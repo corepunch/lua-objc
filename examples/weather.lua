@@ -1,3 +1,5 @@
+local ui = require("luaui")
+
 local function fetch_json(url)
 	local cmd = "curl -s --max-time 10 '" .. url .. "' 2>/dev/null"
 	local handle = io.popen(cmd)
@@ -28,9 +30,9 @@ local cities = {
 	{ name = "Singapore",        query = "Singapore" },
 }
 
-local spinner = Spinner()
-local status_text = Text "Initializing..."
-local list = List {
+local spinner = ui.Spinner()
+local status_text = ui.Text "Initializing..."
+local list = ui.List {
 	width = 660,
 	height = 430,
 	columns = {
@@ -70,36 +72,36 @@ end
 
 local function run()
 	status_text:set_text("Fetching weather data...")
-	sleep(0.3)
+	ui.sleep(0.3)
 
 	for i, city in ipairs(cities) do
 		fetch_city(city)
 		status_text:set_text(
 			string.format("Loading %d/%d  \226\154\128 %s",
 				i, #cities, city.name))
-		sleep(0.15)
+		ui.sleep(0.15)
 	end
 
 	status_text:set_text(
 		string.format("\226\154\136  %d cities  \226\128\162  live from wttr.in",
 			#cities))
-	SpinnerStop(spinner)
+	ui.SpinnerStop(spinner)
 end
 
-Window {
+ui.Window {
 	title = "World Weather  \226\140\136",
 	width = 680,
 	height = 500,
-	VStack {
-		HStack {
+	ui.VStack {
+		ui.HStack {
 			spinner,
 			status_text,
-			Spacer(),
+			ui.Spacer(),
 		},
 		list,
 	}
 }
 
 status_text:set_text("Connecting...")
-SpinnerStart(spinner)
-async(run)
+ui.SpinnerStart(spinner)
+ui.async(run)

@@ -1,3 +1,5 @@
+local ui = require("luaui")
+
 local stocks = {
 	{ symbol = "AAPL",  name = "Apple Inc.",         price = 193.82, change = "+2.34" },
 	{ symbol = "GOOGL", name = "Alphabet Inc.",      price = 141.15, change = "-0.81" },
@@ -11,9 +13,9 @@ local stocks = {
 	{ symbol = "WMT",   name = "Walmart Inc.",       price = 67.82,  change = "+0.27" },
 }
 
-local spinner = Spinner()
-local status_text = Text "Starting up..."
-local list = List {
+local spinner = ui.Spinner()
+local status_text = ui.Text "Starting up..."
+local list = ui.List {
 	width = 600,
 	height = 390,
 	columns = {
@@ -27,7 +29,7 @@ local list = List {
 local function fetch_stock(i)
 	local s = stocks[i]
 	local delay = 0.2 + math.random() * 0.6
-	sleep(delay)
+	ui.sleep(delay)
 
 	local green = s.change:sub(1, 1) == "+"
 	local arrow = green and "\226\150\178" or "\226\150\188"
@@ -46,7 +48,7 @@ end
 
 local function run_ticker()
 	status_text:set_text("Connecting to market data...")
-	sleep(0.8)
+	ui.sleep(0.8)
 
 	for i = 1, #stocks do
 		fetch_stock(i)
@@ -55,23 +57,23 @@ local function run_ticker()
 	status_text:set_text(
 		string.format("\226\151\143  %d stocks  |  Last update: just now",
 			#stocks))
-	SpinnerStop(spinner)
+	ui.SpinnerStop(spinner)
 end
 
-Window {
+ui.Window {
 	title = "Live Stock Ticker",
 	width = 620,
 	height = 480,
-	VStack {
-		HStack {
+	ui.VStack {
+		ui.HStack {
 			spinner,
-			Text "Market Data",
-			Spacer(),
+			ui.Text "Market Data",
+			ui.Spacer(),
 			status_text,
 		},
 		list,
 	}
 }
 
-SpinnerStart(spinner)
-async(run_ticker)
+ui.SpinnerStart(spinner)
+ui.async(run_ticker)

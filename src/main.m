@@ -775,7 +775,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	lua_getglobal(L, "require");
-	lua_pushstring(L, "UI");
+	lua_pushstring(L, "luaui");
 	if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
 		fprintf(stderr, "error loading UI: %s\n", lua_tostring(L, -1));
 		lua_close(L);

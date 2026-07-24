@@ -1,10 +1,12 @@
-Window {
-	title = "ListView Demo",
+local ui = require("luaui")
+
+ui.Window {
+	title = "Employee Directory",
 	width = 640,
 	height = 420,
-	VStack {
-		Text "Employees",
-		List {
+	ui.VStack {
+		ui.Text "Employees",
+		ui.List {
 			width = 620,
 			height = 350,
 			columns = {
