@@ -461,13 +461,26 @@ static void layout_recursive(NSView *view, CGFloat width) {
 
 	if ([axis isEqualToString:@"vstack"]) {
 		CGFloat y = kPadding;
+		CGFloat availH = view.frame.size.height;
+		NSUInteger count = view.subviews.count;
+		NSUInteger i = 0;
 		for (NSView *sv in view.subviews) {
+			i++;
+			BOOL isLast = (i == count);
 			if ([sv respondsToSelector:@selector(sizeToFit)]) {
 				[(id)sv sizeToFit];
 			}
 			NSRect f = sv.frame;
 			CGFloat childW = f.size.width > 0 ? f.size.width : width - 2 * kPadding;
 			CGFloat childH = f.size.height > 0 ? f.size.height : 22;
+
+			if (isLast && availH > 0) {
+				CGFloat remaining = availH - y - kPadding;
+				if (remaining > childH) {
+					childH = remaining;
+				}
+			}
+
 			sv.frame = NSMakeRect(kPadding, y, childW, childH);
 			y += childH + kPadding;
 			layout_recursive(sv, childW);
