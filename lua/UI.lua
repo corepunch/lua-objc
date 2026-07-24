@@ -121,4 +121,32 @@ function UI.List(props)
     return tv
 end
 
+function UI.Spinner()
+    return bridge._spinner()
+end
+
+function UI.SpinnerStart(spinner)
+    bridge._spinner_start(spinner)
+end
+
+function UI.SpinnerStop(spinner)
+    bridge._spinner_stop(spinner)
+end
+
+function UI.sleep(seconds)
+    local co = coroutine.running()
+    if not co then
+        error("sleep() must be called from within a coroutine (use async())")
+    end
+    bridge._timer_after(seconds, function()
+        coroutine.resume(co)
+    end)
+    coroutine.yield()
+end
+
+function UI.async(fn)
+    local co = coroutine.create(fn)
+    coroutine.resume(co)
+end
+
 return UI

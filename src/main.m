@@ -87,6 +87,7 @@ typedef struct {
 static int bridge_tableview_add(lua_State *L);
 static int bridge_tableview_remove(lua_State *L);
 static int bridge_tableview_clear(lua_State *L);
+static int bridge_set_text(lua_State *L);
 
 static void push_objc(lua_State *L, id obj, const char *meta) {
     ObjCRef *ref = lua_newuserdata(L, sizeof(ObjCRef));
@@ -122,13 +123,19 @@ static int gc_objc(lua_State *L) {
 
 static int nsview_index(lua_State *L) {
     id obj = (__bridge id)((ObjCRef *)lua_touserdata(L, 1))->ptr;
+    const char *key = lua_tostring(L, 2);
+    if (!key) { lua_pushnil(L); return 1; }
+
+    if (strcmp(key, "set_text") == 0 && [obj isKindOfClass:[NSTextField class]]) {
+        lua_pushcfunction(L, bridge_set_text);
+        return 1;
+    }
+
     id src = objc_getAssociatedObject(obj, &kTableSourceKey);
     if (!src) {
         lua_pushnil(L);
         return 1;
     }
-    const char *key = lua_tostring(L, 2);
-    if (!key) { lua_pushnil(L); return 1; }
 
     if (strcmp(key, "add_row") == 0) {
         lua_pushcfunction(L, bridge_tableview_add);
@@ -358,6 +365,18 @@ static int bridge_set_content_size(lua_State *L) {
     return 0;
 }
 
+#pragma mark - Text update
+
+static int bridge_set_text(lua_State *L) {
+    id obj = check_objc(L, 1);
+    const char *str = luaL_checkstring(L, 2);
+    if ([obj isKindOfClass:[NSTextField class]]) {
+        [(NSTextField *)obj setStringValue:[NSString stringWithUTF8String:str]];
+        [(NSTextField *)obj sizeToFit];
+    }
+    return 0;
+}
+
 #pragma mark - TableView bridge
 
 static NSMutableDictionary *lua_table_to_dict(lua_State *L, int idx) {
@@ -480,8 +499,55 @@ static int bridge_show(lua_State *L) {
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
     [NSApp activateIgnoringOtherApps:YES];
     [w makeKeyAndOrderFront:nil];
-    [NSApp run];
 
+    return 0;
+}
+
+#pragma mark - Timer & spinner
+
+static int bridge_timer_after(lua_State *L) {
+    double delay = luaL_checknumber(L, 1);
+    luaL_checktype(L, 2, LUA_TFUNCTION);
+    lua_pushvalue(L, 2);
+    int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+
+    lua_getfield(L, LUA_REGISTRYINDEX, "bridge_main");
+    lua_State *mainL = (lua_State *)lua_touserdata(L, -1);
+    lua_pop(L, 1);
+
+    [NSTimer scheduledTimerWithTimeInterval:delay repeats:NO block:^(NSTimer *t) {
+        lua_rawgeti(mainL, LUA_REGISTRYINDEX, ref);
+        if (lua_pcall(mainL, 0, 0, 0) != LUA_OK) {
+            fprintf(stderr, "timer error: %s\n", lua_tostring(mainL, -1));
+            lua_pop(mainL, 1);
+        }
+        luaL_unref(mainL, LUA_REGISTRYINDEX, ref);
+    }];
+
+    return 0;
+}
+
+static int bridge_spinner(lua_State *L) {
+    NSProgressIndicator *p = [[NSProgressIndicator alloc] initWithFrame:NSMakeRect(0, 0, 22, 22)];
+    p.style = NSProgressIndicatorStyleSpinning;
+    p.displayedWhenStopped = NO;
+    push_objc(L, p, "nsview");
+    return 1;
+}
+
+static int bridge_spinner_start(lua_State *L) {
+    NSView *view = check_view(L, 1);
+    if ([view isKindOfClass:[NSProgressIndicator class]]) {
+        [(NSProgressIndicator *)view startAnimation:nil];
+    }
+    return 0;
+}
+
+static int bridge_spinner_stop(lua_State *L) {
+    NSView *view = check_view(L, 1);
+    if ([view isKindOfClass:[NSProgressIndicator class]]) {
+        [(NSProgressIndicator *)view stopAnimation:nil];
+    }
     return 0;
 }
 
@@ -500,6 +566,10 @@ static const luaL_Reg bridge_lib[] = {
     {"_get_frame",        bridge_get_frame},
     {"_set_content_size", bridge_set_content_size},
     {"_tableview",        bridge_tableview},
+    {"_timer_after",      bridge_timer_after},
+    {"_spinner",          bridge_spinner},
+    {"_spinner_start",    bridge_spinner_start},
+    {"_spinner_stop",     bridge_spinner_stop},
     {"_show",             bridge_show},
     {NULL, NULL},
 };
@@ -527,6 +597,9 @@ int main(int argc, char *argv[]) {
 
     lua_State *L = luaL_newstate();
     luaL_openlibs(L);
+
+    lua_pushlightuserdata(L, L);
+    lua_setfield(L, LUA_REGISTRYINDEX, "bridge_main");
 
     luaL_requiref(L, "bridge", luaopen_bridge, 1);
     lua_pop(L, 1);
@@ -580,6 +653,8 @@ int main(int argc, char *argv[]) {
         lua_close(L);
         return 1;
     }
+
+    [NSApp run];
 
     lua_close(L);
     return 0;
