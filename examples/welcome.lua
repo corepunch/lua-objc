@@ -1,0 +1,25 @@
+Window {
+	title = "Welcome to lua-objc",
+	width = 520,
+	height = 420,
+	transparent_titlebar = true,
+	VStack {
+		Spacer(),
+		HStack { Spacer(), Text "Welcome to lua-objc", Spacer() },
+		HStack { Spacer(), Text "A Lua to AppKit UI framework", Spacer() },
+		Spacer(),
+		Text "--  Create New Script",
+		Text "--  Open Existing Example",
+		Text "--  Clone Repository",
+		Spacer(),
+		Text "Recent",
+		Text "----------------------------------------",
+		Text "  hello.lua              just now",
+		Text "  list.lua               8 minutes ago",
+		Text "  live.lua               12 minutes ago",
+		Text "  weather.lua            20 minutes ago",
+		Spacer(),
+		Text "[ ] Show this window on launch",
+		Spacer(),
+	}
+}

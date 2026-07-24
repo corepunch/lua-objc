@@ -26,8 +26,12 @@ function UI.Window(props)
 	local title = props.title or "Window"
 	local width = props.width or 480
 	local height = props.height or 360
+	local transparent_titlebar = props.transparent_titlebar or false
+	local hide_title = props.hide_title
+	if hide_title == nil then hide_title = transparent_titlebar end
 
-	local win = bridge._window(title, width, height)
+	local win = bridge._window(title, width, height,
+		transparent_titlebar, hide_title)
 	local content = bridge._vstack()
 	bridge._set_frame(content, 0, 0, width, height)
 	bridge._add(win, content)

@@ -163,6 +163,8 @@ static int bridge_window(lua_State *L) {
 	const char *title = luaL_checkstring(L, 1);
 	CGFloat width = luaL_checknumber(L, 2);
 	CGFloat height = luaL_checknumber(L, 3);
+	int transparent_titlebar = lua_toboolean(L, 4);
+	int hide_title = lua_toboolean(L, 5);
 
 	NSRect frame = NSMakeRect(0, 0, width, height);
 	NSUInteger style = NSWindowStyleMaskTitled
@@ -170,12 +172,25 @@ static int bridge_window(lua_State *L) {
 					 | NSWindowStyleMaskMiniaturizable
 					 | NSWindowStyleMaskResizable;
 
+	if (transparent_titlebar) {
+		style |= NSWindowStyleMaskFullSizeContentView;
+	}
+
 	NSWindow *w = [[NSWindow alloc] initWithContentRect:frame
 											   styleMask:style
 												 backing:NSBackingStoreBuffered
 												   defer:NO];
 	w.title = [NSString stringWithUTF8String:title];
 	w.releasedWhenClosed = NO;
+
+	if (transparent_titlebar) {
+		w.titlebarAppearsTransparent = YES;
+		if (hide_title) {
+			w.titleVisibility = NSWindowTitleHidden;
+		}
+		w.movableByWindowBackground = YES;
+	}
+
 	[w center];
 
 	[[NSNotificationCenter defaultCenter]
