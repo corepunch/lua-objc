@@ -28,6 +28,9 @@ run-weather: $(TARGET)
 run-welcome: $(TARGET)
 	./$(TARGET) examples/welcome.lua
 
+run-mail: $(TARGET)
+	./$(TARGET) examples/mail.lua
+
 clean:
 	rm -f $(TARGET)
 

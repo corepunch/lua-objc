@@ -30,8 +30,15 @@ function UI.Window(props)
 	local hide_title = props.hide_title
 	if hide_title == nil then hide_title = transparent_titlebar end
 
-	local win = bridge._window(title, width, height,
-		transparent_titlebar, hide_title)
+	local toolbar = props.toolbar
+	local win
+	if toolbar then
+		win = bridge._window(title, width, height,
+			transparent_titlebar, hide_title, toolbar)
+	else
+		win = bridge._window(title, width, height,
+			transparent_titlebar, hide_title)
+	end
 	local content = bridge._vstack()
 	bridge._set_frame(content, 0, 0, width, height)
 	bridge._add(win, content)
@@ -65,6 +72,18 @@ end
 
 function UI.HStack(props)
 	local view = bridge._hstack()
+	if type(props) == "table" then
+		for _, v in ipairs(props) do
+			if type(v) == "userdata" then
+				bridge._add(view, v)
+			end
+		end
+	end
+	return view
+end
+
+function UI.HSplit(props)
+	local view = bridge._hsplit()
 	if type(props) == "table" then
 		for _, v in ipairs(props) do
 			if type(v) == "userdata" then

@@ -1,0 +1,59 @@
+local ui = require("luaui")
+
+local inbox = {
+	{ from = "Alice Chen",    subject = "Q3 roadmap review",            date = "10:32 AM" },
+	{ from = "Bob Martinez",  subject = "Design system updates",         date = "9:15 AM" },
+	{ from = "Carol Park",    subject = "Meeting notes from yesterday",  date = "Yesterday" },
+	{ from = "Dave Johnson",  subject = "PR #142 ready for review",      date = "Yesterday" },
+	{ from = "Eve Williams",  subject = "Budget approval needed",        date = "Mon" },
+	{ from = "Frank Brown",   subject = "Welcome to the team!",          date = "Mon" },
+	{ from = "Grace Kim",     subject = "API migration progress",        date = "Sun" },
+	{ from = "Henry Davis",   subject = "Weekly standup notes",          date = "Sun" },
+}
+
+local folders = {
+	{ name = "Inbox",     count = "8" },
+	{ name = "Sent",      count = "" },
+	{ name = "Drafts",    count = "3" },
+	{ name = "Archive",   count = "" },
+	{ name = "Trash",     count = "" },
+}
+
+local message_list = ui.List {
+	width = 460,
+	height = 310,
+	columns = {
+		{ id = "from",    title = "From" },
+		{ id = "subject", title = "Subject" },
+		{ id = "date",    title = "Date" },
+	},
+	data = inbox,
+}
+
+local folder_list = ui.List {
+	width = 170,
+	height = 310,
+	columns = {
+		{ id = "name",  title = "" },
+		{ id = "count", title = "" },
+	},
+	data = folders,
+}
+
+ui.Window {
+	title = "Mail",
+	width = 680,
+	height = 420,
+	toolbar = {
+		{ id = "new",     label = "New" },
+		{ id = "reply",   label = "Reply" },
+		{ id = "archive", label = "Archive" },
+		{ id = "trash",   label = "Trash" },
+	},
+	ui.VStack {
+		ui.HSplit {
+			folder_list,
+			message_list,
+		},
+	}
+}

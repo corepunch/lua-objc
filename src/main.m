@@ -114,6 +114,66 @@ typedef struct {
 
 @end
 
+#pragma mark - LuaToolbarDelegate
+
+@interface LuaToolbarDelegate : NSObject <NSToolbarDelegate>
+@property (nonatomic, strong) NSArray *items;
+@end
+
+@implementation LuaToolbarDelegate
+
+- (instancetype)initWithItems:(NSArray *)items {
+	self = [super init];
+	if (self) {
+		_items = [items copy];
+	}
+	return self;
+}
+
+- (NSArray<NSString *> *)toolbarDefaultItemIdentifiers:(NSToolbar *)toolbar {
+	NSMutableArray *ids = [NSMutableArray array];
+	for (NSDictionary *item in _items) {
+		[ids addObject:item[@"id"]];
+	}
+	return ids;
+}
+
+- (NSArray<NSString *> *)toolbarAllowedItemIdentifiers:(NSToolbar *)toolbar {
+	return [self toolbarDefaultItemIdentifiers:toolbar];
+}
+
+- (NSToolbarItem *)toolbar:(NSToolbar *)toolbar
+	 itemForItemIdentifier:(NSString *)identifier
+ willBeInsertedIntoToolbar:(BOOL)flag
+{
+	for (NSDictionary *item in _items) {
+		if ([item[@"id"] isEqualToString:identifier]) {
+			NSToolbarItem *ti = [[NSToolbarItem alloc] initWithItemIdentifier:identifier];
+			ti.label = item[@"label"] ?: identifier;
+			ti.paletteLabel = ti.label;
+
+			NSNumber *refNum = item[@"actionRef"];
+			if (refNum) {
+				NSButton *btn = [[NSButton alloc] initWithFrame:NSZeroRect];
+				btn.title = ti.label;
+				btn.bezelStyle = NSBezelStyleToolbar;
+				[btn sizeToFit];
+				ti.view = btn;
+
+				objc_setAssociatedObject(btn, &kCallbackKey, refNum,
+					OBJC_ASSOCIATION_RETAIN);
+				btn.target = [LuaButtonTarget shared];
+				btn.action = @selector(onAction:);
+			}
+
+			return ti;
+		}
+	}
+	return nil;
+}
+
+@end
+
 #pragma mark - Lua helpers
 
 static int bridge_tableview_add(lua_State *L);
@@ -243,6 +303,40 @@ static int bridge_window(lua_State *L) {
 					[NSApp terminate:nil];
 				}];
 
+	if (!lua_isnoneornil(L, 6)) {
+		luaL_checktype(L, 6, LUA_TTABLE);
+		int n = (int)luaL_len(L, 6);
+		NSMutableArray *items = [NSMutableArray array];
+		for (int i = 1; i <= n; i++) {
+			lua_rawgeti(L, 6, i);
+			lua_getfield(L, -1, "id");
+			lua_getfield(L, -2, "label");
+			const char *iid = lua_tostring(L, -2);
+			const char *ilabel = lua_tostring(L, -1);
+
+			NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+			if (iid) dict[@"id"] = [NSString stringWithUTF8String:iid];
+			if (ilabel) dict[@"label"] = [NSString stringWithUTF8String:ilabel];
+
+			lua_getfield(L, -3, "action");
+			if (lua_isfunction(L, -1)) {
+				lua_pushvalue(L, -1);
+				int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+				dict[@"actionRef"] = @(ref);
+			}
+			lua_pop(L, 1);
+
+			[items addObject:dict];
+			lua_pop(L, 3);
+		}
+
+		LuaToolbarDelegate *del = [[LuaToolbarDelegate alloc] initWithItems:items];
+		NSToolbar *tb = [[NSToolbar alloc] initWithIdentifier:@"main"];
+		tb.displayMode = NSToolbarDisplayModeIconAndLabel;
+		tb.delegate = del;
+		w.toolbar = tb;
+	}
+
 	push_objc(L, w, "nswindow");
 	return 1;
 }
@@ -257,6 +351,15 @@ static int bridge_vstack(lua_State *L) {
 static int bridge_hstack(lua_State *L) {
 	NSView *v = [[NSView alloc] initWithFrame:NSZeroRect];
 	objc_setAssociatedObject(v, &kAxisKey, @"hstack", OBJC_ASSOCIATION_RETAIN);
+	push_objc(L, v, "nsview");
+	return 1;
+}
+
+static int bridge_hsplit(lua_State *L) {
+	NSSplitView *v = [[NSSplitView alloc] initWithFrame:NSZeroRect];
+	v.vertical = YES;
+	v.dividerStyle = NSSplitViewDividerStyleThin;
+	objc_setAssociatedObject(v, &kAxisKey, @"hsplit", OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, v, "nsview");
 	return 1;
 }
@@ -373,6 +476,16 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			layout_recursive(sv, childW);
 		}
 		view.frame = NSMakeRect(0, 0, x, maxH + 2 * kPadding);
+	} else if ([axis isEqualToString:@"hsplit"]) {
+		CGFloat n = (CGFloat)view.subviews.count;
+		if (n == 0) return;
+		CGFloat childW = (width - (n - 1) * kPadding) / n;
+		CGFloat x = 0;
+		for (NSView *sv in view.subviews) {
+			sv.frame = NSMakeRect(x, 0, childW, view.frame.size.height);
+			layout_recursive(sv, childW);
+			x += childW + kPadding;
+		}
 	} else {
 		for (NSView *sv in view.subviews) {
 			if (objc_getAssociatedObject(sv, &kAxisKey)) {
@@ -709,6 +822,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_window",           bridge_window},
 	{"_vstack",           bridge_vstack},
 	{"_hstack",           bridge_hstack},
+	{"_hsplit",           bridge_hsplit},
 	{"_spacer",           bridge_spacer},
 	{"_text",             bridge_text},
 	{"_image",            bridge_image},

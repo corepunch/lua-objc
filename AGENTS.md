@@ -97,6 +97,7 @@ Creates an `NSWindow`. Table keys:
 | `height` | number | `360` | Content height in points |
 | `transparent_titlebar` | bool | `false` | Full-size content, transparent title bar |
 | `hide_title` | bool | `=transparent_titlebar` | Hide title text in transparent mode |
+| `toolbar` | `{{id, label, action?}}` | none | NSToolbar items |
 
 The array part of the table holds child views (added to a VStack inside the
 window's content view). After building the view tree, calls `bridge._show(win)`
@@ -107,8 +108,12 @@ Window {
     title = "My App",
     width = 600,
     height = 400,
-    Text "Hello",           -- array part = children
-    List { columns = ... }, -- added to window's VStack
+    toolbar = {
+        { id = "new",  label = "New" },
+        { id = "save", label = "Save", action = function() print("saved") end },
+    },
+    Text "Hello",
+    List { columns = ... },
 }
 ```
 
@@ -127,6 +132,19 @@ VStack {
         Spacer(),
         Text "Right",
     }
+}
+```
+
+### `HSplit{...}`
+
+Horizontal split view (NSSplitView with thin vertical divider). Children
+are divided equally across the available width. Useful for sidebar + content
+layouts.
+
+```lua
+HSplit {
+    VStack { Text "Sidebar" },
+    VStack { Text "Content" },
 }
 ```
 
@@ -404,6 +422,54 @@ make run ARGS="examples/list.lua"
 make clean
 ```
 
+## ObjC tricks that make Lua binding shorter (vs C++ or C)
+
+ObjC's dynamic runtime eliminates a lot of binding boilerplate compared to
+statically-typed languages. These are the tricks we use — and the ones we
+should add next.
+
+### Already in use
+
+| Trick | How it helps |
+|---|---|
+| **`objc_setAssociatedObject`** | Attach Lua callback refs, layout tags, data sources directly to ObjC objects — no wrapper structs or side tables. We use it for `kAxisKey` (layout), `kTableSourceKey` (table view), `kCallbackKey` (button actions). |
+| **`CFBridgingRetain` / `CFRelease`** | Seamless ARC ↔ C pointer ownership. One call to retain when crossing into Lua, one to release on `__gc`. No `retain`/`release` bookkeeping. |
+| **`isKindOfClass:`** | Type-safe downcasting. `check_objc` returns `id`; bridge functions check `[obj isKindOfClass:[NSWindow class]]` before casting. Prevents crashes on wrong types. |
+| **Blocks (`^ { ... }`)** | ObjC closures capture variables by value. `NSTimer` and `NSNotificationCenter` accept blocks — no C function pointers or `void *` contexts. We use this for timer callbacks and window-close handlers. |
+| **`id` dynamic typing** | `id` accepts any ObjC object without static type info. Bridge functions receive `id` and decide at runtime which class to cast to. |
+
+### Not yet using — would reduce boilerplate further
+
+| Trick | How it helps | Effort |
+|---|---|---|
+| **KVC (`setValue:forKey:`)** | Replace `bridge._set_text`, `bridge._set_frame`, etc. with one generic `bridge._set(view, "stringValue", "hello")`. KVC auto-boxes scalars and handles type conversion. | Low |
+| **`performSelector:`** | `bridge._call(view, "sizeToFit")` — call any method by name without a typed bridge function. Guard with `respondsToSelector:`. | Low |
+| **`class_copyMethodList`** | Enumerate all methods on NSView/NSWindow at runtime, auto-register them as Lua-callable bridge functions. One-time setup, then new AppKit methods work for free. | Medium |
+| **Generic Lua↔NSDictionary** | A recursive converter: Lua table → `NSDictionary`/`NSArray`, ObjC collection → Lua table. Eliminates `lua_table_to_dict` and enables passing complex data anywhere. | Medium |
+| **KVO** | `observeValueForKeyPath:ofObject:change:context:` → Lua callback. Enables reactive UI: change a property in ObjC, Lua gets notified automatically. | Medium |
+| **`NSInvocation`** | Full dynamic method invocation with arbitrary signatures. More complex but enables calling any method without writing a typed wrapper. | High |
+| **`NSProxy` + `forwardingTargetForSelector:`** | Create a Lua-backed proxy object that responds to any selector by calling a Lua function. The Lua side defines the interface; ObjC forwards everything. | High |
+
+### C++ things that don't apply here
+
+| C++ concept | Why it doesn't help |
+|---|---|
+| RTTI (`dynamic_cast`) | ObjC has `isKindOfClass:` — simpler, no type_info needed |
+| Templates | No equivalent in ObjC; use `id` + runtime checks instead |
+| Function pointers | ObjC uses blocks or `performSelector:` — type-safe, no raw pointers |
+| `std::bind` / lambdas | ObjC blocks are the equivalent, with automatic memory management |
+| RAII | ARC handles memory; use `CFBridgingRetain`/`CFRelease` at the boundary |
+
+### Gotchas to avoid
+
+| Gotcha | Why it happens | Fix |
+|---|---|---|
+| **Calling `lua_pcall` from a coroutine's C function** | `L` in a coroutine's bridge function is the coroutine's `lua_State *`, not the main state. `lua_pcall` on it corrupts the stack. | Store main `L` as lightuserdata in registry (`"bridge_main"`), retrieve it before `lua_pcall` from timer callbacks. |
+| **`lua_tostring` mutating numbers on the stack** | Calling `lua_tostring` on a number changes the stack slot to a string, breaking `lua_next` iteration. | Use `lua_pushvalue` before conversion, or check `lua_type` first. |
+| **`sizeToFit` on non-NSControl views** | `NSScrollView`, `NSSplitView` don't implement it — crash. | Guard with `respondsToSelector:@selector(sizeToFit)`. |
+| **ARC and `lua_State*` lifetime** | ARC won't release the `lua_State*` for you — it's a C pointer. The ObjC object holding it can be dealloc'd while the state is still alive. | Never store `lua_State*` as an ObjC property without a corresponding `__weak` or manual cleanup in `dealloc`. |
+| **Blocks capturing `lua_State*` in timers** | The block captures the pointer by value. If the Lua state is closed before the timer fires → crash. | Ensure the Lua state outlives all timers (it does — state closes in `main()` after `[NSApp run]` returns). |
+
 ## File layout
 
 ```
@@ -416,5 +482,9 @@ lua-objc/
 │   └── UI.lua              # SwiftUI-like Lua module
 └── examples/
     ├── hello.lua           # Window + Text + Image demo
-    └── list.lua            # Window + List (NSTableView) demo
+    ├── list.lua            # Window + List (NSTableView) demo
+    ├── live.lua            # Stock ticker with coroutines + spinner
+    ├── weather.lua         # Real network fetch (wttr.in)
+    ├── welcome.lua         # Xcode-style welcome window
+    └── mail.lua            # Sidebar + toolbar + split view
 ```
