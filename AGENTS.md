@@ -330,6 +330,16 @@ end)
 Window { title = "Live Data", width = 600, height = 400, tv }
 ```
 
+## Conventions
+
+**Tab indentation.** All source files (`.m`, `.lua`) use tabs for leading
+indentation, not spaces. Set your editor to display tabs at 4 columns wide.
+
+```sh
+# To convert spaces to tabs in any file:
+perl -i -pe '1 while s/^(\t*)    /$1\t/' file
+```
+
 ## Building
 
 Requires:
