@@ -99,4 +99,26 @@ function UI.Spacer()
     return bridge._spacer()
 end
 
+function UI.List(props)
+    local columns = props.columns
+    if not columns or type(columns) ~= "table" then
+        error("List requires a 'columns' property (array of {id, title})")
+    end
+
+    local width = props.width or 400
+    local height = props.height or 200
+
+    local tv = bridge._tableview(columns, width, height)
+
+    if props.data and type(props.data) == "table" then
+        for _, row in ipairs(props.data) do
+            if type(row) == "table" then
+                tv:add_row(row)
+            end
+        end
+    end
+
+    return tv
+end
+
 return UI
