@@ -13,7 +13,22 @@ $(TARGET): $(SRC)
 run: $(TARGET)
 	./$(TARGET) $(ARGS)
 
+run-hello: $(TARGET)
+	./$(TARGET) examples/hello.lua
+
+run-list: $(TARGET)
+	./$(TARGET) examples/list.lua
+
+run-live: $(TARGET)
+	./$(TARGET) examples/live.lua
+
+run-weather: $(TARGET)
+	./$(TARGET) examples/weather.lua
+
+run-welcome: $(TARGET)
+	./$(TARGET) examples/welcome.lua
+
 clean:
 	rm -f $(TARGET)
 
-.PHONY: all run clean
+.PHONY: all run clean run-hello run-list run-live run-weather run-welcome
