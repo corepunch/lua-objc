@@ -7,7 +7,9 @@
 
 static char kAxisKey;
 static char kTableSourceKey;
+static char kCallbackKey;
 static const CGFloat kPadding = 12.0;
+static lua_State *gL = NULL;
 
 typedef struct {
 	void *ptr;
@@ -82,12 +84,44 @@ typedef struct {
 
 @end
 
+#pragma mark - LuaButtonTarget
+
+@interface LuaButtonTarget : NSObject
++ (instancetype)shared;
+@end
+
+@implementation LuaButtonTarget
+
++ (instancetype)shared {
+	static LuaButtonTarget *instance = nil;
+	static dispatch_once_t once;
+	dispatch_once(&once, ^{ instance = [[self alloc] init]; });
+	return instance;
+}
+
+- (void)onAction:(id)sender {
+	id refObj = objc_getAssociatedObject(sender, &kCallbackKey);
+	if (!refObj || !gL) return;
+	int ref = [refObj intValue];
+
+	lua_rawgeti(gL, LUA_REGISTRYINDEX, ref);
+	int status = lua_pcall(gL, 0, 0, 0);
+	if (status != LUA_OK) {
+		fprintf(stderr, "button error: %s\n", lua_tostring(gL, -1));
+		lua_pop(gL, 1);
+	}
+}
+
+@end
+
 #pragma mark - Lua helpers
 
 static int bridge_tableview_add(lua_State *L);
 static int bridge_tableview_remove(lua_State *L);
 static int bridge_tableview_clear(lua_State *L);
 static int bridge_set_text(lua_State *L);
+static int bridge_toggle_get_state(lua_State *L);
+static int bridge_toggle_set_state(lua_State *L);
 
 static void push_objc(lua_State *L, id obj, const char *meta) {
 	ObjCRef *ref = lua_newuserdata(L, sizeof(ObjCRef));
@@ -128,6 +162,14 @@ static int nsview_index(lua_State *L) {
 
 	if (strcmp(key, "set_text") == 0 && [obj isKindOfClass:[NSTextField class]]) {
 		lua_pushcfunction(L, bridge_set_text);
+		return 1;
+	}
+	if (strcmp(key, "get_state") == 0 && [obj isKindOfClass:[NSButton class]]) {
+		lua_pushcfunction(L, bridge_toggle_get_state);
+		return 1;
+	}
+	if (strcmp(key, "set_state") == 0 && [obj isKindOfClass:[NSButton class]]) {
+		lua_pushcfunction(L, bridge_toggle_set_state);
 		return 1;
 	}
 
@@ -227,6 +269,8 @@ static int bridge_spacer(lua_State *L) {
 
 static int bridge_text(lua_State *L) {
 	const char *str = luaL_checkstring(L, 1);
+	CGFloat fontSize = luaL_optnumber(L, 2, 0);
+	const char *weightStr = luaL_optstring(L, 3, NULL);
 
 	NSTextField *tf = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 300, 22)];
 	tf.stringValue = [NSString stringWithUTF8String:str];
@@ -234,6 +278,18 @@ static int bridge_text(lua_State *L) {
 	tf.drawsBackground = NO;
 	tf.editable = NO;
 	tf.selectable = NO;
+
+	if (fontSize > 0) {
+		NSFontWeight w = NSFontWeightRegular;
+		if (weightStr) {
+			if (strcmp(weightStr, "bold") == 0) w = NSFontWeightBold;
+			else if (strcmp(weightStr, "semibold") == 0) w = NSFontWeightSemibold;
+			else if (strcmp(weightStr, "light") == 0) w = NSFontWeightLight;
+			else if (strcmp(weightStr, "heavy") == 0) w = NSFontWeightHeavy;
+		}
+		tf.font = [NSFont systemFontOfSize:fontSize weight:w];
+	}
+
 	[tf sizeToFit];
 
 	push_objc(L, tf, "nsview");
@@ -388,6 +444,87 @@ static int bridge_set_text(lua_State *L) {
 	if ([obj isKindOfClass:[NSTextField class]]) {
 		[(NSTextField *)obj setStringValue:[NSString stringWithUTF8String:str]];
 		[(NSTextField *)obj sizeToFit];
+	}
+	return 0;
+}
+
+#pragma mark - Button, toggle, separator
+
+static int bridge_button(lua_State *L) {
+	const char *title = luaL_checkstring(L, 1);
+	int has_action = !lua_isnoneornil(L, 2);
+	int ref = LUA_NOREF;
+	if (has_action) {
+		luaL_checktype(L, 2, LUA_TFUNCTION);
+		lua_pushvalue(L, 2);
+		ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	}
+
+	NSButton *btn = [[NSButton alloc] initWithFrame:NSZeroRect];
+	btn.title = [NSString stringWithUTF8String:title];
+	btn.bezelStyle = NSBezelStyleRounded;
+	[btn sizeToFit];
+
+	if (has_action) {
+		objc_setAssociatedObject(btn, &kCallbackKey, @(ref),
+			OBJC_ASSOCIATION_RETAIN);
+		btn.target = [LuaButtonTarget shared];
+		btn.action = @selector(onAction:);
+	}
+
+	push_objc(L, btn, "nsview");
+	return 1;
+}
+
+static int bridge_toggle(lua_State *L) {
+	const char *label = luaL_checkstring(L, 1);
+	int is_on = lua_toboolean(L, 2);
+	int has_action = !lua_isnoneornil(L, 3);
+	int ref = LUA_NOREF;
+	if (has_action) {
+		luaL_checktype(L, 3, LUA_TFUNCTION);
+		lua_pushvalue(L, 3);
+		ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	}
+
+	NSButton *btn = [NSButton checkboxWithTitle:[NSString stringWithUTF8String:label]
+										 target:nil action:nil];
+	btn.state = is_on ? NSControlStateValueOn : NSControlStateValueOff;
+	[btn sizeToFit];
+
+	if (has_action) {
+		objc_setAssociatedObject(btn, &kCallbackKey, @(ref),
+			OBJC_ASSOCIATION_RETAIN);
+		btn.target = [LuaButtonTarget shared];
+		btn.action = @selector(onAction:);
+	}
+
+	push_objc(L, btn, "nsview");
+	return 1;
+}
+
+static int bridge_separator(lua_State *L) {
+	NSBox *sep = [[NSBox alloc] initWithFrame:NSMakeRect(0, 0, 200, 1)];
+	sep.boxType = NSBoxSeparator;
+	push_objc(L, sep, "nsview");
+	return 1;
+}
+
+static int bridge_toggle_get_state(lua_State *L) {
+	id obj = check_objc(L, 1);
+	if ([obj isKindOfClass:[NSButton class]]) {
+		lua_pushboolean(L, [(NSButton *)obj state] == NSControlStateValueOn);
+		return 1;
+	}
+	lua_pushnil(L);
+	return 1;
+}
+
+static int bridge_toggle_set_state(lua_State *L) {
+	id obj = check_objc(L, 1);
+	int is_on = lua_toboolean(L, 2);
+	if ([obj isKindOfClass:[NSButton class]]) {
+		[(NSButton *)obj setState:is_on ? NSControlStateValueOn : NSControlStateValueOff];
 	}
 	return 0;
 }
@@ -581,6 +718,11 @@ static const luaL_Reg bridge_lib[] = {
 	{"_get_frame",        bridge_get_frame},
 	{"_set_content_size", bridge_set_content_size},
 	{"_tableview",        bridge_tableview},
+	{"_button",           bridge_button},
+	{"_toggle",           bridge_toggle},
+	{"_separator",        bridge_separator},
+	{"_toggle_get_state", bridge_toggle_get_state},
+	{"_toggle_set_state", bridge_toggle_set_state},
 	{"_timer_after",      bridge_timer_after},
 	{"_spinner",          bridge_spinner},
 	{"_spinner_start",    bridge_spinner_start},
@@ -611,6 +753,7 @@ int main(int argc, char *argv[]) {
 	[NSApplication sharedApplication];
 
 	lua_State *L = luaL_newstate();
+	gL = L;
 	luaL_openlibs(L);
 
 	lua_pushlightuserdata(L, L);

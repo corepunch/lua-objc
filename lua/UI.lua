@@ -76,15 +76,23 @@ function UI.HStack(props)
 end
 
 function UI.Text(arg)
-	local text
+	local text, size, weight
 	if type(arg) == "table" then
 		text = arg[1] or ""
+		size = arg.size
+		weight = arg.weight
 	elseif type(arg) == "string" then
 		text = arg
 	else
 		text = tostring(arg)
 	end
-	return bridge._text(text)
+	return bridge._text(text, size or 0, weight)
+end
+
+function UI.Title(arg)
+	return bridge._text(
+		type(arg) == "table" and arg[1] or arg,
+		22, "bold")
 end
 
 function UI.Image(arg)
@@ -123,6 +131,29 @@ function UI.List(props)
 	end
 
 	return tv
+end
+
+function UI.Button(props)
+	local title = type(props) == "table" and (props.title or props[1] or "") or ""
+	local action = type(props) == "table" and props.action or nil
+	if action then
+		return bridge._button(title, action)
+	end
+	return bridge._button(title)
+end
+
+function UI.Toggle(props)
+	local label = type(props) == "table" and (props.label or props[1] or "") or ""
+	local is_on = type(props) == "table" and props.is_on or false
+	local action = type(props) == "table" and props.action or nil
+	if action then
+		return bridge._toggle(label, is_on, action)
+	end
+	return bridge._toggle(label, is_on)
+end
+
+function UI.Separator()
+	return bridge._separator()
 end
 
 function UI.Spinner()

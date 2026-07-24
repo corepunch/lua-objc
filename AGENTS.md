@@ -3,6 +3,11 @@
 SwiftUI-like declarative UI from Lua scripts, backed by AppKit (NSView/NSWindow).
 Edit `.lua` files — no recompilation needed.
 
+**Goal: 100% SwiftUI coverage via Lua.** Every control should be a proper
+AppKit-backed widget, never a hack (no `Text "----"` for separators or
+`Text "[ ]"` for checkboxes). If something looks like a placeholder, the
+missing widget must be built.
+
 ## Architecture
 
 ```
@@ -33,12 +38,17 @@ Each ObjC object is wrapped in a Lua full userdata with a metatable (`nsview` or
 | `_window(title, w, h)` | `NSWindow` |
 | `_vstack()` | `NSView` (vertical layout) |
 | `_hstack()` | `NSView` (horizontal layout) |
-| `_text(str)` | `NSTextField` (non-editable label) |
+| `_text(str, size, weight)` | `NSTextField` (non-editable label, optional font) |
 | `_image(path)` | `NSImageView` |
+| `_button(title, callback)` | `NSButton` (push button, stores callback in registry) |
+| `_toggle(label, is_on, callback)` | `NSButton` (checkbox, stores callback in registry) |
+| `_separator()` | `NSBox` (separator line) |
 | `_add(parent, child)` | calls `addSubview:` |
 | `_layout(view, width)` | recursive frame-based layout in C |
 | `_tableview(columns, w, h)` | `NSScrollView` wrapping `NSTableView` + `LuaTableViewSource` |
-| `_show(window)` | starts `[NSApp run]` |
+| `_timer_after(delay, callback)` | one-shot `NSTimer` |
+| `_spinner()` / `_spinner_start` / `_spinner_stop` | `NSProgressIndicator` |
+| `_show(window)` | orders window front (run loop in `main()`) |
 
 ### Layout
 
@@ -85,10 +95,12 @@ Creates an `NSWindow`. Table keys:
 | `title` | string | `"Window"` | Window title |
 | `width` | number | `480` | Content width in points |
 | `height` | number | `360` | Content height in points |
+| `transparent_titlebar` | bool | `false` | Full-size content, transparent title bar |
+| `hide_title` | bool | `=transparent_titlebar` | Hide title text in transparent mode |
 
 The array part of the table holds child views (added to a VStack inside the
 window's content view). After building the view tree, calls `bridge._show(win)`
-which starts `[NSApp run]` — this blocks until the window closes.
+— the run loop starts in `main()` after the script returns.
 
 ```lua
 Window {
@@ -120,12 +132,19 @@ VStack {
 
 ### `Text "string"` / `Text{"string"}`
 
-Creates a non-editable, bezel-less `NSTextField` label. Both forms work:
+Creates a non-editable, bezel-less `NSTextField` label. Both forms work,
+with an optional `size` and `weight` key for custom fonts:
 
 ```lua
-Text "Hello"        -- single string argument
-Text { "Hello" }    -- table with string in [1]
+Text "Hello"                          -- default font
+Text { "Hello", size = 16 }           -- 16pt system font
+Text { "Hello", size = 18, weight = "bold" }  -- 18pt bold
 ```
+
+### `Title "string"`
+
+Shorthand for `Text{string, size = 22, weight = "bold"}`. Useful for
+window headers.
 
 ### `Image "path"`
 
@@ -133,9 +152,40 @@ Creates an `NSImageView`. The image is scaled proportionally, max width 400px.
 Paths can be absolute (`/Library/Desktop Pictures/Beach.jpg`) or relative to
 the working directory.
 
+### `Button{...}`
+
+Creates an `NSButton` (rounded push button). The optional `action` key stores a
+Lua callback in the registry, fired via `LuaButtonTarget` + target-action.
+
 ```lua
-Image "/Library/Desktop Pictures/Beach.jpg"
+Button { title = "Create New Script" }
+Button {
+    title = "Create New Script",
+    action = function() print("clicked") end
+}
 ```
+
+### `Toggle{...}`
+
+Creates an `NSButton` checkbox. Keys: `label` (string), `is_on` (bool),
+`action` (function, optional).
+
+```lua
+Toggle { label = "Show on launch", is_on = true }
+Toggle {
+    label = "Show on launch",
+    is_on = true,
+    action = function() print("toggled") end
+}
+```
+
+The toggle state can be read/written via `toggle:get_state()` and
+`toggle:set_state(bool)` (exposed through the nsview metatable `__index`).
+
+### `Separator()`
+
+Creates an `NSBox` with `NSBoxSeparator` style — a thin horizontal line.
+Use between sections instead of faking it with `Text "---"`.
 
 ### `Spacer()`
 
