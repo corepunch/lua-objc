@@ -45,10 +45,10 @@ ui.Window {
 	width = 680,
 	height = 420,
 	toolbar = {
-		{ id = "new",     label = "New" },
-		{ id = "reply",   label = "Reply" },
-		{ id = "archive", label = "Archive" },
-		{ id = "trash",   label = "Trash" },
+		{ id = "new",     label = "New",     icon = "square.and.pencil" },
+		{ id = "reply",   label = "Reply",   icon = "arrowshape.turn.up.left" },
+		{ id = "archive", label = "Archive", icon = "archivebox" },
+		{ id = "trash",   label = "Trash",   icon = "trash" },
 	},
 	ui.VStack {
 		ui.HSplit {

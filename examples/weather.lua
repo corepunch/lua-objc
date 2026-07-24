@@ -92,6 +92,15 @@ ui.Window {
 	title = "World Weather  \226\140\136",
 	width = 680,
 	height = 500,
+	toolbar = {
+		{ id = "refresh", label = "Refresh", icon = "arrow.clockwise",
+		  action = function()
+			  list:clear_rows()
+			  status_text:set_text("Refreshing...")
+			  ui.SpinnerStart(spinner)
+			  ui.async(run)
+		  end },
+	},
 	ui.VStack {
 		ui.HStack {
 			spinner,

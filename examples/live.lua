@@ -64,6 +64,15 @@ ui.Window {
 	title = "Live Stock Ticker",
 	width = 620,
 	height = 480,
+	toolbar = {
+		{ id = "refresh", label = "Refresh", icon = "arrow.clockwise",
+		  action = function()
+			  list:clear_rows()
+			  status_text:set_text("Refreshing...")
+			  ui.SpinnerStart(spinner)
+			  ui.async(run_ticker)
+		  end },
+	},
 	ui.VStack {
 		ui.HStack {
 			spinner,

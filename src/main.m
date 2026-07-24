@@ -152,6 +152,14 @@ typedef struct {
 			ti.label = item[@"label"] ?: identifier;
 			ti.paletteLabel = ti.label;
 
+			if (item[@"icon"]) {
+				NSImage *img = [NSImage imageWithSystemSymbolName:item[@"icon"]
+										accessibilityDescription:nil];
+				if (img) {
+					ti.image = img;
+				}
+			}
+
 			NSNumber *refNum = item[@"actionRef"];
 			if (refNum) {
 				NSButton *btn = [[NSButton alloc] initWithFrame:NSZeroRect];
@@ -311,12 +319,17 @@ static int bridge_window(lua_State *L) {
 			lua_rawgeti(L, 6, i);
 			lua_getfield(L, -1, "id");
 			lua_getfield(L, -2, "label");
-			const char *iid = lua_tostring(L, -2);
-			const char *ilabel = lua_tostring(L, -1);
+			lua_getfield(L, -3, "icon");
+			const char *iid = lua_tostring(L, -3);
+			const char *ilabel = lua_tostring(L, -2);
+			const char *iicon = lua_tostring(L, -1);
 
 			NSMutableDictionary *dict = [NSMutableDictionary dictionary];
 			if (iid) dict[@"id"] = [NSString stringWithUTF8String:iid];
 			if (ilabel) dict[@"label"] = [NSString stringWithUTF8String:ilabel];
+			if (iicon) dict[@"icon"] = [NSString stringWithUTF8String:iicon];
+
+			lua_pop(L, 1);
 
 			lua_getfield(L, -3, "action");
 			if (lua_isfunction(L, -1)) {
