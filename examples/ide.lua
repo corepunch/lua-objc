@@ -1,5 +1,6 @@
 local ns = require("AppKit")
 local ide = require("IDEKit")
+local bridge = require("bridge")
 
 local canvas = ide.Canvas()
 local editor = ide.Editor {
@@ -47,6 +48,23 @@ local fileTree = ns.List {
 	data = files,
 }
 
+local examplesDir = "examples"
+
+local function openInEditor(filename)
+	local f = io.open(examplesDir .. "/" .. filename, "r")
+	if not f then return end
+	local content = f:read("*a")
+	f:close()
+	bridge._textViewSetText(editor, content)
+	ide._evalIntoCanvas(canvas, content)
+end
+
+fileTree:onRowSelect(function(list, rowIndex, rowData)
+	if rowData and rowData.name then
+		openInEditor(rowData.name)
+	end
+end)
+
 local function Panel(title, content, props)
 	props = props or {}
 	return ns.VStack {
@@ -80,7 +98,7 @@ ns.Window {
 		spacing = 0,
 		ns.HSplit {
 			flexGrow = 1,
-			Panel("Files", fileTree, { fixedWidth = 220 }),
+			Panel("Files", fileTree, { fixedWidth = 120 }),
 			Panel("Editor", editor, { flexGrow = 1 }),
 			Panel("Canvas", canvas, { flexGrow = 1 }),
 		},

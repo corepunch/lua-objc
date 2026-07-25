@@ -31,6 +31,7 @@ static char kFillWidthKey;
 static char kFillHeightKey;
 static char kImageLayoutSizeKey;
 static char kTableSpinnerKey;
+static char kTableSelectionKey;
 static char kTableRefreshKey;
 static char kTextChangeKey;
 static const CGFloat kStackSpacing = 8.0;
@@ -39,6 +40,8 @@ static lua_State *gL = NULL;
 typedef struct {
 	void *ptr;
 } ObjCRef;
+
+static void push_objc(lua_State *L, id obj, const char *meta);
 
 #pragma mark - LuaTableViewSource
 
@@ -182,6 +185,35 @@ typedef struct {
 	[_rows removeAllObjects];
 	[_tableView reloadData];
 	[self updateTableFrame];
+}
+
+- (void)tableViewSelectionDidChange:(NSNotification *)notification {
+	NSInteger row = _tableView.selectedRow;
+	if (row < 0) return;
+
+	NSScrollView *sv = _tableView.enclosingScrollView;
+	if (!sv || !gL) return;
+
+	NSNumber *refNum = objc_getAssociatedObject(sv, &kTableSelectionKey);
+	if (!refNum) return;
+
+	NSDictionary *rowData = _rows[row];
+	lua_rawgeti(gL, LUA_REGISTRYINDEX, refNum.intValue);
+	push_objc(gL, sv, "nsview");
+	lua_pushinteger(gL, (lua_Integer)row);
+	lua_newtable(gL);
+	for (NSString *key in rowData) {
+		id value = rowData[key];
+		const char *str = value && ![value isEqual:[NSNull null]]
+			? [[value description] UTF8String] : NULL;
+		lua_pushstring(gL, str ?: "");
+		lua_setfield(gL, -2, [key UTF8String]);
+	}
+	int status = lua_pcall(gL, 3, 0, 0);
+	if (status != LUA_OK) {
+		fprintf(stderr, "table selection error: %s\n", lua_tostring(gL, -1));
+		lua_pop(gL, 1);
+	}
 }
 
 @end
@@ -513,6 +545,7 @@ static int bridge_table_show_loading(lua_State *L);
 static int bridge_table_hide_loading(lua_State *L);
 static int bridge_table_set_refresh(lua_State *L);
 static int bridge_table_refresh(lua_State *L);
+static int bridge_table_set_selection(lua_State *L);
 static int bridge_set_text(lua_State *L);
 static int bridge_text_view(lua_State *L);
 static int bridge_text_view_get_text(lua_State *L);
@@ -729,6 +762,10 @@ static int nsview_index(lua_State *L) {
 		}
 		if (strcmp(key, "refresh") == 0) {
 			lua_pushcfunction(L, bridge_table_refresh);
+			return 1;
+		}
+		if (strcmp(key, "onRowSelect") == 0) {
+			lua_pushcfunction(L, bridge_table_set_selection);
 			return 1;
 		}
 	}
@@ -1268,13 +1305,19 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		natural.height += 2 * padY;
 	} else if ([axis isEqualToString:@"hsplit"]) {
 		for (NSView *child in view.subviews) {
-			NSSize childSize = measure_view(child, (LuaLayoutConstraint){
-				.width = 0,
-				.height = innerHeight,
-				.widthMode = LuaMeasureUndefined,
-				.heightMode = constraint.heightMode == LuaMeasureUndefined
-					? LuaMeasureUndefined : LuaMeasureAtMost,
-			});
+			CGFloat fw = view_fixed_width(child);
+			NSSize childSize;
+			if (fw > 0) {
+				childSize = NSMakeSize(fw, 0);
+			} else {
+				childSize = measure_view(child, (LuaLayoutConstraint){
+					.width = 0,
+					.height = innerHeight,
+					.widthMode = LuaMeasureUndefined,
+					.heightMode = constraint.heightMode == LuaMeasureUndefined
+						? LuaMeasureUndefined : LuaMeasureAtMost,
+				});
+			}
 			natural.width += childSize.width;
 			natural.height = MAX(natural.height, childSize.height);
 		}
@@ -1502,16 +1545,39 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			}
 			free(widths);
 		} else if ([axis isEqualToString:@"hsplit"]) {
-			CGFloat n = (CGFloat)view.subviews.count;
-			if (n == 0) return;
+			NSUInteger count = view.subviews.count;
+			if (count == 0) return;
+
 			CGFloat divider = [(NSSplitView *)view dividerThickness];
-			CGFloat childW = (contentW - (n - 1) * divider) / n;
+			CGFloat spacing = count > 1 ? (count - 1) * divider : 0;
+			CGFloat *widths = calloc(count, sizeof(CGFloat));
+			for (NSUInteger i = 0; i < count; i++) {
+				NSView *child = view.subviews[i];
+				NSSize size = measure_view(child, (LuaLayoutConstraint){
+					.width = 0,
+					.height = contentH,
+					.widthMode = LuaMeasureUndefined,
+					.heightMode = LuaMeasureAtMost,
+				});
+				NSNumber *basis = objc_getAssociatedObject(child, &kFlexBasisKey);
+				CGFloat fixed = view_fixed_width(child);
+				widths[i] = clamp_dimension(
+					fixed > 0 ? fixed : (basis ? basis.doubleValue : size.width),
+					view_optional_dimension(child, &kMinWidthKey, 0),
+					view_optional_dimension(child, &kMaxWidthKey, INFINITY));
+			}
+			distribute_main_axis(view.subviews, widths,
+				MAX(0, contentW - spacing), YES);
 			CGFloat x = padX;
-			for (NSView *sv in view.subviews) {
+
+			for (NSUInteger i = 0; i < count; i++) {
+				NSView *sv = view.subviews[i];
+				CGFloat childW = widths[i];
 				sv.frame = NSMakeRect(x, padY, childW, contentH);
 				layout_recursive(sv, childW);
 				x += childW + divider;
 			}
+			free(widths);
 		}
 	} else {
 		if ([view isKindOfClass:[NSScrollView class]]) {
@@ -1957,14 +2023,37 @@ static int bridge_table_refresh(lua_State *L) {
 	return 1;
 }
 
+static int bridge_table_set_selection(lua_State *L) {
+	id obj = check_objc(L, 1);
+	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kTableSourceKey);
+	if (!src) return luaL_error(L, "not a table view");
+
+	if (lua_isnoneornil(L, 2)) {
+		objc_setAssociatedObject(obj, &kTableSelectionKey, nil,
+			OBJC_ASSOCIATION_ASSIGN);
+		return 0;
+	}
+
+	luaL_checktype(L, 2, LUA_TFUNCTION);
+	lua_pushvalue(L, 2);
+	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	objc_setAssociatedObject(obj, &kTableSelectionKey, @(ref),
+		OBJC_ASSOCIATION_RETAIN);
+	return 0;
+}
+
 #pragma mark - Show
 
 static int bridge_show(lua_State *L) {
 	NSWindow *w = (__bridge NSWindow *)((ObjCRef *)lua_touserdata(L, 1))->ptr;
 
 	[NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
-	[NSApp activateIgnoringOtherApps:YES];
 	[w makeKeyAndOrderFront:nil];
+
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[NSApp activateIgnoringOtherApps:YES];
+		[w makeKeyAndOrderFront:nil];
+	});
 
 	return 0;
 }
