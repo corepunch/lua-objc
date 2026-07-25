@@ -34,7 +34,23 @@ run-mail: $(TARGET)
 run-layout: $(TARGET)
 	./$(TARGET) examples/layout.lua
 
+TEST_FILES = $(wildcard tests/*.test.lua)
+
+test: $(TARGET)
+	@passed=0; failed=0; \
+	for t in $(TEST_FILES); do \
+		echo "--- $$t ---"; \
+		if ./$(TARGET) $$t 2>&1; then \
+			passed=$$((passed + 1)); \
+		else \
+			failed=$$((failed + 1)); \
+		fi; \
+		echo ""; \
+	done; \
+	echo "$$((passed + failed)) test files: $$passed passed, $$failed failed"; \
+	test $$failed -eq 0
+
 clean:
 	rm -f $(TARGET)
 
-.PHONY: all run clean run-hello run-list run-live run-weather run-welcome run-mail run-layout
+.PHONY: all run clean test run-hello run-list run-live run-weather run-welcome run-mail run-layout

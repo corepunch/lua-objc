@@ -1,4 +1,4 @@
-local ui = require("luaui")
+local ns = require("AppKit")
 
 local inbox = {
 	{ from = "Alice Chen",    subject = "Q3 roadmap review",            date = "10:32 AM" },
@@ -19,7 +19,7 @@ local folders = {
 	{ name = "Trash",     count = "" },
 }
 
-local message_list = ui.List {
+local message_list = ns.List {
 	width = 460,
 	height = 310,
 	columns = {
@@ -30,7 +30,7 @@ local message_list = ui.List {
 	data = inbox,
 }
 
-local folder_list = ui.List {
+local folder_list = ns.List {
 	width = 170,
 	height = 310,
 	header = false,
@@ -41,7 +41,7 @@ local folder_list = ui.List {
 	data = folders,
 }
 
-ui.Window {
+ns.Window {
 	title = "Mail",
 	width = 680,
 	height = 420,
@@ -52,7 +52,7 @@ ui.Window {
 			icon = "square.and.pencil",
 			tooltip = "Compose a new message",
 			action = function()
-				message_list:add_row{
+				message_list:addRow{
 					from = "Me",
 					subject = "Untitled message",
 					date = "Now",
@@ -60,7 +60,7 @@ ui.Window {
 			end,
 		},
 	},
-	ui.HSplit {
+	ns.HSplit {
 		folder_list,
 		message_list,
 	},

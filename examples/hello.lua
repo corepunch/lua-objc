@@ -1,15 +1,15 @@
-local ui = require("luaui")
+local ns = require("AppKit")
 
-ui.Window {
+ns.Window {
 	title = "Lua + ObjC Demo",
 	width = 480,
 	height = 420,
-	ui.VStack {
+	ns.VStack {
 		padding = 24,
 		alignment = "leading",
-		ui.Title "Hello from Lua",
-		ui.Text "A SwiftUI-like API backed by native AppKit controls.",
-		ui.Image "/Library/Desktop Pictures/Beach.jpg",
-		ui.Text "Edit the Lua file and relaunch—no recompilation needed.",
+		ns.Title "Hello from Lua",
+		ns.Text "A SwiftUI-like API backed by native AppKit controls.",
+		ns.Image "/Library/Desktop Pictures/Beach.jpg",
+		ns.Text "Edit the Lua file and relaunch—no recompilation needed.",
 	},
 }

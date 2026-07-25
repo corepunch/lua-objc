@@ -67,6 +67,15 @@ These rules summarize Apple's current Human Interface Guidelines:
   duration is known, keep indeterminate indicators moving, and generally avoid
   labeling a spinner. Refresh automatically when appropriate while still
   allowing an explicit refresh action when useful.
+  **Table loading state:** When a list or table is fetching data, show a
+  centered indeterminate `NSProgressIndicator` (spinner) in the scroll view's
+  content area — this is the HIG-recommended pattern. Use `show_loading()`
+  before data fetches begin and `hide_loading()` after the last row arrives.
+  Never insert artificial `ui.sleep()` delays to simulate animation; let
+  network latency provide the natural progressive-loading rhythm. Each table
+  must activate the content-area spinner independently of the toolbar progress
+  indicator, because the toolbar item is easy to miss while the empty content
+  area communicates "nothing here yet."
 - Use menus, separators, split views, sidebars, search fields, toggles, and
   other real AppKit widgets for their intended roles. A visual approximation is
   a missing framework feature, not an acceptable sample implementation.
@@ -104,19 +113,25 @@ Before declaring UI work complete:
 ## Architecture
 
 ```
-lua script  -->  luaui.lua (sugar)  -->  bridge (C)  -->  AppKit objects
-                                    (lua C API)      (NSWindow, NSView, etc.)
+lua script  -->  AppKit.lua (sugar)  -->  bridge (C)  -->  AppKit objects
+                                     (lua C API)      (NSWindow, NSView, etc.)
 ```
+
+For iOS targets, swap `AppKit.lua` → `UIKit.lua` and the bridge links to UIKit
+instead of AppKit (see `src/uikit_bridge.m`). Both modules expose the same
+SwiftUI-like API but with framework-appropriate element names.
 
 1. **`src/main.m`** — Host binary. Embeds Lua, registers the `bridge` module
    (C functions exposed to Lua), loads and runs a Lua script, then starts the
    Cocoa run loop.
 
-2. **`lua/luaui.lua`** — Lua module providing SwiftUI-like functions
+2. **`lua/AppKit.lua`** — Lua module providing SwiftUI-like functions
    (`Window`, `VStack`, `HStack`, `Text`, `Image`, `Spacer`, `List`).
    Translates to `bridge._*` calls that create real ObjC objects.
+3. **`lua/UIKit.lua`** — iOS counterpart. Same API shape, UIKit-appropriate
+   element names (`Label` for `UILabel`, `ImageView` for `UIImageView`, etc.).
 
-3. **`examples/*.lua`** — UI scripts written by the user. No compilation step.
+4. **`examples/*.lua`** — UI scripts written by the user. No compilation step.
 
 ## Bridge (C ↔ ObjC)
 
@@ -155,31 +170,15 @@ Non-container views (Text, Image, List) are treated as leaf nodes — their fram
 is used as-is, and recursion stops there. The `respondsToSelector:` guard on
 `sizeToFit` avoids crashes on views like `NSScrollView` that don't support it.
 
-## Scoping: `_ENV` trick
-
-The host binary creates a custom Lua environment for each user script. The env's
-`__index` metamethod first looks up names in the `UI` module, then falls back to
-`_G`. This means users write bare names — no `require "UI"` or `UI.` prefix:
-
-```lua
-Window {
-    title = "My App",
-    width = 480,
-    height = 360,
-    VStack {
-        Text "Hello, World!",
-        Image "/path/to/image.jpg",
-    }
-}
-```
-
-This technique comes from [leafo's DSL guide](https://leafo.net/guides/dsl-in-lua.html).
-
 ## Lua API — Views
 
 Each function returns an ObjC userdata. Lua's parenthesis-free calling convention
 makes the SwiftUI-like syntax possible: `fn "arg"` == `fn("arg")`, and
 `fn { ... }` == `fn({...})`.
+
+Scripts start with `local ns = require("AppKit")` (macOS) or
+`local ui = require("UIKit")` (iOS). All widget functions are namespaced under
+the module name.
 
 ### `Window{...}`
 
@@ -200,7 +199,7 @@ window's content view). After building the view tree, calls `bridge._show(win)`
 — the run loop starts in `main()` after the script returns.
 
 ```lua
-Window {
+ns.Window {
     title = "My App",
     width = 600,
     height = 400,
@@ -208,18 +207,18 @@ Window {
         { id = "new",  label = "New" },
         { id = "save", label = "Save", action = function() print("saved") end },
     },
-    Text "Hello",
-    List { columns = ... },
+    ns.Text "Hello",
+    ns.List { columns = ... },
 }
 ```
 
-`Window{...}` returns its native window userdata. Use
-`ToolbarItem(window, id)` when an item needs dynamic native properties, or
-`ToolbarProgress(window, id)` to replace an action's symbol with a real
+`ns.Window{...}` returns its native window userdata. Use
+`ns.ToolbarItem(window, id)` when an item needs dynamic native properties, or
+`ns.ToolbarProgress(window, id)` to replace an action's symbol with a real
 indeterminate `NSProgressIndicator` while work is active:
 
 ```lua
-local progress = ToolbarProgress(window, "refresh")
+local progress = ns.ToolbarProgress(window, "refresh")
 progress:start("Refreshing data")
 -- asynchronous work
 progress:stop("Refresh data — last updated just now")
@@ -237,13 +236,13 @@ horizontally with 8pt sibling spacing and no implicit outer padding. Set
 userdata that can be added as a child of any other container.
 
 ```lua
-VStack {
-    Text "Line 1",
-    Text "Line 2",
-    HStack {
-        Text "Left",
-        Spacer(),
-        Text "Right",
+ns.VStack {
+    ns.Text "Line 1",
+    ns.Text "Line 2",
+    ns.HStack {
+        ns.Text "Left",
+        ns.Spacer(),
+        ns.Text "Right",
     }
 }
 ```
@@ -255,9 +254,9 @@ are divided equally across the available width. Useful for sidebar + content
 layouts.
 
 ```lua
-HSplit {
-    VStack { Text "Sidebar" },
-    VStack { Text "Content" },
+ns.HSplit {
+    ns.VStack { ns.Text "Sidebar" },
+    ns.VStack { ns.Text "Content" },
 }
 ```
 
@@ -267,9 +266,9 @@ Creates a non-editable, bezel-less `NSTextField` label. Both forms work,
 with an optional `size` and `weight` key for custom fonts:
 
 ```lua
-Text "Hello"                          -- default font
-Text { "Hello", size = 16 }           -- 16pt system font
-Text { "Hello", size = 18, weight = "bold" }  -- 18pt bold
+ns.Text "Hello"                          -- default font
+ns.Text { "Hello", size = 16 }           -- 16pt system font
+ns.Text { "Hello", size = 18, weight = "bold" }  -- 18pt bold
 ```
 
 ### `Title "string"`
@@ -289,8 +288,8 @@ Creates an `NSButton` (rounded push button). The optional `action` key stores a
 Lua callback in the registry, fired via `LuaButtonTarget` + target-action.
 
 ```lua
-Button { title = "Create New Script" }
-Button {
+ns.Button { title = "Create New Script" }
+ns.Button {
     title = "Create New Script",
     action = function() print("clicked") end
 }
@@ -302,8 +301,8 @@ Creates an `NSButton` checkbox. Keys: `label` (string), `is_on` (bool),
 `action` (function, optional).
 
 ```lua
-Toggle { label = "Show on launch", is_on = true }
-Toggle {
+ns.Toggle { label = "Show on launch", is_on = true }
+ns.Toggle {
     label = "Show on launch",
     is_on = true,
     action = function() print("toggled") end
@@ -383,6 +382,7 @@ row colors, a header, and a vertical scroller. Table keys:
 | `header` | bool | `true` | Show the native table header |
 | `bordered` | bool | `false` | Draw a bezel around the scroll view |
 | `data` | `{{key=val}}` | `{}` | Initial rows (array of string-keyed tables) |
+| `refresh` | `function(list)` | `nil` | See SwiftUI-like async refresh below |
 
 ```lua
 List {
@@ -412,25 +412,60 @@ These are available on the userdata returned by `List{...}`, exposed via the
 nsview metatable `__index`:
 
 ```lua
-tv:add_row{ key = "value", ... }    -- inserts with slide-down animation
-tv:remove_row(2)                     -- removes row at 0-based index
-tv:clear_rows()                      -- removes all rows (reloadData)
-n = tv:row_count                     -- returns number of rows (read-only property)
+tv:addRow{ key = "value", ... }       -- inserts with slide-down animation
+tv:removeRow(2)                        -- removes row at 0-based index
+tv:clearRows()                         -- removes all rows (reloadData)
+n = tv:rowCount                        -- returns number of rows (read-only property)
+tv:showLoading()                       -- shows centered spinner in content area
+tv:hideLoading()                       -- removes the spinner
+tv:refresh()                           -- auto-managed loading + refresh callback
+tv:refresh(onDone)                     -- with optional completion callback
 ```
 
-Methods can be called **before** `Window{...}` shows the app (e.g. in initial
+`tv:refresh()` wraps the `refresh` callback set on `List{...}`. When called:
+1. Shows a centered `NSProgressIndicator` (content-area spinner)
+2. Clears all existing rows via `reloadData`
+3. Invokes the `refresh` callback in a coroutine — the callback yields for
+   each async operation (e.g. `fetch_json`) and auto-resumes when data arrives
+4. Hides the spinner when the coroutine completes
+
+This is modeled on SwiftUI's `.refreshable { ... }` — the developer provides
+only the data-loading logic; the framework manages the loading indicator.
+
+```lua
+local list = ns.List {
+    columns = { ... },
+    refresh = function(l)
+        for _, sym in ipairs(symbols) do
+            l:add_row{ symbol = sym, price = fetch_price(sym) }
+        end
+    end,
+}
+
+-- Trigger refresh from toolbar:
+{ id = "refresh", label = "Refresh", action = function() list:refresh() end },
+
+-- Or call imperatively:
+list:refresh()
+```
+
+If an optional `on_done` callback is passed to `list:refresh(on_done)`, the
+callback fires after `hide_loading()` — useful for coordinating with
+`ns.ToolbarProgress` or other UI updates.
+
+Methods can be called **before** `ns.Window{...}` shows the app (e.g. in initial
 setup) or **during** runtime (e.g. from a timer/event handler — see below).
 
 ### Complete example
 
 ```lua
-Window {
+ns.Window {
     title = "Employee Directory",
     width = 640,
     height = 420,
-    VStack {
-        Text "Employees",
-        List {
+    ns.VStack {
+        ns.Text "Employees",
+        ns.List {
             width = 620,
             height = 350,
             columns = {
@@ -506,16 +541,21 @@ static int bridge_timer(lua_State *L) {
 Then users can write:
 
 ```lua
-local tv = List { columns = {...} }
+local tv = ns.List { columns = {...} }
 
-Timer(2.0, function()
+ns.Timer(2.0, function()
     tv:add_row{ name = "New User", role = "Engineer", dept = "Core" }
 end)
 
-Window { title = "Live Data", width = 600, height = 400, tv }
+ns.Window { title = "Live Data", width = 600, height = 400, tv }
 ```
 
 ## Conventions
+
+**CamelCase naming.** All method names, property keys, and bridge functions
+use camelCase to match SwiftUI conventions: `addRow`, `clearRows`,
+`fixedWidth`, `flexGrow`, `transparentTitlebar`. No snake_case anywhere —
+this keeps the API familiar to Swift developers and predictable for AI agents.
 
 **Tab indentation.** All source files (`.m`, `.lua`) use tabs for leading
 indentation, not spaces. Set your editor to display tabs at 4 columns wide.
@@ -549,6 +589,45 @@ make run ARGS="examples/hello.lua"
 make run ARGS="examples/list.lua"
 make clean
 ```
+
+## Testing
+
+Tests are `.lua` files that exercise the framework headlessly — no window
+showing, no run loop. `ns.Window{visible = false}` creates a window without
+ordering it front.
+
+```sh
+make test      # runs all tests/*.test.lua
+```
+
+The `lua/TestKit.lua` module provides assertions:
+
+```lua
+local ns = require("AppKit")
+local t = require("TestKit")
+
+local win = ns.Window {
+    title = "Test",
+    width = 400,
+    height = 300,
+    visible = false,
+}
+
+t.assertEqual(win.title, "Test", "window title")
+t.expect(ns.fetch ~= nil, "fetch exists")
+t.assertEqual(list.row_count, 0, "new list is empty")
+t.assertThrows(function() ns.List{columns = {}} end, "missing columns")
+```
+
+Tests run in a single `lua_State` and `os.exit(0)` on success, `os.exit(1)`
+on failure. Add `.test.lua` files under `tests/` and they're automatically
+picked up by `make test`.
+
+**Smoke-testing examples.** Set `_G.__headless = true` before loading any
+example to suppress `bridge._show(win)`. This lets you verify every example
+parses and constructs its view hierarchy without popping windows. The
+`tests/examples.test.lua` smoke test uses this pattern — add new examples
+to its list when you create them.
 
 ## ObjC tricks that make Lua binding shorter (vs C++ or C)
 
@@ -607,7 +686,11 @@ lua-objc/
 ├── src/
 │   └── main.m              # host binary + bridge + LuaTableViewSource
 ├── lua/
-│   └── UI.lua              # SwiftUI-like Lua module
+│   └── AppKit.lua           # SwiftUI-like Lua module (macOS)
+│   └── UIKit.lua            # SwiftUI-like Lua module (iOS)
+│   └── TestKit.lua          # Assertion helpers for testing
+└── tests/
+│   └── bridge.test.lua      # Framework tests
 └── examples/
     ├── hello.lua           # Window + Text + Image demo
     ├── list.lua            # Window + List (NSTableView) demo

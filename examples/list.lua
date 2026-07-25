@@ -1,10 +1,10 @@
-local ui = require("luaui")
+local ns = require("AppKit")
 
-ui.Window {
+ns.Window {
 	title = "Employee Directory",
 	width = 640,
 	height = 420,
-	ui.List {
+	ns.List {
 		width = 640,
 		height = 420,
 		columns = {

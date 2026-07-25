@@ -1,22 +1,22 @@
 local bridge = require("bridge")
 
-local UI = {}
+local AppKit = {}
 
 local layout_properties = {
 	"padding",
 	"alignment",
-	"fixed_width",
-	"fixed_height",
-	"min_width",
-	"min_height",
-	"max_width",
-	"max_height",
-	"flex_grow",
-	"flex_shrink",
-	"flex_basis",
+	"fixedWidth",
+	"fixedHeight",
+	"minWidth",
+	"minHeight",
+	"maxWidth",
+	"maxHeight",
+	"flexGrow",
+	"flexShrink",
+	"flexBasis",
 }
 
-local function apply_layout(view, props)
+local function applyLayout(view, props)
 	if type(props) ~= "table" then return view end
 	for _, key in ipairs(layout_properties) do
 		if props[key] ~= nil then
@@ -32,12 +32,10 @@ local function path_join(...)
 	return table.concat(parts, sep)
 end
 
-local function resolve_image(name)
-	-- check absolute path first
+local function resolveImage(name)
 	if name:sub(1, 1) == "/" or name:sub(1, 1) == "~" then
 		return name
 	end
-	-- check relative to cwd
 	local f = io.open(name)
 	if f then
 		f:close()
@@ -46,12 +44,12 @@ local function resolve_image(name)
 	return name
 end
 
-function UI.Window(props)
+function AppKit.Window(props)
 	local title = props.title or "Window"
 	local width = props.width or 480
 	local height = props.height or 360
-	local transparent_titlebar = props.transparent_titlebar or false
-	local hide_title = props.hide_title
+	local transparent_titlebar = props.transparentTitlebar or false
+	local hide_title = props.hideTitle
 	if hide_title == nil then hide_title = transparent_titlebar end
 
 	local toolbar = props.toolbar
@@ -59,12 +57,12 @@ function UI.Window(props)
 	if toolbar then
 		win = bridge._window(title, width, height,
 			transparent_titlebar, hide_title, toolbar,
-			props.toolbar_labels == true)
+			props.toolbarLabels == true)
 	else
 		win = bridge._window(title, width, height,
 			transparent_titlebar, hide_title)
 	end
-	bridge._set_content_size(win, width, height)
+	bridge._setContentSize(win, width, height)
 
 	local content = bridge._vstack()
 	bridge._add(win, content)
@@ -77,14 +75,16 @@ function UI.Window(props)
 
 	bridge._layout(content, width)
 
-	bridge._show(win)
+	if props.visible ~= false and not _G.__headless then
+		bridge._show(win)
+	end
 	return win
 end
 
-function UI.VStack(props)
+function AppKit.VStack(props)
 	local view = bridge._vstack()
 	if type(props) == "table" then
-		apply_layout(view, props)
+		applyLayout(view, props)
 		for _, v in ipairs(props) do
 			if type(v) == "userdata" then
 				bridge._add(view, v)
@@ -94,10 +94,10 @@ function UI.VStack(props)
 	return view
 end
 
-function UI.HStack(props)
+function AppKit.HStack(props)
 	local view = bridge._hstack()
 	if type(props) == "table" then
-		apply_layout(view, props)
+		applyLayout(view, props)
 		for _, v in ipairs(props) do
 			if type(v) == "userdata" then
 				bridge._add(view, v)
@@ -107,10 +107,10 @@ function UI.HStack(props)
 	return view
 end
 
-function UI.HSplit(props)
+function AppKit.HSplit(props)
 	local view = bridge._hsplit()
 	if type(props) == "table" then
-		apply_layout(view, props)
+		applyLayout(view, props)
 		for _, v in ipairs(props) do
 			if type(v) == "userdata" then
 				bridge._add(view, v)
@@ -120,7 +120,7 @@ function UI.HSplit(props)
 	return view
 end
 
-function UI.Text(arg)
+function AppKit.Text(arg)
 	local text, size, weight
 	if type(arg) == "table" then
 		text = arg[1] or ""
@@ -144,18 +144,18 @@ function UI.Text(arg)
 	end
 
 	bridge._perform(v, "sizeToFit")
-	return apply_layout(v, type(arg) == "table" and arg or nil)
+	return applyLayout(v, type(arg) == "table" and arg or nil)
 end
 
-function UI.Title(arg)
-	return UI.Text({
+function AppKit.Title(arg)
+	return AppKit.Text({
 		type(arg) == "table" and arg[1] or arg,
 		size = 22,
 		weight = "bold",
 	})
 end
 
-function UI.Image(arg)
+function AppKit.Image(arg)
 	local path
 	local props
 	if type(arg) == "table" then
@@ -166,14 +166,14 @@ function UI.Image(arg)
 	else
 		path = tostring(arg)
 	end
-	return apply_layout(bridge._image(resolve_image(path)), props)
+	return applyLayout(bridge._image(resolveImage(path)), props)
 end
 
-function UI.Spacer(props)
-	return apply_layout(bridge._spacer(), props)
+function AppKit.Spacer(props)
+	return applyLayout(bridge._spacer(), props)
 end
 
-function UI.List(props)
+function AppKit.List(props)
 	local columns = props.columns
 	if not columns or type(columns) ~= "table" then
 		error("List requires a 'columns' property (array of {id, title})")
@@ -190,15 +190,32 @@ function UI.List(props)
 	if props.data and type(props.data) == "table" then
 		for _, row in ipairs(props.data) do
 			if type(row) == "table" then
-				tv:add_row(row)
+				tv:addRow(row)
 			end
 		end
 	end
 
-	return apply_layout(tv, props)
+	if props.refresh and type(props.refresh) == "function" then
+		local refresh_fn = props.refresh
+		bridge._tableSetRefresh(tv, function(list, on_done)
+			list:showLoading()
+			list:clearRows()
+			local co = coroutine.create(function()
+				local ok, err = pcall(refresh_fn, list)
+				if not ok then
+					io.stderr:write("refresh error: " .. tostring(err) .. "\n")
+				end
+				list:hideLoading()
+				if on_done then on_done() end
+			end)
+			coroutine.resume(co)
+		end)
+	end
+
+	return applyLayout(tv, props)
 end
 
-function UI.ToolbarItem(window, identifier)
+function AppKit.ToolbarItem(window, identifier)
 	local item = bridge._toolbar_item(window, identifier)
 	if not item then
 		error("toolbar item not found: " .. tostring(identifier))
@@ -206,7 +223,7 @@ function UI.ToolbarItem(window, identifier)
 	return item
 end
 
-function UI.Button(props)
+function AppKit.Button(props)
 	local title = type(props) == "table" and (props.title or props[1] or "") or ""
 	local action = type(props) == "table" and props.action or nil
 	local button
@@ -215,10 +232,10 @@ function UI.Button(props)
 	else
 		button = bridge._button(title)
 	end
-	return apply_layout(button, props)
+	return applyLayout(button, props)
 end
 
-function UI.Toggle(props)
+function AppKit.Toggle(props)
 	local label = type(props) == "table" and (props.label or props[1] or "") or ""
 	local is_on = type(props) == "table" and props.is_on or false
 	local action = type(props) == "table" and props.action or nil
@@ -228,53 +245,53 @@ function UI.Toggle(props)
 	else
 		toggle = bridge._toggle(label, is_on)
 	end
-	return apply_layout(toggle, props)
+	return applyLayout(toggle, props)
 end
 
-function UI.Separator(props)
+function AppKit.Separator(props)
 	local v = bridge._create("NSBox")
-	v.boxType = 2  -- NSBoxSeparator = 2
-	v.fixed_height = 1
-	v.flex_grow = 1
-	return apply_layout(v, props)
+	v.boxType = 2
+	v.fixedHeight = 1
+	v.flexGrow = 1
+	return applyLayout(v, props)
 end
 
-function UI.ProgressView(props)
+function AppKit.ProgressView(props)
 	local v = bridge._create("NSProgressIndicator")
-	v.style = 1  -- NSProgressIndicatorStyleSpinning = 1
+	v.style = 1
 	v.displayedWhenStopped = false
-	return apply_layout(v, props)
+	return applyLayout(v, props)
 end
 
-function UI.Layout(view, props)
+function AppKit.Layout(view, props)
 	if type(view) ~= "userdata" then
 		error("Layout requires a view userdata")
 	end
-	return apply_layout(view, props)
+	return applyLayout(view, props)
 end
 
-function UI.ProgressStart(progress)
+function AppKit.ProgressStart(progress)
 	bridge._perform(progress, "startAnimation:", nil)
 end
 
-function UI.ProgressStop(progress)
+function AppKit.ProgressStop(progress)
 	bridge._perform(progress, "stopAnimation:", nil)
 end
 
-function UI.ToolbarProgress(window, identifier)
-	local item = UI.ToolbarItem(window, identifier)
+function AppKit.ToolbarProgress(window, identifier)
+	local item = AppKit.ToolbarItem(window, identifier)
 	local restore_view = item.view
-	local progress = UI.ProgressView()
-	bridge._set_content_size(progress, 32, 32)
+	local progress = AppKit.ProgressView()
+	bridge._setContentSize(progress, 32, 32)
 
 	return {
 		start = function(self, tooltip)
 			if tooltip then item.toolTip = tooltip end
 			item.view = progress
-			UI.ProgressStart(progress)
+			AppKit.ProgressStart(progress)
 		end,
 		stop = function(self, tooltip)
-			UI.ProgressStop(progress)
+			AppKit.ProgressStop(progress)
 			item.view = restore_view
 			item.enabled = true
 			if tooltip then item.toolTip = tooltip end
@@ -282,24 +299,50 @@ function UI.ToolbarProgress(window, identifier)
 	}
 end
 
-UI.Spinner = UI.ProgressView
-UI.SpinnerStart = UI.ProgressStart
-UI.SpinnerStop = UI.ProgressStop
+AppKit.Spinner = AppKit.ProgressView
+AppKit.SpinnerStart = AppKit.ProgressStart
+AppKit.SpinnerStop = AppKit.ProgressStop
 
-function UI.sleep(seconds)
+function AppKit.sleep(seconds)
 	local co = coroutine.running()
 	if not co then
 		error("sleep() must be called from within a coroutine (use async())")
 	end
-	bridge._timer_after(seconds, function()
+	bridge._timerAfter(seconds, function()
 		coroutine.resume(co)
 	end)
 	coroutine.yield()
 end
 
-function UI.async(fn)
+function AppKit.async(fn)
 	local co = coroutine.create(fn)
 	coroutine.resume(co)
 end
 
-return UI
+function AppKit.fetch(url)
+	local co = coroutine.running()
+	if not co then
+		error("fetch() must be called from within a coroutine (use async())")
+	end
+	local body, err = nil, nil
+	bridge._httpGet(url, function(b, e)
+		body, err = b, e
+		coroutine.resume(co)
+	end)
+	coroutine.yield()
+	if err then error(err) end
+	return body
+end
+
+function AppKit.json_parse(str)
+	local obj, err = bridge._jsonParse(str)
+	if err then error(err) end
+	return obj
+end
+
+function AppKit.fetch_json(url)
+	local body = AppKit.fetch(url)
+	return AppKit.json_parse(body)
+end
+
+return AppKit

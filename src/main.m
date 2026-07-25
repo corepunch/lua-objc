@@ -23,6 +23,8 @@ static char kMaxHeightKey;
 static char kFlexGrowKey;
 static char kFlexShrinkKey;
 static char kFlexBasisKey;
+static char kTableSpinnerKey;
+static char kTableRefreshKey;
 static const CGFloat kStackSpacing = 8.0;
 static lua_State *gL = NULL;
 
@@ -259,6 +261,10 @@ typedef struct {
 static int bridge_tableview_add(lua_State *L);
 static int bridge_tableview_remove(lua_State *L);
 static int bridge_tableview_clear(lua_State *L);
+static int bridge_table_show_loading(lua_State *L);
+static int bridge_table_hide_loading(lua_State *L);
+static int bridge_table_set_refresh(lua_State *L);
+static int bridge_table_refresh(lua_State *L);
 static int bridge_set_text(lua_State *L);
 static void layout_recursive(NSView *view, CGFloat width);
 
@@ -357,47 +363,47 @@ static int nsview_index(lua_State *L) {
 		lua_pushstring(L, a ? a.UTF8String : "center");
 		return 1;
 	}
-	if (strcmp(key, "fixed_width") == 0) {
+	if (strcmp(key, "fixedWidth") == 0) {
 		NSNumber *w = objc_getAssociatedObject(obj, &kFixedWidthKey);
 		lua_pushnumber(L, w ? w.doubleValue : 0);
 		return 1;
 	}
-	if (strcmp(key, "fixed_height") == 0) {
+	if (strcmp(key, "fixedHeight") == 0) {
 		NSNumber *h = objc_getAssociatedObject(obj, &kFixedHeightKey);
 		lua_pushnumber(L, h ? h.doubleValue : 0);
 		return 1;
 	}
-	if (strcmp(key, "min_width") == 0) {
+	if (strcmp(key, "minWidth") == 0) {
 		NSNumber *v = objc_getAssociatedObject(obj, &kMinWidthKey);
 		lua_pushnumber(L, v ? v.doubleValue : 0);
 		return 1;
 	}
-	if (strcmp(key, "min_height") == 0) {
+	if (strcmp(key, "minHeight") == 0) {
 		NSNumber *v = objc_getAssociatedObject(obj, &kMinHeightKey);
 		lua_pushnumber(L, v ? v.doubleValue : 0);
 		return 1;
 	}
-	if (strcmp(key, "max_width") == 0) {
+	if (strcmp(key, "maxWidth") == 0) {
 		NSNumber *v = objc_getAssociatedObject(obj, &kMaxWidthKey);
 		if (v) lua_pushnumber(L, v.doubleValue); else lua_pushnil(L);
 		return 1;
 	}
-	if (strcmp(key, "max_height") == 0) {
+	if (strcmp(key, "maxHeight") == 0) {
 		NSNumber *v = objc_getAssociatedObject(obj, &kMaxHeightKey);
 		if (v) lua_pushnumber(L, v.doubleValue); else lua_pushnil(L);
 		return 1;
 	}
-	if (strcmp(key, "flex_grow") == 0) {
+	if (strcmp(key, "flexGrow") == 0) {
 		NSNumber *v = objc_getAssociatedObject(obj, &kFlexGrowKey);
 		lua_pushnumber(L, v ? v.doubleValue : 0);
 		return 1;
 	}
-	if (strcmp(key, "flex_shrink") == 0) {
+	if (strcmp(key, "flexShrink") == 0) {
 		NSNumber *v = objc_getAssociatedObject(obj, &kFlexShrinkKey);
 		lua_pushnumber(L, v ? v.doubleValue : 1);
 		return 1;
 	}
-	if (strcmp(key, "flex_basis") == 0) {
+	if (strcmp(key, "flexBasis") == 0) {
 		NSNumber *v = objc_getAssociatedObject(obj, &kFlexBasisKey);
 		if (v) lua_pushnumber(L, v.doubleValue); else lua_pushnil(L);
 		return 1;
@@ -418,20 +424,32 @@ static int nsview_index(lua_State *L) {
 
 	id src = objc_getAssociatedObject(obj, &kTableSourceKey);
 	if (src) {
-		if (strcmp(key, "add_row") == 0) {
+		if (strcmp(key, "addRow") == 0) {
 			lua_pushcfunction(L, bridge_tableview_add);
 			return 1;
 		}
-		if (strcmp(key, "remove_row") == 0) {
+		if (strcmp(key, "removeRow") == 0) {
 			lua_pushcfunction(L, bridge_tableview_remove);
 			return 1;
 		}
-		if (strcmp(key, "clear_rows") == 0) {
+		if (strcmp(key, "clearRows") == 0) {
 			lua_pushcfunction(L, bridge_tableview_clear);
 			return 1;
 		}
-		if (strcmp(key, "row_count") == 0) {
+		if (strcmp(key, "rowCount") == 0) {
 			lua_pushinteger(L, (lua_Integer)((LuaTableViewSource *)src).rows.count);
+			return 1;
+		}
+		if (strcmp(key, "showLoading") == 0) {
+			lua_pushcfunction(L, bridge_table_show_loading);
+			return 1;
+		}
+		if (strcmp(key, "hideLoading") == 0) {
+			lua_pushcfunction(L, bridge_table_hide_loading);
+			return 1;
+		}
+		if (strcmp(key, "refresh") == 0) {
+			lua_pushcfunction(L, bridge_table_refresh);
 			return 1;
 		}
 	}
@@ -456,27 +474,27 @@ static int nsview_newindex(lua_State *L) {
 			[NSString stringWithUTF8String:val], OBJC_ASSOCIATION_RETAIN);
 		return 0;
 	}
-	if (strcmp(key, "fixed_width") == 0) {
+	if (strcmp(key, "fixedWidth") == 0) {
 		double val = luaL_checknumber(L, 3);
 		objc_setAssociatedObject(obj, &kFixedWidthKey, @(val), OBJC_ASSOCIATION_RETAIN);
 		return 0;
 	}
-	if (strcmp(key, "fixed_height") == 0) {
+	if (strcmp(key, "fixedHeight") == 0) {
 		double val = luaL_checknumber(L, 3);
 		objc_setAssociatedObject(obj, &kFixedHeightKey, @(val), OBJC_ASSOCIATION_RETAIN);
 		return 0;
 	}
-	if (strcmp(key, "min_width") == 0) {
+	if (strcmp(key, "minWidth") == 0) {
 		double val = luaL_checknumber(L, 3);
 		objc_setAssociatedObject(obj, &kMinWidthKey, @(val), OBJC_ASSOCIATION_RETAIN);
 		return 0;
 	}
-	if (strcmp(key, "min_height") == 0) {
+	if (strcmp(key, "minHeight") == 0) {
 		double val = luaL_checknumber(L, 3);
 		objc_setAssociatedObject(obj, &kMinHeightKey, @(val), OBJC_ASSOCIATION_RETAIN);
 		return 0;
 	}
-	if (strcmp(key, "max_width") == 0) {
+	if (strcmp(key, "maxWidth") == 0) {
 		if (lua_isnil(L, 3)) {
 			objc_setAssociatedObject(obj, &kMaxWidthKey, nil, OBJC_ASSOCIATION_ASSIGN);
 		} else {
@@ -485,7 +503,7 @@ static int nsview_newindex(lua_State *L) {
 		}
 		return 0;
 	}
-	if (strcmp(key, "max_height") == 0) {
+	if (strcmp(key, "maxHeight") == 0) {
 		if (lua_isnil(L, 3)) {
 			objc_setAssociatedObject(obj, &kMaxHeightKey, nil, OBJC_ASSOCIATION_ASSIGN);
 		} else {
@@ -494,19 +512,19 @@ static int nsview_newindex(lua_State *L) {
 		}
 		return 0;
 	}
-	if (strcmp(key, "flex_grow") == 0) {
+	if (strcmp(key, "flexGrow") == 0) {
 		double val = luaL_checknumber(L, 3);
 		objc_setAssociatedObject(obj, &kFlexGrowKey, @(MAX(0, val)),
 			OBJC_ASSOCIATION_RETAIN);
 		return 0;
 	}
-	if (strcmp(key, "flex_shrink") == 0) {
+	if (strcmp(key, "flexShrink") == 0) {
 		double val = luaL_checknumber(L, 3);
 		objc_setAssociatedObject(obj, &kFlexShrinkKey, @(MAX(0, val)),
 			OBJC_ASSOCIATION_RETAIN);
 		return 0;
 	}
-	if (strcmp(key, "flex_basis") == 0) {
+	if (strcmp(key, "flexBasis") == 0) {
 		if (lua_isnil(L, 3)) {
 			objc_setAssociatedObject(obj, &kFlexBasisKey, nil, OBJC_ASSOCIATION_ASSIGN);
 		} else {
@@ -1377,18 +1395,94 @@ static int bridge_tableview_clear(lua_State *L) {
 	return 0;
 }
 
-#pragma mark - Env & show
+static int bridge_table_show_loading(lua_State *L) {
+	id obj = check_objc(L, 1);
+	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kTableSourceKey);
+	if (!src) return luaL_error(L, "not a table view");
 
-static int ui_env_index(lua_State *L) {
-	lua_getfield(L, LUA_REGISTRYINDEX, "ui_module");
+	NSScrollView *sv = (NSScrollView *)obj;
+	NSProgressIndicator *spinner = objc_getAssociatedObject(sv, &kTableSpinnerKey);
+	if (spinner) {
+		[spinner startAnimation:nil];
+		return 0;
+	}
+
+	spinner = [[NSProgressIndicator alloc] initWithFrame:NSMakeRect(0, 0, 32, 32)];
+	spinner.style = NSProgressIndicatorStyleSpinning;
+	spinner.controlSize = NSControlSizeRegular;
+	spinner.displayedWhenStopped = NO;
+	[spinner sizeToFit];
+
+	CGFloat sw = spinner.frame.size.width;
+	CGFloat sh = spinner.frame.size.height;
+	spinner.frame = NSMakeRect(
+		(sv.bounds.size.width - sw) / 2,
+		(sv.bounds.size.height - sh) / 2,
+		sw, sh);
+	spinner.autoresizingMask = NSViewMinXMargin | NSViewMaxXMargin
+		| NSViewMinYMargin | NSViewMaxYMargin;
+
+	objc_setAssociatedObject(sv, &kTableSpinnerKey, spinner,
+		OBJC_ASSOCIATION_RETAIN);
+	[sv addSubview:spinner];
+	[spinner startAnimation:nil];
+	return 0;
+}
+
+static int bridge_table_hide_loading(lua_State *L) {
+	id obj = check_objc(L, 1);
+	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kTableSourceKey);
+	if (!src) return luaL_error(L, "not a table view");
+
+	NSScrollView *sv = (NSScrollView *)obj;
+	NSProgressIndicator *spinner = objc_getAssociatedObject(sv, &kTableSpinnerKey);
+	if (spinner) {
+		[spinner stopAnimation:nil];
+		[spinner removeFromSuperview];
+		objc_setAssociatedObject(sv, &kTableSpinnerKey, nil,
+			OBJC_ASSOCIATION_RETAIN);
+	}
+	return 0;
+}
+
+static int bridge_table_set_refresh(lua_State *L) {
+	id obj = check_objc(L, 1);
+	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kTableSourceKey);
+	if (!src) return luaL_error(L, "not a table view");
+
+	luaL_checktype(L, 2, LUA_TFUNCTION);
 	lua_pushvalue(L, 2);
-	lua_gettable(L, -2);
-	if (!lua_isnil(L, -1)) return 1;
-	lua_pop(L, 2);
+	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	objc_setAssociatedObject(obj, &kTableRefreshKey, @(ref),
+		OBJC_ASSOCIATION_RETAIN);
+	return 0;
+}
 
-	lua_getglobal(L, lua_tostring(L, 2));
+static int bridge_table_refresh(lua_State *L) {
+	id obj = check_objc(L, 1);
+	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kTableSourceKey);
+	if (!src) return luaL_error(L, "not a table view");
+
+	NSNumber *refNum = objc_getAssociatedObject(obj, &kTableRefreshKey);
+	if (!refNum) { lua_pushboolean(L, 0); return 1; }
+
+	lua_rawgeti(L, LUA_REGISTRYINDEX, refNum.intValue);
+	lua_pushvalue(L, 1);
+	if (!lua_isnoneornil(L, 2)) {
+		lua_pushvalue(L, 2);
+	} else {
+		lua_pushnil(L);
+	}
+	int status = lua_pcall(L, 2, 0, 0);
+	if (status != LUA_OK) {
+		fprintf(stderr, "refresh error: %s\n", lua_tostring(L, -1));
+		lua_pop(L, 1);
+	}
+	lua_pushboolean(L, 1);
 	return 1;
 }
+
+#pragma mark - Show
 
 static int bridge_show(lua_State *L) {
 	NSWindow *w = (__bridge NSWindow *)((ObjCRef *)lua_touserdata(L, 1))->ptr;
@@ -1518,6 +1612,101 @@ static int bridge_callback(lua_State *L) {
 	return 0;
 }
 
+#pragma mark - HTTP & JSON
+
+static int bridge_http_get(lua_State *L) {
+	const char *url = luaL_checkstring(L, 1);
+	luaL_checktype(L, 2, LUA_TFUNCTION);
+	lua_pushvalue(L, 2);
+	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+
+	lua_getfield(L, LUA_REGISTRYINDEX, "bridge_main");
+	lua_State *mainL = (lua_State *)lua_touserdata(L, -1);
+	lua_pop(L, 1);
+
+	NSMutableURLRequest *req = [NSMutableURLRequest
+		requestWithURL:[NSURL URLWithString:[NSString stringWithUTF8String:url]]];
+	[req setValue:@"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+		@"AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+		forHTTPHeaderField:@"User-Agent"];
+
+	NSURLSessionDataTask *task = [[NSURLSession sharedSession]
+		dataTaskWithRequest:req
+		completionHandler:^(NSData *data, NSURLResponse *resp, NSError *error) {
+			dispatch_async(dispatch_get_main_queue(), ^{
+				lua_rawgeti(mainL, LUA_REGISTRYINDEX, ref);
+				if (error) {
+					lua_pushnil(mainL);
+					lua_pushstring(mainL, error.localizedDescription.UTF8String);
+				} else {
+					NSString *body = [[NSString alloc] initWithData:data
+						encoding:NSUTF8StringEncoding];
+					lua_pushstring(mainL, body.UTF8String ?: "");
+					lua_pushnil(mainL);
+				}
+				if (lua_pcall(mainL, 2, 0, 0) != LUA_OK) {
+					fprintf(stderr, "http error: %s\n",
+						lua_tostring(mainL, -1));
+					lua_pop(mainL, 1);
+				}
+				luaL_unref(mainL, LUA_REGISTRYINDEX, ref);
+			});
+		}];
+	[task resume];
+	return 0;
+}
+
+static void push_foundation_value(lua_State *L, id value) {
+	if (!value || value == [NSNull null]) {
+		lua_pushnil(L);
+	} else if ([value isKindOfClass:[NSString class]]) {
+		lua_pushstring(L, [(NSString *)value UTF8String]);
+	} else if ([value isKindOfClass:[NSNumber class]]) {
+		NSNumber *num = (NSNumber *)value;
+		if (strcmp(num.objCType, @encode(BOOL)) == 0
+			|| strcmp(num.objCType, "c") == 0
+			|| strcmp(num.objCType, "B") == 0) {
+			lua_pushboolean(L, num.boolValue);
+		} else {
+			lua_pushnumber(L, num.doubleValue);
+		}
+	} else if ([value isKindOfClass:[NSDictionary class]]) {
+		lua_newtable(L);
+		NSDictionary *dict = (NSDictionary *)value;
+		for (id key in dict) {
+			push_foundation_value(L, dict[key]);
+			NSString *strKey = [key isKindOfClass:[NSString class]]
+				? (NSString *)key : [key description];
+			lua_setfield(L, -2, strKey.UTF8String);
+		}
+	} else if ([value isKindOfClass:[NSArray class]]) {
+		lua_newtable(L);
+		NSArray *array = (NSArray *)value;
+		int i = 1;
+		for (id item in array) {
+			push_foundation_value(L, item);
+			lua_rawseti(L, -2, i++);
+		}
+	} else {
+		lua_pushstring(L, [[value description] UTF8String]);
+	}
+}
+
+static int bridge_json_parse(lua_State *L) {
+	const char *json = luaL_checkstring(L, 1);
+	NSData *data = [[NSString stringWithUTF8String:json]
+		dataUsingEncoding:NSUTF8StringEncoding];
+	NSError *error = nil;
+	id obj = [NSJSONSerialization JSONObjectWithData:data options:0 error:&error];
+	if (error) {
+		lua_pushnil(L);
+		lua_pushstring(L, error.localizedDescription.UTF8String);
+		return 2;
+	}
+	push_foundation_value(L, obj);
+	return 1;
+}
+
 #pragma mark - Module registration
 
 static const luaL_Reg bridge_lib[] = {
@@ -1529,17 +1718,20 @@ static const luaL_Reg bridge_lib[] = {
 	{"_image",            bridge_image},
 	{"_add",              bridge_add},
 	{"_layout",           bridge_layout},
-	{"_set_content_size", bridge_set_content_size},
+	{"_setContentSize", bridge_set_content_size},
 	{"_tableview",        bridge_tableview},
 	{"_toolbar_item",     bridge_toolbar_item},
 	{"_button",           bridge_button},
 	{"_toggle",           bridge_toggle},
-	{"_timer_after",      bridge_timer_after},
+	{"_timerAfter",      bridge_timer_after},
 	{"_show",             bridge_show},
 	{"_create",           bridge_create},
 	{"_font",             bridge_font},
 	{"_perform",          bridge_perform},
 	{"_callback",         bridge_callback},
+	{"_httpGet",         bridge_http_get},
+	{"_jsonParse",       bridge_json_parse},
+	{"_tableSetRefresh", bridge_table_set_refresh},
 	{NULL, NULL},
 };
 
@@ -1589,39 +1781,8 @@ int main(int argc, char *argv[]) {
 		lua_pop(L, 2);
 	}
 
-	lua_getglobal(L, "require");
-	lua_pushstring(L, "luaui");
-	if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
-		fprintf(stderr, "error loading UI: %s\n", lua_tostring(L, -1));
-		lua_close(L);
-		return 1;
-	}
-	lua_setfield(L, LUA_REGISTRYINDEX, "ui_module");
-
-	lua_newtable(L);
-	lua_newtable(L);
-	lua_pushcfunction(L, ui_env_index);
-	lua_setfield(L, -2, "__index");
-	lua_setmetatable(L, -2);
-
 	const char *script = argc > 1 ? argv[1] : "examples/hello.lua";
-	if (luaL_loadfile(L, script) != LUA_OK) {
-		fprintf(stderr, "error: %s\n", lua_tostring(L, -1));
-		lua_close(L);
-		return 1;
-	}
-
-	lua_insert(L, -2);
-
-	if (lua_setupvalue(L, -2, 1) == NULL) {
-		lua_pop(L, 1);
-		fprintf(stderr,
-			"error: script has no _ENV upvalue (require Lua 5.2+)\n");
-		lua_close(L);
-		return 1;
-	}
-
-	if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+	if (luaL_dofile(L, script) != LUA_OK) {
 		fprintf(stderr, "error: %s\n", lua_tostring(L, -1));
 		lua_close(L);
 		return 1;

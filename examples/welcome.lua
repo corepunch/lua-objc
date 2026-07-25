@@ -1,17 +1,17 @@
-local ui = require("luaui")
+local ns = require("AppKit")
 
-ui.Window {
+ns.Window {
 	title = "Welcome to lua-objc",
 	width = 520,
 	height = 500,
-	transparent_titlebar = true,
-	ui.VStack {
+	transparentTitlebar = true,
+	ns.VStack {
 		padding = 24,
 		alignment = "leading",
-		ui.Title "Welcome to lua-objc",
-		ui.Text { "Build native AppKit interfaces with a SwiftUI-like Lua API.", size = 13 },
-		ui.Text { "Examples", size = 13, weight = "semibold" },
-		ui.List {
+		ns.Title "Welcome to lua-objc",
+		ns.Text { "Build native AppKit interfaces with a SwiftUI-like Lua API.", size = 13 },
+		ns.Text { "Examples", size = 13, weight = "semibold" },
+		ns.List {
 			width = 472,
 			height = 320,
 			columns = {
@@ -27,6 +27,6 @@ ui.Window {
 				{ name = "layout.lua",  purpose = "Measured flexible layout" },
 			}
 		},
-		ui.Toggle { label = "Show this window on launch", is_on = true },
+		ns.Toggle { label = "Show this window on launch", is_on = true },
 	}
 }

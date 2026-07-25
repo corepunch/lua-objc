@@ -1,6 +1,6 @@
-local ui = require("luaui")
+local ns = require("AppKit")
 
-local navigation = ui.List {
+local navigation = ns.List {
 	width = 170,
 	height = 280,
 	header = false,
@@ -20,7 +20,7 @@ local navigation = ui.List {
 	},
 }
 
-local content = ui.List {
+local content = ns.List {
 	width = 380,
 	height = 280,
 	flex_basis = 300,
@@ -40,29 +40,29 @@ local content = ui.List {
 	},
 }
 
-ui.Window {
+ns.Window {
 	title = "Flexible Layout",
 	width = 680,
 	height = 420,
-	ui.VStack {
+	ns.VStack {
 		padding = 20,
 		alignment = "leading",
-		ui.Title "Measured, then placed",
-		ui.Text {
+		ns.Title "Measured, then placed",
+		ns.Text {
 			"Panels grow 1:2, shrink from their measured basis, and respect minimum widths.",
 			flex_shrink = 1,
 		},
-		ui.Separator(),
-		ui.HStack {
+		ns.Separator(),
+		ns.HStack {
 			flex_grow = 1,
 			alignment = "top",
 			navigation,
 			content,
 		},
-		ui.HStack {
-			ui.Text "Resize the window to exercise the constraints.",
-			ui.Spacer(),
-			ui.Button { title = "Done" },
+		ns.HStack {
+			ns.Text "Resize the window to exercise the constraints.",
+			ns.Spacer(),
+			ns.Button { title = "Done" },
 		},
 	}
 }
