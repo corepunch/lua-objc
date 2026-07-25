@@ -29,11 +29,11 @@ static lua_State *canvas_state_create(void) {
 	if (!C) return NULL;
 	luaL_openlibs(C);
 
-	/* Store itself as bridge_main so any async bridge callbacks that
-	 * fire while the canvas is being built land on the right state.
-	 * (Canvas eval is synchronous, so this is defensive.) */
-	lua_pushlightuserdata(C, C);
-	lua_setfield(C, LUA_REGISTRYINDEX, "bridge_main");
+	/* Zero the extraspace so owner_for_state() returns nil until an
+	 * owner is attached.  bridge_eval attaches one immediately; the
+	 * --preview path runs without one, and async callbacks from a
+	 * preview script are dropped instead of crashing after lua_close. */
+	*(void **)lua_getextraspace(C) = NULL;
 
 	luaL_requiref(C, "bridge", luaopen_bridge, 1);
 	lua_pop(C, 1);
@@ -73,6 +73,8 @@ static int bridge_eval(lua_State *L) {
 			lua_pushstring(L, "failed to create canvas state");
 			return 2;
 		}
+		LuaStateOwner *canvasOwner = [[LuaStateOwner alloc] initWithState:C];
+		(void)canvasOwner;  /* ARC releases at return; async blocks retain */
 
 		n = snprintf(wrapped, sizeof(wrapped),
 			"local ns=require('AppKit');"
@@ -87,7 +89,6 @@ static int bridge_eval(lua_State *L) {
 		if (n < 0 || n >= (int)sizeof(wrapped)) {
 			fprintf(stderr, "canvas error: code too long\n");
 			fflush(stderr);
-			lua_close(C);
 			lua_pushnil(L);
 			lua_pushstring(L, "code too long");
 			return 2;
@@ -98,7 +99,6 @@ static int bridge_eval(lua_State *L) {
 			report_lua_error(C, "canvas");
 			lua_pushnil(L);
 			lua_pushstring(L, err ?: "compile error");
-			lua_close(C);
 			return 2;
 		}
 
@@ -107,13 +107,15 @@ static int bridge_eval(lua_State *L) {
 			report_lua_error(C, "canvas");
 			lua_pushnil(L);
 			lua_pushstring(L, err ?: "runtime error");
-			lua_close(C);
 			return 2;
 		}
 
 		/* Marshal the resulting view from the canvas state into gL.
 		 * The ObjCRef holds a CFBridgingRetain'd pointer, so extracting
-		 * the id and re-retaining it in gL is safe across lua_close(C). */
+		 * the id and re-retaining it in gL is safe.  ARC manages C's
+		 * lifetime via LuaStateOwner: our local reference is released
+		 * at return; the state stays alive only while async callbacks
+		 * hold a reference, and closes automatically when they finish. */
 		id resultObj = nil;
 		ObjCRef *ref = luaL_testudata(C, -1, "nsview");
 		if (!ref) ref = luaL_testudata(C, -1, "nswindow");
@@ -124,7 +126,6 @@ static int bridge_eval(lua_State *L) {
 		} else {
 			lua_pushnil(L);
 		}
-		lua_close(C);
 		lua_pushnil(L);  /* no error */
 		return 2;
 	} else {

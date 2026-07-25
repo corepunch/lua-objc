@@ -61,6 +61,49 @@ The resulting `NSView` is marshalled back to the main Lua state via `CFBridgingR
 
 ---
 
+## Async state lifetime (`LuaStateOwner` + `lua_getextraspace`)
+
+Async bridge functions (`_httpGet`, `_timerAfter`, `_textViewOnChange`) schedule ObjC work that completes *after* the calling Lua code returns — sometimes after the `lua_State` that started it would normally be closed. The lifetime rule is:
+
+> A state must die exactly once, on the main thread, when its creator and all in-flight async ops are done with it.
+
+That is a reference count. We spell it with an ObjC object (`LuaStateOwner`) instead of a hand-rolled `_Atomic int` because ARC removes the three classic failure modes:
+
+| Manual refcount failure | Why ARC is immune |
+|---|---|
+| Missed decrement on a callback error/early-return path → leak | capture = retain, release = block disposal, both automatic |
+| Block never runs (invalidated timer, cancelled task) → unbalanced count | blocks don't retain raw C pointers, so a manual increment is never balanced; ARC's retain is tied to the block, not its execution |
+| Double decrement → use-after-free | `-dealloc` runs exactly once, at the last release |
+
+`-dealloc` is the single choke point where `lua_close` lives.
+
+### Why extraspace instead of a registry or dictionary
+
+Bridge functions resolve the owner via `owner_for_state(L)`, which reads an unretained pointer from `lua_getextraspace(L)`. Two properties make this correct:
+
+1. **Coroutine inheritance.** Lua 5.4 copies the main thread's extraspace into every new coroutine at `lua_newthread`. `fetch`/`timer` are always called *from coroutines*, and a coroutine's `L` is not the root state — this was the "stuck spinner" bug: a pointer-keyed dictionary lookup on `L` missed because only the root state was registered. Extraspace inherits, so resolution works from any thread.
+2. **No ABA window.** The extraspace read happens inside the calling state during an active C call, when the state is provably alive. A freed-and-reused pointer can never be looked up, because we never look anything up by pointer after the call returns — blocks capture the owner object itself.
+
+`bridge_main` (registry-based root-state resolution) and the `gLuaOwners` dictionary were both deleted once extraspace replaced them.
+
+### Why main-thread close matters
+
+`NSURLSession` runs and *releases* completion blocks on background queues. If that background release is the last one, `-dealloc` runs there — and `lua_close` runs `__gc` handlers that `CFRelease` `NSView`s, which AppKit requires on the main thread. `-dealloc` therefore marshals the close to the main queue when needed.
+
+### Design rejected: eager close + invalidation token
+
+Close the canvas state immediately at eval end; callbacks capture a retained `alive` flag and drop themselves when flipped. Simpler ownership, but a canvas mid-fetch at eval end has its coroutines killed with the state — `live.lua` in the IDE canvas would render the table shell and never populate a row. Keep-alive is what makes live data in canvas previews work.
+
+### Behavior by context
+
+| Context | Owner | Async outcome |
+|---|---|---|
+| Main app state (`gL`) | created in `main()`, released by ARC at exit | works (standalone `live.lua`, `weather.lua`) |
+| IDE canvas eval | created in `bridge_eval`, released at return | works — canvas state outlives eval until fetches complete |
+| `--preview` CLI | none (extraspace zeroed) | callbacks drop cleanly; no crash, coroutines never resume |
+
+---
+
 ## Layer 2 — AppKit.lua
 
 Provides a SwiftUI-like declarative API over the bridge.
@@ -182,4 +225,5 @@ This matches Xcode's static preview fast path: AppKit drawing stack initialises 
 - **Single translation unit**: all C/ObjC code lives in `src/main.m` (with `canvas_eval.m` `#include`d). No separate `.h` files.
 - **No subclassing for layout**: layout metadata is attached via associated objects, keeping native view classes unmodified.
 - **Isolated canvas evals**: each preview run gets a clean Lua state; no global pollution between runs.
+- **ARC-owned state lifetime**: `lua_State` teardown is tied to `LuaStateOwner` refcount; async callbacks resolve the owner via `lua_getextraspace` (inherited by coroutines), never by raw pointer lookup.
 - **No AutoLayout**: the custom flex engine replaces AppKit's AutoLayout entirely for bridge-created views.

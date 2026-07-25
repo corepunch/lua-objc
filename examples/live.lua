@@ -67,6 +67,8 @@ local list = ns.List {
 	end,
 }
 
+list:refresh()
+
 return ns.Window {
 	title = "Live Stock Ticker",
 	width = 620,
@@ -84,5 +86,3 @@ return ns.Window {
 	},
 	list,
 }
-
-list:refresh()

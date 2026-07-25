@@ -42,6 +42,56 @@ static char kKeys[kKeyCount];
 static const CGFloat kStackSpacing = 8.0;
 static lua_State *gL = NULL;
 
+#pragma mark - LuaStateOwner
+
+/* ARC-managed wrapper around a lua_State so async ObjC callbacks (HTTP,
+ * timer, notifications) keep the state alive until outstanding work
+ * completes.  The owner is stored unretained in the state's extraspace
+ * (lua_getextraspace): Lua copies the main thread's extraspace into
+ * every new coroutine at lua_newthread time, so bridge functions can
+ * resolve the owner from ANY thread of the global state — including the
+ * coroutines that fetch/timer are always called from — with no global
+ * registry and no pointer-keyed lookup.  The extraspace read happens
+ * inside the calling state while it is provably alive, so there is no
+ * ABA window.
+ *
+ * Lifetime: the creator holds the owner in a local; ARC releases it at
+ * scope exit.  Async blocks that captured it keep the state alive until
+ * they complete.  The last release runs -dealloc, which closes the state
+ * on the main thread — NSURLSession releases completion blocks on
+ * background queues, and lua_close runs __gc handlers that CFRelease
+ * NSViews, which AppKit requires to happen on the main thread. */
+@interface LuaStateOwner : NSObject
+@property (nonatomic, readonly) lua_State *L;
+@end
+
+@implementation LuaStateOwner
+- (instancetype)initWithState:(lua_State *)L {
+	self = [super init];
+	_L = L;
+	*(void **)lua_getextraspace(L) = (__bridge void *)self;
+	return self;
+}
+- (void)dealloc {
+	lua_State *L = _L;
+	if (!L) return;
+	if ([NSThread isMainThread]) {
+		lua_close(L);
+	} else {
+		dispatch_async(dispatch_get_main_queue(), ^{
+			lua_close(L);
+		});
+	}
+}
+@end
+
+/* Resolve the owner from any thread of a global state (main or
+ * coroutine).  Returns nil for states without an owner (preview
+ * canvas), which callers treat as "drop the callback". */
+static inline LuaStateOwner *owner_for_state(lua_State *L) {
+	return (__bridge LuaStateOwner *)(*(void **)lua_getextraspace(L));
+}
+
 typedef struct {
 	void *ptr;
 } ObjCRef;
@@ -2161,17 +2211,19 @@ static int bridge_timer_after(lua_State *L) {
 	lua_pushvalue(L, 2);
 	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
-	lua_getfield(L, LUA_REGISTRYINDEX, "bridge_main");
-	lua_State *mainL = (lua_State *)lua_touserdata(L, -1);
-	lua_pop(L, 1);
+	/* Same coroutine caveat as bridge_http_get: extraspace inherits. */
+	LuaStateOwner *owner = owner_for_state(L);
 
 	[NSTimer scheduledTimerWithTimeInterval:delay repeats:NO block:^(NSTimer *t) {
-		lua_rawgeti(mainL, LUA_REGISTRYINDEX, ref);
-		if (lua_pcall(mainL, 0, 0, 0) != LUA_OK) {
-			report_lua_error(mainL, "timer");
-			lua_pop(mainL, 1);
+		if (!owner) return;
+		lua_State *callL = owner.L;
+		if (!callL) return;
+		lua_rawgeti(callL, LUA_REGISTRYINDEX, ref);
+		if (lua_pcall(callL, 0, 0, 0) != LUA_OK) {
+			report_lua_error(callL, "timer");
+			lua_pop(callL, 1);
 		}
-		luaL_unref(mainL, LUA_REGISTRYINDEX, ref);
+		luaL_unref(callL, LUA_REGISTRYINDEX, ref);
 	}];
 
 	return 0;
@@ -2279,9 +2331,10 @@ static int bridge_http_get(lua_State *L) {
 	lua_pushvalue(L, 2);
 	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
-	lua_getfield(L, LUA_REGISTRYINDEX, "bridge_main");
-	lua_State *mainL = (lua_State *)lua_touserdata(L, -1);
-	lua_pop(L, 1);
+	/* L may be a coroutine's state (fetch is always called from one);
+	 * extraspace inherits from the main thread, so this resolves the
+	 * root state's owner regardless. */
+	LuaStateOwner *owner = owner_for_state(L);
 
 	NSMutableURLRequest *req = [NSMutableURLRequest
 		requestWithURL:[NSURL URLWithString:[NSString stringWithUTF8String:url]]];
@@ -2292,22 +2345,25 @@ static int bridge_http_get(lua_State *L) {
 	NSURLSessionDataTask *task = [[NSURLSession sharedSession]
 		dataTaskWithRequest:req
 		completionHandler:^(NSData *data, NSURLResponse *resp, NSError *error) {
+			if (!owner) return;
 			dispatch_async(dispatch_get_main_queue(), ^{
-				lua_rawgeti(mainL, LUA_REGISTRYINDEX, ref);
+				lua_State *callL = owner.L;
+				if (!callL) return;
+				lua_rawgeti(callL, LUA_REGISTRYINDEX, ref);
 				if (error) {
-					lua_pushnil(mainL);
-					lua_pushstring(mainL, error.localizedDescription.UTF8String);
+					lua_pushnil(callL);
+					lua_pushstring(callL, error.localizedDescription.UTF8String);
 				} else {
 					NSString *body = [[NSString alloc] initWithData:data
 						encoding:NSUTF8StringEncoding];
-					lua_pushstring(mainL, body.UTF8String ?: "");
-					lua_pushnil(mainL);
+					lua_pushstring(callL, body.UTF8String ?: "");
+					lua_pushnil(callL);
 				}
-				if (lua_pcall(mainL, 2, 0, 0) != LUA_OK) {
-					report_lua_error(mainL, "http");
-					lua_pop(mainL, 1);
+				if (lua_pcall(callL, 2, 0, 0) != LUA_OK) {
+					report_lua_error(callL, "http");
+					lua_pop(callL, 1);
 				}
-				luaL_unref(mainL, LUA_REGISTRYINDEX, ref);
+				luaL_unref(callL, LUA_REGISTRYINDEX, ref);
 			});
 		}];
 	[task resume];
@@ -2449,9 +2505,8 @@ static int bridge_text_view_on_change(lua_State *L) {
 	objc_setAssociatedObject(tv, &kKeys[kTextChangeKey], @(ref),
 		OBJC_ASSOCIATION_RETAIN);
 
-	lua_getfield(L, LUA_REGISTRYINDEX, "bridge_main");
-	lua_State *mainL = (lua_State *)lua_touserdata(L, -1);
-	lua_pop(L, 1);
+	/* Same coroutine caveat: extraspace inherits from the main thread. */
+	LuaStateOwner *owner = owner_for_state(L);
 
 	[[NSNotificationCenter defaultCenter]
 		addObserverForName:NSTextDidChangeNotification
@@ -2460,13 +2515,15 @@ static int bridge_text_view_on_change(lua_State *L) {
 				usingBlock:^(NSNotification *note) {
 		NSNumber *refNum = objc_getAssociatedObject(note.object,
 			&kKeys[kTextChangeKey]);
-		if (!refNum || !mainL) return;
-		lua_rawgeti(mainL, LUA_REGISTRYINDEX, refNum.intValue);
-		lua_pushstring(mainL,
+		if (!refNum || !owner) return;
+		lua_State *callL = owner.L;
+		if (!callL) return;
+		lua_rawgeti(callL, LUA_REGISTRYINDEX, refNum.intValue);
+		lua_pushstring(callL,
 			((NSTextView *)note.object).string.UTF8String);
-		if (lua_pcall(mainL, 1, 0, 0) != LUA_OK) {
-			report_lua_error(mainL, "text change");
-			lua_pop(mainL, 1);
+		if (lua_pcall(callL, 1, 0, 0) != LUA_OK) {
+			report_lua_error(callL, "text change");
+			lua_pop(callL, 1);
 		}
 	}];
 
@@ -2806,8 +2863,8 @@ int main(int argc, char *argv[]) {
 	gL = L;
 	luaL_openlibs(L);
 
-	lua_pushlightuserdata(L, L);
-	lua_setfield(L, LUA_REGISTRYINDEX, "bridge_main");
+	LuaStateOwner *mainOwner = [[LuaStateOwner alloc] initWithState:L];
+	(void)mainOwner;  /* released by ARC at return → -dealloc → lua_close */
 
 	luaL_requiref(L, "bridge", luaopen_bridge, 1);
 	lua_pop(L, 1);
@@ -2834,16 +2891,15 @@ int main(int argc, char *argv[]) {
 		lua_State *C = canvas_state_create();
 		if (!C) {
 			fprintf(stderr, "preview: failed to create canvas state\n");
-			lua_close(L);
 			return 1;
 		}
 
-		/* Read the file into a string so we can pass it through bridge_eval's
+	/* Read the file into a string so we can pass it through bridge_eval's
 		 * canvas wrapper (which intercepts ns.Window → ns.VStack). */
 		FILE *fp = fopen(script, "r");
 		if (!fp) {
 			fprintf(stderr, "preview: cannot open %s\n", script);
-			lua_close(C); lua_close(L);
+			lua_close(C);
 			return 1;
 		}
 		fseek(fp, 0, SEEK_END);
@@ -2870,7 +2926,7 @@ int main(int argc, char *argv[]) {
 			lua_pcall(C, 0, 1, 0) != LUA_OK) {
 			report_lua_error(C, "preview");
 			free(wrapped);
-			lua_close(C); lua_close(L);
+			lua_close(C);
 			return 1;
 		}
 		free(wrapped);
@@ -2882,7 +2938,7 @@ int main(int argc, char *argv[]) {
 
 		if (!resultObj || ![resultObj isKindOfClass:[NSView class]]) {
 			fprintf(stderr, "preview: script did not return a view\n");
-			lua_close(C); lua_close(L);
+			lua_close(C);
 			return 1;
 		}
 
@@ -2895,7 +2951,6 @@ int main(int argc, char *argv[]) {
 
 		if (!png) {
 			fprintf(stderr, "preview: render failed\n");
-			lua_close(L);
 			return 1;
 		}
 
@@ -2910,18 +2965,15 @@ int main(int argc, char *argv[]) {
 			}
 		}
 
-		lua_close(L);
 		return write_ok ? 0 : 1;
 	}
 
 	if (luaL_dofile(L, script) != LUA_OK) {
 		report_lua_error(L, "script");
-		lua_close(L);
 		return 1;
 	}
 
 	[NSApp run];
 
-	lua_close(L);
 	return 0;
 }
