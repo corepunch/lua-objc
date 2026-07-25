@@ -28,6 +28,16 @@ return ns.VStack {
 ]=],
 }
 
+local wrapToggle = bridge._symbolToggle(
+	"arrow.left.and.line.vertical.and.arrow.right",
+	"Toggle Word Wrap",
+	false,
+	function(btn)
+		local wrapped = btn.state == 1
+		bridge._textViewSetWrapMode(editor._view, wrapped)
+	end
+)
+
 local files = {
 	{ name = "hello.lua" },
 	{ name = "list.lua" },
@@ -96,6 +106,7 @@ return ns.Window {
 			editor = ide.EditorArea {
 				title = "EDITOR",
 				content = editor._view,
+				trailing = { wrapToggle },
 			},
 			preview = ide.PreviewArea {
 				title = "CANVAS",

@@ -161,15 +161,15 @@ local editor = require("IDEKit").Editor {
 	initialCode = "return 1",
 }
 t.assertEqual(
-	editor.documentView.editable,
+	editor._view.documentView.editable,
 	true,
 	"IDE editor text view is editable")
 t.assertEqual(
-	editor.documentView.selectable,
+	editor._view.documentView.selectable,
 	true,
 	"IDE editor text view is selectable")
 t.assertEqual(
-	editor.documentView.string,
+	editor._view.documentView.string,
 	"return 1",
 	"IDE editor exposes its initial source")
 

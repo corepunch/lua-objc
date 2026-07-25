@@ -35,6 +35,7 @@ enum {
 	kTableSelectionKey,
 	kTableRefreshKey,
 	kTextChangeKey,
+	kTextWrapKey,
 	kKeyCount
 };
 static char kKeys[kKeyCount];
@@ -297,7 +298,8 @@ static void push_objc(lua_State *L, id obj, const char *meta);
 	int ref = [refObj intValue];
 
 	lua_rawgeti(gL, LUA_REGISTRYINDEX, ref);
-	int status = lua_pcall(gL, 0, 0, 0);
+	push_objc(gL, sender, "nsview");
+	int status = lua_pcall(gL, 1, 0, 0);
 	if (status != LUA_OK) {
 		fprintf(stderr, "button error: %s\n", lua_tostring(gL, -1));
 		lua_pop(gL, 1);
@@ -610,6 +612,8 @@ static int bridge_text_view_get_text(lua_State *L);
 static int bridge_text_view_set_text(lua_State *L);
 static int bridge_text_view_on_change(lua_State *L);
 static int bridge_text_view_set_language(lua_State *L);
+static int bridge_text_view_set_wrap_mode(lua_State *L);
+static int bridge_symbol_toggle(lua_State *L);
 static int bridge_eval(lua_State *L);
 static int bridge_clear_container(lua_State *L);
 static void layout_recursive(NSView *view, CGFloat width);
@@ -2351,8 +2355,8 @@ static int bridge_text_view(lua_State *L) {
 	SyntaxTextStorage *storage = [[SyntaxTextStorage alloc] init];
 	NSLayoutManager   *lm      = [[NSLayoutManager alloc] init];
 	NSTextContainer   *tc      = [[NSTextContainer alloc]
-		initWithContainerSize:NSMakeSize(contentSize.width, FLT_MAX)];
-	tc.widthTracksTextView = YES;
+		initWithContainerSize:NSMakeSize(FLT_MAX, FLT_MAX)];
+	tc.widthTracksTextView = NO;
 	[lm addTextContainer:tc];
 	[storage addLayoutManager:lm];
 
@@ -2371,9 +2375,11 @@ static int bridge_text_view(lua_State *L) {
 	tv.minSize = NSMakeSize(0, 0);
 	tv.maxSize = NSMakeSize(FLT_MAX, FLT_MAX);
 	tv.verticallyResizable = YES;
-	tv.horizontallyResizable = NO;
+	tv.horizontallyResizable = YES;
 
+	sv.hasHorizontalScroller = YES;
 	sv.documentView = tv;
+	objc_setAssociatedObject(sv, &kKeys[kTextWrapKey], @NO, OBJC_ASSOCIATION_RETAIN);
 	objc_setAssociatedObject(sv, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 
 	push_objc(L, sv, "nsview");
@@ -2453,6 +2459,85 @@ static int bridge_text_view_set_language(lua_State *L) {
 		storage.language = [NSString stringWithUTF8String:lang];
 	}
 	return 0;
+}
+
+/* Toggle word wrap on/off. Wrap ON tracks the visible width; wrap OFF
+ * lets the text view grow horizontally with a scroll bar. */
+static int bridge_text_view_set_wrap_mode(lua_State *L) {
+	id obj = check_objc(L, 1);
+	int wrap = lua_toboolean(L, 2);
+
+	if (![obj isKindOfClass:[NSScrollView class]]) {
+		return luaL_error(L, "expected a text view");
+	}
+	NSScrollView *sv = (NSScrollView *)obj;
+	NSTextView *tv = (NSTextView *)sv.documentView;
+	NSTextContainer *tc = tv.textContainer;
+
+	if (wrap) {
+		tv.horizontallyResizable = NO;
+		tc.widthTracksTextView = YES;
+		tc.containerSize = NSMakeSize(sv.contentSize.width, FLT_MAX);
+		sv.hasHorizontalScroller = NO;
+	} else {
+		tv.horizontallyResizable = YES;
+		tc.widthTracksTextView = NO;
+		tc.containerSize = NSMakeSize(FLT_MAX, FLT_MAX);
+		sv.hasHorizontalScroller = YES;
+	}
+
+	objc_setAssociatedObject(sv, &kKeys[kTextWrapKey],
+		@(wrap), OBJC_ASSOCIATION_RETAIN);
+	return 0;
+}
+
+/* Symbol toggle: an NSButton with an SF Symbol, acting as an on/off toggle.
+ * Args: symbolName, tooltip, initialState, callback(optional) */
+static int bridge_symbol_toggle(lua_State *L) {
+	const char *symbol = luaL_checkstring(L, 1);
+	const char *tooltip = luaL_optstring(L, 2, "");
+	int state = lua_toboolean(L, 3);
+	int has_action = !lua_isnoneornil(L, 4);
+	int ref = LUA_NOREF;
+	if (has_action) {
+		luaL_checktype(L, 4, LUA_TFUNCTION);
+		lua_pushvalue(L, 4);
+		ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	}
+
+	NSString *name = [NSString stringWithUTF8String:symbol];
+	NSImage *img = [NSImage imageWithSystemSymbolName:name
+		accessibilityDescription:[NSString stringWithUTF8String:tooltip]];
+	if (!img) {
+		if (has_action) luaL_unref(L, LUA_REGISTRYINDEX, ref);
+		return luaL_error(L, "unknown SF Symbol: %s", symbol);
+	}
+
+	NSImageSymbolConfiguration *config =
+		[NSImageSymbolConfiguration configurationWithPointSize:13
+														weight:NSFontWeightMedium];
+	img = [img imageWithSymbolConfiguration:config];
+
+	NSButton *btn = [[NSButton alloc] initWithFrame:NSMakeRect(0, 0, 28, 28)];
+	btn.title = @"";
+	btn.image = img;
+	btn.imagePosition = NSImageOnly;
+	btn.bezelStyle = NSBezelStyleRounded;
+	btn.buttonType = NSButtonTypeOnOff;
+	btn.state = state ? NSControlStateValueOn : NSControlStateValueOff;
+	btn.toolTip = [NSString stringWithUTF8String:tooltip];
+	btn.accessibilityLabel = btn.toolTip;
+	[btn sizeToFit];
+
+	if (has_action) {
+		objc_setAssociatedObject(btn, &kKeys[kCallbackKey], @(ref),
+			OBJC_ASSOCIATION_RETAIN);
+		btn.target = [LuaButtonTarget shared];
+		btn.action = @selector(onAction:);
+	}
+
+	push_objc(L, btn, "nsview");
+	return 1;
 }
 
 #include "canvas_eval.m"
@@ -2630,6 +2715,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_textViewSetText",  bridge_text_view_set_text},
 	{"_textViewOnChange", bridge_text_view_on_change},
 	{"_textViewSetLanguage", bridge_text_view_set_language},
+	{"_textViewSetWrapMode", bridge_text_view_set_wrap_mode},
+	{"_symbolToggle",       bridge_symbol_toggle},
 	{"_eval",             bridge_eval},
 	{"_clearContainer",   bridge_clear_container},
 	{"_renderToPNG",      bridge_render_to_png},

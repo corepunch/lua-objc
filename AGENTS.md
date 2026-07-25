@@ -273,6 +273,15 @@ Each ObjC object is wrapped in a Lua full userdata with a metatable (`nsview` or
 | `_image(path)` | `NSImageView` |
 | `_button(title, callback)` | `NSButton` (push button, stores callback in registry) |
 | `_toggle(label, is_on, callback)` | `NSButton` (checkbox, stores callback in registry) |
+| `_actionButton(title, subtitle, symbol, style, detail, callback)` | `LuaActionButton` (compound button) |
+| `_systemImage(symbol, description, size, weight, color)` | `NSImageView` with SF Symbol |
+| `_symbolToggle(symbol, tooltip, state, callback?)` | `NSButton` (toggle) with SF Symbol, fires callback with sender |
+| `_textView()` | `NSScrollView` wrapping `NSTextView` + `SyntaxTextStorage` |
+| `_textViewGetText(textView)` | Reads `NSTextView.string` |
+| `_textViewSetText(textView, str)` | Sets `NSTextView.string` |
+| `_textViewOnChange(textView, callback)` | Registers `NSTextDidChangeNotification` observer |
+| `_textViewSetLanguage(textView, lang)` | Sets syntax highlighting language |
+| `_textViewSetWrapMode(textView, wrap)` | Toggles word wrap; default is OFF (horizontally scrollable) |
 | `_separator()` | `NSBox` (separator line) |
 | `_add(parent, child)` | calls `addSubview:` |
 | `_layout(view, width)` | recursive frame-based layout in C |
@@ -435,6 +444,9 @@ the working directory.
 
 Creates an `NSButton` (rounded push button). The optional `action` key stores a
 Lua callback in the registry, fired via `LuaButtonTarget` + target-action.
+**Callbacks receive the sender NSView as the first argument** — Lua functions
+silently ignore extra arguments, so `function() ... end` and
+`function(btn) ... end` both work.
 
 ```lua
 ns.Button { title = "Create New Script" }
@@ -447,19 +459,42 @@ ns.Button {
 ### `Toggle{...}`
 
 Creates an `NSButton` checkbox. Keys: `label` (string), `is_on` (bool),
-`action` (function, optional).
+`action` (function, optional). **Callbacks receive the sender NSButton** —
+read `btn.state == 1` to get the current toggle state.
 
 ```lua
 ns.Toggle { label = "Show on launch", is_on = true }
 ns.Toggle {
     label = "Show on launch",
     is_on = true,
-    action = function() print("toggled") end
+    action = function(btn) print("toggled", btn.state) end
 }
 ```
 
-The toggle state can be read/written via `toggle:get_state()` and
-`toggle:set_state(bool)` (exposed through the nsview metatable `__index`).
+The toggle state can also be read/written via KVC: `toggle.state` returns `1`
+(on) or `0` (off); assign `toggle.state = 1` to turn it on.
+
+### `SymbolToggle(symbol, tooltip, is_on, action?)`
+
+Creates an `NSButton` toggle with an SF Symbol instead of a text label. Uses
+`NSButtonTypeOnOff` with `NSBezelStyleRounded` — the symbol appears filled
+when toggled on. **Callbacks receive the sender** for reading `btn.state`.
+
+```lua
+local wrapToggle = bridge._symbolToggle(
+    "arrow.left.and.line.vertical.and.arrow.right",
+    "Toggle Word Wrap",
+    false,
+    function(btn)
+        local wrapped = btn.state == 1
+        bridge._textViewSetWrapMode(editor._view, wrapped)
+    end
+)
+```
+
+This is a low-level bridge function (`bridge._symbolToggle`), not wrapped by
+`AppKit.lua`. It's intended for ControlBar header toggles and similar compact
+toolbar-like buttons.
 
 ### `Separator()`
 
