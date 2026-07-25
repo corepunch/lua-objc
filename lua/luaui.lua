@@ -39,8 +39,9 @@ function UI.Window(props)
 		win = bridge._window(title, width, height,
 			transparent_titlebar, hide_title)
 	end
+	bridge._set_content_size(win, width, height)
+
 	local content = bridge._vstack()
-	bridge._set_frame(content, 0, 0, width, height)
 	bridge._add(win, content)
 
 	for _, v in ipairs(props) do
@@ -51,16 +52,14 @@ function UI.Window(props)
 
 	bridge._layout(content, width)
 
-	local _, _, cw, ch = bridge._get_frame(content)
-	local totalH = math.max(ch, height)
-	bridge._set_content_size(win, width, totalH)
-
 	bridge._show(win)
 end
 
 function UI.VStack(props)
 	local view = bridge._vstack()
 	if type(props) == "table" then
+		if props.padding then view.padding = props.padding end
+		if props.alignment then view.alignment = props.alignment end
 		for _, v in ipairs(props) do
 			if type(v) == "userdata" then
 				bridge._add(view, v)
@@ -73,6 +72,8 @@ end
 function UI.HStack(props)
 	local view = bridge._hstack()
 	if type(props) == "table" then
+		if props.padding then view.padding = props.padding end
+		if props.alignment then view.alignment = props.alignment end
 		for _, v in ipairs(props) do
 			if type(v) == "userdata" then
 				bridge._add(view, v)
@@ -85,6 +86,7 @@ end
 function UI.HSplit(props)
 	local view = bridge._hsplit()
 	if type(props) == "table" then
+		if props.padding then view.padding = props.padding end
 		for _, v in ipairs(props) do
 			if type(v) == "userdata" then
 				bridge._add(view, v)
@@ -105,13 +107,28 @@ function UI.Text(arg)
 	else
 		text = tostring(arg)
 	end
-	return bridge._text(text, size or 0, weight)
+
+	local v = bridge._create("NSTextField")
+	v.stringValue = text
+	v.bezeled = false
+	v.drawsBackground = false
+	v.editable = false
+	v.selectable = false
+
+	if size and size > 0 then
+		v.font = bridge._font(size, weight)
+	end
+
+	bridge._perform(v, "sizeToFit")
+	return v
 end
 
 function UI.Title(arg)
-	return bridge._text(
+	return UI.Text({
 		type(arg) == "table" and arg[1] or arg,
-		22, "bold")
+		size = 22,
+		weight = "bold",
+	})
 end
 
 function UI.Image(arg)
@@ -172,19 +189,24 @@ function UI.Toggle(props)
 end
 
 function UI.Separator()
-	return bridge._separator()
+	local v = bridge._create("NSBox")
+	v.boxType = 2  -- NSBoxSeparator = 2
+	return v
 end
 
 function UI.Spinner()
-	return bridge._spinner()
+	local v = bridge._create("NSProgressIndicator")
+	v.style = 1  -- NSProgressIndicatorStyleSpinning = 1
+	v.displayedWhenStopped = false
+	return v
 end
 
 function UI.SpinnerStart(spinner)
-	bridge._spinner_start(spinner)
+	bridge._perform(spinner, "startAnimation:", nil)
 end
 
 function UI.SpinnerStop(spinner)
-	bridge._spinner_stop(spinner)
+	bridge._perform(spinner, "stopAnimation:", nil)
 end
 
 function UI.sleep(seconds)
