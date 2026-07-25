@@ -33,7 +33,10 @@ end
 function IDEKit._evalIntoCanvas(canvas, code)
 	if not canvas then return end
 
-	local result, err = bridge._eval(code)
+	-- Canvas mode: ns.Window is intercepted so the code returns a view
+	-- hierarchy instead of creating a real NSWindow. This lets .lua files
+	-- that call ns.Window{...} render inline in the IDE canvas.
+	local result, err = bridge._eval(code, true)
 	bridge._clearContainer(canvas)
 
 	if err then

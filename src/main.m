@@ -2378,11 +2378,34 @@ NSTextView *text_view_from_scroll_view(NSView *obj) {
 
 static int bridge_eval(lua_State *L) {
 	const char *code = luaL_checkstring(L, 1);
+	int canvas = lua_toboolean(L, 2);
 
 	char wrapped[65536];
-	int n = snprintf(wrapped, sizeof(wrapped),
-		"local ns=require('AppKit');return(function()\n%s\nend)()",
-		code);
+	int n;
+
+	if (canvas) {
+		/*
+		 * Canvas mode: intercept ns.Window so the evaluated code
+		 * returns a view hierarchy instead of creating a real NSWindow.
+		 * ns.Window(props) → ns.VStack(props), window-only properties
+		 * (title, toolbar, appearance, etc.) are ignored.
+		 *
+		 * pcall ensures ns.Window is restored even if the user code errors.
+		 */
+		n = snprintf(wrapped, sizeof(wrapped),
+			"local ns=require('AppKit');"
+			"local __crw=ns.Window;"
+			"ns.Window=function(p)return ns.VStack(p)end;"
+			"local __rok,__rr=pcall(function()\n%s\nend);"
+			"ns.Window=__crw;"
+			"if not __rok then error(__rr) end;"
+			"return __rr",
+			code);
+	} else {
+		n = snprintf(wrapped, sizeof(wrapped),
+			"local ns=require('AppKit');return(function()\n%s\nend)()",
+			code);
+	}
 
 	if (n < 0 || n >= (int)sizeof(wrapped)) {
 		lua_pushnil(L);
