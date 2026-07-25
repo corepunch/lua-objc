@@ -155,6 +155,23 @@ function AppKit.HSplit(props)
 	return view
 end
 
+-- VSplit: NSSplitView splitting top-to-bottom (vertical=NO in AppKit terms).
+-- Mirrors Xcode's DVTSplitView used to stack editor + debug area.
+function AppKit.VSplit(props)
+	local view = bridge._vsplit()
+	if type(props) == "table" then
+		applyLayout(view, props)
+		addChildren(view, props)
+	end
+	return view
+end
+
+-- Separator: 1pt NSBox rule, fills available width.
+-- Mirrors Xcode's thin dividers between ControlBar areas.
+function AppKit.Separator(props)
+	return applyLayout(bridge._separator(), props)
+end
+
 function AppKit.Group(children)
 	children = children or {}
 	children.__appkitGroup = true

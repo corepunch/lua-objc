@@ -2,7 +2,10 @@ local ns = require("AppKit")
 local ide = require("IDEKit")
 local bridge = require("bridge")
 
+-- Canvas: inline preview host — matches Xcode's macOS preview architecture.
+-- ns.Window is intercepted by _evalIntoCanvas → content-only VStack, no chrome.
 local canvas = ide.Canvas()
+
 local editor = ide.Editor {
 	canvas = canvas,
 	initialCode = [=[
@@ -34,9 +37,11 @@ local files = {
 	{ name = "welcome.lua" },
 }
 
+-- File tree: NSTableView acting as a source-list navigator.
+-- Mirrors Xcode's DVTExplorerOutlineView inside IDENavigatorArea.
 local fileTree = ns.List {
 	header = false,
-	bordered = true,
+	bordered = false,
 	flexGrow = 1,
 	columns = {
 		{
@@ -51,12 +56,14 @@ local fileTree = ns.List {
 local examplesDir = "examples"
 
 local function openInEditor(filename)
-	local f = io.open(examplesDir .. "/" .. filename, "r")
+	local path = examplesDir .. "/" .. filename
+	local f = io.open(path, "r")
 	if not f then return end
 	local content = f:read("*a")
 	f:close()
-	bridge._textViewSetText(editor, content)
+	bridge._textViewSetText(editor._view, content)
 	ide._evalIntoCanvas(canvas, content)
+	editor.watchFile(path)
 end
 
 fileTree:onRowSelect(function(list, rowIndex, rowData)
@@ -65,27 +72,11 @@ fileTree:onRowSelect(function(list, rowIndex, rowData)
 	end
 end)
 
-local function Panel(title, content, props)
-	props = props or {}
-	return ns.VStack {
-		fixedWidth = props.fixedWidth,
-		flexGrow = props.flexGrow,
-		spacing = 0,
-		ns.HStack {
-			fixedHeight = 28,
-			paddingHorizontal = 10,
-			alignment = "center",
-			ns.Text {
-				title,
-				size = 11,
-				weight = "semibold",
-				color = "secondary",
-			},
-		},
-		content,
-	}
-end
-
+-- WorkspaceLayout: root HSplit with three areas:
+--   NavigatorArea (left)  → IDENavigatorArea
+--   EditorArea   (centre) → IDEEditorArea
+--   PreviewArea  (right)  → inline macOS preview canvas
+-- This mirrors the Xcode workspace root NSSplitView structure.
 return ns.Window {
 	title = "lua-objc IDE",
 	width = 1100,
@@ -96,11 +87,20 @@ return ns.Window {
 	ns.VStack {
 		flexGrow = 1,
 		spacing = 0,
-		ns.HSplit {
-			flexGrow = 1,
-			Panel("Files", fileTree, { fixedWidth = 220 }),
-			Panel("Editor", editor, { flexGrow = 1 }),
-			Panel("Canvas", canvas, { flexGrow = 1 }),
+		ide.WorkspaceLayout {
+			navigator = ide.NavigatorArea {
+				title = "FILES",
+				fixedWidth = 160,
+				content = fileTree,
+			},
+			editor = ide.EditorArea {
+				title = "EDITOR",
+				content = editor._view,
+			},
+			preview = ide.PreviewArea {
+				title = "CANVAS",
+				content = canvas,
+			},
 		},
 	},
 }

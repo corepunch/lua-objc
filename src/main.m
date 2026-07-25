@@ -999,6 +999,28 @@ static int bridge_hsplit(lua_State *L) {
 	return 1;
 }
 
+/* VSplit — NSSplitView with vertical=NO, splits the area top-to-bottom.
+ * Maps to Xcode's DVTSplitView used for editor/debug-area stacking. */
+static int bridge_vsplit(lua_State *L) {
+	NSSplitView *v = [[NSSplitView alloc] initWithFrame:NSZeroRect];
+	v.vertical = NO;
+	v.dividerStyle = NSSplitViewDividerStyleThin;
+	objc_setAssociatedObject(v, &kAxisKey, @"vsplit", OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(v, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
+	push_objc(L, v, "nsview");
+	return 1;
+}
+
+/* Thin horizontal separator line — like NSBox with NSBoxSeparator. */
+static int bridge_separator(lua_State *L) {
+	NSBox *box = [[NSBox alloc] initWithFrame:NSMakeRect(0, 0, 1, 1)];
+	box.boxType = NSBoxSeparator;
+	objc_setAssociatedObject(box, &kFixedHeightKey, @1.0, OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(box, &kFillWidthKey, @YES, OBJC_ASSOCIATION_RETAIN);
+	push_objc(L, box, "nsview");
+	return 1;
+}
+
 static int bridge_spacer(lua_State *L) {
 	NSView *v = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 10, 10)];
 	objc_setAssociatedObject(v, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
@@ -1169,10 +1191,9 @@ static CGFloat clamp_dimension(CGFloat value, CGFloat minimum, CGFloat maximum) 
 
 static BOOL default_grows_on_axis(NSView *view, BOOL horizontal) {
 	if (!is_flexible(view)) return NO;
-	NSString *axis = objc_getAssociatedObject(view, &kKeys[kAxisKey]);
-	if (!horizontal && [axis isEqualToString:@"hstack"]) {
-		return NO;
-	}
+	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
+	if (!horizontal && [axis isEqualToString:@"hstack"]) return NO;
+	if (horizontal && [axis isEqualToString:@"vsplit"]) return NO;
 	return YES;
 }
 
@@ -1310,6 +1331,28 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 			? (view.subviews.count - 1) * [(NSSplitView *)view dividerThickness] : 0;
 		natural.width += dividers + 2 * padX;
 		natural.height += 2 * padY;
+	} else if ([axis isEqualToString:@"vsplit"]) {
+		for (NSView *child in view.subviews) {
+			CGFloat fh = view_fixed_height(child);
+			NSSize childSize;
+			if (fh > 0) {
+				childSize = NSMakeSize(0, fh);
+			} else {
+				childSize = measure_view(child, (LuaLayoutConstraint){
+					.width = innerWidth,
+					.height = 0,
+					.widthMode = constraint.widthMode == LuaMeasureUndefined
+						? LuaMeasureUndefined : LuaMeasureAtMost,
+					.heightMode = LuaMeasureUndefined,
+				});
+			}
+			natural.width = MAX(natural.width, childSize.width);
+			natural.height += childSize.height;
+		}
+		CGFloat dividers = view.subviews.count > 1
+			? (view.subviews.count - 1) * [(NSSplitView *)view dividerThickness] : 0;
+		natural.width += 2 * padX;
+		natural.height += dividers + 2 * padY;
 	} else {
 		NSValue *imageLayoutSize =
 			objc_getAssociatedObject(view, &kKeys[kImageLayoutSizeKey]);
@@ -1419,7 +1462,7 @@ static void layout_recursive(NSView *view, CGFloat width) {
 	CGFloat availableHeight = view.bounds.size.height;
 
 	if ([axis isEqualToString:@"vstack"] || [axis isEqualToString:@"hstack"] ||
-		[axis isEqualToString:@"hsplit"]) {
+		[axis isEqualToString:@"hsplit"] || [axis isEqualToString:@"vsplit"]) {
 
 		CGFloat padX = view_padding_horizontal(view);
 		CGFloat padY = view_padding_vertical(view);
@@ -1563,6 +1606,41 @@ static void layout_recursive(NSView *view, CGFloat width) {
 				x += childW + divider;
 			}
 			free(widths);
+		} else if ([axis isEqualToString:@"vsplit"]) {
+			NSUInteger count = view.subviews.count;
+			if (count == 0) return;
+
+			CGFloat divider = [(NSSplitView *)view dividerThickness];
+			CGFloat spacing = count > 1 ? (count - 1) * divider : 0;
+			CGFloat *heights = calloc(count, sizeof(CGFloat));
+			for (NSUInteger i = 0; i < count; i++) {
+				NSView *child = view.subviews[i];
+				NSSize size = measure_view(child, (LuaLayoutConstraint){
+					.width = contentW,
+					.height = 0,
+					.widthMode = LuaMeasureAtMost,
+					.heightMode = LuaMeasureUndefined,
+				});
+				NSNumber *basis = objc_getAssociatedObject(child, &kFlexBasisKey);
+				CGFloat fixed = view_fixed_height(child);
+				heights[i] = clamp_dimension(
+					fixed > 0 ? fixed : (basis ? basis.doubleValue : size.height),
+					view_optional_dimension(child, &kMinHeightKey, 0),
+					view_optional_dimension(child, &kMaxHeightKey, INFINITY));
+			}
+			distribute_main_axis(view.subviews, heights,
+				MAX(0, contentH - spacing), NO);
+			CGFloat top = padY + contentH;
+
+			for (NSUInteger i = 0; i < count; i++) {
+				NSView *sv = view.subviews[i];
+				CGFloat childH = heights[i];
+				top -= childH;
+				sv.frame = NSMakeRect(padX, top, contentW, childH);
+				layout_recursive(sv, contentW);
+				top -= divider;
+			}
+			free(heights);
 		}
 	} else {
 		if ([view isKindOfClass:[NSScrollView class]]) {
@@ -2352,6 +2430,141 @@ static int bridge_text_view_on_change(lua_State *L) {
 
 #include "canvas_eval.m"
 
+#pragma mark - Offscreen render
+
+static NSData *offscreen_render(NSView *view, CGFloat width, CGFloat height) {
+	view.frame = NSMakeRect(0, 0, width, height);
+
+	/* Wrap in a borderless offscreen window so drawRect: has a valid window. */
+	NSWindow *offscreen = [[NSWindow alloc]
+		initWithContentRect:NSMakeRect(-10000, -10000, width, height)
+				  styleMask:NSWindowStyleMaskBorderless
+					backing:NSBackingStoreBuffered
+					  defer:NO];
+	offscreen.releasedWhenClosed = NO;
+	[offscreen.contentView addSubview:view];
+	[offscreen orderBack:nil];
+
+	NSBitmapImageRep *rep = [view bitmapImageRepForCachingDisplayInRect:view.bounds];
+	if (!rep) {
+		[view removeFromSuperview];
+		[offscreen close];
+		return nil;
+	}
+
+	CGFloat scale = [NSScreen mainScreen]
+		? [NSScreen mainScreen].backingScaleFactor : 2.0;
+	(void)scale;
+
+	[view cacheDisplayInRect:view.bounds toBitmapImageRep:rep];
+
+	NSData *png = [rep representationUsingType:NSBitmapImageFileTypePNG
+									properties:@{}];
+
+	[view removeFromSuperview];
+	[offscreen close];
+	return png;
+}
+
+static int bridge_render_to_png(lua_State *L) {
+	NSView *view  = check_view(L, 1);
+	CGFloat width  = luaL_optnumber(L, 2, 400);
+	CGFloat height = luaL_optnumber(L, 3, 300);
+	view.frame = NSMakeRect(0, 0, width, height);
+	layout_recursive(view, width);
+	NSData *png = offscreen_render(view, width, height);
+	if (!png) { lua_pushnil(L); return 1; }
+	lua_pushlstring(L, png.bytes, png.length);
+	return 1;
+}
+
+#pragma mark - File watcher
+
+static NSMutableDictionary *gFileWatchers = nil;
+
+typedef struct {
+	FSEventStreamRef stream;
+	int luaRef;
+} FileWatcherEntry;
+
+static void file_watcher_callback(ConstFSEventStreamRef streamRef,
+	void *clientCallBackInfo, size_t numEvents, void *eventPaths,
+	const FSEventStreamEventFlags *eventFlags,
+	const FSEventStreamEventId *eventIds)
+{
+	(void)streamRef; (void)numEvents; (void)eventPaths;
+	(void)eventFlags; (void)eventIds;
+	NSValue *boxed = (__bridge NSValue *)clientCallBackInfo;
+	NSString *path = (__bridge NSString *)(void *)boxed.pointerValue;
+
+	NSValue *entryBox = gFileWatchers[path];
+	if (!entryBox || !gL) return;
+
+	FileWatcherEntry entry;
+	[entryBox getValue:&entry];
+	if (entry.luaRef == LUA_NOREF) return;
+
+	lua_rawgeti(gL, LUA_REGISTRYINDEX, entry.luaRef);
+	lua_pushstring(gL, path.UTF8String);
+	if (lua_pcall(gL, 1, 0, 0) != LUA_OK) {
+		fprintf(stderr, "watchFile error: %s\n", lua_tostring(gL, -1));
+		lua_pop(gL, 1);
+	}
+}
+
+static int bridge_watch_file(lua_State *L) {
+	const char *pathC = luaL_checkstring(L, 1);
+	NSString *path = [NSString stringWithUTF8String:pathC];
+
+	if (!gFileWatchers) {
+		gFileWatchers = [NSMutableDictionary dictionary];
+	}
+
+	/* Cancel any existing watcher for this path. */
+	NSValue *existing = gFileWatchers[path];
+	if (existing) {
+		FileWatcherEntry old;
+		[existing getValue:&old];
+		FSEventStreamStop(old.stream);
+		FSEventStreamInvalidate(old.stream);
+		FSEventStreamRelease(old.stream);
+		if (old.luaRef != LUA_NOREF) {
+			luaL_unref(gL, LUA_REGISTRYINDEX, old.luaRef);
+		}
+		[gFileWatchers removeObjectForKey:path];
+	}
+
+	/* nil callback = just cancel */
+	if (lua_isnoneornil(L, 2)) return 0;
+
+	luaL_checktype(L, 2, LUA_TFUNCTION);
+	lua_pushvalue(L, 2);
+	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+
+	/* Use the path NSString pointer as stable context; kept alive by dict. */
+	FSEventStreamContext ctx = {
+		.version = 0,
+		.info = (__bridge void *)([NSValue valueWithPointer:(__bridge void *)path]),
+		.retain = NULL,
+		.release = NULL,
+		.copyDescription = NULL,
+	};
+
+	CFArrayRef paths = (__bridge CFArrayRef)@[path];
+	FSEventStreamRef stream = FSEventStreamCreate(
+		NULL, file_watcher_callback, &ctx,
+		paths, kFSEventStreamEventIdSinceNow, 0.2,
+		kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagNoDefer);
+	FSEventStreamSetDispatchQueue(stream, dispatch_get_main_queue());
+	FSEventStreamStart(stream);
+
+	FileWatcherEntry entry = { .stream = stream, .luaRef = ref };
+	[gFileWatchers setObject:[NSValue value:&entry
+							withObjCType:@encode(FileWatcherEntry)]
+					  forKey:path];
+	return 0;
+}
+
 #pragma mark - Module registration
 
 static const luaL_Reg bridge_lib[] = {
@@ -2359,6 +2572,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_vstack",           bridge_vstack},
 	{"_hstack",           bridge_hstack},
 	{"_hsplit",           bridge_hsplit},
+	{"_vsplit",           bridge_vsplit},
+	{"_separator",        bridge_separator},
 	{"_spacer",           bridge_spacer},
 	{"_image",            bridge_image},
 	{"_systemImage",      bridge_system_image},
@@ -2389,6 +2604,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_textViewOnChange", bridge_text_view_on_change},
 	{"_eval",             bridge_eval},
 	{"_clearContainer",   bridge_clear_container},
+	{"_renderToPNG",      bridge_render_to_png},
+	{"_watchFile",        bridge_watch_file},
 	{NULL, NULL},
 };
 
@@ -2418,9 +2635,21 @@ int main(int argc, char *argv[]) {
 
 	const char *appearance = NULL;
 	const char *script = NULL;
+	int preview_mode = 0;
+	CGFloat preview_width = 400;
+	CGFloat preview_height = 300;
+	const char *preview_out = NULL;
 
 	for (int i = 1; i < argc; i++) {
-		if (strncmp(argv[i], "--appearance=", 13) == 0) {
+		if (strcmp(argv[i], "--preview") == 0) {
+			preview_mode = 1;
+		} else if (strncmp(argv[i], "--width=", 8) == 0) {
+			preview_width = atof(argv[i] + 8);
+		} else if (strncmp(argv[i], "--height=", 9) == 0) {
+			preview_height = atof(argv[i] + 9);
+		} else if (strncmp(argv[i], "--out=", 6) == 0) {
+			preview_out = argv[i] + 6;
+		} else if (strncmp(argv[i], "--appearance=", 13) == 0) {
 			appearance = argv[i] + 13;
 		} else if (strcmp(argv[i], "--appearance") == 0 && i + 1 < argc) {
 			appearance = argv[++i];
@@ -2456,6 +2685,91 @@ int main(int argc, char *argv[]) {
 		lua_pushstring(L, newpath);
 		lua_setfield(L, -3, "path");
 		lua_pop(L, 2);
+	}
+
+	if (preview_mode) {
+		/* --preview: eval the script in canvas mode, render to PNG, write out. */
+		lua_State *C = canvas_state_create();
+		if (!C) {
+			fprintf(stderr, "preview: failed to create canvas state\n");
+			lua_close(L);
+			return 1;
+		}
+
+		/* Read the file into a string so we can pass it through bridge_eval's
+		 * canvas wrapper (which intercepts ns.Window → ns.VStack). */
+		FILE *fp = fopen(script, "r");
+		if (!fp) {
+			fprintf(stderr, "preview: cannot open %s\n", script);
+			lua_close(C); lua_close(L);
+			return 1;
+		}
+		fseek(fp, 0, SEEK_END);
+		long fsize = ftell(fp);
+		rewind(fp);
+		char *code = malloc((size_t)fsize + 1);
+		fread(code, 1, (size_t)fsize, fp);
+		code[fsize] = '\0';
+		fclose(fp);
+
+		char *wrapped = malloc((size_t)fsize + 256);
+		snprintf(wrapped, (size_t)fsize + 256,
+			"local ns=require('AppKit');"
+			"local __rr;"
+			"ns.Window=function(p) __rr=ns.VStack(p) return __rr end;"
+			"ns.Preview=function(p) __rr=ns.VStack(p) return __rr end;"
+			"local __rok,__ret=pcall(function()\n%s\nend);"
+			"if not __rok then error(__ret) end;"
+			"return __ret or __rr",
+			code);
+		free(code);
+
+		if (luaL_loadstring(C, wrapped) != LUA_OK ||
+			lua_pcall(C, 0, 1, 0) != LUA_OK) {
+			fprintf(stderr, "preview error: %s\n", lua_tostring(C, -1));
+			free(wrapped);
+			lua_close(C); lua_close(L);
+			return 1;
+		}
+		free(wrapped);
+
+		id resultObj = nil;
+		ObjCRef *ref = luaL_testudata(C, -1, "nsview");
+		if (!ref) ref = luaL_testudata(C, -1, "nswindow");
+		if (ref) resultObj = (__bridge id)ref->ptr;
+
+		if (!resultObj || ![resultObj isKindOfClass:[NSView class]]) {
+			fprintf(stderr, "preview: script did not return a view\n");
+			lua_close(C); lua_close(L);
+			return 1;
+		}
+
+		NSView *view = (NSView *)resultObj;
+		view.frame = NSMakeRect(0, 0, preview_width, preview_height);
+		layout_recursive(view, preview_width);
+
+		NSData *png = offscreen_render(view, preview_width, preview_height);
+		lua_close(C);
+
+		if (!png) {
+			fprintf(stderr, "preview: render failed\n");
+			lua_close(L);
+			return 1;
+		}
+
+		int write_ok = 0;
+		if (!preview_out || strcmp(preview_out, "-") == 0) {
+			write_ok = fwrite(png.bytes, 1, png.length, stdout) == (size_t)png.length;
+		} else {
+			FILE *out = fopen(preview_out, "wb");
+			if (out) {
+				write_ok = fwrite(png.bytes, 1, png.length, out) == (size_t)png.length;
+				fclose(out);
+			}
+		}
+
+		lua_close(L);
+		return write_ok ? 0 : 1;
 	}
 
 	if (luaL_dofile(L, script) != LUA_OK) {
