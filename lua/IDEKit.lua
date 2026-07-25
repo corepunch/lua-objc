@@ -4,12 +4,24 @@ local bridge = require("bridge")
 local IDEKit = {}
 
 -- ControlBar: thin header strip, like Xcode's DVTControlBar.
--- Props: title (string), height (number, default 28), leading/trailing (view arrays).
+-- Props: title (string), height (number, default 28), leading/buttons (view arrays).
 function IDEKit.ControlBar(props)
 	props = props or {}
 	local height = props.height or 28
 
-	-- Row of items: leading | title | Spacer | trailing
+	-- Edge groups must retain their intrinsic width. HStack normally expands on
+	-- its main axis, which would make a trailing button group occupy half the
+	-- header and visually center its controls instead of pinning them right.
+	local function edgeGroup(controls)
+		return ns.HStack {
+			spacing = 4,
+			flexGrow = 0,
+			flexShrink = 0,
+			table.unpack(controls),
+		}
+	end
+
+	-- Row of items: leading | title | Spacer | buttons
 	local rowItems = {
 		fixedHeight = height,
 		paddingHorizontal = 8,
@@ -17,7 +29,7 @@ function IDEKit.ControlBar(props)
 		spacing = 6,
 	}
 	if props.leading then
-		rowItems[#rowItems + 1] = ns.HStack { spacing = 4, table.unpack(props.leading) }
+		rowItems[#rowItems + 1] = edgeGroup(props.leading)
 	end
 	if props.title then
 		rowItems[#rowItems + 1] = ns.Text {
@@ -28,8 +40,9 @@ function IDEKit.ControlBar(props)
 		}
 	end
 	rowItems[#rowItems + 1] = ns.Spacer()
-	if props.trailing then
-		rowItems[#rowItems + 1] = ns.HStack { spacing = 4, table.unpack(props.trailing) }
+	local buttons = props.buttons or props.trailing
+	if buttons then
+		rowItems[#rowItems + 1] = edgeGroup(buttons)
 	end
 
 	-- fixedHeight pins the total bar height; flexGrow=0 prevents vertical expansion.
@@ -67,7 +80,7 @@ function IDEKit.NavigatorArea(props)
 end
 
 -- EditorArea: centre editing panel.
--- Props: title, content (view), leading/trailing ControlBar items.
+-- Props: title, content (view), leading/buttons ControlBar items.
 -- Mirrors Xcode's IDEEditorArea / DVTSplitView_ControlledBy_IDEEditorArea.
 function IDEKit.EditorArea(props)
 	props = props or {}
@@ -76,7 +89,8 @@ function IDEKit.EditorArea(props)
 		spacing = 0,
 		IDEKit.ControlBar {
 			title = props.title,
-			trailing = props.trailing,
+			leading = props.leading,
+			buttons = props.buttons or props.trailing,
 		},
 		wrapContent(props.content),
 	}
@@ -94,7 +108,8 @@ function IDEKit.PreviewArea(props)
 		spacing = 0,
 		IDEKit.ControlBar {
 			title = props.title or "Canvas",
-			trailing = props.trailing,
+			leading = props.leading,
+			buttons = props.buttons or props.trailing,
 		},
 		wrapContent(props.content),
 	}

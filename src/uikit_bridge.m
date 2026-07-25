@@ -21,6 +21,17 @@ typedef struct {
 	void *ptr;
 } ObjCRef;
 
+/* Protected callbacks must remain non-fatal without hiding Lua failures. */
+static void report_lua_error(lua_State *L, const char *context) {
+	const char *message = lua_tostring(L, -1);
+	if (message) {
+		fprintf(stderr, "%s error: %s\n", context, message);
+	} else {
+		fprintf(stderr, "%s error: <%s>\n", context, luaL_typename(L, -1));
+	}
+	fflush(stderr);
+}
+
 #pragma mark - LuaTableViewSource (iOS UITableView)
 
 @interface LuaTableViewSource : NSObject <UITableViewDataSource, UITableViewDelegate>
@@ -108,7 +119,7 @@ typedef struct {
 	lua_rawgeti(gL, LUA_REGISTRYINDEX, ref);
 	int status = lua_pcall(gL, 0, 0, 0);
 	if (status != LUA_OK) {
-		fprintf(stderr, "button error: %s\n", lua_tostring(gL, -1));
+		report_lua_error(gL, "button");
 		lua_pop(gL, 1);
 	}
 }
@@ -719,7 +730,7 @@ static int bridge_timer_after(lua_State *L) {
 	[NSTimer scheduledTimerWithTimeInterval:delay repeats:NO block:^(NSTimer *t) {
 		lua_rawgeti(mainL, LUA_REGISTRYINDEX, ref);
 		if (lua_pcall(mainL, 0, 0, 0) != LUA_OK) {
-			fprintf(stderr, "timer error: %s\n", lua_tostring(mainL, -1));
+			report_lua_error(mainL, "timer");
 			lua_pop(mainL, 1);
 		}
 		luaL_unref(mainL, LUA_REGISTRYINDEX, ref);

@@ -52,6 +52,7 @@ local files = {
 local fileTree = ns.List {
 	header = false,
 	bordered = false,
+	style = "plain",
 	flexGrow = 1,
 	columns = {
 		{
@@ -106,7 +107,7 @@ return ns.Window {
 			editor = ide.EditorArea {
 				title = "EDITOR",
 				content = editor._view,
-				trailing = { wrapToggle },
+				buttons = { wrapToggle },
 			},
 			preview = ide.PreviewArea {
 				title = "CANVAS",

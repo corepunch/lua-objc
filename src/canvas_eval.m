@@ -67,6 +67,8 @@ static int bridge_eval(lua_State *L) {
 		 * VStack instead of a real NSWindow. */
 		lua_State *C = canvas_state_create();
 		if (!C) {
+			fprintf(stderr, "canvas error: failed to create canvas state\n");
+			fflush(stderr);
 			lua_pushnil(L);
 			lua_pushstring(L, "failed to create canvas state");
 			return 2;
@@ -83,6 +85,8 @@ static int bridge_eval(lua_State *L) {
 			code);
 
 		if (n < 0 || n >= (int)sizeof(wrapped)) {
+			fprintf(stderr, "canvas error: code too long\n");
+			fflush(stderr);
 			lua_close(C);
 			lua_pushnil(L);
 			lua_pushstring(L, "code too long");
@@ -91,6 +95,7 @@ static int bridge_eval(lua_State *L) {
 
 		if (luaL_loadstring(C, wrapped) != LUA_OK) {
 			const char *err = lua_tostring(C, -1);
+			report_lua_error(C, "canvas");
 			lua_pushnil(L);
 			lua_pushstring(L, err ?: "compile error");
 			lua_close(C);
@@ -99,6 +104,7 @@ static int bridge_eval(lua_State *L) {
 
 		if (lua_pcall(C, 0, 1, 0) != LUA_OK) {
 			const char *err = lua_tostring(C, -1);
+			report_lua_error(C, "canvas");
 			lua_pushnil(L);
 			lua_pushstring(L, err ?: "runtime error");
 			lua_close(C);
@@ -128,18 +134,22 @@ static int bridge_eval(lua_State *L) {
 	}
 
 	if (n < 0 || n >= (int)sizeof(wrapped)) {
+		fprintf(stderr, "eval error: code too long\n");
+		fflush(stderr);
 		lua_pushnil(L);
 		lua_pushstring(L, "code too long");
 		return 2;
 	}
 
 	if (luaL_loadstring(L, wrapped) != LUA_OK) {
+		report_lua_error(L, "eval");
 		lua_pushnil(L);
 		lua_insert(L, -2);
 		return 2;
 	}
 
 	if (lua_pcall(L, 0, 1, 0) != LUA_OK) {
+		report_lua_error(L, "eval");
 		lua_pushnil(L);
 		lua_insert(L, -2);
 		return 2;

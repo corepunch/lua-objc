@@ -48,6 +48,19 @@ typedef struct {
 
 static void push_objc(lua_State *L, id obj, const char *meta);
 
+/* Protected Lua calls keep the host alive, but they must not make failures
+ * invisible. Keep reporting at the native boundary so every AppKit callback
+ * follows the same stderr contract, including unusual non-string errors. */
+static void report_lua_error(lua_State *L, const char *context) {
+	const char *message = lua_tostring(L, -1);
+	if (message) {
+		fprintf(stderr, "%s error: %s\n", context, message);
+	} else {
+		fprintf(stderr, "%s error: <%s>\n", context, luaL_typename(L, -1));
+	}
+	fflush(stderr);
+}
+
 #pragma mark - LuaTableViewSource
 
 @interface LuaTableViewSource : NSObject <NSTableViewDataSource, NSTableViewDelegate>
@@ -228,7 +241,7 @@ static void push_objc(lua_State *L, id obj, const char *meta);
 	}
 	int status = lua_pcall(gL, 3, 0, 0);
 	if (status != LUA_OK) {
-		fprintf(stderr, "table selection error: %s\n", lua_tostring(gL, -1));
+		report_lua_error(gL, "table selection");
 		lua_pop(gL, 1);
 	}
 }
@@ -301,7 +314,7 @@ static void push_objc(lua_State *L, id obj, const char *meta);
 	push_objc(gL, sender, "nsview");
 	int status = lua_pcall(gL, 1, 0, 0);
 	if (status != LUA_OK) {
-		fprintf(stderr, "button error: %s\n", lua_tostring(gL, -1));
+		report_lua_error(gL, "button");
 		lua_pop(gL, 1);
 	}
 }
@@ -1871,6 +1884,7 @@ static int bridge_tableview(lua_State *L) {
 	CGFloat height = luaL_checknumber(L, 3);
 	BOOL showsHeader = YES;
 	BOOL bordered = NO;
+	NSString *tableStyle = nil;
 	if (lua_istable(L, 4)) {
 		lua_getfield(L, 4, "header");
 		if (!lua_isnil(L, -1)) showsHeader = lua_toboolean(L, -1);
@@ -1878,11 +1892,26 @@ static int bridge_tableview(lua_State *L) {
 		lua_getfield(L, 4, "bordered");
 		if (!lua_isnil(L, -1)) bordered = lua_toboolean(L, -1);
 		lua_pop(L, 1);
+		lua_getfield(L, 4, "style");
+		const char *style = lua_tostring(L, -1);
+		if (style) tableStyle = [NSString stringWithUTF8String:style];
+		lua_pop(L, 1);
 	}
 
 	int ncols = (int)luaL_len(L, 1);
 
 	NSTableView *tv = [[NSTableView alloc] initWithFrame:NSMakeRect(0, 0, width, height)];
+	if ([tableStyle isEqualToString:@"plain"]) {
+		// Automatic styling adds end padding when a headerless table sits in a
+		// sidebar. Plain is the native edge-to-edge style for compact file lists.
+		tv.style = NSTableViewStylePlain;
+	} else if ([tableStyle isEqualToString:@"fullWidth"]) {
+		tv.style = NSTableViewStyleFullWidth;
+	} else if ([tableStyle isEqualToString:@"inset"]) {
+		tv.style = NSTableViewStyleInset;
+	} else if ([tableStyle isEqualToString:@"sourceList"]) {
+		tv.style = NSTableViewStyleSourceList;
+	}
 	tv.headerView = showsHeader ? [[NSTableHeaderView alloc] init] : nil;
 	tv.usesAlternatingRowBackgroundColors = YES;
 	tv.intercellSpacing = NSMakeSize(3, 2);
@@ -2082,7 +2111,7 @@ static int bridge_table_refresh(lua_State *L) {
 	}
 	int status = lua_pcall(L, 2, 0, 0);
 	if (status != LUA_OK) {
-		fprintf(stderr, "refresh error: %s\n", lua_tostring(L, -1));
+		report_lua_error(L, "refresh");
 		lua_pop(L, 1);
 	}
 	lua_pushboolean(L, 1);
@@ -2139,7 +2168,7 @@ static int bridge_timer_after(lua_State *L) {
 	[NSTimer scheduledTimerWithTimeInterval:delay repeats:NO block:^(NSTimer *t) {
 		lua_rawgeti(mainL, LUA_REGISTRYINDEX, ref);
 		if (lua_pcall(mainL, 0, 0, 0) != LUA_OK) {
-			fprintf(stderr, "timer error: %s\n", lua_tostring(mainL, -1));
+			report_lua_error(mainL, "timer");
 			lua_pop(mainL, 1);
 		}
 		luaL_unref(mainL, LUA_REGISTRYINDEX, ref);
@@ -2275,8 +2304,7 @@ static int bridge_http_get(lua_State *L) {
 					lua_pushnil(mainL);
 				}
 				if (lua_pcall(mainL, 2, 0, 0) != LUA_OK) {
-					fprintf(stderr, "http error: %s\n",
-						lua_tostring(mainL, -1));
+					report_lua_error(mainL, "http");
 					lua_pop(mainL, 1);
 				}
 				luaL_unref(mainL, LUA_REGISTRYINDEX, ref);
@@ -2437,8 +2465,7 @@ static int bridge_text_view_on_change(lua_State *L) {
 		lua_pushstring(mainL,
 			((NSTextView *)note.object).string.UTF8String);
 		if (lua_pcall(mainL, 1, 0, 0) != LUA_OK) {
-			fprintf(stderr, "text change error: %s\n",
-				lua_tostring(mainL, -1));
+			report_lua_error(mainL, "text change");
 			lua_pop(mainL, 1);
 		}
 	}];
@@ -2619,7 +2646,7 @@ static void file_watcher_callback(ConstFSEventStreamRef streamRef,
 	lua_rawgeti(gL, LUA_REGISTRYINDEX, entry.luaRef);
 	lua_pushstring(gL, path.UTF8String);
 	if (lua_pcall(gL, 1, 0, 0) != LUA_OK) {
-		fprintf(stderr, "watchFile error: %s\n", lua_tostring(gL, -1));
+		report_lua_error(gL, "watchFile");
 		lua_pop(gL, 1);
 	}
 }
@@ -2841,7 +2868,7 @@ int main(int argc, char *argv[]) {
 
 		if (luaL_loadstring(C, wrapped) != LUA_OK ||
 			lua_pcall(C, 0, 1, 0) != LUA_OK) {
-			fprintf(stderr, "preview error: %s\n", lua_tostring(C, -1));
+			report_lua_error(C, "preview");
 			free(wrapped);
 			lua_close(C); lua_close(L);
 			return 1;
@@ -2888,7 +2915,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (luaL_dofile(L, script) != LUA_OK) {
-		fprintf(stderr, "error: %s\n", lua_tostring(L, -1));
+		report_lua_error(L, "script");
 		lua_close(L);
 		return 1;
 	}

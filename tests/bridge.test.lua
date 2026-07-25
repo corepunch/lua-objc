@@ -109,11 +109,26 @@ local compound = ns.Button {
 }
 t.expect(compound ~= nil, "compound native button creates successfully")
 
+local symbolToggle = require("bridge")._symbolToggle(
+	"text.justify",
+	"Toggle Word Wrap",
+	false)
+local secondSymbolToggle = require("bridge")._symbolToggle(
+	"sidebar.right",
+	"Toggle Inspector",
+	false)
+local controlBar = require("IDEKit").ControlBar {
+	title = "EDITOR",
+	buttons = { symbolToggle, secondSymbolToggle },
+}
+t.expect(controlBar ~= nil, "ControlBar accepts an optional trailing button array")
+
 -- List: add, remove, clear rows
 
 local list = ns.List {
 	width = 400,
 	height = 200,
+	style = "plain",
 	columns = {
 		{
 			id = "name",
@@ -124,6 +139,8 @@ local list = ns.List {
 		{ id = "role", title = "Role", width = 200 },
 	},
 }
+
+t.assertEqual(list.documentView.style, 4, "List forwards the native plain table style")
 
 local has_add = list["addRow"] ~= nil
 t.expect(has_add, "List has add_row method")
@@ -180,6 +197,25 @@ t.expect(ns.fetch_json ~= nil, "fetch_json function exists")
 t.expect(ns.json_parse ~= nil, "json_parse function exists")
 t.expect(ns.async ~= nil, "async function exists")
 t.expect(ns.sleep ~= nil, "sleep function exists")
+
+-- Async functions execute behind coroutine.resume, whose errors are return
+-- values rather than thrown exceptions. They still need to reach stderr.
+
+local original_stderr = io.stderr
+local async_stderr = ""
+io.stderr = {
+	write = function(_, message)
+		async_stderr = async_stderr .. message
+	end,
+}
+ns.async(function()
+	error("async boom")
+end)
+io.stderr = original_stderr
+t.expect(
+	async_stderr:find("coroutine error:", 1, true) ~= nil
+		and async_stderr:find("async boom", 1, true) ~= nil,
+	"async errors are written to stderr")
 
 -- JSON parsing
 

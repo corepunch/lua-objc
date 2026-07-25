@@ -2,6 +2,16 @@ local bridge = require("bridge")
 
 local UIKit = {}
 
+-- coroutine.resume reports failures as return values. Always surface those
+-- failures because timers and network callbacks otherwise swallow Lua errors.
+local function resumeCoroutine(co, ...)
+	local ok, err = coroutine.resume(co, ...)
+	if not ok then
+		io.stderr:write("coroutine error: " .. tostring(err) .. "\n")
+	end
+	return ok, err
+end
+
 local layout_properties = {
 	"padding",
 	"alignment",
@@ -173,7 +183,7 @@ function UIKit.List(props)
 				list:hideLoading()
 				if on_done then on_done() end
 			end)
-			coroutine.resume(co)
+			resumeCoroutine(co)
 		end)
 	end
 
@@ -226,14 +236,14 @@ function UIKit.sleep(seconds)
 		error("sleep() must be called from within a coroutine (use async())")
 	end
 	bridge._timerAfter(seconds, function()
-		coroutine.resume(co)
+		resumeCoroutine(co)
 	end)
 	coroutine.yield()
 end
 
 function UIKit.async(fn)
 	local co = coroutine.create(fn)
-	coroutine.resume(co)
+	resumeCoroutine(co)
 end
 
 function UIKit.fetch(url)
@@ -244,7 +254,7 @@ function UIKit.fetch(url)
 	local body, err = nil, nil
 	bridge._httpGet(url, function(b, e)
 		body, err = b, e
-		coroutine.resume(co)
+		resumeCoroutine(co)
 	end)
 	coroutine.yield()
 	if err then error(err) end

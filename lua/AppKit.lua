@@ -2,6 +2,17 @@ local bridge = require("bridge")
 
 local AppKit = {}
 
+-- Native timers and network callbacks resume suspended Lua work later. Lua's
+-- coroutine.resume returns failures instead of raising them, so centralize the
+-- check here to preserve the same stderr visibility as native callbacks.
+local function resumeCoroutine(co, ...)
+	local ok, err = coroutine.resume(co, ...)
+	if not ok then
+		io.stderr:write("coroutine error: " .. tostring(err) .. "\n")
+	end
+	return ok, err
+end
+
 local layout_properties = {
 	"padding",
 	"paddingHorizontal",
@@ -285,6 +296,7 @@ function AppKit.List(props)
 	local tv = bridge._tableview(columns, width, height, {
 		header = props.header ~= false,
 		bordered = props.bordered == true,
+		style = props.style,
 	})
 
 	if props.data and type(props.data) == "table" then
@@ -308,7 +320,7 @@ function AppKit.List(props)
 				list:hideLoading()
 				if on_done then on_done() end
 			end)
-			coroutine.resume(co)
+			resumeCoroutine(co)
 		end)
 	end
 
@@ -437,14 +449,14 @@ function AppKit.sleep(seconds)
 		error("sleep() must be called from within a coroutine (use async())")
 	end
 	bridge._timerAfter(seconds, function()
-		coroutine.resume(co)
+		resumeCoroutine(co)
 	end)
 	coroutine.yield()
 end
 
 function AppKit.async(fn)
 	local co = coroutine.create(fn)
-	coroutine.resume(co)
+	resumeCoroutine(co)
 end
 
 function AppKit.fetch(url)
@@ -455,7 +467,7 @@ function AppKit.fetch(url)
 	local body, err = nil, nil
 	bridge._httpGet(url, function(b, e)
 		body, err = b, e
-		coroutine.resume(co)
+		resumeCoroutine(co)
 	end)
 	coroutine.yield()
 	if err then error(err) end
