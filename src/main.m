@@ -609,6 +609,7 @@ static int bridge_text_view(lua_State *L);
 static int bridge_text_view_get_text(lua_State *L);
 static int bridge_text_view_set_text(lua_State *L);
 static int bridge_text_view_on_change(lua_State *L);
+static int bridge_text_view_set_language(lua_State *L);
 static int bridge_eval(lua_State *L);
 static int bridge_clear_container(lua_State *L);
 static void layout_recursive(NSView *view, CGFloat width);
@@ -1005,8 +1006,8 @@ static int bridge_vsplit(lua_State *L) {
 	NSSplitView *v = [[NSSplitView alloc] initWithFrame:NSZeroRect];
 	v.vertical = NO;
 	v.dividerStyle = NSSplitViewDividerStyleThin;
-	objc_setAssociatedObject(v, &kAxisKey, @"vsplit", OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(v, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(v, &kKeys[kAxisKey], @"vsplit", OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(v, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, v, "nsview");
 	return 1;
 }
@@ -1015,8 +1016,8 @@ static int bridge_vsplit(lua_State *L) {
 static int bridge_separator(lua_State *L) {
 	NSBox *box = [[NSBox alloc] initWithFrame:NSMakeRect(0, 0, 1, 1)];
 	box.boxType = NSBoxSeparator;
-	objc_setAssociatedObject(box, &kFixedHeightKey, @1.0, OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(box, &kFillWidthKey, @YES, OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(box, &kKeys[kFixedHeightKey], @1.0, OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(box, &kKeys[kFillWidthKey], @YES, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, box, "nsview");
 	return 1;
 }
@@ -1191,7 +1192,7 @@ static CGFloat clamp_dimension(CGFloat value, CGFloat minimum, CGFloat maximum) 
 
 static BOOL default_grows_on_axis(NSView *view, BOOL horizontal) {
 	if (!is_flexible(view)) return NO;
-	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
+	NSString *axis = objc_getAssociatedObject(view, &kKeys[kAxisKey]);
 	if (!horizontal && [axis isEqualToString:@"hstack"]) return NO;
 	if (horizontal && [axis isEqualToString:@"vsplit"]) return NO;
 	return YES;
@@ -1621,12 +1622,12 @@ static void layout_recursive(NSView *view, CGFloat width) {
 					.widthMode = LuaMeasureAtMost,
 					.heightMode = LuaMeasureUndefined,
 				});
-				NSNumber *basis = objc_getAssociatedObject(child, &kFlexBasisKey);
+				NSNumber *basis = objc_getAssociatedObject(child, &kKeys[kFlexBasisKey]);
 				CGFloat fixed = view_fixed_height(child);
 				heights[i] = clamp_dimension(
 					fixed > 0 ? fixed : (basis ? basis.doubleValue : size.height),
-					view_optional_dimension(child, &kMinHeightKey, 0),
-					view_optional_dimension(child, &kMaxHeightKey, INFINITY));
+					view_optional_dimension(child, &kKeys[kMinHeightKey], 0),
+					view_optional_dimension(child, &kKeys[kMaxHeightKey], INFINITY));
 			}
 			distribute_main_axis(view.subviews, heights,
 				MAX(0, contentH - spacing), NO);
@@ -2332,6 +2333,8 @@ static int bridge_json_parse(lua_State *L) {
 	return 1;
 }
 
+#include "syntax_highlight.m"
+
 #pragma mark - NSTextView (code editor)
 
 static int bridge_text_view(lua_State *L) {
@@ -2343,8 +2346,19 @@ static int bridge_text_view(lua_State *L) {
 	sv.borderType = NSNoBorder;
 
 	NSSize contentSize = sv.contentSize;
+
+	/* Use SyntaxTextStorage so syntax highlighting works */
+	SyntaxTextStorage *storage = [[SyntaxTextStorage alloc] init];
+	NSLayoutManager   *lm      = [[NSLayoutManager alloc] init];
+	NSTextContainer   *tc      = [[NSTextContainer alloc]
+		initWithContainerSize:NSMakeSize(contentSize.width, FLT_MAX)];
+	tc.widthTracksTextView = YES;
+	[lm addTextContainer:tc];
+	[storage addLayoutManager:lm];
+
 	NSTextView *tv = [[NSTextView alloc]
-		initWithFrame:NSMakeRect(0, 0, contentSize.width, contentSize.height)];
+		initWithFrame:NSMakeRect(0, 0, contentSize.width, contentSize.height)
+		textContainer:tc];
 	tv.font = [NSFont monospacedSystemFontOfSize:13
 		weight:NSFontWeightRegular];
 	tv.editable = YES;
@@ -2352,14 +2366,12 @@ static int bridge_text_view(lua_State *L) {
 	tv.automaticQuoteSubstitutionEnabled = NO;
 	tv.automaticDashSubstitutionEnabled = NO;
 	tv.automaticTextReplacementEnabled = NO;
-	tv.richText = NO;
+	tv.richText = YES;  /* must be YES to render attributed colors */
 	tv.allowsUndo = YES;
 	tv.minSize = NSMakeSize(0, 0);
 	tv.maxSize = NSMakeSize(FLT_MAX, FLT_MAX);
 	tv.verticallyResizable = YES;
 	tv.horizontallyResizable = NO;
-	tv.textContainer.widthTracksTextView = YES;
-	tv.textContainer.containerSize = NSMakeSize(contentSize.width, FLT_MAX);
 
 	sv.documentView = tv;
 	objc_setAssociatedObject(sv, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
@@ -2425,6 +2437,21 @@ static int bridge_text_view_on_change(lua_State *L) {
 		}
 	}];
 
+	return 0;
+}
+
+static int bridge_text_view_set_language(lua_State *L) {
+	id obj = check_objc(L, 1);
+	const char *lang = luaL_checkstring(L, 2);
+
+	if (![obj isKindOfClass:[NSScrollView class]]) {
+		return luaL_error(L, "expected a text view");
+	}
+	NSTextView *tv = (NSTextView *)((NSScrollView *)obj).documentView;
+	SyntaxTextStorage *storage = (SyntaxTextStorage *)tv.textStorage;
+	if ([storage isKindOfClass:[SyntaxTextStorage class]]) {
+		storage.language = [NSString stringWithUTF8String:lang];
+	}
 	return 0;
 }
 
@@ -2602,6 +2629,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_textViewGetText",  bridge_text_view_get_text},
 	{"_textViewSetText",  bridge_text_view_set_text},
 	{"_textViewOnChange", bridge_text_view_on_change},
+	{"_textViewSetLanguage", bridge_text_view_set_language},
 	{"_eval",             bridge_eval},
 	{"_clearContainer",   bridge_clear_container},
 	{"_renderToPNG",      bridge_render_to_png},

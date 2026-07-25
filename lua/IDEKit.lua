@@ -123,6 +123,8 @@ function IDEKit.Editor(props)
 	local canvas = props.canvas
 	local view = bridge._textView()
 
+	bridge._textViewSetLanguage(view, props.language or "lua")
+
 	if props.initialCode then
 		bridge._textViewSetText(view, props.initialCode)
 	end
