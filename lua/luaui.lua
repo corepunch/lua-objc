@@ -34,7 +34,8 @@ function UI.Window(props)
 	local win
 	if toolbar then
 		win = bridge._window(title, width, height,
-			transparent_titlebar, hide_title, toolbar)
+			transparent_titlebar, hide_title, toolbar,
+			props.toolbar_labels == true)
 	else
 		win = bridge._window(title, width, height,
 			transparent_titlebar, hide_title)
@@ -53,6 +54,7 @@ function UI.Window(props)
 	bridge._layout(content, width)
 
 	bridge._show(win)
+	return win
 end
 
 function UI.VStack(props)
@@ -156,7 +158,10 @@ function UI.List(props)
 	local width = props.width or 400
 	local height = props.height or 200
 
-	local tv = bridge._tableview(columns, width, height)
+	local tv = bridge._tableview(columns, width, height, {
+		header = props.header ~= false,
+		bordered = props.bordered == true,
+	})
 
 	if props.data and type(props.data) == "table" then
 		for _, row in ipairs(props.data) do
@@ -167,6 +172,14 @@ function UI.List(props)
 	end
 
 	return tv
+end
+
+function UI.ToolbarItem(window, identifier)
+	local item = bridge._toolbar_item(window, identifier)
+	if not item then
+		error("toolbar item not found: " .. tostring(identifier))
+	end
+	return item
 end
 
 function UI.Button(props)
@@ -194,20 +207,47 @@ function UI.Separator()
 	return v
 end
 
-function UI.Spinner()
+function UI.ProgressView()
 	local v = bridge._create("NSProgressIndicator")
 	v.style = 1  -- NSProgressIndicatorStyleSpinning = 1
 	v.displayedWhenStopped = false
 	return v
 end
 
-function UI.SpinnerStart(spinner)
-	bridge._perform(spinner, "startAnimation:", nil)
+function UI.ProgressStart(progress)
+	bridge._perform(progress, "startAnimation:", nil)
 end
 
-function UI.SpinnerStop(spinner)
-	bridge._perform(spinner, "stopAnimation:", nil)
+function UI.ProgressStop(progress)
+	bridge._perform(progress, "stopAnimation:", nil)
 end
+
+function UI.ToolbarProgress(window, identifier)
+	local item = UI.ToolbarItem(window, identifier)
+	local image = item.image
+	local progress = UI.ProgressView()
+	bridge._set_content_size(progress, 32, 32)
+
+	return {
+		start = function(self, tooltip)
+			if tooltip then item.toolTip = tooltip end
+			item.image = nil
+			item.view = progress
+			UI.ProgressStart(progress)
+		end,
+		stop = function(self, tooltip)
+			UI.ProgressStop(progress)
+			item.view = nil
+			item.image = image
+			item.enabled = true
+			if tooltip then item.toolTip = tooltip end
+		end,
+	}
+end
+
+UI.Spinner = UI.ProgressView
+UI.SpinnerStart = UI.ProgressStart
+UI.SpinnerStop = UI.ProgressStop
 
 function UI.sleep(seconds)
 	local co = coroutine.running()

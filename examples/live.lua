@@ -13,18 +13,20 @@ local stocks = {
 	{ symbol = "WMT",   name = "Walmart Inc.",       price = 67.82,  change = "+0.27" },
 }
 
-local spinner = ui.Spinner()
-local status_text = ui.Text "Starting up..."
 local list = ui.List {
 	width = 600,
 	height = 390,
 	columns = {
-		{ id = "symbol", title = "Sym" },
-		{ id = "name",   title = "Name" },
-		{ id = "price",  title = "Price" },
-		{ id = "change", title = "Change" },
+		{ id = "symbol", title = "Symbol", width = 100 },
+		{ id = "name",   title = "Name",   width = 220 },
+		{ id = "price",  title = "Price",  width = 120, alignment = "trailing" },
+		{ id = "change", title = "Change", width = 140, alignment = "trailing" },
 	},
 }
+
+local window
+local refresh_progress
+local is_loading = false
 
 local function fetch_stock(i)
 	local s = stocks[i]
@@ -41,48 +43,42 @@ local function fetch_stock(i)
 		price = string.format("$%.2f", s.price),
 		change = change_str,
 	}
-	status_text:set_text(
-		string.format("Loaded %d/%d  (%s in %.2fs)",
-			i, #stocks, s.symbol, delay))
 end
 
 local function run_ticker()
-	status_text:set_text("Connecting to market data...")
 	ui.sleep(0.8)
 
 	for i = 1, #stocks do
 		fetch_stock(i)
 	end
 
-	status_text:set_text(
-		string.format("\226\151\143  %d stocks  |  Last update: just now",
-			#stocks))
-	ui.SpinnerStop(spinner)
+	refresh_progress:stop("Refresh market data — last updated just now")
+	is_loading = false
 end
 
-ui.Window {
+local function refresh()
+	if is_loading then return end
+	is_loading = true
+	list:clear_rows()
+	refresh_progress:start("Refreshing market data")
+	ui.async(run_ticker)
+end
+
+window = ui.Window {
 	title = "Live Stock Ticker",
 	width = 620,
 	height = 480,
 	toolbar = {
-		{ id = "refresh", label = "Refresh", icon = "arrow.clockwise",
-		  action = function()
-			  list:clear_rows()
-			  status_text:set_text("Refreshing...")
-			  ui.SpinnerStart(spinner)
-			  ui.async(run_ticker)
-		  end },
-	},
-	ui.VStack {
-		ui.HStack {
-			spinner,
-			ui.Text "Market Data",
-			ui.Spacer(),
-			status_text,
+		{
+			id = "refresh",
+			label = "Refresh",
+			icon = "arrow.clockwise",
+			tooltip = "Refresh market data",
+			action = refresh,
 		},
-		list,
-	}
+	},
+	list,
 }
 
-ui.SpinnerStart(spinner)
-ui.async(run_ticker)
+refresh_progress = ui.ToolbarProgress(window, "refresh")
+refresh()

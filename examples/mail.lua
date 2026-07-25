@@ -33,9 +33,10 @@ local message_list = ui.List {
 local folder_list = ui.List {
 	width = 170,
 	height = 310,
+	header = false,
 	columns = {
-		{ id = "name",  title = "" },
-		{ id = "count", title = "" },
+		{ id = "name",  title = "", width = 125 },
+		{ id = "count", title = "", width = 45, alignment = "trailing" },
 	},
 	data = folders,
 }
@@ -45,15 +46,22 @@ ui.Window {
 	width = 680,
 	height = 420,
 	toolbar = {
-		{ id = "new",     label = "New",     icon = "square.and.pencil" },
-		{ id = "reply",   label = "Reply",   icon = "arrowshape.turn.up.left" },
-		{ id = "archive", label = "Archive", icon = "archivebox" },
-		{ id = "trash",   label = "Trash",   icon = "trash" },
-	},
-	ui.VStack {
-		ui.HSplit {
-			folder_list,
-			message_list,
+		{
+			id = "new",
+			label = "New",
+			icon = "square.and.pencil",
+			tooltip = "Compose a new message",
+			action = function()
+				message_list:add_row{
+					from = "Me",
+					subject = "Untitled message",
+					date = "Now",
+				}
+			end,
 		},
-	}
+	},
+	ui.HSplit {
+		folder_list,
+		message_list,
+	},
 }

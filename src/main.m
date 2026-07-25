@@ -9,6 +9,8 @@ static char kAxisKey;
 static char kFlexibleKey;
 static char kTableSourceKey;
 static char kCallbackKey;
+static char kToolbarDelegateKey;
+static char kColumnAlignmentKey;
 static char kResizeObserverKey;
 static char kPaddingKey;
 static char kAlignmentKey;
@@ -27,6 +29,26 @@ typedef struct {
 @property (nonatomic, strong) NSMutableArray *rows;
 @property (nonatomic, strong) NSMutableArray *columns;
 @property (nonatomic, weak) NSTableView *tableView;
+- (void)updateTableFrame;
+@end
+
+@interface LuaTableCellView : NSTableCellView
+@end
+
+@implementation LuaTableCellView
+
+- (void)layout {
+	[super layout];
+	NSTextField *text = self.textField;
+	if (!text) return;
+	CGFloat height = ceil(text.intrinsicContentSize.height);
+	text.frame = NSMakeRect(
+		6,
+		floor((self.bounds.size.height - height) / 2),
+		MAX(0, self.bounds.size.width - 12),
+		height);
+}
+
 @end
 
 @implementation LuaTableViewSource
@@ -47,6 +69,18 @@ typedef struct {
 	return (NSInteger)_rows.count;
 }
 
+- (void)updateTableFrame {
+	NSClipView *clipView = (NSClipView *)_tableView.superview;
+	if (![clipView isKindOfClass:[NSClipView class]]) return;
+
+	CGFloat headerHeight = _tableView.headerView
+		? _tableView.headerView.frame.size.height : 0;
+	CGFloat rowsHeight = _rows.count * _tableView.rowHeight + headerHeight;
+	NSSize viewport = clipView.bounds.size;
+	_tableView.frame = NSMakeRect(
+		0, 0, viewport.width, MAX(viewport.height, rowsHeight));
+}
+
 - (NSView *)tableView:(NSTableView *)tableView
    viewForTableColumn:(NSTableColumn *)column
 				  row:(NSInteger)row
@@ -56,11 +90,12 @@ typedef struct {
 	id value = rowData[colId];
 	NSString *text = value ? [value description] : @"";
 
-	NSTableCellView *cell = [tableView makeViewWithIdentifier:@"cell" owner:self];
+	NSString *reuseId = [@"cell-" stringByAppendingString:column.identifier];
+	NSTableCellView *cell = [tableView makeViewWithIdentifier:reuseId owner:self];
 	if (!cell) {
-		cell = [[NSTableCellView alloc] initWithFrame:
+		cell = [[LuaTableCellView alloc] initWithFrame:
 			NSMakeRect(0, 0, column.width, tableView.rowHeight)];
-		cell.identifier = @"cell";
+		cell.identifier = reuseId;
 
 		NSTextField *tf = [NSTextField labelWithString:@""];
 		tf.bezeled = NO;
@@ -68,18 +103,15 @@ typedef struct {
 		tf.editable = NO;
 		tf.selectable = NO;
 		tf.lineBreakMode = NSLineBreakByTruncatingTail;
-		tf.translatesAutoresizingMaskIntoConstraints = NO;
 
 		[cell addSubview:tf];
 		cell.textField = tf;
-		[NSLayoutConstraint activateConstraints:@[
-			[tf.leadingAnchor constraintEqualToAnchor:cell.leadingAnchor constant:6],
-			[tf.trailingAnchor constraintLessThanOrEqualToAnchor:
-				cell.trailingAnchor constant:-6],
-			[tf.centerYAnchor constraintEqualToAnchor:cell.centerYAnchor],
-		]];
 	}
 	cell.textField.stringValue = text;
+	NSNumber *alignment = objc_getAssociatedObject(column, &kColumnAlignmentKey);
+	cell.textField.alignment = alignment
+		? (NSTextAlignment)alignment.integerValue : NSTextAlignmentLeft;
+	[cell setNeedsLayout:YES];
 	return cell;
 }
 
@@ -88,6 +120,7 @@ typedef struct {
 	NSInteger idx = (NSInteger)_rows.count - 1;
 	[_tableView insertRowsAtIndexes:[NSIndexSet indexSetWithIndex:idx]
 					  withAnimation:NSTableViewAnimationSlideDown];
+	[self updateTableFrame];
 }
 
 - (void)removeRowAtIndex:(NSInteger)index {
@@ -95,11 +128,13 @@ typedef struct {
 	[_rows removeObjectAtIndex:(NSUInteger)index];
 	[_tableView removeRowsAtIndexes:[NSIndexSet indexSetWithIndex:index]
 					  withAnimation:NSTableViewAnimationSlideUp];
+	[self updateTableFrame];
 }
 
 - (void)clearRows {
 	[_rows removeAllObjects];
 	[_tableView reloadData];
+	[self updateTableFrame];
 }
 
 @end
@@ -171,10 +206,13 @@ typedef struct {
 			NSToolbarItem *ti = [[NSToolbarItem alloc] initWithItemIdentifier:identifier];
 			ti.label = item[@"label"] ?: identifier;
 			ti.paletteLabel = ti.label;
+			ti.toolTip = item[@"tooltip"];
+			ti.autovalidates = NO;
+			ti.enabled = YES;
 
 			if (item[@"icon"]) {
 				NSImage *img = [NSImage imageWithSystemSymbolName:item[@"icon"]
-										accessibilityDescription:nil];
+										accessibilityDescription:ti.label];
 				if (img) {
 					ti.image = img;
 				}
@@ -182,16 +220,10 @@ typedef struct {
 
 			NSNumber *refNum = item[@"actionRef"];
 			if (refNum) {
-				NSButton *btn = [[NSButton alloc] initWithFrame:NSZeroRect];
-				btn.title = ti.label;
-				btn.bezelStyle = NSBezelStyleToolbar;
-				[btn sizeToFit];
-				ti.view = btn;
-
-				objc_setAssociatedObject(btn, &kCallbackKey, refNum,
+				objc_setAssociatedObject(ti, &kCallbackKey, refNum,
 					OBJC_ASSOCIATION_RETAIN);
-				btn.target = [LuaButtonTarget shared];
-				btn.action = @selector(onAction:);
+				ti.target = [LuaButtonTarget shared];
+				ti.action = @selector(onAction:);
 			}
 
 			return ti;
@@ -267,6 +299,11 @@ static void push_objc_value(lua_State *L, id value) {
 }
 
 static id lua_to_objc_value(lua_State *L, int idx) {
+	ObjCRef *ref = luaL_testudata(L, idx, "nsview");
+	if (!ref) ref = luaL_testudata(L, idx, "nswindow");
+	if (!ref) ref = luaL_testudata(L, idx, "nsobject");
+	if (ref) return (__bridge id)ref->ptr;
+
 	switch (lua_type(L, idx)) {
 		case LUA_TNIL:
 			return nil;
@@ -292,7 +329,7 @@ static int nsview_index(lua_State *L) {
 
 	if (strcmp(key, "padding") == 0) {
 		NSNumber *p = objc_getAssociatedObject(obj, &kPaddingKey);
-		lua_pushnumber(L, p ? p.doubleValue : 12.0);
+		lua_pushnumber(L, p ? p.doubleValue : 0);
 		return 1;
 	}
 	if (strcmp(key, "alignment") == 0) {
@@ -451,6 +488,13 @@ static int bridge_window(lua_State *L) {
 
 			lua_pop(L, 1);
 
+			lua_getfield(L, -3, "tooltip");
+			const char *tooltip = lua_tostring(L, -1);
+			if (tooltip) {
+				dict[@"tooltip"] = [NSString stringWithUTF8String:tooltip];
+			}
+			lua_pop(L, 1);
+
 			lua_getfield(L, -3, "action");
 			if (lua_isfunction(L, -1)) {
 				lua_pushvalue(L, -1);
@@ -465,9 +509,12 @@ static int bridge_window(lua_State *L) {
 
 		LuaToolbarDelegate *del = [[LuaToolbarDelegate alloc] initWithItems:items];
 		NSToolbar *tb = [[NSToolbar alloc] initWithIdentifier:@"main"];
-		tb.displayMode = NSToolbarDisplayModeIconAndLabel;
+		tb.displayMode = lua_toboolean(L, 7)
+			? NSToolbarDisplayModeIconAndLabel : NSToolbarDisplayModeIconOnly;
 		tb.delegate = del;
 		w.toolbar = tb;
+		objc_setAssociatedObject(w, &kToolbarDelegateKey, del,
+			OBJC_ASSOCIATION_RETAIN);
 	}
 
 	push_objc(L, w, "nswindow");
@@ -576,9 +623,19 @@ static BOOL is_flexible(NSView *view) {
 	return [objc_getAssociatedObject(view, &kFlexibleKey) boolValue];
 }
 
+static BOOL is_flexible_width(NSView *view) {
+	return is_flexible(view);
+}
+
+static BOOL is_flexible_height(NSView *view) {
+	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
+	if ([axis isEqualToString:@"hstack"]) return NO;
+	return is_flexible(view);
+}
+
 static CGFloat view_padding(NSView *view) {
 	NSNumber *p = objc_getAssociatedObject(view, &kPaddingKey);
-	return p ? p.doubleValue : 12.0;
+	return p ? p.doubleValue : 0;
 }
 
 static NSString *view_alignment(NSView *view) {
@@ -596,9 +653,29 @@ static CGFloat view_fixed_height(NSView *view) {
 }
 
 static void size_to_fit_if_needed(NSView *view) {
-	if (!is_flexible(view) && [view respondsToSelector:@selector(sizeToFit)]) {
+	if (!is_flexible_width(view) && !is_flexible_height(view) &&
+		[view respondsToSelector:@selector(sizeToFit)]) {
 		[(id)view sizeToFit];
 	}
+}
+
+static CGFloat preferred_height(NSView *view) {
+	CGFloat fixed = view_fixed_height(view);
+	if (fixed > 0) return fixed;
+
+	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
+	if ([axis isEqualToString:@"hstack"]) {
+		CGFloat maxHeight = 0;
+		for (NSView *child in view.subviews) {
+			size_to_fit_if_needed(child);
+			CGFloat childHeight = preferred_height(child);
+			if (childHeight > maxHeight) maxHeight = childHeight;
+		}
+		return maxHeight + 2 * view_padding(view);
+	}
+
+	size_to_fit_if_needed(view);
+	return view.frame.size.height > 0 ? view.frame.size.height : 22;
 }
 
 static void layout_recursive(NSView *view, CGFloat width) {
@@ -626,13 +703,12 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			for (NSView *sv in view.subviews) {
 				size_to_fit_if_needed(sv);
 				CGFloat fh = view_fixed_height(sv);
-				if (is_flexible(sv)) {
-					flexibleCount++;
-				} else if (fh > 0) {
+				if (fh > 0) {
 					fixedHeight += fh;
+				} else if (is_flexible_height(sv)) {
+					flexibleCount++;
 				} else {
-					fixedHeight += sv.frame.size.height > 0
-						? sv.frame.size.height : 22;
+					fixedHeight += preferred_height(sv);
 				}
 			}
 
@@ -644,11 +720,12 @@ static void layout_recursive(NSView *view, CGFloat width) {
 
 			for (NSView *sv in view.subviews) {
 				CGFloat fh = view_fixed_height(sv);
-				CGFloat childH = is_flexible(sv) ? flexibleHeight
-					: (fh > 0 ? fh : (sv.frame.size.height > 0 ? sv.frame.size.height : 22));
+				CGFloat childH = fh > 0 ? fh
+					: (is_flexible_height(sv) ? flexibleHeight : preferred_height(sv));
 				CGFloat fw = view_fixed_width(sv);
-				CGFloat childW = is_flexible(sv) ? contentW
-					: (fw > 0 ? fw : MIN(sv.frame.size.width, contentW));
+				CGFloat childW = fw > 0 ? fw
+					: (is_flexible_width(sv) ? contentW
+						: MIN(sv.frame.size.width, contentW));
 				top -= childH;
 				CGFloat childX = pad;
 				if ([alignment isEqualToString:@"center"]) {
@@ -669,10 +746,10 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			for (NSView *sv in view.subviews) {
 				size_to_fit_if_needed(sv);
 				CGFloat fw = view_fixed_width(sv);
-				if (is_flexible(sv)) {
-					flexibleCount++;
-				} else if (fw > 0) {
+				if (fw > 0) {
 					fixedWidth += fw;
+				} else if (is_flexible_width(sv)) {
+					flexibleCount++;
 				} else {
 					fixedWidth += sv.frame.size.width > 0
 						? sv.frame.size.width : 40;
@@ -687,11 +764,13 @@ static void layout_recursive(NSView *view, CGFloat width) {
 
 			for (NSView *sv in view.subviews) {
 				CGFloat fw = view_fixed_width(sv);
-				CGFloat childW = is_flexible(sv) ? flexibleWidth
-					: (fw > 0 ? fw : (sv.frame.size.width > 0 ? sv.frame.size.width : 40));
+				CGFloat childW = fw > 0 ? fw
+					: (is_flexible_width(sv) ? flexibleWidth
+						: (sv.frame.size.width > 0 ? sv.frame.size.width : 40));
 				CGFloat fh = view_fixed_height(sv);
-				CGFloat childH = is_flexible(sv) ? contentH
-					: (fh > 0 ? fh : MIN(sv.frame.size.height, contentH));
+				CGFloat childH = fh > 0 ? fh
+					: (is_flexible_height(sv) ? contentH
+						: MIN(preferred_height(sv), contentH));
 				CGFloat childY = pad;
 				if ([alignment isEqualToString:@"center"]) {
 					childY = pad + (contentH - childH) / 2;
@@ -715,6 +794,11 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			}
 		}
 	} else {
+		if ([view isKindOfClass:[NSScrollView class]]) {
+			LuaTableViewSource *source =
+				objc_getAssociatedObject(view, &kTableSourceKey);
+			[source updateTableFrame];
+		}
 		for (NSView *sv in view.subviews) {
 			if (objc_getAssociatedObject(sv, &kAxisKey)) {
 				layout_recursive(sv, width);
@@ -763,8 +847,20 @@ static int bridge_set_text(lua_State *L) {
 	id obj = check_objc(L, 1);
 	const char *str = luaL_checkstring(L, 2);
 	if ([obj isKindOfClass:[NSTextField class]]) {
-		[(NSTextField *)obj setStringValue:[NSString stringWithUTF8String:str]];
-		[(NSTextField *)obj sizeToFit];
+		NSTextField *textField = (NSTextField *)obj;
+		[textField setStringValue:[NSString stringWithUTF8String:str]];
+		[textField sizeToFit];
+
+		NSView *layoutRoot = nil;
+		for (NSView *ancestor = textField.superview;
+			 ancestor != nil; ancestor = ancestor.superview) {
+			if (objc_getAssociatedObject(ancestor, &kAxisKey)) {
+				layoutRoot = ancestor;
+			}
+		}
+		if (layoutRoot) {
+			layout_recursive(layoutRoot, layoutRoot.bounds.size.width);
+		}
 	}
 	return 0;
 }
@@ -847,12 +943,22 @@ static int bridge_tableview(lua_State *L) {
 	luaL_checktype(L, 1, LUA_TTABLE);
 	CGFloat width = luaL_checknumber(L, 2);
 	CGFloat height = luaL_checknumber(L, 3);
+	BOOL showsHeader = YES;
+	BOOL bordered = NO;
+	if (lua_istable(L, 4)) {
+		lua_getfield(L, 4, "header");
+		if (!lua_isnil(L, -1)) showsHeader = lua_toboolean(L, -1);
+		lua_pop(L, 1);
+		lua_getfield(L, 4, "bordered");
+		if (!lua_isnil(L, -1)) bordered = lua_toboolean(L, -1);
+		lua_pop(L, 1);
+	}
 
 	int ncols = (int)luaL_len(L, 1);
 
 	NSTableView *tv = [[NSTableView alloc] initWithFrame:NSMakeRect(0, 0, width, height)];
-	tv.columnAutoresizingStyle = NSTableViewUniformColumnAutoresizingStyle;
-	tv.headerView = [[NSTableHeaderView alloc] init];
+	tv.columnAutoresizingStyle = NSTableViewNoColumnAutoresizing;
+	tv.headerView = showsHeader ? [[NSTableHeaderView alloc] init] : nil;
 	tv.usesAlternatingRowBackgroundColors = YES;
 
 	CGFloat colW = ncols > 0 ? width / ncols : width;
@@ -862,25 +968,40 @@ static int bridge_tableview(lua_State *L) {
 		lua_rawgeti(L, 1, i);
 		lua_getfield(L, -1, "id");
 		lua_getfield(L, -2, "title");
-		const char *colId = lua_tostring(L, -2);
-		const char *colTitle = lua_tostring(L, -1);
+		lua_getfield(L, -3, "alignment");
+		lua_getfield(L, -4, "width");
+		const char *colId = lua_tostring(L, -4);
+		const char *colTitle = lua_tostring(L, -3);
+		const char *colAlignment = lua_tostring(L, -2);
+		CGFloat requestedWidth = lua_isnumber(L, -1)
+			? lua_tonumber(L, -1) : colW;
 
 		if (!colId) {
-			lua_pop(L, 3);
+			lua_pop(L, 5);
 			continue;
 		}
 
 		NSString *nsId = [NSString stringWithUTF8String:colId];
 		NSTableColumn *col = [[NSTableColumn alloc] initWithIdentifier:nsId];
 		col.title = [NSString stringWithUTF8String:colTitle ?: colId];
-		col.width = colW;
+		col.width = requestedWidth;
 		col.minWidth = 40;
+		NSTextAlignment alignment = NSTextAlignmentLeft;
+		if (colAlignment && strcmp(colAlignment, "trailing") == 0) {
+			alignment = NSTextAlignmentRight;
+		} else if (colAlignment && strcmp(colAlignment, "center") == 0) {
+			alignment = NSTextAlignmentCenter;
+		}
+		col.headerCell.alignment = NSTextAlignmentLeft;
+		objc_setAssociatedObject(col, &kColumnAlignmentKey, @(alignment),
+			OBJC_ASSOCIATION_RETAIN);
 		[tv addTableColumn:col];
 
 		[colSpecs addObject:@{@"id": nsId, @"title": col.title}];
 
-		lua_pop(L, 3);
+		lua_pop(L, 5);
 	}
+	tv.columnAutoresizingStyle = NSTableViewUniformColumnAutoresizingStyle;
 
 	LuaTableViewSource *src = [[LuaTableViewSource alloc] initWithTableView:tv
 																   columns:colSpecs];
@@ -889,12 +1010,31 @@ static int bridge_tableview(lua_State *L) {
 	sv.documentView = tv;
 	sv.hasVerticalScroller = YES;
 	sv.autohidesScrollers = YES;
-	sv.borderType = NSBezelBorder;
+	sv.borderType = bordered ? NSBezelBorder : NSNoBorder;
 	objc_setAssociatedObject(sv, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
 
 	objc_setAssociatedObject(sv, &kTableSourceKey, src, OBJC_ASSOCIATION_RETAIN);
 
 	push_objc(L, sv, "nsview");
+	return 1;
+}
+
+static int bridge_toolbar_item(lua_State *L) {
+	id obj = check_objc(L, 1);
+	const char *identifier = luaL_checkstring(L, 2);
+	if (![obj isKindOfClass:[NSWindow class]]) {
+		return luaL_error(L, "ToolbarItem requires a window");
+	}
+
+	NSString *wanted = [NSString stringWithUTF8String:identifier];
+	for (NSToolbarItem *item in ((NSWindow *)obj).toolbar.items) {
+		if ([item.itemIdentifier isEqualToString:wanted]) {
+			push_objc(L, item, "nsobject");
+			return 1;
+		}
+	}
+
+	lua_pushnil(L);
 	return 1;
 }
 
@@ -1082,6 +1222,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_layout",           bridge_layout},
 	{"_set_content_size", bridge_set_content_size},
 	{"_tableview",        bridge_tableview},
+	{"_toolbar_item",     bridge_toolbar_item},
 	{"_button",           bridge_button},
 	{"_toggle",           bridge_toggle},
 	{"_timer_after",      bridge_timer_after},

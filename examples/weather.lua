@@ -30,19 +30,21 @@ local cities = {
 	{ name = "Singapore",        query = "Singapore" },
 }
 
-local spinner = ui.Spinner()
-local status_text = ui.Text "Initializing..."
 local list = ui.List {
 	width = 660,
 	height = 430,
 	columns = {
-		{ id = "city",  title = "City" },
-		{ id = "temp",  title = "Temp" },
-		{ id = "cond",  title = "Conditions" },
-		{ id = "humid", title = "Humidity" },
-		{ id = "wind",  title = "Wind" },
+		{ id = "city",  title = "City",        width = 130 },
+		{ id = "temp",  title = "Temperature", width = 110, alignment = "trailing" },
+		{ id = "cond",  title = "Conditions",  width = 180 },
+		{ id = "humid", title = "Humidity",    width = 100, alignment = "trailing" },
+		{ id = "wind",  title = "Wind",        width = 120, alignment = "trailing" },
 	},
 }
+
+local window
+local refresh_progress
+local is_loading = false
 
 local function fetch_city(city)
 	local url = "https://wttr.in/" .. city.query .. "?format=j1"
@@ -71,46 +73,40 @@ local function fetch_city(city)
 end
 
 local function run()
-	status_text:set_text("Fetching weather data...")
 	ui.sleep(0.3)
 
-	for i, city in ipairs(cities) do
+	for _, city in ipairs(cities) do
 		fetch_city(city)
-		status_text:set_text(
-			string.format("Loading %d/%d  \226\154\128 %s",
-				i, #cities, city.name))
 		ui.sleep(0.15)
 	end
 
-	status_text:set_text(
-		string.format("\226\154\136  %d cities  \226\128\162  live from wttr.in",
-			#cities))
-	ui.SpinnerStop(spinner)
+	refresh_progress:stop("Refresh weather — last updated just now")
+	is_loading = false
 end
 
-ui.Window {
-	title = "World Weather  \226\140\136",
+local function refresh()
+	if is_loading then return end
+	is_loading = true
+	list:clear_rows()
+	refresh_progress:start("Refreshing weather")
+	ui.async(run)
+end
+
+window = ui.Window {
+	title = "World Weather",
 	width = 680,
 	height = 500,
 	toolbar = {
-		{ id = "refresh", label = "Refresh", icon = "arrow.clockwise",
-		  action = function()
-			  list:clear_rows()
-			  status_text:set_text("Refreshing...")
-			  ui.SpinnerStart(spinner)
-			  ui.async(run)
-		  end },
-	},
-	ui.VStack {
-		ui.HStack {
-			spinner,
-			status_text,
-			ui.Spacer(),
+		{
+			id = "refresh",
+			label = "Refresh",
+			icon = "arrow.clockwise",
+			tooltip = "Refresh weather",
+			action = refresh,
 		},
-		list,
-	}
+	},
+	list,
 }
 
-status_text:set_text("Connecting...")
-ui.SpinnerStart(spinner)
-ui.async(run)
+refresh_progress = ui.ToolbarProgress(window, "refresh")
+refresh()

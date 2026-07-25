@@ -8,10 +8,103 @@ AppKit-backed widget, never a hack (no `Text "----"` for separators or
 `Text "[ ]"` for checkboxes). If something looks like a placeholder, the
 missing widget must be built.
 
+## Apple UI design quality bar
+
+Working is necessary but not sufficient. Every example and widget must look and
+behave like a polished macOS app. Use native AppKit controls, system metrics,
+semantic colors, system fonts, and SF Symbols; do not imitate system UI with
+text, emoji, hard-coded colors, or custom drawing when a native control exists.
+These rules summarize Apple's current Human Interface Guidelines:
+
+- [Design principles](https://developer.apple.com/design/human-interface-guidelines/design-principles):
+  keep the interface focused, establish a clear hierarchy, use concise wording,
+  and refine visual details instead of treating them as optional polish.
+- [Designing for macOS](https://developer.apple.com/design/human-interface-guidelines/designing-for-macos/):
+  use the large display for useful content, maintain comfortable information
+  density, support precise pointer and keyboard interaction, and let people
+  resize and configure windows.
+- [Layout](https://developer.apple.com/design/human-interface-guidelines/layout):
+  put the most important content near the top and leading edge, align related
+  elements, use consistent spacing, respect the content area, and adapt
+  gracefully throughout the supported window-size range.
+
+### Placement and hierarchy
+
+- The primary content must dominate the window and consume the remaining
+  flexible space. Never leave a large empty region unless it communicates an
+  intentional empty state.
+- Stacks add spacing between siblings, not implicit outer margins. Add explicit
+  padding only around content that needs separation. Primary scrollable content
+  such as a table normally reaches the content-area edges.
+- Put persistent, window-wide actions in the toolbar. Put actions that operate
+  on one row or local section next to that content or in its context menu.
+  Avoid duplicating the same action in the toolbar and body.
+- Keep passive status near the content it describes. Keep alerts, validation,
+  and progress feedback close to the initiating action. Don't place critical
+  controls only at the bottom of a macOS window, because that edge can be off
+  screen.
+- Preserve reading order: top to bottom, then leading to trailing. Use visual
+  weight, alignment, and grouping to communicate importance before adding
+  decoration.
+
+### Native components
+
+- [Toolbars](https://developer.apple.com/design/human-interface-guidelines/toolbars):
+  use `NSToolbar` and `NSToolbarItem`. Use a recognizable
+  [SF Symbol](https://developer.apple.com/design/human-interface-guidelines/sf-symbols)
+  plus a concise label and accessibility description. Let the native toolbar
+  render the item; don't replace an icon item with a custom text button.
+- [Lists and tables](https://developer.apple.com/design/human-interface-guidelines/lists-and-tables):
+  use succinct row text, descriptive noun or short noun-phrase headings,
+  visible selection feedback, resizable columns, sorting when valuable, and
+  alternating row backgrounds for wide multicolumn data. Cells must use native
+  reusable cell views and align their content consistently.
+- [Buttons](https://developer.apple.com/design/human-interface-guidelines/buttons):
+  use native roles and bezel styles. Make the most likely safe action primary;
+  never make a destructive action primary. Use precise verb labels.
+- [Progress indicators](https://developer.apple.com/design/human-interface-guidelines/progress-indicators):
+  show progress only while work is occurring, prefer determinate progress when
+  duration is known, keep indeterminate indicators moving, and generally avoid
+  labeling a spinner. Refresh automatically when appropriate while still
+  allowing an explicit refresh action when useful.
+- Use menus, separators, split views, sidebars, search fields, toggles, and
+  other real AppKit widgets for their intended roles. A visual approximation is
+  a missing framework feature, not an acceptable sample implementation.
+
+### Typography, color, and accessibility
+
+- [Typography](https://developer.apple.com/design/human-interface-guidelines/typography):
+  prefer system fonts and standard control font variants. Use size and weight
+  sparingly to establish hierarchy; don't hard-code a custom font merely for
+  decoration.
+- [Color](https://developer.apple.com/design/human-interface-guidelines/color):
+  use semantic dynamic system colors, preserve their meanings, and verify light,
+  dark, and increased-contrast appearances. Never rely on color alone to convey
+  state.
+- [Accessibility](https://developer.apple.com/design/human-interface-guidelines/accessibility):
+  provide meaningful accessibility labels, keyboard navigation, sufficient
+  contrast, and comfortable targets. On macOS, aim for the 28×28 pt default
+  control size (20×20 pt minimum) and 13 pt default text (10 pt minimum).
+  Verify the accessibility tree with Accessibility Inspector for new controls.
+
+### Required visual QA
+
+Before declaring UI work complete:
+
+1. Launch every affected example and inspect an actual screenshot.
+2. Resize each window substantially smaller and larger; content must reflow or
+   clip intentionally, never drift, overlap, or create accidental voids.
+3. Exercise loading, loaded, empty, selected, disabled, error, and long-text
+   states that the component supports.
+4. Check toolbar icons and labels, table alignment and truncation, native
+   selection appearance, focus behavior, and keyboard access.
+5. Check both light and dark appearance and avoid hard-coded geometry that
+   breaks with longer text or localization.
+
 ## Architecture
 
 ```
-lua script  -->  UI.lua (sugar)  -->  bridge (C)  -->  AppKit objects
+lua script  -->  luaui.lua (sugar)  -->  bridge (C)  -->  AppKit objects
                                     (lua C API)      (NSWindow, NSView, etc.)
 ```
 
@@ -19,7 +112,7 @@ lua script  -->  UI.lua (sugar)  -->  bridge (C)  -->  AppKit objects
    (C functions exposed to Lua), loads and runs a Lua script, then starts the
    Cocoa run loop.
 
-2. **`lua/UI.lua`** — Lua module providing SwiftUI-like functions
+2. **`lua/luaui.lua`** — Lua module providing SwiftUI-like functions
    (`Window`, `VStack`, `HStack`, `Text`, `Image`, `Spacer`, `List`).
    Translates to `bridge._*` calls that create real ObjC objects.
 
@@ -47,14 +140,16 @@ Each ObjC object is wrapped in a Lua full userdata with a metatable (`nsview` or
 | `_layout(view, width)` | recursive frame-based layout in C |
 | `_tableview(columns, w, h)` | `NSScrollView` wrapping `NSTableView` + `LuaTableViewSource` |
 | `_timer_after(delay, callback)` | one-shot `NSTimer` |
-| `_spinner()` / `_spinner_start` / `_spinner_stop` | `NSProgressIndicator` |
+| `_toolbar_item(window, id)` | Finds an `NSToolbarItem` for generic property access |
 | `_show(window)` | orders window front (run loop in `main()`) |
 
 ### Layout
 
-Layout is done recursively in C (`layout_recursive`). Containers tagged
-via `objc_setAssociatedObject` (`"vstack"` / `"hstack"`) lay out their
-children top-to-bottom or left-to-right with 12pt padding.
+Layout is done recursively in C (`layout_recursive`). Containers tagged via
+`objc_setAssociatedObject` (`"vstack"` / `"hstack"`) lay out their children
+top-to-bottom or left-to-right with 8pt sibling spacing and no implicit outer
+padding. `HStack` uses intrinsic vertical height and flexible horizontal width;
+primary flexible content such as `List` consumes the remaining proposal.
 
 Non-container views (Text, Image, List) are treated as leaf nodes — their frame
 is used as-is, and recursion stops there. The `respondsToSelector:` guard on
@@ -97,7 +192,8 @@ Creates an `NSWindow`. Table keys:
 | `height` | number | `360` | Content height in points |
 | `transparent_titlebar` | bool | `false` | Full-size content, transparent title bar |
 | `hide_title` | bool | `=transparent_titlebar` | Hide title text in transparent mode |
-| `toolbar` | `{{id, label, action?}}` | none | NSToolbar items |
+| `toolbar` | `{{id, label, icon?, tooltip?, action?}}` | none | Native NSToolbar items |
+| `toolbar_labels` | bool | `false` | Show labels below toolbar icons |
 
 The array part of the table holds child views (added to a VStack inside the
 window's content view). After building the view tree, calls `bridge._show(win)`
@@ -117,11 +213,28 @@ Window {
 }
 ```
 
+`Window{...}` returns its native window userdata. Use
+`ToolbarItem(window, id)` when an item needs dynamic native properties, or
+`ToolbarProgress(window, id)` to replace an action's symbol with a real
+indeterminate `NSProgressIndicator` while work is active:
+
+```lua
+local progress = ToolbarProgress(window, "refresh")
+progress:start("Refreshing data")
+-- asynchronous work
+progress:stop("Refresh data — last updated just now")
+```
+
+This API stays small by relying on the generic KVC bridge for properties like
+`enabled`, `view`, `image`, and `toolTip`; don't add a dedicated C bridge
+function for each toolbar state.
+
 ### `VStack{...}` / `HStack{...}`
 
 Layout containers. Children listed in the array part are stacked vertically or
-horizontally with 12pt padding. Returns an NSView userdata that can be added as
-a child of any other container.
+horizontally with 8pt sibling spacing and no implicit outer padding. Set
+`padding = number` explicitly when a group needs margins. Returns an NSView
+userdata that can be added as a child of any other container.
 
 ```lua
 VStack {
@@ -264,9 +377,11 @@ row colors, a header, and a vertical scroller. Table keys:
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `columns` | `{{id, title}}` | *(required)* | Array of column specs |
+| `columns` | `{{id, title, width?, alignment?}}` | *(required)* | Array of column specs |
 | `width` | number | `400` | Scroll view width |
 | `height` | number | `200` | Scroll view height |
+| `header` | bool | `true` | Show the native table header |
+| `bordered` | bool | `false` | Draw a bezel around the scroll view |
 | `data` | `{{key=val}}` | `{}` | Initial rows (array of string-keyed tables) |
 
 ```lua
@@ -274,9 +389,9 @@ List {
     width = 620,
     height = 350,
     columns = {
-        { id = "name", title = "Name" },
-        { id = "role", title = "Role" },
-        { id = "dept", title = "Dept" },
+        { id = "name", title = "Name", width = 240 },
+        { id = "role", title = "Role", width = 180 },
+        { id = "dept", title = "Department", alignment = "trailing" },
     },
     data = {
         { name = "Alice Chen",   role = "Engineer",  dept = "Core" },
@@ -288,6 +403,8 @@ List {
 
 Each column `id` must match a key in the row data tables. Cells render the
 string value of `row[id]`. Numbers are converted to strings automatically.
+Column alignment can be `"leading"` (default), `"center"`, or `"trailing"`;
+the header and reusable native cells use the same alignment.
 
 ### List methods
 
