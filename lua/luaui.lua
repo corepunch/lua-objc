@@ -2,6 +2,30 @@ local bridge = require("bridge")
 
 local UI = {}
 
+local layout_properties = {
+	"padding",
+	"alignment",
+	"fixed_width",
+	"fixed_height",
+	"min_width",
+	"min_height",
+	"max_width",
+	"max_height",
+	"flex_grow",
+	"flex_shrink",
+	"flex_basis",
+}
+
+local function apply_layout(view, props)
+	if type(props) ~= "table" then return view end
+	for _, key in ipairs(layout_properties) do
+		if props[key] ~= nil then
+			view[key] = props[key]
+		end
+	end
+	return view
+end
+
 local function path_join(...)
 	local parts = {...}
 	local sep = package.config:sub(1, 1)
@@ -60,8 +84,7 @@ end
 function UI.VStack(props)
 	local view = bridge._vstack()
 	if type(props) == "table" then
-		if props.padding then view.padding = props.padding end
-		if props.alignment then view.alignment = props.alignment end
+		apply_layout(view, props)
 		for _, v in ipairs(props) do
 			if type(v) == "userdata" then
 				bridge._add(view, v)
@@ -74,8 +97,7 @@ end
 function UI.HStack(props)
 	local view = bridge._hstack()
 	if type(props) == "table" then
-		if props.padding then view.padding = props.padding end
-		if props.alignment then view.alignment = props.alignment end
+		apply_layout(view, props)
 		for _, v in ipairs(props) do
 			if type(v) == "userdata" then
 				bridge._add(view, v)
@@ -88,7 +110,7 @@ end
 function UI.HSplit(props)
 	local view = bridge._hsplit()
 	if type(props) == "table" then
-		if props.padding then view.padding = props.padding end
+		apply_layout(view, props)
 		for _, v in ipairs(props) do
 			if type(v) == "userdata" then
 				bridge._add(view, v)
@@ -122,7 +144,7 @@ function UI.Text(arg)
 	end
 
 	bridge._perform(v, "sizeToFit")
-	return v
+	return apply_layout(v, type(arg) == "table" and arg or nil)
 end
 
 function UI.Title(arg)
@@ -135,18 +157,20 @@ end
 
 function UI.Image(arg)
 	local path
+	local props
 	if type(arg) == "table" then
 		path = arg[1] or ""
+		props = arg
 	elseif type(arg) == "string" then
 		path = arg
 	else
 		path = tostring(arg)
 	end
-	return bridge._image(resolve_image(path))
+	return apply_layout(bridge._image(resolve_image(path)), props)
 end
 
-function UI.Spacer()
-	return bridge._spacer()
+function UI.Spacer(props)
+	return apply_layout(bridge._spacer(), props)
 end
 
 function UI.List(props)
@@ -171,7 +195,7 @@ function UI.List(props)
 		end
 	end
 
-	return tv
+	return apply_layout(tv, props)
 end
 
 function UI.ToolbarItem(window, identifier)
@@ -185,33 +209,48 @@ end
 function UI.Button(props)
 	local title = type(props) == "table" and (props.title or props[1] or "") or ""
 	local action = type(props) == "table" and props.action or nil
+	local button
 	if action then
-		return bridge._button(title, action)
+		button = bridge._button(title, action)
+	else
+		button = bridge._button(title)
 	end
-	return bridge._button(title)
+	return apply_layout(button, props)
 end
 
 function UI.Toggle(props)
 	local label = type(props) == "table" and (props.label or props[1] or "") or ""
 	local is_on = type(props) == "table" and props.is_on or false
 	local action = type(props) == "table" and props.action or nil
+	local toggle
 	if action then
-		return bridge._toggle(label, is_on, action)
+		toggle = bridge._toggle(label, is_on, action)
+	else
+		toggle = bridge._toggle(label, is_on)
 	end
-	return bridge._toggle(label, is_on)
+	return apply_layout(toggle, props)
 end
 
-function UI.Separator()
+function UI.Separator(props)
 	local v = bridge._create("NSBox")
 	v.boxType = 2  -- NSBoxSeparator = 2
-	return v
+	v.fixed_height = 1
+	v.flex_grow = 1
+	return apply_layout(v, props)
 end
 
-function UI.ProgressView()
+function UI.ProgressView(props)
 	local v = bridge._create("NSProgressIndicator")
 	v.style = 1  -- NSProgressIndicatorStyleSpinning = 1
 	v.displayedWhenStopped = false
-	return v
+	return apply_layout(v, props)
+end
+
+function UI.Layout(view, props)
+	if type(view) ~= "userdata" then
+		error("Layout requires a view userdata")
+	end
+	return apply_layout(view, props)
 end
 
 function UI.ProgressStart(progress)
@@ -224,21 +263,19 @@ end
 
 function UI.ToolbarProgress(window, identifier)
 	local item = UI.ToolbarItem(window, identifier)
-	local image = item.image
+	local restore_view = item.view
 	local progress = UI.ProgressView()
 	bridge._set_content_size(progress, 32, 32)
 
 	return {
 		start = function(self, tooltip)
 			if tooltip then item.toolTip = tooltip end
-			item.image = nil
 			item.view = progress
 			UI.ProgressStart(progress)
 		end,
 		stop = function(self, tooltip)
 			UI.ProgressStop(progress)
-			item.view = nil
-			item.image = image
+			item.view = restore_view
 			item.enabled = true
 			if tooltip then item.toolTip = tooltip end
 		end,

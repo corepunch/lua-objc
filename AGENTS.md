@@ -525,6 +525,17 @@ indentation, not spaces. Set your editor to display tabs at 4 columns wide.
 perl -i -pe '1 while s/^(\t*)    /$1\t/' file
 ```
 
+**Code documentation.** Always explain the *why* behind non-trivial decisions —
+design rationale, edge cases being handled, why a particular approach was chosen
+over alternatives. Comments should tell a future maintainer what problem was
+solved, not restate what the code does. Skip comments for self-explanatory
+mechanics (e.g. calling a well-known AppKit method, standard Lua idioms).
+
+When adding new code, also document what infrastructure already exists:
+capabilities the framework already provides, patterns already in use, and
+prior art within the codebase that shows how similar problems were solved.
+This avoids reinvention and keeps the codebase consistent.
+
 ## Building
 
 Requires:

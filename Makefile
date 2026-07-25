@@ -31,7 +31,10 @@ run-welcome: $(TARGET)
 run-mail: $(TARGET)
 	./$(TARGET) examples/mail.lua
 
+run-layout: $(TARGET)
+	./$(TARGET) examples/layout.lua
+
 clean:
 	rm -f $(TARGET)
 
-.PHONY: all run clean run-hello run-list run-live run-weather run-welcome
+.PHONY: all run clean run-hello run-list run-live run-weather run-welcome run-mail run-layout

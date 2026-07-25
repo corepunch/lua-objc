@@ -16,6 +16,13 @@ static char kPaddingKey;
 static char kAlignmentKey;
 static char kFixedWidthKey;
 static char kFixedHeightKey;
+static char kMinWidthKey;
+static char kMinHeightKey;
+static char kMaxWidthKey;
+static char kMaxHeightKey;
+static char kFlexGrowKey;
+static char kFlexShrinkKey;
+static char kFlexBasisKey;
 static const CGFloat kStackSpacing = 8.0;
 static lua_State *gL = NULL;
 
@@ -43,9 +50,9 @@ typedef struct {
 	if (!text) return;
 	CGFloat height = ceil(text.intrinsicContentSize.height);
 	text.frame = NSMakeRect(
-		6,
+		8,
 		floor((self.bounds.size.height - height) / 2),
-		MAX(0, self.bounds.size.width - 12),
+		MAX(0, self.bounds.size.width - 16),
 		height);
 }
 
@@ -77,8 +84,9 @@ typedef struct {
 		? _tableView.headerView.frame.size.height : 0;
 	CGFloat rowsHeight = _rows.count * _tableView.rowHeight + headerHeight;
 	NSSize viewport = clipView.bounds.size;
-	_tableView.frame = NSMakeRect(
-		0, 0, viewport.width, MAX(viewport.height, rowsHeight));
+	CGRect frame = _tableView.frame;
+	frame.size.height = MAX(viewport.height, rowsHeight);
+	_tableView.frame = frame;
 }
 
 - (NSView *)tableView:(NSTableView *)tableView
@@ -210,12 +218,10 @@ typedef struct {
 			ti.autovalidates = NO;
 			ti.enabled = YES;
 
+			NSImage *img = nil;
 			if (item[@"icon"]) {
-				NSImage *img = [NSImage imageWithSystemSymbolName:item[@"icon"]
+				img = [NSImage imageWithSystemSymbolName:item[@"icon"]
 										accessibilityDescription:ti.label];
-				if (img) {
-					ti.image = img;
-				}
 			}
 
 			NSNumber *refNum = item[@"actionRef"];
@@ -224,6 +230,20 @@ typedef struct {
 					OBJC_ASSOCIATION_RETAIN);
 				ti.target = [LuaButtonTarget shared];
 				ti.action = @selector(onAction:);
+
+				NSButton *btn = [[NSButton alloc] initWithFrame:NSZeroRect];
+				btn.bezelStyle = NSBezelStyleToolbar;
+				btn.image = img;
+				btn.imagePosition = img ? NSImageOnly : NSNoImage;
+				btn.toolTip = ti.toolTip;
+				[btn sizeToFit];
+				btn.target = [LuaButtonTarget shared];
+				btn.action = @selector(onAction:);
+				objc_setAssociatedObject(btn, &kCallbackKey, refNum,
+					OBJC_ASSOCIATION_RETAIN);
+				ti.view = btn;
+			} else if (img) {
+				ti.image = img;
 			}
 
 			return ti;
@@ -347,6 +367,41 @@ static int nsview_index(lua_State *L) {
 		lua_pushnumber(L, h ? h.doubleValue : 0);
 		return 1;
 	}
+	if (strcmp(key, "min_width") == 0) {
+		NSNumber *v = objc_getAssociatedObject(obj, &kMinWidthKey);
+		lua_pushnumber(L, v ? v.doubleValue : 0);
+		return 1;
+	}
+	if (strcmp(key, "min_height") == 0) {
+		NSNumber *v = objc_getAssociatedObject(obj, &kMinHeightKey);
+		lua_pushnumber(L, v ? v.doubleValue : 0);
+		return 1;
+	}
+	if (strcmp(key, "max_width") == 0) {
+		NSNumber *v = objc_getAssociatedObject(obj, &kMaxWidthKey);
+		if (v) lua_pushnumber(L, v.doubleValue); else lua_pushnil(L);
+		return 1;
+	}
+	if (strcmp(key, "max_height") == 0) {
+		NSNumber *v = objc_getAssociatedObject(obj, &kMaxHeightKey);
+		if (v) lua_pushnumber(L, v.doubleValue); else lua_pushnil(L);
+		return 1;
+	}
+	if (strcmp(key, "flex_grow") == 0) {
+		NSNumber *v = objc_getAssociatedObject(obj, &kFlexGrowKey);
+		lua_pushnumber(L, v ? v.doubleValue : 0);
+		return 1;
+	}
+	if (strcmp(key, "flex_shrink") == 0) {
+		NSNumber *v = objc_getAssociatedObject(obj, &kFlexShrinkKey);
+		lua_pushnumber(L, v ? v.doubleValue : 1);
+		return 1;
+	}
+	if (strcmp(key, "flex_basis") == 0) {
+		NSNumber *v = objc_getAssociatedObject(obj, &kFlexBasisKey);
+		if (v) lua_pushnumber(L, v.doubleValue); else lua_pushnil(L);
+		return 1;
+	}
 
 	if (strcmp(key, "set_text") == 0 && [obj isKindOfClass:[NSTextField class]]) {
 		lua_pushcfunction(L, bridge_set_text);
@@ -409,6 +464,56 @@ static int nsview_newindex(lua_State *L) {
 	if (strcmp(key, "fixed_height") == 0) {
 		double val = luaL_checknumber(L, 3);
 		objc_setAssociatedObject(obj, &kFixedHeightKey, @(val), OBJC_ASSOCIATION_RETAIN);
+		return 0;
+	}
+	if (strcmp(key, "min_width") == 0) {
+		double val = luaL_checknumber(L, 3);
+		objc_setAssociatedObject(obj, &kMinWidthKey, @(val), OBJC_ASSOCIATION_RETAIN);
+		return 0;
+	}
+	if (strcmp(key, "min_height") == 0) {
+		double val = luaL_checknumber(L, 3);
+		objc_setAssociatedObject(obj, &kMinHeightKey, @(val), OBJC_ASSOCIATION_RETAIN);
+		return 0;
+	}
+	if (strcmp(key, "max_width") == 0) {
+		if (lua_isnil(L, 3)) {
+			objc_setAssociatedObject(obj, &kMaxWidthKey, nil, OBJC_ASSOCIATION_ASSIGN);
+		} else {
+			double val = luaL_checknumber(L, 3);
+			objc_setAssociatedObject(obj, &kMaxWidthKey, @(val), OBJC_ASSOCIATION_RETAIN);
+		}
+		return 0;
+	}
+	if (strcmp(key, "max_height") == 0) {
+		if (lua_isnil(L, 3)) {
+			objc_setAssociatedObject(obj, &kMaxHeightKey, nil, OBJC_ASSOCIATION_ASSIGN);
+		} else {
+			double val = luaL_checknumber(L, 3);
+			objc_setAssociatedObject(obj, &kMaxHeightKey, @(val), OBJC_ASSOCIATION_RETAIN);
+		}
+		return 0;
+	}
+	if (strcmp(key, "flex_grow") == 0) {
+		double val = luaL_checknumber(L, 3);
+		objc_setAssociatedObject(obj, &kFlexGrowKey, @(MAX(0, val)),
+			OBJC_ASSOCIATION_RETAIN);
+		return 0;
+	}
+	if (strcmp(key, "flex_shrink") == 0) {
+		double val = luaL_checknumber(L, 3);
+		objc_setAssociatedObject(obj, &kFlexShrinkKey, @(MAX(0, val)),
+			OBJC_ASSOCIATION_RETAIN);
+		return 0;
+	}
+	if (strcmp(key, "flex_basis") == 0) {
+		if (lua_isnil(L, 3)) {
+			objc_setAssociatedObject(obj, &kFlexBasisKey, nil, OBJC_ASSOCIATION_ASSIGN);
+		} else {
+			double val = luaL_checknumber(L, 3);
+			objc_setAssociatedObject(obj, &kFlexBasisKey, @(MAX(0, val)),
+				OBJC_ASSOCIATION_RETAIN);
+		}
 		return 0;
 	}
 
@@ -550,6 +655,7 @@ static int bridge_hsplit(lua_State *L) {
 static int bridge_spacer(lua_State *L) {
 	NSView *v = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 10, 10)];
 	objc_setAssociatedObject(v, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(v, &kFlexBasisKey, @0, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, v, "nsview");
 	return 1;
 }
@@ -623,16 +729,6 @@ static BOOL is_flexible(NSView *view) {
 	return [objc_getAssociatedObject(view, &kFlexibleKey) boolValue];
 }
 
-static BOOL is_flexible_width(NSView *view) {
-	return is_flexible(view);
-}
-
-static BOOL is_flexible_height(NSView *view) {
-	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
-	if ([axis isEqualToString:@"hstack"]) return NO;
-	return is_flexible(view);
-}
-
 static CGFloat view_padding(NSView *view) {
 	NSNumber *p = objc_getAssociatedObject(view, &kPaddingKey);
 	return p ? p.doubleValue : 0;
@@ -652,30 +748,228 @@ static CGFloat view_fixed_height(NSView *view) {
 	return h ? h.doubleValue : 0;
 }
 
-static void size_to_fit_if_needed(NSView *view) {
-	if (!is_flexible_width(view) && !is_flexible_height(view) &&
-		[view respondsToSelector:@selector(sizeToFit)]) {
-		[(id)view sizeToFit];
-	}
+static CGFloat view_optional_dimension(NSView *view, const void *key, CGFloat fallback) {
+	NSNumber *value = objc_getAssociatedObject(view, key);
+	return value ? value.doubleValue : fallback;
 }
 
-static CGFloat preferred_height(NSView *view) {
-	CGFloat fixed = view_fixed_height(view);
-	if (fixed > 0) return fixed;
+static CGFloat clamp_dimension(CGFloat value, CGFloat minimum, CGFloat maximum) {
+	value = MAX(value, minimum);
+	if (isfinite(maximum)) value = MIN(value, maximum);
+	return MAX(0, value);
+}
 
+static BOOL default_grows_on_axis(NSView *view, BOOL horizontal) {
+	if (!is_flexible(view)) return NO;
 	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
-	if ([axis isEqualToString:@"hstack"]) {
-		CGFloat maxHeight = 0;
-		for (NSView *child in view.subviews) {
-			size_to_fit_if_needed(child);
-			CGFloat childHeight = preferred_height(child);
-			if (childHeight > maxHeight) maxHeight = childHeight;
-		}
-		return maxHeight + 2 * view_padding(view);
+	if (!horizontal && [axis isEqualToString:@"hstack"]) {
+		return NO;
+	}
+	return YES;
+}
+
+static CGFloat view_flex_grow(NSView *view, BOOL horizontal) {
+	if ((horizontal && view_fixed_width(view) > 0) ||
+		(!horizontal && view_fixed_height(view) > 0)) {
+		return 0;
+	}
+	NSNumber *grow = objc_getAssociatedObject(view, &kFlexGrowKey);
+	if (grow) return MAX(0, grow.doubleValue);
+	return default_grows_on_axis(view, horizontal) ? 1 : 0;
+}
+
+static CGFloat view_flex_shrink(NSView *view, BOOL horizontal) {
+	if ((horizontal && view_fixed_width(view) > 0) ||
+		(!horizontal && view_fixed_height(view) > 0)) {
+		return 0;
+	}
+	NSNumber *shrink = objc_getAssociatedObject(view, &kFlexShrinkKey);
+	if (shrink) return MAX(0, shrink.doubleValue);
+	return is_flexible(view) ? 1 : 0;
+}
+
+typedef NS_ENUM(NSInteger, LuaMeasureMode) {
+	LuaMeasureUndefined,
+	LuaMeasureAtMost,
+	LuaMeasureExactly,
+};
+
+typedef struct {
+	CGFloat width;
+	CGFloat height;
+	LuaMeasureMode widthMode;
+	LuaMeasureMode heightMode;
+} LuaLayoutConstraint;
+
+static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint);
+
+static CGFloat constrained_result(CGFloat natural, CGFloat proposal,
+								  LuaMeasureMode mode) {
+	if (mode == LuaMeasureExactly) return MAX(0, proposal);
+	if (mode == LuaMeasureAtMost) return MIN(MAX(0, natural), MAX(0, proposal));
+	return MAX(0, natural);
+}
+
+static NSSize measure_leaf(NSView *view) {
+	NSSize size = view.frame.size;
+	NSSize intrinsic = view.intrinsicContentSize;
+	if (intrinsic.width != NSViewNoIntrinsicMetric && intrinsic.width >= 0) {
+		size.width = MAX(size.width, intrinsic.width);
+	}
+	if (intrinsic.height != NSViewNoIntrinsicMetric && intrinsic.height >= 0) {
+		size.height = MAX(size.height, intrinsic.height);
 	}
 
-	size_to_fit_if_needed(view);
-	return view.frame.size.height > 0 ? view.frame.size.height : 22;
+	NSSize fitting = view.fittingSize;
+	if (fitting.width > 0) size.width = MAX(size.width, fitting.width);
+	if (fitting.height > 0) size.height = MAX(size.height, fitting.height);
+	if (size.width <= 0) size.width = 1;
+	if (size.height <= 0) size.height = 22;
+	return size;
+}
+
+static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
+	if (!view) return NSZeroSize;
+
+	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
+	CGFloat pad = view_padding(view);
+	CGFloat innerWidth = constraint.widthMode == LuaMeasureUndefined
+		? 0 : MAX(0, constraint.width - 2 * pad);
+	CGFloat innerHeight = constraint.heightMode == LuaMeasureUndefined
+		? 0 : MAX(0, constraint.height - 2 * pad);
+	NSSize natural = NSZeroSize;
+
+	if ([axis isEqualToString:@"vstack"]) {
+		NSUInteger count = view.subviews.count;
+		for (NSView *child in view.subviews) {
+			LuaLayoutConstraint childConstraint = {
+				.width = innerWidth,
+				.height = 0,
+				.widthMode = constraint.widthMode == LuaMeasureUndefined
+					? LuaMeasureUndefined : LuaMeasureAtMost,
+				.heightMode = LuaMeasureUndefined,
+			};
+			NSSize childSize = measure_view(child, childConstraint);
+			natural.width = MAX(natural.width, childSize.width);
+			natural.height += childSize.height;
+		}
+		if (count > 1) natural.height += (count - 1) * kStackSpacing;
+		natural.width += 2 * pad;
+		natural.height += 2 * pad;
+	} else if ([axis isEqualToString:@"hstack"]) {
+		NSUInteger count = view.subviews.count;
+		for (NSView *child in view.subviews) {
+			LuaLayoutConstraint childConstraint = {
+				.width = 0,
+				.height = innerHeight,
+				.widthMode = LuaMeasureUndefined,
+				.heightMode = constraint.heightMode == LuaMeasureUndefined
+					? LuaMeasureUndefined : LuaMeasureAtMost,
+			};
+			NSSize childSize = measure_view(child, childConstraint);
+			natural.width += childSize.width;
+			natural.height = MAX(natural.height, childSize.height);
+		}
+		if (count > 1) natural.width += (count - 1) * kStackSpacing;
+		natural.width += 2 * pad;
+		natural.height += 2 * pad;
+	} else if ([axis isEqualToString:@"hsplit"]) {
+		for (NSView *child in view.subviews) {
+			NSSize childSize = measure_view(child, (LuaLayoutConstraint){
+				.width = 0,
+				.height = innerHeight,
+				.widthMode = LuaMeasureUndefined,
+				.heightMode = constraint.heightMode == LuaMeasureUndefined
+					? LuaMeasureUndefined : LuaMeasureAtMost,
+			});
+			natural.width += childSize.width;
+			natural.height = MAX(natural.height, childSize.height);
+		}
+		CGFloat dividers = view.subviews.count > 1
+			? (view.subviews.count - 1) * [(NSSplitView *)view dividerThickness] : 0;
+		natural.width += dividers + 2 * pad;
+		natural.height += 2 * pad;
+	} else {
+		natural = measure_leaf(view);
+	}
+
+	CGFloat fixedWidth = view_fixed_width(view);
+	CGFloat fixedHeight = view_fixed_height(view);
+	if (fixedWidth > 0) natural.width = fixedWidth;
+	if (fixedHeight > 0) natural.height = fixedHeight;
+
+	natural.width = clamp_dimension(
+		natural.width,
+		view_optional_dimension(view, &kMinWidthKey, 0),
+		view_optional_dimension(view, &kMaxWidthKey, INFINITY));
+	natural.height = clamp_dimension(
+		natural.height,
+		view_optional_dimension(view, &kMinHeightKey, 0),
+		view_optional_dimension(view, &kMaxHeightKey, INFINITY));
+
+	if (fixedWidth <= 0) {
+		natural.width = constrained_result(
+			natural.width, constraint.width, constraint.widthMode);
+	}
+	if (fixedHeight <= 0) {
+		natural.height = constrained_result(
+			natural.height, constraint.height, constraint.heightMode);
+	}
+	return natural;
+}
+
+static void distribute_main_axis(NSArray<NSView *> *children, CGFloat *sizes,
+								 CGFloat available, BOOL horizontal) {
+	NSUInteger count = children.count;
+	if (count == 0) return;
+
+	CGFloat used = 0;
+	for (NSUInteger i = 0; i < count; i++) used += sizes[i];
+	CGFloat freeSpace = available - used;
+	if (fabs(freeSpace) < 0.5) return;
+
+	BOOL growing = freeSpace > 0;
+	BOOL *frozen = calloc(count, sizeof(BOOL));
+	for (NSUInteger pass = 0; pass < count && fabs(freeSpace) >= 0.5; pass++) {
+		CGFloat totalWeight = 0;
+		for (NSUInteger i = 0; i < count; i++) {
+			if (frozen[i]) continue;
+			NSView *child = children[i];
+			CGFloat weight = growing
+				? view_flex_grow(child, horizontal)
+				: view_flex_shrink(child, horizontal) * MAX(1, sizes[i]);
+			totalWeight += weight;
+		}
+		if (totalWeight <= 0) break;
+
+		CGFloat distributed = 0;
+		BOOL hitBound = NO;
+		for (NSUInteger i = 0; i < count; i++) {
+			if (frozen[i]) continue;
+			NSView *child = children[i];
+			CGFloat weight = growing
+				? view_flex_grow(child, horizontal)
+				: view_flex_shrink(child, horizontal) * MAX(1, sizes[i]);
+			if (weight <= 0) continue;
+
+			CGFloat delta = freeSpace * weight / totalWeight;
+			CGFloat minimum = view_optional_dimension(child,
+				horizontal ? &kMinWidthKey : &kMinHeightKey, 0);
+			CGFloat maximum = view_optional_dimension(child,
+				horizontal ? &kMaxWidthKey : &kMaxHeightKey, INFINITY);
+			CGFloat proposed = sizes[i] + delta;
+			CGFloat clamped = clamp_dimension(proposed, minimum, maximum);
+			distributed += clamped - sizes[i];
+			sizes[i] = clamped;
+			if (fabs(clamped - proposed) >= 0.5) {
+				frozen[i] = YES;
+				hitBound = YES;
+			}
+		}
+		freeSpace -= distributed;
+		if (!hitBound) break;
+	}
+	free(frozen);
 }
 
 static void layout_recursive(NSView *view, CGFloat width) {
@@ -698,34 +992,40 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			NSUInteger count = view.subviews.count;
 			if (count == 0) return;
 
-			CGFloat fixedHeight = 0;
-			NSUInteger flexibleCount = 0;
-			for (NSView *sv in view.subviews) {
-				size_to_fit_if_needed(sv);
-				CGFloat fh = view_fixed_height(sv);
-				if (fh > 0) {
-					fixedHeight += fh;
-				} else if (is_flexible_height(sv)) {
-					flexibleCount++;
-				} else {
-					fixedHeight += preferred_height(sv);
-				}
-			}
-
 			CGFloat spacing = count > 1 ? (count - 1) * kStackSpacing : 0;
-			CGFloat flexibleHeight = flexibleCount > 0
-				? MAX(0, (contentH - fixedHeight - spacing) / flexibleCount)
-				: 0;
+			CGFloat *heights = calloc(count, sizeof(CGFloat));
+			NSMutableArray<NSValue *> *measured = [NSMutableArray arrayWithCapacity:count];
+			for (NSUInteger i = 0; i < count; i++) {
+				NSView *child = view.subviews[i];
+				NSSize size = measure_view(child, (LuaLayoutConstraint){
+					.width = contentW,
+					.height = 0,
+					.widthMode = LuaMeasureAtMost,
+					.heightMode = LuaMeasureUndefined,
+				});
+				NSNumber *basis = objc_getAssociatedObject(child, &kFlexBasisKey);
+				heights[i] = clamp_dimension(
+					basis ? basis.doubleValue : size.height,
+					view_optional_dimension(child, &kMinHeightKey, 0),
+					view_optional_dimension(child, &kMaxHeightKey, INFINITY));
+				[measured addObject:[NSValue valueWithSize:size]];
+			}
+			distribute_main_axis(view.subviews, heights,
+				MAX(0, contentH - spacing), NO);
 			CGFloat top = pad + contentH;
 
-			for (NSView *sv in view.subviews) {
-				CGFloat fh = view_fixed_height(sv);
-				CGFloat childH = fh > 0 ? fh
-					: (is_flexible_height(sv) ? flexibleHeight : preferred_height(sv));
+			for (NSUInteger i = 0; i < count; i++) {
+				NSView *sv = view.subviews[i];
+				CGFloat childH = heights[i];
+				NSSize natural = measured[i].sizeValue;
 				CGFloat fw = view_fixed_width(sv);
 				CGFloat childW = fw > 0 ? fw
-					: (is_flexible_width(sv) ? contentW
-						: MIN(sv.frame.size.width, contentW));
+					: (view_flex_grow(sv, YES) > 0 ? contentW
+						: MIN(natural.width, contentW));
+				childW = clamp_dimension(
+					childW,
+					view_optional_dimension(sv, &kMinWidthKey, 0),
+					view_optional_dimension(sv, &kMaxWidthKey, INFINITY));
 				top -= childH;
 				CGFloat childX = pad;
 				if ([alignment isEqualToString:@"center"]) {
@@ -737,50 +1037,56 @@ static void layout_recursive(NSView *view, CGFloat width) {
 				layout_recursive(sv, childW);
 				top -= kStackSpacing;
 			}
+			free(heights);
 		} else if ([axis isEqualToString:@"hstack"]) {
 			NSUInteger count = view.subviews.count;
 			if (count == 0) return;
 
-			CGFloat fixedWidth = 0;
-			NSUInteger flexibleCount = 0;
-			for (NSView *sv in view.subviews) {
-				size_to_fit_if_needed(sv);
-				CGFloat fw = view_fixed_width(sv);
-				if (fw > 0) {
-					fixedWidth += fw;
-				} else if (is_flexible_width(sv)) {
-					flexibleCount++;
-				} else {
-					fixedWidth += sv.frame.size.width > 0
-						? sv.frame.size.width : 40;
-				}
-			}
-
 			CGFloat spacing = count > 1 ? (count - 1) * kStackSpacing : 0;
-			CGFloat flexibleWidth = flexibleCount > 0
-				? MAX(0, (contentW - fixedWidth - spacing) / flexibleCount)
-				: 0;
+			CGFloat *widths = calloc(count, sizeof(CGFloat));
+			NSMutableArray<NSValue *> *measured = [NSMutableArray arrayWithCapacity:count];
+			for (NSUInteger i = 0; i < count; i++) {
+				NSView *child = view.subviews[i];
+				NSSize size = measure_view(child, (LuaLayoutConstraint){
+					.width = 0,
+					.height = contentH,
+					.widthMode = LuaMeasureUndefined,
+					.heightMode = LuaMeasureAtMost,
+				});
+				NSNumber *basis = objc_getAssociatedObject(child, &kFlexBasisKey);
+				widths[i] = clamp_dimension(
+					basis ? basis.doubleValue : size.width,
+					view_optional_dimension(child, &kMinWidthKey, 0),
+					view_optional_dimension(child, &kMaxWidthKey, INFINITY));
+				[measured addObject:[NSValue valueWithSize:size]];
+			}
+			distribute_main_axis(view.subviews, widths,
+				MAX(0, contentW - spacing), YES);
 			CGFloat x = pad;
 
-			for (NSView *sv in view.subviews) {
-				CGFloat fw = view_fixed_width(sv);
-				CGFloat childW = fw > 0 ? fw
-					: (is_flexible_width(sv) ? flexibleWidth
-						: (sv.frame.size.width > 0 ? sv.frame.size.width : 40));
+			for (NSUInteger i = 0; i < count; i++) {
+				NSView *sv = view.subviews[i];
+				CGFloat childW = widths[i];
+				NSSize natural = measured[i].sizeValue;
 				CGFloat fh = view_fixed_height(sv);
 				CGFloat childH = fh > 0 ? fh
-					: (is_flexible_height(sv) ? contentH
-						: MIN(preferred_height(sv), contentH));
+					: (view_flex_grow(sv, NO) > 0 ? contentH
+						: MIN(natural.height, contentH));
+				childH = clamp_dimension(
+					childH,
+					view_optional_dimension(sv, &kMinHeightKey, 0),
+					view_optional_dimension(sv, &kMaxHeightKey, INFINITY));
 				CGFloat childY = pad;
 				if ([alignment isEqualToString:@"center"]) {
 					childY = pad + (contentH - childH) / 2;
-				} else if ([alignment isEqualToString:@"bottom"]) {
+				} else if ([alignment isEqualToString:@"top"]) {
 					childY = pad + contentH - childH;
 				}
 				sv.frame = NSMakeRect(x, childY, childW, childH);
 				layout_recursive(sv, childW);
 				x += childW + kStackSpacing;
 			}
+			free(widths);
 		} else if ([axis isEqualToString:@"hsplit"]) {
 			CGFloat n = (CGFloat)view.subviews.count;
 			if (n == 0) return;
@@ -957,9 +1263,12 @@ static int bridge_tableview(lua_State *L) {
 	int ncols = (int)luaL_len(L, 1);
 
 	NSTableView *tv = [[NSTableView alloc] initWithFrame:NSMakeRect(0, 0, width, height)];
-	tv.columnAutoresizingStyle = NSTableViewNoColumnAutoresizing;
 	tv.headerView = showsHeader ? [[NSTableHeaderView alloc] init] : nil;
 	tv.usesAlternatingRowBackgroundColors = YES;
+	tv.intercellSpacing = NSMakeSize(3, 2);
+	tv.allowsColumnReordering = NO;
+	tv.allowsColumnResizing = YES;
+	tv.columnAutoresizingStyle = NSTableViewNoColumnAutoresizing;
 
 	CGFloat colW = ncols > 0 ? width / ncols : width;
 	NSMutableArray *colSpecs = [NSMutableArray array];
@@ -992,7 +1301,7 @@ static int bridge_tableview(lua_State *L) {
 		} else if (colAlignment && strcmp(colAlignment, "center") == 0) {
 			alignment = NSTextAlignmentCenter;
 		}
-		col.headerCell.alignment = NSTextAlignmentLeft;
+		col.headerCell.alignment = alignment;
 		objc_setAssociatedObject(col, &kColumnAlignmentKey, @(alignment),
 			OBJC_ASSOCIATION_RETAIN);
 		[tv addTableColumn:col];
@@ -1001,7 +1310,7 @@ static int bridge_tableview(lua_State *L) {
 
 		lua_pop(L, 5);
 	}
-	tv.columnAutoresizingStyle = NSTableViewUniformColumnAutoresizingStyle;
+	tv.columnAutoresizingStyle = NSTableViewLastColumnOnlyAutoresizingStyle;
 
 	LuaTableViewSource *src = [[LuaTableViewSource alloc] initWithTableView:tv
 																   columns:colSpecs];

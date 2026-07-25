@@ -24,6 +24,7 @@ ui.Window {
 				{ name = "live.lua",    purpose = "Async updates and toolbars" },
 				{ name = "weather.lua", purpose = "Network data and progress" },
 				{ name = "mail.lua",    purpose = "Split views and sidebars" },
+				{ name = "layout.lua",  purpose = "Measured flexible layout" },
 			}
 		},
 		ui.Toggle { label = "Show this window on launch", is_on = true },
