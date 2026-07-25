@@ -44,6 +44,44 @@ t.assertEqual(s.boxType, 2, "Separator has NSBoxSeparator boxType")
 local sp = ns.Spacer()
 t.expect(sp ~= nil, "Spacer creates successfully")
 
+-- Layout modifiers support SwiftUI-like stack spacing and cross-axis fill
+
+local filled = ns.Text {
+	"Fill",
+	fillWidth = true,
+}
+t.expect(filled.fillWidth, "fillWidth is retained")
+
+local spaced = ns.VStack {
+	spacing = 3,
+	paddingHorizontal = 12,
+	paddingVertical = 7,
+	ns.Text "One",
+	ns.Text "Two",
+}
+t.assertEqual(spaced.spacing, 3, "custom stack spacing is retained")
+t.assertEqual(spaced.paddingHorizontal, 12, "horizontal padding is retained")
+t.assertEqual(spaced.paddingVertical, 7, "vertical padding is retained")
+
+-- ForEach composes data-driven children without adding placeholder views
+
+ok = pcall(function()
+	ns.VStack {
+		ns.ForEach({ "One", "Two" }, function(value)
+			return ns.Text(value)
+		end),
+	}
+end)
+t.expect(ok, "ForEach composes data-driven views")
+
+local compound = ns.Button {
+	title = "Open",
+	subtitle = "A document",
+	systemImage = "folder",
+	style = "plain",
+}
+t.expect(compound ~= nil, "compound native button creates successfully")
+
 -- List: add, remove, clear rows
 
 local list = ns.List {

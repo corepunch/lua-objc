@@ -13,6 +13,9 @@ static char kToolbarDelegateKey;
 static char kColumnAlignmentKey;
 static char kResizeObserverKey;
 static char kPaddingKey;
+static char kPaddingHorizontalKey;
+static char kPaddingVerticalKey;
+static char kSpacingKey;
 static char kAlignmentKey;
 static char kFixedWidthKey;
 static char kFixedHeightKey;
@@ -23,6 +26,8 @@ static char kMaxHeightKey;
 static char kFlexGrowKey;
 static char kFlexShrinkKey;
 static char kFlexBasisKey;
+static char kFillWidthKey;
+static char kFillHeightKey;
 static char kTableSpinnerKey;
 static char kTableRefreshKey;
 static const CGFloat kStackSpacing = 8.0;
@@ -175,6 +180,217 @@ typedef struct {
 		fprintf(stderr, "button error: %s\n", lua_tostring(gL, -1));
 		lua_pop(gL, 1);
 	}
+}
+
+@end
+
+#pragma mark - Compound action button
+
+static NSColor *semantic_color(NSString *name) {
+	if ([name isEqualToString:@"secondary"]) return NSColor.secondaryLabelColor;
+	if ([name isEqualToString:@"tertiary"]) return NSColor.tertiaryLabelColor;
+	if ([name isEqualToString:@"accent"]) return NSColor.controlAccentColor;
+	if ([name isEqualToString:@"white"]) return NSColor.whiteColor;
+	if ([name isEqualToString:@"separator"]) return NSColor.separatorColor;
+	if ([name isEqualToString:@"background"]) return NSColor.windowBackgroundColor;
+	return NSColor.labelColor;
+}
+
+@interface LuaActionButton : NSButton
+@property (nonatomic, strong) NSBox *backgroundView;
+@property (nonatomic, strong) NSImageView *symbolView;
+@property (nonatomic, strong) NSTextField *titleLabel;
+@property (nonatomic, strong) NSTextField *subtitleLabel;
+@property (nonatomic, strong) NSTextField *detailLabel;
+@property (nonatomic, copy) NSString *presentationStyle;
+@property (nonatomic) BOOL hovering;
+@property (nonatomic, strong) NSTrackingArea *hoverTrackingArea;
+@end
+
+@implementation LuaActionButton
+
+- (instancetype)initWithTitle:(NSString *)title
+					 subtitle:(NSString *)subtitle
+					   symbol:(NSString *)symbol
+						detail:(NSString *)detail
+						 style:(NSString *)style
+{
+	self = [super initWithFrame:NSZeroRect];
+	if (!self) return nil;
+
+	_presentationStyle = [style copy] ?: @"plain";
+	self.title = @"";
+	self.bordered = NO;
+	self.focusRingType = NSFocusRingTypeDefault;
+
+	// NSBox resolves dynamic system fill colors in its effective appearance.
+	// Keeping it behind the content avoids caching an NSColor as a stale CGColor
+	// when a window switches between Aqua and Dark Aqua.
+	_backgroundView = [[NSBox alloc] initWithFrame:NSZeroRect];
+	_backgroundView.boxType = NSBoxCustom;
+	_backgroundView.borderWidth = 0;
+	_backgroundView.titlePosition = NSNoTitle;
+	_backgroundView.cornerRadius = 8;
+	_backgroundView.contentViewMargins = NSZeroSize;
+
+	_symbolView = [[NSImageView alloc] initWithFrame:NSZeroRect];
+	if (symbol.length > 0) {
+		NSImageSymbolConfiguration *configuration =
+			[NSImageSymbolConfiguration configurationWithPointSize:
+				[_presentationStyle isEqualToString:@"row"] ? 20 : 17
+														 weight:NSFontWeightMedium];
+		NSImage *image = [NSImage imageWithSystemSymbolName:symbol
+			accessibilityDescription:title];
+		_symbolView.image = [image imageWithSymbolConfiguration:configuration];
+		_symbolView.imageScaling = NSImageScaleProportionallyDown;
+	}
+
+	_titleLabel = [NSTextField labelWithString:title ?: @""];
+	_titleLabel.font = [NSFont systemFontOfSize:13 weight:
+		[_presentationStyle isEqualToString:@"primary"]
+			? NSFontWeightSemibold : NSFontWeightRegular];
+	BOOL wrapsTitle = ![_presentationStyle isEqualToString:@"row"]
+		&& ![_presentationStyle isEqualToString:@"link"];
+	_titleLabel.lineBreakMode = wrapsTitle
+		? NSLineBreakByWordWrapping : NSLineBreakByTruncatingTail;
+	_titleLabel.maximumNumberOfLines = wrapsTitle ? 2 : 1;
+	_titleLabel.cell.wraps = wrapsTitle;
+
+	_subtitleLabel = [NSTextField labelWithString:subtitle ?: @""];
+	_subtitleLabel.font = [NSFont systemFontOfSize:11 weight:NSFontWeightRegular];
+	_subtitleLabel.lineBreakMode = [_presentationStyle isEqualToString:@"row"]
+		? NSLineBreakByTruncatingMiddle : NSLineBreakByTruncatingTail;
+	_subtitleLabel.maximumNumberOfLines = 1;
+
+	_detailLabel = [NSTextField labelWithString:detail ?: @""];
+	_detailLabel.font = [NSFont systemFontOfSize:11 weight:NSFontWeightRegular];
+	_detailLabel.alignment = NSTextAlignmentRight;
+	_detailLabel.lineBreakMode = NSLineBreakByClipping;
+
+	[self addSubview:_backgroundView];
+	[self addSubview:_symbolView];
+	[self addSubview:_titleLabel];
+	[self addSubview:_subtitleLabel];
+	[self addSubview:_detailLabel];
+	self.accessibilityLabel = title;
+	self.accessibilityHelp = subtitle;
+	[self updatePresentation];
+	return self;
+}
+
+- (NSView *)hitTest:(NSPoint)point {
+	return NSPointInRect(point, self.bounds) ? self : nil;
+}
+
+- (NSSize)intrinsicContentSize {
+	CGFloat height = 58;
+	if ([_presentationStyle isEqualToString:@"primary"]) height = 64;
+	if ([_presentationStyle isEqualToString:@"row"]) height = 52;
+	if ([_presentationStyle isEqualToString:@"link"]) height = 40;
+	return NSMakeSize(220, height);
+}
+
+- (void)updateTrackingAreas {
+	[super updateTrackingAreas];
+	if (_hoverTrackingArea) [self removeTrackingArea:_hoverTrackingArea];
+	_hoverTrackingArea = [[NSTrackingArea alloc]
+		initWithRect:self.bounds
+			options:NSTrackingMouseEnteredAndExited | NSTrackingActiveInKeyWindow
+			  owner:self
+		   userInfo:nil];
+	[self addTrackingArea:_hoverTrackingArea];
+}
+
+- (void)mouseEntered:(NSEvent *)event {
+	_hovering = YES;
+	[self updatePresentation];
+}
+
+- (void)mouseExited:(NSEvent *)event {
+	_hovering = NO;
+	[self updatePresentation];
+}
+
+- (void)viewDidChangeEffectiveAppearance {
+	[super viewDidChangeEffectiveAppearance];
+	[self updatePresentation];
+}
+
+- (void)updatePresentation {
+	BOOL primary = [_presentationStyle isEqualToString:@"primary"];
+	BOOL link = [_presentationStyle isEqualToString:@"link"];
+	_backgroundView.cornerRadius = primary || !link ? 8 : 0;
+
+	NSColor *background = NSColor.clearColor;
+	if (primary) {
+		background = _hovering
+			? [NSColor.controlAccentColor colorWithAlphaComponent:0.85]
+			: NSColor.controlAccentColor;
+	} else if (_hovering) {
+		background = [NSColor.labelColor colorWithAlphaComponent:0.07];
+	}
+	_backgroundView.fillColor = background;
+
+	_titleLabel.textColor = primary ? NSColor.whiteColor
+		: (link ? NSColor.controlAccentColor : NSColor.labelColor);
+	_subtitleLabel.textColor = primary
+		? [NSColor.whiteColor colorWithAlphaComponent:0.75]
+		: NSColor.secondaryLabelColor;
+	_detailLabel.textColor = NSColor.tertiaryLabelColor;
+	_symbolView.contentTintColor = primary ? NSColor.whiteColor
+		: ([_presentationStyle isEqualToString:@"row"]
+			? NSColor.secondaryLabelColor : NSColor.controlAccentColor);
+}
+
+- (void)layout {
+	[super layout];
+	CGFloat width = self.bounds.size.width;
+	CGFloat height = self.bounds.size.height;
+	_backgroundView.frame = self.bounds;
+	BOOL link = [_presentationStyle isEqualToString:@"link"];
+	BOOL hasSymbol = _symbolView.image != nil;
+	BOOL hasSubtitle = _subtitleLabel.stringValue.length > 0;
+	BOOL hasDetail = _detailLabel.stringValue.length > 0;
+	CGFloat inset = link ? 20 : ([_presentationStyle isEqualToString:@"row"] ? 14 : 12);
+	CGFloat iconWidth = hasSymbol
+		? ([_presentationStyle isEqualToString:@"row"] ? 28 : 24) : 0;
+	CGFloat iconGap = hasSymbol ? 12 : 0;
+	CGFloat detailWidth = hasDetail ? 72 : 0;
+	CGFloat textX = inset + iconWidth + iconGap;
+	CGFloat textWidth = MAX(0, width - textX - inset - detailWidth
+		- (hasDetail ? 12 : 0));
+	if ([_presentationStyle isEqualToString:@"primary"]
+		|| [_presentationStyle isEqualToString:@"plain"]) {
+		// SwiftUI's trailing Spacer keeps a small minimum even before it grows.
+		// Reserving the same room makes long titles wrap at native welcome-panel
+		// widths instead of crowding the button's trailing edge.
+		textWidth = MAX(0, textWidth - 16);
+	}
+	CGFloat titleHeight = ceil(_titleLabel.intrinsicContentSize.height);
+	BOOL wrapsTitle = ![_presentationStyle isEqualToString:@"row"]
+		&& ![_presentationStyle isEqualToString:@"link"];
+	if (wrapsTitle) {
+		CGFloat naturalTitleWidth = [_titleLabel.stringValue sizeWithAttributes:
+			@{NSFontAttributeName: _titleLabel.font}].width;
+		if (naturalTitleWidth > textWidth) {
+			titleHeight *= 2;
+		}
+	}
+	CGFloat subtitleHeight = hasSubtitle
+		? ceil(_subtitleLabel.intrinsicContentSize.height) : 0;
+	CGFloat textGap = hasSubtitle ? 1 : 0;
+	CGFloat blockHeight = titleHeight + textGap + subtitleHeight;
+	CGFloat blockBottom = floor((height - blockHeight) / 2);
+
+	_symbolView.frame = NSMakeRect(
+		inset, floor((height - iconWidth) / 2), iconWidth, iconWidth);
+	_titleLabel.frame = NSMakeRect(
+		textX, blockBottom, textWidth, titleHeight);
+	_subtitleLabel.frame = NSMakeRect(
+		textX, blockBottom + titleHeight + textGap, textWidth, subtitleHeight);
+	_detailLabel.frame = NSMakeRect(
+		MAX(textX, width - inset - detailWidth),
+		floor((height - 16) / 2), detailWidth, 16);
 }
 
 @end
@@ -358,6 +574,21 @@ static int nsview_index(lua_State *L) {
 		lua_pushnumber(L, p ? p.doubleValue : 0);
 		return 1;
 	}
+	if (strcmp(key, "paddingHorizontal") == 0) {
+		NSNumber *p = objc_getAssociatedObject(obj, &kPaddingHorizontalKey);
+		lua_pushnumber(L, p ? p.doubleValue : 0);
+		return 1;
+	}
+	if (strcmp(key, "paddingVertical") == 0) {
+		NSNumber *p = objc_getAssociatedObject(obj, &kPaddingVerticalKey);
+		lua_pushnumber(L, p ? p.doubleValue : 0);
+		return 1;
+	}
+	if (strcmp(key, "spacing") == 0) {
+		NSNumber *p = objc_getAssociatedObject(obj, &kSpacingKey);
+		lua_pushnumber(L, p ? p.doubleValue : kStackSpacing);
+		return 1;
+	}
 	if (strcmp(key, "alignment") == 0) {
 		NSString *a = objc_getAssociatedObject(obj, &kAlignmentKey);
 		lua_pushstring(L, a ? a.UTF8String : "center");
@@ -406,6 +637,16 @@ static int nsview_index(lua_State *L) {
 	if (strcmp(key, "flexBasis") == 0) {
 		NSNumber *v = objc_getAssociatedObject(obj, &kFlexBasisKey);
 		if (v) lua_pushnumber(L, v.doubleValue); else lua_pushnil(L);
+		return 1;
+	}
+	if (strcmp(key, "fillWidth") == 0) {
+		NSNumber *v = objc_getAssociatedObject(obj, &kFillWidthKey);
+		lua_pushboolean(L, v.boolValue);
+		return 1;
+	}
+	if (strcmp(key, "fillHeight") == 0) {
+		NSNumber *v = objc_getAssociatedObject(obj, &kFillHeightKey);
+		lua_pushboolean(L, v.boolValue);
 		return 1;
 	}
 
@@ -466,6 +707,24 @@ static int nsview_newindex(lua_State *L) {
 	if (strcmp(key, "padding") == 0) {
 		double val = luaL_checknumber(L, 3);
 		objc_setAssociatedObject(obj, &kPaddingKey, @(val), OBJC_ASSOCIATION_RETAIN);
+		return 0;
+	}
+	if (strcmp(key, "paddingHorizontal") == 0) {
+		double val = luaL_checknumber(L, 3);
+		objc_setAssociatedObject(obj, &kPaddingHorizontalKey, @(val),
+			OBJC_ASSOCIATION_RETAIN);
+		return 0;
+	}
+	if (strcmp(key, "paddingVertical") == 0) {
+		double val = luaL_checknumber(L, 3);
+		objc_setAssociatedObject(obj, &kPaddingVerticalKey, @(val),
+			OBJC_ASSOCIATION_RETAIN);
+		return 0;
+	}
+	if (strcmp(key, "spacing") == 0) {
+		double val = luaL_checknumber(L, 3);
+		objc_setAssociatedObject(obj, &kSpacingKey, @(MAX(0, val)),
+			OBJC_ASSOCIATION_RETAIN);
 		return 0;
 	}
 	if (strcmp(key, "alignment") == 0) {
@@ -532,6 +791,16 @@ static int nsview_newindex(lua_State *L) {
 			objc_setAssociatedObject(obj, &kFlexBasisKey, @(MAX(0, val)),
 				OBJC_ASSOCIATION_RETAIN);
 		}
+		return 0;
+	}
+	if (strcmp(key, "fillWidth") == 0) {
+		objc_setAssociatedObject(obj, &kFillWidthKey, @(lua_toboolean(L, 3)),
+			OBJC_ASSOCIATION_RETAIN);
+		return 0;
+	}
+	if (strcmp(key, "fillHeight") == 0) {
+		objc_setAssociatedObject(obj, &kFillHeightKey, @(lua_toboolean(L, 3)),
+			OBJC_ASSOCIATION_RETAIN);
 		return 0;
 	}
 
@@ -709,6 +978,48 @@ static int bridge_image(lua_State *L) {
 	return 1;
 }
 
+static int bridge_system_image(lua_State *L) {
+	const char *symbol = luaL_checkstring(L, 1);
+	const char *description = luaL_optstring(L, 2, symbol);
+	CGFloat pointSize = luaL_optnumber(L, 3, 17);
+	const char *weightName = luaL_optstring(L, 4, "regular");
+	const char *colorName = luaL_optstring(L, 5, "accent");
+
+	NSFontWeight weight = NSFontWeightRegular;
+	if (strcmp(weightName, "semibold") == 0) weight = NSFontWeightSemibold;
+	else if (strcmp(weightName, "medium") == 0) weight = NSFontWeightMedium;
+	else if (strcmp(weightName, "light") == 0) weight = NSFontWeightLight;
+	else if (strcmp(weightName, "bold") == 0) weight = NSFontWeightBold;
+
+	NSString *name = [NSString stringWithUTF8String:symbol];
+	NSString *accessibilityDescription =
+		[NSString stringWithUTF8String:description];
+	NSImage *image = [NSImage imageWithSystemSymbolName:name
+		accessibilityDescription:accessibilityDescription];
+	if (!image) return luaL_error(L, "unknown SF Symbol: %s", symbol);
+
+	NSImageSymbolConfiguration *configuration =
+		[NSImageSymbolConfiguration configurationWithPointSize:pointSize
+													   weight:weight];
+	image = [image imageWithSymbolConfiguration:configuration];
+	NSImageView *view = [[NSImageView alloc]
+		initWithFrame:NSMakeRect(0, 0, pointSize, pointSize)];
+	view.image = image;
+	view.imageScaling = NSImageScaleProportionallyDown;
+	view.contentTintColor = semantic_color(
+		[NSString stringWithUTF8String:colorName]);
+	view.accessibilityLabel = accessibilityDescription;
+	push_objc(L, view, "nsview");
+	return 1;
+}
+
+static int bridge_system_color(lua_State *L) {
+	const char *name = luaL_checkstring(L, 1);
+	NSColor *color = semantic_color([NSString stringWithUTF8String:name]);
+	push_objc(L, color, "nsobject");
+	return 1;
+}
+
 static int bridge_add(lua_State *L) {
 	id parent = check_objc(L, 1);
 	NSView *child = check_view(L, 2);
@@ -747,9 +1058,23 @@ static BOOL is_flexible(NSView *view) {
 	return [objc_getAssociatedObject(view, &kFlexibleKey) boolValue];
 }
 
-static CGFloat view_padding(NSView *view) {
+static CGFloat view_padding_horizontal(NSView *view) {
+	NSNumber *value = objc_getAssociatedObject(view, &kPaddingHorizontalKey);
+	if (value) return value.doubleValue;
 	NSNumber *p = objc_getAssociatedObject(view, &kPaddingKey);
 	return p ? p.doubleValue : 0;
+}
+
+static CGFloat view_padding_vertical(NSView *view) {
+	NSNumber *value = objc_getAssociatedObject(view, &kPaddingVerticalKey);
+	if (value) return value.doubleValue;
+	NSNumber *p = objc_getAssociatedObject(view, &kPaddingKey);
+	return p ? p.doubleValue : 0;
+}
+
+static CGFloat view_spacing(NSView *view) {
+	NSNumber *value = objc_getAssociatedObject(view, &kSpacingKey);
+	return value ? value.doubleValue : kStackSpacing;
 }
 
 static NSString *view_alignment(NSView *view) {
@@ -806,6 +1131,12 @@ static CGFloat view_flex_shrink(NSView *view, BOOL horizontal) {
 	return is_flexible(view) ? 1 : 0;
 }
 
+static BOOL view_fills_cross_axis(NSView *view, BOOL horizontal) {
+	const void *key = horizontal ? &kFillWidthKey : &kFillHeightKey;
+	NSNumber *fill = objc_getAssociatedObject(view, key);
+	return fill ? fill.boolValue : view_flex_grow(view, horizontal) > 0;
+}
+
 typedef NS_ENUM(NSInteger, LuaMeasureMode) {
 	LuaMeasureUndefined,
 	LuaMeasureAtMost,
@@ -850,11 +1181,12 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 	if (!view) return NSZeroSize;
 
 	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
-	CGFloat pad = view_padding(view);
+	CGFloat padX = view_padding_horizontal(view);
+	CGFloat padY = view_padding_vertical(view);
 	CGFloat innerWidth = constraint.widthMode == LuaMeasureUndefined
-		? 0 : MAX(0, constraint.width - 2 * pad);
+		? 0 : MAX(0, constraint.width - 2 * padX);
 	CGFloat innerHeight = constraint.heightMode == LuaMeasureUndefined
-		? 0 : MAX(0, constraint.height - 2 * pad);
+		? 0 : MAX(0, constraint.height - 2 * padY);
 	NSSize natural = NSZeroSize;
 
 	if ([axis isEqualToString:@"vstack"]) {
@@ -871,9 +1203,9 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 			natural.width = MAX(natural.width, childSize.width);
 			natural.height += childSize.height;
 		}
-		if (count > 1) natural.height += (count - 1) * kStackSpacing;
-		natural.width += 2 * pad;
-		natural.height += 2 * pad;
+		if (count > 1) natural.height += (count - 1) * view_spacing(view);
+		natural.width += 2 * padX;
+		natural.height += 2 * padY;
 	} else if ([axis isEqualToString:@"hstack"]) {
 		NSUInteger count = view.subviews.count;
 		for (NSView *child in view.subviews) {
@@ -888,9 +1220,9 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 			natural.width += childSize.width;
 			natural.height = MAX(natural.height, childSize.height);
 		}
-		if (count > 1) natural.width += (count - 1) * kStackSpacing;
-		natural.width += 2 * pad;
-		natural.height += 2 * pad;
+		if (count > 1) natural.width += (count - 1) * view_spacing(view);
+		natural.width += 2 * padX;
+		natural.height += 2 * padY;
 	} else if ([axis isEqualToString:@"hsplit"]) {
 		for (NSView *child in view.subviews) {
 			NSSize childSize = measure_view(child, (LuaLayoutConstraint){
@@ -905,8 +1237,8 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		}
 		CGFloat dividers = view.subviews.count > 1
 			? (view.subviews.count - 1) * [(NSSplitView *)view dividerThickness] : 0;
-		natural.width += dividers + 2 * pad;
-		natural.height += 2 * pad;
+		natural.width += dividers + 2 * padX;
+		natural.height += 2 * padY;
 	} else {
 		natural = measure_leaf(view);
 	}
@@ -1001,16 +1333,18 @@ static void layout_recursive(NSView *view, CGFloat width) {
 	if ([axis isEqualToString:@"vstack"] || [axis isEqualToString:@"hstack"] ||
 		[axis isEqualToString:@"hsplit"]) {
 
-		CGFloat pad = view_padding(view);
-		CGFloat contentW = availableWidth - 2 * pad;
-		CGFloat contentH = availableHeight - 2 * pad;
+		CGFloat padX = view_padding_horizontal(view);
+		CGFloat padY = view_padding_vertical(view);
+		CGFloat stackSpacing = view_spacing(view);
+		CGFloat contentW = availableWidth - 2 * padX;
+		CGFloat contentH = availableHeight - 2 * padY;
 		NSString *alignment = view_alignment(view);
 
 		if ([axis isEqualToString:@"vstack"]) {
 			NSUInteger count = view.subviews.count;
 			if (count == 0) return;
 
-			CGFloat spacing = count > 1 ? (count - 1) * kStackSpacing : 0;
+			CGFloat spacing = count > 1 ? (count - 1) * stackSpacing : 0;
 			CGFloat *heights = calloc(count, sizeof(CGFloat));
 			NSMutableArray<NSValue *> *measured = [NSMutableArray arrayWithCapacity:count];
 			for (NSUInteger i = 0; i < count; i++) {
@@ -1022,15 +1356,16 @@ static void layout_recursive(NSView *view, CGFloat width) {
 					.heightMode = LuaMeasureUndefined,
 				});
 				NSNumber *basis = objc_getAssociatedObject(child, &kFlexBasisKey);
+				CGFloat fixed = view_fixed_height(child);
 				heights[i] = clamp_dimension(
-					basis ? basis.doubleValue : size.height,
+					fixed > 0 ? fixed : (basis ? basis.doubleValue : size.height),
 					view_optional_dimension(child, &kMinHeightKey, 0),
 					view_optional_dimension(child, &kMaxHeightKey, INFINITY));
 				[measured addObject:[NSValue valueWithSize:size]];
 			}
 			distribute_main_axis(view.subviews, heights,
 				MAX(0, contentH - spacing), NO);
-			CGFloat top = pad + contentH;
+			CGFloat top = padY + contentH;
 
 			for (NSUInteger i = 0; i < count; i++) {
 				NSView *sv = view.subviews[i];
@@ -1038,29 +1373,29 @@ static void layout_recursive(NSView *view, CGFloat width) {
 				NSSize natural = measured[i].sizeValue;
 				CGFloat fw = view_fixed_width(sv);
 				CGFloat childW = fw > 0 ? fw
-					: (view_flex_grow(sv, YES) > 0 ? contentW
+					: (view_fills_cross_axis(sv, YES) ? contentW
 						: MIN(natural.width, contentW));
 				childW = clamp_dimension(
 					childW,
 					view_optional_dimension(sv, &kMinWidthKey, 0),
 					view_optional_dimension(sv, &kMaxWidthKey, INFINITY));
 				top -= childH;
-				CGFloat childX = pad;
+				CGFloat childX = padX;
 				if ([alignment isEqualToString:@"center"]) {
-					childX = pad + (contentW - childW) / 2;
+					childX = padX + (contentW - childW) / 2;
 				} else if ([alignment isEqualToString:@"trailing"]) {
-					childX = pad + contentW - childW;
+					childX = padX + contentW - childW;
 				}
 				sv.frame = NSMakeRect(childX, top, childW, childH);
 				layout_recursive(sv, childW);
-				top -= kStackSpacing;
+				top -= stackSpacing;
 			}
 			free(heights);
 		} else if ([axis isEqualToString:@"hstack"]) {
 			NSUInteger count = view.subviews.count;
 			if (count == 0) return;
 
-			CGFloat spacing = count > 1 ? (count - 1) * kStackSpacing : 0;
+			CGFloat spacing = count > 1 ? (count - 1) * stackSpacing : 0;
 			CGFloat *widths = calloc(count, sizeof(CGFloat));
 			NSMutableArray<NSValue *> *measured = [NSMutableArray arrayWithCapacity:count];
 			for (NSUInteger i = 0; i < count; i++) {
@@ -1072,15 +1407,16 @@ static void layout_recursive(NSView *view, CGFloat width) {
 					.heightMode = LuaMeasureAtMost,
 				});
 				NSNumber *basis = objc_getAssociatedObject(child, &kFlexBasisKey);
+				CGFloat fixed = view_fixed_width(child);
 				widths[i] = clamp_dimension(
-					basis ? basis.doubleValue : size.width,
+					fixed > 0 ? fixed : (basis ? basis.doubleValue : size.width),
 					view_optional_dimension(child, &kMinWidthKey, 0),
 					view_optional_dimension(child, &kMaxWidthKey, INFINITY));
 				[measured addObject:[NSValue valueWithSize:size]];
 			}
 			distribute_main_axis(view.subviews, widths,
 				MAX(0, contentW - spacing), YES);
-			CGFloat x = pad;
+			CGFloat x = padX;
 
 			for (NSUInteger i = 0; i < count; i++) {
 				NSView *sv = view.subviews[i];
@@ -1088,21 +1424,21 @@ static void layout_recursive(NSView *view, CGFloat width) {
 				NSSize natural = measured[i].sizeValue;
 				CGFloat fh = view_fixed_height(sv);
 				CGFloat childH = fh > 0 ? fh
-					: (view_flex_grow(sv, NO) > 0 ? contentH
+					: (view_fills_cross_axis(sv, NO) ? contentH
 						: MIN(natural.height, contentH));
 				childH = clamp_dimension(
 					childH,
 					view_optional_dimension(sv, &kMinHeightKey, 0),
 					view_optional_dimension(sv, &kMaxHeightKey, INFINITY));
-				CGFloat childY = pad;
+				CGFloat childY = padY;
 				if ([alignment isEqualToString:@"center"]) {
-					childY = pad + (contentH - childH) / 2;
+					childY = padY + (contentH - childH) / 2;
 				} else if ([alignment isEqualToString:@"top"]) {
-					childY = pad + contentH - childH;
+					childY = padY + contentH - childH;
 				}
 				sv.frame = NSMakeRect(x, childY, childW, childH);
 				layout_recursive(sv, childW);
-				x += childW + kStackSpacing;
+				x += childW + stackSpacing;
 			}
 			free(widths);
 		} else if ([axis isEqualToString:@"hsplit"]) {
@@ -1110,9 +1446,9 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			if (n == 0) return;
 			CGFloat divider = [(NSSplitView *)view dividerThickness];
 			CGFloat childW = (contentW - (n - 1) * divider) / n;
-			CGFloat x = pad;
+			CGFloat x = padX;
 			for (NSView *sv in view.subviews) {
-				sv.frame = NSMakeRect(x, pad, childW, contentH);
+				sv.frame = NSMakeRect(x, padY, childW, contentH);
 				layout_recursive(sv, childW);
 				x += childW + divider;
 			}
@@ -1161,6 +1497,41 @@ static int bridge_set_content_size(lua_State *L) {
 	} else {
 		NSView *v = (NSView *)obj;
 		v.frame = NSMakeRect(v.frame.origin.x, v.frame.origin.y, width, height);
+	}
+	return 0;
+}
+
+static int bridge_set_window_min_size(lua_State *L) {
+	id obj = check_objc(L, 1);
+	if (![obj isKindOfClass:[NSWindow class]]) {
+		return luaL_error(L, "setWindowMinSize requires a window");
+	}
+	CGFloat width = luaL_checknumber(L, 2);
+	CGFloat height = luaL_checknumber(L, 3);
+	((NSWindow *)obj).contentMinSize = NSMakeSize(width, height);
+	return 0;
+}
+
+static int bridge_set_appearance(lua_State *L) {
+	id obj = check_objc(L, 1);
+	const char *name = luaL_checkstring(L, 2);
+
+	if (strcmp(name, "system") == 0) {
+		if ([obj isKindOfClass:[NSWindow class]]) {
+			((NSWindow *)obj).appearance = nil;
+		} else if ([obj isKindOfClass:[NSView class]]) {
+			((NSView *)obj).appearance = nil;
+		}
+		return 0;
+	}
+
+	NSString *appearanceName = strcmp(name, "dark") == 0
+		? NSAppearanceNameDarkAqua : NSAppearanceNameAqua;
+	NSAppearance *appearance = [NSAppearance appearanceNamed:appearanceName];
+	if ([obj isKindOfClass:[NSWindow class]]) {
+		((NSWindow *)obj).appearance = appearance;
+	} else if ([obj isKindOfClass:[NSView class]]) {
+		((NSView *)obj).appearance = appearance;
 	}
 	return 0;
 }
@@ -1214,6 +1585,36 @@ static int bridge_button(lua_State *L) {
 	}
 
 	push_objc(L, btn, "nsview");
+	return 1;
+}
+
+static int bridge_action_button(lua_State *L) {
+	const char *title = luaL_checkstring(L, 1);
+	const char *subtitle = luaL_optstring(L, 2, "");
+	const char *symbol = luaL_optstring(L, 3, "");
+	const char *style = luaL_optstring(L, 4, "plain");
+	const char *detail = luaL_optstring(L, 5, "");
+	BOOL hasAction = !lua_isnoneornil(L, 6);
+	int ref = LUA_NOREF;
+	if (hasAction) {
+		luaL_checktype(L, 6, LUA_TFUNCTION);
+		lua_pushvalue(L, 6);
+		ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	}
+
+	LuaActionButton *button = [[LuaActionButton alloc]
+		initWithTitle:[NSString stringWithUTF8String:title]
+			subtitle:[NSString stringWithUTF8String:subtitle]
+			  symbol:[NSString stringWithUTF8String:symbol]
+			  detail:[NSString stringWithUTF8String:detail]
+			   style:[NSString stringWithUTF8String:style]];
+	if (hasAction) {
+		objc_setAssociatedObject(button, &kCallbackKey, @(ref),
+			OBJC_ASSOCIATION_RETAIN);
+		button.target = [LuaButtonTarget shared];
+		button.action = @selector(onAction:);
+	}
+	push_objc(L, button, "nsview");
 	return 1;
 }
 
@@ -1716,12 +2117,17 @@ static const luaL_Reg bridge_lib[] = {
 	{"_hsplit",           bridge_hsplit},
 	{"_spacer",           bridge_spacer},
 	{"_image",            bridge_image},
+	{"_systemImage",      bridge_system_image},
+	{"_systemColor",      bridge_system_color},
 	{"_add",              bridge_add},
 	{"_layout",           bridge_layout},
 	{"_setContentSize", bridge_set_content_size},
+	{"_setWindowMinSize", bridge_set_window_min_size},
+	{"_setAppearance",    bridge_set_appearance},
 	{"_tableview",        bridge_tableview},
 	{"_toolbar_item",     bridge_toolbar_item},
 	{"_button",           bridge_button},
+	{"_actionButton",     bridge_action_button},
 	{"_toggle",           bridge_toggle},
 	{"_timerAfter",      bridge_timer_after},
 	{"_show",             bridge_show},
@@ -1759,6 +2165,21 @@ int luaopen_bridge(lua_State *L) {
 int main(int argc, char *argv[]) {
 	[NSApplication sharedApplication];
 
+	const char *appearance = NULL;
+	const char *script = NULL;
+
+	for (int i = 1; i < argc; i++) {
+		if (strncmp(argv[i], "--appearance=", 13) == 0) {
+			appearance = argv[i] + 13;
+		} else if (strcmp(argv[i], "--appearance") == 0 && i + 1 < argc) {
+			appearance = argv[++i];
+		} else if (argv[i][0] != '-') {
+			if (!script) script = argv[i];
+		}
+	}
+
+	if (!script) script = "examples/hello.lua";
+
 	lua_State *L = luaL_newstate();
 	gL = L;
 	luaL_openlibs(L);
@@ -1768,6 +2189,11 @@ int main(int argc, char *argv[]) {
 
 	luaL_requiref(L, "bridge", luaopen_bridge, 1);
 	lua_pop(L, 1);
+
+	if (appearance && strcmp(appearance, "system") != 0) {
+		lua_pushstring(L, appearance);
+		lua_setglobal(L, "_LAUNCH_APPEARANCE");
+	}
 
 	char cwd[4096];
 	if (getcwd(cwd, sizeof(cwd))) {
@@ -1781,7 +2207,6 @@ int main(int argc, char *argv[]) {
 		lua_pop(L, 2);
 	}
 
-	const char *script = argc > 1 ? argv[1] : "examples/hello.lua";
 	if (luaL_dofile(L, script) != LUA_OK) {
 		fprintf(stderr, "error: %s\n", lua_tostring(L, -1));
 		lua_close(L);

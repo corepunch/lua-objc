@@ -4,6 +4,9 @@ local AppKit = {}
 
 local layout_properties = {
 	"padding",
+	"paddingHorizontal",
+	"paddingVertical",
+	"spacing",
 	"alignment",
 	"fixedWidth",
 	"fixedHeight",
@@ -14,6 +17,8 @@ local layout_properties = {
 	"flexGrow",
 	"flexShrink",
 	"flexBasis",
+	"fillWidth",
+	"fillHeight",
 }
 
 local function applyLayout(view, props)
@@ -24,6 +29,16 @@ local function applyLayout(view, props)
 		end
 	end
 	return view
+end
+
+local function addChildren(parent, children)
+	for _, child in ipairs(children) do
+		if type(child) == "userdata" then
+			bridge._add(parent, child)
+		elseif type(child) == "table" and child.__appkitGroup then
+			addChildren(parent, child)
+		end
+	end
 end
 
 local function path_join(...)
@@ -63,15 +78,23 @@ function AppKit.Window(props)
 			transparent_titlebar, hide_title)
 	end
 	bridge._setContentSize(win, width, height)
+	if props.minWidth or props.minHeight then
+		bridge._setWindowMinSize(
+			win,
+			props.minWidth or width,
+			props.minHeight or height)
+	end
+	local appearance = props.appearance
+		or os.getenv("LUA_OBJC_APPEARANCE")
+		or _G._LAUNCH_APPEARANCE
+	if appearance == "light" or appearance == "dark" or appearance == "system" then
+		bridge._setAppearance(win, appearance)
+	end
 
 	local content = bridge._vstack()
 	bridge._add(win, content)
 
-	for _, v in ipairs(props) do
-		if type(v) == "userdata" then
-			bridge._add(content, v)
-		end
-	end
+	addChildren(content, props)
 
 	bridge._layout(content, width)
 
@@ -85,11 +108,7 @@ function AppKit.VStack(props)
 	local view = bridge._vstack()
 	if type(props) == "table" then
 		applyLayout(view, props)
-		for _, v in ipairs(props) do
-			if type(v) == "userdata" then
-				bridge._add(view, v)
-			end
-		end
+		addChildren(view, props)
 	end
 	return view
 end
@@ -98,11 +117,7 @@ function AppKit.HStack(props)
 	local view = bridge._hstack()
 	if type(props) == "table" then
 		applyLayout(view, props)
-		for _, v in ipairs(props) do
-			if type(v) == "userdata" then
-				bridge._add(view, v)
-			end
-		end
+		addChildren(view, props)
 	end
 	return view
 end
@@ -111,13 +126,33 @@ function AppKit.HSplit(props)
 	local view = bridge._hsplit()
 	if type(props) == "table" then
 		applyLayout(view, props)
-		for _, v in ipairs(props) do
-			if type(v) == "userdata" then
-				bridge._add(view, v)
-			end
-		end
+		addChildren(view, props)
 	end
 	return view
+end
+
+function AppKit.Group(children)
+	children = children or {}
+	children.__appkitGroup = true
+	return children
+end
+
+function AppKit.ForEach(data, content)
+	if type(data) ~= "table" then
+		error("ForEach requires an array")
+	end
+	if type(content) ~= "function" then
+		error("ForEach requires a content function")
+	end
+	local views = AppKit.Group {}
+	for index, value in ipairs(data) do
+		local result = content(value, index, #data)
+		if type(result) == "userdata"
+			or (type(result) == "table" and result.__appkitGroup) then
+			views[#views + 1] = result
+		end
+	end
+	return views
 end
 
 function AppKit.Text(arg)
@@ -141,6 +176,16 @@ function AppKit.Text(arg)
 
 	if size and size > 0 then
 		v.font = bridge._font(size, weight)
+	end
+	if type(arg) == "table" and arg.color then
+		v.textColor = bridge._systemColor(arg.color)
+	end
+	if type(arg) == "table" and arg.lineLimit then
+		v.maximumNumberOfLines = arg.lineLimit
+	end
+	if type(arg) == "table" and arg.truncation then
+		local modes = { head = 3, tail = 4, middle = 5 }
+		v.lineBreakMode = modes[arg.truncation] or 4
 	end
 
 	bridge._perform(v, "sizeToFit")
@@ -167,6 +212,20 @@ function AppKit.Image(arg)
 		path = tostring(arg)
 	end
 	return applyLayout(bridge._image(resolveImage(path)), props)
+end
+
+function AppKit.SystemImage(arg)
+	if type(arg) ~= "table" then
+		arg = { tostring(arg) }
+	end
+	local name = arg.name or arg[1] or ""
+	local description = arg.accessibilityLabel or arg.label or name
+	local size = arg.size or 17
+	local weight = arg.weight or "regular"
+	local color = arg.color or "accent"
+	return applyLayout(
+		bridge._systemImage(name, description, size, weight, color),
+		arg)
 end
 
 function AppKit.Spacer(props)
@@ -227,13 +286,27 @@ function AppKit.Button(props)
 	local title = type(props) == "table" and (props.title or props[1] or "") or ""
 	local action = type(props) == "table" and props.action or nil
 	local button
-	if action then
+	local compound = type(props) == "table"
+		and (props.subtitle or props.systemImage or props.detail
+			or props.style == "primary" or props.style == "plain"
+			or props.style == "row" or props.style == "link")
+	if compound then
+		button = bridge._actionButton(
+			title,
+			props.subtitle or "",
+			props.systemImage or "",
+			props.style or "plain",
+			props.detail or "",
+			action)
+	elseif action then
 		button = bridge._button(title, action)
 	else
 		button = bridge._button(title)
 	end
 	return applyLayout(button, props)
 end
+
+AppKit.ActionButton = AppKit.Button
 
 function AppKit.Toggle(props)
 	local label = type(props) == "table" and (props.label or props[1] or "") or ""
@@ -253,6 +326,20 @@ function AppKit.Separator(props)
 	v.boxType = 2
 	v.fixedHeight = 1
 	v.flexGrow = 1
+	return applyLayout(v, props)
+end
+
+function AppKit.Divider(props)
+	props = props or {}
+	local v = bridge._create("NSBox")
+	v.boxType = 2
+	if props.orientation == "vertical" then
+		v.fixedWidth = 1
+		v.flexGrow = 1
+	else
+		v.fixedHeight = 1
+		v.flexGrow = 1
+	end
 	return applyLayout(v, props)
 end
 

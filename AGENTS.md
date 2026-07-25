@@ -133,6 +133,129 @@ SwiftUI-like API but with framework-appropriate element names.
 
 4. **`examples/*.lua`** — UI scripts written by the user. No compilation step.
 
+### Declarative components: the escape hatch beyond the eager native tree
+
+The current API is declarative in syntax but eager in execution. `Text`,
+`VStack`, and the other constructors immediately create native objects, and a
+container immediately attaches the already-created child `NSView`s. This is a
+useful small architecture, but it is not the part of SwiftUI that makes view
+structure reactive.
+
+In Swift, `struct Foo: View` does not inherit from a `View` class: a struct
+cannot inherit. It conforms to the `View` protocol and supplies a `body`.
+SwiftUI retains the description produced by `body`, reevaluates it when its
+dependencies change, and reconciles the new description with the mounted native
+view hierarchy. `some View` hides the concrete nested result type, while
+`@ViewBuilder` translates conditionals and other supported control flow into
+that result.
+
+The corresponding first-class composition mechanism in Lua should be an
+ordinary function. It permits normal `if`, `for`, early returns, local values,
+and decomposition without inventing an inheritance system:
+
+```lua
+local function PresenterWindow(props)
+	local request = props.request
+	local session = request and PresentationSession(request)
+
+	if session then
+		return PresenterWindowView { session = session }
+	end
+
+	return InvalidPresenterCleanup()
+end
+
+local function PeopleList(props)
+	local children = {}
+	for _, person in ipairs(props.people) do
+		children[#children + 1] = PersonRow { person = person }
+	end
+	return VStack(children)
+end
+
+Window {
+	PresenterWindow { request = request },
+	PeopleList { people = people },
+}
+```
+
+A Lua table constructor is evaluated at runtime, so a tree written with table
+syntax is not inherently compile-time static. It can already contain expression
+conditions such as `loading and Spinner() or Content()`. Lua cannot, however,
+place statement-form `if` or `for` blocks directly inside a table constructor.
+Component functions are the simple, idiomatic answer. React follows the same
+model: a function uses JavaScript control flow and returns an element
+description; JSX itself is only syntax for that description.
+
+The eager renderer already provides `ForEach` and `Group` for data-driven
+initial composition:
+
+```lua
+ns.VStack {
+	ns.ForEach(people, function(person)
+		return PersonRow { person = person }
+	end),
+}
+```
+
+`ns.ForEach` eagerly invokes its content function once per array item.
+`ns.Group` returns flattenable siblings when one item needs to produce several
+views. This removes repeated view declarations during initial construction, but
+it does not provide identity, diffing, or reactive reevaluation. A future `If`
+must receive lazy callbacks or Lua will eagerly build both branches.
+
+#### Know when the eager model has reached its limit
+
+For initial construction, reusable component functions returning native
+userdata are sufficient. Prefer them over adding a nominal `View` base class or
+metatable solely for organization: Lua does not need Swift's static protocol
+machinery.
+
+The crucial limitation is that such a function currently runs once. If its
+input or state changes later, the framework does not reevaluate the function.
+Callbacks must mutate native controls manually, and state-dependent structural
+changes require ad hoc removal and rebuilding. A `View { body = ... }` wrapper
+that merely invokes `body` once does not solve this limitation; it is only a
+more elaborate spelling of a function.
+
+When implementing SwiftUI behavior, treat any of the following as evidence that
+the eager native-tree architecture may have hit the wall this section predicts:
+
+- view structure must change when state, bindings, or environment values change;
+- the same component must preserve local state while its body is reevaluated;
+- conditional branches or collections must insert, remove, move, or reuse
+  native controls without bespoke imperative code for that one feature;
+- modifiers, animation transactions, lifecycle, environment, preferences, or
+  navigation need to propagate through a logical component hierarchy;
+- implementing the feature would require every application callback to know and
+  manually synchronize the underlying AppKit subtree.
+
+At that point, do not keep extending the design with feature-specific mutation
+hooks merely to avoid an architectural change. Reconsider the representation:
+component functions should return lightweight, unevaluated descriptions rather
+than mounted `NSView`s, and a renderer should own evaluation and reconciliation.
+The intended progression is:
+
+1. Use ordinary Lua functions for reusable components and unrestricted initial
+   `if`/`for` construction.
+2. Evolve eager `ForEach`/`Group` into lazy keyed descriptions, and add lazy
+   `If`, when inline tree composition needs reactive identity.
+3. Separate logical view descriptions from mounted native AppKit objects.
+4. Add observable state/bindings and dependency invalidation so the appropriate
+   component function is reevaluated.
+5. Add stable identity and keyed reconciliation so native widgets and component
+   state survive updates where their logical identity is unchanged.
+6. Layer environment, lifecycle, preferences, navigation, transactions, and
+   animation on that retained logical graph.
+
+This is not a mandate to build a virtual tree for every small missing control.
+A new leaf widget with stable structure should still use the existing direct
+AppKit bridge. It is a decision rule for preserving the project's 100% SwiftUI
+coverage goal: when SwiftUI semantics require reevaluating structure, the
+framework must evolve toward function components plus a retained description
+and reconciliation engine instead of declaring the behavior impossible under
+the current eager tree.
+
 ## Bridge (C ↔ ObjC)
 
 Each ObjC object is wrapped in a Lua full userdata with a metatable (`nsview` or
@@ -246,6 +369,32 @@ ns.VStack {
     }
 }
 ```
+
+### `ForEach(data, content)` / `Group{...}`
+
+Use `ForEach` whenever sibling views share the same structure and differ only
+by data. The content function receives `(item, index, count)` and returns a
+native view or a `Group` of sibling views. Containers flatten the result without
+inserting an extra placeholder `NSView`.
+
+```lua
+local actions = {
+	{ title = "New", icon = "plus" },
+	{ title = "Open", icon = "folder" },
+}
+
+ns.VStack {
+	ns.ForEach(actions, function(item)
+		return ns.Button {
+			title = item.title,
+			systemImage = item.icon,
+		}
+	end),
+}
+```
+
+`ForEach` is currently eager: it constructs native views once and does not
+diff, reuse, or reevaluate them when the source table changes.
 
 ### `HSplit{...}`
 
@@ -556,6 +705,14 @@ ns.Window { title = "Live Data", width = 600, height = 400, tv }
 use camelCase to match SwiftUI conventions: `addRow`, `clearRows`,
 `fixedWidth`, `flexGrow`, `transparentTitlebar`. No snake_case anywhere —
 this keeps the API familiar to Swift developers and predictable for AI agents.
+
+**Data-driven repeated views.** Never duplicate sibling view declarations whose
+structure is the same and whose content or styling varies only by values. Put
+those values in an array and render them with `ns.ForEach`; extract the repeated
+view into a component function when it improves clarity. Use `ns.Group` when
+one data item must emit multiple siblings, such as a row plus a conditional
+divider. Direct duplication is acceptable only when the views have genuinely
+different structure or behavior that a shared component would obscure.
 
 **Tab indentation.** All source files (`.m`, `.lua`) use tabs for leading
 indentation, not spaces. Set your editor to display tabs at 4 columns wide.
