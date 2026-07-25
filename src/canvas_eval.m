@@ -14,6 +14,36 @@ int luaopen_bridge(lua_State *L);  /* defined later in main.m */
 
 #pragma mark - eval & canvas
 
+/* Lua registry refs stored on a bridged ObjC object via associated objects
+ * point at the canvas state's registry.  Those refs are invalid in the main
+ * state, and the canvas state may be closed at any time.  Strip them
+ * recursively before the view crosses the state boundary so stale lookups
+ * produce nil instead of crashing or calling the wrong function. */
+static void clear_canvas_lua_refs(NSView *view) {
+	if (!view) return;
+
+	/* Keys that store Lua registry refs (NSNumber wrapping an int ref).
+	 * Do NOT touch keys that store pure ObjC objects such as layout metadata
+	 * (kAxisKey, kFlexibleKey, etc.) or table data sources. */
+	static const void * const luaRefKeys[] = {
+		&kKeys[kCallbackKey],
+		&kKeys[kTableRefreshKey],
+		&kKeys[kTableSelectionKey],
+		&kKeys[kTextChangeKey],
+	};
+	static const int luaRefKeyCount =
+		(int)(sizeof(luaRefKeys) / sizeof(luaRefKeys[0]));
+
+	for (int i = 0; i < luaRefKeyCount; i++) {
+		objc_setAssociatedObject(view, luaRefKeys[i], nil,
+			OBJC_ASSOCIATION_RETAIN);
+	}
+
+	for (NSView *sub in view.subviews) {
+		clear_canvas_lua_refs(sub);
+	}
+}
+
 NSTextView *text_view_from_scroll_view(NSView *obj) {
 	if (![obj isKindOfClass:[NSScrollView class]]) return nil;
 	NSTextView *tv = (NSTextView *)((NSScrollView *)obj).documentView;
@@ -122,6 +152,9 @@ static int bridge_eval(lua_State *L) {
 		if (ref) resultObj = (__bridge id)ref->ptr;
 
 		if (resultObj) {
+			if ([resultObj isKindOfClass:[NSView class]]) {
+				clear_canvas_lua_refs((NSView *)resultObj);
+			}
 			push_objc(L, resultObj, "nsview");
 		} else {
 			lua_pushnil(L);

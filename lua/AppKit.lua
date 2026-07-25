@@ -327,6 +327,35 @@ function AppKit.List(props)
 	return applyLayout(tv, props)
 end
 
+function AppKit.readDirectory(path, depth)
+	return bridge._listDirectory(path, depth or 0)
+end
+
+function AppKit.OutlineView(props)
+	local columns = props.columns
+	if not columns or type(columns) ~= "table" then
+		error("OutlineView requires a 'columns' property (array of {id, title})")
+	end
+
+	local width = props.width or 400
+	local height = props.height or 200
+
+	local tv = bridge._outlineview(columns, width, height, {
+		header = props.header ~= false,
+		bordered = props.bordered == true,
+	})
+
+	if props.data and type(props.data) == "table" then
+		for _, item in ipairs(props.data) do
+			if type(item) == "table" then
+				tv:addRow(item)
+			end
+		end
+	end
+
+	return applyLayout(tv, props)
+end
+
 function AppKit.ToolbarItem(window, identifier)
 	local item = bridge._toolbar_item(window, identifier)
 	if not item then

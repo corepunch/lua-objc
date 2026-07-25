@@ -60,6 +60,8 @@ local list = ns.List {
 	end,
 }
 
+list:refresh()
+
 return ns.Window {
 	title = "World Weather",
 	width = 680,
@@ -77,5 +79,3 @@ return ns.Window {
 	},
 	list,
 }
-
-list:refresh()

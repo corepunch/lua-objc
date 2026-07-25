@@ -150,9 +150,7 @@ static void report_lua_error(lua_State *L, const char *context) {
 
 @end
 
-@implementation LuaTableViewSource {
-	BOOL _isRedistributing;
-}
+@implementation LuaTableViewSource
 
 - (instancetype)initWithTableView:(NSTableView *)tv columns:(NSArray *)cols {
 	self = [super init];
@@ -162,17 +160,8 @@ static void report_lua_error(lua_State *L, const char *context) {
 		_rows = [NSMutableArray array];
 		tv.dataSource = self;
 		tv.delegate = self;
-		[[NSNotificationCenter defaultCenter]
-			addObserver:self
-			   selector:@selector(tableViewColumnDidResize:)
-				   name:NSTableViewColumnDidResizeNotification
-				 object:tv];
 	}
 	return self;
-}
-
-- (void)dealloc {
-	[[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView {
@@ -296,46 +285,185 @@ static void report_lua_error(lua_State *L, const char *context) {
 	}
 }
 
-- (void)tableViewColumnDidResize:(NSNotification *)notification {
-	if (_isRedistributing) return;
-	_isRedistributing = YES;
+@end
 
-	NSTableView *tv = _tableView;
-	CGFloat available = tv.bounds.size.width;
-	NSTableColumn *resizedCol =
-		notification.userInfo[@"NSTableColumn"];
+#pragma mark - LuaOutlineViewSource
 
-	NSMutableArray *others = [NSMutableArray array];
-	CGFloat othersTotal = 0;
-	for (NSTableColumn *col in tv.tableColumns) {
-		if (col != resizedCol) {
-			[others addObject:col];
-			othersTotal += col.width;
-		}
+/* NSOutlineView data source that mirrors a Lua-side tree of name/path/children
+ * tables. Each row is an NSMutableDictionary with optional @"children" array.
+ * Supports single-column display with systemImage (folder vs file icons). */
+@interface LuaOutlineViewSource : NSObject <NSOutlineViewDataSource,
+	NSOutlineViewDelegate> {
+	NSMutableArray *_rootRows;      /* top-level items */
+	NSOutlineView *_outlineView;
+	NSArray     *_columns;
+}
+- (instancetype)initWithOutlineView:(NSOutlineView *)ov columns:(NSArray *)cols;
+- (void)addRootItem:(NSDictionary *)item;
+- (void)addChildItem:(NSDictionary *)item parent:(NSDictionary *)parent;
+- (void)clearAll;
+- (NSInteger)rowCount;
+- (void)updateTableFrame;
+@end
+
+@implementation LuaOutlineViewSource
+
+- (instancetype)initWithOutlineView:(NSOutlineView *)ov columns:(NSArray *)cols {
+	self = [super init];
+	if (self) {
+		_outlineView = ov;
+		_columns = [cols copy];
+		_rootRows = [NSMutableArray array];
+		ov.dataSource = self;
+		ov.delegate = self;
+	}
+	return self;
+}
+
+- (void)dealloc {
+	_outlineView.dataSource = nil;
+	_outlineView.delegate = nil;
+}
+
+- (void)updateTableFrame {
+	NSClipView *clipView = (NSClipView *)_outlineView.superview;
+	if (![clipView isKindOfClass:[NSClipView class]]) return;
+
+	CGFloat headerHeight = _outlineView.headerView
+		? _outlineView.headerView.frame.size.height : 0;
+	CGFloat rowsHeight = _outlineView.numberOfRows * _outlineView.rowHeight
+		+ headerHeight;
+	NSSize viewport = clipView.bounds.size;
+	CGRect frame = _outlineView.frame;
+	frame.size.width = viewport.width;
+	frame.size.height = MAX(viewport.height, rowsHeight);
+	_outlineView.frame = frame;
+}
+
+- (void)addRootItem:(NSDictionary *)item {
+	[_rootRows addObject:[item mutableCopy]];
+	[_outlineView reloadData];
+	[self updateTableFrame];
+}
+
+- (void)addChildItem:(NSDictionary *)item parent:(NSMutableDictionary *)parent {
+	NSMutableArray *children = parent[@"children"];
+	if (!children) {
+		children = [NSMutableArray array];
+		parent[@"children"] = children;
+	}
+	[children addObject:[item mutableCopy]];
+	[_outlineView reloadData];
+	[self updateTableFrame];
+}
+
+- (void)clearAll {
+	[_rootRows removeAllObjects];
+	[_outlineView reloadData];
+}
+
+- (NSInteger)rowCount {
+	return _outlineView.numberOfRows;
+}
+
+- (NSInteger)outlineView:(NSOutlineView *)ov numberOfChildrenOfItem:(id)item {
+	if (!item) return (NSInteger)_rootRows.count;
+	return [(NSArray *)((NSDictionary *)item)[@"children"] count];
+}
+
+- (id)outlineView:(NSOutlineView *)ov child:(NSInteger)idx ofItem:(id)item {
+	if (!item) return _rootRows[idx];
+	return ((NSDictionary *)item)[@"children"][idx];
+}
+
+- (BOOL)outlineView:(NSOutlineView *)ov isItemExpandable:(id)item {
+	return ((NSDictionary *)item)[@"children"] != nil;
+}
+
+/* Single-column cells: use NSTextField in an NSTableCellView, matching the
+ * NSTableView pattern. */
+- (NSView *)outlineView:(NSOutlineView *)ov
+	viewForTableColumn:(NSTableColumn *)column
+				  item:(id)item
+{
+	NSDictionary *rowData = (NSDictionary *)item;
+	NSString *colId = column.identifier;
+	id value = rowData[colId];
+	NSString *text = value ? [value description] : @"";
+
+	NSString *reuseId = [@"outline-cell-" stringByAppendingString:colId];
+	NSTableCellView *cell = [ov makeViewWithIdentifier:reuseId owner:self];
+	if (!cell) {
+		cell = [[NSTableCellView alloc]
+			initWithFrame:NSMakeRect(0, 0, column.width, ov.rowHeight)];
+		cell.identifier = reuseId;
+
+		NSTextField *tf = [NSTextField labelWithString:@""];
+		tf.bezeled = NO;
+		tf.drawsBackground = NO;
+		tf.editable = NO;
+		tf.selectable = NO;
+		tf.lineBreakMode = NSLineBreakByTruncatingTail;
+		[cell addSubview:tf];
+		cell.textField = tf;
+	}
+	cell.textField.stringValue = text;
+
+	NSString *symbolName =
+		objc_getAssociatedObject(column, &kKeys[kColumnSystemImageKey]);
+	if (symbolName.length > 0) {
+		NSString *iconName = rowData[@"children"] != nil
+			? @"folder" : symbolName;
+		NSImage *image = [NSImage imageWithSystemSymbolName:iconName
+			accessibilityDescription:text];
+		NSImageSymbolConfiguration *config =
+			[NSImageSymbolConfiguration configurationWithPointSize:13
+														 weight:NSFontWeightRegular];
+		cell.imageView.image = [image imageWithSymbolConfiguration:config];
+	} else {
+		cell.imageView.image = nil;
 	}
 
-	if (others.count == 0) {
-		if (resizedCol) {
-			resizedCol.width = MAX(resizedCol.minWidth, available);
-		}
-		_isRedistributing = NO;
-		return;
-	}
+	NSNumber *alignment = objc_getAssociatedObject(column,
+		&kKeys[kColumnAlignmentKey]);
+	cell.textField.alignment = alignment
+		? (NSTextAlignment)alignment.integerValue : NSTextAlignmentLeft;
+	[cell setNeedsLayout:YES];
+	return cell;
+}
 
-	CGFloat spaceForOthers = available - (resizedCol ? resizedCol.width : 0);
-	if (spaceForOthers <= 0) {
-		_isRedistributing = NO;
-		return;
-	}
+- (void)outlineViewSelectionDidChange:(NSNotification *)notification {
+	NSInteger row = _outlineView.selectedRow;
+	if (row < 0) return;
 
-	for (NSTableColumn *col in others) {
-		CGFloat share = othersTotal > 0
-			? spaceForOthers * (col.width / othersTotal)
-			: spaceForOthers / others.count;
-		col.width = MAX(col.minWidth, share);
-	}
+	NSScrollView *sv = _outlineView.enclosingScrollView;
+	if (!sv || !gL) return;
 
-	_isRedistributing = NO;
+	NSNumber *refNum = objc_getAssociatedObject(sv,
+		&kKeys[kTableSelectionKey]);
+	if (!refNum) return;
+
+	id item = [_outlineView itemAtRow:row];
+	if (!item) return;
+	NSDictionary *rowData = (NSDictionary *)item;
+
+	lua_rawgeti(gL, LUA_REGISTRYINDEX, refNum.intValue);
+	push_objc(gL, sv, "nsview");
+	lua_pushinteger(gL, (lua_Integer)row);
+	lua_newtable(gL);
+	for (NSString *key in rowData) {
+		if ([key isEqualToString:@"children"]) continue;
+		id val = rowData[key];
+		const char *str = val && ![val isEqual:[NSNull null]]
+			? [[val description] UTF8String] : NULL;
+		lua_pushstring(gL, str ?: "");
+		lua_setfield(gL, -2, [key UTF8String]);
+	}
+	int status = lua_pcall(gL, 3, 0, 0);
+	if (status != LUA_OK) {
+		report_lua_error(gL, "outline selection");
+		lua_pop(gL, 1);
+	}
 }
 
 @end
@@ -679,6 +807,8 @@ static int bridge_text_view_set_wrap_mode(lua_State *L);
 static int bridge_symbol_toggle(lua_State *L);
 static int bridge_eval(lua_State *L);
 static int bridge_clear_container(lua_State *L);
+static int bridge_outlineview(lua_State *L);
+static int bridge_list_directory(lua_State *L);
 static void layout_recursive(NSView *view, CGFloat width);
 
 static void push_objc(lua_State *L, id obj, const char *meta) {
@@ -885,7 +1015,13 @@ static int nsview_index(lua_State *L) {
 			return 1;
 		}
 		if (strcmp(key, "rowCount") == 0) {
-			lua_pushinteger(L, (lua_Integer)((LuaTableViewSource *)src).rows.count);
+			if ([src isKindOfClass:[LuaOutlineViewSource class]]) {
+				lua_pushinteger(L,
+					(lua_Integer)[(LuaOutlineViewSource *)src rowCount]);
+			} else {
+				lua_pushinteger(L,
+					(lua_Integer)((LuaTableViewSource *)src).rows.count);
+			}
 			return 1;
 		}
 		if (strcmp(key, "showLoading") == 0) {
@@ -1911,21 +2047,63 @@ static int bridge_toggle(lua_State *L) {
 
 #pragma mark - Timer & spinner
 
+static id lua_to_objc_recursive(lua_State *L, int idx);
+
 static NSMutableDictionary *lua_table_to_dict(lua_State *L, int idx) {
-	NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+	return (NSMutableDictionary *)lua_to_objc_recursive(L, idx);
+}
+
+/* Convert a Lua table (string or integer keys) to an ObjC collection.
+ * String-keyed subtables become NSMutableDictionary, array-indexed ones
+ * become NSMutableArray.  Leaf values become NSString.  This preserves
+ * the tree structure needed by LuaOutlineViewSource. */
+static id lua_to_objc_recursive(lua_State *L, int idx) {
+	lua_pushvalue(L, idx);
 	lua_pushnil(L);
-	while (lua_next(L, idx) != 0) {
-		if (lua_type(L, -2) == LUA_TSTRING) {
-			const char *key = lua_tostring(L, -2);
-			const char *val = lua_tostring(L, -1);
-			if (key) {
-				dict[[NSString stringWithUTF8String:key]] =
-					[NSString stringWithUTF8String:val ?: ""];
+	int firstKeyType = lua_next(L, -2) != 0 ? lua_type(L, -2) : LUA_TNIL;
+	if (firstKeyType != LUA_TNIL) lua_pop(L, 2);  /* pop key+value */
+	lua_pop(L, 1);  /* pop pushed copy */
+
+	if (firstKeyType == LUA_TNIL) {
+		/* Empty table — return empty dict */
+		return [NSMutableDictionary dictionary];
+	}
+
+	if (firstKeyType == LUA_TNUMBER || firstKeyType == LUA_TSTRING) {
+		BOOL isArray = (firstKeyType == LUA_TNUMBER);
+		id result = isArray ? (id)[NSMutableArray array]
+			: (id)[NSMutableDictionary dictionary];
+
+		lua_pushvalue(L, idx);
+		lua_pushnil(L);
+		while (lua_next(L, -2) != 0) {
+			id value = nil;
+			if (lua_type(L, -1) == LUA_TTABLE) {
+				value = lua_to_objc_recursive(L, lua_gettop(L));
+			} else {
+				const char *str = lua_tostring(L, -1);
+				value = str ? [NSString stringWithUTF8String:str] : @"";
 			}
+
+			if (isArray) {
+				[(NSMutableArray *)result addObject:value];
+			} else {
+				const char *key = lua_tostring(L, -2);
+				if (key) {
+					[(NSMutableDictionary *)result
+						setObject:value
+						forKey:[NSString stringWithUTF8String:key]];
+				}
+			}
+			lua_pop(L, 1);
 		}
 		lua_pop(L, 1);
+
+		return result;
 	}
-	return dict;
+
+	/* Not a table — shouldn't happen */
+	return [NSMutableDictionary dictionary];
 }
 
 static int bridge_tableview(lua_State *L) {
@@ -2014,7 +2192,7 @@ static int bridge_tableview(lua_State *L) {
 
 		lua_pop(L, 6);
 	}
-	tv.columnAutoresizingStyle = NSTableViewUniformColumnAutoresizingStyle;
+	tv.columnAutoresizingStyle = NSTableViewLastColumnOnlyAutoresizingStyle;
 
 	LuaTableViewSource *src = [[LuaTableViewSource alloc] initWithTableView:tv
 																   columns:colSpecs];
@@ -2053,12 +2231,16 @@ static int bridge_toolbar_item(lua_State *L) {
 
 static int bridge_tableview_add(lua_State *L) {
 	id obj = check_objc(L, 1);
-	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
-	if (!src) return luaL_error(L, "not a table view");
+	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
+	if (!src) return luaL_error(L, "not a table or outline view");
 
 	luaL_checktype(L, 2, LUA_TTABLE);
 	NSMutableDictionary *row = lua_table_to_dict(L, 2);
-	[src addRow:row];
+	if ([src isKindOfClass:[LuaOutlineViewSource class]]) {
+		[(LuaOutlineViewSource *)src addRootItem:row];
+	} else {
+		[(LuaTableViewSource *)src addRow:row];
+	}
 	return 0;
 }
 
@@ -2074,10 +2256,14 @@ static int bridge_tableview_remove(lua_State *L) {
 
 static int bridge_tableview_clear(lua_State *L) {
 	id obj = check_objc(L, 1);
-	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
-	if (!src) return luaL_error(L, "not a table view");
+	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
+	if (!src) return luaL_error(L, "not a table or outline view");
 
-	[src clearRows];
+	if ([src isKindOfClass:[LuaOutlineViewSource class]]) {
+		[(LuaOutlineViewSource *)src clearAll];
+	} else {
+		[(LuaTableViewSource *)src clearRows];
+	}
 	return 0;
 }
 
@@ -2185,6 +2371,155 @@ static int bridge_table_set_selection(lua_State *L) {
 	objc_setAssociatedObject(obj, &kKeys[kTableSelectionKey], @(ref),
 		OBJC_ASSOCIATION_RETAIN);
 	return 0;
+}
+
+#pragma mark - Outline View
+
+static int bridge_outlineview(lua_State *L) {
+	BOOL bordered = NO;
+	BOOL header = YES;
+
+	luaL_checktype(L, 1, LUA_TTABLE);
+	CGFloat width = luaL_checknumber(L, 2);
+	CGFloat height = luaL_checknumber(L, 3);
+	if (lua_gettop(L) >= 4 && lua_istable(L, 4)) {
+		lua_getfield(L, 4, "header");
+		header = lua_isnil(L, -1) ? YES : lua_toboolean(L, -1);
+		lua_pop(L, 1);
+		lua_getfield(L, 4, "bordered");
+		bordered = lua_toboolean(L, -1);
+		lua_pop(L, 1);
+	}
+
+	NSOutlineView *ov = [[NSOutlineView alloc]
+		initWithFrame:NSMakeRect(0, 0, width, height)];
+	ov.headerView = header ? [[NSTableHeaderView alloc] init] : nil;
+	ov.usesAlternatingRowBackgroundColors = YES;
+	ov.rowHeight = 24;
+	ov.intercellSpacing = NSMakeSize(3, 2);
+	ov.allowsColumnReordering = NO;
+	ov.allowsColumnResizing = YES;
+	ov.indentationPerLevel = 16;
+	ov.indentationMarkerFollowsCell = YES;
+	ov.columnAutoresizingStyle = NSTableViewLastColumnOnlyAutoresizingStyle;
+
+	int ncols = (int)luaL_len(L, 1);
+	CGFloat colW = ncols > 0 ? width / ncols : width;
+	NSMutableArray *colSpecs = [NSMutableArray array];
+
+	for (int i = 1; i <= ncols; i++) {
+		lua_rawgeti(L, 1, i);
+		lua_getfield(L, -1, "id");
+		lua_getfield(L, -2, "title");
+		lua_getfield(L, -3, "alignment");
+		lua_getfield(L, -4, "width");
+		lua_getfield(L, -5, "systemImage");
+		const char *colId = lua_tostring(L, -5);
+		const char *colTitle = lua_tostring(L, -4);
+		const char *colAlignment = lua_tostring(L, -3);
+		CGFloat requestedWidth = lua_isnumber(L, -2)
+			? lua_tonumber(L, -2) : colW;
+		const char *systemImage = lua_tostring(L, -1);
+
+		if (!colId) { lua_pop(L, 6); continue; }
+
+		NSString *nsId = [NSString stringWithUTF8String:colId];
+		NSTableColumn *col = [[NSTableColumn alloc] initWithIdentifier:nsId];
+		col.title = [NSString stringWithUTF8String:colTitle ?: colId];
+		col.width = requestedWidth;
+		col.minWidth = 40;
+		NSTextAlignment alignment = NSTextAlignmentLeft;
+		if (colAlignment && strcmp(colAlignment, "trailing") == 0)
+			alignment = NSTextAlignmentRight;
+		else if (colAlignment && strcmp(colAlignment, "center") == 0)
+			alignment = NSTextAlignmentCenter;
+		col.headerCell.alignment = alignment;
+		objc_setAssociatedObject(col, &kKeys[kColumnAlignmentKey],
+			@(alignment), OBJC_ASSOCIATION_RETAIN);
+		if (systemImage) {
+			objc_setAssociatedObject(col, &kKeys[kColumnSystemImageKey],
+				[NSString stringWithUTF8String:systemImage],
+				OBJC_ASSOCIATION_RETAIN);
+		}
+		[ov addTableColumn:col];
+		[colSpecs addObject:@{@"id": nsId, @"title": col.title}];
+		lua_pop(L, 6);
+	}
+
+	LuaOutlineViewSource *src = [[LuaOutlineViewSource alloc]
+		initWithOutlineView:ov columns:colSpecs];
+
+	NSScrollView *sv = [[NSScrollView alloc]
+		initWithFrame:NSMakeRect(0, 0, width, height)];
+	sv.documentView = ov;
+	sv.hasVerticalScroller = YES;
+	sv.autohidesScrollers = YES;
+	sv.borderType = bordered ? NSBezelBorder : NSNoBorder;
+	objc_setAssociatedObject(sv, &kKeys[kFlexibleKey], @YES,
+		OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(sv, &kKeys[kTableSourceKey], src,
+		OBJC_ASSOCIATION_RETAIN);
+
+	push_objc(L, sv, "nsview");
+	return 1;
+}
+
+#pragma mark - Directory listing
+
+/* Internal helper: list directory contents into a Lua table on the stack.
+ * path and depth are C strings/ints, not read from the Lua stack.
+ * Always pushes exactly one value (the result table, or nil on error). */
+static void list_dir_into_table(lua_State *L, const char *raw, int depth) {
+	NSString *dirPath = [NSString stringWithUTF8String:raw];
+	NSFileManager *fm = [NSFileManager defaultManager];
+	NSArray *contents = [fm contentsOfDirectoryAtPath:dirPath error:nil];
+	if (!contents) { lua_pushnil(L); return; }
+
+	/* Sort: directories first, then alpha by name */
+	contents = [contents sortedArrayUsingComparator:^NSComparisonResult(
+		id a, id b) {
+		NSString *pa = [dirPath stringByAppendingPathComponent:a];
+		NSString *pb = [dirPath stringByAppendingPathComponent:b];
+		BOOL ad = NO, bd = NO;
+		[fm fileExistsAtPath:pa isDirectory:&ad];
+		[fm fileExistsAtPath:pb isDirectory:&bd];
+		if (ad != bd) return ad ? NSOrderedAscending : NSOrderedDescending;
+		return [(NSString *)a caseInsensitiveCompare:(NSString *)b];
+	}];
+
+	lua_newtable(L);
+	int ti = 1;
+
+	for (NSString *name in contents) {
+		NSString *full = [dirPath stringByAppendingPathComponent:name];
+		BOOL isDir = NO;
+		[fm fileExistsAtPath:full isDirectory:&isDir];
+
+		/* Skip hidden files/directories */
+		if ([name hasPrefix:@"."]) continue;
+
+		lua_newtable(L);
+		lua_pushstring(L, name.UTF8String);
+		lua_setfield(L, -2, "name");
+		lua_pushstring(L, full.UTF8String);
+		lua_setfield(L, -2, "path");
+		if (isDir) {
+			lua_pushboolean(L, 1);
+			lua_setfield(L, -2, "directory");
+			if (depth > 0) {
+				list_dir_into_table(L, full.UTF8String, depth - 1);
+				lua_setfield(L, -2, "children");
+			}
+		}
+		lua_rawseti(L, -2, ti++);
+	}
+}
+
+static int bridge_list_directory(lua_State *L) {
+	const char *raw = luaL_checkstring(L, 1);
+	int depth = lua_isnumber(L, 2) ? (int)lua_tointeger(L, 2) : 0;
+	list_dir_into_table(L, raw, depth);
+	return 1;
 }
 
 #pragma mark - Show
@@ -2805,6 +3140,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_clearContainer",   bridge_clear_container},
 	{"_renderToPNG",      bridge_render_to_png},
 	{"_watchFile",        bridge_watch_file},
+	{"_outlineview",      bridge_outlineview},
+	{"_listDirectory",    bridge_list_directory},
 	{NULL, NULL},
 };
 

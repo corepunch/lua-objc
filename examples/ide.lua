@@ -28,6 +28,8 @@ return ns.VStack {
 ]=],
 }
 
+local rootDir = (...) or "."
+
 local wrapToggle = bridge._symbolToggle(
 	"arrow.left.and.line.vertical.and.arrow.right",
 	"Toggle Word Wrap",
@@ -38,21 +40,35 @@ local wrapToggle = bridge._symbolToggle(
 	end
 )
 
-local files = {
-	{ name = "hello.lua" },
-	{ name = "list.lua" },
-	{ name = "live.lua" },
-	{ name = "weather.lua" },
-	{ name = "mail.lua" },
-	{ name = "welcome.lua" },
-}
+-- File tree: NSOutlineView acting as a source-list navigator.
+-- Reads the actual directory contents via NSFileManager.
+local function isLuaFile(name)
+	return name:match("%.lua$") ~= nil
+end
 
--- File tree: NSTableView acting as a source-list navigator.
--- Mirrors Xcode's DVTExplorerOutlineView inside IDENavigatorArea.
-local fileTree = ns.List {
+local function filterLuaFiles(items)
+	if not items then return {} end
+	local result = {}
+	for _, item in ipairs(items) do
+		if item.directory then
+			local filtered = filterLuaFiles(item.children)
+			if #filtered > 0 or not item.children then
+				item.children = #filtered > 0 and filtered or nil
+				table.insert(result, item)
+			end
+		elseif isLuaFile(item.name) then
+			table.insert(result, item)
+		end
+	end
+	return result
+end
+
+local entries = ns.readDirectory(rootDir, 3)
+local filtered = filterLuaFiles(entries)
+
+local fileTree = ns.OutlineView {
 	header = false,
 	bordered = false,
-	style = "plain",
 	flexGrow = 1,
 	columns = {
 		{
@@ -61,13 +77,10 @@ local fileTree = ns.List {
 			systemImage = "doc.text",
 		},
 	},
-	data = files,
+	data = filtered,
 }
 
-local examplesDir = "examples"
-
-local function openInEditor(filename)
-	local path = examplesDir .. "/" .. filename
+local function openInEditor(path)
 	local f = io.open(path, "r")
 	if not f then return end
 	local content = f:read("*a")
@@ -78,8 +91,8 @@ local function openInEditor(filename)
 end
 
 fileTree:onRowSelect(function(list, rowIndex, rowData)
-	if rowData and rowData.name then
-		openInEditor(rowData.name)
+	if rowData and rowData.path and not rowData.directory then
+		openInEditor(rowData.path)
 	end
 end)
 
@@ -101,7 +114,7 @@ return ns.Window {
 		ide.WorkspaceLayout {
 			navigator = ide.NavigatorArea {
 				title = "FILES",
-				fixedWidth = 160,
+				fixedWidth = 260,
 				content = fileTree,
 			},
 			editor = ide.EditorArea {
