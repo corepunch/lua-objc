@@ -86,7 +86,7 @@ local function Panel(title, content, props)
 	}
 end
 
-ns.Window {
+return ns.Window {
 	title = "lua-objc IDE",
 	width = 1100,
 	height = 680,

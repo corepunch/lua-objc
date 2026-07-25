@@ -2392,14 +2392,22 @@ static int bridge_eval(lua_State *L) {
 		 *
 		 * pcall ensures ns.Window is restored even if the user code errors.
 		 */
+		/* Canvas mode: intercept ns.Window and ns.Preview so scripts that
+		 * call ns.Window{...} or ns.Preview{...} without `return` still
+		 * produce a view.  Both patterns work:
+		 *   ns.Window { ... }          -- no return, common in examples
+		 *   return ns.Window { ... }   -- explicit return also works
+		 */
 		n = snprintf(wrapped, sizeof(wrapped),
 			"local ns=require('AppKit');"
-			"local __crw=ns.Window;"
-			"ns.Window=function(p)return ns.VStack(p)end;"
-			"local __rok,__rr=pcall(function()\n%s\nend);"
-			"ns.Window=__crw;"
-			"if not __rok then error(__rr) end;"
-			"return __rr",
+			"local __rr;"
+			"local __crw,__crp=ns.Window,ns.Preview;"
+			"ns.Window=function(p) __rr=ns.VStack(p) return __rr end;"
+			"ns.Preview=function(p) __rr=ns.VStack(p) return __rr end;"
+			"local __rok,__ret=pcall(function()\n%s\nend);"
+			"ns.Window=__crw; ns.Preview=__crp;"
+			"if not __rok then error(__ret) end;"
+			"return __ret or __rr",
 			code);
 	} else {
 		n = snprintf(wrapped, sizeof(wrapped),

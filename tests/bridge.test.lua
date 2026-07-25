@@ -187,4 +187,50 @@ local parsed = ns.json_parse('{"key": 42, "name": "test"}')
 t.assertEqual(parsed.key, 42, "json_parse: numeric value")
 t.assertEqual(parsed.name, "test", "json_parse: string value")
 
+-- Canvas eval: ns.Window{...} without `return` must produce a view
+
+local bridge_raw = require("bridge")
+
+local view1, err1 = bridge_raw._eval("local ns=require('AppKit'); ns.Window { ns.Text 'hi' }", true)
+t.expect(err1 == nil, "canvas eval: Window without return has no error")
+t.expect(view1 ~= nil, "canvas eval: Window without return produces a view")
+
+-- Canvas eval: explicit return still works
+
+local view2, err2 = bridge_raw._eval("local ns=require('AppKit'); return ns.VStack { ns.Text 'hi' }", true)
+t.expect(err2 == nil, "canvas eval: explicit return has no error")
+t.expect(view2 ~= nil, "canvas eval: explicit return produces a view")
+
+-- Canvas eval: ns.Preview{...} without `return` produces a view
+
+local view3, err3 = bridge_raw._eval("local ns=require('AppKit'); ns.Preview { ns.Text 'preview' }", true)
+t.expect(err3 == nil, "canvas eval: Preview without return has no error")
+t.expect(view3 ~= nil, "canvas eval: Preview without return produces a view")
+
+-- Canvas eval: ns.Preview with content function
+
+local view4, err4 = bridge_raw._eval(
+	"local ns=require('AppKit'); ns.Preview { content = function() return ns.Text 'hello' end }",
+	true)
+t.expect(err4 == nil, "canvas eval: Preview with content fn has no error")
+t.expect(view4 ~= nil, "canvas eval: Preview with content fn produces a view")
+
+-- Canvas eval: syntax error returns an error string, not a crash
+
+local view5, err5 = bridge_raw._eval("this is not valid lua !!!!", true)
+t.expect(view5 == nil, "canvas eval: syntax error yields nil view")
+t.expect(err5 ~= nil, "canvas eval: syntax error yields error string")
+
+-- Canvas eval: runtime error returns an error string
+
+local view6, err6 = bridge_raw._eval("error('boom')", true)
+t.expect(view6 == nil, "canvas eval: runtime error yields nil view")
+t.expect(err6 ~= nil, "canvas eval: runtime error yields error string")
+
+-- ns.Window is restored after canvas eval (not permanently replaced)
+
+local ns_check = require("AppKit")
+t.expect(type(ns_check.Window) == "function", "AppKit.Window is still a function after canvas eval")
+t.expect(type(ns_check.Preview) == "function", "AppKit.Preview is still a function after canvas eval")
+
 os.exit(t.summary() and 0 or 1)

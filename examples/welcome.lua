@@ -173,7 +173,7 @@ local right_panel = ns.VStack {
 	},
 }
 
-ns.Window {
+return ns.Window {
 	title = "Xcode Previews",
 	width = 740,
 	height = 440,

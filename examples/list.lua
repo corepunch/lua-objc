@@ -1,6 +1,6 @@
 local ns = require("AppKit")
 
-ns.Window {
+return ns.Window {
 	title = "Employee Directory",
 	width = 640,
 	height = 420,

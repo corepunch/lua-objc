@@ -60,7 +60,7 @@ local list = ns.List {
 	end,
 }
 
-ns.Window {
+return ns.Window {
 	title = "World Weather",
 	width = 680,
 	height = 500,

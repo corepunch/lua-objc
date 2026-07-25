@@ -67,7 +67,7 @@ local list = ns.List {
 	end,
 }
 
-ns.Window {
+return ns.Window {
 	title = "Live Stock Ticker",
 	width = 620,
 	height = 480,

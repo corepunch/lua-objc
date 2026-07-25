@@ -1,6 +1,6 @@
 local ns = require("AppKit")
 
-ns.Window {
+return ns.Window {
 	title = "Lua + ObjC Demo",
 	width = 480,
 	height = 420,

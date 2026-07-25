@@ -41,7 +41,7 @@ local folder_list = ns.List {
 	data = folders,
 }
 
-ns.Window {
+return ns.Window {
 	title = "Mail",
 	width = 680,
 	height = 420,

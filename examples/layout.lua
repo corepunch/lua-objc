@@ -40,7 +40,7 @@ local content = ns.List {
 	},
 }
 
-ns.Window {
+return ns.Window {
 	title = "Flexible Layout",
 	width = 680,
 	height = 420,

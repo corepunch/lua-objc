@@ -104,6 +104,30 @@ function AppKit.Window(props)
 	return win
 end
 
+-- #Preview equivalent: renders a named preview in the IDE canvas.
+-- In a real window context it behaves like Window; in canvas eval the
+-- bridge intercepts it the same way it intercepts Window.
+function AppKit.Preview(props)
+	props = props or {}
+	local width  = props.width  or 393   -- iPhone 16 logical width
+	local height = props.height or 852   -- iPhone 16 logical height
+	local content_fn = props.content
+	local root = bridge._vstack()
+	root.fixedWidth  = width
+	root.fixedHeight = height
+	if content_fn then
+		local child = content_fn()
+		if type(child) == "userdata" then
+			bridge._add(root, child)
+		end
+	else
+		-- allow inline children: ns.Preview { ns.Text "hi" }
+		addChildren(root, props)
+	end
+	bridge._layout(root, width)
+	return root
+end
+
 function AppKit.VStack(props)
 	local view = bridge._vstack()
 	if type(props) == "table" then
