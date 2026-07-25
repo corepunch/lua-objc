@@ -11,6 +11,7 @@ static char kTableSourceKey;
 static char kCallbackKey;
 static char kToolbarDelegateKey;
 static char kColumnAlignmentKey;
+static char kColumnSystemImageKey;
 static char kResizeObserverKey;
 static char kPaddingKey;
 static char kPaddingHorizontalKey;
@@ -57,12 +58,23 @@ typedef struct {
 	[super layout];
 	NSTextField *text = self.textField;
 	if (!text) return;
+	NSImageView *image = self.imageView;
+	CGFloat imageWidth = image.image ? 16 : 0;
+	CGFloat imageGap = imageWidth > 0 ? 6 : 0;
+	CGFloat textX = 8 + imageWidth + imageGap;
 	CGFloat height = ceil(text.intrinsicContentSize.height);
 	text.frame = NSMakeRect(
-		8,
+		textX,
 		floor((self.bounds.size.height - height) / 2),
-		MAX(0, self.bounds.size.width - 16),
+		MAX(0, self.bounds.size.width - textX - 8),
 		height);
+	if (image) {
+		image.frame = NSMakeRect(
+			8,
+			floor((self.bounds.size.height - imageWidth) / 2),
+			imageWidth,
+			imageWidth);
+	}
 }
 
 @end
@@ -123,8 +135,26 @@ typedef struct {
 
 		[cell addSubview:tf];
 		cell.textField = tf;
+
+		NSImageView *imageView = [[NSImageView alloc] initWithFrame:NSZeroRect];
+		imageView.imageScaling = NSImageScaleProportionallyDown;
+		imageView.contentTintColor = NSColor.secondaryLabelColor;
+		[cell addSubview:imageView];
+		cell.imageView = imageView;
 	}
 	cell.textField.stringValue = text;
+	NSString *symbolName = objc_getAssociatedObject(
+		column, &kColumnSystemImageKey);
+	if (symbolName.length > 0) {
+		NSImage *image = [NSImage imageWithSystemSymbolName:symbolName
+			accessibilityDescription:text];
+		NSImageSymbolConfiguration *configuration =
+			[NSImageSymbolConfiguration configurationWithPointSize:13
+														 weight:NSFontWeightRegular];
+		cell.imageView.image = [image imageWithSymbolConfiguration:configuration];
+	} else {
+		cell.imageView.image = nil;
+	}
 	NSNumber *alignment = objc_getAssociatedObject(column, &kColumnAlignmentKey);
 	cell.textField.alignment = alignment
 		? (NSTextAlignment)alignment.integerValue : NSTextAlignmentLeft;
@@ -1735,14 +1765,16 @@ static int bridge_tableview(lua_State *L) {
 		lua_getfield(L, -2, "title");
 		lua_getfield(L, -3, "alignment");
 		lua_getfield(L, -4, "width");
-		const char *colId = lua_tostring(L, -4);
-		const char *colTitle = lua_tostring(L, -3);
-		const char *colAlignment = lua_tostring(L, -2);
-		CGFloat requestedWidth = lua_isnumber(L, -1)
-			? lua_tonumber(L, -1) : colW;
+		lua_getfield(L, -5, "systemImage");
+		const char *colId = lua_tostring(L, -5);
+		const char *colTitle = lua_tostring(L, -4);
+		const char *colAlignment = lua_tostring(L, -3);
+		CGFloat requestedWidth = lua_isnumber(L, -2)
+			? lua_tonumber(L, -2) : colW;
+		const char *systemImage = lua_tostring(L, -1);
 
 		if (!colId) {
-			lua_pop(L, 5);
+			lua_pop(L, 6);
 			continue;
 		}
 
@@ -1760,11 +1792,16 @@ static int bridge_tableview(lua_State *L) {
 		col.headerCell.alignment = alignment;
 		objc_setAssociatedObject(col, &kColumnAlignmentKey, @(alignment),
 			OBJC_ASSOCIATION_RETAIN);
+		if (systemImage) {
+			objc_setAssociatedObject(col, &kColumnSystemImageKey,
+				[NSString stringWithUTF8String:systemImage],
+				OBJC_ASSOCIATION_RETAIN);
+		}
 		[tv addTableColumn:col];
 
 		[colSpecs addObject:@{@"id": nsId, @"title": col.title}];
 
-		lua_pop(L, 5);
+		lua_pop(L, 6);
 	}
 	tv.columnAutoresizingStyle = NSTableViewLastColumnOnlyAutoresizingStyle;
 
@@ -2160,6 +2197,8 @@ static int bridge_text_view(lua_State *L) {
 		initWithFrame:NSMakeRect(0, 0, contentSize.width, contentSize.height)];
 	tv.font = [NSFont monospacedSystemFontOfSize:13
 		weight:NSFontWeightRegular];
+	tv.editable = YES;
+	tv.selectable = YES;
 	tv.automaticQuoteSubstitutionEnabled = NO;
 	tv.automaticDashSubstitutionEnabled = NO;
 	tv.automaticTextReplacementEnabled = NO;

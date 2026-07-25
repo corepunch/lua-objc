@@ -115,7 +115,12 @@ local list = ns.List {
 	width = 400,
 	height = 200,
 	columns = {
-		{ id = "name", title = "Name", width = 200 },
+		{
+			id = "name",
+			title = "Name",
+			width = 200,
+			systemImage = "doc.text",
+		},
 		{ id = "role", title = "Role", width = 200 },
 	},
 }
@@ -149,6 +154,24 @@ t.assertEqual(list.rowCount, 0, "After clearRows: 0 rows")
 list:showLoading()
 list:hideLoading()
 t.expect(true, "show_loading and hide_loading do not crash")
+
+-- Code editor remains a native editable text view inside its scroll view.
+
+local editor = require("IDEKit").Editor {
+	initialCode = "return 1",
+}
+t.assertEqual(
+	editor.documentView.editable,
+	true,
+	"IDE editor text view is editable")
+t.assertEqual(
+	editor.documentView.selectable,
+	true,
+	"IDE editor text view is selectable")
+t.assertEqual(
+	editor.documentView.string,
+	"return 1",
+	"IDE editor exposes its initial source")
 
 -- fetch infrastructure exists
 
