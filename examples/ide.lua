@@ -98,7 +98,7 @@ return ns.Window {
 		spacing = 0,
 		ns.HSplit {
 			flexGrow = 1,
-			Panel("Files", fileTree, { fixedWidth = 120 }),
+			Panel("Files", fileTree, { fixedWidth = 220 }),
 			Panel("Editor", editor, { flexGrow = 1 }),
 			Panel("Canvas", canvas, { flexGrow = 1 }),
 		},

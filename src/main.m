@@ -5,35 +5,39 @@
 #include <lualib.h>
 #include <lauxlib.h>
 
-static char kAxisKey;
-static char kFlexibleKey;
-static char kTableSourceKey;
-static char kCallbackKey;
-static char kToolbarDelegateKey;
-static char kColumnAlignmentKey;
-static char kColumnSystemImageKey;
-static char kResizeObserverKey;
-static char kPaddingKey;
-static char kPaddingHorizontalKey;
-static char kPaddingVerticalKey;
-static char kSpacingKey;
-static char kAlignmentKey;
-static char kFixedWidthKey;
-static char kFixedHeightKey;
-static char kMinWidthKey;
-static char kMinHeightKey;
-static char kMaxWidthKey;
-static char kMaxHeightKey;
-static char kFlexGrowKey;
-static char kFlexShrinkKey;
-static char kFlexBasisKey;
-static char kFillWidthKey;
-static char kFillHeightKey;
-static char kImageLayoutSizeKey;
-static char kTableSpinnerKey;
-static char kTableSelectionKey;
-static char kTableRefreshKey;
-static char kTextChangeKey;
+enum {
+	kAxisKey,
+	kFlexibleKey,
+	kTableSourceKey,
+	kCallbackKey,
+	kToolbarDelegateKey,
+	kColumnAlignmentKey,
+	kColumnSystemImageKey,
+	kResizeObserverKey,
+	kPaddingKey,
+	kPaddingHorizontalKey,
+	kPaddingVerticalKey,
+	kSpacingKey,
+	kAlignmentKey,
+	kFixedWidthKey,
+	kFixedHeightKey,
+	kMinWidthKey,
+	kMinHeightKey,
+	kMaxWidthKey,
+	kMaxHeightKey,
+	kFlexGrowKey,
+	kFlexShrinkKey,
+	kFlexBasisKey,
+	kFillWidthKey,
+	kFillHeightKey,
+	kImageLayoutSizeKey,
+	kTableSpinnerKey,
+	kTableSelectionKey,
+	kTableRefreshKey,
+	kTextChangeKey,
+	kKeyCount
+};
+static char kKeys[kKeyCount];
 static const CGFloat kStackSpacing = 8.0;
 static lua_State *gL = NULL;
 
@@ -82,7 +86,9 @@ static void push_objc(lua_State *L, id obj, const char *meta);
 
 @end
 
-@implementation LuaTableViewSource
+@implementation LuaTableViewSource {
+	BOOL _isRedistributing;
+}
 
 - (instancetype)initWithTableView:(NSTableView *)tv columns:(NSArray *)cols {
 	self = [super init];
@@ -92,8 +98,17 @@ static void push_objc(lua_State *L, id obj, const char *meta);
 		_rows = [NSMutableArray array];
 		tv.dataSource = self;
 		tv.delegate = self;
+		[[NSNotificationCenter defaultCenter]
+			addObserver:self
+			   selector:@selector(tableViewColumnDidResize:)
+				   name:NSTableViewColumnDidResizeNotification
+				 object:tv];
 	}
 	return self;
+}
+
+- (void)dealloc {
+	[[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView {
@@ -109,6 +124,7 @@ static void push_objc(lua_State *L, id obj, const char *meta);
 	CGFloat rowsHeight = _rows.count * _tableView.rowHeight + headerHeight;
 	NSSize viewport = clipView.bounds.size;
 	CGRect frame = _tableView.frame;
+	frame.size.width = viewport.width;
 	frame.size.height = MAX(viewport.height, rowsHeight);
 	_tableView.frame = frame;
 }
@@ -147,7 +163,7 @@ static void push_objc(lua_State *L, id obj, const char *meta);
 	}
 	cell.textField.stringValue = text;
 	NSString *symbolName = objc_getAssociatedObject(
-		column, &kColumnSystemImageKey);
+		column, &kKeys[kColumnSystemImageKey]);
 	if (symbolName.length > 0) {
 		NSImage *image = [NSImage imageWithSystemSymbolName:symbolName
 			accessibilityDescription:text];
@@ -158,7 +174,7 @@ static void push_objc(lua_State *L, id obj, const char *meta);
 	} else {
 		cell.imageView.image = nil;
 	}
-	NSNumber *alignment = objc_getAssociatedObject(column, &kColumnAlignmentKey);
+	NSNumber *alignment = objc_getAssociatedObject(column, &kKeys[kColumnAlignmentKey]);
 	cell.textField.alignment = alignment
 		? (NSTextAlignment)alignment.integerValue : NSTextAlignmentLeft;
 	[cell setNeedsLayout:YES];
@@ -194,7 +210,7 @@ static void push_objc(lua_State *L, id obj, const char *meta);
 	NSScrollView *sv = _tableView.enclosingScrollView;
 	if (!sv || !gL) return;
 
-	NSNumber *refNum = objc_getAssociatedObject(sv, &kTableSelectionKey);
+	NSNumber *refNum = objc_getAssociatedObject(sv, &kKeys[kTableSelectionKey]);
 	if (!refNum) return;
 
 	NSDictionary *rowData = _rows[row];
@@ -216,6 +232,48 @@ static void push_objc(lua_State *L, id obj, const char *meta);
 	}
 }
 
+- (void)tableViewColumnDidResize:(NSNotification *)notification {
+	if (_isRedistributing) return;
+	_isRedistributing = YES;
+
+	NSTableView *tv = _tableView;
+	CGFloat available = tv.bounds.size.width;
+	NSTableColumn *resizedCol =
+		notification.userInfo[@"NSTableColumn"];
+
+	NSMutableArray *others = [NSMutableArray array];
+	CGFloat othersTotal = 0;
+	for (NSTableColumn *col in tv.tableColumns) {
+		if (col != resizedCol) {
+			[others addObject:col];
+			othersTotal += col.width;
+		}
+	}
+
+	if (others.count == 0) {
+		if (resizedCol) {
+			resizedCol.width = MAX(resizedCol.minWidth, available);
+		}
+		_isRedistributing = NO;
+		return;
+	}
+
+	CGFloat spaceForOthers = available - (resizedCol ? resizedCol.width : 0);
+	if (spaceForOthers <= 0) {
+		_isRedistributing = NO;
+		return;
+	}
+
+	for (NSTableColumn *col in others) {
+		CGFloat share = othersTotal > 0
+			? spaceForOthers * (col.width / othersTotal)
+			: spaceForOthers / others.count;
+		col.width = MAX(col.minWidth, share);
+	}
+
+	_isRedistributing = NO;
+}
+
 @end
 
 #pragma mark - LuaButtonTarget
@@ -234,7 +292,7 @@ static void push_objc(lua_State *L, id obj, const char *meta);
 }
 
 - (void)onAction:(id)sender {
-	id refObj = objc_getAssociatedObject(sender, &kCallbackKey);
+	id refObj = objc_getAssociatedObject(sender, &kKeys[kCallbackKey]);
 	if (!refObj || !gL) return;
 	int ref = [refObj intValue];
 
@@ -508,7 +566,7 @@ static NSColor *semantic_color(NSString *name) {
 
 			NSNumber *refNum = item[@"actionRef"];
 			if (refNum) {
-				objc_setAssociatedObject(ti, &kCallbackKey, refNum,
+				objc_setAssociatedObject(ti, &kKeys[kCallbackKey], refNum,
 					OBJC_ASSOCIATION_RETAIN);
 				ti.target = [LuaButtonTarget shared];
 				ti.action = @selector(onAction:);
@@ -521,7 +579,7 @@ static NSColor *semantic_color(NSString *name) {
 				[btn sizeToFit];
 				btn.target = [LuaButtonTarget shared];
 				btn.action = @selector(onAction:);
-				objc_setAssociatedObject(btn, &kCallbackKey, refNum,
+				objc_setAssociatedObject(btn, &kKeys[kCallbackKey], refNum,
 					OBJC_ASSOCIATION_RETAIN);
 				ti.view = btn;
 			} else if (img) {
@@ -577,6 +635,80 @@ static NSView *check_view(lua_State *L, int idx) {
 	}
 	return (NSView *)obj;
 }
+
+#define INDEX_NUMBER(name, kvar, fallback) \
+	if (strcmp(key, name) == 0) { \
+		NSNumber *v = objc_getAssociatedObject(obj, &kKeys[kvar]); \
+		lua_pushnumber(L, v ? v.doubleValue : fallback); \
+		return 1; \
+	}
+
+#define INDEX_NUMBER_OR_NIL(name, kvar) \
+	if (strcmp(key, name) == 0) { \
+		NSNumber *v = objc_getAssociatedObject(obj, &kKeys[kvar]); \
+		if (v) lua_pushnumber(L, v.doubleValue); else lua_pushnil(L); \
+		return 1; \
+	}
+
+#define INDEX_BOOL(name, kvar) \
+	if (strcmp(key, name) == 0) { \
+		NSNumber *v = objc_getAssociatedObject(obj, &kKeys[kvar]); \
+		lua_pushboolean(L, v.boolValue); \
+		return 1; \
+	}
+
+#define INDEX_STRING(name, kvar, fallback) \
+	if (strcmp(key, name) == 0) { \
+		NSString *v = objc_getAssociatedObject(obj, &kKeys[kvar]); \
+		lua_pushstring(L, v ? v.UTF8String : fallback); \
+		return 1; \
+	}
+
+#define NEWINDEX_NUMBER(name, kvar) \
+	if (strcmp(key, name) == 0) { \
+		objc_setAssociatedObject(obj, &kKeys[kvar], @(luaL_checknumber(L, 3)), OBJC_ASSOCIATION_RETAIN); \
+		return 0; \
+	}
+
+#define NEWINDEX_NUMBER_CLAMP(name, kvar, expr) \
+	if (strcmp(key, name) == 0) { \
+		double val = luaL_checknumber(L, 3); \
+		objc_setAssociatedObject(obj, &kKeys[kvar], @(expr), OBJC_ASSOCIATION_RETAIN); \
+		return 0; \
+	}
+
+#define NEWINDEX_NILABLE_NUMBER(name, kvar) \
+	if (strcmp(key, name) == 0) { \
+		if (lua_isnil(L, 3)) { \
+			objc_setAssociatedObject(obj, &kKeys[kvar], nil, OBJC_ASSOCIATION_ASSIGN); \
+		} else { \
+			objc_setAssociatedObject(obj, &kKeys[kvar], @(luaL_checknumber(L, 3)), OBJC_ASSOCIATION_RETAIN); \
+		} \
+		return 0; \
+	}
+
+#define NEWINDEX_NILABLE_NUMBER_CLAMP(name, kvar, expr) \
+	if (strcmp(key, name) == 0) { \
+		if (lua_isnil(L, 3)) { \
+			objc_setAssociatedObject(obj, &kKeys[kvar], nil, OBJC_ASSOCIATION_ASSIGN); \
+		} else { \
+			double val = luaL_checknumber(L, 3); \
+			objc_setAssociatedObject(obj, &kKeys[kvar], @(expr), OBJC_ASSOCIATION_RETAIN); \
+		} \
+		return 0; \
+	}
+
+#define NEWINDEX_BOOL(name, kvar) \
+	if (strcmp(key, name) == 0) { \
+		objc_setAssociatedObject(obj, &kKeys[kvar], @(lua_toboolean(L, 3)), OBJC_ASSOCIATION_RETAIN); \
+		return 0; \
+	}
+
+#define NEWINDEX_STRING(name, kvar) \
+	if (strcmp(key, name) == 0) { \
+		objc_setAssociatedObject(obj, &kKeys[kvar], [NSString stringWithUTF8String:luaL_checkstring(L, 3)], OBJC_ASSOCIATION_RETAIN); \
+		return 0; \
+	}
 
 static int gc_objc(lua_State *L) {
 	ObjCRef *ref = lua_touserdata(L, 1);
@@ -640,86 +772,22 @@ static int nsview_index(lua_State *L) {
 	const char *key = lua_tostring(L, 2);
 	if (!key) { lua_pushnil(L); return 1; }
 
-	if (strcmp(key, "padding") == 0) {
-		NSNumber *p = objc_getAssociatedObject(obj, &kPaddingKey);
-		lua_pushnumber(L, p ? p.doubleValue : 0);
-		return 1;
-	}
-	if (strcmp(key, "paddingHorizontal") == 0) {
-		NSNumber *p = objc_getAssociatedObject(obj, &kPaddingHorizontalKey);
-		lua_pushnumber(L, p ? p.doubleValue : 0);
-		return 1;
-	}
-	if (strcmp(key, "paddingVertical") == 0) {
-		NSNumber *p = objc_getAssociatedObject(obj, &kPaddingVerticalKey);
-		lua_pushnumber(L, p ? p.doubleValue : 0);
-		return 1;
-	}
-	if (strcmp(key, "spacing") == 0) {
-		NSNumber *p = objc_getAssociatedObject(obj, &kSpacingKey);
-		lua_pushnumber(L, p ? p.doubleValue : kStackSpacing);
-		return 1;
-	}
-	if (strcmp(key, "alignment") == 0) {
-		NSString *a = objc_getAssociatedObject(obj, &kAlignmentKey);
-		lua_pushstring(L, a ? a.UTF8String : "center");
-		return 1;
-	}
-	if (strcmp(key, "fixedWidth") == 0) {
-		NSNumber *w = objc_getAssociatedObject(obj, &kFixedWidthKey);
-		lua_pushnumber(L, w ? w.doubleValue : 0);
-		return 1;
-	}
-	if (strcmp(key, "fixedHeight") == 0) {
-		NSNumber *h = objc_getAssociatedObject(obj, &kFixedHeightKey);
-		lua_pushnumber(L, h ? h.doubleValue : 0);
-		return 1;
-	}
-	if (strcmp(key, "minWidth") == 0) {
-		NSNumber *v = objc_getAssociatedObject(obj, &kMinWidthKey);
-		lua_pushnumber(L, v ? v.doubleValue : 0);
-		return 1;
-	}
-	if (strcmp(key, "minHeight") == 0) {
-		NSNumber *v = objc_getAssociatedObject(obj, &kMinHeightKey);
-		lua_pushnumber(L, v ? v.doubleValue : 0);
-		return 1;
-	}
-	if (strcmp(key, "maxWidth") == 0) {
-		NSNumber *v = objc_getAssociatedObject(obj, &kMaxWidthKey);
-		if (v) lua_pushnumber(L, v.doubleValue); else lua_pushnil(L);
-		return 1;
-	}
-	if (strcmp(key, "maxHeight") == 0) {
-		NSNumber *v = objc_getAssociatedObject(obj, &kMaxHeightKey);
-		if (v) lua_pushnumber(L, v.doubleValue); else lua_pushnil(L);
-		return 1;
-	}
-	if (strcmp(key, "flexGrow") == 0) {
-		NSNumber *v = objc_getAssociatedObject(obj, &kFlexGrowKey);
-		lua_pushnumber(L, v ? v.doubleValue : 0);
-		return 1;
-	}
-	if (strcmp(key, "flexShrink") == 0) {
-		NSNumber *v = objc_getAssociatedObject(obj, &kFlexShrinkKey);
-		lua_pushnumber(L, v ? v.doubleValue : 1);
-		return 1;
-	}
-	if (strcmp(key, "flexBasis") == 0) {
-		NSNumber *v = objc_getAssociatedObject(obj, &kFlexBasisKey);
-		if (v) lua_pushnumber(L, v.doubleValue); else lua_pushnil(L);
-		return 1;
-	}
-	if (strcmp(key, "fillWidth") == 0) {
-		NSNumber *v = objc_getAssociatedObject(obj, &kFillWidthKey);
-		lua_pushboolean(L, v.boolValue);
-		return 1;
-	}
-	if (strcmp(key, "fillHeight") == 0) {
-		NSNumber *v = objc_getAssociatedObject(obj, &kFillHeightKey);
-		lua_pushboolean(L, v.boolValue);
-		return 1;
-	}
+	INDEX_NUMBER("padding", kPaddingKey, 0);
+	INDEX_NUMBER("paddingHorizontal", kPaddingHorizontalKey, 0);
+	INDEX_NUMBER("paddingVertical", kPaddingVerticalKey, 0);
+	INDEX_NUMBER("spacing", kSpacingKey, kStackSpacing);
+	INDEX_STRING("alignment", kAlignmentKey, "center");
+	INDEX_NUMBER("fixedWidth", kFixedWidthKey, 0);
+	INDEX_NUMBER("fixedHeight", kFixedHeightKey, 0);
+	INDEX_NUMBER("minWidth", kMinWidthKey, 0);
+	INDEX_NUMBER("minHeight", kMinHeightKey, 0);
+	INDEX_NUMBER_OR_NIL("maxWidth", kMaxWidthKey);
+	INDEX_NUMBER_OR_NIL("maxHeight", kMaxHeightKey);
+	INDEX_NUMBER("flexGrow", kFlexGrowKey, 0);
+	INDEX_NUMBER("flexShrink", kFlexShrinkKey, 1);
+	INDEX_NUMBER_OR_NIL("flexBasis", kFlexBasisKey);
+	INDEX_BOOL("fillWidth", kFillWidthKey);
+	INDEX_BOOL("fillHeight", kFillHeightKey);
 
 	if (strcmp(key, "set_text") == 0 && [obj isKindOfClass:[NSTextField class]]) {
 		lua_pushcfunction(L, bridge_set_text);
@@ -734,7 +802,7 @@ static int nsview_index(lua_State *L) {
 	} @catch (NSException *e) {
 	}
 
-	id src = objc_getAssociatedObject(obj, &kTableSourceKey);
+	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (src) {
 		if (strcmp(key, "addRow") == 0) {
 			lua_pushcfunction(L, bridge_tableview_add);
@@ -779,105 +847,22 @@ static int nsview_newindex(lua_State *L) {
 	const char *key = lua_tostring(L, 2);
 	if (!key) return luaL_error(L, "invalid property name");
 
-	if (strcmp(key, "padding") == 0) {
-		double val = luaL_checknumber(L, 3);
-		objc_setAssociatedObject(obj, &kPaddingKey, @(val), OBJC_ASSOCIATION_RETAIN);
-		return 0;
-	}
-	if (strcmp(key, "paddingHorizontal") == 0) {
-		double val = luaL_checknumber(L, 3);
-		objc_setAssociatedObject(obj, &kPaddingHorizontalKey, @(val),
-			OBJC_ASSOCIATION_RETAIN);
-		return 0;
-	}
-	if (strcmp(key, "paddingVertical") == 0) {
-		double val = luaL_checknumber(L, 3);
-		objc_setAssociatedObject(obj, &kPaddingVerticalKey, @(val),
-			OBJC_ASSOCIATION_RETAIN);
-		return 0;
-	}
-	if (strcmp(key, "spacing") == 0) {
-		double val = luaL_checknumber(L, 3);
-		objc_setAssociatedObject(obj, &kSpacingKey, @(MAX(0, val)),
-			OBJC_ASSOCIATION_RETAIN);
-		return 0;
-	}
-	if (strcmp(key, "alignment") == 0) {
-		const char *val = luaL_checkstring(L, 3);
-		objc_setAssociatedObject(obj, &kAlignmentKey,
-			[NSString stringWithUTF8String:val], OBJC_ASSOCIATION_RETAIN);
-		return 0;
-	}
-	if (strcmp(key, "fixedWidth") == 0) {
-		double val = luaL_checknumber(L, 3);
-		objc_setAssociatedObject(obj, &kFixedWidthKey, @(val), OBJC_ASSOCIATION_RETAIN);
-		return 0;
-	}
-	if (strcmp(key, "fixedHeight") == 0) {
-		double val = luaL_checknumber(L, 3);
-		objc_setAssociatedObject(obj, &kFixedHeightKey, @(val), OBJC_ASSOCIATION_RETAIN);
-		return 0;
-	}
-	if (strcmp(key, "minWidth") == 0) {
-		double val = luaL_checknumber(L, 3);
-		objc_setAssociatedObject(obj, &kMinWidthKey, @(val), OBJC_ASSOCIATION_RETAIN);
-		return 0;
-	}
-	if (strcmp(key, "minHeight") == 0) {
-		double val = luaL_checknumber(L, 3);
-		objc_setAssociatedObject(obj, &kMinHeightKey, @(val), OBJC_ASSOCIATION_RETAIN);
-		return 0;
-	}
-	if (strcmp(key, "maxWidth") == 0) {
-		if (lua_isnil(L, 3)) {
-			objc_setAssociatedObject(obj, &kMaxWidthKey, nil, OBJC_ASSOCIATION_ASSIGN);
-		} else {
-			double val = luaL_checknumber(L, 3);
-			objc_setAssociatedObject(obj, &kMaxWidthKey, @(val), OBJC_ASSOCIATION_RETAIN);
-		}
-		return 0;
-	}
-	if (strcmp(key, "maxHeight") == 0) {
-		if (lua_isnil(L, 3)) {
-			objc_setAssociatedObject(obj, &kMaxHeightKey, nil, OBJC_ASSOCIATION_ASSIGN);
-		} else {
-			double val = luaL_checknumber(L, 3);
-			objc_setAssociatedObject(obj, &kMaxHeightKey, @(val), OBJC_ASSOCIATION_RETAIN);
-		}
-		return 0;
-	}
-	if (strcmp(key, "flexGrow") == 0) {
-		double val = luaL_checknumber(L, 3);
-		objc_setAssociatedObject(obj, &kFlexGrowKey, @(MAX(0, val)),
-			OBJC_ASSOCIATION_RETAIN);
-		return 0;
-	}
-	if (strcmp(key, "flexShrink") == 0) {
-		double val = luaL_checknumber(L, 3);
-		objc_setAssociatedObject(obj, &kFlexShrinkKey, @(MAX(0, val)),
-			OBJC_ASSOCIATION_RETAIN);
-		return 0;
-	}
-	if (strcmp(key, "flexBasis") == 0) {
-		if (lua_isnil(L, 3)) {
-			objc_setAssociatedObject(obj, &kFlexBasisKey, nil, OBJC_ASSOCIATION_ASSIGN);
-		} else {
-			double val = luaL_checknumber(L, 3);
-			objc_setAssociatedObject(obj, &kFlexBasisKey, @(MAX(0, val)),
-				OBJC_ASSOCIATION_RETAIN);
-		}
-		return 0;
-	}
-	if (strcmp(key, "fillWidth") == 0) {
-		objc_setAssociatedObject(obj, &kFillWidthKey, @(lua_toboolean(L, 3)),
-			OBJC_ASSOCIATION_RETAIN);
-		return 0;
-	}
-	if (strcmp(key, "fillHeight") == 0) {
-		objc_setAssociatedObject(obj, &kFillHeightKey, @(lua_toboolean(L, 3)),
-			OBJC_ASSOCIATION_RETAIN);
-		return 0;
-	}
+	NEWINDEX_NUMBER("padding", kPaddingKey);
+	NEWINDEX_NUMBER("paddingHorizontal", kPaddingHorizontalKey);
+	NEWINDEX_NUMBER("paddingVertical", kPaddingVerticalKey);
+	NEWINDEX_NUMBER_CLAMP("spacing", kSpacingKey, MAX(0, val));
+	NEWINDEX_STRING("alignment", kAlignmentKey);
+	NEWINDEX_NUMBER("fixedWidth", kFixedWidthKey);
+	NEWINDEX_NUMBER("fixedHeight", kFixedHeightKey);
+	NEWINDEX_NUMBER("minWidth", kMinWidthKey);
+	NEWINDEX_NUMBER("minHeight", kMinHeightKey);
+	NEWINDEX_NILABLE_NUMBER("maxWidth", kMaxWidthKey);
+	NEWINDEX_NILABLE_NUMBER("maxHeight", kMaxHeightKey);
+	NEWINDEX_NUMBER_CLAMP("flexGrow", kFlexGrowKey, MAX(0, val));
+	NEWINDEX_NUMBER_CLAMP("flexShrink", kFlexShrinkKey, MAX(0, val));
+	NEWINDEX_NILABLE_NUMBER_CLAMP("flexBasis", kFlexBasisKey, MAX(0, val));
+	NEWINDEX_BOOL("fillWidth", kFillWidthKey);
+	NEWINDEX_BOOL("fillHeight", kFillHeightKey);
 
 	NSString *kvcKey = [NSString stringWithUTF8String:key];
 	id value = lua_to_objc_value(L, 3);
@@ -980,7 +965,7 @@ static int bridge_window(lua_State *L) {
 			? NSToolbarDisplayModeIconAndLabel : NSToolbarDisplayModeIconOnly;
 		tb.delegate = del;
 		w.toolbar = tb;
-		objc_setAssociatedObject(w, &kToolbarDelegateKey, del,
+		objc_setAssociatedObject(w, &kKeys[kToolbarDelegateKey], del,
 			OBJC_ASSOCIATION_RETAIN);
 	}
 
@@ -990,16 +975,16 @@ static int bridge_window(lua_State *L) {
 
 static int bridge_vstack(lua_State *L) {
 	NSView *v = [[NSView alloc] initWithFrame:NSZeroRect];
-	objc_setAssociatedObject(v, &kAxisKey, @"vstack", OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(v, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(v, &kKeys[kAxisKey], @"vstack", OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(v, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, v, "nsview");
 	return 1;
 }
 
 static int bridge_hstack(lua_State *L) {
 	NSView *v = [[NSView alloc] initWithFrame:NSZeroRect];
-	objc_setAssociatedObject(v, &kAxisKey, @"hstack", OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(v, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(v, &kKeys[kAxisKey], @"hstack", OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(v, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, v, "nsview");
 	return 1;
 }
@@ -1008,16 +993,16 @@ static int bridge_hsplit(lua_State *L) {
 	NSSplitView *v = [[NSSplitView alloc] initWithFrame:NSZeroRect];
 	v.vertical = YES;
 	v.dividerStyle = NSSplitViewDividerStyleThin;
-	objc_setAssociatedObject(v, &kAxisKey, @"hsplit", OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(v, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(v, &kKeys[kAxisKey], @"hsplit", OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(v, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, v, "nsview");
 	return 1;
 }
 
 static int bridge_spacer(lua_State *L) {
 	NSView *v = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 10, 10)];
-	objc_setAssociatedObject(v, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(v, &kFlexBasisKey, @0, OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(v, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(v, &kKeys[kFlexBasisKey], @0, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, v, "nsview");
 	return 1;
 }
@@ -1051,7 +1036,7 @@ static int bridge_image(lua_State *L) {
 	// NSImageView reports the source bitmap's intrinsic dimensions even when
 	// the bridge has capped its display frame. Preserve the intended display
 	// size so stack measurement does not reserve space for the original image.
-	objc_setAssociatedObject(iv, &kImageLayoutSizeKey,
+	objc_setAssociatedObject(iv, &kKeys[kImageLayoutSizeKey],
 		[NSValue valueWithSize:size], OBJC_ASSOCIATION_RETAIN);
 
 	push_objc(L, iv, "nsview");
@@ -1111,7 +1096,7 @@ static int bridge_add(lua_State *L) {
 		child.frame = container.bounds;
 		child.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 
-		if (!objc_getAssociatedObject(window, &kResizeObserverKey)) {
+		if (!objc_getAssociatedObject(window, &kKeys[kResizeObserverKey])) {
 			__weak NSView *weakChild = child;
 			id observer = [[NSNotificationCenter defaultCenter]
 				addObserverForName:NSWindowDidResizeNotification
@@ -1123,7 +1108,7 @@ static int bridge_add(lua_State *L) {
 							root.frame = ((NSWindow *)note.object).contentView.bounds;
 							layout_recursive(root, root.bounds.size.width);
 						}];
-			objc_setAssociatedObject(window, &kResizeObserverKey, observer,
+			objc_setAssociatedObject(window, &kKeys[kResizeObserverKey], observer,
 				OBJC_ASSOCIATION_RETAIN);
 		}
 	} else {
@@ -1135,39 +1120,39 @@ static int bridge_add(lua_State *L) {
 }
 
 static BOOL is_flexible(NSView *view) {
-	return [objc_getAssociatedObject(view, &kFlexibleKey) boolValue];
+	return [objc_getAssociatedObject(view, &kKeys[kFlexibleKey]) boolValue];
 }
 
 static CGFloat view_padding_horizontal(NSView *view) {
-	NSNumber *value = objc_getAssociatedObject(view, &kPaddingHorizontalKey);
+	NSNumber *value = objc_getAssociatedObject(view, &kKeys[kPaddingHorizontalKey]);
 	if (value) return value.doubleValue;
-	NSNumber *p = objc_getAssociatedObject(view, &kPaddingKey);
+	NSNumber *p = objc_getAssociatedObject(view, &kKeys[kPaddingKey]);
 	return p ? p.doubleValue : 0;
 }
 
 static CGFloat view_padding_vertical(NSView *view) {
-	NSNumber *value = objc_getAssociatedObject(view, &kPaddingVerticalKey);
+	NSNumber *value = objc_getAssociatedObject(view, &kKeys[kPaddingVerticalKey]);
 	if (value) return value.doubleValue;
-	NSNumber *p = objc_getAssociatedObject(view, &kPaddingKey);
+	NSNumber *p = objc_getAssociatedObject(view, &kKeys[kPaddingKey]);
 	return p ? p.doubleValue : 0;
 }
 
 static CGFloat view_spacing(NSView *view) {
-	NSNumber *value = objc_getAssociatedObject(view, &kSpacingKey);
+	NSNumber *value = objc_getAssociatedObject(view, &kKeys[kSpacingKey]);
 	return value ? value.doubleValue : kStackSpacing;
 }
 
 static NSString *view_alignment(NSView *view) {
-	return objc_getAssociatedObject(view, &kAlignmentKey) ?: @"center";
+	return objc_getAssociatedObject(view, &kKeys[kAlignmentKey]) ?: @"center";
 }
 
 static CGFloat view_fixed_width(NSView *view) {
-	NSNumber *w = objc_getAssociatedObject(view, &kFixedWidthKey);
+	NSNumber *w = objc_getAssociatedObject(view, &kKeys[kFixedWidthKey]);
 	return w ? w.doubleValue : 0;
 }
 
 static CGFloat view_fixed_height(NSView *view) {
-	NSNumber *h = objc_getAssociatedObject(view, &kFixedHeightKey);
+	NSNumber *h = objc_getAssociatedObject(view, &kKeys[kFixedHeightKey]);
 	return h ? h.doubleValue : 0;
 }
 
@@ -1184,7 +1169,7 @@ static CGFloat clamp_dimension(CGFloat value, CGFloat minimum, CGFloat maximum) 
 
 static BOOL default_grows_on_axis(NSView *view, BOOL horizontal) {
 	if (!is_flexible(view)) return NO;
-	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
+	NSString *axis = objc_getAssociatedObject(view, &kKeys[kAxisKey]);
 	if (!horizontal && [axis isEqualToString:@"hstack"]) {
 		return NO;
 	}
@@ -1196,7 +1181,7 @@ static CGFloat view_flex_grow(NSView *view, BOOL horizontal) {
 		(!horizontal && view_fixed_height(view) > 0)) {
 		return 0;
 	}
-	NSNumber *grow = objc_getAssociatedObject(view, &kFlexGrowKey);
+	NSNumber *grow = objc_getAssociatedObject(view, &kKeys[kFlexGrowKey]);
 	if (grow) return MAX(0, grow.doubleValue);
 	return default_grows_on_axis(view, horizontal) ? 1 : 0;
 }
@@ -1206,13 +1191,13 @@ static CGFloat view_flex_shrink(NSView *view, BOOL horizontal) {
 		(!horizontal && view_fixed_height(view) > 0)) {
 		return 0;
 	}
-	NSNumber *shrink = objc_getAssociatedObject(view, &kFlexShrinkKey);
+	NSNumber *shrink = objc_getAssociatedObject(view, &kKeys[kFlexShrinkKey]);
 	if (shrink) return MAX(0, shrink.doubleValue);
 	return is_flexible(view) ? 1 : 0;
 }
 
 static BOOL view_fills_cross_axis(NSView *view, BOOL horizontal) {
-	const void *key = horizontal ? &kFillWidthKey : &kFillHeightKey;
+	const void *key = horizontal ? &kKeys[kFillWidthKey] : &kKeys[kFillHeightKey];
 	NSNumber *fill = objc_getAssociatedObject(view, key);
 	return fill ? fill.boolValue : view_flex_grow(view, horizontal) > 0;
 }
@@ -1260,7 +1245,7 @@ static NSSize measure_leaf(NSView *view) {
 static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 	if (!view) return NSZeroSize;
 
-	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
+	NSString *axis = objc_getAssociatedObject(view, &kKeys[kAxisKey]);
 	CGFloat padX = view_padding_horizontal(view);
 	CGFloat padY = view_padding_vertical(view);
 	CGFloat innerWidth = constraint.widthMode == LuaMeasureUndefined
@@ -1327,7 +1312,7 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		natural.height += 2 * padY;
 	} else {
 		NSValue *imageLayoutSize =
-			objc_getAssociatedObject(view, &kImageLayoutSizeKey);
+			objc_getAssociatedObject(view, &kKeys[kImageLayoutSizeKey]);
 		if (imageLayoutSize) {
 			natural = imageLayoutSize.sizeValue;
 			CGFloat scale = 1;
@@ -1353,12 +1338,12 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 
 	natural.width = clamp_dimension(
 		natural.width,
-		view_optional_dimension(view, &kMinWidthKey, 0),
-		view_optional_dimension(view, &kMaxWidthKey, INFINITY));
+		view_optional_dimension(view, &kKeys[kMinWidthKey], 0),
+		view_optional_dimension(view, &kKeys[kMaxWidthKey], INFINITY));
 	natural.height = clamp_dimension(
 		natural.height,
-		view_optional_dimension(view, &kMinHeightKey, 0),
-		view_optional_dimension(view, &kMaxHeightKey, INFINITY));
+		view_optional_dimension(view, &kKeys[kMinHeightKey], 0),
+		view_optional_dimension(view, &kKeys[kMaxHeightKey], INFINITY));
 
 	if (fixedWidth <= 0) {
 		natural.width = constrained_result(
@@ -1407,9 +1392,9 @@ static void distribute_main_axis(NSArray<NSView *> *children, CGFloat *sizes,
 
 			CGFloat delta = freeSpace * weight / totalWeight;
 			CGFloat minimum = view_optional_dimension(child,
-				horizontal ? &kMinWidthKey : &kMinHeightKey, 0);
+				horizontal ? &kKeys[kMinWidthKey] : &kKeys[kMinHeightKey], 0);
 			CGFloat maximum = view_optional_dimension(child,
-				horizontal ? &kMaxWidthKey : &kMaxHeightKey, INFINITY);
+				horizontal ? &kKeys[kMaxWidthKey] : &kKeys[kMaxHeightKey], INFINITY);
 			CGFloat proposed = sizes[i] + delta;
 			CGFloat clamped = clamp_dimension(proposed, minimum, maximum);
 			distributed += clamped - sizes[i];
@@ -1428,7 +1413,7 @@ static void distribute_main_axis(NSArray<NSView *> *children, CGFloat *sizes,
 static void layout_recursive(NSView *view, CGFloat width) {
 	if (!view) return;
 
-	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
+	NSString *axis = objc_getAssociatedObject(view, &kKeys[kAxisKey]);
 	CGFloat availableWidth = view.bounds.size.width > 0
 		? view.bounds.size.width : width;
 	CGFloat availableHeight = view.bounds.size.height;
@@ -1458,12 +1443,12 @@ static void layout_recursive(NSView *view, CGFloat width) {
 					.widthMode = LuaMeasureAtMost,
 					.heightMode = LuaMeasureUndefined,
 				});
-				NSNumber *basis = objc_getAssociatedObject(child, &kFlexBasisKey);
+				NSNumber *basis = objc_getAssociatedObject(child, &kKeys[kFlexBasisKey]);
 				CGFloat fixed = view_fixed_height(child);
 				heights[i] = clamp_dimension(
 					fixed > 0 ? fixed : (basis ? basis.doubleValue : size.height),
-					view_optional_dimension(child, &kMinHeightKey, 0),
-					view_optional_dimension(child, &kMaxHeightKey, INFINITY));
+					view_optional_dimension(child, &kKeys[kMinHeightKey], 0),
+					view_optional_dimension(child, &kKeys[kMaxHeightKey], INFINITY));
 				[measured addObject:[NSValue valueWithSize:size]];
 			}
 			distribute_main_axis(view.subviews, heights,
@@ -1480,8 +1465,8 @@ static void layout_recursive(NSView *view, CGFloat width) {
 						: MIN(natural.width, contentW));
 				childW = clamp_dimension(
 					childW,
-					view_optional_dimension(sv, &kMinWidthKey, 0),
-					view_optional_dimension(sv, &kMaxWidthKey, INFINITY));
+					view_optional_dimension(sv, &kKeys[kMinWidthKey], 0),
+					view_optional_dimension(sv, &kKeys[kMaxWidthKey], INFINITY));
 				top -= childH;
 				CGFloat childX = padX;
 				if ([alignment isEqualToString:@"center"]) {
@@ -1509,12 +1494,12 @@ static void layout_recursive(NSView *view, CGFloat width) {
 					.widthMode = LuaMeasureUndefined,
 					.heightMode = LuaMeasureAtMost,
 				});
-				NSNumber *basis = objc_getAssociatedObject(child, &kFlexBasisKey);
+				NSNumber *basis = objc_getAssociatedObject(child, &kKeys[kFlexBasisKey]);
 				CGFloat fixed = view_fixed_width(child);
 				widths[i] = clamp_dimension(
 					fixed > 0 ? fixed : (basis ? basis.doubleValue : size.width),
-					view_optional_dimension(child, &kMinWidthKey, 0),
-					view_optional_dimension(child, &kMaxWidthKey, INFINITY));
+					view_optional_dimension(child, &kKeys[kMinWidthKey], 0),
+					view_optional_dimension(child, &kKeys[kMaxWidthKey], INFINITY));
 				[measured addObject:[NSValue valueWithSize:size]];
 			}
 			distribute_main_axis(view.subviews, widths,
@@ -1531,8 +1516,8 @@ static void layout_recursive(NSView *view, CGFloat width) {
 						: MIN(natural.height, contentH));
 				childH = clamp_dimension(
 					childH,
-					view_optional_dimension(sv, &kMinHeightKey, 0),
-					view_optional_dimension(sv, &kMaxHeightKey, INFINITY));
+					view_optional_dimension(sv, &kKeys[kMinHeightKey], 0),
+					view_optional_dimension(sv, &kKeys[kMaxHeightKey], INFINITY));
 				CGFloat childY = padY;
 				if ([alignment isEqualToString:@"center"]) {
 					childY = padY + (contentH - childH) / 2;
@@ -1559,12 +1544,12 @@ static void layout_recursive(NSView *view, CGFloat width) {
 					.widthMode = LuaMeasureUndefined,
 					.heightMode = LuaMeasureAtMost,
 				});
-				NSNumber *basis = objc_getAssociatedObject(child, &kFlexBasisKey);
+				NSNumber *basis = objc_getAssociatedObject(child, &kKeys[kFlexBasisKey]);
 				CGFloat fixed = view_fixed_width(child);
 				widths[i] = clamp_dimension(
 					fixed > 0 ? fixed : (basis ? basis.doubleValue : size.width),
-					view_optional_dimension(child, &kMinWidthKey, 0),
-					view_optional_dimension(child, &kMaxWidthKey, INFINITY));
+					view_optional_dimension(child, &kKeys[kMinWidthKey], 0),
+					view_optional_dimension(child, &kKeys[kMaxWidthKey], INFINITY));
 			}
 			distribute_main_axis(view.subviews, widths,
 				MAX(0, contentW - spacing), YES);
@@ -1582,11 +1567,11 @@ static void layout_recursive(NSView *view, CGFloat width) {
 	} else {
 		if ([view isKindOfClass:[NSScrollView class]]) {
 			LuaTableViewSource *source =
-				objc_getAssociatedObject(view, &kTableSourceKey);
+				objc_getAssociatedObject(view, &kKeys[kTableSourceKey]);
 			[source updateTableFrame];
 		}
 		for (NSView *sv in view.subviews) {
-			if (objc_getAssociatedObject(sv, &kAxisKey)) {
+			if (objc_getAssociatedObject(sv, &kKeys[kAxisKey])) {
 				layout_recursive(sv, width);
 			}
 		}
@@ -1682,7 +1667,7 @@ static int bridge_set_text(lua_State *L) {
 		NSView *layoutRoot = nil;
 		for (NSView *ancestor = textField.superview;
 			 ancestor != nil; ancestor = ancestor.superview) {
-			if (objc_getAssociatedObject(ancestor, &kAxisKey)) {
+			if (objc_getAssociatedObject(ancestor, &kKeys[kAxisKey])) {
 				layoutRoot = ancestor;
 			}
 		}
@@ -1711,7 +1696,7 @@ static int bridge_button(lua_State *L) {
 	[btn sizeToFit];
 
 	if (has_action) {
-		objc_setAssociatedObject(btn, &kCallbackKey, @(ref),
+		objc_setAssociatedObject(btn, &kKeys[kCallbackKey], @(ref),
 			OBJC_ASSOCIATION_RETAIN);
 		btn.target = [LuaButtonTarget shared];
 		btn.action = @selector(onAction:);
@@ -1742,7 +1727,7 @@ static int bridge_action_button(lua_State *L) {
 			  detail:[NSString stringWithUTF8String:detail]
 			   style:[NSString stringWithUTF8String:style]];
 	if (hasAction) {
-		objc_setAssociatedObject(button, &kCallbackKey, @(ref),
+		objc_setAssociatedObject(button, &kKeys[kCallbackKey], @(ref),
 			OBJC_ASSOCIATION_RETAIN);
 		button.target = [LuaButtonTarget shared];
 		button.action = @selector(onAction:);
@@ -1768,7 +1753,7 @@ static int bridge_toggle(lua_State *L) {
 	[btn sizeToFit];
 
 	if (has_action) {
-		objc_setAssociatedObject(btn, &kCallbackKey, @(ref),
+		objc_setAssociatedObject(btn, &kKeys[kCallbackKey], @(ref),
 			OBJC_ASSOCIATION_RETAIN);
 		btn.target = [LuaButtonTarget shared];
 		btn.action = @selector(onAction:);
@@ -1820,8 +1805,6 @@ static int bridge_tableview(lua_State *L) {
 	tv.intercellSpacing = NSMakeSize(3, 2);
 	tv.allowsColumnReordering = NO;
 	tv.allowsColumnResizing = YES;
-	tv.columnAutoresizingStyle = NSTableViewNoColumnAutoresizing;
-
 	CGFloat colW = ncols > 0 ? width / ncols : width;
 	NSMutableArray *colSpecs = [NSMutableArray array];
 
@@ -1856,10 +1839,10 @@ static int bridge_tableview(lua_State *L) {
 			alignment = NSTextAlignmentCenter;
 		}
 		col.headerCell.alignment = alignment;
-		objc_setAssociatedObject(col, &kColumnAlignmentKey, @(alignment),
+		objc_setAssociatedObject(col, &kKeys[kColumnAlignmentKey], @(alignment),
 			OBJC_ASSOCIATION_RETAIN);
 		if (systemImage) {
-			objc_setAssociatedObject(col, &kColumnSystemImageKey,
+			objc_setAssociatedObject(col, &kKeys[kColumnSystemImageKey],
 				[NSString stringWithUTF8String:systemImage],
 				OBJC_ASSOCIATION_RETAIN);
 		}
@@ -1869,7 +1852,7 @@ static int bridge_tableview(lua_State *L) {
 
 		lua_pop(L, 6);
 	}
-	tv.columnAutoresizingStyle = NSTableViewLastColumnOnlyAutoresizingStyle;
+	tv.columnAutoresizingStyle = NSTableViewUniformColumnAutoresizingStyle;
 
 	LuaTableViewSource *src = [[LuaTableViewSource alloc] initWithTableView:tv
 																   columns:colSpecs];
@@ -1879,9 +1862,9 @@ static int bridge_tableview(lua_State *L) {
 	sv.hasVerticalScroller = YES;
 	sv.autohidesScrollers = YES;
 	sv.borderType = bordered ? NSBezelBorder : NSNoBorder;
-	objc_setAssociatedObject(sv, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(sv, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 
-	objc_setAssociatedObject(sv, &kTableSourceKey, src, OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(sv, &kKeys[kTableSourceKey], src, OBJC_ASSOCIATION_RETAIN);
 
 	push_objc(L, sv, "nsview");
 	return 1;
@@ -1908,7 +1891,7 @@ static int bridge_toolbar_item(lua_State *L) {
 
 static int bridge_tableview_add(lua_State *L) {
 	id obj = check_objc(L, 1);
-	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kTableSourceKey);
+	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
 
 	luaL_checktype(L, 2, LUA_TTABLE);
@@ -1919,7 +1902,7 @@ static int bridge_tableview_add(lua_State *L) {
 
 static int bridge_tableview_remove(lua_State *L) {
 	id obj = check_objc(L, 1);
-	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kTableSourceKey);
+	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
 
 	int idx = (int)luaL_checkinteger(L, 2);
@@ -1929,7 +1912,7 @@ static int bridge_tableview_remove(lua_State *L) {
 
 static int bridge_tableview_clear(lua_State *L) {
 	id obj = check_objc(L, 1);
-	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kTableSourceKey);
+	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
 
 	[src clearRows];
@@ -1938,11 +1921,11 @@ static int bridge_tableview_clear(lua_State *L) {
 
 static int bridge_table_show_loading(lua_State *L) {
 	id obj = check_objc(L, 1);
-	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kTableSourceKey);
+	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
 
 	NSScrollView *sv = (NSScrollView *)obj;
-	NSProgressIndicator *spinner = objc_getAssociatedObject(sv, &kTableSpinnerKey);
+	NSProgressIndicator *spinner = objc_getAssociatedObject(sv, &kKeys[kTableSpinnerKey]);
 	if (spinner) {
 		[spinner startAnimation:nil];
 		return 0;
@@ -1963,7 +1946,7 @@ static int bridge_table_show_loading(lua_State *L) {
 	spinner.autoresizingMask = NSViewMinXMargin | NSViewMaxXMargin
 		| NSViewMinYMargin | NSViewMaxYMargin;
 
-	objc_setAssociatedObject(sv, &kTableSpinnerKey, spinner,
+	objc_setAssociatedObject(sv, &kKeys[kTableSpinnerKey], spinner,
 		OBJC_ASSOCIATION_RETAIN);
 	[sv addSubview:spinner];
 	[spinner startAnimation:nil];
@@ -1972,15 +1955,15 @@ static int bridge_table_show_loading(lua_State *L) {
 
 static int bridge_table_hide_loading(lua_State *L) {
 	id obj = check_objc(L, 1);
-	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kTableSourceKey);
+	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
 
 	NSScrollView *sv = (NSScrollView *)obj;
-	NSProgressIndicator *spinner = objc_getAssociatedObject(sv, &kTableSpinnerKey);
+	NSProgressIndicator *spinner = objc_getAssociatedObject(sv, &kKeys[kTableSpinnerKey]);
 	if (spinner) {
 		[spinner stopAnimation:nil];
 		[spinner removeFromSuperview];
-		objc_setAssociatedObject(sv, &kTableSpinnerKey, nil,
+		objc_setAssociatedObject(sv, &kKeys[kTableSpinnerKey], nil,
 			OBJC_ASSOCIATION_RETAIN);
 	}
 	return 0;
@@ -1988,23 +1971,23 @@ static int bridge_table_hide_loading(lua_State *L) {
 
 static int bridge_table_set_refresh(lua_State *L) {
 	id obj = check_objc(L, 1);
-	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kTableSourceKey);
+	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
 
 	luaL_checktype(L, 2, LUA_TFUNCTION);
 	lua_pushvalue(L, 2);
 	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	objc_setAssociatedObject(obj, &kTableRefreshKey, @(ref),
+	objc_setAssociatedObject(obj, &kKeys[kTableRefreshKey], @(ref),
 		OBJC_ASSOCIATION_RETAIN);
 	return 0;
 }
 
 static int bridge_table_refresh(lua_State *L) {
 	id obj = check_objc(L, 1);
-	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kTableSourceKey);
+	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
 
-	NSNumber *refNum = objc_getAssociatedObject(obj, &kTableRefreshKey);
+	NSNumber *refNum = objc_getAssociatedObject(obj, &kKeys[kTableRefreshKey]);
 	if (!refNum) { lua_pushboolean(L, 0); return 1; }
 
 	lua_rawgeti(L, LUA_REGISTRYINDEX, refNum.intValue);
@@ -2025,11 +2008,11 @@ static int bridge_table_refresh(lua_State *L) {
 
 static int bridge_table_set_selection(lua_State *L) {
 	id obj = check_objc(L, 1);
-	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kTableSourceKey);
+	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
 
 	if (lua_isnoneornil(L, 2)) {
-		objc_setAssociatedObject(obj, &kTableSelectionKey, nil,
+		objc_setAssociatedObject(obj, &kKeys[kTableSelectionKey], nil,
 			OBJC_ASSOCIATION_ASSIGN);
 		return 0;
 	}
@@ -2037,7 +2020,7 @@ static int bridge_table_set_selection(lua_State *L) {
 	luaL_checktype(L, 2, LUA_TFUNCTION);
 	lua_pushvalue(L, 2);
 	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	objc_setAssociatedObject(obj, &kTableSelectionKey, @(ref),
+	objc_setAssociatedObject(obj, &kKeys[kTableSelectionKey], @(ref),
 		OBJC_ASSOCIATION_RETAIN);
 	return 0;
 }
@@ -2165,7 +2148,7 @@ static int bridge_callback(lua_State *L) {
 	lua_pushvalue(L, 2);
 	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
-	objc_setAssociatedObject(obj, &kCallbackKey, @(ref), OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(obj, &kKeys[kCallbackKey], @(ref), OBJC_ASSOCIATION_RETAIN);
 	if ([obj respondsToSelector:@selector(setTarget:)]) {
 		[obj setTarget:[LuaButtonTarget shared]];
 	}
@@ -2301,7 +2284,7 @@ static int bridge_text_view(lua_State *L) {
 	tv.textContainer.containerSize = NSMakeSize(contentSize.width, FLT_MAX);
 
 	sv.documentView = tv;
-	objc_setAssociatedObject(sv, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(sv, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 
 	push_objc(L, sv, "nsview");
 	return 1;
@@ -2339,7 +2322,7 @@ static int bridge_text_view_on_change(lua_State *L) {
 
 	lua_pushvalue(L, 2);
 	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	objc_setAssociatedObject(tv, &kTextChangeKey, @(ref),
+	objc_setAssociatedObject(tv, &kKeys[kTextChangeKey], @(ref),
 		OBJC_ASSOCIATION_RETAIN);
 
 	lua_getfield(L, LUA_REGISTRYINDEX, "bridge_main");
@@ -2352,7 +2335,7 @@ static int bridge_text_view_on_change(lua_State *L) {
 					 queue:nil
 				usingBlock:^(NSNotification *note) {
 		NSNumber *refNum = objc_getAssociatedObject(note.object,
-			&kTextChangeKey);
+			&kKeys[kTextChangeKey]);
 		if (!refNum || !mainL) return;
 		lua_rawgeti(mainL, LUA_REGISTRYINDEX, refNum.intValue);
 		lua_pushstring(mainL,
