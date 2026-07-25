@@ -63,6 +63,33 @@ t.assertEqual(spaced.spacing, 3, "custom stack spacing is retained")
 t.assertEqual(spaced.paddingHorizontal, 12, "horizontal padding is retained")
 t.assertEqual(spaced.paddingVertical, 7, "vertical padding is retained")
 
+-- Image layout uses the bridge's capped display size, not the source bitmap's
+-- intrinsic dimensions, and remains proportional under a narrower proposal.
+
+local cappedImage = ns.Image "tests/fixtures/oversized.svg"
+ns.Window {
+	width = 480,
+	height = 300,
+	visible = false,
+	ns.VStack {
+		alignment = "leading",
+		cappedImage,
+	},
+}
+t.assertSize(cappedImage, 400, 200, "oversized image uses capped layout size")
+
+local narrowImage = ns.Image "tests/fixtures/oversized.svg"
+ns.Window {
+	width = 300,
+	height = 300,
+	visible = false,
+	ns.VStack {
+		alignment = "leading",
+		narrowImage,
+	},
+}
+t.assertSize(narrowImage, 300, 150, "image scales proportionally in a narrow window")
+
 -- ForEach composes data-driven children without adding placeholder views
 
 ok = pcall(function()

@@ -9,6 +9,7 @@ local examples = {
 	"examples/mail.lua",
 	"examples/layout.lua",
 	"examples/welcome.lua",
+	"examples/ide.lua",
 }
 
 for _, path in ipairs(examples) do

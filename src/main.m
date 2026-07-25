@@ -28,8 +28,10 @@ static char kFlexShrinkKey;
 static char kFlexBasisKey;
 static char kFillWidthKey;
 static char kFillHeightKey;
+static char kImageLayoutSizeKey;
 static char kTableSpinnerKey;
 static char kTableRefreshKey;
+static char kTextChangeKey;
 static const CGFloat kStackSpacing = 8.0;
 static lua_State *gL = NULL;
 
@@ -482,6 +484,12 @@ static int bridge_table_hide_loading(lua_State *L);
 static int bridge_table_set_refresh(lua_State *L);
 static int bridge_table_refresh(lua_State *L);
 static int bridge_set_text(lua_State *L);
+static int bridge_text_view(lua_State *L);
+static int bridge_text_view_get_text(lua_State *L);
+static int bridge_text_view_set_text(lua_State *L);
+static int bridge_text_view_on_change(lua_State *L);
+static int bridge_eval(lua_State *L);
+static int bridge_clear_container(lua_State *L);
 static void layout_recursive(NSView *view, CGFloat width);
 
 static void push_objc(lua_State *L, id obj, const char *meta) {
@@ -973,6 +981,11 @@ static int bridge_image(lua_State *L) {
 	NSImageView *iv = [[NSImageView alloc] initWithFrame:NSMakeRect(0, 0, size.width, size.height)];
 	iv.image = img;
 	iv.imageScaling = NSImageScaleProportionallyUpOrDown;
+	// NSImageView reports the source bitmap's intrinsic dimensions even when
+	// the bridge has capped its display frame. Preserve the intended display
+	// size so stack measurement does not reserve space for the original image.
+	objc_setAssociatedObject(iv, &kImageLayoutSizeKey,
+		[NSValue valueWithSize:size], OBJC_ASSOCIATION_RETAIN);
 
 	push_objc(L, iv, "nsview");
 	return 1;
@@ -1240,7 +1253,24 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		natural.width += dividers + 2 * padX;
 		natural.height += 2 * padY;
 	} else {
-		natural = measure_leaf(view);
+		NSValue *imageLayoutSize =
+			objc_getAssociatedObject(view, &kImageLayoutSizeKey);
+		if (imageLayoutSize) {
+			natural = imageLayoutSize.sizeValue;
+			CGFloat scale = 1;
+			if (constraint.widthMode != LuaMeasureUndefined
+				&& natural.width > constraint.width && natural.width > 0) {
+				scale = MIN(scale, constraint.width / natural.width);
+			}
+			if (constraint.heightMode != LuaMeasureUndefined
+				&& natural.height > constraint.height && natural.height > 0) {
+				scale = MIN(scale, constraint.height / natural.height);
+			}
+			natural.width *= MAX(0, scale);
+			natural.height *= MAX(0, scale);
+		} else {
+			natural = measure_leaf(view);
+		}
 	}
 
 	CGFloat fixedWidth = view_fixed_width(view);
@@ -1480,6 +1510,13 @@ static int bridge_layout(lua_State *L) {
 
 	layout_recursive(view, width);
 	return 0;
+}
+
+static int bridge_view_size(lua_State *L) {
+	NSView *view = check_view(L, 1);
+	lua_pushnumber(L, view.frame.size.width);
+	lua_pushnumber(L, view.frame.size.height);
+	return 2;
 }
 
 static int bridge_set_content_size(lua_State *L) {
@@ -2108,6 +2145,148 @@ static int bridge_json_parse(lua_State *L) {
 	return 1;
 }
 
+#pragma mark - NSTextView (code editor)
+
+static int bridge_text_view(lua_State *L) {
+	NSScrollView *sv = [[NSScrollView alloc]
+		initWithFrame:NSMakeRect(0, 0, 400, 300)];
+	sv.hasVerticalScroller = YES;
+	sv.hasHorizontalScroller = NO;
+	sv.autohidesScrollers = YES;
+	sv.borderType = NSNoBorder;
+
+	NSSize contentSize = sv.contentSize;
+	NSTextView *tv = [[NSTextView alloc]
+		initWithFrame:NSMakeRect(0, 0, contentSize.width, contentSize.height)];
+	tv.font = [NSFont monospacedSystemFontOfSize:13
+		weight:NSFontWeightRegular];
+	tv.automaticQuoteSubstitutionEnabled = NO;
+	tv.automaticDashSubstitutionEnabled = NO;
+	tv.automaticTextReplacementEnabled = NO;
+	tv.richText = NO;
+	tv.allowsUndo = YES;
+	tv.minSize = NSMakeSize(0, 0);
+	tv.maxSize = NSMakeSize(FLT_MAX, FLT_MAX);
+	tv.verticallyResizable = YES;
+	tv.horizontallyResizable = NO;
+	tv.textContainer.widthTracksTextView = YES;
+	tv.textContainer.containerSize = NSMakeSize(contentSize.width, FLT_MAX);
+
+	sv.documentView = tv;
+	objc_setAssociatedObject(sv, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
+
+	push_objc(L, sv, "nsview");
+	return 1;
+}
+
+static int bridge_text_view_get_text(lua_State *L) {
+	id obj = check_objc(L, 1);
+	if (![obj isKindOfClass:[NSScrollView class]]) {
+		return luaL_error(L, "expected a text view");
+	}
+	NSTextView *tv = (NSTextView *)((NSScrollView *)obj).documentView;
+	lua_pushstring(L, tv.string.UTF8String);
+	return 1;
+}
+
+static int bridge_text_view_set_text(lua_State *L) {
+	id obj = check_objc(L, 1);
+	const char *str = luaL_checkstring(L, 2);
+	if (![obj isKindOfClass:[NSScrollView class]]) {
+		return luaL_error(L, "expected a text view");
+	}
+	NSTextView *tv = (NSTextView *)((NSScrollView *)obj).documentView;
+	tv.string = [NSString stringWithUTF8String:str];
+	return 0;
+}
+
+static int bridge_text_view_on_change(lua_State *L) {
+	id obj = check_objc(L, 1);
+	luaL_checktype(L, 2, LUA_TFUNCTION);
+
+	if (![obj isKindOfClass:[NSScrollView class]]) {
+		return luaL_error(L, "expected a text view");
+	}
+	NSTextView *tv = (NSTextView *)((NSScrollView *)obj).documentView;
+
+	lua_pushvalue(L, 2);
+	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	objc_setAssociatedObject(tv, &kTextChangeKey, @(ref),
+		OBJC_ASSOCIATION_RETAIN);
+
+	lua_getfield(L, LUA_REGISTRYINDEX, "bridge_main");
+	lua_State *mainL = (lua_State *)lua_touserdata(L, -1);
+	lua_pop(L, 1);
+
+	[[NSNotificationCenter defaultCenter]
+		addObserverForName:NSTextDidChangeNotification
+					object:tv
+					 queue:nil
+				usingBlock:^(NSNotification *note) {
+		NSNumber *refNum = objc_getAssociatedObject(note.object,
+			&kTextChangeKey);
+		if (!refNum || !mainL) return;
+		lua_rawgeti(mainL, LUA_REGISTRYINDEX, refNum.intValue);
+		lua_pushstring(mainL,
+			((NSTextView *)note.object).string.UTF8String);
+		if (lua_pcall(mainL, 1, 0, 0) != LUA_OK) {
+			fprintf(stderr, "text change error: %s\n",
+				lua_tostring(mainL, -1));
+			lua_pop(mainL, 1);
+		}
+	}];
+
+	return 0;
+}
+
+#pragma mark - eval & canvas
+
+NSTextView *text_view_from_scroll_view(NSView *obj) {
+	if (![obj isKindOfClass:[NSScrollView class]]) return nil;
+	NSTextView *tv = (NSTextView *)((NSScrollView *)obj).documentView;
+	if (![tv isKindOfClass:[NSTextView class]]) return nil;
+	return tv;
+}
+
+static int bridge_eval(lua_State *L) {
+	const char *code = luaL_checkstring(L, 1);
+
+	char wrapped[65536];
+	int n = snprintf(wrapped, sizeof(wrapped),
+		"local ns=require('AppKit');return(function()\n%s\nend)()",
+		code);
+
+	if (n < 0 || n >= (int)sizeof(wrapped)) {
+		lua_pushnil(L);
+		lua_pushstring(L, "code too long");
+		return 2;
+	}
+
+	if (luaL_loadstring(L, wrapped) != LUA_OK) {
+		lua_pushnil(L);
+		lua_insert(L, -2);
+		return 2;
+	}
+
+	if (lua_pcall(L, 0, 1, 0) != LUA_OK) {
+		lua_pushnil(L);
+		lua_insert(L, -2);
+		return 2;
+	}
+
+	lua_pushnil(L);
+	return 2;
+}
+
+static int bridge_clear_container(lua_State *L) {
+	NSView *container = check_view(L, 1);
+	for (NSView *sub in [container.subviews copy]) {
+		[sub removeFromSuperview];
+	}
+	layout_recursive(container, container.bounds.size.width);
+	return 0;
+}
+
 #pragma mark - Module registration
 
 static const luaL_Reg bridge_lib[] = {
@@ -2121,6 +2300,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_systemColor",      bridge_system_color},
 	{"_add",              bridge_add},
 	{"_layout",           bridge_layout},
+	{"_viewSize",         bridge_view_size},
 	{"_setContentSize", bridge_set_content_size},
 	{"_setWindowMinSize", bridge_set_window_min_size},
 	{"_setAppearance",    bridge_set_appearance},
@@ -2138,6 +2318,12 @@ static const luaL_Reg bridge_lib[] = {
 	{"_httpGet",         bridge_http_get},
 	{"_jsonParse",       bridge_json_parse},
 	{"_tableSetRefresh", bridge_table_set_refresh},
+	{"_textView",         bridge_text_view},
+	{"_textViewGetText",  bridge_text_view_get_text},
+	{"_textViewSetText",  bridge_text_view_set_text},
+	{"_textViewOnChange", bridge_text_view_on_change},
+	{"_eval",             bridge_eval},
+	{"_clearContainer",   bridge_clear_container},
 	{NULL, NULL},
 };
 
