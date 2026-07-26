@@ -441,4 +441,55 @@ local ns_check = require("AppKit")
 t.expect(type(ns_check.Window) == "function", "AppKit.Window is still a function after canvas eval")
 t.expect(type(ns_check.Preview) == "function", "AppKit.Preview is still a function after canvas eval")
 
+-- Table columns resize proportionally when the table view is laid out at
+-- a narrower width than its creation width. This mirrors the IDE canvas
+-- embedding pattern: a 640-wide table must keep all columns visible when
+-- squeezed into a 450-wide preview pane.
+local tableList = ns.List {
+	width = 640,
+	height = 200,
+	columns = {
+		{ id = "name", title = "Name" },
+		{ id = "role", title = "Role" },
+		{ id = "dept", title = "Department" },
+	},
+	data = {
+		{ name = "Alice Chen", role = "Engineer", dept = "Core" },
+		{ name = "Bob", role = "Designer", dept = "UX" },
+	},
+}
+local widths = bridge._tableColumnWidths(tableList)
+t.assertEqual(#widths, 3, "three columns created")
+for _, c in ipairs(widths) do
+	t.expect(c.width > 0, "column '" .. c.id .. "' has positive width")
+end
+
+-- Verify column widths fit the initial 640-wide table.
+-- (Content area is slightly narrower due to the vertical scroller.)
+local total640 = 0
+for _, c in ipairs(widths) do total640 = total640 + c.width end
+t.expect(total640 > 600, "640-wide columns fill available width (" .. total640 .. ")")
+
+-- Resize to 450 (simulates canvas pane embedding) and re-layout.
+bridge._setContentSize(tableList, 450, 200)
+bridge._layout(tableList, 450)
+widths = bridge._tableColumnWidths(tableList)
+local total450 = 0
+for _, c in ipairs(widths) do
+	t.expect(c.width > 0, "column '" .. c.id .. "' visible at 450px")
+	total450 = total450 + c.width
+end
+t.expect(total450 < total640, "columns shrink when table is narrowed (" .. total450 .. " < " .. total640 .. ")")
+
+-- Resize to 320 (very narrow but all columns must stay visible).
+bridge._setContentSize(tableList, 320, 200)
+bridge._layout(tableList, 320)
+widths = bridge._tableColumnWidths(tableList)
+local total320 = 0
+for _, c in ipairs(widths) do
+	t.expect(c.width > 0, "column '" .. c.id .. "' visible at 320px")
+	total320 = total320 + c.width
+end
+t.expect(total320 < total450, "columns shrink further at 320px (" .. total320 .. " < " .. total450 .. ")")
+
 os.exit(t.summary() and 0 or 1)

@@ -952,6 +952,7 @@ static int bridge_tableview_clear(lua_State *L);
 static int bridge_table_show_loading(lua_State *L);
 static int bridge_table_hide_loading(lua_State *L);
 static int bridge_table_set_refresh(lua_State *L);
+static int bridge_table_column_widths(lua_State *L);
 static int bridge_table_refresh(lua_State *L);
 static int bridge_table_set_selection(lua_State *L);
 static int bridge_set_text(lua_State *L);
@@ -2237,6 +2238,7 @@ static void layout_recursive(NSView *view, CGFloat width) {
 	}
 	} else {
 		if ([view isKindOfClass:[NSScrollView class]]) {
+			[(NSScrollView *)view tile];
 			LuaTableViewSource *source =
 				objc_getAssociatedObject(view, &kKeys[kTableSourceKey]);
 			[source updateTableFrame];
@@ -2594,7 +2596,7 @@ static int bridge_tableview(lua_State *L) {
 
 		lua_pop(L, 6);
 	}
-	tv.columnAutoresizingStyle = NSTableViewLastColumnOnlyAutoresizingStyle;
+	tv.columnAutoresizingStyle = NSTableViewUniformColumnAutoresizingStyle;
 
 	LuaTableViewSource *src = [[LuaTableViewSource alloc] initWithTableView:tv
 																   columns:colSpecs];
@@ -2607,6 +2609,8 @@ static int bridge_tableview(lua_State *L) {
 	objc_setAssociatedObject(sv, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 
 	objc_setAssociatedObject(sv, &kKeys[kTableSourceKey], src, OBJC_ASSOCIATION_RETAIN);
+
+	[tv sizeLastColumnToFit];
 
 	push_objc(L, sv, "nsview");
 	return 1;
@@ -2719,6 +2723,31 @@ static int bridge_table_hide_loading(lua_State *L) {
 	return 0;
 }
 
+static int bridge_table_column_widths(lua_State *L) {
+	id obj = check_objc(L, 1);
+	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
+	if (!src) return luaL_error(L, "not a table view");
+
+	NSScrollView *sv = (NSScrollView *)obj;
+	NSTableView *tv = (NSTableView *)sv.documentView;
+	if (![tv isKindOfClass:[NSTableView class]]) return 0;
+
+	lua_newtable(L);
+	NSArray<NSTableColumn *> *columns = tv.tableColumns;
+	for (NSUInteger i = 0; i < columns.count; i++) {
+		NSTableColumn *col = columns[i];
+		lua_newtable(L);
+		lua_pushstring(L, col.identifier.UTF8String);
+		lua_setfield(L, -2, "id");
+		lua_pushnumber(L, col.width);
+		lua_setfield(L, -2, "width");
+		lua_pushnumber(L, col.minWidth);
+		lua_setfield(L, -2, "minWidth");
+		lua_rawseti(L, -2, (lua_Integer)(i + 1));
+	}
+	return 1;
+}
+
 static int bridge_table_set_refresh(lua_State *L) {
 	id obj = check_objc(L, 1);
 	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
@@ -2822,7 +2851,7 @@ static int bridge_outlineview(lua_State *L) {
 	ov.allowsColumnResizing = YES;
 	ov.indentationPerLevel = kOutlineIndentation;
 	ov.indentationMarkerFollowsCell = YES;
-	ov.columnAutoresizingStyle = NSTableViewLastColumnOnlyAutoresizingStyle;
+	ov.columnAutoresizingStyle = NSTableViewUniformColumnAutoresizingStyle;
 
 	int ncols = (int)luaL_len(L, 1);
 	CGFloat colW = ncols > 0 ? width / ncols : width;
@@ -3463,6 +3492,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_httpGet",         bridge_http_get},
 	{"_jsonParse",       bridge_json_parse},
 	{"_tableSetRefresh", bridge_table_set_refresh},
+	{"_tableColumnWidths", bridge_table_column_widths},
 	{"_textView",         bridge_text_view},
 	{"_textViewGetText",  bridge_text_view_get_text},
 	{"_textViewSetText",  bridge_text_view_set_text},
