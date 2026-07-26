@@ -163,7 +163,6 @@ return ns.VStack {
 			ide.WorkspaceLayout {
 				navigator = ide.NavigatorArea {
 					title = "FILES",
-					fixedWidth = 260,
 					content = fileTree,
 				},
 				editor = ide.EditorArea {

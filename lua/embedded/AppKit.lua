@@ -164,6 +164,9 @@ function AppKit.HSplit(props)
 	if type(props) == "table" then
 		applyLayout(view, props)
 		addChildren(view, props)
+		if props.proportions then
+			bridge._splitSetProportions(view, props.proportions)
+		end
 	end
 	return view
 end
@@ -175,6 +178,9 @@ function AppKit.VSplit(props)
 	if type(props) == "table" then
 		applyLayout(view, props)
 		addChildren(view, props)
+		if props.proportions then
+			bridge._splitSetProportions(view, props.proportions)
+		end
 	end
 	return view
 end

@@ -72,12 +72,11 @@ local function wrapContent(view)
 end
 
 -- NavigatorArea: left sidebar panel.
--- Props: title, content (view), fixedWidth.
+-- Props: title, content (view).
 -- Mirrors Xcode's IDENavigatorArea / NSView_ControlledBy_IDENavigatorArea.
 function IDEKit.NavigatorArea(props)
 	props = props or {}
 	return ns.VStack {
-		fixedWidth = props.fixedWidth,
 		spacing = 0,
 		IDEKit.ControlBar { title = props.title },
 		wrapContent(props.content),
@@ -127,6 +126,7 @@ function IDEKit.WorkspaceLayout(props)
 	props = props or {}
 	return ns.HSplit {
 		flexGrow = 1,
+		proportions = { 1, 2, 2 },
 		props.navigator,
 		props.editor,
 		props.preview,

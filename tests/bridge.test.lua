@@ -1,6 +1,8 @@
 local ns = require("AppKit")
 local t = require("TestKit")
 local App = require("App")
+local ide = require("IDEKit")
+local bridge = require("bridge")
 local ImageViewerPlugin = require("examples.ide.plugins.image_viewer")
 local TextEditorPlugin = require("examples.ide.plugins.text_editor")
 local NativeControlsPlugin = require("examples.ide.plugins.native_controls")
@@ -78,6 +80,61 @@ local spaced = ns.VStack {
 t.assertEqual(spaced.spacing, 3, "custom stack spacing is retained")
 t.assertEqual(spaced.paddingHorizontal, 12, "horizontal padding is retained")
 t.assertEqual(spaced.paddingVertical, 7, "vertical padding is retained")
+
+-- IDE workspace areas start with usable native split panes. In particular, an
+-- intrinsically wide editor must not squeeze the initially empty canvas to 0.
+
+local navigatorArea = ide.NavigatorArea {
+	title = "FILES",
+	content = ns.Text "Files",
+}
+local editorAction = bridge._symbolToggle(
+	"arrow.left.and.line.vertical.and.arrow.right",
+	"Toggle Word Wrap",
+	false)
+local editorArea = ide.EditorArea {
+	title = "EDITOR",
+	content = ns.Text "A very wide editor surface",
+	buttons = { editorAction },
+}
+local previewArea = ide.PreviewArea {
+	title = "CANVAS",
+	content = ide.Canvas(),
+}
+local workspace = ide.WorkspaceLayout {
+	navigator = navigatorArea,
+	editor = editorArea,
+	preview = previewArea,
+}
+local workspaceWindow = ns.Window {
+	width = 1100,
+	height = 680,
+	visible = false,
+	workspace,
+}
+local navigatorWidth = bridge._viewSize(navigatorArea)
+local editorWidth = bridge._viewSize(editorArea)
+local previewWidth = bridge._viewSize(previewArea)
+t.expect(navigatorWidth > 0, "IDE navigator split pane has a usable width")
+t.expect(editorWidth > 0,
+	"IDE editor split pane has a usable native width")
+t.expect(previewWidth > 0,
+	"IDE canvas split pane is visible initially")
+t.expect(math.abs(editorWidth - navigatorWidth * 2) < 2,
+	"IDE navigator starts half as wide as the editor")
+t.expect(math.abs(previewWidth - navigatorWidth * 2) < 2,
+	"IDE navigator starts half as wide as the canvas")
+t.assertEqual(workspace.className, "NSSplitView",
+	"IDE workspace uses Cocoa's NSSplitView directly")
+t.expect(editorArea.clipsToBounds, "IDE editor pane clips content at its divider")
+t.expect(previewArea.clipsToBounds, "IDE canvas pane clips content at its divider")
+local editorX, _, editorFrameWidth = bridge._viewFrameInWindow(editorArea)
+local actionX, _, actionWidth = bridge._viewFrameInWindow(editorAction)
+t.expect(actionX >= editorX
+		and actionX + actionWidth <= editorX + editorFrameWidth,
+	string.format(
+		"IDE editor action remains inside its split pane (editor %.0f..%.0f, action %.0f..%.0f)",
+		editorX, editorX + editorFrameWidth, actionX, actionX + actionWidth))
 
 -- Image layout uses the bridge's capped display size, not the source bitmap's
 -- intrinsic dimensions, and remains proportional under a narrower proposal.

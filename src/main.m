@@ -39,6 +39,9 @@ enum {
 	kTableRefreshKey,
 	kTextChangeKey,
 	kTextWrapKey,
+	kSplitPaneFrameObserverKey,
+	kSplitProportionsKey,
+	kSplitProportionsAppliedKey,
 	kKeyCount
 };
 static char kKeys[kKeyCount];
@@ -51,9 +54,9 @@ static lua_State *gL = NULL;
 
 /* ----- Table / Outline cells ----- */
 #define kTableCellImageWidth            16
-#define kTableCellImageTextGap           4
-#define kTableCellImageLeadingInset      4
-#define kTableCellTextLeadingInset       8
+#define kTableCellImageTextGap           2
+#define kTableCellImageLeadingInset      0
+#define kTableCellTextLeadingInset       2
 #define kTableCellTextTrailingInset      8
 #define kTableCellSymbolPointSize       13
 #define kTableColumnMinWidth            40
@@ -225,6 +228,7 @@ static void report_lua_error(lua_State *L, const char *context) {
 	frame.size.width = viewport.width;
 	frame.size.height = MAX(viewport.height, rowsHeight);
 	_tableView.frame = frame;
+	[_tableView sizeLastColumnToFit];
 }
 
 - (NSView *)tableView:(NSTableView *)tableView
@@ -383,6 +387,7 @@ static void report_lua_error(lua_State *L, const char *context) {
 	frame.size.width = viewport.width;
 	frame.size.height = MAX(viewport.height, rowsHeight);
 	_outlineView.frame = frame;
+	[_outlineView sizeLastColumnToFit];
 }
 
 - (void)addRootItem:(NSDictionary *)item {
@@ -1368,6 +1373,30 @@ static int bridge_vsplit(lua_State *L) {
 	return 1;
 }
 
+static int bridge_split_set_proportions(lua_State *L) {
+	NSView *view = check_view(L, 1);
+	if (![view isKindOfClass:[NSSplitView class]]) {
+		return luaL_error(L, "splitSetProportions requires an NSSplitView");
+	}
+	luaL_checktype(L, 2, LUA_TTABLE);
+
+	NSMutableArray<NSNumber *> *proportions = [NSMutableArray array];
+	lua_Integer count = luaL_len(L, 2);
+	for (lua_Integer i = 1; i <= count; i++) {
+		lua_rawgeti(L, 2, i);
+		CGFloat value = luaL_checknumber(L, -1);
+		lua_pop(L, 1);
+		if (value <= 0) {
+			return luaL_error(L, "split proportions must be positive");
+		}
+		[proportions addObject:@(value)];
+	}
+	objc_setAssociatedObject(
+		view, &kKeys[kSplitProportionsKey], proportions,
+		OBJC_ASSOCIATION_RETAIN);
+	return 0;
+}
+
 /* Thin horizontal separator line — like NSBox with NSBoxSeparator. */
 static int bridge_separator(lua_State *L) {
 	NSBox *box = [[NSBox alloc] initWithFrame:NSMakeRect(0, 0, kSeparatorSize, kSeparatorSize)];
@@ -1676,6 +1705,33 @@ static int bridge_add(lua_State *L) {
 		container = (NSView *)parent;
 	}
 
+	if ([container isKindOfClass:[NSSplitView class]]) {
+		/*
+		 * A split pane is a clipping boundary. NSView no longer clips to its
+		 * bounds by default on modern macOS, so an intrinsically wide editor
+		 * would otherwise draw across the divider into the next pane.
+		 */
+		child.clipsToBounds = YES;
+		[(NSSplitView *)container addArrangedSubview:child];
+		if (!objc_getAssociatedObject(
+				child, &kKeys[kSplitPaneFrameObserverKey])) {
+			child.postsFrameChangedNotifications = YES;
+			__weak NSView *weakChild = child;
+			id observer = [[NSNotificationCenter defaultCenter]
+				addObserverForName:NSViewFrameDidChangeNotification
+							object:child
+							 queue:nil
+						usingBlock:^(NSNotification *note) {
+							NSView *pane = weakChild;
+							if (!pane) return;
+							layout_recursive(pane, pane.bounds.size.width);
+						}];
+			objc_setAssociatedObject(
+				child, &kKeys[kSplitPaneFrameObserverKey], observer,
+				OBJC_ASSOCIATION_RETAIN);
+		}
+		return 0;
+	}
 	[container addSubview:child];
 	return 0;
 }
@@ -1914,7 +1970,7 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		}
 		natural.width *= MAX(0, scale);
 		natural.height *= MAX(0, scale);
-	} else {
+	} else if (layout_axis(view) == LayoutAxisNone) {
 		natural = measure_leaf(view);
 	}
 
@@ -1995,6 +2051,43 @@ static void distribute_main_axis(NSArray<NSView *> *children, CGFloat *sizes,
 		if (!hitBound) break;
 	}
 	free(frozen);
+}
+
+static void apply_initial_split_proportions(NSSplitView *split) {
+	if ([objc_getAssociatedObject(
+			split, &kKeys[kSplitProportionsAppliedKey]) boolValue]) return;
+
+	NSArray<NSView *> *panes = split.arrangedSubviews;
+	NSUInteger count = panes.count;
+	CGFloat totalLength = split.vertical
+		? split.bounds.size.width : split.bounds.size.height;
+	if (count < 2 || totalLength <= 0) return;
+
+	NSArray<NSNumber *> *configured =
+		objc_getAssociatedObject(split, &kKeys[kSplitProportionsKey]);
+	BOOL useConfigured = configured.count == count;
+	CGFloat totalWeight = 0;
+	if (useConfigured) {
+		for (NSNumber *weight in configured) totalWeight += weight.doubleValue;
+		useConfigured = totalWeight > 0;
+	}
+	if (!useConfigured) totalWeight = count;
+
+	CGFloat divider = split.dividerThickness;
+	CGFloat usableLength = MAX(0, totalLength - (count - 1) * divider);
+	CGFloat consumedWeight = 0;
+	for (NSUInteger i = 0; i + 1 < count; i++) {
+		consumedWeight += useConfigured
+			? configured[i].doubleValue : 1;
+		CGFloat leadingLength = usableLength * consumedWeight / totalWeight;
+		CGFloat position = split.vertical
+			? leadingLength + i * divider
+			: totalLength - leadingLength - i * divider;
+		[split setPosition:position ofDividerAtIndex:(NSInteger)i];
+	}
+	objc_setAssociatedObject(
+		split, &kKeys[kSplitProportionsAppliedKey], @YES,
+		OBJC_ASSOCIATION_RETAIN);
 }
 
 static void layout_recursive(NSView *view, CGFloat width) {
@@ -2122,72 +2215,23 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			NSUInteger count = view.subviews.count;
 			if (count == 0) return;
 
-			CGFloat divider = [(NSSplitView *)view dividerThickness];
-			CGFloat spacing = count > 1 ? (count - 1) * divider : 0;
-			CGFloat *widths = calloc(count, sizeof(CGFloat));
-			for (NSUInteger i = 0; i < count; i++) {
-				NSView *child = view.subviews[i];
-				NSSize size = measure_view(child, (LuaLayoutConstraint){
-					.width = 0,
-					.height = contentH,
-					.widthMode = LuaMeasureUndefined,
-					.heightMode = LuaMeasureAtMost,
-				});
-				NSNumber *basis = objc_getAssociatedObject(child, &kKeys[kFlexBasisKey]);
-				CGFloat fixed = view_fixed_width(child);
-				widths[i] = clamp_dimension(
-					fixed > 0 ? fixed : (basis ? basis.doubleValue : size.width),
-					view_optional_dimension(child, &kKeys[kMinWidthKey], 0),
-					view_optional_dimension(child, &kKeys[kMaxWidthKey], INFINITY));
+			NSSplitView *split = (NSSplitView *)view;
+			[split layoutSubtreeIfNeeded];
+			apply_initial_split_proportions(split);
+			for (NSView *pane in split.arrangedSubviews) {
+				layout_recursive(pane, pane.bounds.size.width);
 			}
-			distribute_main_axis(view.subviews, widths,
-				MAX(0, contentW - spacing), YES);
-			CGFloat x = padX;
-
-			for (NSUInteger i = 0; i < count; i++) {
-				NSView *sv = view.subviews[i];
-				CGFloat childW = widths[i];
-				sv.frame = NSMakeRect(x, padY, childW, contentH);
-				layout_recursive(sv, childW);
-				x += childW + divider;
-			}
-			free(widths);
 	} break;
 	case LayoutAxisVSplit: {
 			NSUInteger count = view.subviews.count;
 			if (count == 0) return;
 
-			CGFloat divider = [(NSSplitView *)view dividerThickness];
-			CGFloat spacing = count > 1 ? (count - 1) * divider : 0;
-			CGFloat *heights = calloc(count, sizeof(CGFloat));
-			for (NSUInteger i = 0; i < count; i++) {
-				NSView *child = view.subviews[i];
-				NSSize size = measure_view(child, (LuaLayoutConstraint){
-					.width = contentW,
-					.height = 0,
-					.widthMode = LuaMeasureAtMost,
-					.heightMode = LuaMeasureUndefined,
-				});
-				NSNumber *basis = objc_getAssociatedObject(child, &kKeys[kFlexBasisKey]);
-				CGFloat fixed = view_fixed_height(child);
-				heights[i] = clamp_dimension(
-					fixed > 0 ? fixed : (basis ? basis.doubleValue : size.height),
-					view_optional_dimension(child, &kKeys[kMinHeightKey], 0),
-					view_optional_dimension(child, &kKeys[kMaxHeightKey], INFINITY));
+			NSSplitView *split = (NSSplitView *)view;
+			[split layoutSubtreeIfNeeded];
+			apply_initial_split_proportions(split);
+			for (NSView *pane in split.arrangedSubviews) {
+				layout_recursive(pane, pane.bounds.size.width);
 			}
-			distribute_main_axis(view.subviews, heights,
-				MAX(0, contentH - spacing), NO);
-			CGFloat top = padY + contentH;
-
-			for (NSUInteger i = 0; i < count; i++) {
-				NSView *sv = view.subviews[i];
-				CGFloat childH = heights[i];
-				top -= childH;
-				sv.frame = NSMakeRect(padX, top, contentW, childH);
-				layout_recursive(sv, contentW);
-				top -= divider;
-			}
-			free(heights);
 	} break;
 	default: break;
 	}
@@ -2225,6 +2269,16 @@ static int bridge_view_size(lua_State *L) {
 	lua_pushnumber(L, view.frame.size.width);
 	lua_pushnumber(L, view.frame.size.height);
 	return 2;
+}
+
+static int bridge_view_frame_in_window(lua_State *L) {
+	NSView *view = check_view(L, 1);
+	NSRect frame = [view convertRect:view.bounds toView:nil];
+	lua_pushnumber(L, frame.origin.x);
+	lua_pushnumber(L, frame.origin.y);
+	lua_pushnumber(L, frame.size.width);
+	lua_pushnumber(L, frame.size.height);
+	return 4;
 }
 
 static int bridge_set_content_size(lua_State *L) {
@@ -3381,6 +3435,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_hstack",           bridge_hstack},
 	{"_hsplit",           bridge_hsplit},
 	{"_vsplit",           bridge_vsplit},
+	{"_splitSetProportions", bridge_split_set_proportions},
 	{"_separator",        bridge_separator},
 	{"_spacer",           bridge_spacer},
 	{"_image",            bridge_image},
@@ -3390,7 +3445,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_add",              bridge_add},
 	{"_layout",           bridge_layout},
 	{"_viewSize",         bridge_view_size},
-	{"_setContentSize", bridge_set_content_size},
+	{"_viewFrameInWindow",bridge_view_frame_in_window},
+	{"_setContentSize",   bridge_set_content_size},
 	{"_setWindowMinSize", bridge_set_window_min_size},
 	{"_setAppearance",    bridge_set_appearance},
 	{"_tableview",        bridge_tableview},
@@ -3453,6 +3509,41 @@ int luaopen_bridge(lua_State *L) {
  */
 int lua_objc_main(int argc, char *argv[]) {
 	[NSApplication sharedApplication];
+
+	/* Standard main menu with Edit menu so keyboard shortcuts
+	 * (Cmd+C/V/X/Z/Shift+Z/A) work for NSTextView code editors.
+	 * NSTextView handles cut:/copy:/paste:/undo:/redo:/selectAll:
+	 * natively through the responder chain. */
+	NSMenu *mainMenu = [[NSMenu alloc] init];
+	NSMenuItem *appItem = [[NSMenuItem alloc] init];
+	[mainMenu addItem:appItem];
+
+	NSMenu *appMenu = [[NSMenu alloc] init];
+	appItem.submenu = appMenu;
+	[appMenu addItemWithTitle:@"Quit" action:@selector(terminate:)
+		keyEquivalent:@"q"];
+
+	NSMenuItem *editItem = [[NSMenuItem alloc] init];
+	editItem.title = @"Edit";
+	[mainMenu addItem:editItem];
+
+	NSMenu *editMenu = [[NSMenu alloc] initWithTitle:@"Edit"];
+	editItem.submenu = editMenu;
+	[editMenu addItemWithTitle:@"Undo" action:@selector(undo:)
+		keyEquivalent:@"z"];
+	[editMenu addItemWithTitle:@"Redo" action:@selector(redo:)
+		keyEquivalent:@"Z"];  /* Cmd+Shift+Z */
+	[editMenu addItem:[NSMenuItem separatorItem]];
+	[editMenu addItemWithTitle:@"Cut" action:@selector(cut:)
+		keyEquivalent:@"x"];
+	[editMenu addItemWithTitle:@"Copy" action:@selector(copy:)
+		keyEquivalent:@"c"];
+	[editMenu addItemWithTitle:@"Paste" action:@selector(paste:)
+		keyEquivalent:@"v"];
+	[editMenu addItemWithTitle:@"Select All" action:@selector(selectAll:)
+		keyEquivalent:@"a"];
+
+	NSApp.mainMenu = mainMenu;
 
 	const char *appearance = NULL;
 	const char *script = NULL;

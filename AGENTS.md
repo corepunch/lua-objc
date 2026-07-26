@@ -79,6 +79,13 @@ These rules summarize Apple's current Human Interface Guidelines:
 - Use menus, separators, split views, sidebars, search fields, toggles, and
   other real AppKit widgets for their intended roles. A visual approximation is
   a missing framework feature, not an acceptable sample implementation.
+- Let native container controls own the geometry they are designed to manage.
+  In particular, `NSSplitView` owns split-pane frames, divider dragging, and
+  proportional resizing. Do not reapply pane frames from the custom stack
+  layout engine, seed dividers from hard-coded pixel widths, or subclass/override
+  native split behavior without a demonstrated platform limitation. Lua layout
+  may arrange content inside a pane after Cocoa resizes it, but it must not
+  compete with Cocoa for ownership of the pane itself.
 
 ### Typography, color, and accessibility
 
