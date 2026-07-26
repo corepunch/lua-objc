@@ -506,6 +506,34 @@ typedef struct {
 	void (^apply)(lua_State *L, int idx);
 } TablePropParser;
 
+typedef struct {
+	const char *name;
+	lua_CFunction func;
+} MethodEntry;
+
+static lua_CFunction lookupMethod(const char *name, MethodEntry *map) {
+	for (int i = 0; map[i].name; i++) {
+		if (strcmp(name, map[i].name) == 0)
+			return map[i].func;
+	}
+	return NULL;
+}
+
+typedef NS_ENUM(NSInteger, LuaActionButtonStyle) {
+	LuaActionButtonStylePlain,
+	LuaActionButtonStylePrimary,
+	LuaActionButtonStyleRow,
+	LuaActionButtonStyleLink,
+};
+
+static NameValueEntry ActionButtonStyleMap[] = {
+	{@"plain",   LuaActionButtonStylePlain},
+	{@"primary", LuaActionButtonStylePrimary},
+	{@"row",     LuaActionButtonStyleRow},
+	{@"link",    LuaActionButtonStyleLink},
+	{nil, LuaActionButtonStylePlain}
+};
+
 typedef NS_ENUM(NSInteger, LayoutAxis) {
 	LayoutAxisNone = -1,
 	LayoutAxisVStack,
@@ -537,7 +565,7 @@ static NSColor *semantic_color(NSString *name) {
 @property (nonatomic, strong) NSTextField *titleLabel;
 @property (nonatomic, strong) NSTextField *subtitleLabel;
 @property (nonatomic, strong) NSTextField *detailLabel;
-@property (nonatomic, copy) NSString *presentationStyle;
+@property (nonatomic) NSInteger presentationStyle;
 @property (nonatomic) BOOL hovering;
 @property (nonatomic, strong) NSTrackingArea *hoverTrackingArea;
 @end
@@ -553,7 +581,8 @@ static NSColor *semantic_color(NSString *name) {
 	self = [super initWithFrame:NSZeroRect];
 	if (!self) return nil;
 
-	_presentationStyle = [style copy] ?: @"plain";
+	_presentationStyle = lookupNameValue(style ?: @"plain",
+		ActionButtonStyleMap, LuaActionButtonStylePlain);
 	self.title = @"";
 	self.bordered = NO;
 	self.focusRingType = NSFocusRingTypeDefault;
@@ -572,7 +601,7 @@ static NSColor *semantic_color(NSString *name) {
 	if (symbol.length > 0) {
 		NSImageSymbolConfiguration *configuration =
 			[NSImageSymbolConfiguration configurationWithPointSize:
-				[_presentationStyle isEqualToString:@"row"] ? 20 : 17
+				_presentationStyle == LuaActionButtonStyleRow ? 20 : 17
 														 weight:NSFontWeightMedium];
 		NSImage *image = [NSImage imageWithSystemSymbolName:symbol
 			accessibilityDescription:title];
@@ -582,10 +611,10 @@ static NSColor *semantic_color(NSString *name) {
 
 	_titleLabel = [NSTextField labelWithString:title ?: @""];
 	_titleLabel.font = [NSFont systemFontOfSize:13 weight:
-		[_presentationStyle isEqualToString:@"primary"]
+		_presentationStyle == LuaActionButtonStylePrimary
 			? NSFontWeightSemibold : NSFontWeightRegular];
-	BOOL wrapsTitle = ![_presentationStyle isEqualToString:@"row"]
-		&& ![_presentationStyle isEqualToString:@"link"];
+	BOOL wrapsTitle = _presentationStyle != LuaActionButtonStyleRow
+		&& _presentationStyle != LuaActionButtonStyleLink;
 	_titleLabel.lineBreakMode = wrapsTitle
 		? NSLineBreakByWordWrapping : NSLineBreakByTruncatingTail;
 	_titleLabel.maximumNumberOfLines = wrapsTitle ? 2 : 1;
@@ -593,7 +622,7 @@ static NSColor *semantic_color(NSString *name) {
 
 	_subtitleLabel = [NSTextField labelWithString:subtitle ?: @""];
 	_subtitleLabel.font = [NSFont systemFontOfSize:11 weight:NSFontWeightRegular];
-	_subtitleLabel.lineBreakMode = [_presentationStyle isEqualToString:@"row"]
+	_subtitleLabel.lineBreakMode = _presentationStyle == LuaActionButtonStyleRow
 		? NSLineBreakByTruncatingMiddle : NSLineBreakByTruncatingTail;
 	_subtitleLabel.maximumNumberOfLines = 1;
 
@@ -618,10 +647,13 @@ static NSColor *semantic_color(NSString *name) {
 }
 
 - (NSSize)intrinsicContentSize {
-	CGFloat height = 58;
-	if ([_presentationStyle isEqualToString:@"primary"]) height = 64;
-	if ([_presentationStyle isEqualToString:@"row"]) height = 52;
-	if ([_presentationStyle isEqualToString:@"link"]) height = 40;
+	CGFloat height;
+	switch (_presentationStyle) {
+		case LuaActionButtonStylePrimary: height = 64; break;
+		case LuaActionButtonStyleRow:     height = 52; break;
+		case LuaActionButtonStyleLink:    height = 40; break;
+		default:                          height = 58; break;
+	}
 	return NSMakeSize(220, height);
 }
 
@@ -652,8 +684,8 @@ static NSColor *semantic_color(NSString *name) {
 }
 
 - (void)updatePresentation {
-	BOOL primary = [_presentationStyle isEqualToString:@"primary"];
-	BOOL link = [_presentationStyle isEqualToString:@"link"];
+	BOOL primary = _presentationStyle == LuaActionButtonStylePrimary;
+	BOOL link = _presentationStyle == LuaActionButtonStyleLink;
 	_backgroundView.cornerRadius = primary || !link ? 8 : 0;
 
 	NSColor *background = NSColor.clearColor;
@@ -673,7 +705,7 @@ static NSColor *semantic_color(NSString *name) {
 		: NSColor.secondaryLabelColor;
 	_detailLabel.textColor = NSColor.tertiaryLabelColor;
 	_symbolView.contentTintColor = primary ? NSColor.whiteColor
-		: ([_presentationStyle isEqualToString:@"row"]
+		: (_presentationStyle == LuaActionButtonStyleRow
 			? NSColor.secondaryLabelColor : NSColor.controlAccentColor);
 }
 
@@ -682,28 +714,25 @@ static NSColor *semantic_color(NSString *name) {
 	CGFloat width = self.bounds.size.width;
 	CGFloat height = self.bounds.size.height;
 	_backgroundView.frame = self.bounds;
-	BOOL link = [_presentationStyle isEqualToString:@"link"];
+	BOOL link = _presentationStyle == LuaActionButtonStyleLink;
 	BOOL hasSymbol = _symbolView.image != nil;
 	BOOL hasSubtitle = _subtitleLabel.stringValue.length > 0;
 	BOOL hasDetail = _detailLabel.stringValue.length > 0;
-	CGFloat inset = link ? 20 : ([_presentationStyle isEqualToString:@"row"] ? 14 : 12);
+	CGFloat inset = link ? 20 : (_presentationStyle == LuaActionButtonStyleRow ? 14 : 12);
 	CGFloat iconWidth = hasSymbol
-		? ([_presentationStyle isEqualToString:@"row"] ? 28 : 24) : 0;
+		? (_presentationStyle == LuaActionButtonStyleRow ? 28 : 24) : 0;
 	CGFloat iconGap = hasSymbol ? 12 : 0;
 	CGFloat detailWidth = hasDetail ? 72 : 0;
 	CGFloat textX = inset + iconWidth + iconGap;
 	CGFloat textWidth = MAX(0, width - textX - inset - detailWidth
 		- (hasDetail ? 12 : 0));
-	if ([_presentationStyle isEqualToString:@"primary"]
-		|| [_presentationStyle isEqualToString:@"plain"]) {
-		// SwiftUI's trailing Spacer keeps a small minimum even before it grows.
-		// Reserving the same room makes long titles wrap at native welcome-panel
-		// widths instead of crowding the button's trailing edge.
+	if (_presentationStyle == LuaActionButtonStylePrimary
+		|| _presentationStyle == LuaActionButtonStylePlain) {
 		textWidth = MAX(0, textWidth - 16);
 	}
 	CGFloat titleHeight = ceil(_titleLabel.intrinsicContentSize.height);
-	BOOL wrapsTitle = ![_presentationStyle isEqualToString:@"row"]
-		&& ![_presentationStyle isEqualToString:@"link"];
+	BOOL wrapsTitle = _presentationStyle != LuaActionButtonStyleRow
+		&& _presentationStyle != LuaActionButtonStyleLink;
 	if (wrapsTitle) {
 		CGFloat naturalTitleWidth = [_titleLabel.stringValue sizeWithAttributes:
 			@{NSFontAttributeName: _titleLabel.font}].width;
@@ -985,6 +1014,18 @@ static id lua_to_objc_value(lua_State *L, int idx) {
 	}
 }
 
+static MethodEntry TableMethods[] = {
+	{"addRow",       bridge_tableview_add},
+	{"removeRow",    bridge_tableview_remove},
+	{"clearRows",    bridge_tableview_clear},
+	{"rowCount",     NULL},
+	{"showLoading",  bridge_table_show_loading},
+	{"hideLoading",  bridge_table_hide_loading},
+	{"refresh",      bridge_table_refresh},
+	{"onRowSelect",  bridge_table_set_selection},
+	{NULL, NULL}
+};
+
 static int nsview_index(lua_State *L) {
 	id obj = (__bridge id)((ObjCRef *)lua_touserdata(L, 1))->ptr;
 	const char *key = lua_tostring(L, 2);
@@ -1022,18 +1063,6 @@ static int nsview_index(lua_State *L) {
 
 	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (src) {
-		if (strcmp(key, "addRow") == 0) {
-			lua_pushcfunction(L, bridge_tableview_add);
-			return 1;
-		}
-		if (strcmp(key, "removeRow") == 0) {
-			lua_pushcfunction(L, bridge_tableview_remove);
-			return 1;
-		}
-		if (strcmp(key, "clearRows") == 0) {
-			lua_pushcfunction(L, bridge_tableview_clear);
-			return 1;
-		}
 		if (strcmp(key, "rowCount") == 0) {
 			if ([src isKindOfClass:[LuaOutlineViewSource class]]) {
 				lua_pushinteger(L,
@@ -1044,20 +1073,9 @@ static int nsview_index(lua_State *L) {
 			}
 			return 1;
 		}
-		if (strcmp(key, "showLoading") == 0) {
-			lua_pushcfunction(L, bridge_table_show_loading);
-			return 1;
-		}
-		if (strcmp(key, "hideLoading") == 0) {
-			lua_pushcfunction(L, bridge_table_hide_loading);
-			return 1;
-		}
-		if (strcmp(key, "refresh") == 0) {
-			lua_pushcfunction(L, bridge_table_refresh);
-			return 1;
-		}
-		if (strcmp(key, "onRowSelect") == 0) {
-			lua_pushcfunction(L, bridge_table_set_selection);
+		lua_CFunction method = lookupMethod(key, TableMethods);
+		if (method) {
+			lua_pushcfunction(L, method);
 			return 1;
 		}
 	}
