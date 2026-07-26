@@ -767,6 +767,30 @@ indentation, not spaces. Set your editor to display tabs at 4 columns wide.
 perl -i -pe '1 while s/^(\t*)    /$1\t/' file
 ```
 
+**No magic numbers.** Every numeric literal that controls visual appearance or
+layout must be a named `#define` constant in the constants section at the top of
+`src/main.m`. This includes spacing, font sizes, dimensions, corner radii,
+alpha values, point sizes, and default widths/heights. Group new constants with
+the existing category and follow the `k` prefix naming convention. When tuning a
+value, change the constant — never hard-code a number in layout code. Loop
+bounds, array indices, arithmetic factors (e.g. division by 2 for centering),
+and system API constants (e.g. `kFSEventStreamEventIdSinceNow`) are exempt.
+
+```c
+// existing constant categories:
+//  Table / Outline cells   kTableCellImageWidth    kTableColumnMinWidth
+//  ActionButton             kActionBtnSymbolSize   kActionBtnCornerRadius
+//  Spacer & Separator       kSpacerSize            kSeparatorSize
+//  Image                    kDefaultImageMaxWidth  kImageViewerMinZoomScale
+//  System Image / SF        kDefaultSymbolPointSize
+//  Code Editor              kEditorFontSize        kEditorDefaultWidth
+//  Symbol Toggle            kSymbolToggleSize      kSymbolTogglePointSize
+//  Loading Spinner          kLoadingSpinnerSize
+//  Layout Engine            kLayoutDefaultWidth    kMinLeafWidth  kFlexEpsilon
+//  Preview / Render         kRenderDefaultWidth    kRenderDefaultHeight
+//  Misc                     kFallbackBackingScale  kFSWatcherLatency
+```
+
 **Code documentation.** Always explain the *why* behind non-trivial decisions —
 design rationale, edge cases being handled, why a particular approach was chosen
 over alternatives. Comments should tell a future maintainer what problem was

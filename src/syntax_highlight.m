@@ -196,7 +196,7 @@ static SyntaxRules syntax_rules_for_language(NSString *lang) {
 	if (!(self = [super init])) return nil;
 	_backing = [[NSMutableAttributedString alloc] init];
 	theme_init_default();
-	_font = [NSFont monospacedSystemFontOfSize:13 weight:NSFontWeightRegular];
+	_font = [NSFont monospacedSystemFontOfSize:kEditorFontSize weight:NSFontWeightRegular];
 	_baseAttrs = @{
 		NSFontAttributeName: _font,
 		NSForegroundColorAttributeName: [NSColor labelColor],

@@ -45,6 +45,95 @@ static char kKeys[kKeyCount];
 static const CGFloat kStackSpacing = 8.0;
 static lua_State *gL = NULL;
 
+/* Every value that controls visual appearance or layout has a named constant
+ * so that tuning across the codebase is a single-section edit. Add new constants
+ * here instead of embedding raw numbers in code. */
+
+/* ----- Table / Outline cells ----- */
+#define kTableCellImageWidth            16
+#define kTableCellImageTextGap           4
+#define kTableCellImageLeadingInset      4
+#define kTableCellTextLeadingInset       8
+#define kTableCellTextTrailingInset      8
+#define kTableCellSymbolPointSize       13
+#define kTableColumnMinWidth            40
+#define kTableDefaultWidth             400
+#define kTableDefaultHeight            200
+#define kTableIntercellSpacingH          3
+#define kTableIntercellSpacingV          2
+#define kOutlineRowHeight              24
+#define kOutlineIndentation            16
+#define kOutlineDefaultWidth           400
+#define kOutlineDefaultHeight          200
+
+/* ----- ActionButton ----- */
+#define kActionBtnSymbolSize            17
+#define kActionBtnSymbolSizeRow         20
+#define kActionBtnTitleFontSize         13
+#define kActionBtnSubtitleFontSize      11
+#define kActionBtnDetailFontSize        11
+#define kActionBtnTitleMaxLines          2
+#define kActionBtnHeightPrimary         64
+#define kActionBtnHeightPlain           58
+#define kActionBtnHeightRow             52
+#define kActionBtnHeightLink            40
+#define kActionBtnWidth                220
+#define kActionBtnIconWidth             24
+#define kActionBtnIconWidthRow          28
+#define kActionBtnIconGap               12
+#define kActionBtnInsetPlain            12
+#define kActionBtnInsetRow              14
+#define kActionBtnInsetLink             20
+#define kActionBtnDetailWidth           72
+#define kActionBtnDetailHeight          16
+#define kActionBtnDetailGap             12
+#define kActionBtnTitleSubtitleGap       1
+#define kActionBtnTextExtraInset        16
+#define kActionBtnCornerRadius           8
+#define kActionBtnHoverPrimary          0.85
+#define kActionBtnHoverSecondary        0.07
+#define kActionBtnSubtitleAlpha         0.75
+
+/* ----- Spacer & Separator ----- */
+#define kSpacerSize                     10
+#define kSeparatorSize                   1
+
+/* ----- Image ----- */
+#define kDefaultImageMaxWidth          400.0
+#define kImageViewerDefaultWidth       640
+#define kImageViewerDefaultHeight      480
+#define kImageViewerMinZoomScale        0.05
+#define kImageViewerDefaultZoomScale    1.0
+
+/* ----- System Image / SF Symbols ----- */
+#define kDefaultSymbolPointSize         17
+
+/* ----- Code Editor ----- */
+#define kEditorFontSize                 13
+#define kEditorDefaultWidth            400
+#define kEditorDefaultHeight           300
+
+/* ----- Symbol Toggle ----- */
+#define kSymbolToggleSize               28
+#define kSymbolTogglePointSize          13
+
+/* ----- Loading Spinner ----- */
+#define kLoadingSpinnerSize             32
+
+/* ----- Layout Engine ----- */
+#define kLayoutDefaultWidth            400
+#define kMinLeafWidth                    1
+#define kMinLeafHeight                  22
+#define kFlexEpsilon                    0.5
+
+/* ----- Preview / Render ----- */
+#define kRenderDefaultWidth            400
+#define kRenderDefaultHeight           300
+
+/* ----- Misc ----- */
+#define kFallbackBackingScale            2.0
+#define kFSWatcherLatency                0.2
+
 #include "lua_async.m"
 
 typedef struct {
@@ -85,18 +174,19 @@ static void report_lua_error(lua_State *L, const char *context) {
 	NSTextField *text = self.textField;
 	if (!text) return;
 	NSImageView *image = self.imageView;
-	CGFloat imageWidth = image.image ? 16 : 0;
-	CGFloat imageGap = imageWidth > 0 ? 6 : 0;
-	CGFloat textX = 8 + imageWidth + imageGap;
+	CGFloat imageWidth = image.image ? kTableCellImageWidth : 0;
+	CGFloat imageGap = imageWidth > 0 ? kTableCellImageTextGap : 0;
+	CGFloat textInset = imageWidth > 0 ? kTableCellImageLeadingInset : kTableCellTextLeadingInset;
+	CGFloat textX = textInset + imageWidth + imageGap;
 	CGFloat height = ceil(text.intrinsicContentSize.height);
 	text.frame = NSMakeRect(
 		textX,
 		floor((self.bounds.size.height - height) / 2),
-		MAX(0, self.bounds.size.width - textX - 8),
+		MAX(0, self.bounds.size.width - textX - kTableCellTextTrailingInset),
 		height);
 	if (image) {
 		image.frame = NSMakeRect(
-			8,
+			textInset,
 			floor((self.bounds.size.height - imageWidth) / 2),
 			imageWidth,
 			imageWidth);
@@ -176,8 +266,8 @@ static void report_lua_error(lua_State *L, const char *context) {
 		NSImage *image = [NSImage imageWithSystemSymbolName:symbolName
 			accessibilityDescription:text];
 		NSImageSymbolConfiguration *configuration =
-			[NSImageSymbolConfiguration configurationWithPointSize:13
-														 weight:NSFontWeightRegular];
+		[NSImageSymbolConfiguration configurationWithPointSize:kTableCellSymbolPointSize
+													 weight:NSFontWeightRegular];
 		cell.imageView.image = [image imageWithSymbolConfiguration:configuration];
 	} else {
 		cell.imageView.image = nil;
@@ -361,6 +451,12 @@ static void report_lua_error(lua_State *L, const char *context) {
 		tf.lineBreakMode = NSLineBreakByTruncatingTail;
 		[cell addSubview:tf];
 		cell.textField = tf;
+
+		NSImageView *imageView = [[NSImageView alloc] initWithFrame:NSZeroRect];
+		imageView.imageScaling = NSImageScaleProportionallyDown;
+		imageView.contentTintColor = NSColor.secondaryLabelColor;
+		[cell addSubview:imageView];
+		cell.imageView = imageView;
 	}
 	cell.textField.stringValue = text;
 
@@ -372,8 +468,8 @@ static void report_lua_error(lua_State *L, const char *context) {
 		NSImage *image = [NSImage imageWithSystemSymbolName:iconName
 			accessibilityDescription:text];
 		NSImageSymbolConfiguration *config =
-			[NSImageSymbolConfiguration configurationWithPointSize:13
-														 weight:NSFontWeightRegular];
+		[NSImageSymbolConfiguration configurationWithPointSize:kTableCellSymbolPointSize
+													 weight:NSFontWeightRegular];
 		cell.imageView.image = [image imageWithSymbolConfiguration:config];
 	} else {
 		cell.imageView.image = nil;
@@ -594,15 +690,16 @@ static NSColor *semantic_color(NSString *name) {
 	_backgroundView.boxType = NSBoxCustom;
 	_backgroundView.borderWidth = 0;
 	_backgroundView.titlePosition = NSNoTitle;
-	_backgroundView.cornerRadius = 8;
+	_backgroundView.cornerRadius = kActionBtnCornerRadius;
 	_backgroundView.contentViewMargins = NSZeroSize;
 
 	_symbolView = [[NSImageView alloc] initWithFrame:NSZeroRect];
 	if (symbol.length > 0) {
 		NSImageSymbolConfiguration *configuration =
 			[NSImageSymbolConfiguration configurationWithPointSize:
-				_presentationStyle == LuaActionButtonStyleRow ? 20 : 17
-														 weight:NSFontWeightMedium];
+				_presentationStyle == LuaActionButtonStyleRow
+					? kActionBtnSymbolSizeRow : kActionBtnSymbolSize
+												 weight:NSFontWeightMedium];
 		NSImage *image = [NSImage imageWithSystemSymbolName:symbol
 			accessibilityDescription:title];
 		_symbolView.image = [image imageWithSymbolConfiguration:configuration];
@@ -610,24 +707,26 @@ static NSColor *semantic_color(NSString *name) {
 	}
 
 	_titleLabel = [NSTextField labelWithString:title ?: @""];
-	_titleLabel.font = [NSFont systemFontOfSize:13 weight:
+	_titleLabel.font = [NSFont systemFontOfSize:kActionBtnTitleFontSize weight:
 		_presentationStyle == LuaActionButtonStylePrimary
 			? NSFontWeightSemibold : NSFontWeightRegular];
 	BOOL wrapsTitle = _presentationStyle != LuaActionButtonStyleRow
 		&& _presentationStyle != LuaActionButtonStyleLink;
 	_titleLabel.lineBreakMode = wrapsTitle
 		? NSLineBreakByWordWrapping : NSLineBreakByTruncatingTail;
-	_titleLabel.maximumNumberOfLines = wrapsTitle ? 2 : 1;
+	_titleLabel.maximumNumberOfLines = wrapsTitle ? kActionBtnTitleMaxLines : 1;
 	_titleLabel.cell.wraps = wrapsTitle;
 
 	_subtitleLabel = [NSTextField labelWithString:subtitle ?: @""];
-	_subtitleLabel.font = [NSFont systemFontOfSize:11 weight:NSFontWeightRegular];
+	_subtitleLabel.font = [NSFont systemFontOfSize:kActionBtnSubtitleFontSize
+										   weight:NSFontWeightRegular];
 	_subtitleLabel.lineBreakMode = _presentationStyle == LuaActionButtonStyleRow
 		? NSLineBreakByTruncatingMiddle : NSLineBreakByTruncatingTail;
 	_subtitleLabel.maximumNumberOfLines = 1;
 
 	_detailLabel = [NSTextField labelWithString:detail ?: @""];
-	_detailLabel.font = [NSFont systemFontOfSize:11 weight:NSFontWeightRegular];
+	_detailLabel.font = [NSFont systemFontOfSize:kActionBtnDetailFontSize
+										 weight:NSFontWeightRegular];
 	_detailLabel.alignment = NSTextAlignmentRight;
 	_detailLabel.lineBreakMode = NSLineBreakByClipping;
 
@@ -649,12 +748,12 @@ static NSColor *semantic_color(NSString *name) {
 - (NSSize)intrinsicContentSize {
 	CGFloat height;
 	switch (_presentationStyle) {
-		case LuaActionButtonStylePrimary: height = 64; break;
-		case LuaActionButtonStyleRow:     height = 52; break;
-		case LuaActionButtonStyleLink:    height = 40; break;
-		default:                          height = 58; break;
+		case LuaActionButtonStylePrimary: height = kActionBtnHeightPrimary; break;
+		case LuaActionButtonStyleRow:     height = kActionBtnHeightRow;     break;
+		case LuaActionButtonStyleLink:    height = kActionBtnHeightLink;    break;
+		default:                          height = kActionBtnHeightPlain;   break;
 	}
-	return NSMakeSize(220, height);
+	return NSMakeSize(kActionBtnWidth, height);
 }
 
 - (void)updateTrackingAreas {
@@ -686,22 +785,22 @@ static NSColor *semantic_color(NSString *name) {
 - (void)updatePresentation {
 	BOOL primary = _presentationStyle == LuaActionButtonStylePrimary;
 	BOOL link = _presentationStyle == LuaActionButtonStyleLink;
-	_backgroundView.cornerRadius = primary || !link ? 8 : 0;
+	_backgroundView.cornerRadius = primary || !link ? kActionBtnCornerRadius : 0;
 
 	NSColor *background = NSColor.clearColor;
 	if (primary) {
 		background = _hovering
-			? [NSColor.controlAccentColor colorWithAlphaComponent:0.85]
+			? [NSColor.controlAccentColor colorWithAlphaComponent:kActionBtnHoverPrimary]
 			: NSColor.controlAccentColor;
 	} else if (_hovering) {
-		background = [NSColor.labelColor colorWithAlphaComponent:0.07];
+		background = [NSColor.labelColor colorWithAlphaComponent:kActionBtnHoverSecondary];
 	}
 	_backgroundView.fillColor = background;
 
 	_titleLabel.textColor = primary ? NSColor.whiteColor
 		: (link ? NSColor.controlAccentColor : NSColor.labelColor);
 	_subtitleLabel.textColor = primary
-		? [NSColor.whiteColor colorWithAlphaComponent:0.75]
+		? [NSColor.whiteColor colorWithAlphaComponent:kActionBtnSubtitleAlpha]
 		: NSColor.secondaryLabelColor;
 	_detailLabel.textColor = NSColor.tertiaryLabelColor;
 	_symbolView.contentTintColor = primary ? NSColor.whiteColor
@@ -718,17 +817,20 @@ static NSColor *semantic_color(NSString *name) {
 	BOOL hasSymbol = _symbolView.image != nil;
 	BOOL hasSubtitle = _subtitleLabel.stringValue.length > 0;
 	BOOL hasDetail = _detailLabel.stringValue.length > 0;
-	CGFloat inset = link ? 20 : (_presentationStyle == LuaActionButtonStyleRow ? 14 : 12);
+	CGFloat inset = link ? kActionBtnInsetLink
+		: (_presentationStyle == LuaActionButtonStyleRow
+			? kActionBtnInsetRow : kActionBtnInsetPlain);
 	CGFloat iconWidth = hasSymbol
-		? (_presentationStyle == LuaActionButtonStyleRow ? 28 : 24) : 0;
-	CGFloat iconGap = hasSymbol ? 12 : 0;
-	CGFloat detailWidth = hasDetail ? 72 : 0;
+		? (_presentationStyle == LuaActionButtonStyleRow
+			? kActionBtnIconWidthRow : kActionBtnIconWidth) : 0;
+	CGFloat iconGap = hasSymbol ? kActionBtnIconGap : 0;
+	CGFloat detailWidth = hasDetail ? kActionBtnDetailWidth : 0;
 	CGFloat textX = inset + iconWidth + iconGap;
 	CGFloat textWidth = MAX(0, width - textX - inset - detailWidth
-		- (hasDetail ? 12 : 0));
+		- (hasDetail ? kActionBtnDetailGap : 0));
 	if (_presentationStyle == LuaActionButtonStylePrimary
 		|| _presentationStyle == LuaActionButtonStylePlain) {
-		textWidth = MAX(0, textWidth - 16);
+		textWidth = MAX(0, textWidth - kActionBtnTextExtraInset);
 	}
 	CGFloat titleHeight = ceil(_titleLabel.intrinsicContentSize.height);
 	BOOL wrapsTitle = _presentationStyle != LuaActionButtonStyleRow
@@ -737,12 +839,12 @@ static NSColor *semantic_color(NSString *name) {
 		CGFloat naturalTitleWidth = [_titleLabel.stringValue sizeWithAttributes:
 			@{NSFontAttributeName: _titleLabel.font}].width;
 		if (naturalTitleWidth > textWidth) {
-			titleHeight *= 2;
+			titleHeight *= kActionBtnTitleMaxLines;
 		}
 	}
 	CGFloat subtitleHeight = hasSubtitle
 		? ceil(_subtitleLabel.intrinsicContentSize.height) : 0;
-	CGFloat textGap = hasSubtitle ? 1 : 0;
+	CGFloat textGap = hasSubtitle ? kActionBtnTitleSubtitleGap : 0;
 	CGFloat blockHeight = titleHeight + textGap + subtitleHeight;
 	CGFloat blockBottom = floor((height - blockHeight) / 2);
 
@@ -754,7 +856,8 @@ static NSColor *semantic_color(NSString *name) {
 		textX, blockBottom + titleHeight + textGap, textWidth, subtitleHeight);
 	_detailLabel.frame = NSMakeRect(
 		MAX(textX, width - inset - detailWidth),
-		floor((height - 16) / 2), detailWidth, 16);
+		floor((height - kActionBtnDetailHeight) / 2),
+		detailWidth, kActionBtnDetailHeight);
 }
 
 @end
@@ -1267,16 +1370,16 @@ static int bridge_vsplit(lua_State *L) {
 
 /* Thin horizontal separator line — like NSBox with NSBoxSeparator. */
 static int bridge_separator(lua_State *L) {
-	NSBox *box = [[NSBox alloc] initWithFrame:NSMakeRect(0, 0, 1, 1)];
+	NSBox *box = [[NSBox alloc] initWithFrame:NSMakeRect(0, 0, kSeparatorSize, kSeparatorSize)];
 	box.boxType = NSBoxSeparator;
-	objc_setAssociatedObject(box, &kKeys[kFixedHeightKey], @1.0, OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(box, &kKeys[kFixedHeightKey], @(kSeparatorSize), OBJC_ASSOCIATION_RETAIN);
 	objc_setAssociatedObject(box, &kKeys[kFillWidthKey], @YES, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, box, "nsview");
 	return 1;
 }
 
 static int bridge_spacer(lua_State *L) {
-	NSView *v = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 10, 10)];
+	NSView *v = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, kSpacerSize, kSpacerSize)];
 	objc_setAssociatedObject(v, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 	objc_setAssociatedObject(v, &kKeys[kFlexBasisKey], @0, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, v, "nsview");
@@ -1303,7 +1406,7 @@ static int bridge_spacer(lua_State *L) {
 - (instancetype)initWithFrame:(NSRect)frameRect {
 	self = [super initWithFrame:frameRect];
 	if (self) {
-		_zoomScale = 1.0;
+		_zoomScale = kImageViewerDefaultZoomScale;
 		_fitToWindow = NO;
 		_dropCallbackRef = LUA_NOREF;
 
@@ -1362,7 +1465,7 @@ static int bridge_spacer(lua_State *L) {
 }
 
 - (void)setZoomScale:(CGFloat)zoomScale {
-	_zoomScale = MAX(0.05, zoomScale);
+	_zoomScale = MAX(kImageViewerMinZoomScale, zoomScale);
 	if (!_fitToWindow) {
 		[self updateLayout];
 	}
@@ -1427,7 +1530,7 @@ static int bridge_spacer(lua_State *L) {
 
 	NSSize source = image.size;
 	if (source.width <= 0 || source.height <= 0) {
-		source = NSMakeSize(1, 1);
+		source = NSMakeSize(kMinLeafWidth, kMinLeafHeight);
 	}
 
 	NSSize viewport = self.scrollView.contentSize;
@@ -1435,10 +1538,10 @@ static int bridge_spacer(lua_State *L) {
 		? MIN(viewport.width / source.width, viewport.height / source.height)
 		: self.zoomScale;
 	if (!isfinite(scale) || scale <= 0) {
-		scale = 1.0;
+		scale = kImageViewerDefaultZoomScale;
 	}
-	CGFloat imageWidth = MAX(1, round(source.width * scale));
-	CGFloat imageHeight = MAX(1, round(source.height * scale));
+	CGFloat imageWidth = MAX(kMinLeafWidth, round(source.width * scale));
+	CGFloat imageHeight = MAX(kMinLeafHeight, round(source.height * scale));
 	CGFloat docWidth = MAX(viewport.width, imageWidth);
 	CGFloat docHeight = MAX(viewport.height, imageHeight);
 
@@ -1457,7 +1560,7 @@ static int bridge_spacer(lua_State *L) {
 static int bridge_image(lua_State *L) {
 	const char *path = luaL_checkstring(L, 1);
 	NSString *nsPath = [NSString stringWithUTF8String:path];
-	CGFloat maxWidth = luaL_optnumber(L, 2, 400.0);
+	CGFloat maxWidth = luaL_optnumber(L, 2, kDefaultImageMaxWidth);
 
 	NSImage *img = [[NSImage alloc] initWithContentsOfFile:nsPath];
 	if (!img) {
@@ -1497,7 +1600,7 @@ static int bridge_image_viewer(lua_State *L) {
 	}
 
 	LuaImageViewerView *viewer = [[LuaImageViewerView alloc]
-		initWithFrame:NSMakeRect(0, 0, 640, 480)];
+		initWithFrame:NSMakeRect(0, 0, kImageViewerDefaultWidth, kImageViewerDefaultHeight)];
 	viewer.dropCallbackRef = ref;
 	viewer.imagePath = [NSString stringWithUTF8String:path];
 
@@ -1508,7 +1611,7 @@ static int bridge_image_viewer(lua_State *L) {
 static int bridge_system_image(lua_State *L) {
 	const char *symbol = luaL_checkstring(L, 1);
 	const char *description = luaL_optstring(L, 2, symbol);
-	CGFloat pointSize = luaL_optnumber(L, 3, 17);
+	CGFloat pointSize = luaL_optnumber(L, 3, kDefaultSymbolPointSize);
 	const char *weightName = luaL_optstring(L, 4, "regular");
 	const char *colorName = luaL_optstring(L, 5, "accent");
 
@@ -1694,8 +1797,8 @@ static NSSize measure_leaf(NSView *view) {
 	NSSize fitting = view.fittingSize;
 	if (fitting.width > 0) size.width = MAX(size.width, fitting.width);
 	if (fitting.height > 0) size.height = MAX(size.height, fitting.height);
-	if (size.width <= 0) size.width = 1;
-	if (size.height <= 0) size.height = 22;
+	if (size.width <= 0) size.width = kMinLeafWidth;
+	if (size.height <= 0) size.height = kMinLeafHeight;
 	return size;
 }
 
@@ -1848,18 +1951,18 @@ static void distribute_main_axis(NSArray<NSView *> *children, CGFloat *sizes,
 	CGFloat used = 0;
 	for (NSUInteger i = 0; i < count; i++) used += sizes[i];
 	CGFloat freeSpace = available - used;
-	if (fabs(freeSpace) < 0.5) return;
+	if (fabs(freeSpace) < kFlexEpsilon) return;
 
 	BOOL growing = freeSpace > 0;
 	BOOL *frozen = calloc(count, sizeof(BOOL));
-	for (NSUInteger pass = 0; pass < count && fabs(freeSpace) >= 0.5; pass++) {
+	for (NSUInteger pass = 0; pass < count && fabs(freeSpace) >= kFlexEpsilon; pass++) {
 		CGFloat totalWeight = 0;
 		for (NSUInteger i = 0; i < count; i++) {
 			if (frozen[i]) continue;
 			NSView *child = children[i];
 			CGFloat weight = growing
 				? view_flex_grow(child, horizontal)
-				: view_flex_shrink(child, horizontal) * MAX(1, sizes[i]);
+				: view_flex_shrink(child, horizontal) * MAX(kMinLeafWidth, sizes[i]);
 			totalWeight += weight;
 		}
 		if (totalWeight <= 0) break;
@@ -1871,7 +1974,7 @@ static void distribute_main_axis(NSArray<NSView *> *children, CGFloat *sizes,
 			NSView *child = children[i];
 			CGFloat weight = growing
 				? view_flex_grow(child, horizontal)
-				: view_flex_shrink(child, horizontal) * MAX(1, sizes[i]);
+				: view_flex_shrink(child, horizontal) * MAX(kMinLeafWidth, sizes[i]);
 			if (weight <= 0) continue;
 
 			CGFloat delta = freeSpace * weight / totalWeight;
@@ -1883,7 +1986,7 @@ static void distribute_main_axis(NSArray<NSView *> *children, CGFloat *sizes,
 			CGFloat clamped = clamp_dimension(proposed, minimum, maximum);
 			distributed += clamped - sizes[i];
 			sizes[i] = clamped;
-			if (fabs(clamped - proposed) >= 0.5) {
+			if (fabs(clamped - proposed) >= kFlexEpsilon) {
 				frozen[i] = YES;
 				hitBound = YES;
 			}
@@ -2104,7 +2207,7 @@ static void layout_recursive(NSView *view, CGFloat width) {
 
 static int bridge_layout(lua_State *L) {
 	id obj = check_objc(L, 1);
-	CGFloat width = luaL_optnumber(L, 2, 400);
+	CGFloat width = luaL_optnumber(L, 2, kLayoutDefaultWidth);
 
 	NSView *view;
 	if ([obj isKindOfClass:[NSWindow class]]) {
@@ -2388,7 +2491,7 @@ static int bridge_tableview(lua_State *L) {
 	tv.headerView = showsHeader ? [[NSTableHeaderView alloc] init] : nil;
 	tv.usesAlternatingRowBackgroundColors = alternatingRows;
 	tv.gridStyleMask = (NSTableViewGridLineStyle)gridLines;
-	tv.intercellSpacing = NSMakeSize(3, 2);
+	tv.intercellSpacing = NSMakeSize(kTableIntercellSpacingH, kTableIntercellSpacingV);
 	tv.allowsColumnReordering = NO;
 	tv.allowsColumnResizing = YES;
 	CGFloat colW = ncols > 0 ? width / ncols : width;
@@ -2417,7 +2520,7 @@ static int bridge_tableview(lua_State *L) {
 		NSTableColumn *col = [[NSTableColumn alloc] initWithIdentifier:nsId];
 		col.title = [NSString stringWithUTF8String:colTitle ?: colId];
 		col.width = requestedWidth;
-		col.minWidth = 40;
+		col.minWidth = kTableColumnMinWidth;
 		NSTextAlignment alignment = colAlignment
 			? (NSTextAlignment)lookupNameValue(
 				[NSString stringWithUTF8String:colAlignment],
@@ -2524,7 +2627,7 @@ static int bridge_table_show_loading(lua_State *L) {
 		return 0;
 	}
 
-	spinner = [[NSProgressIndicator alloc] initWithFrame:NSMakeRect(0, 0, 32, 32)];
+	spinner = [[NSProgressIndicator alloc] initWithFrame:NSMakeRect(0, 0, kLoadingSpinnerSize, kLoadingSpinnerSize)];
 	spinner.style = NSProgressIndicatorStyleSpinning;
 	spinner.controlSize = NSControlSizeRegular;
 	spinner.displayedWhenStopped = NO;
@@ -2659,11 +2762,11 @@ static int bridge_outlineview(lua_State *L) {
 	ov.headerView = header ? [[NSTableHeaderView alloc] init] : nil;
 	ov.usesAlternatingRowBackgroundColors = alternatingRows;
 	ov.gridStyleMask = (NSTableViewGridLineStyle)gridLines;
-	ov.rowHeight = 24;
+	ov.rowHeight = kOutlineRowHeight;
 	ov.intercellSpacing = NSMakeSize(3, 2);
 	ov.allowsColumnReordering = NO;
 	ov.allowsColumnResizing = YES;
-	ov.indentationPerLevel = 16;
+	ov.indentationPerLevel = kOutlineIndentation;
 	ov.indentationMarkerFollowsCell = YES;
 	ov.columnAutoresizingStyle = NSTableViewLastColumnOnlyAutoresizingStyle;
 
@@ -2691,7 +2794,7 @@ static int bridge_outlineview(lua_State *L) {
 		NSTableColumn *col = [[NSTableColumn alloc] initWithIdentifier:nsId];
 		col.title = [NSString stringWithUTF8String:colTitle ?: colId];
 		col.width = requestedWidth;
-		col.minWidth = 40;
+		col.minWidth = kTableColumnMinWidth;
 		NSTextAlignment alignment = colAlignment
 			? (NSTextAlignment)lookupNameValue(
 				[NSString stringWithUTF8String:colAlignment],
@@ -2898,7 +3001,7 @@ static int bridge_callback(lua_State *L) {
 
 static int bridge_text_view(lua_State *L) {
 	NSScrollView *sv = [[NSScrollView alloc]
-		initWithFrame:NSMakeRect(0, 0, 400, 300)];
+		initWithFrame:NSMakeRect(0, 0, kEditorDefaultWidth, kEditorDefaultHeight)];
 	sv.hasVerticalScroller = YES;
 	sv.hasHorizontalScroller = NO;
 	sv.autohidesScrollers = YES;
@@ -2918,7 +3021,7 @@ static int bridge_text_view(lua_State *L) {
 	NSTextView *tv = [[NSTextView alloc]
 		initWithFrame:NSMakeRect(0, 0, contentSize.width, contentSize.height)
 		textContainer:tc];
-	tv.font = [NSFont monospacedSystemFontOfSize:13
+	tv.font = [NSFont monospacedSystemFontOfSize:kEditorFontSize
 		weight:NSFontWeightRegular];
 	tv.editable = YES;
 	tv.selectable = YES;
@@ -3069,11 +3172,11 @@ static int bridge_symbol_toggle(lua_State *L) {
 	}
 
 	NSImageSymbolConfiguration *config =
-		[NSImageSymbolConfiguration configurationWithPointSize:13
+		[NSImageSymbolConfiguration configurationWithPointSize:kSymbolTogglePointSize
 														weight:NSFontWeightMedium];
 	img = [img imageWithSymbolConfiguration:config];
 
-	NSButton *btn = [[NSButton alloc] initWithFrame:NSMakeRect(0, 0, 28, 28)];
+	NSButton *btn = [[NSButton alloc] initWithFrame:NSMakeRect(0, 0, kSymbolToggleSize, kSymbolToggleSize)];
 	btn.title = @"";
 	btn.image = img;
 	btn.imagePosition = NSImageOnly;
@@ -3120,7 +3223,7 @@ static NSData *offscreen_render(NSView *view, CGFloat width, CGFloat height) {
 	}
 
 	CGFloat scale = [NSScreen mainScreen]
-		? [NSScreen mainScreen].backingScaleFactor : 2.0;
+		? [NSScreen mainScreen].backingScaleFactor : kFallbackBackingScale;
 	(void)scale;
 
 	[view cacheDisplayInRect:view.bounds toBitmapImageRep:rep];
@@ -3135,8 +3238,8 @@ static NSData *offscreen_render(NSView *view, CGFloat width, CGFloat height) {
 
 static int bridge_render_to_png(lua_State *L) {
 	NSView *view  = check_view(L, 1);
-	CGFloat width  = luaL_optnumber(L, 2, 400);
-	CGFloat height = luaL_optnumber(L, 3, 300);
+	CGFloat width  = luaL_optnumber(L, 2, kRenderDefaultWidth);
+	CGFloat height = luaL_optnumber(L, 3, kRenderDefaultHeight);
 	view.frame = NSMakeRect(0, 0, width, height);
 	layout_recursive(view, width);
 	NSData *png = offscreen_render(view, width, height);
@@ -3220,7 +3323,7 @@ static int bridge_watch_file(lua_State *L) {
 	CFArrayRef paths = (__bridge CFArrayRef)@[path];
 	FSEventStreamRef stream = FSEventStreamCreate(
 		NULL, file_watcher_callback, &ctx,
-		paths, kFSEventStreamEventIdSinceNow, 0.2,
+		paths, kFSEventStreamEventIdSinceNow, kFSWatcherLatency,
 		kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagNoDefer);
 	FSEventStreamSetDispatchQueue(stream, dispatch_get_main_queue());
 	FSEventStreamStart(stream);
@@ -3354,8 +3457,8 @@ int lua_objc_main(int argc, char *argv[]) {
 	const char *appearance = NULL;
 	const char *script = NULL;
 	int preview_mode = 0;
-	CGFloat preview_width = 400;
-	CGFloat preview_height = 300;
+	CGFloat preview_width = kRenderDefaultWidth;
+	CGFloat preview_height = kRenderDefaultHeight;
 	const char *preview_out = NULL;
 	const char *script_args[256];
 	int script_arg_count = 0;
