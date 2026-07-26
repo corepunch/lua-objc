@@ -1,14 +1,11 @@
 local ns = require("AppKit")
 local bridge = require("bridge")
-local PluginKit = require("PluginKit")
-local TextEditor = require("Plugins.TextEditor")
-local ImageViewer = require("Plugins.ImageViewer")
 
 local IDEKit = {}
 
-IDEKit.Plugins = PluginKit
-IDEKit.TextEditor = TextEditor
-IDEKit.ImageViewer = ImageViewer
+-- PluginHost is owned by the IDE app. IDEKit only exposes the common editor
+-- chrome; keeping discovery in examples/ide prevents the framework from
+-- becoming coupled to one application's plugin catalog.
 
 -- ControlBar: thin header strip, like Xcode's DVTControlBar.
 -- Props: title (string), height (number, default 28), leading/buttons (view arrays).
@@ -143,7 +140,11 @@ function IDEKit.Editor(props)
 	local canvas = props.canvas
 	local eval_version = 0
 
-	local editor = TextEditor.create {
+	local plugin = props.plugin
+	if not plugin or type(plugin.create) ~= "function" then
+		error("IDEKit.Editor requires props.plugin")
+	end
+	local editor = plugin.create {
 		initialCode = props.initialCode,
 		language = props.language or "lua",
 	}

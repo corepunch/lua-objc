@@ -2,7 +2,7 @@ local ns = require("AppKit")
 local ide = require("IDEKit")
 local bridge = require("bridge")
 local App = require("App")
-local ImageViewer = require("Plugins.ImageViewer")
+local Registry = require("examples.ide.plugins.registry")
 
 local Source = {}
 
@@ -50,7 +50,11 @@ local function filterLuaFiles(items)
 end
 
 local function openImage(path, app)
-	local window = ImageViewer.create {
+	local host = app and app.plugins
+	local plugin = host and host:resolveFile(path, "editor")
+		or Registry.resolveByFile(path, "editor")
+	if not plugin then return end
+	local window = plugin.create {
 		path = path,
 		app = app,
 	}
@@ -65,6 +69,7 @@ function Source.open(folder, app, initialFile)
 
 	local editor = ide.Editor {
 		canvas = canvas,
+		plugin = app and app.plugins and app.plugins:get("textEditor"),
 		initialCode = [=[
 -- Try changing the text and see it update in the canvas
 return ns.VStack {

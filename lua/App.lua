@@ -233,6 +233,7 @@ function App.new(props)
 	local self = setmetatable({
 		name = props.name or "app",
 		spec = props,
+		plugins = props.plugins,
 		currentWindow = nil,
 		storageRoot = storageRoot(props.storageRoot),
 	}, App)

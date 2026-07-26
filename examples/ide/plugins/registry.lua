@@ -1,16 +1,21 @@
-local PluginKit = {}
+local PluginRegistry = {}
 
 local registry = {}
 
+local function moduleNameFromPath(path)
+	local name = path:match("([^/\\]+)%.lua$")
+	return name or path
+end
+
 local function assertSpec(spec)
 	if type(spec) ~= "table" then
-		error("PluginKit.register requires a spec table")
+		error("IDE plugin register requires a spec table")
 	end
 	if type(spec.id) ~= "string" or spec.id == "" then
-		error("PluginKit.register requires spec.id")
+		error("IDE plugin register requires spec.id")
 	end
 	if type(spec.create) ~= "function" then
-		error("PluginKit.register requires spec.create")
+		error("IDE plugin register requires spec.create")
 	end
 end
 
@@ -78,7 +83,7 @@ local function cloneProps(props)
 	return copy
 end
 
-function PluginKit.register(spec)
+function PluginRegistry.register(spec)
 	assertSpec(spec)
 
 	local existing = registry[spec.id]
@@ -87,21 +92,21 @@ function PluginKit.register(spec)
 	end
 
 	if spec.capabilities ~= nil and type(spec.capabilities) ~= "table" then
-		error("PluginKit.register requires spec.capabilities to be a table")
+		error("IDE plugin register requires spec.capabilities to be a table")
 	end
 	if spec.activation ~= nil and type(spec.activation) ~= "table" then
-		error("PluginKit.register requires spec.activation to be a table")
+		error("IDE plugin register requires spec.activation to be a table")
 	end
 
 	registry[spec.id] = spec
 	return spec
 end
 
-function PluginKit.get(id)
+function PluginRegistry.get(id)
 	return registry[id]
 end
 
-function PluginKit.list(kind)
+function PluginRegistry.list(kind)
 	local plugins = {}
 	for _, spec in pairs(registry) do
 		if kind == nil or spec.kind == kind then
@@ -119,8 +124,8 @@ function PluginKit.list(kind)
 	return plugins
 end
 
-function PluginKit.resolveByFile(path, kind)
-	for _, spec in ipairs(PluginKit.list(kind)) do
+function PluginRegistry.resolveByFile(path, kind)
+	for _, spec in ipairs(PluginRegistry.list(kind)) do
 		if matchesFilePattern(path, spec) then
 			return spec
 		end
@@ -128,8 +133,8 @@ function PluginKit.resolveByFile(path, kind)
 	return nil
 end
 
-function PluginKit.resolveByCommand(name, kind)
-	for _, spec in ipairs(PluginKit.list(kind)) do
+function PluginRegistry.resolveByCommand(name, kind)
+	for _, spec in ipairs(PluginRegistry.list(kind)) do
 		if matchesCommand(name, spec) then
 			return spec
 		end
@@ -137,7 +142,7 @@ function PluginKit.resolveByCommand(name, kind)
 	return nil
 end
 
-function PluginKit.use(id, props)
+function PluginRegistry.use(id, props)
 	local spec = registry[id]
 	if not spec then
 		error("unknown plugin: " .. tostring(id))
@@ -145,7 +150,7 @@ function PluginKit.use(id, props)
 	return spec.create(cloneProps(props))
 end
 
-function PluginKit.activate(specOrId, props)
+function PluginRegistry.activate(specOrId, props)
 	local spec = specOrId
 	if type(specOrId) == "string" then
 		spec = registry[specOrId]
@@ -156,10 +161,41 @@ function PluginKit.activate(specOrId, props)
 	return spec.create(cloneProps(props))
 end
 
-function PluginKit.component(id)
+function PluginRegistry.component(id)
 	return function(props)
-		return PluginKit.use(id, props)
+		return PluginRegistry.use(id, props)
 	end
 end
 
-return PluginKit
+-- Lua plugins are ordinary modules; native extensions use Lua's standard
+-- package.loadlib entry point. Keeping both paths here lets the IDE own
+-- plugin discovery without adding a second plugin ABI to the framework.
+function PluginRegistry.loadLua(path)
+	if type(path) ~= "string" or path == "" then
+		error("IDE plugin loadLua requires a path")
+	end
+	local chunk, err = loadfile(path)
+	if not chunk then
+		error("failed to load Lua plugin " .. path .. ": " .. tostring(err))
+	end
+	return chunk()
+end
+
+function PluginRegistry.loadNative(path, moduleName)
+	if type(path) ~= "string" or path == "" then
+		error("IDE plugin loadNative requires a dylib path")
+	end
+	moduleName = moduleName or moduleNameFromPath(path)
+	local symbol = "luaopen_" .. moduleName:gsub("[^%w_]", "_")
+	local loader, err = package.loadlib(path, symbol)
+	if not loader then
+		error("failed to load native plugin " .. path .. ": " .. tostring(err))
+	end
+	local module = loader(moduleName)
+	if module == nil then
+		module = package.loaded[moduleName]
+	end
+	return module
+end
+
+return PluginRegistry

@@ -1,9 +1,10 @@
 local ns = require("AppKit")
 local t = require("TestKit")
 local App = require("App")
-local PluginKit = require("PluginKit")
-local ImageViewerPlugin = require("Plugins.ImageViewer")
-local TextEditorPlugin = require("Plugins.TextEditor")
+local Registry = require("examples.ide.plugins.registry")
+local ImageViewerPlugin = require("examples.ide.plugins.image_viewer")
+local TextEditorPlugin = require("examples.ide.plugins.text_editor")
+local NativeControlsPlugin = require("examples.ide.plugins.native_controls")
 local RecentState = require("examples.ide.state.recent")
 
 -- VStack: can create and add children without crashing
@@ -180,6 +181,7 @@ t.expect(true, "show_loading and hide_loading do not crash")
 -- Code editor remains a native editable text view inside its scroll view.
 
 local editor = require("IDEKit").Editor {
+	plugin = TextEditorPlugin,
 	initialCode = "return 1",
 }
 t.assertEqual(
@@ -197,28 +199,36 @@ t.assertEqual(
 
 -- Plugin registry exposes the text editor as the first editor plugin.
 
-t.expect(PluginKit.get("textEditor") == TextEditorPlugin,
+ t.expect(Registry.get("textEditor") == TextEditorPlugin,
 	"text editor plugin is registered")
-t.expect(PluginKit.get("imageViewer") == ImageViewerPlugin,
+
+t.expect(Registry.get("imageViewer") == ImageViewerPlugin,
 	"image viewer plugin is registered")
 t.assertEqual(TextEditorPlugin.kind, "editor", "text editor plugin kind")
 t.assertEqual(TextEditorPlugin.title, "Text Editor", "text editor plugin title")
 t.assertEqual(ImageViewerPlugin.kind, "editor", "image viewer plugin kind")
 t.assertEqual(ImageViewerPlugin.title, "Image Viewer", "image viewer plugin title")
+t.assertEqual(NativeControlsPlugin.kind, "provider", "native controls plugin kind")
 t.assertEqual(
-	PluginKit.resolveByFile("sample.lua", "editor"),
+	Registry.resolveByFile("sample.lua", "editor"),
 	TextEditorPlugin.spec,
 	"plugin resolves by file extension")
 t.assertEqual(
-	PluginKit.resolveByFile("sample.svg", "editor"),
+	Registry.resolveByFile("sample.svg", "editor"),
 	ImageViewerPlugin.spec,
 	"image viewer resolves by image extension")
 t.assertEqual(
-	PluginKit.resolveByCommand("openTextEditor", "editor"),
+	Registry.resolveByCommand("openTextEditor", "editor"),
 	TextEditorPlugin.spec,
 	"plugin resolves by command")
 
-local pluginEditor = PluginKit.use("textEditor", {
+local nativeControls = Registry.loadNative("build/ide-controls.dylib", "ide_controls")
+t.expect(nativeControls and type(nativeControls.ColorWell) == "function",
+	"Lua loads the optional Objective-C controls dylib")
+local colorWell = NativeControlsPlugin.create { module = nativeControls }
+t.expect(colorWell ~= nil, "native controls plugin creates an AppKit control")
+
+local pluginEditor = Registry.use("textEditor", {
 	initialCode = "return 42",
 })
 t.assertEqual(
@@ -242,7 +252,7 @@ t.assertEqual(imageViewer.zoomScale, 1.25, "image viewer zoomScale is writable")
 imageViewer.imagePath = "tests/fixtures/oversized.svg"
 t.assertEqual(imageViewer.imagePath, "tests/fixtures/oversized.svg", "image viewer imagePath is writable")
 
-local pluginImage = PluginKit.use("imageViewer", {
+local pluginImage = Registry.use("imageViewer", {
 	path = "tests/fixtures/oversized.svg",
 })
 t.expect(pluginImage ~= nil, "image viewer plugin window creates successfully")

@@ -47,7 +47,37 @@ return app:run()
 - Use `state/` for persistence and recent-item adapters.
 - Use `plugins/` for concrete editor surfaces.
 - Keep `workspace.lua` and `welcome.lua` as compatibility shims if legacy entrypoints still point there.
-- Prefer `PluginKit` for editor/plugin registration and `IDEKit` for shared editor chrome.
+- Keep the IDE's plugin registry in `examples/ide/plugins/registry.lua`; use
+  `IDEKit` only for shared editor chrome.
+
+## IDE-Owned Plugins
+
+The framework provides the Lua/AppKit boundary; the IDE owns the plugin
+catalog and loading policy. Keep editor surfaces as Lua modules and let the IDE
+select them by file extension, command, or capability:
+
+```lua
+local PluginHost = require("examples.ide.plugins.host")
+local plugins = PluginHost.new():loadBuiltins()
+local surface = plugins:openFile(path, { app = app })
+```
+
+Lua plugins can optionally load native controls through the standard Lua
+dynamic-module ABI. The IDE registry's `loadNative(path, moduleName)` calls the dylib's
+`luaopen_<moduleName>` entry point; the dylib should return a normal Lua module
+whose functions create bridge-compatible native views. The dylib is an
+extension provider, not the IDE plugin itself:
+
+```lua
+local registry = require("examples.ide.plugins.registry")
+local controls = registry.loadNative("build/ide-controls.dylib", "ide_controls")
+local colorWell = controls.ColorWell()
+```
+
+This keeps application code Lua-only while allowing missing AppKit controls to
+be added without moving IDE behavior into Objective-C. Native extensions share
+the host Lua state and are therefore trusted in-process code, not a security
+sandbox.
 
 ## Recent State
 
@@ -63,3 +93,6 @@ return app:run()
 - Test startup routing by stubbing `openFolder`, `openFile`, and `welcome`.
 - Verify recent-store behavior with a temporary storage root so tests do not touch user data.
 - Add a smoke test when a new app surface, entrypoint, or persistence path is introduced.
+- Test both Lua plugin loading and native provider loading when an IDE plugin
+  depends on a dylib; a successful dylib build alone does not verify the Lua
+  module ABI.

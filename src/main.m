@@ -1073,8 +1073,22 @@ static int bridge_window(lua_State *L) {
 					object:w
 					 queue:nil
 				usingBlock:^(NSNotification *note) {
+			/* App:present replaces windows while the run loop is alive. Defer
+			 * termination until the close has completed so the replacement
+			 * window is visible before deciding that the app has no UI left. */
+			dispatch_async(dispatch_get_main_queue(), ^{
+				BOOL hasVisibleWindow = NO;
+				for (NSWindow *window in NSApp.windows) {
+					if (window.isVisible) {
+						hasVisibleWindow = YES;
+						break;
+					}
+				}
+				if (!hasVisibleWindow) {
 					[NSApp terminate:nil];
-				}];
+				}
+			});
+		}];
 
 	if (!lua_isnoneornil(L, 6)) {
 		luaL_checktype(L, 6, LUA_TTABLE);
