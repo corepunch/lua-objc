@@ -1,6 +1,7 @@
 _G.__headless = true
 
 local App = require("App")
+local Source = require("examples.ide.plugins.source")
 local Recent = require("examples.ide.state.recent")
 local t = require("TestKit")
 
@@ -11,6 +12,7 @@ local files = {
 	"examples/ide/components/recent.lua",
 	"examples/ide/components/welcome.lua",
 	"examples/ide/plugins/source.lua",
+	"lua/Plugins/ImageViewer.lua",
 	"examples/ide/workspace.lua",
 	"examples/ide/welcome.lua",
 }
@@ -69,10 +71,15 @@ _G.arg = originalArg
 app:openFolder("/private/tmp/project-b")
 app:openFile("/private/tmp/project-b/main.lua")
 
+local imageWindow = Source.openFile("tests/fixtures/oversized.svg", app)
+t.expect(imageWindow ~= nil, "image source route creates a window")
+t.assertEqual(imageWindow.title, "oversized.svg", "image source route uses the file name as title")
+
 t.assertEqual(#recent:folders(), 2, "recent folders are stored separately")
-t.assertEqual(#recent:files(), 1, "recent files are stored separately")
+t.assertEqual(#recent:files(), 2, "recent files are stored separately")
 t.assertEqual(recent:folders()[1].path, "/private/tmp/project-b", "most recent folder is first")
-t.assertEqual(recent:files()[1].path, "/private/tmp/project-b/main.lua", "most recent file is first")
+t.assertEqual(recent:files()[1].path, "tests/fixtures/oversized.svg", "most recent file is first")
+t.assertEqual(recent:files()[2].path, "/private/tmp/project-b/main.lua", "older file remains available")
 
 recent:clear()
 

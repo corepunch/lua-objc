@@ -16,6 +16,7 @@ local examples = {
 	"examples/ide/components/recent.lua",
 	"examples/ide/components/welcome.lua",
 	"examples/ide/plugins/source.lua",
+	"lua/Plugins/ImageViewer.lua",
 	"examples/ide/workspace.lua",
 	"examples/ide/welcome.lua",
 }

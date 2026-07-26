@@ -2,6 +2,7 @@ local ns = require("AppKit")
 local t = require("TestKit")
 local App = require("App")
 local PluginKit = require("PluginKit")
+local ImageViewerPlugin = require("Plugins.ImageViewer")
 local TextEditorPlugin = require("Plugins.TextEditor")
 local RecentState = require("examples.ide.state.recent")
 
@@ -198,12 +199,20 @@ t.assertEqual(
 
 t.expect(PluginKit.get("textEditor") == TextEditorPlugin,
 	"text editor plugin is registered")
+t.expect(PluginKit.get("imageViewer") == ImageViewerPlugin,
+	"image viewer plugin is registered")
 t.assertEqual(TextEditorPlugin.kind, "editor", "text editor plugin kind")
 t.assertEqual(TextEditorPlugin.title, "Text Editor", "text editor plugin title")
+t.assertEqual(ImageViewerPlugin.kind, "editor", "image viewer plugin kind")
+t.assertEqual(ImageViewerPlugin.title, "Image Viewer", "image viewer plugin title")
 t.assertEqual(
 	PluginKit.resolveByFile("sample.lua", "editor"),
 	TextEditorPlugin.spec,
 	"plugin resolves by file extension")
+t.assertEqual(
+	PluginKit.resolveByFile("sample.svg", "editor"),
+	ImageViewerPlugin.spec,
+	"image viewer resolves by image extension")
 t.assertEqual(
 	PluginKit.resolveByCommand("openTextEditor", "editor"),
 	TextEditorPlugin.spec,
@@ -220,6 +229,27 @@ t.assertEqual(
 	pluginEditor._view.documentView.string,
 	"return 42",
 	"text editor plugin editor exposes initial source")
+
+local imageViewer = require("bridge")._imageViewer("tests/fixtures/oversized.svg")
+t.expect(imageViewer ~= nil, "image viewer surface creates successfully")
+t.assertEqual(imageViewer.zoomScale, 1, "image viewer starts at 1x zoom")
+t.expect(imageViewer.fitToWindow == false, "image viewer starts in actual-size mode")
+imageViewer.fitToWindow = true
+t.expect(imageViewer.fitToWindow == true, "image viewer fit-to-window property is writable")
+imageViewer.fitToWindow = false
+imageViewer.zoomScale = 1.25
+t.assertEqual(imageViewer.zoomScale, 1.25, "image viewer zoomScale is writable")
+imageViewer.imagePath = "tests/fixtures/oversized.svg"
+t.assertEqual(imageViewer.imagePath, "tests/fixtures/oversized.svg", "image viewer imagePath is writable")
+
+local pluginImage = PluginKit.use("imageViewer", {
+	path = "tests/fixtures/oversized.svg",
+})
+t.expect(pluginImage ~= nil, "image viewer plugin window creates successfully")
+t.assertEqual(
+	pluginImage.title,
+	"oversized.svg",
+	"image viewer plugin uses the file name as its title")
 
 -- App recent-store persists and restores recents in a workspace-local path.
 

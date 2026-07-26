@@ -1189,9 +1189,177 @@ static int bridge_spacer(lua_State *L) {
 
 #pragma mark - Image
 
+@interface LuaImageViewerView : NSView <NSDraggingDestination>
+@property (nonatomic, strong) NSScrollView *scrollView;
+@property (nonatomic, strong) NSView *documentView;
+@property (nonatomic, strong) NSImageView *imageView;
+@property (nonatomic, strong) NSImage *sourceImage;
+@property (nonatomic, copy) NSString *imagePath;
+@property (nonatomic) CGFloat zoomScale;
+@property (nonatomic) BOOL fitToWindow;
+@property (nonatomic) int dropCallbackRef;
+@end
+
+@implementation LuaImageViewerView
+
+- (instancetype)initWithFrame:(NSRect)frameRect {
+	self = [super initWithFrame:frameRect];
+	if (self) {
+		_zoomScale = 1.0;
+		_fitToWindow = NO;
+		_dropCallbackRef = LUA_NOREF;
+
+		_scrollView = [[NSScrollView alloc] initWithFrame:self.bounds];
+		_scrollView.hasVerticalScroller = YES;
+		_scrollView.hasHorizontalScroller = YES;
+		_scrollView.autohidesScrollers = YES;
+		_scrollView.borderType = NSNoBorder;
+		_scrollView.drawsBackground = NO;
+
+		_documentView = [[NSView alloc] initWithFrame:NSZeroRect];
+		_imageView = [[NSImageView alloc] initWithFrame:NSZeroRect];
+		_imageView.imageScaling = NSImageScaleProportionallyUpOrDown;
+		_imageView.imageAlignment = NSImageAlignCenter;
+		[_documentView addSubview:_imageView];
+		_scrollView.documentView = _documentView;
+		[self addSubview:_scrollView];
+		[self registerForDraggedTypes:@[NSPasteboardTypeFileURL]];
+	}
+	return self;
+}
+
+- (void)dealloc {
+	if (_dropCallbackRef != LUA_NOREF && gL) {
+		luaL_unref(gL, LUA_REGISTRYINDEX, _dropCallbackRef);
+	}
+}
+
+- (BOOL)acceptsFirstResponder {
+	return YES;
+}
+
+- (void)setFrame:(NSRect)frameRect {
+	[super setFrame:frameRect];
+	[self updateLayout];
+}
+
+- (void)layout {
+	[super layout];
+	[self updateLayout];
+}
+
+- (void)setImagePath:(NSString *)imagePath {
+	_imagePath = [imagePath copy];
+	NSString *path = _imagePath;
+	NSImage *image = nil;
+	if (path.length > 0) {
+		image = [[NSImage alloc] initWithContentsOfFile:path];
+		if (!image) {
+			image = [NSImage imageNamed:path];
+		}
+	}
+	_sourceImage = image;
+	_imageView.image = image;
+	[self updateLayout];
+}
+
+- (void)setZoomScale:(CGFloat)zoomScale {
+	_zoomScale = MAX(0.05, zoomScale);
+	if (!_fitToWindow) {
+		[self updateLayout];
+	}
+}
+
+- (void)setFitToWindow:(BOOL)fitToWindow {
+	_fitToWindow = fitToWindow;
+	[self updateLayout];
+}
+
+- (NSArray<NSString *> *)dropPathsFromPasteboard:(NSPasteboard *)pasteboard {
+	NSArray<NSURL *> *urls = [pasteboard readObjectsForClasses:@[[NSURL class]]
+		options:@{ NSPasteboardURLReadingFileURLsOnlyKey: @YES }];
+	NSMutableArray<NSString *> *paths = [NSMutableArray array];
+	for (NSURL *url in urls) {
+		if (url.isFileURL && url.path.length > 0) {
+			[paths addObject:url.path];
+		}
+	}
+	return paths;
+}
+
+- (BOOL)hasFileDrop:(id<NSDraggingInfo>)sender {
+	return [self dropPathsFromPasteboard:sender.draggingPasteboard].count > 0;
+}
+
+- (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
+	return [self hasFileDrop:sender] ? NSDragOperationCopy : NSDragOperationNone;
+}
+
+- (BOOL)prepareForDragOperation:(id<NSDraggingInfo>)sender {
+	return [self hasFileDrop:sender];
+}
+
+- (BOOL)performDragOperation:(id<NSDraggingInfo>)sender {
+	NSArray<NSString *> *paths = [self dropPathsFromPasteboard:sender.draggingPasteboard];
+	if (paths.count == 0) return NO;
+	if (_dropCallbackRef == LUA_NOREF || !gL) return YES;
+
+	lua_State *callL = gL;
+	lua_rawgeti(callL, LUA_REGISTRYINDEX, _dropCallbackRef);
+	lua_newtable(callL);
+	for (NSUInteger i = 0; i < paths.count; i++) {
+		lua_pushstring(callL, paths[i].UTF8String);
+		lua_rawseti(callL, -2, (lua_Integer)(i + 1));
+	}
+	if (lua_pcall(callL, 1, 0, 0) != LUA_OK) {
+		report_lua_error(callL, "image drop");
+		lua_pop(callL, 1);
+	}
+	return YES;
+}
+
+- (void)updateLayout {
+	self.scrollView.frame = self.bounds;
+	NSImage *image = self.sourceImage;
+	if (!image) {
+		self.documentView.frame = self.scrollView.bounds;
+		self.imageView.frame = NSZeroRect;
+		return;
+	}
+
+	NSSize source = image.size;
+	if (source.width <= 0 || source.height <= 0) {
+		source = NSMakeSize(1, 1);
+	}
+
+	NSSize viewport = self.scrollView.contentSize;
+	CGFloat scale = self.fitToWindow
+		? MIN(viewport.width / source.width, viewport.height / source.height)
+		: self.zoomScale;
+	if (!isfinite(scale) || scale <= 0) {
+		scale = 1.0;
+	}
+	CGFloat imageWidth = MAX(1, round(source.width * scale));
+	CGFloat imageHeight = MAX(1, round(source.height * scale));
+	CGFloat docWidth = MAX(viewport.width, imageWidth);
+	CGFloat docHeight = MAX(viewport.height, imageHeight);
+
+	self.documentView.frame = NSMakeRect(0, 0, docWidth, docHeight);
+	self.imageView.frame = NSMakeRect(
+		floor((docWidth - imageWidth) / 2.0),
+		floor((docHeight - imageHeight) / 2.0),
+		imageWidth,
+		imageHeight);
+	self.scrollView.hasHorizontalScroller = docWidth > viewport.width;
+	self.scrollView.hasVerticalScroller = docHeight > viewport.height;
+}
+
+@end
+
 static int bridge_image(lua_State *L) {
 	const char *path = luaL_checkstring(L, 1);
 	NSString *nsPath = [NSString stringWithUTF8String:path];
+	CGFloat maxWidth = luaL_optnumber(L, 2, 400.0);
 
 	NSImage *img = [[NSImage alloc] initWithContentsOfFile:nsPath];
 	if (!img) {
@@ -1202,9 +1370,9 @@ static int bridge_image(lua_State *L) {
 	}
 
 	NSSize size = img.size;
-	if (size.width > 400) {
-		CGFloat ratio = 400.0 / size.width;
-		size.width = 400;
+	if (maxWidth > 0 && size.width > maxWidth) {
+		CGFloat ratio = maxWidth / size.width;
+		size.width = maxWidth;
 		size.height *= ratio;
 	}
 
@@ -1218,6 +1386,24 @@ static int bridge_image(lua_State *L) {
 		[NSValue valueWithSize:size], OBJC_ASSOCIATION_RETAIN);
 
 	push_objc(L, iv, "nsview");
+	return 1;
+}
+
+static int bridge_image_viewer(lua_State *L) {
+	const char *path = luaL_checkstring(L, 1);
+	int ref = LUA_NOREF;
+	if (!lua_isnoneornil(L, 2)) {
+		luaL_checktype(L, 2, LUA_TFUNCTION);
+		lua_pushvalue(L, 2);
+		ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	}
+
+	LuaImageViewerView *viewer = [[LuaImageViewerView alloc]
+		initWithFrame:NSMakeRect(0, 0, 640, 480)];
+	viewer.dropCallbackRef = ref;
+	viewer.imagePath = [NSString stringWithUTF8String:path];
+
+	push_objc(L, viewer, "nsview");
 	return 1;
 }
 
@@ -2987,6 +3173,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_separator",        bridge_separator},
 	{"_spacer",           bridge_spacer},
 	{"_image",            bridge_image},
+	{"_imageViewer",      bridge_image_viewer},
 	{"_systemImage",      bridge_system_image},
 	{"_systemColor",      bridge_system_color},
 	{"_add",              bridge_add},

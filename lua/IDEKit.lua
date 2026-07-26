@@ -2,11 +2,13 @@ local ns = require("AppKit")
 local bridge = require("bridge")
 local PluginKit = require("PluginKit")
 local TextEditor = require("Plugins.TextEditor")
+local ImageViewer = require("Plugins.ImageViewer")
 
 local IDEKit = {}
 
 IDEKit.Plugins = PluginKit
 IDEKit.TextEditor = TextEditor
+IDEKit.ImageViewer = ImageViewer
 
 -- ControlBar: thin header strip, like Xcode's DVTControlBar.
 -- Props: title (string), height (number, default 28), leading/buttons (view arrays).

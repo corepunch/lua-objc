@@ -2,11 +2,34 @@ local ns = require("AppKit")
 local ide = require("IDEKit")
 local bridge = require("bridge")
 local App = require("App")
+local ImageViewer = require("Plugins.ImageViewer")
 
 local Source = {}
 
 local function isLuaFile(name)
 	return name:match("%.lua$") ~= nil
+end
+
+local imageExtensions = {
+	png = true,
+	jpg = true,
+	jpeg = true,
+	gif = true,
+	tif = true,
+	tiff = true,
+	bmp = true,
+	icns = true,
+	svg = true,
+	pdf = true,
+}
+
+local function isImageFile(name)
+	local ext = name:match("%.([^.]+)$")
+	return ext ~= nil and imageExtensions[ext:lower()] == true
+end
+
+local function isOpenableFile(name)
+	return isLuaFile(name) or isImageFile(name)
 end
 
 local function filterLuaFiles(items)
@@ -19,11 +42,22 @@ local function filterLuaFiles(items)
 				item.children = #filtered > 0 and filtered or nil
 				table.insert(result, item)
 			end
-		elseif isLuaFile(item.name) then
+		elseif isOpenableFile(item.name) then
 			table.insert(result, item)
 		end
 	end
 	return result
+end
+
+local function openImage(path, app)
+	local window = ImageViewer.create {
+		path = path,
+		app = app,
+	}
+	if app and app.recent then
+		app.recent:recordFile(path)
+	end
+	return window
 end
 
 function Source.open(folder, app, initialFile)
@@ -81,7 +115,16 @@ return ns.VStack {
 		data = filtered,
 	}
 
-	local function openInEditor(path)
+	local openInEditor
+
+	local function openPath(path)
+		if isImageFile(path) then
+			return openImage(path, app)
+		end
+		return openInEditor(path)
+	end
+
+	openInEditor = function(path)
 		local f = io.open(path, "r")
 		if not f then return end
 		local content = f:read("*a")
@@ -101,7 +144,7 @@ return ns.VStack {
 
 	fileTree:onRowSelect(function(list, rowIndex, rowData)
 		if rowData and rowData.path and not rowData.directory then
-			openInEditor(rowData.path)
+			openPath(rowData.path)
 		end
 	end)
 
@@ -139,6 +182,9 @@ return ns.VStack {
 end
 
 function Source.openFile(path, app)
+	if isImageFile(path) then
+		return openImage(path, app)
+	end
 	local folder = App.dirname(path)
 	return Source.open(folder, app, path)
 end

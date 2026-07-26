@@ -109,7 +109,10 @@ TextEditor.activation = {
 }
 TextEditor.create = createEditor
 
-local registered = PluginKit.register(TextEditor)
+local registered = PluginKit.get(TextEditor.id)
+if not registered then
+	registered = PluginKit.register(TextEditor)
+end
 
 TextEditor.spec = registered
 
