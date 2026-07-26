@@ -77,20 +77,27 @@ static lua_State *canvas_state_create(void) {
 	 * preview script are dropped instead of crashing after lua_close. */
 	*(void **)lua_getextraspace(C) = NULL;
 
+	luaL_requiref(C, "AppKitNative", luaopen_bridge, 1);
+	lua_pop(C, 1);
 	luaL_requiref(C, "bridge", luaopen_bridge, 1);
 	lua_pop(C, 1);
 
-	/* Copy package.path from gL so all Lua modules resolve identically. */
+	/* Copy both Lua and native module paths so isolated previews resolve the
+	 * same embedded framework dylibs as the main application state. */
 	lua_getglobal(gL, "package");
-	lua_getfield(gL, -1, "path");
-	const char *path = lua_tostring(gL, -1);
-	if (path) {
-		lua_getglobal(C, "package");
-		lua_pushstring(C, path);
-		lua_setfield(C, -2, "path");
-		lua_pop(C, 1);
+	lua_getglobal(C, "package");
+	const char *fields[] = { "path", "cpath" };
+	for (int i = 0; i < 2; i++) {
+		lua_getfield(gL, -1, fields[i]);
+		const char *value = lua_tostring(gL, -1);
+		if (value) {
+			lua_pushstring(C, value);
+			lua_setfield(C, -2, fields[i]);
+		}
+		lua_pop(gL, 1);
 	}
-	lua_pop(gL, 2);
+	lua_pop(C, 1);
+	lua_pop(gL, 1);
 
 	return C;
 }

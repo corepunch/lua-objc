@@ -1,4 +1,5 @@
-local bridge = require("bridge")
+-- UIKitNative is registered by UIKit.dylib before this embedded layer runs.
+local bridge = require("UIKitNative")
 
 local UIKit = {}
 

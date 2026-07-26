@@ -1,5 +1,6 @@
+-- Embedded by IDEKit.dylib; public callers load one native Lua module.
 local ns = require("AppKit")
-local bridge = require("bridge")
+local bridge = require("AppKitNative")
 
 local IDEKit = {}
 

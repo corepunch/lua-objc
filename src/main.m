@@ -1,6 +1,9 @@
 #import <Cocoa/Cocoa.h>
 #import <objc/runtime.h>
 
+#include <dlfcn.h>
+#include <libgen.h>
+#include <limits.h>
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
@@ -3249,7 +3252,12 @@ int luaopen_bridge(lua_State *L) {
 
 #pragma mark - Main
 
-int main(int argc, char *argv[]) {
+/*
+ * The executable is intentionally a tiny loader. AppKit.dylib owns the host
+ * runtime as well as luaopen_AppKit, so the same image that Lua requires also
+ * owns every AppKit control, layout key, callback target, and canvas service.
+ */
+int lua_objc_main(int argc, char *argv[]) {
 	[NSApplication sharedApplication];
 
 	const char *appearance = NULL;
@@ -3292,6 +3300,10 @@ int main(int argc, char *argv[]) {
 	LuaStateOwner *mainOwner = [[LuaStateOwner alloc] initWithState:L];
 	(void)mainOwner;  /* released by ARC at return → -dealloc → lua_close */
 
+	luaL_requiref(L, "AppKitNative", luaopen_bridge, 1);
+	lua_pop(L, 1);
+	/* Compatibility for application code that still imports the old private
+	 * name directly. Public framework code uses AppKitNative. */
 	luaL_requiref(L, "bridge", luaopen_bridge, 1);
 	lua_pop(L, 1);
 
@@ -3315,6 +3327,16 @@ int main(int argc, char *argv[]) {
 
 	char cwd[4096];
 	if (getcwd(cwd, sizeof(cwd))) {
+		char frameworkDirectory[PATH_MAX] = "";
+		Dl_info imageInfo;
+		if (dladdr((const void *)&lua_objc_main, &imageInfo)
+			&& imageInfo.dli_fname) {
+			char imagePath[PATH_MAX];
+			snprintf(imagePath, sizeof(imagePath), "%s", imageInfo.dli_fname);
+			snprintf(frameworkDirectory, sizeof(frameworkDirectory), "%s",
+				dirname(imagePath));
+		}
+
 		lua_getglobal(L, "package");
 		lua_getfield(L, -1, "path");
 		const char *defpath = lua_tostring(L, -1);
@@ -3322,6 +3344,15 @@ int main(int argc, char *argv[]) {
 		snprintf(newpath, sizeof(newpath), "%s;%s/?.lua;%s/lua/?.lua", defpath, cwd, cwd);
 		lua_pushstring(L, newpath);
 		lua_setfield(L, -3, "path");
+		lua_pop(L, 1);
+
+		lua_getfield(L, -1, "cpath");
+		const char *defcpath = lua_tostring(L, -1);
+		char newcpath[8192];
+		snprintf(newcpath, sizeof(newcpath), "%s;%s/build/?.dylib;%s/?.dylib",
+			defcpath, cwd, frameworkDirectory);
+		lua_pushstring(L, newcpath);
+		lua_setfield(L, -3, "cpath");
 		lua_pop(L, 2);
 	}
 

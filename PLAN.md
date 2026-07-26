@@ -54,7 +54,7 @@ Apple does not document Preview internals. This is the best public picture:
 | Thing | File | Notes |
 |---|---|---|
 | `bridge_eval(code, canvas=true)` | `src/canvas_eval.m` | Runs Lua in a fresh isolated `lua_State`; intercepts `ns.Window` → `ns.VStack`; returns an `NSView` |
-| `IDEKit._evalIntoCanvas` | `lua/IDEKit.lua` | Clears a live canvas view and re-adds the result |
+| `IDEKit._evalIntoCanvas` | `lua/embedded/IDEKit.lua` | Clears a live canvas view and re-adds the result |
 | `layout_recursive` | `src/main.m` | Full flex layout pass |
 | `bridge._layout` | `src/main.m` | Lua-callable layout trigger |
 
@@ -150,7 +150,7 @@ path.
 ### Step 4 — `IDEKit.renderCanvas` Lua helper
 
 ```lua
--- lua/IDEKit.lua  (new export)
+-- lua/embedded/IDEKit.lua  (embedded in IDEKit.dylib)
 function IDEKit.renderCanvas(code, width, height)
     local result, err = bridge._eval(code, true)
     if err then return nil, err end
@@ -180,7 +180,7 @@ Internally uses the same `FSEventStream` mechanism as Step 5.  One stream per
 watched path, stored in a global `NSMutableDictionary<NSString*, id>` (path →
 stream wrapper).  Callback fires on the main queue.
 
-**6b. `IDEKit.Editor` tracks `currentFile`** (`lua/IDEKit.lua`):
+**6b. `IDEKit.Editor` tracks `currentFile`** (`lua/embedded/IDEKit.lua`):
 
 ```lua
 function IDEKit.Editor(props)
@@ -259,7 +259,7 @@ past `lua_close`, this is safe.
 | File | Change |
 |---|---|
 | `src/main.m` | Add `offscreen_render()`, `bridge_render_to_png()`, `--preview` branch in `main()`, `bridge_watch_file()`, register `_renderToPNG` + `_watchFile` |
-| `lua/IDEKit.lua` | Add `IDEKit.renderCanvas()`, `editor.watchFile` tracking in `IDEKit.Editor` |
+| `lua/embedded/IDEKit.lua` | Add `IDEKit.renderCanvas()`, `editor.watchFile` tracking in `IDEKit.Editor` |
 | `examples/ide.lua` | Call `editor.watchFile(path)` inside `openInEditor` |
 | `examples/preview.lua` | Minimal example: `return ns.VStack { ... }` usable as `./lua-objc --preview examples/preview.lua` |
 

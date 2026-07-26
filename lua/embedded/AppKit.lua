@@ -1,4 +1,6 @@
-local bridge = require("bridge")
+-- AppKitNative is supplied by the host runtime. Keeping it private lets the
+-- public AppKit module remain a single dylib with a stable declarative API.
+local bridge = require("AppKitNative")
 
 local AppKit = {}
 

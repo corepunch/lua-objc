@@ -2,21 +2,58 @@
 
 ## Overview
 
-lua-objc is a macOS application that runs Lua scripts and renders native AppKit UIs from them. It consists of three layers:
+lua-objc runs Lua scripts against native framework modules. Public UI
+frameworks are Mach-O dylibs loaded by Lua; their declarative conveniences are
+authored in Lua and embedded into the corresponding library at build time.
 
 ```
-examples/*.lua          Lua scripts (user-facing UI descriptions)
-lua/AppKit.lua          High-level SwiftUI-like Lua API
-lua/IDEKit.lua          IDE workspace components (Xcode-aligned)
-src/main.m              ObjC/C bridge + layout engine
-src/canvas_eval.m       Isolated Lua state for canvas preview eval
+examples/*.lua              User-facing UI descriptions
+src/host.c                  Tiny executable loader
+build/AppKit.dylib          AppKit runtime + luaopen_AppKit
+build/IDEKit.dylib          luaopen_IDEKit
+build/UIKit.dylib           UIKit runtime + luaopen_UIKit (iOS SDK)
+lua/embedded/*.lua          Declarative layers embedded in those dylibs
+src/canvas_eval.m           Isolated AppKit canvas evaluation
 ```
 
 ---
 
-## Layer 1 — Bridge (`src/main.m` + `canvas_eval.m`)
+## Native module loading
 
-The bridge is a single Objective-C/C translation unit that registers a `bridge` Lua module.
+`src/host.c` loads `build/AppKit.dylib` and calls its `lua_objc_main` entry
+point. The framework owns the Lua state, AppKit bridge, layout metadata keys,
+callback targets, and run loop. Keeping these in one image avoids splitting
+native object identity or associated-object keys across the executable and a
+plugin.
+
+The runtime appends `build/?.dylib` to `package.cpath`. Consequently:
+
+```lua
+require("AppKit")  -- luaopen_AppKit in AppKit.dylib
+require("IDEKit")  -- luaopen_IDEKit in IDEKit.dylib
+require("UIKit")   -- luaopen_UIKit in UIKit.dylib, inside an iOS host
+```
+
+The build converts each `lua/embedded/*.lua` source into a byte-array header.
+`luaopen_*` evaluates that embedded chunk and returns its complete public API
+table. There is no loose `AppKit.lua`, `IDEKit.lua`, or `UIKit.lua` module that
+can silently bypass native loading.
+
+`AppKitNative` and `UIKitNative` are private implementation modules. The
+legacy `bridge` name remains temporarily available for existing application
+code, but public framework layers do not depend on it.
+
+`make all` builds AppKit and IDEKit everywhere and also builds UIKit when an
+iPhone Simulator SDK is available. `make uikit` requests that target
+explicitly and fails with a focused message when Xcode platform support is
+missing.
+
+---
+
+## Layer 1 — AppKit runtime (`src/main.m` + `canvas_eval.m`)
+
+The AppKit bridge is a single Objective-C/C translation unit inside
+`AppKit.dylib`. It registers the private `AppKitNative` Lua module.
 
 ### View construction
 
@@ -104,9 +141,11 @@ Close the canvas state immediately at eval end; callbacks capture a retained `al
 
 ---
 
-## Layer 2 — AppKit.lua
+## Layer 2 — AppKit.dylib
 
-Provides a SwiftUI-like declarative API over the bridge.
+Provides a SwiftUI-like declarative API over the native bridge. Its editable
+source is `lua/embedded/AppKit.lua`; that file is build input rather than a
+runtime-searchable Lua module.
 
 ### Key functions
 
@@ -137,9 +176,10 @@ fillWidth, fillHeight
 
 ---
 
-## Layer 3 — IDEKit.lua
+## Layer 3 — IDEKit.dylib
 
-Xcode-aligned IDE workspace components. Each component maps to a named Xcode private class.
+Xcode-aligned IDE workspace components. The dylib embeds
+`lua/embedded/IDEKit.lua`; each component maps to a named Xcode private class.
 
 ### Component map
 
@@ -291,7 +331,10 @@ This matches Xcode's static preview fast path: AppKit drawing stack initialises 
 
 ## Key design constraints
 
-- **Single translation unit**: all C/ObjC code lives in `src/main.m` (with `canvas_eval.m` `#include`d). No separate `.h` files.
+- **One AppKit runtime image**: all AppKit bridge and host state lives in
+  `AppKit.dylib`; `lua-objc` itself is only a loader.
+- **Embedded public modules**: framework Lua helpers remain editable source,
+  but ship inside native `luaopen_*` modules rather than loose runtime files.
 - **No subclassing for layout**: layout metadata is attached via associated objects, keeping native view classes unmodified.
 - **Isolated canvas evals**: each preview run gets a clean Lua state; no global pollution between runs.
 - **ARC-owned state lifetime**: `lua_State` teardown is tied to `LuaStateOwner` refcount; async callbacks resolve the owner via `lua_getextraspace` (inherited by coroutines), never by raw pointer lookup.

@@ -113,25 +113,32 @@ Before declaring UI work complete:
 ## Architecture
 
 ```
-lua script  -->  AppKit.lua (sugar)  -->  bridge (C)  -->  AppKit objects
-                                     (lua C API)      (NSWindow, NSView, etc.)
+lua script  -->  require("AppKit")  -->  AppKit.dylib  -->  AppKit objects
+                                        native API +     (NSWindow, NSView, etc.)
+                                        embedded Lua
 ```
 
-For iOS targets, swap `AppKit.lua` → `UIKit.lua` and the bridge links to UIKit
-instead of AppKit (see `src/uikit_bridge.m`). Both modules expose the same
-SwiftUI-like API but with framework-appropriate element names.
+For iOS targets, `require("UIKit")` loads `UIKit.dylib` inside the iOS runtime.
+Both modules expose the same SwiftUI-like API but use framework-appropriate
+native controls and element names.
 
-1. **`src/main.m`** — Host binary. Embeds Lua, registers the `bridge` module
-   (C functions exposed to Lua), loads and runs a Lua script, then starts the
-   Cocoa run loop.
+1. **`src/host.c`** — Tiny executable loader. Loads `AppKit.dylib` and invokes
+   its `lua_objc_main` host entry point.
 
-2. **`lua/AppKit.lua`** — Lua module providing SwiftUI-like functions
-   (`Window`, `VStack`, `HStack`, `Text`, `Image`, `Spacer`, `List`).
-   Translates to `bridge._*` calls that create real ObjC objects.
-3. **`lua/UIKit.lua`** — iOS counterpart. Same API shape, UIKit-appropriate
-   element names (`Label` for `UILabel`, `ImageView` for `UIImageView`, etc.).
+2. **`build/AppKit.dylib`** — Self-contained macOS Lua module and runtime.
+   Owns the ObjC bridge, layout engine, canvas services, and embedded
+   `lua/embedded/AppKit.lua` declarative layer.
+3. **`build/UIKit.dylib`** — iOS Simulator Lua module. Owns the UIKit bridge
+   and embeds `lua/embedded/UIKit.lua`.
+4. **`build/IDEKit.dylib`** — IDE component module with embedded
+   `lua/embedded/IDEKit.lua`.
+5. **`examples/*.lua`** — UI scripts written by the user. No compilation step.
 
-4. **`examples/*.lua`** — UI scripts written by the user. No compilation step.
+The embedded AppKit layer provides SwiftUI-like functions
+(`Window`, `VStack`, `HStack`, `Text`, `Image`, `Spacer`, `List`).
+It translates to private `AppKitNative._*` calls that create real ObjC objects.
+The UIKit counterpart has the same API shape with UIKit-appropriate names
+(`Label` for `UILabel`, `ImageView` for `UIImageView`, etc.).
 
 ### Declarative components: the escape hatch beyond the eager native tree
 
@@ -493,8 +500,8 @@ local wrapToggle = bridge._symbolToggle(
 ```
 
 This is a low-level bridge function (`bridge._symbolToggle`), not wrapped by
-`AppKit.lua`. It's intended for ControlBar header toggles and similar compact
-toolbar-like buttons.
+the embedded AppKit declarative layer. It's intended for ControlBar header
+toggles and similar compact toolbar-like buttons.
 
 ### `Separator()`
 
@@ -876,11 +883,15 @@ lua-objc/
 ├── AGENTS.md
 ├── Makefile
 ├── src/
-│   └── main.m              # host binary + bridge + LuaTableViewSource
+│   ├── host.c              # tiny AppKit.dylib loader executable
+│   ├── main.m              # AppKit module runtime + bridge
+│   └── uikit_module.m      # self-contained UIKit Lua module
 ├── lua/
-│   └── AppKit.lua           # SwiftUI-like Lua module (macOS)
-│   └── UIKit.lua            # SwiftUI-like Lua module (iOS)
-│   └── TestKit.lua          # Assertion helpers for testing
+│   ├── embedded/
+│   │   ├── AppKit.lua      # embedded declarative macOS layer
+│   │   ├── UIKit.lua       # embedded declarative iOS layer
+│   │   └── IDEKit.lua      # embedded IDE component layer
+│   └── TestKit.lua         # Assertion helpers for testing
 └── tests/
 │   └── bridge.test.lua      # Framework tests
 └── examples/

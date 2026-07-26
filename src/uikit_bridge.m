@@ -375,18 +375,18 @@ static int nsview_index(lua_State *L) {
 		lua_pushstring(L, a ? a.UTF8String : "center");
 		return 1;
 	}
-	if (strcmp(key, "fixed_width") == 0) {
+	if (strcmp(key, "fixedWidth") == 0) {
 		NSNumber *w = objc_getAssociatedObject(obj, &kFixedWidthKey);
 		lua_pushnumber(L, w ? w.doubleValue : 0);
 		return 1;
 	}
-	if (strcmp(key, "fixed_height") == 0) {
+	if (strcmp(key, "fixedHeight") == 0) {
 		NSNumber *h = objc_getAssociatedObject(obj, &kFixedHeightKey);
 		lua_pushnumber(L, h ? h.doubleValue : 0);
 		return 1;
 	}
 
-	if (strcmp(key, "set_text") == 0 && [obj isKindOfClass:[UILabel class]]) {
+	if (strcmp(key, "setText") == 0 && [obj isKindOfClass:[UILabel class]]) {
 		lua_pushcfunction(L, bridge_set_text);
 		return 1;
 	}
@@ -401,19 +401,19 @@ static int nsview_index(lua_State *L) {
 
 	id src = objc_getAssociatedObject(obj, &kTableSourceKey);
 	if (src) {
-		if (strcmp(key, "add_row") == 0) {
+		if (strcmp(key, "addRow") == 0) {
 			lua_pushcfunction(L, bridge_tableview_add);
 			return 1;
 		}
-		if (strcmp(key, "remove_row") == 0) {
+		if (strcmp(key, "removeRow") == 0) {
 			lua_pushcfunction(L, bridge_tableview_remove);
 			return 1;
 		}
-		if (strcmp(key, "clear_rows") == 0) {
+		if (strcmp(key, "clearRows") == 0) {
 			lua_pushcfunction(L, bridge_tableview_clear);
 			return 1;
 		}
-		if (strcmp(key, "row_count") == 0) {
+		if (strcmp(key, "rowCount") == 0) {
 			lua_pushinteger(L, (lua_Integer)((LuaTableViewSource *)src).rows.count);
 			return 1;
 		}
@@ -439,12 +439,12 @@ static int nsview_newindex(lua_State *L) {
 			[NSString stringWithUTF8String:val], OBJC_ASSOCIATION_RETAIN);
 		return 0;
 	}
-	if (strcmp(key, "fixed_width") == 0) {
+	if (strcmp(key, "fixedWidth") == 0) {
 		double val = luaL_checknumber(L, 3);
 		objc_setAssociatedObject(obj, &kFixedWidthKey, @(val), OBJC_ASSOCIATION_RETAIN);
 		return 0;
 	}
-	if (strcmp(key, "fixed_height") == 0) {
+	if (strcmp(key, "fixedHeight") == 0) {
 		double val = luaL_checknumber(L, 3);
 		objc_setAssociatedObject(obj, &kFixedHeightKey, @(val), OBJC_ASSOCIATION_RETAIN);
 		return 0;
@@ -842,11 +842,11 @@ static const luaL_Reg bridge_lib[] = {
 	{"_image",            bridge_image},
 	{"_add",              bridge_add},
 	{"_layout",           bridge_layout},
-	{"_set_content_size", bridge_set_content_size},
+	{"_setContentSize",   bridge_set_content_size},
 	{"_tableview",        bridge_tableview},
 	{"_button",           bridge_button},
 	{"_toggle",           bridge_toggle},
-	{"_timer_after",      bridge_timer_after},
+	{"_timerAfter",       bridge_timer_after},
 	{"_show",             bridge_show},
 	{"_create",           bridge_create},
 	{"_font",             bridge_font},
@@ -866,7 +866,7 @@ static void register_metatable(lua_State *L, const char *name) {
 	lua_pop(L, 1);
 }
 
-int luaopen_bridge(lua_State *L) {
+int luaopen_UIKitNative(lua_State *L) {
 	gL = L;
 
 	lua_pushlightuserdata(L, L);

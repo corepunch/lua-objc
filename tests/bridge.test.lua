@@ -7,6 +7,17 @@ local TextEditorPlugin = require("examples.ide.plugins.text_editor")
 local NativeControlsPlugin = require("examples.ide.plugins.native_controls")
 local RecentState = require("examples.ide.state.recent")
 
+-- Public frameworks must come from native Lua modules. A loose Lua fallback
+-- would hide packaging regressions while still making require() appear to work.
+t.expect(package.searchpath("AppKit", package.path) == nil,
+	"AppKit has no loose-Lua module fallback")
+local appkitModulePath = package.searchpath("AppKit", package.cpath)
+t.expect(appkitModulePath ~= nil and appkitModulePath:match("AppKit%.dylib$") ~= nil,
+	"AppKit resolves through package.cpath")
+local idekitModulePath = package.searchpath("IDEKit", package.cpath)
+t.expect(idekitModulePath ~= nil and idekitModulePath:match("IDEKit%.dylib$") ~= nil,
+	"IDEKit resolves through package.cpath")
+
 -- VStack: can create and add children without crashing
 
 local ok = pcall(function()
