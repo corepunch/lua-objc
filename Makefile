@@ -34,6 +34,9 @@ run-mail: $(TARGET)
 run-layout: $(TARGET)
 	./$(TARGET) examples/layout.lua
 
+run-ide: $(TARGET)
+	./$(TARGET) examples/ide.lua
+
 TEST_FILES = $(wildcard tests/*.test.lua)
 
 test: $(TARGET)

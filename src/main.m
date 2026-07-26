@@ -2938,6 +2938,44 @@ static int bridge_watch_file(lua_State *L) {
 	return 0;
 }
 
+static int bridge_pick_folder(lua_State *L) {
+	const char *titleC = luaL_optstring(L, 1, "Open Folder");
+	NSOpenPanel *panel = [NSOpenPanel openPanel];
+	panel.canChooseFiles = NO;
+	panel.canChooseDirectories = YES;
+	panel.allowsMultipleSelection = NO;
+	panel.canCreateDirectories = YES;
+	panel.title = [NSString stringWithUTF8String:titleC];
+
+	NSInteger response = [panel runModal];
+	if (response != NSModalResponseOK || panel.URL == nil) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_pushstring(L, panel.URL.path.UTF8String);
+	return 1;
+}
+
+static int bridge_pick_file(lua_State *L) {
+	const char *titleC = luaL_optstring(L, 1, "Open File");
+	NSOpenPanel *panel = [NSOpenPanel openPanel];
+	panel.canChooseFiles = YES;
+	panel.canChooseDirectories = NO;
+	panel.allowsMultipleSelection = NO;
+	panel.canCreateDirectories = NO;
+	panel.title = [NSString stringWithUTF8String:titleC];
+
+	NSInteger response = [panel runModal];
+	if (response != NSModalResponseOK || panel.URL == nil) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_pushstring(L, panel.URL.path.UTF8String);
+	return 1;
+}
+
 #pragma mark - Module registration
 
 static const luaL_Reg bridge_lib[] = {
@@ -2982,6 +3020,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_clearContainer",   bridge_clear_container},
 	{"_renderToPNG",      bridge_render_to_png},
 	{"_watchFile",        bridge_watch_file},
+	{"_pickFolder",       bridge_pick_folder},
+	{"_pickFile",         bridge_pick_file},
 	{"_outlineview",      bridge_outlineview},
 	{"_listDirectory",    bridge_list_directory},
 	{NULL, NULL},
@@ -3017,6 +3057,8 @@ int main(int argc, char *argv[]) {
 	CGFloat preview_width = 400;
 	CGFloat preview_height = 300;
 	const char *preview_out = NULL;
+	const char *script_args[256];
+	int script_arg_count = 0;
 
 	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "--preview") == 0) {
@@ -3032,7 +3074,11 @@ int main(int argc, char *argv[]) {
 		} else if (strcmp(argv[i], "--appearance") == 0 && i + 1 < argc) {
 			appearance = argv[++i];
 		} else if (argv[i][0] != '-') {
-			if (!script) script = argv[i];
+			if (!script) {
+				script = argv[i];
+			} else if (script_arg_count < (int)(sizeof(script_args) / sizeof(script_args[0]))) {
+				script_args[script_arg_count++] = argv[i];
+			}
 		}
 	}
 
@@ -3052,6 +3098,19 @@ int main(int argc, char *argv[]) {
 		lua_pushstring(L, appearance);
 		lua_setglobal(L, "_LAUNCH_APPEARANCE");
 	}
+
+	lua_newtable(L);
+	if (script) {
+		lua_pushinteger(L, 0);
+		lua_pushstring(L, script);
+		lua_settable(L, -3);
+	}
+	for (int i = 0; i < script_arg_count; i++) {
+		lua_pushinteger(L, i + 1);
+		lua_pushstring(L, script_args[i]);
+		lua_settable(L, -3);
+	}
+	lua_setglobal(L, "arg");
 
 	char cwd[4096];
 	if (getcwd(cwd, sizeof(cwd))) {

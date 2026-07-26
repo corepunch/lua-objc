@@ -1,5 +1,9 @@
 local ns = require("AppKit")
 local t = require("TestKit")
+local App = require("App")
+local PluginKit = require("PluginKit")
+local TextEditorPlugin = require("Plugins.TextEditor")
+local RecentState = require("examples.ide.state.recent")
 
 -- VStack: can create and add children without crashing
 
@@ -189,6 +193,67 @@ t.assertEqual(
 	editor._view.documentView.string,
 	"return 1",
 	"IDE editor exposes its initial source")
+
+-- Plugin registry exposes the text editor as the first editor plugin.
+
+t.expect(PluginKit.get("textEditor") == TextEditorPlugin,
+	"text editor plugin is registered")
+t.assertEqual(TextEditorPlugin.kind, "editor", "text editor plugin kind")
+t.assertEqual(TextEditorPlugin.title, "Text Editor", "text editor plugin title")
+t.assertEqual(
+	PluginKit.resolveByFile("sample.lua", "editor"),
+	TextEditorPlugin.spec,
+	"plugin resolves by file extension")
+t.assertEqual(
+	PluginKit.resolveByCommand("openTextEditor", "editor"),
+	TextEditorPlugin.spec,
+	"plugin resolves by command")
+
+local pluginEditor = PluginKit.use("textEditor", {
+	initialCode = "return 42",
+})
+t.assertEqual(
+	pluginEditor._view.documentView.editable,
+	true,
+	"text editor plugin editor is editable")
+t.assertEqual(
+	pluginEditor._view.documentView.string,
+	"return 42",
+	"text editor plugin editor exposes initial source")
+
+-- App recent-store persists and restores recents in a workspace-local path.
+
+local recentRoot = "/private/tmp/lua-objc-app-test"
+local recentStore = App.recentStore("bridge-test", {
+	storageRoot = recentRoot,
+	limit = 2,
+})
+recentStore:clear()
+recentStore:recordFolder("/private/tmp/project-a", "Project A")
+recentStore:recordFile("/private/tmp/project-a/main.lua", "main.lua")
+
+local reloadedStore = App.recentStore("bridge-test", {
+	storageRoot = recentRoot,
+	limit = 2,
+})
+t.assertEqual(#reloadedStore:list(), 2, "recent store reloads saved entries")
+t.assertEqual(reloadedStore:list()[1].kind, "file", "most recent entry is first")
+t.assertEqual(reloadedStore:list()[2].kind, "folder", "older entry remains available")
+
+local recentApp = App.new {
+	recentKey = "bridge-test",
+	storageRoot = recentRoot,
+}
+t.assertEqual(#recentApp:recentFiles(), 1, "recent files are filtered separately")
+t.assertEqual(#recentApp:recentFolders(), 1, "recent folders are filtered separately")
+
+local recentState = RecentState.new {
+	key = "bridge-test",
+	limit = 2,
+	storageRoot = recentRoot,
+}
+t.assertEqual(#recentState:files(), 1, "recent state exposes file items")
+t.assertEqual(#recentState:folders(), 1, "recent state exposes folder items")
 
 -- fetch infrastructure exists
 

@@ -175,6 +175,75 @@ no window chrome             ns.Window intercepted → ns.VStack
 - `._view` — the underlying `NSScrollView` userdata, passed directly to bridge functions
 - `.watchFile(path)` — installs/replaces an `FSEventStream` watcher; reloads and re-evals on disk change
 
+The actual editor implementation now lives in `lua/Plugins/TextEditor.lua` and
+is registered through `lua/PluginKit.lua`. `IDEKit.Editor` is a compatibility
+wrapper that keeps the existing IDE canvas behavior while the editor-specific
+logic stays isolated in a plugin module.
+
+### Plugin layer
+
+The first plugin layer is intentionally small:
+
+- `PluginKit.register(spec)` stores a plugin manifest and factory.
+- `PluginKit.use(id, props)` constructs a plugin instance.
+- `PluginKit.resolveByFile(path, kind)` and `PluginKit.resolveByCommand(name, kind)` perform lazy selection from activation rules.
+- `Plugins.TextEditor` is the first registered plugin and owns the native
+  `NSTextView`, change callback, file watching, and text accessors.
+
+This gives us a practical boundary for editor-specific features. A future slide
+editor, image editor, or chat agent panel can ship as its own plugin module
+without pulling its internals into the shared AppKit layer. That keeps the
+surface area smaller for both humans and the agent, which is the main reason to
+introduce the registry before the plugin count grows.
+
+The IDE example now lives under `examples/ide/` with `main.lua` as the real
+entrypoint and `examples/ide.lua` kept as a compatibility shim. That gives the
+workspace room to grow into a small plugin playground without cluttering the
+top-level examples directory.
+
+### App layer
+
+`lua/App.lua` is the root app controller. It does not mimic Swift inheritance;
+it provides the same lifecycle role with a Lua object and callbacks:
+
+- `App.args()` reads command-line arguments exposed by `src/main.m` as the
+  global `arg` table.
+- `App.new(spec)` creates a controller that can decide between a welcome scene
+  and a workspace scene.
+- `App:run()` opens the folder passed on the command line when present, and
+  falls back to the welcome screen when no folder was provided.
+- `App.recentStore(key)` persists recent folders/files under the user's app
+  support directory.
+
+The IDE now uses that layer to behave like VS Code on startup: open a folder
+immediately when one was provided, or show a welcome screen with recent items
+and an open-folder picker otherwise.
+
+The IDE example is now organized like a small application bundle:
+
+```text
+examples/ide/
+├── app.lua        # app lifecycle + routing
+├── main.lua       # thin entrypoint
+├── workspace.lua  # editor workspace window
+└── welcome.lua    # startup / recent-project screen
+```
+
+That structure keeps app boot, scene selection, and UI composition separate
+without introducing a second runtime or any non-Lua app scaffolding.
+
+The next split is already in place in the filesystem:
+
+```text
+examples/ide/
+├── components/    # reusable UI bricks
+├── plugins/       # editor surfaces
+└── state/         # persistence and recents
+```
+
+Those subdirectories keep the app shell readable as the number of surfaces
+grows, while preserving the same single-Lua-source workflow.
+
 This table wrapper avoids triggering KVC on `NSScrollView` when storing Lua-side methods.
 
 ---

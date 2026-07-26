@@ -1,7 +1,12 @@
 local ns = require("AppKit")
 local bridge = require("bridge")
+local PluginKit = require("PluginKit")
+local TextEditor = require("Plugins.TextEditor")
 
 local IDEKit = {}
+
+IDEKit.Plugins = PluginKit
+IDEKit.TextEditor = TextEditor
 
 -- ControlBar: thin header strip, like Xcode's DVTControlBar.
 -- Props: title (string), height (number, default 28), leading/buttons (view arrays).
@@ -129,59 +134,32 @@ function IDEKit.WorkspaceLayout(props)
 end
 
 -- Editor: code-editor view backed by NSTextView.
--- Returns a table wrapping the scroll-view userdata so Lua-side methods
--- (watchFile) can be stored without hitting KVC on the NSScrollView.
--- The __index metamethod forwards unknown keys to the underlying view,
--- so bridge callers like bridge._textViewSetText(editor, ...) still work.
+-- The actual editor behavior lives in Plugins/TextEditor.lua; this wrapper
+-- keeps the IDE canvas debounce and preserves the historical IDEKit.Editor API.
 function IDEKit.Editor(props)
 	props = props or {}
 	local canvas = props.canvas
-	local view = bridge._textView()
-
-	bridge._textViewSetLanguage(view, props.language or "lua")
-
-	if props.initialCode then
-		bridge._textViewSetText(view, props.initialCode)
-	end
-
 	local eval_version = 0
 
-	bridge._textViewOnChange(view, function(text)
-		eval_version = eval_version + 1
-		local version = eval_version
-		bridge._timerAfter(0.3, function()
-			if version ~= eval_version then return end
-			IDEKit._evalIntoCanvas(canvas, text)
-		end)
-	end)
+	local editor = TextEditor.create {
+		initialCode = props.initialCode,
+		language = props.language or "lua",
+	}
 
-	if props.initialCode and canvas then
-		IDEKit._evalIntoCanvas(canvas, props.initialCode)
+	if canvas then
+		editor:setChangeHandler(function(text)
+			eval_version = eval_version + 1
+			local version = eval_version
+			bridge._timerAfter(0.3, function()
+				if version ~= eval_version then return end
+				IDEKit._evalIntoCanvas(canvas, text)
+			end)
+		end)
 	end
 
-	local currentFile = nil
-
-	-- editor is a plain Lua table holding Lua-side state.
-	-- _view is the raw nsview userdata for bridge calls.
-	-- watchFile is a Lua method stored here, not on the C object.
-	local editor = {
-		_view = view,
-		watchFile = function(path)
-			if currentFile then
-				bridge._watchFile(currentFile, nil)
-			end
-			currentFile = path
-			if path then
-				bridge._watchFile(path, function()
-					local f = io.open(path, "r")
-					if not f then return end
-					local content = f:read("*a"); f:close()
-					bridge._textViewSetText(view, content)
-					IDEKit._evalIntoCanvas(canvas, content)
-				end)
-			end
-		end,
-	}
+	if canvas and props.initialCode then
+		IDEKit._evalIntoCanvas(canvas, props.initialCode)
+	end
 
 	return editor
 end

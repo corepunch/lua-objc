@@ -10,6 +10,14 @@ local examples = {
 	"examples/layout.lua",
 	"examples/welcome.lua",
 	"examples/ide.lua",
+	"examples/ide/main.lua",
+	"examples/ide/app.lua",
+	"examples/ide/state/recent.lua",
+	"examples/ide/components/recent.lua",
+	"examples/ide/components/welcome.lua",
+	"examples/ide/plugins/source.lua",
+	"examples/ide/workspace.lua",
+	"examples/ide/welcome.lua",
 }
 
 for _, path in ipairs(examples) do

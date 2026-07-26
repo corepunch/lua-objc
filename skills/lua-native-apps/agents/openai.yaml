@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lua Native Apps"
+  short_description: "Lua app shells, plugins, and headless tests"
+  default_prompt: "Use $lua-native-apps to design or refactor a Lua-first macOS/iOS app shell, plugin surfaces, welcome routing, or headless smoke tests."
