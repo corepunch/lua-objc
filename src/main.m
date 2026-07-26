@@ -454,6 +454,71 @@ static void report_lua_error(lua_State *L, const char *context) {
 
 @end
 
+#pragma mark - Shared lookup tables
+
+typedef struct {
+	NSString *name;
+	NSInteger value;
+} NameValueEntry;
+
+static NameValueEntry GridLinesMap[] = {
+	{@"horizontal", 1},
+	{@"vertical",   2},
+	{@"both",       3},
+	{nil, 0}
+};
+
+static NameValueEntry TableStyleMap[] = {
+	{@"plain",     NSTableViewStylePlain},
+	{@"fullWidth", NSTableViewStyleFullWidth},
+	{@"inset",     NSTableViewStyleInset},
+	{@"sourceList",NSTableViewStyleSourceList},
+	{nil, -1}
+};
+
+static NameValueEntry AlignmentMap[] = {
+	{@"trailing", NSTextAlignmentRight},
+	{@"center",   NSTextAlignmentCenter},
+	{nil, NSTextAlignmentLeft}
+};
+
+static NSInteger lookupNameValue(NSString *name, NameValueEntry *map, NSInteger defaultVal) {
+	if (!name) return defaultVal;
+	for (int i = 0; map[i].name; i++) {
+		if ([name isEqualToString:map[i].name])
+			return map[i].value;
+	}
+	return defaultVal;
+}
+
+static CGFloat lookupFontWeight(NSString *name) {
+	if (!name) return NSFontWeightRegular;
+	if ([name isEqualToString:@"bold"]) return NSFontWeightBold;
+	if ([name isEqualToString:@"semibold"]) return NSFontWeightSemibold;
+	if ([name isEqualToString:@"medium"]) return NSFontWeightMedium;
+	if ([name isEqualToString:@"light"]) return NSFontWeightLight;
+	if ([name isEqualToString:@"heavy"]) return NSFontWeightHeavy;
+	return NSFontWeightRegular;
+}
+
+typedef struct {
+	const char *key;
+	void (^apply)(lua_State *L, int idx);
+} TablePropParser;
+
+typedef NS_ENUM(NSInteger, LayoutAxis) {
+	LayoutAxisNone = -1,
+	LayoutAxisVStack,
+	LayoutAxisHStack,
+	LayoutAxisHSplit,
+	LayoutAxisVSplit,
+};
+
+static LayoutAxis layout_axis(NSView *view) {
+	NSNumber *val = objc_getAssociatedObject(view, &kKeys[kAxisKey]);
+	return val ? (LayoutAxis)val.integerValue : LayoutAxisNone;
+}
+
 #pragma mark - Compound action button
 
 static NSColor *semantic_color(NSString *name) {
@@ -1148,7 +1213,7 @@ static int bridge_window(lua_State *L) {
 
 static int bridge_vstack(lua_State *L) {
 	NSView *v = [[NSView alloc] initWithFrame:NSZeroRect];
-	objc_setAssociatedObject(v, &kKeys[kAxisKey], @"vstack", OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(v, &kKeys[kAxisKey], @(LayoutAxisVStack), OBJC_ASSOCIATION_RETAIN);
 	objc_setAssociatedObject(v, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, v, "nsview");
 	return 1;
@@ -1156,7 +1221,7 @@ static int bridge_vstack(lua_State *L) {
 
 static int bridge_hstack(lua_State *L) {
 	NSView *v = [[NSView alloc] initWithFrame:NSZeroRect];
-	objc_setAssociatedObject(v, &kKeys[kAxisKey], @"hstack", OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(v, &kKeys[kAxisKey], @(LayoutAxisHStack), OBJC_ASSOCIATION_RETAIN);
 	objc_setAssociatedObject(v, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, v, "nsview");
 	return 1;
@@ -1166,19 +1231,17 @@ static int bridge_hsplit(lua_State *L) {
 	NSSplitView *v = [[NSSplitView alloc] initWithFrame:NSZeroRect];
 	v.vertical = YES;
 	v.dividerStyle = NSSplitViewDividerStyleThin;
-	objc_setAssociatedObject(v, &kKeys[kAxisKey], @"hsplit", OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(v, &kKeys[kAxisKey], @(LayoutAxisHSplit), OBJC_ASSOCIATION_RETAIN);
 	objc_setAssociatedObject(v, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, v, "nsview");
 	return 1;
 }
 
-/* VSplit — NSSplitView with vertical=NO, splits the area top-to-bottom.
- * Maps to Xcode's DVTSplitView used for editor/debug-area stacking. */
 static int bridge_vsplit(lua_State *L) {
 	NSSplitView *v = [[NSSplitView alloc] initWithFrame:NSZeroRect];
 	v.vertical = NO;
 	v.dividerStyle = NSSplitViewDividerStyleThin;
-	objc_setAssociatedObject(v, &kKeys[kAxisKey], @"vsplit", OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(v, &kKeys[kAxisKey], @(LayoutAxisVSplit), OBJC_ASSOCIATION_RETAIN);
 	objc_setAssociatedObject(v, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, v, "nsview");
 	return 1;
@@ -1431,11 +1494,7 @@ static int bridge_system_image(lua_State *L) {
 	const char *weightName = luaL_optstring(L, 4, "regular");
 	const char *colorName = luaL_optstring(L, 5, "accent");
 
-	NSFontWeight weight = NSFontWeightRegular;
-	if (strcmp(weightName, "semibold") == 0) weight = NSFontWeightSemibold;
-	else if (strcmp(weightName, "medium") == 0) weight = NSFontWeightMedium;
-	else if (strcmp(weightName, "light") == 0) weight = NSFontWeightLight;
-	else if (strcmp(weightName, "bold") == 0) weight = NSFontWeightBold;
+	NSFontWeight weight = lookupFontWeight([NSString stringWithUTF8String:weightName]);
 
 	NSString *name = [NSString stringWithUTF8String:symbol];
 	NSString *accessibilityDescription =
@@ -1550,9 +1609,9 @@ static CGFloat clamp_dimension(CGFloat value, CGFloat minimum, CGFloat maximum) 
 
 static BOOL default_grows_on_axis(NSView *view, BOOL horizontal) {
 	if (!is_flexible(view)) return NO;
-	NSString *axis = objc_getAssociatedObject(view, &kKeys[kAxisKey]);
-	if (!horizontal && [axis isEqualToString:@"hstack"]) return NO;
-	if (horizontal && [axis isEqualToString:@"vsplit"]) return NO;
+	LayoutAxis axis = layout_axis(view);
+	if (!horizontal && axis == LayoutAxisHStack) return NO;
+	if (horizontal && axis == LayoutAxisVSplit) return NO;
 	return YES;
 }
 
@@ -1625,7 +1684,6 @@ static NSSize measure_leaf(NSView *view) {
 static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 	if (!view) return NSZeroSize;
 
-	NSString *axis = objc_getAssociatedObject(view, &kKeys[kAxisKey]);
 	CGFloat padX = view_padding_horizontal(view);
 	CGFloat padY = view_padding_vertical(view);
 	CGFloat innerWidth = constraint.widthMode == LuaMeasureUndefined
@@ -1634,7 +1692,8 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		? 0 : MAX(0, constraint.height - 2 * padY);
 	NSSize natural = NSZeroSize;
 
-	if ([axis isEqualToString:@"vstack"]) {
+	switch (layout_axis(view)) {
+	case LayoutAxisVStack: {
 		NSUInteger count = view.subviews.count;
 		for (NSView *child in view.subviews) {
 			LuaLayoutConstraint childConstraint = {
@@ -1651,7 +1710,8 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		if (count > 1) natural.height += (count - 1) * view_spacing(view);
 		natural.width += 2 * padX;
 		natural.height += 2 * padY;
-	} else if ([axis isEqualToString:@"hstack"]) {
+	} break;
+	case LayoutAxisHStack: {
 		NSUInteger count = view.subviews.count;
 		for (NSView *child in view.subviews) {
 			LuaLayoutConstraint childConstraint = {
@@ -1668,7 +1728,8 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		if (count > 1) natural.width += (count - 1) * view_spacing(view);
 		natural.width += 2 * padX;
 		natural.height += 2 * padY;
-	} else if ([axis isEqualToString:@"hsplit"]) {
+	} break;
+	case LayoutAxisHSplit: {
 		for (NSView *child in view.subviews) {
 			CGFloat fw = view_fixed_width(child);
 			NSSize childSize;
@@ -1690,7 +1751,8 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 			? (view.subviews.count - 1) * [(NSSplitView *)view dividerThickness] : 0;
 		natural.width += dividers + 2 * padX;
 		natural.height += 2 * padY;
-	} else if ([axis isEqualToString:@"vsplit"]) {
+	} break;
+	case LayoutAxisVSplit: {
 		for (NSView *child in view.subviews) {
 			CGFloat fh = view_fixed_height(child);
 			NSSize childSize;
@@ -1712,25 +1774,27 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 			? (view.subviews.count - 1) * [(NSSplitView *)view dividerThickness] : 0;
 		natural.width += 2 * padX;
 		natural.height += dividers + 2 * padY;
-	} else {
-		NSValue *imageLayoutSize =
-			objc_getAssociatedObject(view, &kKeys[kImageLayoutSizeKey]);
-		if (imageLayoutSize) {
-			natural = imageLayoutSize.sizeValue;
-			CGFloat scale = 1;
-			if (constraint.widthMode != LuaMeasureUndefined
-				&& natural.width > constraint.width && natural.width > 0) {
-				scale = MIN(scale, constraint.width / natural.width);
-			}
-			if (constraint.heightMode != LuaMeasureUndefined
-				&& natural.height > constraint.height && natural.height > 0) {
-				scale = MIN(scale, constraint.height / natural.height);
-			}
-			natural.width *= MAX(0, scale);
-			natural.height *= MAX(0, scale);
-		} else {
-			natural = measure_leaf(view);
+	} break;
+	default: break;
+	}
+
+	NSValue *imageLayoutSize =
+		objc_getAssociatedObject(view, &kKeys[kImageLayoutSizeKey]);
+	if (imageLayoutSize) {
+		natural = imageLayoutSize.sizeValue;
+		CGFloat scale = 1;
+		if (constraint.widthMode != LuaMeasureUndefined
+			&& natural.width > constraint.width && natural.width > 0) {
+			scale = MIN(scale, constraint.width / natural.width);
 		}
+		if (constraint.heightMode != LuaMeasureUndefined
+			&& natural.height > constraint.height && natural.height > 0) {
+			scale = MIN(scale, constraint.height / natural.height);
+		}
+		natural.width *= MAX(0, scale);
+		natural.height *= MAX(0, scale);
+	} else {
+		natural = measure_leaf(view);
 	}
 
 	CGFloat fixedWidth = view_fixed_width(view);
@@ -1815,13 +1879,12 @@ static void distribute_main_axis(NSArray<NSView *> *children, CGFloat *sizes,
 static void layout_recursive(NSView *view, CGFloat width) {
 	if (!view) return;
 
-	NSString *axis = objc_getAssociatedObject(view, &kKeys[kAxisKey]);
+	LayoutAxis axis = layout_axis(view);
 	CGFloat availableWidth = view.bounds.size.width > 0
 		? view.bounds.size.width : width;
 	CGFloat availableHeight = view.bounds.size.height;
 
-	if ([axis isEqualToString:@"vstack"] || [axis isEqualToString:@"hstack"] ||
-		[axis isEqualToString:@"hsplit"] || [axis isEqualToString:@"vsplit"]) {
+	if (axis != LayoutAxisNone) {
 
 		CGFloat padX = view_padding_horizontal(view);
 		CGFloat padY = view_padding_vertical(view);
@@ -1830,7 +1893,8 @@ static void layout_recursive(NSView *view, CGFloat width) {
 		CGFloat contentH = availableHeight - 2 * padY;
 		NSString *alignment = view_alignment(view);
 
-		if ([axis isEqualToString:@"vstack"]) {
+		switch (axis) {
+		case LayoutAxisVStack: {
 			NSUInteger count = view.subviews.count;
 			if (count == 0) return;
 
@@ -1881,7 +1945,8 @@ static void layout_recursive(NSView *view, CGFloat width) {
 				top -= stackSpacing;
 			}
 			free(heights);
-		} else if ([axis isEqualToString:@"hstack"]) {
+	} break;
+	case LayoutAxisHStack: {
 			NSUInteger count = view.subviews.count;
 			if (count == 0) return;
 
@@ -1931,7 +1996,8 @@ static void layout_recursive(NSView *view, CGFloat width) {
 				x += childW + stackSpacing;
 			}
 			free(widths);
-		} else if ([axis isEqualToString:@"hsplit"]) {
+	} break;
+	case LayoutAxisHSplit: {
 			NSUInteger count = view.subviews.count;
 			if (count == 0) return;
 
@@ -1965,7 +2031,8 @@ static void layout_recursive(NSView *view, CGFloat width) {
 				x += childW + divider;
 			}
 			free(widths);
-		} else if ([axis isEqualToString:@"vsplit"]) {
+	} break;
+	case LayoutAxisVSplit: {
 			NSUInteger count = view.subviews.count;
 			if (count == 0) return;
 
@@ -2000,7 +2067,9 @@ static void layout_recursive(NSView *view, CGFloat width) {
 				top -= divider;
 			}
 			free(heights);
-		}
+	} break;
+	default: break;
+	}
 	} else {
 		if ([view isKindOfClass:[NSScrollView class]]) {
 			LuaTableViewSource *source =
@@ -2260,48 +2329,6 @@ static id lua_to_objc_recursive(lua_State *L, int idx) {
 	/* Not a table — shouldn't happen */
 	return [NSMutableDictionary dictionary];
 }
-
-#pragma mark - Table / Outline shared data
-
-typedef struct {
-	NSString *name;
-	NSInteger value;
-} NameValueEntry;
-
-static NameValueEntry GridLinesMap[] = {
-	{@"horizontal", 1},
-	{@"vertical",   2},
-	{@"both",       3},
-	{nil, 0}
-};
-
-static NameValueEntry TableStyleMap[] = {
-	{@"plain",     NSTableViewStylePlain},
-	{@"fullWidth", NSTableViewStyleFullWidth},
-	{@"inset",     NSTableViewStyleInset},
-	{@"sourceList",NSTableViewStyleSourceList},
-	{nil, -1}
-};
-
-static NameValueEntry AlignmentMap[] = {
-	{@"trailing", NSTextAlignmentRight},
-	{@"center",   NSTextAlignmentCenter},
-	{nil, NSTextAlignmentLeft}
-};
-
-static NSInteger lookupNameValue(NSString *name, NameValueEntry *map, NSInteger defaultVal) {
-	if (!name) return defaultVal;
-	for (int i = 0; map[i].name; i++) {
-		if ([name isEqualToString:map[i].name])
-			return map[i].value;
-	}
-	return defaultVal;
-}
-
-typedef struct {
-	const char *key;
-	void (^apply)(lua_State *L, int idx);
-} TablePropParser;
 
 static int bridge_tableview(lua_State *L) {
 	luaL_checktype(L, 1, LUA_TTABLE);
@@ -2773,13 +2800,9 @@ static int bridge_font(lua_State *L) {
 	CGFloat size = luaL_checknumber(L, 1);
 	const char *weightStr = luaL_optstring(L, 2, NULL);
 
-	NSFontWeight w = NSFontWeightRegular;
-	if (weightStr) {
-		if (strcmp(weightStr, "bold") == 0) w = NSFontWeightBold;
-		else if (strcmp(weightStr, "semibold") == 0) w = NSFontWeightSemibold;
-		else if (strcmp(weightStr, "light") == 0) w = NSFontWeightLight;
-		else if (strcmp(weightStr, "heavy") == 0) w = NSFontWeightHeavy;
-	}
+	NSFontWeight w = weightStr
+		? lookupFontWeight([NSString stringWithUTF8String:weightStr])
+		: NSFontWeightRegular;
 
 	NSFont *font = [NSFont systemFontOfSize:size weight:w];
 	push_objc(L, font, "nsobject");

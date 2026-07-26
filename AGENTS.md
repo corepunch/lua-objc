@@ -846,6 +846,7 @@ should add next.
 | **`isKindOfClass:`** | Type-safe downcasting. `check_objc` returns `id`; bridge functions check `[obj isKindOfClass:[NSWindow class]]` before casting. Prevents crashes on wrong types. |
 | **Blocks (`^ { ... }`)** | ObjC closures capture variables by value. `NSTimer` and `NSNotificationCenter` accept blocks — no C function pointers or `void *` contexts. We use this for timer callbacks and window-close handlers. |
 | **`id` dynamic typing** | `id` accepts any ObjC object without static type info. Bridge functions receive `id` and decide at runtime which class to cast to. |
+| **Static lookup tables + block prop parsers** | Replace chained `if/strcmp`/`isEqualToString:` with data arrays. `NameValueEntry` maps compile-time string constants to enum values via a 4-line lookup loop. `TablePropParser` arrays make option-table parsing declarative — each Lua key → block entry. Adding a property is one line; the parsing loop never changes. See `GridLinesMap` / `TableStyleMap` / `AlignmentMap` + the `propParsers[]` array in `bridge_tableview` / `bridge_outlineview`. |
 
 ### Not yet using — would reduce boilerplate further
 
