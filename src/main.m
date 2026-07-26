@@ -224,11 +224,23 @@ static void report_lua_error(lua_State *L, const char *context) {
 		? _tableView.headerView.frame.size.height : 0;
 	CGFloat rowsHeight = _rows.count * _tableView.rowHeight + headerHeight;
 	NSSize viewport = clipView.bounds.size;
+
+	CGFloat totalColumnWidth = 0;
+	for (NSTableColumn *col in _tableView.tableColumns) {
+		totalColumnWidth += col.width;
+	}
+	BOOL overflows = totalColumnWidth > viewport.width;
+
 	CGRect frame = _tableView.frame;
-	frame.size.width = viewport.width;
+	frame.size.width = overflows ? totalColumnWidth : viewport.width;
 	frame.size.height = MAX(viewport.height, rowsHeight);
 	_tableView.frame = frame;
-	[_tableView sizeLastColumnToFit];
+
+	NSScrollView *sv = _tableView.enclosingScrollView;
+	sv.hasHorizontalScroller = overflows;
+	if (!overflows) {
+		[_tableView sizeLastColumnToFit];
+	}
 }
 
 - (NSView *)tableView:(NSTableView *)tableView
@@ -383,11 +395,23 @@ static void report_lua_error(lua_State *L, const char *context) {
 	CGFloat rowsHeight = _outlineView.numberOfRows * _outlineView.rowHeight
 		+ headerHeight;
 	NSSize viewport = clipView.bounds.size;
+
+	CGFloat totalColumnWidth = 0;
+	for (NSTableColumn *col in _outlineView.tableColumns) {
+		totalColumnWidth += col.width;
+	}
+	BOOL overflows = totalColumnWidth > viewport.width;
+
 	CGRect frame = _outlineView.frame;
-	frame.size.width = viewport.width;
+	frame.size.width = overflows ? totalColumnWidth : viewport.width;
 	frame.size.height = MAX(viewport.height, rowsHeight);
 	_outlineView.frame = frame;
-	[_outlineView sizeLastColumnToFit];
+
+	NSScrollView *sv = _outlineView.enclosingScrollView;
+	sv.hasHorizontalScroller = overflows;
+	if (!overflows) {
+		[_outlineView sizeLastColumnToFit];
+	}
 }
 
 - (void)addRootItem:(NSDictionary *)item {
