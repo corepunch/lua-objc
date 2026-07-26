@@ -8,7 +8,19 @@
  *   - globals set by user code do not leak between runs
  *   - package.loaded / module cache is not shared
  *   - registry refs (callbacks, timers) from previous runs cannot fire
+ *
+ * CANCELLATION
+ * When the user saves new code, _evalIntoCanvas calls bridge._eval again.
+ * gLastCanvasOwner tracks the most-recently-created canvas owner so that
+ * bridge_eval can call [owner cancel] before spinning up the new state.
+ * This immediately cancels all in-flight NSURLSessionDataTasks and NSTimers
+ * from the previous eval, preventing orphaned coroutines from resuming
+ * into stale views.
  */
+
+/* Strong ref to the canvas owner currently running async work.
+ * Cancelled and replaced each time bridge_eval creates a new canvas state. */
+static LuaStateOwner *gLastCanvasOwner = nil;
 
 int luaopen_bridge(lua_State *L);  /* defined later in main.m */
 
@@ -95,6 +107,12 @@ static int bridge_eval(lua_State *L) {
 		 * cannot pollute globals, module cache, or registry of the main
 		 * state.  ns.Window / ns.Preview are intercepted to return a
 		 * VStack instead of a real NSWindow. */
+		/* Cancel any in-flight async work (fetches, timers) from the previous
+		 * canvas eval before creating the new state.  This prevents orphaned
+		 * coroutines from resuming into stale views after a re-eval. */
+		[gLastCanvasOwner cancel];
+		gLastCanvasOwner = nil;
+
 		lua_State *C = canvas_state_create();
 		if (!C) {
 			fprintf(stderr, "canvas error: failed to create canvas state\n");
@@ -104,7 +122,7 @@ static int bridge_eval(lua_State *L) {
 			return 2;
 		}
 		LuaStateOwner *canvasOwner = [[LuaStateOwner alloc] initWithState:C];
-		(void)canvasOwner;  /* ARC releases at return; async blocks retain */
+		gLastCanvasOwner = canvasOwner;  /* track for cancellation on next eval */
 
 		n = snprintf(wrapped, sizeof(wrapped),
 			"local ns=require('AppKit');"
