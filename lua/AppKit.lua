@@ -343,6 +343,7 @@ function AppKit.OutlineView(props)
 	local tv = bridge._outlineview(columns, width, height, {
 		header = props.header ~= false,
 		bordered = props.bordered == true,
+		style = props.style,
 	})
 
 	if props.data and type(props.data) == "table" then

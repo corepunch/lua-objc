@@ -394,7 +394,7 @@ static void report_lua_error(lua_State *L, const char *context) {
 	NSString *reuseId = [@"outline-cell-" stringByAppendingString:colId];
 	NSTableCellView *cell = [ov makeViewWithIdentifier:reuseId owner:self];
 	if (!cell) {
-		cell = [[NSTableCellView alloc]
+		cell = [[LuaTableCellView alloc]
 			initWithFrame:NSMakeRect(0, 0, column.width, ov.rowHeight)];
 		cell.identifier = reuseId;
 
@@ -2378,6 +2378,7 @@ static int bridge_table_set_selection(lua_State *L) {
 static int bridge_outlineview(lua_State *L) {
 	BOOL bordered = NO;
 	BOOL header = YES;
+	NSString *tableStyle = nil;
 
 	luaL_checktype(L, 1, LUA_TTABLE);
 	CGFloat width = luaL_checknumber(L, 2);
@@ -2389,10 +2390,23 @@ static int bridge_outlineview(lua_State *L) {
 		lua_getfield(L, 4, "bordered");
 		bordered = lua_toboolean(L, -1);
 		lua_pop(L, 1);
+		lua_getfield(L, 4, "style");
+		const char *style = lua_tostring(L, -1);
+		if (style) tableStyle = [NSString stringWithUTF8String:style];
+		lua_pop(L, 1);
 	}
 
 	NSOutlineView *ov = [[NSOutlineView alloc]
 		initWithFrame:NSMakeRect(0, 0, width, height)];
+	if ([tableStyle isEqualToString:@"plain"]) {
+		ov.style = NSTableViewStylePlain;
+	} else if ([tableStyle isEqualToString:@"fullWidth"]) {
+		ov.style = NSTableViewStyleFullWidth;
+	} else if ([tableStyle isEqualToString:@"inset"]) {
+		ov.style = NSTableViewStyleInset;
+	} else if ([tableStyle isEqualToString:@"sourceList"]) {
+		ov.style = NSTableViewStyleSourceList;
+	}
 	ov.headerView = header ? [[NSTableHeaderView alloc] init] : nil;
 	ov.usesAlternatingRowBackgroundColors = YES;
 	ov.rowHeight = 24;

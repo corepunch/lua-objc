@@ -69,6 +69,7 @@ local filtered = filterLuaFiles(entries)
 local fileTree = ns.OutlineView {
 	header = false,
 	bordered = false,
+	style = "plain",
 	flexGrow = 1,
 	columns = {
 		{

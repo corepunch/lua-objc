@@ -1,16 +1,5 @@
 #pragma mark - Syntax highlighting (NSTextStorage subclass)
 
-/* Token kinds — order determines priority (first match wins inside each pass). */
-typedef NS_ENUM(NSInteger, SyntaxToken) {
-	SyntaxTokenComment,
-	SyntaxTokenString,
-	SyntaxTokenNumber,
-	SyntaxTokenKeyword,
-	SyntaxTokenType,
-	SyntaxTokenPreprocessor,
-	SyntaxTokenOperator,
-};
-
 /* Per-language rule table. */
 typedef struct {
 	const char * const *keywords;
@@ -130,26 +119,35 @@ static NSColor *syntax_color(CGFloat lr, CGFloat lg, CGFloat lb,
 	}];
 }
 
-static NSColor *g_colorComment;
-static NSColor *g_colorString;
-static NSColor *g_colorNumber;
-static NSColor *g_colorKeyword;
-static NSColor *g_colorType;
-static NSColor *g_colorPreprocessor;
-static NSColor *g_colorOperator;
-static NSColor *g_colorDefault;
+/* Color theme — maps token categories to dynamic light/dark colors.
+   Struct-based so a future bridge API can swap themes per text view.   */
+typedef struct {
+	NSColor *comment;
+	NSColor *string;
+	NSColor *number;
+	NSColor *keyword;
+	NSColor *type;
+	NSColor *preprocessor;
+	NSColor *operator;
+	NSColor *property;        /* .field or :method (no parens)          */
+	NSColor *functionCall;    /* .method() or :method()                 */
+	NSColor *defaultColor;
+} SyntaxTheme;
 
-static void syntax_init_colors(void) {
-	if (g_colorDefault) return;
-	/* light / dark pairs (sRGB) */
-	g_colorComment     = syntax_color(0.40f,0.47f,0.40f,  0.44f,0.54f,0.44f);
-	g_colorString      = syntax_color(0.75f,0.12f,0.10f,  0.98f,0.40f,0.36f);
-	g_colorNumber      = syntax_color(0.10f,0.40f,0.75f,  0.36f,0.72f,1.00f);
-	g_colorKeyword     = syntax_color(0.62f,0.00f,0.57f,  0.92f,0.38f,0.90f);
-	g_colorType        = syntax_color(0.10f,0.46f,0.65f,  0.29f,0.72f,0.88f);
-	g_colorPreprocessor= syntax_color(0.50f,0.35f,0.00f,  0.80f,0.62f,0.18f);
-	g_colorOperator    = syntax_color(0.30f,0.30f,0.30f,  0.65f,0.65f,0.65f);
-	g_colorDefault     = [NSColor labelColor];
+static SyntaxTheme g_theme;
+
+static void theme_init_default(void) {
+	if (g_theme.defaultColor) return;
+	g_theme.comment      = syntax_color(0.40f,0.47f,0.40f,  0.44f,0.54f,0.44f);
+	g_theme.string       = syntax_color(0.75f,0.12f,0.10f,  0.98f,0.40f,0.36f);
+	g_theme.number       = syntax_color(0.10f,0.40f,0.75f,  0.36f,0.72f,1.00f);
+	g_theme.keyword      = syntax_color(0.62f,0.00f,0.57f,  0.92f,0.38f,0.90f);
+	g_theme.type         = syntax_color(0.10f,0.46f,0.65f,  0.29f,0.72f,0.88f);
+	g_theme.preprocessor = syntax_color(0.50f,0.35f,0.00f,  0.80f,0.62f,0.18f);
+	g_theme.operator     = syntax_color(0.30f,0.30f,0.30f,  0.65f,0.65f,0.65f);
+	g_theme.property     = syntax_color(0.70f,0.35f,0.00f,  0.90f,0.60f,0.22f);
+	g_theme.functionCall = syntax_color(0.33f,0.24f,0.65f,  0.60f,0.55f,0.88f);
+	g_theme.defaultColor = [NSColor labelColor];
 }
 
 /* ── SyntaxRules factory ─────────────────────────────────────────────────── */
@@ -197,7 +195,7 @@ static SyntaxRules syntax_rules_for_language(NSString *lang) {
 - (instancetype)init {
 	if (!(self = [super init])) return nil;
 	_backing = [[NSMutableAttributedString alloc] init];
-	syntax_init_colors();
+	theme_init_default();
 	_font = [NSFont monospacedSystemFontOfSize:13 weight:NSFontWeightRegular];
 	_baseAttrs = @{
 		NSFontAttributeName: _font,
@@ -253,17 +251,12 @@ static SyntaxRules syntax_rules_for_language(NSString *lang) {
 	const char *buf = src.UTF8String;
 	NSUInteger  byteLen = strlen(buf);
 
-	/* We track byte offsets, then convert back to NSRange character offsets. */
-	/* For ASCII-dominant source this is 1:1; for non-ASCII we use UTF-16 length. */
-
-	/* Helper: apply color to a byte-range, converting to char range safely */
 	void (^applyColor)(NSUInteger, NSUInteger, NSColor *) =
 		^(NSUInteger start, NSUInteger end, NSColor *color) {
 			NSString *sub = [[NSString alloc] initWithBytes:buf+start
 			                                         length:end-start
 			                                       encoding:NSUTF8StringEncoding];
 			if (!sub) return;
-			/* Find the character-level offset by slicing the prefix */
 			NSString *prefix = [[NSString alloc] initWithBytes:buf
 			                                            length:start
 			                                          encoding:NSUTF8StringEncoding];
@@ -276,6 +269,34 @@ static SyntaxRules syntax_rules_for_language(NSString *lang) {
 			                 range:NSMakeRange(charStart, charLen)];
 		};
 
+	/* Consume an identifier starting at byte offset.  If it matches a
+	   keyword or type, color it accordingly and return.  Otherwise, if
+	   memberColor is non-nil, apply that color (caller-determined).
+	   Pass nil for standalone identifiers (no default coloring).     */
+	void (^consumeIdentifier)(NSUInteger *, NSColor *) = ^(NSUInteger *pos, NSColor *memberColor) {
+		NSUInteger start = *pos;
+		(*pos)++;
+		while (*pos < byteLen && (isalnum((unsigned char)buf[*pos]) || buf[*pos] == '_')) (*pos)++;
+		NSUInteger wordLen = *pos - start;
+
+		for (NSUInteger k = 0; k < _rules.keywordCount; k++) {
+			NSUInteger klen = strlen(_rules.keywords[k]);
+			if (klen == wordLen && memcmp(buf+start, _rules.keywords[k], klen) == 0) {
+				applyColor(start, *pos, g_theme.keyword);
+				return;
+			}
+		}
+		for (NSUInteger k = 0; k < _rules.typeCount; k++) {
+			NSUInteger klen = strlen(_rules.types[k]);
+			if (klen == wordLen && memcmp(buf+start, _rules.types[k], klen) == 0) {
+				applyColor(start, *pos, g_theme.type);
+				return;
+			}
+		}
+		if (memberColor)
+			applyColor(start, *pos, memberColor);
+	};
+
 	NSUInteger i = 0;
 	while (i < byteLen) {
 		unsigned char c = (unsigned char)buf[i];
@@ -284,12 +305,11 @@ static SyntaxRules syntax_rules_for_language(NSString *lang) {
 		if (!_rules.luaStyle && c == '/' && i+1 < byteLen && buf[i+1] == '/') {
 			NSUInteger start = i;
 			while (i < byteLen && buf[i] != '\n') i++;
-			applyColor(start, i, g_colorComment);
+			applyColor(start, i, g_theme.comment);
 			continue;
 		}
 		/* Lua single-line:  -- */
 		if (_rules.luaStyle && c == '-' && i+1 < byteLen && buf[i+1] == '-') {
-			/* Check for long comment  --[[ ]] */
 			NSUInteger start = i;
 			if (i+3 < byteLen && buf[i+2] == '[' && buf[i+3] == '[') {
 				i += 4;
@@ -298,7 +318,7 @@ static SyntaxRules syntax_rules_for_language(NSString *lang) {
 			} else {
 				while (i < byteLen && buf[i] != '\n') i++;
 			}
-			applyColor(start, i, g_colorComment);
+			applyColor(start, i, g_theme.comment);
 			continue;
 		}
 
@@ -308,18 +328,14 @@ static SyntaxRules syntax_rules_for_language(NSString *lang) {
 			i += 2;
 			while (i+1 < byteLen && !(buf[i] == '*' && buf[i+1] == '/')) i++;
 			if (i+1 < byteLen) i += 2;
-			applyColor(start, i, g_colorComment);
+			applyColor(start, i, g_theme.comment);
 			continue;
 		}
-
-		/* ── Swift // comment (same as C but no block needed separately) */
-		/* already handled above */
 
 		/* ── Preprocessor  # (C-family only) ──────────────────────────── */
 		if (_rules.hasPreprocessor && c == '#'
 		    && (i == 0 || buf[i-1] == '\n')) {
 			NSUInteger start = i;
-			/* handle line continuation with \ */
 			while (i < byteLen) {
 				if (buf[i] == '\n') {
 					if (i > 0 && buf[i-1] == '\\') { i++; continue; }
@@ -327,11 +343,9 @@ static SyntaxRules syntax_rules_for_language(NSString *lang) {
 				}
 				i++;
 			}
-			applyColor(start, i, g_colorPreprocessor);
+			applyColor(start, i, g_theme.preprocessor);
 			continue;
 		}
-
-		/* ── ObjC @ keywords (already in keyword list, handled below) ─── */
 
 		/* ── String literal  " ─────────────────────────────────────────── */
 		if (c == '"') {
@@ -341,7 +355,7 @@ static SyntaxRules syntax_rules_for_language(NSString *lang) {
 				i++;
 			}
 			if (i < byteLen) i++;
-			applyColor(start, i, g_colorString);
+			applyColor(start, i, g_theme.string);
 			continue;
 		}
 		/* ── String literal  ' (C char, Swift single-quoted) ──────────── */
@@ -352,7 +366,7 @@ static SyntaxRules syntax_rules_for_language(NSString *lang) {
 				i++;
 			}
 			if (i < byteLen) i++;
-			applyColor(start, i, g_colorString);
+			applyColor(start, i, g_theme.string);
 			continue;
 		}
 		/* ── Lua long string  [[ ]] ─────────────────────────────────────── */
@@ -361,14 +375,13 @@ static SyntaxRules syntax_rules_for_language(NSString *lang) {
 			i += 2;
 			while (i+1 < byteLen && !(buf[i] == ']' && buf[i+1] == ']')) i++;
 			if (i+1 < byteLen) i += 2;
-			applyColor(start, i, g_colorString);
+			applyColor(start, i, g_theme.string);
 			continue;
 		}
 
 		/* ── Number literal ─────────────────────────────────────────────── */
 		if (isdigit(c) || (c == '.' && i+1 < byteLen && isdigit((unsigned char)buf[i+1]))) {
 			NSUInteger start = i;
-			/* hex */
 			if (c == '0' && i+1 < byteLen && (buf[i+1]=='x'||buf[i+1]=='X')) {
 				i += 2;
 				while (i < byteLen && isxdigit((unsigned char)buf[i])) i++;
@@ -377,36 +390,63 @@ static SyntaxRules syntax_rules_for_language(NSString *lang) {
 				       buf[i] == 'e' || buf[i] == 'E' || buf[i] == '_' ||
 				       ((buf[i]=='+' || buf[i]=='-') && i>0 &&
 				        (buf[i-1]=='e'||buf[i-1]=='E')))) i++;
-				/* suffix: f, u, l, ul, ll, etc. */
 				while (i < byteLen && (buf[i]=='f'||buf[i]=='u'||buf[i]=='l'||
 				       buf[i]=='F'||buf[i]=='U'||buf[i]=='L')) i++;
 			}
-			applyColor(start, i, g_colorNumber);
+			applyColor(start, i, g_theme.number);
+			continue;
+		}
+
+		/* ── Accessor: .identifier  /  Lua :method ────────────────────────────
+		   Matches any . or (in Lua) : followed by an identifier, regardless of
+		   what precedes it.  Handles table.field, obj:method(), "hello":upper()
+		   and (expr).prop.  In C-family, : is ternary / labels and passes
+		   through to the operator block below.
+		   Edge cases consumed earlier:  `.5` (number literal), `..` (below).
+		   The accessor itself is colored as an operator.                   */
+		if (c == '.' || (_rules.luaStyle && c == ':')) {
+			/* Lua concat  .. */
+			if (c == '.' && i+1 < byteLen && buf[i+1] == '.') {
+				applyColor(i, i+2, g_theme.operator);
+				i += 2;
+				continue;
+			}
+			/* Lua label  ::  (only when followed by an identifier) */
+			if (_rules.luaStyle && c == ':' && i+1 < byteLen && buf[i+1] == ':') {
+				NSUInteger start = i;
+				i += 2;
+				if (i < byteLen && (isalpha((unsigned char)buf[i]) || buf[i]=='_'))
+					consumeIdentifier(&i, nil);
+				applyColor(start, i, g_theme.operator);
+				continue;
+			}
+			applyColor(i, i+1, g_theme.operator);
+			i++;
+			/* skip whitespace between accessor and member name */
+			while (i < byteLen && isspace((unsigned char)buf[i])) i++;
+			if (i < byteLen && (isalpha((unsigned char)buf[i]) || buf[i]=='_')) {
+				/* Peek past identifier + whitespace for '(' to decide
+				   whether this is a function call or a plain property. */
+				NSUInteger peek = i;
+				while (peek < byteLen && (isalnum((unsigned char)buf[peek]) || buf[peek]=='_')) peek++;
+				while (peek < byteLen && isspace((unsigned char)buf[peek])) peek++;
+				BOOL isCall = (peek < byteLen && buf[peek] == '(');
+
+				NSColor *mc;
+				if (isCall)
+					mc = g_theme.functionCall;
+				else
+					mc = isupper((unsigned char)buf[i]) ? g_theme.type : g_theme.property;
+
+				consumeIdentifier(&i, mc);
+			}
 			continue;
 		}
 
 		/* ── Identifier / keyword ───────────────────────────────────────── */
 		if (isalpha(c) || c == '_' ||
-		    /* ObjC/Swift @ prefixed keywords */
 		    (c == '@' && i+1 < byteLen && isalpha((unsigned char)buf[i+1]))) {
-			NSUInteger start = i;
-			i++;
-			while (i < byteLen && (isalnum((unsigned char)buf[i]) || buf[i] == '_')) i++;
-			NSUInteger wordLen = i - start;
-
-			/* keyword lookup */
-			NSColor *color = nil;
-			for (NSUInteger k = 0; k < _rules.keywordCount && !color; k++) {
-				NSUInteger klen = strlen(_rules.keywords[k]);
-				if (klen == wordLen && memcmp(buf+start, _rules.keywords[k], klen) == 0)
-					color = g_colorKeyword;
-			}
-			for (NSUInteger k = 0; k < _rules.typeCount && !color; k++) {
-				NSUInteger klen = strlen(_rules.types[k]);
-				if (klen == wordLen && memcmp(buf+start, _rules.types[k], klen) == 0)
-					color = g_colorType;
-			}
-			if (color) applyColor(start, i, color);
+			consumeIdentifier(&i, nil);
 			continue;
 		}
 
@@ -415,12 +455,11 @@ static SyntaxRules syntax_rules_for_language(NSString *lang) {
 		    c == '=' || c == '<' || c == '>' || c == '!' || c == '&' ||
 		    c == '|' || c == '^' || c == '~' || c == '?' || c == ':') {
 			NSUInteger start = i++;
-			/* absorb a second operator char if it forms a two-char op */
 			if (i < byteLen && (buf[i]==buf[start]||buf[i]=='='||
 			    (buf[start]=='-'&&buf[i]=='>')||
 			    (buf[start]=='<'&&buf[i]=='<')||
 			    (buf[start]=='>'&&buf[i]=='>'))) i++;
-			applyColor(start, i, g_colorOperator);
+			applyColor(start, i, g_theme.operator);
 			continue;
 		}
 
