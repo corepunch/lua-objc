@@ -33,10 +33,9 @@ local message_list = ns.List {
 local folder_list = ns.List {
 	width = 170,
 	height = 310,
-	header = false,
 	columns = {
-		{ id = "name",  title = "", width = 125 },
-		{ id = "count", title = "", width = 45, alignment = "trailing" },
+		{ id = "name",  title = "Mailboxes", width = 125 },
+		{ id = "count", title = "",         width = 45,  alignment = "trailing" },
 	},
 	data = folders,
 }
