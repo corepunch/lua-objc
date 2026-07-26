@@ -1,7 +1,6 @@
 local ns = require("AppKit")
 local t = require("TestKit")
 local App = require("App")
-local Registry = require("examples.ide.plugins.registry")
 local ImageViewerPlugin = require("examples.ide.plugins.image_viewer")
 local TextEditorPlugin = require("examples.ide.plugins.text_editor")
 local NativeControlsPlugin = require("examples.ide.plugins.native_controls")
@@ -210,10 +209,10 @@ t.assertEqual(
 
 -- Plugin registry exposes the text editor as the first editor plugin.
 
- t.expect(Registry.get("textEditor") == TextEditorPlugin,
+ t.expect(App.getPlugin("textEditor") == TextEditorPlugin,
 	"text editor plugin is registered")
 
-t.expect(Registry.get("imageViewer") == ImageViewerPlugin,
+t.expect(App.getPlugin("imageViewer") == ImageViewerPlugin,
 	"image viewer plugin is registered")
 t.assertEqual(TextEditorPlugin.kind, "editor", "text editor plugin kind")
 t.assertEqual(TextEditorPlugin.title, "Text Editor", "text editor plugin title")
@@ -221,25 +220,25 @@ t.assertEqual(ImageViewerPlugin.kind, "editor", "image viewer plugin kind")
 t.assertEqual(ImageViewerPlugin.title, "Image Viewer", "image viewer plugin title")
 t.assertEqual(NativeControlsPlugin.kind, "provider", "native controls plugin kind")
 t.assertEqual(
-	Registry.resolveByFile("sample.lua", "editor"),
+	App.resolvePluginByFile("sample.lua", "editor"),
 	TextEditorPlugin.spec,
 	"plugin resolves by file extension")
 t.assertEqual(
-	Registry.resolveByFile("sample.svg", "editor"),
+	App.resolvePluginByFile("sample.svg", "editor"),
 	ImageViewerPlugin.spec,
 	"image viewer resolves by image extension")
 t.assertEqual(
-	Registry.resolveByCommand("openTextEditor", "editor"),
+	App.resolvePluginByCommand("openTextEditor", "editor"),
 	TextEditorPlugin.spec,
 	"plugin resolves by command")
 
-local nativeControls = Registry.loadNative("build/ide-controls.dylib", "ide_controls")
+local nativeControls = App.loadNativePlugin("build/ide-controls.dylib", "ide_controls")
 t.expect(nativeControls and type(nativeControls.ColorWell) == "function",
 	"Lua loads the optional Objective-C controls dylib")
 local colorWell = NativeControlsPlugin.create { module = nativeControls }
 t.expect(colorWell ~= nil, "native controls plugin creates an AppKit control")
 
-local pluginEditor = Registry.use("textEditor", {
+local pluginEditor = App.usePlugin("textEditor", {
 	initialCode = "return 42",
 })
 t.assertEqual(
@@ -263,7 +262,7 @@ t.assertEqual(imageViewer.zoomScale, 1.25, "image viewer zoomScale is writable")
 imageViewer.imagePath = "tests/fixtures/oversized.svg"
 t.assertEqual(imageViewer.imagePath, "tests/fixtures/oversized.svg", "image viewer imagePath is writable")
 
-local pluginImage = Registry.use("imageViewer", {
+local pluginImage = App.usePlugin("imageViewer", {
 	path = "tests/fixtures/oversized.svg",
 })
 t.expect(pluginImage ~= nil, "image viewer plugin window creates successfully")

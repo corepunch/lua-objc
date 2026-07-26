@@ -1,5 +1,5 @@
 local bridge = require("bridge")
-local Registry = require("examples.ide.plugins.registry")
+local App = require("App")
 local TextEditor = {}
 
 local function resumeCoroutine(co, ...)
@@ -109,9 +109,9 @@ TextEditor.activation = {
 }
 TextEditor.create = createEditor
 
-local registered = Registry.get(TextEditor.id)
+local registered = App.getPlugin(TextEditor.id)
 if not registered then
-	registered = Registry.register(TextEditor)
+	registered = App.registerPlugin(TextEditor)
 end
 
 TextEditor.spec = registered

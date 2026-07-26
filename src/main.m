@@ -2261,42 +2261,88 @@ static id lua_to_objc_recursive(lua_State *L, int idx) {
 	return [NSMutableDictionary dictionary];
 }
 
+#pragma mark - Table / Outline shared data
+
+typedef struct {
+	NSString *name;
+	NSInteger value;
+} NameValueEntry;
+
+static NameValueEntry GridLinesMap[] = {
+	{@"horizontal", 1},
+	{@"vertical",   2},
+	{@"both",       3},
+	{nil, 0}
+};
+
+static NameValueEntry TableStyleMap[] = {
+	{@"plain",     NSTableViewStylePlain},
+	{@"fullWidth", NSTableViewStyleFullWidth},
+	{@"inset",     NSTableViewStyleInset},
+	{@"sourceList",NSTableViewStyleSourceList},
+	{nil, -1}
+};
+
+static NameValueEntry AlignmentMap[] = {
+	{@"trailing", NSTextAlignmentRight},
+	{@"center",   NSTextAlignmentCenter},
+	{nil, NSTextAlignmentLeft}
+};
+
+static NSInteger lookupNameValue(NSString *name, NameValueEntry *map, NSInteger defaultVal) {
+	if (!name) return defaultVal;
+	for (int i = 0; map[i].name; i++) {
+		if ([name isEqualToString:map[i].name])
+			return map[i].value;
+	}
+	return defaultVal;
+}
+
+typedef struct {
+	const char *key;
+	void (^apply)(lua_State *L, int idx);
+} TablePropParser;
+
 static int bridge_tableview(lua_State *L) {
 	luaL_checktype(L, 1, LUA_TTABLE);
 	CGFloat width = luaL_checknumber(L, 2);
 	CGFloat height = luaL_checknumber(L, 3);
-	BOOL showsHeader = YES;
-	BOOL bordered = NO;
-	NSString *tableStyle = nil;
+	__block BOOL showsHeader = YES;
+	__block BOOL bordered = NO;
+	__block BOOL alternatingRows = YES;
+	__block int gridLines = 0;
+	__block NSString *tableStyle = nil;
+
 	if (lua_istable(L, 4)) {
-		lua_getfield(L, 4, "header");
-		if (!lua_isnil(L, -1)) showsHeader = lua_toboolean(L, -1);
-		lua_pop(L, 1);
-		lua_getfield(L, 4, "bordered");
-		if (!lua_isnil(L, -1)) bordered = lua_toboolean(L, -1);
-		lua_pop(L, 1);
-		lua_getfield(L, 4, "style");
-		const char *style = lua_tostring(L, -1);
-		if (style) tableStyle = [NSString stringWithUTF8String:style];
-		lua_pop(L, 1);
+		TablePropParser propParsers[] = {
+			{"header",          ^(lua_State *L, int idx) { showsHeader = lua_toboolean(L, idx); }},
+			{"bordered",        ^(lua_State *L, int idx) { bordered = lua_toboolean(L, idx); }},
+			{"alternatingRows", ^(lua_State *L, int idx) { alternatingRows = lua_toboolean(L, idx); }},
+			{"gridLines",       ^(lua_State *L, int idx) {
+				const char *g = lua_tostring(L, idx);
+				gridLines = g ? (int)lookupNameValue([NSString stringWithUTF8String:g], GridLinesMap, 0) : 0;
+			}},
+			{"style",           ^(lua_State *L, int idx) {
+				const char *s = lua_tostring(L, idx);
+				tableStyle = s ? [NSString stringWithUTF8String:s] : nil;
+			}},
+			{NULL, nil}
+		};
+		for (TablePropParser *p = propParsers; p->key; p++) {
+			lua_getfield(L, 4, p->key);
+			if (!lua_isnil(L, -1)) p->apply(L, -1);
+			lua_pop(L, 1);
+		}
 	}
 
 	int ncols = (int)luaL_len(L, 1);
 
 	NSTableView *tv = [[NSTableView alloc] initWithFrame:NSMakeRect(0, 0, width, height)];
-	if ([tableStyle isEqualToString:@"plain"]) {
-		// Automatic styling adds end padding when a headerless table sits in a
-		// sidebar. Plain is the native edge-to-edge style for compact file lists.
-		tv.style = NSTableViewStylePlain;
-	} else if ([tableStyle isEqualToString:@"fullWidth"]) {
-		tv.style = NSTableViewStyleFullWidth;
-	} else if ([tableStyle isEqualToString:@"inset"]) {
-		tv.style = NSTableViewStyleInset;
-	} else if ([tableStyle isEqualToString:@"sourceList"]) {
-		tv.style = NSTableViewStyleSourceList;
-	}
+	NSInteger styleVal = lookupNameValue(tableStyle, TableStyleMap, -1);
+	if (styleVal >= 0) tv.style = (NSTableViewStyle)styleVal;
 	tv.headerView = showsHeader ? [[NSTableHeaderView alloc] init] : nil;
-	tv.usesAlternatingRowBackgroundColors = YES;
+	tv.usesAlternatingRowBackgroundColors = alternatingRows;
+	tv.gridStyleMask = (NSTableViewGridLineStyle)gridLines;
 	tv.intercellSpacing = NSMakeSize(3, 2);
 	tv.allowsColumnReordering = NO;
 	tv.allowsColumnResizing = YES;
@@ -2327,12 +2373,11 @@ static int bridge_tableview(lua_State *L) {
 		col.title = [NSString stringWithUTF8String:colTitle ?: colId];
 		col.width = requestedWidth;
 		col.minWidth = 40;
-		NSTextAlignment alignment = NSTextAlignmentLeft;
-		if (colAlignment && strcmp(colAlignment, "trailing") == 0) {
-			alignment = NSTextAlignmentRight;
-		} else if (colAlignment && strcmp(colAlignment, "center") == 0) {
-			alignment = NSTextAlignmentCenter;
-		}
+		NSTextAlignment alignment = colAlignment
+			? (NSTextAlignment)lookupNameValue(
+				[NSString stringWithUTF8String:colAlignment],
+				AlignmentMap, NSTextAlignmentLeft)
+			: NSTextAlignmentLeft;
 		col.headerCell.alignment = alignment;
 		objc_setAssociatedObject(col, &kKeys[kColumnAlignmentKey], @(alignment),
 			OBJC_ASSOCIATION_RETAIN);
@@ -2531,39 +2576,44 @@ static int bridge_table_set_selection(lua_State *L) {
 #pragma mark - Outline View
 
 static int bridge_outlineview(lua_State *L) {
-	BOOL bordered = NO;
-	BOOL header = YES;
-	NSString *tableStyle = nil;
+	__block BOOL bordered = NO;
+	__block BOOL header = YES;
+	__block BOOL alternatingRows = YES;
+	__block int gridLines = 0;
+	__block NSString *tableStyle = nil;
 
 	luaL_checktype(L, 1, LUA_TTABLE);
 	CGFloat width = luaL_checknumber(L, 2);
 	CGFloat height = luaL_checknumber(L, 3);
 	if (lua_gettop(L) >= 4 && lua_istable(L, 4)) {
-		lua_getfield(L, 4, "header");
-		header = lua_isnil(L, -1) ? YES : lua_toboolean(L, -1);
-		lua_pop(L, 1);
-		lua_getfield(L, 4, "bordered");
-		bordered = lua_toboolean(L, -1);
-		lua_pop(L, 1);
-		lua_getfield(L, 4, "style");
-		const char *style = lua_tostring(L, -1);
-		if (style) tableStyle = [NSString stringWithUTF8String:style];
-		lua_pop(L, 1);
+		TablePropParser propParsers[] = {
+			{"header",          ^(lua_State *L, int idx) { header = lua_toboolean(L, idx); }},
+			{"bordered",        ^(lua_State *L, int idx) { bordered = lua_toboolean(L, idx); }},
+			{"alternatingRows", ^(lua_State *L, int idx) { alternatingRows = lua_toboolean(L, idx); }},
+			{"gridLines",       ^(lua_State *L, int idx) {
+				const char *g = lua_tostring(L, idx);
+				gridLines = g ? (int)lookupNameValue([NSString stringWithUTF8String:g], GridLinesMap, 0) : 0;
+			}},
+			{"style",           ^(lua_State *L, int idx) {
+				const char *s = lua_tostring(L, idx);
+				tableStyle = s ? [NSString stringWithUTF8String:s] : nil;
+			}},
+			{NULL, nil}
+		};
+		for (TablePropParser *p = propParsers; p->key; p++) {
+			lua_getfield(L, 4, p->key);
+			if (!lua_isnil(L, -1)) p->apply(L, -1);
+			lua_pop(L, 1);
+		}
 	}
 
 	NSOutlineView *ov = [[NSOutlineView alloc]
 		initWithFrame:NSMakeRect(0, 0, width, height)];
-	if ([tableStyle isEqualToString:@"plain"]) {
-		ov.style = NSTableViewStylePlain;
-	} else if ([tableStyle isEqualToString:@"fullWidth"]) {
-		ov.style = NSTableViewStyleFullWidth;
-	} else if ([tableStyle isEqualToString:@"inset"]) {
-		ov.style = NSTableViewStyleInset;
-	} else if ([tableStyle isEqualToString:@"sourceList"]) {
-		ov.style = NSTableViewStyleSourceList;
-	}
+	NSInteger styleVal = lookupNameValue(tableStyle, TableStyleMap, -1);
+	if (styleVal >= 0) ov.style = (NSTableViewStyle)styleVal;
 	ov.headerView = header ? [[NSTableHeaderView alloc] init] : nil;
-	ov.usesAlternatingRowBackgroundColors = YES;
+	ov.usesAlternatingRowBackgroundColors = alternatingRows;
+	ov.gridStyleMask = (NSTableViewGridLineStyle)gridLines;
 	ov.rowHeight = 24;
 	ov.intercellSpacing = NSMakeSize(3, 2);
 	ov.allowsColumnReordering = NO;
@@ -2597,11 +2647,11 @@ static int bridge_outlineview(lua_State *L) {
 		col.title = [NSString stringWithUTF8String:colTitle ?: colId];
 		col.width = requestedWidth;
 		col.minWidth = 40;
-		NSTextAlignment alignment = NSTextAlignmentLeft;
-		if (colAlignment && strcmp(colAlignment, "trailing") == 0)
-			alignment = NSTextAlignmentRight;
-		else if (colAlignment && strcmp(colAlignment, "center") == 0)
-			alignment = NSTextAlignmentCenter;
+		NSTextAlignment alignment = colAlignment
+			? (NSTextAlignment)lookupNameValue(
+				[NSString stringWithUTF8String:colAlignment],
+				AlignmentMap, NSTextAlignmentLeft)
+			: NSTextAlignmentLeft;
 		col.headerCell.alignment = alignment;
 		objc_setAssociatedObject(col, &kKeys[kColumnAlignmentKey],
 			@(alignment), OBJC_ASSOCIATION_RETAIN);

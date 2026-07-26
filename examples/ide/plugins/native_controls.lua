@@ -1,9 +1,9 @@
-local Registry = require("examples.ide.plugins.registry")
+local App = require("App")
 
 local NativeControls = {}
 
 function NativeControls.load(path)
-	return Registry.loadNative(path, "ide_controls")
+	return App.loadNativePlugin(path, "ide_controls")
 end
 
 NativeControls.id = "nativeControls"
@@ -19,9 +19,9 @@ NativeControls.create = function(props)
 	return props.module[props.control or "ColorWell"](props)
 end
 
-local registered = Registry.get(NativeControls.id)
+local registered = App.getPlugin(NativeControls.id)
 if not registered then
-	registered = Registry.register(NativeControls)
+	registered = App.registerPlugin(NativeControls)
 end
 
 return registered

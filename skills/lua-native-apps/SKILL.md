@@ -47,8 +47,10 @@ return app:run()
 - Use `state/` for persistence and recent-item adapters.
 - Use `plugins/` for concrete editor surfaces.
 - Keep `workspace.lua` and `welcome.lua` as compatibility shims if legacy entrypoints still point there.
-- Keep the IDE's plugin registry in `examples/ide/plugins/registry.lua`; use
-  `IDEKit` only for shared editor chrome.
+- Keep the IDE's plugin registry inside `lua/App.lua` — the base App class owns
+  plugin discovery, registration, and loading. `plugins/` contains only plugin
+  definitions (no boilerplate).
+- Use `IDEKit` only for shared editor chrome.
 
 ## IDE-Owned Plugins
 
@@ -57,9 +59,10 @@ catalog and loading policy. Keep editor surfaces as Lua modules and let the IDE
 select them by file extension, command, or capability:
 
 ```lua
-local PluginHost = require("examples.ide.plugins.host")
-local plugins = PluginHost.new():loadBuiltins()
-local surface = plugins:openFile(path, { app = app })
+local App = require("App")
+local app = App.new { name = "ide" }
+local surface = app:resolvePluginByFile(path, "editor")
+-- App.new() auto-loads plugins from the plugin directory on construction.
 ```
 
 Lua plugins can optionally load native controls through the standard Lua
@@ -69,8 +72,8 @@ whose functions create bridge-compatible native views. The dylib is an
 extension provider, not the IDE plugin itself:
 
 ```lua
-local registry = require("examples.ide.plugins.registry")
-local controls = registry.loadNative("build/ide-controls.dylib", "ide_controls")
+local App = require("App")
+local controls = App.loadNativePlugin("build/ide-controls.dylib", "ide_controls")
 local colorWell = controls.ColorWell()
 ```
 

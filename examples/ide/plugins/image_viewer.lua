@@ -1,6 +1,5 @@
 local ns = require("AppKit")
 local bridge = require("bridge")
-local Registry = require("examples.ide.plugins.registry")
 local App = require("App")
 
 local ImageViewer = {}
@@ -120,9 +119,9 @@ ImageViewer.activation = {
 }
 ImageViewer.create = createViewer
 
-local registered = Registry.get(ImageViewer.id)
+local registered = App.getPlugin(ImageViewer.id)
 if not registered then
-	registered = Registry.register(ImageViewer)
+	registered = App.registerPlugin(ImageViewer)
 end
 
 ImageViewer.spec = registered

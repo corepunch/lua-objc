@@ -1,10 +1,7 @@
 local App = require("App")
 local Recent = require("examples.ide.state.recent")
 local Source = require("examples.ide.plugins.source")
-local PluginHost = require("examples.ide.plugins.host")
 local Welcome = require("examples.ide.components.welcome")
-
-local plugins = PluginHost.new():loadBuiltins()
 
 local app = App.new {
 	name = "ide",
@@ -12,11 +9,11 @@ local app = App.new {
 	recentLimit = 12,
 	openFolderPrompt = "Open Folder",
 	openFilePrompt = "Open File",
+	pluginDir = "examples/ide/plugins",
 	recent = Recent.new {
 		key = "ide",
 		limit = 12,
 	},
-	plugins = plugins,
 	openFolder = function(self, folder)
 		return Source.open(folder, self)
 	end,

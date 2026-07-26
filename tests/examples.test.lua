@@ -16,8 +16,6 @@ local examples = {
 	"examples/ide/components/recent.lua",
 	"examples/ide/components/welcome.lua",
 	"examples/ide/plugins/source.lua",
-	"examples/ide/plugins/host.lua",
-	"examples/ide/plugins/registry.lua",
 	"examples/ide/plugins/text_editor.lua",
 	"examples/ide/plugins/image_viewer.lua",
 	"examples/ide/plugins/native_controls.lua",

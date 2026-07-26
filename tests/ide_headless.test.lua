@@ -2,7 +2,6 @@ _G.__headless = true
 
 local App = require("App")
 local Source = require("examples.ide.plugins.source")
-local PluginHost = require("examples.ide.plugins.host")
 require("examples.ide.plugins.image_viewer")
 local Recent = require("examples.ide.state.recent")
 local t = require("TestKit")
@@ -14,8 +13,6 @@ local files = {
 	"examples/ide/components/recent.lua",
 	"examples/ide/components/welcome.lua",
 	"examples/ide/plugins/source.lua",
-	"examples/ide/plugins/host.lua",
-	"examples/ide/plugins/registry.lua",
 	"examples/ide/plugins/text_editor.lua",
 	"examples/ide/plugins/image_viewer.lua",
 	"examples/ide/plugins/native_controls.lua",
@@ -43,8 +40,7 @@ local recent = Recent.new {
 }
 recent:clear()
 
-local host = PluginHost.new():loadBuiltins()
-t.expect(host:resolveFile("sample.svg", "editor") ~= nil,
+t.expect(App.resolvePluginByFile("sample.svg", "editor") ~= nil,
 	"IDE plugin host resolves the image editor")
 
 local calls = {}

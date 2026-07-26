@@ -298,6 +298,8 @@ function AppKit.List(props)
 	local tv = bridge._tableview(columns, width, height, {
 		header = props.header ~= false,
 		bordered = props.bordered == true,
+		alternatingRows = props.alternatingRows ~= false,
+		gridLines = props.gridLines,
 		style = props.style,
 	})
 
@@ -345,6 +347,8 @@ function AppKit.OutlineView(props)
 	local tv = bridge._outlineview(columns, width, height, {
 		header = props.header ~= false,
 		bordered = props.bordered == true,
+		alternatingRows = props.alternatingRows ~= false,
+		gridLines = props.gridLines,
 		style = props.style,
 	})
 

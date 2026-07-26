@@ -2,7 +2,6 @@ local ns = require("AppKit")
 local ide = require("IDEKit")
 local bridge = require("bridge")
 local App = require("App")
-local Registry = require("examples.ide.plugins.registry")
 
 local Source = {}
 
@@ -50,9 +49,7 @@ local function filterLuaFiles(items)
 end
 
 local function openImage(path, app)
-	local host = app and app.plugins
-	local plugin = host and host:resolveFile(path, "editor")
-		or Registry.resolveByFile(path, "editor")
+	local plugin = app and app:resolvePluginByFile(path, "editor")
 	if not plugin then return end
 	local window = plugin.create {
 		path = path,
@@ -69,7 +66,7 @@ function Source.open(folder, app, initialFile)
 
 	local editor = ide.Editor {
 		canvas = canvas,
-		plugin = app and app.plugins and app.plugins:get("textEditor"),
+		plugin = app and app:getPlugin("textEditor"),
 		initialCode = [=[
 -- Try changing the text and see it update in the canvas
 return ns.VStack {

@@ -572,6 +572,9 @@ row colors, a header, and a vertical scroller. Table keys:
 | `height` | number | `200` | Scroll view height |
 | `header` | bool | `true` | Show the native table header |
 | `bordered` | bool | `false` | Draw a bezel around the scroll view |
+| `style` | `"plain"` `"fullWidth"` `"inset"` `"sourceList"` | automatic | `NSTableView.Style` (SwiftUI: `.tableStyle()`) |
+| `alternatingRows` | bool | `true` | Alternating row background colors (SwiftUI: `.alternatingRowBackgrounds()`) |
+| `gridLines` | `"none"` `"horizontal"` `"vertical"` `"both"` | `"none"` | Grid line style |
 | `data` | `{{key=val}}` | `{}` | Initial rows (array of string-keyed tables) |
 | `refresh` | `function(list)` | `nil` | See SwiftUI-like async refresh below |
 

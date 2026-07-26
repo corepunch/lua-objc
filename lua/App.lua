@@ -199,6 +199,268 @@ function RecentStore:clear()
 	end
 end
 
+--------------------------------------------------------------------------------
+-- Plugin registry -- self-registering modules, like lite-xl's core.load_plugins.
+-- Plugin files are discoverable Lua modules that call App.registerPlugin(spec)
+-- at load time. App scans directories and requires them; the files themselves
+-- are pure plugin definitions with no framework boilerplate.
+--------------------------------------------------------------------------------
+
+local _plugins = {}
+
+local function moduleNameFromPath(path)
+	local name = path:match("([^/\\]+)%.lua$")
+	return name or path
+end
+
+local function parsePluginPriority(filepath)
+	local f = io.open(filepath, "r")
+	if not f then return 100 end
+	local priority = 100
+	for line in f:lines() do
+		local pri = line:match("%-%-%s*priority%s*:%s*(%-?[%d%.]+)")
+		if pri then
+			priority = tonumber(pri) or 100
+			break
+		end
+	end
+	f:close()
+	return priority
+end
+
+local function normalizeExtensions(list)
+	if type(list) ~= "table" then return nil end
+	local result = {}
+	for _, ext in ipairs(list) do
+		if type(ext) == "string" and ext ~= "" then
+			result[#result + 1] = ext:lower():gsub("^%.*", "")
+		end
+	end
+	if #result == 0 then return nil end
+	return result
+end
+
+local function matchesFilePattern(path, spec)
+	if type(path) ~= "string" or path == "" then
+		return false
+	end
+	local activation = spec.activation
+	if type(activation) ~= "table" then
+		return false
+	end
+	local exts = normalizeExtensions(activation.onFileExtension)
+	if not exts then
+		return false
+	end
+	local ext = path:match("%.([^.]+)$")
+	if not ext then
+		return false
+	end
+	ext = ext:lower()
+	for _, candidate in ipairs(exts) do
+		if ext == candidate then
+			return true
+		end
+	end
+	return false
+end
+
+local function matchesCommand(name, spec)
+	if type(name) ~= "string" or name == "" then
+		return false
+	end
+	local activation = spec.activation
+	if type(activation) ~= "table" or type(activation.onCommand) ~= "table" then
+		return false
+	end
+	for _, candidate in ipairs(activation.onCommand) do
+		if candidate == name then
+			return true
+		end
+	end
+	return false
+end
+
+local function cloneProps(props)
+	if type(props) ~= "table" then
+		return {}
+	end
+	local copy = {}
+	for k, v in pairs(props) do
+		copy[k] = v
+	end
+	return copy
+end
+
+--- Shared plugin registry (module-level, not per-instance).
+--- Plugins self-register via App.registerPlugin() when their file is required.
+
+local function _isAppInstance(maybeApp)
+	return type(maybeApp) == "table" and rawget(maybeApp, "spec") ~= nil
+end
+
+function App.registerPlugin(spec)
+	if type(spec) ~= "table" then
+		error("App.registerPlugin requires a spec table")
+	end
+	if type(spec.id) ~= "string" or spec.id == "" then
+		error("App.registerPlugin requires spec.id")
+	end
+	if type(spec.create) ~= "function" then
+		error("App.registerPlugin requires spec.create")
+	end
+
+	local existing = _plugins[spec.id]
+	if existing and existing ~= spec then
+		error("plugin already registered: " .. spec.id)
+	end
+
+	if spec.capabilities ~= nil and type(spec.capabilities) ~= "table" then
+		error("App.registerPlugin requires spec.capabilities to be a table")
+	end
+	if spec.activation ~= nil and type(spec.activation) ~= "table" then
+		error("App.registerPlugin requires spec.activation to be a table")
+	end
+
+	_plugins[spec.id] = spec
+	return spec
+end
+
+-- Each public function handles both App.fn(args) and app:fn(args) via
+-- _isAppInstance(self). When self looks like an App instance (table with
+-- a spec field), it's an instance call; otherwise it's a module call.
+-- This avoids the overwrite problem of defining both App.fn and App:fn
+-- on the same table key.
+
+local function _pluginList(kind)
+	local plugins = {}
+	for _, spec in pairs(_plugins) do
+		if kind == nil or spec.kind == kind then
+			plugins[#plugins + 1] = spec
+		end
+	end
+	table.sort(plugins, function(a, b)
+		local an = a.title or a.id
+		local bn = b.title or b.id
+		if an == bn then
+			return a.id < b.id
+		end
+		return an < bn
+	end)
+	return plugins
+end
+
+function App.getPlugin(self, id)
+	if _isAppInstance(self) then return _plugins[id] end
+	return _plugins[self]
+end
+
+function App.listPlugins(self, kind)
+	if _isAppInstance(self) then return _pluginList(kind) end
+	return _pluginList(self)
+end
+
+function App.resolvePluginByFile(self, path, kind)
+	if _isAppInstance(self) then
+		for _, spec in ipairs(_pluginList(kind)) do
+			if matchesFilePattern(path, spec) then return spec end
+		end
+		return nil
+	end
+	for _, spec in ipairs(_pluginList(path)) do
+		if matchesFilePattern(self, spec) then return spec end
+	end
+	return nil
+end
+
+function App.resolvePluginByCommand(self, name, kind)
+	if _isAppInstance(self) then
+		for _, spec in ipairs(_pluginList(kind)) do
+			if matchesCommand(name, spec) then return spec end
+		end
+		return nil
+	end
+	for _, spec in ipairs(_pluginList(name)) do
+		if matchesCommand(self, spec) then return spec end
+	end
+	return nil
+end
+
+function App.usePlugin(self, id, props)
+	if _isAppInstance(self) then
+		local spec = _plugins[id]
+		if not spec then error("unknown plugin: " .. tostring(id)) end
+		return spec.create(cloneProps(props))
+	end
+	local spec = _plugins[self]
+	if not spec then error("unknown plugin: " .. tostring(self)) end
+	return spec.create(cloneProps(id))
+end
+
+local function _loadNativePlugin(path, moduleName)
+	moduleName = moduleName or moduleNameFromPath(path)
+	local symbol = "luaopen_" .. moduleName:gsub("[^%w_]", "_")
+	local loader, err = package.loadlib(path, symbol)
+	if not loader then
+		error("failed to load native plugin " .. path .. ": " .. tostring(err))
+	end
+	local module = loader(moduleName)
+	if module == nil then
+		module = package.loaded[moduleName]
+	end
+	return module
+end
+
+function App.loadNativePlugin(self, path, moduleName)
+	if _isAppInstance(self) then
+		if type(path) ~= "string" or path == "" then
+			error("App.loadNativePlugin requires a dylib path")
+		end
+		return _loadNativePlugin(path, moduleName)
+	end
+	if type(self) ~= "string" or self == "" then
+		error("App.loadNativePlugin requires a dylib path")
+	end
+	return _loadNativePlugin(self, path)
+end
+
+-- Called from App.new() only; no instance form needed.
+function App.loadPluginsFromDirectory(dir)
+	if type(dir) ~= "string" or dir == "" then
+		return {}
+	end
+	local fh = io.popen("ls -1 " .. string.format("%q", dir) .. " 2>/dev/null")
+	if not fh then return {} end
+	local entries = {}
+	for name in fh:lines() do
+		if name:match("%.lua$") then
+			local filepath = pathJoin(dir, name)
+			entries[#entries + 1] = {
+				name = name:gsub("%.lua$", ""),
+				filepath = filepath,
+				priority = parsePluginPriority(filepath),
+			}
+		end
+	end
+	fh:close()
+
+	table.sort(entries, function(a, b)
+		if a.priority ~= b.priority then
+			return a.priority < b.priority
+		end
+		return a.name < b.name
+	end)
+
+	local loaded = {}
+	for _, entry in ipairs(entries) do
+		local ok, result = pcall(require, "examples.ide.plugins." .. entry.name)
+		if ok then
+			loaded[#loaded + 1] = entry.name
+		end
+	end
+	return loaded
+end
+
 function App.basename(path)
 	return basename(path)
 end
@@ -230,12 +492,13 @@ end
 
 function App.new(props)
 	props = props or {}
+	local pluginDir = props.pluginDir or "examples/ide/plugins"
 	local self = setmetatable({
 		name = props.name or "app",
 		spec = props,
-		plugins = props.plugins,
 		currentWindow = nil,
 		storageRoot = storageRoot(props.storageRoot),
+		pluginDir = pluginDir,
 	}, App)
 	if props.recent then
 		self.recent = props.recent
@@ -244,6 +507,10 @@ function App.new(props)
 			storageRoot = self.storageRoot,
 			limit = props.recentLimit or 12,
 		})
+	end
+	if props.plugins == false then
+	else
+		App.loadPluginsFromDirectory(pluginDir)
 	end
 	return self
 end
