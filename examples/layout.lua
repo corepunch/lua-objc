@@ -4,13 +4,14 @@ local navigation = ns.List {
 	width = 170,
 	height = 280,
 	header = false,
+	style = "sourceList",
 	flex_basis = 170,
 	flex_grow = 1,
 	flex_shrink = 1,
 	min_width = 130,
 	max_width = 240,
 	columns = {
-		{ id = "section", title = "Section" },
+		{ id = "section" },
 	},
 	data = {
 		{ section = "Overview" },

@@ -21,7 +21,7 @@ local folders = {
 
 local message_list = ns.List {
 	width = 460,
-	height = 310,
+	flexGrow = 1,
 	columns = {
 		{ id = "from",    title = "From" },
 		{ id = "subject", title = "Subject" },
@@ -30,12 +30,14 @@ local message_list = ns.List {
 	data = inbox,
 }
 
-local folder_list = ns.List {
+local mailbox_list = ns.List {
 	width = 170,
-	height = 310,
+	flexGrow = 1,
+	header = false,
+	style = "sourceList",
 	columns = {
-		{ id = "name",  title = "Mailboxes", width = 125 },
-		{ id = "count", title = "",         width = 45,  alignment = "trailing" },
+		{ id = "name",  width = 125 },
+		{ id = "count", width = 45,  alignment = "trailing" },
 	},
 	data = folders,
 }
@@ -60,7 +62,11 @@ return ns.Window {
 		},
 	},
 	ns.HSplit {
-		folder_list,
+		ns.VStack {
+			spacing = 2,
+			ns.Text { "Mailboxes", size = 11, weight = "semibold", color = "secondary" },
+			mailbox_list,
+		},
 		message_list,
 	},
 }

@@ -3363,7 +3363,6 @@ static int bridge_symbol_toggle(lua_State *L) {
 	btn.state = state ? NSControlStateValueOn : NSControlStateValueOff;
 	btn.toolTip = [NSString stringWithUTF8String:tooltip];
 	btn.accessibilityLabel = btn.toolTip;
-	[btn sizeToFit];
 
 	if (has_action) {
 		objc_setAssociatedObject(btn, &kKeys[kCallbackKey], @(ref),

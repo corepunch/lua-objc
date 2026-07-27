@@ -59,6 +59,15 @@ These rules summarize Apple's current Human Interface Guidelines:
   visible selection feedback, resizable columns, sorting when valuable, and
   alternating row backgrounds for wide multicolumn data. Cells must use native
   reusable cell views and align their content consistently.
+  **Table styles:** `plain` / `fullWidth` (default) produce edge-to-edge tables
+  for primary data content — they fill the container without padding and the
+  standard column header provides the vertical baseline. `sourceList` is for
+  navigation sidebars: hide the column header, add a section label above the
+  table as a separate `Text`, and set `style = "sourceList"` for the vibrant
+  blur-background appearance. `inset` adds rounded corners and automatic padding
+  for grouped/settings-style lists that sit inside a larger form. Never use
+  `inset` or `sourceList` for the main content table of a window. Never use
+  `plain` / `fullWidth` inside a settings panel when `inset` is available.
 - [Buttons](https://developer.apple.com/design/human-interface-guidelines/buttons):
   use native roles and bezel styles. Make the most likely safe action primary;
   never make a destructive action primary. Use precise verb labels.
