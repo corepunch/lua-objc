@@ -1,9 +1,3 @@
-typedef struct {
-	void *ptr;
-} ObjCRef;
-
-static void push_objc(lua_State *L, id obj, const char *meta);
-
 #pragma mark - LuaTableViewSource
 
 @interface LuaTableViewSource : NSObject <NSTableViewDataSource, NSTableViewDelegate>

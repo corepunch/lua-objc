@@ -184,69 +184,37 @@ t.expect(navSize > 0, "tabbed NavigatorArea has a positive width after layout")
 t.expect(not tabFiles.hidden, "initial tab content (files) is visible")
 t.expect(tabFind.hidden, "inactive tab content (find) is hidden")
 
--- EditorArea with tabbed API (no title, onTabChange/saveFn).
+-- EditorArea with tabbed API returns area + native NSTabView.
 
-local calls = {}
-local tabbedEditor, tabBar = EditorArea {
+local tabbedEditor, tabView = EditorArea {
 	content = ns.Text "Editor content",
-	onTabChange = function(tabId, content)
-		calls[#calls + 1] = { kind = "tabChange", tabId = tabId, content = content }
-	end,
-	saveFn = function()
-		return "saved content"
-	end,
 }
 t.expect(tabbedEditor ~= nil, "tabbed EditorArea creates a view")
-t.expect(tabBar ~= nil, "tabbed EditorArea returns a tab bar")
-t.expect(tabBar._strip ~= nil, "tab bar has a strip view")
+t.expect(tabView ~= nil, "tabbed EditorArea returns native NSTabView")
+local tvClass = tabView.className
+t.expect(tvClass == "NSTabView" or tvClass:find("TabView") ~= nil,
+	"tabbed EditorArea uses native NSTabView (got " .. tostring(tvClass) .. ")")
 
--- EditorTabBar: add, switch, remove tabs.
+-- Native NSTabView: add, select, remove, count.
 
-local saveCalls = {}
-local tbar = require("examples.ide.components.editor_tab_bar")({
-	onTabChange = function(tabId, content)
-		saveCalls[#saveCalls + 1] = tabId
-	end,
-	saveFn = function()
-		return "text-from-editor"
-	end,
-})
+local ntv = bridge._tabview(400, 200, "top")
+t.assertEqual(bridge._tabCount(ntv), 0, "empty tab view has zero tabs")
 
-local id1 = tbar:addTab("/tmp/test/file_a.lua", "content a")
-local id2 = tbar:addTab("/tmp/test/file_b.lua", "content b")
-local id3 = tbar:addTab("/tmp/test/file_c.lua", "content c")
-t.assertEqual(#tbar._tabs, 3, "three tabs added")
-t.assertEqual(tbar._activeId, id3, "last added tab is active")
-t.assertEqual(tbar._tabs[3].content, "content c", "tab stores initial content")
+local contentA = ns.Text "Content A"
+local contentB = ns.Text "Content B"
+local contentC = ns.Text "Content C"
 
--- Switch tab from file_c to file_a (triggers saveFn on file_c).
-tbar:switchToTab(id1)
-t.assertEqual(tbar._activeId, id1, "switched to first tab")
-t.assertEqual(tbar._tabs[3].content, "text-from-editor", "saveFn captures content on switch")
+bridge._tabAdd(ntv, "File A.lua", contentA)
+bridge._tabAdd(ntv, "File B.lua", contentB)
+bridge._tabAdd(ntv, "File C.lua", contentC)
+t.assertEqual(bridge._tabCount(ntv), 3, "three tabs added")
 
--- Remove active tab (file_a) → next tab becomes active.
-tbar:removeTab(id1)
-t.assertEqual(#tbar._tabs, 2, "two tabs remain after removing active")
-t.assertEqual(tbar._activeId, id2, "next tab becomes active after removal")
+bridge._tabSelect(ntv, 0)
+bridge._tabRemove(ntv, 0)
+t.assertEqual(bridge._tabCount(ntv), 2, "two tabs remain after removing first")
 
--- Remove inactive tab (file_c).
-tbar:removeTab(id3)
-t.assertEqual(#tbar._tabs, 1, "one tab remains")
-t.assertEqual(tbar._activeId, id2, "active tab unchanged when removing inactive")
-
--- Remove last tab.
-tbar:removeTab(id2)
-t.assertEqual(#tbar._tabs, 0, "no tabs remain")
-t.assertEqual(tbar._activeId, nil, "no active tab when empty")
-
--- Duplicate add switches to existing tab.
-local tbar2 = require("examples.ide.components.editor_tab_bar")({})
-tbar2:addTab("/tmp/test/dup.lua", "first")
-tbar2:addTab("/tmp/test/other.lua", "second")
-t.assertEqual(#tbar2._tabs, 2, "two distinct tabs")
-tbar2:addTab("/tmp/test/dup.lua", "reload")
-t.assertEqual(#tbar2._tabs, 2, "duplicate add does not create new tab")
-t.assertEqual(tbar2._activeId, "/tmp/test/dup.lua", "duplicate add switches to existing tab")
+bridge._tabSelect(ntv, 0)
+t.assertEqual(bridge._tabCount(ntv), 2, "selection does not change count")
 
 -- Image layout uses the bridge's capped display size, not the source bitmap's
 -- intrinsic dimensions, and remains proportional under a narrower proposal.

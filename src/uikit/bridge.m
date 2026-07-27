@@ -17,14 +17,15 @@ static char kFixedHeightKey;
 static const CGFloat kStackSpacing = 8.0;
 static lua_State *gL = NULL;
 
-typedef struct {
-	void *ptr;
-} ObjCRef;
-
 #define LUA_OBJC_EXTERNAL_STATE_OWNER 1
 #define LUA_OBJC_HTTP_USER_AGENT \
 	@"Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) " \
 	@"AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+#define LUA_OBJC_VIEW_CLASS UIView
+#define LUA_OBJC_WINDOW_CLASS UIWindow
+#define LUA_OBJC_VIEW_METATABLE "uiview"
+#define LUA_OBJC_WINDOW_METATABLE "uiwindow"
+#include "../shared/lua_bridge_support.m"
 #include "../shared/lua_error.m"
 #include "../shared/lua_async.m"
 

@@ -10,3 +10,19 @@ static void report_lua_error(lua_State *L, const char *context) {
 	}
 	fflush(stderr);
 }
+
+/* Native callbacks share one failure contract: report once, restore the stack,
+ * and leave the host alive for later events. */
+static int lua_objc_pcall(
+	lua_State *L,
+	int argumentCount,
+	int resultCount,
+	const char *context
+) {
+	int status = lua_pcall(L, argumentCount, resultCount, 0);
+	if (status != LUA_OK) {
+		report_lua_error(L, context);
+		lua_pop(L, 1);
+	}
+	return status;
+}

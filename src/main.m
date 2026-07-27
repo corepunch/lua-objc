@@ -49,6 +49,7 @@ enum {
 	kCanvasToolbarItemsKey,
 	kTableScrollViewKey,
 	kColumnFlexKey,
+	kTabViewDelegateKey,
 	kKeyCount
 };
 static char kKeys[kKeyCount];
@@ -147,6 +148,11 @@ static lua_State *gL = NULL;
 #define LUA_OBJC_HTTP_USER_AGENT \
 	@"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " \
 	@"AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+#define LUA_OBJC_VIEW_CLASS NSView
+#define LUA_OBJC_WINDOW_CLASS NSWindow
+#define LUA_OBJC_VIEW_METATABLE "nsview"
+#define LUA_OBJC_WINDOW_METATABLE "nswindow"
+#include "shared/lua_bridge_support.m"
 #include "shared/lua_error.m"
 #include "shared/lua_async.m"
 
@@ -162,6 +168,7 @@ static lua_State *gL = NULL;
 #include "appkit/controls.m"
 #include "appkit/outline.m"
 #include "appkit/editor.m"
+#include "appkit/tabview.m"
 #include "appkit/platform.m"
 #pragma mark - Module registration
 
@@ -228,6 +235,12 @@ static const luaL_Reg bridge_lib[] = {
 	{"_pickFile",         bridge_pick_file},
 	{"_outlineview",      bridge_outlineview},
 	{"_listDirectory",    bridge_list_directory},
+	{"_tabview",          bridge_tabview},
+	{"_tabAdd",           bridge_tab_add},
+	{"_tabSelect",        bridge_tab_select},
+	{"_tabRemove",        bridge_tab_remove},
+	{"_tabCount",         bridge_tab_count},
+	{"_tabOnChange",      bridge_tab_on_change},
 	{NULL, NULL},
 };
 

@@ -1,49 +1,42 @@
 local ns = require("AppKit")
+local bridge = require("bridge")
 local ControlBar = require("examples.ide.components.control_bar")
-local EditorTabBar = require("examples.ide.components.editor_tab_bar")
-
-local function wrapContent(view)
-	if not view then return nil end
-	view.flexGrow = 1
-	view.fillWidth = true
-	return view
-end
 
 -- EditorArea: centre editing panel.
--- New API (tabbed): no title, uses EditorTabBar. Requires
---   onTabChange and saveFn callbacks.
--- Legacy API: props.title, props.content, props.buttons → ControlBar.
--- Mirrors Xcode's IDEEditorArea with NSTabView-style tab bar.
+-- New API (no title): returns area VStack + native NSTabView.
+-- Legacy API (props.title set): returns ControlBar area.
 local function EditorArea(props)
 	props = props or {}
 
-	-- New API: tabbed editor (no title, has onTabChange/saveFn).
-	if not props.title then
-		local tabBar = EditorTabBar {
-			onTabChange = props.onTabChange,
-			saveFn = props.saveFn,
-		}
-
+	if props.title then
+		local content = props.content
+		if content then
+			content.flexGrow = 1
+			content.fillWidth = true
+		end
 		return ns.VStack {
 			flexGrow = props.flexGrow or 1,
 			spacing = 0,
-			tabBar._strip,
-			ns.Separator(),
-			wrapContent(props.content),
-		}, tabBar
+			ControlBar {
+				title = props.title,
+				leading = props.leading,
+				buttons = props.buttons or props.trailing,
+			},
+			content,
+		}
 	end
 
-	-- Legacy API: ControlBar-based.
-	return ns.VStack {
+	local tabView = bridge._tabview(400, 200, "top")
+	tabView.flexGrow = 1
+	tabView.fillWidth = true
+
+	local area = ns.VStack {
 		flexGrow = props.flexGrow or 1,
 		spacing = 0,
-		ControlBar {
-			title = props.title,
-			leading = props.leading,
-			buttons = props.buttons or props.trailing,
-		},
-		wrapContent(props.content),
+		tabView,
 	}
+
+	return area, tabView
 end
 
 return EditorArea
