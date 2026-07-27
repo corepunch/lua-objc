@@ -8,6 +8,11 @@ IOS_SIM_SDK = $(shell xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null)
 TARGET = lua-objc
 HOST_SRC = src/host.c
 APPKIT_RUNTIME_SRC = src/main.m
+APPKIT_RUNTIME_DIRS = src/appkit src/shared
+APPKIT_RUNTIME_FRAGMENTS = $(shell find $(APPKIT_RUNTIME_DIRS) -type f -name '*.m')
+UIKIT_RUNTIME_SRC = src/uikit_module.m
+UIKIT_RUNTIME_DIRS = src/uikit src/shared
+UIKIT_RUNTIME_FRAGMENTS = $(shell find $(UIKIT_RUNTIME_DIRS) -type f -name '*.m')
 NATIVE_PLUGIN = build/ide-controls.dylib
 NATIVE_PLUGIN_SRC = src/ide_controls_plugin.m
 FRAMEWORK_MODULES = build/AppKit.dylib build/IDEKit.dylib
@@ -28,7 +33,7 @@ $(GENERATED_DIR)/%.lua.h: $(EMBEDDED_LUA_DIR)/%.lua
 	mkdir -p $(GENERATED_DIR)
 	xxd -i -n $*_lua $< $@
 
-build/appkit-runtime.o: $(APPKIT_RUNTIME_SRC)
+build/appkit-runtime.o: $(APPKIT_RUNTIME_SRC) $(APPKIT_RUNTIME_FRAGMENTS)
 	mkdir -p build
 	$(CC) $(CFLAGS) -fPIC -c -o $@ $<
 
@@ -56,12 +61,12 @@ build/IDEKit.dylib: src/embedded_lua_module.c $(GENERATED_DIR)/IDEKit.lua.h
 		-DLUA_MODULE_CHUNK_NAME='"@IDEKit.lua"' \
 		-o $@ $<
 
-build/UIKit.dylib: src/uikit_module.m $(GENERATED_DIR)/UIKit.lua.h
+build/UIKit.dylib: $(UIKIT_RUNTIME_SRC) $(UIKIT_RUNTIME_FRAGMENTS) $(GENERATED_DIR)/UIKit.lua.h
 	@test -n "$(IOS_SIM_SDK)" || \
 		{ echo "UIKit.dylib requires the iPhone Simulator SDK from Xcode"; exit 1; }
 	mkdir -p build
 	xcrun --sdk iphonesimulator $(CC) $(CFLAGS) $(MODULE_LDFLAGS) \
-		-Ibuild -framework UIKit -framework Foundation -o $@ $<
+		-Ibuild -framework UIKit -framework Foundation -o $@ $(UIKIT_RUNTIME_SRC)
 
 uikit: build/UIKit.dylib
 

@@ -3,7 +3,7 @@
 
 int luaopen_UIKitNative(lua_State *L);
 
-#include "uikit_bridge.m"
+#include "uikit/bridge.m"
 #include "generated/UIKit.lua.h"
 
 /*

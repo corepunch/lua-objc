@@ -9,11 +9,15 @@ authored in Lua and embedded into the corresponding library at build time.
 ```
 examples/*.lua              User-facing UI descriptions
 src/host.c                  Tiny executable loader
+src/main.m                  AppKit translation-unit root and registration
+src/appkit/*.m              Focused bridge fragments included by main.m
+src/uikit/*.m               UIKit bridge root and focused fragments
+src/shared/*.m              Shared Lua state, async, HTTP, JSON, error helpers
 build/AppKit.dylib          AppKit runtime + luaopen_AppKit
 build/IDEKit.dylib          luaopen_IDEKit
 build/UIKit.dylib           UIKit runtime + luaopen_UIKit (iOS SDK)
 lua/embedded/*.lua          Declarative layers embedded in those dylibs
-src/canvas_eval.m           Isolated AppKit canvas evaluation
+src/appkit/canvas_eval.m    Isolated AppKit canvas evaluation
 ```
 
 ---
@@ -50,10 +54,28 @@ missing.
 
 ---
 
-## Layer 1 — AppKit runtime (`src/main.m` + `canvas_eval.m`)
+## Layer 1 — Native runtimes and shared services
+
+### AppKit runtime (`src/main.m` and `src/appkit/*.m`)
 
 The AppKit bridge is a single Objective-C/C translation unit inside
-`AppKit.dylib`. It registers the private `AppKitNative` Lua module.
+`AppKit.dylib`. `src/main.m` owns shared constants and registration and includes
+the focused fragments under `src/appkit/`. This preserves static shared state
+without forcing readers to load an unrelated 4,000-line file. See
+`src/README.md` for the subsystem map.
+
+### UIKit runtime (`src/uikit_module.m` and `src/uikit/*.m`)
+
+`src/uikit_module.m` embeds the public Lua layer and includes
+`src/uikit/bridge.m`, the UIKit translation-unit root. That root owns UIKit
+keys and module registration and includes focused fragments for layout, views,
+controls, tables, metatables, and platform helpers.
+
+Both runtime roots include `src/shared/lua_error.m` and
+`src/shared/lua_async.m`. The shared async layer supplies timers, HTTP, JSON,
+coroutine-safe owner lookup, and cancellation. AppKit-created states use
+closing owners; UIKit is loaded into a host-owned state and installs a
+non-closing registry owner that detaches safely during `lua_close`.
 
 ### View construction
 
@@ -84,7 +106,7 @@ A custom flex-like layout engine is implemented entirely in C (`layout_recursive
 
 `NSSplitView` divider thickness is accounted for in both hsplit and vsplit layout passes.
 
-### Canvas eval (`canvas_eval.m`)
+### Canvas eval (`src/appkit/canvas_eval.m`)
 
 Each canvas preview evaluation runs in a **fresh, isolated `lua_State`** (created by `canvas_state_create()`). This means:
 
@@ -100,11 +122,18 @@ The resulting `NSView` is marshalled back to the main Lua state via `CFBridgingR
 
 ## Async state lifetime (`LuaStateOwner` + `lua_getextraspace`)
 
-Async bridge functions (`_httpGet`, `_timerAfter`, `_textViewOnChange`) schedule ObjC work that completes *after* the calling Lua code returns — sometimes after the `lua_State` that started it would normally be closed. The lifetime rule is:
+Async bridge functions (`_httpGet`, `_timerAfter`, `_textViewOnChange`) schedule
+ObjC work that completes after the calling Lua code returns. Runtime-created
+states follow this lifetime rule:
 
 > A state must die exactly once, on the main thread, when its creator and all in-flight async ops are done with it.
 
-That is a reference count. We spell it with an ObjC object (`LuaStateOwner`) instead of a hand-rolled `_Atomic int` because ARC removes the three classic failure modes:
+Host-owned UIKit states use the same owner for callback lookup and cancellation,
+but the host remains responsible for `lua_close`. The registry holds a
+non-closing owner that detaches before state teardown.
+
+The owner is an ObjC object (`LuaStateOwner`) rather than a hand-rolled
+`_Atomic int` because ARC removes the three classic failure modes:
 
 | Manual refcount failure | Why ARC is immune |
 |---|---|

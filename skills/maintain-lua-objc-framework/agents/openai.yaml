@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lua-ObjC Framework"
+  short_description: "Maintain native AppKit and UIKit bridge code"
+  default_prompt: "Use $maintain-lua-objc-framework to modify and verify the native lua-objc framework bridge."

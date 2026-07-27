@@ -1,4 +1,8 @@
-# PLAN: Offscreen Canvas Preview (Xcode-style)
+# Archived plan: Offscreen Canvas Preview (Xcode-style)
+
+> Historical context only. The preview renderer, CLI mode, IDE canvas, and file
+> watcher described here have been implemented. Use `ARCHITECTURE.md` and
+> `src/README.md` for the current design.
 
 ## Goal
 
@@ -53,7 +57,7 @@ Apple does not document Preview internals. This is the best public picture:
 
 | Thing | File | Notes |
 |---|---|---|
-| `bridge_eval(code, canvas=true)` | `src/canvas_eval.m` | Runs Lua in a fresh isolated `lua_State`; intercepts `ns.Window` → `ns.VStack`; returns an `NSView` |
+| `bridge_eval(code, canvas=true)` | `src/appkit/canvas_eval.m` | Runs Lua in a fresh isolated `lua_State`; intercepts `ns.Window` → `ns.VStack`; returns an `NSView` |
 | `IDEKit._evalIntoCanvas` | `lua/embedded/IDEKit.lua` | Clears a live canvas view and re-adds the result |
 | `layout_recursive` | `src/main.m` | Full flex layout pass |
 | `bridge._layout` | `src/main.m` | Lua-callable layout trigger |
