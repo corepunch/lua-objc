@@ -320,6 +320,7 @@ function AppKit.List(props)
 	if props.refresh and type(props.refresh) == "function" then
 		local refresh_fn = props.refresh
 		bridge._tableSetRefresh(tv, function(list, on_done)
+			if not list then return end
 			list:showLoading()
 			list:clearRows()
 			local co = coroutine.create(function()

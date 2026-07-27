@@ -38,6 +38,7 @@ enum {
 	kTableSelectionKey,
 	kTableRefreshKey,
 	kTextChangeKey,
+	kTextProgrammaticKey,
 	kTextWrapKey,
 	kSplitPaneFrameObserverKey,
 	kSplitProportionsKey,
@@ -3168,7 +3169,13 @@ static int bridge_text_view_set_text(lua_State *L) {
 		return luaL_error(L, "expected a text view");
 	}
 	NSTextView *tv = (NSTextView *)((NSScrollView *)obj).documentView;
+	/* Suppress NSTextDidChangeNotification for programmatic updates so that
+	 * the IDE change handler only fires for user-initiated edits. */
+	objc_setAssociatedObject(tv, &kKeys[kTextProgrammaticKey], @YES,
+		OBJC_ASSOCIATION_RETAIN);
 	tv.string = [NSString stringWithUTF8String:str];
+	objc_setAssociatedObject(tv, &kKeys[kTextProgrammaticKey], nil,
+		OBJC_ASSOCIATION_RETAIN);
 	return 0;
 }
 
@@ -3194,6 +3201,7 @@ static int bridge_text_view_on_change(lua_State *L) {
 					object:tv
 					 queue:nil
 				usingBlock:^(NSNotification *note) {
+		if (objc_getAssociatedObject(note.object, &kKeys[kTextProgrammaticKey])) return;
 		NSNumber *refNum = objc_getAssociatedObject(note.object,
 			&kKeys[kTextChangeKey]);
 		if (!refNum || !owner) return;
