@@ -60,6 +60,28 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   intentionally included by their platform roots to share static bridge state;
   platform-neutral services belong in `src/shared/`.
 
+## Testing
+
+**Every implementation or bugfix must include fast headless regression tests.**
+Tests are ordinary Lua scripts discovered by `make test` (any `tests/*.test.lua`)
+and run in under a second — no windows, no pauses. They should verify:
+
+- Construction, properties, layout contracts, data mutation.
+- Column widths, flex behavior, split proportions.
+- Edge cases: empty, zero-size, overflow, missing data.
+- Round-trip: create → mutate → verify no change in unrelated state.
+
+Use `t.assertSize` / `t.assertEqual` / `t.expect` from `TestKit` (see
+`lua/TestKit.lua`). Bridge helpers available in test context:
+
+- `bridge._viewSize(view)` → `(width, height)`
+- `bridge._tableColumnWidths(view)` → `{{id, width, minWidth}}`
+- `bridge._setContentSize(view, w, h)` + `bridge._layout(view, w)` to simulate
+  container sizing without a window
+
+Tests are the project's primary safety net. When in doubt, add more assertions
+rather than fewer. The test suite should grow continually.
+
 ## Build and verification
 
 ```sh

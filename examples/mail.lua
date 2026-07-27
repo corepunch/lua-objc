@@ -1,7 +1,7 @@
 local ns = require("AppKit")
 
 local inbox = {
-	{ from = "Alice Chen",    subject = "Q3 roadmap review",            date = "10:32 AM" },
+	{ from = "Alice Chen",    subject = "Q3 roadmap review",             date = "10:32 AM" },
 	{ from = "Bob Martinez",  subject = "Design system updates",         date = "9:15 AM" },
 	{ from = "Carol Park",    subject = "Meeting notes from yesterday",  date = "Yesterday" },
 	{ from = "Dave Johnson",  subject = "PR #142 ready for review",      date = "Yesterday" },
@@ -20,24 +20,22 @@ local folders = {
 }
 
 local message_list = ns.List {
-	width = 460,
 	flexGrow = 1,
 	columns = {
-		{ id = "from",    title = "From" },
+		{ id = "from",    title = "From",    width = 120 },
 		{ id = "subject", title = "Subject" },
-		{ id = "date",    title = "Date" },
+		{ id = "date",    title = "Date",    width = 60, minWidth = 40 },
 	},
 	data = inbox,
 }
 
 local mailbox_list = ns.List {
-	width = 170,
-	flexGrow = 1,
+	fixedWidth = 170,
 	header = false,
 	style = "sourceList",
 	columns = {
-		{ id = "name",  width = 125 },
-		{ id = "count", width = 45,  alignment = "trailing" },
+		{ id = "name" },
+		{ id = "count", width = 45, alignment = "trailing" },
 	},
 	data = folders,
 }
@@ -62,11 +60,7 @@ return ns.Window {
 		},
 	},
 	ns.HSplit {
-		ns.VStack {
-			spacing = 2,
-			ns.Text { "Mailboxes", size = 11, weight = "semibold", color = "secondary" },
-			mailbox_list,
-		},
+		mailbox_list,
 		message_list,
 	},
 }

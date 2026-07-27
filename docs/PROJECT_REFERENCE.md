@@ -589,7 +589,7 @@ row colors, a header, and a vertical scroller. Table keys:
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `columns` | `{{id, title, width?, alignment?}}` | *(required)* | Array of column specs |
+| `columns` | `{{id, title, width?, minWidth?, alignment?}}` | *(required)* | Array of column specs |
 | `width` | number | `400` | Scroll view width |
 | `height` | number | `200` | Scroll view height |
 | `header` | bool | `true` | Show the native table header |
@@ -621,6 +621,23 @@ Each column `id` must match a key in the row data tables. Cells render the
 string value of `row[id]`. Numbers are converted to strings automatically.
 Column alignment can be `"leading"` (default), `"center"`, or `"trailing"`;
 the header and reusable native cells use the same alignment.
+
+**Column sizing:**
+
+- **`width`** — explicit column width in points. The column keeps this size.
+- **No `width`** — the column becomes a stretch column that fills the remaining
+  viewport space. Multiple stretch columns split the space equally.
+- **`minWidth`** — minimum width in points (default `40`). When the viewport is
+  too narrow for all fixed columns at their `minWidth`, a horizontal scroller
+  appears.
+
+```lua
+columns = {
+    { id = "from",    title = "From",    width = 120 },
+    { id = "subject", title = "Subject" },               -- stretches
+    { id = "date",    title = "Date",    width = 60, minWidth = 40 },
+}
+```
 
 ### List methods
 

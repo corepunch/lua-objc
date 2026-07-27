@@ -189,6 +189,8 @@ static int bridge_tableview(lua_State *L) {
 	CGFloat colW = ncols > 0 ? width / ncols : width;
 	NSMutableArray *colSpecs = [NSMutableArray array];
 
+	BOOL hasFlexColumns = NO;
+
 	for (int i = 1; i <= ncols; i++) {
 		lua_rawgeti(L, 1, i);
 		lua_getfield(L, -1, "id");
@@ -196,15 +198,19 @@ static int bridge_tableview(lua_State *L) {
 		lua_getfield(L, -3, "alignment");
 		lua_getfield(L, -4, "width");
 		lua_getfield(L, -5, "systemImage");
-		const char *colId = lua_tostring(L, -5);
-		const char *colTitle = lua_tostring(L, -4);
-		const char *colAlignment = lua_tostring(L, -3);
-		CGFloat requestedWidth = lua_isnumber(L, -2)
-			? lua_tonumber(L, -2) : colW;
-		const char *systemImage = lua_tostring(L, -1);
+		lua_getfield(L, -6, "minWidth");
+		const char *colId = lua_tostring(L, -6);
+		const char *colTitle = lua_tostring(L, -5);
+		const char *colAlignment = lua_tostring(L, -4);
+		BOOL hasExplicitWidth = lua_isnumber(L, -3);
+		CGFloat requestedWidth = hasExplicitWidth
+			? lua_tonumber(L, -3) : colW;
+		const char *systemImage = lua_tostring(L, -2);
+		CGFloat requestedMinWidth = lua_isnumber(L, -1)
+			? lua_tonumber(L, -1) : kTableColumnMinWidth;
 
 		if (!colId) {
-			lua_pop(L, 6);
+			lua_pop(L, 7);
 			continue;
 		}
 
@@ -212,7 +218,7 @@ static int bridge_tableview(lua_State *L) {
 		NSTableColumn *col = [[NSTableColumn alloc] initWithIdentifier:nsId];
 		col.title = [NSString stringWithUTF8String:colTitle ?: colId];
 		col.width = requestedWidth;
-		col.minWidth = kTableColumnMinWidth;
+		col.minWidth = MAX(kTableColumnMinWidth, requestedMinWidth);
 		NSTextAlignment alignment = colAlignment
 			? (NSTextAlignment)lookupNameValue(
 				[NSString stringWithUTF8String:colAlignment],
@@ -226,13 +232,20 @@ static int bridge_tableview(lua_State *L) {
 				[NSString stringWithUTF8String:systemImage],
 				OBJC_ASSOCIATION_RETAIN);
 		}
+		if (!hasExplicitWidth) {
+			objc_setAssociatedObject(col, &kKeys[kColumnFlexKey],
+				@1.0, OBJC_ASSOCIATION_RETAIN);
+			hasFlexColumns = YES;
+		}
 		[tv addTableColumn:col];
 
 		[colSpecs addObject:@{@"id": nsId, @"title": col.title}];
 
-		lua_pop(L, 6);
+		lua_pop(L, 7);
 	}
-	tv.columnAutoresizingStyle = NSTableViewUniformColumnAutoresizingStyle;
+	tv.columnAutoresizingStyle = hasFlexColumns
+		? NSTableViewNoColumnAutoresizing
+		: NSTableViewUniformColumnAutoresizingStyle;
 
 	LuaTableViewSource *src = [[LuaTableViewSource alloc] initWithTableView:tv
 																   columns:colSpecs];
@@ -243,8 +256,6 @@ static int bridge_tableview(lua_State *L) {
 	sv.autohidesScrollers = YES;
 	sv.borderType = bordered ? NSBezelBorder : NSNoBorder;
 	if (isSourceList) sv.drawsBackground = NO;
-
-	[tv sizeLastColumnToFit];
 
 	if (isSourceList) {
 		NSVisualEffectView *vev = [[NSVisualEffectView alloc]

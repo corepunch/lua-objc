@@ -65,42 +65,59 @@ column widths. Cocoa's scroll machinery handles the rest.
 
 In `updateTableFrame` (called on every row insertion and every layout pass):
 
+**When any column omits `width` (flex column):**
+
+1. Columns with an explicit `width` are treated as fixed — they keep their
+   specified width.
+2. Columns without `width` are flexible — they split the remaining viewport
+   space equally among themselves.
+3. If the viewport is narrower than the sum of all fixed-column widths,
+   all columns shrink to their `minWidth` and a horizontal scroller appears.
+
+**When every column has an explicit `width` (legacy, no flex columns):**
+
 1. Compute `totalColumnWidth` from `tableColumns`
-2. Compare to `viewport.width` (the clip view's visible area)
-3. If `totalColumnWidth > viewport.width`:
+2. If `totalColumnWidth > viewport.width`:
    - `hasHorizontalScroller = YES`
    - `_tableView.frame.width = totalColumnWidth` (table is wider than visible area)
    - Do **not** call `sizeLastColumnToFit` (columns keep their explicit widths)
-4. If columns fit:
+3. If columns fit:
    - `hasHorizontalScroller = NO`
    - `_tableView.frame.width = viewport.width`
    - Call `sizeLastColumnToFit` → autoresizing distributes remaining space
 
-This gives us the SwiftUI-equivalent behaviour with zero Lua changes:
-columns with explicit `width`/`minWidth` get a horizontal scrollbar when
-the view is too narrow; auto-sized columns proportionally fill the space.
+This gives us the SwiftUI-equivalent behaviour: columns with explicit
+`width`/`minWidth` get a horizontal scrollbar when the view is too narrow;
+columns without `width` stretch to fill the available space.
 
-## Column widths — initial sizing
+## Column widths
 
-### Default widths
+### Stretch column (no `width`)
 
-When no explicit `width` is given in the column spec, each column gets
-`tableWidth / columnCount`. This approximates SwiftUI's behaviour where
-columns without explicit `width` divide the remaining space equally.
+Omitting `width` on a column makes it a stretch column that fills the
+remaining viewport space. This follows the same contract as other lua-objc
+controls: no explicit size means "consume available space."
 
-### `sizeLastColumnToFit`
+Multiple stretch columns split the remaining space equally.  To prevent
+a stretch column from collapsing below a readable size, set `minWidth`:
 
-Called after all columns are added and data is loaded. With
-`NSTableViewUniformColumnAutoresizingStyle`, this distributes any
-"leftover" width proportionally, not just to the last column.
+```lua
+columns = {
+    { id = "from",    title = "From",    width = 120 },
+    { id = "subject", title = "Subject" },               -- stretch column
+    { id = "date",    title = "Date",    width = 60, minWidth = 40 },
+}
+```
 
-### Minimum column width
+When the viewport is too narrow for all fixed columns at their `minWidth`,
+a horizontal scroller appears — keeping every column at least its
+`minWidth` and restoring the scrollable overflow behaviour.
 
-Every column gets `minWidth = kTableColumnMinWidth` (currently 40 pt).
-NSTableView enforces this — columns never shrink below it, even with
-proportional autoresizing. This is the mechanism that triggers the
-horizontal-scrollbar fallback: when the view is too narrow for all
-`minWidth` columns to fit, rows overflow and scrolling becomes available.
+### Legacy table (all columns have `width`)
+
+When every column has an explicit `width`, the old `sizeLastColumnToFit`
+behaviour is preserved: the last column stretches to fill the viewport,
+or a horizontal scroller appears when columns overflow.
 
 ## Scroll view geometry (`tile` and bounds staleness)
 

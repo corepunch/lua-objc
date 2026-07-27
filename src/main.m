@@ -45,6 +45,7 @@ enum {
 	kSplitProportionsAppliedKey,
 	kCanvasToolbarItemsKey,
 	kTableScrollViewKey,
+	kColumnFlexKey,
 	kKeyCount
 };
 static char kKeys[kKeyCount];

@@ -492,4 +492,130 @@ for _, c in ipairs(widths) do
 end
 t.expect(total320 < total450, "columns shrink further at 320px (" .. total320 .. " < " .. total450 .. ")")
 
+-- HSplit respects fixedWidth on children (no proportions configured).
+
+local leftFix = ns.Text {
+	fixedWidth = 150,
+	text = "sidebar",
+}
+local rightFlex = ns.Text {
+	flexGrow = 1,
+	text = "content",
+}
+local splitView = ns.HSplit {
+	leftFix,
+	rightFlex,
+}
+
+-- Set a known content size and run layout.
+-- NSSplitView initial width matches the first subview's frame; we force a
+-- specific width so the proportions kick in with a deterministic total.
+bridge._setContentSize(splitView, 620, 300)
+bridge._layout(splitView, 620)
+
+local leftW, _ = bridge._viewSize(leftFix)
+local rightW, _ = bridge._viewSize(rightFlex)
+t.assertEqual(leftW, 150, "fixed-width pane retains 150 px in HSplit (got " .. leftW .. ")")
+t.expect(rightW > 400, "flexible pane fills remaining width (got " .. rightW .. ")")
+
+-- Simulate a window resize and verify the fixed pane does not change.
+bridge._setContentSize(splitView, 900, 300)
+bridge._layout(splitView, 900)
+
+leftW, _ = bridge._viewSize(leftFix)
+rightW, _ = bridge._viewSize(rightFlex)
+t.assertEqual(leftW, 150, "fixed-width pane still 150 px after resize (got " .. leftW .. ")")
+t.expect(rightW > leftW, "flexible pane absorbs resize (right " .. rightW .. " > left " .. leftW .. ")")
+
+-- Table column flex: columns without width stretch; fixed columns stay fixed.
+
+local flexTable = ns.List {
+	width = 600,
+	height = 200,
+	columns = {
+		{ id = "a", title = "FixedA", width = 120 },
+		{ id = "b", title = "Stretch" },
+		{ id = "c", title = "FixedC", width = 80, minWidth = 50 },
+	},
+	data = {
+		{ a = "Alice", b = "Some subject text",  c = "Now" },
+		{ a = "Bob",   b = "Another subject",    c = "10:32" },
+		{ a = "Carol", b = "Long subject here",   c = "Yesterday" },
+	},
+}
+
+-- Measure initial column widths at 600 px.
+local function colWidth(cols, id)
+	for _, c in ipairs(cols) do
+		if c.id == id then return c.width end
+	end
+	return 0
+end
+
+bridge._setContentSize(flexTable, 600, 200)
+bridge._layout(flexTable, 600)
+local cw = bridge._tableColumnWidths(flexTable)
+local a1 = colWidth(cw, "a")
+local b1 = colWidth(cw, "b")
+local c1 = colWidth(cw, "c")
+
+t.assertEqual(a1, 120, "fixed column 'a' at 120 px (got " .. a1 .. ")")
+t.assertEqual(c1, 80, "fixed column 'c' at 80 px (got " .. c1 .. ")")
+local expectedB1 = 600 - 120 - 80
+t.assertEqual(b1, expectedB1, "stretch column fills remaining " .. expectedB1 .. " px (got " .. b1 .. ")")
+
+-- Resize wider: fixed columns must NOT change.
+bridge._setContentSize(flexTable, 800, 200)
+bridge._layout(flexTable, 800)
+cw = bridge._tableColumnWidths(flexTable)
+local a2 = colWidth(cw, "a")
+local b2 = colWidth(cw, "b")
+local c2 = colWidth(cw, "c")
+
+t.assertEqual(a2, 120, "fixed 'a' unchanged at 120 after widen (got " .. a2 .. ")")
+t.assertEqual(c2, 80, "fixed 'c' unchanged at 80 after widen (got " .. c2 .. ")")
+t.expect(b2 > b1, "stretch column 'b' grew (was " .. b1 .. ", now " .. b2 .. ")")
+
+-- Resize narrower: fixed columns must NOT change; stretch column shrinks.
+bridge._setContentSize(flexTable, 400, 200)
+bridge._layout(flexTable, 400)
+cw = bridge._tableColumnWidths(flexTable)
+local a3 = colWidth(cw, "a")
+local b3 = colWidth(cw, "b")
+local c3 = colWidth(cw, "c")
+
+t.assertEqual(a3, 120, "fixed 'a' unchanged at 120 after narrow (got " .. a3 .. ")")
+t.assertEqual(c3, 80, "fixed 'c' unchanged at 80 after narrow (got " .. c3 .. ")")
+t.expect(b3 < b2, "stretch column 'b' shrank (was " .. b2 .. ", now " .. b3 .. ")")
+
+-- Verify total fills viewport.
+t.assertEqual(a3 + b3 + c3, 400,
+	"columns sum to viewport width (120+" .. b3 .. "+80=" .. (a3+b3+c3) .. ")")
+
+-- Mailbox: source list with name (stretch) + count (fixed 45 px).
+-- At table width 170, count column must be present and visible.
+local mailbox = ns.List {
+	width = 170,
+	height = 200,
+	header = false,
+	style = "sourceList",
+	columns = {
+		{ id = "name" },
+		{ id = "count", width = 45, alignment = "trailing" },
+	},
+	data = {
+		{ name = "Inbox",  count = "8" },
+		{ name = "Sent",   count = "" },
+	},
+}
+
+bridge._setContentSize(mailbox, 170, 200)
+bridge._layout(mailbox, 170)
+cw = bridge._tableColumnWidths(mailbox)
+local nameW = colWidth(cw, "name")
+local countW = colWidth(cw, "count")
+
+t.assertEqual(countW, 45, "mailbox count column at 45 px (got " .. countW .. ")")
+t.assertEqual(nameW, 125, "mailbox name column fills 125 px (170-45, got " .. nameW .. ")")
+
 os.exit(t.summary() and 0 or 1)

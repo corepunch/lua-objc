@@ -71,22 +71,68 @@ static void push_objc(lua_State *L, id obj, const char *meta);
 	CGFloat rowsHeight = _rows.count * _tableView.rowHeight + headerHeight;
 	NSSize viewport = clipView.bounds.size;
 
-	CGFloat totalColumnWidth = 0;
+	/*
+	 * Separate columns into fixed and flex groups. When no flex columns
+	 * are present, the old sizeLastColumnToFit behaviour is preserved.
+	 * When flex columns exist, they split remaining space by their flex
+	 * weight; if the viewport is too narrow even for minimum widths, a
+	 * horizontal scroller appears.
+	 */
+	CGFloat fixedDesired = 0, flexTotalWeight = 0, allMin = 0;
+	BOOL hasFlex = NO;
+
 	for (NSTableColumn *col in _tableView.tableColumns) {
-		totalColumnWidth += col.width;
+		NSNumber *flexN = objc_getAssociatedObject(col, &kKeys[kColumnFlexKey]);
+		CGFloat flex = flexN ? flexN.doubleValue : 0;
+		allMin += col.minWidth;
+		if (flex > 0) {
+			flexTotalWeight += flex;
+			hasFlex = YES;
+		} else {
+			fixedDesired += col.width;
+		}
 	}
-	BOOL overflows = totalColumnWidth > viewport.width;
+
+	BOOL overflows = NO;
+	CGFloat tableWidth = viewport.width;
+
+	if (hasFlex) {
+		CGFloat remaining = viewport.width - fixedDesired;
+		if (remaining > 0) {
+			for (NSTableColumn *col in _tableView.tableColumns) {
+				NSNumber *flexN = objc_getAssociatedObject(
+					col, &kKeys[kColumnFlexKey]);
+				CGFloat flex = flexN ? flexN.doubleValue : 0;
+				if (flex > 0) {
+					col.width = remaining * flex / flexTotalWeight;
+				}
+			}
+		} else {
+			for (NSTableColumn *col in _tableView.tableColumns) {
+				col.width = col.minWidth;
+			}
+			overflows = (viewport.width < allMin);
+			if (overflows) tableWidth = allMin;
+		}
+	} else {
+		CGFloat totalColumnWidth = 0;
+		for (NSTableColumn *col in _tableView.tableColumns) {
+			totalColumnWidth += col.width;
+		}
+		overflows = totalColumnWidth > viewport.width;
+		if (overflows) tableWidth = totalColumnWidth;
+		if (!overflows) {
+			[_tableView sizeLastColumnToFit];
+		}
+	}
 
 	CGRect frame = _tableView.frame;
-	frame.size.width = overflows ? totalColumnWidth : viewport.width;
+	frame.size.width = tableWidth;
 	frame.size.height = MAX(viewport.height, rowsHeight);
 	_tableView.frame = frame;
 
 	NSScrollView *sv = _tableView.enclosingScrollView;
 	sv.hasHorizontalScroller = overflows;
-	if (!overflows) {
-		[_tableView sizeLastColumnToFit];
-	}
 }
 
 - (NSView *)tableView:(NSTableView *)tableView

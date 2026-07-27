@@ -377,40 +377,109 @@ static void distribute_main_axis(NSArray<NSView *> *children, CGFloat *sizes,
 }
 
 static void apply_initial_split_proportions(NSSplitView *split) {
-	if ([objc_getAssociatedObject(
-			split, &kKeys[kSplitProportionsAppliedKey]) boolValue]) return;
-
 	NSArray<NSView *> *panes = split.arrangedSubviews;
 	NSUInteger count = panes.count;
 	CGFloat totalLength = split.vertical
 		? split.bounds.size.width : split.bounds.size.height;
 	if (count < 2 || totalLength <= 0) return;
 
+	BOOL horizontalFlex = split.vertical;
+	CGFloat divider = split.dividerThickness;
+	CGFloat usableLength = MAX(0, totalLength - (count - 1) * divider);
+
 	NSArray<NSNumber *> *configured =
 		objc_getAssociatedObject(split, &kKeys[kSplitProportionsKey]);
 	BOOL useConfigured = configured.count == count;
-	CGFloat totalWeight = 0;
-	if (useConfigured) {
-		for (NSNumber *weight in configured) totalWeight += weight.doubleValue;
-		useConfigured = totalWeight > 0;
-	}
-	if (!useConfigured) totalWeight = count;
 
-	CGFloat divider = split.dividerThickness;
-	CGFloat usableLength = MAX(0, totalLength - (count - 1) * divider);
-	CGFloat consumedWeight = 0;
-	for (NSUInteger i = 0; i + 1 < count; i++) {
-		consumedWeight += useConfigured
-			? configured[i].doubleValue : 1;
-		CGFloat leadingLength = usableLength * consumedWeight / totalWeight;
-		CGFloat position = split.vertical
-			? leadingLength + i * divider
-			: totalLength - leadingLength - i * divider;
-		[split setPosition:position ofDividerAtIndex:(NSInteger)i];
+	/*
+	 * Explicit proportions are applied once and then left to NSSplitView's
+	 * native resizing (the user can freely drag dividers afterward).
+	 */
+	if (useConfigured) {
+		if ([objc_getAssociatedObject(
+				split, &kKeys[kSplitProportionsAppliedKey]) boolValue]) return;
+
+		CGFloat totalWeight = 0;
+		for (NSNumber *weight in configured) totalWeight += weight.doubleValue;
+		if (totalWeight <= 0) return;
+
+		CGFloat consumedWeight = 0;
+		for (NSUInteger i = 0; i + 1 < count; i++) {
+			consumedWeight += configured[i].doubleValue;
+			CGFloat leadingLength = usableLength * consumedWeight / totalWeight;
+			CGFloat position = split.vertical
+				? leadingLength + i * divider
+				: totalLength - leadingLength - i * divider;
+			[split setPosition:position ofDividerAtIndex:(NSInteger)i];
+		}
+		objc_setAssociatedObject(
+			split, &kKeys[kSplitProportionsAppliedKey], @YES,
+			OBJC_ASSOCIATION_RETAIN);
+		return;
 	}
-	objc_setAssociatedObject(
-		split, &kKeys[kSplitProportionsAppliedKey], @YES,
-		OBJC_ASSOCIATION_RETAIN);
+
+	/*
+	 * No explicit proportions: derive initial (and on-resize) pane widths
+	 * from child flex characteristics. Panes with flexGrow == 0 (including
+	 * those with fixedWidth) retain their natural width; flexible panes split
+	 * the remaining space proportionally by flexGrow.
+	 *
+	 * Holding priorities are set so that NSSplitView's native resize path
+	 * also respects the same fixed-vs-flexible intent.
+	 */
+	for (NSUInteger i = 0; i < count; i++) {
+		CGFloat fg = view_flex_grow(panes[i], horizontalFlex);
+		[split setHoldingPriority:(fg > 0
+			? NSLayoutPriorityDefaultLow
+			: NSLayoutPriorityDefaultHigh) forSubviewAtIndex:i];
+	}
+
+	CGFloat fixedWidths[count];
+	CGFloat flexWeights[count];
+	CGFloat flexSum = 0;
+	CGFloat fixedSum = 0;
+	BOOL hasFlexible = NO;
+
+	for (NSUInteger i = 0; i < count; i++) {
+		NSView *child = panes[i];
+		CGFloat fw = view_fixed_width(child);
+		CGFloat fg = view_flex_grow(child, horizontalFlex);
+
+		if (fg <= 0) {
+			fixedWidths[i] = fw > 0
+				? fw : MAX(kMinLeafWidth, child.frame.size.width);
+			flexWeights[i] = 0;
+			fixedSum += fixedWidths[i];
+		} else {
+			flexWeights[i] = fg;
+			fixedWidths[i] = 0;
+			flexSum += fg;
+			hasFlexible = YES;
+		}
+	}
+
+	CGFloat consumed = 0;
+	if (hasFlexible && flexSum > 0) {
+		CGFloat remaining = MAX(0, usableLength - fixedSum);
+		for (NSUInteger i = 0; i + 1 < count; i++) {
+			consumed += fixedWidths[i];
+			if (flexWeights[i] > 0) {
+				consumed += remaining * flexWeights[i] / flexSum;
+			}
+			CGFloat position = split.vertical
+				? consumed + i * divider
+				: totalLength - consumed - i * divider;
+			[split setPosition:position ofDividerAtIndex:(NSInteger)i];
+		}
+	} else {
+		for (NSUInteger i = 0; i + 1 < count; i++) {
+			consumed += usableLength / count;
+			CGFloat position = split.vertical
+				? consumed + i * divider
+				: totalLength - consumed - i * divider;
+			[split setPosition:position ofDividerAtIndex:(NSInteger)i];
+		}
+	}
 }
 
 static void layout_recursive(NSView *view, CGFloat width) {
