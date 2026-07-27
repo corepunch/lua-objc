@@ -124,6 +124,13 @@ static lua_State *gL = NULL;
 #define kEditorDefaultWidth            400
 #define kEditorDefaultHeight           300
 
+/* ----- Rounded Tabs ----- */
+#define kRoundedTabBarHeight            34
+#define kRoundedTabControlHeight        28
+#define kRoundedTabHorizontalInset       6
+#define kRoundedTabVerticalInset         3
+#define kRoundedTabFontSize             12
+
 /* ----- Symbol Toggle ----- */
 #define kSymbolToggleSize               28
 #define kSymbolTogglePointSize          13

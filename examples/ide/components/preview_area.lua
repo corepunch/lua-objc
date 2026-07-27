@@ -4,6 +4,10 @@ local bridge = require("bridge")
 
 local PreviewArea = {}
 
+local PANEL = {
+	headerHeight = 34,
+}
+
 PreviewArea._toolbarTarget = nil
 PreviewArea._toolbarParent = nil
 
@@ -51,6 +55,7 @@ function PreviewArea.show(props)
 		spacing = 0,
 		ControlBar {
 			title = props.title or "Canvas",
+			height = PANEL.headerHeight,
 			leading = props.leading,
 			buttons = { toolbarRow },
 		},

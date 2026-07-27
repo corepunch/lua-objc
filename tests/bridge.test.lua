@@ -190,6 +190,8 @@ local segmented = bridge._segmentedControl({
 }, 0)
 t.assertEqual(segmented.selectedSegment, 0,
 	"segmented control selection is readable through native KVC")
+t.assertEqual(segmented.segmentStyle, 5,
+	"navigator tabs use AppKit's native capsule segments")
 segmented.selectedSegment = 1
 t.assertEqual(segmented.selectedSegment, 1,
 	"segmented control selection is writable through native KVC")
@@ -197,16 +199,20 @@ t.assertThrows(function()
 	bridge._tabCount(segmented)
 end, "typed native arguments reject a view of the wrong Cocoa class")
 
--- EditorArea with tabbed API returns area + native NSTabView.
+-- EditorArea with tabbed API returns area + native rounded tab container.
 
 local tabbedEditor, tabView = EditorArea {
 	content = ns.Text "Editor content",
 }
 t.expect(tabbedEditor ~= nil, "tabbed EditorArea creates a view")
-t.expect(tabView ~= nil, "tabbed EditorArea returns native NSTabView")
+t.expect(tabView ~= nil, "tabbed EditorArea returns a native tab container")
 local tvClass = tabView.className
-t.expect(tvClass == "NSTabView" or tvClass:find("TabView") ~= nil,
-	"tabbed EditorArea uses native NSTabView (got " .. tostring(tvClass) .. ")")
+t.assertEqual(tvClass, "LuaRoundedTabContainer",
+	"tabbed EditorArea uses the native rounded tab container")
+t.expect(tvClass ~= "NSTabView",
+	"rounded editor tabs do not use NSTabView")
+t.assertEqual(tabView.tabSeparator.boxType, 2,
+	"rounded editor tabs include a native horizontal separator")
 
 -- Native NSTabView: add, select, remove, count.
 
@@ -228,6 +234,22 @@ t.assertEqual(bridge._tabCount(ntv), 2, "two tabs remain after removing first")
 
 bridge._tabSelect(ntv, 0)
 t.assertEqual(bridge._tabCount(ntv), 2, "selection does not change count")
+
+local rounded = bridge._tabview(400, 200, "rounded")
+local roundedFirst = ns.Text "First"
+local roundedSecond = ns.Text "Second"
+bridge._tabAdd(rounded, "First.lua", roundedFirst)
+bridge._tabAdd(rounded, "Second.lua", roundedSecond)
+t.assertEqual(bridge._tabCount(rounded), 2,
+	"rounded tabs preserve dynamic add and count behavior")
+t.expect(roundedFirst.hidden and not roundedSecond.hidden,
+	"rounded tabs show only the most recently added content")
+bridge._tabSelect(rounded, 0)
+t.expect(not roundedFirst.hidden and roundedSecond.hidden,
+	"rounded tab selection swaps ordinary native content views")
+bridge._tabRemove(rounded, 1)
+t.assertEqual(bridge._tabCount(rounded), 1,
+	"rounded tabs preserve dynamic select and remove behavior")
 
 -- Image layout uses the bridge's capped display size, not the source bitmap's
 -- intrinsic dimensions, and remains proportional under a narrower proposal.
@@ -288,6 +310,12 @@ local controlBar = ControlBar {
 	buttons = { symbolToggle, secondSymbolToggle },
 }
 t.expect(controlBar ~= nil, "ControlBar accepts an optional trailing button array")
+local alignedControlBar = ControlBar {
+	title = "CANVAS",
+	height = 34,
+}
+t.assertEqual(alignedControlBar.fixedHeight, 35,
+	"panel headers include the 34-point row and native 1-point separator")
 
 -- List: add, remove, clear rows
 

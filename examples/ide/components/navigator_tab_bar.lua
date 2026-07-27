@@ -1,6 +1,12 @@
 local ns = require("AppKit")
 local bridge = require("bridge")
 
+local TABS = {
+	height = 34,
+	controlHeight = 28,
+	horizontalPadding = 6,
+}
+
 -- NavigatorTabBar: Xcode-style navigator tab strip backed by native
 -- NSSegmentedControl with NSSegmentSwitchTrackingSelectOne (radio group).
 -- Props: tabs (array of {id, symbol, tooltip}), selectedId, onSelect(id).
@@ -31,16 +37,16 @@ local function NavigatorTabBar(props)
 				onSelect(tab.id)
 			end
 		end)
-	seg.fixedWidth = #tabs * 28
-	seg.fixedHeight = 28
-	seg.flexGrow = 0
+	seg.fixedHeight = TABS.controlHeight
+	seg.fillWidth = true
+	seg.flexGrow = 1
 	seg.flexShrink = 0
 
 	local bar = ns.HStack {
-		fixedHeight = 28,
+		fixedHeight = TABS.height,
 		flexGrow = 0,
 		flexShrink = 0,
-		paddingHorizontal = 6,
+		paddingHorizontal = TABS.horizontalPadding,
 		seg,
 	}
 

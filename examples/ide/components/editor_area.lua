@@ -3,7 +3,7 @@ local bridge = require("bridge")
 local ControlBar = require("examples.ide.components.control_bar")
 
 -- EditorArea: centre editing panel.
--- New API (no title): returns area VStack + native NSTabView.
+-- New API (no title): returns area VStack + native rounded tab container.
 -- Legacy API (props.title set): returns ControlBar area.
 local function EditorArea(props)
 	props = props or {}
@@ -26,7 +26,7 @@ local function EditorArea(props)
 		}
 	end
 
-	local tabView = bridge._tabview(400, 200, "top")
+	local tabView = bridge._tabview(400, 200, "rounded")
 	tabView.flexGrow = 1
 	tabView.fillWidth = true
 
