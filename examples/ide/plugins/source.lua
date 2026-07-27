@@ -9,6 +9,7 @@ local NavigatorArea = require("examples.ide.components.navigator_area")
 local EditorArea = require("examples.ide.components.editor_area")
 local PreviewArea = require("examples.ide.components.preview_area")
 local SearchView = require("examples.ide.components.search_view")
+local FindInFiles = require("examples.ide.components.find_in_files")
 
 local Source = {}
 
@@ -17,16 +18,9 @@ local function isLuaFile(name)
 end
 
 local imageExtensions = {
-	png = true,
-	jpg = true,
-	jpeg = true,
-	gif = true,
-	tif = true,
-	tiff = true,
-	bmp = true,
-	icns = true,
-	svg = true,
-	pdf = true,
+	png = true, jpg = true, jpeg = true, gif = true,
+	tif = true, tiff = true, bmp = true, icns = true,
+	svg = true, pdf = true,
 }
 
 local function isImageFile(name)
@@ -58,13 +52,8 @@ end
 local function openImage(path, app)
 	local plugin = app and app:resolvePluginByFile(path, "editor")
 	if not plugin then return end
-	local window = plugin.create {
-		path = path,
-		app = app,
-	}
-	if app and app.recent then
-		app.recent:recordFile(path)
-	end
+	local window = plugin.create { path = path, app = app }
+	if app and app.recent then app.recent:recordFile(path) end
 	return window
 end
 
@@ -95,16 +84,19 @@ return ns.VStack {
 	}
 
 	local rootDir = folder or "examples"
+	local wordWrapEnabled = false
 
-	local wrapToggle = bridge._symbolToggle(
-		"arrow.left.and.line.vertical.and.arrow.right",
-		"Toggle Word Wrap",
-		false,
-		function(btn)
-			local wrapped = btn.state == 1
-			bridge._textViewSetWrapMode(editor._view, wrapped)
-		end
-	)
+	-- Word wrap in Editor menu (matches Xcode Editor → Wrap Lines).
+	ns.MenuItem {
+		menu = "Editor",
+		title = "Wrap Lines",
+		keyEquivalent = "",
+		modifiers = {},
+		action = function()
+			wordWrapEnabled = not wordWrapEnabled
+			bridge._textViewSetWrapMode(editor._view, wordWrapEnabled)
+		end,
+	}
 
 	local entries = ns.readDirectory(rootDir, 3)
 	local filtered = filterLuaFiles(entries)
@@ -115,16 +107,24 @@ return ns.VStack {
 		style = "plain",
 		flexGrow = 1,
 		columns = {
-			{
-				id = "name",
-				title = "Name",
-				systemImage = "doc.text",
-			},
+			{ id = "name", title = "Name", systemImage = "doc.text" },
 		},
 		data = filtered,
 	}
 
-	local openInEditor
+	local editorArea, tabBar
+
+	local function openInEditor(path)
+		local f = io.open(path, "r")
+		if not f then return end
+		local content = f:read("*a")
+		f:close()
+
+		tabBar:addTab(path, content)
+		if app.recent then
+			app.recent:recordFile(path)
+		end
+	end
 
 	local function openPath(path)
 		if isImageFile(path) then
@@ -133,31 +133,33 @@ return ns.VStack {
 		return openInEditor(path)
 	end
 
-	openInEditor = function(path)
-		local f = io.open(path, "r")
-		if not f then return end
-		local content = f:read("*a")
-		f:close()
-		bridge._textViewSetText(editor._view, content)
-		if isLuaFile(path) then
-			canvasMod.evalIntoCanvas(canvas, content)
-		end
-		editor.watchFile(path)
-		if app.recent then
-			app.recent:recordFile(path)
-		end
-	end
-
-	local function openInitialFile(path)
-		if not path then return end
-		openInEditor(path)
-	end
-
 	fileTree:onRowSelect(function(list, rowIndex, rowData)
 		if rowData and rowData.path and not rowData.directory then
 			openPath(rowData.path)
 		end
 	end)
+
+	local findInFilesUI, findRoot = FindInFiles {
+		rootDir = rootDir,
+		onSelect = function(path)
+			openPath(path)
+		end,
+	}
+
+	editorArea, tabBar = EditorArea {
+		content = editor._view,
+		saveFn = function()
+			return bridge._textViewGetText(editor._view)
+		end,
+		onTabChange = function(tabId, content)
+			if not tabId then
+				bridge._textViewSetText(editor._view, "")
+				return
+			end
+			bridge._textViewSetText(editor._view, content or "")
+			editor.watchFile(tabId)
+		end,
+	}
 
 	local window = ns.Window {
 		title = "lua-objc IDE",
@@ -171,14 +173,21 @@ return ns.VStack {
 			spacing = 0,
 			WorkspaceLayout {
 				navigator = NavigatorArea {
-					title = "FILES",
-					content = fileTree,
+					tabs = {
+						{ id = "files",
+							symbol = "folder",
+							tooltip = "Project Files" },
+						{ id = "find",
+							symbol = "magnifyingglass",
+							tooltip = "Find in Files" },
+					},
+					selectedId = "files",
+					content = {
+						files = fileTree,
+						find = findRoot,
+					},
 				},
-				editor = EditorArea {
-					title = "EDITOR",
-					content = editor._view,
-					buttons = { wrapToggle },
-				},
+				editor = editorArea,
 				preview = PreviewArea.show {
 					title = "CANVAS",
 					content = canvas,
@@ -203,6 +212,11 @@ return ns.VStack {
 			searchView:show(window)
 		end,
 	}
+
+	local function openInitialFile(path)
+		if not path then return end
+		openInEditor(path)
+	end
 
 	openInitialFile(initialFile)
 	return window
