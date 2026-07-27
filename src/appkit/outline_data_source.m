@@ -49,22 +49,64 @@
 		+ headerHeight;
 	NSSize viewport = clipView.bounds.size;
 
-	CGFloat totalColumnWidth = 0;
+	/* An omitted Lua width means the outline column follows its viewport.
+	 * This is especially important for navigator panes, whose final width is
+	 * assigned by NSSplitView after the outline has loaded its rows. */
+	CGFloat fixedDesired = 0, flexTotalWeight = 0, allMin = 0;
+	BOOL hasFlex = NO;
+
 	for (NSTableColumn *col in _outlineView.tableColumns) {
-		totalColumnWidth += col.width;
+		NSNumber *flexN = objc_getAssociatedObject(col, &kKeys[kColumnFlexKey]);
+		CGFloat flex = flexN ? flexN.doubleValue : 0;
+		allMin += col.minWidth;
+		if (flex > 0) {
+			flexTotalWeight += flex;
+			hasFlex = YES;
+		} else {
+			fixedDesired += col.width;
+		}
 	}
-	BOOL overflows = totalColumnWidth > viewport.width;
+
+	BOOL overflows = NO;
+	CGFloat outlineWidth = viewport.width;
+
+	if (hasFlex) {
+		CGFloat remaining = viewport.width - fixedDesired;
+		if (remaining > 0) {
+			for (NSTableColumn *col in _outlineView.tableColumns) {
+				NSNumber *flexN = objc_getAssociatedObject(
+					col, &kKeys[kColumnFlexKey]);
+				CGFloat flex = flexN ? flexN.doubleValue : 0;
+				if (flex > 0) {
+					col.width = remaining * flex / flexTotalWeight;
+				}
+			}
+		} else {
+			for (NSTableColumn *col in _outlineView.tableColumns) {
+				col.width = col.minWidth;
+			}
+			overflows = viewport.width < allMin;
+			if (overflows) outlineWidth = allMin;
+		}
+	} else {
+		CGFloat totalColumnWidth = 0;
+		for (NSTableColumn *col in _outlineView.tableColumns) {
+			totalColumnWidth += col.width;
+		}
+		overflows = totalColumnWidth > viewport.width;
+		if (overflows) outlineWidth = totalColumnWidth;
+		if (!overflows) {
+			[_outlineView sizeLastColumnToFit];
+		}
+	}
 
 	CGRect frame = _outlineView.frame;
-	frame.size.width = overflows ? totalColumnWidth : viewport.width;
+	frame.size.width = outlineWidth;
 	frame.size.height = MAX(viewport.height, rowsHeight);
 	_outlineView.frame = frame;
 
 	NSScrollView *sv = _outlineView.enclosingScrollView;
 	sv.hasHorizontalScroller = overflows;
-	if (!overflows) {
-		[_outlineView sizeLastColumnToFit];
-	}
 }
 
 - (void)addRootItem:(NSDictionary *)item {

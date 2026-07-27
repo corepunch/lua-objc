@@ -541,6 +541,32 @@ for _, c in ipairs(widths) do
 end
 t.expect(total320 < total450, "columns shrink further at 320px (" .. total320 .. " < " .. total450 .. ")")
 
+-- Outline columns without an explicit width follow the navigator viewport.
+-- The IDE constructs its file tree at the default 400 px, then NSSplitView
+-- narrows it; retaining the construction width would reveal a horizontal
+-- scrollbar even though the single name column is meant to stretch.
+local fileTree = ns.OutlineView {
+	width = 400,
+	height = 200,
+	header = false,
+	columns = {
+		{ id = "name", title = "Name", systemImage = "doc.text" },
+	},
+	data = {
+		{ name = "project", children = {
+			{ name = "a-file-with-a-long-name.lua" },
+		} },
+	},
+}
+bridge._setContentSize(fileTree, 220, 200)
+bridge._layout(fileTree, 220)
+local outlineWidths = bridge._tableColumnWidths(fileTree)
+t.assertEqual(#outlineWidths, 1, "file tree has one outline column")
+t.assertEqual(outlineWidths[1].width, 220,
+	"file tree column shrinks to the navigator viewport")
+t.expect(not fileTree.hasHorizontalScroller,
+	"stretching file tree does not show a horizontal scroller")
+
 -- HSplit respects fixedWidth on children (no proportions configured).
 
 local leftFix = ns.Text {

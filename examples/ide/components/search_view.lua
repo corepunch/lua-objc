@@ -4,16 +4,18 @@
 local ns = require("AppKit")
 local bridge = require("bridge")
 
-local SEARCH_WIDTH = 520
-local SEARCH_COLLAPSED_HEIGHT = 48
-local SEARCH_EXPANDED_HEIGHT = 360
-local SEARCH_HEADER_HEIGHT = 48
-local SEARCH_FIELD_HEIGHT = 28
-local SEARCH_ICON_SIZE = 22
-local SEARCH_ICON_FRAME = 28
-local SEARCH_ROW_HEIGHT = 28
-local SEARCH_HEADER_PADDING_HORIZONTAL = 14
-local SEARCH_HEADER_SPACING = 8
+local SEARCH = {
+	width = 520,
+	collapsedHeight = 48,
+	expandedHeight = 360,
+	headerHeight = 48,
+	fieldHeight = 28,
+	iconSize = 22,
+	iconFrame = 28,
+	rowHeight = 28,
+	headerPaddingHorizontal = 14,
+	headerSpacing = 8,
+}
 
 local SearchView = {}
 SearchView.__index = SearchView
@@ -49,10 +51,10 @@ function SearchView:_setExpanded(expanded)
 	self._resultsView.hidden = not expanded
 	ns.resizeWindow(
 		self._panel,
-		SEARCH_WIDTH,
-		expanded and SEARCH_EXPANDED_HEIGHT or SEARCH_COLLAPSED_HEIGHT,
+		SEARCH.width,
+		expanded and SEARCH.expandedHeight or SEARCH.collapsedHeight,
 		"top")
-	ns.relayout(self._content, SEARCH_WIDTH)
+	ns.relayout(self._content, SEARCH.width)
 end
 
 function SearchView:_replaceResults(query)
@@ -150,7 +152,7 @@ function SearchView:show(window)
 	self._parentWindow = window
 	self:setQuery("")
 	ns.present(self._panel, window, {
-		offsetY = (SEARCH_EXPANDED_HEIGHT - SEARCH_COLLAPSED_HEIGHT) / 2,
+		offsetY = (SEARCH.expandedHeight - SEARCH.collapsedHeight) / 2,
 	})
 	ns.focus(self._panel, self._searchField)
 end
@@ -183,7 +185,7 @@ local function create(props)
 		alternatingRows = false,
 		drawsBackground = false,
 		style = "plain",
-		rowHeight = SEARCH_ROW_HEIGHT,
+		rowHeight = SEARCH.rowHeight,
 		indentation = 0,
 		flexGrow = 1,
 		flexBasis = 0,
@@ -208,7 +210,7 @@ local function create(props)
 		drawsBackground = false,
 		focusRing = false,
 		size = 20,
-		fixedHeight = SEARCH_FIELD_HEIGHT,
+		fixedHeight = SEARCH.fieldHeight,
 		fillWidth = true,
 		flexGrow = 1,
 		flexBasis = 0,
@@ -224,28 +226,28 @@ local function create(props)
 	self._searchIcon = ns.SystemImage {
 		"magnifyingglass",
 		accessibilityLabel = "Search",
-		size = SEARCH_ICON_SIZE,
+		size = SEARCH.iconSize,
 		weight = "regular",
 		color = "secondary",
-		fixedWidth = SEARCH_ICON_FRAME,
-		fixedHeight = SEARCH_ICON_FRAME,
+		fixedWidth = SEARCH.iconFrame,
+		fixedHeight = SEARCH.iconFrame,
 		flexGrow = 0,
 		flexShrink = 0,
 	}
 
 	self._searchHeader = ns.HStack {
-		fixedHeight = SEARCH_HEADER_HEIGHT,
+		fixedHeight = SEARCH.headerHeight,
 		fillWidth = true,
 		alignment = "center",
-		paddingHorizontal = SEARCH_HEADER_PADDING_HORIZONTAL,
-		spacing = SEARCH_HEADER_SPACING,
+		paddingHorizontal = SEARCH.headerPaddingHorizontal,
+		spacing = SEARCH.headerSpacing,
 		self._searchIcon,
 		self._searchField,
 	}
 
 	self._panel, self._content = ns.Panel {
-		width = SEARCH_WIDTH,
-		height = SEARCH_COLLAPSED_HEIGHT,
+		width = SEARCH.width,
+		height = SEARCH.collapsedHeight,
 		material = "popover",
 		padding = 0,
 		spacing = 0,
