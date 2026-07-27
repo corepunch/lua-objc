@@ -134,25 +134,7 @@ static int bridge_eval(lua_State *L) {
 		n = snprintf(wrapped, sizeof(wrapped),
 			"local ns=require('AppKit');"
 			"local __rr, __tvbar;"
-			"local function __build_toolbar(items)"
-			"  if not items or #items == 0 then return nil end"
-			"  local btns = {fixedHeight=28, paddingHorizontal=8, spacing=6, alignment='center'}"
-			"  for _,it in ipairs(items) do"
-			"    local b"
-			"    if it.icon then"
-			"      b = ns.Button{systemImage=it.icon, tooltip=it.tooltip or it.label, style='plain', action=it.action}"
-			"    elseif it.label then"
-			"      b = ns.Button{it.label, tooltip=it.tooltip, style='plain', action=it.action}"
-			"    end"
-			"    if b then btns[#btns+1]=b end"
-			"  end"
-			"  if #btns == 0 then return nil end"
-			"  return ns.VStack{fixedHeight=29, flexGrow=0, fillWidth=true, spacing=0,"
-			"    ns.HStack(btns),"
-			"    ns.Separator(),"
-			"  }"
-			"end;"
-			"ns.Window=function(p) __tvbar=__build_toolbar(p.toolbar) __rr=ns.VStack(p) return __rr end;"
+			"ns.Window=function(p) __tvbar=p.toolbar; __rr=ns.VStack(p) return __rr end;"
 			"ns.Preview=function(p) __rr=ns.VStack(p) return __rr end;"
 			"local __rok,__ret=pcall(function()\n%s\nend);"
 			"if not __rok then error(__ret) end;"
@@ -183,27 +165,42 @@ static int bridge_eval(lua_State *L) {
 			return 2;
 		}
 
-		/* Stack (C): [-2] = content view, [-1] = toolbar bar view (or nil) */
+		/* Stack (C): [-2] = content view, [-1] = toolbar items table (or nil) */
 
-		/* Marshal toolbar bar view if present; store it on the content view
-		 * as an associated object so _evalIntoCanvas can retrieve it. */
+		/* Extract toolbar item definitions and store on the content view
+		 * as an NSArray of NSDictionary so _evalIntoCanvas can build
+		 * native buttons for the CANVAS ControlBar in the main state. */
 		{
-			ObjCRef *tbref = luaL_testudata(C, -1, "nsview");
-			if (tbref) {
-				NSView *tbView = (__bridge NSView *)tbref->ptr;
-				clear_canvas_lua_refs(tbView);
-				/* Stash on index -2 (content view) before we pop the toolbar */
-				ObjCRef *cvref = luaL_testudata(C, -2, "nsview");
-				if (!cvref) cvref = luaL_testudata(C, -2, "nswindow");
-				if (cvref) {
-					NSView *contentView = (__bridge NSView *)cvref->ptr;
-					objc_setAssociatedObject(contentView,
-						&kKeys[kCanvasToolbarKey], tbView,
-						OBJC_ASSOCIATION_RETAIN);
+			ObjCRef *cvref = luaL_testudata(C, -2, "nsview");
+			if (!cvref) cvref = luaL_testudata(C, -2, "nswindow");
+			NSView *contentView = cvref ? (__bridge NSView *)cvref->ptr : nil;
+
+			if (contentView && lua_istable(C, -1)) {
+				NSMutableArray *items = [NSMutableArray array];
+
+				lua_pushnil(C);
+				while (lua_next(C, -2)) {
+					/* key: index, value: item table {icon, label, tooltip} */
+					if (lua_istable(C, -1)) {
+						NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+						lua_pushnil(C);
+						while (lua_next(C, -2)) {
+							const char *k = lua_tostring(C, -2);
+							const char *v = lua_tostring(C, -1);
+							if (k && v) dict[@(k)] = @(v);
+							lua_pop(C, 1);
+						}
+						if (dict.count > 0) [items addObject:dict];
+					}
+					lua_pop(C, 1);
 				}
+
+				objc_setAssociatedObject(contentView,
+					&kKeys[kCanvasToolbarItemsKey], items,
+					OBJC_ASSOCIATION_RETAIN);
 			}
 		}
-		lua_pop(C, 1);  /* pop toolbar view */
+		lua_pop(C, 1);  /* pop toolbar items */
 
 		/* Marshal the resulting view from the canvas state into gL.
 		 * The ObjCRef holds a CFBridgingRetain'd pointer, so extracting

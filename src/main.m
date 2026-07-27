@@ -43,7 +43,7 @@ enum {
 	kSplitPaneFrameObserverKey,
 	kSplitProportionsKey,
 	kSplitProportionsAppliedKey,
-	kCanvasToolbarKey,
+	kCanvasToolbarItemsKey,
 	kTableScrollViewKey,
 	kKeyCount
 };
@@ -2683,17 +2683,30 @@ static int bridge_toolbar_item(lua_State *L) {
 	return 1;
 }
 
-/* Return the canvas toolbar bar view stored on a canvas content view, or nil.
- * The toolbar bar is an NSView (HStack of buttons) built in the canvas state
- * and attached here so it can be inserted above the content in the IDE canvas. */
-static int bridge_canvas_toolbar(lua_State *L) {
+/* Return the canvas toolbar items stored on a canvas content view as a Lua
+ * array of item tables (each with icon/label/tooltip string keys), or nil.
+ * The items were extracted from the user code's Window.toolbar in the canvas
+ * state and stored as an NSArray of NSDictionary via canvas_eval.m. */
+static int bridge_canvas_toolbar_items(lua_State *L) {
 	NSView *view = check_view(L, 1);
-	NSView *tbView = objc_getAssociatedObject(view, &kKeys[kCanvasToolbarKey]);
-	if (!tbView) {
+	NSArray<NSDictionary *> *items = objc_getAssociatedObject(view, &kKeys[kCanvasToolbarItemsKey]);
+	if (!items || items.count == 0) {
 		lua_pushnil(L);
 		return 1;
 	}
-	push_objc(L, tbView, "nsview");
+
+	lua_newtable(L);
+	int i = 1;
+	for (NSDictionary *dict in items) {
+		lua_newtable(L);
+		NSString *icon = dict[@"icon"];
+		NSString *label = dict[@"label"];
+		NSString *tooltip = dict[@"tooltip"];
+		if (icon)    { lua_pushstring(L, icon.UTF8String);    lua_setfield(L, -2, "icon"); }
+		if (label)   { lua_pushstring(L, label.UTF8String);   lua_setfield(L, -2, "label"); }
+		if (tooltip) { lua_pushstring(L, tooltip.UTF8String); lua_setfield(L, -2, "tooltip"); }
+		lua_rawseti(L, -2, i++);
+	}
 	return 1;
 }
 
@@ -3327,6 +3340,38 @@ static int bridge_text_view_set_wrap_mode(lua_State *L) {
 	return 0;
 }
 
+/* Symbol button: a non-toggling NSButton with an SF Symbol, matching the
+ * visual style of _symbolToggle (rounded bezel, same size and point weight).
+ * Args: symbolName, tooltip */
+static int bridge_symbol_button(lua_State *L) {
+	const char *symbol = luaL_checkstring(L, 1);
+	const char *tooltip = luaL_optstring(L, 2, "");
+
+	NSString *name = [NSString stringWithUTF8String:symbol];
+	NSImage *img = [NSImage imageWithSystemSymbolName:name
+		accessibilityDescription:[NSString stringWithUTF8String:tooltip]];
+	if (!img) {
+		return luaL_error(L, "unknown SF Symbol: %s", symbol);
+	}
+
+	NSImageSymbolConfiguration *config =
+		[NSImageSymbolConfiguration configurationWithPointSize:kSymbolTogglePointSize
+														weight:NSFontWeightMedium];
+	img = [img imageWithSymbolConfiguration:config];
+
+	NSButton *btn = [[NSButton alloc] initWithFrame:NSMakeRect(0, 0, kSymbolToggleSize, kSymbolToggleSize)];
+	btn.title = @"";
+	btn.image = img;
+	btn.imagePosition = NSImageOnly;
+	btn.bezelStyle = NSBezelStyleRounded;
+	btn.buttonType = NSButtonTypeMomentaryPushIn;
+	btn.toolTip = [NSString stringWithUTF8String:tooltip];
+	btn.accessibilityLabel = btn.toolTip;
+
+	push_objc(L, btn, "nsview");
+	return 1;
+}
+
 /* Symbol toggle: an NSButton with an SF Symbol, acting as an on/off toggle.
  * Args: symbolName, tooltip, initialState, callback(optional) */
 static int bridge_symbol_toggle(lua_State *L) {
@@ -3574,7 +3619,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_setAppearance",    bridge_set_appearance},
 	{"_tableview",        bridge_tableview},
 	{"_toolbar_item",     bridge_toolbar_item},
-	{"_canvas_toolbar",   bridge_canvas_toolbar},
+	{"_canvas_toolbar_items", bridge_canvas_toolbar_items},
 	{"_button",           bridge_button},
 	{"_actionButton",     bridge_action_button},
 	{"_toggle",           bridge_toggle},
@@ -3595,6 +3640,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_textViewSetLanguage", bridge_text_view_set_language},
 	{"_textViewSetWrapMode", bridge_text_view_set_wrap_mode},
 	{"_symbolToggle",       bridge_symbol_toggle},
+	{"_symbolButton",       bridge_symbol_button},
 	{"_eval",             bridge_eval},
 	{"_clearContainer",   bridge_clear_container},
 	{"_renderToPNG",      bridge_render_to_png},

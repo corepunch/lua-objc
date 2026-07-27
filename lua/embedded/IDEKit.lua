@@ -107,16 +107,24 @@ end
 -- Xcode's approach of displaying content-only with no NSWindow frame.
 function IDEKit.PreviewArea(props)
 	props = props or {}
-	return ns.VStack {
+	local toolbarRow = ns.HStack {
+		flexGrow = 0,
+		flexShrink = 0,
+		spacing = 4,
+	}
+	local area = ns.VStack {
 		flexGrow = props.flexGrow or 1,
 		spacing = 0,
 		IDEKit.ControlBar {
 			title = props.title or "Canvas",
 			leading = props.leading,
-			buttons = props.buttons or props.trailing,
+			buttons = { toolbarRow },
 		},
 		wrapContent(props.content),
 	}
+	IDEKit._canvasToolbarTarget = toolbarRow
+	IDEKit._canvasToolbarParent = area
+	return area
 end
 
 -- WorkspaceLayout: root 3-panel HSplit.
@@ -179,7 +187,8 @@ end
 
 -- _evalIntoCanvas: evaluate Lua code and render the result into a canvas view.
 -- ns.Window is intercepted so scripts that call ns.Window{} render inline.
--- If the script defines a toolbar, a button bar is inserted above the content.
+-- If the script defines a toolbar, buttons are placed in the PreviewArea
+-- ControlBar via _setToolbarButtons.
 function IDEKit._evalIntoCanvas(canvas, code)
 	if not canvas then return end
 
@@ -196,12 +205,32 @@ function IDEKit._evalIntoCanvas(canvas, code)
 		bridge._perform(label, "sizeToFit")
 		bridge._add(canvas, label)
 	elseif result then
-		local toolbarBar = bridge._canvas_toolbar(result)
-		if toolbarBar then bridge._add(canvas, toolbarBar) end
+		local toolbarItems = bridge._canvas_toolbar_items(result)
+		IDEKit._setToolbarButtons(toolbarItems)
 		bridge._add(canvas, result)
 	end
 
 	bridge._layout(canvas)
+end
+
+-- _setToolbarButtons: rebuild toolbar buttons in the CANVAS ControlBar.
+-- Items is an array of {icon, tooltip} descriptors from the canvas eval,
+-- or nil to clear all buttons.
+function IDEKit._setToolbarButtons(items)
+	local target = IDEKit._canvasToolbarTarget
+	local parent = IDEKit._canvasToolbarParent
+	if not target then return end
+
+	bridge._clearContainer(target)
+	if items then
+		for _, item in ipairs(items) do
+			if item.icon then
+				local btn = bridge._symbolButton(item.icon, item.tooltip or item.label)
+				bridge._add(target, btn)
+			end
+		end
+	end
+	if parent then bridge._layout(parent) end
 end
 
 function IDEKit.renderCanvas(code, width, height)
