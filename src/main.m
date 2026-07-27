@@ -472,6 +472,12 @@ static void report_lua_error(lua_State *L, const char *context) {
 			initWithFrame:NSMakeRect(0, 0, column.width, ov.rowHeight)];
 		cell.identifier = reuseId;
 
+		NSImageView *imageView = [[NSImageView alloc] initWithFrame:NSZeroRect];
+		imageView.imageScaling = NSImageScaleProportionallyDown;
+		imageView.contentTintColor = NSColor.secondaryLabelColor;
+		[cell addSubview:imageView];
+		cell.imageView = imageView;
+
 		NSTextField *tf = [NSTextField labelWithString:@""];
 		tf.bezeled = NO;
 		tf.drawsBackground = NO;
@@ -480,12 +486,6 @@ static void report_lua_error(lua_State *L, const char *context) {
 		tf.lineBreakMode = NSLineBreakByTruncatingTail;
 		[cell addSubview:tf];
 		cell.textField = tf;
-
-		NSImageView *imageView = [[NSImageView alloc] initWithFrame:NSZeroRect];
-		imageView.imageScaling = NSImageScaleProportionallyDown;
-		imageView.contentTintColor = NSColor.secondaryLabelColor;
-		[cell addSubview:imageView];
-		cell.imageView = imageView;
 	}
 	cell.textField.stringValue = text;
 
