@@ -117,13 +117,6 @@ function Source.open(folder, app, initialFile)
 
 	local editorArea, tabView
 
-	local function openPath(path)
-		if isImageFile(path) then
-			return openImage(path, app)
-		end
-		return openInEditor(path)
-	end
-
 	local function openInEditor(path)
 		local f = io.open(path, "r")
 		if not f then return end
@@ -143,10 +136,15 @@ function Source.open(folder, app, initialFile)
 			app.recent:recordFile(path)
 		end
 
-		-- Start file viewer for this tab.
 		watchFile(path)
-
 		return idx
+	end
+
+	local function openPath(path)
+		if isImageFile(path) then
+			return openImage(path, app)
+		end
+		return openInEditor(path)
 	end
 
 	fileTree:onRowSelect(function(list, rowIndex, rowData)

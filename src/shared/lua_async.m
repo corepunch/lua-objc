@@ -194,10 +194,7 @@ static int bridge_timer_after(lua_State *L) {
 			}
 			lua_State *callL = owner.L;
 			lua_rawgeti(callL, LUA_REGISTRYINDEX, ref);
-			if (lua_pcall(callL, 0, 0, 0) != LUA_OK) {
-				report_lua_error(callL, "timer");
-				lua_pop(callL, 1);
-			}
+			lua_objc_pcall(callL, 0, 0, "timer");
 			luaL_unref(callL, LUA_REGISTRYINDEX, ref);
 		}];
 
@@ -256,42 +253,6 @@ static int bridge_http_get(lua_State *L) {
 	return 0;
 }
 
-static void push_foundation_value(lua_State *L, id value) {
-	if (!value || value == [NSNull null]) {
-		lua_pushnil(L);
-	} else if ([value isKindOfClass:[NSString class]]) {
-		lua_pushstring(L, [(NSString *)value UTF8String]);
-	} else if ([value isKindOfClass:[NSNumber class]]) {
-		NSNumber *num = (NSNumber *)value;
-		if (strcmp(num.objCType, @encode(BOOL)) == 0
-			|| strcmp(num.objCType, "c") == 0
-			|| strcmp(num.objCType, "B") == 0) {
-			lua_pushboolean(L, num.boolValue);
-		} else {
-			lua_pushnumber(L, num.doubleValue);
-		}
-	} else if ([value isKindOfClass:[NSDictionary class]]) {
-		lua_newtable(L);
-		NSDictionary *dict = (NSDictionary *)value;
-		for (id key in dict) {
-			push_foundation_value(L, dict[key]);
-			NSString *strKey = [key isKindOfClass:[NSString class]]
-				? (NSString *)key : [key description];
-			lua_setfield(L, -2, strKey.UTF8String);
-		}
-	} else if ([value isKindOfClass:[NSArray class]]) {
-		lua_newtable(L);
-		NSArray *array = (NSArray *)value;
-		int i = 1;
-		for (id item in array) {
-			push_foundation_value(L, item);
-			lua_rawseti(L, -2, i++);
-		}
-	} else {
-		lua_pushstring(L, [[value description] UTF8String]);
-	}
-}
-
 static int bridge_json_parse(lua_State *L) {
 	const char *json = luaL_checkstring(L, 1);
 	NSData *data = [[NSString stringWithUTF8String:json]
@@ -303,6 +264,6 @@ static int bridge_json_parse(lua_State *L) {
 		lua_pushstring(L, error.localizedDescription.UTF8String);
 		return 2;
 	}
-	push_foundation_value(L, obj);
+	push_objc_value(L, obj);
 	return 1;
 }
