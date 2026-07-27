@@ -472,6 +472,39 @@ static int bridge_table_column_widths(lua_State *L) {
 	return 1;
 }
 
+static int bridge_table_cell_frames(lua_State *L) {
+	id obj = check_objc(L, 1);
+	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
+	if (!src) return luaL_error(L, "not a table view");
+
+	NSScrollView *sv = table_scrollview(obj);
+	NSTableView *tv = (NSTableView *)sv.documentView;
+	if (![tv isKindOfClass:[NSTableView class]]) return 0;
+
+	NSInteger row = (NSInteger)luaL_optinteger(L, 2, 0);
+	if (row < 0 || row >= tv.numberOfRows) {
+		return luaL_error(L, "table row out of bounds");
+	}
+
+	lua_newtable(L);
+	NSArray<NSTableColumn *> *columns = tv.tableColumns;
+	for (NSUInteger i = 0; i < columns.count; i++) {
+		NSTableColumn *col = columns[i];
+		NSRect frame = [tv frameOfCellAtColumn:(NSInteger)i row:row];
+		lua_newtable(L);
+		lua_pushstring(L, col.identifier.UTF8String);
+		lua_setfield(L, -2, "id");
+		lua_pushnumber(L, frame.origin.x);
+		lua_setfield(L, -2, "x");
+		lua_pushnumber(L, frame.size.width);
+		lua_setfield(L, -2, "width");
+		lua_pushnumber(L, NSMaxX(frame));
+		lua_setfield(L, -2, "maxX");
+		lua_rawseti(L, -2, (lua_Integer)(i + 1));
+	}
+	return 1;
+}
+
 static int bridge_table_set_refresh(lua_State *L) {
 	id obj = check_objc(L, 1);
 	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);

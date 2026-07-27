@@ -65,6 +65,25 @@ static void push_objc(lua_State *L, id obj, const char *meta);
 	return (NSInteger)_rows.count;
 }
 
+- (CGFloat)horizontalCellOverhead {
+	/*
+	 * Source-list styling applies a native leading inset to row cells, and
+	 * NSTableView places inter-column spacing outside the declared widths.
+	 * Measure both from AppKit's actual last-cell frame so fixed and flexible
+	 * columns remain inside the clip view without duplicating system metrics.
+	 */
+	if (_tableView.style != NSTableViewStyleSourceList ||
+		_rows.count == 0 || _tableView.tableColumns.count == 0) return 0;
+
+	CGFloat declaredWidth = 0;
+	for (NSTableColumn *col in _tableView.tableColumns) {
+		declaredWidth += col.width;
+	}
+	NSRect lastCell = [_tableView frameOfCellAtColumn:
+		(NSInteger)_tableView.tableColumns.count - 1 row:0];
+	return MAX(0, NSMaxX(lastCell) - declaredWidth);
+}
+
 - (void)updateTableFrame {
 	NSClipView *clipView = (NSClipView *)_tableView.superview;
 	if (![clipView isKindOfClass:[NSClipView class]]) return;
@@ -98,9 +117,10 @@ static void push_objc(lua_State *L, id obj, const char *meta);
 
 	BOOL overflows = NO;
 	CGFloat tableWidth = viewport.width;
+	CGFloat cellOverhead = [self horizontalCellOverhead];
 
 	if (hasFlex) {
-		CGFloat remaining = viewport.width - fixedDesired;
+		CGFloat remaining = viewport.width - fixedDesired - cellOverhead;
 		if (remaining > 0) {
 			for (NSTableColumn *col in _tableView.tableColumns) {
 				NSNumber *flexN = objc_getAssociatedObject(
@@ -114,16 +134,17 @@ static void push_objc(lua_State *L, id obj, const char *meta);
 			for (NSTableColumn *col in _tableView.tableColumns) {
 				col.width = col.minWidth;
 			}
-			overflows = (viewport.width < allMin);
-			if (overflows) tableWidth = allMin;
+			overflows = (viewport.width < allMin + cellOverhead);
+			if (overflows) tableWidth = allMin + cellOverhead;
 		}
 	} else {
 		CGFloat totalColumnWidth = 0;
 		for (NSTableColumn *col in _tableView.tableColumns) {
 			totalColumnWidth += col.width;
 		}
-		overflows = totalColumnWidth > viewport.width;
-		if (overflows) tableWidth = totalColumnWidth;
+		CGFloat contentWidth = totalColumnWidth + cellOverhead;
+		overflows = contentWidth > viewport.width;
+		if (overflows) tableWidth = contentWidth;
 		if (!overflows) {
 			[_tableView sizeLastColumnToFit];
 		}

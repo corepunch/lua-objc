@@ -689,8 +689,13 @@ bridge._layout(mailbox, 170)
 cw = bridge._tableColumnWidths(mailbox)
 local nameW = colWidth(cw, "name")
 local countW = colWidth(cw, "count")
+local cellFrames = bridge._tableCellFrames(mailbox, 0)
+local countFrame = cellFrames[2]
 
 t.assertEqual(countW, 45, "mailbox count column at 45 px (got " .. countW .. ")")
-t.assertEqual(nameW, 125, "mailbox name column fills 125 px (170-45, got " .. nameW .. ")")
+t.expect(nameW < 125, "mailbox name column reserves native source-list inset")
+t.assertEqual(countFrame.id, "count", "mailbox second rendered cell is count")
+t.expect(countFrame.maxX <= 170,
+	"mailbox count cell stays inside viewport (maxX " .. countFrame.maxX .. ")")
 
 os.exit(t.summary() and 0 or 1)

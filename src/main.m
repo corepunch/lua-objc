@@ -211,6 +211,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_jsonParse",       bridge_json_parse},
 	{"_tableSetRefresh", bridge_table_set_refresh},
 	{"_tableColumnWidths", bridge_table_column_widths},
+	{"_tableCellFrames", bridge_table_cell_frames},
 	{"_textView",         bridge_text_view},
 	{"_textViewGetText",  bridge_text_view_get_text},
 	{"_textViewSetText",  bridge_text_view_set_text},
