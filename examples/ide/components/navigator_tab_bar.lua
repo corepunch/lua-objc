@@ -57,6 +57,9 @@ local function NavigatorTabBar(props)
 				if idx >= 0 and idx < seg.segmentCount then
 					seg.selectedSegment = idx
 				end
+				if onSelect then
+					onSelect(tab.id)
+				end
 				return
 			end
 		end

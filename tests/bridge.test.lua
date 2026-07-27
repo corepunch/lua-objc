@@ -9,6 +9,7 @@ local TextEditorPlugin = require("examples.ide.plugins.text_editor")
 local NativeControlsPlugin = require("examples.ide.plugins.native_controls")
 local RecentState = require("examples.ide.state.recent")
 local NavigatorArea = require("examples.ide.components.navigator_area")
+local FindInFiles = require("examples.ide.components.find_in_files")
 local EditorArea = require("examples.ide.components.editor_area")
 local PreviewArea = require("examples.ide.components.preview_area")
 local WorkspaceLayout = require("examples.ide.components.workspace_layout")
@@ -64,6 +65,25 @@ t.expect(bridge._textFieldTestCommand(input, "submit"),
 	"TextField onCommand can consume a native editing command")
 t.assertEqual(receivedCommand, "submit",
 	"TextField onCommand receives the normalized command name")
+
+-- Borderless fields keep their native intrinsic height so a centered HStack
+-- aligns visible glyphs with adjacent symbols, not merely an oversized frame.
+
+local findInFiles, findInFilesRoot = FindInFiles {
+	files = { "/project/main.lua" },
+}
+bridge._setContentSize(findInFilesRoot, 220, 300)
+bridge._layout(findInFilesRoot, 220)
+local _, searchIconY, _, searchIconHeight =
+	bridge._viewFrameInWindow(findInFiles._searchIcon)
+local _, searchFieldY, _, searchFieldHeight =
+	bridge._viewFrameInWindow(findInFiles._searchField)
+t.assertEqual(searchFieldHeight, 16,
+	"borderless Find field keeps AppKit's native intrinsic text height")
+t.expect(math.abs(
+		(searchIconY + searchIconHeight / 2)
+		- (searchFieldY + searchFieldHeight / 2)) < 0.5,
+	"Find field and search symbol share the same vertical center")
 
 -- Window with visible=false does not show
 
@@ -165,7 +185,7 @@ t.expect(actionX >= editorX
 
 local tabFiles = ns.Text "File Tree"
 local tabFind = ns.Text "Search Results"
-local tabbedNav = NavigatorArea {
+local tabbedNav, selectNavigatorTab = NavigatorArea {
 	tabs = {
 		{ id = "files", symbol = "folder", tooltip = "Project Files" },
 		{ id = "find", symbol = "magnifyingglass", tooltip = "Find in Files" },
@@ -183,6 +203,15 @@ local navSize = bridge._viewSize(tabbedNav)
 t.expect(navSize > 0, "tabbed NavigatorArea has a positive width after layout")
 t.expect(not tabFiles.hidden, "initial tab content (files) is visible")
 t.expect(tabFind.hidden, "inactive tab content (find) is hidden")
+selectNavigatorTab("find")
+t.expect(tabFiles.hidden, "switching tabs hides Files content")
+t.expect(not tabFind.hidden, "switching tabs reveals Find content")
+local findWidth, findHeight = bridge._viewSize(tabFind)
+t.expect(findWidth > 0 and findHeight > 0,
+	"newly revealed Find content is laid out at a visible size")
+selectNavigatorTab("files")
+t.expect(not tabFiles.hidden and tabFind.hidden,
+	"navigator tab switching round-trips without stale visibility")
 
 local segmented = bridge._segmentedControl({
 	{ "folder", "Files" },
@@ -190,8 +219,12 @@ local segmented = bridge._segmentedControl({
 }, 0)
 t.assertEqual(segmented.selectedSegment, 0,
 	"segmented control selection is readable through native KVC")
-t.assertEqual(segmented.segmentStyle, 5,
-	"navigator tabs use AppKit's native capsule segments")
+t.expect(segmented.segmentStyle == 0 or segmented.segmentStyle == 5,
+	"navigator tabs use AppKit's automatic capsule-compatible style")
+if segmented.borderShape ~= nil then
+	t.assertEqual(segmented.borderShape, 1,
+		"navigator tabs use macOS 26's native capsule border shape")
+end
 segmented.selectedSegment = 1
 t.assertEqual(segmented.selectedSegment, 1,
 	"segmented control selection is writable through native KVC")

@@ -1,5 +1,17 @@
 #pragma mark - Native tab containers
 
+static void configure_rounded_tab_selector(NSSegmentedControl *selector) {
+	selector.trackingMode = NSSegmentSwitchTrackingSelectOne;
+	selector.segmentDistribution = NSSegmentDistributionFillEqually;
+	selector.selectedSegmentBezelColor = NSColor.controlBackgroundColor;
+	if (@available(macOS 26.0, *)) {
+		selector.segmentStyle = NSSegmentStyleAutomatic;
+		selector.borderShape = NSControlBorderShapeCapsule;
+	} else {
+		selector.segmentStyle = NSSegmentStyleCapsule;
+	}
+}
+
 @interface LuaRoundedTabItem : NSObject
 @property (nonatomic, copy) NSString *identifier;
 @property (nonatomic, copy) NSString *label;
@@ -40,9 +52,7 @@
 				MAX(0, frameRect.size.width -
 					2 * kRoundedTabHorizontalInset),
 				kRoundedTabControlHeight)];
-		_tabSelector.segmentStyle = NSSegmentStyleCapsule;
-		_tabSelector.segmentDistribution = NSSegmentDistributionFillEqually;
-		_tabSelector.trackingMode = NSSegmentSwitchTrackingSelectOne;
+		configure_rounded_tab_selector(_tabSelector);
 		_tabSelector.controlSize = NSControlSizeRegular;
 		_tabSelector.font = [NSFont systemFontOfSize:kRoundedTabFontSize];
 		_tabSelector.target = self;
@@ -362,9 +372,7 @@ static int bridge_segmented_control(lua_State *L) {
 	NSSegmentedControl *seg = [[NSSegmentedControl alloc]
 		initWithFrame:NSMakeRect(0, 0, (CGFloat)count * 28, 28)];
 	seg.segmentCount = count;
-	seg.trackingMode = NSSegmentSwitchTrackingSelectOne;
-	seg.segmentStyle = NSSegmentStyleCapsule;
-	seg.segmentDistribution = NSSegmentDistributionFillEqually;
+	configure_rounded_tab_selector(seg);
 
 	NSImageSymbolConfiguration *symConfig =
 		[NSImageSymbolConfiguration configurationWithPointSize:13

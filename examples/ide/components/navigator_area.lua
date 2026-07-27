@@ -33,6 +33,7 @@ local function NavigatorArea(props)
 	}
 	local content = props.content or {}
 	local initialTab = props.selectedId or (tabs[1] and tabs[1].id)
+	local area
 
 	local bar, selectTab = NavigatorTabBar {
 		tabs = tabs,
@@ -42,6 +43,8 @@ local function NavigatorArea(props)
 				for tid, view in pairs(content) do
 					view.hidden = (tid ~= id)
 				end
+				if area then bridge._layout(area) end
+				if props.onSelect then props.onSelect(id) end
 			end
 		end,
 	}
@@ -52,12 +55,12 @@ local function NavigatorArea(props)
 		children[#children + 1] = wrapContent(view)
 	end
 
-	local area = ns.VStack {
+	area = ns.VStack {
 		spacing = 0,
 		table.unpack(children),
 	}
 
-	return area
+	return area, selectTab
 end
 
 return NavigatorArea
