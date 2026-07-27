@@ -59,6 +59,9 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
 - Use tabs for leading indentation in `.m` and `.lua`.
 - Visual/layout numeric values must be named constants in the platform root:
   `src/main.m` for AppKit and `src/uikit/bridge.m` for UIKit.
+- Group related layout constants into a local table (e.g. `local SEARCH = {
+  width = 520, rowHeight = 28 }`) rather than separate `local SCREAMING_SNAKE`
+  variables. Prefer flat camelCase keys.
 - Comments explain design reasons, edge cases, and existing prior art.
 - Keep `examples/<app>/main.lua` thin. Put UI bricks in `components/`, state in
   `state/`, and editor surfaces in `plugins/`.
