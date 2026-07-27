@@ -20,11 +20,7 @@
 
 	lua_rawgeti(gL, LUA_REGISTRYINDEX, ref);
 	push_objc(gL, sender, "nsview");
-	int status = lua_pcall(gL, 1, 0, 0);
-	if (status != LUA_OK) {
-		report_lua_error(gL, "button");
-		lua_pop(gL, 1);
-	}
+	lua_objc_pcall(gL, 1, 0, "button");
 }
 
 @end
@@ -340,4 +336,3 @@ static NSColor *semantic_color(NSString *name) {
 }
 
 @end
-

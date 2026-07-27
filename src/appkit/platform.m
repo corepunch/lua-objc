@@ -74,10 +74,7 @@ static void file_watcher_callback(ConstFSEventStreamRef streamRef,
 
 	lua_rawgeti(gL, LUA_REGISTRYINDEX, entry.luaRef);
 	lua_pushstring(gL, path.UTF8String);
-	if (lua_pcall(gL, 1, 0, 0) != LUA_OK) {
-		report_lua_error(gL, "watchFile");
-		lua_pop(gL, 1);
-	}
+	lua_objc_pcall(gL, 1, 0, "watchFile");
 }
 
 static int bridge_watch_file(lua_State *L) {
@@ -170,4 +167,3 @@ static int bridge_pick_file(lua_State *L) {
 	lua_pushstring(L, panel.URL.path.UTF8String);
 	return 1;
 }
-

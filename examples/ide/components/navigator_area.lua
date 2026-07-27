@@ -34,7 +34,7 @@ local function NavigatorArea(props)
 	local content = props.content or {}
 	local initialTab = props.selectedId or (tabs[1] and tabs[1].id)
 
-	local bar, buttons, selectTab = NavigatorTabBar {
+	local bar, selectTab = NavigatorTabBar {
 		tabs = tabs,
 		selectedId = initialTab,
 		onSelect = function(id)

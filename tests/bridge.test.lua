@@ -184,6 +184,19 @@ t.expect(navSize > 0, "tabbed NavigatorArea has a positive width after layout")
 t.expect(not tabFiles.hidden, "initial tab content (files) is visible")
 t.expect(tabFind.hidden, "inactive tab content (find) is hidden")
 
+local segmented = bridge._segmentedControl({
+	{ "folder", "Files" },
+	{ "magnifyingglass", "Find" },
+}, 0)
+t.assertEqual(segmented.selectedSegment, 0,
+	"segmented control selection is readable through native KVC")
+segmented.selectedSegment = 1
+t.assertEqual(segmented.selectedSegment, 1,
+	"segmented control selection is writable through native KVC")
+t.assertThrows(function()
+	bridge._tabCount(segmented)
+end, "typed native arguments reject a view of the wrong Cocoa class")
+
 -- EditorArea with tabbed API returns area + native NSTabView.
 
 local tabbedEditor, tabView = EditorArea {
@@ -498,6 +511,49 @@ t.expect(
 local parsed = ns.json_parse('{"key": 42, "name": "test"}')
 t.assertEqual(parsed.key, 42, "json_parse: numeric value")
 t.assertEqual(parsed.name, "test", "json_parse: string value")
+
+-- Shared Lua/Foundation conversion preserves nested collections and scalar
+-- types across ordinary KVC and invocation boundaries.
+
+local valueCarrier = bridge._create("NSTableCellView")
+local embeddedNul = "left\0right"
+local largeInteger = 9007199254740993
+valueCarrier.objectValue = {
+	title = embeddedNul,
+	enabled = true,
+	count = largeInteger,
+	items = { "one", 2, false },
+}
+local roundTrip = valueCarrier.objectValue
+t.assertEqual(roundTrip.title, embeddedNul,
+	"Foundation conversion preserves embedded NUL bytes")
+t.assertEqual(roundTrip.enabled, true,
+	"Foundation conversion preserves booleans")
+t.assertEqual(roundTrip.count, largeInteger,
+	"Foundation conversion preserves Lua integers above double precision")
+t.assertEqual(roundTrip.items[1], "one",
+	"Foundation conversion preserves nested arrays")
+t.assertEqual(roundTrip.items[2], 2,
+	"Foundation conversion preserves numeric array entries")
+t.assertEqual(roundTrip.items[3], false,
+	"Foundation conversion preserves false array entries")
+
+local popup = bridge._create("NSPopUpButton")
+bridge._perform(popup, "addItemsWithTitles:", { "First", "Second" })
+t.assertEqual(popup.numberOfItems, 2,
+	"generic invocation converts a Lua array to NSArray")
+t.assertEqual(popup.itemTitles[2], "Second",
+	"KVC converts an NSArray result back to a Lua array")
+
+valueCarrier.objectValue = "unchanged"
+local cyclic = {}
+cyclic.self = cyclic
+local cyclicOk = pcall(function()
+	valueCarrier.objectValue = cyclic
+end)
+t.expect(not cyclicOk, "cyclic Lua tables are rejected at the native boundary")
+t.assertEqual(valueCarrier.objectValue, "unchanged",
+	"failed conversion does not mutate unrelated native state")
 
 -- Canvas eval: ns.Window{...} without `return` must produce a view
 

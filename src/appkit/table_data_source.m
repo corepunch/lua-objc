@@ -256,11 +256,7 @@
 		lua_pushstring(callL, str ?: "");
 		lua_setfield(callL, -2, [key UTF8String]);
 	}
-	int status = lua_pcall(callL, 3, 0, 0);
-	if (status != LUA_OK) {
-		report_lua_error(callL, "table selection");
-		lua_pop(callL, 1);
-	}
+	lua_objc_pcall(callL, 3, 0, "table selection");
 }
 
 - (void)activateSelectedRow:(id)sender {
@@ -282,10 +278,7 @@
 		lua_pushstring(callL, value ? [[value description] UTF8String] : "");
 		lua_setfield(callL, -2, key.UTF8String);
 	}
-	if (lua_pcall(callL, 3, 0, 0) != LUA_OK) {
-		report_lua_error(callL, "table activation");
-		lua_pop(callL, 1);
-	}
+	lua_objc_pcall(callL, 3, 0, "table activation");
 }
 
 @end

@@ -313,10 +313,7 @@ static int bridge_spacer(lua_State *L) {
 		lua_pushstring(callL, paths[i].UTF8String);
 		lua_rawseti(callL, -2, (lua_Integer)(i + 1));
 	}
-	if (lua_pcall(callL, 1, 0, 0) != LUA_OK) {
-		report_lua_error(callL, "image drop");
-		lua_pop(callL, 1);
-	}
+	lua_objc_pcall(callL, 1, 0, "image drop");
 	return YES;
 }
 
@@ -446,4 +443,3 @@ static int bridge_system_color(lua_State *L) {
 	push_objc(L, color, "nsobject");
 	return 1;
 }
-

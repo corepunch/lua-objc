@@ -241,6 +241,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_tabRemove",        bridge_tab_remove},
 	{"_tabCount",         bridge_tab_count},
 	{"_tabOnChange",      bridge_tab_on_change},
+	{"_segmentedControl", bridge_segmented_control},
 	{NULL, NULL},
 };
 

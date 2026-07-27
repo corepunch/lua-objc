@@ -36,10 +36,7 @@
 	lua_rawgeti(callL, LUA_REGISTRYINDEX, _changeRef);
 	lua_pushstring(callL, field.stringValue.UTF8String);
 	push_objc(callL, field, "nsview");
-	if (lua_pcall(callL, 2, 0, 0) != LUA_OK) {
-		report_lua_error(callL, "text field change");
-		lua_pop(callL, 1);
-	}
+	lua_objc_pcall(callL, 2, 0, "text field change");
 }
 
 - (BOOL)dispatchCommand:(NSString *)command field:(NSTextField *)field {
@@ -48,9 +45,7 @@
 	lua_rawgeti(callL, LUA_REGISTRYINDEX, _commandRef);
 	lua_pushstring(callL, command.UTF8String);
 	push_objc(callL, field, "nsview");
-	if (lua_pcall(callL, 2, 1, 0) != LUA_OK) {
-		report_lua_error(callL, "text field command");
-		lua_pop(callL, 1);
+	if (lua_objc_pcall(callL, 2, 1, "text field command") != LUA_OK) {
 		return NO;
 	}
 	BOOL handled = lua_toboolean(callL, -1);

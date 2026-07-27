@@ -1,72 +1,62 @@
 local ns = require("AppKit")
 local bridge = require("bridge")
 
-local NAV = {
-	buttonSize = 28,
-	spacing = 2,
-	paddingHorizontal = 6,
-}
-
--- NavigatorTabBar: Xcode-style navigator tab strip with icon buttons.
+-- NavigatorTabBar: Xcode-style navigator tab strip backed by native
+-- NSSegmentedControl with NSSegmentSwitchTrackingSelectOne (radio group).
 -- Props: tabs (array of {id, symbol, tooltip}), selectedId, onSelect(id).
--- Returns the bar view, a buttons table, and select(id) helper.
+-- Returns the bar view and a select(id) helper.
 local function NavigatorTabBar(props)
 	props = props or {}
 	local tabs = props.tabs or {}
-	local selectedId = props.selectedId
+	local selectedId = props.selectedId or (tabs[1] and tabs[1].id)
 	local onSelect = props.onSelect
 
-	local buttons = {}
-
-	local function handleSelect(targetId)
-		for _, tab in ipairs(tabs) do
-			local btn = buttons[tab.id]
-			if btn then
-				btn.state = (tab.id == targetId) and 1 or 0
-			end
+	local selectedIdx = 0
+	local segments = {}
+	for i, tab in ipairs(tabs) do
+		if tab.id == selectedId then
+			selectedIdx = i - 1
 		end
-		if onSelect then
-			onSelect(targetId)
-		end
-	end
-
-	for _, tab in ipairs(tabs) do
-		local targetId = tab.id
-		local selected = (tab.id == selectedId)
-		local btn = bridge._symbolToggle(
+		segments[#segments + 1] = {
 			tab.symbol,
 			tab.tooltip or tab.title or tab.id,
-			selected and true or false,
-			function(_)
-				handleSelect(targetId)
-			end)
-		btn.fixedWidth = NAV.buttonSize
-		btn.fixedHeight = NAV.buttonSize
-		btn.flexGrow = 0
-		btn.flexShrink = 0
-		btn.accessibilityLabel = tab.tooltip or tab.title or tab.id
-		buttons[tab.id] = btn
+		}
 	end
 
-	local children = {}
-	for i = 1, #tabs do
-		children[#children + 1] = buttons[tabs[i].id]
-	end
+	local seg = bridge._segmentedControl(segments, selectedIdx,
+		function(sender)
+			local idx = sender.selectedSegment
+			local tab = tabs[idx + 1]
+			if tab and onSelect then
+				onSelect(tab.id)
+			end
+		end)
+	seg.fixedWidth = #tabs * 28
+	seg.fixedHeight = 28
+	seg.flexGrow = 0
+	seg.flexShrink = 0
 
 	local bar = ns.HStack {
-		fixedHeight = NAV.buttonSize,
+		fixedHeight = 28,
 		flexGrow = 0,
 		flexShrink = 0,
-		spacing = NAV.spacing,
-		paddingHorizontal = NAV.paddingHorizontal,
-		table.unpack(children),
+		paddingHorizontal = 6,
+		seg,
 	}
 
 	local function select(id)
-		handleSelect(id)
+		for i, tab in ipairs(tabs) do
+			if tab.id == id then
+				local idx = i - 1
+				if idx >= 0 and idx < seg.segmentCount then
+					seg.selectedSegment = idx
+				end
+				return
+			end
+		end
 	end
 
-	return bar, buttons, select
+	return bar, select
 end
 
 return NavigatorTabBar

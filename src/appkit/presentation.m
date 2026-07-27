@@ -151,10 +151,7 @@ static int bridge_is_first_responder(lua_State *L) {
 	lua_State *callL = _owner.L;
 	if (_callbackRef == LUA_NOREF || !callL) return;
 	lua_rawgeti(callL, LUA_REGISTRYINDEX, _callbackRef);
-	if (lua_pcall(callL, 0, 0, 0) != LUA_OK) {
-		report_lua_error(callL, "menu action");
-		lua_pop(callL, 1);
-	}
+	lua_objc_pcall(callL, 0, 0, "menu action");
 }
 
 @end

@@ -31,6 +31,7 @@ static int bridge_tab_select(lua_State *L);
 static int bridge_tab_remove(lua_State *L);
 static int bridge_tab_count(lua_State *L);
 static int bridge_tab_on_change(lua_State *L);
+static int bridge_segmented_control(lua_State *L);
 static int bridge_panel(lua_State *L);
 static int bridge_panel_style_state(lua_State *L);
 static int bridge_present_panel(lua_State *L);

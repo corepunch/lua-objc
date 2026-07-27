@@ -211,10 +211,7 @@ static int bridge_text_view_on_change(lua_State *L) {
 		lua_rawgeti(callL, LUA_REGISTRYINDEX, refNum.intValue);
 		lua_pushstring(callL,
 			((NSTextView *)note.object).string.UTF8String);
-		if (lua_pcall(callL, 1, 0, 0) != LUA_OK) {
-			report_lua_error(callL, "text change");
-			lua_pop(callL, 1);
-		}
+		lua_objc_pcall(callL, 1, 0, "text change");
 	}];
 
 	return 0;

@@ -63,6 +63,10 @@ static BOOL is_flexible(NSView *view) {
 	return [objc_getAssociatedObject(view, &kKeys[kFlexibleKey]) boolValue];
 }
 
+static BOOL is_hidden(NSView *view) {
+	return view.isHidden;
+}
+
 static CGFloat view_padding_horizontal(NSView *view) {
 	NSNumber *value = objc_getAssociatedObject(view, &kKeys[kPaddingHorizontalKey]);
 	if (value) return value.doubleValue;
@@ -194,8 +198,10 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 
 	switch (layout_axis(view)) {
 	case LayoutAxisVStack: {
-		NSUInteger count = view.subviews.count;
+		NSInteger visibleCount = 0;
 		for (NSView *child in view.subviews) {
+			if (is_hidden(child)) continue;
+			visibleCount++;
 			LuaLayoutConstraint childConstraint = {
 				.width = innerWidth,
 				.height = 0,
@@ -207,13 +213,15 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 			natural.width = MAX(natural.width, childSize.width);
 			natural.height += childSize.height;
 		}
-		if (count > 1) natural.height += (count - 1) * view_spacing(view);
+		if (visibleCount > 1) natural.height += (visibleCount - 1) * view_spacing(view);
 		natural.width += 2 * padX;
 		natural.height += 2 * padY;
 	} break;
 	case LayoutAxisHStack: {
-		NSUInteger count = view.subviews.count;
+		NSInteger visibleCount = 0;
 		for (NSView *child in view.subviews) {
+			if (is_hidden(child)) continue;
+			visibleCount++;
 			LuaLayoutConstraint childConstraint = {
 				.width = 0,
 				.height = innerHeight,
@@ -225,12 +233,15 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 			natural.width += childSize.width;
 			natural.height = MAX(natural.height, childSize.height);
 		}
-		if (count > 1) natural.width += (count - 1) * view_spacing(view);
+		if (visibleCount > 1) natural.width += (visibleCount - 1) * view_spacing(view);
 		natural.width += 2 * padX;
 		natural.height += 2 * padY;
 	} break;
 	case LayoutAxisHSplit: {
+		NSInteger visibleCount = 0;
 		for (NSView *child in view.subviews) {
+			if (is_hidden(child)) continue;
+			visibleCount++;
 			CGFloat fw = view_fixed_width(child);
 			NSSize childSize;
 			if (fw > 0) {
@@ -247,13 +258,16 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 			natural.width += childSize.width;
 			natural.height = MAX(natural.height, childSize.height);
 		}
-		CGFloat dividers = view.subviews.count > 1
-			? (view.subviews.count - 1) * [(NSSplitView *)view dividerThickness] : 0;
+		CGFloat dividers = visibleCount > 1
+			? (visibleCount - 1) * [(NSSplitView *)view dividerThickness] : 0;
 		natural.width += dividers + 2 * padX;
 		natural.height += 2 * padY;
 	} break;
 	case LayoutAxisVSplit: {
+		NSInteger visibleCount = 0;
 		for (NSView *child in view.subviews) {
+			if (is_hidden(child)) continue;
+			visibleCount++;
 			CGFloat fh = view_fixed_height(child);
 			NSSize childSize;
 			if (fh > 0) {
@@ -270,8 +284,8 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 			natural.width = MAX(natural.width, childSize.width);
 			natural.height += childSize.height;
 		}
-		CGFloat dividers = view.subviews.count > 1
-			? (view.subviews.count - 1) * [(NSSplitView *)view dividerThickness] : 0;
+		CGFloat dividers = visibleCount > 1
+			? (visibleCount - 1) * [(NSSplitView *)view dividerThickness] : 0;
 		natural.width += 2 * padX;
 		natural.height += dividers + 2 * padY;
 	} break;
@@ -328,7 +342,9 @@ static void distribute_main_axis(NSArray<NSView *> *children, CGFloat *sizes,
 	if (count == 0) return;
 
 	CGFloat used = 0;
-	for (NSUInteger i = 0; i < count; i++) used += sizes[i];
+	for (NSUInteger i = 0; i < count; i++) {
+		if (!is_hidden(children[i])) used += sizes[i];
+	}
 	CGFloat freeSpace = available - used;
 	if (fabs(freeSpace) < kFlexEpsilon) return;
 
@@ -337,7 +353,7 @@ static void distribute_main_axis(NSArray<NSView *> *children, CGFloat *sizes,
 	for (NSUInteger pass = 0; pass < count && fabs(freeSpace) >= kFlexEpsilon; pass++) {
 		CGFloat totalWeight = 0;
 		for (NSUInteger i = 0; i < count; i++) {
-			if (frozen[i]) continue;
+			if (frozen[i] || is_hidden(children[i])) continue;
 			NSView *child = children[i];
 			CGFloat weight = growing
 				? view_flex_grow(child, horizontal)
@@ -349,7 +365,7 @@ static void distribute_main_axis(NSArray<NSView *> *children, CGFloat *sizes,
 		CGFloat distributed = 0;
 		BOOL hitBound = NO;
 		for (NSUInteger i = 0; i < count; i++) {
-			if (frozen[i]) continue;
+			if (frozen[i] || is_hidden(children[i])) continue;
 			NSView *child = children[i];
 			CGFloat weight = growing
 				? view_flex_grow(child, horizontal)
@@ -509,6 +525,11 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			NSMutableArray<NSValue *> *measured = [NSMutableArray arrayWithCapacity:count];
 			for (NSUInteger i = 0; i < count; i++) {
 				NSView *child = view.subviews[i];
+				if (is_hidden(child)) {
+					heights[i] = 0;
+					[measured addObject:[NSValue valueWithSize:NSZeroSize]];
+					continue;
+				}
 				NSSize size = measure_view(child, (LuaLayoutConstraint){
 					.width = contentW,
 					.height = 0,
@@ -529,6 +550,7 @@ static void layout_recursive(NSView *view, CGFloat width) {
 
 			for (NSUInteger i = 0; i < count; i++) {
 				NSView *sv = view.subviews[i];
+				if (is_hidden(sv)) continue;
 				CGFloat childH = heights[i];
 				NSSize natural = measured[i].sizeValue;
 				CGFloat fw = view_fixed_width(sv);
@@ -561,6 +583,11 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			NSMutableArray<NSValue *> *measured = [NSMutableArray arrayWithCapacity:count];
 			for (NSUInteger i = 0; i < count; i++) {
 				NSView *child = view.subviews[i];
+				if (is_hidden(child)) {
+					widths[i] = 0;
+					[measured addObject:[NSValue valueWithSize:NSZeroSize]];
+					continue;
+				}
 				NSSize size = measure_view(child, (LuaLayoutConstraint){
 					.width = 0,
 					.height = contentH,
@@ -581,6 +608,7 @@ static void layout_recursive(NSView *view, CGFloat width) {
 
 			for (NSUInteger i = 0; i < count; i++) {
 				NSView *sv = view.subviews[i];
+				if (is_hidden(sv)) continue;
 				CGFloat childW = widths[i];
 				NSSize natural = measured[i].sizeValue;
 				CGFloat fh = view_fixed_height(sv);
@@ -611,6 +639,7 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			[split layoutSubtreeIfNeeded];
 			apply_initial_split_proportions(split);
 			for (NSView *pane in split.arrangedSubviews) {
+				if (is_hidden(pane)) continue;
 				layout_recursive(pane, pane.bounds.size.width);
 			}
 	} break;
@@ -622,6 +651,7 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			[split layoutSubtreeIfNeeded];
 			apply_initial_split_proportions(split);
 			for (NSView *pane in split.arrangedSubviews) {
+				if (is_hidden(pane)) continue;
 				layout_recursive(pane, pane.bounds.size.width);
 			}
 	} break;

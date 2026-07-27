@@ -19,12 +19,7 @@
 	int ref = [refObj intValue];
 
 	lua_rawgeti(gL, LUA_REGISTRYINDEX, ref);
-	int status = lua_pcall(gL, 0, 0, 0);
-	if (status != LUA_OK) {
-		report_lua_error(gL, "button");
-		lua_pop(gL, 1);
-	}
+	lua_objc_pcall(gL, 0, 0, "button");
 }
 
 @end
-

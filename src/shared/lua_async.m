@@ -240,10 +240,7 @@ static int bridge_http_get(lua_State *L) {
 					lua_pushstring(callL, body.UTF8String ?: "");
 					lua_pushnil(callL);
 				}
-				if (lua_pcall(callL, 2, 0, 0) != LUA_OK) {
-					report_lua_error(callL, "http");
-					lua_pop(callL, 1);
-				}
+				lua_objc_pcall(callL, 2, 0, "http");
 				luaL_unref(callL, LUA_REGISTRYINDEX, ref);
 			});
 		}];

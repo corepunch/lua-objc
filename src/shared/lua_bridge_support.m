@@ -22,6 +22,30 @@ static ObjCRef *lua_objc_test_ref(lua_State *L, int idx) {
 	return ref;
 }
 
+static id lua_objc_check_object(
+	lua_State *L,
+	int idx,
+	Class expectedClass,
+	const char *expectedName
+) {
+	ObjCRef *ref = lua_objc_test_ref(L, idx);
+	if (!ref) {
+		luaL_typeerror(L, idx, expectedName);
+		return nil;
+	}
+	id object = (__bridge id)ref->ptr;
+	if (![object isKindOfClass:expectedClass]) {
+		NSString *message = [NSString stringWithFormat:@"%s expected, got %@",
+			expectedName, NSStringFromClass([object class])];
+		luaL_argerror(L, idx, message.UTF8String);
+		return nil;
+	}
+	return object;
+}
+
+#define LUA_OBJC_CHECK_OBJECT(L, idx, type) \
+	((type *)lua_objc_check_object((L), (idx), [type class], #type))
+
 static int gc_objc(lua_State *L) {
 	ObjCRef *ref = lua_touserdata(L, 1);
 	if (ref && ref->ptr) {
@@ -90,6 +114,10 @@ static void lua_objc_push_foundation_value(
 		lua_createtable(L, 0, (int)[(NSDictionary *)value count]);
 		for (id key in (NSDictionary *)value) {
 			lua_objc_push_foundation_value(L, key, ancestors, depth + 1);
+			if (lua_isnil(L, -1)) {
+				lua_pop(L, 1);
+				continue;
+			}
 			lua_objc_push_foundation_value(
 				L, [(NSDictionary *)value objectForKey:key], ancestors, depth + 1);
 			lua_settable(L, -3);
@@ -128,7 +156,7 @@ static id lua_objc_foundation_value_at_index(
 			return nil;
 		case LUA_TBOOLEAN:
 			*converted = YES;
-			return @(lua_toboolean(L, idx));
+			return @((BOOL)lua_toboolean(L, idx));
 		case LUA_TNUMBER:
 			*converted = YES;
 			return lua_isinteger(L, idx)

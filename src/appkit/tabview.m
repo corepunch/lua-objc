@@ -54,7 +54,7 @@ static int bridge_tabview(lua_State *L) {
 }
 
 static int bridge_tab_add(lua_State *L) {
-	NSTabView *tv = (NSTabView *)check_view(L, 1);
+	NSTabView *tv = LUA_OBJC_CHECK_OBJECT(L, 1, NSTabView);
 	const char *titleC = luaL_checkstring(L, 2);
 	NSView *content = check_view(L, 3);
 
@@ -72,7 +72,7 @@ static int bridge_tab_add(lua_State *L) {
 }
 
 static int bridge_tab_select(lua_State *L) {
-	NSTabView *tv = (NSTabView *)check_view(L, 1);
+	NSTabView *tv = LUA_OBJC_CHECK_OBJECT(L, 1, NSTabView);
 	NSInteger idx = (NSInteger)luaL_checkinteger(L, 2);
 
 	if (idx >= 0 && idx < (NSInteger)tv.numberOfTabViewItems) {
@@ -82,7 +82,7 @@ static int bridge_tab_select(lua_State *L) {
 }
 
 static int bridge_tab_remove(lua_State *L) {
-	NSTabView *tv = (NSTabView *)check_view(L, 1);
+	NSTabView *tv = LUA_OBJC_CHECK_OBJECT(L, 1, NSTabView);
 	NSInteger idx = (NSInteger)luaL_checkinteger(L, 2);
 
 	if (idx >= 0 && idx < (NSInteger)tv.numberOfTabViewItems) {
@@ -93,13 +93,13 @@ static int bridge_tab_remove(lua_State *L) {
 }
 
 static int bridge_tab_count(lua_State *L) {
-	NSTabView *tv = (NSTabView *)check_view(L, 1);
+	NSTabView *tv = LUA_OBJC_CHECK_OBJECT(L, 1, NSTabView);
 	lua_pushinteger(L, tv.numberOfTabViewItems);
 	return 1;
 }
 
 static int bridge_tab_on_change(lua_State *L) {
-	NSTabView *tv = (NSTabView *)check_view(L, 1);
+	NSTabView *tv = LUA_OBJC_CHECK_OBJECT(L, 1, NSTabView);
 	int has_action = !lua_isnoneornil(L, 2);
 	int ref = LUA_NOREF;
 
@@ -122,4 +122,68 @@ static int bridge_tab_on_change(lua_State *L) {
 			delegate, OBJC_ASSOCIATION_RETAIN);
 	}
 	return 0;
+}
+
+#pragma mark - NSSegmentedControl bridge (navigator tabs)
+
+static int bridge_segmented_control(lua_State *L) {
+	luaL_checktype(L, 1, LUA_TTABLE);
+	NSInteger selectedIdx = (NSInteger)luaL_optinteger(L, 2, 0);
+	int has_action = !lua_isnoneornil(L, 3);
+	int ref = LUA_NOREF;
+
+	NSInteger count = (NSInteger)luaL_len(L, 1);
+	if (count < 1) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	NSSegmentedControl *seg = [[NSSegmentedControl alloc]
+		initWithFrame:NSMakeRect(0, 0, (CGFloat)count * 28, 28)];
+	seg.segmentCount = count;
+	seg.trackingMode = NSSegmentSwitchTrackingSelectOne;
+	seg.segmentStyle = NSSegmentStyleSeparated;
+
+	NSImageSymbolConfiguration *symConfig =
+		[NSImageSymbolConfiguration configurationWithPointSize:13
+			weight:NSFontWeightMedium];
+
+	for (NSInteger i = 0; i < count; i++) {
+		lua_rawgeti(L, 1, (int)(i + 1));
+		luaL_checktype(L, -1, LUA_TTABLE);
+		lua_rawgeti(L, -1, 1);
+		lua_rawgeti(L, -2, 2);
+		const char *symbolC = lua_tostring(L, -2);
+		const char *tipC = lua_tostring(L, -1);
+
+		[seg setWidth:28 forSegment:i];
+		if (symbolC) {
+			NSString *name = [NSString stringWithUTF8String:symbolC];
+			NSImage *img = [NSImage imageWithSystemSymbolName:name
+				accessibilityDescription:nil];
+			if (img) {
+				img = [img imageWithSymbolConfiguration:symConfig];
+				[seg setImage:img forSegment:i];
+			}
+		}
+		if (tipC) {
+			[seg setToolTip:[NSString stringWithUTF8String:tipC]
+				forSegment:i];
+		}
+		lua_pop(L, 2);
+		[seg setSelected:(i == selectedIdx) forSegment:i];
+	}
+
+	if (has_action) {
+		luaL_checktype(L, 3, LUA_TFUNCTION);
+		lua_pushvalue(L, 3);
+		ref = luaL_ref(L, LUA_REGISTRYINDEX);
+		objc_setAssociatedObject(seg, &kKeys[kCallbackKey], @(ref),
+			OBJC_ASSOCIATION_RETAIN);
+		seg.target = [LuaButtonTarget shared];
+		seg.action = @selector(onAction:);
+	}
+
+	push_objc(L, seg, "nsview");
+	return 1;
 }

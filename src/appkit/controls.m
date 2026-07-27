@@ -533,11 +533,7 @@ static int bridge_table_refresh(lua_State *L) {
 	} else {
 		lua_pushnil(L);
 	}
-	int status = lua_pcall(L, 2, 0, 0);
-	if (status != LUA_OK) {
-		report_lua_error(L, "refresh");
-		lua_pop(L, 1);
-	}
+	lua_objc_pcall(L, 2, 0, "refresh");
 	lua_pushboolean(L, 1);
 	return 1;
 }

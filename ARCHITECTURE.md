@@ -72,7 +72,10 @@ keys and module registration and includes focused fragments for layout, views,
 controls, tables, metatables, and platform helpers.
 
 Both runtime roots include `src/shared/lua_error.m` and
-`src/shared/lua_async.m`. The shared async layer supplies timers, HTTP, JSON,
+`src/shared/lua_async.m`, plus the state-agnostic boundary helpers in
+`src/shared/lua_bridge_support.m`. The support layer owns native userdata and
+converts scalar and collection values between Lua and Foundation without
+owning a Lua state. The shared async layer supplies timers, HTTP, JSON,
 coroutine-safe owner lookup, and cancellation. AppKit-created states use
 closing owners; UIKit is loaded into a host-owned state and installs a
 non-closing registry owner that detaches safely during `lua_close`.
