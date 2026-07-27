@@ -12,13 +12,8 @@ local SEARCH_FIELD_HEIGHT = 28
 local SEARCH_ICON_SIZE = 22
 local SEARCH_ICON_FRAME = 28
 local SEARCH_ROW_HEIGHT = 28
-local SEARCH_CORNER_RADIUS = 16
 local SEARCH_HEADER_PADDING_HORIZONTAL = 14
 local SEARCH_HEADER_SPACING = 8
-local SEARCH_SHADOW_RADIUS = 22
-local SEARCH_SHADOW_OPACITY = 0.28
-local SEARCH_SHADOW_OFFSET_Y = 8
-local SEARCH_SHADOW_INSET = 30
 
 local SearchView = {}
 SearchView.__index = SearchView
@@ -215,6 +210,9 @@ local function create(props)
 		size = 20,
 		fixedHeight = SEARCH_FIELD_HEIGHT,
 		fillWidth = true,
+		flexGrow = 1,
+		flexBasis = 0,
+		minWidth = 0,
 		onChange = function(value)
 			self:_replaceResults(value)
 		end,
@@ -249,11 +247,6 @@ local function create(props)
 		width = SEARCH_WIDTH,
 		height = SEARCH_COLLAPSED_HEIGHT,
 		material = "popover",
-		cornerRadius = SEARCH_CORNER_RADIUS,
-		shadowRadius = SEARCH_SHADOW_RADIUS,
-		shadowOpacity = SEARCH_SHADOW_OPACITY,
-		shadowOffsetY = SEARCH_SHADOW_OFFSET_Y,
-		shadowInset = SEARCH_SHADOW_INSET,
 		padding = 0,
 		spacing = 0,
 		self._searchHeader,

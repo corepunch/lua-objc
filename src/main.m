@@ -186,6 +186,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_setWindowMinSize", bridge_set_window_min_size},
 	{"_setAppearance",    bridge_set_appearance},
 	{"_panel",            bridge_panel},
+	{"_panelStyleState",  bridge_panel_style_state},
 	{"_presentPanel",     bridge_present_panel},
 	{"_dismissWindow",    bridge_dismiss_window},
 	{"_focus",            bridge_focus},

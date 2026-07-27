@@ -125,8 +125,7 @@ function AppKit.Panel(props)
 	local panel = bridge._panel(
 		width,
 		height,
-		props.material or "popover",
-		props.cornerRadius or 0)
+		props.material or "popover")
 	local content = bridge._vstack()
 	applyLayout(content, props)
 	bridge._add(panel, content)

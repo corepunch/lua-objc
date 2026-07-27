@@ -31,9 +31,12 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   or decorative drawing.
 - Use system controls, metrics, fonts, semantic colors, SF Symbols, keyboard
   behavior, and accessibility labels.
-- Floating panels use AppKit's native window shadow. Do not add custom shadow
-  layers, transparent shadow insets, or hand-tuned shadow parameters unless the
-  user explicitly requests a non-native effect.
+- Floating panels use an ordinary titled, full-size-content `NSPanel` and let
+  AppKit own the frame shape, corners, clipping, and shadow. Do not expose
+  per-panel `cornerRadius`, `shadowRadius`, `shadowOpacity`, `shadowOffset`, or
+  `shadowInset` APIs in Lua or the native bridge. Do not add custom shadow
+  layers or transparent shadow insets unless the user explicitly requests a
+  non-native effect.
 - Primary content consumes flexible space. Stacks add sibling spacing, not
   implicit outer margins.
 - Let native containers own their geometry. In particular, do not fight

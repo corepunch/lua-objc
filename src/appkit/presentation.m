@@ -26,20 +26,20 @@ static int bridge_panel(lua_State *L) {
 	CGFloat width = luaL_checknumber(L, 1);
 	CGFloat height = luaL_checknumber(L, 2);
 	const char *materialC = luaL_optstring(L, 3, "popover");
-	CGFloat radius = luaL_optnumber(L, 4, 0);
 
 	LuaPanel *panel = [[LuaPanel alloc]
 		initWithContentRect:NSMakeRect(0, 0, width, height)
-				  styleMask:NSWindowStyleMaskBorderless
+				  styleMask:(NSWindowStyleMaskTitled
+					  | NSWindowStyleMaskFullSizeContentView)
 					backing:NSBackingStoreBuffered
 					  defer:NO];
+	panel.titleVisibility = NSWindowTitleHidden;
+	panel.titlebarAppearsTransparent = YES;
 	panel.movableByWindowBackground = YES;
 	panel.releasedWhenClosed = NO;
 	panel.level = NSFloatingWindowLevel;
 	panel.hasShadow = YES;
 	panel.hidesOnDeactivate = NO;
-	panel.opaque = NO;
-	panel.backgroundColor = NSColor.clearColor;
 
 	NSVisualEffectView *content = [[NSVisualEffectView alloc]
 		initWithFrame:NSMakeRect(0, 0, width, height)];
@@ -47,12 +47,25 @@ static int bridge_panel(lua_State *L) {
 		[NSString stringWithUTF8String:materialC]);
 	content.blendingMode = NSVisualEffectBlendingModeBehindWindow;
 	content.state = NSVisualEffectStateFollowsWindowActiveState;
-	content.wantsLayer = YES;
-	content.layer.cornerRadius = radius;
-	content.layer.masksToBounds = YES;
 	panel.contentView = content;
 
 	push_objc(L, panel, "nswindow");
+	return 1;
+}
+
+static int bridge_panel_style_state(lua_State *L) {
+	id obj = check_objc(L, 1);
+	if (![obj isKindOfClass:[LuaPanel class]]) {
+		return luaL_error(L, "panelStyleState requires a panel");
+	}
+	LuaPanel *panel = (LuaPanel *)obj;
+	lua_newtable(L);
+	lua_pushboolean(L, panel.hasShadow);
+	lua_setfield(L, -2, "usesNativeShadow");
+	lua_pushboolean(L,
+		(panel.styleMask & NSWindowStyleMaskTitled) != 0
+		&& (panel.styleMask & NSWindowStyleMaskFullSizeContentView) != 0);
+	lua_setfield(L, -2, "usesNativeFrame");
 	return 1;
 }
 

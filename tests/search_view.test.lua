@@ -38,12 +38,10 @@ local headerWidth, headerHeight = bridge._viewSize(search._searchHeader)
 t.assertEqual(headerWidth, 520, "search header fills the palette")
 t.assertEqual(headerHeight, 48, "search header owns the collapsed height")
 local panelStyle = bridge._panelStyleState(search._panel)
-t.assertEqual(panelStyle.cornerRadius, 16,
-	"SearchView uses Xcode-like continuous corners")
 t.expect(panelStyle.usesNativeShadow,
 	"SearchView delegates its shadow entirely to NSPanel")
-t.expect(panelStyle.contentMasked,
-	"SearchView masks content at the continuous rounded boundary")
+t.expect(panelStyle.usesNativeFrame,
+	"SearchView uses AppKit's titled full-size panel frame")
 t.assertEqual(#search._files, 3, "SearchView retains explicitly supplied files")
 
 -- Simulate native user input. The generic NSTextField callback performs all

@@ -26,6 +26,7 @@ static int bridge_clear_container(lua_State *L);
 static int bridge_outlineview(lua_State *L);
 static int bridge_list_directory(lua_State *L);
 static int bridge_panel(lua_State *L);
+static int bridge_panel_style_state(lua_State *L);
 static int bridge_present_panel(lua_State *L);
 static int bridge_dismiss_window(lua_State *L);
 static int bridge_focus(lua_State *L);
