@@ -43,6 +43,8 @@ enum {
 	kSplitPaneFrameObserverKey,
 	kSplitProportionsKey,
 	kSplitProportionsAppliedKey,
+	kCanvasToolbarKey,
+	kTableScrollViewKey,
 	kKeyCount
 };
 static char kKeys[kKeyCount];
@@ -2262,7 +2264,13 @@ static void layout_recursive(NSView *view, CGFloat width) {
 	default: break;
 	}
 	} else {
-		if ([view isKindOfClass:[NSScrollView class]]) {
+		NSScrollView *innerSV = objc_getAssociatedObject(view, &kKeys[kTableScrollViewKey]);
+		if (innerSV) {
+			[innerSV tile];
+			LuaTableViewSource *source =
+				objc_getAssociatedObject(view, &kKeys[kTableSourceKey]);
+			[source updateTableFrame];
+		} else if ([view isKindOfClass:[NSScrollView class]]) {
 			[(NSScrollView *)view tile];
 			LuaTableViewSource *source =
 				objc_getAssociatedObject(view, &kKeys[kTableSourceKey]);
@@ -2568,9 +2576,10 @@ static int bridge_tableview(lua_State *L) {
 
 	NSTableView *tv = [[NSTableView alloc] initWithFrame:NSMakeRect(0, 0, width, height)];
 	NSInteger styleVal = lookupNameValue(tableStyle, TableStyleMap, -1);
+	BOOL isSourceList = (styleVal == NSTableViewStyleSourceList);
 	if (styleVal >= 0) tv.style = (NSTableViewStyle)styleVal;
 	tv.headerView = showsHeader ? [[NSTableHeaderView alloc] init] : nil;
-	tv.usesAlternatingRowBackgroundColors = alternatingRows;
+	tv.usesAlternatingRowBackgroundColors = isSourceList ? NO : alternatingRows;
 	tv.gridStyleMask = (NSTableViewGridLineStyle)gridLines;
 	tv.intercellSpacing = NSMakeSize(kTableIntercellSpacingH, kTableIntercellSpacingV);
 	tv.allowsColumnReordering = NO;
@@ -2631,13 +2640,27 @@ static int bridge_tableview(lua_State *L) {
 	sv.hasVerticalScroller = YES;
 	sv.autohidesScrollers = YES;
 	sv.borderType = bordered ? NSBezelBorder : NSNoBorder;
-	objc_setAssociatedObject(sv, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
-
-	objc_setAssociatedObject(sv, &kKeys[kTableSourceKey], src, OBJC_ASSOCIATION_RETAIN);
+	if (isSourceList) sv.drawsBackground = NO;
 
 	[tv sizeLastColumnToFit];
 
-	push_objc(L, sv, "nsview");
+	if (isSourceList) {
+		NSVisualEffectView *vev = [[NSVisualEffectView alloc]
+			initWithFrame:NSMakeRect(0, 0, width, height)];
+		vev.material = NSVisualEffectMaterialSidebar;
+		vev.blendingMode = NSVisualEffectBlendingModeBehindWindow;
+		vev.state = NSVisualEffectStateFollowsWindowActiveState;
+		sv.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+		[vev addSubview:sv];
+		objc_setAssociatedObject(vev, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
+		objc_setAssociatedObject(vev, &kKeys[kTableSourceKey], src, OBJC_ASSOCIATION_RETAIN);
+		objc_setAssociatedObject(vev, &kKeys[kTableScrollViewKey], sv, OBJC_ASSOCIATION_RETAIN);
+		push_objc(L, vev, "nsview");
+	} else {
+		objc_setAssociatedObject(sv, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
+		objc_setAssociatedObject(sv, &kKeys[kTableSourceKey], src, OBJC_ASSOCIATION_RETAIN);
+		push_objc(L, sv, "nsview");
+	}
 	return 1;
 }
 
@@ -2657,6 +2680,20 @@ static int bridge_toolbar_item(lua_State *L) {
 	}
 
 	lua_pushnil(L);
+	return 1;
+}
+
+/* Return the canvas toolbar bar view stored on a canvas content view, or nil.
+ * The toolbar bar is an NSView (HStack of buttons) built in the canvas state
+ * and attached here so it can be inserted above the content in the IDE canvas. */
+static int bridge_canvas_toolbar(lua_State *L) {
+	NSView *view = check_view(L, 1);
+	NSView *tbView = objc_getAssociatedObject(view, &kKeys[kCanvasToolbarKey]);
+	if (!tbView) {
+		lua_pushnil(L);
+		return 1;
+	}
+	push_objc(L, tbView, "nsview");
 	return 1;
 }
 
@@ -2698,12 +2735,19 @@ static int bridge_tableview_clear(lua_State *L) {
 	return 0;
 }
 
+/* If obj is an NSVisualEffectView wrapping a table scroll view, return the inner
+ * NSScrollView; otherwise return obj itself cast to NSScrollView. */
+static NSScrollView *table_scrollview(id obj) {
+	NSScrollView *inner = objc_getAssociatedObject(obj, &kKeys[kTableScrollViewKey]);
+	return inner ? inner : (NSScrollView *)obj;
+}
+
 static int bridge_table_show_loading(lua_State *L) {
 	id obj = check_objc(L, 1);
 	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
 
-	NSScrollView *sv = (NSScrollView *)obj;
+	NSScrollView *sv = table_scrollview(obj);
 	NSProgressIndicator *spinner = objc_getAssociatedObject(sv, &kKeys[kTableSpinnerKey]);
 	if (spinner) {
 		[spinner startAnimation:nil];
@@ -2737,7 +2781,7 @@ static int bridge_table_hide_loading(lua_State *L) {
 	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
 
-	NSScrollView *sv = (NSScrollView *)obj;
+	NSScrollView *sv = table_scrollview(obj);
 	NSProgressIndicator *spinner = objc_getAssociatedObject(sv, &kKeys[kTableSpinnerKey]);
 	if (spinner) {
 		[spinner stopAnimation:nil];
@@ -2753,7 +2797,7 @@ static int bridge_table_column_widths(lua_State *L) {
 	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
 
-	NSScrollView *sv = (NSScrollView *)obj;
+	NSScrollView *sv = table_scrollview(obj);
 	NSTableView *tv = (NSTableView *)sv.documentView;
 	if (![tv isKindOfClass:[NSTableView class]]) return 0;
 
@@ -2866,9 +2910,10 @@ static int bridge_outlineview(lua_State *L) {
 	NSOutlineView *ov = [[NSOutlineView alloc]
 		initWithFrame:NSMakeRect(0, 0, width, height)];
 	NSInteger styleVal = lookupNameValue(tableStyle, TableStyleMap, -1);
+	BOOL isSourceList = (styleVal == NSTableViewStyleSourceList);
 	if (styleVal >= 0) ov.style = (NSTableViewStyle)styleVal;
 	ov.headerView = header ? [[NSTableHeaderView alloc] init] : nil;
-	ov.usesAlternatingRowBackgroundColors = alternatingRows;
+	ov.usesAlternatingRowBackgroundColors = isSourceList ? NO : alternatingRows;
 	ov.gridStyleMask = (NSTableViewGridLineStyle)gridLines;
 	ov.rowHeight = kOutlineRowHeight;
 	ov.intercellSpacing = NSMakeSize(3, 2);
@@ -2930,12 +2975,30 @@ static int bridge_outlineview(lua_State *L) {
 	sv.hasVerticalScroller = YES;
 	sv.autohidesScrollers = YES;
 	sv.borderType = bordered ? NSBezelBorder : NSNoBorder;
-	objc_setAssociatedObject(sv, &kKeys[kFlexibleKey], @YES,
-		OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(sv, &kKeys[kTableSourceKey], src,
-		OBJC_ASSOCIATION_RETAIN);
+	if (isSourceList) sv.drawsBackground = NO;
 
-	push_objc(L, sv, "nsview");
+	if (isSourceList) {
+		NSVisualEffectView *vev = [[NSVisualEffectView alloc]
+			initWithFrame:NSMakeRect(0, 0, width, height)];
+		vev.material = NSVisualEffectMaterialSidebar;
+		vev.blendingMode = NSVisualEffectBlendingModeBehindWindow;
+		vev.state = NSVisualEffectStateFollowsWindowActiveState;
+		sv.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+		[vev addSubview:sv];
+		objc_setAssociatedObject(vev, &kKeys[kFlexibleKey], @YES,
+			OBJC_ASSOCIATION_RETAIN);
+		objc_setAssociatedObject(vev, &kKeys[kTableSourceKey], src,
+			OBJC_ASSOCIATION_RETAIN);
+		objc_setAssociatedObject(vev, &kKeys[kTableScrollViewKey], sv,
+			OBJC_ASSOCIATION_RETAIN);
+		push_objc(L, vev, "nsview");
+	} else {
+		objc_setAssociatedObject(sv, &kKeys[kFlexibleKey], @YES,
+			OBJC_ASSOCIATION_RETAIN);
+		objc_setAssociatedObject(sv, &kKeys[kTableSourceKey], src,
+			OBJC_ASSOCIATION_RETAIN);
+		push_objc(L, sv, "nsview");
+	}
 	return 1;
 }
 
@@ -3512,6 +3575,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_setAppearance",    bridge_set_appearance},
 	{"_tableview",        bridge_tableview},
 	{"_toolbar_item",     bridge_toolbar_item},
+	{"_canvas_toolbar",   bridge_canvas_toolbar},
 	{"_button",           bridge_button},
 	{"_actionButton",     bridge_action_button},
 	{"_toggle",           bridge_toggle},

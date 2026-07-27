@@ -179,6 +179,7 @@ end
 
 -- _evalIntoCanvas: evaluate Lua code and render the result into a canvas view.
 -- ns.Window is intercepted so scripts that call ns.Window{} render inline.
+-- If the script defines a toolbar, a button bar is inserted above the content.
 function IDEKit._evalIntoCanvas(canvas, code)
 	if not canvas then return end
 
@@ -195,6 +196,8 @@ function IDEKit._evalIntoCanvas(canvas, code)
 		bridge._perform(label, "sizeToFit")
 		bridge._add(canvas, label)
 	elseif result then
+		local toolbarBar = bridge._canvas_toolbar(result)
+		if toolbarBar then bridge._add(canvas, toolbarBar) end
 		bridge._add(canvas, result)
 	end
 
