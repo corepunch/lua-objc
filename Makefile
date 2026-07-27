@@ -15,7 +15,7 @@ UIKIT_RUNTIME_DIRS = src/uikit src/shared
 UIKIT_RUNTIME_FRAGMENTS = $(shell find $(UIKIT_RUNTIME_DIRS) -type f -name '*.m')
 NATIVE_PLUGIN = build/ide-controls.dylib
 NATIVE_PLUGIN_SRC = src/ide_controls_plugin.m
-FRAMEWORK_MODULES = build/AppKit.dylib build/IDEKit.dylib
+FRAMEWORK_MODULES = build/AppKit.dylib
 IOS_FRAMEWORK_MODULE = $(if $(strip $(IOS_SIM_SDK)),build/UIKit.dylib)
 EMBEDDED_LUA_DIR = lua/embedded
 GENERATED_DIR = build/generated
@@ -50,16 +50,6 @@ build/appkit-module.o: src/embedded_lua_module.c $(GENERATED_DIR)/AppKit.lua.h
 build/AppKit.dylib: build/appkit-runtime.o build/appkit-module.o
 	$(CC) -dynamiclib -Wl,-install_name,@rpath/AppKit.dylib \
 		-o $@ $^ $(LDFLAGS)
-
-build/IDEKit.dylib: src/embedded_lua_module.c $(GENERATED_DIR)/IDEKit.lua.h
-	mkdir -p build
-	$(CC) $(CFLAGS) $(MODULE_LDFLAGS) -Ibuild \
-		-DLUA_MODULE_OPEN=luaopen_IDEKit \
-		-DLUA_MODULE_BYTES=IDEKit_lua \
-		-DLUA_MODULE_LENGTH=IDEKit_lua_len \
-		-DLUA_MODULE_HEADER='"generated/IDEKit.lua.h"' \
-		-DLUA_MODULE_CHUNK_NAME='"@IDEKit.lua"' \
-		-o $@ $<
 
 build/UIKit.dylib: $(UIKIT_RUNTIME_SRC) $(UIKIT_RUNTIME_FRAGMENTS) $(GENERATED_DIR)/UIKit.lua.h
 	@test -n "$(IOS_SIM_SDK)" || \
@@ -116,6 +106,6 @@ test: $(TARGET) $(NATIVE_PLUGIN) $(FRAMEWORK_MODULES)
 clean:
 	rm -f $(TARGET) $(NATIVE_PLUGIN) $(FRAMEWORK_MODULES) build/UIKit.dylib
 	rm -f build/appkit-runtime.o build/appkit-module.o
-	rm -f $(GENERATED_DIR)/AppKit.lua.h $(GENERATED_DIR)/IDEKit.lua.h $(GENERATED_DIR)/UIKit.lua.h
+	rm -f $(GENERATED_DIR)/AppKit.lua.h $(GENERATED_DIR)/UIKit.lua.h
 
 .PHONY: all uikit run clean test run-hello run-list run-live run-weather run-welcome run-mail run-layout

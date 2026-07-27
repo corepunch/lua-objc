@@ -1,7 +1,14 @@
 local ns = require("AppKit")
-local ide = require("IDEKit")
 local bridge = require("bridge")
 local App = require("App")
+
+local canvasMod = require("examples.ide.components.canvas")
+local Editor = require("examples.ide.components.editor")
+local WorkspaceLayout = require("examples.ide.components.workspace_layout")
+local NavigatorArea = require("examples.ide.components.navigator_area")
+local EditorArea = require("examples.ide.components.editor_area")
+local PreviewArea = require("examples.ide.components.preview_area")
+local SearchView = require("examples.ide.components.search_view")
 
 local Source = {}
 
@@ -62,9 +69,9 @@ local function openImage(path, app)
 end
 
 function Source.open(folder, app, initialFile)
-	local canvas = ide.Canvas()
+	local canvas = canvasMod.Canvas()
 
-	local editor = ide.Editor {
+	local editor = Editor {
 		canvas = canvas,
 		plugin = app and app:getPlugin("textEditor"),
 		initialCode = [=[
@@ -133,7 +140,7 @@ return ns.VStack {
 		f:close()
 		bridge._textViewSetText(editor._view, content)
 		if isLuaFile(path) then
-			ide._evalIntoCanvas(canvas, content)
+			canvasMod.evalIntoCanvas(canvas, content)
 		end
 		editor.watchFile(path)
 		if app.recent then
@@ -162,17 +169,17 @@ return ns.VStack {
 		ns.VStack {
 			flexGrow = 1,
 			spacing = 0,
-			ide.WorkspaceLayout {
-				navigator = ide.NavigatorArea {
+			WorkspaceLayout {
+				navigator = NavigatorArea {
 					title = "FILES",
 					content = fileTree,
 				},
-				editor = ide.EditorArea {
+				editor = EditorArea {
 					title = "EDITOR",
 					content = editor._view,
 					buttons = { wrapToggle },
 				},
-				preview = ide.PreviewArea {
+				preview = PreviewArea.show {
 					title = "CANVAS",
 					content = canvas,
 				},
@@ -180,8 +187,8 @@ return ns.VStack {
 		},
 	}
 
-	-- Xcode-style Open Quickly (Cmd+P), implemented by IDEKit in Lua.
-	local searchView = ide.SearchView {
+	-- Xcode-style Open Quickly (Cmd+P).
+	local searchView = SearchView {
 		rootDir = rootDir,
 		onSelect = function(path)
 			openPath(path)

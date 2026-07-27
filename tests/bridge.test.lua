@@ -1,12 +1,18 @@
 local ns = require("AppKit")
 local t = require("TestKit")
 local App = require("App")
-local ide = require("IDEKit")
+local ControlBar = require("examples.ide.components.control_bar")
+local Editor = require("examples.ide.components.editor")
 local bridge = require("bridge")
 local ImageViewerPlugin = require("examples.ide.plugins.image_viewer")
 local TextEditorPlugin = require("examples.ide.plugins.text_editor")
 local NativeControlsPlugin = require("examples.ide.plugins.native_controls")
 local RecentState = require("examples.ide.state.recent")
+local NavigatorArea = require("examples.ide.components.navigator_area")
+local EditorArea = require("examples.ide.components.editor_area")
+local PreviewArea = require("examples.ide.components.preview_area")
+local WorkspaceLayout = require("examples.ide.components.workspace_layout")
+local canvasMod = require("examples.ide.components.canvas")
 
 -- Public frameworks must come from native Lua modules. A loose Lua fallback
 -- would hide packaging regressions while still making require() appear to work.
@@ -15,9 +21,6 @@ t.expect(package.searchpath("AppKit", package.path) == nil,
 local appkitModulePath = package.searchpath("AppKit", package.cpath)
 t.expect(appkitModulePath ~= nil and appkitModulePath:match("AppKit%.dylib$") ~= nil,
 	"AppKit resolves through package.cpath")
-local idekitModulePath = package.searchpath("IDEKit", package.cpath)
-t.expect(idekitModulePath ~= nil and idekitModulePath:match("IDEKit%.dylib$") ~= nil,
-	"IDEKit resolves through package.cpath")
 
 -- VStack: can create and add children without crashing
 
@@ -106,7 +109,7 @@ t.assertEqual(spaced.paddingVertical, 7, "vertical padding is retained")
 -- IDE workspace areas start with usable native split panes. In particular, an
 -- intrinsically wide editor must not squeeze the initially empty canvas to 0.
 
-local navigatorArea = ide.NavigatorArea {
+local navigatorArea = NavigatorArea {
 	title = "FILES",
 	content = ns.Text "Files",
 }
@@ -114,16 +117,16 @@ local editorAction = bridge._symbolToggle(
 	"arrow.left.and.line.vertical.and.arrow.right",
 	"Toggle Word Wrap",
 	false)
-local editorArea = ide.EditorArea {
+local editorArea = EditorArea {
 	title = "EDITOR",
 	content = ns.Text "A very wide editor surface",
 	buttons = { editorAction },
 }
-local previewArea = ide.PreviewArea {
+local previewArea = PreviewArea.show {
 	title = "CANVAS",
-	content = ide.Canvas(),
+	content = canvasMod.Canvas(),
 }
-local workspace = ide.WorkspaceLayout {
+local workspace = WorkspaceLayout {
 	navigator = navigatorArea,
 	editor = editorArea,
 	preview = previewArea,
@@ -212,7 +215,7 @@ local secondSymbolToggle = require("bridge")._symbolToggle(
 	"sidebar.right",
 	"Toggle Inspector",
 	false)
-local controlBar = require("IDEKit").ControlBar {
+local controlBar = ControlBar {
 	title = "EDITOR",
 	buttons = { symbolToggle, secondSymbolToggle },
 }
@@ -293,7 +296,7 @@ t.expect(true, "show_loading and hide_loading do not crash")
 
 -- Code editor remains a native editable text view inside its scroll view.
 
-local editor = require("IDEKit").Editor {
+local editor = Editor {
 	plugin = TextEditorPlugin,
 	initialCode = "return 1",
 }

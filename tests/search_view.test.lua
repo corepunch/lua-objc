@@ -1,12 +1,12 @@
 _G.__headless = true
 
 local bridge = require("bridge")
-local ide = require("IDEKit")
+local SearchView = require("examples.ide.components.search_view")
 local ns = require("AppKit")
 local t = require("TestKit")
 
 local selectedPath = nil
-local search = ide.SearchView {
+local search = SearchView {
 	files = {
 		"/tmp/test/main.lua",
 		"/tmp/test/App.lua",
@@ -16,7 +16,7 @@ local search = ide.SearchView {
 		selectedPath = path
 	end,
 }
-t.expect(search ~= nil, "ide.SearchView creates without error")
+t.expect(search ~= nil, "SearchView creates without error")
 
 local width, height = bridge._viewSize(search._panel)
 t.assertEqual(width, 520, "SearchView uses the palette width")
@@ -27,6 +27,23 @@ t.assertEqual(search._resultsView.rowCount, 0,
 	"empty datasource starts with zero rows")
 t.assertEqual(search._searchField.accessibilityLabel, "Open Quickly",
 	"SearchView input has a native accessibility label")
+t.assertEqual(search._searchField.placeholderString, "Open Quickly",
+	"SearchView uses Xcode's concise placeholder")
+t.assertEqual(search._searchIcon.accessibilityLabel, "Search",
+	"SearchView has an accessible native search symbol")
+local iconWidth, iconHeight = bridge._viewSize(search._searchIcon)
+t.assertEqual(iconWidth, 28, "search symbol has a stable alignment frame")
+t.assertEqual(iconHeight, 28, "search symbol frame is vertically centered")
+local headerWidth, headerHeight = bridge._viewSize(search._searchHeader)
+t.assertEqual(headerWidth, 520, "search header fills the palette")
+t.assertEqual(headerHeight, 48, "search header owns the collapsed height")
+local panelStyle = bridge._panelStyleState(search._panel)
+t.assertEqual(panelStyle.cornerRadius, 16,
+	"SearchView uses Xcode-like continuous corners")
+t.expect(panelStyle.usesNativeShadow,
+	"SearchView delegates its shadow entirely to NSPanel")
+t.expect(panelStyle.contentMasked,
+	"SearchView masks content at the continuous rounded boundary")
 t.assertEqual(#search._files, 3, "SearchView retains explicitly supplied files")
 
 -- Simulate native user input. The generic NSTextField callback performs all
@@ -89,7 +106,7 @@ end)
 t.expect(ok, "SearchView tolerates an unavailable search root")
 
 t.assertThrows(function()
-	ide.SearchView {}
+	SearchView {}
 end, "SearchView requires an onSelect callback")
 
 os.exit(t.summary() and 0 or 1)

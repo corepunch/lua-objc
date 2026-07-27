@@ -31,6 +31,9 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   or decorative drawing.
 - Use system controls, metrics, fonts, semantic colors, SF Symbols, keyboard
   behavior, and accessibility labels.
+- Floating panels use AppKit's native window shadow. Do not add custom shadow
+  layers, transparent shadow insets, or hand-tuned shadow parameters unless the
+  user explicitly requests a non-native effect.
 - Primary content consumes flexible space. Stacks add sibling spacing, not
   implicit outer margins.
 - Let native containers own their geometry. In particular, do not fight
@@ -56,6 +59,10 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
 - Comments explain design reasons, edge cases, and existing prior art.
 - Keep `examples/<app>/main.lua` thin. Put UI bricks in `components/`, state in
   `state/`, and editor surfaces in `plugins/`.
+- Native `.m` sources expose existing Cocoa classes to Lua. New classes are
+  implemented in Lua whenever possible. Only reach for `.m` when the
+  feature cannot be built in pure Lua (e.g. Canvas requires offscreen
+  rendering via `CGImage`).
 - Preserve one runtime image per platform. AppKit and UIKit fragments are
   intentionally included by their platform roots to share static bridge state;
   platform-neutral services belong in `src/shared/`.
