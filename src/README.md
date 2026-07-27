@@ -13,6 +13,8 @@ and ARC ownership while letting readers open only the subsystem they need.
 | `appkit/action_button.m` | callback target, lookup tables, compound action button | `LuaButtonTarget`, `LuaActionButton` |
 | `appkit/toolbar.m` | native toolbar item construction | `LuaToolbarDelegate` |
 | `appkit/runtime.m` | userdata conversion, KVC, metatables, shared helpers | `push_objc`, `nsview_index` |
+| `appkit/presentation.m` | generic adaptive panels, focus, and menu items | `LuaPanel`, `bridge_present_panel` |
+| `appkit/text_field.m` | editable text callbacks and command routing | `LuaTextFieldDelegate` |
 | `appkit/views.m` | windows, stacks, splits, images, basic view creation | `bridge_window`, `LuaImageViewerView` |
 | `appkit/layout.m` | measurement, flex distribution, frame placement | `measure_view`, `layout_recursive` |
 | `appkit/controls.m` | buttons, tables, loading, refresh, selection | `bridge_button`, `bridge_tableview` |

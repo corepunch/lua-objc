@@ -40,6 +40,28 @@ ok = pcall(function()
 end)
 t.expect(ok, "HStack creates without error")
 
+-- TextField: native edits and editing commands call reusable Lua callbacks.
+
+local changedText = nil
+local receivedCommand = nil
+local input = ns.TextField {
+	placeholder = "Search",
+	accessibilityLabel = "Search",
+	onChange = function(value)
+		changedText = value
+	end,
+	onCommand = function(command)
+		receivedCommand = command
+		return command == "submit"
+	end,
+}
+bridge._textFieldTestInput(input, "hello")
+t.assertEqual(changedText, "hello", "TextField onChange receives native input")
+t.expect(bridge._textFieldTestCommand(input, "submit"),
+	"TextField onCommand can consume a native editing command")
+t.assertEqual(receivedCommand, "submit",
+	"TextField onCommand receives the normalized command name")
+
 -- Window with visible=false does not show
 
 local win = ns.Window {
@@ -238,6 +260,30 @@ t.assertEqual(list.rowCount, 1, "After removeRow(0): 1 row")
 
 list:clearRows()
 t.assertEqual(list.rowCount, 0, "After clearRows: 0 rows")
+
+list:replaceRows {
+	{ name = "Carol", role = "Engineer" },
+	{ name = "Drew", role = "Designer" },
+}
+t.assertEqual(list.rowCount, 2, "replaceRows atomically refreshes the datasource")
+
+local selectedRowIndex = nil
+local selectedRowName = nil
+list:onRowSelect(function(_, rowIndex, row)
+	selectedRowIndex = rowIndex
+	selectedRowName = row.name
+end)
+list:selectRow(1)
+t.assertEqual(selectedRowIndex, 1, "selectRow updates native selection")
+t.assertEqual(selectedRowName, "Drew", "selection callback receives row data")
+
+local activatedRowName = nil
+list:onRowActivate(function(_, _, row)
+	activatedRowName = row.name
+end)
+list:activateRow(0)
+t.assertEqual(activatedRowName, "Carol",
+	"activateRow follows the native double-click activation callback")
 
 -- Loading spinner
 

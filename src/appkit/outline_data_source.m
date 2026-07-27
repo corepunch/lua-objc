@@ -9,12 +9,15 @@
 	NSOutlineView *_outlineView;
 	NSArray     *_columns;
 }
+@property (nonatomic, weak) LuaStateOwner *owner;
 - (instancetype)initWithOutlineView:(NSOutlineView *)ov columns:(NSArray *)cols;
 - (void)addRootItem:(NSDictionary *)item;
 - (void)addChildItem:(NSDictionary *)item parent:(NSDictionary *)parent;
 - (void)clearAll;
+- (void)replaceRootItems:(NSArray *)items;
 - (NSInteger)rowCount;
 - (void)updateTableFrame;
+- (void)activateSelectedRow:(id)sender;
 @end
 
 @implementation LuaOutlineViewSource
@@ -84,6 +87,12 @@
 - (void)clearAll {
 	[_rootRows removeAllObjects];
 	[_outlineView reloadData];
+}
+
+- (void)replaceRootItems:(NSArray *)items {
+	_rootRows = [items mutableCopy];
+	[_outlineView reloadData];
+	[self updateTableFrame];
 }
 
 - (NSInteger)rowCount {
@@ -167,7 +176,8 @@
 	if (row < 0) return;
 
 	NSScrollView *sv = _outlineView.enclosingScrollView;
-	if (!sv || !gL) return;
+	lua_State *callL = self.owner.L;
+	if (!sv || !callL) return;
 
 	NSNumber *refNum = objc_getAssociatedObject(sv,
 		&kKeys[kTableSelectionKey]);
@@ -177,24 +187,51 @@
 	if (!item) return;
 	NSDictionary *rowData = (NSDictionary *)item;
 
-	lua_rawgeti(gL, LUA_REGISTRYINDEX, refNum.intValue);
-	push_objc(gL, sv, "nsview");
-	lua_pushinteger(gL, (lua_Integer)row);
-	lua_newtable(gL);
+	lua_rawgeti(callL, LUA_REGISTRYINDEX, refNum.intValue);
+	push_objc(callL, sv, "nsview");
+	lua_pushinteger(callL, (lua_Integer)row);
+	lua_newtable(callL);
 	for (NSString *key in rowData) {
 		if ([key isEqualToString:@"children"]) continue;
 		id val = rowData[key];
 		const char *str = val && ![val isEqual:[NSNull null]]
 			? [[val description] UTF8String] : NULL;
-		lua_pushstring(gL, str ?: "");
-		lua_setfield(gL, -2, [key UTF8String]);
+		lua_pushstring(callL, str ?: "");
+		lua_setfield(callL, -2, [key UTF8String]);
 	}
-	int status = lua_pcall(gL, 3, 0, 0);
+	int status = lua_pcall(callL, 3, 0, 0);
 	if (status != LUA_OK) {
-		report_lua_error(gL, "outline selection");
-		lua_pop(gL, 1);
+		report_lua_error(callL, "outline selection");
+		lua_pop(callL, 1);
+	}
+}
+
+- (void)activateSelectedRow:(id)sender {
+	NSInteger row = _outlineView.selectedRow;
+	lua_State *callL = self.owner.L;
+	if (row < 0 || !callL) return;
+	id item = [_outlineView itemAtRow:row];
+	if (!item) return;
+	NSScrollView *sv = _outlineView.enclosingScrollView;
+	NSNumber *refNum = objc_getAssociatedObject(sv,
+		&kKeys[kTableActivationKey]);
+	if (!refNum) return;
+
+	NSDictionary *rowData = (NSDictionary *)item;
+	lua_rawgeti(callL, LUA_REGISTRYINDEX, refNum.intValue);
+	push_objc(callL, sv, "nsview");
+	lua_pushinteger(callL, (lua_Integer)row);
+	lua_newtable(callL);
+	for (NSString *key in rowData) {
+		if ([key isEqualToString:@"children"]) continue;
+		id value = rowData[key];
+		lua_pushstring(callL, value ? [[value description] UTF8String] : "");
+		lua_setfield(callL, -2, key.UTF8String);
+	}
+	if (lua_pcall(callL, 3, 0, 0) != LUA_OK) {
+		report_lua_error(callL, "outline activation");
+		lua_pop(callL, 1);
 	}
 }
 
 @end
-

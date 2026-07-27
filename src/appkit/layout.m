@@ -684,13 +684,18 @@ static int bridge_set_content_size(lua_State *L) {
 	id obj = check_objc(L, 1);
 	CGFloat width = luaL_checknumber(L, 2);
 	CGFloat height = luaL_checknumber(L, 3);
+	const char *anchor = luaL_optstring(L, 4, "");
 
 	if ([obj isKindOfClass:[NSWindow class]]) {
 		NSWindow *w = (NSWindow *)obj;
 		NSRect frame = w.frame;
+		CGFloat top = NSMaxY(frame);
 		NSRect contentRect = [w contentRectForFrameRect:frame];
 		contentRect.size = NSMakeSize(width, height);
 		NSRect newFrame = [w frameRectForContentRect:contentRect];
+		if (strcmp(anchor, "top") == 0) {
+			newFrame.origin.y = top - newFrame.size.height;
+		}
 		[w setFrame:newFrame display:YES animate:NO];
 	} else {
 		NSView *v = (NSView *)obj;
@@ -759,4 +764,3 @@ static int bridge_set_text(lua_State *L) {
 }
 
 #pragma mark - Button, toggle, separator
-

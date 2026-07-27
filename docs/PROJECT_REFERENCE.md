@@ -534,6 +534,53 @@ Use between sections instead of faking it with `Text "---"`.
 
 Empty 10×10 view used to push siblings apart in HStack/VStack.
 
+### `ide.SearchView` — Open Quickly palette (Cmd+P)
+
+`IDEKit.SearchView` is the Xcode-style search palette. The complete feature is
+implemented in `lua/embedded/IDEKit.lua`: recursive file collection, substring
+filtering, keyboard selection, datasource replacement, collapsed/expanded
+state, and result activation all remain in Lua.
+
+AppKit exposes only reusable primitives:
+
+- `ns.TextField` with `onChange` and normalized `onCommand` callbacks.
+- `ns.OutlineView` with `replaceRows`, `selectRow`, `onRowSelect`, and
+  `onRowActivate`.
+- `ns.Panel`, `ns.present`, `ns.dismiss`, `ns.focus`, and `ns.resizeWindow`.
+- `ns.MenuItem` for registering an ordinary menu command and shortcut.
+
+There is intentionally no Quick Open-specific native bridge or Objective-C
+datasource. `SearchView` refreshes the native `NSOutlineView` datasource in one
+`replaceRows(results)` operation whenever the query changes.
+
+```lua
+local ns = require("AppKit")
+local ide = require("IDEKit")
+
+local searchView = ide.SearchView {
+    rootDir = "examples",
+    maxDepth = 5,
+    onSelect = function(path)
+        openPath(path)
+    end,
+}
+
+ns.MenuItem {
+    menu = "Find",
+    title = "Open Quickly...",
+    keyEquivalent = "p",
+    modifiers = { "command" },
+    action = function()
+        searchView:show(window)
+    end,
+}
+```
+
+The palette starts as a focused input bar. It expands downward only while the
+query has matches and uses AppKit's adaptive popover material. Escape dismisses
+it, Up/Down changes the selected result, and Return or double-click activates
+the result.
+
 ## Lua API — List (NSTableView)
 
 The `List` widget is the most architecturally significant part of lua-objc. It
@@ -648,6 +695,11 @@ nsview metatable `__index`:
 tv:addRow{ key = "value", ... }       -- inserts with slide-down animation
 tv:removeRow(2)                        -- removes row at 0-based index
 tv:clearRows()                         -- removes all rows (reloadData)
+tv:replaceRows(rows)                   -- atomically replaces the datasource
+tv:selectRow(0)                        -- selects and reveals a 0-based row
+tv:activateRow(0)                      -- invokes native row activation
+tv:onRowSelect(callback)               -- selection callback
+tv:onRowActivate(callback)             -- double-click activation callback
 n = tv:rowCount                        -- returns number of rows (read-only property)
 tv:showLoading()                       -- shows centered spinner in content area
 tv:hideLoading()                       -- removes the spinner

@@ -32,6 +32,7 @@ local layout_properties = {
 	"flexBasis",
 	"fillWidth",
 	"fillHeight",
+	"hidden",
 }
 
 local function applyLayout(view, props)
@@ -115,6 +116,62 @@ function AppKit.Window(props)
 		bridge._show(win)
 	end
 	return win
+end
+
+function AppKit.Panel(props)
+	props = props or {}
+	local width = props.width or 480
+	local height = props.height or 240
+	local panel = bridge._panel(
+		width,
+		height,
+		props.material or "popover",
+		props.cornerRadius or 0)
+	local content = bridge._vstack()
+	applyLayout(content, props)
+	bridge._add(panel, content)
+	addChildren(content, props)
+	bridge._layout(content, width)
+	return panel, content
+end
+
+function AppKit.present(panel, parent, props)
+	props = props or {}
+	return bridge._presentPanel(panel, parent, props.offsetY or 0)
+end
+
+function AppKit.dismiss(window)
+	return bridge._dismissWindow(window)
+end
+
+function AppKit.focus(window, view)
+	return bridge._focus(window, view)
+end
+
+function AppKit.isFirstResponder(window, view)
+	return bridge._isFirstResponder(window, view)
+end
+
+function AppKit.resizeWindow(window, width, height, anchor)
+	return bridge._setContentSize(window, width, height, anchor or "")
+end
+
+function AppKit.relayout(view, width)
+	return bridge._layout(view, width)
+end
+
+function AppKit.MenuItem(props)
+	props = props or {}
+	local modifiers = props.modifiers or { "command" }
+	if type(modifiers) == "table" then
+		modifiers = table.concat(modifiers, ",")
+	end
+	return bridge._menuItem(
+		props.menu or "Application",
+		props.title or "",
+		props.keyEquivalent or "",
+		modifiers,
+		assert(props.action, "MenuItem requires an action"))
 end
 
 -- #Preview equivalent: renders a named preview in the IDE canvas.
@@ -252,6 +309,27 @@ function AppKit.Text(arg)
 	return applyLayout(v, type(arg) == "table" and arg or nil)
 end
 
+function AppKit.TextField(props)
+	if type(props) ~= "table" then
+		props = { value = tostring(props or "") }
+	end
+	local field = bridge._create("NSTextField")
+	field.stringValue = props.value or props[1] or ""
+	field.placeholderString = props.placeholder or ""
+	field.editable = props.editable ~= false
+	field.selectable = props.selectable ~= false
+	field.bezeled = props.bezeled ~= false
+	field.bordered = props.bordered ~= false
+	field.drawsBackground = props.drawsBackground ~= false
+	if props.focusRing == false then field.focusRingType = 1 end
+	if props.size then field.font = bridge._font(props.size, props.weight) end
+	if props.accessibilityLabel then
+		field.accessibilityLabel = props.accessibilityLabel
+	end
+	bridge._textFieldCallbacks(field, props.onChange, props.onCommand)
+	return applyLayout(field, props)
+end
+
 function AppKit.Title(arg)
 	return AppKit.Text({
 		type(arg) == "table" and arg[1] or arg,
@@ -305,16 +383,19 @@ function AppKit.List(props)
 		header = props.header ~= false,
 		bordered = props.bordered == true,
 		alternatingRows = props.alternatingRows ~= false,
+		drawsBackground = props.drawsBackground ~= false,
 		gridLines = props.gridLines,
 		style = props.style,
 	})
 
 	if props.data and type(props.data) == "table" then
-		for _, row in ipairs(props.data) do
-			if type(row) == "table" then
-				tv:addRow(row)
-			end
-		end
+		tv:replaceRows(props.data)
+	end
+	if type(props.onSelect) == "function" then
+		tv:onRowSelect(props.onSelect)
+	end
+	if type(props.onActivate) == "function" then
+		tv:onRowActivate(props.onActivate)
 	end
 
 	if props.refresh and type(props.refresh) == "function" then
@@ -355,16 +436,23 @@ function AppKit.OutlineView(props)
 		header = props.header ~= false,
 		bordered = props.bordered == true,
 		alternatingRows = props.alternatingRows ~= false,
+		drawsBackground = props.drawsBackground ~= false,
 		gridLines = props.gridLines,
 		style = props.style,
 	})
 
+	if props.rowHeight then tv.documentView.rowHeight = props.rowHeight end
+	if props.indentation then
+		tv.documentView.indentationPerLevel = props.indentation
+	end
 	if props.data and type(props.data) == "table" then
-		for _, item in ipairs(props.data) do
-			if type(item) == "table" then
-				tv:addRow(item)
-			end
-		end
+		tv:replaceRows(props.data)
+	end
+	if type(props.onSelect) == "function" then
+		tv:onRowSelect(props.onSelect)
+	end
+	if type(props.onActivate) == "function" then
+		tv:onRowActivate(props.onActivate)
 	end
 
 	return applyLayout(tv, props)

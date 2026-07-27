@@ -132,7 +132,9 @@ return ns.VStack {
 		local content = f:read("*a")
 		f:close()
 		bridge._textViewSetText(editor._view, content)
-		ide._evalIntoCanvas(canvas, content)
+		if isLuaFile(path) then
+			ide._evalIntoCanvas(canvas, content)
+		end
 		editor.watchFile(path)
 		if app.recent then
 			app.recent:recordFile(path)
@@ -176,6 +178,23 @@ return ns.VStack {
 				},
 			},
 		},
+	}
+
+	-- Xcode-style Open Quickly (Cmd+P), implemented by IDEKit in Lua.
+	local searchView = ide.SearchView {
+		rootDir = rootDir,
+		onSelect = function(path)
+			openPath(path)
+		end,
+	}
+	ns.MenuItem {
+		menu = "Find",
+		title = "Open Quickly...",
+		keyEquivalent = "p",
+		modifiers = { "command" },
+		action = function()
+			searchView:show(window)
+		end,
 	}
 
 	openInitialFile(initialFile)

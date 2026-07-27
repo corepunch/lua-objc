@@ -36,10 +36,13 @@ enum {
 	kImageLayoutSizeKey,
 	kTableSpinnerKey,
 	kTableSelectionKey,
+	kTableActivationKey,
 	kTableRefreshKey,
 	kTextChangeKey,
+	kTextFieldDelegateKey,
 	kTextProgrammaticKey,
 	kTextWrapKey,
+	kMenuTargetKey,
 	kSplitPaneFrameObserverKey,
 	kSplitProportionsKey,
 	kSplitProportionsAppliedKey,
@@ -152,6 +155,8 @@ static lua_State *gL = NULL;
 #include "appkit/action_button.m"
 #include "appkit/toolbar.m"
 #include "appkit/runtime.m"
+#include "appkit/presentation.m"
+#include "appkit/text_field.m"
 #include "appkit/views.m"
 #include "appkit/layout.m"
 #include "appkit/controls.m"
@@ -180,6 +185,15 @@ static const luaL_Reg bridge_lib[] = {
 	{"_setContentSize",   bridge_set_content_size},
 	{"_setWindowMinSize", bridge_set_window_min_size},
 	{"_setAppearance",    bridge_set_appearance},
+	{"_panel",            bridge_panel},
+	{"_presentPanel",     bridge_present_panel},
+	{"_dismissWindow",    bridge_dismiss_window},
+	{"_focus",            bridge_focus},
+	{"_isFirstResponder", bridge_is_first_responder},
+	{"_menuItem",         bridge_menu_item},
+	{"_textFieldCallbacks", bridge_text_field_callbacks},
+	{"_textFieldTestInput", bridge_text_field_test_input},
+	{"_textFieldTestCommand", bridge_text_field_test_command},
 	{"_tableview",        bridge_tableview},
 	{"_toolbar_item",     bridge_toolbar_item},
 	{"_canvas_toolbar_items", bridge_canvas_toolbar_items},

@@ -9,6 +9,10 @@ static int bridge_table_set_refresh(lua_State *L);
 static int bridge_table_column_widths(lua_State *L);
 static int bridge_table_refresh(lua_State *L);
 static int bridge_table_set_selection(lua_State *L);
+static int bridge_table_set_activation(lua_State *L);
+static int bridge_tableview_replace(lua_State *L);
+static int bridge_table_select_row(lua_State *L);
+static int bridge_table_activate_row(lua_State *L);
 static int bridge_set_text(lua_State *L);
 static int bridge_text_view(lua_State *L);
 static int bridge_text_view_get_text(lua_State *L);
@@ -21,6 +25,15 @@ static int bridge_eval(lua_State *L);
 static int bridge_clear_container(lua_State *L);
 static int bridge_outlineview(lua_State *L);
 static int bridge_list_directory(lua_State *L);
+static int bridge_panel(lua_State *L);
+static int bridge_present_panel(lua_State *L);
+static int bridge_dismiss_window(lua_State *L);
+static int bridge_focus(lua_State *L);
+static int bridge_is_first_responder(lua_State *L);
+static int bridge_menu_item(lua_State *L);
+static int bridge_text_field_callbacks(lua_State *L);
+static int bridge_text_field_test_input(lua_State *L);
+static int bridge_text_field_test_command(lua_State *L);
 static void layout_recursive(NSView *view, CGFloat width);
 
 static void push_objc(lua_State *L, id obj, const char *meta) {
@@ -181,11 +194,15 @@ static MethodEntry TableMethods[] = {
 	{"addRow",       bridge_tableview_add},
 	{"removeRow",    bridge_tableview_remove},
 	{"clearRows",    bridge_tableview_clear},
+	{"replaceRows",  bridge_tableview_replace},
+	{"selectRow",    bridge_table_select_row},
+	{"activateRow",  bridge_table_activate_row},
 	{"rowCount",     NULL},
 	{"showLoading",  bridge_table_show_loading},
 	{"hideLoading",  bridge_table_hide_loading},
 	{"refresh",      bridge_table_refresh},
 	{"onRowSelect",  bridge_table_set_selection},
+	{"onRowActivate", bridge_table_set_activation},
 	{NULL, NULL}
 };
 
@@ -280,4 +297,3 @@ static int nsview_newindex(lua_State *L) {
 
 	return 0;
 }
-

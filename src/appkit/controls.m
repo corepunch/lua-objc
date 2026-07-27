@@ -149,6 +149,7 @@ static int bridge_tableview(lua_State *L) {
 	__block BOOL showsHeader = YES;
 	__block BOOL bordered = NO;
 	__block BOOL alternatingRows = YES;
+	__block BOOL drawsBackground = YES;
 	__block int gridLines = 0;
 	__block NSString *tableStyle = nil;
 
@@ -157,6 +158,7 @@ static int bridge_tableview(lua_State *L) {
 			{"header",          ^(lua_State *L, int idx) { showsHeader = lua_toboolean(L, idx); }},
 			{"bordered",        ^(lua_State *L, int idx) { bordered = lua_toboolean(L, idx); }},
 			{"alternatingRows", ^(lua_State *L, int idx) { alternatingRows = lua_toboolean(L, idx); }},
+			{"drawsBackground", ^(lua_State *L, int idx) { drawsBackground = lua_toboolean(L, idx); }},
 			{"gridLines",       ^(lua_State *L, int idx) {
 				const char *g = lua_tostring(L, idx);
 				gridLines = g ? (int)lookupNameValue([NSString stringWithUTF8String:g], GridLinesMap, 0) : 0;
@@ -184,6 +186,7 @@ static int bridge_tableview(lua_State *L) {
 	tv.usesAlternatingRowBackgroundColors = isSourceList ? NO : alternatingRows;
 	tv.gridStyleMask = (NSTableViewGridLineStyle)gridLines;
 	tv.intercellSpacing = NSMakeSize(kTableIntercellSpacingH, kTableIntercellSpacingV);
+	if (!drawsBackground) tv.backgroundColor = NSColor.clearColor;
 	tv.allowsColumnReordering = NO;
 	tv.allowsColumnResizing = YES;
 	CGFloat colW = ncols > 0 ? width / ncols : width;
@@ -249,12 +252,14 @@ static int bridge_tableview(lua_State *L) {
 
 	LuaTableViewSource *src = [[LuaTableViewSource alloc] initWithTableView:tv
 																   columns:colSpecs];
+	src.owner = owner_for_state(L);
 
 	NSScrollView *sv = [[NSScrollView alloc] initWithFrame:NSMakeRect(0, 0, width, height)];
 	sv.documentView = tv;
 	sv.hasVerticalScroller = YES;
 	sv.autohidesScrollers = YES;
 	sv.borderType = bordered ? NSBezelBorder : NSNoBorder;
+	sv.drawsBackground = drawsBackground;
 	if (isSourceList) sv.drawsBackground = NO;
 
 	if (isSourceList) {
@@ -357,6 +362,30 @@ static int bridge_tableview_clear(lua_State *L) {
 		[(LuaOutlineViewSource *)src clearAll];
 	} else {
 		[(LuaTableViewSource *)src clearRows];
+	}
+	return 0;
+}
+
+static int bridge_tableview_replace(lua_State *L) {
+	id obj = check_objc(L, 1);
+	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
+	if (!src) return luaL_error(L, "not a table or outline view");
+	luaL_checktype(L, 2, LUA_TTABLE);
+
+	NSMutableArray *rows = [NSMutableArray array];
+	lua_Integer count = luaL_len(L, 2);
+	for (lua_Integer index = 1; index <= count; index++) {
+		lua_rawgeti(L, 2, index);
+		if (lua_istable(L, -1)) {
+			[rows addObject:lua_table_to_dict(L, lua_gettop(L))];
+		}
+		lua_pop(L, 1);
+	}
+
+	if ([src isKindOfClass:[LuaOutlineViewSource class]]) {
+		[(LuaOutlineViewSource *)src replaceRootItems:rows];
+	} else {
+		[(LuaTableViewSource *)src replaceRows:rows];
 	}
 	return 0;
 }
@@ -484,9 +513,10 @@ static int bridge_table_set_selection(lua_State *L) {
 	id obj = check_objc(L, 1);
 	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
+	NSScrollView *sv = table_scrollview(obj);
 
 	if (lua_isnoneornil(L, 2)) {
-		objc_setAssociatedObject(obj, &kKeys[kTableSelectionKey], nil,
+		objc_setAssociatedObject(sv, &kKeys[kTableSelectionKey], nil,
 			OBJC_ASSOCIATION_ASSIGN);
 		return 0;
 	}
@@ -494,8 +524,67 @@ static int bridge_table_set_selection(lua_State *L) {
 	luaL_checktype(L, 2, LUA_TFUNCTION);
 	lua_pushvalue(L, 2);
 	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	objc_setAssociatedObject(obj, &kKeys[kTableSelectionKey], @(ref),
+	objc_setAssociatedObject(sv, &kKeys[kTableSelectionKey], @(ref),
 		OBJC_ASSOCIATION_RETAIN);
 	return 0;
 }
 
+static int bridge_table_set_activation(lua_State *L) {
+	id obj = check_objc(L, 1);
+	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
+	if (!src) return luaL_error(L, "not a table or outline view");
+	NSScrollView *sv = table_scrollview(obj);
+	NSTableView *table = (NSTableView *)sv.documentView;
+
+	if (lua_isnoneornil(L, 2)) {
+		objc_setAssociatedObject(sv, &kKeys[kTableActivationKey], nil,
+			OBJC_ASSOCIATION_ASSIGN);
+		table.target = nil;
+		table.doubleAction = nil;
+		return 0;
+	}
+
+	luaL_checktype(L, 2, LUA_TFUNCTION);
+	lua_pushvalue(L, 2);
+	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	objc_setAssociatedObject(sv, &kKeys[kTableActivationKey], @(ref),
+		OBJC_ASSOCIATION_RETAIN);
+	table.target = src;
+	table.doubleAction = @selector(activateSelectedRow:);
+	return 0;
+}
+
+static int bridge_table_select_row(lua_State *L) {
+	id obj = check_objc(L, 1);
+	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
+	if (!src) return luaL_error(L, "not a table or outline view");
+	NSTableView *table = (NSTableView *)table_scrollview(obj).documentView;
+
+	if (lua_isnoneornil(L, 2)) {
+		[table deselectAll:nil];
+		return 0;
+	}
+	NSInteger row = (NSInteger)luaL_checkinteger(L, 2);
+	if (row < 0 || row >= table.numberOfRows) return 0;
+	[table selectRowIndexes:[NSIndexSet indexSetWithIndex:(NSUInteger)row]
+		byExtendingSelection:NO];
+	[table scrollRowToVisible:row];
+	return 0;
+}
+
+static int bridge_table_activate_row(lua_State *L) {
+	id obj = check_objc(L, 1);
+	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
+	if (!src) return luaL_error(L, "not a table or outline view");
+	NSScrollView *sv = table_scrollview(obj);
+	NSTableView *table = (NSTableView *)sv.documentView;
+	NSInteger row = (NSInteger)luaL_checkinteger(L, 2);
+	if (row < 0 || row >= table.numberOfRows) return 0;
+	[table selectRowIndexes:[NSIndexSet indexSetWithIndex:(NSUInteger)row]
+		byExtendingSelection:NO];
+	[table scrollRowToVisible:row];
+	if ([src respondsToSelector:@selector(activateSelectedRow:)]) {
+		[src activateSelectedRow:table];
+	}
+	return 0;
+}

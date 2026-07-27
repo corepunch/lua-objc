@@ -4,6 +4,7 @@ static int bridge_outlineview(lua_State *L) {
 	__block BOOL bordered = NO;
 	__block BOOL header = YES;
 	__block BOOL alternatingRows = YES;
+	__block BOOL drawsBackground = YES;
 	__block int gridLines = 0;
 	__block NSString *tableStyle = nil;
 
@@ -15,6 +16,7 @@ static int bridge_outlineview(lua_State *L) {
 			{"header",          ^(lua_State *L, int idx) { header = lua_toboolean(L, idx); }},
 			{"bordered",        ^(lua_State *L, int idx) { bordered = lua_toboolean(L, idx); }},
 			{"alternatingRows", ^(lua_State *L, int idx) { alternatingRows = lua_toboolean(L, idx); }},
+			{"drawsBackground", ^(lua_State *L, int idx) { drawsBackground = lua_toboolean(L, idx); }},
 			{"gridLines",       ^(lua_State *L, int idx) {
 				const char *g = lua_tostring(L, idx);
 				gridLines = g ? (int)lookupNameValue([NSString stringWithUTF8String:g], GridLinesMap, 0) : 0;
@@ -42,6 +44,7 @@ static int bridge_outlineview(lua_State *L) {
 	ov.gridStyleMask = (NSTableViewGridLineStyle)gridLines;
 	ov.rowHeight = kOutlineRowHeight;
 	ov.intercellSpacing = NSMakeSize(3, 2);
+	if (!drawsBackground) ov.backgroundColor = NSColor.clearColor;
 	ov.allowsColumnReordering = NO;
 	ov.allowsColumnResizing = YES;
 	ov.indentationPerLevel = kOutlineIndentation;
@@ -93,6 +96,7 @@ static int bridge_outlineview(lua_State *L) {
 
 	LuaOutlineViewSource *src = [[LuaOutlineViewSource alloc]
 		initWithOutlineView:ov columns:colSpecs];
+	src.owner = owner_for_state(L);
 
 	NSScrollView *sv = [[NSScrollView alloc]
 		initWithFrame:NSMakeRect(0, 0, width, height)];
@@ -100,6 +104,7 @@ static int bridge_outlineview(lua_State *L) {
 	sv.hasVerticalScroller = YES;
 	sv.autohidesScrollers = YES;
 	sv.borderType = bordered ? NSBezelBorder : NSNoBorder;
+	sv.drawsBackground = drawsBackground;
 	if (isSourceList) sv.drawsBackground = NO;
 
 	if (isSourceList) {
@@ -184,4 +189,3 @@ static int bridge_list_directory(lua_State *L) {
 	list_dir_into_table(L, raw, depth);
 	return 1;
 }
-

@@ -10,7 +10,10 @@ static void push_objc(lua_State *L, id obj, const char *meta);
 @property (nonatomic, strong) NSMutableArray *rows;
 @property (nonatomic, strong) NSMutableArray *columns;
 @property (nonatomic, weak) NSTableView *tableView;
+@property (nonatomic, weak) LuaStateOwner *owner;
 - (void)updateTableFrame;
+- (void)replaceRows:(NSArray *)rows;
+- (void)activateSelectedRow:(id)sender;
 @end
 
 @interface LuaTableCellView : NSTableCellView
@@ -209,32 +212,64 @@ static void push_objc(lua_State *L, id obj, const char *meta);
 	[self updateTableFrame];
 }
 
+- (void)replaceRows:(NSArray *)rows {
+	_rows = [rows mutableCopy];
+	[_tableView reloadData];
+	[self updateTableFrame];
+}
+
 - (void)tableViewSelectionDidChange:(NSNotification *)notification {
 	NSInteger row = _tableView.selectedRow;
 	if (row < 0) return;
 
 	NSScrollView *sv = _tableView.enclosingScrollView;
-	if (!sv || !gL) return;
+	lua_State *callL = _owner.L;
+	if (!sv || !callL) return;
 
 	NSNumber *refNum = objc_getAssociatedObject(sv, &kKeys[kTableSelectionKey]);
 	if (!refNum) return;
 
 	NSDictionary *rowData = _rows[row];
-	lua_rawgeti(gL, LUA_REGISTRYINDEX, refNum.intValue);
-	push_objc(gL, sv, "nsview");
-	lua_pushinteger(gL, (lua_Integer)row);
-	lua_newtable(gL);
+	lua_rawgeti(callL, LUA_REGISTRYINDEX, refNum.intValue);
+	push_objc(callL, sv, "nsview");
+	lua_pushinteger(callL, (lua_Integer)row);
+	lua_newtable(callL);
 	for (NSString *key in rowData) {
 		id value = rowData[key];
 		const char *str = value && ![value isEqual:[NSNull null]]
 			? [[value description] UTF8String] : NULL;
-		lua_pushstring(gL, str ?: "");
-		lua_setfield(gL, -2, [key UTF8String]);
+		lua_pushstring(callL, str ?: "");
+		lua_setfield(callL, -2, [key UTF8String]);
 	}
-	int status = lua_pcall(gL, 3, 0, 0);
+	int status = lua_pcall(callL, 3, 0, 0);
 	if (status != LUA_OK) {
-		report_lua_error(gL, "table selection");
-		lua_pop(gL, 1);
+		report_lua_error(callL, "table selection");
+		lua_pop(callL, 1);
+	}
+}
+
+- (void)activateSelectedRow:(id)sender {
+	NSInteger row = _tableView.selectedRow;
+	lua_State *callL = _owner.L;
+	if (row < 0 || row >= (NSInteger)_rows.count || !callL) return;
+	NSScrollView *sv = _tableView.enclosingScrollView;
+	NSNumber *refNum = objc_getAssociatedObject(sv,
+		&kKeys[kTableActivationKey]);
+	if (!refNum) return;
+
+	NSDictionary *rowData = _rows[row];
+	lua_rawgeti(callL, LUA_REGISTRYINDEX, refNum.intValue);
+	push_objc(callL, sv, "nsview");
+	lua_pushinteger(callL, (lua_Integer)row);
+	lua_newtable(callL);
+	for (NSString *key in rowData) {
+		id value = rowData[key];
+		lua_pushstring(callL, value ? [[value description] UTF8String] : "");
+		lua_setfield(callL, -2, key.UTF8String);
+	}
+	if (lua_pcall(callL, 3, 0, 0) != LUA_OK) {
+		report_lua_error(callL, "table activation");
+		lua_pop(callL, 1);
 	}
 }
 
