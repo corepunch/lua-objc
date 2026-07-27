@@ -63,6 +63,7 @@ function Source.open(folder, app, initialFile)
 	local rootDir = folder or "examples"
 	local wordWrapEnabled = false
 	local canvasVersion = 0
+	local previewTabIndex = nil  -- 0-based index of the preview tab, or nil
 
 	local function makeTextView(content)
 		local tv = bridge._textView()
@@ -71,8 +72,13 @@ function Source.open(folder, app, initialFile)
 		return tv
 	end
 
-	local function wireCanvasEval(tv)
+	local function wireEditor(tv, isPreview)
 		bridge._textViewOnChange(tv, function(text)
+			-- Pin preview tab on first edit
+			if isPreview and previewTabIndex ~= nil then
+				previewTabIndex = nil
+			end
+
 			canvasVersion = canvasVersion + 1
 			local v = canvasVersion
 			bridge._timerAfter(0.3, function()
@@ -117,20 +123,33 @@ function Source.open(folder, app, initialFile)
 
 	local editorArea, tabView
 
-	local function openInEditor(path)
+	local function openInEditor(path, pinImmediately)
 		local f = io.open(path, "r")
 		if not f then return end
 		local content = f:read("*a")
 		f:close()
 
 		local tv = makeTextView(content)
-		wireCanvasEval(tv)
 		local watchFile = wireInitialEditor(tv, path)
-
 		local name = path:match("([^/\\]+)$") or path
-		bridge._tabAdd(tabView, name, tv)
-		local idx = bridge._tabCount(tabView)
-		bridge._tabSelect(tabView, idx - 1)
+
+		if previewTabIndex ~= nil and not pinImmediately then
+			-- Replace existing preview tab with the new file
+			bridge._tabRemove(tabView, previewTabIndex)
+			bridge._tabAdd(tabView, name, tv)
+			local idx = bridge._tabCount(tabView)
+			bridge._tabSelect(tabView, idx - 1)
+			previewTabIndex = idx - 1
+			wireEditor(tv, true)
+		else
+			bridge._tabAdd(tabView, name, tv)
+			local idx = bridge._tabCount(tabView)
+			bridge._tabSelect(tabView, idx - 1)
+			if not pinImmediately then
+				previewTabIndex = idx - 1
+			end
+			wireEditor(tv, not pinImmediately)
+		end
 
 		if app.recent then
 			app.recent:recordFile(path)
@@ -140,23 +159,29 @@ function Source.open(folder, app, initialFile)
 		return idx
 	end
 
-	local function openPath(path)
+	local function openPath(path, pinImmediately)
 		if isImageFile(path) then
 			return openImage(path, app)
 		end
-		return openInEditor(path)
+		return openInEditor(path, pinImmediately)
 	end
 
 	fileTree:onRowSelect(function(list, rowIndex, rowData)
 		if rowData and rowData.path and not rowData.directory then
-			openPath(rowData.path)
+			openPath(rowData.path, false)
 		end
 	end)
 
-	local findInFilesUI, findRoot = FindInFiles {
+	fileTree:onRowActivate(function(list, rowIndex, rowData)
+		if rowData and rowData.path and not rowData.directory then
+			openPath(rowData.path, true)
+		end
+	end)
+
+	local 	findInFilesUI, findRoot = FindInFiles {
 		rootDir = rootDir,
 		onSelect = function(path)
-			openPath(path)
+			openPath(path, false)  -- preview on single-click from find results
 		end,
 	}
 
@@ -184,7 +209,7 @@ return ns.VStack {
 }
 ]=]
 	local initialTV = makeTextView(initialCode)
-	wireCanvasEval(initialTV)
+	wireEditor(initialTV, false)
 	bridge._tabAdd(tabView, "Untitled", initialTV)
 
 	bridge._tabOnChange(tabView, function(tv, idx, identifier, contentView)
@@ -254,7 +279,7 @@ return ns.VStack {
 	local searchView = SearchView {
 		rootDir = rootDir,
 		onSelect = function(path)
-			openPath(path)
+			openPath(path, false)  -- preview from Open Quickly
 		end,
 	}
 	ns.MenuItem {
@@ -269,7 +294,7 @@ return ns.VStack {
 
 	local function openInitialFile(path)
 		if not path then return end
-		openInEditor(path)
+		openInEditor(path, true)  -- initial file opens as pinned
 	end
 
 	openInitialFile(initialFile)

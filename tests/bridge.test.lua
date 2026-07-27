@@ -284,6 +284,30 @@ bridge._tabRemove(rounded, 1)
 t.assertEqual(bridge._tabCount(rounded), 1,
 	"rounded tabs preserve dynamic select and remove behavior")
 
+-- Preview tab pattern: remove + add replaces, plain add grows count.
+
+local ptv = bridge._tabview(400, 200, "rounded")
+t.assertEqual(bridge._tabCount(ptv), 0, "preview tab view starts empty")
+
+local function makePreviewTV(content)
+	local tv = bridge._textView()
+	bridge._textViewSetText(tv, content)
+	return tv
+end
+
+local prev1 = makePreviewTV("preview 1")
+bridge._tabAdd(ptv, "p1.lua", prev1)
+t.assertEqual(bridge._tabCount(ptv), 1, "preview add: one tab")
+
+bridge._tabRemove(ptv, 0)
+local prev2 = makePreviewTV("preview 2")
+bridge._tabAdd(ptv, "p2.lua", prev2)
+t.assertEqual(bridge._tabCount(ptv), 1, "preview replaced: count stays 1")
+
+local perm = makePreviewTV("permanent")
+bridge._tabAdd(ptv, "perm.lua", perm)
+t.assertEqual(bridge._tabCount(ptv), 2, "permanent added: count grows to 2")
+
 -- Image layout uses the bridge's capped display size, not the source bitmap's
 -- intrinsic dimensions, and remains proportional under a narrower proposal.
 
