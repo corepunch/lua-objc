@@ -22,9 +22,9 @@ local folders = {
 local message_list = ns.List {
 	flexGrow = 1,
 	columns = {
-		{ id = "from",    title = "From",    width = 120 },
+		{ id = "from",    title = "From",    width = 140 },
 		{ id = "subject", title = "Subject" },
-		{ id = "date",    title = "Date",    width = 60, minWidth = 40 },
+		{ id = "date",    title = "Date",    width = 120, minWidth = 80 },
 	},
 	data = inbox,
 }
