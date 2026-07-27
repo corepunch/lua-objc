@@ -1,8 +1,12 @@
-# Xcode UI Architecture Notes
+# Xcode UI Architecture
 
-> Reverse-engineering notes based on the macOS Accessibility hierarchy captured from Xcode on 25 July 2026, supplemented with public Apple documentation and inspection of Xcode bundle/framework artifacts reported online.
+> **Dual-source reference:** Part I documents the runtime accessibility hierarchy captured 25 July 2026 via Accessibility Inspector. Part II supplements with reverse-engineered class-dump headers from `IDEKit`, `DVTKit`, `IDEFoundation`, `IDESourceEditor`, and the Interface Builder frameworks (`IDEInterfaceBuilderCocoaIntegration`, `IBAutolayoutFoundation`, `IBFoundation`).
 >
-> **Important:** most classes prefixed `IDE`, `DVT`, `IBC`, `SourceEditor`, and `XR` are private implementation details. They are useful for understanding Xcode and for exploratory automation, but they are not stable APIs and may change between Xcode releases.
+> **Important:** Most classes prefixed `IDE`, `DVT`, `IBC`, `SourceEditor`, and `XR` are private implementation details. They are useful for understanding Xcode and for exploratory automation, but they are not stable APIs and may change between Xcode releases.
+
+---
+
+# Part I — Accessibility Hierarchy Observations
 
 ## 1. Executive summary
 
@@ -30,27 +34,30 @@ This suggests that Xcode is not one monolithic custom canvas. It is closer to a 
 
 ## 2. Evidence source and limitations
 
+### 2.1 Accessibility Inspector captures
+
 The screenshots were produced by Accessibility Inspector. That means the trees describe the **accessibility hierarchy**, not necessarily the exact `NSView` ownership tree. Accessibility may:
 
 - omit non-accessible implementation views;
 - flatten wrapper views;
 - expose virtual rows or lazy SwiftUI nodes not present as individual persistent views;
 - use generated accessibility proxies;
-- report role names such as “group” or “split group” that are semantic rather than exact AppKit types.
+- report role names such as "group" or "split group" that are semantic rather than exact AppKit types.
 
 However, many entries include their runtime class names, making the captures unusually useful for architectural inference.
 
-Captured files:
+Captured files: `Screenshot 2026-07-25 at 18.26.01.png` through `Screenshot 2026-07-25 at 18.43.03.png` (9 files).
 
-- `Screenshot 2026-07-25 at 18.26.01.png`
-- `Screenshot 2026-07-25 at 18.26.28.png`
-- `Screenshot 2026-07-25 at 18.26.51.png`
-- `Screenshot 2026-07-25 at 18.27.20.png`
-- `Screenshot 2026-07-25 at 18.27.57.png`
-- `Screenshot 2026-07-25 at 18.28.51.png`
-- `Screenshot 2026-07-25 at 18.41.28.png`
-- `Screenshot 2026-07-25 at 18.41.52.png`
-- `Screenshot 2026-07-25 at 18.43.03.png`
+### 2.2 Class-dump header evidence
+
+A second source of evidence comes from class-dump headers extracted from Xcode private frameworks. These headers expose the Objective-C method signatures, ivars, protocols, and class hierarchy — providing a **code-level view** that complements the accessibility-level view. These headers come from:
+- `IDEKit` — window, tab, editor, navigator, inspector classes
+- `DVTKit` — shared developer-tool views (`DVTSplitView`, `DVTReplacementView`, `DVTTabBarView`, `DVTChooserView`)
+- `IDEFoundation` — project model (`IDEWorkspace`, `IDEContainerItem`)
+- `IDESourceEditor` — source code editing UI
+- `IDEInterfaceBuilderCocoaIntegration` — Interface Builder Cocoa editing
+- `IBAutolayoutFoundation` — autolayout constraint engine
+- `IBFoundation` — IB serialization utilities
 
 ---
 
@@ -68,7 +75,6 @@ Xcode (application) [IDEApplication]
 `IDEApplication` is Xcode's application-level object, apparently an `NSApplication` subclass or equivalent private application class. It represents the process-level shell rather than a project.
 
 Likely responsibilities include:
-
 - application lifecycle;
 - global menus and commands;
 - opening projects/workspaces;
@@ -87,14 +93,15 @@ Application — Assets.xcassets
 
 This indicates that the window is persistent while the active editor context changes beneath it. Publicly observed Xcode bundle diffs also list an `IDEWorkspaceWindow.nib` inside `IDEKit.framework`, supporting the interpretation that the workspace window is an IDEKit-owned AppKit window loaded from a NIB.
 
-The first structural child is:
+**From headers:** `IDEWorkspaceWindow : DVTDualProxyWindow` (`IDEKit/IDEWorkspaceWindow.h`). `DVTDualProxyWindow` (`DVTKit/DVTDualProxyWindow.h`) is an `NSWindow` subclass supporting two represented URLs (primary/secondary) and a custom title view. `IDEWorkspaceWindow` overrides key-view loop recalculation, cursor rect interception, and window zoom/cascade behavior. Its controller is `IDEWorkspaceWindowController`, which manages tab creation, full-screen transitions, mini-debugging morphing, and the tab bar.
 
-```text
-/Users/ICHERNA/Developer/presenter/Application.xcodeproj
-(split group) [NSSplitView...]
-```
+### The document object behind the window
 
-The project path appears to label the workspace-root split group. This is the container from which the major workspace areas branch.
+**From headers:** `IDEWorkspaceDocument : NSDocument` (`IDEKit/IDEWorkspaceDocument.h`) is the `.xcworkspace` / `.xcodeproj` file on disk. It:
+- Owns a single `IDEWorkspace` (the in-memory project model, see Part II)
+- Creates and manages multiple `IDEWorkspaceWindowController` instances
+- Persists editor state (open files, cursor positions, assistant editor splits)
+- Implements `DVTTabbedWindowCreation` to let windows create tabs
 
 ---
 
@@ -120,7 +127,19 @@ IDEWorkspaceWindow
     └── Inspector / utilities area     likely another IDE-owned area controller
 ```
 
-The class names include `_ControlledBy_...`, which strongly suggests Xcode uses controller-bound host views or private subclasses whose debugging/accessibility names identify their owning controller.
+**From headers** (`IDEWorkspaceTabController.h`): The workspace root is not just a bare split view — it is owned by `IDEWorkspaceTabController`, one per tab. Each tab controller's `loadView` constructs a three-pane layout:
+
+```
+IDEWorkspaceTabController.view
+ └── DVTSplitView (_designAreaSplitView)          ← horizontal 3-pane
+      ├── DVTReplacementView → IDENavigatorArea    ← left: navigator
+      ├── DVTReplacementView → IDEEditorArea       ← center: editor
+      └── DVTSplitView (_utilityAreaSplitView)     ← right: vertical sub-split
+           ├── DVTReplacementView → IDEInspectorArea  ← top right
+           └── DVTReplacementView → IDELibraryArea    ← bottom right
+```
+
+All areas are loaded lazily through `DVTReplacementView`, which swaps in the appropriate `DVTViewController` subclass by extension identifier.
 
 ### Architectural interpretation
 
@@ -161,51 +180,35 @@ navigator (group) [NSView_ControlledBy_IDENavigatorArea]
 `IDENavigatorArea` appears to own the entire left sidebar region, rather than one particular navigator. The selected navigator in this capture is the Project Navigator.
 
 This distinction matters:
-
 - **Navigator area:** persistent host region and selector infrastructure.
 - **Project Navigator:** one navigator implementation placed inside that host.
 
-Other standard Xcode navigator modes—symbols, find, issues, tests, debug, breakpoints, reports—would likely replace or reconfigure the area’s child content without replacing the entire workspace region.
+**From headers** (`IDEKit/IDENavigatorArea.h`): `IDENavigatorArea` owns a `DVTChooserView` (_chooserView) — the segmented icon bar at the top of the left sidebar. Each `DVTChoice` in the chooser has an `image` (SF Symbol icon), `toolTip`, `identifier` (e.g. `"IDEStructureNavigator"`), and `representedObject` (the `DVTExtension` for that navigator). When the user clicks a tab, `selectionIndexes` changes → KVO triggers `IDENavigatorArea` to swap the `DVTReplacementView`'s child to the selected navigator. Navigator extensions are registered under point `"Xcode.IDEKit.Navigator"`.
+
+Navigator tabs visible in different contexts:
+
+| Identifier | Navigator | Icon |
+|---|---|---|
+| `IDEStructureNavigator` | Project files | Folder |
+| `IDESymbolNavigator` | Symbols | Hierarchy |
+| `IDEFindNavigator` | Find | Magnifying glass |
+| `IDEIssueNavigator` | Issues | Warning triangle |
+| `IDETestNavigator` | Tests | Diamond |
+| `IDEDebugNavigator` | Debug | Debugger |
+| `IDEBreakpointNavigator` | Breakpoints | Breakpoint |
+| `IDELogNavigator` | Logs | Speech bubble |
+
+### Navigator base class
+
+`IDENavigator : IDEViewController` (`IDEKit/IDENavigator.h`) — the base for all navigators. Owns an `IDENavigableItemCoordinator`, a `rootNavigableItem`, and supports `NSPredicate` filtering. `IDEOutlineBasedNavigator` extends it for tree-based navigators, managing an `IDENavigatorOutlineView` with object/selected-object arrays.
 
 ### `DVTScrollView`
 
 The project tree is wrapped in `DVTScrollView`, probably a Developer Tools (`DVT`) subclass of `NSScrollView` providing Xcode-wide behavior or styling.
 
-### `DVTExplorerOutlineView`
+### Navigable items — the universal selection model
 
-The Project Navigator itself is exposed as:
-
-```text
-DVTExplorableKit.DVTExplorerOutlineView
-```
-
-This implies a reusable “explorer” subsystem, not a project-specific tree coded directly into `IDENavigatorArea`. The subsystem likely handles:
-
-- hierarchical data presentation;
-- expansion/collapse;
-- selection;
-- contextual menus;
-- drag and drop;
-- filtering;
-- badges and status decorations;
-- cell reuse.
-
-The Swift-qualified style `DVTExplorableKit.DVTExplorerOutlineView` suggests at least this component comes from a named module/framework called `DVTExplorableKit`.
-
-### Outline rows and cells
-
-Rows appear as `NSOutlineRow`, while the cell appears through an accessibility mock object:
-
-```text
-<NSTableViewCellMockElement>
-```
-
-That is a reminder that Accessibility Inspector is showing a semantic representation. The visible file row contains at least:
-
-- a text field for the file name;
-- an icon cell, here identified as `DVTIconViewImageCell`.
-
-The file-type description `C Header Source` is exposed separately from the visible filename.
+**From headers** (`IDEKit/IDENavigableItem.h`): Every selectable thing in Xcode is wrapped in an `IDENavigableItem`. These form trees that serve both the navigator outline views and the jump bar. Each wraps a `representedObject` (the underlying model — file reference, symbol, issue, breakpoint, test, etc.), maintains `parentItem` / `childItems`, and is coordinated by an `IDENavigableItemCoordinator`. Each navigator and each editor context has its own coordinator, but all ultimately trace back to the workspace's model objects.
 
 ---
 
@@ -218,12 +221,45 @@ editor area (group) [DVTSplitView_ControlledBy_IDEEditorArea]
 ```
 
 This points to `IDEEditorArea` as the controller responsible for the central workspace. The editor area contains further split views so Xcode can support:
-
 - a primary editor;
 - assistant or additional editor columns;
 - tabbed editor contexts;
 - a lower debug area;
 - control bars and jump bars around editor content.
+
+### Editor hierarchy from class-dump headers
+
+**From headers** — the editor system is a multi-layer hierarchy:
+
+```
+IDEEditorArea (center pane owner)
+ └── IDEEditorModeViewController (editor mode: standard/assistant/version/genius)
+      ├── primaryEditorContext: IDEEditorContext
+      └── (in assistant mode) IDEEditorMultipleContext
+           └── NSSplitView of IDEEditorContext instances
+```
+
+**`IDEEditorArea`** (`IDEKit/IDEEditorArea.h`) manages an `int editorMode` (standard, assistant, version, genius), tracks `IDEEditorContext *lastActiveEditorContext` for Command-click navigation, owns the debugger split overlay, generates the `IDEWorkspaceTabControllerLayoutTree` for the Navigation HUD (Cmd-J), and caches default persistent representations per document type.
+
+**`IDEEditorModeViewController`** (`IDEKit/IDEEditorModeViewController.h`) owns the current mode's `primaryEditorContext` and `selectedAlternateEditorContext`, routes `openEditorOpenSpecifier:` and `openEditorHistoryItem:` to the right context, and controls assistant operations (add/remove split, change layout).
+
+**`IDEEditorMultipleContext`** (`IDEKit/IDEEditorMultipleContext.h`) is an `NSSplitView` container of multiple `IDEEditorContext` instances, used in assistant editor mode. Provides `splitEditorContext:`, `closeEditorContext:`, and `addEditorContext` operations.
+
+**`IDEEditorContext`** (`IDEKit/IDEEditorContext.h`, 336 lines) — the central class wrapping:
+- An `IDEEditor` (the content — source editor, IB canvas, plist editor, etc.)
+- An `IDENavBar` (jump bar)
+- An `IDEEditorHistoryController` (back/forward)
+- A `DVTFindBar` (find & replace)
+- A `DVTScopeBarsManager` (scope bar)
+- An `IDEEditorSplittingController` (add/remove split buttons)
+- An `IDEEditorStepperView` (sibling navigation)
+- An `IDEEditorIssueMenuController` (issue mini-menu)
+
+The `.navigableItem` property drives everything: when it changes, the context resolves the document extension, opens an `IDEEditorDocument`, installs the appropriate `IDEEditor` subclass, and updates nav bar and history. The context also implements swipe navigation between history items using Core Animation overlay layers.
+
+**`IDEEditorCoordinate`** (`IDEKit/IDEEditorCoordinator.h`) is a **static routing class** with no instances. It decides *where* to open a document — new window, new tab, adjacent editor, or Navigation HUD prompt — based on `NSUserDefaults` preferences and the active layout tree.
+
+**`IDEEditor`** (`IDEKit/IDEEditor.h`) is the base class for all content editors. Owns an `IDEEditorDocument`, a `DVTFindBar`, and references its owner `IDEEditorContext`. Concrete subclasses include `IDESourceCodeEditor`, `IDEComparisonEditor`, and editors from extension bundles (plist, RTF, model, Interface Builder).
 
 A representative hierarchy from the Asset Catalog capture is:
 
@@ -244,15 +280,47 @@ This is likely the immediate container for one or more editor panes. The name al
 
 ### `IDEEditorAreaSplitContentView`
 
-This appears to represent the content assigned to a particular editor split. It likely hosts the editor context, including the selected document editor and related chrome.
+This appears to represent the content assigned to a particular editor split. **From headers**, this is the view that an `IDEEditorContext` places inside the `DVTReplacementView` in the `IDEEditorMultipleContext` split view.
 
 ### `IDEEditorContextClipView`
 
-The term “editor context” suggests that Xcode models each open editor pane as a context object: selected document, navigation history, current editor type, cursor/selection state, and auxiliary controls. The clip view likely bounds or clips the currently installed editor view.
+The term "editor context" suggests that Xcode models each open editor pane as a context object: selected document, navigation history, current editor type, cursor/selection state, and auxiliary controls. The clip view likely bounds or clips the currently installed editor view.
 
-### `IDESafeAreaAwareSplitView`
+### How file selection propagates (navigator → editor → inspector)
 
-This wrapper probably adjusts layout around editor chrome, titlebar integration, accessory bars, or other safe-area concerns. Its presence in a macOS application illustrates that newer AppKit window layouts can still need explicit safe-area handling.
+**From headers** — the full chain when a file is selected in the Project Navigator:
+
+```
+1. IDEStructureNavigator (NSOutlineView selection)
+   → selectionDidChange
+
+2. IDENavigator.currentSelectedItems
+   → bound via output selection binding
+
+3. IDEWorkspaceTabController.navigatorArea
+   → currentNavigator navigates
+
+4. IDEEditorCoordinator (static routing)
+   → openEditorOpenSpecifier:forWorkspaceTabController:eventType:
+   → decides target: this tab, new tab, new window, adjacent editor
+
+5. IDEEditorContext (target context)
+   → openEditorOpenSpecifier: → installs IDEEditor
+
+6. IDEEditorContext._currentSelectedItemsChanged
+   → selection propagates to workspace IDESelection
+
+7. IDEUtilityArea (both Inspector and Library)
+   → sliceExtensionsForNavigableItems:inCategory:withWorkspaceDocument:
+   → matches selected navigable items to inspector categories
+
+8. Inspector installs appropriate slices:
+   → File Inspector, Quick Help, Identity, Attributes, etc.
+```
+
+### Editor history
+
+**From headers** — `IDEEditorHistoryController` (`IDEKit/IDEEditorHistoryController.h`) manages back/forward navigation with `previousHistoryItems` and `nextHistoryItems` stacks. `IDEEditorHistoryStack` wraps past/present/future items in a serializable container. `IDEEditorHistoryItem` holds a navigable item + state dictionary (cursor position, scroll offset). `IDEEditorContents` wraps an array of stacks (one per editor context) for top-level state serialization.
 
 ---
 
@@ -280,6 +348,8 @@ editor area [DVTSplitView_ControlledBy_IDEEditorArea]
 
 The outer class is `DVTReplacementView`. This name suggests a placeholder or swappable host used when the Debug Area is shown or hidden. Instead of hard-coding all debug content into the workspace, Xcode can replace the placeholder's child with the appropriate debug interface.
 
+**From headers:** `IDEEditorArea` owns an `_editorModeHostView` and a `_debuggerSplitView` — a vertical `DVTSplitView` below the editor content. The debugger split holds a `DVTReplacementView` for the `IDEDebugBar` (step/continue/pause toolbar) and another for the `IDEDebugArea` (variables + console). The debug area can be toggled by `showDebuggerArea:`.
+
 ### The console reuses Source Editor infrastructure
 
 The Console is backed by:
@@ -290,7 +360,6 @@ SourceEditor.SourceEditorContentView
 ```
 
 This is significant. Xcode's debug console is not merely an `NSTextView`; it reuses the Source Editor subsystem. That likely provides:
-
 - syntax-aware text rendering;
 - selection and editing behavior;
 - efficient layout for large text buffers;
@@ -298,20 +367,53 @@ This is significant. Xcode's debug console is not merely an `NSTextView`; it reu
 - shared scrolling behavior;
 - command completion or token handling.
 
+### Source Code Editor — detailed implementation
+
+**From headers** (`IDESourceEditor/IDESourceCodeEditor.h`, 298 lines):
+
+`IDESourceCodeEditor : IDEEditor` is the main source code editor. Key views:
+
+| View | Type | Role |
+|---|---|---|
+| `scrollView` | `NSScrollView` | Outer scroll |
+| `textView` | `DVTSourceTextView` | Core text editing |
+| `layoutManager` | `DVTLayoutManager` | Syntax coloring, folding, line numbers |
+| `containerView` | `IDESourceCodeEditorContainerView` | Hosts editor + toolbar |
+| `sidebarView` | `DVTTextSidebarView` | Gutter (line numbers, breakpoints, fold ribbons) |
+
+Capabilities include:
+- **Syntax coloring** via `syntaxColoringContext`
+- **Expression analysis** — `selectedExpression`, `mouseOverExpression` (drives Quick Help and jump-to-definition)
+- **Jump to definition** via `IDESourceCodeNavigationRequest` on a background `symbolLookupQueue`
+- **Diagnostic display** — `IDESourceCodeEditorAnnotationProvider` renders inline error/warning annotations
+- **Analyzer results** — `IDEAnalyzerResultsExplorer` for step-by-step traces
+- **Blame** — `IDESourceCodeSingleLineBlameProvider` with SCM blame popover
+- **Breakpoints** — gutter click → `_createFileBreakpointAtLocation:`
+- **Single-file processing** — `compileCurrentFile`, `analyzeCurrentFile`, `preprocessCurrentFile`, `assembleCurrentFile`
+- **Source code generation** — supports programmatic code insertion
+
+**`IDESourceCodeDocument : IDEEditorDocument`** (`IDESourceEditor/IDESourceCodeDocument.h`) is the document model. Key properties: `textStorage` (DVTTextStorage), `language` (DVTSourceCodeLanguage), `diagnosticController` (IDEDiagnosticController), `sourceLandmarks` (top-level structure: classes, methods), `generatesContent`, `lineEndings`, `textEncoding`.
+
+**Diagnostic pipeline** (`IDESourceEditor/IDEDiagnosticController.h`):
+
+```
+IDESourceCodeDocument (text changes)
+ → IDEDiagnosticController.scheduleDiagnosticsGeneration
+ → IDEClangDiagnosticController.diagnose
+ → IDEDiagnosticGeneratorOperation (NSOperation, runs clang on background)
+ → diagnosticItems posted to document
+ → IDESourceCodeEditorAnnotationProvider
+ → DVTSourceTextView (inline bubbles, gutter markers, scroll marks)
+```
+
+**Text completion** — three strategies extending `DVTTextCompletionStrategy`:
+- `IDETextCompletionSourceModelStrategy` — class/method/property names from index
+- `IDETextCompletionFrameworksStrategy` — headers from linked frameworks
+- `IDETextCompletionHeadersInSearchPathStrategy` — headers from search paths
+
 ### `DVTMarkedScroller`
 
 The scrollbar class suggests support for marks in the scroll track. In source-oriented surfaces these can represent search hits, diagnostics, changes, breakpoints, or other document positions.
-
-### Split debug panes
-
-The multiple `SourceEditorScrollView` and `DVTScrollView` nodes, separated by an `NSSplitViewSplitter`, are consistent with the Debug Area's combination of:
-
-- variable/watch views;
-- debug navigator-like panes;
-- console output/input;
-- optional additional panes or collapsed regions.
-
-The accessibility tree does not identify every pane by semantic name, so exact mapping is uncertain.
 
 ---
 
@@ -335,9 +437,7 @@ DVTSplitView
 
 `IBC` is historically associated with Interface Builder-related components. Here, `IBCSourceListOutlineView` is used for the catalog's asset list. This suggests that some Asset Catalog infrastructure belongs to, or shares components with, the Interface Builder family of Xcode frameworks.
 
-### Asset editor toolbar/control bar
-
-Another capture shows:
+### Asset editor toolbar
 
 ```text
 DVTSplitView
@@ -350,26 +450,9 @@ DVTSplitView
 ```
 
 This indicates a reusable private control layer:
-
 - `DVTControlBar` provides a standard Xcode bar container;
 - `DVTSearchFieldCell` provides Xcode-specific search-field behavior or styling;
 - `DVTImageButton` provides icon buttons and menu buttons consistent with the IDE.
-
-The Asset Catalog editor is therefore composed from generic DVT controls plus an editor-specific outline and content view.
-
-### Inferred Asset Catalog composition
-
-```text
-Asset Catalog editor plug-in
-├── Source-list pane
-│   └── IBCSourceListOutlineView
-├── Main asset canvas/editor
-├── Control bars
-│   ├── search/filter
-│   ├── add asset
-│   └── delete asset
-└── optional inspector integration
-```
 
 ---
 
@@ -396,7 +479,6 @@ navigator
 The `_TtGC...NSHostingView...` name is a mangled Swift generic class. The important part is `SwiftUI.NSHostingView`: Xcode embeds a SwiftUI hierarchy into its AppKit navigator shell.
 
 Observed SwiftUI accessibility types include:
-
 - `SwiftUI.AccessibilityNode`;
 - `SwiftUI.AccessibilityLazyLayoutNode`;
 - `SwiftUI.HostingScrollView`;
@@ -407,20 +489,10 @@ The list contains chat-style content, build status, code references, controls su
 
 ### Accessibility Inspector itself
 
-The Accessibility Inspector screenshot shows:
-
 ```text
 Accessibility Inspector (application) [XRCApplication]
 └── dialog [NSPanel]
     └── group [SwiftUI NSHostingView ...]
-        ├── scope (toggle button)
-        ├── Element (text)
-        ├── Source Editor, ...
-        ├── Captions (toggle button)
-        ├── Back (button)
-        ├── Play (toggle button)
-        ├── Forward (button)
-        └── scroll area [SwiftUI.HostingScrollView]
 ```
 
 Its panel chrome remains AppKit (`NSPanel`, `NSToolbarView`, standard window buttons), but its main content is SwiftUI. This reinforces the hybrid pattern:
@@ -430,8 +502,6 @@ AppKit process/window shell
 └── NSHostingView
     └── SwiftUI feature UI
 ```
-
-`XRCApplication` likely belongs to an internal developer-tool framework used by Accessibility Inspector rather than Xcode proper.
 
 ---
 
@@ -448,10 +518,6 @@ Application (application) [SwiftUI.AppKitApplication]
 └── Xcode Previews (standard window) [NSPreviewTargetWindow]
     ├── group [_TtGC7SwiftUI13NSHostingView...AnyView...]
     │   ├── Create New Presentation ... (button)
-    │   ├── RECENT PRESENTATIONS (text)
-    │   ├── Study Cards (image)
-    │   ├── QuickSlides (text)
-    │   ├── Open Presentation... (button)
     │   └── ...
     ├── close button [_NSThemeCloseWidgetCell]
     ├── zoom button [_NSThemeZoomWidgetCell]
@@ -467,11 +533,7 @@ SwiftUI.AppKitApplication
         └── real SwiftUI accessibility elements
 ```
 
-The controls inside the preview remain individually visible to macOS accessibility. Buttons, text, images, scroll areas, and other SwiftUI nodes are inspectable as semantic UI elements. Window chrome is ordinary AppKit chrome.
-
 > For a macOS target, the Xcode preview canvas is effectively a live native UI hosted in a special preview window, not a flattened screenshot.
-
-The preview process/window is separate from the main `IDEApplication` workspace. Xcode coordinates it, but Accessibility Inspector sees it under `SwiftUI.AppKitApplication` and `NSPreviewTargetWindow`, rather than as descendants of `IDEWorkspaceWindow`.
 
 ### 10.2 iOS preview: a SimulatorKit display surface embedded in Xcode
 
@@ -488,12 +550,7 @@ IDEApplication
                         └── SimulatorKit.SimDisplayRenderable...
                             ├── Loading games... [AXPMapPlatformElement]
                             ├── Adventures (tab) [AXPMapPlatformElement]
-                            ├── Library (tab) [AXPMapPlatformElement]
-                            ├── Create Game (tab) [AXPMapPlatformElement]
-                            ├── Settings (tab) [AXPMapPlatformElement]
-                            ├── Action (button) [NSButtonCell]
-                            ├── Volume Up (button) [NSButtonCell]
-                            ├── Volume Down (button) [NSButtonCell]
+                            ├── ...
                             └── Sleep/Wake (button) [NSButtonCell]
 ```
 
@@ -509,14 +566,6 @@ Remote iOS accessibility bridge
 └── AXPMapPlatformElement descendants  semantic elements from the guest UI
 ```
 
-This explains the apparent contradiction in the capture:
-
-- structurally, the canvas contains one simulated screen/render target;
-- semantically, Accessibility Inspector may still show tabs, labels, and controls as `AXPMapPlatformElement` objects supplied through the simulator's cross-platform accessibility bridge;
-- Mac-side simulator controls such as Action, Volume Up, Volume Down, and Sleep/Wake are ordinary AppKit controls, exposed as `NSButtonCell`.
-
-Therefore, the iOS canvas is much closer to a remotely rendered screen than the macOS preview. Its application controls are not local AppKit widgets. They are pixels rendered by the simulator plus optional remote accessibility proxies.
-
 ### 10.3 Direct comparison
 
 | Property | macOS SwiftUI preview | iOS SwiftUI preview |
@@ -528,27 +577,6 @@ Therefore, the iOS canvas is much closer to a remotely rendered screen than the 
 | Accessibility representation | Direct SwiftUI accessibility nodes | Remote `AXPMapPlatformElement` proxies |
 | Window/device controls | Native AppKit window buttons | Native AppKit simulator buttons |
 | Conceptual model | Live native preview application | Embedded remote screen plus bridge |
-
-### 10.4 Implications for canvas implementation
-
-This is a useful precedent for implementing a custom editor or presentation engine:
-
-1. **A macOS preview can be a genuine secondary window/process.** The editor does not need to fake the application inside its own view tree. It can launch or host the real UI and coordinate it externally.
-2. **A foreign-platform preview can be one render surface.** The host editor only needs a pixel/display surface, while input and accessibility are forwarded through a bridge.
-3. **Visual hierarchy and semantic hierarchy can be separate.** One rendered screen can expose a large semantic accessibility tree without creating one native host view per guest control.
-4. **Editor controls should remain outside the guest surface.** Device buttons and canvas controls can be ordinary host-platform controls while the preview remains isolated.
-5. **Automation strategy differs by target.** A macOS preview can often be automated through normal native accessibility. An iOS preview requires simulator/XCUI accessibility or coordinate/input forwarding; traversing Xcode's `NSView` tree alone is insufficient.
-
-The architecture can be summarized as:
-
-```text
-macOS preview
-Xcode coordinator ── controls ──> real preview application/window
-
-other-platform preview
-Xcode editor ── hosts ──> rendered screen
-             ── bridges ─> remote input/accessibility tree
-```
 
 ---
 
@@ -566,8 +594,6 @@ The captures allow a tentative subsystem map.
 | `SwiftUI` | Newer embedded feature surfaces | `NSHostingView`, `HostingScrollView`, `AccessibilityNode` |
 | `XR` / `XRC` | Accessibility Inspector or related developer tools | `XRCApplication` |
 | AppKit (`NS...`) | Core windows, panels, split views, outlines, cells, toolbars | `NSSplitView`, `NSPanel`, `NSOutlineRow`, `NSTableColumn` |
-
-This is an inference from runtime names; Apple does not document these private framework boundaries as supported APIs.
 
 ---
 
@@ -614,46 +640,401 @@ Although not directly visible in the screenshots, the UI names imply several int
 - **DVT shared controls:** IDE-wide visual and behavioral components.
 - **Replacement/host views:** permit lazy insertion and removal of optional regions.
 
-This separation would explain how Xcode can support dozens of file editors and navigators while retaining a consistent window shell.
+---
+
+# Part II — Class Implementation Details
+
+## 13. The Workspace Model (`IDEWorkspace`)
+
+**From headers** (`IDEFoundation/IDEWorkspace.h`, 246 lines):
+
+`IDEWorkspace : IDEXMLPackageContainer` is the in-memory representation of a project. Key owned subsystems:
+
+| Property | Type | Role |
+|---|---|---|
+| `runContextManager` | `IDERunContextManager` | Schemes, targets, destinations |
+| `logManager` | `IDELogManager` | Build & activity logs |
+| `issueManager` | `IDEIssueManager` | Errors, warnings, analyzer |
+| `breakpointManager` | `IDEBreakpointManager` | All breakpoints |
+| `batchFindManager` | `IDEBatchFindManager` | Find-in-project |
+| `testManager` | `IDETestManager` | Test suites & results |
+| `index` | `IDEIndex` | Clang/LLVM code index |
+| `refactoring` | `IDERefactoring` | Refactoring engine |
+| `textIndex` | `IDETextIndex` | Full-text search index |
+| `workspaceArena` | `IDEWorkspaceArena` | DerivedData layout |
+| `executionEnvironment` | `IDEExecutionEnvironment` | Build settings env |
+| `snapshotManager` | `IDEWorkspaceSnapshotManager` | Project snapshots |
+| `sourceControlWorkspaceMonitor` | `IDESourceControlWorkspaceMonitor` | SCM status |
+| `userSettings` / `sharedSettings` | Workspace settings | Per-user/per-team |
+
+Tracks `referencedContainers` (subprojects, frameworks), `referencedBlueprints` (buildable targets), and `referencedTestables`. Supports `simpleFilesFocused` mode for untitled QuickLook-style workspaces.
 
 ---
 
-## 13. Accessibility and automation implications
+## 14. Tab Bars — All Three Bar Types
 
-Apple documents that UI testing and inspection operate through the accessibility representation of the UI. `XCUIAutomation` can inspect UI state and control visible interface elements, while `XCUIElementSnapshot` represents element attributes and descendant hierarchy.
+Xcode uses **two distinct tab-bar widget classes** in three locations:
 
-For Xcode automation, this has practical consequences:
+| Bar | Widget | Location | Controls |
+|---|---|---|---|
+| **Editor tab bar** | `DVTTabBarView` + `DVTTabSwitcher` | Top of editor area | File tabs: close, reorder, detach, new-tab, overflow |
+| **Navigator tab bar** | `DVTChooserView` | Left sidebar top | Navigator icons: Project, Symbol, Find, Issues, etc. |
+| **Utility tab bar** | `DVTChooserView` | Right sidebar (inspector + library) | Inspector categories + Library categories |
 
-1. Prefer stable semantic identifiers, labels, roles, and menu commands over private class names.
-2. Treat private classes only as diagnostic hints.
-3. Expect SwiftUI regions to expose virtual/lazy accessibility nodes.
-4. Expect outline and table rows to be represented by accessibility proxy or mock elements.
-5. Do not assume the accessibility parent/child relationship exactly matches `NSView.superview`.
-6. Xcode updates can alter labels, hierarchy depth, class names, and implementation technology.
+### 14.1 Editor tab bar — `DVTTabBarView` + `DVTTabSwitcher`
 
-### What is probably automatable reliably
+```
+DVTTabSwitcher (NSView wrapping NSTabView + DVTTabBarView)
+ ├── DVTTabBarView : DVTSlidingViewsBar : DVTBarBackground
+ │    ├── DVTTabButton (one per open tab, title + close)
+ │    ├── DVTNewTabButton (+ button at right edge)
+ │    ├── DVTClippedTabsIndicator (overflow "»" menu)
+ │    └── DVTSlidingAnimation (slide tabs for reorder)
+ └── NSTabView (tabless — content switching via IDEWorkspaceTabController)
+```
 
-- opening menus and invoking named commands;
-- selecting a known navigator by label;
-- selecting visible project files by filename;
-- focusing the editor or console by accessibility role/label;
-- clicking clearly labelled Asset Catalog controls;
-- reading visible build/status messages.
+**`DVTTabBarView`** (`DVTKit/DVTTabBarView.h`):
+- Drag-to-reorder tabs via `reorderSlidingView:fromMouseDownEvent:`
+- Detach tab to new window via morphing drag image (`_detachTab:withClickPoint:sourceView:`)
+- Overflow clipping with "»" menu when tabs don't fit
+- Close buttons, new tab button, background theming (active/inactive × main/non-main)
+- Drag-and-drop to accept tabs from other windows
 
-### What is likely fragile
+**`DVTTabSwitcher`** (`DVTKit/DVTTabSwitcher.h`):
+- Bridges `DVTTabBarView` to `NSTabView`
+- `activeViewController` → current `IDEWorkspaceTabController`
+- `selectTabViewItem:` → tells `IDEWorkspaceWindowController` to `activateWorkspaceTabController:`
 
-- traversing by a fixed number of child indices;
-- matching long private class names;
-- depending on `<empty description>` wrapper nodes;
-- assuming a specific number of split views;
-- relying on generated SwiftUI mangled class names;
-- trying to address off-screen virtualized rows without scrolling.
+**`DVTSlidingViewsBar`** (`DVTKit/DVTSlidingViewsBar.h`):
+- Base class providing drag-reorder with `dropIndex`, `DVTSlidingAnimation`, `DVTClippedTabsIndicator`
+
+### 14.2 Navigator tab bar — `DVTChooserView`
+
+`DVTChooserView : DVTBorderedView` (`DVTKit/DVTChooserView.h`) renders a segmented-button bar using an `NSMatrix` of button cells. Each tab is a `DVTChoice`:
+
+```objc
+@interface DVTChoice : NSObject
+@property NSString *title;
+@property NSString *toolTip;
+@property NSImage *image;
+@property NSString *identifier;
+@property id representedObject;  // the DVTExtension
+@property BOOL enabled;
+@end
+```
+
+Key properties: `choices` (array of DVTChoice), `selectionIndexes` (NSIndexSet), `allowsEmptySelection`, `choicesFillWidth`, `justification`, `gradientStyle`.
+
+When a tab is clicked, `_chooserButtonClicked:` fires → `selectionIndexes` updates → `IDENavigatorArea` swaps the `DVTReplacementView`'s controller.
+
+### 14.3 Utility tab bar — `DVTChooserView`
+
+`IDEUtilityArea` (`IDEKit/IDEUtilityArea.h`) owns a `DVTChooserView` for category tabs. The utility area split (`_utilityAreaSplitView`) is a vertical `DVTSplitView` within `IDEWorkspaceTabController`:
+
+```
+DVTSplitView (_utilityAreaSplitView)
+ ├── DVTReplacementView → IDEInspectorArea
+ │    └── DVTChooserView (inspector categories: File, Quick Help, Identity...)
+ │         └── DVTStackView_ML of DVTDisclosureView-wrapped slice content
+ └── DVTReplacementView → IDELibraryArea
+      └── DVTChooserView (library categories: Snippets, Objects, Media...)
+           └── DVTStackView_ML of DVTDisclosureView-wrapped slice content
+```
+
+**Category resolution:** `IDEUtilityArea._rebuildCategoriesAndStack` gets the editor's navigable items, queries each `IDEInspectorCategoryController` for matching slices, builds `DVTChoice` objects for valid categories, and displays them in the chooser. When a category is selected, `_rebuildStackWithNavigableItems:` constructs the vertical `DVTStackView_ML` of `DVTDisclosureView`-wrapped inspector slice content views.
+
+### 14.4 Tab bar state persistence
+
+- Editor tab bar state (which files, order, selected tab) is persisted through `IDEWorkspaceDocument` (tracks `stateSavingRecentEditorDocumentURLs` and `stateSavingDefaultEditorStatesForURLs`) and `IDEWorkspaceWindowController` (tab controllers' state)
+- Navigator chooser selection is persisted via `IDENavigatorArea.commitStateToDictionary:`
+- Utility chooser selection is persisted via `IDEUtilityArea`'s `preferredCategoriesPersistenceKey`
 
 ---
 
-## 14. Design lessons for a lightweight Xcode alternative
+## 15. Inspector Resolution Detail
 
-The inspected architecture suggests several useful principles for an alternative IDE:
+### IDEInspectorArea and IDEUtilityArea
+
+`IDEInspectorArea : IDEUtilityArea` (`IDEKit/IDEInspectorArea.h`) — the right-top pane:
+- Overrides `sliceExtensionsForNavigableItems:` to match selected navigable items to inspector categories via `IDEInspectorCategoryController`
+- Maintains a dictionary of `IDEInspectorCategoryController` instances per category
+- Routes editor selection changes to appropriate inspector slices
+
+`IDEUtilityArea : IDEViewController` (`IDEKit/IDEUtilityArea.h`) — the base class shared by inspector and library:
+- Owns a `DVTChooserView` for category tab selection and a `DVTStackView_ML` for stacking slice content
+- Owns its own `IDENavigableItemCoordinator` to observe workspace content
+- Derives input selection from the workspace's `IDESelection`
+
+### IDEInspectorViewController
+
+`IDEInspectorViewController : IDEViewController` (`IDEKit/IDEInspectorViewController.h`) — one inspector slice:
+- Holds `inspectedObjectsController` (NSArrayController — selected objects) and `inspectedDocumentsController` (selected documents)
+- Content is XML-driven via `IDEBindableDeclarativeInspectorController` — the layout (rows, labels, controls) is defined in plists loaded from extension bundles
+- Supports undo, issue display, and deferred reload
+
+### IDEInspectorCategoryController
+
+`IDEInspectorCategoryController : NSObject` (`IDEKit/IDEInspectorCategoryController.h`):
+- Wraps a `DVTExtension` category and its inspector extensions
+- `inspectorsForInspectedNavigables:withWorkspaceDocument:` determines which inspector slices apply to a given set of navigable items using type-matching and representation-matching strategies
+
+### IDELibraryArea
+
+`IDELibraryArea : IDEUtilityArea` (`IDEKit/IDELibraryArea.h`):
+- Manages library content (Code Snippets, Object Library, Media Library, File Templates)
+- Caches `previousLibraries` and `libraryExtensions`
+- Supports collapse/expand and filter-field activation (`focusOnLibraryFilter`)
+
+---
+
+## 16. Interface Builder Pipeline
+
+### 16.1 Framework stack
+
+```
+IDEInterfaceBuilderCocoa (plugin init, 3rd-party doc-archiving adapters)
+        │
+IDEInterfaceBuilderCocoaIntegration (Cocoa-specific editing layer)
+  ├── IBCocoaDocument        (nib/xib document model)
+  ├── IBCocoaAutolayoutEngine (runs NSISEngine offscreen)
+  ├── IB*Editor classes      (view-specific editors)
+  ├── IB*EditorCanvasFrame   (editor chrome)
+  └── IBCocoa*Connection      (outlet, action, binding connections)
+        │
+IBAutolayoutFoundation (constraint engine, guides, frame deciders)
+        │
+IBFoundation (binary archiver, identity dict, message channel)
+```
+
+### 16.2 IBCocoaDocument
+
+`IBCocoaDocument : IBDocument` (`IDEInterfaceBuilderCocoaIntegration/IBCocoaDocument.h`):
+- Reads/writes `.xib` (XML) and compiles to `.nib` (binary keyed-objects format)
+- Manages file owner, first responder, and application placeholder objects
+- Runs 60+ verification methods for nib integrity
+- Hosts an `IBCocoaAutolayoutEngine` that creates an offscreen `NSWindow` with a copy of the view hierarchy to run `NSISEngine` (AppKit's real constraint solver)
+
+### 16.3 Editor hierarchy per view type
+
+Every view class has its own `IBEditor` subclass:
+
+```
+IBEditor (abstract)
+ ├── IBNSViewEditor (generic NSView)
+ │    ├── IBNSTableViewEditor
+ │    ├── IBNSSplitViewEditor
+ │    ├── IBNSStackViewEditor
+ │    ├── IBNSTabViewEditor
+ │    ├── IBNSScrollViewEditor
+ │    └── IBNSBoxEditor
+ ├── IBNSWindowEditor  (window chrome, toolbar, simulation)
+ ├── IBNSToolbarEditor (drag-to-configure toolbar)
+ ├── IBNSMenuEditor / IBNSMenuItemEditor
+ ├── IBNSCellEditor → per-cell subclasses (Button, TextField, Slider, etc.)
+ └── IBTabViewItemEditor
+```
+
+Each editor supports **embedding policies** — wrapping views in containers via drag (e.g., embed in scroll view, split view, tab view, submenu).
+
+### 16.4 Canvas rendering
+
+**Window chrome:** `IBNSWindowEditorView` draws realistic window chrome (shadow, title bar, rounded corners, toolbar button) by mimicking a real `NSWindow` through custom drawing.
+
+**Autolayout:** `IBCocoaAutolayoutEngine` installs copies of canvas views in an offscreen `NSWindow`, runs real `NSISEngine` for constraint solving, reads back frames, and updates the canvas. `IBAutolayoutArbiter` generates candidate constraints for ambiguous views and breaks mutually exclusive constraints. `IBAutolayoutFrameDecisionDriver` manages temporary sizing constraints during live resize.
+
+**Layout guides:** `IBLayoutGuideGenerator` generates blue snap/drag guides (centering, edge, baseline, indentation) using `IBLayoutRuleManager`, which loads rules per widget type from plists.
+
+### 16.5 Storyboards
+
+The Mac `IBCocoaDocument` handles nib/xib. iOS storyboard support would extend the same `IBDocument` base with `UIStoryboard` integration via `UIStoryboardSegue`. The core `IDEInterfaceBuilder.framework` (containing `IBDocument`, `IBCanvas`, `IBStoryboard`) is not present in the DevKits dump — only the Cocoa plugin layer is available. Build pipeline: `.xib`/`.storyboard` → `ibtool` → `.nib`/`.storyboardc` (compiled binaries).
+
+### 16.6 Nib serialization
+
+- `IBBinaryArchiver` / `IBBinaryUnarchiver` — custom binary serialization with object ID tables
+- `IBMutableIdentityDictionary` — `NSMapTable`-backed identity-based dictionary
+- Connections (outlet, action, binding, accessibility) validate source/destination and archive to nib connector objects
+
+---
+
+## 17. State Restoration & Persistence
+
+### 17.1 The DVTStatefulObject protocol
+
+```objc
+@protocol DVTStatefulObject
++ (long long)version;
++ (void)configureStateSavingObjectPersistenceByName:(id)arg1;
+- (void)commitStateToDictionary:(id)arg1;
+- (void)revertStateWithDictionary:(id)arg1;
+- (void)setStateToken:(DVTStateToken *)token;
+@end
+```
+
+Every major IDE object conforms to this. On quit: `IDEWorkspaceDocument.writeStateData` triggers a full state snapshot → each object's `commitStateToDictionary:` writes its state → serialized to `DerivedData/<workspace>-<hash>/` or `~/Library/Saved Application State/com.apple.dt.Xcode.savedState/`. On relaunch: `readStateData` → each object's `revertStateWithDictionary:` restores state.
+
+### 17.2 DVTInvalidation
+
+```objc
+@protocol DVTInvalidation
+- (void)primitiveInvalidate;
+@optional
+@property(readonly, getter=isValid) BOOL valid;
+@end
+```
+
+Every IDE object conforms. `primitiveInvalidate` cleans up KVO, notifications, timers, and child objects. Prevented memory leaks when tabs/windows/documents close.
+
+### 17.3 Editor layout tree
+
+`IDEWorkspaceTabControllerLayoutTree` and `IDEWorkspaceTabControllerLayoutTreeNode` (`IDEKit/IDEWorkspaceTabControllerLayoutTree.h`) encode the editor split hierarchy for:
+1. **State restoration** — which files were open in which editors
+2. **Navigation HUD** — the Cmd-J overlay
+
+Each `LayoutTreeNode` has `orientation`, `contentType`, `children` (array), and `documentArchivableRepresentation` (what file is shown).
+
+---
+
+## 18. Debugger Integration (deep dive)
+
+### 18.1 Debug area classes
+
+`IDEDebugArea : IDEViewController` → `IDESplitViewDebugArea` → `IDEDefaultDebugArea`:
+- `IDESplitViewDebugArea` adds `NSSplitView` for variables + console split
+- `IDEDefaultDebugArea` provides the standard layout
+- `IDEConsoleArea` provides the LLDB console with find bar, scope bar, and input history
+
+### 18.2 Mini-debugging mode
+
+`IDEWorkspaceWindowController` (`IDEKit/IDEWorkspaceWindowController.h`):
+- `inMiniDebuggingMode` — compact debugger overlay
+- `_changeToMiniDebugging:` / `_morphToMedium:` / `_morphToCollapsed` / `_morphToNonCollapsed:` — resize transitions
+- `_reSnapshotContentViewToNewFrame:` — snapshot-based morph animation
+
+### 18.3 Debugging addition lifecycle
+
+`IDEWorkspaceTabController` manages debug addition controllers:
+- `debuggingAdditionUIControllersForLaunchSession:` — returns debugger-related controllers
+- `addDebuggingAdditionUIControllerLifeCycleObserver:` / `remove...` — observer pattern
+- `_createDebuggingAdditionUIControllersForLaunchSession:` — creates on debug start
+- Notifies observers of invalidation/update
+
+---
+
+## 19. DVTKit Base Views
+
+The core custom views Xcode builds on:
+
+| Class | Role |
+|---|---|
+| `DVTSplitView : NSSplitView` | Universal split container with state saving, animation, custom dividers |
+| `DVTReplacementView : DVTLayoutView_ML` | Lazy-loads `DVTViewController` by extension ID; forwards bindings |
+| `DVTChooserView : DVTBorderedView` | Segmented/tab-style button bar (NSMatrix-based) |
+| `DVTStackView_ML : DVTLayoutView_ML` | Manual-layout stack with direction, spacing, inset |
+| `DVTTabBarView : DVTSlidingViewsBar` | Native tab bar with reorder, close, overflow |
+| `DVTTabSwitcher : NSView` | Wraps NSTabView + DVTTabBarView |
+| `DVTDualProxyWindow : NSWindow` | Window with primary/secondary URLs + custom title |
+| `DVTViewController : NSViewController` | Base VC with DVTInvalidation, nib loading |
+| `DVTScopeBarView` / `DVTScopeBarController` | Filter/scope bar |
+| `DVTFindBar` / `DVTIncrementalFindBar` | Find-and-replace bars |
+| `DVTDisclosureView` / `DVTDisclosureHeaderView` | Collapsible sections (used in inspector slices) |
+| `DVTLibraryController` / `DVTLibraryAssetView` | Library panel |
+
+---
+
+## 20. File-Type to Editor Mapping
+
+When a document is opened, `IDEEditorContext._defaultDocumentExtensionForNavigableItem:` determines the document extension, which determines the editor:
+
+| File Type | Document Extension | Editor Class |
+|---|---|---|
+| `.h`, `.m`, `.swift`, `.c`, `.cpp` | Source code | `IDESourceCodeEditor` |
+| `.xib`, `.nib` | Interface Builder Cocoa | `IBCocoaDocument` → IB editor |
+| `.storyboard` | Interface Builder Cocoa Touch | IB editor (iOS variant) |
+| `.plist`, `.xcent`, `.entitlements` | Property list | `IDEPropertyListEditor` |
+| `.xcdatamodeld` | Core Data model | `IDEDataModelEditor` |
+| `.rtf` | RTF | `IDERTFEditor` |
+| `.pdf` | PDF | `IDEPDFViewer` |
+| `.playground` | Playground | Playground editor |
+
+---
+
+## 21. Key Architectural Patterns
+
+### 21.1 DVTReplacementView lazy loading
+Every major area uses `DVTReplacementView` with a `controllerExtensionIdentifier`. Extensions register what area they fill; the view lazy-loads the controller on first use.
+
+### 21.2 DVTInvalidation lifecycle
+All IDE objects conform to `DVTInvalidation`. `primitiveInvalidate` cleans up everything — prevents leaks.
+
+### 21.3 Navigable items as universal selection
+Every selectable thing is an `IDENavigableItem`. Navigators produce them, editors consume them, inspectors react to them.
+
+### 21.4 Extension-based architecture
+Navigators, editors, inspectors, debuggers, and libraries are all extensions loaded via `DVTReplacementView` or `IDEUtilityArea` slice management.
+
+### 21.5 Stateful object graph
+The entire IDE window state is serialized through `DVTStatefulObject` into a dictionary tree and persisted to disk.
+
+---
+
+## 22. Combined Class Hierarchy from Headers and Accessibility
+
+```
+IDEApplication
+└── IDEWorkspaceDocument (NSDocument)
+    └── IDEWorkspaceWindowController (NSWindowController)    ← 0–N windows
+        ├── DVTTabBarView (tab strip)
+        ├── DVTTabSwitcher (tab model)
+        └── IDEWorkspaceTabController (IDEViewController)    ← one per tab
+            └── DVTSplitView (_designAreaSplitView)
+                ├── DVTReplacementView → IDENavigatorArea
+                │    ├── DVTChooserView (navigator icons: Project/Symbol/Find...)
+                │    ├── IDENavigatorFilterControlBar (filter field)
+                │    └── DVTReplacementView → IDENavigator subclass
+                │         ├── IDEStructureNavigator (project tree)
+                │         ├── IDESymbolNavigator (symbols)
+                │         ├── IDEFindNavigator (search results)
+                │         ├── IDEIssueNavigator (errors/warnings)
+                │         ├── IDETestNavigator (tests)
+                │         ├── IDEDebugNavigator (debug)
+                │         ├── IDEBreakpointNavigator (breakpoints)
+                │         └── IDELogNavigator (build logs)
+                │
+                ├── DVTReplacementView → IDEEditorArea
+                │    ├── IDEEditorModeViewController (mode: std/assistant/version/genius)
+                │    │    ├── IDEEditorMultipleContext (NSSplitView of editor panes)
+                │    │    │    └── IDEEditorContext × N
+                │    │    │         ├── IDENavBar (jump bar)
+                │    │    │         ├── DVTScopeBarsManager (scope bar)
+                │    │    │         ├── IDEEditorHistoryController (back/forward)
+                │    │    │         ├── DVTFindBar (find & replace)
+                │    │    │         ├── IDEEditorSplittingController (add/remove split)
+                │    │    │         └── IDEEditor subclass
+                │    │    │              ├── IDESourceCodeEditor (+ annotations, completion)
+                │    │    │              ├── IDEComparisonEditor (diff/merge)
+                │    │    │              ├── IB editor (Interface Builder)
+                │    │    │              └── ... (plist, RTF, model, etc.)
+                │    │    └── (or IDEEditorBasicMode — single context)
+                │    └── DVTSplitView (_debuggerSplitView)
+                │         ├── DVTReplacementView → IDEDebugBar (step/continue/pause)
+                │         └── DVTReplacementView → IDEDebugArea
+                │              └── IDESplitViewDebugArea → IDEDefaultDebugArea
+                │                   ├── Variables view
+                │                   └── IDEConsoleArea (SourceEditorScrollView-based)
+                │
+                └── DVTSplitView (_utilityAreaSplitView)
+                     ├── DVTReplacementView → IDEInspectorArea
+                     │    ├── DVTChooserView (inspector: File/QuickHelp/Identity...)
+                     │    └── DVTStackView_ML of DVTDisclosureView slices
+                     │         └── IDEInspectorViewController (per slice, XML-driven)
+                     └── DVTReplacementView → IDELibraryArea
+                          ├── DVTChooserView (library: Snippets/Objects/Media/FileTmpl)
+                          └── DVTStackView_ML of DVTDisclosureView slices
+```
+
+---
+
+## 23. Design lessons for a lightweight Xcode alternative
 
 ### Keep a stable shell and modular content
 
@@ -672,7 +1053,6 @@ Feature modules should provide content for those hosts instead of modifying the 
 ### Model editor panes explicitly
 
 An editor split should own an `EditorContext` containing:
-
 - current document;
 - editor type;
 - navigation history;
@@ -680,12 +1060,9 @@ An editor split should own an `EditorContext` containing:
 - zoom and view state;
 - optional assistant relationships.
 
-This makes split editors and restoration straightforward.
-
 ### Build shared control primitives
 
 Xcode repeatedly uses DVT-level controls and wrappers. A smaller IDE would benefit from equivalents such as:
-
 - `IDEControlBar`;
 - `IDESplitView`;
 - `IDESearchField`;
@@ -697,7 +1074,6 @@ Xcode repeatedly uses DVT-level controls and wrappers. A smaller IDE would benef
 ### Reuse the text engine
 
 Xcode appears to use Source Editor components for the debug console. A lightweight IDE can similarly reuse one text-engine abstraction for:
-
 - source files;
 - console;
 - logs;
@@ -717,7 +1093,7 @@ Semantic labels and roles make both assistive use and automation more reliable. 
 
 ---
 
-## 15. Suggested architecture diagram for implementation
+## 24. Suggested architecture diagram for implementation
 
 ```text
 Application
@@ -770,101 +1146,134 @@ This is not claimed to be Xcode's exact source-level design; it is an implementa
 
 ---
 
-## 16. Open questions for further inspection
+## 25. Accessibility and automation implications
 
-The current screenshots do not expose enough information to answer these precisely:
+Apple documents that UI testing and inspection operate through the accessibility representation of the UI. `XCUIAutomation` can inspect UI state and control visible interface elements, while `XCUIElementSnapshot` represents element attributes and descendant hierarchy.
 
-- How the inspector/utilities area is represented internally.
-- Whether editor providers use a formal plug-in protocol or internal extension-point registry.
-- How tabs relate to `IDEEditorContext` and split views.
-- Which object owns the jump bar and editor navigation history.
-- Whether `DVTReplacementView` is a generic placeholder class used across Xcode.
+For Xcode automation, this has practical consequences:
+
+1. Prefer stable semantic identifiers, labels, roles, and menu commands over private class names.
+2. Treat private classes only as diagnostic hints.
+3. Expect SwiftUI regions to expose virtual/lazy accessibility nodes.
+4. Expect outline and table rows to be represented by accessibility proxy or mock elements.
+5. Do not assume the accessibility parent/child relationship exactly matches `NSView.superview`.
+6. Xcode updates can alter labels, hierarchy depth, class names, and implementation technology.
+
+### What is probably automatable reliably
+
+- opening menus and invoking named commands;
+- selecting a known navigator by label;
+- selecting visible project files by filename;
+- focusing the editor or console by accessibility role/label;
+- clicking clearly labelled Asset Catalog controls;
+- reading visible build/status messages.
+
+### What is likely fragile
+
+- traversing by a fixed number of child indices;
+- matching long private class names;
+- depending on `<empty description>` wrapper nodes;
+- assuming a specific number of split views;
+- relying on generated SwiftUI mangled class names;
+- trying to address off-screen virtualized rows without scrolling.
+
+---
+
+## 26. Open questions for further inspection
+
+The current investigation does not resolve:
+
+- How the inspector/utilities area is represented internally in the accessibility tree when expanded.
+- Whether editor providers use a formal plug-in protocol or internal extension-point registry (likely the latter — `DVTReplacementView.controllerExtensionIdentifier`).
+- How tabs relate to `IDEEditorContext` and split views (tabs = `IDEWorkspaceTabController`; editor panes = `IDEEditorContext`).
+- Which object owns the jump bar and editor navigation history (`IDEEditorContext` owns the `IDENavBar` and `IDEEditorHistoryController`).
+- Whether `DVTReplacementView` is a generic placeholder class used across Xcode (confirmed: every area uses it).
 - How the build system, indexer, debugger, and source-control models communicate with UI controllers.
 - Whether the new intelligence surface is loaded from a separate framework or Xcode extension.
 - Which portions of Source Editor remain AppKit views versus custom rendering layers.
 
-Additional useful captures would include:
-
-- workspace with the right inspector open;
-- split editor with two files;
-- source editor jump bar and minimap;
-- debugger variables pane expanded;
-- test navigator and report navigator;
-- SwiftUI preview canvas;
-- Interface Builder storyboard editor;
-- window/view hierarchy from LLDB or a view debugger, for comparison with accessibility.
-
 ---
 
-## 17. Public references
+## 27. Public references
 
 ### Apple documentation
 
-- [Xcode](https://developer.apple.com/xcode/) — Apple's overview of Xcode as the integrated toolchain for development, testing, debugging, profiling, and distribution.
-- [Accessibility Inspector](https://developer.apple.com/documentation/accessibility/accessibility-inspector) — official entry point and documentation for the tool used to obtain these hierarchies.
-- [Inspecting the accessibility of screens](https://developer.apple.com/documentation/accessibility/inspecting-the-accessibility-of-screens) — explains inspecting application UI through Accessibility Inspector.
-- [XCUIAutomation](https://developer.apple.com/documentation/xcuiautomation) — Apple's UI automation framework, which operates against the accessible interface representation.
-- [XCUIElementAttributes](https://developer.apple.com/documentation/xcuiautomation/xcuielementattributes) — includes snapshot concepts for element attributes and descendant UI hierarchy.
-- [Archived: User Interface Testing](https://developer.apple.com/library/archive/documentation/DeveloperTools/Conceptual/testing_with_xcode/chapters/09-ui_testing.html) — explicitly states that accessibility technology supplies the semantic UI data used by UI testing.
+- [Xcode](https://developer.apple.com/xcode/)
+- [Accessibility Inspector](https://developer.apple.com/documentation/accessibility/accessibility-inspector)
+- [Inspecting the accessibility of screens](https://developer.apple.com/documentation/accessibility/inspecting-the-accessibility-of-screens)
+- [XCUIAutomation](https://developer.apple.com/documentation/xcuiautomation)
+- [XCUIElementAttributes](https://developer.apple.com/documentation/xcuiautomation/xcuielementattributes)
 
 ### Public evidence of private Xcode components
 
 - [Xcode 12A7208 vs 12A7209 bundle diff](https://gist.github.com/rpendleton/c5e41605d3dd3bbfa43a70f2bf314f57) — lists resources inside private frameworks, including `IDEKit.framework`, `IDENavigatorArea.nib`, and `IDEWorkspaceWindow.nib`.
-- [What is Xcode doing on the main thread?](https://gist.github.com/steipete/09ed94e78f084804a48291bef6c965c5) — a sampled Xcode process showing private IDE classes such as `IDENavigatorArea`, providing historical corroboration that these are real internal classes.
-
-These non-Apple sources are observational and version-specific. They should not be treated as API documentation.
+- [What is Xcode doing on the main thread?](https://gist.github.com/steipete/09ed94e78f084804a48291bef6c965c5) — sampled Xcode process showing private IDE classes such as `IDENavigatorArea`.
 
 ---
 
-## 18. Concise class hierarchy inventory from the screenshots
+## 28. Concise class hierarchy inventory
 
 ```text
 IDEApplication
-└── IDEWorkspaceWindow
-    └── NSSplitView (workspace root)
-        ├── NSView_ControlledBy_IDENavigatorArea
-        │   ├── DVTScrollView
-        │   │   └── DVTExplorableKit.DVTExplorerOutlineView
-        │   │       └── NSOutlineRow
-        │   │           └── NSTableViewCellMockElement
-        │   │               ├── text field
-        │   │               └── DVTIconViewImageCell
-        │   └── SwiftUI.NSHostingView
-        │       └── SwiftUI.HostingScrollView
-        │           └── SwiftUI.AccessibilityLazyLayoutNode
-        │
-        └── DVTSplitView_ControlledBy_IDEEditorArea
-            ├── IDEEditorSplitView_ControlledBy_...
-            │   └── IDEEditorAreaSplitContentView_ControlledBy_...
-            │       └── IDEEditorContextClipView_ControlledBy_...
-            │           └── IDESafeAreaAwareSplitView
-            │               └── DVTSplitView
-            │                   ├── DVTControlBar
-            │                   │   ├── DVTSearchFieldCell
-            │                   │   └── DVTImageButton
-            │                   └── DVTScrollView
-            │                       └── IBCSourceListOutlineView
-            │
-            └── DVTReplacementView (Debug Area)
-                └── DVTSplitView
-                    ├── SourceEditorScrollView
-                    │   └── SourceEditor.SourceEditorContentView
-                    ├── DVTMarkedScroller
-                    ├── DVTControlBar
-                    ├── DVTScrollView
-                    └── NSSplitViewSplitter
+└── IDEWorkspaceDocument (NSDocument)
+    └── IDEWorkspaceWindowController (NSWindowController)     ← 0–N
+        ├── DVTTabBarView + DVTTabSwitcher
+        └── IDEWorkspaceTabController (IDEViewController)    ← 0–N tabs
+            └── DVTSplitView (_designAreaSplitView)
+                ├── NSView_ControlledBy_IDENavigatorArea
+                │    ├── DVTChooserView (navigator icons)
+                │    ├── DVTScrollView
+                │    │   └── DVTExplorableKit.DVTExplorerOutlineView
+                │    │       └── NSOutlineRow → NSTableViewCellMockElement
+                │    │           ├── text field
+                │    │           └── DVTIconViewImageCell
+                │    └── SwiftUI.NSHostingView (intelligence/chat)
+                │        └── SwiftUI.HostingScrollView → SwiftUI.AccessibilityLazyLayoutNode
+                │
+                ├── DVTSplitView_ControlledBy_IDEEditorArea
+                │    ├── IDEEditorSplitView_ControlledBy_...
+                │    │   └── IDEEditorAreaSplitContentView_ControlledBy_...
+                │    │       └── IDEEditorContextClipView_ControlledBy_...
+                │    │           └── IDESafeAreaAwareSplitView
+                │    │               └── DVTSplitView
+                │    │                   ├── DVTControlBar
+                │    │                   │   ├── DVTSearchFieldCell
+                │    │                   │   └── DVTImageButton
+                │    │                   └── DVTScrollView
+                │    │                       └── IBCSourceListOutlineView
+                │    │
+                │    └── DVTReplacementView (Debug Area)
+                │        └── DVTSplitView
+                │            ├── SourceEditorScrollView
+                │            │   └── SourceEditor.SourceEditorContentView
+                │            ├── DVTMarkedScroller
+                │            ├── DVTControlBar
+                │            ├── DVTScrollView
+                │            └── NSSplitViewSplitter
+                │
+                └── Utility area (DVTSplitView)
+                     ├── IDEInspectorArea + DVTChooserView
+                     └── IDELibraryArea + DVTChooserView
 ```
 
 ---
 
 ## Conclusion
 
-The accessibility captures reveal Xcode as a layered, modular native application:
+The combination of accessibility captures and class-dump headers reveals Xcode as a layered, modular native application built on a clear document-centered architecture:
 
-- `IDEKit`-style objects define workspace-level concepts and persistent regions.
-- `DVT` components supply common developer-tool controls and layout infrastructure.
-- Specialized frameworks provide navigators and editors.
-- Source Editor is reusable beyond source files, including the debug console.
-- SwiftUI is embedded selectively inside a predominantly AppKit workspace shell.
+- **`IDEWorkspaceDocument`** (NSDocument) owns the project workspace and creates windows.
+- **`IDEWorkspaceWindowController`** (NSWindowController) manages the tab bar, tabs, and window-level state.
+- **`IDEWorkspaceTabController`** (IDEViewController) is the heart of each tab, constructing a three-pane `DVTSplitView` (navigator | editor | utilities).
+- **`IDEEditorArea`** manages the center pane with pluggable editor contexts, each wrapping a nav bar, jump bar, find bar, and the content editor itself.
+- **`DVTReplacementView`** is the universal lazy-loading mechanism — every area (navigator, editor, debug, inspector, library) uses it.
+- **`IDENavigableItem`** is the universal selection currency — navigators produce them, editors consume them, and inspectors react to them.
+- **`DVTChooserView`** provides the tab bars on the left (navigators) and right (inspector/library categories).
+- **`DVTTabBarView`** + **`DVTTabSwitcher`** provide the editor tab bar with drag-reorder, detach, and overflow.
+- **`DVTStatefulObject`** serializes the entire IDE state for seamless restoration across launches.
+- **`DVTInvalidation`** provides lifecycle cleanup across every object to prevent leaks.
+- **Interface Builder** uses an offscreen `NSISEngine` for live autolayout, a hierarchy of per-view-type editors, and custom window chrome drawing for the canvas.
+- **SwiftUI** is embedded selectively through `NSHostingView` in a predominantly AppKit workspace shell.
+- **Previews** differ by platform: macOS previews are live native AppKit windows; iOS previews are embedded SimulatorKit-rendered surfaces with remote accessibility bridges.
 
-For reverse engineering or for designing a smaller IDE, the most important pattern is the separation between **stable workspace areas**, **editor/navigator contexts**, and **replaceable feature implementations**. The private class names are useful evidence of that structure, but automation and new implementation work should depend on semantic abstractions rather than those exact names.
+For reverse engineering or for designing a smaller IDE, the most important pattern is the separation between **stable workspace areas**, **editor/navigator contexts**, and **replaceable feature implementations**.
