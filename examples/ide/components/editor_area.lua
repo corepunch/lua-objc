@@ -13,21 +13,10 @@ end
 local function EditorArea(props)
 	props = props or {}
 
-	local source = ns.VStack {
-		flexGrow = 1,
-		spacing = 0,
-		ControlBar {
-			title = props.title or "SOURCE EDITOR",
-			leading = props.leading,
-			buttons = props.buttons or props.trailing,
-		},
-		fill(props.editor or props.content),
-	}
-
 	return ns.HSplit {
 		flexGrow = props.flexGrow or 1,
 		proportions = props.proportions or { 1, 1 },
-		source,
+		fill(props.editor or props.content),
 		fill(props.preview),
 	}
 end

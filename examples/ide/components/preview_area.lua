@@ -27,17 +27,18 @@ function PreviewArea.show(props)
 		flexShrink = 0,
 		spacing = 4,
 	}
-	local area = ns.VStack {
-		flexGrow = props.flexGrow or 1,
-		spacing = 0,
-		ControlBar {
-			title = props.title or "Canvas",
-			height = PANEL.headerHeight,
-			leading = props.leading,
-			buttons = { toolbarRow },
-		},
-		wrapContent(props.content),
-	}
+	-- local area = ns.VStack {
+	-- 	flexGrow = props.flexGrow or 1,
+	-- 	spacing = 0,
+	-- 	ControlBar {
+	-- 		title = props.title or "Canvas",
+	-- 		height = PANEL.headerHeight,
+	-- 		leading = props.leading,
+	-- 		buttons = { toolbarRow },
+	-- 	},
+	-- 	wrapContent(props.content),
+	-- }
+	local area = wrapContent(props.content)
 
 	local function rebuildToolbar(items)
 		bridge._clearContainer(toolbarRow)

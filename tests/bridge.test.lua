@@ -200,6 +200,12 @@ t.expect(workspaceState.nativeSidebar,
 	"navigator uses NSSplitViewItem's semantic sidebar behavior")
 t.expect(workspaceState.fullHeightSidebar,
 	"semantic sidebar participates in full-height window layout")
+t.expect(workspaceState.hasToolbar,
+	"workspace opts into native toolbar window chrome")
+t.expect(workspaceState.usesUnifiedToolbar,
+	"workspace toolbar lets the sidebar surround the traffic lights")
+t.expect(workspaceState.safeAreaPaneHosts,
+	"workspace panes consistently avoid native toolbar and tab-bar chrome")
 t.expect(workspaceState.contentUsesSafeArea,
 	"content pane respects the floating sidebar safe area")
 t.assertEqual(workspaceState.topAccessoryCount, 0,

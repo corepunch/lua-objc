@@ -4,7 +4,6 @@ local App = require("App")
 
 local canvasMod = require("examples.ide.components.canvas")
 local NavigatorArea = require("examples.ide.components.navigator_area")
-local EditorArea = require("examples.ide.components.editor_area")
 local PreviewArea = require("examples.ide.components.preview_area")
 local SearchView = require("examples.ide.components.search_view")
 
@@ -15,6 +14,39 @@ local WINDOW = {
 	height = 680,
 	minWidth = 800,
 	minHeight = 500,
+}
+
+local IDE_TOOLBAR = {
+	{
+		id = "newFile",
+		label = "New File",
+		icon = "doc.badge.plus",
+		tooltip = "New File",
+	},
+	{
+		id = "open",
+		label = "Open",
+		icon = "folder",
+		tooltip = "Open",
+	},
+	{
+		id = "save",
+		label = "Save",
+		icon = "square.and.arrow.down",
+		tooltip = "Save",
+	},
+	{
+		id = "build",
+		label = "Build",
+		icon = "hammer",
+		tooltip = "Build",
+	},
+	{
+		id = "run",
+		label = "Run",
+		icon = "play.fill",
+		tooltip = "Run",
+	},
 }
 
 local function isLuaFile(name)
@@ -152,11 +184,6 @@ function Source.open(folder, app, initialFile)
 			end)
 		end
 
-		local sourceEditor = EditorArea {
-			title = "SOURCE EDITOR",
-			editor = textView,
-			preview = preview,
-		}
 		local window = ns.Window {
 			title = name,
 			width = WINDOW.width,
@@ -166,11 +193,14 @@ function Source.open(folder, app, initialFile)
 			tabbingMode = "preferred",
 			tabbingIdentifier = tabbingIdentifier,
 			visible = visible,
+			toolbar = IDE_TOOLBAR,
+			toolbarContentDividerAfter = "save",
 			sidebarWidth = 240,
 			sidebar = NavigatorArea {
 				content = makeFileTree(),
 			},
-			content = sourceEditor,
+			content = textView,
+			detail = preview,
 		}
 
 		documents[#documents + 1] = {

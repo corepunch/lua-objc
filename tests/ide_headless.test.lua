@@ -1,6 +1,7 @@
 _G.__headless = true
 
 local App = require("App")
+local ns = require("AppKit")
 local Source = require("examples.ide.plugins.source")
 require("examples.ide.plugins.image_viewer")
 local Recent = require("examples.ide.state.recent")
@@ -100,8 +101,18 @@ local bridge = require("bridge")
 local sourceWorkspaceState = bridge._windowWorkspaceState(sourceWindow)
 t.expect(sourceWorkspaceState.nativeSidebar,
 	"source workspace uses AppKit's semantic floating sidebar")
+t.assertEqual(sourceWorkspaceState.itemCount, 3,
+	"source editor and preview use sibling native split items")
+t.expect(sourceWorkspaceState.tracksContentDivider,
+	"editor divider continues through the native toolbar")
 t.assertEqual(sourceWorkspaceState.topAccessoryCount, 0,
 	"source document does not insert a custom tab control")
+local buildItem = ns.ToolbarItem(sourceWindow, "build")
+local runItem = ns.ToolbarItem(sourceWindow, "run")
+t.assertEqual(buildItem.label, "Build",
+	"source workspace exposes the decorative Build toolbar item")
+t.assertEqual(runItem.label, "Run",
+	"source workspace exposes the decorative Run toolbar item")
 
 recent:clear()
 

@@ -354,12 +354,14 @@ Creates an `NSWindow`. Table keys:
 | `hideTitle` | bool | `=transparentTitlebar` | Hide title text in transparent mode |
 | `sidebar` | view | none | Semantic `NSSplitViewItem` sidebar; requires `content` |
 | `content` | view | none | Main view paired with `sidebar` in `NSSplitViewController` |
+| `detail` | view | none | Optional detail pane added as a third native split item |
 | `contentAccessory` | view | none | macOS 26 top accessory spanning only the content split |
 | `sidebarWidth` | number | `240` | Preferred native sidebar width |
 | `tabbingMode` | `"automatic"` `"preferred"` `"disallowed"` | AppKit default | Native `NSWindow` tab behavior |
 | `tabbingIdentifier` | string | AppKit default | Groups compatible native window tabs |
 | `toolbar` | `{{id, label, icon?, tooltip?, action?}}` | none | Native NSToolbar items |
 | `toolbarLabels` | bool | `false` | Show labels below toolbar icons |
+| `toolbarContentDividerAfter` | string | none | Continue a vertical content split divider through the toolbar after this item ID |
 
 The array part of the table holds child views (added to a VStack inside the
 window's content view). After building the view tree, calls `bridge._show(win)`
@@ -368,8 +370,10 @@ window's content view). After building the view tree, calls `bridge._show(win)`
 When `sidebar` and `content` are present, `Window` instead installs a native
 `NSSplitViewController`. AppKit gives the semantic sidebar its current system
 appearance—including floating glass on macOS 26—and a `contentAccessory`
-occupies only the content column. In this form, `transparentTitlebar` defaults
-to `true`.
+occupies only the content column. Supplying `detail` adds a third sibling split
+item, allowing a tracking toolbar separator to create a native titlebar section
+boundary between content and detail. In this form, `transparentTitlebar`
+defaults to `true`.
 
 ```lua
 ns.Window {

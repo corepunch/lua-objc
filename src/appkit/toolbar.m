@@ -1,7 +1,17 @@
 #pragma mark - LuaToolbarDelegate
 
+static NSToolbarItemIdentifier const kContentTrackingSeparatorIdentifier =
+	@"lua-objc.contentTrackingSeparator";
+
 @interface LuaToolbarDelegate : NSObject <NSToolbarDelegate>
 @property (nonatomic, strong) NSArray *items;
+@property (nonatomic, strong) NSSplitView *trackingSplitView;
+@property (nonatomic, copy) NSString *trackingAfterIdentifier;
+@property (nonatomic) NSInteger trackingDividerIndex;
+- (void)installTrackingSeparatorForSplitView:(NSSplitView *)splitView
+								dividerIndex:(NSInteger)dividerIndex
+								   inToolbar:(NSToolbar *)toolbar
+							 afterIdentifier:(NSString *)itemIdentifier;
 @end
 
 @implementation LuaToolbarDelegate
@@ -16,8 +26,17 @@
 
 - (NSArray<NSString *> *)toolbarDefaultItemIdentifiers:(NSToolbar *)toolbar {
 	NSMutableArray *ids = [NSMutableArray array];
+	BOOL insertedTrackingSeparator = NO;
 	for (NSDictionary *item in _items) {
 		[ids addObject:item[@"id"]];
+		if (_trackingSplitView
+			&& [item[@"id"] isEqualToString:_trackingAfterIdentifier]) {
+			[ids addObject:kContentTrackingSeparatorIdentifier];
+			insertedTrackingSeparator = YES;
+		}
+	}
+	if (_trackingSplitView && !insertedTrackingSeparator) {
+		[ids addObject:kContentTrackingSeparatorIdentifier];
 	}
 	return ids;
 }
@@ -30,6 +49,14 @@
 	 itemForItemIdentifier:(NSString *)identifier
  willBeInsertedIntoToolbar:(BOOL)flag
 {
+	if ([identifier isEqualToString:kContentTrackingSeparatorIdentifier]
+		&& _trackingSplitView) {
+		return [NSTrackingSeparatorToolbarItem
+			trackingSeparatorToolbarItemWithIdentifier:identifier
+										 splitView:_trackingSplitView
+									  dividerIndex:_trackingDividerIndex];
+	}
+
 	for (NSDictionary *item in _items) {
 		if ([item[@"id"] isEqualToString:identifier]) {
 			NSToolbarItem *ti = [[NSToolbarItem alloc] initWithItemIdentifier:identifier];
@@ -73,5 +100,25 @@
 	return nil;
 }
 
-@end
+- (void)installTrackingSeparatorForSplitView:(NSSplitView *)splitView
+								dividerIndex:(NSInteger)dividerIndex
+								   inToolbar:(NSToolbar *)toolbar
+							 afterIdentifier:(NSString *)itemIdentifier
+{
+	if (_trackingSplitView || !splitView.isVertical) return;
+	_trackingSplitView = splitView;
+	_trackingDividerIndex = dividerIndex;
+	_trackingAfterIdentifier = [itemIdentifier copy];
+	NSUInteger insertionIndex = toolbar.items.count;
+	for (NSUInteger index = 0; index < toolbar.items.count; index++) {
+		if ([toolbar.items[index].itemIdentifier
+			isEqualToString:itemIdentifier]) {
+			insertionIndex = index + 1;
+			break;
+		}
+	}
+	[toolbar insertItemWithItemIdentifier:kContentTrackingSeparatorIdentifier
+								  atIndex:insertionIndex];
+}
 
+@end

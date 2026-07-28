@@ -50,6 +50,7 @@ enum {
 	kColumnFlexKey,
 	kTabViewDelegateKey,
 	kTableScrollViewKey,
+	kWorkspaceSafeAreaContentKey,
 	kKeyCount
 };
 static char kKeys[kKeyCount];
@@ -128,6 +129,8 @@ static lua_State *gL = NULL;
 #define kWorkspaceSidebarWidth         240
 #define kWorkspaceSidebarMinWidth      160
 #define kWorkspaceSidebarMaxWidth      420
+#define kWorkspaceContentDividerIndex    0
+#define kWorkspaceDetailDividerIndex     1
 
 /* ----- Symbol Toggle ----- */
 #define kSymbolToggleSize               28

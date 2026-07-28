@@ -213,6 +213,28 @@ static void observe_workspace_pane(NSView *pane) {
 		OBJC_ASSOCIATION_RETAIN);
 }
 
+static NSViewController *workspace_pane_controller(NSView *content) {
+	NSViewController *controller = [[NSViewController alloc] init];
+	NSView *host = [[NSView alloc] initWithFrame:NSZeroRect];
+	controller.view = host;
+
+	content.translatesAutoresizingMaskIntoConstraints = NO;
+	[host addSubview:content];
+	[NSLayoutConstraint activateConstraints:@[
+		[content.leadingAnchor constraintEqualToAnchor:host.leadingAnchor],
+		[content.trailingAnchor constraintEqualToAnchor:host.trailingAnchor],
+		[content.bottomAnchor constraintEqualToAnchor:host.bottomAnchor],
+		[content.topAnchor
+			constraintEqualToAnchor:host.safeAreaLayoutGuide.topAnchor],
+	]];
+	objc_setAssociatedObject(
+		host,
+		&kKeys[kWorkspaceSafeAreaContentKey],
+		@YES,
+		OBJC_ASSOCIATION_RETAIN);
+	return controller;
+}
+
 static int bridge_set_window_workspace(lua_State *L) {
 	id obj = check_objc(L, 1);
 	if (![obj isKindOfClass:[NSWindow class]]) {
@@ -225,13 +247,22 @@ static int bridge_set_window_workspace(lua_State *L) {
 		? nil : check_view(L, 4);
 	CGFloat sidebarWidth = luaL_optnumber(
 		L, 5, kWorkspaceSidebarWidth);
+	NSString *contentDividerAfter = lua_isnoneornil(L, 6)
+		? nil
+		: [NSString stringWithUTF8String:luaL_checkstring(L, 6)];
+	NSView *detail = lua_isnoneornil(L, 7)
+		? nil : check_view(L, 7);
 
+	/* Keep the semantic split items full height so AppKit owns their glass,
+	 * but place app content below the current toolbar and tab-bar safe area.
+	 * A shared host makes scroll views and plain preview canvases agree. */
 	NSViewController *sidebarController =
-		[[NSViewController alloc] init];
-	sidebarController.view = sidebar;
+		workspace_pane_controller(sidebar);
 	NSViewController *contentController =
-		[[NSViewController alloc] init];
-	contentController.view = content;
+		workspace_pane_controller(content);
+	NSViewController *detailController = detail
+		? workspace_pane_controller(detail)
+		: nil;
 
 	NSSplitViewController *splitController =
 		[[NSSplitViewController alloc] init];
@@ -247,9 +278,16 @@ static int bridge_set_window_workspace(lua_State *L) {
 		/ MAX(1, window.contentLayoutRect.size.width);
 	sidebarItem.allowsFullHeightLayout = YES;
 
-	NSSplitViewItem *contentItem =
-		[NSSplitViewItem splitViewItemWithViewController:contentController];
+	NSSplitViewItem *contentItem = detail
+		? [NSSplitViewItem
+			contentListWithViewController:contentController]
+		: [NSSplitViewItem
+			splitViewItemWithViewController:contentController];
 	contentItem.automaticallyAdjustsSafeAreaInsets = YES;
+	NSSplitViewItem *detailItem = detail
+		? [NSSplitViewItem
+			splitViewItemWithViewController:detailController]
+		: nil;
 
 	if (accessory) {
 		NSSplitViewItemAccessoryViewController *accessoryController =
@@ -262,8 +300,19 @@ static int bridge_set_window_workspace(lua_State *L) {
 
 	[splitController addSplitViewItem:sidebarItem];
 	[splitController addSplitViewItem:contentItem];
+	if (detailItem) {
+		[splitController addSplitViewItem:detailItem];
+	}
 	window.styleMask |= NSWindowStyleMaskFullSizeContentView;
 	window.titlebarAppearsTransparent = YES;
+	/* Tahoe gives toolbar windows the large concentric frame that lets the
+	 * semantic sidebar surround the traffic lights. A workspace without
+	 * actions still needs an empty native toolbar to opt into that chrome. */
+	if (!window.toolbar) {
+		window.toolbar = [[NSToolbar alloc]
+			initWithIdentifier:@"workspace"];
+	}
+	window.toolbarStyle = NSWindowToolbarStyleUnified;
 	window.contentViewController = splitController;
 	splitController.view.frame = window.contentView.bounds;
 	[splitController.view layoutSubtreeIfNeeded];
@@ -272,8 +321,31 @@ static int bridge_set_window_workspace(lua_State *L) {
 
 	observe_workspace_pane(sidebar);
 	observe_workspace_pane(content);
+	if (detail) {
+		observe_workspace_pane(detail);
+	}
 	layout_recursive(sidebar, sidebar.bounds.size.width);
 	layout_recursive(content, content.bounds.size.width);
+	if (detail) {
+		layout_recursive(detail, detail.bounds.size.width);
+	}
+	if (contentDividerAfter
+		&& (detail || [content isKindOfClass:[NSSplitView class]])) {
+		LuaToolbarDelegate *toolbarDelegate = objc_getAssociatedObject(
+			window,
+			&kKeys[kToolbarDelegateKey]);
+		NSSplitView *trackedSplitView = detail
+			? splitController.splitView
+			: (NSSplitView *)content;
+		NSInteger trackedDividerIndex = detail
+			? kWorkspaceDetailDividerIndex
+			: kWorkspaceContentDividerIndex;
+		[toolbarDelegate
+			installTrackingSeparatorForSplitView:trackedSplitView
+									 dividerIndex:trackedDividerIndex
+									  inToolbar:window.toolbar
+								afterIdentifier:contentDividerAfter];
+	}
 	return 0;
 }
 
@@ -296,9 +368,40 @@ static int bridge_window_workspace_state(lua_State *L) {
 	lua_setfield(L, -2, "controllerClass");
 	lua_pushinteger(L, (lua_Integer)items.count);
 	lua_setfield(L, -2, "itemCount");
+	lua_pushboolean(L, ((NSWindow *)obj).toolbar != nil);
+	lua_setfield(L, -2, "hasToolbar");
+	lua_pushboolean(
+		L,
+		((NSWindow *)obj).toolbarStyle == NSWindowToolbarStyleUnified);
+	lua_setfield(L, -2, "usesUnifiedToolbar");
+	BOOL tracksContentDivider = NO;
+	for (NSToolbarItem *toolbarItem in ((NSWindow *)obj).toolbar.items) {
+		if ([toolbarItem
+			isKindOfClass:[NSTrackingSeparatorToolbarItem class]]) {
+			tracksContentDivider = YES;
+			break;
+		}
+	}
+	lua_pushboolean(L, tracksContentDivider);
+	lua_setfield(L, -2, "tracksContentDivider");
 	if (items.count >= 2) {
 		NSSplitViewItem *sidebarItem = items[0];
 		NSSplitViewItem *contentItem = items[1];
+		BOOL safeAreaPaneHosts =
+			[objc_getAssociatedObject(
+				sidebarItem.viewController.view,
+				&kKeys[kWorkspaceSafeAreaContentKey]) boolValue]
+			&& [objc_getAssociatedObject(
+				contentItem.viewController.view,
+				&kKeys[kWorkspaceSafeAreaContentKey]) boolValue];
+		if (items.count >= 3) {
+			safeAreaPaneHosts = safeAreaPaneHosts
+				&& [objc_getAssociatedObject(
+					items[2].viewController.view,
+					&kKeys[kWorkspaceSafeAreaContentKey]) boolValue];
+		}
+		lua_pushboolean(L, safeAreaPaneHosts);
+		lua_setfield(L, -2, "safeAreaPaneHosts");
 		lua_pushboolean(
 			L, sidebarItem.behavior == NSSplitViewItemBehaviorSidebar);
 		lua_setfield(L, -2, "nativeSidebar");

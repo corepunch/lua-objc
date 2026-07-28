@@ -329,16 +329,10 @@ ns.Window
     ├── NSSplitViewItem.sidebar
     │   └── IDEKit.NavigatorArea
     │       └── ns.OutlineView  (source-list file tree)
+    ├── NSSplitViewItem.contentList
+    │   └── NSTextView  (source editor)
     └── NSSplitViewItem.content
-        ├── NSSplitViewItemAccessoryViewController
-        │   └── native document selector
-        └── selected IDEKit.EditorArea  (inner ns.HSplit)
-            ├── source editor
-            │   ├── IDEKit.ControlBar  "SOURCE EDITOR"
-            │   └── NSTextView
-            └── IDEKit.PreviewArea
-                ├── IDEKit.ControlBar  "CANVAS"
-                └── IDEKit.Canvas (inline preview)
+        └── IDEKit.Canvas  (inline preview)
 ```
 
 ---
