@@ -188,6 +188,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_selectWindowTab",     bridge_select_window_tab},
 	{"_setWindowWorkspace",  bridge_set_window_workspace},
 	{"_windowWorkspaceState",bridge_window_workspace_state},
+	{"_toggleSidebar",       bridge_toggle_sidebar},
 	{NULL, NULL},
 };
 

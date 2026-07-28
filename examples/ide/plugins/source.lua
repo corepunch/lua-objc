@@ -16,38 +16,47 @@ local WINDOW = {
 	minHeight = 500,
 }
 
-local IDE_TOOLBAR = {
-	{
-		id = "newFile",
-		label = "New File",
-		icon = "doc.badge.plus",
-		tooltip = "New File",
-	},
-	{
-		id = "open",
-		label = "Open",
-		icon = "folder",
-		tooltip = "Open",
-	},
-	{
-		id = "save",
-		label = "Save",
-		icon = "square.and.arrow.down",
-		tooltip = "Save",
-	},
-	{
-		id = "build",
-		label = "Build",
-		icon = "hammer",
-		tooltip = "Build",
-	},
-	{
-		id = "run",
-		label = "Run",
-		icon = "play.fill",
-		tooltip = "Run",
-	},
-}
+local function makeToolbar(windowRef)
+	return {
+		{
+			id = "sidebar",
+			label = "Sidebar",
+			icon = "sidebar.leading",
+			tooltip = "Toggle Sidebar",
+			action = function() bridge._toggleSidebar(windowRef()) end,
+		},
+		{
+			id = "newFile",
+			label = "New File",
+			icon = "doc.badge.plus",
+			tooltip = "New File",
+		},
+		{
+			id = "open",
+			label = "Open",
+			icon = "folder",
+			tooltip = "Open",
+		},
+		{
+			id = "save",
+			label = "Save",
+			icon = "square.and.arrow.down",
+			tooltip = "Save",
+		},
+		{
+			id = "build",
+			label = "Build",
+			icon = "hammer",
+			tooltip = "Build",
+		},
+		{
+			id = "run",
+			label = "Run",
+			icon = "play.fill",
+			tooltip = "Run",
+		},
+	}
+end
 
 local function isLuaFile(name)
 	return name:match("%.lua$") ~= nil
@@ -131,6 +140,7 @@ function Source.open(folder, app, initialFile)
 	local documents = {}
 	local wordWrapEnabled = false
 	local openPath
+	local openInEditor
 
 	local function makeFileTree()
 		local fileTree = ns.OutlineView {
@@ -143,9 +153,13 @@ function Source.open(folder, app, initialFile)
 			},
 			data = files,
 		}
-		fileTree:onRowActivate(function(list, rowIndex, rowData)
+		fileTree:onRowSelect(function(list, rowIndex, rowData, modifiers)
 			if rowData and rowData.path and not rowData.directory then
-				openPath(rowData.path)
+				if modifiers and modifiers.command then
+					openInEditor(rowData.path, true)
+				else
+					openPath(rowData.path)
+				end
 			end
 		end)
 		return fileTree
@@ -184,7 +198,9 @@ function Source.open(folder, app, initialFile)
 			end)
 		end
 
-		local window = ns.Window {
+		local window
+		local toolbar = makeToolbar(function() return window end)
+		window = ns.Window {
 			title = name,
 			width = WINDOW.width,
 			height = WINDOW.height,
@@ -193,7 +209,7 @@ function Source.open(folder, app, initialFile)
 			tabbingMode = "preferred",
 			tabbingIdentifier = tabbingIdentifier,
 			visible = visible,
-			toolbar = IDE_TOOLBAR,
+			toolbar = toolbar,
 			toolbarContentDividerAfter = "save",
 			sidebarWidth = 240,
 			sidebar = NavigatorArea {
@@ -212,11 +228,13 @@ function Source.open(folder, app, initialFile)
 		return window
 	end
 
-	local function openInEditor(path)
-		for _, document in ipairs(documents) do
-			if document.path == path then
-				ns.selectWindowTab(document.window)
-				return document
+	openInEditor = function(path, forceNewTab)
+		if not forceNewTab then
+			for _, document in ipairs(documents) do
+				if document.path == path then
+					ns.selectWindowTab(document.window)
+					return document
+				end
 			end
 		end
 		local content = readFile(path)
@@ -249,6 +267,16 @@ function Source.open(folder, app, initialFile)
 		modifiers = { "command" },
 		action = function()
 			searchView:show(primaryWindow)
+		end,
+	}
+
+	ns.MenuItem {
+		menu = "View",
+		title = "Toggle Sidebar",
+		keyEquivalent = "0",
+		modifiers = { "command" },
+		action = function()
+			bridge._toggleSidebar(primaryWindow)
 		end,
 	}
 

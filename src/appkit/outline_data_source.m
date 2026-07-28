@@ -229,6 +229,8 @@
 	if (!item) return;
 	NSDictionary *rowData = (NSDictionary *)item;
 
+	NSEventModifierFlags mods = NSApp.currentEvent.modifierFlags;
+
 	lua_rawgeti(callL, LUA_REGISTRYINDEX, refNum.intValue);
 	push_objc(callL, sv, "nsview");
 	lua_pushinteger(callL, (lua_Integer)row);
@@ -241,7 +243,14 @@
 		lua_pushstring(callL, str ?: "");
 		lua_setfield(callL, -2, [key UTF8String]);
 	}
-	lua_objc_pcall(callL, 3, 0, "outline selection");
+	lua_newtable(callL);
+	lua_pushboolean(callL, (mods & NSEventModifierFlagCommand) != 0);
+	lua_setfield(callL, -2, "command");
+	lua_pushboolean(callL, (mods & NSEventModifierFlagShift) != 0);
+	lua_setfield(callL, -2, "shift");
+	lua_pushboolean(callL, (mods & NSEventModifierFlagOption) != 0);
+	lua_setfield(callL, -2, "option");
+	lua_objc_pcall(callL, 4, 0, "outline selection");
 }
 
 - (void)activateSelectedRow:(id)sender {

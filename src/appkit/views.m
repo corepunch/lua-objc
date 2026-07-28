@@ -436,6 +436,25 @@ static int bridge_window_workspace_state(lua_State *L) {
 	return 1;
 }
 
+static int bridge_toggle_sidebar(lua_State *L) {
+	id obj = check_objc(L, 1);
+	if (![obj isKindOfClass:[NSWindow class]]) {
+		return luaL_error(L, "toggleSidebar requires a window");
+	}
+	NSWindow *window = obj;
+	NSViewController *controller = window.contentViewController;
+	if (![controller isKindOfClass:[NSSplitViewController class]]) {
+		return 0;
+	}
+	NSSplitViewController *splitController =
+		(NSSplitViewController *)controller;
+	NSSplitViewItem *sidebarItem = splitController.splitViewItems.firstObject;
+	if (sidebarItem.behavior == NSSplitViewItemBehaviorSidebar) {
+		sidebarItem.animator.collapsed = !sidebarItem.isCollapsed;
+	}
+	return 0;
+}
+
 static int bridge_split_set_proportions(lua_State *L) {
 	NSView *view = check_view(L, 1);
 	if (![view isKindOfClass:[NSSplitView class]]) {
