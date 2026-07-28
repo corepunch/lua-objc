@@ -35,6 +35,10 @@ static int bridge_text_field_test_command(lua_State *L);
 #define GEN_METHODS_FORWARDS
 #include "generated/bridge_methods.m"
 #undef GEN_METHODS_FORWARDS
+/* Generated _impl forwards for class-binding methods */
+#define GEN_CLASS_FORWARDS
+#include "generated/bridge_class_methods.m"
+#undef GEN_CLASS_FORWARDS
 static void layout_recursive(NSView *view, CGFloat width);
 
 static id check_objc(lua_State *L, int idx) {
@@ -53,6 +57,11 @@ static NSView *check_view(lua_State *L, int idx) {
 	}
 	return (NSView *)obj;
 }
+
+/* Generated class-binding wrapper functions (after check_view etc.) */
+#define GEN_CLASS_WRAPPERS
+#include "generated/bridge_class_methods.m"
+#undef GEN_CLASS_WRAPPERS
 
 #define INDEX_NUMBER(name, kvar, fallback) \
 	if (strcmp(key, name) == 0) { \
@@ -132,6 +141,10 @@ static NSView *check_view(lua_State *L, int idx) {
 #define GEN_METHODS_ARRAYS
 #include "generated/bridge_methods.m"
 #undef GEN_METHODS_ARRAYS
+/* Generated class-binding MethodEntry arrays (NSTabViewMethods, etc.) */
+#define GEN_CLASS_ARRAYS
+#include "generated/bridge_class_methods.m"
+#undef GEN_CLASS_ARRAYS
 
 static MethodEntry TableMethods[] = {
 	{"addRow",       bridge_tableview_add},
@@ -168,6 +181,10 @@ static int nsview_index(lua_State *L) {
 #define GEN_METHODS_INDEX
 #include "generated/bridge_methods.m"
 #undef GEN_METHODS_INDEX
+	/* Generated class-binding dispatch (NSTabView, etc.) */
+#define GEN_CLASS_INDEX
+#include "generated/bridge_class_methods.m"
+#undef GEN_CLASS_INDEX
 
 	NSString *kvcKey = [NSString stringWithUTF8String:key];
 	@try {

@@ -41,11 +41,6 @@ static void configure_segmented_control(NSSegmentedControl *selector) {
 }
 @end
 
-static id check_tab_container(lua_State *L, int index) {
-	return lua_objc_check_object(
-		L, index, [NSTabView class], "NSTabView");
-}
-
 static int bridge_tabview(lua_State *L) {
 	CGFloat width = luaL_optnumber(L, 1, 400);
 	CGFloat height = luaL_optnumber(L, 2, 200);
@@ -67,76 +62,60 @@ static int bridge_tabview(lua_State *L) {
 	return 1;
 }
 
-static int bridge_tab_add(lua_State *L) {
-	id obj = check_tab_container(L, 1);
-	const char *titleC = luaL_checkstring(L, 2);
-	NSView *content = check_view(L, 3);
+/* ─── NSTabView method implementations ───────────────────────────────── */
 
-	NSString *title = [NSString stringWithUTF8String:titleC];
-	NSTabView *tv = (NSTabView *)obj;
+static int bridge_NSTabView_addTab_impl(lua_State *L, NSTabView *self,
+                                         const char *title,
+                                         NSView *content) {
+	NSString *titleStr = [NSString stringWithUTF8String:title];
 	NSTabViewItem *item = [[NSTabViewItem alloc]
 		initWithIdentifier:[NSUUID UUID].UUIDString];
-	item.label = title;
+	item.label = titleStr;
 	item.view = content;
 
-	[tv addTabViewItem:item];
-	[tv selectTabViewItem:item];
+	[self addTabViewItem:item];
+	[self selectTabViewItem:item];
 
 	push_objc(L, item, "nsobject");
 	return 1;
 }
 
-static int bridge_tab_select(lua_State *L) {
-	id obj = check_tab_container(L, 1);
-	NSInteger idx = (NSInteger)luaL_checkinteger(L, 2);
-
-	NSTabView *tv = (NSTabView *)obj;
-	if (idx >= 0 && idx < (NSInteger)tv.numberOfTabViewItems) {
-		[tv selectTabViewItemAtIndex:idx];
+static int bridge_NSTabView_removeTab_impl(lua_State *L, NSTabView *self,
+                                            NSInteger index) {
+	if (index >= 0 && index < (NSInteger)self.numberOfTabViewItems) {
+		NSTabViewItem *item = [self tabViewItemAtIndex:index];
+		[self removeTabViewItem:item];
 	}
 	return 0;
 }
 
-static int bridge_tab_remove(lua_State *L) {
-	id obj = check_tab_container(L, 1);
-	NSInteger idx = (NSInteger)luaL_checkinteger(L, 2);
-
-	NSTabView *tv = (NSTabView *)obj;
-	if (idx >= 0 && idx < (NSInteger)tv.numberOfTabViewItems) {
-		NSTabViewItem *item = [tv tabViewItemAtIndex:idx];
-		[tv removeTabViewItem:item];
+static int bridge_NSTabView_selectTab_impl(lua_State *L, NSTabView *self,
+                                            NSInteger index) {
+	if (index >= 0 && index < (NSInteger)self.numberOfTabViewItems) {
+		[self selectTabViewItemAtIndex:index];
 	}
 	return 0;
 }
 
-static int bridge_tab_count(lua_State *L) {
-	id obj = check_tab_container(L, 1);
-	lua_pushinteger(L, ((NSTabView *)obj).numberOfTabViewItems);
+static int bridge_NSTabView_tabCount_impl(lua_State *L, NSTabView *self) {
+	lua_pushinteger(L, (lua_Integer)self.numberOfTabViewItems);
 	return 1;
 }
 
-static int bridge_tab_on_change(lua_State *L) {
-	id obj = check_tab_container(L, 1);
-	int has_action = !lua_isnoneornil(L, 2);
-	int ref = LUA_NOREF;
-
-	NSTabView *tv = (NSTabView *)obj;
+static int bridge_NSTabView_onChange_impl(lua_State *L, NSTabView *self,
+                                           int callback) {
 	LuaTabViewDelegate *existing = objc_getAssociatedObject(
-		tv, &kKeys[kTabViewDelegateKey]);
+		self, &kKeys[kTabViewDelegateKey]);
 	if (existing) {
-		tv.delegate = nil;
+		self.delegate = nil;
 	}
 
-	if (has_action) {
-		luaL_checktype(L, 2, LUA_TFUNCTION);
-		lua_pushvalue(L, 2);
-		ref = luaL_ref(L, LUA_REGISTRYINDEX);
-
+	if (callback != LUA_NOREF) {
 		LuaTabViewDelegate *delegate = [[LuaTabViewDelegate alloc] init];
 		delegate.owner = owner_for_state(L);
-		delegate.selectionRef = ref;
-		tv.delegate = delegate;
-		objc_setAssociatedObject(tv, &kKeys[kTabViewDelegateKey],
+		delegate.selectionRef = callback;
+		self.delegate = delegate;
+		objc_setAssociatedObject(self, &kKeys[kTabViewDelegateKey],
 			delegate, OBJC_ASSOCIATION_RETAIN);
 	}
 	return 0;

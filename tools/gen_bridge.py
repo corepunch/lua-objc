@@ -319,6 +319,198 @@ def gen_callback_setter(el, key_style):
 
 
 # ---------------------------------------------------------------------------
+# Class bindings  →  bridge_class_methods.m
+# ---------------------------------------------------------------------------
+#
+# <class name="NSTabView" lua_name="TabView" detect_class="NSTabView">
+#     <method name="addTab" impl="true">
+#         <arg name="title"   type="string"/>
+#         <arg name="content" type="nsview"/>
+#     </method>
+#     <method name="tabCount" impl="true"/>
+#     <method name="selectTab">
+#         <arg name="index" type="integer"/>
+#         <objc>
+#             if (index >= 0 && index < (NSInteger)self.numberOfTabViewItems)
+#                 [self selectTabViewItemAtIndex:index];
+#         </objc>
+#     </method>
+# </class>
+#
+# When impl="true" the wrapper calls bridge_ClassName_methodName_impl(L, self, ...).
+# When a method body is provided via <objc> the generator emits it directly;
+# otherwise it emits a delegate-to-_impl wrapper.
+
+_OBJC_CLASS_TO_C_TYPE = {
+    "NSTabView":    "NSTabView *",
+    "NSScrollView": "NSScrollView *",
+    "NSTextView":   "NSTextView *",
+    "NSTextField":  "NSTextField *",
+    "NSWindow":     "NSWindow *",
+    "NSView":       "NSView *",
+    "NSPanel":      "NSPanel *",
+}
+
+_LUA_TO_C_ARG_CHECK = {
+    "string":    lambda idx, name, opt, dflt: f"\tconst char *{name} = {'luaL_optstring' if opt else 'luaL_checkstring'}(L, {idx}{', ' + dflt if opt and dflt else ''});",
+    "number":    lambda idx, name, opt, dflt: f"\tCGFloat {name} = (CGFloat){'luaL_optnumber' if opt else 'luaL_checknumber'}(L, {idx}{', ' + dflt if opt and dflt else ''});",
+    "integer":   lambda idx, name, opt, dflt: f"\tNSInteger {name} = (NSInteger){'luaL_optinteger' if opt else 'luaL_checkinteger'}(L, {idx}{', ' + (dflt + 'L') if opt and dflt else ''});",
+    "bool":      lambda idx, name, opt, dflt: f"\tBOOL {name} = (BOOL)lua_toboolean(L, {idx});",
+    "nsview":    lambda idx, name, opt, dflt: f"\tNSView *{name} = check_view(L, {idx});",
+    "nsobject":  lambda idx, name, opt, dflt: f"\tid {name} = check_objc(L, {idx});",
+    "nswindow":  lambda idx, name, opt, dflt: f"\tNSWindow *{name} = lua_objc_check_object(L, {idx}, [NSWindow class], \"NSWindow\");",
+    "function":  lambda idx, name, opt, dflt: f"\tluaL_checktype(L, {idx}, LUA_TFUNCTION);\n\tlua_pushvalue(L, {idx});\n\tint {name} = luaL_ref(L, LUA_REGISTRYINDEX);",
+    "function?": lambda idx, name, opt, dflt: f"\tBOOL has_{name} = !lua_isnoneornil(L, {idx});\n\tint {name} = LUA_NOREF;\n\tif (has_{name}) {{\n\t\tluaL_checktype(L, {idx}, LUA_TFUNCTION);\n\t\tlua_pushvalue(L, {idx});\n\t\t{name} = luaL_ref(L, LUA_REGISTRYINDEX);\n\t}}",
+    "table":     lambda idx, name, opt, dflt: f"\tluaL_checktype(L, {idx}, LUA_TTABLE);",
+}
+
+_LUA_TO_C_IMPL_TYPE = {
+    "string":    "const char *",
+    "number":    "CGFloat",
+    "integer":   "NSInteger",
+    "bool":      "BOOL",
+    "nsview":    "NSView *",
+    "nsobject":  "id",
+    "nswindow":  "NSWindow *",
+    "function":  "int",
+    "function?": "int",
+    "table":     "int",
+}
+
+
+def gen_class_bindings(classes, key_style, xml_path):
+    """Generate bridge_class_methods.m from <class> elements.
+
+    Sections:
+      GEN_CLASS_FORWARDS  — forward decls for _impl functions
+      GEN_CLASS_WRAPPERS  — auto-generated wrapper functions
+      GEN_CLASS_ARRAYS    — MethodEntry[] dispatch tables
+      GEN_CLASS_INDEX     — nsview_index dispatch blocks
+    """
+    fwd_lines = []
+    wrapper_lines = []
+    array_lines = []
+    index_lines = []
+
+    for cls in classes:
+        cls_name   = cls.get("name")           # "NSTabView"
+        lua_name   = cls.get("lua_name")       # "TabView"
+        detect_key = cls.get("detect")
+        detect_cls = cls.get("detect_class")
+        array_name = lua_name + "Methods"
+
+        c_self_type = _OBJC_CLASS_TO_C_TYPE.get(cls_name, "id")
+        self_class_expr = f"[{cls_name} class]"
+
+        methods = cls.findall("method")
+
+        # --- per-method generation ---
+        for m in methods:
+            mname = m.get("name")
+            has_impl = m.get("impl", "false") == "true"
+            wrapper_func = f"bridge_{cls_name}_{mname}"
+            impl_func = f"bridge_{cls_name}_{mname}_impl"
+            body_el = m.find("objc")
+            args = m.findall("arg")
+
+            # --- Forward declaration for _impl ---
+            if has_impl:
+                arg_sig = ", ".join(
+                    _LUA_TO_C_IMPL_TYPE.get(a.get("type"), "id") + " " + a.get("name")
+                    for a in args
+                )
+                fwd_lines.append(f"static int {impl_func}(lua_State *L, {c_self_type}self{', ' + arg_sig if arg_sig else ''});")
+
+            # --- Wrapper function ---
+            wrapper_lines.append(f"static int {wrapper_func}(lua_State *L) {{")
+            wrapper_lines.append(f"\tid _obj = lua_objc_check_object(L, 1, {self_class_expr}, {c_str(lua_name)});")
+            wrapper_lines.append(f"\t{c_self_type}self = ({c_self_type})_obj;")
+
+            arg_names = []
+            for a in args:
+                aname = a.get("name")
+                atyp  = a.get("type", "nsobject")
+                idx   = str(len(arg_names) + 2)
+                opt   = atyp.endswith("?")
+                dflt  = a.get("default", "")
+                check_fn = _LUA_TO_C_ARG_CHECK.get(atyp)
+                if check_fn:
+                    wrapper_lines.append(check_fn(idx, aname, opt, c_str(dflt) if opt and dflt else dflt))
+                else:
+                    wrapper_lines.append(f"\t/* unknown type: {atyp} */")
+                arg_names.append(aname)
+
+            if body_el is not None:
+                wrapper_lines.append(f"\t{{")
+                for line in textwrap.dedent(body_el.text or "").strip().splitlines():
+                    wrapper_lines.append(f"\t\t{line}")
+                wrapper_lines.append(f"\t}}")
+                wrapper_lines.append(f"\treturn 0;")
+            elif has_impl:
+                call_args = ", ".join(["L", "self"] + arg_names)
+                wrapper_lines.append(f"\treturn {impl_func}({call_args});")
+            else:
+                wrapper_lines.append(f"\treturn 0;")
+
+            wrapper_lines.append("}")
+            wrapper_lines.append("")
+
+        # --- MethodEntry array ---
+        array_lines.append(f"static MethodEntry {array_name}[] = {{")
+        for m in methods:
+            mname = m.get("name")
+            wrapper_func = f"bridge_{cls_name}_{mname}"
+            array_lines.append(f'\t{{{c_str(mname)},\t{wrapper_func}}},')
+        array_lines.append(f'\t{{NULL, NULL}}')
+        array_lines.append("};")
+        array_lines.append("")
+
+        # --- Dispatch block ---
+        index_lines.append("{")
+        if detect_key:
+            kaddr = key_ref_addr(detect_key, key_style)
+            index_lines.append(f"\tid _sentinel_{cls_name.lower()} = objc_getAssociatedObject(obj, {kaddr});")
+            index_lines.append(f"\tif (_sentinel_{cls_name.lower()}) {{")
+        elif detect_cls:
+            index_lines.append(f"\tif ([obj isKindOfClass:[{detect_cls} class]]) {{")
+        else:
+            index_lines.append("\tif (YES) {")
+        index_lines.append(f"\t\tlua_CFunction _m = lookupMethod(key, {array_name});")
+        index_lines.append(f"\t\tif (_m) {{ lua_pushcfunction(L, _m); return 1; }}")
+        index_lines.append("\t}")
+        index_lines.append("}")
+        index_lines.append("")
+
+    out = [make_header(xml_path)]
+
+    out.append("/* --- _impl forward declarations --- */")
+    out.append("#if defined(GEN_CLASS_FORWARDS)")
+    out.extend(fwd_lines)
+    out.append("#endif /* GEN_CLASS_FORWARDS */")
+    out.append("")
+
+    out.append("/* --- Auto-generated wrapper functions --- */")
+    out.append("#if defined(GEN_CLASS_WRAPPERS)")
+    out.extend(wrapper_lines)
+    out.append("#endif /* GEN_CLASS_WRAPPERS */")
+    out.append("")
+
+    out.append("/* --- MethodEntry dispatch arrays --- */")
+    out.append("#if defined(GEN_CLASS_ARRAYS)")
+    out.extend(array_lines)
+    out.append("#endif /* GEN_CLASS_ARRAYS */")
+    out.append("")
+
+    out.append("/* --- nsview_index dispatch blocks --- */")
+    out.append("#if defined(GEN_CLASS_INDEX)")
+    out.extend(index_lines)
+    out.append("#endif /* GEN_CLASS_INDEX */")
+    out.append("")
+
+    return "\n".join(out)
+
+
+# ---------------------------------------------------------------------------
 # Method groups  →  bridge_methods.m
 # ---------------------------------------------------------------------------
 
@@ -483,6 +675,13 @@ def main():
         with open(os.path.join(args.out, "bridge_methods.m"), "w") as f:
             f.write(gen_methods(method_groups, key_style, args.xml))
         print(f"  wrote {args.out}/bridge_methods.m")
+
+    # bridge_class_methods.m  (only if any <class> elements exist)
+    classes = root.findall("class")
+    if classes:
+        with open(os.path.join(args.out, "bridge_class_methods.m"), "w") as f:
+            f.write(gen_class_bindings(classes, key_style, args.xml))
+        print(f"  wrote {args.out}/bridge_class_methods.m")
 
     print("Done.")
 

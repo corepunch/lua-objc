@@ -252,11 +252,11 @@ _table.doubleAction = nil;
 
   <!-- Tab view -->
   <manual_entry name="tabview"            lua_name="_tabview"        src="tabview.m"/>
-  <manual_entry name="tab_add"            lua_name="_tabAdd"         src="tabview.m"/>
-  <manual_entry name="tab_select"         lua_name="_tabSelect"      src="tabview.m"/>
-  <manual_entry name="tab_remove"         lua_name="_tabRemove"      src="tabview.m"/>
-  <manual_entry name="tab_count"          lua_name="_tabCount"       src="tabview.m"/>
-  <manual_entry name="tab_on_change"      lua_name="_tabOnChange"    src="tabview.m"/>
+  <manual_entry name="NSTabView_addTab"   lua_name="_tabAdd"         src="tabview.m"/>
+  <manual_entry name="NSTabView_selectTab" lua_name="_tabSelect"     src="tabview.m"/>
+  <manual_entry name="NSTabView_removeTab" lua_name="_tabRemove"     src="tabview.m"/>
+  <manual_entry name="NSTabView_tabCount"  lua_name="_tabCount"      src="tabview.m"/>
+  <manual_entry name="NSTabView_onChange"  lua_name="_tabOnChange"   src="tabview.m"/>
   <manual_entry name="segmented_control"  lua_name="_segmentedControl" src="tabview.m"/>
 
   <!-- Platform -->
@@ -301,15 +301,25 @@ _table.doubleAction = nil;
 
   <!--
     Tab views: detected by isKindOfClass:[NSTabView class].
-    All five functions exist in tabview.m.
+    All methods are auto-generated wrappers that validate Lua args and delegate
+    to hand-written bridge_NSTabView_xxx_impl() functions in tabview.m.
   -->
-  <method_group name="tab_view" detect_class="NSTabView">
-    <method name="addTab"    c_func="bridge_tab_add"       src="tabview.m"/>
-    <method name="removeTab" c_func="bridge_tab_remove"    src="tabview.m"/>
-    <method name="selectTab" c_func="bridge_tab_select"    src="tabview.m"/>
-    <method name="tabCount"  c_func="bridge_tab_count"     src="tabview.m"/>
-    <method name="onChange"  c_func="bridge_tab_on_change" src="tabview.m"/>
-  </method_group>
+  <class name="NSTabView" lua_name="TabView" detect_class="NSTabView">
+    <method name="addTab" impl="true">
+      <arg name="title"   type="string"/>
+      <arg name="content" type="nsview"/>
+    </method>
+    <method name="removeTab" impl="true">
+      <arg name="index" type="integer"/>
+    </method>
+    <method name="selectTab" impl="true">
+      <arg name="index" type="integer"/>
+    </method>
+    <method name="tabCount" impl="true"/>
+    <method name="onChange" impl="true">
+      <arg name="callback" type="function?"/>
+    </method>
+  </class>
 
   <!--
     Windows: detected by isKindOfClass:[NSWindow class].

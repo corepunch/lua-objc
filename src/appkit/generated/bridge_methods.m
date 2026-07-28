@@ -11,11 +11,6 @@ static int bridge_text_view_get_text(lua_State *L);
 static int bridge_text_view_set_language(lua_State *L);
 static int bridge_text_view_set_wrap_mode(lua_State *L);
 static int bridge_text_view_on_change(lua_State *L);
-static int bridge_tab_add(lua_State *L);
-static int bridge_tab_remove(lua_State *L);
-static int bridge_tab_select(lua_State *L);
-static int bridge_tab_count(lua_State *L);
-static int bridge_tab_on_change(lua_State *L);
 static int bridge_add_tabbed_window(lua_State *L);
 static int bridge_set_window_tabbing(lua_State *L);
 static int bridge_window_tab_count(lua_State *L);
@@ -55,15 +50,6 @@ static MethodEntry TextViewMethods[] = {
 	{"setLanguage",	bridge_text_view_set_language},
 	{"setWrapMode",	bridge_text_view_set_wrap_mode},
 	{"onChange",	bridge_text_view_on_change},
-	{NULL, NULL}
-};
-
-static MethodEntry TabViewMethods[] = {
-	{"addTab",	bridge_tab_add},
-	{"removeTab",	bridge_tab_remove},
-	{"selectTab",	bridge_tab_select},
-	{"tabCount",	bridge_tab_count},
-	{"onChange",	bridge_tab_on_change},
 	{NULL, NULL}
 };
 
@@ -112,13 +98,6 @@ static MethodEntry ViewMethods[] = {
 	id _sentinel_text_view = objc_getAssociatedObject(obj, &kKeys[kTextViewSourceKey]);
 	if (_sentinel_text_view) {
 		lua_CFunction _m = lookupMethod(key, TextViewMethods);
-		if (_m) { lua_pushcfunction(L, _m); return 1; }
-	}
-}
-
-{
-	if ([obj isKindOfClass:[NSTabView class]]) {
-		lua_CFunction _m = lookupMethod(key, TabViewMethods);
 		if (_m) { lua_pushcfunction(L, _m); return 1; }
 	}
 }
