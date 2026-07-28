@@ -4,12 +4,14 @@ gen_bridge.py — generate Lua bridge boilerplate from an XML config file.
 
 Usage:
     python3 tools/gen_bridge.py                           # AppKit (default)
-    python3 tools/gen_bridge.py --xml tools/uikit_bridge.xml --out src/uikit/generated
+    python3 tools/gen_bridge.py --xml tools/UIKit.xml --out src/uikit/generated
 
 Outputs (in --out dir):
+    bridge_structs.m — generated native value userdata and registration
     bridge_funcs.m   — generated bridge_xxx() C functions
-    bridge_props.m   — INDEX_xxx / NEWINDEX_xxx macro calls for nsview_index/newindex
+    bridge_props.m   — class-scoped property access for nsview_index/newindex
     bridge_lib.inc   — luaL_Reg entries for bridge_lib[]
+    bridge_class_methods.m — typed wrappers, method tables, and class dispatch
 
 Key-reference style (set via <bridge key_style="…"> in the XML):
     "enum"   (default) — &kKeys[kFooKey]   (AppKit: enum + char array)
@@ -23,6 +25,7 @@ Callback target style (set via <bridge callback_add_target="…">):
 
 import argparse
 import os
+import re
 import sys
 import textwrap
 import xml.etree.ElementTree as ET
@@ -74,38 +77,92 @@ def key_ref_addr(key, style):
 # Properties  →  bridge_props.m
 # ---------------------------------------------------------------------------
 
-def gen_props(props_el, key_style, xml_path):
+def class_guard(cls):
+    detect_key = cls.get("detect")
+    detect_cls = cls.get("detect_class")
+    if detect_key:
+        return ("associated",
+                detect_key,
+                f"objc_getAssociatedObject(obj, {{key}})")
+    if detect_cls:
+        return ("class", detect_cls, f"[obj isKindOfClass:[{detect_cls} class]]")
+    return ("always", "", "YES")
+
+
+def gen_props(classes, structs, key_style, xml_path):
     index_lines = []
     newindex_lines = []
 
-    for prop in props_el.findall("prop"):
-        name  = prop.get("name")
-        key   = prop.get("key")
-        typ   = prop.get("type")
-        dflt  = prop.get("default", "")
-        clamp = prop.get("clamp", "")
-        kref  = key_ref(key, key_style)
+    for cls in classes:
+        props_el = cls.find("properties")
+        if props_el is None:
+            continue
+        guard_kind, guard_value, guard_expr = class_guard(cls)
+        if guard_kind == "associated":
+            guard_expr = guard_expr.format(
+                key=key_ref_addr(guard_value, key_style))
+        index_lines.append(f"if ({guard_expr}) {{")
+        newindex_lines.append(f"if ({guard_expr}) {{")
 
-        if typ == "number":
-            index_lines.append(f'INDEX_NUMBER({c_str(name)}, {kref}, {dflt});')
-            if clamp:
-                newindex_lines.append(f'NEWINDEX_NUMBER_CLAMP({c_str(name)}, {kref}, {clamp});')
+        for prop in props_el.findall("property"):
+            name = prop.get("name")
+            key = prop.get("key")
+            typ = prop.get("type")
+            dflt = prop.get("default", "")
+            clamp = prop.get("clamp", "")
+            native = prop.get("native")
+            getter = prop.get("getter")
+            readonly = prop.get("readonly", "false") == "true"
+            if typ in structs:
+                if not native and not getter:
+                    raise ValueError(
+                        f"{cls.get('name')}.{name}: struct property requires "
+                        "native= or getter=")
+                cast = f"(({cls.get('name')} *)obj)"
+                value_expr = getter or f"{cast}.{native}"
+                index_lines.extend([
+                    f'\tif (strcmp(key, {c_str(name)}) == 0) {{',
+                    f'\t\tpush_{typ}(L, {value_expr});',
+                    '\t\treturn 1;',
+                    '\t}',
+                ])
+                if not readonly:
+                    newindex_lines.extend([
+                        f'\tif (strcmp(key, {c_str(name)}) == 0) {{',
+                        f'\t\t{cast}.{native} = *check_{typ}(L, 3);',
+                        '\t\treturn 0;',
+                        '\t}',
+                    ])
+                continue
+            if not key:
+                raise ValueError(
+                    f"{cls.get('name')}.{name}: associated property requires key")
+            kref = key_ref(key, key_style)
+
+            if typ == "number":
+                index_lines.append(f'\tINDEX_NUMBER({c_str(name)}, {kref}, {dflt});')
+                if clamp:
+                    newindex_lines.append(f'\tNEWINDEX_NUMBER_CLAMP({c_str(name)}, {kref}, {clamp});')
+                else:
+                    newindex_lines.append(f'\tNEWINDEX_NUMBER({c_str(name)}, {kref});')
+            elif typ == "number?":
+                index_lines.append(f'\tINDEX_NUMBER_OR_NIL({c_str(name)}, {kref});')
+                if clamp:
+                    newindex_lines.append(f'\tNEWINDEX_NILABLE_NUMBER_CLAMP({c_str(name)}, {kref}, {clamp});')
+                else:
+                    newindex_lines.append(f'\tNEWINDEX_NILABLE_NUMBER({c_str(name)}, {kref});')
+            elif typ == "bool":
+                index_lines.append(f'\tINDEX_BOOL({c_str(name)}, {kref});')
+                newindex_lines.append(f'\tNEWINDEX_BOOL({c_str(name)}, {kref});')
+            elif typ == "string":
+                index_lines.append(f'\tINDEX_STRING({c_str(name)}, {kref}, {c_str(dflt)});')
+                newindex_lines.append(f'\tNEWINDEX_STRING({c_str(name)}, {kref});')
             else:
-                newindex_lines.append(f'NEWINDEX_NUMBER({c_str(name)}, {kref});')
-        elif typ == "number?":
-            index_lines.append(f'INDEX_NUMBER_OR_NIL({c_str(name)}, {kref});')
-            if clamp:
-                newindex_lines.append(f'NEWINDEX_NILABLE_NUMBER_CLAMP({c_str(name)}, {kref}, {clamp});')
-            else:
-                newindex_lines.append(f'NEWINDEX_NILABLE_NUMBER({c_str(name)}, {kref});')
-        elif typ == "bool":
-            index_lines.append(f'INDEX_BOOL({c_str(name)}, {kref});')
-            newindex_lines.append(f'NEWINDEX_BOOL({c_str(name)}, {kref});')
-        elif typ == "string":
-            index_lines.append(f'INDEX_STRING({c_str(name)}, {kref}, {c_str(dflt)});')
-            newindex_lines.append(f'NEWINDEX_STRING({c_str(name)}, {kref});')
-        else:
-            print(f"WARNING: unknown prop type '{typ}' for '{name}'", file=sys.stderr)
+                raise ValueError(
+                    f"{cls.get('name')}.{name}: unknown property type {typ!r}")
+
+        index_lines.append("}")
+        newindex_lines.append("}")
 
     out = [make_header(xml_path)]
     out.append("/* --- nsview_index property lookups --- */")
@@ -124,23 +181,127 @@ def gen_props(props_el, key_style, xml_path):
 
 
 # ---------------------------------------------------------------------------
+# Native structs → bridge_structs.m
+# ---------------------------------------------------------------------------
+
+def gen_structs(structs, xml_path):
+    lines = [make_header(xml_path), "#if defined(GEN_STRUCT_HELPERS)"]
+    for struct in structs.values():
+        name = struct.get("name")
+        fields = struct.findall("field")
+        meta = f"lua_objc.struct.{name}"
+        lines.extend([
+            f"static {name} *check_{name}(lua_State *L, int idx) {{",
+            f"\treturn ({name} *)luaL_checkudata(L, idx, {c_str(meta)});",
+            "}",
+            "",
+            f"static void push_{name}(lua_State *L, {name} value) {{",
+            f"\t{name} *box = ({name} *)lua_newuserdata(L, sizeof({name}));",
+            "\t*box = value;",
+            f"\tluaL_setmetatable(L, {c_str(meta)});",
+            "}",
+            "",
+            f"static int index_{name}(lua_State *L) {{",
+            f"\t{name} *value = check_{name}(L, 1);",
+            "\tconst char *key = luaL_checkstring(L, 2);",
+        ])
+        for field in fields:
+            fname = field.get("name")
+            ftype = field.get("type")
+            lines.append(f"\tif (strcmp(key, {c_str(fname)}) == 0) {{")
+            if ftype == "number":
+                lines.append(f"\t\tlua_pushnumber(L, value->{fname});")
+            elif ftype in structs:
+                lines.append(f"\t\tpush_{ftype}(L, value->{fname});")
+            else:
+                raise ValueError(f"{name}.{fname}: unknown struct field type {ftype!r}")
+            lines.extend(["\t\treturn 1;", "\t}"])
+        lines.extend(["\tlua_pushnil(L);", "\treturn 1;", "}", ""])
+        lines.extend([
+            f"static int newindex_{name}(lua_State *L) {{",
+            f"\t{name} *value = check_{name}(L, 1);",
+            "\tconst char *key = luaL_checkstring(L, 2);",
+        ])
+        for field in fields:
+            fname = field.get("name")
+            ftype = field.get("type")
+            lines.append(f"\tif (strcmp(key, {c_str(fname)}) == 0) {{")
+            if ftype == "number":
+                lines.append(f"\t\tvalue->{fname} = (CGFloat)luaL_checknumber(L, 3);")
+            else:
+                lines.append(f"\t\tvalue->{fname} = *check_{ftype}(L, 3);")
+            lines.extend(["\t\treturn 0;", "\t}"])
+        lines.extend([
+            f"\treturn luaL_error(L, \"unknown {name} field: %s\", key);",
+            "}",
+            "",
+            f"static int bridge_{name}(lua_State *L) {{",
+            f"\t{name} value = {{0}};",
+            "\tif (lua_istable(L, 1)) {",
+        ])
+        for field in fields:
+            fname = field.get("name")
+            ftype = field.get("type")
+            lines.append(f"\t\tlua_getfield(L, 1, {c_str(fname)});")
+            if ftype == "number":
+                lines.append(f"\t\tvalue.{fname} = (CGFloat)luaL_checknumber(L, -1);")
+            else:
+                lines.append(f"\t\tvalue.{fname} = *check_{ftype}(L, -1);")
+            lines.append("\t\tlua_pop(L, 1);")
+        lines.append("\t} else {")
+        for idx, field in enumerate(fields, 1):
+            fname = field.get("name")
+            ftype = field.get("type")
+            if ftype == "number":
+                lines.append(f"\t\tvalue.{fname} = (CGFloat)luaL_checknumber(L, {idx});")
+            else:
+                lines.append(f"\t\tvalue.{fname} = *check_{ftype}(L, {idx});")
+        lines.extend([
+            "\t}",
+            f"\tpush_{name}(L, value);",
+            "\treturn 1;",
+            "}",
+            "",
+            f"static void register_{name}(lua_State *L) {{",
+            f"\tluaL_newmetatable(L, {c_str(meta)});",
+            f"\tlua_pushcfunction(L, index_{name});",
+            "\tlua_setfield(L, -2, \"__index\");",
+            f"\tlua_pushcfunction(L, newindex_{name});",
+            "\tlua_setfield(L, -2, \"__newindex\");",
+            "\tlua_pop(L, 1);",
+            "}",
+            "",
+        ])
+    lines.append("#endif /* GEN_STRUCT_HELPERS */")
+    lines.append("")
+    lines.append("#if defined(GEN_STRUCT_REGISTER)")
+    for name in structs:
+        lines.append(f"\tregister_{name}(L);")
+    lines.append("#endif /* GEN_STRUCT_REGISTER */")
+    lines.append("")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
 # Constructor  →  bridge_xxx() function body
 # ---------------------------------------------------------------------------
 
-def gen_constructor(el, key_style, cb_style):
+def gen_constructor(el, key_style, cb_style, function_name=None):
     name    = el.get("name")
     returns = el.get("returns", "nsview")
     lines   = []
 
-    lines.append(f"static int bridge_{name}(lua_State *L) {{")
+    function_name = function_name or f"bridge_{name}"
+    lines.append(f"static int {function_name}(lua_State *L) {{")
 
     # ── Arg declarations ────────────────────────────────────────────────────
     args = el.findall("arg")
-    for arg in args:
-        idx      = arg.get("index")
+    for position, arg in enumerate(args, 1):
+        idx      = arg.get("index", str(position))
         aname    = arg.get("name")
         typ      = arg.get("type")
-        required = arg.get("required", "true") == "true"
+        required = (arg.get("required", "true") == "true"
+                    and not typ.endswith("?"))
         default  = arg.get("default", "")
 
         if typ == "string":
@@ -173,11 +334,12 @@ def gen_constructor(el, key_style, cb_style):
             lines.append(f"\tluaL_checktype(L, {idx}, LUA_TTABLE);")
 
     # ── Callback ref capture ─────────────────────────────────────────────────
-    for arg in args:
+    for position, arg in enumerate(args, 1):
         if arg.get("type") in ("function", "function?"):
             aname = arg.get("name")
-            idx   = arg.get("index")
-            req   = arg.get("required", "true") == "true"
+            idx   = arg.get("index", str(position))
+            req   = (arg.get("required", "true") == "true"
+                     and not arg.get("type", "").endswith("?"))
             if req:
                 lines.append(f"\tluaL_checktype(L, {idx}, LUA_TFUNCTION);")
                 lines.append(f"\tlua_pushvalue(L, {idx});")
@@ -270,7 +432,7 @@ def gen_constructor(el, key_style, cb_style):
 # Callback setter  →  bridge_xxx() function body
 # ---------------------------------------------------------------------------
 
-def gen_callback_setter(el, key_style):
+def gen_callback_setter(el, key_style, function_name=None):
     name = el.get("name")
     lines = []
 
@@ -285,7 +447,8 @@ def gen_callback_setter(el, key_style):
     store_key  = store_el.get("key")  if store_el is not None else None
     store_on   = store_el.get("on")   if store_el is not None else "obj"
 
-    lines.append(f"static int bridge_{name}(lua_State *L) {{")
+    function_name = function_name or f"bridge_{name}"
+    lines.append(f"static int {function_name}(lua_State *L) {{")
     lines.append("\tid obj = check_objc(L, 1);")
 
     if guard_el is not None:
@@ -357,11 +520,14 @@ _LUA_TO_C_ARG_CHECK = {
     "integer":   lambda idx, name, opt, dflt: f"\tNSInteger {name} = (NSInteger){'luaL_optinteger' if opt else 'luaL_checkinteger'}(L, {idx}{', ' + (dflt + 'L') if opt and dflt else ''});",
     "bool":      lambda idx, name, opt, dflt: f"\tBOOL {name} = (BOOL)lua_toboolean(L, {idx});",
     "nsview":    lambda idx, name, opt, dflt: f"\tNSView *{name} = check_view(L, {idx});",
+    "nsview?":   lambda idx, name, opt, dflt: f"\tNSView *{name} = lua_isnoneornil(L, {idx}) ? nil : check_view(L, {idx});",
     "nsobject":  lambda idx, name, opt, dflt: f"\tid {name} = check_objc(L, {idx});",
+    "nsobject?": lambda idx, name, opt, dflt: f"\tid {name} = lua_isnoneornil(L, {idx}) ? nil : check_objc(L, {idx});",
     "nswindow":  lambda idx, name, opt, dflt: f"\tNSWindow *{name} = lua_objc_check_object(L, {idx}, [NSWindow class], \"NSWindow\");",
     "function":  lambda idx, name, opt, dflt: f"\tluaL_checktype(L, {idx}, LUA_TFUNCTION);\n\tlua_pushvalue(L, {idx});\n\tint {name} = luaL_ref(L, LUA_REGISTRYINDEX);",
     "function?": lambda idx, name, opt, dflt: f"\tBOOL has_{name} = !lua_isnoneornil(L, {idx});\n\tint {name} = LUA_NOREF;\n\tif (has_{name}) {{\n\t\tluaL_checktype(L, {idx}, LUA_TFUNCTION);\n\t\tlua_pushvalue(L, {idx});\n\t\t{name} = luaL_ref(L, LUA_REGISTRYINDEX);\n\t}}",
     "table":     lambda idx, name, opt, dflt: f"\tluaL_checktype(L, {idx}, LUA_TTABLE);",
+    "any":       lambda idx, name, opt, dflt: f"\t(void)lua_type(L, {idx});",
 }
 
 _LUA_TO_C_IMPL_TYPE = {
@@ -370,12 +536,113 @@ _LUA_TO_C_IMPL_TYPE = {
     "integer":   "NSInteger",
     "bool":      "BOOL",
     "nsview":    "NSView *",
+    "nsview?":   "NSView *",
     "nsobject":  "id",
     "nswindow":  "NSWindow *",
     "function":  "int",
     "function?": "int",
     "table":     "int",
 }
+
+_OBJC_ENUM_TYPES = {
+    "NSWindowTabbingMode": (
+        ("automatic", "NSWindowTabbingModeAutomatic"),
+        ("preferred", "NSWindowTabbingModePreferred"),
+        ("disallowed", "NSWindowTabbingModeDisallowed"),
+    ),
+}
+
+
+def snake_case(name):
+    first = re.sub(r"(.)([A-Z][a-z]+)", r"\1_\2", name)
+    return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", first).lower()
+
+
+def objc_arg_expr(arg):
+    typ = arg.get("type", "nsobject").rstrip("?")
+    name = arg.get("name")
+    if typ == "string":
+        return f"[NSString stringWithUTF8String:{name}]"
+    return name
+
+
+def objc_return(lines, return_type, message):
+    if return_type in (None, "void"):
+        lines.append(f"\t{message};")
+        lines.append("\treturn 0;")
+    elif return_type == "bool":
+        lines.append(f"\tlua_pushboolean(L, {message});")
+        lines.append("\treturn 1;")
+    elif return_type == "integer":
+        lines.append(f"\tlua_pushinteger(L, (lua_Integer){message});")
+        lines.append("\treturn 1;")
+    elif return_type == "number":
+        lines.append(f"\tlua_pushnumber(L, (lua_Number){message});")
+        lines.append("\treturn 1;")
+    elif return_type == "string":
+        lines.append(f"\tNSString *_result = {message};")
+        lines.append("\tlua_pushstring(L, _result.UTF8String);")
+        lines.append("\treturn 1;")
+    elif return_type in ("nsobject", "nsview", "nswindow"):
+        metatable = {
+            "nsobject": "nsobject",
+            "nsview": "nsview",
+            "nswindow": "nswindow",
+        }[return_type]
+        lines.append(f"\tid _result = {message};")
+        lines.append(f"\tpush_objc(L, _result, {c_str(metatable)});")
+        lines.append("\treturn 1;")
+    else:
+        raise ValueError(f"unknown method return type {return_type!r}")
+
+
+def stack_arg_check(arg, idx):
+    typ = arg.get("type", "nsobject")
+    base_type = typ.rstrip("?")
+    optional = typ.endswith("?")
+    default = arg.get("default", "")
+    if base_type in _OBJC_ENUM_TYPES:
+        option_names = ", ".join(
+            c_str(name) for name, _ in _OBJC_ENUM_TYPES[base_type])
+        return (
+            f"\tstatic const char *const {arg.get('name')}_options[] = "
+            f"{{{option_names}, NULL}};\n"
+            f"\t(void)luaL_checkoption(L, {idx}, NULL, "
+            f"{arg.get('name')}_options);")
+    if base_type == "string":
+        fallback = c_str(default) if default else "NULL"
+        return (f"\t(void)luaL_optstring(L, {idx}, {fallback});" if optional
+                else f"\t(void)luaL_checkstring(L, {idx});")
+    if base_type == "number":
+        fallback = default or "0"
+        return (f"\t(void)luaL_optnumber(L, {idx}, {fallback});" if optional
+                else f"\t(void)luaL_checknumber(L, {idx});")
+    if base_type == "integer":
+        fallback = default or "0"
+        return (f"\t(void)luaL_optinteger(L, {idx}, {fallback});" if optional
+                else f"\t(void)luaL_checkinteger(L, {idx});")
+    if base_type == "bool":
+        return f"\t(void)lua_toboolean(L, {idx});"
+    if base_type == "any":
+        return f"\t(void)lua_type(L, {idx});"
+    if base_type == "function":
+        if optional:
+            return (f"\tif (!lua_isnoneornil(L, {idx})) "
+                    f"luaL_checktype(L, {idx}, LUA_TFUNCTION);")
+        return f"\tluaL_checktype(L, {idx}, LUA_TFUNCTION);"
+    if base_type == "table":
+        return f"\tluaL_checktype(L, {idx}, LUA_TTABLE);"
+    if base_type in ("nsobject", "nsview", "nswindow"):
+        checker = {
+            "nsobject": f"check_objc(L, {idx})",
+            "nsview": f"check_view(L, {idx})",
+            "nswindow": (f"lua_objc_check_object(L, {idx}, "
+                         f"[NSWindow class], \"NSWindow\")"),
+        }[base_type]
+        if optional:
+            return f"\tif (!lua_isnoneornil(L, {idx})) (void){checker};"
+        return f"\t(void){checker};"
+    raise ValueError(f"unknown argument type {typ!r}")
 
 
 def gen_class_bindings(classes, key_style, xml_path):
@@ -394,7 +661,8 @@ def gen_class_bindings(classes, key_style, xml_path):
 
     for cls in classes:
         cls_name   = cls.get("name")           # "NSTabView"
-        lua_name   = cls.get("lua_name")       # "TabView"
+        lua_name   = cls.get("lua_name", cls_name)
+        is_static  = cls.get("static", "false") == "true"
         detect_key = cls.get("detect")
         detect_cls = cls.get("detect_class")
         array_name = lua_name + "Methods"
@@ -407,53 +675,134 @@ def gen_class_bindings(classes, key_style, xml_path):
         # --- per-method generation ---
         for m in methods:
             mname = m.get("name")
-            has_impl = m.get("impl", "false") == "true"
+            impl_mode = m.get("impl", "")
+            has_impl = impl_mode == "true"
+            stack_impl = impl_mode in ("stack", "class_stack")
+            generated_body = impl_mode in ("constructor", "callback")
             wrapper_func = f"bridge_{cls_name}_{mname}"
             impl_func = f"bridge_{cls_name}_{mname}_impl"
             body_el = m.find("objc")
             args = m.findall("arg")
 
             # --- Forward declaration for _impl ---
-            if has_impl:
+            if generated_body:
+                fwd_lines.append(f"static int {wrapper_func}(lua_State *L);")
+            elif has_impl:
                 arg_sig = ", ".join(
                     _LUA_TO_C_IMPL_TYPE.get(a.get("type"), "id") + " " + a.get("name")
                     for a in args
                 )
                 fwd_lines.append(f"static int {impl_func}(lua_State *L, {c_self_type}self{', ' + arg_sig if arg_sig else ''});")
+            elif stack_impl:
+                stack_func = (f"bridge_{mname}" if is_static
+                              else f"{wrapper_func}_impl")
+                fwd_lines.append(f"static int {stack_func}(lua_State *L);")
 
             # --- Wrapper function ---
+            if generated_body:
+                continue
+
             wrapper_lines.append(f"static int {wrapper_func}(lua_State *L) {{")
-            wrapper_lines.append(f"\tid _obj = lua_objc_check_object(L, 1, {self_class_expr}, {c_str(lua_name)});")
-            wrapper_lines.append(f"\t{c_self_type}self = ({c_self_type})_obj;")
+            if not is_static:
+                if stack_impl:
+                    wrapper_lines.append(
+                        f"\t(void)lua_objc_check_object(L, 1, "
+                        f"{self_class_expr}, {c_str(lua_name)});")
+                else:
+                    wrapper_lines.append(f"\tid _obj = lua_objc_check_object(L, 1, {self_class_expr}, {c_str(lua_name)});")
+                    wrapper_lines.append(f"\t{c_self_type}self = ({c_self_type})_obj;")
 
             arg_names = []
+            declared_arg_names = []
             for a in args:
                 aname = a.get("name")
                 atyp  = a.get("type", "nsobject")
-                idx   = str(len(arg_names) + 2)
+                idx   = str(len(arg_names) + (1 if is_static else 2))
+                if stack_impl:
+                    wrapper_lines.append(stack_arg_check(a, idx))
+                    arg_names.append(aname)
+                    continue
                 opt   = atyp.endswith("?")
+                base_type = atyp[:-1] if opt else atyp
                 dflt  = a.get("default", "")
+                if base_type in _OBJC_ENUM_TYPES:
+                    if opt:
+                        raise ValueError(
+                            f"{cls_name}.{mname}.{aname}: optional enums "
+                            "are not supported")
+                    enum_options = _OBJC_ENUM_TYPES[base_type]
+                    option_names = ", ".join(
+                        c_str(name) for name, _ in enum_options)
+                    option_values = ", ".join(
+                        value for _, value in enum_options)
+                    wrapper_lines.append(
+                        f"\tstatic const char *const {aname}_options[] = "
+                        f"{{{option_names}, NULL}};")
+                    wrapper_lines.append(
+                        f"\tstatic const {base_type} {aname}_values[] = "
+                        f"{{{option_values}}};")
+                    wrapper_lines.append(
+                        f"\t{base_type} {aname} = {aname}_values["
+                        f"luaL_checkoption(L, {idx}, NULL, "
+                        f"{aname}_options)];")
+                    arg_names.append(aname)
+                    declared_arg_names.append(aname)
+                    continue
                 check_fn = _LUA_TO_C_ARG_CHECK.get(atyp)
+                if check_fn is None and opt:
+                    check_fn = _LUA_TO_C_ARG_CHECK.get(base_type)
                 if check_fn:
-                    wrapper_lines.append(check_fn(idx, aname, opt, c_str(dflt) if opt and dflt else dflt))
+                    default_expr = c_str(dflt) if base_type == "string" else dflt
+                    if opt and not dflt:
+                        default_expr = "NULL" if base_type == "string" else "0"
+                    wrapper_lines.append(
+                        check_fn(idx, aname, opt, default_expr))
+                    if base_type not in ("any", "table"):
+                        declared_arg_names.append(aname)
                 else:
-                    wrapper_lines.append(f"\t/* unknown type: {atyp} */")
+                    raise ValueError(
+                        f"{cls_name}.{mname}.{aname}: unknown argument type {atyp!r}")
                 arg_names.append(aname)
 
             if body_el is not None:
+                body_text = textwrap.dedent(body_el.text or "").strip()
+                if not is_static and not re.search(r"\bself\b", body_text):
+                    wrapper_lines.append("\t(void)self;")
+                for declared_name in declared_arg_names:
+                    if not re.search(
+                            rf"\b{re.escape(declared_name)}\b", body_text):
+                        wrapper_lines.append(f"\t(void){declared_name};")
                 wrapper_lines.append(f"\t{{")
-                for line in textwrap.dedent(body_el.text or "").strip().splitlines():
+                for line in body_text.splitlines():
                     wrapper_lines.append(f"\t\t{line}")
                 wrapper_lines.append(f"\t}}")
                 wrapper_lines.append(f"\treturn 0;")
             elif has_impl:
                 call_args = ", ".join(["L", "self"] + arg_names)
                 wrapper_lines.append(f"\treturn {impl_func}({call_args});")
+            elif stack_impl:
+                stack_func = (f"bridge_{mname}" if is_static
+                              else f"{wrapper_func}_impl")
+                wrapper_lines.append(f"\treturn {stack_func}(L);")
             else:
-                wrapper_lines.append(f"\treturn 0;")
+                selector_parts = [mname] + [
+                    a.get("label", a.get("name")) for a in args[1:]
+                ]
+                if args:
+                    message = "[" + " ".join(
+                        [f"self {selector_parts[0]}:{objc_arg_expr(args[0])}"] +
+                        [f"{label}:{objc_arg_expr(arg)}"
+                         for label, arg in zip(selector_parts[1:], args[1:])]
+                    ) + "]"
+                else:
+                    message = f"[self {mname}]"
+                objc_return(wrapper_lines, m.get("returns"), message)
 
             wrapper_lines.append("}")
             wrapper_lines.append("")
+
+        if is_static:
+            continue
 
         # --- MethodEntry array ---
         array_lines.append(f"static MethodEntry {array_name}[] = {{")
@@ -480,6 +829,10 @@ def gen_class_bindings(classes, key_style, xml_path):
         index_lines.append("\t}")
         index_lines.append("}")
         index_lines.append("")
+
+    # Multiple classes may intentionally share one stack implementation
+    # (for example NSWindow.layout and NSView.layout). Emit one declaration.
+    fwd_lines = list(dict.fromkeys(fwd_lines))
 
     out = [make_header(xml_path)]
 
@@ -511,99 +864,6 @@ def gen_class_bindings(classes, key_style, xml_path):
 
 
 # ---------------------------------------------------------------------------
-# Method groups  →  bridge_methods.m
-# ---------------------------------------------------------------------------
-
-def c_func_name(method_name):
-    """Convert camelCase Lua method name to bridge_xxx_yyy C function name.
-
-    setText      → bridge_text_view_set_text   (caller prefixes group)
-    We don't prefix here — caller passes the group prefix separately.
-    """
-    import re
-    # Insert underscore before each uppercase letter, then lowercase
-    s = re.sub(r'([A-Z])', r'_\1', method_name).lower()
-    return s
-
-
-def gen_methods(method_groups, key_style, xml_path):
-    """Generate bridge_methods.m with MethodEntry arrays and __index dispatch blocks."""
-
-    arrays_lines = []   # inside GEN_METHODS_ARRAYS guard
-    index_lines  = []   # inside GEN_METHODS_INDEX guard
-    forward_lines = []  # inside GEN_METHODS_FORWARDS guard
-
-    for mg in method_groups:
-        group_name  = mg.get("name")          # e.g. "text_view"
-        detect_key  = mg.get("detect")        # e.g. "kTextViewSourceKey"
-        detect_class = mg.get("detect_class") # e.g. "NSTabView"
-        array_name  = "".join(w.capitalize() for w in group_name.split("_")) + "Methods"
-        # e.g. "text_view" → "TextViewMethods"
-
-        methods = mg.findall("method")
-
-        # --- Forward declarations ---
-        for m in methods:
-            mname = m.get("name")
-            cfunc = "bridge_" + group_name + "_method_" + c_func_name(mname).lstrip("_")
-            # actual C name is specified via c_func attr, or derived
-            cfunc = m.get("c_func", "bridge_" + group_name.replace("_", "_") + "_" + c_func_name(mname).lstrip("_"))
-            forward_lines.append(f"static int {cfunc}(lua_State *L);")
-
-        # --- MethodEntry array ---
-        arrays_lines.append(f"static MethodEntry {array_name}[] = {{")
-        for m in methods:
-            mname = m.get("name")
-            cfunc = m.get("c_func", "bridge_" + group_name + "_" + c_func_name(mname).lstrip("_"))
-            arrays_lines.append(f'\t{{{c_str(mname)},\t{cfunc}}},')
-        arrays_lines.append(f'\t{{NULL, NULL}}')
-        arrays_lines.append("};")
-        arrays_lines.append("")
-
-        # --- Dispatch block in nsview_index ---
-        index_lines.append("{")
-        if detect_key:
-            kaddr = key_ref_addr(detect_key, key_style)
-            index_lines.append(f"\tid _sentinel_{group_name} = objc_getAssociatedObject(obj, {kaddr});")
-            index_lines.append(f"\tif (_sentinel_{group_name}) {{")
-        elif detect_class:
-            index_lines.append(f"\tif ([obj isKindOfClass:[{detect_class} class]]) {{")
-        else:
-            index_lines.append("\tif (YES) {")
-
-        index_lines.append(f"\t\tlua_CFunction _m = lookupMethod(key, {array_name});")
-        index_lines.append(f"\t\tif (_m) {{ lua_pushcfunction(L, _m); return 1; }}")
-        index_lines.append("\t}")
-        index_lines.append("}")
-        index_lines.append("")
-
-    out = [make_header(xml_path)]
-
-    out.append("/* --- method C function forward declarations --- */")
-    out.append("/* #include with GEN_METHODS_FORWARDS defined, before runtime.m method tables */")
-    out.append("#if defined(GEN_METHODS_FORWARDS)")
-    out.extend(forward_lines)
-    out.append("#endif /* GEN_METHODS_FORWARDS */")
-    out.append("")
-
-    out.append("/* --- MethodEntry arrays for each method group --- */")
-    out.append("/* #include with GEN_METHODS_ARRAYS defined, before nsview_index */")
-    out.append("#if defined(GEN_METHODS_ARRAYS)")
-    out.extend(arrays_lines)
-    out.append("#endif /* GEN_METHODS_ARRAYS */")
-    out.append("")
-
-    out.append("/* --- nsview_index dispatch blocks --- */")
-    out.append("/* #include with GEN_METHODS_INDEX defined, inside nsview_index body */")
-    out.append("#if defined(GEN_METHODS_INDEX)")
-    out.extend(index_lines)
-    out.append("#endif /* GEN_METHODS_INDEX */")
-    out.append("")
-
-    return "\n".join(out)
-
-
-# ---------------------------------------------------------------------------
 # bridge_lib.inc
 # ---------------------------------------------------------------------------
 
@@ -613,8 +873,15 @@ def gen_lib_entries(root, xml_path):
         tag      = el.tag
         name     = el.get("name")
         lua_name = el.get("lua_name")
-        if tag in ("constructor", "callback_setter", "manual_entry"):
-            entries.append((lua_name, f"bridge_{name}"))
+        if tag == "class" and el.get("static", "false") == "true":
+            for method in el.findall("method"):
+                method_lua_name = method.get("lua_name")
+                if method_lua_name:
+                    entries.append((
+                        method_lua_name,
+                        f"bridge_{el.get('name')}_{method.get('name')}"))
+        elif tag == "struct":
+            entries.append((name, f"bridge_{name}"))
 
     lines = [make_header(xml_path)]
     lines.append("/* luaL_Reg entries — #include inside bridge_lib[] initialiser */")
@@ -632,33 +899,60 @@ def gen_lib_entries(root, xml_path):
 
 def main():
     parser = argparse.ArgumentParser(description="Generate Lua bridge boilerplate from XML.")
-    parser.add_argument("--xml", default="tools/bridge.xml")
+    parser.add_argument("--xml", default="tools/AppKit.xml")
     parser.add_argument("--out", default="src/appkit/generated")
     args = parser.parse_args()
 
     tree = ET.parse(args.xml)
     root = tree.getroot()
+    legacy_tags = {
+        "method_group", "manual_entry", "constructor",
+        "callback_setter", "prop",
+    }
+    for el in root.iter():
+        if el.tag in legacy_tags:
+            raise ValueError(
+                f"<{el.tag}> is obsolete; use class methods and properties")
+        for obsolete_attr in ("c_func", "src"):
+            if obsolete_attr in el.attrib:
+                raise ValueError(
+                    f"{obsolete_attr}= is obsolete on <{el.tag}>")
+    for el in root:
+        if el.tag not in ("class", "struct"):
+            raise ValueError(
+                f"<{el.tag}> is not allowed at bridge scope; use <class> or <struct>")
 
     key_style = root.get("key_style", "enum")    # "enum" | "direct"
     cb_style  = root.get("callback_style", "property")  # "property" | "addTarget"
 
     os.makedirs(args.out, exist_ok=True)
 
+    classes = root.findall("class")
+    structs = {el.get("name"): el for el in root.findall("struct")}
+
+    with open(os.path.join(args.out, "bridge_structs.m"), "w") as f:
+        f.write(gen_structs(structs, args.xml))
+    print(f"  wrote {args.out}/bridge_structs.m")
+
     # bridge_props.m
-    props_el = root.find("properties")
-    if props_el is not None:
+    if any(cls.find("properties") is not None for cls in classes):
         with open(os.path.join(args.out, "bridge_props.m"), "w") as f:
-            f.write(gen_props(props_el, key_style, args.xml))
+            f.write(gen_props(classes, structs, key_style, args.xml))
         print(f"  wrote {args.out}/bridge_props.m")
 
     # bridge_funcs.m
     hdr = make_header(args.xml)
     funcs = [hdr, "/* Generated bridge_xxx() functions */", ""]
-    for el in root:
-        if el.tag == "constructor":
-            funcs.append(gen_constructor(el, key_style, cb_style))
-        elif el.tag == "callback_setter":
-            funcs.append(gen_callback_setter(el, key_style))
+    for cls in classes:
+        for method in cls.findall("method"):
+            function_name = (
+                f"bridge_{cls.get('name')}_{method.get('name')}")
+            if method.get("impl") == "constructor":
+                funcs.append(gen_constructor(
+                    method, key_style, cb_style, function_name))
+            elif method.get("impl") == "callback":
+                funcs.append(gen_callback_setter(
+                    method, key_style, function_name))
 
     with open(os.path.join(args.out, "bridge_funcs.m"), "w") as f:
         f.write("\n".join(funcs))
@@ -669,15 +963,7 @@ def main():
         f.write(gen_lib_entries(root, args.xml))
     print(f"  wrote {args.out}/bridge_lib.inc")
 
-    # bridge_methods.m  (only if any <method_group> elements exist)
-    method_groups = root.findall("method_group")
-    if method_groups:
-        with open(os.path.join(args.out, "bridge_methods.m"), "w") as f:
-            f.write(gen_methods(method_groups, key_style, args.xml))
-        print(f"  wrote {args.out}/bridge_methods.m")
-
     # bridge_class_methods.m  (only if any <class> elements exist)
-    classes = root.findall("class")
     if classes:
         with open(os.path.join(args.out, "bridge_class_methods.m"), "w") as f:
             f.write(gen_class_bindings(classes, key_style, args.xml))

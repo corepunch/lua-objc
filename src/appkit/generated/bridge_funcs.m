@@ -1,11 +1,11 @@
 /* AUTO-GENERATED — do not edit by hand.
- * Regenerate with:  python3 tools/gen_bridge.py --xml tools/bridge.xml
- * Source:           tools/bridge.xml
+ * Regenerate with:  python3 tools/gen_bridge.py --xml tools/AppKit.xml
+ * Source:           tools/AppKit.xml
  */
 
 /* Generated bridge_xxx() functions */
 
-static int bridge_vstack(lua_State *L) {
+static int bridge_AppKitControls_vstack(lua_State *L) {
 
 	NSView *obj = [[NSView alloc] initWithFrame:NSZeroRect];
 	objc_setAssociatedObject(obj, &kKeys[kAxisKey], @(LayoutAxisVStack), OBJC_ASSOCIATION_RETAIN);
@@ -14,7 +14,7 @@ static int bridge_vstack(lua_State *L) {
 	return 1;
 }
 
-static int bridge_hstack(lua_State *L) {
+static int bridge_AppKitControls_hstack(lua_State *L) {
 
 	NSView *obj = [[NSView alloc] initWithFrame:NSZeroRect];
 	objc_setAssociatedObject(obj, &kKeys[kAxisKey], @(LayoutAxisHStack), OBJC_ASSOCIATION_RETAIN);
@@ -23,7 +23,7 @@ static int bridge_hstack(lua_State *L) {
 	return 1;
 }
 
-static int bridge_hsplit(lua_State *L) {
+static int bridge_AppKitControls_hsplit(lua_State *L) {
 
 	NSSplitView *obj = [[NSSplitView alloc] initWithFrame:NSZeroRect];
 	obj.vertical = YES;
@@ -34,7 +34,7 @@ static int bridge_hsplit(lua_State *L) {
 	return 1;
 }
 
-static int bridge_vsplit(lua_State *L) {
+static int bridge_AppKitControls_vsplit(lua_State *L) {
 
 	NSSplitView *obj = [[NSSplitView alloc] initWithFrame:NSZeroRect];
 	obj.vertical = NO;
@@ -45,7 +45,7 @@ static int bridge_vsplit(lua_State *L) {
 	return 1;
 }
 
-static int bridge_separator(lua_State *L) {
+static int bridge_AppKitControls_separator(lua_State *L) {
 
 	NSBox *obj = [[NSBox alloc] initWithFrame:NSMakeRect(0, 0, kSeparatorSize, kSeparatorSize)];
 	obj.boxType = NSBoxSeparator;
@@ -55,7 +55,7 @@ static int bridge_separator(lua_State *L) {
 	return 1;
 }
 
-static int bridge_spacer(lua_State *L) {
+static int bridge_AppKitControls_spacer(lua_State *L) {
 
 	NSView *obj = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, kSpacerSize, kSpacerSize)];
 	objc_setAssociatedObject(obj, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
@@ -64,7 +64,7 @@ static int bridge_spacer(lua_State *L) {
 	return 1;
 }
 
-static int bridge_button(lua_State *L) {
+static int bridge_AppKitControls_button(lua_State *L) {
 	const char *title = luaL_checkstring(L, 1);
 	BOOL has_callback = !lua_isnoneornil(L, 2);
 	int callback_ref = LUA_NOREF;
@@ -87,7 +87,7 @@ static int bridge_button(lua_State *L) {
 	return 1;
 }
 
-static int bridge_toggle(lua_State *L) {
+static int bridge_AppKitControls_toggle(lua_State *L) {
 	const char *label = luaL_checkstring(L, 1);
 	BOOL is_on = (BOOL)lua_toboolean(L, 2);
 	BOOL has_callback = !lua_isnoneornil(L, 3);
@@ -110,7 +110,7 @@ static int bridge_toggle(lua_State *L) {
 	return 1;
 }
 
-static int bridge_table_set_refresh(lua_State *L) {
+static int bridge_NSScrollView_setRefresh(lua_State *L) {
 	id obj = check_objc(L, 1);
 	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
@@ -125,7 +125,7 @@ static int bridge_table_set_refresh(lua_State *L) {
 	return 0;
 }
 
-static int bridge_table_set_selection(lua_State *L) {
+static int bridge_NSScrollView_onRowSelect(lua_State *L) {
 	id obj = check_objc(L, 1);
 	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
@@ -140,7 +140,7 @@ static int bridge_table_set_selection(lua_State *L) {
 	return 0;
 }
 
-static int bridge_table_set_activation(lua_State *L) {
+static int bridge_NSScrollView_onRowActivate(lua_State *L) {
 	id obj = check_objc(L, 1);
 	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table or outline view");

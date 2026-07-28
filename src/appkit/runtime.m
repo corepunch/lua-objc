@@ -1,18 +1,14 @@
 #pragma mark - Lua helpers
 
 /* Forward declarations for table/outline and other hand-written functions
- * that runtime.m references directly. Method-group functions are declared
- * via the generated block below. */
+ * that runtime.m references directly. */
 static int bridge_tableview_add(lua_State *L);
 static int bridge_tableview_remove(lua_State *L);
 static int bridge_tableview_clear(lua_State *L);
 static int bridge_table_show_loading(lua_State *L);
 static int bridge_table_hide_loading(lua_State *L);
-static int bridge_table_set_refresh(lua_State *L);
 static int bridge_table_column_widths(lua_State *L);
 static int bridge_table_refresh(lua_State *L);
-static int bridge_table_set_selection(lua_State *L);
-static int bridge_table_set_activation(lua_State *L);
 static int bridge_tableview_replace(lua_State *L);
 static int bridge_table_select_row(lua_State *L);
 static int bridge_table_activate_row(lua_State *L);
@@ -26,16 +22,15 @@ static int bridge_tabview(lua_State *L);
 static int bridge_segmented_control(lua_State *L);
 static int bridge_panel(lua_State *L);
 static int bridge_panel_style_state(lua_State *L);
-static int bridge_present_panel(lua_State *L);
 static int bridge_menu_item(lua_State *L);
 static int bridge_text_field_callbacks(lua_State *L);
 static int bridge_text_field_test_input(lua_State *L);
 static int bridge_text_field_test_command(lua_State *L);
-/* Generated forwards for all method-group C functions */
-#define GEN_METHODS_FORWARDS
-#include "generated/bridge_methods.m"
-#undef GEN_METHODS_FORWARDS
-/* Generated _impl forwards for class-binding methods */
+static int bridge_object_add_impl(lua_State *L);
+static int bridge_object_layout_impl(lua_State *L);
+static int bridge_object_set_content_size_impl(lua_State *L);
+static int bridge_object_perform_impl(lua_State *L);
+/* Generated implementation forwards for class methods. */
 #define GEN_CLASS_FORWARDS
 #include "generated/bridge_class_methods.m"
 #undef GEN_CLASS_FORWARDS
@@ -57,6 +52,11 @@ static NSView *check_view(lua_State *L, int idx) {
 	}
 	return (NSView *)obj;
 }
+
+/* Generated native value userdata helpers (NSSize, NSPoint, NSRect). */
+#define GEN_STRUCT_HELPERS
+#include "generated/bridge_structs.m"
+#undef GEN_STRUCT_HELPERS
 
 /* Generated class-binding wrapper functions (after check_view etc.) */
 #define GEN_CLASS_WRAPPERS
@@ -137,16 +137,12 @@ static NSView *check_view(lua_State *L, int idx) {
 		return 0; \
 	}
 
-/* Generated MethodEntry arrays (TextViewMethods, TabViewMethods, etc.) */
-#define GEN_METHODS_ARRAYS
-#include "generated/bridge_methods.m"
-#undef GEN_METHODS_ARRAYS
-/* Generated class-binding MethodEntry arrays (NSTabViewMethods, etc.) */
+/* Generated class MethodEntry arrays. */
 #define GEN_CLASS_ARRAYS
 #include "generated/bridge_class_methods.m"
 #undef GEN_CLASS_ARRAYS
 
-static MethodEntry TableMethods[] = {
+static MethodEntry TableDataMethods[] = {
 	{"addRow",       bridge_tableview_add},
 	{"removeRow",    bridge_tableview_remove},
 	{"clearRows",    bridge_tableview_clear},
@@ -157,9 +153,9 @@ static MethodEntry TableMethods[] = {
 	{"showLoading",  bridge_table_show_loading},
 	{"hideLoading",  bridge_table_hide_loading},
 	{"refresh",      bridge_table_refresh},
-	{"setRefresh",   bridge_table_set_refresh},
-	{"onRowSelect",  bridge_table_set_selection},
-	{"onRowActivate", bridge_table_set_activation},
+	{"setRefresh",   bridge_NSScrollView_setRefresh},
+	{"onRowSelect",  bridge_NSScrollView_onRowSelect},
+	{"onRowActivate", bridge_NSScrollView_onRowActivate},
 	{NULL, NULL}
 };
 
@@ -177,11 +173,7 @@ static int nsview_index(lua_State *L) {
 		return 1;
 	}
 
-	/* Generated method-group dispatch (text view, tab view, window, view) */
-#define GEN_METHODS_INDEX
-#include "generated/bridge_methods.m"
-#undef GEN_METHODS_INDEX
-	/* Generated class-binding dispatch (NSTabView, etc.) */
+	/* Generated class dispatch. */
 #define GEN_CLASS_INDEX
 #include "generated/bridge_class_methods.m"
 #undef GEN_CLASS_INDEX
@@ -206,7 +198,7 @@ static int nsview_index(lua_State *L) {
 			}
 			return 1;
 		}
-		lua_CFunction method = lookupMethod(key, TableMethods);
+		lua_CFunction method = lookupMethod(key, TableDataMethods);
 		if (method) {
 			lua_pushcfunction(L, method);
 			return 1;

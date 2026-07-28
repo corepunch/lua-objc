@@ -255,7 +255,7 @@ static int bridge_eval(lua_State *L) {
 	return 2;
 }
 
-static int bridge_clear_container(lua_State *L) {
+static int bridge_NSView_clearContainer_impl(lua_State *L) {
 	NSView *container = check_view(L, 1);
 	for (NSView *sub in [container.subviews copy]) {
 		[sub removeFromSuperview];

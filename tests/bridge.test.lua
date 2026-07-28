@@ -29,6 +29,9 @@ local ok = pcall(function()
 		ns.Text "First",
 		ns.Text "Second",
 	}
+	v:setHidden(true)
+	t.expect(v.hidden, "typed NSView methods call the native selector")
+	v:setHidden(false)
 end)
 t.expect(ok, "VStack creates without error")
 
@@ -73,10 +76,14 @@ local findInFiles, findInFilesRoot = FindInFiles {
 }
 findInFilesRoot:setContentSize(220, 300)
 findInFilesRoot:layout(220)
-local _, searchIconY, _, searchIconHeight =
-	findInFiles._searchIcon:frameInWindow()
-local _, searchFieldY, _, searchFieldHeight =
-	findInFiles._searchField:frameInWindow()
+local searchIconFrame = findInFiles._searchIcon.frameInWindow
+t.assertEqual(type(searchIconFrame), "userdata",
+	"frameInWindow is an NSRect userdata property")
+local searchIconY = searchIconFrame.origin.y
+local searchIconHeight = searchIconFrame.size.height
+local searchFieldFrame = findInFiles._searchField.frameInWindow
+local searchFieldY = searchFieldFrame.origin.y
+local searchFieldHeight = searchFieldFrame.size.height
 t.assertEqual(searchFieldHeight, 16,
 	"borderless Find field keeps AppKit's native intrinsic text height")
 t.expect(math.abs(
@@ -88,13 +95,27 @@ t.expect(math.abs(
 
 local win = ns.Window {
 	title = "Headless Test",
-	width = 400,
-	height = 300,
+	size = { width = 400, height = 300 },
 	visible = false,
 	ns.Text "Hello",
 }
 
 t.assertEqual(win.title, "Headless Test", "Window title is set")
+local windowSize = win.size
+t.assertEqual(type(windowSize), "userdata",
+	"Window.size is an NSSize userdata property")
+t.assertEqual(windowSize.width, 400,
+	"Window.size reads the native content width")
+t.assertEqual(windowSize.height, 300,
+	"Window.size reads the native content height")
+win.size = ns.NSSize(360, 240)
+windowSize = win.size
+t.assertEqual(windowSize.width, 360,
+	"Window.size accepts positional width")
+t.assertEqual(windowSize.height, 240,
+	"Window.size accepts positional height")
+t.assertEqual(win.title, "Headless Test",
+	"mutating Window.size preserves unrelated native properties")
 
 -- NSWindow tabs group complete document windows through AppKit.
 
@@ -183,9 +204,9 @@ local workspaceWindow = ns.Window {
 	sidebar = navigatorArea,
 	content = editorArea,
 }
-local navigatorWidth = navigatorArea:size()
-local editorWidth = editorArea:size()
-local previewWidth = previewArea:size()
+local navigatorWidth = navigatorArea.size.width
+local editorWidth = editorArea.size.width
+local previewWidth = previewArea.size.width
 t.expect(navigatorWidth > 0, "IDE navigator split pane has a usable width")
 t.expect(editorWidth > 0,
 	"IDE editor split pane has a usable native width")
@@ -249,7 +270,7 @@ segmented.selectedSegment = 1
 t.assertEqual(segmented.selectedSegment, 1,
 	"segmented control selection is writable through native KVC")
 t.assertThrows(function()
-	bridge._tabCount(segmented)
+	segmented:tabCount()
 end, "typed native arguments reject a view of the wrong Cocoa class")
 
 -- Native NSTabView: add, select, remove, count.
@@ -776,8 +797,8 @@ local splitView = ns.HSplit {
 splitView:setContentSize(620, 300)
 splitView:layout(620)
 
-local leftW, _ = leftFix:size()
-local rightW, _ = rightFlex:size()
+local leftW = leftFix.size.width
+local rightW = rightFlex.size.width
 t.assertEqual(leftW, 150, "fixed-width pane retains 150 px in HSplit (got " .. leftW .. ")")
 t.expect(rightW > 400, "flexible pane fills remaining width (got " .. rightW .. ")")
 
@@ -785,8 +806,8 @@ t.expect(rightW > 400, "flexible pane fills remaining width (got " .. rightW .. 
 splitView:setContentSize(900, 300)
 splitView:layout(900)
 
-leftW, _ = leftFix:size()
-rightW, _ = rightFlex:size()
+leftW = leftFix.size.width
+rightW = rightFlex.size.width
 t.assertEqual(leftW, 150, "fixed-width pane still 150 px after resize (got " .. leftW .. ")")
 t.expect(rightW > leftW, "flexible pane absorbs resize (right " .. rightW .. " > left " .. leftW .. ")")
 

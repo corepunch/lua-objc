@@ -1,6 +1,6 @@
 #pragma mark - Show
 
-static int bridge_show(lua_State *L) {
+static int bridge_NSWindow_show_impl(lua_State *L) {
 	NSWindow *w = (__bridge NSWindow *)((ObjCRef *)lua_touserdata(L, 1))->ptr;
 
 	[NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
@@ -39,7 +39,7 @@ static int bridge_font(lua_State *L) {
 	return 1;
 }
 
-static int bridge_perform(lua_State *L) {
+static int bridge_object_perform_impl(lua_State *L) {
 	id obj = check_objc(L, 1);
 	const char *selName = luaL_checkstring(L, 2);
 	SEL sel = NSSelectorFromString([NSString stringWithUTF8String:selName]);
@@ -87,7 +87,7 @@ static int bridge_perform(lua_State *L) {
 	return 0;
 }
 
-static int bridge_callback(lua_State *L) {
+static int bridge_NSView_setCallback_impl(lua_State *L) {
 	id obj = check_objc(L, 1);
 	luaL_checktype(L, 2, LUA_TFUNCTION);
 	lua_pushvalue(L, 2);
@@ -155,7 +155,7 @@ static int bridge_text_view(lua_State *L) {
 	return 1;
 }
 
-static int bridge_text_view_get_text(lua_State *L) {
+static int bridge_NSScrollView_getText_impl(lua_State *L) {
 	id obj = check_objc(L, 1);
 	if (![obj isKindOfClass:[NSScrollView class]]) {
 		return luaL_error(L, "expected a text view");
@@ -165,7 +165,7 @@ static int bridge_text_view_get_text(lua_State *L) {
 	return 1;
 }
 
-static int bridge_text_view_set_text(lua_State *L) {
+static int bridge_NSScrollView_setText_impl(lua_State *L) {
 	id obj = check_objc(L, 1);
 	const char *str = luaL_checkstring(L, 2);
 	if (![obj isKindOfClass:[NSScrollView class]]) {
@@ -182,7 +182,7 @@ static int bridge_text_view_set_text(lua_State *L) {
 	return 0;
 }
 
-static int bridge_text_view_on_change(lua_State *L) {
+static int bridge_NSScrollView_onChange_impl(lua_State *L) {
 	id obj = check_objc(L, 1);
 	luaL_checktype(L, 2, LUA_TFUNCTION);
 
@@ -219,7 +219,7 @@ static int bridge_text_view_on_change(lua_State *L) {
 	return 0;
 }
 
-static int bridge_text_view_set_language(lua_State *L) {
+static int bridge_NSScrollView_setLanguage_impl(lua_State *L) {
 	id obj = check_objc(L, 1);
 	const char *lang = luaL_checkstring(L, 2);
 
@@ -236,7 +236,7 @@ static int bridge_text_view_set_language(lua_State *L) {
 
 /* Toggle word wrap on/off. Wrap ON tracks the visible width; wrap OFF
  * lets the text view grow horizontally with a scroll bar. */
-static int bridge_text_view_set_wrap_mode(lua_State *L) {
+static int bridge_NSScrollView_setWrapMode_impl(lua_State *L) {
 	id obj = check_objc(L, 1);
 	int wrap = lua_toboolean(L, 2);
 

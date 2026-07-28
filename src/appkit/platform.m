@@ -34,7 +34,7 @@ static NSData *offscreen_render(NSView *view, CGFloat width, CGFloat height) {
 	return png;
 }
 
-static int bridge_render_to_png(lua_State *L) {
+static int bridge_NSView_renderToPNG_impl(lua_State *L) {
 	NSView *view  = check_view(L, 1);
 	CGFloat width  = luaL_optnumber(L, 2, kRenderDefaultWidth);
 	CGFloat height = luaL_optnumber(L, 3, kRenderDefaultHeight);

@@ -97,8 +97,7 @@ t.assertEqual(sourceWindow.title, "main.lua",
 	"source document uses its filename as the native window-tab title")
 t.assertEqual(sourceWindow.tabbingIdentifier, "lua-objc.ide:examples/ide/",
 	"source documents opt into one AppKit window tab group")
-local bridge = require("bridge")
-local sourceWorkspaceState = bridge._windowWorkspaceState(sourceWindow)
+local sourceWorkspaceState = sourceWindow:workspaceState()
 t.expect(sourceWorkspaceState.nativeSidebar,
 	"source workspace uses AppKit's semantic floating sidebar")
 t.assertEqual(sourceWorkspaceState.itemCount, 3,

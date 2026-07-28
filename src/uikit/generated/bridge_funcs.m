@@ -1,11 +1,11 @@
 /* AUTO-GENERATED — do not edit by hand.
- * Regenerate with:  python3 tools/gen_bridge.py --xml tools/uikit_bridge.xml
- * Source:           tools/uikit_bridge.xml
+ * Regenerate with:  python3 tools/gen_bridge.py --xml tools/UIKit.xml
+ * Source:           tools/UIKit.xml
  */
 
 /* Generated bridge_xxx() functions */
 
-static int bridge_vstack(lua_State *L) {
+static int bridge_UIKitControls_vstack(lua_State *L) {
 
 	UIView *obj = [[UIView alloc] initWithFrame:CGRectZero];
 	objc_setAssociatedObject(obj, &kAxisKey, @"vstack", OBJC_ASSOCIATION_RETAIN);
@@ -14,7 +14,7 @@ static int bridge_vstack(lua_State *L) {
 	return 1;
 }
 
-static int bridge_hstack(lua_State *L) {
+static int bridge_UIKitControls_hstack(lua_State *L) {
 
 	UIView *obj = [[UIView alloc] initWithFrame:CGRectZero];
 	objc_setAssociatedObject(obj, &kAxisKey, @"hstack", OBJC_ASSOCIATION_RETAIN);
@@ -23,7 +23,7 @@ static int bridge_hstack(lua_State *L) {
 	return 1;
 }
 
-static int bridge_hsplit(lua_State *L) {
+static int bridge_UIKitControls_hsplit(lua_State *L) {
 
 	UIView *obj = [[UIView alloc] initWithFrame:CGRectZero];
 	objc_setAssociatedObject(obj, &kAxisKey, @"hsplit", OBJC_ASSOCIATION_RETAIN);
@@ -32,7 +32,7 @@ static int bridge_hsplit(lua_State *L) {
 	return 1;
 }
 
-static int bridge_spacer(lua_State *L) {
+static int bridge_UIKitControls_spacer(lua_State *L) {
 
 	UIView *obj = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 10, 10)];
 	objc_setAssociatedObject(obj, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
@@ -40,7 +40,7 @@ static int bridge_spacer(lua_State *L) {
 	return 1;
 }
 
-static int bridge_button(lua_State *L) {
+static int bridge_UIKitControls_button(lua_State *L) {
 	const char *title = luaL_checkstring(L, 1);
 	BOOL has_callback = !lua_isnoneornil(L, 2);
 	int callback_ref = LUA_NOREF;
@@ -61,7 +61,7 @@ static int bridge_button(lua_State *L) {
 	return 1;
 }
 
-static int bridge_toggle(lua_State *L) {
+static int bridge_UIKitControls_toggle(lua_State *L) {
 	const char *label = luaL_checkstring(L, 1);
 	BOOL is_on = (BOOL)lua_toboolean(L, 2);
 	BOOL has_callback = !lua_isnoneornil(L, 3);

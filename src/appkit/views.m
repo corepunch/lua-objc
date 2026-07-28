@@ -115,35 +115,7 @@ static int bridge_window(lua_State *L) {
 	return 1;
 }
 
-static int bridge_set_window_tabbing(lua_State *L) {
-	id obj = check_objc(L, 1);
-	if (![obj isKindOfClass:[NSWindow class]]) {
-		return luaL_error(L, "setWindowTabbing requires a window");
-	}
-
-	const char *mode = luaL_checkstring(L, 2);
-	NSWindowTabbingMode tabbingMode;
-	if (strcmp(mode, "automatic") == 0) {
-		tabbingMode = NSWindowTabbingModeAutomatic;
-	} else if (strcmp(mode, "preferred") == 0) {
-		tabbingMode = NSWindowTabbingModePreferred;
-	} else if (strcmp(mode, "disallowed") == 0) {
-		tabbingMode = NSWindowTabbingModeDisallowed;
-	} else {
-		return luaL_error(L,
-			"tabbingMode must be 'automatic', 'preferred', or 'disallowed'");
-	}
-
-	NSWindow *window = (NSWindow *)obj;
-	window.tabbingMode = tabbingMode;
-	if (!lua_isnoneornil(L, 3)) {
-		window.tabbingIdentifier = [NSString stringWithUTF8String:
-			luaL_checkstring(L, 3)];
-	}
-	return 0;
-}
-
-static int bridge_add_tabbed_window(lua_State *L) {
+static int bridge_NSWindow_addTabbedWindow_impl(lua_State *L) {
 	id parentObj = check_objc(L, 1);
 	id childObj = check_objc(L, 2);
 	if (![parentObj isKindOfClass:[NSWindow class]]
@@ -166,30 +138,6 @@ static int bridge_add_tabbed_window(lua_State *L) {
 	[parent addTabbedWindow:child ordered:orderingMode];
 	if (parent.isVisible) {
 		[child makeKeyAndOrderFront:nil];
-	}
-	return 0;
-}
-
-static int bridge_window_tab_count(lua_State *L) {
-	id obj = check_objc(L, 1);
-	if (![obj isKindOfClass:[NSWindow class]]) {
-		return luaL_error(L, "windowTabCount requires a window");
-	}
-	lua_pushinteger(L, (lua_Integer)((NSWindow *)obj).tabbedWindows.count);
-	return 1;
-}
-
-static int bridge_select_window_tab(lua_State *L) {
-	id obj = check_objc(L, 1);
-	if (![obj isKindOfClass:[NSWindow class]]) {
-		return luaL_error(L, "selectWindowTab requires a window");
-	}
-	NSWindow *window = obj;
-	if (window.tabGroup) {
-		window.tabGroup.selectedWindow = window;
-	}
-	if (window.isVisible) {
-		[window makeKeyAndOrderFront:nil];
 	}
 	return 0;
 }
@@ -375,10 +323,10 @@ static int bridge_set_window_workspace(lua_State *L) {
 	return 0;
 }
 
-static int bridge_window_workspace_state(lua_State *L) {
+static int bridge_NSWindow_workspaceState_impl(lua_State *L) {
 	id obj = check_objc(L, 1);
 	if (![obj isKindOfClass:[NSWindow class]]) {
-		return luaL_error(L, "windowWorkspaceState requires a window");
+		return luaL_error(L, "workspaceState requires a window");
 	}
 	NSViewController *controller = ((NSWindow *)obj).contentViewController;
 	if (![controller isKindOfClass:[NSSplitViewController class]]) {
@@ -456,7 +404,7 @@ static int bridge_window_workspace_state(lua_State *L) {
 	return 1;
 }
 
-static int bridge_toggle_sidebar(lua_State *L) {
+static int bridge_NSWindow_toggleSidebar_impl(lua_State *L) {
 	id obj = check_objc(L, 1);
 	if (![obj isKindOfClass:[NSWindow class]]) {
 		return luaL_error(L, "toggleSidebar requires a window");
@@ -475,10 +423,10 @@ static int bridge_toggle_sidebar(lua_State *L) {
 	return 0;
 }
 
-static int bridge_split_set_proportions(lua_State *L) {
+static int bridge_NSView_splitProportions_impl(lua_State *L) {
 	NSView *view = check_view(L, 1);
 	if (![view isKindOfClass:[NSSplitView class]]) {
-		return luaL_error(L, "splitSetProportions requires an NSSplitView");
+		return luaL_error(L, "splitProportions requires an NSSplitView");
 	}
 	luaL_checktype(L, 2, LUA_TTABLE);
 

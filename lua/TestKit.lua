@@ -39,10 +39,8 @@ end
 
 function TestKit.assertSize(view, width, height, message)
 	message = message or "assertSize"
-	-- NSRect is an ObjC struct rather than an NSObject, so generic KVC cannot
-	-- expose frame.size as nested Lua properties. Keep that representation
-	-- detail in the private bridge instead of leaking it into every test.
-	local fw, fh = view:size()
+	local size = view.size
+	local fw, fh = size.width, size.height
 	if fw == width and fh == height then
 		passed = passed + 1
 		return true

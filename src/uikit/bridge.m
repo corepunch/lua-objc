@@ -38,7 +38,13 @@ static lua_State *gL = NULL;
 #include "controls.m"
 #include "tables.m"
 #include "platform.m"
+#define GEN_STRUCT_HELPERS
+#include "generated/bridge_structs.m"
+#undef GEN_STRUCT_HELPERS
 #include "generated/bridge_funcs.m"
+#define GEN_CLASS_WRAPPERS
+#include "generated/bridge_class_methods.m"
+#undef GEN_CLASS_WRAPPERS
 #pragma mark - Module registration
 
 static const luaL_Reg bridge_lib[] = {
@@ -66,6 +72,9 @@ int luaopen_UIKitNative(lua_State *L) {
 	register_metatable(L, "uiview");
 	register_metatable(L, "uiwindow");
 	register_metatable(L, "nsobject");
+#define GEN_STRUCT_REGISTER
+#include "generated/bridge_structs.m"
+#undef GEN_STRUCT_REGISTER
 	luaL_newlib(L, bridge_lib);
 	return 1;
 }

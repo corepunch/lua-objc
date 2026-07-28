@@ -1,4 +1,4 @@
-static int bridge_add(lua_State *L) {
+static int bridge_object_add_impl(lua_State *L) {
 	id parent = check_objc(L, 1);
 	NSView *child = check_view(L, 2);
 
@@ -690,7 +690,7 @@ static void layout_recursive(NSView *view, CGFloat width) {
 	}
 }
 
-static int bridge_layout(lua_State *L) {
+static int bridge_object_layout_impl(lua_State *L) {
 	id obj = check_objc(L, 1);
 	CGFloat width = luaL_optnumber(L, 2, kLayoutDefaultWidth);
 
@@ -705,24 +705,7 @@ static int bridge_layout(lua_State *L) {
 	return 0;
 }
 
-static int bridge_view_size(lua_State *L) {
-	NSView *view = check_view(L, 1);
-	lua_pushnumber(L, view.frame.size.width);
-	lua_pushnumber(L, view.frame.size.height);
-	return 2;
-}
-
-static int bridge_view_frame_in_window(lua_State *L) {
-	NSView *view = check_view(L, 1);
-	NSRect frame = [view convertRect:view.bounds toView:nil];
-	lua_pushnumber(L, frame.origin.x);
-	lua_pushnumber(L, frame.origin.y);
-	lua_pushnumber(L, frame.size.width);
-	lua_pushnumber(L, frame.size.height);
-	return 4;
-}
-
-static int bridge_set_content_size(lua_State *L) {
+static int bridge_object_set_content_size_impl(lua_State *L) {
 	id obj = check_objc(L, 1);
 	CGFloat width = luaL_checknumber(L, 2);
 	CGFloat height = luaL_checknumber(L, 3);
@@ -746,18 +729,7 @@ static int bridge_set_content_size(lua_State *L) {
 	return 0;
 }
 
-static int bridge_set_window_min_size(lua_State *L) {
-	id obj = check_objc(L, 1);
-	if (![obj isKindOfClass:[NSWindow class]]) {
-		return luaL_error(L, "setWindowMinSize requires a window");
-	}
-	CGFloat width = luaL_checknumber(L, 2);
-	CGFloat height = luaL_checknumber(L, 3);
-	((NSWindow *)obj).contentMinSize = NSMakeSize(width, height);
-	return 0;
-}
-
-static int bridge_set_appearance(lua_State *L) {
+static int bridge_NSWindow_setAppearance_impl(lua_State *L) {
 	id obj = check_objc(L, 1);
 	const char *name = luaL_checkstring(L, 2);
 

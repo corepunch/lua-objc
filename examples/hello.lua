@@ -9,7 +9,11 @@ return ns.Window {
 		alignment = "leading",
 		ns.Title "Hello from Lua",
 		ns.Text "A SwiftUI-like API backed by native AppKit controls.",
-		ns.Image "/Library/Desktop Pictures/Beach.jpg",
+		ns.SystemImage {
+			"swift",
+			size = 64,
+			accessibilityLabel = "Swift",
+		},
 		ns.Text "Edit the Lua file and relaunch—no recompilation needed.",
 	},
 }

@@ -69,7 +69,7 @@ static int bridge_panel_style_state(lua_State *L) {
 	return 1;
 }
 
-static int bridge_present_panel(lua_State *L) {
+static int bridge_NSWindow_presentPanel_impl(lua_State *L) {
 	id panelObj = check_objc(L, 1);
 	id parentObj = check_objc(L, 2);
 	CGFloat offsetY = luaL_optnumber(L, 3, 0);
@@ -92,18 +92,7 @@ static int bridge_present_panel(lua_State *L) {
 	return 0;
 }
 
-static int bridge_dismiss_window(lua_State *L) {
-	id obj = check_objc(L, 1);
-	if (![obj isKindOfClass:[NSWindow class]]) {
-		return luaL_error(L, "dismissWindow requires a window");
-	}
-	NSWindow *window = (NSWindow *)obj;
-	[window orderOut:nil];
-	[window.parentWindow removeChildWindow:window];
-	return 0;
-}
-
-static int bridge_focus(lua_State *L) {
+static int bridge_NSWindow_focus_impl(lua_State *L) {
 	id windowObj = check_objc(L, 1);
 	id viewObj = check_objc(L, 2);
 	if (![windowObj isKindOfClass:[NSWindow class]]
@@ -115,7 +104,7 @@ static int bridge_focus(lua_State *L) {
 	return 1;
 }
 
-static int bridge_is_first_responder(lua_State *L) {
+static int bridge_NSWindow_isFirstResponder_impl(lua_State *L) {
 	id windowObj = check_objc(L, 1);
 	id viewObj = check_objc(L, 2);
 	if (![windowObj isKindOfClass:[NSWindow class]]

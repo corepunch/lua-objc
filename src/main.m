@@ -179,6 +179,7 @@ static lua_State *gL = NULL;
 #include "appkit/editor.m"
 #include "appkit/tabview.m"
 #include "appkit/platform.m"
+
 #include "appkit/generated/bridge_funcs.m"
 #pragma mark - Module registration
 
@@ -186,10 +187,6 @@ static const luaL_Reg bridge_lib[] = {
 #define GEN_BRIDGE_LIB
 #include "appkit/generated/bridge_lib.inc"
 #undef GEN_BRIDGE_LIB
-	{"_selectWindowTab",     bridge_select_window_tab},
-	{"_setWindowWorkspace",  bridge_set_window_workspace},
-	{"_windowWorkspaceState",bridge_window_workspace_state},
-	{"_toggleSidebar",       bridge_toggle_sidebar},
 	{NULL, NULL},
 };
 
@@ -208,6 +205,9 @@ int luaopen_bridge(lua_State *L) {
 	register_metatable(L, "nsview");
 	register_metatable(L, "nswindow");
 	register_metatable(L, "nsobject");
+#define GEN_STRUCT_REGISTER
+#include "appkit/generated/bridge_structs.m"
+#undef GEN_STRUCT_REGISTER
 	luaL_newlib(L, bridge_lib);
 	return 1;
 }

@@ -4,6 +4,10 @@ local bridge = require("AppKitNative")
 
 local AppKit = {}
 
+AppKit.NSSize = bridge.NSSize
+AppKit.NSPoint = bridge.NSPoint
+AppKit.NSRect = bridge.NSRect
+
 -- Native timers and network callbacks resume suspended Lua work later. Lua's
 -- coroutine.resume returns failures instead of raising them, so centralize the
 -- check here to preserve the same stderr visibility as native callbacks.
@@ -75,8 +79,15 @@ end
 
 function AppKit.Window(props)
 	local title = props.title or "Window"
-	local width = props.width or 480
-	local height = props.height or 360
+	local requested_size = props.size
+	local has_requested_size = type(requested_size) == "table"
+		or type(requested_size) == "userdata"
+	local width = (has_requested_size
+			and (requested_size.width or requested_size[1]))
+		or props.width or 480
+	local height = (has_requested_size
+			and (requested_size.height or requested_size[2]))
+		or props.height or 360
 	local has_workspace = props.sidebar ~= nil and props.content ~= nil
 	local transparent_titlebar = props.transparentTitlebar
 	if transparent_titlebar == nil then
@@ -95,7 +106,7 @@ function AppKit.Window(props)
 		win = bridge._window(title, width, height,
 			transparent_titlebar, hide_title)
 	end
-	win:setContentSize(width, height)
+	win.size = AppKit.NSSize(width, height)
 	if props.minWidth or props.minHeight then
 		win:setMinSize(
 			props.minWidth or width,
