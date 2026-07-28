@@ -282,7 +282,7 @@ local ptv = bridge._tabview(400, 200, "notabs")
 t.assertEqual(ptv:tabCount(), 0, "preview tab view starts empty")
 
 local function makePreviewTV(content)
-	local tv = bridge._textView()
+	local tv = ns.TextEditor()
 	tv:setText(content)
 	return tv
 end
@@ -616,7 +616,7 @@ t.assertEqual(roundTrip.items[3], false,
 	"Foundation conversion preserves false array entries")
 
 local popup = bridge._create("NSPopUpButton")
-bridge._perform(popup, "addItemsWithTitles:", { "First", "Second" })
+popup:perform("addItemsWithTitles:", { "First", "Second" })
 t.assertEqual(popup.numberOfItems, 2,
 	"generic invocation converts a Lua array to NSArray")
 t.assertEqual(popup.itemTitles[2], "Second",

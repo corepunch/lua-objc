@@ -32,6 +32,8 @@ static int bridge_show(lua_State *L);
 static int bridge_add(lua_State *L);
 static int bridge_layout(lua_State *L);
 static int bridge_view_size(lua_State *L);
+static int bridge_perform(lua_State *L);
+static int bridge_present_panel(lua_State *L);
 static int bridge_layout(lua_State *L);
 static int bridge_view_size(lua_State *L);
 static int bridge_view_frame_in_window(lua_State *L);
@@ -40,6 +42,7 @@ static int bridge_render_to_png(lua_State *L);
 static int bridge_clear_container(lua_State *L);
 static int bridge_split_set_proportions(lua_State *L);
 static int bridge_set_content_size(lua_State *L);
+static int bridge_perform(lua_State *L);
 static int bridge_callback(lua_State *L);
 #endif /* GEN_METHODS_FORWARDS */
 
@@ -81,6 +84,8 @@ static MethodEntry WindowMethods[] = {
 	{"add",	bridge_add},
 	{"layout",	bridge_layout},
 	{"size",	bridge_view_size},
+	{"perform",	bridge_perform},
+	{"presentPanel",	bridge_present_panel},
 	{NULL, NULL}
 };
 
@@ -93,6 +98,7 @@ static MethodEntry ViewMethods[] = {
 	{"clearContainer",	bridge_clear_container},
 	{"splitProportions",	bridge_split_set_proportions},
 	{"setContentSize",	bridge_set_content_size},
+	{"perform",	bridge_perform},
 	{"setCallback",	bridge_callback},
 	{NULL, NULL}
 };

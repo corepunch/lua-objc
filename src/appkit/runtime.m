@@ -144,6 +144,7 @@ static MethodEntry TableMethods[] = {
 	{"showLoading",  bridge_table_show_loading},
 	{"hideLoading",  bridge_table_hide_loading},
 	{"refresh",      bridge_table_refresh},
+	{"setRefresh",   bridge_table_set_refresh},
 	{"onRowSelect",  bridge_table_set_selection},
 	{"onRowActivate", bridge_table_set_activation},
 	{NULL, NULL}

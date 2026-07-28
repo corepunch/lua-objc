@@ -41,18 +41,18 @@ function PreviewArea.show(props)
 	local area = wrapContent(props.content)
 
 	local function rebuildToolbar(items)
-		bridge._clearContainer(toolbarRow)
+		toolbarRow:clearContainer()
 		if items then
 			for _, item in ipairs(items) do
 				if item.icon then
 					local btn = bridge._symbolButton(
 						item.icon,
 						item.tooltip or item.label)
-					bridge._add(toolbarRow, btn)
+					toolbarRow:add(btn)
 				end
 			end
 		end
-		bridge._layout(area)
+		area:layout()
 	end
 
 	return area, rebuildToolbar

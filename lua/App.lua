@@ -546,7 +546,7 @@ end
 function App:present(window)
 	if self.currentWindow and self.currentWindow ~= window then
 		pcall(function()
-			bridge._perform(self.currentWindow, "close")
+			self.currentWindow:perform("close")
 		end)
 	end
 	self.currentWindow = window

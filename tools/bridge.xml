@@ -332,6 +332,8 @@ _table.doubleAction = nil;
     <method name="add"           c_func="bridge_add"                   src="layout.m"/>
     <method name="layout"        c_func="bridge_layout"                src="layout.m"/>
     <method name="size"          c_func="bridge_view_size"             src="layout.m"/>
+    <method name="perform"       c_func="bridge_perform"               src="editor.m"/>
+    <method name="presentPanel"  c_func="bridge_present_panel"         src="presentation.m"/>
   </method_group>
 
   <!--
@@ -348,6 +350,7 @@ _table.doubleAction = nil;
     <method name="clearContainer"  c_func="bridge_clear_container"      src="editor.m"/>
     <method name="splitProportions" c_func="bridge_split_set_proportions" src="views.m"/>
     <method name="setContentSize"  c_func="bridge_set_content_size"     src="layout.m"/>
+    <method name="perform"         c_func="bridge_perform"              src="editor.m"/>
     <method name="setCallback"     c_func="bridge_callback"              src="editor.m"/>
   </method_group>
 

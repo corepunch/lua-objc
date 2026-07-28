@@ -174,7 +174,7 @@ end
 
 function AppKit.present(panel, parent, props)
 	props = props or {}
-	return bridge._presentPanel(panel, parent, props.offsetY or 0)
+	return panel:presentPanel(parent, props.offsetY or 0)
 end
 
 function AppKit.dismiss(window)
@@ -342,7 +342,7 @@ function AppKit.Text(arg)
 		v.lineBreakMode = modes[arg.truncation] or 4
 	end
 
-	bridge._perform(v, "sizeToFit")
+	v:perform("sizeToFit")
 	return applyLayout(v, type(arg) == "table" and arg or nil)
 end
 
@@ -365,6 +365,15 @@ function AppKit.TextField(props)
 	end
 	bridge._textFieldCallbacks(field, props.onChange, props.onCommand)
 	return applyLayout(field, props)
+end
+
+function AppKit.TextEditor(props)
+	props = props or {}
+	local view = bridge._textView()
+	if props.language then view:setLanguage(props.language) end
+	if props.text then view:setText(props.text) end
+	if props.wrapMode ~= nil then view:setWrapMode(props.wrapMode) end
+	return applyLayout(view, props)
 end
 
 function AppKit.Title(arg)
@@ -437,7 +446,7 @@ function AppKit.List(props)
 
 	if props.refresh and type(props.refresh) == "function" then
 		local refresh_fn = props.refresh
-		bridge._tableSetRefresh(tv, function(list, on_done)
+		tv:setRefresh(function(list, on_done)
 			if not list then return end
 			list:showLoading()
 			list:clearRows()
@@ -579,11 +588,11 @@ function AppKit.Layout(view, props)
 end
 
 function AppKit.ProgressStart(progress)
-	bridge._perform(progress, "startAnimation:", nil)
+	progress:perform("startAnimation:")
 end
 
 function AppKit.ProgressStop(progress)
-	bridge._perform(progress, "stopAnimation:", nil)
+	progress:perform("stopAnimation:")
 end
 
 function AppKit.ToolbarProgress(window, identifier)

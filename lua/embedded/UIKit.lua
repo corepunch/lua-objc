@@ -55,19 +55,19 @@ function UIKit.Window(props)
 	local height = props.height or 360
 
 	local win = bridge._window(title, width, height, false, false)
-	bridge._setContentSize(win, width, height)
+	win:setContentSize(width, height)
 
 	local content = bridge._vstack()
-	bridge._add(win, content)
+	win:add(content)
 
 	for _, v in ipairs(props) do
 		if type(v) == "userdata" then
-			bridge._add(content, v)
+			content:add(v)
 		end
 	end
 
-	bridge._layout(content, width)
-	bridge._show(win)
+	content:layout(width)
+	win:show()
 	return win
 end
 
@@ -77,7 +77,7 @@ function UIKit.VStack(props)
 		applyLayout(view, props)
 		for _, v in ipairs(props) do
 			if type(v) == "userdata" then
-				bridge._add(view, v)
+				view:add(v)
 			end
 		end
 	end
@@ -90,7 +90,7 @@ function UIKit.HStack(props)
 		applyLayout(view, props)
 		for _, v in ipairs(props) do
 			if type(v) == "userdata" then
-				bridge._add(view, v)
+				view:add(v)
 			end
 		end
 	end

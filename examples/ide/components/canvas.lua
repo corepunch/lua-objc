@@ -9,7 +9,7 @@ local function evalIntoCanvas(canvas, code, rebuildToolbar)
 	if not canvas then return end
 
 	local result, err = bridge._eval(code, true)
-	bridge._clearContainer(canvas)
+	canvas:clearContainer()
 	if rebuildToolbar then rebuildToolbar(nil) end
 
 	if err then
@@ -19,15 +19,15 @@ local function evalIntoCanvas(canvas, code, rebuildToolbar)
 		label.drawsBackground = false
 		label.editable = false
 		label.textColor = bridge._systemColor("secondary")
-		bridge._perform(label, "sizeToFit")
-		bridge._add(canvas, label)
+		label:perform("sizeToFit")
+		canvas:add(label)
 	elseif result then
 		local toolbarItems = bridge._canvas_toolbar_items(result)
 		if rebuildToolbar then rebuildToolbar(toolbarItems) end
-		bridge._add(canvas, result)
+		canvas:add(result)
 	end
 
-	bridge._layout(canvas)
+	canvas:layout()
 end
 
 -- Canvas: the inline preview host view.

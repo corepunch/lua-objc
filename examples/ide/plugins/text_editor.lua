@@ -1,3 +1,4 @@
+local ns = require("AppKit")
 local bridge = require("bridge")
 local App = require("App")
 local TextEditor = {}
@@ -13,12 +14,10 @@ end
 local function createEditor(props)
 	props = props or {}
 
-	local view = bridge._textView()
-	view:setLanguage(props.language or "lua")
-
-	if props.initialCode then
-		view:setText(props.initialCode)
-	end
+	local view = ns.TextEditor {
+		language = props.language or "lua",
+		text = props.initialCode,
+	}
 
 	local editor = {
 		_view = view,

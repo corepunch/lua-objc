@@ -166,9 +166,10 @@ function Source.open(folder, app, initialFile)
 			title = "CANVAS",
 			content = canvas,
 		}
-		local textView = bridge._textView()
-		textView:setLanguage("lua")
-		textView:setWrapMode(wordWrapEnabled)
+		local textView = ns.TextEditor {
+			language = "lua",
+			wrapMode = wordWrapEnabled,
+		}
 
 		local version = 0
 		local function evaluate(code)
