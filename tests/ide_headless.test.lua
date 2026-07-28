@@ -87,6 +87,16 @@ t.assertEqual(recent:folders()[1].path, "/private/tmp/project-b", "most recent f
 t.assertEqual(recent:files()[1].path, "tests/fixtures/oversized.svg", "most recent file is first")
 t.assertEqual(recent:files()[2].path, "/private/tmp/project-b/main.lua", "older file remains available")
 
+local sourceWindow = Source.open(
+	"examples/ide",
+	nil,
+	"examples/ide/main.lua")
+t.expect(sourceWindow ~= nil, "source workspace creates a document window")
+t.assertEqual(sourceWindow.title, "main.lua",
+	"source document uses its filename as the native window-tab title")
+t.assertEqual(sourceWindow.tabbingIdentifier, "lua-objc.ide:examples/ide",
+	"source documents opt into one native window tab group")
+
 recent:clear()
 
 os.exit(t.summary() and 0 or 1)

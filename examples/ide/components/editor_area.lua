@@ -1,42 +1,35 @@
 local ns = require("AppKit")
-local bridge = require("bridge")
 local ControlBar = require("examples.ide.components.control_bar")
 
--- EditorArea: centre editing panel.
--- New API (no title): returns area VStack + native rounded tab container.
--- Legacy API (props.title set): returns ControlBar area.
+local function fill(view)
+	if not view then return nil end
+	view.flexGrow = 1
+	view.fillWidth = true
+	return view
+end
+
+-- EditorArea: one document surface. The code editor and its preview canvas
+-- share an inner NSSplitView; document switching belongs to NSWindow tabs.
 local function EditorArea(props)
 	props = props or {}
 
-	if props.title then
-		local content = props.content
-		if content then
-			content.flexGrow = 1
-			content.fillWidth = true
-		end
-		return ns.VStack {
-			flexGrow = props.flexGrow or 1,
-			spacing = 0,
-			ControlBar {
-				title = props.title,
-				leading = props.leading,
-				buttons = props.buttons or props.trailing,
-			},
-			content,
-		}
-	end
-
-	local tabView = bridge._tabview(400, 200, "rounded")
-	tabView.flexGrow = 1
-	tabView.fillWidth = true
-
-	local area = ns.VStack {
-		flexGrow = props.flexGrow or 1,
+	local source = ns.VStack {
+		flexGrow = 1,
 		spacing = 0,
-		tabView,
+		ControlBar {
+			title = props.title or "SOURCE EDITOR",
+			leading = props.leading,
+			buttons = props.buttons or props.trailing,
+		},
+		fill(props.editor or props.content),
 	}
 
-	return area, tabView
+	return ns.HSplit {
+		flexGrow = props.flexGrow or 1,
+		proportions = props.proportions or { 1, 1 },
+		source,
+		fill(props.preview),
+	}
 end
 
 return EditorArea

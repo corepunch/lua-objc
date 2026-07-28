@@ -29,15 +29,13 @@ static int bridge_tableview(lua_State *L) {
 	int ncols = (int)luaL_len(L, 1);
 	for (int i = 1; i <= ncols; i++) {
 		lua_rawgeti(L, 1, i);
-		lua_getfield(L, -1, "id");
-		lua_getfield(L, -2, "title");
-		const char *colId = lua_tostring(L, -2);
-		const char *colTitle = lua_tostring(L, -1);
+		NSDictionary *column = lua_to_objc_value(L, -1);
+		lua_pop(L, 1);
+		NSString *colId = column[@"id"];
 		if (colId) {
-			[colSpecs addObject:@{@"id": [NSString stringWithUTF8String:colId],
-								  @"title": [NSString stringWithUTF8String:colTitle ?: colId]}];
+			[colSpecs addObject:@{@"id": colId,
+								  @"title": column[@"title"] ?: colId}];
 		}
-		lua_pop(L, 3);
 	}
 
 	LuaTableViewSource *src = [[LuaTableViewSource alloc] initWithTableView:tv

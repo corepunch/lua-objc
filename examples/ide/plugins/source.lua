@@ -8,9 +8,15 @@ local NavigatorArea = require("examples.ide.components.navigator_area")
 local EditorArea = require("examples.ide.components.editor_area")
 local PreviewArea = require("examples.ide.components.preview_area")
 local SearchView = require("examples.ide.components.search_view")
-local FindInFiles = require("examples.ide.components.find_in_files")
 
 local Source = {}
+
+local WINDOW = {
+	width = 1100,
+	height = 680,
+	minWidth = 800,
+	minHeight = 500,
+}
 
 local function isLuaFile(name)
 	return name:match("%.lua$") ~= nil
@@ -31,12 +37,12 @@ local function isOpenableFile(name)
 	return isLuaFile(name) or isImageFile(name)
 end
 
-local function filterLuaFiles(items)
+local function filterOpenableFiles(items)
 	if not items then return {} end
 	local result = {}
 	for _, item in ipairs(items) do
 		if item.directory then
-			local filtered = filterLuaFiles(item.children)
+			local filtered = filterOpenableFiles(item.children)
 			if #filtered > 0 or not item.children then
 				item.children = #filtered > 0 and filtered or nil
 				table.insert(result, item)
@@ -48,6 +54,14 @@ local function filterLuaFiles(items)
 	return result
 end
 
+local function readFile(path)
+	local file = io.open(path, "r")
+	if not file then return nil end
+	local content = file:read("*a")
+	file:close()
+	return content
+end
+
 local function openImage(path, app)
 	local plugin = app and app:resolvePluginByFile(path, "editor")
 	if not plugin then return end
@@ -56,148 +70,15 @@ local function openImage(path, app)
 	return window
 end
 
-function Source.open(folder, app, initialFile)
-	local canvas = canvasMod.Canvas()
-	local plugin = app and app:getPlugin("textEditor")
-
-	local rootDir = folder or "examples"
-	local wordWrapEnabled = false
-	local canvasVersion = 0
-	local previewTabIndex = nil  -- 0-based index of the preview tab, or nil
-
-	local function makeTextView(content)
-		local tv = bridge._textView()
-		bridge._textViewSetLanguage(tv, "lua")
-		bridge._textViewSetText(tv, content or "")
-		return tv
-	end
-
-	local function wireEditor(tv, isPreview)
-		bridge._textViewOnChange(tv, function(text)
-			-- Pin preview tab on first edit
-			if isPreview and previewTabIndex ~= nil then
-				previewTabIndex = nil
-			end
-
-			canvasVersion = canvasVersion + 1
-			local v = canvasVersion
-			bridge._timerAfter(0.3, function()
-				if v ~= canvasVersion then return end
-				canvasMod.evalIntoCanvas(canvas, text)
-			end)
-		end)
-	end
-
-	local function wireInitialEditor(tv, path)
-		local currentFile = nil
-
-		local function watchFile(fpath)
-			if currentFile then bridge._watchFile(currentFile, nil) end
-			currentFile = fpath
-			if not fpath then return end
-			bridge._watchFile(fpath, function()
-				local f = io.open(fpath, "r")
-				if not f then return end
-				local data = f:read("*a")
-				f:close()
-				bridge._textViewSetText(tv, data)
-			end)
-		end
-
-		return watchFile
-	end
-
-	local entries = ns.readDirectory(rootDir, 3)
-	local filtered = filterLuaFiles(entries)
-
-	local fileTree = ns.OutlineView {
-		header = false,
-		bordered = false,
-		style = "plain",
-		flexGrow = 1,
-		columns = {
-			{ id = "name", title = "Name", systemImage = "doc.text" },
-		},
-		data = filtered,
-	}
-
-	local editorArea, tabView
-
-	local function openInEditor(path, pinImmediately)
-		local f = io.open(path, "r")
-		if not f then return end
-		local content = f:read("*a")
-		f:close()
-
-		local tv = makeTextView(content)
-		local watchFile = wireInitialEditor(tv, path)
-		local name = path:match("([^/\\]+)$") or path
-
-		if previewTabIndex ~= nil and not pinImmediately then
-			-- Replace existing preview tab with the new file
-			bridge._tabRemove(tabView, previewTabIndex)
-			bridge._tabAdd(tabView, name, tv)
-			local idx = bridge._tabCount(tabView)
-			bridge._tabSelect(tabView, idx - 1)
-			previewTabIndex = idx - 1
-			wireEditor(tv, true)
-		else
-			bridge._tabAdd(tabView, name, tv)
-			local idx = bridge._tabCount(tabView)
-			bridge._tabSelect(tabView, idx - 1)
-			if not pinImmediately then
-				previewTabIndex = idx - 1
-			end
-			wireEditor(tv, not pinImmediately)
-		end
-
-		if app.recent then
-			app.recent:recordFile(path)
-		end
-
-		watchFile(path)
-		return idx
-	end
-
-	local function openPath(path, pinImmediately)
-		if isImageFile(path) then
-			return openImage(path, app)
-		end
-		return openInEditor(path, pinImmediately)
-	end
-
-	fileTree:onRowSelect(function(list, rowIndex, rowData)
-		if rowData and rowData.path and not rowData.directory then
-			openPath(rowData.path, false)
-		end
-	end)
-
-	fileTree:onRowActivate(function(list, rowIndex, rowData)
-		if rowData and rowData.path and not rowData.directory then
-			openPath(rowData.path, true)
-		end
-	end)
-
-	local 	findInFilesUI, findRoot = FindInFiles {
-		rootDir = rootDir,
-		onSelect = function(path)
-			openPath(path, false)  -- preview on single-click from find results
-		end,
-	}
-
-	editorArea, tabView = EditorArea {
-		flexGrow = 1,
-	}
-
-	-- Add initial tab with canvas-eval-enabled editor.
-	local initialCode = [=[
+local function defaultSource()
+	return [=[
 -- Try changing the text and see it update in the canvas
 return ns.VStack {
 	padding = 16,
 	alignment = "leading",
 	ns.Title "Hello, lua-objc",
 	ns.Text {
-		"Edit the code in the center. The canvas updates as you type.",
+		"Edit the code on the left. The canvas updates as you type.",
 		size = 13,
 		color = "secondary",
 	},
@@ -208,79 +89,137 @@ return ns.VStack {
 	},
 }
 ]=]
-	local initialTV = makeTextView(initialCode)
-	wireEditor(initialTV, false)
-	bridge._tabAdd(tabView, "Untitled", initialTV)
+end
 
-	bridge._tabOnChange(tabView, function(tv, idx, identifier, contentView)
-		if contentView and isLuaFile(identifier) then
-			-- NSTabView switched; the contentView is the new active text view.
-			canvasMod.evalIntoCanvas(canvas,
-				bridge._textViewGetText(contentView))
-		end
-	end)
+function Source.open(folder, app, initialFile)
+	local rootDir = folder or "examples"
+	local entries = ns.readDirectory(rootDir, 3)
+	local files = filterOpenableFiles(entries)
+	local tabbingIdentifier = "lua-objc.ide:" .. rootDir
+	local primaryWindow = nil
+	local documents = {}
+	local wordWrapEnabled = false
+	local openPath
 
-	-- Word wrap in Editor menu (matches Xcode Editor → Wrap Lines).
-	ns.MenuItem {
-		menu = "Editor",
-		title = "Wrap Lines",
-		keyEquivalent = "",
-		modifiers = {},
-		action = function()
-			wordWrapEnabled = not wordWrapEnabled
-			-- Wrap the currently visible tab's text view.
-			local count = bridge._tabCount(tabView)
-			if count > 0 then
-				-- Find the selected tab's text view.
-				for i = 0, count - 1 do
-					-- We track text views separately; for now wrap initialTV.
-					bridge._textViewSetWrapMode(initialTV, wordWrapEnabled)
-				end
-			end
-		end,
-	}
-
-	local window = ns.Window {
-		title = "lua-objc IDE",
-		width = 1100,
-		height = 680,
-		minWidth = 800,
-		minHeight = 500,
-
-		ns.VStack {
+	local function makeFileTree()
+		local fileTree = ns.OutlineView {
+			header = false,
+			bordered = false,
+			style = "sourceList",
 			flexGrow = 1,
-			spacing = 0,
-			WorkspaceLayout {
-				navigator = NavigatorArea {
-					tabs = {
-						{ id = "files",
-							symbol = "folder",
-							tooltip = "Project Files" },
-						{ id = "find",
-							symbol = "magnifyingglass",
-							tooltip = "Find in Files" },
-					},
-					selectedId = "files",
-					content = {
-						files = fileTree,
-						find = findRoot,
-					},
-				},
-				editor = editorArea,
-				preview = PreviewArea.show {
-					title = "CANVAS",
-					content = canvas,
-				},
+			columns = {
+				{ id = "name", title = "Name", systemImage = "doc.text" },
 			},
-		},
-	}
+			data = files,
+		}
 
-	-- Xcode-style Open Quickly (Cmd+P).
+		-- Selection remains ordinary source-list selection. Opening is the
+		-- standard activation gesture and creates a native document window tab.
+		fileTree:onRowActivate(function(list, rowIndex, rowData)
+			if rowData and rowData.path and not rowData.directory then
+				openPath(rowData.path)
+			end
+		end)
+		return fileTree
+	end
+
+	local function makeDocumentWindow(path, content, visible)
+		local name = path and (path:match("([^/\\]+)$") or path) or "Untitled"
+		local canvas = canvasMod.Canvas()
+		local preview, rebuildToolbar = PreviewArea.show {
+			title = "CANVAS",
+			content = canvas,
+		}
+		local textView = bridge._textView()
+		bridge._textViewSetLanguage(textView, "lua")
+		bridge._textViewSetText(textView, content or "")
+		bridge._textViewSetWrapMode(textView, wordWrapEnabled)
+
+		local version = 0
+		local function evaluate(code)
+			canvasMod.evalIntoCanvas(canvas, code, rebuildToolbar)
+		end
+		bridge._textViewOnChange(textView, function(text)
+			version = version + 1
+			local requestedVersion = version
+			bridge._timerAfter(0.3, function()
+				if requestedVersion == version then evaluate(text) end
+			end)
+		end)
+
+		if path then
+			bridge._watchFile(path, function()
+				local updated = readFile(path)
+				if not updated then return end
+				bridge._textViewSetText(textView, updated)
+				evaluate(updated)
+			end)
+		end
+
+		local sourceEditor = EditorArea {
+			title = "SOURCE EDITOR",
+			editor = textView,
+			preview = preview,
+		}
+		local workspace = WorkspaceLayout {
+			navigator = NavigatorArea {
+				title = rootDir:match("([^/\\]+)$") or "FILES",
+				content = makeFileTree(),
+			},
+			editor = sourceEditor,
+		}
+		local window = ns.Window {
+			title = name,
+			width = WINDOW.width,
+			height = WINDOW.height,
+			minWidth = WINDOW.minWidth,
+			minHeight = WINDOW.minHeight,
+			tabbingMode = "preferred",
+			tabbingIdentifier = tabbingIdentifier,
+			visible = visible,
+			ns.VStack {
+				flexGrow = 1,
+				spacing = 0,
+				workspace,
+			},
+		}
+
+		documents[#documents + 1] = {
+			window = window,
+			textView = textView,
+			path = path,
+		}
+		evaluate(content or "")
+		return window
+	end
+
+	local function openInEditor(path)
+		local content = readFile(path)
+		if not content then return end
+		local window = makeDocumentWindow(path, content, false)
+		if primaryWindow then
+			ns.addTabbedWindow(primaryWindow, window)
+		else
+			primaryWindow = window
+		end
+		if app and app.recent then app.recent:recordFile(path) end
+		return window
+	end
+
+	openPath = function(path)
+		if isImageFile(path) then return openImage(path, app) end
+		return openInEditor(path)
+	end
+
+	local initialContent = initialFile and readFile(initialFile) or defaultSource()
+	primaryWindow = makeDocumentWindow(initialFile, initialContent, true)
+	if initialFile and app and app.recent then app.recent:recordFile(initialFile) end
+
+	-- Xcode-style Open Quickly remains a window-wide command instead of
+	-- occupying a second navigator tab.
 	local searchView = SearchView {
 		rootDir = rootDir,
-		onSelect = function(path)
-			openPath(path, false)  -- preview from Open Quickly
-		end,
+		onSelect = openPath,
 	}
 	ns.MenuItem {
 		menu = "Find",
@@ -288,25 +227,31 @@ return ns.VStack {
 		keyEquivalent = "p",
 		modifiers = { "command" },
 		action = function()
-			searchView:show(window)
+			searchView:show(primaryWindow)
 		end,
 	}
 
-	local function openInitialFile(path)
-		if not path then return end
-		openInEditor(path, true)  -- initial file opens as pinned
-	end
+	ns.MenuItem {
+		menu = "Editor",
+		title = "Wrap Lines",
+		keyEquivalent = "",
+		modifiers = {},
+		action = function()
+			wordWrapEnabled = not wordWrapEnabled
+			for _, document in ipairs(documents) do
+				bridge._textViewSetWrapMode(
+					document.textView,
+					wordWrapEnabled)
+			end
+		end,
+	}
 
-	openInitialFile(initialFile)
-	return window
+	return primaryWindow
 end
 
 function Source.openFile(path, app)
-	if isImageFile(path) then
-		return openImage(path, app)
-	end
-	local folder = App.dirname(path)
-	return Source.open(folder, app, path)
+	if isImageFile(path) then return openImage(path, app) end
+	return Source.open(App.dirname(path), app, path)
 end
 
 return Source

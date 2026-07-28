@@ -58,32 +58,30 @@ static int bridge_outlineview(lua_State *L) {
 
 	for (int i = 1; i <= ncols; i++) {
 		lua_rawgeti(L, 1, i);
-		lua_getfield(L, -1, "id");
-		lua_getfield(L, -2, "title");
-		lua_getfield(L, -3, "alignment");
-		lua_getfield(L, -4, "width");
-		lua_getfield(L, -5, "systemImage");
-		lua_getfield(L, -6, "minWidth");
-		const char *colId = lua_tostring(L, -6);
-		const char *colTitle = lua_tostring(L, -5);
-		const char *colAlignment = lua_tostring(L, -4);
-		BOOL hasExplicitWidth = lua_isnumber(L, -3);
+		NSDictionary *column = lua_to_objc_value(L, -1);
+		lua_pop(L, 1);
+
+		NSString *colId = column[@"id"];
+		if (!colId) continue;
+
+		NSString *colTitle = column[@"title"] ?: colId;
+		NSString *colAlignment = column[@"alignment"];
+		NSString *systemImage = column[@"systemImage"];
+		NSNumber *width = column[@"width"];
+		NSNumber *minWidth = column[@"minWidth"];
+
+		BOOL hasExplicitWidth = [width isKindOfClass:NSNumber.class];
 		CGFloat requestedWidth = hasExplicitWidth
-			? lua_tonumber(L, -3) : colW;
-		const char *systemImage = lua_tostring(L, -2);
-		CGFloat requestedMinWidth = lua_isnumber(L, -1)
-			? lua_tonumber(L, -1) : kTableColumnMinWidth;
+			? width.doubleValue : colW;
+		CGFloat requestedMinWidth = [minWidth isKindOfClass:NSNumber.class]
+			? minWidth.doubleValue : kTableColumnMinWidth;
 
-		if (!colId) { lua_pop(L, 7); continue; }
-
-		NSString *nsId = [NSString stringWithUTF8String:colId];
-		NSTableColumn *col = [[NSTableColumn alloc] initWithIdentifier:nsId];
-		col.title = [NSString stringWithUTF8String:colTitle ?: colId];
+		NSTableColumn *col = [[NSTableColumn alloc] initWithIdentifier:colId];
+		col.title = colTitle;
 		col.width = requestedWidth;
 		col.minWidth = MAX(kTableColumnMinWidth, requestedMinWidth);
 		NSTextAlignment alignment = colAlignment
-			? (NSTextAlignment)lookupNameValue(
-				[NSString stringWithUTF8String:colAlignment],
+			? (NSTextAlignment)lookupNameValue(colAlignment,
 				AlignmentMap, NSTextAlignmentLeft)
 			: NSTextAlignmentLeft;
 		col.headerCell.alignment = alignment;
@@ -91,8 +89,7 @@ static int bridge_outlineview(lua_State *L) {
 			@(alignment), OBJC_ASSOCIATION_RETAIN);
 		if (systemImage) {
 			objc_setAssociatedObject(col, &kKeys[kColumnSystemImageKey],
-				[NSString stringWithUTF8String:systemImage],
-				OBJC_ASSOCIATION_RETAIN);
+				systemImage, OBJC_ASSOCIATION_RETAIN);
 		}
 		if (!hasExplicitWidth) {
 			objc_setAssociatedObject(col, &kKeys[kColumnFlexKey],
@@ -100,8 +97,7 @@ static int bridge_outlineview(lua_State *L) {
 			hasFlexColumns = YES;
 		}
 		[ov addTableColumn:col];
-		[colSpecs addObject:@{@"id": nsId, @"title": col.title}];
-		lua_pop(L, 7);
+		[colSpecs addObject:@{@"id": colId, @"title": col.title}];
 	}
 	ov.columnAutoresizingStyle = hasFlexColumns
 		? NSTableViewNoColumnAutoresizing

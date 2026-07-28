@@ -1,16 +1,15 @@
 local ns = require("AppKit")
 
--- WorkspaceLayout: root 3-panel HSplit.
--- Props: navigator, editor, preview - each a view produced by the area helpers.
--- Mirrors Xcode's workspace root NSSplitView.
+-- WorkspaceLayout: the window owns only the navigator/content split.
+-- The source editor owns its code/canvas split so both travel together when
+-- AppKit moves a document tab into another window.
 local function WorkspaceLayout(props)
 	props = props or {}
 	return ns.HSplit {
 		flexGrow = 1,
-		proportions = { 1, 2, 2 },
+		proportions = props.proportions or { 1, 4 },
 		props.navigator,
 		props.editor,
-		props.preview,
 	}
 end
 

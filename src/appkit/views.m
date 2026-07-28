@@ -109,6 +109,70 @@ static int bridge_window(lua_State *L) {
 	return 1;
 }
 
+static int bridge_set_window_tabbing(lua_State *L) {
+	id obj = check_objc(L, 1);
+	if (![obj isKindOfClass:[NSWindow class]]) {
+		return luaL_error(L, "setWindowTabbing requires a window");
+	}
+
+	const char *mode = luaL_checkstring(L, 2);
+	NSWindowTabbingMode tabbingMode;
+	if (strcmp(mode, "automatic") == 0) {
+		tabbingMode = NSWindowTabbingModeAutomatic;
+	} else if (strcmp(mode, "preferred") == 0) {
+		tabbingMode = NSWindowTabbingModePreferred;
+	} else if (strcmp(mode, "disallowed") == 0) {
+		tabbingMode = NSWindowTabbingModeDisallowed;
+	} else {
+		return luaL_error(L,
+			"tabbingMode must be 'automatic', 'preferred', or 'disallowed'");
+	}
+
+	NSWindow *window = (NSWindow *)obj;
+	window.tabbingMode = tabbingMode;
+	if (!lua_isnoneornil(L, 3)) {
+		window.tabbingIdentifier = [NSString stringWithUTF8String:
+			luaL_checkstring(L, 3)];
+	}
+	return 0;
+}
+
+static int bridge_add_tabbed_window(lua_State *L) {
+	id parentObj = check_objc(L, 1);
+	id childObj = check_objc(L, 2);
+	if (![parentObj isKindOfClass:[NSWindow class]]
+		|| ![childObj isKindOfClass:[NSWindow class]]) {
+		return luaL_error(L, "addTabbedWindow requires two windows");
+	}
+
+	const char *order = luaL_optstring(L, 3, "above");
+	NSWindowOrderingMode orderingMode;
+	if (strcmp(order, "above") == 0) {
+		orderingMode = NSWindowAbove;
+	} else if (strcmp(order, "below") == 0) {
+		orderingMode = NSWindowBelow;
+	} else {
+		return luaL_error(L, "tab order must be 'above' or 'below'");
+	}
+
+	NSWindow *parent = (NSWindow *)parentObj;
+	NSWindow *child = (NSWindow *)childObj;
+	[parent addTabbedWindow:child ordered:orderingMode];
+	if (parent.isVisible) {
+		[child makeKeyAndOrderFront:nil];
+	}
+	return 0;
+}
+
+static int bridge_window_tab_count(lua_State *L) {
+	id obj = check_objc(L, 1);
+	if (![obj isKindOfClass:[NSWindow class]]) {
+		return luaL_error(L, "windowTabCount requires a window");
+	}
+	lua_pushinteger(L, (lua_Integer)((NSWindow *)obj).tabbedWindows.count);
+	return 1;
+}
+
 static int bridge_vstack(lua_State *L) {
 	NSView *v = [[NSView alloc] initWithFrame:NSZeroRect];
 	objc_setAssociatedObject(v, &kKeys[kAxisKey], @(LayoutAxisVStack), OBJC_ASSOCIATION_RETAIN);

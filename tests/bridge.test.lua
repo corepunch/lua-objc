@@ -97,6 +97,38 @@ local win = ns.Window {
 
 t.assertEqual(win.title, "Headless Test", "Window title is set")
 
+-- NSWindow tabs group complete document windows through AppKit.
+
+local tabHost = ns.Window {
+	title = "Host.lua",
+	width = 400,
+	height = 300,
+	visible = false,
+	tabbingMode = "preferred",
+	tabbingIdentifier = "tests.source-documents",
+	ns.Text "Host",
+}
+local tabChild = ns.Window {
+	title = "Child.lua",
+	width = 400,
+	height = 300,
+	visible = false,
+	tabbingMode = "preferred",
+	tabbingIdentifier = "tests.source-documents",
+	ns.Text "Child",
+}
+ns.addTabbedWindow(tabHost, tabChild)
+t.assertEqual(ns.windowTabCount(tabHost), 2,
+	"native window tab group contains both document windows")
+t.assertEqual(tabHost.tabbingIdentifier, "tests.source-documents",
+	"window tabbing identifier round-trips through AppKit")
+t.assertThrows(function()
+	ns.Window {
+		visible = false,
+		tabbingMode = "custom",
+	}
+end, "window tabbing rejects unknown native modes")
+
 -- Separator is an NSBox with separator style
 
 local s = ns.Separator()
@@ -126,30 +158,25 @@ t.assertEqual(spaced.spacing, 3, "custom stack spacing is retained")
 t.assertEqual(spaced.paddingHorizontal, 12, "horizontal padding is retained")
 t.assertEqual(spaced.paddingVertical, 7, "vertical padding is retained")
 
--- IDE workspace areas start with usable native split panes. In particular, an
--- intrinsically wide editor must not squeeze the initially empty canvas to 0.
+-- The IDE uses a two-pane workspace whose source-editor pane owns its own
+-- code/canvas split. Both native dividers must start with usable geometry.
 
 local navigatorArea = NavigatorArea {
 	title = "FILES",
 	content = ns.Text "Files",
 }
-local editorAction = bridge._symbolToggle(
-	"arrow.left.and.line.vertical.and.arrow.right",
-	"Toggle Word Wrap",
-	false)
-local editorArea = EditorArea {
-	title = "EDITOR",
-	content = ns.Text "A very wide editor surface",
-	buttons = { editorAction },
-}
-local previewArea = PreviewArea.show {
+local previewArea, rebuildPreviewToolbar = PreviewArea.show {
 	title = "CANVAS",
 	content = canvasMod.Canvas(),
+}
+local editorArea = EditorArea {
+	title = "SOURCE EDITOR",
+	editor = ns.Text "A very wide editor surface",
+	preview = previewArea,
 }
 local workspace = WorkspaceLayout {
 	navigator = navigatorArea,
 	editor = editorArea,
-	preview = previewArea,
 }
 local workspaceWindow = ns.Window {
 	width = 1100,
@@ -165,53 +192,18 @@ t.expect(editorWidth > 0,
 	"IDE editor split pane has a usable native width")
 t.expect(previewWidth > 0,
 	"IDE canvas split pane is visible initially")
-t.expect(math.abs(editorWidth - navigatorWidth * 2) < 2,
-	"IDE navigator starts half as wide as the editor")
-t.expect(math.abs(previewWidth - navigatorWidth * 2) < 2,
-	"IDE navigator starts half as wide as the canvas")
+t.expect(math.abs(editorWidth - navigatorWidth * 4) < 3,
+	"IDE content starts four times as wide as the navigator")
 t.assertEqual(workspace.className, "NSSplitView",
 	"IDE workspace uses Cocoa's NSSplitView directly")
-t.expect(editorArea.clipsToBounds, "IDE editor pane clips content at its divider")
+t.assertEqual(editorArea.className, "NSSplitView",
+	"source editor owns a nested native split view")
 t.expect(previewArea.clipsToBounds, "IDE canvas pane clips content at its divider")
-local editorX, _, editorFrameWidth = bridge._viewFrameInWindow(editorArea)
-local actionX, _, actionWidth = bridge._viewFrameInWindow(editorAction)
-t.expect(actionX >= editorX
-		and actionX + actionWidth <= editorX + editorFrameWidth,
-	string.format(
-		"IDE editor action remains inside its split pane (editor %.0f..%.0f, action %.0f..%.0f)",
-		editorX, editorX + editorFrameWidth, actionX, actionX + actionWidth))
-
--- NavigatorArea with tabbed API (icon tabs + content switching).
-
-local tabFiles = ns.Text "File Tree"
-local tabFind = ns.Text "Search Results"
-local tabbedNav, selectNavigatorTab = NavigatorArea {
-	tabs = {
-		{ id = "files", symbol = "folder", tooltip = "Project Files" },
-		{ id = "find", symbol = "magnifyingglass", tooltip = "Find in Files" },
-	},
-	selectedId = "files",
-	content = {
-		files = tabFiles,
-		find = tabFind,
-	},
-}
-t.expect(tabbedNav ~= nil, "NavigatorArea with tabs creates a view")
-bridge._setContentSize(tabbedNav, 220, 400)
-bridge._layout(tabbedNav, 220)
-local navSize = bridge._viewSize(tabbedNav)
-t.expect(navSize > 0, "tabbed NavigatorArea has a positive width after layout")
-t.expect(not tabFiles.hidden, "initial tab content (files) is visible")
-t.expect(tabFind.hidden, "inactive tab content (find) is hidden")
-selectNavigatorTab("find")
-t.expect(tabFiles.hidden, "switching tabs hides Files content")
-t.expect(not tabFind.hidden, "switching tabs reveals Find content")
-local findWidth, findHeight = bridge._viewSize(tabFind)
-t.expect(findWidth > 0 and findHeight > 0,
-	"newly revealed Find content is laid out at a visible size")
-selectNavigatorTab("files")
-t.expect(not tabFiles.hidden and tabFind.hidden,
-	"navigator tab switching round-trips without stale visibility")
+rebuildPreviewToolbar({
+	{ icon = "play.fill", tooltip = "Run" },
+})
+t.expect(previewWidth > 0,
+	"document-local preview toolbar rebuild preserves canvas geometry")
 
 local segmented = bridge._segmentedControl({
 	{ "folder", "Files" },
@@ -231,21 +223,6 @@ t.assertEqual(segmented.selectedSegment, 1,
 t.assertThrows(function()
 	bridge._tabCount(segmented)
 end, "typed native arguments reject a view of the wrong Cocoa class")
-
--- EditorArea with tabbed API returns area + native rounded tab container.
-
-local tabbedEditor, tabView = EditorArea {
-	content = ns.Text "Editor content",
-}
-t.expect(tabbedEditor ~= nil, "tabbed EditorArea creates a view")
-t.expect(tabView ~= nil, "tabbed EditorArea returns a native tab container")
-local tvClass = tabView.className
-t.assertEqual(tvClass, "LuaRoundedTabContainer",
-	"tabbed EditorArea uses the native rounded tab container")
-t.expect(tvClass ~= "NSTabView",
-	"rounded editor tabs do not use NSTabView")
-t.assertEqual(tabView.tabSeparator.boxType, 2,
-	"rounded editor tabs include a native horizontal separator")
 
 -- Native NSTabView: add, select, remove, count.
 

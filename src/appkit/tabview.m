@@ -380,27 +380,23 @@ static int bridge_segmented_control(lua_State *L) {
 
 	for (NSInteger i = 0; i < count; i++) {
 		lua_rawgeti(L, 1, (int)(i + 1));
-		luaL_checktype(L, -1, LUA_TTABLE);
-		lua_rawgeti(L, -1, 1);
-		lua_rawgeti(L, -2, 2);
-		const char *symbolC = lua_tostring(L, -2);
-		const char *tipC = lua_tostring(L, -1);
+		NSArray *pair = lua_to_objc_value(L, -1);
+		lua_pop(L, 1);
+		NSString *symbol = pair[0];
+		NSString *tip = pair[1];
 
 		[seg setWidth:28 forSegment:i];
-		if (symbolC) {
-			NSString *name = [NSString stringWithUTF8String:symbolC];
-			NSImage *img = [NSImage imageWithSystemSymbolName:name
+		if (symbol) {
+			NSImage *img = [NSImage imageWithSystemSymbolName:symbol
 				accessibilityDescription:nil];
 			if (img) {
 				img = [img imageWithSymbolConfiguration:symConfig];
 				[seg setImage:img forSegment:i];
 			}
 		}
-		if (tipC) {
-			[seg setToolTip:[NSString stringWithUTF8String:tipC]
-				forSegment:i];
+		if (tip) {
+			[seg setToolTip:tip forSegment:i];
 		}
-		lua_pop(L, 2);
 		[seg setSelected:(i == selectedIdx) forSegment:i];
 	}
 

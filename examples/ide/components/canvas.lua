@@ -1,16 +1,16 @@
 local bridge = require("bridge")
 local ns = require("AppKit")
-local PreviewArea = require("examples.ide.components.preview_area")
 
 -- evalIntoCanvas: evaluate Lua code and render the result into a canvas view.
 -- ns.Window is intercepted so scripts that call ns.Window{} render inline.
 -- If the script defines a toolbar, buttons are placed in the PreviewArea
 -- ControlBar via rebuildToolbar.
-local function evalIntoCanvas(canvas, code)
+local function evalIntoCanvas(canvas, code, rebuildToolbar)
 	if not canvas then return end
 
 	local result, err = bridge._eval(code, true)
 	bridge._clearContainer(canvas)
+	if rebuildToolbar then rebuildToolbar(nil) end
 
 	if err then
 		local label = bridge._create("NSTextField")
@@ -23,7 +23,7 @@ local function evalIntoCanvas(canvas, code)
 		bridge._add(canvas, label)
 	elseif result then
 		local toolbarItems = bridge._canvas_toolbar_items(result)
-		PreviewArea.rebuildToolbar(toolbarItems)
+		if rebuildToolbar then rebuildToolbar(toolbarItems) end
 		bridge._add(canvas, result)
 	end
 

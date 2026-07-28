@@ -11,17 +11,35 @@ static int bridge_add(lua_State *L) {
 
 		if (!objc_getAssociatedObject(window, &kKeys[kResizeObserverKey])) {
 			__weak NSView *weakChild = child;
-			id observer = [[NSNotificationCenter defaultCenter]
+			__weak NSWindow *weakWindow = window;
+			void (^relayoutRoot)(void) = ^{
+				NSView *root = weakChild;
+				NSWindow *observedWindow = weakWindow;
+				if (!root || !observedWindow) return;
+				root.frame = observedWindow.contentView.bounds;
+				layout_recursive(root, root.bounds.size.width);
+			};
+			id windowObserver = [[NSNotificationCenter defaultCenter]
 				addObserverForName:NSWindowDidResizeNotification
 							object:window
 							 queue:nil
 						usingBlock:^(NSNotification *note) {
-							NSView *root = weakChild;
-							if (!root) return;
-							root.frame = ((NSWindow *)note.object).contentView.bounds;
-							layout_recursive(root, root.bounds.size.width);
+							relayoutRoot();
 						}];
-			objc_setAssociatedObject(window, &kKeys[kResizeObserverKey], observer,
+
+			/* Showing or hiding the native NSWindow tab bar changes the
+			 * content view's frame without resizing the window. Observe that
+			 * frame directly so the root never remains underneath the bar. */
+			container.postsFrameChangedNotifications = YES;
+			id contentObserver = [[NSNotificationCenter defaultCenter]
+				addObserverForName:NSViewFrameDidChangeNotification
+							object:container
+							 queue:nil
+						usingBlock:^(NSNotification *note) {
+							relayoutRoot();
+						}];
+			NSArray *observers = @[windowObserver, contentObserver];
+			objc_setAssociatedObject(window, &kKeys[kResizeObserverKey], observers,
 				OBJC_ASSOCIATION_RETAIN);
 		}
 	} else {

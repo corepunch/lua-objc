@@ -181,6 +181,9 @@ static lua_State *gL = NULL;
 
 static const luaL_Reg bridge_lib[] = {
 	{"_window",           bridge_window},
+	{"_setWindowTabbing", bridge_set_window_tabbing},
+	{"_addTabbedWindow",  bridge_add_tabbed_window},
+	{"_windowTabCount",   bridge_window_tab_count},
 	{"_vstack",           bridge_vstack},
 	{"_hstack",           bridge_hstack},
 	{"_hsplit",           bridge_hsplit},

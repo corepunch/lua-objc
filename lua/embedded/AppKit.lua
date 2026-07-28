@@ -98,6 +98,12 @@ function AppKit.Window(props)
 			props.minWidth or width,
 			props.minHeight or height)
 	end
+	if props.tabbingMode or props.tabbingIdentifier then
+		bridge._setWindowTabbing(
+			win,
+			props.tabbingMode or "automatic",
+			props.tabbingIdentifier)
+	end
 	local appearance = props.appearance
 		or os.getenv("LUA_OBJC_APPEARANCE")
 		or _G._LAUNCH_APPEARANCE
@@ -116,6 +122,15 @@ function AppKit.Window(props)
 		bridge._show(win)
 	end
 	return win
+end
+
+function AppKit.addTabbedWindow(window, tabbedWindow, order)
+	bridge._addTabbedWindow(window, tabbedWindow, order or "above")
+	return tabbedWindow
+end
+
+function AppKit.windowTabCount(window)
+	return bridge._windowTabCount(window)
 end
 
 function AppKit.Panel(props)

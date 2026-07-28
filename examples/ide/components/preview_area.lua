@@ -8,34 +8,11 @@ local PANEL = {
 	headerHeight = 34,
 }
 
-PreviewArea._toolbarTarget = nil
-PreviewArea._toolbarParent = nil
-
 local function wrapContent(view)
 	if not view then return nil end
 	view.flexGrow = 1
 	view.fillWidth = true
 	return view
-end
-
--- rebuildToolbar: rebuild toolbar buttons in the CANVAS ControlBar.
--- Items is an array of {icon, tooltip} descriptors from the canvas eval,
--- or nil to clear all buttons.
-function PreviewArea.rebuildToolbar(items)
-	local target = PreviewArea._toolbarTarget
-	local parent = PreviewArea._toolbarParent
-	if not target then return end
-
-	bridge._clearContainer(target)
-	if items then
-		for _, item in ipairs(items) do
-			if item.icon then
-				local btn = bridge._symbolButton(item.icon, item.tooltip or item.label)
-				bridge._add(target, btn)
-			end
-		end
-	end
-	if parent then bridge._layout(parent) end
 end
 
 -- PreviewArea: canvas / preview panel.
@@ -61,9 +38,23 @@ function PreviewArea.show(props)
 		},
 		wrapContent(props.content),
 	}
-	PreviewArea._toolbarTarget = toolbarRow
-	PreviewArea._toolbarParent = area
-	return area
+
+	local function rebuildToolbar(items)
+		bridge._clearContainer(toolbarRow)
+		if items then
+			for _, item in ipairs(items) do
+				if item.icon then
+					local btn = bridge._symbolButton(
+						item.icon,
+						item.tooltip or item.label)
+					bridge._add(toolbarRow, btn)
+				end
+			end
+		end
+		bridge._layout(area)
+	end
+
+	return area, rebuildToolbar
 end
 
 return PreviewArea

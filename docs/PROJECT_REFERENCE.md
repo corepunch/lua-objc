@@ -352,6 +352,8 @@ Creates an `NSWindow`. Table keys:
 | `height` | number | `360` | Content height in points |
 | `transparentTitlebar` | bool | `false` | Full-size content, transparent title bar |
 | `hideTitle` | bool | `=transparentTitlebar` | Hide title text in transparent mode |
+| `tabbingMode` | `"automatic"` `"preferred"` `"disallowed"` | AppKit default | Native `NSWindow` tab behavior |
+| `tabbingIdentifier` | string | AppKit default | Groups compatible native window tabs |
 | `toolbar` | `{{id, label, icon?, tooltip?, action?}}` | none | Native NSToolbar items |
 | `toolbarLabels` | bool | `false` | Show labels below toolbar icons |
 
@@ -384,6 +386,12 @@ progress:start("Refreshing data")
 -- asynchronous work
 progress:stop("Refresh data — last updated just now")
 ```
+
+Use `ns.addTabbedWindow(window, tabbedWindow, order?)` to put two complete
+document windows in a native AppKit tab group. `order` is `"above"` (the
+default) or `"below"`. `ns.windowTabCount(window)` reports the number of windows
+in the group. Window tabs own complete content trees; use an inner
+`NSSplitView` when one document contains an editor and preview.
 
 This API stays small by relying on the generic KVC bridge for properties like
 `enabled`, `view`, `image`, and `toolTip`; don't add a dedicated C bridge
