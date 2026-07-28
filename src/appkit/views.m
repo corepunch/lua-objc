@@ -303,6 +303,8 @@ static int bridge_set_window_workspace(lua_State *L) {
 	if (detailItem) {
 		[splitController addSplitViewItem:detailItem];
 	}
+	CGFloat contentWidth = window.contentLayoutRect.size.width;
+	CGFloat contentHeight = window.contentLayoutRect.size.height;
 	window.styleMask |= NSWindowStyleMaskFullSizeContentView;
 	window.titlebarAppearsTransparent = YES;
 	/* Tahoe gives toolbar windows the large concentric frame that lets the
@@ -314,6 +316,12 @@ static int bridge_set_window_workspace(lua_State *L) {
 	}
 	window.toolbarStyle = NSWindowToolbarStyleUnified;
 	window.contentViewController = splitController;
+	NSRect restoredFrame = [window
+		frameRectForContentRect:NSMakeRect(0, 0, contentWidth, contentHeight)];
+	CGFloat topEdge = NSMaxY(window.frame);
+	restoredFrame.origin.x = window.frame.origin.x;
+	restoredFrame.origin.y = topEdge - restoredFrame.size.height;
+	[window setFrame:restoredFrame display:NO animate:NO];
 	splitController.view.frame = window.contentView.bounds;
 	[splitController.view layoutSubtreeIfNeeded];
 	[content setNeedsLayout:YES];
