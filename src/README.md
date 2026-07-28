@@ -24,13 +24,14 @@ and ARC ownership while letting readers open only the subsystem they need.
 | `appkit/canvas_eval.m` | isolated preview states and canvas mounting | `canvas_state_create`, `bridge_eval` |
 | `appkit/syntax_highlight.m` | editor syntax storage | `SyntaxTextStorage` |
 | `uikit/bridge.m` | UIKit keys, fragment includes, registration | `luaopen_UIKitNative`, `bridge_lib` |
+| `uikit/constructors.m` | UIKit native stack and leaf-control constructors | `bridge_UIKitControls_*` |
 | `uikit/layout.m` | UIKit stack measurement and placement | `layout_recursive` |
 | `uikit/views.m` | UIKit windows, stacks, images, and layout entry points | `bridge_window`, `bridge_image` |
 | `uikit/controls.m` | UIKit buttons and switches | `bridge_button`, `bridge_toggle` |
 | `uikit/table_data_source.m` | reusable UITableView rows | `LuaTableViewSource` |
 | `uikit/tables.m` | UITableView construction and mutation | `bridge_tableview` |
 | `uikit/runtime.m` / `uikit/metatable.m` | userdata conversion and property access | `push_objc`, `nsview_index` |
-| `uikit/platform.m` | window display and generic UIKit invocation | `bridge_show`, `bridge_perform` |
+| `uikit/platform.m` | window display and native values | `bridge_show`, `bridge_font` |
 | `shared/lua_bridge_support.m` | userdata ownership, Foundation conversion, shared boundary helpers | `push_objc`, `push_objc_value`, `lua_to_objc_value` |
 | `shared/lua_async.m` | state owners, timers, HTTP, and JSON for both platforms | `LuaStateOwner`, `bridge_http_get` |
 | `shared/lua_error.m` | protected callback error reporting | `report_lua_error` |

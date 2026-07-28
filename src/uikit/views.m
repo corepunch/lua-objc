@@ -86,15 +86,3 @@ static int bridge_set_content_size(lua_State *L) {
 	v.frame = CGRectMake(v.frame.origin.x, v.frame.origin.y, width, height);
 	return 0;
 }
-
-#pragma mark - Text update
-
-static int bridge_set_text(lua_State *L) {
-	id obj = check_objc(L, 1);
-	const char *str = luaL_checkstring(L, 2);
-	if ([obj isKindOfClass:[UILabel class]]) {
-		[(UILabel *)obj setText:[NSString stringWithUTF8String:str]];
-		[(UILabel *)obj sizeToFit];
-	}
-	return 0;
-}

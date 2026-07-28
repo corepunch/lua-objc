@@ -1,6 +1,6 @@
 _G.__headless = true
 
-local bridge = require("bridge")
+local bridge = require("AppKitNative")
 local SearchView = require("examples.ide.components.search_view")
 local ns = require("AppKit")
 local t = require("TestKit")
@@ -32,7 +32,7 @@ t.assertEqual(search._resultsView.rowCount, 0,
 	"empty datasource starts with zero rows")
 t.assertEqual(search._searchField.accessibilityLabel, "Open Quickly",
 	"SearchView input has a native accessibility label")
-t.assertEqual(search._searchField.placeholderString, "Open Quickly",
+t.assertEqual(search._searchField.placeholder, "Open Quickly",
 	"SearchView uses Xcode's concise placeholder")
 t.assertEqual(search._searchIcon.accessibilityLabel, "Search",
 	"SearchView has an accessible native search symbol")

@@ -1,4 +1,4 @@
-local bridge = require("bridge")
+local bridge = require("AppKitNative")
 
 local App = {}
 App.__index = App
@@ -546,7 +546,7 @@ end
 function App:present(window)
 	if self.currentWindow and self.currentWindow ~= window then
 		pcall(function()
-			self.currentWindow:perform("close")
+			self.currentWindow:close()
 		end)
 	end
 	self.currentWindow = window

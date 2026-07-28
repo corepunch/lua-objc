@@ -105,129 +105,22 @@ Use `t.assertSize` / `t.assertEqual` / `t.expect` from `TestKit` (see
 Tests are the project's primary safety net. When in doubt, add more assertions
 rather than fewer. The test suite should grow continually.
 
-## Bridge code generation
+## Native bridge surfaces
 
-Most AppKit and UIKit bridge boilerplate is **generated** from XML config files.
-Never edit the generated files directly — edit the XML and regenerate.
+AppKit and UIKit have no XML schemas. Their Lua metatables read and write
+Objective-C properties through KVC. Put semantic aliases and framework-owned
+state on the exported classes themselves:
 
-### Files
+- ordinary Cocoa property: no bridge declaration;
+- semantic alias: accessor on an exported subclass such as `LuaTextField`;
+- property shared by every view: accessor on the `NSView` base extension;
+- non-property operation: explicit entry in `src/appkit/bindings.m`;
+- module constructor/service: `src/appkit/constructors.m` or its owning native
+  subsystem;
+- native value structs: explicit userdata in the platform runtime.
 
-| File | Purpose |
-|---|---|
-| `tools/AppKit.xml` | AppKit bridge surface (classes, methods, and properties) |
-| `tools/UIKit.xml` | UIKit bridge surface (same structure, UIKit classes and key style) |
-| `tools/gen_bridge.py` | Generator — reads XML, emits five files per platform |
-
-### Generated files (do not edit)
-
-| Generated file | Used by | Contains |
-|---|---|---|
-| `src/appkit/generated/bridge_funcs.m` | `src/main.m` | `bridge_xxx()` C functions |
-| `src/appkit/generated/bridge_props.m` | `src/appkit/runtime.m` | `INDEX_xxx` / `NEWINDEX_xxx` macro calls |
-| `src/appkit/generated/bridge_lib.inc` | `src/main.m` | `luaL_Reg` table entries |
-| `src/appkit/generated/bridge_class_methods.m` | `src/appkit/runtime.m` | typed class wrappers and dispatch |
-| `src/appkit/generated/bridge_structs.m` | `src/appkit/runtime.m` / `src/main.m` | native value userdata helpers and registration |
-| `src/uikit/generated/bridge_funcs.m` | `src/uikit/bridge.m` | same, UIKit |
-| `src/uikit/generated/bridge_props.m` | `src/uikit/metatable.m` | same, UIKit |
-| `src/uikit/generated/bridge_lib.inc` | `src/uikit/bridge.m` | same, UIKit |
-| `src/uikit/generated/bridge_class_methods.m` | `src/uikit/bridge.m` | static class wrappers |
-| `src/uikit/generated/bridge_structs.m` | UIKit runtime root | native value userdata helpers and registration |
-
-### Regenerate after any XML change
-
-```sh
-python3 tools/gen_bridge.py                                              # AppKit
-python3 tools/gen_bridge.py --xml tools/UIKit.xml --out src/uikit/generated  # UIKit
-make
-```
-
-### Adding a new bridge function
-
-**Static construction method** (alloc a view, set properties, return it):
-
-```xml
-<!-- tools/AppKit.xml or tools/UIKit.xml -->
-<class name="AppKitControls" static="true">
-  <method name="myWidget" lua_name="_myWidget"
-          returns="nsview" impl="constructor">
-    <arg name="title" type="string"/>
-    <arg name="callback" type="function?"/>
-    <alloc class="NSMyClass" frame="NSZeroRect"/>
-    <set_prop property="title" from_arg="title"/>
-    <call_method method="sizeToFit"/>
-    <assoc key="kFlexibleKey" value="@YES"/>
-    <callback arg="callback" key="kCallbackKey"
-              target="[LuaButtonTarget shared]" action="onAction:"/>
-  </method>
-</class>
-```
-
-**Callback method** (stores a Lua function ref on an existing view):
-
-```xml
-<class name="NSMyClass" lua_name="MyWidget" detect="kMySourceKey">
-  <method name="onChange" impl="callback">
-    <guard type="MySourceClass" key="kMySourceKey" msg="not a my_widget"/>
-    <store key="kMyChangeKey" on="obj"/>
-    <!-- optional side_effect_set / side_effect_clear blocks -->
-  </method>
-</class>
-```
-
-**Native method** (arguments are checked and the Objective-C selector is generated):
-
-```xml
-<class name="NSMyClass" lua_name="MyClass" detect_class="NSMyClass">
-  <method name="setSomeValue">
-    <arg name="value" type="number"/>
-    <arg name="at" type="integer"/>
-  </method>
-</class>
-```
-
-This generates `[self setSomeValue:value at:at]`. Complex operations remain
-class methods with `impl="stack"` or a typed `<objc>` body; the C symbol is
-derived from the class and method name. Do not add source paths or C symbols
-to XML.
-
-Bridge symbols follow convention over configuration:
-
-- A Lua-visible handler is always `bridge_<ObjectiveCClass>_<method>`.
-- A handwritten body behind a generated typed handler is
-  `bridge_<ObjectiveCClass>_<method>_impl`.
-- Never add an exported C function name to XML and never introduce an
-  unscoped adapter such as `bridge_size` or `bridge_set_min_size`.
-- Objective-C enum types are written directly in `type`, for example
-  `<arg name="mode" type="NSWindowTabbingMode"/>`. The generator owns the
-  accepted Lua option names and emits `luaL_checkoption` plus the native enum
-  value table.
-- Native value types such as `NSSize`, `NSPoint`, and `NSRect` are declared
-  with top-level `<struct>` nodes. Methods and properties use those native
-  names directly; do not flatten a struct into multiple Lua return values or
-  represent it with an ad hoc table.
-
-**New layout property** (appears on all views as `view.myProp`):
-
-```xml
-<class name="NSView" lua_name="View" detect_class="NSView">
-  <properties>
-    <property name="myProp" key="kMyPropKey" type="number" default="0"/>
-  </properties>
-</class>
-```
-Also add `kMyPropKey` to the enum in `src/main.m`.
-
-### Key styles
-
-The two XML files use different key styles, handled automatically:
-
-- `AppKit.xml` (`key_style="enum"`) — AppKit uses a single `char kKeys[kKeyCount]` array; property macro args are bare enum names (`kFooKey`).
-- `UIKit.xml` (`key_style="direct"`) — UIKit uses individual `static char kFooKey` vars; all references are `&kFooKey`.
-
-### Callback target styles
-
-- `callback_style="property"` (AppKit) — sets `.target` / `.action` on NSControl subclasses.
-- `callback_style="addTarget"` (UIKit) — calls `addTarget:action:forControlEvents:`. Set the `event=` attribute on `<callback>` to specify the control event (default: `UIControlEventTouchUpInside`).
+Do not add getter/setter wrappers, generated bridge artifacts, or platform XML
+metadata layers.
 
 ## Build and verification
 

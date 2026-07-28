@@ -1,5 +1,5 @@
 local ns = require("AppKit")
-local bridge = require("bridge")
+local bridge = require("AppKitNative")
 local App = require("App")
 local TextEditor = {}
 
@@ -32,19 +32,19 @@ local function createEditor(props)
 	end
 
 	function editor:setText(text)
-		view:setText(text or "")
+		view.text = text or ""
 	end
 
 	function editor:getText()
-		return view:getText()
+		return view.text
 	end
 
 	function editor:setLanguage(language)
-		view:setLanguage(language or "lua")
+		view.language = language or "lua"
 	end
 
 	function editor:setWrapMode(wrapped)
-		view:setWrapMode(wrapped and true or false)
+		view.wrapMode = wrapped and true or false
 	end
 
 	function editor:watchFile(path)
@@ -66,7 +66,7 @@ local function createEditor(props)
 			local content = f:read("*a")
 			f:close()
 
-			view:setText(content)
+			view.text = content
 
 			if changeHandler then
 				local co = coroutine.create(function()

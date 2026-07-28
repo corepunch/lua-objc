@@ -69,7 +69,7 @@ does not replace `visible = false` in focused window assertions.
 Use the private bridge only in framework tests:
 
 ```lua
-local bridge = require("bridge")
+local bridge = require("AppKitNative")
 local view, err = bridge._eval(source, true)
 ```
 

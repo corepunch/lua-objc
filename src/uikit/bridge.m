@@ -38,19 +38,31 @@ static lua_State *gL = NULL;
 #include "controls.m"
 #include "tables.m"
 #include "platform.m"
-#define GEN_STRUCT_HELPERS
-#include "generated/bridge_structs.m"
-#undef GEN_STRUCT_HELPERS
-#include "generated/bridge_funcs.m"
-#define GEN_CLASS_WRAPPERS
-#include "generated/bridge_class_methods.m"
-#undef GEN_CLASS_WRAPPERS
+#include "constructors.m"
 #pragma mark - Module registration
 
 static const luaL_Reg bridge_lib[] = {
-#define GEN_BRIDGE_LIB
-#include "generated/bridge_lib.inc"
-#undef GEN_BRIDGE_LIB
+	{"_vstack", bridge_UIKitControls_vstack},
+	{"_hstack", bridge_UIKitControls_hstack},
+	{"_hsplit", bridge_UIKitControls_hsplit},
+	{"_spacer", bridge_UIKitControls_spacer},
+	{"_textField", bridge_UIKitControls_textField},
+	{"_label", bridge_UIKitControls_label},
+	{"_separator", bridge_UIKitControls_separator},
+	{"_progressIndicator", bridge_UIKitControls_progressIndicator},
+	{"_button", bridge_UIKitControls_button},
+	{"_toggle", bridge_UIKitControls_toggle},
+	{"_window", bridge_window},
+	{"_image", bridge_image},
+	{"_add", bridge_add},
+	{"_layout", bridge_layout},
+	{"_setContentSize", bridge_set_content_size},
+	{"_tableview", bridge_tableview},
+	{"_show", bridge_show},
+	{"_font", bridge_font},
+	{"_timerAfter", bridge_timer_after},
+	{"_httpGet", bridge_http_get},
+	{"_jsonParse", bridge_json_parse},
 	{NULL, NULL},
 };
 
@@ -72,9 +84,6 @@ int luaopen_UIKitNative(lua_State *L) {
 	register_metatable(L, "uiview");
 	register_metatable(L, "uiwindow");
 	register_metatable(L, "nsobject");
-#define GEN_STRUCT_REGISTER
-#include "generated/bridge_structs.m"
-#undef GEN_STRUCT_REGISTER
 	luaL_newlib(L, bridge_lib);
 	return 1;
 }

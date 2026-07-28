@@ -14,17 +14,7 @@ static int bridge_NSWindow_show_impl(lua_State *L) {
 	return 0;
 }
 
-#pragma mark - Generic bridge (_create, _font, _perform, _callback)
-
-static int bridge_create(lua_State *L) {
-	const char *className = luaL_checkstring(L, 1);
-	Class cls = NSClassFromString([NSString stringWithUTF8String:className]);
-	if (!cls) return luaL_error(L, "unknown class: %s", className);
-
-	id obj = [[cls alloc] init];
-	push_objc(L, obj, [obj isKindOfClass:[NSWindow class]] ? "nswindow" : "nsview");
-	return 1;
-}
+#pragma mark - Generic bridge (_font)
 
 static int bridge_font(lua_State *L) {
 	CGFloat size = luaL_checknumber(L, 1);
@@ -39,77 +29,61 @@ static int bridge_font(lua_State *L) {
 	return 1;
 }
 
-static int bridge_object_perform_impl(lua_State *L) {
-	id obj = check_objc(L, 1);
-	const char *selName = luaL_checkstring(L, 2);
-	SEL sel = NSSelectorFromString([NSString stringWithUTF8String:selName]);
-	if (![obj respondsToSelector:sel]) return 0;
-
-	id arg = nil;
-	if (!lua_isnoneornil(L, 3)) {
-		arg = lua_to_objc_value(L, 3);
-	}
-
-	NSMethodSignature *sig = [obj methodSignatureForSelector:sel];
-	if (!sig) return 0;
-
-	NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
-	inv.target = obj;
-	inv.selector = sel;
-	if (sig.numberOfArguments > 2) {
-		[inv setArgument:&arg atIndex:2];
-	}
-	[inv invoke];
-
-	if (sig.methodReturnLength > 0) {
-		const char *retType = sig.methodReturnType;
-		if (strcmp(retType, @encode(BOOL)) == 0 || strcmp(retType, "B") == 0 || strcmp(retType, "c") == 0) {
-			BOOL val = NO;
-			[inv getReturnValue:&val];
-			lua_pushboolean(L, val);
-		} else if (strcmp(retType, @encode(NSInteger)) == 0 || strcmp(retType, "q") == 0) {
-			NSInteger val = 0;
-			[inv getReturnValue:&val];
-			lua_pushinteger(L, (lua_Integer)val);
-		} else if (strcmp(retType, @encode(CGFloat)) == 0 || strcmp(retType, "d") == 0) {
-			CGFloat val = 0;
-			[inv getReturnValue:&val];
-			lua_pushnumber(L, val);
-		} else if (strcmp(retType, "@") == 0) {
-			__unsafe_unretained id val = nil;
-			[inv getReturnValue:&val];
-			push_objc_value(L, val);
-		} else {
-			lua_pushnil(L);
-		}
-		return 1;
-	}
-	return 0;
-}
-
-static int bridge_NSView_setCallback_impl(lua_State *L) {
-	id obj = check_objc(L, 1);
-	luaL_checktype(L, 2, LUA_TFUNCTION);
-	lua_pushvalue(L, 2);
-	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-
-	objc_setAssociatedObject(obj, &kKeys[kCallbackKey], @(ref), OBJC_ASSOCIATION_RETAIN);
-	if ([obj respondsToSelector:@selector(setTarget:)]) {
-		[obj setTarget:[LuaButtonTarget shared]];
-	}
-	if ([obj respondsToSelector:@selector(setAction:)]) {
-		[obj setAction:@selector(onAction:)];
-	}
-
-	return 0;
-}
-
 #include "syntax_highlight.m"
 
 #pragma mark - NSTextView (code editor)
 
+@interface LuaTextScrollView : NSScrollView
+@property(nonatomic, copy) NSString *text;
+@property(nonatomic, copy) NSString *language;
+@property(nonatomic) BOOL wrapMode;
+@end
+
+@implementation LuaTextScrollView
+- (NSString *)text {
+	return ((NSTextView *)self.documentView).string;
+}
+- (void)setText:(NSString *)value {
+	NSTextView *textView = (NSTextView *)self.documentView;
+	objc_setAssociatedObject(textView, &kKeys[kTextProgrammaticKey], @YES,
+		OBJC_ASSOCIATION_RETAIN);
+	textView.string = value ?: @"";
+	objc_setAssociatedObject(textView, &kKeys[kTextProgrammaticKey], nil,
+		OBJC_ASSOCIATION_RETAIN);
+}
+- (NSString *)language {
+	SyntaxTextStorage *storage =
+		(SyntaxTextStorage *)((NSTextView *)self.documentView).textStorage;
+	return [storage isKindOfClass:[SyntaxTextStorage class]]
+		? storage.language : @"";
+}
+- (void)setLanguage:(NSString *)value {
+	SyntaxTextStorage *storage =
+		(SyntaxTextStorage *)((NSTextView *)self.documentView).textStorage;
+	if ([storage isKindOfClass:[SyntaxTextStorage class]]) {
+		storage.language = value ?: @"";
+	}
+}
+- (BOOL)wrapMode {
+	return [objc_getAssociatedObject(
+		self, &kKeys[kTextWrapKey]) boolValue];
+}
+- (void)setWrapMode:(BOOL)wrap {
+	NSTextView *textView = (NSTextView *)self.documentView;
+	NSTextContainer *container = textView.textContainer;
+	textView.horizontallyResizable = !wrap;
+	container.widthTracksTextView = wrap;
+	container.containerSize = wrap
+		? NSMakeSize(self.contentSize.width, FLT_MAX)
+		: NSMakeSize(FLT_MAX, FLT_MAX);
+	self.hasHorizontalScroller = !wrap;
+	objc_setAssociatedObject(self, &kKeys[kTextWrapKey], @(wrap),
+		OBJC_ASSOCIATION_RETAIN);
+}
+@end
+
 static int bridge_text_view(lua_State *L) {
-	NSScrollView *sv = [[NSScrollView alloc]
+	NSScrollView *sv = [[LuaTextScrollView alloc]
 		initWithFrame:NSMakeRect(0, 0, kEditorDefaultWidth, kEditorDefaultHeight)];
 	sv.hasVerticalScroller = YES;
 	sv.hasHorizontalScroller = NO;
@@ -127,7 +101,7 @@ static int bridge_text_view(lua_State *L) {
 	[lm addTextContainer:tc];
 	[storage addLayoutManager:lm];
 
-	NSTextView *tv = [[NSTextView alloc]
+	NSTextView *tv = [[LuaNativeTextView alloc]
 		initWithFrame:NSMakeRect(0, 0, contentSize.width, contentSize.height)
 		textContainer:tc];
 	tv.font = [NSFont monospacedSystemFontOfSize:kEditorFontSize
@@ -148,38 +122,11 @@ static int bridge_text_view(lua_State *L) {
 	sv.documentView = tv;
 	objc_setAssociatedObject(sv, &kKeys[kTextWrapKey], @NO, OBJC_ASSOCIATION_RETAIN);
 	objc_setAssociatedObject(sv, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
-	/* Sentinel that nsview_index uses to dispatch obj:setText() etc. */
+	/* Sentinel used by TextView method dispatch. */
 	objc_setAssociatedObject(sv, &kKeys[kTextViewSourceKey], @YES, OBJC_ASSOCIATION_RETAIN);
 
 	push_objc(L, sv, "nsview");
 	return 1;
-}
-
-static int bridge_NSScrollView_getText_impl(lua_State *L) {
-	id obj = check_objc(L, 1);
-	if (![obj isKindOfClass:[NSScrollView class]]) {
-		return luaL_error(L, "expected a text view");
-	}
-	NSTextView *tv = (NSTextView *)((NSScrollView *)obj).documentView;
-	lua_pushstring(L, tv.string.UTF8String);
-	return 1;
-}
-
-static int bridge_NSScrollView_setText_impl(lua_State *L) {
-	id obj = check_objc(L, 1);
-	const char *str = luaL_checkstring(L, 2);
-	if (![obj isKindOfClass:[NSScrollView class]]) {
-		return luaL_error(L, "expected a text view");
-	}
-	NSTextView *tv = (NSTextView *)((NSScrollView *)obj).documentView;
-	/* Suppress NSTextDidChangeNotification for programmatic updates so that
-	 * the IDE change handler only fires for user-initiated edits. */
-	objc_setAssociatedObject(tv, &kKeys[kTextProgrammaticKey], @YES,
-		OBJC_ASSOCIATION_RETAIN);
-	tv.string = [NSString stringWithUTF8String:str];
-	objc_setAssociatedObject(tv, &kKeys[kTextProgrammaticKey], nil,
-		OBJC_ASSOCIATION_RETAIN);
-	return 0;
 }
 
 static int bridge_NSScrollView_onChange_impl(lua_State *L) {
@@ -216,51 +163,6 @@ static int bridge_NSScrollView_onChange_impl(lua_State *L) {
 		lua_objc_pcall(callL, 1, 0, "text change");
 	}];
 
-	return 0;
-}
-
-static int bridge_NSScrollView_setLanguage_impl(lua_State *L) {
-	id obj = check_objc(L, 1);
-	const char *lang = luaL_checkstring(L, 2);
-
-	if (![obj isKindOfClass:[NSScrollView class]]) {
-		return luaL_error(L, "expected a text view");
-	}
-	NSTextView *tv = (NSTextView *)((NSScrollView *)obj).documentView;
-	SyntaxTextStorage *storage = (SyntaxTextStorage *)tv.textStorage;
-	if ([storage isKindOfClass:[SyntaxTextStorage class]]) {
-		storage.language = [NSString stringWithUTF8String:lang];
-	}
-	return 0;
-}
-
-/* Toggle word wrap on/off. Wrap ON tracks the visible width; wrap OFF
- * lets the text view grow horizontally with a scroll bar. */
-static int bridge_NSScrollView_setWrapMode_impl(lua_State *L) {
-	id obj = check_objc(L, 1);
-	int wrap = lua_toboolean(L, 2);
-
-	if (![obj isKindOfClass:[NSScrollView class]]) {
-		return luaL_error(L, "expected a text view");
-	}
-	NSScrollView *sv = (NSScrollView *)obj;
-	NSTextView *tv = (NSTextView *)sv.documentView;
-	NSTextContainer *tc = tv.textContainer;
-
-	if (wrap) {
-		tv.horizontallyResizable = NO;
-		tc.widthTracksTextView = YES;
-		tc.containerSize = NSMakeSize(sv.contentSize.width, FLT_MAX);
-		sv.hasHorizontalScroller = NO;
-	} else {
-		tv.horizontallyResizable = YES;
-		tc.widthTracksTextView = NO;
-		tc.containerSize = NSMakeSize(FLT_MAX, FLT_MAX);
-		sv.hasHorizontalScroller = YES;
-	}
-
-	objc_setAssociatedObject(sv, &kKeys[kTextWrapKey],
-		@(wrap), OBJC_ASSOCIATION_RETAIN);
 	return 0;
 }
 

@@ -1,5 +1,5 @@
 local ns = require("AppKit")
-local bridge = require("bridge")
+local bridge = require("AppKitNative")
 
 local FIND = {
 	rowHeight = 28,

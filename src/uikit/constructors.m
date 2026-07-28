@@ -1,9 +1,4 @@
-/* AUTO-GENERATED — do not edit by hand.
- * Regenerate with:  python3 tools/gen_bridge.py --xml tools/UIKit.xml
- * Source:           tools/UIKit.xml
- */
-
-/* Generated bridge_xxx() functions */
+/* Native constructors exported by the UIKit module. */
 
 static int bridge_UIKitControls_vstack(lua_State *L) {
 
@@ -36,6 +31,42 @@ static int bridge_UIKitControls_spacer(lua_State *L) {
 
 	UIView *obj = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 10, 10)];
 	objc_setAssociatedObject(obj, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
+	push_objc(L, obj, "uiview");
+	return 1;
+}
+
+static int bridge_UIKitControls_textField(lua_State *L) {
+	const char *text = luaL_optstring(L, 1, "");
+	UITextField *obj = [[UITextField alloc] initWithFrame:CGRectZero];
+	obj.text = [NSString stringWithUTF8String:text];
+	push_objc(L, obj, "uiview");
+	return 1;
+}
+
+static int bridge_UIKitControls_label(lua_State *L) {
+	const char *text = luaL_optstring(L, 1, "");
+	UILabel *obj = [[UILabel alloc] initWithFrame:CGRectZero];
+	obj.text = [NSString stringWithUTF8String:text];
+	obj.numberOfLines = 0;
+	[obj sizeToFit];
+	push_objc(L, obj, "uiview");
+	return 1;
+}
+
+static int bridge_UIKitControls_separator(lua_State *L) {
+	UIView *obj = [[UIView alloc] initWithFrame:CGRectZero];
+	objc_setAssociatedObject(obj, &kFixedHeightKey, @1,
+		OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(obj, &kFlexibleKey, @YES,
+		OBJC_ASSOCIATION_RETAIN);
+	push_objc(L, obj, "uiview");
+	return 1;
+}
+
+static int bridge_UIKitControls_progressIndicator(lua_State *L) {
+	UIActivityIndicatorView *obj =
+		[[UIActivityIndicatorView alloc] initWithFrame:CGRectZero];
+	[obj startAnimating];
 	push_objc(L, obj, "uiview");
 	return 1;
 }

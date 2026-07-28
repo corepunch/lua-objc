@@ -52,8 +52,29 @@ static int bridge_object_add_impl(lua_State *L) {
 		 * bounds by default on modern macOS, so an intrinsically wide editor
 		 * would otherwise draw across the divider into the next pane.
 		 */
+		/*
+		 * NSSplitView adopts each pane's current frame as its initial holding
+		 * size. Seed a declared fixed length before insertion so a table's
+		 * 400-point construction frame cannot become the preserved width when
+		 * the split is mounted into an already-constrained IDE canvas.
+		 */
+		NSSplitView *split = (NSSplitView *)container;
+		NSNumber *fixedLength = objc_getAssociatedObject(
+			child,
+			split.isVertical
+				? &kKeys[kFixedWidthKey]
+				: &kKeys[kFixedHeightKey]);
+		if (fixedLength.doubleValue > 0) {
+			NSRect frame = child.frame;
+			if (split.isVertical) {
+				frame.size.width = fixedLength.doubleValue;
+			} else {
+				frame.size.height = fixedLength.doubleValue;
+			}
+			child.frame = frame;
+		}
 		child.clipsToBounds = YES;
-		[(NSSplitView *)container addArrangedSubview:child];
+		[split addArrangedSubview:child];
 		if (!objc_getAssociatedObject(
 				child, &kKeys[kSplitPaneFrameObserverKey])) {
 			child.postsFrameChangedNotifications = YES;
@@ -725,54 +746,6 @@ static int bridge_object_set_content_size_impl(lua_State *L) {
 	} else {
 		NSView *v = (NSView *)obj;
 		v.frame = NSMakeRect(v.frame.origin.x, v.frame.origin.y, width, height);
-	}
-	return 0;
-}
-
-static int bridge_NSWindow_setAppearance_impl(lua_State *L) {
-	id obj = check_objc(L, 1);
-	const char *name = luaL_checkstring(L, 2);
-
-	if (strcmp(name, "system") == 0) {
-		if ([obj isKindOfClass:[NSWindow class]]) {
-			((NSWindow *)obj).appearance = nil;
-		} else if ([obj isKindOfClass:[NSView class]]) {
-			((NSView *)obj).appearance = nil;
-		}
-		return 0;
-	}
-
-	NSString *appearanceName = strcmp(name, "dark") == 0
-		? NSAppearanceNameDarkAqua : NSAppearanceNameAqua;
-	NSAppearance *appearance = [NSAppearance appearanceNamed:appearanceName];
-	if ([obj isKindOfClass:[NSWindow class]]) {
-		((NSWindow *)obj).appearance = appearance;
-	} else if ([obj isKindOfClass:[NSView class]]) {
-		((NSView *)obj).appearance = appearance;
-	}
-	return 0;
-}
-
-#pragma mark - Text update
-
-static int bridge_set_text(lua_State *L) {
-	id obj = check_objc(L, 1);
-	const char *str = luaL_checkstring(L, 2);
-	if ([obj isKindOfClass:[NSTextField class]]) {
-		NSTextField *textField = (NSTextField *)obj;
-		[textField setStringValue:[NSString stringWithUTF8String:str]];
-		[textField sizeToFit];
-
-		NSView *layoutRoot = nil;
-		for (NSView *ancestor = textField.superview;
-			 ancestor != nil; ancestor = ancestor.superview) {
-			if (objc_getAssociatedObject(ancestor, &kKeys[kAxisKey])) {
-				layoutRoot = ancestor;
-			}
-		}
-		if (layoutRoot) {
-			layout_recursive(layoutRoot, layoutRoot.bounds.size.width);
-		}
 	}
 	return 0;
 }

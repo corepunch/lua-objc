@@ -1,9 +1,4 @@
-/* AUTO-GENERATED — do not edit by hand.
- * Regenerate with:  python3 tools/gen_bridge.py --xml tools/AppKit.xml
- * Source:           tools/AppKit.xml
- */
-
-/* --- _impl forward declarations --- */
+/* Instance methods that supplement ordinary Objective-C/KVC dispatch. */
 #if defined(GEN_CLASS_FORWARDS)
 static int bridge_AppKitControls_vstack(lua_State *L);
 static int bridge_AppKitControls_hstack(lua_State *L);
@@ -11,9 +6,14 @@ static int bridge_AppKitControls_hsplit(lua_State *L);
 static int bridge_AppKitControls_vsplit(lua_State *L);
 static int bridge_AppKitControls_separator(lua_State *L);
 static int bridge_AppKitControls_spacer(lua_State *L);
+static int bridge_AppKitControls_textField(lua_State *L);
+static int bridge_AppKitControls_box(lua_State *L);
+static int bridge_AppKitControls_progressIndicator(lua_State *L);
+static int bridge_AppKitControls_tableCellView(lua_State *L);
+static int bridge_AppKitControls_popUpButton(lua_State *L);
 static int bridge_AppKitControls_button(lua_State *L);
 static int bridge_AppKitControls_toggle(lua_State *L);
-static int bridge_NSScrollView_setRefresh(lua_State *L);
+static int bridge_NSScrollView_onRefresh(lua_State *L);
 static int bridge_NSScrollView_onRowSelect(lua_State *L);
 static int bridge_NSScrollView_onRowActivate(lua_State *L);
 static int bridge_table_column_widths(lua_State *L);
@@ -48,12 +48,7 @@ static int bridge_list_directory(lua_State *L);
 static int bridge_timer_after(lua_State *L);
 static int bridge_http_get(lua_State *L);
 static int bridge_json_parse(lua_State *L);
-static int bridge_create(lua_State *L);
 static int bridge_font(lua_State *L);
-static int bridge_NSScrollView_setText_impl(lua_State *L);
-static int bridge_NSScrollView_getText_impl(lua_State *L);
-static int bridge_NSScrollView_setLanguage_impl(lua_State *L);
-static int bridge_NSScrollView_setWrapMode_impl(lua_State *L);
 static int bridge_NSScrollView_onChange_impl(lua_State *L);
 static int bridge_NSTabView_addTab_impl(lua_State *L, NSTabView *self, const char * title, NSView * content);
 static int bridge_NSTabView_removeTab_impl(lua_State *L, NSTabView *self, NSInteger index);
@@ -62,7 +57,6 @@ static int bridge_NSTabView_tabCount_impl(lua_State *L, NSTabView *self);
 static int bridge_NSTabView_onChange_impl(lua_State *L, NSTabView *self, int callback);
 static int bridge_NSWindow_addTabbedWindow_impl(lua_State *L);
 static int bridge_NSWindow_toggleSidebar_impl(lua_State *L);
-static int bridge_NSWindow_setAppearance_impl(lua_State *L);
 static int bridge_NSWindow_focus_impl(lua_State *L);
 static int bridge_NSWindow_isFirstResponder_impl(lua_State *L);
 static int bridge_NSWindow_workspaceState_impl(lua_State *L);
@@ -71,7 +65,6 @@ static int bridge_NSWindow_presentPanel_impl(lua_State *L);
 static int bridge_NSView_renderToPNG_impl(lua_State *L);
 static int bridge_NSView_clearContainer_impl(lua_State *L);
 static int bridge_NSView_splitProportions_impl(lua_State *L);
-static int bridge_NSView_setCallback_impl(lua_State *L);
 #endif /* GEN_CLASS_FORWARDS */
 
 /* --- Auto-generated wrapper functions --- */
@@ -204,35 +197,8 @@ static int bridge_AppKit_json_parse(lua_State *L) {
 	return bridge_json_parse(L);
 }
 
-static int bridge_AppKit_create(lua_State *L) {
-	return bridge_create(L);
-}
-
 static int bridge_AppKit_font(lua_State *L) {
 	return bridge_font(L);
-}
-
-static int bridge_NSScrollView_setText(lua_State *L) {
-	(void)lua_objc_check_object(L, 1, [NSScrollView class], "TextView");
-	(void)luaL_checkstring(L, 2);
-	return bridge_NSScrollView_setText_impl(L);
-}
-
-static int bridge_NSScrollView_getText(lua_State *L) {
-	(void)lua_objc_check_object(L, 1, [NSScrollView class], "TextView");
-	return bridge_NSScrollView_getText_impl(L);
-}
-
-static int bridge_NSScrollView_setLanguage(lua_State *L) {
-	(void)lua_objc_check_object(L, 1, [NSScrollView class], "TextView");
-	(void)luaL_checkstring(L, 2);
-	return bridge_NSScrollView_setLanguage_impl(L);
-}
-
-static int bridge_NSScrollView_setWrapMode(lua_State *L) {
-	(void)lua_objc_check_object(L, 1, [NSScrollView class], "TextView");
-	(void)lua_toboolean(L, 2);
-	return bridge_NSScrollView_setWrapMode_impl(L);
 }
 
 static int bridge_NSScrollView_onChange(lua_State *L) {
@@ -289,22 +255,6 @@ static int bridge_NSWindow_addTabbedWindow(lua_State *L) {
 	return bridge_NSWindow_addTabbedWindow_impl(L);
 }
 
-static int bridge_NSWindow_setTabbing(lua_State *L) {
-	id _obj = lua_objc_check_object(L, 1, [NSWindow class], "Window");
-	NSWindow *self = (NSWindow *)_obj;
-	static const char *const mode_options[] = {"automatic", "preferred", "disallowed", NULL};
-	static const NSWindowTabbingMode mode_values[] = {NSWindowTabbingModeAutomatic, NSWindowTabbingModePreferred, NSWindowTabbingModeDisallowed};
-	NSWindowTabbingMode mode = mode_values[luaL_checkoption(L, 2, NULL, mode_options)];
-	const char *identifier = luaL_optstring(L, 3, NULL);
-	{
-		self.tabbingMode = mode;
-		if (identifier) {
-			self.tabbingIdentifier = [NSString stringWithUTF8String:identifier];
-		}
-	}
-	return 0;
-}
-
 static int bridge_NSWindow_tabCount(lua_State *L) {
 	id _obj = lua_objc_check_object(L, 1, [NSWindow class], "Window");
 	NSWindow *self = (NSWindow *)_obj;
@@ -330,7 +280,7 @@ static int bridge_NSWindow_dismiss(lua_State *L) {
 	return 0;
 }
 
-static int bridge_NSWindow_setContentSize(lua_State *L) {
+static int bridge_NSWindow_resize(lua_State *L) {
 	id _obj = lua_objc_check_object(L, 1, [NSWindow class], "Window");
 	NSWindow *self = (NSWindow *)_obj;
 	CGFloat width = (CGFloat)luaL_checknumber(L, 2);
@@ -344,23 +294,6 @@ static int bridge_NSWindow_setContentSize(lua_State *L) {
 		return bridge_object_set_content_size_impl(L);
 	}
 	return 0;
-}
-
-static int bridge_NSWindow_setMinSize(lua_State *L) {
-	id _obj = lua_objc_check_object(L, 1, [NSWindow class], "Window");
-	NSWindow *self = (NSWindow *)_obj;
-	CGFloat width = (CGFloat)luaL_checknumber(L, 2);
-	CGFloat height = (CGFloat)luaL_checknumber(L, 3);
-	{
-		self.contentMinSize = NSMakeSize(width, height);
-	}
-	return 0;
-}
-
-static int bridge_NSWindow_setAppearance(lua_State *L) {
-	(void)lua_objc_check_object(L, 1, [NSWindow class], "Window");
-	(void)luaL_checkstring(L, 2);
-	return bridge_NSWindow_setAppearance_impl(L);
 }
 
 static int bridge_NSWindow_focus(lua_State *L) {
@@ -399,6 +332,13 @@ static int bridge_NSWindow_show(lua_State *L) {
 	return bridge_NSWindow_show_impl(L);
 }
 
+static int bridge_NSWindow_close(lua_State *L) {
+	id _obj = lua_objc_check_object(L, 1, [NSWindow class], "Window");
+	NSWindow *self = (NSWindow *)_obj;
+	[self close];
+	return 0;
+}
+
 static int bridge_NSWindow_add(lua_State *L) {
 	id _obj = lua_objc_check_object(L, 1, [NSWindow class], "Window");
 	NSWindow *self = (NSWindow *)_obj;
@@ -423,19 +363,6 @@ static int bridge_NSWindow_layout(lua_State *L) {
 	return 0;
 }
 
-static int bridge_NSWindow_perform(lua_State *L) {
-	id _obj = lua_objc_check_object(L, 1, [NSWindow class], "Window");
-	NSWindow *self = (NSWindow *)_obj;
-	const char *selector = luaL_checkstring(L, 2);
-	(void)lua_type(L, 3);
-	(void)self;
-	(void)selector;
-	{
-		return bridge_object_perform_impl(L);
-	}
-	return 0;
-}
-
 static int bridge_NSWindow_presentPanel(lua_State *L) {
 	(void)lua_objc_check_object(L, 1, [NSWindow class], "Window");
 	(void)lua_objc_check_object(L, 2, [NSWindow class], "NSWindow");
@@ -443,11 +370,37 @@ static int bridge_NSWindow_presentPanel(lua_State *L) {
 	return bridge_NSWindow_presentPanel_impl(L);
 }
 
-static int bridge_NSView_setHidden(lua_State *L) {
-	id _obj = lua_objc_check_object(L, 1, [NSView class], "View");
-	NSView *self = (NSView *)_obj;
-	BOOL hidden = (BOOL)lua_toboolean(L, 2);
-	[self setHidden:hidden];
+static int bridge_NSTextField_sizeToFit(lua_State *L) {
+	id _obj = lua_objc_check_object(L, 1, [NSTextField class], "TextField");
+	NSTextField *self = (NSTextField *)_obj;
+	[self sizeToFit];
+	return 0;
+}
+
+static int bridge_NSProgressIndicator_start(lua_State *L) {
+	id _obj = lua_objc_check_object(L, 1, [NSProgressIndicator class], "ProgressIndicator");
+	NSProgressIndicator *self = (NSProgressIndicator *)_obj;
+	{
+		[self startAnimation:nil];
+	}
+	return 0;
+}
+
+static int bridge_NSProgressIndicator_stop(lua_State *L) {
+	id _obj = lua_objc_check_object(L, 1, [NSProgressIndicator class], "ProgressIndicator");
+	NSProgressIndicator *self = (NSProgressIndicator *)_obj;
+	{
+		[self stopAnimation:nil];
+	}
+	return 0;
+}
+
+static int bridge_NSPopUpButton_addItemsWithTitles(lua_State *L) {
+	id _obj = lua_objc_check_object(L, 1, [NSPopUpButton class], "PopUpButton");
+	NSPopUpButton *self = (NSPopUpButton *)_obj;
+	luaL_checktype(L, 2, LUA_TTABLE);
+	id titles = lua_to_objc_value(L, 2);
+	[self addItemsWithTitles:titles];
 	return 0;
 }
 
@@ -504,39 +457,6 @@ static int bridge_NSView_splitProportions(lua_State *L) {
 	return bridge_NSView_splitProportions_impl(L);
 }
 
-static int bridge_NSView_setContentSize(lua_State *L) {
-	id _obj = lua_objc_check_object(L, 1, [NSView class], "View");
-	NSView *self = (NSView *)_obj;
-	CGFloat width = (CGFloat)luaL_checknumber(L, 2);
-	CGFloat height = (CGFloat)luaL_checknumber(L, 3);
-	(void)self;
-	(void)width;
-	(void)height;
-	{
-		return bridge_object_set_content_size_impl(L);
-	}
-	return 0;
-}
-
-static int bridge_NSView_perform(lua_State *L) {
-	id _obj = lua_objc_check_object(L, 1, [NSView class], "View");
-	NSView *self = (NSView *)_obj;
-	const char *selector = luaL_checkstring(L, 2);
-	(void)lua_type(L, 3);
-	(void)self;
-	(void)selector;
-	{
-		return bridge_object_perform_impl(L);
-	}
-	return 0;
-}
-
-static int bridge_NSView_setCallback(lua_State *L) {
-	(void)lua_objc_check_object(L, 1, [NSView class], "View");
-	luaL_checktype(L, 2, LUA_TFUNCTION);
-	return bridge_NSView_setCallback_impl(L);
-}
-
 #endif /* GEN_CLASS_WRAPPERS */
 
 /* --- MethodEntry dispatch arrays --- */
@@ -546,17 +466,13 @@ static MethodEntry LayoutViewMethods[] = {
 };
 
 static MethodEntry TableMethods[] = {
-	{"setRefresh",	bridge_NSScrollView_setRefresh},
+	{"onRefresh",	bridge_NSScrollView_onRefresh},
 	{"onRowSelect",	bridge_NSScrollView_onRowSelect},
 	{"onRowActivate",	bridge_NSScrollView_onRowActivate},
 	{NULL, NULL}
 };
 
 static MethodEntry TextViewMethods[] = {
-	{"setText",	bridge_NSScrollView_setText},
-	{"getText",	bridge_NSScrollView_getText},
-	{"setLanguage",	bridge_NSScrollView_setLanguage},
-	{"setWrapMode",	bridge_NSScrollView_setWrapMode},
 	{"onChange",	bridge_NSScrollView_onChange},
 	{NULL, NULL}
 };
@@ -572,36 +488,49 @@ static MethodEntry TabViewMethods[] = {
 
 static MethodEntry WindowMethods[] = {
 	{"addTabbedWindow",	bridge_NSWindow_addTabbedWindow},
-	{"setTabbing",	bridge_NSWindow_setTabbing},
 	{"tabCount",	bridge_NSWindow_tabCount},
 	{"toggleSidebar",	bridge_NSWindow_toggleSidebar},
 	{"dismiss",	bridge_NSWindow_dismiss},
-	{"setContentSize",	bridge_NSWindow_setContentSize},
-	{"setMinSize",	bridge_NSWindow_setMinSize},
-	{"setAppearance",	bridge_NSWindow_setAppearance},
+	{"resize",	bridge_NSWindow_resize},
 	{"focus",	bridge_NSWindow_focus},
 	{"isFirstResponder",	bridge_NSWindow_isFirstResponder},
 	{"selectTab",	bridge_NSWindow_selectTab},
 	{"workspaceState",	bridge_NSWindow_workspaceState},
 	{"show",	bridge_NSWindow_show},
+	{"close",	bridge_NSWindow_close},
 	{"add",	bridge_NSWindow_add},
 	{"layout",	bridge_NSWindow_layout},
-	{"perform",	bridge_NSWindow_perform},
 	{"presentPanel",	bridge_NSWindow_presentPanel},
 	{NULL, NULL}
 };
 
+static MethodEntry TextFieldMethods[] = {
+	{"sizeToFit",	bridge_NSTextField_sizeToFit},
+	{NULL, NULL}
+};
+
+static MethodEntry ProgressIndicatorMethods[] = {
+	{"start",	bridge_NSProgressIndicator_start},
+	{"stop",	bridge_NSProgressIndicator_stop},
+	{NULL, NULL}
+};
+
+static MethodEntry PopUpButtonMethods[] = {
+	{"addItemsWithTitles",	bridge_NSPopUpButton_addItemsWithTitles},
+	{NULL, NULL}
+};
+
+static MethodEntry NativeTextViewMethods[] = {
+	{NULL, NULL}
+};
+
 static MethodEntry ViewMethods[] = {
-	{"setHidden",	bridge_NSView_setHidden},
 	{"addSubview",	bridge_NSView_addSubview},
 	{"layout",	bridge_NSView_layout},
 	{"add",	bridge_NSView_add},
 	{"renderToPNG",	bridge_NSView_renderToPNG},
 	{"clearContainer",	bridge_NSView_clearContainer},
 	{"splitProportions",	bridge_NSView_splitProportions},
-	{"setContentSize",	bridge_NSView_setContentSize},
-	{"perform",	bridge_NSView_perform},
-	{"setCallback",	bridge_NSView_setCallback},
 	{NULL, NULL}
 };
 
@@ -642,6 +571,34 @@ static MethodEntry ViewMethods[] = {
 {
 	if ([obj isKindOfClass:[NSWindow class]]) {
 		lua_CFunction _m = lookupMethod(key, WindowMethods);
+		if (_m) { lua_pushcfunction(L, _m); return 1; }
+	}
+}
+
+{
+	if ([obj isKindOfClass:[NSTextField class]]) {
+		lua_CFunction _m = lookupMethod(key, TextFieldMethods);
+		if (_m) { lua_pushcfunction(L, _m); return 1; }
+	}
+}
+
+{
+	if ([obj isKindOfClass:[NSProgressIndicator class]]) {
+		lua_CFunction _m = lookupMethod(key, ProgressIndicatorMethods);
+		if (_m) { lua_pushcfunction(L, _m); return 1; }
+	}
+}
+
+{
+	if ([obj isKindOfClass:[NSPopUpButton class]]) {
+		lua_CFunction _m = lookupMethod(key, PopUpButtonMethods);
+		if (_m) { lua_pushcfunction(L, _m); return 1; }
+	}
+}
+
+{
+	if ([obj isKindOfClass:[NSTextView class]]) {
+		lua_CFunction _m = lookupMethod(key, NativeTextViewMethods);
 		if (_m) { lua_pushcfunction(L, _m); return 1; }
 	}
 }

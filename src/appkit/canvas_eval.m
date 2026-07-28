@@ -79,8 +79,6 @@ static lua_State *canvas_state_create(void) {
 
 	luaL_requiref(C, "AppKitNative", luaopen_bridge, 1);
 	lua_pop(C, 1);
-	luaL_requiref(C, "bridge", luaopen_bridge, 1);
-	lua_pop(C, 1);
 
 	/* Copy both Lua and native module paths so isolated previews resolve the
 	 * same embedded framework dylibs as the main application state. */

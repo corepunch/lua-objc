@@ -1,7 +1,4 @@
-/* AUTO-GENERATED — do not edit by hand.
- * Regenerate with:  python3 tools/gen_bridge.py --xml tools/AppKit.xml
- * Source:           tools/AppKit.xml
- */
+/* Lua value userdata for AppKit structs. */
 
 #if defined(GEN_STRUCT_HELPERS)
 static NSSize *check_NSSize(lua_State *L, int idx) {

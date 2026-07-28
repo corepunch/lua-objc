@@ -1,4 +1,4 @@
-local bridge = require("bridge")
+local bridge = require("AppKitNative")
 
 local TestKit = {}
 

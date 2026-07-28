@@ -1,6 +1,6 @@
 local ns = require("AppKit")
 local ControlBar = require("examples.ide.components.control_bar")
-local bridge = require("bridge")
+local bridge = require("AppKitNative")
 
 local PreviewArea = {}
 

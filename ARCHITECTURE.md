@@ -189,13 +189,14 @@ runtime-searchable Lua module.
 | `ns.HSplit { ... }` | `bridge._hsplit()` | NSSplitView, left-right panes |
 | `ns.VSplit { ... }` | `bridge._vsplit()` | NSSplitView, top-bottom panes |
 | `ns.Separator()` | `bridge._separator()` | 1px NSBox rule |
-| `ns.Text { ... }` | `bridge._create("NSTextField")` | Label with KVC property setting |
+| `ns.Text { ... }` | `bridge._textField()` | LuaTextField constructor with inherited KVC accessors |
 | `ns.List { ... }` | `bridge._tableview(...)` | NSTableView in NSScrollView |
 | `ns.Spacer()` | `bridge._spacer()` | flexGrow=1 filler |
 
 ### Layout props
 
-All container and leaf views accept layout props applied via `applyLayout()`:
+All container and leaf views inherit bridge-owned layout accessors from the
+`NSView` base extension. Ordinary Cocoa properties use the same KVC metatable:
 
 ```
 padding, paddingHorizontal, paddingVertical

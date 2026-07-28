@@ -2,11 +2,10 @@
 -- public AppKit module remain a single dylib with a stable declarative API.
 local bridge = require("AppKitNative")
 
-local AppKit = {}
-
-AppKit.NSSize = bridge.NSSize
-AppKit.NSPoint = bridge.NSPoint
-AppKit.NSRect = bridge.NSRect
+-- XML-generated native exports are the public module. Lua only adds compound
+-- declarative components whose behavior cannot be expressed as a native class
+-- declaration.
+local AppKit = bridge
 
 -- Native timers and network callbacks resume suspended Lua work later. Lua's
 -- coroutine.resume returns failures instead of raising them, so centralize the
@@ -106,22 +105,21 @@ function AppKit.Window(props)
 		win = bridge._window(title, width, height,
 			transparent_titlebar, hide_title)
 	end
-	win.size = AppKit.NSSize(width, height)
+	win.size = AppKit.Size(width, height)
 	if props.minWidth or props.minHeight then
-		win:setMinSize(
+		win.contentMinSize = AppKit.Size(
 			props.minWidth or width,
 			props.minHeight or height)
 	end
 	if props.tabbingMode or props.tabbingIdentifier then
-		win:setTabbing(
-			props.tabbingMode or "automatic",
-			props.tabbingIdentifier)
+		win.tabbing = props.tabbingMode or "automatic"
+		win.tabbingIdentifier = props.tabbingIdentifier
 	end
 	local appearance = props.appearance
 		or os.getenv("LUA_OBJC_APPEARANCE")
 		or _G._LAUNCH_APPEARANCE
 	if appearance == "light" or appearance == "dark" or appearance == "system" then
-		win:setAppearance(appearance)
+		win.appearanceStyle = appearance
 	end
 
 	if has_workspace then
@@ -201,7 +199,10 @@ function AppKit.isFirstResponder(window, view)
 end
 
 function AppKit.resizeWindow(window, width, height, anchor)
-	return window:setContentSize(width, height, anchor or "")
+	if anchor and anchor ~= "" then
+		return window:resize(width, height, anchor)
+	end
+	window.size = AppKit.Size(width, height)
 end
 
 function AppKit.relayout(view, width)
@@ -332,8 +333,8 @@ function AppKit.Text(arg)
 		text = tostring(arg)
 	end
 
-	local v = bridge._create("NSTextField")
-	v.stringValue = text
+	local v = bridge._textField()
+	v.text = text
 	v.bezeled = false
 	v.drawsBackground = false
 	v.editable = false
@@ -346,14 +347,14 @@ function AppKit.Text(arg)
 		v.textColor = bridge._systemColor(arg.color)
 	end
 	if type(arg) == "table" and arg.lineLimit then
-		v.maximumNumberOfLines = arg.lineLimit
+		v.lineLimit = arg.lineLimit
 	end
 	if type(arg) == "table" and arg.truncation then
 		local modes = { head = 3, tail = 4, middle = 5 }
 		v.lineBreakMode = modes[arg.truncation] or 4
 	end
 
-	v:perform("sizeToFit")
+	v:sizeToFit()
 	return applyLayout(v, type(arg) == "table" and arg or nil)
 end
 
@@ -361,9 +362,9 @@ function AppKit.TextField(props)
 	if type(props) ~= "table" then
 		props = { value = tostring(props or "") }
 	end
-	local field = bridge._create("NSTextField")
-	field.stringValue = props.value or props[1] or ""
-	field.placeholderString = props.placeholder or ""
+	local field = bridge._textField()
+	field.text = props.value or props[1] or ""
+	field.placeholder = props.placeholder or ""
 	field.editable = props.editable ~= false
 	field.selectable = props.selectable ~= false
 	field.bezeled = props.bezeled ~= false
@@ -381,9 +382,9 @@ end
 function AppKit.TextEditor(props)
 	props = props or {}
 	local view = bridge._textView()
-	if props.language then view:setLanguage(props.language) end
-	if props.text then view:setText(props.text) end
-	if props.wrapMode ~= nil then view:setWrapMode(props.wrapMode) end
+	if props.language then view.language = props.language end
+	if props.text then view.text = props.text end
+	if props.wrapMode ~= nil then view.wrapMode = props.wrapMode end
 	return applyLayout(view, props)
 end
 
@@ -457,7 +458,7 @@ function AppKit.List(props)
 
 	if props.refresh and type(props.refresh) == "function" then
 		local refresh_fn = props.refresh
-		tv:setRefresh(function(list, on_done)
+		tv:onRefresh(function(list, on_done)
 			if not list then return end
 			list:showLoading()
 			list:clearRows()
@@ -563,7 +564,7 @@ function AppKit.Toggle(props)
 end
 
 function AppKit.Separator(props)
-	local v = bridge._create("NSBox")
+	local v = bridge._box()
 	v.boxType = 2
 	v.fixedHeight = 1
 	v.flexGrow = 1
@@ -572,7 +573,7 @@ end
 
 function AppKit.Divider(props)
 	props = props or {}
-	local v = bridge._create("NSBox")
+	local v = bridge._box()
 	v.boxType = 2
 	if props.orientation == "vertical" then
 		v.fixedWidth = 1
@@ -585,7 +586,7 @@ function AppKit.Divider(props)
 end
 
 function AppKit.ProgressView(props)
-	local v = bridge._create("NSProgressIndicator")
+	local v = bridge._progressIndicator()
 	v.style = 1
 	v.displayedWhenStopped = false
 	return applyLayout(v, props)
@@ -599,18 +600,18 @@ function AppKit.Layout(view, props)
 end
 
 function AppKit.ProgressStart(progress)
-	progress:perform("startAnimation:")
+	progress:start()
 end
 
 function AppKit.ProgressStop(progress)
-	progress:perform("stopAnimation:")
+	progress:stop()
 end
 
 function AppKit.ToolbarProgress(window, identifier)
 	local item = AppKit.ToolbarItem(window, identifier)
 	local restore_view = item.view
 	local progress = AppKit.ProgressView()
-	progress:setContentSize(32, 32)
+	progress.size = AppKit.Size(32, 32)
 
 	return {
 		start = function(self, tooltip)

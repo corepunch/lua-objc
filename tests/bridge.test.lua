@@ -3,7 +3,7 @@ local t = require("TestKit")
 local App = require("App")
 local ControlBar = require("examples.ide.components.control_bar")
 local Editor = require("examples.ide.components.editor")
-local bridge = require("bridge")
+local bridge = require("AppKitNative")
 local ImageViewerPlugin = require("examples.ide.plugins.image_viewer")
 local TextEditorPlugin = require("examples.ide.plugins.text_editor")
 local NativeControlsPlugin = require("examples.ide.plugins.native_controls")
@@ -13,6 +13,18 @@ local FindInFiles = require("examples.ide.components.find_in_files")
 local EditorArea = require("examples.ide.components.editor_area")
 local PreviewArea = require("examples.ide.components.preview_area")
 local canvasMod = require("examples.ide.components.canvas")
+
+local publicSize = ns.Size(12, 34)
+t.assertEqual(publicSize.width, 12,
+	"Size is the platform-neutral native size constructor")
+t.assertEqual(publicSize.height, 34,
+	"Size preserves native height")
+t.assertEqual(ns.NSSize, nil,
+	"platform-prefixed compatibility constructors are not exported")
+t.assertEqual(ns.NSPoint, nil,
+	"platform-prefixed Point compatibility is not exported")
+t.assertEqual(ns.NSRect, nil,
+	"platform-prefixed Rect compatibility is not exported")
 
 -- Public frameworks must come from native Lua modules. A loose Lua fallback
 -- would hide packaging regressions while still making require() appear to work.
@@ -29,11 +41,38 @@ local ok = pcall(function()
 		ns.Text "First",
 		ns.Text "Second",
 	}
-	v:setHidden(true)
-	t.expect(v.hidden, "typed NSView methods call the native selector")
-	v:setHidden(false)
+	v.hidden = true
+	t.expect(v.hidden, "typed NSView properties mutate native state")
+	v.hidden = false
 end)
 t.expect(ok, "VStack creates without error")
+
+local textBlock = ns.Text {
+	"Initial",
+	lineLimit = 2,
+}
+t.assertEqual(textBlock.text, "Initial",
+	"Text construction uses the native subclass text property")
+t.assertEqual(textBlock.lineLimit, 2,
+	"Text construction uses the renamed native line-limit property")
+textBlock.text = "Updated"
+t.assertEqual(textBlock.text, "Updated",
+	"Text native properties support mutation and readback")
+t.expect(not textBlock.editable,
+	"Text role defaults remain native control state")
+textBlock.frame = ns.Rect(ns.Point(7, 9), ns.Size(120, 24))
+local nativeFrame = textBlock.frame
+t.assertEqual(nativeFrame.origin.x, 7,
+	"KVC converts native Point fields to platform-neutral userdata")
+t.assertEqual(nativeFrame.origin.y, 9,
+	"KVC round-trips native Point fields")
+t.assertEqual(nativeFrame.size.width, 120,
+	"KVC converts native Size fields to platform-neutral userdata")
+t.assertEqual(nativeFrame.size.height, 24,
+	"KVC round-trips native Size fields")
+t.assertThrows(function()
+	textBlock.undeclaredProperty = true
+end, "undeclared properties cannot bypass native KVC")
 
 -- HStack: can create with Spacer
 
@@ -74,11 +113,11 @@ t.assertEqual(receivedCommand, "submit",
 local findInFiles, findInFilesRoot = FindInFiles {
 	files = { "/project/main.lua" },
 }
-findInFilesRoot:setContentSize(220, 300)
+findInFilesRoot.size = ns.Size(220, 300)
 findInFilesRoot:layout(220)
 local searchIconFrame = findInFiles._searchIcon.frameInWindow
 t.assertEqual(type(searchIconFrame), "userdata",
-	"frameInWindow is an NSRect userdata property")
+	"frameInWindow is a Rect userdata property")
 local searchIconY = searchIconFrame.origin.y
 local searchIconHeight = searchIconFrame.size.height
 local searchFieldFrame = findInFiles._searchField.frameInWindow
@@ -103,12 +142,12 @@ local win = ns.Window {
 t.assertEqual(win.title, "Headless Test", "Window title is set")
 local windowSize = win.size
 t.assertEqual(type(windowSize), "userdata",
-	"Window.size is an NSSize userdata property")
+	"Window.size is a Size userdata property")
 t.assertEqual(windowSize.width, 400,
 	"Window.size reads the native content width")
 t.assertEqual(windowSize.height, 300,
 	"Window.size reads the native content height")
-win.size = ns.NSSize(360, 240)
+win.size = ns.Size(360, 240)
 windowSize = win.size
 t.assertEqual(windowSize.width, 360,
 	"Window.size accepts positional width")
@@ -116,6 +155,14 @@ t.assertEqual(windowSize.height, 240,
 	"Window.size accepts positional height")
 t.assertEqual(win.title, "Headless Test",
 	"mutating Window.size preserves unrelated native properties")
+win.minSize = ns.Size(280, 180)
+local windowMinSize = win.minSize
+t.assertEqual(windowMinSize.width, 280,
+	"Window.minSize replaces the scalar setter")
+t.assertEqual(windowMinSize.height, 180,
+	"Window.minSize round-trips its native struct value")
+t.assertEqual(win.title, "Headless Test",
+	"mutating Window.minSize preserves unrelated native properties")
 
 -- NSWindow tabs group complete document windows through AppKit.
 
@@ -304,7 +351,7 @@ t.assertEqual(ptv:tabCount(), 0, "preview tab view starts empty")
 
 local function makePreviewTV(content)
 	local tv = ns.TextEditor()
-	tv:setText(content)
+	tv.text = content
 	return tv
 end
 
@@ -367,11 +414,11 @@ local compound = ns.Button {
 }
 t.expect(compound ~= nil, "compound native button creates successfully")
 
-local symbolToggle = require("bridge")._symbolToggle(
+local symbolToggle = require("AppKitNative")._symbolToggle(
 	"text.justify",
 	"Toggle Word Wrap",
 	false)
-local secondSymbolToggle = require("bridge")._symbolToggle(
+local secondSymbolToggle = require("AppKitNative")._symbolToggle(
 	"sidebar.right",
 	"Toggle Inspector",
 	false)
@@ -475,7 +522,7 @@ t.assertEqual(
 	true,
 	"IDE editor text view is selectable")
 t.assertEqual(
-	editor._view.documentView.string,
+	editor._view.documentView.text,
 	"return 1",
 	"IDE editor exposes its initial source")
 
@@ -518,11 +565,11 @@ t.assertEqual(
 	true,
 	"text editor plugin editor is editable")
 t.assertEqual(
-	pluginEditor._view.documentView.string,
+	pluginEditor._view.documentView.text,
 	"return 42",
 	"text editor plugin editor exposes initial source")
 
-local imageViewer = require("bridge")._imageViewer("tests/fixtures/oversized.svg")
+local imageViewer = require("AppKitNative")._imageViewer("tests/fixtures/oversized.svg")
 t.expect(imageViewer ~= nil, "image viewer surface creates successfully")
 t.assertEqual(imageViewer.zoomScale, 1, "image viewer starts at 1x zoom")
 t.expect(imageViewer.fitToWindow == false, "image viewer starts in actual-size mode")
@@ -611,9 +658,9 @@ t.assertEqual(parsed.key, 42, "json_parse: numeric value")
 t.assertEqual(parsed.name, "test", "json_parse: string value")
 
 -- Shared Lua/Foundation conversion preserves nested collections and scalar
--- types across ordinary KVC and invocation boundaries.
+-- types across KVC properties and explicit native method boundaries.
 
-local valueCarrier = bridge._create("NSTableCellView")
+local valueCarrier = bridge._tableCellView()
 local embeddedNul = "left\0right"
 local largeInteger = 9007199254740993
 valueCarrier.objectValue = {
@@ -636,12 +683,12 @@ t.assertEqual(roundTrip.items[2], 2,
 t.assertEqual(roundTrip.items[3], false,
 	"Foundation conversion preserves false array entries")
 
-local popup = bridge._create("NSPopUpButton")
-popup:perform("addItemsWithTitles:", { "First", "Second" })
+local popup = bridge._popUpButton()
+popup:addItemsWithTitles { "First", "Second" }
 t.assertEqual(popup.numberOfItems, 2,
 	"generic invocation converts a Lua array to NSArray")
 t.assertEqual(popup.itemTitles[2], "Second",
-	"KVC converts an NSArray result back to a Lua array")
+	"KVC properties convert an NSArray result back to a Lua array")
 
 valueCarrier.objectValue = "unchanged"
 local cyclic = {}
@@ -655,7 +702,7 @@ t.assertEqual(valueCarrier.objectValue, "unchanged",
 
 -- Canvas eval: ns.Window{...} without `return` must produce a view
 
-local bridge_raw = require("bridge")
+local bridge_raw = require("AppKitNative")
 
 local view1, err1 = bridge_raw._eval("local ns=require('AppKit'); ns.Window { ns.Text 'hi' }", true)
 t.expect(err1 == nil, "canvas eval: Window without return has no error")
@@ -680,6 +727,44 @@ local view4, err4 = bridge_raw._eval(
 	true)
 t.expect(err4 == nil, "canvas eval: Preview with content fn has no error")
 t.expect(view4 ~= nil, "canvas eval: Preview with content fn produces a view")
+
+-- A preview is inserted after the IDE workspace has already sized its canvas.
+-- Native tables begin at 400 px, so a fixed split pane must establish its
+-- requested width before NSSplitView preserves those construction frames.
+local mailCanvas = canvasMod.Canvas()
+local mailWorkspace = ns.Window {
+	width = 1024,
+	height = 768,
+	visible = false,
+	sidebarWidth = 240,
+	sidebar = ns.Text "Files",
+	content = ns.TextEditor { language = "lua" },
+	detail = mailCanvas,
+}
+local mailFile = assert(io.open("examples/mail.lua", "r"))
+local mailCode = mailFile:read("*a")
+mailFile:close()
+local mailPreview, mailError = bridge_raw._eval(mailCode, true)
+t.expect(mailError == nil, "mail preview evaluates in the IDE canvas")
+t.expect(mailPreview ~= nil, "mail preview returns its embedded content")
+mailCanvas:add(mailPreview)
+mailCanvas:layout()
+local mailSplit = mailPreview.subviews[1]
+local mailPanes = mailSplit.arrangedSubviews
+t.expect(mailCanvas.size.width < 600,
+	"mail regression mounts in a constrained IDE detail pane")
+t.assertEqual(mailPanes[1].size.width, 170,
+	"IDE-mounted mail split honors the mailbox fixed width")
+t.expect(mailPanes[2].size.width > 200,
+	"IDE-mounted mail split leaves usable room for messages")
+
+mailWorkspace.size = ns.Size(1800, 1000)
+mailWorkspace:layout()
+mailPanes = mailSplit.arrangedSubviews
+t.assertEqual(mailPanes[1].size.width, 170,
+	"mailbox width survives an outer editor/canvas resize")
+t.expect(mailPanes[2].size.width > 800,
+	"message pane absorbs the wider IDE canvas")
 
 -- Canvas eval: syntax error returns an error string, not a crash
 
@@ -729,7 +814,7 @@ for _, c in ipairs(widths) do total640 = total640 + c.width end
 t.expect(total640 > 600, "640-wide columns fill available width (" .. total640 .. ")")
 
 -- Resize to 450 (simulates canvas pane embedding) and re-layout.
-tableList:setContentSize(450, 200)
+tableList.size = ns.Size(450, 200)
 tableList:layout(450)
 widths = bridge._tableColumnWidths(tableList)
 local total450 = 0
@@ -740,7 +825,7 @@ end
 t.expect(total450 < total640, "columns shrink when table is narrowed (" .. total450 .. " < " .. total640 .. ")")
 
 -- Resize to 320 (very narrow but all columns must stay visible).
-tableList:setContentSize(320, 200)
+tableList.size = ns.Size(320, 200)
 tableList:layout(320)
 widths = bridge._tableColumnWidths(tableList)
 local total320 = 0
@@ -767,7 +852,7 @@ local fileTree = ns.OutlineView {
 		} },
 	},
 }
-fileTree:setContentSize(220, 200)
+fileTree.size = ns.Size(220, 200)
 fileTree:layout(220)
 local outlineWidths = bridge._tableColumnWidths(fileTree)
 t.assertEqual(#outlineWidths, 1, "file tree has one outline column")
@@ -794,7 +879,7 @@ local splitView = ns.HSplit {
 -- Set a known content size and run layout.
 -- NSSplitView initial width matches the first subview's frame; we force a
 -- specific width so the proportions kick in with a deterministic total.
-splitView:setContentSize(620, 300)
+splitView.size = ns.Size(620, 300)
 splitView:layout(620)
 
 local leftW = leftFix.size.width
@@ -803,7 +888,7 @@ t.assertEqual(leftW, 150, "fixed-width pane retains 150 px in HSplit (got " .. l
 t.expect(rightW > 400, "flexible pane fills remaining width (got " .. rightW .. ")")
 
 -- Simulate a window resize and verify the fixed pane does not change.
-splitView:setContentSize(900, 300)
+splitView.size = ns.Size(900, 300)
 splitView:layout(900)
 
 leftW = leftFix.size.width
@@ -836,7 +921,7 @@ local function colWidth(cols, id)
 	return 0
 end
 
-flexTable:setContentSize(600, 200)
+flexTable.size = ns.Size(600, 200)
 flexTable:layout(600)
 local cw = bridge._tableColumnWidths(flexTable)
 local a1 = colWidth(cw, "a")
@@ -849,7 +934,7 @@ local expectedB1 = 600 - 120 - 80
 t.assertEqual(b1, expectedB1, "stretch column fills remaining " .. expectedB1 .. " px (got " .. b1 .. ")")
 
 -- Resize wider: fixed columns must NOT change.
-flexTable:setContentSize(800, 200)
+flexTable.size = ns.Size(800, 200)
 flexTable:layout(800)
 cw = bridge._tableColumnWidths(flexTable)
 local a2 = colWidth(cw, "a")
@@ -861,7 +946,7 @@ t.assertEqual(c2, 80, "fixed 'c' unchanged at 80 after widen (got " .. c2 .. ")"
 t.expect(b2 > b1, "stretch column 'b' grew (was " .. b1 .. ", now " .. b2 .. ")")
 
 -- Resize narrower: fixed columns must NOT change; stretch column shrinks.
-flexTable:setContentSize(400, 200)
+flexTable.size = ns.Size(400, 200)
 flexTable:layout(400)
 cw = bridge._tableColumnWidths(flexTable)
 local a3 = colWidth(cw, "a")
@@ -897,7 +982,7 @@ t.assertEqual(mailbox.className, "NSScrollView",
 t.expect(not mailbox.drawsBackground,
 	"source-list table scroll view is transparent")
 
-mailbox:setContentSize(170, 200)
+mailbox.size = ns.Size(170, 200)
 mailbox:layout(170)
 cw = bridge._tableColumnWidths(mailbox)
 local nameW = colWidth(cw, "name")

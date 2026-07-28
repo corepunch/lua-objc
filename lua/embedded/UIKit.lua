@@ -18,13 +18,6 @@ local layout_properties = {
 	"alignment",
 	"fixedWidth",
 	"fixedHeight",
-	"minWidth",
-	"minHeight",
-	"maxWidth",
-	"maxHeight",
-	"flexGrow",
-	"flexShrink",
-	"flexBasis",
 }
 
 local function applyLayout(view, props)
@@ -107,8 +100,7 @@ function UIKit.TextField(arg)
 		text = arg
 	end
 
-	local v = bridge._create("UITextField")
-	if text ~= "" then v.text = text end
+	local v = bridge._textField(text)
 	return applyLayout(v, props)
 end
 
@@ -124,10 +116,7 @@ function UIKit.Label(arg)
 		text = tostring(arg)
 	end
 
-	local v = bridge._create("UILabel")
-	v.text = text
-	v.numberOfLines = 0
-	bridge._perform(v, "sizeToFit")
+	local v = bridge._label(text)
 	return applyLayout(v, props)
 end
 
@@ -217,16 +206,12 @@ function UIKit.Switch(props)
 end
 
 function UIKit.Separator(props)
-	local v = bridge._create("UIView")
-	v.fixedHeight = 1
-	v.flexGrow = 1
+	local v = bridge._separator()
 	return applyLayout(v, props)
 end
 
 function UIKit.ProgressView(props)
-	local v = bridge._create("UIActivityIndicatorView")
-	bridge._perform(v, "startAnimating")
-	return applyLayout(v, props)
+	return applyLayout(bridge._progressIndicator(), props)
 end
 
 UIKit.Text = UIKit.Label

@@ -1,4 +1,4 @@
-local bridge = require("bridge")
+local bridge = require("AppKitNative")
 local ns = require("AppKit")
 
 -- evalIntoCanvas: evaluate Lua code and render the result into a canvas view.
@@ -13,13 +13,13 @@ local function evalIntoCanvas(canvas, code, rebuildToolbar)
 	if rebuildToolbar then rebuildToolbar(nil) end
 
 	if err then
-		local label = bridge._create("NSTextField")
-		label.stringValue = err
+		local label = bridge._textField()
+		label.text = err
 		label.bezeled = false
 		label.drawsBackground = false
 		label.editable = false
 		label.textColor = bridge._systemColor("secondary")
-		label:perform("sizeToFit")
+		label:sizeToFit()
 		canvas:add(label)
 	elseif result then
 		local toolbarItems = bridge._canvas_toolbar_items(result)

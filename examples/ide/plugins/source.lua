@@ -1,5 +1,5 @@
 local ns = require("AppKit")
-local bridge = require("bridge")
+local bridge = require("AppKitNative")
 local App = require("App")
 
 local canvasMod = require("examples.ide.components.canvas")
@@ -187,12 +187,12 @@ function Source.open(folder, app, initialFile)
 			bridge._watchFile(path, function()
 				local updated = readFile(path)
 				if not updated then return end
-				textView:setText(updated)
+				textView.text = updated
 				evaluate(updated)
 			end)
 		end
 
-		textView:setText(content or "")
+		textView.text = content or ""
 
 		local window = ns.Window {
 			title = name,
@@ -242,12 +242,12 @@ function Source.open(folder, app, initialFile)
 		local function reload()
 			local updated = readFile(path)
 			if not updated then return end
-			document.textView:setText(updated)
+			document.textView.text = updated
 			document.evaluate(updated)
 		end
 
-	document.textView:setText(content)
-	document.textView:setLanguage("lua")
+	document.textView.text = content
+	document.textView.language = "lua"
 		primaryWindow.title = path:match("([^/\\]+)$") or path
 		bridge._watchFile(path, reload)
 		document.evaluate(content)
@@ -323,7 +323,7 @@ function Source.open(folder, app, initialFile)
 		action = function()
 			wordWrapEnabled = not wordWrapEnabled
 			for _, document in ipairs(documents) do
-				document.textView:setWrapMode(wordWrapEnabled)
+				document.textView.wrapMode = wordWrapEnabled
 			end
 		end,
 	}

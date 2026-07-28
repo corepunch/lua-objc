@@ -2,7 +2,7 @@
 -- File discovery, filtering, selection, datasource replacement, and palette
 -- state all live in Lua. AppKit supplies only generic native primitives.
 local ns = require("AppKit")
-local bridge = require("bridge")
+local bridge = require("AppKitNative")
 
 local SEARCH = {
 	width = 520,
@@ -133,7 +133,7 @@ function SearchView:setRootDir(root)
 end
 
 function SearchView:setQuery(query)
-	self._searchField.stringValue = query or ""
+	self._searchField.text = query or ""
 	self:_replaceResults(query or "")
 end
 

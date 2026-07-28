@@ -180,13 +180,59 @@ static lua_State *gL = NULL;
 #include "appkit/tabview.m"
 #include "appkit/platform.m"
 
-#include "appkit/generated/bridge_funcs.m"
+#include "appkit/constructors.m"
 #pragma mark - Module registration
 
 static const luaL_Reg bridge_lib[] = {
-#define GEN_BRIDGE_LIB
-#include "appkit/generated/bridge_lib.inc"
-#undef GEN_BRIDGE_LIB
+	{"Size", bridge_NSSize},
+	{"Point", bridge_NSPoint},
+	{"Rect", bridge_NSRect},
+	{"_vstack", bridge_AppKitControls_vstack},
+	{"_hstack", bridge_AppKitControls_hstack},
+	{"_hsplit", bridge_AppKitControls_hsplit},
+	{"_vsplit", bridge_AppKitControls_vsplit},
+	{"_separator", bridge_AppKitControls_separator},
+	{"_spacer", bridge_AppKitControls_spacer},
+	{"_textField", bridge_AppKitControls_textField},
+	{"_box", bridge_AppKitControls_box},
+	{"_progressIndicator", bridge_AppKitControls_progressIndicator},
+	{"_tableCellView", bridge_AppKitControls_tableCellView},
+	{"_popUpButton", bridge_AppKitControls_popUpButton},
+	{"_button", bridge_AppKitControls_button},
+	{"_toggle", bridge_AppKitControls_toggle},
+	{"_tableColumnWidths", bridge_AppKit_table_column_widths},
+	{"_tableCellFrames", bridge_AppKit_table_cell_frames},
+	{"_toolbar_item", bridge_AppKit_toolbar_item},
+	{"_canvas_toolbar_items", bridge_AppKit_canvas_toolbar_items},
+	{"_window", bridge_AppKit_window},
+	{"_setWindowWorkspace", bridge_AppKit_set_window_workspace},
+	{"_image", bridge_AppKit_image},
+	{"_imageViewer", bridge_AppKit_image_viewer},
+	{"_systemImage", bridge_AppKit_system_image},
+	{"_systemColor", bridge_AppKit_system_color},
+	{"_tableview", bridge_AppKit_tableview},
+	{"_actionButton", bridge_AppKit_action_button},
+	{"_panel", bridge_AppKit_panel},
+	{"_panelStyleState", bridge_AppKit_panel_style_state},
+	{"_menuItem", bridge_AppKit_menu_item},
+	{"_textFieldCallbacks", bridge_AppKit_text_field_callbacks},
+	{"_textFieldTestInput", bridge_AppKit_text_field_test_input},
+	{"_textFieldTestCommand", bridge_AppKit_text_field_test_command},
+	{"_textView", bridge_AppKit_text_view},
+	{"_symbolToggle", bridge_AppKit_symbol_toggle},
+	{"_symbolButton", bridge_AppKit_symbol_button},
+	{"_eval", bridge_AppKit_eval},
+	{"_tabview", bridge_AppKit_tabview},
+	{"_segmentedControl", bridge_AppKit_segmented_control},
+	{"_watchFile", bridge_AppKit_watch_file},
+	{"_pickFolder", bridge_AppKit_pick_folder},
+	{"_pickFile", bridge_AppKit_pick_file},
+	{"_outlineview", bridge_AppKit_outlineview},
+	{"_listDirectory", bridge_AppKit_list_directory},
+	{"_timerAfter", bridge_AppKit_timer_after},
+	{"_httpGet", bridge_AppKit_http_get},
+	{"_jsonParse", bridge_AppKit_json_parse},
+	{"_font", bridge_AppKit_font},
 	{NULL, NULL},
 };
 
@@ -206,7 +252,7 @@ int luaopen_bridge(lua_State *L) {
 	register_metatable(L, "nswindow");
 	register_metatable(L, "nsobject");
 #define GEN_STRUCT_REGISTER
-#include "appkit/generated/bridge_structs.m"
+#include "appkit/structs.m"
 #undef GEN_STRUCT_REGISTER
 	luaL_newlib(L, bridge_lib);
 	return 1;
@@ -298,10 +344,6 @@ int lua_objc_main(int argc, char *argv[]) {
 	(void)mainOwner;  /* released by ARC at return → -dealloc → lua_close */
 
 	luaL_requiref(L, "AppKitNative", luaopen_bridge, 1);
-	lua_pop(L, 1);
-	/* Compatibility for application code that still imports the old private
-	 * name directly. Public framework code uses AppKitNative. */
-	luaL_requiref(L, "bridge", luaopen_bridge, 1);
 	lua_pop(L, 1);
 
 	if (appearance && strcmp(appearance, "system") != 0) {

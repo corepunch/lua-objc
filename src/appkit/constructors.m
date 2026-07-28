@@ -1,9 +1,4 @@
-/* AUTO-GENERATED — do not edit by hand.
- * Regenerate with:  python3 tools/gen_bridge.py --xml tools/AppKit.xml
- * Source:           tools/AppKit.xml
- */
-
-/* Generated bridge_xxx() functions */
+/* Native constructors exported by the AppKit module. */
 
 static int bridge_AppKitControls_vstack(lua_State *L) {
 
@@ -64,6 +59,41 @@ static int bridge_AppKitControls_spacer(lua_State *L) {
 	return 1;
 }
 
+static int bridge_AppKitControls_textField(lua_State *L) {
+
+	LuaTextField *obj = [[LuaTextField alloc] initWithFrame:NSZeroRect];
+	push_objc(L, obj, "nsview");
+	return 1;
+}
+
+static int bridge_AppKitControls_box(lua_State *L) {
+
+	NSBox *obj = [[NSBox alloc] initWithFrame:NSZeroRect];
+	push_objc(L, obj, "nsview");
+	return 1;
+}
+
+static int bridge_AppKitControls_progressIndicator(lua_State *L) {
+
+	NSProgressIndicator *obj = [[NSProgressIndicator alloc] initWithFrame:NSZeroRect];
+	push_objc(L, obj, "nsview");
+	return 1;
+}
+
+static int bridge_AppKitControls_tableCellView(lua_State *L) {
+
+	NSTableCellView *obj = [[NSTableCellView alloc] initWithFrame:NSZeroRect];
+	push_objc(L, obj, "nsview");
+	return 1;
+}
+
+static int bridge_AppKitControls_popUpButton(lua_State *L) {
+
+	NSPopUpButton *obj = [[NSPopUpButton alloc] initWithFrame:NSZeroRect];
+	push_objc(L, obj, "nsview");
+	return 1;
+}
+
 static int bridge_AppKitControls_button(lua_State *L) {
 	const char *title = luaL_checkstring(L, 1);
 	BOOL has_callback = !lua_isnoneornil(L, 2);
@@ -110,7 +140,7 @@ static int bridge_AppKitControls_toggle(lua_State *L) {
 	return 1;
 }
 
-static int bridge_NSScrollView_setRefresh(lua_State *L) {
+static int bridge_NSScrollView_onRefresh(lua_State *L) {
 	id obj = check_objc(L, 1);
 	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");

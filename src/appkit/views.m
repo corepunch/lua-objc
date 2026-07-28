@@ -17,7 +17,7 @@ static int bridge_window(lua_State *L) {
 		style |= NSWindowStyleMaskFullSizeContentView;
 	}
 
-	NSWindow *w = [[NSWindow alloc] initWithContentRect:frame
+	NSWindow *w = [[LuaWindow alloc] initWithContentRect:frame
 											   styleMask:style
 												 backing:NSBackingStoreBuffered
 												   defer:NO];

@@ -412,9 +412,9 @@ window in its group. Window tabs own complete content trees; use an inner
 `NSWindow` API owns all tab presentation; applications must not instantiate
 Finder's private `NSTabBar` or `NSTabButton` implementation classes.
 
-This API stays small by relying on the generic KVC bridge for properties like
-`enabled`, `view`, `image`, and `toolTip`; don't add a dedicated C bridge
-function for each toolbar state.
+Toolbar state such as `enabled`, `view`, `label`, and `toolTip` uses the native
+object's KVC-compliant properties directly. Semantic aliases live as accessors
+on exported Objective-C subclasses.
 
 ### `VStack{...}` / `HStack{...}`
 
@@ -527,8 +527,8 @@ ns.Toggle {
 }
 ```
 
-The toggle state can also be read/written via KVC: `toggle.state` returns `1`
-(on) or `0` (off); assign `toggle.state = 1` to turn it on.
+The native KVC `state` property returns `1` (on) or `0` (off); assign
+`toggle.state = 1` to turn it on.
 
 ### `SymbolToggle(symbol, tooltip, is_on, action?)`
 
@@ -991,16 +991,16 @@ should add next.
 | **`id` dynamic typing** | `id` accepts any ObjC object without static type info. Bridge functions receive `id` and decide at runtime which class to cast to. |
 | **Static lookup tables + block prop parsers** | Replace chained `if/strcmp`/`isEqualToString:` with data arrays. `NameValueEntry` maps compile-time string constants to enum values via a 4-line lookup loop. `TablePropParser` arrays make option-table parsing declarative — each Lua key → block entry. Adding a property is one line; the parsing loop never changes. See `GridLinesMap` / `TableStyleMap` / `AlignmentMap` + the `propParsers[]` array in `bridge_tableview` / `bridge_outlineview`. |
 
-### Not yet using — would reduce boilerplate further
+### Dynamic runtime tools
 
 | Trick | How it helps | Effort |
 |---|---|---|
-| **KVC (`setValue:forKey:`)** | Replace `bridge._set_text`, `bridge._set_frame`, etc. with one generic `bridge._set(view, "stringValue", "hello")`. KVC auto-boxes scalars and handles type conversion. | Low |
-| **`performSelector:`** | `bridge._call(view, "sizeToFit")` — call any method by name without a typed bridge function. Guard with `respondsToSelector:`. | Low |
+| **KVC (`setValue:forKey:`)** | Used for Cocoa properties and inherited bridge properties. Exported subclasses own semantic aliases and custom accessors. | In use |
+| **`performSelector:`** | Rejected for the public bridge: specialized operations use explicit native method bindings. | — |
 | **`class_copyMethodList`** | Enumerate all methods on NSView/NSWindow at runtime, auto-register them as Lua-callable bridge functions. One-time setup, then new AppKit methods work for free. | Medium |
 | **Generic Lua↔NSDictionary** | A recursive converter: Lua table → `NSDictionary`/`NSArray`, ObjC collection → Lua table. Eliminates `lua_table_to_dict` and enables passing complex data anywhere. | Medium |
 | **KVO** | `observeValueForKeyPath:ofObject:change:context:` → Lua callback. Enables reactive UI: change a property in ObjC, Lua gets notified automatically. | Medium |
-| **`NSInvocation`** | Full dynamic method invocation with arbitrary signatures. More complex but enables calling any method without writing a typed wrapper. | High |
+| **`NSInvocation`** | Rejected for ordinary public calls in favor of explicit native method bindings. | — |
 | **`NSProxy` + `forwardingTargetForSelector:`** | Create a Lua-backed proxy object that responds to any selector by calling a Lua function. The Lua side defines the interface; ObjC forwards everything. | High |
 
 ### C++ things that don't apply here
