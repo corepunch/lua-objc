@@ -676,13 +676,7 @@ static void layout_recursive(NSView *view, CGFloat width) {
 	default: break;
 	}
 	} else {
-		NSScrollView *innerSV = objc_getAssociatedObject(view, &kKeys[kTableScrollViewKey]);
-		if (innerSV) {
-			[innerSV tile];
-			LuaTableViewSource *source =
-				objc_getAssociatedObject(view, &kKeys[kTableSourceKey]);
-			[source updateTableFrame];
-		} else if ([view isKindOfClass:[NSScrollView class]]) {
+		if ([view isKindOfClass:[NSScrollView class]]) {
 			[(NSScrollView *)view tile];
 			LuaTableViewSource *source =
 				objc_getAssociatedObject(view, &kKeys[kTableSourceKey]);

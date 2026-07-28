@@ -114,30 +114,17 @@ static int bridge_outlineview(lua_State *L) {
 	sv.autohidesScrollers = YES;
 	sv.borderType = bordered ? NSBezelBorder : NSNoBorder;
 	sv.drawsBackground = drawsBackground;
-	if (isSourceList) sv.drawsBackground = NO;
-
 	if (isSourceList) {
-		NSVisualEffectView *vev = [[NSVisualEffectView alloc]
-			initWithFrame:NSMakeRect(0, 0, width, height)];
-		vev.material = NSVisualEffectMaterialSidebar;
-		vev.blendingMode = NSVisualEffectBlendingModeBehindWindow;
-		vev.state = NSVisualEffectStateFollowsWindowActiveState;
-		sv.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-		[vev addSubview:sv];
-		objc_setAssociatedObject(vev, &kKeys[kFlexibleKey], @YES,
-			OBJC_ASSOCIATION_RETAIN);
-		objc_setAssociatedObject(vev, &kKeys[kTableSourceKey], src,
-			OBJC_ASSOCIATION_RETAIN);
-		objc_setAssociatedObject(vev, &kKeys[kTableScrollViewKey], sv,
-			OBJC_ASSOCIATION_RETAIN);
-		push_objc(L, vev, "nsview");
-	} else {
-		objc_setAssociatedObject(sv, &kKeys[kFlexibleKey], @YES,
-			OBJC_ASSOCIATION_RETAIN);
-		objc_setAssociatedObject(sv, &kKeys[kTableSourceKey], src,
-			OBJC_ASSOCIATION_RETAIN);
-		push_objc(L, sv, "nsview");
+		ov.backgroundColor = NSColor.clearColor;
+		sv.drawsBackground = NO;
+		sv.contentView.drawsBackground = NO;
 	}
+
+	objc_setAssociatedObject(sv, &kKeys[kFlexibleKey], @YES,
+		OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(sv, &kKeys[kTableSourceKey], src,
+		OBJC_ASSOCIATION_RETAIN);
+	push_objc(L, sv, "nsview");
 	return 1;
 }
 

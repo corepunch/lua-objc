@@ -218,12 +218,12 @@ Xcode-aligned IDE workspace components. The dylib embeds
 | IDEKit component | Xcode equivalent | Description |
 |---|---|---|
 | `IDEKit.ControlBar` | `DVTControlBar` | 28px header strip with title + leading/trailing slots, terminated by a 1px separator |
-| `IDEKit.NavigatorArea` | `NSView_ControlledBy_IDENavigatorArea` | Left sidebar: ControlBar + one source-list file tree |
+| `IDEKit.NavigatorArea` | `NSView_ControlledBy_IDENavigatorArea` | Persistent semantic sidebar with one source-list file tree |
 | `IDEKit.EditorArea` | `DVTSplitView_ControlledBy_IDEEditorArea` | Document pane: inner `NSSplitView` of source editor + preview |
 | `IDEKit.PreviewArea` | macOS preview canvas panel | Document-local ControlBar + inline canvas |
-| `IDEKit.WorkspaceLayout` | Workspace root `NSSplitView` | `ns.HSplit` of navigator + document editor |
+| Native workspace | `NSSplitViewController` | Semantic sidebar item + content item with safe-area integration |
 | `IDEKit.Canvas` | `IDEEditorContextClipView` content area | `ns.VStack` that receives eval results |
-| Native document tabs | `NSWindowTabGroup` | Each open source document is a complete standard `NSWindow` tab |
+| Native document tabs | `NSWindow` tab group | Public `addTabbedWindow:ordered:`; AppKit owns the tab bar and tab buttons |
 | `IDEKit.Editor` | `SourceEditorScrollView` | `NSTextView` in a scroll view; debounces eval on change |
 
 ### Canvas preview architecture
@@ -325,18 +325,20 @@ This table wrapper avoids triggering KVC on `NSScrollView` when storing Lua-side
 
 ```
 ns.Window
-├── native NSWindow tab bar
-└── IDEKit.WorkspaceLayout  (ns.HSplit)
-    ├── IDEKit.NavigatorArea
-    │   ├── IDEKit.ControlBar  "FILES"
-    │   └── ns.OutlineView  (source-list file tree)
-    └── IDEKit.EditorArea  (inner ns.HSplit)
-        ├── source editor
-        │   ├── IDEKit.ControlBar  "SOURCE EDITOR"
-        │   └── NSTextView
-        └── IDEKit.PreviewArea
-            ├── IDEKit.ControlBar  "CANVAS"
-            └── IDEKit.Canvas (inline preview)
+└── NSSplitViewController
+    ├── NSSplitViewItem.sidebar
+    │   └── IDEKit.NavigatorArea
+    │       └── ns.OutlineView  (source-list file tree)
+    └── NSSplitViewItem.content
+        ├── NSSplitViewItemAccessoryViewController
+        │   └── native document selector
+        └── selected IDEKit.EditorArea  (inner ns.HSplit)
+            ├── source editor
+            │   ├── IDEKit.ControlBar  "SOURCE EDITOR"
+            │   └── NSTextView
+            └── IDEKit.PreviewArea
+                ├── IDEKit.ControlBar  "CANVAS"
+                └── IDEKit.Canvas (inline preview)
 ```
 
 ---

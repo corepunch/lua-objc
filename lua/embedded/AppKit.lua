@@ -77,7 +77,11 @@ function AppKit.Window(props)
 	local title = props.title or "Window"
 	local width = props.width or 480
 	local height = props.height or 360
-	local transparent_titlebar = props.transparentTitlebar or false
+	local has_workspace = props.sidebar ~= nil and props.content ~= nil
+	local transparent_titlebar = props.transparentTitlebar
+	if transparent_titlebar == nil then
+		transparent_titlebar = has_workspace
+	end
 	local hide_title = props.hideTitle
 	if hide_title == nil then hide_title = transparent_titlebar end
 
@@ -111,12 +115,23 @@ function AppKit.Window(props)
 		bridge._setAppearance(win, appearance)
 	end
 
-	local content = bridge._vstack()
-	bridge._add(win, content)
-
-	addChildren(content, props)
-
-	bridge._layout(content, width)
+	if has_workspace then
+		bridge._setWindowWorkspace(
+			win,
+			props.sidebar,
+			props.content,
+			props.contentAccessory,
+			props.sidebarWidth)
+		bridge._layout(props.sidebar, props.sidebarWidth or 240)
+		bridge._layout(
+			props.content,
+			math.max(1, width - (props.sidebarWidth or 240)))
+	else
+		local content = bridge._vstack()
+		bridge._add(win, content)
+		addChildren(content, props)
+		bridge._layout(content, width)
+	end
 
 	if props.visible ~= false and not _G.__headless then
 		bridge._show(win)
@@ -131,6 +146,11 @@ end
 
 function AppKit.windowTabCount(window)
 	return bridge._windowTabCount(window)
+end
+
+function AppKit.selectWindowTab(window)
+	bridge._selectWindowTab(window)
+	return window
 end
 
 function AppKit.Panel(props)

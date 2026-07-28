@@ -3,7 +3,6 @@ local bridge = require("bridge")
 local App = require("App")
 
 local canvasMod = require("examples.ide.components.canvas")
-local WorkspaceLayout = require("examples.ide.components.workspace_layout")
 local NavigatorArea = require("examples.ide.components.navigator_area")
 local EditorArea = require("examples.ide.components.editor_area")
 local PreviewArea = require("examples.ide.components.preview_area")
@@ -112,9 +111,6 @@ function Source.open(folder, app, initialFile)
 			},
 			data = files,
 		}
-
-		-- Selection remains ordinary source-list selection. Opening is the
-		-- standard activation gesture and creates a native document window tab.
 		fileTree:onRowActivate(function(list, rowIndex, rowData)
 			if rowData and rowData.path and not rowData.directory then
 				openPath(rowData.path)
@@ -161,13 +157,6 @@ function Source.open(folder, app, initialFile)
 			editor = textView,
 			preview = preview,
 		}
-		local workspace = WorkspaceLayout {
-			navigator = NavigatorArea {
-				title = rootDir:match("([^/\\]+)$") or "FILES",
-				content = makeFileTree(),
-			},
-			editor = sourceEditor,
-		}
 		local window = ns.Window {
 			title = name,
 			width = WINDOW.width,
@@ -177,11 +166,11 @@ function Source.open(folder, app, initialFile)
 			tabbingMode = "preferred",
 			tabbingIdentifier = tabbingIdentifier,
 			visible = visible,
-			ns.VStack {
-				flexGrow = 1,
-				spacing = 0,
-				workspace,
+			sidebarWidth = 240,
+			sidebar = NavigatorArea {
+				content = makeFileTree(),
 			},
+			content = sourceEditor,
 		}
 
 		documents[#documents + 1] = {
@@ -194,14 +183,16 @@ function Source.open(folder, app, initialFile)
 	end
 
 	local function openInEditor(path)
+		for _, document in ipairs(documents) do
+			if document.path == path then
+				ns.selectWindowTab(document.window)
+				return document
+			end
+		end
 		local content = readFile(path)
 		if not content then return end
 		local window = makeDocumentWindow(path, content, false)
-		if primaryWindow then
-			ns.addTabbedWindow(primaryWindow, window)
-		else
-			primaryWindow = window
-		end
+		ns.addTabbedWindow(primaryWindow, window)
 		if app and app.recent then app.recent:recordFile(path) end
 		return window
 	end

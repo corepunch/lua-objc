@@ -31,6 +31,16 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   or decorative drawing.
 - Use system controls, metrics, fonts, semantic colors, SF Symbols, keyboard
   behavior, and accessibility labels.
+- The macOS target is macOS 26 and later. Never add legacy, deprecated, or
+  compatibility UI implementations, appearance shims, or old-material
+  fallbacks. Use current semantic AppKit containers directly. In particular,
+  source lists must not insert an `NSVisualEffectMaterialSidebar` wrapper;
+  the owning `NSSplitViewItem` sidebar supplies the system appearance.
+- Never recreate an existing system control with another control or a custom
+  view. Document tabs must use public `NSWindow` tabbing; never imitate them
+  with `NSSegmentedControl`, custom drawing, or private Finder classes such as
+  `NSTabBar` and `NSTabButton`. AppKit may use private implementation classes
+  internally when the public API is invoked.
 - Floating panels use an ordinary titled, full-size-content `NSPanel` and let
   AppKit own the frame shape, corners, clipping, and shadow. Do not expose
   per-panel `cornerRadius`, `shadowRadius`, `shadowOpacity`, `shadowOffset`, or

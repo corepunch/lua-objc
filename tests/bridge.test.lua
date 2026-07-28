@@ -12,7 +12,6 @@ local NavigatorArea = require("examples.ide.components.navigator_area")
 local FindInFiles = require("examples.ide.components.find_in_files")
 local EditorArea = require("examples.ide.components.editor_area")
 local PreviewArea = require("examples.ide.components.preview_area")
-local WorkspaceLayout = require("examples.ide.components.workspace_layout")
 local canvasMod = require("examples.ide.components.canvas")
 
 -- Public frameworks must come from native Lua modules. A loose Lua fallback
@@ -120,6 +119,7 @@ local tabChild = ns.Window {
 ns.addTabbedWindow(tabHost, tabChild)
 t.assertEqual(ns.windowTabCount(tabHost), 2,
 	"native window tab group contains both document windows")
+ns.selectWindowTab(tabHost)
 t.assertEqual(tabHost.tabbingIdentifier, "tests.source-documents",
 	"window tabbing identifier round-trips through AppKit")
 t.assertThrows(function()
@@ -158,8 +158,9 @@ t.assertEqual(spaced.spacing, 3, "custom stack spacing is retained")
 t.assertEqual(spaced.paddingHorizontal, 12, "horizontal padding is retained")
 t.assertEqual(spaced.paddingVertical, 7, "vertical padding is retained")
 
--- The IDE uses a two-pane workspace whose source-editor pane owns its own
--- code/canvas split. Both native dividers must start with usable geometry.
+-- Each native document window uses NSSplitViewController's semantic sidebar.
+-- AppKit owns the window tab group; each document owns its nested code/canvas
+-- NSSplitView.
 
 local navigatorArea = NavigatorArea {
 	title = "FILES",
@@ -174,15 +175,13 @@ local editorArea = EditorArea {
 	editor = ns.Text "A very wide editor surface",
 	preview = previewArea,
 }
-local workspace = WorkspaceLayout {
-	navigator = navigatorArea,
-	editor = editorArea,
-}
 local workspaceWindow = ns.Window {
 	width = 1100,
 	height = 680,
 	visible = false,
-	workspace,
+	sidebarWidth = 240,
+	sidebar = navigatorArea,
+	content = editorArea,
 }
 local navigatorWidth = bridge._viewSize(navigatorArea)
 local editorWidth = bridge._viewSize(editorArea)
@@ -192,10 +191,35 @@ t.expect(editorWidth > 0,
 	"IDE editor split pane has a usable native width")
 t.expect(previewWidth > 0,
 	"IDE canvas split pane is visible initially")
-t.expect(math.abs(editorWidth - navigatorWidth * 4) < 3,
-	"IDE content starts four times as wide as the navigator")
-t.assertEqual(workspace.className, "NSSplitView",
-	"IDE workspace uses Cocoa's NSSplitView directly")
+local workspaceState = bridge._windowWorkspaceState(workspaceWindow)
+t.assertEqual(workspaceState.controllerClass, "NSSplitViewController",
+	"IDE workspace is owned by NSSplitViewController")
+t.assertEqual(workspaceState.itemCount, 2,
+	"workspace has sidebar and content split items")
+t.expect(workspaceState.nativeSidebar,
+	"navigator uses NSSplitViewItem's semantic sidebar behavior")
+t.expect(workspaceState.fullHeightSidebar,
+	"semantic sidebar participates in full-height window layout")
+t.expect(workspaceState.contentUsesSafeArea,
+	"content pane respects the floating sidebar safe area")
+t.assertEqual(workspaceState.topAccessoryCount, 0,
+	"document window does not insert a custom content tab strip")
+
+local sourceTree = ns.OutlineView {
+	header = false,
+	style = "sourceList",
+	columns = {
+		{ id = "name", title = "Name" },
+	},
+	data = {
+		{ name = "main.lua" },
+	},
+}
+t.assertEqual(sourceTree.className, "NSScrollView",
+	"source list leaves sidebar material to NSSplitViewController")
+t.expect(not sourceTree.drawsBackground,
+	"source list remains transparent over native sidebar glass")
+
 t.assertEqual(editorArea.className, "NSSplitView",
 	"source editor owns a nested native split view")
 t.expect(previewArea.clipsToBounds, "IDE canvas pane clips content at its divider")
@@ -211,12 +235,10 @@ local segmented = bridge._segmentedControl({
 }, 0)
 t.assertEqual(segmented.selectedSegment, 0,
 	"segmented control selection is readable through native KVC")
-t.expect(segmented.segmentStyle == 0 or segmented.segmentStyle == 5,
-	"navigator tabs use AppKit's automatic capsule-compatible style")
-if segmented.borderShape ~= nil then
-	t.assertEqual(segmented.borderShape, 1,
-		"navigator tabs use macOS 26's native capsule border shape")
-end
+t.assertEqual(segmented.segmentStyle, 0,
+	"segmented controls use AppKit's automatic macOS 26 style")
+t.assertEqual(segmented.borderShape, 1,
+	"segmented controls use macOS 26's native capsule border shape")
 segmented.selectedSegment = 1
 t.assertEqual(segmented.selectedSegment, 1,
 	"segmented control selection is writable through native KVC")
@@ -228,6 +250,9 @@ end, "typed native arguments reject a view of the wrong Cocoa class")
 
 local ntv = bridge._tabview(400, 200, "top")
 t.assertEqual(bridge._tabCount(ntv), 0, "empty tab view has zero tabs")
+t.assertThrows(function()
+	bridge._tabview(400, 200, "rounded")
+end, "tab views reject app-defined document tab styles")
 
 local contentA = ns.Text "Content A"
 local contentB = ns.Text "Content B"
@@ -245,25 +270,9 @@ t.assertEqual(bridge._tabCount(ntv), 2, "two tabs remain after removing first")
 bridge._tabSelect(ntv, 0)
 t.assertEqual(bridge._tabCount(ntv), 2, "selection does not change count")
 
-local rounded = bridge._tabview(400, 200, "rounded")
-local roundedFirst = ns.Text "First"
-local roundedSecond = ns.Text "Second"
-bridge._tabAdd(rounded, "First.lua", roundedFirst)
-bridge._tabAdd(rounded, "Second.lua", roundedSecond)
-t.assertEqual(bridge._tabCount(rounded), 2,
-	"rounded tabs preserve dynamic add and count behavior")
-t.expect(roundedFirst.hidden and not roundedSecond.hidden,
-	"rounded tabs show only the most recently added content")
-bridge._tabSelect(rounded, 0)
-t.expect(not roundedFirst.hidden and roundedSecond.hidden,
-	"rounded tab selection swaps ordinary native content views")
-bridge._tabRemove(rounded, 1)
-t.assertEqual(bridge._tabCount(rounded), 1,
-	"rounded tabs preserve dynamic select and remove behavior")
-
 -- Preview tab pattern: remove + add replaces, plain add grows count.
 
-local ptv = bridge._tabview(400, 200, "rounded")
+local ptv = bridge._tabview(400, 200, "notabs")
 t.assertEqual(bridge._tabCount(ptv), 0, "preview tab view starts empty")
 
 local function makePreviewTV(content)
@@ -856,6 +865,10 @@ local mailbox = ns.List {
 		{ name = "Sent",   count = "" },
 	},
 }
+t.assertEqual(mailbox.className, "NSScrollView",
+	"source-list tables do not insert a visual-effect wrapper")
+t.expect(not mailbox.drawsBackground,
+	"source-list table scroll view is transparent")
 
 bridge._setContentSize(mailbox, 170, 200)
 bridge._layout(mailbox, 170)

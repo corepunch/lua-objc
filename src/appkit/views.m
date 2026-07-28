@@ -173,6 +173,149 @@ static int bridge_window_tab_count(lua_State *L) {
 	return 1;
 }
 
+static int bridge_select_window_tab(lua_State *L) {
+	id obj = check_objc(L, 1);
+	if (![obj isKindOfClass:[NSWindow class]]) {
+		return luaL_error(L, "selectWindowTab requires a window");
+	}
+	NSWindow *window = obj;
+	if (window.tabGroup) {
+		window.tabGroup.selectedWindow = window;
+	}
+	if (window.isVisible) {
+		[window makeKeyAndOrderFront:nil];
+	}
+	return 0;
+}
+
+static void observe_workspace_pane(NSView *pane) {
+	if (objc_getAssociatedObject(
+			pane, &kKeys[kSplitPaneFrameObserverKey])) {
+		return;
+	}
+	pane.postsFrameChangedNotifications = YES;
+	__weak NSView *weakPane = pane;
+	id observer = [[NSNotificationCenter defaultCenter]
+		addObserverForName:NSViewFrameDidChangeNotification
+					object:pane
+					 queue:nil
+				usingBlock:^(NSNotification *note) {
+					NSView *resizedPane = weakPane;
+					if (!resizedPane) return;
+					layout_recursive(
+						resizedPane,
+						resizedPane.bounds.size.width);
+				}];
+	objc_setAssociatedObject(
+		pane,
+		&kKeys[kSplitPaneFrameObserverKey],
+		observer,
+		OBJC_ASSOCIATION_RETAIN);
+}
+
+static int bridge_set_window_workspace(lua_State *L) {
+	id obj = check_objc(L, 1);
+	if (![obj isKindOfClass:[NSWindow class]]) {
+		return luaL_error(L, "setWindowWorkspace requires a window");
+	}
+	NSWindow *window = obj;
+	NSView *sidebar = check_view(L, 2);
+	NSView *content = check_view(L, 3);
+	NSView *accessory = lua_isnoneornil(L, 4)
+		? nil : check_view(L, 4);
+	CGFloat sidebarWidth = luaL_optnumber(
+		L, 5, kWorkspaceSidebarWidth);
+
+	NSViewController *sidebarController =
+		[[NSViewController alloc] init];
+	sidebarController.view = sidebar;
+	NSViewController *contentController =
+		[[NSViewController alloc] init];
+	contentController.view = content;
+
+	NSSplitViewController *splitController =
+		[[NSSplitViewController alloc] init];
+	splitController.splitView.vertical = YES;
+
+	NSSplitViewItem *sidebarItem =
+		[NSSplitViewItem sidebarWithViewController:sidebarController];
+	sidebarItem.minimumThickness = kWorkspaceSidebarMinWidth;
+	sidebarItem.maximumThickness = kWorkspaceSidebarMaxWidth;
+	sidebarItem.preferredThicknessFraction = MAX(
+		kWorkspaceSidebarMinWidth,
+		MIN(kWorkspaceSidebarMaxWidth, sidebarWidth))
+		/ MAX(1, window.contentLayoutRect.size.width);
+	sidebarItem.allowsFullHeightLayout = YES;
+
+	NSSplitViewItem *contentItem =
+		[NSSplitViewItem splitViewItemWithViewController:contentController];
+	contentItem.automaticallyAdjustsSafeAreaInsets = YES;
+
+	if (accessory) {
+		NSSplitViewItemAccessoryViewController *accessoryController =
+			[[NSSplitViewItemAccessoryViewController alloc] init];
+		accessoryController.view = accessory;
+		accessoryController.automaticallyAppliesContentInsets = YES;
+		[contentItem addTopAlignedAccessoryViewController:
+			accessoryController];
+	}
+
+	[splitController addSplitViewItem:sidebarItem];
+	[splitController addSplitViewItem:contentItem];
+	window.styleMask |= NSWindowStyleMaskFullSizeContentView;
+	window.titlebarAppearsTransparent = YES;
+	window.contentViewController = splitController;
+	splitController.view.frame = window.contentView.bounds;
+	[splitController.view layoutSubtreeIfNeeded];
+	[content setNeedsLayout:YES];
+	[content layoutSubtreeIfNeeded];
+
+	observe_workspace_pane(sidebar);
+	observe_workspace_pane(content);
+	layout_recursive(sidebar, sidebar.bounds.size.width);
+	layout_recursive(content, content.bounds.size.width);
+	return 0;
+}
+
+static int bridge_window_workspace_state(lua_State *L) {
+	id obj = check_objc(L, 1);
+	if (![obj isKindOfClass:[NSWindow class]]) {
+		return luaL_error(L, "windowWorkspaceState requires a window");
+	}
+	NSViewController *controller = ((NSWindow *)obj).contentViewController;
+	if (![controller isKindOfClass:[NSSplitViewController class]]) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	NSSplitViewController *splitController =
+		(NSSplitViewController *)controller;
+	NSArray<NSSplitViewItem *> *items = splitController.splitViewItems;
+	lua_newtable(L);
+	lua_pushstring(L, controller.className.UTF8String);
+	lua_setfield(L, -2, "controllerClass");
+	lua_pushinteger(L, (lua_Integer)items.count);
+	lua_setfield(L, -2, "itemCount");
+	if (items.count >= 2) {
+		NSSplitViewItem *sidebarItem = items[0];
+		NSSplitViewItem *contentItem = items[1];
+		lua_pushboolean(
+			L, sidebarItem.behavior == NSSplitViewItemBehaviorSidebar);
+		lua_setfield(L, -2, "nativeSidebar");
+		lua_pushboolean(L, sidebarItem.allowsFullHeightLayout);
+		lua_setfield(L, -2, "fullHeightSidebar");
+		lua_pushboolean(
+			L, contentItem.automaticallyAdjustsSafeAreaInsets);
+		lua_setfield(L, -2, "contentUsesSafeArea");
+		lua_pushinteger(
+			L,
+			(lua_Integer)contentItem
+				.topAlignedAccessoryViewControllers.count);
+		lua_setfield(L, -2, "topAccessoryCount");
+	}
+	return 1;
+}
+
 static int bridge_vstack(lua_State *L) {
 	NSView *v = [[NSView alloc] initWithFrame:NSZeroRect];
 	objc_setAssociatedObject(v, &kKeys[kAxisKey], @(LayoutAxisVStack), OBJC_ASSOCIATION_RETAIN);

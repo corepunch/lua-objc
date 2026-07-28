@@ -95,7 +95,13 @@ t.expect(sourceWindow ~= nil, "source workspace creates a document window")
 t.assertEqual(sourceWindow.title, "main.lua",
 	"source document uses its filename as the native window-tab title")
 t.assertEqual(sourceWindow.tabbingIdentifier, "lua-objc.ide:examples/ide",
-	"source documents opt into one native window tab group")
+	"source documents opt into one AppKit window tab group")
+local bridge = require("bridge")
+local sourceWorkspaceState = bridge._windowWorkspaceState(sourceWindow)
+t.expect(sourceWorkspaceState.nativeSidebar,
+	"source workspace uses AppKit's semantic floating sidebar")
+t.assertEqual(sourceWorkspaceState.topAccessoryCount, 0,
+	"source document does not insert a custom tab control")
 
 recent:clear()
 

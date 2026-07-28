@@ -252,25 +252,15 @@ static int bridge_tableview(lua_State *L) {
 	sv.autohidesScrollers = YES;
 	sv.borderType = bordered ? NSBezelBorder : NSNoBorder;
 	sv.drawsBackground = drawsBackground;
-	if (isSourceList) sv.drawsBackground = NO;
-
 	if (isSourceList) {
-		NSVisualEffectView *vev = [[NSVisualEffectView alloc]
-			initWithFrame:NSMakeRect(0, 0, width, height)];
-		vev.material = NSVisualEffectMaterialSidebar;
-		vev.blendingMode = NSVisualEffectBlendingModeBehindWindow;
-		vev.state = NSVisualEffectStateFollowsWindowActiveState;
-		sv.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-		[vev addSubview:sv];
-		objc_setAssociatedObject(vev, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
-		objc_setAssociatedObject(vev, &kKeys[kTableSourceKey], src, OBJC_ASSOCIATION_RETAIN);
-		objc_setAssociatedObject(vev, &kKeys[kTableScrollViewKey], sv, OBJC_ASSOCIATION_RETAIN);
-		push_objc(L, vev, "nsview");
-	} else {
-		objc_setAssociatedObject(sv, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
-		objc_setAssociatedObject(sv, &kKeys[kTableSourceKey], src, OBJC_ASSOCIATION_RETAIN);
-		push_objc(L, sv, "nsview");
+		tv.backgroundColor = NSColor.clearColor;
+		sv.drawsBackground = NO;
+		sv.contentView.drawsBackground = NO;
 	}
+
+	objc_setAssociatedObject(sv, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(sv, &kKeys[kTableSourceKey], src, OBJC_ASSOCIATION_RETAIN);
+	push_objc(L, sv, "nsview");
 	return 1;
 }
 
@@ -382,19 +372,12 @@ static int bridge_tableview_replace(lua_State *L) {
 	return 0;
 }
 
-/* If obj is an NSVisualEffectView wrapping a table scroll view, return the inner
- * NSScrollView; otherwise return obj itself cast to NSScrollView. */
-static NSScrollView *table_scrollview(id obj) {
-	NSScrollView *inner = objc_getAssociatedObject(obj, &kKeys[kTableScrollViewKey]);
-	return inner ? inner : (NSScrollView *)obj;
-}
-
 static int bridge_table_show_loading(lua_State *L) {
 	id obj = check_objc(L, 1);
 	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
 
-	NSScrollView *sv = table_scrollview(obj);
+	NSScrollView *sv = (NSScrollView *)obj;
 	NSProgressIndicator *spinner = objc_getAssociatedObject(sv, &kKeys[kTableSpinnerKey]);
 	if (spinner) {
 		[spinner startAnimation:nil];
@@ -428,7 +411,7 @@ static int bridge_table_hide_loading(lua_State *L) {
 	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
 
-	NSScrollView *sv = table_scrollview(obj);
+	NSScrollView *sv = (NSScrollView *)obj;
 	NSProgressIndicator *spinner = objc_getAssociatedObject(sv, &kKeys[kTableSpinnerKey]);
 	if (spinner) {
 		[spinner stopAnimation:nil];
@@ -444,7 +427,7 @@ static int bridge_table_column_widths(lua_State *L) {
 	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
 
-	NSScrollView *sv = table_scrollview(obj);
+	NSScrollView *sv = (NSScrollView *)obj;
 	NSTableView *tv = (NSTableView *)sv.documentView;
 	if (![tv isKindOfClass:[NSTableView class]]) return 0;
 
@@ -469,7 +452,7 @@ static int bridge_table_cell_frames(lua_State *L) {
 	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
 
-	NSScrollView *sv = table_scrollview(obj);
+	NSScrollView *sv = (NSScrollView *)obj;
 	NSTableView *tv = (NSTableView *)sv.documentView;
 	if (![tv isKindOfClass:[NSTableView class]]) return 0;
 
@@ -534,7 +517,7 @@ static int bridge_table_set_selection(lua_State *L) {
 	id obj = check_objc(L, 1);
 	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
-	NSScrollView *sv = table_scrollview(obj);
+	NSScrollView *sv = (NSScrollView *)obj;
 
 	if (lua_isnoneornil(L, 2)) {
 		objc_setAssociatedObject(sv, &kKeys[kTableSelectionKey], nil,
@@ -554,7 +537,7 @@ static int bridge_table_set_activation(lua_State *L) {
 	id obj = check_objc(L, 1);
 	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table or outline view");
-	NSScrollView *sv = table_scrollview(obj);
+	NSScrollView *sv = (NSScrollView *)obj;
 	NSTableView *table = (NSTableView *)sv.documentView;
 
 	if (lua_isnoneornil(L, 2)) {
@@ -579,7 +562,7 @@ static int bridge_table_select_row(lua_State *L) {
 	id obj = check_objc(L, 1);
 	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table or outline view");
-	NSTableView *table = (NSTableView *)table_scrollview(obj).documentView;
+	NSTableView *table = (NSTableView *)((NSScrollView *)obj).documentView;
 
 	if (lua_isnoneornil(L, 2)) {
 		[table deselectAll:nil];
@@ -597,7 +580,7 @@ static int bridge_table_activate_row(lua_State *L) {
 	id obj = check_objc(L, 1);
 	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table or outline view");
-	NSScrollView *sv = table_scrollview(obj);
+	NSScrollView *sv = (NSScrollView *)obj;
 	NSTableView *table = (NSTableView *)sv.documentView;
 	NSInteger row = (NSInteger)luaL_checkinteger(L, 2);
 	if (row < 0 || row >= table.numberOfRows) return 0;

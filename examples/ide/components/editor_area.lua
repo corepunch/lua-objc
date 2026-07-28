@@ -8,8 +8,8 @@ local function fill(view)
 	return view
 end
 
--- EditorArea: one document surface. The code editor and its preview canvas
--- share an inner NSSplitView; document switching belongs to NSWindow tabs.
+-- EditorArea: one native window-tab document surface. The code editor and its
+-- preview canvas share an inner NSSplitView owned by that document window.
 local function EditorArea(props)
 	props = props or {}
 

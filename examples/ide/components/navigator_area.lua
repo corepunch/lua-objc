@@ -1,5 +1,4 @@
 local ns = require("AppKit")
-local ControlBar = require("examples.ide.components.control_bar")
 
 local function wrapContent(view)
 	if not view then return nil end
@@ -15,7 +14,6 @@ local function NavigatorArea(props)
 	props = props or {}
 	return ns.VStack {
 		spacing = 0,
-		ControlBar { title = props.title or "FILES" },
 		wrapContent(props.content),
 	}
 end

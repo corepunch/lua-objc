@@ -47,7 +47,6 @@ enum {
 	kSplitProportionsKey,
 	kSplitProportionsAppliedKey,
 	kCanvasToolbarItemsKey,
-	kTableScrollViewKey,
 	kColumnFlexKey,
 	kTabViewDelegateKey,
 	kKeyCount
@@ -124,12 +123,10 @@ static lua_State *gL = NULL;
 #define kEditorDefaultWidth            400
 #define kEditorDefaultHeight           300
 
-/* ----- Rounded Tabs ----- */
-#define kRoundedTabBarHeight            34
-#define kRoundedTabControlHeight        28
-#define kRoundedTabHorizontalInset       6
-#define kRoundedTabVerticalInset         3
-#define kRoundedTabFontSize             12
+/* ----- Workspace Split Controller ----- */
+#define kWorkspaceSidebarWidth         240
+#define kWorkspaceSidebarMinWidth      160
+#define kWorkspaceSidebarMaxWidth      420
 
 /* ----- Symbol Toggle ----- */
 #define kSymbolToggleSize               28
@@ -181,9 +178,12 @@ static lua_State *gL = NULL;
 
 static const luaL_Reg bridge_lib[] = {
 	{"_window",           bridge_window},
+	{"_setWindowWorkspace", bridge_set_window_workspace},
+	{"_windowWorkspaceState", bridge_window_workspace_state},
 	{"_setWindowTabbing", bridge_set_window_tabbing},
 	{"_addTabbedWindow",  bridge_add_tabbed_window},
 	{"_windowTabCount",   bridge_window_tab_count},
+	{"_selectWindowTab",  bridge_select_window_tab},
 	{"_vstack",           bridge_vstack},
 	{"_hstack",           bridge_hstack},
 	{"_hsplit",           bridge_hsplit},

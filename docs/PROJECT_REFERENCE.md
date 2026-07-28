@@ -352,6 +352,10 @@ Creates an `NSWindow`. Table keys:
 | `height` | number | `360` | Content height in points |
 | `transparentTitlebar` | bool | `false` | Full-size content, transparent title bar |
 | `hideTitle` | bool | `=transparentTitlebar` | Hide title text in transparent mode |
+| `sidebar` | view | none | Semantic `NSSplitViewItem` sidebar; requires `content` |
+| `content` | view | none | Main view paired with `sidebar` in `NSSplitViewController` |
+| `contentAccessory` | view | none | macOS 26 top accessory spanning only the content split |
+| `sidebarWidth` | number | `240` | Preferred native sidebar width |
 | `tabbingMode` | `"automatic"` `"preferred"` `"disallowed"` | AppKit default | Native `NSWindow` tab behavior |
 | `tabbingIdentifier` | string | AppKit default | Groups compatible native window tabs |
 | `toolbar` | `{{id, label, icon?, tooltip?, action?}}` | none | Native NSToolbar items |
@@ -360,6 +364,12 @@ Creates an `NSWindow`. Table keys:
 The array part of the table holds child views (added to a VStack inside the
 window's content view). After building the view tree, calls `bridge._show(win)`
 — the run loop starts in `main()` after the script returns.
+
+When `sidebar` and `content` are present, `Window` instead installs a native
+`NSSplitViewController`. AppKit gives the semantic sidebar its current system
+appearance—including floating glass on macOS 26—and a `contentAccessory`
+occupies only the content column. In this form, `transparentTitlebar` defaults
+to `true`.
 
 ```lua
 ns.Window {
@@ -390,8 +400,11 @@ progress:stop("Refresh data — last updated just now")
 Use `ns.addTabbedWindow(window, tabbedWindow, order?)` to put two complete
 document windows in a native AppKit tab group. `order` is `"above"` (the
 default) or `"below"`. `ns.windowTabCount(window)` reports the number of windows
-in the group. Window tabs own complete content trees; use an inner
-`NSSplitView` when one document contains an editor and preview.
+in the group, and `ns.selectWindowTab(window)` selects an existing document
+window in its group. Window tabs own complete content trees; use an inner
+`NSSplitView` when one document contains an editor and preview. The public
+`NSWindow` API owns all tab presentation; applications must not instantiate
+Finder's private `NSTabBar` or `NSTabButton` implementation classes.
 
 This API stays small by relying on the generic KVC bridge for properties like
 `enabled`, `view`, `image`, and `toolTip`; don't add a dedicated C bridge
