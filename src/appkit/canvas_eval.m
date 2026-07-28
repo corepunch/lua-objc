@@ -149,7 +149,7 @@ static int bridge_eval(lua_State *L) {
 			return 2;
 		}
 
-		if (luaL_loadstring(C, wrapped) != LUA_OK) {
+		if (luaL_loadbuffer(C, wrapped, strlen(wrapped), "=canvas") != LUA_OK) {
 			const char *err = lua_tostring(C, -1);
 			report_lua_error(C, "canvas");
 			lua_pushnil(L);
@@ -237,7 +237,7 @@ static int bridge_eval(lua_State *L) {
 		return 2;
 	}
 
-	if (luaL_loadstring(L, wrapped) != LUA_OK) {
+	if (luaL_loadbuffer(L, wrapped, strlen(wrapped), "=eval") != LUA_OK) {
 		report_lua_error(L, "eval");
 		lua_pushnil(L);
 		lua_insert(L, -2);

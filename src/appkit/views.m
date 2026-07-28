@@ -288,6 +288,10 @@ static int bridge_set_window_workspace(lua_State *L) {
 		? [NSSplitViewItem
 			splitViewItemWithViewController:detailController]
 		: nil;
+	if (detail) {
+		contentItem.holdingPriority = NSLayoutPriorityDefaultLow;
+		detailItem.holdingPriority = NSLayoutPriorityDefaultLow;
+	}
 
 	if (accessory) {
 		NSSplitViewItemAccessoryViewController *accessoryController =
@@ -336,6 +340,11 @@ static int bridge_set_window_workspace(lua_State *L) {
 	layout_recursive(content, content.bounds.size.width);
 	if (detail) {
 		layout_recursive(detail, detail.bounds.size.width);
+		CGFloat totalWidth = splitController.splitView.bounds.size.width;
+		CGFloat sidebarEnd = sidebar.bounds.size.width;
+		[splitController.splitView
+			setPosition:sidebarEnd + (totalWidth - sidebarEnd) / 2.0
+		 ofDividerAtIndex:kWorkspaceDetailDividerIndex];
 	}
 	if (contentDividerAfter
 		&& (detail || [content isKindOfClass:[NSSplitView class]])) {
