@@ -38,29 +38,13 @@ static lua_State *gL = NULL;
 #include "controls.m"
 #include "tables.m"
 #include "platform.m"
+#include "generated/bridge_funcs.m"
 #pragma mark - Module registration
 
 static const luaL_Reg bridge_lib[] = {
-	{"_window",           bridge_window},
-	{"_vstack",           bridge_vstack},
-	{"_hstack",           bridge_hstack},
-	{"_hsplit",           bridge_hsplit},
-	{"_spacer",           bridge_spacer},
-	{"_image",            bridge_image},
-	{"_add",              bridge_add},
-	{"_layout",           bridge_layout},
-	{"_setContentSize",   bridge_set_content_size},
-	{"_tableview",        bridge_tableview},
-	{"_button",           bridge_button},
-	{"_toggle",           bridge_toggle},
-	{"_timerAfter",       bridge_timer_after},
-	{"_show",             bridge_show},
-	{"_create",           bridge_create},
-	{"_font",             bridge_font},
-	{"_perform",          bridge_perform},
-	{"_callback",         bridge_callback},
-	{"_httpGet",          bridge_http_get},
-	{"_jsonParse",        bridge_json_parse},
+#define GEN_BRIDGE_LIB
+#include "generated/bridge_lib.inc"
+#undef GEN_BRIDGE_LIB
 	{NULL, NULL},
 };
 

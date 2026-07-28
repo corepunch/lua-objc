@@ -316,42 +316,6 @@ static int bridge_window_workspace_state(lua_State *L) {
 	return 1;
 }
 
-static int bridge_vstack(lua_State *L) {
-	NSView *v = [[NSView alloc] initWithFrame:NSZeroRect];
-	objc_setAssociatedObject(v, &kKeys[kAxisKey], @(LayoutAxisVStack), OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(v, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
-	push_objc(L, v, "nsview");
-	return 1;
-}
-
-static int bridge_hstack(lua_State *L) {
-	NSView *v = [[NSView alloc] initWithFrame:NSZeroRect];
-	objc_setAssociatedObject(v, &kKeys[kAxisKey], @(LayoutAxisHStack), OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(v, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
-	push_objc(L, v, "nsview");
-	return 1;
-}
-
-static int bridge_hsplit(lua_State *L) {
-	NSSplitView *v = [[NSSplitView alloc] initWithFrame:NSZeroRect];
-	v.vertical = YES;
-	v.dividerStyle = NSSplitViewDividerStyleThin;
-	objc_setAssociatedObject(v, &kKeys[kAxisKey], @(LayoutAxisHSplit), OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(v, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
-	push_objc(L, v, "nsview");
-	return 1;
-}
-
-static int bridge_vsplit(lua_State *L) {
-	NSSplitView *v = [[NSSplitView alloc] initWithFrame:NSZeroRect];
-	v.vertical = NO;
-	v.dividerStyle = NSSplitViewDividerStyleThin;
-	objc_setAssociatedObject(v, &kKeys[kAxisKey], @(LayoutAxisVSplit), OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(v, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
-	push_objc(L, v, "nsview");
-	return 1;
-}
-
 static int bridge_split_set_proportions(lua_State *L) {
 	NSView *view = check_view(L, 1);
 	if (![view isKindOfClass:[NSSplitView class]]) {
@@ -376,23 +340,6 @@ static int bridge_split_set_proportions(lua_State *L) {
 	return 0;
 }
 
-/* Thin horizontal separator line — like NSBox with NSBoxSeparator. */
-static int bridge_separator(lua_State *L) {
-	NSBox *box = [[NSBox alloc] initWithFrame:NSMakeRect(0, 0, kSeparatorSize, kSeparatorSize)];
-	box.boxType = NSBoxSeparator;
-	objc_setAssociatedObject(box, &kKeys[kFixedHeightKey], @(kSeparatorSize), OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(box, &kKeys[kFillWidthKey], @YES, OBJC_ASSOCIATION_RETAIN);
-	push_objc(L, box, "nsview");
-	return 1;
-}
-
-static int bridge_spacer(lua_State *L) {
-	NSView *v = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, kSpacerSize, kSpacerSize)];
-	objc_setAssociatedObject(v, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(v, &kKeys[kFlexBasisKey], @0, OBJC_ASSOCIATION_RETAIN);
-	push_objc(L, v, "nsview");
-	return 1;
-}
 
 #pragma mark - Text update
 

@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  bridge.xml — declarative source for the AppKit Lua bridge.
+
+  Run tools/gen_bridge.py to regenerate:
+    src/appkit/generated/bridge_funcs.m    — bridge_xxx() C functions
+    src/appkit/generated/bridge_props.m    — nsview_index / nsview_newindex bodies
+    src/appkit/generated/bridge_lib.inc    — luaL_Reg entries for bridge_lib[]
+
+  Types for <arg>:
+    string   → luaL_checkstring / luaL_optstring
+    number   → luaL_checknumber / luaL_optnumber
+    integer  → luaL_checkinteger / luaL_optinteger
+    bool     → lua_toboolean  (always optional, defaults to NO)
+    function → luaL_checktype(LUA_TFUNCTION) + luaL_ref
+    function? → optional function (no error if nil)
+    object   → check_objc
+    view     → check_view
+    table    → luaL_checktype(LUA_TTABLE)
+
+  Property types for <prop>:
+    number   → NSNumber double, INDEX_NUMBER / NEWINDEX_NUMBER
+    number?  → INDEX_NUMBER_OR_NIL / NEWINDEX_NILABLE_NUMBER
+    bool     → NSNumber bool,   INDEX_BOOL  / NEWINDEX_BOOL
+    string   → NSString,        INDEX_STRING / NEWINDEX_STRING
+-->
+<bridge module="AppKit">
+
+  <!-- ================================================================
+       LAYOUT PROPERTIES — written to bridge_props.m
+       These expand into the INDEX_xxx / NEWINDEX_xxx macro calls
+       inside nsview_index and nsview_newindex.
+       ================================================================ -->
+  <properties metatable="nsview">
+    <prop name="padding"           key="kPaddingKey"           type="number"  default="0"/>
+    <prop name="paddingHorizontal" key="kPaddingHorizontalKey" type="number"  default="0"/>
+    <prop name="paddingVertical"   key="kPaddingVerticalKey"   type="number"  default="0"/>
+    <prop name="spacing"           key="kSpacingKey"           type="number"  default="kStackSpacing"  clamp="MAX(0, val)"/>
+    <prop name="alignment"         key="kAlignmentKey"         type="string"  default="center"/>
+    <prop name="fixedWidth"        key="kFixedWidthKey"        type="number"  default="0"/>
+    <prop name="fixedHeight"       key="kFixedHeightKey"       type="number"  default="0"/>
+    <prop name="minWidth"          key="kMinWidthKey"          type="number"  default="0"/>
+    <prop name="minHeight"         key="kMinHeightKey"         type="number"  default="0"/>
+    <prop name="maxWidth"          key="kMaxWidthKey"          type="number?"/>
+    <prop name="maxHeight"         key="kMaxHeightKey"         type="number?"/>
+    <prop name="flexGrow"          key="kFlexGrowKey"          type="number"  default="0"  clamp="MAX(0, val)"/>
+    <prop name="flexShrink"        key="kFlexShrinkKey"        type="number"  default="1"  clamp="MAX(0, val)"/>
+    <prop name="flexBasis"         key="kFlexBasisKey"         type="number?" clamp="MAX(0, val)"/>
+    <prop name="fillWidth"         key="kFillWidthKey"         type="bool"/>
+    <prop name="fillHeight"        key="kFillHeightKey"        type="bool"/>
+  </properties>
+
+  <!-- ================================================================
+       STACK / SPLIT CONTAINER CONSTRUCTORS
+       Each allocates a view, stamps associated-object tags, returns nsview.
+       ================================================================ -->
+
+  <constructor name="vstack" lua_name="_vstack" returns="nsview">
+    <alloc class="NSView" frame="NSZeroRect"/>
+    <assoc key="kAxisKey"     value="@(LayoutAxisVStack)"/>
+    <assoc key="kFlexibleKey" value="@YES"/>
+  </constructor>
+
+  <constructor name="hstack" lua_name="_hstack" returns="nsview">
+    <alloc class="NSView" frame="NSZeroRect"/>
+    <assoc key="kAxisKey"     value="@(LayoutAxisHStack)"/>
+    <assoc key="kFlexibleKey" value="@YES"/>
+  </constructor>
+
+  <constructor name="hsplit" lua_name="_hsplit" returns="nsview">
+    <alloc class="NSSplitView" frame="NSZeroRect"/>
+    <set_prop property="vertical"      value="YES"/>
+    <set_prop property="dividerStyle"  value="NSSplitViewDividerStyleThin"/>
+    <assoc key="kAxisKey"     value="@(LayoutAxisHSplit)"/>
+    <assoc key="kFlexibleKey" value="@YES"/>
+  </constructor>
+
+  <constructor name="vsplit" lua_name="_vsplit" returns="nsview">
+    <alloc class="NSSplitView" frame="NSZeroRect"/>
+    <set_prop property="vertical"      value="NO"/>
+    <set_prop property="dividerStyle"  value="NSSplitViewDividerStyleThin"/>
+    <assoc key="kAxisKey"     value="@(LayoutAxisVSplit)"/>
+    <assoc key="kFlexibleKey" value="@YES"/>
+  </constructor>
+
+  <constructor name="separator" lua_name="_separator" returns="nsview">
+    <!-- NSBox separator line. Fixed height = kSeparatorSize, fills width. -->
+    <alloc class="NSBox" frame="NSMakeRect(0, 0, kSeparatorSize, kSeparatorSize)"/>
+    <set_prop property="boxType" value="NSBoxSeparator"/>
+    <assoc key="kFixedHeightKey" value="@(kSeparatorSize)"/>
+    <assoc key="kFillWidthKey"   value="@YES"/>
+  </constructor>
+
+  <constructor name="spacer" lua_name="_spacer" returns="nsview">
+    <alloc class="NSView" frame="NSMakeRect(0, 0, kSpacerSize, kSpacerSize)"/>
+    <assoc key="kFlexibleKey" value="@YES"/>
+    <assoc key="kFlexBasisKey" value="@0"/>
+  </constructor>
+
+  <!-- ================================================================
+       BUTTON / TOGGLE
+       ================================================================ -->
+
+  <!--
+    bridge_button(title: string, callback?: function) -> nsview
+    Creates an NSButton with rounded bezel and optional Lua action callback.
+  -->
+  <constructor name="button" lua_name="_button" returns="nsview">
+    <arg index="1" name="title"    type="string"   required="true"/>
+    <arg index="2" name="callback" type="function?" required="false"/>
+    <alloc class="NSButton" frame="NSZeroRect"/>
+    <set_prop property="title"      from_arg="title"/>
+    <set_prop property="bezelStyle" value="NSBezelStyleRounded"/>
+    <call_method method="sizeToFit"/>
+    <callback arg="callback" key="kCallbackKey"
+              target="[LuaButtonTarget shared]" action="onAction:"/>
+  </constructor>
+
+  <!--
+    bridge_toggle(label: string, is_on: bool, callback?: function) -> nsview
+    Creates an NSButton checkbox with optional Lua action callback.
+  -->
+  <constructor name="toggle" lua_name="_toggle" returns="nsview">
+    <arg index="1" name="label"    type="string"   required="true"/>
+    <arg index="2" name="is_on"    type="bool"     required="true"/>
+    <arg index="3" name="callback" type="function?" required="false"/>
+    <alloc_factory class="NSButton"
+      method="checkboxWithTitle:target:action:"
+      args="[NSString stringWithUTF8String:label], nil, nil"/>
+    <set_prop property="state"
+              value="is_on ? NSControlStateValueOn : NSControlStateValueOff"/>
+    <call_method method="sizeToFit"/>
+    <callback arg="callback" key="kCallbackKey"
+              target="[LuaButtonTarget shared]" action="onAction:"/>
+  </constructor>
+
+  <!-- ================================================================
+       CALLBACK-ONLY SETTERS
+       Each function:  (obj, fn?) → void
+         1. Validates the guard associated-object exists on obj
+         2. If fn is nil/none — clears the stored ref
+         3. Otherwise stores a new luaL_ref in the given key
+       The optional <side_effect> block is emitted after storing the ref.
+       ================================================================ -->
+
+  <callback_setter name="table_set_refresh" lua_name="_tableSetRefresh">
+    <guard type="LuaTableViewSource" key="kTableSourceKey" msg="not a table view"/>
+    <store key="kTableRefreshKey" on="obj"/>
+  </callback_setter>
+
+  <callback_setter name="table_set_selection" lua_name="_tableSetSelection">
+    <guard type="LuaTableViewSource" key="kTableSourceKey" msg="not a table view"/>
+    <!-- Selection ref lives on the scroll view, not on obj directly -->
+    <store key="kTableSelectionKey" on="table_scrollview(obj)"/>
+  </callback_setter>
+
+  <callback_setter name="table_set_activation" lua_name="_tableSetActivation">
+    <guard type="id" key="kTableSourceKey" msg="not a table or outline view"/>
+    <store key="kTableActivationKey" on="table_scrollview(obj)"/>
+    <!-- When setting: wire the double-click action; when clearing: unwire -->
+    <side_effect_set>
+NSScrollView *_sv = table_scrollview(obj);
+NSTableView *_table = (NSTableView *)_sv.documentView;
+_table.target = src;
+_table.doubleAction = @selector(activateSelectedRow:);
+</side_effect_set>
+    <side_effect_clear>
+NSScrollView *_sv = table_scrollview(obj);
+NSTableView *_table = (NSTableView *)_sv.documentView;
+_table.target = nil;
+_table.doubleAction = nil;
+</side_effect_clear>
+  </callback_setter>
+
+  <!-- text_view_on_change has non-trivial NSNotificationCenter wiring — kept in editor.m -->
+  <manual_entry name="text_view_on_change" lua_name="_textViewOnChange" src="editor.m"/>
+
+  <!-- ================================================================
+       SIMPLE FORWARDING FUNCTIONS (obj + args → void or value)
+       These are thin wrappers that look up a typed associated object
+       and call a single ObjC method.  Keeping them in the XML
+       documents the full dispatch table even where the body is trivial.
+       ================================================================ -->
+
+  <!--
+    bridge_table_show_loading(obj) — starts spinner overlay on table scroll view.
+    bridge_table_hide_loading(obj) — stops and removes spinner overlay.
+    These have non-trivial bodies (spinner alloc/layout) — kept in controls.m.
+    Listed here only so the bridge_lib[] entry is generated.
+  -->
+  <manual_entry name="table_show_loading"   lua_name="_tableShowLoading"   src="controls.m"/>
+  <manual_entry name="table_hide_loading"   lua_name="_tableHideLoading"   src="controls.m"/>
+  <manual_entry name="table_column_widths"  lua_name="_tableColumnWidths"  src="controls.m"/>
+  <manual_entry name="table_cell_frames"    lua_name="_tableCellFrames"    src="controls.m"/>
+  <manual_entry name="tableview_add"        lua_name="_tableviewAdd"       src="controls.m"/>
+  <manual_entry name="tableview_remove"     lua_name="_tableviewRemove"    src="controls.m"/>
+  <manual_entry name="tableview_clear"      lua_name="_tableviewClear"     src="controls.m"/>
+  <manual_entry name="tableview_replace"    lua_name="_tableviewReplace"   src="controls.m"/>
+  <manual_entry name="table_select_row"     lua_name="_tableSelectRow"     src="controls.m"/>
+  <manual_entry name="table_activate_row"   lua_name="_tableActivateRow"   src="controls.m"/>
+  <manual_entry name="table_refresh"        lua_name="_tableRefresh"       src="controls.m"/>
+  <manual_entry name="toolbar_item"         lua_name="_toolbar_item"       src="controls.m"/>
+  <manual_entry name="canvas_toolbar_items" lua_name="_canvas_toolbar_items" src="controls.m"/>
+
+  <!-- Views -->
+  <manual_entry name="window"               lua_name="_window"             src="views.m"/>
+  <manual_entry name="set_window_tabbing"   lua_name="_setWindowTabbing"   src="views.m"/>
+  <manual_entry name="add_tabbed_window"    lua_name="_addTabbedWindow"    src="views.m"/>
+  <manual_entry name="window_tab_count"     lua_name="_windowTabCount"     src="views.m"/>
+  <manual_entry name="split_set_proportions" lua_name="_splitSetProportions" src="views.m"/>
+  <manual_entry name="image"                lua_name="_image"              src="views.m"/>
+  <manual_entry name="image_viewer"         lua_name="_imageViewer"        src="views.m"/>
+  <manual_entry name="system_image"         lua_name="_systemImage"        src="views.m"/>
+  <manual_entry name="system_color"         lua_name="_systemColor"        src="views.m"/>
+  <manual_entry name="tableview"            lua_name="_tableview"          src="controls.m"/>
+  <manual_entry name="action_button"        lua_name="_actionButton"       src="controls.m"/>
+
+  <!-- Layout -->
+  <manual_entry name="add"                  lua_name="_add"                src="layout.m"/>
+  <manual_entry name="layout"               lua_name="_layout"             src="layout.m"/>
+  <manual_entry name="view_size"            lua_name="_viewSize"           src="layout.m"/>
+  <manual_entry name="view_frame_in_window" lua_name="_viewFrameInWindow"  src="layout.m"/>
+  <manual_entry name="set_content_size"     lua_name="_setContentSize"     src="layout.m"/>
+  <manual_entry name="set_window_min_size"  lua_name="_setWindowMinSize"   src="layout.m"/>
+  <manual_entry name="set_appearance"       lua_name="_setAppearance"      src="layout.m"/>
+  <manual_entry name="set_text"             lua_name="_setText"            src="layout.m"/>
+
+  <!-- Presentation -->
+  <manual_entry name="panel"                lua_name="_panel"              src="presentation.m"/>
+  <manual_entry name="panel_style_state"    lua_name="_panelStyleState"    src="presentation.m"/>
+  <manual_entry name="present_panel"        lua_name="_presentPanel"       src="presentation.m"/>
+  <manual_entry name="dismiss_window"       lua_name="_dismissWindow"      src="presentation.m"/>
+  <manual_entry name="focus"                lua_name="_focus"              src="presentation.m"/>
+  <manual_entry name="is_first_responder"   lua_name="_isFirstResponder"   src="presentation.m"/>
+  <manual_entry name="menu_item"            lua_name="_menuItem"           src="presentation.m"/>
+
+  <!-- Text field -->
+  <manual_entry name="text_field_callbacks"     lua_name="_textFieldCallbacks"    src="text_field.m"/>
+  <manual_entry name="text_field_test_input"    lua_name="_textFieldTestInput"    src="text_field.m"/>
+  <manual_entry name="text_field_test_command"  lua_name="_textFieldTestCommand"  src="text_field.m"/>
+
+  <!-- Editor -->
+  <manual_entry name="text_view"              lua_name="_textView"             src="editor.m"/>
+  <manual_entry name="text_view_get_text"     lua_name="_textViewGetText"      src="editor.m"/>
+  <manual_entry name="text_view_set_text"     lua_name="_textViewSetText"      src="editor.m"/>
+  <manual_entry name="text_view_set_language" lua_name="_textViewSetLanguage"  src="editor.m"/>
+  <manual_entry name="text_view_set_wrap_mode" lua_name="_textViewSetWrapMode" src="editor.m"/>
+  <manual_entry name="symbol_toggle"          lua_name="_symbolToggle"         src="editor.m"/>
+  <manual_entry name="symbol_button"          lua_name="_symbolButton"         src="editor.m"/>
+  <manual_entry name="eval"                   lua_name="_eval"                 src="editor.m"/>
+  <manual_entry name="clear_container"        lua_name="_clearContainer"       src="editor.m"/>
+
+  <!-- Tab view -->
+  <manual_entry name="tabview"            lua_name="_tabview"        src="tabview.m"/>
+  <manual_entry name="tab_add"            lua_name="_tabAdd"         src="tabview.m"/>
+  <manual_entry name="tab_select"         lua_name="_tabSelect"      src="tabview.m"/>
+  <manual_entry name="tab_remove"         lua_name="_tabRemove"      src="tabview.m"/>
+  <manual_entry name="tab_count"          lua_name="_tabCount"       src="tabview.m"/>
+  <manual_entry name="tab_on_change"      lua_name="_tabOnChange"    src="tabview.m"/>
+  <manual_entry name="segmented_control"  lua_name="_segmentedControl" src="tabview.m"/>
+
+  <!-- Platform -->
+  <manual_entry name="render_to_png"  lua_name="_renderToPNG"  src="platform.m"/>
+  <manual_entry name="watch_file"     lua_name="_watchFile"    src="platform.m"/>
+  <manual_entry name="pick_folder"    lua_name="_pickFolder"   src="platform.m"/>
+  <manual_entry name="pick_file"      lua_name="_pickFile"     src="platform.m"/>
+  <manual_entry name="outlineview"    lua_name="_outlineview"  src="outline.m"/>
+  <manual_entry name="list_directory" lua_name="_listDirectory" src="platform.m"/>
+
+  <!-- Async / shared -->
+  <manual_entry name="timer_after"  lua_name="_timerAfter"  src="lua_async.m"/>
+  <manual_entry name="http_get"     lua_name="_httpGet"     src="lua_async.m"/>
+  <manual_entry name="json_parse"   lua_name="_jsonParse"   src="lua_async.m"/>
+
+  <!-- Generic runtime -->
+  <manual_entry name="show"         lua_name="_show"         src="editor.m"/>
+  <manual_entry name="create"       lua_name="_create"       src="editor.m"/>
+  <manual_entry name="font"         lua_name="_font"         src="editor.m"/>
+  <manual_entry name="perform"      lua_name="_perform"      src="editor.m"/>
+  <manual_entry name="callback"     lua_name="_callback"     src="editor.m"/>
+
+</bridge>

@@ -156,22 +156,9 @@ static int nsview_index(lua_State *L) {
 	const char *key = lua_tostring(L, 2);
 	if (!key) { lua_pushnil(L); return 1; }
 
-	INDEX_NUMBER("padding", kPaddingKey, 0);
-	INDEX_NUMBER("paddingHorizontal", kPaddingHorizontalKey, 0);
-	INDEX_NUMBER("paddingVertical", kPaddingVerticalKey, 0);
-	INDEX_NUMBER("spacing", kSpacingKey, kStackSpacing);
-	INDEX_STRING("alignment", kAlignmentKey, "center");
-	INDEX_NUMBER("fixedWidth", kFixedWidthKey, 0);
-	INDEX_NUMBER("fixedHeight", kFixedHeightKey, 0);
-	INDEX_NUMBER("minWidth", kMinWidthKey, 0);
-	INDEX_NUMBER("minHeight", kMinHeightKey, 0);
-	INDEX_NUMBER_OR_NIL("maxWidth", kMaxWidthKey);
-	INDEX_NUMBER_OR_NIL("maxHeight", kMaxHeightKey);
-	INDEX_NUMBER("flexGrow", kFlexGrowKey, 0);
-	INDEX_NUMBER("flexShrink", kFlexShrinkKey, 1);
-	INDEX_NUMBER_OR_NIL("flexBasis", kFlexBasisKey);
-	INDEX_BOOL("fillWidth", kFillWidthKey);
-	INDEX_BOOL("fillHeight", kFillHeightKey);
+#define GEN_PROPS_INDEX
+#include "generated/bridge_props.m"
+#undef GEN_PROPS_INDEX
 
 	if (strcmp(key, "set_text") == 0 && [obj isKindOfClass:[NSTextField class]]) {
 		lua_pushcfunction(L, bridge_set_text);
@@ -214,22 +201,9 @@ static int nsview_newindex(lua_State *L) {
 	const char *key = lua_tostring(L, 2);
 	if (!key) return luaL_error(L, "invalid property name");
 
-	NEWINDEX_NUMBER("padding", kPaddingKey);
-	NEWINDEX_NUMBER("paddingHorizontal", kPaddingHorizontalKey);
-	NEWINDEX_NUMBER("paddingVertical", kPaddingVerticalKey);
-	NEWINDEX_NUMBER_CLAMP("spacing", kSpacingKey, MAX(0, val));
-	NEWINDEX_STRING("alignment", kAlignmentKey);
-	NEWINDEX_NUMBER("fixedWidth", kFixedWidthKey);
-	NEWINDEX_NUMBER("fixedHeight", kFixedHeightKey);
-	NEWINDEX_NUMBER("minWidth", kMinWidthKey);
-	NEWINDEX_NUMBER("minHeight", kMinHeightKey);
-	NEWINDEX_NILABLE_NUMBER("maxWidth", kMaxWidthKey);
-	NEWINDEX_NILABLE_NUMBER("maxHeight", kMaxHeightKey);
-	NEWINDEX_NUMBER_CLAMP("flexGrow", kFlexGrowKey, MAX(0, val));
-	NEWINDEX_NUMBER_CLAMP("flexShrink", kFlexShrinkKey, MAX(0, val));
-	NEWINDEX_NILABLE_NUMBER_CLAMP("flexBasis", kFlexBasisKey, MAX(0, val));
-	NEWINDEX_BOOL("fillWidth", kFillWidthKey);
-	NEWINDEX_BOOL("fillHeight", kFillHeightKey);
+#define GEN_PROPS_NEWINDEX
+#include "generated/bridge_props.m"
+#undef GEN_PROPS_NEWINDEX
 
 	NSString *kvcKey = [NSString stringWithUTF8String:key];
 	id value = lua_to_objc_value(L, 3);

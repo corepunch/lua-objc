@@ -1,0 +1,391 @@
+#!/usr/bin/env python3
+"""
+gen_bridge.py — generate Lua bridge boilerplate from an XML config file.
+
+Usage:
+    python3 tools/gen_bridge.py                           # AppKit (default)
+    python3 tools/gen_bridge.py --xml tools/uikit_bridge.xml --out src/uikit/generated
+
+Outputs (in --out dir):
+    bridge_funcs.m   — generated bridge_xxx() C functions
+    bridge_props.m   — INDEX_xxx / NEWINDEX_xxx macro calls for nsview_index/newindex
+    bridge_lib.inc   — luaL_Reg entries for bridge_lib[]
+
+Key-reference style (set via <bridge key_style="…"> in the XML):
+    "enum"   (default) — &kKeys[kFooKey]   (AppKit: enum + char array)
+    "direct"           — &kFooKey          (UIKit:  individual static char vars)
+
+Callback target style (set via <bridge callback_add_target="…">):
+    "property"  (default) — obj.target = X; obj.action = @selector(Y);
+    "addTarget" — [obj addTarget:X action:@selector(Y) forControlEvents:Z];
+    The forControlEvents value comes from the <callback> element's event="" attribute.
+"""
+
+import argparse
+import os
+import sys
+import textwrap
+import xml.etree.ElementTree as ET
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def make_header(xml_path):
+    return f"""\
+/* AUTO-GENERATED — do not edit by hand.
+ * Regenerate with:  python3 tools/gen_bridge.py --xml {xml_path}
+ * Source:           {xml_path}
+ */
+"""
+
+
+def c_str(s):
+    return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def key_ref(key, style):
+    """
+    Return the key expression to pass to INDEX_xxx / NEWINDEX_xxx macros and
+    to objc_setAssociatedObject / objc_getAssociatedObject.
+
+    "enum"   — AppKit: macros take just the enum name (kFooKey); the macro
+               body itself does &kKeys[kvar].  objc_*AssociatedObject calls
+               also need the full address, so callers that go to those calls
+               directly must use key_ref_addr() instead.
+    "direct" — UIKit: bare static char, so always &kFooKey.
+    """
+    if style == "direct":
+        return f"&{key}"
+    # For the INDEX_xxx / NEWINDEX_xxx macros the second arg is the bare enum
+    # name; the macro expands it to &kKeys[kvar] internally.
+    return key
+
+
+def key_ref_addr(key, style):
+    """Full &-address for use in objc_setAssociatedObject / objc_getAssociatedObject."""
+    if style == "direct":
+        return f"&{key}"
+    return f"&kKeys[{key}]"
+
+
+# ---------------------------------------------------------------------------
+# Properties  →  bridge_props.m
+# ---------------------------------------------------------------------------
+
+def gen_props(props_el, key_style, xml_path):
+    index_lines = []
+    newindex_lines = []
+
+    for prop in props_el.findall("prop"):
+        name  = prop.get("name")
+        key   = prop.get("key")
+        typ   = prop.get("type")
+        dflt  = prop.get("default", "")
+        clamp = prop.get("clamp", "")
+        kref  = key_ref(key, key_style)
+
+        if typ == "number":
+            index_lines.append(f'INDEX_NUMBER({c_str(name)}, {kref}, {dflt});')
+            if clamp:
+                newindex_lines.append(f'NEWINDEX_NUMBER_CLAMP({c_str(name)}, {kref}, {clamp});')
+            else:
+                newindex_lines.append(f'NEWINDEX_NUMBER({c_str(name)}, {kref});')
+        elif typ == "number?":
+            index_lines.append(f'INDEX_NUMBER_OR_NIL({c_str(name)}, {kref});')
+            if clamp:
+                newindex_lines.append(f'NEWINDEX_NILABLE_NUMBER_CLAMP({c_str(name)}, {kref}, {clamp});')
+            else:
+                newindex_lines.append(f'NEWINDEX_NILABLE_NUMBER({c_str(name)}, {kref});')
+        elif typ == "bool":
+            index_lines.append(f'INDEX_BOOL({c_str(name)}, {kref});')
+            newindex_lines.append(f'NEWINDEX_BOOL({c_str(name)}, {kref});')
+        elif typ == "string":
+            index_lines.append(f'INDEX_STRING({c_str(name)}, {kref}, {c_str(dflt)});')
+            newindex_lines.append(f'NEWINDEX_STRING({c_str(name)}, {kref});')
+        else:
+            print(f"WARNING: unknown prop type '{typ}' for '{name}'", file=sys.stderr)
+
+    out = [make_header(xml_path)]
+    out.append("/* --- nsview_index property lookups --- */")
+    out.append("/* #include this block inside nsview_index, after the key check. */")
+    out.append("#if defined(GEN_PROPS_INDEX)")
+    out.extend(index_lines)
+    out.append("#endif /* GEN_PROPS_INDEX */")
+    out.append("")
+    out.append("/* --- nsview_newindex property setters --- */")
+    out.append("/* #include this block inside nsview_newindex, after the key check. */")
+    out.append("#if defined(GEN_PROPS_NEWINDEX)")
+    out.extend(newindex_lines)
+    out.append("#endif /* GEN_PROPS_NEWINDEX */")
+    out.append("")
+    return "\n".join(out)
+
+
+# ---------------------------------------------------------------------------
+# Constructor  →  bridge_xxx() function body
+# ---------------------------------------------------------------------------
+
+def gen_constructor(el, key_style, cb_style):
+    name    = el.get("name")
+    returns = el.get("returns", "nsview")
+    lines   = []
+
+    lines.append(f"static int bridge_{name}(lua_State *L) {{")
+
+    # ── Arg declarations ────────────────────────────────────────────────────
+    args = el.findall("arg")
+    for arg in args:
+        idx      = arg.get("index")
+        aname    = arg.get("name")
+        typ      = arg.get("type")
+        required = arg.get("required", "true") == "true"
+        default  = arg.get("default", "")
+
+        if typ == "string":
+            if required:
+                lines.append(f"\tconst char *{aname} = luaL_checkstring(L, {idx});")
+            else:
+                dflt = c_str(default) if default else '""'
+                lines.append(f"\tconst char *{aname} = luaL_optstring(L, {idx}, {dflt});")
+        elif typ == "number":
+            if required:
+                lines.append(f"\tCGFloat {aname} = (CGFloat)luaL_checknumber(L, {idx});")
+            else:
+                dflt = default if default else "0"
+                lines.append(f"\tCGFloat {aname} = (CGFloat)luaL_optnumber(L, {idx}, {dflt});")
+        elif typ == "integer":
+            if required:
+                lines.append(f"\tNSInteger {aname} = (NSInteger)luaL_checkinteger(L, {idx});")
+            else:
+                dflt = default if default else "0"
+                lines.append(f"\tNSInteger {aname} = (NSInteger)luaL_optinteger(L, {idx}, {dflt});")
+        elif typ == "bool":
+            lines.append(f"\tBOOL {aname} = (BOOL)lua_toboolean(L, {idx});")
+        elif typ in ("function", "function?"):
+            lines.append(f"\tBOOL has_{aname} = !lua_isnoneornil(L, {idx});")
+            lines.append(f"\tint {aname}_ref = LUA_NOREF;")
+        elif typ in ("object", "view"):
+            checker = "check_objc" if typ == "object" else "check_view"
+            lines.append(f"\tid {aname} = {checker}(L, {idx});")
+        elif typ == "table":
+            lines.append(f"\tluaL_checktype(L, {idx}, LUA_TTABLE);")
+
+    # ── Callback ref capture ─────────────────────────────────────────────────
+    for arg in args:
+        if arg.get("type") in ("function", "function?"):
+            aname = arg.get("name")
+            idx   = arg.get("index")
+            req   = arg.get("required", "true") == "true"
+            if req:
+                lines.append(f"\tluaL_checktype(L, {idx}, LUA_TFUNCTION);")
+                lines.append(f"\tlua_pushvalue(L, {idx});")
+                lines.append(f"\t{aname}_ref = luaL_ref(L, LUA_REGISTRYINDEX);")
+            else:
+                lines.append(f"\tif (has_{aname}) {{")
+                lines.append(f"\t\tluaL_checktype(L, {idx}, LUA_TFUNCTION);")
+                lines.append(f"\t\tlua_pushvalue(L, {idx});")
+                lines.append(f"\t\t{aname}_ref = luaL_ref(L, LUA_REGISTRYINDEX);")
+                lines.append(f"\t}}")
+    lines.append("")
+
+    # ── Alloc / factory ──────────────────────────────────────────────────────
+    alloc_el         = el.find("alloc")
+    alloc_factory_el = el.find("alloc_factory")
+    var = "obj"
+
+    if alloc_el is not None:
+        cls   = alloc_el.get("class")
+        frame = alloc_el.get("frame", "NSZeroRect")
+        lines.append(f"\t{cls} *{var} = [[{cls} alloc] initWithFrame:{frame}];")
+    elif alloc_factory_el is not None:
+        cls    = alloc_factory_el.get("class")
+        method = alloc_factory_el.get("method")
+        fargs  = alloc_factory_el.get("args", "")
+        parts    = [p for p in method.split(":") if p]
+        arg_list = [a.strip() for a in fargs.split(",")]
+        if len(parts) == len(arg_list):
+            interleaved = " ".join(f"{p}:{a}" for p, a in zip(parts, arg_list))
+            lines.append(f"\t{cls} *{var} = [{cls} {interleaved}];")
+        else:
+            lines.append(f"\t{cls} *{var} = [{cls} {method}];")
+
+    # ── Property assignments ──────────────────────────────────────────────────
+    for sp in el.findall("set_prop"):
+        prop     = sp.get("property")
+        value    = sp.get("value", "")
+        from_arg = sp.get("from_arg", "")
+        if from_arg:
+            lines.append(f"\t{var}.{prop} = [NSString stringWithUTF8String:{from_arg}];")
+        else:
+            lines.append(f"\t{var}.{prop} = {value};")
+
+    # ── Method calls and raw statements ──────────────────────────────────────
+    for cm in el.findall("call_method"):
+        method = cm.get("method")
+        if ":" in method:
+            # method already contains the full ObjC message, e.g.
+            # "setTitle:[NSString stringWithUTF8String:title] forState:UIControlStateNormal"
+            lines.append(f"\t[{var} {method}];")
+        else:
+            lines.append(f"\t[{var} {method}];")
+    for rl in el.findall("raw"):
+        # <raw>arbitrary C statement; var is available as "obj"</raw>
+        for line in textwrap.dedent(rl.text or "").strip().splitlines():
+            lines.append(f"\t{line}")
+
+    # ── Associated-object stamps ──────────────────────────────────────────────
+    for assoc in el.findall("assoc"):
+        kaddr = key_ref_addr(assoc.get("key"), key_style)
+        value = assoc.get("value")
+        lines.append(f"\tobjc_setAssociatedObject({var}, {kaddr}, {value}, OBJC_ASSOCIATION_RETAIN);")
+
+    # ── Callback wiring ───────────────────────────────────────────────────────
+    cb_el = el.find("callback")
+    if cb_el is not None:
+        arg_name = cb_el.get("arg")
+        cb_key   = cb_el.get("key")
+        target   = cb_el.get("target")
+        action   = cb_el.get("action")
+        event    = cb_el.get("event", "UIControlEventTouchUpInside")
+        kaddr    = key_ref_addr(cb_key, key_style)
+        lines.append(f"\tif (has_{arg_name}) {{")
+        lines.append(f"\t\tobjc_setAssociatedObject({var}, {kaddr}, @({arg_name}_ref), OBJC_ASSOCIATION_RETAIN);")
+        if cb_style == "addTarget":
+            lines.append(f"\t\t[{var} addTarget:{target} action:@selector({action}) forControlEvents:{event}];")
+        else:
+            lines.append(f"\t\t{var}.target = {target};")
+            lines.append(f"\t\t{var}.action = @selector({action});")
+        lines.append(f"\t}}")
+
+    lines.append(f"\tpush_objc(L, {var}, {c_str(returns)});")
+    lines.append("\treturn 1;")
+    lines.append("}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Callback setter  →  bridge_xxx() function body
+# ---------------------------------------------------------------------------
+
+def gen_callback_setter(el, key_style):
+    name = el.get("name")
+    lines = []
+
+    guard_el  = el.find("guard")
+    store_el  = el.find("store")
+    side_set  = el.find("side_effect_set")
+    side_clr  = el.find("side_effect_clear")
+
+    guard_type = guard_el.get("type") if guard_el is not None else None
+    guard_key  = guard_el.get("key")  if guard_el is not None else None
+    guard_msg  = guard_el.get("msg")  if guard_el is not None else "invalid view"
+    store_key  = store_el.get("key")  if store_el is not None else None
+    store_on   = store_el.get("on")   if store_el is not None else "obj"
+
+    lines.append(f"static int bridge_{name}(lua_State *L) {{")
+    lines.append("\tid obj = check_objc(L, 1);")
+
+    if guard_el is not None:
+        gkaddr = key_ref_addr(guard_key, key_style)
+        if guard_type and guard_type != "id":
+            lines.append(f"\t{guard_type} *src = objc_getAssociatedObject(obj, {gkaddr});")
+            lines.append(f"\tif (!src) return luaL_error(L, {c_str(guard_msg)});")
+        else:
+            lines.append(f"\tid src = objc_getAssociatedObject(obj, {gkaddr});")
+            lines.append(f"\tif (!src) return luaL_error(L, {c_str(guard_msg)});")
+
+    skaddr = key_ref_addr(store_key, key_style)
+    lines.append("\tif (lua_isnoneornil(L, 2)) {")
+    if side_clr is not None:
+        for line in textwrap.dedent(side_clr.text or "").strip().splitlines():
+            lines.append(f"\t\t{line}")
+    lines.append(f"\t\tobjc_setAssociatedObject({store_on}, {skaddr}, nil, OBJC_ASSOCIATION_ASSIGN);")
+    lines.append("\t\treturn 0;")
+    lines.append("\t}")
+    lines.append("\tluaL_checktype(L, 2, LUA_TFUNCTION);")
+    lines.append("\tlua_pushvalue(L, 2);")
+    lines.append("\tint ref = luaL_ref(L, LUA_REGISTRYINDEX);")
+    if side_set is not None:
+        for line in textwrap.dedent(side_set.text or "").strip().splitlines():
+            lines.append(f"\t{line}")
+    lines.append(f"\tobjc_setAssociatedObject({store_on}, {skaddr}, @(ref), OBJC_ASSOCIATION_RETAIN);")
+    lines.append("\treturn 0;")
+    lines.append("}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# bridge_lib.inc
+# ---------------------------------------------------------------------------
+
+def gen_lib_entries(root, xml_path):
+    entries = []
+    for el in root:
+        tag      = el.tag
+        name     = el.get("name")
+        lua_name = el.get("lua_name")
+        if tag in ("constructor", "callback_setter", "manual_entry"):
+            entries.append((lua_name, f"bridge_{name}"))
+
+    lines = [make_header(xml_path)]
+    lines.append("/* luaL_Reg entries — #include inside bridge_lib[] initialiser */")
+    lines.append("#if defined(GEN_BRIDGE_LIB)")
+    for lua_n, c_n in entries:
+        lines.append(f'\t{{{c_str(lua_n)},\t{c_n}}},')
+    lines.append("#endif /* GEN_BRIDGE_LIB */")
+    lines.append("")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate Lua bridge boilerplate from XML.")
+    parser.add_argument("--xml", default="tools/bridge.xml")
+    parser.add_argument("--out", default="src/appkit/generated")
+    args = parser.parse_args()
+
+    tree = ET.parse(args.xml)
+    root = tree.getroot()
+
+    key_style = root.get("key_style", "enum")    # "enum" | "direct"
+    cb_style  = root.get("callback_style", "property")  # "property" | "addTarget"
+
+    os.makedirs(args.out, exist_ok=True)
+
+    # bridge_props.m
+    props_el = root.find("properties")
+    if props_el is not None:
+        with open(os.path.join(args.out, "bridge_props.m"), "w") as f:
+            f.write(gen_props(props_el, key_style, args.xml))
+        print(f"  wrote {args.out}/bridge_props.m")
+
+    # bridge_funcs.m
+    hdr = make_header(args.xml)
+    funcs = [hdr, "/* Generated bridge_xxx() functions */", ""]
+    for el in root:
+        if el.tag == "constructor":
+            funcs.append(gen_constructor(el, key_style, cb_style))
+        elif el.tag == "callback_setter":
+            funcs.append(gen_callback_setter(el, key_style))
+
+    with open(os.path.join(args.out, "bridge_funcs.m"), "w") as f:
+        f.write("\n".join(funcs))
+    print(f"  wrote {args.out}/bridge_funcs.m")
+
+    # bridge_lib.inc
+    with open(os.path.join(args.out, "bridge_lib.inc"), "w") as f:
+        f.write(gen_lib_entries(root, args.xml))
+    print(f"  wrote {args.out}/bridge_lib.inc")
+
+    print("Done.")
+
+
+if __name__ == "__main__":
+    main()

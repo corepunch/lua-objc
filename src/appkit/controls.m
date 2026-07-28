@@ -1,27 +1,7 @@
-static int bridge_button(lua_State *L) {
-	const char *title = luaL_checkstring(L, 1);
-	int has_action = !lua_isnoneornil(L, 2);
-	int ref = LUA_NOREF;
-	if (has_action) {
-		luaL_checktype(L, 2, LUA_TFUNCTION);
-		lua_pushvalue(L, 2);
-		ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	}
 
-	NSButton *btn = [[NSButton alloc] initWithFrame:NSZeroRect];
-	btn.title = [NSString stringWithUTF8String:title];
-	btn.bezelStyle = NSBezelStyleRounded;
-	[btn sizeToFit];
-
-	if (has_action) {
-		objc_setAssociatedObject(btn, &kKeys[kCallbackKey], @(ref),
-			OBJC_ASSOCIATION_RETAIN);
-		btn.target = [LuaButtonTarget shared];
-		btn.action = @selector(onAction:);
-	}
-
-	push_objc(L, btn, "nsview");
-	return 1;
+static NSScrollView *table_scrollview(id obj) {
+	return objc_getAssociatedObject(obj, &kKeys[kTableScrollViewKey])
+		?: (NSScrollView *)obj;
 }
 
 static int bridge_action_button(lua_State *L) {
@@ -54,32 +34,6 @@ static int bridge_action_button(lua_State *L) {
 	return 1;
 }
 
-static int bridge_toggle(lua_State *L) {
-	const char *label = luaL_checkstring(L, 1);
-	int is_on = lua_toboolean(L, 2);
-	int has_action = !lua_isnoneornil(L, 3);
-	int ref = LUA_NOREF;
-	if (has_action) {
-		luaL_checktype(L, 3, LUA_TFUNCTION);
-		lua_pushvalue(L, 3);
-		ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	}
-
-	NSButton *btn = [NSButton checkboxWithTitle:[NSString stringWithUTF8String:label]
-										 target:nil action:nil];
-	btn.state = is_on ? NSControlStateValueOn : NSControlStateValueOff;
-	[btn sizeToFit];
-
-	if (has_action) {
-		objc_setAssociatedObject(btn, &kKeys[kCallbackKey], @(ref),
-			OBJC_ASSOCIATION_RETAIN);
-		btn.target = [LuaButtonTarget shared];
-		btn.action = @selector(onAction:);
-	}
-
-	push_objc(L, btn, "nsview");
-	return 1;
-}
 
 #pragma mark - Timer & spinner
 
@@ -480,18 +434,6 @@ static int bridge_table_cell_frames(lua_State *L) {
 	return 1;
 }
 
-static int bridge_table_set_refresh(lua_State *L) {
-	id obj = check_objc(L, 1);
-	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
-	if (!src) return luaL_error(L, "not a table view");
-
-	luaL_checktype(L, 2, LUA_TFUNCTION);
-	lua_pushvalue(L, 2);
-	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	objc_setAssociatedObject(obj, &kKeys[kTableRefreshKey], @(ref),
-		OBJC_ASSOCIATION_RETAIN);
-	return 0;
-}
 
 static int bridge_table_refresh(lua_State *L) {
 	id obj = check_objc(L, 1);
@@ -511,51 +453,6 @@ static int bridge_table_refresh(lua_State *L) {
 	lua_objc_pcall(L, 2, 0, "refresh");
 	lua_pushboolean(L, 1);
 	return 1;
-}
-
-static int bridge_table_set_selection(lua_State *L) {
-	id obj = check_objc(L, 1);
-	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
-	if (!src) return luaL_error(L, "not a table view");
-	NSScrollView *sv = (NSScrollView *)obj;
-
-	if (lua_isnoneornil(L, 2)) {
-		objc_setAssociatedObject(sv, &kKeys[kTableSelectionKey], nil,
-			OBJC_ASSOCIATION_ASSIGN);
-		return 0;
-	}
-
-	luaL_checktype(L, 2, LUA_TFUNCTION);
-	lua_pushvalue(L, 2);
-	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	objc_setAssociatedObject(sv, &kKeys[kTableSelectionKey], @(ref),
-		OBJC_ASSOCIATION_RETAIN);
-	return 0;
-}
-
-static int bridge_table_set_activation(lua_State *L) {
-	id obj = check_objc(L, 1);
-	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
-	if (!src) return luaL_error(L, "not a table or outline view");
-	NSScrollView *sv = (NSScrollView *)obj;
-	NSTableView *table = (NSTableView *)sv.documentView;
-
-	if (lua_isnoneornil(L, 2)) {
-		objc_setAssociatedObject(sv, &kKeys[kTableActivationKey], nil,
-			OBJC_ASSOCIATION_ASSIGN);
-		table.target = nil;
-		table.doubleAction = nil;
-		return 0;
-	}
-
-	luaL_checktype(L, 2, LUA_TFUNCTION);
-	lua_pushvalue(L, 2);
-	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	objc_setAssociatedObject(sv, &kKeys[kTableActivationKey], @(ref),
-		OBJC_ASSOCIATION_RETAIN);
-	table.target = src;
-	table.doubleAction = @selector(activateSelectedRow:);
-	return 0;
 }
 
 static int bridge_table_select_row(lua_State *L) {

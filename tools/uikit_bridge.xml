@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  uikit_bridge.xml — declarative source for the UIKit Lua bridge.
+
+  Run tools/gen_bridge.py to regenerate:
+    src/uikit/generated/bridge_funcs.m    — bridge_xxx() C functions
+    src/uikit/generated/bridge_props.m    — nsview_index / nsview_newindex bodies
+    src/uikit/generated/bridge_lib.inc    — luaL_Reg entries for bridge_lib[]
+
+  key_style="direct"  — keys are bare static char vars (&kFooKey),
+                         not an enum array (&kKeys[kFooKey]) as in AppKit.
+  callback_style="addTarget" — UIKit uses addTarget:action:forControlEvents:
+                                instead of NSControl's .target/.action properties.
+-->
+<bridge module="UIKit" key_style="direct" callback_style="addTarget">
+
+  <!-- ================================================================
+       LAYOUT PROPERTIES — written to bridge_props.m
+       UIKit only exposes the subset of properties its simpler layout
+       engine actually reads (padding, alignment, fixedWidth/Height).
+       ================================================================ -->
+  <properties metatable="uiview">
+    <prop name="padding"     key="kPaddingKey"     type="number"  default="12.0"/>
+    <prop name="alignment"   key="kAlignmentKey"   type="string"  default="center"/>
+    <prop name="fixedWidth"  key="kFixedWidthKey"  type="number"  default="0"/>
+    <prop name="fixedHeight" key="kFixedHeightKey" type="number"  default="0"/>
+  </properties>
+
+  <!-- ================================================================
+       STACK CONTAINER CONSTRUCTORS
+       UIKit uses NSString values for the axis key, not an enum int.
+       ================================================================ -->
+
+  <constructor name="vstack" lua_name="_vstack" returns="uiview">
+    <alloc class="UIView" frame="CGRectZero"/>
+    <assoc key="kAxisKey"     value='@"vstack"'/>
+    <assoc key="kFlexibleKey" value="@YES"/>
+  </constructor>
+
+  <constructor name="hstack" lua_name="_hstack" returns="uiview">
+    <alloc class="UIView" frame="CGRectZero"/>
+    <assoc key="kAxisKey"     value='@"hstack"'/>
+    <assoc key="kFlexibleKey" value="@YES"/>
+  </constructor>
+
+  <constructor name="hsplit" lua_name="_hsplit" returns="uiview">
+    <alloc class="UIView" frame="CGRectZero"/>
+    <assoc key="kAxisKey"     value='@"hsplit"'/>
+    <assoc key="kFlexibleKey" value="@YES"/>
+  </constructor>
+
+  <constructor name="spacer" lua_name="_spacer" returns="uiview">
+    <alloc class="UIView" frame="CGRectMake(0, 0, 10, 10)"/>
+    <assoc key="kFlexibleKey" value="@YES"/>
+  </constructor>
+
+  <!-- ================================================================
+       BUTTON / TOGGLE
+       UIKit button uses a factory method; toggle is UISwitch.
+       ================================================================ -->
+
+  <!--
+    bridge_button(title: string, callback?: function) -> uiview
+    UIButtonTypeSystem factory; addTarget for UIControlEventTouchUpInside.
+  -->
+  <constructor name="button" lua_name="_button" returns="uiview">
+    <arg index="1" name="title"    type="string"   required="true"/>
+    <arg index="2" name="callback" type="function?" required="false"/>
+    <alloc_factory class="UIButton"
+      method="buttonWithType:"
+      args="UIButtonTypeSystem"/>
+    <call_method method="setTitle:[NSString stringWithUTF8String:title] forState:UIControlStateNormal"/>
+    <call_method method="sizeToFit"/>
+    <callback arg="callback" key="kCallbackKey"
+              target="[LuaButtonTarget shared]" action="onAction:"
+              event="UIControlEventTouchUpInside"/>
+  </constructor>
+
+  <!--
+    bridge_toggle(label: string, is_on: bool, callback?: function) -> uiview
+    UISwitch; addTarget for UIControlEventValueChanged.
+  -->
+  <constructor name="toggle" lua_name="_toggle" returns="uiview">
+    <arg index="1" name="label"    type="string"   required="true"/>
+    <arg index="2" name="is_on"    type="bool"     required="true"/>
+    <arg index="3" name="callback" type="function?" required="false"/>
+    <alloc class="UISwitch" frame="CGRectZero"/>
+    <set_prop property="on"                 value="is_on"/>
+    <set_prop property="accessibilityLabel" from_arg="label"/>
+    <call_method method="sizeToFit"/>
+    <callback arg="callback" key="kCallbackKey"
+              target="[LuaButtonTarget shared]" action="onAction:"
+              event="UIControlEventValueChanged"/>
+  </constructor>
+
+  <!-- ================================================================
+       MANUAL ENTRIES — hand-written functions in UIKit .m files.
+       Listed here so bridge_lib.inc is the sole source of truth for
+       the registration table; no entries need updating in bridge.m.
+       ================================================================ -->
+
+  <!-- views.m -->
+  <manual_entry name="window"          lua_name="_window"         src="views.m"/>
+  <manual_entry name="image"           lua_name="_image"          src="views.m"/>
+  <manual_entry name="add"             lua_name="_add"            src="views.m"/>
+  <manual_entry name="layout"          lua_name="_layout"         src="views.m"/>
+  <manual_entry name="set_content_size" lua_name="_setContentSize" src="views.m"/>
+
+  <!-- tables.m -->
+  <manual_entry name="tableview"       lua_name="_tableview"      src="tables.m"/>
+
+  <!-- platform.m -->
+  <manual_entry name="show"            lua_name="_show"           src="platform.m"/>
+  <manual_entry name="create"          lua_name="_create"         src="platform.m"/>
+  <manual_entry name="font"            lua_name="_font"           src="platform.m"/>
+  <manual_entry name="perform"         lua_name="_perform"        src="platform.m"/>
+  <manual_entry name="callback"        lua_name="_callback"       src="platform.m"/>
+
+  <!-- shared async -->
+  <manual_entry name="timer_after"     lua_name="_timerAfter"     src="lua_async.m"/>
+  <manual_entry name="http_get"        lua_name="_httpGet"        src="lua_async.m"/>
+  <manual_entry name="json_parse"      lua_name="_jsonParse"      src="lua_async.m"/>
+
+</bridge>

@@ -105,6 +105,95 @@ Use `t.assertSize` / `t.assertEqual` / `t.expect` from `TestKit` (see
 Tests are the project's primary safety net. When in doubt, add more assertions
 rather than fewer. The test suite should grow continually.
 
+## Bridge code generation
+
+Most AppKit and UIKit bridge boilerplate is **generated** from XML config files.
+Never edit the generated files directly — edit the XML and regenerate.
+
+### Files
+
+| File | Purpose |
+|---|---|
+| `tools/bridge.xml` | AppKit bridge surface (properties, constructors, callback setters, manual entries) |
+| `tools/uikit_bridge.xml` | UIKit bridge surface (same structure, UIKit classes and key style) |
+| `tools/gen_bridge.py` | Generator — reads XML, emits three files per platform |
+
+### Generated files (do not edit)
+
+| Generated file | Used by | Contains |
+|---|---|---|
+| `src/appkit/generated/bridge_funcs.m` | `src/main.m` | `bridge_xxx()` C functions |
+| `src/appkit/generated/bridge_props.m` | `src/appkit/runtime.m` | `INDEX_xxx` / `NEWINDEX_xxx` macro calls |
+| `src/appkit/generated/bridge_lib.inc` | `src/main.m` | `luaL_Reg` table entries |
+| `src/uikit/generated/bridge_funcs.m` | `src/uikit/bridge.m` | same, UIKit |
+| `src/uikit/generated/bridge_props.m` | `src/uikit/metatable.m` | same, UIKit |
+| `src/uikit/generated/bridge_lib.inc` | `src/uikit/bridge.m` | same, UIKit |
+
+### Regenerate after any XML change
+
+```sh
+python3 tools/gen_bridge.py                                              # AppKit
+python3 tools/gen_bridge.py --xml tools/uikit_bridge.xml --out src/uikit/generated  # UIKit
+make
+```
+
+### Adding a new bridge function
+
+**Simple constructor** (alloc a view, set properties, return it):
+
+```xml
+<!-- tools/bridge.xml or uikit_bridge.xml -->
+<constructor name="my_widget" lua_name="_myWidget" returns="nsview">
+  <arg index="1" name="title"    type="string"   required="true"/>
+  <arg index="2" name="callback" type="function?" required="false"/>
+  <alloc class="NSMyClass" frame="NSZeroRect"/>
+  <set_prop property="title" from_arg="title"/>
+  <call_method method="sizeToFit"/>
+  <assoc key="kFlexibleKey" value="@YES"/>
+  <callback arg="callback" key="kCallbackKey"
+            target="[LuaButtonTarget shared]" action="onAction:"/>
+</constructor>
+```
+
+**Callback setter** (stores a Lua function ref on an existing view):
+
+```xml
+<callback_setter name="widget_on_change" lua_name="_widgetOnChange">
+  <guard type="MySourceClass" key="kMySourceKey" msg="not a my_widget"/>
+  <store key="kMyChangeKey" on="obj"/>
+  <!-- optional side effects when setting or clearing: -->
+  <!-- <side_effect_set>ObjC statements here</side_effect_set> -->
+  <!-- <side_effect_clear>ObjC statements here</side_effect_clear> -->
+</callback_setter>
+```
+
+**Manual entry** (complex logic that stays hand-written, but is registered via generated table):
+
+```xml
+<manual_entry name="my_complex_func" lua_name="_myComplexFunc" src="views.m"/>
+```
+Then implement `static int bridge_my_complex_func(lua_State *L)` in the named `.m` file.
+
+**New layout property** (appears on all views as `view.myProp`):
+
+```xml
+<!-- in <properties metatable="nsview"> -->
+<prop name="myProp" key="kMyPropKey" type="number" default="0"/>
+```
+Also add `kMyPropKey` to the enum in `src/main.m`.
+
+### Key styles
+
+The two XML files use different key styles, handled automatically:
+
+- `bridge.xml` (`key_style="enum"`) — AppKit uses a single `char kKeys[kKeyCount]` array; props macro args are bare enum names (`kFooKey`).
+- `uikit_bridge.xml` (`key_style="direct"`) — UIKit uses individual `static char kFooKey` vars; all references are `&kFooKey`.
+
+### Callback target styles
+
+- `callback_style="property"` (AppKit) — sets `.target` / `.action` on NSControl subclasses.
+- `callback_style="addTarget"` (UIKit) — calls `addTarget:action:forControlEvents:`. Set the `event=` attribute on `<callback>` to specify the control event (default: `UIControlEventTouchUpInside`).
+
 ## Build and verification
 
 ```sh

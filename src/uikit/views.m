@@ -27,36 +27,6 @@ static int bridge_window(lua_State *L) {
 	return 1;
 }
 
-static int bridge_vstack(lua_State *L) {
-	UIView *v = [[UIView alloc] initWithFrame:CGRectZero];
-	objc_setAssociatedObject(v, &kAxisKey, @"vstack", OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(v, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
-	push_objc(L, v, "uiview");
-	return 1;
-}
-
-static int bridge_hstack(lua_State *L) {
-	UIView *v = [[UIView alloc] initWithFrame:CGRectZero];
-	objc_setAssociatedObject(v, &kAxisKey, @"hstack", OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(v, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
-	push_objc(L, v, "uiview");
-	return 1;
-}
-
-static int bridge_hsplit(lua_State *L) {
-	UIView *v = [[UIView alloc] initWithFrame:CGRectZero];
-	objc_setAssociatedObject(v, &kAxisKey, @"hsplit", OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(v, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
-	push_objc(L, v, "uiview");
-	return 1;
-}
-
-static int bridge_spacer(lua_State *L) {
-	UIView *v = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 10, 10)];
-	objc_setAssociatedObject(v, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
-	push_objc(L, v, "uiview");
-	return 1;
-}
 
 static int bridge_image(lua_State *L) {
 	const char *path = luaL_checkstring(L, 1);
