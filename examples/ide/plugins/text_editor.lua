@@ -14,10 +14,10 @@ local function createEditor(props)
 	props = props or {}
 
 	local view = bridge._textView()
-	bridge._textViewSetLanguage(view, props.language or "lua")
+	view:setLanguage(props.language or "lua")
 
 	if props.initialCode then
-		bridge._textViewSetText(view, props.initialCode)
+		view:setText(props.initialCode)
 	end
 
 	local editor = {
@@ -33,19 +33,19 @@ local function createEditor(props)
 	end
 
 	function editor:setText(text)
-		bridge._textViewSetText(view, text or "")
+		view:setText(text or "")
 	end
 
 	function editor:getText()
-		return bridge._textViewGetText(view)
+		return view:getText()
 	end
 
 	function editor:setLanguage(language)
-		bridge._textViewSetLanguage(view, language or "lua")
+		view:setLanguage(language or "lua")
 	end
 
 	function editor:setWrapMode(wrapped)
-		bridge._textViewSetWrapMode(view, wrapped and true or false)
+		view:setWrapMode(wrapped and true or false)
 	end
 
 	function editor:watchFile(path)
@@ -67,7 +67,7 @@ local function createEditor(props)
 			local content = f:read("*a")
 			f:close()
 
-			bridge._textViewSetText(view, content)
+			view:setText(content)
 
 			if changeHandler then
 				local co = coroutine.create(function()
@@ -85,7 +85,7 @@ local function createEditor(props)
 		end
 	end
 
-	bridge._textViewOnChange(view, function(text)
+	view:onChange(function(text)
 		if changeHandler then
 			changeHandler(text, editor)
 		end

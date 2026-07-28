@@ -167,14 +167,14 @@ function Source.open(folder, app, initialFile)
 			content = canvas,
 		}
 		local textView = bridge._textView()
-		bridge._textViewSetLanguage(textView, "lua")
-		bridge._textViewSetWrapMode(textView, wordWrapEnabled)
+		textView:setLanguage("lua")
+		textView:setWrapMode(wordWrapEnabled)
 
 		local version = 0
 		local function evaluate(code)
 			canvasMod.evalIntoCanvas(canvas, code, rebuildToolbar)
 		end
-		bridge._textViewOnChange(textView, function(text)
+		textView:onChange(function(text)
 			version = version + 1
 			local requestedVersion = version
 			bridge._timerAfter(0.3, function()
@@ -186,12 +186,12 @@ function Source.open(folder, app, initialFile)
 			bridge._watchFile(path, function()
 				local updated = readFile(path)
 				if not updated then return end
-				bridge._textViewSetText(textView, updated)
+				textView:setText(updated)
 				evaluate(updated)
 			end)
 		end
 
-		bridge._textViewSetText(textView, content or "")
+		textView:setText(content or "")
 
 		local window = ns.Window {
 			title = name,
@@ -241,12 +241,12 @@ function Source.open(folder, app, initialFile)
 		local function reload()
 			local updated = readFile(path)
 			if not updated then return end
-			bridge._textViewSetText(document.textView, updated)
+			document.textView:setText(updated)
 			document.evaluate(updated)
 		end
 
-		bridge._textViewSetText(document.textView, content)
-		bridge._textViewSetLanguage(document.textView, "lua")
+	document.textView:setText(content)
+	document.textView:setLanguage("lua")
 		primaryWindow.title = path:match("([^/\\]+)$") or path
 		bridge._watchFile(path, reload)
 		document.evaluate(content)
@@ -310,7 +310,7 @@ function Source.open(folder, app, initialFile)
 				and primaryWindow.tabGroup.selectedWindow then
 				selectedWindow = primaryWindow.tabGroup.selectedWindow
 			end
-			bridge._toggleSidebar(selectedWindow)
+			selectedWindow:toggleSidebar()
 		end,
 	}
 
@@ -322,9 +322,7 @@ function Source.open(folder, app, initialFile)
 		action = function()
 			wordWrapEnabled = not wordWrapEnabled
 			for _, document in ipairs(documents) do
-				bridge._textViewSetWrapMode(
-					document.textView,
-					wordWrapEnabled)
+				document.textView:setWrapMode(wordWrapEnabled)
 			end
 		end,
 	}

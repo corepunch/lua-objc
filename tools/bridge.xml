@@ -279,4 +279,77 @@ _table.doubleAction = nil;
   <manual_entry name="perform"      lua_name="_perform"      src="editor.m"/>
   <manual_entry name="callback"     lua_name="_callback"     src="editor.m"/>
 
+  <!-- ================================================================
+       METHOD GROUPS — obj:method(args) dispatch via nsview_index.
+       detect="kXxxKey"       → detected by associated-object sentinel.
+       detect_class="NSFoo"   → detected by isKindOfClass:.
+       c_func="bridge_xxx"    → the existing C function that implements it
+                                (same function, new calling convention).
+       ================================================================ -->
+
+  <!--
+    Text views: NSScrollView wrapping NSTextView, sentinel = kTextViewSourceKey.
+    All five functions already exist in editor.m.
+  -->
+  <method_group name="text_view" detect="kTextViewSourceKey">
+    <method name="setText"     c_func="bridge_text_view_set_text"      src="editor.m"/>
+    <method name="getText"     c_func="bridge_text_view_get_text"       src="editor.m"/>
+    <method name="setLanguage" c_func="bridge_text_view_set_language"   src="editor.m"/>
+    <method name="setWrapMode" c_func="bridge_text_view_set_wrap_mode"  src="editor.m"/>
+    <method name="onChange"    c_func="bridge_text_view_on_change"      src="editor.m"/>
+  </method_group>
+
+  <!--
+    Tab views: detected by isKindOfClass:[NSTabView class].
+    All five functions exist in tabview.m.
+  -->
+  <method_group name="tab_view" detect_class="NSTabView">
+    <method name="addTab"    c_func="bridge_tab_add"       src="tabview.m"/>
+    <method name="removeTab" c_func="bridge_tab_remove"    src="tabview.m"/>
+    <method name="selectTab" c_func="bridge_tab_select"    src="tabview.m"/>
+    <method name="tabCount"  c_func="bridge_tab_count"     src="tabview.m"/>
+    <method name="onChange"  c_func="bridge_tab_on_change" src="tabview.m"/>
+  </method_group>
+
+  <!--
+    Windows: detected by isKindOfClass:[NSWindow class].
+    Functions exist in views.m / main.m.
+  -->
+  <method_group name="window" detect_class="NSWindow">
+    <method name="addTabbedWindow" c_func="bridge_add_tabbed_window"      src="views.m"/>
+    <method name="setTabbing"      c_func="bridge_set_window_tabbing"      src="views.m"/>
+    <method name="tabCount"        c_func="bridge_window_tab_count"        src="views.m"/>
+    <method name="toggleSidebar"   c_func="bridge_toggle_sidebar"          src="main.m"/>
+    <method name="dismiss"         c_func="bridge_dismiss_window"          src="presentation.m"/>
+    <method name="setContentSize"  c_func="bridge_set_content_size"        src="layout.m"/>
+    <method name="setMinSize"      c_func="bridge_set_window_min_size"     src="layout.m"/>
+    <method name="setAppearance"   c_func="bridge_set_appearance"          src="layout.m"/>
+    <method name="focus"           c_func="bridge_focus"                   src="presentation.m"/>
+    <method name="isFirstResponder" c_func="bridge_is_first_responder"     src="presentation.m"/>
+    <method name="selectTab"       c_func="bridge_select_window_tab"       src="main.m"/>
+    <method name="workspaceState"  c_func="bridge_window_workspace_state"  src="main.m"/>
+    <method name="show"           c_func="bridge_show"                  src="main.m"/>
+    <method name="add"           c_func="bridge_add"                   src="layout.m"/>
+    <method name="layout"        c_func="bridge_layout"                src="layout.m"/>
+    <method name="size"          c_func="bridge_view_size"             src="layout.m"/>
+  </method_group>
+
+  <!--
+    Generic views: NSView (non-window, non-specialised).
+    Detected last so more specific groups above take priority.
+    layout, viewSize, viewFrameInWindow, add, setAppearance apply to any view.
+  -->
+  <method_group name="view" detect_class="NSView">
+    <method name="layout"          c_func="bridge_layout"               src="layout.m"/>
+    <method name="size"            c_func="bridge_view_size"            src="layout.m"/>
+    <method name="frameInWindow"   c_func="bridge_view_frame_in_window" src="layout.m"/>
+    <method name="add"             c_func="bridge_add"                  src="layout.m"/>
+    <method name="renderToPNG"     c_func="bridge_render_to_png"        src="platform.m"/>
+    <method name="clearContainer"  c_func="bridge_clear_container"      src="editor.m"/>
+    <method name="splitProportions" c_func="bridge_split_set_proportions" src="views.m"/>
+    <method name="setContentSize"  c_func="bridge_set_content_size"     src="layout.m"/>
+    <method name="setCallback"     c_func="bridge_callback"              src="editor.m"/>
+  </method_group>
+
+
 </bridge>

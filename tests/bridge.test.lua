@@ -71,12 +71,12 @@ t.assertEqual(receivedCommand, "submit",
 local findInFiles, findInFilesRoot = FindInFiles {
 	files = { "/project/main.lua" },
 }
-bridge._setContentSize(findInFilesRoot, 220, 300)
-bridge._layout(findInFilesRoot, 220)
+findInFilesRoot:setContentSize(220, 300)
+findInFilesRoot:layout(220)
 local _, searchIconY, _, searchIconHeight =
-	bridge._viewFrameInWindow(findInFiles._searchIcon)
+	findInFiles._searchIcon:frameInWindow()
 local _, searchFieldY, _, searchFieldHeight =
-	bridge._viewFrameInWindow(findInFiles._searchField)
+	findInFiles._searchField:frameInWindow()
 t.assertEqual(searchFieldHeight, 16,
 	"borderless Find field keeps AppKit's native intrinsic text height")
 t.expect(math.abs(
@@ -183,15 +183,15 @@ local workspaceWindow = ns.Window {
 	sidebar = navigatorArea,
 	content = editorArea,
 }
-local navigatorWidth = bridge._viewSize(navigatorArea)
-local editorWidth = bridge._viewSize(editorArea)
-local previewWidth = bridge._viewSize(previewArea)
+local navigatorWidth = navigatorArea:size()
+local editorWidth = editorArea:size()
+local previewWidth = previewArea:size()
 t.expect(navigatorWidth > 0, "IDE navigator split pane has a usable width")
 t.expect(editorWidth > 0,
 	"IDE editor split pane has a usable native width")
 t.expect(previewWidth > 0,
 	"IDE canvas split pane is visible initially")
-local workspaceState = bridge._windowWorkspaceState(workspaceWindow)
+local workspaceState = workspaceWindow:workspaceState()
 t.assertEqual(workspaceState.controllerClass, "NSSplitViewController",
 	"IDE workspace is owned by NSSplitViewController")
 t.assertEqual(workspaceState.itemCount, 2,
@@ -255,7 +255,7 @@ end, "typed native arguments reject a view of the wrong Cocoa class")
 -- Native NSTabView: add, select, remove, count.
 
 local ntv = bridge._tabview(400, 200, "top")
-t.assertEqual(bridge._tabCount(ntv), 0, "empty tab view has zero tabs")
+t.assertEqual(ntv:tabCount(), 0, "empty tab view has zero tabs")
 t.assertThrows(function()
 	bridge._tabview(400, 200, "rounded")
 end, "tab views reject app-defined document tab styles")
@@ -264,41 +264,41 @@ local contentA = ns.Text "Content A"
 local contentB = ns.Text "Content B"
 local contentC = ns.Text "Content C"
 
-bridge._tabAdd(ntv, "File A.lua", contentA)
-bridge._tabAdd(ntv, "File B.lua", contentB)
-bridge._tabAdd(ntv, "File C.lua", contentC)
-t.assertEqual(bridge._tabCount(ntv), 3, "three tabs added")
+ntv:addTab("File A.lua", contentA)
+ntv:addTab("File B.lua", contentB)
+ntv:addTab("File C.lua", contentC)
+t.assertEqual(ntv:tabCount(), 3, "three tabs added")
 
-bridge._tabSelect(ntv, 0)
-bridge._tabRemove(ntv, 0)
-t.assertEqual(bridge._tabCount(ntv), 2, "two tabs remain after removing first")
+ntv:selectTab(0)
+ntv:removeTab(0)
+t.assertEqual(ntv:tabCount(), 2, "two tabs remain after removing first")
 
-bridge._tabSelect(ntv, 0)
-t.assertEqual(bridge._tabCount(ntv), 2, "selection does not change count")
+ntv:selectTab(0)
+t.assertEqual(ntv:tabCount(), 2, "selection does not change count")
 
 -- Preview tab pattern: remove + add replaces, plain add grows count.
 
 local ptv = bridge._tabview(400, 200, "notabs")
-t.assertEqual(bridge._tabCount(ptv), 0, "preview tab view starts empty")
+t.assertEqual(ptv:tabCount(), 0, "preview tab view starts empty")
 
 local function makePreviewTV(content)
 	local tv = bridge._textView()
-	bridge._textViewSetText(tv, content)
+	tv:setText(content)
 	return tv
 end
 
 local prev1 = makePreviewTV("preview 1")
-bridge._tabAdd(ptv, "p1.lua", prev1)
-t.assertEqual(bridge._tabCount(ptv), 1, "preview add: one tab")
+ptv:addTab("p1.lua", prev1)
+t.assertEqual(ptv:tabCount(), 1, "preview add: one tab")
 
-bridge._tabRemove(ptv, 0)
+ptv:removeTab(0)
 local prev2 = makePreviewTV("preview 2")
-bridge._tabAdd(ptv, "p2.lua", prev2)
-t.assertEqual(bridge._tabCount(ptv), 1, "preview replaced: count stays 1")
+ptv:addTab("p2.lua", prev2)
+t.assertEqual(ptv:tabCount(), 1, "preview replaced: count stays 1")
 
 local perm = makePreviewTV("permanent")
-bridge._tabAdd(ptv, "perm.lua", perm)
-t.assertEqual(bridge._tabCount(ptv), 2, "permanent added: count grows to 2")
+ptv:addTab("perm.lua", perm)
+t.assertEqual(ptv:tabCount(), 2, "permanent added: count grows to 2")
 
 -- Image layout uses the bridge's capped display size, not the source bitmap's
 -- intrinsic dimensions, and remains proportional under a narrower proposal.
@@ -708,8 +708,8 @@ for _, c in ipairs(widths) do total640 = total640 + c.width end
 t.expect(total640 > 600, "640-wide columns fill available width (" .. total640 .. ")")
 
 -- Resize to 450 (simulates canvas pane embedding) and re-layout.
-bridge._setContentSize(tableList, 450, 200)
-bridge._layout(tableList, 450)
+tableList:setContentSize(450, 200)
+tableList:layout(450)
 widths = bridge._tableColumnWidths(tableList)
 local total450 = 0
 for _, c in ipairs(widths) do
@@ -719,8 +719,8 @@ end
 t.expect(total450 < total640, "columns shrink when table is narrowed (" .. total450 .. " < " .. total640 .. ")")
 
 -- Resize to 320 (very narrow but all columns must stay visible).
-bridge._setContentSize(tableList, 320, 200)
-bridge._layout(tableList, 320)
+tableList:setContentSize(320, 200)
+tableList:layout(320)
 widths = bridge._tableColumnWidths(tableList)
 local total320 = 0
 for _, c in ipairs(widths) do
@@ -746,8 +746,8 @@ local fileTree = ns.OutlineView {
 		} },
 	},
 }
-bridge._setContentSize(fileTree, 220, 200)
-bridge._layout(fileTree, 220)
+fileTree:setContentSize(220, 200)
+fileTree:layout(220)
 local outlineWidths = bridge._tableColumnWidths(fileTree)
 t.assertEqual(#outlineWidths, 1, "file tree has one outline column")
 t.assertEqual(outlineWidths[1].width, 220,
@@ -773,20 +773,20 @@ local splitView = ns.HSplit {
 -- Set a known content size and run layout.
 -- NSSplitView initial width matches the first subview's frame; we force a
 -- specific width so the proportions kick in with a deterministic total.
-bridge._setContentSize(splitView, 620, 300)
-bridge._layout(splitView, 620)
+splitView:setContentSize(620, 300)
+splitView:layout(620)
 
-local leftW, _ = bridge._viewSize(leftFix)
-local rightW, _ = bridge._viewSize(rightFlex)
+local leftW, _ = leftFix:size()
+local rightW, _ = rightFlex:size()
 t.assertEqual(leftW, 150, "fixed-width pane retains 150 px in HSplit (got " .. leftW .. ")")
 t.expect(rightW > 400, "flexible pane fills remaining width (got " .. rightW .. ")")
 
 -- Simulate a window resize and verify the fixed pane does not change.
-bridge._setContentSize(splitView, 900, 300)
-bridge._layout(splitView, 900)
+splitView:setContentSize(900, 300)
+splitView:layout(900)
 
-leftW, _ = bridge._viewSize(leftFix)
-rightW, _ = bridge._viewSize(rightFlex)
+leftW, _ = leftFix:size()
+rightW, _ = rightFlex:size()
 t.assertEqual(leftW, 150, "fixed-width pane still 150 px after resize (got " .. leftW .. ")")
 t.expect(rightW > leftW, "flexible pane absorbs resize (right " .. rightW .. " > left " .. leftW .. ")")
 
@@ -815,8 +815,8 @@ local function colWidth(cols, id)
 	return 0
 end
 
-bridge._setContentSize(flexTable, 600, 200)
-bridge._layout(flexTable, 600)
+flexTable:setContentSize(600, 200)
+flexTable:layout(600)
 local cw = bridge._tableColumnWidths(flexTable)
 local a1 = colWidth(cw, "a")
 local b1 = colWidth(cw, "b")
@@ -828,8 +828,8 @@ local expectedB1 = 600 - 120 - 80
 t.assertEqual(b1, expectedB1, "stretch column fills remaining " .. expectedB1 .. " px (got " .. b1 .. ")")
 
 -- Resize wider: fixed columns must NOT change.
-bridge._setContentSize(flexTable, 800, 200)
-bridge._layout(flexTable, 800)
+flexTable:setContentSize(800, 200)
+flexTable:layout(800)
 cw = bridge._tableColumnWidths(flexTable)
 local a2 = colWidth(cw, "a")
 local b2 = colWidth(cw, "b")
@@ -840,8 +840,8 @@ t.assertEqual(c2, 80, "fixed 'c' unchanged at 80 after widen (got " .. c2 .. ")"
 t.expect(b2 > b1, "stretch column 'b' grew (was " .. b1 .. ", now " .. b2 .. ")")
 
 -- Resize narrower: fixed columns must NOT change; stretch column shrinks.
-bridge._setContentSize(flexTable, 400, 200)
-bridge._layout(flexTable, 400)
+flexTable:setContentSize(400, 200)
+flexTable:layout(400)
 cw = bridge._tableColumnWidths(flexTable)
 local a3 = colWidth(cw, "a")
 local b3 = colWidth(cw, "b")
@@ -876,8 +876,8 @@ t.assertEqual(mailbox.className, "NSScrollView",
 t.expect(not mailbox.drawsBackground,
 	"source-list table scroll view is transparent")
 
-bridge._setContentSize(mailbox, 170, 200)
-bridge._layout(mailbox, 170)
+mailbox:setContentSize(170, 200)
+mailbox:layout(170)
 cw = bridge._tableColumnWidths(mailbox)
 local nameW = colWidth(cw, "name")
 local countW = colWidth(cw, "count")

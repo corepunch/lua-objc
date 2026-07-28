@@ -48,7 +48,7 @@ end
 local function addChildren(parent, children)
 	for _, child in ipairs(children) do
 		if type(child) == "userdata" then
-			bridge._add(parent, child)
+			parent:add(child)
 		elseif type(child) == "table" and child.__appkitGroup then
 			addChildren(parent, child)
 		end
@@ -95,16 +95,14 @@ function AppKit.Window(props)
 		win = bridge._window(title, width, height,
 			transparent_titlebar, hide_title)
 	end
-	bridge._setContentSize(win, width, height)
+	win:setContentSize(width, height)
 	if props.minWidth or props.minHeight then
-		bridge._setWindowMinSize(
-			win,
+		win:setMinSize(
 			props.minWidth or width,
 			props.minHeight or height)
 	end
 	if props.tabbingMode or props.tabbingIdentifier then
-		bridge._setWindowTabbing(
-			win,
+		win:setTabbing(
 			props.tabbingMode or "automatic",
 			props.tabbingIdentifier)
 	end
@@ -112,7 +110,7 @@ function AppKit.Window(props)
 		or os.getenv("LUA_OBJC_APPEARANCE")
 		or _G._LAUNCH_APPEARANCE
 	if appearance == "light" or appearance == "dark" or appearance == "system" then
-		bridge._setAppearance(win, appearance)
+		win:setAppearance(appearance)
 	end
 
 	if has_workspace then
@@ -124,39 +122,37 @@ function AppKit.Window(props)
 			props.sidebarWidth,
 			props.toolbarContentDividerAfter,
 			props.detail)
-		bridge._layout(props.sidebar, props.sidebarWidth or 240)
-		bridge._layout(
-			props.content,
+		props.sidebar:layout(props.sidebarWidth or 240)
+		props.content:layout(
 			math.max(1, width - (props.sidebarWidth or 240)))
 		if props.detail then
-			bridge._layout(
-				props.detail,
+			props.detail:layout(
 				math.max(1, (width - (props.sidebarWidth or 240)) / 2))
 		end
 	else
 		local content = bridge._vstack()
-		bridge._add(win, content)
+		win:add(content)
 		addChildren(content, props)
-		bridge._layout(content, width)
+		content:layout(width)
 	end
 
 	if props.visible ~= false and not _G.__headless then
-		bridge._show(win)
+		win:show()
 	end
 	return win
 end
 
 function AppKit.addTabbedWindow(window, tabbedWindow, order)
-	bridge._addTabbedWindow(window, tabbedWindow, order or "above")
+	window:addTabbedWindow(tabbedWindow, order or "above")
 	return tabbedWindow
 end
 
 function AppKit.windowTabCount(window)
-	return bridge._windowTabCount(window)
+	return window:tabCount()
 end
 
 function AppKit.selectWindowTab(window)
-	bridge._selectWindowTab(window)
+	window:selectTab()
 	return window
 end
 
@@ -170,9 +166,9 @@ function AppKit.Panel(props)
 		props.material or "popover")
 	local content = bridge._vstack()
 	applyLayout(content, props)
-	bridge._add(panel, content)
+	panel:add(content)
 	addChildren(content, props)
-	bridge._layout(content, width)
+	content:layout(width)
 	return panel, content
 end
 
@@ -182,23 +178,23 @@ function AppKit.present(panel, parent, props)
 end
 
 function AppKit.dismiss(window)
-	return bridge._dismissWindow(window)
+	return window:dismiss()
 end
 
 function AppKit.focus(window, view)
-	return bridge._focus(window, view)
+	return window:focus(view)
 end
 
 function AppKit.isFirstResponder(window, view)
-	return bridge._isFirstResponder(window, view)
+	return window:isFirstResponder(view)
 end
 
 function AppKit.resizeWindow(window, width, height, anchor)
-	return bridge._setContentSize(window, width, height, anchor or "")
+	return window:setContentSize(width, height, anchor or "")
 end
 
 function AppKit.relayout(view, width)
-	return bridge._layout(view, width)
+	return view:layout(width)
 end
 
 function AppKit.MenuItem(props)
@@ -229,13 +225,13 @@ function AppKit.Preview(props)
 	if content_fn then
 		local child = content_fn()
 		if type(child) == "userdata" then
-			bridge._add(root, child)
+			root:add(child)
 		end
 	else
 		-- allow inline children: ns.Preview { ns.Text "hi" }
 		addChildren(root, props)
 	end
-	bridge._layout(root, width)
+	root:layout(width)
 	return root
 end
 
@@ -263,7 +259,7 @@ function AppKit.HSplit(props)
 		applyLayout(view, props)
 		addChildren(view, props)
 		if props.proportions then
-			bridge._splitSetProportions(view, props.proportions)
+			view:splitProportions(props.proportions)
 		end
 	end
 	return view
@@ -277,7 +273,7 @@ function AppKit.VSplit(props)
 		applyLayout(view, props)
 		addChildren(view, props)
 		if props.proportions then
-			bridge._splitSetProportions(view, props.proportions)
+			view:splitProportions(props.proportions)
 		end
 	end
 	return view
@@ -594,7 +590,7 @@ function AppKit.ToolbarProgress(window, identifier)
 	local item = AppKit.ToolbarItem(window, identifier)
 	local restore_view = item.view
 	local progress = AppKit.ProgressView()
-	bridge._setContentSize(progress, 32, 32)
+	progress:setContentSize(32, 32)
 
 	return {
 		start = function(self, tooltip)

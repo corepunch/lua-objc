@@ -148,6 +148,8 @@ static int bridge_text_view(lua_State *L) {
 	sv.documentView = tv;
 	objc_setAssociatedObject(sv, &kKeys[kTextWrapKey], @NO, OBJC_ASSOCIATION_RETAIN);
 	objc_setAssociatedObject(sv, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
+	/* Sentinel that nsview_index uses to dispatch obj:setText() etc. */
+	objc_setAssociatedObject(sv, &kKeys[kTextViewSourceKey], @YES, OBJC_ASSOCIATION_RETAIN);
 
 	push_objc(L, sv, "nsview");
 	return 1;

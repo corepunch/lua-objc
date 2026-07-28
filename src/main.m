@@ -51,6 +51,7 @@ enum {
 	kTabViewDelegateKey,
 	kTableScrollViewKey,
 	kWorkspaceSafeAreaContentKey,
+	kTextViewSourceKey,
 	kKeyCount
 };
 static char kKeys[kKeyCount];

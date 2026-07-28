@@ -319,6 +319,99 @@ def gen_callback_setter(el, key_style):
 
 
 # ---------------------------------------------------------------------------
+# Method groups  →  bridge_methods.m
+# ---------------------------------------------------------------------------
+
+def c_func_name(method_name):
+    """Convert camelCase Lua method name to bridge_xxx_yyy C function name.
+
+    setText      → bridge_text_view_set_text   (caller prefixes group)
+    We don't prefix here — caller passes the group prefix separately.
+    """
+    import re
+    # Insert underscore before each uppercase letter, then lowercase
+    s = re.sub(r'([A-Z])', r'_\1', method_name).lower()
+    return s
+
+
+def gen_methods(method_groups, key_style, xml_path):
+    """Generate bridge_methods.m with MethodEntry arrays and __index dispatch blocks."""
+
+    arrays_lines = []   # inside GEN_METHODS_ARRAYS guard
+    index_lines  = []   # inside GEN_METHODS_INDEX guard
+    forward_lines = []  # inside GEN_METHODS_FORWARDS guard
+
+    for mg in method_groups:
+        group_name  = mg.get("name")          # e.g. "text_view"
+        detect_key  = mg.get("detect")        # e.g. "kTextViewSourceKey"
+        detect_class = mg.get("detect_class") # e.g. "NSTabView"
+        array_name  = "".join(w.capitalize() for w in group_name.split("_")) + "Methods"
+        # e.g. "text_view" → "TextViewMethods"
+
+        methods = mg.findall("method")
+
+        # --- Forward declarations ---
+        for m in methods:
+            mname = m.get("name")
+            cfunc = "bridge_" + group_name + "_method_" + c_func_name(mname).lstrip("_")
+            # actual C name is specified via c_func attr, or derived
+            cfunc = m.get("c_func", "bridge_" + group_name.replace("_", "_") + "_" + c_func_name(mname).lstrip("_"))
+            forward_lines.append(f"static int {cfunc}(lua_State *L);")
+
+        # --- MethodEntry array ---
+        arrays_lines.append(f"static MethodEntry {array_name}[] = {{")
+        for m in methods:
+            mname = m.get("name")
+            cfunc = m.get("c_func", "bridge_" + group_name + "_" + c_func_name(mname).lstrip("_"))
+            arrays_lines.append(f'\t{{{c_str(mname)},\t{cfunc}}},')
+        arrays_lines.append(f'\t{{NULL, NULL}}')
+        arrays_lines.append("};")
+        arrays_lines.append("")
+
+        # --- Dispatch block in nsview_index ---
+        index_lines.append("{")
+        if detect_key:
+            kaddr = key_ref_addr(detect_key, key_style)
+            index_lines.append(f"\tid _sentinel_{group_name} = objc_getAssociatedObject(obj, {kaddr});")
+            index_lines.append(f"\tif (_sentinel_{group_name}) {{")
+        elif detect_class:
+            index_lines.append(f"\tif ([obj isKindOfClass:[{detect_class} class]]) {{")
+        else:
+            index_lines.append("\tif (YES) {")
+
+        index_lines.append(f"\t\tlua_CFunction _m = lookupMethod(key, {array_name});")
+        index_lines.append(f"\t\tif (_m) {{ lua_pushcfunction(L, _m); return 1; }}")
+        index_lines.append("\t}")
+        index_lines.append("}")
+        index_lines.append("")
+
+    out = [make_header(xml_path)]
+
+    out.append("/* --- method C function forward declarations --- */")
+    out.append("/* #include with GEN_METHODS_FORWARDS defined, before runtime.m method tables */")
+    out.append("#if defined(GEN_METHODS_FORWARDS)")
+    out.extend(forward_lines)
+    out.append("#endif /* GEN_METHODS_FORWARDS */")
+    out.append("")
+
+    out.append("/* --- MethodEntry arrays for each method group --- */")
+    out.append("/* #include with GEN_METHODS_ARRAYS defined, before nsview_index */")
+    out.append("#if defined(GEN_METHODS_ARRAYS)")
+    out.extend(arrays_lines)
+    out.append("#endif /* GEN_METHODS_ARRAYS */")
+    out.append("")
+
+    out.append("/* --- nsview_index dispatch blocks --- */")
+    out.append("/* #include with GEN_METHODS_INDEX defined, inside nsview_index body */")
+    out.append("#if defined(GEN_METHODS_INDEX)")
+    out.extend(index_lines)
+    out.append("#endif /* GEN_METHODS_INDEX */")
+    out.append("")
+
+    return "\n".join(out)
+
+
+# ---------------------------------------------------------------------------
 # bridge_lib.inc
 # ---------------------------------------------------------------------------
 
@@ -383,6 +476,13 @@ def main():
     with open(os.path.join(args.out, "bridge_lib.inc"), "w") as f:
         f.write(gen_lib_entries(root, args.xml))
     print(f"  wrote {args.out}/bridge_lib.inc")
+
+    # bridge_methods.m  (only if any <method_group> elements exist)
+    method_groups = root.findall("method_group")
+    if method_groups:
+        with open(os.path.join(args.out, "bridge_methods.m"), "w") as f:
+            f.write(gen_methods(method_groups, key_style, args.xml))
+        print(f"  wrote {args.out}/bridge_methods.m")
 
     print("Done.")
 

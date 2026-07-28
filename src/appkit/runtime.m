@@ -1,5 +1,8 @@
 #pragma mark - Lua helpers
 
+/* Forward declarations for table/outline and other hand-written functions
+ * that runtime.m references directly. Method-group functions are declared
+ * via the generated block below. */
 static int bridge_tableview_add(lua_State *L);
 static int bridge_tableview_remove(lua_State *L);
 static int bridge_tableview_clear(lua_State *L);
@@ -15,33 +18,23 @@ static int bridge_table_select_row(lua_State *L);
 static int bridge_table_activate_row(lua_State *L);
 static int bridge_set_text(lua_State *L);
 static int bridge_text_view(lua_State *L);
-static int bridge_text_view_get_text(lua_State *L);
-static int bridge_text_view_set_text(lua_State *L);
-static int bridge_text_view_on_change(lua_State *L);
-static int bridge_text_view_set_language(lua_State *L);
-static int bridge_text_view_set_wrap_mode(lua_State *L);
 static int bridge_symbol_toggle(lua_State *L);
 static int bridge_eval(lua_State *L);
-static int bridge_clear_container(lua_State *L);
 static int bridge_outlineview(lua_State *L);
 static int bridge_list_directory(lua_State *L);
 static int bridge_tabview(lua_State *L);
-static int bridge_tab_add(lua_State *L);
-static int bridge_tab_select(lua_State *L);
-static int bridge_tab_remove(lua_State *L);
-static int bridge_tab_count(lua_State *L);
-static int bridge_tab_on_change(lua_State *L);
 static int bridge_segmented_control(lua_State *L);
 static int bridge_panel(lua_State *L);
 static int bridge_panel_style_state(lua_State *L);
 static int bridge_present_panel(lua_State *L);
-static int bridge_dismiss_window(lua_State *L);
-static int bridge_focus(lua_State *L);
-static int bridge_is_first_responder(lua_State *L);
 static int bridge_menu_item(lua_State *L);
 static int bridge_text_field_callbacks(lua_State *L);
 static int bridge_text_field_test_input(lua_State *L);
 static int bridge_text_field_test_command(lua_State *L);
+/* Generated forwards for all method-group C functions */
+#define GEN_METHODS_FORWARDS
+#include "generated/bridge_methods.m"
+#undef GEN_METHODS_FORWARDS
 static void layout_recursive(NSView *view, CGFloat width);
 
 static id check_objc(lua_State *L, int idx) {
@@ -135,6 +128,11 @@ static NSView *check_view(lua_State *L, int idx) {
 		return 0; \
 	}
 
+/* Generated MethodEntry arrays (TextViewMethods, TabViewMethods, etc.) */
+#define GEN_METHODS_ARRAYS
+#include "generated/bridge_methods.m"
+#undef GEN_METHODS_ARRAYS
+
 static MethodEntry TableMethods[] = {
 	{"addRow",       bridge_tableview_add},
 	{"removeRow",    bridge_tableview_remove},
@@ -164,6 +162,11 @@ static int nsview_index(lua_State *L) {
 		lua_pushcfunction(L, bridge_set_text);
 		return 1;
 	}
+
+	/* Generated method-group dispatch (text view, tab view, window, view) */
+#define GEN_METHODS_INDEX
+#include "generated/bridge_methods.m"
+#undef GEN_METHODS_INDEX
 
 	NSString *kvcKey = [NSString stringWithUTF8String:key];
 	@try {
