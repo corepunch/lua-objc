@@ -96,7 +96,13 @@ static int bridge_window(lua_State *L) {
 		}
 
 		LuaToolbarDelegate *del = [[LuaToolbarDelegate alloc] initWithItems:items];
-		NSToolbar *tb = [[NSToolbar alloc] initWithIdentifier:@"main"];
+		/* Document tabs own independent tracking separators. A shared toolbar
+		 * family identifier makes AppKit duplicate those non-repeatable items
+		 * when a second document joins the native window tab group. */
+		NSString *toolbarIdentifier = [NSString stringWithFormat:
+			@"lua-objc.%@", NSUUID.UUID.UUIDString];
+		NSToolbar *tb = [[NSToolbar alloc]
+			initWithIdentifier:toolbarIdentifier];
 		tb.displayMode = lua_toboolean(L, 7)
 			? NSToolbarDisplayModeIconAndLabel : NSToolbarDisplayModeIconOnly;
 		tb.delegate = del;
@@ -328,6 +334,12 @@ static int bridge_set_window_workspace(lua_State *L) {
 	[window setFrame:restoredFrame display:NO animate:NO];
 	splitController.view.frame = window.contentView.bounds;
 	[splitController.view layoutSubtreeIfNeeded];
+	LuaToolbarDelegate *toolbarDelegate = objc_getAssociatedObject(
+		window,
+		&kKeys[kToolbarDelegateKey]);
+	[toolbarDelegate
+		installSidebarTrackingSeparatorForSplitView:splitController.splitView
+										 inToolbar:window.toolbar];
 	[content setNeedsLayout:YES];
 	[content layoutSubtreeIfNeeded];
 
@@ -348,9 +360,6 @@ static int bridge_set_window_workspace(lua_State *L) {
 	}
 	if (contentDividerAfter
 		&& (detail || [content isKindOfClass:[NSSplitView class]])) {
-		LuaToolbarDelegate *toolbarDelegate = objc_getAssociatedObject(
-			window,
-			&kKeys[kToolbarDelegateKey]);
 		NSSplitView *trackedSplitView = detail
 			? splitController.splitView
 			: (NSSplitView *)content;
@@ -392,15 +401,26 @@ static int bridge_window_workspace_state(lua_State *L) {
 		((NSWindow *)obj).toolbarStyle == NSWindowToolbarStyleUnified);
 	lua_setfield(L, -2, "usesUnifiedToolbar");
 	BOOL tracksContentDivider = NO;
+	BOOL hasSidebarToggle = NO;
+	BOOL tracksSidebarDivider = NO;
 	for (NSToolbarItem *toolbarItem in ((NSWindow *)obj).toolbar.items) {
-		if ([toolbarItem
+		if ([toolbarItem.itemIdentifier
+			isEqualToString:NSToolbarToggleSidebarItemIdentifier]) {
+			hasSidebarToggle = YES;
+		} else if ([toolbarItem.itemIdentifier
+			isEqualToString:kSidebarTrackingSeparatorIdentifier]) {
+			tracksSidebarDivider = YES;
+		} else if ([toolbarItem
 			isKindOfClass:[NSTrackingSeparatorToolbarItem class]]) {
 			tracksContentDivider = YES;
-			break;
 		}
 	}
 	lua_pushboolean(L, tracksContentDivider);
 	lua_setfield(L, -2, "tracksContentDivider");
+	lua_pushboolean(L, hasSidebarToggle);
+	lua_setfield(L, -2, "hasSidebarToggle");
+	lua_pushboolean(L, tracksSidebarDivider);
+	lua_setfield(L, -2, "tracksSidebarDivider");
 	if (items.count >= 2) {
 		NSSplitViewItem *sidebarItem = items[0];
 		NSSplitViewItem *contentItem = items[1];

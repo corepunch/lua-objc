@@ -359,7 +359,7 @@ Creates an `NSWindow`. Table keys:
 | `sidebarWidth` | number | `240` | Preferred native sidebar width |
 | `tabbingMode` | `"automatic"` `"preferred"` `"disallowed"` | AppKit default | Native `NSWindow` tab behavior |
 | `tabbingIdentifier` | string | AppKit default | Groups compatible native window tabs |
-| `toolbar` | `{{id, label, icon?, tooltip?, action?}}` | none | Native NSToolbar items |
+| `toolbar` | `{{id, label, icon?, tooltip?, action?}}` | none | Native NSToolbar items; `id = "toggleSidebar"` uses AppKit's standard sidebar command |
 | `toolbarLabels` | bool | `false` | Show labels below toolbar icons |
 | `toolbarContentDividerAfter` | string | none | Continue a vertical content split divider through the toolbar after this item ID |
 
@@ -373,7 +373,9 @@ appearance—including floating glass on macOS 26—and a `contentAccessory`
 occupies only the content column. Supplying `detail` adds a third sibling split
 item, allowing a tracking toolbar separator to create a native titlebar section
 boundary between content and detail. In this form, `transparentTitlebar`
-defaults to `true`.
+defaults to `true`. A toolbar item with `id = "toggleSidebar"` uses AppKit's
+standard first-responder action. The workspace pairs it with a native tracking
+separator so the button follows the semantic sidebar divider.
 
 ```lua
 ns.Window {

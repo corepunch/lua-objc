@@ -2,12 +2,25 @@
 
 static NSToolbarItemIdentifier const kContentTrackingSeparatorIdentifier =
 	@"lua-objc.contentTrackingSeparator";
+static NSToolbarItemIdentifier const kSidebarTrackingSeparatorIdentifier =
+	@"lua-objc.sidebarTrackingSeparator";
+static NSString *const kToggleSidebarAlias = @"toggleSidebar";
+
+static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
+	if ([identifier isEqualToString:kToggleSidebarAlias]) {
+		return NSToolbarToggleSidebarItemIdentifier;
+	}
+	return identifier;
+}
 
 @interface LuaToolbarDelegate : NSObject <NSToolbarDelegate>
 @property (nonatomic, strong) NSArray *items;
 @property (nonatomic, strong) NSSplitView *trackingSplitView;
+@property (nonatomic, strong) NSSplitView *sidebarTrackingSplitView;
 @property (nonatomic, copy) NSString *trackingAfterIdentifier;
 @property (nonatomic) NSInteger trackingDividerIndex;
+- (void)installSidebarTrackingSeparatorForSplitView:(NSSplitView *)splitView
+										  inToolbar:(NSToolbar *)toolbar;
 - (void)installTrackingSeparatorForSplitView:(NSSplitView *)splitView
 								dividerIndex:(NSInteger)dividerIndex
 								   inToolbar:(NSToolbar *)toolbar
@@ -28,9 +41,14 @@ static NSToolbarItemIdentifier const kContentTrackingSeparatorIdentifier =
 	NSMutableArray *ids = [NSMutableArray array];
 	BOOL insertedTrackingSeparator = NO;
 	for (NSDictionary *item in _items) {
-		[ids addObject:item[@"id"]];
+		NSString *identifier = item[@"id"];
+		[ids addObject:toolbar_item_identifier(identifier)];
+		if (_sidebarTrackingSplitView
+			&& [identifier isEqualToString:kToggleSidebarAlias]) {
+			[ids addObject:kSidebarTrackingSeparatorIdentifier];
+		}
 		if (_trackingSplitView
-			&& [item[@"id"] isEqualToString:_trackingAfterIdentifier]) {
+			&& [identifier isEqualToString:_trackingAfterIdentifier]) {
 			[ids addObject:kContentTrackingSeparatorIdentifier];
 			insertedTrackingSeparator = YES;
 		}
@@ -49,6 +67,13 @@ static NSToolbarItemIdentifier const kContentTrackingSeparatorIdentifier =
 	 itemForItemIdentifier:(NSString *)identifier
  willBeInsertedIntoToolbar:(BOOL)flag
 {
+	if ([identifier isEqualToString:kSidebarTrackingSeparatorIdentifier]
+		&& _sidebarTrackingSplitView) {
+		return [NSTrackingSeparatorToolbarItem
+			trackingSeparatorToolbarItemWithIdentifier:identifier
+										 splitView:_sidebarTrackingSplitView
+									  dividerIndex:kWorkspaceContentDividerIndex];
+	}
 	if ([identifier isEqualToString:kContentTrackingSeparatorIdentifier]
 		&& _trackingSplitView) {
 		return [NSTrackingSeparatorToolbarItem
@@ -98,6 +123,25 @@ static NSToolbarItemIdentifier const kContentTrackingSeparatorIdentifier =
 		}
 	}
 	return nil;
+}
+
+- (void)installSidebarTrackingSeparatorForSplitView:(NSSplitView *)splitView
+										  inToolbar:(NSToolbar *)toolbar
+{
+	if (_sidebarTrackingSplitView || !splitView.isVertical) return;
+	NSUInteger toggleIndex = NSNotFound;
+	for (NSUInteger index = 0; index < toolbar.items.count; index++) {
+		if ([toolbar.items[index].itemIdentifier
+			isEqualToString:NSToolbarToggleSidebarItemIdentifier]) {
+			toggleIndex = index;
+			break;
+		}
+	}
+	if (toggleIndex == NSNotFound) return;
+
+	_sidebarTrackingSplitView = splitView;
+	[toolbar insertItemWithItemIdentifier:kSidebarTrackingSeparatorIdentifier
+								  atIndex:toggleIndex + 1];
 }
 
 - (void)installTrackingSeparatorForSplitView:(NSSplitView *)splitView

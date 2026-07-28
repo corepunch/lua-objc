@@ -225,7 +225,8 @@ static int bridge_toolbar_item(lua_State *L) {
 		return luaL_error(L, "ToolbarItem requires a window");
 	}
 
-	NSString *wanted = [NSString stringWithUTF8String:identifier];
+	NSString *wanted = toolbar_item_identifier(
+		[NSString stringWithUTF8String:identifier]);
 	for (NSToolbarItem *item in ((NSWindow *)obj).toolbar.items) {
 		if ([item.itemIdentifier isEqualToString:wanted]) {
 			push_objc(L, item, "nsobject");

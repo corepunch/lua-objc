@@ -10,53 +10,47 @@ local SearchView = require("examples.ide.components.search_view")
 local Source = {}
 
 local WINDOW = {
-	width = 1100,
-	height = 680,
+	width = 1024,
+	height = 768,
 	minWidth = 800,
 	minHeight = 500,
 }
 
-local function makeToolbar(windowRef)
-	return {
-		{
-			id = "sidebar",
-			label = "Sidebar",
-			icon = "sidebar.leading",
-			tooltip = "Toggle Sidebar",
-			action = function() bridge._toggleSidebar(windowRef()) end,
-		},
-		{
-			id = "newFile",
-			label = "New File",
-			icon = "doc.badge.plus",
-			tooltip = "New File",
-		},
-		{
-			id = "open",
-			label = "Open",
-			icon = "folder",
-			tooltip = "Open",
-		},
-		{
-			id = "save",
-			label = "Save",
-			icon = "square.and.arrow.down",
-			tooltip = "Save",
-		},
-		{
-			id = "build",
-			label = "Build",
-			icon = "hammer",
-			tooltip = "Build",
-		},
-		{
-			id = "run",
-			label = "Run",
-			icon = "play.fill",
-			tooltip = "Run",
-		},
-	}
-end
+local IDE_TOOLBAR = {
+	{
+		id = "toggleSidebar",
+	},
+	{
+		id = "newFile",
+		label = "New File",
+		icon = "doc.badge.plus",
+		tooltip = "New File",
+	},
+	{
+		id = "open",
+		label = "Open",
+		icon = "folder",
+		tooltip = "Open",
+	},
+	{
+		id = "save",
+		label = "Save",
+		icon = "square.and.arrow.down",
+		tooltip = "Save",
+	},
+	{
+		id = "build",
+		label = "Build",
+		icon = "hammer",
+		tooltip = "Build",
+	},
+	{
+		id = "run",
+		label = "Run",
+		icon = "play.fill",
+		tooltip = "Run",
+	},
+}
 
 local function isLuaFile(name)
 	return name:match("%.lua$") ~= nil
@@ -138,9 +132,9 @@ function Source.open(folder, app, initialFile)
 	local tabbingIdentifier = "lua-objc.ide:" .. rootDir
 	local primaryWindow = nil
 	local documents = {}
-	local wordWrapEnabled = false
+	local fileTrees = {}
+	local wordWrapEnabled = true
 	local openPath
-	local openInEditor
 
 	local function makeFileTree()
 		local fileTree = ns.OutlineView {
@@ -153,15 +147,15 @@ function Source.open(folder, app, initialFile)
 			},
 			data = files,
 		}
+
+		-- Selection follows IDE convention: replace the primary editor unless
+		-- Command asks AppKit for a separate document tab.
 		fileTree:onRowSelect(function(list, rowIndex, rowData, modifiers)
 			if rowData and rowData.path and not rowData.directory then
-				if modifiers and modifiers.command then
-					openInEditor(rowData.path, true)
-				else
-					openPath(rowData.path)
-				end
+				openPath(rowData.path, modifiers and modifiers.command)
 			end
 		end)
+		fileTrees[#fileTrees + 1] = fileTree
 		return fileTree
 	end
 
@@ -174,7 +168,6 @@ function Source.open(folder, app, initialFile)
 		}
 		local textView = bridge._textView()
 		bridge._textViewSetLanguage(textView, "lua")
-		bridge._textViewSetText(textView, content or "")
 		bridge._textViewSetWrapMode(textView, wordWrapEnabled)
 
 		local version = 0
@@ -198,9 +191,9 @@ function Source.open(folder, app, initialFile)
 			end)
 		end
 
-		local window
-		local toolbar = makeToolbar(function() return window end)
-		window = ns.Window {
+		bridge._textViewSetText(textView, content or "")
+
+		local window = ns.Window {
 			title = name,
 			width = WINDOW.width,
 			height = WINDOW.height,
@@ -209,7 +202,7 @@ function Source.open(folder, app, initialFile)
 			tabbingMode = "preferred",
 			tabbingIdentifier = tabbingIdentifier,
 			visible = visible,
-			toolbar = toolbar,
+			toolbar = IDE_TOOLBAR,
 			toolbarContentDividerAfter = "save",
 			sidebarWidth = 240,
 			sidebar = NavigatorArea {
@@ -223,31 +216,67 @@ function Source.open(folder, app, initialFile)
 			window = window,
 			textView = textView,
 			path = path,
+			evaluate = evaluate,
 		}
 		evaluate(content or "")
 		return window
 	end
 
-	openInEditor = function(path, forceNewTab)
-		if not forceNewTab then
-			for _, document in ipairs(documents) do
-				if document.path == path then
-					ns.selectWindowTab(document.window)
-					return document
-				end
+	local function recordFile(path)
+		if app and app.recent then app.recent:recordFile(path) end
+	end
+
+	local function openInPrimaryEditor(path)
+		local document = documents[1]
+		if document.path == path then
+			ns.selectWindowTab(primaryWindow)
+			recordFile(path)
+			return document
+		end
+
+		local content = readFile(path)
+		if not content then return end
+		if document.path then bridge._watchFile(document.path, nil) end
+
+		local function reload()
+			local updated = readFile(path)
+			if not updated then return end
+			bridge._textViewSetText(document.textView, updated)
+			document.evaluate(updated)
+		end
+
+		bridge._textViewSetText(document.textView, content)
+		bridge._textViewSetLanguage(document.textView, "lua")
+		primaryWindow.title = path:match("([^/\\]+)$") or path
+		bridge._watchFile(path, reload)
+		document.evaluate(content)
+		document.path = path
+		ns.selectWindowTab(primaryWindow)
+		recordFile(path)
+		return document
+	end
+
+	local function openInNewTab(path)
+		for _, document in ipairs(documents) do
+			if document.path == path then
+				ns.selectWindowTab(document.window)
+				recordFile(path)
+				return document
 			end
 		end
+
 		local content = readFile(path)
 		if not content then return end
 		local window = makeDocumentWindow(path, content, false)
 		ns.addTabbedWindow(primaryWindow, window)
-		if app and app.recent then app.recent:recordFile(path) end
+		recordFile(path)
 		return window
 	end
 
-	openPath = function(path)
+	openPath = function(path, inNewTab)
 		if isImageFile(path) then return openImage(path, app) end
-		return openInEditor(path)
+		if inNewTab then return openInNewTab(path) end
+		return openInPrimaryEditor(path)
 	end
 
 	local initialContent = initialFile and readFile(initialFile) or defaultSource()
@@ -276,7 +305,12 @@ function Source.open(folder, app, initialFile)
 		keyEquivalent = "0",
 		modifiers = { "command" },
 		action = function()
-			bridge._toggleSidebar(primaryWindow)
+			local selectedWindow = primaryWindow
+			if primaryWindow.tabGroup
+				and primaryWindow.tabGroup.selectedWindow then
+				selectedWindow = primaryWindow.tabGroup.selectedWindow
+			end
+			bridge._toggleSidebar(selectedWindow)
 		end,
 	}
 
@@ -295,6 +329,13 @@ function Source.open(folder, app, initialFile)
 		end,
 	}
 
+	if _G.__headless then
+		return primaryWindow, {
+			documents = documents,
+			fileTrees = fileTrees,
+			openPath = openPath,
+		}
+	end
 	return primaryWindow
 end
 

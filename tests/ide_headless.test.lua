@@ -88,14 +88,14 @@ t.assertEqual(recent:folders()[1].path, "/private/tmp/project-b", "most recent f
 t.assertEqual(recent:files()[1].path, "tests/fixtures/oversized.svg", "most recent file is first")
 t.assertEqual(recent:files()[2].path, "/private/tmp/project-b/main.lua", "older file remains available")
 
-local sourceWindow = Source.open(
-	"examples/ide",
+local sourceWindow, sourceSession = Source.open(
+	"examples/ide/",
 	nil,
 	"examples/ide/main.lua")
 t.expect(sourceWindow ~= nil, "source workspace creates a document window")
 t.assertEqual(sourceWindow.title, "main.lua",
 	"source document uses its filename as the native window-tab title")
-t.assertEqual(sourceWindow.tabbingIdentifier, "lua-objc.ide:examples/ide",
+t.assertEqual(sourceWindow.tabbingIdentifier, "lua-objc.ide:examples/ide/",
 	"source documents opt into one AppKit window tab group")
 local bridge = require("bridge")
 local sourceWorkspaceState = bridge._windowWorkspaceState(sourceWindow)
@@ -105,14 +105,47 @@ t.assertEqual(sourceWorkspaceState.itemCount, 3,
 	"source editor and preview use sibling native split items")
 t.expect(sourceWorkspaceState.tracksContentDivider,
 	"editor divider continues through the native toolbar")
+t.expect(sourceWorkspaceState.hasSidebarToggle,
+	"source workspace has AppKit's standard sidebar toggle")
+t.expect(sourceWorkspaceState.tracksSidebarDivider,
+	"sidebar toggle follows the native sidebar divider")
 t.assertEqual(sourceWorkspaceState.topAccessoryCount, 0,
 	"source document does not insert a custom tab control")
+local sidebarItem = ns.ToolbarItem(sourceWindow, "toggleSidebar")
+t.expect(sidebarItem ~= nil,
+	"standard sidebar toolbar item is addressable by its Lua alias")
 local buildItem = ns.ToolbarItem(sourceWindow, "build")
 local runItem = ns.ToolbarItem(sourceWindow, "run")
 t.assertEqual(buildItem.label, "Build",
 	"source workspace exposes the decorative Build toolbar item")
 t.assertEqual(runItem.label, "Run",
 	"source workspace exposes the decorative Run toolbar item")
+
+local initialTabCount = ns.windowTabCount(sourceWindow)
+local initialPrimaryPath = sourceSession.documents[1].path
+for row = 0, sourceSession.fileTrees[1].rowCount - 1 do
+	sourceSession.fileTrees[1]:selectRow(row)
+	if sourceSession.documents[1].path ~= initialPrimaryPath then break end
+end
+t.expect(sourceSession.documents[1].path ~= initialPrimaryPath,
+	"single-clicking a sidebar file replaces the primary editor document")
+t.assertEqual(ns.windowTabCount(sourceWindow), initialTabCount,
+	"single-clicking a sidebar file does not create a window tab")
+
+local primaryPath = sourceSession.documents[1].path
+local tabPath = primaryPath == "examples/ide/plugins/text_editor.lua"
+	and "examples/ide/plugins/source.lua"
+	or "examples/ide/plugins/text_editor.lua"
+sourceSession.openPath(tabPath, true)
+local commandTabCount = ns.windowTabCount(sourceWindow)
+t.expect(commandTabCount > initialTabCount,
+	"Command-click routing opens a separate native window tab")
+t.assertEqual(sourceSession.documents[#sourceSession.documents].path, tabPath,
+	"the new native tab contains the Command-clicked document")
+t.assertEqual(
+	ns.windowTabCount(sourceSession.documents[#sourceSession.documents].window),
+	commandTabCount,
+	"the Command-clicked document joins the primary AppKit tab group")
 
 recent:clear()
 
