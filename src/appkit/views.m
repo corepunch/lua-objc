@@ -242,10 +242,6 @@ static int bridge_set_window_workspace(lua_State *L) {
 		? [NSSplitViewItem
 			splitViewItemWithViewController:detailController]
 		: nil;
-	if (detail) {
-		contentItem.holdingPriority = NSLayoutPriorityDefaultLow;
-		detailItem.holdingPriority = NSLayoutPriorityDefaultLow;
-	}
 
 	if (accessory) {
 		NSSplitViewItemAccessoryViewController *accessoryController =
@@ -311,12 +307,6 @@ static int bridge_set_window_workspace(lua_State *L) {
 	layout_recursive(sidebar, clampedSidebarWidth);
 	layout_recursive(content, content.bounds.size.width);
 	if (detail) {
-		layout_recursive(detail, detail.bounds.size.width);
-		CGFloat totalWidth = splitController.splitView.bounds.size.width;
-		CGFloat sidebarEnd = sidebar.bounds.size.width;
-		[splitController.splitView
-			setPosition:sidebarEnd + (totalWidth - sidebarEnd) / 2.0
-		 ofDividerAtIndex:kWorkspaceDetailDividerIndex];
 		layout_recursive(detail, detail.bounds.size.width);
 	}
 	if (contentDividerAfter
@@ -431,16 +421,7 @@ static int bridge_NSWindow_toggleSidebar_impl(lua_State *L) {
 		(NSSplitViewController *)controller;
 	NSSplitViewItem *sidebarItem = splitController.splitViewItems.firstObject;
 	if (sidebarItem.behavior == NSSplitViewItemBehaviorSidebar) {
-		[NSAnimationContext runAnimationGroup:^(NSAnimationContext *ctx) {
-			sidebarItem.animator.collapsed = !sidebarItem.isCollapsed;
-		} completionHandler:^{
-			/* Re-layout each pane at its post-toggle NSSplitView size
-			 * because layout_recursive does not cascade into panes. */
-			for (NSSplitViewItem *item in splitController.splitViewItems) {
-				NSView *pane = item.viewController.view;
-				layout_recursive(pane, pane.bounds.size.width);
-			}
-		}];
+		sidebarItem.collapsed = !sidebarItem.isCollapsed;
 	}
 	return 0;
 }

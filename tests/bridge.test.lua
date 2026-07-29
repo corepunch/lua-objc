@@ -277,6 +277,32 @@ t.expect(workspaceState.contentUsesSafeArea,
 t.assertEqual(workspaceState.topAccessoryCount, 0,
 	"document window does not insert a custom content tab strip")
 
+-- AppKit owns the geometry of all three semantic workspace items. Collapsing
+-- and restoring the sidebar must not leave the content/detail divider offset
+-- by the sidebar width.
+local toggleNavigator = ns.Text "Files"
+local toggleContent = ns.TextEditor { language = "lua" }
+local toggleDetail = ns.Text "Preview"
+local toggleWorkspace = ns.Window {
+	width = 1000,
+	height = 600,
+	visible = false,
+	sidebarWidth = 240,
+	sidebar = toggleNavigator,
+	content = toggleContent,
+	detail = toggleDetail,
+}
+local contentWidthBeforeToggle = toggleContent.size.width
+local detailWidthBeforeToggle = toggleDetail.size.width
+toggleWorkspace:toggleSidebar()
+toggleWorkspace:layout()
+toggleWorkspace:toggleSidebar()
+toggleWorkspace:layout()
+t.expect(math.abs(toggleContent.size.width - contentWidthBeforeToggle) < 1,
+	"showing sidebar restores the native content divider")
+t.expect(math.abs(toggleDetail.size.width - detailWidthBeforeToggle) < 1,
+	"sidebar round-trip preserves the native detail pane width")
+
 local sourceTree = ns.OutlineView {
 	header = false,
 	style = "sourceList",
