@@ -204,19 +204,14 @@ static int bridge_symbol_toggle(lua_State *L) {
 	const char *symbol = luaL_checkstring(L, 1);
 	const char *tooltip = luaL_optstring(L, 2, "");
 	int state = lua_toboolean(L, 3);
-	int has_action = !lua_isnoneornil(L, 4);
-	int ref = LUA_NOREF;
-	if (has_action) {
-		luaL_checktype(L, 4, LUA_TFUNCTION);
-		lua_pushvalue(L, 4);
-		ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	}
+	int ref;
+	LUA_OPT_CALLBACK_REF(L, 4, ref);
 
 	NSString *name = [NSString stringWithUTF8String:symbol];
 	NSImage *img = [NSImage imageWithSystemSymbolName:name
 		accessibilityDescription:[NSString stringWithUTF8String:tooltip]];
 	if (!img) {
-		if (has_action) luaL_unref(L, LUA_REGISTRYINDEX, ref);
+		if (ref != LUA_NOREF) luaL_unref(L, LUA_REGISTRYINDEX, ref);
 		return luaL_error(L, "unknown SF Symbol: %s", symbol);
 	}
 
@@ -235,7 +230,7 @@ static int bridge_symbol_toggle(lua_State *L) {
 	btn.toolTip = [NSString stringWithUTF8String:tooltip];
 	btn.accessibilityLabel = btn.toolTip;
 
-	if (has_action) {
+	if (ref != LUA_NOREF) {
 		objc_setAssociatedObject(btn, &kKeys[kCallbackKey], @(ref),
 			OBJC_ASSOCIATION_RETAIN);
 		btn.target = [LuaButtonTarget shared];

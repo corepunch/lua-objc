@@ -33,7 +33,7 @@ return function(props)
 			systemImage = "folder",
 			style = "primary",
 			height = 64,
-			onClick = openFolder,
+			action = openFolder,
 		},
 		{
 			title = "Open File…",
@@ -41,7 +41,7 @@ return function(props)
 			systemImage = "doc.text",
 			style = "plain",
 			height = 56,
-			onClick = openFile,
+			action = openFile,
 		},
 		{
 			title = "Open Example Project",
@@ -49,7 +49,7 @@ return function(props)
 			systemImage = "play.rectangle",
 			style = "plain",
 			height = 56,
-			onClick = openExample,
+			action = openExample,
 		},
 	}
 
@@ -102,7 +102,7 @@ return function(props)
 					spacing = 8,
 					alignment = "leading",
 					ns.ForEach(actionItems, function(item)
-						return actionButton(item, item.onClick)
+						return actionButton(item, item.action)
 					end),
 				},
 				ns.Spacer(),

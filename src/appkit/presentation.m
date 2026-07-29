@@ -16,10 +16,14 @@
 @end
 
 static NSVisualEffectMaterial panel_material(NSString *name) {
-	if ([name isEqualToString:@"menu"]) return NSVisualEffectMaterialMenu;
-	if ([name isEqualToString:@"sidebar"]) return NSVisualEffectMaterialSidebar;
-	if ([name isEqualToString:@"headerView"]) return NSVisualEffectMaterialHeaderView;
-	return NSVisualEffectMaterialPopover;
+	static NameValueEntry PanelMaterialMap[] = {
+		{@"menu",       NSVisualEffectMaterialMenu},
+		{@"sidebar",    NSVisualEffectMaterialSidebar},
+		{@"headerView", NSVisualEffectMaterialHeaderView},
+		{nil, NSVisualEffectMaterialPopover}
+	};
+	return (NSVisualEffectMaterial)lookupNameValue(name, PanelMaterialMap,
+		NSVisualEffectMaterialPopover);
 }
 
 static int bridge_panel(lua_State *L) {

@@ -14,14 +14,15 @@ static void configure_segmented_control(NSSegmentedControl *selector) {
 
 @implementation LuaTabViewDelegate
 - (void)dealloc {
-	if (_selectionRef != LUA_NOREF && gL) {
-		luaL_unref(gL, LUA_REGISTRYINDEX, _selectionRef);
+	lua_State *callL = _owner.L;
+	if (_selectionRef != LUA_NOREF && callL) {
+		luaL_unref(callL, LUA_REGISTRYINDEX, _selectionRef);
 		_selectionRef = LUA_NOREF;
 	}
 }
 - (void)tabView:(NSTabView *)tabView didSelectTabViewItem:(NSTabViewItem *)tabViewItem {
-	if (_selectionRef == LUA_NOREF || !gL) return;
-	lua_State *L = gL;
+	lua_State *L = _owner.L;
+	if (_selectionRef == LUA_NOREF || !L) return;
 	int top = lua_gettop(L);
 	lua_rawgeti(L, LUA_REGISTRYINDEX, _selectionRef);
 	push_objc(L, tabView, "nsview");
@@ -46,17 +47,20 @@ static int bridge_tabview(lua_State *L) {
 	CGFloat height = luaL_optnumber(L, 2, 200);
 
 	const char *style = luaL_optstring(L, 3, "top");
-	NSTabView *tv = [[NSTabView alloc] initWithFrame:
-		NSMakeRect(0, 0, width, height)];
-	if (strcmp(style, "top") == 0)
-		tv.tabViewType = NSTopTabsBezelBorder;
-	else if (strcmp(style, "bottom") == 0)
-		tv.tabViewType = NSBottomTabsBezelBorder;
-	else if (strcmp(style, "notabs") == 0)
-		tv.tabViewType = NSNoTabsNoBorder;
-	else
+	static NameValueEntry TabStyleMap[] = {
+		{@"top",    NSTopTabsBezelBorder},
+		{@"bottom", NSBottomTabsBezelBorder},
+		{@"notabs", NSNoTabsNoBorder},
+		{nil, -1}
+	};
+	NSString *styleStr = [NSString stringWithUTF8String:style];
+	NSInteger tabType = lookupNameValue(styleStr, TabStyleMap, -1);
+	if (tabType < 0)
 		return luaL_error(
 			L, "tab view style must be 'top', 'bottom', or 'notabs'");
+	NSTabView *tv = [[NSTabView alloc] initWithFrame:
+		NSMakeRect(0, 0, width, height)];
+	tv.tabViewType = (NSTabViewType)tabType;
 
 	push_objc(L, tv, "nsview");
 	return 1;
@@ -126,8 +130,8 @@ static int bridge_NSTabView_onChange_impl(lua_State *L, NSTabView *self,
 static int bridge_segmented_control(lua_State *L) {
 	luaL_checktype(L, 1, LUA_TTABLE);
 	NSInteger selectedIdx = (NSInteger)luaL_optinteger(L, 2, 0);
-	int has_action = !lua_isnoneornil(L, 3);
-	int ref = LUA_NOREF;
+	int ref;
+	LUA_OPT_CALLBACK_REF(L, 3, ref);
 
 	NSInteger count = (NSInteger)luaL_len(L, 1);
 	if (count < 1) {
@@ -166,10 +170,7 @@ static int bridge_segmented_control(lua_State *L) {
 		[seg setSelected:(i == selectedIdx) forSegment:i];
 	}
 
-	if (has_action) {
-		luaL_checktype(L, 3, LUA_TFUNCTION);
-		lua_pushvalue(L, 3);
-		ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	if (ref != LUA_NOREF) {
 		objc_setAssociatedObject(seg, &kKeys[kCallbackKey], @(ref),
 			OBJC_ASSOCIATION_RETAIN);
 		seg.target = [LuaButtonTarget shared];

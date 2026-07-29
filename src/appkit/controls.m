@@ -10,13 +10,8 @@ static int bridge_action_button(lua_State *L) {
 	const char *symbol = luaL_optstring(L, 3, "");
 	const char *style = luaL_optstring(L, 4, "plain");
 	const char *detail = luaL_optstring(L, 5, "");
-	BOOL hasAction = !lua_isnoneornil(L, 6);
-	int ref = LUA_NOREF;
-	if (hasAction) {
-		luaL_checktype(L, 6, LUA_TFUNCTION);
-		lua_pushvalue(L, 6);
-		ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	}
+	int ref;
+	LUA_OPT_CALLBACK_REF(L, 6, ref);
 
 	LuaActionButton *button = [[LuaActionButton alloc]
 		initWithTitle:[NSString stringWithUTF8String:title]
@@ -24,7 +19,7 @@ static int bridge_action_button(lua_State *L) {
 			  symbol:[NSString stringWithUTF8String:symbol]
 			  detail:[NSString stringWithUTF8String:detail]
 			   style:[NSString stringWithUTF8String:style]];
-	if (hasAction) {
+	if (ref != LUA_NOREF) {
 		objc_setAssociatedObject(button, &kKeys[kCallbackKey], @(ref),
 			OBJC_ASSOCIATION_RETAIN);
 		button.target = [LuaButtonTarget shared];

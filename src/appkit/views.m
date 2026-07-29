@@ -464,6 +464,7 @@ static int bridge_NSView_splitProportions_impl(lua_State *L) {
 @property (nonatomic) CGFloat zoomScale;
 @property (nonatomic) BOOL fitToWindow;
 @property (nonatomic) int dropCallbackRef;
+@property (nonatomic, strong) LuaStateOwner *owner;
 @end
 
 @implementation LuaImageViewerView
@@ -495,8 +496,9 @@ static int bridge_NSView_splitProportions_impl(lua_State *L) {
 }
 
 - (void)dealloc {
-	if (_dropCallbackRef != LUA_NOREF && gL) {
-		luaL_unref(gL, LUA_REGISTRYINDEX, _dropCallbackRef);
+	lua_State *callL = _owner.L;
+	if (_dropCallbackRef != LUA_NOREF && callL) {
+		luaL_unref(callL, LUA_REGISTRYINDEX, _dropCallbackRef);
 	}
 }
 
@@ -568,9 +570,8 @@ static int bridge_NSView_splitProportions_impl(lua_State *L) {
 - (BOOL)performDragOperation:(id<NSDraggingInfo>)sender {
 	NSArray<NSString *> *paths = [self dropPathsFromPasteboard:sender.draggingPasteboard];
 	if (paths.count == 0) return NO;
-	if (_dropCallbackRef == LUA_NOREF || !gL) return YES;
-
-	lua_State *callL = gL;
+	lua_State *callL = _owner.L;
+	if (_dropCallbackRef == LUA_NOREF || !callL) return YES;
 	lua_rawgeti(callL, LUA_REGISTRYINDEX, _dropCallbackRef);
 	lua_newtable(callL);
 	for (NSUInteger i = 0; i < paths.count; i++) {
@@ -654,15 +655,12 @@ static int bridge_image(lua_State *L) {
 
 static int bridge_image_viewer(lua_State *L) {
 	const char *path = luaL_checkstring(L, 1);
-	int ref = LUA_NOREF;
-	if (!lua_isnoneornil(L, 2)) {
-		luaL_checktype(L, 2, LUA_TFUNCTION);
-		lua_pushvalue(L, 2);
-		ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	}
+	int ref;
+	LUA_OPT_CALLBACK_REF(L, 2, ref);
 
 	LuaImageViewerView *viewer = [[LuaImageViewerView alloc]
 		initWithFrame:NSMakeRect(0, 0, kImageViewerDefaultWidth, kImageViewerDefaultHeight)];
+	viewer.owner = owner_for_state(L);
 	viewer.dropCallbackRef = ref;
 	viewer.imagePath = [NSString stringWithUTF8String:path];
 

@@ -238,13 +238,8 @@ static int bridge_NSTabView_tabCount(lua_State *L) {
 static int bridge_NSTabView_onChange(lua_State *L) {
 	id _obj = lua_objc_check_object(L, 1, [NSTabView class], "TabView");
 	NSTabView *self = (NSTabView *)_obj;
-	BOOL has_callback = !lua_isnoneornil(L, 2);
-	int callback = LUA_NOREF;
-	if (has_callback) {
-		luaL_checktype(L, 2, LUA_TFUNCTION);
-		lua_pushvalue(L, 2);
-		callback = luaL_ref(L, LUA_REGISTRYINDEX);
-	}
+	int callback;
+	LUA_OPT_CALLBACK_REF(L, 2, callback);
 	return bridge_NSTabView_onChange_impl(L, self, callback);
 }
 
@@ -281,19 +276,8 @@ static int bridge_NSWindow_dismiss(lua_State *L) {
 }
 
 static int bridge_NSWindow_resize(lua_State *L) {
-	id _obj = lua_objc_check_object(L, 1, [NSWindow class], "Window");
-	NSWindow *self = (NSWindow *)_obj;
-	CGFloat width = (CGFloat)luaL_checknumber(L, 2);
-	CGFloat height = (CGFloat)luaL_checknumber(L, 3);
-	const char *anchor = luaL_optstring(L, 4, NULL);
-	(void)self;
-	(void)width;
-	(void)height;
-	(void)anchor;
-	{
-		return bridge_object_set_content_size_impl(L);
-	}
-	return 0;
+	(void)lua_objc_check_object(L, 1, [NSWindow class], "Window");
+	return bridge_object_set_content_size_impl(L);
 }
 
 static int bridge_NSWindow_focus(lua_State *L) {

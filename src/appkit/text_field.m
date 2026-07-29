@@ -77,19 +77,14 @@ static int bridge_text_field_callbacks(lua_State *L) {
 	if (![obj isKindOfClass:[NSTextField class]]) {
 		return luaL_error(L, "textFieldCallbacks requires an NSTextField");
 	}
-	if (!lua_isnoneornil(L, 2)) luaL_checktype(L, 2, LUA_TFUNCTION);
-	if (!lua_isnoneornil(L, 3)) luaL_checktype(L, 3, LUA_TFUNCTION);
+	int changeRef, commandRef;
+	LUA_OPT_CALLBACK_REF(L, 2, changeRef);
+	LUA_OPT_CALLBACK_REF(L, 3, commandRef);
 
 	LuaTextFieldDelegate *delegate = [[LuaTextFieldDelegate alloc] init];
 	delegate.owner = owner_for_state(L);
-	if (!lua_isnoneornil(L, 2)) {
-		lua_pushvalue(L, 2);
-		delegate.changeRef = luaL_ref(L, LUA_REGISTRYINDEX);
-	}
-	if (!lua_isnoneornil(L, 3)) {
-		lua_pushvalue(L, 3);
-		delegate.commandRef = luaL_ref(L, LUA_REGISTRYINDEX);
-	}
+	delegate.changeRef = changeRef;
+	delegate.commandRef = commandRef;
 	NSTextField *field = (NSTextField *)obj;
 	field.delegate = delegate;
 	objc_setAssociatedObject(field, &kKeys[kTextFieldDelegateKey], delegate,

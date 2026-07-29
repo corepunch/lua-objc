@@ -161,6 +161,20 @@ static lua_State *gL = NULL;
 #define LUA_OBJC_WINDOW_CLASS NSWindow
 #define LUA_OBJC_VIEW_METATABLE "nsview"
 #define LUA_OBJC_WINDOW_METATABLE "nswindow"
+
+/* Extract an optional Lua function at stack index idx into ref_var (int).
+   ref_var is set to LUA_NOREF when no function is present. */
+#define LUA_OPT_CALLBACK_REF(L, idx, ref_var) \
+    do { \
+        if (!lua_isnoneornil((L), (idx))) { \
+            luaL_checktype((L), (idx), LUA_TFUNCTION); \
+            lua_pushvalue((L), (idx)); \
+            (ref_var) = luaL_ref((L), LUA_REGISTRYINDEX); \
+        } else { \
+            (ref_var) = LUA_NOREF; \
+        } \
+    } while (0)
+
 #include "shared/lua_bridge_support.m"
 #include "shared/lua_error.m"
 #include "shared/lua_async.m"

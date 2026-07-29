@@ -96,19 +96,14 @@ static int bridge_AppKitControls_popUpButton(lua_State *L) {
 
 static int bridge_AppKitControls_button(lua_State *L) {
 	const char *title = luaL_checkstring(L, 1);
-	BOOL has_callback = !lua_isnoneornil(L, 2);
-	int callback_ref = LUA_NOREF;
-	if (has_callback) {
-		luaL_checktype(L, 2, LUA_TFUNCTION);
-		lua_pushvalue(L, 2);
-		callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	}
+	int callback_ref;
+	LUA_OPT_CALLBACK_REF(L, 2, callback_ref);
 
 	NSButton *obj = [[NSButton alloc] initWithFrame:NSZeroRect];
 	obj.title = [NSString stringWithUTF8String:title];
 	obj.bezelStyle = NSBezelStyleRounded;
 	[obj sizeToFit];
-	if (has_callback) {
+	if (callback_ref != LUA_NOREF) {
 		objc_setAssociatedObject(obj, &kKeys[kCallbackKey], @(callback_ref), OBJC_ASSOCIATION_RETAIN);
 		obj.target = [LuaButtonTarget shared];
 		obj.action = @selector(onAction:);
@@ -120,18 +115,13 @@ static int bridge_AppKitControls_button(lua_State *L) {
 static int bridge_AppKitControls_toggle(lua_State *L) {
 	const char *label = luaL_checkstring(L, 1);
 	BOOL is_on = (BOOL)lua_toboolean(L, 2);
-	BOOL has_callback = !lua_isnoneornil(L, 3);
-	int callback_ref = LUA_NOREF;
-	if (has_callback) {
-		luaL_checktype(L, 3, LUA_TFUNCTION);
-		lua_pushvalue(L, 3);
-		callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	}
+	int callback_ref;
+	LUA_OPT_CALLBACK_REF(L, 3, callback_ref);
 
 	NSButton *obj = [NSButton checkboxWithTitle:[NSString stringWithUTF8String:label] target:nil action:nil];
 	obj.state = is_on ? NSControlStateValueOn : NSControlStateValueOff;
 	[obj sizeToFit];
-	if (has_callback) {
+	if (callback_ref != LUA_NOREF) {
 		objc_setAssociatedObject(obj, &kKeys[kCallbackKey], @(callback_ref), OBJC_ASSOCIATION_RETAIN);
 		obj.target = [LuaButtonTarget shared];
 		obj.action = @selector(onAction:);
