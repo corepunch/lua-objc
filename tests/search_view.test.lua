@@ -1,7 +1,7 @@
 _G.__headless = true
 
 local bridge = require("AppKitNative")
-local SearchView = require("examples.ide.components.search_view")
+local SearchView = require("examples.IDEKit.SearchView")
 local ns = require("AppKit")
 local t = require("TestKit")
 

@@ -131,13 +131,6 @@ function AppKit.Window(props)
 			props.sidebarWidth,
 			props.toolbarContentDividerAfter,
 			props.detail)
-		props.sidebar:layout(props.sidebarWidth or 240)
-		props.content:layout(
-			math.max(1, width - (props.sidebarWidth or 240)))
-		if props.detail then
-			props.detail:layout(
-				math.max(1, (width - (props.sidebarWidth or 240)) / 2))
-		end
 	else
 		local content = bridge._vstack()
 		win:add(content)

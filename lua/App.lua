@@ -451,9 +451,10 @@ function App.loadPluginsFromDirectory(dir)
 		return a.name < b.name
 	end)
 
+	local prefix = dir:gsub("/", "."):gsub("^%.+", ""):gsub("%.+$", "")
 	local loaded = {}
 	for _, entry in ipairs(entries) do
-		local ok, result = pcall(require, "examples.ide.plugins." .. entry.name)
+		local ok, result = pcall(require, prefix .. "." .. entry.name)
 		if ok then
 			loaded[#loaded + 1] = entry.name
 		end
@@ -492,7 +493,7 @@ end
 
 function App.new(props)
 	props = props or {}
-	local pluginDir = props.pluginDir or "examples/ide/plugins"
+	local pluginDir = props.pluginDir or "examples/IDEKit/plugins"
 	local self = setmetatable({
 		name = props.name or "app",
 		spec = props,

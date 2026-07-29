@@ -34,8 +34,8 @@ Render a script without opening a window:
 | Change async state ownership, HTTP, timers, or JSON | `src/shared/lua_async.m` |
 | Change isolated canvas evaluation | `src/appkit/canvas_eval.m` |
 | Change editor highlighting | `src/appkit/syntax_highlight.m` |
-| Add an IDE editor surface | `examples/ide/plugins/` |
-| Change app startup or recents | `lua/App.lua`, `examples/ide/app.lua` |
+| Add an IDE editor surface | `examples/IDEKit/plugins/` |
+| Change app startup or recents | `lua/App.lua`, `examples/IDEKit/app.lua` |
 | Add UIKit coverage | `src/uikit/`, `src/uikit_module.m`, `lua/embedded/UIKit.lua` |
 | Understand runtime ownership | `ARCHITECTURE.md` |
 | Look up the Lua API or bridge rationale | `docs/PROJECT_REFERENCE.md` |

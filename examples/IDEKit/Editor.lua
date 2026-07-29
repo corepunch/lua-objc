@@ -1,8 +1,5 @@
--- Editor: code-editor view backed by NSTextView.
--- The actual editor behavior lives in Plugins/TextEditor.lua; this wrapper
--- keeps the IDE canvas debounce and preserves the historical IDEKit.Editor API.
 local bridge = require("AppKitNative")
-local canvasMod = require("examples.ide.components.canvas")
+local canvasMod = require("examples.IDEKit.Canvas")
 
 local function Editor(props)
 	props = props or {}

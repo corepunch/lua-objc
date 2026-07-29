@@ -270,7 +270,7 @@ without pulling its internals into the shared AppKit layer. That keeps the
 surface area smaller for both humans and the agent, which is the main reason to
 introduce the registry before the plugin count grows.
 
-The IDE example now lives under `examples/ide/` with `main.lua` as the real
+The IDE example now lives under `examples/IDEKit/` with `init.lua` as the real
 entrypoint and `examples/ide.lua` kept as a compatibility shim. That gives the
 workspace room to grow into a small plugin playground without cluttering the
 top-level examples directory.
@@ -296,11 +296,22 @@ and an open-folder picker otherwise.
 The IDE example is now organized like a small application bundle:
 
 ```text
-examples/ide/
+examples/IDEKit/
+├── init.lua       # module entrypoint (requires("examples.IDEKit"))
 ├── app.lua        # app lifecycle + routing
-├── main.lua       # thin entrypoint
-├── workspace.lua  # editor workspace window
-└── welcome.lua    # startup / recent-project screen
+├── workspace.lua  # editor workspace window (IDEWorkspace)
+├── welcome.lua    # startup / recent-project screen
+├── Canvas.lua     # preview canvas
+├── Editor.lua     # editor wrapper
+├── EditorArea.lua
+├── NavigatorArea.lua
+├── PreviewArea.lua
+├── ControlBar.lua
+├── SearchView.lua
+├── FindInFiles.lua
+├── Recent.lua
+├── plugins/       # editor surfaces (self-registering)
+└── state/         # persistence and recents
 ```
 
 That structure keeps app boot, scene selection, and UI composition separate
@@ -309,9 +320,8 @@ without introducing a second runtime or any non-Lua app scaffolding.
 The next split is already in place in the filesystem:
 
 ```text
-examples/ide/
-├── components/    # reusable UI bricks
-├── plugins/       # editor surfaces
+examples/IDEKit/
+├── plugins/       # editor surfaces (files that call App.registerPlugin)
 └── state/         # persistence and recents
 ```
 
@@ -322,7 +332,7 @@ This table wrapper avoids triggering KVC on `NSScrollView` when storing Lua-side
 
 ---
 
-## IDE layout (`examples/ide.lua`)
+## IDE layout (`examples/IDEKit`)
 
 ```
 ns.Window

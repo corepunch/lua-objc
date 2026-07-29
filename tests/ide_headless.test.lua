@@ -2,23 +2,21 @@ _G.__headless = true
 
 local App = require("App")
 local ns = require("AppKit")
-local Source = require("examples.ide.plugins.source")
-require("examples.ide.plugins.image_viewer")
-local Recent = require("examples.ide.state.recent")
+local Source = require("examples.IDEKit.Workspace")
+require("examples.IDEKit.plugins.ImageViewer")
+local Recent = require("examples.IDEKit.state.Recent")
 local t = require("TestKit")
 
 local files = {
-	"examples/ide/main.lua",
-	"examples/ide/app.lua",
-	"examples/ide/state/recent.lua",
-	"examples/ide/components/recent.lua",
-	"examples/ide/components/welcome.lua",
-	"examples/ide/plugins/source.lua",
-	"examples/ide/plugins/text_editor.lua",
-	"examples/ide/plugins/image_viewer.lua",
-	"examples/ide/plugins/native_controls.lua",
-	"examples/ide/workspace.lua",
-	"examples/ide/welcome.lua",
+	"examples/IDEKit/init.lua",
+	"examples/IDEKit/App.lua",
+	"examples/IDEKit/state/Recent.lua",
+	"examples/IDEKit/Recent.lua",
+	"examples/IDEKit/Welcome.lua",
+	"examples/IDEKit/Workspace.lua",
+	"examples/IDEKit/plugins/TextEditor.lua",
+	"examples/IDEKit/plugins/ImageViewer.lua",
+	"examples/IDEKit/plugins/NativeControls.lua",
 }
 
 for _, path in ipairs(files) do
@@ -89,13 +87,13 @@ t.assertEqual(recent:files()[1].path, "tests/fixtures/oversized.svg", "most rece
 t.assertEqual(recent:files()[2].path, "/private/tmp/project-b/main.lua", "older file remains available")
 
 local sourceWindow, sourceSession = Source.open(
-	"examples/ide/",
+	"examples/IDEKit/",
 	nil,
-	"examples/ide/main.lua")
+	"examples/IDEKit/init.lua")
 t.expect(sourceWindow ~= nil, "source workspace creates a document window")
-t.assertEqual(sourceWindow.title, "main.lua",
+t.assertEqual(sourceWindow.title, "init.lua",
 	"source document uses its filename as the native window-tab title")
-t.assertEqual(sourceWindow.tabbingIdentifier, "lua-objc.ide:examples/ide/",
+t.assertEqual(sourceWindow.tabbingIdentifier, "lua-objc.ide:examples/IDEKit/",
 	"source documents opt into one AppKit window tab group")
 local sourceWorkspaceState = sourceWindow:workspaceState()
 t.expect(sourceWorkspaceState.nativeSidebar,
@@ -122,19 +120,21 @@ t.assertEqual(runItem.label, "Run",
 
 local initialTabCount = ns.windowTabCount(sourceWindow)
 local initialPrimaryPath = sourceSession.documents[1].path
-for row = 0, sourceSession.fileTrees[1].rowCount - 1 do
-	sourceSession.fileTrees[1]:selectRow(row)
-	if sourceSession.documents[1].path ~= initialPrimaryPath then break end
-end
+local otherFile = initialPrimaryPath:match("(.+/)")
+	and initialPrimaryPath:gsub("init%.lua", "App.lua")
+	or "examples/IDEKit/App.lua"
+sourceSession.openPath(otherFile, false)
 t.expect(sourceSession.documents[1].path ~= initialPrimaryPath,
-	"single-clicking a sidebar file replaces the primary editor document")
+	"openPath replaces the primary editor document without creating a tab")
+t.assertEqual(sourceSession.documents[1].path, otherFile,
+	"primary editor now shows the opened file")
 t.assertEqual(ns.windowTabCount(sourceWindow), initialTabCount,
-	"single-clicking a sidebar file does not create a window tab")
+	"single file selection does not create a window tab")
 
 local primaryPath = sourceSession.documents[1].path
-local tabPath = primaryPath == "examples/ide/plugins/text_editor.lua"
-	and "examples/ide/plugins/source.lua"
-	or "examples/ide/plugins/text_editor.lua"
+local tabPath = primaryPath == "examples/IDEKit/plugins/TextEditor.lua"
+	and "examples/IDEKit/Workspace.lua"
+	or "examples/IDEKit/plugins/TextEditor.lua"
 sourceSession.openPath(tabPath, true)
 local commandTabCount = ns.windowTabCount(sourceWindow)
 t.expect(commandTabCount > initialTabCount,

@@ -21,14 +21,14 @@ The current `lua-objc` pattern is:
 
 ```lua
 local App = require("App")
-local Recent = require("examples.ide.state.recent")
-local Source = require("examples.ide.plugins.source")
-local Welcome = require("examples.ide.components.welcome")
+local Recent = require("examples.IDEKit.state.Recent")
+local Workspace = require("examples.IDEKit.Workspace")
+local Welcome = require("examples.IDEKit.Welcome")
 
 local app = App.new {
 	recent = Recent.new { key = "ide" },
 	openFolder = function(self, folder)
-		return Source.open(folder, self)
+		return Workspace.open(folder, self)
 	end,
 	welcome = function(self)
 		return Welcome {
@@ -43,14 +43,14 @@ return app:run()
 
 ## IDE App Layout
 
-- Use `components/` for shared UI bricks.
-- Use `state/` for persistence and recent-item adapters.
-- Use `plugins/` for concrete editor surfaces.
-- Keep `workspace.lua` and `welcome.lua` as compatibility shims if legacy entrypoints still point there.
+- Top-level files in `IDEKit/` are the core IDE components (workspace, editors, navigators, etc.).
+- Use `IDEKit/plugins/` for concrete editor surfaces — only files that call `App.registerPlugin()`.
+- Use `IDEKit/state/` for persistence and recent-item adapters.
 - Keep the IDE's plugin registry inside `lua/App.lua` — the base App class owns
   plugin discovery, registration, and loading. `plugins/` contains only plugin
   definitions (no boilerplate).
-- Use `IDEKit` only for shared editor chrome.
+- Follow Xcode's `-Kit` naming convention: `IDEKit` for the IDE framework,
+  `DVTKit` for shared dev-tools widgets, `IDEFoundation` for non-UI model logic.
 
 ## IDE-Owned Plugins
 
@@ -85,7 +85,7 @@ sandbox.
 ## Recent State
 
 - Track `recent files` and `recent folders` independently.
-- Persist them through the app layer or a small state wrapper such as `examples.ide.state.recent`.
+- Persist them through the app layer or a small state wrapper such as `examples.IDEKit.state.Recent`.
 - When adding open actions, record the item kind at the same time the workspace opens.
 - Keep path pickers in the app layer so the UI does not need to know how folders/files are chosen.
 

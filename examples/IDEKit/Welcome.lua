@@ -1,5 +1,5 @@
 local ns = require("AppKit")
-local Recent = require("examples.ide.components.recent")
+local Recent = require("examples.IDEKit.Recent")
 
 local function actionButton(item, handler)
 	return ns.Button {

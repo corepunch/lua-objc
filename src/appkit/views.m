@@ -226,9 +226,9 @@ static int bridge_set_window_workspace(lua_State *L) {
 		[NSSplitViewItem sidebarWithViewController:sidebarController];
 	sidebarItem.minimumThickness = kWorkspaceSidebarMinWidth;
 	sidebarItem.maximumThickness = kWorkspaceSidebarMaxWidth;
-	sidebarItem.preferredThicknessFraction = MAX(
-		kWorkspaceSidebarMinWidth,
-		MIN(kWorkspaceSidebarMaxWidth, sidebarWidth))
+	sidebarItem.preferredThicknessFraction =
+		fmax(kWorkspaceSidebarMinWidth,
+			 fmin(kWorkspaceSidebarMaxWidth, sidebarWidth))
 		/ MAX(1, window.contentLayoutRect.size.width);
 	sidebarItem.allowsFullHeightLayout = YES;
 
@@ -282,6 +282,18 @@ static int bridge_set_window_workspace(lua_State *L) {
 	[window setFrame:restoredFrame display:NO animate:NO];
 	splitController.view.frame = window.contentView.bounds;
 	[splitController.view layoutSubtreeIfNeeded];
+
+	/* preferredThicknessFraction only takes effect on double-click or
+	 * fullscreen entry, not at construction.  Set the sidebar divider
+	 * position directly so sidebarWidth takes immediate effect. */
+	CGFloat clampedSidebarWidth =
+		fmax(kWorkspaceSidebarMinWidth,
+			 fmin(kWorkspaceSidebarMaxWidth, sidebarWidth));
+	[splitController.splitView
+		setPosition:clampedSidebarWidth
+		ofDividerAtIndex:0];
+	[splitController.view layoutSubtreeIfNeeded];
+
 	LuaToolbarDelegate *toolbarDelegate = objc_getAssociatedObject(
 		window,
 		&kKeys[kToolbarDelegateKey]);
@@ -296,7 +308,7 @@ static int bridge_set_window_workspace(lua_State *L) {
 	if (detail) {
 		observe_workspace_pane(detail);
 	}
-	layout_recursive(sidebar, sidebar.bounds.size.width);
+	layout_recursive(sidebar, clampedSidebarWidth);
 	layout_recursive(content, content.bounds.size.width);
 	if (detail) {
 		layout_recursive(detail, detail.bounds.size.width);
@@ -305,6 +317,7 @@ static int bridge_set_window_workspace(lua_State *L) {
 		[splitController.splitView
 			setPosition:sidebarEnd + (totalWidth - sidebarEnd) / 2.0
 		 ofDividerAtIndex:kWorkspaceDetailDividerIndex];
+		layout_recursive(detail, detail.bounds.size.width);
 	}
 	if (contentDividerAfter
 		&& (detail || [content isKindOfClass:[NSSplitView class]])) {
@@ -418,7 +431,16 @@ static int bridge_NSWindow_toggleSidebar_impl(lua_State *L) {
 		(NSSplitViewController *)controller;
 	NSSplitViewItem *sidebarItem = splitController.splitViewItems.firstObject;
 	if (sidebarItem.behavior == NSSplitViewItemBehaviorSidebar) {
-		sidebarItem.animator.collapsed = !sidebarItem.isCollapsed;
+		[NSAnimationContext runAnimationGroup:^(NSAnimationContext *ctx) {
+			sidebarItem.animator.collapsed = !sidebarItem.isCollapsed;
+		} completionHandler:^{
+			/* Re-layout each pane at its post-toggle NSSplitView size
+			 * because layout_recursive does not cascade into panes. */
+			for (NSSplitViewItem *item in splitController.splitViewItems) {
+				NSView *pane = item.viewController.view;
+				layout_recursive(pane, pane.bounds.size.width);
+			}
+		}];
 	}
 	return 0;
 }

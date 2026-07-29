@@ -1,18 +1,17 @@
 local ns = require("AppKit")
 local t = require("TestKit")
 local App = require("App")
-local ControlBar = require("examples.ide.components.control_bar")
-local Editor = require("examples.ide.components.editor")
+local ControlBar = require("examples.IDEKit.ControlBar")
+local Editor = require("examples.IDEKit.Editor")
 local bridge = require("AppKitNative")
-local ImageViewerPlugin = require("examples.ide.plugins.image_viewer")
-local TextEditorPlugin = require("examples.ide.plugins.text_editor")
-local NativeControlsPlugin = require("examples.ide.plugins.native_controls")
-local RecentState = require("examples.ide.state.recent")
-local NavigatorArea = require("examples.ide.components.navigator_area")
-local FindInFiles = require("examples.ide.components.find_in_files")
-local EditorArea = require("examples.ide.components.editor_area")
-local PreviewArea = require("examples.ide.components.preview_area")
-local canvasMod = require("examples.ide.components.canvas")
+local ImageViewerPlugin = require("examples.IDEKit.plugins.ImageViewer")
+local TextEditorPlugin = require("examples.IDEKit.plugins.TextEditor")
+local NativeControlsPlugin = require("examples.IDEKit.plugins.NativeControls")
+local RecentState = require("examples.IDEKit.state.Recent")
+local FindInFiles = require("examples.IDEKit.FindInFiles")
+local EditorArea = require("examples.IDEKit.EditorArea")
+local PreviewArea = require("examples.IDEKit.PreviewArea")
+local canvasMod = require("examples.IDEKit.Canvas")
 
 local publicSize = ns.Size(12, 34)
 t.assertEqual(publicSize.width, 12,
@@ -230,9 +229,8 @@ t.assertEqual(spaced.paddingVertical, 7, "vertical padding is retained")
 -- AppKit owns the window tab group; each document owns its nested code/canvas
 -- NSSplitView.
 
-local navigatorArea = NavigatorArea {
-	title = "FILES",
-	content = ns.Text "Files",
+local navigatorArea = ns.VStack {
+	ns.Text { "Files", flexGrow = 1 },
 }
 local previewArea, rebuildPreviewToolbar = PreviewArea.show {
 	title = "CANVAS",

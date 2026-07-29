@@ -1,6 +1,3 @@
--- SearchView: Xcode-style Open Quickly palette.
--- File discovery, filtering, selection, datasource replacement, and palette
--- state all live in Lua. AppKit supplies only generic native primitives.
 local ns = require("AppKit")
 local bridge = require("AppKitNative")
 

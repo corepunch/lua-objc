@@ -1,7 +1,7 @@
 local App = require("App")
-local Recent = require("examples.ide.state.recent")
-local Source = require("examples.ide.plugins.source")
-local Welcome = require("examples.ide.components.welcome")
+local Recent = require("examples.IDEKit.state.Recent")
+local Workspace = require("examples.IDEKit.Workspace")
+local Welcome = require("examples.IDEKit.Welcome")
 
 local app = App.new {
 	name = "ide",
@@ -9,16 +9,16 @@ local app = App.new {
 	recentLimit = 12,
 	openFolderPrompt = "Open Folder",
 	openFilePrompt = "Open File",
-	pluginDir = "examples/ide/plugins",
+	pluginDir = "examples/IDEKit/plugins",
 	recent = Recent.new {
 		key = "ide",
 		limit = 12,
 	},
 	openFolder = function(self, folder)
-		return Source.open(folder, self)
+		return Workspace.open(folder, self)
 	end,
 	openFile = function(self, path)
-		return Source.openFile(path, self)
+		return Workspace.openFile(path, self)
 	end,
 	welcome = function(self)
 		return Welcome {

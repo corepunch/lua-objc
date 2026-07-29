@@ -717,7 +717,22 @@ static int bridge_object_layout_impl(lua_State *L) {
 
 	NSView *view;
 	if ([obj isKindOfClass:[NSWindow class]]) {
-		view = [(NSWindow *)obj contentView];
+		NSWindow *window = (NSWindow *)obj;
+		view = window.contentView;
+
+		/* Workspace windows use NSSplitViewController.  layout_recursive
+		 * does not cascade into split-view panes, so re-layout each pane
+		 * individually at its current NSSplitView-assigned width. */
+		if ([window.contentViewController
+				isKindOfClass:[NSSplitViewController class]]) {
+			NSSplitViewController *svc =
+				(NSSplitViewController *)window.contentViewController;
+			for (NSSplitViewItem *item in svc.splitViewItems) {
+				NSView *pane = item.viewController.view;
+				layout_recursive(pane, pane.bounds.size.width);
+			}
+			return 0;
+		}
 	} else {
 		view = (NSView *)obj;
 	}

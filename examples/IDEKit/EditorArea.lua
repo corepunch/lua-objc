@@ -1,5 +1,5 @@
 local ns = require("AppKit")
-local ControlBar = require("examples.ide.components.control_bar")
+local ControlBar = require("examples.IDEKit.ControlBar")
 
 local function fill(view)
 	if not view then return nil end
@@ -8,8 +8,6 @@ local function fill(view)
 	return view
 end
 
--- EditorArea: one native window-tab document surface. The code editor and its
--- preview canvas share an inner NSSplitView owned by that document window.
 local function EditorArea(props)
 	props = props or {}
 

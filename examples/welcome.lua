@@ -1,1 +1,1 @@
-return dofile("examples/ide/welcome.lua")
+return dofile("examples/IDEKit/welcome.lua")

@@ -1,1 +1,1 @@
-return dofile("examples/ide/main.lua")
+return require("examples.IDEKit")

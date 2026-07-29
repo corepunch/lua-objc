@@ -2,10 +2,10 @@ local ns = require("AppKit")
 local bridge = require("AppKitNative")
 local App = require("App")
 
-local canvasMod = require("examples.ide.components.canvas")
-local NavigatorArea = require("examples.ide.components.navigator_area")
-local PreviewArea = require("examples.ide.components.preview_area")
-local SearchView = require("examples.ide.components.search_view")
+local canvasMod = require("examples.IDEKit.Canvas")
+local NavigatorArea = require("examples.IDEKit.NavigatorArea")
+local PreviewArea = require("examples.IDEKit.PreviewArea")
+local SearchView = require("examples.IDEKit.SearchView")
 
 local Source = {}
 
@@ -132,32 +132,8 @@ function Source.open(folder, app, initialFile)
 	local tabbingIdentifier = "lua-objc.ide:" .. rootDir
 	local primaryWindow = nil
 	local documents = {}
-	local fileTrees = {}
 	local wordWrapEnabled = true
 	local openPath
-
-	local function makeFileTree()
-		local fileTree = ns.OutlineView {
-			header = false,
-			bordered = false,
-			style = "sourceList",
-			flexGrow = 1,
-			columns = {
-				{ id = "name", title = "Name", systemImage = "doc.text" },
-			},
-			data = files,
-		}
-
-		-- Selection follows IDE convention: replace the primary editor unless
-		-- Command asks AppKit for a separate document tab.
-		fileTree:onRowSelect(function(list, rowIndex, rowData, modifiers)
-			if rowData and rowData.path and not rowData.directory then
-				openPath(rowData.path, modifiers and modifiers.command)
-			end
-		end)
-		fileTrees[#fileTrees + 1] = fileTree
-		return fileTree
-	end
 
 	local function makeDocumentWindow(path, content, visible)
 		local name = path and (path:match("([^/\\]+)$") or path) or "Untitled"
@@ -207,7 +183,10 @@ function Source.open(folder, app, initialFile)
 			toolbarContentDividerAfter = "save",
 			sidebarWidth = 240,
 			sidebar = NavigatorArea {
-				content = makeFileTree(),
+				files = files,
+				onRowSelect = function(path, inNewTab)
+					openPath(path, inNewTab)
+				end,
 			},
 			content = textView,
 			detail = preview,
@@ -284,8 +263,6 @@ function Source.open(folder, app, initialFile)
 	primaryWindow = makeDocumentWindow(initialFile, initialContent, true)
 	if initialFile and app and app.recent then app.recent:recordFile(initialFile) end
 
-	-- Xcode-style Open Quickly remains a window-wide command instead of
-	-- occupying a second navigator tab.
 	local searchView = SearchView {
 		rootDir = rootDir,
 		onSelect = openPath,
@@ -331,7 +308,6 @@ function Source.open(folder, app, initialFile)
 	if _G.__headless then
 		return primaryWindow, {
 			documents = documents,
-			fileTrees = fileTrees,
 			openPath = openPath,
 		}
 	end
