@@ -1,3 +1,4 @@
+local ns = require("AppKit")
 local App = require("App")
 local Recent = require("examples.IDEKit.state.Recent")
 local Workspace = require("examples.IDEKit.Workspace")
@@ -21,34 +22,36 @@ local app = App.new {
 		return Workspace.openFile(path, self)
 	end,
 	welcome = function(self)
-		return Welcome {
-			title = "lua-objc IDE",
+		local view = Welcome {
 			recentFolders = self.recent:folders(),
 			recentFiles = self.recent:files(),
 			onOpenFolder = function()
 				local folder = self:pickFolder()
-				if folder then
-					self:openFolder(folder)
-				end
+				if folder then self:openFolder(folder) end
 			end,
 			onOpenFile = function()
 				local path = self:pickFile()
-				if path then
-					self:openFile(path)
-				end
+				if path then self:openFile(path) end
 			end,
 			onOpenRecent = function(item)
-				if item and item.path then
-					if item.kind == "file" then
-						self:openFile(item.path)
-					else
-						self:openFolder(item.path)
-					end
+				if not item or not item.path then return end
+				if item.kind == "file" then
+					self:openFile(item.path)
+				else
+					self:openFolder(item.path)
 				end
 			end,
 			onOpenExample = function()
 				self:openFolder("examples")
 			end,
+		}
+		return ns.Window {
+			title = "lua-objc IDE",
+			width = 860,
+			height = 520,
+			minWidth = 760,
+			minHeight = 480,
+			content = view,
 		}
 	end,
 }

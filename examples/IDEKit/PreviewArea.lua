@@ -1,8 +1,5 @@
 local ns = require("AppKit")
-local ControlBar = require("examples.IDEKit.ControlBar")
 local bridge = require("AppKitNative")
-
-local PreviewArea = {}
 
 local PANEL = {
 	headerHeight = 34,
@@ -15,14 +12,17 @@ local function wrapContent(view)
 	return view
 end
 
-function PreviewArea.show(props)
+local function PreviewArea(props)
 	props = props or {}
+
 	local toolbarRow = ns.HStack {
 		flexGrow = 0,
 		flexShrink = 0,
 		spacing = 4,
 	}
-	local area = wrapContent(props.content)
+
+	local canvas = props.canvas
+	local area = wrapContent(canvas)
 
 	local function rebuildToolbar(items)
 		toolbarRow:clearContainer()
@@ -36,10 +36,17 @@ function PreviewArea.show(props)
 				end
 			end
 		end
-		area:layout()
+		if area then area:layout() end
 	end
 
-	return area, rebuildToolbar
+	local self = {
+		view = area,
+		setContent = function(_, result, toolbarItems)
+			rebuildToolbar(toolbarItems)
+		end,
+	}
+
+	return self
 end
 
 return PreviewArea

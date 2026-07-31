@@ -2,9 +2,8 @@ local ns = require("AppKit")
 local bridge = require("AppKitNative")
 local App = require("App")
 
-local canvasMod = require("examples.IDEKit.Canvas")
+local EditorArea = require("examples.IDEKit.EditorArea")
 local NavigatorArea = require("examples.IDEKit.NavigatorArea")
-local PreviewArea = require("examples.IDEKit.PreviewArea")
 local SearchView = require("examples.IDEKit.SearchView")
 
 local Source = {}
@@ -137,38 +136,22 @@ function Source.open(folder, app, initialFile)
 
 	local function makeDocumentWindow(path, content, visible)
 		local name = path and (path:match("([^/\\]+)$") or path) or "Untitled"
-		local canvas = canvasMod.Canvas()
-		local preview, rebuildToolbar = PreviewArea.show {
-			title = "CANVAS",
-			content = canvas,
-		}
-		local textView = ns.TextEditor {
+
+		local editor = EditorArea {
 			language = "lua",
 			wrapMode = wordWrapEnabled,
 		}
-
-		local version = 0
-		local function evaluate(code)
-			canvasMod.evalIntoCanvas(canvas, code, rebuildToolbar)
-		end
-		textView:onChange(function(text)
-			version = version + 1
-			local requestedVersion = version
-			bridge._timerAfter(0.3, function()
-				if requestedVersion == version then evaluate(text) end
-			end)
-		end)
 
 		if path then
 			bridge._watchFile(path, function()
 				local updated = readFile(path)
 				if not updated then return end
-				textView.text = updated
-				evaluate(updated)
+				editor.textView.text = updated
+				editor.evaluate(updated)
 			end)
 		end
 
-		textView.text = content or ""
+		editor.textView.text = content or ""
 
 		local window = ns.Window {
 			title = name,
@@ -184,21 +167,19 @@ function Source.open(folder, app, initialFile)
 			sidebarWidth = 240,
 			sidebar = NavigatorArea {
 				files = files,
-				onRowSelect = function(path, inNewTab)
-					openPath(path, inNewTab)
+				onRowSelect = function(filePath, inNewTab)
+					openPath(filePath, inNewTab)
 				end,
 			},
-			content = textView,
-			detail = preview,
+			content = editor.view,
 		}
 
 		documents[#documents + 1] = {
 			window = window,
-			textView = textView,
+			editor = editor,
 			path = path,
-			evaluate = evaluate,
 		}
-		evaluate(content or "")
+		editor.evaluate(content or "")
 		return window
 	end
 
@@ -221,15 +202,15 @@ function Source.open(folder, app, initialFile)
 		local function reload()
 			local updated = readFile(path)
 			if not updated then return end
-			document.textView.text = updated
-			document.evaluate(updated)
+			document.editor.textView.text = updated
+			document.editor.evaluate(updated)
 		end
 
-	document.textView.text = content
-	document.textView.language = "lua"
+		document.editor.textView.text = content
+		document.editor.textView.language = "lua"
 		primaryWindow.title = path:match("([^/\\]+)$") or path
 		bridge._watchFile(path, reload)
-		document.evaluate(content)
+		document.editor.evaluate(content)
 		document.path = path
 		ns.selectWindowTab(primaryWindow)
 		recordFile(path)
@@ -300,7 +281,7 @@ function Source.open(folder, app, initialFile)
 		action = function()
 			wordWrapEnabled = not wordWrapEnabled
 			for _, document in ipairs(documents) do
-				document.textView.wrapMode = wordWrapEnabled
+				document.editor.textView.wrapMode = wordWrapEnabled
 			end
 		end,
 	}

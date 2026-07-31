@@ -1,22 +1,65 @@
 local ns = require("AppKit")
-local ControlBar = require("examples.IDEKit.ControlBar")
-
-local function fill(view)
-	if not view then return nil end
-	view.flexGrow = 1
-	view.fillWidth = true
-	return view
-end
+local bridge = require("AppKitNative")
+local canvasMod = require("examples.IDEKit.Canvas")
+local PreviewArea = require("examples.IDEKit.PreviewArea")
 
 local function EditorArea(props)
 	props = props or {}
 
-	return ns.HSplit {
-		flexGrow = props.flexGrow or 1,
-		proportions = props.proportions or { 1, 1 },
-		fill(props.editor or props.content),
-		fill(props.preview),
+	local canvas = canvasMod.Canvas()
+	local previewArea = PreviewArea { canvas = canvas }
+
+	local textView = ns.TextEditor {
+		language = props.language or "lua",
+		wrapMode = props.wrapMode ~= false,
+		flexGrow = 1,
+		fillWidth = true,
 	}
+
+	local function evaluate(code)
+		canvasMod.evalIntoCanvas(canvas, code, previewArea)
+	end
+
+	local version = 0
+	textView:onChange(function(text)
+		version = version + 1
+		local snap = version
+		bridge._timerAfter(0.3, function()
+			if snap == version then evaluate(text) end
+		end)
+	end)
+
+	local editorPane = ns.VStack {
+		flexGrow = 1,
+		fillWidth = true,
+		spacing = 0,
+		textView,
+	}
+
+	local previewPane = ns.VStack {
+		flexGrow = 1,
+		fillWidth = true,
+		spacing = 0,
+		previewArea.view,
+	}
+
+	local split = ns.HSplit {
+		flexGrow = 1,
+		proportions = props.proportions or { 1, 1 },
+		editorPane,
+		previewPane,
+	}
+
+	local self = {
+		view = split,
+		textView = textView,
+		evaluate = evaluate,
+		togglePreview = function()
+			previewPane.hidden = not previewPane.hidden
+		end,
+	}
+
+	return self
 end
 
 return EditorArea

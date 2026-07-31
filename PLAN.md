@@ -111,18 +111,15 @@ this becomes an internal detail.
 
 ---
 
-## Phase 4 — Crash fix and mechanical cleanup (from old A-track)
+## Phase 4 — Crash fix and mechanical cleanup ✓ done
 
-These are carried forward from the previous plan. Do them on this branch since
-they are low-risk and unblock further refactor.
-
-| Item | File | Notes |
-|------|------|-------|
-| A6: fix `gL` in `LuaTabViewDelegate` + `LuaImageViewerView` | `tabview.m`, `views.m` | P0 crash fix |
-| A1: `LUA_OPT_CALLBACK_REF` macro | shared header | already partially done |
-| A8: remove dead extraction in `bindings.m:289–292` | `bindings.m` | trivial |
-| A7: replace `strcmp` style lookups with `lookupNameValue` | `tabview.m`, `presentation.m` | mechanical |
-| B4: `onClick` → `action` in `Welcome.lua` | `Welcome.lua` | trivial |
+| Item | Status | Notes |
+|------|--------|-------|
+| A6: fix `gL` in `LuaTabViewDelegate` + `LuaImageViewerView` | done (pre-existing) | `_owner` ivar already present |
+| A7: `lookupNameValue` in `tabview.m` + `presentation.m` | done (pre-existing) | `NameValueEntry` maps already used |
+| A8: dead `(void)self`/`(void)width` in `bindings.m` layout fns | done | removed in this branch |
+| B4: `onClick` → `action` in `Welcome.lua` | done | Welcome rewritten, `action` used throughout |
+| A1: `LUA_OPT_CALLBACK_REF` macro | done (pre-existing) | macro already in `main.m` |
 
 ---
 

@@ -336,15 +336,8 @@ static int bridge_NSWindow_add(lua_State *L) {
 }
 
 static int bridge_NSWindow_layout(lua_State *L) {
-	id _obj = lua_objc_check_object(L, 1, [NSWindow class], "Window");
-	NSWindow *self = (NSWindow *)_obj;
-	CGFloat width = (CGFloat)luaL_optnumber(L, 2, 400);
-	(void)self;
-	(void)width;
-	{
-		return bridge_object_layout_impl(L);
-	}
-	return 0;
+	(void)lua_objc_check_object(L, 1, [NSWindow class], "Window");
+	return bridge_object_layout_impl(L);
 }
 
 static int bridge_NSWindow_presentPanel(lua_State *L) {
@@ -399,15 +392,8 @@ static int bridge_NSView_addSubview(lua_State *L) {
 }
 
 static int bridge_NSView_layout(lua_State *L) {
-	id _obj = lua_objc_check_object(L, 1, [NSView class], "View");
-	NSView *self = (NSView *)_obj;
-	CGFloat width = (CGFloat)luaL_optnumber(L, 2, 400);
-	(void)self;
-	(void)width;
-	{
-		return bridge_object_layout_impl(L);
-	}
-	return 0;
+	(void)lua_objc_check_object(L, 1, [NSView class], "View");
+	return bridge_object_layout_impl(L);
 }
 
 static int bridge_NSView_add(lua_State *L) {

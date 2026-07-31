@@ -1,7 +1,7 @@
 local ns = require("AppKit")
 local Recent = require("examples.IDEKit.Recent")
 
-local function actionButton(item, handler)
+local function actionButton(item)
 	return ns.Button {
 		title = item.title,
 		subtitle = item.subtitle,
@@ -9,22 +9,14 @@ local function actionButton(item, handler)
 		style = item.style or "plain",
 		fixedWidth = item.width or 240,
 		fixedHeight = item.height or 56,
-		action = function()
-			if handler then
-				handler(item)
-			end
-		end,
+		action = item.action,
 	}
 end
 
-return function(props)
+local function Welcome(props)
 	props = props or {}
 	local recentFolders = props.recentFolders or {}
 	local recentFiles = props.recentFiles or {}
-	local openFolder = props.onOpenFolder
-	local openFile = props.onOpenFile
-	local openExample = props.onOpenExample
-	local openRecent = props.onOpenRecent
 
 	local actionItems = {
 		{
@@ -33,7 +25,7 @@ return function(props)
 			systemImage = "folder",
 			style = "primary",
 			height = 64,
-			action = openFolder,
+			action = props.onOpenFolder,
 		},
 		{
 			title = "Open File…",
@@ -41,7 +33,7 @@ return function(props)
 			systemImage = "doc.text",
 			style = "plain",
 			height = 56,
-			action = openFile,
+			action = props.onOpenFile,
 		},
 		{
 			title = "Open Example Project",
@@ -49,73 +41,68 @@ return function(props)
 			systemImage = "play.rectangle",
 			style = "plain",
 			height = 56,
-			action = openExample,
+			action = props.onOpenExample,
 		},
 	}
 
-	return ns.Window {
-		title = props.title or "lua-objc IDE",
-		width = 860,
-		height = 520,
-		minWidth = 760,
-		minHeight = 480,
-		ns.HStack {
+	return ns.HStack {
+		flexGrow = 1,
+		spacing = 0,
+		alignment = "center",
+		ns.VStack {
+			fixedWidth = 320,
+			paddingHorizontal = 36,
+			spacing = 0,
+			alignment = "leading",
+			ns.Spacer(),
+			ns.VStack {
+				fixedWidth = 228,
+				flexGrow = 0,
+				spacing = 10,
+				alignment = "leading",
+				ns.SystemImage {
+					"rectangle.on.rectangle.angled",
+					size = 56,
+					weight = "regular",
+					color = "accent",
+					fixedWidth = 56,
+					fixedHeight = 56,
+					accessibilityLabel = "lua-objc IDE",
+				},
+				ns.VStack {
+					flexGrow = 0,
+					spacing = 2,
+					alignment = "leading",
+					ns.Text { "lua-objc IDE", size = 22, weight = "bold" },
+					ns.Text {
+						"Open a folder or resume recent work",
+						size = 13,
+						color = "secondary",
+					},
+				},
+			},
+			ns.Spacer { fixedHeight = 32 },
+			ns.VStack {
+				fixedWidth = 228,
+				flexGrow = 0,
+				spacing = 8,
+				alignment = "leading",
+				ns.ForEach(actionItems, function(item)
+					return actionButton(item)
+				end),
+			},
+			ns.Spacer(),
+		},
+		ns.Divider { orientation = "vertical" },
+		ns.VStack {
 			flexGrow = 1,
 			spacing = 0,
-			alignment = "center",
-			ns.VStack {
-				fixedWidth = 320,
-				paddingHorizontal = 36,
-				spacing = 0,
-				alignment = "leading",
-				ns.Spacer(),
-				ns.VStack {
-					fixedWidth = 228,
-					flexGrow = 0,
-					spacing = 10,
-					alignment = "leading",
-					ns.SystemImage {
-						"rectangle.on.rectangle.angled",
-						size = 56,
-						weight = "regular",
-						color = "accent",
-						fixedWidth = 56,
-						fixedHeight = 56,
-						accessibilityLabel = "lua-objc IDE",
-					},
-					ns.VStack {
-						flexGrow = 0,
-						spacing = 2,
-						alignment = "leading",
-						ns.Text { "lua-objc IDE", size = 22, weight = "bold" },
-						ns.Text {
-							"Open a folder or resume recent work",
-							size = 13,
-							color = "secondary",
-						},
-					},
-				},
-				ns.Spacer { fixedHeight = 32 },
-				ns.VStack {
-					fixedWidth = 228,
-					flexGrow = 0,
-					spacing = 8,
-					alignment = "leading",
-					ns.ForEach(actionItems, function(item)
-						return actionButton(item, item.action)
-					end),
-				},
-				ns.Spacer(),
-			},
-			ns.Divider { orientation = "vertical" },
-			ns.VStack {
-				flexGrow = 1,
-				spacing = 0,
-				alignment = "leading",
-				Recent.section("RECENT FOLDERS", "No recent folders yet", recentFolders, openRecent),
-				ns.Divider(),
-				Recent.section("RECENT FILES", "No recent files yet", recentFiles, openRecent),
-			},
+			alignment = "leading",
+			Recent.section("RECENT FOLDERS", "No recent folders yet", recentFolders, props.onOpenRecent),
+			ns.Divider(),
+			Recent.section("RECENT FILES", "No recent files yet", recentFiles, props.onOpenRecent),
 		},
 	}
 end
+
+return Welcome
