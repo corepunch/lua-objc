@@ -24,6 +24,35 @@ rg -n 'function_name|LuaClassName' src lua tests
 rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
 ```
 
+## Non-negotiable project rules
+
+- **No backwards compatibility, ever.** When the right design is found, move
+  to it completely. Delete old paths, old names, and old files — do not leave
+  shims, aliases, or forwarding stubs behind. A clean break is always preferred
+  over a compatibility layer. Callers update in the same commit.
+- **No monolith scenes.** Components return view trees (`ns.VStack { ... }`).
+  Only the app entry point (`init.lua` or the `App` object) creates an
+  `ns.Window`. A component that creates a window is wrong.
+- **Apps live in `examples/<appname>/`.** Every app has its own folder with
+  `init.lua` as the entry point. Flat `examples/<appname>.lua` files are
+  forbidden. There are no forwarding shims.
+- **MVP folder layout inside each app:**
+  ```
+  examples/<app>/
+    init.lua        ← entry point only: creates window, nothing else
+    Model.lua       ← data, queries, mutations
+    Controller.lua  ← wires model → views, owns actions
+    views/          ← XML templates and Lua component functions
+  ```
+- **XML templates are cross-platform.** View XML files live in `views/` and
+  use the tag vocabulary in `lua/ui/xml.lua` (`<Label>`, `<VStack>`, `<Button>`,
+  etc.). The platform module (`ns`) is injected by the caller; the same XML
+  file renders NSTextField on AppKit and UILabel on UIKit without conditionals.
+  To extend the vocabulary, add one entry to `xml.registry`.
+- **etlua is the only template engine.** It is vendored at
+  `lua/vendor/etlua` (git submodule). Import with `require("etlua")`. Do not
+  add Mustache, Handlebars, or any other template dependency.
+
 ## Non-negotiable product rules
 
 - The goal is complete SwiftUI-style coverage through native AppKit/UIKit
@@ -73,8 +102,8 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   width = 520, rowHeight = 28 }`) rather than separate `local SCREAMING_SNAKE`
   variables. Prefer flat camelCase keys.
 - Comments explain design reasons, edge cases, and existing prior art.
-- Keep `examples/<app>/main.lua` thin. Put UI bricks in `components/`, state in
-  `state/`, and editor surfaces in `plugins/`.
+- Keep `examples/<app>/init.lua` thin — entry point only. Put UI bricks in
+  `views/`, state in `Model.lua`, and wiring in `Controller.lua`.
 - Native `.m` sources expose existing Cocoa classes to Lua. New classes are
   implemented in Lua whenever possible. Only reach for `.m` when the
   feature cannot be built in pure Lua (e.g. Canvas requires offscreen
@@ -127,8 +156,8 @@ metadata layers.
 ```sh
 make
 make test
-make run ARGS="examples/hello.lua"
-./lua-objc --preview --out=/tmp/preview.png examples/hello.lua
+make run ARGS="examples/hello/init.lua"
+./lua-objc --preview --out=/tmp/preview.png examples/hello/init.lua
 ```
 
 For UI changes, completion requires actual visual QA:
