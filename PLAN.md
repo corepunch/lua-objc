@@ -1,315 +1,181 @@
-# Native AppKit surface
+# Redesign: testable splits, template data sources, etlua
 
-## Decision
-
-AppKit properties come from Objective-C, not bridge metadata.
-
-- `__index` reads with `valueForKey:`.
-- `__newindex` writes with `setValue:forKey:`.
-- Exported subclasses add semantic Lua names such as `text`.
-- The `NSView` base extension owns framework layout properties.
-- `Size`, `Point`, and `Rect` remain explicit value userdata.
-- Specialized operations that are not properties remain native methods.
-
-The AppKit/UIKit XML schemas and their generated bridge files are removed.
-Each platform now owns ordinary native constructors, bindings, and KVC
-accessors.
-
-## Public naming
-
-- `NSSize` → `ns.Size`
-- `NSPoint` → `ns.Point`
-- `NSRect` → `ns.Rect`
-- No `NSSize`/`NSPoint`/`NSRect` compatibility exports
-- Getter/setter pairs become assignments where they represent state
-
-Examples:
-
-```lua
-label.text = "Hello"
-field.editable = true
-window.size = ns.Size(800, 600)
-editor.wrapMode = true
-```
-
-## Native ownership
-
-- `LuaTextField` exposes `text`, `placeholder`, and `lineLimit`.
-- `LuaTextScrollView` exposes `text`, `language`, and `wrapMode`.
-- `LuaNativeTextView` exposes `text`.
-- `LuaWindow` is the exported window class.
-- AppKit-native names such as `editable`, `hidden`, `toolTip`, and `rowHeight`
-  require no declaration because KVC discovers them directly.
-
-## Verification
-
-- Headless tests cover property read/write round trips and unrelated-state
-  preservation.
-- Schema tests ensure both platform XML files are absent and native classes own
-  semantic/layout properties.
-- Build and test with `make test`.
+Target audience: AI agents running lua-objc scripts.
+Goal: clear layered architecture, testable without a window, cell templates via etlua.
 
 ---
 
-# Cleanup plan: reduce boilerplate, close SwiftUI gap
+## Phase 1 — Editor panel owns its own split
 
-Outcome of the audit in July 2026. Two tracks run independently.
+**Motivation:** The outer `NSSplitViewController` (sidebar / content / detail)
+is a window-level concern. The inner editor↔preview split is an editor-panel
+concern. Mixing them couples Workspace to layout details it should not own —
+exactly the Xcode mistake we want to avoid.
 
----
+**Changes:**
 
-## Track A — src/appkit binding layer
+1. **Remove `detail` from `ns.Window` in Workspace.lua.**
+   The window becomes a two-pane layout: sidebar + editor-content.
+   `detail` is dropped from `bridge_set_window_workspace`'s third-pane path
+   when the caller passes `content` only (this path already exists; just stop
+   passing `detail`).
 
-### A1. Shared callback-ref macro
+2. **`EditorArea.lua` becomes the canonical editor component.**
+   It owns an `ns.HSplit { proportions = {1,1} }` with editor on the left and
+   preview on the right. This is already written but unused — activate it.
 
-**Problem:** The 5-line "extract optional Lua callback" block appears 9+ times
-across `constructors.m`, `editor.m`, `tabview.m`, `controls.m`, `views.m`.
+3. **Workspace passes `EditorArea { ... }` as `content`.**
+   `EditorArea` receives `textView` and `previewArea` as props and composes the
+   inner split. Workspace never touches split geometry again.
 
-**Fix:** Add a `LUA_OPT_CALLBACK_REF(L, idx, ref_var)` macro in a shared
-header (e.g., `lua_bridge_utils.h`). Replace every occurrence.
+4. **`EditorArea` exposes a toggle: `editor:togglePreview()`.**
+   Toolbar "Show Preview" button calls this; Workspace is not involved.
 
-Files touched: `constructors.m`, `editor.m`, `tabview.m`, `controls.m`,
-`views.m`, `outline.m`.
+**Files:** `examples/IDEKit/EditorArea.lua`, `examples/IDEKit/Workspace.lua`,
+`examples/IDEKit/PreviewArea.lua`.
 
----
-
-### A2. Shared column-setup and column-width helpers
-
-**Problem:**
-- `bridge_tableview` (`controls.m`) and `bridge_outlineview` (`outline.m`)
-  share ~65 lines of column-construction code, copy-pasted.
-- `LuaTableViewSource.updateTableFrame` and
-  `LuaOutlineViewSource.updateTableFrame` share ~70 lines of flex
-  column-width distribution, copy-pasted.
-
-**Fix:**
-- Extract `build_table_columns(lua_State *L, NSTableView *tv, int tableIdx)`
-  as a static C helper in a new `table_utils.m` (or inline in `controls.m`
-  and `#include`d by `outline.m`).
-- Extract `distribute_column_widths(NSTableView *tv, NSScrollView *sv)` as a
-  shared C function that both data-source classes call.
-
-Files touched: `controls.m`, `outline.m`, `table_data_source.m`,
-`outline_data_source.m`.
+**Test:** headless canvas eval still works; `--preview` CLI mode is unaffected
+(it never uses `ns.Window`).
 
 ---
 
-### A3. Shared cell-construction helper
+## Phase 2 — Embed etlua and wire cell templates
 
-**Problem:** `tableView:viewForTableColumn:row:` and
-`outlineView:viewForTableColumn:item:` duplicate ~50 lines of
-`LuaTableCellView` construction and reuse.
+**Motivation:** `TableView` and `OutlineView` data sources currently accept row
+dictionaries and render them with a hardcoded cell layout. AI agents need to
+supply a template string that controls how each cell looks — without writing
+native code.
 
-**Fix:** Static C function
-`make_or_reuse_cell(NSTableView *tv, NSTableColumn *col, NSString *prefix)`
-returning a configured `LuaTableCellView *`.
+**Changes:**
 
-Files touched: `table_data_source.m`, `outline_data_source.m`.
+1. **Embed etlua verbatim.**
+   Copy `etlua.lua` into `lua/vendor/etlua.lua`. No wrapper, no modification.
+   Add it to the embedded-lua bundle (Makefile target that compiles `.lua` →
+   byte array). Register as `"etlua"` so `require("etlua")` works from any
+   Lua script.
 
----
+2. **`ns.TableView { cellTemplate = "..." }`.**
+   The native `LuaTableViewSource` reads an optional `cell_template` string
+   from the constructor table. When present, for each row it calls a Lua helper:
 
-### A4. Shared row-data push helper
+   ```lua
+   -- lua/template_cell.lua (new, ~15 lines)
+   local etlua = require("etlua")
+   return function(template, rowData)
+       local src = etlua.render(template, rowData)
+       local fn = load("local ns = require('AppKit'); return " .. src)
+       return fn()
+   end
+   ```
 
-**Problem:** The loop that builds a Lua table from a row `NSDictionary` is
-copied in three places: `tableViewSelectionDidChange:`,
-`activateSelectedRow:`, `outlineViewSelectionDidChange:`.
+   The returned view replaces the default `LuaTableCellView`. The helper is
+   cached on first call; `etlua.compile` pre-compiles the template string once.
 
-**Fix:** Static `push_row_data_table(lua_State *L, NSDictionary *rowData)`
-used by all three.
+3. **Same for `ns.OutlineView { cellTemplate = "..." }`.**
+   Same mechanism, same helper. The native data-source delegates both to the
+   shared Lua helper — no C duplication.
 
-Files touched: `table_data_source.m`, `outline_data_source.m`.
+4. **Fallback:** when `cellTemplate` is absent, existing hardcoded cell layout
+   is used unchanged. No breaking change.
 
----
+**Files:** `lua/vendor/etlua.lua` (new), `lua/template_cell.lua` (new),
+`src/appkit/table_data_source.m`, `src/appkit/outline_data_source.m`,
+`Makefile`.
 
-### A5. Merge bridge_pick_folder / bridge_pick_file
-
-**Problem:** Two 17-line functions differing only in two `BOOL` values.
-
-**Fix:** Single `bridge_pick_panel(lua_State *L, BOOL isFolder)` helper;
-the two exported functions become 2-line wrappers.
-
-Files touched: `platform.m`.
-
----
-
-### A6. Fix gL usage in LuaTabViewDelegate and LuaImageViewerView
-
-**Problem:** `LuaTabViewDelegate.dealloc` (`tabview.m:17-19`) and
-`LuaImageViewerView.performDragOperation:` (`views.m:574`) use the global
-`gL` instead of a stored `LuaStateOwner`. This is a latent crash if the
-canvas Lua state is torn down while either object is still alive.
-
-**Fix:** Add a `LuaStateOwner *_owner` ivar to `LuaTabViewDelegate` and
-store/release via it, matching the pattern in `LuaTextFieldDelegate` and
-`LuaMenuActionTarget`. Same fix for `LuaImageViewerView`.
-
-Files touched: `tabview.m`, `views.m`.
+**Test:** a new `examples/template_table.lua` that renders a three-column
+table with a `cellTemplate` string — runnable headlessly via `--preview`.
 
 ---
 
-### A7. Standardise style/enum lookups
+## Phase 3 — PreviewArea encapsulation (B2 from old plan)
 
-**Problem:**
-- `tabview.m:bridge_tabview` uses raw `strcmp` for the `style` argument.
-- `presentation.m:panel_material` uses bare `if` branches.
-- Both are inconsistent with `lookupNameValue` used everywhere else.
+**Motivation:** `Workspace.lua` currently holds a `rebuildToolbar` closure that
+PreviewArea leaked to it. After Phase 1, the editor panel owns PreviewArea, so
+this becomes an internal detail.
 
-**Fix:** Replace both with `NameValueEntry` arrays + `lookupNameValue`.
+**Changes:**
 
-Files touched: `tabview.m`, `presentation.m`.
+1. **`PreviewArea` exposes `setContent(view)` only.**
+   The returned value from `PreviewArea.show` is an object with a single method.
+   `rebuildToolbar` is internal.
 
----
+2. **`Canvas.evalIntoCanvas` calls `previewArea:setContent(result)`.**
+   The `rebuildToolbar` parameter is removed from `evalIntoCanvas`.
 
-### A8. Dead extraction in bridge_NSWindow_resize
+3. **`EditorArea` wires canvas → preview internally.**
+   Workspace passes `onEval = function(result) previewArea:setContent(result) end`
+   to EditorArea, or EditorArea owns both and wires them directly.
 
-**Problem:** `bindings.m:289-292` extracts `width`, `height`, `anchor`,
-marks them `(void)`, then calls an impl that re-reads the stack.
-
-**Fix:** Remove the dead extraction lines; the impl already handles them.
-
-Files touched: `bindings.m`.
-
----
-
-### A9. structs.m code-gen macro
-
-**Problem:** `structs.m` repeats the same 6-function pattern (check, push,
-index, newindex, bridge, register) for each of the 3 structs — ~67 lines
-per struct, 200 lines total.
-
-**Fix:** Define a `DEFINE_LUA_STRUCT(TypeName, ...)` macro bundle (parallel
-to `LUA_NUMBER_ACCESSORS`) that generates all 6 functions from the struct
-name and a field descriptor. Reduces the file to ~40 lines of declarations.
-
-Files touched: `structs.m`.
+**Files:** `examples/IDEKit/PreviewArea.lua`, `examples/IDEKit/Canvas.lua`,
+`examples/IDEKit/EditorArea.lua`, `examples/IDEKit/Workspace.lua`.
 
 ---
 
-### A10. Break up bridge_set_window_workspace
+## Phase 4 — Crash fix and mechanical cleanup (from old A-track)
 
-**Problem:** `views.m:bridge_set_window_workspace` is 135 lines performing
-7 distinct tasks: hosting controller setup, sidebar item creation, split
-position clamping, toolbar tracking separator, safe-area constraints, detail
-pane wiring, initial layout.
+These are carried forward from the previous plan. Do them on this branch since
+they are low-risk and unblock further refactor.
 
-**Fix:** Extract 3-4 named static C helpers. No behaviour change, just
-readability. Defer if other A-track items are higher priority.
-
-Files touched: `views.m`.
-
----
-
-## Track B — examples/IDEKit SwiftUI parity
-
-The binding layer already supports `onSelect`, `onChange`, etc. inside
-constructor tables for most views. The examples don't consistently use this.
-
-### B1. Move post-construction wiring inside constructor tables
-
-**Problem:** `NavigatorArea.lua` calls `:setChangeHandler(fn)` and wires
-`onRowSelect` imperatively after construction. `Editor.lua` calls
-`:setChangeHandler(fn)` on the returned object.
-
-**Target:** All event handlers declared inside the constructor table:
-
-```lua
--- Before
-local view, fileTree = NavigatorArea.create(props)
-fileTree:onRowSelect(function(row) ... end)
-
--- After
-local view = NavigatorArea.create {
-    onSelect = function(row) ... end,
-}
-```
-
-This matches `ns.TableView { onSelect = fn }` already used in other files.
-
-Files touched: `examples/IDEKit/NavigatorArea.lua`,
-`examples/IDEKit/Editor.lua`, any callers in `Workspace.lua`.
+| Item | File | Notes |
+|------|------|-------|
+| A6: fix `gL` in `LuaTabViewDelegate` + `LuaImageViewerView` | `tabview.m`, `views.m` | P0 crash fix |
+| A1: `LUA_OPT_CALLBACK_REF` macro | shared header | already partially done |
+| A8: remove dead extraction in `bindings.m:289–292` | `bindings.m` | trivial |
+| A7: replace `strcmp` style lookups with `lookupNameValue` | `tabview.m`, `presentation.m` | mechanical |
+| B4: `onClick` → `action` in `Welcome.lua` | `Welcome.lua` | trivial |
 
 ---
 
-### B2. Encapsulate PreviewArea internals
+## Phase 5 — Signal primitive (B3 from old plan)
 
-**Problem:** `PreviewArea.lua` returns `(area, rebuildToolbar)`. The caller
-(`Workspace.lua`) threads `rebuildToolbar` to `evalIntoCanvas` because there
-is no way for the preview area to observe canvas output directly.
+**Motivation:** Workspace.lua's debounce counter and SearchView's imperative
+update chain both want a lightweight reactive value. Pure Lua, no C changes.
 
-**Fix:** `PreviewArea` exposes a single `setContent(view)` method. The
-`rebuildToolbar` closure becomes internal; the caller never holds it.
-`Workspace.lua` calls `previewArea.setContent(result)` instead.
+**Changes:**
 
-Files touched: `examples/IDEKit/PreviewArea.lua`, `Workspace.lua`.
+1. **`ns.signal(initialValue)` in `lua/AppKit.lua`.**
 
----
+   ```lua
+   function AppKit.signal(initial)
+       local listeners = {}
+       local s = { value = initial }
+       function s:set(v)
+           self.value = v
+           for _, fn in ipairs(listeners) do fn(v) end
+       end
+       function s:onChange(fn) listeners[#listeners+1] = fn end
+       return s
+   end
+   ```
 
-### B3. Introduce a minimal observable/signal primitive
+2. **Opt-in migration.** `Workspace.lua`'s debounce timer, `SearchView.lua`'s
+   query chain. Existing files are not touched until they migrate.
 
-**Problem:** The largest structural gap vs SwiftUI is the absence of reactive
-state. `Workspace.lua` debounces with a version counter + manual timer.
-`SearchView.lua` chains 5 imperative calls on every query change.
-
-**Fix:** Add `ns.signal(initialValue)` returning `{ value, onChange(fn) }`
-in the Lua standard library (pure Lua, no native bridge needed). Example:
-
-```lua
-local query = ns.signal("")
-query.onChange(function(v) results.rows = search(v) end)
--- binding an input:
-ns.TextField { value = query }   -- ns.TextField reads query.value on change
-```
-
-This does not require changes to the C layer. Start with a pure-Lua
-implementation; later the native text field can call `query:set(newValue)`
-directly.
-
-Files touched: `lua/AppKit.lua` (or new `lua/signal.lua`), any consumers
-that opt in. Existing files are unaffected until they migrate.
+**Files:** `lua/embedded/AppKit.lua`, `examples/IDEKit/Workspace.lua` (opt-in),
+`examples/IDEKit/SearchView.lua` (opt-in).
 
 ---
 
-### B4. Standardise the action key to `action`
+## Phase 6 — A2/A3/A4 native dedup (low urgency)
 
-**Problem:** `Welcome.lua` uses `onClick` on action items;
-the rest of the codebase uses `action` (e.g., `ns.Button { action = fn }`).
+Carry forward from old plan when all Lua-side phases are stable.
 
-**Fix:** Replace `onClick = ...` with `action = ...` in `Welcome.lua` and
-update the `actionButton` helper to read `item.action`.
-
-Files touched: `examples/IDEKit/Welcome.lua`.
-
----
-
-### B5. Remove index/count leak from ForEach callbacks
-
-**Problem:** `Recent.lua`'s `ForEach` callback receives `(item, index, count)`
-so it can skip the trailing divider — a layout concern leaking into data
-mapping.
-
-**Fix:** Either (a) wrap rows in `ns.Group { row, ns.Divider() }` and let the
-layout engine suppress the last divider via a `:separatedBy(ns.Divider())`
-modifier (requires a small addition to the `ns.ForEach` implementation), or
-(b) use `ns.List` if that widget handles inter-item separators natively.
-
-Files touched: `examples/IDEKit/Recent.lua`, potentially `lua/AppKit.lua`.
+- A2: shared column-setup helper (`table_utils.m`)
+- A3: `make_or_reuse_cell` helper
+- A4: `push_row_data_table` helper
+- A5: merge `bridge_pick_folder`/`bridge_pick_file`
+- A9: `DEFINE_LUA_STRUCT` macro for `structs.m`
+- A10: break up `bridge_set_window_workspace`
+- B1: inline event handlers in `NavigatorArea.lua`
+- B5: `ForEach` separator leak
 
 ---
 
-## Priority order
+## Invariants to preserve across all phases
 
-| Priority | Item | Effort | Risk |
-|---|---|---|---|
-| P0 | A6 (gL crash bugs) | Small | Bug fix — do first |
-| P1 | A1 (callback macro) | Small | Mechanical, low risk |
-| P1 | A8 (dead extraction) | Trivial | Trivial |
-| P1 | A7 (enum lookup consistency) | Small | Mechanical |
-| P1 | B4 (onClick → action) | Trivial | Trivial |
-| P2 | A2 (column-setup dedup) | Medium | Moderate — test table + outline |
-| P2 | A3 + A4 (cell + row helpers) | Medium | Moderate |
-| P2 | A5 (pick panel merge) | Small | Low |
-| P2 | B1 (inline event handlers) | Small | Requires Workspace.lua edits |
-| P2 | B2 (PreviewArea encapsulation) | Medium | Moderate |
-| P3 | A9 (structs macro) | Medium | No behavior change |
-| P3 | A10 (split workspace fn) | Small | No behavior change |
-| P3 | B3 (signal primitive) | Medium | New API — additive only |
-| P4 | B5 (ForEach separator) | Medium | Requires ns.ForEach change |
+- `ns.VStack { padding=N, child1, child2 }` syntax: **no change**. The
+  mixed-key table trick works perfectly and is the public API surface.
+- `--preview` CLI mode: headless canvas eval must work at every commit.
+- `make test` must pass at every phase boundary.
+- No SwiftUI dependency is introduced. All layout is the existing custom flex
+  engine.
