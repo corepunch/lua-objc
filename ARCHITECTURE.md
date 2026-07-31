@@ -293,42 +293,65 @@ The IDE now uses that layer to behave like VS Code on startup: open a folder
 immediately when one was provided, or show a welcome screen with recent items
 and an open-folder picker otherwise.
 
-The IDE example is now organized like a small application bundle:
+**Scene separation rule.** Components return view trees. Only `init.lua` (or
+the `App` object's `welcome` callback) calls `ns.Window`. `Welcome.lua` returns
+a plain `ns.HStack` view; `App.lua` wraps it in `ns.Window`. No component
+module should ever create a window directly.
+
+**MVP example layout.** Every standalone example lives under
+`examples/<appname>/` with this layout:
+
+```text
+init.lua        ← entry point only: one call to Controller/createWindow
+Model.lua       ← data, queries, mutations (no ns.* calls)
+Controller.lua  ← wires model ↔ views, owns actions, calls ns.Window
+views/          ← *.xml templates and Lua component functions
+```
+
+Flat `examples/<appname>.lua` shims are forbidden. No backwards-compat stubs.
+
+The IDE example is organized as:
 
 ```text
 examples/IDEKit/
-├── init.lua       # module entrypoint (requires("examples.IDEKit"))
-├── app.lua        # app lifecycle + routing
-├── workspace.lua  # editor workspace window (IDEWorkspace)
-├── welcome.lua    # startup / recent-project screen
-├── Canvas.lua     # preview canvas
-├── Editor.lua     # editor wrapper
-├── EditorArea.lua
-├── NavigatorArea.lua
-├── PreviewArea.lua
-├── ControlBar.lua
-├── SearchView.lua
-├── FindInFiles.lua
-├── Recent.lua
-├── plugins/       # editor surfaces (self-registering)
-└── state/         # persistence and recents
+├── init.lua          # entry point
+├── App.lua           # app lifecycle + routing
+├── Workspace.lua     # editor workspace window
+├── Welcome.lua       # startup / recent-project screen
+├── Canvas.lua        # preview canvas
+├── EditorArea.lua    # inner HSplit: source editor + preview
+├── NavigatorArea.lua # sidebar file tree
+├── PreviewArea.lua   # document-local ControlBar + inline canvas
+├── ControlBar.lua    # 28px header strip
+├── SearchView.lua    # search UI
+├── Recent.lua        # recent projects list
+├── plugins/          # editor surfaces (self-registering)
+└── state/            # persistence and recents
 ```
 
 That structure keeps app boot, scene selection, and UI composition separate
 without introducing a second runtime or any non-Lua app scaffolding.
 
-The next split is already in place in the filesystem:
-
-```text
-examples/IDEKit/
-├── plugins/       # editor surfaces (files that call App.registerPlugin)
-└── state/         # persistence and recents
-```
-
-Those subdirectories keep the app shell readable as the number of surfaces
-grows, while preserving the same single-Lua-source workflow.
+**PreviewArea API.** `PreviewArea` exposes `setContent(result, toolbarItems)`.
+The `rebuildToolbar` closure is internal; callers never hold it.
 
 This table wrapper avoids triggering KVC on `NSScrollView` when storing Lua-side methods.
+
+---
+
+### XML view templates (`lua/ui/xml.lua`)
+
+A cross-platform XML renderer sits between the app layer and the `ns.*` APIs.
+Templates live in `examples/<app>/views/*.xml`. The renderer:
+
+- Applies etlua (`lua/vendor/etlua`, git submodule) to the XML source first,
+  substituting `<%= expr %>` and `<% stmt %>` blocks.
+- Parses the resulting XML with a pure-Lua SAX-style parser.
+- Maps each tag to an `ns.*` call via a registry table. The platform module
+  (`ns`) is injected by the caller — `<Label>` becomes `ns.Text` on AppKit
+  and `ns.Label` (→ UILabel) on UIKit. No conditionals in the template.
+- Custom tags: `xml.registry["MyTag"] = function(ns, attrs, children) ... end`
+- API: `xml.render(src, data, ns)` and `xml.renderFile(path, data, ns)`
 
 ---
 
@@ -337,14 +360,15 @@ This table wrapper avoids triggering KVC on `NSScrollView` when storing Lua-side
 ```
 ns.Window
 └── NSSplitViewController
-    ├── NSSplitViewItem.sidebar
-    │   └── IDEKit.NavigatorArea
-    │       └── ns.OutlineView  (source-list file tree)
-    ├── NSSplitViewItem.contentList
-    │   └── NSTextView  (source editor)
-    └── NSSplitViewItem.content
-        └── IDEKit.Canvas  (inline preview)
+    ├── NSSplitViewItem.sidebar  → NavigatorArea (OutlineView, source-list file tree)
+    └── NSSplitViewItem.content → EditorArea (inner HSplit)
+        ├── NSTextView  (source editor)
+        └── Canvas  (ns.VStack, preview pane)
 ```
+
+`EditorArea` owns its own inner `NSSplitView` (horizontal split). The
+`NavigatorArea` is the sole sidebar item; there is no separate `contentList`
+pane.
 
 ---
 

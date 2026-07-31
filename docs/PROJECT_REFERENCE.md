@@ -1052,3 +1052,120 @@ lua-objc/
     ├── welcome.lua         # Xcode-style welcome window
     └── mail.lua            # Sidebar + toolbar + split view
 ```
+
+## XML view templates
+
+`lua/ui/xml.lua` provides a cross-platform XML-to-view renderer. It sits between
+the app controller layer and the `ns.*` APIs. The same XML file produces
+`NSTextField` on AppKit and `UILabel` on UIKit with no conditionals in the
+template, because the platform module (`ns`) is injected by the caller.
+
+### How it works
+
+1. **etlua pass** — the XML source is treated as an etlua template.
+   `<%= expr %>` substitutes a value; `<% stmt %>` runs Lua code (conditionals,
+   loops). The data table passed to `render` is the template's environment.
+2. **XML parse** — a pure-Lua SAX-style parser turns the rendered string into a
+   node tree. No external XML dependency.
+3. **Tag dispatch** — each element tag is looked up in the registry and called as
+   `handler(ns, attrs, children) → view`. Unknown tags raise an error at render
+   time, not at template load time.
+
+### Tag vocabulary
+
+| XML tag | AppKit result | UIKit result |
+|---------|---------------|--------------|
+| `<Label text="…">` / `<Text>` | `ns.Text` (NSTextField) | `ns.Text` (UILabel) |
+| `<Title text="…">` | `ns.Title` | `ns.Title` |
+| `<TextField>` | `ns.TextField` | `ns.TextField` |
+| `<Button title="…">` | `ns.Button` | `ns.Button` |
+| `<VStack>` / `<HStack>` | flex containers | flex containers |
+| `<Spacer>` / `<Divider>` | layout helpers | layout helpers |
+| `<Image src="…">` | `ns.Image` | `ns.Image` |
+| `<Image symbol="…">` / `<SystemImage>` | `ns.SystemImage` | `ns.SystemImage` |
+| `<Toggle>` / `<Switch>` | `ns.Toggle` | `ns.Toggle` |
+
+All layout attributes (`flexGrow`, `padding`, `fixedWidth`, etc.) are accepted on
+every tag and forwarded to `applyLayout`.
+
+### Extending the registry
+
+```lua
+local xml = require("ui.xml")
+xml.registry["Avatar"] = function(ns, attrs, children)
+    -- attrs.src, attrs.size available
+    return ns.Image { attrs.src, fixedWidth = tonumber(attrs.size) or 32 }
+end
+```
+
+### API
+
+```lua
+local xml = require("ui.xml")
+
+-- Render from a string (data optional, ns defaults to require("AppKit"))
+local view = xml.render(xmlString, data, ns)
+
+-- Render from a file path (relative to cwd)
+local view = xml.renderFile("examples/mail/views/MessageRow.xml", rowData, ns)
+```
+
+The returned value is a single view userdata. When the XML root has multiple
+sibling elements, they are wrapped in a `ns.VStack`.
+
+## MVP app structure
+
+Every standalone example app follows the same three-layer structure:
+
+```
+examples/<appname>/
+  init.lua        — entry point only: one call that returns ns.Window
+  Model.lua       — data, queries, mutations; no ns.* calls
+  Controller.lua  — wires model → views, owns actions, returns window
+  views/          — *.xml templates and Lua component functions
+```
+
+### Rules
+
+- `init.lua` is the only file that calls `Controller.createWindow()` (or
+  equivalent). It must not contain UI logic.
+- `Model.lua` must not call any `ns.*` APIs. It is testable headlessly without
+  AppKit.
+- `Controller.lua` is the only file that calls `ns.Window { ... }`. Component
+  functions in `views/` return view subtrees, never scenes.
+- XML templates in `views/` are the primary cell/row rendering mechanism for
+  list-backed data. Use `xml.renderFile(path, rowData)` from the controller or
+  from a cell callback.
+
+### Example: mail app
+
+```lua
+-- examples/mail/init.lua
+local Controller = require("examples.mail.Controller")
+return Controller.createWindow()
+
+-- examples/mail/Model.lua
+local Model = {}
+Model.messages = { ... }
+function Model.byMailbox(id) ... end
+function Model.markRead(id) ... end
+return Model
+
+-- examples/mail/Controller.lua
+local ns  = require("AppKit")
+local xml = require("ui.xml")
+local Model = require("examples.mail.Model")
+
+function Controller.createWindow()
+    -- build views, wire model, return ns.Window { ... }
+end
+```
+
+```xml
+<!-- examples/mail/views/MessageRow.xml -->
+<HStack padding="12" spacing="10">
+    <Label text="<%= from %>" size="13"
+           weight="<%= unread and 'semibold' or 'regular' %>" />
+    <Label text="<%= date %>"  size="11" color="secondary" />
+</HStack>
+```

@@ -11,7 +11,7 @@ Requirements: macOS and Lua 5.4.
 ```sh
 make
 make test
-make run ARGS="examples/hello.lua"
+make run ARGS="examples/hello/init.lua"
 make run-ide
 ```
 
@@ -35,6 +35,8 @@ Render a script without opening a window:
 | Change isolated canvas evaluation | `src/appkit/canvas_eval.m` |
 | Change editor highlighting | `src/appkit/syntax_highlight.m` |
 | Add an IDE editor surface | `examples/IDEKit/plugins/` |
+| Write or modify XML view templates | `lua/ui/xml.lua`, `examples/<app>/views/` |
+| Add a new example app | `examples/<app>/init.lua`, `AGENTS.md` (MVP layout rules) |
 | Change app startup or recents | `lua/App.lua`, `examples/IDEKit/app.lua` |
 | Add UIKit coverage | `src/uikit/`, `src/uikit_module.m`, `lua/embedded/UIKit.lua` |
 | Understand runtime ownership | `ARCHITECTURE.md` |
@@ -71,6 +73,8 @@ src/                    native runtimes and bridges
   uikit/                focused UIKit bridge fragments
   shared/               state ownership, async services, common Lua errors
 lua/embedded/           public declarative framework layers
+lua/ui/                 cross-platform XML template renderer
+lua/vendor/             vendored Lua libraries (etlua submodule)
 lua/App.lua             app lifecycle and recent-item persistence
 examples/               runnable Lua applications
 tests/                  headless Lua integration tests
