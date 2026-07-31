@@ -1,0 +1,11 @@
+<VStack flexGrow="1" padding="24" spacing="16" alignment="leading">
+    <VStack spacing="4" alignment="leading">
+        <Label text="<%= subject %>" size="18" weight="semibold" />
+        <HStack spacing="8" alignment="center">
+            <Label text="<%= from %>" size="13" weight="medium" />
+            <Label text="<%= date %>" size="12" color="secondary" />
+        </HStack>
+    </VStack>
+    <Divider />
+    <Label text="<%= body %>" size="13" flexGrow="1" />
+</VStack>

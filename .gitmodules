@@ -1,0 +1,3 @@
+[submodule "lua/vendor/etlua"]
+	path = lua/vendor/etlua
+	url = https://github.com/leafo/etlua.git

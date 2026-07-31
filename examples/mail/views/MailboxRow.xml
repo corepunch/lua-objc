@@ -1,0 +1,8 @@
+<HStack fixedHeight="32" paddingHorizontal="8" spacing="6" alignment="center">
+    <SystemImage name="<%= icon %>" label="<%= name %>" size="14" color="secondary"
+                 fixedWidth="18" fixedHeight="18" />
+    <Label text="<%= name %>" size="13" flexGrow="1" />
+    <% if count and count > 0 then %>
+    <Label text="<%= count %>" size="12" color="secondary" />
+    <% end %>
+</HStack>

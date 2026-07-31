@@ -64,7 +64,7 @@ run: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) $(ARGS)
 
 run-hello: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) examples/hello.lua
+	./$(TARGET) examples/hello/init.lua
 
 run-list: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) examples/list.lua
@@ -73,13 +73,13 @@ run-live: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) examples/live.lua
 
 run-weather: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) examples/weather.lua
+	./$(TARGET) examples/weather/init.lua
 
 run-welcome: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) examples/welcome.lua
 
 run-mail: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) examples/mail.lua
+	./$(TARGET) examples/mail/init.lua
 
 run-layout: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) examples/layout.lua

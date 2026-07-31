@@ -1,0 +1,19 @@
+<HStack paddingHorizontal="12" paddingVertical="8" spacing="10" alignment="center">
+    <VStack fixedWidth="36" fixedHeight="36" alignment="center"
+            flexGrow="0" flexShrink="0">
+        <Label text="<%= initials %>" size="13" weight="semibold"
+               color="<%= unread and 'accent' or 'secondary' %>" />
+    </VStack>
+    <VStack flexGrow="1" spacing="2" alignment="leading">
+        <HStack alignment="center" spacing="4">
+            <Label text="<%= from %>" size="13"
+                   weight="<%= unread and 'semibold' or 'regular' %>"
+                   flexGrow="1" />
+            <Label text="<%= date %>" size="11" color="secondary" />
+        </HStack>
+        <Label text="<%= subject %>" size="12"
+               weight="<%= unread and 'medium' or 'regular' %>" />
+        <Label text="<%= preview %>" size="11" color="secondary"
+               lines="1" truncation="tail" />
+    </VStack>
+</HStack>
