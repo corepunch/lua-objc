@@ -129,8 +129,12 @@ local function layoutProps(attrs)
 end
 
 -- ── Node → view compilation ───────────────────────────────────────────────
+--
+-- refs: table populated during compile; any element with a ref="name" attr
+-- has its produced view stored as refs[name]. Callers use refs to attach
+-- callbacks after rendering without scanning the view tree.
 
-local function compile(nodes, ns, registry)
+local function compile(nodes, ns, registry, refs)
     local views = {}
     for _, node in ipairs(nodes) do
         if node.kind == "element" then
@@ -138,9 +142,12 @@ local function compile(nodes, ns, registry)
             if not handler then
                 error("xml: unknown tag <" .. node.tag .. ">")
             end
-            local children = compile(node.children, ns, registry)
+            local children = compile(node.children, ns, registry, refs)
             local view = handler(ns, node.attrs, children)
-            if view then views[#views + 1] = view end
+            if view then
+                if node.attrs.ref then refs[node.attrs.ref] = view end
+                views[#views + 1] = view
+            end
         end
     end
     return views
@@ -263,6 +270,42 @@ local function makeRegistry()
     end
     R["Switch"] = R["Toggle"]
 
+    -- List / Column
+    -- <List ref="msgList" style="plain" header="false" alternatingRows="false">
+    --   <Column id="from" title="From" />
+    --   <Column id="subject" title="Subject" />
+    -- </List>
+    -- Column children are collected here; data is supplied at runtime via list:replaceRows().
+    R["Column"] = function(_, a, _)
+        -- Returns a plain table, not a view — List consumes it before returning.
+        return { __column = true, id = a.id, title = a.title or "",
+                 width = num(a.width), minWidth = num(a.minWidth),
+                 alignment = a.alignment }
+    end
+
+    R["List"] = function(ns, a, children)
+        local columns, views = {}, {}
+        for _, c in ipairs(children) do
+            if type(c) == "table" and c.__column then
+                columns[#columns + 1] = c
+            else
+                views[#views + 1] = c
+            end
+        end
+        if #columns == 0 then
+            error("xml: <List> requires at least one <Column> child")
+        end
+        local props = layoutProps(a)
+        props.columns          = columns
+        props.header           = a.header  ~= nil and bool(a.header)  or true
+        props.alternatingRows  = a.alternatingRows ~= nil and bool(a.alternatingRows) or true
+        props.style            = a.style
+        if a.bordered  ~= nil then props.bordered  = bool(a.bordered)  end
+        if a.gridLines         then props.gridLines = a.gridLines       end
+        -- views inside List (unusual) are ignored; columns are all we need
+        return ns.List(props)
+    end
+
     return R
 end
 
@@ -272,6 +315,8 @@ local registry = makeRegistry()
 local M = {}
 
 -- Render an XML string with optional etlua data and platform module.
+-- Returns view, refs where refs is a table of { [refName] = view } for
+-- every element that carried a ref="name" attribute.
 function M.render(src, data, ns)
     ns = ns or require("AppKit")
     if data then
@@ -283,13 +328,19 @@ function M.render(src, data, ns)
     src = src:gsub("^%s*<%?xml[^?]*%?>%s*", "")
              :gsub("^%s*<!DOCTYPE[^>]*>%s*", "")
 
+    local refs  = {}
     local nodes = parseXML(src)
-    local views = compile(nodes, ns, registry)
-    if #views == 1 then return views[1] end
-    -- multiple root nodes: wrap in VStack
-    local props = {}
-    for _, v in ipairs(views) do props[#props + 1] = v end
-    return ns.VStack(props)
+    local views = compile(nodes, ns, registry, refs)
+    local root
+    if #views == 1 then
+        root = views[1]
+    else
+        -- multiple root nodes: wrap in VStack
+        local props = {}
+        for _, v in ipairs(views) do props[#props + 1] = v end
+        root = ns.VStack(props)
+    end
+    return root, refs
 end
 
 -- Render an XML file.  Path is relative to the process working directory.

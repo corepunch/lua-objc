@@ -1080,13 +1080,43 @@ template, because the platform module (`ns`) is injected by the caller.
 | `<TextField>` | `ns.TextField` | `ns.TextField` |
 | `<Button title="…">` | `ns.Button` | `ns.Button` |
 | `<VStack>` / `<HStack>` | flex containers | flex containers |
+| `<HSplit>` | `ns.HSplit` (NSSplitView) | — |
 | `<Spacer>` / `<Divider>` | layout helpers | layout helpers |
 | `<Image src="…">` | `ns.Image` | `ns.Image` |
 | `<Image symbol="…">` / `<SystemImage>` | `ns.SystemImage` | `ns.SystemImage` |
 | `<Toggle>` / `<Switch>` | `ns.Toggle` | `ns.Toggle` |
+| `<List>` + `<Column>` children | `ns.List` (NSTableView) | — |
 
 All layout attributes (`flexGrow`, `padding`, `fixedWidth`, etc.) are accepted on
 every tag and forwarded to `applyLayout`.
+
+**`<List>` attributes:**
+
+| Attribute | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `style` | `"plain"` `"sourceList"` `"inset"` | automatic | `NSTableView` style |
+| `header` | bool | `true` | Show the column header |
+| `alternatingRows` | bool | `true` | Alternating row colors |
+| `bordered` | bool | `false` | Bezel around the scroll view |
+| `gridLines` | string | — | `"horizontal"` `"vertical"` `"both"` |
+
+**`<Column>` attributes:** `id` (required, matches row dict key), `title`, `width`, `minWidth`, `alignment`.
+
+**`ref=` attribute (all tags):** Storing `ref="name"` on any element causes `xml.renderFile`
+to return that view as `refs["name"]`. Controllers use refs to attach callbacks after
+rendering without building views in Lua code:
+
+```xml
+<List ref="messageList" style="plain" header="false">
+    <Column id="from" title="From" />
+</List>
+```
+
+```lua
+local layout, refs = xml.renderFile("views/MailLayout.xml")
+refs.messageList:replaceRows(rows)
+refs.messageList:onRowSelect(function(_, _, row) ... end)
+```
 
 ### Extending the registry
 
@@ -1119,53 +1149,77 @@ Every standalone example app follows the same three-layer structure:
 
 ```
 examples/<appname>/
-  init.lua        — entry point only: one call that returns ns.Window
+  init.lua        — entry point only: WindowController.new():createWindow()
   Model.lua       — data, queries, mutations; no ns.* calls
-  Controller.lua  — wires model → views, owns actions, returns window
-  views/          — *.xml templates and Lua component functions
+  Controller.lua  — defines WindowController class; one ns.Window call
+  views/          — *.xml templates; all view construction happens here
 ```
 
 ### Rules
 
-- `init.lua` is the only file that calls `Controller.createWindow()` (or
-  equivalent). It must not contain UI logic.
+- `init.lua` constructs one `WindowController` instance and calls
+  `createWindow()`. It must not contain UI logic.
 - `Model.lua` must not call any `ns.*` APIs. It is testable headlessly without
   AppKit.
-- `Controller.lua` is the only file that calls `ns.Window { ... }`. Component
-  functions in `views/` return view subtrees, never scenes.
-- XML templates in `views/` are the primary cell/row rendering mechanism for
-  list-backed data. Use `xml.renderFile(path, rowData)` from the controller or
-  from a cell callback.
+- `Controller.lua` defines a `WindowController` class (metatable + `__index`).
+  It is the only file that calls `ns.Window { ... }`. All other view
+  construction is delegated to XML templates via `xml.renderFile`.
+- Controllers must not call `ns.VStack`, `ns.HStack`, `ns.List`, or any other
+  view constructor. Use `xml.renderFile` and wire behaviour through `refs`.
+- XML templates in `views/` express the complete view hierarchy. `ref="name"`
+  on any element surfaces that view to the controller for callback wiring.
 
 ### Example: mail app
 
 ```lua
 -- examples/mail/init.lua
-local Controller = require("examples.mail.Controller")
-return Controller.createWindow()
+local WindowController = require("examples.mail.Controller")
+return WindowController.new():createWindow()
+```
 
--- examples/mail/Model.lua
-local Model = {}
-Model.messages = { ... }
-function Model.byMailbox(id) ... end
-function Model.markRead(id) ... end
-return Model
+```lua
+-- examples/mail/Controller.lua  (abridged)
+local WindowController = {}
+WindowController.__index = WindowController
 
--- examples/mail/Controller.lua
-local ns  = require("AppKit")
-local xml = require("ui.xml")
-local Model = require("examples.mail.Model")
+function WindowController.new()
+    return setmetatable({ selectedMailbox = Model.mailboxes[1] }, WindowController)
+end
 
-function Controller.createWindow()
-    -- build views, wire model, return ns.Window { ... }
+function WindowController:createWindow()
+    local layout, refs = xml.renderFile("views/MailLayout.xml")
+    self.messageList = refs.messageList
+    self.detailPane  = refs.detailPane
+    self.messageList:replaceRows(Model.byMailbox(self.selectedMailbox.id))
+    self.messageList:onRowSelect(function(_, _, row)
+        self:showDetail(Model.find(row._id))
+    end)
+    return ns.Window { title = "Mail", width = 940, height = 520, layout }
 end
 ```
 
 ```xml
-<!-- examples/mail/views/MessageRow.xml -->
-<HStack padding="12" spacing="10">
-    <Label text="<%= from %>" size="13"
-           weight="<%= unread and 'semibold' or 'regular' %>" />
-    <Label text="<%= date %>"  size="11" color="secondary" />
-</HStack>
+<!-- examples/mail/views/MailLayout.xml -->
+<HSplit>
+    <List ref="mailboxList" fixedWidth="180" style="sourceList" header="false">
+        <Column id="name" title="Mailbox" />
+    </List>
+    <List ref="messageList" fixedWidth="280" style="plain" header="false">
+        <Column id="from" title="From" />
+    </List>
+    <VStack ref="detailPane" flexGrow="1" />
+</HSplit>
+```
+
+```xml
+<!-- examples/mail/views/MessageDetail.xml -->
+<VStack flexGrow="1" padding="24" spacing="16" alignment="leading">
+    <Label text="<%= subject %>" size="18" weight="semibold" />
+    <HStack spacing="8">
+        <Label text="<%= from %>" size="13" weight="medium" />
+        <Label text="<%= date %>"  size="12" color="secondary" />
+    </HStack>
+    <Divider />
+    <Label text="<%= body %>" size="13" flexGrow="1" />
+</VStack>
 ```

@@ -4,12 +4,12 @@ local ns = require("AppKit")
 local t = require("TestKit")
 
 local examples = {
-	"examples/hello.lua",
-	"examples/list.lua",
-	"examples/mail.lua",
-	"examples/layout.lua",
-	"examples/welcome.lua",
-	"examples/ide.lua",
+	"examples/hello/init.lua",
+	"examples/list/init.lua",
+	"examples/mail/init.lua",
+	"examples/layout/init.lua",
+	"examples/welcome/init.lua",
+	"examples/ide/init.lua",
 	"examples/IDEKit/init.lua",
 	"examples/IDEKit/App.lua",
 	"examples/IDEKit/state/Recent.lua",

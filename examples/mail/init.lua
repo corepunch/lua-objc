@@ -1,2 +1,2 @@
-local Controller = require("examples.mail.Controller")
-return Controller.createWindow()
+local WindowController = require("examples.mail.Controller")
+return WindowController.new():createWindow()

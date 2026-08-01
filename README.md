@@ -19,7 +19,7 @@ Render a script without opening a window:
 
 ```sh
 ./lua-objc --preview --width=800 --height=600 \
-  --out=/tmp/preview.png examples/layout.lua
+  --out=/tmp/preview.png examples/layout/init.lua
 ```
 
 ## Where to work

@@ -1,0 +1,5 @@
+<List ref="employeeList" flexGrow="1" header="false" alternatingRows="false">
+    <Column id="name" title="Name" />
+    <Column id="role" title="Role" />
+    <Column id="dept" title="Department" />
+</List>

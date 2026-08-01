@@ -1,0 +1,6 @@
+<VStack flexGrow="1" padding="24" spacing="12" alignment="leading">
+    <Label text="Hello, Preview" size="24" weight="bold" />
+    <Label text="This view was rendered offscreen — no NSWindow, no event loop."
+          size="13" color="secondary" />
+    <Button title="A Button" />
+</VStack>

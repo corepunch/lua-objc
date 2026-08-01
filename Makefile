@@ -67,25 +67,25 @@ run-hello: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) examples/hello/init.lua
 
 run-list: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) examples/list.lua
+	./$(TARGET) examples/list/init.lua
 
 run-live: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) examples/live.lua
+	./$(TARGET) examples/live/init.lua
 
 run-weather: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) examples/weather/init.lua
 
 run-welcome: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) examples/welcome.lua
+	./$(TARGET) examples/welcome/init.lua
 
 run-mail: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) examples/mail/init.lua
 
 run-layout: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) examples/layout.lua
+	./$(TARGET) examples/layout/init.lua
 
 run-ide: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) examples/ide.lua
+	./$(TARGET) examples/ide/init.lua
 
 TEST_FILES = $(wildcard tests/*.test.lua)
 

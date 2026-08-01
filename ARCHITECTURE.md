@@ -271,7 +271,7 @@ surface area smaller for both humans and the agent, which is the main reason to
 introduce the registry before the plugin count grows.
 
 The IDE example now lives under `examples/IDEKit/` with `init.lua` as the real
-entrypoint and `examples/ide.lua` kept as a compatibility shim. That gives the
+entrypoint and `examples/ide/init.lua` kept as a compatibility shim. That gives the
 workspace room to grow into a small plugin playground without cluttering the
 top-level examples directory.
 
@@ -302,13 +302,16 @@ module should ever create a window directly.
 `examples/<appname>/` with this layout:
 
 ```text
-init.lua        ← entry point only: one call to Controller/createWindow
+init.lua        ← entry point only: WindowController.new():createWindow()
 Model.lua       ← data, queries, mutations (no ns.* calls)
-Controller.lua  ← wires model ↔ views, owns actions, calls ns.Window
-views/          ← *.xml templates and Lua component functions
+Controller.lua  ← defines WindowController class; one ns.Window call
+views/          ← *.xml templates; no ns.* calls inside templates
 ```
 
-Flat `examples/<appname>.lua` shims are forbidden. No backwards-compat stubs.
+`Controller.lua` exports a `WindowController` class with `new()` and
+`createWindow()`. `init.lua` constructs one instance and calls
+`createWindow()`. No module-level function controllers, no loose table
+hierarchies. Flat `examples/<appname>.lua` shims are forbidden.
 
 The IDE example is organized as:
 
@@ -352,6 +355,29 @@ Templates live in `examples/<app>/views/*.xml`. The renderer:
   and `ns.Label` (→ UILabel) on UIKit. No conditionals in the template.
 - Custom tags: `xml.registry["MyTag"] = function(ns, attrs, children) ... end`
 - API: `xml.render(src, data, ns)` and `xml.renderFile(path, data, ns)`
+
+#### ref= attribute and named view handles
+
+Any element may carry `ref="name"`. `xml.render` and `xml.renderFile` return
+two values: the root view and a `refs` table `{ [name] = view }`. Controllers
+use refs to attach callbacks and call methods on specific views without
+scanning the tree manually:
+
+```lua
+local layout, refs = xml.renderFile("views/MailLayout.xml")
+refs.messageList:onRowSelect(function(_, _, row) ... end)
+refs.detailPane:clearContainer()
+```
+
+`ref` is consumed by the renderer and never forwarded to the native layer.
+
+#### XML-first rule
+
+All views in an example app are expressed as XML templates. Controllers must
+not call `ns.VStack`, `ns.HStack`, `ns.List`, or any other view constructor
+directly. The only `ns.*` calls allowed in a controller are `ns.Window` (one,
+at the top level), property mutations on existing views, and layout helpers
+(`view:layout()`, `view:clearContainer()`, etc.).
 
 ---
 

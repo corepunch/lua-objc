@@ -1,0 +1,11 @@
+<HSplit>
+    <List ref="mailboxList" fixedWidth="180" flexGrow="0"
+          style="sourceList" header="false" alternatingRows="false">
+        <Column id="name" title="Mailbox" />
+    </List>
+    <List ref="messageList" fixedWidth="280" flexGrow="0"
+          style="plain" header="false" alternatingRows="false">
+        <Column id="from" title="From" />
+    </List>
+    <VStack ref="detailPane" flexGrow="1" />
+</HSplit>
