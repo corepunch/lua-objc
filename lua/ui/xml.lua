@@ -361,6 +361,9 @@ local function makeRegistry()
                 else
                     contentViews[#contentViews + 1] = c
                 end
+            elseif type(c) == "userdata" then
+                -- Views (userdata) are direct content
+                contentViews[#contentViews + 1] = c
             end
         end
 
@@ -412,75 +415,32 @@ local function injectTemplateHelpers(ctx, baseDir)
     ctx = ctx or {}
 
     -- Block storage: { [name] = "rendered content string" }
-    local blocks = {}
+    -- Stored on ctx so it's accessible after etlua.render returns (for deferred extends).
+    ctx.__blocks = ctx.__blocks or {}
 
-    -- current block name being defined (set inside block() ... end)
-    local currentBlock = nil
-    -- accumulated content for the current block
-    local blockContent = {}
-    -- whether we are inside a block definition
-    local inBlock = false
-
-    -- block("name") ... end
-    -- In a child template, this captures everything between block/end into blocks[name].
-    -- The parent template calls yield("name") to emit it.
-    ctx.block = function(name)
-        currentBlock = name
-        blockContent = {}
-        inBlock = true
-    end
-
-    -- Internal: capture raw text into current block
-    ctx._blockCapture = function(text)
-        if inBlock and currentBlock then
-            blockContent[#blockContent + 1] = text
-        end
-    end
-
-    -- Internal: end current block, store captured content
-    ctx._blockEnd = function()
-        if inBlock and currentBlock then
-            blocks[currentBlock] = table.concat(blockContent)
-            currentBlock = nil
-            blockContent = {}
-            inBlock = false
+    -- block("name", "literal content") — content passed as string
+    ctx.block = function(name, content)
+        if content ~= nil then
+            ctx.__blocks[name] = content
         end
     end
 
     -- yield("name") — emit the content of a block defined in a child template.
     -- Returns empty string if block not defined (allows optional sections).
     ctx.yield = function(name)
-        return blocks[name] or ""
+        return ctx.__blocks[name] or ""
     end
 
     -- extends("path", data) — load a parent template.
-    -- The parent template uses yield() to place child blocks.
-    -- After the child template runs, we render the parent with block data.
+    -- Parent rendering is DEFERRED until after the child template runs,
+    -- so all block() calls execute before yield() reads their content.
     ctx.extends = function(path, parentData)
         local fullPath = resolvePath(baseDir, path)
-        local parentSrc = readTemplate(fullPath)
-        local parentDir = fullPath:match("^(.-)[^/\\]*$")
-
-        -- Merge parent data with current context (child overrides parent)
-        local merged = {}
-        for k, v in pairs(parentData or {}) do merged[k] = v end
-        for k, v in pairs(ctx) do
-            if type(v) ~= "function" then merged[k] = v end
-        end
-
-        -- Inject helpers into merged context with parent's base dir
-        injectTemplateHelpers(merged, parentDir)
-        -- Give the parent access to the blocks we just defined
-        merged.yield = function(name)
-            return blocks[name] or ""
-        end
-
-        -- Render parent (this will call yield() which reads our blocks)
-        local parentResult = etlua.render(parentSrc, merged)
-
-        -- Signal to the caller that extends was used — the child's raw output
-        -- should be discarded, parentResult is the final output.
-        ctx.__extendsResult = parentResult
+        ctx.__extendsInfo = {
+            path = fullPath,
+            data = parentData or {},
+            baseDir = baseDir,
+        }
     end
 
     -- partial("path", data) — include a sub-template inline.
@@ -510,23 +470,32 @@ local M = {}
 function M.render(src, data, ns)
     ns = ns or require("AppKit")
 
-    -- Extract file path from src for resolvePath (set by renderFile)
-    local baseDir = data and data.__baseDir or ""
+    data = type(data) == "table" and data or {}
+    local baseDir = data.__baseDir or ""
 
-    -- Inject template helpers into data context
-    if data then
-        injectTemplateHelpers(data, baseDir)
-    end
+    injectTemplateHelpers(data, baseDir)
 
-    if data then
-        local ok, result = pcall(etlua.render, src, data)
-        if not ok then error("xml.render: template error: " .. tostring(result)) end
-        src = result
-        -- If extends() was called, it sets __extendsResult — use that instead
-        if data.__extendsResult then
-            src = data.__extendsResult
-            data.__extendsResult = nil
+    local ok, result = pcall(etlua.render, src, data)
+    if not ok then error("xml.render: template error: " .. tostring(result)) end
+    src = result
+    -- If extends() was called, render the parent now (after all block() calls)
+    if data.__extendsInfo then
+        local info = data.__extendsInfo
+        local parentSrc = readTemplate(info.path)
+        local parentDir = info.path:match("^(.-)[^/\\]*$")
+        local merged = {}
+        for k, v in pairs(info.data) do merged[k] = v end
+        for k, v in pairs(data) do
+            if type(v) ~= "function" then merged[k] = v end
         end
+        injectTemplateHelpers(merged, parentDir)
+        -- Yield reads from the blocks collected during child processing
+        merged.yield = function(name)
+            return data.__blocks[name] or ""
+        end
+            local ok2, parentResult = pcall(etlua.render, parentSrc, merged)
+            if not ok2 then error("xml.render: template error in parent: " .. tostring(parentResult)) end
+            src = parentResult
     end
     -- strip XML declaration / doctype if present
     src = src:gsub("^%s*<%?xml[^?]*%?>%s*", "")
@@ -561,9 +530,8 @@ function M.renderFile(path, data, ns)
     local src = f:read("*a")
     f:close()
     -- Pass base directory so extends/partial can resolve relative paths
-    if type(data) == "table" then
-        data.__baseDir = path:match("^(.-)[^/\\]*$")
-    end
+    data = type(data) == "table" and data or {}
+    data.__baseDir = path:match("^(.-)[^/\\]*$")
     return M.render(src, data, ns)
 end
 

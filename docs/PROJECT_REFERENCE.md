@@ -1060,6 +1060,9 @@ the app controller layer and the `ns.*` APIs. The same XML file produces
 `NSTextField` on AppKit and `UILabel` on UIKit with no conditionals in the
 template, because the platform module (`ns`) is injected by the caller.
 
+Templates use the `.etlua` extension to reflect that they contain etlua
+(Lua embedded in XML) rather than plain XML.
+
 ### How it works
 
 1. **etlua pass** — the XML source is treated as an etlua template.
@@ -1086,6 +1089,8 @@ template, because the platform module (`ns`) is injected by the caller.
 | `<Image symbol="…">` / `<SystemImage>` | `ns.SystemImage` | `ns.SystemImage` |
 | `<Toggle>` / `<Switch>` | `ns.Toggle` | `ns.Toggle` |
 | `<List>` + `<Column>` children | `ns.List` (NSTableView) | — |
+| `<Window>` | window config table | window config table |
+| `<Toolbar>` + `<ToolbarItem>` | toolbar items | toolbar items |
 
 All layout attributes (`flexGrow`, `padding`, `fixedWidth`, etc.) are accepted on
 every tag and forwarded to `applyLayout`.
@@ -1113,9 +1118,158 @@ rendering without building views in Lua code:
 ```
 
 ```lua
-local layout, refs = xml.renderFile("views/MailLayout.xml")
+local layout, refs = xml.renderFile("views/Window.etlua")
 refs.messageList:replaceRows(rows)
 refs.messageList:onRowSelect(function(_, _, row) ... end)
+```
+
+### Window config from XML (NIB-style)
+
+The `<Window>` tag captures window configuration declaratively, similar to
+Xcode NIB/Storyboard files. `xml.renderFile` detects a `<Window>` root and
+returns `(config, refs)` instead of `(view, refs)`:
+
+```xml
+<Window title="Mail" width="940" height="520" minWidth="640" minHeight="400">
+    <Toolbar>
+        <ToolbarItem id="compose" label="Compose"
+                     icon="square.and.pencil" tooltip="New Message" />
+    </Toolbar>
+    <HSplit>
+        <List ref="mailboxList" ... />
+    </HSplit>
+</Window>
+```
+
+**Window attributes:** `title`, `width`, `height`, `minWidth`, `minHeight`,
+`maxWidth`, `maxHeight`, `appearance`, `tabbingMode`, `tabbingIdentifier`,
+`toolbarLabels`, `visible`, `sidebarWidth`, `toolbarContentDividerAfter`.
+
+**ToolbarItem attributes:** `id`, `label`, `icon`, `tooltip`, `action`.
+
+Toolbar `action` strings are resolved to Controller methods via an ACTIONS table:
+
+```lua
+local ACTIONS = {
+    compose = function(self) self:compose() end,
+    refresh = function(self) self:refresh() end,
+}
+for _, item in ipairs(cfg.toolbar or {}) do
+    if item.action and ACTIONS[item.action] then
+        local fn = ACTIONS[item.action]
+        item.action = function() fn(self) end
+    end
+end
+```
+
+### Template inheritance (Blade/Twig style)
+
+Child templates can extend a parent layout, defining blocks that the parent
+renders via `yield()`. This is similar to PHP's Blade/Twig template inheritance.
+
+**Parent template** (`views/AppWindow.etlua`):
+
+```xml
+<Window title="<%= title %>" width="<%= width or 640 %>" height="<%= height or 420 %>">
+    <% if toolbar then %>
+    <Toolbar>
+        <% for _, item in ipairs(toolbar) do %>
+        <ToolbarItem id="<%= item.id %>"
+                     <% if item.label then %>label="<%= item.label %>"<% end %>
+                     <% if item.icon then %>icon="<%= item.icon %>"<% end %>
+                     <% if item.tooltip then %>tooltip="<%= item.tooltip %>"<% end %>
+                     />
+        <% end %>
+    </Toolbar>
+    <% end %>
+    <%- yield("content") %>
+</Window>
+```
+
+**Child template** (`examples/hello/views/Window.etlua`):
+
+```lua
+<% extends("views/AppWindow.etlua", { title = "Hello", width = 480, height = 420 }) %>
+<% block("content", [[
+    <VStack flexGrow="1" padding="24" spacing="12" alignment="leading">
+        <Label text="Hello from Lua" size="24" weight="bold" />
+        <Label text="A SwiftUI-like API backed by native AppKit controls." size="14" />
+    </VStack>
+]]) %>
+```
+
+**API:**
+- `extends(path, data)` — load parent template with data context
+- `block(name, content)` — define a named content section (content is a Lua string)
+- `yield(name)` — emit block content in parent template (returns empty string if undefined)
+
+Relative paths are resolved from the child template's directory.
+
+### Partials
+
+Include reusable sub-templates with `partial()`. This is similar to PHP's
+`@include` or Rails' `render partial`:
+
+```lua
+<%= partial("views/partials/SimpleList.etlua", {
+    ref = "employeeList",
+    columns = {
+        { id = "name", title = "Name" },
+        { id = "role", title = "Role" },
+    },
+}) %>
+```
+
+Partials receive their own data context and resolve paths relative to their
+own file location.
+
+**Example partial** (`views/partials/SimpleList.etlua`):
+
+```xml
+<List ref="<%= ref or 'list' %>" flexGrow="1"
+      <% if style then %>style="<%= style %>"<% end %>
+      header="false" alternatingRows="false">
+    <% for _, col in ipairs(columns) do %>
+    <Column id="<%= col.id %>"
+            <% if col.title then %>title="<%= col.title %>"<% end %>
+            <% if col.width then %>width="<%= col.width %>"<% end %>
+            <% if col.alignment then %>alignment="<%= col.alignment %>"<% end %>
+            />
+    <% end %>
+</List>
+```
+
+### View description format
+
+For efficient diffing and patching, `lua/ui/viewdesc.lua` compiles templates
+to plain-table descriptions instead of live native views. This enables
+React-style updates where only changed views are recreated:
+
+```lua
+local viewdesc = require("ui.viewdesc")
+
+-- Generate description from template
+local desc = viewdesc.fromFile("views/Window.etlua", data)
+
+-- Later, with new data
+local newDesc = viewdesc.fromFile("views/Window.etlua", newData)
+
+-- Diff (returns list of patches)
+local patches = viewdesc.diff(desc, newDesc)
+
+-- Apply to live views (stub — implementation depends on native bridge)
+viewdesc.apply(liveView, patches)
+```
+
+**Description format:**
+
+```lua
+{
+    tag = "VStack",           -- component name
+    props = { padding = 24 }, -- layout props
+    children = { ... },       -- child descriptions
+    key = "unique-id",        -- for stable identity during diffing
+}
 ```
 
 ### Extending the registry
@@ -1137,7 +1291,10 @@ local xml = require("ui.xml")
 local view = xml.render(xmlString, data, ns)
 
 -- Render from a file path (relative to cwd)
-local view = xml.renderFile("examples/mail/views/MessageRow.xml", rowData, ns)
+local view = xml.renderFile("examples/mail/views/Window.etlua", rowData, ns)
+
+-- When XML root is <Window>, returns (config, refs) instead of (view, refs)
+local cfg, refs = xml.renderFile("examples/mail/views/Window.etlua")
 ```
 
 The returned value is a single view userdata. When the XML root has multiple
@@ -1152,7 +1309,7 @@ examples/<appname>/
   init.lua        — entry point only: WindowController.new():createWindow()
   Model.lua       — data, queries, mutations; no ns.* calls
   Controller.lua  — defines WindowController class; one ns.Window call
-  views/          — *.xml templates; all view construction happens here
+  views/          — *.etlua templates; all view construction happens here
 ```
 
 ### Rules
@@ -1187,19 +1344,20 @@ function WindowController.new()
 end
 
 function WindowController:createWindow()
-    local layout, refs = xml.renderFile("views/MailLayout.xml")
+    local cfg, refs = xml.renderFile("views/Window.etlua")
     self.messageList = refs.messageList
     self.detailPane  = refs.detailPane
     self.messageList:replaceRows(Model.byMailbox(self.selectedMailbox.id))
     self.messageList:onRowSelect(function(_, _, row)
         self:showDetail(Model.find(row._id))
     end)
-    return ns.Window { title = "Mail", width = 940, height = 520, layout }
+    return ns.Window(cfg)
+end
 end
 ```
 
 ```xml
-<!-- examples/mail/views/MailLayout.xml -->
+<!-- examples/mail/views/Window.etlua -->
 <HSplit>
     <List ref="mailboxList" fixedWidth="180" style="sourceList" header="false">
         <Column id="name" title="Mailbox" />
@@ -1212,7 +1370,7 @@ end
 ```
 
 ```xml
-<!-- examples/mail/views/MessageDetail.xml -->
+<!-- examples/mail/views/MessageDetail.etlua -->
 <VStack flexGrow="1" padding="24" spacing="16" alignment="leading">
     <Label text="<%= subject %>" size="18" weight="semibold" />
     <HStack spacing="8">

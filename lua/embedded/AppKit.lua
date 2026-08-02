@@ -134,6 +134,13 @@ function AppKit.Window(props)
 	else
 		local content = bridge._vstack()
 		win:add(content)
+		if props.content then
+			if type(props.content) == "userdata" then
+				content:add(props.content)
+			elseif type(props.content) == "table" then
+				addChildren(content, props.content)
+			end
+		end
 		addChildren(content, props)
 		content:layout(width)
 	end
