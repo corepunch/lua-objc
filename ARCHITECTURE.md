@@ -302,16 +302,15 @@ module should ever create a window directly.
 `examples/<appname>/` with this layout:
 
 ```text
-init.lua        ← entry point only: WindowController.new():createWindow()
+init.lua        ← requires and returns Controller class (framework instantiates)
 Model.lua       ← data, queries, mutations (no ns.* calls)
-Controller.lua  ← defines WindowController class; one ns.Window call
-views/          ← *.xml templates; no ns.* calls inside templates
+Controller.lua  ← defines Controller class; wires model → views, owns actions
+views/          ← *.etlua templates; no ns.* calls inside templates
 ```
 
-`Controller.lua` exports a `WindowController` class with `new()` and
-`createWindow()`. `init.lua` constructs one instance and calls
-`createWindow()`. No module-level function controllers, no loose table
-hierarchies. Flat `examples/<appname>.lua` shims are forbidden.
+`init.lua` never self-starts. It returns the class; the framework calls
+`class.new():createWindow()`. No module-level function controllers, no loose
+table hierarchies. Flat `examples/<appname>.lua` shims are forbidden.
 
 The IDE example is organized as:
 
@@ -345,7 +344,7 @@ This table wrapper avoids triggering KVC on `NSScrollView` when storing Lua-side
 ### XML view templates (`lua/ui/xml.lua`)
 
 A cross-platform XML renderer sits between the app layer and the `ns.*` APIs.
-Templates live in `examples/<app>/views/*.xml`. The renderer:
+Templates live in `examples/<app>/views/*.etlua`. The renderer:
 
 - Applies etlua (`lua/vendor/etlua`, git submodule) to the XML source first,
   substituting `<%= expr %>` and `<% stmt %>` blocks.
@@ -364,12 +363,102 @@ use refs to attach callbacks and call methods on specific views without
 scanning the tree manually:
 
 ```lua
-local layout, refs = xml.renderFile("views/MailLayout.xml")
+local layout, refs = xml.renderFile("views/Window.etlua")
 refs.messageList:onRowSelect(function(_, _, row) ... end)
 refs.detailPane:clearContainer()
 ```
 
 `ref` is consumed by the renderer and never forwarded to the native layer.
+
+#### Window config from XML (NIB-style)
+
+The `<Window>` tag captures window configuration declaratively, similar to
+Xcode NIB/Storyboard files:
+
+```xml
+<Window title="Mail" width="940" height="520" minWidth="640" minHeight="400">
+    <Toolbar>
+        <ToolbarItem id="compose" label="Compose"
+                     icon="square.and.pencil" tooltip="New Message" />
+    </Toolbar>
+    <HSplit>
+        <List ref="mailboxList" ... />
+    </HSplit>
+</Window>
+```
+
+`xml.renderFile` detects a `<Window>` root and returns `(config, refs)` instead
+of `(view, refs)`. The config table includes title, dimensions, toolbar items,
+and other window properties. Controllers pass it to `ns.Window(cfg)`. Toolbar
+action strings (e.g., `action="compose"`) resolve to Controller methods via an
+ACTIONS table:
+
+```lua
+local ACTIONS = {
+    compose = function(self) self:compose() end,
+}
+for _, item in ipairs(cfg.toolbar or {}) do
+    if item.action and ACTIONS[item.action] then
+        local fn = ACTIONS[item.action]
+        item.action = function() fn(self) end
+    end
+end
+```
+
+#### Template inheritance (Blade/Twig style)
+
+Child templates can extend a parent layout, defining blocks that the parent
+renders via `yield()`:
+
+```lua
+-- Child: examples/hello/views/Window.etlua
+<% extends("views/AppWindow.etlua", { title = "Hello", width = 480 }) %>
+<% block("content", [[
+    <VStack padding="24">
+        <Label text="Hello from Lua" size="24" />
+    </VStack>
+]]) %>
+
+-- Parent: views/AppWindow.etlua
+<Window title="<%= title %>" width="<%= width %>">
+    <%= yield("content") %>
+</Window>
+```
+
+The framework resolves relative paths from the child template's directory.
+
+#### Partials
+
+Include reusable sub-templates with `partial()`:
+
+```lua
+<%= partial("views/partials/SimpleList.etlua", {
+    ref = "employeeList",
+    columns = {
+        { id = "name", title = "Name" },
+        { id = "role", title = "Role" },
+    },
+}) %>
+```
+
+Partials receive their own data context and resolve paths relative to their
+own file location.
+
+#### View description format (`lua/ui/viewdesc.lua`)
+
+For future diffing and patching, `viewdesc` compiles templates to plain-table
+descriptions instead of live native views:
+
+```lua
+local viewdesc = require("ui.viewdesc")
+local desc = viewdesc.fromFile("views/Window.etlua", data)
+local newDesc = viewdesc.fromFile("views/Window.etlua", newData)
+local patches = viewdesc.diff(desc, newDesc)
+viewdesc.apply(liveView, patches)
+```
+
+This enables efficient updates: only changed views are recreated, similar to
+React's virtual DOM diffing.
 
 #### XML-first rule
 

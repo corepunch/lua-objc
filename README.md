@@ -36,6 +36,8 @@ Render a script without opening a window:
 | Change editor highlighting | `src/appkit/syntax_highlight.m` |
 | Add an IDE editor surface | `examples/IDEKit/plugins/` |
 | Write or modify XML view templates | `lua/ui/xml.lua`, `examples/<app>/views/` |
+| Use template inheritance or partials | `views/AppWindow.etlua`, `views/partials/` |
+| Work with view descriptions/diffing | `lua/ui/viewdesc.lua` |
 | Add a new example app | `examples/<app>/init.lua`, `AGENTS.md` (MVP layout rules) |
 | Change app startup or recents | `lua/App.lua`, `examples/IDEKit/app.lua` |
 | Add UIKit coverage | `src/uikit/`, `src/uikit_module.m`, `lua/embedded/UIKit.lua` |
@@ -62,6 +64,38 @@ bridge, layout engine, async services, and embedded declarative layer.
 `IDEKit.dylib` and `UIKit.dylib` expose the corresponding embedded modules.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for lifecycle and ownership details.
+
+## Template system
+
+Templates use etlua (Lua embedded in XML) with cross-platform tags:
+
+```xml
+<Window title="My App" width="640" height="420">
+    <VStack padding="24" spacing="12">
+        <Label text="<%= greeting %>" size="24" weight="bold" />
+        <Button title="Click me" />
+    </VStack>
+</Window>
+```
+
+Key features:
+
+- **Cross-platform**: same template renders on AppKit (macOS) and UIKit (iOS)
+- **Window config from XML**: `<Window>` and `<Toolbar>` tags define window properties
+- **Template inheritance**: `extends()` / `block()` / `yield()` for layouts
+- **Partials**: `partial()` for reusable components
+- **View diffing**: `viewdesc` module for efficient updates (React-style)
+
+```lua
+-- Template inheritance
+<% extends("views/AppWindow.etlua", { title = "Mail" }) %>
+<% block("content", [[
+    <HSplit>...</HSplit>
+]]) %>
+
+-- Partials
+<%= partial("views/partials/SimpleList.etlua", { columns = {...} }) %>
+```
 
 ## Repository map
 
