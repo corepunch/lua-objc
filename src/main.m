@@ -521,11 +521,15 @@ int lua_objc_main(int argc, char *argv[]) {
 		lua_getfield(L, -1, "new");
 		if (lua_isfunction(L, -1)) {
 			lua_pushvalue(L, -2);  /* class as self */
-			if (lua_pcall(L, 1, 1, 0) == LUA_OK && lua_istable(L, -1)) {
+			if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
+				report_lua_error(L, "new");
+			} else if (lua_istable(L, -1)) {
 				lua_getfield(L, -1, "createWindow");
 				if (lua_isfunction(L, -1)) {
 					lua_pushvalue(L, -2);  /* instance as self */
-					lua_pcall(L, 1, 0, 0);
+					if (lua_pcall(L, 1, 0, 0) != LUA_OK) {
+						report_lua_error(L, "createWindow");
+					}
 				}
 			}
 		}
