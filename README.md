@@ -11,8 +11,12 @@ Requirements: macOS and Lua 5.4.
 ```sh
 make
 make test
-make run ARGS="examples/hello/init.lua"
+make run ARGS="examples/hello"
 make run-ide
+
+# Or directly (directory path auto-discovers init.lua):
+./lua-objc examples/hello
+./lua-objc examples/mail
 ```
 
 Render a script without opening a window:

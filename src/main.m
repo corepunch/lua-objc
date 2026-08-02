@@ -348,7 +348,22 @@ int lua_objc_main(int argc, char *argv[]) {
 		}
 	}
 
-	if (!script) script = "examples/hello.lua";
+	if (!script) script = "examples/hello";
+
+	// If script path is a directory, look for init.lua inside it.
+	{
+		static char resolvedPath[PATH_MAX];
+		BOOL isDir = NO;
+		if ([[NSFileManager defaultManager]
+			fileExistsAtPath:[NSString stringWithUTF8String:script]
+				 isDirectory:&isDir] && isDir) {
+			NSString *initPath = [[NSString stringWithUTF8String:script]
+				stringByAppendingPathComponent:@"init.lua"];
+			snprintf(resolvedPath, sizeof(resolvedPath), "%s",
+				[initPath UTF8String]);
+			script = resolvedPath;
+		}
+	}
 
 	lua_State *L = luaL_newstate();
 	gL = L;
