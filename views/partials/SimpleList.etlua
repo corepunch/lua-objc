@@ -1,0 +1,13 @@
+<List ref="<%= ref or "list" %>"
+      flexGrow="1"
+      <% if style then %>style="<%= style %>"<% end %>
+      header="false"
+      alternatingRows="false">
+    <% for _, col in ipairs(columns) do %>
+    <Column id="<%= col.id %>"
+            <% if col.title then %>title="<%= col.title %>"<% end %>
+            <% if col.width then %>width="<%= col.width %>"<% end %>
+            <% if col.alignment then %>alignment="<%= col.alignment %>"<% end %>
+            />
+    <% end %>
+</List>

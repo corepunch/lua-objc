@@ -383,6 +383,122 @@ local function makeRegistry()
     return R
 end
 
+-- ── Template inheritance & partials ───────────────────────────────────────
+--
+-- These helpers are injected into the etlua data context so templates can
+-- call them directly:
+--
+--   <% extends("layouts/AppWindow", { title = "Mail" }) %>
+--   <% block("content") %> ... <% end %>
+--   <%= yield("content") %>
+--   <%= partial("MessageRow", msg) %>
+
+local function resolvePath(base, rel)
+    if rel:match("^/") or rel:match("^%a:") then return rel end
+    local dir = base:match("^(.-)[^/\\]*$")
+    return dir .. rel
+end
+
+local function readTemplate(path)
+    local f = assert(io.open(path, "r"), "xml: cannot open " .. path)
+    local src = f:read("*a")
+    f:close()
+    return src
+end
+
+-- Build the template helper functions.
+-- `ctx` is the data table passed to etlua.render(); we enrich it in-place.
+local function injectTemplateHelpers(ctx, baseDir)
+    ctx = ctx or {}
+
+    -- Block storage: { [name] = "rendered content string" }
+    local blocks = {}
+
+    -- current block name being defined (set inside block() ... end)
+    local currentBlock = nil
+    -- accumulated content for the current block
+    local blockContent = {}
+    -- whether we are inside a block definition
+    local inBlock = false
+
+    -- block("name") ... end
+    -- In a child template, this captures everything between block/end into blocks[name].
+    -- The parent template calls yield("name") to emit it.
+    ctx.block = function(name)
+        currentBlock = name
+        blockContent = {}
+        inBlock = true
+    end
+
+    -- Internal: capture raw text into current block
+    ctx._blockCapture = function(text)
+        if inBlock and currentBlock then
+            blockContent[#blockContent + 1] = text
+        end
+    end
+
+    -- Internal: end current block, store captured content
+    ctx._blockEnd = function()
+        if inBlock and currentBlock then
+            blocks[currentBlock] = table.concat(blockContent)
+            currentBlock = nil
+            blockContent = {}
+            inBlock = false
+        end
+    end
+
+    -- yield("name") — emit the content of a block defined in a child template.
+    -- Returns empty string if block not defined (allows optional sections).
+    ctx.yield = function(name)
+        return blocks[name] or ""
+    end
+
+    -- extends("path", data) — load a parent template.
+    -- The parent template uses yield() to place child blocks.
+    -- After the child template runs, we render the parent with block data.
+    ctx.extends = function(path, parentData)
+        local fullPath = resolvePath(baseDir, path)
+        local parentSrc = readTemplate(fullPath)
+        local parentDir = fullPath:match("^(.-)[^/\\]*$")
+
+        -- Merge parent data with current context (child overrides parent)
+        local merged = {}
+        for k, v in pairs(parentData or {}) do merged[k] = v end
+        for k, v in pairs(ctx) do
+            if type(v) ~= "function" then merged[k] = v end
+        end
+
+        -- Inject helpers into merged context with parent's base dir
+        injectTemplateHelpers(merged, parentDir)
+        -- Give the parent access to the blocks we just defined
+        merged.yield = function(name)
+            return blocks[name] or ""
+        end
+
+        -- Render parent (this will call yield() which reads our blocks)
+        local parentResult = etlua.render(parentSrc, merged)
+
+        -- Signal to the caller that extends was used — the child's raw output
+        -- should be discarded, parentResult is the final output.
+        ctx.__extendsResult = parentResult
+    end
+
+    -- partial("path", data) — include a sub-template inline.
+    ctx.partial = function(path, partialData)
+        local fullPath = resolvePath(baseDir, path)
+        local src = readTemplate(fullPath)
+        local partialDir = fullPath:match("^(.-)[^/\\]*$")
+        local data = partialData or {}
+        -- Inject helpers for nested templates
+        if type(data) == "table" then
+            injectTemplateHelpers(data, partialDir)
+        end
+        return etlua.render(src, data)
+    end
+
+    return ctx
+end
+
 -- ── Public API ────────────────────────────────────────────────────────────
 
 local registry = makeRegistry()
@@ -393,10 +509,24 @@ local M = {}
 -- every element that carried a ref="name" attribute.
 function M.render(src, data, ns)
     ns = ns or require("AppKit")
+
+    -- Extract file path from src for resolvePath (set by renderFile)
+    local baseDir = data and data.__baseDir or ""
+
+    -- Inject template helpers into data context
+    if data then
+        injectTemplateHelpers(data, baseDir)
+    end
+
     if data then
         local ok, result = pcall(etlua.render, src, data)
         if not ok then error("xml.render: template error: " .. tostring(result)) end
         src = result
+        -- If extends() was called, it sets __extendsResult — use that instead
+        if data.__extendsResult then
+            src = data.__extendsResult
+            data.__extendsResult = nil
+        end
     end
     -- strip XML declaration / doctype if present
     src = src:gsub("^%s*<%?xml[^?]*%?>%s*", "")
@@ -430,6 +560,10 @@ function M.renderFile(path, data, ns)
     local f = assert(io.open(path, "r"), "xml.renderFile: cannot open " .. path)
     local src = f:read("*a")
     f:close()
+    -- Pass base directory so extends/partial can resolve relative paths
+    if type(data) == "table" then
+        data.__baseDir = path:match("^(.-)[^/\\]*$")
+    end
     return M.render(src, data, ns)
 end
 

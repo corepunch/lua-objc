@@ -1,0 +1,23 @@
+<Window title="<%= title %>"
+        width="<%= width or 640 %>"
+        height="<%= height or 420 %>"
+        <% if minWidth then %>minWidth="<%= minWidth %>"<% end %>
+        <% if minHeight then %>minHeight="<%= minHeight %>"<% end %>
+        <% if tabbingMode then %>tabbingMode="<%= tabbingMode %>"<% end %>
+        <% if tabbingIdentifier then %>tabbingIdentifier="<%= tabbingIdentifier %>"<% end %>
+        <% if sidebarWidth then %>sidebarWidth="<%= sidebarWidth %>"<% end %>
+        <% if toolbarContentDividerAfter then %>toolbarContentDividerAfter="<%= toolbarContentDividerAfter %>"<% end %>
+        >
+    <% if toolbar then %>
+    <Toolbar>
+        <% for _, item in ipairs(toolbar) do %>
+        <ToolbarItem id="<%= item.id %>"
+                     <% if item.label then %>label="<%= item.label %>"<% end %>
+                     <% if item.icon then %>icon="<%= item.icon %>"<% end %>
+                     <% if item.tooltip then %>tooltip="<%= item.tooltip %>"<% end %>
+                     />
+        <% end %>
+    </Toolbar>
+    <% end %>
+    <%= yield("content") %>
+</Window>

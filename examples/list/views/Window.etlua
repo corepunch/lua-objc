@@ -1,7 +1,15 @@
-<Window title="Employee Directory" width="640" height="420">
-    <List ref="employeeList" flexGrow="1" header="false" alternatingRows="false">
-        <Column id="name" title="Name" />
-        <Column id="role" title="Role" />
-        <Column id="dept" title="Department" />
-    </List>
-</Window>
+<% extends("views/AppWindow.etlua", {
+    title = "Employee Directory",
+    width = 640,
+    height = 420,
+}) %>
+<% block("content", [[
+    <%= partial("views/partials/SimpleList.etlua", {
+        ref = "employeeList",
+        columns = {
+            { id = "name", title = "Name" },
+            { id = "role", title = "Role" },
+            { id = "dept", title = "Department" },
+        },
+    }) %>
+]]) %>

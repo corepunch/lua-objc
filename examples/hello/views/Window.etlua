@@ -1,8 +1,9 @@
-<Window title="Lua + ObjC Demo" width="480" height="420">
+<% extends("views/AppWindow.etlua", { title = "Lua + ObjC Demo", width = 480, height = 420 }) %>
+<% block("content", [[
     <VStack flexGrow="1" padding="24" spacing="12" alignment="leading">
         <Label text="Hello from Lua" size="24" weight="bold" />
         <Label text="A SwiftUI-like API backed by native AppKit controls." size="14" />
         <SystemImage name="swift" size="64" label="Swift" />
         <Label text="Edit the Lua file and relaunch—no recompilation needed." size="13" color="secondary" />
     </VStack>
-</Window>
+]]) %>
