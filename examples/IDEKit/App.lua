@@ -1,8 +1,11 @@
 local ns = require("AppKit")
+local xml = require("ui.xml")
 local App = require("App")
 local Recent = require("examples.IDEKit.state.Recent")
 local Workspace = require("examples.IDEKit.Workspace")
 local Welcome = require("examples.IDEKit.Welcome")
+
+local VIEWS = "examples/IDEKit/views/"
 
 local app = App.new {
 	name = "ide",
@@ -45,14 +48,9 @@ local app = App.new {
 				self:openFolder("examples")
 			end,
 		}
-		return ns.Window {
-			title = "lua-objc IDE",
-			width = 860,
-			height = 520,
-			minWidth = 760,
-			minHeight = 480,
-			content = view,
-		}
+		local cfg = xml.renderFile(VIEWS .. "WelcomeWindow.etlua")
+		cfg.content = view
+		return ns.Window(cfg)
 	end,
 }
 

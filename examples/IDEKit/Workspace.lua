@@ -1,4 +1,5 @@
 local ns = require("AppKit")
+local xml = require("ui.xml")
 local bridge = require("AppKitNative")
 local App = require("App")
 
@@ -6,50 +7,9 @@ local EditorArea = require("examples.IDEKit.EditorArea")
 local NavigatorArea = require("examples.IDEKit.NavigatorArea")
 local SearchView = require("examples.IDEKit.SearchView")
 
+local VIEWS = "examples/IDEKit/views/"
+
 local Source = {}
-
-local WINDOW = {
-	width = 1024,
-	height = 768,
-	minWidth = 800,
-	minHeight = 500,
-}
-
-local IDE_TOOLBAR = {
-	{
-		id = "toggleSidebar",
-	},
-	{
-		id = "newFile",
-		label = "New File",
-		icon = "doc.badge.plus",
-		tooltip = "New File",
-	},
-	{
-		id = "open",
-		label = "Open",
-		icon = "folder",
-		tooltip = "Open",
-	},
-	{
-		id = "save",
-		label = "Save",
-		icon = "square.and.arrow.down",
-		tooltip = "Save",
-	},
-	{
-		id = "build",
-		label = "Build",
-		icon = "hammer",
-		tooltip = "Build",
-	},
-	{
-		id = "run",
-		label = "Run",
-		icon = "play.fill",
-		tooltip = "Run",
-	},
-}
 
 local function isLuaFile(name)
 	return name:match("%.lua$") ~= nil
@@ -153,26 +113,20 @@ function Source.open(folder, app, initialFile)
 
 		editor.textView.text = content or ""
 
-		local window = ns.Window {
-			title = name,
-			width = WINDOW.width,
-			height = WINDOW.height,
-			minWidth = WINDOW.minWidth,
-			minHeight = WINDOW.minHeight,
-			tabbingMode = "preferred",
-			tabbingIdentifier = tabbingIdentifier,
-			visible = visible,
-			toolbar = IDE_TOOLBAR,
-			toolbarContentDividerAfter = "save",
-			sidebarWidth = 240,
-			sidebar = NavigatorArea {
-				files = files,
-				onRowSelect = function(filePath, inNewTab)
-					openPath(filePath, inNewTab)
-				end,
-			},
-			content = editor.view,
+		local cfg = xml.renderFile(VIEWS .. "WorkspaceWindow.etlua", {
+			name = name,
+			tabbingId = tabbingIdentifier,
+		})
+		cfg.visible = visible
+		cfg.sidebar = NavigatorArea {
+			files = files,
+			onRowSelect = function(filePath, inNewTab)
+				openPath(filePath, inNewTab)
+			end,
 		}
+		cfg.content = editor.view
+
+		local window = ns.Window(cfg)
 
 		documents[#documents + 1] = {
 			window = window,

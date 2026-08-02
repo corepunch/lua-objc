@@ -1,0 +1,18 @@
+<Window title="<%= name %>" width="1024" height="768"
+        minWidth="800" minHeight="500"
+        tabbingMode="preferred" tabbingIdentifier="<%= tabbingId %>"
+        sidebarWidth="240" toolbarContentDividerAfter="save">
+    <Toolbar>
+        <ToolbarItem id="toggleSidebar" />
+        <ToolbarItem id="newFile" label="New File"
+                     icon="doc.badge.plus" tooltip="New File" />
+        <ToolbarItem id="open" label="Open"
+                     icon="folder" tooltip="Open" />
+        <ToolbarItem id="save" label="Save"
+                     icon="square.and.arrow.down" tooltip="Save" />
+        <ToolbarItem id="build" label="Build"
+                     icon="hammer" tooltip="Build" />
+        <ToolbarItem id="run" label="Run"
+                     icon="play.fill" tooltip="Run" />
+    </Toolbar>
+</Window>
