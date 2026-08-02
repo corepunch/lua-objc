@@ -1,2 +1,1 @@
-local Controller = require("examples.layout.Controller")
-return Controller.new():createWindow()
+return require("examples.layout.Controller")

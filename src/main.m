@@ -496,6 +496,27 @@ int lua_objc_main(int argc, char *argv[]) {
 		return 1;
 	}
 
+	/*
+	 * If the script returned a table with a `new` method, treat it as an
+	 * app class: call class.new() then instance:createWindow().
+	 * Scripts that self-start (creating a window as a side effect) return
+	 * nil or a window — this path is skipped for backward compatibility.
+	 */
+	if (lua_istable(L, -1)) {
+		lua_getfield(L, -1, "new");
+		if (lua_isfunction(L, -1)) {
+			lua_pushvalue(L, -2);  /* class as self */
+			if (lua_pcall(L, 1, 1, 0) == LUA_OK && lua_istable(L, -1)) {
+				lua_getfield(L, -1, "createWindow");
+				if (lua_isfunction(L, -1)) {
+					lua_pushvalue(L, -2);  /* instance as self */
+					lua_pcall(L, 1, 0, 0);
+				}
+			}
+		}
+	}
+	lua_settop(L, 0);
+
 	[NSApp run];
 
 	return 0;

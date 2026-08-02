@@ -39,11 +39,13 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
 - **MVP folder layout inside each app:**
   ```
   examples/<app>/
-    init.lua        ← entry point only: creates window, nothing else
+    init.lua        ← requires and returns Controller class (framework instantiates)
     Model.lua       ← data, queries, mutations
     Controller.lua  ← wires model → views, owns actions
-    views/          ← XML templates and Lua component functions
+    views/          ← etlua templates and Lua component functions
   ```
+  init.lua never self-starts. It returns the class; the framework calls
+  `class.new():createWindow()`.
 - **XML templates are cross-platform.** View XML files live in `views/` and
   use the tag vocabulary in `lua/ui/xml.lua` (`<Label>`, `<VStack>`, `<Button>`,
   etc.). The platform module (`ns`) is injected by the caller; the same XML

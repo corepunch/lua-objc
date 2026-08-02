@@ -1,2 +1,1 @@
-local Controller = require("examples.list.Controller")
-return Controller.new():createWindow()
+return require("examples.list.Controller")
