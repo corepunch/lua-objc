@@ -15,7 +15,7 @@ function Controller.new()
 end
 
 function Controller:createWindow()
-	local cfg, refs = xml.renderFile(VIEWS .. "Window.xml")
+	local cfg, refs = xml.renderFile(VIEWS .. "Window.etlua")
 
 	self.employeeList = refs.employeeList
 	self.employeeList:replaceRows(Model.employees)

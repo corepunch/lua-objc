@@ -25,7 +25,7 @@ function Controller:refresh()
 end
 
 function Controller:createWindow()
-	local cfg, refs = xml.renderFile(VIEWS .. "Window.xml")
+	local cfg, refs = xml.renderFile(VIEWS .. "Window.etlua")
 
 	for _, item in ipairs(cfg.toolbar or {}) do
 		if item.action and ACTIONS[item.action] then

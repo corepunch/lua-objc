@@ -11,7 +11,7 @@ function Controller.new()
 end
 
 function Controller:render()
-	return xml.renderFile(VIEWS .. "PreviewView.xml")
+	return xml.renderFile(VIEWS .. "PreviewView.etlua")
 end
 
 return Controller

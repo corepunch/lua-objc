@@ -16,7 +16,7 @@ function Controller.new()
 end
 
 function Controller:createWindow()
-	local cfg, refs = xml.renderFile(VIEWS .. "Window.xml")
+	local cfg, refs = xml.renderFile(VIEWS .. "Window.etlua")
 
 	self.navList = refs.navList
 	self.contentList = refs.contentList

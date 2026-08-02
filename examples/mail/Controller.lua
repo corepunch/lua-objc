@@ -25,7 +25,7 @@ function WindowController:showDetail(msg)
 	if not msg then return end
 	Model.markRead(msg.id)
 	self.detailPane:clearContainer()
-	local view = xml.renderFile(VIEWS .. "MessageDetail.xml", msg)
+	local view = xml.renderFile(VIEWS .. "MessageDetail.etlua", msg)
 	self.detailPane:add(view)
 	self.detailPane:layout()
 end
@@ -44,7 +44,7 @@ function WindowController:loadMessages(mailboxId)
 end
 
 function WindowController:createWindow()
-	local cfg, refs = xml.renderFile(VIEWS .. "Window.xml")
+	local cfg, refs = xml.renderFile(VIEWS .. "Window.etlua")
 
 	for _, item in ipairs(cfg.toolbar or {}) do
 		if item.action and ACTIONS[item.action] then

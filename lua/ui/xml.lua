@@ -10,7 +10,7 @@
   macOS or UILabel on iOS without any conditionals in the template.
 
   Workflow for file-based templates:
-    local view = xml.renderFile("examples/mail/views/MailRow.xml", rowData, ns)
+    local view = xml.renderFile("examples/mail/views/MailRow.etlua", rowData, ns)
 
   etlua is applied to the XML source before parsing, so you can embed data
   with <%= expr %> or execute logic with <% if cond then %> ... <% end %>.

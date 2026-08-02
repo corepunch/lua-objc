@@ -12,7 +12,7 @@ function Controller.new()
 end
 
 function Controller:createWindow()
-	local cfg, refs = xml.renderFile(VIEWS .. "Window.xml")
+	local cfg, refs = xml.renderFile(VIEWS .. "Window.etlua")
 	return ns.Window(cfg)
 end
 
