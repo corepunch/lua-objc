@@ -1,9 +1,5 @@
 local Model = {}
 
-Model.title = "World Weather"
-Model.windowWidth = 680
-Model.windowHeight = 500
-
 Model.cities = {
 	{ name = "London",           query = "London" },
 	{ name = "Tokyo",            query = "Tokyo" },

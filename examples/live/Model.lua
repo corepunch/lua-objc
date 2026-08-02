@@ -1,9 +1,5 @@
 local Model = {}
 
-Model.title = "Live Stock Ticker"
-Model.windowWidth = 620
-Model.windowHeight = 480
-
 Model.symbols = {
 	"AAPL", "GOOGL", "MSFT", "AMZN", "META",
 	"TSLA", "NVDA", "JPM", "V",  "WMT",

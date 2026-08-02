@@ -15,17 +15,12 @@ function Controller.new()
 end
 
 function Controller:createWindow()
-	local layout, refs = xml.renderFile(VIEWS .. "ListView.xml")
+	local cfg, refs = xml.renderFile(VIEWS .. "Window.xml")
 
 	self.employeeList = refs.employeeList
 	self.employeeList:replaceRows(Model.employees)
 
-	self.window = ns.Window {
-		title  = Model.title,
-		width  = Model.windowWidth,
-		height = Model.windowHeight,
-		layout,
-	}
+	self.window = ns.Window(cfg)
 	return self.window
 end
 

@@ -16,7 +16,7 @@ function Controller.new()
 end
 
 function Controller:createWindow()
-	local layout, refs = xml.renderFile(VIEWS .. "LayoutView.xml")
+	local cfg, refs = xml.renderFile(VIEWS .. "Window.xml")
 
 	self.navList = refs.navList
 	self.contentList = refs.contentList
@@ -24,12 +24,7 @@ function Controller:createWindow()
 	self.navList:replaceRows(Model.navigationItems)
 	self.contentList:replaceRows(Model.contentItems)
 
-	self.window = ns.Window {
-		title  = Model.title,
-		width  = Model.windowWidth,
-		height = Model.windowHeight,
-		layout,
-	}
+	self.window = ns.Window(cfg)
 	return self.window
 end
 

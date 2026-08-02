@@ -4,6 +4,10 @@ local Model = require("examples.live.Model")
 
 local VIEWS = "examples/live/views/"
 
+local ACTIONS = {
+	refresh = function(self) self:refresh() end,
+}
+
 local Controller = {}
 Controller.__index = Controller
 
@@ -21,27 +25,20 @@ function Controller:refresh()
 end
 
 function Controller:createWindow()
-	local layout, refs = xml.renderFile(VIEWS .. "LiveLayout.xml")
+	local cfg, refs = xml.renderFile(VIEWS .. "Window.xml")
+
+	for _, item in ipairs(cfg.toolbar or {}) do
+		if item.action and ACTIONS[item.action] then
+			local fn = ACTIONS[item.action]
+			item.action = function() fn(self) end
+		end
+	end
 
 	self.stockList = refs.stockList
 
 	self:refresh()
 
-	self.window = ns.Window {
-		title  = Model.title,
-		width  = Model.windowWidth,
-		height = Model.windowHeight,
-		toolbar = {
-			{
-				id      = "refresh",
-				label   = "Refresh",
-				icon    = "arrow.clockwise",
-				tooltip = "Refresh market data",
-				action  = function() self:refresh() end,
-			},
-		},
-		layout,
-	}
+	self.window = ns.Window(cfg)
 	return self.window
 end
 

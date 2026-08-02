@@ -12,14 +12,8 @@ function Controller.new()
 end
 
 function Controller:createWindow()
-	local layout = xml.renderFile(VIEWS .. "HelloLayout.xml")
-
-	return ns.Window {
-		title  = Model.title,
-		width  = Model.windowWidth,
-		height = Model.windowHeight,
-		layout,
-	}
+	local cfg, refs = xml.renderFile(VIEWS .. "Window.xml")
+	return ns.Window(cfg)
 end
 
 return Controller

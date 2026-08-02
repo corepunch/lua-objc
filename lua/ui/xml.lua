@@ -306,6 +306,80 @@ local function makeRegistry()
         return ns.List(props)
     end
 
+    -- Window / Toolbar (NIB-style declarative window config)
+    -- <ToolbarItem> returns a plain table, consumed by <Window>.
+    R["ToolbarItem"] = function(_, a, _)
+        return {
+            __toolbarItem = true,
+            id      = a.id or "",
+            label   = a.label or "",
+            icon    = a.icon or "",
+            tooltip = a.tooltip or "",
+            action  = a.action or nil,
+        }
+    end
+
+    -- <Toolbar> is a passthrough; its ToolbarItem children are collected by <Window>.
+    R["Toolbar"] = function(_, _, children)
+        return { __toolbar = true, items = children }
+    end
+
+    -- <Window> captures window config and wraps content.
+    -- Returns a config table (not a view) — detected by render().
+    R["Window"] = function(_, a, children)
+        local cfg = {}
+
+        -- Window properties
+        if a.title          then cfg.title          = a.title          end
+        if a.width          then cfg.width          = num(a.width)     end
+        if a.height         then cfg.height         = num(a.height)    end
+        if a.minWidth       then cfg.minWidth       = num(a.minWidth)  end
+        if a.minHeight      then cfg.minHeight      = num(a.minHeight) end
+        if a.maxWidth       then cfg.maxWidth       = num(a.maxWidth)  end
+        if a.maxHeight      then cfg.maxHeight      = num(a.maxHeight) end
+        if a.appearance     then cfg.appearance     = a.appearance     end
+        if a.tabbingMode    then cfg.tabbingMode    = a.tabbingMode    end
+        if a.tabbingIdentifier then cfg.tabbingIdentifier = a.tabbingIdentifier end
+        if a.toolbarLabels  then cfg.toolbarLabels  = bool(a.toolbarLabels) end
+        if a.visible        then cfg.visible        = bool(a.visible)  end
+        if a.sidebarWidth   then cfg.sidebarWidth   = num(a.sidebarWidth) end
+        if a.toolbarContentDividerAfter then
+            cfg.toolbarContentDividerAfter = a.toolbarContentDividerAfter
+        end
+
+        -- Separate toolbar items from content children
+        local toolbarItems = {}
+        local contentViews = {}
+        for _, c in ipairs(children) do
+            if type(c) == "table" then
+                if c.__toolbar then
+                    for _, item in ipairs(c.items) do
+                        if type(item) == "table" and item.__toolbarItem then
+                            toolbarItems[#toolbarItems + 1] = item
+                        end
+                    end
+                else
+                    contentViews[#contentViews + 1] = c
+                end
+            end
+        end
+
+        if #toolbarItems > 0 then cfg.toolbar = toolbarItems end
+
+        -- Wrap content: single child passthrough, multiple → VStack
+        if #contentViews == 1 then
+            cfg.content = contentViews[1]
+        elseif #contentViews > 1 then
+            local props = {}
+            for _, v in ipairs(contentViews) do props[#props + 1] = v end
+            cfg.content = props  -- VStack will be created by ns.Window
+        end
+
+        -- Mark as window config so render() can detect it
+        cfg.__isWindowConfig = true
+        return cfg
+    end
+
     return R
 end
 
@@ -331,6 +405,14 @@ function M.render(src, data, ns)
     local refs  = {}
     local nodes = parseXML(src)
     local views = compile(nodes, ns, registry, refs)
+
+    -- Window root: return (configTable, refs) — caller passes config to ns.Window
+    if #views == 1 and type(views[1]) == "table" and views[1].__isWindowConfig then
+        local cfg = views[1]
+        cfg.__isWindowConfig = nil
+        return cfg, refs
+    end
+
     local root
     if #views == 1 then
         root = views[1]

@@ -1,9 +1,5 @@
 local Model = {}
 
-Model.title = "Flexible Layout"
-Model.windowWidth = 680
-Model.windowHeight = 420
-
 Model.navigationItems = {
 	{ section = "Overview" },
 	{ section = "Activity" },

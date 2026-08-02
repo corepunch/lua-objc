@@ -1,0 +1,22 @@
+<Window title="Flexible Layout" width="680" height="420">
+    <VStack flexGrow="1" padding="20" spacing="12" alignment="leading">
+        <Label text="Measured, then placed" size="16" weight="semibold" />
+        <Label text="Panels grow 1:2, shrink from their measured basis, and respect minimum widths." size="13" color="secondary" />
+        <Divider />
+        <HStack flexGrow="1" alignment="top">
+            <List ref="navList" fixedWidth="170" flexGrow="0" header="false"
+                  style="sourceList" min_width="130" max_width="240">
+                <Column id="section" />
+            </List>
+            <List ref="contentList" flexGrow="2" min_width="260">
+                <Column id="item" title="Item" width="120" />
+                <Column id="owner" title="Owner" width="75" />
+                <Column id="status" title="Status" width="65" />
+            </List>
+        </HStack>
+        <HStack>
+            <Label text="Resize the window to exercise the constraints." size="12" color="secondary" flexGrow="1" />
+            <Button title="Done" />
+        </HStack>
+    </VStack>
+</Window>

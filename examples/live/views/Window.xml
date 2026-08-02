@@ -1,0 +1,11 @@
+<Window title="Live Stock Ticker" width="620" height="480">
+    <Toolbar>
+        <ToolbarItem id="refresh" label="Refresh" icon="arrow.clockwise" tooltip="Refresh market data" />
+    </Toolbar>
+    <List ref="stockList" flexGrow="1" header="false" alternatingRows="false">
+        <Column id="symbol" title="Symbol" width="100" />
+        <Column id="name" title="Name" width="220" />
+        <Column id="price" title="Price" width="120" alignment="trailing" />
+        <Column id="change" title="Change" width="140" alignment="trailing" />
+    </List>
+</Window>
