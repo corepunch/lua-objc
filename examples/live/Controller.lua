@@ -12,7 +12,6 @@ local function buildStockList()
 	return ns.List {
 		flexGrow = 1,
 		style = "fullWidth",
-		header = false,
 		alternatingRows = false,
 		columns = {
 			{ id = "symbol", title = "Symbol", width = 100 },
@@ -43,37 +42,52 @@ function Controller.new()
 end
 
 function Controller:refresh()
+	-- The table owns the native indeterminate spinner, just like SwiftUI's
+	-- ProgressView or React Native's ActivityIndicator. Keep the table in place
+	-- while the coroutine suspends for each HTTP request.
+	self.stockList:showLoading()
+	self.stockList:clearRows()
+
 	ns.async(function()
-		self.stockData = {}
-		local rows = {}
+		local ok, err = pcall(function()
+			self.stockData = {}
+			local rows = {}
 
-		for _, symbol in ipairs(Model.symbols) do
-			local data = Model.fetchStock(symbol)
-			self.stockData[symbol] = data
-			if data then
-				local arrow = data.changePct >= 0 and "▲" or "▼"
-				rows[#rows + 1] = {
-					_id = symbol,
-					symbol = symbol,
-					name = data.name,
-					price = string.format("$%.2f", data.price),
-					change = arrow .. " " .. string.format("%.2f%%", math.abs(data.changePct)),
-				}
-			else
-				rows[#rows + 1] = {
-					_id = symbol,
-					symbol = symbol,
-					name = symbol,
-					price = "--",
-					change = "—",
-				}
+			for _, symbol in ipairs(Model.symbols) do
+				local data = Model.fetchStock(symbol)
+				self.stockData[symbol] = data
+				if data then
+					local arrow = data.changePct >= 0 and "▲" or "▼"
+					rows[#rows + 1] = {
+						_id = symbol,
+						symbol = symbol,
+						name = data.name,
+						price = string.format("$%.2f", data.price),
+						change = arrow .. " " .. string.format("%.2f%%", math.abs(data.changePct)),
+					}
+				else
+					rows[#rows + 1] = {
+						_id = symbol,
+						symbol = symbol,
+						name = symbol,
+						price = "--",
+						change = "—",
+					}
+				end
 			end
-		end
 
-		self.stockList:replaceRows(rows)
+			self.stockList:replaceRows(rows)
 
-		if self.selectedSymbol then
-			self:showDetail(self.stockData[self.selectedSymbol])
+			if self.selectedSymbol then
+				self:showDetail(self.stockData[self.selectedSymbol])
+			end
+		end)
+
+		-- Always stop the native spinner, including when a request or response
+		-- parser fails. A failed refresh leaves the table empty and retryable.
+		self.stockList:hideLoading()
+		if not ok then
+			io.stderr:write("refresh error: " .. tostring(err) .. "\n")
 		end
 	end)
 end

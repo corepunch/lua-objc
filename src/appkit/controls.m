@@ -213,6 +213,30 @@ static int bridge_tableview(lua_State *L) {
 	return 1;
 }
 
+/* The spinner is an overlay of the scroll view rather than part of the
+ * document view, so its frame must follow the visible viewport when the
+ * containing window or split pane is laid out. Center it in the table body,
+ * below the native header, not in the scroll view's initial construction
+ * frame. */
+static void position_table_spinner(NSScrollView *sv) {
+	NSProgressIndicator *spinner = objc_getAssociatedObject(
+		sv, &kKeys[kTableSpinnerKey]);
+	if (!spinner) return;
+
+	NSRect visible = [sv convertRect:sv.contentView.bounds
+							fromView:sv.contentView];
+		NSTableView *table = (NSTableView *)sv.documentView;
+		CGFloat headerHeight = [table isKindOfClass:[NSTableView class]]
+			? table.headerView.frame.size.height : 0;
+		CGFloat bodyHeight = MAX(0, visible.size.height - headerHeight);
+		CGFloat sw = spinner.frame.size.width;
+		CGFloat sh = spinner.frame.size.height;
+		spinner.frame = NSMakeRect(
+			NSMidX(visible) - sw / 2,
+			NSMinY(visible) + headerHeight + (bodyHeight - sh) / 2,
+			sw, sh);
+}
+
 static int bridge_toolbar_item(lua_State *L) {
 	id obj = check_objc(L, 1);
 	const char *identifier = luaL_checkstring(L, 2);
@@ -312,19 +336,13 @@ static int bridge_table_show_loading(lua_State *L) {
 	spinner.controlSize = NSControlSizeRegular;
 	spinner.displayedWhenStopped = NO;
 	[spinner sizeToFit];
-
-	CGFloat sw = spinner.frame.size.width;
-	CGFloat sh = spinner.frame.size.height;
-	spinner.frame = NSMakeRect(
-		(sv.bounds.size.width - sw) / 2,
-		(sv.bounds.size.height - sh) / 2,
-		sw, sh);
 	spinner.autoresizingMask = NSViewMinXMargin | NSViewMaxXMargin
 		| NSViewMinYMargin | NSViewMaxYMargin;
 
 	objc_setAssociatedObject(sv, &kKeys[kTableSpinnerKey], spinner,
 		OBJC_ASSOCIATION_RETAIN);
 	[sv addSubview:spinner];
+	position_table_spinner(sv);
 	[spinner startAnimation:nil];
 	return 0;
 }
@@ -400,6 +418,29 @@ static int bridge_table_cell_frames(lua_State *L) {
 		lua_setfield(L, -2, "maxX");
 		lua_rawseti(L, -2, (lua_Integer)(i + 1));
 	}
+	return 1;
+}
+
+/* Test-only geometry probe for the native loading overlay. */
+static int bridge_table_spinner_frame(lua_State *L) {
+	id obj = check_objc(L, 1);
+	NSProgressIndicator *spinner = objc_getAssociatedObject(
+		obj, &kKeys[kTableSpinnerKey]);
+	if (!spinner) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	NSRect frame = spinner.frame;
+	lua_newtable(L);
+	lua_pushnumber(L, frame.origin.x);
+	lua_setfield(L, -2, "x");
+	lua_pushnumber(L, frame.origin.y);
+	lua_setfield(L, -2, "y");
+	lua_pushnumber(L, frame.size.width);
+	lua_setfield(L, -2, "width");
+	lua_pushnumber(L, frame.size.height);
+	lua_setfield(L, -2, "height");
 	return 1;
 }
 

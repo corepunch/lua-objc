@@ -18,6 +18,7 @@ static int bridge_NSScrollView_onRowSelect(lua_State *L);
 static int bridge_NSScrollView_onRowActivate(lua_State *L);
 static int bridge_table_column_widths(lua_State *L);
 static int bridge_table_cell_frames(lua_State *L);
+static int bridge_table_spinner_frame(lua_State *L);
 static int bridge_toolbar_item(lua_State *L);
 static int bridge_window(lua_State *L);
 static int bridge_set_window_workspace(lua_State *L);
@@ -73,6 +74,10 @@ static int bridge_AppKit_table_column_widths(lua_State *L) {
 
 static int bridge_AppKit_table_cell_frames(lua_State *L) {
 	return bridge_table_cell_frames(L);
+}
+
+static int bridge_AppKit_table_spinner_frame(lua_State *L) {
+	return bridge_table_spinner_frame(L);
 }
 
 static int bridge_AppKit_toolbar_item(lua_State *L) {

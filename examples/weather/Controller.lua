@@ -44,27 +44,39 @@ function Controller.new()
 end
 
 function Controller:refresh()
+	-- Keep the native table visible while the coroutine suspends for HTTP.
+	-- List:showLoading owns the indeterminate AppKit spinner.
+	self.weatherList:showLoading()
+	self.weatherList:clearRows()
+
 	ns.async(function()
-		self.weatherData = {}
-		local rows = {}
+		local ok, err = pcall(function()
+			self.weatherData = {}
+			local rows = {}
 
-		for _, city in ipairs(Model.cities) do
-			local data = Model.fetchCity(city)
-			self.weatherData[city.name] = data
-			rows[#rows + 1] = {
-				_id = city.name,
-				city = city.name,
-				temp = data and (string.format("%.0f", data.temp) .. "°C") or "--",
-				cond = data and data.cond or "unreachable",
-				humid = data and (data.humid .. "%") or "--",
-				wind = data and (data.wind .. " km/h") or "--",
+			for _, city in ipairs(Model.cities) do
+				local data = Model.fetchCity(city)
+				self.weatherData[city.name] = data
+				rows[#rows + 1] = {
+					_id = city.name,
+					city = city.name,
+					temp = data and (string.format("%.0f", data.temp) .. "°C") or "--",
+					cond = data and data.cond or "unreachable",
+					humid = data and (data.humid .. "%") or "--",
+					wind = data and (data.wind .. " km/h") or "--",
 			}
-		end
+			end
 
-		self.weatherList:replaceRows(rows)
+			self.weatherList:replaceRows(rows)
 
-		if self.selectedCity then
-			self:showDetail(self.weatherData[self.selectedCity], self.selectedCity)
+			if self.selectedCity then
+				self:showDetail(self.weatherData[self.selectedCity], self.selectedCity)
+			end
+		end)
+
+		self.weatherList:hideLoading()
+		if not ok then
+			io.stderr:write("weather refresh error: " .. tostring(err) .. "\n")
 		end
 	end)
 end

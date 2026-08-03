@@ -506,7 +506,20 @@ t.assertEqual(activatedRowName, "Carol",
 -- Loading spinner
 
 list:showLoading()
+local spinnerFrame = bridge._tableSpinnerFrame(list)
+t.expect(spinnerFrame ~= nil, "loading spinner is mounted as a native overlay")
+local initialSpinnerCenterX = spinnerFrame.x + spinnerFrame.width / 2
+local initialSpinnerCenterY = spinnerFrame.y + spinnerFrame.height / 2
+list.size = ns.Size(800, 500)
+list:layout(800)
+spinnerFrame = bridge._tableSpinnerFrame(list)
+t.expect(spinnerFrame.x + spinnerFrame.width / 2 > initialSpinnerCenterX + 100,
+	"loading spinner recenters horizontally after table resize")
+t.expect(spinnerFrame.y + spinnerFrame.height / 2 > initialSpinnerCenterY + 100,
+	"loading spinner recenters vertically after table resize")
 list:hideLoading()
+t.expect(bridge._tableSpinnerFrame(list) == nil,
+	"hiding loading removes the native spinner overlay")
 t.expect(true, "show_loading and hide_loading do not crash")
 
 -- Code editor remains a native editable text view inside its scroll view.

@@ -1,3 +1,5 @@
+static void position_table_spinner(NSScrollView *sv);
+
 static int bridge_object_add_impl(lua_State *L) {
 	id parent = check_objc(L, 1);
 	NSView *child = check_view(L, 2);
@@ -702,6 +704,7 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			LuaTableViewSource *source =
 				objc_getAssociatedObject(view, &kKeys[kTableSourceKey]);
 			[source updateTableFrame];
+			position_table_spinner((NSScrollView *)view);
 		}
 		for (NSView *sv in view.subviews) {
 			if (objc_getAssociatedObject(sv, &kKeys[kAxisKey])) {

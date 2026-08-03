@@ -215,6 +215,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_toggle", bridge_AppKitControls_toggle},
 	{"_tableColumnWidths", bridge_AppKit_table_column_widths},
 	{"_tableCellFrames", bridge_AppKit_table_cell_frames},
+	{"_tableSpinnerFrame", bridge_AppKit_table_spinner_frame},
 	{"_toolbar_item", bridge_AppKit_toolbar_item},
 	{"_window", bridge_AppKit_window},
 	{"_setWindowWorkspace", bridge_AppKit_set_window_workspace},
