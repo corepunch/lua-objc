@@ -1,0 +1,27 @@
+<%- if employee then -%>
+<VStack flexGrow="1" padding="24" spacing="16" alignment="leading">
+    <VStack spacing="4" alignment="leading">
+        <Label text="<%= employee.name %>" size="20" weight="bold" />
+        <Label text="<%= employee.role %>" size="14" color="secondary" />
+    </VStack>
+    <Divider />
+    <VStack spacing="12" alignment="leading">
+        <HStack spacing="8" alignment="center">
+            <Label text="Department" size="12" color="secondary" fixedWidth="100" />
+            <Label text="<%= employee.dept %>" size="14" />
+        </HStack>
+        <HStack spacing="8" alignment="center">
+            <Label text="Role" size="12" color="secondary" fixedWidth="100" />
+            <Label text="<%= employee.role %>" size="14" />
+        </HStack>
+        <HStack spacing="8" alignment="center">
+            <Label text="Employee ID" size="12" color="secondary" fixedWidth="100" />
+            <Label text="<%= employee._id %>" size="14" />
+        </HStack>
+    </VStack>
+</VStack>
+<%- else -%>
+<VStack flexGrow="1" padding="24" alignment="center">
+    <Label text="Select an employee" size="16" color="secondary" />
+</VStack>
+<%- end -%>

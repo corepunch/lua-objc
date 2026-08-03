@@ -1,15 +1,1 @@
-<% extends("views/AppWindow.etlua", {
-    title = "Employee Directory",
-    width = 640,
-    height = 420,
-}) %>
-<% block("content", [[
-    <%= partial("views/partials/SimpleList.etlua", {
-        ref = "employeeList",
-        columns = {
-            { id = "name", title = "Name" },
-            { id = "role", title = "Role" },
-            { id = "dept", title = "Department" },
-        },
-    }) %>
-]]) %>
+<Window title="Employee Directory" width="680" height="420" minWidth="520" minHeight="320" />

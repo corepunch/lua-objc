@@ -1,3 +1,5 @@
+local ns = require("AppKit")
+
 local Model = {}
 
 Model.cities = {
@@ -13,33 +15,44 @@ Model.cities = {
 	{ name = "Singapore",        query = "Singapore" },
 }
 
-function Model.fetchCity(list, city)
+function Model.fetchCity(city)
 	local url = "https://wttr.in/" .. city.query .. "?format=j1"
 
 	local ok, data = pcall(ns.fetch_json, url)
 	if not ok or not data or not data.current_condition then
-		list:addRow{
-			city = city.name, temp = "\226\154\160",
-			cond = "unreachable", humid = "-", wind = "-",
-		}
-		return
+		return nil
 	end
 
 	local cc = data.current_condition[1]
 	if not cc or not cc.weatherDesc then
-		list:addRow{
-			city = city.name, temp = "\226\154\160",
-			cond = "no data", humid = "-", wind = "-",
-		}
-		return
+		return nil
 	end
 
-	list:addRow{
+	local forecast = {}
+	if data.weather then
+		for _, day in ipairs(data.weather) do
+			local f = { date = day.date or "" }
+			if day.hourly and #day.hourly > 0 then
+				local mid = day.hourly[math.max(1, math.floor(#day.hourly / 2))]
+				f.tempMax = day.maxtempC
+				f.tempMin = day.mintempC
+				f.desc = mid.weatherDesc and mid.weatherDesc[1] and mid.weatherDesc[1].value or "--"
+			end
+			forecast[#forecast + 1] = f
+		end
+	end
+
+	return {
 		city = city.name,
-		temp = cc.temp_C .. "\194\176C",
+		temp = cc.temp_C,
 		cond = cc.weatherDesc[1].value,
-		humid = cc.humidity .. "%",
-		wind = cc.windspeedKmph .. " km/h",
+		humid = cc.humidity,
+		wind = cc.windspeedKmph,
+		feelsLike = cc.FeelsLikeC,
+		visibility = cc.visibility,
+		pressure = cc.pressure,
+		uvIndex = cc.uvIndex,
+		forecast = forecast,
 	}
 end
 

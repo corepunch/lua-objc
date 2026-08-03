@@ -1,0 +1,55 @@
+<%- if city then -%>
+<VStack flexGrow="1" padding="24" spacing="16" alignment="leading">
+    <Label text="<%= city.city %>" size="24" weight="bold" />
+    <HStack spacing="24" alignment="top">
+        <VStack spacing="4" alignment="leading" fixedWidth="160">
+            <Label text="Temperature" size="11" color="secondary" />
+            <Label text="<%= string.format("%.0f", city.temp) %>°C" size="32" weight="light" />
+        </VStack>
+        <VStack spacing="4" alignment="leading" fixedWidth="160">
+            <Label text="Conditions" size="11" color="secondary" />
+            <Label text="<%= city.cond %>" size="16" />
+        </VStack>
+        <VStack spacing="4" alignment="leading" fixedWidth="120">
+            <Label text="Feels Like" size="11" color="secondary" />
+            <Label text="<%= string.format("%.0f", city.feelsLike) %>°C" size="16" />
+        </VStack>
+    </HStack>
+    <HStack spacing="24" alignment="top">
+        <VStack spacing="4" alignment="leading" fixedWidth="120">
+            <Label text="Humidity" size="11" color="secondary" />
+            <Label text="<%= city.humid %>%" size="16" />
+        </VStack>
+        <VStack spacing="4" alignment="leading" fixedWidth="140">
+            <Label text="Wind" size="11" color="secondary" />
+            <Label text="<%= city.wind %> km/h" size="16" />
+        </VStack>
+        <VStack spacing="4" alignment="leading" fixedWidth="120">
+            <Label text="Visibility" size="11" color="secondary" />
+            <Label text="<%= city.visibility %> km" size="16" />
+        </VStack>
+        <VStack spacing="4" alignment="leading" fixedWidth="120">
+            <Label text="Pressure" size="11" color="secondary" />
+            <Label text="<%= city.pressure %> mb" size="16" />
+        </VStack>
+    </HStack>
+    <%- if #city.forecast > 0 then -%>
+    <Divider />
+    <Label text="Forecast" size="14" weight="semibold" />
+    <HStack spacing="12" alignment="top">
+        <%- for _, day in ipairs(city.forecast) do -%>
+        <VStack spacing="4" alignment="center" fixedWidth="100">
+            <Label text="<%= day.date %>" size="11" color="secondary" />
+            <Label text="<%= day.tempMax or "--" %>°" size="16" weight="medium" />
+            <Label text="<%= day.tempMin or "--" %>°" size="13" color="secondary" />
+            <Label text="<%= day.desc %>" size="11" />
+        </VStack>
+        <%- end -%>
+    </HStack>
+    <%- end -%>
+</VStack>
+<%- else -%>
+<VStack flexGrow="1" padding="24" alignment="center">
+    <Label text="Select a city" size="16" color="secondary" />
+</VStack>
+<%- end -%>

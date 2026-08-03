@@ -1,12 +1,5 @@
-<Window title="World Weather" width="680" height="500">
+<Window title="World Weather" width="820" height="520" minWidth="640" minHeight="420">
     <Toolbar>
         <ToolbarItem id="refresh" label="Refresh" icon="arrow.clockwise" tooltip="Refresh weather" />
     </Toolbar>
-    <List ref="weatherList" flexGrow="1" header="false" alternatingRows="false">
-        <Column id="city" title="City" width="130" />
-        <Column id="temp" title="Temperature" width="110" alignment="trailing" />
-        <Column id="cond" title="Conditions" width="180" />
-        <Column id="humid" title="Humidity" width="100" alignment="trailing" />
-        <Column id="wind" title="Wind" width="120" alignment="trailing" />
-    </List>
 </Window>

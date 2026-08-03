@@ -10,6 +10,8 @@ local examples = {
 	"examples/layout/init.lua",
 	"examples/welcome/init.lua",
 	"examples/ide/init.lua",
+	"examples/weather/init.lua",
+	"examples/live/init.lua",
 	"examples/IDEKit/init.lua",
 	"examples/IDEKit/App.lua",
 	"examples/IDEKit/state/Recent.lua",

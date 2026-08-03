@@ -1,0 +1,47 @@
+<%- if stock then -%>
+<VStack flexGrow="1" padding="24" spacing="20" alignment="leading">
+    <VStack spacing="4" alignment="leading">
+        <Label text="<%= stock.symbol %>" size="20" weight="bold" />
+        <Label text="<%= stock.name %>" size="13" color="secondary" />
+    </VStack>
+
+    <HStack spacing="16" alignment="bottom">
+        <Label text="<%= stock.priceStr %>" size="36" weight="light" />
+        <VStack spacing="2" fixedWidth="100">
+            <Label text="<%= stock.changeStr %>" size="16" color="<%= stock.changeColor %>" />
+            <Label text="Today" size="11" color="secondary" />
+        </VStack>
+    </HStack>
+
+    <Divider />
+
+    <HStack spacing="32" alignment="top">
+        <VStack spacing="12" alignment="leading" fixedWidth="180">
+            <Label text="Open" size="11" color="secondary" />
+            <Label text="<%= stock.openStr %>" size="16" />
+            <Label text="Previous Close" size="11" color="secondary" />
+            <Label text="<%= stock.prevCloseStr %>" size="16" />
+            <Label text="Volume" size="11" color="secondary" />
+            <Label text="<%= stock.volumeStr %>" size="16" />
+        </VStack>
+        <VStack spacing="12" alignment="leading" fixedWidth="180">
+            <Label text="Day High" size="11" color="secondary" />
+            <Label text="<%= stock.dailyHighStr %>" size="16" />
+            <Label text="Day Low" size="11" color="secondary" />
+            <Label text="<%= stock.dailyLowStr %>" size="16" />
+            <Label text="Market Cap" size="11" color="secondary" />
+            <Label text="<%= stock.marketCapStr %>" size="16" />
+        </VStack>
+        <VStack spacing="12" alignment="leading" fixedWidth="180">
+            <Label text="52 Week High" size="11" color="secondary" />
+            <Label text="<%= stock.fiftyTwoWeekHighStr %>" size="16" />
+            <Label text="52 Week Low" size="11" color="secondary" />
+            <Label text="<%= stock.fiftyTwoWeekLowStr %>" size="16" />
+        </VStack>
+    </HStack>
+</VStack>
+<%- else -%>
+<VStack flexGrow="1" padding="24" alignment="center">
+    <Label text="Select a stock" size="16" color="secondary" />
+</VStack>
+<%- end -%>

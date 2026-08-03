@@ -8,20 +8,108 @@ local ACTIONS = {
 	refresh = function(self) self:refresh() end,
 }
 
+local function buildStockList()
+	return ns.List {
+		flexGrow = 1,
+		style = "fullWidth",
+		header = false,
+		alternatingRows = false,
+		columns = {
+			{ id = "symbol", title = "Symbol", width = 100 },
+			{ id = "name", title = "Name", width = 200 },
+			{ id = "price", title = "Price", width = 120, alignment = "right" },
+			{ id = "change", title = "Change", width = 140, alignment = "right" },
+		},
+	}
+end
+
+local function buildDetailPane()
+	return ns.VStack {
+		flexGrow = 1,
+	}
+end
+
 local Controller = {}
 Controller.__index = Controller
 
 function Controller.new()
 	return setmetatable({
 		stockList = nil,
-		window    = nil,
+		detailPane = nil,
+		stockData = {},
+		selectedSymbol = nil,
+		window = nil,
 	}, Controller)
 end
 
 function Controller:refresh()
-	for _, sym in ipairs(Model.symbols) do
-		Model.fetchStock(self.stockList, sym)
+	self.stockData = {}
+	local rows = {}
+
+	for _, symbol in ipairs(Model.symbols) do
+		local data = Model.fetchStock(symbol)
+		self.stockData[symbol] = data
+		if data then
+			local arrow = data.changePct >= 0 and "▲" or "▼"
+			rows[#rows + 1] = {
+				_id = symbol,
+				symbol = symbol,
+				name = data.name,
+				price = string.format("$%.2f", data.price),
+				change = arrow .. " " .. string.format("%.2f%%", math.abs(data.changePct)),
+			}
+		else
+			rows[#rows + 1] = {
+				_id = symbol,
+				symbol = symbol,
+				name = symbol,
+				price = "--",
+				change = "—",
+			}
+		end
 	end
+
+	self.stockList:replaceRows(rows)
+
+	if self.selectedSymbol then
+		self:showDetail(self.stockData[self.selectedSymbol])
+	end
+end
+
+local function fmt(val, dec)
+	if val == nil then return "--" end
+	return string.format("$%." .. (dec or 2) .. "f", val)
+end
+
+local function fmtVolume(val)
+	if val == nil then return "--" end
+	return string.format("%.0f", val)
+end
+
+function Controller:showDetail(data)
+	self.detailPane:clearContainer()
+	if data then
+		local stock = {}
+		for k, v in pairs(data) do stock[k] = v end
+		stock.priceStr = fmt(stock.price)
+		stock.openStr = fmt(stock.open)
+		stock.prevCloseStr = fmt(stock.prevClose)
+		stock.dailyHighStr = fmt(stock.dailyHigh)
+		stock.dailyLowStr = fmt(stock.dailyLow)
+		stock.marketCapStr = stock.marketCap and fmtVolume(stock.marketCap) or "--"
+		stock.fiftyTwoWeekHighStr = fmt(stock.fiftyTwoWeekHigh)
+		stock.fiftyTwoWeekLowStr = fmt(stock.fiftyTwoWeekLow)
+		stock.volumeStr = stock.volume and fmtVolume(stock.volume) or "--"
+		local arrow = (stock.changePct or 0) >= 0 and "▲" or "▼"
+		stock.changeStr = arrow .. " " .. string.format("%.2f%%", math.abs(stock.changePct or 0))
+		stock.changeColor = (stock.changePct or 0) >= 0 and "systemGreen" or "systemRed"
+		local view = xml.renderFile(VIEWS .. "StockDetail.etlua", { stock = stock })
+		self.detailPane:add(view)
+	else
+		local view = xml.renderFile(VIEWS .. "StockDetail.etlua", { stock = nil })
+		self.detailPane:add(view)
+	end
+	self.detailPane:layout()
 end
 
 function Controller:createWindow()
@@ -34,7 +122,17 @@ function Controller:createWindow()
 		end
 	end
 
-	self.stockList = refs.stockList
+	self.stockList = buildStockList()
+	self.detailPane = buildDetailPane()
+	cfg.content = self.stockList
+	cfg.detail = self.detailPane
+
+	self.stockList:onRowSelect(function(_, _, row)
+		if row and row._id then
+			self.selectedSymbol = row._id
+			self:showDetail(self.stockData[row._id])
+		end
+	end)
 
 	self:refresh()
 

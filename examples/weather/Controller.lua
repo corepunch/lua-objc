@@ -8,20 +8,75 @@ local ACTIONS = {
 	refresh = function(self) self:refresh() end,
 }
 
+local function buildWeatherList()
+	return ns.List {
+		flexGrow = 1,
+		style = "fullWidth",
+		header = false,
+		alternatingRows = false,
+		columns = {
+			{ id = "city", title = "City", width = 150 },
+			{ id = "temp", title = "Temperature", width = 110, alignment = "right" },
+			{ id = "cond", title = "Conditions", width = 180 },
+			{ id = "humid", title = "Humidity", width = 100, alignment = "right" },
+			{ id = "wind", title = "Wind", width = 120, alignment = "right" },
+		},
+	}
+end
+
+local function buildDetailPane()
+	return ns.VStack {
+		flexGrow = 1,
+	}
+end
+
 local Controller = {}
 Controller.__index = Controller
 
 function Controller.new()
 	return setmetatable({
 		weatherList = nil,
-		window      = nil,
+		detailPane = nil,
+		weatherData = {},
+		selectedCity = nil,
+		window = nil,
 	}, Controller)
 end
 
 function Controller:refresh()
+	self.weatherData = {}
+	local rows = {}
+
 	for _, city in ipairs(Model.cities) do
-		Model.fetchCity(self.weatherList, city)
+		local data = Model.fetchCity(city)
+		self.weatherData[city.name] = data
+		rows[#rows + 1] = {
+			_id = city.name,
+			city = city.name,
+			temp = data and (string.format("%.0f", data.temp) .. "°C") or "--",
+			cond = data and data.cond or "unreachable",
+			humid = data and (data.humid .. "%") or "--",
+			wind = data and (data.wind .. " km/h") or "--",
+		}
 	end
+
+	self.weatherList:replaceRows(rows)
+
+	if self.selectedCity then
+		self:showDetail(self.weatherData[self.selectedCity], self.selectedCity)
+	end
+end
+
+function Controller:showDetail(data, cityName)
+	self.detailPane:clearContainer()
+	if data then
+		local view = xml.renderFile(VIEWS .. "CityDetail.etlua", { city = data })
+		self.detailPane:add(view)
+	elseif cityName then
+		local view = xml.renderFile(VIEWS .. "CityDetail.etlua", { city = nil })
+		self.detailPane:add(view)
+	end
+	self.detailPane:layout()
 end
 
 function Controller:createWindow()
@@ -34,7 +89,17 @@ function Controller:createWindow()
 		end
 	end
 
-	self.weatherList = refs.weatherList
+	self.weatherList = buildWeatherList()
+	self.detailPane = buildDetailPane()
+	cfg.content = self.weatherList
+	cfg.detail = self.detailPane
+
+	self.weatherList:onRowSelect(function(_, _, row)
+		if row and row._id then
+			self.selectedCity = row._id
+			self:showDetail(self.weatherData[row._id], row._id)
+		end
+	end)
 
 	self:refresh()
 
