@@ -1,4 +1,4 @@
-<%- if city then -%>
+<% if city then -%>
 <VStack flexGrow="1" padding="24" spacing="16" alignment="leading">
     <Label text="<%= city.city %>" size="24" weight="bold" />
     <HStack spacing="24" alignment="top">
@@ -33,23 +33,23 @@
             <Label text="<%= city.pressure %> mb" size="16" />
         </VStack>
     </HStack>
-    <%- if #city.forecast > 0 then -%>
+    <% if #city.forecast > 0 then -%>
     <Divider />
     <Label text="Forecast" size="14" weight="semibold" />
     <HStack spacing="12" alignment="top">
-        <%- for _, day in ipairs(city.forecast) do -%>
+        <% for _, day in ipairs(city.forecast) do -%>
         <VStack spacing="4" alignment="center" fixedWidth="100">
             <Label text="<%= day.date %>" size="11" color="secondary" />
             <Label text="<%= day.tempMax or "--" %>°" size="16" weight="medium" />
             <Label text="<%= day.tempMin or "--" %>°" size="13" color="secondary" />
             <Label text="<%= day.desc %>" size="11" />
         </VStack>
-        <%- end -%>
+        <% end -%>
     </HStack>
-    <%- end -%>
+    <% end -%>
 </VStack>
-<%- else -%>
+<% else -%>
 <VStack flexGrow="1" padding="24" alignment="center">
     <Label text="Select a city" size="16" color="secondary" />
 </VStack>
-<%- end -%>
+<% end -%>

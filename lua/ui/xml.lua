@@ -701,6 +701,7 @@ function M.render(src, data, ns)
 
     local ok, result = pcall(etlua.render, src, data)
     if not ok then error("xml.render: template error: " .. tostring(result)) end
+    if result == nil then error("xml.render: template returned nil") end
     src = result
     -- If extends() was called, render the parent now (after all block() calls)
     if data.__extendsInfo then

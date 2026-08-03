@@ -88,6 +88,18 @@ local function fmtVolume(val)
 	return string.format("%.0f", val)
 end
 
+function Controller:showLoading()
+	self.detailPane:clearContainer()
+	local spinner = ns.ProgressView { flexGrow = 1 }
+	self.detailPane:add(ns.VStack {
+		flexGrow = 1,
+		alignment = "center",
+		spinner,
+	})
+	self.detailPane:layout()
+	spinner:start()
+end
+
 function Controller:showDetail(data)
 	self.detailPane:clearContainer()
 	if data then
@@ -132,7 +144,12 @@ function Controller:createWindow()
 	self.stockList:onRowSelect(function(_, _, row)
 		if row and row._id then
 			self.selectedSymbol = row._id
-			self:showDetail(self.stockData[row._id])
+			local data = self.stockData[row._id]
+			if data then
+				self:showDetail(data)
+			else
+				self:showLoading()
+			end
 		end
 	end)
 
