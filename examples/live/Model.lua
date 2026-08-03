@@ -9,7 +9,7 @@ Model.symbols = {
 
 function Model.fetchStock(symbol)
 	local url = "https://query1.finance.yahoo.com/v8/finance/chart/"
-		.. symbol .. "?interval=1d&range=1d"
+		.. symbol .. "?interval=5m&range=1d"
 
 	local ok, data = pcall(ns.fetch_json, url)
 	if not ok or not data then
@@ -45,6 +45,14 @@ function Model.fetchStock(symbol)
 	local fiftyTwoWeekHigh = meta.fiftyTwoWeekHigh
 	local fiftyTwoWeekLow = meta.fiftyTwoWeekLow
 
+	local chartData = nil
+	if entry.indicators then
+		local quote = entry.indicators.quote
+		if quote and #quote > 0 and quote[1].close then
+			chartData = quote[1].close
+		end
+	end
+
 	return {
 		symbol = symbol,
 		name = name,
@@ -58,6 +66,7 @@ function Model.fetchStock(symbol)
 		marketCap = marketCap,
 		fiftyTwoWeekHigh = fiftyTwoWeekHigh,
 		fiftyTwoWeekLow = fiftyTwoWeekLow,
+		chartData = chartData,
 	}
 end
 

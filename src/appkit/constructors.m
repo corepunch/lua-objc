@@ -160,6 +160,14 @@ static int bridge_NSScrollView_onRowSelect(lua_State *L) {
 	return 0;
 }
 
+static int bridge_pathView(lua_State *L) {
+	CGFloat w = (CGFloat)luaL_optnumber(L, 1, 100);
+	CGFloat h = (CGFloat)luaL_optnumber(L, 2, 100);
+	LuaPathView *obj = [[LuaPathView alloc] initWithFrame:NSMakeRect(0, 0, w, h)];
+	push_objc(L, obj, "nsview");
+	return 1;
+}
+
 static int bridge_NSScrollView_onRowActivate(lua_State *L) {
 	id obj = check_objc(L, 1);
 	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);

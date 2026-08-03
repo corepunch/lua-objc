@@ -561,6 +561,63 @@ Use between sections instead of faking it with `Text "---"`.
 
 Empty 10×10 view used to push siblings apart in HStack/VStack.
 
+### `PathView{...}`
+
+Creates a `LuaPathView` — a custom `NSView` subclass backed by an `NSBezierPath`
+that renders in `drawRect:`. The coordinate system is flipped (y-axis goes
+top-to-bottom) to match standard UI coordinate space. Path operations are
+persistent; call `clear()` to start a new path.
+
+```lua
+local p = ns.PathView { width = 200, height = 150 }
+p:moveTo(10, 10)
+p:lineTo(100, 80)
+p:lineTo(180, 30)
+p:setStrokeColor(0.2, 0.6, 1.0, 1.0)  -- r, g, b, a
+p:setLineWidth(2)
+```
+
+| Method | Arguments | Description |
+|---|---|---|
+| `:moveTo(x, y)` | number, number | Begin a new subpath at point |
+| `:lineTo(x, y)` | number, number | Draw a straight line to point |
+| `:curveTo(cp1x, cp1y, cp2x, cp2y, x, y)` | 6 numbers | Cubic Bezier curve to end point with two control points |
+| `:closePath()` | none | Close the current subpath (line from current point to start) |
+| `:clear()` | none | Remove all points from the path |
+| `:setStrokeColor(r, g, b[, a])` | 3–4 numbers | Set stroke color (0.0–1.0, alpha defaults to 1.0) |
+| `:setFillColor(r, g, b[, a])` | 3–4 numbers | Set fill color (0.0–1.0, alpha defaults to 1.0) |
+| `:setLineWidth(w)` | number | Set line width in points |
+
+### `Curve{...}`
+
+Convenience constructor that builds a `PathView` and draws a line chart from a
+flat array of y-values. Values are auto-scaled to the view bounds. Supports
+optional area fill below the line.
+
+```lua
+ns.Curve {
+    data          = {10, 12, 8, 14, 11, 16, 9},  -- y-values, left to right
+    width         = 400,
+    height        = 200,
+    strokeColor   = {0.2, 0.8, 0.4},              -- r, g, b (alpha = 1)
+    lineWidth     = 2,
+    fillArea      = true,
+    fillColor     = {0.2, 0.8, 0.4, 0.15},        -- optional explicit fill
+    chartPadding  = 8,                             -- inset on all sides
+}
+```
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `data` | `{number}` | required | Flat array of y-values to plot |
+| `width` | number | `100` | View width in points |
+| `height` | number | `100` | View height in points |
+| `strokeColor` | `{r,g,b[,a]}` | accent | Line color as RGBA table |
+| `lineWidth` | number | `2` | Stroke width in points |
+| `fillArea` | bool | `false` | Fill region below the line |
+| `fillColor` | `{r,g,b[,a]}` | auto | Fill color; defaults to stroke with alpha 0.15 |
+| `chartPadding` | number | `0` | Inner margin on all sides |
+
 ### `ide.SearchView` — Open Quickly palette (Cmd+P)
 
 `IDEKit.SearchView` is the Xcode-style search palette. The complete feature is

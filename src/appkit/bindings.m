@@ -196,6 +196,91 @@ static int bridge_AppKit_font(lua_State *L) {
 	return bridge_font(L);
 }
 
+static int bridge_LuaPathView_moveTo(lua_State *L) {
+	id _obj = lua_objc_check_object(L, 1, [LuaPathView class], "PathView");
+	LuaPathView *self = (LuaPathView *)_obj;
+	CGFloat x = (CGFloat)luaL_checknumber(L, 2);
+	CGFloat y = (CGFloat)luaL_checknumber(L, 3);
+	[self.path moveToPoint:NSMakePoint(x, y)];
+	[self setNeedsDisplay:YES];
+	return 0;
+}
+
+static int bridge_LuaPathView_lineTo(lua_State *L) {
+	id _obj = lua_objc_check_object(L, 1, [LuaPathView class], "PathView");
+	LuaPathView *self = (LuaPathView *)_obj;
+	CGFloat x = (CGFloat)luaL_checknumber(L, 2);
+	CGFloat y = (CGFloat)luaL_checknumber(L, 3);
+	[self.path lineToPoint:NSMakePoint(x, y)];
+	[self setNeedsDisplay:YES];
+	return 0;
+}
+
+static int bridge_LuaPathView_curveTo(lua_State *L) {
+	id _obj = lua_objc_check_object(L, 1, [LuaPathView class], "PathView");
+	LuaPathView *self = (LuaPathView *)_obj;
+	CGFloat cp1x = (CGFloat)luaL_checknumber(L, 2);
+	CGFloat cp1y = (CGFloat)luaL_checknumber(L, 3);
+	CGFloat cp2x = (CGFloat)luaL_checknumber(L, 4);
+	CGFloat cp2y = (CGFloat)luaL_checknumber(L, 5);
+	CGFloat endX = (CGFloat)luaL_checknumber(L, 6);
+	CGFloat endY = (CGFloat)luaL_checknumber(L, 7);
+	[self.path curveToPoint:NSMakePoint(endX, endY)
+		controlPoint1:NSMakePoint(cp1x, cp1y)
+		controlPoint2:NSMakePoint(cp2x, cp2y)];
+	[self setNeedsDisplay:YES];
+	return 0;
+}
+
+static int bridge_LuaPathView_closePath(lua_State *L) {
+	id _obj = lua_objc_check_object(L, 1, [LuaPathView class], "PathView");
+	LuaPathView *self = (LuaPathView *)_obj;
+	[self.path closePath];
+	[self setNeedsDisplay:YES];
+	return 0;
+}
+
+static int bridge_LuaPathView_clear(lua_State *L) {
+	id _obj = lua_objc_check_object(L, 1, [LuaPathView class], "PathView");
+	LuaPathView *self = (LuaPathView *)_obj;
+	[self.path removeAllPoints];
+	[self setNeedsDisplay:YES];
+	return 0;
+}
+
+static int bridge_LuaPathView_setStrokeColor(lua_State *L) {
+	id _obj = lua_objc_check_object(L, 1, [LuaPathView class], "PathView");
+	LuaPathView *self = (LuaPathView *)_obj;
+	CGFloat r = (CGFloat)luaL_checknumber(L, 2);
+	CGFloat g = (CGFloat)luaL_checknumber(L, 3);
+	CGFloat b = (CGFloat)luaL_checknumber(L, 4);
+	CGFloat a = (CGFloat)luaL_optnumber(L, 5, 1.0);
+	self.strokeColor = [NSColor colorWithRed:r green:g blue:b alpha:a];
+	[self setNeedsDisplay:YES];
+	return 0;
+}
+
+static int bridge_LuaPathView_setFillColor(lua_State *L) {
+	id _obj = lua_objc_check_object(L, 1, [LuaPathView class], "PathView");
+	LuaPathView *self = (LuaPathView *)_obj;
+	CGFloat r = (CGFloat)luaL_checknumber(L, 2);
+	CGFloat g = (CGFloat)luaL_checknumber(L, 3);
+	CGFloat b = (CGFloat)luaL_checknumber(L, 4);
+	CGFloat a = (CGFloat)luaL_optnumber(L, 5, 1.0);
+	self.fillColor = [NSColor colorWithRed:r green:g blue:b alpha:a];
+	[self setNeedsDisplay:YES];
+	return 0;
+}
+
+static int bridge_LuaPathView_setLineWidth(lua_State *L) {
+	id _obj = lua_objc_check_object(L, 1, [LuaPathView class], "PathView");
+	LuaPathView *self = (LuaPathView *)_obj;
+	CGFloat w = (CGFloat)luaL_checknumber(L, 2);
+	self.lineWidth = w;
+	[self setNeedsDisplay:YES];
+	return 0;
+}
+
 static int bridge_NSScrollView_onChange(lua_State *L) {
 	(void)lua_objc_check_object(L, 1, [NSScrollView class], "TextView");
 	if (!lua_isnoneornil(L, 2)) luaL_checktype(L, 2, LUA_TFUNCTION);
@@ -499,6 +584,18 @@ static MethodEntry ViewMethods[] = {
 	{NULL, NULL}
 };
 
+static MethodEntry PathViewMethods[] = {
+	{"moveTo",	bridge_LuaPathView_moveTo},
+	{"lineTo",	bridge_LuaPathView_lineTo},
+	{"curveTo",	bridge_LuaPathView_curveTo},
+	{"closePath",	bridge_LuaPathView_closePath},
+	{"clear",	bridge_LuaPathView_clear},
+	{"setStrokeColor",	bridge_LuaPathView_setStrokeColor},
+	{"setFillColor",	bridge_LuaPathView_setFillColor},
+	{"setLineWidth",	bridge_LuaPathView_setLineWidth},
+	{NULL, NULL}
+};
+
 #endif /* GEN_CLASS_ARRAYS */
 
 /* --- nsview_index dispatch blocks --- */
@@ -564,6 +661,13 @@ static MethodEntry ViewMethods[] = {
 {
 	if ([obj isKindOfClass:[NSTextView class]]) {
 		lua_CFunction _m = lookupMethod(key, NativeTextViewMethods);
+		if (_m) { lua_pushcfunction(L, _m); return 1; }
+	}
+}
+
+{
+	if ([obj isKindOfClass:[LuaPathView class]]) {
+		lua_CFunction _m = lookupMethod(key, PathViewMethods);
 		if (_m) { lua_pushcfunction(L, _m); return 1; }
 	}
 }

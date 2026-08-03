@@ -132,6 +132,20 @@ function Controller:showDetail(data)
 		stock.changeStr = arrow .. " " .. string.format("%.2f%%", math.abs(stock.changePct or 0))
 		stock.changeColor = (stock.changePct or 0) >= 0 and "systemGreen" or "systemRed"
 		local view = xml.renderFile(VIEWS .. "StockDetail.etlua", { stock = stock })
+		if stock.chartData and #stock.chartData > 1 then
+			local gain = (stock.changePct or 0) >= 0
+			local chartColor = gain and {0.2, 0.8, 0.4} or {0.9, 0.3, 0.3}
+			local chart = ns.Curve {
+				data = stock.chartData,
+				width = 500,
+				height = 120,
+				strokeColor = chartColor,
+				lineWidth = 2,
+				chartPadding = 4,
+				fillArea = true,
+			}
+			view:add(chart)
+		end
 		self.detailPane:add(view)
 	else
 		local view = xml.renderFile(VIEWS .. "StockDetail.etlua", { stock = nil })

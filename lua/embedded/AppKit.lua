@@ -616,6 +616,80 @@ function AppKit.ProgressView(props)
 	return applyLayout(v, props)
 end
 
+function AppKit.PathView(props)
+	props = props or {}
+	local w = props.width or 100
+	local h = props.height or 100
+	local v = bridge._pathView(w, h)
+	if props.strokeColor then
+		local c = props.strokeColor
+		v:setStrokeColor(c[1], c[2], c[3], c[4] or 1)
+	end
+	if props.fillColor then
+		local c = props.fillColor
+		v:setFillColor(c[1], c[2], c[3], c[4] or 1)
+	end
+	if props.lineWidth then
+		v:setLineWidth(props.lineWidth)
+	end
+	return applyLayout(v, props)
+end
+
+function AppKit.Curve(props)
+	props = props or {}
+	local data = props.data or {}
+	if #data < 2 then
+		return AppKit.PathView(props)
+	end
+	local minY, maxY = data[1], data[1]
+	for _, v in ipairs(data) do
+		if v < minY then minY = v end
+		if v > maxY then maxY = v end
+	end
+	local range = maxY - minY
+	if range == 0 then range = 1 end
+	local v = AppKit.PathView(props)
+	local fillArea = props.fillArea
+	local fillColor = props.fillColor
+	local lineWidth = props.lineWidth or 2
+	v:setLineWidth(lineWidth)
+	if props.strokeColor then
+		local c = props.strokeColor
+		v:setStrokeColor(c[1], c[2], c[3], c[4] or 1)
+	end
+	local w = props.width or 100
+	local h = props.height or 100
+	local padding = props.chartPadding or 0
+	local drawW = w - padding * 2
+	local drawH = h - padding * 2
+	local step = #data > 1 and (drawW / (#data - 1)) or 0
+	local function cx(i)
+		return padding + (i - 1) * step
+	end
+	local function cy(val)
+		return padding + drawH * (1 - (val - minY) / range)
+	end
+	local firstX, firstY = cx(1), cy(data[1])
+	v:moveTo(firstX, firstY)
+	for i = 2, #data do
+		v:lineTo(cx(i), cy(data[i]))
+	end
+	if fillArea then
+		local lastX = cx(#data)
+		local bottom = padding + drawH
+		v:lineTo(lastX, bottom)
+		v:lineTo(firstX, bottom)
+		v:closePath()
+		if fillColor then
+			v:setFillColor(fillColor[1], fillColor[2], fillColor[3], fillColor[4] or 0.3)
+		elseif props.strokeColor then
+			local c = props.strokeColor
+			v:setFillColor(c[1], c[2], c[3], 0.15)
+		end
+	end
+	return v
+end
+
 function AppKit.Layout(view, props)
 	if type(view) ~= "userdata" then
 		error("Layout requires a view userdata")

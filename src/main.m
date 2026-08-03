@@ -178,6 +178,7 @@ static lua_State *gL = NULL;
 #include "shared/lua_error.m"
 #include "shared/lua_async.m"
 
+#include "appkit/bezier_path.m"
 #include "appkit/table_data_source.m"
 #include "appkit/outline_data_source.m"
 #include "appkit/action_button.m"
@@ -245,6 +246,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_httpGet", bridge_AppKit_http_get},
 	{"_jsonParse", bridge_AppKit_json_parse},
 	{"_font", bridge_AppKit_font},
+	{"_pathView", bridge_pathView},
 	{NULL, NULL},
 };
 

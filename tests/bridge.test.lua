@@ -925,4 +925,41 @@ t.assertEqual(countFrame.id, "count", "mailbox second rendered cell is count")
 t.expect(countFrame.maxX <= 170,
 	"mailbox count cell stays inside viewport (maxX " .. countFrame.maxX .. ")")
 
+-- PathView / Curve tests
+
+local pathView = ns.PathView { width = 200, height = 100 }
+t.expect(pathView ~= nil, "PathView creates successfully")
+t.assertSize(pathView, 200, 100, "PathView default size")
+
+pathView:moveTo(10, 10)
+pathView:lineTo(50, 80)
+pathView:lineTo(100, 20)
+pathView:setStrokeColor(0.2, 0.6, 1.0, 1.0)
+pathView:setLineWidth(2)
+pathView:clear()
+pathView:moveTo(0, 0)
+pathView:lineTo(100, 100)
+pathView:setFillColor(0.8, 0.2, 0.2, 0.5)
+pathView:closePath()
+t.expect(true, "PathView operations complete without errors")
+
+local line = ns.Curve { data = {10, 20, 15, 30, 25}, width = 200, height = 80 }
+t.expect(line ~= nil, "Curve creates successfully")
+t.assertSize(line, 200, 80, "Curve default size")
+
+local filled = ns.Curve {
+	data = {5, 8, 6, 9, 7},
+	width = 150,
+	height = 60,
+	strokeColor = {0.2, 0.8, 0.4},
+	lineWidth = 2,
+	fillArea = true,
+	chartPadding = 8,
+}
+t.expect(filled ~= nil, "filled Curve creates successfully")
+t.assertSize(filled, 150, 60, "filled Curve size")
+
+local empty = ns.Curve { data = {5}, width = 100, height = 50 }
+t.expect(empty ~= nil, "single-point Curve creates as bare PathView")
+
 os.exit(t.summary() and 0 or 1)
