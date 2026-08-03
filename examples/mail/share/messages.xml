@@ -1,0 +1,358 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mail>
+  <mailboxes>
+    <mailbox id="inbox" name="Inbox" icon="tray" count="12" />
+    <mailbox id="sent" name="Sent" icon="paperplane" count="5" />
+    <mailbox id="drafts" name="Drafts" icon="doc" count="3" />
+    <mailbox id="archive" name="Archive" icon="archivebox" count="4" />
+    <mailbox id="trash" name="Trash" icon="trash" count="2" />
+  </mailboxes>
+  <messages>
+    <message id="1" mailbox="inbox" from="Alice Chen" initials="AC" subject="Q3 roadmap review" preview="Can we align on the roadmap before the board meeting on Thursday?" date="10:32 AM" unread="true">
+      <body><![CDATA[Hi team,
+
+Can we align on the Q3 roadmap this week before the board meeting on Thursday? There are a few open questions about the design system timeline and the API migration priority order.
+
+Please review the attached deck and come prepared with questions. I've scheduled a working session for Wednesday at 2pm in the main conference room.
+
+Best,
+Alice]]></body>
+    </message>
+    <message id="2" mailbox="inbox" from="Bob Martinez" initials="BM" subject="Design system updates" preview="I've pushed the new token set to Figma — please review the spacing changes." date="9:15 AM" unread="true">
+      <body><![CDATA[Hey everyone,
+
+I've pushed the v3 token set to Figma and updated the component library. Key changes:
+
+— Spacing scale now uses 4pt increments across the board
+— Color tokens now include explicit dark mode variants
+— Button sizing has been standardized (32pt, 36pt, 44pt)
+— New semantic shadow tokens added
+
+Please review by Friday. Breaking changes to the old spacing scale will go live next sprint.
+
+Thanks,
+Bob]]></body>
+    </message>
+    <message id="3" mailbox="inbox" from="Carol Park" initials="CP" subject="Meeting notes from yesterday" preview="Attaching the notes from our sync — action items inside." date="Yesterday" unread="false">
+      <body><![CDATA[Here are the notes from yesterday's sync.
+
+Decisions:
+• Agreed on v2 scope for Q3
+• Bob owns design tokens migration
+• Alice presents roadmap to board next Thursday
+
+Action items:
+• Carol: draft technical spec for API migration (due Monday)
+• Bob: finalize spacing tokens by Friday
+• Dave: review PR #142 and merge
+
+Next sync: Wednesday 10am.
+
+Carol]]></body>
+    </message>
+    <message id="4" mailbox="inbox" from="Dave Johnson" initials="DJ" subject="PR #142 ready for review" preview="Added tests and fixed the edge case we discussed yesterday." date="Yesterday" unread="false">
+      <body><![CDATA[PR #142 is up and ready for review: github.com/example/repo/pull/142
+
+Changes:
+— Added comprehensive tests for the nil-path edge case we discussed
+— Fixed a race condition in the async handler
+— Cleaned up error propagation in the request chain
+
+Build is green on all platforms. Would appreciate a review before EOD if possible.
+
+Dave]]></body>
+    </message>
+    <message id="5" mailbox="inbox" from="Eve Williams" initials="EW" subject="Budget approval needed" preview="Please approve the Q4 tooling spend by end of day." date="Mon" unread="false">
+      <body><![CDATA[Hi,
+
+The Q4 tooling budget needs sign-off by end of day today.
+
+Breakdown:
+— Design tools (Figma enterprise + plugins): $2,400
+— CI/CD credits increase: $1,200
+— Monitoring and observability: $600
+
+Total: $4,200 for the quarter. All items are renewals of existing services.
+
+Please reply with approval and I'll submit the PO.
+
+Eve]]></body>
+    </message>
+    <message id="6" mailbox="inbox" from="Frank Brown" initials="FB" subject="Welcome to the team!" preview="So glad to have you on board — here's everything you need to get started." date="Mon" unread="false">
+      <body><![CDATA[Welcome to the team!
+
+Really glad to have you on board. Here are a few things to get you started:
+
+— Slack: #team-engineering and #team-random
+— Standups: daily at 9:30am in the team channel
+— Docs: wiki.internal.example.com/team-handbook
+— Onboarding buddy: Bob will reach out to walk you through the codebase
+
+Reach out anytime if you have questions. Looking forward to working together!
+
+Frank]]></body>
+    </message>
+    <message id="7" mailbox="inbox" from="Grace Kim" initials="GK" subject="API migration progress" preview="We're at 80% — on track for the Friday deadline." date="Sun" unread="false">
+      <body><![CDATA[Status update on the API migration:
+
+Progress:
+— 80% of endpoints migrated and passing tests
+— /users, /projects, /tasks, /comments done
+— /notifications and /search in progress
+
+Remaining:
+— /auth/refresh (blocked on new token format)
+— /upload (needs multipart handling review)
+
+On track for the Friday deadline. Will send another update Wednesday.
+
+Grace]]></body>
+    </message>
+    <message id="8" mailbox="inbox" from="Henry Davis" initials="HD" subject="Weekly standup notes" preview="Short summary of this week's standups and action items." date="Sun" unread="false">
+      <body><![CDATA[This week's standup highlights:
+
+Monday: Roadmap review with Alice — v2 scope locked in
+Tuesday: Bob pushed design tokens v3 to Figma
+Wednesday: Working session on API migration strategy
+Thursday: Budget submitted for Q4 tooling
+Friday: PR #142 merged, edge case fix deployed
+
+Next week priorities: finish API migration, start v2 implementation.
+
+Henry]]></body>
+    </message>
+    <message id="9" mailbox="inbox" from="Irene Zhao" initials="IZ" subject="Customer feedback summary" preview="Top 5 UX issues from the latest NPS survey." date="Sat" unread="true">
+      <body><![CDATA[Team,
+
+Compiled the top UX issues from last week's NPS survey (n=1,200):
+
+1. Search results load time (reported by 34% of detractors)
+2. Mobile navigation confusing after redesign (28%)
+3. Dark mode contrast issues on data tables (19%)
+4. Export to CSV missing column headers (14%)
+5. Notification settings too granular (11%)
+
+We should prioritize #1 and #2 for Q3. I've created tickets in Linear — please take a look.
+
+Irene]]></body>
+    </message>
+    <message id="10" mailbox="inbox" from="James Taylor" initials="JT" subject="Office closed Friday" preview="Building maintenance — plan to work remote." date="Fri" unread="false">
+      <body><![CDATA[All,
+
+The building will be closed this Friday for scheduled HVAC maintenance. No badge access from 6am to 6pm.
+
+Please plan to work remotely on Friday. The office will reopen Monday morning as usual.
+
+Facilities will send a reminder Thursday evening.
+
+James]]></body>
+    </message>
+    <message id="11" mailbox="inbox" from="Katherine Liu" initials="KL" subject="Slides for the board deck" preview="Draft slides attached — feedback by Tuesday please." date="Thurs" unread="true">
+      <body><![CDATA[Hi Alice,
+
+Draft slides for the board deck are in the shared drive: /decks/board-q3-draft
+
+Sections covered:
+— Q2 results and metrics
+— Q3 roadmap and priorities
+— Team growth and hiring plan
+— Budget overview
+
+Would love your feedback by Tuesday so I can incorporate changes before the dry run Wednesday.
+
+Katherine]]></body>
+    </message>
+    <message id="12" mailbox="inbox" from="Leo Garcia" initials="LG" subject="Server migration window confirmed" preview="Saturday 2am-6am UTC — full downtime expected." date="Wed" unread="false">
+      <body><![CDATA[The final migration window is confirmed:
+
+Date: Saturday, 2am-6am UTC
+Impact: Full downtime for all services
+Duration: Up to 4 hours (targeting 2 hours)
+Rollback plan: Snapshot-based, 15-minute rollback window
+
+All teams should freeze deploys from Friday 6pm through Saturday 10am UTC.
+
+Leo]]></body>
+    </message>
+    <message id="13" mailbox="sent" from="Me" initials="ME" subject="Re: Q3 roadmap review" preview="Here are my thoughts on the design system timeline." date="10:45 AM" unread="false">
+      <body><![CDATA[Alice,
+
+Thanks for putting this together. A few thoughts:
+
+— The design system timeline feels aggressive. I'd suggest pushing token finalization to sprint 4 to give Bob's team enough breathing room.
+— API migration priority order looks right but we should add a hard dependency check for the /upload and /auth endpoints.
+— Happy to present the engineering section at the board meeting.
+
+Let's discuss Wednesday.
+
+Best,
+Me]]></body>
+    </message>
+    <message id="14" mailbox="sent" from="Me" initials="ME" subject="Re: Design system updates" preview="Reviewed the new tokens — looks great, one comment on border radii." date="9:30 AM" unread="false">
+      <body><![CDATA[Bob,
+
+The new token set looks great overall. One thing:
+
+— Border radius tokens: the jump from 4pt to 12pt is a bit wide. Can we add an 8pt intermediate? We have several cards and modals that would benefit from a subtler curve than 12pt.
+
+Everything else looks good. Great work on the semantic shadows.
+
+Me]]></body>
+    </message>
+    <message id="15" mailbox="sent" from="Me" initials="ME" subject="Sprint planning agenda" preview="Proposed agenda for tomorrow's sprint planning." date="Yesterday" unread="false">
+      <body><![CDATA[Team,
+
+Proposed agenda for tomorrow's sprint planning (2pm, Conference Room B):
+
+1. Sprint review (15 min) - what got shipped
+2. Retrospective highlights (10 min) - what went well, what to improve
+3. Backlog grooming (20 min) - priority review for next sprint
+4. Sprint commitment (15 min) - capacity planning and assignments
+
+Please review the backlog board beforehand: linear.internal.example.com/team
+
+Me]]></body>
+    </message>
+    <message id="16" mailbox="sent" from="Me" initials="ME" subject="Re: Customer feedback summary" preview="Good analysis — let's tackle search performance first." date="Sat" unread="false">
+      <body><![CDATA[Irene,
+
+This is a great summary. I agree #1 (search performance) and #2 (mobile nav) should be top priority.
+
+For search: let's timebox an investigation next sprint. I suspect the index is stale — simple reindexing could fix most of the reported slowness.
+
+I'll pick up the search investigation ticket. Thanks for pulling this together.
+
+Me]]></body>
+    </message>
+    <message id="17" mailbox="sent" from="Me" initials="ME" subject="PTO request: Aug 18-22" preview="Taking a week off next month — coverage plan inside." date="Fri" unread="false">
+      <body><![CDATA[Team,
+
+I'll be out of office August 18-22. Here's the coverage plan:
+
+— Standups: Bob will run
+— Code reviews: Dave is primary, Carol is backup
+— On-call: Already swapped with Grace (she covers my week, I cover hers in September)
+— Urgent issues: Slack DM me, I'll check once a day
+
+I'll make sure all my PRs are merged and docs updated before I leave.
+
+Me]]></body>
+    </message>
+    <message id="18" mailbox="drafts" from="Me" initials="ME" subject="Performance review notes" preview="Mid-year feedback for the team — still drafting." date="Mon" unread="false">
+      <body><![CDATA[[DRAFT — not yet sent]
+
+Mid-year review notes for the team:
+
+Highlights this half:
+— Shipped v1.0 on time, positive customer reception
+— Technical debt reduction: 40% fewer critical issues in Sentry
+— Team velocity improved after CI pipeline fixes
+
+Areas to improve:
+— More cross-functional collaboration with design team
+— Better documentation of architectural decisions
+— Need to invest in on-call runbooks
+
+Individual notes still being drafted.]]></body>
+    </message>
+    <message id="19" mailbox="drafts" from="Me" initials="ME" subject="Re: Office closed Friday" preview="Is the parking garage also closed?" date="Mon" unread="false">
+      <body><![CDATA[[DRAFT — not yet sent]
+
+Hey James, quick question — is the parking garage also going to be closed on Friday, or just the building itself? I have some equipment in my car I was planning to pick up.]]></body>
+    </message>
+    <message id="20" mailbox="drafts" from="Me" initials="ME" subject="Conference proposal: SwiftCraft 2026" preview="Proposal for speaking at SwiftCraft this fall." date="Sun" unread="false">
+      <body><![CDATA[[DRAFT — not yet sent]
+
+CFP proposal for SwiftCraft 2026:
+
+Talk title: "Building Native macOS Apps with Lua — The lua-objc Story"
+
+Abstract: lua-objc combines the speed and simplicity of Lua with native AppKit controls to deliver production-quality macOS applications. This talk covers the architecture, lessons learned, and practical examples of building real apps with the framework.
+
+Outline:
+1. Why Lua? Developer experience and iteration speed
+2. Architecture deep dive: LUA ↔ ObjC bridge, the layout engine
+3. Live demo: building a mail client in 10 minutes
+4. Testing, previews, and CI
+
+Still refining. Deadline is next Friday.]]></body>
+    </message>
+    <message id="21" mailbox="archive" from="DevOps Team" initials="DO" subject="CI/CD pipeline upgrade complete" preview="All pipelines migrated to the new infrastructure." date="Jul 14" unread="false">
+      <body><![CDATA[The CI/CD pipeline upgrade is complete. Here's what changed:
+
+— Build agents upgraded from m6i.large to m6i.xlarge
+— Build times reduced by ~35% on average
+— New caching layer for dependencies (no more clean npm installs)
+— Parallel test execution enabled (2x faster test suite runs)
+
+All 12 pipelines have been migrated. Please report any issues in #devops-help.
+
+— DevOps]]></body>
+    </message>
+    <message id="22" mailbox="archive" from="Legal" initials="LG" subject="OSS license review — Go ahead" preview="All open-source dependencies approved for use." date="Jul 8" unread="false">
+      <body><![CDATA[Engineering,
+
+We've completed the review of all open-source dependencies listed in your spreadsheet. Here's the summary:
+
+Approved (no restrictions): 47 packages
+Approved (attribution required): 3 packages
+Flagged for further review: 0 packages
+
+The 3 attribution-required packages are MIT licensed and just need a notice in the about dialog. No blocking issues.
+
+Let us know if you plan to add new dependencies before the next release.
+
+— Legal]]></body>
+    </message>
+    <message id="23" mailbox="archive" from="Marketing" initials="MK" subject="Product launch assets ready" preview="Banners, screenshots, and app store copy for the launch." date="Jun 30" unread="false">
+      <body><![CDATA[Hi team,
+
+Launch assets for v1.0 are ready in the shared drive:
+
+— App Store screenshots (6.7" and 12.9" variants): 12 images
+— Feature banners for the website: 5 hero images
+— Press kit with logos and brand guidelines
+— Draft copy for the release blog post and App Store description
+
+Please review and approve by Thursday. Karen from PR needs lead time for outreach.
+
+— Marketing]]></body>
+    </message>
+    <message id="24" mailbox="archive" from="HR" initials="HR" subject="Benefits enrollment period opens Monday" preview="Open enrollment runs Aug 1-15 — review your elections." date="Jun 28" unread="false">
+      <body><![CDATA[All,
+
+Open enrollment for benefits runs August 1-15. Changes take effect September 1.
+
+What's new this year:
+— New mental health benefit (12 free therapy sessions/year)
+— Expanded commuter benefits (now includes bike share)
+— HSA contribution limit increased to $4,150 (individual) / $8,300 (family)
+
+Log in to the benefits portal to review and update your elections. Current elections will roll over if you take no action.
+
+— HR]]></body>
+    </message>
+    <message id="25" mailbox="trash" from="No Reply" initials="NR" subject="Your shipment has been delivered" preview="Package #TKN-48291 left at front door." date="Jul 5" unread="false">
+      <body><![CDATA[Your shipment has been delivered.
+
+Tracking: TKN-48291
+Carrier: FastShip
+Delivered: July 5, 10:23 AM
+Left at: Front door
+
+If you did not receive your package, please contact support within 48 hours.]]></body>
+    </message>
+    <message id="26" mailbox="trash" from="LinkedIn" initials="LI" subject="You have 14 new notifications" preview="People are engaging with your profile this week." date="Jul 3" unread="false">
+      <body><![CDATA[You have 14 new notifications on LinkedIn:
+
+— 3 people viewed your profile
+— 2 new connection requests
+— 5 reactions to your post
+— 4 messages in your inbox
+
+View your notifications: linkedin.com/notifications
+
+You're receiving this email because you have notifications enabled.]]></body>
+    </message>
+  </messages>
+</mail>

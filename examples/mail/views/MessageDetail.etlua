@@ -1,11 +1,13 @@
-<VStack flexGrow="1" padding="24" spacing="16" alignment="leading">
-    <VStack spacing="4" alignment="leading">
-        <Label text="<%= subject %>" size="18" weight="semibold" />
+<VStack flexGrow="1" paddingHorizontal="24" paddingVertical="16" spacing="8" alignment="leading">
+    <VStack spacing="4" alignment="leading" fixedHeight="41">
+        <Label text="<%= subject %>" size="18" weight="semibold" lines="1" truncation="tail" />
         <HStack spacing="8" alignment="center">
             <Label text="<%= from %>" size="13" weight="medium" />
             <Label text="<%= date %>" size="12" color="secondary" />
         </HStack>
     </VStack>
     <Divider />
-    <Label text="<%= body %>" size="13" flexGrow="1" />
+    <TextEditor text="<%= body %>" size="13" wrapMode="true"
+		editable="false" selectable="true" drawsBackground="false"
+		flexGrow="1" fillWidth="true" />
 </VStack>

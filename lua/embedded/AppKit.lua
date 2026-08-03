@@ -390,9 +390,25 @@ end
 function AppKit.TextEditor(props)
 	props = props or {}
 	local view = bridge._textView()
+	local textView = view.documentView
 	if props.language then view.language = props.language end
 	if props.text then view.text = props.text end
 	if props.wrapMode ~= nil then view.wrapMode = props.wrapMode end
+	if props.size then
+		textView.font = bridge._font(props.size, props.weight)
+	end
+	if props.editable ~= nil then
+		textView.editable = props.editable ~= false
+	end
+	if props.selectable ~= nil then
+		textView.selectable = props.selectable ~= false
+	end
+	if props.drawsBackground ~= nil then
+		textView.drawsBackground = props.drawsBackground ~= false
+	end
+	if props.wrapMode ~= nil then
+		view.hasHorizontalScroller = not props.wrapMode
+	end
 	return applyLayout(view, props)
 end
 

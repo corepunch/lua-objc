@@ -22,6 +22,13 @@ local function dirname(path)
 	return path:match("^(.*)[/\\][^/\\]+$") or "."
 end
 
+local function sourcePath(level)
+	local info = debug.getinfo((level or 1) + 1, "S")
+	if not info or type(info.source) ~= "string" then return nil end
+	if info.source:sub(1, 1) == "@" then return info.source:sub(2) end
+	return nil
+end
+
 local function ensureDirectory(path)
 	if not path or path == "" then return end
 	os.execute("mkdir -p " .. string.format("%q", path))
@@ -468,6 +475,22 @@ end
 
 function App.dirname(path)
 	return dirname(path)
+end
+
+function App.sourcePath(level)
+	return sourcePath((level or 1) + 1)
+end
+
+function App.sharePath(relative, opts)
+	opts = opts or {}
+	local anchor = opts.anchorPath or sourcePath((opts.level or 1) + 1) or App.args()[0]
+	local shareDir = anchor and anchor ~= ""
+		and pathJoin(dirname(anchor), "share")
+		or "share"
+	if not relative or relative == "" then
+		return shareDir
+	end
+	return pathJoin(shareDir, relative)
 end
 
 function App.describeRecent(item)

@@ -22,15 +22,33 @@
 
 local etlua = require("etlua")
 
+local function decodeXMLText(value)
+    if type(value) ~= "string" or value == "" then return value end
+    value = value:gsub("&#x([%da-fA-F]+);", function(hex)
+        local code = tonumber(hex, 16)
+        return code and utf8.char(code) or "&#x" .. hex .. ";"
+    end)
+    value = value:gsub("&#(%d+);", function(decimal)
+        local code = tonumber(decimal, 10)
+        return code and utf8.char(code) or "&#" .. decimal .. ";"
+    end)
+    return (value
+        :gsub("&quot;", '"')
+        :gsub("&apos;", "'")
+        :gsub("&lt;", "<")
+        :gsub("&gt;", ">")
+        :gsub("&amp;", "&"))
+end
+
 -- ── Minimal XML parser ────────────────────────────────────────────────────
 
 local function parseAttrs(attrStr)
     local attrs = {}
     for key, val in attrStr:gmatch('%s+([%w_:%-]+)%s*=%s*"([^"]*)"') do
-        attrs[key] = val
+        attrs[key] = decodeXMLText(val)
     end
     for key, val in attrStr:gmatch("%s+([%w_:%-]+)%s*=%s*'([^']*)'") do
-        attrs[key] = val
+        attrs[key] = decodeXMLText(val)
     end
     return attrs
 end
@@ -207,6 +225,18 @@ local function makeRegistry()
     end
 
     R["Text"] = R["Label"]
+
+    R["TextEditor"] = function(ns, a, _)
+        local props = layoutProps(a)
+        props.text = a.text or a.value or ""
+        if a.size then props.size = num(a.size) end
+        if a.weight then props.weight = a.weight end
+        if a.editable ~= nil then props.editable = bool(a.editable) end
+        if a.selectable ~= nil then props.selectable = bool(a.selectable) end
+        if a.wrapMode ~= nil then props.wrapMode = bool(a.wrapMode) end
+        if a.drawsBackground ~= nil then props.drawsBackground = bool(a.drawsBackground) end
+        return ns.TextEditor(props)
+    end
 
     R["Title"] = function(ns, a, _)
         return ns.Title(a.text or a.value or "")
