@@ -5,7 +5,13 @@ local Model = require("examples.mail.Model")
 local VIEWS = "examples/mail/views/"
 
 local ACTIONS = {
+	filter = function(self) self:toggleUnreadFilter() end,
 	compose = function(self) self:compose() end,
+	reply = function() end,
+	replyAll = function() end,
+	forward = function() end,
+	archive = function() end,
+	trash = function() end,
 }
 
 local function buildMailboxList()
@@ -52,8 +58,14 @@ function WindowController.new()
 		mailboxList     = nil,
 		messageList     = nil,
 		detailPane      = nil,
+		unreadOnlyFilter = false,
 		window          = nil,
 	}, WindowController)
+end
+
+function WindowController:toggleUnreadFilter()
+	self.unreadOnlyFilter = not self.unreadOnlyFilter
+	self:loadMessages(self.selectedMailbox.id)
 end
 
 function WindowController:showDetail(msg)
@@ -68,12 +80,14 @@ end
 function WindowController:loadMessages(mailboxId)
 	local rows = {}
 	for _, msg in ipairs(Model.byMailbox(mailboxId)) do
-		rows[#rows + 1] = {
-			_id     = msg.id,
-			from    = msg.from,
-			subject = msg.subject,
-			date    = msg.date,
-		}
+		if (not self.unreadOnlyFilter) or msg.unread then
+			rows[#rows + 1] = {
+				_id     = msg.id,
+				from    = msg.from,
+				subject = msg.subject,
+				date    = msg.date,
+			}
+		end
 	end
 	self.messageList:replaceRows(rows)
 end

@@ -1,7 +1,13 @@
 <Window title="Mail" width="1040" height="620" minWidth="760" minHeight="460"
-    sidebarWidth="220" toolbarContentDividerAfter="toggleSidebar">
+    sidebarWidth="220" toolbarContentDividerAfter="filter">
     <Toolbar>
         <ToolbarItem id="toggleSidebar" />
-        <ToolbarItem id="compose" label="Compose" icon="square.and.pencil" tooltip="New Message" />
+        <ToolbarItem id="filter" label="Filter" icon="line.3.horizontal.decrease.circle" tooltip="Filter Messages" action="filter" />
+        <ToolbarItem id="compose" label="Compose" icon="square.and.pencil" tooltip="New Message" action="compose" />
+        <ToolbarItem id="reply" label="Reply" icon="arrowshape.turn.up.left" tooltip="Reply" action="reply" />
+        <ToolbarItem id="replyAll" label="Reply All" icon="arrowshape.turn.up.left.2" tooltip="Reply All" action="replyAll" />
+        <ToolbarItem id="forward" label="Forward" icon="arrowshape.turn.up.right" tooltip="Forward" action="forward" />
+        <ToolbarItem id="archive" label="Archive" icon="archivebox" tooltip="Archive" action="archive" />
+        <ToolbarItem id="trash" label="Trash" icon="trash" tooltip="Move to Trash" action="trash" />
     </Toolbar>
 </Window>

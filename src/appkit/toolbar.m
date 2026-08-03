@@ -153,10 +153,11 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 	_trackingSplitView = splitView;
 	_trackingDividerIndex = dividerIndex;
 	_trackingAfterIdentifier = [itemIdentifier copy];
+	NSString *resolvedIdentifier = toolbar_item_identifier(itemIdentifier);
 	NSUInteger insertionIndex = toolbar.items.count;
 	for (NSUInteger index = 0; index < toolbar.items.count; index++) {
 		if ([toolbar.items[index].itemIdentifier
-			isEqualToString:itemIdentifier]) {
+			isEqualToString:resolvedIdentifier]) {
 			insertionIndex = index + 1;
 			break;
 		}
