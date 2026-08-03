@@ -1,0 +1,7 @@
+<Window title="IDE" width="1024" height="768" minWidth="640" minHeight="420"
+        sidebarWidth="240">
+    <Toolbar>
+        <ToolbarItem id="toggleSidebar" />
+        <ToolbarItem id="openFolder" label="Open Folder" icon="folder" tooltip="Open a folder" />
+    </Toolbar>
+</Window>

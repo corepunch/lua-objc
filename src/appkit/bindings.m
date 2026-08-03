@@ -19,7 +19,6 @@ static int bridge_NSScrollView_onRowActivate(lua_State *L);
 static int bridge_table_column_widths(lua_State *L);
 static int bridge_table_cell_frames(lua_State *L);
 static int bridge_toolbar_item(lua_State *L);
-static int bridge_canvas_toolbar_items(lua_State *L);
 static int bridge_window(lua_State *L);
 static int bridge_set_window_workspace(lua_State *L);
 static int bridge_image(lua_State *L);
@@ -37,7 +36,6 @@ static int bridge_text_field_test_command(lua_State *L);
 static int bridge_text_view(lua_State *L);
 static int bridge_symbol_toggle(lua_State *L);
 static int bridge_symbol_button(lua_State *L);
-static int bridge_eval(lua_State *L);
 static int bridge_tabview(lua_State *L);
 static int bridge_segmented_control(lua_State *L);
 static int bridge_watch_file(lua_State *L);
@@ -79,10 +77,6 @@ static int bridge_AppKit_table_cell_frames(lua_State *L) {
 
 static int bridge_AppKit_toolbar_item(lua_State *L) {
 	return bridge_toolbar_item(L);
-}
-
-static int bridge_AppKit_canvas_toolbar_items(lua_State *L) {
-	return bridge_canvas_toolbar_items(L);
 }
 
 static int bridge_AppKit_window(lua_State *L) {
@@ -151,10 +145,6 @@ static int bridge_AppKit_symbol_toggle(lua_State *L) {
 
 static int bridge_AppKit_symbol_button(lua_State *L) {
 	return bridge_symbol_button(L);
-}
-
-static int bridge_AppKit_eval(lua_State *L) {
-	return bridge_eval(L);
 }
 
 static int bridge_AppKit_tabview(lua_State *L) {

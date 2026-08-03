@@ -44,27 +44,29 @@ function Controller.new()
 end
 
 function Controller:refresh()
-	self.weatherData = {}
-	local rows = {}
+	ns.async(function()
+		self.weatherData = {}
+		local rows = {}
 
-	for _, city in ipairs(Model.cities) do
-		local data = Model.fetchCity(city)
-		self.weatherData[city.name] = data
-		rows[#rows + 1] = {
-			_id = city.name,
-			city = city.name,
-			temp = data and (string.format("%.0f", data.temp) .. "°C") or "--",
-			cond = data and data.cond or "unreachable",
-			humid = data and (data.humid .. "%") or "--",
-			wind = data and (data.wind .. " km/h") or "--",
-		}
-	end
+		for _, city in ipairs(Model.cities) do
+			local data = Model.fetchCity(city)
+			self.weatherData[city.name] = data
+			rows[#rows + 1] = {
+				_id = city.name,
+				city = city.name,
+				temp = data and (string.format("%.0f", data.temp) .. "°C") or "--",
+				cond = data and data.cond or "unreachable",
+				humid = data and (data.humid .. "%") or "--",
+				wind = data and (data.wind .. " km/h") or "--",
+			}
+		end
 
-	self.weatherList:replaceRows(rows)
+		self.weatherList:replaceRows(rows)
 
-	if self.selectedCity then
-		self:showDetail(self.weatherData[self.selectedCity], self.selectedCity)
-	end
+		if self.selectedCity then
+			self:showDetail(self.weatherData[self.selectedCity], self.selectedCity)
+		end
+	end)
 end
 
 function Controller:showDetail(data, cityName)

@@ -46,7 +46,6 @@ enum {
 	kSplitPaneFrameObserverKey,
 	kSplitProportionsKey,
 	kSplitProportionsAppliedKey,
-	kCanvasToolbarItemsKey,
 	kColumnFlexKey,
 	kTabViewDelegateKey,
 	kTableScrollViewKey,
@@ -217,7 +216,6 @@ static const luaL_Reg bridge_lib[] = {
 	{"_tableColumnWidths", bridge_AppKit_table_column_widths},
 	{"_tableCellFrames", bridge_AppKit_table_cell_frames},
 	{"_toolbar_item", bridge_AppKit_toolbar_item},
-	{"_canvas_toolbar_items", bridge_AppKit_canvas_toolbar_items},
 	{"_window", bridge_AppKit_window},
 	{"_setWindowWorkspace", bridge_AppKit_set_window_workspace},
 	{"_image", bridge_AppKit_image},
@@ -235,7 +233,6 @@ static const luaL_Reg bridge_lib[] = {
 	{"_textView", bridge_AppKit_text_view},
 	{"_symbolToggle", bridge_AppKit_symbol_toggle},
 	{"_symbolButton", bridge_AppKit_symbol_button},
-	{"_eval", bridge_AppKit_eval},
 	{"_tabview", bridge_AppKit_tabview},
 	{"_segmentedControl", bridge_AppKit_segmented_control},
 	{"_watchFile", bridge_AppKit_watch_file},
@@ -425,19 +422,10 @@ int lua_objc_main(int argc, char *argv[]) {
 	}
 
 	if (preview_mode) {
-		/* --preview: eval the script in canvas mode, render to PNG, write out. */
-		lua_State *C = canvas_state_create();
-		if (!C) {
-			fprintf(stderr, "preview: failed to create canvas state\n");
-			return 1;
-		}
-
-	/* Read the file into a string so we can pass it through bridge_eval's
-		 * canvas wrapper (which intercepts ns.Window → ns.VStack). */
+		/* --preview: eval the script in the main state, render to PNG. */
 		FILE *fp = fopen(script, "r");
 		if (!fp) {
 			fprintf(stderr, "preview: cannot open %s\n", script);
-			lua_close(C);
 			return 1;
 		}
 		fseek(fp, 0, SEEK_END);
@@ -460,23 +448,21 @@ int lua_objc_main(int argc, char *argv[]) {
 			code);
 		free(code);
 
-		if (luaL_loadstring(C, wrapped) != LUA_OK ||
-			lua_pcall(C, 0, 1, 0) != LUA_OK) {
-			report_lua_error(C, "preview");
+		if (luaL_loadstring(L, wrapped) != LUA_OK ||
+			lua_pcall(L, 0, 1, 0) != LUA_OK) {
+			report_lua_error(L, "preview");
 			free(wrapped);
-			lua_close(C);
 			return 1;
 		}
 		free(wrapped);
 
 		id resultObj = nil;
-		ObjCRef *ref = luaL_testudata(C, -1, "nsview");
-		if (!ref) ref = luaL_testudata(C, -1, "nswindow");
+		ObjCRef *ref = luaL_testudata(L, -1, "nsview");
+		if (!ref) ref = luaL_testudata(L, -1, "nswindow");
 		if (ref) resultObj = (__bridge id)ref->ptr;
 
 		if (!resultObj || ![resultObj isKindOfClass:[NSView class]]) {
 			fprintf(stderr, "preview: script did not return a view\n");
-			lua_close(C);
 			return 1;
 		}
 
@@ -485,7 +471,7 @@ int lua_objc_main(int argc, char *argv[]) {
 		layout_recursive(view, preview_width);
 
 		NSData *png = offscreen_render(view, preview_width, preview_height);
-		lua_close(C);
+		lua_settop(L, 0);
 
 		if (!png) {
 			fprintf(stderr, "preview: render failed\n");

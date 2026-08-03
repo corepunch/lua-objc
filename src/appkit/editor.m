@@ -249,5 +249,3 @@ static int bridge_symbol_toggle(lua_State *L) {
 	push_objc(L, btn, "nsview");
 	return 1;
 }
-
-#include "canvas_eval.m"

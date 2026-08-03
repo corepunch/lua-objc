@@ -233,33 +233,6 @@ static int bridge_toolbar_item(lua_State *L) {
 	return 1;
 }
 
-/* Return the canvas toolbar items stored on a canvas content view as a Lua
- * array of item tables (each with icon/label/tooltip string keys), or nil.
- * The items were extracted from the user code's Window.toolbar in the canvas
- * state and stored as an NSArray of NSDictionary via canvas_eval.m. */
-static int bridge_canvas_toolbar_items(lua_State *L) {
-	NSView *view = check_view(L, 1);
-	NSArray<NSDictionary *> *items = objc_getAssociatedObject(view, &kKeys[kCanvasToolbarItemsKey]);
-	if (!items || items.count == 0) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	lua_newtable(L);
-	int i = 1;
-	for (NSDictionary *dict in items) {
-		lua_newtable(L);
-		NSString *icon = dict[@"icon"];
-		NSString *label = dict[@"label"];
-		NSString *tooltip = dict[@"tooltip"];
-		if (icon)    { lua_pushstring(L, icon.UTF8String);    lua_setfield(L, -2, "icon"); }
-		if (label)   { lua_pushstring(L, label.UTF8String);   lua_setfield(L, -2, "label"); }
-		if (tooltip) { lua_pushstring(L, tooltip.UTF8String); lua_setfield(L, -2, "tooltip"); }
-		lua_rawseti(L, -2, i++);
-	}
-	return 1;
-}
-
 static int bridge_tableview_add(lua_State *L) {
 	id obj = check_objc(L, 1);
 	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);

@@ -65,13 +65,13 @@ end
 
 local function defaultSource()
 	return [=[
--- Try changing the text and see it update in the canvas
+-- A simple text editor example
 return ns.VStack {
 	padding = 16,
 	alignment = "leading",
 	ns.Title "Hello, lua-objc",
 	ns.Text {
-		"Edit the code on the left. The canvas updates as you type.",
+		"Edit the code on the left.",
 		size = 13,
 		color = "secondary",
 	},
@@ -107,7 +107,6 @@ function Source.open(folder, app, initialFile)
 				local updated = readFile(path)
 				if not updated then return end
 				editor.textView.text = updated
-				editor.evaluate(updated)
 			end)
 		end
 
@@ -133,7 +132,6 @@ function Source.open(folder, app, initialFile)
 			editor = editor,
 			path = path,
 		}
-		editor.evaluate(content or "")
 		return window
 	end
 
@@ -157,14 +155,12 @@ function Source.open(folder, app, initialFile)
 			local updated = readFile(path)
 			if not updated then return end
 			document.editor.textView.text = updated
-			document.editor.evaluate(updated)
 		end
 
 		document.editor.textView.text = content
 		document.editor.textView.language = "lua"
 		primaryWindow.title = path:match("([^/\\]+)$") or path
 		bridge._watchFile(path, reload)
-		document.editor.evaluate(content)
 		document.path = path
 		ns.selectWindowTab(primaryWindow)
 		recordFile(path)

@@ -705,3 +705,12 @@ static int bridge_system_color(lua_State *L) {
 	push_objc(L, color, "nsobject");
 	return 1;
 }
+
+static int bridge_NSView_clearContainer_impl(lua_State *L) {
+	NSView *container = check_view(L, 1);
+	for (NSView *sub in [container.subviews copy]) {
+		[sub removeFromSuperview];
+	}
+	layout_recursive(container, container.bounds.size.width);
+	return 0;
+}

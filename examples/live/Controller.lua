@@ -43,37 +43,39 @@ function Controller.new()
 end
 
 function Controller:refresh()
-	self.stockData = {}
-	local rows = {}
+	ns.async(function()
+		self.stockData = {}
+		local rows = {}
 
-	for _, symbol in ipairs(Model.symbols) do
-		local data = Model.fetchStock(symbol)
-		self.stockData[symbol] = data
-		if data then
-			local arrow = data.changePct >= 0 and "▲" or "▼"
-			rows[#rows + 1] = {
-				_id = symbol,
-				symbol = symbol,
-				name = data.name,
-				price = string.format("$%.2f", data.price),
-				change = arrow .. " " .. string.format("%.2f%%", math.abs(data.changePct)),
-			}
-		else
-			rows[#rows + 1] = {
-				_id = symbol,
-				symbol = symbol,
-				name = symbol,
-				price = "--",
-				change = "—",
-			}
+		for _, symbol in ipairs(Model.symbols) do
+			local data = Model.fetchStock(symbol)
+			self.stockData[symbol] = data
+			if data then
+				local arrow = data.changePct >= 0 and "▲" or "▼"
+				rows[#rows + 1] = {
+					_id = symbol,
+					symbol = symbol,
+					name = data.name,
+					price = string.format("$%.2f", data.price),
+					change = arrow .. " " .. string.format("%.2f%%", math.abs(data.changePct)),
+				}
+			else
+				rows[#rows + 1] = {
+					_id = symbol,
+					symbol = symbol,
+					name = symbol,
+					price = "--",
+					change = "—",
+				}
+			end
 		end
-	end
 
-	self.stockList:replaceRows(rows)
+		self.stockList:replaceRows(rows)
 
-	if self.selectedSymbol then
-		self:showDetail(self.stockData[self.selectedSymbol])
-	end
+		if self.selectedSymbol then
+			self:showDetail(self.stockData[self.selectedSymbol])
+		end
+	end)
 end
 
 local function fmt(val, dec)

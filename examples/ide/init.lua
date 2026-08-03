@@ -1,1 +1,1 @@
-return require("examples.IDEKit")
+return require("examples.ide.Controller")

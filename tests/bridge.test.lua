@@ -10,8 +10,6 @@ local NativeControlsPlugin = require("examples.IDEKit.plugins.NativeControls")
 local RecentState = require("examples.IDEKit.state.Recent")
 local FindInFiles = require("examples.IDEKit.FindInFiles")
 local EditorArea = require("examples.IDEKit.EditorArea")
-local PreviewArea = require("examples.IDEKit.PreviewArea")
-local canvasMod = require("examples.IDEKit.Canvas")
 
 local publicSize = ns.Size(12, 34)
 t.assertEqual(publicSize.width, 12,
@@ -226,20 +224,12 @@ t.assertEqual(spaced.paddingHorizontal, 12, "horizontal padding is retained")
 t.assertEqual(spaced.paddingVertical, 7, "vertical padding is retained")
 
 -- Each native document window uses NSSplitViewController's semantic sidebar.
--- AppKit owns the window tab group; each document owns its nested code/canvas
--- NSSplitView.
 
 local navigatorArea = ns.VStack {
 	ns.Text { "Files", flexGrow = 1 },
 }
-local previewArea, rebuildPreviewToolbar = PreviewArea.show {
-	title = "CANVAS",
-	content = canvasMod.Canvas(),
-}
 local editorArea = EditorArea {
-	title = "SOURCE EDITOR",
-	editor = ns.Text "A very wide editor surface",
-	preview = previewArea,
+	language = "lua",
 }
 local workspaceWindow = ns.Window {
 	width = 1100,
@@ -247,16 +237,13 @@ local workspaceWindow = ns.Window {
 	visible = false,
 	sidebarWidth = 240,
 	sidebar = navigatorArea,
-	content = editorArea,
+	content = editorArea.view,
 }
 local navigatorWidth = navigatorArea.size.width
-local editorWidth = editorArea.size.width
-local previewWidth = previewArea.size.width
+local editorWidth = editorArea.view.size.width
 t.expect(navigatorWidth > 0, "IDE navigator split pane has a usable width")
 t.expect(editorWidth > 0,
 	"IDE editor split pane has a usable native width")
-t.expect(previewWidth > 0,
-	"IDE canvas split pane is visible initially")
 local workspaceState = workspaceWindow:workspaceState()
 t.assertEqual(workspaceState.controllerClass, "NSSplitViewController",
 	"IDE workspace is owned by NSSplitViewController")
@@ -317,15 +304,6 @@ t.assertEqual(sourceTree.className, "NSScrollView",
 	"source list leaves sidebar material to NSSplitViewController")
 t.expect(not sourceTree.drawsBackground,
 	"source list remains transparent over native sidebar glass")
-
-t.assertEqual(editorArea.className, "NSSplitView",
-	"source editor owns a nested native split view")
-t.expect(previewArea.clipsToBounds, "IDE canvas pane clips content at its divider")
-rebuildPreviewToolbar({
-	{ icon = "play.fill", tooltip = "Run" },
-})
-t.expect(previewWidth > 0,
-	"document-local preview toolbar rebuild preserves canvas geometry")
 
 local segmented = bridge._segmentedControl({
 	{ "folder", "Files" },
@@ -721,97 +699,11 @@ local cyclicOk = pcall(function()
 	valueCarrier.objectValue = cyclic
 end)
 t.expect(not cyclicOk, "cyclic Lua tables are rejected at the native boundary")
-t.assertEqual(valueCarrier.objectValue, "unchanged",
+	t.assertEqual(valueCarrier.objectValue, "unchanged",
 	"failed conversion does not mutate unrelated native state")
 
--- Canvas eval: ns.Window{...} without `return` must produce a view
-
-local bridge_raw = require("AppKitNative")
-
-local view1, err1 = bridge_raw._eval("local ns=require('AppKit'); ns.Window { ns.Text 'hi' }", true)
-t.expect(err1 == nil, "canvas eval: Window without return has no error")
-t.expect(view1 ~= nil, "canvas eval: Window without return produces a view")
-
--- Canvas eval: explicit return still works
-
-local view2, err2 = bridge_raw._eval("local ns=require('AppKit'); return ns.VStack { ns.Text 'hi' }", true)
-t.expect(err2 == nil, "canvas eval: explicit return has no error")
-t.expect(view2 ~= nil, "canvas eval: explicit return produces a view")
-
--- Canvas eval: ns.Preview{...} without `return` produces a view
-
-local view3, err3 = bridge_raw._eval("local ns=require('AppKit'); ns.Preview { ns.Text 'preview' }", true)
-t.expect(err3 == nil, "canvas eval: Preview without return has no error")
-t.expect(view3 ~= nil, "canvas eval: Preview without return produces a view")
-
--- Canvas eval: ns.Preview with content function
-
-local view4, err4 = bridge_raw._eval(
-	"local ns=require('AppKit'); ns.Preview { content = function() return ns.Text 'hello' end }",
-	true)
-t.expect(err4 == nil, "canvas eval: Preview with content fn has no error")
-t.expect(view4 ~= nil, "canvas eval: Preview with content fn produces a view")
-
--- A preview is inserted after the IDE workspace has already sized its canvas.
--- Native tables begin at 400 px, so a fixed split pane must establish its
--- requested width before NSSplitView preserves those construction frames.
-local mailCanvas = canvasMod.Canvas()
-local mailWorkspace = ns.Window {
-	width = 1024,
-	height = 768,
-	visible = false,
-	sidebarWidth = 240,
-	sidebar = ns.Text "Files",
-	content = ns.TextEditor { language = "lua" },
-	detail = mailCanvas,
-}
-local mailFile = assert(io.open("examples/mail.lua", "r"))
-local mailCode = mailFile:read("*a")
-mailFile:close()
-local mailPreview, mailError = bridge_raw._eval(mailCode, true)
-t.expect(mailError == nil, "mail preview evaluates in the IDE canvas")
-t.expect(mailPreview ~= nil, "mail preview returns its embedded content")
-mailCanvas:add(mailPreview)
-mailCanvas:layout()
-local mailSplit = mailPreview.subviews[1]
-local mailPanes = mailSplit.arrangedSubviews
-t.expect(mailCanvas.size.width < 600,
-	"mail regression mounts in a constrained IDE detail pane")
-t.assertEqual(mailPanes[1].size.width, 170,
-	"IDE-mounted mail split honors the mailbox fixed width")
-t.expect(mailPanes[2].size.width > 200,
-	"IDE-mounted mail split leaves usable room for messages")
-
-mailWorkspace.size = ns.Size(1800, 1000)
-mailWorkspace:layout()
-mailPanes = mailSplit.arrangedSubviews
-t.assertEqual(mailPanes[1].size.width, 170,
-	"mailbox width survives an outer editor/canvas resize")
-t.expect(mailPanes[2].size.width > 800,
-	"message pane absorbs the wider IDE canvas")
-
--- Canvas eval: syntax error returns an error string, not a crash
-
-local view5, err5 = bridge_raw._eval("this is not valid lua !!!!", true)
-t.expect(view5 == nil, "canvas eval: syntax error yields nil view")
-t.expect(err5 ~= nil, "canvas eval: syntax error yields error string")
-
--- Canvas eval: runtime error returns an error string
-
-local view6, err6 = bridge_raw._eval("error('boom')", true)
-t.expect(view6 == nil, "canvas eval: runtime error yields nil view")
-t.expect(err6 ~= nil, "canvas eval: runtime error yields error string")
-
--- ns.Window is restored after canvas eval (not permanently replaced)
-
-local ns_check = require("AppKit")
-t.expect(type(ns_check.Window) == "function", "AppKit.Window is still a function after canvas eval")
-t.expect(type(ns_check.Preview) == "function", "AppKit.Preview is still a function after canvas eval")
-
 -- Table columns resize proportionally when the table view is laid out at
--- a narrower width than its creation width. This mirrors the IDE canvas
--- embedding pattern: a 640-wide table must keep all columns visible when
--- squeezed into a 450-wide preview pane.
+-- a narrower width than its creation width.
 local tableList = ns.List {
 	width = 640,
 	height = 200,

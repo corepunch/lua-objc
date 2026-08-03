@@ -98,10 +98,8 @@ t.assertEqual(sourceWindow.tabbingIdentifier, "lua-objc.ide:examples/IDEKit/",
 local sourceWorkspaceState = sourceWindow:workspaceState()
 t.expect(sourceWorkspaceState.nativeSidebar,
 	"source workspace uses AppKit's semantic floating sidebar")
-t.assertEqual(sourceWorkspaceState.itemCount, 3,
-	"source editor and preview use sibling native split items")
-t.expect(sourceWorkspaceState.tracksContentDivider,
-	"editor divider continues through the native toolbar")
+t.assertEqual(sourceWorkspaceState.itemCount, 2,
+	"source editor uses sidebar and content split items")
 t.expect(sourceWorkspaceState.hasSidebarToggle,
 	"source workspace has AppKit's standard sidebar toggle")
 t.expect(sourceWorkspaceState.tracksSidebarDivider,
