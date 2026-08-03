@@ -1,85 +1,38 @@
 local App = require("App")
+local xml = require("ui.xml")
 
 local Model = {}
 
-local function decodeXMLText(value)
-	if type(value) ~= "string" or value == "" then return value end
-	value = value:gsub("&#x([%da-fA-F]+);", function(hex)
-		local code = tonumber(hex, 16)
-		return code and utf8.char(code) or "&#x" .. hex .. ";"
-	end)
-	value = value:gsub("&#(%d+);", function(decimal)
-		local code = tonumber(decimal, 10)
-		return code and utf8.char(code) or "&#" .. decimal .. ";"
-	end)
-	return (value
-		:gsub("&quot;", '"')
-		:gsub("&apos;", "'")
-		:gsub("&lt;", "<")
-		:gsub("&gt;", ">")
-		:gsub("&amp;", "&"))
-end
-
-local function parseAttrs(attrText)
-	local attrs = {}
-	for key, value in attrText:gmatch('([%w_:%-]+)%s*=%s*"([^"]*)"') do
-		attrs[key] = decodeXMLText(value)
-	end
-	for key, value in attrText:gmatch("([%w_:%-]+)%s*=%s*'([^']*)'") do
-		attrs[key] = decodeXMLText(value)
-	end
-	return attrs
-end
-
-local function readFile(path)
-	local file = assert(io.open(path, "r"), "mail: cannot open " .. path)
-	local body = file:read("*a")
-	file:close()
-	return body
-end
-
-local function parseBody(messageXML)
-	local cdata = messageXML:match("<body>%s*<!%[CDATA%[(.-)%]%]>%s*</body>")
-	if cdata then return cdata end
-	local body = messageXML:match("<body>%s*(.-)%s*</body>")
-	return decodeXMLText(body or "")
-end
-
-local function parseMailboxes(xml)
-	local mailboxes = {}
-	for attrText in xml:gmatch("<mailbox%s+([^>/]-)%s*/>") do
-		local attrs = parseAttrs(attrText)
-		mailboxes[#mailboxes + 1] = {
-			id = attrs.id,
-			name = attrs.name,
-			icon = attrs.icon,
-			count = tonumber(attrs.count) or 0,
-		}
-	end
-	return mailboxes
-end
-
-local function parseMessages(xml)
-	local messages = {}
-	for attrText, inner in xml:gmatch("<message%s+([^>]-)%s*>(.-)</message>") do
-		local attrs = parseAttrs(attrText)
-		messages[#messages + 1] = {
-			id = tonumber(attrs.id),
-			mailbox = attrs.mailbox,
-			from = attrs.from,
-			initials = attrs.initials,
-			subject = attrs.subject,
-			preview = attrs.preview,
-			date = attrs.date,
-			unread = attrs.unread == "true",
-			body = parseBody(inner),
-		}
-	end
-	table.sort(messages, function(a, b)
-		return (a.id or 0) < (b.id or 0)
-	end)
-	return messages
-end
+local mailSchema = {
+	root = "mail",
+	fields = {
+		mailboxes = {
+			path = "mailboxes/mailbox",
+			array = true,
+			fields = {
+				id = { attr = "id", type = "string" },
+				name = { attr = "name", type = "string" },
+				icon = { attr = "icon", type = "string" },
+				count = { attr = "count", type = "number", default = 0 },
+			},
+		},
+		messages = {
+			path = "messages/message",
+			array = true,
+			fields = {
+				id = { attr = "id", type = "number" },
+				mailbox = { attr = "mailbox", type = "string" },
+				from = { attr = "from", type = "string" },
+				initials = { attr = "initials", type = "string" },
+				subject = { attr = "subject", type = "string" },
+				preview = { attr = "preview", type = "string" },
+				date = { attr = "date", type = "string" },
+				unread = { attr = "unread", type = "boolean", default = false },
+				body = { path = "body", text = true, type = "string", default = "" },
+			},
+		},
+	},
+}
 
 local function syncMailboxCounts()
 	local byId = {}
@@ -95,9 +48,12 @@ local function syncMailboxCounts()
 end
 
 local function loadData()
-	local xml = readFile(App.sharePath("messages.xml"))
-	local mailboxes = parseMailboxes(xml)
-	local messages = parseMessages(xml)
+	local data = xml.decodeFile(App.sharePath("messages.xml"), mailSchema)
+	local mailboxes = data.mailboxes or {}
+	local messages = data.messages or {}
+	table.sort(messages, function(a, b)
+		return (a.id or 0) < (b.id or 0)
+	end)
 	assert(#mailboxes > 0, "mail: expected at least one mailbox in share/messages.xml")
 	assert(#messages > 0, "mail: expected at least one message in share/messages.xml")
 	return mailboxes, messages

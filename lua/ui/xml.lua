@@ -53,7 +53,11 @@ local function parseAttrs(attrStr)
     return attrs
 end
 
-local function parseXML(src)
+local function parseXML(src, opts)
+    opts = opts or {}
+    local trimText = opts.trimText ~= false
+    local decodeText = opts.decodeText ~= false
+
     local nodes = {}
     local stack = { { tag = "__root__", attrs = {}, children = nodes } }
 
@@ -62,8 +66,13 @@ local function parseXML(src)
 
     local function current() return stack[#stack] end
 
-    local function pushText(text)
-        text = text:match("^%s*(.-)%s*$")
+    local function pushText(text, isCdata)
+        if not isCdata and decodeText then
+            text = decodeXMLText(text)
+        end
+        if trimText and not isCdata then
+            text = text:match("^%s*(.-)%s*$")
+        end
         if #text > 0 then
             current().children[#current().children + 1] = { kind = "text", value = text }
         end
@@ -84,6 +93,23 @@ local function parseXML(src)
         if src:sub(lt, lt + 3) == "<!--" then
             local ce = src:find("-->", lt + 4, true)
             pos = ce and (ce + 3) or (len + 1)
+
+        -- CDATA block
+        elseif src:sub(lt, lt + 8) == "<![CDATA[" then
+            local ce = src:find("]]>", lt + 9, true)
+            if not ce then error("xml: unclosed CDATA near pos " .. lt) end
+            pushText(src:sub(lt + 9, ce - 1), true)
+            pos = ce + 3
+
+        -- processing instruction
+        elseif src:sub(lt, lt + 1) == "<?" then
+            local pe = src:find("?>", lt + 2, true)
+            pos = pe and (pe + 2) or (len + 1)
+
+        -- doctype/declaration
+        elseif src:sub(lt, lt + 8):upper() == "<!DOCTYPE" then
+            local de = src:find(">", lt + 9, true)
+            pos = de and (de + 1) or (len + 1)
 
         -- closing tag
         elseif src:sub(lt + 1, lt + 1) == "/" then
@@ -115,6 +141,174 @@ local function parseXML(src)
     end
 
     return nodes
+end
+
+-- ── XML data decoding (schema-driven) ─────────────────────────────────────
+
+local function splitPath(path)
+    local parts = {}
+    for seg in tostring(path):gmatch("[^/]+") do
+        if seg ~= "" and seg ~= "." then parts[#parts + 1] = seg end
+    end
+    return parts
+end
+
+local function elementChildren(node)
+    local out = {}
+    for _, child in ipairs(node.children or {}) do
+        if child.kind == "element" then out[#out + 1] = child end
+    end
+    return out
+end
+
+local function selectNodes(node, path)
+    if not path or path == "" or path == "." then
+        return { node }
+    end
+    local current = { node }
+    for _, seg in ipairs(splitPath(path)) do
+        local nextNodes = {}
+        for _, parent in ipairs(current) do
+            for _, child in ipairs(parent.children or {}) do
+                if child.kind == "element" and child.tag == seg then
+                    nextNodes[#nextNodes + 1] = child
+                end
+            end
+        end
+        current = nextNodes
+        if #current == 0 then break end
+    end
+    return current
+end
+
+local function collectText(node)
+    local parts = {}
+    local function walk(n)
+        for _, child in ipairs(n.children or {}) do
+            if child.kind == "text" then
+                parts[#parts + 1] = child.value
+            elseif child.kind == "element" then
+                walk(child)
+            end
+        end
+    end
+    walk(node)
+    return table.concat(parts)
+end
+
+local function toBoolean(value)
+    if type(value) == "boolean" then return value end
+    if value == nil then return nil end
+    local s = tostring(value):lower()
+    if s == "true" or s == "1" or s == "yes" then return true end
+    if s == "false" or s == "0" or s == "no" then return false end
+    return nil
+end
+
+local function coerceType(value, typeName)
+    if value == nil or typeName == nil then return value end
+    if type(typeName) == "function" then return typeName(value) end
+
+    if typeName == "string" then return tostring(value) end
+    if typeName == "number" then return tonumber(value) end
+    if typeName == "integer" then
+        local n = tonumber(value)
+        if not n then return nil end
+        local i = math.tointeger and math.tointeger(n) or (n % 1 == 0 and n or nil)
+        return i
+    end
+    if typeName == "boolean" then return toBoolean(value) end
+    return value
+end
+
+local function normalizeFieldSpec(spec)
+    if type(spec) == "string" then
+        if spec:sub(1, 1) == "@" then
+            return { attr = spec:sub(2) }
+        end
+        if spec == "#text" then
+            return { text = true }
+        end
+        return { path = spec, text = true }
+    end
+    return spec
+end
+
+local decodeWithSchema
+
+local function decodeScalar(node, spec)
+    local target = node
+    if spec.path then
+        target = selectNodes(node, spec.path)[1]
+    end
+
+    local value
+    if target then
+        if spec.attr then
+            value = target.attrs and target.attrs[spec.attr] or nil
+        else
+            value = collectText(target)
+            if spec.trim ~= false and type(value) == "string" then
+                value = value:match("^%s*(.-)%s*$")
+            end
+            if spec.text == false then value = nil end
+        end
+    end
+
+    value = coerceType(value, spec.type)
+    if value == nil and spec.default ~= nil then return spec.default end
+    return value
+end
+
+decodeWithSchema = function(node, spec)
+    spec = normalizeFieldSpec(spec)
+    if type(spec) ~= "table" then return spec end
+
+    if spec.array then
+        local nodes
+        if spec.path then
+            nodes = selectNodes(node, spec.path)
+        elseif spec.tag then
+            nodes = selectNodes(node, spec.tag)
+        else
+            nodes = elementChildren(node)
+        end
+
+        local itemSpec
+        if spec.of ~= nil then
+            itemSpec = spec.of
+        elseif spec.fields ~= nil then
+            itemSpec = { fields = spec.fields }
+        else
+            itemSpec = { text = true, type = spec.type }
+        end
+
+        local out = {}
+        for _, child in ipairs(nodes) do
+            out[#out + 1] = decodeWithSchema(child, itemSpec)
+        end
+        if #out == 0 and spec.default ~= nil then return spec.default end
+        return out
+    end
+
+    if spec.fields then
+        local target = node
+        if spec.path then
+            target = selectNodes(node, spec.path)[1]
+        end
+        if not target then
+            if spec.default ~= nil then return spec.default end
+            return nil
+        end
+
+        local out = {}
+        for key, fieldSpec in pairs(spec.fields) do
+            out[key] = decodeWithSchema(target, fieldSpec)
+        end
+        return out
+    end
+
+    return decodeScalar(node, spec)
 end
 
 -- ── Attribute coercion helpers ────────────────────────────────────────────
@@ -563,6 +757,44 @@ function M.renderFile(path, data, ns)
     data = type(data) == "table" and data or {}
     data.__baseDir = path:match("^(.-)[^/\\]*$")
     return M.render(src, data, ns)
+end
+
+-- Decode XML into Lua tables using a schema.
+--
+-- Schema primitives:
+--   { attr = "id", type = "number" }
+--   { path = "body", text = true, type = "string" }
+--   { path = "messages/message", array = true, fields = { ... } }
+--   { fields = { ... } }
+-- Shorthands:
+--   "@id"    => { attr = "id" }
+--   "#text"  => { text = true }
+--   "a/b"    => { path = "a/b", text = true }
+function M.decode(src, schema)
+    schema = schema or {}
+
+    src = src:gsub("^%s*<%?xml[^?]*%?>%s*", "")
+             :gsub("^%s*<!DOCTYPE[^>]*>%s*", "")
+
+    local nodes = parseXML(src, { trimText = true, decodeText = true })
+    local docRoot = { kind = "element", tag = "__document__", attrs = {}, children = nodes }
+
+    local target = docRoot
+    if schema.root then
+        target = selectNodes(docRoot, schema.root)[1]
+        if not target then
+            error("xml.decode: root path not found: " .. tostring(schema.root))
+        end
+    end
+
+    return decodeWithSchema(target, schema)
+end
+
+function M.decodeFile(path, schema)
+    local f = assert(io.open(path, "r"), "xml.decodeFile: cannot open " .. path)
+    local src = f:read("*a")
+    f:close()
+    return M.decode(src, schema)
 end
 
 -- Expose the registry so callers can add custom tags:

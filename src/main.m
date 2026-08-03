@@ -66,7 +66,7 @@ static lua_State *gL = NULL;
 #define kTableCellImageWidth            16
 #define kTableCellImageTextGap           2
 #define kTableCellImageLeadingInset      0
-#define kTableCellTextLeadingInset       2
+#define kTableCellTextLeadingInset       8
 #define kTableCellTextTrailingInset      8
 #define kTableCellSymbolPointSize       13
 #define kTableColumnMinWidth            40

@@ -1295,10 +1295,73 @@ local view = xml.renderFile("examples/mail/views/Window.etlua", rowData, ns)
 
 -- When XML root is <Window>, returns (config, refs) instead of (view, refs)
 local cfg, refs = xml.renderFile("examples/mail/views/Window.etlua")
+
+-- Decode data XML into Lua tables via schema
+local data = xml.decode(xmlString, schema)
+
+-- Decode from file path
+local data = xml.decodeFile("examples/mail/share/messages.xml", schema)
 ```
 
 The returned value is a single view userdata. When the XML root has multiple
 sibling elements, they are wrapped in a `ns.VStack`.
+
+### Schema-based XML data decoding
+
+`xml.decode` and `xml.decodeFile` parse XML into Lua tables based on a schema,
+so app models can describe structure/types once instead of re-implementing
+attribute parsing, entity decoding, arrays, and CDATA handling.
+
+Supported schema primitives:
+
+- `root = "a/b"` — select the document root path before decoding fields.
+- `fields = { ... }` — object mapping.
+- `array = true` + `path = "x/y"` — collect many child elements.
+- `attr = "name"` — read an attribute value.
+- `text = true` — read element text content.
+- `type = "string" | "number" | "integer" | "boolean"` — type coercion.
+- `default = value` — fallback when value is missing or coercion fails.
+
+String field shorthands:
+
+- `"@id"` is equivalent to `{ attr = "id" }`.
+- `"#text"` is equivalent to `{ text = true }`.
+- `"body/title"` is equivalent to `{ path = "body/title", text = true }`.
+
+Example (mail data):
+
+```lua
+local xml = require("ui.xml")
+
+local schema = {
+  root = "mail",
+  fields = {
+    mailboxes = {
+      path = "mailboxes/mailbox",
+      array = true,
+      fields = {
+        id = "@id",
+        name = "@name",
+        count = { attr = "count", type = "number", default = 0 },
+      },
+    },
+    messages = {
+      path = "messages/message",
+      array = true,
+      fields = {
+        id = { attr = "id", type = "number" },
+        unread = { attr = "unread", type = "boolean", default = false },
+        body = { path = "body", text = true, default = "" },
+      },
+    },
+  },
+}
+
+local data = xml.decodeFile("examples/mail/share/messages.xml", schema)
+```
+
+This API decodes XML entities in attributes/text and preserves multiline CDATA
+content when extracting text fields.
 
 ## MVP app structure
 

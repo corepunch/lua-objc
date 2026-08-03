@@ -8,6 +8,41 @@ local ACTIONS = {
 	compose = function(self) self:compose() end,
 }
 
+local function buildMailboxList()
+	return ns.List {
+		fixedWidth = 220,
+		flexGrow = 0,
+		style = "sourceList",
+		header = false,
+		alternatingRows = false,
+		columns = {
+			{ id = "name", title = "Mailbox" },
+			{ id = "count", title = "Count", width = 45, alignment = "right" },
+		},
+	}
+end
+
+local function buildMessageList()
+	return ns.List {
+		fixedWidth = 320,
+		minWidth = 260,
+		maxWidth = 420,
+		flexGrow = 0,
+		style = "plain",
+		header = false,
+		alternatingRows = false,
+		columns = {
+			{ id = "from", title = "From" },
+		},
+	}
+end
+
+local function buildDetailPane()
+	return ns.VStack {
+		flexGrow = 1,
+	}
+end
+
 local WindowController = {}
 WindowController.__index = WindowController
 
@@ -45,6 +80,7 @@ end
 
 function WindowController:createWindow()
 	local cfg, refs = xml.renderFile(VIEWS .. "Window.etlua")
+	refs = refs or {}
 
 	for _, item in ipairs(cfg.toolbar or {}) do
 		if item.action and ACTIONS[item.action] then
@@ -53,13 +89,21 @@ function WindowController:createWindow()
 		end
 	end
 
-	self.mailboxList = refs.mailboxList
-	self.messageList = refs.messageList
-	self.detailPane  = refs.detailPane
+	self.mailboxList = buildMailboxList()
+	self.messageList = buildMessageList()
+	self.detailPane  = buildDetailPane()
+	cfg.sidebar = self.mailboxList
+	cfg.content = self.messageList
+	cfg.detail = self.detailPane
 
 	local mailboxRows = {}
 	for _, mb in ipairs(Model.mailboxes) do
-		mailboxRows[#mailboxRows + 1] = { _id = mb.id, name = mb.name, icon = mb.icon }
+		mailboxRows[#mailboxRows + 1] = {
+			_id = mb.id,
+			name = mb.name,
+			count = tostring(mb.count),
+			icon = mb.icon,
+		}
 	end
 	self.mailboxList:replaceRows(mailboxRows)
 

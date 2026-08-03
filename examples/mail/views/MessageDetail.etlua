@@ -1,4 +1,4 @@
-<VStack flexGrow="1" paddingHorizontal="24" paddingVertical="16" spacing="8" alignment="leading">
+<VStack flexGrow="1" paddingHorizontal="24" paddingVertical="8" spacing="8" alignment="leading">
     <VStack spacing="4" alignment="leading" fixedHeight="41">
         <Label text="<%= subject %>" size="18" weight="semibold" lines="1" truncation="tail" />
         <HStack spacing="8" alignment="center">

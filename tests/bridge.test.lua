@@ -1015,7 +1015,7 @@ local cellFrames = bridge._tableCellFrames(mailbox, 0)
 local countFrame = cellFrames[2]
 
 t.assertEqual(countW, 45, "mailbox count column at 45 px (got " .. countW .. ")")
-t.expect(nameW < 125, "mailbox name column reserves native source-list inset")
+t.expect(nameW < 119, "mailbox name column reserves native source-list inset")
 t.assertEqual(countFrame.id, "count", "mailbox second rendered cell is count")
 t.expect(countFrame.maxX <= 170,
 	"mailbox count cell stays inside viewport (maxX " .. countFrame.maxX .. ")")
