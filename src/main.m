@@ -517,6 +517,12 @@ int lua_objc_main(int argc, char *argv[]) {
 	 * Scripts that self-start (creating a window as a side effect) return
 	 * nil or a window — this path is skipped for backward compatibility.
 	 */
+	/*
+	 * require() pushes two values: the module and the filename it was loaded
+	 * from. Pop any trailing non-table values so the class table is on top.
+	 */
+	while (lua_gettop(L) > 0 && !lua_istable(L, -1))
+		lua_pop(L, 1);
 	if (lua_istable(L, -1)) {
 		lua_getfield(L, -1, "new");
 		if (lua_isfunction(L, -1)) {
@@ -527,13 +533,44 @@ int lua_objc_main(int argc, char *argv[]) {
 				lua_getfield(L, -1, "createWindow");
 				if (lua_isfunction(L, -1)) {
 					lua_pushvalue(L, -2);  /* instance as self */
-					if (lua_pcall(L, 1, 0, 0) != LUA_OK) {
+					if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
 						report_lua_error(L, "createWindow");
+					} else {
+						/*
+						 * Keep the launch controller and its window alive for the
+						 * lifetime of the run loop. Many examples store their
+						 * NSWindow and callback closures on the instance, so
+						 * dropping the last Lua root here can deallocate the
+						 * whole window tree before AppKit has a chance to display it.
+						 */
+						lua_pushvalue(L, -2);
+						luaL_ref(L, LUA_REGISTRYINDEX);
+						lua_pushvalue(L, -1);
+						luaL_ref(L, LUA_REGISTRYINDEX);
 					}
 				}
 			}
 		}
 	}
+
+	[NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+	[NSApp finishLaunching];
+	[NSApp unhide:nil];
+	[NSApp activate];
+	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)),
+		dispatch_get_main_queue(), ^{
+		[NSApp unhide:nil];
+		[NSApp activate];
+		for (NSWindow *window in NSApp.windows) {
+			if (window.isVisible) {
+				[window makeKeyAndOrderFront:nil];
+				[window makeKeyWindow];
+				[window makeMainWindow];
+				[window orderFrontRegardless];
+			}
+		}
+	});
+
 	lua_settop(L, 0);
 
 	[NSApp run];

@@ -2,13 +2,22 @@
 
 static int bridge_NSWindow_show_impl(lua_State *L) {
 	NSWindow *w = (__bridge NSWindow *)((ObjCRef *)lua_touserdata(L, 1))->ptr;
-
 	[NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+	[NSApp unhide:nil];
+	[NSApp activate];
 	[w makeKeyAndOrderFront:nil];
+	[w makeKeyWindow];
+	[w makeMainWindow];
+	[w orderFrontRegardless];
 
-	dispatch_async(dispatch_get_main_queue(), ^{
-		[NSApp activateIgnoringOtherApps:YES];
+	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)),
+		dispatch_get_main_queue(), ^{
+		[NSApp unhide:nil];
+		[NSApp activate];
 		[w makeKeyAndOrderFront:nil];
+		[w makeKeyWindow];
+		[w makeMainWindow];
+		[w orderFrontRegardless];
 	});
 
 	return 0;

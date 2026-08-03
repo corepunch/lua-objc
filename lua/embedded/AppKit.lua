@@ -141,12 +141,20 @@ function AppKit.Window(props)
 				addChildren(content, props.content)
 			end
 		end
-		addChildren(content, props)
+		for _, child in ipairs(props) do
+			if type(child) == "userdata" then
+				content:add(child)
+			elseif type(child) == "table" and child.__appkitGroup then
+				addChildren(content, child)
+			end
+		end
 		content:layout(width)
 	end
 
 	if props.visible ~= false and not _G.__headless then
-		win:show()
+		bridge._timerAfter(0, function()
+			win:show()
+		end)
 	end
 	return win
 end
