@@ -69,8 +69,8 @@ run-hello: $(TARGET) $(FRAMEWORK_MODULES)
 run-list: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) examples/list/init.lua
 
-run-live: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) examples/live/init.lua
+run-stocks: $(TARGET) $(FRAMEWORK_MODULES)
+	./$(TARGET) examples/stocks/init.lua
 
 run-weather: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) examples/weather/init.lua

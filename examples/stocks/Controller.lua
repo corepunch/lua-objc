@@ -1,8 +1,8 @@
 local ns    = require("AppKit")
 local xml   = require("ui.xml")
-local Model = require("examples.live.Model")
+local Model = require("examples.stocks.Model")
 
-local VIEWS = "examples/live/views/"
+local VIEWS = "examples/stocks/views/"
 
 local ACTIONS = {
 	refresh = function(self) self:refresh() end,

@@ -637,7 +637,13 @@ end
 
 function AppKit.Curve(props)
 	props = props or {}
-	local data = props.data or {}
+	local raw = props.data or {}
+	local data = {}
+	for _, v in ipairs(raw) do
+		if v ~= nil then
+			data[#data + 1] = v
+		end
+	end
 	if #data < 2 then
 		return AppKit.PathView(props)
 	end

@@ -49,7 +49,13 @@ function Model.fetchStock(symbol)
 	if entry.indicators then
 		local quote = entry.indicators.quote
 		if quote and #quote > 0 and quote[1].close then
-			chartData = quote[1].close
+			local raw = quote[1].close
+			chartData = {}
+			for _, v in ipairs(raw) do
+				if v ~= nil then
+					chartData[#chartData + 1] = v
+				end
+			end
 		end
 	end
 
