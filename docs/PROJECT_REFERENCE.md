@@ -377,6 +377,44 @@ defaults to `true`. A toolbar item with `id = "toggleSidebar"` uses AppKit's
 standard first-responder action. The workspace pairs it with a native tracking
 separator so the button follows the semantic sidebar divider.
 
+#### Sidebar recipe
+
+Use a semantic window sidebar for navigation, and put the source-list table
+inside a small native stack when the sidebar needs a search field or heading.
+The window owns the sidebar width and split geometry; the table only owns its
+rows and selection.
+
+```lua
+local search = ns.TextField {
+    placeholder = "Search",
+    accessibilityLabel = "Search items",
+    onChange = function(query) filterRows(query) end,
+}
+local sourceList = ns.List {
+    flexGrow = 1,
+    style = "sourceList",
+    header = false,
+    columns = {{ id = "name", title = "Name" }},
+}
+local sidebar = ns.VStack {
+    spacing = 12,
+    padding = 12,
+    search,
+    ns.Text { "Navigation", weight = "bold" },
+    sourceList,
+}
+local window = ns.Window {
+    sidebar = sidebar,
+    content = mainContent,
+    sidebarWidth = 240,
+    toolbar = {{ id = "toggleSidebar" }},
+}
+```
+
+This is the pattern used by `examples/mail` and `examples/stocks`. Keep
+`style = "sourceList"` limited to navigation; primary data belongs in a
+`plain` or `fullWidth` table in the content column.
+
 ```lua
 ns.Window {
     title = "My App",
@@ -690,10 +728,9 @@ We chose **#5** because:
 - **`insertRowsAtIndexes:withAnimation:`** — rows slide in one at a time instead
   of flashing the whole table. ObjC gives us this for free; we just need to wrap it.
 - **Column `id` → row dictionary key** — minimal but extensible. Each column's
-  `id` maps directly to a key in the row's `NSDictionary`. For now, cells are
-  `NSTextField`s showing the string value. A future `cell` callback per column
-  (stored in the Lua registry) would enable custom renderers without changing
-  the data model.
+  `id` maps directly to a key in the row's `NSDictionary`. Cells default to
+  native `NSTextField`s; a column may instead provide a `cell(row)` callback
+  that returns any native view.
 - **Methods via `nsview` metatable `__index`** — instead of returning a Lua
   wrapper table (which can't be added as a subview), we attach the data source
   to the scroll view via `objc_setAssociatedObject`. The `nsview` metatable's
@@ -729,6 +766,7 @@ row colors, a header, and a vertical scroller. Table keys:
 | `alternatingRows` | bool | `true` | Alternating row background colors (SwiftUI: `.alternatingRowBackgrounds()`) |
 | `gridLines` | `"none"` `"horizontal"` `"vertical"` `"both"` | `"none"` | Grid line style |
 | `data` | `{{key=val}}` | `{}` | Initial rows (array of string-keyed tables) |
+| `rowHeight` | number | native default | Height of each native table row |
 | `refresh` | `function(list)` | `nil` | See SwiftUI-like async refresh below |
 
 ```lua
@@ -749,7 +787,10 @@ List {
 ```
 
 Each column `id` must match a key in the row data tables. Cells render the
-string value of `row[id]`. Numbers are converted to strings automatically.
+string value of `row[id]`, unless the column has a `cell` callback. A callback
+receives the row table and returns a native view; this supports compact
+two-line rows, inline charts, and other compound native content. Numbers are
+converted to strings automatically.
 Column alignment can be `"leading"` (default), `"center"`, or `"trailing"`;
 the header and reusable native cells use the same alignment.
 
@@ -857,35 +898,9 @@ ns.Window {
 
 ### Extending: custom cell renderers
 
-The current implementation maps column `id` → `row[id]` → `NSTextField`.
-To support custom per-column cell renderers:
-
-1. Add a `cell` key to each column spec — a Lua function stored in the registry.
-2. In `LuaTableViewSource.tableView:viewForTableColumn:row:`, if a column has a
-   registered cell callback, call it with the row dictionary to get a view.
-3. The callback returns userdata (any NSView) which becomes the cell.
-
-The bridge function prototype:
-
-```c
-// In bridge_tableview (src/appkit/controls.m), after creating columns:
-if (lua_getfield(L, -1, "cell") == LUA_TFUNCTION) {
-    int ref = luaL_ref(L, LUA_REGISTRYINDEX);  // store callback
-    // attach ref to the NSTableColumn via associated object
-}
-```
-
-This would let users write:
-
-```lua
-List {
-    columns = {
-        { id = "name", title = "Name" },
-        { id = "avatar", title = "",
-          cell = function(row) return Image(row.avatar_path) end },
-    }
-}
-```
+Custom renderers return native views, not a canvas or a second table
+implementation. Keep their height bounded with `rowHeight`, and let the
+returned stack or control own its internal layout.
 
 ### Dynamic updates at runtime
 
@@ -1030,6 +1045,22 @@ example to suppress `bridge._show(win)`. This lets you verify every example
 parses and constructs its view hierarchy without popping windows. The
 `tests/examples.test.lua` smoke test uses this pattern — add new examples
 to its list when you create them.
+
+### Debugging view frames with `DebugTree`
+
+`lua/DebugTree.lua` dumps the full view hierarchy of a window or any
+view as XML, including each view's frame, absolute position, and parent
+dimensions.  Overlaps and unexpected widths are immediately visible.
+
+```lua
+local dt = require("DebugTree")
+dt.write(window.contentView, "/tmp/layout.xml")
+```
+
+Every `<View>` element records `x`, `y`, `w`, `h` (local frame),
+`parentW`, `parentH` (superview frame), and `absX`, `absY` (cumulative
+origin from the root).  Leaf views self-close; containers nest children
+as `<subN>` elements sorted by subview index.
 
 ## ObjC tricks that make Lua binding shorter (vs C++ or C)
 
