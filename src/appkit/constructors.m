@@ -66,6 +66,14 @@ static int bridge_AppKitControls_textField(lua_State *L) {
 	return 1;
 }
 
+static int bridge_AppKitControls_searchField(lua_State *L) {
+	NSSearchField *obj = [[NSSearchField alloc] initWithFrame:NSZeroRect];
+	obj.bezelStyle = NSTextFieldRoundedBezel;
+	[obj sizeToFit];
+	push_objc(L, obj, "nsview");
+	return 1;
+}
+
 static int bridge_AppKitControls_box(lua_State *L) {
 
 	NSBox *obj = [[NSBox alloc] initWithFrame:NSZeroRect];

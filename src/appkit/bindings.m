@@ -7,6 +7,7 @@ static int bridge_AppKitControls_vsplit(lua_State *L);
 static int bridge_AppKitControls_separator(lua_State *L);
 static int bridge_AppKitControls_spacer(lua_State *L);
 static int bridge_AppKitControls_textField(lua_State *L);
+static int bridge_AppKitControls_searchField(lua_State *L);
 static int bridge_AppKitControls_box(lua_State *L);
 static int bridge_AppKitControls_progressIndicator(lua_State *L);
 static int bridge_AppKitControls_tableCellView(lua_State *L);

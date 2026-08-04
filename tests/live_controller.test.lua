@@ -16,6 +16,7 @@ controller.stockList = {
 	clearRows = function() rows = nil end,
 	replaceRows = function(_, value) rows = value end,
 }
+controller.selectedSymbol = "^IXIC"
 
 -- Run the app coroutine inline so the test can verify its lifecycle without
 -- opening a window or making network requests.
@@ -26,16 +27,23 @@ ns.fetch_json = function()
 			regularMarketPrice = 101,
 			chartPreviousClose = 100,
 			shortName = "Example Corp",
-		} } } },
+		}, timestamp = {1, 2, 3, 4}, indicators = { quote = {{
+			close = {[1] = 100, [3] = 100.5, [4] = 101},
+		}} } } } },
 	}
 end
 
+_G.__headless = false
 controller:refresh()
+_G.__headless = true
 
 t.assertEqual(table.concat(loadingCalls, ","), "show,hide",
 	"refresh starts and stops the native loading indicator")
-t.assertEqual(#rows, 10, "refresh replaces rows after the coroutine completes")
-t.assertEqual(rows[1].price, "$101.00", "refresh formats fetched prices")
+t.assertEqual(#rows, #require("examples.stocks.Model").symbols + 1,
+	"refresh includes Business News and every watchlist row")
+t.assertEqual(rows[2].price, "$101.00", "refresh formats fetched prices")
+t.assertEqual(#controller.stockData["^IXIC"].chartData, 3,
+	"intraday parsing continues after a missing close value")
 
 ns.async = originalAsync
 ns.fetch_json = originalFetchJSON

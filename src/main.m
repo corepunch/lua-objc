@@ -47,6 +47,7 @@ enum {
 	kSplitProportionsKey,
 	kSplitProportionsAppliedKey,
 	kColumnFlexKey,
+	kColumnCellKey,
 	kTabViewDelegateKey,
 	kTableScrollViewKey,
 	kWorkspaceSafeAreaContentKey,
@@ -73,6 +74,8 @@ static lua_State *gL = NULL;
 #define kTableDefaultHeight            200
 #define kTableIntercellSpacingH          3
 #define kTableIntercellSpacingV          2
+#define kLayoutDebugGeometryTolerance  0.75
+#define kLayoutDebugMaxTableRows          4
 #define kOutlineRowHeight              24
 #define kOutlineIndentation            16
 #define kOutlineDefaultWidth           400
@@ -188,6 +191,7 @@ static lua_State *gL = NULL;
 #include "appkit/text_field.m"
 #include "appkit/views.m"
 #include "appkit/layout.m"
+#include "appkit/layout_debug.m"
 #include "appkit/controls.m"
 #include "appkit/outline.m"
 #include "appkit/editor.m"
@@ -208,6 +212,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_separator", bridge_AppKitControls_separator},
 	{"_spacer", bridge_AppKitControls_spacer},
 	{"_textField", bridge_AppKitControls_textField},
+	{"_searchField", bridge_AppKitControls_searchField},
 	{"_box", bridge_AppKitControls_box},
 	{"_progressIndicator", bridge_AppKitControls_progressIndicator},
 	{"_tableCellView", bridge_AppKitControls_tableCellView},
@@ -322,7 +327,10 @@ int lua_objc_main(int argc, char *argv[]) {
 	int preview_mode = 0;
 	CGFloat preview_width = kRenderDefaultWidth;
 	CGFloat preview_height = kRenderDefaultHeight;
+	BOOL layout_width_set = NO;
+	BOOL layout_height_set = NO;
 	const char *preview_out = NULL;
+	const char *layout_out = NULL;
 	const char *script_args[256];
 	int script_arg_count = 0;
 
@@ -331,10 +339,14 @@ int lua_objc_main(int argc, char *argv[]) {
 			preview_mode = 1;
 		} else if (strncmp(argv[i], "--width=", 8) == 0) {
 			preview_width = atof(argv[i] + 8);
+			layout_width_set = YES;
 		} else if (strncmp(argv[i], "--height=", 9) == 0) {
 			preview_height = atof(argv[i] + 9);
+			layout_height_set = YES;
 		} else if (strncmp(argv[i], "--out=", 6) == 0) {
 			preview_out = argv[i] + 6;
+		} else if (strncmp(argv[i], "--dump-layout=", 14) == 0) {
+			layout_out = argv[i] + 14;
 		} else if (strncmp(argv[i], "--appearance=", 13) == 0) {
 			appearance = argv[i] + 13;
 		} else if (strcmp(argv[i], "--appearance") == 0 && i + 1 < argc) {
@@ -495,6 +507,11 @@ int lua_objc_main(int argc, char *argv[]) {
 		return write_ok ? 0 : 1;
 	}
 
+	if (layout_out) {
+		lua_pushboolean(L, 1);
+		lua_setglobal(L, "__headless");
+	}
+
 	if (luaL_dofile(L, script) != LUA_OK) {
 		report_lua_error(L, "script");
 		return 1;
@@ -544,6 +561,20 @@ int lua_objc_main(int argc, char *argv[]) {
 
 	[NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
 	[NSApp finishLaunching];
+	if (layout_out) {
+		NSWindow *window = NSApp.windows.firstObject;
+		if (window && (layout_width_set || layout_height_set)) {
+			NSSize size = window.contentView.bounds.size;
+			if (layout_width_set) size.width = preview_width;
+			if (layout_height_set) size.height = preview_height;
+			[window setContentSize:size];
+		}
+		if (!window || !write_layout_debug_dump(window, layout_out)) {
+			fprintf(stderr, "layout dump: cannot write %s\n", layout_out);
+			return 1;
+		}
+		return 0;
+	}
 	[NSApp unhide:nil];
 	[NSApp activate];
 	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)),

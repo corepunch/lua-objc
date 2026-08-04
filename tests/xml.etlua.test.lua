@@ -50,6 +50,7 @@ t.expect(v ~= nil, "Title creates a view")
 v = render([[<TextField value="Search" placeholder="Type here" />]])
 t.expect(v ~= nil, "TextField creates a view")
 
+
 -- Button
 v = render([[<Button title="Click Me" />]])
 t.expect(v ~= nil, "Button creates a view")

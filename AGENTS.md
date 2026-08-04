@@ -162,6 +162,29 @@ make run ARGS="examples/hello/init.lua"
 ./lua-objc --preview --out=/tmp/preview.png examples/hello/init.lua
 ```
 
+### Inspect computed AppKit layout
+
+Use the native layout dump whenever a macOS view is clipped, misplaced, or
+unexpectedly sized. It launches the app headlessly, forces AppKit and the
+lua-objc layout engine to finish layout, writes the hierarchy, and exits:
+
+```sh
+make
+./lua-objc --dump-layout=/tmp/layout.xml examples/stocks/init.lua
+rg -n 'cropped="true"|outsideParent="true"|contentClipped="true"' /tmp/layout.xml
+
+# Repeat at the app's minimum supported content size.
+./lua-objc --dump-layout=/tmp/layout-small.xml --width=760 --height=468 \
+  examples/stocks/init.lua
+```
+
+The XML is generated automatically by Objective-C; application code must not
+manually construct a diagnostic tree. Each native view records its class,
+computed frame, intrinsic/fitting sizes, clipping state, and relevant text.
+`NSTableView` nodes additionally record computed column widths and visible cell
+text geometry with an explicit `cropped` flag. Inspect the dump before changing
+layout values and again afterward so the diagnosis and fix are both evidenced.
+
 For UI changes, completion requires actual visual QA:
 
 1. Launch every affected example and inspect a screenshot.

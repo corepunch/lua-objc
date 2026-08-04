@@ -385,7 +385,7 @@ The window owns the sidebar width and split geometry; the table only owns its
 rows and selection.
 
 ```lua
-local search = ns.TextField {
+local search = ns.SearchField {
     placeholder = "Search",
     accessibilityLabel = "Search items",
     onChange = function(query) filterRows(query) end,
@@ -666,6 +666,8 @@ state, and result activation all remain in Lua.
 AppKit exposes only reusable primitives:
 
 - `ns.TextField` with `onChange` and normalized `onCommand` callbacks.
+- `ns.SearchField` for the native macOS `NSSearchField` capsule, including
+  AppKit's search icon, clear button, focus ring, and keyboard behavior.
 - `ns.OutlineView` with `replaceRows`, `selectRow`, `onRowSelect`, and
   `onRowActivate`.
 - `ns.Panel`, `ns.present`, `ns.dismiss`, `ns.focus`, and `ns.resizeWindow`.
@@ -1046,21 +1048,26 @@ parses and constructs its view hierarchy without popping windows. The
 `tests/examples.test.lua` smoke test uses this pattern — add new examples
 to its list when you create them.
 
-### Debugging view frames with `DebugTree`
+### Debugging computed AppKit layout
 
-`lua/DebugTree.lua` dumps the full view hierarchy of a window or any
-view as XML, including each view's frame, absolute position, and parent
-dimensions.  Overlaps and unexpected widths are immediately visible.
+The runtime can launch an app headlessly, force native layout, write an
+agent-readable XML hierarchy, and exit without diagnostic code in the app:
 
-```lua
-local dt = require("DebugTree")
-dt.write(window.contentView, "/tmp/layout.xml")
+```sh
+./lua-objc --dump-layout=/tmp/layout.xml examples/stocks/init.lua
+rg -n 'cropped="true"|outsideParent="true"|contentClipped="true"' /tmp/layout.xml
+
+# Override content size to exercise a compact layout.
+./lua-objc --dump-layout=/tmp/layout-small.xml --width=760 --height=468 \
+  examples/stocks/init.lua
 ```
 
-Every `<View>` element records `x`, `y`, `w`, `h` (local frame),
-`parentW`, `parentH` (superview frame), and `absX`, `absY` (cumulative
-origin from the root).  Leaf views self-close; containers nest children
-as `<subN>` elements sorted by subview index.
+Every `<View>` records the Objective-C class, computed frame,
+intrinsic/fitting size, clipping state, and text where relevant. Tables also
+emit `<Column>` and visible `<Cell>` records; cells compare the native label's
+intrinsic width with its final text frame and expose the result as `cropped`.
+This output comes from the post-layout AppKit hierarchy in Objective-C, so
+applications do not manually generate or maintain a second diagnostic tree.
 
 ## ObjC tricks that make Lua binding shorter (vs C++ or C)
 

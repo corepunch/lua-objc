@@ -1,189 +1,215 @@
-local ns    = require("AppKit")
-local xml   = require("ui.xml")
+local ns = require("AppKit")
+local xml = require("ui.xml")
 local Model = require("examples.stocks.Model")
+local Views = require("examples.stocks.views.StockDetail")
 
 local VIEWS = "examples/stocks/views/"
-
-local ACTIONS = {
-	refresh = function(self) self:refresh() end,
+local LAYOUT = {
+	chartWidth = 600,
+	chartHeight = 118,
+	chartLineWidth = 2,
+	chartPadding = 3,
+	searchHeight = 28,
+	rowHeight = 32,
+	symbolMinWidth = 72,
+	priceWidth = 80,
+	priceMinWidth = 72,
+	changeWidth = 70,
+	changeMinWidth = 64,
+	sidebarPaddingHorizontal = 8,
+	sidebarPaddingVertical = 10,
+	sidebarSpacing = 8,
+	sidebarWidth = 324,
+	gainColor = {0.16, 0.68, 0.32},
+	lossColor = {0.86, 0.24, 0.25},
 }
-
-local function buildStockList()
-	return ns.List {
-		flexGrow = 1,
-		style = "fullWidth",
-		alternatingRows = false,
-		columns = {
-			{ id = "symbol", title = "Symbol", width = 100 },
-			{ id = "name", title = "Name", width = 200 },
-			{ id = "price", title = "Price", width = 120, alignment = "right" },
-			{ id = "change", title = "Change", width = 140, alignment = "right" },
-		},
-	}
-end
-
-local function buildDetailPane()
-	return ns.VStack {
-		flexGrow = 1,
-	}
-end
 
 local Controller = {}
 Controller.__index = Controller
 
+local function money(value)
+	if value == nil then return "--" end
+	return string.format("$%.2f", value)
+end
+
+local function compactNumber(value)
+	if value == nil then return "--" end
+	if value >= 1e12 then return string.format("%.2fT", value / 1e12) end
+	if value >= 1e9 then return string.format("%.2fB", value / 1e9) end
+	if value >= 1e6 then return string.format("%.2fM", value / 1e6) end
+	return string.format("%.0f", value)
+end
+
+local function decorate(data)
+	local stock = {}
+	for key, value in pairs(data) do stock[key] = value end
+	stock.priceStr = money(stock.price)
+	stock.openStr = money(stock.open)
+	stock.prevCloseStr = money(stock.prevClose)
+	stock.volumeStr = compactNumber(stock.volume)
+	stock.dayRangeStr = money(stock.dailyLow) .. " – " .. money(stock.dailyHigh)
+	stock.yearRangeStr = money(stock.fiftyTwoWeekLow) .. " – " .. money(stock.fiftyTwoWeekHigh)
+	local gain = (stock.changePct or 0) >= 0
+	stock.changeStr = (gain and "▲ " or "▼ ")
+		.. string.format("%.2f%% Today", math.abs(stock.changePct or 0))
+	stock.changeColor = gain and "systemGreen" or "systemRed"
+	return stock
+end
+
 function Controller.new()
 	return setmetatable({
 		stockList = nil,
+		searchField = nil,
+		sidebar = nil,
 		detailPane = nil,
 		stockData = {},
-		selectedSymbol = nil,
+		selectedSymbol = "^IXIC",
+		query = "",
 		window = nil,
+		chart = nil,
 	}, Controller)
 end
 
-function Controller:refresh()
-	-- The table owns the native indeterminate spinner, just like SwiftUI's
-	-- ProgressView or React Native's ActivityIndicator. Keep the table in place
-	-- while the coroutine suspends for each HTTP request.
-	self.stockList:showLoading()
-	self.stockList:clearRows()
-
-	ns.async(function()
-		local ok, err = pcall(function()
-			self.stockData = {}
-			local rows = {}
-
-			for _, symbol in ipairs(Model.symbols) do
-				local data = Model.fetchStock(symbol)
-				self.stockData[symbol] = data
-				if data then
-					local arrow = data.changePct >= 0 and "▲" or "▼"
-					rows[#rows + 1] = {
-						_id = symbol,
-						symbol = symbol,
-						name = data.name,
-						price = string.format("$%.2f", data.price),
-						change = arrow .. " " .. string.format("%.2f%%", math.abs(data.changePct)),
-					}
-				else
-					rows[#rows + 1] = {
-						_id = symbol,
-						symbol = symbol,
-						name = symbol,
-						price = "--",
-						change = "—",
-					}
-				end
-			end
-
-			self.stockList:replaceRows(rows)
-
-			if self.selectedSymbol then
-				self:showDetail(self.stockData[self.selectedSymbol])
-			end
-		end)
-
-		-- Always stop the native spinner, including when a request or response
-		-- parser fails. A failed refresh leaves the table empty and retryable.
-		self.stockList:hideLoading()
-		if not ok then
-			io.stderr:write("refresh error: " .. tostring(err) .. "\n")
+function Controller:visibleRows()
+	local rows = {{
+		_id = "news",
+		symbol = "Business News",
+		price = "",
+		change = "",
+	}}
+	local query = self.query:lower()
+	for _, symbol in ipairs(Model.symbols) do
+		local data = self.stockData[symbol] or Model.sampleStock(symbol)
+		if query == "" or symbol:lower():find(query, 1, true)
+			or data.name:lower():find(query, 1, true) then
+			local gain = (data.changePct or 0) >= 0
+			rows[#rows + 1] = {
+				_id = symbol,
+				symbol = symbol,
+				price = money(data.price),
+				change = (gain and "▲ " or "▼ ")
+					.. string.format("%.2f%%", math.abs(data.changePct or 0)),
+			}
 		end
-	end)
+	end
+	return rows
 end
 
-local function fmt(val, dec)
-	if val == nil then return "--" end
-	return string.format("$%." .. (dec or 2) .. "f", val)
+function Controller:updateSidebar()
+	self.stockList:replaceRows(self:visibleRows())
 end
 
-local function fmtVolume(val)
-	if val == nil then return "--" end
-	return string.format("%.0f", val)
-end
-
-function Controller:showLoading()
+function Controller:showNews()
 	self.detailPane:clearContainer()
-	local spinner = ns.ProgressView { flexGrow = 1 }
-	self.detailPane:add(ns.VStack {
-		flexGrow = 1,
-		alignment = "center",
-		spinner,
-	})
+	self.detailPane:add(Views.newsPage(Model.news))
 	self.detailPane:layout()
-	spinner:start()
 end
 
 function Controller:showDetail(data)
+	if not data then return end
+	local stock = decorate(data)
+	local gain = (stock.changePct or 0) >= 0
+	self.chart = ns.Curve {
+		data = stock.chartData,
+		width = LAYOUT.chartWidth,
+		height = LAYOUT.chartHeight,
+		fixedHeight = LAYOUT.chartHeight,
+		fillWidth = true,
+		strokeColor = gain and LAYOUT.gainColor or LAYOUT.lossColor,
+		lineWidth = LAYOUT.chartLineWidth,
+		chartPadding = LAYOUT.chartPadding,
+		fillArea = false,
+	}
 	self.detailPane:clearContainer()
-	if data then
-		local stock = {}
-		for k, v in pairs(data) do stock[k] = v end
-		stock.priceStr = fmt(stock.price)
-		stock.openStr = fmt(stock.open)
-		stock.prevCloseStr = fmt(stock.prevClose)
-		stock.dailyHighStr = fmt(stock.dailyHigh)
-		stock.dailyLowStr = fmt(stock.dailyLow)
-		stock.marketCapStr = stock.marketCap and fmtVolume(stock.marketCap) or "--"
-		stock.fiftyTwoWeekHighStr = fmt(stock.fiftyTwoWeekHigh)
-		stock.fiftyTwoWeekLowStr = fmt(stock.fiftyTwoWeekLow)
-		stock.volumeStr = stock.volume and fmtVolume(stock.volume) or "--"
-		local arrow = (stock.changePct or 0) >= 0 and "▲" or "▼"
-		stock.changeStr = arrow .. " " .. string.format("%.2f%%", math.abs(stock.changePct or 0))
-		stock.changeColor = (stock.changePct or 0) >= 0 and "systemGreen" or "systemRed"
-		local view = xml.renderFile(VIEWS .. "StockDetail.etlua", { stock = stock })
-		if stock.chartData and #stock.chartData > 1 then
-			local gain = (stock.changePct or 0) >= 0
-			local chartColor = gain and {0.2, 0.8, 0.4} or {0.9, 0.3, 0.3}
-			local chart = ns.Curve {
-				data = stock.chartData,
-				width = 500,
-				height = 120,
-				strokeColor = chartColor,
-				lineWidth = 2,
-				chartPadding = 4,
-				fillArea = true,
-			}
-			view:add(chart)
-		end
-		self.detailPane:add(view)
-	else
-		local view = xml.renderFile(VIEWS .. "StockDetail.etlua", { stock = nil })
-		self.detailPane:add(view)
-	end
+	self.detailPane:add(Views.stock(stock, self.chart))
 	self.detailPane:layout()
 end
 
-function Controller:createWindow()
-	local cfg, refs = xml.renderFile(VIEWS .. "Window.etlua")
+function Controller:refresh()
+	self.stockList:showLoading()
+	local function load()
+		for _, symbol in ipairs(Model.symbols) do
+			local data
+			if not _G.__headless then data = Model.fetchStock(symbol) end
+			self.stockData[symbol] = data or self.stockData[symbol]
+				or Model.sampleStock(symbol)
+		end
+		self:updateSidebar()
+		if self.detailPane then
+			if self.selectedSymbol == "news" then
+				self:showNews()
+			else
+				self:showDetail(self.stockData[self.selectedSymbol])
+			end
+		end
+		self.stockList:hideLoading()
+	end
+	if _G.__headless then load() else ns.async(load) end
+end
 
+function Controller:createWindow()
+	local cfg = xml.renderFile(VIEWS .. "Window.etlua")
 	for _, item in ipairs(cfg.toolbar or {}) do
-		if item.action and ACTIONS[item.action] then
-			local fn = ACTIONS[item.action]
-			item.action = function() fn(self) end
+		if item.id == "refresh" then
+			item.action = function() self:refresh() end
 		end
 	end
 
-	self.stockList = buildStockList()
-	self.detailPane = buildDetailPane()
-	cfg.content = self.stockList
-	cfg.detail = self.detailPane
+	self.searchField = ns.SearchField {
+		placeholder = "Search",
+		accessibilityLabel = "Search stocks",
+		fixedHeight = LAYOUT.searchHeight,
+		fillWidth = true,
+		onChange = function(query)
+			self.query = query
+			self:updateSidebar()
+		end,
+	}
+	self.stockList = ns.List {
+		flexGrow = 1,
+		fillWidth = true,
+		style = "sourceList",
+		header = false,
+		alternatingRows = false,
+		rowHeight = LAYOUT.rowHeight,
+		columns = {
+			{ id = "symbol", title = "Symbol", minWidth = LAYOUT.symbolMinWidth },
+			{ id = "price", title = "Price", width = LAYOUT.priceWidth,
+				minWidth = LAYOUT.priceMinWidth, alignment = "right" },
+			{ id = "change", title = "Change", width = LAYOUT.changeWidth,
+				minWidth = LAYOUT.changeMinWidth, alignment = "right" },
+		},
+	}
+	self.sidebar = ns.VStack {
+		flexGrow = 1,
+		paddingHorizontal = LAYOUT.sidebarPaddingHorizontal,
+		paddingVertical = LAYOUT.sidebarPaddingVertical,
+		spacing = LAYOUT.sidebarSpacing,
+		self.searchField,
+		self.stockList,
+	}
+	self.detailPane = ns.VStack { flexGrow = 1 }
+	cfg.sidebar = self.sidebar
+	cfg.content = self.detailPane
+	cfg.sidebarWidth = LAYOUT.sidebarWidth
 
 	self.stockList:onRowSelect(function(_, _, row)
-		if row and row._id then
-			self.selectedSymbol = row._id
-			local data = self.stockData[row._id]
-			if data then
-				self:showDetail(data)
-			else
-				self:showLoading()
-			end
+		if not row or not row._id then return end
+		self.selectedSymbol = row._id
+		if row._id == "news" then
+			self:showNews()
+		else
+			self:showDetail(self.stockData[row._id] or Model.sampleStock(row._id))
 		end
 	end)
 
-	self:refresh()
-
+	for _, symbol in ipairs(Model.symbols) do
+		self.stockData[symbol] = Model.sampleStock(symbol)
+	end
+	self:updateSidebar()
+	self:showDetail(self.stockData[self.selectedSymbol])
 	self.window = ns.Window(cfg)
+	self:refresh()
 	return self.window
 end
 

@@ -17,11 +17,22 @@ t.expect(state.hasSidebarToggle, "stocks exposes the standard sidebar toggle")
 t.expect(state.tracksSidebarDivider, "stocks sidebar toggle tracks the native divider")
 t.expect(controller.sidebar ~= nil, "stocks sidebar includes a native container")
 t.expect(controller.searchField ~= nil, "stocks sidebar includes a native search field")
+t.assertEqual(controller.searchField.className, "NSSearchField",
+	"stocks uses AppKit's native capsule search control")
+t.assertEqual(controller.searchField.bezelStyle, 1,
+	"stocks search uses NSTextFieldRoundedBezel")
 t.assertEqual(controller.searchField.size.height, 28, "stocks search field stays compact")
 t.expect(controller.searchField.size.width > 200, "stocks search field fills the sidebar width")
 t.assertEqual(controller.selectedSymbol, "^IXIC", "stocks selects NASDAQ by default")
 t.assertEqual(controller.stockList.rowCount, #Model.symbols + 1,
 	"stocks includes Business News plus the watchlist rows")
+t.expect(#Model.news >= 8, "Business News has a useful set of stories")
+t.expect(#Model.newsFor("^IXIC", 4) >= 4,
+	"stock details include several related stories")
+t.assertEqual(#Model.newsFor("AAPL", 4), 4,
+	"a company detail fills sparse ticker coverage with market news")
+t.expect(controller.chart ~= nil and not controller.chart.closed,
+	"stock chart is an open stroked path without a closing round trip")
 t.expect(state.safeAreaPaneHosts, "stocks panes use native safe-area hosts")
 t.expect(state.contentUsesSafeArea, "stocks content respects the native sidebar safe area")
 

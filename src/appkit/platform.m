@@ -1,6 +1,7 @@
 #pragma mark - Offscreen render
 
 static NSData *offscreen_render(NSView *view, CGFloat width, CGFloat height) {
+	NSAppearance *appearance = view.effectiveAppearance;
 	view.frame = NSMakeRect(0, 0, width, height);
 
 	/* Wrap in a borderless offscreen window so drawRect: has a valid window. */
@@ -10,10 +11,22 @@ static NSData *offscreen_render(NSView *view, CGFloat width, CGFloat height) {
 					backing:NSBackingStoreBuffered
 					  defer:NO];
 	offscreen.releasedWhenClosed = NO;
+	offscreen.appearance = appearance;
+	__block NSColor *background;
+	[appearance performAsCurrentDrawingAppearance:^{
+		background = [NSColor.windowBackgroundColor
+			colorUsingColorSpace:NSColorSpace.deviceRGBColorSpace];
+	}];
+	offscreen.backgroundColor = background;
+	offscreen.opaque = YES;
+	offscreen.contentView.wantsLayer = YES;
+	offscreen.contentView.layer.backgroundColor = background.CGColor;
 	[offscreen.contentView addSubview:view];
 	[offscreen orderBack:nil];
 
-	NSBitmapImageRep *rep = [view bitmapImageRepForCachingDisplayInRect:view.bounds];
+	NSView *renderRoot = offscreen.contentView;
+	NSBitmapImageRep *rep = [renderRoot
+		bitmapImageRepForCachingDisplayInRect:renderRoot.bounds];
 	if (!rep) {
 		[view removeFromSuperview];
 		[offscreen close];
@@ -24,7 +37,7 @@ static NSData *offscreen_render(NSView *view, CGFloat width, CGFloat height) {
 		? [NSScreen mainScreen].backingScaleFactor : kFallbackBackingScale;
 	(void)scale;
 
-	[view cacheDisplayInRect:view.bounds toBitmapImageRep:rep];
+	[renderRoot cacheDisplayInRect:renderRoot.bounds toBitmapImageRep:rep];
 
 	NSData *png = [rep representationUsingType:NSBitmapImageFileTypePNG
 									properties:@{}];

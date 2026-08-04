@@ -24,6 +24,9 @@ Render a script without opening a window:
 ```sh
 ./lua-objc --preview --width=800 --height=600 \
   --out=/tmp/preview.png examples/layout/init.lua
+
+# Dump AppKit's computed native hierarchy, frames, and table-cell cropping.
+./lua-objc --dump-layout=/tmp/layout.xml examples/stocks/init.lua
 ```
 
 ## Where to work

@@ -387,6 +387,21 @@ function AppKit.TextField(props)
 	return applyLayout(field, props)
 end
 
+-- SwiftUI's searchable modifier maps to AppKit's native NSSearchField on
+-- macOS. The control owns its bezel, search icon, clear button, focus ring,
+-- keyboard behavior, and capsule geometry.
+function AppKit.SearchField(props)
+	props = props or {}
+	local field = bridge._searchField()
+	field.stringValue = props.value or props[1] or ""
+	field.placeholderString = props.placeholder or "Search"
+	if props.accessibilityLabel then
+		field.accessibilityLabel = props.accessibilityLabel
+	end
+	bridge._textFieldCallbacks(field, props.onChange, props.onCommand)
+	return applyLayout(field, props)
+end
+
 function AppKit.TextEditor(props)
 	props = props or {}
 	local view = bridge._textView()
@@ -469,6 +484,7 @@ function AppKit.List(props)
 		gridLines = props.gridLines,
 		style = props.style,
 	})
+	if props.rowHeight then tv.documentView.rowHeight = props.rowHeight end
 
 	if props.data and type(props.data) == "table" then
 		tv:replaceRows(props.data)
@@ -655,6 +671,7 @@ function AppKit.Curve(props)
 	local range = maxY - minY
 	if range == 0 then range = 1 end
 	local v = AppKit.PathView(props)
+	v.scalesToFit = true
 	local fillArea = props.fillArea
 	local fillColor = props.fillColor
 	local lineWidth = props.lineWidth or 2
