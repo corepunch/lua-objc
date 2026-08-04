@@ -167,7 +167,7 @@ static void observe_workspace_pane(NSView *pane) {
 		OBJC_ASSOCIATION_RETAIN);
 }
 
-static NSViewController *workspace_pane_controller(NSView *content) {
+static NSViewController *workspace_pane_controller(NSView *content, CGFloat leadingOffset) {
 	NSViewController *controller = [[NSViewController alloc] init];
 	NSView *host = [[NSView alloc] initWithFrame:NSZeroRect];
 	controller.view = host;
@@ -175,7 +175,8 @@ static NSViewController *workspace_pane_controller(NSView *content) {
 	content.translatesAutoresizingMaskIntoConstraints = NO;
 	[host addSubview:content];
 	[NSLayoutConstraint activateConstraints:@[
-		[content.leadingAnchor constraintEqualToAnchor:host.leadingAnchor],
+		[content.leadingAnchor constraintEqualToAnchor:host.leadingAnchor
+											   constant:leadingOffset],
 		[content.trailingAnchor constraintEqualToAnchor:host.trailingAnchor],
 		[content.bottomAnchor constraintEqualToAnchor:host.bottomAnchor],
 		[content.topAnchor
@@ -210,12 +211,13 @@ static int bridge_set_window_workspace(lua_State *L) {
 	/* Keep the semantic split items full height so AppKit owns their glass,
 	 * but place app content below the current toolbar and tab-bar safe area.
 	 * A shared host makes scroll views and plain preview canvases agree. */
+	CGFloat contentLeadingOffset = detail ? 0 : sidebarWidth;
 	NSViewController *sidebarController =
-		workspace_pane_controller(sidebar);
+		workspace_pane_controller(sidebar, 0);
 	NSViewController *contentController =
-		workspace_pane_controller(content);
+		workspace_pane_controller(content, contentLeadingOffset);
 	NSViewController *detailController = detail
-		? workspace_pane_controller(detail)
+		? workspace_pane_controller(detail, 0)
 		: nil;
 
 	NSSplitViewController *splitController =
@@ -236,7 +238,7 @@ static int bridge_set_window_workspace(lua_State *L) {
 		? [NSSplitViewItem
 			contentListWithViewController:contentController]
 		: [NSSplitViewItem
-			splitViewItemWithViewController:contentController];
+			contentListWithViewController:contentController];
 	contentItem.automaticallyAdjustsSafeAreaInsets = YES;
 	NSSplitViewItem *detailItem = detail
 		? [NSSplitViewItem

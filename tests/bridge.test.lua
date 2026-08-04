@@ -264,6 +264,16 @@ t.expect(workspaceState.contentUsesSafeArea,
 t.assertEqual(workspaceState.topAccessoryCount, 0,
 	"document window does not insert a custom content tab strip")
 
+-- In a 2-pane workspace (sidebar + content), the content view must start
+-- after the sidebar, not extend full-width behind it.  Verify the content
+-- width equals the available space between sidebar and window edge.
+local expectedContentWidth = workspaceWindow.frame.size.width - navigatorWidth
+t.expect(math.abs(editorWidth - expectedContentWidth) < 60,
+	"2-pane content pane fills space after sidebar (" ..
+	tostring(editorWidth) .. " ≈ " .. tostring(expectedContentWidth) .. ")")
+t.expect(editorWidth < workspaceWindow.frame.size.width - 50,
+	"2-pane content pane is narrower than the full window")
+
 -- AppKit owns the geometry of all three semantic workspace items. Collapsing
 -- and restoring the sidebar must not leave the content/detail divider offset
 -- by the sidebar width.
@@ -289,6 +299,21 @@ t.expect(math.abs(toggleContent.size.width - contentWidthBeforeToggle) < 1,
 	"showing sidebar restores the native content divider")
 t.expect(math.abs(toggleDetail.size.width - detailWidthBeforeToggle) < 1,
 	"sidebar round-trip preserves the native detail pane width")
+
+-- 2-pane sidebar toggle: collapsing the sidebar must not crash.  Content
+-- offsets are verified in the IDE workspace assertions above.
+local twoPaneSidebar = ns.Text "Left"
+local twoPaneContent = ns.Text "Right"
+local twoPaneWorkspace = ns.Window {
+	width = 800, height = 400, visible = false,
+	sidebarWidth = 240,
+	sidebar = twoPaneSidebar,
+	content = twoPaneContent,
+}
+twoPaneWorkspace:toggleSidebar()
+twoPaneWorkspace:layout()
+t.expect(twoPaneSidebar.size.width >= 0,
+	"2-pane toggle sidebar completes without error")
 
 local sourceTree = ns.OutlineView {
 	header = false,
