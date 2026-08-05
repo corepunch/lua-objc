@@ -1,7 +1,6 @@
 local ns = require("AppKit")
 local xml = require("ui.xml")
 local Model = require("examples.stocks.Model")
-local Views = require("examples.stocks.views.StockDetail")
 
 local VIEWS = "examples/stocks/views/"
 local LAYOUT = {
@@ -36,6 +35,39 @@ local function compactNumber(value)
 	if value >= 1e9 then return string.format("%.2fB", value / 1e9) end
 	if value >= 1e6 then return string.format("%.2fM", value / 1e6) end
 	return string.format("%.0f", value)
+end
+
+local function precomputeMetrics(stock)
+	return {
+		{
+			{"Open", stock.openStr},
+			{"High", stock.dailyHighStr},
+			{"Low", stock.dailyLowStr},
+		},
+		{
+			{"Vol", stock.volumeStr},
+			{"P/E", "--"},
+			{"Mkt Cap", stock.marketCapStr},
+		},
+		{
+			{"52W H", stock.fiftyTwoWeekHighStr},
+			{"52W L", stock.fiftyTwoWeekLowStr},
+			{"Avg Vol", stock.volumeStr},
+		},
+		{
+			{"Yield", "--"},
+			{"Beta", "--"},
+			{"EPS", "--"},
+		},
+	}
+end
+
+local function precomputeNewsColumns(articles)
+	local columns = {{}, {}}
+	for index, article in ipairs(articles or {}) do
+		columns[(index - 1) % 2 + 1][#columns[(index - 1) % 2 + 1] + 1] = article
+	end
+	return columns
 end
 
 local function decorate(data)
@@ -106,8 +138,11 @@ function Controller:updateSidebar()
 end
 
 function Controller:showNews()
+	local view = xml.renderFile(VIEWS .. "NewsPage.etlua", {
+		newsColumns = precomputeNewsColumns(Model.news),
+	})
 	self.detailPane:clearContainer()
-	self.detailPane:add(Views.newsPage(Model.news))
+	self.detailPane:add(view)
 	self.detailPane:layout()
 end
 
@@ -126,8 +161,14 @@ function Controller:showDetail(data)
 		chartPadding = LAYOUT.chartPadding,
 		fillArea = false,
 	}
+	stock.metricColumns = precomputeMetrics(stock)
+	stock.newsColumns = precomputeNewsColumns(stock.news)
+	local view = xml.renderFile(VIEWS .. "StockDetail.etlua", {
+		stock = stock,
+		chart = self.chart,
+	})
 	self.detailPane:clearContainer()
-	self.detailPane:add(Views.stock(stock, self.chart))
+	self.detailPane:add(view)
 	self.detailPane:layout()
 end
 

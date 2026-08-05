@@ -1,0 +1,40 @@
+<VStack flexGrow="1" padding="18" spacing="9" alignment="leading">
+	<VStack fixedHeight="42" flexShrink="0" spacing="2" alignment="leading">
+		<Label weight="bold" size="20" text="<%= stock.symbol %>" />
+		<Label color="secondary" size="13" text="<%= stock.name %>" />
+	</VStack>
+	<HStack flexShrink="0" spacing="14" alignment="bottom">
+		<Label weight="light" size="34" text="<%= stock.priceStr %>" />
+		<Label color="<%= stock.changeColor %>" size="15" text="<%= stock.changeStr %>" />
+	</HStack>
+	<Chart />
+	<HStack fillWidth="true" fixedHeight="72" flexShrink="0" spacing="12" alignment="top">
+		<% for i, column in ipairs(stock.metricColumns) do %>
+		<% if i > 1 then %><Divider orientation="vertical" /><% end %>
+		<VStack flexGrow="1" spacing="4" alignment="leading">
+			<% for _, row in ipairs(column) do %>
+			<HStack fillWidth="true" spacing="4">
+				<Label weight="semibold" color="secondary" size="11" text="<%= row[1] %>" />
+				<Spacer />
+				<Label weight="semibold" size="12" text="<%= row[2] %>" />
+			</HStack>
+			<% end %>
+		</VStack>
+		<% end %>
+	</HStack>
+	<Divider />
+	<Label weight="semibold" size="14" text="Related News" />
+	<HStack fillWidth="true" flexGrow="1" spacing="22" alignment="top">
+		<% for _, column in ipairs(stock.newsColumns) do %>
+		<VStack flexGrow="1" spacing="9" alignment="leading">
+			<% for _, article in ipairs(column) do %>
+			<VStack fixedHeight="64" fillWidth="true" spacing="2" alignment="leading">
+				<Label color="secondary" size="10" text="<%= article.source %>" />
+				<Label weight="semibold" size="13" lines="2" fixedHeight="32" fillWidth="true" text="<%= article.title %>" />
+				<Label color="secondary" size="10" text="<%= article.time %>" />
+			</VStack>
+			<% end %>
+		</VStack>
+		<% end %>
+	</HStack>
+</VStack>

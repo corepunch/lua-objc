@@ -21,6 +21,7 @@
 --]]
 
 local etlua = require("etlua")
+local renderData = nil
 
 local function decodeXMLText(value)
     if type(value) ~= "string" or value == "" then return value end
@@ -404,6 +405,12 @@ local function makeRegistry()
         return ns.Divider(props)
     end
 
+    R["Chart"] = function(ns, a, _)
+        local key = a.data or "chart"
+        if renderData[key] then return renderData[key] end
+        error("xml: <Chart> requires pre-built chart in render data (key: " .. (key) .. ")")
+    end
+
     -- Text / labels
     -- <Label text="Hello" size="13" weight="bold" color="secondary" />
     -- Maps to ns.Text on both platforms (UIKit aliases Text=Label).
@@ -414,6 +421,7 @@ local function makeRegistry()
         if a.weight then props.weight = a.weight       end
         if a.color  then props.color  = a.color        end
         if a.lines  then props.lineLimit = num(a.lines) end
+        if a.lines and num(a.lines) > 1 then props.lineBreakMode = 0 end
         if a.truncation then props.truncation = a.truncation end
         return ns.Text(props)
     end
@@ -727,8 +735,10 @@ function M.render(src, data, ns)
              :gsub("^%s*<!DOCTYPE[^>]*>%s*", "")
 
     local refs  = {}
+    renderData = data
     local nodes = parseXML(src)
     local views = compile(nodes, ns, registry, refs)
+    renderData = nil
 
     -- Window root: return (configTable, refs) — caller passes config to ns.Window
     if #views == 1 and type(views[1]) == "table" and views[1].__isWindowConfig then
