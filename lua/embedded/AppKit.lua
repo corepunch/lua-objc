@@ -356,6 +356,7 @@ function AppKit.Text(arg)
 	end
 	if type(arg) == "table" and arg.lineLimit then
 		v.lineLimit = arg.lineLimit
+		if arg.lineLimit > 1 then v.lineBreakMode = 0 end
 	end
 	if type(arg) == "table" and arg.truncation then
 		local modes = { head = 3, tail = 4, middle = 5 }

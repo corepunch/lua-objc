@@ -29,7 +29,7 @@ function Controller:createWindow()
 	self.window = window
 
 	ns.async(function()
-		ns.sleep(0.4)
+		ns.sleep(1.0)
 		local fh = assert(io.open(%q, "w"))
 		local frame = window.frame
 		local visible = window.screen and window.screen.visibleFrame or nil

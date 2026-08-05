@@ -10,16 +10,14 @@ local LAYOUT = {
 	chartLineWidth = 2,
 	chartPadding = 3,
 	searchHeight = 28,
-	rowHeight = 32,
-	symbolMinWidth = 72,
-	priceWidth = 80,
-	priceMinWidth = 72,
-	changeWidth = 70,
-	changeMinWidth = 64,
+	rowHeight = 58,
+	symbolMinWidth = 96,
+	sidebarChartWidth = 68,
+	quoteWidth = 96,
 	sidebarPaddingHorizontal = 8,
 	sidebarPaddingVertical = 10,
 	sidebarSpacing = 8,
-	sidebarWidth = 324,
+	sidebarWidth = 342,
 	gainColor = {0.16, 0.68, 0.32},
 	lossColor = {0.86, 0.24, 0.25},
 }
@@ -47,11 +45,15 @@ local function decorate(data)
 	stock.openStr = money(stock.open)
 	stock.prevCloseStr = money(stock.prevClose)
 	stock.volumeStr = compactNumber(stock.volume)
+	stock.dailyHighStr = money(stock.dailyHigh)
+	stock.dailyLowStr = money(stock.dailyLow)
+	stock.marketCapStr = compactNumber(stock.marketCap)
 	stock.dayRangeStr = money(stock.dailyLow) .. " – " .. money(stock.dailyHigh)
 	stock.yearRangeStr = money(stock.fiftyTwoWeekLow) .. " – " .. money(stock.fiftyTwoWeekHigh)
+	stock.fiftyTwoWeekHighStr = money(stock.fiftyTwoWeekHigh)
+	stock.fiftyTwoWeekLowStr = money(stock.fiftyTwoWeekLow)
 	local gain = (stock.changePct or 0) >= 0
-	stock.changeStr = (gain and "▲ " or "▼ ")
-		.. string.format("%.2f%% Today", math.abs(stock.changePct or 0))
+	stock.changeStr = string.format("%+.2f%% Today", stock.changePct or 0)
 	stock.changeColor = gain and "systemGreen" or "systemRed"
 	return stock
 end
@@ -74,8 +76,10 @@ function Controller:visibleRows()
 	local rows = {{
 		_id = "news",
 		symbol = "Business News",
+		name = "Latest market stories",
 		price = "",
 		change = "",
+		chartData = {},
 	}}
 	local query = self.query:lower()
 	for _, symbol in ipairs(Model.symbols) do
@@ -86,9 +90,11 @@ function Controller:visibleRows()
 			rows[#rows + 1] = {
 				_id = symbol,
 				symbol = symbol,
+				name = data.name,
 				price = money(data.price),
-				change = (gain and "▲ " or "▼ ")
-					.. string.format("%.2f%%", math.abs(data.changePct or 0)),
+				change = string.format("%+.2f%%", data.changePct or 0),
+				changeColor = gain and "systemGreen" or "systemRed",
+				chartData = data.chartData or {},
 			}
 		end
 	end
@@ -173,11 +179,14 @@ function Controller:createWindow()
 		alternatingRows = false,
 		rowHeight = LAYOUT.rowHeight,
 		columns = {
-			{ id = "symbol", title = "Symbol", minWidth = LAYOUT.symbolMinWidth },
-			{ id = "price", title = "Price", width = LAYOUT.priceWidth,
-				minWidth = LAYOUT.priceMinWidth, alignment = "right" },
-			{ id = "change", title = "Change", width = LAYOUT.changeWidth,
-				minWidth = LAYOUT.changeMinWidth, alignment = "right" },
+			{ id = "symbol", title = "Symbol", minWidth = LAYOUT.symbolMinWidth,
+				cell = { secondary = "name", weight = "semibold" } },
+			{ id = "chartData", title = "Day", width = LAYOUT.sidebarChartWidth,
+				cell = { curve = "chartData", curveColor = "changeColor" } },
+			{ id = "price", title = "Quote", width = LAYOUT.quoteWidth,
+				alignment = "right",
+				cell = { secondary = "change",
+					secondaryColor = "changeColor", weight = "semibold" } },
 		},
 	}
 	self.sidebar = ns.VStack {

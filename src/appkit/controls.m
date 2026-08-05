@@ -154,6 +154,8 @@ static int bridge_tableview(lua_State *L) {
 		NSString *colTitle = column[@"title"] ?: colId;
 		NSString *colAlignment = column[@"alignment"];
 		NSString *systemImage = column[@"systemImage"];
+		NSDictionary *cellSpec = [column[@"cell"] isKindOfClass:NSDictionary.class]
+			? column[@"cell"] : nil;
 		NSNumber *width = column[@"width"];
 		NSNumber *minWidth = column[@"minWidth"];
 
@@ -177,6 +179,10 @@ static int bridge_tableview(lua_State *L) {
 		if (systemImage) {
 			objc_setAssociatedObject(col, &kKeys[kColumnSystemImageKey],
 				systemImage, OBJC_ASSOCIATION_RETAIN);
+		}
+		if (cellSpec) {
+			objc_setAssociatedObject(col, &kKeys[kColumnCellKey], cellSpec,
+				OBJC_ASSOCIATION_RETAIN);
 		}
 		if (!hasExplicitWidth) {
 			objc_setAssociatedObject(col, &kKeys[kColumnFlexKey],

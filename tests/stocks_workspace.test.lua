@@ -48,6 +48,16 @@ t.expect(math.abs(detailW - expectedDetailW) < 50,
 t.expect(detailW > sidebarW,
 	"stocks detail pane is wider than the sidebar")
 
+window:toggleSidebar()
+window:layout()
+local expandedDetailW = controller.detailPane.size.width
+t.expect(expandedDetailW > detailW + sidebarW - 50,
+	"collapsing the sidebar gives its width back to stock details")
+window:toggleSidebar()
+window:layout()
+t.expect(math.abs(controller.detailPane.size.width - detailW) < 1,
+	"restoring the sidebar restores the stock detail width")
+
 -- Detail content should start after the sidebar (not at x=0)
 t.expect(controller.detailPane.size.width > 0,
 	"stocks detail content has measurable width")

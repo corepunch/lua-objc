@@ -69,6 +69,13 @@ static lua_State *gL = NULL;
 #define kTableCellTextLeadingInset       8
 #define kTableCellTextTrailingInset      8
 #define kTableCellSymbolPointSize       13
+#define kTableCellSecondaryFontSize     11
+#define kTableCellLineSpacing            2
+#define kTableCellCurveInsetH            4
+#define kTableCellCurveInsetV           10
+#define kTableCellCurvePathWidth       100
+#define kTableCellCurvePathHeight       32
+#define kTableCellCurveLineWidth       1.5
 #define kTableColumnMinWidth            40
 #define kTableDefaultWidth             400
 #define kTableDefaultHeight            200

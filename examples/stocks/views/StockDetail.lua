@@ -2,13 +2,14 @@ local ns = require("AppKit")
 
 local Views = {}
 local LAYOUT = {
-	metricSpacing = 3,
+	metricSpacing = 4,
 	metricLabelSize = 11,
-	metricValueSize = 14,
-	newsRowHeight = 38,
-	newsTimeWidth = 48,
-	pagePadding = 20,
-	pageSpacing = 12,
+	metricValueSize = 12,
+	metricGridHeight = 72,
+	newsCardHeight = 64,
+	newsColumnSpacing = 22,
+	pagePadding = 18,
+	pageSpacing = 9,
 	pageTitleSize = 26,
 	pageSubtitleSize = 13,
 	symbolSize = 20,
@@ -18,42 +19,63 @@ local LAYOUT = {
 	sectionTitleSize = 14,
 	compactSpacing = 2,
 	summarySpacing = 14,
-	metricGroupSpacing = 16,
+	metricGroupSpacing = 12,
 }
 
-local function metric(title, value)
+local function metricRow(title, value)
+	return ns.HStack {
+		fillWidth = true,
+		spacing = LAYOUT.metricSpacing,
+		ns.Text { title, size = LAYOUT.metricLabelSize,
+			weight = "semibold", color = "secondary" },
+		ns.Spacer {},
+		ns.Text { value, size = LAYOUT.metricValueSize, weight = "semibold" },
+	}
+end
+
+local function metricColumn(rows)
 	return ns.VStack {
 		flexGrow = 1,
 		spacing = LAYOUT.metricSpacing,
 		alignment = "leading",
-		ns.Text { title, size = LAYOUT.metricLabelSize, color = "secondary" },
-		ns.Text { value, size = LAYOUT.metricValueSize },
+		ns.ForEach(rows, function(row)
+			return metricRow(row[1], row[2])
+		end),
 	}
 end
 
-function Views.newsList(articles)
-	local list = ns.List {
-		flexGrow = 1,
-		style = "plain",
-		header = false,
-		alternatingRows = false,
-		rowHeight = LAYOUT.newsRowHeight,
-		columns = {
-			{ id = "headline", title = "Headline" },
-			{ id = "time", title = "Time", width = LAYOUT.newsTimeWidth,
-				alignment = "right" },
-		},
+local function newsCard(article)
+	return ns.VStack {
+		fixedHeight = LAYOUT.newsCardHeight,
+		fillWidth = true,
+		spacing = 2,
+		alignment = "leading",
+		ns.Text { article.source, size = 10, color = "secondary" },
+		ns.Text { article.title, size = 13, weight = "semibold",
+			lineLimit = 2, fixedHeight = 32, fillWidth = true },
+		ns.Text { article.time, size = 10, color = "secondary" },
 	}
-	local rows = {}
+end
+
+function Views.newsGrid(articles)
+	local columns = {{}, {}}
 	for index, article in ipairs(articles or {}) do
-		rows[index] = {
-			_id = tostring(index),
-			headline = article.title .. "  —  " .. article.source,
-			time = article.time,
-		}
+		columns[(index - 1) % 2 + 1][#columns[(index - 1) % 2 + 1] + 1] = article
 	end
-	list:replaceRows(rows)
-	return list
+	return ns.HStack {
+		fillWidth = true,
+		flexGrow = 1,
+		spacing = LAYOUT.newsColumnSpacing,
+		alignment = "top",
+		ns.ForEach(columns, function(column)
+			return ns.VStack {
+				flexGrow = 1,
+				spacing = LAYOUT.pageSpacing,
+				alignment = "leading",
+				ns.ForEach(column, newsCard),
+			}
+		end),
+	}
 end
 
 function Views.newsPage(articles)
@@ -65,7 +87,7 @@ function Views.newsPage(articles)
 		ns.Text { "Business News", size = LAYOUT.pageTitleSize, weight = "bold" },
 		ns.Text { "Latest market and company stories",
 			size = LAYOUT.pageSubtitleSize, color = "secondary" },
-		Views.newsList(articles),
+		Views.newsGrid(articles),
 	}
 end
 
@@ -76,6 +98,7 @@ function Views.stock(stock, chart)
 		spacing = LAYOUT.pageSpacing,
 		alignment = "leading",
 		ns.VStack {
+			fixedHeight = 42,
 			flexShrink = 0,
 			spacing = LAYOUT.compactSpacing,
 			alignment = "leading",
@@ -93,25 +116,38 @@ function Views.stock(stock, chart)
 		chart,
 		ns.HStack {
 			fillWidth = true,
+			fixedHeight = LAYOUT.metricGridHeight,
 			flexShrink = 0,
 			spacing = LAYOUT.metricGroupSpacing,
 			alignment = "top",
-			metric("Open", stock.openStr),
-			metric("Previous Close", stock.prevCloseStr),
-			metric("Day Range", stock.dayRangeStr),
-		},
-		ns.HStack {
-			fillWidth = true,
-			flexShrink = 0,
-			spacing = LAYOUT.metricGroupSpacing,
-			alignment = "top",
-			metric("Volume", stock.volumeStr),
-			metric("52 Week Range", stock.yearRangeStr),
+			metricColumn {
+				{"Open", stock.openStr},
+				{"High", stock.dailyHighStr},
+				{"Low", stock.dailyLowStr},
+			},
+			ns.Divider { orientation = "vertical" },
+			metricColumn {
+				{"Vol", stock.volumeStr},
+				{"P/E", "--"},
+				{"Mkt Cap", stock.marketCapStr},
+			},
+			ns.Divider { orientation = "vertical" },
+			metricColumn {
+				{"52W H", stock.fiftyTwoWeekHighStr},
+				{"52W L", stock.fiftyTwoWeekLowStr},
+				{"Avg Vol", stock.volumeStr},
+			},
+			ns.Divider { orientation = "vertical" },
+			metricColumn {
+				{"Yield", "--"},
+				{"Beta", "--"},
+				{"EPS", "--"},
+			},
 		},
 		ns.Divider {},
 		ns.Text { "Related News", size = LAYOUT.sectionTitleSize,
 			weight = "semibold" },
-		Views.newsList(stock.news),
+		Views.newsGrid(stock.news),
 	}
 end
 

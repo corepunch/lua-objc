@@ -167,16 +167,18 @@ static void observe_workspace_pane(NSView *pane) {
 		OBJC_ASSOCIATION_RETAIN);
 }
 
-static NSViewController *workspace_pane_controller(NSView *content, CGFloat leadingOffset) {
+static NSViewController *workspace_pane_controller(
+	NSView *content, BOOL followsSafeAreaLeading) {
 	NSViewController *controller = [[NSViewController alloc] init];
 	NSView *host = [[NSView alloc] initWithFrame:NSZeroRect];
 	controller.view = host;
 
 	content.translatesAutoresizingMaskIntoConstraints = NO;
 	[host addSubview:content];
+	NSLayoutXAxisAnchor *leadingAnchor = followsSafeAreaLeading
+		? host.safeAreaLayoutGuide.leadingAnchor : host.leadingAnchor;
 	[NSLayoutConstraint activateConstraints:@[
-		[content.leadingAnchor constraintEqualToAnchor:host.leadingAnchor
-											   constant:leadingOffset],
+		[content.leadingAnchor constraintEqualToAnchor:leadingAnchor],
 		[content.trailingAnchor constraintEqualToAnchor:host.trailingAnchor],
 		[content.bottomAnchor constraintEqualToAnchor:host.bottomAnchor],
 		[content.topAnchor
@@ -211,13 +213,12 @@ static int bridge_set_window_workspace(lua_State *L) {
 	/* Keep the semantic split items full height so AppKit owns their glass,
 	 * but place app content below the current toolbar and tab-bar safe area.
 	 * A shared host makes scroll views and plain preview canvases agree. */
-	CGFloat contentLeadingOffset = detail ? 0 : sidebarWidth;
 	NSViewController *sidebarController =
-		workspace_pane_controller(sidebar, 0);
+		workspace_pane_controller(sidebar, NO);
 	NSViewController *contentController =
-		workspace_pane_controller(content, contentLeadingOffset);
+		workspace_pane_controller(content, detail == nil);
 	NSViewController *detailController = detail
-		? workspace_pane_controller(detail, 0)
+		? workspace_pane_controller(detail, NO)
 		: nil;
 
 	NSSplitViewController *splitController =

@@ -1,4 +1,4 @@
-<Window title="Stocks" width="980" height="620" minWidth="760" minHeight="520">
+<Window title="Stocks" width="1050" height="700" minWidth="900" minHeight="620">
     <Toolbar>
         <ToolbarItem id="toggleSidebar" />
         <ToolbarItem id="refresh" label="Refresh" icon="arrow.clockwise" tooltip="Refresh market data" />
