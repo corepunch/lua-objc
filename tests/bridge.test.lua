@@ -104,6 +104,18 @@ t.expect(bridge._textFieldTestCommand(input, "submit"),
 t.assertEqual(receivedCommand, "submit",
 	"TextField onCommand receives the normalized command name")
 
+local extraLargeSearch = ns.SearchField {
+	placeholder = "Search",
+	controlSize = "extraLarge",
+}
+t.assertEqual(extraLargeSearch.controlSize, 4,
+	"SearchField maps the semantic extra-large size to native AppKit")
+t.assertEqual(extraLargeSearch.intrinsicContentSize.height, 36,
+	"extra-large SearchField uses AppKit's native 36-point metric")
+t.assertThrows(function()
+	ns.SearchField { controlSize = "oversized" }
+end, "SearchField rejects unknown control sizes")
+
 -- Borderless fields keep their native intrinsic height so a centered HStack
 -- aligns visible glyphs with adjacent symbols, not merely an oversized frame.
 

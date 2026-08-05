@@ -14,12 +14,18 @@ os.remove(path)
 
 t.expect(dump:find('<View class="NSSearchField"', 1, true) ~= nil,
 	"layout dump identifies native control classes")
+t.expect(dump:find('<View class="NSSearchField" x="8.0" y="0.0" width="318.0" height="36.0"',
+	1, true) ~= nil,
+	"layout dump proves the extra-large search field is pinned high in its inset wrapper")
 t.expect(dump:find('<Column id="price"', 1, true) ~= nil,
 	"layout dump includes computed quote columns")
+t.expect(dump:find('<Column id="symbol" width="131.0"', 1, true) ~= nil,
+	"layout dump proves the edge-to-edge list gives spare width to stock names")
 t.expect(dump:find('cropped="', 1, true) ~= nil,
 	"layout dump reports cell cropping explicitly")
-t.expect(dump:find('insufficientTextSpace="true" ellipsis="true"', 1, true) ~= nil,
-	"layout dump reports Cocoa text fields that will render an ellipsis")
+t.expect(dump:match('contentClipped="false" insufficientTextSpace="false" '
+	.. 'ellipsis="false" text="NASDAQ Composite"') ~= nil,
+	"layout dump proves NASDAQ Composite uses the recovered sidebar width")
 t.expect(dump:match('row="1" column="price"[^>]-cropped="false"[^>]-ellipsis="false"') ~= nil,
 	"layout dump proves computed stock quotes do not receive ellipses")
 t.expect(dump:find('<Column id="chartData"', 1, true) ~= nil,

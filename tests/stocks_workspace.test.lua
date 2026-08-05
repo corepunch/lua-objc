@@ -21,7 +21,12 @@ t.assertEqual(controller.searchField.className, "NSSearchField",
 	"stocks uses AppKit's native capsule search control")
 t.assertEqual(controller.searchField.bezelStyle, 1,
 	"stocks search uses NSTextFieldRoundedBezel")
-t.assertEqual(controller.searchField.size.height, 28, "stocks search field stays compact")
+t.assertEqual(controller.searchField.controlSize, 4,
+	"stocks search field uses AppKit's macOS 26 extra-large control size")
+t.assertEqual(controller.searchField.intrinsicContentSize.height, 36,
+	"stocks search field receives native 36-point capsule geometry")
+t.assertEqual(controller.searchField.size.height, 36,
+	"stocks search field frame follows its extra-large intrinsic height")
 t.expect(controller.searchField.size.width > 200, "stocks search field fills the sidebar width")
 t.assertEqual(controller.selectedSymbol, "^IXIC", "stocks selects NASDAQ by default")
 t.assertEqual(controller.stockList.rowCount, #Model.symbols + 1,
@@ -66,5 +71,7 @@ t.expect(controller.detailPane.size.width > 0,
 local searchW = controller.searchField.size.width
 t.expect(searchW > 200, "stocks search field fills the sidebar width")
 t.expect(searchW <= sidebarW + 8, "stocks search field does not overflow the sidebar")
+t.expect(controller.stockList.size.width > searchW,
+	"stocks list uses the sidebar edges beyond the inset search field")
 
 os.exit(t.summary() and 0 or 1)

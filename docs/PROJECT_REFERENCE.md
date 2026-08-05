@@ -388,6 +388,7 @@ rows and selection.
 local search = ns.SearchField {
     placeholder = "Search",
     accessibilityLabel = "Search items",
+    controlSize = "extraLarge",
     onChange = function(query) filterRows(query) end,
 }
 local sourceList = ns.List {
@@ -410,6 +411,9 @@ local window = ns.Window {
     toolbar = {{ id = "toggleSidebar" }},
 }
 ```
+
+`SearchField.controlSize` accepts `"mini"`, `"small"`, `"regular"`,
+`"large"`, or macOS 26's native `"extraLarge"` size.
 
 This is the pattern used by `examples/mail` and `examples/stocks`. Keep
 `style = "sourceList"` limited to navigation; primary data belongs in a

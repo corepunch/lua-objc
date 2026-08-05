@@ -8,13 +8,13 @@ local LAYOUT = {
 	chartHeight = 118,
 	chartLineWidth = 2,
 	chartPadding = 3,
-	searchHeight = 28,
+	searchHeight = 36,
 	rowHeight = 58,
 	symbolMinWidth = 96,
 	sidebarChartWidth = 68,
 	quoteWidth = 96,
-	sidebarPaddingHorizontal = 8,
-	sidebarPaddingVertical = 10,
+	searchPaddingHorizontal = 8,
+	sidebarPaddingVertical = 4,
 	sidebarSpacing = 8,
 	sidebarWidth = 342,
 	gainColor = {0.16, 0.68, 0.32},
@@ -205,6 +205,7 @@ function Controller:createWindow()
 	self.searchField = ns.SearchField {
 		placeholder = "Search",
 		accessibilityLabel = "Search stocks",
+		controlSize = "extraLarge",
 		fixedHeight = LAYOUT.searchHeight,
 		fillWidth = true,
 		onChange = function(query)
@@ -230,12 +231,18 @@ function Controller:createWindow()
 					secondaryColor = "changeColor", weight = "semibold" } },
 		},
 	}
+	self.searchContainer = ns.VStack {
+		fillWidth = true,
+		fixedHeight = LAYOUT.searchHeight,
+		flexShrink = 0,
+		paddingHorizontal = LAYOUT.searchPaddingHorizontal,
+		self.searchField,
+	}
 	self.sidebar = ns.VStack {
 		flexGrow = 1,
-		paddingHorizontal = LAYOUT.sidebarPaddingHorizontal,
 		paddingVertical = LAYOUT.sidebarPaddingVertical,
 		spacing = LAYOUT.sidebarSpacing,
-		self.searchField,
+		self.searchContainer,
 		self.stockList,
 	}
 	self.detailPane = ns.VStack { flexGrow = 1 }

@@ -391,9 +391,22 @@ end
 -- SwiftUI's searchable modifier maps to AppKit's native NSSearchField on
 -- macOS. The control owns its bezel, search icon, clear button, focus ring,
 -- keyboard behavior, and capsule geometry.
+local search_control_sizes = {
+	mini = 2,
+	small = 1,
+	regular = 0,
+	large = 3,
+	extraLarge = 4,
+}
+
 function AppKit.SearchField(props)
 	props = props or {}
 	local field = bridge._searchField()
+	if props.controlSize ~= nil then
+		local controlSize = search_control_sizes[props.controlSize]
+		assert(controlSize ~= nil, "invalid SearchField controlSize")
+		field.controlSize = controlSize
+	end
 	field.stringValue = props.value or props[1] or ""
 	field.placeholderString = props.placeholder or "Search"
 	if props.accessibilityLabel then
