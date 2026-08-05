@@ -1,4 +1,4 @@
-<VStack flexGrow="1" padding="18" spacing="9" alignment="leading">
+<VStack flexGrow="1" paddingHorizontal="18" paddingVertical="4" spacing="9" alignment="leading">
 	<VStack fixedHeight="42" flexShrink="0" spacing="2" alignment="leading">
 		<Label weight="bold" size="20" text="<%= stock.symbol %>" />
 		<Label color="secondary" size="13" text="<%= stock.name %>" />

@@ -169,6 +169,37 @@ sandbox.
 - When adding open actions, record the item kind at the same time the workspace opens.
 - Keep path pickers in the app layer so the UI does not need to know how folders/files are chosen.
 
+## Cross-pane alignment
+
+When a split-view layout has aligned peer content in both panes (e.g. a sidebar
+search field and a detail header that share the same visual baseline), the
+elements must sit at the same Y position across panes. Do not let independent
+per-pane padding values drift apart.
+
+To verify:
+
+```sh
+./lua-objc --dump-layout=/tmp/layout.xml examples/<app>/init.lua
+rg 'search|header|Detail|SearchField' /tmp/layout.xml | head -20
+```
+
+In the dump, compare the y+height top edge of the two elements. AppKit uses
+bottom-left origin: `y` is the distance from the split-view bottom, so the
+visual distance from the window top is `windowHeight - (element.y + element.height)`.
+
+Example from stocks: the search field sat at y=592 (56px from top), the detail
+header at y=578 (70px from top) — a 14px drift caused by the detail pane's
+`padding="18"` not accounting for the sidebar's glass-effect margin + search
+container vertical padding.
+
+Fix approach:
+- Compute the target top-edge offset for the primary element (usually the
+  sidebar anchor — search field, master list header, etc.).
+- Set the detail pane's `paddingTop` to match it, pulling the padding constant
+  from a shared `LAYOUT` table in the Controller rather than hardcoding in the
+  template.
+- Verify both dumps (default size + minimum size) show equal top-edge values.
+
 ## Headless Verification
 
 - Set `_G.__headless = true` in tests.
