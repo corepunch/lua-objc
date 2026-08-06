@@ -78,7 +78,7 @@ Model.sampleNews = sampleNews
 local CRUMB_URL = "https://query2.finance.yahoo.com/v1/test/getcrumb"
 local COOKIE_URL = "https://fc.yahoo.com/"
 local NEWS_URL_FMT = "https://query2.finance.yahoo.com/v10/finance/quoteSummary/%s?modules=news"
-local CHART_URL_FMT = "https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=5m&range=1d"
+local CHART_URL_FMT = "https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=1d&range=5d"
 
 local crumbCache = nil
 
@@ -86,7 +86,10 @@ local function getCrumb()
 	if crumbCache then return crumbCache end
 	pcall(ns.fetch, COOKIE_URL)
 	local ok, raw = pcall(ns.fetch, CRUMB_URL)
-	if not ok or not raw then return nil end
+	if not ok or not raw then
+		if not ok then io.stderr:write("fetchNews: crumb request failed: " .. tostring(raw) .. "\n") end
+		return nil
+	end
 	raw = raw:match("^%s*(.-)%s*$") or ""
 	if #raw == 0 then return nil end
 	crumbCache = raw
@@ -109,6 +112,7 @@ function Model.fetchNews(symbol, count)
 	local url = string.format(NEWS_URL_FMT, symbol) .. "&crumb=" .. crumb
 	local ok, data = pcall(ns.fetch_json, url)
 	if not ok or not data then
+		if not ok then io.stderr:write("fetchNews " .. symbol .. ": " .. tostring(data) .. "\n") end
 		crumbCache = nil
 		return nil
 	end
@@ -166,6 +170,7 @@ function Model.fetchStock(symbol)
 
 	local ok, data = pcall(ns.fetch_json, url)
 	if not ok or not data then
+		if not ok then io.stderr:write("fetchStock " .. symbol .. ": " .. tostring(data) .. "\n") end
 		return nil
 	end
 
@@ -209,6 +214,10 @@ function Model.fetchStock(symbol)
 				end
 			end
 		end
+	end
+
+	if not chartData or #chartData < 2 then
+		io.stderr:write("fetchStock " .. symbol .. ": chart data missing or empty\n")
 	end
 
 	local news = Model.fetchNews(symbol, 4)

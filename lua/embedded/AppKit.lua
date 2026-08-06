@@ -675,7 +675,17 @@ function AppKit.Curve(props)
 		end
 	end
 	if #data < 2 then
-		return AppKit.PathView(props)
+		local msg = props.fallbackMessage or "There may be a problem with the server or network."
+		return AppKit.VStack {
+			fixedHeight = props.fixedHeight or props.height or 100,
+			fillWidth = props.fillWidth,
+			alignment = "center",
+			AppKit.Spacer {},
+			AppKit.Text { "Chart Unavailable", size = 15, weight = "bold",
+				color = "secondary" },
+			AppKit.Text { msg, size = 12, color = "secondary" },
+			AppKit.Spacer {},
+		}
 	end
 	local minY, maxY = data[1], data[1]
 	for _, v in ipairs(data) do
