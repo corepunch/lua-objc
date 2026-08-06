@@ -5,9 +5,10 @@
 		<% for _, column in ipairs(newsColumns) do %>
 		<VStack flexGrow="1" spacing="9" alignment="leading">
 			<% for _, article in ipairs(column) do %>
-			<VStack fixedHeight="64" fillWidth="true" spacing="2" alignment="leading">
+			<VStack fixedHeight="108" fillWidth="true" spacing="2" alignment="leading">
 				<Label color="secondary" size="10" text="<%= article.source %>" />
 				<Label weight="semibold" size="13" lines="2" fixedHeight="32" fillWidth="true" text="<%= article.title %>" />
+				<Label color="secondary" size="12" lines="3" fixedHeight="42" fillWidth="true" text="<%= article.summary %>" />
 				<Label color="secondary" size="10" text="<%= article.time %>" />
 			</VStack>
 			<% end %>

@@ -101,6 +101,7 @@ function Controller.new()
 		query = "",
 		window = nil,
 		chart = nil,
+		generalNews = nil,
 	}, Controller)
 end
 
@@ -138,8 +139,12 @@ function Controller:updateSidebar()
 end
 
 function Controller:showNews()
+	local articles = self.generalNews
+	if not articles or #articles == 0 then
+		articles = Model.sampleNews(nil, 8)
+	end
 	local view = xml.renderFile(VIEWS .. "NewsPage.etlua", {
-		newsColumns = precomputeNewsColumns(Model.news),
+		newsColumns = precomputeNewsColumns(articles),
 	})
 	self.detailPane:clearContainer()
 	self.detailPane:add(view)
@@ -175,6 +180,10 @@ end
 function Controller:refresh()
 	self.stockList:showLoading()
 	local function load()
+		local generalNews = Model.fetchNews("^IXIC", 10)
+		if generalNews and #generalNews > 0 then
+			self.generalNews = generalNews
+		end
 		for _, symbol in ipairs(Model.symbols) do
 			local data
 			if not _G.__headless then data = Model.fetchStock(symbol) end

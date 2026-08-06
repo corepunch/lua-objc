@@ -31,11 +31,13 @@ t.expect(controller.searchField.size.width > 200, "stocks search field fills the
 t.assertEqual(controller.selectedSymbol, "^IXIC", "stocks selects NASDAQ by default")
 t.assertEqual(controller.stockList.rowCount, #Model.symbols + 1,
 	"stocks includes Business News plus the watchlist rows")
-t.expect(#Model.news >= 8, "Business News has a useful set of stories")
-t.expect(#Model.newsFor("^IXIC", 4) >= 4,
-	"stock details include several related stories")
-t.assertEqual(#Model.newsFor("AAPL", 4), 4,
+local ixNews = Model.sampleStock("^IXIC").news
+t.expect(#ixNews >= 4, "stock details include several related stories")
+local aaplNews = Model.sampleStock("AAPL").news
+t.assertEqual(#aaplNews, 4,
 	"a company detail fills sparse ticker coverage with market news")
+local generalNews = Model.sampleNews(nil, 8)
+t.expect(#generalNews >= 8, "Business News has a useful set of stories")
 t.expect(controller.chart ~= nil and not controller.chart.closed,
 	"stock chart is an open stroked path without a closing round trip")
 t.expect(state.safeAreaPaneHosts, "stocks panes use native safe-area hosts")

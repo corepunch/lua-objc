@@ -21,15 +21,23 @@ local STOCKS = {
 	WMT = { name = "Walmart Inc.", price = 102.74 },
 }
 
-Model.news = {
-	{ title = "Markets rise as technology shares lead a broad afternoon rally", source = "Reuters", time = "12m", symbols = {"^IXIC", "MSFT", "NVDA"} },
-	{ title = "Apple suppliers prepare for the next wave of device upgrades", source = "Bloomberg", time = "28m", symbols = {"AAPL"} },
-	{ title = "Chip demand remains strong as data-center investment accelerates", source = "CNBC", time = "44m", symbols = {"NVDA", "MSFT", "GOOGL"} },
-	{ title = "Amazon expands same-day delivery to more regional markets", source = "The Wall Street Journal", time = "1h", symbols = {"AMZN"} },
-	{ title = "Banks gain as investors assess the path for interest rates", source = "Financial Times", time = "2h", symbols = {"JPM", "V"} },
-	{ title = "Meta outlines new tools for businesses and creators", source = "The Verge", time = "2h", symbols = {"META"} },
-	{ title = "Electric-vehicle makers report steadier demand into the quarter", source = "Associated Press", time = "3h", symbols = {"TSLA"} },
-	{ title = "Retail spending holds firm ahead of the back-to-school season", source = "MarketWatch", time = "4h", symbols = {"WMT", "AMZN", "V"} },
+local SAMPLE_NEWS = {
+	{ title = "Markets rise as technology shares lead a broad afternoon rally", source = "Reuters", time = "12m", symbols = {"^IXIC", "MSFT", "NVDA"},
+		summary = "The S&P 500 and Nasdaq both climbed more than 1% as chipmakers and software names led gains. Investor sentiment improved after the latest inflation data came in below expectations." },
+	{ title = "Apple suppliers prepare for the next wave of device upgrades", source = "Bloomberg", time = "28m", symbols = {"AAPL"},
+		summary = "Key component manufacturers are ramping production ahead of Apple's fall product launches. Analysts expect a strong upgrade cycle driven by new AI features across the iPhone and Mac lineups." },
+	{ title = "Chip demand remains strong as data-center investment accelerates", source = "CNBC", time = "44m", symbols = {"NVDA", "MSFT", "GOOGL"},
+		summary = "Cloud providers continue to expand their infrastructure, fueling demand for high-performance processors. Orders for next-generation AI accelerators remain well above supply through mid-year." },
+	{ title = "Amazon expands same-day delivery to more regional markets", source = "The Wall Street Journal", time = "1h", symbols = {"AMZN"},
+		summary = "The e-commerce giant is adding dozens of metro areas to its same-day delivery network. The move puts pressure on traditional retailers already struggling with logistics costs." },
+	{ title = "Banks gain as investors assess the path for interest rates", source = "Financial Times", time = "2h", symbols = {"JPM", "V"},
+		summary = "Financial shares rose broadly after Fed officials signaled a measured approach to future rate adjustments. Higher-for-longer rates continue to support net interest margins across the sector." },
+	{ title = "Meta outlines new tools for businesses and creators", source = "The Verge", time = "2h", symbols = {"META"},
+		summary = "The company announced a suite of AI-powered advertising and content tools at its annual developer event. Early testing shows improved click-through rates for targeted campaigns." },
+	{ title = "Electric-vehicle makers report steadier demand into the quarter", source = "Associated Press", time = "3h", symbols = {"TSLA"},
+		summary = "Several automakers posted delivery numbers that topped lowered expectations, signaling that demand may be stabilizing. Price cuts earlier in the year helped clear inventory across key markets." },
+	{ title = "Retail spending holds firm ahead of the back-to-school season", source = "MarketWatch", time = "4h", symbols = {"WMT", "AMZN", "V"},
+		summary = "Consumer spending data showed resilience as households began early back-to-school shopping. Discount retailers and online platforms reported stronger-than-expected foot traffic and order volumes." },
 }
 
 local function contains(values, needle)
@@ -39,20 +47,18 @@ local function contains(values, needle)
 	return false
 end
 
-function Model.newsFor(symbol, limit)
+local function sampleNews(symbol, limit)
 	local result = {}
 	local included = {}
-	for _, article in ipairs(Model.news) do
+	for _, article in ipairs(SAMPLE_NEWS) do
 		if not symbol or contains(article.symbols, symbol) or symbol == "^IXIC" then
 			result[#result + 1] = article
 			included[article] = true
 			if limit and #result >= limit then break end
 		end
 	end
-	-- A company page should never collapse to one sparse story merely because
-	-- the remaining market coverage is broader than that ticker.
 	if limit and #result < limit then
-		for _, article in ipairs(Model.news) do
+		for _, article in ipairs(SAMPLE_NEWS) do
 			if not included[article] then
 				result[#result + 1] = article
 				if #result >= limit then break end
@@ -60,6 +66,68 @@ function Model.newsFor(symbol, limit)
 		end
 	end
 	return result
+end
+
+Model.sampleNews = sampleNews
+
+-- Yahoo Finance news API with crumb-based auth.
+-- NSURLSession.sharedSession cookies are shared across calls within the same
+-- coroutine, so the fc.yahoo.com → getcrumb → quoteSummary flow works
+-- transparently.
+
+local CRUMB_URL = "https://query2.finance.yahoo.com/v1/test/getcrumb"
+local COOKIE_URL = "https://fc.yahoo.com/"
+local NEWS_URL_FMT = "https://query2.finance.yahoo.com/v10/finance/quoteSummary/%s?modules=news"
+local CHART_URL_FMT = "https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=5m&range=1d"
+
+local crumbCache = nil
+
+local function getCrumb()
+	if crumbCache then return crumbCache end
+	pcall(ns.fetch, COOKIE_URL)
+	local ok, raw = pcall(ns.fetch, CRUMB_URL)
+	if not ok or not raw then return nil end
+	raw = raw:match("^%s*(.-)%s*$") or ""
+	if #raw == 0 then return nil end
+	crumbCache = raw
+	return raw
+end
+
+local function relativeTime(unixTime)
+	local now = os.time()
+	local diff = math.max(0, now - unixTime)
+	if diff < 60 then return "Just now" end
+	if diff < 3600 then return math.floor(diff / 60) .. "m" end
+	if diff < 86400 then return math.floor(diff / 3600) .. "h" end
+	return math.floor(diff / 86400) .. "d"
+end
+
+function Model.fetchNews(symbol, count)
+	if _G.__headless then return nil end
+	local crumb = getCrumb()
+	if not crumb then return nil end
+	local url = string.format(NEWS_URL_FMT, symbol) .. "&crumb=" .. crumb
+	local ok, data = pcall(ns.fetch_json, url)
+	if not ok or not data then
+		crumbCache = nil
+		return nil
+	end
+	local result = data.quoteSummary and data.quoteSummary.result
+	if not result or #result == 0 then return nil end
+	local newsItems = result[1].news
+	if not newsItems then return nil end
+	local articles = {}
+	for i, n in ipairs(newsItems) do
+		if count and i > count then break end
+		articles[#articles + 1] = {
+			title = n.title or "",
+			source = n.publisher or "",
+			summary = n.description or "",
+			time = n.providerPublishTime and relativeTime(n.providerPublishTime) or "",
+			symbols = n.relatedTickers or {},
+		}
+	end
+	return #articles > 0 and articles or nil
 end
 
 function Model.sampleStock(symbol)
@@ -89,13 +157,12 @@ function Model.sampleStock(symbol)
 		fiftyTwoWeekHigh = info.price * 1.18,
 		fiftyTwoWeekLow = info.price * 0.71,
 		chartData = chartData,
-		news = Model.newsFor(symbol, 4),
+		news = sampleNews(symbol, 4),
 	}
 end
 
 function Model.fetchStock(symbol)
-	local url = "https://query1.finance.yahoo.com/v8/finance/chart/"
-		.. symbol .. "?interval=5m&range=1d"
+	local url = string.format(CHART_URL_FMT, symbol)
 
 	local ok, data = pcall(ns.fetch_json, url)
 	if not ok or not data then
@@ -122,14 +189,6 @@ function Model.fetchStock(symbol)
 	end
 
 	local change = ((price - prev) / prev) * 100
-	local dailyHigh = meta.regularMarketDayHigh
-	local dailyLow = meta.regularMarketDayLow
-	local volume = meta.regularMarketVolume
-	local previousClose = meta.chartPreviousClose
-	local open = meta.regularMarketOpen
-	local marketCap = meta.marketCap
-	local fiftyTwoWeekHigh = meta.fiftyTwoWeekHigh
-	local fiftyTwoWeekLow = meta.fiftyTwoWeekLow
 
 	local chartData = nil
 	if entry.indicators then
@@ -152,21 +211,26 @@ function Model.fetchStock(symbol)
 		end
 	end
 
+	local news = Model.fetchNews(symbol, 4)
+	if not news or #news == 0 then
+		news = sampleNews(symbol, 4)
+	end
+
 	return {
 		symbol = symbol,
 		name = name,
 		price = price,
 		prevClose = prev,
 		changePct = change,
-		dailyHigh = dailyHigh,
-		dailyLow = dailyLow,
-		volume = volume,
-		open = open,
-		marketCap = marketCap,
-		fiftyTwoWeekHigh = fiftyTwoWeekHigh,
-		fiftyTwoWeekLow = fiftyTwoWeekLow,
+		dailyHigh = meta.regularMarketDayHigh,
+		dailyLow = meta.regularMarketDayLow,
+		volume = meta.regularMarketVolume,
+		open = meta.regularMarketOpen,
+		marketCap = meta.marketCap,
+		fiftyTwoWeekHigh = meta.fiftyTwoWeekHigh,
+		fiftyTwoWeekLow = meta.fiftyTwoWeekLow,
 		chartData = chartData,
-		news = Model.newsFor(symbol, 4),
+		news = news,
 	}
 end
 
