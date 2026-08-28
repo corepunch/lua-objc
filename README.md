@@ -191,6 +191,13 @@ column widths, flex behavior, split proportions, and edge cases (empty,
 zero-size, overflow, missing data). Every implementation or bugfix must
 include fast headless regression tests.
 
+## Contributing
+
+Contributors are very welcome. Whether you want to improve the native bridge,
+add a Lua widget, build an example app, improve UIKit coverage, or strengthen
+the tests and documentation, start with the task map above and open an issue or
+pull request.
+
 ## Repository map
 
 ```text
