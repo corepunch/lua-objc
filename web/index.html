@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f5f7">
+  <meta name="description" content="Build native Apple apps with declarative Lua, AppKit, and UIKit. No compile cycle for every change.">
+  <title>lua-objc | Native Apple apps in Lua</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="lua-objc home"><span class="brand-mark">{ }</span> lua-objc</a>
+    <nav aria-label="Primary navigation">
+      <a href="#why">Why</a>
+      <a href="#example">Example</a>
+      <a href="#start">Start</a>
+      <a class="nav-button" href="https://github.com/corepunch/lua-objc">GitHub <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero section-wrap">
+      <div class="hero-copy reveal">
+        <p class="eyebrow"><span class="status-dot"></span> Native Apple UI, live in Lua</p>
+        <h1>Make the idea<br><em>the app.</em></h1>
+        <p class="hero-lede">Build polished macOS and iOS interfaces with declarative Lua, real AppKit/UIKit controls, and no compile cycle between edits.</p>
+        <div class="hero-actions">
+          <a class="button button-dark" href="#start">Build your first app <span aria-hidden="true">↓</span></a>
+          <a class="text-link" href="https://github.com/corepunch/lua-objc">Explore the source <span aria-hidden="true">↗</span></a>
+        </div>
+        <p class="hero-note"><span>⌘</span> Edit. Run. See it immediately.</p>
+      </div>
+      <div class="hero-art reveal reveal-delay" aria-label="A native weather app built with lua-objc">
+        <div class="art-glow"></div>
+        <div class="sun-disc"></div>
+        <div class="weather-window">
+          <div class="window-chrome"><span></span><span></span><span></span><b>World Weather</b><i>↻</i></div>
+          <div class="weather-body">
+            <aside>
+              <div class="side-title">LOCATIONS</div>
+              <div class="location active"><b>London</b><small>24°C · Light rain</small></div>
+              <div class="location"><b>Tokyo</b><small>28°C · Partly cloudy</small></div>
+              <div class="location"><b>San Francisco</b><small>18°C · Clear</small></div>
+              <div class="location"><b>Sydney</b><small>16°C · Showers</small></div>
+              <div class="location"><b>Berlin</b><small>21°C · Cloudy</small></div>
+            </aside>
+            <div class="weather-detail">
+              <div class="weather-heading"><div><small>London, England</small><h2>Light rain</h2></div><div class="weather-temp">24<span>°</span></div></div>
+              <div class="weather-metrics"><div><small>HUMIDITY</small><b>68%</b></div><div><small>WIND</small><b>23 km/h W</b></div><div><small>VISIBILITY</small><b>10 km</b></div></div>
+              <div class="forecast-line"><small>7-DAY FORECAST</small><div class="forecast"><span>FRI <b>☂</b><strong>24°</strong></span><span>SAT <b>☀</b><strong>20°</strong></span><span>SUN <b>☁</b><strong>22°</strong></span><span>MON <b>☂</b><strong>20°</strong></span><span>TUE <b>☀</b><strong>21°</strong></span></div></div>
+            </div>
+          </div>
+        </div>
+        <p class="art-caption"><span class="caption-line"></span> A real native window, rendered from Lua</p>
+      </div>
+    </section>
+
+    <section id="why" class="band band-dark">
+      <div class="section-wrap split-intro">
+        <p class="eyebrow eyebrow-light">The short version</p>
+        <div><h2>Less waiting.<br><span>More making.</span></h2><p>SwiftUI is elegant. The compile-and-preview loop around it can be anything but. lua-objc keeps the expressive part and removes the ceremony between an edit and the thing you are building.</p></div>
+      </div>
+      <div class="section-wrap proof-grid">
+        <article><span class="proof-number">01</span><h3>Native by default</h3><p>AppKit and UIKit controls do the real work: selection, keyboard behavior, accessibility, focus, and platform metrics.</p></article>
+        <article><span class="proof-number">02</span><h3>Fast to change</h3><p>Edit a Lua controller or etlua view, run it directly, and get a fresh native window without an Xcode build step.</p></article>
+        <article><span class="proof-number">03</span><h3>Easy to verify</h3><p>Headless tests, screenshots, and native layout dumps make behavior and geometry inspectable by people and agents.</p></article>
+      </div>
+    </section>
+
+    <section id="example" class="section-wrap example-section">
+      <div class="section-heading"><div><p class="eyebrow">A small proof</p><h2>Weather, without<br>the weather report.</h2></div><p>One app. A real network request, native loading state, a location sidebar, and a seven-day forecast that scrolls when it needs to.</p></div>
+      <div class="example-frame"><img src="weather-example.png" alt="lua-objc Weather app showing a location sidebar and detailed seven-day forecast"><div class="image-label">EXAMPLE / WEATHER <span>APPKIT</span></div></div>
+      <div class="example-bottom"><p>Stable structure belongs in etlua. State, network boundaries, and actions stay in Lua. The result is simple to read, simple to test, and still feels at home on the platform.</p><a class="text-link" href="https://corepunch.github.io/lua-objc/weather_app_example.html">Read the weather walkthrough <span aria-hidden="true">↗</span></a></div>
+    </section>
+
+    <section id="start" class="band band-paper">
+      <div class="section-wrap start-grid"><div><p class="eyebrow">Start with a folder</p><h2>Your next screen<br>is a Lua file.</h2><p class="start-copy">Keep the shape familiar: a model for data, a controller for actions, and views for declarative structure.</p></div><div class="code-card"><div class="code-top"><span>examples/hello/init.lua</span><span>LIVE</span></div><pre><code><i>local</i> ns = <i>require</i>(<q>"AppKit"</q>)
+
+<i>return</i> <i>function</i>()
+  <i>return</i> ns.Window {
+    title = <q>"Hello"</q>,
+    ns.VStack {
+      ns.Title <q>"A native app"</q>,
+      ns.Text <q>"Built without a compile cycle."</q>,
+    },
+  }
+<i>end</i></code></pre><div class="code-run">$ ./lua-objc examples/hello <span>●</span></div></div></div>
+    </section>
+
+    <section class="closing section-wrap"><p class="eyebrow">Open source, Apple-shaped</p><h2>A faster path from<br>thought to interface.</h2><div class="closing-actions"><a class="button button-dark" href="https://github.com/corepunch/lua-objc">View lua-objc on GitHub <span aria-hidden="true">↗</span></a><a class="text-link" href="https://corepunch.github.io/lua-objc/">Read the agent docs <span aria-hidden="true">↗</span></a></div><p class="contributors">Contributors are very welcome. Bring a widget, an example, a test, a design idea, or simply a sharp question.</p></section>
+  </main>
+
+  <footer class="site-footer section-wrap"><span>© 2026 lua-objc</span><span>Built for native Apple platforms</span><a href="https://github.com/corepunch/lua-objc">GitHub ↗</a></footer>
+  <script>document.querySelectorAll('.reveal').forEach((el, i) => setTimeout(() => el.classList.add('is-visible'), 80 + i * 140));</script>
+</body>
+</html>
