@@ -152,9 +152,7 @@ native controls and element names.
 3. **`build/UIKit.dylib`** — iOS Simulator Lua module. Owns the UIKit bridge
    split under `src/uikit/`, shares async state/HTTP/JSON services from
    `src/shared/`, and embeds `lua/embedded/UIKit.lua`.
-4. **`build/IDEKit.dylib`** — IDE component module with embedded
-   `lua/embedded/IDEKit.lua`.
-5. **`examples/*.lua`** — UI scripts written by the user. No compilation step.
+4. **`examples/*.lua`** — UI scripts written by the user. No compilation step.
 
 The embedded AppKit layer provides SwiftUI-like functions
 (`Window`, `VStack`, `HStack`, `Text`, `Image`, `Spacer`, `List`).
@@ -660,54 +658,12 @@ ns.Curve {
 | `fillColor` | `{r,g,b[,a]}` | auto | Fill color; defaults to stroke with alpha 0.15 |
 | `chartPadding` | number | `0` | Inner margin on all sides |
 
-### `ide.SearchView` — Open Quickly palette (Cmd+P)
+### IDE example
 
-`IDEKit.SearchView` is the Xcode-style search palette. The complete feature is
-implemented in `lua/embedded/IDEKit.lua`: recursive file collection, substring
-filtering, keyboard selection, datasource replacement, collapsed/expanded
-state, and result activation all remain in Lua.
-
-AppKit exposes only reusable primitives:
-
-- `ns.TextField` with `onChange` and normalized `onCommand` callbacks.
-- `ns.SearchField` for the native macOS `NSSearchField` capsule, including
-  AppKit's search icon, clear button, focus ring, and keyboard behavior.
-- `ns.OutlineView` with `replaceRows`, `selectRow`, `onRowSelect`, and
-  `onRowActivate`.
-- `ns.Panel`, `ns.present`, `ns.dismiss`, `ns.focus`, and `ns.resizeWindow`.
-- `ns.MenuItem` for registering an ordinary menu command and shortcut.
-
-There is intentionally no Quick Open-specific native bridge or Objective-C
-datasource. `SearchView` refreshes the native `NSOutlineView` datasource in one
-`replaceRows(results)` operation whenever the query changes.
-
-```lua
-local ns = require("AppKit")
-local ide = require("IDEKit")
-
-local searchView = ide.SearchView {
-    rootDir = "examples",
-    maxDepth = 5,
-    onSelect = function(path)
-        openPath(path)
-    end,
-}
-
-ns.MenuItem {
-    menu = "Find",
-    title = "Open Quickly...",
-    keyEquivalent = "p",
-    modifiers = { "command" },
-    action = function()
-        searchView:show(window)
-    end,
-}
-```
-
-The palette starts as a focused input bar. It expands downward only while the
-query has matches and uses AppKit's adaptive popover material. Escape dismisses
-it, Up/Down changes the selected result, and Return or double-click activates
-the result.
+The IDE example intentionally stays small: a native source-list `OutlineView`
+shows folder contents in the sidebar, and a native `TextEditor` displays the
+selected file in the content pane. See `examples/ide/` and the agent-facing
+[quickstart](index.md) for the supported workflow.
 
 ## Lua API — List (NSTableView)
 

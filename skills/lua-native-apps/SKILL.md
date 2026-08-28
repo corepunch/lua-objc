@@ -1,6 +1,6 @@
 ---
 name: lua-native-apps
-description: Lua-first macOS/iOS app architecture for lua-objc. Use when building or refactoring native app shells, IDE-style welcome/workspace flows, plugin/editor surfaces, recent-files/folders persistence, headless smoke tests, or converting Lua view functions to etlua templates.
+description: Lua-first macOS/iOS app architecture for lua-objc. Use when building or refactoring native app shells, simple folder-and-editor examples, headless smoke tests, or converting Lua view functions to etlua templates.
 ---
 
 # Lua Native Apps
@@ -11,36 +11,18 @@ modules.
 
 ## Canonical Shape
 
-- Use `App.new{...}` as the root lifecycle/controller object.
-- Put startup routing in the app shell, not in ad hoc example scripts.
-- Let `App:run()` decide:
-  - folder argument present -> open the workspace
-  - no folder -> show the welcome screen
-- Keep recent files and recent folders separate.
-- Keep `examples/<app>/main.lua` as a thin bootstrap only.
+- Keep `examples/<app>/init.lua` as a thin bootstrap that returns its controller.
+- Put file access and language detection in `Model.lua`.
+- Put the folder sidebar, editor content, file watching, and saving in
+  `Controller.lua`.
+- Use a native semantic sidebar plus one content editor for the simple IDE.
 
 The current `lua-objc` pattern is:
 
 ```lua
-local App = require("App")
-local Recent = require("examples.IDEKit.state.Recent")
-local Workspace = require("examples.IDEKit.Workspace")
-local Welcome = require("examples.IDEKit.Welcome")
+local Controller = require("examples.ide.Controller")
 
-local app = App.new {
-	recent = Recent.new { key = "ide" },
-	openFolder = function(self, folder)
-		return Workspace.open(folder, self)
-	end,
-	welcome = function(self)
-		return Welcome {
-			recentFolders = self.recent:folders(),
-			recentFiles = self.recent:files(),
-		}
-	end,
-}
-
-return app:run()
+return Controller
 ```
 
 ## App architecture: Model → Controller → etlua views
@@ -165,7 +147,8 @@ sandbox.
 ## Recent State
 
 - Track `recent files` and `recent folders` independently.
-- Persist them through the app layer or a small state wrapper such as `examples.IDEKit.state.Recent`.
+- Keep app-specific persistence in the app model or a small state wrapper under
+  the app's own folder.
 - When adding open actions, record the item kind at the same time the workspace opens.
 - Keep path pickers in the app layer so the UI does not need to know how folders/files are chosen.
 

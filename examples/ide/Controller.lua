@@ -5,11 +5,6 @@ local Model = require("examples.ide.Model")
 
 local VIEWS = "examples/ide/views/"
 
-local ACTIONS = {
-	openFolder = function(self) self:openFolder() end,
-	saveFile   = function(self) self:saveFile() end,
-}
-
 local function buildFileTree(files)
 	return ns.OutlineView {
 		header = false,
@@ -100,14 +95,7 @@ function Controller:loadFolder(folder)
 end
 
 function Controller:createWindow()
-	local cfg, refs = xml.renderFile(VIEWS .. "Window.etlua")
-
-	for _, item in ipairs(cfg.toolbar or {}) do
-		if item.action and ACTIONS[item.action] then
-			local fn = ACTIONS[item.action]
-			item.action = function() fn(self) end
-		end
-	end
+	local cfg = xml.renderFile(VIEWS .. "Window.etlua")
 
 	local files = {}
 	local folder = _G.arg and _G.arg[1]

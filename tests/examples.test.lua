@@ -12,19 +12,6 @@ local examples = {
 	"examples/ide/init.lua",
 	"examples/weather/init.lua",
 	"examples/stocks/init.lua",
-	"examples/IDEKit/init.lua",
-	"examples/IDEKit/App.lua",
-	"examples/IDEKit/state/Recent.lua",
-	"examples/IDEKit/Recent.lua",
-	"examples/IDEKit/Welcome.lua",
-	"examples/IDEKit/Workspace.lua",
-	"examples/IDEKit/Editor.lua",
-	"examples/IDEKit/EditorArea.lua",
-	"examples/IDEKit/NavigatorArea.lua",
-	"examples/IDEKit/SearchView.lua",
-	"examples/IDEKit/plugins/TextEditor.lua",
-	"examples/IDEKit/plugins/ImageViewer.lua",
-	"examples/IDEKit/plugins/NativeControls.lua",
 }
 
 for _, path in ipairs(examples) do

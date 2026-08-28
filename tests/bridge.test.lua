@@ -1,15 +1,7 @@
 local ns = require("AppKit")
 local t = require("TestKit")
 local App = require("App")
-local ControlBar = require("examples.IDEKit.ControlBar")
-local Editor = require("examples.IDEKit.Editor")
 local bridge = require("AppKitNative")
-local ImageViewerPlugin = require("examples.IDEKit.plugins.ImageViewer")
-local TextEditorPlugin = require("examples.IDEKit.plugins.TextEditor")
-local NativeControlsPlugin = require("examples.IDEKit.plugins.NativeControls")
-local RecentState = require("examples.IDEKit.state.Recent")
-local FindInFiles = require("examples.IDEKit.FindInFiles")
-local EditorArea = require("examples.IDEKit.EditorArea")
 
 local publicSize = ns.Size(12, 34)
 t.assertEqual(publicSize.width, 12,
@@ -119,26 +111,6 @@ end, "SearchField rejects unknown control sizes")
 -- Borderless fields keep their native intrinsic height so a centered HStack
 -- aligns visible glyphs with adjacent symbols, not merely an oversized frame.
 
-local findInFiles, findInFilesRoot = FindInFiles {
-	files = { "/project/main.lua" },
-}
-findInFilesRoot.size = ns.Size(220, 300)
-findInFilesRoot:layout(220)
-local searchIconFrame = findInFiles._searchIcon.frameInWindow
-t.assertEqual(type(searchIconFrame), "userdata",
-	"frameInWindow is a Rect userdata property")
-local searchIconY = searchIconFrame.origin.y
-local searchIconHeight = searchIconFrame.size.height
-local searchFieldFrame = findInFiles._searchField.frameInWindow
-local searchFieldY = searchFieldFrame.origin.y
-local searchFieldHeight = searchFieldFrame.size.height
-t.assertEqual(searchFieldHeight, 16,
-	"borderless Find field keeps AppKit's native intrinsic text height")
-t.expect(math.abs(
-		(searchIconY + searchIconHeight / 2)
-		- (searchFieldY + searchFieldHeight / 2)) < 0.5,
-	"Find field and search symbol share the same vertical center")
-
 -- Window with visible=false does not show
 
 local win = ns.Window {
@@ -240,8 +212,9 @@ t.assertEqual(spaced.paddingVertical, 7, "vertical padding is retained")
 local navigatorArea = ns.VStack {
 	ns.Text { "Files", flexGrow = 1 },
 }
-local editorArea = EditorArea {
+local editorArea = ns.TextEditor {
 	language = "lua",
+	flexGrow = 1,
 }
 local workspaceWindow = ns.Window {
 	width = 1100,
@@ -249,10 +222,10 @@ local workspaceWindow = ns.Window {
 	visible = false,
 	sidebarWidth = 240,
 	sidebar = navigatorArea,
-	content = editorArea.view,
+	content = editorArea,
 }
 local navigatorWidth = navigatorArea.size.width
-local editorWidth = editorArea.view.size.width
+local editorWidth = editorArea.size.width
 t.expect(navigatorWidth > 0, "IDE navigator split pane has a usable width")
 t.expect(editorWidth > 0,
 	"IDE editor split pane has a usable native width")
@@ -453,26 +426,6 @@ local compound = ns.Button {
 }
 t.expect(compound ~= nil, "compound native button creates successfully")
 
-local symbolToggle = require("AppKitNative")._symbolToggle(
-	"text.justify",
-	"Toggle Word Wrap",
-	false)
-local secondSymbolToggle = require("AppKitNative")._symbolToggle(
-	"sidebar.right",
-	"Toggle Inspector",
-	false)
-local controlBar = ControlBar {
-	title = "EDITOR",
-	buttons = { symbolToggle, secondSymbolToggle },
-}
-t.expect(controlBar ~= nil, "ControlBar accepts an optional trailing button array")
-local alignedControlBar = ControlBar {
-	title = "CANVAS",
-	height = 34,
-}
-t.assertEqual(alignedControlBar.fixedHeight, 35,
-	"panel headers include the 34-point row and native 1-point separator")
-
 -- List: add, remove, clear rows
 
 local list = ns.List {
@@ -559,89 +512,6 @@ t.expect(bridge._tableSpinnerFrame(list) == nil,
 	"hiding loading removes the native spinner overlay")
 t.expect(true, "show_loading and hide_loading do not crash")
 
--- Code editor remains a native editable text view inside its scroll view.
-
-local editor = Editor {
-	plugin = TextEditorPlugin,
-	initialCode = "return 1",
-}
-t.assertEqual(
-	editor._view.documentView.editable,
-	true,
-	"IDE editor text view is editable")
-t.assertEqual(
-	editor._view.documentView.selectable,
-	true,
-	"IDE editor text view is selectable")
-t.assertEqual(
-	editor._view.documentView.text,
-	"return 1",
-	"IDE editor exposes its initial source")
-
--- Plugin registry exposes the text editor as the first editor plugin.
-
- t.expect(App.getPlugin("textEditor") == TextEditorPlugin,
-	"text editor plugin is registered")
-
-t.expect(App.getPlugin("imageViewer") == ImageViewerPlugin,
-	"image viewer plugin is registered")
-t.assertEqual(TextEditorPlugin.kind, "editor", "text editor plugin kind")
-t.assertEqual(TextEditorPlugin.title, "Text Editor", "text editor plugin title")
-t.assertEqual(ImageViewerPlugin.kind, "editor", "image viewer plugin kind")
-t.assertEqual(ImageViewerPlugin.title, "Image Viewer", "image viewer plugin title")
-t.assertEqual(NativeControlsPlugin.kind, "provider", "native controls plugin kind")
-t.assertEqual(
-	App.resolvePluginByFile("sample.lua", "editor"),
-	TextEditorPlugin.spec,
-	"plugin resolves by file extension")
-t.assertEqual(
-	App.resolvePluginByFile("sample.svg", "editor"),
-	ImageViewerPlugin.spec,
-	"image viewer resolves by image extension")
-t.assertEqual(
-	App.resolvePluginByCommand("openTextEditor", "editor"),
-	TextEditorPlugin.spec,
-	"plugin resolves by command")
-
-local nativeControls = App.loadNativePlugin("build/ide-controls.dylib", "ide_controls")
-t.expect(nativeControls and type(nativeControls.ColorWell) == "function",
-	"Lua loads the optional Objective-C controls dylib")
-local colorWell = NativeControlsPlugin.create { module = nativeControls }
-t.expect(colorWell ~= nil, "native controls plugin creates an AppKit control")
-
-local pluginEditor = App.usePlugin("textEditor", {
-	initialCode = "return 42",
-})
-t.assertEqual(
-	pluginEditor._view.documentView.editable,
-	true,
-	"text editor plugin editor is editable")
-t.assertEqual(
-	pluginEditor._view.documentView.text,
-	"return 42",
-	"text editor plugin editor exposes initial source")
-
-local imageViewer = require("AppKitNative")._imageViewer("tests/fixtures/oversized.svg")
-t.expect(imageViewer ~= nil, "image viewer surface creates successfully")
-t.assertEqual(imageViewer.zoomScale, 1, "image viewer starts at 1x zoom")
-t.expect(imageViewer.fitToWindow == false, "image viewer starts in actual-size mode")
-imageViewer.fitToWindow = true
-t.expect(imageViewer.fitToWindow == true, "image viewer fit-to-window property is writable")
-imageViewer.fitToWindow = false
-imageViewer.zoomScale = 1.25
-t.assertEqual(imageViewer.zoomScale, 1.25, "image viewer zoomScale is writable")
-imageViewer.imagePath = "tests/fixtures/oversized.svg"
-t.assertEqual(imageViewer.imagePath, "tests/fixtures/oversized.svg", "image viewer imagePath is writable")
-
-local pluginImage = App.usePlugin("imageViewer", {
-	path = "tests/fixtures/oversized.svg",
-})
-t.expect(pluginImage ~= nil, "image viewer plugin window creates successfully")
-t.assertEqual(
-	pluginImage.title,
-	"oversized.svg",
-	"image viewer plugin uses the file name as its title")
-
 -- App recent-store persists and restores recents in a workspace-local path.
 
 local recentRoot = "/private/tmp/lua-objc-app-test"
@@ -667,14 +537,6 @@ local recentApp = App.new {
 }
 t.assertEqual(#recentApp:recentFiles(), 1, "recent files are filtered separately")
 t.assertEqual(#recentApp:recentFolders(), 1, "recent folders are filtered separately")
-
-local recentState = RecentState.new {
-	key = "bridge-test",
-	limit = 2,
-	storageRoot = recentRoot,
-}
-t.assertEqual(#recentState:files(), 1, "recent state exposes file items")
-t.assertEqual(#recentState:folders(), 1, "recent state exposes folder items")
 
 -- fetch infrastructure exists
 

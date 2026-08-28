@@ -13,21 +13,15 @@ APPKIT_RUNTIME_FRAGMENTS = $(shell find $(APPKIT_RUNTIME_DIRS) -type f -name '*.
 UIKIT_RUNTIME_SRC = src/uikit_module.m
 UIKIT_RUNTIME_DIRS = src/uikit src/shared
 UIKIT_RUNTIME_FRAGMENTS = $(shell find $(UIKIT_RUNTIME_DIRS) -type f -name '*.m')
-NATIVE_PLUGIN = build/ide-controls.dylib
-NATIVE_PLUGIN_SRC = src/ide_controls_plugin.m
 FRAMEWORK_MODULES = build/AppKit.dylib
 IOS_FRAMEWORK_MODULE = $(if $(strip $(IOS_SIM_SDK)),build/UIKit.dylib)
 EMBEDDED_LUA_DIR = lua/embedded
 GENERATED_DIR = build/generated
 
-all: $(TARGET) $(NATIVE_PLUGIN) $(FRAMEWORK_MODULES) $(IOS_FRAMEWORK_MODULE)
+all: $(TARGET) $(FRAMEWORK_MODULES) $(IOS_FRAMEWORK_MODULE)
 
 $(TARGET): $(HOST_SRC)
 	$(CC) $(HOST_CFLAGS) -o $@ $<
-
-$(NATIVE_PLUGIN): $(NATIVE_PLUGIN_SRC)
-	mkdir -p build
-	$(CC) $(CFLAGS) -dynamiclib -o $@ $^ $(LDFLAGS)
 
 $(GENERATED_DIR)/%.lua.h: $(EMBEDDED_LUA_DIR)/%.lua
 	mkdir -p $(GENERATED_DIR)
@@ -89,7 +83,7 @@ run-ide: $(TARGET) $(FRAMEWORK_MODULES)
 
 TEST_FILES = $(wildcard tests/*.test.lua)
 
-test: $(TARGET) $(NATIVE_PLUGIN) $(FRAMEWORK_MODULES)
+test: $(TARGET) $(FRAMEWORK_MODULES)
 	@passed=0; failed=0; \
 	for t in $(TEST_FILES); do \
 		echo "--- $$t ---"; \
@@ -104,7 +98,7 @@ test: $(TARGET) $(NATIVE_PLUGIN) $(FRAMEWORK_MODULES)
 	test $$failed -eq 0
 
 clean:
-	rm -f $(TARGET) $(NATIVE_PLUGIN) $(FRAMEWORK_MODULES) build/UIKit.dylib
+	rm -f $(TARGET) $(FRAMEWORK_MODULES) build/UIKit.dylib
 	rm -f build/appkit-runtime.o build/appkit-module.o
 	rm -f $(GENERATED_DIR)/AppKit.lua.h $(GENERATED_DIR)/UIKit.lua.h
 

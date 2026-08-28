@@ -1,8 +1,2 @@
 <Window title="IDE" width="1024" height="768" minWidth="640" minHeight="420"
-        sidebarWidth="240">
-    <Toolbar>
-        <ToolbarItem id="toggleSidebar" />
-        <ToolbarItem id="openFolder" label="Open Folder" icon="folder" tooltip="Open a folder" />
-        <ToolbarItem id="saveFile" label="Save" icon="square.and.arrow.down" tooltip="Save current file" />
-    </Toolbar>
-</Window>
+        sidebarWidth="240" />

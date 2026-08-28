@@ -14,7 +14,6 @@ src/appkit/*.m              Focused bridge fragments included by main.m
 src/uikit/*.m               UIKit bridge root and focused fragments
 src/shared/*.m              Shared Lua state, async, HTTP, JSON, error helpers
 build/AppKit.dylib          AppKit runtime + luaopen_AppKit
-build/IDEKit.dylib          luaopen_IDEKit
 build/UIKit.dylib           UIKit runtime + luaopen_UIKit (iOS SDK)
 lua/embedded/*.lua          Declarative layers embedded in those dylibs
 src/appkit/canvas_eval.m    Isolated AppKit canvas evaluation
@@ -34,7 +33,6 @@ The runtime appends `build/?.dylib` to `package.cpath`. Consequently:
 
 ```lua
 require("AppKit")  -- luaopen_AppKit in AppKit.dylib
-require("IDEKit")  -- luaopen_IDEKit in IDEKit.dylib
 require("UIKit")   -- luaopen_UIKit in UIKit.dylib, inside an iOS host
 ```
 
@@ -47,7 +45,7 @@ can silently bypass native loading.
 legacy `bridge` name remains temporarily available for existing application
 code, but public framework layers do not depend on it.
 
-`make all` builds AppKit and IDEKit everywhere and also builds UIKit when an
+`make all` builds AppKit everywhere and also builds UIKit when an
 iPhone Simulator SDK is available. `make uikit` requests that target
 explicitly and fails with a focused message when Xcode platform support is
 missing.
@@ -209,71 +207,12 @@ fillWidth, fillHeight
 
 ---
 
-## Layer 3 — IDEKit.dylib
+## IDE example (`examples/ide`)
 
-Xcode-aligned IDE workspace components. The dylib embeds
-`lua/embedded/IDEKit.lua`; each component maps to a named Xcode private class.
-
-### Component map
-
-| IDEKit component | Xcode equivalent | Description |
-|---|---|---|
-| `IDEKit.ControlBar` | `DVTControlBar` | 28px header strip with title + leading/trailing slots, terminated by a 1px separator |
-| `IDEKit.NavigatorArea` | `NSView_ControlledBy_IDENavigatorArea` | Persistent semantic sidebar with one source-list file tree |
-| `IDEKit.EditorArea` | `DVTSplitView_ControlledBy_IDEEditorArea` | Document pane: inner `NSSplitView` of source editor + preview |
-| `IDEKit.PreviewArea` | macOS preview canvas panel | Document-local ControlBar + inline canvas |
-| Native workspace | `NSSplitViewController` | Semantic sidebar item + content item with safe-area integration |
-| `IDEKit.Canvas` | `IDEEditorContextClipView` content area | `ns.VStack` that receives eval results |
-| Native document tabs | `NSWindow` tab group | Public `addTabbedWindow:ordered:`; AppKit owns the tab bar and tab buttons |
-| `IDEKit.Editor` | `SourceEditorScrollView` | `NSTextView` in a scroll view; debounces eval on change |
-
-### Canvas preview architecture
-
-Matches Xcode's macOS preview model exactly:
-
-```
-Xcode macOS preview          lua-objc equivalent
-─────────────────────────    ──────────────────────────────────
-SwiftUI.AppKitApplication    main lua_State
-NSPreviewTargetWindow        IDEKit.Canvas (ns.VStack host)
-NSHostingView → content      bridge._eval(code, true) → NSView
-no window chrome             ns.Window intercepted → ns.VStack
-```
-
-`IDEKit._evalIntoCanvas(canvas, code)` runs each eval in an isolated `lua_State` via `bridge._eval(code, true)`, clears the canvas, then inserts the returned view. Live updates are debounced 300ms via `bridge._timerAfter`.
-
-### Editor wrapper
-
-`IDEKit.Editor` returns a plain Lua **table** (not a raw userdata) with:
-
-- `._view` — the underlying `NSScrollView` userdata, passed directly to bridge functions
-- `.watchFile(path)` — installs/replaces an `FSEventStream` watcher; reloads and re-evals on disk change
-
-The actual editor implementation now lives in `lua/Plugins/TextEditor.lua` and
-is registered through `lua/PluginKit.lua`. `IDEKit.Editor` is a compatibility
-wrapper that keeps the existing IDE canvas behavior while the editor-specific
-logic stays isolated in a plugin module.
-
-### Plugin layer
-
-The first plugin layer is intentionally small:
-
-- `PluginKit.register(spec)` stores a plugin manifest and factory.
-- `PluginKit.use(id, props)` constructs a plugin instance.
-- `PluginKit.resolveByFile(path, kind)` and `PluginKit.resolveByCommand(name, kind)` perform lazy selection from activation rules.
-- `Plugins.TextEditor` is the first registered plugin and owns the native
-  `NSTextView`, change callback, file watching, and text accessors.
-
-This gives us a practical boundary for editor-specific features. A future slide
-editor, image editor, or chat agent panel can ship as its own plugin module
-without pulling its internals into the shared AppKit layer. That keeps the
-surface area smaller for both humans and the agent, which is the main reason to
-introduce the registry before the plugin count grows.
-
-The IDE example now lives under `examples/IDEKit/` with `init.lua` as the real
-entrypoint and `examples/ide/init.lua` kept as a compatibility shim. That gives the
-workspace room to grow into a small plugin playground without cluttering the
-top-level examples directory.
+The IDE is an intentionally small Lua application, not a separate framework.
+It uses one native semantic sidebar for folder contents and one native editor
+content pane. Folder selection, file watching, and saving stay in its
+`Controller.lua`; file access and language detection stay in `Model.lua`.
 
 ### App layer
 
@@ -315,20 +254,11 @@ table hierarchies. Flat `examples/<appname>.lua` shims are forbidden.
 The IDE example is organized as:
 
 ```text
-examples/IDEKit/
+examples/ide/
 ├── init.lua          # entry point
-├── App.lua           # app lifecycle + routing
-├── Workspace.lua     # editor workspace window
-├── Welcome.lua       # startup / recent-project screen
-├── Canvas.lua        # preview canvas
-├── EditorArea.lua    # inner HSplit: source editor + preview
-├── NavigatorArea.lua # sidebar file tree
-├── PreviewArea.lua   # document-local ControlBar + inline canvas
-├── ControlBar.lua    # 28px header strip
-├── SearchView.lua    # search UI
-├── Recent.lua        # recent projects list
-├── plugins/          # editor surfaces (self-registering)
-└── state/            # persistence and recents
+├── Model.lua         # file access and language detection
+├── Controller.lua    # folder sidebar, editor, file watching, and saving
+└── views/            # window configuration templates
 ```
 
 That structure keeps app boot, scene selection, and UI composition separate
@@ -470,20 +400,14 @@ at the top level), property mutations on existing views, and layout helpers
 
 ---
 
-## IDE layout (`examples/IDEKit`)
+## IDE layout (`examples/ide`)
 
 ```
 ns.Window
 └── NSSplitViewController
-    ├── NSSplitViewItem.sidebar  → NavigatorArea (OutlineView, source-list file tree)
-    └── NSSplitViewItem.content → EditorArea (inner HSplit)
-        ├── NSTextView  (source editor)
-        └── Canvas  (ns.VStack, preview pane)
+    ├── NSSplitViewItem.sidebar  → OutlineView (source-list folder tree)
+    └── NSSplitViewItem.content  → TextEditor (editable file content)
 ```
-
-`EditorArea` owns its own inner `NSSplitView` (horizontal split). The
-`NavigatorArea` is the sole sidebar item; there is no separate `contentList`
-pane.
 
 ---
 

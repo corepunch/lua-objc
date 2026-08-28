@@ -1,5 +1,4 @@
 local ns = require("AppKit")
-local Welcome = require("examples.IDEKit.Welcome")
 
 local Controller = {}
 Controller.__index = Controller
@@ -9,13 +8,16 @@ function Controller.new()
 end
 
 function Controller:createWindow()
-	local welcomeView = Welcome {}
-
 	return ns.Window {
 		title  = "Welcome",
 		width  = 820,
 		height = 520,
-		welcomeView,
+		ns.VStack {
+			flexGrow = 1,
+			alignment = "center",
+			ns.Title "lua-objc",
+			ns.Text "Build native apps with Lua and AppKit.",
+		},
 	}
 end
 

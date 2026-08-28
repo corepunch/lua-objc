@@ -108,11 +108,11 @@ Render a script without opening a window:
 | Change async state ownership, HTTP, timers, or JSON | `src/shared/lua_async.m` |
 | Change isolated canvas evaluation | `src/appkit/canvas_eval.m` |
 | Change editor highlighting | `src/appkit/syntax_highlight.m` |
-| Add an IDE editor surface | `examples/IDEKit/plugins/` |
+| Add an IDE editor surface | `examples/ide/` |
 | Write or modify XML view templates | `lua/ui/xml.lua`, `examples/<app>/views/` |
 | Use template inheritance or partials | `views/AppWindow.etlua`, `views/partials/` |
 | Add a new example app | `examples/<app>/init.lua`, `AGENTS.md` (MVP layout rules) |
-| Change app startup or recents | `lua/App.lua`, `examples/IDEKit/app.lua` |
+| Change app startup or recents | `lua/App.lua`, `examples/ide/` |
 | Add UIKit coverage | `src/uikit/`, `src/uikit_module.m`, `lua/embedded/UIKit.lua` |
 | Understand runtime ownership | `ARCHITECTURE.md` |
 | Look up the Lua API or bridge rationale | `docs/PROJECT_REFERENCE.md` |
@@ -134,7 +134,7 @@ Lua script -> require("AppKit") -> build/AppKit.dylib -> AppKit objects
 
 `src/host.c` is a small loader. `build/AppKit.dylib` owns the Lua state, AppKit
 bridge, layout engine, async services, and embedded declarative layer.
-`IDEKit.dylib` and `UIKit.dylib` expose the corresponding embedded modules.
+`AppKit.dylib` and `UIKit.dylib` expose the corresponding native modules.
 
 ### App structure (MVC)
 
