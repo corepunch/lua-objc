@@ -81,6 +81,11 @@ This is the current best reference for the product story: a real app built with 
 
 See [docs/stocks_app_example.md](docs/stocks_app_example.md) for the full walkthrough.
 
+Agent-facing documentation is published from [`docs/`](docs/index.md): start
+with the [agent quickstart](docs/agents/quickstart.md), then use the
+[XML syntax reference](docs/agents/xml-syntax.md) and [Apple UI checklist](docs/agents/apple-ui-checklist.md)
+when generating an app.
+
 Render a script without opening a window:
 
 ```sh

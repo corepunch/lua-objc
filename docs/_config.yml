@@ -1,0 +1,6 @@
+title: lua-objc documentation
+description: Agent-facing syntax, architecture, and Apple UI guidance for lua-objc.
+markdown: kramdown
+theme: minima
+plugins:
+  - jekyll-feed
