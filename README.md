@@ -73,13 +73,13 @@ make run-ide
 ./lua-objc examples/mail
 ```
 
-## Stocks app example
+## Weather app example
 
-This is the current best reference for the product story: a real app built with native AppKit controls, declarative Lua, and cross-platform XML templates — without recompiling the app or touching Xcode.
+This is the current best reference for the product story: a real app built with native AppKit controls, declarative Lua, custom SVG artwork, and cross-platform XML templates — without recompiling the app or touching Xcode.
 
-![Stocks app example](docs/stocks-example.png)
+![Weather app example](docs/weather-example.png)
 
-See [docs/stocks_app_example.md](docs/stocks_app_example.md) for the full walkthrough.
+See [docs/weather_app_example.md](docs/weather_app_example.md) for the full walkthrough.
 
 The [weather example](docs/weather_app_example.md) demonstrates asynchronous
 HTTP, native loading state, selection-driven detail views, and the current
