@@ -273,6 +273,23 @@ function AppKit.HStack(props)
 	return view
 end
 
+function AppKit.ScrollView(props)
+	assert(type(props) == "table", "ScrollView requires a property table")
+	local content = props.content or props[1]
+	assert(type(content) == "userdata", "ScrollView requires one content view")
+	local view = bridge._scrollView(
+		content,
+		props.contentWidth or 0,
+		props.contentHeight or 0)
+	if props.horizontal ~= false then
+		view.hasHorizontalScroller = true
+	end
+	if props.vertical then
+		view.hasVerticalScroller = true
+	end
+	return applyLayout(view, props)
+end
+
 function AppKit.HSplit(props)
 	local view = bridge._hsplit()
 	if type(props) == "table" then

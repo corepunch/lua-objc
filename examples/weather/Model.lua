@@ -23,6 +23,46 @@ local function iconForCondition(condition)
 	return ICONS.sunny
 end
 
+local function conditionForCode(code)
+	code = tonumber(code)
+	if not code then return "Unknown" end
+	if code == 0 then return "Clear" end
+	if code <= 3 then return "Partly cloudy" end
+	if code <= 48 then return "Foggy" end
+	if code <= 57 then return "Drizzle" end
+	if code <= 67 then return "Rain" end
+	if code <= 77 then return "Snow" end
+	if code <= 82 then return "Showers" end
+	return "Stormy"
+end
+
+local function openMeteoForecast(latitude, longitude)
+	if not latitude or not longitude then return nil end
+	local url = string.format(
+		"https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,rain_sum,windspeed_10m_max,uv_index_max&forecast_days=7&timezone=auto",
+		tostring(latitude), tostring(longitude))
+	local ok, data = pcall(ns.fetch_json, url)
+	local daily = ok and data and data.daily
+	if not daily or not daily.time then return nil end
+
+	local forecast = {}
+	for index, date in ipairs(daily.time) do
+		local condition = conditionForCode(daily.weather_code and daily.weather_code[index])
+		forecast[#forecast + 1] = {
+			date = date,
+			tempMax = daily.temperature_2m_max and daily.temperature_2m_max[index] or "--",
+			tempMin = daily.temperature_2m_min and daily.temperature_2m_min[index] or "--",
+			desc = condition,
+			icon = iconForCondition(condition),
+			precipProbability = daily.precipitation_probability_max and daily.precipitation_probability_max[index] or "--",
+			rain = daily.rain_sum and daily.rain_sum[index] or "--",
+			wind = daily.windspeed_10m_max and daily.windspeed_10m_max[index] or "--",
+			uvIndex = daily.uv_index_max and daily.uv_index_max[index] or "--",
+		}
+	end
+	return #forecast > 0 and forecast or nil
+end
+
 Model.cities = {
 	{ name = "London",           query = "London" },
 	{ name = "Tokyo",            query = "Tokyo" },
@@ -48,6 +88,14 @@ function Model.fetchCity(city)
 	if not cc or not cc.weatherDesc or not cc.weatherDesc[1] then
 		return nil
 	end
+	local nearest = data.nearest_area and data.nearest_area[1] or {}
+	local nearestValue = function(key, fallback)
+		local values = nearest[key]
+		if type(values) == "string" or type(values) == "number" then
+			return values
+		end
+		return values and values[1] and (values[1].value or values[1]) or fallback
+	end
 
 	local forecast = {}
 	if data.weather then
@@ -64,7 +112,7 @@ function Model.fetchCity(city)
 		end
 	end
 
-	return {
+	local result = {
 		city = city.name,
 		temp = cc.temp_C or "--",
 		cond = cc.weatherDesc[1].value or "Unknown",
@@ -81,13 +129,15 @@ function Model.fetchCity(city)
 		windDegree = cc.winddirDegree or "--",
 		observationTime = cc.observation_time or "--",
 		localObsDate = cc.localObsDateTime or "--",
-		areaName = cc.areaName and cc.areaName[1] and cc.areaName[1].value or city.name,
-		region = cc.region and cc.region[1] and cc.region[1].value or "",
-		country = cc.country and cc.country[1] and cc.country[1].value or "",
-		latitude = cc.latitude or "--",
-		longitude = cc.longitude or "--",
+		areaName = cc.areaName and cc.areaName[1] and cc.areaName[1].value or nearestValue("areaName", city.name),
+		region = cc.region and cc.region[1] and cc.region[1].value or nearestValue("region", ""),
+		country = cc.country and cc.country[1] and cc.country[1].value or nearestValue("country", ""),
+		latitude = cc.latitude or nearestValue("latitude", "--"),
+		longitude = cc.longitude or nearestValue("longitude", "--"),
 		forecast = forecast,
 	}
+	result.forecast = openMeteoForecast(result.latitude, result.longitude) or forecast
+	return result
 end
 
 return Model

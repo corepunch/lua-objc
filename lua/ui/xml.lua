@@ -389,6 +389,18 @@ local function makeRegistry()
         return ns.HStack(props)
     end
 
+    R["ScrollView"] = function(ns, a, ch)
+        local content = ch[1]
+        if not content then error("xml: <ScrollView> requires one content child") end
+        local props = layoutProps(a)
+        props.content = content
+        if a.contentWidth then props.contentWidth = num(a.contentWidth) end
+        if a.contentHeight then props.contentHeight = num(a.contentHeight) end
+        if a.horizontal ~= nil then props.horizontal = bool(a.horizontal) end
+        if a.vertical ~= nil then props.vertical = bool(a.vertical) end
+        return ns.ScrollView(props)
+    end
+
     R["HSplit"] = function(ns, a, ch)
         local props = layoutProps(a)
         for _, c in ipairs(ch) do props[#props + 1] = c end

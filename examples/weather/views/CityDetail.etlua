@@ -52,8 +52,9 @@
     </HStack>
     <% if #city.forecast > 0 then -%>
     <Divider />
-    <Label text="Forecast" size="14" weight="semibold" />
-    <HStack spacing="12" alignment="top">
+        <Label text="7-day forecast" size="14" weight="semibold" />
+        <ScrollView contentWidth="772" contentHeight="188" fixedHeight="200" fillWidth="true" horizontal="true">
+    <HStack spacing="12" alignment="top" fixedWidth="772">
         <% for _, day in ipairs(city.forecast) do -%>
         <VStack spacing="4" alignment="center" fixedWidth="100">
             <Label text="<%= day.date %>" size="11" color="secondary" />
@@ -61,9 +62,11 @@
             <Label text="<%= day.tempMax or "--" %>°" size="16" weight="medium" />
             <Label text="<%= day.tempMin or "--" %>°" size="13" color="secondary" />
             <Label text="<%= day.desc %>" size="11" lines="2" />
+                <Label text="<%= day.precipProbability or "--" %>% rain" size="10" color="secondary" />
         </VStack>
         <% end -%>
     </HStack>
+    </ScrollView>
     <% end -%>
 </VStack>
 <% else -%>

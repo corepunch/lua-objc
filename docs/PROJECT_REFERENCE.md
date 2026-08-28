@@ -475,6 +475,24 @@ ns.VStack {
 }
 ```
 
+### `ScrollView{...}`
+
+Creates a native `NSScrollView` around one content view. Set
+`contentWidth` larger than the viewport to enable horizontal scrolling; the
+content view keeps that document width while the scroll view fills its parent.
+Use it for fixed-format rows such as a seven-day forecast.
+
+```lua
+ns.ScrollView {
+  content = ns.HStack { fixedWidth = 772, ... },
+  contentWidth = 772,
+  contentHeight = 164,
+  horizontal = true,
+  fixedHeight = 176,
+  fillWidth = true,
+}
+```
+
 ### `ForEach(data, content)` / `Group{...}`
 
 Use `ForEach` whenever sibling views share the same structure and differ only

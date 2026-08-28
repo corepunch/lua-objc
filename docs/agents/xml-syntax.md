@@ -29,6 +29,7 @@ attributes are ignored unless the tag documents them below.
 | `VStack` | Vertical native stack | `padding`, `paddingHorizontal`, `paddingVertical`, `spacing`, `alignment`, `flexGrow`, `flexShrink`, `fixedWidth`, `fixedHeight`, `minWidth`, `minHeight`, `maxWidth`, `maxHeight`, `fillWidth`, `fillHeight`, `hidden` |
 | `HStack` | Horizontal native stack | Same layout attributes as `VStack` |
 | `HSplit` | Horizontal split container | Same layout attributes as `VStack`; use `Window sidebar/content` for a window-level sidebar |
+| `ScrollView` | Native scroll container for one content child | `contentWidth`, `contentHeight`, `horizontal`, `vertical`, plus layout attributes |
 | `Spacer` | Flexible spacing view | Layout attributes |
 | `Divider` | Native separator | `orientation`, plus layout attributes |
 

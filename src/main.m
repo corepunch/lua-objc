@@ -214,6 +214,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"Rect", bridge_NSRect},
 	{"_vstack", bridge_AppKitControls_vstack},
 	{"_hstack", bridge_AppKitControls_hstack},
+	{"_scrollView", bridge_AppKitControls_scrollView},
 	{"_hsplit", bridge_AppKitControls_hsplit},
 	{"_vsplit", bridge_AppKitControls_vsplit},
 	{"_separator", bridge_AppKitControls_separator},

@@ -74,6 +74,23 @@ ok = pcall(function()
 end)
 t.expect(ok, "HStack creates without error")
 
+local scrollContent = ns.HStack {
+	fixedWidth = 700,
+	ns.Text "Wide content",
+}
+local scrollView = ns.ScrollView {
+	content = scrollContent,
+	contentWidth = 700,
+	contentHeight = 40,
+	fixedHeight = 40,
+}
+t.assertEqual(scrollView.hasHorizontalScroller, true,
+	"ScrollView enables native horizontal scrolling")
+t.assertEqual(scrollView.hasVerticalScroller, false,
+	"horizontal ScrollView does not add a vertical scroller")
+t.assertEqual(scrollContent.frame.size.width, 700,
+	"ScrollView preserves the explicit document width")
+
 -- TextField: native edits and editing commands call reusable Lua callbacks.
 
 local changedText = nil

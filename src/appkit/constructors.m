@@ -18,6 +18,29 @@ static int bridge_AppKitControls_hstack(lua_State *L) {
 	return 1;
 }
 
+static int bridge_AppKitControls_scrollView(lua_State *L) {
+	NSView *content = check_view(L, 1);
+	CGFloat contentWidth = (CGFloat)luaL_optnumber(L, 2, 0);
+	CGFloat contentHeight = (CGFloat)luaL_optnumber(L, 3, 0);
+
+	NSScrollView *obj = [[NSScrollView alloc] initWithFrame:NSZeroRect];
+	obj.hasHorizontalScroller = YES;
+	obj.hasVerticalScroller = NO;
+	obj.autohidesScrollers = YES;
+	obj.borderType = NSNoBorder;
+	obj.drawsBackground = NO;
+	obj.documentView = content;
+	if (contentWidth > 0 || contentHeight > 0) {
+		NSRect frame = content.frame;
+		frame.size.width = contentWidth > 0 ? contentWidth : frame.size.width;
+		frame.size.height = contentHeight > 0 ? contentHeight : frame.size.height;
+		content.frame = frame;
+		layout_recursive(content, frame.size.width);
+	}
+	push_objc(L, obj, "nsview");
+	return 1;
+}
+
 static int bridge_AppKitControls_hsplit(lua_State *L) {
 
 	NSSplitView *obj = [[NSSplitView alloc] initWithFrame:NSZeroRect];

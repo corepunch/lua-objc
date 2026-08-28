@@ -67,6 +67,12 @@ with cell formatters, selection callbacks, or a runtime data source. That is a
 framework documentation/API gap, not an application mistake. Until a schema
 API exists, use this pattern:
 
+The seven-day forecast is different: it is stable structure and therefore lives
+in etlua. Its seven 100-point cards occupy 772 points, so the native
+`ScrollView` keeps the cards readable and reveals a horizontal scroller when a
+window is narrower than the forecast.
+Open-Meteo supplies daily high/low, precipitation probability, wind, and UV values for the full week.
+
 ```lua
 local list = ns.List {
     style = "sourceList",
