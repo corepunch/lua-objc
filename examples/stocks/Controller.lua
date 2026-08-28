@@ -11,6 +11,7 @@ local LAYOUT = {
 	searchHeight = 36,
 	rowHeight = 58,
 	symbolMinWidth = 96,
+	symbolWidth = 131,
 	sidebarChartWidth = 68,
 	quoteWidth = 96,
 	searchPaddingHorizontal = 8,
@@ -230,7 +231,8 @@ function Controller:createWindow()
 		alternatingRows = false,
 		rowHeight = LAYOUT.rowHeight,
 		columns = {
-			{ id = "symbol", title = "Symbol", minWidth = LAYOUT.symbolMinWidth,
+			{ id = "symbol", title = "Symbol", width = LAYOUT.symbolWidth,
+				minWidth = LAYOUT.symbolMinWidth,
 				cell = { secondary = "name", weight = "semibold" } },
 			{ id = "chartData", title = "Day", width = LAYOUT.sidebarChartWidth,
 				cell = { curve = "chartData", curveColor = "changeColor" } },

@@ -95,9 +95,7 @@
 		}
 		overflows = totalColumnWidth > viewport.width;
 		if (overflows) outlineWidth = totalColumnWidth;
-		if (!overflows) {
-			[_outlineView sizeLastColumnToFit];
-		}
+		else outlineWidth = viewport.width;
 	}
 
 	CGRect frame = _outlineView.frame;

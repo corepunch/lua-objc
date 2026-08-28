@@ -8,6 +8,22 @@ compile/run cycle per change.
 
 **SwiftUI is fast for humans but slow for agents.** Every structural change
 triggers a full recompilation. A dozen iterations means a dozen Xcode builds.
+This is not just theoretical. The tooling pain is widely discussed online:
+
+> "Literally every time I make a change the SwiftUI previews break, requires me
+to restart, and give unexpected errors..." — Reddit, r/iOSProgramming
+>
+> "The preview canvas crashes more than it works." — Reddit, r/SwiftUI
+>
+> "The Problem: Full app builds take 30+ seconds. That latency kills the
+feedback loop." — Reddit, r/SwiftUI
+>
+> "In reality, the process would take minutes and simulator often stuck in black
+screen... I can go on and on about how slow SwiftUI preview is." — Reddit,
+r/iOSProgramming
+
+The same theme appears on Stack Overflow and Xcode discussions: builds stall,
+previews lag, and simulator startup is flaky enough to break the feedback loop.
 lua-objc decouples the app from the toolchain: edit an etlua template or Lua
 controller, hit run, and the native window updates instantly. The same code
 renders NSTextField on macOS and UILabel on iOS without platform conditionals.
@@ -56,6 +72,14 @@ make run-ide
 ./lua-objc examples/hello
 ./lua-objc examples/mail
 ```
+
+## Stocks app example
+
+This is the current best reference for the product story: a real app built with native AppKit controls, declarative Lua, and cross-platform XML templates — without recompiling the app or touching Xcode.
+
+![Stocks app example](docs/stocks-example.png)
+
+See [docs/stocks_app_example.md](docs/stocks_app_example.md) for the full walkthrough.
 
 Render a script without opening a window:
 

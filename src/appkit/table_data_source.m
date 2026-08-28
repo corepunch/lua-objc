@@ -198,9 +198,7 @@ static void table_update_curve(
 		CGFloat contentWidth = totalColumnWidth + cellOverhead;
 		overflows = contentWidth > viewport.width;
 		if (overflows) tableWidth = contentWidth;
-		if (!overflows) {
-			[_tableView sizeLastColumnToFit];
-		}
+		else tableWidth = viewport.width;
 	}
 
 	CGRect frame = _tableView.frame;

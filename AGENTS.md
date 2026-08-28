@@ -160,6 +160,7 @@ make
 make test
 make run ARGS="examples/hello/init.lua"
 ./lua-objc --preview --out=/tmp/preview.png examples/hello/init.lua
+./lua-objc --screenshot=/tmp/screenshot.png examples/stocks/init.lua
 ```
 
 ### Inspect computed AppKit layout
@@ -184,6 +185,42 @@ computed frame, intrinsic/fitting sizes, clipping state, and relevant text.
 `NSTableView` nodes additionally record computed column widths and visible cell
 text geometry with an explicit `cropped` flag. Inspect the dump before changing
 layout values and again afterward so the diagnosis and fix are both evidenced.
+
+### Screenshot verification
+
+Use `--screenshot=<path>` to launch the app, let it settle, capture the window
+content, and quit automatically:
+
+```sh
+make
+./lua-objc --screenshot=/tmp/before.png examples/stocks/init.lua
+# make your change
+make
+./lua-objc --screenshot=/tmp/after.png examples/stocks/init.lua
+```
+
+Or with the Makefile shortcut:
+
+```sh
+make screenshot ARGS="examples/stocks/init.lua" OUT=/tmp/screenshot.png
+```
+
+The flag runs the full app event loop, waits 1.5 s for layout and rendering to
+finish, captures the `contentView` of the first window as PNG, and exits with
+code 0 on success or 1 on failure. Unlike `--preview`, this exercises the real
+window geometry, split-view proportions, toolbar, and all live state. Use it to:
+
+- Verify a UI change before and after without keeping the app open.
+- Confirm a specific example renders without visual regressions.
+- Capture both light and dark appearances:
+  ```sh
+  ./lua-objc --screenshot=/tmp/light.png --appearance=light examples/stocks/init.lua
+  ./lua-objc --screenshot=/tmp/dark.png  --appearance=dark  examples/stocks/init.lua
+  ```
+- Capture at a custom content size:
+  ```sh
+  ./lua-objc --screenshot=/tmp/small.png --width=760 --height=468 examples/stocks/init.lua
+  ```
 
 For UI changes, completion requires actual visual QA:
 

@@ -7,6 +7,7 @@ local VIEWS = "examples/ide/views/"
 
 local ACTIONS = {
 	openFolder = function(self) self:openFolder() end,
+	saveFile   = function(self) self:saveFile() end,
 }
 
 local function buildFileTree(files)
@@ -71,6 +72,15 @@ function Controller:openFolder()
 	self:loadFolder(folder)
 end
 
+function Controller:saveFile()
+	if not self.currentPath then return end
+	local content = self.editor.text
+	if Model.writeFile(self.currentPath, content) then
+		local name = self.currentPath:match("([^/]+)$") or self.currentPath
+		self.window.title = name
+	end
+end
+
 function Controller:loadFolder(folder)
 	local files = Model.readDirectory(folder, 3)
 	self.fileTree:replaceRows(files)
@@ -121,6 +131,15 @@ function Controller:createWindow()
 	end
 
 	self.window = ns.Window(cfg)
+
+	ns.MenuItem {
+		menu = "File",
+		title = "Save",
+		keyEquivalent = "s",
+		modifiers = { "command" },
+		action = function() self:saveFile() end,
+	}
+
 	return self.window
 end
 

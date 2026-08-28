@@ -108,4 +108,7 @@ clean:
 	rm -f build/appkit-runtime.o build/appkit-module.o
 	rm -f $(GENERATED_DIR)/AppKit.lua.h $(GENERATED_DIR)/UIKit.lua.h
 
-.PHONY: all uikit run clean test run-hello run-list run-live run-weather run-welcome run-mail run-layout
+screenshot: $(TARGET) $(FRAMEWORK_MODULES)
+	./$(TARGET) --screenshot=$(or $(OUT),/tmp/screenshot.png) $(ARGS)
+
+.PHONY: all uikit run clean test run-hello run-list run-live run-weather run-welcome run-mail run-layout screenshot

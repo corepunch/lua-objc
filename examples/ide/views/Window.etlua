@@ -3,5 +3,6 @@
     <Toolbar>
         <ToolbarItem id="toggleSidebar" />
         <ToolbarItem id="openFolder" label="Open Folder" icon="folder" tooltip="Open a folder" />
+        <ToolbarItem id="saveFile" label="Save" icon="square.and.arrow.down" tooltip="Save current file" />
     </Toolbar>
 </Window>

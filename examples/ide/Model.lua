@@ -42,6 +42,14 @@ function Model.readFile(path)
 	return content
 end
 
+function Model.writeFile(path, content)
+	local file = io.open(path, "w")
+	if not file then return false end
+	file:write(content)
+	file:close()
+	return true
+end
+
 function Model.buildTree(entries, parentPath)
 	local tree = {}
 	for _, entry in ipairs(entries) do

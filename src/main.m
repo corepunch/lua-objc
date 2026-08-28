@@ -338,6 +338,7 @@ int lua_objc_main(int argc, char *argv[]) {
 	BOOL layout_height_set = NO;
 	const char *preview_out = NULL;
 	const char *layout_out = NULL;
+	const char *screenshot_out = NULL;
 	const char *script_args[256];
 	int script_arg_count = 0;
 
@@ -354,6 +355,8 @@ int lua_objc_main(int argc, char *argv[]) {
 			preview_out = argv[i] + 6;
 		} else if (strncmp(argv[i], "--dump-layout=", 14) == 0) {
 			layout_out = argv[i] + 14;
+		} else if (strncmp(argv[i], "--screenshot=", 13) == 0) {
+			screenshot_out = argv[i] + 13;
 		} else if (strncmp(argv[i], "--appearance=", 13) == 0) {
 			appearance = argv[i] + 13;
 		} else if (strcmp(argv[i], "--appearance") == 0 && i + 1 < argc) {
@@ -599,6 +602,35 @@ int lua_objc_main(int argc, char *argv[]) {
 	});
 
 	lua_settop(L, 0);
+
+	if (screenshot_out) {
+		NSString *screenshotPath = [NSString stringWithUTF8String:screenshot_out];
+		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)),
+			dispatch_get_main_queue(), ^{
+			NSWindow *window = NSApp.windows.firstObject;
+			NSData *png = nil;
+			if (window && (layout_width_set || layout_height_set)) {
+				NSSize size = window.contentView.bounds.size;
+				if (layout_width_set) size.width = preview_width;
+				if (layout_height_set) size.height = preview_height;
+				[window setContentSize:size];
+			}
+			if (window) {
+				[window display];
+				int winNum = (int)[window windowNumber];
+				NSString *cmd = [NSString stringWithFormat:
+					@"screencapture -x -l %d %@", winNum, screenshotPath];
+				system([cmd UTF8String]);
+				png = [NSData dataWithContentsOfFile:screenshotPath];
+			}
+			if (png) {
+				[png writeToFile:screenshotPath atomically:YES];
+			} else {
+				fprintf(stderr, "screenshot: failed to capture window\n");
+			}
+			[NSApp terminate:nil];
+		});
+	}
 
 	[NSApp run];
 

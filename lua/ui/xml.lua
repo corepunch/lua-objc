@@ -635,7 +635,12 @@ local function resolvePath(base, rel)
 end
 
 local function readTemplate(path)
-    local f = assert(io.open(path, "r"), "xml: cannot open " .. path)
+    local f = io.open(path, "r")
+    if not f then
+        local msg = "xml: cannot open " .. path
+        io.stderr:write(msg .. "\n")
+        error(msg, 2)
+    end
     local src = f:read("*a")
     f:close()
     return src
@@ -708,7 +713,11 @@ function M.render(src, data, ns)
     injectTemplateHelpers(data, baseDir)
 
     local ok, result = pcall(etlua.render, src, data)
-    if not ok then error("xml.render: template error: " .. tostring(result)) end
+    if not ok then
+        local msg = "xml.render: template error: " .. tostring(result)
+        io.stderr:write(msg .. "\n")
+        error(msg)
+    end
     if result == nil then error("xml.render: template returned nil") end
     src = result
     -- If extends() was called, render the parent now (after all block() calls)
@@ -722,13 +731,16 @@ function M.render(src, data, ns)
             if type(v) ~= "function" then merged[k] = v end
         end
         injectTemplateHelpers(merged, parentDir)
-        -- Yield reads from the blocks collected during child processing
         merged.yield = function(name)
             return data.__blocks[name] or ""
         end
-            local ok2, parentResult = pcall(etlua.render, parentSrc, merged)
-            if not ok2 then error("xml.render: template error in parent: " .. tostring(parentResult)) end
-            src = parentResult
+        local ok2, parentResult = pcall(etlua.render, parentSrc, merged)
+        if not ok2 then
+            local msg = "xml.render: error in extends(\"" .. info.path .. "\"): " .. tostring(parentResult)
+            io.stderr:write(msg .. "\n")
+            error(msg)
+        end
+        src = parentResult
     end
     -- strip XML declaration / doctype if present
     src = src:gsub("^%s*<%?xml[^?]*%?>%s*", "")
@@ -761,13 +773,23 @@ end
 
 -- Render an XML file.  Path is relative to the process working directory.
 function M.renderFile(path, data, ns)
-    local f = assert(io.open(path, "r"), "xml.renderFile: cannot open " .. path)
+    local f = io.open(path, "r")
+    if not f then
+        local msg = "xml.renderFile: cannot open " .. path
+        io.stderr:write(msg .. "\n")
+        error(msg)
+    end
     local src = f:read("*a")
     f:close()
-    -- Pass base directory so extends/partial can resolve relative paths
     data = type(data) == "table" and data or {}
     data.__baseDir = path:match("^(.-)[^/\\]*$")
-    return M.render(src, data, ns)
+    local ok, result, refs = pcall(M.render, src, data, ns)
+    if not ok then
+        local msg = "xml.renderFile [" .. path .. "]: " .. tostring(result)
+        io.stderr:write(msg .. "\n")
+        error(msg)
+    end
+    return result, refs
 end
 
 -- Decode XML into Lua tables using a schema.
