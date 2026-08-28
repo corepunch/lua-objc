@@ -11,6 +11,8 @@ Open the narrowest document that answers the task:
   build/test notes, and bridge rationale.
 - `stocks_app_example.md` — a visual app example built in native AppKit with
   hot-reloadable Lua and XML layout, plus the recommended MVC structure.
+- `weather_app_example.md` — async HTTP, native table loading, selection, XML
+  detail views, and the framework gaps exposed by the example.
 - `tableview_swiftui.md` — NSTableView sizing, scrolling, and style behavior.
 - `research/XCODE_UI_ARCHITECTURE.md` — Xcode inspection notes for IDE parity
   work; this is research, not the lua-objc implementation contract.

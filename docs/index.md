@@ -14,6 +14,7 @@ AppKit/UIKit controls, and no compile cycle for every UI change.
 - [XML syntax](agents/xml-syntax.md): the supported etlua/XML tags and attributes.
 - [Apple UI checklist](agents/apple-ui-checklist.md): design and accessibility rules for polished native apps.
 - [Stocks app example](stocks_app_example.md): a complete Model/Controller/views example with a screenshot.
+- [Weather app example](weather_app_example.md): async HTTP, loading, selection, and normalized API data.
 - [Project reference](PROJECT_REFERENCE.md): detailed Lua API, bridge behavior, and layout contracts.
 - [Table behavior](tableview_swiftui.md): list sizing, styles, columns, and loading state.
 

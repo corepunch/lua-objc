@@ -81,6 +81,10 @@ This is the current best reference for the product story: a real app built with 
 
 See [docs/stocks_app_example.md](docs/stocks_app_example.md) for the full walkthrough.
 
+The [weather example](docs/weather_app_example.md) demonstrates asynchronous
+HTTP, native loading state, selection-driven detail views, and the current
+framework gaps around declarative table row schemas.
+
 Agent-facing documentation is published from [`docs/`](docs/index.md): start
 with the [agent quickstart](docs/agents/quickstart.md), then use the
 [XML syntax reference](docs/agents/xml-syntax.md) and [Apple UI checklist](docs/agents/apple-ui-checklist.md)

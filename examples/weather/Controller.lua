@@ -11,15 +11,13 @@ local ACTIONS = {
 local function buildWeatherList()
 	return ns.List {
 		flexGrow = 1,
-		style = "fullWidth",
+		style = "sourceList",
 		header = false,
 		alternatingRows = false,
+		rowHeight = 48,
 		columns = {
-			{ id = "city", title = "City", width = 150 },
-			{ id = "temp", title = "Temperature", width = 110, alignment = "right" },
-			{ id = "cond", title = "Conditions", width = 180 },
-			{ id = "humid", title = "Humidity", width = 100, alignment = "right" },
-			{ id = "wind", title = "Wind", width = 120, alignment = "right" },
+			{ id = "city", title = "Location", width = 270,
+				cell = { secondary = "summary" } },
 		},
 	}
 end
@@ -38,7 +36,7 @@ function Controller.new()
 		weatherList = nil,
 		detailPane = nil,
 		weatherData = {},
-		selectedCity = nil,
+		selectedCity = Model.cities[1].name,
 		window = nil,
 	}, Controller)
 end
@@ -60,16 +58,15 @@ function Controller:refresh()
 				rows[#rows + 1] = {
 					_id = city.name,
 					city = city.name,
-					temp = data and (string.format("%.0f", data.temp) .. "°C") or "--",
+					summary = data and (data.temp .. "°C  ·  " .. data.cond) or "Unavailable",
+					temp = data and (tonumber(data.temp) and string.format("%.0f", data.temp) .. "°C" or "--") or "--",
 					cond = data and data.cond or "unreachable",
-					humid = data and (data.humid .. "%") or "--",
-					wind = data and (data.wind .. " km/h") or "--",
 			}
 			end
 
 			self.weatherList:replaceRows(rows)
 
-			if self.selectedCity then
+			if self.selectedCity and self.detailPane then
 				self:showDetail(self.weatherData[self.selectedCity], self.selectedCity)
 			end
 		end)
@@ -105,8 +102,8 @@ function Controller:createWindow()
 
 	self.weatherList = buildWeatherList()
 	self.detailPane = buildDetailPane()
-	cfg.content = self.weatherList
-	cfg.detail = self.detailPane
+	cfg.sidebar = self.weatherList
+	cfg.content = self.detailPane
 
 	self.weatherList:onRowSelect(function(_, _, row)
 		if row and row._id then
@@ -115,9 +112,8 @@ function Controller:createWindow()
 		end
 	end)
 
-	self:refresh()
-
 	self.window = ns.Window(cfg)
+	self:refresh()
 	return self.window
 end
 
