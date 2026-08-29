@@ -366,265 +366,391 @@ local function compile(nodes, ns, registry, refs)
     return views
 end
 
--- ── Tag registry ─────────────────────────────────────────────────────────
+-- ── Declarative Tag Schema ────────────────────────────────────────────────
 --
--- Each entry: function(ns, attrs, children) → view
---
--- `ns` is the platform module passed by the caller, so `ns.Text` is
--- NSTextField on AppKit and UILabel on UIKit — callers never see the diff.
+-- Tags are defined as data-driven schema tables:
+--   kind:        nil (visual view) | "record" (table data / config)
+--   constructor: name of constructor on platform module `ns` (defaults to tag name)
+--   flag:        table marker for records (e.g. "__toolbarItem", "__isWindowConfig")
+--   children:    "array" (props[1..n] = children) | "content" (props.content = children[1]) | "items" (props.items = children)
+--   positional:  ordered attribute names mapped to props[1] (with optional .default)
+--   directArg:   "positional" -> passes props[1] directly to ctor instead of props table
+--   props:       attribute definitions table:
+--                  propName = "type"  (types: "num", "bool", "str")
+--                  or propName = { prop = "targetName", type = "...", aliases = {...}, default = ... }
+--   collect:     optional child aggregation hook: fn(targetTable, children)
+--   transform:   optional hook for platform quirks: fn(props, attrs, children, ns) -> optional view
 
-local function makeRegistry()
-    local R = {}
-
+local TAG_SCHEMA = {
     -- Layout containers
-    R["VStack"] = function(ns, a, ch)
-        local props = layoutProps(a)
-        for _, c in ipairs(ch) do props[#props + 1] = c end
-        return ns.VStack(props)
-    end
+    VStack = {
+        constructor = "VStack",
+        children    = "array",
+    },
+    HStack = {
+        constructor = "HStack",
+        children    = "array",
+    },
+    HSplit = {
+        constructor = "HSplit",
+        children    = "array",
+    },
+    Spacer = {
+        constructor = "Spacer",
+    },
+    Divider = {
+        constructor = "Divider",
+        props = {
+            orientation = "str",
+        },
+    },
+    ScrollView = {
+        constructor = "ScrollView",
+        children    = "content",
+        props = {
+            contentWidth  = "num",
+            contentHeight = "num",
+            horizontal    = "bool",
+            vertical      = "bool",
+        },
+    },
 
-    R["HStack"] = function(ns, a, ch)
-        local props = layoutProps(a)
-        for _, c in ipairs(ch) do props[#props + 1] = c end
-        return ns.HStack(props)
-    end
-
-    R["ScrollView"] = function(ns, a, ch)
-        local content = ch[1]
-        if not content then error("xml: <ScrollView> requires one content child") end
-        local props = layoutProps(a)
-        props.content = content
-        if a.contentWidth then props.contentWidth = num(a.contentWidth) end
-        if a.contentHeight then props.contentHeight = num(a.contentHeight) end
-        if a.horizontal ~= nil then props.horizontal = bool(a.horizontal) end
-        if a.vertical ~= nil then props.vertical = bool(a.vertical) end
-        return ns.ScrollView(props)
-    end
-
-    R["HSplit"] = function(ns, a, ch)
-        local props = layoutProps(a)
-        for _, c in ipairs(ch) do props[#props + 1] = c end
-        return ns.HSplit(props)
-    end
-
-    R["Spacer"] = function(ns, a, _)
-        return ns.Spacer(layoutProps(a))
-    end
-
-    R["Divider"] = function(ns, a, _)
-        local props = layoutProps(a)
-        if a.orientation then props.orientation = a.orientation end
-        return ns.Divider(props)
-    end
-
-    R["Chart"] = function(ns, a, _)
-        local key = a.data or "chart"
-        if renderData[key] then return renderData[key] end
-        error("xml: <Chart> requires pre-built chart in render data (key: " .. (key) .. ")")
-    end
-
-    -- Text / labels
-    -- <Label text="Hello" size="13" weight="bold" color="secondary" />
-    -- Maps to ns.Text on both platforms (UIKit aliases Text=Label).
-    R["Label"] = function(ns, a, ch)
-        local props = layoutProps(a)
-        props[1] = a.text or a.value or ""
-        if a.size   then props.size   = num(a.size)   end
-        if a.weight then props.weight = a.weight       end
-        if a.color  then props.color  = a.color        end
-        if a.lines  then props.lineLimit = num(a.lines) end
-        if a.lines and num(a.lines) > 1 then props.lineBreakMode = 0 end
-        if a.truncation then props.truncation = a.truncation end
-        return ns.Text(props)
-    end
-
-    R["Text"] = R["Label"]
-
-    R["TextEditor"] = function(ns, a, _)
-        local props = layoutProps(a)
-        props.text = a.text or a.value or ""
-        if a.size then props.size = num(a.size) end
-        if a.weight then props.weight = a.weight end
-        if a.editable ~= nil then props.editable = bool(a.editable) end
-        if a.selectable ~= nil then props.selectable = bool(a.selectable) end
-        if a.wrapMode ~= nil then props.wrapMode = bool(a.wrapMode) end
-        if a.drawsBackground ~= nil then props.drawsBackground = bool(a.drawsBackground) end
-        return ns.TextEditor(props)
-    end
-
-    R["Title"] = function(ns, a, _)
-        return ns.Title(a.text or a.value or "")
-    end
-
-    -- Input
-    R["TextField"] = function(ns, a, _)
-        local props = layoutProps(a)
-        props.value       = a.value or a.text or ""
-        props.placeholder = a.placeholder or ""
-        if a.editable  ~= nil then props.editable  = bool(a.editable)  end
-        if a.bezeled   ~= nil then props.bezeled   = bool(a.bezeled)   end
-        if a.bordered  ~= nil then props.bordered  = bool(a.bordered)  end
-        if a.size      ~= nil then props.size      = num(a.size)       end
-        return ns.TextField(props)
-    end
-
-    -- Button
-    R["Button"] = function(ns, a, _)
-        local props = layoutProps(a)
-        props.title = a.title or a.label or ""
-        if a.subtitle    then props.subtitle    = a.subtitle    end
-        if a.systemImage then props.systemImage = a.systemImage end
-        if a.style       then props.style       = a.style       end
-        if a.detail      then props.detail      = a.detail      end
-        return ns.Button(props)
-    end
-
-    -- Image
-    R["Image"] = function(ns, a, _)
-        if a.system or a.symbol then
-            local props = layoutProps(a)
-            props[1]                = a.system or a.symbol
-            props.accessibilityLabel = a.label or props[1]
-            if a.size   then props.size   = num(a.size)   end
-            if a.weight then props.weight = a.weight       end
-            if a.color  then props.color  = a.color        end
-            return ns.SystemImage(props)
-        end
-        local props = layoutProps(a)
-        props[1] = a.src or a.path or ""
-        return ns.Image(props)
-    end
-
-    R["SystemImage"] = function(ns, a, _)
-        local props = layoutProps(a)
-        props[1]                = a.name or a.symbol or ""
-        props.accessibilityLabel = a.label or props[1]
-        if a.size   then props.size   = num(a.size)   end
-        if a.weight then props.weight = a.weight       end
-        if a.color  then props.color  = a.color        end
-        return ns.SystemImage(props)
-    end
-
-    -- Toggle / Switch
-    R["Toggle"] = function(ns, a, _)
-        local props = layoutProps(a)
-        props[1]   = a.label or ""
-        props.is_on = bool(a.value or a.checked or "false")
-        return ns.Toggle(props)
-    end
-    R["Switch"] = R["Toggle"]
-
-    -- List / Column
-    -- <List ref="msgList" style="plain" header="false" alternatingRows="false">
-    --   <Column id="from" title="From" />
-    --   <Column id="subject" title="Subject" />
-    -- </List>
-    -- Column children are collected here; data is supplied at runtime via list:replaceRows().
-    R["Column"] = function(_, a, _)
-        -- Returns a plain table, not a view — List consumes it before returning.
-        return { __column = true, id = a.id, title = a.title or "",
-                 width = num(a.width), minWidth = num(a.minWidth),
-                 alignment = a.alignment }
-    end
-
-    R["List"] = function(ns, a, children)
-        local columns, views = {}, {}
-        for _, c in ipairs(children) do
-            if type(c) == "table" and c.__column then
-                columns[#columns + 1] = c
-            else
-                views[#views + 1] = c
+    -- Text & Typography
+    Label = {
+        constructor = "Text",
+        positional  = { "text", "value", default = "" },
+        props = {
+            size       = "num",
+            weight     = "str",
+            color      = "str",
+            lines      = { prop = "lineLimit", type = "num" },
+            truncation = "str",
+        },
+        transform = function(props, a)
+            if a.lines and (num(a.lines) or 0) > 1 then
+                props.lineBreakMode = 0
             end
-        end
-        if #columns == 0 then
-            error("xml: <List> requires at least one <Column> child")
-        end
-        local props = layoutProps(a)
-        props.columns          = columns
-        props.header           = a.header  ~= nil and bool(a.header)  or true
-        props.alternatingRows  = a.alternatingRows ~= nil and bool(a.alternatingRows) or true
-        props.style            = a.style
-        if a.bordered  ~= nil then props.bordered  = bool(a.bordered)  end
-        if a.gridLines         then props.gridLines = a.gridLines       end
-        -- views inside List (unusual) are ignored; columns are all we need
-        return ns.List(props)
-    end
+        end,
+    },
+    Title = {
+        constructor = "Title",
+        positional  = { "text", "value", default = "" },
+        directArg   = "positional",
+    },
+    TextEditor = {
+        constructor = "TextEditor",
+        props = {
+            text            = { aliases = { "value" }, default = "", type = "str" },
+            size            = "num",
+            weight          = "str",
+            editable        = "bool",
+            selectable      = "bool",
+            wrapMode        = "bool",
+            drawsBackground = "bool",
+        },
+    },
 
-    -- Window / Toolbar (NIB-style declarative window config)
-    -- <ToolbarItem> returns a plain table, consumed by <Window>.
-    R["ToolbarItem"] = function(_, a, _)
-        return {
-            __toolbarItem = true,
-            id      = a.id or "",
-            label   = a.label or "",
-            icon    = a.icon or "",
-            tooltip = a.tooltip or "",
-            action  = a.action or nil,
-        }
-    end
+    -- Controls & Input
+    TextField = {
+        constructor = "TextField",
+        props = {
+            value       = { aliases = { "text" }, default = "", type = "str" },
+            placeholder = { default = "", type = "str" },
+            editable    = "bool",
+            bezeled     = "bool",
+            bordered    = "bool",
+            size        = "num",
+        },
+    },
+    Button = {
+        constructor = "Button",
+        props = {
+            title       = { aliases = { "label" }, default = "", type = "str" },
+            subtitle    = "str",
+            systemImage = "str",
+            style       = "str",
+            detail      = "str",
+        },
+    },
+    Toggle = {
+        constructor = "Toggle",
+        positional  = { "label", default = "" },
+        props = {
+            value = { prop = "is_on", aliases = { "checked" }, type = "bool", default = false },
+        },
+    },
 
-    -- <Toolbar> is a passthrough; its ToolbarItem children are collected by <Window>.
-    R["Toolbar"] = function(_, _, children)
-        return { __toolbar = true, items = children }
-    end
+    -- Imagery
+    SystemImage = {
+        constructor = "SystemImage",
+        positional  = { "name", "symbol", default = "" },
+        props = {
+            size   = "num",
+            weight = "str",
+            color  = "str",
+            label  = { prop = "accessibilityLabel", type = "str" },
+        },
+        transform = function(props)
+            props.accessibilityLabel = props.accessibilityLabel or props[1]
+        end,
+    },
+    Image = {
+        constructor = "Image",
+        transform = function(props, a, _, ns)
+            if a.system or a.symbol then
+                props[1] = a.system or a.symbol
+                props.accessibilityLabel = a.label or props[1]
+                if a.size   then props.size   = num(a.size)   end
+                if a.weight then props.weight = a.weight       end
+                if a.color  then props.color  = a.color        end
+                return ns.SystemImage(props)
+            end
+            props[1] = a.src or a.path or ""
+            return ns.Image(props)
+        end,
+    },
 
-    -- <Window> captures window config and wraps content.
-    -- Returns a config table (not a view) — detected by render().
-    R["Window"] = function(_, a, children)
-        local cfg = {}
+    -- List & Table structures
+    Column = {
+        kind  = "record",
+        flag  = "__column",
+        props = {
+            id        = "str",
+            title     = { default = "", type = "str" },
+            width     = "num",
+            minWidth  = "num",
+            alignment = "str",
+        },
+    },
+    List = {
+        constructor = "List",
+        props = {
+            header          = { default = true, type = "bool" },
+            alternatingRows = { default = true, type = "bool" },
+            style           = "str",
+            bordered        = "bool",
+            gridLines       = "str",
+        },
+        collect = function(props, children)
+            local columns = {}
+            for _, c in ipairs(children) do
+                if type(c) == "table" and c.__column then
+                    columns[#columns + 1] = c
+                end
+            end
+            if #columns == 0 then
+                error("xml: <List> requires at least one <Column> child")
+            end
+            props.columns = columns
+        end,
+    },
 
-        -- Window properties
-        if a.title          then cfg.title          = a.title          end
-        if a.width          then cfg.width          = num(a.width)     end
-        if a.height         then cfg.height         = num(a.height)    end
-        if a.minWidth       then cfg.minWidth       = num(a.minWidth)  end
-        if a.minHeight      then cfg.minHeight      = num(a.minHeight) end
-        if a.maxWidth       then cfg.maxWidth       = num(a.maxWidth)  end
-        if a.maxHeight      then cfg.maxHeight      = num(a.maxHeight) end
-        if a.appearance     then cfg.appearance     = a.appearance     end
-        if a.tabbingMode    then cfg.tabbingMode    = a.tabbingMode    end
-        if a.tabbingIdentifier then cfg.tabbingIdentifier = a.tabbingIdentifier end
-        if a.toolbarLabels  then cfg.toolbarLabels  = bool(a.toolbarLabels) end
-        if a.visible        then cfg.visible        = bool(a.visible)  end
-        if a.sidebarWidth   then cfg.sidebarWidth   = num(a.sidebarWidth) end
-        if a.toolbarContentDividerAfter then
-            cfg.toolbarContentDividerAfter = a.toolbarContentDividerAfter
-        end
-
-        -- Separate toolbar items from content children
-        local toolbarItems = {}
-        local contentViews = {}
-        for _, c in ipairs(children) do
-            if type(c) == "table" then
-                if c.__toolbar then
-                    for _, item in ipairs(c.items) do
+    -- Window & Toolbar structures
+    ToolbarItem = {
+        kind  = "record",
+        flag  = "__toolbarItem",
+        props = {
+            id      = { default = "", type = "str" },
+            label   = { default = "", type = "str" },
+            icon    = { default = "", type = "str" },
+            tooltip = { default = "", type = "str" },
+            action  = "str",
+        },
+    },
+    Toolbar = {
+        kind     = "record",
+        flag     = "__toolbar",
+        children = "items",
+    },
+    Window = {
+        kind  = "record",
+        flag  = "__isWindowConfig",
+        props = {
+            title                      = "str",
+            width                      = "num",
+            height                     = "num",
+            minWidth                   = "num",
+            minHeight                  = "num",
+            maxWidth                   = "num",
+            maxHeight                  = "num",
+            appearance                 = "str",
+            tabbingMode                = "str",
+            tabbingIdentifier          = "str",
+            toolbarLabels              = "bool",
+            visible                    = "bool",
+            sidebarWidth               = "num",
+            toolbarContentDividerAfter = "str",
+        },
+        collect = function(cfg, children)
+            local toolbarItems, contentViews = {}, {}
+            for _, c in ipairs(children) do
+                if type(c) == "table" and c.__toolbar then
+                    for _, item in ipairs(c.items or {}) do
                         if type(item) == "table" and item.__toolbarItem then
                             toolbarItems[#toolbarItems + 1] = item
                         end
                     end
-                else
+                elseif type(c) == "userdata" or type(c) == "table" then
                     contentViews[#contentViews + 1] = c
                 end
-            elseif type(c) == "userdata" then
-                -- Views (userdata) are direct content
-                contentViews[#contentViews + 1] = c
+            end
+
+            if #toolbarItems > 0 then cfg.toolbar = toolbarItems end
+
+            if #contentViews == 1 then
+                cfg.content = contentViews[1]
+            elseif #contentViews > 1 then
+                local props = {}
+                for _, v in ipairs(contentViews) do props[#props + 1] = v end
+                cfg.content = props
+            end
+        end,
+    },
+
+    -- Charts
+    Chart = {
+        transform = function(_, a)
+            local key = a.data or "chart"
+            if renderData and renderData[key] then return renderData[key] end
+            error("xml: <Chart> requires pre-built chart in render data (key: " .. tostring(key) .. ")")
+        end,
+    },
+}
+
+-- Tag aliases
+local TAG_ALIASES = {
+    Text   = "Label",
+    Switch = "Toggle",
+}
+
+-- ── Tag registry compiler ─────────────────────────────────────────────────
+
+local function coerceValue(val, valType)
+    if valType == "bool" then
+        return bool(val)
+    elseif valType == "num" then
+        return num(val)
+    else
+        return val
+    end
+end
+
+local function extractProps(propDefs, attrs)
+    local props = {}
+    if not propDefs then return props end
+
+    for propKey, def in pairs(propDefs) do
+        local val = attrs[propKey]
+        local targetName = propKey
+        local valType = nil
+        local defaultVal = nil
+
+        if type(def) == "string" then
+            valType = def
+        elseif type(def) == "table" then
+            targetName = def.prop or propKey
+            valType    = def.type
+            defaultVal = def.default
+
+            if val == nil and def.aliases then
+                for _, alias in ipairs(def.aliases) do
+                    if attrs[alias] ~= nil then
+                        val = attrs[alias]
+                        break
+                    end
+                end
             end
         end
 
-        if #toolbarItems > 0 then cfg.toolbar = toolbarItems end
+        if val ~= nil then
+            props[targetName] = coerceValue(val, valType)
+        elseif defaultVal ~= nil then
+            props[targetName] = defaultVal
+        end
+    end
 
-        -- Wrap content: single child passthrough, multiple → VStack
-        if #contentViews == 1 then
-            cfg.content = contentViews[1]
-        elseif #contentViews > 1 then
-            local props = {}
-            for _, v in ipairs(contentViews) do props[#props + 1] = v end
-            cfg.content = props  -- VStack will be created by ns.Window
+    return props
+end
+
+local function makeSchemaHandler(tag, def)
+    return function(ns, attrs, children)
+        if def.kind == "record" then
+            local rec = extractProps(def.props, attrs)
+            if def.flag then rec[def.flag] = true end
+            if def.children == "items" then rec.items = children end
+            if def.collect then def.collect(rec, children) end
+            return rec
         end
 
-        -- Mark as window config so render() can detect it
-        cfg.__isWindowConfig = true
-        return cfg
+        local ctorName = def.constructor or tag
+        local ctor = ns and ns[ctorName]
+        if not ctor and not def.transform then
+            error("xml: platform does not support constructor ns." .. ctorName .. " for tag <" .. tag .. ">")
+        end
+
+        local props = layoutProps(attrs)
+
+        -- Positional attribute (e.g. props[1])
+        if def.positional then
+            local found = false
+            for _, key in ipairs(def.positional) do
+                if attrs[key] ~= nil then
+                    props[1] = attrs[key]
+                    found = true
+                    break
+                end
+            end
+            if not found and def.positional.default ~= nil then
+                props[1] = def.positional.default
+            end
+        end
+
+        -- Declared properties
+        local extracted = extractProps(def.props, attrs)
+        for k, v in pairs(extracted) do
+            props[k] = v
+        end
+
+        if def.children == "array" then
+            for _, c in ipairs(children) do
+                props[#props + 1] = c
+            end
+        elseif def.children == "content" then
+            local content = children[1]
+            if not content then
+                error("xml: <" .. tag .. "> requires one content child")
+            end
+            props.content = content
+        end
+
+        if def.collect then
+            def.collect(props, children)
+        end
+
+        if def.transform then
+            local res = def.transform(props, attrs, children, ns)
+            if res ~= nil then return res end
+        end
+
+        if def.directArg == "positional" then
+            return ctor(props[1])
+        end
+
+        return ctor(props)
+    end
+end
+
+local function makeRegistry()
+    local R = {}
+
+    -- Compile schema-defined tags
+    for tag, def in pairs(TAG_SCHEMA) do
+        R[tag] = makeSchemaHandler(tag, def)
+    end
+
+    -- Wire tag aliases
+    for alias, target in pairs(TAG_ALIASES) do
+        R[alias] = R[target]
     end
 
     return R
@@ -842,8 +968,11 @@ function M.decodeFile(path, schema)
     return M.decode(src, schema)
 end
 
--- Expose the registry so callers can add custom tags:
+-- Expose registry and schema so callers or platform backends can inspect/extend:
 --   xml.registry["MyWidget"] = function(ns, attrs, children) ... end
+--   xml.schema["MyWidget"] = { ... }
 M.registry = registry
+M.schema   = TAG_SCHEMA
+M.aliases  = TAG_ALIASES
 
 return M

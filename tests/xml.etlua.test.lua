@@ -267,6 +267,20 @@ t.assertEqual(#desc.props.columns, 2, "List has 2 columns")
 t.assertEqual(desc.props.columns[1].id, "name", "First column id")
 t.assertEqual(desc.props.columns[2].width, 80, "Second column width")
 
+-- ── Schema introspection & registry ────────────────────────────────────────
+
+t.expect(type(xml.schema) == "table", "xml.schema is exported as a table")
+t.expect(xml.schema.TextField ~= nil, "xml.schema contains TextField definition")
+t.assertEqual(xml.schema.TextField.constructor, "TextField", "TextField constructor is TextField")
+t.expect(xml.schema.Window ~= nil, "xml.schema contains Window definition")
+t.assertEqual(xml.schema.Window.kind, "record", "Window is a record schema")
+t.assertEqual(xml.schema.Window.flag, "__isWindowConfig", "Window has __isWindowConfig flag")
+t.expect(xml.schema.ToolbarItem ~= nil, "xml.schema contains ToolbarItem definition")
+t.expect(xml.schema.Column ~= nil, "xml.schema contains Column definition")
+t.expect(type(xml.aliases) == "table", "xml.aliases is exported as a table")
+t.assertEqual(xml.aliases.Text, "Label", "Text is an alias for Label")
+t.assertEqual(xml.aliases.Switch, "Toggle", "Switch is an alias for Toggle")
+
 -- ── Custom tag registration ────────────────────────────────────────────────
 
 xml.registry["CustomWidget"] = function(ns, attrs, children)
