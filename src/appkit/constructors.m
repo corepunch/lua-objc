@@ -161,18 +161,28 @@ static int bridge_AppKitControls_toggle(lua_State *L) {
 	return 1;
 }
 
+/* Replaces any previously registered ref at `key` so re-registering or
+ * clearing a callback never leaks a registry slot. */
+static void bridge_set_optional_callback(
+	lua_State *L, id target, const void *key, int argIdx
+) {
+	NSNumber *previous = objc_getAssociatedObject(target, key);
+	if (previous) luaL_unref(L, LUA_REGISTRYINDEX, previous.intValue);
+	if (lua_isnoneornil(L, argIdx)) {
+		objc_setAssociatedObject(target, key, nil, OBJC_ASSOCIATION_ASSIGN);
+		return;
+	}
+	luaL_checktype(L, argIdx, LUA_TFUNCTION);
+	lua_pushvalue(L, argIdx);
+	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	objc_setAssociatedObject(target, key, @(ref), OBJC_ASSOCIATION_RETAIN);
+}
+
 static int bridge_NSScrollView_onRefresh(lua_State *L) {
 	id obj = check_objc(L, 1);
 	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
-	if (lua_isnoneornil(L, 2)) {
-		objc_setAssociatedObject(obj, &kKeys[kTableRefreshKey], nil, OBJC_ASSOCIATION_ASSIGN);
-		return 0;
-	}
-	luaL_checktype(L, 2, LUA_TFUNCTION);
-	lua_pushvalue(L, 2);
-	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	objc_setAssociatedObject(obj, &kKeys[kTableRefreshKey], @(ref), OBJC_ASSOCIATION_RETAIN);
+	bridge_set_optional_callback(L, obj, &kKeys[kTableRefreshKey], 2);
 	return 0;
 }
 
@@ -180,14 +190,7 @@ static int bridge_NSScrollView_onRowSelect(lua_State *L) {
 	id obj = check_objc(L, 1);
 	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
-	if (lua_isnoneornil(L, 2)) {
-		objc_setAssociatedObject(table_scrollview(obj), &kKeys[kTableSelectionKey], nil, OBJC_ASSOCIATION_ASSIGN);
-		return 0;
-	}
-	luaL_checktype(L, 2, LUA_TFUNCTION);
-	lua_pushvalue(L, 2);
-	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	objc_setAssociatedObject(table_scrollview(obj), &kKeys[kTableSelectionKey], @(ref), OBJC_ASSOCIATION_RETAIN);
+	bridge_set_optional_callback(L, table_scrollview(obj), &kKeys[kTableSelectionKey], 2);
 	return 0;
 }
 
@@ -203,21 +206,11 @@ static int bridge_NSScrollView_onRowActivate(lua_State *L) {
 	id obj = check_objc(L, 1);
 	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table or outline view");
-	if (lua_isnoneornil(L, 2)) {
-		NSScrollView *_sv = table_scrollview(obj);
-		NSTableView *_table = (NSTableView *)_sv.documentView;
-		_table.target = nil;
-		_table.doubleAction = nil;
-		objc_setAssociatedObject(table_scrollview(obj), &kKeys[kTableActivationKey], nil, OBJC_ASSOCIATION_ASSIGN);
-		return 0;
-	}
-	luaL_checktype(L, 2, LUA_TFUNCTION);
-	lua_pushvalue(L, 2);
-	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	NSScrollView *_sv = table_scrollview(obj);
-	NSTableView *_table = (NSTableView *)_sv.documentView;
-	_table.target = src;
-	_table.doubleAction = @selector(activateSelectedRow:);
-	objc_setAssociatedObject(table_scrollview(obj), &kKeys[kTableActivationKey], @(ref), OBJC_ASSOCIATION_RETAIN);
+	NSScrollView *sv = table_scrollview(obj);
+	NSTableView *table = (NSTableView *)sv.documentView;
+	BOOL hasCallback = !lua_isnoneornil(L, 2);
+	table.target = hasCallback ? src : nil;
+	table.doubleAction = hasCallback ? @selector(activateSelectedRow:) : nil;
+	bridge_set_optional_callback(L, sv, &kKeys[kTableActivationKey], 2);
 	return 0;
 }

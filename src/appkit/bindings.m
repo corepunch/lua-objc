@@ -512,10 +512,6 @@ static int bridge_NSView_splitProportions(lua_State *L) {
 
 /* --- MethodEntry dispatch arrays --- */
 #if defined(GEN_CLASS_ARRAYS)
-static MethodEntry LayoutViewMethods[] = {
-	{NULL, NULL}
-};
-
 static MethodEntry TableMethods[] = {
 	{"onRefresh",	bridge_NSScrollView_onRefresh},
 	{"onRowSelect",	bridge_NSScrollView_onRowSelect},
@@ -571,10 +567,6 @@ static MethodEntry PopUpButtonMethods[] = {
 	{NULL, NULL}
 };
 
-static MethodEntry NativeTextViewMethods[] = {
-	{NULL, NULL}
-};
-
 static MethodEntry ViewMethods[] = {
 	{"addSubview",	bridge_NSView_addSubview},
 	{"layout",	bridge_NSView_layout},
@@ -601,13 +593,6 @@ static MethodEntry PathViewMethods[] = {
 
 /* --- nsview_index dispatch blocks --- */
 #if defined(GEN_CLASS_INDEX)
-{
-	if ([obj isKindOfClass:[NSView class]]) {
-		lua_CFunction _m = lookupMethod(key, LayoutViewMethods);
-		if (_m) { lua_pushcfunction(L, _m); return 1; }
-	}
-}
-
 {
 	id _sentinel_nsscrollview = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (_sentinel_nsscrollview) {
@@ -655,13 +640,6 @@ static MethodEntry PathViewMethods[] = {
 {
 	if ([obj isKindOfClass:[NSPopUpButton class]]) {
 		lua_CFunction _m = lookupMethod(key, PopUpButtonMethods);
-		if (_m) { lua_pushcfunction(L, _m); return 1; }
-	}
-}
-
-{
-	if ([obj isKindOfClass:[NSTextView class]]) {
-		lua_CFunction _m = lookupMethod(key, NativeTextViewMethods);
 		if (_m) { lua_pushcfunction(L, _m); return 1; }
 	}
 }
