@@ -112,6 +112,10 @@ static int bridge_NSTabView_onChange_impl(lua_State *L, NSTabView *self,
 		self, &kKeys[kTabViewDelegateKey]);
 	if (existing) {
 		self.delegate = nil;
+		/* Releasing the association triggers dealloc, which unrefs
+		 * the previous callback. */
+		objc_setAssociatedObject(self, &kKeys[kTabViewDelegateKey], nil,
+			OBJC_ASSOCIATION_RETAIN);
 	}
 
 	if (callback != LUA_NOREF) {

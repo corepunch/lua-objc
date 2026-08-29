@@ -147,9 +147,12 @@ static int bridge_NSScrollView_onChange_impl(lua_State *L) {
 	}
 	NSTextView *tv = (NSTextView *)((NSScrollView *)obj).documentView;
 
-	lua_pushvalue(L, 2);
-	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	objc_setAssociatedObject(tv, &kKeys[kTextChangeKey], @(ref),
+	bridge_set_optional_callback(L, tv, &kKeys[kTextChangeKey], 2);
+
+	/* Register the notification observer once per text view; re-calling
+	 * onChange only needs to replace the stored ref above. */
+	if (objc_getAssociatedObject(tv, &kKeys[kTextChangeObserverKey])) return 0;
+	objc_setAssociatedObject(tv, &kKeys[kTextChangeObserverKey], @YES,
 		OBJC_ASSOCIATION_RETAIN);
 
 	/* Same coroutine caveat: extraspace inherits from the main thread. */

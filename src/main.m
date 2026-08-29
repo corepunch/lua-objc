@@ -39,6 +39,7 @@ enum {
 	kTableActivationKey,
 	kTableRefreshKey,
 	kTextChangeKey,
+	kTextChangeObserverKey,
 	kTextFieldDelegateKey,
 	kTextProgrammaticKey,
 	kTextWrapKey,
@@ -183,6 +184,23 @@ static lua_State *gL = NULL;
             (ref_var) = LUA_NOREF; \
         } \
     } while (0)
+
+/* Replaces any previously registered ref at `key` so re-registering or
+ * clearing a callback never leaks a registry slot. */
+static void bridge_set_optional_callback(
+	lua_State *L, id target, const void *key, int argIdx
+) {
+	NSNumber *previous = objc_getAssociatedObject(target, key);
+	if (previous) luaL_unref(L, LUA_REGISTRYINDEX, previous.intValue);
+	if (lua_isnoneornil(L, argIdx)) {
+		objc_setAssociatedObject(target, key, nil, OBJC_ASSOCIATION_ASSIGN);
+		return;
+	}
+	luaL_checktype(L, argIdx, LUA_TFUNCTION);
+	lua_pushvalue(L, argIdx);
+	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	objc_setAssociatedObject(target, key, @(ref), OBJC_ASSOCIATION_RETAIN);
+}
 
 #include "shared/lua_bridge_support.m"
 #include "shared/lua_error.m"
