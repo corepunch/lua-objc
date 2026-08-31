@@ -634,6 +634,42 @@ function AppKit.Toggle(props)
 	return applyLayout(toggle, props)
 end
 
+function AppKit.Slider(props)
+	props = props or {}
+	local slider = bridge._slider(
+		props.min or 0,
+		props.max or 1,
+		props.value or props.min or 0,
+		props.action)
+	if props.tickMarks then slider.numberOfTickMarks = props.tickMarks end
+	if props.allowsTickMarkValuesOnly then
+		slider.allowsTickMarkValuesOnly = true
+	end
+	return applyLayout(slider, props)
+end
+
+function AppKit.Stepper(props)
+	props = props or {}
+	local stepper = bridge._stepper(
+		props.min or 0,
+		props.max or 100,
+		props.increment or 1,
+		props.value or props.min or 0,
+		props.action)
+	if props.wraps then stepper.valueWraps = true end
+	if props.autorepeat == false then stepper.autorepeat = false end
+	return applyLayout(stepper, props)
+end
+
+function AppKit.Picker(props)
+	assert(type(props) == "table", "Picker requires a property table")
+	assert(type(props.options) == "table", "Picker requires an options array")
+	return applyLayout(bridge._picker(
+		props.options,
+		props.value or 0,
+		props.action), props)
+end
+
 function AppKit.Separator(props)
 	local v = bridge._box()
 	v.boxType = 2

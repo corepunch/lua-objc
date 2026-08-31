@@ -67,6 +67,27 @@ t.expect(v ~= nil, "Image with symbol creates SystemImage")
 v = render([[<Toggle label="Enable" />]])
 t.expect(v ~= nil, "Toggle creates a view")
 
+v = render([[<Slider min="0" max="10" value="4" tickMarks="6" />]])
+t.assertEqual(v.minValue, 0, "Slider coerces XML minimum values")
+t.assertEqual(v.maxValue, 10, "Slider coerces XML maximum values")
+t.assertEqual(v.numberOfTickMarks, 6, "Slider sets XML tick marks")
+
+v = render([[<Stepper min="1" max="9" value="3" increment="2" wraps="true" />]])
+t.assertEqual(v.doubleValue, 3, "Stepper coerces its XML value")
+t.assertEqual(v.increment, 2, "Stepper coerces its XML increment")
+t.expect(v.valueWraps, "Stepper enables XML wrapping")
+
+v = render([[
+<Picker value="1">
+    <Option title="Low" />
+    <Option title="Medium" />
+    <Option title="High" />
+</Picker>
+]])
+t.assertEqual(v.numberOfItems, 3, "Picker collects XML Option children")
+t.assertEqual(v.indexOfSelectedItem, 1, "Picker selects its XML value")
+t.assertEqual(v.titleOfSelectedItem, "Medium", "Picker exposes selected XML option")
+
 -- Spacer
 v = render([[<Spacer />]])
 t.expect(v ~= nil, "Spacer creates a view")

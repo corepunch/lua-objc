@@ -621,6 +621,44 @@ t.assertEqual(popup.numberOfItems, 2,
 t.assertEqual(popup.itemTitles[2], "Second",
 	"KVC properties convert an NSArray result back to a Lua array")
 
+local slider = ns.Slider {
+	min = -10,
+	max = 10,
+	value = 4,
+	tickMarks = 5,
+	allowsTickMarkValuesOnly = true,
+}
+t.assertEqual(slider.minValue, -10, "Slider exposes its native minimum value")
+t.assertEqual(slider.maxValue, 10, "Slider exposes its native maximum value")
+t.assertEqual(slider.doubleValue, 5,
+	"Slider quantizes its value to the nearest required native tick")
+t.assertEqual(slider.numberOfTickMarks, 5, "Slider retains native tick marks")
+t.expect(slider.allowsTickMarkValuesOnly,
+	"Slider retains native tick-only behavior")
+
+local stepper = ns.Stepper {
+	min = 2,
+	max = 8,
+	increment = 2,
+	value = 6,
+	wraps = true,
+	autorepeat = false,
+}
+t.assertEqual(stepper.increment, 2, "Stepper preserves its native increment")
+t.assertEqual(stepper.doubleValue, 6, "Stepper preserves its native value")
+t.expect(stepper.valueWraps, "Stepper enables native value wrapping")
+t.expect(not stepper.autorepeat, "Stepper can disable native autorepeat")
+
+local picker = ns.Picker {
+	options = { "Low", "Medium", "High" },
+	value = 1,
+}
+t.assertEqual(picker.numberOfItems, 3, "Picker creates native menu items")
+t.assertEqual(picker.indexOfSelectedItem, 1,
+	"Picker selects the requested zero-based item index")
+t.assertEqual(picker.titleOfSelectedItem, "Medium",
+	"Picker exposes the selected native item title")
+
 valueCarrier.objectValue = "unchanged"
 local cyclic = {}
 cyclic.self = cyclic

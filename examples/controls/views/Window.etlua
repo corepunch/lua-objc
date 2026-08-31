@@ -1,0 +1,21 @@
+<Window title="Controls" width="560" height="320" minWidth="420" minHeight="260">
+	<VStack padding="24" spacing="18" fillWidth="true">
+		<Label text="Native Controls" size="22" weight="bold" />
+		<VStack spacing="8" fillWidth="true">
+			<Label text="Brightness" color="secondary" />
+			<Slider min="0" max="100" value="60" tickMarks="6" fixedWidth="360" />
+		</VStack>
+		<HStack spacing="12" fillWidth="true">
+			<Label text="Quantity" fixedWidth="110" />
+			<Stepper min="0" max="20" value="4" increment="1" />
+		</HStack>
+		<HStack spacing="12" fillWidth="true">
+			<Label text="Priority" fixedWidth="110" />
+			<Picker value="1" fixedWidth="180">
+				<Option title="Low" />
+				<Option title="Medium" />
+				<Option title="High" />
+			</Picker>
+		</HStack>
+	</VStack>
+</Window>

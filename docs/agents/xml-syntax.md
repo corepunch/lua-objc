@@ -47,6 +47,10 @@ caller rather than creating a window directly in the XML compiler.
 | `TextField` | Native single-line field | `value` or `text`, `placeholder`, `editable`, `bezeled`, `bordered`, `size`, plus layout attributes |
 | `Button` | Native push button | `title` or `label`, `subtitle`, `systemImage`, `style`, `detail`, plus layout attributes |
 | `Toggle` / `Switch` | Native checkbox/toggle | `label`, `value` or `checked`, plus layout attributes |
+| `Slider` | AppKit `NSSlider` | `min`, `max`, `value`, `tickMarks`, `allowsTickMarkValuesOnly`, plus layout attributes |
+| `Stepper` | AppKit `NSStepper` | `min`, `max`, `value`, `increment`, `wraps`, `autorepeat`, plus layout attributes |
+| `Picker` | AppKit `NSPopUpButton` | zero-based `value`, plus one or more `Option` children |
+| `Option` | Child descriptor consumed by `Picker` | `title`, `label`, or `value` |
 | `Image` | Native image view or SF Symbol | `src`/`path`, or `system`/`symbol`; `label`, `size`, `weight`, `color` |
 | `SystemImage` | Native SF Symbol image | `name` or `symbol`, `label`, `size`, `weight`, `color` |
 | `Chart` | Pre-built chart supplied in render data | `data` key, default `chart` |
@@ -54,6 +58,19 @@ caller rather than creating a window directly in the XML compiler.
 XML callbacks are normally attached in the controller after rendering. Keep
 business logic out of templates. For a button or toggle whose callback must be
 attached after rendering, use `ref` and the returned `refs` table.
+
+`Slider`, `Stepper`, and `Picker` are currently AppKit-only. Do not place them
+in a template that must render on UIKit until matching UIKit controls exist.
+
+```xml
+<Slider min="0" max="100" value="60" tickMarks="6" />
+<Stepper min="0" max="20" value="4" increment="1" />
+<Picker value="1">
+  <Option title="Low" />
+  <Option title="Medium" />
+  <Option title="High" />
+</Picker>
+```
 
 ## Lists and toolbars
 

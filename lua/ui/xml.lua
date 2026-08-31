@@ -479,6 +479,51 @@ local TAG_SCHEMA = {
             value = { prop = "is_on", aliases = { "checked" }, type = "bool", default = false },
         },
     },
+    Slider = {
+        constructor = "Slider",
+        props = {
+            min                      = "num",
+            max                      = "num",
+            value                    = "num",
+            tickMarks                = "num",
+            allowsTickMarkValuesOnly = "bool",
+        },
+    },
+    Stepper = {
+        constructor = "Stepper",
+        props = {
+            min        = "num",
+            max        = "num",
+            value      = "num",
+            increment  = "num",
+            wraps      = "bool",
+            autorepeat = "bool",
+        },
+    },
+    Option = {
+        kind  = "record",
+        flag  = "__pickerOption",
+        props = {
+            title = { aliases = { "label", "value" }, default = "", type = "str" },
+        },
+    },
+    Picker = {
+        constructor = "Picker",
+        props = {
+            value = "num",
+        },
+        collect = function(props, children)
+            props.options = {}
+            for _, child in ipairs(children) do
+                if type(child) == "table" and child.__pickerOption then
+                    props.options[#props.options + 1] = child.title
+                end
+            end
+            if #props.options == 0 then
+                error("xml: <Picker> requires at least one <Option> child")
+            end
+        end,
+    },
 
     -- Imagery
     SystemImage = {

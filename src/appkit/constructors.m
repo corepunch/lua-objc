@@ -125,6 +125,73 @@ static int bridge_AppKitControls_popUpButton(lua_State *L) {
 	return 1;
 }
 
+static void configure_control_callback(
+	NSControl *control, lua_State *L, int callbackIndex
+) {
+	int callbackRef;
+	LUA_OPT_CALLBACK_REF(L, callbackIndex, callbackRef);
+	if (callbackRef == LUA_NOREF) return;
+	objc_setAssociatedObject(control, &kKeys[kCallbackKey], @(callbackRef),
+		OBJC_ASSOCIATION_RETAIN);
+	control.target = [LuaButtonTarget shared];
+	control.action = @selector(onAction:);
+}
+
+static int bridge_AppKitControls_slider(lua_State *L) {
+	CGFloat minimum = (CGFloat)luaL_optnumber(L, 1, 0);
+	CGFloat maximum = (CGFloat)luaL_optnumber(L, 2, 1);
+	CGFloat value = (CGFloat)luaL_optnumber(L, 3, minimum);
+	if (maximum < minimum) {
+		return luaL_error(L, "Slider maximum must be greater than or equal to minimum");
+	}
+
+	NSSlider *slider = [[NSSlider alloc] initWithFrame:NSZeroRect];
+	slider.minValue = minimum;
+	slider.maxValue = maximum;
+	slider.doubleValue = MIN(MAX(value, minimum), maximum);
+	configure_control_callback(slider, L, 4);
+	push_objc(L, slider, "nsview");
+	return 1;
+}
+
+static int bridge_AppKitControls_stepper(lua_State *L) {
+	CGFloat minimum = (CGFloat)luaL_optnumber(L, 1, 0);
+	CGFloat maximum = (CGFloat)luaL_optnumber(L, 2, 100);
+	CGFloat increment = (CGFloat)luaL_optnumber(L, 3, 1);
+	CGFloat value = (CGFloat)luaL_optnumber(L, 4, minimum);
+	if (maximum < minimum || increment <= 0) {
+		return luaL_error(L, "Stepper requires maximum >= minimum and increment > 0");
+	}
+
+	NSStepper *stepper = [[NSStepper alloc] initWithFrame:NSZeroRect];
+	stepper.minValue = minimum;
+	stepper.maxValue = maximum;
+	stepper.increment = increment;
+	stepper.doubleValue = MIN(MAX(value, minimum), maximum);
+	configure_control_callback(stepper, L, 5);
+	push_objc(L, stepper, "nsview");
+	return 1;
+}
+
+static int bridge_AppKitControls_picker(lua_State *L) {
+	luaL_checktype(L, 1, LUA_TTABLE);
+	NSInteger selectedIndex = (NSInteger)luaL_optinteger(L, 2, 0);
+	id titles = lua_to_objc_value(L, 1);
+	if (![titles isKindOfClass:[NSArray class]]) {
+		return luaL_error(L, "Picker options must be an array");
+	}
+
+	NSPopUpButton *picker = [[NSPopUpButton alloc]
+		initWithFrame:NSZeroRect pullsDown:NO];
+	[picker addItemsWithTitles:titles];
+	if (selectedIndex >= 0 && selectedIndex < picker.numberOfItems) {
+		[picker selectItemAtIndex:selectedIndex];
+	}
+	configure_control_callback(picker, L, 3);
+	push_objc(L, picker, "nsview");
+	return 1;
+}
+
 static int bridge_AppKitControls_button(lua_State *L) {
 	const char *title = luaL_checkstring(L, 1);
 	int callback_ref;

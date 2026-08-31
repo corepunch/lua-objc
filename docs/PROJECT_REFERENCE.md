@@ -300,6 +300,9 @@ Each ObjC object is wrapped in a Lua full userdata with a metatable (`nsview` or
 | `_image(path)` | `NSImageView` |
 | `_button(title, callback)` | `NSButton` (push button, stores callback in registry) |
 | `_toggle(label, is_on, callback)` | `NSButton` (checkbox, stores callback in registry) |
+| `_slider(min, max, value, callback?)` | `NSSlider` |
+| `_stepper(min, max, increment, value, callback?)` | `NSStepper` |
+| `_picker(options, selectedIndex, callback?)` | `NSPopUpButton` |
 | `_actionButton(title, subtitle, symbol, style, detail, callback)` | `LuaActionButton` (compound button) |
 | `_systemImage(symbol, description, size, weight, color)` | `NSImageView` with SF Symbol |
 | `_symbolToggle(symbol, tooltip, state, callback?)` | `NSButton` (toggle) with SF Symbol, fires callback with sender |
@@ -587,6 +590,63 @@ ns.Toggle {
 
 The native KVC `state` property returns `1` (on) or `0` (off); assign
 `toggle.state = 1` to turn it on.
+
+### `Slider{...}`
+
+Creates a native `NSSlider`. Keys: `min` (number, default `0`), `max`
+(number, default `1`), `value` (number), `tickMarks` (integer),
+`allowsTickMarkValuesOnly` (bool), and `action` (function, optional).
+Callbacks receive the sender, whose live value is `slider.doubleValue`.
+
+```lua
+ns.Slider {
+  min = 0,
+  max = 100,
+  value = 60,
+  tickMarks = 6,
+  action = function(slider)
+    print(slider.doubleValue)
+  end,
+}
+```
+
+When `allowsTickMarkValuesOnly = true`, AppKit quantizes `doubleValue` to
+the nearest configured tick.
+
+### `Stepper{...}`
+
+Creates a native `NSStepper`. Keys: `min` (number, default `0`), `max`
+(number, default `100`), `increment` (number, default `1`), `value`
+(number), `wraps` (bool), `autorepeat` (bool, defaults to AppKit's enabled
+behavior), and `action` (function, optional). Callbacks receive the sender;
+read `stepper.doubleValue` for the current value.
+
+```lua
+ns.Stepper {
+  min = 0,
+  max = 20,
+  value = 4,
+  increment = 1,
+  wraps = true,
+}
+```
+
+### `Picker{...}`
+
+Creates a native `NSPopUpButton`. `options` is a required array of display
+strings and `value` is the selected **zero-based** index (default `0`). The
+optional `action` receives the picker; read `picker.indexOfSelectedItem` and
+`picker.titleOfSelectedItem` to identify its selection.
+
+```lua
+ns.Picker {
+  options = { "Low", "Medium", "High" },
+  value = 1,
+  action = function(picker)
+    print(picker.titleOfSelectedItem)
+  end,
+}
+```
 
 ### `SymbolToggle(symbol, tooltip, is_on, action?)`
 
@@ -1157,6 +1217,9 @@ Templates use the `.etlua` extension to reflect that they contain etlua
 | `<Button title="…">` | `ns.Button` | `ns.Button` |
 | `<VStack>` / `<HStack>` | flex containers | flex containers |
 | `<HSplit>` | `ns.HSplit` (NSSplitView) | — |
+| `<Slider>` | `ns.Slider` (`NSSlider`) | — |
+| `<Stepper>` | `ns.Stepper` (`NSStepper`) | — |
+| `<Picker>` + `<Option>` children | `ns.Picker` (`NSPopUpButton`) | — |
 | `<Spacer>` / `<Divider>` | layout helpers | layout helpers |
 | `<Image src="…">` | `ns.Image` | `ns.Image` |
 | `<Image symbol="…">` / `<SystemImage>` | `ns.SystemImage` | `ns.SystemImage` |
@@ -1179,6 +1242,26 @@ every tag and forwarded to `applyLayout`.
 | `gridLines` | string | — | `"horizontal"` `"vertical"` `"both"` |
 
 **`<Column>` attributes:** `id` (required, matches row dict key), `title`, `width`, `minWidth`, `alignment`.
+
+**`<Slider>` attributes:** `min`, `max`, `value`, `tickMarks`,
+`allowsTickMarkValuesOnly`.
+
+**`<Stepper>` attributes:** `min`, `max`, `value`, `increment`, `wraps`,
+`autorepeat`.
+
+**`<Picker>` attributes:** `value` is a zero-based selected index. It requires
+one or more `<Option title="…" />` children:
+
+```xml
+<Picker value="1">
+  <Option title="Low" />
+  <Option title="Medium" />
+  <Option title="High" />
+</Picker>
+```
+
+`Slider`, `Stepper`, and `Picker` are currently AppKit-only XML tags. Using
+them with UIKit raises the normal unsupported-constructor error.
 
 **`ref=` attribute (all tags):** Storing `ref="name"` on any element causes `xml.renderFile`
 to return that view as `refs["name"]`. Controllers use refs to attach callbacks after
