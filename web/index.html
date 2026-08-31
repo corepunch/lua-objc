@@ -76,10 +76,26 @@
 
     <section id="start" class="band band-paper">
       <div class="section-wrap start-grid"><div><p class="eyebrow">Start with a folder</p><h2>Your next screen<br>is a Lua file.</h2><p class="start-copy">Keep the shape familiar: a model for data, a controller for actions, and views for declarative structure. Only the app entry point ever creates a window&mdash;the view itself is plain etlua.</p></div><div class="code-stack">
+        <div class="code-card"><div class="code-top"><span>examples/weather/views/CityDetail.etlua</span><span>VIEW</span></div><pre><code>&lt;% <i>if</i> #city.forecast &gt; 0 <i>then</i> -%&gt;
+      &lt;Divider /&gt;
+      &lt;Label text=<q>"7-day forecast"</q> size=<q>"14"</q> weight=<q>"semibold"</q> /&gt;
+      &lt;ScrollView contentWidth=<q>"772"</q> contentHeight=<q>"188"</q> fixedHeight=<q>"200"</q> fillWidth=<q>"true"</q> horizontal=<q>"true"</q>&gt;
+        &lt;HStack spacing=<q>"12"</q> alignment=<q>"top"</q> fixedWidth=<q>"772"</q>&gt;
+          &lt;% <i>for</i> _, day <i>in</i> ipairs(city.forecast) <i>do</i> -%&gt;
+          &lt;VStack spacing=<q>"4"</q> alignment=<q>"center"</q> fixedWidth=<q>"100"</q>&gt;
+            &lt;Label text=<q>"&lt;%= day.date %&gt;"</q> size=<q>"11"</q> color=<q>"secondary"</q> /&gt;
+            &lt;Image src=<q>"&lt;%= day.icon %&gt;"</q> fixedWidth=<q>"28"</q> fixedHeight=<q>"28"</q> label=<q>"&lt;%= day.desc %&gt;"</q> /&gt;
+            &lt;Label text=<q>"&lt;%= day.tempMax <i>or</i> "--" %&gt;°"</q> size=<q>"16"</q> weight=<q>"medium"</q> /&gt;
+            &lt;Label text=<q>"&lt;%= day.precipProbability <i>or</i> "--" %&gt;% rain"</q> size=<q>"10"</q> color=<q>"secondary"</q> /&gt;
+          &lt;/VStack&gt;
+          &lt;% <i>end</i> -%&gt;
+        &lt;/HStack&gt;
+      &lt;/ScrollView&gt;
+    &lt;% <i>end</i> -%&gt;</code></pre></div>
         <div class="code-card"><div class="code-top"><span>examples/hello/views/Window.etlua</span><span>VIEW</span></div><pre><code>&lt;VStack flexGrow=<q>"1"</q> padding=<q>"24"</q> spacing=<q>"12"</q> alignment=<q>"leading"</q>&gt;
-    &lt;Label text=<q>"Hello from Lua"</q> size=<q>"24"</q> weight=<q>"bold"</q> /&gt;
-    &lt;Label text=<q>"A SwiftUI-like API backed by native AppKit controls."</q> size=<q>"14"</q> /&gt;
-    &lt;SystemImage name=<q>"swift"</q> size=<q>"64"</q> label=<q>"Swift"</q> /&gt;
+      &lt;Label text=<q>"Hello from Lua"</q> size=<q>"24"</q> weight=<q>"bold"</q> /&gt;
+      &lt;Label text=<q>"A SwiftUI-like API backed by native AppKit controls."</q> size=<q>"14"</q> /&gt;
+      &lt;SystemImage name=<q>"swift"</q> size=<q>"64"</q> label=<q>"Swift"</q> /&gt;
 &lt;/VStack&gt;</code></pre></div>
         <div class="code-card"><div class="code-top"><span>examples/hello/Controller.lua</span><span>LIVE</span></div><pre><code><i>local</i> ns  = <i>require</i>(<q>"AppKit"</q>)
 <i>local</i> xml = <i>require</i>(<q>"ui.xml"</q>)
