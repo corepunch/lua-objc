@@ -13,6 +13,7 @@ local examples = {
 	"examples/ide/init.lua",
 	"examples/weather/init.lua",
 	"examples/stocks/init.lua",
+	"examples/snippets/init.lua",
 }
 
 for _, path in ipairs(examples) do

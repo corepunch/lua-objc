@@ -75,17 +75,20 @@
     </section>
 
     <section id="start" class="band band-paper">
-      <div class="section-wrap start-grid"><div><p class="eyebrow">Start with a folder</p><h2>Your next screen<br>is a Lua file.</h2><p class="start-copy">Keep the shape familiar: a model for data, a controller for actions, and views for declarative structure.</p></div><div class="code-card"><div class="code-top"><span>examples/hello/init.lua</span><span>LIVE</span></div><pre><code><i>local</i> ns = <i>require</i>(<q>"AppKit"</q>)
+      <div class="section-wrap start-grid"><div><p class="eyebrow">Start with a folder</p><h2>Your next screen<br>is a Lua file.</h2><p class="start-copy">Keep the shape familiar: a model for data, a controller for actions, and views for declarative structure. Only the app entry point ever creates a window&mdash;the view itself is plain etlua.</p></div><div class="code-stack">
+        <div class="code-card"><div class="code-top"><span>examples/hello/views/Window.etlua</span><span>VIEW</span></div><pre><code>&lt;VStack flexGrow=<q>"1"</q> padding=<q>"24"</q> spacing=<q>"12"</q> alignment=<q>"leading"</q>&gt;
+    &lt;Label text=<q>"Hello from Lua"</q> size=<q>"24"</q> weight=<q>"bold"</q> /&gt;
+    &lt;Label text=<q>"A SwiftUI-like API backed by native AppKit controls."</q> size=<q>"14"</q> /&gt;
+    &lt;SystemImage name=<q>"swift"</q> size=<q>"64"</q> label=<q>"Swift"</q> /&gt;
+&lt;/VStack&gt;</code></pre></div>
+        <div class="code-card"><div class="code-top"><span>examples/hello/Controller.lua</span><span>LIVE</span></div><pre><code><i>local</i> ns  = <i>require</i>(<q>"AppKit"</q>)
+<i>local</i> xml = <i>require</i>(<q>"ui.xml"</q>)
 
-<i>return</i> <i>function</i>()
-  <i>return</i> ns.Window {
-    title = <q>"Hello"</q>,
-    ns.VStack {
-      ns.Title <q>"A native app"</q>,
-      ns.Text <q>"Built without a compile cycle."</q>,
-    },
-  }
-<i>end</i></code></pre><div class="code-run">$ ./lua-objc examples/hello <span>●</span></div></div></div>
+<i>function</i> Controller:createWindow()
+  <i>local</i> cfg = xml.renderFile(VIEWS .. <q>"Window.etlua"</q>)
+  <i>return</i> ns.Window(cfg)
+<i>end</i></code></pre><div class="code-run">$ ./lua-objc examples/hello <span>●</span></div></div>
+      </div></div>
     </section>
 
     <section class="closing section-wrap"><p class="eyebrow">Open source, Apple-shaped</p><h2>A faster path from<br>thought to interface.</h2><div class="closing-actions"><a class="button button-dark" href="https://github.com/corepunch/lua-objc">View lua-objc on GitHub <span aria-hidden="true">↗</span></a><a class="text-link" href="https://corepunch.github.io/lua-objc/">Read the agent docs <span aria-hidden="true">↗</span></a></div><p class="contributors">Contributors are very welcome. Bring a widget, an example, a test, a design idea, or simply a sharp question.</p></section>
