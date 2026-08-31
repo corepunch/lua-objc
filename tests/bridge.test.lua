@@ -658,6 +658,11 @@ t.assertEqual(picker.indexOfSelectedItem, 1,
 	"Picker selects the requested zero-based item index")
 t.assertEqual(picker.titleOfSelectedItem, "Medium",
 	"Picker exposes the selected native item title")
+picker:selectIndex(2)
+t.assertEqual(picker.indexOfSelectedItem, 2,
+	"Picker selectIndex changes the selected item at runtime")
+t.assertEqual(picker.titleOfSelectedItem, "High",
+	"Picker selectIndex updates the selected native item title")
 
 valueCarrier.objectValue = "unchanged"
 local cyclic = {}

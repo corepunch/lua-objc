@@ -594,7 +594,7 @@ int lua_objc_main(int argc, char *argv[]) {
 	[NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
 	[NSApp finishLaunching];
 	if (layout_out) {
-		NSWindow *window = NSApp.windows.firstObject;
+		NSWindow *window = lua_objc_app_window();
 		if (window && (layout_width_set || layout_height_set)) {
 			NSSize size = window.contentView.bounds.size;
 			if (layout_width_set) size.width = preview_width;
@@ -629,7 +629,7 @@ int lua_objc_main(int argc, char *argv[]) {
 		NSString *screenshotPath = [NSString stringWithUTF8String:screenshot_out];
 		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)),
 			dispatch_get_main_queue(), ^{
-			NSWindow *window = NSApp.windows.firstObject;
+			NSWindow *window = lua_objc_app_window();
 			NSData *png = nil;
 			if (window && (layout_width_set || layout_height_set)) {
 				NSSize size = window.contentView.bounds.size;

@@ -137,6 +137,18 @@ LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
 @implementation LuaWindow
 @end
 
+/* AppKit lazily creates private helper windows (e.g. the text-input cursor
+ * helper window) the first time a text view's selection changes. These can
+ * appear in NSApp.windows ahead of the app's own window, so headless tooling
+ * (--dump-layout, --screenshot) must look for an actual LuaWindow instance
+ * rather than blindly taking NSApp.windows.firstObject. */
+static NSWindow *lua_objc_app_window(void) {
+	for (NSWindow *w in NSApp.windows) {
+		if ([w isKindOfClass:[LuaWindow class]]) return w;
+	}
+	return NSApp.windows.firstObject;
+}
+
 @implementation NSWindow (LuaProperties)
 - (NSSize)size { return self.contentView.frame.size; }
 - (void)setSize:(NSSize)value { [self setContentSize:value]; }

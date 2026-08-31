@@ -462,6 +462,16 @@ static int bridge_NSPopUpButton_addItemsWithTitles(lua_State *L) {
 	return 0;
 }
 
+static int bridge_NSPopUpButton_selectIndex(lua_State *L) {
+	id _obj = lua_objc_check_object(L, 1, [NSPopUpButton class], "PopUpButton");
+	NSPopUpButton *self = (NSPopUpButton *)_obj;
+	NSInteger index = (NSInteger)luaL_checkinteger(L, 2);
+	if (index >= 0 && index < self.numberOfItems) {
+		[self selectItemAtIndex:index];
+	}
+	return 0;
+}
+
 static int bridge_NSView_addSubview(lua_State *L) {
 	id _obj = lua_objc_check_object(L, 1, [NSView class], "View");
 	NSView *self = (NSView *)_obj;
@@ -564,6 +574,7 @@ static MethodEntry ProgressIndicatorMethods[] = {
 
 static MethodEntry PopUpButtonMethods[] = {
 	{"addItemsWithTitles",	bridge_NSPopUpButton_addItemsWithTitles},
+	{"selectIndex",	bridge_NSPopUpButton_selectIndex},
 	{NULL, NULL}
 };
 

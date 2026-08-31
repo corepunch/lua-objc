@@ -1,6 +1,7 @@
-<Window title="Snippets" width="1180" height="760" minWidth="820" minHeight="520" sidebarWidth="300">
+<Window title="Snippets" width="1180" height="760" minWidth="820" minHeight="520" sidebarWidth="330">
     <Toolbar>
         <ToolbarItem id="newSnippet" label="New" icon="plus" tooltip="Create a new snippet" />
         <ToolbarItem id="toggleFavorite" label="Favorite" icon="star" tooltip="Toggle current snippet favorite state" />
+        <ToolbarItem id="runSnippet" label="Run" icon="play.fill" tooltip="Execute the current snippet" />
     </Toolbar>
 </Window>
