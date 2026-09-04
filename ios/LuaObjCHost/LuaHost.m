@@ -236,6 +236,9 @@ static int bridge_read_file(lua_State *L) {
 		if (lua_isstring(_L, -2)) {
 			NSString *name = @(lua_tostring(_L, -2));
 			BOOL keep = [name isEqualToString:@"UIKitNative"]
+				|| [name isEqualToString:@"UIKit"]
+				|| [name isEqualToString:@"AppKit"]
+				|| [name isEqualToString:@"ns"]
 				|| [name isEqualToString:@"package"]
 				|| [name hasSuffix:@".Model"]
 				|| [name isEqualToString:@"Model"];
@@ -269,6 +272,17 @@ static int bridge_read_file(lua_State *L) {
 	}
 	[LuaSourceLoader.shared dropCacheForPath:path];
 	[self unrequireExceptModel];
+	if ([path containsString:@"lua/embedded/UIKit.lua"]) {
+		lua_getglobal(_L, "package");
+		lua_getfield(_L, -1, "loaded");
+		lua_pushnil(_L);
+		lua_setfield(_L, -2, "UIKit");
+		lua_pop(_L, 2);
+		if (luaL_dostring(_L, "local u = require('UIKit'); package.loaded.ns = u; package.loaded.AppKit = u; package.loaded.UIKit = u") != LUA_OK) {
+			[self showError:[self luaError:@"reload UIKit"].localizedDescription];
+			return;
+		}
+	}
 	NSString *entry = [LuaSourceLoader.shared entryPath:&err];
 	NSData *src = entry ? [LuaSourceLoader.shared dataForPath:entry error:&err] : nil;
 	if (!src) {

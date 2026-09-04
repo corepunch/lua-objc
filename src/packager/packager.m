@@ -286,6 +286,8 @@ static void serve_client(int fd) {
 	NSDictionary *headers = parse_headers(head);
 	BOOL keep = [path isEqualToString:@"/hot"]
 		&& headers[@"Sec-WebSocket-Key"] != nil;
+	fprintf(stderr, "get %s%s%s\n", path.UTF8String,
+		query.length ? "?" : "", query.UTF8String ?: "");
 	handle_get(fd, path, query, headers);
 	if (!keep) close(fd);
 }
@@ -305,6 +307,7 @@ static void on_fs_event(
 		if (![full hasPrefix:gRoot]) continue;
 		NSString *rel = [full substringFromIndex:gRoot.length];
 		if ([rel hasPrefix:@"/"]) rel = [rel substringFromIndex:1];
+		fprintf(stderr, "watch %s\n", rel.UTF8String);
 		NSString *norm = nil;
 		if (!jail_full(rel, &norm)) continue;
 		if (!lua_watched(norm ?: rel)) continue;
