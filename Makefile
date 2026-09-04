@@ -97,12 +97,91 @@ test: $(TARGET) $(FRAMEWORK_MODULES)
 	echo "$$((passed + failed)) test files: $$passed passed, $$failed failed"; \
 	test $$failed -eq 0
 
+DEVELOPER_DIR ?= /Applications/Xcode.app/Contents/Developer
+export DEVELOPER_DIR
+IOS_MIN := 26.5
+DEVICE ?= iPhone 17
+IOS_SDK := $(shell DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null)
+IOS_CC := $(shell DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun --sdk iphonesimulator --find clang)
+LUA_SRC_DIR := third_party/lua-5.4.8/src
+LUA_CORE := lapi lcode lctype ldebug ldo ldump lfunc lgc llex lmem lobject \
+	lopcodes lparser lstate lstring ltable ltm lundump lvm lzio
+LUA_LIB := lauxlib lbaselib lcorolib ldblib liolib lmathlib loadlib loslib \
+	lstrlib ltablib lutf8lib linit
+LUA_OBJS := $(addprefix build/ios/lua/,$(addsuffix .o,$(LUA_CORE) $(LUA_LIB)))
+IOS_LUA_A := build/ios/liblua.a
+HOST_BUNDLE := build/ios/LuaObjCHost.app
+PACKAGER := build/lua-objc-packager
+IOS_HOST_SRCS := ios/LuaObjCHost/main.m ios/LuaObjCHost/AppDelegate.m \
+	ios/LuaObjCHost/SceneDelegate.m ios/LuaObjCHost/LuaHost.m \
+	ios/LuaObjCHost/LuaSourceLoader.m ios/LuaObjCHost/LuaHotClient.m \
+	ios/LuaObjCHost/LuaErrorOverlay.m
+IOS_CFLAGS_C := -Wall -O2 -isysroot $(IOS_SDK) -arch arm64 \
+	-mios-simulator-version-min=$(IOS_MIN) -DLUA_USE_IOS \
+	-I$(LUA_SRC_DIR)
+IOS_CFLAGS := -fobjc-arc $(IOS_CFLAGS_C) \
+	-Iios/LuaObjCHost -Isrc -Ibuild
+
+build/ios/lua/%.o: $(LUA_SRC_DIR)/%.c
+	mkdir -p $(dir $@)
+	$(IOS_CC) $(IOS_CFLAGS_C) -c -o $@ $<
+
+$(IOS_LUA_A): $(LUA_OBJS)
+	libtool -static -o $@ $^
+
+$(PACKAGER): src/packager/packager.m lua/packager/paths.lua
+	mkdir -p build
+	$(CC) -fobjc-arc -Wall -O2 \
+		$(shell pkg-config --cflags lua 2>/dev/null || echo "-I/opt/homebrew/include/lua") \
+		-o $@ src/packager/packager.m \
+		$(shell pkg-config --libs lua 2>/dev/null || echo "-L/opt/homebrew/lib -llua") \
+		-framework Foundation -framework CoreServices
+
+$(HOST_BUNDLE): $(IOS_LUA_A) $(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) \
+		$(UIKIT_RUNTIME_FRAGMENTS) $(GENERATED_DIR)/UIKit.lua.h \
+		ios/LuaObjCHost/Info.plist
+	@test -n "$(IOS_SDK)" || { echo "iPhone Simulator SDK missing; set DEVELOPER_DIR"; exit 1; }
+	mkdir -p $(HOST_BUNDLE)
+	$(IOS_CC) $(IOS_CFLAGS) \
+		-framework UIKit -framework Foundation -framework CoreGraphics \
+		-o $(HOST_BUNDLE)/LuaObjCHost \
+		$(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) $(IOS_LUA_A)
+	cp ios/LuaObjCHost/Info.plist $(HOST_BUNDLE)/Info.plist
+	printf 'APPL????' > $(HOST_BUNDLE)/PkgInfo
+	codesign --sign - --force --entitlements /dev/null $(HOST_BUNDLE) 2>/dev/null \
+		|| codesign --sign - --force $(HOST_BUNDLE)
+
+ios-host: $(HOST_BUNDLE)
+ios-packager: $(PACKAGER)
+
+ios-run: ios-host ios-packager
+	@mkdir -p build/ios
+	@entry="$(or $(ARGS),examples/hello)"; \
+	packager_url="http://127.0.0.1:8081"; \
+	./$(PACKAGER) --root "$(CURDIR)" --port 8081 --entry "$$entry" \
+		>build/ios/packager.log 2>&1 & echo $$! > build/ios/packager.pid; \
+	trap 'kill $$(cat build/ios/packager.pid) 2>/dev/null' EXIT INT; \
+	ok=0; \
+	for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do \
+		if curl -sf "$$packager_url/health" >/dev/null; then ok=1; break; fi; \
+		sleep 0.2; \
+	done; \
+	if [ "$$ok" != 1 ]; then echo "packager failed to start"; cat build/ios/packager.log; exit 1; fi; \
+	DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun simctl boot "$(DEVICE)" 2>/dev/null || true; \
+	DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun simctl bootstatus "$(DEVICE)" -b; \
+	DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun simctl install booted $(HOST_BUNDLE); \
+	SIMCTL_CHILD_LUA_OBJC_APP="$$entry" \
+	SIMCTL_CHILD_LUA_OBJC_PACKAGER="$$packager_url" \
+	DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun simctl launch \
+		--console --terminate-running-process booted org.luaobjc.host
+
 clean:
 	rm -f $(TARGET) $(FRAMEWORK_MODULES) build/UIKit.dylib
 	rm -f build/appkit-runtime.o build/appkit-module.o
 	rm -f $(GENERATED_DIR)/AppKit.lua.h $(GENERATED_DIR)/UIKit.lua.h
+	rm -rf build/ios $(PACKAGER)
 
 screenshot: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) --screenshot=$(or $(OUT),/tmp/screenshot.png) $(ARGS)
 
-.PHONY: all uikit run clean test run-hello run-list run-live run-weather run-welcome run-mail run-layout screenshot
+.PHONY: all uikit run clean test run-hello run-list run-live run-weather run-welcome run-mail run-layout screenshot ios-host ios-packager ios-run

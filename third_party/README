@@ -1,0 +1,9 @@
+# Vendored Lua 5.4.8
+
+lua-objc’s iPhone Simulator host cannot link Homebrew’s macOS Lua dylib.
+
+- URL: https://www.lua.org/ftp/lua-5.4.8.tar.gz
+- SHA-256: `4f18ddae154e793e46eeab727c59ef1c0c0c2b744e7b94219710d76f530629ae`
+- Compile with `-DLUA_USE_IOS`, `ARCHS=arm64`, no readline.
+- Exclude `lua.c` and `luac.c` from `liblua.a`.
+- Do not use AdventureArena’s LuaKit (Lua 5.5).

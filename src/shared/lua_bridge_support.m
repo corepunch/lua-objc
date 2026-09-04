@@ -15,9 +15,14 @@ static void push_objc(lua_State *L, id obj, const char *meta) {
 	luaL_setmetatable(L, meta);
 }
 
+#ifndef LUA_OBJC_VIEWCONTROLLER_METATABLE
+#define LUA_OBJC_VIEWCONTROLLER_METATABLE "uiviewcontroller"
+#endif
+
 static ObjCRef *lua_objc_test_ref(lua_State *L, int idx) {
 	ObjCRef *ref = luaL_testudata(L, idx, LUA_OBJC_VIEW_METATABLE);
 	if (!ref) ref = luaL_testudata(L, idx, LUA_OBJC_WINDOW_METATABLE);
+	if (!ref) ref = luaL_testudata(L, idx, LUA_OBJC_VIEWCONTROLLER_METATABLE);
 	if (!ref) ref = luaL_testudata(L, idx, "nsobject");
 	return ref;
 }

@@ -27,6 +27,7 @@ and ARC ownership while letting readers open only the subsystem they need.
 | `uikit/constructors.m` | UIKit native stack and leaf-control constructors | `bridge_UIKitControls_*` |
 | `uikit/layout.m` | UIKit stack measurement and placement | `layout_recursive` |
 | `uikit/views.m` | UIKit windows, stacks, images, and layout entry points | `bridge_window`, `bridge_image` |
+| `uikit/hosting.m` | scene installer and `LuaHostingController` | `bridge_install_scene` |
 | `uikit/controls.m` | UIKit buttons and switches | `bridge_button`, `bridge_toggle` |
 | `uikit/table_data_source.m` | reusable UITableView rows | `LuaTableViewSource` |
 | `uikit/tables.m` | UITableView construction and mutation | `bridge_tableview` |

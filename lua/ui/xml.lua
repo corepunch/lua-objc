@@ -817,7 +817,23 @@ local function resolvePath(base, rel)
     return dir .. rel
 end
 
-local function readTemplate(path)
+local function nativeReadFile()
+    for _, name in ipairs({ "UIKitNative", "AppKitNative" }) do
+        local ok, native = pcall(require, name)
+        if ok and type(native) == "table" and type(native._readFile) == "function" then
+            return native._readFile
+        end
+    end
+    return nil
+end
+
+local function readFile(path)
+    local reader = nativeReadFile()
+    if reader then
+        local body, err = reader(path)
+        if err then error(err, 2) end
+        return body
+    end
     local f = io.open(path, "r")
     if not f then
         local msg = "xml: cannot open " .. path
@@ -827,6 +843,10 @@ local function readTemplate(path)
     local src = f:read("*a")
     f:close()
     return src
+end
+
+local function readTemplate(path)
+    return readFile(path)
 end
 
 -- Build the template helper functions.
@@ -888,7 +908,7 @@ local M = {}
 -- Returns view, refs where refs is a table of { [refName] = view } for
 -- every element that carried a ref="name" attribute.
 function M.render(src, data, ns)
-    ns = ns or require("AppKit")
+    ns = ns or require("ns")
 
     data = type(data) == "table" and data or {}
     local baseDir = data.__baseDir or ""
@@ -956,14 +976,7 @@ end
 
 -- Render an XML file.  Path is relative to the process working directory.
 function M.renderFile(path, data, ns)
-    local f = io.open(path, "r")
-    if not f then
-        local msg = "xml.renderFile: cannot open " .. path
-        io.stderr:write(msg .. "\n")
-        error(msg)
-    end
-    local src = f:read("*a")
-    f:close()
+    local src = readFile(path)
     data = type(data) == "table" and data or {}
     data.__baseDir = path:match("^(.-)[^/\\]*$")
     local ok, result, refs = pcall(M.render, src, data, ns)

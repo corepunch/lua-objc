@@ -14,6 +14,9 @@ static char kPaddingKey;
 static char kAlignmentKey;
 static char kFixedWidthKey;
 static char kFixedHeightKey;
+static char kSpacingKey;
+static char kFlexGrowKey;
+static char kFillWidthKey;
 static const CGFloat kStackSpacing = 8.0;
 static lua_State *gL = NULL;
 
@@ -25,6 +28,7 @@ static lua_State *gL = NULL;
 #define LUA_OBJC_WINDOW_CLASS UIWindow
 #define LUA_OBJC_VIEW_METATABLE "uiview"
 #define LUA_OBJC_WINDOW_METATABLE "uiwindow"
+#define LUA_OBJC_VIEWCONTROLLER_METATABLE "uiviewcontroller"
 #include "../shared/lua_bridge_support.m"
 #include "../shared/lua_error.m"
 #include "../shared/lua_async.m"
@@ -39,6 +43,7 @@ static lua_State *gL = NULL;
 #include "tables.m"
 #include "platform.m"
 #include "constructors.m"
+#include "hosting.m"
 #pragma mark - Module registration
 
 static const luaL_Reg bridge_lib[] = {
@@ -53,7 +58,12 @@ static const luaL_Reg bridge_lib[] = {
 	{"_button", bridge_UIKitControls_button},
 	{"_toggle", bridge_UIKitControls_toggle},
 	{"_window", bridge_window},
+	{"_installScene", bridge_install_scene},
+	{"_hostingController", bridge_hosting_controller},
 	{"_image", bridge_image},
+	{"_imageData", bridge_image_data},
+	{"_systemImage", bridge_system_image},
+	{"_systemColor", bridge_system_color},
 	{"_add", bridge_add},
 	{"_layout", bridge_layout},
 	{"_setContentSize", bridge_set_content_size},
@@ -83,6 +93,7 @@ int luaopen_UIKitNative(lua_State *L) {
 
 	register_metatable(L, "uiview");
 	register_metatable(L, "uiwindow");
+	register_metatable(L, "uiviewcontroller");
 	register_metatable(L, "nsobject");
 	luaL_newlib(L, bridge_lib);
 	return 1;

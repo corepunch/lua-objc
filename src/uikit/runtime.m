@@ -14,6 +14,9 @@ static void layout_recursive(UIView *view, CGFloat width);
 @property(nonatomic, copy) NSString *alignment;
 @property(nonatomic) CGFloat fixedWidth;
 @property(nonatomic) CGFloat fixedHeight;
+@property(nonatomic) CGFloat spacing;
+@property(nonatomic) CGFloat flexGrow;
+@property(nonatomic) BOOL fillWidth;
 @end
 
 @implementation UIView (LuaLayoutProperties)
@@ -46,14 +49,34 @@ static void layout_recursive(UIView *view, CGFloat width);
 	objc_setAssociatedObject(self, &kFixedHeightKey, @(value),
 		OBJC_ASSOCIATION_RETAIN);
 }
+- (CGFloat)spacing {
+	NSNumber *value = objc_getAssociatedObject(self, &kSpacingKey);
+	return value ? value.doubleValue : kStackSpacing;
+}
+- (void)setSpacing:(CGFloat)value {
+	objc_setAssociatedObject(self, &kSpacingKey, @(MAX(0, value)),
+		OBJC_ASSOCIATION_RETAIN);
+}
+- (CGFloat)flexGrow {
+	return [objc_getAssociatedObject(self, &kFlexGrowKey) doubleValue];
+}
+- (void)setFlexGrow:(CGFloat)value {
+	objc_setAssociatedObject(self, &kFlexGrowKey, @(MAX(0, value)),
+		OBJC_ASSOCIATION_RETAIN);
+}
+- (BOOL)fillWidth {
+	return [objc_getAssociatedObject(self, &kFillWidthKey) boolValue];
+}
+- (void)setFillWidth:(BOOL)value {
+	objc_setAssociatedObject(self, &kFillWidthKey, @(value),
+		OBJC_ASSOCIATION_RETAIN);
+}
 @end
 
 static id check_objc(lua_State *L, int idx) {
-	ObjCRef *ref = luaL_testudata(L, idx, "uiview");
+	ObjCRef *ref = lua_objc_test_ref(L, idx);
 	if (ref) return (__bridge id)ref->ptr;
-	ref = luaL_testudata(L, idx, "uiwindow");
-	if (ref) return (__bridge id)ref->ptr;
-	luaL_typeerror(L, idx, "uiview or uiwindow");
+	luaL_typeerror(L, idx, "uiview, uiwindow, or uiviewcontroller");
 	return nil;
 }
 
