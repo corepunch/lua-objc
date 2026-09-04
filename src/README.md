@@ -42,6 +42,11 @@ AppKit and `src/uikit/` + `src/shared/` for UIKit. Adding or changing a nested
 fragment therefore rebuilds the appropriate runtime without maintaining file
 lists.
 
+The iPhone Simulator host compiles `ios/LuaObjCHost/*.m` + `src/uikit_module.m`
++ `liblua.a` only — never glob `src/uikit/*.m` as extra Compile Sources.
+Application Lua and assets are not in the `.app`; they stream from the
+packager. See [`docs/ios.md`](../docs/ios.md).
+
 To add a bridge function:
 
 1. Put it in the fragment matching its native responsibility.

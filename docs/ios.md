@@ -16,7 +16,9 @@ This document is both an implementation spec and an operator how-to. An engineer
 
 lua-objc already has a complete AppKit product and a UIKit *stub*: `make` builds `build/UIKit.dylib` with the iPhone Simulator SDK when Xcode is present, but there is no iOS host, no scene, no packager, and `lua/embedded/UIKit.lua` is a thin copy of a few AppKit constructors. `src/uikit/views.m` `bridge_window` requires an attached `UIWindowScene`, so the macOS loader `src/host.c` cannot run UIKit.
 
-This work adds a real iPhone Simulator host that statically compiles Lua 5.4.8 plus the UIKit translation unit (`src/uikit_module.m` includes `src/uikit/*.m` and `src/shared/*.m` — those fragments are **not** extra Compile Sources). The `.app` is a **runtime**, not an app bundle: it contains no Lua, templates, or images. A Mac packager streams every `.lua` / `.etlua` file and every asset (`png`, `svg`, `json`, game data, …) over HTTP, and pushes change events over WebSocket. The operator loop never rebuilds or reinstalls. Model state is preserved across view rebuilds the way React Native Fast Refresh preserves JS state.
+This work adds a real iPhone Simulator host that statically compiles Lua 5.4.8 plus the UIKit translation unit (`src/uikit_module.m` includes `src/uikit/*.m` and `src/shared/*.m` — those fragments are **not** extra Compile Sources). The `.app` is a **runtime**, not an app bundle: it contains no Lua, templates, or images. A Mac packager streams every `.lua` / `.etlua` file and every asset (`png`, `svg`, `json`, game data, …) over HTTP, and pushes change events over WebSocket. The operator loop never rebuilds or reinstalls.
+
+**The host process does not quit on reload.** A save does not `simctl launch`, does not terminate `LuaObjCHost`, and does not tear down the `UIWindowScene`. The packager sends `update` over WebSocket; the running host replaces `rootViewController` (or, for `Model.lua` / `init.lua`, recycles the in-process `lua_State`) and keeps the Simulator on screen. A Lua error is a redbox overlay, not a crash. This is the React Native Fast Refresh analogue: native runtime stays up, app Lua and assets stream in.
 
 Success is **coverage**, not a port: AdventureArena’s SwiftUI screens at `/Users/igor/Developer/adventure-arena` define the primitive set that must exist in Lua + XML + real UIKit. AdventureArena itself is not ported in this workstream.
 
@@ -861,7 +863,7 @@ export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 make ios-run ARGS=examples/hello
 ```
 
-That is the whole loop. It starts the packager (`http://127.0.0.1:8081`, `ws://127.0.0.1:8081/hot`), boots the Simulator if needed, installs the **already-built** host if it is missing, and launches with `SIMCTL_CHILD_LUA_OBJC_PACKAGER` / `LUA_OBJC_APP`. Lua, templates, and assets stream from the packager. Edit `examples/hello/views/Window.etlua`, `Controller.lua`, or an image and save: the Simulator updates; `Model` state remains. **No `make`, no `xcodebuild`, no reinstall.**
+That is the whole loop. It starts the packager (`http://127.0.0.1:8081`, `ws://127.0.0.1:8081/hot`), boots the Simulator if needed, installs the **already-built** host if it is missing, and launches with `SIMCTL_CHILD_LUA_OBJC_PACKAGER` / `LUA_OBJC_APP`. Lua, templates, and assets stream from the packager. Edit `examples/hello/views/Window.etlua`, `Controller.lua`, or an image and save: the Simulator updates **without quitting**; `Model` state remains. **No `make`, no `xcodebuild`, no reinstall, no `simctl launch`.**
 
 The host binary is built once (CI or the first `make ios-host` on a clean machine). After that, `ios-run` does not rebuild it.
 

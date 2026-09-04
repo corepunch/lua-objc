@@ -8,14 +8,16 @@ authored in Lua and embedded into the corresponding library at build time.
 
 ```
 examples/*.lua              User-facing UI descriptions
-src/host.c                  Tiny executable loader
+src/host.c                  Tiny macOS executable loader
 src/main.m                  AppKit translation-unit root and registration
 src/appkit/*.m              Focused bridge fragments included by main.m
 src/uikit/*.m               UIKit bridge root and focused fragments
 src/shared/*.m              Shared Lua state, async, HTTP, JSON, error helpers
+src/packager/packager.m     Mac packager: Lua + assets over HTTP/WebSocket
+ios/LuaObjCHost/            iPhone Simulator runtime (no app Lua inside)
 build/AppKit.dylib          AppKit runtime + luaopen_AppKit
-build/UIKit.dylib           UIKit runtime + luaopen_UIKit (iOS SDK)
-lua/embedded/*.lua          Declarative layers embedded in those dylibs
+build/UIKit.dylib           UIKit compile-check (iOS SDK)
+lua/embedded/*.lua          Declarative layers (AppKit embedded; UIKit streamed on iOS)
 src/appkit/canvas_eval.m    Isolated AppKit canvas evaluation
 ```
 
@@ -37,9 +39,13 @@ require("UIKit")   -- luaopen_UIKit in UIKit.dylib, inside an iOS host
 ```
 
 The build converts each `lua/embedded/*.lua` source into a byte-array header.
-`luaopen_*` evaluates that embedded chunk and returns its complete public API
-table. There is no loose `AppKit.lua`, `IDEKit.lua`, or `UIKit.lua` module that
-can silently bypass native loading.
+`luaopen_AppKit` evaluates that embedded chunk and returns its complete public
+API table. There is no loose `AppKit.lua` or `IDEKit.lua` module that can
+silently bypass native loading on macOS.
+
+On the iPhone Simulator host, `luaopen_UIKitNative` is in-process and
+`lua/embedded/UIKit.lua` is streamed from the Mac packager like application
+Lua. See [docs/ios.md](docs/ios.md).
 
 `AppKitNative` and `UIKitNative` are private implementation modules. The
 legacy `bridge` name remains temporarily available for existing application
@@ -49,6 +55,26 @@ code, but public framework layers do not depend on it.
 iPhone Simulator SDK is available. `make uikit` requests that target
 explicitly and fails with a focused message when Xcode platform support is
 missing.
+
+### iOS host and in-process reload
+
+`src/host.c` cannot run UIKit. The iPhone Simulator product is a host app
+(`LuaObjCHost`) that statically links Lua 5.4.8 and the UIKit translation
+unit. That `.app` is a runtime: it contains no application Lua, templates, or
+images.
+
+A Mac packager streams `.lua`, `.etlua`, and assets over HTTP and pushes
+change events over WebSocket. The host calls `luaopen_UIKitNative` and
+`require`s `UIKit.lua` from the packager (the `xxd`-embedded chunk in
+`luaopen_UIKit` remains a dylib compile-check, not the Simulator load path).
+
+A save **does not quit the host**. The process, scene, and window stay up.
+Controller/view/asset updates replace `rootViewController` and keep `Model`.
+`Model.lua` / `init.lua` recycle the in-process `lua_State` without
+terminating `UIApplication`. Lua errors show an overlay. Native `.m` changes
+are outside this loop.
+
+The contract and operator commands live in [`docs/ios.md`](docs/ios.md).
 
 ---
 
