@@ -169,7 +169,11 @@ ios-run: ios-host ios-packager
 	if [ "$$ok" != 1 ]; then echo "packager failed to start"; cat build/ios/packager.log; exit 1; fi; \
 	DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun simctl boot "$(DEVICE)" 2>/dev/null || true; \
 	DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun simctl bootstatus "$(DEVICE)" -b; \
+	open -a Simulator; \
+	osascript -e 'tell application "Simulator" to activate' >/dev/null 2>&1 || true; \
+	sleep 1; \
 	DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun simctl install booted $(HOST_BUNDLE); \
+	echo "Launching org.luaobjc.host on $(DEVICE) — watch the Simulator window."; \
 	SIMCTL_CHILD_LUA_OBJC_APP="$$entry" \
 	SIMCTL_CHILD_LUA_OBJC_PACKAGER="$$packager_url" \
 	DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun simctl launch \
