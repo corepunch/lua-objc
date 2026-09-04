@@ -4,7 +4,7 @@ set -e
 DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 export DEVELOPER_DIR
 DEVICE="${DEVICE:-iPhone 17}"
-ENTRY="${ARGS:-examples/hello}"
+ENTRY="${PROJECT:-examples/hello}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SIMAPP="$DEVELOPER_DIR/Applications/Simulator.app"
 PACKAGER="$ROOT/build/lua-objc-packager"
@@ -26,32 +26,28 @@ if [ ! -d "$HOST_BUNDLE" ]; then
 	exit 1
 fi
 
-if [ -f "$LOGDIR/packager.pid" ]; then
-	old="$(cat "$LOGDIR/packager.pid")"
-	if kill -0 "$old" 2>/dev/null; then
-		kill "$old" 2>/dev/null || true
-		sleep 0.2
+ensure_packager() {
+	if curl -sf "$PACKAGER_URL/health" >/dev/null; then
+		echo "ios-run: packager already running at $PACKAGER_URL"
+		return 0
 	fi
-fi
-
-echo "ios-run: packager $PACKAGER_URL  entry=$ENTRY"
-"$PACKAGER" --root "$ROOT" --port 8081 --entry "$ENTRY" \
-	>"$LOGDIR/packager.log" 2>&1 &
-echo $! > "$LOGDIR/packager.pid"
-trap 'kill $(cat "'"$LOGDIR"'/packager.pid") 2>/dev/null' EXIT INT
-
-ok=0
-i=0
-while [ "$i" -lt 25 ]; do
-	if curl -sf "$PACKAGER_URL/health" >/dev/null; then ok=1; break; fi
-	i=$((i + 1))
-	sleep 0.2
-done
-if [ "$ok" != 1 ]; then
+	echo "ios-run: starting packager $PACKAGER_URL  entry=$ENTRY"
+	"$PACKAGER" --root "$ROOT" --port 8081 --entry "$ENTRY" \
+		>>"$LOGDIR/packager.log" 2>&1 &
+	echo $! > "$LOGDIR/packager.pid"
+	i=0
+	while [ "$i" -lt 25 ]; do
+		if curl -sf "$PACKAGER_URL/health" >/dev/null; then return 0; fi
+		i=$((i + 1))
+		sleep 0.2
+	done
 	echo "ios-run: packager failed to start" >&2
 	cat "$LOGDIR/packager.log" >&2
 	exit 1
-fi
+}
+
+ensure_packager
+echo "ios-run: packager stays up after this command (make ios-packager-stop to kill it)"
 
 echo "ios-run: boot $DEVICE"
 xcrun simctl boot "$DEVICE" 2>/dev/null || true
