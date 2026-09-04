@@ -1,7 +1,14 @@
 #pragma mark - Layout helpers
 
 static BOOL is_flexible(UIView *view) {
+	if ([objc_getAssociatedObject(view, &kFlexGrowKey) doubleValue] > 0)
+		return YES;
 	return [objc_getAssociatedObject(view, &kFlexibleKey) boolValue];
+}
+
+static CGFloat view_spacing(UIView *view) {
+	NSNumber *value = objc_getAssociatedObject(view, &kSpacingKey);
+	return value ? value.doubleValue : kStackSpacing;
 }
 
 static CGFloat view_padding(UIView *view) {
@@ -64,29 +71,30 @@ static void layout_recursive(UIView *view, CGFloat width) {
 				}
 			}
 
-			CGFloat spacing = count > 1 ? (count - 1) * kStackSpacing : 0;
+			CGFloat stackSpacing = view_spacing(view);
+			CGFloat spacing = count > 1 ? (count - 1) * stackSpacing : 0;
 			CGFloat flexibleHeight = flexibleCount > 0
 				? MAX(0, (contentH - fixedHeight - spacing) / flexibleCount)
 				: 0;
-			CGFloat top = pad + contentH;
+			CGFloat y = pad;
 
 			for (UIView *sv in view.subviews) {
 				CGFloat fh = view_fixed_height(sv);
 				CGFloat childH = is_flexible(sv) ? flexibleHeight
 					: (fh > 0 ? fh : (sv.frame.size.height > 0 ? sv.frame.size.height : 22));
 				CGFloat fw = view_fixed_width(sv);
-				CGFloat childW = is_flexible(sv) ? contentW
+				BOOL fill = [objc_getAssociatedObject(sv, &kFillWidthKey) boolValue];
+				CGFloat childW = (is_flexible(sv) || fill) ? contentW
 					: (fw > 0 ? fw : MIN(sv.frame.size.width, contentW));
-				top -= childH;
 				CGFloat childX = pad;
 				if ([alignment isEqualToString:@"center"]) {
 					childX = pad + (contentW - childW) / 2;
 				} else if ([alignment isEqualToString:@"trailing"]) {
 					childX = pad + contentW - childW;
 				}
-				sv.frame = CGRectMake(childX, top, childW, childH);
+				sv.frame = CGRectMake(childX, y, childW, childH);
 				layout_recursive(sv, childW);
-				top -= kStackSpacing;
+				y += childH + stackSpacing;
 			}
 		} else if ([axis isEqualToString:@"hstack"]) {
 			NSUInteger count = view.subviews.count;
@@ -107,7 +115,8 @@ static void layout_recursive(UIView *view, CGFloat width) {
 				}
 			}
 
-			CGFloat spacing = count > 1 ? (count - 1) * kStackSpacing : 0;
+			CGFloat stackSpacing = view_spacing(view);
+			CGFloat spacing = count > 1 ? (count - 1) * stackSpacing : 0;
 			CGFloat flexibleWidth = flexibleCount > 0
 				? MAX(0, (contentW - fixedWidth - spacing) / flexibleCount)
 				: 0;
@@ -128,7 +137,7 @@ static void layout_recursive(UIView *view, CGFloat width) {
 				}
 				sv.frame = CGRectMake(x, childY, childW, childH);
 				layout_recursive(sv, childW);
-				x += childW + kStackSpacing;
+				x += childW + stackSpacing;
 			}
 		} else if ([axis isEqualToString:@"hsplit"]) {
 			CGFloat n = (CGFloat)view.subviews.count;

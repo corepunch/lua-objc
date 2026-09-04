@@ -1,10 +1,7 @@
--- UIKitNative is registered by UIKit.dylib before this embedded layer runs.
+-- UIKitNative is registered by the host before this layer runs.
 local bridge = require("UIKitNative")
+local UIKit = bridge
 
-local UIKit = {}
-
--- coroutine.resume reports failures as return values. Always surface those
--- failures because timers and network callbacks otherwise swallow Lua errors.
 local function resumeCoroutine(co, ...)
 	local ok, err = coroutine.resume(co, ...)
 	if not ok then
@@ -15,9 +12,22 @@ end
 
 local layout_properties = {
 	"padding",
+	"paddingHorizontal",
+	"paddingVertical",
+	"spacing",
 	"alignment",
 	"fixedWidth",
 	"fixedHeight",
+	"minWidth",
+	"minHeight",
+	"maxWidth",
+	"maxHeight",
+	"flexGrow",
+	"flexShrink",
+	"flexBasis",
+	"fillWidth",
+	"fillHeight",
+	"hidden",
 }
 
 local function applyLayout(view, props)
@@ -30,49 +40,48 @@ local function applyLayout(view, props)
 	return view
 end
 
-local function resolveImage(name)
-	if name:sub(1, 1) == "/" or name:sub(1, 1) == "~" then
-		return name
+local function addChildren(parent, children)
+	if type(children) ~= "table" then return end
+	for _, child in ipairs(children) do
+		if type(child) == "userdata" then
+			parent:add(child)
+		elseif type(child) == "table" and child.__appkitGroup then
+			addChildren(parent, child)
+		end
 	end
-	local f = io.open(name)
-	if f then
-		f:close()
-		return name
+end
+
+local function asViewController(content)
+	if content == nil then
+		error("UIKit.Window requires content")
 	end
-	return name
+	if type(content) == "table" then
+		local stack = UIKit.VStack(content)
+		return bridge._hostingController(stack)
+	end
+	local ok, vc = pcall(function()
+		return bridge._hostingController(content)
+	end)
+	if ok then return vc end
+	return content
 end
 
 function UIKit.Window(props)
-	local title = props.title or "Window"
-	local width = props.width or 480
-	local height = props.height or 360
+	props = props or {}
+	local content = props.content or props[1]
+	local vc = asViewController(content)
+	return bridge._installScene(vc, props.title or "")
+end
 
-	local win = bridge._window(title, width, height, false, false)
-	win:setContentSize(width, height)
-
-	local content = bridge._vstack()
-	win:add(content)
-
-	for _, v in ipairs(props) do
-		if type(v) == "userdata" then
-			content:add(v)
-		end
-	end
-
-	content:layout(width)
-	win:show()
-	return win
+function UIKit.HostingController(view)
+	return bridge._hostingController(view)
 end
 
 function UIKit.VStack(props)
 	local view = bridge._vstack()
 	if type(props) == "table" then
 		applyLayout(view, props)
-		for _, v in ipairs(props) do
-			if type(v) == "userdata" then
-				view:add(v)
-			end
-		end
+		addChildren(view, props)
 	end
 	return view
 end
@@ -81,11 +90,7 @@ function UIKit.HStack(props)
 	local view = bridge._hstack()
 	if type(props) == "table" then
 		applyLayout(view, props)
-		for _, v in ipairs(props) do
-			if type(v) == "userdata" then
-				view:add(v)
-			end
-		end
+		addChildren(view, props)
 	end
 	return view
 end
@@ -94,12 +99,11 @@ function UIKit.TextField(arg)
 	local text = ""
 	local props
 	if type(arg) == "table" then
-		text = arg[1] or arg.placeholder or ""
+		text = arg[1] or arg.placeholder or arg.value or ""
 		props = arg
 	elseif type(arg) == "string" then
 		text = arg
 	end
-
 	local v = bridge._textField(text)
 	return applyLayout(v, props)
 end
@@ -108,30 +112,66 @@ function UIKit.Label(arg)
 	local text
 	local props
 	if type(arg) == "table" then
-		text = arg[1] or ""
+		text = arg[1] or arg.text or arg.value or ""
 		props = arg
 	elseif type(arg) == "string" then
 		text = arg
 	else
 		text = tostring(arg)
 	end
-
 	local v = bridge._label(text)
+	if type(props) == "table" then
+		if props.size and props.size > 0 then
+			v.font = bridge._font(props.size, props.weight)
+		end
+		if props.color then
+			v.textColor = bridge._systemColor(props.color)
+		end
+	end
 	return applyLayout(v, props)
 end
 
-function UIKit.ImageView(arg)
+UIKit.Text = UIKit.Label
+
+function UIKit.Title(arg)
+	return UIKit.Label({
+		type(arg) == "table" and (arg[1] or arg.text) or arg,
+		size = 22,
+		weight = "bold",
+	})
+end
+
+function UIKit.Image(arg)
 	local path
 	local props
 	if type(arg) == "table" then
-		path = arg[1] or ""
+		path = arg[1] or arg.src or arg.path or ""
 		props = arg
 	elseif type(arg) == "string" then
 		path = arg
 	else
 		path = tostring(arg)
 	end
-	return applyLayout(bridge._image(resolveImage(path)), props)
+	if bridge._readFile then
+		local body, err = bridge._readFile(path)
+		if err then error(err) end
+		return applyLayout(bridge._imageData(body), props)
+	end
+	return applyLayout(bridge._image(path), props)
+end
+
+function UIKit.SystemImage(arg)
+	if type(arg) ~= "table" then
+		arg = { tostring(arg) }
+	end
+	local name = arg.name or arg[1] or ""
+	local description = arg.accessibilityLabel or arg.label or name
+	local size = arg.size or 17
+	local weight = arg.weight or "regular"
+	local color = arg.color or "accent"
+	return applyLayout(
+		bridge._systemImage(name, description, size, weight, color),
+		arg)
 end
 
 function UIKit.Spacer(props)
@@ -143,15 +183,12 @@ function UIKit.List(props)
 	if not columns or type(columns) ~= "table" then
 		error("List requires a 'columns' property (array of {id, title})")
 	end
-
 	local width = props.width or 400
 	local height = props.height or 200
-
 	local tv = bridge._tableview(columns, width, height, {
 		header = props.header ~= false,
 		bordered = props.bordered == true,
 	})
-
 	if props.data and type(props.data) == "table" then
 		for _, row in ipairs(props.data) do
 			if type(row) == "table" then
@@ -159,24 +196,6 @@ function UIKit.List(props)
 			end
 		end
 	end
-
-	if props.refresh and type(props.refresh) == "function" then
-		local refresh_fn = props.refresh
-		bridge._tableSetRefresh(tv, function(list, on_done)
-			list:showLoading()
-			list:clearRows()
-			local co = coroutine.create(function()
-				local ok, err = pcall(refresh_fn, list)
-				if not ok then
-					io.stderr:write("refresh error: " .. tostring(err) .. "\n")
-				end
-				list:hideLoading()
-				if on_done then on_done() end
-			end)
-			resumeCoroutine(co)
-		end)
-	end
-
 	return applyLayout(tv, props)
 end
 
@@ -192,7 +211,7 @@ function UIKit.Button(props)
 	return applyLayout(button, props)
 end
 
-function UIKit.Switch(props)
+function UIKit.Toggle(props)
 	local label = type(props) == "table" and (props.label or props[1] or "") or ""
 	local is_on = type(props) == "table" and props.is_on or false
 	local action = type(props) == "table" and props.action or nil
@@ -206,15 +225,29 @@ function UIKit.Switch(props)
 end
 
 function UIKit.Separator(props)
-	local v = bridge._separator()
-	return applyLayout(v, props)
+	return applyLayout(bridge._separator(), props)
 end
+
+UIKit.Divider = UIKit.Separator
 
 function UIKit.ProgressView(props)
 	return applyLayout(bridge._progressIndicator(), props)
 end
 
-UIKit.Text = UIKit.Label
+function UIKit.Group(children)
+	children = children or {}
+	children.__appkitGroup = true
+	return children
+end
+
+function UIKit.ForEach(data, content)
+	local out = { __appkitGroup = true }
+	if type(data) ~= "table" then return out end
+	for i, item in ipairs(data) do
+		out[#out + 1] = content(item, i)
+	end
+	return out
+end
 
 function UIKit.sleep(seconds)
 	local co = coroutine.running()

@@ -468,6 +468,16 @@ int lua_objc_main(int argc, char *argv[]) {
 		lua_pop(L, 2);
 	}
 
+	{
+		extern int luaopen_AppKit(lua_State *L);
+		luaL_requiref(L, "AppKit", luaopen_AppKit, 1);
+		lua_getglobal(L, "package");
+		lua_getfield(L, -1, "loaded");
+		lua_pushvalue(L, -3);
+		lua_setfield(L, -2, "ns");
+		lua_pop(L, 3);
+	}
+
 	if (preview_mode) {
 		/* --preview: eval the script in the main state, render to PNG. */
 		FILE *fp = fopen(script, "r");
