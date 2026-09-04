@@ -14,6 +14,8 @@ Open the narrowest document that answers the task:
 - `weather_app_example.md` — async HTTP, native table loading, selection, XML
   detail views, and the framework gaps exposed by the example.
 - `tableview_swiftui.md` — NSTableView sizing, scrolling, and style behavior.
+- `ios.md` — iPhone Simulator host, UIKit coverage for AdventureArena-class
+  apps, and React Native-style Lua/XML hot reload.
 - `research/XCODE_UI_ARCHITECTURE.md` — Xcode inspection notes for IDE parity
   work; this is research, not the lua-objc implementation contract.
 - `archive/OFFSCREEN_CANVAS_PLAN.md` — historical implementation plan retained

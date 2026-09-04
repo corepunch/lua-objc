@@ -118,6 +118,7 @@ Render a script without opening a window:
 | Add a new example app | `examples/<app>/init.lua`, `AGENTS.md` (MVP layout rules) |
 | Change app startup or recents | `lua/App.lua`, `examples/ide/` |
 | Add UIKit coverage | `src/uikit/`, `src/uikit_module.m`, `lua/embedded/UIKit.lua` |
+| Run on iPhone Simulator / hot reload | [`docs/ios.md`](docs/ios.md) |
 | Understand runtime ownership | `ARCHITECTURE.md` |
 | Look up the Lua API or bridge rationale | `docs/PROJECT_REFERENCE.md` |
 | Research Xcode parity | `docs/research/XCODE_UI_ARCHITECTURE.md` |
