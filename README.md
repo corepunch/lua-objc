@@ -73,6 +73,15 @@ make run-ide
 ./lua-objc examples/mail
 ```
 
+iPhone Simulator (host is a runtime; Lua and assets stream from a Mac packager). After the host exists, a save reloads the app **in place** — the process does not quit:
+
+```sh
+make ios-run ARGS=examples/hello
+# edit examples/hello/views/Window.etlua or an asset, save
+```
+
+See [`docs/ios.md`](docs/ios.md) for the host, packager protocol, and coverage contract.
+
 ## Weather app example
 
 This is the current best reference for the product story: a real app built with native AppKit controls, declarative Lua, custom SVG artwork, and cross-platform XML templates — without recompiling the app or touching Xcode.
@@ -118,7 +127,7 @@ Render a script without opening a window:
 | Add a new example app | `examples/<app>/init.lua`, `AGENTS.md` (MVP layout rules) |
 | Change app startup or recents | `lua/App.lua`, `examples/ide/` |
 | Add UIKit coverage | `src/uikit/`, `src/uikit_module.m`, `lua/embedded/UIKit.lua` |
-| Run on iPhone Simulator / hot reload | [`docs/ios.md`](docs/ios.md) |
+| Run on iPhone Simulator / in-process reload | [`docs/ios.md`](docs/ios.md) |
 | Understand runtime ownership | `ARCHITECTURE.md` |
 | Look up the Lua API or bridge rationale | `docs/PROJECT_REFERENCE.md` |
 | Research Xcode parity | `docs/research/XCODE_UI_ARCHITECTURE.md` |

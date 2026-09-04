@@ -138,21 +138,26 @@ lua script  -->  require("AppKit")  -->  AppKit.dylib  -->  AppKit objects
                                         embedded Lua
 ```
 
-For iOS targets, `require("UIKit")` loads `UIKit.dylib` inside the iOS runtime.
-Both modules expose the same SwiftUI-like API but use framework-appropriate
-native controls and element names.
+For iOS, `require("UIKit")` runs inside the Simulator host (`LuaObjCHost`),
+which statically links the UIKit translation unit and streams `UIKit.lua` plus
+application Lua/assets from a Mac packager. `build/UIKit.dylib` is a
+compile-check, not the process that displays the phone UI. Both modules expose
+the same SwiftUI-like API but use framework-appropriate native controls. See
+[iOS host and hot reload](ios.md): a save reloads the running app without
+quitting.
 
 1. **`src/host.c`** — Tiny executable loader. Loads `AppKit.dylib` and invokes
-   its `lua_objc_main` host entry point.
+   its `lua_objc_main` host entry point. macOS only.
 
 2. **`build/AppKit.dylib`** — Self-contained macOS Lua module and runtime.
    `src/main.m` includes focused bridge fragments from `src/appkit/`; together
    they own the ObjC bridge, layout engine, canvas services, and embedded
    `lua/embedded/AppKit.lua` declarative layer.
-3. **`build/UIKit.dylib`** — iOS Simulator Lua module. Owns the UIKit bridge
-   split under `src/uikit/`, shares async state/HTTP/JSON services from
-   `src/shared/`, and embeds `lua/embedded/UIKit.lua`.
-4. **`examples/*.lua`** — UI scripts written by the user. No compilation step.
+3. **iOS Simulator host** — `ios/LuaObjCHost` + `luaopen_UIKitNative`. No app
+   Lua inside the `.app`. Packager streams Lua, templates, and assets; the host
+   reloads in process. `build/UIKit.dylib` remains an optional SDK compile-check.
+4. **`examples/*.lua`** — UI scripts written by the user. No compilation step
+   for Lua/asset changes.
 
 The embedded AppKit layer provides SwiftUI-like functions
 (`Window`, `VStack`, `HStack`, `Text`, `Image`, `Spacer`, `List`).

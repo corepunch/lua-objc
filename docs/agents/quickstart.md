@@ -100,7 +100,20 @@ states where the feature supports them. For tables, call `showLoading()` before
 fetching and `hideLoading()` after rows are available. Do not add sleeps to
 simulate progress.
 
-## 6. Validate before handoff
+## 6. iPhone Simulator
+
+The same `examples/<app>/` tree runs on iOS. The Simulator host is a runtime;
+Lua, templates, and assets stream from a Mac packager. After `make ios-run`,
+a save reloads the running app **without quitting**:
+
+```sh
+make ios-run ARGS=examples/hello
+```
+
+Do not copy Lua into the `.app`. Do not rebuild the host because a view or
+asset changed. See [iOS host and hot reload](../ios.md).
+
+## 7. Validate before handoff
 
 ```sh
 make test

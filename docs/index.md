@@ -17,14 +17,15 @@ AppKit/UIKit controls, and no compile cycle for every UI change.
 - [Weather app example](weather_app_example.md): async HTTP, loading, selection, and normalized API data.
 - [Project reference](PROJECT_REFERENCE.md): detailed Lua API, bridge behavior, and layout contracts.
 - [Table behavior](tableview_swiftui.md): list sizing, styles, columns, and loading state.
-- [iOS host and hot reload](ios.md): iPhone Simulator host, UIKit coverage, and React Native-style Lua reload.
+- [iOS host and hot reload](ios.md): iPhone Simulator host, UIKit coverage, streamed Lua/assets, and in-process reload (the app does not quit).
 
 ## The core loop
 
 1. Describe the view in Lua or an etlua template.
-2. Run it directly with `./lua-objc examples/<app>`.
-3. Exercise the behavior with a headless Lua test.
-4. Inspect a screenshot or native layout dump when the change is visual.
+2. Run it: `./lua-objc examples/<app>` on macOS, or `make ios-run ARGS=examples/<app>` on the iPhone Simulator.
+3. On iOS, save a Lua/etlua/asset file; the running host reloads in place (no quit, no rebuild).
+4. Exercise the behavior with a headless Lua test.
+5. Inspect a screenshot or native layout dump when the change is visual.
 
 The runtime uses real AppKit/UIKit controls. Use semantic system colors, SF
 Symbols, native lists, native toolbars, and platform-owned containers instead of
