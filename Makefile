@@ -155,29 +155,9 @@ ios-host: $(HOST_BUNDLE)
 ios-packager: $(PACKAGER)
 
 ios-run: ios-host ios-packager
-	@mkdir -p build/ios
-	@entry="$(or $(ARGS),examples/hello)"; \
-	packager_url="http://127.0.0.1:8081"; \
-	./$(PACKAGER) --root "$(CURDIR)" --port 8081 --entry "$$entry" \
-		>build/ios/packager.log 2>&1 & echo $$! > build/ios/packager.pid; \
-	trap 'kill $$(cat build/ios/packager.pid) 2>/dev/null' EXIT INT; \
-	ok=0; \
-	for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do \
-		if curl -sf "$$packager_url/health" >/dev/null; then ok=1; break; fi; \
-		sleep 0.2; \
-	done; \
-	if [ "$$ok" != 1 ]; then echo "packager failed to start"; cat build/ios/packager.log; exit 1; fi; \
-	DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun simctl boot "$(DEVICE)" 2>/dev/null || true; \
-	DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun simctl bootstatus "$(DEVICE)" -b; \
-	open -a Simulator; \
-	osascript -e 'tell application "Simulator" to activate' >/dev/null 2>&1 || true; \
-	sleep 1; \
-	DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun simctl install booted $(HOST_BUNDLE); \
-	echo "Launching org.luaobjc.host on $(DEVICE) — watch the Simulator window."; \
-	SIMCTL_CHILD_LUA_OBJC_APP="$$entry" \
-	SIMCTL_CHILD_LUA_OBJC_PACKAGER="$$packager_url" \
-	DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun simctl launch \
-		--console --terminate-running-process booted org.luaobjc.host
+	chmod +x scripts/ios-run.sh
+	DEVELOPER_DIR=$(DEVELOPER_DIR) DEVICE="$(DEVICE)" ARGS="$(or $(ARGS),examples/hello)" \
+		scripts/ios-run.sh
 
 clean:
 	rm -f $(TARGET) $(FRAMEWORK_MODULES) build/UIKit.dylib

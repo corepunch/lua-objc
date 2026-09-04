@@ -863,7 +863,7 @@ export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 make ios-run ARGS=examples/hello
 ```
 
-`simctl boot` only starts the runtime. `ios-run` also opens **Simulator.app** so you get a phone window. If that window is behind the terminal, click Simulator in the Dock (or Mission Control). Logs in the terminal (`boot ok`) mean the app process is running; the UI is in Simulator.app, not in the terminal.
+`simctl boot` only starts the runtime. `ios-run` opens **Xcode’s** Simulator at `$DEVELOPER_DIR/Applications/Simulator.app` (do not `open -a Simulator` — on this machine that name is a different app). Logs in the terminal (`boot ok`) mean the process is running; the UI is the iPhone window, not the terminal.
 
 That is the whole loop. It starts the packager (`http://127.0.0.1:8081`, `ws://127.0.0.1:8081/hot`), boots the Simulator if needed, opens Simulator.app, installs the **already-built** host if it is missing, and launches with `SIMCTL_CHILD_LUA_OBJC_PACKAGER` / `LUA_OBJC_APP`. Lua, templates, and assets stream from the packager. Edit `examples/hello/views/Window.etlua`, `Controller.lua`, or an image and save: the Simulator updates **without quitting**; `Model` state remains. **No `make`, no `xcodebuild`, no reinstall, no `simctl launch`.**
 
@@ -876,7 +876,9 @@ make ios-packager ARGS=examples/hello          # terminal 1
 # terminal 2:
 xcrun simctl boot "iPhone 17" || true
 xcrun simctl bootstatus "iPhone 17" -b
-open -a Simulator
+open -a "$DEVELOPER_DIR/Applications/Simulator.app" \
+  --args -CurrentDeviceUDID "$(xcrun simctl list devices booted -j | python3 -c 'import json,sys; d=json.load(sys.stdin);
+[print(x["udid"]) for devs in d["devices"].values() for x in devs if x.get("state")=="Booted"]')"
 xcrun simctl install booted build/ios/LuaObjCHost.app   # only if not already installed
 SIMCTL_CHILD_LUA_OBJC_PACKAGER=http://127.0.0.1:8081 \
 SIMCTL_CHILD_LUA_OBJC_APP=examples/hello \

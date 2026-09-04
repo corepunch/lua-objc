@@ -76,8 +76,10 @@ make run-ide
 iPhone Simulator (host is a runtime; Lua and assets stream from a Mac packager). After the host exists, a save reloads the app **in place** — the process does not quit:
 
 ```sh
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 make ios-run ARGS=examples/hello
-# edit examples/hello/views/Window.etlua or an asset, save
+# watch Xcode’s Simulator window (not the terminal)
+# edit examples/hello/views/Window.etlua, save — UI updates without quitting
 ```
 
 See [`docs/ios.md`](docs/ios.md) for the host, packager protocol, and coverage contract.
