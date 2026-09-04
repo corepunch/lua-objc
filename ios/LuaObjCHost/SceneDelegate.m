@@ -12,5 +12,6 @@
 	self.window = [[UIWindow alloc] initWithWindowScene:(UIWindowScene *)scene];
 	self.window.backgroundColor = UIColor.systemBackgroundColor;
 	[[LuaHost shared] startWithWindow:self.window];
+	[self.window makeKeyAndVisible];
 }
 @end
