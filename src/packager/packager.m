@@ -332,6 +332,11 @@ int main(int argc, char **argv) {
 				gEntry = @(argv[++i]);
 			}
 		}
+		if (![gRoot hasPrefix:@"/"]) {
+			gRoot = [[[NSFileManager defaultManager] currentDirectoryPath]
+				stringByAppendingPathComponent:gRoot];
+			gRoot = [gRoot stringByStandardizingPath];
+		}
 
 		gL = luaL_newstate();
 		luaL_openlibs(gL);
