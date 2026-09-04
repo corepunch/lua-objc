@@ -17,6 +17,7 @@ AppKit/UIKit controls, and no compile cycle for every UI change.
 - [Weather app example](weather_app_example.md): async HTTP, loading, selection, and normalized API data.
 - [Project reference](PROJECT_REFERENCE.md): detailed Lua API, bridge behavior, and layout contracts.
 - [Table behavior](tableview_swiftui.md): list sizing, styles, columns, and loading state.
+- [iOS host and hot reload](ios.md): iPhone Simulator host, UIKit coverage, and React Native-style Lua reload.
 
 ## The core loop
 
