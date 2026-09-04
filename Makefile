@@ -154,9 +154,15 @@ $(HOST_BUNDLE): $(IOS_LUA_A) $(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) \
 ios-host: $(HOST_BUNDLE)
 ios-packager: $(PACKAGER)
 
+ios-packager-run: ios-packager
+	./$(PACKAGER) --root "$(CURDIR)" --port 8081 --entry "$(or $(PROJECT),examples/hello)"
+
+ios-packager-stop:
+	@if [ -f build/ios/packager.pid ]; then kill $$(cat build/ios/packager.pid) 2>/dev/null || true; rm -f build/ios/packager.pid; fi
+
 ios-run: ios-host ios-packager
 	chmod +x scripts/ios-run.sh
-	DEVELOPER_DIR=$(DEVELOPER_DIR) DEVICE="$(DEVICE)" ARGS="$(or $(ARGS),examples/hello)" \
+	DEVELOPER_DIR=$(DEVELOPER_DIR) DEVICE="$(DEVICE)" PROJECT="$(or $(PROJECT),examples/hello)" \
 		scripts/ios-run.sh
 
 clean:
@@ -168,4 +174,4 @@ clean:
 screenshot: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) --screenshot=$(or $(OUT),/tmp/screenshot.png) $(ARGS)
 
-.PHONY: all uikit run clean test run-hello run-list run-live run-weather run-welcome run-mail run-layout screenshot ios-host ios-packager ios-run
+.PHONY: all uikit run clean test run-hello run-list run-live run-weather run-welcome run-mail run-layout screenshot ios-host ios-packager ios-packager-run ios-packager-stop ios-run

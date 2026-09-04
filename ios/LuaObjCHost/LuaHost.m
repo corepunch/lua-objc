@@ -23,6 +23,8 @@ UIWindow *lua_objc_host_window(void) {
 	LuaHotClient *_hot;
 	NSMutableDictionary<NSString *, NSString *> *_modulePaths;
 	id _preservedModel;
+	BOOL _booted;
+	BOOL _retrying;
 }
 
 + (instancetype)shared {
@@ -46,18 +48,36 @@ UIWindow *lua_objc_host_window(void) {
 	return fallback;
 }
 
+- (NSString *)packagerURL {
+	return [self env:@"LUA_OBJC_PACKAGER" fallback:@"http://127.0.0.1:8081"];
+}
+
 - (void)startWithWindow:(UIWindow *)window {
 	_window = window;
 	gHostWindow = window;
-	NSString *packager = [self env:@"LUA_OBJC_PACKAGER"
-		fallback:@"http://127.0.0.1:8081"];
-	NSLog(@"[lua-objc] packager=%@", packager);
-	LuaSourceLoader.shared.baseURL = [NSURL URLWithString:packager];
+	LuaSourceLoader.shared.baseURL = [NSURL URLWithString:self.packagerURL];
+	NSLog(@"[lua-objc] packager=%@", self.packagerURL);
+	[self tryBoot];
+}
+
+- (void)tryBoot {
+	if (_booted) return;
 	NSError *err = nil;
 	if (![LuaSourceLoader.shared ping:&err]) {
 		[self showError:[NSString stringWithFormat:
-			@"Packager not running.\nmake ios-run ARGS=…\n\n%@",
-			err.localizedDescription]];
+			@"Waiting for packager at %@\n\nOn your Mac, leave this running:\n  make ios-run PROJECT=examples/hello\n\nThen this screen updates by itself.\n\n%@",
+			self.packagerURL,
+			err.localizedDescription ?: @"Could not connect to the server."]];
+		if (_retrying) return;
+		_retrying = YES;
+		__weak typeof(self) weakSelf = self;
+		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.6 * NSEC_PER_SEC)),
+			dispatch_get_main_queue(), ^{
+				__strong typeof(weakSelf) strongSelf = weakSelf;
+				if (!strongSelf) return;
+				strongSelf->_retrying = NO;
+				[strongSelf tryBoot];
+			});
 		return;
 	}
 	NSLog(@"[lua-objc] packager reachable");
@@ -65,8 +85,9 @@ UIWindow *lua_objc_host_window(void) {
 		[self showError:err.localizedDescription ?: @"boot failed"];
 		return;
 	}
+	_booted = YES;
 	NSLog(@"[lua-objc] boot ok");
-	NSString *hot = [packager stringByReplacingOccurrencesOfString:@"https://"
+	NSString *hot = [self.packagerURL stringByReplacingOccurrencesOfString:@"https://"
 		withString:@"wss://"];
 	hot = [hot stringByReplacingOccurrencesOfString:@"http://" withString:@"ws://"];
 	if (![hot hasSuffix:@"/"]) hot = [hot stringByAppendingString:@"/"];
