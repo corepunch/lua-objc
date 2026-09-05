@@ -37,15 +37,19 @@ static int bridge_image(lua_State *L) {
 	if (!img) return luaL_error(L, "failed to load image: %s", path);
 
 	CGSize size = img.size;
-	if (size.width > 400) {
-		CGFloat ratio = 400.0 / size.width;
-		size.width = 400;
+	if (size.width > kImageMaxWidth) {
+		CGFloat ratio = kImageMaxWidth / size.width;
+		size.width = kImageMaxWidth;
 		size.height *= ratio;
 	}
 
 	UIImageView *iv = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, size.width, size.height)];
 	iv.image = img;
 	iv.contentMode = UIViewContentModeScaleAspectFit;
+	/* Keep layout measurement tied to the bridge's proportional display size,
+	 * rather than UIImageView's uncapped intrinsic image size. */
+	objc_setAssociatedObject(iv, &kImageLayoutSizeKey,
+		[NSValue valueWithCGSize:size], OBJC_ASSOCIATION_RETAIN);
 
 	push_objc(L, iv, "uiview");
 	return 1;
@@ -70,10 +74,17 @@ static int bridge_image_data(lua_State *L) {
 	UIImage *img = [UIImage imageWithData:data];
 	if (!img) return luaL_error(L, "failed to decode image data");
 	CGSize size = img.size;
+	if (size.width > kImageMaxWidth) {
+		CGFloat ratio = kImageMaxWidth / size.width;
+		size.width = kImageMaxWidth;
+		size.height *= ratio;
+	}
 	UIImageView *iv = [[UIImageView alloc]
 		initWithFrame:CGRectMake(0, 0, size.width, size.height)];
 	iv.image = img;
 	iv.contentMode = UIViewContentModeScaleAspectFit;
+	objc_setAssociatedObject(iv, &kImageLayoutSizeKey,
+		[NSValue valueWithCGSize:size], OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, iv, "uiview");
 	return 1;
 }
