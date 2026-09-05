@@ -12,7 +12,13 @@ function Controller.new()
 end
 
 function Controller:createWindow()
-	local cfg, refs = xml.renderFile(VIEWS .. "Window.etlua")
+	local cfg, refs = xml.renderFile(VIEWS .. "Window.etlua", {
+		title     = Model.title,
+		subtitle  = Model.subtitle,
+		version   = Model.version,
+		timestamp = Model.timestamp,
+		contacts  = Model.contacts,
+	})
 	return ns.Window(cfg)
 end
 

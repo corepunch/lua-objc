@@ -293,7 +293,7 @@ end
 function M.fromString(src, data)
     local etlua = require("etlua")
     if data then
-        local ok, result = pcall(etlua.render, src, data)
+        local ok, result = pcall(etlua.render, src, data, "@viewdesc.lua")
         if not ok then error("viewdesc: template error: " .. tostring(result)) end
         src = result
     end

@@ -505,7 +505,9 @@ int lua_objc_main(int argc, char *argv[]) {
 			code);
 		free(code);
 
-		if (luaL_loadstring(L, wrapped) != LUA_OK ||
+		NSString *previewSource = [NSString stringWithFormat:@"@%s", script];
+		if (luaL_loadbufferx(L, wrapped, strlen(wrapped),
+			previewSource.UTF8String, "t") != LUA_OK ||
 			lua_pcall(L, 0, 1, 0) != LUA_OK) {
 			report_lua_error(L, "preview");
 			free(wrapped);

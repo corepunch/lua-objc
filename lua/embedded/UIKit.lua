@@ -73,6 +73,18 @@ function UIKit.Window(props)
 	return bridge._installScene(vc, props.title or "")
 end
 
+function UIKit.TabView(props)
+	local tbc = bridge._tabview()
+	local tabs = props.tabs or {}
+	for _, tab in ipairs(tabs) do
+		if type(tab) == "table" and tab.__tab then
+			local vc = asViewController(tab.content)
+			bridge._tabViewAddTab(tbc, vc, tab.title or "", tab.systemImage or "")
+		end
+	end
+	return tbc
+end
+
 function UIKit.HostingController(view)
 	return bridge._hostingController(view)
 end
@@ -124,9 +136,18 @@ function UIKit.Label(arg)
 		if props.size and props.size > 0 then
 			v.font = bridge._font(props.size, props.weight)
 		end
+		if props.lineLimit then
+			v.numberOfLines = props.lineLimit
+			if props.lineLimit > 1 then v.lineBreakMode = 0 end
+		end
+		if props.truncation then
+			local modes = { head = 3, tail = 4, middle = 5 }
+			v.lineBreakMode = modes[props.truncation] or 4
+		end
 		if props.color then
 			v.textColor = bridge._systemColor(props.color)
 		end
+		v:sizeToFit()
 	end
 	return applyLayout(v, props)
 end

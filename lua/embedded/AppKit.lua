@@ -255,6 +255,22 @@ function AppKit.Preview(props)
 	return root
 end
 
+function AppKit.TabView(props)
+	local style = props and props.style or "top"
+	local tv = bridge._tabview(400, 200, style)
+	local tabs = props and props.tabs or {}
+	for _, tab in ipairs(tabs) do
+		if type(tab) == "table" and tab.__tab then
+			local content = tab.content
+			if type(content) == "table" then
+				content = AppKit.VStack(content)
+			end
+			tv:addTab(tab.title or "", content)
+		end
+	end
+	return applyLayout(tv, props)
+end
+
 function AppKit.VStack(props)
 	local view = bridge._vstack()
 	if type(props) == "table" then

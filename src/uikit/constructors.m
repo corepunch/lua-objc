@@ -47,7 +47,8 @@ static int bridge_UIKitControls_label(lua_State *L) {
 	const char *text = luaL_optstring(L, 1, "");
 	UILabel *obj = [[UILabel alloc] initWithFrame:CGRectZero];
 	obj.text = [NSString stringWithUTF8String:text];
-	obj.numberOfLines = 0;
+	/* SwiftUI Text is single-line unless the caller requests a line limit. */
+	obj.numberOfLines = 1;
 	[obj sizeToFit];
 	push_objc(L, obj, "uiview");
 	return 1;
@@ -57,7 +58,7 @@ static int bridge_UIKitControls_separator(lua_State *L) {
 	UIView *obj = [[UIView alloc] initWithFrame:CGRectZero];
 	objc_setAssociatedObject(obj, &kFixedHeightKey, @1,
 		OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(obj, &kFlexibleKey, @YES,
+	objc_setAssociatedObject(obj, &kFillWidthKey, @YES,
 		OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, obj, "uiview");
 	return 1;

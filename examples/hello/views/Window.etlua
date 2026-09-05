@@ -1,8 +1,29 @@
-<Window title="Lua + ObjC Demo" width="480" height="420">
-	<VStack flexGrow="1" padding="24" spacing="12" alignment="leading">
-		<Label text="Hello from Lua" size="24" weight="bold" />
-		<Label text="A SwiftUI-like API backed by native AppKit controls." size="14" />
-		<SystemImage name="swift" size="64" label="Swift" />
-		<Label text="Edit the Lua file and relaunch—no recompilation needed." size="13" color="secondary" />
+<Window title="<%= title %>" width="480" height="460">
+	<VStack flexGrow="1" padding="24" spacing="14" alignment="leading">
+		<Label text="<%= title %>" size="24" weight="bold" />
+		<Label text="<%= subtitle %>" size="14" color="secondary" />
+
+		<Divider />
+
+		<Label text="Contacts" size="16" weight="semibold" />
+
+		<% for i, contact in ipairs(contacts) do -%>
+		<HStack spacing="10" alignment="center">
+			<SystemImage name="person.circle" size="28" label="<%= contact.name %>" />
+			<VStack spacing="1" alignment="leading" flexGrow="1">
+				<Label text="<%= contact.name %>" size="14" weight="medium" />
+				<Label text="<%= contact.role %>" size="12" color="secondary" />
+			</VStack>
+			<% if contact.active then -%>
+			<Label text="Active" size="12" color="green" />
+			<% else -%>
+			<Label text="Inactive" size="12" color="secondary" />
+			<% end -%>
+		</HStack>
+		<% end -%>
+
+		<Spacer />
+
+		<Label text="v<%= version %> · last updated <%= timestamp %>" size="11" color="secondary" />
 	</VStack>
 </Window>

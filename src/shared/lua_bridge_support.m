@@ -27,7 +27,7 @@ static ObjCRef *lua_objc_test_ref(lua_State *L, int idx) {
 	return ref;
 }
 
-static id lua_objc_check_object(
+id lua_objc_check_object(
 	lua_State *L,
 	int idx,
 	Class expectedClass,

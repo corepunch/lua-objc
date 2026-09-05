@@ -111,6 +111,7 @@ LUA_LIB := lauxlib lbaselib lcorolib ldblib liolib lmathlib loadlib loslib \
 LUA_OBJS := $(addprefix build/ios/lua/,$(addsuffix .o,$(LUA_CORE) $(LUA_LIB)))
 IOS_LUA_A := build/ios/liblua.a
 HOST_BUNDLE := build/ios/LuaObjCHost.app
+HOST_BINARY := $(HOST_BUNDLE)/LuaObjCHost
 PACKAGER := build/lua-objc-packager
 IOS_HOST_SRCS := ios/LuaObjCHost/main.m ios/LuaObjCHost/AppDelegate.m \
 	ios/LuaObjCHost/SceneDelegate.m ios/LuaObjCHost/LuaHost.m \
@@ -123,11 +124,13 @@ IOS_CFLAGS := -fobjc-arc $(IOS_CFLAGS_C) \
 	-Iios/LuaObjCHost -Isrc -Ibuild
 
 build/ios/lua/%.o: $(LUA_SRC_DIR)/%.c
-	mkdir -p $(dir $@)
-	$(IOS_CC) $(IOS_CFLAGS_C) -c -o $@ $<
+	@mkdir -p $(dir $@)
+	@if [ "$*" = "lapi" ]; then echo "Compiling Lua 5.4..."; fi
+	@$(IOS_CC) $(IOS_CFLAGS_C) -c -o $@ $<
 
 $(IOS_LUA_A): $(LUA_OBJS)
-	libtool -static -o $@ $^
+	@echo "Linking Lua 5.4 runtime..."
+	@libtool -static -o $@ $^
 
 $(PACKAGER): src/packager/packager.m lua/packager/paths.lua
 	mkdir -p build
@@ -137,21 +140,22 @@ $(PACKAGER): src/packager/packager.m lua/packager/paths.lua
 		$(shell pkg-config --libs lua 2>/dev/null || echo "-L/opt/homebrew/lib -llua") \
 		-framework Foundation -framework CoreServices
 
-$(HOST_BUNDLE): $(IOS_LUA_A) $(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) \
+$(HOST_BINARY): $(IOS_LUA_A) $(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) \
 		$(UIKIT_RUNTIME_FRAGMENTS) $(GENERATED_DIR)/UIKit.lua.h \
 		ios/LuaObjCHost/Info.plist
 	@test -n "$(IOS_SDK)" || { echo "iPhone Simulator SDK missing; set DEVELOPER_DIR"; exit 1; }
-	mkdir -p $(HOST_BUNDLE)
-	$(IOS_CC) $(IOS_CFLAGS) \
+	@echo "Building iOS host..."
+	@mkdir -p $(HOST_BUNDLE)
+	@$(IOS_CC) $(IOS_CFLAGS) \
 		-framework UIKit -framework Foundation -framework CoreGraphics \
 		-o $(HOST_BUNDLE)/LuaObjCHost \
 		$(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) $(IOS_LUA_A)
-	cp ios/LuaObjCHost/Info.plist $(HOST_BUNDLE)/Info.plist
-	printf 'APPL????' > $(HOST_BUNDLE)/PkgInfo
-	codesign --sign - --force --entitlements /dev/null $(HOST_BUNDLE) 2>/dev/null \
+	@cp ios/LuaObjCHost/Info.plist $(HOST_BUNDLE)/Info.plist
+	@printf 'APPL????' > $(HOST_BUNDLE)/PkgInfo
+	@codesign --sign - --force --entitlements /dev/null $(HOST_BUNDLE) 2>/dev/null \
 		|| codesign --sign - --force $(HOST_BUNDLE)
 
-ios-host: $(HOST_BUNDLE)
+ios-host: $(HOST_BINARY)
 ios-packager: $(PACKAGER)
 
 ios-packager-run: ios-packager
@@ -166,10 +170,10 @@ ios-run: ios-host ios-packager
 		scripts/ios-run.sh
 
 clean:
-	rm -f $(TARGET) $(FRAMEWORK_MODULES) build/UIKit.dylib
-	rm -f build/appkit-runtime.o build/appkit-module.o
-	rm -f $(GENERATED_DIR)/AppKit.lua.h $(GENERATED_DIR)/UIKit.lua.h
-	rm -rf build/ios $(PACKAGER)
+	@rm -f $(TARGET) $(FRAMEWORK_MODULES) build/UIKit.dylib
+	@rm -f build/appkit-runtime.o build/appkit-module.o
+	@rm -f $(GENERATED_DIR)/AppKit.lua.h $(GENERATED_DIR)/UIKit.lua.h
+	@rm -rf build/ios $(PACKAGER)
 
 screenshot: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) --screenshot=$(or $(OUT),/tmp/screenshot.png) $(ARGS)

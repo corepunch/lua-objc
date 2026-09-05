@@ -4,6 +4,12 @@ static int nsview_index(lua_State *L) {
 	id obj = (__bridge id)((ObjCRef *)lua_touserdata(L, 1))->ptr;
 	const char *key = lua_tostring(L, 2);
 	if (!key) { lua_pushnil(L); return 1; }
+	/* UIView operations must bypass KVC: KVC can treat a method-shaped key
+	 * such as sizeToFit as an undefined, nil-valued property. */
+	if (strcmp(key, "sizeToFit") == 0) {
+		lua_pushcfunction(L, bridge_size_to_fit);
+		return 1;
+	}
 
 	NSString *kvcKey = [NSString stringWithUTF8String:key];
 	@try {

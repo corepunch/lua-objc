@@ -660,6 +660,40 @@ local TAG_SCHEMA = {
             error("xml: <Chart> requires pre-built chart in render data (key: " .. tostring(key) .. ")")
         end,
     },
+
+    -- Navigation
+    TabView = {
+        constructor = "TabView",
+        props = {
+            style    = "str",
+            selected = "str",
+        },
+        collect = function(props, children)
+            local tabs = {}
+            for _, c in ipairs(children) do
+                if type(c) == "table" and c.__tab then
+                    tabs[#tabs + 1] = c
+                end
+            end
+            props.tabs = tabs
+        end,
+    },
+    Tab = {
+        kind  = "record",
+        flag  = "__tab",
+        props = {
+            id          = "str",
+            title       = { aliases = { "label" }, default = "", type = "str" },
+            systemImage = "str",
+        },
+        collect = function(props, children)
+            if #children == 1 then
+                props.content = children[1]
+            elseif #children > 1 then
+                props.content = children
+            end
+        end,
+    },
 }
 
 -- Tag aliases
@@ -893,7 +927,7 @@ local function injectTemplateHelpers(ctx, baseDir)
         if type(data) == "table" then
             injectTemplateHelpers(data, partialDir)
         end
-        return etlua.render(src, data)
+        return etlua.render(src, data, "@" .. fullPath)
     end
 
     return ctx
@@ -907,7 +941,7 @@ local M = {}
 -- Render an XML string with optional etlua data and platform module.
 -- Returns view, refs where refs is a table of { [refName] = view } for
 -- every element that carried a ref="name" attribute.
-function M.render(src, data, ns)
+function M.render(src, data, ns, sourceName)
     ns = ns or require("ns")
 
     data = type(data) == "table" and data or {}
@@ -915,7 +949,7 @@ function M.render(src, data, ns)
 
     injectTemplateHelpers(data, baseDir)
 
-    local ok, result = pcall(etlua.render, src, data)
+    local ok, result = pcall(etlua.render, src, data, sourceName and ("@" .. sourceName) or nil)
     if not ok then
         local msg = "xml.render: template error: " .. tostring(result)
         io.stderr:write(msg .. "\n")
@@ -937,7 +971,7 @@ function M.render(src, data, ns)
         merged.yield = function(name)
             return data.__blocks[name] or ""
         end
-        local ok2, parentResult = pcall(etlua.render, parentSrc, merged)
+        local ok2, parentResult = pcall(etlua.render, parentSrc, merged, "@" .. info.path)
         if not ok2 then
             local msg = "xml.render: error in extends(\"" .. info.path .. "\"): " .. tostring(parentResult)
             io.stderr:write(msg .. "\n")
@@ -979,7 +1013,7 @@ function M.renderFile(path, data, ns)
     local src = readFile(path)
     data = type(data) == "table" and data or {}
     data.__baseDir = path:match("^(.-)[^/\\]*$")
-    local ok, result, refs = pcall(M.render, src, data, ns)
+    local ok, result, refs = pcall(M.render, src, data, ns, path)
     if not ok then
         local msg = "xml.renderFile [" .. path .. "]: " .. tostring(result)
         io.stderr:write(msg .. "\n")
