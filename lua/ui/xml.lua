@@ -340,7 +340,7 @@ end
 
 local function layoutProps(attrs)
     local lp = {
-        "padding", "paddingHorizontal", "paddingVertical",
+        "padding", "paddingHorizontal", "paddingVertical", "paddingTop", "paddingBottom",
         "spacing", "alignment",
         "fixedWidth", "fixedHeight", "minWidth", "minHeight",
         "maxWidth", "maxHeight",
@@ -582,6 +582,13 @@ local TAG_SCHEMA = {
             props[1] = a.src or a.path or ""
             return ns.Image(props)
         end,
+    },
+    LinearGradient = {
+        constructor = "LinearGradient",
+        props = {
+            topAlpha = "num",
+            bottomAlpha = "num",
+        },
     },
 
     -- List & Table structures

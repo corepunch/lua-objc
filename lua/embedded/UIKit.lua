@@ -14,6 +14,8 @@ local layout_properties = {
 	"padding",
 	"paddingHorizontal",
 	"paddingVertical",
+	"paddingTop",
+	"paddingBottom",
 	"spacing",
 	"alignment",
 	"fixedWidth",
@@ -235,6 +237,13 @@ function UIKit.PageControl(props)
 		props.currentPage or 0), props)
 end
 
+function UIKit.LinearGradient(props)
+	props = props or {}
+	return applyLayout(bridge._linearGradient(props.topAlpha or 0,
+		props.middleAlpha or 0.5, props.middleLocation or 0.6,
+		props.bottomAlpha or 0.82), props)
+end
+
 function UIKit.List(props)
 	local columns = props.columns
 	if not columns or type(columns) ~= "table" then
@@ -260,10 +269,11 @@ function UIKit.Button(props)
 	local title = type(props) == "table" and (props.title or props[1] or "") or ""
 	local action = type(props) == "table" and props.action or nil
 	local button
+	local style = type(props) == "table" and props.style or nil
 	if action then
-		button = bridge._button(title, action)
+		button = bridge._button(title, action, style or "default")
 	else
-		button = bridge._button(title)
+		button = bridge._button(title, nil, style or "default")
 	end
 	return applyLayout(button, props)
 end

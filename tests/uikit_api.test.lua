@@ -28,6 +28,11 @@ t.expect(src:find("function UIKit.ZStack", 1, true) ~= nil,
 	"UIKit exposes a native overlay stack")
 t.expect(src:find("function UIKit.NavigationStack", 1, true) ~= nil,
 	"UIKit exposes a native navigation stack")
+t.expect(src:find("props.middleLocation", 1, true) ~= nil,
+	"UIKit gradients expose an intermediate fade stop")
+t.expect(src:find('"paddingTop"', 1, true) ~= nil
+		and src:find('"paddingBottom"', 1, true) ~= nil,
+	"UIKit exposes edge-specific padding")
 
 local layout = assert(io.open("src/uikit/layout.m", "r")):read("*a")
 local views = assert(io.open("src/uikit/views.m", "r")):read("*a")
@@ -39,5 +44,14 @@ t.expect(views:find("kImageMaxWidth", 1, true) ~= nil,
 	"UIKit data-backed images use the same display-size limit")
 t.expect(layout:find("CGFloat fixedHeight = view_fixed_height(view);", 1, true) ~= nil,
 	"UIKit stack measurement honors fixed child heights")
+t.expect(layout:find("view_padding_top", 1, true) ~= nil
+		and layout:find("view_padding_bottom", 1, true) ~= nil,
+	"UIKit stack measurement honors asymmetric vertical padding")
+
+local constructors = assert(io.open("src/uikit/constructors.m", "r")):read("*a")
+t.expect(constructors:find("gradient.locations", 1, true) ~= nil,
+	"UIKit gradients preserve SwiftUI-like stop locations")
+t.expect(constructors:find("layer.borderWidth = 1", 1, true) ~= nil,
+	"UIKit page controls retain the outlined capsule")
 
 os.exit(t.summary() and 0 or 1)

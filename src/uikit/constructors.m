@@ -126,19 +126,71 @@ static int bridge_UIKitControls_progressIndicator(lua_State *L) {
 	return 1;
 }
 
+@interface LuaPageControlView : UIView
+@property(nonatomic, strong) UIPageControl *control;
+@end
+
+@implementation LuaPageControlView
+- (void)layoutSubviews {
+	[super layoutSubviews];
+	self.control.frame = self.bounds;
+}
+@end
+
 static int bridge_UIKitControls_pageControl(lua_State *L) {
 	NSInteger pages = (NSInteger)luaL_optinteger(L, 1, 0);
-	UIPageControl *control = [[UIPageControl alloc] initWithFrame:CGRectZero];
-	control.numberOfPages = MAX(0, pages);
-	control.currentPage = (NSInteger)luaL_optinteger(L, 2, 0);
-	[control sizeToFit];
-	push_objc(L, control, "uiview");
+	LuaPageControlView *view = [[LuaPageControlView alloc] initWithFrame:CGRectMake(0, 0, 88, 32)];
+	view.backgroundColor = [UIColor colorWithWhite:0.35 alpha:0.65];
+	view.layer.cornerRadius = 16;
+	view.layer.borderWidth = 1;
+	view.layer.borderColor = UIColor.whiteColor.CGColor;
+	view.clipsToBounds = YES;
+	view.control = [[UIPageControl alloc] initWithFrame:view.bounds];
+	view.control.numberOfPages = MAX(0, pages);
+	view.control.currentPage = (NSInteger)luaL_optinteger(L, 2, 0);
+	view.control.pageIndicatorTintColor = [UIColor colorWithWhite:0.8 alpha:0.8];
+	view.control.currentPageIndicatorTintColor = UIColor.whiteColor;
+	[view addSubview:view.control];
+	push_objc(L, view, "uiview");
+	return 1;
+}
+
+@interface LuaGradientView : UIView
+@property(nonatomic, strong) CAGradientLayer *gradient;
+@end
+
+@implementation LuaGradientView
+- (void)layoutSubviews {
+	[super layoutSubviews];
+	self.gradient.frame = self.bounds;
+}
+@end
+
+static int bridge_UIKitControls_linearGradient(lua_State *L) {
+	CGFloat topAlpha = (CGFloat)luaL_optnumber(L, 1, 0);
+	CGFloat middleAlpha = (CGFloat)luaL_optnumber(L, 2, 0.5);
+	CGFloat middleLocation = (CGFloat)luaL_optnumber(L, 3, 0.6);
+	CGFloat bottomAlpha = (CGFloat)luaL_optnumber(L, 4, 0.82);
+	LuaGradientView *view = [[LuaGradientView alloc] initWithFrame:CGRectZero];
+	CAGradientLayer *gradient = [CAGradientLayer layer];
+	gradient.colors = @[(id)[UIColor colorWithWhite:0 alpha:topAlpha].CGColor,
+		(id)[UIColor colorWithWhite:0 alpha:topAlpha].CGColor,
+		(id)[UIColor colorWithWhite:0 alpha:middleAlpha].CGColor,
+		(id)[UIColor colorWithWhite:0 alpha:bottomAlpha].CGColor];
+	gradient.locations = @[@0.0, @0.3, @(middleLocation), @1.0];
+	gradient.startPoint = CGPointMake(0.5, 0);
+	gradient.endPoint = CGPointMake(0.5, 1);
+	view.gradient = gradient;
+	[view.layer addSublayer:gradient];
+	view.userInteractionEnabled = NO;
+	push_objc(L, view, "uiview");
 	return 1;
 }
 
 static int bridge_UIKitControls_button(lua_State *L) {
 	const char *title = luaL_checkstring(L, 1);
 	BOOL has_callback = !lua_isnoneornil(L, 2);
+	const char *style = luaL_optstring(L, 3, "default");
 	int callback_ref = LUA_NOREF;
 	if (has_callback) {
 		luaL_checktype(L, 2, LUA_TFUNCTION);
@@ -148,6 +200,10 @@ static int bridge_UIKitControls_button(lua_State *L) {
 
 	UIButton *obj = [UIButton buttonWithType:UIButtonTypeSystem];
 	[obj setTitle:[NSString stringWithUTF8String:title] forState:UIControlStateNormal];
+	if (strcmp(style, "plain") == 0) {
+		[obj setTitleColor:UIColor.labelColor forState:UIControlStateNormal];
+		obj.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+	}
 	[obj sizeToFit];
 	if (has_callback) {
 		objc_setAssociatedObject(obj, &kCallbackKey, @(callback_ref), OBJC_ASSOCIATION_RETAIN);

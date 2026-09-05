@@ -13,6 +13,8 @@ static char kResizeObserverKey;
 static char kPaddingKey;
 static char kPaddingHorizontalKey;
 static char kPaddingVerticalKey;
+static char kPaddingTopKey;
+static char kPaddingBottomKey;
 static char kAlignmentKey;
 static char kFixedWidthKey;
 static char kFixedHeightKey;
@@ -75,6 +77,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_separator", bridge_UIKitControls_separator},
 	{"_progressIndicator", bridge_UIKitControls_progressIndicator},
 	{"_pageControl", bridge_UIKitControls_pageControl},
+	{"_linearGradient", bridge_UIKitControls_linearGradient},
 	{"_button", bridge_UIKitControls_button},
 	{"_toggle", bridge_UIKitControls_toggle},
 	{"_window", bridge_window},
