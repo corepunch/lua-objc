@@ -45,7 +45,15 @@ static UIViewController *check_view_controller(lua_State *L, int idx) {
 }
 
 static int bridge_hosting_controller(lua_State *L) {
-	UIView *view = check_view(L, 1);
+	id obj = check_objc(L, 1);
+	if ([obj isKindOfClass:[UIViewController class]]) {
+		push_objc(L, obj, "uiviewcontroller");
+		return 1;
+	}
+	if (![obj isKindOfClass:[UIView class]]) {
+		luaL_typeerror(L, 1, "uiview or uiviewcontroller");
+	}
+	UIView *view = (UIView *)obj;
 	LuaHostingController *vc =
 		[[LuaHostingController alloc] initWithLuaView:view];
 	push_objc(L, vc, "uiviewcontroller");

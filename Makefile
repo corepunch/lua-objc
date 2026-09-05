@@ -142,7 +142,7 @@ $(PACKAGER): src/packager/packager.m lua/packager/paths.lua
 
 $(HOST_BINARY): $(IOS_LUA_A) $(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) \
 		$(UIKIT_RUNTIME_FRAGMENTS) $(GENERATED_DIR)/UIKit.lua.h \
-		ios/LuaObjCHost/Info.plist
+		ios/LuaObjCHost/Info.plist ios/LuaObjCHost/AppIcon.png
 	@test -n "$(IOS_SDK)" || { echo "iPhone Simulator SDK missing; set DEVELOPER_DIR"; exit 1; }
 	@echo "Building iOS host..."
 	@mkdir -p $(HOST_BUNDLE)
@@ -151,6 +151,7 @@ $(HOST_BINARY): $(IOS_LUA_A) $(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) \
 		-o $(HOST_BUNDLE)/LuaObjCHost \
 		$(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) $(IOS_LUA_A)
 	@cp ios/LuaObjCHost/Info.plist $(HOST_BUNDLE)/Info.plist
+	@cp ios/LuaObjCHost/AppIcon.png $(HOST_BUNDLE)/AppIcon.png
 	@printf 'APPL????' > $(HOST_BUNDLE)/PkgInfo
 	@codesign --sign - --force --entitlements /dev/null $(HOST_BUNDLE) 2>/dev/null \
 		|| codesign --sign - --force $(HOST_BUNDLE)
