@@ -7,12 +7,16 @@ Model.recents = {
 	{ title = "1:1 with manager", subtitle = "Thursday 3:30 PM", systemImage = "person.crop.circle" },
 }
 
+Model.featured = {
+	title = "A slower way to move",
+	subtitle = "Notes from the mountain trail",
+	image = "examples/phone-tabs/assets/home-mountain.jpg",
+}
+
 Model.favorites = {
-	{ title = "Recipes", systemImage = "fork.knife" },
-	{ title = "Travel", systemImage = "airplane" },
-	{ title = "Books", systemImage = "book" },
-	{ title = "Workouts", systemImage = "dumbbell" },
-	{ title = "Music", systemImage = "music.note" },
+	{ title = "Lake escape", subtitle = "Travel inspiration", image = "examples/phone-tabs/assets/favorite-lake.jpg" },
+	{ title = "Good companions", subtitle = "Weekend ideas", image = "examples/phone-tabs/assets/favorite-dog.jpg" },
+	{ title = "Into the trees", subtitle = "Places to explore", image = "examples/phone-tabs/assets/favorite-forest.jpg" },
 }
 
 Model.profile = {
@@ -20,6 +24,8 @@ Model.profile = {
 	email = "alex@example.com",
 	files = 12,
 	storage = "2.4 GB of 5 GB",
+	cover = "examples/phone-tabs/assets/profile-cover.jpg",
+	avatar = "examples/phone-tabs/assets/profile-avatar.jpg",
 }
 
 return Model

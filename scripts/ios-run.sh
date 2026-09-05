@@ -87,7 +87,28 @@ echo "ios-run: packager stays up after this command (make ios-packager-stop to k
 
 echo "ios-run: boot $DEVICE"
 xcrun simctl boot "$DEVICE" 2>/dev/null || true
-xcrun simctl bootstatus "$DEVICE" -b
+
+# bootstatus -b blocks until boot completes.  First boot after an Xcode
+# upgrade or `simctl erase` runs data migration that can take minutes.
+BOOT_TIMEOUT=90
+xcrun simctl bootstatus "$DEVICE" -b &
+BOOT_PID=$!
+i=0
+while kill -0 "$BOOT_PID" 2>/dev/null; do
+  sleep 1
+  i=$((i + 1))
+  if [ "$i" -ge "$BOOT_TIMEOUT" ]; then
+    echo "" >&2
+    echo "ios-run: simulator boot is slow (first boot after upgrade/erase takes minutes)." >&2
+    echo "ios-run: the simulator IS booting — you should see the Apple logo in Simulator.app." >&2
+    echo "ios-run: if stuck, try:  make ios-reset  then retry." >&2
+    echo "" >&2
+    kill "$BOOT_PID" 2>/dev/null || true
+    wait "$BOOT_PID" 2>/dev/null || true
+    break
+  fi
+done
+wait "$BOOT_PID" 2>/dev/null || true
 
 UDID="$(xcrun simctl list devices booted -j | python3 -c '
 import json,sys

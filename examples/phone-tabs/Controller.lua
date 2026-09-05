@@ -1,5 +1,5 @@
 local Model = require("examples.phone-tabs.Model")
-local xml   = require("ui.xml")
+local Tabs  = require("examples.phone-tabs.views.Tabs")
 
 local Controller = {}
 Controller.__index = Controller
@@ -10,12 +10,10 @@ end
 
 function Controller:createWindow()
 	local ns = require("ns")
-	local cfg, refs = xml.renderFile("examples/phone-tabs/views/Window.etlua", {
-		recents  = Model.recents,
-		favorites = Model.favorites,
-		profile  = Model.profile,
-	})
-	return ns.Window(cfg)
+	return ns.Window {
+		title = "Phone Tabs",
+		content = Tabs(Model),
+	}
 end
 
 return Controller

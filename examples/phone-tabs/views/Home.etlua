@@ -1,0 +1,16 @@
+<VStack padding="20" spacing="16" fillWidth="true" alignment="leading">
+    <Label text="Home" size="28" weight="bold" />
+    <Image path="<%= featured.image %>" />
+    <Label text="<%= featured.title %>" size="20" weight="semibold" />
+    <Label text="<%= featured.subtitle %>" size="14" color="secondary" />
+    <Label text="Recent activity" size="14" color="secondary" />
+<% for _, item in ipairs(recents) do %>
+    <HStack spacing="12" fillWidth="true" padding="12">
+        <SystemImage name="<%= item.systemImage %>" size="22" fixedWidth="32" color="accent" />
+        <VStack spacing="2" flexGrow="1" alignment="leading">
+            <Label text="<%= item.title %>" size="16" weight="semibold" />
+            <Label text="<%= item.subtitle %>" size="13" color="secondary" />
+        </VStack>
+    </HStack>
+<% end %>
+</VStack>
