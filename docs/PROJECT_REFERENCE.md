@@ -485,10 +485,12 @@ ns.VStack {
 
 ### `ScrollView{...}`
 
-Creates a native `NSScrollView` around one content view. Set
-`contentWidth` larger than the viewport to enable horizontal scrolling; the
-content view keeps that document width while the scroll view fills its parent.
-Use it for fixed-format rows such as a seven-day forecast.
+Creates a native scroll view around one content view. It scrolls vertically by
+default, matching SwiftUI's `ScrollView`; set `horizontal = true` for a
+horizontal document and `vertical = false` when vertical scrolling is not
+desired. Set `contentWidth` larger than the viewport to preserve the document
+width while the scroll view fills its parent. Use it for fixed-format rows
+such as a seven-day forecast.
 
 ```lua
 ns.ScrollView {

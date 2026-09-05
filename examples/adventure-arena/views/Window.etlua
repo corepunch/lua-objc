@@ -1,1 +1,1 @@
-<Window title="Adventure Arena" />
+<Window title="Adventure Arena" width="640" height="720" minWidth="420" minHeight="360" />

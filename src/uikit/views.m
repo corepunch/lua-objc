@@ -64,6 +64,8 @@ static UIColor *lua_objc_uikit_system_color(const char *name) {
 	if (strcmp(name, "blue") == 0) return UIColor.systemBlueColor;
 	if (strcmp(name, "green") == 0) return UIColor.systemGreenColor;
 	if (strcmp(name, "primary") == 0) return UIColor.labelColor;
+	if (strcmp(name, "white") == 0) return UIColor.whiteColor;
+	if (strcmp(name, "yellow") == 0) return UIColor.systemYellowColor;
 	return UIColor.labelColor;
 }
 

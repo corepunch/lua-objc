@@ -20,6 +20,10 @@ t.assertEqual(paths.moduleRel("UIKit"), "lua/embedded/UIKit.lua", "UIKit is stre
 t.assertEqual(paths.moduleRel("ui.xml"), "lua/ui/xml.lua", "ui.xml mapping")
 t.assertEqual(paths.moduleRel("examples.hello.Controller"),
 	"examples/hello/Controller.lua", "app module mapping")
+t.assertEqual(paths.moduleRel("zilscript.runtime"),
+	"External/zilscript/zilscript/runtime.lua", "zilscript runtime is streamed")
+t.assertEqual(paths.moduleCandidates("zilscript.compiler")[1],
+	"External/zilscript/zilscript/compiler.lua", "zilscript compiler is streamed")
 
 local full, norm = paths.jail("/tmp/repo", "examples/hello/views/Window.etlua")
 t.assertEqual(norm, "examples/hello/views/Window.etlua", "jail keeps relative path")

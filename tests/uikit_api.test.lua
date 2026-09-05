@@ -17,8 +17,17 @@ t.expect(src:find("function UIKit.Switch") == nil, "Switch constructor is delete
 t.expect(src:find("UIKit.Text = UIKit.Label") ~= nil, "Text aliases Label")
 t.expect(src:find("v:sizeToFit%(%)[%s%S]-end") ~= nil,
 	"UIKit labels resize after applying a custom font")
-t.expect(src:find("v.numberOfLines = props.lineLimit", 1, true) ~= nil,
+t.expect(src:find("local lines = props.lineLimit or props.lines", 1, true) ~= nil,
 	"UIKit labels honor explicit line limits")
+t.expect(src:find("props.vertical ~= false", 1, true) ~= nil,
+	"UIKit ScrollView defaults to vertical scrolling like SwiftUI")
+t.expect(src:find('"paddingHorizontal"', 1, true) ~= nil
+		and src:find('"fillHeight"', 1, true) ~= nil,
+	"UIKit exposes the shared layout property contract")
+t.expect(src:find("function UIKit.ZStack", 1, true) ~= nil,
+	"UIKit exposes a native overlay stack")
+t.expect(src:find("function UIKit.NavigationStack", 1, true) ~= nil,
+	"UIKit exposes a native navigation stack")
 
 local layout = assert(io.open("src/uikit/layout.m", "r")):read("*a")
 local views = assert(io.open("src/uikit/views.m", "r")):read("*a")

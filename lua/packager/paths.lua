@@ -92,6 +92,10 @@ function M.moduleRel(name)
 	if type(name) ~= "string" or name == "" then return nil, "empty" end
 	if NATIVE[name] then return nil, "native" end
 	if MODULES[name] then return MODULES[name] end
+	if name == "zilscript" then return "External/zilscript/zilscript/init.lua" end
+	if name:match("^zilscript%.") then
+		return "External/zilscript/" .. name:gsub("%.", "/") .. ".lua"
+	end
 	return (name:gsub("%.", "/")) .. ".lua"
 end
 
@@ -99,6 +103,9 @@ function M.moduleCandidates(name)
 	local rel, err = M.moduleRel(name)
 	if not rel then return nil, err end
 	if MODULES[name] then return { rel } end
+	if name == "zilscript" or name:match("^zilscript%.") then
+		return { rel, rel:gsub("%.lua$", "/init.lua") }
+	end
 	return { rel, "lua/" .. rel, "examples/" .. rel }
 end
 

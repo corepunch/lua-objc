@@ -297,10 +297,10 @@ function AppKit.ScrollView(props)
 		content,
 		props.contentWidth or 0,
 		props.contentHeight or 0)
-	if props.horizontal ~= false then
+	if props.horizontal then
 		view.hasHorizontalScroller = true
 	end
-	if props.vertical then
+	if props.vertical ~= false then
 		view.hasVerticalScroller = true
 	end
 	return applyLayout(view, props)

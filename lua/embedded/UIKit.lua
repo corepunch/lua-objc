@@ -28,6 +28,8 @@ local layout_properties = {
 	"fillWidth",
 	"fillHeight",
 	"hidden",
+	"cornerRadius",
+	"contentModeName",
 }
 
 local function applyLayout(view, props)
@@ -89,6 +91,12 @@ function UIKit.HostingController(view)
 	return bridge._hostingController(view)
 end
 
+function UIKit.NavigationStack(props)
+	props = props or {}
+	local content = props.content or props[1]
+	return bridge._navigationStack(asViewController(content))
+end
+
 function UIKit.VStack(props)
 	local view = bridge._vstack()
 	if type(props) == "table" then
@@ -105,6 +113,23 @@ function UIKit.HStack(props)
 		addChildren(view, props)
 	end
 	return view
+end
+
+function UIKit.ZStack(props)
+	local view = bridge._zstack()
+	if type(props) == "table" then
+		applyLayout(view, props)
+		addChildren(view, props)
+	end
+	return view
+end
+
+function UIKit.ScrollView(props)
+	assert(type(props) == "table", "ScrollView requires a property table")
+	local content = props.content or props[1]
+	assert(type(content) == "userdata", "ScrollView requires one content view")
+	return applyLayout(bridge._scrollView(content, props.contentWidth or 0,
+		props.contentHeight or 0, props.horizontal == true, props.vertical ~= false), props)
 end
 
 function UIKit.TextField(arg)
@@ -136,9 +161,10 @@ function UIKit.Label(arg)
 		if props.size and props.size > 0 then
 			v.font = bridge._font(props.size, props.weight)
 		end
-		if props.lineLimit then
-			v.numberOfLines = props.lineLimit
-			if props.lineLimit > 1 then v.lineBreakMode = 0 end
+		local lines = props.lineLimit or props.lines
+		if lines then
+			v.numberOfLines = lines
+			if lines > 1 then v.lineBreakMode = 0 end
 		end
 		if props.truncation then
 			local modes = { head = 3, tail = 4, middle = 5 }
@@ -176,9 +202,13 @@ function UIKit.Image(arg)
 	if bridge._readFile then
 		local body, err = bridge._readFile(path)
 		if err then error(err) end
-		return applyLayout(bridge._imageData(body), props)
+		local view = bridge._imageData(body)
+		if props and props.contentMode then view.contentModeName = props.contentMode end
+		return applyLayout(view, props)
 	end
-	return applyLayout(bridge._image(path), props)
+	local view = bridge._image(path)
+	if props and props.contentMode then view.contentModeName = props.contentMode end
+	return applyLayout(view, props)
 end
 
 function UIKit.SystemImage(arg)
@@ -197,6 +227,12 @@ end
 
 function UIKit.Spacer(props)
 	return applyLayout(bridge._spacer(), props)
+end
+
+function UIKit.PageControl(props)
+	props = props or {}
+	return applyLayout(bridge._pageControl(props.numberOfPages or props.pages or 0,
+		props.currentPage or 0), props)
 end
 
 function UIKit.List(props)

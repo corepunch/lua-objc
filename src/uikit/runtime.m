@@ -12,12 +12,23 @@ static void layout_recursive(UIView *view, CGFloat width);
 
 @interface UIView (LuaLayoutProperties)
 @property(nonatomic) CGFloat padding;
+@property(nonatomic) CGFloat paddingHorizontal;
+@property(nonatomic) CGFloat paddingVertical;
 @property(nonatomic, copy) NSString *alignment;
 @property(nonatomic) CGFloat fixedWidth;
 @property(nonatomic) CGFloat fixedHeight;
+@property(nonatomic) CGFloat minWidth;
+@property(nonatomic) CGFloat minHeight;
+@property(nonatomic) NSNumber *maxWidth;
+@property(nonatomic) NSNumber *maxHeight;
 @property(nonatomic) CGFloat spacing;
 @property(nonatomic) CGFloat flexGrow;
+@property(nonatomic) CGFloat flexShrink;
+@property(nonatomic) NSNumber *flexBasis;
 @property(nonatomic) BOOL fillWidth;
+@property(nonatomic) BOOL fillHeight;
+@property(nonatomic) CGFloat cornerRadius;
+@property(nonatomic, copy) NSString *contentModeName;
 @end
 
 @implementation UIView (LuaLayoutProperties)
@@ -29,6 +40,10 @@ static void layout_recursive(UIView *view, CGFloat width);
 	objc_setAssociatedObject(self, &kPaddingKey, @(value),
 		OBJC_ASSOCIATION_RETAIN);
 }
+- (CGFloat)paddingHorizontal { return [objc_getAssociatedObject(self, &kPaddingHorizontalKey) doubleValue]; }
+- (void)setPaddingHorizontal:(CGFloat)value { objc_setAssociatedObject(self, &kPaddingHorizontalKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
+- (CGFloat)paddingVertical { return [objc_getAssociatedObject(self, &kPaddingVerticalKey) doubleValue]; }
+- (void)setPaddingVertical:(CGFloat)value { objc_setAssociatedObject(self, &kPaddingVerticalKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
 - (NSString *)alignment {
 	return objc_getAssociatedObject(self, &kAlignmentKey) ?: @"center";
 }
@@ -50,6 +65,14 @@ static void layout_recursive(UIView *view, CGFloat width);
 	objc_setAssociatedObject(self, &kFixedHeightKey, @(value),
 		OBJC_ASSOCIATION_RETAIN);
 }
+- (CGFloat)minWidth { return [objc_getAssociatedObject(self, &kMinWidthKey) doubleValue]; }
+- (void)setMinWidth:(CGFloat)value { objc_setAssociatedObject(self, &kMinWidthKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
+- (CGFloat)minHeight { return [objc_getAssociatedObject(self, &kMinHeightKey) doubleValue]; }
+- (void)setMinHeight:(CGFloat)value { objc_setAssociatedObject(self, &kMinHeightKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
+- (NSNumber *)maxWidth { return objc_getAssociatedObject(self, &kMaxWidthKey); }
+- (void)setMaxWidth:(NSNumber *)value { objc_setAssociatedObject(self, &kMaxWidthKey, value, OBJC_ASSOCIATION_RETAIN); }
+- (NSNumber *)maxHeight { return objc_getAssociatedObject(self, &kMaxHeightKey); }
+- (void)setMaxHeight:(NSNumber *)value { objc_setAssociatedObject(self, &kMaxHeightKey, value, OBJC_ASSOCIATION_RETAIN); }
 - (CGFloat)spacing {
 	NSNumber *value = objc_getAssociatedObject(self, &kSpacingKey);
 	return value ? value.doubleValue : kStackSpacing;
@@ -65,12 +88,31 @@ static void layout_recursive(UIView *view, CGFloat width);
 	objc_setAssociatedObject(self, &kFlexGrowKey, @(MAX(0, value)),
 		OBJC_ASSOCIATION_RETAIN);
 }
+- (CGFloat)flexShrink { NSNumber *v = objc_getAssociatedObject(self, &kFlexShrinkKey); return v ? v.doubleValue : 1; }
+- (void)setFlexShrink:(CGFloat)value { objc_setAssociatedObject(self, &kFlexShrinkKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
+- (NSNumber *)flexBasis { return objc_getAssociatedObject(self, &kFlexBasisKey); }
+- (void)setFlexBasis:(NSNumber *)value { objc_setAssociatedObject(self, &kFlexBasisKey, value, OBJC_ASSOCIATION_RETAIN); }
 - (BOOL)fillWidth {
 	return [objc_getAssociatedObject(self, &kFillWidthKey) boolValue];
 }
 - (void)setFillWidth:(BOOL)value {
 	objc_setAssociatedObject(self, &kFillWidthKey, @(value),
 		OBJC_ASSOCIATION_RETAIN);
+}
+- (BOOL)fillHeight { return [objc_getAssociatedObject(self, &kFillHeightKey) boolValue]; }
+- (void)setFillHeight:(BOOL)value { objc_setAssociatedObject(self, &kFillHeightKey, @(value), OBJC_ASSOCIATION_RETAIN); }
+- (CGFloat)cornerRadius { return [objc_getAssociatedObject(self, &kCornerRadiusKey) doubleValue]; }
+- (void)setCornerRadius:(CGFloat)value {
+	CGFloat radius = MAX(0, value);
+	objc_setAssociatedObject(self, &kCornerRadiusKey, @(radius), OBJC_ASSOCIATION_RETAIN);
+	self.layer.cornerRadius = radius;
+	self.clipsToBounds = radius > 0;
+}
+- (NSString *)contentModeName { return @"fit"; }
+- (void)setContentModeName:(NSString *)value {
+	if (![self isKindOfClass:[UIImageView class]]) return;
+	((UIImageView *)self).contentMode = [value isEqualToString:@"fill"]
+		? UIViewContentModeScaleAspectFill : UIViewContentModeScaleAspectFit;
 }
 @end
 

@@ -35,6 +35,10 @@ static int nsview_index(lua_State *L) {
 		lua_pushcfunction(L, bridge_show);
 		return 1;
 	}
+	if ([obj isKindOfClass:[UINavigationController class]]) {
+		if (strcmp(key, "push") == 0) { lua_pushcfunction(L, bridge_UIKitNavigation_push); return 1; }
+		if (strcmp(key, "pop") == 0) { lua_pushcfunction(L, bridge_UIKitNavigation_pop); return 1; }
+	}
 
 	id src = objc_getAssociatedObject(obj, &kTableSourceKey);
 	if (src) {

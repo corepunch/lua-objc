@@ -1,0 +1,33 @@
+<ScrollView vertical="true" horizontal="false">
+  <VStack padding="0" spacing="0" fillWidth="true">
+    <ZStack ref="hero" fixedHeight="500" fillWidth="true" cornerRadius="16">
+      <Image path="<%= featured.cover %>" contentMode="fill" fillWidth="true" fixedHeight="500" />
+      <VStack padding="20" alignment="leading" fillWidth="true" fillHeight="true">
+        <Spacer flexGrow="1" />
+        <Label text="<%= featured.genre:upper() %>" size="12" color="white" fillWidth="true" />
+        <Label text="<%= featured.title %>" size="28" weight="bold" color="white" lines="2" fillWidth="true" />
+        <Label text="<%= featured.shortDescription %>" size="16" color="white" lines="2" fillWidth="true" />
+        <HStack spacing="6">
+          <Label text="★★★★★" size="13" color="yellow" />
+          <Label text="<%= string.format('%.1f · Play', featured.rating) %>" size="13" weight="bold" color="white" />
+        </HStack>
+        <PageControl numberOfPages="3" currentPage="0" fixedHeight="20" fillWidth="true" />
+      </VStack>
+    </ZStack>
+    <VStack padding="20" spacing="14" alignment="leading" fillWidth="true">
+      <Button title="Play Featured Adventure" action="featured" ref="featuredButton" />
+      <Label text="All Adventures" size="23" weight="bold" />
+      <ScrollView horizontal="true" vertical="false" fixedHeight="230" contentWidth="<%= #games * 154 %>">
+        <HStack spacing="12">
+          <% for index, game in ipairs(games) do %>
+          <VStack fixedWidth="142" spacing="8" alignment="leading">
+            <Image ref="cover_<%= index %>" path="<%= game.cover %>" contentMode="fill" cornerRadius="10" fixedWidth="130" fixedHeight="176" />
+            <Button title="<%= game.title %>" action="game_<%= index %>" ref="coverButton_<%= index %>" fixedWidth="142" />
+            <Label text="★★★★★ <%= string.format('%.1f', game.rating) %>" size="12" color="yellow" />
+          </VStack>
+          <% end %>
+        </HStack>
+      </ScrollView>
+    </VStack>
+  </VStack>
+</ScrollView>

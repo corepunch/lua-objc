@@ -11,16 +11,30 @@ static char kTableSourceKey;
 static char kCallbackKey;
 static char kResizeObserverKey;
 static char kPaddingKey;
+static char kPaddingHorizontalKey;
+static char kPaddingVerticalKey;
 static char kAlignmentKey;
 static char kFixedWidthKey;
 static char kFixedHeightKey;
+static char kMinWidthKey;
+static char kMinHeightKey;
+static char kMaxWidthKey;
+static char kMaxHeightKey;
 static char kSpacingKey;
 static char kFlexGrowKey;
+static char kFlexShrinkKey;
+static char kFlexBasisKey;
 static char kFillWidthKey;
+static char kFillHeightKey;
+static char kCornerRadiusKey;
 static char kImageLayoutSizeKey;
+static char kScrollContentKey;
 static const CGFloat kImageMaxWidth = 400.0;
 static const CGFloat kStackSpacing = 8.0;
 static lua_State *gL = NULL;
+static int bridge_UIKitNavigation_stack(lua_State *L);
+static int bridge_UIKitNavigation_push(lua_State *L);
+static int bridge_UIKitNavigation_pop(lua_State *L);
 
 #define LUA_OBJC_EXTERNAL_STATE_OWNER 1
 #define LUA_OBJC_HTTP_USER_AGENT \
@@ -52,12 +66,15 @@ static lua_State *gL = NULL;
 static const luaL_Reg bridge_lib[] = {
 	{"_vstack", bridge_UIKitControls_vstack},
 	{"_hstack", bridge_UIKitControls_hstack},
+	{"_zstack", bridge_UIKitControls_zstack},
+	{"_scrollView", bridge_UIKitControls_scrollView},
 	{"_hsplit", bridge_UIKitControls_hsplit},
 	{"_spacer", bridge_UIKitControls_spacer},
 	{"_textField", bridge_UIKitControls_textField},
 	{"_label", bridge_UIKitControls_label},
 	{"_separator", bridge_UIKitControls_separator},
 	{"_progressIndicator", bridge_UIKitControls_progressIndicator},
+	{"_pageControl", bridge_UIKitControls_pageControl},
 	{"_button", bridge_UIKitControls_button},
 	{"_toggle", bridge_UIKitControls_toggle},
 	{"_window", bridge_window},
@@ -81,6 +98,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_tabViewSelectTab", bridge_UIKitTabView_selectTab},
 	{"_tabViewTabCount", bridge_UIKitTabView_tabCount},
 	{"_tabViewOnChange", bridge_UIKitTabView_onChange},
+	{"_navigationStack", bridge_UIKitNavigation_stack},
 	{NULL, NULL},
 };
 

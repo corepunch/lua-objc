@@ -82,6 +82,7 @@ local scrollView = ns.ScrollView {
 	content = scrollContent,
 	contentWidth = 700,
 	contentHeight = 40,
+	horizontal = true,
 	fixedHeight = 40,
 }
 t.assertEqual(scrollView.hasHorizontalScroller, true,

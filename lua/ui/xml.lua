@@ -345,7 +345,7 @@ local function layoutProps(attrs)
         "fixedWidth", "fixedHeight", "minWidth", "minHeight",
         "maxWidth", "maxHeight",
         "flexGrow", "flexShrink", "flexBasis",
-        "fillWidth", "fillHeight", "hidden",
+        "fillWidth", "fillHeight", "hidden", "cornerRadius", "contentMode",
     }
     local props = {}
     for _, k in ipairs(lp) do
@@ -404,12 +404,23 @@ local TAG_SCHEMA = {
         constructor = "HStack",
         children    = "array",
     },
+    ZStack = {
+        constructor = "ZStack",
+        children    = "array",
+    },
     HSplit = {
         constructor = "HSplit",
         children    = "array",
     },
     Spacer = {
         constructor = "Spacer",
+    },
+    PageControl = {
+        constructor = "PageControl",
+        props = {
+            numberOfPages = "num",
+            currentPage = "num",
+        },
     },
     Divider = {
         constructor = "Divider",
@@ -484,6 +495,11 @@ local TAG_SCHEMA = {
             style       = "str",
             detail      = "str",
         },
+        transform = function(props, attrs)
+            if attrs.action and renderData and renderData.actions then
+                props.action = renderData.actions[attrs.action]
+            end
+        end,
     },
     Toggle = {
         constructor = "Toggle",

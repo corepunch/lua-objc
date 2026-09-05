@@ -39,6 +39,29 @@ static int bridge_tabview(lua_State *L) {
 	return 1;
 }
 
+static int bridge_UIKitNavigation_stack(lua_State *L) {
+	UIViewController *root = check_view_controller(L, 1);
+	UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:root];
+	nav.navigationBarHidden = YES;
+	push_objc(L, nav, "uiviewcontroller");
+	return 1;
+}
+
+static int bridge_UIKitNavigation_push(lua_State *L) {
+	UINavigationController *nav = (UINavigationController *)check_objc(L, 1);
+	UIViewController *controller = check_view_controller(L, 2);
+	const char *title = luaL_optstring(L, 3, "");
+	if (title && title[0]) controller.title = [NSString stringWithUTF8String:title];
+	[nav pushViewController:controller animated:NO];
+	return 0;
+}
+
+static int bridge_UIKitNavigation_pop(lua_State *L) {
+	UINavigationController *nav = (UINavigationController *)check_objc(L, 1);
+	[nav popViewControllerAnimated:NO];
+	return 0;
+}
+
 static int bridge_UIKitTabView_addTab(lua_State *L) {
 	id obj = check_objc(L, 1);
 	UITabBarController *tbc = (UITabBarController *)obj;
