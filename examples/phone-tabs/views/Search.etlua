@@ -1,0 +1,21 @@
+<VStack padding="20" spacing="16" fillWidth="true" alignment="leading">
+    <Label text="Favorites" size="28" weight="bold" />
+    <Label text="Things worth coming back to" size="14" color="secondary" />
+    <HStack spacing="12" fillWidth="true">
+        <VStack spacing="6" alignment="leading" fixedWidth="150">
+            <Image path="<%= favorites[1].image %>" fixedWidth="150" fixedHeight="120" />
+            <Label text="<%= favorites[1].title %>" size="15" weight="semibold" />
+            <Label text="<%= favorites[1].subtitle %>" size="12" color="secondary" />
+        </VStack>
+        <VStack spacing="6" alignment="leading" fixedWidth="150">
+            <Image path="<%= favorites[2].image %>" fixedWidth="150" fixedHeight="120" />
+            <Label text="<%= favorites[2].title %>" size="15" weight="semibold" />
+            <Label text="<%= favorites[2].subtitle %>" size="12" color="secondary" />
+        </VStack>
+    </HStack>
+    <VStack spacing="6" alignment="leading" fixedWidth="150">
+        <Image path="<%= favorites[3].image %>" fixedWidth="150" fixedHeight="120" />
+        <Label text="<%= favorites[3].title %>" size="15" weight="semibold" />
+        <Label text="<%= favorites[3].subtitle %>" size="12" color="secondary" />
+    </VStack>
+</VStack>

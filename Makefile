@@ -101,8 +101,8 @@ DEVELOPER_DIR ?= /Applications/Xcode.app/Contents/Developer
 export DEVELOPER_DIR
 IOS_MIN := 26.5
 DEVICE ?= iPhone 17
-IOS_SDK := $(shell DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null)
-IOS_CC := $(shell DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun --sdk iphonesimulator --find clang)
+IOS_SDK := $(shell xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null)
+IOS_CC := $(shell xcrun --sdk iphonesimulator --find clang)
 LUA_SRC_DIR := third_party/lua-5.4.8/src
 LUA_CORE := lapi lcode lctype ldebug ldo ldump lfunc lgc llex lmem lobject \
 	lopcodes lparser lstate lstring ltable ltm lundump lvm lzio
@@ -170,6 +170,14 @@ ios-run: ios-host ios-packager
 	DEVELOPER_DIR=$(DEVELOPER_DIR) DEVICE="$(DEVICE)" PROJECT="$(or $(PROJECT),examples/hello)" \
 		scripts/ios-run.sh
 
+ios: ios-run
+
+ios-reset:
+	@killall Simulator 2>/dev/null || true
+	@xcrun simctl shutdown all 2>/dev/null || true
+	@xcrun simctl erase all 2>/dev/null || true
+	@echo "ios-reset: simulator shut down and erased"
+
 clean:
 	@rm -f $(TARGET) $(FRAMEWORK_MODULES) build/UIKit.dylib
 	@rm -f build/appkit-runtime.o build/appkit-module.o
@@ -179,4 +187,4 @@ clean:
 screenshot: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) --screenshot=$(or $(OUT),/tmp/screenshot.png) $(ARGS)
 
-.PHONY: all uikit run clean test run-hello run-list run-live run-weather run-welcome run-mail run-layout screenshot ios-host ios-packager ios-packager-run ios-packager-stop ios-run
+.PHONY: all uikit run clean test run-hello run-list run-live run-weather run-welcome run-mail run-layout screenshot ios-host ios-packager ios-packager-run ios-packager-stop ios-run ios ios-reset
