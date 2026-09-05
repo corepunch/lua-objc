@@ -2,7 +2,6 @@ local t = require("TestKit")
 local ns = require("AppKit")
 local xml = require("ui.xml")
 local viewdesc = require("ui.viewdesc")
-local etlua = require("etlua")
 
 -- ── Helper: render XML string and return view + refs ────────────────────────
 local function render(src, data)
@@ -12,10 +11,10 @@ end
 -- ── Basic etlua templates ──────────────────────────────────────────────────
 
 t.expect(true, "basic etlua renders without error")
-local _, sourceError = etlua.render("<% this is not valid Lua %>", {},
-	"@fixtures/source-name.etlua")
-t.expect(sourceError ~= nil and sourceError:find("fixtures/source%-name%.etlua") ~= nil,
-	"etlua diagnostics preserve explicit source filenames")
+local sourceOk, sourceError = pcall(xml.render,
+	"<% this is not valid Lua %>", {}, ns, "fixtures/source-name.etlua")
+t.expect(not sourceOk and tostring(sourceError):find("fixtures/source%-name%.etlua") ~= nil,
+	"XML diagnostics preserve explicit source filenames")
 local v, refs = render([[<Label text="<%= 'Hello' %>" />]])
 t.expect(v ~= nil, "etlua template produces a view")
 t.assertEqual(v.text, "Hello", "etlua expression substitutes value")

@@ -42,6 +42,9 @@ t.expect(uikitRuntime:find(
 	"UIKit layout properties are inherited KVC accessors")
 t.expect(uikitMetatable:find('"sizeToFit"', 1, true) ~= nil,
 	"UIKit exposes native sizeToFit as an explicit view operation")
+t.expect(read("src/uikit/hosting.m"):find(
+		"isKindOfClass:[UIViewController class]", 1, true) ~= nil,
+	"UIKit hosting preserves existing view controllers")
 t.expect(uikitConstructors:find(
 		"bridge_UIKitControls_vstack", 1, true) ~= nil,
 	"UIKit constructors are ordinary native source")

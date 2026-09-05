@@ -23,6 +23,19 @@
 local etlua = require("etlua")
 local renderData = nil
 
+local function renderTemplate(src, data, sourceName)
+    local parser = etlua.Parser()
+    local code, err = parser:compile_to_lua(src)
+    if not code then return nil, err end
+    local fn
+    fn, err = parser:load(code, sourceName and ("@" .. sourceName) or nil)
+    if not fn then return nil, err end
+    local buffer
+    buffer, err = parser:run(fn, data)
+    if not buffer then return nil, err end
+    return table.concat(buffer)
+end
+
 local function decodeXMLText(value)
     if type(value) ~= "string" or value == "" then return value end
     value = value:gsub("&#x([%da-fA-F]+);", function(hex)
@@ -927,7 +940,7 @@ local function injectTemplateHelpers(ctx, baseDir)
         if type(data) == "table" then
             injectTemplateHelpers(data, partialDir)
         end
-        return etlua.render(src, data, "@" .. fullPath)
+        return renderTemplate(src, data, fullPath)
     end
 
     return ctx
@@ -949,13 +962,15 @@ function M.render(src, data, ns, sourceName)
 
     injectTemplateHelpers(data, baseDir)
 
-    local ok, result = pcall(etlua.render, src, data, sourceName and ("@" .. sourceName) or nil)
+    local ok, result, templateErr = pcall(renderTemplate, src, data, sourceName)
     if not ok then
         local msg = "xml.render: template error: " .. tostring(result)
         io.stderr:write(msg .. "\n")
         error(msg)
     end
-    if result == nil then error("xml.render: template returned nil") end
+    if result == nil then
+        error("xml.render: template error: " .. tostring(templateErr))
+    end
     src = result
     -- If extends() was called, render the parent now (after all block() calls)
     if data.__extendsInfo then
@@ -971,11 +986,14 @@ function M.render(src, data, ns, sourceName)
         merged.yield = function(name)
             return data.__blocks[name] or ""
         end
-        local ok2, parentResult = pcall(etlua.render, parentSrc, merged, "@" .. info.path)
+        local ok2, parentResult, parentErr = pcall(renderTemplate, parentSrc, merged, info.path)
         if not ok2 then
             local msg = "xml.render: error in extends(\"" .. info.path .. "\"): " .. tostring(parentResult)
             io.stderr:write(msg .. "\n")
             error(msg)
+        end
+        if parentResult == nil then
+            error("xml.render: error in extends(\"" .. info.path .. "\"): " .. tostring(parentErr))
         end
         src = parentResult
     end

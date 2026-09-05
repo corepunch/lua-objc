@@ -11,6 +11,7 @@ PACKAGER="$ROOT/build/lua-objc-packager"
 HOST_BUNDLE="$ROOT/build/ios/LuaObjCHost.app"
 PACKAGER_URL="http://127.0.0.1:8081"
 LOGDIR="$ROOT/build/ios"
+PIDFILE="$LOGDIR/packager.pid"
 mkdir -p "$LOGDIR"
 
 if [ ! -d "$SIMAPP" ]; then
@@ -28,13 +29,48 @@ fi
 
 ensure_packager() {
 	if curl -sf "$PACKAGER_URL/health" >/dev/null; then
-		echo "ios-run: packager already running at $PACKAGER_URL"
-		return 0
+		running_entry="$(curl -sf "$PACKAGER_URL/entry" | python3 -c '
+import json, sys
+print(json.load(sys.stdin).get("path", ""))
+')"
+		expected_entry="$ENTRY"
+		case "$expected_entry" in
+			*.lua) ;;
+			*) expected_entry="${expected_entry%/}/init.lua" ;;
+		esac
+		if [ "$running_entry" = "$expected_entry" ]; then
+			echo "ios-run: packager already running at $PACKAGER_URL  entry=$running_entry"
+			return 0
+		fi
+
+		echo "ios-run: switching packager entry $running_entry -> $expected_entry"
+		packager_pid=""
+		if [ -f "$PIDFILE" ]; then
+			packager_pid="$(sed -n '1p' "$PIDFILE")"
+		fi
+		if [ -z "$packager_pid" ] || ! kill -0 "$packager_pid" 2>/dev/null; then
+			packager_pid="$(lsof -tiTCP:8081 -sTCP:LISTEN | sed -n '1p')"
+		fi
+		if [ -z "$packager_pid" ] || ! ps -p "$packager_pid" -o command= | grep -q "$PACKAGER"; then
+			echo "ios-run: port 8081 is owned by an unknown process; stop it manually" >&2
+			exit 1
+		fi
+		kill "$packager_pid"
+		i=0
+		while curl -sf "$PACKAGER_URL/health" >/dev/null; do
+			i=$((i + 1))
+			if [ "$i" -ge 25 ]; then
+				echo "ios-run: old packager did not stop" >&2
+				exit 1
+			fi
+			sleep 0.2
+		done
+		rm -f "$PIDFILE"
 	fi
 	echo "ios-run: starting packager $PACKAGER_URL  entry=$ENTRY"
 	"$PACKAGER" --root "$ROOT" --port 8081 --entry "$ENTRY" \
 		>>"$LOGDIR/packager.log" 2>&1 &
-	echo $! > "$LOGDIR/packager.pid"
+	echo $! > "$PIDFILE"
 	i=0
 	while [ "$i" -lt 25 ]; do
 		if curl -sf "$PACKAGER_URL/health" >/dev/null; then return 0; fi
@@ -68,7 +104,7 @@ sleep 1
 echo "ios-run: install $HOST_BUNDLE"
 xcrun simctl install booted "$HOST_BUNDLE"
 
-echo "ios-run: launch org.luaobjc.host  (UI is in Simulator.app, not this terminal)"
+echo "ios-run: launch Impulse  (UI is in Simulator.app, not this terminal)"
 SIMCTL_CHILD_LUA_OBJC_APP="$ENTRY" \
 SIMCTL_CHILD_LUA_OBJC_PACKAGER="$PACKAGER_URL" \
 xcrun simctl launch --console --terminate-running-process booted org.luaobjc.host
