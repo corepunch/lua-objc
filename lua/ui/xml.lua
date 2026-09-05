@@ -345,7 +345,7 @@ local function layoutProps(attrs)
         "fixedWidth", "fixedHeight", "minWidth", "minHeight",
         "maxWidth", "maxHeight",
         "flexGrow", "flexShrink", "flexBasis",
-        "fillWidth", "fillHeight", "hidden", "cornerRadius", "contentMode",
+        "fillWidth", "fillHeight", "hidden", "cornerRadius", "ignoresSafeArea", "contentMode",
     }
     local props = {}
     for _, k in ipairs(lp) do
@@ -494,6 +494,7 @@ local TAG_SCHEMA = {
             systemImage = "str",
             style       = "str",
             detail      = "str",
+            truncation  = "str",
         },
         transform = function(props, attrs)
             if attrs.action and renderData and renderData.actions then

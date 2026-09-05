@@ -30,6 +30,7 @@ static void layout_recursive(UIView *view, CGFloat width);
 @property(nonatomic) BOOL fillWidth;
 @property(nonatomic) BOOL fillHeight;
 @property(nonatomic) CGFloat cornerRadius;
+@property(nonatomic, copy) NSString *ignoresSafeArea;
 @property(nonatomic, copy) NSString *contentModeName;
 @end
 
@@ -113,6 +114,10 @@ static void layout_recursive(UIView *view, CGFloat width);
 	objc_setAssociatedObject(self, &kCornerRadiusKey, @(radius), OBJC_ASSOCIATION_RETAIN);
 	self.layer.cornerRadius = radius;
 	self.clipsToBounds = radius > 0;
+}
+- (NSString *)ignoresSafeArea { return objc_getAssociatedObject(self, &kIgnoresSafeAreaKey); }
+- (void)setIgnoresSafeArea:(NSString *)value {
+	objc_setAssociatedObject(self, &kIgnoresSafeAreaKey, value, OBJC_ASSOCIATION_COPY);
 }
 - (NSString *)contentModeName { return @"fit"; }
 - (void)setContentModeName:(NSString *)value {

@@ -31,6 +31,7 @@ local layout_properties = {
 	"fillHeight",
 	"hidden",
 	"cornerRadius",
+	"ignoresSafeArea",
 	"contentModeName",
 }
 
@@ -274,6 +275,11 @@ function UIKit.Button(props)
 		button = bridge._button(title, action, style or "default")
 	else
 		button = bridge._button(title, nil, style or "default")
+	end
+	if type(props) == "table" and props.truncation then
+		local modes = { head = 3, tail = 4, middle = 5 }
+		button.titleLabel.lineBreakMode = modes[props.truncation] or 4
+		button.titleLabel.numberOfLines = 1
 	end
 	return applyLayout(button, props)
 end

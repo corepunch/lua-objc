@@ -31,8 +31,12 @@ t.expect(src:find("function UIKit.NavigationStack", 1, true) ~= nil,
 t.expect(src:find("props.middleLocation", 1, true) ~= nil,
 	"UIKit gradients expose an intermediate fade stop")
 t.expect(src:find('"paddingTop"', 1, true) ~= nil
-		and src:find('"paddingBottom"', 1, true) ~= nil,
+	and src:find('"paddingBottom"', 1, true) ~= nil,
 	"UIKit exposes edge-specific padding")
+t.expect(src:find('"ignoresSafeArea"', 1, true) ~= nil,
+	"UIKit exposes safe-area edge control")
+t.expect(src:find("button.titleLabel.lineBreakMode", 1, true) ~= nil,
+	"UIKit buttons support explicit tail truncation")
 
 local layout = assert(io.open("src/uikit/layout.m", "r")):read("*a")
 local views = assert(io.open("src/uikit/views.m", "r")):read("*a")
@@ -45,8 +49,10 @@ t.expect(views:find("kImageMaxWidth", 1, true) ~= nil,
 t.expect(layout:find("CGFloat fixedHeight = view_fixed_height(view);", 1, true) ~= nil,
 	"UIKit stack measurement honors fixed child heights")
 t.expect(layout:find("view_padding_top", 1, true) ~= nil
-		and layout:find("view_padding_bottom", 1, true) ~= nil,
+	and layout:find("view_padding_bottom", 1, true) ~= nil,
 	"UIKit stack measurement honors asymmetric vertical padding")
+t.expect(layout:find("view_fixed_width(sv)", 1, true) ~= nil,
+	"UIKit overlay stacks preserve fixed child geometry")
 
 local constructors = assert(io.open("src/uikit/constructors.m", "r")):read("*a")
 t.expect(constructors:find("gradient.locations", 1, true) ~= nil,

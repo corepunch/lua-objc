@@ -124,8 +124,22 @@ static void layout_recursive(UIView *view, CGFloat width) {
 
 		if ([axis isEqualToString:@"zstack"]) {
 			for (UIView *sv in view.subviews) {
-				sv.frame = CGRectMake(padX, padTop, contentW, contentH);
-				layout_recursive(sv, contentW);
+				CGFloat childW = [objc_getAssociatedObject(sv, &kFillWidthKey) boolValue]
+					|| is_flexible(sv) ? contentW
+					: (view_fixed_width(sv) > 0 ? view_fixed_width(sv)
+						: MIN(sv.frame.size.width, contentW));
+				CGFloat childH = [objc_getAssociatedObject(sv, &kFillHeightKey) boolValue]
+					|| is_flexible(sv) ? contentH
+					: (view_fixed_height(sv) > 0 ? view_fixed_height(sv)
+						: MIN(sv.frame.size.height, contentH));
+				if (childW <= 0) childW = contentW;
+				if (childH <= 0) childH = contentH;
+				CGFloat childX = padX + (contentW - childW) / 2;
+				CGFloat childY = padTop + (contentH - childH) / 2;
+				if ([alignment isEqualToString:@"leading"]) childX = padX;
+				if ([alignment isEqualToString:@"trailing"]) childX = padX + contentW - childW;
+				sv.frame = CGRectMake(childX, childY, childW, childH);
+				layout_recursive(sv, childW);
 			}
 		} else if ([axis isEqualToString:@"vstack"]) {
 			NSUInteger count = view.subviews.count;

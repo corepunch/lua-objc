@@ -23,7 +23,12 @@ __attribute__((weak)) UIWindow *lua_objc_host_window(void) {
 
 - (void)viewDidLayoutSubviews {
 	[super viewDidLayoutSubviews];
-	CGRect bounds = self.view.safeAreaLayoutGuide.layoutFrame;
+	NSString *safeArea = self.luaRoot.ignoresSafeArea;
+	BOOL ignoresTop = [safeArea isEqualToString:@"top"]
+		|| [safeArea isEqualToString:@"all"]
+		|| [safeArea isEqualToString:@"edges"];
+	CGRect bounds = ignoresTop ? self.view.bounds
+		: self.view.safeAreaLayoutGuide.layoutFrame;
 	self.luaRoot.frame = bounds;
 	layout_recursive(self.luaRoot, bounds.size.width);
 }

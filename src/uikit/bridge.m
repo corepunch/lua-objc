@@ -29,6 +29,7 @@ static char kFlexBasisKey;
 static char kFillWidthKey;
 static char kFillHeightKey;
 static char kCornerRadiusKey;
+static char kIgnoresSafeAreaKey;
 static char kImageLayoutSizeKey;
 static char kScrollContentKey;
 static const CGFloat kImageMaxWidth = 400.0;
