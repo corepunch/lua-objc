@@ -1,6 +1,6 @@
 <ScrollView vertical="true" horizontal="false" ignoresSafeArea="top">
   <VStack padding="0" spacing="0" fillWidth="true">
-    <ZStack ref="hero" fixedHeight="500" fillWidth="true">
+    <ZStack ref="hero" fixedHeight="500" fillWidth="true" clipsToBounds="true">
       <Image path="<%= featured.cover %>" contentMode="fill" fillWidth="true" fixedHeight="500" />
       <LinearGradient topAlpha="0" middleAlpha="0.5" middleLocation="0.6" bottomAlpha="0.82" fillWidth="true" fillHeight="true" />
       <VStack padding="20" alignment="leading" fillWidth="true" fillHeight="true">

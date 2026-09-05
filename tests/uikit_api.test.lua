@@ -35,6 +35,8 @@ t.expect(src:find('"paddingTop"', 1, true) ~= nil
 	"UIKit exposes edge-specific padding")
 t.expect(src:find('"ignoresSafeArea"', 1, true) ~= nil,
 	"UIKit exposes safe-area edge control")
+t.expect(src:find('"clipsToBounds"', 1, true) ~= nil,
+	"UIKit exposes square clipping independently of corner radius")
 t.expect(src:find("button.titleLabel.lineBreakMode", 1, true) ~= nil,
 	"UIKit buttons support explicit tail truncation")
 

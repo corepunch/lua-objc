@@ -31,6 +31,7 @@ local layout_properties = {
 	"fillHeight",
 	"hidden",
 	"cornerRadius",
+	"clipsToBounds",
 	"ignoresSafeArea",
 	"contentModeName",
 }
