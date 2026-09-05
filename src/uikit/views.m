@@ -153,3 +153,9 @@ static int bridge_set_content_size(lua_State *L) {
 	v.frame = CGRectMake(v.frame.origin.x, v.frame.origin.y, width, height);
 	return 0;
 }
+
+static int bridge_size_to_fit(lua_State *L) {
+	UIView *view = check_view(L, 1);
+	[view sizeToFit];
+	return 0;
+}

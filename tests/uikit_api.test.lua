@@ -15,5 +15,9 @@ t.expect(src:find("bridge%._installScene") ~= nil, "Window installs the scene")
 t.expect(not src:find("bridge%._window%("), "480x360 _window path is gone")
 t.expect(src:find("function UIKit.Switch") == nil, "Switch constructor is deleted")
 t.expect(src:find("UIKit.Text = UIKit.Label") ~= nil, "Text aliases Label")
+t.expect(src:find("v:sizeToFit%(%)[%s%S]-end") ~= nil,
+	"UIKit labels resize after applying a custom font")
+t.expect(src:find("v.numberOfLines = props.lineLimit", 1, true) ~= nil,
+	"UIKit labels honor explicit line limits")
 
 os.exit(t.summary() and 0 or 1)

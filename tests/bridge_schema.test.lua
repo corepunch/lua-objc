@@ -12,6 +12,7 @@ local constructors = read("src/appkit/constructors.m")
 local bindings = read("src/appkit/bindings.m")
 local structs = read("src/appkit/structs.m")
 local uikitRuntime = read("src/uikit/runtime.m")
+local uikitMetatable = read("src/uikit/metatable.m")
 local uikitConstructors = read("src/uikit/constructors.m")
 local uikitBridge = read("src/uikit/bridge.m")
 local uikitPlatform = read("src/uikit/platform.m")
@@ -37,8 +38,10 @@ t.expect(structs:find("lua_objc.struct.NSSize", 1, true) ~= nil
 		and structs:find("bridge_NSSize", 1, true) ~= nil,
 	"Size userdata remains an explicit native value bridge")
 t.expect(uikitRuntime:find(
-		"@implementation UIView (LuaLayoutProperties)", 1, true) ~= nil,
+	"@implementation UIView (LuaLayoutProperties)", 1, true) ~= nil,
 	"UIKit layout properties are inherited KVC accessors")
+t.expect(uikitMetatable:find('"sizeToFit"', 1, true) ~= nil,
+	"UIKit exposes native sizeToFit as an explicit view operation")
 t.expect(uikitConstructors:find(
 		"bridge_UIKitControls_vstack", 1, true) ~= nil,
 	"UIKit constructors are ordinary native source")

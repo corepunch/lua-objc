@@ -1,0 +1,50 @@
+<Window title="Phone Tabs">
+    <TabView>
+        <Tab title="Home" systemImage="house">
+            <VStack padding="20" spacing="16" fillWidth="true" alignment="leading">
+                <Label text="Home" size="28" weight="bold" />
+                <Label text="Recent activity" size="14" color="secondary" />
+<% for _, item in ipairs(recents) do %>
+                <HStack spacing="12" fillWidth="true" padding="12">
+                    <SystemImage name="<%= item.systemImage %>" size="22" color="accent" />
+                    <VStack spacing="2" flexGrow="1" alignment="leading">
+                        <Label text="<%= item.title %>" size="16" weight="semibold" />
+                        <Label text="<%= item.subtitle %>" size="13" color="secondary" />
+                    </VStack>
+                </HStack>
+<% end %>
+            </VStack>
+        </Tab>
+        <Tab title="Search" systemImage="magnifyingglass">
+            <VStack padding="20" spacing="16" fillWidth="true" alignment="leading">
+                <Label text="Favorites" size="28" weight="bold" />
+                <Label text="Things you love" size="14" color="secondary" />
+<% for _, item in ipairs(favorites) do %>
+                <HStack spacing="12" fillWidth="true" padding="12">
+                    <SystemImage name="<%= item.systemImage %>" size="22" color="accent" />
+                    <Label text="<%= item.title %>" size="16" />
+                </HStack>
+<% end %>
+            </VStack>
+        </Tab>
+        <Tab title="Profile" systemImage="person.crop.circle">
+            <VStack padding="20" spacing="16" fillWidth="true" alignment="leading">
+                <Label text="Profile" size="28" weight="bold" />
+                <VStack spacing="12" fillWidth="true" padding="16">
+                    <Label text="<%= profile.name %>" size="18" weight="semibold" />
+                    <Label text="<%= profile.email %>" size="14" color="secondary" />
+                </VStack>
+                <VStack spacing="8" fillWidth="true" padding="16">
+                    <HStack spacing="8">
+                        <SystemImage name="doc" size="18" color="accent" />
+                        <Label text="<%= profile.files %> files" size="15" />
+                    </HStack>
+                    <HStack spacing="8">
+                        <SystemImage name="internaldrive" size="18" color="accent" />
+                        <Label text="<%= profile.storage %>" size="15" />
+                    </HStack>
+                </VStack>
+            </VStack>
+        </Tab>
+    </TabView>
+</Window>

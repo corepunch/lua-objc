@@ -44,6 +44,7 @@ static lua_State *gL = NULL;
 #include "platform.m"
 #include "constructors.m"
 #include "hosting.m"
+#include "navigation.m"
 #pragma mark - Module registration
 
 static const luaL_Reg bridge_lib[] = {
@@ -73,6 +74,11 @@ static const luaL_Reg bridge_lib[] = {
 	{"_timerAfter", bridge_timer_after},
 	{"_httpGet", bridge_http_get},
 	{"_jsonParse", bridge_json_parse},
+	{"_tabview", bridge_tabview},
+	{"_tabViewAddTab", bridge_UIKitTabView_addTab},
+	{"_tabViewSelectTab", bridge_UIKitTabView_selectTab},
+	{"_tabViewTabCount", bridge_UIKitTabView_tabCount},
+	{"_tabViewOnChange", bridge_UIKitTabView_onChange},
 	{NULL, NULL},
 };
 

@@ -6,14 +6,44 @@ static BOOL is_flexible(UIView *view) {
 	return [objc_getAssociatedObject(view, &kFlexibleKey) boolValue];
 }
 
+static CGFloat view_padding(UIView *view) {
+	NSNumber *p = objc_getAssociatedObject(view, &kPaddingKey);
+	return p ? p.doubleValue : 0.0;
+}
+
+/* A horizontal stack may flex along its own horizontal axis, but it must
+ * retain its intrinsic height when it is a child of a vertical stack. */
+static BOOL grows_vertically(UIView *view) {
+	if (!is_flexible(view)) return NO;
+	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
+	return ![axis isEqualToString:@"hstack"];
+}
+
 static CGFloat view_spacing(UIView *view) {
 	NSNumber *value = objc_getAssociatedObject(view, &kSpacingKey);
 	return value ? value.doubleValue : kStackSpacing;
 }
 
-static CGFloat view_padding(UIView *view) {
-	NSNumber *p = objc_getAssociatedObject(view, &kPaddingKey);
-	return p ? p.doubleValue : 12.0;
+static CGFloat natural_height(UIView *view) {
+	if (!view) return 0;
+	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
+	CGFloat pad = view_padding(view);
+	if ([axis isEqualToString:@"vstack"]) {
+		CGFloat height = 2 * pad;
+		NSUInteger index = 0;
+		for (UIView *child in view.subviews) {
+			if (index++ > 0) height += view_spacing(view);
+			height += natural_height(child);
+		}
+		return height;
+	}
+	if ([axis isEqualToString:@"hstack"]) {
+		CGFloat maximum = 0;
+		for (UIView *child in view.subviews)
+			maximum = MAX(maximum, natural_height(child));
+		return 2 * pad + maximum;
+	}
+	return view.frame.size.height;
 }
 
 static NSString *view_alignment(UIView *view) {
@@ -61,7 +91,7 @@ static void layout_recursive(UIView *view, CGFloat width) {
 			for (UIView *sv in view.subviews) {
 				size_to_fit_if_needed(sv);
 				CGFloat fh = view_fixed_height(sv);
-				if (is_flexible(sv)) {
+				if (grows_vertically(sv)) {
 					flexibleCount++;
 				} else if (fh > 0) {
 					fixedHeight += fh;
@@ -80,8 +110,9 @@ static void layout_recursive(UIView *view, CGFloat width) {
 
 			for (UIView *sv in view.subviews) {
 				CGFloat fh = view_fixed_height(sv);
-				CGFloat childH = is_flexible(sv) ? flexibleHeight
-					: (fh > 0 ? fh : (sv.frame.size.height > 0 ? sv.frame.size.height : 22));
+				CGFloat childH = grows_vertically(sv) ? flexibleHeight
+					: (fh > 0 ? fh : MAX(sv.frame.size.height, natural_height(sv)));
+				if (childH <= 0) childH = 22;
 				CGFloat fw = view_fixed_width(sv);
 				BOOL fill = [objc_getAssociatedObject(sv, &kFillWidthKey) boolValue];
 				CGFloat childW = (is_flexible(sv) || fill) ? contentW
@@ -127,8 +158,9 @@ static void layout_recursive(UIView *view, CGFloat width) {
 				CGFloat childW = is_flexible(sv) ? flexibleWidth
 					: (fw > 0 ? fw : (sv.frame.size.width > 0 ? sv.frame.size.width : 40));
 				CGFloat fh = view_fixed_height(sv);
-				CGFloat childH = is_flexible(sv) ? contentH
-					: (fh > 0 ? fh : MIN(sv.frame.size.height, contentH));
+				CGFloat childH = grows_vertically(sv) ? contentH
+					: (fh > 0 ? fh : MIN(MAX(sv.frame.size.height,
+						natural_height(sv)), contentH));
 				CGFloat childY = pad;
 				if ([alignment isEqualToString:@"center"]) {
 					childY = pad + (contentH - childH) / 2;
@@ -158,4 +190,3 @@ static void layout_recursive(UIView *view, CGFloat width) {
 		}
 	}
 }
-

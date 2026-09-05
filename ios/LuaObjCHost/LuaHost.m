@@ -121,7 +121,8 @@ static int searcher_packager(lua_State *L) {
 		return 1;
 	}
 	NSData *bytes = [src dataUsingEncoding:NSUTF8StringEncoding];
-	if (luaL_loadbuffer(L, bytes.bytes, bytes.length, name) != LUA_OK) {
+	NSString *chunk = [NSString stringWithFormat:@"@%@", @(name)];
+	if (luaL_loadbuffer(L, bytes.bytes, bytes.length, chunk.UTF8String) != LUA_OK) {
 		return lua_error(L);
 	}
 	lua_pushstring(L, name);

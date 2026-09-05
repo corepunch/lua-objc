@@ -6,6 +6,7 @@ static int bridge_tableview_clear(lua_State *L);
 static int bridge_add(lua_State *L);
 static int bridge_layout(lua_State *L);
 static int bridge_set_content_size(lua_State *L);
+static int bridge_size_to_fit(lua_State *L);
 static int bridge_show(lua_State *L);
 static void layout_recursive(UIView *view, CGFloat width);
 
