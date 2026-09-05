@@ -14,6 +14,7 @@ local examples = {
 	"examples/weather/init.lua",
 	"examples/stocks/init.lua",
 	"examples/snippets/init.lua",
+	"examples/adventure-arena/init.lua",
 }
 
 for _, path in ipairs(examples) do
