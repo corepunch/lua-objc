@@ -28,5 +28,7 @@ t.expect(views:find("objc_setAssociatedObject(iv, &kImageLayoutSizeKey", 1, true
 	"UIKit images publish their proportional layout size")
 t.expect(views:find("kImageMaxWidth", 1, true) ~= nil,
 	"UIKit data-backed images use the same display-size limit")
+t.expect(layout:find("CGFloat fixedHeight = view_fixed_height(view);", 1, true) ~= nil,
+	"UIKit stack measurement honors fixed child heights")
 
 os.exit(t.summary() and 0 or 1)
