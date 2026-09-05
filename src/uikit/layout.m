@@ -24,8 +24,12 @@ static CGFloat view_spacing(UIView *view) {
 	return value ? value.doubleValue : kStackSpacing;
 }
 
+static CGFloat view_fixed_height(UIView *view);
+
 static CGFloat natural_height(UIView *view) {
 	if (!view) return 0;
+	CGFloat fixedHeight = view_fixed_height(view);
+	if (fixedHeight > 0) return fixedHeight;
 	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
 	CGFloat pad = view_padding(view);
 	if ([axis isEqualToString:@"vstack"]) {
