@@ -3,7 +3,7 @@
     <ZStack ref="hero" fixedHeight="500" fillWidth="true" clipsToBounds="true">
       <Image path="<%= featured.cover %>" contentMode="fill" fillWidth="true" fixedHeight="500" />
       <LinearGradient topAlpha="0" middleAlpha="0.5" middleLocation="0.6" bottomAlpha="0.82" fillWidth="true" fillHeight="true" />
-      <VStack padding="20" alignment="leading" fillWidth="true" fillHeight="true">
+      <VStack paddingHorizontal="20" paddingTop="0" paddingBottom="8" spacing="4" alignment="leading" fillWidth="true" fillHeight="true">
         <Spacer flexGrow="1" />
         <Label text="<%= featured.genre:upper() %>" size="12" color="white" fillWidth="true" />
         <Label text="<%= featured.title %>" size="28" weight="bold" color="white" lines="2" fillWidth="true" />
@@ -12,17 +12,17 @@
           <Label text="★★★★★" size="13" color="yellow" />
           <Label text="<%= string.format('%.1f · Play', featured.rating) %>" size="13" weight="bold" color="white" />
         </HStack>
-        <ZStack fillWidth="true" alignment="center">
-          <PageControl numberOfPages="3" currentPage="0" fixedWidth="72" fixedHeight="24" />
+        <ZStack fixedHeight="16" fillWidth="true" alignment="center">
+          <PageControl numberOfPages="3" currentPage="0" fixedWidth="64" fixedHeight="16" />
         </ZStack>
       </VStack>
     </ZStack>
     <VStack padding="0" paddingBottom="24" spacing="0" alignment="leading" fillWidth="true">
-      <VStack paddingTop="24" paddingBottom="8" paddingHorizontal="16" spacing="0" fillWidth="true">
-        <Label text="All Adventures" size="23" weight="bold" fillWidth="true" />
+      <VStack fixedHeight="48" paddingTop="16" paddingBottom="8" paddingHorizontal="16" spacing="0" alignment="leading" fillWidth="true">
+        <Label text="All Adventures" size="23" weight="bold" color="primary" fillWidth="true" />
       </VStack>
-      <ScrollView horizontal="true" vertical="false" fixedHeight="230" contentWidth="<%= #games * 154 + 32 %>">
-        <HStack spacing="12" paddingHorizontal="16">
+      <ScrollView horizontal="true" vertical="false" fixedHeight="290" contentWidth="<%= #games * 154 + 32 %>">
+        <HStack spacing="12" paddingHorizontal="16" alignment="top" fixedHeight="290">
           <% for index, game in ipairs(games) do %>
           <VStack fixedWidth="142" spacing="8" alignment="leading">
             <Image ref="cover_<%= index %>" path="<%= game.cover %>" contentMode="fill" cornerRadius="10" fixedWidth="130" fixedHeight="176" />

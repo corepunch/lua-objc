@@ -31,10 +31,13 @@ static CGFloat view_padding_bottom(UIView *view) {
 	return value ? value.doubleValue : view_padding_vertical(view);
 }
 
+static CGFloat view_fixed_height(UIView *view);
+
 /* A horizontal stack may flex along its own horizontal axis, but it must
  * retain its intrinsic height when it is a child of a vertical stack. */
 static BOOL grows_vertically(UIView *view) {
 	if (!is_flexible(view)) return NO;
+	if (view_fixed_height(view) > 0) return NO;
 	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
 	return ![axis isEqualToString:@"hstack"];
 }
@@ -43,8 +46,6 @@ static CGFloat view_spacing(UIView *view) {
 	NSNumber *value = objc_getAssociatedObject(view, &kSpacingKey);
 	return value ? value.doubleValue : kStackSpacing;
 }
-
-static CGFloat view_fixed_height(UIView *view);
 
 static CGFloat natural_height(UIView *view) {
 	if (!view) return 0;

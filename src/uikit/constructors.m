@@ -34,6 +34,11 @@ static int bridge_UIKitControls_zstack(lua_State *L) {
 - (void)layoutSubviews {
 	[super layoutSubviews];
 	if (!self.luaContent) return;
+	self.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+	self.contentInset = UIEdgeInsetsZero;
+	self.scrollIndicatorInsets = UIEdgeInsetsZero;
+	if (self.contentOffset.y != 0)
+		self.contentOffset = CGPointMake(self.contentOffset.x, 0);
 	CGFloat width = MAX(self.bounds.size.width, self.luaContent.frame.size.width);
 	/* A scroll view's content is measured independently of the viewport. If
 	 * height is left at zero, a flexible VStack otherwise collapses before its
@@ -42,6 +47,16 @@ static int bridge_UIKitControls_zstack(lua_State *L) {
 	height = MAX(height, natural_height(self.luaContent));
 	self.luaContent.frame = CGRectMake(0, 0, width, height);
 	layout_recursive(self.luaContent, width);
+	/* Horizontal SwiftUI scroll views pin their row to the top of the
+	 * viewport. Keep the row's cards from inheriting a centered/bottom
+	 * placement when its measured height is smaller than the viewport. */
+	NSString *axis = objc_getAssociatedObject(self.luaContent, &kAxisKey);
+	if ([axis isEqualToString:@"hstack"]) {
+		for (UIView *child in self.luaContent.subviews) {
+			CGRect frame = child.frame;
+			child.frame = CGRectMake(frame.origin.x, 0, frame.size.width, frame.size.height);
+		}
+	}
 	self.contentSize = CGSizeMake(MAX(width, self.luaContent.frame.size.width),
 		MAX(self.bounds.size.height, self.luaContent.frame.size.height));
 }
@@ -54,6 +69,11 @@ static int bridge_UIKitControls_scrollView(lua_State *L) {
 	BOOL horizontal = lua_toboolean(L, 4);
 	BOOL vertical = lua_toboolean(L, 5);
 	LuaUIKitScrollView *scroll = [[LuaUIKitScrollView alloc] initWithFrame:CGRectZero];
+	/* Safe-area placement is owned by LuaHostingController. Automatic UIKit
+	 * adjustment would add the same inset again to the root scroll content. */
+	scroll.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+	scroll.contentInset = UIEdgeInsetsZero;
+	scroll.scrollIndicatorInsets = UIEdgeInsetsZero;
 	scroll.luaContent = content;
 	scroll.alwaysBounceHorizontal = horizontal;
 	scroll.alwaysBounceVertical = vertical;
@@ -140,11 +160,7 @@ static int bridge_UIKitControls_progressIndicator(lua_State *L) {
 static int bridge_UIKitControls_pageControl(lua_State *L) {
 	NSInteger pages = (NSInteger)luaL_optinteger(L, 1, 0);
 	LuaPageControlView *view = [[LuaPageControlView alloc] initWithFrame:CGRectMake(0, 0, 88, 32)];
-	view.backgroundColor = [UIColor colorWithWhite:0.35 alpha:0.65];
-	view.layer.cornerRadius = 16;
-	view.layer.borderWidth = 1;
-	view.layer.borderColor = UIColor.whiteColor.CGColor;
-	view.clipsToBounds = YES;
+	view.backgroundColor = UIColor.clearColor;
 	view.control = [[UIPageControl alloc] initWithFrame:view.bounds];
 	view.control.numberOfPages = MAX(0, pages);
 	view.control.currentPage = (NSInteger)luaL_optinteger(L, 2, 0);

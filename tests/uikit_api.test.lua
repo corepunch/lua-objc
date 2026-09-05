@@ -57,9 +57,19 @@ t.expect(layout:find("view_fixed_width(sv)", 1, true) ~= nil,
 	"UIKit overlay stacks preserve fixed child geometry")
 
 local constructors = assert(io.open("src/uikit/constructors.m", "r")):read("*a")
+t.expect(constructors:find("contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever", 1, true) ~= nil,
+	"UIKit scroll views do not duplicate host safe-area insets")
+t.expect(constructors:find("scroll.contentInset = UIEdgeInsetsZero", 1, true) ~= nil,
+	"UIKit scroll views start content at their declared edge")
+t.expect(constructors:find("self.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever", 1, true) ~= nil,
+	"UIKit scroll views retain edge placement after layout")
+t.expect(constructors:find("self.contentOffset = CGPointMake(self.contentOffset.x, 0)", 1, true) ~= nil,
+	"UIKit scroll views clear unintended vertical content offsets")
 t.expect(constructors:find("gradient.locations", 1, true) ~= nil,
 	"UIKit gradients preserve SwiftUI-like stop locations")
-t.expect(constructors:find("layer.borderWidth = 1", 1, true) ~= nil,
-	"UIKit page controls retain the outlined capsule")
+t.expect(constructors:find("view.backgroundColor = UIColor.clearColor", 1, true) ~= nil,
+	"UIKit page controls render dots without a capsule")
+t.expect(constructors:find("view.layer.cornerRadius", 1, true) == nil,
+	"UIKit page controls do not add custom capsule corners")
 
 os.exit(t.summary() and 0 or 1)
