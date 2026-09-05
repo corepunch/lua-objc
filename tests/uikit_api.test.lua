@@ -20,4 +20,13 @@ t.expect(src:find("v:sizeToFit%(%)[%s%S]-end") ~= nil,
 t.expect(src:find("v.numberOfLines = props.lineLimit", 1, true) ~= nil,
 	"UIKit labels honor explicit line limits")
 
+local layout = assert(io.open("src/uikit/layout.m", "r")):read("*a")
+local views = assert(io.open("src/uikit/views.m", "r")):read("*a")
+t.expect(layout:find("kImageLayoutSizeKey", 1, true) ~= nil,
+	"UIKit layout preserves image display size during size-to-fit")
+t.expect(views:find("objc_setAssociatedObject(iv, &kImageLayoutSizeKey", 1, true) ~= nil,
+	"UIKit images publish their proportional layout size")
+t.expect(views:find("kImageMaxWidth", 1, true) ~= nil,
+	"UIKit data-backed images use the same display-size limit")
+
 os.exit(t.summary() and 0 or 1)

@@ -61,6 +61,16 @@ static CGFloat view_fixed_height(UIView *view) {
 }
 
 static void size_to_fit_if_needed(UIView *view) {
+	/* Image views have an explicit display size established by the bridge.
+	 * UIImageView's sizeToFit uses the source image's intrinsic dimensions,
+	 * which can undo the bridge's max-width scaling and leave a vertically
+	 * oversized frame in a VStack. */
+	NSValue *imageLayoutSize = objc_getAssociatedObject(view, &kImageLayoutSizeKey);
+	if (imageLayoutSize) {
+		view.frame = CGRectMake(view.frame.origin.x, view.frame.origin.y,
+			imageLayoutSize.CGSizeValue.width, imageLayoutSize.CGSizeValue.height);
+		return;
+	}
 	if (!is_flexible(view)) {
 		[view sizeToFit];
 	}

@@ -17,6 +17,8 @@ static char kFixedHeightKey;
 static char kSpacingKey;
 static char kFlexGrowKey;
 static char kFillWidthKey;
+static char kImageLayoutSizeKey;
+static const CGFloat kImageMaxWidth = 400.0;
 static const CGFloat kStackSpacing = 8.0;
 static lua_State *gL = NULL;
 
