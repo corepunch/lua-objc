@@ -11,6 +11,26 @@
   ],
   "cases": [
     {
+      "id": "input.native-editor-picker-search",
+      "family": "B4",
+      "purpose": "Native multiline editor, picker selection, and search field",
+      "gate": "core",
+      "platforms": ["macos", "ios"],
+      "swiftuiScene": "InputControlsScene",
+      "etluaScene": "input.native-editor-picker-search",
+      "nativeFamily": "input-controls",
+      "mapping": "SwiftUI TextEditor/Picker/search field -> native editor, picker, and search controls",
+      "data": {"text": "Native multiline editor content", "options": ["Low", "Medium", "High"]},
+      "state": "default",
+      "actions": [],
+      "size": {"width": 320, "height": 240},
+      "appearance": "light",
+      "textSize": "large",
+      "assertions": ["editor.content", "picker.selection", "search.value"],
+      "status": "implemented-unverified",
+      "evidence": []
+    },
+    {
       "id": "container.form-labeled-control-group",
       "family": "C2",
       "purpose": "Form, LabeledContent, and ControlGroup composition",

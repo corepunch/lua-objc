@@ -61,6 +61,16 @@
 			<Button title="Save" />
 		</ControlGroup>
 	</Form>
+	<% elseif caseId == "input.native-editor-picker-search" then %>
+	<VStack padding="16" spacing="10" fillWidth="true" alignment="leading">
+		<SearchField value="<%= search %>" placeholder="Search" />
+		<Picker value="1">
+			<Option title="<%= options[1] %>" />
+			<Option title="<%= options[2] %>" />
+			<Option title="<%= options[3] %>" />
+		</Picker>
+		<TextEditor text="<%= text %>" fixedHeight="72" />
+	</VStack>
 	<% else %>
 	<Label text="Unknown parity case" />
 	<% end %>

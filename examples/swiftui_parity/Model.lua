@@ -47,6 +47,12 @@ local CASES = {
 		title = "Form",
 		body = "Native form content",
 	},
+	["input.native-editor-picker-search"] = {
+		title = "Input controls",
+		search = "SwiftUI search",
+		options = { "Low", "Medium", "High" },
+		text = "Native multiline editor content",
+	},
 }
 
 function Model.caseId()

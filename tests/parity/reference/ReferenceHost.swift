@@ -13,6 +13,7 @@ private enum Fixture: String {
 	case container = "container.section-groupbox"
 	case disclosure = "container.disclosure-expanded"
 	case form = "container.form-labeled-control-group"
+	case input = "input.native-editor-picker-search"
 
 	var sceneName: String {
 		switch self {
@@ -27,6 +28,7 @@ private enum Fixture: String {
 		case .container: return "ContainerScene"
 		case .disclosure: return "DisclosureScene"
 		case .form: return "FormScene"
+		case .input: return "InputControlsScene"
 		}
 	}
 
@@ -36,6 +38,7 @@ private enum Fixture: String {
 		case .container: return CGSize(width: 320, height: 160)
 		case .disclosure: return CGSize(width: 320, height: 120)
 		case .form: return CGSize(width: 320, height: 160)
+		case .input: return CGSize(width: 320, height: 240)
 		case .stack: return CGSize(width: 480, height: 120)
 		}
 	}
@@ -161,6 +164,18 @@ private struct FixtureView: View {
 					Button("Cancel") {}
 					Button("Save") {}
 				}
+			}
+		case .input:
+			VStack(alignment: .leading, spacing: 10) {
+				TextField("Search", text: .constant("SwiftUI search"))
+					.textFieldStyle(.roundedBorder)
+				Picker("", selection: .constant(1)) {
+					Text("Low").tag(0)
+					Text("Medium").tag(1)
+					Text("High").tag(2)
+				}
+				TextEditor(text: .constant("Native multiline editor content"))
+					.frame(height: 72)
 			}
 		}
 	}

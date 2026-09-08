@@ -160,13 +160,19 @@ The following ordered parity phases are now implemented, tested, and pushed on
   text/value, editable/selectable state, wrapping, font, and background
   behavior; the iOS host compiles and the bridge/API tests pass.
 - The current follow-on change adds UIKit `SearchField` backed by
-  `UISearchTextField`, with XML registration and bridge coverage. It is ready
-  for its own commit after the host build and focused tests complete; no
-  simulator screenshot is claimed because the same packager bind failure
-  remains active.
+  `UISearchTextField`, with XML registration and bridge coverage; it is
+  committed as `28c3d045`. No simulator screenshot is claimed because the same
+  packager bind failure remains active.
 
-The full headless suite is now 29 test files passing, and the parity manifest
-validates with 11 cases. An internal iOS Simulator capture was retried for the
+The input fixture `input.native-editor-picker-search` is now registered as the
+12th manifest case. Its SwiftUI reference host builds, and the macOS candidate
+layout dump records native `NSSearchField`, `NSPopUpButton`, and
+`LuaTextScrollView` frames. The headless PNG visibly renders the editor text,
+but does not visibly render all control chrome, so the image is retained as
+candidate evidence without marking the fixture passing.
+
+The full headless suite is now 30 test files passing, and the parity manifest
+validates with 12 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable
 because the local packager cannot bind port 8081 (`Operation not permitted`)
 after stale packager activity. No iOS screenshot is claimed for that attempt,
