@@ -404,6 +404,14 @@ local TAG_SCHEMA = {
         constructor = "HStack",
         children    = "array",
     },
+    Grid = {
+        constructor = "Grid",
+        children    = "array",
+    },
+    GridRow = {
+        constructor = "Group",
+        children    = "array",
+    },
     ZStack = {
         constructor = "ZStack",
         children    = "array",

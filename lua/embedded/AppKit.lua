@@ -351,6 +351,20 @@ function AppKit.Group(children)
 	return children
 end
 
+function AppKit.Grid(props)
+	props = props or {}
+	local rows = {}
+	for _, row in ipairs(props) do
+		local rowProps = { spacing = props.spacing, alignment = props.alignment }
+		for _, child in ipairs(row) do rowProps[#rowProps + 1] = child end
+		rows[#rows + 1] = AppKit.HStack(rowProps)
+	end
+	props.content = nil
+	for i = #props, 1, -1 do props[i] = nil end
+	for _, row in ipairs(rows) do props[#props + 1] = row end
+	return AppKit.VStack(props)
+end
+
 function AppKit.ForEach(data, content)
 	if type(data) ~= "table" then
 		error("ForEach requires an array")
