@@ -195,6 +195,16 @@ static int bridge_UIKitControls_progressIndicator(lua_State *L) {
 	return 1;
 }
 
+static int bridge_UIKitControls_progressView(lua_State *L) {
+	CGFloat progress = (CGFloat)luaL_optnumber(L, 1, 0);
+	UIProgressView *obj = [[UIProgressView alloc]
+		initWithProgressViewStyle:UIProgressViewStyleDefault];
+	obj.progress = MIN(MAX(progress, 0.0), 1.0);
+	[obj sizeToFit];
+	push_objc(L, obj, "uiview");
+	return 1;
+}
+
 @interface LuaPageControlView : UIView
 @property(nonatomic, strong) UIPageControl *control;
 @end

@@ -79,6 +79,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_label", bridge_UIKitControls_label},
 	{"_separator", bridge_UIKitControls_separator},
 	{"_progressIndicator", bridge_UIKitControls_progressIndicator},
+	{"_progressView", bridge_UIKitControls_progressView},
 	{"_pageControl", bridge_UIKitControls_pageControl},
 	{"_linearGradient", bridge_UIKitControls_linearGradient},
 	{"_button", bridge_UIKitControls_button},

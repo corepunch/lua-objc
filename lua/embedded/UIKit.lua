@@ -463,6 +463,10 @@ end
 UIKit.Divider = UIKit.Separator
 
 function UIKit.ProgressView(props)
+	props = props or {}
+	if props.value ~= nil then
+		return applyLayout(bridge._progressView(props.value), props)
+	end
 	return applyLayout(bridge._progressIndicator(), props)
 end
 

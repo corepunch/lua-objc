@@ -175,7 +175,11 @@ candidate evidence without marking the fixture passing.
 native `DisclosureGroup` and text nodes over `data`/`items` tree input. Its
 construction and recursion contract are covered by a focused headless test.
 
-The full headless suite is now 31 test files passing, and the parity manifest
+UIKit `ProgressView` now selects native `UIProgressView` for determinate
+`value` input and retains the native activity indicator for indeterminate use;
+XML registration, bridge coverage, and the iOS host build all pass.
+
+The full headless suite is now 32 test files passing, and the parity manifest
 validates with 12 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable
 because the local packager cannot bind port 8081 (`Operation not permitted`)

@@ -464,6 +464,13 @@ local TAG_SCHEMA = {
             currentPage = "num",
         },
     },
+    ProgressView = {
+        constructor = "ProgressView",
+        props = {
+            value = "num",
+            indeterminate = "bool",
+        },
+    },
     Divider = {
         constructor = "Divider",
         props = {

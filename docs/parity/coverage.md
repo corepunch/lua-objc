@@ -20,7 +20,7 @@ not additional user-facing controls. Data-only services are excluded.
 | Images | `Image`, `SystemImage`, `ImageViewer` | `Image`, `SystemImage` | yes | yes | `Image`, `Label` | implemented-unverified |
 | Buttons | `Button`, `MenuItem` | `Button` | yes | yes | `Button`, `Menu` | implemented-unverified |
 | Selection | `Toggle`, `Slider`, `Stepper`, `Picker` | all four plus `Option` | yes | `Toggle`, `Slider`, `Stepper`, `Picker` | controls and `Picker` | implemented-unverified |
-| Feedback | `Separator`, `Divider`, `ProgressView`, `PageControl` | `Divider` | no `PageControl`; yes other listed primitives | no `ProgressView` export; yes other listed primitives | `Divider`, `ProgressView`, `PageControl` | implemented-unverified |
+| Feedback | `Separator`, `Divider`, `ProgressView`, `PageControl` | `Divider`, `ProgressView` | no `PageControl`; yes other listed primitives | `ProgressView`, `PageControl` | `Divider`, `ProgressView`, `PageControl` | implemented-unverified |
 | Collections | `List`, `OutlineView` | `List`, `Column` | yes | `List` (table-shaped) | `List`, `Table`, `OutlineGroup` | implemented-unverified |
 | Navigation | `TabView`, `NavigationStack` | `TabView`, `Tab` | `TabView` | both | `TabView`, `NavigationStack`, `NavigationSplitView` | implemented-unverified |
 | Presentation | `present`, `dismiss`, focus helpers | none | yes | partial hosting | sheets, popovers, alerts, panels | implemented-unverified |
