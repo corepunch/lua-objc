@@ -100,6 +100,10 @@ and edge padding. The host rebuilds successfully; this environment's current
 LaunchServices invocation fails with `kLSNoExecutableErr`, so no reference
 readiness or screenshot is claimed from that failed run.
 
+The reference bundle now includes explicit version and high-resolution metadata;
+LaunchServices still returns the same error after rebuild and ad-hoc signing,
+so the runtime blocker is external to the SwiftUI source and remains recorded.
+
 ## Next batch
 
 P1: add the independent SwiftUI reference host and a fail-closed capture/report

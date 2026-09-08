@@ -53,8 +53,14 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 	<string>org.luaobjc.parity.reference</string>
 	<key>CFBundleName</key>
 	<string>SwiftUI Parity Reference</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
 	<key>LSMinimumSystemVersion</key>
 	<string>26.0</string>
 </dict>
