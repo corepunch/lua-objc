@@ -37,6 +37,9 @@ t.expect(src:find('"ignoresSafeArea"', 1, true) ~= nil,
 	"UIKit exposes safe-area edge control")
 t.expect(src:find('"clipsToBounds"', 1, true) ~= nil,
 	"UIKit exposes square clipping independently of corner radius")
+t.expect(src:find('"background"', 1, true) ~= nil
+		and src:find("view.backgroundColor = bridge._systemColor(props[key])", 1, true) ~= nil,
+	"UIKit applies semantic background colors to every declarative view")
 t.expect(src:find("button.titleLabel.lineBreakMode", 1, true) ~= nil,
 	"UIKit buttons support explicit tail truncation")
 

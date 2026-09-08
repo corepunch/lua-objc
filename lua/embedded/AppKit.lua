@@ -36,13 +36,20 @@ local layout_properties = {
 	"fillWidth",
 	"fillHeight",
 	"hidden",
+	"background",
+	"cornerRadius",
+	"clipsToBounds",
 }
 
 local function applyLayout(view, props)
 	if type(props) ~= "table" then return view end
 	for _, key in ipairs(layout_properties) do
 		if props[key] ~= nil then
-			view[key] = props[key]
+			if key == "background" then
+				view.backgroundColor = bridge._systemColor(props[key])
+			else
+				view[key] = props[key]
+			end
 		end
 	end
 	return view

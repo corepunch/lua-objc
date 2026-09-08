@@ -56,6 +56,44 @@ static void layout_recursive(NSView *view, CGFloat width);
 		OBJC_ASSOCIATION_RETAIN); \
 }
 
+@interface NSView (LuaSurfaceProperties)
+@property(nonatomic, retain) NSColor *backgroundColor;
+@property(nonatomic) CGFloat cornerRadius;
+@property(nonatomic) BOOL clipsToBounds;
+@end
+
+@implementation NSView (LuaSurfaceProperties)
+- (NSColor *)backgroundColor {
+	return objc_getAssociatedObject(self, &kKeys[kBackgroundColorKey]);
+}
+- (void)setBackgroundColor:(NSColor *)value {
+	objc_setAssociatedObject(self, &kKeys[kBackgroundColorKey], value,
+		OBJC_ASSOCIATION_RETAIN);
+	self.wantsLayer = YES;
+	self.layer.backgroundColor = value.CGColor;
+}
+- (CGFloat)cornerRadius {
+	return [objc_getAssociatedObject(self, &kKeys[kCornerRadiusKey]) doubleValue];
+}
+- (void)setCornerRadius:(CGFloat)value {
+	CGFloat radius = MAX(0, value);
+	objc_setAssociatedObject(self, &kKeys[kCornerRadiusKey], @(radius),
+		OBJC_ASSOCIATION_RETAIN);
+	self.wantsLayer = YES;
+	self.layer.cornerRadius = radius;
+	self.clipsToBounds = radius > 0;
+}
+- (BOOL)clipsToBounds {
+	return [objc_getAssociatedObject(self, &kKeys[kClipsToBoundsKey]) boolValue];
+}
+- (void)setClipsToBounds:(BOOL)value {
+	objc_setAssociatedObject(self, &kKeys[kClipsToBoundsKey], @(value),
+		OBJC_ASSOCIATION_RETAIN);
+	self.wantsLayer = YES;
+	self.layer.masksToBounds = value;
+}
+@end
+
 @implementation NSView (LuaLayoutProperties)
 LUA_NUMBER_ACCESSORS(padding, setPadding, kPaddingKey, 0, value)
 LUA_NUMBER_ACCESSORS(paddingHorizontal, setPaddingHorizontal,
