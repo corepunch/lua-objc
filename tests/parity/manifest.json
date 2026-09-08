@@ -169,6 +169,26 @@
       "assertions": ["padding.top", "padding.bottom", "surface.background"],
       "status": "implemented-unverified",
       "evidence": []
+    },
+    {
+      "id": "container.section-groupbox",
+      "family": "C2",
+      "purpose": "Nested Section and GroupBox composition",
+      "gate": "common",
+      "platforms": ["macos", "ios"],
+      "swiftuiScene": "ContainerScene",
+      "etluaScene": "container.section-groupbox",
+      "nativeFamily": "stack",
+      "mapping": "SwiftUI Section/GroupBox -> native stack containers",
+      "data": {"text": "Nested native content"},
+      "state": "default",
+      "actions": [],
+      "size": {"width": 320, "height": 160},
+      "appearance": "light",
+      "textSize": "large",
+      "assertions": ["section.header", "groupbox.background", "nested.content"],
+      "status": "implemented-unverified",
+      "evidence": []
     }
   ]
 }

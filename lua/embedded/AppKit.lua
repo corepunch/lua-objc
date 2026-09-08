@@ -298,6 +298,33 @@ function AppKit.HStack(props)
 	return view
 end
 
+local function stackChildren(props, header)
+	local content = {
+		spacing = props.spacing or 8,
+		alignment = props.alignment or "leading",
+	}
+	if header and header ~= "" then
+		content[#content + 1] = AppKit.Text({ header, weight = "bold" })
+	end
+	for _, child in ipairs(props) do content[#content + 1] = child end
+	return content
+end
+
+function AppKit.Section(props)
+	props = props or {}
+	return AppKit.VStack(stackChildren(props, props.header))
+end
+
+function AppKit.GroupBox(props)
+	props = props or {}
+	local content = stackChildren(props, props.header)
+	content.padding = props.padding or 12
+	content.background = props.background or "background"
+	content.cornerRadius = props.cornerRadius or 10
+	content.clipsToBounds = true
+	return AppKit.VStack(content)
+end
+
 function AppKit.ScrollView(props)
 	assert(type(props) == "table", "ScrollView requires a property table")
 	local content = props.content or props[1]

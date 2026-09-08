@@ -404,6 +404,16 @@ local TAG_SCHEMA = {
         constructor = "HStack",
         children    = "array",
     },
+    Section = {
+        constructor = "Section",
+        children    = "array",
+        props = { header = "str" },
+    },
+    GroupBox = {
+        constructor = "GroupBox",
+        children    = "array",
+        props = { header = "str" },
+    },
     Grid = {
         constructor = "Grid",
         children    = "array",

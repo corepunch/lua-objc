@@ -35,6 +35,10 @@ local CASES = {
 		title = "Padding",
 		body = "Top and bottom edges",
 	},
+	["container.section-groupbox"] = {
+		title = "Containers",
+		body = "Nested native content",
+	},
 }
 
 function Model.caseId()

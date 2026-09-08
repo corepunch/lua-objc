@@ -36,6 +36,15 @@
 	<VStack paddingTop="8" paddingBottom="40" fillWidth="true" alignment="center" background="systemGreen" cornerRadius="12">
 		<Label text="<%= body %>" />
 	</VStack>
+	<% elseif caseId == "container.section-groupbox" then %>
+	<VStack padding="16" spacing="12" fillWidth="true">
+		<Section header="Overview">
+			<Label text="<%= body %>" />
+		</Section>
+		<GroupBox header="Details" background="systemGreen" cornerRadius="12">
+			<Label text="Grouped native content" />
+		</GroupBox>
+	</VStack>
 	<% else %>
 	<Label text="Unknown parity case" />
 	<% end %>
