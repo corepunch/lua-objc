@@ -245,7 +245,11 @@ UIKit `Button` now forwards `systemImage` and `role` into native
 tint. The current SDK uses `borderedProminentButtonConfiguration` for the
 prominent style; the host build and focused bridge tests pass.
 
-The full headless suite is now 46 test files passing, and the parity manifest
+AppKit now also exports `ZStack` as a native overlay container. It measures the
+largest visible child, applies stack alignment and padding, and recursively
+lays out nested children; its focused construction/layout test passes.
+
+The full headless suite is now 47 test files passing, and the parity manifest
 validates with 13 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable
 because the local packager cannot bind port 8081 (`Operation not permitted`)

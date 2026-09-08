@@ -13,7 +13,7 @@ not additional user-facing controls. Data-only services are excluded.
 | Family | Lua API | XML | AppKit | UIKit | SwiftUI mapping | Initial status |
 |---|---|---:|---:|---:|---|---|
 | Window | `Window`, `Panel` | `Window` | yes | `Window`/hosting | `WindowGroup`, `sheet`/window | implemented-unverified |
-| Layout | `VStack`, `HStack`, `HSplit`, `VSplit`, `ScrollView`, `Spacer`, `Group`, `ForEach` | `VStack`, `HStack`, `ZStack`, `HSplit`, `Spacer` | no `ZStack` export; yes other listed primitives | no `HSplit` export; `ZStack` yes | stacks, `ZStack`, grouping, `ForEach` | implemented-unverified |
+| Layout | `VStack`, `HStack`, `ZStack`, `HSplit`, `VSplit`, `ScrollView`, `Spacer`, `Group`, `ForEach` | `VStack`, `HStack`, `ZStack`, `HSplit`, `Spacer` | yes | no `HSplit` export; `ZStack` yes | stacks, `ZStack`, grouping, `ForEach` | implemented-unverified |
 | Scrolling | `ScrollView` | `ScrollView` | yes | yes | `ScrollView` | implemented-unverified |
 | Text | `Text`, `Title` | `Label`, `Text`, `Title` | yes | `Label`, `Text`, `Title` | `Text` | implemented-unverified |
 | Text input | `TextField`, `SearchField`, `TextEditor` | `TextField`, `SearchField`, `TextEditor` | yes | `TextField`, `SearchField`, `TextEditor` | `TextField`, `SecureField`, `TextEditor`, searchable | implemented-unverified |

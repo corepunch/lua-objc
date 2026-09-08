@@ -290,6 +290,23 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		natural.width += 2 * padX;
 		natural.height += padY;
 	} break;
+	case LayoutAxisZStack: {
+		for (NSView *child in view.subviews) {
+			if (is_hidden(child)) continue;
+			NSSize childSize = measure_view(child, (LuaLayoutConstraint){
+				.width = innerWidth,
+				.height = innerHeight,
+				.widthMode = constraint.widthMode == LuaMeasureUndefined
+					? LuaMeasureUndefined : LuaMeasureAtMost,
+				.heightMode = constraint.heightMode == LuaMeasureUndefined
+					? LuaMeasureUndefined : LuaMeasureAtMost,
+			});
+			natural.width = MAX(natural.width, childSize.width);
+			natural.height = MAX(natural.height, childSize.height);
+		}
+		natural.width += 2 * padX;
+		natural.height += padY;
+	} break;
 	case LayoutAxisHSplit: {
 		NSInteger visibleCount = 0;
 		for (NSView *child in view.subviews) {
@@ -628,7 +645,7 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			}
 			free(heights);
 	} break;
-	case LayoutAxisHStack: {
+		case LayoutAxisHStack: {
 			NSUInteger count = view.subviews.count;
 			if (count == 0) return;
 
@@ -685,7 +702,36 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			}
 			free(widths);
 	} break;
-	case LayoutAxisHSplit: {
+		case LayoutAxisZStack: {
+			for (NSView *sv in view.subviews) {
+				if (is_hidden(sv)) continue;
+				NSSize natural = measure_view(sv, (LuaLayoutConstraint){
+					.width = contentW,
+					.height = contentH,
+					.widthMode = LuaMeasureAtMost,
+					.heightMode = LuaMeasureAtMost,
+				});
+				CGFloat childW = view_fills_cross_axis(sv, YES)
+					? contentW : MIN(natural.width, contentW);
+				CGFloat childH = view_fills_cross_axis(sv, NO)
+					? contentH : MIN(natural.height, contentH);
+				if (view_fixed_width(sv) > 0) childW = view_fixed_width(sv);
+				if (view_fixed_height(sv) > 0) childH = view_fixed_height(sv);
+				CGFloat childX = padX;
+				CGFloat childY = padBottom;
+				if ([alignment isEqualToString:@"center"]) {
+					childX = padX + (contentW - childW) / 2;
+					childY = padBottom + (contentH - childH) / 2;
+				} else if ([alignment isEqualToString:@"trailing"]) {
+					childX = padX + contentW - childW;
+				} else if ([alignment isEqualToString:@"top"]) {
+					childY = padBottom + contentH - childH;
+				}
+				sv.frame = NSMakeRect(childX, childY, childW, childH);
+				layout_recursive(sv, childW);
+			}
+		} break;
+		case LayoutAxisHSplit: {
 			NSUInteger count = view.subviews.count;
 			if (count == 0) return;
 

@@ -2,6 +2,7 @@
 #if defined(GEN_CLASS_FORWARDS)
 static int bridge_AppKitControls_vstack(lua_State *L);
 static int bridge_AppKitControls_hstack(lua_State *L);
+static int bridge_AppKitControls_zstack(lua_State *L);
 static int bridge_AppKitControls_hsplit(lua_State *L);
 static int bridge_AppKitControls_vsplit(lua_State *L);
 static int bridge_AppKitControls_separator(lua_State *L);

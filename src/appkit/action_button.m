@@ -109,6 +109,7 @@ typedef NS_ENUM(NSInteger, LayoutAxis) {
 	LayoutAxisNone = -1,
 	LayoutAxisVStack,
 	LayoutAxisHStack,
+	LayoutAxisZStack,
 	LayoutAxisHSplit,
 	LayoutAxisVSplit,
 };

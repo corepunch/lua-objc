@@ -562,6 +562,15 @@ function AppKit.Text(arg)
 	return result
 end
 
+function AppKit.ZStack(props)
+	local view = bridge._zstack()
+	if type(props) == "table" then
+		applyLayout(view, props)
+		addChildren(view, props)
+	end
+	return view
+end
+
 function AppKit.TextField(props)
 	if type(props) ~= "table" then
 		props = { value = tostring(props or "") }
