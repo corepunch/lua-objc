@@ -8,7 +8,7 @@ if [ -z "$case_id" ]; then
 fi
 
 case "$case_id" in
-	text.single.default|button.standard.action-counter|surface.background-rounded|grid.two-by-two|text.long-ellipsis-italic|image.system-icon|padding.vertical-edges|container.section-groupbox|container.disclosure-expanded|container.form-labeled-control-group|input.native-editor-picker-search) width=320 ;;
+	text.single.default|button.standard.action-counter|surface.background-rounded|grid.two-by-two|text.long-ellipsis-italic|image.system-icon|padding.vertical-edges|container.section-groupbox|container.disclosure-expanded|container.form-labeled-control-group|input.native-editor-picker-search|input.date-and-color-pickers) width=320 ;;
 	stack.h.spacing.default-text-spacer) width=480 ;;
 	*)
 		echo "unknown parity case: $case_id" >&2
@@ -20,6 +20,7 @@ root="build/parity/macos/$case_id"
 height=120
 if [ "$case_id" = "surface.background-rounded" ] || [ "$case_id" = "container.section-groupbox" ] || [ "$case_id" = "container.form-labeled-control-group" ]; then height=160; fi
 if [ "$case_id" = "input.native-editor-picker-search" ]; then height=240; fi
+if [ "$case_id" = "input.date-and-color-pickers" ]; then height=140; fi
 mkdir -p "$root"
 
 LUA_OBJC_PARITY_CASE="$case_id" ./lua-objc \

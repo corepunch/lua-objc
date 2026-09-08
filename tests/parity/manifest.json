@@ -11,6 +11,26 @@
   ],
   "cases": [
     {
+      "id": "input.date-and-color-pickers",
+      "family": "D3",
+      "purpose": "Native date and color picker controls",
+      "gate": "common",
+      "platforms": ["macos", "ios"],
+      "swiftuiScene": "SystemPickersScene",
+      "etluaScene": "input.date-and-color-pickers",
+      "nativeFamily": "system-pickers",
+      "mapping": "SwiftUI DatePicker/ColorPicker -> native date and color controls",
+      "data": {"timestamp": 0, "color": "systemBlue"},
+      "state": "default",
+      "actions": [],
+      "size": {"width": 320, "height": 140},
+      "appearance": "light",
+      "textSize": "large",
+      "assertions": ["datePicker.native", "colorPicker.native"],
+      "status": "implemented-unverified",
+      "evidence": []
+    },
+    {
       "id": "input.native-editor-picker-search",
       "family": "B4",
       "purpose": "Native multiline editor, picker selection, and search field",

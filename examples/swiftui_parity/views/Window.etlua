@@ -71,6 +71,11 @@
 		</Picker>
 		<TextEditor text="<%= text %>" fixedHeight="72" />
 	</VStack>
+	<% elseif caseId == "input.date-and-color-pickers" then %>
+	<VStack padding="16" spacing="12" fillWidth="true" alignment="leading">
+		<DatePicker timestamp="<%= timestamp %>" />
+		<ColorPicker color="<%= color %>" />
+	</VStack>
 	<% else %>
 	<Label text="Unknown parity case" />
 	<% end %>

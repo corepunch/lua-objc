@@ -8,7 +8,7 @@ if [ -z "$case_id" ]; then
 fi
 
 case "$case_id" in
-	text.single.default|stack.h.spacing.default-text-spacer|button.standard.action-counter|surface.background-rounded|grid.two-by-two|text.long-ellipsis-italic|image.system-icon|padding.vertical-edges|container.section-groupbox|container.disclosure-expanded|container.form-labeled-control-group|input.native-editor-picker-search) ;;
+	text.single.default|stack.h.spacing.default-text-spacer|button.standard.action-counter|surface.background-rounded|grid.two-by-two|text.long-ellipsis-italic|image.system-icon|padding.vertical-edges|container.section-groupbox|container.disclosure-expanded|container.form-labeled-control-group|input.native-editor-picker-search|input.date-and-color-pickers) ;;
 	*) echo "unknown parity case: $case_id" >&2; exit 2 ;;
 esac
 

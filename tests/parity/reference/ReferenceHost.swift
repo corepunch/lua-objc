@@ -14,6 +14,7 @@ private enum Fixture: String {
 	case disclosure = "container.disclosure-expanded"
 	case form = "container.form-labeled-control-group"
 	case input = "input.native-editor-picker-search"
+	case pickers = "input.date-and-color-pickers"
 
 	var sceneName: String {
 		switch self {
@@ -29,6 +30,7 @@ private enum Fixture: String {
 		case .disclosure: return "DisclosureScene"
 		case .form: return "FormScene"
 		case .input: return "InputControlsScene"
+		case .pickers: return "SystemPickersScene"
 		}
 	}
 
@@ -39,6 +41,7 @@ private enum Fixture: String {
 		case .disclosure: return CGSize(width: 320, height: 120)
 		case .form: return CGSize(width: 320, height: 160)
 		case .input: return CGSize(width: 320, height: 240)
+		case .pickers: return CGSize(width: 320, height: 140)
 		case .stack: return CGSize(width: 480, height: 120)
 		}
 	}
@@ -176,6 +179,11 @@ private struct FixtureView: View {
 				}
 				TextEditor(text: .constant("Native multiline editor content"))
 					.frame(height: 72)
+			}
+		case .pickers:
+			VStack(alignment: .leading, spacing: 12) {
+				DatePicker("Date", selection: .constant(Date(timeIntervalSince1970: 0)), displayedComponents: .date)
+				ColorPicker("Color", selection: .constant(.blue))
 			}
 		}
 	}

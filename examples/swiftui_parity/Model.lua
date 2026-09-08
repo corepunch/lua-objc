@@ -53,6 +53,11 @@ local CASES = {
 		options = { "Low", "Medium", "High" },
 		text = "Native multiline editor content",
 	},
+	["input.date-and-color-pickers"] = {
+		title = "System pickers",
+		timestamp = 0,
+		color = "systemBlue",
+	},
 }
 
 function Model.caseId()

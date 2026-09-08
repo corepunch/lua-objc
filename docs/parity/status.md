@@ -193,6 +193,11 @@ They accept timestamp/semantic-color inputs and optional native value-change
 callbacks; the current macOS and iOS hosts compile without deprecated API
 warnings.
 
+The `input.date-and-color-pickers` fixture is now registered as the 13th
+manifest case. Its SwiftUI reference host builds, and the macOS candidate
+capture visibly shows the native date field/stepper and semantic blue color
+well; the layout dump reports `NSDatePicker` and `NSColorWell` without clipping.
+
 The full headless suite is now 35 test files passing, and the parity manifest
 validates with 12 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable
