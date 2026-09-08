@@ -581,6 +581,7 @@ function AppKit.TextField(props)
 		field.accessibilityLabel = props.accessibilityLabel
 	end
 	bridge._textFieldCallbacks(field, props.onChange, props.onCommand)
+	if props.disabled ~= nil then field.enabled = not props.disabled end
 	return applyLayout(field, props)
 end
 
@@ -820,6 +821,7 @@ function AppKit.Toggle(props)
 	else
 		toggle = bridge._toggle(label, is_on)
 	end
+	if type(props) == "table" and props.disabled ~= nil then toggle.enabled = not props.disabled end
 	return applyLayout(toggle, props)
 end
 
@@ -834,6 +836,7 @@ function AppKit.Slider(props)
 	if props.allowsTickMarkValuesOnly then
 		slider.allowsTickMarkValuesOnly = true
 	end
+	if props.disabled ~= nil then slider.enabled = not props.disabled end
 	return applyLayout(slider, props)
 end
 
@@ -847,26 +850,33 @@ function AppKit.Stepper(props)
 		props.action)
 	if props.wraps then stepper.valueWraps = true end
 	if props.autorepeat == false then stepper.autorepeat = false end
+	if props.disabled ~= nil then stepper.enabled = not props.disabled end
 	return applyLayout(stepper, props)
 end
 
 function AppKit.Picker(props)
 	assert(type(props) == "table", "Picker requires a property table")
 	assert(type(props.options) == "table", "Picker requires an options array")
-	return applyLayout(bridge._picker(
+	local picker = bridge._picker(
 		props.options,
 		props.value or 0,
-		props.action), props)
+		props.action)
+	if props.disabled ~= nil then picker.enabled = not props.disabled end
+	return applyLayout(picker, props)
 end
 
 function AppKit.DatePicker(props)
 	props = props or {}
-	return applyLayout(bridge._datePicker(props.timestamp or props.time, props.onChange), props)
+	local picker = bridge._datePicker(props.timestamp or props.time, props.onChange)
+	if props.disabled ~= nil then picker.enabled = not props.disabled end
+	return applyLayout(picker, props)
 end
 
 function AppKit.ColorPicker(props)
 	props = props or {}
-	return applyLayout(bridge._colorPicker(props.color, props.onChange), props)
+	local picker = bridge._colorPicker(props.color, props.onChange)
+	if props.disabled ~= nil then picker.enabled = not props.disabled end
+	return applyLayout(picker, props)
 end
 
 function AppKit.Separator(props)

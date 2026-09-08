@@ -544,6 +544,7 @@ local TAG_SCHEMA = {
             bezeled     = "bool",
             bordered    = "bool",
             size        = "num",
+			disabled    = "bool",
         },
     },
     Button = {
@@ -568,6 +569,7 @@ local TAG_SCHEMA = {
         positional  = { "label", default = "" },
         props = {
             value = { prop = "is_on", aliases = { "checked" }, type = "bool", default = false },
+			disabled = "bool",
         },
     },
     Link = {
@@ -585,6 +587,7 @@ local TAG_SCHEMA = {
             value                    = "num",
             tickMarks                = "num",
             allowsTickMarkValuesOnly = "bool",
+			disabled                = "bool",
         },
     },
     Stepper = {
@@ -596,6 +599,7 @@ local TAG_SCHEMA = {
             increment  = "num",
             wraps      = "bool",
             autorepeat = "bool",
+			disabled   = "bool",
         },
     },
     Option = {
@@ -624,11 +628,14 @@ local TAG_SCHEMA = {
     },
     DatePicker = {
         constructor = "DatePicker",
-        props = { timestamp = { aliases = { "time" }, type = "num" } },
+        props = {
+            timestamp = { aliases = { "time" }, type = "num" },
+            disabled = "bool",
+        },
     },
     ColorPicker = {
         constructor = "ColorPicker",
-        props = { color = "str" },
+        props = { color = "str", disabled = "bool" },
     },
 
     -- Imagery

@@ -207,7 +207,11 @@ properties to its existing native `NSTabView` bindings.
 Button disabled state is now represented by native `enabled` propagation on
 both platforms and exposed through the shared XML schema.
 
-The full headless suite is now 38 test files passing, and the parity manifest
+The same disabled contract now reaches text fields, toggles, sliders, steppers,
+pickers, and system date/color pickers; XML attributes and wrapper coverage are
+kept in sync across the two platforms.
+
+The full headless suite is now 39 test files passing, and the parity manifest
 validates with 12 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable
 because the local packager cannot bind port 8081 (`Operation not permitted`)

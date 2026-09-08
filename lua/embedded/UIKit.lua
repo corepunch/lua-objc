@@ -268,6 +268,7 @@ function UIKit.TextField(arg)
 	end
 	local v = bridge._textField(text)
 	if type(props) == "table" and props.secure then v.secureTextEntry = true end
+	if type(props) == "table" and props.disabled ~= nil then v.enabled = not props.disabled end
 	return applyLayout(v, props)
 end
 
@@ -453,34 +454,45 @@ function UIKit.Toggle(props)
 	else
 		toggle = bridge._toggle(label, is_on)
 	end
+	if type(props) == "table" and props.disabled ~= nil then toggle.enabled = not props.disabled end
 	return applyLayout(toggle, props)
 end
 
 function UIKit.Slider(props)
 	props = props or {}
-	return applyLayout(bridge._slider(props.min or 0, props.max or 1,
-		props.value or props.min or 0, props.onChange), props)
+	local slider = bridge._slider(props.min or 0, props.max or 1,
+		props.value or props.min or 0, props.onChange)
+	if props.disabled ~= nil then slider.enabled = not props.disabled end
+	return applyLayout(slider, props)
 end
 
 function UIKit.Stepper(props)
 	props = props or {}
-	return applyLayout(bridge._stepper(props.min or 0, props.max or 100,
-		props.value or props.min or 0, props.step or 1, props.onChange), props)
+	local stepper = bridge._stepper(props.min or 0, props.max or 100,
+		props.value or props.min or 0, props.step or 1, props.onChange)
+	if props.disabled ~= nil then stepper.enabled = not props.disabled end
+	return applyLayout(stepper, props)
 end
 
 function UIKit.Picker(props)
 	props = props or {}
-	return applyLayout(bridge._picker(props.options or {}, props.value or 0, props.action), props)
+	local picker = bridge._picker(props.options or {}, props.value or 0, props.action)
+	if props.disabled ~= nil then picker.userInteractionEnabled = not props.disabled end
+	return applyLayout(picker, props)
 end
 
 function UIKit.DatePicker(props)
 	props = props or {}
-	return applyLayout(bridge._datePicker(props.timestamp or props.time, props.onChange), props)
+	local picker = bridge._datePicker(props.timestamp or props.time, props.onChange)
+	if props.disabled ~= nil then picker.enabled = not props.disabled end
+	return applyLayout(picker, props)
 end
 
 function UIKit.ColorPicker(props)
 	props = props or {}
-	return applyLayout(bridge._colorPicker(props.color, props.onChange), props)
+	local picker = bridge._colorPicker(props.color, props.onChange)
+	if props.disabled ~= nil then picker.enabled = not props.disabled end
+	return applyLayout(picker, props)
 end
 
 function UIKit.Separator(props)
