@@ -660,9 +660,12 @@ int lua_objc_main(int argc, char *argv[]) {
 			}
 			if (window && window.contentView) {
 				[window.contentView layoutSubtreeIfNeeded];
+				CGFloat captureWidth = layout_width_set
+					? preview_width : window.contentView.bounds.size.width;
+				CGFloat captureHeight = layout_height_set
+					? preview_height : window.contentView.bounds.size.height;
 				png = offscreen_render(window.contentView,
-					window.contentView.bounds.size.width,
-					window.contentView.bounds.size.height);
+					captureWidth, captureHeight);
 			}
 			if (png && [png writeToFile:screenshotPath atomically:YES]) {
 				fprintf(stderr, "internal screenshot: wrote %s (%lu bytes)\n",
