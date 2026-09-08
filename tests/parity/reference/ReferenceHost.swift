@@ -5,18 +5,28 @@ private enum Fixture: String {
 	case text = "text.single.default"
 	case stack = "stack.h.spacing.default-text-spacer"
 	case button = "button.standard.action-counter"
+	case surface = "surface.background-rounded"
+	case grid = "grid.two-by-two"
+	case longText = "text.long-ellipsis-italic"
+	case image = "image.system-icon"
+	case padding = "padding.vertical-edges"
 
 	var sceneName: String {
 		switch self {
 		case .text: return "TextScene"
 		case .stack: return "HStackScene"
 		case .button: return "ButtonScene"
+		case .surface: return "SurfaceScene"
+		case .grid: return "GridScene"
+		case .longText: return "LongTextScene"
+		case .image: return "ImageScene"
+		case .padding: return "PaddingScene"
 		}
 	}
 
 	var size: CGSize {
 		switch self {
-		case .text, .button: return CGSize(width: 320, height: 120)
+		case .text, .button, .surface, .grid, .longText, .image, .padding: return CGSize(width: 320, height: 120)
 		case .stack: return CGSize(width: 480, height: 120)
 		}
 	}
@@ -90,6 +100,36 @@ private struct FixtureView: View {
 				ProbeView(id: "button", content: Button("Activate", action: activate))
 				ProbeView(id: "counter", content: Text("Count: \(actionCount)"))
 			}
+		case .surface:
+			ProbeView(id: "surface", content: Text("Native rounded surface")
+				.padding(24)
+				.frame(maxWidth: .infinity)
+				.background(Color.green)
+				.clipShape(RoundedRectangle(cornerRadius: 16)))
+		case .grid:
+			Grid(horizontalSpacing: 24, verticalSpacing: 12) {
+				GridRow {
+					ProbeView(id: "A1", content: Text("A1"))
+					ProbeView(id: "B1", content: Text("B1"))
+				}
+				GridRow {
+					ProbeView(id: "A2", content: Text("A2"))
+					ProbeView(id: "B2", content: Text("B2"))
+				}
+			}
+		case .longText:
+			ProbeView(id: "styled", content: Text("A deliberately long semantic text value that must truncate at the trailing edge")
+				.font(.system(size: 18)).italic().lineLimit(1).truncationMode(.tail)
+				.multilineTextAlignment(.center))
+		case .image:
+			ProbeView(id: "icon", content: Image(systemName: "star.fill")
+				.font(.system(size: 32)).foregroundStyle(.tint)
+				.accessibilityLabel("Favorite"))
+		case .padding:
+			ProbeView(id: "padded", content: Text("Top and bottom edges")
+				.padding(.top, 8).padding(.bottom, 40)
+				.frame(maxWidth: .infinity).background(Color.green)
+				.clipShape(RoundedRectangle(cornerRadius: 12)))
 		}
 	}
 

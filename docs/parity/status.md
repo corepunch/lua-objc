@@ -94,6 +94,12 @@ symbol rendering.
 AppKit now supports native `paddingTop` and `paddingBottom` semantics; the
 padding fixture's layout dump records the expected asymmetric label frame.
 
+The independent SwiftUI reference host now has scene definitions for all eight
+registered fixtures, including Grid, surface styling, long text, SF Symbols,
+and edge padding. The host rebuilds successfully; this environment's current
+LaunchServices invocation fails with `kLSNoExecutableErr`, so no reference
+readiness or screenshot is claimed from that failed run.
+
 ## Next batch
 
 P1: add the independent SwiftUI reference host and a fail-closed capture/report
