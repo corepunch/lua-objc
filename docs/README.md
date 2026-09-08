@@ -14,6 +14,8 @@ Open the narrowest document that answers the task:
 - `weather_app_example.md` — async HTTP, native table loading, selection, XML
   detail views, and the framework gaps exposed by the example.
 - `tableview_swiftui.md` — NSTableView sizing, scrolling, and style behavior.
+- `SWIFTUI_PARITY_PLAN.md` — Luna execution plan for paired SwiftUI/etlua
+  fixtures, native behavior tests, visual comparisons, and coverage gates.
 - `ios.md` — iPhone Simulator host, UIKit coverage for AdventureArena-class
   apps, streamed Lua/assets, and in-process reload (the host does not quit).
 - `research/XCODE_UI_ARCHITECTURE.md` — Xcode inspection notes for IDE parity
