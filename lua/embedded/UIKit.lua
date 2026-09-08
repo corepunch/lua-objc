@@ -479,6 +479,12 @@ function UIKit.Link(props)
 		props.url), props)
 end
 
+function UIKit.Menu(props)
+	props = props or {}
+	return applyLayout(bridge._menu(props.items or props.children or {},
+		props.title or "Menu"), props)
+end
+
 function UIKit.Toggle(props)
 	local label = type(props) == "table" and (props.label or props[1] or "") or ""
 	local is_on = type(props) == "table" and props.is_on or false

@@ -374,6 +374,74 @@ static int bridge_UIKitControls_link(lua_State *L) {
 	return 1;
 }
 
+@interface LuaMenuStore : NSObject
+@property (nonatomic, strong) NSArray<NSNumber *> *callbackRefs;
+@property (nonatomic, strong) LuaStateOwner *owner;
+@end
+
+@implementation LuaMenuStore
+- (void)dealloc {
+	lua_State *L = self.owner.L;
+	for (NSNumber *number in self.callbackRefs)
+		if (L) luaL_unref(L, LUA_REGISTRYINDEX, number.intValue);
+}
+@end
+
+static int bridge_UIKitControls_menu(lua_State *L) {
+	luaL_checktype(L, 1, LUA_TTABLE);
+	const char *buttonTitle = luaL_optstring(L, 2, "Menu");
+	NSMutableArray<UIMenuElement *> *elements = [NSMutableArray array];
+	NSMutableArray<NSNumber *> *refs = [NSMutableArray array];
+	LuaStateOwner *owner = owner_for_state(L);
+	NSInteger count = (NSInteger)luaL_len(L, 1);
+	for (NSInteger i = 1; i <= count; i++) {
+		lua_rawgeti(L, 1, i);
+		lua_getfield(L, -1, "title");
+		const char *title = luaL_optstring(L, -1, "");
+		lua_pop(L, 1);
+		lua_getfield(L, -1, "systemImage");
+		const char *symbol = luaL_optstring(L, -1, "");
+		lua_pop(L, 1);
+		lua_getfield(L, -1, "role");
+		const char *role = luaL_optstring(L, -1, "");
+		lua_pop(L, 1);
+		lua_getfield(L, -1, "action");
+		int ref = LUA_NOREF;
+		if (lua_isfunction(L, -1)) {
+			ref = luaL_ref(L, LUA_REGISTRYINDEX);
+			[refs addObject:@(ref)];
+		} else {
+			lua_pop(L, 1);
+		}
+		UIAction *action = [UIAction actionWithTitle:[NSString stringWithUTF8String:title]
+			image:(symbol[0] ? [UIImage systemImageNamed:[NSString stringWithUTF8String:symbol]] : nil)
+			identifier:nil
+			handler:^(__unused UIAction *selected) {
+				if (ref == LUA_NOREF || !owner.L) return;
+				lua_rawgeti(owner.L, LUA_REGISTRYINDEX, ref);
+				lua_objc_pcall(owner.L, 0, 0, "menu");
+			}];
+		if (strcmp(role, "destructive") == 0)
+			action.attributes = UIMenuElementAttributesDestructive;
+		[elements addObject:action];
+		lua_pop(L, 1);
+	}
+
+	UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+	[button setTitle:[NSString stringWithUTF8String:buttonTitle]
+		forState:UIControlStateNormal];
+	button.menu = [UIMenu menuWithTitle:@"" children:elements];
+	button.showsMenuAsPrimaryAction = YES;
+	LuaMenuStore *store = [[LuaMenuStore alloc] init];
+	store.callbackRefs = refs;
+	store.owner = owner;
+	objc_setAssociatedObject(button, &kTableSourceKey, store,
+		OBJC_ASSOCIATION_RETAIN);
+	[button sizeToFit];
+	push_objc(L, button, "uiview");
+	return 1;
+}
+
 static int bridge_UIKitControls_toggle(lua_State *L) {
 	const char *label = luaL_checkstring(L, 1);
 	BOOL is_on = (BOOL)lua_toboolean(L, 2);

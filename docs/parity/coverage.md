@@ -18,7 +18,7 @@ not additional user-facing controls. Data-only services are excluded.
 | Text | `Text`, `Title` | `Label`, `Text`, `Title` | yes | `Label`, `Text`, `Title` | `Text` | implemented-unverified |
 | Text input | `TextField`, `SearchField`, `TextEditor` | `TextField`, `SearchField`, `TextEditor` | yes | `TextField`, `SearchField`, `TextEditor` | `TextField`, `SecureField`, `TextEditor`, searchable | implemented-unverified |
 | Images | `Image`, `SystemImage`, `ImageViewer` | `Image`, `SystemImage` | yes | yes | `Image`, `Label` | implemented-unverified |
-| Buttons | `Button`, `MenuItem`, `Link` | `Button`, `Link` | yes | yes | `Button`, `Link`, `Menu` | implemented-unverified |
+| Buttons | `Button`, `MenuItem`, `Link`, `Menu` | `Button`, `Link`, `Menu` | yes | yes | `Button`, `Link`, `Menu` | implemented-unverified |
 | Selection | `Toggle`, `Slider`, `Stepper`, `Picker` | all four plus `Option` | yes | `Toggle`, `Slider`, `Stepper`, `Picker` | controls and `Picker` | implemented-unverified |
 | System pickers | `DatePicker`, `ColorPicker` | both tags | yes | yes | `DatePicker`, `ColorPicker` | implemented-unverified |
 | Feedback | `Separator`, `Divider`, `ProgressView`, `PageControl` | `Divider`, `ProgressView` | no `PageControl`; yes other listed primitives | `ProgressView`, `PageControl` | `Divider`, `ProgressView`, `PageControl` | implemented-unverified |

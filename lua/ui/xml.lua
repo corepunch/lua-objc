@@ -579,6 +579,23 @@ local TAG_SCHEMA = {
             url = { default = "", type = "str" },
         },
     },
+    Menu = {
+        constructor = "Menu",
+        children = "items",
+        props = { title = "str" },
+        collect = function(props, children)
+            props.items = children
+        end,
+    },
+    MenuItem = {
+        kind = "record",
+        flag = "__menuItem",
+        props = {
+            title = { aliases = { "label" }, default = "", type = "str" },
+            systemImage = "str",
+            role = "str",
+        },
+    },
     Slider = {
         constructor = "Slider",
         props = {
