@@ -112,8 +112,14 @@ function Controller:home()
 	local view, refs = xml.renderFile(
 		"examples/adventure-arena/views/Adventures.etlua",
 		{ games = Model.games, featured = featured, actions = actions }, ns)
-	self.navigation = ns.NavigationStack { content = view }
-	return self.navigation
+	-- AppKit presents each screen in a window; UIKit wraps the same content in
+	-- its native navigation stack when that platform provides one.
+	if ns.NavigationStack then
+		self.navigation = ns.NavigationStack { content = view }
+		return self.navigation
+	end
+	self.navigation = nil
+	return view
 end
 
 function Controller:tabs()
@@ -126,7 +132,7 @@ function Controller:tabs()
 		tab("Ongoing", "clock.arrow.circlepath", stack(ns, {
 			text(ns, "Ongoing Games", { size = 30, weight = "bold" }),
 			ns.HStack { spacing = 16,
-				ns.Image { path = Model.game("books.limehouse-killings").cover, fixedWidth = 92, fixedHeight = 128,
+				ns.Image { Model.game("books.limehouse-killings").cover, fixedWidth = 92, fixedHeight = 128,
 					contentMode = "fill", cornerRadius = 8 },
 				ns.VStack {
 					text(ns, "The Limehouse Killings", { size = 18, weight = "bold" }),
