@@ -1,7 +1,7 @@
 <Window title="SwiftUI parity" width="480" height="160" minWidth="320" minHeight="120">
 	<% if caseId == "text.single.default" then %>
 	<VStack padding="24" spacing="12" fillWidth="true">
-		<Label text="<%= body %>" size="24" ref="text" />
+	<Label text="<%= body %>" size="24" ref="text.node" />
 	</VStack>
 	<% elseif caseId == "stack.h.spacing.default-text-spacer" then %>
 	<HStack padding="24" spacing="12" fillWidth="true" alignment="center">
@@ -20,8 +20,8 @@
 	</VStack>
 	<% elseif caseId == "grid.two-by-two" then %>
 	<Grid padding="24" spacing="12" alignment="center" fillWidth="true">
-		<GridRow spacing="24"><Label text="<%= cells[1] %>" /><Label text="<%= cells[2] %>" /></GridRow>
-		<GridRow spacing="24"><Label text="<%= cells[3] %>" /><Label text="<%= cells[4] %>" /></GridRow>
+		<GridRow spacing="24"><Label text="<%= cells[1] %>" ref="A1" /><Label text="<%= cells[2] %>" ref="B1" /></GridRow>
+		<GridRow spacing="24"><Label text="<%= cells[3] %>" ref="A2" /><Label text="<%= cells[4] %>" ref="B2" /></GridRow>
 	</Grid>
 	<% elseif caseId == "text.long-ellipsis-italic" then %>
 	<VStack padding="24" fillWidth="true" alignment="center">
@@ -34,21 +34,21 @@
 	</VStack>
 	<% elseif caseId == "padding.vertical-edges" then %>
 	<VStack paddingTop="8" paddingBottom="40" fillWidth="true" alignment="center" background="systemGreen" cornerRadius="12">
-		<Label text="<%= body %>" />
+		<Label text="<%= body %>" ref="padded" />
 	</VStack>
 	<% elseif caseId == "container.section-groupbox" then %>
 	<VStack padding="16" spacing="12" fillWidth="true">
-		<Section header="Overview">
+		<Section header="Overview" ref="section">
 			<Label text="<%= body %>" />
 		</Section>
-		<GroupBox header="Details" background="systemGreen" cornerRadius="12">
+		<GroupBox header="Details" background="systemGreen" cornerRadius="12" ref="groupbox">
 			<Label text="Grouped native content" />
 		</GroupBox>
 	</VStack>
 	<% elseif caseId == "container.disclosure-expanded" then %>
 	<VStack padding="16" fillWidth="true">
 		<DisclosureGroup label="Advanced" expanded="true">
-			<Label text="<%= body %>" />
+			<Label text="<%= body %>" ref="content" />
 		</DisclosureGroup>
 	</VStack>
 	<% elseif caseId == "container.form-labeled-control-group" then %>

@@ -142,7 +142,7 @@ def write_html(path: Path, report: dict) -> None:
 	def image_tag(meta: dict, title: str) -> str:
 		if not meta.get("available"):
 			return f"<figure><figcaption>{html.escape(title)} unavailable</figcaption></figure>"
-		src = html.escape(Path(meta["path"]).as_uri())
+		src = html.escape(Path(meta["path"]).resolve().as_uri())
 		return f'<figure><figcaption>{html.escape(title)}</figcaption><img src="{src}" alt="{html.escape(title)}"></figure>'
 	rows = []
 	for item in report["comparisons"]:

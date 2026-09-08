@@ -94,15 +94,14 @@ symbol rendering.
 AppKit now supports native `paddingTop` and `paddingBottom` semantics; the
 padding fixture's layout dump records the expected asymmetric label frame.
 
-The independent SwiftUI reference host now has scene definitions for all eight
+The independent SwiftUI reference host now has scene definitions for all
 registered fixtures, including Grid, surface styling, long text, SF Symbols,
-and edge padding. The host rebuilds successfully; this environment's current
-LaunchServices invocation fails with `kLSNoExecutableErr`, so no reference
-readiness or screenshot is claimed from that failed run.
+and edge padding. The host rebuilds successfully. Earlier LaunchServices
+readiness failures are retained below as historical evidence; the repaired
+runner now emits readiness JSON after signing the completed bundle.
 
-The reference bundle now includes explicit version and high-resolution metadata;
-LaunchServices still returns the same error after rebuild and ad-hoc signing,
-so the runtime blocker is external to the SwiftUI source and remains recorded.
+The reference bundle includes explicit version and high-resolution metadata;
+the current runner binds that metadata into the ad-hoc signature before launch.
 
 Semantic surface colors are now normalized across AppKit and UIKit, including
 the `systemGreen`/`background` values used by the cross-platform fixtures;
@@ -137,11 +136,10 @@ matching scene.
 
 ## Next batch
 
-P1: add the independent SwiftUI reference host and a fail-closed capture/report
-script. Add readiness, environment metadata, native semantic frames, paired
-screenshots, negative controls, and explicit unavailable-toolchain artifacts.
-Do not approve baselines until the reference and candidate captures are
-independently produced.
+P1 remaining work is paired capture/report execution for each manifest case,
+including reference screenshots where the window-capture prerequisite is
+available, followed by P2 layout fixture expansion. Do not approve baselines
+until candidate and reference captures are independently produced.
 
 ## Continuation: 2026-09-08
 
@@ -264,6 +262,11 @@ record clipping/out-of-bounds failures and image metadata, and emit JSON plus a
 side-by-side HTML review artifact. The focused report test proves both a match
 and a missing-node negative control; pixel diffing remains explicitly marked
 unavailable unless Pillow is installed.
+
+The reference build now ad-hoc signs the completed app bundle after generating
+its `Info.plist`, fixing the previous LaunchServices `kLSNoExecutableErr`
+failure. Reference runs also explicitly quit the bundle on completion, so
+readiness checks do not leave a reference window running.
 
 The full headless suite is now 48 test files passing, and the parity manifest
 validates with 13 cases. An internal iOS Simulator capture was retried for the

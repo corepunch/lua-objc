@@ -67,4 +67,9 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 </plist>
 PLIST
 
+# The executable is linker-signed before the generated Info.plist exists.
+# Re-sign the completed bundle so LaunchServices binds the executable and
+# metadata as one runnable application.
+codesign --force --deep --sign - "$app" >/dev/null
+
 echo "reference host built: $app"

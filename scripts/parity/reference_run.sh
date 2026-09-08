@@ -38,9 +38,19 @@ rm -f "$ready_file"
 command_args="--case $case_id --ready-file $ready_file --generation $generation"
 if [ "$activate" -eq 1 ]; then command_args="$command_args --activate"; fi
 
+# A prior diagnostic run may have left the reference bundle alive. Ensure the
+# new run owns the readiness file and its one application window.
+osascript -e 'tell application id "org.luaobjc.parity.reference" to quit' \
+	>/dev/null 2>&1 || true
+sleep 1
 open -n "$app" --args $command_args >"$build_dir/$case_id.stdout.log" 2>"$build_dir/$case_id.stderr.log" &
 launcher_pid=$!
-trap 'kill "$launcher_pid" 2>/dev/null || true' EXIT INT TERM
+cleanup() {
+	kill "$launcher_pid" 2>/dev/null || true
+	osascript -e 'tell application id "org.luaobjc.parity.reference" to quit' \
+		>/dev/null 2>&1 || true
+}
+trap cleanup EXIT INT TERM
 
 i=0
 while [ ! -s "$ready_file" ] && [ "$i" -lt 50 ]; do
