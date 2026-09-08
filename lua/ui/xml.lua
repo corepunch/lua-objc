@@ -798,6 +798,25 @@ local TAG_SCHEMA = {
             props.tabs = tabs
         end,
     },
+    NavigationStack = {
+        constructor = "NavigationStack",
+        children = "content",
+        props = {
+            title = "str",
+            largeTitle = "bool",
+            hidesTabBar = "bool",
+            hidesNavigationBar = "bool",
+        },
+    },
+    NavigationLink = {
+        constructor = "NavigationLink",
+        children = "content",
+        props = {
+            value = "str",
+            destination = "str",
+            title = "str",
+        },
+    },
     Tab = {
         kind  = "record",
         flag  = "__tab",

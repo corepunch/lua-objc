@@ -62,6 +62,38 @@ static int bridge_UIKitNavigation_pop(lua_State *L) {
 	return 0;
 }
 
+@interface LuaNavigationLinkTarget : NSObject
+@property (nonatomic, weak) UINavigationController *navigation;
+@property (nonatomic, strong) UIViewController *destination;
+@end
+
+@implementation LuaNavigationLinkTarget
+- (void)onAction:(id)sender {
+	if (self.navigation && self.destination)
+		[self.navigation pushViewController:self.destination animated:NO];
+}
+@end
+
+static int bridge_UIKitNavigation_link(lua_State *L) {
+	UINavigationController *navigation =
+		(UINavigationController *)check_objc(L, 1);
+	UIViewController *destination = check_view_controller(L, 2);
+	const char *title = luaL_optstring(L, 3, "");
+	UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+	[button setTitle:[NSString stringWithUTF8String:title]
+		forState:UIControlStateNormal];
+	LuaNavigationLinkTarget *target = [[LuaNavigationLinkTarget alloc] init];
+	target.navigation = navigation;
+	target.destination = destination;
+	[button addTarget:target action:@selector(onAction:)
+		forControlEvents:UIControlEventTouchUpInside];
+	objc_setAssociatedObject(button, &kCallbackKey, target,
+		OBJC_ASSOCIATION_RETAIN);
+	[button sizeToFit];
+	push_objc(L, button, "uiview");
+	return 1;
+}
+
 static int bridge_UIKitTabView_addTab(lua_State *L) {
 	id obj = check_objc(L, 1);
 	UITabBarController *tbc = (UITabBarController *)obj;

@@ -110,7 +110,28 @@ end
 function UIKit.NavigationStack(props)
 	props = props or {}
 	local content = props.content or props[1]
-	return bridge._navigationStack(asViewController(content))
+	local root = asViewController(content)
+	local navigation = bridge._navigationStack(root)
+	if props.title then root.title = props.title end
+	if props.largeTitle ~= nil then
+		navigation.navigationBar.prefersLargeTitles = props.largeTitle
+	end
+	if props.hidesNavigationBar ~= nil then
+		navigation.navigationBarHidden = props.hidesNavigationBar
+	end
+	if props.hidesTabBar ~= nil then
+		root.hidesBottomBarWhenPushed = props.hidesTabBar
+	end
+	return navigation
+end
+
+function UIKit.NavigationLink(props)
+	props = props or {}
+	assert(props.navigation, "NavigationLink requires a navigation stack")
+	assert(props.destination, "NavigationLink requires a destination")
+	local destination = asViewController(props.destination)
+	return applyLayout(bridge._navigationLink(props.navigation, destination,
+		props.title or props.label or props[1] or "Open"), props)
 end
 
 function UIKit.VStack(props)

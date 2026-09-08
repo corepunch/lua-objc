@@ -211,8 +211,13 @@ The same disabled contract now reaches text fields, toggles, sliders, steppers,
 pickers, and system date/color pickers; XML attributes and wrapper coverage are
 kept in sync across the two platforms.
 
-The full headless suite is now 39 test files passing, and the parity manifest
-validates with 12 cases. An internal iOS Simulator capture was retried for the
+The iOS navigation contract now includes native `NavigationLink` push targets,
+`NavigationStack` title/large-title/nav-bar/tab-bar configuration, and XML
+schema entries for both navigation tags. The iOS host builds and focused bridge
+tests pass; AppKit remains intentionally unsupported for this iOS-only surface.
+
+The full headless suite is now 40 test files passing, and the parity manifest
+validates with 13 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable
 because the local packager cannot bind port 8081 (`Operation not permitted`)
 after stale packager activity. No iOS screenshot is claimed for that attempt,

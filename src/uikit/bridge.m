@@ -112,6 +112,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_tabViewTabCount", bridge_UIKitTabView_tabCount},
 	{"_tabViewOnChange", bridge_UIKitTabView_onChange},
 	{"_navigationStack", bridge_UIKitNavigation_stack},
+	{"_navigationLink", bridge_UIKitNavigation_link},
 	{NULL, NULL},
 };
 
