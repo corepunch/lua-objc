@@ -792,6 +792,13 @@ function AppKit.Button(props)
 	return applyLayout(button, props)
 end
 
+function AppKit.Link(props)
+	props = props or {}
+	assert(props.url, "Link requires a URL")
+	return applyLayout(bridge._link(props.title or props.label or props[1] or props.url,
+		props.url), props)
+end
+
 AppKit.ActionButton = AppKit.Button
 
 function AppKit.Toggle(props)

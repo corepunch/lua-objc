@@ -83,6 +83,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_pageControl", bridge_UIKitControls_pageControl},
 	{"_linearGradient", bridge_UIKitControls_linearGradient},
 	{"_button", bridge_UIKitControls_button},
+	{"_link", bridge_UIKitControls_link},
 	{"_toggle", bridge_UIKitControls_toggle},
 	{"_slider", bridge_UIKitControls_slider},
 	{"_stepper", bridge_UIKitControls_stepper},

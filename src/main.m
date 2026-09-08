@@ -253,6 +253,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_stepper", bridge_AppKitControls_stepper},
 	{"_picker", bridge_AppKitControls_picker},
 	{"_button", bridge_AppKitControls_button},
+	{"_link", bridge_AppKitControls_link},
 	{"_toggle", bridge_AppKitControls_toggle},
 	{"_tableColumnWidths", bridge_AppKit_table_column_widths},
 	{"_tableCellFrames", bridge_AppKit_table_cell_frames},

@@ -569,6 +569,13 @@ local TAG_SCHEMA = {
             value = { prop = "is_on", aliases = { "checked" }, type = "bool", default = false },
         },
     },
+    Link = {
+        constructor = "Link",
+        props = {
+            title = { aliases = { "label" }, default = "", type = "str" },
+            url = { default = "", type = "str" },
+        },
+    },
     Slider = {
         constructor = "Slider",
         props = {

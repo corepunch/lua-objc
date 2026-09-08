@@ -1,5 +1,16 @@
 /* Native constructors exported by the UIKit module. */
 
+@interface LuaLinkTarget : NSObject
+@property (nonatomic, strong) NSURL *url;
+@end
+
+@implementation LuaLinkTarget
+- (void)onAction:(id)sender {
+	if (self.url) [[UIApplication sharedApplication] openURL:self.url
+		options:@{} completionHandler:nil];
+}
+@end
+
 @interface LuaPickerDataSource : NSObject <UIPickerViewDataSource, UIPickerViewDelegate>
 @property (nonatomic, copy) NSArray<NSString *> *options;
 @end
@@ -301,6 +312,29 @@ static int bridge_UIKitControls_button(lua_State *L) {
 		[obj addTarget:[LuaButtonTarget shared] action:@selector(onAction:) forControlEvents:UIControlEventTouchUpInside];
 	}
 	push_objc(L, obj, "uiview");
+	return 1;
+}
+
+static int bridge_UIKitControls_link(lua_State *L) {
+	const char *title = luaL_checkstring(L, 1);
+	const char *urlString = luaL_checkstring(L, 2);
+	NSURL *url = [NSURL URLWithString:[NSString stringWithUTF8String:urlString]];
+	if (!url) return luaL_error(L, "Link URL is invalid");
+
+	UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+	UIButtonConfiguration *configuration =
+		[UIButtonConfiguration plainButtonConfiguration];
+	configuration.title = [NSString stringWithUTF8String:title];
+	button.configuration = configuration;
+	button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+	LuaLinkTarget *target = [[LuaLinkTarget alloc] init];
+	target.url = url;
+	[button addTarget:target action:@selector(onAction:)
+		forControlEvents:UIControlEventTouchUpInside];
+	objc_setAssociatedObject(button, &kCallbackKey, target,
+		OBJC_ASSOCIATION_RETAIN);
+	[button sizeToFit];
+	push_objc(L, button, "uiview");
 	return 1;
 }
 

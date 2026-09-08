@@ -426,6 +426,13 @@ function UIKit.Button(props)
 	return applyLayout(button, props)
 end
 
+function UIKit.Link(props)
+	props = props or {}
+	assert(props.url, "Link requires a URL")
+	return applyLayout(bridge._link(props.title or props.label or props[1] or props.url,
+		props.url), props)
+end
+
 function UIKit.Toggle(props)
 	local label = type(props) == "table" and (props.label or props[1] or "") or ""
 	local is_on = type(props) == "table" and props.is_on or false

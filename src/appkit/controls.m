@@ -4,6 +4,38 @@ static NSScrollView *table_scrollview(id obj) {
 		?: (NSScrollView *)obj;
 }
 
+@interface LuaLinkTarget : NSObject
+@property (nonatomic, strong) NSURL *url;
+@end
+
+@implementation LuaLinkTarget
+- (void)onAction:(id)sender {
+	if (self.url) [[NSWorkspace sharedWorkspace] openURL:self.url];
+}
+@end
+
+static int bridge_AppKitControls_link(lua_State *L) {
+	const char *title = luaL_checkstring(L, 1);
+	const char *urlString = luaL_checkstring(L, 2);
+	NSURL *url = [NSURL URLWithString:[NSString stringWithUTF8String:urlString]];
+	if (!url) return luaL_error(L, "Link URL is invalid");
+
+	NSButton *button = [[NSButton alloc] initWithFrame:NSZeroRect];
+	button.title = [NSString stringWithUTF8String:title];
+	button.bordered = NO;
+	button.bezelStyle = NSBezelStyleInline;
+	button.contentTintColor = NSColor.linkColor;
+	LuaLinkTarget *target = [[LuaLinkTarget alloc] init];
+	target.url = url;
+	button.target = target;
+	button.action = @selector(onAction:);
+	objc_setAssociatedObject(button, &kKeys[kTableSourceKey], target,
+		OBJC_ASSOCIATION_RETAIN);
+	[button sizeToFit];
+	push_objc(L, button, "nsview");
+	return 1;
+}
+
 static int bridge_action_button(lua_State *L) {
 	const char *title = luaL_checkstring(L, 1);
 	const char *subtitle = luaL_optstring(L, 2, "");

@@ -183,7 +183,11 @@ UIKit buttons now map `plain`, `bordered`, `borderedProminent`, and `link` to
 native `UIButton.Configuration` styles; the current iOS SDK host build and
 focused bridge test pass.
 
-The full headless suite is now 33 test files passing, and the parity manifest
+Native `Link` is now available on AppKit and UIKit. It validates the URL and
+uses `NSWorkspace` or `UIApplication` to open it from a native button target;
+the shared XML tag and both bridge paths are covered by a focused test.
+
+The full headless suite is now 34 test files passing, and the parity manifest
 validates with 12 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable
 because the local packager cannot bind port 8081 (`Operation not permitted`)
