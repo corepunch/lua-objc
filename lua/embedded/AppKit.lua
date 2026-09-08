@@ -325,6 +325,30 @@ function AppKit.GroupBox(props)
 	return AppKit.VStack(content)
 end
 
+function AppKit.DisclosureGroup(props)
+	props = props or {}
+	local content = AppKit.VStack({
+		spacing = props.spacing or 8,
+		alignment = props.alignment or "leading",
+	})
+	for _, child in ipairs(props) do content:add(child) end
+	local container = AppKit.VStack { spacing = 8, alignment = "leading" }
+	local expanded = props.expanded ~= false
+	local button = AppKit.Button {
+		title = props.label or props.header or "Details",
+		style = "plain",
+		action = function()
+			expanded = not expanded
+			content.hidden = not expanded
+			container:layout()
+		end,
+	}
+	container:add(button)
+	container:add(content)
+	content.hidden = not expanded
+	return applyLayout(container, props)
+end
+
 function AppKit.ScrollView(props)
 	assert(type(props) == "table", "ScrollView requires a property table")
 	local content = props.content or props[1]

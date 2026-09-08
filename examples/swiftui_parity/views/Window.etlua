@@ -45,6 +45,12 @@
 			<Label text="Grouped native content" />
 		</GroupBox>
 	</VStack>
+	<% elseif caseId == "container.disclosure-expanded" then %>
+	<VStack padding="16" fillWidth="true">
+		<DisclosureGroup label="Advanced" expanded="true">
+			<Label text="<%= body %>" />
+		</DisclosureGroup>
+	</VStack>
 	<% else %>
 	<Label text="Unknown parity case" />
 	<% end %>

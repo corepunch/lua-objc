@@ -151,6 +151,29 @@ function UIKit.GroupBox(props)
 	return UIKit.VStack(content)
 end
 
+function UIKit.DisclosureGroup(props)
+	props = props or {}
+	local content = UIKit.VStack({
+		spacing = props.spacing or 8,
+		alignment = props.alignment or "leading",
+	})
+	for _, child in ipairs(props) do content:add(child) end
+	local container = UIKit.VStack { spacing = 8, alignment = "leading" }
+	local expanded = props.expanded ~= false
+	local button = UIKit.Button {
+		title = props.label or props.header or "Details",
+		action = function()
+			expanded = not expanded
+			content.hidden = not expanded
+			container:layout()
+		end,
+	}
+	container:add(button)
+	container:add(content)
+	content.hidden = not expanded
+	return applyLayout(container, props)
+end
+
 function UIKit.ZStack(props)
 	local view = bridge._zstack()
 	if type(props) == "table" then

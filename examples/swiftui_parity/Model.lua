@@ -39,6 +39,10 @@ local CASES = {
 		title = "Containers",
 		body = "Nested native content",
 	},
+	["container.disclosure-expanded"] = {
+		title = "Disclosure",
+		body = "Expanded content",
+	},
 }
 
 function Model.caseId()

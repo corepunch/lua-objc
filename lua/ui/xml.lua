@@ -414,6 +414,15 @@ local TAG_SCHEMA = {
         children    = "array",
         props = { header = "str" },
     },
+    DisclosureGroup = {
+        constructor = "DisclosureGroup",
+        children    = "array",
+        props = {
+            label = "str",
+            header = "str",
+            expanded = "bool",
+        },
+    },
     Grid = {
         constructor = "Grid",
         children    = "array",

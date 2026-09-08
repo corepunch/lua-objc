@@ -189,6 +189,26 @@
       "assertions": ["section.header", "groupbox.background", "nested.content"],
       "status": "implemented-unverified",
       "evidence": []
+    },
+    {
+      "id": "container.disclosure-expanded",
+      "family": "C2",
+      "purpose": "Expanded native DisclosureGroup content",
+      "gate": "common",
+      "platforms": ["macos", "ios"],
+      "swiftuiScene": "DisclosureScene",
+      "etluaScene": "container.disclosure-expanded",
+      "nativeFamily": "button-stack",
+      "mapping": "SwiftUI DisclosureGroup -> native button plus retained content state",
+      "data": {"text": "Expanded content"},
+      "state": "expanded",
+      "actions": ["toggle"],
+      "size": {"width": 320, "height": 120},
+      "appearance": "light",
+      "textSize": "large",
+      "assertions": ["disclosure.header", "disclosure.content", "disclosure.toggle"],
+      "status": "implemented-unverified",
+      "evidence": []
     }
   ]
 }
