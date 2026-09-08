@@ -24,5 +24,8 @@ t.expect(runtime:find("self.layer.backgroundColor = value.CGColor", 1, true) ~= 
 	"AppKit backgrounds are rendered by the native backing layer")
 t.expect(runtime:find("self.layer.masksToBounds = value", 1, true) ~= nil,
 	"AppKit clipping is native layer clipping")
+t.expect(runtime:find("paddingTop", 1, true) ~= nil
+		and runtime:find("paddingBottom", 1, true) ~= nil,
+	"AppKit exposes asymmetric vertical padding")
 
 os.exit(t.summary() and 0 or 1)

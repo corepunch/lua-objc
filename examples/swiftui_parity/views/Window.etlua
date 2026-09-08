@@ -32,6 +32,10 @@
 		<SystemImage name="<%= name %>" size="32" color="accent" label="<%= label %>" ref="icon" />
 		<Label text="<%= label %>" />
 	</VStack>
+	<% elseif caseId == "padding.vertical-edges" then %>
+	<VStack paddingTop="8" paddingBottom="40" fillWidth="true" alignment="center" background="systemGreen" cornerRadius="12">
+		<Label text="<%= body %>" />
+	</VStack>
 	<% else %>
 	<Label text="Unknown parity case" />
 	<% end %>

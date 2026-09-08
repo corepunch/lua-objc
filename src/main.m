@@ -20,6 +20,8 @@ enum {
 	kPaddingKey,
 	kPaddingHorizontalKey,
 	kPaddingVerticalKey,
+	kPaddingTopKey,
+	kPaddingBottomKey,
 	kSpacingKey,
 	kAlignmentKey,
 	kFixedWidthKey,

@@ -31,6 +31,10 @@ local CASES = {
 		name = "star.fill",
 		label = "Favorite",
 	},
+	["padding.vertical-edges"] = {
+		title = "Padding",
+		body = "Top and bottom edges",
+	},
 }
 
 function Model.caseId()

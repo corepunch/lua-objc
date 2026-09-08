@@ -100,6 +100,8 @@ LUA_NUMBER_ACCESSORS(paddingHorizontal, setPaddingHorizontal,
 	kPaddingHorizontalKey, 0, value)
 LUA_NUMBER_ACCESSORS(paddingVertical, setPaddingVertical,
 	kPaddingVerticalKey, 0, value)
+LUA_NUMBER_ACCESSORS(paddingTop, setPaddingTop, kPaddingTopKey, 0, value)
+LUA_NUMBER_ACCESSORS(paddingBottom, setPaddingBottom, kPaddingBottomKey, 0, value)
 LUA_NUMBER_ACCESSORS(spacing, setSpacing, kSpacingKey,
 	kStackSpacing, MAX(0, value))
 LUA_NUMBER_ACCESSORS(fixedWidth, setFixedWidth, kFixedWidthKey, 0, value)

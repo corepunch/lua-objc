@@ -91,6 +91,9 @@ The imagery phase adds a native `star.fill` SF Symbol fixture with semantic
 accent tint and an accessibility label; its macOS capture confirms the real
 symbol rendering.
 
+AppKit now supports native `paddingTop` and `paddingBottom` semantics; the
+padding fixture's layout dump records the expected asymmetric label frame.
+
 ## Next batch
 
 P1: add the independent SwiftUI reference host and a fail-closed capture/report

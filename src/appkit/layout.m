@@ -122,6 +122,16 @@ static CGFloat view_padding_vertical(NSView *view) {
 	return p ? p.doubleValue : 0;
 }
 
+static CGFloat view_padding_top(NSView *view) {
+	NSNumber *value = objc_getAssociatedObject(view, &kKeys[kPaddingTopKey]);
+	return value ? value.doubleValue : view_padding_vertical(view);
+}
+
+static CGFloat view_padding_bottom(NSView *view) {
+	NSNumber *value = objc_getAssociatedObject(view, &kKeys[kPaddingBottomKey]);
+	return value ? value.doubleValue : view_padding_vertical(view);
+}
+
 static CGFloat view_spacing(NSView *view) {
 	NSNumber *value = objc_getAssociatedObject(view, &kKeys[kSpacingKey]);
 	return value ? value.doubleValue : kStackSpacing;
@@ -230,11 +240,13 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 	if (!view) return NSZeroSize;
 
 	CGFloat padX = view_padding_horizontal(view);
-	CGFloat padY = view_padding_vertical(view);
+	CGFloat padTop = view_padding_top(view);
+	CGFloat padBottom = view_padding_bottom(view);
+	CGFloat padY = padTop + padBottom;
 	CGFloat innerWidth = constraint.widthMode == LuaMeasureUndefined
 		? 0 : MAX(0, constraint.width - 2 * padX);
 	CGFloat innerHeight = constraint.heightMode == LuaMeasureUndefined
-		? 0 : MAX(0, constraint.height - 2 * padY);
+		? 0 : MAX(0, constraint.height - padY);
 	NSSize natural = NSZeroSize;
 
 	switch (layout_axis(view)) {
@@ -256,7 +268,7 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		}
 		if (visibleCount > 1) natural.height += (visibleCount - 1) * view_spacing(view);
 		natural.width += 2 * padX;
-		natural.height += 2 * padY;
+		natural.height += padY;
 	} break;
 	case LayoutAxisHStack: {
 		NSInteger visibleCount = 0;
@@ -276,7 +288,7 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		}
 		if (visibleCount > 1) natural.width += (visibleCount - 1) * view_spacing(view);
 		natural.width += 2 * padX;
-		natural.height += 2 * padY;
+		natural.height += padY;
 	} break;
 	case LayoutAxisHSplit: {
 		NSInteger visibleCount = 0;
@@ -302,7 +314,7 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		CGFloat dividers = visibleCount > 1
 			? (visibleCount - 1) * [(NSSplitView *)view dividerThickness] : 0;
 		natural.width += dividers + 2 * padX;
-		natural.height += 2 * padY;
+		natural.height += padY;
 	} break;
 	case LayoutAxisVSplit: {
 		NSInteger visibleCount = 0;
@@ -328,7 +340,7 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		CGFloat dividers = visibleCount > 1
 			? (visibleCount - 1) * [(NSSplitView *)view dividerThickness] : 0;
 		natural.width += 2 * padX;
-		natural.height += dividers + 2 * padY;
+		natural.height += dividers + padY;
 	} break;
 	default: break;
 	}
@@ -550,10 +562,11 @@ static void layout_recursive(NSView *view, CGFloat width) {
 	if (axis != LayoutAxisNone) {
 
 		CGFloat padX = view_padding_horizontal(view);
-		CGFloat padY = view_padding_vertical(view);
+		CGFloat padTop = view_padding_top(view);
+		CGFloat padBottom = view_padding_bottom(view);
 		CGFloat stackSpacing = view_spacing(view);
 		CGFloat contentW = availableWidth - 2 * padX;
-		CGFloat contentH = availableHeight - 2 * padY;
+		CGFloat contentH = availableHeight - padTop - padBottom;
 		NSString *alignment = view_alignment(view);
 
 		switch (axis) {
@@ -587,7 +600,7 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			}
 			distribute_main_axis(view.subviews, heights,
 				MAX(0, contentH - spacing), NO);
-			CGFloat top = padY + contentH;
+			CGFloat top = padTop + contentH;
 
 			for (NSUInteger i = 0; i < count; i++) {
 				NSView *sv = view.subviews[i];
@@ -660,11 +673,11 @@ static void layout_recursive(NSView *view, CGFloat width) {
 					childH,
 					view_optional_dimension(sv, &kKeys[kMinHeightKey], 0),
 					view_optional_dimension(sv, &kKeys[kMaxHeightKey], INFINITY));
-				CGFloat childY = padY;
-				if ([alignment isEqualToString:@"center"]) {
-					childY = padY + (contentH - childH) / 2;
-				} else if ([alignment isEqualToString:@"top"]) {
-					childY = padY + contentH - childH;
+					CGFloat childY = padBottom;
+					if ([alignment isEqualToString:@"center"]) {
+						childY = padBottom + (contentH - childH) / 2;
+					} else if ([alignment isEqualToString:@"top"]) {
+						childY = padBottom + contentH - childH;
 				}
 				sv.frame = NSMakeRect(x, childY, childW, childH);
 				layout_recursive(sv, childW);

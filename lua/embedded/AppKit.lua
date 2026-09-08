@@ -22,6 +22,8 @@ local layout_properties = {
 	"padding",
 	"paddingHorizontal",
 	"paddingVertical",
+	"paddingTop",
+	"paddingBottom",
 	"spacing",
 	"alignment",
 	"fixedWidth",
