@@ -168,7 +168,7 @@ function UIKit.Label(arg)
 	local v = bridge._label(text)
 	if type(props) == "table" then
 		if props.size and props.size > 0 then
-			v.font = bridge._font(props.size, props.weight)
+			v.font = bridge._font(props.size, props.weight, props.italic)
 		end
 		local lines = props.lineLimit or props.lines
 		if lines then
@@ -181,6 +181,9 @@ function UIKit.Label(arg)
 		end
 		if props.color then
 			v.textColor = bridge._systemColor(props.color)
+		end
+		if props.alignment then
+			v.textAlignment = ({ leading = 0, center = 1, trailing = 2 })[props.alignment] or 0
 		end
 		v:sizeToFit()
 	end

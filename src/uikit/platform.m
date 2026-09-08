@@ -11,6 +11,7 @@ static int bridge_show(lua_State *L) {
 static int bridge_font(lua_State *L) {
 	CGFloat size = luaL_checknumber(L, 1);
 	const char *weightStr = luaL_optstring(L, 2, NULL);
+	BOOL italic = lua_toboolean(L, 3);
 
 	UIFontWeight w = UIFontWeightRegular;
 	if (weightStr) {
@@ -21,7 +22,11 @@ static int bridge_font(lua_State *L) {
 	}
 
 	UIFont *font = [UIFont systemFontOfSize:size weight:w];
+	if (italic) {
+		UIFontDescriptor *descriptor = [font.fontDescriptor
+			fontDescriptorWithSymbolicTraits:UIFontDescriptorTraitItalic];
+		if (descriptor) font = [UIFont fontWithDescriptor:descriptor size:size];
+	}
 	push_objc(L, font, "nsobject");
 	return 1;
 }
-

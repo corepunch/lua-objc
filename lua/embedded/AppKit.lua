@@ -389,10 +389,13 @@ function AppKit.Text(arg)
 	v.selectable = false
 
 	if size and size > 0 then
-		v.font = bridge._font(size, weight)
+		v.font = bridge._font(size, weight, type(arg) == "table" and arg.italic)
 	end
 	if type(arg) == "table" and arg.color then
 		v.textColor = bridge._systemColor(arg.color)
+	end
+	if type(arg) == "table" and arg.alignment then
+		v.alignment = ({ leading = 0, center = 2, trailing = 1 })[arg.alignment] or 0
 	end
 	if type(arg) == "table" and arg.lineLimit then
 		v.lineLimit = arg.lineLimit

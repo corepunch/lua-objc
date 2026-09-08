@@ -443,10 +443,12 @@ local TAG_SCHEMA = {
     Label = {
         constructor = "Text",
         positional  = { "text", "value", default = "" },
-        props = {
-            size       = "num",
-            weight     = "str",
-            color      = "str",
+		props = {
+			size       = "num",
+			weight     = "str",
+			italic     = "bool",
+			alignment  = "str",
+			color      = "str",
             lines      = { prop = "lineLimit", type = "num" },
             truncation = "str",
         },

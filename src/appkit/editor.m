@@ -28,12 +28,17 @@ static int bridge_NSWindow_show_impl(lua_State *L) {
 static int bridge_font(lua_State *L) {
 	CGFloat size = luaL_checknumber(L, 1);
 	const char *weightStr = luaL_optstring(L, 2, NULL);
+	BOOL italic = lua_toboolean(L, 3);
 
 	NSFontWeight w = weightStr
 		? lookupFontWeight([NSString stringWithUTF8String:weightStr])
 		: NSFontWeightRegular;
 
 	NSFont *font = [NSFont systemFontOfSize:size weight:w];
+	if (italic) {
+		font = [[NSFontManager sharedFontManager]
+			convertFont:font toHaveTrait:NSItalicFontMask];
+	}
 	push_objc(L, font, "nsobject");
 	return 1;
 }
