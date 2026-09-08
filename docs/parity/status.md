@@ -112,6 +112,10 @@ UIKit now exposes native `UISlider` and `UIStepper` constructors with bounded
 values, step size, and value-change callbacks; the API regression suite covers
 their bridge registration and native control types.
 
+Secure text entry is now native on both platforms: AppKit selects
+`NSSecureTextField`, and UIKit sets `UITextField.secureTextEntry` through the
+shared XML/Lua `secure` property.
+
 ## Next batch
 
 P1: add the independent SwiftUI reference host and a fail-closed capture/report

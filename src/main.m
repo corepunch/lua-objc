@@ -243,6 +243,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_separator", bridge_AppKitControls_separator},
 	{"_spacer", bridge_AppKitControls_spacer},
 	{"_textField", bridge_AppKitControls_textField},
+	{"_secureTextField", bridge_AppKitControls_secureTextField},
 	{"_searchField", bridge_AppKitControls_searchField},
 	{"_box", bridge_AppKitControls_box},
 	{"_progressIndicator", bridge_AppKitControls_progressIndicator},

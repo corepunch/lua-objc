@@ -54,6 +54,8 @@ t.expect(bridge:find('"_slider"', 1, true) ~= nil
 t.expect(constructors:find("UISlider", 1, true) ~= nil
 		and constructors:find("UIStepper", 1, true) ~= nil,
 	"UIKit slider and stepper use native controls")
+t.expect(src:find("secureTextEntry", 1, true) ~= nil,
+	"UIKit text fields expose native secure entry")
 
 local layout = assert(io.open("src/uikit/layout.m", "r")):read("*a")
 local views = assert(io.open("src/uikit/views.m", "r")):read("*a")

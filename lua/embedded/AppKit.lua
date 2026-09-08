@@ -444,7 +444,8 @@ function AppKit.TextField(props)
 	if type(props) ~= "table" then
 		props = { value = tostring(props or "") }
 	end
-	local field = bridge._textField()
+	local field = props.secure and bridge._secureTextField()
+		or bridge._textField()
 	field.text = props.value or props[1] or ""
 	field.placeholder = props.placeholder or ""
 	field.editable = props.editable ~= false

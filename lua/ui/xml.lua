@@ -490,7 +490,8 @@ local TAG_SCHEMA = {
         props = {
             value       = { aliases = { "text" }, default = "", type = "str" },
             placeholder = { default = "", type = "str" },
-            editable    = "bool",
+					editable    = "bool",
+					secure     = "bool",
             bezeled     = "bool",
             bordered    = "bool",
             size        = "num",

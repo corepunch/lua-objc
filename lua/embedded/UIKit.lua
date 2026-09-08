@@ -151,6 +151,7 @@ function UIKit.TextField(arg)
 		text = arg
 	end
 	local v = bridge._textField(text)
+	if type(props) == "table" and props.secure then v.secureTextEntry = true end
 	return applyLayout(v, props)
 end
 
