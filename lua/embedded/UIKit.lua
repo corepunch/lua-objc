@@ -396,6 +396,11 @@ function UIKit.Stepper(props)
 		props.value or props.min or 0, props.step or 1, props.onChange), props)
 end
 
+function UIKit.Picker(props)
+	props = props or {}
+	return applyLayout(bridge._picker(props.options or {}, props.value or 0, props.action), props)
+end
+
 function UIKit.Separator(props)
 	return applyLayout(bridge._separator(), props)
 end

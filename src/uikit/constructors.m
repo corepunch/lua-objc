@@ -1,5 +1,28 @@
 /* Native constructors exported by the UIKit module. */
 
+@interface LuaPickerDataSource : NSObject <UIPickerViewDataSource, UIPickerViewDelegate>
+@property (nonatomic, copy) NSArray<NSString *> *options;
+@end
+
+@implementation LuaPickerDataSource
+- (NSInteger)numberOfComponentsInPickerView:(UIPickerView *)pickerView { return 1; }
+- (NSInteger)pickerView:(UIPickerView *)pickerView numberOfRowsInComponent:(NSInteger)component {
+	return self.options.count;
+}
+- (NSString *)pickerView:(UIPickerView *)pickerView titleForRow:(NSInteger)row
+	forComponent:(NSInteger)component {
+	return self.options[(NSUInteger)row];
+}
+- (void)pickerView:(UIPickerView *)pickerView didSelectRow:(NSInteger)row
+	inComponent:(NSInteger)component {
+	id refObj = objc_getAssociatedObject(pickerView, &kCallbackKey);
+	if (!refObj || !gL) return;
+	lua_rawgeti(gL, LUA_REGISTRYINDEX, [refObj intValue]);
+	push_objc(gL, pickerView, "uiview");
+	lua_objc_pcall(gL, 1, 0, "picker");
+}
+@end
+
 static int bridge_UIKitControls_vstack(lua_State *L) {
 
 	UIView *obj = [[UIView alloc] initWithFrame:CGRectZero];
@@ -306,6 +329,40 @@ static int bridge_UIKitControls_stepper(lua_State *L) {
 			action:@selector(onAction:)
 			forControlEvents:UIControlEventValueChanged];
 	}
+	push_objc(L, obj, "uiview");
+	return 1;
+}
+
+static int bridge_UIKitControls_picker(lua_State *L) {
+	luaL_checktype(L, 1, LUA_TTABLE);
+	NSInteger count = (NSInteger)luaL_len(L, 1);
+	if (count < 1) return luaL_error(L, "Picker options must not be empty");
+	NSMutableArray<NSString *> *options = [NSMutableArray arrayWithCapacity:(NSUInteger)count];
+	for (NSInteger i = 1; i <= count; i++) {
+		lua_rawgeti(L, 1, i);
+		const char *value = luaL_checkstring(L, -1);
+		[options addObject:[NSString stringWithUTF8String:value]];
+		lua_pop(L, 1);
+	}
+	NSInteger selected = luaL_optinteger(L, 2, 0);
+	selected = MIN(MAX(selected, 0), count - 1);
+	int callback_ref = LUA_NOREF;
+	if (!lua_isnoneornil(L, 3)) {
+		luaL_checktype(L, 3, LUA_TFUNCTION);
+		lua_pushvalue(L, 3);
+		callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	}
+
+	UIPickerView *obj = [[UIPickerView alloc] initWithFrame:CGRectZero];
+	LuaPickerDataSource *source = [[LuaPickerDataSource alloc] init];
+	source.options = options;
+	obj.dataSource = source;
+	obj.delegate = source;
+	[obj selectRow:(NSUInteger)selected inComponent:0 animated:NO];
+	objc_setAssociatedObject(obj, &kTableSourceKey, source, OBJC_ASSOCIATION_RETAIN);
+	if (callback_ref != LUA_NOREF)
+		objc_setAssociatedObject(obj, &kCallbackKey, @(callback_ref), OBJC_ASSOCIATION_RETAIN);
+	[obj sizeToFit];
 	push_objc(L, obj, "uiview");
 	return 1;
 }
