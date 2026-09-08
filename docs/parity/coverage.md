@@ -16,7 +16,7 @@ not additional user-facing controls. Data-only services are excluded.
 | Layout | `VStack`, `HStack`, `HSplit`, `VSplit`, `ScrollView`, `Spacer`, `Group`, `ForEach` | `VStack`, `HStack`, `ZStack`, `HSplit`, `Spacer` | no `ZStack` export; yes other listed primitives | no `HSplit` export; `ZStack` yes | stacks, `ZStack`, grouping, `ForEach` | implemented-unverified |
 | Scrolling | `ScrollView` | `ScrollView` | yes | yes | `ScrollView` | implemented-unverified |
 | Text | `Text`, `Title` | `Label`, `Text`, `Title` | yes | `Label`, `Text`, `Title` | `Text` | implemented-unverified |
-| Text input | `TextField`, `SearchField`, `TextEditor` | `TextField`, `TextEditor` | yes | `TextField`, `TextEditor` | `TextField`, `SecureField`, `TextEditor`, searchable | implemented-unverified |
+| Text input | `TextField`, `SearchField`, `TextEditor` | `TextField`, `SearchField`, `TextEditor` | yes | `TextField`, `SearchField`, `TextEditor` | `TextField`, `SecureField`, `TextEditor`, searchable | implemented-unverified |
 | Images | `Image`, `SystemImage`, `ImageViewer` | `Image`, `SystemImage` | yes | yes | `Image`, `Label` | implemented-unverified |
 | Buttons | `Button`, `MenuItem` | `Button` | yes | yes | `Button`, `Menu` | implemented-unverified |
 | Selection | `Toggle`, `Slider`, `Stepper`, `Picker` | all four plus `Option` | yes | `Toggle`, `Slider`, `Stepper`, `Picker` | controls and `Picker` | implemented-unverified |
