@@ -159,6 +159,7 @@ LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
 @property(nonatomic, copy) NSString *text;
 @property(nonatomic, copy) NSString *placeholder;
 @property(nonatomic) NSInteger lineLimit;
+@property(nonatomic) NSInteger textAlignment;
 @end
 
 @implementation LuaTextField
@@ -168,6 +169,8 @@ LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
 - (void)setPlaceholder:(NSString *)value { self.placeholderString = value; }
 - (NSInteger)lineLimit { return self.maximumNumberOfLines; }
 - (void)setLineLimit:(NSInteger)value { self.maximumNumberOfLines = value; }
+- (NSInteger)textAlignment { return self.alignment; }
+- (void)setTextAlignment:(NSInteger)value { self.alignment = (NSTextAlignment)value; }
 @end
 
 @interface LuaWindow : NSWindow

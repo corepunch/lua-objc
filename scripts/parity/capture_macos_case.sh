@@ -8,7 +8,7 @@ if [ -z "$case_id" ]; then
 fi
 
 case "$case_id" in
-	text.single.default|button.standard.action-counter|surface.background-rounded|grid.two-by-two) width=320 ;;
+	text.single.default|button.standard.action-counter|surface.background-rounded|grid.two-by-two|text.long-ellipsis-italic) width=320 ;;
 	stack.h.spacing.default-text-spacer) width=480 ;;
 	*)
 		echo "unknown parity case: $case_id" >&2

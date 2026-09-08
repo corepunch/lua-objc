@@ -12,10 +12,11 @@ local uikit = read("lua/embedded/UIKit.lua")
 local xml = read("lua/ui/xml.lua")
 local appkitFont = read("src/appkit/editor.m")
 local uikitFont = read("src/uikit/platform.m")
+local runtime = read("src/appkit/runtime.m")
 
 t.expect(appkit:find("arg.italic", 1, true) ~= nil,
 	"AppKit text accepts italic styling")
-t.expect(appkit:find("v.alignment", 1, true) ~= nil,
+t.expect(appkit:find("result.textAlignment", 1, true) ~= nil,
 	"AppKit text accepts semantic alignment")
 t.expect(uikit:find("props.italic", 1, true) ~= nil,
 	"UIKit text accepts italic styling")
@@ -25,6 +26,8 @@ t.expect(xml:find('italic     = "bool"', 1, true) ~= nil,
 	"XML exposes italic text")
 t.expect(appkitFont:find("NSItalicFontMask", 1, true) ~= nil,
 	"AppKit italic text uses the native font manager")
+t.expect(runtime:find("setTextAlignment", 1, true) ~= nil,
+	"AppKit isolates text alignment from stack alignment")
 t.expect(uikitFont:find("UIFontDescriptorTraitItalic", 1, true) ~= nil,
 	"UIKit italic text uses the native font descriptor")
 

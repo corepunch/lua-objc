@@ -421,9 +421,6 @@ function AppKit.Text(arg)
 	if type(arg) == "table" and arg.color then
 		v.textColor = bridge._systemColor(arg.color)
 	end
-	if type(arg) == "table" and arg.alignment then
-		v.alignment = ({ leading = 0, center = 2, trailing = 1 })[arg.alignment] or 0
-	end
 	if type(arg) == "table" and arg.lineLimit then
 		v.lineLimit = arg.lineLimit
 		if arg.lineLimit > 1 then v.lineBreakMode = 0 end
@@ -434,7 +431,11 @@ function AppKit.Text(arg)
 	end
 
 	v:sizeToFit()
-	return applyLayout(v, type(arg) == "table" and arg or nil)
+	local result = applyLayout(v, type(arg) == "table" and arg or nil)
+	if type(arg) == "table" and arg.alignment then
+		result.textAlignment = ({ leading = 0, center = 2, trailing = 1 })[arg.alignment] or 0
+	end
+	return result
 end
 
 function AppKit.TextField(props)

@@ -83,6 +83,10 @@ widths across GridRow HStacks; the two-by-two macOS capture shows aligned
 columns. iOS capture remains pending while the simulator packager port is
 occupied by stale background processes.
 
+The long-text fixture now exercises native italic fonts, centered alignment,
+single-line trailing ellipsis, and intrinsic label measurement; the macOS
+capture visibly shows all four behaviors.
+
 ## Next batch
 
 P1: add the independent SwiftUI reference host and a fail-closed capture/report

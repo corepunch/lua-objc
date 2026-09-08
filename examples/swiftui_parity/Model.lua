@@ -22,6 +22,10 @@ local CASES = {
 		title = "Grid",
 		cells = { "A1", "B1", "A2", "B2" },
 	},
+	["text.long-ellipsis-italic"] = {
+		title = "Text styles",
+		body = "A deliberately long semantic text value that must truncate at the trailing edge",
+	},
 }
 
 function Model.caseId()

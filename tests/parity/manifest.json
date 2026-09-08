@@ -109,6 +109,26 @@
       "assertions": ["grid.row.count", "grid.cell.content"],
       "status": "implemented-unverified",
       "evidence": []
+    },
+    {
+      "id": "text.long-ellipsis-italic",
+      "family": "B1",
+      "purpose": "Long text with trailing truncation, italic font, and alignment",
+      "gate": "core",
+      "platforms": ["macos", "ios"],
+      "swiftuiScene": "LongTextScene",
+      "etluaScene": "text.long-ellipsis-italic",
+      "nativeFamily": "label",
+      "mapping": "SwiftUI Text lineLimit/truncation/font/alignment -> native label",
+      "data": {"text": "long semantic text"},
+      "state": "default",
+      "actions": [],
+      "size": {"width": 320, "height": 120},
+      "appearance": "light",
+      "textSize": "large",
+      "assertions": ["text.ellipsis", "text.italic", "text.alignment"],
+      "status": "implemented-unverified",
+      "evidence": []
     }
   ]
 }
