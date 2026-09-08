@@ -201,7 +201,10 @@ well; the layout dump reports `NSDatePicker` and `NSColorWell` without clipping.
 UIKit `TabView` now forwards declarative `selected` and `onChange` properties
 to its existing native `UITabBarController` selection bridge.
 
-The full headless suite is now 36 test files passing, and the parity manifest
+AppKit `TabView` now forwards the same declarative selection and change
+properties to its existing native `NSTabView` bindings.
+
+The full headless suite is now 37 test files passing, and the parity manifest
 validates with 12 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable
 because the local packager cannot bind port 8081 (`Operation not permitted`)

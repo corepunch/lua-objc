@@ -277,6 +277,12 @@ function AppKit.TabView(props)
 			tv:addTab(tab.title or "", content)
 		end
 	end
+	if props and props.selected ~= nil then
+		tv:selectTab(props.selected)
+	end
+	if props and type(props.onChange) == "function" then
+		tv:onChange(props.onChange)
+	end
 	return applyLayout(tv, props)
 end
 
