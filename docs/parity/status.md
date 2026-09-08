@@ -116,6 +116,10 @@ ScrollView axis inference now matches SwiftUI: omitted axes are vertical,
 `horizontal=true` selects horizontal-only unless `vertical=true` is explicit,
 and both-axis scrolling remains available.
 
+The baseline table-width failure is resolved: explicit NSTableView column widths
+are no longer redistributed by AppKit, while declared flexible columns remain
+managed by the Lua table layout source.
+
 Secure text entry is now native on both platforms: AppKit selects
 `NSSecureTextField`, and UIKit sets `UITextField.secureTextEntry` through the
 shared XML/Lua `secure` property.

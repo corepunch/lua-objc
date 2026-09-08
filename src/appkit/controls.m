@@ -141,7 +141,6 @@ static int bridge_tableview(lua_State *L) {
 	CGFloat colW = ncols > 0 ? width / ncols : width;
 	NSMutableArray *colSpecs = [NSMutableArray array];
 
-	BOOL hasFlexColumns = NO;
 
 	for (int i = 1; i <= ncols; i++) {
 		lua_rawgeti(L, 1, i);
@@ -187,15 +186,16 @@ static int bridge_tableview(lua_State *L) {
 		if (!hasExplicitWidth) {
 			objc_setAssociatedObject(col, &kKeys[kColumnFlexKey],
 				@1.0, OBJC_ASSOCIATION_RETAIN);
-			hasFlexColumns = YES;
 		}
 		[tv addTableColumn:col];
 
 		[colSpecs addObject:@{@"id": colId, @"title": col.title}];
 	}
-	tv.columnAutoresizingStyle = hasFlexColumns
-		? NSTableViewNoColumnAutoresizing
-		: NSTableViewUniformColumnAutoresizingStyle;
+	/* Explicit widths are semantic constraints, not proportions. Our table
+	 * source allocates only columns declared flexible; AppKit's uniform
+	 * autoresizing would otherwise shrink fixed source-list columns whenever
+	 * the viewport has spare width. */
+	tv.columnAutoresizingStyle = NSTableViewNoColumnAutoresizing;
 
 	LuaTableViewSource *src = [[LuaTableViewSource alloc] initWithTableView:tv
 																   columns:colSpecs];
