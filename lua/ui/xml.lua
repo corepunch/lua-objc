@@ -621,6 +621,14 @@ local TAG_SCHEMA = {
             end
         end,
     },
+    DatePicker = {
+        constructor = "DatePicker",
+        props = { timestamp = { aliases = { "time" }, type = "num" } },
+    },
+    ColorPicker = {
+        constructor = "ColorPicker",
+        props = { color = "str" },
+    },
 
     -- Imagery
     SystemImage = {

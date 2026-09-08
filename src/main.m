@@ -252,6 +252,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_slider", bridge_AppKitControls_slider},
 	{"_stepper", bridge_AppKitControls_stepper},
 	{"_picker", bridge_AppKitControls_picker},
+	{"_datePicker", bridge_AppKitControls_datePicker},
+	{"_colorPicker", bridge_AppKitControls_colorPicker},
 	{"_button", bridge_AppKitControls_button},
 	{"_link", bridge_AppKitControls_link},
 	{"_toggle", bridge_AppKitControls_toggle},

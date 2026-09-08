@@ -20,6 +20,7 @@ not additional user-facing controls. Data-only services are excluded.
 | Images | `Image`, `SystemImage`, `ImageViewer` | `Image`, `SystemImage` | yes | yes | `Image`, `Label` | implemented-unverified |
 | Buttons | `Button`, `MenuItem`, `Link` | `Button`, `Link` | yes | yes | `Button`, `Link`, `Menu` | implemented-unverified |
 | Selection | `Toggle`, `Slider`, `Stepper`, `Picker` | all four plus `Option` | yes | `Toggle`, `Slider`, `Stepper`, `Picker` | controls and `Picker` | implemented-unverified |
+| System pickers | `DatePicker`, `ColorPicker` | both tags | yes | yes | `DatePicker`, `ColorPicker` | implemented-unverified |
 | Feedback | `Separator`, `Divider`, `ProgressView`, `PageControl` | `Divider`, `ProgressView` | no `PageControl`; yes other listed primitives | `ProgressView`, `PageControl` | `Divider`, `ProgressView`, `PageControl` | implemented-unverified |
 | Collections | `List`, `OutlineView` | `List`, `Column` | yes | `List` (table-shaped) | `List`, `Table`, `OutlineGroup` | implemented-unverified |
 | Navigation | `TabView`, `NavigationStack` | `TabView`, `Tab` | `TabView` | both | `TabView`, `NavigationStack`, `NavigationSplitView` | implemented-unverified |

@@ -201,6 +201,28 @@ static int bridge_AppKitControls_picker(lua_State *L) {
 	return 1;
 }
 
+static int bridge_AppKitControls_datePicker(lua_State *L) {
+	NSDatePicker *picker = [[NSDatePicker alloc] initWithFrame:NSZeroRect];
+	picker.datePickerStyle = NSDatePickerStyleTextFieldAndStepper;
+	picker.datePickerElements = NSDatePickerElementFlagYearMonthDay;
+	if (!lua_isnoneornil(L, 1))
+		picker.dateValue = [NSDate dateWithTimeIntervalSince1970:luaL_checknumber(L, 1)];
+	configure_control_callback(picker, L, 2);
+	[picker sizeToFit];
+	push_objc(L, picker, "nsview");
+	return 1;
+}
+
+static int bridge_AppKitControls_colorPicker(lua_State *L) {
+	NSColorWell *well = [[NSColorWell alloc] initWithFrame:NSZeroRect];
+	if (!lua_isnoneornil(L, 1))
+		well.color = semantic_color([NSString stringWithUTF8String:luaL_checkstring(L, 1)]);
+	configure_control_callback(well, L, 2);
+	[well sizeToFit];
+	push_objc(L, well, "nsview");
+	return 1;
+}
+
 static int bridge_AppKitControls_button(lua_State *L) {
 	const char *title = luaL_checkstring(L, 1);
 	int callback_ref;

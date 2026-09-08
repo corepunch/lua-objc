@@ -850,6 +850,16 @@ function AppKit.Picker(props)
 		props.action), props)
 end
 
+function AppKit.DatePicker(props)
+	props = props or {}
+	return applyLayout(bridge._datePicker(props.timestamp or props.time, props.onChange), props)
+end
+
+function AppKit.ColorPicker(props)
+	props = props or {}
+	return applyLayout(bridge._colorPicker(props.color, props.onChange), props)
+end
+
 function AppKit.Separator(props)
 	local v = bridge._box()
 	v.boxType = 2

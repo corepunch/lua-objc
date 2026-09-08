@@ -187,7 +187,13 @@ Native `Link` is now available on AppKit and UIKit. It validates the URL and
 uses `NSWorkspace` or `UIApplication` to open it from a native button target;
 the shared XML tag and both bridge paths are covered by a focused test.
 
-The full headless suite is now 34 test files passing, and the parity manifest
+Native `DatePicker` and `ColorPicker` controls are now available on both
+platforms, using `NSDatePicker`/`NSColorWell` and `UIDatePicker`/`UIColorWell`.
+They accept timestamp/semantic-color inputs and optional native value-change
+callbacks; the current macOS and iOS hosts compile without deprecated API
+warnings.
+
+The full headless suite is now 35 test files passing, and the parity manifest
 validates with 12 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable
 because the local packager cannot bind port 8081 (`Operation not permitted`)

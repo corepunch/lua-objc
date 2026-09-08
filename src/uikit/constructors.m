@@ -1,5 +1,41 @@
 /* Native constructors exported by the UIKit module. */
 
+static int bridge_UIKitControls_datePicker(lua_State *L) {
+	UIDatePicker *picker = [[UIDatePicker alloc] initWithFrame:CGRectZero];
+	picker.datePickerMode = UIDatePickerModeDate;
+	picker.preferredDatePickerStyle = UIDatePickerStyleCompact;
+	if (!lua_isnoneornil(L, 1))
+		picker.date = [NSDate dateWithTimeIntervalSince1970:luaL_checknumber(L, 1)];
+	if (!lua_isnoneornil(L, 2)) {
+		luaL_checktype(L, 2, LUA_TFUNCTION);
+		lua_pushvalue(L, 2);
+		int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+		objc_setAssociatedObject(picker, &kCallbackKey, @(ref), OBJC_ASSOCIATION_RETAIN);
+		[picker addTarget:[LuaButtonTarget shared] action:@selector(onAction:)
+			forControlEvents:UIControlEventValueChanged];
+	}
+	[picker sizeToFit];
+	push_objc(L, picker, "uiview");
+	return 1;
+}
+
+static int bridge_UIKitControls_colorPicker(lua_State *L) {
+	UIColorWell *well = [[UIColorWell alloc] initWithFrame:CGRectZero];
+	if (!lua_isnoneornil(L, 1))
+		well.selectedColor = lua_objc_uikit_system_color(luaL_checkstring(L, 1));
+	if (!lua_isnoneornil(L, 2)) {
+		luaL_checktype(L, 2, LUA_TFUNCTION);
+		lua_pushvalue(L, 2);
+		int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+		objc_setAssociatedObject(well, &kCallbackKey, @(ref), OBJC_ASSOCIATION_RETAIN);
+		[well addTarget:[LuaButtonTarget shared] action:@selector(onAction:)
+			forControlEvents:UIControlEventValueChanged];
+	}
+	[well sizeToFit];
+	push_objc(L, well, "uiview");
+	return 1;
+}
+
 @interface LuaLinkTarget : NSObject
 @property (nonatomic, strong) NSURL *url;
 @end

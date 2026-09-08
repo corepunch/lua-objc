@@ -463,6 +463,16 @@ function UIKit.Picker(props)
 	return applyLayout(bridge._picker(props.options or {}, props.value or 0, props.action), props)
 end
 
+function UIKit.DatePicker(props)
+	props = props or {}
+	return applyLayout(bridge._datePicker(props.timestamp or props.time, props.onChange), props)
+end
+
+function UIKit.ColorPicker(props)
+	props = props or {}
+	return applyLayout(bridge._colorPicker(props.color, props.onChange), props)
+end
+
 function UIKit.Separator(props)
 	return applyLayout(bridge._separator(), props)
 end
