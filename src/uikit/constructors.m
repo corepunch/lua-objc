@@ -140,6 +140,17 @@ static int bridge_UIKitControls_textField(lua_State *L) {
 	return 1;
 }
 
+static int bridge_UIKitControls_searchField(lua_State *L) {
+	const char *text = luaL_optstring(L, 1, "");
+	const char *placeholder = luaL_optstring(L, 2, "Search");
+	UISearchTextField *obj = [[UISearchTextField alloc] initWithFrame:CGRectZero];
+	obj.text = [NSString stringWithUTF8String:text];
+	obj.placeholder = [NSString stringWithUTF8String:placeholder];
+	[obj sizeToFit];
+	push_objc(L, obj, "uiview");
+	return 1;
+}
+
 static int bridge_UIKitControls_textEditor(lua_State *L) {
 	const char *text = luaL_optstring(L, 1, "");
 	UITextView *obj = [[UITextView alloc] initWithFrame:CGRectZero];

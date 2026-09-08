@@ -245,6 +245,16 @@ function UIKit.TextEditor(props)
 	return applyLayout(v, props)
 end
 
+function UIKit.SearchField(props)
+	props = props or {}
+	local v = bridge._searchField(props.value or props[1] or "",
+		props.placeholder or "Search")
+	if props.accessibilityLabel then
+		v.accessibilityLabel = props.accessibilityLabel
+	end
+	return applyLayout(v, props)
+end
+
 function UIKit.Label(arg)
 	local text
 	local props

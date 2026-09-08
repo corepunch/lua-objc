@@ -517,6 +517,14 @@ local TAG_SCHEMA = {
             drawsBackground = "bool",
         },
     },
+    SearchField = {
+        constructor = "SearchField",
+        props = {
+            value = { aliases = { "text" }, default = "", type = "str" },
+            placeholder = { default = "Search", type = "str" },
+            accessibilityLabel = "str",
+        },
+    },
 
     -- Controls & Input
     TextField = {
