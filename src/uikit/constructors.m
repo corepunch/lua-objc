@@ -274,10 +274,26 @@ static int bridge_UIKitControls_button(lua_State *L) {
 	}
 
 	UIButton *obj = [UIButton buttonWithType:UIButtonTypeSystem];
-	[obj setTitle:[NSString stringWithUTF8String:title] forState:UIControlStateNormal];
-	if (strcmp(style, "plain") == 0) {
+	NSString *buttonTitle = [NSString stringWithUTF8String:title];
+	if (strcmp(style, "bordered") == 0) {
+		UIButtonConfiguration *configuration =
+			[UIButtonConfiguration borderedButtonConfiguration];
+		configuration.title = buttonTitle;
+		obj.configuration = configuration;
+	} else if (strcmp(style, "borderedProminent") == 0) {
+		UIButtonConfiguration *configuration =
+			[UIButtonConfiguration filledButtonConfiguration];
+		configuration.title = buttonTitle;
+		obj.configuration = configuration;
+	} else if (strcmp(style, "plain") == 0 || strcmp(style, "link") == 0) {
+		UIButtonConfiguration *configuration =
+			[UIButtonConfiguration plainButtonConfiguration];
+		configuration.title = buttonTitle;
+		obj.configuration = configuration;
 		[obj setTitleColor:UIColor.labelColor forState:UIControlStateNormal];
 		obj.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+	} else {
+		[obj setTitle:buttonTitle forState:UIControlStateNormal];
 	}
 	[obj sizeToFit];
 	if (has_callback) {

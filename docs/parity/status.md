@@ -179,7 +179,11 @@ UIKit `ProgressView` now selects native `UIProgressView` for determinate
 `value` input and retains the native activity indicator for indeterminate use;
 XML registration, bridge coverage, and the iOS host build all pass.
 
-The full headless suite is now 32 test files passing, and the parity manifest
+UIKit buttons now map `plain`, `bordered`, `borderedProminent`, and `link` to
+native `UIButton.Configuration` styles; the current iOS SDK host build and
+focused bridge test pass.
+
+The full headless suite is now 33 test files passing, and the parity manifest
 validates with 12 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable
 because the local packager cannot bind port 8081 (`Operation not permitted`)
