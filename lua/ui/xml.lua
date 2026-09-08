@@ -414,6 +414,21 @@ local TAG_SCHEMA = {
         children    = "array",
         props = { header = "str" },
     },
+    Form = {
+        constructor = "Form",
+        children    = "array",
+        props = { spacing = "num", alignment = "str" },
+    },
+    LabeledContent = {
+        constructor = "LabeledContent",
+        children    = "array",
+        props = { label = "str", labelWeight = "str", spacing = "num" },
+    },
+    ControlGroup = {
+        constructor = "ControlGroup",
+        children    = "array",
+        props = { spacing = "num", alignment = "str" },
+    },
     DisclosureGroup = {
         constructor = "DisclosureGroup",
         children    = "array",

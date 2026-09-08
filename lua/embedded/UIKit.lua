@@ -151,6 +151,33 @@ function UIKit.GroupBox(props)
 	return UIKit.VStack(content)
 end
 
+function UIKit.Form(props)
+	props = props or {}
+	local content = {
+		spacing = props.spacing or 12,
+		alignment = props.alignment or "leading",
+	}
+	for _, child in ipairs(props) do content[#content + 1] = child end
+	return applyLayout(UIKit.VStack(content), props)
+end
+
+function UIKit.LabeledContent(props)
+	props = props or {}
+	local row = { spacing = props.spacing or 12, alignment = "center" }
+	if props.label and props.label ~= "" then
+		row[#row + 1] = UIKit.Text({ props.label, weight = props.labelWeight })
+	end
+	for _, child in ipairs(props) do row[#row + 1] = child end
+	return applyLayout(UIKit.HStack(row), props)
+end
+
+function UIKit.ControlGroup(props)
+	props = props or {}
+	local row = { spacing = props.spacing or 8, alignment = props.alignment or "center" }
+	for _, child in ipairs(props) do row[#row + 1] = child end
+	return applyLayout(UIKit.HStack(row), props)
+end
+
 function UIKit.DisclosureGroup(props)
 	props = props or {}
 	local content = UIKit.VStack({

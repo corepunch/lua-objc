@@ -325,6 +325,33 @@ function AppKit.GroupBox(props)
 	return AppKit.VStack(content)
 end
 
+function AppKit.Form(props)
+	props = props or {}
+	local content = {
+		spacing = props.spacing or 12,
+		alignment = props.alignment or "leading",
+	}
+	for _, child in ipairs(props) do content[#content + 1] = child end
+	return applyLayout(AppKit.VStack(content), props)
+end
+
+function AppKit.LabeledContent(props)
+	props = props or {}
+	local row = { spacing = props.spacing or 12, alignment = "center" }
+	if props.label and props.label ~= "" then
+		row[#row + 1] = AppKit.Text({ props.label, weight = props.labelWeight })
+	end
+	for _, child in ipairs(props) do row[#row + 1] = child end
+	return applyLayout(AppKit.HStack(row), props)
+end
+
+function AppKit.ControlGroup(props)
+	props = props or {}
+	local row = { spacing = props.spacing or 8, alignment = props.alignment or "center" }
+	for _, child in ipairs(props) do row[#row + 1] = child end
+	return applyLayout(AppKit.HStack(row), props)
+end
+
 function AppKit.DisclosureGroup(props)
 	props = props or {}
 	local content = AppKit.VStack({
