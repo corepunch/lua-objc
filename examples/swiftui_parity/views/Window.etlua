@@ -14,6 +14,10 @@
 		<Button title="<%= buttonTitle %>" action="activate" ref="button" />
 		<Label text="Count: 0" ref="counter" />
 	</VStack>
+	<% elseif caseId == "surface.background-rounded" then %>
+	<VStack padding="24" spacing="12" fillWidth="true" background="systemGreen" cornerRadius="16" clipsToBounds="true">
+		<Label text="<%= body %>" size="20" ref="surface" />
+	</VStack>
 	<% else %>
 	<Label text="Unknown parity case" />
 	<% end %>

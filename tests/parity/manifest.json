@@ -69,6 +69,26 @@
       "assertions": ["button.frame", "counter.equals.1", "single.activation"],
       "status": "implemented-unverified",
       "evidence": []
+    },
+    {
+      "id": "surface.background-rounded",
+      "family": "C2",
+      "purpose": "Semantic background and native rounded clipping",
+      "gate": "core",
+      "platforms": ["macos", "ios"],
+      "swiftuiScene": "SurfaceScene",
+      "etluaScene": "surface.background-rounded",
+      "nativeFamily": "container",
+      "mapping": "SwiftUI semantic background + clipShape -> native view surface properties",
+      "data": {"text": "Native rounded surface"},
+      "state": "default",
+      "actions": [],
+      "size": {"width": 320, "height": 160},
+      "appearance": "light",
+      "textSize": "large",
+      "assertions": ["surface.background", "surface.cornerRadius", "surface.content"],
+      "status": "implemented-unverified",
+      "evidence": []
     }
   ]
 }

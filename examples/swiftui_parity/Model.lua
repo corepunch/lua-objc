@@ -14,6 +14,10 @@ local CASES = {
 		title = "Button",
 		buttonTitle = "Activate",
 	},
+	["surface.background-rounded"] = {
+		title = "Surface",
+		body = "Native rounded surface",
+	},
 }
 
 function Model.caseId()

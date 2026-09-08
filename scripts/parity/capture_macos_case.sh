@@ -8,7 +8,7 @@ if [ -z "$case_id" ]; then
 fi
 
 case "$case_id" in
-	text.single.default|button.standard.action-counter) width=320 ;;
+	text.single.default|button.standard.action-counter|surface.background-rounded) width=320 ;;
 	stack.h.spacing.default-text-spacer) width=480 ;;
 	*)
 		echo "unknown parity case: $case_id" >&2
@@ -17,10 +17,12 @@ case "$case_id" in
 esac
 
 root="build/parity/macos/$case_id"
+height=120
+if [ "$case_id" = "surface.background-rounded" ]; then height=160; fi
 mkdir -p "$root"
 
 LUA_OBJC_PARITY_CASE="$case_id" ./lua-objc \
-	--width="$width" --height=120 \
+	--width="$width" --height="$height" \
 	--internal-screenshot="$root/candidate.png" \
 	examples/swiftui_parity/init.lua
 
@@ -30,7 +32,7 @@ if [ ! -s "$root/candidate.png" ]; then
 fi
 
 LUA_OBJC_PARITY_CASE="$case_id" ./lua-objc \
-	--width="$width" --height=120 \
+	--width="$width" --height="$height" \
 	--dump-layout="$root/candidate.xml" \
 	examples/swiftui_parity/init.lua
 

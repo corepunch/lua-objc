@@ -74,6 +74,10 @@ The iOS artifacts are candidate evidence only: an independent SwiftUI iOS
 reference host and semantic frame export are still required before these cases
 can be marked passing for parity.
 
+Shared native surface styling now maps XML/Lua `background`, `cornerRadius`,
+and `clipsToBounds` to AppKit and UIKit views; the rounded-surface fixture is
+registered and awaits fresh cross-platform capture evidence.
+
 ## Next batch
 
 P1: add the independent SwiftUI reference host and a fail-closed capture/report
