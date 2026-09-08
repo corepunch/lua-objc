@@ -112,9 +112,10 @@ UIKit now exposes native `UISlider` and `UIStepper` constructors with bounded
 values, step size, and value-change callbacks; the API regression suite covers
 their bridge registration and native control types.
 
-ScrollView axis inference now matches SwiftUI: omitted axes are vertical,
-`horizontal=true` selects horizontal-only unless `vertical=true` is explicit,
-and both-axis scrolling remains available.
+AppKit ScrollView axis inference now matches SwiftUI: omitted axes are
+vertical, `horizontal=true` selects horizontal-only unless `vertical=true` is
+explicit, and both-axis scrolling remains available. UIKit retains its
+existing vertical-default contract for compatibility.
 
 The baseline table-width failure is resolved: explicit NSTableView column widths
 are no longer redistributed by AppKit, while declared flexible columns remain
