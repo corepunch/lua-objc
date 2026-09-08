@@ -554,6 +554,7 @@ local TAG_SCHEMA = {
             subtitle    = "str",
             systemImage = "str",
             style       = "str",
+            role        = "str",
             detail      = "str",
             truncation  = "str",
             disabled    = "bool",

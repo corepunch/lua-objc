@@ -341,6 +341,8 @@ static int bridge_UIKitControls_button(lua_State *L) {
 	const char *title = luaL_checkstring(L, 1);
 	BOOL has_callback = !lua_isnoneornil(L, 2);
 	const char *style = luaL_optstring(L, 3, "default");
+	const char *systemImage = luaL_optstring(L, 4, "");
+	const char *role = luaL_optstring(L, 5, "");
 	int callback_ref = LUA_NOREF;
 	if (has_callback) {
 		luaL_checktype(L, 2, LUA_TFUNCTION);
@@ -350,23 +352,26 @@ static int bridge_UIKitControls_button(lua_State *L) {
 
 	UIButton *obj = [UIButton buttonWithType:UIButtonTypeSystem];
 	NSString *buttonTitle = [NSString stringWithUTF8String:title];
+	UIButtonConfiguration *configuration = nil;
 	if (strcmp(style, "bordered") == 0) {
-		UIButtonConfiguration *configuration =
-			[UIButtonConfiguration borderedButtonConfiguration];
-		configuration.title = buttonTitle;
-		obj.configuration = configuration;
+		configuration = [UIButtonConfiguration borderedButtonConfiguration];
 	} else if (strcmp(style, "borderedProminent") == 0) {
-		UIButtonConfiguration *configuration =
-			[UIButtonConfiguration filledButtonConfiguration];
-		configuration.title = buttonTitle;
-		obj.configuration = configuration;
+		configuration = [UIButtonConfiguration borderedProminentButtonConfiguration];
 	} else if (strcmp(style, "plain") == 0 || strcmp(style, "link") == 0) {
-		UIButtonConfiguration *configuration =
-			[UIButtonConfiguration plainButtonConfiguration];
-		configuration.title = buttonTitle;
-		obj.configuration = configuration;
+		configuration = [UIButtonConfiguration plainButtonConfiguration];
 		[obj setTitleColor:UIColor.labelColor forState:UIControlStateNormal];
 		obj.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+	} else if (systemImage[0] || role[0]) {
+		configuration = [UIButtonConfiguration plainButtonConfiguration];
+	}
+	if (configuration) {
+		configuration.title = buttonTitle;
+		if (systemImage[0])
+			configuration.image = [UIImage systemImageNamed:
+				[NSString stringWithUTF8String:systemImage]];
+		if (strcmp(role, "destructive") == 0)
+			configuration.baseForegroundColor = UIColor.systemRedColor;
+		obj.configuration = configuration;
 	} else {
 		[obj setTitle:buttonTitle forState:UIControlStateNormal];
 	}

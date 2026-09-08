@@ -240,7 +240,12 @@ UIKit `Picker` now maps `segmented` to `UISegmentedControl`, `menu` and
 `automatic` to native `UIButton`/`UIMenu`, and `wheel` to `UIPickerView`, with
 style validation and XML forwarding.
 
-The full headless suite is now 45 test files passing, and the parity manifest
+UIKit `Button` now forwards `systemImage` and `role` into native
+`UIButton.Configuration`, including SF Symbols and the destructive semantic
+tint. The current SDK uses `borderedProminentButtonConfiguration` for the
+prominent style; the host build and focused bridge tests pass.
+
+The full headless suite is now 46 test files passing, and the parity manifest
 validates with 13 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable
 because the local packager cannot bind port 8081 (`Operation not permitted`)
