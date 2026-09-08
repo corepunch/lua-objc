@@ -596,6 +596,16 @@ local TAG_SCHEMA = {
             role = "str",
         },
     },
+    ContentUnavailable = {
+        constructor = "ContentUnavailable",
+        props = {
+            title = "str",
+            systemImage = "str",
+            description = "str",
+            imageSize = "num",
+            lines = "num",
+        },
+    },
     Slider = {
         constructor = "Slider",
         props = {

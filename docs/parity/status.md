@@ -228,7 +228,11 @@ UIKit `Menu` now uses native `UIButton` + `UIMenu`/`UIAction` elements,
 including SF Symbol titles, destructive roles, and Lua action callbacks. XML
 `Menu`/`MenuItem` records are registered and the current iOS host compiles.
 
-The full headless suite is now 42 test files passing, and the parity manifest
+`ContentUnavailable` is now a cross-platform native composition of system image,
+title, and semantic description nodes, matching the iOS architecture contract
+without custom drawing. XML registration and focused composition tests pass.
+
+The full headless suite is now 43 test files passing, and the parity manifest
 validates with 13 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable
 because the local packager cannot bind port 8081 (`Operation not permitted`)

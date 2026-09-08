@@ -485,6 +485,29 @@ function UIKit.Menu(props)
 		props.title or "Menu"), props)
 end
 
+function UIKit.ContentUnavailable(props)
+	props = props or {}
+	local content = { spacing = props.spacing or 8, alignment = "center" }
+	if props.systemImage then
+		content[#content + 1] = UIKit.SystemImage {
+			props.systemImage,
+			size = props.imageSize or 28,
+			color = "secondary",
+			accessibilityLabel = props.title or "",
+		}
+	end
+	if props.title then content[#content + 1] = UIKit.Title(props.title) end
+	if props.description then
+		content[#content + 1] = UIKit.Label {
+			props.description,
+			alignment = "center",
+			color = "secondary",
+			lines = props.lines or 0,
+		}
+	end
+	return applyLayout(UIKit.VStack(content), props)
+end
+
 function UIKit.Toggle(props)
 	local label = type(props) == "table" and (props.label or props[1] or "") or ""
 	local is_on = type(props) == "table" and props.is_on or false

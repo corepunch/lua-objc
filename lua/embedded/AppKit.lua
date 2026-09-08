@@ -809,6 +809,29 @@ function AppKit.Link(props)
 		props.url), props)
 end
 
+function AppKit.ContentUnavailable(props)
+	props = props or {}
+	local content = { spacing = props.spacing or 8, alignment = "center" }
+	if props.systemImage then
+		content[#content + 1] = AppKit.SystemImage {
+			props.systemImage,
+			size = props.imageSize or 28,
+			color = "secondary",
+			accessibilityLabel = props.title or "",
+		}
+	end
+	if props.title then content[#content + 1] = AppKit.Title(props.title) end
+	if props.description then
+		content[#content + 1] = AppKit.Text {
+			props.description,
+			alignment = "center",
+			color = "secondary",
+			lineLimit = props.lines or 0,
+		}
+	end
+	return applyLayout(AppKit.VStack(content), props)
+end
+
 AppKit.ActionButton = AppKit.Button
 
 function AppKit.Toggle(props)

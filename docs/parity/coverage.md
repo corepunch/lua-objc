@@ -21,7 +21,7 @@ not additional user-facing controls. Data-only services are excluded.
 | Buttons | `Button`, `MenuItem`, `Link`, `Menu` | `Button`, `Link`, `Menu` | yes | yes | `Button`, `Link`, `Menu` | implemented-unverified |
 | Selection | `Toggle`, `Slider`, `Stepper`, `Picker` | all four plus `Option` | yes | `Toggle`, `Slider`, `Stepper`, `Picker` | controls and `Picker` | implemented-unverified |
 | System pickers | `DatePicker`, `ColorPicker` | both tags | yes | yes | `DatePicker`, `ColorPicker` | implemented-unverified |
-| Feedback | `Separator`, `Divider`, `ProgressView`, `PageControl` | `Divider`, `ProgressView` | no `PageControl`; yes other listed primitives | `ProgressView`, `PageControl` | `Divider`, `ProgressView`, `PageControl` | implemented-unverified |
+| Feedback | `Separator`, `Divider`, `ProgressView`, `PageControl`, `ContentUnavailable` | `Divider`, `ProgressView`, `ContentUnavailable` | no `PageControl`; yes other listed primitives | `ProgressView`, `PageControl`, `ContentUnavailable` | `Divider`, `ProgressView`, `PageControl` | implemented-unverified |
 | Collections | `List`, `OutlineView` | `List`, `Column` | yes | `List` (table-shaped) | `List`, `Table`, `OutlineGroup` | implemented-unverified |
 | Navigation | `TabView`, `NavigationStack`, `NavigationLink` | `TabView`, `Tab` | `TabView` | `TabView`, `NavigationStack`, `NavigationLink` | `TabView`, `NavigationStack`, `NavigationSplitView` | implemented-unverified |
 | Presentation | `present`, `dismiss`, focus helpers | none | yes | partial hosting | sheets, popovers, alerts, panels | implemented-unverified |
