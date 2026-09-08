@@ -142,3 +142,27 @@ script. Add readiness, environment metadata, native semantic frames, paired
 screenshots, negative controls, and explicit unavailable-toolchain artifacts.
 Do not approve baselines until the reference and candidate captures are
 independently produced.
+
+## Continuation: 2026-09-08
+
+The following ordered parity phases are now implemented, tested, and pushed on
+`feature/adventure-arena-port`:
+
+- `4e9f5c77`: cross-platform `Form`, `LabeledContent`, and `ControlGroup`
+  composition, with focused headless coverage.
+- `e9903011`: combined Form fixture, SwiftUI reference scene, manifest entry,
+  and macOS candidate screenshot/layout capture. The capture visibly contains
+  the labeled row and native Cancel/Save buttons with no clipping flags.
+- `6fb365ab`: native UIKit `Picker` backed by `UIPickerView`, including
+  zero-based selection and selection callbacks; the iOS host compiles and the
+  bridge/API tests pass.
+- `81db0591`: native UIKit `TextEditor` backed by `UITextView`, including
+  text/value, editable/selectable state, wrapping, font, and background
+  behavior; the iOS host compiles and the bridge/API tests pass.
+
+The full headless suite is now 29 test files passing, and the parity manifest
+validates with 11 cases. An internal iOS Simulator capture was retried for the
+new Form fixture using the in-app screenshot channel; it remains unavailable
+because the local packager cannot bind port 8081 (`Operation not permitted`)
+after stale packager activity. No iOS screenshot is claimed for that attempt,
+and the failed run was cleaned up without leaving a screenshot window open.

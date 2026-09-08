@@ -16,10 +16,10 @@ not additional user-facing controls. Data-only services are excluded.
 | Layout | `VStack`, `HStack`, `HSplit`, `VSplit`, `ScrollView`, `Spacer`, `Group`, `ForEach` | `VStack`, `HStack`, `ZStack`, `HSplit`, `Spacer` | no `ZStack` export; yes other listed primitives | no `HSplit` export; `ZStack` yes | stacks, `ZStack`, grouping, `ForEach` | implemented-unverified |
 | Scrolling | `ScrollView` | `ScrollView` | yes | yes | `ScrollView` | implemented-unverified |
 | Text | `Text`, `Title` | `Label`, `Text`, `Title` | yes | `Label`, `Text`, `Title` | `Text` | implemented-unverified |
-| Text input | `TextField`, `SearchField`, `TextEditor` | `TextField`, `TextEditor` | yes | `TextField` only | `TextField`, `SecureField`, `TextEditor`, searchable | implemented-unverified |
+| Text input | `TextField`, `SearchField`, `TextEditor` | `TextField`, `TextEditor` | yes | `TextField`, `TextEditor` | `TextField`, `SecureField`, `TextEditor`, searchable | implemented-unverified |
 | Images | `Image`, `SystemImage`, `ImageViewer` | `Image`, `SystemImage` | yes | yes | `Image`, `Label` | implemented-unverified |
 | Buttons | `Button`, `MenuItem` | `Button` | yes | yes | `Button`, `Menu` | implemented-unverified |
-| Selection | `Toggle`, `Slider`, `Stepper`, `Picker` | all four plus `Option` | yes | `Toggle` only | controls and `Picker` | implemented-unverified |
+| Selection | `Toggle`, `Slider`, `Stepper`, `Picker` | all four plus `Option` | yes | `Toggle`, `Slider`, `Stepper`, `Picker` | controls and `Picker` | implemented-unverified |
 | Feedback | `Separator`, `Divider`, `ProgressView`, `PageControl` | `Divider` | no `PageControl`; yes other listed primitives | no `ProgressView` export; yes other listed primitives | `Divider`, `ProgressView`, `PageControl` | implemented-unverified |
 | Collections | `List`, `OutlineView` | `List`, `Column` | yes | `List` (table-shaped) | `List`, `Table`, `OutlineGroup` | implemented-unverified |
 | Navigation | `TabView`, `NavigationStack` | `TabView`, `Tab` | `TabView` | both | `TabView`, `NavigationStack`, `NavigationSplitView` | implemented-unverified |
@@ -33,7 +33,8 @@ The schema currently defines these tags: `VStack`, `HStack`, `ZStack`, `HSplit`,
 `Spacer`, `PageControl`, `Divider`, `ScrollView`, `Label`, `Title`, `TextEditor`,
 `TextField`, `Button`, `Toggle`, `Slider`, `Stepper`, `Option`, `Picker`,
 `SystemImage`, `Image`, `LinearGradient`, `Column`, `List`, `ToolbarItem`,
-`Toolbar`, `Window`, `Chart`, `TabView`, and `Tab`. `Text` and `Switch` are
+`Toolbar`, `Window`, `Chart`, `TabView`, `Tab`, `Section`, `GroupBox`, `Form`,
+`LabeledContent`, `ControlGroup`, and `DisclosureGroup`. `Text` and `Switch` are
 aliases, not separate controls. Record tags such as `Column` and `Option` are
 configuration nodes and are not counted as visual controls.
 
