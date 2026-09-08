@@ -11,6 +11,8 @@ local appkit = read("lua/embedded/AppKit.lua")
 local uikit = read("lua/embedded/UIKit.lua")
 local xml = read("lua/ui/xml.lua")
 local runtime = read("src/appkit/runtime.m")
+local uikitColors = read("src/uikit/views.m")
+local appkitColors = read("src/appkit/action_button.m")
 
 t.expect(appkit:find('"background"', 1, true) ~= nil,
 	"AppKit exposes semantic background colors")
@@ -27,5 +29,10 @@ t.expect(runtime:find("self.layer.masksToBounds = value", 1, true) ~= nil,
 t.expect(runtime:find("paddingTop", 1, true) ~= nil
 		and runtime:find("paddingBottom", 1, true) ~= nil,
 	"AppKit exposes asymmetric vertical padding")
+t.expect(uikitColors:find('"systemGreen"', 1, true) ~= nil
+		and uikitColors:find("systemBackgroundColor", 1, true) ~= nil,
+	"UIKit resolves the semantic colors used by parity surfaces")
+t.expect(appkitColors:find('"systemBlue"', 1, true) ~= nil,
+	"AppKit resolves the shared semantic color vocabulary")
 
 os.exit(t.summary() and 0 or 1)

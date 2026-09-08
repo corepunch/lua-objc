@@ -104,6 +104,10 @@ The reference bundle now includes explicit version and high-resolution metadata;
 LaunchServices still returns the same error after rebuild and ad-hoc signing,
 so the runtime blocker is external to the SwiftUI source and remains recorded.
 
+Semantic surface colors are now normalized across AppKit and UIKit, including
+the `systemGreen`/`background` values used by the cross-platform fixtures;
+both native hosts rebuild successfully.
+
 ## Next batch
 
 P1: add the independent SwiftUI reference host and a fail-closed capture/report

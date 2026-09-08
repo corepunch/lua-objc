@@ -57,6 +57,10 @@ static int bridge_image(lua_State *L) {
 
 static UIColor *lua_objc_uikit_system_color(const char *name) {
 	if (!name) return UIColor.labelColor;
+	if (strcmp(name, "systemRed") == 0) return UIColor.systemRedColor;
+	if (strcmp(name, "systemGreen") == 0) return UIColor.systemGreenColor;
+	if (strcmp(name, "systemBlue") == 0) return UIColor.systemBlueColor;
+	if (strcmp(name, "systemYellow") == 0) return UIColor.systemYellowColor;
 	if (strcmp(name, "secondary") == 0) return UIColor.secondaryLabelColor;
 	if (strcmp(name, "tertiary") == 0) return UIColor.tertiaryLabelColor;
 	if (strcmp(name, "accent") == 0) return UIColor.tintColor;
@@ -66,6 +70,8 @@ static UIColor *lua_objc_uikit_system_color(const char *name) {
 	if (strcmp(name, "primary") == 0) return UIColor.labelColor;
 	if (strcmp(name, "white") == 0) return UIColor.whiteColor;
 	if (strcmp(name, "yellow") == 0) return UIColor.systemYellowColor;
+	if (strcmp(name, "separator") == 0) return UIColor.separatorColor;
+	if (strcmp(name, "background") == 0) return UIColor.systemBackgroundColor;
 	return UIColor.labelColor;
 }
 
