@@ -44,6 +44,11 @@ The command must fail closed; no missing PNG is accepted as evidence. Preview
 mode cannot render the MVC entry point because it correctly requires a view
 return value, so it is not substituted for a window screenshot.
 
+The desktop Simulator integration is available and has produced a live
+Adventure Arena screenshot plus accessibility tree on an iPhone 17 / iOS 26.5
+simulator. That is valid integration evidence, but it is not yet one of the
+three independent SwiftUI reference captures required by the seeded manifest.
+
 ## Next batch
 
 P1: add the independent SwiftUI reference host and a fail-closed capture/report
