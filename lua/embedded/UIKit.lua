@@ -137,8 +137,10 @@ function UIKit.ScrollView(props)
 	assert(type(props) == "table", "ScrollView requires a property table")
 	local content = props.content or props[1]
 	assert(type(content) == "userdata", "ScrollView requires one content view")
+	local vertical = props.vertical
+	if vertical == nil then vertical = not props.horizontal end
 	return applyLayout(bridge._scrollView(content, props.contentWidth or 0,
-		props.contentHeight or 0, props.horizontal == true, props.vertical ~= false), props)
+		props.contentHeight or 0, props.horizontal == true, vertical), props)
 end
 
 function UIKit.TextField(arg)

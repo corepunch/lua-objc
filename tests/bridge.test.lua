@@ -89,6 +89,8 @@ t.assertEqual(scrollView.hasHorizontalScroller, true,
 	"ScrollView enables native horizontal scrolling")
 t.assertEqual(scrollView.hasVerticalScroller, false,
 	"horizontal ScrollView does not add a vertical scroller")
+t.assertEqual(scrollView.hasHorizontalScroller, true,
+	"horizontal ScrollView keeps its horizontal scroller after layout properties")
 t.assertEqual(scrollContent.frame.size.width, 700,
 	"ScrollView preserves the explicit document width")
 

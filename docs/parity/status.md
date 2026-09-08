@@ -112,6 +112,10 @@ UIKit now exposes native `UISlider` and `UIStepper` constructors with bounded
 values, step size, and value-change callbacks; the API regression suite covers
 their bridge registration and native control types.
 
+ScrollView axis inference now matches SwiftUI: omitted axes are vertical,
+`horizontal=true` selects horizontal-only unless `vertical=true` is explicit,
+and both-axis scrolling remains available.
+
 Secure text entry is now native on both platforms: AppKit selects
 `NSSecureTextField`, and UIKit sets `UITextField.secureTextEntry` through the
 shared XML/Lua `secure` property.

@@ -24,12 +24,14 @@ static int bridge_AppKitControls_scrollView(lua_State *L) {
 	CGFloat contentHeight = (CGFloat)luaL_optnumber(L, 3, 0);
 
 	NSScrollView *obj = [[NSScrollView alloc] initWithFrame:NSZeroRect];
-	obj.hasHorizontalScroller = YES;
-	obj.hasVerticalScroller = NO;
 	obj.autohidesScrollers = YES;
 	obj.borderType = NSNoBorder;
 	obj.drawsBackground = NO;
 	obj.documentView = content;
+	/* Assigning documentView can restore AppKit's default vertical scroller;
+	 * apply the requested axis policy after the document is installed. */
+	obj.hasHorizontalScroller = YES;
+	obj.hasVerticalScroller = NO;
 	if (contentWidth > 0 || contentHeight > 0) {
 		NSRect frame = content.frame;
 		frame.size.width = contentWidth > 0 ? contentWidth : frame.size.width;
