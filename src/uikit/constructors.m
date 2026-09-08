@@ -251,3 +251,61 @@ static int bridge_UIKitControls_toggle(lua_State *L) {
 	push_objc(L, obj, "uiview");
 	return 1;
 }
+
+static int bridge_UIKitControls_slider(lua_State *L) {
+	CGFloat minimum = luaL_optnumber(L, 1, 0);
+	CGFloat maximum = luaL_optnumber(L, 2, 1);
+	CGFloat value = luaL_optnumber(L, 3, minimum);
+	BOOL has_callback = !lua_isnoneornil(L, 4);
+	int callback_ref = LUA_NOREF;
+	if (has_callback) {
+		luaL_checktype(L, 4, LUA_TFUNCTION);
+		lua_pushvalue(L, 4);
+		callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	}
+
+	UISlider *obj = [[UISlider alloc] initWithFrame:CGRectZero];
+	obj.minimumValue = minimum;
+	obj.maximumValue = MAX(minimum, maximum);
+	obj.value = MIN(MAX(value, minimum), obj.maximumValue);
+	[obj sizeToFit];
+	if (has_callback) {
+		objc_setAssociatedObject(obj, &kCallbackKey, @(callback_ref),
+			OBJC_ASSOCIATION_RETAIN);
+		[obj addTarget:[LuaButtonTarget shared]
+			action:@selector(onAction:)
+			forControlEvents:UIControlEventValueChanged];
+	}
+	push_objc(L, obj, "uiview");
+	return 1;
+}
+
+static int bridge_UIKitControls_stepper(lua_State *L) {
+	CGFloat minimum = luaL_optnumber(L, 1, 0);
+	CGFloat maximum = luaL_optnumber(L, 2, 100);
+	CGFloat value = luaL_optnumber(L, 3, minimum);
+	CGFloat step = luaL_optnumber(L, 4, 1);
+	BOOL has_callback = !lua_isnoneornil(L, 5);
+	int callback_ref = LUA_NOREF;
+	if (has_callback) {
+		luaL_checktype(L, 5, LUA_TFUNCTION);
+		lua_pushvalue(L, 5);
+		callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	}
+
+	UIStepper *obj = [[UIStepper alloc] initWithFrame:CGRectZero];
+	obj.minimumValue = minimum;
+	obj.maximumValue = MAX(minimum, maximum);
+	obj.stepValue = MAX(0, step);
+	obj.value = MIN(MAX(value, minimum), obj.maximumValue);
+	[obj sizeToFit];
+	if (has_callback) {
+		objc_setAssociatedObject(obj, &kCallbackKey, @(callback_ref),
+			OBJC_ASSOCIATION_RETAIN);
+		[obj addTarget:[LuaButtonTarget shared]
+			action:@selector(onAction:)
+			forControlEvents:UIControlEventValueChanged];
+	}
+	push_objc(L, obj, "uiview");
+	return 1;
+}

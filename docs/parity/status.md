@@ -108,6 +108,10 @@ Semantic surface colors are now normalized across AppKit and UIKit, including
 the `systemGreen`/`background` values used by the cross-platform fixtures;
 both native hosts rebuild successfully.
 
+UIKit now exposes native `UISlider` and `UIStepper` constructors with bounded
+values, step size, and value-change callbacks; the API regression suite covers
+their bridge registration and native control types.
+
 ## Next batch
 
 P1: add the independent SwiftUI reference host and a fail-closed capture/report

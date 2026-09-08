@@ -42,6 +42,18 @@ t.expect(src:find('"background"', 1, true) ~= nil
 	"UIKit applies semantic background colors to every declarative view")
 t.expect(src:find("button.titleLabel.lineBreakMode", 1, true) ~= nil,
 	"UIKit buttons support explicit tail truncation")
+t.expect(src:find("function UIKit.Slider", 1, true) ~= nil
+		and src:find("function UIKit.Stepper", 1, true) ~= nil,
+	"UIKit exposes native slider and stepper controls")
+
+local bridge = assert(io.open("src/uikit/bridge.m", "r")):read("*a")
+local constructors = assert(io.open("src/uikit/constructors.m", "r")):read("*a")
+t.expect(bridge:find('"_slider"', 1, true) ~= nil
+		and bridge:find('"_stepper"', 1, true) ~= nil,
+	"UIKit registers slider and stepper bridge constructors")
+t.expect(constructors:find("UISlider", 1, true) ~= nil
+		and constructors:find("UIStepper", 1, true) ~= nil,
+	"UIKit slider and stepper use native controls")
 
 local layout = assert(io.open("src/uikit/layout.m", "r")):read("*a")
 local views = assert(io.open("src/uikit/views.m", "r")):read("*a")

@@ -306,6 +306,18 @@ function UIKit.Toggle(props)
 	return applyLayout(toggle, props)
 end
 
+function UIKit.Slider(props)
+	props = props or {}
+	return applyLayout(bridge._slider(props.min or 0, props.max or 1,
+		props.value or props.min or 0, props.onChange), props)
+end
+
+function UIKit.Stepper(props)
+	props = props or {}
+	return applyLayout(bridge._stepper(props.min or 0, props.max or 100,
+		props.value or props.min or 0, props.step or 1, props.onChange), props)
+end
+
 function UIKit.Separator(props)
 	return applyLayout(bridge._separator(), props)
 end
