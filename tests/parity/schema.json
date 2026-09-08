@@ -1,0 +1,23 @@
+{
+  "type": "object",
+  "required": ["version", "statusValues", "cases"],
+  "properties": {
+    "version": {"type": "integer", "minimum": 1},
+    "statusValues": {"type": "array", "minItems": 7, "uniqueItems": true},
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "family", "gate", "platforms", "swiftuiScene", "etluaScene", "mapping", "status", "evidence"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9.-]*$"},
+          "family": {"type": "string", "pattern": "^[A-E][0-9]$"},
+          "gate": {"enum": ["core", "common"]},
+          "platforms": {"type": "array", "minItems": 1},
+          "status": {"type": "string"},
+          "evidence": {"type": "array"}
+        }
+      }
+    }
+  }
+}
