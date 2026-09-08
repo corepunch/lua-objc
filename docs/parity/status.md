@@ -1,6 +1,6 @@
 # SwiftUI parity status
 
-Last updated: 2026-09-08 (P0)
+Last updated: 2026-09-08 (P1 in progress)
 
 ## Completed
 
@@ -8,6 +8,10 @@ Last updated: 2026-09-08 (P0)
 - Apple source ledger and initial mapping decisions recorded.
 - Three P1 smoke fixtures entered in `tests/parity/manifest.json`.
 - Baseline `make test` executed on the current checkout.
+- Deterministic `examples/swiftui_parity/` gallery added with the three P1
+  smoke cases selected by `LUA_OBJC_PARITY_CASE`.
+- Headless example loading passes and AppKit layout dumps were captured for all
+  three smoke cases under `build/parity/p1-macos/`.
 
 ## Baseline and environment
 
@@ -27,11 +31,19 @@ Last updated: 2026-09-08 (P0)
 ## Current fixture state
 
 All seeded fixtures are `implemented-unverified`; no fixture is passing yet.
+The candidate-side AppKit layout evidence exists, but the independent SwiftUI
+reference and paired comparison are still absent.
+
+Live AppKit screenshot capture was attempted for all three cases and failed with
+`could not create image from window` plus HIServices connection-invalid errors.
+The command must fail closed; no missing PNG is accepted as evidence. Preview
+mode cannot render the MVC entry point because it correctly requires a view
+return value, so it is not substituted for a window screenshot.
 
 ## Next batch
 
-P1: build the smallest macOS/iOS reference and etlua harness, beginning with
-the three manifest cases. Add readiness, environment metadata, native semantic
-frames, screenshots, negative controls, and explicit unavailable-toolchain
-artifacts. Do not approve baselines until the reference and candidate captures
-are independently produced.
+P1: add the independent SwiftUI reference host and a fail-closed capture/report
+script. Add readiness, environment metadata, native semantic frames, paired
+screenshots, negative controls, and explicit unavailable-toolchain artifacts.
+Do not approve baselines until the reference and candidate captures are
+independently produced.

@@ -1,0 +1,19 @@
+<Window title="SwiftUI parity" width="480" height="160" minWidth="320" minHeight="120">
+	<% if caseId == "text.single.default" then %>
+	<VStack padding="24" spacing="12" fillWidth="true">
+		<Label text="<%= body %>" size="24" ref="text" />
+	</VStack>
+	<% elseif caseId == "stack.h.spacing.default-text-spacer" then %>
+	<HStack padding="24" spacing="12" fillWidth="true" alignment="center">
+		<Label text="<%= left %>" ref="left" />
+		<Spacer />
+		<Label text="<%= right %>" ref="right" />
+	</HStack>
+	<% elseif caseId == "button.standard.action-counter" then %>
+	<VStack padding="24" spacing="12" alignment="center">
+		<Button title="<%= buttonTitle %>" action="activate" ref="button" />
+	</VStack>
+	<% else %>
+	<Label text="Unknown parity case" />
+	<% end %>
+</Window>

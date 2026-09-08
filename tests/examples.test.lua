@@ -16,6 +16,7 @@ local examples = {
 	"examples/snippets/init.lua",
 	"examples/adventure-arena/init.lua",
 	"examples/phone-tabs/init.lua",
+	"examples/swiftui_parity/init.lua",
 }
 
 for _, path in ipairs(examples) do
