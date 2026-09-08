@@ -14,6 +14,9 @@ Last updated: 2026-09-08 (P1 in progress)
   families, statuses, platforms, and evidence arrays.
 - `make parity-case CASE=<id>` now runs a fail-closed macOS screenshot/layout
   capture for each seeded case; missing screenshots are errors, not passes.
+- Independent SwiftUI reference host scaffold added under
+  `tests/parity/reference/`; it builds as a real macOS `.app`, emits readiness
+  JSON with semantic probe frames, and supports the three seeded cases.
 - Headless example loading passes and AppKit layout dumps were captured for all
   three smoke cases under `build/parity/p1-macos/`.
 
@@ -48,6 +51,13 @@ The desktop Simulator integration is available and has produced a live
 Adventure Arena screenshot plus accessibility tree on an iPhone 17 / iOS 26.5
 simulator. That is valid integration evidence, but it is not yet one of the
 three independent SwiftUI reference captures required by the seeded manifest.
+
+The SwiftUI host was built with Xcode 26.6 and emitted readiness for all three
+macOS cases. Observed probes include `text.node` at 61.5×16 points,
+HStack `left`/`right` frames at x=20/428, and the activated button case with
+`actionCount: 1`. Its screenshot option now fails closed unless a window ID is
+provided; the desktop capture integration remains the supported UI capture
+path.
 
 ## Next batch
 
