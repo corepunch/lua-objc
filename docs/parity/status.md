@@ -204,7 +204,10 @@ to its existing native `UITabBarController` selection bridge.
 AppKit `TabView` now forwards the same declarative selection and change
 properties to its existing native `NSTabView` bindings.
 
-The full headless suite is now 37 test files passing, and the parity manifest
+Button disabled state is now represented by native `enabled` propagation on
+both platforms and exposed through the shared XML schema.
+
+The full headless suite is now 38 test files passing, and the parity manifest
 validates with 12 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable
 because the local packager cannot bind port 8081 (`Operation not permitted`)

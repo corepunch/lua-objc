@@ -555,6 +555,7 @@ local TAG_SCHEMA = {
             style       = "str",
             detail      = "str",
             truncation  = "str",
+            disabled    = "bool",
         },
         transform = function(props, attrs)
             if attrs.action and renderData and renderData.actions then

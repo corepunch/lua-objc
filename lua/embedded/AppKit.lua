@@ -795,6 +795,9 @@ function AppKit.Button(props)
 	else
 		button = bridge._button(title)
 	end
+	if type(props) == "table" and props.disabled ~= nil then
+		button.enabled = not props.disabled
+	end
 	return applyLayout(button, props)
 end
 

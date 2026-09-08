@@ -430,6 +430,9 @@ function UIKit.Button(props)
 		button.titleLabel.lineBreakMode = modes[props.truncation] or 4
 		button.titleLabel.numberOfLines = 1
 	end
+	if type(props) == "table" and props.disabled ~= nil then
+		button.enabled = not props.disabled
+	end
 	return applyLayout(button, props)
 end
 
