@@ -21,4 +21,11 @@ t.expect(appkit:find("props.data or props.items", 1, true) ~= nil
 		and uikit:find("props.data or props.items", 1, true) ~= nil,
 	"OutlineGroup accepts tree data")
 
+local ns = require("AppKit")
+local view = ns.OutlineGroup {
+		expanded = true,
+		data = {{ title = "Root", children = {{ title = "Leaf" }} }},
+}
+t.expect(type(view) == "userdata", "OutlineGroup constructs a native AppKit view tree")
+
 os.exit(t.summary() and 0 or 1)

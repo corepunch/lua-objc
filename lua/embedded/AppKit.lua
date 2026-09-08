@@ -382,10 +382,14 @@ local function outlineItems(ns, items, expanded)
 		local title = item.title or item.name or tostring(item)
 		local children = item.children
 		if type(children) == "table" and #children > 0 then
+			local nested = ns.VStack { spacing = 4, alignment = "leading" }
+			for _, child in ipairs(outlineItems(ns, children, expanded)) do
+				nested:add(child)
+			end
 			views[#views + 1] = ns.DisclosureGroup {
 				label = title,
 				expanded = expanded,
-				 ns.Group(outlineItems(ns, children, expanded)),
+				nested,
 			}
 		else
 			views[#views + 1] = ns.Text(title)
