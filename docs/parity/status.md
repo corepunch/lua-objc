@@ -236,7 +236,11 @@ UIKit `MaterialView` now wraps content in a native `UIVisualEffectView` and
 maps `regular`, `thick`, and `thin` to the current SDK’s adaptive system
 materials; its child is laid out by the native container.
 
-The full headless suite is now 44 test files passing, and the parity manifest
+UIKit `Picker` now maps `segmented` to `UISegmentedControl`, `menu` and
+`automatic` to native `UIButton`/`UIMenu`, and `wheel` to `UIPickerView`, with
+style validation and XML forwarding.
+
+The full headless suite is now 45 test files passing, and the parity manifest
 validates with 13 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable
 because the local packager cannot bind port 8081 (`Operation not permitted`)

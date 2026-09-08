@@ -19,7 +19,7 @@ not additional user-facing controls. Data-only services are excluded.
 | Text input | `TextField`, `SearchField`, `TextEditor` | `TextField`, `SearchField`, `TextEditor` | yes | `TextField`, `SearchField`, `TextEditor` | `TextField`, `SecureField`, `TextEditor`, searchable | implemented-unverified |
 | Images | `Image`, `SystemImage`, `ImageViewer` | `Image`, `SystemImage` | yes | yes | `Image`, `Label` | implemented-unverified |
 | Buttons | `Button`, `MenuItem`, `Link`, `Menu` | `Button`, `Link`, `Menu` | yes | yes | `Button`, `Link`, `Menu` | implemented-unverified |
-| Selection | `Toggle`, `Slider`, `Stepper`, `Picker` | all four plus `Option` | yes | `Toggle`, `Slider`, `Stepper`, `Picker` | controls and `Picker` | implemented-unverified |
+| Selection | `Toggle`, `Slider`, `Stepper`, `Picker` | all four plus `Option` | yes | `Toggle`, `Slider`, `Stepper`, `Picker` styles | controls and `Picker` | implemented-unverified |
 | System pickers | `DatePicker`, `ColorPicker` | both tags | yes | yes | `DatePicker`, `ColorPicker` | implemented-unverified |
 | Feedback | `Separator`, `Divider`, `ProgressView`, `PageControl`, `ContentUnavailable` | `Divider`, `ProgressView`, `ContentUnavailable` | no `PageControl`; yes other listed primitives | `ProgressView`, `PageControl`, `ContentUnavailable` | `Divider`, `ProgressView`, `PageControl` | implemented-unverified |
 | Collections | `List`, `OutlineView` | `List`, `Column` | yes | `List` (table-shaped) | `List`, `Table`, `OutlineGroup` | implemented-unverified |

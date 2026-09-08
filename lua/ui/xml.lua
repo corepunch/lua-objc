@@ -645,6 +645,8 @@ local TAG_SCHEMA = {
         constructor = "Picker",
         props = {
             value = "num",
+			style = "str",
+			disabled = "bool",
         },
         collect = function(props, children)
             props.options = {}

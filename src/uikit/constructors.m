@@ -564,11 +564,55 @@ static int bridge_UIKitControls_picker(lua_State *L) {
 	}
 	NSInteger selected = luaL_optinteger(L, 2, 0);
 	selected = MIN(MAX(selected, 0), count - 1);
+	const char *style = luaL_optstring(L, 4, "automatic");
 	int callback_ref = LUA_NOREF;
 	if (!lua_isnoneornil(L, 3)) {
 		luaL_checktype(L, 3, LUA_TFUNCTION);
 		lua_pushvalue(L, 3);
 		callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	}
+	if (strcmp(style, "segmented") == 0) {
+		UISegmentedControl *segmented = [[UISegmentedControl alloc]
+			initWithItems:options];
+		segmented.selectedSegmentIndex = selected;
+		if (callback_ref != LUA_NOREF) {
+			objc_setAssociatedObject(segmented, &kCallbackKey, @(callback_ref),
+				OBJC_ASSOCIATION_RETAIN);
+			[segmented addTarget:[LuaButtonTarget shared]
+				action:@selector(onAction:)
+				forControlEvents:UIControlEventValueChanged];
+		}
+		[segmented sizeToFit];
+		push_objc(L, segmented, "uiview");
+		return 1;
+	}
+	if (strcmp(style, "wheel") != 0 && strcmp(style, "menu") != 0
+		&& strcmp(style, "automatic") != 0)
+		return luaL_error(L, "Picker style must be segmented, menu, wheel, or automatic");
+	if (strcmp(style, "menu") == 0 || strcmp(style, "automatic") == 0) {
+		LuaStateOwner *owner = owner_for_state(L);
+		NSMutableArray<UIMenuElement *> *elements = [NSMutableArray array];
+		for (NSInteger i = 0; i < count; i++) {
+			NSInteger index = i;
+			UIAction *action = [UIAction actionWithTitle:options[i] image:nil
+				identifier:nil handler:^(__unused UIAction *selectedAction) {
+					if (callback_ref == LUA_NOREF || !owner.L) return;
+					lua_rawgeti(owner.L, LUA_REGISTRYINDEX, callback_ref);
+					lua_pushinteger(owner.L, index);
+					lua_objc_pcall(owner.L, 1, 0, "picker");
+				}];
+			[elements addObject:action];
+		}
+		UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+		[button setTitle:options[selected] forState:UIControlStateNormal];
+		button.menu = [UIMenu menuWithTitle:@"" children:elements];
+		button.showsMenuAsPrimaryAction = YES;
+		if (callback_ref != LUA_NOREF)
+			objc_setAssociatedObject(button, &kCallbackKey, @(callback_ref),
+				OBJC_ASSOCIATION_RETAIN);
+		[button sizeToFit];
+		push_objc(L, button, "uiview");
+		return 1;
 	}
 
 	UIPickerView *obj = [[UIPickerView alloc] initWithFrame:CGRectZero];

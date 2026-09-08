@@ -547,7 +547,8 @@ end
 
 function UIKit.Picker(props)
 	props = props or {}
-	local picker = bridge._picker(props.options or {}, props.value or 0, props.action)
+	local picker = bridge._picker(props.options or {}, props.value or 0, props.action,
+		props.style or "automatic")
 	if props.disabled ~= nil then picker.userInteractionEnabled = not props.disabled end
 	return applyLayout(picker, props)
 end
