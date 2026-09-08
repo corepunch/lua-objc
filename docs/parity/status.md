@@ -171,7 +171,11 @@ layout dump records native `NSSearchField`, `NSPopUpButton`, and
 but does not visibly render all control chrome, so the image is retained as
 candidate evidence without marking the fixture passing.
 
-The full headless suite is now 30 test files passing, and the parity manifest
+`OutlineGroup` is now available on both platforms as a recursive composition of
+native `DisclosureGroup` and text nodes over `data`/`items` tree input. Its
+construction and recursion contract are covered by a focused headless test.
+
+The full headless suite is now 31 test files passing, and the parity manifest
 validates with 12 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable
 because the local packager cannot bind port 8081 (`Operation not permitted`)

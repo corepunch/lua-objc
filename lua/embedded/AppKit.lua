@@ -376,6 +376,34 @@ function AppKit.DisclosureGroup(props)
 	return applyLayout(container, props)
 end
 
+local function outlineItems(ns, items, expanded)
+	local views = {}
+	for _, item in ipairs(items or {}) do
+		local title = item.title or item.name or tostring(item)
+		local children = item.children
+		if type(children) == "table" and #children > 0 then
+			views[#views + 1] = ns.DisclosureGroup {
+				label = title,
+				expanded = expanded,
+				 ns.Group(outlineItems(ns, children, expanded)),
+			}
+		else
+			views[#views + 1] = ns.Text(title)
+		end
+	end
+	return views
+end
+
+function AppKit.OutlineGroup(props)
+	props = props or {}
+	local data = props.data or props.items or {}
+	assert(type(data) == "table", "OutlineGroup requires data or items")
+	local content = outlineItems(AppKit, data, props.expanded)
+	content.spacing = props.spacing or 4
+	content.alignment = props.alignment or "leading"
+	return applyLayout(AppKit.VStack(content), props)
+end
+
 function AppKit.ScrollView(props)
 	assert(type(props) == "table", "ScrollView requires a property table")
 	local content = props.content or props[1]

@@ -34,7 +34,8 @@ The schema currently defines these tags: `VStack`, `HStack`, `ZStack`, `HSplit`,
 `TextField`, `Button`, `Toggle`, `Slider`, `Stepper`, `Option`, `Picker`,
 `SystemImage`, `Image`, `LinearGradient`, `Column`, `List`, `ToolbarItem`,
 `Toolbar`, `Window`, `Chart`, `TabView`, `Tab`, `Section`, `GroupBox`, `Form`,
-`LabeledContent`, `ControlGroup`, and `DisclosureGroup`. `Text` and `Switch` are
+`LabeledContent`, `ControlGroup`, `DisclosureGroup`, and the recursive
+`OutlineGroup` Lua composition. `Text` and `Switch` are
 aliases, not separate controls. Record tags such as `Column` and `Option` are
 configuration nodes and are not counted as visual controls.
 
