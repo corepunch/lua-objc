@@ -221,6 +221,9 @@ by `UIModalPresentationPageSheet` and native medium/large sheet detents. The
 iOS host build and focused presentation bridge test pass; no simulator runtime
 claim is made while the local packager remains unable to bind port 8081.
 
+The same presentation bridge now exposes `confirm(props)` backed by native
+`UIAlertController`, including destructive/cancel actions and a Lua callback.
+
 The full headless suite is now 41 test files passing, and the parity manifest
 validates with 13 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable

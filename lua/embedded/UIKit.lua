@@ -142,6 +142,12 @@ function UIKit.dismiss()
 	return bridge._dismiss()
 end
 
+function UIKit.confirm(props)
+	props = props or {}
+	return bridge._confirm(props.title or "Confirm", props.message or "",
+		props.destructive or "OK", props.cancel or "Cancel", props.action)
+end
+
 function UIKit.VStack(props)
 	local view = bridge._vstack()
 	if type(props) == "table" then

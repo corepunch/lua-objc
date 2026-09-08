@@ -14,8 +14,12 @@ t.expect(native:find("UISheetPresentationController", 1, true) ~= nil
 t.expect(native:find("mediumDetent", 1, true) ~= nil
 		and native:find("largeDetent", 1, true) ~= nil,
 	"UIKit sheets map native detents")
+t.expect(src:find("function UIKit.confirm", 1, true) ~= nil
+		and native:find("UIAlertController", 1, true) ~= nil,
+	"UIKit confirmations use native UIAlertController")
 t.expect(bridge:find('{"_presentSheet", bridge_UIKitPresentation_presentSheet}', 1, true) ~= nil
-		and bridge:find('{"_dismiss", bridge_UIKitPresentation_dismiss}', 1, true) ~= nil,
+		and bridge:find('{"_dismiss", bridge_UIKitPresentation_dismiss}', 1, true) ~= nil
+		and bridge:find('{"_confirm", bridge_UIKitPresentation_confirm}', 1, true) ~= nil,
 	"UIKit presentation bridge is registered")
 
 os.exit(t.summary() and 0 or 1)

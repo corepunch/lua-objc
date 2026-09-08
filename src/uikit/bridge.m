@@ -116,6 +116,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_navigationLink", bridge_UIKitNavigation_link},
 	{"_presentSheet", bridge_UIKitPresentation_presentSheet},
 	{"_dismiss", bridge_UIKitPresentation_dismiss},
+	{"_confirm", bridge_UIKitPresentation_confirm},
 	{NULL, NULL},
 };
 
