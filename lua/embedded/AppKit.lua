@@ -531,6 +531,23 @@ function AppKit.Text(arg)
 	else
 		text = tostring(arg)
 	end
+	if type(arg) == "table" and arg.systemImage then
+		local row = {
+			spacing = arg.spacing or 6,
+			alignment = "center",
+			AppKit.SystemImage({
+				name = arg.systemImage,
+				accessibilityLabel = arg.accessibilityLabel,
+				size = arg.iconSize or arg.size,
+				weight = arg.iconWeight or arg.weight,
+				color = arg.color,
+			}),
+			AppKit.Text({ text, size = arg.size, weight = arg.weight,
+				italic = arg.italic, color = arg.color,
+				lineLimit = arg.lineLimit, truncation = arg.truncation }),
+		}
+		return applyLayout(AppKit.HStack(row), arg)
+	end
 
 	local v = bridge._textField()
 	v.text = text

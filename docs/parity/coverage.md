@@ -17,7 +17,7 @@ not additional user-facing controls. Data-only services are excluded.
 | Scrolling | `ScrollView` | `ScrollView` | yes | yes | `ScrollView` | implemented-unverified |
 | Text | `Text`, `Title` | `Label`, `Text`, `Title` | yes | `Label`, `Text`, `Title` | `Text` | implemented-unverified |
 | Text input | `TextField`, `SearchField`, `TextEditor` | `TextField`, `SearchField`, `TextEditor` | yes | `TextField`, `SearchField`, `TextEditor` | `TextField`, `SecureField`, `TextEditor`, searchable | implemented-unverified |
-| Images | `Image`, `SystemImage`, `ImageViewer` | `Image`, `SystemImage` | yes | yes | `Image`, `Label` | implemented-unverified |
+| Images | `Image`, `SystemImage`, `ImageViewer` | `Image`, `SystemImage` | yes | yes | `Image`, `Label` with symbols | implemented-unverified |
 | Buttons | `Button`, `MenuItem`, `Link`, `Menu` | `Button`, `Link`, `Menu` | yes | yes | `Button` styles, roles, symbols; `Link`, `Menu` | implemented-unverified |
 | Selection | `Toggle`, `Slider`, `Stepper`, `Picker` | all four plus `Option` | yes | `Toggle`, `Slider`, `Stepper`, `Picker` styles | controls and `Picker` | implemented-unverified |
 | System pickers | `DatePicker`, `ColorPicker` | both tags | yes | yes | `DatePicker`, `ColorPicker` | implemented-unverified |

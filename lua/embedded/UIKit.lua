@@ -341,6 +341,23 @@ function UIKit.Label(arg)
 	else
 		text = tostring(arg)
 	end
+	if type(props) == "table" and props.systemImage then
+		local row = {
+			spacing = props.spacing or 6,
+			alignment = "center",
+			UIKit.SystemImage({
+				name = props.systemImage,
+				accessibilityLabel = props.accessibilityLabel,
+				size = props.iconSize or props.size,
+				weight = props.iconWeight or props.weight,
+				color = props.color,
+			}),
+			UIKit.Label({ text, size = props.size, weight = props.weight,
+				italic = props.italic, color = props.color,
+				lineLimit = props.lineLimit, truncation = props.truncation }),
+		}
+		return applyLayout(UIKit.HStack(row), props)
+	end
 	local v = bridge._label(text)
 	if type(props) == "table" then
 		if props.size and props.size > 0 then
