@@ -74,6 +74,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_hsplit", bridge_UIKitControls_hsplit},
 	{"_spacer", bridge_UIKitControls_spacer},
 	{"_textField", bridge_UIKitControls_textField},
+	{"_textEditor", bridge_UIKitControls_textEditor},
 	{"_label", bridge_UIKitControls_label},
 	{"_separator", bridge_UIKitControls_separator},
 	{"_progressIndicator", bridge_UIKitControls_progressIndicator},

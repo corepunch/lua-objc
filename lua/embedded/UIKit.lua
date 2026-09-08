@@ -232,6 +232,19 @@ function UIKit.TextField(arg)
 	return applyLayout(v, props)
 end
 
+function UIKit.TextEditor(props)
+	props = props or {}
+	local v = bridge._textEditor(props.text or props.value or "",
+		props.editable, props.selectable, props.drawsBackground)
+	if props.size and props.size > 0 then
+		v.font = bridge._font(props.size, props.weight, props.italic)
+	end
+	if props.wrapMode == false then
+		v.textContainer.lineBreakMode = 1
+	end
+	return applyLayout(v, props)
+end
+
 function UIKit.Label(arg)
 	local text
 	local props
