@@ -12,6 +12,8 @@ Last updated: 2026-09-08 (P1 in progress)
   smoke cases selected by `LUA_OBJC_PARITY_CASE`.
 - `make parity-check` now validates manifest version, required fields, IDs,
   families, statuses, platforms, and evidence arrays.
+- `make parity-case CASE=<id>` now runs a fail-closed macOS screenshot/layout
+  capture for each seeded case; missing screenshots are errors, not passes.
 - Headless example loading passes and AppKit layout dumps were captured for all
   three smoke cases under `build/parity/p1-macos/`.
 

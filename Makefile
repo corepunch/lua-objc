@@ -190,4 +190,7 @@ screenshot: $(TARGET) $(FRAMEWORK_MODULES)
 parity-check:
 	python3 scripts/parity/validate_manifest.py
 
-.PHONY: all uikit run clean test parity-check run-hello run-list run-live run-weather run-welcome run-mail run-layout screenshot ios-host ios-packager ios-packager-run ios-run ios ios-reset
+parity-case: parity-check $(TARGET) $(FRAMEWORK_MODULES)
+	CASE=$(CASE) scripts/parity/capture_macos_case.sh
+
+.PHONY: all uikit run clean test parity-check parity-case run-hello run-list run-live run-weather run-welcome run-mail run-layout screenshot ios-host ios-packager ios-packager-run ios-run ios ios-reset
