@@ -18,6 +18,10 @@ local CASES = {
 		title = "Surface",
 		body = "Native rounded surface",
 	},
+	["grid.two-by-two"] = {
+		title = "Grid",
+		cells = { "A1", "B1", "A2", "B2" },
+	},
 }
 
 function Model.caseId()

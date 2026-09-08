@@ -353,10 +353,23 @@ end
 
 function AppKit.Grid(props)
 	props = props or {}
+	local columnWidths = {}
+	for _, row in ipairs(props) do
+		for column, child in ipairs(row) do
+			local size = child.size
+			local width = size and size.width or 0
+			columnWidths[column] = math.max(columnWidths[column] or 0, width)
+		end
+	end
 	local rows = {}
 	for _, row in ipairs(props) do
 		local rowProps = { spacing = props.spacing, alignment = props.alignment }
-		for _, child in ipairs(row) do rowProps[#rowProps + 1] = child end
+		for column, child in ipairs(row) do
+			if columnWidths[column] and columnWidths[column] > 0 then
+				child.fixedWidth = columnWidths[column]
+			end
+			rowProps[#rowProps + 1] = child
+		end
 		rows[#rows + 1] = AppKit.HStack(rowProps)
 	end
 	props.content = nil

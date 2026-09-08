@@ -78,6 +78,11 @@ Shared native surface styling now maps XML/Lua `background`, `cornerRadius`,
 and `clipsToBounds` to AppKit and UIKit views; the rounded-surface fixture is
 registered and awaits fresh cross-platform capture evidence.
 
+The grid phase now measures native child widths per column and shares those
+widths across GridRow HStacks; the two-by-two macOS capture shows aligned
+columns. iOS capture remains pending while the simulator packager port is
+occupied by stale background processes.
+
 ## Next batch
 
 P1: add the independent SwiftUI reference host and a fail-closed capture/report

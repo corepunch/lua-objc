@@ -89,6 +89,26 @@
       "assertions": ["surface.background", "surface.cornerRadius", "surface.content"],
       "status": "implemented-unverified",
       "evidence": []
+    },
+    {
+      "id": "grid.two-by-two",
+      "family": "A4",
+      "purpose": "Two-row two-column grid composition",
+      "gate": "core",
+      "platforms": ["macos", "ios"],
+      "swiftuiScene": "GridScene",
+      "etluaScene": "grid.two-by-two",
+      "nativeFamily": "stack",
+      "mapping": "SwiftUI Grid/GridRow -> native HStack rows inside VStack",
+      "data": {"cells": ["A1", "B1", "A2", "B2"]},
+      "state": "default",
+      "actions": [],
+      "size": {"width": 320, "height": 160},
+      "appearance": "light",
+      "textSize": "large",
+      "assertions": ["grid.row.count", "grid.cell.content"],
+      "status": "implemented-unverified",
+      "evidence": []
     }
   ]
 }

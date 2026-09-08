@@ -18,6 +18,11 @@
 	<VStack padding="24" spacing="12" fillWidth="true" background="systemGreen" cornerRadius="16" clipsToBounds="true">
 		<Label text="<%= body %>" size="20" ref="surface" />
 	</VStack>
+	<% elseif caseId == "grid.two-by-two" then %>
+	<Grid padding="24" spacing="12" alignment="center" fillWidth="true">
+		<GridRow spacing="24"><Label text="<%= cells[1] %>" /><Label text="<%= cells[2] %>" /></GridRow>
+		<GridRow spacing="24"><Label text="<%= cells[3] %>" /><Label text="<%= cells[4] %>" /></GridRow>
+	</Grid>
 	<% else %>
 	<Label text="Unknown parity case" />
 	<% end %>

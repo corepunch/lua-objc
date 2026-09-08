@@ -19,5 +19,8 @@ t.expect(xml:find("GridRow", 1, true) ~= nil,
 	"XML provides explicit grid row structure")
 t.expect(xml:find('constructor = "Grid"', 1, true) ~= nil,
 	"XML registers Grid")
+t.expect(appkit:find("columnWidths[column]", 1, true) ~= nil
+		and uikit:find("child.fixedWidth = columnWidths[column]", 1, true) ~= nil,
+	"Grid shares measured column widths across rows")
 
 os.exit(t.summary() and 0 or 1)
