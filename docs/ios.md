@@ -280,6 +280,14 @@ This is a content-window capture, not a device-frame screenshot. It requires a
 booted Simulator and the normal local packager, but does not invoke
 `simctl io screenshot`.
 
+For the normal device-frame capture, which includes the status bar and home
+indicator, use the existing Simulator API directly:
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+make ios-screenshot OUT=/tmp/ios-device.png
+```
+
 The host protocol stays `class.new():createWindow()` — same as `src/main.m` lines 552–588. The method name is the framework instantiation contract, not “make an NSWindow.” Keep the registry refs of the controller and the returned window/VC so the tree is not collected.
 
 ### `ns.Window` replacement (no shims)

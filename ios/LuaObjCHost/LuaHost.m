@@ -254,6 +254,9 @@ static int bridge_read_file(lua_State *L) {
 		[window layoutIfNeeded];
 		NSData *png = lua_objc_capture_view_png(window);
 		NSError *error = nil;
+		NSString *directory = [path stringByDeletingLastPathComponent];
+		[[NSFileManager defaultManager] createDirectoryAtPath:directory
+			withIntermediateDirectories:YES attributes:nil error:&error];
 		BOOL ok = png && [png writeToFile:path options:NSDataWritingAtomic error:&error];
 		if (ok) {
 			NSLog(@"[lua-objc] internal screenshot written %@ (%lu bytes)",

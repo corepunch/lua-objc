@@ -22,6 +22,12 @@ Last updated: 2026-09-08 (P1 in progress)
 - UIKit host now has an internal PNG renderer and `make ios-internal-screenshot`
   copies its live-window capture out of the app container without `simctl io
   screenshot`.
+- The three seeded cases have now run on iPhone 17 / iOS 26.5: each produced a
+  402×874 in-app content PNG, and each also produced a 1206×2622 device-frame
+  PNG through `make ios-screenshot`.
+- The live iOS button was activated through the Simulator accessibility tree;
+  its visible/accessibility counter changed from `Count: 0` to `Count: 1`, and
+  the activated device-frame screenshot was captured.
 - Headless example loading passes and AppKit layout dumps were captured for all
   three smoke cases under `build/parity/p1-macos/`.
 
@@ -63,6 +69,10 @@ HStack `left`/`right` frames at x=20/428, and the activated button case with
 `actionCount: 1`. Its screenshot option now fails closed unless a window ID is
 provided; the desktop capture integration remains the supported UI capture
 path.
+
+The iOS artifacts are candidate evidence only: an independent SwiftUI iOS
+reference host and semantic frame export are still required before these cases
+can be marked passing for parity.
 
 ## Next batch
 

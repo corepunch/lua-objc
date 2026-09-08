@@ -12,6 +12,7 @@
 	<% elseif caseId == "button.standard.action-counter" then %>
 	<VStack padding="24" spacing="12" alignment="center">
 		<Button title="<%= buttonTitle %>" action="activate" ref="button" />
+		<Label text="Count: 0" ref="counter" />
 	</VStack>
 	<% else %>
 	<Label text="Unknown parity case" />

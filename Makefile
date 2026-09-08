@@ -176,6 +176,10 @@ ios-internal-screenshot: ios-host ios-packager
 		PROJECT="$(or $(PROJECT),examples/hello)" DEVICE="$(DEVICE)" \
 		scripts/ios-internal-screenshot.sh
 
+ios-screenshot:
+	DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun simctl io booted screenshot \
+		$(or $(OUT),/tmp/ios-screenshot.png)
+
 ios: ios-run
 
 ios-reset:
@@ -199,4 +203,4 @@ parity-check:
 parity-case: parity-check $(TARGET) $(FRAMEWORK_MODULES)
 	CASE=$(CASE) scripts/parity/capture_macos_case.sh
 
-.PHONY: all uikit run clean test parity-check parity-case run-hello run-list run-live run-weather run-welcome run-mail run-layout screenshot ios-host ios-packager ios-packager-run ios-run ios-internal-screenshot ios ios-reset
+.PHONY: all uikit run clean test parity-check parity-case run-hello run-list run-live run-weather run-welcome run-mail run-layout screenshot ios-host ios-packager ios-packager-run ios-run ios-internal-screenshot ios-screenshot ios ios-reset

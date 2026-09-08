@@ -126,6 +126,12 @@ echo "ios-run: install $HOST_BUNDLE"
 xcrun simctl install booted "$HOST_BUNDLE"
 
 echo "ios-run: launch Impulse  (UI is in Simulator.app, not this terminal)"
-SIMCTL_CHILD_LUA_OBJC_APP="$ENTRY" \
-SIMCTL_CHILD_LUA_OBJC_PACKAGER="$PACKAGER_URL" \
-xcrun simctl launch --console --terminate-running-process booted org.luaobjc.host
+if [ "${LUA_OBJC_RUN_NONBLOCKING:-0}" = "1" ]; then
+	SIMCTL_CHILD_LUA_OBJC_APP="$ENTRY" \
+	SIMCTL_CHILD_LUA_OBJC_PACKAGER="$PACKAGER_URL" \
+		xcrun simctl launch --terminate-running-process booted org.luaobjc.host
+else
+	SIMCTL_CHILD_LUA_OBJC_APP="$ENTRY" \
+	SIMCTL_CHILD_LUA_OBJC_PACKAGER="$PACKAGER_URL" \
+		xcrun simctl launch --console --terminate-running-process booted org.luaobjc.host
+fi
