@@ -187,4 +187,7 @@ clean:
 screenshot: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) --screenshot=$(or $(OUT),/tmp/screenshot.png) $(ARGS)
 
-.PHONY: all uikit run clean test run-hello run-list run-live run-weather run-welcome run-mail run-layout screenshot ios-host ios-packager ios-packager-run ios-packager-stop ios-run ios ios-reset
+parity-check:
+	python3 scripts/parity/validate_manifest.py
+
+.PHONY: all uikit run clean test parity-check run-hello run-list run-live run-weather run-welcome run-mail run-layout screenshot ios-host ios-packager ios-packager-run ios-run ios ios-reset

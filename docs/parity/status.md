@@ -10,6 +10,8 @@ Last updated: 2026-09-08 (P1 in progress)
 - Baseline `make test` executed on the current checkout.
 - Deterministic `examples/swiftui_parity/` gallery added with the three P1
   smoke cases selected by `LUA_OBJC_PARITY_CASE`.
+- `make parity-check` now validates manifest version, required fields, IDs,
+  families, statuses, platforms, and evidence arrays.
 - Headless example loading passes and AppKit layout dumps were captured for all
   three smoke cases under `build/parity/p1-macos/`.
 
