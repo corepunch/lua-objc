@@ -64,6 +64,7 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #include "constructors.m"
 #include "hosting.m"
 #include "navigation.m"
+#include "presentation.m"
 #pragma mark - Module registration
 
 static const luaL_Reg bridge_lib[] = {
@@ -113,6 +114,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_tabViewOnChange", bridge_UIKitTabView_onChange},
 	{"_navigationStack", bridge_UIKitNavigation_stack},
 	{"_navigationLink", bridge_UIKitNavigation_link},
+	{"_presentSheet", bridge_UIKitPresentation_presentSheet},
+	{"_dismiss", bridge_UIKitPresentation_dismiss},
 	{NULL, NULL},
 };
 

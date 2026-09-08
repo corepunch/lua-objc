@@ -134,6 +134,14 @@ function UIKit.NavigationLink(props)
 		props.title or props.label or props[1] or "Open"), props)
 end
 
+function UIKit.presentSheet(content, props)
+	return bridge._presentSheet(asViewController(content), props or {})
+end
+
+function UIKit.dismiss()
+	return bridge._dismiss()
+end
+
 function UIKit.VStack(props)
 	local view = bridge._vstack()
 	if type(props) == "table" then

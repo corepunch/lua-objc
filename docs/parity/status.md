@@ -216,7 +216,12 @@ The iOS navigation contract now includes native `NavigationLink` push targets,
 schema entries for both navigation tags. The iOS host builds and focused bridge
 tests pass; AppKit remains intentionally unsupported for this iOS-only surface.
 
-The full headless suite is now 40 test files passing, and the parity manifest
+UIKit D2 now has `presentSheet(content, props)` and `dismiss()` wrappers backed
+by `UIModalPresentationPageSheet` and native medium/large sheet detents. The
+iOS host build and focused presentation bridge test pass; no simulator runtime
+claim is made while the local packager remains unable to bind port 8081.
+
+The full headless suite is now 41 test files passing, and the parity manifest
 validates with 13 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable
 because the local packager cannot bind port 8081 (`Operation not permitted`)
