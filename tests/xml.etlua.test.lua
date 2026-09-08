@@ -38,6 +38,10 @@ v = render([[<Label text="Hello" />]])
 t.expect(v ~= nil, "Label creates a view")
 t.assertEqual(v.text, "Hello", "Label sets text property")
 
+v = render([[<Label text="Identified" ref="semantic.label" />]])
+t.assertEqual(v.accessibilityIdentifier, "semantic.label",
+	"ref propagates to native accessibility identifier")
+
 v = render([[<Text text="Hello" />]])
 t.expect(v ~= nil, "Text creates a view")
 t.assertEqual(v.text, "Hello", "Text sets text property")

@@ -368,11 +368,20 @@ local function compile(nodes, ns, registry, refs)
             if not handler then
                 error("xml: unknown tag <" .. node.tag .. ">")
             end
-            local children = compile(node.children, ns, registry, refs)
-            local view = handler(ns, node.attrs, children)
-            if view then
-                if node.attrs.ref then refs[node.attrs.ref] = view end
-                views[#views + 1] = view
+			local children = compile(node.children, ns, registry, refs)
+			local view = handler(ns, node.attrs, children)
+			if view then
+				if node.attrs.ref then
+					refs[node.attrs.ref] = view
+					-- Keep the declarative identity on the native view as well as
+					-- in the returned refs table. Diagnostics and accessibility
+					-- tooling can then locate the same semantic node without
+					-- depending on child order or implementation classes.
+					pcall(function()
+						view.accessibilityIdentifier = node.attrs.ref
+					end)
+				end
+				views[#views + 1] = view
             end
         end
     end

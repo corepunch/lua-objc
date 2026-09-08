@@ -77,9 +77,12 @@ static void append_layout_view(NSMutableString *out, NSView *view,
 		? layout_text_has_insufficient_space((NSTextField *)view) : NO;
 	BOOL ellipsis = text
 		? layout_text_uses_ellipsis((NSTextField *)view) : NO;
+	NSString *identifier = view.accessibilityIdentifier;
 	[out appendFormat:
-		@"%@<View class=\"%@\" x=\"%.1f\" y=\"%.1f\" width=\"%.1f\" height=\"%.1f\" intrinsicWidth=\"%.1f\" intrinsicHeight=\"%.1f\" fittingWidth=\"%.1f\" fittingHeight=\"%.1f\" clipsToBounds=\"%@\" outsideParent=\"%@\" contentClipped=\"%@\"%@%@%@>\n",
+		@"%@<View class=\"%@\"%@ x=\"%.1f\" y=\"%.1f\" width=\"%.1f\" height=\"%.1f\" intrinsicWidth=\"%.1f\" intrinsicHeight=\"%.1f\" fittingWidth=\"%.1f\" fittingHeight=\"%.1f\" clipsToBounds=\"%@\" outsideParent=\"%@\" contentClipped=\"%@\"%@%@%@>\n",
 		layout_indent(depth), NSStringFromClass(view.class),
+		identifier ? [NSString stringWithFormat:@" identifier=\"%@\"",
+			layout_xml_escape(identifier)] : @"",
 		frame.origin.x, frame.origin.y, frame.size.width, frame.size.height,
 		intrinsic.width, intrinsic.height, fitting.width, fitting.height,
 		view.clipsToBounds ? @"true" : @"false",

@@ -253,6 +253,11 @@ lays out nested children; its focused construction/layout test passes.
 the title on both platforms, including icon sizing/weight and accessibility
 forwarding through the XML schema.
 
+The parity XML compiler now propagates each `ref` into the native view's
+accessibility identifier. AppKit layout dumps include that identifier, making
+candidate/reference frame matching semantic and independent of native child
+ordering; the XML regression suite covers the round trip.
+
 The full headless suite is now 48 test files passing, and the parity manifest
 validates with 13 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable
