@@ -26,6 +26,11 @@ local CASES = {
 		title = "Text styles",
 		body = "A deliberately long semantic text value that must truncate at the trailing edge",
 	},
+	["image.system-icon"] = {
+		title = "Image",
+		name = "star.fill",
+		label = "Favorite",
+	},
 }
 
 function Model.caseId()

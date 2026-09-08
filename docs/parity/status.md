@@ -87,6 +87,10 @@ The long-text fixture now exercises native italic fonts, centered alignment,
 single-line trailing ellipsis, and intrinsic label measurement; the macOS
 capture visibly shows all four behaviors.
 
+The imagery phase adds a native `star.fill` SF Symbol fixture with semantic
+accent tint and an accessibility label; its macOS capture confirms the real
+symbol rendering.
+
 ## Next batch
 
 P1: add the independent SwiftUI reference host and a fail-closed capture/report

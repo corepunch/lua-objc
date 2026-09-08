@@ -27,6 +27,11 @@
 	<VStack padding="24" fillWidth="true" alignment="center">
 		<Label text="<%= body %>" size="18" italic="true" alignment="center" lines="1" truncation="tail" ref="styled" />
 	</VStack>
+	<% elseif caseId == "image.system-icon" then %>
+	<VStack padding="24" spacing="12" fillWidth="true" alignment="center">
+		<SystemImage name="<%= name %>" size="32" color="accent" label="<%= label %>" ref="icon" />
+		<Label text="<%= label %>" />
+	</VStack>
 	<% else %>
 	<Label text="Unknown parity case" />
 	<% end %>

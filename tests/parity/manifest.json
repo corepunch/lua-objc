@@ -129,6 +129,26 @@
       "assertions": ["text.ellipsis", "text.italic", "text.alignment"],
       "status": "implemented-unverified",
       "evidence": []
+    },
+    {
+      "id": "image.system-icon",
+      "family": "B2",
+      "purpose": "Native SF Symbol image with accessibility label",
+      "gate": "core",
+      "platforms": ["macos", "ios"],
+      "swiftuiScene": "ImageScene",
+      "etluaScene": "image.system-icon",
+      "nativeFamily": "image",
+      "mapping": "SwiftUI Image(systemName:) -> native SF Symbol image",
+      "data": {"name": "star.fill", "label": "Favorite"},
+      "state": "default",
+      "actions": [],
+      "size": {"width": 320, "height": 160},
+      "appearance": "light",
+      "textSize": "large",
+      "assertions": ["image.symbol", "image.accessibilityLabel"],
+      "status": "implemented-unverified",
+      "evidence": []
     }
   ]
 }
