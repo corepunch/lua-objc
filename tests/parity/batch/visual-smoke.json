@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "cases": [{
+    "id": "hstack.visual-smoke",
+    "width": 240,
+    "height": 160,
+    "tree": {
+      "id": "root", "kind": "hstack", "padding": 12, "spacing": 8,
+      "children": [
+        {"kind": "text", "id": "first", "text": "Parity", "size": 13},
+        {"kind": "text", "id": "second", "text": "Longer label", "size": 20}
+      ]
+    }
+  }]
+}

@@ -274,3 +274,25 @@ new Form fixture using the in-app screenshot channel; it remains unavailable
 because the local packager cannot bind port 8081 (`Operation not permitted`)
 after stale packager activity. No iOS screenshot is claimed for that attempt,
 and the failed run was cleaned up without leaving a screenshot window open.
+
+## Persistent batch harness — 2026-09-08
+
+The new strategy and complete Luna runbook are in
+`docs/SWIFTUI_PARITY_PLAN.md` section 11. SwiftUI and native candidate hosts now
+consume the same validated 224-case specification in one launch per engine.
+The independent SwiftUI oracle records semantic-node geometry; cached output
+is bound to source, executable, specification, environment, and run identity.
+Comparison rejects stale/incomplete evidence and checks origin, size, and edges.
+
+Actual final runs: macOS oracle 13.42 s / candidate 0.63 s; iOS Simulator oracle
+15.68 s / candidate 5.74 s. These exclude build/install, which occur once per
+native change, not per case. Both platforms currently report **0 geometry pass,
+224 geometry fail**. This establishes working measurement infrastructure and
+exposes framework differences; it does not establish SwiftUI parity.
+
+`make test ios-host`: **51 test files passed**, UIKit host built. Eight Python
+protocol tests pass. A reference PNG was captured and visually inspected.
+Final evidence paths and remaining coverage are in the plan. Batch apps and
+the owned packager were verified stopped afterward. The earlier port-8081
+failure above is historical, not a current blocker: simulator batches now use
+an owned packager on an available ephemeral port.

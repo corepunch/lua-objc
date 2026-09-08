@@ -1,3 +1,4 @@
 lua-objc
 .DS_Store
 build/
+__pycache__/

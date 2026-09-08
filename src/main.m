@@ -229,9 +229,16 @@ static void bridge_set_optional_callback(
 #include "appkit/platform.m"
 
 #include "appkit/constructors.m"
+#include "shared/parity_batch.m"
+#include "appkit/parity_batch.m"
 #pragma mark - Module registration
 
 static const luaL_Reg bridge_lib[] = {
+	{"_parityMeasure", bridge_parity_measure},
+	{"_parityWrite", bridge_parity_write},
+	{"_parityJSON", bridge_parity_json},
+	{"_parityReadJSON", bridge_parity_read_json},
+	{"_parityDocumentsDirectory", bridge_parity_documents},
 	{"Size", bridge_NSSize},
 	{"Point", bridge_NSPoint},
 	{"Rect", bridge_NSRect},
@@ -564,7 +571,11 @@ int lua_objc_main(int argc, char *argv[]) {
 		return write_ok ? 0 : 1;
 	}
 
-	if (layout_out) {
+	BOOL testMode = NO;
+	for (int i = 1; i < argc; i++) {
+		if (strcmp(argv[i], "--test") == 0) testMode = YES;
+	}
+	if (layout_out || testMode) {
 		lua_pushboolean(L, 1);
 		lua_setglobal(L, "__headless");
 	}
@@ -573,6 +584,7 @@ int lua_objc_main(int argc, char *argv[]) {
 		report_lua_error(L, "script");
 		return 1;
 	}
+	if (testMode) return 0;
 
 	/*
 	 * If the script returned a table with a `new` method, treat it as an

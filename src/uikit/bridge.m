@@ -65,9 +65,16 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #include "hosting.m"
 #include "navigation.m"
 #include "presentation.m"
+#include "../shared/parity_batch.m"
+#include "parity_batch.m"
 #pragma mark - Module registration
 
 static const luaL_Reg bridge_lib[] = {
+	{"_parityMeasure", bridge_parity_measure},
+	{"_parityWrite", bridge_parity_write},
+	{"_parityJSON", bridge_parity_json},
+	{"_parityReadJSON", bridge_parity_read_json},
+	{"_parityDocumentsDirectory", bridge_parity_documents},
 	{"_vstack", bridge_UIKitControls_vstack},
 	{"_hstack", bridge_UIKitControls_hstack},
 	{"_zstack", bridge_UIKitControls_zstack},
