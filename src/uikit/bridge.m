@@ -86,6 +86,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_button", bridge_UIKitControls_button},
 	{"_link", bridge_UIKitControls_link},
 	{"_menu", bridge_UIKitControls_menu},
+	{"_materialView", bridge_UIKitControls_materialView},
 	{"_toggle", bridge_UIKitControls_toggle},
 	{"_slider", bridge_UIKitControls_slider},
 	{"_stepper", bridge_UIKitControls_stepper},

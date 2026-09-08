@@ -1,5 +1,33 @@
 /* Native constructors exported by the UIKit module. */
 
+@interface LuaMaterialView : UIVisualEffectView
+@property (nonatomic, strong) UIView *luaContent;
+@end
+
+@implementation LuaMaterialView
+- (void)layoutSubviews {
+	[super layoutSubviews];
+	self.luaContent.frame = self.contentView.bounds;
+	layout_recursive(self.luaContent, self.contentView.bounds.size.width);
+}
+@end
+
+static int bridge_UIKitControls_materialView(lua_State *L) {
+	const char *material = luaL_optstring(L, 1, "regular");
+	UIView *content = check_view(L, 2);
+	UIBlurEffectStyle style = UIBlurEffectStyleSystemMaterial;
+	if (strcmp(material, "thick") == 0)
+		style = UIBlurEffectStyleSystemThickMaterial;
+	else if (strcmp(material, "thin") == 0)
+		style = UIBlurEffectStyleSystemThinMaterial;
+	LuaMaterialView *view = [[LuaMaterialView alloc]
+		initWithEffect:[UIBlurEffect effectWithStyle:style]];
+	view.luaContent = content;
+	[view.contentView addSubview:content];
+	push_objc(L, view, "uiview");
+	return 1;
+}
+
 static int bridge_UIKitControls_datePicker(lua_State *L) {
 	UIDatePicker *picker = [[UIDatePicker alloc] initWithFrame:CGRectZero];
 	picker.datePickerMode = UIDatePickerModeDate;

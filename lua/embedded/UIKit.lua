@@ -508,6 +508,13 @@ function UIKit.ContentUnavailable(props)
 	return applyLayout(UIKit.VStack(content), props)
 end
 
+function UIKit.MaterialView(props)
+	props = props or {}
+	local content = props.content or props[1]
+	assert(type(content) == "userdata", "MaterialView requires one content view")
+	return applyLayout(bridge._materialView(props.material or "regular", content), props)
+end
+
 function UIKit.Toggle(props)
 	local label = type(props) == "table" and (props.label or props[1] or "") or ""
 	local is_on = type(props) == "table" and props.is_on or false

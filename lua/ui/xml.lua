@@ -606,6 +606,11 @@ local TAG_SCHEMA = {
             lines = "num",
         },
     },
+    MaterialView = {
+        constructor = "MaterialView",
+        children = "content",
+        props = { material = "str" },
+    },
     Slider = {
         constructor = "Slider",
         props = {
