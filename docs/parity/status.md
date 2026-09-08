@@ -130,6 +130,11 @@ vocabulary, with a nested macOS capture showing native stack composition and a
 rounded semantic surface. Internal screenshots now honor explicit requested
 dimensions, preventing taller fixtures from being clipped.
 
+DisclosureGroup is now represented by a native button plus retained expanded
+content state on both platforms; the expanded macOS fixture captures its
+header and content, and the independent SwiftUI reference host includes the
+matching scene.
+
 ## Next batch
 
 P1: add the independent SwiftUI reference host and a fail-closed capture/report

@@ -11,6 +11,7 @@ private enum Fixture: String {
 	case image = "image.system-icon"
 	case padding = "padding.vertical-edges"
 	case container = "container.section-groupbox"
+	case disclosure = "container.disclosure-expanded"
 
 	var sceneName: String {
 		switch self {
@@ -23,6 +24,7 @@ private enum Fixture: String {
 		case .image: return "ImageScene"
 		case .padding: return "PaddingScene"
 		case .container: return "ContainerScene"
+		case .disclosure: return "DisclosureScene"
 		}
 	}
 
@@ -30,6 +32,7 @@ private enum Fixture: String {
 		switch self {
 		case .text, .button, .surface, .grid, .longText, .image, .padding: return CGSize(width: 320, height: 120)
 		case .container: return CGSize(width: 320, height: 160)
+		case .disclosure: return CGSize(width: 320, height: 120)
 		case .stack: return CGSize(width: 480, height: 120)
 		}
 	}
@@ -143,6 +146,10 @@ private struct FixtureView: View {
 					Text("Details").bold()
 					Text("Grouped native content")
 				}.padding(12).background(Color.green).clipShape(RoundedRectangle(cornerRadius: 12)))
+			}
+		case .disclosure:
+			DisclosureGroup("Advanced", isExpanded: .constant(true)) {
+				ProbeView(id: "content", content: Text("Expanded content"))
 			}
 		}
 	}
