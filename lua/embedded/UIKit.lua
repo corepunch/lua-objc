@@ -85,6 +85,7 @@ function UIKit.Window(props)
 end
 
 function UIKit.TabView(props)
+	props = props or {}
 	local tbc = bridge._tabview()
 	local tabs = props.tabs or {}
 	for _, tab in ipairs(tabs) do
@@ -92,6 +93,12 @@ function UIKit.TabView(props)
 			local vc = asViewController(tab.content)
 			bridge._tabViewAddTab(tbc, vc, tab.title or "", tab.systemImage or "")
 		end
+	end
+	if props.selected ~= nil then
+		bridge._tabViewSelectTab(tbc, props.selected)
+	end
+	if type(props.onChange) == "function" then
+		bridge._tabViewOnChange(tbc, props.onChange)
 	end
 	return tbc
 end

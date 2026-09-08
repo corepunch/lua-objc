@@ -198,7 +198,10 @@ manifest case. Its SwiftUI reference host builds, and the macOS candidate
 capture visibly shows the native date field/stepper and semantic blue color
 well; the layout dump reports `NSDatePicker` and `NSColorWell` without clipping.
 
-The full headless suite is now 35 test files passing, and the parity manifest
+UIKit `TabView` now forwards declarative `selected` and `onChange` properties
+to its existing native `UITabBarController` selection bridge.
+
+The full headless suite is now 36 test files passing, and the parity manifest
 validates with 12 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable
 because the local packager cannot bind port 8081 (`Operation not permitted`)
