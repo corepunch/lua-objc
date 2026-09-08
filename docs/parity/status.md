@@ -13,7 +13,9 @@ Last updated: 2026-09-08 (P1 in progress)
 - `make parity-check` now validates manifest version, required fields, IDs,
   families, statuses, platforms, and evidence arrays.
 - `make parity-case CASE=<id>` now runs a fail-closed macOS screenshot/layout
-  capture for each seeded case; missing screenshots are errors, not passes.
+  capture for each seeded case; it now uses the in-process
+  `--internal-screenshot` renderer, so missing screenshots are errors, not
+  passes and desktop pixels are never sampled.
 - Independent SwiftUI reference host scaffold added under
   `tests/parity/reference/`; it builds as a real macOS `.app`, emits readiness
   JSON with semantic probe frames, and supports the three seeded cases.

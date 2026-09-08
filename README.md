@@ -50,6 +50,9 @@ text geometry, and explicit `cropped`/`ellipsis`/`outsideParent` flags:
 
 ```sh
 ./lua-objc --dump-layout=/tmp/layout.xml examples/stocks/init.lua
+
+# Capture only the live AppKit content view from inside the process.
+./lua-objc --internal-screenshot=/tmp/content.png examples/stocks/init.lua
 rg -n 'cropped="true"|outsideParent="true"|contentClipped="true"' /tmp/layout.xml
 ```
 

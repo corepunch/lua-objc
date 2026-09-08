@@ -361,6 +361,7 @@ int lua_objc_main(int argc, char *argv[]) {
 	const char *preview_out = NULL;
 	const char *layout_out = NULL;
 	const char *screenshot_out = NULL;
+	const char *internal_screenshot_out = NULL;
 	const char *script_args[256];
 	int script_arg_count = 0;
 
@@ -379,6 +380,8 @@ int lua_objc_main(int argc, char *argv[]) {
 			layout_out = argv[i] + 14;
 		} else if (strncmp(argv[i], "--screenshot=", 13) == 0) {
 			screenshot_out = argv[i] + 13;
+		} else if (strncmp(argv[i], "--internal-screenshot=", 22) == 0) {
+			internal_screenshot_out = argv[i] + 22;
 		} else if (strncmp(argv[i], "--appearance=", 13) == 0) {
 			appearance = argv[i] + 13;
 		} else if (strcmp(argv[i], "--appearance") == 0 && i + 1 < argc) {
@@ -637,7 +640,34 @@ int lua_objc_main(int argc, char *argv[]) {
 
 	lua_settop(L, 0);
 
-	if (screenshot_out) {
+	if (internal_screenshot_out) {
+		NSString *screenshotPath = [NSString stringWithUTF8String:internal_screenshot_out];
+		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)),
+			dispatch_get_main_queue(), ^{
+			NSWindow *window = lua_objc_app_window();
+			NSData *png = nil;
+			if (window && (layout_width_set || layout_height_set)) {
+				NSSize size = window.contentView.bounds.size;
+				if (layout_width_set) size.width = preview_width;
+				if (layout_height_set) size.height = preview_height;
+				[window setContentSize:size];
+			}
+			if (window && window.contentView) {
+				[window.contentView layoutSubtreeIfNeeded];
+				png = offscreen_render(window.contentView,
+					window.contentView.bounds.size.width,
+					window.contentView.bounds.size.height);
+			}
+			if (png && [png writeToFile:screenshotPath atomically:YES]) {
+				fprintf(stderr, "internal screenshot: wrote %s (%lu bytes)\n",
+					internal_screenshot_out, (unsigned long)png.length);
+			} else {
+				fprintf(stderr, "internal screenshot: failed to write %s\n",
+					internal_screenshot_out);
+			}
+			[NSApp terminate:nil];
+		});
+	} else if (screenshot_out) {
 		NSString *screenshotPath = [NSString stringWithUTF8String:screenshot_out];
 		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)),
 			dispatch_get_main_queue(), ^{
