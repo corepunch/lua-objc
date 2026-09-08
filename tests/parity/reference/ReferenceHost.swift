@@ -10,6 +10,7 @@ private enum Fixture: String {
 	case longText = "text.long-ellipsis-italic"
 	case image = "image.system-icon"
 	case padding = "padding.vertical-edges"
+	case container = "container.section-groupbox"
 
 	var sceneName: String {
 		switch self {
@@ -21,12 +22,14 @@ private enum Fixture: String {
 		case .longText: return "LongTextScene"
 		case .image: return "ImageScene"
 		case .padding: return "PaddingScene"
+		case .container: return "ContainerScene"
 		}
 	}
 
 	var size: CGSize {
 		switch self {
 		case .text, .button, .surface, .grid, .longText, .image, .padding: return CGSize(width: 320, height: 120)
+		case .container: return CGSize(width: 320, height: 160)
 		case .stack: return CGSize(width: 480, height: 120)
 		}
 	}
@@ -130,6 +133,17 @@ private struct FixtureView: View {
 				.padding(.top, 8).padding(.bottom, 40)
 				.frame(maxWidth: .infinity).background(Color.green)
 				.clipShape(RoundedRectangle(cornerRadius: 12)))
+		case .container:
+			VStack(alignment: .leading, spacing: 12) {
+				ProbeView(id: "section", content: VStack(alignment: .leading, spacing: 8) {
+					Text("Overview").bold()
+					Text("Nested native content")
+				})
+				ProbeView(id: "groupbox", content: VStack(alignment: .leading, spacing: 8) {
+					Text("Details").bold()
+					Text("Grouped native content")
+				}.padding(12).background(Color.green).clipShape(RoundedRectangle(cornerRadius: 12)))
+			}
 		}
 	}
 

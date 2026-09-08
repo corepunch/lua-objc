@@ -125,6 +125,11 @@ Secure text entry is now native on both platforms: AppKit selects
 `NSSecureTextField`, and UIKit sets `UITextField.secureTextEntry` through the
 shared XML/Lua `secure` property.
 
+Section and GroupBox containers are now available in the cross-platform XML
+vocabulary, with a nested macOS capture showing native stack composition and a
+rounded semantic surface. Internal screenshots now honor explicit requested
+dimensions, preventing taller fixtures from being clipped.
+
 ## Next batch
 
 P1: add the independent SwiftUI reference host and a fail-closed capture/report
