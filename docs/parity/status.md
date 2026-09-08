@@ -258,6 +258,13 @@ accessibility identifier. AppKit layout dumps include that identifier, making
 candidate/reference frame matching semantic and independent of native child
 ordering; the XML regression suite covers the round trip.
 
+P1 now has `scripts/parity/report_case.py` and `make parity-report`: strict
+reports compare reference probe frames with identifier-matched candidate frames,
+record clipping/out-of-bounds failures and image metadata, and emit JSON plus a
+side-by-side HTML review artifact. The focused report test proves both a match
+and a missing-node negative control; pixel diffing remains explicitly marked
+unavailable unless Pillow is installed.
+
 The full headless suite is now 48 test files passing, and the parity manifest
 validates with 13 cases. An internal iOS Simulator capture was retried for the
 new Form fixture using the in-app screenshot channel; it remains unavailable

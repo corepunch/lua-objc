@@ -203,4 +203,14 @@ parity-check:
 parity-case: parity-check $(TARGET) $(FRAMEWORK_MODULES)
 	CASE=$(CASE) scripts/parity/capture_macos_case.sh
 
-.PHONY: all uikit run clean test parity-check parity-case run-hello run-list run-live run-weather run-welcome run-mail run-layout screenshot ios-host ios-packager ios-packager-run ios-run ios-internal-screenshot ios-screenshot ios ios-reset
+parity-report: parity-check
+	@test -n "$(CASE)" || (echo "usage: make parity-report CASE=<id> REFERENCE_JSON=<path>" >&2; exit 2)
+	@test -n "$(REFERENCE_JSON)" || (echo "parity-report: REFERENCE_JSON is required" >&2; exit 2)
+	python3 scripts/parity/report_case.py \
+		--candidate-xml "build/parity/macos/$(CASE)/candidate.xml" \
+		--candidate-png "build/parity/macos/$(CASE)/candidate.png" \
+		--reference-json "$(REFERENCE_JSON)" \
+		$(if $(REFERENCE_PNG),--reference-png "$(REFERENCE_PNG)") \
+		--out "build/parity/macos/$(CASE)/report.json" --strict
+
+.PHONY: all uikit run clean test parity-check parity-case parity-report run-hello run-list run-live run-weather run-welcome run-mail run-layout screenshot ios-host ios-packager ios-packager-run ios-run ios-internal-screenshot ios-screenshot ios ios-reset
