@@ -266,6 +266,19 @@ Launch arguments. `simctl launch` has **no `--env` flag**. Set child environment
 | `LUA_OBJC_APPEARANCE` | `light` / `dark` / `system` |
 | `LUA_OBJC_DUMP_LAYOUT` | Filename under the app container (`NSTemporaryDirectory()` or Documents). Makefile copies it out with `xcrun simctl get_app_container` — `OUT=` is a **Mac** path |
 | `LUA_OBJC_SCREENSHOT` | If set, host signals readiness; Makefile uses `simctl io screenshot` (full **device frame**, including status bar / home indicator — not AppKit `contentView`) |
+| `LUA_OBJC_INTERNAL_SCREENSHOT` | Test-only filename under the app container. After Lua instantiation and layout, the host renders the live `UIWindow` with `UIGraphicsImageRenderer` and writes a PNG without `simctl` or Screen Recording. |
+
+Capture the live app window from inside the host and copy the resulting PNG to
+the Mac with:
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+make ios-internal-screenshot PROJECT=examples/hello OUT=/tmp/ios-hello.png
+```
+
+This is a content-window capture, not a device-frame screenshot. It requires a
+booted Simulator and the normal local packager, but does not invoke
+`simctl io screenshot`.
 
 The host protocol stays `class.new():createWindow()` — same as `src/main.m` lines 552–588. The method name is the framework instantiation contract, not “make an NSWindow.” Keep the registry refs of the controller and the returned window/VC so the tree is not collected.
 

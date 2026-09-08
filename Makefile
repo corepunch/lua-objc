@@ -115,6 +115,7 @@ HOST_BINARY := $(HOST_BUNDLE)/LuaObjCHost
 PACKAGER := build/lua-objc-packager
 IOS_HOST_SRCS := ios/LuaObjCHost/main.m ios/LuaObjCHost/AppDelegate.m \
 	ios/LuaObjCHost/SceneDelegate.m ios/LuaObjCHost/LuaHost.m \
+	ios/LuaObjCHost/LuaCapture.m \
 	ios/LuaObjCHost/LuaSourceLoader.m ios/LuaObjCHost/LuaHotClient.m \
 	ios/LuaObjCHost/LuaErrorOverlay.m
 IOS_CFLAGS_C := -Wall -O2 -isysroot $(IOS_SDK) -arch arm64 \
@@ -170,6 +171,11 @@ ios-run: ios-host ios-packager
 	DEVELOPER_DIR=$(DEVELOPER_DIR) DEVICE="$(DEVICE)" PROJECT="$(or $(PROJECT),examples/hello)" \
 		scripts/ios-run.sh
 
+ios-internal-screenshot: ios-host ios-packager
+	DEVELOPER_DIR=$(DEVELOPER_DIR) OUT="$(or $(OUT),/tmp/ios-internal-screenshot.png)" \
+		PROJECT="$(or $(PROJECT),examples/hello)" DEVICE="$(DEVICE)" \
+		scripts/ios-internal-screenshot.sh
+
 ios: ios-run
 
 ios-reset:
@@ -193,4 +199,4 @@ parity-check:
 parity-case: parity-check $(TARGET) $(FRAMEWORK_MODULES)
 	CASE=$(CASE) scripts/parity/capture_macos_case.sh
 
-.PHONY: all uikit run clean test parity-check parity-case run-hello run-list run-live run-weather run-welcome run-mail run-layout screenshot ios-host ios-packager ios-packager-run ios-run ios ios-reset
+.PHONY: all uikit run clean test parity-check parity-case run-hello run-list run-live run-weather run-welcome run-mail run-layout screenshot ios-host ios-packager ios-packager-run ios-run ios-internal-screenshot ios ios-reset

@@ -2,6 +2,7 @@
 #import "LuaSourceLoader.h"
 #import "LuaHotClient.h"
 #import "LuaErrorOverlay.h"
+#import "LuaCapture.h"
 
 #include <lua.h>
 #include <lauxlib.h>
@@ -236,7 +237,32 @@ static int bridge_read_file(lua_State *L) {
 	lua_pushvalue(_L, -1);
 	_windowRef = luaL_ref(_L, LUA_REGISTRYINDEX);
 	[_window makeKeyAndVisible];
+	[self captureInternalScreenshotIfRequested];
 	return YES;
+}
+
+- (void)captureInternalScreenshotIfRequested {
+	NSString *requested = [self env:@"LUA_OBJC_INTERNAL_SCREENSHOT" fallback:@""];
+	if (requested.length == 0) return;
+
+	NSString *path = requested;
+	if (![path hasPrefix:@"/"]) {
+		path = [NSTemporaryDirectory() stringByAppendingPathComponent:path];
+	}
+	UIWindow *window = _window;
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[window layoutIfNeeded];
+		NSData *png = lua_objc_capture_view_png(window);
+		NSError *error = nil;
+		BOOL ok = png && [png writeToFile:path options:NSDataWritingAtomic error:&error];
+		if (ok) {
+			NSLog(@"[lua-objc] internal screenshot written %@ (%lu bytes)",
+				path, (unsigned long)png.length);
+		} else {
+			NSLog(@"[lua-objc] internal screenshot failed %@: %@",
+				path, error.localizedDescription ?: @"empty view");
+		}
+	});
 }
 
 - (NSError *)luaError:(NSString *)context {

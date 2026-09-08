@@ -17,6 +17,9 @@ Last updated: 2026-09-08 (P1 in progress)
 - Independent SwiftUI reference host scaffold added under
   `tests/parity/reference/`; it builds as a real macOS `.app`, emits readiness
   JSON with semantic probe frames, and supports the three seeded cases.
+- UIKit host now has an internal PNG renderer and `make ios-internal-screenshot`
+  copies its live-window capture out of the app container without `simctl io
+  screenshot`.
 - Headless example loading passes and AppKit layout dumps were captured for all
   three smoke cases under `build/parity/p1-macos/`.
 
