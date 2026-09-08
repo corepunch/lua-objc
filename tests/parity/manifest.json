@@ -11,6 +11,26 @@
   ],
   "cases": [
     {
+      "id": "container.form-labeled-control-group",
+      "family": "C2",
+      "purpose": "Form, LabeledContent, and ControlGroup composition",
+      "gate": "common",
+      "platforms": ["macos", "ios"],
+      "swiftuiScene": "FormScene",
+      "etluaScene": "container.form-labeled-control-group",
+      "nativeFamily": "stack",
+      "mapping": "SwiftUI Form/LabeledContent/ControlGroup -> native stack containers",
+      "data": {"text": "Native form content"},
+      "state": "default",
+      "actions": [],
+      "size": {"width": 320, "height": 160},
+      "appearance": "light",
+      "textSize": "large",
+      "assertions": ["form.content", "labeledContent.label", "controlGroup.buttons"],
+      "status": "implemented-unverified",
+      "evidence": []
+    },
+    {
       "id": "text.single.default",
       "family": "B1",
       "purpose": "Single semantic text node and intrinsic measurement",

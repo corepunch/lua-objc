@@ -43,6 +43,10 @@ local CASES = {
 		title = "Disclosure",
 		body = "Expanded content",
 	},
+	["container.form-labeled-control-group"] = {
+		title = "Form",
+		body = "Native form content",
+	},
 }
 
 function Model.caseId()

@@ -12,6 +12,7 @@ private enum Fixture: String {
 	case padding = "padding.vertical-edges"
 	case container = "container.section-groupbox"
 	case disclosure = "container.disclosure-expanded"
+	case form = "container.form-labeled-control-group"
 
 	var sceneName: String {
 		switch self {
@@ -25,6 +26,7 @@ private enum Fixture: String {
 		case .padding: return "PaddingScene"
 		case .container: return "ContainerScene"
 		case .disclosure: return "DisclosureScene"
+		case .form: return "FormScene"
 		}
 	}
 
@@ -33,6 +35,7 @@ private enum Fixture: String {
 		case .text, .button, .surface, .grid, .longText, .image, .padding: return CGSize(width: 320, height: 120)
 		case .container: return CGSize(width: 320, height: 160)
 		case .disclosure: return CGSize(width: 320, height: 120)
+		case .form: return CGSize(width: 320, height: 160)
 		case .stack: return CGSize(width: 480, height: 120)
 		}
 	}
@@ -150,6 +153,14 @@ private struct FixtureView: View {
 		case .disclosure:
 			DisclosureGroup("Advanced", isExpanded: .constant(true)) {
 				ProbeView(id: "content", content: Text("Expanded content"))
+			}
+		case .form:
+			Form {
+				LabeledContent("Name", value: "Native form content")
+				ControlGroup {
+					Button("Cancel") {}
+					Button("Save") {}
+				}
 			}
 		}
 	}

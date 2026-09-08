@@ -51,6 +51,16 @@
 			<Label text="<%= body %>" />
 		</DisclosureGroup>
 	</VStack>
+	<% elseif caseId == "container.form-labeled-control-group" then %>
+	<Form padding="16" spacing="12" fillWidth="true">
+		<LabeledContent label="Name" spacing="12">
+			<Label text="<%= body %>" />
+		</LabeledContent>
+		<ControlGroup spacing="8">
+			<Button title="Cancel" />
+			<Button title="Save" />
+		</ControlGroup>
+	</Form>
 	<% else %>
 	<Label text="Unknown parity case" />
 	<% end %>
