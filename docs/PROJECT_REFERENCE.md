@@ -334,7 +334,11 @@ padding. Ordinary HStack, VStack and ZStack use intrinsic content size, includin
 zero size for empty stacks. Flexibility is inherited from children on each axis;
 Spacer grows along its parent stack's main axis, and native scroll/tab containers
 consume available space. Use `fillWidth`, `fillHeight`, or `flexGrow` explicitly
-when content must expand. Hidden children do not contribute sibling spacing. Stack overlays can use
+when content must expand. `flexGrow` distributes space along the parent HStack's
+horizontal axis or VStack's vertical axis; it does not stretch the cross axis.
+Use `fillWidth` or `fillHeight` for explicit expansion on that axis. HStack centers
+children vertically by default, including nested text stacks at their intrinsic height.
+Hidden children do not contribute sibling spacing. Stack overlays can use
 `allowsHitTesting = false` to let input reach controls underneath; native hit
 testing still owns the remaining hierarchy.
 

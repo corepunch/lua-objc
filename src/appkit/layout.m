@@ -188,7 +188,12 @@ static CGFloat view_flex_grow(NSView *view, BOOL horizontal) {
 		return 0;
 	}
 	NSNumber *grow = objc_getAssociatedObject(view, &kKeys[kFlexGrowKey]);
-	if (grow) return MAX(0, grow.doubleValue);
+	/* Flex weight belongs to the parent's main axis. Letting it leak into
+	 * the cross axis stretches nested text stacks and their enclosing rows. */
+	LayoutAxis parentAxis = layout_axis(view.superview);
+	BOOL mainAxis = parentAxis == LayoutAxisHStack ? horizontal
+		: parentAxis == LayoutAxisVStack ? !horizontal : YES;
+	if (grow && mainAxis) return MAX(0, grow.doubleValue);
 	if ([objc_getAssociatedObject(view, horizontal ? &kKeys[kFillWidthKey] : &kKeys[kFillHeightKey]) boolValue]) return 1;
 	return default_grows_on_axis(view, horizontal) ? 1 : 0;
 }

@@ -1,8 +1,17 @@
 #pragma mark - Layout helpers
 
+static NSNumber *axis_flex_grow(UIView *view, BOOL horizontal) {
+	/* Flex weight belongs to the parent's main axis, not the cross axis of
+	 * a nested stack. Explicit fillWidth/fillHeight remain axis-specific. */
+	NSString *parentAxis = objc_getAssociatedObject(view.superview, &kAxisKey);
+	if ([parentAxis isEqualToString:@"hstack"] && !horizontal) return nil;
+	if ([parentAxis isEqualToString:@"vstack"] && horizontal) return nil;
+	return objc_getAssociatedObject(view, &kFlexGrowKey);
+}
+
 static BOOL grows_on_axis(UIView *view, BOOL horizontal) {
 	if (objc_getAssociatedObject(view, horizontal ? &kFixedWidthKey : &kFixedHeightKey)) return NO;
-	NSNumber *grow = objc_getAssociatedObject(view, &kFlexGrowKey);
+	NSNumber *grow = axis_flex_grow(view, horizontal);
 	if (grow) return grow.doubleValue > 0;
 	if ([objc_getAssociatedObject(view, horizontal ? &kFillWidthKey : &kFillHeightKey) boolValue]) return YES;
 	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
@@ -24,7 +33,7 @@ static BOOL grows_on_axis(UIView *view, BOOL horizontal) {
 
 static CGFloat flex_weight(UIView *view, BOOL horizontal) {
 	if (!grows_on_axis(view, horizontal)) return 0;
-	NSNumber *grow = objc_getAssociatedObject(view, &kFlexGrowKey);
+	NSNumber *grow = axis_flex_grow(view, horizontal);
 	return grow ? grow.doubleValue : 1;
 }
 

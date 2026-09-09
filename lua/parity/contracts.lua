@@ -135,6 +135,39 @@ function M.run(ns)
 	equal(artwork.image, nil, "clearing native image clears rendered content")
 	artwork.image = source
 	equal(artwork.image ~= nil, true, "native image can be restored after clearing")
+	-- A growing text column in a contact row must not make the whole row
+	-- compete with the screen's vertical Spacer for height.
+	local name = ns.Text { "Alice", fixedWidth = 40, fixedHeight = 16 }
+	local role = ns.Text { "Engineer", fixedWidth = 60, fixedHeight = 14 }
+	local column = ns.VStack { flexGrow = 1, alignment = "leading", spacing = 2, name, role }
+	local icon = ns.Text { "Icon", fixedWidth = 28, fixedHeight = 40 }
+	local status = ns.Text { "Active", fixedWidth = 40, fixedHeight = 14 }
+	local contact = ns.HStack { spacing = 10, icon, column, status }
+	local footer = ns.Spacer()
+	local screen = ns.VStack { fillWidth = true, fillHeight = true, spacing = 0, contact, footer }
+	for _, size in ipairs({ { 240, 200 }, { 400, 800 }, { 240, 200 } }) do
+		local w, h = table.unpack(size)
+		local rowProbe = measure(screen, w, h, contact)
+		local columnProbe = measure(screen, w, h, column)
+		local iconProbe = measure(screen, w, h, icon)
+		equal(rowProbe.height, 40, "contact row keeps its natural height on resize")
+		equal(columnProbe.height, 32, "horizontal flexGrow preserves column height")
+		equal(columnProbe.width, w - 88, "text column consumes remaining row width")
+		equal(columnProbe.y + columnProbe.height / 2, iconProbe.y + iconProbe.height / 2,
+			"default HStack vertically centers the nested text column")
+		equal(measure(screen, w, h, footer).height, h - 40, "vertical Spacer receives surplus height")
+	end
+	column.fillHeight = true
+	equal(measure(screen, 240, 200, column).height, measure(screen, 240, 200, contact).height,
+		"explicit fillHeight still expands across the row")
+	column.fillHeight = false
+	equal(measure(screen, 240, 200, column).height, 32, "cross-axis fill mutation restores intrinsic height")
+	equal(measure(screen, 240, 200, column).width, 152, "cross-axis fill mutation preserves horizontal growth")
+	local growingRow = ns.HStack { flexGrow = 1, spacing = 0,
+		ns.Text { "Fixed", fixedWidth = 40, fixedHeight = 20 } }
+	local vertical = ns.VStack { spacing = 0, growingRow, ns.Spacer() }
+	equal(measure(vertical, 240, 200, growingRow).width, 40, "vertical flexGrow preserves row width")
+	equal(measure(vertical, 240, 200, growingRow).height > 20, true, "vertical flexGrow expands on the main axis")
 	return count
 end
 

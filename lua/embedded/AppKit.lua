@@ -946,7 +946,7 @@ function AppKit.Separator(props)
 	local v = bridge._box()
 	v.boxType = 2
 	v.fixedHeight = 1
-	v.flexGrow = 1
+	v.fillWidth = true
 	return applyLayout(v, props)
 end
 
@@ -956,10 +956,10 @@ function AppKit.Divider(props)
 	v.boxType = 2
 	if props.orientation == "vertical" then
 		v.fixedWidth = 1
-		v.flexGrow = 1
+		v.fillHeight = true
 	else
 		v.fixedHeight = 1
-		v.flexGrow = 1
+		v.fillWidth = true
 	end
 	return applyLayout(v, props)
 end

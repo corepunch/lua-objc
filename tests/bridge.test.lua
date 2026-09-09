@@ -202,6 +202,17 @@ end, "window tabbing rejects unknown native modes")
 
 local s = ns.Separator()
 t.assertEqual(s.boxType, 2, "Separator has NSBoxSeparator boxType")
+local separatorStack = ns.VStack { fixedWidth = 200, fixedHeight = 100, s }
+ns._parityMeasure(separatorStack, {}, { width = 200, height = 100 })
+t.assertSize(s, 200, 1, "Separator fills width independently of the parent main axis")
+local horizontalDivider = ns.Divider()
+local dividerStack = ns.VStack { fixedWidth = 200, fixedHeight = 100, horizontalDivider }
+ns._parityMeasure(dividerStack, {}, { width = 200, height = 100 })
+t.assertSize(horizontalDivider, 200, 1, "horizontal Divider fills stack width")
+local verticalDivider = ns.Divider { orientation = "vertical" }
+local dividerRow = ns.HStack { fixedWidth = 200, fixedHeight = 100, verticalDivider }
+ns._parityMeasure(dividerRow, {}, { width = 200, height = 100 })
+t.assertSize(verticalDivider, 1, 100, "vertical Divider fills row height")
 
 -- Spacer can be created
 
