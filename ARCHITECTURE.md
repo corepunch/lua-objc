@@ -7,7 +7,7 @@ frameworks are Mach-O dylibs loaded by Lua; their declarative conveniences are
 authored in Lua and embedded into the corresponding library at build time.
 
 ```
-examples/*.lua              User-facing UI descriptions
+examples/<app>/             Lua Model, Controller, and views
 src/host.c                  Tiny macOS executable loader
 src/main.m                  AppKit translation-unit root and registration
 src/appkit/*.m              Focused bridge fragments included by main.m
@@ -18,7 +18,6 @@ ios/LuaObjCHost/            iPhone Simulator runtime (no app Lua inside)
 build/AppKit.dylib          AppKit runtime + luaopen_AppKit
 build/UIKit.dylib           UIKit compile-check (iOS SDK)
 lua/embedded/*.lua          Declarative layers (AppKit embedded; UIKit streamed on iOS)
-src/appkit/canvas_eval.m    Isolated AppKit canvas evaluation
 ```
 
 ---
@@ -47,9 +46,8 @@ On the iPhone Simulator host, `luaopen_UIKitNative` is in-process and
 `lua/embedded/UIKit.lua` is streamed from the Mac packager like application
 Lua. See [docs/ios.md](docs/ios.md).
 
-`AppKitNative` and `UIKitNative` are private implementation modules. The
-legacy `bridge` name remains temporarily available for existing application
-code, but public framework layers do not depend on it.
+`AppKitNative` and `UIKitNative` are private implementation modules. Apps
+use the public framework API; bridge tests may access native modules directly.
 
 `make all` builds AppKit everywhere and also builds UIKit when an
 iPhone Simulator SDK is available. `make uikit` requests that target
@@ -106,7 +104,9 @@ non-closing registry owner that detaches safely during `lua_close`.
 
 ### View construction
 
-Every UI primitive is a C function that allocates a native AppKit object and returns it as an `ObjCRef` userdata to Lua:
+Lua components compose existing views. Native leaf constructors allocate
+AppKit/UIKit objects and return `ObjCRef` userdata. Representative AppKit
+construction paths are:
 
 | Bridge function | AppKit class | Lua API |
 |---|---|---|
@@ -132,76 +132,125 @@ A custom flex-like layout engine is implemented entirely in C (`layout_recursive
 **Pass 3 — Place**: each child is given a frame and `layout_recursive` descends into it.
 
 `NSSplitView` divider thickness is accounted for in both hsplit and vsplit layout passes.
+Native split controllers and navigation containers own their internal geometry.
+The bridge uses native layout and constraints where appropriate (for example,
+the workspace content host in `src/appkit/views.m`); the flex engine is not a
+blanket replacement for Auto Layout.
 
-### Canvas eval (`src/appkit/canvas_eval.m`)
+## Object and state ownership
 
-Each canvas preview evaluation runs in a **fresh, isolated `lua_State`** (created by `canvas_state_create()`). This means:
+### Native objects crossing into Lua
 
-- User code globals do not persist between evals.
-- Module cache (`package.loaded`) is reset each run.
-- Registry refs from previous evals cannot fire.
+The shared boundary is implemented in `src/shared/lua_bridge_support.m`:
 
-Inside the isolated state, `ns.Window` and `ns.Preview` are monkey-patched to return an `ns.VStack` instead of creating a real `NSWindow`. This is the same approach Xcode uses for its macOS preview: render the content view only, no window chrome.
+1. `push_objc` allocates a Lua userdata containing an `ObjCRef`.
+2. `CFBridgingRetain(obj)` gives that handle one owning native reference.
+3. Property reads use `__bridge id` to access the native pointer without
+   transferring its ownership away from the handle.
+4. The metatable's `__gc` calls `gc_objc`, which releases that reference with
+   `CFRelease` and clears the pointer.
 
-The resulting `NSView` is marshalled back to the main Lua state via `CFBridgingRetain`, which keeps the view alive past `lua_close(C)`.
+Native parents and strong properties can retain the same object independently.
+Collecting a handle therefore does not mean unmounting or destroying its view.
+Removing a child from a container likewise does not invalidate a surviving Lua
+handle. Never use a native retain count to decide application lifecycle.
 
----
+`push_objc` does not intern userdata. Reading the same native object twice can
+produce distinct Lua keys, each with its own retain. Keep application identity
+in stable model keys. Foundation scalars and collections are converted to Lua
+values/tables; they are not live collection proxies. Native objects inside
+those collections still use retained handles.
 
-## Async state lifetime (`LuaStateOwner` + `lua_getextraspace`)
+`tests/ownership.test.lua` verifies handle collection, native parent retention,
+alias mutation, detachment, and reattachment. It observes Lua handle collection
+and native usability; it does not instrument final native deallocation.
 
-Async bridge functions (`_httpGet`, `_timerAfter`, `_textViewOnChange`) schedule
-ObjC work that completes after the calling Lua code returns. Runtime-created
-states follow this lifetime rule:
+### Lua values crossing into native callbacks
 
-> A state must die exactly once, on the main thread, when its creator and all in-flight async ops are done with it.
+A `luaL_ref` registry entry roots the Lua closure. An associated `NSNumber`
+containing that entry's integer does not itself implement reference cleanup.
+Some paths, such as `bridge_set_optional_callback` in `src/main.m`, unref the
+previous callback on replacement or clearing. This is not yet a universal
+contract: constructors and callback targets also store bare integers.
 
-Host-owned UIKit states use the same owner for callback lookup and cancellation,
-but the host remains responsible for `lua_close`. The registry holds a
-non-closing owner that detaches before state teardown.
+A registry closure can capture a controller, which holds a view handle, which
+retains the native view. Waiting for that view's `dealloc` to unref its callback
+cannot break this cycle. ARC manages native strong references; Lua traces its
+own heap. Neither collector traverses the combined graph to reclaim it.
 
-The owner is an ObjC object (`LuaStateOwner`) rather than a hand-rolled
-`_Atomic int` because ARC removes the three classic failure modes:
+The required direction is a shared, state-bound callback registration with an
+explicit dispose operation. The screen/controller or future renderer must
+end registrations when unmounting, even if the native object remains retained.
+The registration must unref only against its originating, still-live state.
+This is a design requirement, not an API available on every current control.
 
-| Manual refcount failure | Why ARC is immune |
-|---|---|
-| Missed decrement on a callback error/early-return path → leak | capture = retain, release = block disposal, both automatic |
-| Block never runs (invalidated timer, cancelled task) → unbalanced count | blocks don't retain raw C pointers, so a manual increment is never balanced; ARC's retain is tied to the block, not its execution |
-| Double decrement → use-after-free | `-dealloc` runs exactly once, at the last release |
+### Who closes `lua_State*`?
 
-`-dealloc` is the single choke point where `lua_close` lives.
+`lua_State*` is a C pointer. ARC does not free it automatically. The runtime
+chooses an explicit closer, implemented through `LuaStateOwner` or the host:
 
-### Why extraspace instead of a registry or dictionary
-
-Bridge functions resolve the owner via `owner_for_state(L)`, which reads an unretained pointer from `lua_getextraspace(L)`. Two properties make this correct:
-
-1. **Coroutine inheritance.** Lua 5.4 copies the main thread's extraspace into every new coroutine at `lua_newthread`. `fetch`/`timer` are always called *from coroutines*, and a coroutine's `L` is not the root state — this was the "stuck spinner" bug: a pointer-keyed dictionary lookup on `L` missed because only the root state was registered. Extraspace inherits, so resolution works from any thread.
-2. **No ABA window.** The extraspace read happens inside the calling state during an active C call, when the state is provably alive. A freed-and-reused pointer can never be looked up, because we never look anything up by pointer after the call returns — blocks capture the owner object itself.
-
-`bridge_main` (registry-based root-state resolution) and the `gLuaOwners` dictionary were both deleted once extraspace replaced them.
-
-### Why main-thread close matters
-
-`NSURLSession` runs and *releases* completion blocks on background queues. If that background release is the last one, `-dealloc` runs there — and `lua_close` runs `__gc` handlers that `CFRelease` `NSView`s, which AppKit requires on the main thread. `-dealloc` therefore marshals the close to the main queue when needed.
-
-### Design rejected: eager close + invalidation token
-
-Close the canvas state immediately at eval end; callbacks capture a retained `alive` flag and drop themselves when flipped. Simpler ownership, but a canvas mid-fetch at eval end has its coroutines killed with the state — `live.lua` in the IDE canvas would render the table shell and never populate a row. Keep-alive is what makes live data in canvas previews work.
-
-### Behavior by context
-
-| Context | Owner | Async outcome |
+| Context | Creator and closer | Callback lifetime |
 |---|---|---|
-| Main app state (`gL`) | created in `main()`, released by ARC at exit | works (standalone `live.lua`, `weather.lua`) |
-| IDE canvas eval | created in `bridge_eval`, released at return | works — canvas state outlives eval until fetches complete |
-| `--preview` CLI | none (extraspace zeroed) | callbacks drop cleanly; no crash, coroutines never resume |
+| macOS app / headless script | `lua_objc_main` creates the state and a closing `LuaStateOwner`; owner deallocation calls `lua_close` | Async blocks capture the owner; UI targets also use global `gL` |
+| macOS `--preview` | The same main state and closing owner | No application run loop; preview does not wait for async completion |
+| iOS host | `LuaHost` creates and explicitly closes/replaces its state | UIKit installs a registry-retained non-closing owner for async lookup and cancellation |
+
+Normal process termination can bypass orderly stack cleanup; do not use
+process exit as the lifecycle mechanism for reusable screens or reloads.
+
+`owner_for_state(L)` reads an unretained owner pointer from `lua_getextraspace`.
+Lua 5.4 copies the main state's extraspace into new coroutines, so async bridge
+calls resolve the same owner when invoked from a coroutine. Extraspace is a
+lookup slot, not a strong reference. Scheduled work captures the Objective-C
+owner instead of trusting a raw state pointer to remain valid.
+
+The closing owner's `dealloc` marshals `lua_close` to the main queue when
+released on a background queue. Closing a state runs userdata finalizers that
+release UI objects. UI work and state access must remain serialized on the
+main thread; ARC does not provide thread safety.
+
+For iOS, the registry owner's `__gc` calls `detachState`, which cancels pending
+work and sets `owner.L` to `NULL`. This occurs during host-driven `lua_close`;
+it is not a separate pre-close sweep of every native callback. Async completions
+check cancellation and avoid using a detached state. Registry finalization
+must not be treated as a guaranteed ordering mechanism for all UI teardown.
+
+### Cancellation and teardown requirements
+
+`LuaStateOwner` tracks HTTP tasks and timers. `cancel` marks the owner cancelled,
+cancels tasks, invalidates timers, and empties the pending list. Completions
+untrack work and release registry references where the state remains live.
+Strong block captures keep closing owners alive while work is pending; they
+also mean ARC alone is not proof that cancellation releases every resource.
+
+Before expanding reload or supporting multiple simultaneous states, implement
+and test an explicit teardown sequence:
+
+1. Stop accepting events for the retiring screen/state.
+2. Dispose UI callbacks, delegates, watchers, and subscriptions against their
+   original state; cancel outstanding async work.
+3. Detach state access from surviving native objects and callbacks.
+4. Release launch roots and native scene ownership as appropriate, then close
+   the state exactly once on the main thread.
+
+This sequence is the target contract. Current UI action targets in
+`src/appkit/action_button.m` and `src/uikit/action_target.m` use `gL`, so the
+runtime does not yet provide general simultaneous-state callback isolation.
+Retaining a native view never proves that its Lua callback state is alive.
+
+Language references: [Lua finalization](https://www.lua.org/manual/5.4/manual.html#2.5.3),
+[registry references](https://www.lua.org/manual/5.4/manual.html#luaL_ref),
+[coroutine extraspace](https://www.lua.org/manual/5.4/manual.html#lua_getextraspace),
+and [Clang ARC semantics](https://clang.llvm.org/docs/AutomaticReferenceCounting.html).
 
 ---
 
-## Layer 2 — AppKit.dylib
+## Layer 2 — Public Lua composition
 
-Provides a SwiftUI-like declarative API over the native bridge. Its editable
-source is `lua/embedded/AppKit.lua`; that file is build input rather than a
-runtime-searchable Lua module.
+The public APIs live in `lua/embedded/AppKit.lua` and `lua/embedded/UIKit.lua`.
+AppKit is embedded at build time; UIKit is streamed by the iOS host. Both
+compose native controls eagerly. Changing a model does not automatically
+reevaluate the Lua function that constructed a view.
 
 ### Key functions
 
@@ -258,10 +307,10 @@ The IDE now uses that layer to behave like VS Code on startup: open a folder
 immediately when one was provided, or show a welcome screen with recent items
 and an open-folder picker otherwise.
 
-**Scene separation rule.** Components return view trees. Only `init.lua` (or
-the `App` object's `welcome` callback) calls `ns.Window`. `Welcome.lua` returns
-a plain `ns.HStack` view; `App.lua` wraps it in `ns.Window`. No component
-module should ever create a window directly.
+**Scene separation rule.** Components return view trees. The framework
+instantiates the class returned by `init.lua`; its `createWindow()` method
+(or the root `App` lifecycle) creates the window. `init.lua` itself stays thin
+and does not self-start. Reusable view components do not create windows.
 
 **MVP example layout.** Every standalone example lives under
 `examples/<appname>/` with this layout:
@@ -270,7 +319,7 @@ module should ever create a window directly.
 init.lua        ← requires and returns Controller class (framework instantiates)
 Model.lua       ← data, queries, mutations (no ns.* calls)
 Controller.lua  ← defines Controller class; wires model → views, owns actions
-views/          ← *.etlua templates; no ns.* calls inside templates
+views/          ← etlua templates and Lua component functions
 ```
 
 `init.lua` never self-starts. It returns the class; the framework calls
@@ -289,11 +338,6 @@ examples/ide/
 
 That structure keeps app boot, scene selection, and UI composition separate
 without introducing a second runtime or any non-Lua app scaffolding.
-
-**PreviewArea API.** `PreviewArea` exposes `setContent(result, toolbarItems)`.
-The `rebuildToolbar` closure is internal; callers never hold it.
-
-This table wrapper avoids triggering KVC on `NSScrollView` when storing Lua-side methods.
 
 ---
 
@@ -402,27 +446,25 @@ own file location.
 
 #### View description format (`lua/ui/viewdesc.lua`)
 
-For future diffing and patching, `viewdesc` compiles templates to plain-table
-descriptions instead of live native views:
+`lua/ui/viewdesc.lua` parses descriptions and computes positional diffs.
+Its `apply` function is a no-op. It is not connected to the eager constructors
+as a working renderer and does not yet preserve native identity through keyed
+reconciliation.
 
-```lua
-local viewdesc = require("ui.viewdesc")
-local desc = viewdesc.fromFile("views/Window.etlua", data)
-local newDesc = viewdesc.fromFile("views/Window.etlua", newData)
-local patches = viewdesc.diff(desc, newDesc)
-viewdesc.apply(liveView, patches)
-```
+A future renderer should own description evaluation, dependency tracking,
+keyed native reuse, and mount/unmount cleanup. Components should remain Lua
+functions; platform bridges should supply native primitives. Build callback
+disposal first so removing a described subtree also releases its registrations.
+See [Declarative components](docs/PROJECT_REFERENCE.md#declarative-components-the-escape-hatch-beyond-the-eager-native-tree)
+for the intended boundary.
 
-This enables efficient updates: only changed views are recreated, similar to
-React's virtual DOM diffing.
+#### Templates and Lua components
 
-#### XML-first rule
-
-All views in an example app are expressed as XML templates. Controllers must
-not call `ns.VStack`, `ns.HStack`, `ns.List`, or any other view constructor
-directly. The only `ns.*` calls allowed in a controller are `ns.Window` (one,
-at the top level), property mutations on existing views, and layout helpers
-(`view:layout()`, `view:clearContainer()`, etc.).
+Templates provide the shared XML vocabulary; ordinary Lua component functions
+provide reusable view structure. Keep both in `views/`. Controllers own actions
+and connect model data to those views. In Lua, use `ForEach` for repeated
+siblings and `Group` for multiple siblings. etlua loops expand repeated XML
+before parsing; constructors should not run inside template interpolation.
 
 ---
 
@@ -443,13 +485,16 @@ ns.Window
 ./lua-objc --preview [--width=N] [--height=N] [--out=path.png] file.lua
 ```
 
-1. `canvas_state_create()` — fresh isolated Lua state
-2. Script is wrapped: `ns.Window → ns.VStack`
-3. Returned `NSView` is framed and laid out
-4. `offscreen_render()` wraps the view in a borderless offscreen `NSWindow`, calls `cacheDisplayInRect:toBitmapImageRep:`, writes PNG
-5. No `[NSApp run]` — process exits after write
+The implementation is in `src/main.m`, with `offscreen_render` in
+`src/appkit/platform.m`. It uses the launcher's main Lua state, temporarily
+replaces `ns.Window` / `ns.Preview` with stack construction, executes the script,
+and requires a returned native view. It lays out that view and renders PNG
+without running the application event loop. Async-loaded data is not awaited.
 
-This matches Xcode's static preview fast path: AppKit drawing stack initialises (via `[NSApplication sharedApplication]`) but no event loop spins.
+This path does not instantiate a Controller class returned by a thin app entry
+point. Use `--screenshot` or `--dump-layout` for `examples/<app>/init.lua` apps;
+those paths exercise framework startup and real window geometry. There is no
+current `canvas_state_create`, `bridge_eval`, or isolated IDE canvas subsystem.
 
 ---
 
@@ -463,9 +508,28 @@ This matches Xcode's static preview fast path: AppKit drawing stack initialises 
 
 - **One AppKit runtime image**: all AppKit bridge and host state lives in
   `AppKit.dylib`; `lua-objc` itself is only a loader.
-- **Embedded public modules**: framework Lua helpers remain editable source,
-  but ship inside native `luaopen_*` modules rather than loose runtime files.
-- **No subclassing for layout**: layout metadata is attached via associated objects, keeping native view classes unmodified.
-- **Isolated canvas evals**: each preview run gets a clean Lua state; no global pollution between runs.
-- **ARC-owned state lifetime**: `lua_State` teardown is tied to `LuaStateOwner` refcount; async callbacks resolve the owner via `lua_getextraspace` (inherited by coroutines), never by raw pointer lookup.
-- **No AutoLayout**: the custom flex engine replaces AppKit's AutoLayout entirely for bridge-created views.
+- **Public module delivery**: AppKit Lua helpers are embedded in the native
+  module; the iOS development host streams UIKit helpers from the packager.
+- **Per-view layout state**: associated objects store layout metadata; base
+  extensions expose accessors and native subclasses supply semantics as needed.
+- **Explicit state ownership**: closing owners wrap `lua_close` on macOS;
+  the iOS host closes its state. Async callbacks resolve owners via extraspace.
+- **Native geometry authority**: flex layout owns framework stacks; native
+  split, navigation, and hosting containers retain their layout responsibilities.
+- **Source folders express responsibility**: platform and shared fragments stay
+  in their own folders while sharing one platform runtime. See [src/README.md](src/README.md).
+
+## Review priorities and acceptance criteria
+
+| Priority | Evidence in the current implementation | Completion criterion |
+|---|---|---|
+| Callback registration lifetime | Global `gL` targets and bare associated registry integers; cleanup differs by control | State-bound registrations; replacement/unmount releases captures; callbacks from retired states cannot reach a new state |
+| Deterministic state shutdown | `LuaStateOwner` cancellation and iOS registry finalization exist, but no common UI pre-close disposal pass | Explicit main-thread shutdown; pending work, late callbacks, and repeated iOS reload covered without stale-state access |
+| Retained rendering | Eager public constructors; `viewdesc.apply` is empty | Keyed insert/remove/move/reuse preserves focus, selection, local state, and releases removed callbacks |
+
+Keep the existing folder split. Extract further subsystems when they have a
+cohesive responsibility; moving all `.m` files into one directory would not
+resolve any of these lifetime or rendering gaps. Add deterministic headless
+regressions for each implementation step. Verify native interaction and reload
+in a running host when those behaviors change; compilation alone cannot prove
+them.

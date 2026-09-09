@@ -151,12 +151,12 @@ quitting.
 
 2. **`build/AppKit.dylib`** — Self-contained macOS Lua module and runtime.
    `src/main.m` includes focused bridge fragments from `src/appkit/`; together
-   they own the ObjC bridge, layout engine, canvas services, and embedded
+   they own the ObjC bridge, layout engine, rendering services, and embedded
    `lua/embedded/AppKit.lua` declarative layer.
 3. **iOS Simulator host** — `ios/LuaObjCHost` + `luaopen_UIKitNative`. No app
    Lua inside the `.app`. Packager streams Lua, templates, and assets; the host
    reloads in process. `build/UIKit.dylib` remains an optional SDK compile-check.
-4. **`examples/*.lua`** — UI scripts written by the user. No compilation step
+4. **`examples/<app>/`** — Lua Model, Controller, and views. No compilation step
    for Lua/asset changes.
 
 The embedded AppKit layer provides SwiftUI-like functions
@@ -1182,8 +1182,8 @@ should add next.
 | **Resolving ownership from a coroutine** | `L` in a coroutine bridge call differs from the root state's pointer, so pointer-keyed owner maps miss. | Use `owner_for_state(L)`, which reads the inherited owner pointer from `lua_getextraspace`; do not restore the deleted `"bridge_main"` registry workaround. |
 | **`lua_tostring` mutating numbers on the stack** | Calling `lua_tostring` on a number changes the stack slot to a string, breaking `lua_next` iteration. | Use `lua_pushvalue` before conversion, or check `lua_type` first. |
 | **`sizeToFit` on non-NSControl views** | `NSScrollView`, `NSSplitView` don't implement it — crash. | Guard with `respondsToSelector:@selector(sizeToFit)`. |
-| **ARC and `lua_State*` lifetime** | ARC won't release the `lua_State*` for you — it's a C pointer. The ObjC object holding it can be dealloc'd while the state is still alive. | Never store `lua_State*` as an ObjC property without a corresponding `__weak` or manual cleanup in `dealloc`. |
-| **Blocks capturing `lua_State*` in async work** | A raw pointer can outlive its state, especially for isolated canvas evaluations. | Capture `LuaStateOwner` strongly, check cancellation, and resume through its live state. Never capture a bare state pointer as the lifetime mechanism. |
+| **ARC and `lua_State*` lifetime** | ARC manages Objective-C references, not the C allocation behind `lua_State*`; `__weak` cannot manage that pointer. | Designate one explicit closer: a closing `LuaStateOwner` on macOS or `LuaHost` on iOS. See [ownership](../ARCHITECTURE.md#object-and-state-ownership). |
+| **Blocks capturing `lua_State*` in async work** | A raw pointer can outlive its state, especially during host reload. | Capture `LuaStateOwner` strongly, check cancellation, and resume through its live state. UI callbacks still using `gL` need migration to state-bound registrations. |
 
 ## File layout
 
@@ -1426,9 +1426,10 @@ own file location.
 
 ### View description format
 
-For efficient diffing and patching, `lua/ui/viewdesc.lua` compiles templates
-to plain-table descriptions instead of live native views. This enables
-React-style updates where only changed views are recreated:
+`lua/ui/viewdesc.lua` compiles templates to plain-table descriptions and
+computes positional diffs. Its `apply` function is currently a no-op, so this
+is an experimental description API, not a working native renderer. Retained
+evaluation, keyed reuse, and unmount cleanup remain implementation work:
 
 ```lua
 local viewdesc = require("ui.viewdesc")

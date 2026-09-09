@@ -39,8 +39,7 @@ views/*.etlua     — declarative XML templates
 
 Every layer is testable in under a second — no windows, no pauses.
 Controllers are instantiated, models are queried, views are rendered and
-inspected. The full suite of 14 test files runs faster than one SwiftUI
-preview refresh.
+inspected. Headless tests provide a fast feedback loop alongside visual QA.
 
 **Layout is data, not pixels.** The native layout dump is an XML export of
 the entire AppKit/UIKit view hierarchy with computed frames, intrinsic sizes,
@@ -63,7 +62,8 @@ aligns before a human ever sees the screen.
 
 ## Quick start
 
-Requirements: macOS and Lua 5.4.
+Requirements: macOS 26 or later and Lua 5.4. iOS builds also require Xcode
+with the iPhone Simulator SDK.
 
 ```sh
 make
@@ -104,15 +104,19 @@ with the [agent quickstart](docs/agents/quickstart.md), then use the
 [XML syntax reference](docs/agents/xml-syntax.md) and [Apple UI checklist](docs/agents/apple-ui-checklist.md)
 when generating an app.
 
-Render a script without opening a window:
+Capture an app's native content and computed layout:
 
 ```sh
-./lua-objc --preview --width=800 --height=600 \
-  --out=/tmp/preview.png examples/layout/init.lua
+./lua-objc --internal-screenshot=/tmp/content.png --width=800 --height=600 \
+  examples/layout/init.lua
 
 # Dump AppKit's computed native hierarchy, frames, and table-cell cropping.
 ./lua-objc --dump-layout=/tmp/layout.xml examples/stocks/init.lua
 ```
+
+`--preview` is a separate synchronous path for scripts returning a native
+view; it does not instantiate the Controller class returned by an app entry
+point. See [preview behavior](ARCHITECTURE.md#--preview-cli-mode).
 
 ## Where to work
 
@@ -124,7 +128,7 @@ Render a script without opening a window:
 | Change flex layout | `src/appkit/layout.m` |
 | Change lists or outlines | `src/appkit/table_data_source.m`, `src/appkit/outline_data_source.m`, `src/appkit/controls.m`, `src/appkit/outline.m`, `docs/tableview_swiftui.md` |
 | Change async state ownership, HTTP, timers, or JSON | `src/shared/lua_async.m` |
-| Change isolated canvas evaluation | `src/appkit/canvas_eval.m` |
+| Change CLI preview rendering | `src/main.m`, `src/appkit/platform.m` |
 | Change editor highlighting | `src/appkit/syntax_highlight.m` |
 | Add an IDE editor surface | `examples/ide/` |
 | Write or modify XML view templates | `lua/ui/xml.lua`, `examples/<app>/views/` |
@@ -146,16 +150,112 @@ rg -n 'bridge_tableview|List' src lua tests docs
 ## Architecture
 
 ```text
-Lua script -> require("AppKit") -> build/AppKit.dylib -> AppKit objects
-                                    native bridge +
-                                    embedded AppKit.lua
+App: Model + Controller + views (Lua components / etlua templates)
+                         |
+            Public AppKit.lua / UIKit.lua API
+                         |
+            Native platform bridge and layout
+                         |
+                 AppKit / UIKit controls
+
+Shared native services: userdata conversion, Lua state lifetime, async, errors
 ```
 
-`src/host.c` is a small loader. `build/AppKit.dylib` owns the Lua state, AppKit
-bridge, layout engine, async services, and embedded declarative layer.
-`AppKit.dylib` and `UIKit.dylib` expose the corresponding native modules.
+On macOS, `src/host.c` loads `build/AppKit.dylib`, which contains the runtime
+and embedded public Lua API. On iOS, `ios/LuaObjCHost/` links the UIKit runtime
+and streams the public Lua API and app sources from the packager.
+`build/UIKit.dylib` is the SDK compile-check, not the Simulator app.
 
-### App structure (MVC)
+### Who owns an object: Lua or ARC?
+
+**Lua owns the userdata handle; the handle holds a strong native reference.**
+`push_objc` stores a `CFBridgingRetain` in `ObjCRef.ptr`. Lua's `__gc` calls
+`gc_objc`, which balances it with `CFRelease`. ARC manages native strong
+references outside that explicit bridge boundary. See the
+[shared implementation](src/shared/lua_bridge_support.m).
+
+| Resource | What keeps it alive? | What releases it? |
+|---|---|---|
+| Lua model, controller, table, closure | Reachable Lua references, including registry entries | Lua GC after those references disappear |
+| Native view or window exposed to Lua | Each userdata handle retains it; native containers and other strong references can also retain it | Userdata finalization releases its retain; native owners release theirs independently |
+| Native delegate / data source / layout metadata | A strong property or retained associated object where the bridge installs one | Replacement or destruction of the owning native object |
+| Lua callback installed in native code | A Lua registry reference; an integer on the native object identifies it | Explicit `luaL_unref`, or state teardown; cleanup is not yet uniform across controls |
+| `lua_State*` | A closing `LuaStateOwner` on macOS; `LuaHost` on iOS | Explicit `lua_close` by the designated owner; ARC cannot free a C pointer itself |
+
+Setting `view = nil` drops a Lua reference. Collection later releases that
+handle's native retain; a parent can still keep the view alive. Conversely,
+removing a view from a container does not destroy it while Lua still holds a
+handle. Two handles may refer to the same native object; Lua table-key identity
+must not be used as native object identity.
+
+Callbacks need particular care: a registry-rooted closure can capture a
+controller that retains the callback's view. Lua GC and ARC do not jointly
+collect that ownership cycle. Dispose registrations explicitly when their
+screen or state ends; a native `dealloc` alone cannot break a cycle that keeps
+the native object alive. The language rules are described in the
+[Lua GC manual](https://www.lua.org/manual/5.4/manual.html#2.5) and
+[Clang ARC specification](https://clang.llvm.org/docs/AutomaticReferenceCounting.html).
+
+### Should all `.m` files live in one folder?
+
+**Keep native files in folders by platform and responsibility.** The file
+extension does not define an architectural layer:
+
+| Location | Responsibility |
+|---|---|
+| `src/appkit/` | AppKit controls, navigation, layout, property and method bindings |
+| `src/uikit/` | UIKit equivalents and scene integration |
+| `src/shared/` | Common bridge conversion, state ownership, async services, errors |
+| `ios/LuaObjCHost/` | iOS process lifecycle, source loading, reload, capture |
+| `src/packager/` | Mac development server for Lua and assets |
+| `examples/<app>/` | Application behavior and composition in Lua |
+
+Nested subsystem folders are fine when they make navigation easier. Preserve
+the existing build boundary: `src/main.m` includes AppKit fragments;
+`src/uikit_module.m` includes `src/uikit/bridge.m` and its fragments. Included
+`.m` files are **not separate compiler inputs**. Add an explicit include when
+adding a fragment; Makefile discovery only tracks rebuild dependencies.
+
+One runtime image per platform keeps bridge state and associated-object keys
+unique. One image can contain multiple compiled objects; the current included
+fragments additionally share translation-unit-local symbols. Moving a file
+between folders does not change either boundary. See the
+[native source map](src/README.md) for placement and build rules.
+
+### What belongs in Lua, and what belongs in Objective-C?
+
+Keep models, actions, reusable components, and template composition in Lua.
+Use Objective-C for native initializers, delegates, platform lifecycle,
+rendering, and operations the existing bridge cannot express. Ordinary native
+properties use KVC; semantic aliases belong on exported native classes;
+non-property operations get explicit bindings. XML is a shared UI vocabulary,
+not a second native-property schema.
+
+The current API builds native views eagerly. Lua owns the application state;
+native widgets own interaction state, and native containers own their geometry.
+The flex engine measures and places framework stacks while respecting those
+containers. Mutating a model does not automatically rebuild a view tree.
+
+### What should improve next?
+
+The review identifies these priorities, in dependency order:
+
+1. **Unify callback lifetime.** Replace global-state callback lookup and bare
+   registry integers with state-bound registrations and explicit disposal.
+   Test callback replacement, collection, cancellation, and iOS reload.
+2. **Make state teardown explicit.** Quiesce native event sources and detach
+   callbacks before closing or replacing a state. The async owner already
+   provides cancellation, but UI callbacks still use `gL` in several paths.
+3. **Add retained descriptions and keyed reconciliation.** A renderer should
+   own mounting, updates, and unmount cleanup while preserving native focus
+   and selection. `lua/ui/viewdesc.lua` can describe/diff trees, but its
+   `apply` function is currently a no-op; it is not a working renderer.
+
+These are remaining implementation work, not guarantees of the current
+runtime. The [architecture guide](ARCHITECTURE.md) records the evidence,
+lifetime contracts, and verification requirements.
+
+### App structure (MVP)
 
 Every app follows the MVP folder layout:
 
@@ -164,7 +264,7 @@ examples/<app>/
   init.lua        — entry point, requires and returns Controller class
   Model.lua       — pure data: queries, formatting, sample data
   Controller.lua  — creates views, wires Model → views, owns actions
-  views/          — etlua templates, one per screen/section
+  views/          — etlua templates and reusable Lua component functions
 ```
 
 `init.lua` never self-starts. It returns the class; the framework calls
@@ -204,7 +304,7 @@ Key features:
 
 ## Testing
 
-All 14 test suites run in under a second — no windows, no pauses:
+Run the headless regression suites:
 
 ```sh
 make test
