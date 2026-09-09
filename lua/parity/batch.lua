@@ -12,7 +12,7 @@ local function dimension(value, name)
 		name .. " must be a finite nonnegative number")
 end
 
-local function build(node, probes, ids, swiftui)
+local function build(node, probes, ids)
 	assert(type(node) == "table" and constructors[node.kind], "invalid node kind")
 	if node.kind ~= "spacer" then
 		assert(type(node.id) == "string" and node.id ~= "", "node needs an id")
@@ -24,19 +24,8 @@ local function build(node, probes, ids, swiftui)
 		if node[key] ~= nil then dimension(node[key], key) end
 	end
 	props.spacing, props.size = node.spacing, node.size
-	if not swiftui then props.padding = node.padding end
+	props.padding = node.padding
 	props.fixedWidth, props.fixedHeight = node.width, node.height
-	-- The normal AppKit stack constructors are flexible because application
-	-- roots usually consume their window. SwiftUI stacks in this fixture are
-	-- measured intrinsically by the surrounding fixed frame, however, so the
-	-- parity adapter must remove that application-level default. Spacers keep
-	-- their native flexibility and still expand when a stack proposes space.
-	if swiftui and (node.kind == "hstack" or node.kind == "vstack" or node.kind == "zstack") then
-		props.flexGrow = 0
-		props.flexShrink = 0
-		props.fillWidth = false
-		props.fillHeight = false
-	end
 	local probe
 	if node.kind ~= "spacer" then
 		probe = { id = node.id }
@@ -47,47 +36,24 @@ local function build(node, probes, ids, swiftui)
 		props[1] = node.text or ""
 	else
 		for _, child in ipairs(node.children or {}) do
-			props[#props + 1] = build(child, probes, ids, swiftui)
+			props[#props + 1] = build(child, probes, ids)
 		end
 	end
 	local view = constructors[node.kind](props)
-	if swiftui and node.kind == "text" and node.width == nil then
-		-- NSTextField's intrinsic bounds include its two-point cell inset on
-		-- each horizontal edge; SwiftUI Text measures only its glyph content.
-		-- Keep this normalization local to the reference adapter rather than
-		-- changing the sizing contract of production text controls.
-		local frame = view.frameSize
-		if frame and frame.width > 4 then
-			view.fixedWidth = frame.width - 4
-		end
-	end
-	-- Padding is an outer SwiftUI modifier. Represent it with a native
-	-- intrinsic ZStack wrapper so a fixed frame on the node remains inside the
-	-- padding, instead of being overwritten by the production layout property.
-	if swiftui and node.padding ~= nil then
-		view = constructors.zstack {
-			padding = node.padding,
-			flexGrow = 0,
-			flexShrink = 0,
-			fillWidth = false,
-			fillHeight = false,
-			view,
-		}
-	end
 	if node.kind ~= "spacer" then
 		probe.view = view
 	end
 	return view
 end
 
-function batch.measure(case, runId, swiftui)
+function batch.measure(case, runId)
 	assert(type(runId) == "string" and runId ~= "", "runId must be a nonempty string")
 	assert(type(case.id) == "string" and case.id:match("^[%w_.-]+$")
 		and case.id ~= "." and case.id ~= "..", "unsafe case id")
 	dimension(case.width, "case.width")
 	dimension(case.height, "case.height")
 	local probes = {}
-	local root = build(case.tree, probes, {}, swiftui == true)
+	local root = build(case.tree, probes, {})
 	-- The unprobed native parent owns the proposal. Its ordinary ZStack layout
 	-- measures and centers the tree; assigning bounds to the tree would mask
 	-- intrinsic root text sizes and fixed-size root overflow.
@@ -97,7 +63,7 @@ function batch.measure(case, runId, swiftui)
 	})
 end
 
-function batch.run(input, output, swiftui)
+function batch.run(input, output)
 	assert(type(input) == "table" and input.schema == 1, "expected batch schema 1")
 	assert(type(input.runId) == "string" and input.runId ~= "", "missing runId")
 	assert(type(input.cases) == "table", "missing cases")
@@ -109,7 +75,7 @@ function batch.run(input, output, swiftui)
 	end
 	local ok, err = pcall(function()
 		for _, case in ipairs(input.cases) do
-			local json = batch.measure(case, input.runId, swiftui == true)
+			local json = batch.measure(case, input.runId)
 			ns._parityWrite(output .. "/" .. case.id .. ".json", json)
 			collectgarbage("collect")
 		end
@@ -136,7 +102,7 @@ function batch.runEnvironment()
 	end
 	local input, err = ns._jsonParse(source)
 	assert(input, err)
-	return batch.run(input, output, true)
+	return batch.run(input, output)
 end
 
 return batch

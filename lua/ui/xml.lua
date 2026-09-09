@@ -345,7 +345,7 @@ local function layoutProps(attrs)
         "fixedWidth", "fixedHeight", "minWidth", "minHeight",
         "maxWidth", "maxHeight",
         "flexGrow", "flexShrink", "flexBasis",
-		"fillWidth", "fillHeight", "hidden", "background", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode",
+		"fillWidth", "fillHeight", "hidden", "allowsHitTesting", "background", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode",
     }
     local props = {}
     for _, k in ipairs(lp) do

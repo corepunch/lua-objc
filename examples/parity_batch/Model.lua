@@ -8,6 +8,7 @@ function Model.new()
 end
 
 function Model:run(inputPath, outputPath)
+	require("parity.contracts").run(ns)
 	local documents = ns._parityDocumentsDirectory()
 	inputPath = inputPath or os.getenv("PARITY_BATCH_INPUT") or documents .. "/parity-input.json"
 	outputPath = outputPath or os.getenv("PARITY_BATCH_OUTPUT") or documents .. "/parity-results"

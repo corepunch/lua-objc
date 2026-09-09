@@ -330,12 +330,34 @@ Each ObjC object is wrapped in a Lua full userdata with a metatable (`nsview` or
 Layout is done recursively in C (`layout_recursive`). Containers tagged via
 `objc_setAssociatedObject` (`"vstack"` / `"hstack"`) lay out their children
 top-to-bottom or left-to-right with 8pt sibling spacing and no implicit outer
-padding. `HStack` uses intrinsic vertical height and flexible horizontal width;
-primary flexible content such as `List` consumes the remaining proposal.
+padding. Ordinary HStack, VStack and ZStack use intrinsic content size, including
+zero size for empty stacks. Flexibility is inherited from children on each axis;
+Spacer grows along its parent stack's main axis, and native scroll/tab containers
+consume available space. Use `fillWidth`, `fillHeight`, or `flexGrow` explicitly
+when content must expand. Hidden children do not contribute sibling spacing. Stack overlays can use
+`allowsHitTesting = false` to let input reach controls underneath; native hit
+testing still owns the remaining hierarchy.
 
-Non-container views (Text, Image, List) are treated as leaf nodes — their frame
-is used as-is, and recursion stops there. The `respondsToSelector:` guard on
-`sizeToFit` avoids crashes on views like `NSScrollView` that don't support it.
+Text measures the current native content under the parent's width proposal,
+including wrapping. Previous frames are never an intrinsic minimum. HStack
+negotiates constrained widths and native scroll containers measure their documents
+independently from the viewport. Explicit zero dimensions remain zero. AppKit
+uses bottom-left native coordinates internally; asymmetric padding still has the
+same top/bottom meaning as UIKit.
+
+`NavigationStack { content = view, title = "Title" }` owns native page history:
+`NSPageController` on AppKit and `UINavigationController` on UIKit. Push with
+`navigation:push(ns.HostingController(destination), title)` and return with
+`navigation:pop()`. `depth` and `currentController` expose native state. UIKit's
+`hidesNavigationBar = true` hides the root page's bar; pushed pages receive native
+navigation titles and Back behavior. Application components must not create a new
+window to navigate.
+
+`TextField { value = "", placeholder = "Command", onChange = function(value, field)
+end, onCommand = function(command, field) return command == "submit" end }` uses
+native editing events on both platforms. `submit` represents keyboard Return;
+return true to handle the command. Programmatic `.text` updates do not synthesize
+user edits.
 
 ## Lua API — Views
 

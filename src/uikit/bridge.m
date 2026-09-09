@@ -6,6 +6,7 @@
 #include <lauxlib.h>
 
 static char kAxisKey;
+static char kTextFieldDelegateKey;
 static char kFlexibleKey;
 static char kTableSourceKey;
 static char kCallbackKey;
@@ -62,6 +63,7 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #include "tables.m"
 #include "platform.m"
 #include "constructors.m"
+#include "text_field.m"
 #include "hosting.m"
 #include "navigation.m"
 #include "presentation.m"
@@ -70,6 +72,7 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #pragma mark - Module registration
 
 static const luaL_Reg bridge_lib[] = {
+	{"_hitTestTarget", bridge_hit_test_target},
 	{"_parityMeasure", bridge_parity_measure},
 	{"_parityWrite", bridge_parity_write},
 	{"_parityJSON", bridge_parity_json},
@@ -81,6 +84,9 @@ static const luaL_Reg bridge_lib[] = {
 	{"_scrollView", bridge_UIKitControls_scrollView},
 	{"_hsplit", bridge_UIKitControls_hsplit},
 	{"_spacer", bridge_UIKitControls_spacer},
+	{"_textFieldCallbacks", bridge_text_field_callbacks},
+	{"_textFieldTestInput", bridge_text_field_test_input},
+	{"_textFieldTestCommand", bridge_text_field_test_command},
 	{"_textField", bridge_UIKitControls_textField},
 	{"_searchField", bridge_UIKitControls_searchField},
 	{"_textEditor", bridge_UIKitControls_textEditor},

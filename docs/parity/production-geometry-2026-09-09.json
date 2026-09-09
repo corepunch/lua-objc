@@ -1,0 +1,807 @@
+{
+  "schema": 1,
+  "date": "2026-09-09",
+  "scope": "geometry-only",
+  "deliveryGatesComplete": false,
+  "nativeContracts": 63,
+  "luaTestFiles": 57,
+  "pythonProtocolTests": 8,
+  "galleryCases": 13,
+  "galleryStatus": "implemented-unverified",
+  "platforms": {
+    "macos": {
+      "passed": 222,
+      "failed": 2,
+      "candidate": {
+        "schema": 1,
+        "engine": "candidate",
+        "runId": "5e8d22c4-ea96-4d90-b718-69b8044577e3",
+        "specHash": "cd5002779496a7c9a3ddd4b767627293cf7692b707119400f4a724ca33c1403a",
+        "buildHash": "92998756bf1a051080f9a9be9f44e1602c0c39dc51d8a538c33f465e2a1d9dda",
+        "binary": "/Users/igor/Developer/lua-objc/build/AppKit.dylib",
+        "sourceHash": "9db349fe860995c306bf268c35622d8c4df26703d60c7e4effd57044ffd398a8",
+        "environment": [
+          "macos",
+          "Version 26.6.2 (Build 25G83)",
+          1,
+          "light",
+          "en_DE",
+          "large",
+          "ltr",
+          "root-top-left-points"
+        ],
+        "seconds": 0.7595747500308789,
+        "count": 224
+      },
+      "reference": {
+        "schema": 1,
+        "engine": "reference",
+        "runId": "59a8968d-a242-4980-9ec2-6d3807df859e",
+        "specHash": "cd5002779496a7c9a3ddd4b767627293cf7692b707119400f4a724ca33c1403a",
+        "buildHash": "cec4cc0941d2ace29243babbc08fa77dfe7321c3c75c4e4baa47b5b1612c0cd7",
+        "binary": "/Users/igor/Developer/lua-objc/build/parity/batch/SwiftUIBatchReference",
+        "sourceHash": "0dae2089dfab58cf8e22e1655fbc78adf059a2e9f2dc8c69c205ba8cce182dbc",
+        "environment": [
+          "macos",
+          "Version 26.6.2 (Build 25G83)",
+          1,
+          "light",
+          "en_DE",
+          "large",
+          "ltr",
+          "root-top-left-points"
+        ],
+        "seconds": 13.415615499950945,
+        "count": 224
+      },
+      "remainingCases": [
+        {
+          "id": "hstack.w120.s8.p0.nested",
+          "status": "geometry-fail",
+          "failures": [
+            {
+              "node": "first",
+              "kind": "text",
+              "delta": {
+                "x": 0.0,
+                "y": -8,
+                "width": -7,
+                "height": 16,
+                "right": -7.0,
+                "bottom": 8
+              },
+              "reference": {
+                "height": 16,
+                "id": "first",
+                "text": "Parity",
+                "width": 35,
+                "x": 1.5,
+                "y": 72
+              },
+              "candidate": {
+                "height": 32,
+                "id": "first",
+                "text": "Parity",
+                "width": 28,
+                "x": 1.5,
+                "y": 64
+              }
+            },
+            {
+              "node": "inner",
+              "kind": "vstack",
+              "delta": {
+                "x": -7.0,
+                "y": 0,
+                "width": 7,
+                "height": 0,
+                "right": 0.0,
+                "bottom": 0
+              },
+              "reference": {
+                "height": 160,
+                "id": "inner",
+                "width": 29,
+                "x": 89.5,
+                "y": 0
+              },
+              "candidate": {
+                "height": 160,
+                "id": "inner",
+                "width": 36,
+                "x": 82.5,
+                "y": 0
+              }
+            },
+            {
+              "node": "innerText",
+              "kind": "text",
+              "delta": {
+                "x": -7.0,
+                "y": 0,
+                "width": 7,
+                "height": 0,
+                "right": 0.0,
+                "bottom": 0
+              },
+              "reference": {
+                "height": 32,
+                "id": "innerText",
+                "text": "Nested",
+                "width": 29,
+                "x": 89.5,
+                "y": 0
+              },
+              "candidate": {
+                "height": 32,
+                "id": "innerText",
+                "text": "Nested",
+                "width": 36,
+                "x": 82.5,
+                "y": 0
+              }
+            },
+            {
+              "node": "second",
+              "kind": "text",
+              "delta": {
+                "x": -7.0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "right": -7.0,
+                "bottom": 0
+              },
+              "reference": {
+                "height": 96,
+                "id": "second",
+                "text": "Longer label",
+                "width": 37,
+                "x": 44.5,
+                "y": 32
+              },
+              "candidate": {
+                "height": 96,
+                "id": "second",
+                "text": "Longer label",
+                "width": 37,
+                "x": 37.5,
+                "y": 32
+              }
+            }
+          ],
+          "tolerancePoints": 0.5,
+          "visual": "unverified",
+          "interaction": "unverified"
+        },
+        {
+          "id": "hstack.w120.s20.p12.nested",
+          "status": "geometry-fail",
+          "failures": [
+            {
+              "node": "first",
+              "kind": "text",
+              "delta": {
+                "x": -3,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "right": -3,
+                "bottom": 0
+              },
+              "reference": {
+                "height": 48,
+                "id": "first",
+                "text": "Parity",
+                "width": 16,
+                "x": 15,
+                "y": 56
+              },
+              "candidate": {
+                "height": 48,
+                "id": "first",
+                "text": "Parity",
+                "width": 16,
+                "x": 12,
+                "y": 56
+              }
+            },
+            {
+              "node": "inner",
+              "kind": "vstack",
+              "delta": {
+                "x": 3,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "right": 3,
+                "bottom": 0
+              },
+              "reference": {
+                "height": 136,
+                "id": "inner",
+                "width": 19,
+                "x": 86,
+                "y": 12
+              },
+              "candidate": {
+                "height": 136,
+                "id": "inner",
+                "width": 19,
+                "x": 89,
+                "y": 12
+              }
+            },
+            {
+              "node": "innerText",
+              "kind": "text",
+              "delta": {
+                "x": 3,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "right": 3,
+                "bottom": 0
+              },
+              "reference": {
+                "height": 48,
+                "id": "innerText",
+                "text": "Nested",
+                "width": 19,
+                "x": 86,
+                "y": 12
+              },
+              "candidate": {
+                "height": 48,
+                "id": "innerText",
+                "text": "Nested",
+                "width": 19,
+                "x": 89,
+                "y": 12
+              }
+            },
+            {
+              "node": "root",
+              "kind": "hstack",
+              "delta": {
+                "x": -3,
+                "y": 0,
+                "width": 6,
+                "height": 0,
+                "right": 3,
+                "bottom": 0
+              },
+              "reference": {
+                "height": 160,
+                "id": "root",
+                "width": 114,
+                "x": 3,
+                "y": 0
+              },
+              "candidate": {
+                "height": 160,
+                "id": "root",
+                "width": 120,
+                "x": 0,
+                "y": 0
+              }
+            },
+            {
+              "node": "second",
+              "kind": "text",
+              "delta": {
+                "x": -3,
+                "y": 0,
+                "width": 6,
+                "height": 0,
+                "right": 3,
+                "bottom": 0
+              },
+              "reference": {
+                "height": 120,
+                "id": "second",
+                "text": "Longer label",
+                "width": 15,
+                "x": 51,
+                "y": 20
+              },
+              "candidate": {
+                "height": 120,
+                "id": "second",
+                "text": "Longer label",
+                "width": 21,
+                "x": 48,
+                "y": 20
+              }
+            }
+          ],
+          "tolerancePoints": 0.5,
+          "visual": "unverified",
+          "interaction": "unverified"
+        }
+      ]
+    },
+    "ios": {
+      "passed": 218,
+      "failed": 6,
+      "candidate": {
+        "schema": 1,
+        "engine": "candidate",
+        "runId": "2decbd3e-976b-4771-abbd-4a9a4ea373ef",
+        "specHash": "cd5002779496a7c9a3ddd4b767627293cf7692b707119400f4a724ca33c1403a",
+        "buildHash": "d1ca3c394591f15597fb4577f5fbd855de2a9ad6a12da3c5e230e352d584b222",
+        "binary": "/Users/igor/Library/Developer/CoreSimulator/Devices/BBCF85EC-D271-4623-9E3A-6D577C91B170/data/Containers/Bundle/Application/F6EE233D-2378-48F0-9E0C-6BDC43A9062D/LuaObjCHost.app/LuaObjCHost",
+        "sourceHash": "9db349fe860995c306bf268c35622d8c4df26703d60c7e4effd57044ffd398a8",
+        "environment": [
+          "ios",
+          "Version 26.5 (Build 23F77)",
+          3,
+          "light",
+          "en_DE",
+          "large",
+          "ltr",
+          "root-top-left-points"
+        ],
+        "seconds": 3.6116087089758366,
+        "count": 224
+      },
+      "reference": {
+        "schema": 1,
+        "engine": "reference",
+        "runId": "07908007-b6db-4ec8-901f-66f84da4e3f4",
+        "specHash": "cd5002779496a7c9a3ddd4b767627293cf7692b707119400f4a724ca33c1403a",
+        "buildHash": "f26af1aa7b11b34f97b8e4724a03a55a803bae6e37caa9fe914cb5c5156452c2",
+        "binary": "/Users/igor/Library/Developer/CoreSimulator/Devices/BBCF85EC-D271-4623-9E3A-6D577C91B170/data/Containers/Bundle/Application/604F4846-7B1E-49D4-B250-8709F3183A10/SwiftUIBatchReference-iOS.app/SwiftUIBatchReference-iOS",
+        "sourceHash": "0dae2089dfab58cf8e22e1655fbc78adf059a2e9f2dc8c69c205ba8cce182dbc",
+        "environment": [
+          "ios",
+          "Version 26.5 (Build 23F77)",
+          3,
+          "light",
+          "en_DE",
+          "large",
+          "ltr",
+          "root-top-left-points"
+        ],
+        "seconds": 15.675938999978825,
+        "count": 224
+      },
+      "remainingCases": [
+        {
+          "id": "hstack.w120.s0.p12.mixed",
+          "status": "geometry-fail",
+          "failures": [
+            {
+              "node": "root",
+              "kind": "hstack",
+              "delta": {
+                "x": 0.1666666666666643,
+                "y": 0,
+                "width": -0.3333333333333144,
+                "height": 0,
+                "right": -0.1666666666666501,
+                "bottom": 0
+              },
+              "reference": {
+                "height": 72,
+                "id": "root",
+                "width": 120.33333333333331,
+                "x": -0.1666666666666643,
+                "y": 44
+              },
+              "candidate": {
+                "height": 72,
+                "id": "root",
+                "width": 120,
+                "x": 0,
+                "y": 44
+              }
+            },
+            {
+              "node": "second",
+              "kind": "text",
+              "delta": {
+                "x": 0.1666666666666572,
+                "y": 0,
+                "width": -0.3333333333333144,
+                "height": 0,
+                "right": -0.1666666666666572,
+                "bottom": 0
+              },
+              "reference": {
+                "height": 48,
+                "id": "second",
+                "text": "Longer label",
+                "width": 61.66666666666666,
+                "x": 46.5,
+                "y": 56
+              },
+              "candidate": {
+                "height": 48,
+                "id": "second",
+                "text": "Longer label",
+                "width": 61.33333333333334,
+                "x": 46.66666666666666,
+                "y": 56
+              }
+            }
+          ],
+          "tolerancePoints": 0.16666666666666666,
+          "visual": "unverified",
+          "interaction": "unverified"
+        },
+        {
+          "id": "hstack.w120.s8.p0.nested",
+          "status": "geometry-fail",
+          "failures": [
+            {
+              "node": "first",
+              "kind": "text",
+              "delta": {
+                "x": -7.105427357601002e-15,
+                "y": -7.833333333333343,
+                "width": -6.666666666666664,
+                "height": 15.666666666666657,
+                "right": -6.666666666666671,
+                "bottom": 7.833333333333314
+              },
+              "reference": {
+                "height": 15.666666666666671,
+                "id": "first",
+                "text": "Parity",
+                "width": 34.666666666666664,
+                "x": 2.000000000000007,
+                "y": 72.16666666666667
+              },
+              "candidate": {
+                "height": 31.33333333333333,
+                "id": "first",
+                "text": "Parity",
+                "width": 28,
+                "x": 2,
+                "y": 64.33333333333333
+              }
+            },
+            {
+              "node": "inner",
+              "kind": "vstack",
+              "delta": {
+                "x": -9.666666666666671,
+                "y": 0,
+                "width": 7.333333333333329,
+                "height": 0,
+                "right": -2.333333333333343,
+                "bottom": 0
+              },
+              "reference": {
+                "height": 160,
+                "id": "inner",
+                "width": 28.33333333333333,
+                "x": 89.66666666666667,
+                "y": 0
+              },
+              "candidate": {
+                "height": 160,
+                "id": "inner",
+                "width": 35.66666666666666,
+                "x": 80,
+                "y": 0
+              }
+            },
+            {
+              "node": "innerText",
+              "kind": "text",
+              "delta": {
+                "x": -9.666666666666671,
+                "y": 0,
+                "width": 7.333333333333329,
+                "height": 0.0,
+                "right": -2.333333333333343,
+                "bottom": 0.0
+              },
+              "reference": {
+                "height": 31.333333333333332,
+                "id": "innerText",
+                "text": "Nested",
+                "width": 28.33333333333333,
+                "x": 89.66666666666667,
+                "y": 0
+              },
+              "candidate": {
+                "height": 31.333333333333332,
+                "id": "innerText",
+                "text": "Nested",
+                "width": 35.66666666666666,
+                "x": 80,
+                "y": 0
+              }
+            },
+            {
+              "node": "second",
+              "kind": "text",
+              "delta": {
+                "x": -6.666666666666671,
+                "y": -7.105427357601002e-15,
+                "width": -3,
+                "height": 2.842170943040401e-14,
+                "right": -9.666666666666671,
+                "bottom": 2.1316282072803006e-14
+              },
+              "reference": {
+                "height": 95.66666666666666,
+                "id": "second",
+                "text": "Longer label",
+                "width": 37,
+                "x": 44.66666666666667,
+                "y": 32.16666666666667
+              },
+              "candidate": {
+                "height": 95.66666666666669,
+                "id": "second",
+                "text": "Longer label",
+                "width": 34,
+                "x": 38,
+                "y": 32.166666666666664
+              }
+            }
+          ],
+          "tolerancePoints": 0.16666666666666666,
+          "visual": "unverified",
+          "interaction": "unverified"
+        },
+        {
+          "id": "hstack.w120.s8.p12.nested",
+          "status": "geometry-fail",
+          "failures": [
+            {
+              "node": "inner",
+              "kind": "vstack",
+              "delta": {
+                "x": -1.4210854715202004e-14,
+                "y": 0,
+                "width": -4.666666666666657,
+                "height": 0,
+                "right": -4.666666666666671,
+                "bottom": 0
+              },
+              "reference": {
+                "height": 136,
+                "id": "inner",
+                "width": 28.33333333333333,
+                "x": 78.66666666666667,
+                "y": 12
+              },
+              "candidate": {
+                "height": 136,
+                "id": "inner",
+                "width": 23.66666666666667,
+                "x": 78.66666666666666,
+                "y": 12
+              }
+            },
+            {
+              "node": "innerText",
+              "kind": "text",
+              "delta": {
+                "x": -1.4210854715202004e-14,
+                "y": 1.7763568394002505e-15,
+                "width": -4.666666666666657,
+                "height": 0.0,
+                "right": -4.666666666666671,
+                "bottom": 1.7763568394002505e-15
+              },
+              "reference": {
+                "height": 31.33333333333333,
+                "id": "innerText",
+                "text": "Nested",
+                "width": 28.33333333333333,
+                "x": 78.66666666666667,
+                "y": 11.999999999999998
+              },
+              "candidate": {
+                "height": 31.33333333333333,
+                "id": "innerText",
+                "text": "Nested",
+                "width": 23.66666666666667,
+                "x": 78.66666666666666,
+                "y": 12
+              }
+            }
+          ],
+          "tolerancePoints": 0.16666666666666666,
+          "visual": "unverified",
+          "interaction": "unverified"
+        },
+        {
+          "id": "hstack.w120.s20.p0.mixed",
+          "status": "geometry-fail",
+          "failures": [
+            {
+              "node": "root",
+              "kind": "hstack",
+              "delta": {
+                "x": 0.1666666666666572,
+                "y": 0,
+                "width": -0.3333333333333144,
+                "height": 0,
+                "right": -0.1666666666666572,
+                "bottom": 0
+              },
+              "reference": {
+                "height": 48,
+                "id": "root",
+                "width": 120.33333333333331,
+                "x": -0.1666666666666572,
+                "y": 56
+              },
+              "candidate": {
+                "height": 48,
+                "id": "root",
+                "width": 120,
+                "x": 0,
+                "y": 56
+              }
+            },
+            {
+              "node": "second",
+              "kind": "text",
+              "delta": {
+                "x": 0.1666666666666501,
+                "y": 0,
+                "width": -0.3333333333333144,
+                "height": 0,
+                "right": -0.1666666666666643,
+                "bottom": 0
+              },
+              "reference": {
+                "height": 48,
+                "id": "second",
+                "text": "Longer label",
+                "width": 65.66666666666666,
+                "x": 54.500000000000014,
+                "y": 56
+              },
+              "candidate": {
+                "height": 48,
+                "id": "second",
+                "text": "Longer label",
+                "width": 65.33333333333334,
+                "x": 54.666666666666664,
+                "y": 56
+              }
+            }
+          ],
+          "tolerancePoints": 0.16666666666666666,
+          "visual": "unverified",
+          "interaction": "unverified"
+        },
+        {
+          "id": "hstack.w120.s20.p0.nested",
+          "status": "geometry-fail",
+          "failures": [
+            {
+              "node": "inner",
+              "kind": "vstack",
+              "delta": {
+                "x": -1.4210854715202004e-14,
+                "y": 0,
+                "width": -4.666666666666657,
+                "height": 0,
+                "right": -4.666666666666671,
+                "bottom": 0
+              },
+              "reference": {
+                "height": 160,
+                "id": "inner",
+                "width": 28.33333333333333,
+                "x": 90.66666666666667,
+                "y": 0
+              },
+              "candidate": {
+                "height": 160,
+                "id": "inner",
+                "width": 23.66666666666667,
+                "x": 90.66666666666666,
+                "y": 0
+              }
+            },
+            {
+              "node": "innerText",
+              "kind": "text",
+              "delta": {
+                "x": -1.4210854715202004e-14,
+                "y": 0,
+                "width": -4.666666666666657,
+                "height": 0.0,
+                "right": -4.666666666666671,
+                "bottom": 0.0
+              },
+              "reference": {
+                "height": 31.333333333333332,
+                "id": "innerText",
+                "text": "Nested",
+                "width": 28.33333333333333,
+                "x": 90.66666666666667,
+                "y": 0
+              },
+              "candidate": {
+                "height": 31.333333333333332,
+                "id": "innerText",
+                "text": "Nested",
+                "width": 23.66666666666667,
+                "x": 90.66666666666666,
+                "y": 0
+              }
+            }
+          ],
+          "tolerancePoints": 0.16666666666666666,
+          "visual": "unverified",
+          "interaction": "unverified"
+        },
+        {
+          "id": "hstack.w120.s20.p12.nested",
+          "status": "geometry-fail",
+          "failures": [
+            {
+              "node": "root",
+              "kind": "hstack",
+              "delta": {
+                "x": 0.1666666666666572,
+                "y": 0,
+                "width": -0.3333333333333144,
+                "height": 0,
+                "right": -0.1666666666666572,
+                "bottom": 0
+              },
+              "reference": {
+                "height": 160,
+                "id": "root",
+                "width": 120.33333333333331,
+                "x": -0.1666666666666572,
+                "y": 0
+              },
+              "candidate": {
+                "height": 160,
+                "id": "root",
+                "width": 120,
+                "x": 0,
+                "y": 0
+              }
+            },
+            {
+              "node": "second",
+              "kind": "text",
+              "delta": {
+                "x": 0.1666666666666643,
+                "y": -23.833333333333343,
+                "width": -0.3333333333333215,
+                "height": 47.66666666666673,
+                "right": -0.1666666666666572,
+                "bottom": 23.833333333333385
+              },
+              "reference": {
+                "height": 119.66666666666664,
+                "id": "second",
+                "text": "Longer label",
+                "width": 22.33333333333333,
+                "x": 47.16666666666667,
+                "y": 20.16666666666667
+              },
+              "candidate": {
+                "height": 167.33333333333337,
+                "id": "second",
+                "text": "Longer label",
+                "width": 22.000000000000007,
+                "x": 47.333333333333336,
+                "y": -3.6666666666666714
+              }
+            }
+          ],
+          "tolerancePoints": 0.16666666666666666,
+          "visual": "unverified",
+          "interaction": "unverified"
+        }
+      ]
+    }
+  }
+}

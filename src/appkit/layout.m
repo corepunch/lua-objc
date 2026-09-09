@@ -162,27 +162,39 @@ static CGFloat clamp_dimension(CGFloat value, CGFloat minimum, CGFloat maximum) 
 	return MAX(0, value);
 }
 
+static CGFloat view_flex_grow(NSView *view, BOOL horizontal);
+
 static BOOL default_grows_on_axis(NSView *view, BOOL horizontal) {
-	if (!is_flexible(view)) return NO;
 	LayoutAxis axis = layout_axis(view);
-	if (!horizontal && axis == LayoutAxisHStack) return NO;
+	if (axis == LayoutAxisHStack || axis == LayoutAxisVStack || axis == LayoutAxisZStack) {
+		for (NSView *child in view.subviews) {
+			if (is_hidden(child)) continue;
+			if (view_flex_grow(child, horizontal) > 0) return YES;
+		}
+		return NO;
+	}
+	if (!is_flexible(view)) return NO;
+	if (objc_getAssociatedObject(view, &kKeys[kFlexBasisKey])) {
+		LayoutAxis parentAxis = layout_axis(view.superview);
+		if (parentAxis == LayoutAxisHStack) return horizontal;
+		if (parentAxis == LayoutAxisVStack) return !horizontal;
+	}
 	if (horizontal && axis == LayoutAxisVSplit) return NO;
 	return YES;
 }
 
 static CGFloat view_flex_grow(NSView *view, BOOL horizontal) {
-	if ((horizontal && view_fixed_width(view) > 0) ||
-		(!horizontal && view_fixed_height(view) > 0)) {
+	if (objc_getAssociatedObject(view, horizontal ? &kKeys[kFixedWidthKey] : &kKeys[kFixedHeightKey])) {
 		return 0;
 	}
 	NSNumber *grow = objc_getAssociatedObject(view, &kKeys[kFlexGrowKey]);
 	if (grow) return MAX(0, grow.doubleValue);
+	if ([objc_getAssociatedObject(view, horizontal ? &kKeys[kFillWidthKey] : &kKeys[kFillHeightKey]) boolValue]) return 1;
 	return default_grows_on_axis(view, horizontal) ? 1 : 0;
 }
 
 static CGFloat view_flex_shrink(NSView *view, BOOL horizontal) {
-	if ((horizontal && view_fixed_width(view) > 0) ||
-		(!horizontal && view_fixed_height(view) > 0)) {
+	if (objc_getAssociatedObject(view, horizontal ? &kKeys[kFixedWidthKey] : &kKeys[kFixedHeightKey])) {
 		return 0;
 	}
 	NSNumber *shrink = objc_getAssociatedObject(view, &kKeys[kFlexShrinkKey]);
@@ -221,19 +233,71 @@ static CGFloat constrained_result(CGFloat natural, CGFloat proposal,
 static NSSize measure_leaf(NSView *view) {
 	NSSize size = view.frame.size;
 	NSSize intrinsic = view.intrinsicContentSize;
+	NSSize fitting = view.fittingSize;
+	/* A previous layout frame is an output, never a new intrinsic minimum.
+	 * NSTextField also distinguishes intrinsic text size from sizeToFit's
+	 * editing-cell frame. Use Cocoa's intrinsic measurement when available. */
 	if (intrinsic.width != NSViewNoIntrinsicMetric && intrinsic.width >= 0) {
-		size.width = MAX(size.width, intrinsic.width);
+		size.width = intrinsic.width;
+	} else if (fitting.width > 0) {
+		size.width = fitting.width;
+	} else if (size.width <= 0) {
+		size.width = kMinLeafWidth;
 	}
 	if (intrinsic.height != NSViewNoIntrinsicMetric && intrinsic.height >= 0) {
-		size.height = MAX(size.height, intrinsic.height);
+		size.height = intrinsic.height;
+	} else if (fitting.height > 0) {
+		size.height = fitting.height;
+	} else if (size.height <= 0) {
+		size.height = kMinLeafHeight;
 	}
-
-	NSSize fitting = view.fittingSize;
-	if (fitting.width > 0) size.width = MAX(size.width, fitting.width);
-	if (fitting.height > 0) size.height = MAX(size.height, fitting.height);
-	if (size.width <= 0) size.width = kMinLeafWidth;
-	if (size.height <= 0) size.height = kMinLeafHeight;
 	return size;
+}
+
+/* Offer scarce horizontal space to the least flexible children first. Each
+ * child answers the proposal; unused width is available to later siblings.
+ * Reuse this negotiation for measurement and placement so wrapping agrees. */
+static NSSize measure_horizontal_children(NSView *view, LuaLayoutConstraint constraint, NSSize *sizes) {
+	NSArray<NSView *> *children = view.subviews;
+	NSMutableArray<NSNumber *> *order = [NSMutableArray array];
+	NSMutableArray<NSNumber *> *flexibility = [NSMutableArray array];
+	for (NSUInteger i = 0; i < children.count; i++) {
+		NSView *child = children[i];
+		if (child.hidden) { [flexibility addObject:@0]; continue; }
+		sizes[i] = measure_view(child, (LuaLayoutConstraint){
+			.height = constraint.height, .heightMode = constraint.heightMode,
+			.widthMode = LuaMeasureUndefined });
+		[flexibility addObject:@(view_flex_grow(child, YES) > 0 ? INFINITY : sizes[i].width)];
+		[order addObject:@(i)];
+	}
+	[order sortUsingComparator:^NSComparisonResult(NSNumber *a, NSNumber *b) {
+		NSComparisonResult result = [flexibility[a.unsignedIntegerValue] compare:flexibility[b.unsignedIntegerValue]];
+		return result == NSOrderedSame ? [a compare:b] : result;
+	}];
+	CGFloat spacing = order.count > 1 ? (order.count - 1) * view_spacing(view) : 0;
+	CGFloat remaining = MAX(0, constraint.width - spacing);
+	NSUInteger left = order.count;
+	NSSize result = NSMakeSize(spacing, 0);
+	for (NSNumber *index in order) {
+		NSUInteger i = index.unsignedIntegerValue;
+		if (constraint.widthMode != LuaMeasureUndefined) {
+			CGFloat scale = view.window.backingScaleFactor ?: NSScreen.mainScreen.backingScaleFactor ?: 1;
+			CGFloat weight = view_flex_grow(children[i], YES);
+			CGFloat totalWeight = 0;
+			if (weight > 0) for (NSUInteger next = order.count - left; next < order.count; next++)
+				totalWeight += view_flex_grow(children[order[next].unsignedIntegerValue], YES);
+			CGFloat offer = MAX(0, round((weight > 0 ? remaining * weight / totalWeight : remaining / left) * scale) / scale);
+			sizes[i] = measure_view(children[i], (LuaLayoutConstraint){
+				.width = offer, .widthMode = LuaMeasureAtMost,
+				.height = constraint.height, .heightMode = constraint.heightMode });
+			if (view_flex_grow(children[i], YES) > 0) sizes[i].width = offer;
+			remaining -= sizes[i].width;
+		}
+		result.width += sizes[i].width;
+		result.height = MAX(result.height, sizes[i].height);
+		left--;
+	}
+	return result;
 }
 
 static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
@@ -271,22 +335,11 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		natural.height += padY;
 	} break;
 	case LayoutAxisHStack: {
-		NSInteger visibleCount = 0;
-		for (NSView *child in view.subviews) {
-			if (is_hidden(child)) continue;
-			visibleCount++;
-			LuaLayoutConstraint childConstraint = {
-				.width = 0,
-				.height = innerHeight,
-				.widthMode = LuaMeasureUndefined,
-				.heightMode = constraint.heightMode == LuaMeasureUndefined
-					? LuaMeasureUndefined : LuaMeasureAtMost,
-			};
-			NSSize childSize = measure_view(child, childConstraint);
-			natural.width += childSize.width;
-			natural.height = MAX(natural.height, childSize.height);
-		}
-		if (visibleCount > 1) natural.width += (visibleCount - 1) * view_spacing(view);
+		NSSize *sizes = calloc(MAX(1, view.subviews.count), sizeof(NSSize));
+		natural = measure_horizontal_children(view, (LuaLayoutConstraint){
+			.width = innerWidth, .widthMode = constraint.widthMode,
+			.height = innerHeight, .heightMode = constraint.heightMode }, sizes);
+		free(sizes);
 		natural.width += 2 * padX;
 		natural.height += padY;
 	} break;
@@ -379,12 +432,42 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		natural.height *= MAX(0, scale);
 	} else if (layout_axis(view) == LayoutAxisNone) {
 		natural = measure_leaf(view);
+		if ([view isKindOfClass:LuaLabel.class]) {
+			NSTextField *label = (NSTextField *)view;
+			/* Match the native drawing mode to the negotiated line count. A
+			 * multiline editing cell otherwise wraps an intrinsic-width label
+			 * at its internal field margins and drops the final word. */
+			((NSTextFieldCell *)label.cell).usesSingleLineMode = label.maximumNumberOfLines == 1
+				|| constraint.widthMode == LuaMeasureUndefined || natural.width <= constraint.width;
+		}
+		if ([view isKindOfClass:NSTextField.class] && !((NSTextField *)view).isEditable
+			&& constraint.widthMode != LuaMeasureUndefined && natural.width > constraint.width) {
+			NSTextField *field = (NSTextField *)view;
+			if (field.maximumNumberOfLines != 1 && constraint.width > 0) {
+				NSTextStorage *storage = [[NSTextStorage alloc] initWithAttributedString:field.attributedStringValue];
+				NSLayoutManager *manager = [[NSLayoutManager alloc] init];
+				NSTextContainer *container = [[NSTextContainer alloc] initWithSize:NSMakeSize(constraint.width,
+					constraint.heightMode == LuaMeasureUndefined ? CGFLOAT_MAX : constraint.height)];
+				container.lineFragmentPadding = 0;
+				container.maximumNumberOfLines = field.maximumNumberOfLines;
+				[storage addLayoutManager:manager];
+				[manager addTextContainer:container];
+				[manager ensureLayoutForTextContainer:container];
+				NSRect text = [manager usedRectForTextContainer:container];
+				CGFloat scale = view.window.backingScaleFactor ?: NSScreen.mainScreen.backingScaleFactor ?: 1;
+				natural = NSMakeSize(ceil(text.size.width * scale) / scale, ceil(text.size.height * scale) / scale);
+				if (field.maximumNumberOfLines > 0) {
+					CGFloat lineHeight = ceil((field.font.ascender - field.font.descender + field.font.leading) * scale) / scale;
+					natural.height = MIN(natural.height, lineHeight * field.maximumNumberOfLines);
+				}
+			}
+		}
 	}
 
 	CGFloat fixedWidth = view_fixed_width(view);
 	CGFloat fixedHeight = view_fixed_height(view);
-	if (fixedWidth > 0) natural.width = fixedWidth;
-	if (fixedHeight > 0) natural.height = fixedHeight;
+	if (objc_getAssociatedObject(view, &kKeys[kFixedWidthKey])) natural.width = fixedWidth;
+	if (objc_getAssociatedObject(view, &kKeys[kFixedHeightKey])) natural.height = fixedHeight;
 
 	natural.width = clamp_dimension(
 		natural.width,
@@ -395,11 +478,11 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		view_optional_dimension(view, &kKeys[kMinHeightKey], 0),
 		view_optional_dimension(view, &kKeys[kMaxHeightKey], INFINITY));
 
-	if (fixedWidth <= 0) {
+	if (!objc_getAssociatedObject(view, &kKeys[kFixedWidthKey])) {
 		natural.width = constrained_result(
 			natural.width, constraint.width, constraint.widthMode);
 	}
-	if (fixedHeight <= 0) {
+	if (!objc_getAssociatedObject(view, &kKeys[kFixedHeightKey])) {
 		natural.height = constrained_result(
 			natural.height, constraint.height, constraint.heightMode);
 	}
@@ -582,6 +665,8 @@ static void layout_recursive(NSView *view, CGFloat width) {
 		CGFloat padTop = view_padding_top(view);
 		CGFloat padBottom = view_padding_bottom(view);
 		CGFloat stackSpacing = view_spacing(view);
+		NSUInteger visibleCount = 0;
+		for (NSView *child in view.subviews) if (!is_hidden(child)) visibleCount++;
 		CGFloat contentW = availableWidth - 2 * padX;
 		CGFloat contentH = availableHeight - padTop - padBottom;
 		NSString *alignment = view_alignment(view);
@@ -591,7 +676,7 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			NSUInteger count = view.subviews.count;
 			if (count == 0) return;
 
-			CGFloat spacing = count > 1 ? (count - 1) * stackSpacing : 0;
+			CGFloat spacing = visibleCount > 1 ? (visibleCount - 1) * stackSpacing : 0;
 			CGFloat *heights = calloc(count, sizeof(CGFloat));
 			NSMutableArray<NSValue *> *measured = [NSMutableArray arrayWithCapacity:count];
 			for (NSUInteger i = 0; i < count; i++) {
@@ -617,7 +702,7 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			}
 			distribute_main_axis(view.subviews, heights,
 				MAX(0, contentH - spacing), NO);
-			CGFloat top = padTop + contentH;
+			CGFloat top = padBottom + contentH;
 
 			for (NSUInteger i = 0; i < count; i++) {
 				NSView *sv = view.subviews[i];
@@ -649,8 +734,12 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			NSUInteger count = view.subviews.count;
 			if (count == 0) return;
 
-			CGFloat spacing = count > 1 ? (count - 1) * stackSpacing : 0;
+			CGFloat spacing = visibleCount > 1 ? (visibleCount - 1) * stackSpacing : 0;
 			CGFloat *widths = calloc(count, sizeof(CGFloat));
+			NSSize *proposed = calloc(count, sizeof(NSSize));
+			measure_horizontal_children(view, (LuaLayoutConstraint){
+				.width = contentW, .widthMode = LuaMeasureAtMost,
+				.height = contentH, .heightMode = LuaMeasureAtMost }, proposed);
 			NSMutableArray<NSValue *> *measured = [NSMutableArray arrayWithCapacity:count];
 			for (NSUInteger i = 0; i < count; i++) {
 				NSView *child = view.subviews[i];
@@ -659,12 +748,7 @@ static void layout_recursive(NSView *view, CGFloat width) {
 					[measured addObject:[NSValue valueWithSize:NSZeroSize]];
 					continue;
 				}
-				NSSize size = measure_view(child, (LuaLayoutConstraint){
-					.width = 0,
-					.height = contentH,
-					.widthMode = LuaMeasureUndefined,
-					.heightMode = LuaMeasureAtMost,
-				});
+				NSSize size = proposed[i];
 				NSNumber *basis = objc_getAssociatedObject(child, &kKeys[kFlexBasisKey]);
 				CGFloat fixed = view_fixed_width(child);
 				widths[i] = clamp_dimension(
@@ -701,6 +785,7 @@ static void layout_recursive(NSView *view, CGFloat width) {
 				x += childW + stackSpacing;
 			}
 			free(widths);
+			free(proposed);
 	} break;
 		case LayoutAxisZStack: {
 			for (NSView *sv in view.subviews) {
@@ -758,12 +843,59 @@ static void layout_recursive(NSView *view, CGFloat width) {
 	default: break;
 	}
 	} else {
+		if (objc_getAssociatedObject(view, &kKeys[kNavigationControllerKey])) {
+			view.needsLayout = YES;
+			[view layoutSubtreeIfNeeded];
+			return;
+		}
+		if ([view isKindOfClass:[NSTabView class]]) {
+			/* AppKit owns the tab content rectangle. Once it has placed the
+			 * selected view, lay out that view's declarative descendants. */
+			[view layoutSubtreeIfNeeded];
+			NSView *selected = ((NSTabView *)view).selectedTabViewItem.view;
+			if (selected) layout_recursive(selected, selected.bounds.size.width);
+			return;
+		}
 		if ([view isKindOfClass:[NSScrollView class]]) {
-			[(NSScrollView *)view tile];
+			NSScrollView *scroll = (NSScrollView *)view;
+			[scroll tile];
 			LuaTableViewSource *source =
 				objc_getAssociatedObject(view, &kKeys[kTableSourceKey]);
 			[source updateTableFrame];
 			position_table_spinner((NSScrollView *)view);
+			NSView *document = scroll.documentView;
+			if (!source && document && layout_axis(document) != LayoutAxisNone) {
+				NSSize viewport = scroll.contentSize;
+				NSRect previous = document.frame;
+				NSValue *previousViewport = objc_getAssociatedObject(scroll, &kKeys[kScrollViewportSizeKey]);
+				CGFloat previousHeight = previousViewport ? previousViewport.sizeValue.height : viewport.height;
+				CGFloat distanceFromTop = MAX(0, previous.size.height
+					- scroll.contentView.bounds.origin.y - previousHeight);
+				NSSize content = measure_view(document, (LuaLayoutConstraint){
+					.width = viewport.width, .height = viewport.height,
+					.widthMode = scroll.hasHorizontalScroller ? LuaMeasureUndefined : LuaMeasureAtMost,
+					.heightMode = scroll.hasVerticalScroller ? LuaMeasureUndefined : LuaMeasureAtMost,
+				});
+				content.width = scroll.hasHorizontalScroller ? MAX(viewport.width, content.width) : viewport.width;
+				content.height = scroll.hasVerticalScroller ? MAX(viewport.height, content.height) : viewport.height;
+				document.frame = NSMakeRect(0, 0, content.width, content.height);
+				layout_recursive(document, content.width);
+				NSPoint origin = scroll.contentView.bounds.origin;
+				if (!document.isFlipped) origin.y = MAX(0, content.height - viewport.height - distanceFromTop);
+				[scroll.contentView scrollToPoint:origin];
+				objc_setAssociatedObject(scroll, &kKeys[kScrollViewportSizeKey],
+					[NSValue valueWithSize:viewport], OBJC_ASSOCIATION_RETAIN);
+				/* Revealing a non-overlay scroller changes the native viewport.
+				 * Resolve that change before accepting document geometry. */
+				[scroll tile];
+				NSSize tiledViewport = scroll.contentSize;
+				if (!NSEqualSizes(viewport, tiledViewport)) {
+					layout_recursive(scroll, width);
+					return;
+				}
+				[scroll reflectScrolledClipView:scroll.contentView];
+				return;
+			}
 		}
 		for (NSView *sv in view.subviews) {
 			if (objc_getAssociatedObject(sv, &kKeys[kAxisKey])) {

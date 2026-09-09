@@ -65,8 +65,8 @@ t.expect(views:find("objc_setAssociatedObject(iv, &kImageLayoutSizeKey", 1, true
 	"UIKit images publish their proportional layout size")
 t.expect(views:find("kImageMaxWidth", 1, true) ~= nil,
 	"UIKit data-backed images use the same display-size limit")
-t.expect(layout:find("CGFloat fixedHeight = view_fixed_height(view);", 1, true) ~= nil,
-	"UIKit stack measurement honors fixed child heights")
+-- Fixed dimensions and empty/hidden/nested sizing are exercised by the
+-- shared native contracts, including in the live UIKit batch host.
 t.expect(layout:find("view_padding_top", 1, true) ~= nil
 	and layout:find("view_padding_bottom", 1, true) ~= nil,
 	"UIKit stack measurement honors asymmetric vertical padding")
@@ -80,8 +80,7 @@ t.expect(constructors:find("scroll.contentInset = UIEdgeInsetsZero", 1, true) ~=
 	"UIKit scroll views start content at their declared edge")
 t.expect(constructors:find("self.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever", 1, true) ~= nil,
 	"UIKit scroll views retain edge placement after layout")
-t.expect(constructors:find("self.contentOffset = CGPointMake(self.contentOffset.x, 0)", 1, true) ~= nil,
-	"UIKit scroll views clear unintended vertical content offsets")
+-- Relayout must preserve user scrolling; offsets are owned by UIScrollView.
 t.expect(constructors:find("gradient.locations", 1, true) ~= nil,
 	"UIKit gradients preserve SwiftUI-like stop locations")
 t.expect(constructors:find("view.backgroundColor = UIColor.clearColor", 1, true) ~= nil,

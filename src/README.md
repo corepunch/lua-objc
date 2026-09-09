@@ -14,7 +14,8 @@ and ARC ownership while letting readers open only the subsystem they need.
 | `appkit/toolbar.m` | native toolbar item construction | `LuaToolbarDelegate` |
 | `appkit/runtime.m` | userdata conversion, KVC, metatables, shared helpers | `push_objc`, `nsview_index` |
 | `appkit/presentation.m` | generic adaptive panels, focus, and menu items | `LuaPanel`, `bridge_present_panel` |
-| `appkit/text_field.m` | editable text callbacks and command routing | `LuaTextFieldDelegate` |
+| `appkit/text_field.m` / `uikit/text_field.m` | native editing events and semantic command routing | `LuaTextFieldDelegate` |
+| `appkit/navigation.m` / `uikit/navigation.m` | native page history and navigation stacks | `LuaPageController`, `LuaNavigationController` |
 | `appkit/views.m` | windows, stacks, splits, images, basic view creation | `bridge_window`, `LuaImageViewerView` |
 | `appkit/layout.m` | measurement, flex distribution, frame placement | `measure_view`, `layout_recursive` |
 | `appkit/controls.m` | buttons, tables, loading, refresh, selection | `bridge_button`, `bridge_tableview` |

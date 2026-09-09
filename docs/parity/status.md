@@ -1,6 +1,30 @@
 # SwiftUI parity status
 
-Last updated: 2026-09-08 (P1 in progress)
+Last updated: 2026-09-09 (neither delivery gate complete)
+
+## Current verification — 2026-09-09
+
+See [implementation progress](progress-2026-09-09.md) and the earlier
+[source audit](audit-2026-09-09.md).
+
+Production constructors now give **macOS 222/224 geometry passes** and
+**iOS 218/224**, with all batch-only sizing and text adjustments removed.
+These are geometry-only results, not visual/interaction acceptance.
+
+`make test parity-check uikit ios-host`: **57 test files pass**, 13 cases
+validate, and native builds succeed. Eight Python protocol tests pass. The
+shared regression module executes **63 native assertions** on both platforms.
+All gallery cases remain `implemented-unverified`.
+
+Adventure Arena now has matching catalog data, a single navigation root,
+separate view/model/controller responsibilities, and a typed-command session.
+Save persistence and substantial screen/interaction parity remain incomplete.
+The progress report records screenshots, exact run identities and the remaining
+work; neither delivery gate has been reduced or marked complete.
+
+The sections below are the historical September 8 implementation log. Earlier
+toolchain, port-8081, test-count and fixture-count statements describe those
+attempts, not current blockers or current totals.
 
 ## Completed
 

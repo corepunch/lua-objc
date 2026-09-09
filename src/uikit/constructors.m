@@ -2,6 +2,7 @@
 
 @interface LuaMaterialView : UIVisualEffectView
 @property (nonatomic, strong) UIView *luaContent;
+@property (nonatomic) CGSize minimumContentSize;
 @end
 
 @implementation LuaMaterialView
@@ -102,7 +103,6 @@ static int bridge_UIKitControls_vstack(lua_State *L) {
 
 	UIView *obj = [[UIView alloc] initWithFrame:CGRectZero];
 	objc_setAssociatedObject(obj, &kAxisKey, @"vstack", OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(obj, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, obj, "uiview");
 	return 1;
 }
@@ -111,7 +111,6 @@ static int bridge_UIKitControls_hstack(lua_State *L) {
 
 	UIView *obj = [[UIView alloc] initWithFrame:CGRectZero];
 	objc_setAssociatedObject(obj, &kAxisKey, @"hstack", OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(obj, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, obj, "uiview");
 	return 1;
 }
@@ -119,13 +118,13 @@ static int bridge_UIKitControls_hstack(lua_State *L) {
 static int bridge_UIKitControls_zstack(lua_State *L) {
 	UIView *obj = [[UIView alloc] initWithFrame:CGRectZero];
 	objc_setAssociatedObject(obj, &kAxisKey, @"zstack", OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(obj, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, obj, "uiview");
 	return 1;
 }
 
 @interface LuaUIKitScrollView : UIScrollView
 @property (nonatomic, strong) UIView *luaContent;
+@property (nonatomic) CGSize minimumContentSize;
 @end
 
 @implementation LuaUIKitScrollView
@@ -135,28 +134,17 @@ static int bridge_UIKitControls_zstack(lua_State *L) {
 	self.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
 	self.contentInset = UIEdgeInsetsZero;
 	self.scrollIndicatorInsets = UIEdgeInsetsZero;
-	if (self.contentOffset.y != 0)
-		self.contentOffset = CGPointMake(self.contentOffset.x, 0);
-	CGFloat width = MAX(self.bounds.size.width, self.luaContent.frame.size.width);
-	/* A scroll view's content is measured independently of the viewport. If
-	 * height is left at zero, a flexible VStack otherwise collapses before its
-	 * descendants can be laid out, producing clipped images and missing rows. */
-	CGFloat height = self.luaContent.frame.size.height;
-	height = MAX(height, natural_height(self.luaContent));
-	self.luaContent.frame = CGRectMake(0, 0, width, height);
-	layout_recursive(self.luaContent, width);
-	/* Horizontal SwiftUI scroll views pin their row to the top of the
-	 * viewport. Keep the row's cards from inheriting a centered/bottom
-	 * placement when its measured height is smaller than the viewport. */
-	NSString *axis = objc_getAssociatedObject(self.luaContent, &kAxisKey);
-	if ([axis isEqualToString:@"hstack"]) {
-		for (UIView *child in self.luaContent.subviews) {
-			CGRect frame = child.frame;
-			child.frame = CGRectMake(frame.origin.x, 0, frame.size.width, frame.size.height);
-		}
-	}
-	self.contentSize = CGSizeMake(MAX(width, self.luaContent.frame.size.width),
-		MAX(self.bounds.size.height, self.luaContent.frame.size.height));
+	CGSize viewport = self.bounds.size;
+	CGSize measured = measure_size(self.luaContent, CGSizeMake(
+		self.alwaysBounceHorizontal ? CGFLOAT_MAX : viewport.width,
+		self.alwaysBounceVertical ? CGFLOAT_MAX : viewport.height));
+	CGSize content = CGSizeMake(
+		self.alwaysBounceHorizontal ? MAX(viewport.width, MAX(measured.width, self.minimumContentSize.width)) : viewport.width,
+		self.alwaysBounceVertical ? MAX(viewport.height, MAX(measured.height, self.minimumContentSize.height)) : viewport.height);
+	self.luaContent.frame = (CGRect){CGPointZero, content};
+	layout_recursive(self.luaContent, content.width);
+	self.contentSize = content;
+
 }
 @end
 
@@ -173,6 +161,7 @@ static int bridge_UIKitControls_scrollView(lua_State *L) {
 	scroll.contentInset = UIEdgeInsetsZero;
 	scroll.scrollIndicatorInsets = UIEdgeInsetsZero;
 	scroll.luaContent = content;
+	scroll.minimumContentSize = CGSizeMake(contentWidth, contentHeight);
 	scroll.alwaysBounceHorizontal = horizontal;
 	scroll.alwaysBounceVertical = vertical;
 	scroll.showsHorizontalScrollIndicator = horizontal;
@@ -203,6 +192,7 @@ static int bridge_UIKitControls_spacer(lua_State *L) {
 
 	UIView *obj = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 10, 10)];
 	objc_setAssociatedObject(obj, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
+	objc_setAssociatedObject(obj, &kFlexBasisKey, @0, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, obj, "uiview");
 	return 1;
 }
@@ -246,7 +236,8 @@ static int bridge_UIKitControls_label(lua_State *L) {
 	UILabel *obj = [[UILabel alloc] initWithFrame:CGRectZero];
 	obj.text = [NSString stringWithUTF8String:text];
 	/* SwiftUI Text is single-line unless the caller requests a line limit. */
-	obj.numberOfLines = 1;
+	obj.numberOfLines = 0;
+	obj.lineBreakMode = NSLineBreakByWordWrapping;
 	[obj sizeToFit];
 	push_objc(L, obj, "uiview");
 	return 1;
@@ -631,5 +622,13 @@ static int bridge_UIKitControls_picker(lua_State *L) {
 		objc_setAssociatedObject(obj, &kCallbackKey, @(callback_ref), OBJC_ASSOCIATION_RETAIN);
 	[obj sizeToFit];
 	push_objc(L, obj, "uiview");
+	return 1;
+}
+
+static int bridge_hit_test_target(lua_State *L) {
+	UIView *view = check_view(L, 1);
+	UIView *target = check_view(L, 2);
+	CGPoint point = CGPointMake(luaL_checknumber(L, 3), luaL_checknumber(L, 4));
+	lua_pushboolean(L, [view hitTest:point withEvent:nil] == target);
 	return 1;
 }

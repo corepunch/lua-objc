@@ -39,10 +39,27 @@ static int bridge_tabview(lua_State *L) {
 	return 1;
 }
 
+static char kNavigationBarHiddenKey;
+
+@interface LuaNavigationController : UINavigationController <UINavigationControllerDelegate>
+@property(nonatomic, readonly) NSInteger depth;
+@property(nonatomic, readonly) UIViewController *currentController;
+@end
+@implementation LuaNavigationController
+- (NSInteger)depth { return self.viewControllers.count; }
+- (UIViewController *)currentController { return self.topViewController; }
+- (void)navigationController:(UINavigationController *)navigation willShowViewController:(UIViewController *)controller animated:(BOOL)animated {
+	[navigation setNavigationBarHidden:[objc_getAssociatedObject(controller, &kNavigationBarHiddenKey) boolValue] animated:animated];
+}
+@end
+
 static int bridge_UIKitNavigation_stack(lua_State *L) {
 	UIViewController *root = check_view_controller(L, 1);
-	UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:root];
-	nav.navigationBarHidden = YES;
+	LuaNavigationController *nav = [[LuaNavigationController alloc] initWithRootViewController:root];
+	BOOL hidden = lua_toboolean(L, 2);
+	objc_setAssociatedObject(root, &kNavigationBarHiddenKey, @(hidden), OBJC_ASSOCIATION_RETAIN);
+	nav.navigationBarHidden = hidden;
+	nav.delegate = nav;
 	push_objc(L, nav, "uiviewcontroller");
 	return 1;
 }

@@ -42,6 +42,18 @@ static void configure_segmented_control(NSSegmentedControl *selector) {
 }
 @end
 
+/* NSTabView owns selection and pane frames; bridge stacks need their layout
+ * pass after that native lifecycle finishes, including keyboard selection. */
+@interface LuaTabView : NSTabView
+@end
+@implementation LuaTabView
+- (void)layout {
+	[super layout];
+	NSView *content = self.selectedTabViewItem.view;
+	if (content) layout_recursive(content, content.bounds.size.width);
+}
+@end
+
 static int bridge_tabview(lua_State *L) {
 	CGFloat width = luaL_optnumber(L, 1, 400);
 	CGFloat height = luaL_optnumber(L, 2, 200);
@@ -58,9 +70,13 @@ static int bridge_tabview(lua_State *L) {
 	if (tabType < 0)
 		return luaL_error(
 			L, "tab view style must be 'top', 'bottom', or 'notabs'");
-	NSTabView *tv = [[NSTabView alloc] initWithFrame:
+	NSTabView *tv = [[LuaTabView alloc] initWithFrame:
 		NSMakeRect(0, 0, width, height)];
 	tv.tabViewType = (NSTabViewType)tabType;
+	/* A tab container owns its content area, just like UITabBarController.
+	 * Its construction frame is not an intrinsic content size. */
+	objc_setAssociatedObject(tv, &kKeys[kFlexibleKey], @YES,
+		OBJC_ASSOCIATION_RETAIN);
 
 	push_objc(L, tv, "nsview");
 	return 1;
@@ -78,7 +94,6 @@ static int bridge_NSTabView_addTab_impl(lua_State *L, NSTabView *self,
 	item.view = content;
 
 	[self addTabViewItem:item];
-	[self selectTabViewItem:item];
 
 	push_objc(L, item, "nsobject");
 	return 1;

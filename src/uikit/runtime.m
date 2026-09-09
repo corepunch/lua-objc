@@ -28,6 +28,7 @@ static void layout_recursive(UIView *view, CGFloat width);
 @property(nonatomic) CGFloat flexShrink;
 @property(nonatomic) NSNumber *flexBasis;
 @property(nonatomic) BOOL fillWidth;
+@property(nonatomic) BOOL allowsHitTesting;
 @property(nonatomic) BOOL fillHeight;
 @property(nonatomic) CGFloat cornerRadius;
 @property(nonatomic, copy) NSString *ignoresSafeArea;
@@ -35,6 +36,8 @@ static void layout_recursive(UIView *view, CGFloat width);
 @end
 
 @implementation UIView (LuaLayoutProperties)
+- (BOOL)allowsHitTesting { return self.userInteractionEnabled; }
+- (void)setAllowsHitTesting:(BOOL)value { self.userInteractionEnabled = value; }
 - (CGFloat)padding {
 	NSNumber *value = objc_getAssociatedObject(self, &kPaddingKey);
 	return value ? value.doubleValue : 12.0;
@@ -119,11 +122,19 @@ static void layout_recursive(UIView *view, CGFloat width);
 - (void)setIgnoresSafeArea:(NSString *)value {
 	objc_setAssociatedObject(self, &kIgnoresSafeAreaKey, value, OBJC_ASSOCIATION_COPY);
 }
-- (NSString *)contentModeName { return @"fit"; }
+- (NSString *)contentModeName {
+	switch (self.contentMode) {
+		case UIViewContentModeScaleAspectFill: return @"fill";
+		case UIViewContentModeScaleToFill: return @"stretch";
+		case UIViewContentModeCenter: return @"center";
+		default: return @"fit";
+	}
+}
 - (void)setContentModeName:(NSString *)value {
-	if (![self isKindOfClass:[UIImageView class]]) return;
-	((UIImageView *)self).contentMode = [value isEqualToString:@"fill"]
-		? UIViewContentModeScaleAspectFill : UIViewContentModeScaleAspectFit;
+	if (![self isKindOfClass:UIImageView.class]) return;
+	self.contentMode = [value isEqualToString:@"fill"] ? UIViewContentModeScaleAspectFill
+		: ([value isEqualToString:@"stretch"] ? UIViewContentModeScaleToFill
+		: ([value isEqualToString:@"center"] ? UIViewContentModeCenter : UIViewContentModeScaleAspectFit));
 }
 @end
 

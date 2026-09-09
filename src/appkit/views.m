@@ -623,6 +623,40 @@ static int bridge_NSView_splitProportions_impl(lua_State *L) {
 
 @end
 
+/* NSImageView has no aspect-fill scaling mode. Resize the native image's
+ * logical drawing size and let NSImageView center and clip it; retain the
+ * source so repeated resizing never compounds scale or resamples pixels. */
+@interface LuaImageView : NSImageView
+@property(nonatomic, strong) NSImage *sourceImage;
+@property(nonatomic, copy) NSString *contentModeName;
+@end
+@implementation LuaImageView
+- (void)updateImageLayout {
+	NSImage *source = self.sourceImage;
+	if (!source) return;
+	self.imageAlignment = NSImageAlignCenter;
+	if ([_contentModeName isEqualToString:@"fill"] && source.size.width > 0 && source.size.height > 0) {
+		CGFloat scale = MAX(self.bounds.size.width / source.size.width, self.bounds.size.height / source.size.height);
+		NSImage *drawing = [source copy];
+		drawing.size = NSMakeSize(source.size.width * scale, source.size.height * scale);
+		[super setImage:drawing];
+		self.imageScaling = NSImageScaleNone;
+		self.clipsToBounds = YES;
+	} else {
+		[super setImage:source];
+		self.imageScaling = [_contentModeName isEqualToString:@"stretch"] ? NSImageScaleAxesIndependently
+			: ([_contentModeName isEqualToString:@"center"] ? NSImageScaleNone : NSImageScaleProportionallyUpOrDown);
+	}
+}
+- (void)setImage:(NSImage *)image {
+	self.sourceImage = image;
+	if (image) [self updateImageLayout];
+	else [super setImage:nil];
+}
+- (void)setContentModeName:(NSString *)mode { _contentModeName = [mode copy]; [self updateImageLayout]; }
+- (void)setFrameSize:(NSSize)size { [super setFrameSize:size]; [self updateImageLayout]; }
+@end
+
 static int bridge_image(lua_State *L) {
 	const char *path = luaL_checkstring(L, 1);
 	NSString *nsPath = [NSString stringWithUTF8String:path];
@@ -643,7 +677,7 @@ static int bridge_image(lua_State *L) {
 		size.height *= ratio;
 	}
 
-	NSImageView *iv = [[NSImageView alloc] initWithFrame:NSMakeRect(0, 0, size.width, size.height)];
+	LuaImageView *iv = [[LuaImageView alloc] initWithFrame:NSMakeRect(0, 0, size.width, size.height)];
 	iv.image = img;
 	iv.imageScaling = NSImageScaleProportionallyUpOrDown;
 	// NSImageView reports the source bitmap's intrinsic dimensions even when

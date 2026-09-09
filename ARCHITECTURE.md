@@ -125,7 +125,7 @@ Layout metadata (flexGrow, padding, fixedWidth, etc.) is stored as associated ob
 
 A custom flex-like layout engine is implemented entirely in C (`layout_recursive`, `measure_view`, `distribute_main_axis`). It runs synchronously when `bridge._layout(view)` is called.
 
-**Pass 1 — Measure** (`measure_view`): each view reports its natural size given a constraint. Leaf views use `intrinsicContentSize` / `fittingSize`. Stack views sum their children.
+**Pass 1 — Measure** (`measure_view`): each view reports its natural size given a constraint. Leaf views use current native intrinsic measurements, with width proposals for wrapping text. Stacks measure visible children and sibling spacing; HStack negotiates constrained widths. Previous layout frames do not become intrinsic minimums. Empty stacks measure zero, and flexibility is inherited from children on each axis.
 
 **Pass 2 — Distribute** (`distribute_main_axis`): free space is distributed among children proportional to their `flexGrow` weight, clamped by `minWidth`/`maxWidth`.
 

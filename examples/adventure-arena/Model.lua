@@ -1,18 +1,6 @@
 local Model = {}
 
--- Keep the catalog in Lua while the port is being iterated. The paths mirror
--- the checked-in zilscript content so the same records drive artwork and play.
-Model.games = {
-	{ id = "books.wondertown", title = "The Last Toymaker's Apprentice", shortDescription = "Save a toy workshop's magic before dawn.", description = "You are Pip, a tiny workshop gnome apprentice working for Grandfather Tolliver, the last toymaker in Wrenfold. Tonight, Tolliver is missing and the workshop key has stopped ticking on its hook. Find out what happened, recover the key, and rewind the town's heart before dawn.", genre = "Whimsical Adventure", author = "Studio Null", year = 2024, rating = 4.7, reviewCount = 286, cover = "examples/adventure-arena/assets/wondertown.jpg", base = "infocom/zork1", sourceBase = "books/wondertown", startFile = "wondertown.zil" },
-	{ id = "infocom.planetfall", title = "Planetfall", shortDescription = "Survive a crash landing on an alien world.", description = "Your ship, the S.P.S. Feinstein, has been destroyed. You escaped in a life pod and crash-landed on a strange, seemingly abandoned planet. Explore the ruins, befriend Floyd, and unravel what happened here.", genre = "Sci-Fi Adventure", author = "Infocom", year = 1983, rating = 4.7, reviewCount = 2104, cover = "examples/adventure-arena/assets/planetfall.jpg", base = "infocom/planetfall", startFile = "planetfall.zil" },
-	{ id = "books.blackwood-horror", title = "Sanitarium", shortDescription = "A psychological horror adventure.", description = "Something is very wrong. You wake in a place that should not exist, surrounded by people who seem to know you. Navigate fractured realities, solve unsettling puzzles, and piece together the truth.", genre = "Psychological Horror", author = "Studio Null", year = 2024, rating = 4.5, reviewCount = 183, cover = "examples/adventure-arena/assets/sanitarium.jpg", base = "infocom/zork1", sourceBase = "books/blackwood-horror", startFile = "blackwood-horror.zil" },
-	{ id = "infocom.spellbreaker", title = "Spellbreaker", shortDescription = "Master impossible magic before the world unravels.", description = "A dangerous magical puzzle-box awaits. Learn the language of spells, explore a world full of strange transformations, and survive the consequences of every incantation.", genre = "Fantasy Adventure", author = "Infocom", year = 1985, rating = 4.4, reviewCount = 942, cover = "examples/adventure-arena/assets/spellbreaker.jpg", base = "infocom/spellbreaker", startFile = "z6.zil" },
-	{ id = "infocom.lurkinghorror", title = "The Lurking Horror", shortDescription = "Something ancient stirs beneath the campus.", description = "A blizzard rages outside G.U.E. Tech. You descend into steam tunnels and ancient chambers where something malevolent stirs.", genre = "Psychological Horror", author = "Infocom", year = 1987, rating = 4.3, reviewCount = 723, cover = "examples/adventure-arena/assets/lurkinghorror.jpg", base = "infocom/lurkinghorror", startFile = "h1.zil" },
-	{ id = "infocom.zork1", title = "Zork I: The Great Underground Empire", shortDescription = "Explore the Great Underground Empire.", description = "You are standing in an open field west of a white house, with a boarded front door. Navigate treacherous mazes, collect treasures, and outwit the fearsome Grues.", genre = "Classic Adventure", author = "Infocom", year = 1980, rating = 4.8, reviewCount = 2341, cover = "examples/adventure-arena/assets/zork1.jpg", base = "infocom/zork1", startFile = "zork1.zil" },
-	{ id = "infocom.zork2", title = "Zork II: The Wizard of Frobozz", shortDescription = "Face a wizard who bends reality.", description = "The Great Underground Empire grows stranger and more dangerous as the Wizard of Frobozz turns the rules of exploration against you.", genre = "Classic Adventure", author = "Infocom", year = 1981, rating = 4.6, reviewCount = 1180, cover = "examples/adventure-arena/assets/zork2.jpg", base = "infocom/zork2", startFile = "zork2.zil" },
-	{ id = "infocom.zork3", title = "Zork III: The Dungeon Master", shortDescription = "Prove yourself worthy of the Empire.", description = "Deep below the earth, the Dungeon Master sets a final series of trials. Your choices and ingenuity determine whether you escape the Empire.", genre = "Classic Adventure", author = "Infocom", year = 1982, rating = 4.5, reviewCount = 934, cover = "examples/adventure-arena/assets/zork3.jpg", base = "infocom/zork3", startFile = "zork3.zil" },
-	{ id = "books.limehouse-killings", title = "The Limehouse Killings", shortDescription = "Solve a Victorian murder before the fog closes in.", description = "London's East End is thick with fog and secrets. Follow the evidence, question dangerous witnesses, and uncover a killer hiding behind respectable doors.", genre = "Mystery Adventure", author = "Studio Null", year = 2024, rating = 4.6, reviewCount = 214, cover = "examples/adventure-arena/assets/limehouse.jpg", base = "infocom/zork1", sourceBase = "books/limehouse-killings", startFile = "limehouse-killings.zil" },
-}
+Model.games = require("examples.adventure-arena.Catalog")
 
 local gameIndex = {}
 for _, game in ipairs(Model.games) do gameIndex[game.id] = game end
@@ -20,5 +8,35 @@ for _, game in ipairs(Model.games) do gameIndex[game.id] = game end
 function Model.game(id) return gameIndex[id] end
 function Model.featured() return { Model.games[1], Model.games[2], Model.games[3] } end
 function Model.ratingLabel(game) return string.format("%.1f (%d)", game.rating, game.reviewCount) end
+
+Model.__index = Model
+
+function Model.new(engineFactory)
+	return setmetatable({ messages = {}, engineFactory = engineFactory
+		or require("examples.adventure-arena.ZIL").new }, Model)
+end
+
+function Model:startSession(game, ns)
+	local ok, engine, opening = pcall(function()
+		return self.engineFactory(game, ns):start()
+	end)
+	if not ok then return false, tostring(engine) end
+	self.engine, self.currentGame = engine, game
+	self.messages = { tostring(opening or "") }
+	return true
+end
+
+function Model:submit(command)
+	command = tostring(command or ""):match("^%s*(.-)%s*$")
+	if command == "" or not self.engine then return false end
+	local ok, response = pcall(function() return self.engine:resume(command) end)
+	self.messages[#self.messages + 1] = "> " .. command
+	self.messages[#self.messages + 1] = tostring(response or "")
+	return ok, response
+end
+
+function Model:transcript()
+	return table.concat(self.messages, "\n\n")
+end
 
 return Model

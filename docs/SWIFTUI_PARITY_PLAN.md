@@ -3,6 +3,15 @@
 Prepared 2026-09-08. This document is the implementation handoff, not a claim
 that parity has already been verified. Follow root `AGENTS.md` throughout.
 
+**Verification update, 2026-09-09:** neither delivery gate is complete.
+Production constructors now pass **222/224 macOS** and **218/224 iOS** geometry
+cases without batch-only normalization. All 13 gallery cases remain unverified.
+Adventure Arena now has catalog fidelity, single-root navigation, MVP separation
+and a typed-command session; persistent saves and full screen/interaction parity
+remain open. See [implementation progress](parity/progress-2026-09-09.md) and the
+[earlier source audit](parity/audit-2026-09-09.md). Historical counts below are
+dated results, not current verification.
+
 Execution strategy updated 2026-09-08: use persistent batch hosts and cached
 SwiftUI measurements as described in section 11. That section supersedes the
 per-case launch/deployment workflow below. Both delivery gates remain intact.

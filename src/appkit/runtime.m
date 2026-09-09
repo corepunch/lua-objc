@@ -175,6 +175,41 @@ LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
 - (void)setTextAlignment:(NSInteger)value { self.alignment = (NSTextAlignment)value; }
 @end
 
+/* Labels need paragraph metrics to survive text/font changes. KVC alone
+ * cannot maintain attributed paragraph state when those native setters run. */
+@interface LuaLabelCell : NSTextFieldCell
+@end
+@implementation LuaLabelCell
+- (NSRect)drawingRectForBounds:(NSRect)bounds { return bounds; }
+- (NSRect)titleRectForBounds:(NSRect)bounds { return bounds; }
+@end
+
+@interface LuaLabel : LuaTextField
+@end
+
+@implementation LuaLabel
++ (Class)cellClass { return LuaLabelCell.class; }
+- (void)updateParagraphMetrics {
+	if (!self.font) return;
+	NSMutableParagraphStyle *paragraph = [[NSMutableParagraphStyle alloc] init];
+	paragraph.alignment = self.alignment;
+	paragraph.lineBreakMode = self.lineBreakMode;
+	CGFloat lineHeight = ceil(self.font.ascender - self.font.descender + self.font.leading);
+	paragraph.minimumLineHeight = lineHeight;
+	paragraph.maximumLineHeight = lineHeight;
+	self.attributedStringValue = [[NSAttributedString alloc] initWithString:self.stringValue attributes:@{
+		NSFontAttributeName: self.font,
+		NSForegroundColorAttributeName: self.textColor ?: NSColor.labelColor,
+		NSParagraphStyleAttributeName: paragraph,
+	}];
+}
+- (void)setStringValue:(NSString *)value { [super setStringValue:value]; [self updateParagraphMetrics]; }
+- (void)setFont:(NSFont *)font { [super setFont:font]; [self updateParagraphMetrics]; }
+- (void)setTextColor:(NSColor *)color { [super setTextColor:color]; [self updateParagraphMetrics]; }
+- (void)setAlignment:(NSTextAlignment)value { [super setAlignment:value]; [self updateParagraphMetrics]; }
+- (void)setLineBreakMode:(NSLineBreakMode)value { [super setLineBreakMode:value]; [self updateParagraphMetrics]; }
+@end
+
 @interface LuaSecureTextField : NSSecureTextField
 @property(nonatomic, copy) NSString *text;
 @property(nonatomic, copy) NSString *placeholder;

@@ -10,6 +10,8 @@
 
 enum {
 	kAxisKey,
+	kNavigationControllerKey,
+	kScrollViewportSizeKey,
 	kFlexibleKey,
 	kTableSourceKey,
 	kCallbackKey,
@@ -226,6 +228,7 @@ static void bridge_set_optional_callback(
 #include "appkit/outline.m"
 #include "appkit/editor.m"
 #include "appkit/tabview.m"
+#include "appkit/navigation.m"
 #include "appkit/platform.m"
 
 #include "appkit/constructors.m"
@@ -250,6 +253,10 @@ static const luaL_Reg bridge_lib[] = {
 	{"_vsplit", bridge_AppKitControls_vsplit},
 	{"_separator", bridge_AppKitControls_separator},
 	{"_spacer", bridge_AppKitControls_spacer},
+	{"_hitTestTarget", bridge_hit_test_target},
+	{"_hostingController", bridge_hosting_controller},
+	{"_navigationStack", bridge_navigation_stack},
+	{"_label", bridge_AppKitControls_label},
 	{"_textField", bridge_AppKitControls_textField},
 	{"_secureTextField", bridge_AppKitControls_secureTextField},
 	{"_searchField", bridge_AppKitControls_searchField},
@@ -662,18 +669,22 @@ int lua_objc_main(int argc, char *argv[]) {
 
 	lua_settop(L, 0);
 
+	/* Resize before the settling interval, so WindowServer and native container
+	 * layout commit the requested geometry before either capture path runs. */
+	if ((screenshot_out || internal_screenshot_out) && (layout_width_set || layout_height_set)) {
+		NSWindow *window = lua_objc_app_window();
+		NSSize size = window.contentView.bounds.size;
+		if (layout_width_set) size.width = preview_width;
+		if (layout_height_set) size.height = preview_height;
+		[window setContentSize:size];
+	}
+
 	if (internal_screenshot_out) {
 		NSString *screenshotPath = [NSString stringWithUTF8String:internal_screenshot_out];
 		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)),
 			dispatch_get_main_queue(), ^{
 			NSWindow *window = lua_objc_app_window();
 			NSData *png = nil;
-			if (window && (layout_width_set || layout_height_set)) {
-				NSSize size = window.contentView.bounds.size;
-				if (layout_width_set) size.width = preview_width;
-				if (layout_height_set) size.height = preview_height;
-				[window setContentSize:size];
-			}
 			if (window && window.contentView) {
 				[window.contentView layoutSubtreeIfNeeded];
 				CGFloat captureWidth = layout_width_set
@@ -683,14 +694,15 @@ int lua_objc_main(int argc, char *argv[]) {
 				png = offscreen_render(window.contentView,
 					captureWidth, captureHeight);
 			}
-			if (png && [png writeToFile:screenshotPath atomically:YES]) {
+			BOOL captured = png && [png writeToFile:screenshotPath atomically:YES];
+			if (captured) {
 				fprintf(stderr, "internal screenshot: wrote %s (%lu bytes)\n",
 					internal_screenshot_out, (unsigned long)png.length);
 			} else {
 				fprintf(stderr, "internal screenshot: failed to write %s\n",
 					internal_screenshot_out);
 			}
-			[NSApp terminate:nil];
+			exit(captured ? EXIT_SUCCESS : EXIT_FAILURE);
 		});
 	} else if (screenshot_out) {
 		NSString *screenshotPath = [NSString stringWithUTF8String:screenshot_out];
@@ -698,26 +710,25 @@ int lua_objc_main(int argc, char *argv[]) {
 			dispatch_get_main_queue(), ^{
 			NSWindow *window = lua_objc_app_window();
 			NSData *png = nil;
-			if (window && (layout_width_set || layout_height_set)) {
-				NSSize size = window.contentView.bounds.size;
-				if (layout_width_set) size.width = preview_width;
-				if (layout_height_set) size.height = preview_height;
-				[window setContentSize:size];
-			}
+			[[NSFileManager defaultManager] removeItemAtPath:screenshotPath error:nil];
 			if (window) {
 				[window display];
-				int winNum = (int)[window windowNumber];
-				NSString *cmd = [NSString stringWithFormat:
-					@"screencapture -x -l %d %@", winNum, screenshotPath];
-				system([cmd UTF8String]);
-				png = [NSData dataWithContentsOfFile:screenshotPath];
+				NSTask *capture = [[NSTask alloc] init];
+				capture.executableURL = [NSURL fileURLWithPath:@"/usr/sbin/screencapture"];
+				capture.arguments = @[@"-x", @"-l", @(window.windowNumber).stringValue, screenshotPath];
+				NSError *error = nil;
+				if ([capture launchAndReturnError:&error]) {
+					[capture waitUntilExit];
+					if (capture.terminationStatus == 0) png = [NSData dataWithContentsOfFile:screenshotPath];
+				}
 			}
+
 			if (png) {
 				[png writeToFile:screenshotPath atomically:YES];
 			} else {
 				fprintf(stderr, "screenshot: failed to capture window\n");
 			}
-			[NSApp terminate:nil];
+			exit(png.length ? EXIT_SUCCESS : EXIT_FAILURE);
 		});
 	}
 

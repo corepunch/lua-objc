@@ -1,27 +1,46 @@
 /* Native constructors exported by the AppKit module. */
 
+/* AppKit has no KVC property to exclude a container subtree from hit testing.
+ * Keep the native NSView traversal and opt out before it visits descendants. */
+@interface LuaStackView : NSView
+@property(nonatomic) BOOL allowsHitTesting;
+@end
+@implementation LuaStackView
+- (instancetype)initWithFrame:(NSRect)frame {
+	self = [super initWithFrame:frame];
+	if (self) _allowsHitTesting = YES;
+	return self;
+}
+- (NSView *)hitTest:(NSPoint)point { return _allowsHitTesting ? [super hitTest:point] : nil; }
+@end
+
+static int bridge_hit_test_target(lua_State *L) {
+	NSView *view = check_view(L, 1);
+	NSView *target = check_view(L, 2);
+	NSPoint point = NSMakePoint(luaL_checknumber(L, 3), luaL_checknumber(L, 4));
+	lua_pushboolean(L, [view hitTest:point] == target);
+	return 1;
+}
+
 static int bridge_AppKitControls_vstack(lua_State *L) {
 
-	NSView *obj = [[NSView alloc] initWithFrame:NSZeroRect];
+	NSView *obj = [[LuaStackView alloc] initWithFrame:NSZeroRect];
 	objc_setAssociatedObject(obj, &kKeys[kAxisKey], @(LayoutAxisVStack), OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(obj, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, obj, "nsview");
 	return 1;
 }
 
 static int bridge_AppKitControls_hstack(lua_State *L) {
 
-	NSView *obj = [[NSView alloc] initWithFrame:NSZeroRect];
+	NSView *obj = [[LuaStackView alloc] initWithFrame:NSZeroRect];
 	objc_setAssociatedObject(obj, &kKeys[kAxisKey], @(LayoutAxisHStack), OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(obj, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, obj, "nsview");
 	return 1;
 }
 
 static int bridge_AppKitControls_zstack(lua_State *L) {
-	NSView *obj = [[NSView alloc] initWithFrame:NSZeroRect];
+	NSView *obj = [[LuaStackView alloc] initWithFrame:NSZeroRect];
 	objc_setAssociatedObject(obj, &kKeys[kAxisKey], @(LayoutAxisZStack), OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(obj, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, obj, "nsview");
 	return 1;
 }
@@ -32,10 +51,13 @@ static int bridge_AppKitControls_scrollView(lua_State *L) {
 	CGFloat contentHeight = (CGFloat)luaL_optnumber(L, 3, 0);
 
 	NSScrollView *obj = [[NSScrollView alloc] initWithFrame:NSZeroRect];
+	obj.clipsToBounds = YES;
+	obj.contentView.clipsToBounds = YES;
 	obj.autohidesScrollers = YES;
 	obj.borderType = NSNoBorder;
 	obj.drawsBackground = NO;
 	obj.documentView = content;
+	objc_setAssociatedObject(obj, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 	/* Assigning documentView can restore AppKit's default vertical scroller;
 	 * apply the requested axis policy after the document is installed. */
 	obj.hasHorizontalScroller = YES;
@@ -89,6 +111,11 @@ static int bridge_AppKitControls_spacer(lua_State *L) {
 	objc_setAssociatedObject(obj, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 	objc_setAssociatedObject(obj, &kKeys[kFlexBasisKey], @0, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, obj, "nsview");
+	return 1;
+}
+
+static int bridge_AppKitControls_label(lua_State *L) {
+	push_objc(L, [LuaLabel wrappingLabelWithString:@""], "nsview");
 	return 1;
 }
 

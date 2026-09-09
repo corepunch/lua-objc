@@ -30,6 +30,7 @@ local layout_properties = {
 	"fillWidth",
 	"fillHeight",
 	"hidden",
+	"allowsHitTesting",
 	"cornerRadius",
 	"clipsToBounds",
 	"ignoresSafeArea",
@@ -111,13 +112,10 @@ function UIKit.NavigationStack(props)
 	props = props or {}
 	local content = props.content or props[1]
 	local root = asViewController(content)
-	local navigation = bridge._navigationStack(root)
+	local navigation = bridge._navigationStack(root, props.hidesNavigationBar == true)
 	if props.title then root.title = props.title end
 	if props.largeTitle ~= nil then
 		navigation.navigationBar.prefersLargeTitles = props.largeTitle
-	end
-	if props.hidesNavigationBar ~= nil then
-		navigation.navigationBarHidden = props.hidesNavigationBar
 	end
 	if props.hidesTabBar ~= nil then
 		root.hidesBottomBarWhenPushed = props.hidesTabBar
@@ -292,19 +290,18 @@ function UIKit.ScrollView(props)
 		props.contentHeight or 0, props.horizontal == true, props.vertical ~= false), props)
 end
 
-function UIKit.TextField(arg)
-	local text = ""
-	local props
-	if type(arg) == "table" then
-		text = arg[1] or arg.placeholder or arg.value or ""
-		props = arg
-	elseif type(arg) == "string" then
-		text = arg
-	end
-	local v = bridge._textField(text)
-	if type(props) == "table" and props.secure then v.secureTextEntry = true end
-	if type(props) == "table" and props.disabled ~= nil then v.enabled = not props.disabled end
-	return applyLayout(v, props)
+function UIKit.TextField(props)
+	if type(props) ~= "table" then props = { value = tostring(props or "") } end
+	local field = bridge._textField(props.value or props[1] or "")
+	field.placeholder = props.placeholder or ""
+	field.borderStyle = props.bezeled == false and 0 or 3
+	field.secureTextEntry = props.secure == true
+	field.enabled = props.disabled ~= true and props.editable ~= false
+	if props.size then field.font = bridge._font(props.size, props.weight) end
+	if props.accessibilityLabel then field.accessibilityLabel = props.accessibilityLabel end
+	bridge._textFieldCallbacks(field, props.onChange, props.onCommand)
+	field:sizeToFit()
+	return applyLayout(field, props)
 end
 
 function UIKit.TextEditor(props)

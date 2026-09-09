@@ -38,6 +38,7 @@ local layout_properties = {
 	"fillWidth",
 	"fillHeight",
 	"hidden",
+	"allowsHitTesting",
 	"background",
 	"cornerRadius",
 	"clipsToBounds",
@@ -549,12 +550,14 @@ function AppKit.Text(arg)
 		return applyLayout(AppKit.HStack(row), arg)
 	end
 
-	local v = bridge._textField()
+	local v = bridge._label()
 	v.text = text
 	v.bezeled = false
 	v.drawsBackground = false
 	v.editable = false
 	v.selectable = false
+	v.lineLimit = type(arg) == "table" and arg.lineLimit or 0
+	v.lineBreakMode = 0
 
 	if size and size > 0 then
 		v.font = bridge._font(size, weight, type(arg) == "table" and arg.italic)
@@ -676,14 +679,16 @@ function AppKit.Image(arg)
 	local path
 	local props
 	if type(arg) == "table" then
-		path = arg[1] or ""
+		path = arg[1] or arg.path or ""
 		props = arg
 	elseif type(arg) == "string" then
 		path = arg
 	else
 		path = tostring(arg)
 	end
-	return applyLayout(bridge._image(resolveImage(path)), props)
+	local view = bridge._image(resolveImage(path))
+	if props and props.contentMode then view.contentModeName = props.contentMode end
+	return applyLayout(view, props)
 end
 
 function AppKit.SystemImage(arg)
@@ -806,9 +811,8 @@ function AppKit.Button(props)
 	local action = type(props) == "table" and props.action or nil
 	local button
 	local compound = type(props) == "table"
-		and (props.subtitle or props.systemImage or props.detail
-			or props.style == "primary" or props.style == "plain"
-			or props.style == "row" or props.style == "link")
+		and (props.subtitle or props.detail
+			or props.style == "primary" or props.style == "row")
 	if compound then
 		button = bridge._actionButton(
 			title,
@@ -821,6 +825,16 @@ function AppKit.Button(props)
 		button = bridge._button(title, action)
 	else
 		button = bridge._button(title)
+	end
+	if type(props) == "table" then
+		if not compound and (props.style == "plain" or props.style == "link") then
+			button.bordered = false
+		end
+		if not compound and props.systemImage then
+			button.image = AppKit.SystemImage { props.systemImage }.image
+			button.imagePosition = title == "" and 1 or 2
+		end
+		if props.accessibilityLabel then button.accessibilityLabel = props.accessibilityLabel end
 	end
 	if type(props) == "table" and props.disabled ~= nil then
 		button.enabled = not props.disabled
@@ -1128,6 +1142,17 @@ end
 function AppKit.fetch_json(url)
 	local body = AppKit.fetch(url)
 	return AppKit.json_parse(body)
+end
+
+function AppKit.HostingController(view)
+	return bridge._hostingController(view)
+end
+
+function AppKit.NavigationStack(props)
+	props = props or {}
+	local root = AppKit.HostingController(props.content or props[1])
+	root.title = props.title or ""
+	return applyLayout(bridge._navigationStack(root), props)
 end
 
 return AppKit

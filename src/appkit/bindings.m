@@ -1,5 +1,7 @@
 /* Instance methods that supplement ordinary Objective-C/KVC dispatch. */
 #if defined(GEN_CLASS_FORWARDS)
+static int bridge_navigation_push(lua_State *L);
+static int bridge_navigation_pop(lua_State *L);
 static int bridge_AppKitControls_vstack(lua_State *L);
 static int bridge_AppKitControls_hstack(lua_State *L);
 static int bridge_AppKitControls_zstack(lua_State *L);
@@ -605,6 +607,10 @@ static MethodEntry PathViewMethods[] = {
 
 /* --- nsview_index dispatch blocks --- */
 #if defined(GEN_CLASS_INDEX)
+if (objc_getAssociatedObject(obj, &kKeys[kNavigationControllerKey])) {
+	if (strcmp(key, "push") == 0) { lua_pushcfunction(L, bridge_navigation_push); return 1; }
+	if (strcmp(key, "pop") == 0) { lua_pushcfunction(L, bridge_navigation_pop); return 1; }
+}
 {
 	id _sentinel_nsscrollview = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (_sentinel_nsscrollview) {
