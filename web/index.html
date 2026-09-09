@@ -75,7 +75,14 @@
     </section>
 
     <section id="start" class="band band-paper">
-      <div class="section-wrap start-grid"><div><p class="eyebrow">Start with a folder</p><h2>Your next screen<br>is a Lua file.</h2><p class="start-copy">Keep the shape familiar: a model for data, a controller for actions, and views for declarative structure. Only the app entry point ever creates a window&mdash;the view itself is plain etlua.</p></div><div class="code-stack">
+      <div class="section-wrap start-grid"><div><p class="eyebrow">Start with a folder</p><h2>Your next screen<br>is a Lua file.</h2>
+        <p class="start-copy">Keep the shape familiar: a model for data, a controller for actions, and views for declarative structure. The framework instantiates the controller returned by <code>init.lua</code> and calls its <code>createWindow()</code> method. Reusable view components return view trees.</p>
+        <h3>Coming from PHP? Think Laravel with Blade.</h3>
+        <p class="start-copy">The workflow is familiar: a controller prepares model data and passes it to a template. Here, <code>Controller.lua</code> renders <code>views/*.etlua</code> into real AppKit/UIKit controls. Partials, layouts, and reusable Lua view components keep presentation organized.</p>
+        <p class="start-copy">The key difference is lifetime. Controllers and native widgets stay alive across clicks, typing, and asynchronous results. Native callbacks invoke actions, and controllers explicitly update the views. Model changes do not yet trigger automatic reconciliation.</p>
+        <p class="start-copy">Use Laravel as a guide for separating responsibilities: models own queries and mutations, controllers coordinate actions, and views own presentation. This is an architectural comparison; the models are ordinary Lua code, with no Eloquent-style ORM implied.</p>
+        <a class="text-link" href="https://github.com/corepunch/lua-objc#a-php-reference-point-laravel-with-blade">Read the Laravel comparison <span aria-hidden="true">↗</span></a>
+      </div><div class="code-stack">
         <div class="code-card"><div class="code-top"><span>examples/weather/views/CityDetail.etlua</span><span>VIEW</span></div><pre><code>&lt;% <i>if</i> #city.forecast &gt; 0 <i>then</i> -%&gt;
       &lt;Divider /&gt;
       &lt;Label text=<q>"7-day forecast"</q> size=<q>"14"</q> weight=<q>"semibold"</q> /&gt;

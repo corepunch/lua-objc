@@ -273,6 +273,50 @@ examples/<app>/
 `init.lua` never self-starts. It returns the class; the framework calls
 `class.new():createWindow()`.
 
+### A PHP reference point: Laravel with Blade
+
+Think of lua-objc as **Laravel-style application structure and templates,
+rendering real AppKit/UIKit controls, with a persistent native application
+lifecycle**. The PHP analogy fits the authoring workflow: application code
+prepares data, passes it to a template, and the runtime turns it into an
+interface.
+
+| Laravel concept | lua-objc equivalent |
+|---|---|
+| Controller prepares data and renders a view | `Controller.lua` calls `xml.renderFile(...)` |
+| Models and application services | `Model.lua` provides queries, mutations, and fetching |
+| Blade templates | `views/*.etlua` |
+| Includes, layouts, and sections | `partial()`, `extends()`, `block()`, `yield()` |
+| Reusable view components | Lua functions returning native view trees |
+| Routes dispatch actions | Native callbacks invoke controller methods |
+
+The [hello controller](examples/hello/Controller.lua) shows the basic flow:
+take model data, render a template, and create a window. The
+[mail controller](examples/mail/Controller.lua) adds interaction: selecting
+a message marks it read and updates the detail pane in the existing window.
+
+**The key difference is lifetime.** Laravel's web flow handles a request and
+returns a response. A lua-objc controller and its native widgets stay alive
+across selection, typing, asynchronous results, and navigation. The controller
+also acts as a presenter coordinating persistent views, which is why this
+project uses the MVP description. Model changes currently require explicit
+view updates; template rendering does not provide automatic reconciliation.
+
+Use Laravel's [views](https://laravel.com/docs/12.x/views) and
+[Blade](https://laravel.com/docs/12.x/blade) as guides for application
+organization and template composition, with its
+[request lifecycle](https://laravel.com/docs/12.x/lifecycle) marking the
+boundary of the analogy. This is an architectural comparison, not feature
+parity: `Model.lua` is ordinary Lua domain code, not an Eloquent-style ORM.
+
+The practical guide for apps is:
+
+- Controllers coordinate actions, call models, and supply view data.
+- Models own queries, fetching, validation, and mutations.
+- Views own presentation through templates and reusable component functions.
+- The framework owns shared rendering, action binding, and lifecycle
+  machinery. Retained descriptions and reconciliation remain framework work.
+
 ## Template system
 
 Templates use etlua (Lua embedded in XML) with cross-platform tags:
