@@ -1,4 +1,4 @@
-#import "AppDelegate.h"
+#import "LuaObjCHost.h"
 
 @implementation AppDelegate
 - (BOOL)application:(UIApplication *)application

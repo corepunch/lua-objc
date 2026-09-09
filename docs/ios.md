@@ -164,6 +164,7 @@ ios/
   LuaObjCHost.xcodeproj          ← scheme LuaObjCHost, iphonesimulator
   LuaObjCHost/
     Info.plist
+    LuaObjCHost.h                ← shared host declarations; one header for this folder
     main.m                       ← UIApplicationMain
     AppDelegate.m                ← UIApplicationDelegate
     SceneDelegate.m              ← creates UIWindow, starts LuaHost

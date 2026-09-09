@@ -1,4 +1,4 @@
-#import "LuaSourceLoader.h"
+#import "LuaObjCHost.h"
 
 @implementation LuaSourceLoader {
 	NSURLSession *_session;

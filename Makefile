@@ -141,7 +141,7 @@ $(PACKAGER): src/packager/packager.m lua/packager/paths.lua
 		$(shell pkg-config --libs lua 2>/dev/null || echo "-L/opt/homebrew/lib -llua") \
 		-framework Foundation -framework CoreServices
 
-$(HOST_BINARY): $(IOS_LUA_A) $(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) \
+$(HOST_BINARY): $(IOS_LUA_A) $(IOS_HOST_SRCS) ios/LuaObjCHost/LuaObjCHost.h $(UIKIT_RUNTIME_SRC) \
 		$(UIKIT_RUNTIME_FRAGMENTS) $(GENERATED_DIR)/UIKit.lua.h \
 		ios/LuaObjCHost/Info.plist ios/LuaObjCHost/AppIcon.png
 	@test -n "$(IOS_SDK)" || { echo "iPhone Simulator SDK missing; set DEVELOPER_DIR"; exit 1; }

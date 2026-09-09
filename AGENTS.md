@@ -100,6 +100,10 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
 - Repeated sibling views use `ForEach`; reusable structure uses ordinary Lua
   component functions. `Group` emits multiple siblings.
 - Use tabs for leading indentation in `.m` and `.lua`.
+- Project-owned native folders use at most one shared `.h` for their `.m`
+  implementations, not one header per class. Keep implementation-only details
+  in `.m`; included bridge fragments need no header unless sharing declarations
+  across compilation units. Vendored and generated headers are excluded.
 - Visual/layout numeric values must be named constants in the platform root:
   `src/main.m` for AppKit and `src/uikit/bridge.m` for UIKit.
 - Group related layout constants into a local table (e.g. `local SEARCH = {

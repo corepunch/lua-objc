@@ -1,4 +1,4 @@
-#import "LuaHotClient.h"
+#import "LuaObjCHost.h"
 
 @implementation LuaHotClient {
 	NSURL *_url;

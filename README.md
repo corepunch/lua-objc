@@ -210,7 +210,10 @@ extension does not define an architectural layer:
 | `src/packager/` | Mac development server for Lua and assets |
 | `examples/<app>/` | Application behavior and composition in Lua |
 
-Nested subsystem folders are fine when they make navigation easier. Preserve
+Nested subsystem folders are fine when they make navigation easier. Use
+one shared `.h` per folder that needs cross-file declarations, with the
+implementations in separate `.m` files. The iOS host uses `LuaObjCHost.h`;
+included bridge fragments do not need per-class headers. Preserve
 the existing build boundary: `src/main.m` includes AppKit fragments;
 `src/uikit_module.m` includes `src/uikit/bridge.m` and its fragments. Included
 `.m` files are **not separate compiler inputs**. Add an explicit include when

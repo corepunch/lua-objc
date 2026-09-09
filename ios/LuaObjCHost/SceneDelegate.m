@@ -1,5 +1,4 @@
-#import "SceneDelegate.h"
-#import "LuaHost.h"
+#import "LuaObjCHost.h"
 
 @implementation SceneDelegate
 - (void)scene:(UIScene *)scene

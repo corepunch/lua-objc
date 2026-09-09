@@ -1,8 +1,4 @@
-#import "LuaHost.h"
-#import "LuaSourceLoader.h"
-#import "LuaHotClient.h"
-#import "LuaErrorOverlay.h"
-#import "LuaCapture.h"
+#import "LuaObjCHost.h"
 
 #include <lua.h>
 #include <lauxlib.h>

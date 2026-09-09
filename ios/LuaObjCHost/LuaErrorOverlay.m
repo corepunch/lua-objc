@@ -1,4 +1,4 @@
-#import "LuaErrorOverlay.h"
+#import "LuaObjCHost.h"
 
 @implementation LuaErrorOverlay {
 	NSString *_message;

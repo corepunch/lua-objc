@@ -59,6 +59,12 @@ Keep `.m` files with the subsystem they implement. Further nesting under
 moving a file. Do not group unrelated controls, hosting, and services merely
 because they share a language.
 
+Use one shared header per native folder when its implementations need shared
+declarations. Keep private helpers and state in `.m` files. The iOS host uses
+`ios/LuaObjCHost/LuaObjCHost.h` for all its independently compiled `.m` files;
+the platform bridge fragments already share declarations through inclusion.
+Do not add per-class headers or empty headers to those fragment folders.
+
 - AppKit fragments can use AppKit and shared helpers; UIKit fragments can use
   UIKit and shared helpers. Neither platform includes the other platform.
 - Shared helpers express platform-neutral behavior. The userdata converter
