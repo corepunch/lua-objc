@@ -162,7 +162,7 @@ Shared native services: userdata conversion, Lua state lifetime, async, errors
 ```
 
 On macOS, `src/host.c` loads `build/AppKit.dylib`, which contains the runtime
-and embedded public Lua API. On iOS, `ios/LuaObjCHost/` links the UIKit runtime
+and embedded public Lua API. On iOS, `ios/LuaRuntime/` links the UIKit runtime
 and streams the public Lua API and app sources from the packager.
 `build/UIKit.dylib` is the SDK compile-check, not the Simulator app.
 
@@ -180,7 +180,7 @@ references outside that explicit bridge boundary. See the
 | Native view or window exposed to Lua | Each userdata handle retains it; native containers and other strong references can also retain it | Userdata finalization releases its retain; native owners release theirs independently |
 | Native delegate / data source / layout metadata | A strong property or retained associated object where the bridge installs one | Replacement or destruction of the owning native object |
 | Lua callback installed in native code | A Lua registry reference; an integer on the native object identifies it | Explicit `luaL_unref`, or state teardown; cleanup is not yet uniform across controls |
-| `lua_State*` | A closing `LuaStateOwner` on macOS; `LuaHost` on iOS | Explicit `lua_close` by the designated owner; ARC cannot free a C pointer itself |
+| `lua_State*` | A closing `LuaStateOwner` on macOS; `LRTApplicationController` on iOS | Explicit `lua_close` by the designated owner; ARC cannot free a C pointer itself |
 
 Setting `view = nil` drops a Lua reference. Collection later releases that
 handle's native retain; a parent can still keep the view alive. Conversely,
@@ -206,13 +206,13 @@ extension does not define an architectural layer:
 | `src/appkit/` | AppKit controls, navigation, layout, property and method bindings |
 | `src/uikit/` | UIKit equivalents and scene integration |
 | `src/shared/` | Common bridge conversion, state ownership, async services, errors |
-| `ios/LuaObjCHost/` | iOS process lifecycle, source loading, reload, capture |
+| `ios/LuaRuntime/` | iOS process lifecycle, source loading, reload, capture |
 | `src/packager/` | Mac development server for Lua and assets |
 | `examples/<app>/` | Application behavior and composition in Lua |
 
 Nested subsystem folders are fine when they make navigation easier. Use
 one shared `.h` per folder that needs cross-file declarations, with the
-implementations in separate `.m` files. The iOS host uses `LuaObjCHost.h`;
+implementations in separate `.m` files. The iOS host uses `LuaRuntime.h`;
 included bridge fragments do not need per-class headers. Preserve
 the existing build boundary: `src/main.m` includes AppKit fragments;
 `src/uikit_module.m` includes `src/uikit/bridge.m` and its fragments. Included

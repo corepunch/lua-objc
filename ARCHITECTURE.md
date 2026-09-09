@@ -14,7 +14,7 @@ src/appkit/*.m              Focused bridge fragments included by main.m
 src/uikit/*.m               UIKit bridge root and focused fragments
 src/shared/*.m              Shared Lua state, async, HTTP, JSON, error helpers
 src/packager/packager.m     Mac packager: Lua + assets over HTTP/WebSocket
-ios/LuaObjCHost/            iPhone Simulator runtime (no app Lua inside)
+ios/LuaRuntime/            iPhone Simulator runtime (no app Lua inside)
 build/AppKit.dylib          AppKit runtime + luaopen_AppKit
 build/UIKit.dylib           UIKit compile-check (iOS SDK)
 lua/embedded/*.lua          Declarative layers (AppKit embedded; UIKit streamed on iOS)
@@ -57,7 +57,7 @@ missing.
 ### iOS host and in-process reload
 
 `src/host.c` cannot run UIKit. The iPhone Simulator product is a host app
-(`LuaObjCHost`) that statically links Lua 5.4.8 and the UIKit translation
+(`LuaRuntime`) that statically links Lua 5.4.8 and the UIKit translation
 unit. That `.app` is a runtime: it contains no application Lua, templates, or
 images.
 
@@ -193,7 +193,7 @@ chooses an explicit closer, implemented through `LuaStateOwner` or the host:
 |---|---|---|
 | macOS app / headless script | `lua_objc_main` creates the state and a closing `LuaStateOwner`; owner deallocation calls `lua_close` | Async blocks capture the owner; UI targets also use global `gL` |
 | macOS `--preview` | The same main state and closing owner | No application run loop; preview does not wait for async completion |
-| iOS host | `LuaHost` creates and explicitly closes/replaces its state | UIKit installs a registry-retained non-closing owner for async lookup and cancellation |
+| iOS host | `LRTApplicationController` creates and explicitly closes/replaces its state | UIKit installs a registry-retained non-closing owner for async lookup and cancellation |
 
 Normal process termination can bypass orderly stack cleanup; do not use
 process exit as the lifecycle mechanism for reusable screens or reloads.

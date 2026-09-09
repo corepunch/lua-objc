@@ -1,12 +1,12 @@
-#import "LuaObjCHost.h"
+#import "LuaRuntime.h"
 
-@implementation LuaSourceLoader {
+@implementation LRTResourceLoader {
 	NSURLSession *_session;
 	NSMutableDictionary<NSString *, NSData *> *_cache;
 }
 
 + (instancetype)shared {
-	static LuaSourceLoader *shared;
+	static LRTResourceLoader *shared;
 	static dispatch_once_t once;
 	dispatch_once(&once, ^{ shared = [[self alloc] init]; });
 	return shared;
@@ -26,7 +26,7 @@
 - (NSData *)GET:(NSString *)pathQuery error:(NSError **)error {
 	NSURL *url = [NSURL URLWithString:pathQuery relativeToURL:self.baseURL];
 	if (!url) {
-		if (error) *error = [NSError errorWithDomain:@"LuaSourceLoader"
+		if (error) *error = [NSError errorWithDomain:@"LRTResourceLoader"
 			code:1 userInfo:@{NSLocalizedDescriptionKey: @"bad url"}];
 		return nil;
 	}
@@ -45,7 +45,7 @@
 		}];
 	[task resume];
 	if (dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 8 * NSEC_PER_SEC))) {
-		if (error) *error = [NSError errorWithDomain:@"LuaSourceLoader"
+		if (error) *error = [NSError errorWithDomain:@"LRTResourceLoader"
 			code:2 userInfo:@{NSLocalizedDescriptionKey: @"packager timeout"}];
 		return nil;
 	}
@@ -54,7 +54,7 @@
 		return nil;
 	}
 	if (status != 200) {
-		if (error) *error = [NSError errorWithDomain:@"LuaSourceLoader"
+		if (error) *error = [NSError errorWithDomain:@"LRTResourceLoader"
 			code:status
 			userInfo:@{NSLocalizedDescriptionKey:
 				[NSString stringWithFormat:@"HTTP %ld %@",

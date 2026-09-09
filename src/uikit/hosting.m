@@ -1,6 +1,6 @@
 #pragma mark - Scene hosting
 
-__attribute__((weak)) UIWindow *lua_objc_host_window(void) {
+__attribute__((weak)) UIWindow *LRTApplicationWindow(void) {
 	return nil;
 }
 
@@ -68,7 +68,7 @@ static int bridge_hosting_controller(lua_State *L) {
 static int bridge_install_scene(lua_State *L) {
 	UIViewController *root = check_view_controller(L, 1);
 	const char *title = luaL_optstring(L, 2, "");
-	UIWindow *window = lua_objc_host_window();
+	UIWindow *window = LRTApplicationWindow();
 	if (!window) {
 		return luaL_error(L, "UIKit.Window requires an attached UIWindowScene");
 	}

@@ -1,6 +1,6 @@
-#import "LuaObjCHost.h"
+#import "LuaRuntime.h"
 
-NSData *lua_objc_capture_view_png(UIView *view) {
+NSData *LRTCaptureViewPNG(UIView *view) {
 	if (!view || view.bounds.size.width <= 0 || view.bounds.size.height <= 0) {
 		return nil;
 	}

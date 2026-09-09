@@ -1,6 +1,6 @@
-#import "LuaObjCHost.h"
+#import "LuaRuntime.h"
 
-@implementation AppDelegate
+@implementation LRTApplicationDelegate
 - (BOOL)application:(UIApplication *)application
 	didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {

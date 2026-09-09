@@ -138,7 +138,7 @@ lua script  -->  require("AppKit")  -->  AppKit.dylib  -->  AppKit objects
                                         embedded Lua
 ```
 
-For iOS, `require("UIKit")` runs inside the Simulator host (`LuaObjCHost`),
+For iOS, `require("UIKit")` runs inside the Simulator host (`LuaRuntime`),
 which statically links the UIKit translation unit and streams `UIKit.lua` plus
 application Lua/assets from a Mac packager. `build/UIKit.dylib` is a
 compile-check, not the process that displays the phone UI. Both modules expose
@@ -153,7 +153,7 @@ quitting.
    `src/main.m` includes focused bridge fragments from `src/appkit/`; together
    they own the ObjC bridge, layout engine, rendering services, and embedded
    `lua/embedded/AppKit.lua` declarative layer.
-3. **iOS Simulator host** — `ios/LuaObjCHost` + `luaopen_UIKitNative`. No app
+3. **iOS Simulator host** — `ios/LuaRuntime` + `luaopen_UIKitNative`. No app
    Lua inside the `.app`. Packager streams Lua, templates, and assets; the host
    reloads in process. `build/UIKit.dylib` remains an optional SDK compile-check.
 4. **`examples/<app>/`** — Lua Model, Controller, and views. No compilation step
@@ -1182,7 +1182,7 @@ should add next.
 | **Resolving ownership from a coroutine** | `L` in a coroutine bridge call differs from the root state's pointer, so pointer-keyed owner maps miss. | Use `owner_for_state(L)`, which reads the inherited owner pointer from `lua_getextraspace`; do not restore the deleted `"bridge_main"` registry workaround. |
 | **`lua_tostring` mutating numbers on the stack** | Calling `lua_tostring` on a number changes the stack slot to a string, breaking `lua_next` iteration. | Use `lua_pushvalue` before conversion, or check `lua_type` first. |
 | **`sizeToFit` on non-NSControl views** | `NSScrollView`, `NSSplitView` don't implement it — crash. | Guard with `respondsToSelector:@selector(sizeToFit)`. |
-| **ARC and `lua_State*` lifetime** | ARC manages Objective-C references, not the C allocation behind `lua_State*`; `__weak` cannot manage that pointer. | Designate one explicit closer: a closing `LuaStateOwner` on macOS or `LuaHost` on iOS. See [ownership](../ARCHITECTURE.md#object-and-state-ownership). |
+| **ARC and `lua_State*` lifetime** | ARC manages Objective-C references, not the C allocation behind `lua_State*`; `__weak` cannot manage that pointer. | Designate one explicit closer: a closing `LuaStateOwner` on macOS or `LRTApplicationController` on iOS. See [ownership](../ARCHITECTURE.md#object-and-state-ownership). |
 | **Blocks capturing `lua_State*` in async work** | A raw pointer can outlive its state, especially during host reload. | Capture `LuaStateOwner` strongly, check cancellation, and resume through its live state. UI callbacks still using `gL` need migration to state-bound registrations. |
 
 ## File layout

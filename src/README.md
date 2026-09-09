@@ -61,9 +61,15 @@ because they share a language.
 
 Use one shared header per native folder when its implementations need shared
 declarations. Keep private helpers and state in `.m` files. The iOS host uses
-`ios/LuaObjCHost/LuaObjCHost.h` for all its independently compiled `.m` files;
+`ios/LuaRuntime/LuaRuntime.h` for all its independently compiled `.m` files;
 the platform bridge fragments already share declarations through inclusion.
 Do not add per-class headers or empty headers to those fragment folders.
+
+The iOS runtime product is `LuaRuntime`; its classes use the `LRT` prefix and
+name their responsibility (`LRTApplicationController`, `LRTResourceLoader`,
+`LRTReloadConnection`). Implementation filenames match their classes. Reserve
+runtime/state names for execution ownership; the application controller also
+coordinates the scene, resource loading, and reload.
 
 - AppKit fragments can use AppKit and shared helpers; UIKit fragments can use
   UIKit and shared helpers. Neither platform includes the other platform.
@@ -86,7 +92,7 @@ symbol; moving folders alone does not provide that interface.
 
 ## iOS host build
 
-The iPhone Simulator host compiles `ios/LuaObjCHost/*.m` + `src/uikit_module.m`
+The iPhone Simulator host compiles `ios/LuaRuntime/*.m` + `src/uikit_module.m`
 + `liblua.a` only — never glob `src/uikit/*.m` as extra Compile Sources.
 Application Lua and assets are not in the `.app`; they stream from the
 packager. See [`docs/ios.md`](../docs/ios.md).

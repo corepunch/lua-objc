@@ -110,19 +110,19 @@ LUA_LIB := lauxlib lbaselib lcorolib ldblib liolib lmathlib loadlib loslib \
 	lstrlib ltablib lutf8lib linit
 LUA_OBJS := $(addprefix build/ios/lua/,$(addsuffix .o,$(LUA_CORE) $(LUA_LIB)))
 IOS_LUA_A := build/ios/liblua.a
-HOST_BUNDLE := build/ios/LuaObjCHost.app
-HOST_BINARY := $(HOST_BUNDLE)/LuaObjCHost
+HOST_BUNDLE := build/ios/LuaRuntime.app
+HOST_BINARY := $(HOST_BUNDLE)/LuaRuntime
 PACKAGER := build/lua-objc-packager
-IOS_HOST_SRCS := ios/LuaObjCHost/main.m ios/LuaObjCHost/AppDelegate.m \
-	ios/LuaObjCHost/SceneDelegate.m ios/LuaObjCHost/LuaHost.m \
-	ios/LuaObjCHost/LuaCapture.m \
-	ios/LuaObjCHost/LuaSourceLoader.m ios/LuaObjCHost/LuaHotClient.m \
-	ios/LuaObjCHost/LuaErrorOverlay.m
+IOS_HOST_SRCS := ios/LuaRuntime/main.m ios/LuaRuntime/LRTApplicationDelegate.m \
+	ios/LuaRuntime/LRTSceneDelegate.m ios/LuaRuntime/LRTApplicationController.m \
+	ios/LuaRuntime/LRTViewCapture.m \
+	ios/LuaRuntime/LRTResourceLoader.m ios/LuaRuntime/LRTReloadConnection.m \
+	ios/LuaRuntime/LRTErrorViewController.m
 IOS_CFLAGS_C := -Wall -O2 -isysroot $(IOS_SDK) -arch arm64 \
 	-mios-simulator-version-min=$(IOS_MIN) -DLUA_USE_IOS \
 	-I$(LUA_SRC_DIR)
 IOS_CFLAGS := -fobjc-arc $(IOS_CFLAGS_C) \
-	-Iios/LuaObjCHost -Isrc -Ibuild
+	-Iios/LuaRuntime -Isrc -Ibuild
 
 build/ios/lua/%.o: $(LUA_SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
@@ -141,18 +141,18 @@ $(PACKAGER): src/packager/packager.m lua/packager/paths.lua
 		$(shell pkg-config --libs lua 2>/dev/null || echo "-L/opt/homebrew/lib -llua") \
 		-framework Foundation -framework CoreServices
 
-$(HOST_BINARY): $(IOS_LUA_A) $(IOS_HOST_SRCS) ios/LuaObjCHost/LuaObjCHost.h $(UIKIT_RUNTIME_SRC) \
+$(HOST_BINARY): $(IOS_LUA_A) $(IOS_HOST_SRCS) ios/LuaRuntime/LuaRuntime.h $(UIKIT_RUNTIME_SRC) \
 		$(UIKIT_RUNTIME_FRAGMENTS) $(GENERATED_DIR)/UIKit.lua.h \
-		ios/LuaObjCHost/Info.plist ios/LuaObjCHost/AppIcon.png
+		ios/LuaRuntime/Info.plist ios/LuaRuntime/AppIcon.png
 	@test -n "$(IOS_SDK)" || { echo "iPhone Simulator SDK missing; set DEVELOPER_DIR"; exit 1; }
 	@echo "Building iOS host..."
 	@mkdir -p $(HOST_BUNDLE)
 	@$(IOS_CC) $(IOS_CFLAGS) \
 		-framework UIKit -framework Foundation -framework CoreGraphics -framework QuartzCore \
-		-o $(HOST_BUNDLE)/LuaObjCHost \
+		-o $(HOST_BUNDLE)/LuaRuntime \
 		$(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) $(IOS_LUA_A)
-	@cp ios/LuaObjCHost/Info.plist $(HOST_BUNDLE)/Info.plist
-	@cp ios/LuaObjCHost/AppIcon.png $(HOST_BUNDLE)/AppIcon.png
+	@cp ios/LuaRuntime/Info.plist $(HOST_BUNDLE)/Info.plist
+	@cp ios/LuaRuntime/AppIcon.png $(HOST_BUNDLE)/AppIcon.png
 	@printf 'APPL????' > $(HOST_BUNDLE)/PkgInfo
 	@codesign --sign - --force --entitlements /dev/null $(HOST_BUNDLE) 2>/dev/null \
 		|| codesign --sign - --force $(HOST_BUNDLE)

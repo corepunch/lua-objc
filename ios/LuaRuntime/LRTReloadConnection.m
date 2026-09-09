@@ -1,6 +1,6 @@
-#import "LuaObjCHost.h"
+#import "LuaRuntime.h"
 
-@implementation LuaHotClient {
+@implementation LRTReloadConnection {
 	NSURL *_url;
 	NSURLSession *_session;
 	NSURLSessionWebSocketTask *_task;

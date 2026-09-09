@@ -1,5 +1,5 @@
-#ifndef LUA_OBJC_HOST_H
-#define LUA_OBJC_HOST_H
+#ifndef LUA_RUNTIME_H
+#define LUA_RUNTIME_H
 
 #import <UIKit/UIKit.h>
 
@@ -8,22 +8,22 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface AppDelegate : UIResponder <UIApplicationDelegate>
+@interface LRTApplicationDelegate : UIResponder <UIApplicationDelegate>
 @end
 
-@interface SceneDelegate : UIResponder <UIWindowSceneDelegate>
+@interface LRTSceneDelegate : UIResponder <UIWindowSceneDelegate>
 @property (nonatomic, strong, nullable) UIWindow *window;
 @end
 
-@interface LuaHost : NSObject
+@interface LRTApplicationController : NSObject
 + (instancetype)shared;
 - (void)startWithWindow:(UIWindow *)window;
 - (void)captureInternalScreenshotIfRequested;
 @end
 
-UIWindow * _Nullable lua_objc_host_window(void);
+UIWindow * _Nullable LRTApplicationWindow(void);
 
-@interface LuaSourceLoader : NSObject
+@interface LRTResourceLoader : NSObject
 @property (nonatomic, copy, nullable) NSURL *baseURL;
 + (instancetype)shared;
 - (BOOL)ping:(NSError * _Nullable * _Nullable)error;
@@ -33,20 +33,20 @@ UIWindow * _Nullable lua_objc_host_window(void);
 - (void)dropCacheForPath:(NSString *)rel;
 @end
 
-typedef void (^LuaHotHandler)(NSDictionary *event);
+typedef void (^LRTReloadEventHandler)(NSDictionary *event);
 
-@interface LuaHotClient : NSObject
-@property (nonatomic, copy, nullable) LuaHotHandler handler;
+@interface LRTReloadConnection : NSObject
+@property (nonatomic, copy, nullable) LRTReloadEventHandler handler;
 - (void)connectToURL:(NSURL *)url;
 - (void)disconnect;
 @end
 
-@interface LuaErrorOverlay : UIViewController
+@interface LRTErrorViewController : UIViewController
 - (instancetype)initWithMessage:(NSString *)message;
 @end
 
 /* Renders the live view hierarchy without using Simulator or Screen Recording. */
-NSData * _Nullable lua_objc_capture_view_png(UIView *view);
+NSData * _Nullable LRTCaptureViewPNG(UIView *view);
 NS_ASSUME_NONNULL_END
 
 #endif

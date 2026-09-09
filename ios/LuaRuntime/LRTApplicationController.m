@@ -1,4 +1,4 @@
-#import "LuaObjCHost.h"
+#import "LuaRuntime.h"
 
 #include <lua.h>
 #include <lauxlib.h>
@@ -8,16 +8,16 @@ int luaopen_UIKitNative(lua_State *L);
 
 static UIWindow *gHostWindow;
 
-UIWindow *lua_objc_host_window(void) {
+UIWindow *LRTApplicationWindow(void) {
 	return gHostWindow;
 }
 
-@implementation LuaHost {
+@implementation LRTApplicationController {
 	UIWindow *_window;
 	lua_State *_L;
 	int _controllerRef;
 	int _windowRef;
-	LuaHotClient *_hot;
+	LRTReloadConnection *_reloadConnection;
 	NSMutableDictionary<NSString *, NSString *> *_modulePaths;
 	id _preservedModel;
 	BOOL _booted;
@@ -25,7 +25,7 @@ UIWindow *lua_objc_host_window(void) {
 }
 
 + (instancetype)shared {
-	static LuaHost *shared;
+	static LRTApplicationController *shared;
 	static dispatch_once_t once;
 	dispatch_once(&once, ^{ shared = [[self alloc] init]; });
 	return shared;
@@ -52,7 +52,7 @@ UIWindow *lua_objc_host_window(void) {
 - (void)startWithWindow:(UIWindow *)window {
 	_window = window;
 	gHostWindow = window;
-	LuaSourceLoader.shared.baseURL = [NSURL URLWithString:self.packagerURL];
+	LRTResourceLoader.shared.baseURL = [NSURL URLWithString:self.packagerURL];
 	NSLog(@"[lua-objc] packager=%@", self.packagerURL);
 	[self tryBoot];
 }
@@ -60,7 +60,7 @@ UIWindow *lua_objc_host_window(void) {
 - (void)tryBoot {
 	if (_booted) return;
 	NSError *err = nil;
-	if (![LuaSourceLoader.shared ping:&err]) {
+	if (![LRTResourceLoader.shared ping:&err]) {
 		[self showError:[NSString stringWithFormat:
 			@"Waiting for packager at %@\n\nOn your Mac, leave this running:\n  make ios-run PROJECT=examples/hello\n\nThen this screen updates by itself.\n\n%@",
 			self.packagerURL,
@@ -84,35 +84,35 @@ UIWindow *lua_objc_host_window(void) {
 	}
 	_booted = YES;
 	NSLog(@"[lua-objc] boot ok");
-	NSString *hot = [self.packagerURL stringByReplacingOccurrencesOfString:@"https://"
+	NSString *reloadURLString = [self.packagerURL stringByReplacingOccurrencesOfString:@"https://"
 		withString:@"wss://"];
-	hot = [hot stringByReplacingOccurrencesOfString:@"http://" withString:@"ws://"];
-	if (![hot hasSuffix:@"/"]) hot = [hot stringByAppendingString:@"/"];
-	NSURL *hotURL = [NSURL URLWithString:[hot stringByAppendingString:@"hot"]];
-	NSLog(@"[lua-objc] hot %@", hotURL);
-	_hot = [LuaHotClient new];
+	reloadURLString = [reloadURLString stringByReplacingOccurrencesOfString:@"http://" withString:@"ws://"];
+	if (![reloadURLString hasSuffix:@"/"]) reloadURLString = [reloadURLString stringByAppendingString:@"/"];
+	NSURL *reloadURL = [NSURL URLWithString:[reloadURLString stringByAppendingString:@"hot"]];
+	NSLog(@"[lua-objc] reload connection %@", reloadURL);
+	_reloadConnection = [LRTReloadConnection new];
 	__weak typeof(self) weakSelf = self;
-	_hot.handler = ^(NSDictionary *event) {
-		[weakSelf handleHot:event];
+	_reloadConnection.handler = ^(NSDictionary *event) {
+		[weakSelf handleReloadEvent:event];
 	};
 	@try {
-		[_hot connectToURL:hotURL];
+		[_reloadConnection connectToURL:reloadURL];
 	} @catch (NSException *ex) {
-		NSLog(@"[lua-objc] hot client: %@", ex);
+		NSLog(@"[lua-objc] reload connection: %@", ex);
 	}
 }
 
 - (void)showError:(NSString *)message {
 	NSLog(@"[lua-objc] %@", message);
 	_window.rootViewController =
-		[[LuaErrorOverlay alloc] initWithMessage:message];
+		[[LRTErrorViewController alloc] initWithMessage:message];
 	[_window makeKeyAndVisible];
 }
 
 static int searcher_packager(lua_State *L) {
 	const char *name = luaL_checkstring(L, 1);
 	NSError *err = nil;
-	NSString *src = [LuaSourceLoader.shared sourceForModule:@(name) error:&err];
+	NSString *src = [LRTResourceLoader.shared sourceForModule:@(name) error:&err];
 	if (!src) {
 		lua_pushstring(L, err.localizedDescription.UTF8String ?: "not found");
 		return 1;
@@ -123,7 +123,7 @@ static int searcher_packager(lua_State *L) {
 		return lua_error(L);
 	}
 	lua_pushstring(L, name);
-	LuaHost *host = LuaHost.shared;
+	LRTApplicationController *host = LRTApplicationController.shared;
 	[host recordModule:@(name)];
 	return 2;
 }
@@ -135,7 +135,7 @@ static int searcher_packager(lua_State *L) {
 static int bridge_read_file(lua_State *L) {
 	const char *path = luaL_checkstring(L, 1);
 	NSError *err = nil;
-	NSData *data = [LuaSourceLoader.shared dataForPath:@(path) error:&err];
+	NSData *data = [LRTResourceLoader.shared dataForPath:@(path) error:&err];
 	if (!data) {
 		lua_pushnil(L);
 		lua_pushstring(L, err.localizedDescription.UTF8String ?: "read failed");
@@ -174,12 +174,12 @@ static int bridge_read_file(lua_State *L) {
 	}
 
 	NSError *err = nil;
-	NSString *entry = [LuaSourceLoader.shared entryPath:&err];
+	NSString *entry = [LRTResourceLoader.shared entryPath:&err];
 	if (!entry) {
 		if (error) *error = err;
 		return NO;
 	}
-	NSData *src = [LuaSourceLoader.shared dataForPath:entry error:&err];
+	NSData *src = [LRTResourceLoader.shared dataForPath:entry error:&err];
 	if (!src) {
 		if (error) *error = err;
 		return NO;
@@ -197,13 +197,13 @@ static int bridge_read_file(lua_State *L) {
 	while (lua_gettop(_L) > 0 && !lua_istable(_L, -1))
 		lua_pop(_L, 1);
 	if (!lua_istable(_L, -1)) {
-		if (error) *error = [NSError errorWithDomain:@"LuaHost" code:1
+		if (error) *error = [NSError errorWithDomain:@"LRTApplicationController" code:1
 			userInfo:@{NSLocalizedDescriptionKey: @"entry did not return a class"}];
 		return NO;
 	}
 	lua_getfield(_L, -1, "new");
 	if (!lua_isfunction(_L, -1)) {
-		if (error) *error = [NSError errorWithDomain:@"LuaHost" code:1
+		if (error) *error = [NSError errorWithDomain:@"LRTApplicationController" code:1
 			userInfo:@{NSLocalizedDescriptionKey: @"class has no new()"}];
 		return NO;
 	}
@@ -217,7 +217,7 @@ static int bridge_read_file(lua_State *L) {
 	}
 	lua_getfield(_L, -1, "createWindow");
 	if (!lua_isfunction(_L, -1)) {
-		if (error) *error = [NSError errorWithDomain:@"LuaHost" code:1
+		if (error) *error = [NSError errorWithDomain:@"LRTApplicationController" code:1
 			userInfo:@{NSLocalizedDescriptionKey: @"no createWindow"}];
 		return NO;
 	}
@@ -248,7 +248,7 @@ static int bridge_read_file(lua_State *L) {
 	UIWindow *window = _window;
 	dispatch_async(dispatch_get_main_queue(), ^{
 		[window layoutIfNeeded];
-		NSData *png = lua_objc_capture_view_png(window);
+		NSData *png = LRTCaptureViewPNG(window);
 		NSError *error = nil;
 		NSString *directory = [path stringByDeletingLastPathComponent];
 		[[NSFileManager defaultManager] createDirectoryAtPath:directory
@@ -269,7 +269,7 @@ static int bridge_read_file(lua_State *L) {
 	if (_L && lua_gettop(_L) > 0 && lua_tostring(_L, -1)) {
 		msg = @(lua_tostring(_L, -1));
 	}
-	return [NSError errorWithDomain:@"LuaHost" code:1
+	return [NSError errorWithDomain:@"LRTApplicationController" code:1
 		userInfo:@{NSLocalizedDescriptionKey:
 			[NSString stringWithFormat:@"%@: %@", context, msg]}];
 }
@@ -300,7 +300,7 @@ static int bridge_read_file(lua_State *L) {
 	lua_pop(_L, 2);
 }
 
-- (void)handleHot:(NSDictionary *)event {
+- (void)handleReloadEvent:(NSDictionary *)event {
 	NSString *type = event[@"type"];
 	if ([type isEqualToString:@"hello"]) return;
 	if (![type isEqualToString:@"update"]) return;
@@ -308,7 +308,7 @@ static int bridge_read_file(lua_State *L) {
 	NSString *path = event[@"path"] ?: @"";
 	NSLog(@"[lua-objc] update %@ %@", kind, path);
 	if ([kind isEqualToString:@"asset"]) {
-		[LuaSourceLoader.shared dropCacheForPath:path];
+		[LRTResourceLoader.shared dropCacheForPath:path];
 	}
 	NSError *err = nil;
 	if ([kind isEqualToString:@"model"] || [kind isEqualToString:@"init"]) {
@@ -317,7 +317,7 @@ static int bridge_read_file(lua_State *L) {
 		}
 		return;
 	}
-	[LuaSourceLoader.shared dropCacheForPath:path];
+	[LRTResourceLoader.shared dropCacheForPath:path];
 	[self unrequireExceptModel];
 	if ([path containsString:@"lua/embedded/UIKit.lua"]) {
 		lua_getglobal(_L, "package");
@@ -330,8 +330,8 @@ static int bridge_read_file(lua_State *L) {
 			return;
 		}
 	}
-	NSString *entry = [LuaSourceLoader.shared entryPath:&err];
-	NSData *src = entry ? [LuaSourceLoader.shared dataForPath:entry error:&err] : nil;
+	NSString *entry = [LRTResourceLoader.shared entryPath:&err];
+	NSData *src = entry ? [LRTResourceLoader.shared dataForPath:entry error:&err] : nil;
 	if (!src) {
 		[self showError:err.localizedDescription ?: @"reload failed"];
 		return;

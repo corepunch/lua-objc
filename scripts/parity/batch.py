@@ -188,7 +188,7 @@ def compare(case, ref, actual, tolerance=0.5):
 def source_hash(engine):
     """Ignore build products; include uncommitted source changes in provenance."""
     paths = ([ROOT / "tests/parity/batch/BatchReferenceHost.swift"] if engine == "reference" else
-             sorted(p for base in ("src", "lua", "ios/LuaObjCHost", "examples/parity_batch", "scripts/parity")
+             sorted(p for base in ("src", "lua", "ios/LuaRuntime", "examples/parity_batch", "scripts/parity")
                     for p in (ROOT / base).rglob("*")
                     if p.is_file() and p.suffix in {".m", ".h", ".c", ".lua"}))
     return digest({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths})

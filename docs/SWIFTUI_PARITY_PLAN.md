@@ -61,7 +61,7 @@ The following were inspected while writing this plan. Recheck before editing:
 | Surface | Current evidence | Consequence |
 |---|---|---|
 | AppKit | `lua/embedded/AppKit.lua`; `src/appkit/`; native layout dump and screenshot commands | Reuse existing diagnostics and actual native tests. |
-| UIKit | `lua/embedded/UIKit.lua`; `src/uikit/`; `ios/LuaObjCHost/`; `scripts/ios-run.sh` | A real host already exists. Extend it; do not implement the historical host proposal again. |
+| UIKit | `lua/embedded/UIKit.lua`; `src/uikit/`; `ios/LuaRuntime/`; `scripts/ios-run.sh` | A real host already exists. Extend it; do not implement the historical host proposal again. |
 | XML | `lua/ui/xml.lua`, exported `schema` and `registry` | Audit each tag, property, default, and constructor on each platform. Registry presence is not platform support. |
 | Existing tests | `tests/bridge.test.lua`, `tests/xml.etlua.test.lua`, `tests/uikit_api.test.lua` | UIKit API tests inspected here largely search source strings; these do not prove native construction or layout. |
 | iOS diagnostics | No screenshot/layout-dump entry point found in the inspected host sources | Confirm this gap, then add native capture/measurement support before claiming iOS parity. |
@@ -739,7 +739,7 @@ than treating sandbox `Operation not permitted` as a framework failure.
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 make ios-host ios-packager
 scripts/parity/batch_reference_build.sh --ios
-xcrun simctl install booted build/ios/LuaObjCHost.app
+xcrun simctl install booted build/ios/LuaRuntime.app
 xcrun simctl install booted build/parity/batch/SwiftUIBatchReference-iOS.app
 
 python3 scripts/parity/batch.py capture --platform ios --device booted \

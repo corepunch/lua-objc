@@ -1,5 +1,5 @@
 #!/bin/sh
-# Open Apple's Simulator, install LuaObjCHost, stream Lua/assets from the packager.
+# Open Apple's Simulator, install LuaRuntime, stream Lua/assets from the packager.
 set -e
 DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 export DEVELOPER_DIR
@@ -8,7 +8,7 @@ ENTRY="${PROJECT:-examples/hello}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SIMAPP="$DEVELOPER_DIR/Applications/Simulator.app"
 PACKAGER="$ROOT/build/lua-objc-packager"
-HOST_BUNDLE="$ROOT/build/ios/LuaObjCHost.app"
+HOST_BUNDLE="$ROOT/build/ios/LuaRuntime.app"
 PACKAGER_URL="http://127.0.0.1:8081"
 LOGDIR="$ROOT/build/ios"
 PIDFILE="$LOGDIR/packager.pid"

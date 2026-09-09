@@ -18,7 +18,7 @@ lua-objc already has a complete AppKit product and a UIKit *stub*: `make` builds
 
 This work adds a real iPhone Simulator host that statically compiles Lua 5.4.8 plus the UIKit translation unit (`src/uikit_module.m` includes `src/uikit/*.m` and `src/shared/*.m` — those fragments are **not** extra Compile Sources). The `.app` is a **runtime**, not an app bundle: it contains no Lua, templates, or images. A Mac packager streams every `.lua` / `.etlua` file and every asset (`png`, `svg`, `json`, game data, …) over HTTP, and pushes change events over WebSocket. The operator loop never rebuilds or reinstalls.
 
-**The host process does not quit on reload.** A save does not `simctl launch`, does not terminate `LuaObjCHost`, and does not tear down the `UIWindowScene`. The packager sends `update` over WebSocket; the running host replaces `rootViewController` (or, for `Model.lua` / `init.lua`, recycles the in-process `lua_State`) and keeps the Simulator on screen. A Lua error is a redbox overlay, not a crash. This is the React Native Fast Refresh analogue: native runtime stays up, app Lua and assets stream in.
+**The host process does not quit on reload.** A save does not `simctl launch`, does not terminate `LuaRuntime`, and does not tear down the `UIWindowScene`. The packager sends `update` over WebSocket; the running host replaces `rootViewController` (or, for `Model.lua` / `init.lua`, recycles the in-process `lua_State`) and keeps the Simulator on screen. A Lua error is a redbox overlay, not a crash. This is the React Native Fast Refresh analogue: native runtime stays up, app Lua and assets stream in.
 
 Success is **coverage**, not a port: AdventureArena’s SwiftUI screens at `/Users/igor/Developer/adventure-arena` define the primitive set that must exist in Lua + XML + real UIKit. AdventureArena itself is not ported in this workstream.
 
@@ -88,7 +88,7 @@ AdventureArena is a shipping SwiftUI iPhone app (deployment target **iOS 26.5**,
 - Wrapping UIKit in SwiftUI / `UIViewRepresentable`.
 - Using React Native, Expo, or Yoga as the iOS layer.
 - True view-tree reconciliation in v1 hot reload (`lua/ui/viewdesc.lua` exists for a later PR).
-- Bundling `lua/`, `examples/`, `views/`, or assets into `LuaObjCHost.app` as a development path. The host has no app payload. Packager-down is a redbox, not a fallback copy.
+- Bundling `lua/`, `examples/`, `views/`, or assets into `LuaRuntime.app` as a development path. The host has no app payload. Packager-down is a redbox, not a fallback copy.
 - Rebuilding or reinstalling the host because a Lua file, template, or asset changed.
 - FSEvents (or `bridge_watch_file`) inside the simulator pointed at the Mac repo.
 - Routing iOS previews through `src/appkit/canvas_eval.m`.
@@ -142,7 +142,7 @@ flowchart TB
   end
 
   subgraph sim [iPhone Simulator]
-    app["LuaObjCHost.app"]
+    app["LuaRuntime.app"]
     scene["UIWindowScene + UIWindow"]
     lua["lua_State + luaopen_UIKitNative\nstreamed UIKit.lua"]
     tree["UITabBarController / UINavigationController\nLuaHostingController + UIView tree"]
@@ -155,23 +155,23 @@ flowchart TB
 Native UIKit is compiled into the host once. App Lua is either:
 
 - **Dev:** fetched from the packager (`LUA_OBJC_PACKAGER=http://127.0.0.1:8081`).
-- **Bundled:** copied into `LuaObjCHost.app/lua` and `LuaObjCHost.app/examples` for packager-less simulator runs.
+- **Bundled:** copied into `LuaRuntime.app/lua` and `LuaRuntime.app/examples` for packager-less simulator runs.
 
 ### Directory layout
 
 ```text
 ios/
-  LuaObjCHost.xcodeproj          ← scheme LuaObjCHost, iphonesimulator
-  LuaObjCHost/
+  LuaRuntime.xcodeproj          ← scheme LuaRuntime, iphonesimulator
+  LuaRuntime/
     Info.plist
-    LuaObjCHost.h                ← shared host declarations; one header for this folder
+    LuaRuntime.h                ← shared host declarations; one header for this folder
     main.m                       ← UIApplicationMain
-    AppDelegate.m                ← UIApplicationDelegate
-    SceneDelegate.m              ← creates UIWindow, starts LuaHost
-    LuaHost.m                    ← lua_State, searcher, createWindow, hot reload
-    LuaSourceLoader.m            ← packager HTTP only (Lua + assets)
-    LuaHotClient.m               ← WebSocket client
-    LuaErrorOverlay.m            ← redbox
+    LRTApplicationDelegate.m                ← UIApplicationDelegate
+    LRTSceneDelegate.m              ← creates UIWindow, starts LRTApplicationController
+    LRTApplicationController.m                    ← lua_State, searcher, createWindow, hot reload
+    LRTResourceLoader.m            ← packager HTTP only (Lua + assets)
+    LRTReloadConnection.m               ← WebSocket client
+    LRTErrorViewController.m            ← redbox
     LuaHostingController.m       ← UIViewController hosting a Lua UIView
     LuaLayoutDump.m              ← UIKit hierarchy XML
     Assets.xcassets / AppIcon
@@ -191,15 +191,15 @@ Fragments remain `#include`d by `src/uikit/bridge.m`. They are not separate link
 
 Xcode **Compile Sources** (do not glob `src/uikit/*.m` or `src/shared/*.m` — `bridge.m` already `#include`s them, and compiling both double-defines every static):
 
-- `ios/LuaObjCHost/*.m` (host only: scene, loader, overlay, dump)
+- `ios/LuaRuntime/*.m` (host only: scene, loader, overlay, dump)
 - `src/uikit_module.m` (provides `luaopen_UIKit` / `luaopen_UIKitNative`; `#include`s `src/uikit/bridge.m`)
 - `liblua.a` from `third_party/lua-5.4.8/*.c` (no ARC, exclude `lua.c`/`luac.c`, `-DLUA_USE_IOS`, `ARCHS=arm64`)
 
 `LUA_OBJC_EXTERNAL_STATE_OWNER` stays defined in `src/uikit/bridge.m`. The host creates the `lua_State`, calls `luaopen_UIKit`, and is responsible for `lua_close` on teardown / full restart.
 
-`LuaHostingController` is compiled as part of `ios/LuaObjCHost/*.m`. After `luaopen_UIKitNative` and streamed `require("UIKit")`, `LuaHost` pushes `_hostingController` / `_installScene` into `package.loaded.UIKitNative` (or `LuaHostingController.m` is `#include`d from `bridge.m` — pick **one**; default: host injects the two C functions so the dylib compile-check does not need the host symbols). `extern UIWindow *lua_objc_host_window(void);` is defined in `LuaHost.m`. The `make uikit` dylib does not call it.
+`LuaHostingController` is compiled as part of `ios/LuaRuntime/*.m`. After `luaopen_UIKitNative` and streamed `require("UIKit")`, `LRTApplicationController` pushes `_hostingController` / `_installScene` into `package.loaded.UIKitNative` (or `LuaHostingController.m` is `#include`d from `bridge.m` — pick **one**; default: host injects the two C functions so the dylib compile-check does not need the host symbols). `extern UIWindow *LRTApplicationWindow(void);` is defined in `LRTApplicationController.m`. The `make uikit` dylib does not call it.
 
-The `.app` contains **no** `lua/`, `examples/`, `views/`, or asset trees. `LuaSourceLoader` talks only to the packager (`GET /module`, `GET /file`). `package.path` is unused for app code; a packager searcher is installed first and is the only searcher that can load `examples.*`, `ui.*`, `etlua`, `App`, and `lua/embedded/UIKit.lua`. `io.open` of a process-relative path will miss (Simulator cwd is not the git root) and is not a fallback.
+The `.app` contains **no** `lua/`, `examples/`, `views/`, or asset trees. `LRTResourceLoader` talks only to the packager (`GET /module`, `GET /file`). `package.path` is unused for app code; a packager searcher is installed first and is the only searcher that can load `examples.*`, `ui.*`, `etlua`, `App`, and `lua/embedded/UIKit.lua`. `io.open` of a process-relative path will miss (Simulator cwd is not the git root) and is not a fallback.
 
 If the packager is unreachable at boot, show the redbox: “Packager not running. `make ios-run ARGS=…`”. Do not ship a bundled copy of hello “just in case.”
 
@@ -207,8 +207,8 @@ If the packager is unreachable at boot, show the redbox: “Packager not running
 
 ```mermaid
 sequenceDiagram
-  participant SD as SceneDelegate
-  participant H as LuaHost
+  participant SD as LRTSceneDelegate
+  participant H as LRTApplicationController
   participant P as Packager
   participant L as lua_State
   participant C as Controller
@@ -239,14 +239,14 @@ sequenceDiagram
 
 The host calls **`luaopen_UIKitNative` only**. `lua/embedded/UIKit.lua` is ordinary streamed Lua (`GET /module?name=UIKit`), not the `xxd` blob inside `luaopen_UIKit`. That blob may remain for the `make uikit` dylib compile-check; the Simulator host does not use it. Streaming the declarative layer means editing `UIKit.lua` also does not rebuild the `.app`.
 
-`SceneDelegate` is the only place that creates a `UIWindow`. Lua never allocates extra windows in v1. `bridge_window` is replaced by `bridge_install_scene`:
+`LRTSceneDelegate` is the only place that creates a `UIWindow`. Lua never allocates extra windows in v1. `bridge_window` is replaced by `bridge_install_scene`:
 
 ```objc
 /* src/uikit/views.m — replaces today's title/width/height UIWindow */
 static int bridge_install_scene(lua_State *L) {
 	UIViewController *root = check_view_controller(L, 1);
 	const char *title = luaL_optstring(L, 2, "");
-	UIWindow *window = lua_objc_host_window(); /* set by SceneDelegate */
+	UIWindow *window = LRTApplicationWindow(); /* set by LRTSceneDelegate */
 	if (!window) return luaL_error(L, "UIKit.Window requires an attached UIWindowScene");
 	window.rootViewController = root;
 	window.accessibilityLabel = @(title);
@@ -256,7 +256,7 @@ static int bridge_install_scene(lua_State *L) {
 }
 ```
 
-`LuaHost` defines `UIWindow *lua_objc_host_window(void)` (the scene window set before Lua runs). Prefer that pointer over walking `connectedScenes` so hot reload cannot attach to a stale scene. Register a `"uiviewcontroller"` metatable; `check_view_controller` accepts a VC userdata or a `LuaHostingController`. Today `src/uikit/runtime.m` `check_objc` only accepts `"uiview"` / `"uiwindow"`.
+`LRTApplicationController` defines `UIWindow *LRTApplicationWindow(void)` (the scene window set before Lua runs). Prefer that pointer over walking `connectedScenes` so hot reload cannot attach to a stale scene. Register a `"uiviewcontroller"` metatable; `check_view_controller` accepts a VC userdata or a `LuaHostingController`. Today `src/uikit/runtime.m` `check_objc` only accepts `"uiview"` / `"uiwindow"`.
 
 Launch arguments. `simctl launch` has **no `--env` flag**. Set child environment on the calling process with the `SIMCTL_CHILD_` prefix, then pass only the device and bundle id (optional argv after the bundle id is allowed; do not document `--env`):
 
@@ -377,7 +377,7 @@ sequenceDiagram
   participant FS as Mac FSEvents
   participant P as lua-objc-packager
   participant WS as WebSocket /hot
-  participant H as LuaHost
+  participant H as LRTApplicationController
   participant M as Model table
   participant VC as rootViewController
 
@@ -396,20 +396,20 @@ sequenceDiagram
 |---|---|
 | `*.lua` except `Model.lua` / `init.lua` (including `lua/embedded/UIKit.lua`, `lua/ui/**`) | Fast refresh: rebuild root VC, keep Model. Streamed; no `.app` rebuild |
 | `views/*.etlua`, `lua/vendor/etlua/**` | Fast refresh, keep Model |
-| Assets (`png`, `jpg`, `jpeg`, `gif`, `webp`, `svg`, `json`, `zil`, `txt`, …) | Bust `LuaSourceLoader` cache for that path; if an `ns.Image` / cover is on screen, fast refresh. Streamed; no `.app` rebuild |
+| Assets (`png`, `jpg`, `jpeg`, `gif`, `webp`, `svg`, `json`, `zil`, `txt`, …) | Bust `LRTResourceLoader` cache for that path; if an `ns.Image` / cover is on screen, fast refresh. Streamed; no `.app` rebuild |
 | `Model.lua` | Full Lua restart (new `lua_State`, re-`require` entry). Data shape may have changed |
 | `init.lua` | Full Lua restart |
 | `src/**/*.m`, `ios/**`, `third_party/lua-5.4.8/**` | **Out of this loop.** The packager does not watch native sources and does not send a “rebuild the host” event. Framework engineers rebuild the host themselves when they change the bridge |
 
-Fast refresh implementation (`LuaHost.m`):
+Fast refresh implementation (`LRTApplicationController.m`):
 
 1. Keep `Model` in the registry (`LUA_OBJC_MODEL`) if the controller exposed `self.model`. Convention: `Controller.new` stores `self.model = Model.new()` (or the Model module table). The host reads `instance.model` after `new()` and writes the preserved table back after re-`new()`. Today no example stores `self.model`; hello’s Model is a module of strings. Fast refresh of hello preserves nothing until that convention lands in the packager PR.
 2. Unrequire by **tracked module → path** from the custom searcher (loaded keys are module names, not filesystem paths). Clear `package.loaded[name]` for the changed Lua module. `UIKit` / `lua/embedded/UIKit.lua` **is** unrequired on change (it is streamed). **Never** clear `UIKitNative`, `package`, or `*.Model`. Restore `package.loaded[<app>.Model]` to the preserved table before re-`require` of Controller. After unrequiring `UIKit`, re-`require` it and set `package.loaded.ns` again.
-3. Cancel only the *current* `NSURLSession` tasks and `NSTimer`s, then leave `owner.cancelled == NO`. Alternatively install a new non-closing `LuaStateOwner` in extraspace for the same `L` and cancel the old one. Bump `LuaHost.refreshGeneration` and drop completions whose generation is stale. **Do not** call `-cancel` on the live owner and keep the state — `src/shared/lua_async.m` `-cancel` sets `_cancelled = YES` with no reset, so `trackTask` / `trackTimer` would drop all later `ns.fetch` / `ns.sleep`.
+3. Cancel only the *current* `NSURLSession` tasks and `NSTimer`s, then leave `owner.cancelled == NO`. Alternatively install a new non-closing `LuaStateOwner` in extraspace for the same `L` and cancel the old one. Bump `LRTApplicationController.refreshGeneration` and drop completions whose generation is stale. **Do not** call `-cancel` on the live owner and keep the state — `src/shared/lua_async.m` `-cancel` sets `_cancelled = YES` with no reset, so `trackTask` / `trackTimer` would drop all later `ns.fetch` / `ns.sleep`.
 4. `luaL_unref` the previous controller/window registry refs (the block `src/main.m` copies at 584–587) before installing new ones.
 5. Re-`require` the entry module, `new()`, restore `model`, `createWindow()`.
 6. `_installScene` replaces `window.rootViewController`. UIKit tears down the old VC tree.
-7. On Lua error: show `LuaErrorOverlay` (full-screen, system red / white monospaced label, the error string + traceback). Keep the previous VC tree if `createWindow` failed before `_installScene`; if it failed after, overlay on top. Analogous to RN redbox. Also `report_lua_error` to stderr (`src/shared/lua_error.m`).
+7. On Lua error: show `LRTErrorViewController` (full-screen, system red / white monospaced label, the error string + traceback). Keep the previous VC tree if `createWindow` failed before `_installScene`; if it failed after, overlay on top. Analogous to RN redbox. Also `report_lua_error` to stderr (`src/shared/lua_error.m`).
 
 Full restart: `lua_close` the state (host-owned; the non-closing owner detaches in `__gc` of `lua_objc.async_owner`), create a new state, boot from scratch. Overlay if boot fails.
 
@@ -472,7 +472,7 @@ Watch set: `*.lua`, `*.etlua`, plus assets `*.png *.jpg *.jpeg *.gif *.webp *.sv
 ```c
 static int searcher_packager(lua_State *L) {
 	const char *name = luaL_checkstring(L, 1);
-	NSString *src = [LuaSourceLoader.shared sourceForModule:@(name) error:&err];
+	NSString *src = [LRTResourceLoader.shared sourceForModule:@(name) error:&err];
 	if (!src) { lua_pushstring(L, err.UTF8String); return 1; }
 	NSData *bytes = [src dataUsingEncoding:NSUTF8StringEncoding];
 	if (luaL_loadbuffer(L, bytes.bytes, bytes.length, name) != LUA_OK)
@@ -498,7 +498,7 @@ end
 
 `bridge._readFile` in the host is packager `GET /file?path=` only. Paths stay repo-relative (`examples/hello/views/Window.etlua`). There is no `NSBundle` Lua tree.
 
-**Assets.** `ns.Image` / `bridge._image` on iOS must not call `imageWithContentsOfFile` on a Mac path or `imageNamed:` expecting a bundled catalog. Load `GET /file?path=` as `NSData` → `UIImage imageWithData:`. SVG can stay a later leaf if AppKit already has a path; v1 PNG/JPEG is enough for cover art. Cache by path in `LuaSourceLoader`; an `kind=asset` event drops that entry. Game data (`json`, `zil`) uses the same `_readFile` / `_readAsset` so zilscript content is streamed too — still **app** runtime, not a widget.
+**Assets.** `ns.Image` / `bridge._image` on iOS must not call `imageWithContentsOfFile` on a Mac path or `imageNamed:` expecting a bundled catalog. Load `GET /file?path=` as `NSData` → `UIImage imageWithData:`. SVG can stay a later leaf if AppKit already has a path; v1 PNG/JPEG is enough for cover art. Cache by path in `LRTResourceLoader`; an `kind=asset` event drops that entry. Game data (`json`, `zil`) uses the same `_readFile` / `_readAsset` so zilscript content is streamed too — still **app** runtime, not a widget.
 
 ### Native control mapping (eager bridge)
 
@@ -649,7 +649,7 @@ function Controller:createWindow()
 end
 ```
 
-macOS `src/main.m` already does `new()` + `createWindow()`. iOS `LuaHost` copies that block.
+macOS `src/main.m` already does `new()` + `createWindow()`. iOS `LRTApplicationController` copies that block.
 
 ### New / rewritten UIKit.lua surface
 
@@ -787,7 +787,7 @@ Honest split: **UIKit constructors cannot run on macOS.** `UIView` is not availa
 Makefile targets (not part of default `make test` — they boot a simulator):
 
 ```sh
-make ios-test              # xcodebuild test -scheme LuaObjCHost
+make ios-test              # xcodebuild test -scheme LuaRuntime
 make ios-dump-layout ARGS=examples/hello OUT=/tmp/ios-layout.xml
 make ios-screenshot ARGS=examples/hello OUT=/tmp/ios-hello.png
 ```
@@ -816,15 +816,15 @@ DEVELOPER_DIR ?= /Applications/Xcode.app/Contents/Developer
 IOS_SIM_SDK   := $(shell DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun --sdk iphonesimulator --show-sdk-path)
 IOS_MIN       := 26.5
 DEVICE        ?= iPhone 17
-HOST_BUNDLE   := build/ios/LuaObjCHost.app
+HOST_BUNDLE   := build/ios/LuaRuntime.app
 PACKAGER      := build/lua-objc-packager
 
 ios-host: $(HOST_BUNDLE)
 
 $(HOST_BUNDLE):
 	DEVELOPER_DIR=$(DEVELOPER_DIR) xcodebuild \
-		-project ios/LuaObjCHost.xcodeproj \
-		-scheme LuaObjCHost \
+		-project ios/LuaRuntime.xcodeproj \
+		-scheme LuaRuntime \
 		-sdk iphonesimulator \
 		-destination 'platform=iOS Simulator,name=$(DEVICE)' \
 		-derivedDataPath build/ios/DerivedData \
@@ -867,7 +867,7 @@ ios-dump-layout: ios-host
 Info.plist essentials:
 
 - `CFBundleIdentifier` = `org.luaobjc.host`
-- `UIApplicationSceneManifest` with `SceneDelegate`
+- `UIApplicationSceneManifest` with `LRTSceneDelegate`
 - `NSAllowsLocalNetworking` = true (ATS exception domains for `127.0.0.1` are unreliable; ATS keys are hostnames)
 - `UILaunchScreen` empty
 - `MinimumOSVersion` = 26.5
@@ -901,7 +901,7 @@ xcrun simctl bootstatus "iPhone 17" -b
 open -a "$DEVELOPER_DIR/Applications/Simulator.app" \
   --args -CurrentDeviceUDID "$(xcrun simctl list devices booted -j | python3 -c 'import json,sys; d=json.load(sys.stdin);
 [print(x["udid"]) for devs in d["devices"].values() for x in devs if x.get("state")=="Booted"]')"
-xcrun simctl install booted build/ios/LuaObjCHost.app   # only if not already installed
+xcrun simctl install booted build/ios/LuaRuntime.app   # only if not already installed
 SIMCTL_CHILD_LUA_OBJC_PACKAGER=http://127.0.0.1:8081 \
 SIMCTL_CHILD_LUA_OBJC_APP=examples/hello \
 xcrun simctl launch --console --terminate-running-process booted org.luaobjc.host
@@ -968,7 +968,7 @@ Reconciliation is a follow-up PR that applies `viewdesc.apply` inside `LuaHostin
 
 ### 6. Makefile-only `.app` without an Xcode project
 
-Viable for clang + `codesign -s -`, and consistent with AppKit’s Makefile. **Rejected as the only path:** `xcodebuild test`, lldb, and Instruments expect a scheme. Commit `ios/LuaObjCHost.xcodeproj` and wrap it with Makefile targets.
+Viable for clang + `codesign -s -`, and consistent with AppKit’s Makefile. **Rejected as the only path:** `xcodebuild test`, lldb, and Instruments expect a scheme. Commit `ios/LuaRuntime.xcodeproj` and wrap it with Makefile targets.
 
 ### 7. Long-poll instead of WebSocket
 
@@ -1072,18 +1072,18 @@ Each PR is independently reviewable and mergeable. Native `.m` / `.lua` use tabs
 ### PR 1 — iOS Simulator host + packager streams hello (Lua and assets)
 
 - **Title:** Add iPhone Simulator host that streams Lua and assets from a Mac packager
-- **Files:** `third_party/lua-5.4.8/**`, `third_party/README`, `ios/LuaObjCHost.xcodeproj`, `ios/LuaObjCHost/{main,AppDelegate,SceneDelegate,LuaHost,LuaSourceLoader,LuaHotClient,LuaErrorOverlay,LuaHostingController}.*`, `ios/LuaObjCHost/Info.plist`, `src/packager/packager.m`, `lua/packager/paths.lua`, `Makefile` (`ios-host`, `ios-packager`, `ios-run`, `DEVELOPER_DIR`, `SIMCTL_CHILD_*`), `src/uikit/views.m` (`bridge_install_scene`), `src/uikit/runtime.m` (`uiviewcontroller` metatable + layout accessors hello needs: `flexGrow`, `spacing`, `fillWidth`), `src/uikit/constructors.m` (`systemName` image, `_systemColor`; `_image` via `NSData`), `src/uikit/bridge.m` (`_readFile`), `lua/embedded/UIKit.lua` (start from `UIKitNative`; rewrite `Window`; add `HostingController`, `Toggle`, `SystemImage`; Label typography), `lua/ui/xml.lua` (`require("ns")` default, `bridge._readFile`), `src/main.m` (register AppKit as `ns` = same table), `tests/uikit_api.test.lua`, `tests/packager.test.lua`
+- **Files:** `third_party/lua-5.4.8/**`, `third_party/README`, `ios/LuaRuntime.xcodeproj`, `ios/LuaRuntime/{main,LRTApplicationDelegate,LRTSceneDelegate,LRTApplicationController,LRTResourceLoader,LRTReloadConnection,LRTErrorViewController,LuaHostingController}.*`, `ios/LuaRuntime/Info.plist`, `src/packager/packager.m`, `lua/packager/paths.lua`, `Makefile` (`ios-host`, `ios-packager`, `ios-run`, `DEVELOPER_DIR`, `SIMCTL_CHILD_*`), `src/uikit/views.m` (`bridge_install_scene`), `src/uikit/runtime.m` (`uiviewcontroller` metatable + layout accessors hello needs: `flexGrow`, `spacing`, `fillWidth`), `src/uikit/constructors.m` (`systemName` image, `_systemColor`; `_image` via `NSData`), `src/uikit/bridge.m` (`_readFile`), `lua/embedded/UIKit.lua` (start from `UIKitNative`; rewrite `Window`; add `HostingController`, `Toggle`, `SystemImage`; Label typography), `lua/ui/xml.lua` (`require("ns")` default, `bridge._readFile`), `src/main.m` (register AppKit as `ns` = same table), `tests/uikit_api.test.lua`, `tests/packager.test.lua`
 - **Depends on:** none
-- **Description:** Vendor Lua 5.4.8; build an empty `LuaObjCHost.app` (runtime only — no rsync of `lua/` or `examples/`). Compile Sources = host `.m` + `src/uikit_module.m` + `liblua.a` only. Packager on `:8081` serves `/health` `/file` `/module` `/entry` and `/hot`. Host calls `luaopen_UIKitNative`, loads streamed `UIKit.lua`, `package.loaded.ns`, `GET /entry`, `new():createWindow()`. Delete the 480×360 UIKit window. `SystemImage` via `UIImage systemName:`; file images via packager bytes. Operator: `make ios-run ARGS=examples/hello`. Packager-down is a redbox. Do **not** rewrite every example to `require("ns")` in this PR. Do **not** ship a bundled-Lua fallback.
+- **Description:** Vendor Lua 5.4.8; build an empty `LuaRuntime.app` (runtime only — no rsync of `lua/` or `examples/`). Compile Sources = host `.m` + `src/uikit_module.m` + `liblua.a` only. Packager on `:8081` serves `/health` `/file` `/module` `/entry` and `/hot`. Host calls `luaopen_UIKitNative`, loads streamed `UIKit.lua`, `package.loaded.ns`, `GET /entry`, `new():createWindow()`. Delete the 480×360 UIKit window. `SystemImage` via `UIImage systemName:`; file images via packager bytes. Operator: `make ios-run ARGS=examples/hello`. Packager-down is a redbox. Do **not** rewrite every example to `require("ns")` in this PR. Do **not** ship a bundled-Lua fallback.
 
 PR 2 in the previous draft (packager as a follow-up) is absorbed here: without the packager the host has nothing to run.
 
 ### PR 2 — Fast refresh rules, Model preserve, redbox polish
 
 - **Title:** Preserve Model across streamed Lua/asset updates
-- **Files:** `LuaHost.m` (fast refresh / full restart; **no** live-owner `-cancel`), `LuaSourceLoader.m` (asset cache bust), `examples/hello/Controller.lua` (`self.model`), `tests/packager.test.lua` (`kind` including `asset`)
+- **Files:** `LRTApplicationController.m` (fast refresh / full restart; **no** live-owner `-cancel`), `LRTResourceLoader.m` (asset cache bust), `examples/hello/Controller.lua` (`self.model`), `tests/packager.test.lua` (`kind` including `asset`)
 - **Depends on:** PR 1
-- **Description:** Fast refresh rebuilds root VC, does not unrequire `*.Model`, restores `controller.model`, unrefs old registry refs, cancels only the current timer/HTTP set. `kind=asset` drops the file cache and refreshes. `Model.lua` / `init.lua` trigger full `lua_close` + reboot (still no host rebuild). Lua errors present `LuaErrorOverlay`. `NSAllowsLocalNetworking`.
+- **Description:** Fast refresh rebuilds root VC, does not unrequire `*.Model`, restores `controller.model`, unrefs old registry refs, cancels only the current timer/HTTP set. `kind=asset` drops the file cache and refreshes. `Model.lua` / `init.lua` trigger full `lua_close` + reboot (still no host rebuild). Lua errors present `LRTErrorViewController`. `NSAllowsLocalNetworking`.
 
 ### PR 3 — Layout, safe area, keyboard, scene bounds
 
@@ -1123,7 +1123,7 @@ PR 2 in the previous draft (packager as a follow-up) is absorbed here: without t
 ### PR 8 — Simulator dump, screenshot, and ios-test
 
 - **Title:** Add UIKit layout dump, simctl screenshots, and simulator tests
-- **Files:** `ios/LuaObjCHost/LuaLayoutDump.m`, `LuaHost.m` (`SIMCTL_CHILD_LUA_OBJC_DUMP_LAYOUT`), `Makefile` (`ios-dump-layout` copy-out via `get_app_container`, `ios-screenshot`, `ios-test`), `tests/` or `ios/LuaObjCHostTests/`, Agents.md / README how-to pointer to `docs/ios.md`
+- **Files:** `ios/LuaRuntime/LuaLayoutDump.m`, `LRTApplicationController.m` (`SIMCTL_CHILD_LUA_OBJC_DUMP_LAYOUT`), `Makefile` (`ios-dump-layout` copy-out via `get_app_container`, `ios-screenshot`, `ios-test`), `tests/` or `ios/LuaRuntimeTests/`, Agents.md / README how-to pointer to `docs/ios.md`
 - **Depends on:** PR 1, PR 3
 - **Description:** Hierarchy XML with clipping flags, written inside the container then copied to `OUT` on the Mac. `ios-screenshot` is a device-frame capture. XCTest or host-flag Lua script asserts hello dump contains `UILabel` and no `cropped="true"`. Not part of default `make test`.
 

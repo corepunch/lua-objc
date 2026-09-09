@@ -1,6 +1,6 @@
-#import "LuaObjCHost.h"
+#import "LuaRuntime.h"
 
-@implementation LuaErrorOverlay {
+@implementation LRTErrorViewController {
 	NSString *_message;
 }
 

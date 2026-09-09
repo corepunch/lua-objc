@@ -1,7 +1,7 @@
 #pragma mark - UIKit presentation bridge
 
 static UIViewController *lua_uikit_presenter(void) {
-	UIWindow *window = lua_objc_host_window();
+	UIWindow *window = LRTApplicationWindow();
 	UIViewController *presenter = window.rootViewController;
 	while (presenter.presentedViewController)
 		presenter = presenter.presentedViewController;
