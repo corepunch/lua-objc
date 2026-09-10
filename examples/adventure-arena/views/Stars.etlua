@@ -1,0 +1,3 @@
+<% for star = 1, 5 do %>
+<SystemImage name="<%= star <= math.floor(rating) and 'star.fill' or (star - rating <= 0.5 and 'star.leadinghalf.filled' or 'star') %>" size="<%= size %>" color="yellow" label="<%= rating %> out of 5" />
+<% end %>

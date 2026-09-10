@@ -32,19 +32,26 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   to it completely. Delete old paths, old names, and old files — do not leave
   shims, aliases, or forwarding stubs behind. A clean break is always preferred
   over a compatibility layer. Callers update in the same commit.
-- **No monolith scenes.** Components return view trees (`ns.VStack { ... }`).
+- **Views are etlua only.** Screens and reusable components are `.etlua`
+  templates composed with `partial()`, never `.lua` view files or view trees
+  constructed in controllers. Controllers prepare data and bind actions.
+  Components emit view trees through templates.
   Only the app entry point (`init.lua` or the `App` object) creates an
   `ns.Window`. A component that creates a window is wrong.
 - **Apps live in `examples/<appname>/`.** Every app has its own folder with
   `init.lua` as the entry point. Flat `examples/<appname>.lua` files are
   forbidden. There are no forwarding shims.
-- **MVP folder layout inside each app:**
+- **Laravel-style MVC.** Models own domain queries, validation, and mutations;
+  controllers coordinate model calls, navigation, and callbacks; etlua views
+  own presentation. Models never depend on `ns` or native widgets. Inject
+  focused services for IO/runtime integration; keep controller actions thin.
+- **MVC folder layout inside each app:**
   ```
   examples/<app>/
     init.lua        ← requires and returns Controller class (framework instantiates)
     Model.lua       ← data, queries, mutations
     Controller.lua  ← wires model → views, owns actions
-    views/          ← etlua templates and Lua component functions
+    views/          ← etlua templates only, including reusable partials
   ```
   init.lua never self-starts. It returns the class; the framework calls
   `class.new():createWindow()`.
@@ -97,8 +104,8 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
 
 - New public Lua APIs and properties use camelCase. Preserve documented legacy
   names such as `fetch_json` and `Toggle.is_on` until an intentional migration.
-- Repeated sibling views use `ForEach`; reusable structure uses ordinary Lua
-  component functions. `Group` emits multiple siblings.
+- Repeated template siblings use etlua loops; reusable view structure uses
+  etlua partials. Framework-level Lua composition uses `ForEach` and `Group`.
 - Use tabs for leading indentation in `.m` and `.lua`.
 - Project-owned native folders use at most one shared `.h` for their `.m`
   implementations, not one header per class. Keep implementation-only details

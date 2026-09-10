@@ -1,0 +1,4 @@
+<HStack spacing="5">
+  <%- partial("Stars.etlua", { rating = game.rating, size = 13 }) %>
+  <Label text="<%= string.format('%.1f', game.rating) %>" size="12" color="secondary" fillWidth="true" />
+</HStack>

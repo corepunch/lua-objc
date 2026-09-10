@@ -1,5 +1,9 @@
+<% if #games == 0 then %>
+<ContentUnavailable ref="emptyCatalog" title="No Adventures" systemImage="gamecontroller" description="No adventures are available." />
+<% else %>
 <ScrollView vertical="true" horizontal="false" ignoresSafeArea="top">
   <VStack padding="0" spacing="0" fillWidth="true">
+    <% if featured then %>
     <ZStack ref="hero" fixedHeight="500" fillWidth="true" clipsToBounds="true">
       <Image path="<%= featured.cover %>" contentMode="fill" fillWidth="true" fixedHeight="500" />
       <Button title="" action="featured" style="plain" accessibilityLabel="Open <%= featured.title %>" ref="featuredCoverButton" fillWidth="true" fixedHeight="500" />
@@ -9,13 +13,12 @@
         <Label text="<%= featured.title %>" size="28" weight="bold" color="white" lines="2" fillWidth="true" />
         <Label text="<%= featured.shortDescription %>" size="16" color="white" lines="2" fillWidth="true" />
         <HStack spacing="6">
-          <% for star = 1, 5 do %>
-          <SystemImage name="<%= star <= math.floor(featured.rating) and 'star.fill' or (star - featured.rating <= 0.5 and 'star.leadinghalf.filled' or 'star') %>" size="13" color="yellow" />
-          <% end %>
+          <%- partial("Stars.etlua", { rating = featured.rating, size = 13 }) %>
           <Label text="<%= string.format('%.1f · Play', featured.rating) %>" size="13" weight="bold" color="white" />
         </HStack>
       </VStack>
     </ZStack>
+    <% end %>
     <VStack padding="0" paddingBottom="24" spacing="0" alignment="leading" fillWidth="true">
       <VStack fixedHeight="48" paddingTop="16" paddingBottom="8" paddingHorizontal="16" spacing="0" alignment="leading" fillWidth="true">
         <Label text="All Adventures" size="23" weight="bold" color="primary" fillWidth="true" />
@@ -26,13 +29,11 @@
           <VStack fixedWidth="142" spacing="8" alignment="leading">
             <ZStack fixedWidth="130" fixedHeight="176" clipsToBounds="true">
               <Image ref="cover_<%= index %>" path="<%= game.cover %>" contentMode="fill" cornerRadius="10" fixedWidth="130" fixedHeight="176" />
-              <Button title="" action="game_<%= index %>" accessibilityLabel="Open <%= game.title %>" ref="coverButton_<%= index %>" style="plain" fixedWidth="130" fixedHeight="176" />
+              <Button title="" action="<%= game.id %>" accessibilityLabel="Open <%= game.title %>" ref="coverButton_<%= index %>" style="plain" fixedWidth="130" fixedHeight="176" />
             </ZStack>
             <Label text="<%= game.title %>" size="13" weight="bold" color="primary" lines="1" truncation="tail" fillWidth="true" />
             <HStack spacing="4">
-              <% for star = 1, 5 do %>
-              <SystemImage name="<%= star <= math.floor(game.rating) and 'star.fill' or (star - game.rating <= 0.5 and 'star.leadinghalf.filled' or 'star') %>" size="9" color="yellow" />
-              <% end %>
+              <%- partial("Stars.etlua", { rating = game.rating, size = 9 }) %>
               <Label text="<%= string.format('%.1f', game.rating) %>" size="12" color="secondary" />
             </HStack>
           </VStack>
@@ -42,3 +43,4 @@
     </VStack>
   </VStack>
 </ScrollView>
+<% end %>

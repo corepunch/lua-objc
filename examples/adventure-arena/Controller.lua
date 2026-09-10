@@ -1,71 +1,96 @@
 local Model = require("examples.adventure-arena.Model")
+local ZIL = require("examples.adventure-arena.ZIL")
 local xml = require("ui.xml")
-local Detail = require("examples.adventure-arena.views.Detail")
-local Session = require("examples.adventure-arena.views.Session")
-local Tabs = require("examples.adventure-arena.views.Tabs")
 
 local Controller = {}
 Controller.__index = Controller
 
-function Controller.new()
-	return setmetatable({ model = Model.new() }, Controller)
+function Controller.new(options)
+	options = options or {}
+	local ns = options.ns or require("ns")
+	local readFile = ns._readFile
+	local model = options.model or Model.new {
+		engineFactory = function(game) return ZIL.new(game, readFile) end,
+	}
+	return setmetatable({ model = model, ns = ns }, Controller)
 end
 
-function Controller:showGame(game)
-	local ns = require("ns")
-	local view = Detail(ns, game, {
-		play = function() self:showSession(game) end,
-		back = function() self.navigation:pop() end,
-	})
-	self.navigation:push(ns.HostingController(view), game.title)
+function Controller:push(template, data, title)
+	local view, refs = xml.renderFile("examples/adventure-arena/views/" .. template .. ".etlua", data, self.ns)
+	self.navigation:push(self.ns.HostingController(view), title)
+	return view, refs
 end
 
-function Controller:showSession(game)
-	local ns = require("ns")
-	local ok, err = self.model:startSession(game, ns)
+function Controller:back()
+	self.navigation:pop()
+end
+
+function Controller:showGame(id)
+	local game = self.model:game(id)
+	if not game then return false end
+	self:push("Detail", { game = game, actions = {
+		play = function() self:showSession(id) end,
+		back = function() self:back() end,
+	} }, game.title)
+	return true
+end
+
+function Controller:showSession(id)
+	local game = self.model:game(id)
+	if not game then return false end
+	local ok, err = self.model:startSession(id)
 	if not ok then
-		local view = ns.VStack {
-			ns.ContentUnavailable { title = "Couldn’t start adventure",
-				systemImage = "exclamationmark.triangle", description = err },
-			ns.Button { title = "Back", action = function() self.navigation:pop() end },
-		}
-		self.navigation:push(ns.HostingController(view), game.title)
-		return
+		self:push("SessionError", {
+			message = err, actions = { back = function() self:back() end },
+		}, game.title)
+		return false
 	end
-	local view, refs
-	local function submit(command)
-		self.model:submit(command)
-		refs.output.text = self.model:transcript()
-		refs.input.text = ""
-		view:layout()
+	local actions = {
+		submit = function() self:submitCommand(self.sessionRefs.input.text) end,
+		look = function() self:submitCommand("look") end,
+		inventory = function() self:submitCommand("inventory") end,
+		close = function() self:back() end,
+	}
+	self.sessionView, self.sessionRefs = self:push("Session", {
+		transcript = self.model:transcript(), actions = actions,
+	}, game.title)
+	self.sessionRefs.input.accessibilityLabel = "Command"
+	self.ns._textFieldCallbacks(self.sessionRefs.input, nil, function(command)
+		if command ~= "submit" then return false end
+		actions.submit()
+		return true
+	end)
+	return true
+end
+
+function Controller:submitCommand(command)
+	local ok, err = self.model:submit(command)
+	self.sessionRefs.output.text = self.model:transcript()
+	self.sessionRefs.input.text = ""
+	self.sessionView:layout()
+	return ok, err
+end
+
+function Controller:homeData()
+	local games, featured = self.model:listGames(), self.model:featured()[1]
+	local actions = {}
+	if featured then actions.featured = function() self:showGame(featured.id) end end
+	for _, game in ipairs(games) do
+		actions[game.id] = function() self:showGame(game.id) end
 	end
-	view, refs = Session(ns, game, self.model:transcript(), {
-		submit = function() submit(refs.input.text) end,
-		command = submit,
-		close = function() self.navigation:pop() end,
-	})
-	self.sessionView, self.sessionRefs = view, refs
-	self.navigation:push(ns.HostingController(view), game.title)
+	return { games = games, featured = featured, actions = actions }
 end
 
 function Controller:home()
-	local ns = require("ns")
-	local featured = Model.featured()[1]
-	local actions = { featured = function() self:showGame(featured) end }
-	for index, game in ipairs(Model.games) do
-		actions["game_" .. index] = function() self:showGame(game) end
-	end
-	local view = xml.renderFile("examples/adventure-arena/views/Adventures.etlua",
-		{ games = Model.games, featured = featured, actions = actions }, ns)
-	self.navigation = ns.NavigationStack { content = view, title = "Adventures", hidesNavigationBar = true }
+	local _, refs = xml.renderFile("examples/adventure-arena/views/Home.etlua", self:homeData(), self.ns)
+	self.navigation = refs.navigation
 	return self.navigation
 end
 
 function Controller:createWindow()
-	local ns = require("ns")
-	local config = xml.renderFile("examples/adventure-arena/views/Window.etlua")
-	config.content = Tabs(ns, self:home())
-	self.window = ns.Window(config)
+	local config, refs = xml.renderFile("examples/adventure-arena/views/Window.etlua", self:homeData(), self.ns)
+	self.navigation = refs.navigation
+	self.window = self.ns.Window(config)
 	return self.window
 end
 

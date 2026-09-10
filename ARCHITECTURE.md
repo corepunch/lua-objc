@@ -307,19 +307,19 @@ The IDE now uses that layer to behave like VS Code on startup: open a folder
 immediately when one was provided, or show a welcome screen with recent items
 and an open-folder picker otherwise.
 
-**Scene separation rule.** Components return view trees. The framework
+**Scene separation rule.** App components are etlua partials emitting view trees. The framework
 instantiates the class returned by `init.lua`; its `createWindow()` method
 (or the root `App` lifecycle) creates the window. `init.lua` itself stays thin
 and does not self-start. Reusable view components do not create windows.
 
-**MVP example layout.** Every standalone example lives under
+**MVC example layout.** Every standalone example lives under
 `examples/<appname>/` with this layout:
 
 ```text
 init.lua        ← requires and returns Controller class (framework instantiates)
 Model.lua       ← data, queries, mutations (no ns.* calls)
 Controller.lua  ← defines Controller class; wires model → views, owns actions
-views/          ← etlua templates and Lua component functions
+views/          ← etlua templates and reusable partials only
 ```
 
 `init.lua` never self-starts. It returns the class; the framework calls

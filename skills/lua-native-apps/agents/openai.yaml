@@ -1,4 +1,4 @@
 interface:
   display_name: "Lua Native Apps"
-  short_description: "Lua app shells, plugins, and headless tests"
-  default_prompt: "Use $lua-native-apps to design or refactor a Lua-first macOS/iOS app shell, plugin surfaces, welcome routing, or headless smoke tests."
+  short_description: "Laravel-style MVC, etlua views, and Lua app tests"
+  default_prompt: "Use $lua-native-apps to build or refactor a Lua macOS/iOS app with Laravel-style MVC, thin controllers, UI-independent models, etlua-only views, and headless regression tests."

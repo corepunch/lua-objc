@@ -133,7 +133,7 @@ point. See [preview behavior](ARCHITECTURE.md#--preview-cli-mode).
 | Add an IDE editor surface | `examples/ide/` |
 | Write or modify XML view templates | `lua/ui/xml.lua`, `examples/<app>/views/` |
 | Use template inheritance or partials | `views/AppWindow.etlua`, `views/partials/` |
-| Add a new example app | `examples/<app>/init.lua`, `AGENTS.md` (MVP layout rules) |
+| Add a new example app | `examples/<app>/init.lua`, `AGENTS.md` (MVC layout rules) |
 | Change app startup or recents | `lua/App.lua`, `examples/ide/` |
 | Add UIKit coverage | `src/uikit/`, `src/uikit_module.m`, `lua/embedded/UIKit.lua` |
 | Run on iPhone Simulator / in-process reload | [`docs/ios.md`](docs/ios.md) |
@@ -150,7 +150,7 @@ rg -n 'bridge_tableview|List' src lua tests docs
 ## Architecture
 
 ```text
-App: Model + Controller + views (Lua components / etlua templates)
+App: Model + Controller + views (etlua templates and partials)
                          |
             Public AppKit.lua / UIKit.lua API
                          |
@@ -258,16 +258,16 @@ These are remaining implementation work, not guarantees of the current
 runtime. The [architecture guide](ARCHITECTURE.md) records the evidence,
 lifetime contracts, and verification requirements.
 
-### App structure (MVP)
+### App structure (MVC)
 
-Every app follows the MVP folder layout:
+Every app follows the MVC folder layout:
 
 ```
 examples/<app>/
   init.lua        — entry point, requires and returns Controller class
   Model.lua       — pure data: queries, formatting, sample data
   Controller.lua  — creates views, wires Model → views, owns actions
-  views/          — etlua templates and reusable Lua component functions
+  views/          — etlua templates only, including reusable partials
 ```
 
 `init.lua` never self-starts. It returns the class; the framework calls
@@ -287,7 +287,7 @@ interface.
 | Models and application services | `Model.lua` provides queries, mutations, and fetching |
 | Blade templates | `views/*.etlua` |
 | Includes, layouts, and sections | `partial()`, `extends()`, `block()`, `yield()` |
-| Reusable view components | Lua functions returning native view trees |
+| Reusable view components | etlua partials emitting native view trees |
 | Routes dispatch actions | Native callbacks invoke controller methods |
 
 The [hello controller](examples/hello/Controller.lua) shows the basic flow:
@@ -298,8 +298,8 @@ a message marks it read and updates the detail pane in the existing window.
 **The key difference is lifetime.** Laravel's web flow handles a request and
 returns a response. A lua-objc controller and its native widgets stay alive
 across selection, typing, asynchronous results, and navigation. The controller
-also acts as a presenter coordinating persistent views, which is why this
-project uses the MVP description. Model changes currently require explicit
+coordinates persistent views while models own domain state and etlua templates
+own presentation. Model changes currently require explicit
 view updates; template rendering does not provide automatic reconciliation.
 
 Use Laravel's [views](https://laravel.com/docs/12.x/views) and
@@ -313,7 +313,7 @@ The practical guide for apps is:
 
 - Controllers coordinate actions, call models, and supply view data.
 - Models own queries, fetching, validation, and mutations.
-- Views own presentation through templates and reusable component functions.
+- Views own presentation through etlua templates and reusable partials.
 - The framework owns shared rendering, action binding, and lifecycle
   machinery. Retained descriptions and reconciliation remain framework work.
 

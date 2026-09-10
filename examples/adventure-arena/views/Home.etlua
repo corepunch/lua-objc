@@ -1,0 +1,3 @@
+<NavigationStack ref="navigation" title="Adventures" hidesNavigationBar="true">
+  <%- partial("Adventures.etlua", { games = games, featured = featured }) %>
+</NavigationStack>

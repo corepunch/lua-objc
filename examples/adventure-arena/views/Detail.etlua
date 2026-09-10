@@ -1,0 +1,17 @@
+<ScrollView vertical="true" horizontal="false">
+  <VStack padding="20" spacing="14" fillWidth="true">
+    <Image path="<%= game.cover %>" fillWidth="true" fixedHeight="280" contentMode="fill" cornerRadius="16" />
+    <Label ref="title" text="<%= game.title %>" size="30" weight="bold" lines="2" fillWidth="true" />
+    <HStack spacing="8">
+      <Label text="<%= game.genres[1] %>" size="12" color="secondary" fillWidth="true" />
+      <Label text="<%= game.author %>" size="12" color="secondary" fillWidth="true" />
+      <Label text="<%= game.year %>" size="12" color="secondary" fillWidth="true" />
+    </HStack>
+    <%- partial("Rating.etlua", { game = game }) %>
+    <Divider />
+    <Label text="About this Game" size="21" weight="bold" fillWidth="true" />
+    <Label ref="description" text="<%= game.description %>" size="16" color="secondary" lines="0" fillWidth="true" />
+    <Button ref="play" title="Play Adventure" action="play" />
+    <Button ref="back" title="Back to Adventures" action="back" />
+  </VStack>
+</ScrollView>

@@ -1,24 +1,39 @@
 local Model = {}
-
-Model.games = require("examples.adventure-arena.Catalog")
-
-local gameIndex = {}
-for _, game in ipairs(Model.games) do gameIndex[game.id] = game end
-
-function Model.game(id) return gameIndex[id] end
-function Model.featured() return { Model.games[1], Model.games[2], Model.games[3] } end
-function Model.ratingLabel(game) return string.format("%.1f (%d)", game.rating, game.reviewCount) end
-
 Model.__index = Model
 
-function Model.new(engineFactory)
-	return setmetatable({ messages = {}, engineFactory = engineFactory
-		or require("examples.adventure-arena.ZIL").new }, Model)
+function Model.new(options)
+	options = options or {}
+	local games = options.games or require("examples.adventure-arena.Catalog")
+	local gameIndex = {}
+	for _, game in ipairs(games) do gameIndex[game.id] = game end
+	return setmetatable({
+		games = games, gameIndex = gameIndex, messages = {},
+		engineFactory = options.engineFactory,
+	}, Model)
 end
 
-function Model:startSession(game, ns)
+function Model:listGames()
+	local games = {}
+	for index, game in ipairs(self.games) do games[index] = game end
+	return games
+end
+
+function Model:game(id)
+	return self.gameIndex[id]
+end
+
+function Model:featured()
+	local games = {}
+	for index = 1, math.min(3, #self.games) do games[index] = self.games[index] end
+	return games
+end
+
+function Model:startSession(id)
+	local game = self:game(id)
+	if not game then return false, "Adventure not found." end
+	if not self.engineFactory then return false, "No session engine configured." end
 	local ok, engine, opening = pcall(function()
-		return self.engineFactory(game, ns):start()
+		return self.engineFactory(game):start()
 	end)
 	if not ok then return false, tostring(engine) end
 	self.engine, self.currentGame = engine, game

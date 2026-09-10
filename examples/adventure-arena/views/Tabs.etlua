@@ -1,0 +1,20 @@
+<TabView ref="tabs">
+  <Tab title="Adventures" systemImage="gamecontroller">
+    <%- partial("Home.etlua", { games = games, featured = featured }) %>
+  </Tab>
+  <Tab title="Ongoing" systemImage="clock.arrow.circlepath">
+    <ContentUnavailable title="No Saved Games" systemImage="clock.arrow.circlepath" description="Start an adventure to begin playing." />
+  </Tab>
+  <Tab title="Create Game" systemImage="plus.circle">
+    <VStack padding="20" spacing="14" fillWidth="true">
+      <Label text="Create a Game" size="30" weight="bold" fillWidth="true" />
+      <Label text="Bring your own ZIL adventure to the arena." color="secondary" fillWidth="true" />
+    </VStack>
+  </Tab>
+  <Tab title="Settings" systemImage="gearshape">
+    <VStack padding="20" spacing="14" fillWidth="true">
+      <Label text="Settings" size="30" weight="bold" fillWidth="true" />
+      <Label text="Reading preferences and accessibility." color="secondary" fillWidth="true" />
+    </VStack>
+  </Tab>
+</TabView>

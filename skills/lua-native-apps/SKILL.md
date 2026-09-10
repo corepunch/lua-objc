@@ -1,6 +1,6 @@
 ---
 name: lua-native-apps
-description: Lua-first macOS/iOS app architecture for lua-objc. Use when building or refactoring native app shells, simple folder-and-editor examples, headless smoke tests, or converting Lua view functions to etlua templates.
+description: Laravel-style MVC architecture for Lua macOS/iOS apps in lua-objc. Use when building or refactoring app models, controllers, native app shells, etlua views, or their headless regression tests.
 ---
 
 # Lua Native Apps
@@ -9,99 +9,90 @@ Build user-facing apps in Lua only. Keep AppKit/UIKit work behind the bridge
 and keep the app shell thin enough that most behavior lives in reusable Lua
 modules.
 
-## Canonical Shape
+## Laravel-style MVC with etlua views
 
-- Keep `examples/<app>/init.lua` as a thin bootstrap that returns its controller.
-- Put file access and language detection in `Model.lua`.
-- Put the folder sidebar, editor content, file watching, and saving in
-  `Controller.lua`.
-- Use a native semantic sidebar plus one content editor for the simple IDE.
+Use Laravel's separation of models, controller actions, and Blade views as the
+app architecture; etlua fills the Blade role. Keep the native app lifecycle:
+controllers and native widgets persist across events, so controller actions
+update existing refs or navigate to rendered templates. This convention does
+not require an HTTP router, ORM, service container, or Laravel dependency.
 
-The current `lua-objc` pattern is:
-
-```lua
-local Controller = require("examples.ide.Controller")
-
-return Controller
-```
-
-## App architecture: Model → Controller → etlua views
-
-Every app follows strict MVC separation with etlua as the sole view layer:
-
-```
+```text
 examples/<app>/
-  init.lua        — entry point, requires and returns Controller class
-  Model.lua       — pure data: queries, formatting, sample data
-  Controller.lua  — creates views, wires Model → views, owns actions
-  views/          — etlua templates, one per screen/section
+  init.lua        — requires and returns Controller class; never self-starts
+  Model.lua       — domain data, queries, validation, state, mutations
+  Controller.lua  — coordinates model operations, rendering, navigation, callbacks
+  views/          — .etlua screens and reusable partials only
 ```
 
-**Views are etlua templates, never .lua files.** No `require("views/Component")` —
-all views load via `xml.renderFile("views/Component.etlua", data)`.
+Add focused model or service modules only when there is a concrete second
+responsibility. For example, Adventure Arena's `Catalog.lua` stores seed data,
+`Model.lua` queries games and owns session state, and `ZIL.lua` adapts the game
+runtime and file access. Do not create empty Laravel-style directories.
 
-### Why etlua-only
+### Model and service boundaries
 
-etlua templates are cross-platform (same XML renders NSTextField on AppKit,
-UILabel on UIKit). The engine's `<% for %>` loops handle iteration — no need
-for a `ForEach` XML tag or Lua callback functions in templates. Data
-transformation (column splitting, metric grouping, decoration) lives in the
-Controller; the template receives already-structured tables and emits view
-trees declaratively.
+- Models own domain decisions: lookup, validation, command normalization,
+  session transitions, transcript history, and failure semantics.
+- Models never import AppKit/UIKit, accept the whole `ns` module, create views,
+  retain widget refs, render templates, or navigate.
+- Keep file, network, compiler, and engine integration in focused services.
+  Inject the needed operation (such as a file reader or engine factory), not
+  a platform module. Wire concrete dependencies at controller construction or
+  the app composition boundary.
+- Query the controller's model instance rather than reaching around it into
+  module-level catalog tables. Use stable record IDs for actions; resolve and
+  validate them through the model. Allow model/service injection for tests.
+- Keep symbols, colors, typography, layout, and display formatting out of domain
+  models. Preserve raw model data when preparing a view; do not decorate shared
+  records with transient presentation fields.
 
-### Data flow
+### Thin controllers
 
-The Controller pre-computes all display data into plain Lua tables. Templates
-receive a single data table via `xml.renderFile()` and use etlua expressions
-to inject values:
+Controller actions follow: resolve input → call the model → render/navigate or
+update existing native refs. Keep callbacks short by delegating to named actions.
+A controller may assemble a small view-data table and action map, but must not
+implement business rules, file/compiler operations, widget trees, or rating/icon
+rendering algorithms. Extract complex presentation transformations into a focused
+presenter only when a template or small data projection is insufficient.
 
-```lua
--- Controller
-local function precomputeMetrics(stock)
-	return {
-		{ {"Open", stock.openStr}, {"High", stock.dailyHighStr} },
-		{ {"Vol", stock.volumeStr}, {"P/E", "--"} },
-	}
-end
+For example, `showGame(id)` asks `self.model:game(id)` for a record, handles a
+missing record without disturbing navigation, and renders `Detail.etlua` with
+`{ game = game, actions = ... }`. `submitCommand(text)` calls the session model,
+then updates transcript/input refs. The model trims and executes the command.
 
-stock.metricColumns = precomputeMetrics(stock)
-local view = xml.renderFile("views/StockDetail.etlua", { stock = stock })
-```
+### etlua is the sole view layer
 
-```xml
-<!-- StockDetail.etlua -->
-<% for _, column in ipairs(stock.metricColumns) do %>
-<VStack flexGrow="1" spacing="4">
-    <% for _, row in ipairs(column) do %>
-    <HStack fillWidth="true">
-        <Label text="<%= row[1] %>" size="11" color="secondary" weight="semibold" />
-        <Spacer />
-        <Label text="<%= row[2] %>" size="12" weight="semibold" />
-    </HStack>
-    <% end %>
-</VStack>
-<% end %>
-```
+**Views are etlua templates, never `.lua` files.** This includes tab shells,
+detail and session screens, loading/empty/error states, and reusable components.
+Render screens with `xml.renderFile(path, data, ns)` and compose templates with
+`partial("Component.etlua", data)`. Only the controller's `createWindow()` or the
+root App lifecycle creates a native window; components emit view trees only.
 
-### Passing pre-built userdata to templates
+Views own presentation: native XML tags, layout, labels, scalar formatting,
+conditionals, and loops over supplied data. Reuse display logic such as rating
+stars in a shared etlua partial. Templates must not query models, perform IO,
+mutate domain state, call Lua view constructors, or implement action bodies.
+Callbacks arrive in `data.actions` or are attached to returned refs by the
+controller. If a required native control lacks a template tag, extend
+`xml.registry` rather than bypassing templates with a Lua view module.
 
-When a Controller constructs native userdata (e.g., a `Curve` chart) that
-can't be serialized into XML, pass it in the render data and use the `<Chart>`
-tag to reference it:
+The same XML vocabulary renders AppKit and UIKit controls; pass the platform to
+the renderer rather than adding platform conditionals to views. etlua is the
+only template engine, imported with `require("etlua")` when used directly.
 
-```lua
--- Controller
-self.chart = ns.Curve { data = chartData, width = 600, ... }
-local view = xml.renderFile("views/StockDetail.etlua", { chart = self.chart })
-```
+During refactors, migrate callers and tests together and delete replaced Lua
+views and obsolete APIs completely. Do not move view constructors into the
+controller, retain forwarding stubs, or preserve a parallel static model API.
 
-```xml
-<!-- StockDetail.etlua -->
-<Chart />
-```
+### Verify the boundaries
 
-The `<Chart>` tag (in `lua/ui/xml.lua` registry) returns the userdata from
-the render data context keyed by `data` attribute (defaults to `"chart"`).
+Test model queries and mutations with injected services and no UI dependencies.
+Cover empty/missing records, rejected input, failed operations preserving prior
+state, and independent model instances. Controller tests should use injected
+models and exercise the actions actually bound by templates, including navigation
+and unchanged unrelated state. Render etlua with special characters and long
+text. Follow the repository's native layout and visual QA requirements as well.
 
 ## IDE App Layout
 
