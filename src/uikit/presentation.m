@@ -47,7 +47,7 @@ static int bridge_UIKitPresentation_presentSheet(lua_State *L) {
 
 static int bridge_UIKitPresentation_dismiss(lua_State *L) {
 	UIViewController *presenter = lua_uikit_presenter();
-	if (presenter.presentedViewController)
+	if (presenter.presentingViewController)
 		[presenter dismissViewControllerAnimated:NO completion:nil];
 	return 0;
 }

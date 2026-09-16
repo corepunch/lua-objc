@@ -18,19 +18,26 @@ __attribute__((weak)) UIWindow *LRTApplicationWindow(void) {
 - (void)viewDidLoad {
 	[super viewDidLoad];
 	self.view.backgroundColor = UIColor.systemBackgroundColor;
-	if (self.luaRoot) [self.view addSubview:self.luaRoot];
-}
-
-- (void)viewDidLayoutSubviews {
-	[super viewDidLayoutSubviews];
+	if (!self.luaRoot) return;
+	[self.view addSubview:self.luaRoot];
 	NSString *safeArea = self.luaRoot.ignoresSafeArea;
 	BOOL ignoresTop = [safeArea isEqualToString:@"top"]
 		|| [safeArea isEqualToString:@"all"]
 		|| [safeArea isEqualToString:@"edges"];
-	CGRect bounds = ignoresTop ? self.view.bounds
-		: self.view.safeAreaLayoutGuide.layoutFrame;
-	self.luaRoot.frame = bounds;
-	layout_recursive(self.luaRoot, bounds.size.width);
+	self.luaRoot.translatesAutoresizingMaskIntoConstraints = NO;
+	// Referencing the keyboard guide from constraints lets UIKit drive updates
+	// during keyboard transitions, including sheets and hardware keyboards.
+	[NSLayoutConstraint activateConstraints:@[
+		[self.luaRoot.topAnchor constraintEqualToAnchor:ignoresTop ? self.view.topAnchor : self.view.safeAreaLayoutGuide.topAnchor],
+		[self.luaRoot.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor],
+		[self.luaRoot.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor],
+		[self.luaRoot.bottomAnchor constraintEqualToAnchor:self.view.keyboardLayoutGuide.topAnchor],
+	]];
+}
+
+- (void)viewDidLayoutSubviews {
+	[super viewDidLayoutSubviews];
+	layout_recursive(self.luaRoot, self.luaRoot.bounds.size.width);
 }
 @end
 

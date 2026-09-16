@@ -526,6 +526,7 @@ local TAG_SCHEMA = {
         positional  = { "text", "value", default = "" },
         directArg   = "positional",
     },
+    Preview = { constructor = "Preview" },
     TextEditor = {
         constructor = "TextEditor",
         props = {

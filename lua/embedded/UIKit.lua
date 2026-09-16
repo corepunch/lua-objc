@@ -104,6 +104,10 @@ function UIKit.TabView(props)
 	return tbc
 end
 
+function UIKit.Preview(props)
+	return applyLayout(bridge._preview(), props or {})
+end
+
 function UIKit.HostingController(view)
 	return bridge._hostingController(view)
 end

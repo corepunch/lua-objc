@@ -52,8 +52,13 @@ UIWindow *LRTApplicationWindow(void) {
 - (void)startWithWindow:(UIWindow *)window {
 	_window = window;
 	gHostWindow = window;
+	NSString *entry = [NSBundle.mainBundle objectForInfoDictionaryKey:@"LRTLocalEntry"];
+	if (entry.length) {
+		LRTResourceLoader.shared.localRoot = [NSBundle.mainBundle.resourcePath stringByAppendingPathComponent:@"Workspace"];
+		LRTResourceLoader.shared.localEntry = entry;
+	}
 	LRTResourceLoader.shared.baseURL = [NSURL URLWithString:self.packagerURL];
-	NSLog(@"[lua-objc] packager=%@", self.packagerURL);
+	NSLog(@"[lua-objc] source=%@", LRTResourceLoader.shared.localRoot ?: self.packagerURL);
 	[self tryBoot];
 }
 
@@ -77,13 +82,14 @@ UIWindow *LRTApplicationWindow(void) {
 			});
 		return;
 	}
-	NSLog(@"[lua-objc] packager reachable");
+	NSLog(@"[lua-objc] resources available");
 	if (![self boot:&err]) {
 		[self showError:err.localizedDescription ?: @"boot failed"];
 		return;
 	}
 	_booted = YES;
 	NSLog(@"[lua-objc] boot ok");
+	if (LRTResourceLoader.shared.localRoot) return;
 	NSString *reloadURLString = [self.packagerURL stringByReplacingOccurrencesOfString:@"https://"
 		withString:@"wss://"];
 	reloadURLString = [reloadURLString stringByReplacingOccurrencesOfString:@"http://" withString:@"ws://"];
@@ -149,6 +155,8 @@ static int bridge_read_file(lua_State *L) {
 	if (_L) {
 		lua_close(_L);
 		_L = NULL;
+		_controllerRef = LUA_NOREF;
+		_windowRef = LUA_NOREF;
 	}
 	_L = luaL_newstate();
 	luaL_openlibs(_L);

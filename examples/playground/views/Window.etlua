@@ -1,0 +1,11 @@
+<Window title="My app" width="393" height="740">
+	<VStack padding="24" spacing="20" flexGrow="1" alignment="center">
+		<Spacer />
+		<SystemImage name="hammer" size="44" label="Build your app" />
+		<Label text="Make something yours" size="26" weight="bold" lines="2" />
+		<Label text="Ask the agent to change this app. Tap below to try the live preview." size="16" color="secondary" lines="3" />
+		<Label ref="count" text="<%= count %>" size="44" weight="bold" />
+		<Button title="Count up" action="increment" style="borderedProminent" />
+		<Spacer />
+	</VStack>
+</Window>

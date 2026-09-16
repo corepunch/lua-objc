@@ -50,7 +50,7 @@ build/UIKit.dylib: $(UIKIT_RUNTIME_SRC) $(UIKIT_RUNTIME_FRAGMENTS) $(GENERATED_D
 		{ echo "UIKit.dylib requires the iPhone Simulator SDK from Xcode"; exit 1; }
 	mkdir -p build
 	xcrun --sdk iphonesimulator $(CC) $(CFLAGS) $(MODULE_LDFLAGS) \
-		-Ibuild -framework UIKit -framework Foundation -framework QuartzCore -o $@ $(UIKIT_RUNTIME_SRC)
+		-Ibuild -framework UIKit -framework Foundation -framework QuartzCore -framework Security -o $@ $(UIKIT_RUNTIME_SRC)
 
 uikit: build/UIKit.dylib
 
@@ -148,7 +148,7 @@ $(HOST_BINARY): $(IOS_LUA_A) $(IOS_HOST_SRCS) ios/LuaRuntime/LuaRuntime.h $(UIKI
 	@echo "Building iOS host..."
 	@mkdir -p $(HOST_BUNDLE)
 	@$(IOS_CC) $(IOS_CFLAGS) \
-		-framework UIKit -framework Foundation -framework CoreGraphics -framework QuartzCore \
+		-framework UIKit -framework Foundation -framework CoreGraphics -framework QuartzCore -framework Security \
 		-o $(HOST_BUNDLE)/LuaRuntime \
 		$(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) $(IOS_LUA_A)
 	@cp ios/LuaRuntime/Info.plist $(HOST_BUNDLE)/Info.plist
@@ -214,3 +214,16 @@ parity-report: parity-check
 		--out "build/parity/macos/$(CASE)/report.json" --strict
 
 .PHONY: all uikit run clean test parity-check parity-case parity-report run-hello run-list run-live run-weather run-welcome run-mail run-layout screenshot ios-host ios-packager ios-packager-run ios-run ios-internal-screenshot ios-screenshot ios ios-reset
+
+# Standalone iPad development app (no Mac packager required).
+.PHONY: ipad ipad-simulator ipad-run ipad-deploy list-devices
+ipad:
+	$(MAKE) -f scripts/ipad/build.mk SDK=iphoneos app
+ipad-simulator:
+	$(MAKE) -f scripts/ipad/build.mk SDK=iphonesimulator app
+ipad-run:
+	$(MAKE) -f scripts/ipad/build.mk SDK=iphonesimulator run
+ipad-deploy:
+	$(MAKE) -f scripts/ipad/build.mk SDK=iphoneos deploy
+list-devices:
+	xcrun devicectl list devices

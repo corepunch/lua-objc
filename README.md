@@ -392,3 +392,12 @@ docs/                   detailed, opt-in reference material
 Put durable explanations in the focused documents above and link to them from
 the task map. Do not copy complete API references or research notes back into
 the root instructions.
+
+### Develop apps from an iPad
+
+`make ipad-deploy` builds **Lua Studio**, automatically finds one connected iPad,
+signs with a matching installed development profile, and installs/launches it.
+Use `make ipad-run` for the simulator. The app includes an interactive phone-sized
+UIKit preview, an OpenRouter coding agent, system keyboard dictation, source
+editing, and undo. Projects run and save locally without the Mac packager.
+See [Lua Studio](examples/studio/README.md) for setup and current boundaries.

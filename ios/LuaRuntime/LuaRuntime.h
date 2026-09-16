@@ -25,6 +25,8 @@ UIWindow * _Nullable LRTApplicationWindow(void);
 
 @interface LRTResourceLoader : NSObject
 @property (nonatomic, copy, nullable) NSURL *baseURL;
+@property (nonatomic, copy, nullable) NSString *localRoot;
+@property (nonatomic, copy, nullable) NSString *localEntry;
 + (instancetype)shared;
 - (BOOL)ping:(NSError * _Nullable * _Nullable)error;
 - (nullable NSData *)dataForPath:(NSString *)rel error:(NSError * _Nullable * _Nullable)error;

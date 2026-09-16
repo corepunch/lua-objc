@@ -65,6 +65,7 @@
 }
 
 - (BOOL)ping:(NSError **)error {
+	if (self.localRoot) return YES;
 	NSError *err = nil;
 	NSData *data = [self GET:@"/health" error:&err];
 	if (!data) {
@@ -75,6 +76,12 @@
 }
 
 - (NSData *)dataForPath:(NSString *)rel error:(NSError **)error {
+	if (self.localRoot) {
+		NSString *root = self.localRoot.stringByStandardizingPath;
+		NSString *path = [[root stringByAppendingPathComponent:rel] stringByStandardizingPath];
+		if (![path hasPrefix:[root stringByAppendingString:@"/"]]) return nil;
+		return [NSData dataWithContentsOfFile:path options:0 error:error];
+	}
 	@synchronized (_cache) {
 		NSData *cached = _cache[rel];
 		if (cached) return cached;
@@ -93,6 +100,20 @@
 }
 
 - (NSString *)sourceForModule:(NSString *)name error:(NSError **)error {
+	if (self.localRoot) {
+		NSString *rel = [name stringByReplacingOccurrencesOfString:@"." withString:@"/"];
+		NSArray *candidates = [name isEqualToString:@"UIKit"] ? @[@"lua/embedded/UIKit.lua"] : @[
+			[rel stringByAppendingString:@".lua"],
+			[NSString stringWithFormat:@"lua/%@.lua", rel],
+			[NSString stringWithFormat:@"lua/%@/init.lua", rel]];
+		for (NSString *path in candidates) {
+			NSData *data = [self dataForPath:path error:nil];
+			if (data) return [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+		}
+		if (error) *error = [NSError errorWithDomain:@"LRTResourceLoader" code:1
+			userInfo:@{NSLocalizedDescriptionKey:[@"Module not found: " stringByAppendingString:name]}];
+		return nil;
+	}
 	NSString *escaped = [name stringByAddingPercentEncodingWithAllowedCharacters:
 		[NSCharacterSet URLQueryAllowedCharacterSet]];
 	NSError *err = nil;
@@ -106,6 +127,7 @@
 }
 
 - (NSString *)entryPath:(NSError **)error {
+	if (self.localRoot) return self.localEntry;
 	NSError *err = nil;
 	NSData *data = [self GET:@"/entry" error:&err];
 	if (!data) {

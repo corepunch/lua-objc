@@ -1,0 +1,12 @@
+<VStack padding="24" spacing="16" flexGrow="1" alignment="leading">
+	<Label text="OpenRouter" size="26" weight="bold" />
+	<Label text="API key" size="15" weight="semibold" />
+	<TextField ref="key" secure="true" placeholder="OpenRouter API key" fillWidth="true" />
+	<Label text="The key stays in this iPad’s Keychain. Your prompts and requested project files are sent to OpenRouter." size="14" color="secondary" lines="3" />
+	<Label text="Model" size="15" weight="semibold" />
+	<TextField ref="model" value="<%= model %>" placeholder="provider/model" fillWidth="true" />
+	<Label text="Choose an OpenRouter model that supports tools." size="14" color="secondary" lines="2" />
+	<Label ref="status" text="" size="14" lines="3" />
+	<Button title="Save settings" action="save" style="borderedProminent" />
+	<Spacer />
+</VStack>

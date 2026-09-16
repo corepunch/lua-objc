@@ -1,5 +1,6 @@
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
+#import <Security/Security.h>
 
 #include <lua.h>
 #include <lualib.h>
@@ -35,6 +36,8 @@ static char kImageLayoutSizeKey;
 static char kScrollContentKey;
 static const CGFloat kImageMaxWidth = 400.0;
 static const CGFloat kStackSpacing = 8.0;
+static const CGFloat kPreviewWidth = 393.0;
+static const CGFloat kPreviewHeight = 740.0;
 static lua_State *gL = NULL;
 static int bridge_UIKitNavigation_stack(lua_State *L);
 static int bridge_UIKitNavigation_push(lua_State *L);
@@ -65,6 +68,8 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #include "constructors.m"
 #include "text_field.m"
 #include "hosting.m"
+#include "preview.m"
+#include "workspace.m"
 #include "navigation.m"
 #include "presentation.m"
 #include "../shared/parity_batch.m"
@@ -72,6 +77,14 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #pragma mark - Module registration
 
 static const luaL_Reg bridge_lib[] = {
+	{"_preview", bridge_preview},
+	{"_documentRead", bridge_document_read},
+	{"_documentWrite", bridge_document_write},
+	{"_credential", bridge_credential},
+	{"_jsonEncode", bridge_json_encode},
+	{"_httpRequest", bridge_http_request},
+	{"_cancelRequest", bridge_cancel_request},
+	{"_focus", bridge_focus},
 	{"_hitTestTarget", bridge_hit_test_target},
 	{"_parityMeasure", bridge_parity_measure},
 	{"_parityWrite", bridge_parity_write},

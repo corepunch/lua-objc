@@ -88,4 +88,20 @@ t.expect(constructors:find("view.backgroundColor = UIColor.clearColor", 1, true)
 t.expect(constructors:find("view.layer.cornerRadius", 1, true) == nil,
 	"UIKit page controls do not add custom capsule corners")
 
+local hosting = assert(io.open("src/uikit/hosting.m", "r")):read("*a")
+local presentation = assert(io.open("src/uikit/presentation.m", "r")):read("*a")
+local preview = assert(io.open("src/uikit/preview.m", "r")):read("*a")
+t.expect(hosting:find("keyboardLayoutGuide.topAnchor", 1, true) ~= nil,
+	"hosting bounds account for the software keyboard")
+t.expect(presentation:find("if (presenter.presentingViewController)", 1, true) ~= nil,
+	"dismiss targets the presented controller")
+t.expect(preview:find("addChildViewController", 1, true) ~= nil
+	and preview:find("removeFromParentViewController", 1, true) ~= nil,
+	"preview replacement balances native controller containment")
+t.expect(preview:find("UIUserInterfaceIdiomPhone", 1, true) ~= nil,
+	"embedded preview uses phone traits")
+local loader = assert(io.open("ios/LuaRuntime/LRTResourceLoader.m", "r")):read("*a")
+t.expect(loader:find("self.localRoot.stringByStandardizingPath", 1, true) ~= nil,
+	"device bundle root is normalized before the resource containment check")
+
 os.exit(t.summary() and 0 or 1)
