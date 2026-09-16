@@ -26,8 +26,10 @@ failed signing/install steps stop the command.
 
 ## Use
 
-1. Open **Settings** and enter an OpenRouter API key and a tool-capable
-   `provider/model` ID. The default is `anthropic/claude-sonnet-4.5`.
+1. Open **Settings**. Lua Studio starts with the `openrouter/free` router;
+   enter an OpenRouter API key to use it, or choose any stronger tool-capable
+   `provider/model` ID with your key. OpenRouter requires an account/API key
+   even for free models.
 2. Type a request, or tap **Dictate** and use the system keyboard's microphone.
    Tap **Send** after reviewing the dictated text.
 3. The agent reads project files, saves complete file batches, and reloads the
@@ -55,7 +57,10 @@ last working source. Each preview reload creates fresh project state; it does
 not preserve the running model. Native capabilities still require a host build.
 
 The preview uses a child view controller with compact/phone traits, fitted into
-a 393 × 740 point viewport. It is native UIKit running on iPad, not an iPhone
+a 393 × 740 point viewport inside a rounded phone bezel. The bezel and screen
+scale together; the controls inside remain interactive. Reload increments the
+visible load count even when the project revision has not changed.
+It is native UIKit running on iPad, not an iPhone
 Simulator: keyboards, system presentations, and hardware behavior follow the
 host device. Test final apps on an iPhone too.
 
@@ -70,4 +75,11 @@ code. It shares the host's native runtime.
 
 `make test` includes project mutation, syntax validation, atomic persistence,
 undo, tool exchanges, cancellation, runtime error recovery, and device discovery.
-Live API calls require your own OpenRouter key.
+It also invokes the workspace's template-bound buttons with a mocked transport,
+including Files, Settings, Reload, Send, Stop, and keyboard dictation, and checks
+the signing entitlements needed by Keychain. Simulator builds embed their
+entitlements in Mach-O sections; device builds sign with the profile's allowed
+app-specific Keychain group. Credential errors appear in Settings instead of
+preventing the sheet from opening.
+Live API calls require your own OpenRouter key, including calls through
+`openrouter/free`.

@@ -93,6 +93,13 @@ local presentation = assert(io.open("src/uikit/presentation.m", "r")):read("*a")
 local preview = assert(io.open("src/uikit/preview.m", "r")):read("*a")
 t.expect(hosting:find("keyboardLayoutGuide.topAnchor", 1, true) ~= nil,
 	"hosting bounds account for the software keyboard")
+t.expect(hosting:find("luaRoot.topAnchor constraintEqualToAnchor:self.view.topAnchor", 1, true) ~= nil
+	and hosting:find("luaRoot.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor", 1, true) ~= nil
+	and hosting:find("luaRoot.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor", 1, true) ~= nil,
+	"hosting root fills the window behind system chrome")
+t.expect(hosting:find("viewSafeAreaInsetsDidChange", 1, true) ~= nil
+	and hosting:find("kHostSafeAreaTopKey", 1, true) ~= nil,
+	"hosting converts the status-bar inset into top layout padding")
 t.expect(presentation:find("if (presenter.presentingViewController)", 1, true) ~= nil,
 	"dismiss targets the presented controller")
 t.expect(preview:find("addChildViewController", 1, true) ~= nil

@@ -23,7 +23,7 @@ function Controller:createWindow()
 	self.preview = Preview.new(ns, ns._readFile)
 	self.agent = Agent.new(self.model, device.transport, device.json,
 		function() return self:reloadPreview() end, function() self:update() end)
-	self.model:message("Agent", "What would you like to build? I can edit this app and show the changes here. Add your OpenRouter key in Settings to begin.")
+	self.model:message("Agent", "What would you like to build? I can edit this app and show the changes here. Start with OpenRouter Free in Settings, or add your API key to use a stronger model.")
 	local config, refs = self.xml.renderFile(VIEWS .. "Window.etlua", {
 		actions = {
 			send = function() self:send() end,
@@ -59,7 +59,8 @@ function Controller:reloadPreview()
 	local controller, err = self.preview:render(self.model.files)
 	if controller then
 		self.refs.preview.content = controller
-		self:setStatus("Preview ready · revision " .. self.model.revision)
+		self.previewLoads = (self.previewLoads or 0) + 1
+		self:setStatus("Preview ready · revision " .. self.model.revision .. " · load " .. self.previewLoads)
 	else
 		self:setStatus("Preview error · previous version is still visible")
 		self.model:message("Preview error", tostring(err))
@@ -69,7 +70,18 @@ function Controller:reloadPreview()
 end
 function Controller:send()
 	local text = self.refs.composer.text
-	local ok, err = self.agent:send(text, self.ns._credential("openrouter"))
+	local read, key = pcall(self.ns._credential, "openrouter")
+	if not read then
+		self:setStatus("Cannot read API key: " .. tostring(key))
+		self:showSettings()
+		return
+	end
+	if not key or key == "" then
+		self:setStatus("Add an OpenRouter API key in Settings before sending")
+		self:showSettings()
+		return
+	end
+	local ok, err = self.agent:send(text, key)
 	if ok then self.refs.composer.text = "" else self:setStatus(err) end
 end
 function Controller:undo()
@@ -94,13 +106,16 @@ function Controller:showSettings()
 			if not saved then refs.status.text = tostring(keyError); return end
 			self.ns.dismiss()
 			self:setStatus("OpenRouter settings saved")
+		end, free = function()
+			refs.model.text = "openrouter/free"
+			refs.status.text = "Free router selected · an OpenRouter key is still required"
 		end },
 	}, self.ns)
-	refs.key.text = self.ns._credential("openrouter")
+	local read, key = pcall(self.ns._credential, "openrouter")
+	if read then refs.key.text = key or ""
+	else refs.status.text = "Cannot read API key: " .. tostring(key) end
 	for _, field in ipairs({ refs.key, refs.model }) do
-		field.autocorrectionType = 1
-		field.autocapitalizationType = 0
-		field.smartQuotesType = 1
+		field.verbatim = true
 	end
 	self.ns.presentSheet(view, { title = "OpenRouter", detents = { "large" } })
 end
@@ -125,13 +140,8 @@ function Controller:showFiles()
 			refs.status.text = "Saved · revision " .. self.model.revision
 		end },
 	}, self.ns)
-	refs.editor.autocorrectionType = 1
-	refs.editor.autocapitalizationType = 0
-	refs.editor.smartQuotesType = 1
-	refs.editor.smartDashesType = 1
-	refs.editor.spellCheckingType = 1
-	refs.path.autocorrectionType = 1
-	refs.path.autocapitalizationType = 0
+	refs.editor.verbatim = true
+	refs.path.verbatim = true
 	self.ns.presentSheet(view, { title = "Project files", detents = { "large" } })
 end
 return Controller

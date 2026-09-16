@@ -3,6 +3,7 @@ Model.__index = Model
 local PREFIX = "examples/playground/"
 local REQUIRED = { "init.lua", "Model.lua", "Controller.lua", "views/Window.etlua" }
 local LIMITS = { fileBytes = 128 * 1024, totalBytes = 1024 * 1024, history = 20 }
+local DEFAULT_MODEL = "openrouter/free"
 
 local function copy(files)
 	local result = {}
@@ -21,7 +22,7 @@ end
 
 function Model.new(storage, seed)
 	local self = setmetatable({ storage = storage, files = copy(seed), history = {}, messages = {},
-		model = "anthropic/claude-sonnet-4.5", revision = 0 }, Model)
+		model = DEFAULT_MODEL, revision = 0 }, Model)
 	local saved = storage.load()
 	if saved then
 		local ok, err = self:validate(saved.files)

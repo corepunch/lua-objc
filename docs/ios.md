@@ -318,7 +318,7 @@ end
 `LuaHostingController`:
 
 - `view` is a container `UIView` with `backgroundColor = UIColor.systemBackgroundColor`.
-- On `viewDidLayoutSubviews`, set the Lua root view’s frame to `view.bounds` (or `safeAreaLayoutGuide.layoutFrame` unless `ignoresSafeArea`), then `layout_recursive(root, width)`.
+- On `viewDidLayoutSubviews`, keep the Lua root view edge-to-edge in `view.bounds`, then add the live top `safeAreaInsets.top` to its layout padding (unless `ignoresSafeArea` includes `top`) before calling `layout_recursive(root, width)`.
 - Subscribes to `view.keyboardLayoutGuide` when `keyboardAvoidance ~= false` (default on).
 - Forwards `prefersLargeTitles`, `hidesBottomBarWhenPushed`, navigation item from props.
 
@@ -360,11 +360,11 @@ Keep the existing C flex engine in `src/uikit/layout.m` (`layout_recursive`, `kS
 
 A later layout PR (PR 3) brings measure/distribute/min/max up to AppKit parity and wires safe area + keyboard. Named constants stay in `src/uikit/bridge.m`.
 
-`LuaHostingController` is the only place that decides the root width: scene bounds, minus safe area unless ignored. Do not call `content:layout(480)` from `UIKit.Window`.
+`LuaHostingController` is the only place that decides the root width: the full scene bounds, with the status-bar inset represented as top layout padding. Do not call `content:layout(480)` from `UIKit.Window`.
 
 Safe area:
 
-- Default: root view laid out in `safeAreaLayoutGuide`.
+- Default: root view fills the window so the app background continues behind the system status and home-indicator regions; only the top inset is added to content layout.
 - `ignoresSafeArea="top"` (XML / prop): pin to `view.bounds` on that edge so hero images bleed under the nav bar (AdventuresView / GameInfoView).
 - `safeAreaInset` edge bottom: extra bottom constraint (Create Game primary button, session composer). Prefer `keyboardLayoutGuide` for the composer.
 

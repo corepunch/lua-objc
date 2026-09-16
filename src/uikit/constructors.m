@@ -197,9 +197,33 @@ static int bridge_UIKitControls_spacer(lua_State *L) {
 	return 1;
 }
 
+// UITextInputTraits are forwarded by UIKit and are not reliably KVC-settable.
+// Expose a semantic editing mode on the exported controls instead.
+static void set_verbatim_input(id<UITextInputTraits> input, BOOL verbatim) {
+	input.autocorrectionType = verbatim ? UITextAutocorrectionTypeNo : UITextAutocorrectionTypeDefault;
+	input.autocapitalizationType = verbatim ? UITextAutocapitalizationTypeNone : UITextAutocapitalizationTypeSentences;
+	input.smartQuotesType = verbatim ? UITextSmartQuotesTypeNo : UITextSmartQuotesTypeDefault;
+	input.smartDashesType = verbatim ? UITextSmartDashesTypeNo : UITextSmartDashesTypeDefault;
+	input.spellCheckingType = verbatim ? UITextSpellCheckingTypeNo : UITextSpellCheckingTypeDefault;
+}
+
+@interface LuaTextField : UITextField
+@property(nonatomic) BOOL verbatim;
+@end
+@implementation LuaTextField
+- (void)setVerbatim:(BOOL)value { _verbatim = value; set_verbatim_input(self, value); }
+@end
+
+@interface LuaTextView : UITextView
+@property(nonatomic) BOOL verbatim;
+@end
+@implementation LuaTextView
+- (void)setVerbatim:(BOOL)value { _verbatim = value; set_verbatim_input(self, value); }
+@end
+
 static int bridge_UIKitControls_textField(lua_State *L) {
 	const char *text = luaL_optstring(L, 1, "");
-	UITextField *obj = [[UITextField alloc] initWithFrame:CGRectZero];
+	UITextField *obj = [[LuaTextField alloc] initWithFrame:CGRectZero];
 	obj.text = [NSString stringWithUTF8String:text];
 	push_objc(L, obj, "uiview");
 	return 1;
@@ -218,7 +242,7 @@ static int bridge_UIKitControls_searchField(lua_State *L) {
 
 static int bridge_UIKitControls_textEditor(lua_State *L) {
 	const char *text = luaL_optstring(L, 1, "");
-	UITextView *obj = [[UITextView alloc] initWithFrame:CGRectZero];
+	UITextView *obj = [[LuaTextView alloc] initWithFrame:CGRectZero];
 	obj.text = [NSString stringWithUTF8String:text];
 	obj.editable = lua_isnoneornil(L, 2) ? YES : lua_toboolean(L, 2);
 	obj.selectable = lua_isnoneornil(L, 3) ? YES : lua_toboolean(L, 3);

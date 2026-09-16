@@ -20,6 +20,16 @@ FLAGS := -isysroot $(SDK_PATH) -arch $(ARCH) $(MIN_FLAG) -O2 -Wall -DLUA_USE_IOS
 HOST := $(wildcard ios/LuaRuntime/*.m)
 FRAGMENTS := $(shell find src/uikit src/shared -name '*.m')
 FRAMEWORKS := -framework UIKit -framework Foundation -framework CoreGraphics -framework QuartzCore -framework Security
+ifeq ($(SDK),iphonesimulator)
+SIM_ENTITLEMENTS := $(ROOT)/$(BUNDLE_ID).entitlements.plist
+SIM_DER := $(SIM_ENTITLEMENTS:.plist=.der)
+SIM_LINK_FLAGS := -Wl,-sectcreate,__TEXT,__entitlements,$(SIM_ENTITLEMENTS) -Wl,-sectcreate,__TEXT,__ents_der,$(SIM_DER)
+$(SIM_ENTITLEMENTS): scripts/ipad/simulator_entitlements.py
+	@mkdir -p $(@D)
+	python3 $< --identifier $(BUNDLE_ID) --out $@
+$(SIM_DER): $(SIM_ENTITLEMENTS)
+	derq query -f xml -i $< -o $@
+endif
 ifeq ($(filter $(SDK),iphoneos iphonesimulator),)
 $(error SDK must be iphoneos or iphonesimulator)
 endif
@@ -30,8 +40,8 @@ $(ROOT)/lua/%.o: $(LUA)/%.c scripts/ipad/build.mk
 build/generated/UIKit.lua.h: lua/embedded/UIKit.lua
 	@mkdir -p $(@D)
 	xxd -i -n UIKit_lua $< $@
-$(ROOT)/LuaStudio: $(OBJECTS) $(HOST) ios/LuaRuntime/LuaRuntime.h src/uikit_module.m $(FRAGMENTS) build/generated/UIKit.lua.h scripts/ipad/build.mk
-	xcrun --sdk $(SDK) clang $(FLAGS) -fobjc-arc -Iios/LuaRuntime -Isrc -Ibuild $(HOST) src/uikit_module.m $(OBJECTS) $(FRAMEWORKS) -o $@
+$(ROOT)/LuaStudio: $(OBJECTS) $(HOST) ios/LuaRuntime/LuaRuntime.h src/uikit_module.m $(FRAGMENTS) build/generated/UIKit.lua.h scripts/ipad/build.mk $(SIM_ENTITLEMENTS) $(SIM_DER)
+	xcrun --sdk $(SDK) clang $(FLAGS) -fobjc-arc -Iios/LuaRuntime -Isrc -Ibuild $(HOST) src/uikit_module.m $(OBJECTS) $(FRAMEWORKS) $(SIM_LINK_FLAGS) -o $@
 app: $(ROOT)/LuaStudio
 	python3 scripts/ipad/bundle.py --binary $< --bundle $(BUNDLE) --sdk $(SDK) --identifier $(BUNDLE_ID) --minimum $(IOS_MIN)
 ifeq ($(SDK),iphonesimulator)

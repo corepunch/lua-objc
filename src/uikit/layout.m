@@ -56,7 +56,8 @@ static CGFloat view_padding_vertical(UIView *view) {
 
 static CGFloat view_padding_top(UIView *view) {
 	NSNumber *value = objc_getAssociatedObject(view, &kPaddingTopKey);
-	return value ? value.doubleValue : view_padding_vertical(view);
+	CGFloat declared = value ? value.doubleValue : view_padding_vertical(view);
+	return declared + [objc_getAssociatedObject(view, &kHostSafeAreaTopKey) doubleValue];
 }
 
 static CGFloat view_padding_bottom(UIView *view) {

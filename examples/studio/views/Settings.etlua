@@ -5,7 +5,10 @@
 	<Label text="The key stays in this iPad’s Keychain. Your prompts and requested project files are sent to OpenRouter." size="14" color="secondary" lines="3" />
 	<Label text="Model" size="15" weight="semibold" />
 	<TextField ref="model" value="<%= model %>" placeholder="provider/model" fillWidth="true" />
-	<Label text="Choose an OpenRouter model that supports tools." size="14" color="secondary" lines="2" />
+	<HStack padding="0" spacing="10" fillWidth="true">
+		<Button title="Use free router" action="free" />
+		<Label text="Use any tool-capable model with your key." size="14" color="secondary" lines="2" flexGrow="1" />
+	</HStack>
 	<Label ref="status" text="" size="14" lines="3" />
 	<Button title="Save settings" action="save" style="borderedProminent" />
 	<Spacer />

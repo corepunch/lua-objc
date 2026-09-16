@@ -9,6 +9,19 @@ __attribute__((weak)) UIWindow *LRTApplicationWindow(void) {
 @end
 
 @implementation LuaHostingController
+- (BOOL)ignoresTopSafeArea {
+	NSString *safeArea = self.luaRoot.ignoresSafeArea;
+	return [safeArea isEqualToString:@"top"]
+		|| [safeArea isEqualToString:@"all"]
+		|| [safeArea isEqualToString:@"edges"];
+}
+
+- (void)updateHostSafeAreaPadding {
+	CGFloat topInset = [self ignoresTopSafeArea] ? 0 : self.view.safeAreaInsets.top;
+	objc_setAssociatedObject(self.luaRoot, &kHostSafeAreaTopKey, @(topInset),
+		OBJC_ASSOCIATION_RETAIN);
+}
+
 - (instancetype)initWithLuaView:(UIView *)view {
 	self = [super initWithNibName:nil bundle:nil];
 	_luaRoot = view;
@@ -20,23 +33,27 @@ __attribute__((weak)) UIWindow *LRTApplicationWindow(void) {
 	self.view.backgroundColor = UIColor.systemBackgroundColor;
 	if (!self.luaRoot) return;
 	[self.view addSubview:self.luaRoot];
-	NSString *safeArea = self.luaRoot.ignoresSafeArea;
-	BOOL ignoresTop = [safeArea isEqualToString:@"top"]
-		|| [safeArea isEqualToString:@"all"]
-		|| [safeArea isEqualToString:@"edges"];
 	self.luaRoot.translatesAutoresizingMaskIntoConstraints = NO;
-	// Referencing the keyboard guide from constraints lets UIKit drive updates
-	// during keyboard transitions, including sheets and hardware keyboards.
+	// The Lua root owns the entire window so the system status and home-indicator
+	// regions keep the app background. Its top layout padding is updated from
+	// safeAreaInsets below, keeping content clear of the status indicators.
 	[NSLayoutConstraint activateConstraints:@[
-		[self.luaRoot.topAnchor constraintEqualToAnchor:ignoresTop ? self.view.topAnchor : self.view.safeAreaLayoutGuide.topAnchor],
-		[self.luaRoot.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor],
-		[self.luaRoot.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor],
+		[self.luaRoot.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+		[self.luaRoot.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+		[self.luaRoot.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
 		[self.luaRoot.bottomAnchor constraintEqualToAnchor:self.view.keyboardLayoutGuide.topAnchor],
 	]];
 }
 
+- (void)viewSafeAreaInsetsDidChange {
+	[super viewSafeAreaInsetsDidChange];
+	[self updateHostSafeAreaPadding];
+	[self.view setNeedsLayout];
+}
+
 - (void)viewDidLayoutSubviews {
 	[super viewDidLayoutSubviews];
+	[self updateHostSafeAreaPadding];
 	layout_recursive(self.luaRoot, self.luaRoot.bounds.size.width);
 }
 @end

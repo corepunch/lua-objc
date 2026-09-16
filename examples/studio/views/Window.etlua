@@ -6,15 +6,15 @@
 				<Spacer />
 				<Button ref="files" title="Files" action="files" />
 				<Button ref="undo" title="Undo" action="undo" />
-				<Button title="Reload" action="reload" />
+				<Button ref="reload" title="Reload" action="reload" />
 				<Button ref="settings" title="Settings" action="settings" />
 			</HStack>
 			<Label text="BUILD WITH AI" size="12" weight="semibold" color="secondary" />
 			<TextEditor ref="transcript" text="" editable="false" selectable="true" size="16" flexGrow="1" fillWidth="true" />
 			<Label text="Describe a change" size="14" color="secondary" />
-			<TextEditor background="secondaryBackground" ref="composer" text="" size="17" height="108" fillWidth="true" />
+			<TextEditor background="secondaryBackground" ref="composer" text="" size="17" fixedHeight="108" fillWidth="true" />
 			<HStack padding="0" spacing="12" fillWidth="true">
-				<Button title="Dictate" action="voice" />
+				<Button ref="voice" title="Dictate" action="voice" />
 				<Spacer />
 				<Button ref="stop" title="Stop" action="stop" />
 				<Button ref="send" title="Send" action="send" style="borderedProminent" />

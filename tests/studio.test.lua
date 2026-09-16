@@ -17,6 +17,7 @@ local storage = { load = function() return nil end, save = function(value)
 	saved = value; return true
 end }
 local model = Model.new(storage, seed)
+t.assertEqual(model.model, "openrouter/free", "new workspaces start with OpenRouter free router")
 t.assertEqual(#model:listFiles(), 4, "starter has four MVC files")
 for _, path in ipairs({ "../secret.lua", "/tmp/file.lua", "examples/playground/../studio/Model.lua", "examples/playground//a.lua", "examples/playground/evil.txt", "examples/playground/a\\b.lua" }) do
 	t.expect(not Model.validPath(path), "reject unsafe path " .. path)
@@ -105,7 +106,7 @@ local recordedNS = setmetatable({}, { __index = function(_, kind)
 end })
 local config, refs = require("ui.xml").renderFile("examples/studio/views/Window.etlua", {
 	actions = { files = function() end, undo = function() end, reload = function() end,
-		settings = function() end, send = function() end, stop = function() end, voice = function() end },
+		settings = function() end, send = function() end, stop = function() end, voice = function() end, free = function() end },
 }, recordedNS)
 local root = config.content
 local sidebar = root[2]
@@ -122,6 +123,10 @@ t.assertEqual(sidebar[#sidebar], refs.status, "status consumes only agent column
 local Controller = require("examples.studio.Controller")
 local controller = Controller.new()
 controller.refs, controller.model, controller.agent = refs, model, agent
+controller.ns = { _credential = function() return "" end }
+controller.showSettings = function() controller.settingsOpened = true end
+controller:send()
+t.expect(controller.settingsOpened, "send without credentials opens settings")
 controller:setStatus("Preview error")
 t.assertEqual(refs.status.text, "Preview error", "errors remain visible in the agent column")
 agent.busy = true

@@ -56,7 +56,7 @@ end
 function Agent:send(text, key)
 	if self.busy then return nil, "The agent is already working" end
 	if type(text) ~= "string" or not text:match("%S") then return nil, "Enter a message" end
-	if not key or key == "" then return nil, "Add your OpenRouter API key in Settings" end
+	if not key or key == "" then return nil, "Add an OpenRouter API key in Settings to use the free router or a stronger model" end
 	self.busy = true
 	self.generation = self.generation + 1
 	local generation, rounds = self.generation, 0

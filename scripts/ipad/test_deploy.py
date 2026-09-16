@@ -1,7 +1,8 @@
 """Fast, offline regression checks for iPad deployment selection."""
 import unittest
 from deploy import select_ipad
-from sign import matches
+from sign import matches, signing_entitlements
+from simulator_entitlements import entitlements
 
 
 def device(identifier, kind='iPad', state='connected', transport='localNetwork'):
@@ -11,6 +12,20 @@ def device(identifier, kind='iPad', state='connected', transport='localNetwork')
 
 
 class DiscoveryTests(unittest.TestCase):
+    def test_simulator_keychain(self):
+        result = entitlements('org.luaobjc.test')
+        self.assertEqual(result['application-identifier'], 'SIMULATOR.org.luaobjc.test')
+        self.assertEqual(result['keychain-access-groups'], ['SIMULATOR.org.luaobjc.test'])
+
+    def test_keychain_entitlement(self):
+        # App ID prefixes can differ from the signing team identifier.
+        entitlements = signing_entitlements('PREFIX.org.luaobjc.studio', 'TEAM', ['PREFIX.*'])
+        self.assertEqual(entitlements['keychain-access-groups'], ['PREFIX.org.luaobjc.studio'])
+        self.assertEqual(entitlements['application-identifier'], 'PREFIX.org.luaobjc.studio')
+        self.assertEqual(entitlements['com.apple.developer.team-identifier'], 'TEAM')
+        with self.assertRaises(ValueError):
+            signing_entitlements('PREFIX.org.luaobjc.studio', 'TEAM', ['OTHER.*'])
+
     def test_ipad_ignores_iphone(self):
         self.assertEqual(select_ipad([device('phone', 'iPhone'), device('tablet')]), 'tablet')
 
