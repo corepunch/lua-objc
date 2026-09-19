@@ -1,48 +1,30 @@
 #pragma mark - Editable Text Field Callbacks
 
 @interface LuaTextFieldDelegate : NSObject <NSTextFieldDelegate>
-@property (nonatomic) int changeRef;
-@property (nonatomic) int commandRef;
-@property (nonatomic, weak) LuaStateOwner *owner;
+@property (nonatomic, strong) LuaReg *changeReg;
+@property (nonatomic, strong) LuaReg *commandReg;
 - (BOOL)dispatchCommand:(NSString *)command field:(NSTextField *)field;
 @end
 
 @implementation LuaTextFieldDelegate
 
-- (instancetype)init {
-	self = [super init];
-	if (self) {
-		_changeRef = LUA_NOREF;
-		_commandRef = LUA_NOREF;
-	}
-	return self;
-}
-
 - (void)dealloc {
-	lua_State *callL = _owner.L;
-	if (!callL) return;
-	if (_changeRef != LUA_NOREF) {
-		luaL_unref(callL, LUA_REGISTRYINDEX, _changeRef);
-	}
-	if (_commandRef != LUA_NOREF) {
-		luaL_unref(callL, LUA_REGISTRYINDEX, _commandRef);
-	}
+	[_changeReg dispose];
+	[_commandReg dispose];
 }
 
 - (void)controlTextDidChange:(NSNotification *)notification {
-	lua_State *callL = _owner.L;
-	if (_changeRef == LUA_NOREF || !callL) return;
+	lua_State *callL = lua_reg_live_state(_changeReg);
+	if (!callL || !lua_reg_push(_changeReg)) return;
 	NSTextField *field = notification.object;
-	lua_rawgeti(callL, LUA_REGISTRYINDEX, _changeRef);
 	lua_pushstring(callL, field.stringValue.UTF8String);
 	push_objc(callL, field, "nsview");
 	lua_objc_pcall(callL, 2, 0, "text field change");
 }
 
 - (BOOL)dispatchCommand:(NSString *)command field:(NSTextField *)field {
-	lua_State *callL = _owner.L;
-	if (_commandRef == LUA_NOREF || !callL) return NO;
-	lua_rawgeti(callL, LUA_REGISTRYINDEX, _commandRef);
+	lua_State *callL = lua_reg_live_state(_commandReg);
+	if (!callL || !lua_reg_push(_commandReg)) return NO;
 	lua_pushstring(callL, command.UTF8String);
 	push_objc(callL, field, "nsview");
 	if (lua_objc_pcall(callL, 2, 1, "text field command") != LUA_OK) {
@@ -77,14 +59,9 @@ static int bridge_text_field_callbacks(lua_State *L) {
 	if (![obj isKindOfClass:[NSTextField class]]) {
 		return luaL_error(L, "textFieldCallbacks requires an NSTextField");
 	}
-	int changeRef, commandRef;
-	LUA_OPT_CALLBACK_REF(L, 2, changeRef);
-	LUA_OPT_CALLBACK_REF(L, 3, commandRef);
-
 	LuaTextFieldDelegate *delegate = [[LuaTextFieldDelegate alloc] init];
-	delegate.owner = owner_for_state(L);
-	delegate.changeRef = changeRef;
-	delegate.commandRef = commandRef;
+	delegate.changeReg = lua_reg_opt(L, 2);
+	delegate.commandReg = lua_reg_opt(L, 3);
 	NSTextField *field = (NSTextField *)obj;
 	field.delegate = delegate;
 	objc_setAssociatedObject(field, &kKeys[kTextFieldDelegateKey], delegate,

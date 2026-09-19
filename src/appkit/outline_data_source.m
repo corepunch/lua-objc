@@ -216,20 +216,15 @@
 	if (row < 0) return;
 
 	NSScrollView *sv = _outlineView.enclosingScrollView;
-	lua_State *callL = self.owner.L;
-	if (!sv || !callL) return;
-
-	NSNumber *refNum = objc_getAssociatedObject(sv,
-		&kKeys[kTableSelectionKey]);
-	if (!refNum) return;
+	LuaReg *reg = objc_getAssociatedObject(sv, &kKeys[kTableSelectionKey]);
+	lua_State *callL = lua_reg_live_state(reg);
+	if (!sv || !callL || !lua_reg_push(reg)) return;
 
 	id item = [_outlineView itemAtRow:row];
 	if (!item) return;
 	NSDictionary *rowData = (NSDictionary *)item;
 
 	NSEventModifierFlags mods = NSApp.currentEvent.modifierFlags;
-
-	lua_rawgeti(callL, LUA_REGISTRYINDEX, refNum.intValue);
 	push_objc(callL, sv, "nsview");
 	lua_pushinteger(callL, (lua_Integer)row);
 	lua_newtable(callL);
@@ -253,17 +248,15 @@
 
 - (void)activateSelectedRow:(id)sender {
 	NSInteger row = _outlineView.selectedRow;
-	lua_State *callL = self.owner.L;
-	if (row < 0 || !callL) return;
+	if (row < 0) return;
 	id item = [_outlineView itemAtRow:row];
 	if (!item) return;
 	NSScrollView *sv = _outlineView.enclosingScrollView;
-	NSNumber *refNum = objc_getAssociatedObject(sv,
-		&kKeys[kTableActivationKey]);
-	if (!refNum) return;
+	LuaReg *reg = objc_getAssociatedObject(sv, &kKeys[kTableActivationKey]);
+	lua_State *callL = lua_reg_live_state(reg);
+	if (!callL || !lua_reg_push(reg)) return;
 
 	NSDictionary *rowData = (NSDictionary *)item;
-	lua_rawgeti(callL, LUA_REGISTRYINDEX, refNum.intValue);
 	push_objc(callL, sv, "nsview");
 	lua_pushinteger(callL, (lua_Integer)row);
 	lua_newtable(callL);

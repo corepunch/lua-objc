@@ -36,8 +36,9 @@ See [object and state ownership](../ARCHITECTURE.md#object-and-state-ownership).
 | `uikit/tables.m` | UITableView construction and mutation | `bridge_tableview` |
 | `uikit/runtime.m` / `uikit/metatable.m` | userdata conversion and property access | `push_objc`, `nsview_index` |
 | `uikit/platform.m` | window display and native values | `bridge_show`, `bridge_font` |
-| `shared/lua_bridge_support.m` | userdata retain/release, Foundation conversion, shared boundary helpers | `ObjCRef`, `push_objc`, `gc_objc`, `lua_to_objc_value` |
+| `shared/lua_bridge_support.m` | userdata retain/release, interned handles, Foundation conversion | `ObjCRef`, `push_objc`, `gc_objc`, `lua_to_objc_value` |
 | `shared/lua_async.m` | state owners, timers, HTTP, and JSON for both platforms | `LuaStateOwner`, `bridge_http_get` |
+| `shared/lua_reg.m` | state-bound callback registrations included by `lua_async.m` | `LuaReg`, `lua_reg_opt`, `Scope` |
 | `shared/lua_error.m` | protected callback error reporting | `report_lua_error` |
 
 The fragments are not independent libraries and must not be added as separate
@@ -109,7 +110,7 @@ To add a bridge function:
    on the base extension.
 4. Wrap it in the corresponding `lua/embedded/*.lua` when it is public API.
 5. Add headless regression coverage in `tests/*.test.lua` and visual QA when
-   UI is affected. Any callback addition must name its originating state and
-   the path that releases its registry reference. Follow the lifetime gaps
-   and target contracts in `ARCHITECTURE.md`; native retention alone does not
-   make a Lua callback safe.
+   UI is affected. Any callback addition must store a `LuaReg` on the native
+   target (and therefore the current `Scope`) and invoke through
+   `lua_reg_push`. Follow the lifetime contracts in `ARCHITECTURE.md`; native
+   retention alone does not make a Lua callback safe.

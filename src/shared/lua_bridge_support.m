@@ -9,10 +9,65 @@ typedef struct {
 	void *ptr;
 } ObjCRef;
 
+static const char *kHandleInternKey = "lua_objc.handles";
+
+static void lua_objc_init_handles(lua_State *L) {
+	lua_newtable(L);
+	lua_newtable(L);
+	lua_pushliteral(L, "v");
+	lua_setfield(L, -2, "__mode");
+	lua_setmetatable(L, -2);
+	lua_setfield(L, LUA_REGISTRYINDEX, kHandleInternKey);
+}
+
+static int lua_objc_argerror_released(lua_State *L, int idx) {
+	return luaL_argerror(L, idx, "native object has been released");
+}
+
+static int lua_objc_argerror_type(
+	lua_State *L, int idx, const char *expectedName, const char *actualName
+) {
+	lua_pushfstring(L, "%s expected, got %s", expectedName, actualName);
+	return luaL_argerror(L, idx, lua_tostring(L, -1));
+}
+
+static int lua_objc_conversion_error(lua_State *L, const char *tname) {
+	return luaL_error(L, "cannot convert %s to a Foundation value", tname);
+}
+
+static id lua_objc_live_ptr(lua_State *L, int idx, ObjCRef *ref) {
+	if (!ref || !ref->ptr) {
+		lua_objc_argerror_released(L, idx);
+		return nil;
+	}
+	return (__bridge id)ref->ptr;
+}
+
 static void push_objc(lua_State *L, id obj, const char *meta) {
+	if (!obj) {
+		lua_pushnil(L);
+		return;
+	}
+	lua_getfield(L, LUA_REGISTRYINDEX, kHandleInternKey);
+	if (!lua_istable(L, -1)) {
+		lua_pop(L, 1);
+		lua_objc_init_handles(L);
+		lua_getfield(L, LUA_REGISTRYINDEX, kHandleInternKey);
+	}
+	lua_pushlightuserdata(L, (__bridge void *)obj);
+	lua_rawget(L, -2);
+	if (!lua_isnil(L, -1)) {
+		lua_remove(L, -2);
+		return;
+	}
+	lua_pop(L, 1);
 	ObjCRef *ref = lua_newuserdata(L, sizeof(ObjCRef));
 	ref->ptr = (void *)CFBridgingRetain(obj);
 	luaL_setmetatable(L, meta);
+	lua_pushlightuserdata(L, (__bridge void *)obj);
+	lua_pushvalue(L, -2);
+	lua_rawset(L, -4);
+	lua_remove(L, -2);
 }
 
 #ifndef LUA_OBJC_VIEWCONTROLLER_METATABLE
@@ -38,11 +93,11 @@ id lua_objc_check_object(
 		luaL_typeerror(L, idx, expectedName);
 		return nil;
 	}
-	id object = (__bridge id)ref->ptr;
+	id object = lua_objc_live_ptr(L, idx, ref);
 	if (![object isKindOfClass:expectedClass]) {
-		NSString *message = [NSString stringWithFormat:@"%s expected, got %@",
-			expectedName, NSStringFromClass([object class])];
-		luaL_argerror(L, idx, message.UTF8String);
+		const char *got = class_getName([object class]);
+		object = nil;
+		lua_objc_argerror_type(L, idx, expectedName, got);
 		return nil;
 	}
 	return object;
@@ -53,6 +108,15 @@ id lua_objc_check_object(
 
 static int gc_objc(lua_State *L) {
 	ObjCRef *ref = lua_touserdata(L, 1);
+	if (ref && ref->ptr) {
+		CFRelease(ref->ptr);
+		ref->ptr = NULL;
+	}
+	return 0;
+}
+
+static int bridge_invalidate_handle(lua_State *L) {
+	ObjCRef *ref = lua_objc_test_ref(L, 1);
 	if (ref && ref->ptr) {
 		CFRelease(ref->ptr);
 		ref->ptr = NULL;
@@ -260,10 +324,17 @@ static id lua_objc_foundation_value_at_index(
 
 static id lua_to_objc_value(lua_State *L, int idx) {
 	BOOL converted = NO;
-	NSMutableSet<NSValue *> *ancestors = [NSMutableSet set];
-	id value = lua_objc_foundation_value_at_index(L, idx, ancestors, 0, &converted);
-	if (!converted) {
-		luaL_error(L, "cannot convert %s to a Foundation value", luaL_typename(L, idx));
+	const char *tname = NULL;
+	id value = nil;
+	{
+		NSMutableSet<NSValue *> *ancestors = [NSMutableSet set];
+		value = lua_objc_foundation_value_at_index(
+			L, idx, ancestors, 0, &converted);
+		if (!converted) tname = luaL_typename(L, idx);
+		ancestors = nil;
+		if (converted) return value;
+		value = nil;
 	}
-	return value;
+	lua_objc_conversion_error(L, tname);
+	return nil;
 }

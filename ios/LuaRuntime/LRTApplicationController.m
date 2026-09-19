@@ -153,6 +153,7 @@ static int bridge_read_file(lua_State *L) {
 
 - (BOOL)boot:(NSError **)error {
 	if (_L) {
+		lua_objc_prepare_close(_L);
 		lua_close(_L);
 		_L = NULL;
 		_controllerRef = LUA_NOREF;

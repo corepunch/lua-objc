@@ -6,6 +6,8 @@ local bridge = require("AppKitNative")
 -- declarative components whose behavior cannot be expressed as a native class
 -- declaration.
 local AppKit = bridge
+local Scope = require("ui.scope")(bridge)
+AppKit.Scope = Scope
 
 -- Native timers and network callbacks resume suspended Lua work later. Lua's
 -- coroutine.resume returns failures instead of raising them, so centralize the
@@ -87,6 +89,7 @@ local function resolveImage(name)
 end
 
 function AppKit.Window(props)
+	local scope = Scope.push()
 	local title = props.title or "Window"
 	local requested_size = props.size
 	local has_requested_size = type(requested_size) == "table"
@@ -166,6 +169,9 @@ function AppKit.Window(props)
 			win:show()
 		end)
 	end
+	bridge._onWindowClose(win, function()
+		scope:close()
+	end)
 	return win
 end
 

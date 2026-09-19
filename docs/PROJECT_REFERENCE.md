@@ -1187,7 +1187,7 @@ should add next.
 | **`lua_tostring` mutating numbers on the stack** | Calling `lua_tostring` on a number changes the stack slot to a string, breaking `lua_next` iteration. | Use `lua_pushvalue` before conversion, or check `lua_type` first. |
 | **`sizeToFit` on non-NSControl views** | `NSScrollView`, `NSSplitView` don't implement it — crash. | Guard with `respondsToSelector:@selector(sizeToFit)`. |
 | **ARC and `lua_State*` lifetime** | ARC manages Objective-C references, not the C allocation behind `lua_State*`; `__weak` cannot manage that pointer. | Designate one explicit closer: a closing `LuaStateOwner` on macOS or `LRTApplicationController` on iOS. See [ownership](../ARCHITECTURE.md#object-and-state-ownership). |
-| **Blocks capturing `lua_State*` in async work** | A raw pointer can outlive its state, especially during host reload. | Capture `LuaStateOwner` strongly, check cancellation, and resume through its live state. UI callbacks still using `gL` need migration to state-bound registrations. |
+| **Blocks capturing `lua_State*` in async work** | A raw pointer can outlive its state, especially during host reload. | Capture `LuaStateOwner` strongly, check cancellation, and resume through its live state. UI callbacks use `LuaReg` against that owner. |
 
 ## File layout
 

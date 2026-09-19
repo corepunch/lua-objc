@@ -294,9 +294,11 @@ static NSWindow *lua_objc_app_window(void) {
 
 static id check_objc(lua_State *L, int idx) {
 	ObjCRef *ref = lua_objc_test_ref(L, idx);
-	if (ref) return (__bridge id)ref->ptr;
-	luaL_typeerror(L, idx, "Objective-C object");
-	return nil;
+	if (!ref) {
+		luaL_typeerror(L, idx, "Objective-C object");
+		return nil;
+	}
+	return lua_objc_live_ptr(L, idx, ref);
 }
 
 static NSView *check_view(lua_State *L, int idx) {
@@ -370,7 +372,7 @@ static MethodEntry TableDataMethods[] = {
 };
 
 static int nsview_index(lua_State *L) {
-	id obj = (__bridge id)((ObjCRef *)lua_touserdata(L, 1))->ptr;
+	id obj = lua_objc_live_ptr(L, 1, lua_touserdata(L, 1));
 	const char *key = lua_tostring(L, 2);
 	if (!key) { lua_pushnil(L); return 1; }
 
@@ -412,7 +414,7 @@ static int nsview_index(lua_State *L) {
 }
 
 static int nsview_newindex(lua_State *L) {
-	id obj = (__bridge id)((ObjCRef *)lua_touserdata(L, 1))->ptr;
+	id obj = lua_objc_live_ptr(L, 1, lua_touserdata(L, 1));
 	const char *key = lua_tostring(L, 2);
 	if (!key) return luaL_error(L, "invalid property name");
 

@@ -57,7 +57,7 @@ static int bridge_NSTabView_addTab_impl(lua_State *L, NSTabView *self, const cha
 static int bridge_NSTabView_removeTab_impl(lua_State *L, NSTabView *self, NSInteger index);
 static int bridge_NSTabView_selectTab_impl(lua_State *L, NSTabView *self, NSInteger index);
 static int bridge_NSTabView_tabCount_impl(lua_State *L, NSTabView *self);
-static int bridge_NSTabView_onChange_impl(lua_State *L, NSTabView *self, int callback);
+static int bridge_NSTabView_onChange_impl(lua_State *L, NSTabView *self, LuaReg *callback);
 static int bridge_NSWindow_addTabbedWindow_impl(lua_State *L);
 static int bridge_NSWindow_toggleSidebar_impl(lua_State *L);
 static int bridge_NSWindow_focus_impl(lua_State *L);
@@ -322,9 +322,7 @@ static int bridge_NSTabView_tabCount(lua_State *L) {
 static int bridge_NSTabView_onChange(lua_State *L) {
 	id _obj = lua_objc_check_object(L, 1, [NSTabView class], "TabView");
 	NSTabView *self = (NSTabView *)_obj;
-	int callback;
-	LUA_OPT_CALLBACK_REF(L, 2, callback);
-	return bridge_NSTabView_onChange_impl(L, self, callback);
+	return bridge_NSTabView_onChange_impl(L, self, lua_reg_opt(L, 2));
 }
 
 static int bridge_NSWindow_addTabbedWindow(lua_State *L) {

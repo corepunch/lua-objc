@@ -36,10 +36,7 @@ static int bridge_UIKitControls_datePicker(lua_State *L) {
 	if (!lua_isnoneornil(L, 1))
 		picker.date = [NSDate dateWithTimeIntervalSince1970:luaL_checknumber(L, 1)];
 	if (!lua_isnoneornil(L, 2)) {
-		luaL_checktype(L, 2, LUA_TFUNCTION);
-		lua_pushvalue(L, 2);
-		int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-		objc_setAssociatedObject(picker, &kCallbackKey, @(ref), OBJC_ASSOCIATION_RETAIN);
+		lua_reg_store(picker, &kCallbackKey, lua_reg_create(L, 2, YES));
 		[picker addTarget:[LuaButtonTarget shared] action:@selector(onAction:)
 			forControlEvents:UIControlEventValueChanged];
 	}
@@ -53,10 +50,7 @@ static int bridge_UIKitControls_colorPicker(lua_State *L) {
 	if (!lua_isnoneornil(L, 1))
 		well.selectedColor = lua_objc_uikit_system_color(luaL_checkstring(L, 1));
 	if (!lua_isnoneornil(L, 2)) {
-		luaL_checktype(L, 2, LUA_TFUNCTION);
-		lua_pushvalue(L, 2);
-		int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-		objc_setAssociatedObject(well, &kCallbackKey, @(ref), OBJC_ASSOCIATION_RETAIN);
+		lua_reg_store(well, &kCallbackKey, lua_reg_create(L, 2, YES));
 		[well addTarget:[LuaButtonTarget shared] action:@selector(onAction:)
 			forControlEvents:UIControlEventValueChanged];
 	}
@@ -91,11 +85,11 @@ static int bridge_UIKitControls_colorPicker(lua_State *L) {
 }
 - (void)pickerView:(UIPickerView *)pickerView didSelectRow:(NSInteger)row
 	inComponent:(NSInteger)component {
-	id refObj = objc_getAssociatedObject(pickerView, &kCallbackKey);
-	if (!refObj || !gL) return;
-	lua_rawgeti(gL, LUA_REGISTRYINDEX, [refObj intValue]);
-	push_objc(gL, pickerView, "uiview");
-	lua_objc_pcall(gL, 1, 0, "picker");
+	LuaReg *reg = objc_getAssociatedObject(pickerView, &kCallbackKey);
+	lua_State *L = lua_reg_live_state(reg);
+	if (!L || !lua_reg_push(reg)) return;
+	push_objc(L, pickerView, "uiview");
+	lua_objc_pcall(L, 1, 0, "picker");
 }
 @end
 
@@ -358,12 +352,7 @@ static int bridge_UIKitControls_button(lua_State *L) {
 	const char *style = luaL_optstring(L, 3, "default");
 	const char *systemImage = luaL_optstring(L, 4, "");
 	const char *role = luaL_optstring(L, 5, "");
-	int callback_ref = LUA_NOREF;
-	if (has_callback) {
-		luaL_checktype(L, 2, LUA_TFUNCTION);
-		lua_pushvalue(L, 2);
-		callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	}
+	LuaReg *callback = has_callback ? lua_reg_create(L, 2, YES) : nil;
 
 	UIButton *obj = [UIButton buttonWithType:UIButtonTypeSystem];
 	NSString *buttonTitle = [NSString stringWithUTF8String:title];
@@ -391,8 +380,8 @@ static int bridge_UIKitControls_button(lua_State *L) {
 		[obj setTitle:buttonTitle forState:UIControlStateNormal];
 	}
 	[obj sizeToFit];
-	if (has_callback) {
-		objc_setAssociatedObject(obj, &kCallbackKey, @(callback_ref), OBJC_ASSOCIATION_RETAIN);
+	if (callback) {
+		lua_reg_store(obj, &kCallbackKey, callback);
 		[obj addTarget:[LuaButtonTarget shared] action:@selector(onAction:) forControlEvents:UIControlEventTouchUpInside];
 	}
 	push_objc(L, obj, "uiview");
@@ -423,15 +412,12 @@ static int bridge_UIKitControls_link(lua_State *L) {
 }
 
 @interface LuaMenuStore : NSObject
-@property (nonatomic, strong) NSArray<NSNumber *> *callbackRefs;
-@property (nonatomic, strong) LuaStateOwner *owner;
+@property (nonatomic, strong) NSArray<LuaReg *> *callbacks;
 @end
 
 @implementation LuaMenuStore
 - (void)dealloc {
-	lua_State *L = self.owner.L;
-	for (NSNumber *number in self.callbackRefs)
-		if (L) luaL_unref(L, LUA_REGISTRYINDEX, number.intValue);
+	for (LuaReg *reg in self.callbacks) [reg dispose];
 }
 @end
 
@@ -439,8 +425,7 @@ static int bridge_UIKitControls_menu(lua_State *L) {
 	luaL_checktype(L, 1, LUA_TTABLE);
 	const char *buttonTitle = luaL_optstring(L, 2, "Menu");
 	NSMutableArray<UIMenuElement *> *elements = [NSMutableArray array];
-	NSMutableArray<NSNumber *> *refs = [NSMutableArray array];
-	LuaStateOwner *owner = owner_for_state(L);
+	NSMutableArray<LuaReg *> *regs = [NSMutableArray array];
 	NSInteger count = (NSInteger)luaL_len(L, 1);
 	for (NSInteger i = 1; i <= count; i++) {
 		lua_rawgeti(L, 1, i);
@@ -454,10 +439,10 @@ static int bridge_UIKitControls_menu(lua_State *L) {
 		const char *role = luaL_optstring(L, -1, "");
 		lua_pop(L, 1);
 		lua_getfield(L, -1, "action");
-		int ref = LUA_NOREF;
+		LuaReg *itemReg = nil;
 		if (lua_isfunction(L, -1)) {
-			ref = luaL_ref(L, LUA_REGISTRYINDEX);
-			[refs addObject:@(ref)];
+			itemReg = lua_reg_create(L, -1, YES);
+			[regs addObject:itemReg];
 		} else {
 			lua_pop(L, 1);
 		}
@@ -465,9 +450,9 @@ static int bridge_UIKitControls_menu(lua_State *L) {
 			image:(symbol[0] ? [UIImage systemImageNamed:[NSString stringWithUTF8String:symbol]] : nil)
 			identifier:nil
 			handler:^(__unused UIAction *selected) {
-				if (ref == LUA_NOREF || !owner.L) return;
-				lua_rawgeti(owner.L, LUA_REGISTRYINDEX, ref);
-				lua_objc_pcall(owner.L, 0, 0, "menu");
+				lua_State *callL = lua_reg_live_state(itemReg);
+				if (!callL || !lua_reg_push(itemReg)) return;
+				lua_objc_pcall(callL, 0, 0, "menu");
 			}];
 		if (strcmp(role, "destructive") == 0)
 			action.attributes = UIMenuElementAttributesDestructive;
@@ -481,8 +466,7 @@ static int bridge_UIKitControls_menu(lua_State *L) {
 	button.menu = [UIMenu menuWithTitle:@"" children:elements];
 	button.showsMenuAsPrimaryAction = YES;
 	LuaMenuStore *store = [[LuaMenuStore alloc] init];
-	store.callbackRefs = refs;
-	store.owner = owner;
+	store.callbacks = regs;
 	objc_setAssociatedObject(button, &kTableSourceKey, store,
 		OBJC_ASSOCIATION_RETAIN);
 	[button sizeToFit];
@@ -493,20 +477,14 @@ static int bridge_UIKitControls_menu(lua_State *L) {
 static int bridge_UIKitControls_toggle(lua_State *L) {
 	const char *label = luaL_checkstring(L, 1);
 	BOOL is_on = (BOOL)lua_toboolean(L, 2);
-	BOOL has_callback = !lua_isnoneornil(L, 3);
-	int callback_ref = LUA_NOREF;
-	if (has_callback) {
-		luaL_checktype(L, 3, LUA_TFUNCTION);
-		lua_pushvalue(L, 3);
-		callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	}
+	LuaReg *callback = lua_reg_opt(L, 3);
 
 	UISwitch *obj = [[UISwitch alloc] initWithFrame:CGRectZero];
 	obj.on = is_on;
 	obj.accessibilityLabel = [NSString stringWithUTF8String:label];
 	[obj sizeToFit];
-	if (has_callback) {
-		objc_setAssociatedObject(obj, &kCallbackKey, @(callback_ref), OBJC_ASSOCIATION_RETAIN);
+	if (callback) {
+		lua_reg_store(obj, &kCallbackKey, callback);
 		[obj addTarget:[LuaButtonTarget shared] action:@selector(onAction:) forControlEvents:UIControlEventValueChanged];
 	}
 	push_objc(L, obj, "uiview");
@@ -517,22 +495,15 @@ static int bridge_UIKitControls_slider(lua_State *L) {
 	CGFloat minimum = luaL_optnumber(L, 1, 0);
 	CGFloat maximum = luaL_optnumber(L, 2, 1);
 	CGFloat value = luaL_optnumber(L, 3, minimum);
-	BOOL has_callback = !lua_isnoneornil(L, 4);
-	int callback_ref = LUA_NOREF;
-	if (has_callback) {
-		luaL_checktype(L, 4, LUA_TFUNCTION);
-		lua_pushvalue(L, 4);
-		callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	}
+	LuaReg *callback = lua_reg_opt(L, 4);
 
 	UISlider *obj = [[UISlider alloc] initWithFrame:CGRectZero];
 	obj.minimumValue = minimum;
 	obj.maximumValue = MAX(minimum, maximum);
 	obj.value = MIN(MAX(value, minimum), obj.maximumValue);
 	[obj sizeToFit];
-	if (has_callback) {
-		objc_setAssociatedObject(obj, &kCallbackKey, @(callback_ref),
-			OBJC_ASSOCIATION_RETAIN);
+	if (callback) {
+		lua_reg_store(obj, &kCallbackKey, callback);
 		[obj addTarget:[LuaButtonTarget shared]
 			action:@selector(onAction:)
 			forControlEvents:UIControlEventValueChanged];
@@ -546,13 +517,7 @@ static int bridge_UIKitControls_stepper(lua_State *L) {
 	CGFloat maximum = luaL_optnumber(L, 2, 100);
 	CGFloat value = luaL_optnumber(L, 3, minimum);
 	CGFloat step = luaL_optnumber(L, 4, 1);
-	BOOL has_callback = !lua_isnoneornil(L, 5);
-	int callback_ref = LUA_NOREF;
-	if (has_callback) {
-		luaL_checktype(L, 5, LUA_TFUNCTION);
-		lua_pushvalue(L, 5);
-		callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	}
+	LuaReg *callback = lua_reg_opt(L, 5);
 
 	UIStepper *obj = [[UIStepper alloc] initWithFrame:CGRectZero];
 	obj.minimumValue = minimum;
@@ -560,9 +525,8 @@ static int bridge_UIKitControls_stepper(lua_State *L) {
 	obj.stepValue = MAX(0, step);
 	obj.value = MIN(MAX(value, minimum), obj.maximumValue);
 	[obj sizeToFit];
-	if (has_callback) {
-		objc_setAssociatedObject(obj, &kCallbackKey, @(callback_ref),
-			OBJC_ASSOCIATION_RETAIN);
+	if (callback) {
+		lua_reg_store(obj, &kCallbackKey, callback);
 		[obj addTarget:[LuaButtonTarget shared]
 			action:@selector(onAction:)
 			forControlEvents:UIControlEventValueChanged];
@@ -585,19 +549,13 @@ static int bridge_UIKitControls_picker(lua_State *L) {
 	NSInteger selected = luaL_optinteger(L, 2, 0);
 	selected = MIN(MAX(selected, 0), count - 1);
 	const char *style = luaL_optstring(L, 4, "automatic");
-	int callback_ref = LUA_NOREF;
-	if (!lua_isnoneornil(L, 3)) {
-		luaL_checktype(L, 3, LUA_TFUNCTION);
-		lua_pushvalue(L, 3);
-		callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	}
+	LuaReg *callback = lua_reg_opt(L, 3);
 	if (strcmp(style, "segmented") == 0) {
 		UISegmentedControl *segmented = [[UISegmentedControl alloc]
 			initWithItems:options];
 		segmented.selectedSegmentIndex = selected;
-		if (callback_ref != LUA_NOREF) {
-			objc_setAssociatedObject(segmented, &kCallbackKey, @(callback_ref),
-				OBJC_ASSOCIATION_RETAIN);
+		if (callback) {
+			lua_reg_store(segmented, &kCallbackKey, callback);
 			[segmented addTarget:[LuaButtonTarget shared]
 				action:@selector(onAction:)
 				forControlEvents:UIControlEventValueChanged];
@@ -610,16 +568,15 @@ static int bridge_UIKitControls_picker(lua_State *L) {
 		&& strcmp(style, "automatic") != 0)
 		return luaL_error(L, "Picker style must be segmented, menu, wheel, or automatic");
 	if (strcmp(style, "menu") == 0 || strcmp(style, "automatic") == 0) {
-		LuaStateOwner *owner = owner_for_state(L);
 		NSMutableArray<UIMenuElement *> *elements = [NSMutableArray array];
 		for (NSInteger i = 0; i < count; i++) {
 			NSInteger index = i;
 			UIAction *action = [UIAction actionWithTitle:options[i] image:nil
 				identifier:nil handler:^(__unused UIAction *selectedAction) {
-					if (callback_ref == LUA_NOREF || !owner.L) return;
-					lua_rawgeti(owner.L, LUA_REGISTRYINDEX, callback_ref);
-					lua_pushinteger(owner.L, index);
-					lua_objc_pcall(owner.L, 1, 0, "picker");
+					lua_State *callL = lua_reg_live_state(callback);
+					if (!callL || !lua_reg_push(callback)) return;
+					lua_pushinteger(callL, index);
+					lua_objc_pcall(callL, 1, 0, "picker");
 				}];
 			[elements addObject:action];
 		}
@@ -627,9 +584,7 @@ static int bridge_UIKitControls_picker(lua_State *L) {
 		[button setTitle:options[selected] forState:UIControlStateNormal];
 		button.menu = [UIMenu menuWithTitle:@"" children:elements];
 		button.showsMenuAsPrimaryAction = YES;
-		if (callback_ref != LUA_NOREF)
-			objc_setAssociatedObject(button, &kCallbackKey, @(callback_ref),
-				OBJC_ASSOCIATION_RETAIN);
+		if (callback) lua_reg_store(button, &kCallbackKey, callback);
 		[button sizeToFit];
 		push_objc(L, button, "uiview");
 		return 1;
@@ -642,8 +597,7 @@ static int bridge_UIKitControls_picker(lua_State *L) {
 	obj.delegate = source;
 	[obj selectRow:(NSUInteger)selected inComponent:0 animated:NO];
 	objc_setAssociatedObject(obj, &kTableSourceKey, source, OBJC_ASSOCIATION_RETAIN);
-	if (callback_ref != LUA_NOREF)
-		objc_setAssociatedObject(obj, &kCallbackKey, @(callback_ref), OBJC_ASSOCIATION_RETAIN);
+	if (callback) lua_reg_store(obj, &kCallbackKey, callback);
 	[obj sizeToFit];
 	push_objc(L, obj, "uiview");
 	return 1;

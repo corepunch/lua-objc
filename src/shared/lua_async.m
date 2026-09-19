@@ -48,17 +48,22 @@ static void report_lua_error(lua_State *L, const char *context);
 @interface LuaStateOwner : NSObject
 @property (nonatomic, readonly) lua_State *L;
 @property (nonatomic, readonly) BOOL cancelled;
+@property (nonatomic, readonly) BOOL closing;
 - (instancetype)initWithState:(lua_State *)L;
 - (instancetype)initWithState:(lua_State *)L closesState:(BOOL)closesState;
 - (void)cancel;
 - (void)detachState;
+- (void)prepareToClose;
 - (void)trackTask:(NSURLSessionDataTask *)task;
 - (void)trackTimer:(NSTimer *)timer;
 @end
 
+void lua_objc_prepare_close(lua_State *L);
+
 @implementation LuaStateOwner {
 	NSMutableArray *_pending;   /* NSURLSessionDataTask | NSTimer */
 	BOOL _closesState;
+	CFRunLoopObserverRef _gcObserver;
 }
 
 - (instancetype)initWithState:(lua_State *)L {
@@ -74,6 +79,28 @@ static void report_lua_error(lua_State *L, const char *context);
 	 * without creating a retain cycle.  The owner's lifetime is managed
 	 * by whoever created it (a local ARC variable), not by the state. */
 	*(void **)lua_getextraspace(L) = (__bridge void *)self;
+
+	/* Lua userdata is tiny relative to the native view tree it may pin, so
+	 * step the collector whenever the run loop is about to sleep. */
+	__weak LuaStateOwner *weakSelf = self;
+	_gcObserver = CFRunLoopObserverCreateWithHandler(
+		kCFAllocatorDefault, kCFRunLoopBeforeWaiting, true, 0,
+		^(CFRunLoopObserverRef observer, CFRunLoopActivity activity) {
+			LuaStateOwner *owner = weakSelf;
+			lua_State *state = owner.L;
+			if (state && !owner.closing) lua_gc(state, LUA_GCSTEP, 40);
+		});
+	if (_gcObserver) {
+		CFRunLoopAddObserver(CFRunLoopGetMain(), _gcObserver,
+			kCFRunLoopCommonModes);
+	}
+#if TARGET_OS_IPHONE
+	[[NSNotificationCenter defaultCenter]
+		addObserver:self
+		   selector:@selector(didReceiveMemoryWarning)
+			   name:UIApplicationDidReceiveMemoryWarningNotification
+			 object:nil];
+#endif
 	return self;
 }
 
@@ -90,10 +117,21 @@ static void report_lua_error(lua_State *L, const char *context);
 	[_pending removeAllObjects];
 }
 
-- (void)detachState {
+- (void)prepareToClose {
+	_closing = YES;
 	[self cancel];
+}
+
+- (void)detachState {
+	[self prepareToClose];
 	_L = NULL;
 }
+
+#if TARGET_OS_IPHONE
+- (void)didReceiveMemoryWarning {
+	if (_L && !_closing) lua_gc(_L, LUA_GCCOLLECT, 0);
+}
+#endif
 
 - (void)trackTask:(NSURLSessionDataTask *)task {
 	if (_cancelled) { [task cancel]; return; }
@@ -110,7 +148,18 @@ static void report_lua_error(lua_State *L, const char *context);
 }
 
 - (void)dealloc {
+#if TARGET_OS_IPHONE
+	[[NSNotificationCenter defaultCenter] removeObserver:self];
+#endif
+	if (_gcObserver) {
+		CFRunLoopRemoveObserver(CFRunLoopGetMain(), _gcObserver,
+			kCFRunLoopCommonModes);
+		CFRelease(_gcObserver);
+		_gcObserver = NULL;
+	}
+	_closing = YES;
 	lua_State *L = _L;
+	_L = NULL;
 	if (!L || !_closesState) return;
 	if ([NSThread isMainThread]) {
 		lua_close(L);
@@ -130,6 +179,14 @@ static void report_lua_error(lua_State *L, const char *context);
 static inline LuaStateOwner *owner_for_state(lua_State *L) {
 	return (__bridge LuaStateOwner *)(*(void **)lua_getextraspace(L));
 }
+
+void lua_objc_prepare_close(lua_State *L) {
+	if (!L) return;
+	LuaStateOwner *owner = owner_for_state(L);
+	[owner prepareToClose];
+}
+
+#include "lua_reg.m"
 
 #ifdef LUA_OBJC_EXTERNAL_STATE_OWNER
 
@@ -179,8 +236,7 @@ static int bridge_timer_after(lua_State *L) {
 	LuaStateOwner *owner = owner_for_state(L);
 	if (!owner) return luaL_error(L, "async runtime is not initialized");
 
-	lua_pushvalue(L, 2);
-	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	LuaReg *reg = lua_reg_create(L, 2, YES);
 
 	/* __block so the block can untrack itself after firing. */
 	__block NSTimer *timer = [NSTimer
@@ -188,14 +244,12 @@ static int bridge_timer_after(lua_State *L) {
 		repeats:NO
 		block:^(NSTimer *t) {
 			[owner _untrack:timer];
-			if (owner.cancelled) {
-				if (owner.L) luaL_unref(owner.L, LUA_REGISTRYINDEX, ref);
-				return;
+			lua_State *callL = lua_reg_live_state(reg);
+			if (callL && !owner.cancelled) {
+				lua_reg_push(reg);
+				lua_objc_pcall(callL, 0, 0, "timer");
 			}
-			lua_State *callL = owner.L;
-			lua_rawgeti(callL, LUA_REGISTRYINDEX, ref);
-			lua_objc_pcall(callL, 0, 0, "timer");
-			luaL_unref(callL, LUA_REGISTRYINDEX, ref);
+			[reg dispose];
 		}];
 
 	[owner trackTimer:timer];
@@ -212,8 +266,7 @@ static int bridge_http_get(lua_State *L) {
 	LuaStateOwner *owner = owner_for_state(L);
 	if (!owner) return luaL_error(L, "async runtime is not initialized");
 
-	lua_pushvalue(L, 2);
-	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	LuaReg *reg = lua_reg_create(L, 2, YES);
 
 	NSMutableURLRequest *req = [NSMutableURLRequest
 		requestWithURL:[NSURL URLWithString:[NSString stringWithUTF8String:url]]];
@@ -225,23 +278,21 @@ static int bridge_http_get(lua_State *L) {
 		completionHandler:^(NSData *data, NSURLResponse *resp, NSError *error) {
 			dispatch_async(dispatch_get_main_queue(), ^{
 				[owner _untrack:task];
-				if (owner.cancelled) {
-					if (owner.L) luaL_unref(owner.L, LUA_REGISTRYINDEX, ref);
-					return;
+				lua_State *callL = lua_reg_live_state(reg);
+				if (callL && !owner.cancelled) {
+					lua_reg_push(reg);
+					if (error) {
+						lua_pushnil(callL);
+						lua_pushstring(callL, error.localizedDescription.UTF8String);
+					} else {
+						NSString *body = [[NSString alloc] initWithData:data
+							encoding:NSUTF8StringEncoding];
+						lua_pushstring(callL, body.UTF8String ?: "");
+						lua_pushnil(callL);
+					}
+					lua_objc_pcall(callL, 2, 0, "http");
 				}
-				lua_State *callL = owner.L;
-				lua_rawgeti(callL, LUA_REGISTRYINDEX, ref);
-				if (error) {
-					lua_pushnil(callL);
-					lua_pushstring(callL, error.localizedDescription.UTF8String);
-				} else {
-					NSString *body = [[NSString alloc] initWithData:data
-						encoding:NSUTF8StringEncoding];
-					lua_pushstring(callL, body.UTF8String ?: "");
-					lua_pushnil(callL);
-				}
-				lua_objc_pcall(callL, 2, 0, "http");
-				luaL_unref(callL, LUA_REGISTRYINDEX, ref);
+				[reg dispose];
 			});
 		}];
 

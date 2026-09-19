@@ -63,10 +63,27 @@ static int bridge_NSView_renderToPNG_impl(lua_State *L) {
 
 static NSMutableDictionary *gFileWatchers = nil;
 
-typedef struct {
-	FSEventStreamRef stream;
-	int luaRef;
-} FileWatcherEntry;
+@interface LuaFileWatcher : NSObject
+@property (nonatomic) FSEventStreamRef stream;
+@property (nonatomic, strong) LuaReg *reg;
+@property (nonatomic, copy) NSString *path;
+@end
+
+@implementation LuaFileWatcher
+- (void)stop {
+	if (_stream) {
+		FSEventStreamStop(_stream);
+		FSEventStreamInvalidate(_stream);
+		FSEventStreamRelease(_stream);
+		_stream = NULL;
+	}
+	[_reg dispose];
+	_reg = nil;
+}
+- (void)dealloc {
+	[self stop];
+}
+@end
 
 static void file_watcher_callback(ConstFSEventStreamRef streamRef,
 	void *clientCallBackInfo, size_t numEvents, void *eventPaths,
@@ -78,16 +95,11 @@ static void file_watcher_callback(ConstFSEventStreamRef streamRef,
 	NSValue *boxed = (__bridge NSValue *)clientCallBackInfo;
 	NSString *path = (__bridge NSString *)(void *)boxed.pointerValue;
 
-	NSValue *entryBox = gFileWatchers[path];
-	if (!entryBox || !gL) return;
-
-	FileWatcherEntry entry;
-	[entryBox getValue:&entry];
-	if (entry.luaRef == LUA_NOREF) return;
-
-	lua_rawgeti(gL, LUA_REGISTRYINDEX, entry.luaRef);
-	lua_pushstring(gL, path.UTF8String);
-	lua_objc_pcall(gL, 1, 0, "watchFile");
+	LuaFileWatcher *watcher = gFileWatchers[path];
+	lua_State *L = lua_reg_live_state(watcher.reg);
+	if (!L || !lua_reg_push(watcher.reg)) return;
+	lua_pushstring(L, path.UTF8String);
+	lua_objc_pcall(L, 1, 0, "watchFile");
 }
 
 static int bridge_watch_file(lua_State *L) {
@@ -98,28 +110,16 @@ static int bridge_watch_file(lua_State *L) {
 		gFileWatchers = [NSMutableDictionary dictionary];
 	}
 
-	/* Cancel any existing watcher for this path. */
-	NSValue *existing = gFileWatchers[path];
+	LuaFileWatcher *existing = gFileWatchers[path];
 	if (existing) {
-		FileWatcherEntry old;
-		[existing getValue:&old];
-		FSEventStreamStop(old.stream);
-		FSEventStreamInvalidate(old.stream);
-		FSEventStreamRelease(old.stream);
-		if (old.luaRef != LUA_NOREF) {
-			luaL_unref(gL, LUA_REGISTRYINDEX, old.luaRef);
-		}
+		[existing stop];
 		[gFileWatchers removeObjectForKey:path];
 	}
 
-	/* nil callback = just cancel */
 	if (lua_isnoneornil(L, 2)) return 0;
 
-	luaL_checktype(L, 2, LUA_TFUNCTION);
-	lua_pushvalue(L, 2);
-	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	LuaReg *reg = lua_reg_create(L, 2, YES);
 
-	/* Use the path NSString pointer as stable context; kept alive by dict. */
 	FSEventStreamContext ctx = {
 		.version = 0,
 		.info = (__bridge void *)([NSValue valueWithPointer:(__bridge void *)path]),
@@ -136,10 +136,11 @@ static int bridge_watch_file(lua_State *L) {
 	FSEventStreamSetDispatchQueue(stream, dispatch_get_main_queue());
 	FSEventStreamStart(stream);
 
-	FileWatcherEntry entry = { .stream = stream, .luaRef = ref };
-	[gFileWatchers setObject:[NSValue value:&entry
-							withObjCType:@encode(FileWatcherEntry)]
-					  forKey:path];
+	LuaFileWatcher *watcher = [[LuaFileWatcher alloc] init];
+	watcher.stream = stream;
+	watcher.reg = reg;
+	watcher.path = path;
+	gFileWatchers[path] = watcher;
 	return 0;
 }
 

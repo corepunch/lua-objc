@@ -1,25 +1,20 @@
 #pragma mark - UITabBarController bridge
 
 @interface LuaTabBarControllerDelegate : NSObject <UITabBarControllerDelegate>
-@property (nonatomic, assign) int selectionRef;
-@property (nonatomic, strong) LuaStateOwner *owner;
+@property (nonatomic, strong) LuaReg *selection;
 @end
 
 @implementation LuaTabBarControllerDelegate
 - (void)dealloc {
-	lua_State *callL = _owner.L;
-	if (_selectionRef != LUA_NOREF && callL) {
-		luaL_unref(callL, LUA_REGISTRYINDEX, _selectionRef);
-		_selectionRef = LUA_NOREF;
-	}
+	[_selection dispose];
 }
 
 - (void)tabBarController:(UITabBarController *)tabBarController
  didSelectViewController:(UIViewController *)viewController {
-	lua_State *L = _owner.L;
-	if (_selectionRef == LUA_NOREF || !L) return;
+	lua_State *L = lua_reg_live_state(_selection);
+	if (!L) return;
 	int top = lua_gettop(L);
-	lua_rawgeti(L, LUA_REGISTRYINDEX, _selectionRef);
+	if (!lua_reg_push(_selection)) return;
 	push_objc(L, tabBarController, "uiviewcontroller");
 	lua_pushinteger(L,
 		[tabBarController.viewControllers indexOfObject:viewController]);
@@ -156,7 +151,7 @@ static int bridge_UIKitTabView_tabCount(lua_State *L) {
 static int bridge_UIKitTabView_onChange(lua_State *L) {
 	id obj = check_objc(L, 1);
 	UITabBarController *tbc = (UITabBarController *)obj;
-	int callback = luaL_ref(L, LUA_REGISTRYINDEX);
+	LuaReg *callback = lua_reg_opt(L, 2);
 
 	LuaTabBarControllerDelegate *existing = objc_getAssociatedObject(
 		tbc, &kTabBarDelegateKey);
@@ -166,11 +161,10 @@ static int bridge_UIKitTabView_onChange(lua_State *L) {
 			OBJC_ASSOCIATION_RETAIN);
 	}
 
-	if (callback != LUA_NOREF) {
+	if (callback) {
 		LuaTabBarControllerDelegate *delegate =
 			[[LuaTabBarControllerDelegate alloc] init];
-		delegate.owner = owner_for_state(L);
-		delegate.selectionRef = callback;
+		delegate.selection = callback;
 		tbc.delegate = delegate;
 		objc_setAssociatedObject(tbc, &kTabBarDelegateKey,
 			delegate, OBJC_ASSOCIATION_RETAIN);

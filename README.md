@@ -243,12 +243,12 @@ containers. Mutating a model does not automatically rebuild a view tree.
 
 The review identifies these priorities, in dependency order:
 
-1. **Unify callback lifetime.** Replace global-state callback lookup and bare
-   registry integers with state-bound registrations and explicit disposal.
-   Test callback replacement, collection, cancellation, and iOS reload.
+1. **Unify callback lifetime.** Done: `LuaReg` + `Scope` replace `gL` and
+   bare registry integers. Tests cover invoke, dispose, replacement, interned
+   identity, and dead handles.
 2. **Make state teardown explicit.** Quiesce native event sources and detach
    callbacks before closing or replacing a state. The async owner already
-   provides cancellation, but UI callbacks still use `gL` in several paths.
+   provides cancellation; UI callbacks use state-bound `LuaReg` registrations.
 3. **Add retained descriptions and keyed reconciliation.** A renderer should
    own mounting, updates, and unmount cleanup while preserving native focus
    and selection. `lua/ui/viewdesc.lua` can describe/diff trees, but its

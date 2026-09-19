@@ -127,23 +127,18 @@ static int bridge_NSWindow_isFirstResponder_impl(lua_State *L) {
 #pragma mark - Generic Menu Items
 
 @interface LuaMenuActionTarget : NSObject
-@property (nonatomic) int callbackRef;
-@property (nonatomic, weak) LuaStateOwner *owner;
+@property (nonatomic, strong) LuaReg *callback;
 @end
 
 @implementation LuaMenuActionTarget
 
 - (void)dealloc {
-	lua_State *callL = _owner.L;
-	if (_callbackRef != LUA_NOREF && callL) {
-		luaL_unref(callL, LUA_REGISTRYINDEX, _callbackRef);
-	}
+	[_callback dispose];
 }
 
 - (void)performAction:(id)sender {
-	lua_State *callL = _owner.L;
-	if (_callbackRef == LUA_NOREF || !callL) return;
-	lua_rawgeti(callL, LUA_REGISTRYINDEX, _callbackRef);
+	lua_State *callL = lua_reg_live_state(_callback);
+	if (!callL || !lua_reg_push(_callback)) return;
 	lua_objc_pcall(callL, 0, 0, "menu action");
 }
 
@@ -179,10 +174,8 @@ static int bridge_menu_item(lua_State *L) {
 	NSMenuItem *existing = [menu itemWithTitle:itemTitle];
 	if (existing) [menu removeItem:existing];
 
-	lua_pushvalue(L, 5);
 	LuaMenuActionTarget *target = [[LuaMenuActionTarget alloc] init];
-	target.callbackRef = luaL_ref(L, LUA_REGISTRYINDEX);
-	target.owner = owner_for_state(L);
+	target.callback = lua_reg_create(L, 5, YES);
 	NSMenuItem *item = [[NSMenuItem alloc]
 		initWithTitle:itemTitle
 			  action:@selector(performAction:)

@@ -43,7 +43,6 @@ static const CGFloat kPreviewBezel = 10.0;
 static const CGFloat kPreviewScreenRadius = 42.0;
 static const CGFloat kPreviewMargin = 16.0;
 static const CGFloat kPreviewTrimWidth = 2.0;
-static lua_State *gL = NULL;
 static int bridge_UIKitNavigation_stack(lua_State *L);
 static int bridge_UIKitNavigation_push(lua_State *L);
 static int bridge_UIKitNavigation_pop(lua_State *L);
@@ -150,6 +149,9 @@ static const luaL_Reg bridge_lib[] = {
 	{"_presentSheet", bridge_UIKitPresentation_presentSheet},
 	{"_dismiss", bridge_UIKitPresentation_dismiss},
 	{"_confirm", bridge_UIKitPresentation_confirm},
+	{"_setCurrentScope", bridge_set_current_scope},
+	{"_invokeAction", bridge_invoke_action},
+	{"_invalidateHandle", bridge_invalidate_handle},
 	{NULL, NULL},
 };
 
@@ -165,8 +167,9 @@ static void register_metatable(lua_State *L, const char *name) {
 }
 
 int luaopen_UIKitNative(lua_State *L) {
-	gL = L;
 	install_external_lua_state_owner(L);
+	lua_objc_init_handles(L);
+	register_luareg_metatable(L);
 
 	register_metatable(L, "uiview");
 	register_metatable(L, "uiwindow");

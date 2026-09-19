@@ -72,24 +72,22 @@ static int bridge_http_request(lua_State *L) {
 	request.HTTPBody = [@(luaL_checkstring(L, 3)) dataUsingEncoding:NSUTF8StringEncoding];
 	LuaStateOwner *owner = owner_for_state(L);
 	if (!owner) return luaL_error(L, "async runtime is not initialized");
-	lua_pushvalue(L, 4);
-	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	LuaReg *reg = lua_reg_create(L, 4, YES);
 	__block NSURLSessionDataTask *task = nil;
 	task = [NSURLSession.sharedSession dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
 		dispatch_async(dispatch_get_main_queue(), ^{
 			[owner _untrack:task];
 			task = nil;
-			if (!owner.L) return;
-			if (!owner.cancelled) {
-				lua_State *callL = owner.L;
-				lua_rawgeti(callL, LUA_REGISTRYINDEX, ref);
+			lua_State *callL = lua_reg_live_state(reg);
+			if (callL && !owner.cancelled) {
+				lua_reg_push(reg);
 				NSString *body = data ? [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] : nil;
 				if (body) lua_pushstring(callL, body.UTF8String); else lua_pushnil(callL);
 				if (error) lua_pushstring(callL, error.localizedDescription.UTF8String); else lua_pushnil(callL);
 				lua_pushinteger(callL, [response isKindOfClass:NSHTTPURLResponse.class] ? ((NSHTTPURLResponse *)response).statusCode : 0);
 				lua_objc_pcall(callL, 3, 0, "HTTP request");
 			}
-			luaL_unref(owner.L, LUA_REGISTRYINDEX, ref);
+			[reg dispose];
 		});
 	}];
 	[owner trackTask:task];
