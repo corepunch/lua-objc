@@ -9,7 +9,7 @@ local BAR_H       = 28
 local LEVEL_GAP   = 2
 local SIBLING_GAP = 1
 local MIN_LABEL_W = 24
-local MIN_BAR_W   = 4     -- skip bars narrower than this (visual noise)
+local MIN_BAR_W   = 2     -- skip bars narrower than this
 
 local DEPTH_STYLES = {
 	{ bg = "systemBlue",   fg = "white" },
@@ -37,6 +37,7 @@ local function makeIcicle(node, availW, depth, onSelect)
 		alignment     = "center",
 		clipsToBounds  = true,
 		onDoubleClick  = function() onSelect(node.path) end,
+		hoverTooltip  = { title = node.name, detail = Model.humanKb(node.kb) },
 	}
 	if availW >= MIN_LABEL_W then
 		bar:add(ns.Text {
@@ -46,6 +47,7 @@ local function makeIcicle(node, availW, depth, onSelect)
 			color      = style.fg,
 			fixedWidth = availW - 8,
 			alignment  = "center",
+			lineLimit  = 1,
 		})
 	end
 
@@ -83,6 +85,21 @@ local function makeIcicle(node, availW, depth, onSelect)
 			row:add(cv)
 			budget = budget - w
 			count  = count + 1
+		end
+	end
+	-- "Other" filler: files + omitted small subdirs
+	if budget >= MIN_BAR_W then
+		if count > 0 then
+			budget = budget - SIBLING_GAP
+			row:add(ns.VStack { fixedWidth = SIBLING_GAP, fixedHeight = BAR_H })
+		end
+		if budget > 0 then
+			row:add(ns.VStack {
+				fixedWidth   = budget,
+				fixedHeight  = BAR_H,
+				cornerRadius = 3,
+				background   = "separator",
+			})
 		end
 	end
 	nodeV:add(row)
@@ -150,7 +167,7 @@ function Controller:startScan(rootPath, isBack)
 		ns.sleep(0.2)
 		while not Model.isDone(handle) do ns.sleep(0.5) end
 
-		local tree = Model.parseTree(handle, { 12, 10, 8, 6 })
+		local tree = Model.parseTree(handle)
 		if not tree then
 			self:showView(ns.VStack {
 				flexGrow  = 1,

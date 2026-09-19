@@ -31,6 +31,7 @@ static int bridge_image_viewer(lua_State *L);
 static int bridge_system_image(lua_State *L);
 static int bridge_system_color(lua_State *L);
 static int bridge_add_double_click(lua_State *L);
+static int bridge_add_hover_tooltip(lua_State *L);
 static int bridge_tableview(lua_State *L);
 static int bridge_action_button(lua_State *L);
 static int bridge_panel(lua_State *L);
@@ -115,6 +116,10 @@ static int bridge_AppKit_system_color(lua_State *L) {
 
 static int bridge_AppKit_add_double_click(lua_State *L) {
 	return bridge_add_double_click(L);
+}
+
+static int bridge_AppKit_add_hover_tooltip(lua_State *L) {
+	return bridge_add_hover_tooltip(L);
 }
 
 static int bridge_AppKit_tableview(lua_State *L) {

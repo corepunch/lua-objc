@@ -45,6 +45,7 @@ local layout_properties = {
 	"cornerRadius",
 	"clipsToBounds",
 	"onDoubleClick",
+	"hoverTooltip",
 }
 
 local function applyLayout(view, props)
@@ -55,6 +56,9 @@ local function applyLayout(view, props)
 				view.backgroundColor = bridge._systemColor(props[key])
 			elseif key == "onDoubleClick" then
 				bridge._addDoubleClick(view, props[key])
+			elseif key == "hoverTooltip" then
+				local tt = props[key]
+				bridge._addHoverTooltip(view, tt.title or "", tt.detail or "")
 			else
 				view[key] = props[key]
 			end

@@ -7,6 +7,7 @@ static const char kToolbarFieldDelegateKey;
 @end
 
 @implementation LuaToolbarFieldDelegate
+- (void)dealloc { [_submitReg dispose]; }
 - (BOOL)control:(NSControl *)control
 	   textView:(NSTextView *)textView
 doCommandBySelector:(SEL)selector
@@ -115,7 +116,7 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 
 			// ── Field item ────────────────────────────────────────────────
 			if ([item[@"type"] isEqualToString:@"field"]) {
-				NSTextField *field = [[NSTextField alloc] initWithFrame:NSZeroRect];
+				LuaTextField *field = [[LuaTextField alloc] initWithFrame:NSZeroRect];
 				((NSTextFieldCell *)field.cell).bezelStyle = NSTextFieldRoundedBezel;
 				field.placeholderString = item[@"label"] ?: @"";
 				field.stringValue       = item[@"value"] ?: @"";
@@ -130,9 +131,9 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 				}
 
 				CGFloat minW = [item[@"minWidth"] doubleValue] ?: 200;
-				ti.view    = field;
-				ti.minSize = NSMakeSize(minW, 26);
-				ti.maxSize = NSMakeSize(10000, 32);
+				field.translatesAutoresizingMaskIntoConstraints = NO;
+				[field.widthAnchor constraintGreaterThanOrEqualToConstant:minW].active = YES;
+				ti.view = field;
 				return ti;
 			}
 

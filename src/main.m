@@ -194,8 +194,8 @@ static void bridge_set_optional_callback(
 #include "appkit/table_data_source.m"
 #include "appkit/outline_data_source.m"
 #include "appkit/action_button.m"
-#include "appkit/toolbar.m"
 #include "appkit/runtime.m"
+#include "appkit/toolbar.m"
 #include "appkit/presentation.m"
 #include "appkit/text_field.m"
 #include "appkit/views.m"
@@ -260,6 +260,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_systemImage", bridge_AppKit_system_image},
 	{"_systemColor", bridge_AppKit_system_color},
 	{"_addDoubleClick", bridge_AppKit_add_double_click},
+	{"_addHoverTooltip", bridge_AppKit_add_hover_tooltip},
 	{"_tableview", bridge_AppKit_tableview},
 	{"_actionButton", bridge_AppKit_action_button},
 	{"_panel", bridge_AppKit_panel},

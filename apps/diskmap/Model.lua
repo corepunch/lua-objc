@@ -35,9 +35,7 @@ function Model.isDone(handle)
 end
 
 -- Parse results into a tree. Each node: {name, path, kb, children}.
--- depthLimits is a list of max children per depth level (0-indexed depth → limits[depth+1]).
-function Model.parseTree(handle, depthLimits)
-	depthLimits = depthLimits or { 12, 10, 8, 6 }
+function Model.parseTree(handle)
 	local rootPath = handle.rootPath:gsub("/$", "")
 
 	local sizes = {}
@@ -65,19 +63,13 @@ function Model.parseTree(handle, depthLimits)
 		table.sort(kids, function(a, b) return (sizes[a] or 0) > (sizes[b] or 0) end)
 	end
 
-	local function buildNode(path, depth)
+	local function buildNode(path)
 		local name = path:match("([^/]+)$") or path
 		local node = { name = name, path = path, kb = sizes[path] or 0, children = {} }
-		local limit = depthLimits[depth + 1] or 0
-		if limit > 0 then
-			local count = 0
-			for _, child in ipairs(childrenOf[path] or {}) do
-				local childName = child:match("([^/]+)$") or ""
-				if childName:sub(1, 1) ~= "." then
-					count = count + 1
-					if count > limit then break end
-					node.children[#node.children+1] = buildNode(child, depth + 1)
-				end
+		for _, child in ipairs(childrenOf[path] or {}) do
+			local childName = child:match("([^/]+)$") or ""
+			if childName:sub(1, 1) ~= "." then
+				node.children[#node.children+1] = buildNode(child)
 			end
 		end
 		return node
@@ -85,7 +77,7 @@ function Model.parseTree(handle, depthLimits)
 
 	os.remove(handle.outFile)
 	os.remove(handle.doneFile)
-	return buildNode(rootPath, 0)
+	return buildNode(rootPath)
 end
 
 return Model

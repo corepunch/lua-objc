@@ -797,6 +797,144 @@ static int bridge_add_double_click(lua_State *L) {
 	return 0;
 }
 
+#pragma mark - Hover Tooltip (NSPopover)
+
+#define kHoverTooltipMinWidth  60
+#define kHoverTooltipDismissDelay 0.05
+
+@interface LuaHoverTooltipVC : NSViewController
+@property (nonatomic, strong) NSTextField *titleLabel;
+@property (nonatomic, strong) NSTextField *detailLabel;
+@property (nonatomic, strong) NSStackView *stack;
+@end
+
+@implementation LuaHoverTooltipVC
+
+- (void)loadView {
+	_titleLabel = [NSTextField labelWithString:@""];
+	_titleLabel.font = [NSFont systemFontOfSize:12 weight:NSFontWeightSemibold];
+	_titleLabel.textColor = NSColor.labelColor;
+	_titleLabel.alignment = NSTextAlignmentCenter;
+	[_titleLabel setContentCompressionResistancePriority:NSLayoutPriorityRequired
+		forOrientation:NSLayoutConstraintOrientationHorizontal];
+
+	_detailLabel = [NSTextField labelWithString:@""];
+	_detailLabel.font = [NSFont systemFontOfSize:11 weight:NSFontWeightRegular];
+	_detailLabel.textColor = NSColor.secondaryLabelColor;
+	_detailLabel.alignment = NSTextAlignmentCenter;
+	[_detailLabel setContentCompressionResistancePriority:NSLayoutPriorityRequired
+		forOrientation:NSLayoutConstraintOrientationHorizontal];
+
+	_stack = [NSStackView stackViewWithViews:@[_titleLabel, _detailLabel]];
+	_stack.orientation = NSUserInterfaceLayoutOrientationVertical;
+	_stack.spacing = 1;
+	_stack.edgeInsets = NSEdgeInsetsMake(4, 10, 4, 10);
+	self.view = _stack;
+}
+
+- (void)updateTitle:(NSString *)title detail:(NSString *)detail {
+	_titleLabel.stringValue = title;
+	_detailLabel.stringValue = detail;
+	_detailLabel.hidden = (detail.length == 0);
+	[_stack layoutSubtreeIfNeeded];
+	NSSize fitting = [_stack fittingSize];
+	fitting.width = MAX(fitting.width, kHoverTooltipMinWidth);
+	self.preferredContentSize = fitting;
+}
+
+@end
+
+static NSPopover *sharedHoverPopover(void) {
+	static NSPopover *popover;
+	static dispatch_once_t onceToken;
+	dispatch_once(&onceToken, ^{
+		popover = [[NSPopover alloc] init];
+		popover.behavior = NSPopoverBehaviorSemitransient;
+		popover.animates = NO;
+		popover.contentViewController = [[LuaHoverTooltipVC alloc] init];
+	});
+	return popover;
+}
+
+static dispatch_block_t sPendingDismiss;
+
+static void cancelPendingDismiss(void) {
+	if (sPendingDismiss) {
+		dispatch_block_cancel(sPendingDismiss);
+		sPendingDismiss = nil;
+	}
+}
+
+static void scheduleDismiss(void) {
+	cancelPendingDismiss();
+	sPendingDismiss = dispatch_block_create(0, ^{
+		sPendingDismiss = nil;
+		NSPopover *popover = sharedHoverPopover();
+		if (popover.isShown) [popover close];
+	});
+	dispatch_after(
+		dispatch_time(DISPATCH_TIME_NOW,
+			(int64_t)(kHoverTooltipDismissDelay * NSEC_PER_SEC)),
+		dispatch_get_main_queue(), sPendingDismiss);
+}
+
+static const char kHoverTooltipTrackerKey;
+
+@interface LuaHoverTooltipTracker : NSObject
+@property (nonatomic, copy) NSString *title;
+@property (nonatomic, copy) NSString *detail;
+@property (nonatomic, weak) NSView *trackedView;
+@property (nonatomic, strong) NSTrackingArea *area;
+@end
+
+@implementation LuaHoverTooltipTracker
+
+- (void)installOn:(NSView *)view {
+	_trackedView = view;
+	if (_area) [view removeTrackingArea:_area];
+	_area = [[NSTrackingArea alloc]
+		initWithRect:NSZeroRect
+			options:(NSTrackingMouseEnteredAndExited
+				| NSTrackingActiveInKeyWindow
+				| NSTrackingInVisibleRect)
+			  owner:self
+		   userInfo:nil];
+	[view addTrackingArea:_area];
+}
+
+- (void)mouseEntered:(NSEvent *)event {
+	cancelPendingDismiss();
+	NSView *view = _trackedView;
+	if (!view || !view.window) return;
+	NSPopover *popover = sharedHoverPopover();
+	LuaHoverTooltipVC *vc = (LuaHoverTooltipVC *)popover.contentViewController;
+	[vc updateTitle:_title detail:_detail];
+	if (popover.isShown) [popover close];
+	[popover showRelativeToRect:view.bounds
+						 ofView:view
+				  preferredEdge:NSMaxYEdge];
+}
+
+- (void)mouseExited:(NSEvent *)event {
+	scheduleDismiss();
+}
+
+@end
+
+static int bridge_add_hover_tooltip(lua_State *L) {
+	NSView *view = check_view(L, 1);
+	const char *title = luaL_checkstring(L, 2);
+	const char *detail = luaL_optstring(L, 3, "");
+
+	LuaHoverTooltipTracker *tracker = [LuaHoverTooltipTracker new];
+	tracker.title = [NSString stringWithUTF8String:title];
+	tracker.detail = [NSString stringWithUTF8String:detail];
+	[tracker installOn:view];
+	objc_setAssociatedObject(view, &kHoverTooltipTrackerKey, tracker,
+		OBJC_ASSOCIATION_RETAIN);
+	return 0;
+}
+
 static int bridge_NSView_clearContainer_impl(lua_State *L) {
 	NSView *container = check_view(L, 1);
 	for (NSView *sub in [container.subviews copy]) {
