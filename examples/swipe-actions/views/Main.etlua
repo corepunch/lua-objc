@@ -1,0 +1,18 @@
+<Window title="Swipe Actions" width="400" height="600">
+  <VStack padding="0" spacing="0">
+    <Label padding="16" size="16" weight="bold">Swipe left to delete</Label>
+
+    <List>
+      <% for _, item in ipairs(items) do %>
+        <ListRow
+            swipeLeading="archive"
+            swipeTrailing="delete"
+            ref="item_<%= item.id %>">
+          <Label
+              text="<% if item.completed then %>[✓] <% end %><%= item.title %>"
+              color="<% if item.completed then %>gray<% else %>black<% end %>" />
+        </ListRow>
+      <% end %>
+    </List>
+  </VStack>
+</Window>
