@@ -21,9 +21,9 @@ local child = parent.subviews[1]
 t.assertEqual(child.text, "Retained by parent", "child remains readable after GC")
 t.assertEqual(child.fixedWidth, 120, "native layout metadata outlives original handle")
 
--- Reading a native property creates another retained handle to the same object.
+-- Interned handles: reading the same native object returns the same userdata.
 local alias = parent.subviews[1]
-t.expect(not rawequal(child, alias), "native identity is distinct from Lua handle identity")
+t.expect(rawequal(child, alias), "interned handles share Lua identity")
 alias.text = "Changed through alias"
 t.assertEqual(child.text, "Changed through alias", "handles share native property state")
 t.assertEqual(child.fixedWidth, 120, "alias mutation preserves unrelated layout state")
@@ -31,8 +31,8 @@ handles.alias = alias
 alias = nil
 collectgarbage("collect")
 collectgarbage("collect")
-t.assertEqual(handles.alias, nil, "temporary alias is independently collectible")
-t.assertEqual(child.text, "Changed through alias", "collecting alias preserves surviving handle")
+t.assertEqual(handles.alias, child, "intern table keeps the live handle")
+t.assertEqual(child.text, "Changed through alias", "surviving interned handle stays readable")
 
 parent:clearContainer()
 t.assertEqual(#parent.subviews, 0, "container releases its child relationship")

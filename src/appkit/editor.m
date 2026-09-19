@@ -160,21 +160,16 @@ static int bridge_NSScrollView_onChange_impl(lua_State *L) {
 	objc_setAssociatedObject(tv, &kKeys[kTextChangeObserverKey], @YES,
 		OBJC_ASSOCIATION_RETAIN);
 
-	/* Same coroutine caveat: extraspace inherits from the main thread. */
-	LuaStateOwner *owner = owner_for_state(L);
-
 	[[NSNotificationCenter defaultCenter]
 		addObserverForName:NSTextDidChangeNotification
 					object:tv
 					 queue:nil
 				usingBlock:^(NSNotification *note) {
 		if (objc_getAssociatedObject(note.object, &kKeys[kTextProgrammaticKey])) return;
-		NSNumber *refNum = objc_getAssociatedObject(note.object,
+		LuaReg *reg = objc_getAssociatedObject(note.object,
 			&kKeys[kTextChangeKey]);
-		if (!refNum || !owner) return;
-		lua_State *callL = owner.L;
-		if (!callL) return;
-		lua_rawgeti(callL, LUA_REGISTRYINDEX, refNum.intValue);
+		lua_State *callL = lua_reg_live_state(reg);
+		if (!callL || !lua_reg_push(reg)) return;
 		lua_pushstring(callL,
 			((NSTextView *)note.object).string.UTF8String);
 		lua_objc_pcall(callL, 1, 0, "text change");
@@ -221,14 +216,11 @@ static int bridge_symbol_toggle(lua_State *L) {
 	const char *symbol = luaL_checkstring(L, 1);
 	const char *tooltip = luaL_optstring(L, 2, "");
 	int state = lua_toboolean(L, 3);
-	int ref;
-	LUA_OPT_CALLBACK_REF(L, 4, ref);
 
 	NSString *name = [NSString stringWithUTF8String:symbol];
 	NSImage *img = [NSImage imageWithSystemSymbolName:name
 		accessibilityDescription:[NSString stringWithUTF8String:tooltip]];
 	if (!img) {
-		if (ref != LUA_NOREF) luaL_unref(L, LUA_REGISTRYINDEX, ref);
 		return luaL_error(L, "unknown SF Symbol: %s", symbol);
 	}
 
@@ -247,9 +239,9 @@ static int bridge_symbol_toggle(lua_State *L) {
 	btn.toolTip = [NSString stringWithUTF8String:tooltip];
 	btn.accessibilityLabel = btn.toolTip;
 
-	if (ref != LUA_NOREF) {
-		objc_setAssociatedObject(btn, &kKeys[kCallbackKey], @(ref),
-			OBJC_ASSOCIATION_RETAIN);
+	LuaReg *reg = lua_reg_opt(L, 4);
+	if (reg) {
+		lua_reg_store(btn, &kKeys[kCallbackKey], reg);
 		btn.target = [LuaButtonTarget shared];
 		btn.action = @selector(onAction:);
 	}

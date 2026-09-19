@@ -8,23 +8,18 @@ static void configure_segmented_control(NSSegmentedControl *selector) {
 }
 
 @interface LuaTabViewDelegate : NSObject <NSTabViewDelegate>
-@property (nonatomic, assign) int selectionRef;
-@property (nonatomic, strong) LuaStateOwner *owner;
+@property (nonatomic, strong) LuaReg *selection;
 @end
 
 @implementation LuaTabViewDelegate
 - (void)dealloc {
-	lua_State *callL = _owner.L;
-	if (_selectionRef != LUA_NOREF && callL) {
-		luaL_unref(callL, LUA_REGISTRYINDEX, _selectionRef);
-		_selectionRef = LUA_NOREF;
-	}
+	[_selection dispose];
 }
 - (void)tabView:(NSTabView *)tabView didSelectTabViewItem:(NSTabViewItem *)tabViewItem {
-	lua_State *L = _owner.L;
-	if (_selectionRef == LUA_NOREF || !L) return;
+	lua_State *L = lua_reg_live_state(_selection);
+	if (!L) return;
 	int top = lua_gettop(L);
-	lua_rawgeti(L, LUA_REGISTRYINDEX, _selectionRef);
+	if (!lua_reg_push(_selection)) return;
 	push_objc(L, tabView, "nsview");
 	lua_pushinteger(L, [tabView indexOfTabViewItem:tabViewItem]);
 	NSString *ident = tabViewItem.identifier;
@@ -122,21 +117,18 @@ static int bridge_NSTabView_tabCount_impl(lua_State *L, NSTabView *self) {
 }
 
 static int bridge_NSTabView_onChange_impl(lua_State *L, NSTabView *self,
-                                           int callback) {
+                                           LuaReg *callback) {
 	LuaTabViewDelegate *existing = objc_getAssociatedObject(
 		self, &kKeys[kTabViewDelegateKey]);
 	if (existing) {
 		self.delegate = nil;
-		/* Releasing the association triggers dealloc, which unrefs
-		 * the previous callback. */
 		objc_setAssociatedObject(self, &kKeys[kTabViewDelegateKey], nil,
 			OBJC_ASSOCIATION_RETAIN);
 	}
 
-	if (callback != LUA_NOREF) {
+	if (callback) {
 		LuaTabViewDelegate *delegate = [[LuaTabViewDelegate alloc] init];
-		delegate.owner = owner_for_state(L);
-		delegate.selectionRef = callback;
+		delegate.selection = callback;
 		self.delegate = delegate;
 		objc_setAssociatedObject(self, &kKeys[kTabViewDelegateKey],
 			delegate, OBJC_ASSOCIATION_RETAIN);
@@ -149,8 +141,7 @@ static int bridge_NSTabView_onChange_impl(lua_State *L, NSTabView *self,
 static int bridge_segmented_control(lua_State *L) {
 	luaL_checktype(L, 1, LUA_TTABLE);
 	NSInteger selectedIdx = (NSInteger)luaL_optinteger(L, 2, 0);
-	int ref;
-	LUA_OPT_CALLBACK_REF(L, 3, ref);
+	LuaReg *reg = lua_reg_opt(L, 3);
 
 	NSInteger count = (NSInteger)luaL_len(L, 1);
 	if (count < 1) {
@@ -189,9 +180,8 @@ static int bridge_segmented_control(lua_State *L) {
 		[seg setSelected:(i == selectedIdx) forSegment:i];
 	}
 
-	if (ref != LUA_NOREF) {
-		objc_setAssociatedObject(seg, &kKeys[kCallbackKey], @(ref),
-			OBJC_ASSOCIATION_RETAIN);
+	if (reg) {
+		lua_reg_store(seg, &kKeys[kCallbackKey], reg);
 		seg.target = [LuaButtonTarget shared];
 		seg.action = @selector(onAction:);
 	}

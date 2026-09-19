@@ -140,9 +140,11 @@ static void layout_recursive(UIView *view, CGFloat width);
 
 static id check_objc(lua_State *L, int idx) {
 	ObjCRef *ref = lua_objc_test_ref(L, idx);
-	if (ref) return (__bridge id)ref->ptr;
-	luaL_typeerror(L, idx, "uiview, uiwindow, or uiviewcontroller");
-	return nil;
+	if (!ref) {
+		luaL_typeerror(L, idx, "uiview, uiwindow, or uiviewcontroller");
+		return nil;
+	}
+	return lua_objc_live_ptr(L, idx, ref);
 }
 
 static UIView *check_view(lua_State *L, int idx) {

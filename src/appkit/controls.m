@@ -42,8 +42,6 @@ static int bridge_action_button(lua_State *L) {
 	const char *symbol = luaL_optstring(L, 3, "");
 	const char *style = luaL_optstring(L, 4, "plain");
 	const char *detail = luaL_optstring(L, 5, "");
-	int ref;
-	LUA_OPT_CALLBACK_REF(L, 6, ref);
 
 	LuaActionButton *button = [[LuaActionButton alloc]
 		initWithTitle:[NSString stringWithUTF8String:title]
@@ -51,9 +49,9 @@ static int bridge_action_button(lua_State *L) {
 			  symbol:[NSString stringWithUTF8String:symbol]
 			  detail:[NSString stringWithUTF8String:detail]
 			   style:[NSString stringWithUTF8String:style]];
-	if (ref != LUA_NOREF) {
-		objc_setAssociatedObject(button, &kKeys[kCallbackKey], @(ref),
-			OBJC_ASSOCIATION_RETAIN);
+	LuaReg *reg = lua_reg_opt(L, 6);
+	if (reg) {
+		lua_reg_store(button, &kKeys[kCallbackKey], reg);
 		button.target = [LuaButtonTarget shared];
 		button.action = @selector(onAction:);
 	}
@@ -488,10 +486,8 @@ static int bridge_table_refresh(lua_State *L) {
 	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
 
-	NSNumber *refNum = objc_getAssociatedObject(obj, &kKeys[kTableRefreshKey]);
-	if (!refNum) { lua_pushboolean(L, 0); return 1; }
-
-	lua_rawgeti(L, LUA_REGISTRYINDEX, refNum.intValue);
+	LuaReg *reg = objc_getAssociatedObject(obj, &kKeys[kTableRefreshKey]);
+	if (!lua_reg_push(reg)) { lua_pushboolean(L, 0); return 1; }
 	lua_pushvalue(L, 1);
 	if (!lua_isnoneornil(L, 2)) {
 		lua_pushvalue(L, 2);

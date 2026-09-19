@@ -343,14 +343,11 @@ static void table_update_curve(
 	if (row < 0) return;
 
 	NSScrollView *sv = _tableView.enclosingScrollView;
-	lua_State *callL = _owner.L;
-	if (!sv || !callL) return;
-
-	NSNumber *refNum = objc_getAssociatedObject(sv, &kKeys[kTableSelectionKey]);
-	if (!refNum) return;
+	LuaReg *reg = objc_getAssociatedObject(sv, &kKeys[kTableSelectionKey]);
+	lua_State *callL = lua_reg_live_state(reg);
+	if (!sv || !callL || !lua_reg_push(reg)) return;
 
 	NSDictionary *rowData = _rows[row];
-	lua_rawgeti(callL, LUA_REGISTRYINDEX, refNum.intValue);
 	push_objc(callL, sv, "nsview");
 	lua_pushinteger(callL, (lua_Integer)row);
 	lua_newtable(callL);
@@ -366,15 +363,13 @@ static void table_update_curve(
 
 - (void)activateSelectedRow:(id)sender {
 	NSInteger row = _tableView.selectedRow;
-	lua_State *callL = _owner.L;
-	if (row < 0 || row >= (NSInteger)_rows.count || !callL) return;
+	if (row < 0 || row >= (NSInteger)_rows.count) return;
 	NSScrollView *sv = _tableView.enclosingScrollView;
-	NSNumber *refNum = objc_getAssociatedObject(sv,
-		&kKeys[kTableActivationKey]);
-	if (!refNum) return;
+	LuaReg *reg = objc_getAssociatedObject(sv, &kKeys[kTableActivationKey]);
+	lua_State *callL = lua_reg_live_state(reg);
+	if (!callL || !lua_reg_push(reg)) return;
 
 	NSDictionary *rowData = _rows[row];
-	lua_rawgeti(callL, LUA_REGISTRYINDEX, refNum.intValue);
 	push_objc(callL, sv, "nsview");
 	lua_pushinteger(callL, (lua_Integer)row);
 	lua_newtable(callL);

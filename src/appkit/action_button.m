@@ -14,16 +14,22 @@
 }
 
 - (void)onAction:(id)sender {
-	id refObj = objc_getAssociatedObject(sender, &kKeys[kCallbackKey]);
-	if (!refObj || !gL) return;
-	int ref = [refObj intValue];
-
-	lua_rawgeti(gL, LUA_REGISTRYINDEX, ref);
-	push_objc(gL, sender, "nsview");
-	lua_objc_pcall(gL, 1, 0, "button");
+	LuaReg *reg = objc_getAssociatedObject(sender, &kKeys[kCallbackKey]);
+	lua_State *L = lua_reg_live_state(reg);
+	if (!L || !lua_reg_push(reg)) return;
+	push_objc(L, sender, "nsview");
+	lua_objc_pcall(L, 1, 0, "button");
 }
 
 @end
+
+static int bridge_invoke_action(lua_State *L) {
+	ObjCRef *ref = lua_objc_test_ref(L, 1);
+	if (!ref) return luaL_typeerror(L, 1, "Objective-C object");
+	id obj = lua_objc_live_ptr(L, 1, ref);
+	[[LuaButtonTarget shared] onAction:obj];
+	return 0;
+}
 
 #pragma mark - Shared lookup tables
 

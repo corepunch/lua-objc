@@ -97,10 +97,9 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 										accessibilityDescription:ti.label];
 			}
 
-			NSNumber *refNum = item[@"actionRef"];
-			if (refNum) {
-				objc_setAssociatedObject(ti, &kKeys[kCallbackKey], refNum,
-					OBJC_ASSOCIATION_RETAIN);
+			LuaReg *actionReg = item[@"actionReg"];
+			if (actionReg) {
+				lua_reg_store(ti, &kKeys[kCallbackKey], actionReg);
 				ti.target = [LuaButtonTarget shared];
 				ti.action = @selector(onAction:);
 
@@ -112,8 +111,7 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 				[btn sizeToFit];
 				btn.target = [LuaButtonTarget shared];
 				btn.action = @selector(onAction:);
-				objc_setAssociatedObject(btn, &kKeys[kCallbackKey], refNum,
-					OBJC_ASSOCIATION_RETAIN);
+				lua_reg_store(btn, &kKeys[kCallbackKey], actionReg);
 				ti.view = btn;
 			} else if (img) {
 				ti.image = img;

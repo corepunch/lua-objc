@@ -172,11 +172,9 @@ static int bridge_AppKitControls_popUpButton(lua_State *L) {
 static void configure_control_callback(
 	NSControl *control, lua_State *L, int callbackIndex
 ) {
-	int callbackRef;
-	LUA_OPT_CALLBACK_REF(L, callbackIndex, callbackRef);
-	if (callbackRef == LUA_NOREF) return;
-	objc_setAssociatedObject(control, &kKeys[kCallbackKey], @(callbackRef),
-		OBJC_ASSOCIATION_RETAIN);
+	LuaReg *reg = lua_reg_opt(L, callbackIndex);
+	if (!reg) return;
+	lua_reg_store(control, &kKeys[kCallbackKey], reg);
 	control.target = [LuaButtonTarget shared];
 	control.action = @selector(onAction:);
 }
@@ -260,18 +258,12 @@ static int bridge_AppKitControls_colorPicker(lua_State *L) {
 
 static int bridge_AppKitControls_button(lua_State *L) {
 	const char *title = luaL_checkstring(L, 1);
-	int callback_ref;
-	LUA_OPT_CALLBACK_REF(L, 2, callback_ref);
 
 	NSButton *obj = [[NSButton alloc] initWithFrame:NSZeroRect];
 	obj.title = [NSString stringWithUTF8String:title];
 	obj.bezelStyle = NSBezelStyleRounded;
 	[obj sizeToFit];
-	if (callback_ref != LUA_NOREF) {
-		objc_setAssociatedObject(obj, &kKeys[kCallbackKey], @(callback_ref), OBJC_ASSOCIATION_RETAIN);
-		obj.target = [LuaButtonTarget shared];
-		obj.action = @selector(onAction:);
-	}
+	configure_control_callback(obj, L, 2);
 	push_objc(L, obj, "nsview");
 	return 1;
 }
@@ -279,17 +271,11 @@ static int bridge_AppKitControls_button(lua_State *L) {
 static int bridge_AppKitControls_toggle(lua_State *L) {
 	const char *label = luaL_checkstring(L, 1);
 	BOOL is_on = (BOOL)lua_toboolean(L, 2);
-	int callback_ref;
-	LUA_OPT_CALLBACK_REF(L, 3, callback_ref);
 
 	NSButton *obj = [NSButton checkboxWithTitle:[NSString stringWithUTF8String:label] target:nil action:nil];
 	obj.state = is_on ? NSControlStateValueOn : NSControlStateValueOff;
 	[obj sizeToFit];
-	if (callback_ref != LUA_NOREF) {
-		objc_setAssociatedObject(obj, &kKeys[kCallbackKey], @(callback_ref), OBJC_ASSOCIATION_RETAIN);
-		obj.target = [LuaButtonTarget shared];
-		obj.action = @selector(onAction:);
-	}
+	configure_control_callback(obj, L, 3);
 	push_objc(L, obj, "nsview");
 	return 1;
 }

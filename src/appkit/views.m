@@ -39,6 +39,15 @@ static int bridge_window(lua_State *L) {
 					object:w
 					 queue:nil
 				usingBlock:^(NSNotification *note) {
+			NSWindow *closing = note.object;
+			LuaReg *closeReg = objc_getAssociatedObject(
+				closing, &kKeys[kWindowCloseKey]);
+			lua_State *callL = lua_reg_live_state(closeReg);
+			if (callL && lua_reg_push(closeReg))
+				lua_objc_pcall(callL, 0, 0, "window close");
+			[closeReg dispose];
+			objc_setAssociatedObject(closing, &kKeys[kWindowCloseKey], nil,
+				OBJC_ASSOCIATION_ASSIGN);
 			/* App:present replaces windows while the run loop is alive. Defer
 			 * termination until the close has completed so the replacement
 			 * window is visible before deciding that the app has no UI left. */
@@ -85,9 +94,7 @@ static int bridge_window(lua_State *L) {
 
 			lua_getfield(L, -3, "action");
 			if (lua_isfunction(L, -1)) {
-				lua_pushvalue(L, -1);
-				int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-				dict[@"actionRef"] = @(ref);
+				dict[@"actionReg"] = lua_reg_create(L, -1, YES);
 			}
 			lua_pop(L, 1);
 
@@ -113,6 +120,12 @@ static int bridge_window(lua_State *L) {
 
 	push_objc(L, w, "nswindow");
 	return 1;
+}
+
+static int bridge_on_window_close(lua_State *L) {
+	NSWindow *window = lua_objc_check_object(L, 1, [NSWindow class], "Window");
+	lua_reg_store(window, &kKeys[kWindowCloseKey], lua_reg_opt_unscoped(L, 2));
+	return 0;
 }
 
 static int bridge_NSWindow_addTabbedWindow_impl(lua_State *L) {
@@ -466,8 +479,7 @@ static int bridge_NSView_splitProportions_impl(lua_State *L) {
 @property (nonatomic, copy) NSString *imagePath;
 @property (nonatomic) CGFloat zoomScale;
 @property (nonatomic) BOOL fitToWindow;
-@property (nonatomic) int dropCallbackRef;
-@property (nonatomic, strong) LuaStateOwner *owner;
+@property (nonatomic, strong) LuaReg *dropCallback;
 @end
 
 @implementation LuaImageViewerView
@@ -477,7 +489,6 @@ static int bridge_NSView_splitProportions_impl(lua_State *L) {
 	if (self) {
 		_zoomScale = kImageViewerDefaultZoomScale;
 		_fitToWindow = NO;
-		_dropCallbackRef = LUA_NOREF;
 
 		_scrollView = [[NSScrollView alloc] initWithFrame:self.bounds];
 		_scrollView.hasVerticalScroller = YES;
@@ -499,10 +510,7 @@ static int bridge_NSView_splitProportions_impl(lua_State *L) {
 }
 
 - (void)dealloc {
-	lua_State *callL = _owner.L;
-	if (_dropCallbackRef != LUA_NOREF && callL) {
-		luaL_unref(callL, LUA_REGISTRYINDEX, _dropCallbackRef);
-	}
+	[_dropCallback dispose];
 }
 
 - (BOOL)acceptsFirstResponder {
@@ -573,9 +581,8 @@ static int bridge_NSView_splitProportions_impl(lua_State *L) {
 - (BOOL)performDragOperation:(id<NSDraggingInfo>)sender {
 	NSArray<NSString *> *paths = [self dropPathsFromPasteboard:sender.draggingPasteboard];
 	if (paths.count == 0) return NO;
-	lua_State *callL = _owner.L;
-	if (_dropCallbackRef == LUA_NOREF || !callL) return YES;
-	lua_rawgeti(callL, LUA_REGISTRYINDEX, _dropCallbackRef);
+	lua_State *callL = lua_reg_live_state(_dropCallback);
+	if (!callL || !lua_reg_push(_dropCallback)) return YES;
 	lua_newtable(callL);
 	for (NSUInteger i = 0; i < paths.count; i++) {
 		lua_pushstring(callL, paths[i].UTF8String);
@@ -692,13 +699,10 @@ static int bridge_image(lua_State *L) {
 
 static int bridge_image_viewer(lua_State *L) {
 	const char *path = luaL_checkstring(L, 1);
-	int ref;
-	LUA_OPT_CALLBACK_REF(L, 2, ref);
 
 	LuaImageViewerView *viewer = [[LuaImageViewerView alloc]
 		initWithFrame:NSMakeRect(0, 0, kImageViewerDefaultWidth, kImageViewerDefaultHeight)];
-	viewer.owner = owner_for_state(L);
-	viewer.dropCallbackRef = ref;
+	viewer.dropCallback = lua_reg_opt(L, 2);
 	viewer.imagePath = [NSString stringWithUTF8String:path];
 
 	push_objc(L, viewer, "nsview");

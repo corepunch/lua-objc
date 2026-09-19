@@ -155,34 +155,36 @@ Collecting a handle therefore does not mean unmounting or destroying its view.
 Removing a child from a container likewise does not invalidate a surviving Lua
 handle. Never use a native retain count to decide application lifecycle.
 
-`push_objc` does not intern userdata. Reading the same native object twice can
-produce distinct Lua keys, each with its own retain. Keep application identity
-in stable model keys. Foundation scalars and collections are converted to Lua
+`push_objc` interns userdata in a weak-valued registry table keyed by the
+native pointer. Reading the same object twice returns the same Lua handle, so
+`rawequal` matches native identity and there is one Lua retain per live object.
+A released handle (`ptr == NULL`) raises `native object has been released`
+instead of crashing. Foundation scalars and collections are converted to Lua
 values/tables; they are not live collection proxies. Native objects inside
-those collections still use retained handles.
+those collections still use interned retained handles.
 
-`tests/ownership.test.lua` verifies handle collection, native parent retention,
+`tests/ownership.test.lua` verifies interned identity, native parent retention,
 alias mutation, detachment, and reattachment. It observes Lua handle collection
 and native usability; it does not instrument final native deallocation.
 
 ### Lua values crossing into native callbacks
 
-A `luaL_ref` registry entry roots the Lua closure. An associated `NSNumber`
-containing that entry's integer does not itself implement reference cleanup.
-Some paths, such as `bridge_set_optional_callback` in `src/main.m`, unref the
-previous callback on replacement or clearing. This is not yet a universal
-contract: constructors and callback targets also store bare integers.
+A `LuaReg` roots one registry value against the originating `LuaStateOwner`.
+Native targets retain the registration through an associated object. A Lua
+`Scope` (`ui.scope` / `ns.Scope`) may also hold it. `dispose` unrefs against
+the live, non-closing owner and is idempotent. Action targets, timers, HTTP
+completions, watchers, and delegates invoke through `LuaReg` and never through
+a process-global `gL`.
 
 A registry closure can capture a controller, which holds a view handle, which
 retains the native view. Waiting for that view's `dealloc` to unref its callback
-cannot break this cycle. ARC manages native strong references; Lua traces its
-own heap. Neither collector traverses the combined graph to reclaim it.
+cannot break this cycle. `Scope:close()` (window close, reload, or a
+to-be-closed variable) unrefs the captures so Lua can collect the controller
+even if native views still exist.
 
-The required direction is a shared, state-bound callback registration with an
-explicit dispose operation. The screen/controller or future renderer must
-end registrations when unmounting, even if the native object remains retained.
-The registration must unref only against its originating, still-live state.
-This is a design requirement, not an API available on every current control.
+`LuaStateOwner.closing` is set before `lua_close`. Registrations that deallocate
+during finalization skip the Lua API. The iOS host calls
+`lua_objc_prepare_close` before replacing a state.
 
 ### Who closes `lua_State*`?
 
@@ -191,7 +193,7 @@ chooses an explicit closer, implemented through `LuaStateOwner` or the host:
 
 | Context | Creator and closer | Callback lifetime |
 |---|---|---|
-| macOS app / headless script | `lua_objc_main` creates the state and a closing `LuaStateOwner`; owner deallocation calls `lua_close` | Async blocks capture the owner; UI targets also use global `gL` |
+| macOS app / headless script | `lua_objc_main` creates the state and a closing `LuaStateOwner`; owner deallocation calls `lua_close` | Async blocks and UI targets hold `LuaReg` against the owner |
 | macOS `--preview` | The same main state and closing owner | No application run loop; preview does not wait for async completion |
 | iOS host | `LRTApplicationController` creates and explicitly closes/replaces its state | UIKit installs a registry-retained non-closing owner for async lookup and cancellation |
 
@@ -233,10 +235,10 @@ and test an explicit teardown sequence:
 4. Release launch roots and native scene ownership as appropriate, then close
    the state exactly once on the main thread.
 
-This sequence is the target contract. Current UI action targets in
-`src/appkit/action_button.m` and `src/uikit/action_target.m` use `gL`, so the
-runtime does not yet provide general simultaneous-state callback isolation.
-Retaining a native view never proves that its Lua callback state is alive.
+This sequence is the target contract. UI action targets invoke through `LuaReg`
+and the originating `LuaStateOwner`; a callback from a retired state cannot
+reach a new one. Retaining a native view never proves that its Lua callback
+state is alive.
 
 Language references: [Lua finalization](https://www.lua.org/manual/5.4/manual.html#2.5.3),
 [registry references](https://www.lua.org/manual/5.4/manual.html#luaL_ref),
@@ -523,7 +525,7 @@ current `canvas_state_create`, `bridge_eval`, or isolated IDE canvas subsystem.
 
 | Priority | Evidence in the current implementation | Completion criterion |
 |---|---|---|
-| Callback registration lifetime | Global `gL` targets and bare associated registry integers; cleanup differs by control | State-bound registrations; replacement/unmount releases captures; callbacks from retired states cannot reach a new state |
+| Callback registration lifetime | `LuaReg` + `Scope`; UI targets do not use `gL` | Replacement and `Scope:close()` unref captures; retired-state callbacks are no-ops |
 | Deterministic state shutdown | `LuaStateOwner` cancellation and iOS registry finalization exist, but no common UI pre-close disposal pass | Explicit main-thread shutdown; pending work, late callbacks, and repeated iOS reload covered without stale-state access |
 | Retained rendering | Eager public constructors; `viewdesc.apply` is empty | Keyed insert/remove/move/reuse preserves focus, selection, local state, and releases removed callbacks |
 

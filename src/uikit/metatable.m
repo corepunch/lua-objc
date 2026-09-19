@@ -1,7 +1,7 @@
 #pragma mark - nsview metatable (UIKit uses "uiview")
 
 static int nsview_index(lua_State *L) {
-	id obj = (__bridge id)((ObjCRef *)lua_touserdata(L, 1))->ptr;
+	id obj = lua_objc_live_ptr(L, 1, lua_touserdata(L, 1));
 	const char *key = lua_tostring(L, 2);
 	if (!key) { lua_pushnil(L); return 1; }
 	/* UIView operations must bypass KVC: KVC can treat a method-shaped key
@@ -65,7 +65,7 @@ static int nsview_index(lua_State *L) {
 }
 
 static int nsview_newindex(lua_State *L) {
-	id obj = (__bridge id)((ObjCRef *)lua_touserdata(L, 1))->ptr;
+	id obj = lua_objc_live_ptr(L, 1, lua_touserdata(L, 1));
 	const char *key = lua_tostring(L, 2);
 	if (!key) return luaL_error(L, "invalid property name");
 

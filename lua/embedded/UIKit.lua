@@ -1,6 +1,8 @@
 -- UIKitNative is registered by the host before this layer runs.
 local bridge = require("UIKitNative")
 local UIKit = bridge
+local Scope = require("ui.scope")(bridge)
+UIKit.Scope = Scope
 
 local function resumeCoroutine(co, ...)
 	local ok, err = coroutine.resume(co, ...)
@@ -80,6 +82,7 @@ end
 
 function UIKit.Window(props)
 	props = props or {}
+	Scope.push()
 	local content = props.content or props[1]
 	local vc = asViewController(content)
 	return bridge._installScene(vc, props.title or "")
