@@ -21,9 +21,9 @@ t.assertEqual(paths.moduleRel("ui.xml"), "lua/ui/xml.lua", "ui.xml mapping")
 t.assertEqual(paths.moduleRel("apps.hello.Controller"),
 	"apps/hello/Controller.lua", "app module mapping")
 t.assertEqual(paths.moduleRel("zilscript.runtime"),
-	"External/zilscript/zilscript/runtime.lua", "zilscript runtime is streamed")
+	"apps/adventure-arena/zilscript/zilscript/runtime.lua", "zilscript runtime is streamed")
 t.assertEqual(paths.moduleCandidates("zilscript.compiler")[1],
-	"External/zilscript/zilscript/compiler.lua", "zilscript compiler is streamed")
+	"apps/adventure-arena/zilscript/zilscript/compiler.lua", "zilscript compiler is streamed")
 
 local full, norm = paths.jail("/tmp/repo", "apps/hello/views/Window.etlua")
 t.assertEqual(norm, "apps/hello/views/Window.etlua", "jail keeps relative path")

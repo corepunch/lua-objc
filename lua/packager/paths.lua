@@ -92,9 +92,9 @@ function M.moduleRel(name)
 	if type(name) ~= "string" or name == "" then return nil, "empty" end
 	if NATIVE[name] then return nil, "native" end
 	if MODULES[name] then return MODULES[name] end
-	if name == "zilscript" then return "External/zilscript/zilscript/init.lua" end
+	if name == "zilscript" then return "apps/adventure-arena/zilscript/zilscript/init.lua" end
 	if name:match("^zilscript%.") then
-		return "External/zilscript/" .. name:gsub("%.", "/") .. ".lua"
+		return "apps/adventure-arena/zilscript/" .. name:gsub("%.", "/") .. ".lua"
 	end
 	return (name:gsub("%.", "/")) .. ".lua"
 end

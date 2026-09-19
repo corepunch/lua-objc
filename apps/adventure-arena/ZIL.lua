@@ -41,17 +41,17 @@ function ZIL.new(game, readFile)
 	local sourceBase = game.id:gsub("%.", "/")
 	local base = game.base or sourceBase
 	local paths = {
-		lua = "External/zilscript/?.lua;External/zilscript/?/init.lua;" .. package.path,
-		zil = "External/zilscript/" .. sourceBase .. "/?.zil;"
-			.. "External/zilscript/" .. base .. "/?.zil;"
-			.. "External/zilscript/?.zil;External/zilscript/?/?.zil",
+		lua = "apps/adventure-arena/zilscript/?.lua;apps/adventure-arena/zilscript/?/init.lua;" .. package.path,
+		zil = "apps/adventure-arena/zilscript/" .. sourceBase .. "/?.zil;"
+			.. "apps/adventure-arena/zilscript/" .. base .. "/?.zil;"
+			.. "apps/adventure-arena/zilscript/?.zil;apps/adventure-arena/zilscript/?/?.zil",
 	}
 	return withContext(readFile, paths, function()
 
 		local runtime = require("zilscript.runtime")
 		local env = runtime.create_game_env()
 		env.rawget, env.rawset, env.rawequal = rawget, rawset, rawequal
-		local bootstrapPath = "External/zilscript/zilscript/bootstrap.lua"
+		local bootstrapPath = "apps/adventure-arena/zilscript/zilscript/bootstrap.lua"
 		local bootstrap = readFile and readFile(bootstrapPath)
 		if bootstrap then
 			assert(runtime.execute(bootstrap, bootstrapPath, env, true),
@@ -62,11 +62,11 @@ function ZIL.new(game, readFile)
 		-- The bootstrap derives its own default search path from package.path;
 		-- restore the game's directory afterward so INSERT-FILE resolves relative
 		-- to the selected catalog entry on both disk and streamed iOS files.
-		package.zilpath = "External/zilscript/" .. sourceBase .. "/?.zil;"
-			.. "External/zilscript/" .. base .. "/?.zil;"
-			.. "External/zilscript/?.zil;External/zilscript/?/?.zil"
+		package.zilpath = "apps/adventure-arena/zilscript/" .. sourceBase .. "/?.zil;"
+			.. "apps/adventure-arena/zilscript/" .. base .. "/?.zil;"
+			.. "apps/adventure-arena/zilscript/?.zil;apps/adventure-arena/zilscript/?/?.zil"
 
-		local root = "External/zilscript/" .. sourceBase
+		local root = "apps/adventure-arena/zilscript/" .. sourceBase
 		local start = root .. "/" .. game.startFile
 		assert(runtime.load_zil_files({ start }, env, { silent = true }),
 			"failed to load " .. game.title)
