@@ -26,10 +26,10 @@ static int bridge_window(lua_State *L) {
 
 	if (transparent_titlebar) {
 		w.titlebarAppearsTransparent = YES;
-		if (hide_title) {
-			w.titleVisibility = NSWindowTitleHidden;
-		}
 		w.movableByWindowBackground = YES;
+	}
+	if (hide_title) {
+		w.titleVisibility = NSWindowTitleHidden;
 	}
 
 	[w center];
@@ -98,6 +98,25 @@ static int bridge_window(lua_State *L) {
 			}
 			lua_pop(L, 1);
 
+			lua_getfield(L, -3, "type");
+			const char *itype = lua_tostring(L, -1);
+			if (itype) dict[@"type"] = [NSString stringWithUTF8String:itype];
+			lua_pop(L, 1);
+
+			lua_getfield(L, -3, "minWidth");
+			if (lua_isnumber(L, -1)) dict[@"minWidth"] = @(lua_tonumber(L, -1));
+			lua_pop(L, 1);
+
+			lua_getfield(L, -3, "value");
+			const char *ivalue = lua_tostring(L, -1);
+			if (ivalue) dict[@"value"] = [NSString stringWithUTF8String:ivalue];
+			lua_pop(L, 1);
+
+			lua_getfield(L, -3, "onSubmit");
+			if (lua_isfunction(L, -1))
+				dict[@"submitReg"] = lua_reg_create(L, -1, YES);
+			lua_pop(L, 1);
+
 			[items addObject:dict];
 			lua_pop(L, 3);
 		}
@@ -114,6 +133,7 @@ static int bridge_window(lua_State *L) {
 			? NSToolbarDisplayModeIconAndLabel : NSToolbarDisplayModeIconOnly;
 		tb.delegate = del;
 		w.toolbar = tb;
+		w.toolbarStyle = NSWindowToolbarStyleUnified;
 		objc_setAssociatedObject(w, &kKeys[kToolbarDelegateKey], del,
 			OBJC_ASSOCIATION_RETAIN);
 	}
@@ -745,6 +765,36 @@ static int bridge_system_color(lua_State *L) {
 	NSColor *color = semantic_color([NSString stringWithUTF8String:name]);
 	push_objc(L, color, "nsobject");
 	return 1;
+}
+
+static const char kDoubleClickHandlerKey;
+
+@interface LuaDoubleClickHandler : NSObject
+@property (nonatomic) LuaReg *reg;
+@end
+
+@implementation LuaDoubleClickHandler
+- (void)fire:(NSClickGestureRecognizer *)r {
+	if (r.state != NSGestureRecognizerStateRecognized) return;
+	lua_State *L = lua_reg_live_state(self.reg);
+	if (L && lua_reg_push(self.reg))
+		lua_objc_pcall(L, 0, 0, "double-click");
+}
+@end
+
+static int bridge_add_double_click(lua_State *L) {
+	NSView *view = check_view(L, 1);
+	LuaReg *reg = lua_reg_opt(L, 2);
+	if (!reg) return 0;
+	LuaDoubleClickHandler *handler = [LuaDoubleClickHandler new];
+	handler.reg = reg;
+	objc_setAssociatedObject(view, &kDoubleClickHandlerKey, handler,
+		OBJC_ASSOCIATION_RETAIN);
+	NSClickGestureRecognizer *gr = [[NSClickGestureRecognizer alloc]
+		initWithTarget:handler action:@selector(fire:)];
+	gr.numberOfClicksRequired = 2;
+	[view addGestureRecognizer:gr];
+	return 0;
 }
 
 static int bridge_NSView_clearContainer_impl(lua_State *L) {

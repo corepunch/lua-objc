@@ -259,6 +259,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_imageViewer", bridge_AppKit_image_viewer},
 	{"_systemImage", bridge_AppKit_system_image},
 	{"_systemColor", bridge_AppKit_system_color},
+	{"_addDoubleClick", bridge_AppKit_add_double_click},
 	{"_tableview", bridge_AppKit_tableview},
 	{"_actionButton", bridge_AppKit_action_button},
 	{"_panel", bridge_AppKit_panel},

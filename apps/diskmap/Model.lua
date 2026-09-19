@@ -34,16 +34,15 @@ function Model.isDone(handle)
 	return false
 end
 
--- Parse results once scan is done. Returns a flat list of rows sorted for display.
--- Each row: {depth, name, path, kb, rootKb}
-function Model.parseResults(handle, maxChildrenPerDepth)
+-- Parse results into a tree. Each node: {name, path, kb, children}.
+-- depthLimits is a list of max children per depth level (0-indexed depth → limits[depth+1]).
+function Model.parseTree(handle, depthLimits)
+	depthLimits = depthLimits or { 12, 10, 8, 6 }
 	local rootPath = handle.rootPath:gsub("/$", "")
-	local limits = maxChildrenPerDepth or { 999, 12, 10, 8, 6 }
 
-	-- Read all sizes into a path→kb map
 	local sizes = {}
 	local f = io.open(handle.outFile, "r")
-	if not f then return {} end
+	if not f then return nil end
 	for line in f:lines() do
 		local kbStr, p = line:match("^(%d+)%s+(.+)")
 		if kbStr then
@@ -53,65 +52,40 @@ function Model.parseResults(handle, maxChildrenPerDepth)
 	end
 	f:close()
 
-	-- Build parent→children map
-	local children = {}
+	local childrenOf = {}
 	for p in pairs(sizes) do
 		local parent = p:match("^(.+)/[^/]+$")
 		if parent and sizes[parent] then
-			if not children[parent] then children[parent] = {} end
-			children[parent][#children[parent] + 1] = p
+			if not childrenOf[parent] then childrenOf[parent] = {} end
+			childrenOf[parent][#childrenOf[parent]+1] = p
 		end
 	end
 
-	-- Sort children of each node by size descending
-	for p, kids in pairs(children) do
-		table.sort(kids, function(a, b)
-			return (sizes[a] or 0) > (sizes[b] or 0)
-		end)
+	for _, kids in pairs(childrenOf) do
+		table.sort(kids, function(a, b) return (sizes[a] or 0) > (sizes[b] or 0) end)
 	end
 
-	local rootKb = sizes[rootPath] or 0
-	local rows = {}
-
-	-- DFS traversal
-	local function visit(path, depth)
-		if depth > #limits then return end
-		local limit = limits[depth + 1] or 6
-		local kids = children[path] or {}
-		local count = 0
-		for _, child in ipairs(kids) do
-			local name = child:match("([^/]+)$") or child
-			if name:sub(1, 1) ~= "." then
-				count = count + 1
-				if count > limit then break end
-				rows[#rows + 1] = {
-					depth  = depth + 1,
-					name   = name,
-					path   = child,
-					kb     = sizes[child] or 0,
-					rootKb = rootKb,
-				}
-				visit(child, depth + 1)
+	local function buildNode(path, depth)
+		local name = path:match("([^/]+)$") or path
+		local node = { name = name, path = path, kb = sizes[path] or 0, children = {} }
+		local limit = depthLimits[depth + 1] or 0
+		if limit > 0 then
+			local count = 0
+			for _, child in ipairs(childrenOf[path] or {}) do
+				local childName = child:match("([^/]+)$") or ""
+				if childName:sub(1, 1) ~= "." then
+					count = count + 1
+					if count > limit then break end
+					node.children[#node.children+1] = buildNode(child, depth + 1)
+				end
 			end
 		end
+		return node
 	end
 
-	-- Root row
-	local rootName = rootPath:match("([^/]+)$") or rootPath
-	rows[#rows + 1] = {
-		depth  = 0,
-		name   = rootName,
-		path   = rootPath,
-		kb     = rootKb,
-		rootKb = rootKb,
-	}
-	visit(rootPath, 0)
-
-	-- Cleanup temp files
 	os.remove(handle.outFile)
 	os.remove(handle.doneFile)
-
-	return rows
+	return buildNode(rootPath, 0)
 end
 
 return Model

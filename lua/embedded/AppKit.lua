@@ -44,6 +44,7 @@ local layout_properties = {
 	"background",
 	"cornerRadius",
 	"clipsToBounds",
+	"onDoubleClick",
 }
 
 local function applyLayout(view, props)
@@ -52,6 +53,8 @@ local function applyLayout(view, props)
 		if props[key] ~= nil then
 			if key == "background" then
 				view.backgroundColor = bridge._systemColor(props[key])
+			elseif key == "onDoubleClick" then
+				bridge._addDoubleClick(view, props[key])
 			else
 				view[key] = props[key]
 			end

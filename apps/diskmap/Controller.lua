@@ -4,75 +4,90 @@ local Model = require("apps.diskmap.Model")
 
 local VIEWS = "apps/diskmap/views/"
 
-local MAX_BAR_PX  = 500
-local NAME_WIDTH  = 190
-local SIZE_WIDTH  = 72
-local ROW_HEIGHT  = 26
-local BAR_HEIGHT  = 20
-local INDENT_STEP = 14
-local ROW_SPACING = 3
+local CONTENT_W   = 808   -- window 840 minus 2×16 padding
+local BAR_H       = 28
+local LEVEL_GAP   = 2
+local SIBLING_GAP = 1
+local MIN_LABEL_W = 24
+local MIN_BAR_W   = 4     -- skip bars narrower than this (visual noise)
 
-local DEPTH_COLORS = {
-	[0] = "systemBlue",
-	[1] = "accent",
-	[2] = "systemGreen",
-	[3] = "systemYellow",
-	[4] = "systemRed",
+local DEPTH_STYLES = {
+	{ bg = "systemBlue",   fg = "white" },
+	{ bg = "systemGreen",  fg = "white" },
+	{ bg = "systemYellow", fg = "black" },
+	{ bg = "systemOrange", fg = "black" },
+	{ bg = "systemRed",    fg = "white" },
+	{ bg = "systemPurple", fg = "white" },
 }
 
-local Controller = {}
-Controller.__index = Controller
-
-function Controller.new()
-	return setmetatable({ content = nil, window = nil }, Controller)
+local function barStyle(depth)
+	return DEPTH_STYLES[(depth % #DEPTH_STYLES) + 1]
 end
 
-local function makeBarRow(row)
-	local depth  = row.depth
-	local rootKb = math.max(row.rootKb, 1)
-	local barPx  = math.max(math.floor(row.kb / rootKb * MAX_BAR_PX), 2)
-	local color  = DEPTH_COLORS[math.min(depth, 4)] or "systemRed"
-	local indent = depth * INDENT_STEP
-	local nameW  = math.max(NAME_WIDTH - indent, 40)
+local function makeIcicle(node, availW, depth, onSelect)
+	if availW < MIN_BAR_W then return nil end
 
-	-- Name area (indent + label, fixed total width)
-	local nameArea = ns.HStack {
-		fixedWidth = NAME_WIDTH,
-		spacing    = 0,
-		alignment  = "center",
+	local style = barStyle(depth)
+
+	local bar = ns.HStack {
+		fixedWidth    = availW,
+		fixedHeight   = BAR_H,
+		cornerRadius  = 3,
+		background    = style.bg,
+		alignment     = "center",
+		clipsToBounds  = true,
+		onDoubleClick  = function() onSelect(node.path) end,
 	}
-	if indent > 0 then
-		nameArea:add(ns.VStack { fixedWidth = indent })
+	if availW >= MIN_LABEL_W then
+		bar:add(ns.Text {
+			node.name,
+			size       = 11,
+			weight     = "semibold",
+			color      = style.fg,
+			fixedWidth = availW - 8,
+			alignment  = "center",
+		})
 	end
-	nameArea:add(ns.Text { row.name, size = 12, fixedWidth = nameW })
 
-	-- Colored bar
-	local bar = ns.VStack {
-		fixedWidth   = barPx,
-		fixedHeight  = BAR_HEIGHT,
-		cornerRadius = 5,
-		background   = color,
+	local nodeV = ns.VStack {
+		fixedWidth = availW,
+		spacing    = LEVEL_GAP,
+		alignment  = "leading",
+	}
+	nodeV:add(bar)
+
+	if #node.children == 0 then return nodeV end
+
+	local nodeKb = math.max(node.kb, 1)
+
+	local row = ns.HStack {
+		fixedWidth = availW,
+		spacing    = 0,
+		alignment  = "top",
 	}
 
-	-- Size label (right-aligned via trailing flex)
-	local sizeLabel = ns.Text {
-		Model.humanKb(row.kb),
-		size       = 11,
-		color      = "secondary",
-		fixedWidth = SIZE_WIDTH,
-		alignment  = "trailing",
-	}
+	local budget = availW
+	local count  = 0
+	for _, child in ipairs(node.children) do
+		if budget <= 0 then break end
+		local w = math.floor(child.kb / nodeKb * availW)
+		if w < MIN_BAR_W then break end
+		w = math.min(w, budget)
+		if count > 0 then
+			budget = budget - SIBLING_GAP
+			if budget <= 0 then break end
+			row:add(ns.VStack { fixedWidth = SIBLING_GAP, fixedHeight = BAR_H })
+		end
+		local cv = makeIcicle(child, w, depth + 1, onSelect)
+		if cv then
+			row:add(cv)
+			budget = budget - w
+			count  = count + 1
+		end
+	end
+	nodeV:add(row)
 
-	local rowView = ns.HStack {
-		fixedHeight = ROW_HEIGHT,
-		spacing     = 8,
-		alignment   = "center",
-	}
-	rowView:add(nameArea)
-	rowView:add(bar)
-	rowView:add(ns.VStack { flexGrow = 1 })
-	rowView:add(sizeLabel)
-	return rowView
+	return nodeV
 end
 
 local function makeLoadingView(msg)
@@ -88,21 +103,20 @@ local function makeLoadingView(msg)
 	}
 end
 
-local function makeBarsContent(rows)
-	local stack = ns.VStack {
-		spacing   = ROW_SPACING,
-		alignment = "leading",
-		padding   = 16,
-	}
-	for _, row in ipairs(rows) do
-		stack:add(makeBarRow(row))
-	end
-	return ns.ScrollView {
-		content  = stack,
-		vertical = true,
-		flexGrow = 1,
-		fillWidth = true,
-	}
+-- ── Controller ────────────────────────────────────────────────────────────
+
+local Controller = {}
+Controller.__index = Controller
+
+function Controller.new()
+	return setmetatable({
+		content     = nil,
+		window      = nil,
+		backItem    = nil,
+		addressItem = nil,
+		history     = {},
+		currentPath = nil,
+	}, Controller)
 end
 
 function Controller:showView(view)
@@ -111,16 +125,33 @@ function Controller:showView(view)
 	self.content:layout()
 end
 
-function Controller:startScan(rootPath)
+function Controller:goBack()
+	if #self.history == 0 then return end
+	self:startScan(table.remove(self.history), true)
+end
+
+function Controller:startScan(rootPath, isBack)
+	if not isBack and self.currentPath then
+		table.insert(self.history, self.currentPath)
+	end
+	self.currentPath = rootPath
+
+	-- update toolbar items if they exist
+	if self.backItem then self.backItem.enabled = #self.history > 0 end
+	if self.addressItem then
+		local v = self.addressItem.view
+		if v then v.text = rootPath end
+	end
+
 	self:showView(makeLoadingView("Scanning " .. rootPath .. " …"))
+
 	local handle = Model.startScan(rootPath, 4)
 	ns.async(function()
 		ns.sleep(0.2)
-		while not Model.isDone(handle) do
-			ns.sleep(0.5)
-		end
-		local rows = Model.parseResults(handle, { 999, 12, 10, 8, 6 })
-		if #rows == 0 then
+		while not Model.isDone(handle) do ns.sleep(0.5) end
+
+		local tree = Model.parseTree(handle, { 12, 10, 8, 6 })
+		if not tree then
 			self:showView(ns.VStack {
 				flexGrow  = 1,
 				alignment = "center",
@@ -128,20 +159,49 @@ function Controller:startScan(rootPath)
 			})
 			return
 		end
-		self:showView(makeBarsContent(rows))
+
+		local root = makeIcicle(tree, CONTENT_W, 0, function(path)
+			self:startScan(path)
+		end)
+		local wrap = ns.VStack {
+			spacing   = 0,
+			alignment = "leading",
+			padding   = 16,
+		}
+		wrap:add(root)
+		self:showView(ns.ScrollView {
+			content   = wrap,
+			vertical  = true,
+			flexGrow  = 1,
+			fillWidth = true,
+		})
 	end)
 end
 
 function Controller:createWindow()
 	self.content = ns.VStack { flexGrow = 1, fillWidth = true }
 
+	local rootPath = (arg and arg[1]) or os.getenv("HOME") or "/"
+
 	local cfg = xml.renderFile(VIEWS .. "Window.etlua")
-	cfg.content = self.content
+	cfg.content   = self.content
+	cfg.hideTitle = true    -- toolbar replaces the title; no text needed
+	cfg.toolbar   = {
+		{ id = "back",    icon = "chevron.left", tooltip = "Go Back",
+		  action = function() self:goBack() end },
+		{ id = "address", type = "field",  label = "Path",
+		  value = rootPath, minWidth = 500,
+		  onSubmit = function(path) self:startScan(path) end },
+	}
 	self.window = ns.Window(cfg)
 
-	-- arg[1] overrides the root path; default to home directory
-	local root = (arg and arg[1]) or os.getenv("HOME") or "/"
-	self:startScan(root)
+	-- grab references to toolbar items for later updates
+	local ok1, bi = pcall(ns.ToolbarItem, self.window, "back")
+	local ok2, ai = pcall(ns.ToolbarItem, self.window, "address")
+	self.backItem    = ok1 and bi or nil
+	self.addressItem = ok2 and ai or nil
+
+	self:startScan(rootPath)
 end
 
 return Controller

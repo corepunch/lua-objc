@@ -1,3 +1,25 @@
+#pragma mark - LuaToolbarFieldDelegate
+
+static const char kToolbarFieldDelegateKey;
+
+@interface LuaToolbarFieldDelegate : NSObject <NSTextFieldDelegate>
+@property (nonatomic, strong) LuaReg *submitReg;
+@end
+
+@implementation LuaToolbarFieldDelegate
+- (BOOL)control:(NSControl *)control
+	   textView:(NSTextView *)textView
+doCommandBySelector:(SEL)selector
+{
+	if (selector != @selector(insertNewline:)) return NO;
+	lua_State *L = lua_reg_live_state(self.submitReg);
+	if (!L || !lua_reg_push(self.submitReg)) return NO;
+	lua_pushstring(L, ((NSTextField *)control).stringValue.UTF8String);
+	lua_objc_pcall(L, 1, 0, "toolbar field submit");
+	return YES;
+}
+@end
+
 #pragma mark - LuaToolbarDelegate
 
 static NSToolbarItemIdentifier const kContentTrackingSeparatorIdentifier =
@@ -91,6 +113,30 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 			ti.autovalidates = NO;
 			ti.enabled = YES;
 
+			// ── Field item ────────────────────────────────────────────────
+			if ([item[@"type"] isEqualToString:@"field"]) {
+				NSTextField *field = [[NSTextField alloc] initWithFrame:NSZeroRect];
+				((NSTextFieldCell *)field.cell).bezelStyle = NSTextFieldRoundedBezel;
+				field.placeholderString = item[@"label"] ?: @"";
+				field.stringValue       = item[@"value"] ?: @"";
+
+				LuaReg *submitReg = item[@"submitReg"];
+				if (submitReg) {
+					LuaToolbarFieldDelegate *del = [LuaToolbarFieldDelegate new];
+					del.submitReg = submitReg;
+					field.delegate = del;
+					objc_setAssociatedObject(field, &kToolbarFieldDelegateKey,
+						del, OBJC_ASSOCIATION_RETAIN);
+				}
+
+				CGFloat minW = [item[@"minWidth"] doubleValue] ?: 200;
+				ti.view    = field;
+				ti.minSize = NSMakeSize(minW, 26);
+				ti.maxSize = NSMakeSize(10000, 32);
+				return ti;
+			}
+
+			// ── Button / image item ───────────────────────────────────────
 			NSImage *img = nil;
 			if (item[@"icon"]) {
 				img = [NSImage imageWithSystemSymbolName:item[@"icon"]

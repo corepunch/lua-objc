@@ -128,18 +128,24 @@ static LayoutAxis layout_axis(NSView *view) {
 #pragma mark - Compound action button
 
 static NSColor *semantic_color(NSString *name) {
-	if ([name isEqualToString:@"systemGreen"]) return NSColor.systemGreenColor;
-	if ([name isEqualToString:@"systemRed"]) return NSColor.systemRedColor;
-	if ([name isEqualToString:@"systemBlue"]) return NSColor.systemBlueColor;
+	if ([name isEqualToString:@"systemGreen"])  return NSColor.systemGreenColor;
+	if ([name isEqualToString:@"systemRed"])    return NSColor.systemRedColor;
+	if ([name isEqualToString:@"systemBlue"])   return NSColor.systemBlueColor;
 	if ([name isEqualToString:@"systemYellow"]) return NSColor.systemYellowColor;
-	if ([name isEqualToString:@"red"]) return NSColor.systemRedColor;
-	if ([name isEqualToString:@"green"]) return NSColor.systemGreenColor;
-	if ([name isEqualToString:@"blue"]) return NSColor.systemBlueColor;
+	if ([name isEqualToString:@"systemOrange"]) return NSColor.systemOrangeColor;
+	if ([name isEqualToString:@"systemPurple"]) return NSColor.systemPurpleColor;
+	if ([name isEqualToString:@"systemTeal"])   return NSColor.systemTealColor;
+	if ([name isEqualToString:@"systemBrown"])  return NSColor.systemBrownColor;
+	if ([name isEqualToString:@"systemIndigo"]) return NSColor.systemIndigoColor;
+	if ([name isEqualToString:@"red"])    return NSColor.systemRedColor;
+	if ([name isEqualToString:@"green"])  return NSColor.systemGreenColor;
+	if ([name isEqualToString:@"blue"])   return NSColor.systemBlueColor;
 	if ([name isEqualToString:@"yellow"]) return NSColor.systemYellowColor;
+	if ([name isEqualToString:@"black"])  return NSColor.blackColor;
 	if ([name isEqualToString:@"secondary"]) return NSColor.secondaryLabelColor;
-	if ([name isEqualToString:@"tertiary"]) return NSColor.tertiaryLabelColor;
-	if ([name isEqualToString:@"accent"]) return NSColor.controlAccentColor;
-	if ([name isEqualToString:@"white"]) return NSColor.whiteColor;
+	if ([name isEqualToString:@"tertiary"])  return NSColor.tertiaryLabelColor;
+	if ([name isEqualToString:@"accent"])    return NSColor.controlAccentColor;
+	if ([name isEqualToString:@"white"])     return NSColor.whiteColor;
 	if ([name isEqualToString:@"separator"]) return NSColor.separatorColor;
 	if ([name isEqualToString:@"background"]) return NSColor.windowBackgroundColor;
 	return NSColor.labelColor;
