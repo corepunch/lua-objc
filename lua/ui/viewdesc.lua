@@ -53,6 +53,12 @@ local LAYOUT_PROPS = {
     "fillWidth", "fillHeight", "hidden",
 }
 
+-- Modifier attributes that should be tracked separately (not layout props)
+local MODIFIER_PROPS = {
+    "reorderable",      -- marks container as reorderable
+    "reorder_container", -- ref to reorder callback
+}
+
 local function extractLayoutProps(attrs)
     local props = {}
     for _, k in ipairs(LAYOUT_PROPS) do
@@ -106,11 +112,19 @@ function describeNode(node)
     -- Layout containers
     if tag == "VStack" or tag == "HStack" or tag == "HSplit" then
         local props = extractLayoutProps(attrs)
-        return {
+        local desc = {
             tag = tag,
             props = props,
             children = children,
         }
+        -- Track reorderable state and callback ref if present
+        if attrs.reorderable then
+            desc.reorderable = attrs.reorderable == "true"
+        end
+        if attrs.reorder_container then
+            desc.reorder_container = attrs.reorder_container
+        end
+        return desc
     end
 
     -- Spacer
@@ -187,11 +201,19 @@ function describeNode(node)
             end
         end
         props.columns = columns
-        return {
+        local desc = {
             tag = tag,
             props = props,
             children = {},
         }
+        -- Track reorderable state and callback ref if present
+        if attrs.reorderable then
+            desc.reorderable = attrs.reorderable == "true"
+        end
+        if attrs.reorder_container then
+            desc.reorder_container = attrs.reorder_container
+        end
+        return desc
     end
 
     -- Column (returns plain table, not a view)

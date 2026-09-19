@@ -408,10 +408,18 @@ local TAG_SCHEMA = {
     VStack = {
         constructor = "VStack",
         children    = "array",
+        props = {
+            reorderable = "bool",
+            reorder_container = "str",
+        },
     },
     HStack = {
         constructor = "HStack",
         children    = "array",
+        props = {
+            reorderable = "bool",
+            reorder_container = "str",
+        },
     },
     Section = {
         constructor = "Section",
@@ -462,6 +470,10 @@ local TAG_SCHEMA = {
     HSplit = {
         constructor = "HSplit",
         children    = "array",
+        props = {
+            reorderable = "bool",
+            reorder_container = "str",
+        },
     },
     Spacer = {
         constructor = "Spacer",
@@ -745,6 +757,8 @@ local TAG_SCHEMA = {
             style           = "str",
             bordered        = "bool",
             gridLines       = "str",
+            reorderable = "bool",
+            reorder_container = "str",
         },
         collect = function(props, children)
             local columns = {}
