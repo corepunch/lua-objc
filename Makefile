@@ -81,8 +81,10 @@ run-layout: $(TARGET) $(FRAMEWORK_MODULES)
 run-ide: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) apps/ide/init.lua
 
+# Usage: make run-diskmap                      # scans this repo (~28ms)
+#        make run-diskmap DIR=~/Developer/icui  # scan a specific dir
 run-diskmap: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) apps/diskmap/init.lua
+	./$(TARGET) apps/diskmap/init.lua $(or $(DIR),$(CURDIR))
 
 TEST_FILES = $(wildcard tests/*.test.lua)
 

@@ -139,8 +139,9 @@ function Controller:createWindow()
 	cfg.content = self.content
 	self.window = ns.Window(cfg)
 
-	local home = os.getenv("HOME") or "/"
-	self:startScan(home)
+	-- arg[1] overrides the root path; default to home directory
+	local root = (arg and arg[1]) or os.getenv("HOME") or "/"
+	self:startScan(root)
 end
 
 return Controller
