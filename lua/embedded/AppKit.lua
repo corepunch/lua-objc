@@ -44,7 +44,9 @@ local layout_properties = {
 	"background",
 	"cornerRadius",
 	"clipsToBounds",
+	"onClick",
 	"onDoubleClick",
+	"contextMenu",
 	"hoverTooltip",
 }
 
@@ -54,8 +56,12 @@ local function applyLayout(view, props)
 		if props[key] ~= nil then
 			if key == "background" then
 				view.backgroundColor = bridge._systemColor(props[key])
+			elseif key == "onClick" then
+				bridge._addClick(view, props[key])
 			elseif key == "onDoubleClick" then
 				bridge._addDoubleClick(view, props[key])
+			elseif key == "contextMenu" then
+				bridge._addContextMenu(view, props[key])
 			elseif key == "hoverTooltip" then
 				local tt = props[key]
 				bridge._addHoverTooltip(view, tt.title or "", tt.detail or "")
@@ -1166,6 +1172,34 @@ function AppKit.NavigationStack(props)
 	local root = AppKit.HostingController(props.content or props[1])
 	root.title = props.title or ""
 	return applyLayout(bridge._navigationStack(root), props)
+end
+
+function AppKit.revealInFinder(path)
+	bridge._revealInFinder(path)
+end
+
+function AppKit.openPath(path)
+	return bridge._openPath(path)
+end
+
+function AppKit.moveToTrash(path)
+	return bridge._moveToTrash(path)
+end
+
+function AppKit.copyToClipboard(text)
+	bridge._clipboardCopy(text)
+end
+
+function AppKit.Alert(props)
+	props = props or {}
+	return bridge._alert(
+		props.title or "",
+		props.message or "",
+		props.buttons or { "OK" })
+end
+
+function AppKit.diskSpace(path)
+	return bridge._diskSpace(path)
 end
 
 return AppKit

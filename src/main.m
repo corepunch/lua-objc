@@ -208,6 +208,7 @@ static void bridge_set_optional_callback(
 #include "appkit/navigation.m"
 #include "appkit/platform.m"
 
+#include "appkit/workspace.m"
 #include "appkit/constructors.m"
 #include "shared/parity_batch.m"
 #include "appkit/parity_batch.m"
@@ -288,6 +289,14 @@ static const luaL_Reg bridge_lib[] = {
 	{"_invokeAction", bridge_invoke_action},
 	{"_onWindowClose", bridge_on_window_close},
 	{"_invalidateHandle", bridge_invalidate_handle},
+	{"_addContextMenu", bridge_AppKit_add_context_menu},
+	{"_addClick", bridge_AppKit_add_click},
+	{"_revealInFinder", bridge_AppKit_reveal_in_finder},
+	{"_openPath", bridge_AppKit_open_path},
+	{"_moveToTrash", bridge_AppKit_move_to_trash},
+	{"_clipboardCopy", bridge_AppKit_clipboard_copy},
+	{"_alert", bridge_AppKit_alert},
+	{"_diskSpace", bridge_AppKit_disk_space},
 	{NULL, NULL},
 };
 

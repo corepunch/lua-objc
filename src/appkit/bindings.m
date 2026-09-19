@@ -54,6 +54,14 @@ static int bridge_timer_after(lua_State *L);
 static int bridge_http_get(lua_State *L);
 static int bridge_json_parse(lua_State *L);
 static int bridge_font(lua_State *L);
+static int bridge_add_context_menu(lua_State *L);
+static int bridge_add_click(lua_State *L);
+static int bridge_reveal_in_finder(lua_State *L);
+static int bridge_open_path(lua_State *L);
+static int bridge_move_to_trash(lua_State *L);
+static int bridge_clipboard_copy(lua_State *L);
+static int bridge_alert(lua_State *L);
+static int bridge_disk_space(lua_State *L);
 static int bridge_NSScrollView_onChange_impl(lua_State *L);
 static int bridge_NSTabView_addTab_impl(lua_State *L, NSTabView *self, const char * title, NSView * content);
 static int bridge_NSTabView_removeTab_impl(lua_State *L, NSTabView *self, NSInteger index);
@@ -208,6 +216,38 @@ static int bridge_AppKit_json_parse(lua_State *L) {
 
 static int bridge_AppKit_font(lua_State *L) {
 	return bridge_font(L);
+}
+
+static int bridge_AppKit_add_context_menu(lua_State *L) {
+	return bridge_add_context_menu(L);
+}
+
+static int bridge_AppKit_add_click(lua_State *L) {
+	return bridge_add_click(L);
+}
+
+static int bridge_AppKit_reveal_in_finder(lua_State *L) {
+	return bridge_reveal_in_finder(L);
+}
+
+static int bridge_AppKit_open_path(lua_State *L) {
+	return bridge_open_path(L);
+}
+
+static int bridge_AppKit_move_to_trash(lua_State *L) {
+	return bridge_move_to_trash(L);
+}
+
+static int bridge_AppKit_clipboard_copy(lua_State *L) {
+	return bridge_clipboard_copy(L);
+}
+
+static int bridge_AppKit_alert(lua_State *L) {
+	return bridge_alert(L);
+}
+
+static int bridge_AppKit_disk_space(lua_State *L) {
+	return bridge_disk_space(L);
 }
 
 static int bridge_LuaPathView_moveTo(lua_State *L) {

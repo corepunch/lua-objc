@@ -1,18 +1,19 @@
+local ns = require("AppKit")
+
 local Model = {}
 
 function Model.humanKb(kb)
 	if kb >= 1024 * 1024 then
 		return string.format("%.1f GB", kb / 1024 / 1024)
 	elseif kb >= 1024 then
-		return string.format("%.0f MB", kb / 1024)
+		return string.format("%.1f MB", kb / 1024)
 	else
 		return string.format("%d KB", kb)
 	end
 end
 
--- Start a background du scan. Returns a scan handle with outFile/doneFile.
 function Model.startScan(rootPath, maxDepth)
-	local stamp = tostring(os.time())
+	local stamp = tostring(os.time()) .. tostring(math.random(1000, 9999))
 	local outFile = "/tmp/diskmap_" .. stamp .. ".txt"
 	local doneFile = "/tmp/diskmap_" .. stamp .. ".done"
 	local cmd = string.format(
@@ -27,14 +28,12 @@ function Model.startScan(rootPath, maxDepth)
 	return { outFile = outFile, doneFile = doneFile, rootPath = rootPath }
 end
 
--- Returns true when the background scan has finished.
 function Model.isDone(handle)
 	local f = io.open(handle.doneFile, "r")
 	if f then f:close(); return true end
 	return false
 end
 
--- Parse results into a tree. Each node: {name, path, kb, children}.
 function Model.parseTree(handle)
 	local rootPath = handle.rootPath:gsub("/$", "")
 
@@ -78,6 +77,18 @@ function Model.parseTree(handle)
 	os.remove(handle.outFile)
 	os.remove(handle.doneFile)
 	return buildNode(rootPath)
+end
+
+function Model.diskSpace(path)
+	return ns.diskSpace(path)
+end
+
+function Model.countItems(node)
+	local count = #node.children
+	for _, child in ipairs(node.children) do
+		count = count + Model.countItems(child)
+	end
+	return count
 end
 
 return Model
