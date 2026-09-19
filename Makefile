@@ -81,6 +81,9 @@ run-layout: $(TARGET) $(FRAMEWORK_MODULES)
 run-ide: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) apps/ide/init.lua
 
+run-diskmap: $(TARGET) $(FRAMEWORK_MODULES)
+	./$(TARGET) apps/diskmap/init.lua
+
 TEST_FILES = $(wildcard tests/*.test.lua)
 
 test: $(TARGET) $(FRAMEWORK_MODULES)
@@ -213,7 +216,7 @@ parity-report: parity-check
 		$(if $(REFERENCE_PNG),--reference-png "$(REFERENCE_PNG)") \
 		--out "build/parity/macos/$(CASE)/report.json" --strict
 
-.PHONY: all uikit run clean test parity-check parity-case parity-report run-hello run-list run-live run-weather run-welcome run-mail run-layout screenshot ios-host ios-packager ios-packager-run ios-run ios-internal-screenshot ios-screenshot ios ios-reset
+.PHONY: all uikit run clean test parity-check parity-case parity-report run-hello run-list run-live run-weather run-welcome run-mail run-layout run-diskmap screenshot ios-host ios-packager ios-packager-run ios-run ios-internal-screenshot ios-screenshot ios ios-reset
 
 # Standalone iPad development app (no Mac packager required).
 .PHONY: ipad ipad-simulator ipad-run ipad-deploy list-devices
