@@ -9,6 +9,15 @@ Build user-facing apps in Lua only. Keep AppKit/UIKit work behind the bridge
 and keep the app shell thin enough that most behavior lives in reusable Lua
 modules.
 
+## Quick Start
+
+1. **Vocabulary**: See [references/vocabulary.md](references/vocabulary.md) for all XML tags and modifiers
+2. **Navigation**: See [references/navigation.md](references/navigation.md) for routing patterns
+3. **Performance**: See [references/performance.md](references/performance.md) for list and animation rules
+4. **Motion**: See [references/motion.md](references/motion.md) for Core Animation patterns
+5. **Accessibility**: See [references/accessibility.md](references/accessibility.md) for WCAG compliance
+6. **Verification**: See [references/verification.md](references/verification.md) before shipping
+
 ## Laravel-style MVC with etlua views
 
 Use Laravel's separation of models, controller actions, and Blade views as the
