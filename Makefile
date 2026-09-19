@@ -103,7 +103,7 @@ IOS_MIN := 26.5
 DEVICE ?= iPhone 17
 IOS_SDK := $(shell xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null)
 IOS_CC := $(shell xcrun --sdk iphonesimulator --find clang)
-LUA_SRC_DIR := third_party/lua-5.4.8/src
+LUA_SRC_DIR := vendor/lua-5.4.8/src
 LUA_CORE := lapi lcode lctype ldebug ldo ldump lfunc lgc llex lmem lobject \
 	lopcodes lparser lstate lstring ltable ltm lundump lvm lzio
 LUA_LIB := lauxlib lbaselib lcorolib ldblib liolib lmathlib loadlib loslib \

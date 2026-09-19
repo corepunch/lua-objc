@@ -12,7 +12,7 @@ IPAD_DEVICE ?=
 SDK_PATH := $(shell xcrun --sdk $(SDK) --show-sdk-path)
 ROOT := build/ipad/$(SDK)-$(ARCH)
 BUNDLE := $(ROOT)/LuaStudio.app
-LUA := third_party/lua-5.4.8/src
+LUA := vendor/lua-5.4.8/src
 LUA_SOURCES := $(filter-out $(LUA)/lua.c $(LUA)/luac.c,$(wildcard $(LUA)/*.c))
 OBJECTS := $(patsubst $(LUA)/%.c,$(ROOT)/lua/%.o,$(LUA_SOURCES))
 MIN_FLAG := $(if $(filter iphoneos,$(SDK)),-miphoneos-version-min,-mios-simulator-version-min)=$(IOS_MIN)

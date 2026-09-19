@@ -113,7 +113,7 @@ function M.watched(path)
 	local kind = M.kind(path)
 	if kind == "other" then return false end
 	if path:match("^build/") or path:match("^%.git/") then return false end
-	if path:match("^third_party/") or path:match("^src/") or path:match("^ios/") then
+	if path:match("^vendor/") or path:match("^src/") or path:match("^ios/") then
 		return false
 	end
 	return true

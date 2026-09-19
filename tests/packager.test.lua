@@ -11,7 +11,7 @@ t.assertEqual(paths.kind("src/uikit/views.m"), "other", ".m is other")
 
 t.expect(paths.watched("apps/hello/Controller.lua"), "watch app lua")
 t.expect(not paths.watched("src/uikit/views.m"), "do not watch native sources")
-t.expect(not paths.watched("third_party/lua-5.4.8/src/lapi.c"), "do not watch vendored lua")
+t.expect(not paths.watched("vendor/lua-5.4.8/src/lapi.c"), "do not watch vendored lua")
 
 local rel, err = paths.moduleRel("UIKitNative")
 t.expect(rel == nil, "UIKitNative is not served")
