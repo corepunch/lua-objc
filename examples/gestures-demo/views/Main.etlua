@@ -1,0 +1,87 @@
+<Window title="Gestures & Haptics Demo" width="500" height="700">
+  <VStack padding="20" spacing="16">
+    <!-- Title -->
+    <Label size="18" weight="bold">Gesture Recognition</Label>
+    <Divider />
+
+    <!-- Tap Counter Section -->
+    <VStack spacing="8">
+      <Label weight="semibold">Tap Recognition</Label>
+      <VStack
+          padding="16"
+          background="lightgray"
+          cornerRadius="8"
+          onTap="tap"
+          spacing="8">
+        <Label size="14" color="gray">Tap this area</Label>
+        <Label size="24" weight="bold"><%= tapCount %></Label>
+        <Label size="12" color="gray">Tap count</Label>
+      </VStack>
+    </VStack>
+
+    <!-- Long Press Section -->
+    <VStack spacing="8">
+      <Label weight="semibold">Long-Press Recognition</Label>
+      <VStack
+          padding="16"
+          background="lightgray"
+          cornerRadius="8"
+          onLongPress="longPress"
+          spacing="8">
+        <Label size="14" color="gray">Press and hold</Label>
+        <Label size="24" weight="bold"><%= longPressCount %></Label>
+        <Label size="12" color="gray">Long press count</Label>
+      </VStack>
+    </VStack>
+
+    <!-- Drag Section -->
+    <VStack spacing="8">
+      <Label weight="semibold">Drag Recognition</Label>
+      <VStack
+          padding="16"
+          background="lightgray"
+          cornerRadius="8"
+          onDrag="drag"
+          spacing="8">
+        <Label size="14" color="gray">Drag in any direction</Label>
+        <Label size="24" weight="bold"><%= dragCount %></Label>
+        <Label size="12" color="gray">Drag count</Label>
+      </VStack>
+    </VStack>
+
+    <!-- Haptic Feedback Section -->
+    <VStack spacing="8">
+      <Label weight="semibold">Haptic Feedback</Label>
+      <VStack spacing="8">
+        <Button title="Success Haptic" style="bordered" action="success" />
+        <Button title="Warning Haptic" style="bordered" action="warning" />
+        <Button title="Error Haptic" style="bordered" action="error" />
+      </VStack>
+    </VStack>
+
+    <!-- Gesture Log -->
+    <VStack spacing="8">
+      <Label weight="semibold">Event Log</Label>
+      <ScrollView vertical="true">
+        <VStack spacing="4" padding="8" background="white" borderRadius="4">
+          <% if #gestureLog == 0 then %>
+            <Label size="12" color="gray">No events yet...</Label>
+          <% else %>
+            <% for i = #gestureLog, 1, -1 do %>
+              <Label size="11" color="gray"><%= gestureLog[i] %></Label>
+            <% end %>
+          <% end %>
+        </VStack>
+      </ScrollView>
+    </VStack>
+
+    <!-- Reset Button -->
+    <Button
+        title="Reset All Counters"
+        style="plain"
+        role="destructive"
+        action="reset"
+        />
+
+  </VStack>
+</Window>
