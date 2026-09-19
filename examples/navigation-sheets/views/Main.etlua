@@ -1,0 +1,14 @@
+<Window title="Navigation & Sheets" width="500" height="600">
+  <VStack padding="20" spacing="16">
+    <Label size="18" weight="bold">Navigation Demo</Label>
+    <Button title="Show Filter Sheet" action="showFilter" />
+
+    <% if showFilter then %>
+      <VStack padding="16" background="lightgray" cornerRadius="8" spacing="12">
+        <Label size="16" weight="bold">Filter Options</Label>
+        <Label>Sheet with medium/large detents</Label>
+        <Button title="Close" action="closeFilter" style="plain" />
+      </VStack>
+    <% end %>
+  </VStack>
+</Window>
