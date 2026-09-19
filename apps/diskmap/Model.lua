@@ -66,10 +66,7 @@ function Model.parseTree(handle)
 		local name = path:match("([^/]+)$") or path
 		local node = { name = name, path = path, kb = sizes[path] or 0, children = {} }
 		for _, child in ipairs(childrenOf[path] or {}) do
-			local childName = child:match("([^/]+)$") or ""
-			if childName:sub(1, 1) ~= "." then
-				node.children[#node.children+1] = buildNode(child)
-			end
+			node.children[#node.children+1] = buildNode(child)
 		end
 		return node
 	end

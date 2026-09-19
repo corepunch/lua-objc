@@ -40,6 +40,10 @@ local CLEANABLE = {
 	["target"]        = "build output — can be rebuilt",
 	[".gradle"]       = "Gradle cache — rebuilt on next build",
 	["xcuserdata"]    = "Xcode user data — safe to delete",
+	[".lmstudio"]     = "LLM models — delete unused models in LM Studio",
+	[".ollama"]       = "Ollama models — remove with: ollama rm <model>",
+	[".codex"]        = "OpenAI Codex data — safe to delete",
+	["Downloads"]     = "downloads — likely contains stale installers",
 }
 
 -- ── Context menu ─────────────────────────────────────────────────────────
@@ -345,7 +349,15 @@ function Controller.new()
 		currentTree  = nil,
 		selectedNode = nil,
 		chartWidth   = 760,
+		nodeCache    = {},
 	}, Controller)
+end
+
+function Controller:cacheNodes(node)
+	self.nodeCache[node.path] = node
+	for _, child in ipairs(node.children) do
+		self:cacheNodes(child)
+	end
 end
 
 function Controller:selectNode(node)
@@ -383,7 +395,7 @@ function Controller:trashPath(path, name, kb)
 	if choice == 1 then
 		local ok, err = ns.moveToTrash(path)
 		if ok then
-			self:startScan(self.currentPath)
+			self:rescan()
 		else
 			ns.Alert {
 				title = "Could not move to Trash",
@@ -413,6 +425,37 @@ function Controller:showContent(view)
 	self.contentArea:layout()
 end
 
+function Controller:displayTree(tree)
+	self.currentTree = tree
+	local diskInfo = Model.diskSpace(self.currentPath)
+
+	local stack = ns.VStack {
+		spacing   = 16,
+		alignment = "leading",
+		padding   = 16,
+		fillWidth = true,
+	}
+
+	local root = makeIcicle(tree, self.chartWidth, 0, self)
+	if root then stack:add(root) end
+
+	local suggestions = buildSuggestions(tree)
+	local sugView = makeSuggestionsView(suggestions, self)
+	if sugView then stack:add(sugView) end
+
+	local childrenView = makeChildrenTable(tree, self)
+	if childrenView then stack:add(childrenView) end
+
+	stack:add(makeStatusBar(tree, diskInfo))
+
+	self:showContent(ns.ScrollView {
+		content   = stack,
+		vertical  = true,
+		flexGrow  = 1,
+		fillWidth = true,
+	})
+end
+
 function Controller:startScan(rootPath, isNav)
 	if not isNav and self.currentPath then
 		table.insert(self.history, self.currentPath)
@@ -422,6 +465,14 @@ function Controller:startScan(rootPath, isNav)
 	self.selectedNode = nil
 	self.currentTree = nil
 	self:updateToolbar()
+
+	-- Use cached tree if available and populated
+	local cached = self.nodeCache[rootPath]
+	if cached and #cached.children > 0 then
+		self:displayTree(cached)
+		return
+	end
+
 	self:showContent(makeLoadingView("Scanning " .. rootPath .. " …"))
 
 	local handle = Model.startScan(rootPath, 5)
@@ -436,40 +487,15 @@ function Controller:startScan(rootPath, isNav)
 			return
 		end
 
-		self_.currentTree = tree
-		local diskInfo = Model.diskSpace(rootPath)
-
-		-- Build the full content stack: chart → suggestions → children → status
-		local stack = ns.VStack {
-			spacing   = 16,
-			alignment = "leading",
-			padding   = 16,
-			fillWidth = true,
-		}
-
-		-- 1. Icicle chart
-		local root = makeIcicle(tree, self_.chartWidth, 0, self_)
-		if root then stack:add(root) end
-
-		-- 2. Suggestions (cleanable folders)
-		local suggestions = buildSuggestions(tree)
-		local sugView = makeSuggestionsView(suggestions, self_)
-		if sugView then stack:add(sugView) end
-
-		-- 3. Children table
-		local childrenView = makeChildrenTable(tree, self_)
-		if childrenView then stack:add(childrenView) end
-
-		-- 4. Status bar
-		stack:add(makeStatusBar(tree, diskInfo))
-
-		self_:showContent(ns.ScrollView {
-			content   = stack,
-			vertical  = true,
-			flexGrow  = 1,
-			fillWidth = true,
-		})
+		self_:cacheNodes(tree)
+		self_:displayTree(tree)
 	end)
+end
+
+function Controller:rescan()
+	if not self.currentPath then return end
+	self.nodeCache[self.currentPath] = nil
+	self:startScan(self.currentPath)
 end
 
 function Controller:createMenuBar()
@@ -556,7 +582,7 @@ function Controller:createMenuBar()
 		keyEquivalent = "r",
 		modifiers = { "command" },
 		action = function()
-			if self_.currentPath then self_:startScan(self_.currentPath) end
+			self_:rescan()
 		end,
 	}
 end
@@ -606,7 +632,7 @@ function Controller:createWindow()
 		  onSubmit = function(path) self_:startScan(path) end },
 		{ id = "rescan",  icon = "arrow.clockwise", tooltip = "Rescan",
 		  action = function()
-			if self_.currentPath then self_:startScan(self_.currentPath) end
+			self_:rescan()
 		  end },
 	}
 	self.window = ns.Window(cfg)
