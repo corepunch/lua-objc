@@ -310,5 +310,5 @@ end
 
 - Full API: `docs/vocabulary_reorder.md`
 - Integration Guide: `docs/REORDER_INTEGRATION_GUIDE.md`
-- Example: `examples/list-reorder/`
+- Example: `apps/list-reorder/`
 - Tests: `tests/reorder.test.lua`

@@ -137,7 +137,7 @@ function Controller:markItemRead(id)
 end
 ```
 
-See `examples/mail` for example of efficient list updates.
+See `apps/mail` for example of efficient list updates.
 
 ## Layout Performance
 
@@ -290,7 +290,7 @@ end
 Before shipping a feature, test it with 1,000+ items:
 
 ```bash
-./lua-objc --benchmark examples/myapp/init.lua
+./lua-objc --benchmark apps/myapp/init.lua
 ```
 
 This will:
@@ -303,7 +303,7 @@ This will:
 Deeply nested or over-complex hierarchies show up here:
 
 ```bash
-./lua-objc --dump-layout=/tmp/layout.xml examples/myapp/init.lua
+./lua-objc --dump-layout=/tmp/layout.xml apps/myapp/init.lua
 ```
 
 Check for:

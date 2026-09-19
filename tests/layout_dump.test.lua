@@ -3,7 +3,7 @@ _G.__headless = true
 local t = require("TestKit")
 local path = os.tmpname() .. ".xml"
 local command = string.format(
-	"./lua-objc --dump-layout=%q examples/stocks/init.lua >/dev/null 2>&1", path)
+	"./lua-objc --dump-layout=%q apps/stocks/init.lua >/dev/null 2>&1", path)
 local ok = os.execute(command)
 t.expect(ok == true or ok == 0, "native layout dump command exits successfully")
 

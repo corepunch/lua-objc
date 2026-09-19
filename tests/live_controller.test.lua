@@ -2,7 +2,7 @@ _G.__headless = true
 
 local t = require("TestKit")
 local ns = require("AppKit")
-local Controller = require("examples.stocks.Controller")
+local Controller = require("apps.stocks.Controller")
 
 local originalAsync = ns.async
 local originalFetchJSON = ns.fetch_json
@@ -39,7 +39,7 @@ _G.__headless = true
 
 t.assertEqual(table.concat(loadingCalls, ","), "show,hide",
 	"refresh starts and stops the native loading indicator")
-t.assertEqual(#rows, #require("examples.stocks.Model").symbols + 1,
+t.assertEqual(#rows, #require("apps.stocks.Model").symbols + 1,
 	"refresh includes Business News and every watchlist row")
 t.assertEqual(rows[2].price, "$101.00", "refresh formats fetched prices")
 t.assertEqual(#controller.stockData["^IXIC"].chartData, 3,

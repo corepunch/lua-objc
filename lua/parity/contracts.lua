@@ -126,7 +126,7 @@ function M.run(ns)
 	equal(ns._hitTestTarget(layered, button, 50, 50), false, "interactive stack receives hit testing")
 	overlay.allowsHitTesting = false
 	equal(ns._hitTestTarget(layered, button, 50, 50), true, "hit testing modifier round-trips")
-	local artwork = ns.Image { path = "examples/adventure-arena/assets/planetfall.jpg", contentMode = "fill" }
+	local artwork = ns.Image { path = "apps/adventure-arena/assets/planetfall.jpg", contentMode = "fill" }
 	equal(artwork.contentModeName, "fill", "native image reports its actual content mode")
 	artwork.contentModeName = "fit"
 	equal(artwork.contentModeName, "fit", "image mode round-trips")

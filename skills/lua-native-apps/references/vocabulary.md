@@ -439,4 +439,4 @@ To add a new tag to the registry:
 1. Define it in the appropriate platform's `xml.lua` or a platform extension
 2. Document it in this vocabulary reference
 3. Test with both macOS and iOS (or document platform-specific behavior)
-4. Add examples to `examples/<app>/views/` showing usage
+4. Add examples to `apps/<app>/views/` showing usage

@@ -58,28 +58,28 @@ run: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) $(ARGS)
 
 run-hello: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) examples/hello/init.lua
+	./$(TARGET) apps/hello/init.lua
 
 run-list: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) examples/list/init.lua
+	./$(TARGET) apps/list/init.lua
 
 run-stocks: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) examples/stocks/init.lua
+	./$(TARGET) apps/stocks/init.lua
 
 run-weather: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) examples/weather/init.lua
+	./$(TARGET) apps/weather/init.lua
 
 run-welcome: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) examples/welcome/init.lua
+	./$(TARGET) apps/welcome/init.lua
 
 run-mail: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) examples/mail/init.lua
+	./$(TARGET) apps/mail/init.lua
 
 run-layout: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) examples/layout/init.lua
+	./$(TARGET) apps/layout/init.lua
 
 run-ide: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) examples/ide/init.lua
+	./$(TARGET) apps/ide/init.lua
 
 TEST_FILES = $(wildcard tests/*.test.lua)
 
@@ -161,19 +161,19 @@ ios-host: $(HOST_BINARY)
 ios-packager: $(PACKAGER)
 
 ios-packager-run: ios-packager
-	./$(PACKAGER) --root "$(CURDIR)" --port 8081 --entry "$(or $(PROJECT),examples/hello)"
+	./$(PACKAGER) --root "$(CURDIR)" --port 8081 --entry "$(or $(PROJECT),apps/hello)"
 
 ios-packager-stop:
 	@if [ -f build/ios/packager.pid ]; then kill $$(cat build/ios/packager.pid) 2>/dev/null || true; rm -f build/ios/packager.pid; fi
 
 ios-run: ios-host ios-packager
 	chmod +x scripts/ios-run.sh
-	DEVELOPER_DIR=$(DEVELOPER_DIR) DEVICE="$(DEVICE)" PROJECT="$(or $(PROJECT),examples/hello)" \
+	DEVELOPER_DIR=$(DEVELOPER_DIR) DEVICE="$(DEVICE)" PROJECT="$(or $(PROJECT),apps/hello)" \
 		scripts/ios-run.sh
 
 ios-internal-screenshot: ios-host ios-packager
 	DEVELOPER_DIR=$(DEVELOPER_DIR) OUT="$(or $(OUT),/tmp/ios-internal-screenshot.png)" \
-		PROJECT="$(or $(PROJECT),examples/hello)" DEVICE="$(DEVICE)" \
+		PROJECT="$(or $(PROJECT),apps/hello)" DEVICE="$(DEVICE)" \
 		scripts/ios-internal-screenshot.sh
 
 ios-screenshot:

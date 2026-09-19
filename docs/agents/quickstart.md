@@ -10,10 +10,10 @@ app. Read it before writing application code.
 
 ## 1. Choose the app shape
 
-Create a folder under `examples/`:
+Create a folder under `apps/`:
 
 ```text
-examples/weather/
+apps/weather/
   init.lua
   Model.lua
   Controller.lua
@@ -26,7 +26,7 @@ Keep `init.lua` thin. It returns the controller class; it does not create a
 window or start the application.
 
 ```lua
-return require("examples.weather.Controller")
+return require("apps.weather.Controller")
 ```
 
 Put network calls, sample data, formatting, and mutations in `Model.lua`. Keep
@@ -41,7 +41,7 @@ Use a semantic window split when the app has navigation and primary content:
 local ns = require("AppKit")
 local xml = require("ui.xml")
 
-local cfg = xml.renderFile("examples/weather/views/Window.etlua")
+local cfg = xml.renderFile("apps/weather/views/Window.etlua")
 local sidebar = ns.VStack {
     ns.SearchField { placeholder = "Search", accessibilityLabel = "Search locations" },
     ns.List {
@@ -102,12 +102,12 @@ simulate progress.
 
 ## 6. iPhone Simulator
 
-The same `examples/<app>/` tree runs on iOS. The Simulator host is a runtime;
+The same `apps/<app>/` tree runs on iOS. The Simulator host is a runtime;
 Lua, templates, and assets stream from a Mac packager. After `make ios-run`,
 a save reloads the running app **without quitting**:
 
 ```sh
-make ios-run ARGS=examples/hello
+make ios-run ARGS=apps/hello
 ```
 
 Do not copy Lua into the `.app`. Do not rebuild the host because a view or
@@ -117,9 +117,9 @@ asset changed. See [iOS host and hot reload](../ios.md).
 
 ```sh
 make test
-./lua-objc --dump-layout=/tmp/layout.xml examples/weather/init.lua
+./lua-objc --dump-layout=/tmp/layout.xml apps/weather/init.lua
 rg -n 'cropped="true"|outsideParent="true"|contentClipped="true"' /tmp/layout.xml
-./lua-objc --screenshot=/tmp/weather.png examples/weather/init.lua
+./lua-objc --screenshot=/tmp/weather.png apps/weather/init.lua
 ```
 
 For visual changes, inspect small and large window sizes plus light and dark

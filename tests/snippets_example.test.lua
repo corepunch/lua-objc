@@ -1,5 +1,5 @@
 local t = require("TestKit")
-local Model = require("examples.snippets.Model")
+local Model = require("apps.snippets.Model")
 
 Model.initialize()
 

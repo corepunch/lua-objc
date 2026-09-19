@@ -26,7 +26,7 @@ mkdir -p "$root"
 LUA_OBJC_PARITY_CASE="$case_id" ./lua-objc \
 	--width="$width" --height="$height" \
 	--internal-screenshot="$root/candidate.png" \
-	examples/swiftui_parity/init.lua
+	apps/swiftui_parity/init.lua
 
 if [ ! -s "$root/candidate.png" ]; then
 	echo "parity capture failed: screenshot was not produced for $case_id" >&2
@@ -36,7 +36,7 @@ fi
 LUA_OBJC_PARITY_CASE="$case_id" ./lua-objc \
 	--width="$width" --height="$height" \
 	--dump-layout="$root/candidate.xml" \
-	examples/swiftui_parity/init.lua
+	apps/swiftui_parity/init.lua
 
 if [ ! -s "$root/candidate.xml" ]; then
 	echo "parity capture failed: layout dump was not produced for $case_id" >&2

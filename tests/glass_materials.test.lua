@@ -1,6 +1,6 @@
 local function createController()
     _G.__headless = true
-    package.path = "./examples/glass-materials/?.lua;" .. package.path
+    package.path = "./apps/glass-materials/?.lua;" .. package.path
     local Controller = require("Controller")
     return Controller.new()
 end

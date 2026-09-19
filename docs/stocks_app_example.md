@@ -48,7 +48,7 @@ declarative stack.
 The repo recommends this layout for every app:
 
 ```text
-examples/<app>/
+apps/<app>/
   init.lua        -- entry point, returns the controller class
   Model.lua       -- pure data and domain logic
   Controller.lua  -- binds model -> view state and actions
@@ -60,8 +60,8 @@ This keeps app logic testable and separates the declarative UI from business dat
 ## Example: app entry point
 
 ```lua
--- examples/stocks/init.lua
-return require("examples.stocks.Controller")
+-- apps/stocks/init.lua
+return require("apps.stocks.Controller")
 ```
 
 This is intentionally thin. The host framework instantiates the controller and
@@ -70,7 +70,7 @@ opens the window; the app itself does not self-start.
 ## Example: data model in Lua
 
 ```lua
--- examples/stocks/Model.lua
+-- apps/stocks/Model.lua
 local Model = {}
 
 Model.symbols = { "^IXIC", "AAPL", "MSFT", "GOOG", "NVDA" }
@@ -94,9 +94,9 @@ window is required just to reason about market data.
 ## Example: controller wiring
 
 ```lua
--- examples/stocks/Controller.lua
+-- apps/stocks/Controller.lua
 local ns = require("AppKit")
-local Model = require("examples.stocks.Model")
+local Model = require("apps.stocks.Model")
 
 local Controller = {}
 Controller.__index = Controller
@@ -137,7 +137,7 @@ editors, mail clients, or productivity tools.
 ## Example: declarative etlua view composition
 
 ```xml
-<!-- examples/stocks/views/Window.etlua -->
+<!-- apps/stocks/views/Window.etlua -->
 <Window title="Stocks" width="1100" height="680">
 	<SplitView>
 		<VStack id="sidebar" width="340">
@@ -172,11 +172,11 @@ full compile cycle.
 
 ```sh
 make
-./lua-objc examples/stocks
+./lua-objc apps/stocks
 ```
 
 Or capture a screenshot:
 
 ```sh
-make screenshot ARGS="examples/stocks/init.lua" OUT=/tmp/stocks.png
+make screenshot ARGS="apps/stocks/init.lua" OUT=/tmp/stocks.png
 ```

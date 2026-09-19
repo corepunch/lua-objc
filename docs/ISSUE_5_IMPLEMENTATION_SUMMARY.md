@@ -77,7 +77,7 @@ This document summarizes the implementation of drag-to-reorder functionality for
 
 **Status**: ✓ Complete
 
-### 4. Example: `examples/list-reorder/`
+### 4. Example: `apps/list-reorder/`
 
 **Structure**:
 - `init.lua` - Entry point
@@ -291,10 +291,10 @@ LazyVStack/LazyVGrid are placeholders - implementation can use VStack/HStack for
 
 ### Created
 1. `/lua/ui/reorder.lua` - Core module (275 lines)
-2. `/examples/list-reorder/init.lua` - Example entry
-3. `/examples/list-reorder/Model.lua` - Example model
-4. `/examples/list-reorder/Controller.lua` - Example controller
-5. `/examples/list-reorder/README.md` - Example docs
+2. `/apps/list-reorder/init.lua` - Example entry
+3. `/apps/list-reorder/Model.lua` - Example model
+4. `/apps/list-reorder/Controller.lua` - Example controller
+5. `/apps/list-reorder/README.md` - Example docs
 6. `/docs/vocabulary_reorder.md` - API documentation
 7. `/docs/REORDER_INTEGRATION_GUIDE.md` - Integration guide
 8. `/tests/reorder.test.lua` - Unit tests
@@ -335,7 +335,7 @@ EOF
 
 ```lua
 -- In application that supports lua-objc
-local Controller = require("examples.list-reorder.Controller")
+local Controller = require("apps.list-reorder.Controller")
 local ctrl = Controller.new()
 local window = ctrl:createWindow()
 -- Window displays task list (reorder not functional until native support added)
@@ -354,7 +354,7 @@ For developers implementing native support:
 
 - [ ] Read `docs/REORDER_INTEGRATION_GUIDE.md`
 - [ ] Understand Difference API from `lua/ui/reorder.lua`
-- [ ] Review example in `examples/list-reorder/`
+- [ ] Review example in `apps/list-reorder/`
 - [ ] Implement AppKit drag-drop handler
 - [ ] Create Difference object from drop event
 - [ ] Invoke Lua callback with Difference

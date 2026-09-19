@@ -4,22 +4,22 @@ local ns = require("AppKit")
 local t = require("TestKit")
 
 local examples = {
-	"examples/studio/init.lua",
-	"examples/playground/init.lua",
-	"examples/hello/init.lua",
-	"examples/controls/init.lua",
-	"examples/list/init.lua",
-	"examples/mail/init.lua",
-	"examples/layout/init.lua",
-	"examples/welcome/init.lua",
-	"examples/ide/init.lua",
-	"examples/weather/init.lua",
-	"examples/stocks/init.lua",
-	"examples/snippets/init.lua",
-	"examples/adventure-arena/init.lua",
-	"examples/phone-tabs/init.lua",
-	"examples/swiftui_parity/init.lua",
-	"examples/parity_batch/init.lua",
+	"apps/studio/init.lua",
+	"apps/playground/init.lua",
+	"apps/hello/init.lua",
+	"apps/controls/init.lua",
+	"apps/list/init.lua",
+	"apps/mail/init.lua",
+	"apps/layout/init.lua",
+	"apps/welcome/init.lua",
+	"apps/ide/init.lua",
+	"apps/weather/init.lua",
+	"apps/stocks/init.lua",
+	"apps/snippets/init.lua",
+	"apps/adventure-arena/init.lua",
+	"apps/phone-tabs/init.lua",
+	"apps/swiftui_parity/init.lua",
+	"apps/parity_batch/init.lua",
 }
 
 for _, path in ipairs(examples) do

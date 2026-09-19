@@ -61,7 +61,7 @@ _G.__headless = true
 
 local t = require("TestKit")
 local ns = require("AppKit")
-local Controller = require("examples.mail.Controller")
+local Controller = require("apps.mail.Controller")
 
 local controller = Controller.new()
 local window = controller:createWindow()
@@ -85,7 +85,7 @@ Set headless mode before loading an example:
 ```lua
 _G.__headless = true
 
-local fn, loadError = loadfile("examples/example.lua")
+local fn, loadError = loadfile("apps/example.lua")
 if not fn then error(loadError) end
 local ok, runtimeError = pcall(fn)
 ```
@@ -130,7 +130,7 @@ Layout dump tests verify the native view hierarchy without pixel inspection:
 local t = require("TestKit")
 local path = os.tmpname() .. ".xml"
 local cmd = string.format(
-    "./lua-objc --dump-layout=%q examples/stocks/init.lua >/dev/null 2>&1", path)
+    "./lua-objc --dump-layout=%q apps/stocks/init.lua >/dev/null 2>&1", path)
 local ok = os.execute(cmd)
 t.expect(ok == true or ok == 0, "layout dump command exits successfully")
 

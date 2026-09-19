@@ -156,7 +156,7 @@ quitting.
 3. **iOS Simulator host** — `ios/LuaRuntime` + `luaopen_UIKitNative`. No app
    Lua inside the `.app`. Packager streams Lua, templates, and assets; the host
    reloads in process. `build/UIKit.dylib` remains an optional SDK compile-check.
-4. **`examples/<app>/`** — Lua Model, Controller, and views. No compilation step
+4. **`apps/<app>/`** — Lua Model, Controller, and views. No compilation step
    for Lua/asset changes.
 
 The embedded AppKit layer provides SwiftUI-like functions
@@ -447,7 +447,7 @@ local window = ns.Window {
 `SearchField.controlSize` accepts `"mini"`, `"small"`, `"regular"`,
 `"large"`, or macOS 26's native `"extraLarge"` size.
 
-This is the pattern used by `examples/mail` and `examples/stocks`. Keep
+This is the pattern used by `apps/mail` and `apps/stocks`. Keep
 `style = "sourceList"` limited to navigation; primary data belongs in a
 `plain` or `fullWidth` table in the content column.
 
@@ -773,7 +773,7 @@ ns.Curve {
 
 The IDE example intentionally stays small: a native source-list `OutlineView`
 shows folder contents in the sidebar, and a native `TextEditor` displays the
-selected file in the content pane. See `examples/ide/` and the agent-facing
+selected file in the content pane. See `apps/ide/` and the agent-facing
 [quickstart](index.md) for the supported workflow.
 
 ## Lua API — List (NSTableView)
@@ -1074,9 +1074,9 @@ Requires:
 
 ```sh
 make          # build ./lua-objc
-make run      # run examples/hello.lua
-make run ARGS="examples/hello.lua"
-make run ARGS="examples/list.lua"
+make run      # run apps/hello.lua
+make run ARGS="apps/hello.lua"
+make run ARGS="apps/list.lua"
 make clean
 ```
 
@@ -1125,12 +1125,12 @@ The runtime can launch an app headlessly, force native layout, write an
 agent-readable XML hierarchy, and exit without diagnostic code in the app:
 
 ```sh
-./lua-objc --dump-layout=/tmp/layout.xml examples/stocks/init.lua
+./lua-objc --dump-layout=/tmp/layout.xml apps/stocks/init.lua
 rg -n 'cropped="true"|outsideParent="true"|contentClipped="true"' /tmp/layout.xml
 
 # Override content size to exercise a compact layout.
 ./lua-objc --dump-layout=/tmp/layout-small.xml --width=760 --height=468 \
-  examples/stocks/init.lua
+  apps/stocks/init.lua
 ```
 
 Every `<View>` records the Objective-C class, computed frame,
@@ -1210,7 +1210,7 @@ lua-objc/
 │   └── TestKit.lua         # Assertion helpers for testing
 └── tests/
 │   └── bridge.test.lua      # Framework tests
-└── examples/
+└── apps/
     ├── hello.lua           # Window + Text + Image demo
     ├── list.lua            # Window + List (NSTableView) demo
     ├── live.lua            # Stock ticker with coroutines + spinner
@@ -1375,7 +1375,7 @@ renders via `yield()`. This is similar to PHP's Blade/Twig template inheritance.
 </Window>
 ```
 
-**Child template** (`examples/hello/views/Window.etlua`):
+**Child template** (`apps/hello/views/Window.etlua`):
 
 ```lua
 <% extends("views/AppWindow.etlua", { title = "Hello", width = 480, height = 420 }) %>
@@ -1481,16 +1481,16 @@ local xml = require("ui.xml")
 local view = xml.render(xmlString, data, ns)
 
 -- Render from a file path (relative to cwd)
-local view = xml.renderFile("examples/mail/views/Window.etlua", rowData, ns)
+local view = xml.renderFile("apps/mail/views/Window.etlua", rowData, ns)
 
 -- When XML root is <Window>, returns (config, refs) instead of (view, refs)
-local cfg, refs = xml.renderFile("examples/mail/views/Window.etlua")
+local cfg, refs = xml.renderFile("apps/mail/views/Window.etlua")
 
 -- Decode data XML into Lua tables via schema
 local data = xml.decode(xmlString, schema)
 
 -- Decode from file path
-local data = xml.decodeFile("examples/mail/share/messages.xml", schema)
+local data = xml.decodeFile("apps/mail/share/messages.xml", schema)
 ```
 
 The returned value is a single view userdata. When the XML root has multiple
@@ -1547,7 +1547,7 @@ local schema = {
   },
 }
 
-local data = xml.decodeFile("examples/mail/share/messages.xml", schema)
+local data = xml.decodeFile("apps/mail/share/messages.xml", schema)
 ```
 
 This API decodes XML entities in attributes/text and preserves multiline CDATA
@@ -1558,7 +1558,7 @@ content when extracting text fields.
 Every standalone example app follows the same three-layer structure:
 
 ```
-examples/<appname>/
+apps/<appname>/
   init.lua        — entry point only: WindowController.new():createWindow()
   Model.lua       — data, queries, mutations; no ns.* calls
   Controller.lua  — defines WindowController class; one ns.Window call
@@ -1582,13 +1582,13 @@ examples/<appname>/
 ### Example: mail app
 
 ```lua
--- examples/mail/init.lua
-local WindowController = require("examples.mail.Controller")
+-- apps/mail/init.lua
+local WindowController = require("apps.mail.Controller")
 return WindowController.new():createWindow()
 ```
 
 ```lua
--- examples/mail/Controller.lua  (abridged)
+-- apps/mail/Controller.lua  (abridged)
 local WindowController = {}
 WindowController.__index = WindowController
 
@@ -1610,7 +1610,7 @@ end
 ```
 
 ```xml
-<!-- examples/mail/views/Window.etlua -->
+<!-- apps/mail/views/Window.etlua -->
 <HSplit>
     <List ref="mailboxList" fixedWidth="180" style="sourceList" header="false">
         <Column id="name" title="Mailbox" />
@@ -1623,7 +1623,7 @@ end
 ```
 
 ```xml
-<!-- examples/mail/views/MessageDetail.etlua -->
+<!-- apps/mail/views/MessageDetail.etlua -->
 <VStack flexGrow="1" padding="24" spacing="16" alignment="leading">
     <Label text="<%= subject %>" size="18" weight="semibold" />
     <HStack spacing="8">

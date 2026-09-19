@@ -22,7 +22,7 @@ This guide explains how to implement native drag-to-reorder support for lua-objc
    - VStack, HStack, HSplit, List support
    - ✓ Implemented
 
-4. **Example: `examples/list-reorder/`**
+4. **Example: `apps/list-reorder/`**
    - Model, Controller, README with integration instructions
    - Demonstrates callback handling and UI updates
    - ✓ Complete and working (without native drag-drop)
@@ -30,7 +30,7 @@ This guide explains how to implement native drag-to-reorder support for lua-objc
 5. **Documentation**
    - `docs/vocabulary_reorder.md` - Complete API reference
    - `docs/REORDER_INTEGRATION_GUIDE.md` - This file
-   - `examples/list-reorder/README.md` - Example walkthrough
+   - `apps/list-reorder/README.md` - Example walkthrough
 
 ## TODO: Native Implementation
 
@@ -219,7 +219,7 @@ For both platforms, implement:
    - Test fromArrayDiff utility
 
 2. **Integration tests**
-   - Run `examples/list-reorder/` example
+   - Run `apps/list-reorder/` example
    - Verify callback invocation
    - Verify model updates
 
@@ -310,11 +310,11 @@ end
 
 4. **Testing**
    - Run `tests/reorder.test.lua`
-   - Test `examples/list-reorder/` example
+   - Test `apps/list-reorder/` example
 
 ## References
 
 - Lua Difference API: `lua/ui/reorder.lua`
-- Example usage: `examples/list-reorder/`
+- Example usage: `apps/list-reorder/`
 - Full documentation: `docs/vocabulary_reorder.md`
 - AppKit integration: `lua/embedded/AppKit.lua` (Scope, LuaReg patterns)

@@ -1,8 +1,8 @@
 _G.__headless = true
 
 local t = require("TestKit")
-local Controller = require("examples.stocks.Controller")
-local Model = require("examples.stocks.Model")
+local Controller = require("apps.stocks.Controller")
+local Model = require("apps.stocks.Model")
 
 local sample = Model.sampleStock("^IXIC")
 t.assertEqual(sample.name, "NASDAQ Composite", "stocks fallback data names the selected index")

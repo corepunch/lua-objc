@@ -101,7 +101,7 @@ for _, case in ipairs(input.cases) do
 end
 local inputPath = output .. "/input.json"
 ns._parityWrite(inputPath, '{"schema":1,"runId":"model-run","cases":[{"id":"model","width":20,"height":30,"tree":{"id":"root","kind":"vstack"}}]}')
-local model = require("examples.parity_batch.Model").new()
+local model = require("apps.parity_batch.Model").new()
 t.assertEqual(model:run(inputPath, output), 1, "streamed app model executes real native batch")
 t.assertEqual(model.runId, "model-run")
 t.assertEqual(ns._parityReadJSON(output .. "/model.json").probes[1].height, 0)

@@ -1,12 +1,12 @@
 _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
-local Model = require("examples.adventure-arena.Model")
+local Model = require("apps.adventure-arena.Model")
 local catalog = Model.new()
 local model = Model.new({ engineFactory = function()
 	return { start = function() return { resume = function(_, command) return "Response to " .. command end }, "Opening" end }
 end })
-local controller = require("examples.adventure-arena.Controller").new { model = model, ns = ns }
+local controller = require("apps.adventure-arena.Controller").new { model = model, ns = ns }
 t.assertEqual(controller.model, model, "controller uses injected model")
 local home = controller:home()
 home.frameSize = ns.Size(640, 720)

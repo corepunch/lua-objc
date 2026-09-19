@@ -1,7 +1,7 @@
 _G.__headless = true
 local t = require("TestKit")
 local native = require("AppKit")
-local Controller = require("examples.studio.Controller")
+local Controller = require("apps.studio.Controller")
 local key, credentialError, sheet, focused, pending, requestCount = "", nil, nil, nil, nil, 0
 local ns = {
 	_readFile = function(path)

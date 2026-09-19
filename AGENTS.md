@@ -38,8 +38,8 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   Components emit view trees through templates.
   Only the app entry point (`init.lua` or the `App` object) creates an
   `ns.Window`. A component that creates a window is wrong.
-- **Apps live in `examples/<appname>/`.** Every app has its own folder with
-  `init.lua` as the entry point. Flat `examples/<appname>.lua` files are
+- **Apps live in `apps/<appname>/`.** Every app has its own folder with
+  `init.lua` as the entry point. Flat `apps/<appname>.lua` files are
   forbidden. There are no forwarding shims.
 - **Laravel-style MVC.** Models own domain queries, validation, and mutations;
   controllers coordinate model calls, navigation, and callbacks; etlua views
@@ -47,7 +47,7 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   focused services for IO/runtime integration; keep controller actions thin.
 - **MVC folder layout inside each app:**
   ```
-  examples/<app>/
+  apps/<app>/
     init.lua        ← requires and returns Controller class (framework instantiates)
     Model.lua       ← data, queries, mutations
     Controller.lua  ← wires model → views, owns actions
@@ -117,7 +117,7 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   width = 520, rowHeight = 28 }`) rather than separate `local SCREAMING_SNAKE`
   variables. Prefer flat camelCase keys.
 - Comments explain design reasons, edge cases, and existing prior art.
-- Keep `examples/<app>/init.lua` thin — entry point only. Put UI bricks in
+- Keep `apps/<app>/init.lua` thin — entry point only. Put UI bricks in
   `views/`, state in `Model.lua`, and wiring in `Controller.lua`.
 - Native `.m` sources expose existing Cocoa classes to Lua. New classes are
   implemented in Lua whenever possible. Only reach for `.m` when the
@@ -171,9 +171,9 @@ metadata layers.
 ```sh
 make
 make test
-make run ARGS="examples/hello/init.lua"
-./lua-objc --preview --out=/tmp/preview.png examples/hello/init.lua
-./lua-objc --screenshot=/tmp/screenshot.png examples/stocks/init.lua
+make run ARGS="apps/hello/init.lua"
+./lua-objc --preview --out=/tmp/preview.png apps/hello/init.lua
+./lua-objc --screenshot=/tmp/screenshot.png apps/stocks/init.lua
 ```
 
 ### Inspect computed AppKit layout
@@ -184,12 +184,12 @@ lua-objc layout engine to finish layout, writes the hierarchy, and exits:
 
 ```sh
 make
-./lua-objc --dump-layout=/tmp/layout.xml examples/stocks/init.lua
+./lua-objc --dump-layout=/tmp/layout.xml apps/stocks/init.lua
 rg -n 'cropped="true"|outsideParent="true"|contentClipped="true"' /tmp/layout.xml
 
 # Repeat at the app's minimum supported content size.
 ./lua-objc --dump-layout=/tmp/layout-small.xml --width=760 --height=468 \
-  examples/stocks/init.lua
+  apps/stocks/init.lua
 ```
 
 The XML is generated automatically by Objective-C; application code must not
@@ -206,16 +206,16 @@ content, and quit automatically:
 
 ```sh
 make
-./lua-objc --screenshot=/tmp/before.png examples/stocks/init.lua
+./lua-objc --screenshot=/tmp/before.png apps/stocks/init.lua
 # make your change
 make
-./lua-objc --screenshot=/tmp/after.png examples/stocks/init.lua
+./lua-objc --screenshot=/tmp/after.png apps/stocks/init.lua
 ```
 
 Or with the Makefile shortcut:
 
 ```sh
-make screenshot ARGS="examples/stocks/init.lua" OUT=/tmp/screenshot.png
+make screenshot ARGS="apps/stocks/init.lua" OUT=/tmp/screenshot.png
 ```
 
 The flag runs the full app event loop, waits 1.5 s for layout and rendering to
@@ -227,12 +227,12 @@ window geometry, split-view proportions, toolbar, and all live state. Use it to:
 - Confirm a specific example renders without visual regressions.
 - Capture both light and dark appearances:
   ```sh
-  ./lua-objc --screenshot=/tmp/light.png --appearance=light examples/stocks/init.lua
-  ./lua-objc --screenshot=/tmp/dark.png  --appearance=dark  examples/stocks/init.lua
+  ./lua-objc --screenshot=/tmp/light.png --appearance=light apps/stocks/init.lua
+  ./lua-objc --screenshot=/tmp/dark.png  --appearance=dark  apps/stocks/init.lua
   ```
 - Capture at a custom content size:
   ```sh
-  ./lua-objc --screenshot=/tmp/small.png --width=760 --height=468 examples/stocks/init.lua
+  ./lua-objc --screenshot=/tmp/small.png --width=760 --height=468 apps/stocks/init.lua
   ```
 
 For UI changes, completion requires actual visual QA:

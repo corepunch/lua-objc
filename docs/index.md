@@ -22,7 +22,7 @@ AppKit/UIKit controls, and no compile cycle for every UI change.
 ## The core loop
 
 1. Describe the view in Lua or an etlua template.
-2. Run it: `./lua-objc examples/<app>` on macOS, or `make ios-run ARGS=examples/<app>` on the iPhone Simulator.
+2. Run it: `./lua-objc apps/<app>` on macOS, or `make ios-run ARGS=apps/<app>` on the iPhone Simulator.
 3. On iOS, save a Lua/etlua/asset file; the running host reloads in place (no quit, no rebuild).
 4. Exercise the behavior with a headless Lua test.
 5. Inspect a screenshot or native layout dump when the change is visual.
@@ -34,7 +34,7 @@ simulating them with text or custom drawing.
 ## Repository layout
 
 ```text
-examples/<app>/
+apps/<app>/
   init.lua        entry point; returns the controller class
   Model.lua       pure data and domain logic
   Controller.lua  state, actions, and view composition
@@ -46,8 +46,8 @@ examples/<app>/
 ```sh
 make
 make test
-./lua-objc --screenshot=/tmp/app.png examples/stocks/init.lua
-./lua-objc --dump-layout=/tmp/layout.xml examples/stocks/init.lua
+./lua-objc --screenshot=/tmp/app.png apps/stocks/init.lua
+./lua-objc --dump-layout=/tmp/layout.xml apps/stocks/init.lua
 ```
 
 Contributors are very welcome. See the repository README for contribution

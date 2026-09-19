@@ -27,7 +27,7 @@ update existing refs or navigate to rendered templates. This convention does
 not require an HTTP router, ORM, service container, or Laravel dependency.
 
 ```text
-examples/<app>/
+apps/<app>/
   init.lua        — requires and returns Controller class; never self-starts
   Model.lua       — domain data, queries, validation, state, mutations
   Controller.lua  — coordinates model operations, rendering, navigation, callbacks
@@ -162,7 +162,7 @@ per-pane padding values drift apart.
 To verify:
 
 ```sh
-./lua-objc --dump-layout=/tmp/layout.xml examples/<app>/init.lua
+./lua-objc --dump-layout=/tmp/layout.xml apps/<app>/init.lua
 rg 'search|header|Detail|SearchField' /tmp/layout.xml | head -20
 ```
 

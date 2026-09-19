@@ -298,7 +298,7 @@ end
 5. **Profile with Xcode Instruments**:
    ```bash
    # Run with Core Animation tool
-   ./lua-objc examples/myapp/init.lua
+   ./lua-objc apps/myapp/init.lua
    # In Instruments: Core Animation > Render Performance
    ```
 

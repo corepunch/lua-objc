@@ -5,7 +5,7 @@ local button = ns.Button { title = "", style = "plain", accessibilityLabel = "Op
 t.assertEqual(button.bordered, false, "plain action uses borderless native button")
 t.assertEqual(button.accessibilityLabel, "Open adventure", "image action has accessible label")
 t.assertEqual(#button.subviews, 0, "plain action does not render an opaque compound card")
-local image = ns.Image { path = "examples/adventure-arena/assets/planetfall.jpg", contentMode = "fill" }
+local image = ns.Image { path = "apps/adventure-arena/assets/planetfall.jpg", contentMode = "fill" }
 local source = image.sourceImage.size
 image.frameSize = ns.Size(300, 100)
 t.expect(image.image.size.width >= 300 and image.image.size.height >= 100, "aspect fill covers viewport")

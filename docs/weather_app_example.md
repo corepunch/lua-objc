@@ -14,13 +14,13 @@ Run it with:
 ```sh
 make run-weather
 # or
-./lua-objc examples/weather
+./lua-objc apps/weather
 ```
 
 The service is `wttr.in`; when the request fails, the app keeps its native table
 usable and shows `--` or `unreachable` values instead of crashing.
 
-The condition artwork lives in `examples/weather/assets/` as four original SVG
+The condition artwork lives in `apps/weather/assets/` as four original SVG
 assets created for this example (`sunny.svg`, `cloudy.svg`, `rain.svg`, and
 `snow.svg`). The requested Orca checkout was not present at the supplied local
 path, so these are not copied or attributed as Orca assets.
@@ -30,7 +30,7 @@ path, so these are not copied or attributed as Orca assets.
 ## App shape
 
 ```text
-examples/weather/
+apps/weather/
   init.lua                  returns the controller class
   Model.lua                 city list and wttr.in response parsing
   Controller.lua            loading, rows, selection, and detail mounting

@@ -48,10 +48,10 @@ text geometry, and explicit `cropped`/`ellipsis`/`outsideParent` flags:
 ![Layout dump example](docs/example.jpg)
 
 ```sh
-./lua-objc --dump-layout=/tmp/layout.xml examples/stocks/init.lua
+./lua-objc --dump-layout=/tmp/layout.xml apps/stocks/init.lua
 
 # Capture only the live AppKit content view from inside the process.
-./lua-objc --internal-screenshot=/tmp/content.png examples/stocks/init.lua
+./lua-objc --internal-screenshot=/tmp/content.png apps/stocks/init.lua
 rg -n 'cropped="true"|outsideParent="true"|contentClipped="true"' /tmp/layout.xml
 ```
 
@@ -68,21 +68,21 @@ with the iPhone Simulator SDK.
 ```sh
 make
 make test
-make run ARGS="examples/hello"
+make run ARGS="apps/hello"
 make run-ide
 
 # Or directly (directory path auto-discovers init.lua):
-./lua-objc examples/hello
-./lua-objc examples/mail
+./lua-objc apps/hello
+./lua-objc apps/mail
 ```
 
 iPhone Simulator (host is a runtime; Lua and assets stream from a Mac packager). After the host exists, a save reloads the app **in place** — the process does not quit:
 
 ```sh
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
-make ios-run ARGS=examples/hello
+make ios-run ARGS=apps/hello
 # watch Xcode’s Simulator window (not the terminal)
-# edit examples/hello/views/Window.etlua, save — UI updates without quitting
+# edit apps/hello/views/Window.etlua, save — UI updates without quitting
 ```
 
 See [`docs/ios.md`](docs/ios.md) for the host, packager protocol, and coverage contract.
@@ -108,10 +108,10 @@ Capture an app's native content and computed layout:
 
 ```sh
 ./lua-objc --internal-screenshot=/tmp/content.png --width=800 --height=600 \
-  examples/layout/init.lua
+  apps/layout/init.lua
 
 # Dump AppKit's computed native hierarchy, frames, and table-cell cropping.
-./lua-objc --dump-layout=/tmp/layout.xml examples/stocks/init.lua
+./lua-objc --dump-layout=/tmp/layout.xml apps/stocks/init.lua
 ```
 
 `--preview` is a separate synchronous path for scripts returning a native
@@ -130,11 +130,11 @@ point. See [preview behavior](ARCHITECTURE.md#--preview-cli-mode).
 | Change async state ownership, HTTP, timers, or JSON | `src/shared/lua_async.m` |
 | Change CLI preview rendering | `src/main.m`, `src/appkit/platform.m` |
 | Change editor highlighting | `src/appkit/syntax_highlight.m` |
-| Add an IDE editor surface | `examples/ide/` |
-| Write or modify XML view templates | `lua/ui/xml.lua`, `examples/<app>/views/` |
+| Add an IDE editor surface | `apps/ide/` |
+| Write or modify XML view templates | `lua/ui/xml.lua`, `apps/<app>/views/` |
 | Use template inheritance or partials | `views/AppWindow.etlua`, `views/partials/` |
-| Add a new example app | `examples/<app>/init.lua`, `AGENTS.md` (MVC layout rules) |
-| Change app startup or recents | `lua/App.lua`, `examples/ide/` |
+| Add a new example app | `apps/<app>/init.lua`, `AGENTS.md` (MVC layout rules) |
+| Change app startup or recents | `lua/App.lua`, `apps/ide/` |
 | Add UIKit coverage | `src/uikit/`, `src/uikit_module.m`, `lua/embedded/UIKit.lua` |
 | Run on iPhone Simulator / in-process reload | [`docs/ios.md`](docs/ios.md) |
 | Understand runtime ownership | `ARCHITECTURE.md` |
@@ -208,7 +208,7 @@ extension does not define an architectural layer:
 | `src/shared/` | Common bridge conversion, state ownership, async services, errors |
 | `ios/LuaRuntime/` | iOS process lifecycle, source loading, reload, capture |
 | `src/packager/` | Mac development server for Lua and assets |
-| `examples/<app>/` | Application behavior and composition in Lua |
+| `apps/<app>/` | Application behavior and composition in Lua |
 
 Nested subsystem folders are fine when they make navigation easier. Use
 one shared `.h` per folder that needs cross-file declarations, with the
@@ -263,7 +263,7 @@ lifetime contracts, and verification requirements.
 Every app follows the MVC folder layout:
 
 ```
-examples/<app>/
+apps/<app>/
   init.lua        — entry point, requires and returns Controller class
   Model.lua       — pure data: queries, formatting, sample data
   Controller.lua  — creates views, wires Model → views, owns actions
@@ -290,9 +290,9 @@ interface.
 | Reusable view components | etlua partials emitting native view trees |
 | Routes dispatch actions | Native callbacks invoke controller methods |
 
-The [hello controller](examples/hello/Controller.lua) shows the basic flow:
+The [hello controller](apps/hello/Controller.lua) shows the basic flow:
 take model data, render a template, and create a window. The
-[mail controller](examples/mail/Controller.lua) adds interaction: selecting
+[mail controller](apps/mail/Controller.lua) adds interaction: selecting
 a message marks it read and updates the detail pane in the existing window.
 
 **The key difference is lifetime.** Laravel's web flow handles a request and
@@ -381,7 +381,7 @@ lua/embedded/           public declarative framework layers
 lua/ui/                 cross-platform XML template renderer
 lua/vendor/             vendored Lua libraries (etlua submodule)
 lua/App.lua             app lifecycle and recent-item persistence
-examples/               runnable Lua applications
+apps/               runnable Lua applications
 tests/                  headless Lua integration tests
 docs/                   detailed, opt-in reference material
 ```
@@ -400,4 +400,4 @@ signs with a matching installed development profile, and installs/launches it.
 Use `make ipad-run` for the simulator. The app includes an interactive phone-sized
 UIKit preview, an OpenRouter coding agent, system keyboard dictation, source
 editing, and undo. Projects run and save locally without the Mac packager.
-See [Lua Studio](examples/studio/README.md) for setup and current boundaries.
+See [Lua Studio](apps/studio/README.md) for setup and current boundaries.

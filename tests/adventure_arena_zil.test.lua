@@ -1,9 +1,9 @@
 _G.__headless = true
 
 local t = require("TestKit")
-local Model = require("examples.adventure-arena.Model")
+local Model = require("apps.adventure-arena.Model")
 local catalog = Model.new()
-local ZIL = require("examples.adventure-arena.ZIL")
+local ZIL = require("apps.adventure-arena.ZIL")
 local originalOpen, originalPath, originalZilPath = io.open, package.path, package.zilpath
 local reads = 0
 local function readFile(path)

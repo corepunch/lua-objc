@@ -106,7 +106,7 @@ function M.moduleCandidates(name)
 	if name == "zilscript" or name:match("^zilscript%.") then
 		return { rel, rel:gsub("%.lua$", "/init.lua") }
 	end
-	return { rel, "lua/" .. rel, "examples/" .. rel }
+	return { rel, "lua/" .. rel, "apps/" .. rel }
 end
 
 function M.watched(path)

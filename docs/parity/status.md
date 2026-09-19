@@ -32,7 +32,7 @@ attempts, not current blockers or current totals.
 - Apple source ledger and initial mapping decisions recorded.
 - Three P1 smoke fixtures entered in `tests/parity/manifest.json`.
 - Baseline `make test` executed on the current checkout.
-- Deterministic `examples/swiftui_parity/` gallery added with the three P1
+- Deterministic `apps/swiftui_parity/` gallery added with the three P1
   smoke cases selected by `LUA_OBJC_PARITY_CASE`.
 - `make parity-check` now validates manifest version, required fields, IDs,
   families, statuses, platforms, and evidence arrays.

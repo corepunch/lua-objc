@@ -33,5 +33,5 @@ Current runtime architecture lives at the repository root in
 
 This is the clearest proof that the stack can deliver a rich, native-feeling app
 without a compile step: edit Lua, update XML, and rerun. The example sits in
-`examples/stocks/` and demonstrates a production-style split between model,
+`apps/stocks/` and demonstrates a production-style split between model,
 controller, and declarative XML views.

@@ -154,7 +154,7 @@ hierarchy with computed frames, intrinsic sizes, text content, and explicit
 clipping/overflow flags. Use it as the primary visual verification tool:
 
 ```sh
-./lua-objc --dump-layout=/tmp/layout.xml examples/stocks/init.lua
+./lua-objc --dump-layout=/tmp/layout.xml apps/stocks/init.lua
 
 # Check for problems
 rg -n 'cropped="true"|outsideParent="true"|contentClipped="true"' /tmp/layout.xml
@@ -164,7 +164,7 @@ rg -n 'text="Open"|text="52W H"' /tmp/layout.xml
 
 # Verify at different window sizes
 ./lua-objc --dump-layout=/tmp/layout-small.xml --width=760 --height=468 \
-  examples/stocks/init.lua
+  apps/stocks/init.lua
 ```
 
 The dump XML records per-node: class, frame, intrinsic/fitting sizes,

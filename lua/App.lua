@@ -516,7 +516,7 @@ end
 
 function App.new(props)
 	props = props or {}
-	local pluginDir = props.pluginDir or "examples/ide/plugins"
+	local pluginDir = props.pluginDir or "apps/ide/plugins"
 	local self = setmetatable({
 		name = props.name or "app",
 		spec = props,

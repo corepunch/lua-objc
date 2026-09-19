@@ -1,7 +1,7 @@
 _G.__headless = true
 
 local t = require("TestKit")
-local Model = require("examples.adventure-arena.Model")
+local Model = require("apps.adventure-arena.Model")
 local catalog = Model.new()
 
 t.assertEqual(#catalog:listGames(), 9, "AdventureArena catalog contains the complete Lua catalog")
@@ -10,7 +10,7 @@ t.assertEqual(catalog:game("infocom.zork1").title,
 	"catalog resolves games by stable id")
 t.assertEqual(#catalog:featured(), 3, "featured catalog is bounded")
 
-t.expect(catalog:listGames()[1].cover:find("examples/adventure-arena/assets/", 1, true) == 1,
+t.expect(catalog:listGames()[1].cover:find("apps/adventure-arena/assets/", 1, true) == 1,
 	"catalog records use bundled cover assets")
 t.expect(catalog:game("missing") == nil, "unknown game ids return nil")
 

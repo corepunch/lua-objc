@@ -19,14 +19,14 @@ def main():
                 CFBundleExecutable='LuaStudio', CFBundleIdentifier=args.identifier,
                 CFBundleSupportedPlatforms=['iPhoneOS' if args.sdk == 'iphoneos' else 'iPhoneSimulator'],
                 UIDeviceFamily=[2], MinimumOSVersion=args.minimum,
-                LRTLocalEntry='examples/studio/init.lua',
+                LRTLocalEntry='apps/studio/init.lua',
                 UIFileSharingEnabled=True, LSSupportsOpeningDocumentsInPlace=True)
     (bundle / 'Info.plist').write_bytes(plistlib.dumps(info))
     shutil.copy2('ios/LuaRuntime/AppIcon.png', bundle / 'AppIcon.png')
     workspace = bundle / 'Workspace'
     if workspace.exists():
         shutil.rmtree(workspace)
-    for folder in ('lua', 'examples/studio', 'examples/playground'):
+    for folder in ('lua', 'apps/studio', 'apps/playground'):
         source = Path(folder)
         for path in source.rglob('*'):
             if path.is_file() and '.git' not in path.parts and path.suffix in ('.lua', '.etlua'):

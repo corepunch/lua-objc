@@ -3,9 +3,9 @@ _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
 local xml = require("ui.xml")
-local Model = require("examples.adventure-arena.Model")
+local Model = require("apps.adventure-arena.Model")
 local catalog = Model.new()
-local Controller = require("examples.adventure-arena.Controller")
+local Controller = require("apps.adventure-arena.Controller")
 local renderFile, button = xml.renderFile, ns.Button
 local rendered, callbacks = {}, {}
 
@@ -32,7 +32,7 @@ local model = Model.new({ engineFactory = function()
 	end }
 end })
 local controller = Controller.new { model = model, ns = ns }
-local config, refs = xml.renderFile("examples/adventure-arena/views/Window.etlua", controller:homeData(), ns)
+local config, refs = xml.renderFile("apps/adventure-arena/views/Window.etlua", controller:homeData(), ns)
 controller.navigation = refs.navigation
 local tabs = refs.tabs
 for _, size in ipairs({ { 640, 720 }, { 420, 360 }, { 1000, 900 } }) do

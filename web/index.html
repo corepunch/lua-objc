@@ -83,7 +83,7 @@
         <p class="start-copy">Use Laravel as a guide for separating responsibilities: models own queries and mutations, controllers coordinate actions, and views own presentation. This is an architectural comparison; the models are ordinary Lua code, with no Eloquent-style ORM implied.</p>
         <a class="text-link" href="https://github.com/corepunch/lua-objc#a-php-reference-point-laravel-with-blade">Read the Laravel comparison <span aria-hidden="true">↗</span></a>
       </div><div class="code-stack">
-        <div class="code-card"><div class="code-top"><span>examples/weather/views/CityDetail.etlua</span><span>VIEW</span></div><pre><code>&lt;% <i>if</i> #city.forecast &gt; 0 <i>then</i> -%&gt;
+        <div class="code-card"><div class="code-top"><span>apps/weather/views/CityDetail.etlua</span><span>VIEW</span></div><pre><code>&lt;% <i>if</i> #city.forecast &gt; 0 <i>then</i> -%&gt;
       &lt;Divider /&gt;
       &lt;Label text=<q>"7-day forecast"</q> size=<q>"14"</q> weight=<q>"semibold"</q> /&gt;
       &lt;ScrollView contentWidth=<q>"772"</q> contentHeight=<q>"188"</q> fixedHeight=<q>"200"</q> fillWidth=<q>"true"</q> horizontal=<q>"true"</q>&gt;
@@ -99,18 +99,18 @@
         &lt;/HStack&gt;
       &lt;/ScrollView&gt;
     &lt;% <i>end</i> -%&gt;</code></pre></div>
-        <div class="code-card"><div class="code-top"><span>examples/hello/views/Window.etlua</span><span>VIEW</span></div><pre><code>&lt;VStack flexGrow=<q>"1"</q> padding=<q>"24"</q> spacing=<q>"12"</q> alignment=<q>"leading"</q>&gt;
+        <div class="code-card"><div class="code-top"><span>apps/hello/views/Window.etlua</span><span>VIEW</span></div><pre><code>&lt;VStack flexGrow=<q>"1"</q> padding=<q>"24"</q> spacing=<q>"12"</q> alignment=<q>"leading"</q>&gt;
       &lt;Label text=<q>"Hello from Lua"</q> size=<q>"24"</q> weight=<q>"bold"</q> /&gt;
       &lt;Label text=<q>"A SwiftUI-like API backed by native AppKit controls."</q> size=<q>"14"</q> /&gt;
       &lt;SystemImage name=<q>"swift"</q> size=<q>"64"</q> label=<q>"Swift"</q> /&gt;
 &lt;/VStack&gt;</code></pre></div>
-        <div class="code-card"><div class="code-top"><span>examples/hello/Controller.lua</span><span>LIVE</span></div><pre><code><i>local</i> ns  = <i>require</i>(<q>"AppKit"</q>)
+        <div class="code-card"><div class="code-top"><span>apps/hello/Controller.lua</span><span>LIVE</span></div><pre><code><i>local</i> ns  = <i>require</i>(<q>"AppKit"</q>)
 <i>local</i> xml = <i>require</i>(<q>"ui.xml"</q>)
 
 <i>function</i> Controller:createWindow()
   <i>local</i> cfg = xml.renderFile(VIEWS .. <q>"Window.etlua"</q>)
   <i>return</i> ns.Window(cfg)
-<i>end</i></code></pre><div class="code-run">$ ./lua-objc examples/hello <span>●</span></div></div>
+<i>end</i></code></pre><div class="code-run">$ ./lua-objc apps/hello <span>●</span></div></div>
       </div></div>
     </section>
 

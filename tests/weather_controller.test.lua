@@ -2,7 +2,7 @@ _G.__headless = true
 
 local t = require("TestKit")
 local ns = require("AppKit")
-local Controller = require("examples.weather.Controller")
+local Controller = require("apps.weather.Controller")
 
 local originalAsync = ns.async
 local originalFetchJSON = ns.fetch_json

@@ -9,7 +9,7 @@ Before claiming a UI task is done, verify it with screenshots, tests, and layout
 Use the `--screenshot` flag to render the app and save an image:
 
 ```bash
-./lua-objc --screenshot examples/myapp/init.lua > /tmp/screenshot.png
+./lua-objc --screenshot apps/myapp/init.lua > /tmp/screenshot.png
 ```
 
 Verify:
@@ -25,12 +25,12 @@ Test in both light and dark mode:
 
 ```bash
 # Light mode (default)
-./lua-objc --screenshot examples/myapp/init.lua > /tmp/light.png
+./lua-objc --screenshot apps/myapp/init.lua > /tmp/light.png
 
 # Dark mode (on iOS/macOS with dark theme enabled)
 # Set environment variable:
 export FORCE_DARK_MODE=1
-./lua-objc --screenshot examples/myapp/init.lua > /tmp/dark.png
+./lua-objc --screenshot apps/myapp/init.lua > /tmp/dark.png
 ```
 
 Verify:
@@ -58,7 +58,7 @@ open ~/Design/spec.png    # Reference design
 Use `--dump-layout` to inspect the view hierarchy and dimensions:
 
 ```bash
-./lua-objc --dump-layout=/tmp/layout.xml examples/myapp/init.lua
+./lua-objc --dump-layout=/tmp/layout.xml apps/myapp/init.lua
 ```
 
 This outputs an XML file with every view's dimensions and properties:
@@ -80,7 +80,7 @@ Verify:
 For split views with aligned peers, verify top-edge alignment:
 
 ```bash
-./lua-objc --dump-layout=/tmp/layout.xml examples/myapp/init.lua
+./lua-objc --dump-layout=/tmp/layout.xml apps/myapp/init.lua
 grep -E 'search|header|Detail' /tmp/layout.xml | head -20
 ```
 
@@ -215,10 +215,10 @@ Check that visual output doesn't regress after changes:
 
 ```bash
 # Save golden screenshot after design review
-./lua-objc --screenshot examples/myapp/init.lua > /tmp/golden.png
+./lua-objc --screenshot apps/myapp/init.lua > /tmp/golden.png
 
 # After making code changes, compare
-./lua-objc --screenshot examples/myapp/init.lua > /tmp/current.png
+./lua-objc --screenshot apps/myapp/init.lua > /tmp/current.png
 
 # Compare (OS-specific)
 # macOS: open /tmp/golden.png /tmp/current.png
@@ -241,7 +241,7 @@ Check that visual output doesn't regress after changes:
 - ✅ Menu bar integration works if applicable
 
 ```bash
-./lua-objc --screenshot examples/myapp/init.lua > /tmp/macos.png
+./lua-objc --screenshot apps/myapp/init.lua > /tmp/macos.png
 # Verify window chrome, title bar, toolbar
 ```
 
@@ -255,10 +255,10 @@ Check that visual output doesn't regress after changes:
 
 ```bash
 export FORCE_PORTRAIT=1
-./lua-objc --screenshot examples/myapp/init.lua > /tmp/portrait.png
+./lua-objc --screenshot apps/myapp/init.lua > /tmp/portrait.png
 
 export FORCE_LANDSCAPE=1
-./lua-objc --screenshot examples/myapp/init.lua > /tmp/landscape.png
+./lua-objc --screenshot apps/myapp/init.lua > /tmp/landscape.png
 ```
 
 ## Performance Verification
@@ -268,7 +268,7 @@ export FORCE_LANDSCAPE=1
 For lists with 1,000+ items:
 
 ```bash
-./lua-objc --benchmark examples/myapp/init.lua
+./lua-objc --benchmark apps/myapp/init.lua
 ```
 
 This measures:
@@ -288,7 +288,7 @@ For animation performance:
 ```bash
 # Record Core Animation metrics
 instruments -t "Core Animation" -o /tmp/perf_trace \
-    ./lua-objc examples/myapp/init.lua
+    ./lua-objc apps/myapp/init.lua
 
 # View frame rate and rendering time
 ```
@@ -390,7 +390,7 @@ Before opening a PR or marking task done:
 #!/bin/bash
 # verify.sh - Run all verification steps
 
-app="examples/myapp"
+app="apps/myapp"
 echo "Verifying $app..."
 
 # Screenshots
