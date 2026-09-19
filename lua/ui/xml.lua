@@ -823,6 +823,16 @@ local TAG_SCHEMA = {
     },
 
     -- Charts
+    WebView = {
+        constructor = "WebView",
+        props = {
+            page = "str",
+            url = "str",
+            contentBackground = "str",
+            allowsBackForwardNavigation = { default = true, type = "bool" },
+        },
+    },
+
     Chart = {
         transform = function(_, a)
             local key = a.data or "chart"

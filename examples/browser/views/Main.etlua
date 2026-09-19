@@ -1,0 +1,93 @@
+<Window title="Browser" width="800" height="600" minWidth="600" minHeight="400">
+  <VStack spacing="0" padding="0">
+    <!-- Navigation Toolbar -->
+    <VStack padding="12" spacing="8" background="lightgray">
+      <!-- Navigation Buttons -->
+      <HStack spacing="8">
+        <Button
+            title="◀"
+            disabled="<% tostring(not canGoBack) %>"
+            action="goBack"
+            style="bordered" />
+        <Button
+            title="▶"
+            disabled="<% tostring(not canGoForward) %>"
+            action="goForward"
+            style="bordered" />
+        <Button
+            title="↻"
+            action="reload"
+            style="bordered" />
+        <Button
+            title="Home"
+            action="goHome"
+            style="plain" />
+        <Spacer />
+        <Button
+            title="❤️ Favorites"
+            action="toggleFavorites"
+            style="plain" />
+      </HStack>
+
+      <!-- Address Bar -->
+      <TextField
+          value="<%= urlInput %>"
+          placeholder="Enter URL..."
+          borderStyle="bordered"
+          />
+    </VStack>
+
+    <!-- Web View Placeholder -->
+    <VStack fillWidth="true" fillHeight="true" background="white" padding="0" spacing="0">
+      <% if showFavorites then %>
+        <!-- Favorites Panel -->
+        <VStack padding="16" spacing="12">
+          <Label size="16" weight="bold">Favorites</Label>
+          <VStack spacing="8">
+            <% for _, fav in ipairs(favorites) do %>
+              <Button
+                  title="<%= fav.title %>"
+                  subtitle="<%= fav.url %>"
+                  style="plain"
+                  action="navigateFavorite"
+                  />
+            <% end %>
+          </VStack>
+        </VStack>
+      <% else %>
+        <!-- Web View Content Area -->
+        <VStack padding="0" spacing="0" fillWidth="true" fillHeight="true">
+          <!-- Page Title -->
+          <VStack padding="16" spacing="8" background="white" borderWidth="0 0 1 0">
+            <Label size="14" weight="bold"><%= page:getTitle() %></Label>
+            <Label size="12" color="gray"><%= page:getURL() %></Label>
+
+            <!-- Loading Progress Bar -->
+            <% if page.isLoading then %>
+              <VStack fillWidth="true" height="2" background="blue" />
+            <% end %>
+          </VStack>
+
+          <!-- Page Content Area (WebView would render here) -->
+          <VStack fillWidth="true" fillHeight="true" background="lightgray" padding="20" spacing="16">
+            <Label size="18" weight="bold"><%= page:getTitle() %></Label>
+            <Label size="14">
+              This is a placeholder for the native WebView.
+              The page title and URL are displayed above.
+            </Label>
+            <Label size="12" color="gray">
+              Native WebView would render at: <%= page:getURL() %>
+            </Label>
+
+            <!-- Progress Indicator -->
+            <% if page.isLoading then %>
+              <Label size="14" color="blue">
+                Loading... <% string.format("%.0f%%", page.progress * 100) %>
+              </Label>
+            <% end %>
+          </VStack>
+        </VStack>
+      <% end %>
+    </VStack>
+  </VStack>
+</Window>
