@@ -1,46 +1,5 @@
-<VStack fixedWidth="280" flexGrow="1" spacing="16" padding="16" alignment="top" fillHeight="true">
-  <!-- Folder Info -->
-  <VStack fillWidth="true" spacing="6" alignment="leading">
-    <Text weight="bold" size="16"><%= folderName %></Text>
-    <Text size="11" color="secondary" lineLimit="2"><%= folderPath %></Text>
-  </VStack>
-
-  <!-- Size & Items Info -->
-  <VStack fillWidth="true" spacing="8" alignment="leading" cornerRadius="8" background="controlBackground" padding="12">
-    <HStack fillWidth="true">
-      <Text size="11" color="secondary">Size</Text>
-      <Spacer />
-      <Text size="12" weight="medium"><%= sizeStr %></Text>
-    </HStack>
-    <HStack fillWidth="true">
-      <Text size="11" color="secondary">Items</Text>
-      <Spacer />
-      <Text size="12" weight="medium"><%= itemCount %></Text>
-    </HStack>
-  </VStack>
-
-  <!-- Disk Usage -->
-  <% if hasDiskInfo then %>
-  <VStack fillWidth="true" spacing="8" alignment="leading" cornerRadius="8" background="controlBackground" padding="12">
-    <Text size="11" weight="semibold">Disk Usage</Text>
-    <HStack fillWidth="true">
-      <Text size="11" color="secondary">Free</Text>
-      <Spacer />
-      <Text size="12"><%= freeStr %></Text>
-    </HStack>
-  </VStack>
-  <% end %>
-
-  <!-- Quick Actions -->
-  <VStack fillWidth="true" spacing="6" alignment="leading">
-    <Text size="11" weight="semibold" color="secondary">Quick Actions</Text>
-    <HStack>
-      <Button title="Open in Terminal" style="plain" flexGrow="1" action="<%= openTerminalAction %>" />
-    </HStack>
-    <HStack>
-      <Button title="Copy Path" style="plain" flexGrow="1" action="<%= copyPathAction %>" />
-    </HStack>
-  </VStack>
-
-  <Spacer />
+<VStack fixedWidth="330" fillHeight="true" spacing="16" padding="16" alignment="leading">
+  <VStack fillWidth="true" spacing="14" padding="18" alignment="leading" cornerRadius="12" background="controlBackground"><HStack fillWidth="true" spacing="14" alignment="center"><SystemImage name="folder.fill" size="42" color="systemBlue" /><VStack spacing="2" alignment="leading"><Label text="<%= folder.name %>" size="17" weight="bold" /><Label text="<%= folder.total %>" size="23" weight="bold" /><Label text="<%= folder.items %> items" size="12" color="secondary" /></VStack></HStack><Divider /><Label text="<%= folder.path %>" size="12" color="secondary" lineLimit="1" truncation="middle" /><VStack spacing="6" alignment="leading"><HStack fillWidth="true"><Label text="Kind" size="12" color="secondary" /><Spacer /><Label text="Folder" size="12" /></HStack><HStack fillWidth="true"><Label text="Contents" size="12" color="secondary" /><Spacer /><Label text="<%= folder.folderCount %> folders" size="12" /></HStack><HStack fillWidth="true"><Label text="Free on disk" size="12" color="secondary" /><Spacer /><Label text="<%= folder.free %>" size="12" /></HStack></VStack><Button title="Reveal in Finder" systemImage="folder" style="plain" fillWidth="true" action="reveal" /></VStack>
+  <% if #suggestions > 0 then %><VStack fillWidth="true" spacing="0" alignment="leading" cornerRadius="12" background="controlBackground" clipsToBounds="true"><Label text="Suggestions for this folder" size="15" weight="bold" padding="16" /><% for i, suggestion in ipairs(suggestions) do if i <= 3 then %><HStack fillWidth="true" fixedHeight="56" paddingHorizontal="14" spacing="10" alignment="center"><SystemImage name="folder.fill" size="22" color="systemBlue" /><VStack spacing="2" alignment="leading" flexGrow="1"><Label text="<%= suggestion.name %>  <%= suggestion.size %>" size="12" weight="medium" /><Label text="<%= suggestion.hint %>" size="11" color="secondary" lineLimit="1" /></VStack><Button title="Review" style="plain" action="review_<%= i %>" /></HStack><% if i < #suggestions then %><Divider /><% end %><% end end %></VStack><% end %>
+  <VStack fillWidth="true" spacing="8" padding="14" alignment="leading" cornerRadius="12" background="controlBackground"><Label text="Quick Actions" size="15" weight="bold" /><HStack fillWidth="true" spacing="8"><Button title="Open in Terminal" style="plain" flexGrow="1" action="openTerminal" /><Button title="Copy Path" style="plain" flexGrow="1" action="copyPath" /></HStack></VStack><Spacer />
 </VStack>

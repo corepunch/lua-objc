@@ -1,0 +1,34 @@
+<HStack flexGrow="1" fillWidth="true" fillHeight="true" spacing="0" alignment="top">
+  <%= partial("Sidebar.etlua", { navItems = navItems }) %>
+  <VStack flexGrow="1" fillWidth="true" fillHeight="true" spacing="0" alignment="leading">
+  <HStack fillWidth="true" fixedHeight="88" paddingHorizontal="26" spacing="16" alignment="center" background="windowBackground">
+    <SystemImage name="internaldrive.fill" size="40" color="secondary" />
+    <VStack spacing="2" alignment="leading"><Label text="Macintosh HD" size="22" weight="bold" /><Label text="<%= diskTotal %> total   ·   <%= total %> used   ·   <%= free %> free" size="13" color="secondary" /></VStack>
+    <Spacer /><SearchField placeholder="Search folders…" fixedWidth="320" fixedHeight="36" accessibilityLabel="Search folders" />
+  </HStack>
+  <HStack flexGrow="1" fillWidth="true" fillHeight="true" spacing="0" alignment="top">
+    <ScrollView vertical="true" flexGrow="1" fillWidth="true">
+      <VStack fillWidth="true" spacing="16" padding="24" alignment="leading">
+        <HStack fillWidth="true" fixedHeight="40" spacing="10" alignment="center">
+          <Button title="‹" style="plain" fixedWidth="34" action="back" /><Button title="›" style="plain" fixedWidth="34" action="forward" />
+          <% for i, part in ipairs(breadcrumbs) do %><% if i > 1 then %><SystemImage name="chevron.right" size="10" color="tertiary" /><% end %><Label text="<%= part %>" size="14" color="<%= i == #breadcrumbs and "accent" or "secondary" %>" weight="<%= i == #breadcrumbs and "semibold" or "regular" %>" /><% end %>
+        </HStack>
+        <VStack fillWidth="true" fixedHeight="86" spacing="10" alignment="leading">
+          <HStack fillWidth="true" fixedHeight="28" spacing="2" cornerRadius="4" clipsToBounds="true">
+            <% for _, segment in ipairs(usage) do %><HStack fixedWidth="<%= segment.width %>" fixedHeight="28" background="<%= segment.color %>" /><% end %><HStack flexGrow="1" fixedHeight="28" background="systemGray" />
+          </HStack>
+          <HStack fillWidth="true" fixedHeight="42" spacing="22" alignment="top">
+            <% for _, segment in ipairs(usage) do %><VStack spacing="3" alignment="leading"><HStack spacing="7" alignment="center"><ZStack fixedWidth="12" fixedHeight="12" cornerRadius="6" background="<%= segment.color %>" /><Label text="<%= segment.name %>" size="12" weight="medium" /></HStack><Label text="<%= segment.size %>" size="11" color="secondary" /></VStack><% end %>
+          </HStack>
+        </VStack>
+        <VStack fillWidth="true" spacing="0" alignment="leading" cornerRadius="12" background="controlBackground" clipsToBounds="true">
+          <HStack fillWidth="true" fixedHeight="36" paddingHorizontal="12" alignment="center"><Label text="Name" size="12" color="secondary" /><Spacer /><Label text="Size" size="12" color="secondary" fixedWidth="82" alignment="trailing" /><Label text="Items" size="12" color="secondary" fixedWidth="78" alignment="trailing" /><Label text="%" size="12" color="secondary" fixedWidth="58" alignment="trailing" /></HStack>
+          <% for i, row in ipairs(rows) do %><HStack fillWidth="true" fixedHeight="49" paddingHorizontal="12" spacing="10" alignment="center"><SystemImage name="folder.fill" size="22" color="systemBlue" /><Label text="<%= row.name %>" size="14" lineLimit="1" truncation="tail" flexGrow="1" /><Label text="<%= row.size %>" size="13" fixedWidth="82" alignment="trailing" /><Label text="<%= row.items %>" size="13" color="secondary" fixedWidth="78" alignment="trailing" /><Label text="<%= row.percent %>" size="13" color="secondary" fixedWidth="40" alignment="trailing" /><Button title="" systemImage="chevron.right" style="plain" fixedWidth="18" action="open_<%= i %>" /></HStack><% if i < #rows then %><Divider /><% end %><% end %>
+        </VStack>
+      </VStack>
+    </ScrollView>
+    <%= partial("RightSidebar.etlua", { folder = { name = name, path = path, total = total, items = items, folderCount = folderCount, free = free }, suggestions = suggestions }) %>
+  </HStack>
+  <HStack fillWidth="true" fixedHeight="30" paddingHorizontal="24" alignment="center" background="windowBackground"><Label text="<%= folderCount %> items   <%= total %>" size="11" color="secondary" /><Spacer /><Label text="Scan completed" size="11" color="secondary" /><SystemImage name="arrow.clockwise" size="13" color="secondary" /></HStack>
+  </VStack>
+</HStack>

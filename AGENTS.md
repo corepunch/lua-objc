@@ -32,10 +32,13 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   to it completely. Delete old paths, old names, and old files — do not leave
   shims, aliases, or forwarding stubs behind. A clean break is always preferred
   over a compatibility layer. Callers update in the same commit.
-- **Views are etlua only.** Screens and reusable components are `.etlua`
-  templates composed with `partial()`, never `.lua` view files or view trees
-  constructed in controllers. Controllers prepare data and bind actions.
-  Components emit view trees through templates.
+- **Views are etlua only, without exception.** Screens and reusable
+  components are `.etlua` templates composed with `partial()`. Controllers
+  must never construct view trees, create layout containers, or assemble UI in
+  controller code. Controllers prepare plain data, render templates, retain
+  template refs, and bind actions only. If a view needs a new visual branch,
+  add or update an `.etlua` template; do not add a controller-side view
+  builder, helper, or fallback path.
   Only the app entry point (`init.lua` or the `App` object) creates an
   `ns.Window`. A component that creates a window is wrong.
 - **Apps live in `apps/<appname>/`.** Every app has its own folder with

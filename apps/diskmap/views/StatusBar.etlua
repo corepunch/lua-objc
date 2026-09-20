@@ -1,3 +1,0 @@
-<HStack fillWidth="true" fixedHeight="22" padding="8" alignment="center">
-  <Text size="11" color="secondary"><%= statusText %></Text>
-</HStack>

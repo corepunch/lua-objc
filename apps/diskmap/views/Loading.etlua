@@ -1,0 +1,6 @@
+<VStack flexGrow="1" fillWidth="true" fillHeight="true" alignment="center">
+  <Spacer />
+  <ProgressView />
+  <Label text="<%= message %>" size="13" color="secondary" />
+  <Spacer />
+</VStack>
