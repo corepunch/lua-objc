@@ -33,4 +33,11 @@ t.assertEqual(#cfg.toolbar, 2, "disk map toolbar has sidebar and inspector contr
 t.assertEqual(cfg.toolbar[1].id, "toggleSidebar", "disk map toolbar starts with sidebar toggle")
 t.assertEqual(cfg.toolbar[2].id, "toggleDetail", "disk map toolbar includes inspector toggle")
 
+local dashboard = xml.renderFile("apps/diskmap/views/Dashboard.etlua", {
+	name = "Developer", path = "/Developer", breadcrumbs = { "Developer" },
+	usage = {}, rows = {{ name = "Xcode", size = "10 GB", items = "10", percent = "50%", barWidth = 50, barMaxWidth = 100, barHeight = 8, iconSize = 28 }},
+	folderCount = "1", total = "20 GB", diskTotal = "20 GB", free = "—", suggestions = {}, actions = {},
+}, ns)
+t.expect(dashboard ~= nil, "disk map dashboard renders folder usage rows")
+
 os.exit(t.summary() and 0 or 1)

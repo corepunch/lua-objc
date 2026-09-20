@@ -7,6 +7,9 @@ local VIEWS = "apps/diskmap/views/"
 local LAYOUT = {
 	sidebarWidth = 228,
 	rightWidth = 330,
+	rowBarWidth = 100,
+	rowBarHeight = 8,
+	folderIconSize = 28,
 }
 
 local NAV_ITEMS = {
@@ -139,13 +142,17 @@ function Controller:makeDashboardData(tree, diskInfo)
 			}
 		end
 		rows[#rows + 1] = {
-				name = child.name,
-				size = Model.humanKb(child.kb),
-				items = tostring(#child.children),
-				percent = humanPercent(child.kb / total * 100),
-				path = child.path,
-				index = i,
-			}
+			name = child.name,
+			size = Model.humanKb(child.kb),
+			items = tostring(#child.children),
+			percent = humanPercent(child.kb / total * 100),
+			barWidth = math.max(3, math.floor(child.kb / total * LAYOUT.rowBarWidth)),
+			barMaxWidth = LAYOUT.rowBarWidth,
+			barHeight = LAYOUT.rowBarHeight,
+			iconSize = LAYOUT.folderIconSize,
+			path = child.path,
+			index = i,
+		}
 	end
 
 	local data = {
