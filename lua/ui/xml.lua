@@ -345,11 +345,16 @@ local function layoutProps(attrs)
         "fixedWidth", "fixedHeight", "minWidth", "minHeight",
         "maxWidth", "maxHeight",
         "flexGrow", "flexShrink", "flexBasis",
-		"fillWidth", "fillHeight", "hidden", "allowsHitTesting", "background", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode",
+        "fillWidth", "fillHeight", "hidden", "allowsHitTesting", "background", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick",
     }
     local props = {}
     for _, k in ipairs(lp) do
         if attrs[k] then props[k] = coerce(attrs[k]) end
+    end
+    if attrs.onClick and type(attrs.onClick) == "string"
+        and renderData and renderData.actions then
+
+        props.onClick = renderData.actions[attrs.onClick]
     end
     return props
 end

@@ -2,6 +2,7 @@ _G.__headless = true
 
 local t = require("TestKit")
 local Model = require("apps.diskmap.Model")
+local Controller = require("apps.diskmap.Controller")
 local ns = require("AppKit")
 local xml = require("ui.xml")
 
@@ -39,5 +40,13 @@ local dashboard = xml.renderFile("apps/diskmap/views/Dashboard.etlua", {
 	folderCount = "1", total = "20 GB", diskTotal = "20 GB", free = "—", suggestions = {}, actions = {},
 }, ns)
 t.expect(dashboard ~= nil, "disk map dashboard renders folder usage rows")
+
+local controller = Controller.new()
+local detailData = controller:makeDetailData({
+	name = "Xcode", path = "/Developer/Xcode", kb = 1024, children = {},
+}, nil)
+t.assertEqual(detailData.folder.name, "Xcode", "inspector uses the selected folder name")
+t.assertEqual(detailData.folder.path, "/Developer/Xcode", "inspector uses the selected folder path")
+t.assertEqual(detailData.folder.items, "0", "inspector counts selected folder items")
 
 os.exit(t.summary() and 0 or 1)

@@ -92,8 +92,35 @@ function Controller:cacheNodes(node)
 	for _, child in ipairs(node.children) do self:cacheNodes(child) end
 end
 
+function Controller:makeDetailData(node, diskInfo)
+	local data = {
+		folder = {
+			name = node.name,
+			path = node.path,
+			total = Model.humanKb(node.kb),
+			items = tostring(Model.countItems(node)),
+			folderCount = tostring(#node.children),
+			free = diskInfo and Model.humanKb(diskInfo.freeKb) or "—",
+		},
+		suggestions = suggestionsFor(node),
+	}
+	data.actions = {
+		copyPath = function() self:copyPath(node.path) end,
+		openTerminal = function() self:openTerminal(node.path) end,
+		reveal = function() self:reveal(node.path) end,
+	}
+	for i, suggestion in ipairs(data.suggestions) do
+		if i > 3 then break end
+		data.actions["review_" .. i] = function() self:startScan(suggestion.path) end
+	end
+	return data
+end
+
 function Controller:selectNode(node)
 	self.selectedNode = node
+	if self.refs and self.refs.detail then
+		self:showDetail(render("RightSidebar.etlua", self:makeDetailData(node, Model.diskSpace(node.path))))
+	end
 end
 
 function Controller:goBack()
@@ -180,6 +207,8 @@ function Controller:makeDashboardData(tree, diskInfo)
 	}
 	for i, row in ipairs(rows) do
 		data.actions["open_" .. i] = function() self:startScan(row.path) end
+		local child = tree.children[i]
+		data.actions["select_" .. i] = function() self:selectNode(child) end
 	end
 	for i, suggestion in ipairs(data.suggestions) do
 		if i > 3 then break end
@@ -202,9 +231,10 @@ end
 
 function Controller:displayTree(tree)
 	self.currentTree = tree
-	local data = self:makeDashboardData(tree, Model.diskSpace(self.currentPath))
+	local diskInfo = Model.diskSpace(self.currentPath)
+	local data = self:makeDashboardData(tree, diskInfo)
 	self:showContent(render("Dashboard.etlua", data))
-	self:showDetail(render("RightSidebar.etlua", data))
+	self:showDetail(render("RightSidebar.etlua", self:makeDetailData(tree, diskInfo)))
 end
 
 function Controller:startScan(rootPath, isNav)
