@@ -21,6 +21,12 @@ local USAGE_COLORS = {
 	"systemBlue", "systemPurple", "systemOrange", "systemYellow", "systemGray",
 }
 
+local ACTIONS = {
+	toggleDetail = function(self)
+		if self.window then self.window:toggleDetail() end
+	end,
+}
+
 local CLEANABLE = {
 	build = "Build artifacts — can be rebuilt",
 	dist = "Build output — can be rebuilt",
@@ -243,6 +249,12 @@ end
 function Controller:createWindow()
 	local rootPath = (arg and arg[1]) or os.getenv("HOME") or "/"
 	local cfg = render("Window.etlua")
+	for _, item in ipairs(cfg.toolbar or {}) do
+		if item.action and ACTIONS[item.action] then
+			local fn = ACTIONS[item.action]
+			item.action = function() fn(self) end
+		end
+	end
 	local sidebar = render("Sidebar.etlua", { navItems = NAV_ITEMS })
 	local content, contentRefs = render("ContentPane.etlua")
 	local detail, detailRefs = render("DetailPane.etlua")

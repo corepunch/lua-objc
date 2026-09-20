@@ -156,7 +156,8 @@ function AppKit.Window(props)
 			props.contentAccessory,
 			props.sidebarWidth,
 			props.toolbarContentDividerAfter,
-			props.detail)
+			props.detail,
+			props.detailWidth)
 	else
 		local content = bridge._vstack()
 		win:add(content)

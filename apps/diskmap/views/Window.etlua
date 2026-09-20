@@ -1,1 +1,6 @@
-<Window title="Disk Map" width="1024" height="768" minWidth="760" minHeight="460" sidebarWidth="228" />
+<Window title="Disk Map" width="1024" height="768" minWidth="760" minHeight="460" sidebarWidth="228" detailWidth="330" toolbarContentDividerAfter="toggleDetail">
+  <Toolbar>
+    <ToolbarItem id="toggleSidebar" />
+    <ToolbarItem id="toggleDetail" label="Inspector" icon="sidebar.right" tooltip="Show or hide inspector" action="toggleDetail" />
+  </Toolbar>
+</Window>

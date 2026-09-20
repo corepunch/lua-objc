@@ -70,6 +70,7 @@ static int bridge_NSTabView_tabCount_impl(lua_State *L, NSTabView *self);
 static int bridge_NSTabView_onChange_impl(lua_State *L, NSTabView *self, LuaReg *callback);
 static int bridge_NSWindow_addTabbedWindow_impl(lua_State *L);
 static int bridge_NSWindow_toggleSidebar_impl(lua_State *L);
+static int bridge_NSWindow_toggleDetail_impl(lua_State *L);
 static int bridge_NSWindow_focus_impl(lua_State *L);
 static int bridge_NSWindow_isFirstResponder_impl(lua_State *L);
 static int bridge_NSWindow_workspaceState_impl(lua_State *L);
@@ -397,6 +398,11 @@ static int bridge_NSWindow_toggleSidebar(lua_State *L) {
 	return bridge_NSWindow_toggleSidebar_impl(L);
 }
 
+static int bridge_NSWindow_toggleDetail(lua_State *L) {
+	(void)lua_objc_check_object(L, 1, [NSWindow class], "Window");
+	return bridge_NSWindow_toggleDetail_impl(L);
+}
+
 static int bridge_NSWindow_dismiss(lua_State *L) {
 	id _obj = lua_objc_check_object(L, 1, [NSWindow class], "Window");
 	NSWindow *self = (NSWindow *)_obj;
@@ -598,6 +604,7 @@ static MethodEntry WindowMethods[] = {
 	{"addTabbedWindow",	bridge_NSWindow_addTabbedWindow},
 	{"tabCount",	bridge_NSWindow_tabCount},
 	{"toggleSidebar",	bridge_NSWindow_toggleSidebar},
+	{"toggleDetail",	bridge_NSWindow_toggleDetail},
 	{"dismiss",	bridge_NSWindow_dismiss},
 	{"resize",	bridge_NSWindow_resize},
 	{"focus",	bridge_NSWindow_focus},

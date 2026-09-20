@@ -808,6 +808,7 @@ local TAG_SCHEMA = {
             toolbarLabels              = "bool",
             visible                    = "bool",
             sidebarWidth               = "num",
+            detailWidth                = "num",
             toolbarContentDividerAfter = "str",
         },
         collect = function(cfg, children)

@@ -242,6 +242,7 @@ static int bridge_set_window_workspace(lua_State *L) {
 		: [NSString stringWithUTF8String:luaL_checkstring(L, 6)];
 	NSView *detail = lua_isnoneornil(L, 7)
 		? nil : check_view(L, 7);
+	CGFloat detailWidth = luaL_optnumber(L, 8, 0);
 
 	/* Keep the semantic split items full height so AppKit owns their glass,
 	 * but place app content below the current toolbar and tab-bar safe area.
@@ -278,11 +279,14 @@ static int bridge_set_window_workspace(lua_State *L) {
 		? [NSSplitViewItem
 			splitViewItemWithViewController:detailController]
 		: nil;
-	if (detailItem) {
-		detailItem.minimumThickness = kWorkspaceDetailMinWidth;
-		detailItem.maximumThickness = kWorkspaceDetailMaxWidth;
+	if (detailItem && detailWidth > 0) {
+		CGFloat clampedDetailWidth =
+			fmax(kWorkspaceDetailMinWidth,
+				 fmin(kWorkspaceDetailMaxWidth, detailWidth));
+		detailItem.minimumThickness = clampedDetailWidth;
+		detailItem.maximumThickness = clampedDetailWidth;
 		detailItem.preferredThicknessFraction =
-			kWorkspaceDetailWidth / MAX(1, window.contentLayoutRect.size.width);
+			clampedDetailWidth / MAX(1, window.contentLayoutRect.size.width);
 	}
 
 	if (accessory) {
@@ -331,6 +335,15 @@ static int bridge_set_window_workspace(lua_State *L) {
 		setPosition:clampedSidebarWidth
 		ofDividerAtIndex:0];
 	[splitController.view layoutSubtreeIfNeeded];
+	if (detailItem && detailWidth > 0) {
+		CGFloat clampedDetailWidth =
+			fmax(kWorkspaceDetailMinWidth,
+				 fmin(kWorkspaceDetailMaxWidth, detailWidth));
+		[splitController.splitView
+			setPosition:contentWidth - clampedDetailWidth
+			ofDividerAtIndex:kWorkspaceContentDividerIndex];
+		[splitController.view layoutSubtreeIfNeeded];
+	}
 
 	LuaToolbarDelegate *toolbarDelegate = objc_getAssociatedObject(
 		window,
@@ -440,6 +453,10 @@ static int bridge_NSWindow_workspaceState_impl(lua_State *L) {
 		lua_pushboolean(
 			L, contentItem.automaticallyAdjustsSafeAreaInsets);
 		lua_setfield(L, -2, "contentUsesSafeArea");
+		if (items.count >= 3) {
+			lua_pushboolean(L, items.lastObject.isCollapsed);
+			lua_setfield(L, -2, "detailCollapsed");
+		}
 		lua_pushinteger(
 			L,
 			(lua_Integer)contentItem
@@ -465,6 +482,21 @@ static int bridge_NSWindow_toggleSidebar_impl(lua_State *L) {
 	if (sidebarItem.behavior == NSSplitViewItemBehaviorSidebar) {
 		sidebarItem.collapsed = !sidebarItem.isCollapsed;
 	}
+	return 0;
+}
+
+static int bridge_NSWindow_toggleDetail_impl(lua_State *L) {
+	id obj = check_objc(L, 1);
+	if (![obj isKindOfClass:[NSWindow class]]) {
+		return luaL_error(L, "toggleDetail requires a window");
+	}
+	NSViewController *controller = ((NSWindow *)obj).contentViewController;
+	if (![controller isKindOfClass:[NSSplitViewController class]]) return 0;
+	NSSplitViewController *splitController =
+		(NSSplitViewController *)controller;
+	if (splitController.splitViewItems.count < 3) return 0;
+	NSSplitViewItem *detailItem = splitController.splitViewItems.lastObject;
+	detailItem.collapsed = !detailItem.isCollapsed;
 	return 0;
 }
 

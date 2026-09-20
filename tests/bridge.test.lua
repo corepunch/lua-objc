@@ -316,6 +316,17 @@ t.expect(math.abs(toggleContent.size.width - contentWidthBeforeToggle) < 1,
 t.expect(math.abs(toggleDetail.size.width - detailWidthBeforeToggle) < 1,
 	"sidebar round-trip preserves the native detail pane width")
 
+toggleWorkspace:toggleDetail()
+toggleWorkspace:layout()
+local collapsedWorkspaceState = toggleWorkspace:workspaceState()
+t.expect(collapsedWorkspaceState.detailCollapsed,
+	"inspector toggle collapses the native detail pane")
+toggleWorkspace:toggleDetail()
+toggleWorkspace:layout()
+local restoredWorkspaceState = toggleWorkspace:workspaceState()
+t.expect(not restoredWorkspaceState.detailCollapsed,
+	"inspector toggle restores the native detail pane width")
+
 -- 2-pane sidebar toggle: collapsing the sidebar must not crash.  Content
 -- offsets are verified in the IDE workspace assertions above.
 local twoPaneSidebar = ns.Text "Left"
