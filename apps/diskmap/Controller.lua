@@ -393,6 +393,26 @@ end
 
 -- ── Right sidebar with folder details ────────────────────────────────────
 
+local LAYOUT = {
+	sidebarWidth = 228,
+	rightWidth = 330,
+	contentPadding = 24,
+	rowHeight = 49,
+	panelRadius = 12,
+}
+
+local USAGE_COLORS = {
+	"systemBlue", "systemPurple", "systemOrange", "systemYellow", "systemGray",
+}
+
+local NAV_ITEMS = {
+	{ title = "Disk Map", icon = "chart.pie.fill" },
+	{ title = "Suggestions", icon = "lightbulb" },
+	{ title = "Large Files", icon = "doc.fill" },
+	{ title = "Applications", icon = "app.fill" },
+	{ title = "File Types", icon = "doc.on.doc.fill" },
+}
+
 local function makeRightSidebar(tree, diskInfo)
 	local folderName = tree.name or "Folder"
 	local folderPath = tree.path or "/"
@@ -483,6 +503,184 @@ local function makeRightSidebar(tree, diskInfo)
 
 	panel:add(ns.Spacer {})
 
+	return panel
+end
+
+local function makeNavSidebar()
+	local sidebar = ns.VStack {
+		fixedWidth = LAYOUT.sidebarWidth,
+		fillWidth = true,
+		spacing = 8,
+		padding = 16,
+		alignment = "leading",
+	}
+	for i, item in ipairs(NAV_ITEMS) do
+		local row = ns.HStack {
+			fillWidth = true,
+			fixedHeight = 42,
+			paddingHorizontal = 14,
+			spacing = 14,
+			alignment = "center",
+			cornerRadius = 9,
+			background = i == 1 and "selectedControlColor" or nil,
+		}
+		row:add(ns.SystemImage { name = item.icon, size = 19, color = i == 1 and "accent" or "label" })
+		row:add(ns.Text { item.title, size = 15, color = i == 1 and "accent" or "label" })
+		sidebar:add(row)
+	end
+	sidebar:add(ns.Spacer {})
+	local settings = ns.HStack {
+		fillWidth = true,
+		fixedHeight = 38,
+		paddingHorizontal = 14,
+		spacing = 14,
+		alignment = "center",
+	}
+	settings:add(ns.SystemImage { name = "gearshape", size = 18, color = "secondary" })
+	settings:add(ns.Text { "Settings", size = 14, color = "secondary" })
+	sidebar:add(settings)
+	return sidebar
+end
+
+local function makeBreadcrumb(path)
+	local crumbs = {}
+	for part in path:gmatch("[^/]+") do crumbs[#crumbs + 1] = part end
+	local row = ns.HStack { spacing = 8, alignment = "center" }
+	for i, part in ipairs(crumbs) do
+		if i > 1 then
+			row:add(ns.SystemImage { name = "chevron.right", size = 10, color = "tertiary" })
+		end
+		row:add(ns.Text { part, size = 14, color = i == #crumbs and "accent" or "secondary", weight = i == #crumbs and "semibold" or "regular" })
+	end
+	return row
+end
+
+local function makeUsageBar(tree)
+	local bar = ns.HStack {
+		fillWidth = true,
+		fixedHeight = 28,
+		spacing = 2,
+		cornerRadius = 4,
+		clipsToBounds = true,
+	}
+	local total = math.max(tree.kb, 1)
+	for i, child in ipairs(tree.children) do
+		local width = math.max(4, math.floor((child.kb / total) * 600))
+		bar:add(ns.HStack {
+			fixedWidth = width,
+			fixedHeight = 28,
+			background = USAGE_COLORS[((i - 1) % #USAGE_COLORS) + 1],
+		})
+		if i >= 5 then break end
+	end
+	bar:add(ns.HStack { flexGrow = 1, fixedHeight = 28, background = "systemGray" })
+	return bar
+end
+
+local function makeUsageLegend(tree)
+	local legend = ns.HStack { fillWidth = true, fixedHeight = 42, spacing = 22, alignment = "top" }
+	local total = math.max(tree.kb, 1)
+	for i, child in ipairs(tree.children) do
+		if i > 5 then break end
+		local color = USAGE_COLORS[((i - 1) % #USAGE_COLORS) + 1]
+		local item = ns.VStack { spacing = 3, alignment = "leading" }
+		item:add(ns.HStack {
+			spacing = 7,
+			ns.ZStack { fixedWidth = 12, fixedHeight = 12, cornerRadius = 6, background = color },
+			ns.Text { child.name, size = 12, weight = "medium" },
+		})
+		item:add(ns.Text { Model.humanKb(child.kb), size = 11, color = "secondary" })
+		legend:add(item)
+	end
+	return legend
+end
+
+local function makeDiskTable(tree, ctrl)
+	local tableView = ns.VStack {
+		fillWidth = true,
+		spacing = 0,
+		alignment = "leading",
+		cornerRadius = LAYOUT.panelRadius,
+		background = "controlBackground",
+		clipsToBounds = true,
+	}
+	local heading = ns.HStack {
+		fillWidth = true,
+		fixedHeight = 36,
+		paddingHorizontal = 12,
+		alignment = "center",
+	}
+	heading:add(ns.Text { "Name", size = 12, color = "secondary" })
+	heading:add(ns.Spacer {})
+	heading:add(ns.Text { "Size", size = 12, color = "secondary", fixedWidth = 82, alignment = "trailing" })
+	heading:add(ns.Text { "Items", size = 12, color = "secondary", fixedWidth = 78, alignment = "trailing" })
+	heading:add(ns.Text { "%", size = 12, color = "secondary", fixedWidth = 58, alignment = "trailing" })
+	tableView:add(heading)
+	local total = math.max(tree.kb, 1)
+	for i, child in ipairs(tree.children) do
+		local pct = child.kb / total * 100
+		local row = ns.HStack {
+			fillWidth = true,
+			fixedHeight = LAYOUT.rowHeight,
+			paddingHorizontal = 12,
+			spacing = 10,
+			alignment = "center",
+			onClick = function() ctrl:selectNode(child) end,
+			onDoubleClick = function() ctrl:startScan(child.path) end,
+			contextMenu = makeContextMenuItems(ctrl, child),
+		}
+		row:add(ns.SystemImage { name = "folder.fill", size = 22, color = "systemBlue" })
+		row:add(ns.Text { child.name, size = 14, lineLimit = 1, truncation = "tail", flexGrow = 1 })
+		row:add(ns.Text { Model.humanKb(child.kb), size = 13, fixedWidth = 82, alignment = "trailing" })
+		row:add(ns.Text { tostring(#child.children), size = 13, color = "secondary", fixedWidth = 78, alignment = "trailing" })
+		row:add(ns.Text { pct >= 1 and string.format("%.0f%%", pct) or "<1%", size = 13, color = "secondary", fixedWidth = 40, alignment = "trailing" })
+		row:add(ns.SystemImage { name = "chevron.right", size = 12, color = "secondary" })
+		tableView:add(row)
+		if i < #tree.children then tableView:add(ns.Separator {}) end
+	end
+	return tableView
+end
+
+local function makeFolderCard(tree, diskInfo)
+	local panel = ns.VStack {
+		fillWidth = true,
+		spacing = 14,
+		padding = 18,
+		alignment = "leading",
+		cornerRadius = LAYOUT.panelRadius,
+		background = "controlBackground",
+	}
+	local title = ns.HStack { fillWidth = true, spacing = 14, alignment = "center" }
+	title:add(ns.SystemImage { name = "folder.fill", size = 42, color = "systemBlue" })
+	title:add(ns.VStack { spacing = 2, alignment = "leading", ns.Text { tree.name, size = 17, weight = "bold" }, ns.Text { Model.humanKb(tree.kb), size = 23, weight = "bold" }, ns.Text { tostring(Model.countItems(tree)) .. " items", size = 12, color = "secondary" } })
+	panel:add(title)
+	panel:add(ns.Separator {})
+	panel:add(ns.Text { tree.path, size = 12, color = "secondary", lineLimit = 1, truncation = "middle" })
+	local meta = ns.VStack { spacing = 6, alignment = "leading" }
+	meta:add(ns.HStack { fillWidth = true, ns.Text { "Kind", size = 12, color = "secondary" }, ns.Spacer {}, ns.Text { "Folder", size = 12 } })
+	meta:add(ns.HStack { fillWidth = true, ns.Text { "Contents", size = 12, color = "secondary" }, ns.Spacer {}, ns.Text { tostring(#tree.children) .. " folders", size = 12 } })
+	if diskInfo and diskInfo.freeKb then
+		meta:add(ns.HStack { fillWidth = true, ns.Text { "Free on disk", size = 12, color = "secondary" }, ns.Spacer {}, ns.Text { Model.humanKb(diskInfo.freeKb), size = 12 } })
+	end
+	panel:add(meta)
+	panel:add(ns.Button { title = "Reveal in Finder", systemImage = "folder", style = "plain", fillWidth = true, action = function() ns.revealInFinder(tree.path) end })
+	return panel
+end
+
+local function makeSuggestionCard(tree, ctrl)
+	local suggestions = buildSuggestions(tree)
+	if #suggestions == 0 then return nil end
+	local panel = ns.VStack { fillWidth = true, spacing = 0, alignment = "leading", cornerRadius = LAYOUT.panelRadius, background = "controlBackground", clipsToBounds = true }
+	panel:add(ns.Text { "Suggestions for this folder", size = 15, weight = "bold", padding = 16 })
+	for i, suggestion in ipairs(suggestions) do
+		local row = ns.HStack { fillWidth = true, fixedHeight = 56, paddingHorizontal = 14, spacing = 10, alignment = "center" }
+		row:add(ns.SystemImage { name = FOLDER_ICONS[suggestion.node.name] or "folder.fill", size = 22, color = "systemBlue" })
+		row:add(ns.VStack { spacing = 2, alignment = "leading", flexGrow = 1, ns.Text { suggestion.node.name .. "  " .. Model.humanKb(suggestion.node.kb), size = 12, weight = "medium" }, ns.Text { suggestion.hint, size = 11, color = "secondary", lineLimit = 1 } })
+		row:add(ns.Button { title = "Review", style = "plain", action = function() ctrl:startScan(suggestion.node.path) end })
+		panel:add(row)
+		if i < #suggestions then panel:add(ns.Separator {}) end
+		if i >= 3 then break end
+	end
 	return panel
 end
 
@@ -583,43 +781,54 @@ end
 function Controller:displayTree(tree)
 	self.currentTree = tree
 	local diskInfo = Model.diskSpace(self.currentPath)
-
-	local centerStack = ns.VStack {
-		spacing   = 12,
-		alignment = "leading",
-		padding   = 16,
-		fillWidth = true,
-	}
-
-	centerStack:add(makeHeaderBar(tree, diskInfo))
-
-	local root = makeIcicle(tree, self.chartWidth, self)
-	if root then centerStack:add(root) end
-
-	local suggestions = buildSuggestions(tree)
-	local sugView = makeSuggestionsView(suggestions, self)
-	if sugView then centerStack:add(sugView) end
-
-	local childrenView = makeChildrenList(tree, self)
-	if childrenView then centerStack:add(childrenView) end
-
-	centerStack:add(makeStatusBar(tree, diskInfo))
-	centerStack:add(ns.Spacer {})
-
-	local rightSidebar = makeRightSidebar(tree, diskInfo)
-
-	local layout = ns.HStack {
+	local main = ns.VStack {
 		flexGrow = 1,
+		fillWidth = true,
 		fillHeight = true,
-		alignment = "top",
-		ns.ScrollView {
-			content   = centerStack,
-			vertical  = true,
-			flexGrow  = 1,
-			fillWidth = true,
-		},
-		rightSidebar,
+		spacing = 0,
+		alignment = "leading",
 	}
+	local header = ns.HStack {
+		fillWidth = true,
+		fixedHeight = 88,
+		paddingHorizontal = 26,
+		spacing = 16,
+		alignment = "center",
+		background = "windowBackground",
+	}
+	header:add(ns.SystemImage { name = "internaldrive.fill", size = 40, color = "secondary" })
+	header:add(ns.VStack { spacing = 2, alignment = "leading", ns.Text { "Macintosh HD", size = 22, weight = "bold" }, ns.Text { Model.humanKb(tree.kb) .. " total   ·   " .. (diskInfo and Model.humanKb(diskInfo.usedKb or tree.kb) or Model.humanKb(tree.kb)) .. " used   ·   " .. (diskInfo and Model.humanKb(diskInfo.freeKb or 0) or "—") .. " free", size = 13, color = "secondary" } })
+	header:add(ns.Spacer {})
+	header:add(ns.SearchField { placeholder = "Search folders…", fixedWidth = 320, fixedHeight = 36, accessibilityLabel = "Search folders" })
+	main:add(header)
+
+	local body = ns.HStack { flexGrow = 1, fillWidth = true, fillHeight = true, spacing = 0, alignment = "top" }
+	local center = ns.VStack { flexGrow = 1, fillWidth = true, fillHeight = true, spacing = 0, alignment = "leading" }
+	local content = ns.VStack { fillWidth = true, spacing = 16, padding = LAYOUT.contentPadding, alignment = "leading" }
+	local nav = ns.HStack { fillWidth = true, fixedHeight = 40, spacing = 10, alignment = "center" }
+	nav:add(ns.Button { title = "‹", style = "plain", fixedWidth = 34, action = function() self:goBack() end })
+	nav:add(ns.Button { title = "›", style = "plain", fixedWidth = 34, action = function() self:goForward() end })
+	nav:add(makeBreadcrumb(tree.path))
+	content:add(nav)
+	local usage = ns.VStack { fillWidth = true, fixedHeight = 86, spacing = 10, alignment = "leading" }
+	usage:add(makeUsageBar(tree))
+	usage:add(makeUsageLegend(tree))
+	content:add(usage)
+	local tableContent = ns.VStack { fillWidth = true, spacing = 16, padding = LAYOUT.contentPadding, alignment = "leading" }
+	tableContent:add(makeDiskTable(tree, self))
+	center:add(ns.VStack { fillWidth = true, fixedHeight = 136, spacing = 0, paddingHorizontal = LAYOUT.contentPadding, alignment = "leading", nav, usage })
+	center:add(ns.ScrollView { content = tableContent, vertical = true, flexGrow = 1, fillWidth = true })
+	body:add(center)
+	local right = ns.VStack { fixedWidth = LAYOUT.rightWidth, fillHeight = true, spacing = 16, padding = 16, alignment = "leading" }
+	right:add(makeFolderCard(tree, diskInfo))
+	local suggestionCard = makeSuggestionCard(tree, self)
+	if suggestionCard then right:add(suggestionCard) end
+	right:add(ns.VStack { fillWidth = true, spacing = 8, padding = 14, alignment = "leading", cornerRadius = LAYOUT.panelRadius, background = "controlBackground", ns.Text { "Quick Actions", size = 15, weight = "bold" }, ns.HStack { fillWidth = true, spacing = 8, ns.Button { title = "Open in Terminal", style = "plain", flexGrow = 1, action = function() os.execute(string.format("open -a Terminal %q", tree.path)) end }, ns.Button { title = "Copy Path", style = "plain", flexGrow = 1, action = function() ns.copyToClipboard(tree.path) end } } })
+	right:add(ns.Spacer {})
+	body:add(right)
+	main:add(body)
+	main:add(ns.HStack { fillWidth = true, fixedHeight = 30, paddingHorizontal = 24, alignment = "center", background = "windowBackground", ns.Text { tostring(#tree.children) .. " items   " .. Model.humanKb(tree.kb), size = 11, color = "secondary" }, ns.Spacer {}, ns.Text { "Scan completed", size = 11, color = "secondary" }, ns.SystemImage { name = "arrow.clockwise", size = 13, color = "secondary" } })
+	local layout = main
 
 	self:showContent(layout)
 end
@@ -759,32 +968,7 @@ function Controller:createWindow()
 	local self_ = self
 
 	-- Sidebar: main navigation (Settings-style)
-	local sidebarList = ns.List {
-		columns = {
-			{ id = "name", title = "Browse", minWidth = 140,
-			  systemImage = "internaldrive" },
-		},
-		data = {
-			{ name = "Disk Map" },
-			{ name = "Suggestions" },
-			{ name = "Large Files" },
-			{ name = "Applications" },
-			{ name = "File Types" },
-		},
-		style  = "sourceList",
-		header = false,
-		drawsBackground = false,
-		flexGrow = 1,
-	}
-	sidebarList:selectRow(1)
-
-	local sidebar = ns.VStack {
-		flexGrow = 1,
-		fillWidth = true,
-		spacing = 12,
-		padding = 12,
-	}
-	sidebar:add(sidebarList)
+	local sidebar = makeNavSidebar()
 
 	-- Content area
 	self.contentArea = ns.VStack { flexGrow = 1, fillWidth = true }
@@ -792,12 +976,21 @@ function Controller:createWindow()
 	local rootPath = (arg and arg[1]) or os.getenv("HOME") or "/"
 
 	local cfg = xml.renderFile(VIEWS .. "Window.etlua")
-	local sidebarW = 180
-	local rightSidebarW = 280
+	local sidebarW = LAYOUT.sidebarWidth
+	local rightSidebarW = LAYOUT.rightWidth
 	self.chartWidth = (cfg.width or 1024) - sidebarW - rightSidebarW - 64
-	cfg.sidebar      = sidebar
-	cfg.sidebarWidth = sidebarW
-	cfg.content      = self.contentArea
+	local workspace = ns.HStack {
+		flexGrow = 1,
+		fillWidth = true,
+		fillHeight = true,
+		spacing = 0,
+		alignment = "top",
+	}
+	workspace:add(sidebar)
+	workspace:add(self.contentArea)
+	cfg.sidebar      = nil
+	cfg.sidebarWidth = nil
+	cfg.content      = workspace
 	cfg.hideTitle    = true
 	cfg.toolbar = {
 		{ id = "toggleSidebar" },
