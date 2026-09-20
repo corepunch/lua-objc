@@ -147,7 +147,13 @@ static NSColor *semantic_color(NSString *name) {
 	if ([name isEqualToString:@"accent"])    return NSColor.controlAccentColor;
 	if ([name isEqualToString:@"white"])     return NSColor.whiteColor;
 	if ([name isEqualToString:@"separator"]) return NSColor.separatorColor;
-	if ([name isEqualToString:@"background"]) return NSColor.windowBackgroundColor;
+	if ([name isEqualToString:@"quaternaryLabel"]) return NSColor.quaternaryLabelColor;
+	if ([name isEqualToString:@"background"])        return NSColor.windowBackgroundColor;
+	if ([name isEqualToString:@"windowBackground"])  return NSColor.windowBackgroundColor;
+	if ([name isEqualToString:@"controlBackground"]) return NSColor.controlBackgroundColor;
+	if ([name isEqualToString:@"textBackground"])    return NSColor.textBackgroundColor;
+	if ([name isEqualToString:@"underPageBackground"]) return NSColor.underPageBackgroundColor;
+	if ([name isEqualToString:@"gridColor"])         return NSColor.gridColor;
 	return NSColor.labelColor;
 }
 

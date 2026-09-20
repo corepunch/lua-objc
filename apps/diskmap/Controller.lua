@@ -27,23 +27,48 @@ end
 
 -- Folder names that typically contain regenerable/cleanable content
 local CLEANABLE = {
-	["build"]         = "build artifacts — can be rebuilt",
-	["dist"]          = "build output — can be rebuilt",
-	["out"]           = "build output — can be rebuilt",
+	["build"]         = "Build artifacts — can be rebuilt",
+	["dist"]          = "Build output — can be rebuilt",
+	["out"]           = "Build output — can be rebuilt",
 	["node_modules"]  = "npm packages — reinstall with npm install",
-	[".cache"]        = "cache files — safe to delete",
+	[".cache"]        = "Cache files — safe to delete",
 	["__pycache__"]   = "Python bytecode cache",
-	["vendor"]        = "vendored dependencies — reinstallable",
+	["vendor"]        = "Vendored deps — reinstallable",
 	["Pods"]          = "CocoaPods — reinstall with pod install",
 	["DerivedData"]   = "Xcode build data — safe to delete",
 	[".next"]         = "Next.js cache — rebuilt on next build",
-	["target"]        = "build output — can be rebuilt",
+	["target"]        = "Build output — can be rebuilt",
 	[".gradle"]       = "Gradle cache — rebuilt on next build",
 	["xcuserdata"]    = "Xcode user data — safe to delete",
-	[".lmstudio"]     = "LLM models — delete unused models in LM Studio",
-	[".ollama"]       = "Ollama models — remove with: ollama rm <model>",
+	[".lmstudio"]     = "LLM models — delete unused in LM Studio",
+	[".ollama"]       = "Ollama models — remove with: ollama rm",
 	[".codex"]        = "OpenAI Codex data — safe to delete",
-	["Downloads"]     = "downloads — likely contains stale installers",
+	["Downloads"]     = "Downloads — likely stale installers",
+}
+
+-- SF Symbol icons for known folder names
+local FOLDER_ICONS = {
+	["Developer"]     = "hammer.fill",
+	["Library"]       = "books.vertical.fill",
+	["Downloads"]     = "arrow.down.circle.fill",
+	["Documents"]     = "doc.fill",
+	["Desktop"]       = "menubar.dock.rectangle",
+	["Applications"]  = "app.fill",
+	["Movies"]        = "film.fill",
+	["Music"]         = "music.note",
+	["Pictures"]      = "photo.fill",
+	["Photos"]        = "photo.fill",
+	[".lmstudio"]     = "brain",
+	[".ollama"]       = "brain.head.profile",
+	[".cache"]        = "archivebox.fill",
+	[".codex"]        = "terminal.fill",
+	[".local"]        = "internaldrive.fill",
+	[".vscode"]       = "curlybraces",
+	[".claude"]       = "sparkle",
+	["build"]         = "hammer",
+	["node_modules"]  = "shippingbox.fill",
+	["vendor"]        = "shippingbox",
+	["src"]           = "chevron.left.forwardslash.chevron.right",
 }
 
 -- ── Context menu ─────────────────────────────────────────────────────────
@@ -179,6 +204,47 @@ local function makeEmptyView(msg)
 	}
 end
 
+-- ── SwiftUI-style row builder ────────────────────────────────────────────
+
+local function makeIconSquare(name, colorIdx)
+	local style = barStyle(colorIdx)
+	local iconName = FOLDER_ICONS[name] or "folder.fill"
+	local sq = ns.ZStack {
+		fixedWidth  = 30,
+		fixedHeight = 30,
+		cornerRadius = 7,
+		background   = style.bg,
+	}
+	sq:add(ns.SystemImage { name = iconName, size = 14, weight = "medium", color = "white" })
+	return sq
+end
+
+local function makeGroupedRow(child, colorIdx, ctrl, parentKb)
+	local pct = parentKb > 0
+		and string.format("%.1f%%", child.kb / parentKb * 100) or ""
+	local row = ns.HStack {
+		fillWidth     = true,
+		fixedHeight   = 48,
+		paddingHorizontal = 14,
+		spacing       = 12,
+		alignment     = "center",
+		onDoubleClick = function() ctrl:startScan(child.path) end,
+		contextMenu   = makeContextMenuItems(ctrl, child),
+	}
+	row:add(makeIconSquare(child.name, colorIdx))
+	row:add(ns.Text { child.name, size = 13 })
+	row:add(ns.Spacer {})
+	row:add(ns.Text { Model.humanKb(child.kb), size = 13, color = "secondary" })
+	return row
+end
+
+local function makeGroupSeparator()
+	local sep = ns.HStack { fillWidth = true, fixedHeight = 1 }
+	sep:add(ns.VStack { fixedWidth = 56, fixedHeight = 1 })
+	sep:add(ns.VStack { flexGrow = 1, fixedHeight = 1, background = "separator" })
+	return sep
+end
+
 -- ── Suggestions section ──────────────────────────────────────────────────
 
 local function buildSuggestions(tree)
@@ -186,10 +252,7 @@ local function buildSuggestions(tree)
 	for _, child in ipairs(tree.children) do
 		local hint = CLEANABLE[child.name]
 		if hint then
-			items[#items + 1] = {
-				node = child,
-				hint = hint,
-			}
+			items[#items + 1] = { node = child, hint = hint }
 		end
 	end
 	table.sort(items, function(a, b) return a.node.kb > b.node.kb end)
@@ -199,89 +262,88 @@ end
 local function makeSuggestionsView(suggestions, ctrl)
 	if #suggestions == 0 then return nil end
 
-	local list = ns.VStack {
-		fillWidth = true,
-		spacing   = 2,
-		alignment = "leading",
+	local container = ns.VStack {
+		fillWidth    = true,
+		spacing      = 0,
+		alignment    = "leading",
+		cornerRadius = 10,
+		background   = "controlBackground",
+		clipsToBounds = true,
 	}
-	for _, s in ipairs(suggestions) do
+
+	for i, s in ipairs(suggestions) do
 		local row = ns.HStack {
-			fillWidth = true,
-			spacing   = 8,
-			padding   = 6,
-			paddingHorizontal = 12,
-			alignment = "center",
-			cornerRadius = 5,
-			background   = "controlBackground",
-			contextMenu  = makeContextMenuItems(ctrl, s.node),
+			fillWidth     = true,
+			fixedHeight   = 56,
+			paddingHorizontal = 14,
+			spacing       = 12,
+			alignment     = "center",
 			onDoubleClick = function() ctrl:startScan(s.node.path) end,
-			ns.Text { s.node.name, size = 12, weight = "semibold" },
-			ns.Text { Model.humanKb(s.node.kb), size = 11, weight = "medium", color = "secondary" },
-			ns.Text { s.hint, size = 11, color = "secondary" },
-			ns.Spacer {},
-			ns.Button {
-				title = "Reveal",
-				style = "plain",
-				action = function() ns.revealInFinder(s.node.path) end,
-			},
+			contextMenu   = makeContextMenuItems(ctrl, s.node),
 		}
-		list:add(row)
+		local iconName = FOLDER_ICONS[s.node.name] or "archivebox.fill"
+		local sq = ns.ZStack {
+			fixedWidth  = 30,
+			fixedHeight = 30,
+			cornerRadius = 7,
+			background  = "systemOrange",
+		}
+		sq:add(ns.SystemImage { name = iconName, size = 14, weight = "medium", color = "white" })
+		row:add(sq)
+
+		local info = ns.VStack { spacing = 1, alignment = "leading" }
+		info:add(ns.Text { s.node.name .. "  " .. Model.humanKb(s.node.kb),
+			size = 13, weight = "medium" })
+		info:add(ns.Text { s.hint, size = 11, color = "secondary" })
+		row:add(info)
+
+		row:add(ns.Spacer {})
+		row:add(ns.Button {
+			title = "Reveal",
+			style = "plain",
+			action = function() ns.revealInFinder(s.node.path) end,
+		})
+		container:add(row)
+		if i < #suggestions then container:add(makeGroupSeparator()) end
 	end
 
 	return ns.VStack {
 		fillWidth = true,
 		spacing   = 6,
 		alignment = "leading",
-		ns.Text { "Suggestions", size = 12, weight = "bold", color = "secondary" },
-		list,
+		ns.Text { "Recommendations", size = 12, weight = "bold", color = "secondary" },
+		container,
 	}
 end
 
--- ── Children table ───────────────────────────────────────────────────────
+-- ── Children list (SwiftUI grouped style) ────────────────────────────────
 
-local function makeChildrenTable(tree, ctrl)
+local function makeChildrenList(tree, ctrl)
 	if #tree.children == 0 then return nil end
 
 	local parentKb = math.max(tree.kb, 1)
-	local rows = {}
-	for _, child in ipairs(tree.children) do
-		rows[#rows + 1] = {
-			name  = child.name,
-			size  = Model.humanKb(child.kb),
-			pct   = string.format("%.1f%%", child.kb / parentKb * 100),
-			items = tostring(#child.children),
-			path  = child.path,
-			node  = child,
-		}
-	end
-
-	local list = ns.List {
-		columns = {
-			{ id = "name",  title = "Name",  minWidth = 120 },
-			{ id = "size",  title = "Size",  width = 80, alignment = "right" },
-			{ id = "pct",   title = "%",     width = 60, alignment = "right" },
-			{ id = "items", title = "Items", width = 55, alignment = "right" },
-		},
-		data   = rows,
-		style  = "inset",
-		header = true,
-		alternatingRows = true,
-		fillWidth  = true,
-		fixedHeight = math.min(#rows * 24 + 28, 300),
-		onSelect = function(_, idx, row)
-			if row and row.node then ctrl:selectNode(row.node) end
-		end,
-		onActivate = function(_, idx, row)
-			if row and row.path then ctrl:startScan(row.path) end
-		end,
+	local container = ns.VStack {
+		fillWidth    = true,
+		spacing      = 0,
+		alignment    = "leading",
+		cornerRadius = 10,
+		background   = "controlBackground",
+		clipsToBounds = true,
 	}
+
+	for i, child in ipairs(tree.children) do
+		container:add(makeGroupedRow(child, i - 1, ctrl, parentKb))
+		if i < #tree.children then
+			container:add(makeGroupSeparator())
+		end
+	end
 
 	return ns.VStack {
 		fillWidth = true,
 		spacing   = 6,
 		alignment = "leading",
 		ns.Text { "Contents", size = 12, weight = "bold", color = "secondary" },
-		list,
+		container,
 	}
 end
 
@@ -443,7 +505,7 @@ function Controller:displayTree(tree)
 	local sugView = makeSuggestionsView(suggestions, self)
 	if sugView then stack:add(sugView) end
 
-	local childrenView = makeChildrenTable(tree, self)
+	local childrenView = makeChildrenList(tree, self)
 	if childrenView then stack:add(childrenView) end
 
 	stack:add(makeStatusBar(tree, diskInfo))
