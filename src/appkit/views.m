@@ -278,6 +278,12 @@ static int bridge_set_window_workspace(lua_State *L) {
 		? [NSSplitViewItem
 			splitViewItemWithViewController:detailController]
 		: nil;
+	if (detailItem) {
+		detailItem.minimumThickness = kWorkspaceDetailMinWidth;
+		detailItem.maximumThickness = kWorkspaceDetailMaxWidth;
+		detailItem.preferredThicknessFraction =
+			kWorkspaceDetailWidth / MAX(1, window.contentLayoutRect.size.width);
+	}
 
 	if (accessory) {
 		NSSplitViewItemAccessoryViewController *accessoryController =

@@ -181,11 +181,17 @@ function Controller:showContent(view)
 	self.refs.content:layout()
 end
 
+function Controller:showDetail(view)
+	self.refs.detail:clearContainer()
+	self.refs.detail:add(view)
+	self.refs.detail:layout()
+end
+
 function Controller:displayTree(tree)
 	self.currentTree = tree
 	local data = self:makeDashboardData(tree, Model.diskSpace(self.currentPath))
-	local view = render("Dashboard.etlua", data)
-	self:showContent(view)
+	self:showContent(render("Dashboard.etlua", data))
+	self:showDetail(render("RightSidebar.etlua", data))
 end
 
 function Controller:startScan(rootPath, isNav)
@@ -236,12 +242,18 @@ end
 
 function Controller:createWindow()
 	local rootPath = (arg and arg[1]) or os.getenv("HOME") or "/"
-	local cfg, refs = render("Window.etlua", {
-		navItems = NAV_ITEMS,
-		rootPath = rootPath,
-		__baseDir = VIEWS,
-	})
-	self.refs = refs
+	local cfg = render("Window.etlua")
+	local sidebar = render("Sidebar.etlua", { navItems = NAV_ITEMS })
+	local content, contentRefs = render("ContentPane.etlua")
+	local detail, detailRefs = render("DetailPane.etlua")
+	cfg.sidebar = sidebar
+	cfg.content = content
+	cfg.detail = detail
+	cfg.sidebarWidth = LAYOUT.sidebarWidth
+	self.refs = {
+		content = contentRefs.content,
+		detail = detailRefs.detail,
+	}
 	self.window = ns.Window(cfg)
 	self:createMenuBar()
 	self:startScan(rootPath)

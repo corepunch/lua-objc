@@ -147,6 +147,9 @@ static const CGFloat kStackSpacing = 8.0;
 #define kWorkspaceSidebarWidth         240
 #define kWorkspaceSidebarMinWidth      160
 #define kWorkspaceSidebarMaxWidth      420
+#define kWorkspaceDetailWidth          330
+#define kWorkspaceDetailMinWidth       280
+#define kWorkspaceDetailMaxWidth       420
 #define kWorkspaceContentDividerIndex    0
 #define kWorkspaceDetailDividerIndex     1
 

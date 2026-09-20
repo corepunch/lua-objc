@@ -1,13 +1,10 @@
-<HStack flexGrow="1" fillWidth="true" fillHeight="true" spacing="0" alignment="top">
-  <%= partial("Sidebar.etlua", { navItems = navItems }) %>
-  <VStack flexGrow="1" fillWidth="true" fillHeight="true" spacing="0" alignment="leading">
+<VStack flexGrow="1" fillWidth="true" fillHeight="true" spacing="0" alignment="leading">
   <HStack fillWidth="true" fixedHeight="88" paddingHorizontal="26" spacing="16" alignment="center" background="windowBackground">
     <SystemImage name="internaldrive.fill" size="40" color="secondary" />
     <VStack spacing="2" alignment="leading"><Label text="Macintosh HD" size="22" weight="bold" /><Label text="<%= diskTotal %> total   ·   <%= total %> used   ·   <%= free %> free" size="13" color="secondary" /></VStack>
     <Spacer /><SearchField placeholder="Search folders…" fixedWidth="320" fixedHeight="36" accessibilityLabel="Search folders" />
   </HStack>
-  <HStack flexGrow="1" fillWidth="true" fillHeight="true" spacing="0" alignment="top">
-    <ScrollView vertical="true" flexGrow="1" fillWidth="true">
+  <ScrollView vertical="true" flexGrow="1" fillWidth="true">
       <VStack fillWidth="true" spacing="16" padding="24" alignment="leading">
         <HStack fillWidth="true" fixedHeight="40" spacing="10" alignment="center">
           <Button title="‹" style="plain" fixedWidth="34" action="back" /><Button title="›" style="plain" fixedWidth="34" action="forward" />
@@ -26,9 +23,6 @@
           <% for i, row in ipairs(rows) do %><HStack fillWidth="true" fixedHeight="49" paddingHorizontal="12" spacing="10" alignment="center"><SystemImage name="folder.fill" size="22" color="systemBlue" /><Label text="<%= row.name %>" size="14" lineLimit="1" truncation="tail" flexGrow="1" /><Label text="<%= row.size %>" size="13" fixedWidth="82" alignment="trailing" /><Label text="<%= row.items %>" size="13" color="secondary" fixedWidth="78" alignment="trailing" /><Label text="<%= row.percent %>" size="13" color="secondary" fixedWidth="40" alignment="trailing" /><Button title="" systemImage="chevron.right" style="plain" fixedWidth="18" action="open_<%= i %>" /></HStack><% if i < #rows then %><Divider /><% end %><% end %>
         </VStack>
       </VStack>
-    </ScrollView>
-    <%= partial("RightSidebar.etlua", { folder = { name = name, path = path, total = total, items = items, folderCount = folderCount, free = free }, suggestions = suggestions }) %>
-  </HStack>
+  </ScrollView>
   <HStack fillWidth="true" fixedHeight="30" paddingHorizontal="24" alignment="center" background="windowBackground"><Label text="<%= folderCount %> items   <%= total %>" size="11" color="secondary" /><Spacer /><Label text="Scan completed" size="11" color="secondary" /><SystemImage name="arrow.clockwise" size="13" color="secondary" /></HStack>
-  </VStack>
-</HStack>
+</VStack>

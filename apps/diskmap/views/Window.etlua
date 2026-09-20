@@ -1,10 +1,1 @@
-<Window title="Disk Map" width="1024" height="768" minWidth="760" minHeight="460">
-  <VStack fillWidth="true" fillHeight="true" spacing="0" alignment="top">
-    <VStack ref="content" flexGrow="1" fillWidth="true" fillHeight="true" alignment="leading">
-      <VStack flexGrow="1" fillWidth="true" fillHeight="true" alignment="center">
-        <ProgressView />
-        <Label text="Preparing scan…" size="13" color="secondary" />
-      </VStack>
-    </VStack>
-  </VStack>
-</Window>
+<Window title="Disk Map" width="1024" height="768" minWidth="760" minHeight="460" sidebarWidth="228" />
