@@ -1,0 +1,46 @@
+<VStack fixedWidth="280" flexGrow="1" spacing="16" padding="16" alignment="top" fillHeight="true">
+  <!-- Folder Info -->
+  <VStack fillWidth="true" spacing="6" alignment="leading">
+    <Text weight="bold" size="16"><%= folderName %></Text>
+    <Text size="11" color="secondary" lineLimit="2"><%= folderPath %></Text>
+  </VStack>
+
+  <!-- Size & Items Info -->
+  <VStack fillWidth="true" spacing="8" alignment="leading" cornerRadius="8" background="controlBackground" padding="12">
+    <HStack fillWidth="true">
+      <Text size="11" color="secondary">Size</Text>
+      <Spacer />
+      <Text size="12" weight="medium"><%= sizeStr %></Text>
+    </HStack>
+    <HStack fillWidth="true">
+      <Text size="11" color="secondary">Items</Text>
+      <Spacer />
+      <Text size="12" weight="medium"><%= itemCount %></Text>
+    </HStack>
+  </VStack>
+
+  <!-- Disk Usage -->
+  <% if hasDiskInfo then %>
+  <VStack fillWidth="true" spacing="8" alignment="leading" cornerRadius="8" background="controlBackground" padding="12">
+    <Text size="11" weight="semibold">Disk Usage</Text>
+    <HStack fillWidth="true">
+      <Text size="11" color="secondary">Free</Text>
+      <Spacer />
+      <Text size="12"><%= freeStr %></Text>
+    </HStack>
+  </VStack>
+  <% end %>
+
+  <!-- Quick Actions -->
+  <VStack fillWidth="true" spacing="6" alignment="leading">
+    <Text size="11" weight="semibold" color="secondary">Quick Actions</Text>
+    <HStack>
+      <Button title="Open in Terminal" style="plain" flexGrow="1" action="<%= openTerminalAction %>" />
+    </HStack>
+    <HStack>
+      <Button title="Copy Path" style="plain" flexGrow="1" action="<%= copyPathAction %>" />
+    </HStack>
+  </VStack>
+
+  <Spacer />
+</VStack>

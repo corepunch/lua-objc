@@ -4,6 +4,10 @@ local Model = require("apps.diskmap.Model")
 
 local VIEWS = "apps/diskmap/views/"
 
+local function renderTemplate(templateFile, context)
+	return xml.renderFile(VIEWS .. templateFile, context)
+end
+
 -- ── Chart constants ──────────────────────────────────────────────────────
 
 local BAR_H       = 28
@@ -91,50 +95,13 @@ end
 
 -- ── Icicle chart ─────────────────────────────────────────────────────────
 
-local function makeIcicle(node, availW, depth, ctrl)
-	if availW < MIN_BAR_W then return nil end
-
-	local style = barStyle(depth)
-	local sizeStr = Model.humanKb(node.kb)
-	local labelText = node.name .. "  " .. sizeStr
-
-	local bar = ns.HStack {
-		fixedWidth    = availW,
-		fixedHeight   = BAR_H,
-		cornerRadius  = 3,
-		background    = style.bg,
-		alignment     = "center",
-		clipsToBounds = true,
-		onClick       = function() ctrl:selectNode(node) end,
-		onDoubleClick = function() ctrl:startScan(node.path) end,
-		contextMenu   = makeContextMenuItems(ctrl, node),
-		hoverTooltip  = { title = node.name, detail = sizeStr },
-	}
-	if availW >= MIN_LABEL_W then
-		bar:add(ns.Text {
-			labelText,
-			size       = 11,
-			weight     = "semibold",
-			color      = style.fg,
-			fixedWidth = availW - 8,
-			alignment  = "center",
-			lineLimit  = 1,
-		})
-	end
-
-	local nodeV = ns.VStack {
-		fixedWidth = availW,
-		spacing    = LEVEL_GAP,
-		alignment  = "leading",
-	}
-	nodeV:add(bar)
-
-	if #node.children == 0 then return nodeV end
+local function makeIcicle(node, availW, ctrl)
+	if availW < MIN_BAR_W or #node.children == 0 then return nil end
 
 	local nodeKb = math.max(node.kb, 1)
 	local row = ns.HStack {
 		fixedWidth = availW,
-		spacing    = 0,
+		spacing    = SIBLING_GAP,
 		alignment  = "top",
 	}
 
@@ -145,38 +112,56 @@ local function makeIcicle(node, availW, depth, ctrl)
 		local w = math.floor(child.kb / nodeKb * availW)
 		if w < MIN_BAR_W then break end
 		w = math.min(w, budget)
-		if count > 0 then
-			budget = budget - SIBLING_GAP
-			if budget <= 0 then break end
-			row:add(ns.VStack { fixedWidth = SIBLING_GAP, fixedHeight = BAR_H })
-		end
-		local cv = makeIcicle(child, w, depth + 1, ctrl)
-		if cv then
-			row:add(cv)
-			budget = budget - w
-			count  = count + 1
-		end
-	end
-	if budget >= MIN_BAR_W then
-		if count > 0 then
-			budget = budget - SIBLING_GAP
-			row:add(ns.VStack { fixedWidth = SIBLING_GAP, fixedHeight = BAR_H })
-		end
-		if budget > 0 then
-			row:add(ns.HStack {
-				fixedWidth   = budget,
-				fixedHeight  = BAR_H,
-				cornerRadius = 3,
-				background   = "separator",
-				alignment    = "center",
-				clipsToBounds = true,
-				hoverTooltip = { title = "Other", detail = "Files and small folders" },
+
+		local style = barStyle(count)
+		local sizeStr = Model.humanKb(child.kb)
+		local labelText = child.name .. "  " .. sizeStr
+
+		local bar = ns.HStack {
+			fixedWidth    = w,
+			fixedHeight   = BAR_H,
+			cornerRadius  = 3,
+			background    = style.bg,
+			alignment     = "center",
+			clipsToBounds = true,
+			onClick       = function() ctrl:selectNode(child) end,
+			onDoubleClick = function() ctrl:startScan(child.path) end,
+			contextMenu   = makeContextMenuItems(ctrl, child),
+			hoverTooltip  = { title = child.name, detail = sizeStr },
+		}
+		if w >= MIN_LABEL_W then
+			bar:add(ns.Text {
+				labelText,
+				size       = 11,
+				weight     = "semibold",
+				color      = style.fg,
+				fixedWidth = w - 8,
+				alignment  = "center",
+				lineLimit  = 1,
 			})
 		end
-	end
-	nodeV:add(row)
 
-	return nodeV
+		if count > 0 then
+			row:add(ns.VStack { fixedWidth = SIBLING_GAP, fixedHeight = BAR_H })
+		end
+		row:add(bar)
+		budget = budget - w - SIBLING_GAP
+		count  = count + 1
+	end
+
+	if budget > MIN_BAR_W and count > 0 then
+		row:add(ns.HStack {
+			fixedWidth   = budget,
+			fixedHeight  = BAR_H,
+			cornerRadius = 3,
+			background   = "separator",
+			alignment    = "center",
+			clipsToBounds = true,
+			hoverTooltip = { title = "Other", detail = "Files and small folders" },
+		})
+	end
+
+	return row
 end
 
 -- ── Loading / empty views ────────────────────────────────────────────────
@@ -371,26 +356,134 @@ local function makeSelectionDetail(node, parentKb)
 	}
 end
 
--- ── Status bar ───────────────────────────────────────────────────────────
+-- ── Header with folder info (etlua template) ─────────────────────────
+
+local function makeHeaderBar(tree, diskInfo)
+	local parts = {}
+	parts[#parts + 1] = Model.humanKb(tree.kb)
+	if diskInfo and diskInfo.freeKb then
+		parts[#parts + 1] = "Free: " .. Model.humanKb(diskInfo.freeKb)
+	end
+	parts[#parts + 1] = tostring(#tree.children) .. " items"
+
+	local context = {
+		folderName = tree.name or "Folder",
+		headerStats = table.concat(parts, "   ·   "),
+	}
+
+	return renderTemplate("HeaderBar.etlua", context)
+end
+
+-- ── Status bar (etlua template) ───────────────────────────────────────
 
 local function makeStatusBar(tree, diskInfo)
 	local parts = {}
 	parts[#parts + 1] = "Total: " .. Model.humanKb(tree.kb)
 	parts[#parts + 1] = tostring(#tree.children) .. " items"
-	if diskInfo then
+	if diskInfo and diskInfo.freeKb then
 		parts[#parts + 1] = "Free: " .. Model.humanKb(diskInfo.freeKb)
 	end
-	return ns.HStack {
-		fillWidth   = true,
-		fixedHeight = 22,
-		padding     = 8,
-		alignment   = "center",
-		ns.Text {
-			table.concat(parts, "   ·   "),
-			size  = 11,
-			color = "secondary",
-		},
+
+	local context = {
+		statusText = table.concat(parts, "   ·   "),
 	}
+
+	return renderTemplate("StatusBar.etlua", context)
+end
+
+-- ── Right sidebar with folder details ────────────────────────────────────
+
+local function makeRightSidebar(tree, diskInfo)
+	local folderName = tree.name or "Folder"
+	local folderPath = tree.path or "/"
+	local itemCount = #tree.children
+	local sizeStr = Model.humanKb(tree.kb)
+
+	local panel = ns.VStack {
+		fixedWidth = 280,
+		flexGrow = 1,
+		spacing = 16,
+		padding = 16,
+		alignment = "top",
+		fillHeight = true,
+	}
+
+	-- Folder name and size
+	panel:add(ns.VStack {
+		fillWidth = true,
+		spacing = 6,
+		alignment = "leading",
+		ns.Text { folderName, size = 16, weight = "bold" },
+		ns.Text { folderPath, size = 11, color = "secondary", lineLimit = 2 },
+	})
+
+	-- Info section
+	panel:add(ns.VStack {
+		fillWidth = true,
+		spacing = 8,
+		alignment = "leading",
+		cornerRadius = 8,
+		background = "controlBackground",
+		padding = 12,
+		ns.HStack {
+			fillWidth = true,
+			ns.Text { "Size", size = 11, color = "secondary" },
+			ns.Spacer {},
+			ns.Text { sizeStr, size = 12, weight = "medium" },
+		},
+		ns.HStack {
+			fillWidth = true,
+			ns.Text { "Items", size = 11, color = "secondary" },
+			ns.Spacer {},
+			ns.Text { tostring(itemCount), size = 12, weight = "medium" },
+		},
+	})
+
+	if diskInfo and diskInfo.freeKb then
+		panel:add(ns.VStack {
+			fillWidth = true,
+			spacing = 8,
+			alignment = "leading",
+			cornerRadius = 8,
+			background = "controlBackground",
+			padding = 12,
+			ns.Text { "Disk Usage", size = 11, weight = "semibold" },
+			ns.HStack {
+				fillWidth = true,
+				ns.Text { "Free", size = 11, color = "secondary" },
+				ns.Spacer {},
+				ns.Text { Model.humanKb(diskInfo.freeKb), size = 12 },
+			},
+		})
+	end
+
+	-- Quick Actions
+	panel:add(ns.VStack {
+		fillWidth = true,
+		spacing = 6,
+		alignment = "leading",
+		ns.Text { "Quick Actions", size = 11, weight = "semibold", color = "secondary" },
+		ns.Button {
+			title = "Open in Terminal",
+			style = "plain",
+			fillWidth = true,
+			action = function()
+				os.execute(string.format("open -a Terminal %q", folderPath))
+			end,
+		},
+		ns.Button {
+			title = "Copy Path",
+			style = "plain",
+			fillWidth = true,
+			action = function()
+				ns.copyToClipboard(folderPath)
+			end,
+		},
+	})
+
+	panel:add(ns.Spacer {})
+
+	return panel
 end
 
 -- ── Controller ───────────────────────────────────────────────────────────
@@ -491,31 +584,44 @@ function Controller:displayTree(tree)
 	self.currentTree = tree
 	local diskInfo = Model.diskSpace(self.currentPath)
 
-	local stack = ns.VStack {
-		spacing   = 16,
+	local centerStack = ns.VStack {
+		spacing   = 12,
 		alignment = "leading",
 		padding   = 16,
 		fillWidth = true,
 	}
 
-	local root = makeIcicle(tree, self.chartWidth, 0, self)
-	if root then stack:add(root) end
+	centerStack:add(makeHeaderBar(tree, diskInfo))
+
+	local root = makeIcicle(tree, self.chartWidth, self)
+	if root then centerStack:add(root) end
 
 	local suggestions = buildSuggestions(tree)
 	local sugView = makeSuggestionsView(suggestions, self)
-	if sugView then stack:add(sugView) end
+	if sugView then centerStack:add(sugView) end
 
 	local childrenView = makeChildrenList(tree, self)
-	if childrenView then stack:add(childrenView) end
+	if childrenView then centerStack:add(childrenView) end
 
-	stack:add(makeStatusBar(tree, diskInfo))
+	centerStack:add(makeStatusBar(tree, diskInfo))
+	centerStack:add(ns.Spacer {})
 
-	self:showContent(ns.ScrollView {
-		content   = stack,
-		vertical  = true,
-		flexGrow  = 1,
-		fillWidth = true,
-	})
+	local rightSidebar = makeRightSidebar(tree, diskInfo)
+
+	local layout = ns.HStack {
+		flexGrow = 1,
+		fillHeight = true,
+		alignment = "top",
+		ns.ScrollView {
+			content   = centerStack,
+			vertical  = true,
+			flexGrow  = 1,
+			fillWidth = true,
+		},
+		rightSidebar,
+	}
+
+	self:showContent(layout)
 end
 
 function Controller:startScan(rootPath, isNav)
@@ -652,14 +758,18 @@ end
 function Controller:createWindow()
 	local self_ = self
 
-	-- Sidebar: utilities list (Settings-style)
+	-- Sidebar: main navigation (Settings-style)
 	local sidebarList = ns.List {
 		columns = {
-			{ id = "name", title = "Utilities", minWidth = 140,
+			{ id = "name", title = "Browse", minWidth = 140,
 			  systemImage = "internaldrive" },
 		},
 		data = {
 			{ name = "Disk Map" },
+			{ name = "Suggestions" },
+			{ name = "Large Files" },
+			{ name = "Applications" },
+			{ name = "File Types" },
 		},
 		style  = "sourceList",
 		header = false,
@@ -668,7 +778,12 @@ function Controller:createWindow()
 	}
 	sidebarList:selectRow(1)
 
-	local sidebar = ns.VStack { flexGrow = 1, fillWidth = true }
+	local sidebar = ns.VStack {
+		flexGrow = 1,
+		fillWidth = true,
+		spacing = 12,
+		padding = 12,
+	}
 	sidebar:add(sidebarList)
 
 	-- Content area
@@ -678,7 +793,8 @@ function Controller:createWindow()
 
 	local cfg = xml.renderFile(VIEWS .. "Window.etlua")
 	local sidebarW = 180
-	self.chartWidth = (cfg.width or 1060) - sidebarW - 48
+	local rightSidebarW = 280
+	self.chartWidth = (cfg.width or 1024) - sidebarW - rightSidebarW - 64
 	cfg.sidebar      = sidebar
 	cfg.sidebarWidth = sidebarW
 	cfg.content      = self.contentArea

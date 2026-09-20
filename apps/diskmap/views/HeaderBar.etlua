@@ -1,0 +1,5 @@
+<HStack fillWidth="true" fixedHeight="40" paddingHorizontal="16" paddingVertical="8" alignment="center" background="controlBackground" cornerRadius="6" spacing="12">
+  <Text size="13" weight="semibold"><%= folderName %></Text>
+  <Spacer />
+  <Text size="12" color="secondary"><%= headerStats %></Text>
+</HStack>

@@ -1,0 +1,32 @@
+<ScrollView vertical="true" flexGrow="1" fillWidth="true">
+  <VStack spacing="12" alignment="leading" padding="16" fillWidth="true">
+    <!-- Header -->
+    <HStack fillWidth="true" fixedHeight="40" paddingHorizontal="16" paddingVertical="8" alignment="center" background="controlBackground" cornerRadius="6" spacing="12">
+      <Text size="13" weight="semibold"><%= node.name %></Text>
+      <Spacer />
+      <Text size="12" color="secondary"><%= headerStats %></Text>
+    </HStack>
+
+    <!-- Icicle Chart -->
+    <% if icicleChart then %>
+      <%= icicleChart %>
+    <% end %>
+
+    <!-- Recommendations -->
+    <% if suggestionsView then %>
+      <%= suggestionsView %>
+    <% end %>
+
+    <!-- Contents -->
+    <% if childrenView then %>
+      <%= childrenView %>
+    <% end %>
+
+    <!-- Status Bar -->
+    <HStack fillWidth="true" fixedHeight="22" padding="8" alignment="center">
+      <Text size="11" color="secondary"><%= statusText %></Text>
+    </HStack>
+
+    <Spacer />
+  </VStack>
+</ScrollView>
