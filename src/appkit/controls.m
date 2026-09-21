@@ -463,6 +463,13 @@ static int bridge_table_cell_frames(lua_State *L) {
 	}
 
 	lua_newtable(L);
+	if ([tv isKindOfClass:NSOutlineView.class]) {
+		NSRect disclosure = [(NSOutlineView *)tv frameOfOutlineCellAtRow:row];
+		lua_pushnumber(L, NSMidY(disclosure));
+		lua_setfield(L, -2, "disclosureMidY");
+		lua_pushnumber(L, NSMidY([tv rectOfRow:row]));
+		lua_setfield(L, -2, "rowMidY");
+	}
 	NSArray<NSTableColumn *> *columns = tv.tableColumns;
 	for (NSUInteger i = 0; i < columns.count; i++) {
 		NSTableColumn *col = columns[i];

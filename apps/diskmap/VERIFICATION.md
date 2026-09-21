@@ -40,3 +40,20 @@ fallback, Siri/Dictation independent rollups, exact-path uniqueness, and rejecti
 of obsolete unsplit caches. Screenshots cover System Data expanded in light and
 dark appearances. Known asset classes were checked against this Mac’s AssetsV2
 directory; unrecognized classes and preinstalled assets remain residual.
+
+## Compact layout polish
+
+- Default window is 1024 × 768; verified at 1000 × 640 and 1440 × 900.
+- Capacity remains the toolbar subtitle. Inline toolbar content now measures its
+  natural size, with no fixed title-block width/height or fallback dimensions.
+  Regression coverage checks two lines plus growth and shrink after text changes.
+- Navigation and Settings use matching native source-list cells. The legend uses
+  one row of category labels; outline disclosure controls center on each row.
+- Focused headless suites pass: Diskmap, toolbar intrinsic sizing, outline cells,
+  scroll content, bridge, XML templates, stack contracts, and ZStack.
+- Real screenshots checked default/light, minimum/dark, and large/light layouts.
+  Live accessibility/keyboard checks covered selection, expansion, Settings return,
+  empty search, and the native measurement spinner. Cache screenshots use synthetic
+  data. Normal app startup was also inspected with partial measurement results.
+- Long category subtitles intentionally truncate in the outline; selection exposes
+  the description in the inspector. Native scrollers retain access at smaller sizes.

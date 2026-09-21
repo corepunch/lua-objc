@@ -1,23 +1,15 @@
-<VStack fillWidth="true" fillHeight="true" flexGrow="1" flexBasis="0" flexShrink="1" spacing="16" padding="20">
-  <HStack fillWidth="true" spacing="16" alignment="center">
-    <Image path="/" fileIcon="true" fixedWidth="52" fixedHeight="52" />
-    <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="6" alignment="leading">
-      <Label text="Macintosh storage" size="24" weight="bold" fillWidth="true" />
-      <Label ref="capacity" text="<%= capacity %>" size="12" color="secondary" fillWidth="true" lines="2" />
-    </VStack>
-    <SearchField placeholder="Search categories and cleanup tasks…" fixedWidth="290" onChange="search" accessibilityLabel="Search storage categories" />
-  </HStack>
+<VStack fillWidth="true" fillHeight="true" flexGrow="1" flexBasis="0" flexShrink="1" spacing="16" padding="16">
   <VStack ref="storageBar" fillWidth="true" spacing="0" />
   <HSplit flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true" fillHeight="true">
-    <VStack minWidth="400" flexGrow="1" fillHeight="true" fillWidth="true" spacing="12">
-      <HStack spacing="12" fillWidth="true" paddingVertical="8">
-        <SystemImage ref="headingIcon" name="<%= icon %>" size="36" badgeColor="<%= color %>" />
+    <VStack minWidth="390" flexGrow="1" fillHeight="true" fillWidth="true" spacing="12">
+      <HStack spacing="10" fillWidth="true" paddingVertical="8" alignment="center">
+        <SystemImage ref="headingIcon" name="<%= icon %>" size="28" badgeColor="<%= color %>" />
         <VStack spacing="4" flexGrow="1" flexBasis="0" flexShrink="1" alignment="leading">
-          <Label ref="heading" text="<%= title %>" size="22" weight="bold" fillWidth="true" />
+          <Label ref="heading" text="<%= title %>" size="19" weight="semibold" fillWidth="true" />
           <Label ref="subtitle" text="<%= subtitle %>" size="12" color="secondary" fillWidth="true" lines="2" />
         </VStack>
       </HStack>
-      <OutlineView ref="results" style="fullWidth" header="false" alternatingRows="false" rowHeight="48" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true">
+      <OutlineView ref="results" style="fullWidth" header="false" alternatingRows="false" rowHeight="44" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true">
         <Column id="name" title="Category" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" imageSize="32" minWidth="210" />
         <Column id="size" title="On disk" width="125" minWidth="110" alignment="right" />
       </OutlineView>
@@ -31,9 +23,9 @@
         </HStack>
       </GroupBox>
     </VStack>
-    <VStack minWidth="280" flexGrow="0.65" fillWidth="true" fillHeight="true" spacing="0">
+    <VStack minWidth="300" flexGrow="0.7" fillWidth="true" fillHeight="true" spacing="0">
       <ScrollView vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true">
-        <VStack fillWidth="true" spacing="16" padding="16" alignment="leading">
+        <VStack fillWidth="true" spacing="16" paddingHorizontal="16" paddingVertical="8" alignment="leading">
           <VStack ref="inspector" hidden="true" fillWidth="true" spacing="10" alignment="leading">
           <Label ref="detailName" text="Select a category" size="17" weight="semibold" fillWidth="true" lines="2" />
           <Label ref="detailText" text="Understand what is stored and how it is managed." size="12" fillWidth="true" lines="8" />
@@ -43,10 +35,10 @@
           <Label ref="location" text="" size="11" color="secondary" fillWidth="true" lines="4" />
             <Divider />
           </VStack>
-          <HStack spacing="10" fillWidth="true">
-            <SystemImage name="sparkles" size="28" color="accent" />
+          <HStack spacing="10" fillWidth="true" alignment="center">
+            <SystemImage name="sparkles" size="24" color="accent" />
             <VStack flexGrow="1" spacing="4" alignment="leading">
-              <Label text="Cleanup Opportunities" size="18" weight="semibold" fillWidth="true" />
+              <Label text="Cleanup Opportunities" size="16" weight="semibold" fillWidth="true" />
               <Label text="Measured items to review, with consequences." size="11" color="secondary" fillWidth="true" lines="2" />
             </VStack>
           </HStack>
@@ -58,8 +50,6 @@
               <Button title="Learn about system storage" style="link" action="system" />
             </VStack>
           </GroupBox>
-          <Divider />
-
         </VStack>
       </ScrollView>
     </VStack>

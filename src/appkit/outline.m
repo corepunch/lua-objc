@@ -1,5 +1,21 @@
 #pragma mark - Outline View
 
+@interface LuaOutlineView : NSOutlineView
+@end
+
+@implementation LuaOutlineView
+- (NSRect)frameOfOutlineCellAtRow:(NSInteger)row {
+	NSRect disclosure = [super frameOfOutlineCellAtRow:row];
+	if (!NSIsEmptyRect(disclosure)) {
+		// AppKit aligns to the primary label in subtitle cells; center its own
+		// disclosure control on the complete row instead.
+		NSRect rowFrame = [self rectOfRow:row];
+		disclosure.origin.y = NSMidY(rowFrame) - disclosure.size.height / 2;
+	}
+	return disclosure;
+}
+@end
+
 static int bridge_outlineview(lua_State *L) {
 	__block BOOL bordered = NO;
 	__block BOOL header = YES;
@@ -34,7 +50,7 @@ static int bridge_outlineview(lua_State *L) {
 		}
 	}
 
-	NSOutlineView *ov = [[NSOutlineView alloc]
+	NSOutlineView *ov = [[LuaOutlineView alloc]
 		initWithFrame:NSMakeRect(0, 0, width, height)];
 	NSInteger styleVal = lookupNameValue(tableStyle, TableStyleMap, -1);
 	BOOL isSourceList = (styleVal == NSTableViewStyleSourceList);

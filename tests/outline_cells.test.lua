@@ -18,6 +18,14 @@ t.assertEqual(outline.rowCount, 2, "replace preserves user expansion by identity
 t.assertEqual(outline.documentView.selectedRow, 1, "replace preserves selection")
 local frames = bridge._tableCellFrames(outline, 0)
 t.expect(frames[2].maxX <= 501, "outline columns fit native viewport")
+t.assertEqual(frames.disclosureMidY, frames.rowMidY, "native disclosure centers on the whole subtitle row")
+t.expect(cell.textField.frame.origin.x - cell.imageView.frame.origin.x - cell.imageView.frame.size.width >= 8,
+	"native image cells leave readable icon-to-title spacing")
+outline.documentView.rowHeight = 64
+outline:layout(500)
+local tallFrames = bridge._tableCellFrames(outline, 0)
+t.assertEqual(tallFrames.disclosureMidY, tallFrames.rowMidY, "disclosure follows changed native row height")
+t.assertEqual(outline.rowCount, 2, "row height does not change expansion")
 rows[1].subtitle = nil; rows[1].icon = nil
 outline:replaceRows(rows)
 t.assertEqual(bridge._tableCell(outline, 0, 0).secondaryTextField.stringValue, "", "reused cells clear subtitle")

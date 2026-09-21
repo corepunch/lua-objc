@@ -85,7 +85,7 @@ in a template that must render on UIKit until matching UIKit controls exist.
 | `List` | Native table/list | `style`, `header`, `alternatingRows`, `bordered`, `gridLines`, plus layout attributes |
 | `Column` | Child column descriptor consumed by `List` | `id`, `title`, `width`, `minWidth`, `alignment` |
 | `Toolbar` | Toolbar item collection consumed by `Window` | No attributes |
-| `ToolbarItem` | Native toolbar descriptor | `id`, `label`, `icon`, `tooltip`, `action` |
+| `ToolbarItem` | Native toolbar descriptor; accepts at most one view child as its custom control | `id`, `label`, `icon`, `tooltip`, `action`, `bordered` |
 
 A `List` requires at least one `Column`. Rows are supplied by the controller at
 runtime with `list:replaceRows(rows)`. Use `style="sourceList"` for sidebar

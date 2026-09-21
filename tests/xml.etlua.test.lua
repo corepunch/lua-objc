@@ -180,6 +180,33 @@ t.assertEqual(#cfg.toolbar, 2, "Toolbar has 2 items")
 t.assertEqual(cfg.toolbar[1].id, "save", "First toolbar item id")
 t.assertEqual(cfg.toolbar[1].label, "Save", "First toolbar item label")
 
+-- ToolbarItem with an inline view child declares a custom control
+local seen = nil
+cfg, r = xml.render([[
+<Window title="Toolbar View Test" width="640" height="480">
+    <Toolbar>
+        <ToolbarItem id="search" label="Search">
+            <SearchField ref="query" placeholder="Filter…" fixedWidth="210" fixedHeight="28" onChange="search" />
+        </ToolbarItem>
+    </Toolbar>
+    <Label text="Body" />
+</Window>
+]], {actions = {search = function(v) seen = v end}}, ns)
+t.expect(type(cfg.toolbar[1].view) == "userdata", "ToolbarItem carries its view child")
+t.expect(r.query ~= nil, "toolbar view refs are retained")
+ns._textFieldTestInput(r.query, "hello")
+t.assertEqual(seen, "hello", "toolbar SearchField binds the search action")
+local twoChildren = pcall(function()
+    render([[
+<Window title="Bad Toolbar" width="640" height="480">
+    <Toolbar>
+        <ToolbarItem id="bad"><Label text="one" /><Label text="two" /></ToolbarItem>
+    </Toolbar>
+</Window>
+]])
+end)
+t.expect(not twoChildren, "ToolbarItem rejects multiple view children")
+
 -- ── Unknown tags error ─────────────────────────────────────────────────────
 
 local ok = pcall(function()

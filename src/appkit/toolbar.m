@@ -1,6 +1,21 @@
 #pragma mark - LuaToolbarFieldDelegate
 
 static const char kToolbarFieldDelegateKey;
+static const char kToolbarContentKey;
+static void toolbar_size_content(NSView *view);
+
+@interface LuaToolbarItem : NSToolbarItem
+@end
+@implementation LuaToolbarItem
+- (void)setView:(NSView *)view {
+	if (self.view) objc_setAssociatedObject(self.view, &kToolbarContentKey, nil, OBJC_ASSOCIATION_RETAIN);
+	if (view) {
+		objc_setAssociatedObject(view, &kToolbarContentKey, @YES, OBJC_ASSOCIATION_RETAIN);
+		toolbar_size_content(view);
+	}
+	[super setView:view];
+}
+@end
 
 @interface LuaToolbarFieldDelegate : NSObject <NSTextFieldDelegate>
 @property (nonatomic, strong) LuaReg *submitReg;
@@ -107,12 +122,16 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 
 	for (NSDictionary *item in _items) {
 		if ([item[@"id"] isEqualToString:identifier]) {
-			NSToolbarItem *ti = [[NSToolbarItem alloc] initWithItemIdentifier:identifier];
+			NSToolbarItem *ti = [item[@"type"] isEqualToString:@"search"]
+				? [[NSSearchToolbarItem alloc] initWithItemIdentifier:identifier]
+				: [[LuaToolbarItem alloc] initWithItemIdentifier:identifier];
 			ti.label = item[@"label"] ?: identifier;
 			ti.paletteLabel = ti.label;
 			ti.toolTip = item[@"tooltip"];
 			ti.autovalidates = NO;
 			ti.enabled = YES;
+
+			if ([ti isKindOfClass:NSSearchToolbarItem.class]) return ti;
 
 			// ── Field item ────────────────────────────────────────────────
 			if ([item[@"type"] isEqualToString:@"field"]) {

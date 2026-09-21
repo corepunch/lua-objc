@@ -486,6 +486,12 @@ window in its group. Window tabs own complete content trees; use an inner
 `NSWindow` API owns all tab presentation; applications must not instantiate
 Finder's private `NSTabBar` or `NSTabButton` implementation classes.
 
+Inline toolbar views measure their content automatically, including stacked title
+and subtitle labels. No fixed width or height is required. After changing nested
+text, call the toolbar root view’s `layout()` to update its measured size. Native
+AppKit owns item placement and overflow. Inline `SearchField` controls use
+`NSSearchToolbarItem`, including its native bezel and focus behavior.
+
 Toolbar state such as `enabled`, `view`, `label`, and `toolTip` uses the native
 object's KVC-compliant properties directly. Semantic aliases live as accessors
 on exported Objective-C subclasses.
@@ -1334,7 +1340,17 @@ returns `(config, refs)` instead of `(view, refs)`:
 `maxWidth`, `maxHeight`, `appearance`, `tabbingMode`, `tabbingIdentifier`,
 `toolbarLabels`, `visible`, `sidebarWidth`, `toolbarContentDividerAfter`.
 
-**ToolbarItem attributes:** `id`, `label`, `icon`, `tooltip`, `action`.
+**ToolbarItem attributes:** `id`, `label`, `icon`, `tooltip`, `action`,
+`bordered`. A `ToolbarItem` accepts at most one view child, installed by
+`AppKit.Window` as the item's custom control — toolbar content is declared in
+etlua, never assembled in controller code:
+
+```xml
+<ToolbarItem id="search" label="Search">
+    <SearchField ref="search" placeholder="Filter results…"
+                 fixedWidth="210" fixedHeight="28" onChange="search" />
+</ToolbarItem>
+```
 
 Toolbar `action` strings are resolved to Controller methods via an ACTIONS table:
 

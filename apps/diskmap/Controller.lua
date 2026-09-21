@@ -67,6 +67,7 @@ end
 function Controller:updateRows()
 	if not self.refs or not self.refs.results then return end
 	self.refs.results:replaceRows(self:visibleRows())
+	if self.capacity then self.capacity.text = self:capacityText(); self.toolbarTitle:layout() end
 	self.refs.coverage.text = self:coverageText(); self.refs.status.text = self.status
 	self:updateOpportunities()
 	self:updateStorageBar()
@@ -90,6 +91,7 @@ function Controller:select(id)
 end
 function Controller:showSection(section, rootId)
 	self.section = section
+	if self.settingsNavigation then self.settingsNavigation:selectRow(section == "Settings" and 0 or nil) end
 	if self.navigation then self.navigation:selectRow(({Storage = 0, Cleanup = 1, Developer = 2, Applications = 3})[section]) end
 	self.rootId = rootId or (section == "Developer" and "developer" or section == "Applications" and "applications" or nil)
 	if section == "Settings" then
@@ -103,7 +105,6 @@ function Controller:showSection(section, rootId)
 	local suggestions = Model.suggestions(self.model)
 	while #suggestions > 5 do table.remove(suggestions) end
 	local actions = {
-		search = function(value) self.query = value; self:updateRows() end,
 		measure = function() self:scan(self.selectedId or self.rootId) end,
 		manage = function() self:manage() end,
 		keep = function()
@@ -118,7 +119,7 @@ function Controller:showSection(section, rootId)
 	}
 	for i, row in ipairs(suggestions) do actions["review" .. i] = function() self:select(row.id) end end
 	local d = self.disk or {}
-	local view, refs = render("Dashboard", {capacity = self:capacityText(), usedFraction = d.totalKb and d.totalKb > 0 and (1 - d.freeKb / d.totalKb) or 0,
+	local view, refs = render("Dashboard", {usedFraction = d.totalKb and d.totalKb > 0 and (1 - d.freeKb / d.totalKb) or 0,
 		suggestions = suggestions, title = root and root.name or section == "Cleanup" and "Cleanup" or "Storage categories",
 		subtitle = root and root.subtitle or "Understand what is stored, why it exists, and how to manage it.", icon = root and root.icon or "chart.pie.fill", color = root and root.color or "systemBlue",
 		coverage = self:coverageText(), status = self.status, actions = actions})
@@ -164,7 +165,6 @@ function Controller:scan(id)
 		end
 		-- Keep the outline mounted so native selection and disclosure survive updates.
 		self:updateRows()
-		if self.refs and self.refs.capacity then self.refs.capacity.text = self:capacityText() end
 		if self.selectedId then self:select(self.selectedId) end
 	end)
 end
@@ -200,8 +200,9 @@ function Controller:createWindow()
 			self.disk = data.disk; self.status = "Test cache · scanning and cleanup disabled"
 		else self.status = "Cache could not be loaded: " .. tostring(err) end
 	else self.disk = self.service.diskSpace(self.home) end
-	local cfg = render("Window")
-	local sidebar, sidebarRefs = render("Sidebar", {actions = {settings = function() self:showSection("Settings") end}})
+	local cfg, windowRefs = render("Window", {capacity = self:capacityText(),
+		actions = {search = function(value) self.query = value; self:updateRows() end}})
+	local sidebar, sidebarRefs = render("Sidebar")
 	local content, contentRefs = render("ContentPane")
 	cfg.sidebar = sidebar; cfg.content = content
 	self.content = contentRefs.content
@@ -209,10 +210,15 @@ function Controller:createWindow()
 		if item.id == "refresh" then item.action = function() self:scan(self.rootId) end end
 		if item.id == "cancel" then item.action = function() self:cancel() end end
 	end
+	self.settingsNavigation = sidebarRefs.settings
+	self.settingsNavigation:replaceRows({{name = "Settings", icon = "gearshape"}})
+	self.settingsNavigation:onRowSelect(function(_, _, row) if row and self.section ~= "Settings" then self:showSection("Settings") end end)
 	self.navigation = sidebarRefs.navigation
 	sidebarRefs.navigation:replaceRows(sections)
 	sidebarRefs.navigation:onRowSelect(function(_, _, row) if row and row.name ~= self.section then self:showSection(row.name) end end)
 	self.window = ns.Window(cfg)
+	self.toolbarTitle = windowRefs.toolbarTitle
+	self.capacity = windowRefs.capacity
 	self:showSection("Storage")
 	sidebarRefs.navigation:selectRow(0)
 	if not self.cachePath then self:scan() end

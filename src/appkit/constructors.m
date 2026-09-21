@@ -11,6 +11,16 @@
 	if (self) _allowsHitTesting = YES;
 	return self;
 }
+// Publish the same content measurement used by the stack layout engine to
+// native hosts such as NSToolbar, which ask for intrinsic/fitting geometry.
+- (NSSize)intrinsicContentSize {
+	if (!objc_getAssociatedObject(self, &kToolbarContentKey) || layout_axis(self) == LayoutAxisNone) return [super intrinsicContentSize];
+	return measure_view(self, (LuaLayoutConstraint){
+		.widthMode = LuaMeasureUndefined, .heightMode = LuaMeasureUndefined });
+}
+- (NSSize)fittingSize {
+	return objc_getAssociatedObject(self, &kToolbarContentKey) ? self.intrinsicContentSize : [super fittingSize];
+}
 - (NSView *)hitTest:(NSPoint)point { return _allowsHitTesting ? [super hitTest:point] : nil; }
 - (void)viewDidChangeEffectiveAppearance {
 	[super viewDidChangeEffectiveAppearance];
@@ -141,6 +151,8 @@ static int bridge_AppKitControls_secureTextField(lua_State *L) {
 static int bridge_AppKitControls_searchField(lua_State *L) {
 	NSSearchField *obj = [[NSSearchField alloc] initWithFrame:NSZeroRect];
 	obj.bezelStyle = NSTextFieldRoundedBezel;
+	obj.bezeled = YES;
+	obj.drawsBackground = YES;
 	[obj sizeToFit];
 	push_objc(L, obj, "nsview");
 	return 1;

@@ -124,9 +124,32 @@ function AppKit.Window(props)
 	local toolbar = props.toolbar
 	local win
 	if toolbar then
+		for _, item in ipairs(toolbar) do
+			if type(item) == "table" and type(item.view) == "userdata" and item.view.className == "NSSearchField" then
+				item.type = "search"
+			end
+		end
 		win = bridge._window(title, width, height,
 			transparent_titlebar, hide_title, toolbar,
 			props.toolbarLabels == true)
+		-- Toolbar items may declare their control inline in XML
+		-- (<ToolbarItem id="search"><SearchField ... /></ToolbarItem>).
+		-- Install it on the native item here so controllers only render
+		-- templates, keep refs, and bind actions.
+		for _, item in ipairs(toolbar) do
+			if type(item) == "table" and type(item.view) == "userdata" then
+				local view = item.view
+				local nativeItem = bridge._toolbar_item(win, item.id)
+				if nativeItem then
+					if item.type == "search" then
+						nativeItem.searchField = view
+						if view.fixedWidth then nativeItem.preferredWidthForSearchField = view.fixedWidth end
+					else nativeItem.view = view end
+					if item.bordered ~= nil then nativeItem.bordered = item.bordered end
+				end
+				item.view = nil
+			end
+		end
 	else
 		win = bridge._window(title, width, height,
 			transparent_titlebar, hide_title)

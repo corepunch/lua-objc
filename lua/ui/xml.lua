@@ -842,7 +842,15 @@ local TAG_SCHEMA = {
             icon    = { default = "", type = "str" },
             tooltip = { default = "", type = "str" },
             action  = "str",
+            bordered = "bool",
         },
+        collect = function(rec, children)
+            if #children == 1 then
+                rec.view = children[1]
+            elseif #children > 1 then
+                error("xml: <ToolbarItem> accepts at most one view child")
+            end
+        end,
     },
     Toolbar = {
         kind     = "record",

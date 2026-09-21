@@ -189,6 +189,13 @@ LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
 
 @implementation LuaLabel
 + (Class)cellClass { return LuaLabelCell.class; }
+- (NSSize)intrinsicContentSize {
+	NSSize size = [super intrinsicContentSize];
+	// The attributed paragraph uses complete font metrics. Native single-line
+	// field metrics can be shorter, clipping descenders with that paragraph.
+	if (self.font) size.height = MAX(size.height, ceil(self.font.ascender - self.font.descender + self.font.leading));
+	return size;
+}
 - (void)updateParagraphMetrics {
 	if (!self.font) return;
 	NSMutableParagraphStyle *paragraph = [[NSMutableParagraphStyle alloc] init];

@@ -251,6 +251,9 @@ static NSSize measure_leaf(NSView *view) {
 	} else if (size.width <= 0) {
 		size.width = kMinLeafWidth;
 	}
+	// NSTextField's glyph advance omits its native text-cell inset. Retain the
+	// fitting width for labels so the final glyph is not clipped (e.g. Diskmap).
+	if ([view isKindOfClass:LuaLabel.class]) size.width = MAX(size.width, fitting.width);
 	if (intrinsic.height != NSViewNoIntrinsicMetric && intrinsic.height >= 0) {
 		size.height = intrinsic.height;
 	} else if (fitting.height > 0) {
@@ -933,6 +936,14 @@ static void layout_recursive(NSView *view, CGFloat width) {
 	}
 }
 
+static void toolbar_size_content(NSView *view) {
+	NSSize size = measure_view(view, (LuaLayoutConstraint){
+		.widthMode = LuaMeasureUndefined, .heightMode = LuaMeasureUndefined });
+	[view invalidateIntrinsicContentSize];
+	[view setFrameSize:size];
+	layout_recursive(view, size.width);
+}
+
 static int bridge_object_layout_impl(lua_State *L) {
 	id obj = check_objc(L, 1);
 	CGFloat width = luaL_optnumber(L, 2, kLayoutDefaultWidth);
@@ -970,6 +981,17 @@ static int bridge_object_layout_impl(lua_State *L) {
 		}
 	}
 
+	// A toolbar owns its item's placement, but content determines its size.
+	// Recompute after title/subtitle mutations instead of retaining the old frame.
+	for (NSToolbarItem *item in view.window.toolbar.items) {
+		if (item.view != view) continue;
+		NSSize size = measure_view(view, (LuaLayoutConstraint){
+			.widthMode = LuaMeasureUndefined, .heightMode = LuaMeasureUndefined });
+		[view invalidateIntrinsicContentSize];
+		[view setFrameSize:size];
+		width = size.width;
+		break;
+	}
 	layout_recursive(view, width);
 	return 0;
 }

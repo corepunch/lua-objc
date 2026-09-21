@@ -1,21 +1,18 @@
 <VStack fillWidth="true" spacing="10" alignment="leading">
   <% if #segments > 0 then %>
-  <HStack fillWidth="true" fixedHeight="24" spacing="1" cornerRadius="5" clipsToBounds="true">
+  <HStack fillWidth="true" fixedHeight="16" spacing="1" cornerRadius="5" clipsToBounds="true">
     <% for _, segment in ipairs(segments) do %>
     <% if segment.bytes > 0 then %>
-    <VStack flexBasis="0" flexGrow="<%= segment.weight %>" flexShrink="1" fixedHeight="24" background="<%= segment.color %>" />
+    <VStack flexBasis="0" flexGrow="<%= segment.weight %>" flexShrink="1" fixedHeight="16" background="<%= segment.color %>" />
     <% end %>
     <% end %>
   </HStack>
-  <HStack fillWidth="true" spacing="6">
+  <HStack fillWidth="true" spacing="12" alignment="center">
     <% for _, segment in ipairs(segments) do %>
-    <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="4" alignment="leading">
-      <HStack fillWidth="true" spacing="4">
-        <SystemImage name="circle.fill" size="9" color="<%= segment.color %>" />
-        <Button title="<%= segment.name %>" style="link" action="category_<%= segment.id %>" />
-      </HStack>
-      <Label text="<%= segment.size %>" color="secondary" size="11" fillWidth="true" lines="1" truncation="tail" />
-    </VStack>
+    <HStack spacing="6" alignment="center">
+      <SystemImage name="circle.fill" size="9" color="<%= segment.color %>" />
+      <Button title="<%= segment.name %>" style="link" action="category_<%= segment.id %>" />
+    </HStack>
     <% end %>
   </HStack>
   <% else %>

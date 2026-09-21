@@ -74,7 +74,7 @@ static const CGFloat kStackSpacing = 8.0;
 #define kIconBadgeCornerFraction       0.23
 #define kIconBadgeSymbolScale          0.66
 #define kTableCellImageWidth            18
-#define kTableCellImageTextGap           2
+#define kTableCellImageTextGap           8
 #define kTableCellImageLeadingInset      0
 #define kTableCellTextLeadingInset       8
 #define kTableCellTextTrailingInset      8
