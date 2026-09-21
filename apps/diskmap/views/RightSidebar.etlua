@@ -1,28 +1,55 @@
 <ScrollView vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true">
   <VStack fillWidth="true" padding="20" spacing="16" alignment="leading">
     <HStack fillWidth="true" spacing="12" alignment="center">
-      <SystemImage name="<%= icon %>" size="72" color="accent" />
+      <% if hasPath then %><Image path="<%= path %>" fileIcon="true" fixedWidth="56" fixedHeight="56" />
+      <% else %><SystemImage name="<%= icon %>" size="56" color="accent" /><% end %>
       <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="4" alignment="leading">
         <Label fillWidth="true" text="<%= name %>" size="17" weight="semibold" lines="3" />
         <% if size ~= "" then %><Label fillWidth="true" text="<%= size %>" size="24" weight="bold" /><% end %>
+      <% if items and items ~= "" then %><Label text="<%= items %>" size="11" color="secondary" /><% end %>
       </VStack>
     </HStack>
     <% if hasPath then %><Label fillWidth="true" text="<%= path %>" size="12" color="secondary" lines="4" /><% end %>
+    <% if children and #children > 0 then %>
+    <List ref="children" header="false" alternatingRows="false" style="fullWidth" rowHeight="28" fixedHeight="<%= math.min(#children, 5) * 28 %>" fillWidth="true">
+      <Column id="name" title="Contents" fileIconKey="path" imageKey="icon" minWidth="100" />
+      <Column id="size" title="Size" width="80" alignment="right" />
+    </List>
+    <% elseif canScan then %><Button title="Scan Folder Contents" action="scan" /><% end %>
     <Divider />
+    <% if review or not hasPath then %>
     <Label fillWidth="true" text="<%= heading %>" size="14" weight="semibold" />
     <Label fillWidth="true" text="<%= message %>" size="13" lines="16" />
+    <% end %>
     <% if review then %>
     <Label fillWidth="true" text="What space will be freed?" size="14" weight="semibold" />
     <Label fillWidth="true" text="<%= outcome %>" size="12" color="secondary" lines="7" />
     <Button title="<%= primary %>" action="primary" fillWidth="true" />
     <% end %>
     <% if hasPath then %>
-    <Button title="Reveal in Finder" systemImage="folder" action="reveal" fillWidth="true" />
-    <Divider />
-    <Label text="Quick Actions" size="14" weight="semibold" />
-    <Button title="Copy Path" systemImage="doc.on.doc" action="copy" fillWidth="true" />
-    <Button title="Open in Terminal" systemImage="terminal" action="terminal" fillWidth="true" />
+    <Button title="Open in Finder" action="reveal" />
+    <HStack spacing="8" fillWidth="true">
+      <Button title="Copy Path" action="copy" />
+      <Button title="Terminal" action="terminal" />
+    </HStack>
     <% end %>
-    <% if not review then %><Button title="Review Suggestions" systemImage="lightbulb" action="suggestions" fillWidth="true" /><% end %>
+    <% if not review then %>
+    <Divider />
+    <HStack fillWidth="true" spacing="8">
+      <Label text="Suggestions" size="17" weight="semibold" flexGrow="1" />
+      <Button title="Show All" action="suggestions" />
+    </HStack>
+    <% for i, suggestion in ipairs(suggestions or {}) do %>
+    <%- partial("Suggestion.etlua", {suggestion = suggestion, index = i}) %>
+    <% end %>
+    <% if not suggestions or #suggestions == 0 then %>
+    <Label text="Checking known locations. Review Suggestions to measure additional categories." fillWidth="true" size="12" color="secondary" lines="3" />
+    <% else %>
+    <Divider />
+    <Label text="<%= reclaimable %>" size="14" weight="semibold" fillWidth="true" lines="2" />
+    <Label text="Review consequences before removing items. Space is released after emptying Trash." size="11" color="secondary" fillWidth="true" lines="3" />
+    <Button title="Review All Suggestions" action="suggestions" />
+    <% end %>
+    <% end %>
   </VStack>
 </ScrollView>

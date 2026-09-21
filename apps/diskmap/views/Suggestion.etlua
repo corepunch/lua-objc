@@ -1,0 +1,8 @@
+<HStack fillWidth="true" spacing="10" alignment="center">
+  <SystemImage name="<%= suggestion.icon %>" size="22" />
+  <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="3" alignment="leading">
+    <Label text="<%= suggestion.name %>" size="12" weight="semibold" fillWidth="true" lines="2" />
+    <Label text="<%= suggestion.size %> · <%= suggestion.status %>" size="11" color="secondary" fillWidth="true" lines="2" />
+  </VStack>
+  <Button title="Review" action="review<%= index %>" />
+</HStack>

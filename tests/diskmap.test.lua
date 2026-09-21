@@ -66,6 +66,8 @@ barsRefs.results:layout(600)
 local level = bridge._tableCell(barsRefs.results, 2, 0).levelIndicator
 t.expect(level ~= nil, "percentage cells contain a native level indicator")
 if level then
+	t.assertEqual(level.className, "NSLevelIndicator", "storage bars use unmodified native drawing")
+	t.assertEqual(level.levelIndicatorStyle, 1, "storage uses continuous capacity style")
 	t.assertEqual(level.doubleValue, 0.6, "native bar receives measured fraction")
 	t.expect(not level.editable, "storage indicator is read-only")
 end
@@ -87,6 +89,16 @@ t.assertEqual(bridge._tableCell(barsRefs.results, 2, 1).levelIndicator.doubleVal
 t.assertEqual(bridge._tableCell(barsRefs.results, 0, 0).textField.stringValue, "Oversized", "bar binding leaves name column intact")
 local detail = xml.renderFile("apps/diskmap/views/RightSidebar.etlua", {name = "Test", path = "/tmp", size = "1 MB", icon = "folder", heading = "Review", message = "Consequences", review = true, hasPath = true, outcome = "After emptying Trash", primary = "Review", actions = {}}, ns)
 t.expect(detail ~= nil, "review displays outcome and actions")
+local inspector, inspectorRefs = xml.renderFile("apps/diskmap/views/RightSidebar.etlua", {
+	name = "Folder", path = "/tmp", size = "1 MB", items = "4 items measured", hasPath = true,
+	children = shareRows, suggestions = {suggestions[1]}, reclaimable = "1 MB", actions = {},
+}, ns)
+inspectorRefs.children:replaceRows({{name = "Temporary", path = "/tmp", size = "1 MB"}})
+local fileCell = bridge._tableCell(inspectorRefs.children, 0, 0)
+t.expect(fileCell.imageView.image ~= nil, "inspector resolves Finder file icons")
+t.expect(fileCell.imageView.contentTintColor == nil, "Finder icons retain system artwork colors")
+inspectorRefs.children:replaceRows({{name = "No icon", size = "0 KB"}})
+t.expect(bridge._tableCell(inspectorRefs.children, 0, 0).imageView.image == nil, "reused cells clear file icons")
 local search = xml.renderFile("apps/diskmap/views/ToolbarSearch.etlua", {actions = {search = function() end}}, ns)
 t.expect(search ~= nil, "native toolbar search renders with change callback")
 local segments = Model.segments({trees = {{kb = 100, children = {{name = "A", kb = 60}, {name = "B", kb = 20}, {name = "C", kb = 10}, {name = "D", kb = 10}}}}})

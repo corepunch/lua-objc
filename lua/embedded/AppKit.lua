@@ -706,7 +706,7 @@ function AppKit.Image(arg)
 	else
 		path = tostring(arg)
 	end
-	local view = bridge._image(resolveImage(path))
+	local view = bridge._image(resolveImage(path), nil, props and props.fileIcon or false)
 	if props and props.contentMode then view.contentModeName = props.contentMode end
 	return applyLayout(view, props)
 end

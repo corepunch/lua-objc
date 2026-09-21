@@ -745,7 +745,8 @@ static int bridge_image(lua_State *L) {
 	NSString *nsPath = [NSString stringWithUTF8String:path];
 	CGFloat maxWidth = luaL_optnumber(L, 2, kDefaultImageMaxWidth);
 
-	NSImage *img = [[NSImage alloc] initWithContentsOfFile:nsPath];
+	// File icons require NSWorkspace resolution, including custom Finder icons.
+	NSImage *img = lua_toboolean(L, 3) ? [NSWorkspace.sharedWorkspace iconForFile:nsPath] : [[NSImage alloc] initWithContentsOfFile:nsPath];
 	if (!img) {
 		img = [NSImage imageNamed:nsPath];
 	}

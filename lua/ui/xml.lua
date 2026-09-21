@@ -735,6 +735,7 @@ local TAG_SCHEMA = {
                 if a.color  then props.color  = a.color        end
                 return ns.SystemImage(props)
             end
+            props.fileIcon = bool(a.fileIcon)
             props[1] = a.src or a.path or ""
             return ns.Image(props)
         end,
@@ -759,13 +760,14 @@ local TAG_SCHEMA = {
             alignment = "str",
             systemImage = "str",
             imageKey = "str",
+            fileIconKey = "str",
             imageColorKey = "str",
             imageSize = "num",
             levelKey = "str",
             levelColorKey = "str",
         },
         collect = function(props)
-            for key, field in pairs({imageKey = "image", imageColorKey = "imageColor", imageSize = "imageSize", levelKey = "level", levelColorKey = "levelColor"}) do
+            for key, field in pairs({fileIconKey = "fileIcon", imageKey = "image", imageColorKey = "imageColor", imageSize = "imageSize", levelKey = "level", levelColorKey = "levelColor"}) do
                 if props[key] then
                     props.cell = props.cell or {}
                     props.cell[field] = props[key]

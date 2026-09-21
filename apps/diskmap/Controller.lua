@@ -11,7 +11,8 @@ function Controller.new(service)
 	local home = os.getenv("HOME") or "/Users"
 	service = service or System
 	local monitoring = not service.loadSettings or service.loadSettings()
-	return setmetatable({service = service or System, home = home, rules = Model.rules(home), section = "Disk Map", query = "", history = {}, forward = {}, suggestions = {}, monitoring = monitoring, generation = 0, checked = {}, measurements = {trees = {}, rootStates = {}}}, Controller)
+	local rules = Model.rules(home)
+	return setmetatable({service = service or System, home = home, rules = rules, section = "Disk Map", query = "", history = {}, forward = {}, suggestions = Model.suggestions(rules, {}, {}), monitoring = monitoring, generation = 0, checked = {}, measurements = {trees = {}, rootStates = {}}}, Controller)
 end
 function Controller:replace(pane, view)
 	pane:clearContainer(); pane:add(view); pane:layout()
@@ -20,7 +21,18 @@ function Controller:showDetail(row)
 	self.selected = row
 	row = row or {}
 	local review = row.consequence ~= nil
+	local children = Model.rows({trees = {row}}, "Disk Map")
+	local previews = {}
+	local actions = {}
+	for i = 1, math.min(5, #self.suggestions) do
+		local suggestion = self.suggestions[i]
+		previews[i] = suggestion
+		actions["review" .. i] = function() self:showDetail(suggestion) end
+	end
 	local data = {
+		children = children, suggestions = previews, reclaimable = self.reclaimable and Model.humanKb(self.reclaimable) .. " in rebuildable caches" or "Cache measurements pending",
+		items = row.items and tostring(row.items) .. " items measured" or "",
+		canScan = row.directory == true and #children == 0,
 		name = row.name or "Storage insights", path = row.path or "", size = row.size or "",
 		icon = review and "lightbulb" or (row.directory and "folder.fill" or "doc"),
 		heading = review and row.risk or "About this selection",
@@ -34,9 +46,20 @@ function Controller:showDetail(row)
 			copy = function() ns.copyToClipboard(row.path) end,
 			terminal = function() os.execute("/usr/bin/open -a Terminal " .. System.quote(row.directory == false and (row.path:match("^(.*)/") or "/") or row.path)) end,
 			suggestions = function() self:showSection("Suggestions") end,
+			scan = function() self.section = "Disk Map"; self:startScan(row.path) end,
 		},
 	}
-	self:replace(self.refs.detail, render("RightSidebar", data))
+	for key, action in pairs(actions) do data.actions[key] = action end
+	local view, refs = render("RightSidebar", data)
+	self:replace(self.refs.detail, view)
+	if refs.children then
+		refs.children:replaceRows(children)
+		refs.children:onRowSelect(function(_, _, child) if child then self:showDetail(child) end end)
+		refs.children:onRowActivate(function(_, _, child)
+			if child and child.directory then self.section = "Disk Map"; self:startScan(child.path)
+			elseif child then ns.revealInFinder(child.path) end
+		end)
+	end
 end
 function Controller:review(row)
 	if row.action == "measure" then
@@ -176,7 +199,8 @@ function Controller:scanSuggestions(ruleId)
 		end
 		self.suggestions, self.reclaimable = Model.suggestions(self.rules, self.measurements, self.checked)
 		self.suggestionStatus = result.failure and result.failure ~= "" and result.failure or ("Checked " .. os.date("%H:%M") .. " · " .. (result.errors or 0) .. " unavailable locations")
-		if self.section == "Suggestions" then self:showSection("Suggestions"); self:showDetail() end
+		if self.section == "Suggestions" then self:showSection("Suggestions"); self:showDetail()
+		else self:showDetail(self.selected) end
 	end)
 end
 function Controller:updateCapacity()

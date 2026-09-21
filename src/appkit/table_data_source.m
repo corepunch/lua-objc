@@ -17,36 +17,6 @@
 @property (nonatomic) CGFloat imageWidth;
 @end
 
-/* The stock level indicator is intentionally not used for storage shares.
- * Its segmented capacity treatment reads as a control, while this column is
- * a compact data visualization. Keep the NSLevelIndicator surface for the
- * existing table binding and accessibility contract, but render a native
- * continuous capsule with a single rounded fill. */
-@interface LuaCapsuleIndicator : NSLevelIndicator
-@end
-
-@implementation LuaCapsuleIndicator
-- (void)drawRect:(NSRect)dirtyRect {
-	NSRect track = NSInsetRect(self.bounds, 0, floor((self.bounds.size.height - kTableCellLevelHeight) / 2));
-	track.size.height = MIN(kTableCellLevelHeight, self.bounds.size.height);
-	CGFloat radius = track.size.height / 2.0;
-	NSBezierPath *trackPath = [[NSBezierPath alloc] init];
-	[trackPath appendBezierPathWithRoundedRect:track xRadius:radius yRadius:radius];
-	[[[NSColor controlColor] colorWithAlphaComponent:0.16] setFill];
-	[trackPath fill];
-
-	double fraction = MAX(0, MIN(1, self.doubleValue));
-	if (fraction <= 0) return;
-	NSRect fill = track;
-	fill.size.width = MAX(track.size.height, floor(track.size.width * fraction));
-	fill.size.width = MIN(track.size.width, fill.size.width);
-	NSBezierPath *fillPath = [[NSBezierPath alloc] init];
-	[fillPath appendBezierPathWithRoundedRect:fill xRadius:radius yRadius:radius];
-	[(self.fillColor ?: NSColor.controlAccentColor) setFill];
-	[fillPath fill];
-}
-@end
-
 @implementation LuaTableCellView
 
 - (void)layout {
@@ -294,7 +264,10 @@ static void table_update_curve(
 
 		// Reusable native table cells own their embedded Cocoa controls.
 		if (cellSpec[@"level"]) {
-			LuaCapsuleIndicator *level = [[LuaCapsuleIndicator alloc] initWithFrame:NSZeroRect];
+			NSLevelIndicator *level = [[NSLevelIndicator alloc] initWithFrame:NSZeroRect];
+			level.levelIndicatorStyle = NSLevelIndicatorStyleContinuousCapacity;
+			level.warningValue = 2;
+			level.criticalValue = 2;
 			level.minValue = 0;
 			level.maxValue = 1;
 			level.editable = NO;
@@ -357,7 +330,12 @@ static void table_update_curve(
 	NSString *imageKey = cellSpec[@"image"];
 	NSString *symbolName = imageKey && [rowData[imageKey] isKindOfClass:NSString.class]
 		? rowData[imageKey] : objc_getAssociatedObject(column, &kKeys[kColumnSystemImageKey]);
-	if (symbolName.length > 0) {
+	NSString *fileKey = cellSpec[@"fileIcon"];
+	NSString *filePath = fileKey && [rowData[fileKey] isKindOfClass:NSString.class] ? rowData[fileKey] : nil;
+	if (filePath.length > 0) {
+		cell.imageView.image = [NSWorkspace.sharedWorkspace iconForFile:filePath];
+		cell.imageView.contentTintColor = nil;
+	} else if (symbolName.length > 0) {
 		NSImage *image = [NSImage imageWithSystemSymbolName:symbolName
 			accessibilityDescription:text];
 		NSImageSymbolConfiguration *configuration =
