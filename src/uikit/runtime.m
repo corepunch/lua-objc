@@ -151,3 +151,37 @@ static UIView *check_view(lua_State *L, int idx) {
 	id obj = check_objc(L, idx);
 	return (UIView *)obj;
 }
+
+/* Native value userdata helpers (CGSize, CGPoint, CGRect). */
+#define GEN_STRUCT_HELPERS
+#include "structs.m"
+#undef GEN_STRUCT_HELPERS
+
+static void push_kvc_value(lua_State *L, id value) {
+	if ([value isKindOfClass:[NSValue class]]) {
+		const char *type = ((NSValue *)value).objCType;
+		if (strcmp(type, @encode(CGSize)) == 0) {
+			push_CGSize(L, ((NSValue *)value).CGSizeValue);
+			return;
+		}
+		if (strcmp(type, @encode(CGPoint)) == 0) {
+			push_CGPoint(L, ((NSValue *)value).CGPointValue);
+			return;
+		}
+		if (strcmp(type, @encode(CGRect)) == 0) {
+			push_CGRect(L, ((NSValue *)value).CGRectValue);
+			return;
+		}
+	}
+	push_objc_value(L, value);
+}
+
+static id lua_to_kvc_value(lua_State *L, int idx) {
+	CGSize *size = luaL_testudata(L, idx, "lua_objc.struct.CGSize");
+	if (size) return [NSValue valueWithCGSize:*size];
+	CGPoint *point = luaL_testudata(L, idx, "lua_objc.struct.CGPoint");
+	if (point) return [NSValue valueWithCGPoint:*point];
+	CGRect *rect = luaL_testudata(L, idx, "lua_objc.struct.CGRect");
+	if (rect) return [NSValue valueWithCGRect:*rect];
+	return lua_to_objc_value(L, idx);
+}

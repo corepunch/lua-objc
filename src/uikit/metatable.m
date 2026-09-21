@@ -14,7 +14,7 @@ static int nsview_index(lua_State *L) {
 	NSString *kvcKey = [NSString stringWithUTF8String:key];
 	@try {
 		id value = [obj valueForKey:kvcKey];
-		push_objc_value(L, value);
+		push_kvc_value(L, value);
 		return 1;
 	} @catch (NSException *e) {
 	}
@@ -70,7 +70,7 @@ static int nsview_newindex(lua_State *L) {
 	if (!key) return luaL_error(L, "invalid property name");
 
 	NSString *kvcKey = [NSString stringWithUTF8String:key];
-	id value = lua_to_objc_value(L, 3);
+	id value = lua_to_kvc_value(L, 3);
 
 	@try {
 		[obj setValue:value forKey:kvcKey];

@@ -16,6 +16,7 @@ local uikitMetatable = read("src/uikit/metatable.m")
 local uikitConstructors = read("src/uikit/constructors.m")
 local uikitBridge = read("src/uikit/bridge.m")
 local uikitPlatform = read("src/uikit/platform.m")
+local uikitStructs = read("src/uikit/structs.m")
 
 t.expect(not io.open("tools/AppKit.xml", "r"),
 	"AppKit does not duplicate Objective-C metadata in XML")
@@ -37,6 +38,9 @@ t.expect(bindings:find("MethodEntry WindowMethods", 1, true) ~= nil,
 t.expect(structs:find("lua_objc.struct.NSSize", 1, true) ~= nil
 		and structs:find("bridge_NSSize", 1, true) ~= nil,
 	"Size userdata remains an explicit native value bridge")
+t.expect(uikitStructs:find("lua_objc.struct.CGSize", 1, true) ~= nil
+		and uikitStructs:find("bridge_CGSize", 1, true) ~= nil,
+	"UIKit CGSize userdata mirrors AppKit struct pattern")
 t.expect(uikitRuntime:find(
 	"@implementation UIView (LuaLayoutProperties)", 1, true) ~= nil,
 	"UIKit layout properties are inherited KVC accessors")

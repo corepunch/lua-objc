@@ -91,6 +91,32 @@ t.expect(constructors:find("view.layer.cornerRadius", 1, true) == nil,
 local hosting = assert(io.open("src/uikit/hosting.m", "r")):read("*a")
 local presentation = assert(io.open("src/uikit/presentation.m", "r")):read("*a")
 local preview = assert(io.open("src/uikit/preview.m", "r")):read("*a")
+local runtime = assert(io.open("src/uikit/runtime.m", "r")):read("*a")
+local structs = assert(io.open("src/uikit/structs.m", "r")):read("*a")
+t.expect(structs:find("lua_objc.struct.CGSize", 1, true) ~= nil,
+	"UIKit defines CGSize userdata metatable")
+t.expect(structs:find("lua_objc.struct.CGPoint", 1, true) ~= nil,
+	"UIKit defines CGPoint userdata metatable")
+t.expect(structs:find("lua_objc.struct.CGRect", 1, true) ~= nil,
+	"UIKit defines CGRect userdata metatable")
+t.expect(structs:find("bridge_CGSize", 1, true) ~= nil,
+	"UIKit exports CGSize constructor")
+t.expect(structs:find("bridge_CGPoint", 1, true) ~= nil,
+	"UIKit exports CGPoint constructor")
+t.expect(structs:find("bridge_CGRect", 1, true) ~= nil,
+	"UIKit exports CGRect constructor")
+t.expect(runtime:find("push_kvc_value", 1, true) ~= nil,
+	"UIKit runtime converts NSValue structs on KVC read")
+t.expect(runtime:find("lua_to_kvc_value", 1, true) ~= nil,
+	"UIKit runtime converts struct userdata on KVC write")
+t.expect(runtime:find("GEN_STRUCT_HELPERS", 1, true) ~= nil,
+	"UIKit runtime includes struct helpers")
+t.expect(bridge:find('"Size"', 1, true) ~= nil
+		and bridge:find('"Point"', 1, true) ~= nil
+		and bridge:find('"Rect"', 1, true) ~= nil,
+	"UIKit registers Size/Point/Rect in bridge_lib")
+t.expect(bridge:find("GEN_STRUCT_REGISTER", 1, true) ~= nil,
+	"UIKit registers struct metatables at module load")
 t.expect(hosting:find("keyboardLayoutGuide.topAnchor", 1, true) ~= nil,
 	"hosting bounds account for the software keyboard")
 t.expect(hosting:find("luaRoot.topAnchor constraintEqualToAnchor:self.view.topAnchor", 1, true) ~= nil

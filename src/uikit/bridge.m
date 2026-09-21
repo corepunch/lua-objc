@@ -81,6 +81,9 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #pragma mark - Module registration
 
 static const luaL_Reg bridge_lib[] = {
+	{"Size", bridge_CGSize},
+	{"Point", bridge_CGPoint},
+	{"Rect", bridge_CGRect},
 	{"_preview", bridge_preview},
 	{"_documentRead", bridge_document_read},
 	{"_documentWrite", bridge_document_write},
@@ -175,6 +178,9 @@ int luaopen_UIKitNative(lua_State *L) {
 	register_metatable(L, "uiwindow");
 	register_metatable(L, "uiviewcontroller");
 	register_metatable(L, "nsobject");
+#define GEN_STRUCT_REGISTER
+#include "structs.m"
+#undef GEN_STRUCT_REGISTER
 	luaL_newlib(L, bridge_lib);
 	return 1;
 }
