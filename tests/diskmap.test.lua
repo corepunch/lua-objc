@@ -69,7 +69,8 @@ if level then
 	t.assertEqual(level.doubleValue, 0.6, "native bar receives measured fraction")
 	t.expect(not level.editable, "storage indicator is read-only")
 end
-t.assertEqual(barsRefs.results.documentView.rowHeight, 36, "folder rows have consistent breathing room")
+t.assertEqual(bridge._tableCell(barsRefs.results, 0, 0).imageView.frame.size.width, 20, "disk map folder symbols use the larger result-row size")
+t.assertEqual(barsRefs.results.documentView.rowHeight, 44, "folder rows have consistent breathing room")
 barsRefs.results:replaceRows({{name = "Missing", percentage = "—"}})
 barsView:layout(600)
 barsRefs.results.size = ns.Size(600, 200)

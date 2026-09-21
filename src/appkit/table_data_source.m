@@ -14,6 +14,37 @@
 @property (nonatomic, strong) NSTextField *secondaryTextField;
 @property (nonatomic, strong) LuaPathView *curveView;
 @property (nonatomic, strong) NSLevelIndicator *levelIndicator;
+@property (nonatomic) CGFloat imageWidth;
+@end
+
+/* The stock level indicator is intentionally not used for storage shares.
+ * Its segmented capacity treatment reads as a control, while this column is
+ * a compact data visualization. Keep the NSLevelIndicator surface for the
+ * existing table binding and accessibility contract, but render a native
+ * continuous capsule with a single rounded fill. */
+@interface LuaCapsuleIndicator : NSLevelIndicator
+@end
+
+@implementation LuaCapsuleIndicator
+- (void)drawRect:(NSRect)dirtyRect {
+	NSRect track = NSInsetRect(self.bounds, 0, floor((self.bounds.size.height - kTableCellLevelHeight) / 2));
+	track.size.height = MIN(kTableCellLevelHeight, self.bounds.size.height);
+	CGFloat radius = track.size.height / 2.0;
+	NSBezierPath *trackPath = [[NSBezierPath alloc] init];
+	[trackPath appendBezierPathWithRoundedRect:track xRadius:radius yRadius:radius];
+	[[[NSColor controlColor] colorWithAlphaComponent:0.16] setFill];
+	[trackPath fill];
+
+	double fraction = MAX(0, MIN(1, self.doubleValue));
+	if (fraction <= 0) return;
+	NSRect fill = track;
+	fill.size.width = MAX(track.size.height, floor(track.size.width * fraction));
+	fill.size.width = MIN(track.size.width, fill.size.width);
+	NSBezierPath *fillPath = [[NSBezierPath alloc] init];
+	[fillPath appendBezierPathWithRoundedRect:fill xRadius:radius yRadius:radius];
+	[(self.fillColor ?: NSColor.controlAccentColor) setFill];
+	[fillPath fill];
+}
 @end
 
 @implementation LuaTableCellView
@@ -35,7 +66,7 @@
 		return;
 	}
 	NSImageView *image = self.imageView;
-	CGFloat imageWidth = image.image ? kTableCellImageWidth : 0;
+	CGFloat imageWidth = image.image ? (_imageWidth > 0 ? _imageWidth : kTableCellImageWidth) : 0;
 	CGFloat imageGap = imageWidth > 0 ? kTableCellImageTextGap : 0;
 	CGFloat textInset = imageWidth > 0 ? kTableCellImageLeadingInset : kTableCellTextLeadingInset;
 	CGFloat textX = textInset + imageWidth + imageGap;
@@ -263,12 +294,9 @@ static void table_update_curve(
 
 		// Reusable native table cells own their embedded Cocoa controls.
 		if (cellSpec[@"level"]) {
-			NSLevelIndicator *level = [[NSLevelIndicator alloc] initWithFrame:NSZeroRect];
-			level.levelIndicatorStyle = NSLevelIndicatorStyleContinuousCapacity;
+			LuaCapsuleIndicator *level = [[LuaCapsuleIndicator alloc] initWithFrame:NSZeroRect];
 			level.minValue = 0;
 			level.maxValue = 1;
-			level.warningValue = 2;
-			level.criticalValue = 2;
 			level.editable = NO;
 			[cell addSubview:level];
 			cell.levelIndicator = level;
@@ -287,6 +315,7 @@ static void table_update_curve(
 		[cell addSubview:imageView];
 		cell.imageView = imageView;
 	}
+	cell.imageWidth = [cellSpec[@"imageSize"] doubleValue];
 	cell.textField.stringValue = text;
 	NSString *secondaryKey = cellSpec[@"secondary"];
 	id secondaryValue = secondaryKey ? rowData[secondaryKey] : nil;
@@ -322,6 +351,7 @@ static void table_update_curve(
 	NSString *levelColorKey = cellSpec[@"levelColor"];
 	cell.levelIndicator.fillColor = table_semantic_color(levelColorKey ? rowData[levelColorKey] : nil);
 	cell.levelIndicator.accessibilityLabel = [@"Share of measured storage: " stringByAppendingString:text];
+	[cell.levelIndicator setNeedsDisplay:YES];
 	NSString *imageColorKey = cellSpec[@"imageColor"];
 	cell.imageView.contentTintColor = imageColorKey ? table_semantic_color(rowData[imageColorKey]) : NSColor.secondaryLabelColor;
 	NSString *imageKey = cellSpec[@"image"];
@@ -331,7 +361,7 @@ static void table_update_curve(
 		NSImage *image = [NSImage imageWithSystemSymbolName:symbolName
 			accessibilityDescription:text];
 		NSImageSymbolConfiguration *configuration =
-		[NSImageSymbolConfiguration configurationWithPointSize:kTableCellSymbolPointSize
+		[NSImageSymbolConfiguration configurationWithPointSize:(cell.imageWidth > 0 ? cell.imageWidth - 3 : kTableCellSymbolPointSize)
 													 weight:NSFontWeightRegular];
 		cell.imageView.image = [image imageWithSymbolConfiguration:configuration];
 	} else {

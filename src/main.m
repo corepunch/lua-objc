@@ -71,7 +71,7 @@ static const CGFloat kStackSpacing = 8.0;
  * here instead of embedding raw numbers in code. */
 
 /* ----- Table / Outline cells ----- */
-#define kTableCellImageWidth            16
+#define kTableCellImageWidth            18
 #define kTableCellImageTextGap           2
 #define kTableCellImageLeadingInset      0
 #define kTableCellTextLeadingInset       8
@@ -81,7 +81,7 @@ static const CGFloat kStackSpacing = 8.0;
 #define kTableCellLineSpacing            2
 #define kTableCellLevelTextWidth        38
 #define kTableCellLevelGap               8
-#define kTableCellLevelHeight           10
+#define kTableCellLevelHeight           12
 #define kTableCellCurveInsetH            4
 #define kTableCellCurveInsetV           10
 #define kTableCellCurvePathWidth       100

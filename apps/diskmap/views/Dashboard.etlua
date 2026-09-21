@@ -18,11 +18,11 @@
     </HStack>
   </VStack>
   <% end %>
-  <List ref="results" style="fullWidth" alternatingRows="false" rowHeight="36" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true">
-    <Column id="name" title="Name" imageKey="icon" imageColorKey="iconColor" minWidth="160" />
+  <List ref="results" style="fullWidth" alternatingRows="false" rowHeight="44" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true">
+    <Column id="name" title="Name" imageKey="icon" imageColorKey="iconColor" imageSize="20" minWidth="160" />
     <Column id="size" title="On disk" width="110" minWidth="110" alignment="right" />
     <% if section == 'Disk Map' then %>
-    <Column id="percentage" title="% of folder" width="150" minWidth="140" alignment="right" levelKey="share" levelColorKey="shareColor" />
+    <Column id="percentage" title="% of folder" minWidth="140" alignment="right" levelKey="share" levelColorKey="shareColor" />
     <% else %>
     <Column id="status" title="<%= section == 'Suggestions' and 'Consideration' or 'Kind' %>" width="160" minWidth="140" />
     <% end %>

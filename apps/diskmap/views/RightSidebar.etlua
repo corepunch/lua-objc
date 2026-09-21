@@ -1,7 +1,7 @@
 <ScrollView vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true">
   <VStack fillWidth="true" padding="20" spacing="16" alignment="leading">
     <HStack fillWidth="true" spacing="12" alignment="center">
-      <SystemImage name="<%= icon %>" size="40" color="accent" />
+      <SystemImage name="<%= icon %>" size="72" color="accent" />
       <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="4" alignment="leading">
         <Label fillWidth="true" text="<%= name %>" size="17" weight="semibold" lines="3" />
         <% if size ~= "" then %><Label fillWidth="true" text="<%= size %>" size="24" weight="bold" /><% end %>
