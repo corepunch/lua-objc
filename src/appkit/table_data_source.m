@@ -78,10 +78,68 @@ static NSColor *table_semantic_color(NSString *name) {
 	if ([name isEqualToString:@"systemOrange"]) return NSColor.systemOrangeColor;
 	if ([name isEqualToString:@"systemGray"]) return NSColor.systemGrayColor;
 	if ([name isEqualToString:@"systemGreen"]) return NSColor.systemGreenColor;
+	if ([name isEqualToString:@"systemTeal"]) return NSColor.systemTealColor;
+	if ([name isEqualToString:@"systemYellow"]) return NSColor.systemYellowColor;
 	if ([name isEqualToString:@"systemRed"]) return NSColor.systemRedColor;
 	if ([name isEqualToString:@"secondary"]) return NSColor.secondaryLabelColor;
 	return NSColor.labelColor;
 }
+
+// Shared symbol presentation for standalone images and reusable data cells.
+@interface LuaSymbolImageView : NSImageView
+@property(nonatomic) CGFloat symbolSize;
+@property(nonatomic, copy) NSString *badgeColorName;
+@property(nonatomic, copy) NSString *appBundleId;
+@property(nonatomic) BOOL resolvedAppIcon;
+@property(nonatomic, strong) NSColor *symbolTintColor;
+@property(nonatomic, strong) NSImage *symbolImage;
+@end
+@implementation LuaSymbolImageView
+- (void)setImage:(NSImage *)image {
+	_symbolImage = image;
+	[super setImage:image];
+}
+- (NSSize)intrinsicContentSize {
+	if ((_badgeColorName.length || _resolvedAppIcon) && _symbolSize > 0) return NSMakeSize(_symbolSize, _symbolSize);
+	return [super intrinsicContentSize];
+}
+- (void)setBadgeColorName:(NSString *)value {
+	if (![self.contentTintColor isEqual:NSColor.whiteColor]) _symbolTintColor = self.contentTintColor;
+	_badgeColorName = [value copy];
+	self.contentTintColor = value.length ? NSColor.whiteColor : _symbolTintColor;
+	[self invalidateIntrinsicContentSize];
+	[self setNeedsDisplay:YES];
+}
+- (void)setAppBundleId:(NSString *)value {
+	_appBundleId = [value copy];
+	NSURL *url = value.length ? [NSWorkspace.sharedWorkspace URLForApplicationWithBundleIdentifier:value] : nil;
+	_resolvedAppIcon = url != nil;
+	[self invalidateIntrinsicContentSize];
+	if (url) {
+		[super setImage:[NSWorkspace.sharedWorkspace iconForFile:url.path]];
+		self.contentTintColor = nil;
+	} else {
+		[super setImage:_symbolImage];
+		self.contentTintColor = _badgeColorName.length ? NSColor.whiteColor : _symbolTintColor;
+	}
+	[self setNeedsDisplay:YES];
+}
+- (void)drawRect:(NSRect)dirtyRect {
+	BOOL badge = _badgeColorName.length && !_resolvedAppIcon && self.image;
+	if (!badge) { [super drawRect:dirtyRect]; return; }
+	[table_semantic_color(_badgeColorName) setFill];
+	CGFloat radius = MIN(self.bounds.size.width, self.bounds.size.height) * kIconBadgeCornerFraction;
+	[[NSBezierPath bezierPathWithRoundedRect:self.bounds xRadius:radius yRadius:radius] fill];
+	[NSGraphicsContext saveGraphicsState];
+	NSAffineTransform *transform = [NSAffineTransform transform];
+	[transform translateXBy:NSMidX(self.bounds) yBy:NSMidY(self.bounds)];
+	[transform scaleBy:kIconBadgeSymbolScale];
+	[transform translateXBy:-NSMidX(self.bounds) yBy:-NSMidY(self.bounds)];
+	[transform concat];
+	[super drawRect:self.bounds];
+	[NSGraphicsContext restoreGraphicsState];
+}
+@end
 
 static void table_update_curve(
 	LuaPathView *curve, NSArray *values, NSColor *color) {
@@ -112,6 +170,139 @@ static void table_update_curve(
 	curve.scalesToFit = YES;
 	[curve setNeedsDisplay:YES];
 }
+
+static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NSDictionary *rowData, id owner) {
+
+	NSString *colId = column.identifier;
+	id value = rowData[colId];
+	NSString *text = value ? [value description] : @"";
+	NSDictionary *cellSpec = objc_getAssociatedObject(
+		column, &kKeys[kColumnCellKey]);
+	if (cellSpec[@"curve"]) text = @"";
+
+	NSString *reuseId = [@"cell-" stringByAppendingString:column.identifier];
+	LuaTableCellView *cell = (LuaTableCellView *)[tableView
+		makeViewWithIdentifier:reuseId owner:owner];
+	if (!cell) {
+		cell = [[LuaTableCellView alloc] initWithFrame:
+			NSMakeRect(0, 0, column.width, tableView.rowHeight)];
+		cell.identifier = reuseId;
+
+		NSTextField *tf = [NSTextField labelWithString:@""];
+		tf.bezeled = NO;
+		tf.drawsBackground = NO;
+		tf.editable = NO;
+		tf.selectable = NO;
+		tf.lineBreakMode = NSLineBreakByTruncatingTail;
+
+		[cell addSubview:tf];
+		cell.textField = tf;
+
+		if (cellSpec[@"secondary"]) {
+			NSTextField *secondary = [NSTextField labelWithString:@""];
+			secondary.font = [NSFont
+				systemFontOfSize:kTableCellSecondaryFontSize];
+			secondary.textColor = NSColor.secondaryLabelColor;
+			secondary.lineBreakMode = NSLineBreakByTruncatingTail;
+			[cell addSubview:secondary];
+			cell.secondaryTextField = secondary;
+		}
+
+		// Reusable native table cells own their embedded Cocoa controls.
+		if (cellSpec[@"level"]) {
+			NSLevelIndicator *level = [[NSLevelIndicator alloc] initWithFrame:NSZeroRect];
+			level.levelIndicatorStyle = NSLevelIndicatorStyleContinuousCapacity;
+			level.warningValue = 2;
+			level.criticalValue = 2;
+			level.minValue = 0;
+			level.maxValue = 1;
+			level.editable = NO;
+			[cell addSubview:level];
+			cell.levelIndicator = level;
+		}
+		if (cellSpec[@"curve"]) {
+			LuaPathView *curve = [[LuaPathView alloc]
+				initWithFrame:NSZeroRect];
+			curve.hidden = YES;
+			[cell addSubview:curve];
+			cell.curveView = curve;
+		}
+
+		NSImageView *imageView = [[LuaSymbolImageView alloc] initWithFrame:NSZeroRect];
+		imageView.imageScaling = NSImageScaleProportionallyDown;
+		imageView.contentTintColor = NSColor.secondaryLabelColor;
+		[cell addSubview:imageView];
+		cell.imageView = imageView;
+	}
+	cell.imageWidth = [cellSpec[@"imageSize"] doubleValue];
+	cell.textField.stringValue = text;
+	NSString *secondaryKey = cellSpec[@"secondary"];
+	id secondaryValue = secondaryKey ? rowData[secondaryKey] : nil;
+	cell.secondaryTextField.stringValue = secondaryValue
+		? [secondaryValue description] : @"";
+	BOOL semibold = [cellSpec[@"weight"] isEqual:@"semibold"];
+	cell.textField.font = [NSFont systemFontOfSize:NSFont.systemFontSize
+		weight:semibold ? NSFontWeightSemibold : NSFontWeightRegular];
+	NSString *primaryColorKey = cellSpec[@"color"];
+	NSString *primaryColor = primaryColorKey
+		? [rowData[primaryColorKey] description] : nil;
+	cell.textField.textColor = primaryColor
+		? table_semantic_color(primaryColor) : NSColor.labelColor;
+	NSString *secondaryColorKey = cellSpec[@"secondaryColor"];
+	NSString *secondaryColor = secondaryColorKey
+		? [rowData[secondaryColorKey] description] : nil;
+	cell.secondaryTextField.textColor = secondaryColor
+		? table_semantic_color(secondaryColor) : NSColor.secondaryLabelColor;
+	NSString *curveKey = cellSpec[@"curve"];
+	NSArray *curveValues = [rowData[curveKey] isKindOfClass:NSArray.class]
+		? rowData[curveKey] : nil;
+	NSString *curveColorKey = cellSpec[@"curveColor"];
+	NSString *curveColor = curveColorKey
+		? [rowData[curveColorKey] description] : nil;
+	table_update_curve(cell.curveView, curveValues,
+		table_semantic_color(curveColor));
+	// Row-bound symbols let a native source list distinguish navigation destinations.
+	NSString *levelKey = cellSpec[@"level"];
+	id levelValue = levelKey ? rowData[levelKey] : nil;
+	double fraction = [levelValue respondsToSelector:@selector(doubleValue)] ? [levelValue doubleValue] : 0;
+	cell.levelIndicator.doubleValue = isfinite(fraction) ? MAX(0, MIN(1, fraction)) : 0;
+	cell.levelIndicator.hidden = levelValue == nil;
+	NSString *levelColorKey = cellSpec[@"levelColor"];
+	cell.levelIndicator.fillColor = table_semantic_color(levelColorKey ? rowData[levelColorKey] : nil);
+	cell.levelIndicator.accessibilityLabel = [@"Share of measured storage: " stringByAppendingString:text];
+	[cell.levelIndicator setNeedsDisplay:YES];
+	NSString *imageColorKey = cellSpec[@"imageColor"];
+	cell.imageView.contentTintColor = imageColorKey ? table_semantic_color(rowData[imageColorKey]) : NSColor.secondaryLabelColor;
+	NSString *imageKey = cellSpec[@"image"];
+	NSString *symbolName = imageKey && [rowData[imageKey] isKindOfClass:NSString.class]
+		? rowData[imageKey] : objc_getAssociatedObject(column, &kKeys[kColumnSystemImageKey]);
+	NSString *fileKey = cellSpec[@"fileIcon"];
+	NSString *filePath = fileKey && [rowData[fileKey] isKindOfClass:NSString.class] ? rowData[fileKey] : nil;
+	if (filePath.length > 0) {
+		cell.imageView.image = [NSWorkspace.sharedWorkspace iconForFile:filePath];
+		cell.imageView.contentTintColor = nil;
+	} else if (symbolName.length > 0) {
+		NSImage *image = [NSImage imageWithSystemSymbolName:symbolName
+			accessibilityDescription:text];
+		NSImageSymbolConfiguration *configuration =
+		[NSImageSymbolConfiguration configurationWithPointSize:(cell.imageWidth > 0 ? cell.imageWidth - 3 : kTableCellSymbolPointSize)
+													 weight:NSFontWeightRegular];
+		cell.imageView.image = [image imageWithSymbolConfiguration:configuration];
+	} else {
+		cell.imageView.image = nil;
+	}
+	LuaSymbolImageView *symbolView = (LuaSymbolImageView *)cell.imageView;
+	symbolView.badgeColorName = cellSpec[@"badgeColor"] ? rowData[cellSpec[@"badgeColor"]] : nil;
+	symbolView.appBundleId = cellSpec[@"appIcon"] ? rowData[cellSpec[@"appIcon"]] : nil;
+	if (filePath.length) { symbolView.resolvedAppIcon = YES; symbolView.contentTintColor = nil; }
+	NSNumber *alignment = objc_getAssociatedObject(column, &kKeys[kColumnAlignmentKey]);
+	cell.textField.alignment = alignment
+		? (NSTextAlignment)alignment.integerValue : NSTextAlignmentLeft;
+	cell.secondaryTextField.alignment = cell.textField.alignment;
+	[cell setNeedsLayout:YES];
+	return cell;
+}
+
 
 @implementation LuaTableViewSource
 
@@ -222,135 +413,8 @@ static void table_update_curve(
 	sv.hasHorizontalScroller = overflows;
 }
 
-- (NSView *)tableView:(NSTableView *)tableView
-   viewForTableColumn:(NSTableColumn *)column
-				  row:(NSInteger)row
-{
-	NSDictionary *rowData = _rows[row];
-	NSString *colId = column.identifier;
-	id value = rowData[colId];
-	NSString *text = value ? [value description] : @"";
-	NSDictionary *cellSpec = objc_getAssociatedObject(
-		column, &kKeys[kColumnCellKey]);
-	if (cellSpec[@"curve"]) text = @"";
-
-	NSString *reuseId = [@"cell-" stringByAppendingString:column.identifier];
-	LuaTableCellView *cell = (LuaTableCellView *)[tableView
-		makeViewWithIdentifier:reuseId owner:self];
-	if (!cell) {
-		cell = [[LuaTableCellView alloc] initWithFrame:
-			NSMakeRect(0, 0, column.width, tableView.rowHeight)];
-		cell.identifier = reuseId;
-
-		NSTextField *tf = [NSTextField labelWithString:@""];
-		tf.bezeled = NO;
-		tf.drawsBackground = NO;
-		tf.editable = NO;
-		tf.selectable = NO;
-		tf.lineBreakMode = NSLineBreakByTruncatingTail;
-
-		[cell addSubview:tf];
-		cell.textField = tf;
-
-		if (cellSpec[@"secondary"]) {
-			NSTextField *secondary = [NSTextField labelWithString:@""];
-			secondary.font = [NSFont
-				systemFontOfSize:kTableCellSecondaryFontSize];
-			secondary.textColor = NSColor.secondaryLabelColor;
-			secondary.lineBreakMode = NSLineBreakByTruncatingTail;
-			[cell addSubview:secondary];
-			cell.secondaryTextField = secondary;
-		}
-
-		// Reusable native table cells own their embedded Cocoa controls.
-		if (cellSpec[@"level"]) {
-			NSLevelIndicator *level = [[NSLevelIndicator alloc] initWithFrame:NSZeroRect];
-			level.levelIndicatorStyle = NSLevelIndicatorStyleContinuousCapacity;
-			level.warningValue = 2;
-			level.criticalValue = 2;
-			level.minValue = 0;
-			level.maxValue = 1;
-			level.editable = NO;
-			[cell addSubview:level];
-			cell.levelIndicator = level;
-		}
-		if (cellSpec[@"curve"]) {
-			LuaPathView *curve = [[LuaPathView alloc]
-				initWithFrame:NSZeroRect];
-			curve.hidden = YES;
-			[cell addSubview:curve];
-			cell.curveView = curve;
-		}
-
-		NSImageView *imageView = [[NSImageView alloc] initWithFrame:NSZeroRect];
-		imageView.imageScaling = NSImageScaleProportionallyDown;
-		imageView.contentTintColor = NSColor.secondaryLabelColor;
-		[cell addSubview:imageView];
-		cell.imageView = imageView;
-	}
-	cell.imageWidth = [cellSpec[@"imageSize"] doubleValue];
-	cell.textField.stringValue = text;
-	NSString *secondaryKey = cellSpec[@"secondary"];
-	id secondaryValue = secondaryKey ? rowData[secondaryKey] : nil;
-	cell.secondaryTextField.stringValue = secondaryValue
-		? [secondaryValue description] : @"";
-	BOOL semibold = [cellSpec[@"weight"] isEqual:@"semibold"];
-	cell.textField.font = [NSFont systemFontOfSize:NSFont.systemFontSize
-		weight:semibold ? NSFontWeightSemibold : NSFontWeightRegular];
-	NSString *primaryColorKey = cellSpec[@"color"];
-	NSString *primaryColor = primaryColorKey
-		? [rowData[primaryColorKey] description] : nil;
-	cell.textField.textColor = primaryColor
-		? table_semantic_color(primaryColor) : NSColor.labelColor;
-	NSString *secondaryColorKey = cellSpec[@"secondaryColor"];
-	NSString *secondaryColor = secondaryColorKey
-		? [rowData[secondaryColorKey] description] : nil;
-	cell.secondaryTextField.textColor = secondaryColor
-		? table_semantic_color(secondaryColor) : NSColor.secondaryLabelColor;
-	NSString *curveKey = cellSpec[@"curve"];
-	NSArray *curveValues = [rowData[curveKey] isKindOfClass:NSArray.class]
-		? rowData[curveKey] : nil;
-	NSString *curveColorKey = cellSpec[@"curveColor"];
-	NSString *curveColor = curveColorKey
-		? [rowData[curveColorKey] description] : nil;
-	table_update_curve(cell.curveView, curveValues,
-		table_semantic_color(curveColor));
-	// Row-bound symbols let a native source list distinguish navigation destinations.
-	NSString *levelKey = cellSpec[@"level"];
-	id levelValue = levelKey ? rowData[levelKey] : nil;
-	double fraction = [levelValue respondsToSelector:@selector(doubleValue)] ? [levelValue doubleValue] : 0;
-	cell.levelIndicator.doubleValue = isfinite(fraction) ? MAX(0, MIN(1, fraction)) : 0;
-	cell.levelIndicator.hidden = levelValue == nil;
-	NSString *levelColorKey = cellSpec[@"levelColor"];
-	cell.levelIndicator.fillColor = table_semantic_color(levelColorKey ? rowData[levelColorKey] : nil);
-	cell.levelIndicator.accessibilityLabel = [@"Share of measured storage: " stringByAppendingString:text];
-	[cell.levelIndicator setNeedsDisplay:YES];
-	NSString *imageColorKey = cellSpec[@"imageColor"];
-	cell.imageView.contentTintColor = imageColorKey ? table_semantic_color(rowData[imageColorKey]) : NSColor.secondaryLabelColor;
-	NSString *imageKey = cellSpec[@"image"];
-	NSString *symbolName = imageKey && [rowData[imageKey] isKindOfClass:NSString.class]
-		? rowData[imageKey] : objc_getAssociatedObject(column, &kKeys[kColumnSystemImageKey]);
-	NSString *fileKey = cellSpec[@"fileIcon"];
-	NSString *filePath = fileKey && [rowData[fileKey] isKindOfClass:NSString.class] ? rowData[fileKey] : nil;
-	if (filePath.length > 0) {
-		cell.imageView.image = [NSWorkspace.sharedWorkspace iconForFile:filePath];
-		cell.imageView.contentTintColor = nil;
-	} else if (symbolName.length > 0) {
-		NSImage *image = [NSImage imageWithSystemSymbolName:symbolName
-			accessibilityDescription:text];
-		NSImageSymbolConfiguration *configuration =
-		[NSImageSymbolConfiguration configurationWithPointSize:(cell.imageWidth > 0 ? cell.imageWidth - 3 : kTableCellSymbolPointSize)
-													 weight:NSFontWeightRegular];
-		cell.imageView.image = [image imageWithSymbolConfiguration:configuration];
-	} else {
-		cell.imageView.image = nil;
-	}
-	NSNumber *alignment = objc_getAssociatedObject(column, &kKeys[kColumnAlignmentKey]);
-	cell.textField.alignment = alignment
-		? (NSTextAlignment)alignment.integerValue : NSTextAlignmentLeft;
-	cell.secondaryTextField.alignment = cell.textField.alignment;
-	[cell setNeedsLayout:YES];
-	return cell;
+- (NSView *)tableView:(NSTableView *)tableView viewForTableColumn:(NSTableColumn *)column row:(NSInteger)row {
+	return table_cell_view(tableView, column, _rows[row], self);
 }
 
 - (void)addRow:(NSDictionary *)row {

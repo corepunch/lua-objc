@@ -1,4 +1,15 @@
-<VStack fixedWidth="210" fillHeight="true" spacing="0">
-  <List ref="navigation" style="sourceList" header="false" alternatingRows="false" flexGrow="1" fillWidth="true"><Column id="name" title="Sections" imageKey="icon" /></List>
-  <Button title="Settings" systemImage="gearshape" action="settings" />
+<VStack fillWidth="true" fillHeight="true" spacing="0">
+  <HStack padding="20" spacing="12" fillWidth="true">
+    <SystemImage name="chart.pie.fill" size="32" color="accent" />
+    <VStack spacing="3" alignment="leading" flexGrow="1">
+      <Label text="Diskmap" size="18" weight="semibold" />
+      <Label text="Understand. Clean. Free up." size="10" color="secondary" />
+    </VStack>
+  </HStack>
+  <List ref="navigation" style="sourceList" header="false" alternatingRows="false" rowHeight="46" flexGrow="1" fillWidth="true">
+    <Column id="name" title="Sections" imageKey="icon" imageSize="22" />
+  </List>
+  <VStack fillWidth="true" padding="16">
+    <Button title="Settings" systemImage="gearshape" style="row" fillWidth="true" action="settings" accessibilityLabel="Diskmap Settings" />
+  </VStack>
 </VStack>

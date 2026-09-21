@@ -71,7 +71,10 @@
 	CGFloat outlineWidth = viewport.width;
 
 	if (hasFlex) {
-		CGFloat remaining = viewport.width - fixedDesired;
+		CGFloat declared = 0;
+		for (NSTableColumn *column in _outlineView.tableColumns) declared += column.width;
+		CGFloat overhead = _outlineView.numberOfRows > 0 ? MAX(0, NSMaxX([_outlineView frameOfCellAtColumn:_outlineView.tableColumns.count - 1 row:0]) - declared) : 0;
+		CGFloat remaining = viewport.width - fixedDesired - overhead;
 		if (remaining > 0) {
 			for (NSTableColumn *col in _outlineView.tableColumns) {
 				NSNumber *flexN = objc_getAssociatedObject(
@@ -130,8 +133,30 @@
 }
 
 - (void)replaceRootItems:(NSArray *)items {
+	NSMutableSet *expanded = [NSMutableSet set], *known = [NSMutableSet set];
+	NSMutableArray *pending = [_rootRows mutableCopy];
+	while (pending.count) {
+		NSDictionary *row = pending.lastObject; [pending removeLastObject];
+		if (row[@"id"]) {
+			[known addObject:row[@"id"]];
+			if ([_outlineView isItemExpanded:row]) [expanded addObject:row[@"id"]];
+		}
+		if ([row[@"children"] isKindOfClass:NSArray.class]) [pending addObjectsFromArray:row[@"children"]];
+	}
+	id selectedId = [[_outlineView itemAtRow:_outlineView.selectedRow] objectForKey:@"id"];
 	_rootRows = [items mutableCopy];
 	[_outlineView reloadData];
+	pending = [_rootRows mutableCopy];
+	while (pending.count) {
+		NSDictionary *row = pending.firstObject; [pending removeObjectAtIndex:0];
+		id key = row[@"id"];
+		if ([row[@"forceExpanded"] boolValue] || [expanded containsObject:key] || (![known containsObject:key] && [row[@"expanded"] boolValue])) [_outlineView expandItem:row];
+		if ([row[@"children"] isKindOfClass:NSArray.class]) [pending addObjectsFromArray:row[@"children"]];
+		if (selectedId && [selectedId isEqual:key]) {
+			NSInteger index = [_outlineView rowForItem:row];
+			if (index >= 0) [_outlineView selectRowIndexes:[NSIndexSet indexSetWithIndex:index] byExtendingSelection:NO];
+		}
+	}
 	[self updateTableFrame];
 }
 
@@ -150,65 +175,12 @@
 }
 
 - (BOOL)outlineView:(NSOutlineView *)ov isItemExpandable:(id)item {
-	return ((NSDictionary *)item)[@"children"] != nil;
+	return [((NSDictionary *)item)[@"children"] count] > 0;
 }
 
-/* Single-column cells: use NSTextField in an NSTableCellView, matching the
- * NSTableView pattern. */
-- (NSView *)outlineView:(NSOutlineView *)ov
-	viewForTableColumn:(NSTableColumn *)column
-				  item:(id)item
-{
-	NSDictionary *rowData = (NSDictionary *)item;
-	NSString *colId = column.identifier;
-	id value = rowData[colId];
-	NSString *text = value ? [value description] : @"";
-
-	NSString *reuseId = [@"outline-cell-" stringByAppendingString:colId];
-	NSTableCellView *cell = [ov makeViewWithIdentifier:reuseId owner:self];
-	if (!cell) {
-		cell = [[LuaTableCellView alloc]
-			initWithFrame:NSMakeRect(0, 0, column.width, ov.rowHeight)];
-		cell.identifier = reuseId;
-
-		NSImageView *imageView = [[NSImageView alloc] initWithFrame:NSZeroRect];
-		imageView.imageScaling = NSImageScaleProportionallyDown;
-		imageView.contentTintColor = NSColor.secondaryLabelColor;
-		[cell addSubview:imageView];
-		cell.imageView = imageView;
-
-		NSTextField *tf = [NSTextField labelWithString:@""];
-		tf.bezeled = NO;
-		tf.drawsBackground = NO;
-		tf.editable = NO;
-		tf.selectable = NO;
-		tf.lineBreakMode = NSLineBreakByTruncatingTail;
-		[cell addSubview:tf];
-		cell.textField = tf;
-	}
-	cell.textField.stringValue = text;
-
-	NSString *symbolName =
-		objc_getAssociatedObject(column, &kKeys[kColumnSystemImageKey]);
-	if (symbolName.length > 0) {
-		NSString *iconName = rowData[@"children"] != nil
-			? @"folder" : symbolName;
-		NSImage *image = [NSImage imageWithSystemSymbolName:iconName
-			accessibilityDescription:text];
-		NSImageSymbolConfiguration *config =
-		[NSImageSymbolConfiguration configurationWithPointSize:kTableCellSymbolPointSize
-													 weight:NSFontWeightRegular];
-		cell.imageView.image = [image imageWithSymbolConfiguration:config];
-	} else {
-		cell.imageView.image = nil;
-	}
-
-	NSNumber *alignment = objc_getAssociatedObject(column,
-		&kKeys[kColumnAlignmentKey]);
-	cell.textField.alignment = alignment
-		? (NSTextAlignment)alignment.integerValue : NSTextAlignmentLeft;
-	[cell setNeedsLayout:YES];
-	return cell;
+// Outlines and tables share native cells, including subtitles and row-bound symbols.
+- (NSView *)outlineView:(NSOutlineView *)ov viewForTableColumn:(NSTableColumn *)column item:(id)item {
+	return table_cell_view(ov, column, item, self);
 }
 
 - (void)outlineViewSelectionDidChange:(NSNotification *)notification {

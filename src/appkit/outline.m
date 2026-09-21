@@ -43,7 +43,7 @@ static int bridge_outlineview(lua_State *L) {
 	ov.usesAlternatingRowBackgroundColors = isSourceList ? NO : alternatingRows;
 	ov.gridStyleMask = (NSTableViewGridLineStyle)gridLines;
 	ov.rowHeight = kOutlineRowHeight;
-	ov.intercellSpacing = NSMakeSize(3, 2);
+	ov.intercellSpacing = NSMakeSize(kTableIntercellSpacingH, kTableIntercellSpacingV);
 	if (!drawsBackground) ov.backgroundColor = NSColor.clearColor;
 	ov.allowsColumnReordering = NO;
 	ov.allowsColumnResizing = YES;
@@ -78,6 +78,8 @@ static int bridge_outlineview(lua_State *L) {
 
 		NSTableColumn *col = [[NSTableColumn alloc] initWithIdentifier:colId];
 		col.title = colTitle;
+		if ([column[@"cell"] isKindOfClass:NSDictionary.class])
+			objc_setAssociatedObject(col, &kKeys[kColumnCellKey], column[@"cell"], OBJC_ASSOCIATION_RETAIN);
 		col.width = requestedWidth;
 		col.minWidth = MAX(kTableColumnMinWidth, requestedMinWidth);
 		NSTextAlignment alignment = colAlignment
@@ -110,6 +112,8 @@ static int bridge_outlineview(lua_State *L) {
 	NSScrollView *sv = [[NSScrollView alloc]
 		initWithFrame:NSMakeRect(0, 0, width, height)];
 	sv.documentView = ov;
+	sv.clipsToBounds = YES;
+	sv.contentView.clipsToBounds = YES;
 	sv.hasVerticalScroller = YES;
 	sv.autohidesScrollers = YES;
 	sv.borderType = bordered ? NSBezelBorder : NSNoBorder;

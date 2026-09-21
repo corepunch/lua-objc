@@ -1,15 +1,8 @@
-<Window title="Diskmap" width="1440" height="880" minWidth="1000" minHeight="600" sidebarWidth="210" detailWidth="330" toolbarContentDividerAfter="search">
+<Window title="Diskmap" width="1440" height="900" minWidth="1000" minHeight="640" sidebarWidth="220">
   <Toolbar>
     <ToolbarItem id="toggleSidebar" />
-    <ToolbarItem id="drive" label="Storage" />
     <ToolbarItem id="NSToolbarFlexibleSpaceItem" />
-    <ToolbarItem id="choose" label="Scan Folder" icon="folder.badge.plus" />
-    <ToolbarItem id="back" label="Back" icon="chevron.left" />
-    <ToolbarItem id="forward" label="Forward" icon="chevron.right" />
-    <ToolbarItem id="up" label="Enclosing Folder" icon="arrow.up" />
-    <ToolbarItem id="refresh" label="Rescan" icon="arrow.clockwise" />
-    <ToolbarItem id="cancel" label="Cancel Scan" icon="xmark.circle" />
-    <ToolbarItem id="search" label="Search" />
-    <ToolbarItem id="toggleDetail" label="Inspector" icon="sidebar.right" />
+    <ToolbarItem id="refresh" label="Refresh" icon="arrow.clockwise" />
+    <ToolbarItem id="cancel" label="Cancel" icon="xmark.circle" />
   </Toolbar>
 </Window>

@@ -10,12 +10,20 @@ my ($output, $parent, $mode, @roots) = @ARGV;
 use File::Basename qw(dirname);
 sub abandon { unlink "$output.tmp", $output; unlink dirname($output) . "/error"; rmdir dirname($output); exit 0; }
 $SIG{TERM} = sub { abandon(); };
+my %excluded;
+if ($mode eq 'inventory') {
+ open my $plan, '<:raw', $roots[0] or die $!;
+ my $data = JSON::PP->new->utf8->decode(do { local $/; <$plan> }); close $plan;
+ @roots = @{$data->{roots}};
+ %excluded = map { $_ => 1 } @{$data->{exclusions}};
+}
 my (%seen, %types, @large, @apps);
 my $errors = 0;
 my $visited = 0;
 my $started = time;
 sub walk {
  my ($path, $depth, $device) = @_;
+ return undef if $depth > 0 && ($excluded{$path} || $path eq '/System/Volumes');
  my $errorsBefore = $errors;
  abandon() if $parent && $visited % 256 == 0 && !kill(0, $parent);
  die "Scan exceeded ten minutes\n" if time - $started > 600;
@@ -37,12 +45,12 @@ sub walk {
     $node->{kb} += $child->{kb};
     $node->{items} += 1 + $child->{items};
     $node->{partial} = JSON::PP::true if $child->{partial};
-    push @{$node->{children}}, $child if $depth < 1 && $mode ne 'summary';
+    push @{$node->{children}}, $child if $depth < 1 && $mode eq 'tree';
    }
    closedir($dir);
   } else { $errors++; $node->{partial} = JSON::PP::true; }
-  push @apps, {%$node, children => []} if $mode ne 'summary' && $name =~ /\.app$/i;
- } elsif ($mode ne 'summary') {
+  push @apps, {%$node, children => []} if $mode eq 'tree' && $name =~ /\.app$/i;
+ } elsif ($mode eq 'tree') {
   my $ext = $name =~ /\.([^.]+)$/ ? lc($1) : 'No extension';
   $types{$ext}{kb} += $kb; $types{$ext}{items}++;
   push @large, $node if $kb >= 1024;
@@ -56,7 +64,7 @@ my (@trees, @rootStates);
 my $failure;
 eval {
  for my $root (@roots) {
-  %seen = ();
+  %seen = () unless $mode eq 'inventory';
   my @attributes = lstat($root);
   my $state = @attributes ? 'measured' : $! == ENOENT ? 'missing' : 'unreadable';
   my $before = $errors;

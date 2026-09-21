@@ -439,6 +439,13 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		natural.height *= MAX(0, scale);
 	} else if (layout_axis(view) == LayoutAxisNone) {
 		natural = measure_leaf(view);
+		if ([view isKindOfClass:NSBox.class] && ((NSBox *)view).boxType == NSBoxPrimary) {
+			NSBox *box = (NSBox *)view;
+			NSSize margins = box.contentViewMargins;
+			NSSize content = measure_view(box.contentView, (LuaLayoutConstraint){
+				MAX(0, constraint.width - margins.width * 2), 0, constraint.widthMode, LuaMeasureUndefined});
+			natural = NSMakeSize(content.width + margins.width * 2, content.height + margins.height * 2);
+		}
 		if ([view isKindOfClass:LuaLabel.class]) {
 			NSTextField *label = (NSTextField *)view;
 			/* Match the native drawing mode to the negotiated line count. A
@@ -850,6 +857,14 @@ static void layout_recursive(NSView *view, CGFloat width) {
 	default: break;
 	}
 	} else {
+		if ([view isKindOfClass:LuaLabel.class]) {
+			NSTextField *label = (NSTextField *)view;
+			// Measurement visits several proposals; drawing must use the final one.
+			BOOL singleLine = label.maximumNumberOfLines == 1
+				|| label.intrinsicContentSize.width <= view.bounds.size.width;
+			((NSTextFieldCell *)label.cell).usesSingleLineMode = singleLine;
+			((NSTextFieldCell *)label.cell).wraps = !singleLine;
+		}
 		if (objc_getAssociatedObject(view, &kKeys[kNavigationControllerKey])) {
 			view.needsLayout = YES;
 			[view layoutSubtreeIfNeeded];
@@ -861,6 +876,12 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			[view layoutSubtreeIfNeeded];
 			NSView *selected = ((NSTabView *)view).selectedTabViewItem.view;
 			if (selected) layout_recursive(selected, selected.bounds.size.width);
+			return;
+		}
+		if ([view isKindOfClass:NSBox.class] && ((NSBox *)view).boxType == NSBoxPrimary) {
+			[view layoutSubtreeIfNeeded];
+			NSView *content = ((NSBox *)view).contentView;
+			layout_recursive(content, content.bounds.size.width);
 			return;
 		}
 		if ([view isKindOfClass:[NSScrollView class]]) {
@@ -936,6 +957,17 @@ static int bridge_object_layout_impl(lua_State *L) {
 		}
 	} else {
 		view = (NSView *)obj;
+		if (lua_isnoneornil(L, 2)) {
+			// A nested stack's changed intrinsic size affects its siblings. Remeasure
+			// its layout owner, stopping at the pane geometry owned by NSSplitView.
+			while (view.superview && ![view.superview isKindOfClass:NSSplitView.class]) {
+				NSView *parent = view.superview;
+				if (layout_axis(parent) == LayoutAxisNone && ![parent isKindOfClass:NSClipView.class]
+					&& ![parent isKindOfClass:NSScrollView.class] && ![parent isKindOfClass:NSBox.class]) break;
+				view = parent;
+			}
+			width = view.bounds.size.width;
+		}
 	}
 
 	layout_recursive(view, width);

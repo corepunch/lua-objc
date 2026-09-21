@@ -1,0 +1,10 @@
+<VStack fillWidth="true" spacing="14" alignment="leading">
+          <% for i, suggestion in ipairs(suggestions) do %>
+          <%- partial("Suggestion.etlua", {suggestion = suggestion, index = i}) %>
+          <Divider />
+          <% end %>
+          <% if #suggestions == 0 then %>
+          <Label text="No measured cleanup candidates yet. Select a category and choose Measure Category." size="12" color="secondary" fillWidth="true" lines="3" />
+          <% end %>
+
+</VStack>

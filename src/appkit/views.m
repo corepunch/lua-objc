@@ -806,8 +806,9 @@ static int bridge_system_image(lua_State *L) {
 		[NSImageSymbolConfiguration configurationWithPointSize:pointSize
 													   weight:weight];
 	image = [image imageWithSymbolConfiguration:configuration];
-	NSImageView *view = [[NSImageView alloc]
+	LuaSymbolImageView *view = [[LuaSymbolImageView alloc]
 		initWithFrame:NSMakeRect(0, 0, pointSize, pointSize)];
+	view.symbolSize = pointSize;
 	view.image = image;
 	view.imageScaling = NSImageScaleProportionallyDown;
 	view.contentTintColor = semantic_color(

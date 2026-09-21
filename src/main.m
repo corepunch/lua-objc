@@ -71,6 +71,8 @@ static const CGFloat kStackSpacing = 8.0;
  * here instead of embedding raw numbers in code. */
 
 /* ----- Table / Outline cells ----- */
+#define kIconBadgeCornerFraction       0.23
+#define kIconBadgeSymbolScale          0.66
 #define kTableCellImageWidth            18
 #define kTableCellImageTextGap           2
 #define kTableCellImageLeadingInset      0
@@ -416,6 +418,8 @@ int lua_objc_main(int argc, char *argv[]) {
 			appearance = argv[i] + 13;
 		} else if (strcmp(argv[i], "--appearance") == 0 && i + 1 < argc) {
 			appearance = argv[++i];
+		} else if (script && script_arg_count < 256) {
+			script_args[script_arg_count++] = argv[i];
 		} else if (argv[i][0] != '-') {
 			if (!script) {
 				script = argv[i];

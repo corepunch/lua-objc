@@ -1,34 +1,67 @@
-<VStack flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true" fillHeight="true" spacing="0" alignment="leading">
-  <VStack fillWidth="true" padding="20" spacing="8" alignment="leading">
-    <Label fillWidth="true" text="<%= title %>" size="22" weight="bold" />
-    <Label fillWidth="true" text="<%= subtitle %>" size="12" color="secondary" lines="2" />
-  </VStack>
-  <% if segments and #segments > 0 then %>
-  <VStack fillWidth="true" spacing="10" paddingHorizontal="20" paddingBottom="20">
-    <HStack fillWidth="true" fixedHeight="20" spacing="0">
-      <% for _, segment in ipairs(segments) do %><HStack flexBasis="0" flexGrow="<%= segment.weight %>" fixedHeight="20" background="<%= segment.color %>" /><% end %>
-    </HStack>
-    <HStack fillWidth="true" spacing="12">
-      <% for _, segment in ipairs(segments) do %>
-      <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="4" alignment="leading">
-        <Label fillWidth="true" text="<%= segment.name %>" size="11" color="<%= segment.color %>" lines="1" truncation="tail" />
-        <Label text="<%= segment.size %>" size="11" color="secondary" />
-      </VStack>
-      <% end %>
-    </HStack>
-  </VStack>
-  <% end %>
-  <List ref="results" style="fullWidth" alternatingRows="false" rowHeight="44" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true">
-    <Column id="name" title="Name" fileIconKey="path" imageKey="icon" imageColorKey="iconColor" imageSize="20" minWidth="160" />
-    <Column id="size" title="On disk" width="110" minWidth="110" alignment="right" />
-    <% if section == 'Disk Map' then %>
-    <Column id="percentage" title="% of folder" width="170" minWidth="140" alignment="right" levelKey="share" levelColorKey="shareColor" />
-    <% else %>
-    <Column id="status" title="<%= section == 'Suggestions' and 'Consideration' or 'Kind' %>" width="160" minWidth="140" />
-    <% end %>
-  </List>
-  <HStack fillWidth="true" padding="12" spacing="8">
-    <Label ref="status" text="<%= status %>" size="11" color="secondary" lines="2" flexGrow="1" flexBasis="0" flexShrink="1" />
-    <Button title="<%= hasScan == false and 'Scan Folder…' or 'Rescan' %>" systemImage="<%= hasScan == false and 'folder.badge.plus' or 'arrow.clockwise' %>" action="refresh" />
+<VStack fillWidth="true" fillHeight="true" flexGrow="1" flexBasis="0" flexShrink="1" spacing="16" padding="20">
+  <HStack fillWidth="true" spacing="16" alignment="center">
+    <Image path="/" fileIcon="true" fixedWidth="52" fixedHeight="52" />
+    <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="6" alignment="leading">
+      <Label text="Macintosh storage" size="24" weight="bold" fillWidth="true" />
+      <Label ref="capacity" text="<%= capacity %>" size="12" color="secondary" fillWidth="true" lines="2" />
+    </VStack>
+    <SearchField placeholder="Search categories and cleanup tasks…" fixedWidth="290" onChange="search" accessibilityLabel="Search storage categories" />
   </HStack>
+  <VStack ref="storageBar" fillWidth="true" spacing="0" />
+  <HSplit flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true" fillHeight="true">
+    <VStack minWidth="400" flexGrow="1" fillHeight="true" fillWidth="true" spacing="12">
+      <HStack spacing="12" fillWidth="true" paddingVertical="8">
+        <SystemImage ref="headingIcon" name="<%= icon %>" size="36" badgeColor="<%= color %>" />
+        <VStack spacing="4" flexGrow="1" flexBasis="0" flexShrink="1" alignment="leading">
+          <Label ref="heading" text="<%= title %>" size="22" weight="bold" fillWidth="true" />
+          <Label ref="subtitle" text="<%= subtitle %>" size="12" color="secondary" fillWidth="true" lines="2" />
+        </VStack>
+      </HStack>
+      <OutlineView ref="results" style="fullWidth" header="false" alternatingRows="false" rowHeight="48" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true">
+        <Column id="name" title="Category" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" imageSize="32" minWidth="210" />
+        <Column id="size" title="On disk" width="125" minWidth="110" alignment="right" />
+      </OutlineView>
+      <GroupBox fillWidth="true">
+        <HStack fillWidth="true" spacing="12" padding="10">
+          <SystemImage name="checkmark.shield" size="28" color="systemTeal" />
+          <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="4" alignment="leading">
+            <Label ref="coverage" text="<%= coverage %>" size="12" fillWidth="true" lines="2" />
+            <Label ref="status" text="<%= status %>" size="11" color="secondary" fillWidth="true" lines="2" />
+          </VStack>
+        </HStack>
+      </GroupBox>
+    </VStack>
+    <VStack minWidth="280" flexGrow="0.65" fillWidth="true" fillHeight="true" spacing="0">
+      <ScrollView vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true">
+        <VStack fillWidth="true" spacing="16" padding="16" alignment="leading">
+          <VStack ref="inspector" hidden="true" fillWidth="true" spacing="10" alignment="leading">
+          <Label ref="detailName" text="Select a category" size="17" weight="semibold" fillWidth="true" lines="2" />
+          <Label ref="detailText" text="Understand what is stored and how it is managed." size="12" fillWidth="true" lines="8" />
+          <Button ref="measure" title="Measure Category" action="measure" fillWidth="true" />
+          <Button ref="manage" title="Review in Finder" action="manage" fillWidth="true" disabled="true" />
+          <Button ref="keep" title="Keep this resource" action="keep" fillWidth="true" disabled="true" />
+          <Label ref="location" text="" size="11" color="secondary" fillWidth="true" lines="4" />
+            <Divider />
+          </VStack>
+          <HStack spacing="10" fillWidth="true">
+            <SystemImage name="sparkles" size="28" color="accent" />
+            <VStack flexGrow="1" spacing="4" alignment="leading">
+              <Label text="Cleanup Opportunities" size="18" weight="semibold" fillWidth="true" />
+              <Label text="Measured items to review, with consequences." size="11" color="secondary" fillWidth="true" lines="2" />
+            </VStack>
+          </HStack>
+          <VStack ref="opportunities" fillWidth="true" spacing="0" />
+          <GroupBox fillWidth="true">
+            <VStack padding="12" spacing="8" fillWidth="true" alignment="leading">
+              <SystemImage name="shield.lefthalf.filled" size="24" color="accent" />
+              <Label text="Preboot and Recovery belong to macOS. No manual cleanup is offered." size="12" fillWidth="true" lines="3" />
+              <Button title="Learn about system storage" style="link" action="system" />
+            </VStack>
+          </GroupBox>
+          <Divider />
+
+        </VStack>
+      </ScrollView>
+    </VStack>
+  </HSplit>
 </VStack>

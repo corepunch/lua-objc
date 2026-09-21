@@ -539,6 +539,19 @@ static int bridge_NSView_addSubview(lua_State *L) {
 	return 0;
 }
 
+static int bridge_NSView_scrollIntoView(lua_State *L) {
+	NSView *view = check_view(L, 1);
+	NSScrollView *scroll = view.enclosingScrollView;
+	if (scroll) {
+		NSRect target = [scroll.documentView convertRect:view.bounds fromView:view];
+		NSPoint origin = scroll.contentView.bounds.origin;
+		origin.y = scroll.documentView.isFlipped ? NSMinY(target) : NSMaxY(target) - scroll.contentSize.height;
+		[scroll.contentView scrollToPoint:origin];
+		[scroll reflectScrolledClipView:scroll.contentView];
+	}
+	return 0;
+}
+
 static int bridge_NSView_layout(lua_State *L) {
 	(void)lua_objc_check_object(L, 1, [NSView class], "View");
 	return bridge_object_layout_impl(L);
@@ -642,6 +655,7 @@ static MethodEntry ViewMethods[] = {
 	{"add",	bridge_NSView_add},
 	{"renderToPNG",	bridge_NSView_renderToPNG},
 	{"clearContainer",	bridge_NSView_clearContainer},
+	{"scrollIntoView", bridge_NSView_scrollIntoView},
 	{"splitProportions",	bridge_NSView_splitProportions},
 	{NULL, NULL}
 };

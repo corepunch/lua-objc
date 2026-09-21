@@ -70,7 +70,7 @@ static void layout_recursive(NSView *view, CGFloat width);
 	objc_setAssociatedObject(self, &kKeys[kBackgroundColorKey], value,
 		OBJC_ASSOCIATION_RETAIN);
 	self.wantsLayer = YES;
-	self.layer.backgroundColor = value.CGColor;
+	[self.effectiveAppearance performAsCurrentDrawingAppearance:^{ self.layer.backgroundColor = value.CGColor; }];
 }
 - (CGFloat)cornerRadius {
 	return [objc_getAssociatedObject(self, &kKeys[kCornerRadiusKey]) doubleValue];

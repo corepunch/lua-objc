@@ -718,6 +718,8 @@ local TAG_SCHEMA = {
             size   = "num",
             weight = "str",
             color  = "str",
+            badgeColor = "str",
+            appIcon = "str",
             label  = { prop = "accessibilityLabel", type = "str" },
         },
         transform = function(props)
@@ -760,14 +762,17 @@ local TAG_SCHEMA = {
             alignment = "str",
             systemImage = "str",
             imageKey = "str",
+            subtitleKey = "str",
             fileIconKey = "str",
             imageColorKey = "str",
+            badgeColorKey = "str",
+            appIconKey = "str",
             imageSize = "num",
             levelKey = "str",
             levelColorKey = "str",
         },
         collect = function(props)
-            for key, field in pairs({fileIconKey = "fileIcon", imageKey = "image", imageColorKey = "imageColor", imageSize = "imageSize", levelKey = "level", levelColorKey = "levelColor"}) do
+            for key, field in pairs({badgeColorKey = "badgeColor", appIconKey = "appIcon", subtitleKey = "secondary", fileIconKey = "fileIcon", imageKey = "image", imageColorKey = "imageColor", imageSize = "imageSize", levelKey = "level", levelColorKey = "levelColor"}) do
                 if props[key] then
                     props.cell = props.cell or {}
                     props.cell[field] = props[key]
@@ -778,6 +783,31 @@ local TAG_SCHEMA = {
     },
     List = {
         constructor = "List",
+        props = {
+            header          = { default = true, type = "bool" },
+            alternatingRows = { default = true, type = "bool" },
+            rowHeight = "num",
+            style           = "str",
+            bordered        = "bool",
+            gridLines       = "str",
+            reorderable = "bool",
+            reorder_container = "str",
+        },
+        collect = function(props, children)
+            local columns = {}
+            for _, c in ipairs(children) do
+                if type(c) == "table" and c.__column then
+                    columns[#columns + 1] = c
+                end
+            end
+            if #columns == 0 then
+                error("xml: <List> requires at least one <Column> child")
+            end
+            props.columns = columns
+        end,
+    },
+    OutlineView = {
+        constructor = "OutlineView",
         props = {
             header          = { default = true, type = "bool" },
             alternatingRows = { default = true, type = "bool" },

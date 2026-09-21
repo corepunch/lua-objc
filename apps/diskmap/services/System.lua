@@ -4,15 +4,53 @@ function System.quote(value)
 	assert(type(value) == "string" and not value:find("\0", 1, true), "Invalid path")
 	return "'" .. value:gsub("'", "'\\''") .. "'"
 end
-function System.start(paths, mode)
+local function json(value)
+	if type(value) == "string" then return '"' .. value:gsub('[%z\1-\31\\"]', function(c) return string.format("\\u%04x", c:byte()) end) .. '"' end
+	if type(value) == "number" or type(value) == "boolean" then return tostring(value) end
+	if type(value) ~= "table" then return "null" end
+	local out = {}
+	if #value > 0 then for _, v in ipairs(value) do out[#out + 1] = json(v) end; return "[" .. table.concat(out, ",") .. "]" end
+	for k, v in pairs(value) do out[#out + 1] = json(k) .. ":" .. json(v) end
+	return "{" .. table.concat(out, ",") .. "}"
+end
+function System.writeCache(path, data)
+	local f, err = io.open(path .. ".tmp", "w"); if not f then return false, err end
+	f:write(json(data)); f:close(); return os.rename(path .. ".tmp", path)
+end
+function System.readCache(path)
+	local f, err = io.open(path, "r"); if not f then return nil, err end
+	local body = f:read("*a"); f:close()
+	local ok, data = pcall(ns.json_parse, body)
+	if not ok or type(data) ~= "table" or data.version ~= require("apps.diskmap.Catalog").version or type(data.measurements) ~= "table" then return nil, "Invalid Diskmap cache" end
+	for id, m in pairs(data.measurements) do
+		if type(id) ~= "string" or type(m) ~= "table" or (m.bytes ~= nil and (type(m.bytes) ~= "number" or m.bytes < 0)) then return nil, "Invalid measurements" end
+	end
+	if data.disk and (type(data.disk) ~= "table" or type(data.disk.totalKb) ~= "number" or type(data.disk.freeKb) ~= "number" or data.disk.totalKb <= 0 or data.disk.freeKb < 0 or data.disk.freeKb > data.disk.totalKb) then return nil, "Invalid cached capacity" end
+	return data
+end
+function System.loadKeep()
+	local f = io.open((os.getenv("HOME") or "") .. "/Library/Application Support/Diskmap/kept.json", "r")
+	if not f then return {} end
+	local body = f:read("*a"); f:close()
+	local ok, value = pcall(ns.json_parse, body)
+	return ok and type(value) == "table" and value or {}
+end
+function System.saveKeep(kept)
+	local directory = (os.getenv("HOME") or "") .. "/Library/Application Support/Diskmap"
+	if not os.execute("/bin/mkdir -p " .. System.quote(directory)) then return false end
+	return System.writeCache(directory .. "/kept.json", kept)
+end
+function System.start(paths, exclusions)
 	local pipe = assert(io.popen("/usr/bin/mktemp -d /tmp/diskmap.XXXXXXXX"))
 	local directory = pipe:read("*l")
 	pipe:close()
 	assert(directory and directory:match("^/tmp/diskmap%.%w+$"), "Cannot create private scan directory")
 	local output = directory .. "/result.json"
 	local args = {}
-	for _, path in ipairs(paths) do args[#args + 1] = System.quote(path) end
-	local command = "/usr/bin/nice -n 10 /usr/bin/perl " .. System.quote("apps/diskmap/services/scan.pl") .. " " .. System.quote(output) .. ' "$PPID" ' .. System.quote(mode or "tree") .. " " .. table.concat(args, " ")
+	local plan = directory .. "/plan.json"
+	local file = assert(io.open(plan, "w")); file:write(json({roots = paths, exclusions = exclusions or {}})); file:close()
+	args[1] = System.quote(plan)
+	local command = "/usr/bin/nice -n 10 /usr/bin/perl " .. System.quote("apps/diskmap/services/scan.pl") .. " " .. System.quote(output) .. ' "$PPID" ' .. System.quote("inventory") .. " " .. table.concat(args, " ")
 	local launcher = assert(io.popen(command .. " </dev/null >" .. System.quote(directory .. "/error") .. " 2>&1 & echo $!"))
 	local pid = tonumber(launcher:read("*l"))
 	launcher:close()
@@ -21,7 +59,7 @@ end
 function System.cancel(job)
 	if not job then return end
 	if job.pid then os.execute("/bin/kill " .. tostring(job.pid) .. " 2>/dev/null") end
-	for _, file in ipairs({"result.json", "result.json.tmp", "error"}) do os.remove(job.directory .. "/" .. file) end
+	for _, file in ipairs({"result.json", "result.json.tmp", "error", "plan.json"}) do os.remove(job.directory .. "/" .. file) end
 	os.remove(job.directory)
 end
 function System.poll(job)
@@ -59,7 +97,6 @@ function System.saveSettings(enabled)
 	file:write(enabled and "enabled" or "paused"); file:close()
 	return true
 end
-System.pickFolder = function() return ns._pickFolder("Choose a folder to measure") end
 System.diskSpace = ns.diskSpace
 function System.trash(path)
 	local current = ""

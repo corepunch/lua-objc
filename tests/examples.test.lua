@@ -4,6 +4,7 @@ local ns = require("AppKit")
 local t = require("TestKit")
 
 local examples = {
+	"apps/diskmap/init.lua",
 	"apps/studio/init.lua",
 	"apps/playground/init.lua",
 	"apps/hello/init.lua",

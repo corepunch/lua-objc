@@ -70,7 +70,7 @@ static NSMutableDictionary *lua_table_to_dict(lua_State *L, int idx) {
 
 /* Convert a Lua table (string or integer keys) to an ObjC collection.
  * String-keyed subtables become NSMutableDictionary, array-indexed ones
- * become NSMutableArray.  Leaf values become NSString.  This preserves
+ * become NSMutableArray.  Scalar values retain their types.  This preserves
  * the tree structure needed by LuaOutlineViewSource. */
 static id lua_to_objc_recursive(lua_State *L, int idx) {
 	lua_pushvalue(L, idx);
@@ -95,6 +95,10 @@ static id lua_to_objc_recursive(lua_State *L, int idx) {
 			id value = nil;
 			if (lua_type(L, -1) == LUA_TTABLE) {
 				value = lua_to_objc_recursive(L, lua_gettop(L));
+			} else if (lua_isboolean(L, -1)) {
+				value = @(lua_toboolean(L, -1));
+			} else if (lua_type(L, -1) == LUA_TNUMBER) {
+				value = @(lua_tonumber(L, -1));
 			} else {
 				const char *str = lua_tostring(L, -1);
 				value = str ? [NSString stringWithUTF8String:str] : @"";
@@ -428,13 +432,17 @@ static int bridge_table_column_widths(lua_State *L) {
 // visible rows without a window, so ask its real delegate for the cell.
 static int bridge_table_cell(lua_State *L) {
 	NSScrollView *scroll = check_objc(L, 1);
-	LuaTableViewSource *source = objc_getAssociatedObject(scroll, &kKeys[kTableSourceKey]);
+	id source = objc_getAssociatedObject(scroll, &kKeys[kTableSourceKey]);
 	if (!source) return luaL_error(L, "not a table view");
-	NSTableView *table = source.tableView;
+	NSTableView *table = (NSTableView *)scroll.documentView;
 	NSInteger column = luaL_checkinteger(L, 2), row = luaL_checkinteger(L, 3);
-	if (column < 0 || column >= table.tableColumns.count || row < 0 || row >= source.rows.count)
+	if (column < 0 || column >= table.tableColumns.count || row < 0 || row >= table.numberOfRows)
 		return luaL_error(L, "table cell out of bounds");
-	NSView *cell = [source tableView:table viewForTableColumn:table.tableColumns[column] row:row];
+	NSView *cell;
+	if ([table isKindOfClass:NSOutlineView.class]) {
+		NSOutlineView *outline = (NSOutlineView *)table;
+		cell = [source outlineView:outline viewForTableColumn:table.tableColumns[column] item:[outline itemAtRow:row]];
+	} else cell = [source tableView:table viewForTableColumn:table.tableColumns[column] row:row];
 	[cell layoutSubtreeIfNeeded];
 	push_objc(L, cell, "nsview");
 	return 1;

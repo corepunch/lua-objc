@@ -1,52 +1,42 @@
-# Verification — September 21, 2026
+# Category redesign verification — September 21, 2026
 
-## Passing
+- `make` and `make diskmap-app` pass; the bundle has a local ad-hoc signature.
+- Diskmap: 567 assertions pass. Covers catalog policies, partial/denied/stale
+  measurements, ancestor Keep, cache replay, chart accounting, scan cancellation,
+  cross-root exclusions, hard links, small-window geometry, and Settings return
+  navigation. The scanner fixture uses disposable temporary files.
+- Native outline cells: 27 assertions pass for subtitle/symbol cells, clearing
+  reused values, disclosure/selection preservation, viewport widths, native
+  NSBox, determinate progress and ancestor layout invalidation.
+- Bridge: 189 assertions pass. Outline sizing now tests the native cell's
+  extent rather than assuming declared column width includes AppKit insets.
+- Scroll content layout: 12 assertions pass.
+- Screenshot QA used `tests/fixtures/diskmap.json`, explicitly synthetic and
+  visibly labeled as test cache. Inspected small/large windows, light/dark,
+  expanded Developer, selection, Settings, empty search and native loading.
+- Native layout dumps confirmed the dashboard remains inside the minimum-size
+  window. Long outline subtitles truncate; full descriptions are in the inspector.
+- Computer Use verified real outline disclosure, arrow-key selection and the
+  bottom-left Settings button. A Settings-to-Storage selection bug found during
+  that pass is now covered by a regression test.
+- Colored capacity breakdown restored, including Other/unmeasured and free space.
+  Its weights sum to capacity; conflicting allocation totals disable the chart
+  rather than fabricating proportions.
 
-- Diskmap regression suite: 84 assertions, including native three-pane resizing,
-  stale result rejection, cancellation, startup access restrictions, native
-  selection/activation, hard links, and filenames with quotes/tabs/newlines.
-- Native bridge suite: 188 assertions.
-- Mail workspace suite: 14 assertions.
-- UIKit compile check with the installed iPhone Simulator SDK.
-- App bundle: embedded Lua dependency, strict deep code-signature verification,
-  and actual launch/scan of a disposable fixture.
-- Actual window screenshots: large/small layouts, light/dark appearances, loaded,
-  loading, empty, error, suggestions, settings, large files and file types. Search
-  and suggestion selection were also exercised through the accessibility UI.
-- Native layout dump at 1000×600 confirms the footer remains inside its pane and
-  the trailing table cell stays within the viewport. Long names truncate; the
-  inspector and Settings scroll when necessary.
+`make test` stalls in existing run-loop tests. A bounded per-file sweep reproduces
+previously recorded issues: adventure_arena_zil (missing source), glass_materials
+(missing template), layout_dump, stocks_workspace; timeouts in gestures_haptics,
+navigation, perf_large_list, reorder and webpage. No blanket full-suite pass is
+claimed. Focused affected suites pass.
 
-## Folder percentage and layout review
+Coverage is a catalog of known locations, not exhaustive discovery of every app
+version or custom installation. Shared storage and independent measurement
+batches can differ from physical capacity; the unreconciled difference stays
+visible. Protected resources and mixed application data remain review-only.
 
-- Added native colored percentage indicators, stable through filtering, with
-  zero/unknown/tiny-share handling and bounds checks.
-- Reviewed 36-point table rows, blue folder symbols, compact inspector headers,
-  semantic gray chart segments, and grouped actions. Toolbar retained.
-- Verified light and dark screenshots at 1440×880 and 1000×600; native level
-  indicators stay inside cells. The focused Diskmap and bridge suites pass.
-- Repeated the bounded full suite: unchanged 62 passes, four failures and five
-  timeouts listed below.
-
-## Repository-wide result
-
-`make test` stalled in existing run-loop tests. A bounded rerun of all 71 test
-files (six seconds per file) produced 62 passes, four failures and five timeouts:
-
-- Failures: `adventure_arena_zil`, `glass_materials`, `layout_dump`,
-  `stocks_workspace`.
-- Timeouts: `gestures_haptics`, `navigation`, `perf_large_list`, `reorder`,
-  `webpage`.
-
-The layout-dump and Stocks failures were reproduced with a comparison native
-runtime that omits Diskmap's native changes. The adventure test reports missing
-bundled Zork data; the glass test requests a missing `views/Main.etlua`. These
-failures have not been changed as part of Diskmap.
-
-## Distribution still required
-
-The generated bundle has a local ad-hoc signature. Public release requires a
-Developer ID Application identity, notarization/stapling, and verification on
-other supported macOS versions/architectures. No claim of notarization is made.
-The scanner depends on macOS's system Perl and JSON::PP. Permissions can restrict
-coverage; APFS shared blocks mean measured bytes are not guaranteed savings.
+Icon/feature follow-up: verified white rounded badges, square intrinsic sizing,
+installed app artwork (NSWorkspace requires Launch Services access), missing-app
+fallback, Siri/Dictation independent rollups, exact-path uniqueness, and rejection
+of obsolete unsplit caches. Screenshots cover System Data expanded in light and
+dark appearances. Known asset classes were checked against this Mac’s AssetsV2
+directory; unrecognized classes and preinstalled assets remain residual.

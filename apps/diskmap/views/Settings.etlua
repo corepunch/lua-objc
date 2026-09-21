@@ -5,7 +5,7 @@
   <Label fillWidth="true" text="While Diskmap is open, check known developer cache locations every 15 minutes. Scans run in a separate process and never delete files automatically." size="13" lines="4" />
   <Button title="<%= monitoring and 'Pause background checks' or 'Enable background checks' %>" action="monitor" />
   <Label fillWidth="true" text="Access and estimates" size="16" weight="semibold" />
-  <Label fillWidth="true" text="Background checks skip personal folders, app containers, backups and Trash. Measure those locations only when you choose them in Suggestions, or select a folder using Scan Folder. macOS may ask for access. You can decline; restricted sizes remain unknown. Full Disk Access is optional for a comprehensive scan." size="13" lines="20" />
+  <Label fillWidth="true" text="Background checks skip personal folders, app containers, backups and Trash. Measure those locations only when you select a category and choose Measure Category. macOS may ask for access. You can decline; restricted sizes remain unknown. Full Disk Access is optional for a comprehensive scan." size="13" lines="20" />
   <Label fillWidth="true" text="Sizes measure allocated file blocks. APFS clones, compression, snapshots, and concurrent changes can make actual reclaimed space differ. Cloud-only files are not downloaded. Scans skip symbolic links and other mounted volumes." size="13" lines="20" />
   <Label fillWidth="true" text="Time Machine" size="16" weight="semibold" />
   <Label fillWidth="true" text="macOS counts local snapshots as available space and removes them as needed. They are restore points, not junk. Use Time Machine settings to manage backups; Diskmap never deletes snapshots or protected system assets." size="13" lines="20" />

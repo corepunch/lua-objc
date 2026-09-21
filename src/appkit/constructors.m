@@ -12,6 +12,11 @@
 	return self;
 }
 - (NSView *)hitTest:(NSPoint)point { return _allowsHitTesting ? [super hitTest:point] : nil; }
+- (void)viewDidChangeEffectiveAppearance {
+	[super viewDidChangeEffectiveAppearance];
+	NSColor *color = self.backgroundColor;
+	if (color) self.backgroundColor = color;
+}
 @end
 
 static int bridge_hit_test_target(lua_State *L) {

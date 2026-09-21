@@ -344,12 +344,11 @@ end
 
 function AppKit.GroupBox(props)
 	props = props or {}
-	local content = stackChildren(props, props.header)
-	content.padding = props.padding or 12
-	content.background = props.background or "background"
-	content.cornerRadius = props.cornerRadius or 10
-	content.clipsToBounds = true
-	return AppKit.VStack(content)
+	local box = bridge._box()
+	box.title = props.header or ""
+	if not props.header then box.titlePosition = 0 end
+	box.contentView = AppKit.VStack(stackChildren(props))
+	return applyLayout(box, props)
 end
 
 function AppKit.Form(props)
@@ -720,9 +719,10 @@ function AppKit.SystemImage(arg)
 	local size = arg.size or 17
 	local weight = arg.weight or "regular"
 	local color = arg.color or "accent"
-	return applyLayout(
-		bridge._systemImage(name, description, size, weight, color),
-		arg)
+	local view = bridge._systemImage(name, description, size, weight, color)
+	view.badgeColorName = arg.badgeColor
+	view.appBundleId = arg.appIcon
+	return applyLayout(view, arg)
 end
 
 function AppKit.Spacer(props)
@@ -985,9 +985,13 @@ function AppKit.Divider(props)
 end
 
 function AppKit.ProgressView(props)
+	props = props or {}
 	local v = bridge._progressIndicator()
-	v.style = 1
-	v.displayedWhenStopped = false
+	v.indeterminate = props.indeterminate == true or props.value == nil
+	v.style = props.value ~= nil and 0 or 1
+	v.displayedWhenStopped = props.value ~= nil
+	v.minValue = 0; v.maxValue = 1
+	if props.value ~= nil then v.doubleValue = math.max(0, math.min(1, props.value)) end
 	return applyLayout(v, props)
 end
 

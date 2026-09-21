@@ -2,140 +2,137 @@ local ns = require("AppKit")
 local xml = require("ui.xml")
 local Model = require("apps.diskmap.Model")
 local System = require("apps.diskmap.services.System")
-local VIEWS = "apps/diskmap/views/"
-local Controller = {}
-Controller.__index = Controller
-local function render(name, data) return xml.renderFile(VIEWS .. name .. ".etlua", data or {}, ns) end
+local Controller = {}; Controller.__index = Controller
+local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
+local sections = {
+	{name = "Storage", icon = "chart.pie.fill"}, {name = "Cleanup", icon = "trash"},
+	{name = "Developer", icon = "hammer"}, {name = "Applications", icon = "app"},
+}
 function Controller.new(service)
 	if service == Controller then service = nil end
-	local home = os.getenv("HOME") or "/Users"
 	service = service or System
-	local monitoring = not service.loadSettings or service.loadSettings()
-	local rules = Model.rules(home)
-	return setmetatable({service = service or System, home = home, rules = rules, section = "Disk Map", query = "", history = {}, forward = {}, suggestions = Model.suggestions(rules, {}, {}), monitoring = monitoring, generation = 0, checked = {}, measurements = {trees = {}, rootStates = {}}}, Controller)
+	local home = os.getenv("HOME") or "/Users"
+	return setmetatable({service = service, home = home, model = Model.new(home), section = "Storage", query = "", generation = 0,
+		monitoring = not service.loadSettings or service.loadSettings(), status = "Known locations are measured on request."}, Controller)
 end
-function Controller:replace(pane, view)
-	pane:clearContainer(); pane:add(view); pane:layout()
+function Controller:replace(view)
+	self.content:clearContainer(); self.content:add(view); self.content:layout()
 end
-function Controller:showDetail(row)
-	self.selected = row
-	row = row or {}
-	local review = row.consequence ~= nil
-	local children = Model.rows({trees = {row}}, "Disk Map")
-	local previews = {}
-	local actions = {}
-	for i = 1, math.min(5, #self.suggestions) do
-		local suggestion = self.suggestions[i]
-		previews[i] = suggestion
-		actions["review" .. i] = function() self:showDetail(suggestion) end
+function Controller:capacityText()
+	local d = self.disk or {}
+	if not d.totalKb then return "Capacity unavailable" end
+	return Model.size(d.totalKb * 1024) .. " total  ·  " .. Model.size((d.totalKb - d.freeKb) * 1024) .. " used  ·  " .. Model.size(d.freeKb * 1024) .. " available"
+end
+function Controller:coverageText()
+	local measured = Model.total(self.model)
+	local text = Model.size(measured) .. " measured"
+	if self.disk then
+		local difference = (self.disk.totalKb - self.disk.freeKb) * 1024 - measured
+		text = text .. " · " .. (difference < 0 and "−" or "") .. Model.size(math.abs(difference)) .. " unreconciled"
 	end
-	local data = {
-		children = children, suggestions = previews, reclaimable = self.reclaimable and Model.humanKb(self.reclaimable) .. " in rebuildable caches" or "Cache measurements pending",
-		items = row.items and tostring(row.items) .. " items measured" or "",
-		canScan = row.directory == true and #children == 0,
-		name = row.name or "Storage insights", path = row.path or "", size = row.size or "",
-		icon = review and "lightbulb" or (row.directory and "folder.fill" or "doc"),
-		heading = review and row.risk or "About this selection",
-		message = row.consequence or (row.path and ((row.items and (tostring(row.items) .. " items measured. ") or "") .. "Double-click a folder to scan its contents. Files open in Finder for review. Sizes reflect allocated storage, including hidden files.") or "Select an item to inspect it. Suggestions explain what removal changes before you act."),
-		review = review, hasPath = row.path ~= nil,
-		outcome = row.action == "trash" and (row.size .. " measured. Space is released only after you empty Trash in Finder. APFS snapshots may retain blocks; future cache growth is expected.") or "This is measured storage, not a reclaimable-space promise. Review individual items in the owning application before removing them.",
-		primary = row.action == "measure" and "Measure This Location…" or row.action == "trash" and "Review Move to Trash…" or row.action == "xcode" and "Open Xcode" or row.action == "docker" and "Open Docker" or "Review in Finder",
-		actions = {
-			primary = function() self:review(row) end,
-			reveal = function() ns.revealInFinder(row.path) end,
-			copy = function() ns.copyToClipboard(row.path) end,
-			terminal = function() os.execute("/usr/bin/open -a Terminal " .. System.quote(row.directory == false and (row.path:match("^(.*)/") or "/") or row.path)) end,
-			suggestions = function() self:showSection("Suggestions") end,
-			scan = function() self.section = "Disk Map"; self:startScan(row.path) end,
-		},
-	}
-	for key, action in pairs(actions) do data.actions[key] = action end
-	local view, refs = render("RightSidebar", data)
-	self:replace(self.refs.detail, view)
-	if refs.children then
-		refs.children:replaceRows(children)
-		refs.children:onRowSelect(function(_, _, child) if child then self:showDetail(child) end end)
-		refs.children:onRowActivate(function(_, _, child)
-			if child and child.directory then self.section = "Disk Map"; self:startScan(child.path)
-			elseif child then ns.revealInFinder(child.path) end
-		end)
-	end
-end
-function Controller:review(row)
-	if row.action == "measure" then
-		self:scanSuggestions(row.id)
-	elseif row.action == "trash" then
-		local choice = ns.Alert {title = "Move " .. row.name .. " to Trash?", message = row.path .. "\n\n" .. row.consequence .. "\n\n" .. row.size .. " measured at the last scan. No space is freed until Trash is emptied in Finder. You can restore the folder from Trash before then.", buttons = {"Cancel", "Move to Trash"}}
-		if choice ~= 2 then return end
-		local ok, err = Model.trash(row, self.rules, self.service)
-		if not ok then ns.Alert {title = "Could not move to Trash", message = err or "Check access permissions and try again."}; return end
-		self:scanSuggestions()
-		self.result = nil
-		if self.section ~= "Suggestions" and self.currentPath then self:startScan(self.currentPath, true) end
-	elseif row.action == "xcode" or row.action == "docker" then
-		local app = row.action == "xcode" and "Xcode" or "Docker"
-		local ok = os.execute("/usr/bin/open -a " .. System.quote(app))
-		if not ok then ns.Alert {title = app .. " could not be opened", message = "Open the application manually, or reveal the measured location in Finder."} end
-	else ns.revealInFinder(row.path) end
+	return text
 end
 function Controller:visibleRows()
-	if self.section ~= "Suggestions" then return Model.rows(self.result or {}, self.section, self.query) end
-	local rows = {}
-	for _, row in ipairs(self.suggestions) do if row.name:lower():find(self.query:lower(), 1, true) then rows[#rows + 1] = row end end
-	return rows
-end
-function Controller:updateToolbar()
-	if not self.window then return end
-	for id, enabled in pairs({back = #self.history > 0, forward = #self.forward > 0, up = self.result ~= nil and self.currentPath ~= "/", cancel = self.scanJob ~= nil}) do
-		local item = ns.ToolbarItem(self.window, id)
-		item.enabled = enabled
-		if item.view then item.view.enabled = enabled end
+	if self.section == "Cleanup" then
+		local rows = {}
+		for _, row in ipairs(Model.suggestions(self.model)) do
+			if (row.name .. " " .. row.subtitle):lower():find(self.query:lower(), 1, true) then rows[#rows + 1] = row end
+		end
+		return rows
 	end
+	return Model.rows(self.model, self.rootId, self.query)
+end
+function Controller:updateOpportunities()
+	if not self.refs or not self.refs.opportunities then return end
+	local suggestions = Model.suggestions(self.model)
+	while #suggestions > 5 do table.remove(suggestions) end
+	local actions = {}
+	for i, row in ipairs(suggestions) do actions["review" .. i] = function() self:select(row.id) end end
+	local view = render("Opportunities", {suggestions = suggestions, actions = actions})
+	self.refs.opportunities:clearContainer(); self.refs.opportunities:add(view); self.refs.opportunities:layout()
+end
+function Controller:updateStorageBar()
+	if not self.refs or not self.refs.storageBar then return end
+	local segments, explanation = Model.distribution(self.model, self.disk)
+	local actions = {}
+	for _, segment in ipairs(segments) do
+		actions["category_" .. segment.id] = function()
+			if segment.id == "free" then self:openSettings()
+			else self:showSection("Storage", self.model.byId[segment.id] and segment.id or nil) end
+		end
+	end
+	local view = render("StorageBar", {segments = segments, explanation = explanation, actions = actions})
+	self.refs.storageBar:clearContainer(); self.refs.storageBar:add(view); self.refs.storageBar:layout()
 end
 function Controller:updateRows()
-	if not self.results then return end
-	local rows = self:visibleRows()
-	self.results:replaceRows(rows)
-	local status = self.section == "Suggestions" and self.suggestionStatus or self.scanStatus
-	self.status.text = (status or "Ready") .. " · " .. #rows .. " results"
+	if not self.refs or not self.refs.results then return end
+	self.refs.results:replaceRows(self:visibleRows())
+	self.refs.coverage.text = self:coverageText(); self.refs.status.text = self.status
+	self:updateOpportunities()
+	self:updateStorageBar()
+	if self.job then self.refs.results:showLoading() else self.refs.results:hideLoading() end
 end
-function Controller:showSection(section)
+function Controller:select(id)
+	local row = self.model.byId[id]; if not row or not self.refs.detailName then return end
+	self.selectedId = id
+	local m = self.model.measurements[id]
+	self.refs.detailName.text = row.name
+	self.refs.detailText.text = row.consequence or row.subtitle .. ". " .. (row.children and "Expand to inspect categories. Measure to check their known locations." or "Review this data in its owning app. Size alone does not establish that it is disposable.")
+	self.refs.location.text = (row.path or "Multiple known locations") .. (m and "\n" .. Model.size(m.bytes) .. " · " .. m.status or "")
+	self.refs.manage.title = row.action == "trash" and "Review Move to Trash…" or row.action == "settings" and "Open System Settings" or row.action == "xcode" and "Open Xcode" or row.action == "docker" and "Open Docker" or "Reveal in Finder"
+	self.refs.manage.enabled = not self.cachePath and not row.children and (row.action ~= "trash" or Model.canTrash(self.model, id)) and (row.path ~= nil or row.action == "settings")
+	self.refs.measure.enabled = not self.cachePath and row.id ~= "snapshots"
+	self.refs.keep.enabled = true
+	self.refs.keep.title = self.model.kept[id] and "Stop keeping this resource" or "Keep this resource"
+	self.refs.inspector.hidden = false
+	self.refs.inspector:layout()
+	self.refs.detailName:scrollIntoView()
+end
+function Controller:showSection(section, rootId)
 	self.section = section
-	if self.navigation then
-		local indices = {["Disk Map"] = 0, Suggestions = 1, ["Large Files"] = 2, Applications = 3, ["File Types"] = 4}
-		self.navigation:selectRow(indices[section])
-	end
-	if section == "Applications" and not self.currentPath then self:startScan("/Applications", true); return end
-	self.results = nil
+	if self.navigation then self.navigation:selectRow(({Storage = 0, Cleanup = 1, Developer = 2, Applications = 3})[section]) end
+	self.rootId = rootId or (section == "Developer" and "developer" or section == "Applications" and "applications" or nil)
 	if section == "Settings" then
-		self:replace(self.refs.content, render("Settings", {monitoring = self.monitoring, actions = {
-			monitor = function()
-				self.monitoring = not self.monitoring
-				if self.service.saveSettings and not self.service.saveSettings(self.monitoring) then ns.Alert {title = "Settings could not be saved", message = "This choice applies until Diskmap closes."} end
-				self:showSection("Settings")
-				if self.monitoring then self:scanSuggestions() end
-			end,
-			storage = function() os.execute("/usr/bin/open 'x-apple.systempreferences:com.apple.settings.Storage'") end,
-		}}))
-		return
+		self.refs = {}
+		self:replace(render("Settings", {monitoring = self.monitoring, actions = {
+			monitor = function() self.monitoring = not self.monitoring; if self.service.saveSettings then self.service.saveSettings(self.monitoring) end; self:showSection("Settings") end,
+			storage = function() self:openSettings() end,
+		}})); return
 	end
-	local subtitle = self.currentPath or "Choose a folder to measure. Only filenames and size metadata are examined."
-	if section == "Suggestions" then subtitle = Model.humanKb(self.reclaimable) .. " in rebuildable caches · other categories require individual review"
-	elseif section == "Large Files" then subtitle = subtitle .. " · largest 500 files of at least 1 MB"
-	elseif section == "Applications" then subtitle = subtitle .. " · application bundles in this scan"
-	elseif section == "File Types" then subtitle = subtitle .. " · allocated space grouped by filename extension" end
-	local view, refs = render("Dashboard", {title = section, section = section, subtitle = subtitle, segments = section == "Disk Map" and Model.segments(self.result or {}) or {}, status = "Preparing…", hasScan = self.currentPath ~= nil or section == "Suggestions", actions = {refresh = function() self:rescan() end}})
-	self:replace(self.refs.content, view)
-	self.results = refs.results; self.status = refs.status
-	self.results:onRowSelect(function(_, _, row) if row then self:showDetail(row) end end)
-	self.results:onRowActivate(function(_, _, row)
-		if not row then return end
-		if section == "Suggestions" then self:showDetail(row)
-		elseif row.path and row.directory then self.section = "Disk Map"; self:startScan(row.path)
-		elseif row.path then ns.revealInFinder(row.path) end
-	end)
+	local root = self.rootId and self.model.byId[self.rootId]
+	local suggestions = Model.suggestions(self.model)
+	while #suggestions > 5 do table.remove(suggestions) end
+	local actions = {
+		search = function(value) self.query = value; self:updateRows() end,
+		measure = function() self:scan(self.selectedId or self.rootId) end,
+		manage = function() self:manage() end,
+		keep = function()
+			if not self.selectedId then return end
+			self.model.kept[self.selectedId] = not self.model.kept[self.selectedId]
+			if not self.cachePath and self.service.saveKeep then
+				if not self.service.saveKeep(self.model.kept) then self.status = "Keep preference could not be saved." end
+			end
+			self:select(self.selectedId); self:updateRows()
+		end,
+		system = function() self:showSection("Storage", "macos") end,
+	}
+	for i, row in ipairs(suggestions) do actions["review" .. i] = function() self:select(row.id) end end
+	local d = self.disk or {}
+	local view, refs = render("Dashboard", {capacity = self:capacityText(), usedFraction = d.totalKb and d.totalKb > 0 and (1 - d.freeKb / d.totalKb) or 0,
+		suggestions = suggestions, title = root and root.name or section == "Cleanup" and "Cleanup" or "Storage categories",
+		subtitle = root and root.subtitle or "Understand what is stored, why it exists, and how to manage it.", icon = root and root.icon or "chart.pie.fill", color = root and root.color or "systemBlue",
+		coverage = self:coverageText(), status = self.status, actions = actions})
+	self.refs = refs; self:replace(view)
+	refs.results:onRowSelect(function(_, _, row) if row then self:select(row.id) end end)
+	refs.results:onRowActivate(function(_, _, row) if row then self:select(row.id) end end)
 	self:updateRows()
-	if (section == "Suggestions" and self.suggestionJob) or (section ~= "Suggestions" and self.scanJob) then self.results:showLoading() end
+	if self.selectedId then self:select(self.selectedId) end
+end
+function Controller:cancel()
+	self.generation = self.generation + 1
+	if self.job then self.job.cancelled = true; self.service.cancel(self.job); self.job = nil end
+	self.status = "Measurement cancelled; previous results retained."
+	self:updateRows()
 end
 function Controller:await(job, completion)
 	ns.async(function()
@@ -146,144 +143,87 @@ function Controller:await(job, completion)
 		end
 	end)
 end
-function Controller:cancel(job)
-	if job then job.cancelled = true; self.service.cancel(job) end
-end
-function Controller:startScan(path, navigation)
-	path = path:gsub("/+$", ""); if path == "" then path = "/" end
-	if not navigation and self.currentPath and self.currentPath ~= path then self.history[#self.history + 1] = self.currentPath; self.forward = {} end
-	self.currentPath = path
-	self:cancel(self.scanJob)
-	self.generation = self.generation + 1
+function Controller:scan(id)
+	if self.cachePath then self.status = "Test cache · scanning and cleanup disabled"; self:updateRows(); return end
+	self:cancel()
+	local paths, ids = Model.targets(self.model, id)
+	if #paths == 0 then return end
+	local exclusions = {}; for _, row in ipairs(self.model.leaves) do if row.path then exclusions[#exclusions + 1] = row.path end end
+	local ok, job = pcall(self.service.start, paths, exclusions)
+	if not ok then self.status = "Could not start measurement: " .. tostring(job); self:updateRows(); return end
+	self.job = job; self.status = "Measuring known locations…"; self:updateRows()
 	local generation = self.generation
-	self.result = nil; self.scanStatus = "Scanning in background…"
-	local ok, job = pcall(self.service.start, {path})
-	if not ok then self.scanStatus = "Cannot start scan: " .. tostring(job); self:showSection(self.section); return end
-	self.scanJob = job
-	self:updateToolbar()
-	self:showSection(self.section)
-	self:showDetail()
 	self:await(job, function(result)
 		if generation ~= self.generation then return end
-		self.scanJob = nil
-		self:updateToolbar()
-		self.result = result
-		self.scanStatus = result.failure and result.failure ~= "" and result.failure or ("Scanned in " .. (result.seconds or 0) .. "s · " .. (result.errors or 0) .. " unreadable locations")
-		self:updateCapacity()
-		if self.section ~= "Settings" and self.section ~= "Suggestions" then
-			self:showSection(self.section)
-			local root = result.trees and result.trees[1]
-			if type(root) == "table" then root.size = Model.humanKb(root.kb); self:showDetail(root) end
+		self.job = nil; Model.apply(self.model, ids, result)
+		self.disk = self.service.diskSpace(self.home)
+		self.status = result.failure and result.failure ~= "" and result.failure or "Measured " .. os.date("%H:%M") .. " · " .. (result.errors or 0) .. " unavailable locations"
+		if self.writeCache and self.service.writeCache then
+			local saved, err = self.service.writeCache(self.writeCache, {version = require("apps.diskmap.Catalog").version, measurements = self.model.measurements, disk = self.disk})
+			if not saved then self.status = self.status .. " · Cache not saved: " .. tostring(err) end
 		end
+		-- Keep the outline mounted so native selection and disclosure survive updates.
+		self:updateRows()
+		if self.refs and self.refs.capacity then self.refs.capacity.text = self:capacityText() end
+		if self.selectedId then self:select(self.selectedId) end
 	end)
 end
-function Controller:scanSuggestions(ruleId)
-	if self.suggestionJob then return end
-	local paths, indices = {}, {}
-	for i, rule in ipairs(self.rules) do
-		if ruleId and rule.id == ruleId or not ruleId and rule.automatic then
-			paths[#paths + 1] = rule.path; indices[#indices + 1] = i
-		end
-	end
-	if #paths == 0 then return end
-	local ok, job = pcall(self.service.start, paths, "summary")
-	if not ok then self.suggestionStatus = "Could not start suggestions scan"; return end
-	self.suggestionJob = job; self.suggestionStatus = "Checking known locations…"
-	if self.section == "Suggestions" then self:showSection("Suggestions") end
-	self:await(job, function(result)
-		self.suggestionJob = nil
-		for position, index in ipairs(indices) do
-			self.checked[index] = true
-			self.measurements.trees[index] = result.trees and result.trees[position]
-			self.measurements.rootStates[index] = result.rootStates and result.rootStates[position] or "unreadable"
-		end
-		self.suggestions, self.reclaimable = Model.suggestions(self.rules, self.measurements, self.checked)
-		self.suggestionStatus = result.failure and result.failure ~= "" and result.failure or ("Checked " .. os.date("%H:%M") .. " · " .. (result.errors or 0) .. " unavailable locations")
-		if self.section == "Suggestions" then self:showSection("Suggestions"); self:showDetail()
-		else self:showDetail(self.selected) end
-	end)
+function Controller:openSettings()
+	os.execute("/usr/bin/open -a 'System Settings'")
 end
-function Controller:updateCapacity()
-	local disk = self.service.diskSpace(self.currentPath or self.home)
-	if disk and self.capacity then
-		self.capacity.text = Model.humanKb(disk.totalKb) .. " total · " .. Model.humanKb(disk.freeKb) .. " free"
-		self.toolbarTitle:layout()
-	end
-end
-function Controller:goBack()
-	if #self.history == 0 then return end
-	self.forward[#self.forward + 1] = self.currentPath
-	self:startScan(table.remove(self.history), true)
-end
-function Controller:goForward()
-	if #self.forward == 0 then return end
-	self.history[#self.history + 1] = self.currentPath
-	self:startScan(table.remove(self.forward), true)
-end
-function Controller:chooseFolder()
-	local path = self.service.pickFolder()
-	if path then self.section = "Disk Map"; self:startScan(path) end
-end
-function Controller:rescan()
-	if self.section ~= "Suggestions" and not self.currentPath then self:chooseFolder(); return end
-	if self.section == "Suggestions" then self:scanSuggestions() else self:startScan(self.currentPath, true) end
+function Controller:manage()
+	local row = self.model.byId[self.selectedId]
+	if not row or self.cachePath then return end
+	if row.action == "trash" then
+		if not Model.canTrash(self.model, row.id) then return end
+		local choice = ns.Alert {title = "Move " .. row.name .. " to Trash?", message = row.path .. "\n\n" .. row.consequence, buttons = {"Cancel", "Move to Trash"}}
+		if choice ~= 2 then return end
+		local ok, err = self.service.trash(row.path)
+		if not ok then ns.Alert {title = "Could not move to Trash", message = err or "Check permissions."}; return end
+		self:scan(row.id)
+	elseif row.action == "settings" then self:openSettings()
+	elseif row.action == "xcode" or row.action == "docker" then os.execute("/usr/bin/open -a " .. System.quote(row.action == "xcode" and "Xcode" or "Docker"))
+	elseif row.path then ns.revealInFinder(row.path) end
 end
 function Controller:createWindow()
+	for _, value in ipairs(arg or {}) do
+		self.cachePath = value:match("^%-%-?cache=(.+)$") or self.cachePath
+		self.writeCache = value:match("^%-%-write%-cache=(.+)$") or self.writeCache
+	end
+	if not self.cachePath and self.service.loadKeep then
+		for id, kept in pairs(self.service.loadKeep()) do if self.model.byId[id] and kept == true then self.model.kept[id] = true end end
+	end
+	if self.cachePath then
+		local data, err = self.service.readCache(self.cachePath)
+		if data then
+			for id, m in pairs(data.measurements) do if self.model.byId[id] then self.model.measurements[id] = m end end
+			self.disk = data.disk; self.status = "Test cache · scanning and cleanup disabled"
+		else self.status = "Cache could not be loaded: " .. tostring(err) end
+	else self.disk = self.service.diskSpace(self.home) end
 	local cfg = render("Window")
-	local actions = {
-		choose = function() self:chooseFolder() end,
-		back = function() self:goBack() end, forward = function() self:goForward() end,
-		up = function() if not self.currentPath then return end; self:startScan(self.currentPath:match("^(.*)/[^/]+$") or "/") end,
-		cancel = function()
-			self:cancel(self.scanJob); self.scanJob = nil; self.generation = self.generation + 1
-			self.scanStatus = "Scan cancelled"; self:updateToolbar()
-			if self.section ~= "Settings" then self:showSection(self.section) end
-		end,
-		refresh = function() self:rescan() end, toggleDetail = function() self.window:toggleDetail() end,
-	}
-	for _, item in ipairs(cfg.toolbar) do item.action = actions[item.id] end
 	local sidebar, sidebarRefs = render("Sidebar", {actions = {settings = function() self:showSection("Settings") end}})
 	local content, contentRefs = render("ContentPane")
-	local detail, detailRefs = render("DetailPane")
-	cfg.sidebar = sidebar; cfg.content = content; cfg.detail = detail
-	self.refs = {content = contentRefs.content, detail = detailRefs.detail}
-	local navigation = {}
-	local icons = {"chart.pie", "lightbulb", "doc", "app", "doc.on.doc"}
-	for i, name in ipairs({"Disk Map", "Suggestions", "Large Files", "Applications", "File Types"}) do navigation[#navigation + 1] = {name = name, icon = icons[i]} end
+	cfg.sidebar = sidebar; cfg.content = content
+	self.content = contentRefs.content
+	for _, item in ipairs(cfg.toolbar) do
+		if item.id == "refresh" then item.action = function() self:scan(self.rootId) end end
+		if item.id == "cancel" then item.action = function() self:cancel() end end
+	end
 	self.navigation = sidebarRefs.navigation
-	sidebarRefs.navigation:replaceRows(navigation)
+	sidebarRefs.navigation:replaceRows(sections)
 	sidebarRefs.navigation:onRowSelect(function(_, _, row) if row and row.name ~= self.section then self:showSection(row.name) end end)
 	self.window = ns.Window(cfg)
-	self.window.contentViewController.splitViewItems[1].maximumThickness = cfg.sidebarWidth
+	self:showSection("Storage")
+	sidebarRefs.navigation:selectRow(0)
+	if not self.cachePath then self:scan() end
 	local scope = ns.Scope.current()
-	if scope then scope:add({dispose = function() self:cancel(self.scanJob); self:cancel(self.suggestionJob) end}) end
-	local title, titleRefs = render("ToolbarTitle")
-	title.frame = ns.Rect(ns.Point(0, 0), ns.Size(title.fixedWidth, title.fixedHeight))
-	title:layout(title.fixedWidth)
-	ns.ToolbarItem(self.window, "drive").view = title
-	ns.ToolbarItem(self.window, "drive").bordered = false
-	self.toolbarTitle = title
-	self.capacity = titleRefs.capacity
-	local search = render("ToolbarSearch", {actions = {search = function(value) self.query = value; self:updateRows() end}})
-	search.frame = ns.Rect(ns.Point(0, 0), ns.Size(search.fixedWidth, search.fixedHeight))
-	ns.ToolbarItem(self.window, "search").view = search
-	ns.MenuItem {menu = "Go", title = "Back", keyEquivalent = "[", action = actions.back}
-	ns.MenuItem {menu = "Go", title = "Forward", keyEquivalent = "]", action = actions.forward}
-	ns.MenuItem {menu = "View", title = "Rescan", keyEquivalent = "r", action = actions.refresh}
-	if arg and arg[1] then self:startScan(arg[1])
-	else self.scanStatus = "Choose Scan Folder to begin; background checks only inspect known developer caches."
-		self:showSection("Disk Map"); self:showDetail(); self:updateToolbar()
-	end
-	self:updateCapacity()
-	self:scanSuggestions()
-	ns.async(function()
-		while true do
-			ns.sleep(30)
-			if not self.window.visible then self:cancel(self.scanJob); self:cancel(self.suggestionJob); return end
-			self.monitorTicks = (self.monitorTicks or 0) + 1
-			if self.monitoring and self.monitorTicks % 30 == 0 then self:scanSuggestions() end
+	if scope then scope:add({dispose = function() self:cancel() end}) end
+	if not self.cachePath then ns.async(function()
+		while self.window.visible do
+			ns.sleep(30); self.ticks = (self.ticks or 0) + 1
+			if self.window.visible and self.monitoring and not self.job and self.ticks % 30 == 0 then self:scan() end
 		end
-	end)
+	end) end
 	return self.window
 end
 return Controller

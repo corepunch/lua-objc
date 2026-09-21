@@ -769,8 +769,10 @@ fileTree.size = ns.Size(220, 200)
 fileTree:layout(220)
 local outlineWidths = bridge._tableColumnWidths(fileTree)
 t.assertEqual(#outlineWidths, 1, "file tree has one outline column")
-t.assertEqual(outlineWidths[1].width, 220,
-	"file tree column shrinks to the navigator viewport")
+t.expect(outlineWidths[1].width <= 220 and outlineWidths[1].width >= 200,
+	"file tree column follows the viewport after native cell insets")
+t.expect(bridge._tableCellFrames(fileTree, 0)[1].maxX <= 221,
+	"file tree native cell remains inside the navigator viewport")
 t.expect(not fileTree.hasHorizontalScroller,
 	"stretching file tree does not show a horizontal scroller")
 

@@ -1634,3 +1634,28 @@ end
     <Label text="<%= body %>" size="13" flexGrow="1" />
 </VStack>
 ```
+
+### Native outline subtitle cells and layout updates
+
+`<OutlineView>` accepts the same `<Column>` records as `<List>`, including
+`subtitleKey`, `imageKey`, `imageColorKey`, `imageSize`, and `fileIconKey`.
+AppKit shares native cells between both controls. Rows with stable `id` fields
+preserve expansion and selection through `replaceRows`; `expanded = true`
+initially expands a new group. `forceExpanded = true` reveals descendants even
+when a previously loaded group was collapsed (for example, search results).
+Empty child collections have no disclosure.
+
+Calling `view:layout()` without an explicit width remeasures its enclosing
+layout owner up to the native split pane, so content growth moves siblings.
+`view:scrollIntoView()` reveals a view through its enclosing native scroll view.
+`GroupBox` uses NSBox, and `ProgressView { value = fraction }` is determinate;
+omitting a value retains spinner behavior.
+
+### Symbol badges and application artwork (AppKit)
+
+`SystemImage` accepts `badgeColor` (semantic color) and `appIcon` (bundle ID).
+Badges have square intrinsic geometry with rounded corners and white symbols.
+An installed application's NSWorkspace artwork replaces the badge without tint;
+an unavailable bundle retains the symbol. No application path is required.
+`Column` uses `badgeColorKey` and `appIconKey` to bind the same presentation to
+row data in native tables and outlines. Reused cells clear previous icon state.
