@@ -181,3 +181,15 @@ static int bridge_pick_file(lua_State *L) {
 	lua_pushstring(L, panel.URL.path.UTF8String);
 	return 1;
 }
+
+#pragma mark - Test support
+
+/* Headless tests schedule real NSTimers but never run NSApp. Pumping the
+ * current run loop lets a pending timer fire (or prove it was cancelled)
+ * without showing a window. */
+static int bridge_runloop_tick(lua_State *L) {
+	double seconds = luaL_optnumber(L, 1, 0.05);
+	[[NSRunLoop currentRunLoop]
+		runUntilDate:[NSDate dateWithTimeIntervalSinceNow:seconds]];
+	return 0;
+}

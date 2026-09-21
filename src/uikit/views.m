@@ -179,3 +179,40 @@ static int bridge_size_to_fit(lua_State *L) {
 	[view sizeToFit];
 	return 0;
 }
+
+#pragma mark - Window close (scope teardown)
+
+/* Mirrors AppKit's NSWindowWillClose → scope:close() contract. The helper is
+ * retained by the UIWindow; when the window deallocs (scene teardown) the
+ * helper deallocs, invokes the Lua close callback once, and disposes it. */
+@interface LuaWindowCloseHelper : NSObject
+@property (nonatomic, strong) LuaReg *closeReg;
+@end
+
+@implementation LuaWindowCloseHelper
+- (void)dealloc {
+	LuaReg *reg = _closeReg;
+	_closeReg = nil;
+	lua_State *callL = lua_reg_live_state(reg);
+	if (callL && lua_reg_push(reg))
+		lua_objc_pcall(callL, 0, 0, "window close");
+	[reg dispose];
+}
+@end
+
+static int bridge_on_window_close(lua_State *L) {
+	ObjCRef *ref = lua_objc_test_ref(L, 1);
+	if (!ref) return luaL_typeerror(L, 1, "UIWindow");
+	id obj = lua_objc_live_ptr(L, 1, ref);
+	if (![obj isKindOfClass:[UIWindow class]])
+		return luaL_error(L, "onWindowClose requires a window");
+	UIWindow *window = (UIWindow *)obj;
+	LuaWindowCloseHelper *existing = objc_getAssociatedObject(window, &kWindowCloseKey);
+	if (!existing) {
+		existing = [[LuaWindowCloseHelper alloc] init];
+		objc_setAssociatedObject(window, &kWindowCloseKey, existing,
+			OBJC_ASSOCIATION_RETAIN);
+	}
+	existing.closeReg = lua_reg_opt_unscoped(L, 2);
+	return 0;
+}

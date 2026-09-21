@@ -424,6 +424,22 @@ static int bridge_table_column_widths(lua_State *L) {
 	return 1;
 }
 
+// Native cell inspection for headless tests; NSTableView does not materialize
+// visible rows without a window, so ask its real delegate for the cell.
+static int bridge_table_cell(lua_State *L) {
+	NSScrollView *scroll = check_objc(L, 1);
+	LuaTableViewSource *source = objc_getAssociatedObject(scroll, &kKeys[kTableSourceKey]);
+	if (!source) return luaL_error(L, "not a table view");
+	NSTableView *table = source.tableView;
+	NSInteger column = luaL_checkinteger(L, 2), row = luaL_checkinteger(L, 3);
+	if (column < 0 || column >= table.tableColumns.count || row < 0 || row >= source.rows.count)
+		return luaL_error(L, "table cell out of bounds");
+	NSView *cell = [source tableView:table viewForTableColumn:table.tableColumns[column] row:row];
+	[cell layoutSubtreeIfNeeded];
+	push_objc(L, cell, "nsview");
+	return 1;
+}
+
 static int bridge_table_cell_frames(lua_State *L) {
 	id obj = check_objc(L, 1);
 	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);

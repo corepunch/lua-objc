@@ -1,5 +1,28 @@
-<VStack fixedWidth="330" fillHeight="true" spacing="16" padding="16" alignment="leading">
-  <VStack fillWidth="true" spacing="14" padding="18" alignment="leading" cornerRadius="12" background="controlBackground"><HStack fillWidth="true" spacing="14" alignment="center"><SystemImage name="folder.fill" size="42" color="systemBlue" /><VStack spacing="2" alignment="leading"><Label text="<%= folder.name %>" size="17" weight="bold" /><Label text="<%= folder.total %>" size="23" weight="bold" /><Label text="<%= folder.items %> items" size="12" color="secondary" /></VStack></HStack><Divider /><Label text="<%= folder.path %>" size="12" color="secondary" lineLimit="1" truncation="middle" /><VStack spacing="6" alignment="leading"><HStack fillWidth="true"><Label text="Kind" size="12" color="secondary" /><Spacer /><Label text="Folder" size="12" /></HStack><HStack fillWidth="true"><Label text="Contents" size="12" color="secondary" /><Spacer /><Label text="<%= folder.folderCount %> folders" size="12" /></HStack><HStack fillWidth="true"><Label text="Free on disk" size="12" color="secondary" /><Spacer /><Label text="<%= folder.free %>" size="12" /></HStack></VStack><Button title="Reveal in Finder" systemImage="folder" style="plain" fillWidth="true" action="reveal" /></VStack>
-  <% if #suggestions > 0 then %><VStack fillWidth="true" spacing="0" alignment="leading" cornerRadius="12" background="controlBackground" clipsToBounds="true"><Label text="Suggestions for this folder" size="15" weight="bold" padding="16" /><% for i, suggestion in ipairs(suggestions) do if i <= 3 then %><HStack fillWidth="true" fixedHeight="56" paddingHorizontal="14" spacing="10" alignment="center"><SystemImage name="folder.fill" size="22" color="systemBlue" /><VStack spacing="2" alignment="leading" flexGrow="1"><Label text="<%= suggestion.name %>  <%= suggestion.size %>" size="12" weight="medium" /><Label text="<%= suggestion.hint %>" size="11" color="secondary" lineLimit="1" /></VStack><Button title="Review" style="plain" action="review_<%= i %>" /></HStack><% if i < #suggestions then %><Divider /><% end %><% end end %></VStack><% end %>
-  <VStack fillWidth="true" spacing="8" padding="14" alignment="leading" cornerRadius="12" background="controlBackground"><Label text="Quick Actions" size="15" weight="bold" /><HStack fillWidth="true" spacing="8"><Button title="Open in Terminal" style="plain" flexGrow="1" action="openTerminal" /><Button title="Copy Path" style="plain" flexGrow="1" action="copyPath" /></HStack></VStack><Spacer />
-</VStack>
+<ScrollView vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true">
+  <VStack fillWidth="true" padding="20" spacing="16" alignment="leading">
+    <HStack fillWidth="true" spacing="12" alignment="center">
+      <SystemImage name="<%= icon %>" size="40" color="accent" />
+      <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="4" alignment="leading">
+        <Label fillWidth="true" text="<%= name %>" size="17" weight="semibold" lines="3" />
+        <% if size ~= "" then %><Label fillWidth="true" text="<%= size %>" size="24" weight="bold" /><% end %>
+      </VStack>
+    </HStack>
+    <% if hasPath then %><Label fillWidth="true" text="<%= path %>" size="12" color="secondary" lines="4" /><% end %>
+    <Divider />
+    <Label fillWidth="true" text="<%= heading %>" size="14" weight="semibold" />
+    <Label fillWidth="true" text="<%= message %>" size="13" lines="16" />
+    <% if review then %>
+    <Label fillWidth="true" text="What space will be freed?" size="14" weight="semibold" />
+    <Label fillWidth="true" text="<%= outcome %>" size="12" color="secondary" lines="7" />
+    <Button title="<%= primary %>" action="primary" fillWidth="true" />
+    <% end %>
+    <% if hasPath then %>
+    <Button title="Reveal in Finder" systemImage="folder" action="reveal" fillWidth="true" />
+    <Divider />
+    <Label text="Quick Actions" size="14" weight="semibold" />
+    <Button title="Copy Path" systemImage="doc.on.doc" action="copy" fillWidth="true" />
+    <Button title="Open in Terminal" systemImage="terminal" action="terminal" fillWidth="true" />
+    <% end %>
+    <% if not review then %><Button title="Review Suggestions" systemImage="lightbulb" action="suggestions" fillWidth="true" /><% end %>
+  </VStack>
+</ScrollView>

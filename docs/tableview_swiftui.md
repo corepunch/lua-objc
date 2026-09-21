@@ -161,3 +161,13 @@ for a width the scroll view no longer occupies.
 5. **SwiftUI Table wraps itself in vertical-only `ScrollView` by default.**
    Horizontal scroll requires explicit `.horizontal` modifier. Our
    `NSScrollView` handles both axes natively.
+
+### Measured storage cells (AppKit)
+
+An etlua `Column` can bind `levelKey` to a row's fraction (0–1) and
+`levelColorKey` to its semantic color. The column's `id` supplies the adjacent
+text (for example, `39%`). AppKit renders a read-only `NSLevelIndicator`;
+missing values hide the bar, and out-of-range values are clamped. `imageKey`
+and `imageColorKey` bind row symbols and their semantic tint. `List.rowHeight`
+sets the native row height. These cell bindings do not change table selection
+or keyboard behavior.

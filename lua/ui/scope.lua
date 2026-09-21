@@ -18,11 +18,25 @@ return function(bridge)
 
 	function Scope:add(r)
 		if r == nil then return r end
+		-- Prune entries whose native registration was already disposed
+		-- (fired timers, replaced callbacks) so the list does not grow
+		-- for the window's lifetime.
+		for i = #self.regs, 1, -1 do
+			local existing = self.regs[i]
+			local ok, dead = pcall(function()
+				return existing ~= nil and existing:isDisposed()
+			end)
+			if ok and dead then
+				table.remove(self.regs, i)
+			end
+		end
 		self.regs[#self.regs + 1] = r
 		return r
 	end
 
 	function Scope:dispose()
+		if self.closed then return end
+		self.closed = true
 		for i = #self.regs, 1, -1 do
 			local r = self.regs[i]
 			self.regs[i] = nil
@@ -33,11 +47,32 @@ return function(bridge)
 	end
 
 	function Scope:close()
+		if self.closed then
+			Scope.drop(self)
+			return
+		end
 		Scope.drop(self)
 		self:dispose()
 	end
 
 	Scope.__close = Scope.close
+
+	-- Run fn with scope as the current scope, restoring the previous one.
+	-- Used by tests and by per-screen navigation scopes.
+	function Scope.withScope(scope, fn, ...)
+		assert(scope ~= nil, "withScope requires a scope")
+		assert(type(fn) == "function", "withScope requires a function")
+		local prev = current
+		current = scope
+		bridge._setCurrentScope(scope)
+		local results = table.pack(pcall(fn, ...))
+		current = prev
+		bridge._setCurrentScope(prev)
+		if not results[1] then
+			error(results[2], 2)
+		end
+		return table.unpack(results, 2, results.n)
+	end
 
 	function Scope.current()
 		return current

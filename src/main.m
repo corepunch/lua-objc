@@ -79,6 +79,9 @@ static const CGFloat kStackSpacing = 8.0;
 #define kTableCellSymbolPointSize       13
 #define kTableCellSecondaryFontSize     11
 #define kTableCellLineSpacing            2
+#define kTableCellLevelTextWidth        38
+#define kTableCellLevelGap               8
+#define kTableCellLevelHeight           10
 #define kTableCellCurveInsetH            4
 #define kTableCellCurveInsetV           10
 #define kTableCellCurvePathWidth       100
@@ -185,6 +188,7 @@ static const CGFloat kStackSpacing = 8.0;
 #include "shared/lua_bridge_support.m"
 #include "shared/lua_error.m"
 #include "shared/lua_async.m"
+#include "shared/lua_dealloc_watch.m"
 
 /* Replaces any previously registered LuaReg at `key`. */
 static void bridge_set_optional_callback(
@@ -254,6 +258,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_link", bridge_AppKitControls_link},
 	{"_toggle", bridge_AppKitControls_toggle},
 	{"_tableColumnWidths", bridge_AppKit_table_column_widths},
+	{"_tableCell", bridge_table_cell},
 	{"_tableCellFrames", bridge_AppKit_table_cell_frames},
 	{"_tableSpinnerFrame", bridge_AppKit_table_spinner_frame},
 	{"_toolbar_item", bridge_AppKit_toolbar_item},
@@ -292,6 +297,10 @@ static const luaL_Reg bridge_lib[] = {
 	{"_invokeAction", bridge_invoke_action},
 	{"_onWindowClose", bridge_on_window_close},
 	{"_invalidateHandle", bridge_invalidate_handle},
+	{"_watchDealloc", bridge_dealloc_watch},
+	{"_deallocCount", bridge_dealloc_count},
+	{"_deallocReset", bridge_dealloc_reset},
+	{"_runLoopTick", bridge_runloop_tick},
 	{"_addContextMenu", bridge_AppKit_add_context_menu},
 	{"_addClick", bridge_AppKit_add_click},
 	{"_revealInFinder", bridge_AppKit_reveal_in_finder},

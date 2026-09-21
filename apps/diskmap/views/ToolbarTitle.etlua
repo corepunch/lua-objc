@@ -1,0 +1,7 @@
+<HStack fixedWidth="260" fixedHeight="34" spacing="12" alignment="center">
+  <SystemImage name="internaldrive" size="28" color="secondary" />
+  <VStack flexGrow="1" spacing="2" alignment="leading">
+    <Label text="Diskmap" size="15" weight="bold" />
+    <Label fillWidth="true" ref="capacity" text="Storage overview" size="11" color="secondary" />
+  </VStack>
+</HStack>

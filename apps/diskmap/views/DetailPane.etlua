@@ -1,6 +1,1 @@
-<VStack ref="detail" fixedWidth="330" fillHeight="true" alignment="leading">
-  <VStack flexGrow="1" fillWidth="true" fillHeight="true" spacing="8" padding="24" alignment="leading">
-    <Label text="Folder details" size="17" weight="bold" />
-    <Label text="Select a folder to inspect its contents." size="13" color="secondary" />
-  </VStack>
-</VStack>
+<VStack ref="detail" flexGrow="1" fillWidth="true" fillHeight="true" spacing="0" />

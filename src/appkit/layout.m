@@ -1,6 +1,7 @@
 static void position_table_spinner(NSScrollView *sv);
 
 static int bridge_object_add_impl(lua_State *L) {
+@autoreleasepool {
 	id parent = check_objc(L, 1);
 	NSView *child = check_view(L, 2);
 
@@ -98,6 +99,7 @@ static int bridge_object_add_impl(lua_State *L) {
 	}
 	[container addSubview:child];
 	return 0;
+}
 }
 
 static BOOL is_flexible(NSView *view) {

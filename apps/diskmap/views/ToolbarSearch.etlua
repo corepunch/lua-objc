@@ -1,0 +1,1 @@
+<SearchField ref="search" placeholder="Filter results…" fixedWidth="210" fixedHeight="28" accessibilityLabel="Filter storage results" onChange="search" />

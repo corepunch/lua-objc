@@ -82,10 +82,23 @@ end
 
 function UIKit.Window(props)
 	props = props or {}
-	Scope.push()
+	local scope = Scope.push()
 	local content = props.content or props[1]
 	local vc = asViewController(content)
-	return bridge._installScene(vc, props.title or "")
+	-- If scene installation fails, do not leak the pushed scope.
+	local ok, win = pcall(bridge._installScene, vc, props.title or "")
+	if not ok then
+		scope:close()
+		error(win, 2)
+	end
+	-- Like AppKit, window teardown closes the scope automatically so apps
+	-- never call dispose by hand.
+	if bridge._onWindowClose then
+		bridge._onWindowClose(win, function()
+			scope:close()
+		end)
+	end
+	return win
 end
 
 function UIKit.TabView(props)
@@ -115,6 +128,9 @@ function UIKit.HostingController(view)
 	return bridge._hostingController(view)
 end
 
+local navScreenScopes = setmetatable({}, { __mode = "k" })
+local sheetScopes = {}
+
 function UIKit.NavigationStack(props)
 	props = props or {}
 	local content = props.content or props[1]
@@ -127,7 +143,35 @@ function UIKit.NavigationStack(props)
 	if props.hidesTabBar ~= nil then
 		root.hidesBottomBarWhenPushed = props.hidesTabBar
 	end
+	navScreenScopes[navigation] = {}
 	return navigation
+end
+
+function UIKit.pushScreen(nav, title, builder)
+	assert(nav ~= nil, "pushScreen requires a navigation stack")
+	assert(type(builder) == "function", "pushScreen requires a builder function")
+	local stack = navScreenScopes[nav]
+	assert(stack ~= nil, "pushScreen requires a NavigationStack host")
+	local screenScope = Scope.push()
+	local ok, content = pcall(builder)
+	if not ok then
+		screenScope:close()
+		error(content, 2)
+	end
+	local vc = asViewController(content)
+	if title then vc.title = title end
+	nav:push(vc)
+	table.insert(stack, screenScope)
+	return vc
+end
+
+function UIKit.popScreen(nav)
+	assert(nav ~= nil, "popScreen requires a navigation stack")
+	local stack = navScreenScopes[nav]
+	assert(stack ~= nil, "popScreen requires a NavigationStack host")
+	nav:pop()
+	local screenScope = table.remove(stack)
+	if screenScope then screenScope:close() end
 end
 
 function UIKit.NavigationLink(props)
@@ -139,12 +183,31 @@ function UIKit.NavigationLink(props)
 		props.title or props.label or props[1] or "Open"), props)
 end
 
-function UIKit.presentSheet(content, props)
-	return bridge._presentSheet(asViewController(content), props or {})
+function UIKit.presentSheet(contentOrBuilder, props)
+	local content = contentOrBuilder
+	if type(contentOrBuilder) == "function" then
+		local sheetScope = Scope.push()
+		local ok, built = pcall(contentOrBuilder)
+		if not ok then
+			sheetScope:close()
+			error(built, 2)
+		end
+		content = built
+		local sheet = bridge._presentSheet(asViewController(content), props or {})
+		table.insert(sheetScopes, sheetScope)
+		return sheet
+	end
+	local sheetScope = Scope.push()
+	local sheet = bridge._presentSheet(asViewController(content), props or {})
+	table.insert(sheetScopes, sheetScope)
+	return sheet
 end
 
 function UIKit.dismiss()
-	return bridge._dismiss()
+	local sheetScope = table.remove(sheetScopes)
+	local ok, err = pcall(bridge._dismiss)
+	if sheetScope then sheetScope:close() end
+	if not ok then error(err, 2) end
 end
 
 function UIKit.confirm(props)

@@ -7,6 +7,7 @@
 #include <lauxlib.h>
 
 static char kAxisKey;
+static char kWindowCloseKey;
 static char kTextFieldDelegateKey;
 static char kFlexibleKey;
 static char kTableSourceKey;
@@ -59,6 +60,7 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #include "../shared/lua_bridge_support.m"
 #include "../shared/lua_error.m"
 #include "../shared/lua_async.m"
+#include "../shared/lua_dealloc_watch.m"
 
 #include "table_data_source.m"
 #include "action_target.m"
@@ -154,7 +156,11 @@ static const luaL_Reg bridge_lib[] = {
 	{"_confirm", bridge_UIKitPresentation_confirm},
 	{"_setCurrentScope", bridge_set_current_scope},
 	{"_invokeAction", bridge_invoke_action},
+	{"_onWindowClose", bridge_on_window_close},
 	{"_invalidateHandle", bridge_invalidate_handle},
+	{"_watchDealloc", bridge_dealloc_watch},
+	{"_deallocCount", bridge_dealloc_count},
+	{"_deallocReset", bridge_dealloc_reset},
 	{NULL, NULL},
 };
 

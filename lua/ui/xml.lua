@@ -563,6 +563,11 @@ local TAG_SCHEMA = {
             placeholder = { default = "Search", type = "str" },
             accessibilityLabel = "str",
         },
+        transform = function(props, attrs)
+            if attrs.onChange and renderData and renderData.actions then
+                props.onChange = renderData.actions[attrs.onChange]
+            end
+        end,
     },
 
     -- Controls & Input
@@ -752,13 +757,28 @@ local TAG_SCHEMA = {
             width     = "num",
             minWidth  = "num",
             alignment = "str",
+            systemImage = "str",
+            imageKey = "str",
+            imageColorKey = "str",
+            levelKey = "str",
+            levelColorKey = "str",
         },
+        collect = function(props)
+            for key, field in pairs({imageKey = "image", imageColorKey = "imageColor", levelKey = "level", levelColorKey = "levelColor"}) do
+                if props[key] then
+                    props.cell = props.cell or {}
+                    props.cell[field] = props[key]
+                    props[key] = nil
+                end
+            end
+        end,
     },
     List = {
         constructor = "List",
         props = {
             header          = { default = true, type = "bool" },
             alternatingRows = { default = true, type = "bool" },
+            rowHeight = "num",
             style           = "str",
             bordered        = "bool",
             gridLines       = "str",

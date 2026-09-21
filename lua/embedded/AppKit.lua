@@ -1168,11 +1168,51 @@ function AppKit.HostingController(view)
 	return bridge._hostingController(view)
 end
 
+-- Per-screen scopes. Each pushed screen gets its own Scope; popping closes
+-- it so the popped screen's callbacks do not live until window close.
+-- Builder runs inside the new scope so content constructed there binds to
+-- the screen, not the window.
+local navScreenScopes = setmetatable({}, { __mode = "k" })
+
 function AppKit.NavigationStack(props)
 	props = props or {}
 	local root = AppKit.HostingController(props.content or props[1])
 	root.title = props.title or ""
-	return applyLayout(bridge._navigationStack(root), props)
+	local host = applyLayout(bridge._navigationStack(root), props)
+	navScreenScopes[host] = {}
+	return host
+end
+
+function AppKit.pushScreen(nav, title, builder)
+	assert(nav ~= nil, "pushScreen requires a navigation stack")
+	assert(type(builder) == "function", "pushScreen requires a builder function")
+	local stack = navScreenScopes[nav]
+	assert(stack ~= nil, "pushScreen requires a NavigationStack host")
+	local screenScope = Scope.push()
+	local ok, vc = pcall(builder)
+	if not ok then
+		screenScope:close()
+		error(vc, 2)
+	end
+	if type(vc) ~= "userdata" then
+		screenScope:close()
+		error("pushScreen builder must return a view or HostingController", 2)
+	end
+	-- Auto-host plain views; HostingControllers pass through.
+	local okHost, hosted = pcall(AppKit.HostingController, vc)
+	if okHost then vc = hosted end
+	nav:push(vc, title or "")
+	table.insert(stack, screenScope)
+	return vc
+end
+
+function AppKit.popScreen(nav)
+	assert(nav ~= nil, "popScreen requires a navigation stack")
+	local stack = navScreenScopes[nav]
+	assert(stack ~= nil, "popScreen requires a NavigationStack host")
+	nav:pop()
+	local screenScope = table.remove(stack)
+	if screenScope then screenScope:close() end
 end
 
 function AppKit.revealInFinder(path)

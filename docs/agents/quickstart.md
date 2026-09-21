@@ -5,6 +5,9 @@ title: Agent quickstart
 
 # Agent quickstart
 
+Read [application architecture](application-architecture.md) first. It defines
+the non-negotiable split between models, focused controllers, and etlua views.
+
 This page is an operating guide for an agent creating or changing a lua-objc
 app. Read it before writing application code.
 
@@ -29,9 +32,10 @@ window or start the application.
 return require("apps.weather.Controller")
 ```
 
-Put network calls, sample data, formatting, and mutations in `Model.lua`. Keep
-callbacks and view state in `Controller.lua`. Put reusable visual structure in
-`views/*.etlua` or ordinary Lua component functions.
+Put domain queries, validation, formatting inputs, and mutations in
+`Model.lua`. Keep callbacks, navigation, and template refs in `Controller.lua`.
+Put all reusable visual structure in `views/*.etlua` partials. Controllers may
+prepare data and bind refs after rendering, but must not construct view trees.
 
 ## 2. Start with native structure
 

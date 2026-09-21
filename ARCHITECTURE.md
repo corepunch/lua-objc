@@ -139,6 +139,34 @@ blanket replacement for Auto Layout.
 
 ## Object and state ownership
 
+### Relationship to Apple JavaScriptCore
+
+Issue #20 uses `JSManagedValue` as the useful Apple precedent. The analogy is
+about ownership edges, not about embedding JavaScriptCore: a native object that
+exports a script value must not blindly retain a value that can retain its
+context. Apple solves that with conditional reachability reported through
+`addManagedReference:withOwner:`; a managed value is kept alive while it is
+reachable from either the script graph or the reported native owner, and is
+otherwise cleared. See [Apple's JSManagedValue documentation](https://developer.apple.com/documentation/javascriptcore/jsmanagedvalue).
+
+lua-objc applies the same design pressure using Lua-native mechanisms:
+
+| JavaScriptCore idea | lua-objc mechanism |
+|---|---|
+| Script value | Lua closure, table, or native userdata handle |
+| Native owner reported to the VM | Native target retains `LuaReg`; `Scope` retains the registration set |
+| Conditional callback lifetime | `LuaReg` holds a registry ref and a weak `LuaStateOwner`; `dispose` is idempotent |
+| Wrapper identity | Weak-valued handle intern table keyed by native pointer |
+| Context lifetime | Explicit `LuaStateOwner` close/detach sequence |
+
+This means the implementation follows the relevant JSC ownership principle,
+but it does not provide JSC's garbage collector with a graph of arbitrary
+Objective-C edges. A native callback can still participate in a Lua/native
+cycle if it is left registered. Screens must close their `Scope`; models must
+remain free of native handles; and callbacks must be state-bound rather than
+using a process-global Lua state. The framework's current behavior and the
+application rules are summarized in [application architecture](docs/agents/application-architecture.md).
+
 ### Native objects crossing into Lua
 
 The shared boundary is implemented in `src/shared/lua_bridge_support.m`:
@@ -166,6 +194,14 @@ those collections still use interned retained handles.
 `tests/ownership.test.lua` verifies interned identity, native parent retention,
 alias mutation, detachment, and reattachment. It observes Lua handle collection
 and native usability; it does not instrument final native deallocation.
+`tests/lifetime.test.lua` covers that directly with a sentinel associated
+object (`_watchDealloc` / `_deallocCount` / `_deallocReset`): an unmounted view
+deallocs after handle GC, a mounted view survives handle GC while its parent
+retains it and deallocs after container clear, and window close disposes scope
+callbacks without requiring native dealloc (windows are owned by `NSApp`).
+It also covers two-window scope affinity, per-screen push/pop disposal, scope
+pruning and idempotent close, timer cancellation on scope close, and
+retired-state no-ops.
 
 ### Lua values crossing into native callbacks
 
@@ -175,6 +211,18 @@ Native targets retain the registration through an associated object. A Lua
 the live, non-closing owner and is idempotent. Action targets, timers, HTTP
 completions, watchers, and delegates invoke through `LuaReg` and never through
 a process-global `gL`.
+
+Each registration also remembers the `Scope` that was current at creation (a
+registry ref released in `-dispose`/`-dealloc`). Pushing the closure re-enters
+that scope first, so callbacks created inside an event handler bind to the
+firing callback's scope rather than whichever window scope happens to be
+global. A closed scope never accepts new registrations. `Scope:add` prunes
+disposed entries, `Scope:close` is idempotent and marks the scope closed, and
+`Scope.withScope` runs a function under an explicit scope. Navigation pushes
+(`pushScreen`/`popScreen`) and UIKit sheets own per-screen scopes built with a
+builder running inside the new scope; popping/dismissing closes the screen
+scope. Both `AppKit.Window` and `UIKit.Window` close their scope on window
+teardown automatically, so apps never call dispose by hand.
 
 A registry closure can capture a controller, which holds a view handle, which
 retains the native view. Waiting for that view's `dealloc` to unref its callback
@@ -460,13 +508,15 @@ disposal first so removing a described subtree also releases its registrations.
 See [Declarative components](docs/PROJECT_REFERENCE.md#declarative-components-the-escape-hatch-beyond-the-eager-native-tree)
 for the intended boundary.
 
-#### Templates and Lua components
+#### Templates and reusable views
 
-Templates provide the shared XML vocabulary; ordinary Lua component functions
-provide reusable view structure. Keep both in `views/`. Controllers own actions
-and connect model data to those views. In Lua, use `ForEach` for repeated
-siblings and `Group` for multiple siblings. etlua loops expand repeated XML
-before parsing; constructors should not run inside template interpolation.
+Templates provide the shared XML vocabulary and etlua partials provide reusable
+view structure. Keep both in `views/`. Controllers own actions and connect
+model data to rendered refs; they do not assemble view trees. Use etlua loops
+for repeated siblings. Framework-level Lua composition such as `ForEach` and
+`Group` remains available to the framework, but application screens should use
+etlua templates and partials. Constructors should not run inside template
+interpolation.
 
 ---
 

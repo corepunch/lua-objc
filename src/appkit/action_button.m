@@ -128,6 +128,7 @@ static LayoutAxis layout_axis(NSView *view) {
 #pragma mark - Compound action button
 
 static NSColor *semantic_color(NSString *name) {
+	if ([name isEqualToString:@"systemGray"])   return NSColor.systemGrayColor;
 	if ([name isEqualToString:@"systemGreen"])  return NSColor.systemGreenColor;
 	if ([name isEqualToString:@"systemRed"])    return NSColor.systemRedColor;
 	if ([name isEqualToString:@"systemBlue"])   return NSColor.systemBlueColor;

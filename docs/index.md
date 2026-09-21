@@ -11,6 +11,7 @@ AppKit/UIKit controls, and no compile cycle for every UI change.
 ## Start here
 
 - [Agent quickstart](agents/quickstart.md): the shortest path from an idea to a tested app.
+- [Application architecture](agents/application-architecture.md): MVC boundaries, etlua views, ownership, and screen lifecycles.
 - [XML syntax](agents/xml-syntax.md): the supported etlua/XML tags and attributes.
 - [Apple UI checklist](agents/apple-ui-checklist.md): design and accessibility rules for polished native apps.
 - [Stocks app example](stocks_app_example.md): a complete Model/Controller/views example with a screenshot.
@@ -37,7 +38,7 @@ simulating them with text or custom drawing.
 apps/<app>/
   init.lua        entry point; returns the controller class
   Model.lua       pure data and domain logic
-  Controller.lua  state, actions, and view composition
+  Controller.lua  screen coordination, actions, and template wiring
   views/          etlua/XML templates
 ```
 

@@ -100,7 +100,8 @@ HTTP, native loading state, selection-driven detail views, and the current
 framework gaps around declarative table row schemas.
 
 Agent-facing documentation is published from [`docs/`](docs/index.md): start
-with the [agent quickstart](docs/agents/quickstart.md), then use the
+with the [application architecture](docs/agents/application-architecture.md),
+then the [agent quickstart](docs/agents/quickstart.md), and use the
 [XML syntax reference](docs/agents/xml-syntax.md) and [Apple UI checklist](docs/agents/apple-ui-checklist.md)
 when generating an app.
 
@@ -227,7 +228,9 @@ between folders does not change either boundary. See the
 
 ### What belongs in Lua, and what belongs in Objective-C?
 
-Keep models, actions, reusable components, and template composition in Lua.
+Keep models and controller actions in Lua. Keep reusable view structure and
+template composition in etlua partials under `views/`; controllers render
+those templates and wire their refs, but do not construct view trees.
 Use Objective-C for native initializers, delegates, platform lifecycle,
 rendering, and operations the existing bridge cannot express. Ordinary native
 properties use KVC; semantic aliases belong on exported native classes;
@@ -266,7 +269,7 @@ Every app follows the MVC folder layout:
 apps/<app>/
   init.lua        — entry point, requires and returns Controller class
   Model.lua       — pure data: queries, formatting, sample data
-  Controller.lua  — creates views, wires Model → views, owns actions
+  Controller.lua  — renders views, wires Model → views, owns actions
   views/          — etlua templates only, including reusable partials
 ```
 

@@ -4,11 +4,15 @@ Open the narrowest document that answers the task:
 
 - `index.md` — published documentation home and agent-facing entry point.
 - `agents/quickstart.md` — step-by-step workflow for creating a tested app.
+- `agents/application-architecture.md` — MVC boundaries, etlua-only views,
+  ownership, and screen lifecycles.
 - `agents/xml-syntax.md` — XML/etlua tags and attributes from `lua/ui/xml.lua`.
 - `agents/apple-ui-checklist.md` — native Apple UI, layout, accessibility, and
   visual QA checklist.
 - `PROJECT_REFERENCE.md` — detailed AppKit API, UI requirements, conventions,
   build/test notes, and bridge rationale.
+- `../ARCHITECTURE.md` — native/Lua ownership, state lifetime, and the
+  JavaScriptCore-inspired boundary model.
 - `stocks_app_example.md` — a visual app example built in native AppKit with
   hot-reloadable Lua and XML layout, plus the recommended MVC structure.
 - `weather_app_example.md` — async HTTP, native table loading, selection, XML

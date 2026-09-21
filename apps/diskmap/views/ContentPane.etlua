@@ -1,6 +1,1 @@
-<VStack ref="content" flexGrow="1" fillWidth="true" fillHeight="true" alignment="leading">
-  <VStack flexGrow="1" fillWidth="true" fillHeight="true" alignment="center">
-    <ProgressView />
-    <Label text="<%= message or 'Preparing scan…' %>" size="13" color="secondary" />
-  </VStack>
-</VStack>
+<VStack ref="content" minWidth="440" flexGrow="1" fillWidth="true" fillHeight="true" spacing="0" />

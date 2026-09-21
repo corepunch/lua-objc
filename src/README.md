@@ -39,6 +39,7 @@ See [object and state ownership](../ARCHITECTURE.md#object-and-state-ownership).
 | `shared/lua_bridge_support.m` | userdata retain/release, interned handles, Foundation conversion | `ObjCRef`, `push_objc`, `gc_objc`, `lua_to_objc_value` |
 | `shared/lua_async.m` | state owners, timers, HTTP, and JSON for both platforms | `LuaStateOwner`, `bridge_http_get` |
 | `shared/lua_reg.m` | state-bound callback registrations included by `lua_async.m` | `LuaReg`, `lua_reg_opt`, `Scope` |
+| `shared/lua_dealloc_watch.m` | test-only native deallocation sentinel | `bridge_dealloc_watch`, `bridge_dealloc_count` |
 | `shared/lua_error.m` | protected callback error reporting | `report_lua_error` |
 
 The fragments are not independent libraries and must not be added as separate

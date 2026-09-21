@@ -5,6 +5,13 @@
  * associated objects; a Lua Scope may also hold it and dispose it on
  * unmount. dispose is idempotent. Registrations never use a process-global
  * lua_State pointer.
+ *
+ * Each registration also remembers the Scope that was current at creation
+ * (a registry ref to the scope table). lua_reg_push re-enters that scope
+ * before pushing the closure, so callbacks created inside an event handler
+ * bind to the firing callback's scope rather than whichever window scope
+ * happens to be global. This fixes the two-window cross-binding without
+ * threading an explicit scope through every bridge call.
  */
 
 static const char *kLuaRegMeta = "lua_objc.reg";
@@ -13,6 +20,7 @@ static const char *kCurrentScopeKey = "lua_objc.current_scope";
 @interface LuaReg : NSObject
 @property (nonatomic, readonly) int ref;
 @property (nonatomic, readonly, weak) LuaStateOwner *owner;
+@property (nonatomic) int scopeRef;
 + (instancetype)regWithRef:(int)ref owner:(LuaStateOwner *)owner;
 - (void)dispose;
 @end
@@ -20,12 +28,14 @@ static const char *kCurrentScopeKey = "lua_objc.current_scope";
 @implementation LuaReg {
 	int _ref;
 	__weak LuaStateOwner *_owner;
+	int _scopeRef;
 }
 
 + (instancetype)regWithRef:(int)ref owner:(LuaStateOwner *)owner {
 	LuaReg *reg = [[self alloc] init];
 	reg->_ref = ref;
 	reg->_owner = owner;
+	reg->_scopeRef = LUA_NOREF;
 	return reg;
 }
 
@@ -37,33 +47,55 @@ static const char *kCurrentScopeKey = "lua_objc.current_scope";
 	return _owner;
 }
 
+- (int)scopeRef {
+	return _scopeRef;
+}
+
+- (void)setScopeRef:(int)scopeRef {
+	_scopeRef = scopeRef;
+}
+
 - (void)dispose {
 	if (![NSThread isMainThread]) {
 		dispatch_async(dispatch_get_main_queue(), ^{ [self dispose]; });
 		return;
 	}
 	int r = _ref;
+	int s = _scopeRef;
 	LuaStateOwner *o = _owner;
 	_ref = LUA_NOREF;
+	_scopeRef = LUA_NOREF;
 	_owner = nil;
-	if (r == LUA_NOREF) return;
-	if (o && o.L && !o.closing)
-		luaL_unref(o.L, LUA_REGISTRYINDEX, r);
+	if (o && o.L && !o.closing) {
+		if (r != LUA_NOREF)
+			luaL_unref(o.L, LUA_REGISTRYINDEX, r);
+		if (s != LUA_NOREF)
+			luaL_unref(o.L, LUA_REGISTRYINDEX, s);
+	}
 }
 
 - (void)dealloc {
 	int r = _ref;
+	int s = _scopeRef;
 	LuaStateOwner *o = _owner;
 	_ref = LUA_NOREF;
+	_scopeRef = LUA_NOREF;
 	_owner = nil;
-	if (r == LUA_NOREF) return;
 	if (!o || !o.L || o.closing) return;
+	if (r == LUA_NOREF && s == LUA_NOREF) return;
 	if ([NSThread isMainThread]) {
-		luaL_unref(o.L, LUA_REGISTRYINDEX, r);
+		if (r != LUA_NOREF)
+			luaL_unref(o.L, LUA_REGISTRYINDEX, r);
+		if (s != LUA_NOREF)
+			luaL_unref(o.L, LUA_REGISTRYINDEX, s);
 	} else {
 		dispatch_async(dispatch_get_main_queue(), ^{
-			if (o.L && !o.closing)
-				luaL_unref(o.L, LUA_REGISTRYINDEX, r);
+			if (o.L && !o.closing) {
+				if (r != LUA_NOREF)
+					luaL_unref(o.L, LUA_REGISTRYINDEX, r);
+				if (s != LUA_NOREF)
+					luaL_unref(o.L, LUA_REGISTRYINDEX, s);
+			}
 		});
 	}
 }
@@ -97,6 +129,13 @@ static int luareg_dispose(lua_State *L) {
 	return 0;
 }
 
+static int luareg_is_disposed(lua_State *L) {
+	LuaReg *reg = luareg_from_stack(L, 1);
+	if (!reg) luaL_checkudata(L, 1, kLuaRegMeta);
+	lua_pushboolean(L, reg.ref == LUA_NOREF);
+	return 1;
+}
+
 static int luareg_gc(lua_State *L) {
 	LuaRegRef *ud = lua_touserdata(L, 1);
 	if (ud && ud->ptr) {
@@ -114,6 +153,8 @@ static void register_luareg_metatable(lua_State *L) {
 	lua_newtable(L);
 	lua_pushcfunction(L, luareg_dispose);
 	lua_setfield(L, -2, "dispose");
+	lua_pushcfunction(L, luareg_is_disposed);
+	lua_setfield(L, -2, "isDisposed");
 	lua_setfield(L, -2, "__index");
 	lua_pushcfunction(L, luareg_gc);
 	lua_setfield(L, -2, "__gc");
@@ -126,6 +167,18 @@ static void lua_reg_bind_current_scope(lua_State *L, LuaReg *reg) {
 		lua_pop(L, 1);
 		return;
 	}
+	/* A closed scope never accepts new registrations; the callback stays
+	 * live via its native target but is not rooted by a dead scope. */
+	lua_getfield(L, -1, "closed");
+	if (lua_toboolean(L, -1)) {
+		lua_pop(L, 2);
+		return;
+	}
+	lua_pop(L, 1);
+	/* Remember the owning scope so lua_reg_push can re-enter it when the
+	 * callback fires. The ref is released in -dispose/-dealloc. */
+	lua_pushvalue(L, -1);
+	reg.scopeRef = luaL_ref(L, LUA_REGISTRYINDEX);
 	lua_getfield(L, -1, "add");
 	if (!lua_isfunction(L, -1)) {
 		lua_pop(L, 2);
@@ -175,6 +228,26 @@ static lua_State *lua_reg_live_state(LuaReg *reg) {
 static BOOL lua_reg_push(LuaReg *reg) {
 	lua_State *L = lua_reg_live_state(reg);
 	if (!L) return NO;
+	/* Re-enter the owning scope so registrations created inside this
+	 * callback bind to the firing scope, not to whichever scope is
+	 * currently global (two-window cross-binding). The global stays on
+	 * the firing scope after return; all post-startup registrations are
+	 * created inside callbacks, so this is the correct affinity. */
+	if (reg.scopeRef != LUA_NOREF) {
+		lua_rawgeti(L, LUA_REGISTRYINDEX, reg.scopeRef);
+		if (lua_istable(L, -1)) {
+			lua_getfield(L, -1, "closed");
+			BOOL closed = lua_toboolean(L, -1);
+			lua_pop(L, 1);
+			if (!closed) {
+				lua_setfield(L, LUA_REGISTRYINDEX, kCurrentScopeKey);
+			} else {
+				lua_pop(L, 1);
+			}
+		} else {
+			lua_pop(L, 1);
+		}
+	}
 	lua_rawgeti(L, LUA_REGISTRYINDEX, reg.ref);
 	return YES;
 }

@@ -232,3 +232,7 @@ ipad-deploy:
 	$(MAKE) -f scripts/ipad/build.mk SDK=iphoneos deploy
 list-devices:
 	xcrun devicectl list devices
+
+.PHONY: diskmap-app
+diskmap-app: $(TARGET) $(FRAMEWORK_MODULES)
+	python3 scripts/diskmap/bundle.py

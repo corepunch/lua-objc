@@ -1,6 +1,7 @@
 #pragma mark - Bridge functions
 
 static int bridge_window(lua_State *L) {
+@autoreleasepool {
 	const char *title = luaL_checkstring(L, 1);
 	CGFloat width = luaL_checknumber(L, 2);
 	CGFloat height = luaL_checknumber(L, 3);
@@ -39,6 +40,7 @@ static int bridge_window(lua_State *L) {
 					object:w
 					 queue:nil
 				usingBlock:^(NSNotification *note) {
+		@autoreleasepool {
 			NSWindow *closing = note.object;
 			LuaReg *closeReg = objc_getAssociatedObject(
 				closing, &kKeys[kWindowCloseKey]);
@@ -52,6 +54,11 @@ static int bridge_window(lua_State *L) {
 			 * termination until the close has completed so the replacement
 			 * window is visible before deciding that the app has no UI left. */
 			dispatch_async(dispatch_get_main_queue(), ^{
+				/* Headless tooling (tests, --dump-layout, --screenshot) never
+				 * runs NSApp, so closing a window there must not terminate
+				 * the process. Only quit when the real event loop is live
+				 * and no visible window remains. */
+				if (!NSApp.isRunning) return;
 				BOOL hasVisibleWindow = NO;
 				for (NSWindow *window in NSApp.windows) {
 					if (window.isVisible) {
@@ -63,6 +70,7 @@ static int bridge_window(lua_State *L) {
 					[NSApp terminate:nil];
 				}
 			});
+		}
 		}];
 
 	if (!lua_isnoneornil(L, 6)) {
@@ -141,6 +149,7 @@ static int bridge_window(lua_State *L) {
 	push_objc(L, w, "nswindow");
 	return 1;
 }
+}
 
 static int bridge_on_window_close(lua_State *L) {
 	NSWindow *window = lua_objc_check_object(L, 1, [NSWindow class], "Window");
@@ -217,6 +226,15 @@ static NSViewController *workspace_pane_controller(
 		[content.topAnchor
 			constraintEqualToAnchor:host.safeAreaLayoutGuide.topAnchor],
 	]];
+	// AppKit's content-list host includes the floating sidebar. Constrain the
+	// actual safe-area content so a third pane cannot consume its minimum width.
+	NSNumber *minimumWidth = objc_getAssociatedObject(content, &kKeys[kMinWidthKey]);
+	if (minimumWidth.doubleValue > 0) {
+		NSLayoutConstraint *minimum = [content.widthAnchor
+			constraintGreaterThanOrEqualToConstant:minimumWidth.doubleValue];
+		minimum.priority = NSLayoutPriorityDefaultHigh;
+		minimum.active = YES;
+	}
 	objc_setAssociatedObject(
 		host,
 		&kKeys[kWorkspaceSafeAreaContentKey],
@@ -250,7 +268,7 @@ static int bridge_set_window_workspace(lua_State *L) {
 	NSViewController *sidebarController =
 		workspace_pane_controller(sidebar, NO);
 	NSViewController *contentController =
-		workspace_pane_controller(content, detail == nil);
+		workspace_pane_controller(content, YES);
 	NSViewController *detailController = detail
 		? workspace_pane_controller(detail, NO)
 		: nil;
@@ -974,10 +992,12 @@ static int bridge_add_hover_tooltip(lua_State *L) {
 }
 
 static int bridge_NSView_clearContainer_impl(lua_State *L) {
+@autoreleasepool {
 	NSView *container = check_view(L, 1);
 	for (NSView *sub in [container.subviews copy]) {
 		[sub removeFromSuperview];
 	}
 	layout_recursive(container, container.bounds.size.width);
+}
 	return 0;
 }

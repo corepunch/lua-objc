@@ -1,13 +1,4 @@
-<VStack fixedWidth="228" fillHeight="true" spacing="8" padding="16" alignment="leading">
-  <% for _, item in ipairs(navItems) do %>
-    <HStack fillWidth="true" fixedHeight="42" paddingHorizontal="14" spacing="14" alignment="center" cornerRadius="9" background="<%= item.selected and "selectedControlColor" or "windowBackground" %>">
-      <SystemImage name="<%= item.icon %>" size="19" color="<%= item.selected and "accent" or "secondary" %>" />
-      <Label text="<%= item.title %>" size="15" color="<%= item.selected and "accent" or "label" %>" />
-    </HStack>
-  <% end %>
-  <Spacer />
-  <HStack fillWidth="true" fixedHeight="38" paddingHorizontal="14" spacing="14" alignment="center">
-    <SystemImage name="gearshape" size="18" color="secondary" />
-    <Label text="Settings" size="14" color="secondary" />
-  </HStack>
+<VStack fixedWidth="210" fillHeight="true" spacing="0">
+  <List ref="navigation" style="sourceList" header="false" alternatingRows="false" flexGrow="1" fillWidth="true"><Column id="name" title="Sections" imageKey="icon" /></List>
+  <Button title="Settings" systemImage="gearshape" action="settings" />
 </VStack>

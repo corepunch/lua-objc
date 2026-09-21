@@ -10,6 +10,11 @@ Templates are processed by etlua first and then compiled into native AppKit or
 UIKit views. The same template can therefore be rendered with `ns = require("AppKit")`
 or `ns = require("UIKit")`.
 
+Templates are the only place application view structure is defined. Controllers
+provide data, render a template, retain its `refs`, and bind behavior to those
+refs. See [application architecture](application-architecture.md) for the
+model/controller/view boundary.
+
 Render a file with:
 
 ```lua
@@ -57,7 +62,8 @@ caller rather than creating a window directly in the XML compiler.
 
 XML callbacks are normally attached in the controller after rendering. Keep
 business logic out of templates. For a button or toggle whose callback must be
-attached after rendering, use `ref` and the returned `refs` table.
+attached after rendering, use `ref` and the returned `refs` table; do not
+rebuild the surrounding view tree in the controller.
 
 `Slider`, `Stepper`, and `Picker` are currently AppKit-only. Do not place them
 in a template that must render on UIKit until matching UIKit controls exist.

@@ -13,6 +13,7 @@
 @interface LuaTableCellView : NSTableCellView
 @property (nonatomic, strong) NSTextField *secondaryTextField;
 @property (nonatomic, strong) LuaPathView *curveView;
+@property (nonatomic, strong) NSLevelIndicator *levelIndicator;
 @end
 
 @implementation LuaTableCellView
@@ -24,6 +25,13 @@
 	if (_curveView && !_curveView.hidden) {
 		_curveView.frame = NSInsetRect(
 			self.bounds, kTableCellCurveInsetH, kTableCellCurveInsetV);
+		return;
+	}
+	if (_levelIndicator) {
+		CGFloat height = ceil(text.intrinsicContentSize.height);
+		text.frame = NSMakeRect(0, floor((self.bounds.size.height - height) / 2), kTableCellLevelTextWidth, height);
+		CGFloat x = kTableCellLevelTextWidth + kTableCellLevelGap;
+		_levelIndicator.frame = NSMakeRect(x, floor((self.bounds.size.height - kTableCellLevelHeight) / 2), MAX(0, self.bounds.size.width - x - kTableCellTextTrailingInset), kTableCellLevelHeight);
 		return;
 	}
 	NSImageView *image = self.imageView;
@@ -64,6 +72,10 @@
 @end
 
 static NSColor *table_semantic_color(NSString *name) {
+	if ([name isEqualToString:@"systemBlue"]) return NSColor.systemBlueColor;
+	if ([name isEqualToString:@"systemPurple"]) return NSColor.systemPurpleColor;
+	if ([name isEqualToString:@"systemOrange"]) return NSColor.systemOrangeColor;
+	if ([name isEqualToString:@"systemGray"]) return NSColor.systemGrayColor;
 	if ([name isEqualToString:@"systemGreen"]) return NSColor.systemGreenColor;
 	if ([name isEqualToString:@"systemRed"]) return NSColor.systemRedColor;
 	if ([name isEqualToString:@"secondary"]) return NSColor.secondaryLabelColor;
@@ -120,13 +132,12 @@ static void table_update_curve(
 
 - (CGFloat)horizontalCellOverhead {
 	/*
-	 * Source-list styling applies a native leading inset to row cells, and
-	 * NSTableView places inter-column spacing outside the declared widths.
+	 * Native table styles apply row-cell insets, and NSTableView places
+	 * inter-column spacing outside the declared widths.
 	 * Measure both from AppKit's actual last-cell frame so fixed and flexible
 	 * columns remain inside the clip view without duplicating system metrics.
 	 */
-	if (_tableView.style != NSTableViewStyleSourceList ||
-		_rows.count == 0 || _tableView.tableColumns.count == 0) return 0;
+	if (_rows.count == 0 || _tableView.tableColumns.count == 0) return 0;
 
 	CGFloat declaredWidth = 0;
 	for (NSTableColumn *col in _tableView.tableColumns) {
@@ -250,6 +261,18 @@ static void table_update_curve(
 			cell.secondaryTextField = secondary;
 		}
 
+		// Reusable native table cells own their embedded Cocoa controls.
+		if (cellSpec[@"level"]) {
+			NSLevelIndicator *level = [[NSLevelIndicator alloc] initWithFrame:NSZeroRect];
+			level.levelIndicatorStyle = NSLevelIndicatorStyleContinuousCapacity;
+			level.minValue = 0;
+			level.maxValue = 1;
+			level.warningValue = 2;
+			level.criticalValue = 2;
+			level.editable = NO;
+			[cell addSubview:level];
+			cell.levelIndicator = level;
+		}
 		if (cellSpec[@"curve"]) {
 			LuaPathView *curve = [[LuaPathView alloc]
 				initWithFrame:NSZeroRect];
@@ -290,8 +313,20 @@ static void table_update_curve(
 		? [rowData[curveColorKey] description] : nil;
 	table_update_curve(cell.curveView, curveValues,
 		table_semantic_color(curveColor));
-	NSString *symbolName = objc_getAssociatedObject(
-		column, &kKeys[kColumnSystemImageKey]);
+	// Row-bound symbols let a native source list distinguish navigation destinations.
+	NSString *levelKey = cellSpec[@"level"];
+	id levelValue = levelKey ? rowData[levelKey] : nil;
+	double fraction = [levelValue respondsToSelector:@selector(doubleValue)] ? [levelValue doubleValue] : 0;
+	cell.levelIndicator.doubleValue = isfinite(fraction) ? MAX(0, MIN(1, fraction)) : 0;
+	cell.levelIndicator.hidden = levelValue == nil;
+	NSString *levelColorKey = cellSpec[@"levelColor"];
+	cell.levelIndicator.fillColor = table_semantic_color(levelColorKey ? rowData[levelColorKey] : nil);
+	cell.levelIndicator.accessibilityLabel = [@"Share of measured storage: " stringByAppendingString:text];
+	NSString *imageColorKey = cellSpec[@"imageColor"];
+	cell.imageView.contentTintColor = imageColorKey ? table_semantic_color(rowData[imageColorKey]) : NSColor.secondaryLabelColor;
+	NSString *imageKey = cellSpec[@"image"];
+	NSString *symbolName = imageKey && [rowData[imageKey] isKindOfClass:NSString.class]
+		? rowData[imageKey] : objc_getAssociatedObject(column, &kKeys[kColumnSystemImageKey]);
 	if (symbolName.length > 0) {
 		NSImage *image = [NSImage imageWithSystemSymbolName:symbolName
 			accessibilityDescription:text];
