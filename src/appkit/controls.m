@@ -467,6 +467,8 @@ static int bridge_table_cell_frames(lua_State *L) {
 		NSRect disclosure = [(NSOutlineView *)tv frameOfOutlineCellAtRow:row];
 		lua_pushnumber(L, NSMidY(disclosure));
 		lua_setfield(L, -2, "disclosureMidY");
+		lua_pushnumber(L, NSMaxX(disclosure));
+		lua_setfield(L, -2, "disclosureMaxX");
 		lua_pushnumber(L, NSMidY([tv rectOfRow:row]));
 		lua_setfield(L, -2, "rowMidY");
 	}

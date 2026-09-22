@@ -45,7 +45,7 @@ local M = {}
 
 -- Layout prop names that should be included in descriptions
 local LAYOUT_PROPS = {
-    "padding", "paddingHorizontal", "paddingVertical",
+    "padding", "paddingHorizontal", "paddingVertical", "paddingLeading", "paddingTrailing",
     "spacing", "alignment",
     "fixedWidth", "fixedHeight", "minWidth", "minHeight",
     "maxWidth", "maxHeight",

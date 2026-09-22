@@ -44,6 +44,13 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
 - **Apps live in `apps/<appname>/`.** Every app has its own folder with
   `init.lua` as the entry point. Flat `apps/<appname>.lua` files are
   forbidden. There are no forwarding shims.
+- **Improve the framework, never patch around it in apps.** If a UI API is missing
+  or behaves unlike its SwiftUI counterpart, fix the shared framework and add
+  regression coverage. Do not hide layout or control defects with app-specific hacks.
+- **Laravel/PHP-style composition.** Break growing controllers and models into
+  focused controllers, domain models, and injected services in `controllers/`,
+  `models/`, and `services/`. Each must be independently testable; the root
+  controller coordinates them. See [ARCHITECTURE.md](ARCHITECTURE.md#app-layer).
 - **Laravel-style MVC.** Models own domain queries, validation, and mutations;
   controllers coordinate model calls, navigation, and callbacks; etlua views
   own presentation. Models never depend on `ns` or native widgets. Inject

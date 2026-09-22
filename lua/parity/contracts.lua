@@ -101,6 +101,13 @@ function M.run(ns)
 		fixedHeight = 100, top, ns.Spacer(), bottom }
 	equal(measure(padded, 200, 100, top).y, 7, "asymmetric top padding uses top-left coordinates")
 	equal(measure(padded, 200, 100, bottom).y, 71, "asymmetric bottom padding is independent")
+	local insetChild = ns.Text { "Insets", fillWidth = true, fixedHeight = 20 }
+	local inset = ns.VStack { paddingHorizontal = 12, paddingLeading = 7, paddingTrailing = 19, insetChild }
+	equal(measure(inset, 200, 100, insetChild).x, 7, "leading overrides horizontal padding")
+	equal(measure(inset, 200, 100, insetChild).width, 174, "both horizontal edges constrain width")
+	inset.paddingTrailing = 0
+	equal(measure(inset, 200, 100, insetChild).width, 193, "zero trailing padding overrides fallback")
+	equal(measure(inset, 200, 100, insetChild).x, 7, "trailing mutation preserves leading edge")
 	local filled = ns.Text { "Flexible", fillWidth = true, fixedHeight = 20 }
 	local trailing = ns.Text { "Fixed", fixedWidth = 40, fixedHeight = 20 }
 	local fillingRow = ns.HStack { spacing = 10, filled, trailing }

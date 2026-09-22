@@ -376,6 +376,17 @@ views/          ← etlua templates and reusable partials only
 `class.new():createWindow()`. No module-level function controllers, no loose
 table hierarchies. Flat `apps/<appname>.lua` shims are forbidden.
 
+Larger apps follow Laravel/PHP-style composition: focused domain models own
+queries, rules and mutations; small controllers coordinate one feature through
+injected services and callbacks. Put them in `models/`, `controllers/`, and
+`services/`; the root controller composes them. Test each feature with plain
+data and fake IO independently of the window. Templates own all presentation,
+including tips, category rows, and conditional content.
+
+UI gaps belong in the framework. When native controls or layout do not meet
+the SwiftUI-style contract, improve the shared implementation and its tests
+instead of adding app-specific positioning or substitute controls.
+
 The IDE example is organized as:
 
 ```text

@@ -21,6 +21,8 @@ enum {
 	kResizeObserverKey,
 	kPaddingKey,
 	kPaddingHorizontalKey,
+	kPaddingLeadingKey,
+	kPaddingTrailingKey,
 	kPaddingVerticalKey,
 	kPaddingTopKey,
 	kPaddingBottomKey,
@@ -98,6 +100,7 @@ static const CGFloat kStackSpacing = 8.0;
 #define kLayoutDebugMaxTableRows          4
 #define kOutlineRowHeight              24
 #define kOutlineIndentation            16
+#define kOutlineDisclosureContentGap    8
 #define kOutlineDefaultWidth           400
 #define kOutlineDefaultHeight          200
 

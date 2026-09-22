@@ -4,6 +4,17 @@
 @end
 
 @implementation LuaOutlineView
+- (NSRect)frameOfCellAtColumn:(NSInteger)column row:(NSInteger)row {
+	NSRect frame = [super frameOfCellAtColumn:column row:row];
+	if (column >= 0 && column < self.tableColumns.count && self.tableColumns[column] == self.outlineTableColumn) {
+		// Reserve space inside the outline column, preserving AppKit's own
+		// disclosure hit target, indentation, and neighboring column geometry.
+		CGFloat gap = MIN(kOutlineDisclosureContentGap, frame.size.width);
+		if (self.userInterfaceLayoutDirection != NSUserInterfaceLayoutDirectionRightToLeft) frame.origin.x += gap;
+		frame.size.width -= gap;
+	}
+	return frame;
+}
 - (NSRect)frameOfOutlineCellAtRow:(NSInteger)row {
 	NSRect disclosure = [super frameOfOutlineCellAtRow:row];
 	if (!NSIsEmptyRect(disclosure)) {

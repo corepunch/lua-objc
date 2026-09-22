@@ -117,6 +117,12 @@ static CGFloat view_padding_horizontal(NSView *view) {
 	return p ? p.doubleValue : 0;
 }
 
+static CGFloat view_padding_edge(NSView *view, BOOL left) {
+	BOOL rtl = view.userInterfaceLayoutDirection == NSUserInterfaceLayoutDirectionRightToLeft;
+	NSNumber *value = objc_getAssociatedObject(view, left != rtl ? &kKeys[kPaddingLeadingKey] : &kKeys[kPaddingTrailingKey]);
+	return value ? value.doubleValue : view_padding_horizontal(view);
+}
+
 static CGFloat view_padding_vertical(NSView *view) {
 	NSNumber *value = objc_getAssociatedObject(view, &kKeys[kPaddingVerticalKey]);
 	if (value) return value.doubleValue;
@@ -313,12 +319,13 @@ static NSSize measure_horizontal_children(NSView *view, LuaLayoutConstraint cons
 static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 	if (!view) return NSZeroSize;
 
-	CGFloat padX = view_padding_horizontal(view);
+	CGFloat padX = view_padding_edge(view, YES);
+	CGFloat padRight = view_padding_edge(view, NO);
 	CGFloat padTop = view_padding_top(view);
 	CGFloat padBottom = view_padding_bottom(view);
 	CGFloat padY = padTop + padBottom;
 	CGFloat innerWidth = constraint.widthMode == LuaMeasureUndefined
-		? 0 : MAX(0, constraint.width - 2 * padX);
+		? 0 : MAX(0, constraint.width - (padX + padRight));
 	CGFloat innerHeight = constraint.heightMode == LuaMeasureUndefined
 		? 0 : MAX(0, constraint.height - padY);
 	NSSize natural = NSZeroSize;
@@ -341,7 +348,7 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 			natural.height += childSize.height;
 		}
 		if (visibleCount > 1) natural.height += (visibleCount - 1) * view_spacing(view);
-		natural.width += 2 * padX;
+		natural.width += (padX + padRight);
 		natural.height += padY;
 	} break;
 	case LayoutAxisHStack: {
@@ -350,7 +357,7 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 			.width = innerWidth, .widthMode = constraint.widthMode,
 			.height = innerHeight, .heightMode = constraint.heightMode }, sizes);
 		free(sizes);
-		natural.width += 2 * padX;
+		natural.width += (padX + padRight);
 		natural.height += padY;
 	} break;
 	case LayoutAxisZStack: {
@@ -367,7 +374,7 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 			natural.width = MAX(natural.width, childSize.width);
 			natural.height = MAX(natural.height, childSize.height);
 		}
-		natural.width += 2 * padX;
+		natural.width += (padX + padRight);
 		natural.height += padY;
 	} break;
 	case LayoutAxisHSplit: {
@@ -393,7 +400,7 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		}
 		CGFloat dividers = visibleCount > 1
 			? (visibleCount - 1) * [(NSSplitView *)view dividerThickness] : 0;
-		natural.width += dividers + 2 * padX;
+		natural.width += dividers + (padX + padRight);
 		natural.height += padY;
 	} break;
 	case LayoutAxisVSplit: {
@@ -419,7 +426,7 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		}
 		CGFloat dividers = visibleCount > 1
 			? (visibleCount - 1) * [(NSSplitView *)view dividerThickness] : 0;
-		natural.width += 2 * padX;
+		natural.width += (padX + padRight);
 		natural.height += dividers + padY;
 	} break;
 	default: break;
@@ -678,13 +685,14 @@ static void layout_recursive(NSView *view, CGFloat width) {
 
 	if (axis != LayoutAxisNone) {
 
-		CGFloat padX = view_padding_horizontal(view);
+		CGFloat padX = view_padding_edge(view, YES);
+		CGFloat padRight = view_padding_edge(view, NO);
 		CGFloat padTop = view_padding_top(view);
 		CGFloat padBottom = view_padding_bottom(view);
 		CGFloat stackSpacing = view_spacing(view);
 		NSUInteger visibleCount = 0;
 		for (NSView *child in view.subviews) if (!is_hidden(child)) visibleCount++;
-		CGFloat contentW = availableWidth - 2 * padX;
+		CGFloat contentW = availableWidth - (padX + padRight);
 		CGFloat contentH = availableHeight - padTop - padBottom;
 		NSString *alignment = view_alignment(view);
 

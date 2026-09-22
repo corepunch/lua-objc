@@ -340,7 +340,7 @@ end
 
 local function layoutProps(attrs)
     local lp = {
-        "padding", "paddingHorizontal", "paddingVertical", "paddingTop", "paddingBottom",
+        "padding", "paddingHorizontal", "paddingVertical", "paddingLeading", "paddingTrailing", "paddingTop", "paddingBottom",
         "spacing", "alignment",
         "fixedWidth", "fixedHeight", "minWidth", "minHeight",
         "maxWidth", "maxHeight",
