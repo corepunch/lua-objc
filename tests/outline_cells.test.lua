@@ -3,7 +3,7 @@ local t = require("TestKit")
 local ns = require("AppKit")
 local bridge = require("AppKitNative")
 local xml = require("ui.xml")
-local outline = xml.render('<OutlineView header="false" rowHeight="48" style="fullWidth"><Column id="name" subtitleKey="subtitle" imageKey="icon" imageSize="28" /><Column id="size" width="110" alignment="right" /></OutlineView>', {}, ns)
+local outline = xml.render('<OutlineView header="false" rowHeight="48" style="fullWidth"><Column id="name" subtitleKey="subtitle" imageKey="icon" imageSize="28" /><Column id="size" width="110" alignment="trailing" /></OutlineView>', {}, ns)
 local rows = {{id = "a", name = "Developer", subtitle = "Tools and environments", icon = "hammer", expanded = true, children = {{id = "b", name = "Xcode", size = "1 GB"}}}}
 outline:replaceRows(rows)
 outline.size = ns.Size(500, 250); outline:layout(500)

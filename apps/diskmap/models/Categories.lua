@@ -8,21 +8,25 @@ function Categories.rows(model, rootId, query)
 		local m = model.measurements[source.id] or {}
 		row.bytes, row.status = m.bytes, m.status or "notMeasured"
 		if source.children then
-			row.children = {}; local total, measured, complete, attempted = 0, false, true, false
+			row.children = {}; local total, measured, complete, attempted, calculating, failed = 0, false, true, false, false, false
 			for _, child in ipairs(source.children) do
 				local value, visible = build(child, matches)
 				if value.bytes then total = total + value.bytes; measured = true end
+				if value.status == "failed" then failed = true end
+				if value.status == "calculating" then calculating = true end
 				if value.status ~= "complete" then complete = false end
 				if value.status ~= "notMeasured" then attempted = true end
 				if visible then row.children[#row.children + 1] = value end
 			end
 			row.bytes = measured and total or nil
-			row.status = complete and "complete" or measured and "partial" or attempted and "denied" or "notMeasured"
+			row.status = calculating and "calculating" or complete and "complete" or measured and "partial" or failed and "failed" or attempted and "denied" or "notMeasured"
 			row.expanded = (source.id == "xcode" or source.id == "intelligence")
 			row.forceExpanded = needle ~= ""
 		end
 		row.size = (row.status == "partial" and "≥ " or "") .. Model.size(row.bytes)
-		if row.status == "skipped" then row.size = "Linked location" elseif row.status == "unsupported" then row.size = "System managed" elseif row.status == "denied" then row.size = "Access restricted" elseif row.status == "stale" then row.size = Model.size(row.bytes) .. " · stale" end
+		if row.status == "skipped" then row.size = "Linked location" elseif row.status == "unsupported" then row.size = "System managed" elseif row.status == "denied" then row.size = "Access restricted" elseif row.status == "failed" then row.size = "Unavailable" end
+		row.calculating = row.status == "calculating"
+		if row.calculating then row.size = "Calculating…" end
 		row.color = source.color or "secondary"
 		row.icon = source.icon or "doc"
 		row.kept = model.kept[row.id] == true

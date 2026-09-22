@@ -22,7 +22,7 @@ function System.readCache(path)
 	local body = f:read("*a"); f:close()
 	local ok, data = pcall(ns.json_parse, body)
 	if not ok or type(data) ~= "table" or data.version ~= require("apps.diskmap.Catalog").version or type(data.measurements) ~= "table" then return nil, "Invalid Diskmap cache" end
-	local statuses = {complete = true, partial = true, denied = true, stale = true, unsupported = true, skipped = true}
+	local statuses = {complete = true, partial = true, denied = true, failed = true, notMeasured = true, unsupported = true, skipped = true}
 	for id, m in pairs(data.measurements) do
 		if type(id) ~= "string" or type(m) ~= "table" or (m.bytes ~= nil and (type(m.bytes) ~= "number" or m.bytes < 0 or m.bytes ~= m.bytes or m.bytes == math.huge)) or not statuses[m.status] then return nil, "Invalid measurements" end
 	end
@@ -106,11 +106,6 @@ function System.await(job, completion, progress)
 			ns.sleep(0.25)
 		end
 	end)
-end
-function System.defaultCachePath()
-	local directory = (os.getenv("HOME") or "") .. "/Library/Application Support/Diskmap"
-	if not os.execute("/bin/mkdir -p " .. System.quote(directory)) then return nil end
-	return directory .. "/last-scan.json"
 end
 function System.loadSettings()
 	local file = io.open((os.getenv("HOME") or "") .. "/Library/Application Support/Diskmap/background", "r")

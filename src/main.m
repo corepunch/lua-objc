@@ -82,6 +82,7 @@ static const CGFloat kStackSpacing = 8.0;
 #define kTableCellTextTrailingInset      8
 #define kTableCellSymbolPointSize       13
 #define kTableCellSecondaryFontSize     11
+#define kTableCellLoadingGap             4
 #define kTableCellLineSpacing            2
 #define kTableCellLevelTextWidth        38
 #define kTableCellLevelGap               8

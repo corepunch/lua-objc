@@ -15,6 +15,7 @@
 @property (nonatomic, strong) LuaPathView *curveView;
 @property (nonatomic, strong) NSLevelIndicator *levelIndicator;
 @property (nonatomic) CGFloat imageWidth;
+@property (nonatomic, strong) NSProgressIndicator *loadingIndicator;
 @end
 
 @implementation LuaTableCellView
@@ -53,6 +54,18 @@
 		textY,
 		MAX(0, self.bounds.size.width - textX - kTableCellTextTrailingInset),
 		height);
+	if (_loadingIndicator && !_loadingIndicator.hidden) {
+		[_loadingIndicator sizeToFit];
+		CGFloat indicatorWidth = MIN(_loadingIndicator.frame.size.width, MAX(0, self.bounds.size.width - textX));
+		CGFloat available = MAX(0, self.bounds.size.width - textX - kTableCellTextTrailingInset - indicatorWidth - kTableCellLoadingGap);
+		CGFloat labelWidth = MIN(ceil(text.fittingSize.width), available);
+		CGFloat groupWidth = indicatorWidth + kTableCellLoadingGap + labelWidth;
+		CGFloat x = textX;
+		if (text.alignment == NSTextAlignmentRight) x = MAX(textX, self.bounds.size.width - kTableCellTextTrailingInset - groupWidth);
+		else if (text.alignment == NSTextAlignmentCenter) x = MAX(textX, (self.bounds.size.width - groupWidth) / 2);
+		_loadingIndicator.frame = NSMakeRect(x, floor((self.bounds.size.height - _loadingIndicator.frame.size.height) / 2), indicatorWidth, _loadingIndicator.frame.size.height);
+		text.frame = NSMakeRect(x + indicatorWidth + kTableCellLoadingGap, textY, labelWidth, height);
+	}
 	if (hasSecondary) {
 		_secondaryTextField.frame = NSMakeRect(
 			textX,
@@ -197,6 +210,18 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 			cell.secondaryTextField = secondary;
 		}
 
+		// Table delegates own cell content; a row-bound native indicator must be
+		// configured here so reuse clears animation along with the text.
+		if (cellSpec[@"loading"]) {
+			NSProgressIndicator *indicator = [[NSProgressIndicator alloc] initWithFrame:NSZeroRect];
+			indicator.style = NSProgressIndicatorStyleSpinning;
+			indicator.controlSize = NSControlSizeSmall;
+			indicator.indeterminate = YES;
+			indicator.displayedWhenStopped = NO;
+			[indicator sizeToFit];
+			[cell addSubview:indicator];
+			cell.loadingIndicator = indicator;
+		}
 		// Reusable native table cells own their embedded Cocoa controls.
 		if (cellSpec[@"level"]) {
 			NSLevelIndicator *level = [[NSLevelIndicator alloc] initWithFrame:NSZeroRect];
@@ -230,13 +255,21 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	cell.secondaryTextField.stringValue = secondaryValue
 		? [secondaryValue description] : @"";
 	BOOL semibold = [cellSpec[@"weight"] isEqual:@"semibold"];
-	cell.textField.font = [NSFont systemFontOfSize:NSFont.systemFontSize
+	BOOL small = [cellSpec[@"controlSize"] isEqual:@"small"];
+	cell.textField.font = [NSFont systemFontOfSize:small ? NSFont.smallSystemFontSize : NSFont.systemFontSize
 		weight:semibold ? NSFontWeightSemibold : NSFontWeightRegular];
 	NSString *primaryColorKey = cellSpec[@"color"];
 	NSString *primaryColor = primaryColorKey
 		? [rowData[primaryColorKey] description] : nil;
 	cell.textField.textColor = primaryColor
 		? semantic_color(primaryColor) : NSColor.labelColor;
+	NSString *loadingKey = cellSpec[@"loading"];
+	BOOL loading = loadingKey && [rowData[loadingKey] respondsToSelector:@selector(boolValue)] && [rowData[loadingKey] boolValue];
+	cell.loadingIndicator.hidden = !loading;
+	if (loading) {
+		[cell.loadingIndicator startAnimation:nil];
+		cell.textField.textColor = NSColor.secondaryLabelColor;
+	} else [cell.loadingIndicator stopAnimation:nil];
 	NSString *secondaryColorKey = cellSpec[@"secondaryColor"];
 	NSString *secondaryColor = secondaryColorKey
 		? [rowData[secondaryColorKey] description] : nil;

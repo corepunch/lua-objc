@@ -35,13 +35,11 @@ resolved from installed application bundles, with a symbol fallback.
 ```
 
 Cache files must match the current catalog version (3); regenerate older caches. They contain JSON, ID-keyed measurements, capacity, completion time, entry count,
-duration and up to 1,000 access-failure paths. Normal launches save the latest
-scan to `~/Library/Application Support/Diskmap/last-scan.json`; `--write-cache`
-selects another destination. They are
+duration and up to 1,000 access-failure paths. Only `--write-cache` saves a scan to the specified destination. Cache files are
 parsed as data, never executed. Both `-cache=` and `--cache=` work after the app
 path. Cache mode disables background checks and cleanup actions, and is visibly
 labeled. It does not overwrite the supplied cache. The fixture has invented sizes
-for visual verification. Normal startup never uses that fixture. It restores the previous real inventory as stale data while refreshing every category; stale measurements cannot trigger cleanup suggestions.
+for visual verification. Normal startup never restores cached measurements. Startup and refresh replace each pending category’s size with a native spinner and “Calculating…”, then show its fresh result once all of its locations finish.
 
 ## Measurement and actions
 

@@ -26,7 +26,7 @@ t.expect(suggestions[1].evidence:find("Review threshold", 1, true) ~= nil, "sugg
 model.measurements.projects = {bytes = 900e9, status = "complete"}
 model.measurements["xcode-app"] = {bytes = 200e9, status = "complete"}
 t.assertEqual(#Cleanup.suggestions(model), 1, "large projects and installations do not become cleanup opportunities")
-for _, status in ipairs({"partial", "stale", "denied", "skipped"}) do
+for _, status in ipairs({"partial", "failed", "denied", "skipped"}) do
 	model.measurements.simulators.status = status
 	t.assertEqual(#Cleanup.suggestions(model), 0, "uncertain measurement cannot recommend cleanup: " .. status)
 end
@@ -95,11 +95,11 @@ t.assertEqual(writes, 1, "accepted completion writes debug snapshot once")
 t.expect(scanner.status:find("Cache not saved", 1, true) ~= nil, "cache write failure is visible")
 scanner:dispose(); t.assertEqual(cancelled, 1, "completed job is not cancelled again")
 local warm = Scan.new(Model.new("/Users/test"), {
-	readCache = function() return {measurements = {derived = {bytes = 5e9, status = "complete"}}, scan = {}} end,
+	readCache = function() error("Normal startup must not read cached measurements") end,
 	diskSpace = function() return {totalKb = 100, freeKb = 50} end,
 }, "/Users/test")
 warm:configure(nil, "/test/cache")
-t.assertEqual(warm.model.measurements.derived.status, "stale", "warm startup marks prior measurements stale")
+t.assertEqual(warm.model.measurements.derived, nil, "startup has no cached values")
 t.assertEqual(#Cleanup.suggestions(warm.model), 0, "warm cache cannot authorize cleanup until refreshed")
 local failed = Scan.new(model, {start = function() error("Unavailable") end}, "/Users/test")
 failed:start(); t.expect(failed.status:find("Could not start", 1, true) ~= nil, "start failure is visible without a window")

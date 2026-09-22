@@ -78,7 +78,7 @@ eval {
    $state = !$tree ? 'skipped' : $tree->{partial} ? 'unreadable' : 'measured';
   }
   push @trees, $tree; push @states, $state;
-  writeJSON(dirname($output) . '/progress.json', {completed => scalar @states, total => scalar @roots});
+  writeJSON(dirname($output) . '/progress.json', {completed => scalar @states, total => scalar @roots, trees => \@trees, rootStates => \@states});
  }
 }; $failure = $@;
 abandon() if $parent && !kill(0, $parent);

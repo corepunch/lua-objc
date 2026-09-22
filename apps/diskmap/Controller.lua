@@ -46,7 +46,6 @@ function Controller:updateRows()
 	self.opportunities:update(self.cleanup:presentation())
 	self.storageBar:update(self.categories:bar(self.scan.disk))
 	self.tipPanel:update(self.tips:presentation(self.scan.disk))
-	if self.scan.job then self.refs.results:showLoading() else self.refs.results:hideLoading() end
 	if self.inspector.selectedId then self:select(self.inspector.selectedId, false) end
 end
 function Controller:select(id, scroll)

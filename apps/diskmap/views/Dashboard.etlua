@@ -10,8 +10,8 @@
         </VStack>
       </HStack>
       <OutlineView ref="results" style="fullWidth" header="false" alternatingRows="false" rowHeight="44" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true">
-        <Column id="name" title="Category" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" imageSize="32" minWidth="210" />
-        <Column id="size" title="On disk" width="125" minWidth="110" alignment="right" />
+        <Column id="name" title="Category" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" imageSize="32" controlSize="small" minWidth="210" />
+        <Column id="size" title="On disk" width="125" minWidth="110" alignment="trailing" controlSize="small" loadingKey="calculating" />
       </OutlineView>
       <GroupBox ref="coveragePanel" fillWidth="true">
         <HStack fillWidth="true" spacing="12" padding="10">

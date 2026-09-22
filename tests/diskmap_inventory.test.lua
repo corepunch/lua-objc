@@ -26,7 +26,7 @@ t.assertEqual(restored.measurements["apps-system"].bytes, 102400, "inventory cac
 t.assertEqual(restored.scan.visited, 123, "debug metadata survives replay")
 Inventory.apply(model, {"apps-system", "user-trash"}, {failure = "Worker stopped", trees = {{kb = 80}}, rootStates = {"measured"}})
 t.assertEqual(model.measurements["apps-system"].bytes, 81920, "completed roots survive later worker failure")
-t.assertEqual(model.measurements["user-trash"].status, "stale", "unfinished roots retain stale state")
+t.assertEqual(model.measurements["user-trash"].status, "failed", "unfinished roots have no stale value")
 Inventory.apply(model, {"apps-system"}, {rootStates = {"skipped"}})
 t.assertEqual(model.measurements["apps-system"].status, "skipped", "linked location is distinct from access denial")
 -- Scanner tests use tiny temporary trees, no windows or waiting.
@@ -43,6 +43,10 @@ assert(os.execute("/usr/bin/perl apps/diskmap/services/scan.pl " .. System.quote
 f = assert(io.open(output)); local scanned = ns.json_parse(f:read("*a")); f:close()
 t.assertEqual(scanned.trees[1].kb + scanned.trees[2].kb, 8, "hard links across category roots count once")
 t.assertEqual(scanned.rootStates[3], "missing", "absent locations have explicit zero evidence")
+f = assert(io.open(root .. "/progress.json")); local progress = ns.json_parse(f:read("*a")); f:close()
+t.assertEqual(progress.completed, 4, "progress counts finished locations")
+t.assertEqual(progress.trees[1].kb, scanned.trees[1].kb, "progress publishes fresh allocation")
+t.assertEqual(progress.rootStates[3], "missing", "progress preserves missing-location evidence")
 t.assertEqual(scanned.errors, 0, "missing catalog paths do not inflate permission errors")
 t.assertEqual(scanned.rootStates[4], "skipped", "symlink ancestors never escape the scan boundary")
 for _, path in ipairs({a .. "/file", b .. "/link", a, b, root .. "/alias", plan, output, root .. "/progress.json", root}) do os.remove(path) end

@@ -907,6 +907,11 @@ two-line rows, inline charts, and other compound native content. Numbers are
 converted to strings automatically.
 Column alignment can be `"leading"` (default), `"center"`, or `"trailing"`;
 the header and reusable native cells use the same alignment.
+For tables and outlines, `<Column controlSize="small">` uses the small system
+font. `<Column loadingKey="calculating">` binds a boolean row field to a native
+spinning progress indicator beside the cell text. Supply the loading label in
+the column's usual row value; the spinner and label share the column alignment.
+Lua column specs use `cell = {controlSize = "small", loading = "calculating"}`.
 
 **Column sizing:**
 

@@ -295,11 +295,13 @@ Display classification coverage only with a stated denominator, for example
 “94% of measured allocation classified,” not “94% of your Mac understood.”
 Do not claim byte-for-byte parity with System Settings.
 
-Each measurement retains `notMeasured`, `measuring`, `complete`, `partial`,
-`denied`, `unavailable`, `failed`, or `stale` status. A missing path confirmed
+Each measurement retains `notMeasured`, `calculating`, `complete`, `partial`,
+`denied`, `failed`, `skipped`, or `unsupported` status. A missing path confirmed
 by enumeration is different from an inaccessible path. Partial results show
-known allocation as a lower bound; a failed refresh preserves the last result
-as stale. Zero is reserved for a completed empty measurement.
+known allocation as a lower bound. Refresh clears old measurements; only fresh
+completed locations survive cancellation or failure. Each pending category shows
+a native spinner and “Calculating…” in place of its size. Zero is reserved for
+a completed empty measurement.
 
 ## macOS knowledge catalog
 

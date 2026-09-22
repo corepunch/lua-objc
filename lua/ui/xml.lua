@@ -771,9 +771,11 @@ local TAG_SCHEMA = {
             imageSize = "num",
             levelKey = "str",
             levelColorKey = "str",
+            loadingKey = "str",
+            controlSize = "str",
         },
         collect = function(props)
-            for key, field in pairs({badgeColorKey = "badgeColor", appIconKey = "appIcon", subtitleKey = "secondary", fileIconKey = "fileIcon", imageKey = "image", imageColorKey = "imageColor", imageSize = "imageSize", levelKey = "level", levelColorKey = "levelColor"}) do
+            for key, field in pairs({loadingKey = "loading", controlSize = "controlSize", badgeColorKey = "badgeColor", appIconKey = "appIcon", subtitleKey = "secondary", fileIconKey = "fileIcon", imageKey = "image", imageColorKey = "imageColor", imageSize = "imageSize", levelKey = "level", levelColorKey = "levelColor"}) do
                 if props[key] then
                     props.cell = props.cell or {}
                     props.cell[field] = props[key]

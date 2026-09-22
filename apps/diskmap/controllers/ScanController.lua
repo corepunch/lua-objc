@@ -15,30 +15,27 @@ function Scan:configure(cachePath, writeCache)
 			if not data.fixture and self.model.scan.completedAt then self.status = self.status .. " · " .. os.date("%d %b %H:%M", self.model.scan.completedAt) end
 		else self.status = "Cache could not be loaded: " .. tostring(err) end
 	else
-		self.writeCache = writeCache or (self.service.defaultCachePath and self.service.defaultCachePath())
+		self.writeCache = writeCache
 		self.disk = self.service.diskSpace(self.home)
-		if self.writeCache and self.service.readCache then
-			local data = self.service.readCache(self.writeCache)
-			if data and not data.fixture then
-				Inventory.restore(self.model, data)
-				for _, m in pairs(self.model.measurements) do if m.bytes then m.status = "stale" end end
-				self.status = "Previous scan · refreshing all categories"
-			end
-		end
 	end
 end
 function Scan:cancel(silent)
 	self.generation = self.generation + 1
 	if self.job then self.job.cancelled = true; self.service.cancel(self.job); self.job = nil end
-	if not silent then self.status = "Measurement cancelled; previous results retained."; self:notify() end
+	Inventory.cancel(self.model)
+	if not silent then self.status = "Measurement cancelled; completed locations retained."; self:notify() end
 end
 function Scan:start()
 	if self.cachePath then return end
 	self:cancel(true)
 	local paths, ids, exclusions = Inventory.plan(self.model)
 	if #paths == 0 then return end
+	Inventory.begin(self.model, ids)
 	local ok, job = pcall(self.service.start, paths, exclusions)
-	if not ok then self.status = "Could not start measurement: " .. tostring(job); self:notify(); return end
+	if not ok then
+		Inventory.apply(self.model, ids, {failure = tostring(job)})
+		self.status = "Could not start measurement: " .. tostring(job); self:notify(); return
+	end
 	self.job = job; self.status = "Measuring all storage categories…"; self:notify()
 	local generation = self.generation
 	self.service.await(job, function(result)
@@ -53,6 +50,7 @@ function Scan:start()
 		self:notify()
 	end, function(progress)
 		if generation ~= self.generation or not progress or not progress.total then return end
+		Inventory.progress(self.model, ids, progress)
 		self.status = string.format("Measuring all categories · %d/%d locations", progress.completed, progress.total)
 		self:notify()
 	end)
