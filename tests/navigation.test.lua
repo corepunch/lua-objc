@@ -48,6 +48,4 @@ local function testNavigation()
     return true
 end
 
-return {
-    run = testNavigation,
-}
+os.exit(testNavigation() and 0 or 1)

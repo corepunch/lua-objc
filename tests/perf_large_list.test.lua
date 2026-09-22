@@ -63,6 +63,4 @@ local function benchmarkEagerStack()
     return true
 end
 
-return {
-    run = benchmarkEagerStack,
-}
+os.exit(benchmarkEagerStack() and 0 or 1)

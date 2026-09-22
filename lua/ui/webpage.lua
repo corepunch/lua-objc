@@ -19,8 +19,6 @@ function WebPage.new(url)
         url = url or "",
         title = "Loading...",
         progress = 0,
-        canGoBack = false,
-        canGoForward = false,
         isLoading = false,
 
         -- Internal state

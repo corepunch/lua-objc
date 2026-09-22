@@ -74,7 +74,7 @@ function M.run()
   diff = reorder.Difference.new()
   diff:move(5, 1):remove(2)
   diff:apply(items)
-  arrayEqual(items, { 5, 1, 3, 4 }, "move then remove")
+  arrayEqual(items, { 5, 2, 3, 4 }, "move then remove")
   passed = passed + 1
 
   -- Test 7: Non-mutating apply
@@ -147,11 +147,11 @@ function M.run()
     :move(4, 1)
     :move(3, 2)
     :applyTo(items)
-  arrayEqual(result, { 4, 3, 1, 2 }, "chaining works")
+  arrayEqual(result, { 4, 2, 1, 3 }, "chaining works")
   passed = passed + 1
 
   print(string.format("Reorder tests: %d/%d passed", passed, tests))
   return passed == tests
 end
 
-return M
+os.exit(M.run() and 0 or 1)

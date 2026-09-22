@@ -3,7 +3,7 @@
     <!-- Toolbar with glass button styles -->
     <Toolbar>
       <ToolbarItem id="save" label="Save" systemImage="checkmark" />
-      <ToolbarSpacer />
+      <ToolbarItem id="NSToolbarFlexibleSpaceItem" />
       <ToolbarItem id="settings" label="Settings" systemImage="gear" />
     </Toolbar>
 

@@ -102,6 +102,4 @@ local function testWebPage()
     return true
 end
 
-return {
-    run = testWebPage,
-}
+os.exit(testWebPage() and 0 or 1)

@@ -97,7 +97,7 @@ test: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	@passed=0; failed=0; \
 	for t in $(TEST_FILES); do \
 		echo "--- $$t ---"; \
-		if ./$(TARGET) $$t 2>&1; then \
+		if ./$(TARGET) --test $$t 2>&1; then \
 			passed=$$((passed + 1)); \
 		else \
 			failed=$$((failed + 1)); \

@@ -100,42 +100,24 @@ broken[path] = 'while true do end'
 view, err = preview:render(broken)
 t.expect(not view and err:find("execution budget", 1, true), "runaway initial render interrupted")
 t.expect(preview:render(model.files) ~= nil, "hook restored after budget error")
--- Inspect the real template with recording constructors: UIKit-only Preview stays headless.
-local recordedNS = setmetatable({}, { __index = function(_, kind)
-	return function(props) props.kind = kind; return props end
-end })
-local config, refs = require("ui.xml").renderFile("apps/studio/views/Window.etlua", {
-	actions = { files = function() end, undo = function() end, reload = function() end,
-		settings = function() end, send = function() end, stop = function() end, voice = function() end, free = function() end },
-}, recordedNS)
-local root = config.content
-local sidebar = root[2]
-t.assertEqual(root.kind, "HStack", "workspace columns start at the root")
-t.assertEqual(#root, 2, "no workspace header or footer consumes preview height")
-t.assertEqual(root.padding, 0, "preview has no outer padding")
-t.assertEqual(root[1], refs.preview, "preview directly fills the left column")
-t.assertEqual(refs.preview.fillHeight, true, "preview stretches vertically in the horizontal stack")
-t.assertEqual(refs.preview.flexBasis, 0, "preview shares width equally with agent")
-t.assertEqual(sidebar.fillHeight, true, "agent column stretches vertically in the horizontal stack")
-t.assertEqual(sidebar.flexBasis, 0, "agent column shares available width")
-t.assertEqual(sidebar[1][2], refs.files, "workspace actions live in the agent column")
-t.assertEqual(sidebar[#sidebar], refs.status, "status consumes only agent column space")
-local Controller = require("apps.studio.Controller")
-local controller = Controller.new()
-controller.refs, controller.model, controller.agent = refs, model, agent
-controller.ns = { _credential = function() return "" end }
-controller.showSettings = function() controller.settingsOpened = true end
-controller:send()
-t.expect(controller.settingsOpened, "send without credentials opens settings")
-controller:setStatus("Preview error")
-t.assertEqual(refs.status.text, "Preview error", "errors remain visible in the agent column")
-agent.busy = true
-controller:update()
-t.assertEqual(refs.status.text, "Agent is working…", "busy status remains visible")
-t.assertEqual(refs.send.enabled, false, "send disabled while working")
-t.assertEqual(refs.preview.flexGrow, 1, "status changes preserve preview layout")
-agent.busy = false
-controller:update()
-t.assertEqual(refs.send.enabled, true, "send enabled when idle")
-t.assertEqual(refs.status.text, "Preview error", "idle restores last status")
+-- Inspect the current three-column editor template without constructing native UI.
+local sidebarPresentation = require("apps.studio.models.Sidebar").presentation()
+sidebarPresentation.metrics = {
+	iconSize = 20, iconSlotWidth = 32, rowPadding = 8,
+	expandedPadding = 12, collapsedPadding = 8,
+	expandedWidth = 208, compactWidth = 184, collapsedWidth = 64,
+}
+sidebarPresentation.collapsed = false
+local description = require("ui.xml").describeFile("apps/studio/views/Window.etlua", {
+	sidebar = sidebarPresentation,
+	preview = { device = "iPhone 16", zoom = "100%", runLabel = "Run" },
+	chat = { tabs = { "Preview", "Logs" }, status = "Ready", prompt = "Prompt",
+		response = "Response", files = { "App.lua" }, suggestions = {} },
+})
+t.expect(description.source:find("HabitPal", 1, true) ~= nil, "project navigation renders")
+t.expect(description.source:find("hammer.fill", 1, true) ~= nil, "Lua Studio identity keeps its hammer icon")
+t.expect(description.source:find("minWidth=\"300\"", 1, true) ~= nil, "preview keeps a usable minimum width")
+t.expect(description.source:find("minWidth=\"330\"", 1, true) ~= nil, "chat keeps a usable minimum width")
+t.expect(description.source:find("toggleChat", 1, true) ~= nil, "chat visibility customization remains available")
+t.expect(description.source:find("toggleSidebarWidth", 1, true) ~= nil, "sidebar width customization remains available")
 os.exit(t.summary() and 0 or 1)

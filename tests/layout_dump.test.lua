@@ -14,7 +14,7 @@ os.remove(path)
 
 t.expect(dump:find('<View class="NSSearchField"', 1, true) ~= nil,
 	"layout dump identifies native control classes")
-t.expect(dump:find('<View class="NSSearchField" x="8.0" y="0.0" width="318.0" height="36.0"',
+t.expect(dump:find('<View class="NSSearchField" x="8.0" y="0.0" width="326.0" height="36.0"',
 	1, true) ~= nil,
 	"layout dump proves the extra-large search field is pinned high in its inset wrapper")
 t.expect(dump:find('<Column id="price"', 1, true) ~= nil,

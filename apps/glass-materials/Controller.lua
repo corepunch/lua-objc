@@ -10,7 +10,7 @@ function Controller.new()
 end
 
 function Controller:createWindow()
-    local view, refs = xml.renderFile("views/Main.etlua", {
+    local view, refs = xml.renderFile("apps/glass-materials/views/Main.etlua", {
         materials = self.model.materials,
         selectedMaterial = self.model.selectedMaterial,
         isMinimizedOnScroll = self.model.isMinimizedOnScroll,

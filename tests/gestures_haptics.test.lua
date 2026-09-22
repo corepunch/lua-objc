@@ -55,6 +55,4 @@ local function testHapticsModule()
     return true
 end
 
-return {
-    run = testHapticsModule,
-}
+os.exit(testHapticsModule() and 0 or 1)
