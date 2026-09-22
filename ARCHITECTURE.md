@@ -400,6 +400,9 @@ apps/ide/
 That structure keeps app boot, scene selection, and UI composition separate
 without introducing a second runtime or any non-Lua app scaffolding.
 
+For the larger-app pattern used by Diskmap and Studio—feature-oriented MVC with
+controller composition—see [docs/APP_STRUCTURE.md](docs/APP_STRUCTURE.md).
+
 ---
 
 ### XML view templates (`lua/ui/xml.lua`)

@@ -1,0 +1,14 @@
+<VStack padding="16" spacing="10" flexGrow="1" flexBasis="0" fillHeight="true" alignment="center">
+	<HStack padding="0" spacing="8" fillWidth="true">
+		<Label text="Preview" size="17" weight="semibold" />
+		<Spacer />
+		<Button title="Reload" systemImage="arrow.clockwise" />
+	</HStack>
+	<Preview ref="preview" flexGrow="1" fillWidth="true" fillHeight="true" />
+	<HStack padding="10" spacing="12" fillWidth="true">
+		<Button title="<%= device %>" systemImage="iphone" />
+		<Spacer />
+		<Button title="<%= runLabel %>" systemImage="play.fill" style="borderedProminent" />
+		<Label text="<%= zoom %>" size="13" color="secondary" />
+	</HStack>
+</VStack>
