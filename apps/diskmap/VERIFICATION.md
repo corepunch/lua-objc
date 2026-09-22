@@ -78,3 +78,42 @@ The real scan inspected 2,054,792 entries in 65 seconds: 182.1 GB measured versu
 were saved to `/tmp/diskmap-live.json` (not checked in). Screenshots verified real
 measurements, the synthetic fixture, and the minimum-size dark layout. The bar
 now includes every measured category and a separate unreconciled segment.
+
+## 2026-09-22 — feature components and knowledge-based recommendations
+
+- Nine independent catalog providers compose the same versioned ownership ledger.
+  Scan, categories, cleanup, tips, inspector and settings each have focused
+  controllers; pure models and injected services are exercised independently.
+- Cleanup rules now require recognized ownership, a complete measurement and a
+  resource-specific review threshold. Tests cover threshold boundaries, excluded
+  large projects/installations, uncertain measurements, Keep ancestors, stable
+  action IDs, persistence failures, cancellation generations and stale warm caches.
+- Shared `ui.template` retains unchanged native subtrees and owns scoped replacement
+  and callback disposal. Tests cover structural changes, live action rebinding,
+  parent disposal, render failures, native identity and immutable caller bindings.
+- Native scroll views preserve reading position through growing/shrinking viewports.
+  Label measurement includes native field insets and retains declared wrapping
+  through text mutation. Long paths support character wrapping on both platforms.
+- AppKit and UIKit build; `make diskmap-app` rebuilds the standalone app. Final
+  targeted suites: Diskmap 687 assertions, feature components 56, inventory 23,
+  template mounts 13, native image/text 17, scroll layout 14, XML 106, outline 33.
+- Final regression sweep: 68/68 previously passing and affected suites pass with
+  native Launch Services access. A bounded sweep of all 77 files also reproduced
+  four existing failures (adventure_arena_zil, glass_materials, layout_dump,
+  stocks_workspace) and five existing run-loop timeouts (gestures_haptics,
+  navigation, perf_large_list, reorder, webpage). The four failures were confirmed
+  on untouched incoming baseline `f4769008`. `make test` therefore has no blanket
+  pass claim. Sandbox-only app-icon failures pass with Launch Services access.
+- Screenshot inspection covered 1024×768, 1000×640 and 1440×1000, light/dark,
+  real loaded inventory, native loading, empty search, invalid-cache errors,
+  selected/disabled inspector actions, Settings and long text. The final native
+  layout dump and long-text screenshot verify all inspector words and path
+  characters remain accessible. Content below the viewport uses native scrolling;
+  compact outline subtitles intentionally truncate.
+- Computer Use exercised native search, disclosure, arrow-key selection/collapse,
+  Settings and Cleanup navigation in the app. The standalone bundle was captured
+  again using the saved real inventory. No real cleanup action was performed.
+
+Real scans retain local diagnostics and refresh every category. Access-denied
+files, APFS shared extents and exclusive snapshot allocation still limit physical
+reconciliation; these remain explicit, rather than invented measured values.

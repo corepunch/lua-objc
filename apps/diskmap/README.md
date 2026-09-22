@@ -11,7 +11,7 @@ make
 make diskmap-app
 ```
 
-`Catalog.lua` contains the macOS knowledge tree: more than 140 named resources,
+`Catalog.lua` composes independent providers in `catalog/` into the macOS knowledge tree: more than 140 named resources,
 including Xcode runtimes, devices, bundled SDKs, archives, package managers,
 AI coding tools, system assets, app support, backups, media and boot data.
 New layouts remain review-only until their ownership and cleanup policy are
@@ -41,7 +41,7 @@ selects another destination. They are
 parsed as data, never executed. Both `-cache=` and `--cache=` work after the app
 path. Cache mode disables background checks and cleanup actions, and is visibly
 labeled. It does not overwrite the supplied cache. The fixture has invented sizes
-for visual verification. Normal startup never uses that fixture.
+for visual verification. Normal startup never uses that fixture. It restores the previous real inventory as stale data while refreshing every category; stale measurements cannot trigger cleanup suggestions.
 
 ## Measurement and actions
 
@@ -70,6 +70,37 @@ locally. Background checks run every 15 minutes while open and can be paused.
 No file contents are read or uploaded; cloud-only files are not downloaded.
 
 The app and framework changes are described in [DESIGN.md](DESIGN.md).
+
+## Component boundaries
+
+The root controller composes six small controllers: scan lifecycle, category
+presentation, cleanup, contextual tips, inspector actions, and settings. Their
+models contain no native controls. Services are injected, so tests can exercise
+cancellation, persistence failures, action routing and cache replay independently.
+
+| Module | Owns |
+| --- | --- |
+| `catalog/` | Independent category definitions, paths, ownership and consequences |
+| `Model.lua` | Indexed inventory state and byte aggregation |
+| `models/Inventory.lua` | Scan plans, measurement transitions and snapshots |
+| `models/Categories.lua` | Category queries and capacity distribution |
+| `models/Cleanup.lua`, `knowledge/CleanupRules.lua` | Recognized resources, review thresholds, evidence and tailored advice |
+| `models/Tips.lua` | Contextual access, capacity, Keep and system-storage guidance |
+| `models/Inspector.lua`, `models/Preferences.lua` | Resource details and action eligibility |
+| `controllers/` | Small coordinators with injected IO and navigation callbacks |
+| `services/System.lua`, `services/scan.pl` | Native integration and metadata enumeration |
+| `views/` | All presentation, etlua loops and reusable partials |
+
+Cleanup thresholds are review criteria, not claims that data is unnecessary.
+Only complete measurements qualify. A large unrecognized folder or required app
+installation does not become a suggestion simply because it is large. Every
+suggestion explains its owner, measured evidence and consequences; Keep suppresses
+it and its descendants.
+
+`ui.template` owns retained etlua component mounts and callback scopes. Identical
+descriptions retain native views and scroll state; changed descriptions replace
+the scoped subtree. It is boundary-level reconciliation, not keyed child diffing.
+The application does not clear and rebuild native container children itself.
 
 ## Verification
 

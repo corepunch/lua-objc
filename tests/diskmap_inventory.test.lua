@@ -1,3 +1,6 @@
+local Categories = require("apps.diskmap.models.Categories")
+local Preferences = require("apps.diskmap.models.Preferences")
+local Cleanup = require("apps.diskmap.models.Cleanup")
 _G.__headless = true
 local t = require("TestKit")
 local Model = require("apps.diskmap.Model")
@@ -14,7 +17,7 @@ for i in ipairs(ids) do result.rootStates[i] = "missing" end
 result.trees[index["apps-system"]] = {kb = 100}; result.rootStates[index["apps-system"]] = "measured"
 result.trees[index["user-trash"]] = {kb = 0, partial = true}; result.rootStates[index["user-trash"]] = "unreadable"
 Inventory.apply(model, ids, result)
-for _, row in ipairs(Model.rows(model)) do t.expect(row.status ~= "notMeasured", "completed batch attempts " .. row.id) end
+for _, row in ipairs(Categories.rows(model)) do t.expect(row.status ~= "notMeasured", "completed batch attempts " .. row.id) end
 t.assertEqual(model.measurements["user-trash"].status, "partial", "zero with denied descendants remains partial")
 t.assertEqual(model.scan.issues[1].path, "/denied", "debug snapshot retains access evidence")
 local restored = Model.new("/Users/test")
@@ -43,4 +46,10 @@ t.assertEqual(scanned.rootStates[3], "missing", "absent locations have explicit 
 t.assertEqual(scanned.errors, 0, "missing catalog paths do not inflate permission errors")
 t.assertEqual(scanned.rootStates[4], "skipped", "symlink ancestors never escape the scan boundary")
 for _, path in ipairs({a .. "/file", b .. "/link", a, b, root .. "/alias", plan, output, root .. "/progress.json", root}) do os.remove(path) end
+local invalidCache = os.tmpname()
+local snapshot = Inventory.snapshot(model, {totalKb = 200, freeKb = 50})
+snapshot.scan = {completedAt = "invalid"}
+System.writeCache(invalidCache, snapshot)
+t.expect(System.readCache(invalidCache) == nil, "malformed diagnostic timestamp is rejected")
+os.remove(invalidCache)
 os.exit(t.summary() and 0 or 1)

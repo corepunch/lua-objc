@@ -1,10 +1,10 @@
 <VStack fillWidth="true" spacing="14" alignment="leading">
-          <% for i, suggestion in ipairs(suggestions) do %>
-          <%- partial("Suggestion.etlua", {suggestion = suggestion, index = i}) %>
+          <% for _, suggestion in ipairs(suggestions) do %>
+          <%- partial("Suggestion.etlua", {suggestion = suggestion}) %>
           <Divider />
           <% end %>
           <% if #suggestions == 0 then %>
-          <Label text="No measured cleanup candidates yet. Measurements update after each complete scan." size="12" color="secondary" fillWidth="true" lines="3" />
+          <Label text="No recognized resources meet the review thresholds. Suggestions update after each complete scan." size="12" color="secondary" fillWidth="true" lines="0" />
           <% end %>
 
 </VStack>

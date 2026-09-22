@@ -423,7 +423,7 @@ function UIKit.Label(arg)
 			}),
 			UIKit.Label({ text, size = props.size, weight = props.weight,
 				italic = props.italic, color = props.color,
-				lineLimit = props.lineLimit, truncation = props.truncation }),
+				lineLimit = props.lineLimit, truncation = props.truncation, wrapping = props.wrapping }),
 		}
 		return applyLayout(UIKit.HStack(row), props)
 	end
@@ -437,6 +437,7 @@ function UIKit.Label(arg)
 			v.numberOfLines = lines
 			if lines > 1 then v.lineBreakMode = 0 end
 		end
+		if props.wrapping then v.lineBreakMode = props.wrapping == "character" and 1 or 0 end
 		if props.truncation then
 			local modes = { head = 3, tail = 4, middle = 5 }
 			v.lineBreakMode = modes[props.truncation] or 4

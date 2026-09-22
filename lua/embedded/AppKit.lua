@@ -589,7 +589,7 @@ function AppKit.Text(arg)
 			}),
 			AppKit.Text({ text, size = arg.size, weight = arg.weight,
 				italic = arg.italic, color = arg.color,
-				lineLimit = arg.lineLimit, truncation = arg.truncation }),
+				lineLimit = arg.lineLimit, truncation = arg.truncation, wrapping = arg.wrapping }),
 		}
 		return applyLayout(AppKit.HStack(row), arg)
 	end
@@ -612,6 +612,9 @@ function AppKit.Text(arg)
 	if type(arg) == "table" and arg.lineLimit then
 		v.lineLimit = arg.lineLimit
 		if arg.lineLimit > 1 then v.lineBreakMode = 0 end
+	end
+	if type(arg) == "table" and arg.wrapping then
+		v.lineBreakMode = arg.wrapping == "character" and 1 or 0
 	end
 	if type(arg) == "table" and arg.truncation then
 		local modes = { head = 3, tail = 4, middle = 5 }

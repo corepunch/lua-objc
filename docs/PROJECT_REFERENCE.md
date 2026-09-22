@@ -236,6 +236,39 @@ views. This removes repeated view declarations during initial construction, but
 it does not provide identity, diffing, or reactive reevaluation. A future `If`
 must receive lazy callbacks or Lua will eagerly build both branches.
 
+`Text` / `<Label>` accepts `wrapping="word"` (default) or `wrapping="character"`
+for unbroken paths and identifiers. `truncation` remains independent and takes
+precedence when specified. `lines="0"` allows unlimited lines. AppKit retains the
+declared break mode through text changes and viewport resizing.
+
+#### Retained etlua template boundaries
+
+Application screens use etlua templates and partials. `require("ui.template")`
+provides an explicit retained boundary for state-dependent presentation:
+
+```lua
+local Template = require("ui.template")
+local panel = Template.new(refs.panelHost, "apps/example/views/Panel.etlua", ns)
+panel:update({items = model:items(), actions = {review = review}})
+```
+
+The host is a ref from another template. `update` retains the evaluated XML and
+plain bindings. Identical descriptions preserve native controls and route actions
+to the current callbacks. Changed descriptions render inside a fresh `ns.Scope`
+before replacing the old subtree and disposing its callbacks. A render failure
+preserves the previously mounted view. `dispose()` is idempotent; a current parent
+Scope also owns the mount. Root templates for mounts must produce a view, not a Window.
+
+`xml.describe`, `xml.describeFile`, and `xml.renderDescription` separate etlua
+evaluation from native construction. Template evaluation does not mutate the
+caller's data. Application controllers own plain data, refs and actions; this shared
+renderer owns container replacement and lifetime.
+
+This is explicit reconciliation at a whole-template boundary. It does not provide
+keyed child reuse or automatic reactive dependency tracking. `ui.viewdesc.apply`
+remains experimental and is not this renderer. Keep state that must survive changed
+boundaries in models or a stable outer template.
+
 #### Know when the eager model has reached its limit
 
 For initial construction, reusable component functions returning native

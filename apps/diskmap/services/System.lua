@@ -26,6 +26,14 @@ function System.readCache(path)
 	for id, m in pairs(data.measurements) do
 		if type(id) ~= "string" or type(m) ~= "table" or (m.bytes ~= nil and (type(m.bytes) ~= "number" or m.bytes < 0 or m.bytes ~= m.bytes or m.bytes == math.huge)) or not statuses[m.status] then return nil, "Invalid measurements" end
 	end
+	if data.scan ~= nil then
+		if type(data.scan) ~= "table" then return nil, "Invalid scan diagnostics" end
+		for _, field in ipairs({"completedAt", "visited", "seconds", "errors"}) do
+			local value = data.scan[field]
+			if value ~= nil and (type(value) ~= "number" or value < 0 or value ~= value or value >= math.huge) then return nil, "Invalid scan diagnostics" end
+		end
+		if data.scan.completedAt and data.scan.completedAt > 253402300799 then return nil, "Invalid scan timestamp" end
+	end
 	if data.disk and (type(data.disk) ~= "table" or type(data.disk.totalKb) ~= "number" or type(data.disk.freeKb) ~= "number" or data.disk.totalKb <= 0 or data.disk.freeKb < 0 or data.disk.freeKb > data.disk.totalKb) then return nil, "Invalid cached capacity" end
 	return data
 end
@@ -89,6 +97,16 @@ function System.poll(job)
 	end
 	return false
 end
+function System.await(job, completion, progress)
+	ns.async(function()
+		while not job.cancelled do
+			local done, result = System.poll(job)
+			if done then completion(result); return end
+			if result and progress then progress(result) end
+			ns.sleep(0.25)
+		end
+	end)
+end
 function System.defaultCachePath()
 	local directory = (os.getenv("HOME") or "") .. "/Library/Application Support/Diskmap"
 	if not os.execute("/bin/mkdir -p " .. System.quote(directory)) then return nil end
@@ -109,6 +127,27 @@ function System.saveSettings(enabled)
 	file:write(enabled and "enabled" or "paused"); file:close()
 	return true
 end
+function System.monitor(visible, refresh)
+	ns.async(function()
+		local ticks = 0
+		while visible() do
+			ns.sleep(30); ticks = ticks + 1
+			if visible() and ticks % 30 == 0 then refresh() end
+		end
+	end)
+end
+function System.openSettings(section)
+	local target = section == "privacy" and "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles" or "x-apple.systempreferences:com.apple.settings.Storage"
+	os.execute("/usr/bin/open " .. System.quote(target))
+end
+function System.openOwner(owner)
+	os.execute("/usr/bin/open -a " .. System.quote(owner == "xcode" and "Xcode" or "Docker"))
+end
+function System.confirmTrash(row)
+	return ns.Alert {title = "Move " .. row.name .. " to Trash?", message = row.path .. "\n\n" .. row.consequence, buttons = {"Cancel", "Move to Trash"}} == 2
+end
+function System.showError(title, message) ns.Alert {title = title, message = message} end
+System.reveal = ns.revealInFinder
 System.diskSpace = ns.diskSpace
 function System.trash(path)
 	local current = ""

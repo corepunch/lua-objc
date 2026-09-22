@@ -60,12 +60,33 @@ static int bridge_AppKitControls_zstack(lua_State *L) {
 	return 1;
 }
 
+// Unflipped stack documents read from the top. Preserve that reading position
+// across native viewport resizing before the declarative layout measures again.
+@interface LuaScrollView : NSScrollView
+@end
+@implementation LuaScrollView
+- (void)setFrameSize:(NSSize)size {
+	NSView *document = self.documentView;
+	BOOL preserve = document && !document.isFlipped
+		&& objc_getAssociatedObject(self, &kKeys[kScrollViewportSizeKey]);
+	CGFloat distance = MAX(0, document.frame.size.height
+		- self.contentView.bounds.origin.y - self.contentSize.height);
+	[super setFrameSize:size];
+	if (preserve) {
+		[self tile];
+		NSPoint origin = self.contentView.bounds.origin;
+		origin.y = MAX(0, document.frame.size.height - self.contentSize.height - distance);
+		[self.contentView scrollToPoint:origin];
+	}
+}
+@end
+
 static int bridge_AppKitControls_scrollView(lua_State *L) {
 	NSView *content = check_view(L, 1);
 	CGFloat contentWidth = (CGFloat)luaL_optnumber(L, 2, 0);
 	CGFloat contentHeight = (CGFloat)luaL_optnumber(L, 3, 0);
 
-	NSScrollView *obj = [[NSScrollView alloc] initWithFrame:NSZeroRect];
+	NSScrollView *obj = [[LuaScrollView alloc] initWithFrame:NSZeroRect];
 	obj.clipsToBounds = YES;
 	obj.contentView.clipsToBounds = YES;
 	obj.autohidesScrollers = YES;

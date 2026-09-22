@@ -338,22 +338,17 @@ not just mutable path strings.
 
 ## Discovery, permissions, and routine use
 
-Startup shows available capacity and the saved semantic inventory immediately,
-with timestamps. First launch discovers known owners and checks a bounded set
-of approved locations. It does not recursively scan the entire home directory
-or trigger a sequence of protected-folder prompts.
+Startup shows capacity and any saved real inventory immediately, with timestamps.
+It measures every known path and residual roots in one background batch. Named
+roots exclude separately classified descendants; the batch deduplicates hard
+links across categories. Missing paths are confirmed zero; inaccessible paths
+remain partial or unknown. Full Disk Access is optional and cannot make exclusive
+snapshot allocation attributable to a file walk.
 
-Expanding an unmeasured category schedules its targeted inventory and measurement.
-Explain any additional access before requesting it. Denying access leaves the
-category visible and does not block the rest of the app. Full Disk Access is
-optional and does not imply access to every protected system asset. Other users'
-data is summarized only to the extent observable with granted access.
-
-Background checks run only while the app is open and the preference is enabled,
-reuse the existing 15-minute cadence for approved locations, and pause during
-cleanup. Bound concurrency and IO; prioritize the selected category. Cancellation
-is prompt, and callbacks from old scan generations cannot replace current state.
-Use the native table spinner for loading; preserve useful prior rows on refresh.
+Background checks run every 15 minutes while the app is open and the preference
+is enabled. All refresh actions use the same complete ledger, preserving ownership
+across categories. Cancellation is prompt and old generations cannot overwrite
+current results. The native table spinner retains useful previous rows on refresh.
 
 Do not follow symbolic links, traverse additional mounted filesystems implicitly,
 read personal file contents, or materialize cloud-only files. Application metadata
@@ -370,32 +365,33 @@ per-file history just to produce a growth dashboard.
 
 ## Implementation in this repository
 
-The current app has folder navigation, child totals, largest-file and extension
-views, plus a flat allowlist of suggestions in `Model.rules`. Preserve useful
-measurement and lifecycle contracts, while replacing the folder product model.
+The implementation uses semantic categories and stable resource IDs throughout.
+`Catalog.lua` composes nine independent providers. The root controller only wires
+services, feature controllers, template refs, navigation and the window.
 
-| Area | Responsibility in the new design |
+| Area | Current responsibility |
 | --- | --- |
 | `init.lua` | Thin entry point returning the Controller class. |
-| `Model.lua` | Inventory ledger, ownership, category queries, aggregation, state transitions, Keep/Ignore, recommendations, and action-plan validation. No native widgets. |
-| `catalog/` | Pure Lua classifier definitions, explanations, exclusions, and capability requirements. |
-| `services/` | Injected filesystem, capacity, owner-inventory, permission, persistence, and action services. Native integration stays here. |
-| `services/scan.pl` | Evolve metadata enumeration to stable resource results and cross-root identity reporting; no UI or cleanup policy. |
-| `Controller.lua` | Coordinates model/services, semantic selection and expansion, jobs, template rendering, refs, and bound actions. |
-| `views/` | etlua window, category outline, resource inspector, cleanup review, changes, and settings partials. |
+| `Model.lua` | Indexed state and aggregate byte arithmetic. |
+| `models/` | Inventory transitions, categories, cleanup eligibility, tips, inspector data and preferences. No native widgets. |
+| `catalog/` | Category definitions, explanations, paths, ownership and policies. |
+| `knowledge/CleanupRules.lua` | Resource-specific review thresholds and advice with consequences. |
+| `controllers/` | Independently testable scan, category, cleanup, tips, inspector and settings coordinators. |
+| `services/` | Injected native IO, persistence, permissions and owner-management integration. |
+| `services/scan.pl` | Metadata-only enumeration, exclusions, cross-root hard-link ownership and diagnostics. |
+| `Controller.lua` | Composition root, navigation and template/action binding. |
+| `views/` | etlua window, category outline, resource inspector, opportunities, contextual tips and settings. |
 
-Only the root controller's framework-invoked `createWindow()` creates the
-window. Controllers never assemble view trees. Render structural changes through
-templates and framework-owned retained descriptions/reconciliation where needed;
-do not add Diskmap-specific subtree mutation hooks. Bind outline data through
-the existing native outline surface; add a general XML registry entry if needed.
-Use public native controls and keep any new layout constants in `src/main.m`.
+Only the framework-invoked root `createWindow()` creates a window. Controllers
+never assemble view trees. Shared `ui.template` retains evaluated etlua descriptions
+and scopes, preserves unchanged native subtrees, and replaces changed boundaries
+with callback disposal. Keyed child reconciliation remains future framework work.
+Native outlines retain stable selection and disclosure IDs. Shared framework
+contracts own semantic padding, disclosure spacing, label wrapping and scroll
+position through resizing; there are no Diskmap-specific native layout hooks.
 
-Replace path-based `currentPath`, history, section switches, and folder percentage
-segments with stable category/resource state. Replace positional rule/result
-matching with ID-keyed measurements. Delete obsolete folder-navigation actions,
-templates, APIs, and tests as their replacements land; do not preserve shims.
-Update the README and explicit folder CLI contract in that same migration.
+The following sequence describes the broader product roadmap; Changes comparison,
+automatic arbitrary-owner discovery and richer owner adapters remain future work.
 
 ### Delivery sequence
 

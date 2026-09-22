@@ -24,32 +24,26 @@
       </GroupBox>
     </VStack>
     <VStack minWidth="300" flexGrow="0.7" fillWidth="true" fillHeight="true" spacing="0">
-      <ScrollView vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true">
+      <ScrollView ref="opportunitiesScroll" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true">
         <VStack fillWidth="true" spacing="16" paddingHorizontal="16" paddingVertical="8" alignment="leading">
           <VStack ref="inspector" hidden="true" fillWidth="true" spacing="10" alignment="leading">
-          <Label ref="detailName" text="Select a category" size="17" weight="semibold" fillWidth="true" lines="2" />
-          <Label ref="detailText" text="Understand what is stored and how it is managed." size="12" fillWidth="true" lines="8" />
+          <Label ref="detailName" text="Select a category" size="17" weight="semibold" fillWidth="true" lines="0" />
+          <Label ref="detailText" text="Understand what is stored and how it is managed." size="12" fillWidth="true" lines="0" />
           <Button ref="measure" title="Refresh measurements" action="measure" fillWidth="true" />
           <Button ref="manage" title="Review in Finder" action="manage" fillWidth="true" disabled="true" />
           <Button ref="keep" title="Keep this resource" action="keep" fillWidth="true" disabled="true" />
-          <Label ref="location" text="" size="11" color="secondary" fillWidth="true" lines="4" />
+          <Label ref="location" wrapping="character" text="" size="11" color="secondary" fillWidth="true" lines="0" />
             <Divider />
           </VStack>
           <HStack spacing="10" fillWidth="true" alignment="center">
             <SystemImage name="sparkles" size="24" color="accent" />
             <VStack flexGrow="1" spacing="4" alignment="leading">
               <Label text="Cleanup Opportunities" size="16" weight="semibold" fillWidth="true" />
-              <Label text="Measured items to review, with consequences." size="11" color="secondary" fillWidth="true" lines="2" />
+              <Label text="Recognized resources worth reviewing." size="11" color="secondary" fillWidth="true" lines="2" />
             </VStack>
           </HStack>
           <VStack ref="opportunities" fillWidth="true" spacing="0" />
-          <GroupBox fillWidth="true">
-            <VStack padding="12" spacing="8" fillWidth="true" alignment="leading">
-              <SystemImage name="shield.lefthalf.filled" size="24" color="accent" />
-              <Label text="Preboot and Recovery belong to macOS. No manual cleanup is offered." size="12" fillWidth="true" lines="3" />
-              <Button title="Learn about system storage" style="link" action="system" />
-            </VStack>
-          </GroupBox>
+          <VStack ref="tips" fillWidth="true" spacing="0" />
         </VStack>
       </ScrollView>
     </VStack>
