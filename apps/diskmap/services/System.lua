@@ -85,6 +85,18 @@ end
 function System.confirmEmptyTrash(row, size)
 	return ns.Alert {title = "Permanently empty Trash?", message = "This permanently removes " .. size .. " of files in Trash on all mounted volumes. This cannot be undone.", buttons = {"Cancel", "Empty Trash"}} == 2
 end
+function System.confirmOwnerCleanup(row, size)
+	return ns.Alert {title = "Clear " .. row.name .. "?", message = "Measured location: " .. row.path .. "\nMeasured allocation: " .. size .. "\n\n" .. (row.consequence or "The owning tool will clear its cache."), buttons = {"Cancel", "Clear Cache"}} == 2
+end
+function System.runOwnerCleanup(commandId, home, completion)
+	local commands = {
+		["npm-cache"] = {"/usr/bin/env", "npm", "cache", "clean", "--force", "--cache", home .. "/.npm"},
+		["pip-cache"] = {"/usr/bin/env", "python3", "-m", "pip", "--cache-dir", home .. "/Library/Caches/pip", "cache", "purge"},
+	}
+	local argv = commands[commandId]
+	if not argv then completion(false, "Unsupported package-manager cache operation."); return end
+	System.command(argv, completion)
+end
 function System.emptyTrash()
 	return os.execute("/usr/bin/osascript -e 'tell application \"Finder\" to empty trash'")
 end
@@ -110,6 +122,60 @@ function System.agentEntries(model)
 	end
 	return entries
 end
+local function hexId(path)
+	return "discovered-" .. path:gsub(".", function(character) return string.format("%02x", character:byte()) end)
+end
+local function lines(output)
+	local result = {}
+	for path in (output or ""):gmatch("([^\n]+)") do
+		path = path:gsub("\r$", "")
+		if path ~= "" then result[#result + 1] = path end
+	end
+	return result
+end
+function System.discoverEntries(home, completion)
+	local catalog = require("apps.diskmap.Catalog")
+	local locations = catalog.discoveryRules(home)
+	local discovered = {}
+	local function runLocation(index)
+		local location = locations[index]
+		if not location then completion(discovered); return end
+		local argv
+		if location.rules then
+			argv = {"/usr/bin/find", location.root, "-type", "d", "(", "-name", location.rules[1].dirName}
+			for ruleIndex = 2, #location.rules do
+				argv[#argv + 1] = "-o"; argv[#argv + 1] = "-name"; argv[#argv + 1] = location.rules[ruleIndex].dirName
+			end
+			argv[#argv + 1] = ")"; argv[#argv + 1] = "-prune"; argv[#argv + 1] = "-print"
+		else
+			argv = {"/usr/bin/find", location.root, "-maxdepth", "1", "-type", "d", "-name", "Install macOS *.app", "-print"}
+		end
+		System.command(argv, function(ok, output)
+			if ok then
+				for _, path in ipairs(lines(output)) do
+					local name = path:match("([^/]+)$") or path
+					if location.rules then
+						local parent = path:match("^(.*)/[^/]+$") or ""
+						for _, rule in ipairs(location.rules) do
+							local marker = name == rule.dirName and io.open(parent .. "/" .. rule.markerFile, "r")
+							if marker then
+								marker:close()
+								discovered[#discovered + 1] = {id = hexId(path), name = rule.name .. " · " .. (parent:match("([^/]+)$") or parent), subtitle = rule.subtitle, path = path,
+									policy = "Review", action = "finder", reviewThreshold = 500e6, icon = "shippingbox", color = "systemOrange"}
+								break
+							end
+						end
+					elseif name:match("^Install macOS .+%.app$") then
+						discovered[#discovered + 1] = {id = hexId(path), name = name, subtitle = "Full macOS installer app; review after confirming the update completed", path = path,
+							policy = "Review", action = "finder", reviewThreshold = 5e9, consequence = "Each installer is usually large. Keep it if you still need the installer; macOS Software Update can download it again later.", icon = "macwindow", color = "systemBlue"}
+					end
+				end
+			end
+			runLocation(index + 1)
+		end)
+	end
+	runLocation(1)
+end
 function System.command(argv, completion)
 	local job = Scanner.commandStart(argv)
 	ns.async(function()
@@ -122,8 +188,9 @@ function System.command(argv, completion)
 end
 function System.snapshotCount(completion)
 	System.command({"/usr/bin/tmutil", "listlocalsnapshots", "/"}, function(ok, output)
-		local count = ok and require("apps.diskmap.models.SystemDetails").parseSnapshots(output) or nil
-		completion(count)
+		local details = require("apps.diskmap.models.SystemDetails")
+		local dates = ok and details.parseSnapshotDates(output) or nil
+		completion(dates and #dates or nil, dates)
 	end)
 end
 System.decode = ns.json_parse

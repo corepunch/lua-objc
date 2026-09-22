@@ -1,4 +1,4 @@
-<VStack padding="16" spacing="10" fixedWidth="400" fillHeight="true" alignment="leading" background="background" cornerRadius="16">
+<VStack ref="chatPane" padding="12" spacing="8" flexGrow="1" flexBasis="0" minWidth="330" fillWidth="true" fillHeight="true" alignment="leading" background="background" cornerRadius="16">
 	<HStack padding="0" spacing="8" fillWidth="true">
 		<Label text="Chat" size="17" weight="semibold" />
 		<Label text="Code" size="17" color="secondary" />

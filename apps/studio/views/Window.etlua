@@ -1,5 +1,5 @@
 <Window title="Lua Studio" width="1366" height="900" minWidth="980" minHeight="640" appearance="light">
-	<HStack padding="12" spacing="12" flexGrow="1" fillWidth="true" fillHeight="true" alignment="top" background="secondaryBackground">
+	<HStack ref="workspace" padding="8" spacing="8" flexGrow="1" fillWidth="true" fillHeight="true" alignment="top" background="secondaryBackground">
 		<%- partial("Sidebar.etlua", sidebar) %>
 		<Divider orientation="vertical" />
 		<%- partial("PreviewPane.etlua", preview) %>

@@ -5,6 +5,7 @@ local SystemDetails = require("apps.diskmap.models.SystemDetails")
 local Inspector = require("apps.diskmap.models.Inspector")
 
 t.assertEqual(SystemDetails.parseSnapshots("Snapshots for disk /:\ncom.apple.TimeMachine.2026-09-20-120000.local\ncom.apple.TimeMachine.2026-09-21-120000.local\n"), 2, "two snapshots are counted")
+t.assertEqual(SystemDetails.parseSnapshotDates("Snapshots for disk /:\ncom.apple.TimeMachine.2026-09-20-120000.local\ncom.apple.TimeMachine.2026-09-21-120000.local\n")[2], "com.apple.TimeMachine.2026-09-21-120000.local", "snapshot identities retain their dates")
 t.assertEqual(SystemDetails.parseSnapshots("Snapshots for disk /:\n"), 0, "no snapshots count as zero")
 t.assertEqual(SystemDetails.parseSnapshots("tmutil: command failed"), 0, "failure output counts as zero")
 t.assertEqual(SystemDetails.parseSnapshots(nil), nil, "missing output stays unknown")

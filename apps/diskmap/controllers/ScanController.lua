@@ -13,32 +13,55 @@ function Scan:cancel(silent)
 end
 function Scan:start()
 	self:cancel(true)
+	local generation = self.generation
 	if rawget(self.service, "agentEntries") then
 		local added, err = require("apps.diskmap.models.AgentFiles").add(self.model, self.service.agentEntries(self.model))
 		if not added then self.status = "Could not register discovered resource: " .. (err and err.message or "unknown error"); self:notify(); return end
 	end
-	local paths, ids, exclusions = Inventory.plan(self.model)
-	if #paths == 0 then return end
-	Inventory.begin(self.model, ids)
-	local ok, job = pcall(self.service.start, paths, exclusions)
-	if not ok then
-		Inventory.apply(self.model, ids, {failure = tostring(job)})
-		self.status = "Could not start measurement: " .. tostring(job); self:notify(); return
-	end
-	self.job = job; self.status = "Measuring all storage categories…"; self:notify()
-	local generation = self.generation
-	self.service.await(job, function(result)
+	local function measure()
 		if generation ~= self.generation then return end
-		self.job = nil; Inventory.apply(self.model, ids, result)
-		self.disk = self.service.diskSpace(self.home)
-		self.status = result.failure and result.failure ~= "" and result.failure or "Measured " .. os.date("%H:%M") .. " · " .. (result.errors or 0) .. " unavailable locations"
-		self:notify()
-	end, function(progress)
-		if generation ~= self.generation or not progress or not progress.total then return end
-		Inventory.progress(self.model, ids, progress)
-		self.status = string.format("Measuring all categories · %d/%d locations", progress.completed, progress.total)
-		self:notify()
-	end)
+		local paths, ids, exclusions = Inventory.plan(self.model)
+		if #paths == 0 then return end
+		Inventory.begin(self.model, ids)
+		local ok, job = pcall(self.service.start, paths, exclusions)
+		if not ok then
+			Inventory.apply(self.model, ids, {failure = tostring(job)})
+			self.status = "Could not start measurement: " .. tostring(job); self:notify(); return
+		end
+		self.job = job; self.status = "Measuring all storage categories…"; self:notify()
+		self.service.await(job, function(result)
+			if generation ~= self.generation then return end
+			self.job = nil; Inventory.apply(self.model, ids, result)
+			self.disk = self.service.diskSpace(self.home)
+			self.status = result.failure and result.failure ~= "" and result.failure or "Measured " .. os.date("%H:%M") .. " · " .. (result.errors or 0) .. " unavailable locations"
+			self:notify()
+		end, function(progress)
+			if generation ~= self.generation or not progress or not progress.total then return end
+			Inventory.progress(self.model, ids, progress)
+			self.status = string.format("Measuring all categories · %d/%d locations", progress.completed, progress.total)
+			self:notify()
+		end)
+	end
+	if rawget(self.service, "discoverEntries") then
+		local _, initialIds = Inventory.plan(self.model)
+		Inventory.begin(self.model, initialIds)
+		self.status = "Discovering project build data and installers…"; self:notify()
+		self.service.discoverEntries(self.home, function(entries)
+			if generation ~= self.generation then return end
+			local known = {}
+			for _, row in ipairs(self.model.resources:leaves()) do if row.path then known[row.path] = true end end
+			for _, entry in ipairs(entries or {}) do
+				if not known[entry.path] then
+					local _, err = self.model.resources:add(entry.parentId or (entry.path:match("^/Applications/") and "applications" or "developer"), entry)
+					if err then self.status = "Could not register discovered resource: " .. err.message; self:notify(); return end
+					known[entry.path] = true
+				end
+			end
+			measure()
+		end)
+	else
+		measure()
+	end
 end
 function Scan:dispose() self:cancel(true) end
 return Scan

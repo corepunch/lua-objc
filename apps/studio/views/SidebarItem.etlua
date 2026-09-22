@@ -1,5 +1,3 @@
-<% -- Reusable row contract: item.title, item.detail, item.icon, item.selected.
-      Keep the fixed symbol slot stable in expanded and future icon-only sidebars. %>
 <HStack padding="<%= metrics.rowPadding %>" spacing="<%= collapsed and 0 or 10 %>" fillWidth="true" alignment="center" background="<%= item.selected and 'background' or 'secondaryBackground' %>" cornerRadius="10">
 	<SystemImage name="<%= item.icon %>" size="<%= metrics.iconSize %>" fixedWidth="<%= metrics.iconSlotWidth %>" label="<%= item.title %>" />
 	<% if not collapsed then %>

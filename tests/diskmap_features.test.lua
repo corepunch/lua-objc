@@ -74,6 +74,17 @@ inspector:select("derived")
 inspector:manage()
 t.assertEqual(deletes, 1, "allowed action uses injected filesystem service")
 t.assertEqual(refreshed, 1, "successful mutation requests fresh full inventory")
+local ownerCalls = {}
+model.measurements.npm = {bytes = 20e6, status = "complete"}
+local ownerInspector = InspectorController.new(model, {
+	confirmOwnerCleanup = function(row, size) ownerCalls.confirmed = row.id == "npm" and size == "20.0 MB"; return true end,
+	runOwnerCleanup = function(commandId, home, done) ownerCalls.commandId, ownerCalls.home = commandId, home; done(true) end,
+}, function() refreshed = refreshed + 1 end)
+ownerInspector:select("npm"); ownerInspector:manage()
+t.expect(ownerCalls.confirmed, "owner command requires review of measured cache size")
+t.assertEqual(ownerCalls.commandId, "npm-cache", "npm resource routes to its fixed owner command")
+t.assertEqual(ownerCalls.home, model.home, "owner command uses the active account location")
+t.assertEqual(refreshed, 2, "owner cleanup triggers a fresh measurement")
 model.kept.xcode = true
 t.expect(not inspector:manage(), "kept ancestor prevents mutation")
 local settings = SettingsController.new({loadSettings = function() return true end, saveSettings = function() return false end})

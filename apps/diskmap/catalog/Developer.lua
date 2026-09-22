@@ -1,5 +1,5 @@
 local D = require("apps.diskmap.catalog.Definitions")
-local item, group, cache, xcode, system, assets, tool = D.item, D.group, D.cache, D.xcode, D.system, D.assets, D.tool
+local item, group, cache, ownerCache, xcode, system, assets, tool = D.item, D.group, D.cache, D.ownerCache, D.xcode, D.system, D.assets, D.tool
 return function()
 	return group("developer", "Developer", "Xcode, AI coding tools, package managers and environments", "hammer.fill", "systemPurple", {
 	item("projects", "Developer projects", "Source repositories and local build outputs", "~/Developer"),
@@ -29,14 +29,26 @@ return function()
 		tool("claude", "Claude Code", "~/.claude"),
 	}),
 	group("packages", "Package managers", "Downloaded packages are separate from installed environments", "shippingbox", "systemOrange", {
-		item("npm", "npm downloads", "Content-addressed package download cache", "~/.npm/_cacache", cache),
-		item("pip", "Python package downloads", "Cached wheels and downloaded packages", "~/Library/Caches/pip", cache),
+		item("npm", "npm downloads", "Content-addressed package download cache", "~/.npm/_cacache", {policy = ownerCache.policy, action = ownerCache.action, commandId = "npm-cache", consequence = ownerCache.consequence}),
+		item("pip", "Python package downloads", "Cached wheels and downloaded packages", "~/Library/Caches/pip", {policy = ownerCache.policy, action = ownerCache.action, commandId = "pip-cache", consequence = ownerCache.consequence}),
 		item("brew", "Homebrew downloads", "Cached bottles; installed packages are preserved", "~/Library/Caches/Homebrew", cache),
+		item("pnpm-store", "pnpm store", "Content-addressed packages shared across projects", "~/Library/pnpm/store", cache),
+		item("yarn-cache", "Yarn cache", "Downloaded package archives", "~/Library/Caches/Yarn", cache),
+		item("cocoapods-cache", "CocoaPods cache", "Downloaded pod specs and source archives; paths can be changed with CP_HOME_DIR", "~/Library/Caches/CocoaPods"),
+		item("cocoapods-repos", "CocoaPods spec repos", "Local spec-repository mirrors; review before removing", "~/.cocoapods/repos"),
+		item("swiftpm-cache", "Swift Package Manager cache", "Downloaded package sources and repository data", "~/Library/Caches/org.swift.swiftpm", cache),
+		item("conda-packages", "Conda package cache", "Downloaded packages; separate from installed environments", "~/miniconda3/pkgs"),
+		item("conda-packages-user", "Conda package cache (Anaconda)", "Downloaded packages; separate from installed environments", "~/anaconda3/pkgs"),
 		item("brew-install", "Homebrew installation", "Installed packages and environments", "/opt/homebrew"),
 		item("cargo", "Rust registry", "Downloaded crates and registry indexes", "~/.cargo/registry"),
 		item("gradle", "Gradle", "Build caches and tool distributions", "~/.gradle"),
 		item("maven", "Maven repository", "Downloaded and locally published artifacts", "~/.m2/repository"),
 		item("go", "Go modules", "Downloaded module sources", "~/go/pkg/mod"),
+	}),
+	group("mobile-dev", "Cross-platform & mobile", "Android, Flutter and platform package data", "iphone.gen3", "systemGreen", {
+		item("android-sdk", "Android SDK", "Platforms, build tools and system images", "~/Library/Android/sdk"),
+		item("android-avd", "Android emulators (AVDs)", "Virtual device images, snapshots and user data", "~/.android/avd", {reviewThreshold = 2e9, consequence = "Each virtual device can contain installed apps and personal test data. Review in Android Studio or the device manager before removing."}),
+		item("flutter-pub", "Flutter & Dart package cache", "Downloaded packages shared across projects", "~/.pub-cache", cache),
 	}),
 	group("editors", "Editors & IDEs", "Application data can include settings and unsaved work", "curlybraces", "systemBlue", {
 		group("vscode-data", "Visual Studio Code", "Caches separated from settings and unsaved work", "curlybraces", "systemBlue", {

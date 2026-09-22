@@ -270,10 +270,14 @@ static int bridge_UIKitControls_label(lua_State *L) {
 }
 
 static int bridge_UIKitControls_separator(lua_State *L) {
+	const char *orientation = luaL_optstring(L, 1, "horizontal");
+	BOOL vertical = strcmp(orientation, "vertical") == 0;
 	UIView *obj = [[UIView alloc] initWithFrame:CGRectZero];
-	objc_setAssociatedObject(obj, &kFixedHeightKey, @1,
+	obj.backgroundColor = UIColor.separatorColor;
+	objc_setAssociatedObject(obj, vertical ? &kFixedWidthKey : &kFixedHeightKey,
+		@(kSeparatorThickness),
 		OBJC_ASSOCIATION_RETAIN);
-	objc_setAssociatedObject(obj, &kFillWidthKey, @YES,
+	objc_setAssociatedObject(obj, vertical ? &kFillHeightKey : &kFillWidthKey, @YES,
 		OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, obj, "uiview");
 	return 1;

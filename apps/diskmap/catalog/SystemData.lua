@@ -21,6 +21,10 @@ return function()
 		item("mobile-assets", "Other downloaded system assets", "Residual assets, staging and preinstalled resources without confident feature attribution", "/System/Library/AssetsV2", system),
 	}),
 	group("caches", "Caches", "Application and system caches, excluding separately listed tools", "externaldrive.fill", "systemGreen", {
+		item("chrome-cache", "Google Chrome cache", "Browser cache; sign out or clear from Chrome when keeping owner settings", "~/Library/Caches/Google/Chrome", {reviewThreshold = 500e6, consequence = "Review in Chrome's site data and privacy controls before clearing; browser cache size alone does not establish which data is safe to remove."}),
+		item("slack-cache", "Slack cache", "Application cache; use Help → Troubleshooting → Clear Cache and Restart", "~/Library/Containers/com.tinyspeck.slackmacgap/Data/Library/Caches", {reviewThreshold = 500e6, consequence = "Slack's Clear Cache and Restart command rebuilds cached data in the owning app. Diskmap only reveals this location."}),
+		item("slack-cache-appsupport", "Slack cache (standard install)", "Application cache; use Help → Troubleshooting → Clear Cache and Restart", "~/Library/Application Support/Slack/Cache", {reviewThreshold = 500e6, consequence = "Slack's Clear Cache and Restart command rebuilds cached data in the owning app. Diskmap only reveals this location."}),
+		item("spotify-cache", "Spotify cache", "Application cache; manage its cache-size setting in Spotify preferences", "~/Library/Caches/com.spotify.client", {reviewThreshold = 500e6, consequence = "Spotify manages cache size in its preferences. Diskmap only reveals this location and does not clear app data."}),
 		item("user-caches", "Application caches", "Review by owner; may include offline content", "~/Library/Caches"),
 		item("system-caches", "Shared caches", "System-wide generated data", "/Library/Caches", system),
 	}),

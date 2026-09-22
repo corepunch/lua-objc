@@ -10,6 +10,7 @@ UIKit.SidebarMetrics = {
 	expandedPadding = bridge.sidebarExpandedPadding,
 	collapsedPadding = bridge.sidebarCollapsedPadding,
 	expandedWidth = bridge.sidebarExpandedWidth,
+	compactWidth = bridge.sidebarCompactWidth,
 	collapsedWidth = bridge.sidebarCollapsedWidth,
 }
 
@@ -680,7 +681,8 @@ function UIKit.ColorPicker(props)
 end
 
 function UIKit.Separator(props)
-	return applyLayout(bridge._separator(), props)
+	props = props or {}
+	return applyLayout(bridge._separator(props.orientation or "horizontal"), props)
 end
 
 UIKit.Divider = UIKit.Separator

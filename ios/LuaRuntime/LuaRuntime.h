@@ -6,10 +6,10 @@
 // Shared declarations for the host's independently compiled implementations.
 // Implementation-only state and helpers stay in their owning .m file.
 
-struct lua_State;
-void lua_objc_prepare_close(struct lua_State *L);
-
 NS_ASSUME_NONNULL_BEGIN
+
+struct lua_State;
+void lua_objc_prepare_close(struct lua_State * _Nullable L);
 
 @interface LRTApplicationDelegate : UIResponder <UIApplicationDelegate>
 @end

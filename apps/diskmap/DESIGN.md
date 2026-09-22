@@ -203,10 +203,13 @@ links at the service boundary; do not execute commands assembled from display
 labels or broadly delete a parent directory because its children look eligible.
 
 Supported owner operations take precedence over manipulating owner internals.
-The initial release retains only narrowly verified Trash actions; new direct
-operations require an independently tested adapter. Mixed batches report results
-per item and do not imply transactional rollback. Opening another app is a
-handoff, not a completed cleanup.
+Filesystem changes still use the narrowly verified Trash path. npm and pip
+caches have separately allowlisted owner commands with a measured-size
+confirmation and a fresh scan afterward. Commands never come from display labels
+or catalog-supplied argv. Homebrew stays a Trash review because its documented
+cleanup also removes old installed versions. Mixed operations report results per
+item and do not imply transactional rollback. Opening another app is a handoff,
+not a completed cleanup.
 
 Moving to Trash is reported as “Moved to Trash,” not “Freed.” Reclassify the
 resource into Trash and remeasure; Finder handles permanent removal. Capacity
@@ -387,8 +390,12 @@ Native outlines retain stable selection and disclosure IDs. Shared framework
 contracts own semantic padding, disclosure spacing, label wrapping and scroll
 position through resizing; there are no Diskmap-specific native layout hooks.
 
-The following sequence describes the broader product roadmap; Changes comparison,
-automatic arbitrary-owner discovery and richer owner adapters remain future work.
+The following sequence describes the broader product roadmap; Changes comparison
+and automatic discovery outside the explicit project markers and installer pattern
+remain future work. npm and pip use fixed, allowlisted owner commands. CocoaPods
+paths can be redirected with `CP_HOME_DIR`, so Diskmap only reveals its default
+location. Homebrew cleanup stays a reversible review because its cleanup command also
+removes old installed versions.
 
 ### Delivery sequence
 

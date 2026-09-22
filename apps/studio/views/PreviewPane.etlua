@@ -1,4 +1,4 @@
-<VStack padding="16" spacing="10" flexGrow="1" flexBasis="0" minWidth="340" fillWidth="true" fillHeight="true" alignment="leading" background="background" cornerRadius="16">
+<VStack ref="previewPane" padding="8" spacing="8" flexGrow="1" flexBasis="0" minWidth="300" fillWidth="true" fillHeight="true" alignment="leading" background="background" cornerRadius="16">
 	<Preview ref="preview" flexGrow="1" fillWidth="true" fillHeight="true" />
 	<HStack padding="10" spacing="12" fillWidth="true">
 		<Button title="<%= device %>" systemImage="iphone" style="bordered" />

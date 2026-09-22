@@ -13,9 +13,7 @@ make diskmap-app
 Every launch starts a fresh inventory. Photos, Music, Movies and known media support locations are excluded by default; opt in for the current session in Settings. Excluded sizes are unknown, never zero. Diskmap has no directory
 argument, saved-inventory replay, or scan-result cache.
 
-`Catalog.lua` composes independent providers in `catalog/` into the macOS knowledge tree: more than 140 named resources,
-including Xcode runtimes, devices, bundled SDKs, archives, package managers,
-AI coding tools, system assets, app support, backups, media and boot data.
+`Catalog.lua` composes independent providers in `catalog/` into the macOS knowledge tree, including Xcode runtimes, devices, bundled SDKs, archives, package managers, AI coding tools, mobile toolchains, system assets, app support, backups, media and boot data. Startup also discovers project-local generated folders when their parent project marker exists, and full macOS installer apps directly inside `/Applications`; each discovered path is measured as its own reviewable resource and excluded from its broader residual measurement.
 New layouts remain review-only until their ownership and cleanup policy are
 verified. Arbitrary custom installations and every third-party app are not yet
 automatically discovered. Known asset classes give Siri, Dictation/shared speech recognition, voices,
@@ -58,7 +56,7 @@ signed unreconciled difference is displayed, never called disposable junk.
 Category refresh also scans the full ledger so independent batches cannot
 reassign hard-link ownership and corrupt totals.
 
-DerivedData, package download caches, recognized agent download caches and user-owned offline developer documentation offer reviewed Move to Trash. Other entries reveal their location or open the owner/system
+DerivedData, recognized agent download caches and user-owned offline developer documentation offer reviewed Move to Trash. npm and pip caches invoke their package manager's cache command after confirmation; Homebrew remains a reversible Trash review because its cleanup command also removes installed old versions. Other entries reveal their location or open the owner/system
 settings. Your Trash offers reviewed Empty Trash with the measured size up front;
 Finder performs the deletion and Diskmap remeasures afterward. Diskmap never
 deletes SDK internals, removes protected assets, or disables system
@@ -163,7 +161,7 @@ Trash. No protected asset directory is directly deleted.
 
 Selecting System Data decodes the measured total into its ranked contributors
 with virtual memory reported separately; opening its management sheet annotates
-the live local snapshot count, which remains system managed and unattributable
+the live local snapshot count and recent snapshot date identifiers, which remain system managed and unattributable
 to exclusive file allocation. Permission errors and unreconciled allocation
 appear directly below the storage summary. Review candidates may use partial lower bounds marked ≥, while filesystem
 cleanup remains disabled for incomplete measurements. Photos/Music/Movies can be

@@ -6,7 +6,16 @@ end
 local function group(id, name, subtitle, icon, color, children)
 	return {id = id, name = name, subtitle = subtitle, icon = icon, color = color, children = children}
 end
+local function generated(markerFile, dirName, options)
+	local rule = {markerFile = markerFile, dirName = dirName}
+	for key, value in pairs(options or {}) do rule[key] = value end
+	return rule
+end
 local cache = {policy = "Rebuildable", action = "trash", consequence = "Quit the owning tool first. Cached downloads or generated build data will be regenerated; future builds and downloads may take longer. Moving to Trash does not free space until you empty it in Finder."}
+local ownerCache = {
+	policy = "Rebuildable", action = "ownerCleanup",
+	consequence = "Diskmap asks the package manager to clear its own cache. Packages may need to be downloaded again, and future installs can take longer.",
+}
 local xcode = {action = "xcode", consequence = "Review in Xcode. Keep resources required by your projects and devices. Archives can contain irreplaceable release builds and debug symbols."}
 local system = {policy = "System managed", action = "settings", consequence = "Managed by macOS. No manual deletion is offered. Changing a feature setting does not guarantee immediate removal of downloaded assets."}
 -- Exact asset-class directories observed on macOS. Shared ASR belongs to speech,
@@ -80,4 +89,4 @@ local function tool(id, name, root)
 	end
 	return group(id, name, "Paths and data types; sessions and worktrees require review", "terminal", "systemPurple", children)
 end
-return {item = item, group = group, cache = cache, xcode = xcode, system = system, assets = assets, tool = tool}
+return {item = item, group = group, generated = generated, cache = cache, ownerCache = ownerCache, xcode = xcode, system = system, assets = assets, tool = tool}

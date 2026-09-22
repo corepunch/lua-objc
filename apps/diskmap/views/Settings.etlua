@@ -11,6 +11,8 @@
   <Label fillWidth="true" text="Access and estimates" size="16" weight="semibold" />
   <Label fillWidth="true" text="Scans include other personal folders, app containers, backups, Trash and unclassified files. macOS may ask for access to those locations. You can decline; restricted sizes remain unknown. Full Disk Access is optional for a comprehensive scan." size="13" lines="20" />
   <Label fillWidth="true" text="Sizes measure allocated file blocks. APFS clones, compression, snapshots, and concurrent changes can make actual reclaimed space differ. Cloud-only files are not downloaded. Scans skip symbolic links and other mounted volumes." size="13" lines="20" />
+  <Label fillWidth="true" text="How Diskmap decides" size="16" weight="semibold" />
+  <Label fillWidth="true" text="Diskmap names data only when its owner or project markers are recognized. A review suggestion means the measured size crossed a review threshold; it does not mean the data is unnecessary or guarantee recovered space. Cleanup requires a separate confirmation and uses Finder or a supported owner command. Diskmap never deletes automatically." size="13" lines="20" />
   <Label fillWidth="true" text="Time Machine" size="16" weight="semibold" />
   <Label fillWidth="true" text="macOS counts local snapshots as available space and removes them as needed. They are restore points, not junk. Use Time Machine settings to manage backups; Diskmap never deletes snapshots or protected system assets." size="13" lines="20" />
   <Button title="Open Storage Settings" action="storage" />

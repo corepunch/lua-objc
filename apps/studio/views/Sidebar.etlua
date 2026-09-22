@@ -1,6 +1,6 @@
-<VStack padding="<%= collapsed and metrics.collapsedPadding or metrics.expandedPadding %>" spacing="16" fixedWidth="<%= collapsed and metrics.collapsedWidth or metrics.expandedWidth %>" fillHeight="true" alignment="leading">
+<VStack ref="sidebar" padding="<%= collapsed and metrics.collapsedPadding or metrics.expandedPadding %>" spacing="10" fixedWidth="<%= collapsed and metrics.collapsedWidth or metrics.expandedWidth %>" fillHeight="true" alignment="leading">
 	<HStack padding="0" spacing="10" fillWidth="true">
-		<SystemImage name="hammer.fill" size="<%= metrics.iconSize + 6 %>" fixedWidth="<%= metrics.iconSlotWidth %>" />
+		<SystemImage name="hammer.fill" size="<%= metrics.iconSize %>" color="accent" fixedWidth="<%= metrics.iconSlotWidth %>" label="Lua Studio" />
 		<% if not collapsed then %>
 		<VStack padding="0" spacing="1" alignment="leading">
 			<Label text="Lua Studio" size="20" weight="bold" />
@@ -23,6 +23,8 @@
 	<%- partial("SidebarItem.etlua", {item = item, collapsed = collapsed, metrics = metrics}) %>
 	<% end %>
 	<% if not collapsed then %>
+	<Button ref="chatVisibility" title="Focus Preview" systemImage="rectangle.rightthird.inset.filled" action="toggleChat" style="bordered" fillWidth="true" />
+	<Button ref="sidebarWidth" title="Compact sidebar" systemImage="sidebar.left" action="toggleSidebarWidth" style="bordered" fillWidth="true" />
 	<Label text="Documents · local workspace" size="11" color="secondary" lines="2" />
 	<% end %>
 </VStack>

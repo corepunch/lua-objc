@@ -27,6 +27,16 @@ function Controller:manage()
 		local ok, err = Cleanup.emptyTrash(self.model, row.id, self.service)
 		if not ok then self.service.showError("Could not empty Trash", err and err.message or "Check permissions."); return false end
 		self.refresh()
+	elseif row.action == "ownerCleanup" then
+		local measured = self.model.measurements[row.id]
+		if not measured or measured.status ~= "complete" or (measured.bytes or 0) <= 0 then
+			self.service.showError("Cache is not ready to clear", "Refresh Diskmap and review a complete, positive measurement first."); return false
+		end
+		if not self.service.confirmOwnerCleanup or not self.service.confirmOwnerCleanup(row, Model.size(measured.bytes)) then return false end
+		self.service.runOwnerCleanup(row.commandId, self.model.home, function(ok, output)
+			if not ok then self.service.showError("Could not clear " .. row.name, output or "Check that the package manager is installed."); return end
+			self.refresh()
+		end)
 	elseif row.action == "settings" then self.service.openSettings(row.settingsSection)
 	elseif row.action == "xcode" or row.action == "docker" then self.service.openOwner(row.action)
 	elseif row.path then self.service.reveal(row.path) end

@@ -72,9 +72,13 @@ function Controller:open(parent, id, filter)
 	self:update()
 	if id == "system-data" and self.service.snapshotCount then
 		local sheet = self.sheet
-		self.service.snapshotCount(function(count)
+		self.service.snapshotCount(function(count, dates)
 			if count == nil or self.sheet ~= sheet or not self.refs then return end
 			local note = count == 0 and "No local snapshots" or (tostring(count) .. " local snapshots")
+			if count > 0 and dates and #dates > 0 then
+				local shown = {}; for index = math.max(1, #dates - 3), #dates do shown[#shown + 1] = dates[index]:match("TimeMachine%.(.+)%.local$") end
+				note = note .. " · " .. table.concat(shown, ", ") .. (#dates > #shown and " …" or "")
+			end
 			self.refs.status.text = note .. " (system managed) · " .. self.refs.status.text
 			self.sheet:layout()
 		end)

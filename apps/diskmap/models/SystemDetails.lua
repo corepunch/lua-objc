@@ -4,11 +4,17 @@ local SystemDetails = {}
 -- Snapshot lines are stable identity strings; the header line is not one.
 function SystemDetails.parseSnapshots(output)
 	if type(output) ~= "string" then return nil end
-	local count = 0
+	return #SystemDetails.parseSnapshotDates(output)
+end
+function SystemDetails.parseSnapshotDates(output)
+	if type(output) ~= "string" then return nil end
+	local dates = {}
 	for line in output:gmatch("[^\n]+") do
-		if line:match("^com%.apple%.TimeMachine%.") or line:match("^com%.apple%.") then count = count + 1 end
+		local snapshot = line:match("^(com%.apple%.TimeMachine%.[%d%-]+%.local)$")
+		if snapshot then dates[#dates + 1] = snapshot end
 	end
-	return count
+	table.sort(dates)
+	return dates
 end
 local function leaves(row, result)
 	if row:isLeaf() then result[#result + 1] = row; return end

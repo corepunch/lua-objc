@@ -16,8 +16,10 @@ local unique = {}
 for _, row in ipairs(model.resources:leaves()) do
 	t.expect(not unique[row.id], "stable unique resource " .. row.id); unique[row.id] = true
 	t.expect(row.subtitle ~= nil, "resource explains purpose")
-	if row.action == "trash" then t.expect(row.id == "derived" or row.id == "npm" or row.id == "pip" or row.id == "brew" or row.id == "documentation" or row.id == "opencode-downloads" or row.id == "codex-cache" or row.id == "grok-cache" or row.id == "claude-cache" or row.id == "cursor-cache" or row.id == "cursor-cached-data" or row.id == "cursor-gpu-cache", "only verified caches or offline documentation can be trashed") end
+	if row.action == "trash" then t.expect(row.id == "derived" or row.id == "brew" or row.id == "documentation" or row.id == "opencode-downloads" or row.id == "codex-cache" or row.id == "grok-cache" or row.id == "claude-cache" or row.id == "cursor-cache" or row.id == "cursor-cached-data" or row.id == "cursor-gpu-cache" or row.id == "pnpm-store" or row.id == "yarn-cache" or row.id == "swiftpm-cache" or row.id == "flutter-pub", "only verified caches or offline documentation can be trashed: " .. row.id) end
 end
+t.assertEqual(model.resources:find("npm").action, "ownerCleanup", "npm cache uses npm's cache command")
+t.assertEqual(model.resources:find("pip").action, "ownerCleanup", "pip cache uses pip's cache command")
 t.assertEqual(model.resources:find('codex-worktrees').action, "finder", "worktrees never treated as cache")
 t.assertEqual(model.resources:find('preboot').action, "settings", "boot assets system managed")
 t.assertEqual(model.resources:find('xcode-app').action, "xcode", "bundled SDKs managed as installation")
