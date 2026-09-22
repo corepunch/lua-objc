@@ -868,6 +868,11 @@ local TAG_SCHEMA = {
         flag     = "__toolbar",
         children = "items",
     },
+    Sheet = {
+        constructor = "Sheet",
+        children = "array",
+        props = { width = "num", height = "num" },
+    },
     Window = {
         kind  = "record",
         flag  = "__isWindowConfig",

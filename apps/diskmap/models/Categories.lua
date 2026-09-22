@@ -4,14 +4,15 @@ function Categories.rows(model, rootId, query)
 	local needle = (query or ""):lower()
 	local function build(source, inheritedMatch)
 		local row = {}; for k, v in pairs(source) do if k ~= "children" then row[k] = v end end
-		local matches = inheritedMatch or (source.name .. " " .. source.subtitle):lower():find(needle, 1, true) ~= nil
+		local matches = inheritedMatch or (source.name .. " " .. source.subtitle .. " " .. (source.path or "")):lower():find(needle, 1, true) ~= nil
 		local m = model.measurements[source.id] or {}
 		row.bytes, row.status = m.bytes, m.status or "notMeasured"
 		if source.children then
-			row.children = {}; local total, measured, complete, attempted, calculating, failed = 0, false, true, false, false, false
+			row.children = {}; local total, measured, complete, attempted, calculating, failed, excluded = 0, false, true, false, false, false, true
 			for _, child in ipairs(source.children) do
 				local value, visible = build(child, matches)
 				if value.bytes then total = total + value.bytes; measured = true end
+				if value.status ~= "excluded" then excluded = false end
 				if value.status == "failed" then failed = true end
 				if value.status == "calculating" then calculating = true end
 				if value.status ~= "complete" then complete = false end
@@ -19,12 +20,12 @@ function Categories.rows(model, rootId, query)
 				if visible then row.children[#row.children + 1] = value end
 			end
 			row.bytes = measured and total or nil
-			row.status = calculating and "calculating" or complete and "complete" or measured and "partial" or failed and "failed" or attempted and "denied" or "notMeasured"
+			row.status = excluded and "excluded" or calculating and "calculating" or complete and "complete" or measured and "partial" or failed and "failed" or attempted and "denied" or "notMeasured"
 			row.expanded = (source.id == "xcode" or source.id == "intelligence")
 			row.forceExpanded = needle ~= ""
 		end
 		row.size = (row.status == "partial" and "≥ " or "") .. Model.size(row.bytes)
-		if row.status == "skipped" then row.size = "Linked location" elseif row.status == "unsupported" then row.size = "System managed" elseif row.status == "denied" then row.size = "Access restricted" elseif row.status == "failed" then row.size = "Unavailable" end
+		if row.status == "excluded" then row.size = "Not scanned" elseif row.status == "skipped" then row.size = "Linked location" elseif row.status == "unsupported" then row.size = "System managed" elseif row.status == "denied" then row.size = "Access restricted" elseif row.status == "failed" then row.size = "Unavailable" end
 		row.calculating = row.status == "calculating"
 		if row.calculating then row.size = "Calculating…" end
 		row.color = source.color or "secondary"
@@ -57,5 +58,24 @@ function Categories.distribution(model, disk)
 	segments[#segments + 1] = {id = "unreconciled", name = "Unreconciled", color = "tertiary", bytes = other, weight = other / total, size = Model.size(other)}
 	segments[#segments + 1] = {id = "free", name = "Free", color = "quaternaryLabel", bytes = free, weight = free / total, size = Model.size(free)}
 	return segments, "Unreconciled includes inaccessible files, snapshots and filesystem accounting differences. Category measurements may be partial."
+end
+-- Flat management rows retain their owner and exact path; totals stay in the ledger.
+function Categories.managementRows(model, rootId, query, filter)
+	local result, needle = {}, (query or ""):lower()
+	local function visit(row, owner)
+		if row.children then
+			for _, child in ipairs(row.children) do visit(child, row.name) end
+		else
+			local m = model.measurements[row.id] or {}
+			local impact = row.policy == "Essential" and "Essential to keep" or row.policy == "Rebuildable" and "Safe/rebuildable" or "Needs review"
+			if (not filter or filter == "All" or filter == impact) and (row.name .. " " .. (owner or "") .. " " .. (row.path or "")):lower():find(needle, 1, true) then
+				result[#result + 1] = {id = row.id, name = row.name, subtitle = owner, path = row.path or "System managed", impact = impact,
+					size = m.status == "excluded" and "Not scanned" or m.status == "calculating" and "Calculating…" or m.status == "denied" and "Access restricted" or (m.status == "partial" and "≥ " or "") .. Model.size(m.bytes),
+					bytes = m.bytes, partial = m.status == "partial", calculating = m.status == "calculating"}
+			end
+		end
+	end
+	if rootId and model.byId[rootId] then visit(model.byId[rootId]) else for _, row in ipairs(model.tree) do visit(row) end end
+	return result
 end
 return Categories

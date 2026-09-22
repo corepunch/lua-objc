@@ -281,6 +281,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_tableview", bridge_AppKit_tableview},
 	{"_actionButton", bridge_AppKit_action_button},
 	{"_panel", bridge_AppKit_panel},
+	{"_sheet", bridge_sheet},
 	{"_panelStyleState", bridge_AppKit_panel_style_state},
 	{"_menuItem", bridge_AppKit_menu_item},
 	{"_textFieldCallbacks", bridge_AppKit_text_field_callbacks},
@@ -674,9 +675,9 @@ int lua_objc_main(int argc, char *argv[]) {
 		[NSApp activate];
 		for (NSWindow *window in NSApp.windows) {
 			if (window.isVisible) {
-				[window makeKeyAndOrderFront:nil];
-				[window makeKeyWindow];
-				[window makeMainWindow];
+				// Panels and sheets cannot become main; an attached sheet owns key focus.
+				if (window.canBecomeKeyWindow && !window.attachedSheet) [window makeKeyAndOrderFront:nil];
+				if (window.canBecomeMainWindow) [window makeMainWindow];
 				[window orderFrontRegardless];
 			}
 		}

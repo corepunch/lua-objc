@@ -13,6 +13,9 @@ function Scan:cancel(silent)
 end
 function Scan:start()
 	self:cancel(true)
+	if rawget(self.service, "agentEntries") then
+		require("apps.diskmap.models.AgentFiles").add(self.model, self.service.agentEntries(self.model))
+	end
 	local paths, ids, exclusions = Inventory.plan(self.model)
 	if #paths == 0 then return end
 	Inventory.begin(self.model, ids)

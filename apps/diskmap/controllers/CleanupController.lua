@@ -15,9 +15,26 @@ function Controller:rows(query, limit)
 	return rows
 end
 function Controller:presentation()
-	local rows, actions = self:rows(nil, 5), {}
+	local rows, actions = self:rows(), {}
 	for _, row in ipairs(rows) do actions["review_" .. row.id] = function() self.review(row.id) end end
-	return {suggestions = rows, actions = actions}
+	local groups = {{name = "Safe/rebuildable", rows = {}}, {name = "Needs review", rows = {}}, {name = "Essential to keep", rows = {}}}
+	for _, row in ipairs(rows) do
+		local group = row.impact == "Safe/rebuildable" and groups[1] or groups[2]
+		group.rows[#group.rows + 1] = row
+	end
+	for _, row in ipairs(require("apps.diskmap.models.Categories").managementRows(self.model, "runtimes")) do
+		if (row.bytes or 0) > 0 then
+			row.icon = "iphone"; row.color = "systemBlue"; row.subtitle = "Keep installed runtimes required by your projects."
+			groups[3].rows[#groups[3].rows + 1] = row
+			actions["review_" .. row.id] = function() self.review("runtimes") end
+		end
+	end
+	for index, group in ipairs(groups) do
+		local bytes, partial = 0, false; for _, row in ipairs(group.rows) do bytes = bytes + (row.bytes or 0); partial = partial or row.partial end
+		group.index = index; group.size = (partial and "≥ " or "") .. require("apps.diskmap.Model").size(bytes)
+		actions["group_" .. index] = function() self.review(nil, group.name) end
+	end
+	return {suggestions = rows, groups = groups, actions = actions}
 end
 function Controller:toggleKeep(id)
 	if not Preferences.toggle(self.model, id) then return false end

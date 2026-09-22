@@ -13,8 +13,8 @@ model.measurements[ids[1]] = {bytes = 9e9, status = "complete"}
 Inventory.begin(model, ids)
 t.assertEqual(Model.total(model), 0, "refresh immediately discards old measurements")
 for _, row in ipairs(Categories.rows(model)) do
-	t.expect(row.calculating, "category starts calculating: " .. row.id)
-	t.assertEqual(row.size, "Calculating…", "pending category never shows old bytes")
+	t.expect(row.calculating or row.status == "excluded", "category starts calculating unless excluded: " .. row.id)
+	t.assertEqual(row.size, row.status == "excluded" and "Not scanned" or "Calculating…", "pending category never shows old bytes")
 end
 local first = model.tree[1]
 local function belongs(id)

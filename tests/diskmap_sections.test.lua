@@ -56,7 +56,7 @@ local nameCell = bridge._tableCell(refs.results, 0, 0)
 local sizeCell = bridge._tableCell(refs.results, 1, 0)
 t.assertEqual(nameCell.textField.font.pointSize, 13, "category title uses the regular system font")
 t.assertEqual(sizeCell.textField.font.pointSize, 13, "size and loading text use the regular system font")
-t.assertEqual(refs.heading.font.pointSize, 19, "section heading keeps its original typography")
+t.assertEqual(refs.heading, nil, "storage list omits its redundant heading")
 t.expect(nameCell.textField.font.pointSize > buttons[1].font.pointSize, "only legend text uses the smaller primary font")
 
 for _, height in ipairs({220, 500}) do
@@ -65,11 +65,10 @@ for _, height in ipairs({220, 500}) do
 	t.expect(refs.results.frame.size.width <= 400, "category list stays within native group margins")
 	t.expect(not bridge._tableCell(refs.results, 1, 0).loadingIndicator.hidden, "section background preserves per-row loading")
 end
-local empty = render("Opportunities", {suggestions = {}, actions = {}})
-t.assertEqual(empty.subviews[1].className, "NSBox", "empty recommendations remain a native section")
-local suggestions = render("Opportunities", {suggestions = {{id = "derived", name = "Xcode DerivedData",
-	subtitle = "Build products can be recreated.", size = "4.9 GB", icon = "hammer", color = "systemBlue"}}, actions = {}})
-t.assertEqual(suggestions.subviews[1].className, "NSBox", "each recommendation has its own native card")
-suggestions.size = ns.Size(292, 200); suggestions:layout(292)
-t.expect(suggestions.subviews[1].frame.size.width <= 292, "recommendation card fits a narrow inspector")
+local empty = render("Opportunities", {groups = {{name = "Needs review", size = "0 KB", index = 1, rows = {}}}, actions = {}})
+t.expect(empty ~= nil, "empty review group renders")
+local suggestions = render("Opportunities", {groups = {{name = "Safe/rebuildable", size = "4.9 GB", index = 1, rows = {{id = "derived", name = "Xcode DerivedData",
+	subtitle = "Build products can be recreated.", size = "4.9 GB", icon = "hammer", color = "systemBlue"}}}}, actions = {}})
+suggestions.size = ns.Size(292, 300); suggestions:layout(292)
+for _, child in ipairs(suggestions.subviews) do t.expect(child.frame.size.width <= 292, "recommendation fits a narrow inspector") end
 os.exit(t.summary() and 0 or 1)

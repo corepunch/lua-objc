@@ -26,10 +26,13 @@ t.expect(suggestions[1].evidence:find("Review threshold", 1, true) ~= nil, "sugg
 model.measurements.projects = {bytes = 900e9, status = "complete"}
 model.measurements["xcode-app"] = {bytes = 200e9, status = "complete"}
 t.assertEqual(#Cleanup.suggestions(model), 1, "large projects and installations do not become cleanup opportunities")
-for _, status in ipairs({"partial", "failed", "denied", "skipped"}) do
+for _, status in ipairs({"failed", "denied", "skipped"}) do
 	model.measurements.simulators.status = status
 	t.assertEqual(#Cleanup.suggestions(model), 0, "uncertain measurement cannot recommend cleanup: " .. status)
 end
+model.measurements.simulators.status = "partial"
+t.assertEqual(Cleanup.suggestions(model)[1].impact, "Needs review", "partial measurements still offer review")
+t.expect(Cleanup.suggestions(model)[1].size:find("≥", 1, true), "partial review is explicitly a lower bound")
 model.measurements.simulators.status = "complete"
 model.kept.xcode = true
 t.assertEqual(#Cleanup.suggestions(model), 0, "keeping parent suppresses all descendant recommendations")

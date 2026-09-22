@@ -17,4 +17,6 @@ function Scanner.poll(job)
 	if result then job.completed = result.completed end
 	return done, result
 end
+Scanner.commandStart = native.commandStart
+Scanner.commandPoll = native.commandPoll
 return Scanner

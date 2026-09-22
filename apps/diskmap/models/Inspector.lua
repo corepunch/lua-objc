@@ -10,7 +10,7 @@ function Inspector.details(model, id)
 		if candidate.id == id then text = candidate.evidence .. "\n\n" .. candidate.subtitle .. "\n\n" .. text; break end
 	end
 	return {name = row.name, text = text, location = (row.path or "Multiple known locations") .. (m and "\n" .. Model.size(m.bytes) .. " · " .. m.status or ""),
-		manageTitle = row.action == "trash" and "Review Move to Trash…" or row.action == "settings" and "Open System Settings" or row.action == "xcode" and "Open Xcode" or row.action == "docker" and "Open Docker" or "Reveal in Finder",
+		manageTitle = row.action == "simulators" and "Manage simulators…" or row.action == "trash" and "Review Move to Trash…" or row.action == "settings" and (({siri = "Open Siri Settings", dictation = "Open Dictation Settings", voices = "Open Accessibility Settings"})[row.settingsSection] or "Open System Settings") or row.action == "xcode" and "Open Xcode" or row.action == "docker" and "Open Docker" or "Reveal in Finder",
 		canManage = not row.children and (row.action ~= "trash" or Preferences.canTrash(model, id)) and (row.path ~= nil or row.action == "settings"),
 		keepTitle = model.kept[id] and "Stop keeping this resource" or "Keep this resource"}
 end

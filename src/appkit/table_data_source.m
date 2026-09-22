@@ -482,9 +482,7 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	lua_newtable(callL);
 	for (NSString *key in rowData) {
 		id value = rowData[key];
-		const char *str = value && ![value isEqual:[NSNull null]]
-			? [[value description] UTF8String] : NULL;
-		lua_pushstring(callL, str ?: "");
+		push_objc_value(callL, value);
 		lua_setfield(callL, -2, [key UTF8String]);
 	}
 	lua_objc_pcall(callL, 3, 0, "table selection");
@@ -504,7 +502,7 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	lua_newtable(callL);
 	for (NSString *key in rowData) {
 		id value = rowData[key];
-		lua_pushstring(callL, value ? [[value description] UTF8String] : "");
+		push_objc_value(callL, value);
 		lua_setfield(callL, -2, key.UTF8String);
 	}
 	lua_objc_pcall(callL, 3, 0, "table activation");

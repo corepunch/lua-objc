@@ -1732,3 +1732,15 @@ An installed application's NSWorkspace artwork replaces the badge without tint;
 an unavailable bundle retains the symbol. No application path is required.
 `Column` uses `badgeColorKey` and `appIconKey` to bind the same presentation to
 row data in native tables and outlines. Reused cells clear previous icon state.
+
+
+### Native management sheets
+
+`<Sheet width="880" height="620">…</Sheet>` / `AppKit.Sheet(props)` create an
+ordinary AppKit panel with an opaque semantic content background. Present it with
+`AppKit.presentSheet(sheet, parentWindow)` and dismiss with `AppKit.dismiss(sheet)`.
+AppKit owns sheet attachment, focus, frame, corners and shadow. Headless mode
+constructs content without presentation. Callers own their callback scope and
+close it when dismissing. Floating `Panel` presentation keeps its separate native
+material. Native List/Outline selection and activation callbacks preserve row
+boolean, numeric and structured values rather than stringifying them.

@@ -7,7 +7,7 @@ function Model.size(bytes)
 	return string.format("%.0f KB", bytes / 1000)
 end
 function Model.new(home)
-	local self = {tree = Catalog.tree(home), byId = {}, leaves = {}, measurements = {}, kept = {}, scan = {}}
+	local self = {home = home, includeMedia = false, tree = Catalog.tree(home), byId = {}, leaves = {}, measurements = {}, kept = {}, scan = {}}
 	local function index(rows, parent)
 		for _, row in ipairs(rows) do
 			row.parentId = parent and parent.id
@@ -17,6 +17,7 @@ function Model.new(home)
 			self.byId[row.id] = row
 			if row.children then index(row.children, row) else
 				self.leaves[#self.leaves + 1] = row
+				if row.mediaAccess then self.measurements[row.id] = {status = "excluded"} end
 				if row.measurement then self.measurements[row.id] = {status = row.measurement} end
 			end
 		end

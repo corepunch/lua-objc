@@ -38,7 +38,7 @@ for i, arguments in ipairs({{}, {"-cache=/missing/inventory.json"},
 	t.expect(app.model.kept.derived, "Keep preferences survive independently of measurements")
 	t.expect(not app.settings.enabled and app.scan.job ~= nil, "paused background checks do not suppress startup scan")
 	for _, row in ipairs(Categories.rows(app.model)) do
-		t.expect(row.calculating, "startup recalculates category: " .. row.id)
+		t.expect(row.calculating or row.status == "excluded", "startup recalculates allowed category: " .. row.id)
 	end
 	local _, ids = Inventory.plan(app.model)
 	local result = {trees = {}, rootStates = {}}

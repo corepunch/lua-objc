@@ -4,8 +4,17 @@ function Inventory.plan(model)
 	local paths, ids, exclusions = {}, {}, {"/Volumes", "/dev", "/System/Volumes"}
 	for _, row in ipairs(model.leaves) do
 		if row.path then
-			paths[#paths + 1] = row.path; ids[#ids + 1] = row.id
+			if not row.mediaAccess or model.includeMedia then
+				paths[#paths + 1] = row.path; ids[#ids + 1] = row.id
+			else
+				model.measurements[row.id] = {status = "excluded"}
+			end
 			exclusions[#exclusions + 1] = row.path
+		end
+	end
+	if not model.includeMedia then
+		for _, relative in ipairs({"/Library/Photos", "/Library/Music", "/Library/MediaLibrary", "/Library/Containers/com.apple.Photos", "/Library/Containers/com.apple.Music", "/Library/Containers/com.apple.AMPArtworkAgent", "/Library/Group Containers/group.com.apple.Photos", "/Library/Group Containers/group.com.apple.Music"}) do
+			exclusions[#exclusions + 1] = model.home .. relative
 		end
 	end
 	return paths, ids, exclusions
@@ -26,6 +35,7 @@ local function measurement(node, state)
 		status = state == "skipped" and "skipped" or state == "missing" and "complete" or type(node) == "table" and (node.partial and "partial" or "complete") or "denied"}
 end
 function Inventory.progress(model, ids, result)
+	model.scan.errors = result.errors or 0
 	for i = 1, math.min(result.completed or 0, #ids) do
 		local state = result.rootStates and result.rootStates[i]
 		if state then

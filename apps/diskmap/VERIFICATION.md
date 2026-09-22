@@ -123,3 +123,25 @@ now includes every measured category and a separate unreconciled segment.
 Real scans retain local diagnostics and refresh every category. Access-denied
 files, APFS shared extents and exclusive snapshot allocation still limit physical
 reconciliation; these remain explicit, rather than invented measured values.
+
+
+## 2026-09-22 management and privacy pass
+
+- All Diskmap headless suites and the native sheet regression pass, including
+  media opt-in boundaries, unique accounting paths, runtime MobileAssets,
+  partial review evidence, dynamic agent children, simulator command validation,
+  cancellation, Keep protection, busy/error state and stale async responses.
+- Built AppKit, StorageScan and the signed local Diskmap.app; UIKit compile check
+  completed (no UIKit native source change).
+- Live native sheets inspected through accessibility and screenshots. The real
+  read-only simctl service returned 11 devices. No device or file was deleted.
+- Visual fixtures cover selected/disabled, empty, loading, long names, light/dark,
+  and smaller/larger layouts. Offscreen renders cannot capture the native tab
+  selector correctly (black); the live screenshot confirms native tabs render.
+- Full `make test` stalls on existing event-loop test entrypoints. A bounded run
+  of 88 suites passed 78. Remaining failures: stocks_workspace, adventure_arena_zil
+  (missing bundled source), layout_dump, outline_cells (app artwork under sandbox),
+  glass_materials (missing views/Main.etlua). Timeouts: navigation, reorder,
+  perf_large_list, webpage, gestures_haptics. The native sheet and typed table-selection suites passed. These broad-suite results are not a clean full-suite pass.
+
+- Final live sheet uses an opaque semantic `controlBackgroundColor` surface and a native default Done button. Both row selection and activation preserve booleans/numbers; shutdown simulator actions enable correctly.

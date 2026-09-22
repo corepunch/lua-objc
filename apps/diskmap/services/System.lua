@@ -67,7 +67,13 @@ function System.monitor(visible, refresh)
 	end)
 end
 function System.openSettings(section)
-	local target = section == "privacy" and "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles" or "x-apple.systempreferences:com.apple.settings.Storage"
+	local targets = {
+		privacy = "com.apple.preference.security?Privacy_AllFiles",
+		siri = "com.apple.Siri-Settings.extension",
+		dictation = "com.apple.Keyboard-Settings.extension",
+		voices = "com.apple.Accessibility-Settings.extension",
+	}
+	local target = "x-apple.systempreferences:" .. (targets[section] or "com.apple.settings.Storage")
 	os.execute("/usr/bin/open " .. System.quote(target))
 end
 function System.openOwner(owner)
@@ -87,5 +93,29 @@ function System.trash(path)
 		if linked then return false, "This location contains a symbolic link. Review it in Finder instead." end
 	end
 	return ns.moveToTrash(path)
+end
+function System.agentEntries(model)
+	local entries = {}
+	for _, id in ipairs({"codex", "opencode", "grok"}) do
+		local root = model.byId[id .. "-other"]
+		for _, entry in ipairs(ns.readDirectory(root.path, 0) or {}) do
+			entry.agent = id; entries[#entries + 1] = entry
+		end
+	end
+	return entries
+end
+function System.command(argv, completion)
+	local job = Scanner.commandStart(argv)
+	ns.async(function()
+		while true do
+			local done, result = Scanner.commandPoll(job)
+			if done then completion(result.ok, result.output); return end
+			ns.sleep(0.1)
+		end
+	end)
+end
+System.decode = ns.json_parse
+function System.confirmAction(title, message)
+	return ns.Alert {title = title, message = message, buttons = {"Cancel", title}} == 2
 end
 return System

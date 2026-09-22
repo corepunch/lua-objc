@@ -17,7 +17,7 @@ function Controller:manage()
 		local ok, err = self.service.trash(row.path)
 		if not ok then self.service.showError("Could not move to Trash", err or "Check permissions."); return false end
 		self.refresh()
-	elseif row.action == "settings" then self.service.openSettings()
+	elseif row.action == "settings" then self.service.openSettings(row.settingsSection)
 	elseif row.action == "xcode" or row.action == "docker" then self.service.openOwner(row.action)
 	elseif row.path then self.service.reveal(row.path) end
 	return true

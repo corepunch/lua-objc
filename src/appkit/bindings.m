@@ -407,6 +407,7 @@ static int bridge_NSWindow_dismiss(lua_State *L) {
 	id _obj = lua_objc_check_object(L, 1, [NSWindow class], "Window");
 	NSWindow *self = (NSWindow *)_obj;
 	{
+		if (self.sheetParent) [self.sheetParent endSheet:self];
 		[self orderOut:nil];
 		[self.parentWindow removeChildWindow:self];
 	}
@@ -476,6 +477,17 @@ static int bridge_NSWindow_add(lua_State *L) {
 static int bridge_NSWindow_layout(lua_State *L) {
 	(void)lua_objc_check_object(L, 1, [NSWindow class], "Window");
 	return bridge_object_layout_impl(L);
+}
+
+// beginSheet requires two arguments including a block, beyond generic _perform.
+static int bridge_NSWindow_presentSheet(lua_State *L) {
+	NSWindow *sheet = lua_objc_check_object(L, 1, [NSWindow class], "Window");
+	NSWindow *parent = lua_objc_check_object(L, 2, [NSWindow class], "Window");
+	if (parent == sheet || parent.attachedSheet || sheet.sheetParent) return luaL_error(L, "sheet or parent is already presenting");
+	sheet.level = NSNormalWindowLevel;
+	sheet.appearance = parent.appearance;
+	[parent beginSheet:sheet completionHandler:nil];
+	return 0;
 }
 
 static int bridge_NSWindow_presentPanel(lua_State *L) {
@@ -629,6 +641,7 @@ static MethodEntry WindowMethods[] = {
 	{"add",	bridge_NSWindow_add},
 	{"layout",	bridge_NSWindow_layout},
 	{"presentPanel",	bridge_NSWindow_presentPanel},
+	{"presentSheet",	bridge_NSWindow_presentSheet},
 	{NULL, NULL}
 };
 

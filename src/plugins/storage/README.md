@@ -47,3 +47,10 @@ exclusive APFS clone/snapshot allocation.
 See [the investigation](../../../docs/research/STORAGE_SIZING.md) for the private
 Apple-service probes and timing evidence, and `tests/storage_scan.test.lua` for
 fixtures covering allocation, repeated scans, cancellation, and metadata parsing.
+
+`commandStart(argv)` / `commandPoll(job)` provide asynchronous Foundation task
+execution for storage-owner tools such as simctl. Arguments are a validated UTF-8
+array; no shell interpolation is involved. Poll returns `(done, {ok, output})`.
+Output combines stdout/stderr, is capped at 8 MiB, and a 60-second watchdog asks the
+process to terminate. The worker drains pipes independently of the Lua event loop.
+Only the app's model chooses allowed actions and exact resource identifiers.

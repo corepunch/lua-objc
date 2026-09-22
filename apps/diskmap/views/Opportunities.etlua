@@ -1,12 +1,15 @@
 <VStack fillWidth="true" spacing="12" alignment="leading">
-  <% for _, suggestion in ipairs(suggestions) do %>
+  <% for _, group in ipairs(groups) do %>
+  <Button title="<%= group.name %> · <%= group.size %>" action="group_<%= group.index %>" fillWidth="true" />
+  <% end %>
+  <Label text="Amounts describe measured storage, not space guaranteed to be freed." size="11" color="secondary" fillWidth="true" lines="2" />
+  <% for _, group in ipairs(groups) do %>
+  <Label text="<%= group.name %>" size="13" weight="semibold" fillWidth="true" />
+  <% for _, suggestion in ipairs(group.rows) do %>
   <%- partial("Suggestion.etlua", {suggestion = suggestion}) %>
   <% end %>
-  <% if #suggestions == 0 then %>
-  <GroupBox fillWidth="true">
-    <VStack fillWidth="true" padding="12">
-      <Label text="No recognized resources meet the review thresholds. Suggestions update after each complete scan." size="12" color="secondary" fillWidth="true" lines="0" />
-    </VStack>
-  </GroupBox>
+  <% if #group.rows == 0 then %>
+  <Label text="No measured candidates in this group." size="11" color="secondary" fillWidth="true" lines="2" />
+  <% end %>
   <% end %>
 </VStack>

@@ -57,6 +57,23 @@ static int bridge_panel(lua_State *L) {
 	return 1;
 }
 
+// Sheets use an opaque semantic content surface, not floating-panel vibrancy.
+static int bridge_sheet(lua_State *L) {
+	CGFloat width = luaL_checknumber(L, 1), height = luaL_checknumber(L, 2);
+	LuaPanel *sheet = [[LuaPanel alloc] initWithContentRect:NSMakeRect(0, 0, width, height)
+		styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskFullSizeContentView
+		backing:NSBackingStoreBuffered defer:NO];
+	sheet.titleVisibility = NSWindowTitleHidden;
+	sheet.titlebarAppearsTransparent = YES;
+	sheet.releasedWhenClosed = NO;
+	sheet.backgroundColor = NSColor.controlBackgroundColor;
+	sheet.opaque = YES;
+	sheet.hasShadow = YES;
+	sheet.contentView = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, width, height)];
+	push_objc(L, sheet, "nswindow");
+	return 1;
+}
+
 static int bridge_panel_style_state(lua_State *L) {
 	id obj = check_objc(L, 1);
 	if (![obj isKindOfClass:[LuaPanel class]]) {

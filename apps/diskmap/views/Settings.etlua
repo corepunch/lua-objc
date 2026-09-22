@@ -2,10 +2,14 @@
 <VStack fillWidth="true" padding="24" spacing="18" alignment="leading">
   <Label fillWidth="true" text="Settings" size="23" weight="bold" />
   <Label fillWidth="true" text="Background suggestions" size="16" weight="semibold" />
-  <Label fillWidth="true" text="While Diskmap is open, measure all storage categories every 15 minutes. Scans run in a separate process and never delete files automatically." size="13" lines="4" />
+  <Label fillWidth="true" text="While Diskmap is open, measure all storage categories every 15 minutes. Scans run in a background worker and never delete files automatically." size="13" lines="4" />
   <Button title="<%= monitoring and 'Pause background checks' or 'Enable background checks' %>" action="monitor" />
+  <Label fillWidth="true" text="Media library privacy" size="16" weight="semibold" />
+  <Label fillWidth="true" text="Photos, Music and Movies folders and known media support folders are excluded by default. Folder metadata alone cannot tell us the size of a library’s contents. Including these folders may trigger macOS access prompts; their sizes otherwise remain unknown." size="13" lines="0" />
+  <Button title="<%= mediaEnabled and 'Exclude media libraries' or 'Include media libraries…' %>" action="media" />
+  <Label fillWidth="true" text="This choice lasts only until Diskmap quits. You can also inspect media totals in System Settings without granting Diskmap access." size="12" color="secondary" lines="0" />
   <Label fillWidth="true" text="Access and estimates" size="16" weight="semibold" />
-  <Label fillWidth="true" text="Scans include personal folders, app containers, backups, Trash and unclassified files. macOS may ask for access. You can decline; restricted sizes remain unknown. Full Disk Access is optional for a comprehensive scan." size="13" lines="20" />
+  <Label fillWidth="true" text="Scans include other personal folders, app containers, backups, Trash and unclassified files. macOS may ask for access to those locations. You can decline; restricted sizes remain unknown. Full Disk Access is optional for a comprehensive scan." size="13" lines="20" />
   <Label fillWidth="true" text="Sizes measure allocated file blocks. APFS clones, compression, snapshots, and concurrent changes can make actual reclaimed space differ. Cloud-only files are not downloaded. Scans skip symbolic links and other mounted volumes." size="13" lines="20" />
   <Label fillWidth="true" text="Time Machine" size="16" weight="semibold" />
   <Label fillWidth="true" text="macOS counts local snapshots as available space and removes them as needed. They are restore points, not junk. Use Time Machine settings to manage backups; Diskmap never deletes snapshots or protected system assets." size="13" lines="20" />

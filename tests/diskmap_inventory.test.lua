@@ -9,7 +9,7 @@ local System = require("apps.diskmap.services.System")
 local model = Model.new("/Users/test")
 local paths, ids, exclusions = Inventory.plan(model)
 t.assertEqual(#paths, #ids, "every path has one ledger owner")
-t.assertEqual(#exclusions, #paths + 3, "mounted roots are excluded from residual traversal")
+t.expect(#exclusions > #paths + 3, "excluded media roots also stay out of residual traversal")
 local index = {}; for i, id in ipairs(ids) do index[id] = i end
 local result = {trees = {}, rootStates = {}, visited = 123, seconds = 2, errors = 1, issues = {{path = "/denied", reason = "Denied"}}}
 for i in ipairs(ids) do result.rootStates[i] = "missing" end

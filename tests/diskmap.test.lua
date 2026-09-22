@@ -16,7 +16,7 @@ local unique = {}
 for _, row in ipairs(model.leaves) do
 	t.expect(not unique[row.id], "stable unique resource " .. row.id); unique[row.id] = true
 	t.expect(row.subtitle ~= nil, "resource explains purpose")
-	if row.action == "trash" then t.expect(row.id == "derived" or row.id == "npm" or row.id == "pip" or row.id == "brew", "only verified caches can be trashed") end
+	if row.action == "trash" then t.expect(row.id == "derived" or row.id == "npm" or row.id == "pip" or row.id == "brew" or row.id == "documentation" or row.id == "opencode-downloads" or row.id == "codex-cache" or row.id == "opencode-cache" or row.id == "grok-cache", "only verified caches or offline documentation can be trashed") end
 end
 t.assertEqual(model.byId['codex-worktrees'].action, "finder", "worktrees never treated as cache")
 t.assertEqual(model.byId['preboot'].action, "settings", "boot assets system managed")
@@ -46,7 +46,7 @@ t.assertEqual(model.measurements.derived.bytes, nil, "denied is unknown")
 local paths, ids = Inventory.plan(model)
 local targets = {}; for i, path in ipairs(paths) do targets[ids[i]] = path end
 for _, row in ipairs(model.leaves) do
-	if row.path then t.assertEqual(targets[row.id], row.path, "startup includes " .. row.id) end
+	if row.path and not row.mediaAccess then t.assertEqual(targets[row.id], row.path, "startup includes " .. row.id) end
 end
 t.assertEqual(targets["home-other"], "/Users/test", "unrecognized home files are measured")
 t.assertEqual(targets["root-system"], "/", "root residual closes inventory gaps")
@@ -112,7 +112,7 @@ local function atTop()
 end
 t.expect(atTop(), "new opportunity content starts at top")
 ui:updateRows(); t.expect(atTop(), "unchanged model preserves scroll position")
-t.assertEqual(ui.refs.categoriesPane.frame.size.width - ui.refs.coveragePanel.frame.size.width, 16, "coverage panel keeps trailing divider inset")
+t.expect(ui.refs.coveragePanel.frame.size.width > ui.refs.categoriesPane.frame.size.width, "scan quality spans the dashboard beside the totals")
 ui:select("developer")
 t.expect(not ui.refs.inspector.hidden, "selection exposes the inspector")
 t.expect(ui.refs.measure.enabled, "selection allows a fresh measurement")

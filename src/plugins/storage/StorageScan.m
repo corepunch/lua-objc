@@ -229,6 +229,66 @@ static void pushValue(lua_State *L, id value) {
 		for (NSString *key in value) { pushValue(L, value[key]); lua_setfield(L, -2, key.UTF8String); }
 	}
 }
+// NSTask's launch/error and pipe lifetime cannot be represented by KVC alone.
+// Commands are argv arrays (never a shell) and workers never enter Lua.
+@interface StorageCommandJob : NSObject
+@property NSTask *task;
+@property NSDictionary *result;
+@property BOOL done;
+@end
+@implementation StorageCommandJob
+@end
+static const char *CommandMetatable = "StorageScan.Command";
+static int commandStart(lua_State *L) {
+	luaL_checktype(L, 1, LUA_TTABLE);
+	NSUInteger count = lua_rawlen(L, 1);
+	luaL_argcheck(L, count > 0, 1, "expected executable and arguments");
+	for (NSUInteger i = 1; i <= count; i++) {
+		lua_rawgeti(L, 1, i); size_t length; const char *value = luaL_checklstring(L, -1, &length);
+		BOOL valid = !memchr(value, 0, length) && [[NSString alloc] initWithBytes:value length:length encoding:NSUTF8StringEncoding] != nil;
+		luaL_argcheck(L, valid, 1, "arguments must be UTF-8 without NUL"); lua_pop(L, 1);
+	}
+	NSMutableArray *arguments = [NSMutableArray array];
+	for (NSUInteger i = 1; i <= count; i++) { lua_rawgeti(L, 1, i); [arguments addObject:@(lua_tostring(L, -1))]; lua_pop(L, 1); }
+	StorageCommandJob *job = [StorageCommandJob new];
+	job.task = [NSTask new]; job.task.executableURL = [NSURL fileURLWithPath:arguments.firstObject];
+	[arguments removeObjectAtIndex:0]; job.task.arguments = arguments;
+	CFTypeRef *ref = lua_newuserdatauv(L, sizeof(CFTypeRef), 0); *ref = CFBridgingRetain(job); luaL_setmetatable(L, CommandMetatable);
+	dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+		@autoreleasepool {
+			NSPipe *pipe = [NSPipe pipe]; job.task.standardOutput = pipe; job.task.standardError = pipe;
+			NSError *error;
+			if (![job.task launchAndReturnError:&error]) {
+				@synchronized(job) { job.result = @{@"ok": @NO, @"output": error.localizedDescription}; job.done = YES; }
+				return;
+			}
+			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 60 * NSEC_PER_SEC), dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+				if (job.task.running) [job.task terminate];
+			});
+			NSMutableData *data = [NSMutableData data]; BOOL overflow = NO;
+			while (YES) {
+				NSData *chunk = [pipe.fileHandleForReading availableData]; if (!chunk.length) break;
+				if (data.length + chunk.length <= 8 * 1024 * 1024) [data appendData:chunk]; else { overflow = YES; if (job.task.running) [job.task terminate]; }
+			}
+			[job.task waitUntilExit];
+			NSString *output = overflow ? @"Command output exceeded the limit." : [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] ?: @"Invalid command output.";
+			@synchronized(job) { job.result = @{@"ok": @(!overflow && job.task.terminationStatus == 0), @"output": output}; job.done = YES; }
+		}
+	});
+	return 1;
+}
+static int commandPoll(lua_State *L) {
+	CFTypeRef *ref = luaL_checkudata(L, 1, CommandMetatable);
+	StorageCommandJob *job = (__bridge StorageCommandJob *)*ref;
+	@synchronized(job) { lua_pushboolean(L, job.done); pushValue(L, job.result); }
+	return 2;
+}
+static int commandCollect(lua_State *L) {
+	CFTypeRef *ref = luaL_checkudata(L, 1, CommandMetatable);
+	if (*ref) { CFRelease(*ref); *ref = NULL; }
+	return 0;
+}
+
 static void validatePaths(lua_State *L, int index) {
 	luaL_checktype(L, index, LUA_TTABLE);
 	// Validate before retaining Foundation objects: luaL_error performs a longjmp.
@@ -298,9 +358,11 @@ int luaopen_StorageScan(lua_State *L) {
 		Dl_info image;
 		if (dladdr((const void *)&luaopen_StorageScan, &image)) dlopen(image.dli_fname, RTLD_NOW | RTLD_NODELETE);
 	});
+	luaL_newmetatable(L, CommandMetatable);
+	lua_pushcfunction(L, commandCollect); lua_setfield(L, -2, "__gc"); lua_pop(L, 1);
 	luaL_newmetatable(L, JobMetatable);
 	lua_pushcfunction(L, collect); lua_setfield(L, -2, "__gc"); lua_pop(L, 1);
-	const luaL_Reg functions[] = {{"start", start}, {"poll", poll}, {"cancel", cancel}, {"scan", scan}, {NULL, NULL}};
+	const luaL_Reg functions[] = {{"commandStart", commandStart}, {"commandPoll", commandPoll}, {"start", start}, {"poll", poll}, {"cancel", cancel}, {"scan", scan}, {NULL, NULL}};
 	luaL_newlib(L, functions); lua_pushliteral(L, "getattrlistbulk"); lua_setfield(L, -2, "backend");
 	return 1;
 }

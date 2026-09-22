@@ -20,6 +20,7 @@ end
 function Controller:coverage(disk)
 	local measured = Model.total(self.model)
 	local text = Model.size(measured) .. " measured"
+	if (self.model.scan.errors or 0) > 0 then text = string.format("Scan quality warning: %d inaccessible · ", self.model.scan.errors) .. text end
 	if disk then
 		local difference = (disk.totalKb - disk.freeKb) * 1024 - measured
 		text = text .. " · " .. (difference < 0 and "−" or "") .. Model.size(math.abs(difference)) .. " unreconciled"

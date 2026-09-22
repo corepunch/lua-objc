@@ -203,9 +203,7 @@
 	for (NSString *key in rowData) {
 		if ([key isEqualToString:@"children"]) continue;
 		id val = rowData[key];
-		const char *str = val && ![val isEqual:[NSNull null]]
-			? [[val description] UTF8String] : NULL;
-		lua_pushstring(callL, str ?: "");
+		push_objc_value(callL, val);
 		lua_setfield(callL, -2, [key UTF8String]);
 	}
 	lua_newtable(callL);
@@ -235,7 +233,7 @@
 	for (NSString *key in rowData) {
 		if ([key isEqualToString:@"children"]) continue;
 		id value = rowData[key];
-		lua_pushstring(callL, value ? [[value description] UTF8String] : "");
+		push_objc_value(callL, value);
 		lua_setfield(callL, -2, key.UTF8String);
 	}
 	lua_objc_pcall(callL, 3, 0, "outline activation");

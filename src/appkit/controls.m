@@ -96,7 +96,7 @@ static id lua_to_objc_recursive(lua_State *L, int idx) {
 			if (lua_type(L, -1) == LUA_TTABLE) {
 				value = lua_to_objc_recursive(L, lua_gettop(L));
 			} else if (lua_isboolean(L, -1)) {
-				value = @(lua_toboolean(L, -1));
+				value = @((BOOL)lua_toboolean(L, -1));
 			} else if (lua_type(L, -1) == LUA_TNUMBER) {
 				value = @(lua_tonumber(L, -1));
 			} else {
@@ -236,6 +236,8 @@ static int bridge_tableview(lua_State *L) {
 	src.owner = owner_for_state(L);
 
 	NSScrollView *sv = [[NSScrollView alloc] initWithFrame:NSMakeRect(0, 0, width, height)];
+	sv.clipsToBounds = YES;
+	sv.contentView.clipsToBounds = YES;
 	sv.documentView = tv;
 	sv.hasVerticalScroller = YES;
 	sv.autohidesScrollers = YES;

@@ -1,8 +1,7 @@
 # Diskmap
 
 A native macOS 26 storage manager organized by semantic categories, not folders.
-Expand Developer, System Data, Applications, Backups and other categories to
-understand ownership and consequences. Settings stays at the bottom of the
+Open Developer, System Data, Applications, Backups and other categories in native management sheets. Search names, owners and paths, and filter by Safe/rebuildable, Needs review or Essential to keep. Settings stays at the bottom of the
 native sidebar. The inspector exposes locations only as supporting evidence.
 
 ```sh
@@ -11,7 +10,7 @@ make
 make diskmap-app
 ```
 
-Every launch inventories the whole disk from scratch. Diskmap has no directory
+Every launch starts a fresh inventory. Photos, Music, Movies and known media support locations are excluded by default; opt in for the current session in Settings. Excluded sizes are unknown, never zero. Diskmap has no directory
 argument, saved-inventory replay, or scan-result cache.
 
 `Catalog.lua` composes independent providers in `catalog/` into the macOS knowledge tree: more than 140 named resources,
@@ -59,8 +58,7 @@ signed unreconciled difference is displayed, never called disposable junk.
 Category refresh also scans the full ledger so independent batches cannot
 reassign hard-link ownership and corrupt totals.
 
-Only DerivedData, npm downloads, pip cache and Homebrew downloads offer reviewed
-Move to Trash. Other entries reveal their location or open the owner/system
+DerivedData, package download caches, recognized agent download caches and user-owned offline developer documentation offer reviewed Move to Trash. Other entries reveal their location or open the owner/system
 settings. Diskmap never empties Trash, deletes SDK internals, removes protected
 assets, or disables system protections. Moving to Trash does not free space.
 Keep suppresses suggestions for a resource and its descendants and persists
@@ -71,7 +69,7 @@ The app and framework changes are described in [DESIGN.md](DESIGN.md).
 
 ## Component boundaries
 
-The root controller composes six small controllers: scan lifecycle, category
+The root controller composes focused controllers for category management sheets, simulator management, and scan lifecycle, category
 presentation, cleanup, contextual tips, inspector actions, and settings. Their
 models contain no native controls. Services are injected, so tests can exercise
 cancellation, preference persistence failures, action routing and fresh startup independently.
@@ -90,7 +88,7 @@ cancellation, preference persistence failures, action routing and fresh startup 
 | `views/` | All presentation, etlua loops and reusable partials |
 
 Cleanup thresholds are review criteria, not claims that data is unnecessary.
-Only complete measurements qualify. A large unrecognized folder or required app
+Complete measurements and explicit partial lower bounds qualify for review. Partial measurements never authorize Move to Trash. A large unrecognized folder or required app
 installation does not become a suggestion simply because it is large. Every
 suggestion explains its owner, measured evidence and consequences; Keep suppresses
 it and its descendants.
@@ -112,3 +110,37 @@ The native framework now shares subtitle/symbol cells between tables and outline
 preserves outline disclosure and selection by ID, uses NSBox for GroupBox,
 supports determinate ProgressView, remeasures ancestors on nested layout updates,
 and provides `view:scrollIntoView()` through AppKit. No Swift or SwiftUI is used.
+
+## Category management
+
+Simulator devices are read asynchronously with `xcrun simctl list --json`: name,
+runtime, installed apps/data allocation and last use (UTC, or Not recorded).
+Erase/delete use validated individual UUIDs, confirmation with impact, and no
+wildcard selectors. Running devices are disabled. Delete unavailable lists the
+exact devices before confirmation; unavailable does not mean disposable.
+Installed runtimes remain Essential to keep. CoreSimulator images, registered
+bundles and MobileAsset iOSSimulatorRuntime downloads share one runtime category
+and a disjoint accounting ledger. Device-detail sizes are never added twice.
+
+AI tool roots include Codex, OpenCode and Grok's known local locations. Metadata
+inspection splits direct children, versioned SQLite databases and sidecars from
+root residuals without reading credentials, conversations or file contents.
+Unknown children remain individually named Review entries. Arbitrary custom
+locations and cloud-only Grok conversations are outside this inventory.
+
+Siri, Dictation and voice assets link to their relevant Settings panes. Turning
+features off is not a promise that shared models disappear immediately. Downloaded
+voices can be managed in Accessibility > Read & Speak. Protected Apple developer
+documentation links to Storage Settings; user-owned offline docs may be moved to
+Trash. No protected asset directory is directly deleted.
+
+Permission errors and unreconciled allocation appear directly below the storage
+summary. Review candidates may use partial lower bounds marked ≥, while filesystem
+cleanup remains disabled for incomplete measurements. Photos/Music/Movies can be
+included explicitly for a session; normal scans exclude both their roots and known
+media support paths from residual traversal. Other protected folders can still
+require macOS access. System Settings can show its own media totals without giving
+Diskmap access.
+
+Native sheets use the shared `<Sheet>` / `AppKit.presentSheet` API and AppKit
+window presentation. Their views are etlua; controllers do not build view trees.

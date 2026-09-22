@@ -244,6 +244,22 @@ function AppKit.Panel(props)
 	return panel, content
 end
 
+function AppKit.Sheet(props)
+	props = props or {}
+	local sheet = bridge._sheet(props.width or 480, props.height or 240)
+	local content = bridge._vstack()
+	applyLayout(content, props)
+	sheet:add(content)
+	addChildren(content, props)
+	content:layout(props.width or 480)
+	return sheet
+end
+
+function AppKit.presentSheet(sheet, parent)
+	if not _G.__headless then sheet:presentSheet(parent) end
+	return sheet
+end
+
 function AppKit.present(panel, parent, props)
 	props = props or {}
 	return panel:presentPanel(parent, props.offsetY or 0)
