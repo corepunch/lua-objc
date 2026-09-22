@@ -157,4 +157,10 @@ function rowMethods:validateTrash()
 	return Constraints.evaluate("trash", {row = self, action = "trash"})
 end
 
+function rowMethods:validateEmpty()
+	local collection = owners[self]
+	if not collection then return false, {code = "unknown_resource", message = "Resource is not registered."} end
+	return Constraints.evaluate("empty", {row = self, action = "empty"})
+end
+
 return Resources

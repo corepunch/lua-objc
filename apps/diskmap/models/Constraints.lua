@@ -88,7 +88,44 @@ local operations = {
 			if context.row:isKept() then return failure("kept_resource", "Keep protects this resource or one of its ancestors.") end
 			return true
 		end,
-	}
+	},
+	empty = {
+		function(context)
+			if not context.row then return failure("unknown_resource", "Resource is not registered.") end
+			return true
+		end,
+		function(context)
+			if not context.row:isLeaf() then return failure("not_leaf", "Only a measured leaf resource can authorize emptying Trash.") end
+			return true
+		end,
+		function(context)
+			if context.action ~= "empty" or context.row.action ~= "empty" then return failure("invalid_action", "Resource does not authorize emptying Trash.") end
+			return true
+		end,
+		function(context)
+			local path = context.row.path
+			if type(path) ~= "string" or path == "" or path:sub(1, 1) ~= "/" or path:find("\0", 1, true) then
+				return failure("invalid_path", "Emptying Trash requires a nonempty absolute path.")
+			end
+			return true
+		end,
+		function(context)
+			local measurement = context.row:getMeasurement()
+			if type(measurement) ~= "table" or measurement.status ~= "complete" then
+				return failure("measurement_incomplete", "A complete measurement is required before emptying Trash.")
+			end
+			return true
+		end,
+		function(context)
+			local bytes = context.row:getMeasurement().bytes
+			if type(bytes) ~= "number" or bytes <= 0 then return failure("measurement_nonpositive", "Trash is already empty.") end
+			return true
+		end,
+		function(context)
+			if context.row:isKept() then return failure("kept_resource", "Keep protects this resource or one of its ancestors.") end
+			return true
+		end,
+	},
 }
 
 function Constraints.evaluate(operation, context)

@@ -59,8 +59,10 @@ Category refresh also scans the full ledger so independent batches cannot
 reassign hard-link ownership and corrupt totals.
 
 DerivedData, package download caches, recognized agent download caches and user-owned offline developer documentation offer reviewed Move to Trash. Other entries reveal their location or open the owner/system
-settings. Diskmap never empties Trash, deletes SDK internals, removes protected
-assets, or disables system protections. Moving to Trash does not free space.
+settings. Your Trash offers reviewed Empty Trash with the measured size up front;
+Finder performs the deletion and Diskmap remeasures afterward. Diskmap never
+deletes SDK internals, removes protected assets, or disables system
+protections. Moving to Trash does not free space.
 Keep suppresses suggestions for a resource and its descendants and persists
 locally. Background checks run every 15 minutes while open and can be paused.
 No file contents are read or uploaded; cloud-only files are not downloaded.
@@ -142,11 +144,16 @@ Installed runtimes remain Essential to keep. CoreSimulator images, registered
 bundles and MobileAsset iOSSimulatorRuntime downloads share one runtime category
 and a disjoint accounting ledger. Device-detail sizes are never added twice.
 
-AI tool roots include Codex, OpenCode and Grok's known local locations. Metadata
-inspection splits direct children, versioned SQLite databases and sidecars from
-root residuals without reading credentials, conversations or file contents.
-Unknown children remain individually named Review entries. Arbitrary custom
-locations and cloud-only Grok conversations are outside this inventory.
+AI tool coverage follows verified on-disk layouts: Codex sessions, archived
+sessions, worktrees, plugins and skills; OpenCode snapshots, logs, sessions,
+worktrees and generated output; Claude transcripts, file history, plugins and
+caches; Cursor caches split from settings and work; Grok cache and residuals.
+Root-level diagnostic databases, logs and settings are discovered by name
+without reading credentials, conversations or file contents. Caches offer
+reviewed Move to Trash; sessions, histories, snapshots, worktrees and
+databases stay review-only with tool-specific advice and thresholds.
+Arbitrary custom locations and cloud-only conversations are outside this
+inventory.
 
 Siri, Dictation and voice assets link to their relevant Settings panes. Turning
 features off is not a promise that shared models disappear immediately. Downloaded
@@ -154,8 +161,11 @@ voices can be managed in Accessibility > Read & Speak. Protected Apple developer
 documentation links to Storage Settings; user-owned offline docs may be moved to
 Trash. No protected asset directory is directly deleted.
 
-Permission errors and unreconciled allocation appear directly below the storage
-summary. Review candidates may use partial lower bounds marked ≥, while filesystem
+Selecting System Data decodes the measured total into its ranked contributors
+with virtual memory reported separately; opening its management sheet annotates
+the live local snapshot count, which remains system managed and unattributable
+to exclusive file allocation. Permission errors and unreconciled allocation
+appear directly below the storage summary. Review candidates may use partial lower bounds marked ≥, while filesystem
 cleanup remains disabled for incomplete measurements. Photos/Music/Movies can be
 included explicitly for a session; normal scans exclude both their roots and known
 media support paths from residual traversal. Other protected folders can still

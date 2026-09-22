@@ -32,23 +32,46 @@ local function assets(id, name, subtitle, icon, color, classes)
 	return group(id, name, subtitle, icon, color, children)
 end
 local function tool(id, name, root)
-	local specs = {
-		{"cache", "Download cache", "/cache", "Rebuildable downloads; quit the tool before clearing", cache},
-		{"plugins", "Plugins", "/plugins", "Installed integrations and their dependencies; reinstall may be required"},
-		{"models", "Models & downloads", "/models", "Local models and downloads; review before removing"},
-		{"logs", "Logs", id == "opencode" and "/log" or "/logs", "Diagnostic history; may be needed for troubleshooting"},
-		{"databases", "Databases", "/sqlite", "Conversation indexes and persistent state; never disposable cache"},
-		{"sessions", "Sessions & history", id == "opencode" and "/storage" or "/sessions", "Saved conversations and working history"},
-		{"archives", "Archived sessions", "/archived_sessions", "Retained conversations, not disposable cache"},
-		{"worktrees", "Worktrees", id == "opencode" and "/repos" or "/worktrees", "May contain uncommitted source changes"},
-		{"images", "Generated images", "/generated_images", "Created work and output assets"},
-		{"assets", "Generated assets", id == "opencode" and "/tool-output" or "/visualizations", "Generated output; inspect before removing"},
-		{"snapshots", "Snapshots", id == "opencode" and "/snapshot" or "/shell_snapshots", "Recovery and execution history; review before removing"},
-		{"skills", "Skills", "/skills", "User-authored instructions and installed skills"},
-		{"settings", "Settings", "/config.toml", "Tool configuration; preserve credentials and preferences"},
-		{"auth", "Credentials", "/auth.json", "Authentication state; contents are never read"},
-		{"other", "Root metadata & hidden files", "", "Residual after individually measured children; never treated as cache"},
+	-- Curated per-tool layouts verified against installed products. Children
+	-- that do not exist measure as missing; version drift inside a tool root
+	-- is picked up by name through AgentFiles discovery, never guessed here.
+	local catalogs = {
+		codex = {
+			{"cache", "Download cache", "/cache", "Rebuildable downloads; quit the tool before clearing", cache},
+			{"sessions", "Sessions & rollouts", "/sessions", "Saved rollouts and conversation history; review old sessions in Codex and keep what you still need"},
+			{"archives", "Archived sessions", "/archived_sessions", "Retained session history; review before removing"},
+			{"worktrees", "Worktrees", "/worktrees", "May contain uncommitted source changes; never inferred to be a cache"},
+			{"plugins", "Plugins", "/plugins", "Installed integrations and their dependencies; reinstall may be required"},
+			{"skills", "Skills", "/skills", "User-authored instructions and installed skills; review only"},
+			{"other", "Root metadata & hidden files", "", "Residual after individually measured children, including diagnostic databases; never treated as cache"},
+		},
+		opencode = {
+			{"snapshots", "Snapshots", "/snapshot", "Tracks working trees for restore points; can retain orphaned temporary packs after interrupted operations"},
+			{"logs", "Logs", "/log", "Diagnostic history; may be needed for troubleshooting"},
+			{"sessions", "Sessions & history", "/storage", "Saved conversations and working history; review old sessions in OpenCode"},
+			{"worktrees", "Worktrees", "/repos", "May contain uncommitted source changes; never inferred to be a cache"},
+			{"assets", "Generated assets", "/tool-output", "Generated output; inspect before removing"},
+			{"other", "Root metadata & hidden files", "", "Residual after individually measured children, including the main database; never treated as cache"},
+		},
+		claude = {
+			{"projects", "Session transcripts", "/projects", "Conversations organized by project; review old sessions in Claude Code after moving durable notes elsewhere"},
+			{"history", "File history & checkpoints", "/file-history", "Recovery checkpoints; can balloon during stuck sessions, so review before removing"},
+			{"plugins", "Plugins", "/plugins", "Installed integrations and their dependencies; reinstall may be required"},
+			{"cache", "Download cache", "/cache", "Rebuildable downloads; quit the tool before clearing", cache},
+			{"other", "Root metadata & hidden files", "", "Residual after individually measured children, including debug logs and settings; never treated as cache"},
+		},
+		cursor = {
+			{"cache", "Cursor cache", "/Cache", "Rebuildable Chromium cache; review in the owning editor", cache},
+			{"cached-data", "Cursor compiled code cache", "/CachedData", "Generated compilation data", cache},
+			{"gpu-cache", "Cursor GPU cache", "/GPUCache", "Generated graphics data", cache},
+			{"other", "Cursor settings & work", "", "Settings, databases and recovery data; excludes listed caches"},
+		},
+		grok = {
+			{"cache", "Download cache", "/cache", "Rebuildable downloads; quit the tool before clearing", cache},
+			{"other", "Root metadata & hidden files", "", "Residual after individually measured children; never treated as cache"},
+		},
 	}
+	local specs = assert(catalogs[id], "Unknown AI tool layout: " .. tostring(id))
 	local children = {}
 	for _, spec in ipairs(specs) do
 		local row = item(id .. "-" .. spec[1], spec[2], spec[4], root .. spec[3], spec[5])

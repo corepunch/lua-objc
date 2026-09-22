@@ -16,7 +16,7 @@ local unique = {}
 for _, row in ipairs(model.resources:leaves()) do
 	t.expect(not unique[row.id], "stable unique resource " .. row.id); unique[row.id] = true
 	t.expect(row.subtitle ~= nil, "resource explains purpose")
-	if row.action == "trash" then t.expect(row.id == "derived" or row.id == "npm" or row.id == "pip" or row.id == "brew" or row.id == "documentation" or row.id == "opencode-downloads" or row.id == "codex-cache" or row.id == "opencode-cache" or row.id == "grok-cache", "only verified caches or offline documentation can be trashed") end
+	if row.action == "trash" then t.expect(row.id == "derived" or row.id == "npm" or row.id == "pip" or row.id == "brew" or row.id == "documentation" or row.id == "opencode-downloads" or row.id == "codex-cache" or row.id == "grok-cache" or row.id == "claude-cache" or row.id == "cursor-cache" or row.id == "cursor-cached-data" or row.id == "cursor-gpu-cache", "only verified caches or offline documentation can be trashed") end
 end
 t.assertEqual(model.resources:find('codex-worktrees').action, "finder", "worktrees never treated as cache")
 t.assertEqual(model.resources:find('preboot').action, "settings", "boot assets system managed")

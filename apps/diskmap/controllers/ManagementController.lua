@@ -70,6 +70,15 @@ function Controller:open(parent, id, filter)
 		self.refs.tabs:onChange(function() self.selectedId = nil; self.refs.manage.enabled = false; self.refs.reveal.enabled = false; self.refs.keep.enabled = false end)
 	end)
 	self:update()
+	if id == "system-data" and self.service.snapshotCount then
+		local sheet = self.sheet
+		self.service.snapshotCount(function(count)
+			if count == nil or self.sheet ~= sheet or not self.refs then return end
+			local note = count == 0 and "No local snapshots" or (tostring(count) .. " local snapshots")
+			self.refs.status.text = note .. " (system managed) · " .. self.refs.status.text
+			self.sheet:layout()
+		end)
+	end
 	if filter then for index, name in ipairs(self.filters) do if name == filter then self.refs.tabs:selectTab(index - 1) end end end
 	ns.presentSheet(self.sheet, parent); ns.focus(self.sheet, self.refs.search)
 end

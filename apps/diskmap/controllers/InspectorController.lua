@@ -1,3 +1,4 @@
+local Model = require("apps.diskmap.Model")
 local Inspector = require("apps.diskmap.models.Inspector")
 local Cleanup = require("apps.diskmap.models.Cleanup")
 local Controller = {}; Controller.__index = Controller
@@ -17,6 +18,14 @@ function Controller:manage()
 		if not valid or not self.service.confirmTrash(row) then return false end
 		local ok, err = Cleanup.moveToTrash(self.model, row.id, self.service)
 		if not ok then self.service.showError("Could not move to Trash", err and err.message or "Check permissions."); return false end
+		self.refresh()
+	elseif row.action == "empty" then
+		local valid, validation = row:validateEmpty()
+		if not valid then self.service.showError("Trash is already empty", validation and validation.message or "Nothing to remove."); return false end
+		local measured = self.model.measurements[row.id]
+		if not self.service.confirmEmptyTrash(row, Model.size(measured and measured.bytes)) then return false end
+		local ok, err = Cleanup.emptyTrash(self.model, row.id, self.service)
+		if not ok then self.service.showError("Could not empty Trash", err and err.message or "Check permissions."); return false end
 		self.refresh()
 	elseif row.action == "settings" then self.service.openSettings(row.settingsSection)
 	elseif row.action == "xcode" or row.action == "docker" then self.service.openOwner(row.action)

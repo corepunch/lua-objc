@@ -26,7 +26,7 @@ return function()
 		item("grok-support", "Grok application data", "Local app data if present; does not measure cloud conversations", "~/Library/Application Support/Grok"),
 		item("grok-app-cache", "Grok application cache", "Review app-owned downloads before removing", "~/Library/Caches/ai.x.grok"),
 		item("opencode-config", "OpenCode configuration", "Project and tool configuration; review only", "~/.opencode"),
-		item("claude", "Claude Code", "Conversations and configuration; review only", "~/.claude"),
+		tool("claude", "Claude Code", "~/.claude"),
 	}),
 	group("packages", "Package managers", "Downloaded packages are separate from installed environments", "shippingbox", "systemOrange", {
 		item("npm", "npm downloads", "Content-addressed package download cache", "~/.npm/_cacache", cache),
@@ -46,7 +46,7 @@ return function()
 			item("vscode", "VS Code settings & work", "Settings, databases and recovery data; excludes listed caches", "~/Library/Application Support/Code"),
 		}),
 		item("vscode-extensions", "VS Code extensions", "Installed editor extensions", "~/.vscode/extensions"),
-		item("cursor", "Cursor", "Editor settings, conversations and local data", "~/Library/Application Support/Cursor"),
+		tool("cursor", "Cursor", "~/Library/Application Support/Cursor"),
 		item("jetbrains", "JetBrains", "IDE caches and project indexes", "~/Library/Caches/JetBrains"),
 	}),
 	group("containers", "Containers & virtual machines", "Owner-managed disks may contain databases and personal work", "shippingbox.fill", "systemOrange", {

@@ -82,6 +82,12 @@ end
 function System.confirmTrash(row)
 	return ns.Alert {title = "Move " .. row.name .. " to Trash?", message = row.path .. "\n\n" .. row.consequence, buttons = {"Cancel", "Move to Trash"}} == 2
 end
+function System.confirmEmptyTrash(row, size)
+	return ns.Alert {title = "Permanently empty Trash?", message = "This permanently removes " .. size .. " of files in Trash on all mounted volumes. This cannot be undone.", buttons = {"Cancel", "Empty Trash"}} == 2
+end
+function System.emptyTrash()
+	return os.execute("/usr/bin/osascript -e 'tell application \"Finder\" to empty trash'")
+end
 function System.showError(title, message) ns.Alert {title = title, message = message} end
 System.reveal = ns.revealInFinder
 System.diskSpace = ns.diskSpace
@@ -96,7 +102,7 @@ function System.trash(path)
 end
 function System.agentEntries(model)
 	local entries = {}
-	for _, id in ipairs({"codex", "opencode", "grok"}) do
+	for _, id in ipairs({"codex", "opencode", "grok", "claude"}) do
 		local root = model.resources:find(id .. "-other")
 		for _, entry in ipairs(root and ns.readDirectory(root.path, 0) or {}) do
 			entry.agent = id; entries[#entries + 1] = entry
@@ -112,6 +118,12 @@ function System.command(argv, completion)
 			if done then completion(result.ok, result.output); return end
 			ns.sleep(0.1)
 		end
+	end)
+end
+function System.snapshotCount(completion)
+	System.command({"/usr/bin/tmutil", "listlocalsnapshots", "/"}, function(ok, output)
+		local count = ok and require("apps.diskmap.models.SystemDetails").parseSnapshots(output) or nil
+		completion(count)
 	end)
 end
 System.decode = ns.json_parse

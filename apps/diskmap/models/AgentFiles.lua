@@ -6,9 +6,9 @@ function AgentFiles.add(model, entries)
 		local parent = model.resources:find(entry.agent)
 		if parent and not parent:isLeaf() and entry.path and not paths[entry.path] then
 			local name = entry.name or ""
-			local directories = {node_repl = "Tool runtime", attachments = "Generated assets", browser = "Browser data", ["computer-use"] = "Generated assets", tmp = "Temporary data", [".tmp"] = "Temporary data", vendor_imports = "Plugins", memories = "Sessions & memory", ["dictation-history"] = "Sessions & history", rules = "Settings", automations = "Settings"}
+			local directories = {node_repl = "Tool runtime", attachments = "Generated assets", browser = "Browser data", ["computer-use"] = "Generated assets", tmp = "Temporary data", [".tmp"] = "Temporary data", vendor_imports = "Plugins", memories = "Sessions & memory", ["dictation-history"] = "Sessions & history", ["file-history"] = "Checkpoints & history", rules = "Settings", automations = "Settings"}
 			local kind = name:match("%.sqlite") or name:match("%.db")
-			kind = kind and "Database" or name:match("%.jsonl$") and "History" or (name:match("%.toml$") or name:match("%.json$")) and "Settings"
+			kind = kind and "Database" or name:match("%.jsonl$") and "History" or (name:match("%.toml$") or name:match("%.json$")) and "Settings" or name:match("%.log$") and "Logs" or name:match("%.txt$") and "Logs"
 			kind = kind or directories[name] or "Unclassified"
 			if kind then
 				local row = {id = entry.agent .. "-file-" .. name, name = kind .. " · " .. name, subtitle = "Persistent tool state; review only", path = entry.path,

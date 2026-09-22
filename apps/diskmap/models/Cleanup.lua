@@ -38,4 +38,14 @@ function Cleanup.moveToTrash(model, id, service)
 	if not result then return false, {code = "trash_service", message = message or "Check permissions."} end
 	return true
 end
+function Cleanup.emptyTrash(model, id, service)
+	local row = model.resources:find(id)
+	if not row then return false, {code = "unknown_resource", message = "Resource is not registered."} end
+	local valid, validation = row:validateEmpty()
+	if not valid then return false, validation end
+	local ok, result, message = pcall(function() return service.emptyTrash() end)
+	if not ok then return false, {code = "empty_service", message = tostring(result)} end
+	if not result then return false, {code = "empty_service", message = message or "Check permissions."} end
+	return true
+end
 return Cleanup
