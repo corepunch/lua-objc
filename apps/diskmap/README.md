@@ -44,6 +44,12 @@ all separately classified descendants. This closes the former startup allowlist
 gap without double counting folders. Every measured category has its own bar
 segment; Unreconciled is separate from measured Other files.
 
+The app loads the native `StorageScan.dylib` plugin built by `make` and included
+in `make diskmap-app`. Its worker uses `getattrlistbulk` to fetch metadata
+in batches and publishes results directly to Lua without temporary scan files.
+See [the Storage Settings investigation](../../docs/research/STORAGE_SIZING.md)
+for the Apple framework findings and local timing evidence.
+
 Scans inspect allocated file blocks, skip symlinks (including linked root ancestors)
 and mounted descendants, and deduplicate hard links across the whole batch.
 Confirmed missing paths count as zero, permission failures remain partial or
@@ -80,7 +86,7 @@ cancellation, preference persistence failures, action routing and fresh startup 
 | `models/Tips.lua` | Contextual access, capacity, Keep and system-storage guidance |
 | `models/Inspector.lua`, `models/Preferences.lua` | Resource details and action eligibility |
 | `controllers/` | Small coordinators with injected IO and navigation callbacks |
-| `services/System.lua`, `services/scan.pl` | Native integration and metadata enumeration |
+| `services/System.lua`, `services/Scanner.lua`, `src/plugins/storage/StorageScan.m` | Native integration and bulk metadata enumeration |
 | `views/` | All presentation, etlua loops and reusable partials |
 
 Cleanup thresholds are review criteria, not claims that data is unnecessary.

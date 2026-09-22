@@ -375,7 +375,7 @@ services, feature controllers, template refs, navigation and the window.
 | `knowledge/CleanupRules.lua` | Resource-specific review thresholds and advice with consequences. |
 | `controllers/` | Independently testable scan, category, cleanup, tips, inspector and settings coordinators. |
 | `services/` | Injected native IO, persistence, permissions and owner-management integration. |
-| `services/scan.pl` | Metadata-only enumeration, exclusions, cross-root hard-link ownership and diagnostics. |
+| `services/Scanner.lua` + `StorageScan.dylib` | Metadata-only enumeration, exclusions, cross-root hard-link ownership and diagnostics. |
 | `Controller.lua` | Composition root, navigation and template/action binding. |
 | `views/` | etlua window, category outline, resource inspector, opportunities, contextual tips and settings. |
 

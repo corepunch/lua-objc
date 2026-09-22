@@ -115,3 +115,8 @@ To add a bridge function:
    target (and therefore the current `Scope`) and invoke through
    `lua_reg_push`. Follow the lifetime contracts in `ARCHITECTURE.md`; native
    retention alone does not make a Lua callback safe.
+
+Standalone native service plugins live in `src/plugins/`. Unlike included runtime
+fragments, each plugin is an independent Lua module with no duplicate UI runtime.
+[StorageScan](plugins/storage/README.md) supplies cancellable bulk filesystem
+metadata scans to Diskmap through the existing native plugin loader.

@@ -14,11 +14,12 @@ UIKIT_RUNTIME_SRC = src/uikit_module.m
 UIKIT_RUNTIME_DIRS = src/uikit src/shared
 UIKIT_RUNTIME_FRAGMENTS = $(shell find $(UIKIT_RUNTIME_DIRS) -type f -name '*.m')
 FRAMEWORK_MODULES = build/AppKit.dylib
+NATIVE_PLUGINS = build/StorageScan.dylib
 IOS_FRAMEWORK_MODULE = $(if $(strip $(IOS_SIM_SDK)),build/UIKit.dylib)
 EMBEDDED_LUA_DIR = lua/embedded
 GENERATED_DIR = build/generated
 
-all: $(TARGET) $(FRAMEWORK_MODULES) $(IOS_FRAMEWORK_MODULE)
+all: $(TARGET) $(FRAMEWORK_MODULES) $(IOS_FRAMEWORK_MODULE) $(NATIVE_PLUGINS)
 
 $(TARGET): $(HOST_SRC)
 	$(CC) $(HOST_CFLAGS) -o $@ $<
@@ -54,7 +55,11 @@ build/UIKit.dylib: $(UIKIT_RUNTIME_SRC) $(UIKIT_RUNTIME_FRAGMENTS) $(GENERATED_D
 
 uikit: build/UIKit.dylib
 
-run: $(TARGET) $(FRAMEWORK_MODULES)
+build/StorageScan.dylib: src/plugins/storage/StorageScan.m Makefile
+	mkdir -p build
+	$(CC) $(CFLAGS) -mmacosx-version-min=26.0 $(MODULE_LDFLAGS) -framework Foundation -o $@ $<
+
+run: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	./$(TARGET) $(ARGS)
 
 run-hello: $(TARGET) $(FRAMEWORK_MODULES)
@@ -83,12 +88,12 @@ run-ide: $(TARGET) $(FRAMEWORK_MODULES)
 
 # Usage: make run-diskmap                      # scans this repo (~28ms)
 #        make run-diskmap DIR=~/Developer/icui  # scan a specific dir
-run-diskmap: $(TARGET) $(FRAMEWORK_MODULES)
+run-diskmap: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	./$(TARGET) apps/diskmap/init.lua $(or $(DIR),$(CURDIR))
 
 TEST_FILES = $(wildcard tests/*.test.lua)
 
-test: $(TARGET) $(FRAMEWORK_MODULES)
+test: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	@passed=0; failed=0; \
 	for t in $(TEST_FILES); do \
 		echo "--- $$t ---"; \
@@ -234,5 +239,5 @@ list-devices:
 	xcrun devicectl list devices
 
 .PHONY: diskmap-app
-diskmap-app: $(TARGET) $(FRAMEWORK_MODULES)
+diskmap-app: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	python3 scripts/diskmap/bundle.py

@@ -28,54 +28,10 @@ function System.saveKeep(kept)
 	file:write(json(kept)); file:close()
 	return os.rename(path .. ".tmp", path)
 end
-function System.start(paths, exclusions)
-	local pipe = assert(io.popen("/usr/bin/mktemp -d /tmp/diskmap.XXXXXXXX"))
-	local directory = pipe:read("*l")
-	pipe:close()
-	assert(directory and directory:match("^/tmp/diskmap%.%w+$"), "Cannot create private scan directory")
-	local output = directory .. "/result.json"
-	local args = {}
-	local plan = directory .. "/plan.json"
-	local file = assert(io.open(plan, "w")); file:write(json({roots = paths, exclusions = exclusions or {}})); file:close()
-	args[1] = System.quote(plan)
-	local command = "/usr/bin/nice -n 10 /usr/bin/perl " .. System.quote("apps/diskmap/services/scan.pl") .. " " .. System.quote(output) .. ' "$PPID" ' .. table.concat(args, " ")
-	local launcher = assert(io.popen(command .. " </dev/null >" .. System.quote(directory .. "/error") .. " 2>&1 & echo $!"))
-	local pid = tonumber(launcher:read("*l"))
-	launcher:close()
-	return {directory = directory, output = output, pid = pid, started = os.time()}
-end
-function System.cancel(job)
-	if not job then return end
-	if job.pid then os.execute("/bin/kill " .. tostring(job.pid) .. " 2>/dev/null") end
-	for _, file in ipairs({"result.json", "result.json.tmp", "error", "plan.json", "progress.json", "progress.json.tmp"}) do os.remove(job.directory .. "/" .. file) end
-	os.remove(job.directory)
-end
-function System.poll(job)
-	local file = io.open(job.output, "rb")
-	if file then
-		local body = file:read("*a"); file:close()
-		local ok, result = pcall(ns.json_parse, body)
-		job.pid = nil
-		System.cancel(job)
-		return true, ok and result or {failure = "Could not read scan results."}
-	end
-	local errorFile = io.open(job.directory .. "/error", "r")
-	if errorFile then
-		local problem = errorFile:read("*a"); errorFile:close()
-		if #problem > 0 then System.cancel(job); return true, {failure = "Scanner failed: " .. problem:sub(1, 400)} end
-	end
-	if os.time() - job.started > 610 then
-		System.cancel(job)
-		return true, {failure = "Scan timed out. Try a smaller folder."}
-	end
-	local progressFile = io.open(job.directory .. "/progress.json", "r")
-	if progressFile then
-		local body = progressFile:read("*a"); progressFile:close()
-		local ok, progress = pcall(ns.json_parse, body)
-		if ok then return false, progress end
-	end
-	return false
-end
+local Scanner = require("apps.diskmap.services.Scanner")
+System.start = Scanner.start
+System.cancel = Scanner.cancel
+System.poll = Scanner.poll
 function System.await(job, completion, progress)
 	ns.async(function()
 		while not job.cancelled do

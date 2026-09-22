@@ -142,15 +142,12 @@ local hostile = root .. "/cache/quote' dollar$ tab\tline\n.txt"
 local f = assert(io.open(hostile, "w")); f:write(string.rep("x", 8192)); f:close()
 os.execute("/bin/ln " .. System.quote(hostile) .. " " .. System.quote(root .. "/cache/link"))
 os.execute("/bin/ln -s / " .. System.quote(root .. "/outside"))
-local plan, output = root .. ".plan", root .. "/result.json"
-f = assert(io.open(plan, "w"))
-f:write(string.format('{"roots":[%q,%q],"exclusions":[%q,%q]}', root, root .. "/cache", root, root .. "/cache")); f:close()
-t.expect(os.execute("/usr/bin/perl apps/diskmap/services/scan.pl " .. System.quote(output) .. " 0 " .. System.quote(plan)), "inventory scanner finishes")
-f = assert(io.open(output)); local scanned = ns.json_parse(f:read("*a")); f:close()
+local scanned = require("StorageScan").scan({root, root .. "/cache"}, {root, root .. "/cache"})
+t.assertEqual(scanned.failure, "", "native inventory scanner finishes")
 t.assertEqual(scanned.trees[2].kb, 8, "hard links have one allocation")
 t.assertEqual(scanned.trees[1].kb, 0, "parent excludes separately owned child")
 t.assertEqual(scanned.trees[1].children, nil, "inventory retains no folder tree")
-for _, path in ipairs({hostile, root .. "/cache/link", root .. "/cache", root .. "/outside", plan, output, root .. "/progress.json", root}) do os.remove(path) end
+for _, path in ipairs({hostile, root .. "/cache/link", root .. "/cache", root .. "/outside", root}) do os.remove(path) end
 local features = Model.new("/Users/test")
 local uniquePaths = {}
 for _, leaf in ipairs(features.leaves) do

@@ -41,6 +41,7 @@ def install_library(source):
         install_library(path)
         subprocess.run(["install_name_tool", "-change", dependency, "@loader_path/" + path.name, str(destination)], check=True)
 install_library(root / "build/AppKit.dylib")
+install_library(root / "build/StorageScan.dylib")
 (contents / "Info.plist").write_bytes(plistlib.dumps({
     "CFBundleName": "Diskmap", "CFBundleDisplayName": "Diskmap",
     "CFBundleIdentifier": "org.luaobjc.diskmap", "CFBundleExecutable": "Diskmap",
