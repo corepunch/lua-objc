@@ -25,7 +25,7 @@ resolved from installed application bundles, with a symbol fallback.
 ## Fast repeatable UI tests
 
 ```sh
-# Save real measurements after each completed scan; select categories to measure more.
+# Save real measurements and scanner diagnostics after each complete scan.
 ./lua-objc apps/diskmap/init.lua --write-cache=/tmp/diskmap.json
 # Replay without filesystem scans or cleanup; missing/bad caches show an error.
 ./lua-objc apps/diskmap/init.lua -cache=/tmp/diskmap.json
@@ -34,8 +34,10 @@ resolved from installed application bundles, with a symbol fallback.
   -cache=tests/fixtures/diskmap.json
 ```
 
-Cache files must match the current catalog version (2); regenerate older caches
-to avoid replaying totals from before asset categories were split. They contain JSON, ID-keyed measurements and capacity. They are
+Cache files must match the current catalog version (3); regenerate older caches. They contain JSON, ID-keyed measurements, capacity, completion time, entry count,
+duration and up to 1,000 access-failure paths. Normal launches save the latest
+scan to `~/Library/Application Support/Diskmap/last-scan.json`; `--write-cache`
+selects another destination. They are
 parsed as data, never executed. Both `-cache=` and `--cache=` work after the app
 path. Cache mode disables background checks and cleanup actions, and is visibly
 labeled. It does not overwrite the supplied cache. The fixture has invented sizes
@@ -43,13 +45,21 @@ for visual verification. Normal startup never uses that fixture.
 
 ## Measurement and actions
 
-Startup checks the developer allowlist and exact known system asset classes. Select a category and choose
-Measure Category to opt into its known locations; denied access stays unknown.
-Scans run in a worker, skip symbolic links and mounted descendants, and report
-allocated bytes. Parent buckets exclude separately classified descendant roots.
-Hard links are deduplicated within each measurement batch; independent batches,
-APFS shared extents and snapshots can still prevent physical-capacity parity.
-The signed unreconciled difference is displayed, never called disposable junk.
+Startup and refresh measure every catalog path in one background batch, including
+Applications, Documents, media, backups, Trash, developer projects, system data,
+and residual roots for files outside named categories. Parent buckets exclude
+all separately classified descendants. This closes the former startup allowlist
+gap without double counting folders. Every measured category has its own bar
+segment; Unreconciled is separate from measured Other files.
+
+Scans inspect allocated file blocks, skip symlinks (including linked root ancestors)
+and mounted descendants, and deduplicate hard links across the whole batch.
+Confirmed missing paths count as zero, permission failures remain partial or
+unknown, and snapshot exclusive allocation is explicitly system managed. APFS
+shared extents and snapshots can still prevent physical-capacity parity. The
+signed unreconciled difference is displayed, never called disposable junk.
+Category refresh also scans the full ledger so independent batches cannot
+reassign hard-link ownership and corrupt totals.
 
 Only DerivedData, npm downloads, pip cache and Homebrew downloads offer reviewed
 Move to Trash. Other entries reveal their location or open the owner/system

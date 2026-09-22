@@ -7,14 +7,16 @@
     <% end %>
     <% end %>
   </HStack>
+  <% for first = 1, #segments, 6 do %>
   <HStack fillWidth="true" spacing="12" alignment="center">
-    <% for _, segment in ipairs(segments) do %>
+    <% for index = first, math.min(first + 5, #segments) do local segment = segments[index] %>
     <HStack spacing="6" alignment="center">
       <SystemImage name="circle.fill" size="9" color="<%= segment.color %>" />
       <Button title="<%= segment.name %>" style="link" action="category_<%= segment.id %>" />
     </HStack>
     <% end %>
   </HStack>
+  <% end %>
   <% else %>
   <Label text="<%= explanation %>" size="12" color="secondary" fillWidth="true" lines="2" />
   <% end %>

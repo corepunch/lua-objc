@@ -1,7 +1,7 @@
 -- macOS storage knowledge. Paths identify ownership, never permission to delete.
 -- Parent locations are residual buckets: the worker excludes every more-specific root.
 local Catalog = {}
-Catalog.version = 2
+Catalog.version = 3
 local function item(id, name, subtitle, path, options)
 	local row = {id = id, name = name, subtitle = subtitle, path = path, policy = "Review", action = "finder"}
 	for key, value in pairs(options or {}) do row[key] = value end
@@ -10,8 +10,8 @@ end
 local function group(id, name, subtitle, icon, color, children)
 	return {id = id, name = name, subtitle = subtitle, icon = icon, color = color, children = children}
 end
-local cache = {policy = "Rebuildable", action = "trash", automatic = true, consequence = "Quit the owning tool first. Cached downloads or generated build data will be regenerated; future builds and downloads may take longer. Moving to Trash does not free space until you empty it in Finder."}
-local xcode = {action = "xcode", automatic = true, consequence = "Review in Xcode. Keep resources required by your projects and devices. Archives can contain irreplaceable release builds and debug symbols."}
+local cache = {policy = "Rebuildable", action = "trash", consequence = "Quit the owning tool first. Cached downloads or generated build data will be regenerated; future builds and downloads may take longer. Moving to Trash does not free space until you empty it in Finder."}
+local xcode = {action = "xcode", consequence = "Review in Xcode. Keep resources required by your projects and devices. Archives can contain irreplaceable release builds and debug symbols."}
 local system = {policy = "System managed", action = "settings", consequence = "Managed by macOS. No manual deletion is offered. Changing a feature setting does not guarantee immediate removal of downloaded assets."}
 -- Exact asset-class directories observed on macOS. Shared ASR belongs to speech,
 -- not exclusively to Siri or Dictation. Unknown/new classes remain in the residual.
@@ -21,7 +21,6 @@ local function assets(id, name, subtitle, icon, color, classes)
 		children[#children + 1] = item(id .. "-" .. index, class:gsub("_", " "),
 			"System-managed asset class · " .. name,
 			"/System/Library/AssetsV2/com_apple_MobileAsset_" .. class, system)
-		children[#children].automatic = true
 	end
 	return group(id, name, subtitle, icon, color, children)
 end
@@ -38,10 +37,13 @@ end
 function Catalog.tree(home)
 	local tree = {
 		group("applications", "Applications", "Installed apps; developer installations are counted under Developer", "app.fill", "systemBlue", {
+			item("apps-builtin", "Built-in applications", "Applications supplied with macOS", "/System/Applications"),
 			item("apps-system", "Installed applications", "Shared applications on this Mac", "/Applications"),
 			item("apps-user", "Personal applications", "Applications installed for your account", "~/Applications"),
 		}),
 		group("developer", "Developer", "Xcode, AI coding tools, package managers and environments", "hammer.fill", "systemPurple", {
+			item("projects", "Developer projects", "Source repositories and local build outputs", "~/Developer"),
+			item("usr-local", "Local development tools", "Locally installed command-line tools and packages", "/usr/local"),
 			group("xcode", "Xcode", "Simulators, SDKs, device support and build history", "hammer.fill", "systemBlue", {
 				item("runtimes", "Simulator runtimes", "Installed runtime images; manage optional components in Xcode", "/Library/Developer/CoreSimulator/Images", xcode),
 				item("runtimes-legacy", "Additional runtime bundles", "Runtime bundles registered by installed developer tools", "/Library/Developer/CoreSimulator/Profiles/Runtimes", xcode),
@@ -129,13 +131,18 @@ function Catalog.tree(home)
 			item("app-containers", "Sandboxed application data", "Documents and settings belonging to sandboxed apps", "~/Library/Containers"),
 			item("group-containers", "Shared application data", "Data shared by related apps", "~/Library/Group Containers"),
 			item("mail", "Mail", "Downloaded messages and attachments; manage in Mail", "~/Library/Mail"),
+			item("library-user", "Other user library data", "Preferences and other local application data", "~/Library"),
+			item("library-shared", "Other shared library data", "Shared application and system support files", "/Library"),
+			item("private-other", "Other system working data", "System-managed databases and working files", "/private", system),
 			item("messages", "Messages", "Conversation history and attachments", "~/Library/Messages"),
 		}),
 		group("backups", "Backups", "Restore points and device backups are personal data", "clock.arrow.circlepath", "systemTeal", {
 			item("device-backups", "iPhone & iPad backups", "Review connected-device backups in Finder", "~/Library/Application Support/MobileSync/Backup"),
-			{id = "snapshots", name = "Local snapshots", subtitle = "Managed by Time Machine; file scans cannot measure exclusive allocation", icon = "clock.arrow.circlepath", policy = "System managed", action = "settings"},
+			{id = "snapshots", name = "Local snapshots", subtitle = "Managed by Time Machine; file scans cannot measure exclusive allocation", icon = "clock.arrow.circlepath", policy = "System managed", action = "settings", measurement = "unsupported"},
 		}),
 		group("macos", "macOS", "Required system, boot and recovery data", "shield.fill", "systemGray", {
+			item("unix", "Unix system tools", "System executables and libraries", "/usr", system),
+			item("root-system", "System root", "Remaining root files; mounted volumes are excluded", "/", system),
 			item("system", "Operating system", "Protected macOS installation", "/System", system),
 			item("preboot", "Preboot", "Boot support; never manually remove", "/System/Volumes/Preboot", system),
 			item("recovery", "Recovery", "macOS recovery environment", "/System/Volumes/Recovery", system),
@@ -143,6 +150,11 @@ function Catalog.tree(home)
 		}),
 		group("trash", "Trash", "Space remains occupied until Trash is emptied in Finder", "trash", "systemGray", {
 			item("user-trash", "Your Trash", "Review before permanently removing files", "~/.Trash"),
+		}),
+		group("other", "Other files", "Measured files outside recognized locations", "folder.fill", "systemBrown", {
+			item("home-other", "Other home files", "Files and folders outside the named home categories", "~"),
+			item("users-other", "Other users & shared files", "Accessible files outside your home folder", "/Users"),
+			item("opt-other", "Other optional software", "Optional software outside known package managers", "/opt"),
 		}),
 	}
 	local owners = {
