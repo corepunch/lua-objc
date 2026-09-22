@@ -468,18 +468,25 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 			&& constraint.widthMode != LuaMeasureUndefined && natural.width > constraint.width) {
 			NSTextField *field = (NSTextField *)view;
 			if (field.maximumNumberOfLines != 1 && constraint.width > 0) {
+				// Measure in the same text-cell width AppKit draws into. Its
+				// fitting width includes field insets absent from glyph advances.
+				CGFloat textInsets = MAX(0, field.fittingSize.width - field.intrinsicContentSize.width);
 				NSTextStorage *storage = [[NSTextStorage alloc] initWithAttributedString:field.attributedStringValue];
 				NSLayoutManager *manager = [[NSLayoutManager alloc] init];
-				NSTextContainer *container = [[NSTextContainer alloc] initWithSize:NSMakeSize(constraint.width,
+				NSTextContainer *container = [[NSTextContainer alloc] initWithSize:NSMakeSize(MAX(0, constraint.width - textInsets),
 					constraint.heightMode == LuaMeasureUndefined ? CGFLOAT_MAX : constraint.height)];
 				container.lineFragmentPadding = 0;
+				NSParagraphStyle *paragraph = field.attributedStringValue.length
+					? [field.attributedStringValue attribute:NSParagraphStyleAttributeName atIndex:0 effectiveRange:NULL] : nil;
+				container.lineBreakMode = paragraph ? paragraph.lineBreakMode : field.lineBreakMode;
 				container.maximumNumberOfLines = field.maximumNumberOfLines;
 				[storage addLayoutManager:manager];
 				[manager addTextContainer:container];
 				[manager ensureLayoutForTextContainer:container];
 				NSRect text = [manager usedRectForTextContainer:container];
 				CGFloat scale = view.window.backingScaleFactor ?: NSScreen.mainScreen.backingScaleFactor ?: 1;
-				natural = NSMakeSize(ceil(text.size.width * scale) / scale, ceil(text.size.height * scale) / scale);
+				natural = NSMakeSize(ceil((text.size.width + textInsets) * scale) / scale, ceil(text.size.height * scale) / scale);
+
 				if (field.maximumNumberOfLines > 0) {
 					CGFloat lineHeight = ceil((field.font.ascender - field.font.descender + field.font.leading) * scale) / scale;
 					natural.height = MIN(natural.height, lineHeight * field.maximumNumberOfLines);
@@ -872,9 +879,16 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			NSTextField *label = (NSTextField *)view;
 			// Measurement visits several proposals; drawing must use the final one.
 			BOOL singleLine = label.maximumNumberOfLines == 1
-				|| label.intrinsicContentSize.width <= view.bounds.size.width;
+				|| measure_leaf(label).width <= view.bounds.size.width;
 			((NSTextFieldCell *)label.cell).usesSingleLineMode = singleLine;
 			((NSTextFieldCell *)label.cell).wraps = !singleLine;
+			// usesSingleLineMode changes the cell's break mode to clipping.
+			// Restore the declared paragraph mode when the label wraps again.
+			if (!singleLine && label.attributedStringValue.length) {
+				NSParagraphStyle *paragraph = [label.attributedStringValue
+					attribute:NSParagraphStyleAttributeName atIndex:0 effectiveRange:NULL];
+				if (paragraph) label.cell.lineBreakMode = paragraph.lineBreakMode;
+			}
 		}
 		if (objc_getAssociatedObject(view, &kKeys[kNavigationControllerKey])) {
 			view.needsLayout = YES;
@@ -907,9 +921,11 @@ static void layout_recursive(NSView *view, CGFloat width) {
 				NSSize viewport = scroll.contentSize;
 				NSRect previous = document.frame;
 				NSValue *previousViewport = objc_getAssociatedObject(scroll, &kKeys[kScrollViewportSizeKey]);
-				CGFloat previousHeight = previousViewport ? previousViewport.sizeValue.height : viewport.height;
-				CGFloat distanceFromTop = MAX(0, previous.size.height
-					- scroll.contentView.bounds.origin.y - previousHeight);
+				// AppKit has already adjusted the clip origin when tiling a resized
+				// viewport. Pair that origin with the current height, not the old
+				// height, or a resize is mistaken for a user scroll.
+				CGFloat distanceFromTop = previousViewport ? MAX(0, previous.size.height
+					- scroll.contentView.bounds.origin.y - viewport.height) : 0;
 				NSSize content = measure_view(document, (LuaLayoutConstraint){
 					.width = viewport.width, .height = viewport.height,
 					.widthMode = scroll.hasHorizontalScroller ? LuaMeasureUndefined : LuaMeasureAtMost,

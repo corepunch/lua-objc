@@ -22,6 +22,18 @@ scroll:layout(200)
 t.assertEqual(scroll.contentView.bounds.origin.y, content.size.height - scroll.contentSize.height,
 	"shrinking viewport preserves reading position at top")
 t.expect(scroll.contentView.clipsToBounds, "native clip view contains overflowing document")
+-- A native window resize adjusts the clip before the document is remeasured.
+-- Preserve a reader's offset as well as the special at-top position.
+scroll.contentView.bounds = ns.Rect(ns.Point(0, content.size.height - scroll.contentSize.height - 40),
+	scroll.contentSize)
+scroll.frameSize = ns.Size(220, 110)
+scroll:layout(220)
+t.assertEqual(content.size.height - scroll.contentView.bounds.origin.y - scroll.contentSize.height, 40,
+	"growing viewport preserves the reader's distance from top")
+scroll.frameSize = ns.Size(200, 80)
+scroll:layout(200)
+t.assertEqual(content.size.height - scroll.contentView.bounds.origin.y - scroll.contentSize.height, 40,
+	"shrinking viewport preserves the reader's distance from top")
 local tab = ns.TabView { tabs = {{ __tab = true, title = "Content", content = scroll }} }
 tab.frameSize = ns.Size(640, 720)
 tab:layout(640)

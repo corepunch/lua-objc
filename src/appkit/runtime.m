@@ -189,7 +189,9 @@ LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
 @interface LuaLabel : LuaTextField
 @end
 
-@implementation LuaLabel
+@implementation LuaLabel {
+	NSLineBreakMode _paragraphBreakMode;
+}
 + (Class)cellClass { return LuaLabelCell.class; }
 - (NSSize)intrinsicContentSize {
 	NSSize size = [super intrinsicContentSize];
@@ -216,7 +218,14 @@ LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
 - (void)setFont:(NSFont *)font { [super setFont:font]; [self updateParagraphMetrics]; }
 - (void)setTextColor:(NSColor *)color { [super setTextColor:color]; [self updateParagraphMetrics]; }
 - (void)setAlignment:(NSTextAlignment)value { [super setAlignment:value]; [self updateParagraphMetrics]; }
-- (void)setLineBreakMode:(NSLineBreakMode)value { [super setLineBreakMode:value]; [self updateParagraphMetrics]; }
+// Native single-line cell layout temporarily selects clipping. Keep the
+// declared paragraph mode through later text mutations and wider/narrower passes.
+- (NSLineBreakMode)lineBreakMode { return _paragraphBreakMode; }
+- (void)setLineBreakMode:(NSLineBreakMode)value {
+	_paragraphBreakMode = value;
+	[super setLineBreakMode:value];
+	[self updateParagraphMetrics];
+}
 @end
 
 @interface LuaSecureTextField : NSSecureTextField

@@ -531,6 +531,7 @@ local TAG_SCHEMA = {
 			accessibilityLabel = "str",
             lines      = { prop = "lineLimit", type = "num" },
             truncation = "str",
+            wrapping = "str",
         },
         transform = function(props, a)
             if a.lines and (num(a.lines) or 0) > 1 then
@@ -1218,13 +1219,11 @@ end
 local registry = makeRegistry()
 local M = {}
 
--- Render an XML string with optional etlua data and platform module.
--- Returns view, refs where refs is a table of { [refName] = view } for
--- every element that carried a ref="name" attribute.
-function M.render(src, data, ns, sourceName)
-    ns = ns or require("ns")
-
-    data = type(data) == "table" and data or {}
+-- Evaluate etlua without creating native views or mutating caller bindings.
+function M.describe(src, data, sourceName)
+    local context = {}
+    for key, value in pairs(type(data) == "table" and data or {}) do context[key] = value end
+    data = context
     local baseDir = data.__baseDir or ""
 
     injectTemplateHelpers(data, baseDir)
@@ -1268,11 +1267,19 @@ function M.render(src, data, ns, sourceName)
     src = src:gsub("^%s*<%?xml[^?]*%?>%s*", "")
              :gsub("^%s*<!DOCTYPE[^>]*>%s*", "")
 
-    local refs  = {}
-    renderData = data
-    local nodes = parseXML(src)
-    local views = compile(nodes, ns, registry, refs)
-    renderData = nil
+    return {source = src, data = data}
+end
+
+function M.renderDescription(description, ns)
+    ns = ns or require("ns")
+    local refs = {}
+    local previous = renderData
+    renderData = description.data
+    local ok, views = pcall(function()
+        return compile(parseXML(description.source), ns, registry, refs)
+    end)
+    renderData = previous
+    if not ok then error(views) end
 
     -- Window root: return (configTable, refs) — caller passes config to ns.Window
     if #views == 1 and type(views[1]) == "table" and views[1].__isWindowConfig then
@@ -1293,12 +1300,22 @@ function M.render(src, data, ns, sourceName)
     return root, refs
 end
 
+function M.render(src, data, ns, sourceName)
+    return M.renderDescription(M.describe(src, data, sourceName), ns)
+end
+
+function M.describeFile(path, data)
+    local context = {}
+    for key, value in pairs(data or {}) do context[key] = value end
+    context.__baseDir = path:match("^(.-)[^/\\]*$")
+    return M.describe(readFile(path), context, path)
+end
+
 -- Render an XML file.  Path is relative to the process working directory.
 function M.renderFile(path, data, ns)
-    local src = readFile(path)
-    data = type(data) == "table" and data or {}
-    data.__baseDir = path:match("^(.-)[^/\\]*$")
-    local ok, result, refs = pcall(M.render, src, data, ns, path)
+    local ok, result, refs = pcall(function()
+        return M.renderDescription(M.describeFile(path, data), ns)
+    end)
     if not ok then
         local msg = "xml.renderFile [" .. path .. "]: " .. tostring(result)
         io.stderr:write(msg .. "\n")

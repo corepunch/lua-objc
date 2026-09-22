@@ -1,0 +1,12 @@
+<VStack fillWidth="true" spacing="12" alignment="leading">
+  <% for _, tip in ipairs(tips) do %>
+  <GroupBox fillWidth="true">
+    <VStack padding="12" spacing="8" fillWidth="true" alignment="leading">
+      <SystemImage name="<%= tip.icon %>" size="24" color="accent" />
+      <Label text="<%= tip.title %>" size="12" weight="semibold" fillWidth="true" lines="0" />
+      <Label text="<%= tip.text %>" size="12" fillWidth="true" lines="0" />
+      <Button title="<%= tip.actionTitle %>" style="link" action="tip_<%= tip.id %>" />
+    </VStack>
+  </GroupBox>
+  <% end %>
+</VStack>

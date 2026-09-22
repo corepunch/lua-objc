@@ -512,12 +512,17 @@ Its `apply` function is a no-op. It is not connected to the eager constructors
 as a working renderer and does not yet preserve native identity through keyed
 reconciliation.
 
-A future renderer should own description evaluation, dependency tracking,
-keyed native reuse, and mount/unmount cleanup. Components should remain Lua
-functions; platform bridges should supply native primitives. Build callback
-disposal first so removing a described subtree also releases its registrations.
-See [Declarative components](docs/PROJECT_REFERENCE.md#declarative-components-the-escape-hatch-beyond-the-eager-native-tree)
-for the intended boundary.
+`lua/ui/template.lua` is the working retained etlua boundary renderer. `Template.new`
+mounts into a template-provided host; `update(data)` evaluates XML and plain bindings.
+Unchanged descriptions reuse native identity while action dispatch points to current
+callbacks. Changed descriptions render under a new Scope, replace the old subtree,
+and dispose its registrations. Failed rendering leaves the previous tree mounted.
+Parent scopes dispose nested mounts. Applications bind data and actions only.
+
+This boundary renderer does not yet provide keyed child reuse, automatic dependency
+tracking or observable invalidation. `ui.viewdesc` remains a separate experimental
+positional-diff module, not its runtime. A future keyed renderer should extend the
+shared ownership contract rather than add feature-specific subtree mutation hooks.
 
 #### Templates and reusable views
 
