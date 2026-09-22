@@ -62,6 +62,9 @@ badged:replaceRows({{id = "badge", name = "Missing app", icon = "folder", color 
 image = bridge._tableCell(badged, 0, 0).imageView
 t.expect(not image.resolvedAppIcon and image.image ~= nil, "missing application falls back to symbol")
 t.assertEqual(image.badgeColorName, "systemTeal", "reused cell updates badge")
+local colored = ns.List {columns = {{id = "name", cell = {color = "color"}}}, data = {{name = "Brown", color = "systemBrown"}}}
+local coloredCell = bridge._tableCell(colored, 0, 0)
+t.assertEqual(coloredCell.textField.textColor.description, ns._systemColor("systemBrown").description, "table colors use the same semantic palette as standalone views")
 local standalone = xml.render('<SystemImage name="mic.fill" size="32" badgeColor="systemBlue" appIcon="invalid.diskmap.missing"/>', {}, ns)
 t.assertEqual(standalone.badgeColorName, "systemBlue", "standalone and table icons share badge API")
 t.expect(not standalone.resolvedAppIcon, "standalone fallback retains badge")

@@ -67,3 +67,14 @@ Verified screenshots at 1024×768, 1000×640 dark, and 1440×1000 light; the
 minimum-size layout dump confirms the coverage inset and bottom Settings frame.
 Regression coverage checks edge overrides, explicit zero, mutation isolation,
 disclosure geometry, and app insets. Both platform runtimes build.
+
+## 2026-09-22 — full inventory
+
+Startup plans all 153 file-backed roots and excludes separately owned descendants,
+mounted volumes and symlinks. Fast regressions cover every catalog target, absent
+roots, symlink ancestors, hard links across categories, interruption and cache replay.
+The real scan inspected 2,054,792 entries in 65 seconds: 182.1 GB measured versus
+195.9 GB used, with 13.8 GB unreconciled and 988 access failures. Local diagnostics
+were saved to `/tmp/diskmap-live.json` (not checked in). Screenshots verified real
+measurements, the synthetic fixture, and the minimum-size dark layout. The bar
+now includes every measured category and a separate unreconciled segment.

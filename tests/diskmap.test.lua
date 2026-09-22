@@ -4,6 +4,7 @@ local ns = require("AppKit")
 local bridge = require("AppKitNative")
 local xml = require("ui.xml")
 local Model = require("apps.diskmap.Model")
+local Inventory = require("apps.diskmap.models.Inventory")
 local System = require("apps.diskmap.services.System")
 local Controller = require("apps.diskmap.Controller")
 local model = Model.new("/Users/test")
@@ -19,7 +20,7 @@ t.assertEqual(model.byId['preboot'].action, "settings", "boot assets system mana
 t.assertEqual(model.byId['xcode-app'].action, "xcode", "bundled SDKs managed as installation")
 t.assertEqual(Model.size(1e9), "1.0 GB", "decimal bytes")
 t.assertEqual(Model.size(nil), "Not measured", "unknown is not zero")
-Model.apply(model, {"derived", "archives"}, {trees = {{kb = 100}, {kb = 200, partial = true}}, rootStates = {"measured", "unreadable"}})
+Inventory.apply(model, {"derived", "archives"}, {trees = {{kb = 100}, {kb = 200, partial = true}}, rootStates = {"measured", "unreadable"}})
 t.assertEqual(model.measurements.derived.bytes, 102400, "normalizes worker units")
 t.assertEqual(Model.total(model), 307200, "disjoint ledger totals")
 t.expect(Model.canTrash(model, "derived"), "complete cache eligible")
@@ -32,15 +33,21 @@ t.assertEqual(#filtered, 1, "search preserves one semantic ancestor")
 t.assertEqual(filtered[1].id, "developer", "search retains category")
 t.assertEqual(filtered[1].bytes, 307200, "filter does not change category total")
 t.assertEqual(#Model.rows(model, nil, "["), 0, "search is literal")
-Model.apply(model, {"derived"}, {failure = "cancelled"})
+Inventory.apply(model, {"derived"}, {failure = "cancelled"})
 t.expect(not Model.canTrash(model, "derived"), "stale measurement disables removal")
 t.assertEqual(model.measurements.derived.bytes, 102400, "failure preserves old bytes")
-Model.apply(model, {"derived"}, {trees = {}, rootStates = {"missing"}})
+Inventory.apply(model, {"derived"}, {trees = {}, rootStates = {"missing"}})
 t.assertEqual(model.measurements.derived.bytes, 0, "confirmed missing is zero")
-Model.apply(model, {"derived"}, {trees = {}, rootStates = {"unreadable"}})
+Inventory.apply(model, {"derived"}, {trees = {}, rootStates = {"unreadable"}})
 t.assertEqual(model.measurements.derived.bytes, nil, "denied is unknown")
-local paths, ids = Model.targets(model)
-for _, path in ipairs(paths) do t.expect(path ~= "/Users/test" and not path:find("Containers", 1, true), "bounded startup") end
+local paths, ids = Inventory.plan(model)
+local targets = {}; for i, path in ipairs(paths) do targets[ids[i]] = path end
+for _, row in ipairs(model.leaves) do
+	if row.path then t.assertEqual(targets[row.id], row.path, "startup includes " .. row.id) end
+end
+t.assertEqual(targets["home-other"], "/Users/test", "unrecognized home files are measured")
+t.assertEqual(targets["root-system"], "/", "root residual closes inventory gaps")
+t.assertEqual(model.measurements.snapshots.status, "unsupported", "snapshot allocation is explicitly system managed")
 local cache = assert(System.readCache("tests/fixtures/diskmap.json"))
 t.expect(cache.fixture, "example values are identified as fixtures")
 local chartModel = Model.new("/Users/test")
@@ -51,8 +58,8 @@ for _, segment in ipairs(segments) do sum = sum + segment.weight end
 t.expect(math.abs(sum - 1) < 0.000001, "breakdown accounts for all capacity")
 t.assertEqual(segments[1].color, "systemBlue", "applications retain blue category color")
 t.assertEqual(segments[2].color, "systemPurple", "developer retains purple category color")
-t.assertEqual(segments[8].bytes, 157e9, "free space represented separately")
-t.expect(segments[7].bytes > 0, "unclassified and other bytes remain visible")
+t.assertEqual(segments[#segments].bytes, 157e9, "free space represented separately")
+t.expect(segments[#segments-1].bytes > 0, "unclassified and other bytes remain visible")
 t.assertEqual(#Model.distribution(chartModel, {totalKb = 1, freeKb = 0}), 0, "overcount does not fabricate a capacity chart")
 local temp = os.tmpname()
 t.expect(System.writeCache(temp, cache), "cache writes")
@@ -65,9 +72,18 @@ local app = Controller.new(service)
 app.await = function(_, job, completion) job.complete = completion end
 app:scan("derived"); local old = app.job
 app:scan("npm"); local current = app.job
-old.complete({trees = {{kb = 200}}, rootStates = {"measured"}})
+local _, scanIds = Inventory.plan(app.model)
+local function measuredResult(id, kb)
+	local result = {trees = {}, rootStates = {}}
+	for index, target in ipairs(scanIds) do
+		result.rootStates[index] = target == id and "measured" or "missing"
+		if target == id then result.trees[index] = {kb = kb} end
+	end
+	return result
+end
+old.complete(measuredResult("derived", 200))
 t.assertEqual(app.model.measurements.derived, nil, "late completion rejected")
-current.complete({trees = {{kb = 300}}, rootStates = {"measured"}})
+current.complete(measuredResult("npm", 300))
 t.assertEqual(app.model.measurements.npm.bytes, 307200, "current result accepted")
 app.cachePath = "test"; app:scan(); t.assertEqual(startCalls, 2, "cache mode never scans")
 local savedArgs = arg; arg = {"-cache=tests/fixtures/diskmap.json"}
@@ -97,7 +113,7 @@ ui:select("developer")
 t.expect(not ui.refs.inspector.hidden, "selection exposes the inspector")
 t.expect(not ui.refs.measure.enabled, "cache selection keeps measurement disabled")
 ui.refs.results:showLoading()
-t.assertEqual(ui.refs.results.rowCount, 8, "native loading preserves category rows")
+t.assertEqual(ui.refs.results.rowCount, 9, "native loading preserves category rows")
 ui.refs.results:hideLoading()
 ui:showSection("Developer"); ui.query = "no match"; ui:updateRows()
 t.assertEqual(ui.refs.results.rowCount, 0, "empty category search")
@@ -107,21 +123,21 @@ t.expect(dashboard.frame.origin.y >= 0, "small window keeps dashboard within con
 t.expect(ui.refs.results.contentView.clipsToBounds, "outline rows clip within native scroll viewport")
 window:close(); arg = savedArgs
 -- Real scanner: parent residual excludes named children and hard links count once.
-local pipe = assert(io.popen("/usr/bin/mktemp -d /tmp/diskmap-test.XXXXXXXX"))
+local pipe = assert(io.popen("/usr/bin/mktemp -d /private/tmp/diskmap-test.XXXXXXXX"))
 local root = pipe:read("*l"); pipe:close()
 os.execute("/bin/mkdir " .. System.quote(root .. "/cache"))
 local hostile = root .. "/cache/quote' dollar$ tab\tline\n.txt"
 local f = assert(io.open(hostile, "w")); f:write(string.rep("x", 8192)); f:close()
 os.execute("/bin/ln " .. System.quote(hostile) .. " " .. System.quote(root .. "/cache/link"))
 os.execute("/bin/ln -s / " .. System.quote(root .. "/outside"))
-local plan, output = root .. ".plan", root .. ".json"
+local plan, output = root .. ".plan", root .. "/result.json"
 System.writeCache(plan, {roots = {root, root .. "/cache"}, exclusions = {root, root .. "/cache"}})
-t.expect(os.execute("/usr/bin/perl apps/diskmap/services/scan.pl " .. System.quote(output) .. " 0 inventory " .. System.quote(plan)), "inventory scanner finishes")
+t.expect(os.execute("/usr/bin/perl apps/diskmap/services/scan.pl " .. System.quote(output) .. " 0 " .. System.quote(plan)), "inventory scanner finishes")
 f = assert(io.open(output)); local scanned = ns.json_parse(f:read("*a")); f:close()
 t.assertEqual(scanned.trees[2].kb, 8, "hard links have one allocation")
 t.assertEqual(scanned.trees[1].kb, 0, "parent excludes separately owned child")
-t.assertEqual(#scanned.trees[1].children, 0, "inventory retains no folder tree")
-for _, path in ipairs({hostile, root .. "/cache/link", root .. "/cache", root .. "/outside", root, plan, output}) do os.remove(path) end
+t.assertEqual(scanned.trees[1].children, nil, "inventory retains no folder tree")
+for _, path in ipairs({hostile, root .. "/cache/link", root .. "/cache", root .. "/outside", plan, output, root .. "/progress.json", root}) do os.remove(path) end
 local features = Model.new("/Users/test")
 local uniquePaths = {}
 for _, leaf in ipairs(features.leaves) do

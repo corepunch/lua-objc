@@ -4,7 +4,7 @@
           <Divider />
           <% end %>
           <% if #suggestions == 0 then %>
-          <Label text="No measured cleanup candidates yet. Select a category and choose Measure Category." size="12" color="secondary" fillWidth="true" lines="3" />
+          <Label text="No measured cleanup candidates yet. Measurements update after each complete scan." size="12" color="secondary" fillWidth="true" lines="3" />
           <% end %>
 
 </VStack>

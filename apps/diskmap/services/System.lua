@@ -22,8 +22,9 @@ function System.readCache(path)
 	local body = f:read("*a"); f:close()
 	local ok, data = pcall(ns.json_parse, body)
 	if not ok or type(data) ~= "table" or data.version ~= require("apps.diskmap.Catalog").version or type(data.measurements) ~= "table" then return nil, "Invalid Diskmap cache" end
+	local statuses = {complete = true, partial = true, denied = true, stale = true, unsupported = true, skipped = true}
 	for id, m in pairs(data.measurements) do
-		if type(id) ~= "string" or type(m) ~= "table" or (m.bytes ~= nil and (type(m.bytes) ~= "number" or m.bytes < 0)) then return nil, "Invalid measurements" end
+		if type(id) ~= "string" or type(m) ~= "table" or (m.bytes ~= nil and (type(m.bytes) ~= "number" or m.bytes < 0 or m.bytes ~= m.bytes or m.bytes == math.huge)) or not statuses[m.status] then return nil, "Invalid measurements" end
 	end
 	if data.disk and (type(data.disk) ~= "table" or type(data.disk.totalKb) ~= "number" or type(data.disk.freeKb) ~= "number" or data.disk.totalKb <= 0 or data.disk.freeKb < 0 or data.disk.freeKb > data.disk.totalKb) then return nil, "Invalid cached capacity" end
 	return data
@@ -50,7 +51,7 @@ function System.start(paths, exclusions)
 	local plan = directory .. "/plan.json"
 	local file = assert(io.open(plan, "w")); file:write(json({roots = paths, exclusions = exclusions or {}})); file:close()
 	args[1] = System.quote(plan)
-	local command = "/usr/bin/nice -n 10 /usr/bin/perl " .. System.quote("apps/diskmap/services/scan.pl") .. " " .. System.quote(output) .. ' "$PPID" ' .. System.quote("inventory") .. " " .. table.concat(args, " ")
+	local command = "/usr/bin/nice -n 10 /usr/bin/perl " .. System.quote("apps/diskmap/services/scan.pl") .. " " .. System.quote(output) .. ' "$PPID" ' .. table.concat(args, " ")
 	local launcher = assert(io.popen(command .. " </dev/null >" .. System.quote(directory .. "/error") .. " 2>&1 & echo $!"))
 	local pid = tonumber(launcher:read("*l"))
 	launcher:close()
@@ -59,7 +60,7 @@ end
 function System.cancel(job)
 	if not job then return end
 	if job.pid then os.execute("/bin/kill " .. tostring(job.pid) .. " 2>/dev/null") end
-	for _, file in ipairs({"result.json", "result.json.tmp", "error", "plan.json"}) do os.remove(job.directory .. "/" .. file) end
+	for _, file in ipairs({"result.json", "result.json.tmp", "error", "plan.json", "progress.json", "progress.json.tmp"}) do os.remove(job.directory .. "/" .. file) end
 	os.remove(job.directory)
 end
 function System.poll(job)
@@ -80,7 +81,18 @@ function System.poll(job)
 		System.cancel(job)
 		return true, {failure = "Scan timed out. Try a smaller folder."}
 	end
+	local progressFile = io.open(job.directory .. "/progress.json", "r")
+	if progressFile then
+		local body = progressFile:read("*a"); progressFile:close()
+		local ok, progress = pcall(ns.json_parse, body)
+		if ok then return false, progress end
+	end
 	return false
+end
+function System.defaultCachePath()
+	local directory = (os.getenv("HOME") or "") .. "/Library/Application Support/Diskmap"
+	if not os.execute("/bin/mkdir -p " .. System.quote(directory)) then return nil end
+	return directory .. "/last-scan.json"
 end
 function System.loadSettings()
 	local file = io.open((os.getenv("HOME") or "") .. "/Library/Application Support/Diskmap/background", "r")

@@ -29,7 +29,7 @@
           <VStack ref="inspector" hidden="true" fillWidth="true" spacing="10" alignment="leading">
           <Label ref="detailName" text="Select a category" size="17" weight="semibold" fillWidth="true" lines="2" />
           <Label ref="detailText" text="Understand what is stored and how it is managed." size="12" fillWidth="true" lines="8" />
-          <Button ref="measure" title="Measure Category" action="measure" fillWidth="true" />
+          <Button ref="measure" title="Refresh measurements" action="measure" fillWidth="true" />
           <Button ref="manage" title="Review in Finder" action="manage" fillWidth="true" disabled="true" />
           <Button ref="keep" title="Keep this resource" action="keep" fillWidth="true" disabled="true" />
           <Label ref="location" text="" size="11" color="secondary" fillWidth="true" lines="4" />

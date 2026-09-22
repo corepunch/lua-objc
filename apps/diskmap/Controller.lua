@@ -1,6 +1,7 @@
 local ns = require("AppKit")
 local xml = require("ui.xml")
 local Model = require("apps.diskmap.Model")
+local Inventory = require("apps.diskmap.models.Inventory")
 local System = require("apps.diskmap.services.System")
 local Controller = {}; Controller.__index = Controller
 local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
@@ -13,7 +14,7 @@ function Controller.new(service)
 	service = service or System
 	local home = os.getenv("HOME") or "/Users"
 	return setmetatable({service = service, home = home, model = Model.new(home), section = "Storage", query = "", generation = 0,
-		monitoring = not service.loadSettings or service.loadSettings(), status = "Known locations are measured on request."}, Controller)
+		monitoring = not service.loadSettings or service.loadSettings(), status = "Preparing a complete storage inventory."}, Controller)
 end
 function Controller:replace(view)
 	self.content:clearContainer(); self.content:add(view); self.content:layout()
@@ -140,27 +141,30 @@ function Controller:await(job, completion)
 		while not job.cancelled do
 			local done, result = self.service.poll(job)
 			if done then completion(result); return end
+			if result and result.total then
+				self.status = string.format("Measuring all storage categories · %d/%d locations", result.completed, result.total)
+				if self.refs and self.refs.status then self.refs.status.text = self.status end
+			end
 			ns.sleep(0.25)
 		end
 	end)
 end
-function Controller:scan(id)
+function Controller:scan()
 	if self.cachePath then self.status = "Test cache · scanning and cleanup disabled"; self:updateRows(); return end
 	self:cancel()
-	local paths, ids = Model.targets(self.model, id)
+	local paths, ids, exclusions = Inventory.plan(self.model)
 	if #paths == 0 then return end
-	local exclusions = {}; for _, row in ipairs(self.model.leaves) do if row.path then exclusions[#exclusions + 1] = row.path end end
 	local ok, job = pcall(self.service.start, paths, exclusions)
 	if not ok then self.status = "Could not start measurement: " .. tostring(job); self:updateRows(); return end
-	self.job = job; self.status = "Measuring known locations…"; self:updateRows()
+	self.job = job; self.status = "Measuring all storage categories…"; self:updateRows()
 	local generation = self.generation
 	self:await(job, function(result)
 		if generation ~= self.generation then return end
-		self.job = nil; Model.apply(self.model, ids, result)
+		self.job = nil; Inventory.apply(self.model, ids, result)
 		self.disk = self.service.diskSpace(self.home)
 		self.status = result.failure and result.failure ~= "" and result.failure or "Measured " .. os.date("%H:%M") .. " · " .. (result.errors or 0) .. " unavailable locations"
 		if self.writeCache and self.service.writeCache then
-			local saved, err = self.service.writeCache(self.writeCache, {version = require("apps.diskmap.Catalog").version, measurements = self.model.measurements, disk = self.disk})
+			local saved, err = self.service.writeCache(self.writeCache, Inventory.snapshot(self.model, self.disk))
 			if not saved then self.status = self.status .. " · Cache not saved: " .. tostring(err) end
 		end
 		-- Keep the outline mounted so native selection and disclosure survive updates.
@@ -190,13 +194,14 @@ function Controller:createWindow()
 		self.cachePath = value:match("^%-%-?cache=(.+)$") or self.cachePath
 		self.writeCache = value:match("^%-%-write%-cache=(.+)$") or self.writeCache
 	end
+	if not self.cachePath and not self.writeCache and self.service.defaultCachePath then self.writeCache = self.service.defaultCachePath() end
 	if not self.cachePath and self.service.loadKeep then
 		for id, kept in pairs(self.service.loadKeep()) do if self.model.byId[id] and kept == true then self.model.kept[id] = true end end
 	end
 	if self.cachePath then
 		local data, err = self.service.readCache(self.cachePath)
 		if data then
-			for id, m in pairs(data.measurements) do if self.model.byId[id] then self.model.measurements[id] = m end end
+			Inventory.restore(self.model, data)
 			self.disk = data.disk; self.status = "Test cache · scanning and cleanup disabled"
 		else self.status = "Cache could not be loaded: " .. tostring(err) end
 	else self.disk = self.service.diskSpace(self.home) end

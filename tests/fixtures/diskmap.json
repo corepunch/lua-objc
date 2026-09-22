@@ -1,6 +1,6 @@
 {
     "fixture": true,
-    "version": 2,
+    "version": 3,
     "disk": {
         "totalKb": 482421875.0,
         "freeKb": 153320312.5
@@ -573,6 +573,60 @@
         "dictionaries-4": {
             "bytes": 0,
             "status": "complete"
+        },
+        "apps-builtin": {
+            "bytes": 2300000000.0,
+            "status": "complete"
+        },
+        "projects": {
+            "bytes": 6100000000.0,
+            "status": "complete"
+        },
+        "usr-local": {
+            "bytes": 0,
+            "status": "complete"
+        },
+        "library-user": {
+            "bytes": 0,
+            "status": "complete"
+        },
+        "library-shared": {
+            "bytes": 0,
+            "status": "complete"
+        },
+        "private-other": {
+            "bytes": 0,
+            "status": "complete"
+        },
+        "unix": {
+            "bytes": 0,
+            "status": "complete"
+        },
+        "root-system": {
+            "bytes": 0,
+            "status": "complete"
+        },
+        "home-other": {
+            "bytes": 8200000000.0,
+            "status": "complete"
+        },
+        "users-other": {
+            "bytes": 0,
+            "status": "complete"
+        },
+        "opt-other": {
+            "bytes": 0,
+            "status": "complete"
+        },
+        "snapshots": {
+            "status": "unsupported"
         }
+    },
+    "scan": {
+        "completedAt": 1790069400,
+        "errors": 0,
+        "visited": 100000,
+        "seconds": 12,
+        "issues": []
     }
 }

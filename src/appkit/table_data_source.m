@@ -72,18 +72,7 @@
 
 @end
 
-static NSColor *table_semantic_color(NSString *name) {
-	if ([name isEqualToString:@"systemBlue"]) return NSColor.systemBlueColor;
-	if ([name isEqualToString:@"systemPurple"]) return NSColor.systemPurpleColor;
-	if ([name isEqualToString:@"systemOrange"]) return NSColor.systemOrangeColor;
-	if ([name isEqualToString:@"systemGray"]) return NSColor.systemGrayColor;
-	if ([name isEqualToString:@"systemGreen"]) return NSColor.systemGreenColor;
-	if ([name isEqualToString:@"systemTeal"]) return NSColor.systemTealColor;
-	if ([name isEqualToString:@"systemYellow"]) return NSColor.systemYellowColor;
-	if ([name isEqualToString:@"systemRed"]) return NSColor.systemRedColor;
-	if ([name isEqualToString:@"secondary"]) return NSColor.secondaryLabelColor;
-	return NSColor.labelColor;
-}
+static NSColor *semantic_color(NSString *name);
 
 // Shared symbol presentation for standalone images and reusable data cells.
 @interface LuaSymbolImageView : NSImageView
@@ -127,7 +116,7 @@ static NSColor *table_semantic_color(NSString *name) {
 - (void)drawRect:(NSRect)dirtyRect {
 	BOOL badge = _badgeColorName.length && !_resolvedAppIcon && self.image;
 	if (!badge) { [super drawRect:dirtyRect]; return; }
-	[table_semantic_color(_badgeColorName) setFill];
+	[semantic_color(_badgeColorName) setFill];
 	CGFloat radius = MIN(self.bounds.size.width, self.bounds.size.height) * kIconBadgeCornerFraction;
 	[[NSBezierPath bezierPathWithRoundedRect:self.bounds xRadius:radius yRadius:radius] fill];
 	[NSGraphicsContext saveGraphicsState];
@@ -247,12 +236,12 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	NSString *primaryColor = primaryColorKey
 		? [rowData[primaryColorKey] description] : nil;
 	cell.textField.textColor = primaryColor
-		? table_semantic_color(primaryColor) : NSColor.labelColor;
+		? semantic_color(primaryColor) : NSColor.labelColor;
 	NSString *secondaryColorKey = cellSpec[@"secondaryColor"];
 	NSString *secondaryColor = secondaryColorKey
 		? [rowData[secondaryColorKey] description] : nil;
 	cell.secondaryTextField.textColor = secondaryColor
-		? table_semantic_color(secondaryColor) : NSColor.secondaryLabelColor;
+		? semantic_color(secondaryColor) : NSColor.secondaryLabelColor;
 	NSString *curveKey = cellSpec[@"curve"];
 	NSArray *curveValues = [rowData[curveKey] isKindOfClass:NSArray.class]
 		? rowData[curveKey] : nil;
@@ -260,7 +249,7 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	NSString *curveColor = curveColorKey
 		? [rowData[curveColorKey] description] : nil;
 	table_update_curve(cell.curveView, curveValues,
-		table_semantic_color(curveColor));
+		semantic_color(curveColor));
 	// Row-bound symbols let a native source list distinguish navigation destinations.
 	NSString *levelKey = cellSpec[@"level"];
 	id levelValue = levelKey ? rowData[levelKey] : nil;
@@ -268,11 +257,11 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	cell.levelIndicator.doubleValue = isfinite(fraction) ? MAX(0, MIN(1, fraction)) : 0;
 	cell.levelIndicator.hidden = levelValue == nil;
 	NSString *levelColorKey = cellSpec[@"levelColor"];
-	cell.levelIndicator.fillColor = table_semantic_color(levelColorKey ? rowData[levelColorKey] : nil);
+	cell.levelIndicator.fillColor = semantic_color(levelColorKey ? rowData[levelColorKey] : nil);
 	cell.levelIndicator.accessibilityLabel = [@"Share of measured storage: " stringByAppendingString:text];
 	[cell.levelIndicator setNeedsDisplay:YES];
 	NSString *imageColorKey = cellSpec[@"imageColor"];
-	cell.imageView.contentTintColor = imageColorKey ? table_semantic_color(rowData[imageColorKey]) : NSColor.secondaryLabelColor;
+	cell.imageView.contentTintColor = imageColorKey ? semantic_color(rowData[imageColorKey]) : NSColor.secondaryLabelColor;
 	NSString *imageKey = cellSpec[@"image"];
 	NSString *symbolName = imageKey && [rowData[imageKey] isKindOfClass:NSString.class]
 		? rowData[imageKey] : objc_getAssociatedObject(column, &kKeys[kColumnSystemImageKey]);
