@@ -368,11 +368,13 @@ static int bridge_UIKitControls_button(lua_State *L) {
 	UIButtonConfiguration *configuration = nil;
 	if (strcmp(style, "bordered") == 0) {
 		configuration = [UIButtonConfiguration borderedButtonConfiguration];
+		/* Neutral button styles use the label color; prominent carries the app tint. */
+		configuration.baseForegroundColor = UIColor.labelColor;
 	} else if (strcmp(style, "borderedProminent") == 0) {
 		configuration = [UIButtonConfiguration borderedProminentButtonConfiguration];
 	} else if (strcmp(style, "plain") == 0 || strcmp(style, "link") == 0) {
 		configuration = [UIButtonConfiguration plainButtonConfiguration];
-		[obj setTitleColor:UIColor.labelColor forState:UIControlStateNormal];
+		configuration.baseForegroundColor = UIColor.labelColor;
 		obj.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
 	} else if (systemImage[0] || role[0]) {
 		configuration = [UIButtonConfiguration plainButtonConfiguration];

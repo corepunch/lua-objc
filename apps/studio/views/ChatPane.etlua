@@ -1,10 +1,10 @@
-<VStack padding="16" spacing="10" fixedWidth="430" fillHeight="true" alignment="leading">
+<VStack padding="16" spacing="10" fixedWidth="400" fillHeight="true" alignment="leading" background="background" cornerRadius="16">
 	<HStack padding="0" spacing="8" fillWidth="true">
 		<Label text="Chat" size="17" weight="semibold" />
 		<Label text="Code" size="17" color="secondary" />
 		<Spacer />
-		<Button title="Git" systemImage="point.3.connected.trianglepath.dotted" />
-		<Button title="Share" systemImage="square.and.arrow.up" />
+		<Button title="Git" systemImage="point.3.connected.trianglepath.dotted" style="bordered" />
+		<Button title="Share" systemImage="square.and.arrow.up" style="bordered" />
 		<Button title="Deploy" systemImage="paperplane" style="borderedProminent" />
 	</HStack>
 	<HStack padding="0" spacing="18" fillWidth="true">
@@ -15,14 +15,14 @@
 		<Label text="<%= status %>" size="11" color="secondary" />
 	</HStack>
 	<Divider />
-	<GroupBox fillWidth="true">
+	<GroupBox padding="14" background="secondaryBackground" cornerRadius="16" fillWidth="true">
 		<Label text="<%= prompt %>" size="14" fillWidth="true" lines="5" />
 	</GroupBox>
 	<HStack padding="0" spacing="10" fillWidth="true" alignment="top">
 		<SystemImage name="sparkles" size="24" color="accent" />
 		<Label text="<%= response %>" size="14" fillWidth="true" lines="5" />
 	</HStack>
-	<GroupBox fillWidth="true">
+	<GroupBox padding="10" background="secondaryBackground" cornerRadius="12" fillWidth="true">
 		<VStack padding="0" spacing="0" fillWidth="true" alignment="leading">
 			<HStack padding="4" spacing="8" fillWidth="true">
 				<SystemImage name="chevron.down" size="11" color="secondary" />
@@ -43,10 +43,12 @@
 	<Label text="SUGGESTIONS" size="10" weight="semibold" color="secondary" />
 	<HStack padding="0" spacing="6" fillWidth="true">
 		<% for _, suggestion in ipairs(suggestions) do %>
-		<Button title="<%= suggestion %>" size="12" />
+			<Button title="<%= suggestion %>" size="12" style="bordered" />
 		<% end %>
 	</HStack>
-	<TextEditor ref="composer" text="" size="15" fixedHeight="90" fillWidth="true" />
+	<GroupBox padding="4" background="secondaryBackground" cornerRadius="14" fillWidth="true">
+		<TextEditor ref="composer" text="" size="15" fixedHeight="90" fillWidth="true" />
+	</GroupBox>
 	<HStack padding="0" spacing="8" fillWidth="true">
 		<Button title="Dictate" systemImage="mic" />
 		<Spacer />

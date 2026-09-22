@@ -1,4 +1,4 @@
-<VStack padding="16" spacing="10" flexGrow="1" flexBasis="0" fillHeight="true" alignment="center">
+<VStack padding="16" spacing="10" flexGrow="1" flexBasis="0" minWidth="340" fillWidth="true" fillHeight="true" alignment="leading" background="background" cornerRadius="16">
 	<HStack padding="0" spacing="8" fillWidth="true">
 		<Label text="Preview" size="17" weight="semibold" />
 		<Spacer />
@@ -6,7 +6,7 @@
 	</HStack>
 	<Preview ref="preview" flexGrow="1" fillWidth="true" fillHeight="true" />
 	<HStack padding="10" spacing="12" fillWidth="true">
-		<Button title="<%= device %>" systemImage="iphone" />
+		<Button title="<%= device %>" systemImage="iphone" style="bordered" />
 		<Spacer />
 		<Button title="<%= runLabel %>" systemImage="play.fill" style="borderedProminent" />
 		<Label text="<%= zoom %>" size="13" color="secondary" />

@@ -87,6 +87,10 @@ function UIKit.Window(props)
 	local scope = Scope.push()
 	local content = props.content or props[1]
 	local vc = asViewController(content)
+	local userInterfaceStyles = { automatic = 0, light = 1, dark = 2 }
+	if props.appearance and userInterfaceStyles[props.appearance] ~= nil then
+		vc.overrideUserInterfaceStyle = userInterfaceStyles[props.appearance]
+	end
 	-- If scene installation fails, do not leak the pushed scope.
 	local ok, win = pcall(bridge._installScene, vc, props.title or "")
 	if not ok then

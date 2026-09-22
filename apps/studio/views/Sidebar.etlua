@@ -11,16 +11,18 @@
 	<VStack padding="0" spacing="5" fillWidth="true" alignment="leading">
 		<% for index, project in ipairs(projects) do %>
 		<% if index == 1 then %>
-		<Button title="<%= project.name %>" subtitle="<%= project.detail %>" systemImage="<%= project.icon %>" style="borderedProminent" fillWidth="true" />
+		<VStack padding="8" spacing="0" background="background" cornerRadius="10" fillWidth="true" alignment="leading">
+			<Button title="<%= project.name %>" subtitle="<%= project.detail %>" systemImage="<%= project.icon %>" style="plain" fillWidth="true" />
+		</VStack>
 		<% else %>
-		<Button title="<%= project.name %>" subtitle="<%= project.detail %>" systemImage="<%= project.icon %>" fillWidth="true" />
+		<Button title="<%= project.name %>" subtitle="<%= project.detail %>" systemImage="<%= project.icon %>" style="plain" fillWidth="true" />
 		<% end %>
 		<% end %>
 	</VStack>
 	<Spacer />
 	<Divider />
 	<% for _, item in ipairs(links) do %>
-	<Button title="<%= item.name %>" systemImage="<%= item.icon %>" fillWidth="true" />
+	<Button title="<%= item.name %>" systemImage="<%= item.icon %>" style="plain" fillWidth="true" />
 	<% end %>
 	<Label text="Documents · local workspace" size="11" color="secondary" lines="2" />
 </VStack>

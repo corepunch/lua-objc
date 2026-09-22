@@ -113,7 +113,8 @@ static CGSize measure_horizontal_children(UIView *view, CGSize proposal, CGSize 
 				totalWeight += flex_weight(children[order[next].unsignedIntegerValue], YES);
 			CGFloat offer = MAX(0, round((weight > 0 ? remaining * weight / totalWeight : remaining / left) * scale) / scale);
 			sizes[i] = measure_size(children[i], CGSizeMake(offer, proposal.height));
-			if (is_flexible(children[i])) sizes[i].width = offer;
+			/* Flex is a proposal; explicit minimum dimensions remain layout constraints. */
+			if (is_flexible(children[i])) sizes[i].width = MAX(offer, children[i].minWidth);
 			remaining -= sizes[i].width;
 		}
 		result.width += sizes[i].width;
@@ -293,7 +294,7 @@ static void layout_recursive(UIView *view, CGFloat width) {
 
 			for (UIView *sv in children) {
 				CGFloat fh = view_fixed_height(sv);
-				CGFloat childH = grows_vertically(sv) ? flexibleHeight * flex_weight(sv, NO)
+				CGFloat childH = grows_vertically(sv) ? MAX(flexibleHeight * flex_weight(sv, NO), sv.minHeight)
 					: (fh > 0 ? fh : sv.frame.size.height);
 
 				CGFloat fw = view_fixed_width(sv);
