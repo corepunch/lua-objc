@@ -67,6 +67,7 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #include "table_data_source.m"
 #include "action_target.m"
 #include "runtime.m"
+#include "../shared/flow_layout.m"
 #include "layout.m"
 #include "metatable.m"
 #include "views.m"
@@ -104,6 +105,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_parityDocumentsDirectory", bridge_parity_documents},
 	{"_vstack", bridge_UIKitControls_vstack},
 	{"_hstack", bridge_UIKitControls_hstack},
+	{"_flowStack", bridge_UIKitControls_flowStack},
 	{"_zstack", bridge_UIKitControls_zstack},
 	{"_scrollView", bridge_UIKitControls_scrollView},
 	{"_hsplit", bridge_UIKitControls_hsplit},

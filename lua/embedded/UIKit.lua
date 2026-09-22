@@ -236,6 +236,15 @@ function UIKit.HStack(props)
 	return view
 end
 
+function UIKit.FlowStack(props)
+	local view = bridge._flowStack()
+	if type(props) == "table" then
+		applyLayout(view, props)
+		addChildren(view, props)
+	end
+	return view
+end
+
 local function stackChildren(props, header)
 	local content = {
 		spacing = props.spacing or 8,

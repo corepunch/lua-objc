@@ -109,6 +109,14 @@ static int bridge_UIKitControls_hstack(lua_State *L) {
 	return 1;
 }
 
+static int bridge_UIKitControls_flowStack(lua_State *L) {
+
+	UIView *obj = [[UIView alloc] initWithFrame:CGRectZero];
+	objc_setAssociatedObject(obj, &kAxisKey, @"flow", OBJC_ASSOCIATION_RETAIN);
+	push_objc(L, obj, "uiview");
+	return 1;
+}
+
 static int bridge_UIKitControls_zstack(lua_State *L) {
 	UIView *obj = [[UIView alloc] initWithFrame:CGRectZero];
 	objc_setAssociatedObject(obj, &kAxisKey, @"zstack", OBJC_ASSOCIATION_RETAIN);

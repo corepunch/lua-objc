@@ -316,6 +316,35 @@ static NSSize measure_horizontal_children(NSView *view, LuaLayoutConstraint cons
 	return result;
 }
 
+// Flow children retain their native intrinsic widths. Row breaks are computed
+// from the current proposal, never from a previous layout or an item count.
+static NSSize layout_flow_children(NSView *view, CGFloat width, BOOL place) {
+	NSMutableArray<NSView *> *children = [NSMutableArray array];
+	for (NSView *child in view.subviews) if (!child.hidden) [children addObject:child];
+	CGSize *sizes = calloc(MAX(1, children.count), sizeof(CGSize));
+	CGRect *frames = place ? calloc(MAX(1, children.count), sizeof(CGRect)) : NULL;
+	for (NSUInteger i = 0; i < children.count; i++) {
+		NSView *child = children[i];
+		sizes[i] = measure_view(child, (LuaLayoutConstraint){.width = width,
+			.widthMode = width < CGFLOAT_MAX ? LuaMeasureAtMost : LuaMeasureUndefined,
+			.heightMode = LuaMeasureUndefined});
+	}
+	CGSize result = flow_layout(sizes, frames, children.count, width, view_spacing(view));
+	if (place) {
+		BOOL rtl = view.userInterfaceLayoutDirection == NSUserInterfaceLayoutDirectionRightToLeft;
+		for (NSUInteger i = 0; i < children.count; i++) {
+			CGRect frame = frames[i];
+			frame.origin.x = view_padding_edge(view, YES) + (rtl ? width - CGRectGetMaxX(frame) : frame.origin.x);
+			CGFloat top = view_padding_top(view) + frame.origin.y;
+			frame.origin.y = view.isFlipped ? top : view.bounds.size.height - top - frame.size.height;
+			children[i].frame = frame;
+			layout_recursive(children[i], frame.size.width);
+		}
+	}
+	free(sizes); free(frames);
+	return result;
+}
+
 static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 	if (!view) return NSZeroSize;
 
@@ -351,6 +380,11 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		natural.width += (padX + padRight);
 		natural.height += padY;
 	} break;
+	case LayoutAxisFlow:
+		natural = layout_flow_children(view, constraint.widthMode == LuaMeasureUndefined ? CGFLOAT_MAX : innerWidth, NO);
+		natural.width += padX + padRight;
+		natural.height += padY;
+		break;
 	case LayoutAxisHStack: {
 		NSSize *sizes = calloc(MAX(1, view.subviews.count), sizeof(NSSize));
 		natural = measure_horizontal_children(view, (LuaLayoutConstraint){
@@ -704,6 +738,9 @@ static void layout_recursive(NSView *view, CGFloat width) {
 		NSString *alignment = view_alignment(view);
 
 		switch (axis) {
+		case LayoutAxisFlow:
+			layout_flow_children(view, MAX(0, contentW), YES);
+			break;
 		case LayoutAxisVStack: {
 			NSUInteger count = view.subviews.count;
 			if (count == 0) return;

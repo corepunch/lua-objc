@@ -123,6 +123,33 @@ static CGSize measure_horizontal_children(UIView *view, CGSize proposal, CGSize 
 	return result;
 }
 
+// Flow children retain their native intrinsic widths. Row breaks are computed
+// from the current proposal, never from a previous layout or an item count.
+static CGSize layout_flow_children(UIView *view, CGFloat width, BOOL place) {
+	NSMutableArray<UIView *> *children = [NSMutableArray array];
+	for (UIView *child in view.subviews) if (!child.hidden) [children addObject:child];
+	CGSize *sizes = calloc(MAX(1, children.count), sizeof(CGSize));
+	CGRect *frames = place ? calloc(MAX(1, children.count), sizeof(CGRect)) : NULL;
+	for (NSUInteger i = 0; i < children.count; i++) {
+		UIView *child = children[i];
+		sizes[i] = measure_size(child, CGSizeMake(width, CGFLOAT_MAX));
+	}
+	CGSize result = flow_layout(sizes, frames, children.count, width, view_spacing(view));
+	if (place) {
+		BOOL rtl = view.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
+		for (NSUInteger i = 0; i < children.count; i++) {
+			CGRect frame = frames[i];
+			frame.origin.x = view_padding_edge(view, YES) + (rtl ? width - CGRectGetMaxX(frame) : frame.origin.x);
+			CGFloat top = view_padding_top(view) + frame.origin.y;
+			frame.origin.y = top;
+			children[i].frame = frame;
+			layout_recursive(children[i], frame.size.width);
+		}
+	}
+	free(sizes); free(frames);
+	return result;
+}
+
 /* Measurement accepts a proposal; it never inherits the previous frame.
  * The same negotiation is used during placement so wrapped text has one size. */
 static CGSize measure_size(UIView *view, CGSize proposal) {
@@ -138,7 +165,9 @@ static CGSize measure_size(UIView *view, CGSize proposal) {
 		CGFloat padY = view_padding_top(view) + view_padding_bottom(view);
 		CGSize inner = CGSizeMake(MAX(0, proposal.width - padX), MAX(0, proposal.height - padY));
 		NSUInteger count = 0;
-		if ([axis isEqualToString:@"hstack"]) {
+		if ([axis isEqualToString:@"flow"]) {
+			size = layout_flow_children(view, inner.width, NO);
+		} else if ([axis isEqualToString:@"hstack"]) {
 			CGSize *sizes = calloc(MAX(view.subviews.count, 1), sizeof(CGSize));
 			size = measure_horizontal_children(view, inner, sizes);
 			free(sizes);
@@ -203,6 +232,11 @@ static void layout_recursive(UIView *view, CGFloat width) {
 	CGFloat availableWidth = view.bounds.size.width > 0
 		? view.bounds.size.width : width;
 	CGFloat availableHeight = view.bounds.size.height;
+
+	if ([axis isEqualToString:@"flow"]) {
+		layout_flow_children(view, MAX(0, availableWidth - view_padding_edge(view, YES) - view_padding_edge(view, NO)), YES);
+		return;
+	}
 
 	if ([axis isEqualToString:@"vstack"] || [axis isEqualToString:@"hstack"] ||
 		[axis isEqualToString:@"zstack"] ||

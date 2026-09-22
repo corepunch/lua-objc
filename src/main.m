@@ -212,6 +212,7 @@ static void bridge_set_optional_callback(
 #include "appkit/presentation.m"
 #include "appkit/text_field.m"
 #include "appkit/views.m"
+#include "shared/flow_layout.m"
 #include "appkit/layout.m"
 #include "appkit/layout_debug.m"
 #include "appkit/controls.m"
@@ -238,6 +239,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"Rect", bridge_NSRect},
 	{"_vstack", bridge_AppKitControls_vstack},
 	{"_hstack", bridge_AppKitControls_hstack},
+	{"_flowStack", bridge_AppKitControls_flowStack},
 	{"_zstack", bridge_AppKitControls_zstack},
 	{"_scrollView", bridge_AppKitControls_scrollView},
 	{"_hsplit", bridge_AppKitControls_hsplit},

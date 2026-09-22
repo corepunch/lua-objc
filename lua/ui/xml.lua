@@ -418,6 +418,10 @@ local TAG_SCHEMA = {
             reorder_container = "str",
         },
     },
+    FlowStack = {
+        constructor = "FlowStack",
+        children = "array",
+    },
     HStack = {
         constructor = "HStack",
         children    = "array",

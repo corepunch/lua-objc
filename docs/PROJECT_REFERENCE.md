@@ -550,6 +550,16 @@ ns.VStack {
 }
 ```
 
+### `FlowStack{...}`
+
+Packs native child views into horizontal rows and wraps when the next child
+cannot fit the available width. Rows start at the leading edge; children are
+vertically centered within each row. `spacing` applies between items and rows,
+and `padding` adds explicit outer margins. Hidden children consume no space.
+Use `fillWidth = true` to wrap against the parent's available width. Resizing
+reflows the existing controls without recreating them. Available on AppKit and
+UIKit, including the `<FlowStack>` etlua tag.
+
 ### `ScrollView{...}`
 
 Creates a native scroll view around one content view. It scrolls vertically by
@@ -1301,6 +1311,7 @@ Templates use the `.etlua` extension to reflect that they contain etlua
 | `<TextField>` | `ns.TextField` | `ns.TextField` |
 | `<Button title="…">` | `ns.Button` | `ns.Button` |
 | `<VStack>` / `<HStack>` | flex containers | flex containers |
+| `<FlowStack>` | wrapping rows of native views | wrapping rows of native views |
 | `<HSplit>` | `ns.HSplit` (NSSplitView) | — |
 | `<Slider>` | `ns.Slider` (`NSSlider`) | — |
 | `<Stepper>` | `ns.Stepper` (`NSStepper`) | — |

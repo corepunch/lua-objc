@@ -118,6 +118,7 @@ typedef NS_ENUM(NSInteger, LayoutAxis) {
 	LayoutAxisZStack,
 	LayoutAxisHSplit,
 	LayoutAxisVSplit,
+	LayoutAxisFlow,
 };
 
 static LayoutAxis layout_axis(NSView *view) {

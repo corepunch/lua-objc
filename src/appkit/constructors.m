@@ -53,6 +53,14 @@ static int bridge_AppKitControls_hstack(lua_State *L) {
 	return 1;
 }
 
+static int bridge_AppKitControls_flowStack(lua_State *L) {
+
+	NSView *obj = [[LuaStackView alloc] initWithFrame:NSZeroRect];
+	objc_setAssociatedObject(obj, &kKeys[kAxisKey], @(LayoutAxisFlow), OBJC_ASSOCIATION_RETAIN);
+	push_objc(L, obj, "nsview");
+	return 1;
+}
+
 static int bridge_AppKitControls_zstack(lua_State *L) {
 	NSView *obj = [[LuaStackView alloc] initWithFrame:NSZeroRect];
 	objc_setAssociatedObject(obj, &kKeys[kAxisKey], @(LayoutAxisZStack), OBJC_ASSOCIATION_RETAIN);
