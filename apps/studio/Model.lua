@@ -21,6 +21,14 @@ local function migrateSavedFiles(files)
 			canonical = PREFIX .. path:sub(#SAVED_PREFIX + 1)
 			changed = true
 		end
+		if type(source) == "string" then
+			local current = source:gsub("examples%.playground", "apps.playground")
+			current = current:gsub("examples/playground", "apps/playground")
+			if current ~= source then
+				source = current
+				changed = true
+			end
+		end
 		if migrated[canonical] ~= nil then
 			return nil, false, "Saved project has conflicting paths after moving to apps/playground: " .. canonical
 		end
