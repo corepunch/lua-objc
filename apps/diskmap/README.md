@@ -11,6 +11,9 @@ make
 make diskmap-app
 ```
 
+Every launch inventories the whole disk from scratch. Diskmap has no directory
+argument, saved-inventory replay, or scan-result cache.
+
 `Catalog.lua` composes independent providers in `catalog/` into the macOS knowledge tree: more than 140 named resources,
 including Xcode runtimes, devices, bundled SDKs, archives, package managers,
 AI coding tools, system assets, app support, backups, media and boot data.
@@ -22,24 +25,15 @@ separate totals. Unrecognized classes remain in an explicit residual bucket.
 Rounded semantic badges use white SF Symbols; app-owned resources use artwork
 resolved from installed application bundles, with a symbol fallback.
 
-## Fast repeatable UI tests
+## Fresh measurements
 
-```sh
-# Save real measurements and scanner diagnostics after each complete scan.
-./lua-objc apps/diskmap/init.lua --write-cache=/tmp/diskmap.json
-# Replay without filesystem scans or cleanup; missing/bad caches show an error.
-./lua-objc apps/diskmap/init.lua -cache=/tmp/diskmap.json
-# Bundled synthetic fixture, never presented as measurements of your computer:
-./lua-objc --screenshot=/tmp/diskmap.png apps/diskmap/init.lua \
-  -cache=tests/fixtures/diskmap.json
-```
+Every startup and refresh recalculates the inventory. Each pending category
+shows a native spinner and “Calculating…” in place of its size, then displays
+its fresh result once all of its locations finish. No scan results or diagnostics
+are retained between launches. Only Keep choices and the background-check setting persist.
 
-Cache files must match the current catalog version (3); regenerate older caches. They contain JSON, ID-keyed measurements, capacity, completion time, entry count,
-duration and up to 1,000 access-failure paths. Only `--write-cache` saves a scan to the specified destination. Cache files are
-parsed as data, never executed. Both `-cache=` and `--cache=` work after the app
-path. Cache mode disables background checks and cleanup actions, and is visibly
-labeled. It does not overwrite the supplied cache. The fixture has invented sizes
-for visual verification. Normal startup never restores cached measurements. Startup and refresh replace each pending category’s size with a native spinner and “Calculating…”, then show its fresh result once all of its locations finish.
+Headless tests inject scanner results through the service interface, without
+reading saved inventories, opening windows, or waiting for live disk scans.
 
 ## Measurement and actions
 
@@ -74,13 +68,13 @@ The app and framework changes are described in [DESIGN.md](DESIGN.md).
 The root controller composes six small controllers: scan lifecycle, category
 presentation, cleanup, contextual tips, inspector actions, and settings. Their
 models contain no native controls. Services are injected, so tests can exercise
-cancellation, persistence failures, action routing and cache replay independently.
+cancellation, preference persistence failures, action routing and fresh startup independently.
 
 | Module | Owns |
 | --- | --- |
 | `catalog/` | Independent category definitions, paths, ownership and consequences |
 | `Model.lua` | Indexed inventory state and byte aggregation |
-| `models/Inventory.lua` | Scan plans, measurement transitions and snapshots |
+| `models/Inventory.lua` | Scan plans, measurement transitions and current diagnostics |
 | `models/Categories.lua` | Category queries and capacity distribution |
 | `models/Cleanup.lua`, `knowledge/CleanupRules.lua` | Recognized resources, review thresholds, evidence and tailored advice |
 | `models/Tips.lua` | Contextual access, capacity, Keep and system-storage guidance |

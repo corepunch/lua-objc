@@ -1,4 +1,3 @@
-local Catalog = require("apps.diskmap.Catalog")
 local Inventory = {}
 -- Always use one complete batch: hard links must keep a single owner across refreshes.
 function Inventory.plan(model)
@@ -53,13 +52,4 @@ function Inventory.apply(model, ids, result)
 	end
 end
 
-function Inventory.snapshot(model, disk)
-	return {version = Catalog.version, measurements = model.measurements, disk = disk, scan = model.scan}
-end
-function Inventory.restore(model, data)
-	for id, m in pairs(data.measurements) do
-		if model.byId[id] and not model.byId[id].children then model.measurements[id] = m end
-	end
-	model.scan = data.scan or {}
-end
 return Inventory

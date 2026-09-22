@@ -5,20 +5,6 @@ function Scan.new(model, service, home, changed)
 		generation = 0, status = "Preparing a complete storage inventory."}, Scan)
 end
 function Scan:notify() self.changed() end
-function Scan:configure(cachePath, writeCache)
-	self.cachePath = cachePath
-	if cachePath then
-		local data, err = self.service.readCache(cachePath)
-		if data then
-			Inventory.restore(self.model, data); self.disk = data.disk
-			self.status = data.fixture and "Synthetic fixture · scanning and cleanup disabled" or "Saved scan · scanning and cleanup disabled"
-			if not data.fixture and self.model.scan.completedAt then self.status = self.status .. " · " .. os.date("%d %b %H:%M", self.model.scan.completedAt) end
-		else self.status = "Cache could not be loaded: " .. tostring(err) end
-	else
-		self.writeCache = writeCache
-		self.disk = self.service.diskSpace(self.home)
-	end
-end
 function Scan:cancel(silent)
 	self.generation = self.generation + 1
 	if self.job then self.job.cancelled = true; self.service.cancel(self.job); self.job = nil end
@@ -26,7 +12,6 @@ function Scan:cancel(silent)
 	if not silent then self.status = "Measurement cancelled; completed locations retained."; self:notify() end
 end
 function Scan:start()
-	if self.cachePath then return end
 	self:cancel(true)
 	local paths, ids, exclusions = Inventory.plan(self.model)
 	if #paths == 0 then return end
@@ -43,10 +28,6 @@ function Scan:start()
 		self.job = nil; Inventory.apply(self.model, ids, result)
 		self.disk = self.service.diskSpace(self.home)
 		self.status = result.failure and result.failure ~= "" and result.failure or "Measured " .. os.date("%H:%M") .. " · " .. (result.errors or 0) .. " unavailable locations"
-		if self.writeCache and self.service.writeCache then
-			local saved, err = self.service.writeCache(self.writeCache, Inventory.snapshot(self.model, self.disk))
-			if not saved then self.status = self.status .. " · Cache not saved: " .. tostring(err) end
-		end
 		self:notify()
 	end, function(progress)
 		if generation ~= self.generation or not progress or not progress.total then return end

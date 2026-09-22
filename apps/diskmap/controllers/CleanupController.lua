@@ -19,9 +19,9 @@ function Controller:presentation()
 	for _, row in ipairs(rows) do actions["review_" .. row.id] = function() self.review(row.id) end end
 	return {suggestions = rows, actions = actions}
 end
-function Controller:toggleKeep(id, readOnly)
+function Controller:toggleKeep(id)
 	if not Preferences.toggle(self.model, id) then return false end
-	local saved = readOnly or not self.service.saveKeep or self.service.saveKeep(self.model.kept)
+	local saved = not self.service.saveKeep or self.service.saveKeep(self.model.kept)
 	local message; if not saved then message = "Keep preference could not be saved." end
 	self.changed(message)
 	return saved

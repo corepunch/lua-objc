@@ -40,11 +40,11 @@ local cleanup = CleanupController.new(model, {saveKeep = function() saved = save
 local presentation = cleanup:presentation(); presentation.actions.review_simulators()
 t.assertEqual(selected, "simulators", "review callback keeps resource identity")
 t.assertEqual(#cleanup:rows("unfindable"), 0, "cleanup filter is independent")
-cleanup:toggleKeep("simulators", true)
-t.assertEqual(saved, 0, "cache replay does not persist keep mutations")
+cleanup:toggleKeep("simulators")
+t.assertEqual(saved, 1, "keep change persists the preference")
 t.assertEqual(model.measurements.projects.bytes, 900e9, "keep preserves unrelated measured state")
-cleanup:toggleKeep("simulators", false)
-t.assertEqual(saved, 1, "live keep change saves once")
+cleanup:toggleKeep("simulators")
+t.assertEqual(saved, 2, "unkeep change also saves")
 t.assertEqual(keepMessage, nil, "successful persistence does not report an error")
 t.assertEqual(#cleanup:rows(), 1, "unkeep restores eligible resource")
 t.assertEqual(#Tips.forInventory(model, {totalKb = 100, freeKb = 40}), 1, "ordinary capacity gets the system tip")
@@ -60,47 +60,37 @@ local categories = CategoriesController.new(model, function(id) routed = id end)
 local bar = categories:bar({totalKb = 2e12, freeKb = 1e12})
 bar.actions.category_documents()
 t.assertEqual(routed, "documents", "category navigation is testable without widgets")
-local details = Inspector.details(model, "simulators", true)
+local details = Inspector.details(model, "simulators")
 t.expect(details.text:find("Review threshold", 1, true) ~= nil, "inspector reuses cleanup evidence")
-t.expect(not details.canManage and not details.canMeasure, "saved measurements disable live actions")
+t.expect(details.canManage, "fresh measurement allows live actions")
 local deletes = 0
 local inspector = InspectorController.new(model, {confirmTrash = function() return true end,
 	trash = function() deletes = deletes + 1; return true end}, function() refreshed = refreshed + 1 end)
 model.measurements.derived.bytes = 2e9
-inspector:select("derived", false)
-t.expect(not inspector:manage(true), "read-only action cannot mutate filesystem")
-inspector:manage(false)
+inspector:select("derived")
+inspector:manage()
 t.assertEqual(deletes, 1, "allowed action uses injected filesystem service")
 t.assertEqual(refreshed, 1, "successful mutation requests fresh full inventory")
 model.kept.xcode = true
-t.expect(not inspector:manage(false), "kept ancestor prevents mutation")
+t.expect(not inspector:manage(), "kept ancestor prevents mutation")
 local settings = SettingsController.new({loadSettings = function() return true end, saveSettings = function() return false end})
 t.expect(not settings:toggle() and settings.enabled, "failed setting save preserves previous state")
-local pending, cancelled, writes = {}, 0, 0
+local pending, cancelled = {}, 0
 local scanner = Scan.new(Model.new("/Users/test"), {
 	start = function(paths) local job = {}; pending[#pending + 1] = job; return job end,
 	await = function(job, done, progress) job.done = done; job.progress = progress end,
 	cancel = function() cancelled = cancelled + 1 end,
 	diskSpace = function() return {totalKb = 100, freeKb = 50} end,
-	writeCache = function() writes = writes + 1; return false, "Read-only destination" end,
 }, "/Users/test")
-scanner:configure(nil, "/test/cache"); scanner:start()
+scanner:start()
 pending[1].progress({completed = 3, total = 153})
 t.expect(scanner.status:find("3/153", 1, true) ~= nil, "worker progress is independently observable")
 scanner:start(); local status = scanner.status
 pending[1].progress({completed = 100, total = 153}); pending[1].done({failure = "Old failure"})
 t.assertEqual(scanner.status, status, "cancelled generation cannot overwrite status")
 pending[2].done({failure = "Worker failed"})
-t.assertEqual(writes, 1, "accepted completion writes debug snapshot once")
-t.expect(scanner.status:find("Cache not saved", 1, true) ~= nil, "cache write failure is visible")
+t.assertEqual(scanner.status, "Worker failed", "worker failure is visible")
 scanner:dispose(); t.assertEqual(cancelled, 1, "completed job is not cancelled again")
-local warm = Scan.new(Model.new("/Users/test"), {
-	readCache = function() error("Normal startup must not read cached measurements") end,
-	diskSpace = function() return {totalKb = 100, freeKb = 50} end,
-}, "/Users/test")
-warm:configure(nil, "/test/cache")
-t.assertEqual(warm.model.measurements.derived, nil, "startup has no cached values")
-t.assertEqual(#Cleanup.suggestions(warm.model), 0, "warm cache cannot authorize cleanup until refreshed")
 local failed = Scan.new(model, {start = function() error("Unavailable") end}, "/Users/test")
 failed:start(); t.expect(failed.status:find("Could not start", 1, true) ~= nil, "start failure is visible without a window")
 os.exit(t.summary() and 0 or 1)

@@ -19,11 +19,7 @@ result.trees[index["user-trash"]] = {kb = 0, partial = true}; result.rootStates[
 Inventory.apply(model, ids, result)
 for _, row in ipairs(Categories.rows(model)) do t.expect(row.status ~= "notMeasured", "completed batch attempts " .. row.id) end
 t.assertEqual(model.measurements["user-trash"].status, "partial", "zero with denied descendants remains partial")
-t.assertEqual(model.scan.issues[1].path, "/denied", "debug snapshot retains access evidence")
-local restored = Model.new("/Users/test")
-Inventory.restore(restored, Inventory.snapshot(model, {totalKb = 200, freeKb = 50}))
-t.assertEqual(restored.measurements["apps-system"].bytes, 102400, "inventory cache round trip")
-t.assertEqual(restored.scan.visited, 123, "debug metadata survives replay")
+t.assertEqual(model.scan.issues[1].path, "/denied", "current scan retains access evidence")
 Inventory.apply(model, {"apps-system", "user-trash"}, {failure = "Worker stopped", trees = {{kb = 80}}, rootStates = {"measured"}})
 t.assertEqual(model.measurements["apps-system"].bytes, 81920, "completed roots survive later worker failure")
 t.assertEqual(model.measurements["user-trash"].status, "failed", "unfinished roots have no stale value")
@@ -38,7 +34,8 @@ local f = assert(io.open(a .. "/file", "w")); f:write(string.rep("x", 8192)); f:
 assert(os.execute("/bin/ln " .. System.quote(a .. "/file") .. " " .. System.quote(b .. "/link")))
 assert(os.execute("/bin/ln -s " .. System.quote(a) .. " " .. System.quote(root .. "/alias")))
 local plan, output = root .. "/plan.json", root .. "/result.json"
-System.writeCache(plan, {roots = {a, b, root .. "/missing", root .. "/alias/file"}, exclusions = {}})
+f = assert(io.open(plan, "w"))
+f:write(string.format('{"roots":[%q,%q,%q,%q],"exclusions":[]}', a, b, root .. "/missing", root .. "/alias/file")); f:close()
 assert(os.execute("/usr/bin/perl apps/diskmap/services/scan.pl " .. System.quote(output) .. " 0 " .. System.quote(plan)))
 f = assert(io.open(output)); local scanned = ns.json_parse(f:read("*a")); f:close()
 t.assertEqual(scanned.trees[1].kb + scanned.trees[2].kb, 8, "hard links across category roots count once")
@@ -50,10 +47,4 @@ t.assertEqual(progress.rootStates[3], "missing", "progress preserves missing-loc
 t.assertEqual(scanned.errors, 0, "missing catalog paths do not inflate permission errors")
 t.assertEqual(scanned.rootStates[4], "skipped", "symlink ancestors never escape the scan boundary")
 for _, path in ipairs({a .. "/file", b .. "/link", a, b, root .. "/alias", plan, output, root .. "/progress.json", root}) do os.remove(path) end
-local invalidCache = os.tmpname()
-local snapshot = Inventory.snapshot(model, {totalKb = 200, freeKb = 50})
-snapshot.scan = {completedAt = "invalid"}
-System.writeCache(invalidCache, snapshot)
-t.expect(System.readCache(invalidCache) == nil, "malformed diagnostic timestamp is rejected")
-os.remove(invalidCache)
 os.exit(t.summary() and 0 or 1)

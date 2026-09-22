@@ -350,20 +350,15 @@ snapshot allocation attributable to a file walk.
 Background checks run every 15 minutes while the app is open and the preference
 is enabled. All refresh actions use the same complete ledger, preserving ownership
 across categories. Cancellation is prompt and old generations cannot overwrite
-current results. The native table spinner retains useful previous rows on refresh.
+current results. Each category replaces its size with a native spinner while its fresh measurement is pending.
 
 Do not follow symbolic links, traverse additional mounted filesystems implicitly,
 read personal file contents, or materialize cloud-only files. Application metadata
-reads must be narrowly specified by each adapter. Store inventory summaries,
-rule versions, Keep/Ignore choices, and timestamps locally; do not persist
-sensitive content. Detailed location evidence is on demand and locally retained
-only as needed. No network classification or telemetry is required.
+reads must be narrowly specified by each adapter. Persist only Keep/Ignore choices and the background-check preference. Inventory
+summaries, diagnostics, and timestamps stay in memory for the current launch. No network classification or telemetry is required.
 
-Changes compares compatible snapshots by resource identity, measurement scope,
-and catalog version. Distinguish actual growth from newly granted access or
-reclassification. Show “Newly measured” instead of “Grew by 8 GB” when no valid
-baseline exists. Missing and inaccessible are not proof of deletion. Keep no
-per-file history just to produce a growth dashboard.
+Every launch recalculates the complete inventory. There is no saved-scan replay,
+result cache, or persistent measurement history.
 
 ## Implementation in this repository
 
@@ -406,7 +401,7 @@ automatic arbitrary-owner discovery and richer owner adapters remain future work
 3. **System explanations:** feature assets, boot/recovery, snapshots, permissions,
    and capacity reconciliation. Add only version-validated feature destinations.
 4. **Routine maintenance:** reviewed cleanup plans, persistent preferences,
-   compatible snapshot comparisons, growth explanations, and post-action results.
+   fresh measurements and post-action results.
 
 Each stage must be useful without implying that later catalog coverage exists.
 Broad application/media ownership is added through the same catalog contracts,
@@ -425,7 +420,7 @@ and injected fixtures. Tests must cover:
   classifications; none silently becomes zero or a cleanup candidate.
 - Xcode runtime/device/SDK distinctions, retained dependencies, and AI-tool
   histories, settings, generated work, and worktrees excluded from cache cleanup.
-- Keep/Ignore round trips; newly measured versus grown; catalog-version changes;
+- Keep/Ignore round trips; fresh measurements on every launch;
   cancellation, late callbacks, and invalidation after a mutation.
 - Exact action plans, replaced targets, symlink ancestors, active-owner refusal,
   mixed outcomes, and preserved unrelated resources. Use fake action services;

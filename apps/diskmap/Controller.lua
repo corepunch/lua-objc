@@ -50,12 +50,11 @@ function Controller:updateRows()
 end
 function Controller:select(id, scroll)
 	if not self.refs or not self.refs.detailName then return end
-	local data = self.inspector:select(id, self.scan.cachePath)
+	local data = self.inspector:select(id)
 	if not data then return end
 	self.refs.detailName.text = data.name; self.refs.detailText.text = data.text
 	self.refs.location.text = data.location
 	self.refs.manage.title = data.manageTitle; self.refs.manage.enabled = data.canManage
-	self.refs.measure.enabled = data.canMeasure
 	self.refs.keep.enabled = true; self.refs.keep.title = data.keepTitle
 	self.refs.inspector.hidden = false; self.refs.inspector:layout()
 	if scroll ~= false then self.refs.detailName:scrollIntoView() end
@@ -81,8 +80,8 @@ function Controller:showSection(section, rootId)
 		subtitle = root and root.subtitle or "Understand what is stored, why it exists, and how to manage it.", icon = root and root.icon or "chart.pie.fill", color = root and root.color or "systemBlue",
 		coverage = self.categories:coverage(self.scan.disk), status = self.scan.status, actions = {
 			measure = function() self.scan:start() end,
-			manage = function() self.inspector:manage(self.scan.cachePath) end,
-			keep = function() self.cleanup:toggleKeep(self.inspector.selectedId, self.scan.cachePath) end,
+			manage = function() self.inspector:manage() end,
+			keep = function() self.cleanup:toggleKeep(self.inspector.selectedId) end,
 		}})
 	self.refs = refs
 	ns.Scope.withScope(self.page.scope, function()
@@ -95,13 +94,8 @@ function Controller:showSection(section, rootId)
 	self:updateRows()
 end
 function Controller:createWindow()
-	local cachePath, writeCache
-	for _, value in ipairs(arg or {}) do
-		cachePath = value:match("^%-%-?cache=(.+)$") or cachePath
-		writeCache = value:match("^%-%-write%-cache=(.+)$") or writeCache
-	end
-	self.scan:configure(cachePath, writeCache)
-	if not cachePath and self.service.loadKeep then
+	self.scan.disk = self.service.diskSpace(self.scan.home)
+	if self.service.loadKeep then
 		for id, kept in pairs(self.service.loadKeep()) do if self.model.byId[id] and kept == true then self.model.kept[id] = true end end
 	end
 	local cfg, windowRefs = render("Window", {capacity = self.categories:capacity(self.scan.disk),
@@ -120,12 +114,12 @@ function Controller:createWindow()
 	self.navigation:onRowSelect(function(_, _, row) if row and row.name ~= self.section then self:showSection(row.name) end end)
 	self.window = ns.Window(cfg); self.toolbarTitle = windowRefs.toolbarTitle; self.capacity = windowRefs.capacity
 	self:showSection("Storage")
-	if not cachePath then self.scan:start() end
+	self.scan:start()
 	local scope = ns.Scope.current()
 	if scope then scope:add(self.scan); scope:add({dispose = function() if self.page then self.page:dispose() end end}) end
-	if not cachePath then self.service.monitor(function() return self.window.visible end, function()
+	self.service.monitor(function() return self.window.visible end, function()
 		if self.settings.enabled and not self.scan.job then self.scan:start() end
-	end) end
+	end)
 	return self.window
 end
 return Controller

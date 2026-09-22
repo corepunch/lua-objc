@@ -51,11 +51,11 @@ end
 t.assertEqual(targets["home-other"], "/Users/test", "unrecognized home files are measured")
 t.assertEqual(targets["root-system"], "/", "root residual closes inventory gaps")
 t.assertEqual(model.measurements.snapshots.status, "unsupported", "snapshot allocation is explicitly system managed")
-local cache = assert(System.readCache("tests/fixtures/diskmap.json"))
-t.expect(cache.fixture, "example values are identified as fixtures")
 local chartModel = Model.new("/Users/test")
-chartModel.measurements = cache.measurements
-local segments = Categories.distribution(chartModel, cache.disk)
+chartModel.measurements["apps-system"] = {bytes = 58e9, status = "complete"}
+chartModel.measurements.derived = {bytes = 4.9e9, status = "complete"}
+local disk = {totalKb = 494e9 / 1024, freeKb = 157e9 / 1024}
+local segments = Categories.distribution(chartModel, disk)
 local sum = 0
 for _, segment in ipairs(segments) do sum = sum + segment.weight end
 t.expect(math.abs(sum - 1) < 0.000001, "breakdown accounts for all capacity")
@@ -64,12 +64,8 @@ t.assertEqual(segments[2].color, "systemPurple", "developer retains purple categ
 t.assertEqual(segments[#segments].bytes, 157e9, "free space represented separately")
 t.expect(segments[#segments-1].bytes > 0, "unclassified and other bytes remain visible")
 t.assertEqual(#Categories.distribution(chartModel, {totalKb = 1, freeKb = 0}), 0, "overcount does not fabricate a capacity chart")
-local temp = os.tmpname()
-t.expect(System.writeCache(temp, cache), "cache writes")
-t.assertEqual(assert(System.readCache(temp)).measurements.derived.bytes, 4.9e9, "cache round trip")
-os.remove(temp)
 local startCalls = 0
-local service = {readCache = System.readCache, start = function() startCalls = startCalls + 1; return {} end,
+local service = {monitor = function() end, start = function() startCalls = startCalls + 1; return {} end,
 	await = function(job, completion) job.complete = completion end,
 	cancel = function() end, diskSpace = function() return {totalKb = 10000, freeKb = 5000} end}
 local app = Controller.new(service)
@@ -88,11 +84,10 @@ old.complete(measuredResult("derived", 200))
 t.assertEqual(app.model.measurements.derived.status, "calculating", "late completion cannot change pending measurement")
 current.complete(measuredResult("npm", 300))
 t.assertEqual(app.model.measurements.npm.bytes, 307200, "current result accepted")
-app.scan.cachePath = "test"; app.scan:start(); t.assertEqual(startCalls, 2, "cache mode never scans")
-local savedArgs = arg; arg = {"-cache=tests/fixtures/diskmap.json"}
 local ui = Controller.new(service)
 local window = ui:createWindow()
-t.assertEqual(startCalls, 2, "cache startup does not scan")
+t.assertEqual(startCalls, 3, "every window launch starts a fresh scan")
+ui.scan.job.complete(measuredResult("derived", 4900000))
 t.expect(ui.capacity ~= nil, "capacity label retained from toolbar")
 t.expect(ui.toolbarTitle ~= nil, "toolbar title ref retained")
 t.assertEqual(ui.capacity.text, ui.categories:capacity(ui.scan.disk), "toolbar shows measured capacity")
@@ -120,7 +115,7 @@ ui:updateRows(); t.expect(atTop(), "unchanged model preserves scroll position")
 t.assertEqual(ui.refs.categoriesPane.frame.size.width - ui.refs.coveragePanel.frame.size.width, 16, "coverage panel keeps trailing divider inset")
 ui:select("developer")
 t.expect(not ui.refs.inspector.hidden, "selection exposes the inspector")
-t.expect(not ui.refs.measure.enabled, "cache selection keeps measurement disabled")
+t.expect(ui.refs.measure.enabled, "selection allows a fresh measurement")
 local sizeCell = bridge._tableCell(ui.refs.results, 1, 0)
 t.assertEqual(sizeCell.textField.alignment, 2, "Diskmap values use native right alignment")
 t.expect(sizeCell.loadingIndicator.hidden, "loaded category has no spinner")
@@ -138,7 +133,7 @@ window.size = ns.Size(1000, 640); window:layout()
 local dashboard = ui.content.subviews[1]
 t.expect(dashboard.frame.origin.y >= 0, "small window keeps dashboard within content")
 t.expect(ui.refs.results.contentView.clipsToBounds, "outline rows clip within native scroll viewport")
-window:close(); arg = savedArgs
+window:close()
 -- Real scanner: parent residual excludes named children and hard links count once.
 local pipe = assert(io.popen("/usr/bin/mktemp -d /private/tmp/diskmap-test.XXXXXXXX"))
 local root = pipe:read("*l"); pipe:close()
@@ -148,7 +143,8 @@ local f = assert(io.open(hostile, "w")); f:write(string.rep("x", 8192)); f:close
 os.execute("/bin/ln " .. System.quote(hostile) .. " " .. System.quote(root .. "/cache/link"))
 os.execute("/bin/ln -s / " .. System.quote(root .. "/outside"))
 local plan, output = root .. ".plan", root .. "/result.json"
-System.writeCache(plan, {roots = {root, root .. "/cache"}, exclusions = {root, root .. "/cache"}})
+f = assert(io.open(plan, "w"))
+f:write(string.format('{"roots":[%q,%q],"exclusions":[%q,%q]}', root, root .. "/cache", root, root .. "/cache")); f:close()
 t.expect(os.execute("/usr/bin/perl apps/diskmap/services/scan.pl " .. System.quote(output) .. " 0 " .. System.quote(plan)), "inventory scanner finishes")
 f = assert(io.open(output)); local scanned = ns.json_parse(f:read("*a")); f:close()
 t.assertEqual(scanned.trees[2].kb, 8, "hard links have one allocation")
@@ -170,8 +166,4 @@ t.assertEqual(rolled[2].bytes, 1200, "Siri has independent measured total")
 t.assertEqual(rolled[3].bytes, 800, "Dictation has independent measured total")
 t.assertEqual(rolled[2].status, "partial", "unmeasured asset classes remain explicit")
 t.assertEqual(#Cleanup.suggestions(features), 0, "system feature data is never a cleanup suggestion")
-cache.version = 1
-System.writeCache(temp, cache)
-t.expect(System.readCache(temp) == nil, "old unsplit catalog cache is rejected")
-os.remove(temp)
 os.exit(t.summary() and 0 or 1)

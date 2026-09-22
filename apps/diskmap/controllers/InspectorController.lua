@@ -4,14 +4,14 @@ local Controller = {}; Controller.__index = Controller
 function Controller.new(model, service, refresh)
 	return setmetatable({model = model, service = service, refresh = refresh}, Controller)
 end
-function Controller:select(id, readOnly)
-	local data = Inspector.details(self.model, id, readOnly)
+function Controller:select(id)
+	local data = Inspector.details(self.model, id)
 	if data then self.selectedId = id end
 	return data
 end
-function Controller:manage(readOnly)
+function Controller:manage()
 	local row = self.model.byId[self.selectedId]
-	if not row or row.children or readOnly then return false end
+	if not row or row.children then return false end
 	if row.action == "trash" then
 		if not Preferences.canTrash(self.model, row.id) or not self.service.confirmTrash(row) then return false end
 		local ok, err = self.service.trash(row.path)

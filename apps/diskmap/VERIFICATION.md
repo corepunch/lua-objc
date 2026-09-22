@@ -1,3 +1,9 @@
+# Cache removal — September 22, 2026
+
+Saved-inventory replay and scan-result persistence have been removed. Every
+launch starts a fresh scan; tests inject current scanner responses directly.
+The earlier verification notes below describe historical implementations.
+
 # Category redesign verification — September 21, 2026
 
 - `make` and `make diskmap-app` pass; the bundle has a local ad-hoc signature.
@@ -11,7 +17,7 @@
 - Bridge: 189 assertions pass. Outline sizing now tests the native cell's
   extent rather than assuming declared column width includes AppKit insets.
 - Scroll content layout: 12 assertions pass.
-- Screenshot QA used `tests/fixtures/diskmap.json`, explicitly synthetic and
+- Screenshot QA used a saved synthetic inventory (since removed), explicitly synthetic and
   visibly labeled as test cache. Inspected small/large windows, light/dark,
   expanded Developer, selection, Settings, empty search and native loading.
 - Native layout dumps confirmed the dashboard remains inside the minimum-size

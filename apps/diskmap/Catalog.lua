@@ -1,5 +1,5 @@
 -- Compose domain providers; IDs and exact paths form the ownership ledger.
-local Catalog = {version = 3}
+local Catalog = {}
 local providers = {
 	(require("apps.diskmap.catalog.Applications")),
 	(require("apps.diskmap.catalog.Developer")),

@@ -13,30 +13,6 @@ local function json(value)
 	for k, v in pairs(value) do out[#out + 1] = json(k) .. ":" .. json(v) end
 	return "{" .. table.concat(out, ",") .. "}"
 end
-function System.writeCache(path, data)
-	local f, err = io.open(path .. ".tmp", "w"); if not f then return false, err end
-	f:write(json(data)); f:close(); return os.rename(path .. ".tmp", path)
-end
-function System.readCache(path)
-	local f, err = io.open(path, "r"); if not f then return nil, err end
-	local body = f:read("*a"); f:close()
-	local ok, data = pcall(ns.json_parse, body)
-	if not ok or type(data) ~= "table" or data.version ~= require("apps.diskmap.Catalog").version or type(data.measurements) ~= "table" then return nil, "Invalid Diskmap cache" end
-	local statuses = {complete = true, partial = true, denied = true, failed = true, notMeasured = true, unsupported = true, skipped = true}
-	for id, m in pairs(data.measurements) do
-		if type(id) ~= "string" or type(m) ~= "table" or (m.bytes ~= nil and (type(m.bytes) ~= "number" or m.bytes < 0 or m.bytes ~= m.bytes or m.bytes == math.huge)) or not statuses[m.status] then return nil, "Invalid measurements" end
-	end
-	if data.scan ~= nil then
-		if type(data.scan) ~= "table" then return nil, "Invalid scan diagnostics" end
-		for _, field in ipairs({"completedAt", "visited", "seconds", "errors"}) do
-			local value = data.scan[field]
-			if value ~= nil and (type(value) ~= "number" or value < 0 or value ~= value or value >= math.huge) then return nil, "Invalid scan diagnostics" end
-		end
-		if data.scan.completedAt and data.scan.completedAt > 253402300799 then return nil, "Invalid scan timestamp" end
-	end
-	if data.disk and (type(data.disk) ~= "table" or type(data.disk.totalKb) ~= "number" or type(data.disk.freeKb) ~= "number" or data.disk.totalKb <= 0 or data.disk.freeKb < 0 or data.disk.freeKb > data.disk.totalKb) then return nil, "Invalid cached capacity" end
-	return data
-end
 function System.loadKeep()
 	local f = io.open((os.getenv("HOME") or "") .. "/Library/Application Support/Diskmap/kept.json", "r")
 	if not f then return {} end
@@ -47,7 +23,10 @@ end
 function System.saveKeep(kept)
 	local directory = (os.getenv("HOME") or "") .. "/Library/Application Support/Diskmap"
 	if not os.execute("/bin/mkdir -p " .. System.quote(directory)) then return false end
-	return System.writeCache(directory .. "/kept.json", kept)
+	local path = directory .. "/kept.json"
+	local file = io.open(path .. ".tmp", "w"); if not file then return false end
+	file:write(json(kept)); file:close()
+	return os.rename(path .. ".tmp", path)
 end
 function System.start(paths, exclusions)
 	local pipe = assert(io.popen("/usr/bin/mktemp -d /tmp/diskmap.XXXXXXXX"))
