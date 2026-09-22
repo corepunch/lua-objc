@@ -1,0 +1,18 @@
+<Window title="<%= title %>" width="480" height="720">
+	<NavigationStack ref="stack" title="<%= title %>">
+		<VStack padding="24" spacing="16" alignment="center">
+			<Image system="<%= image %>" size="64" label="Cover" />
+			<Label text="Tap the cover to zoom into detail." size="13" color="secondary" />
+			<Image source="<%= image %>" resizable="true" scaledToFill="true"
+			       width="300" height="400" cornerRadius="20"
+			       matchedTransitionSourceId="cover" namespace="ns"
+			       onTap="openCover" />
+		</VStack>
+		<NavigationDestination isPresented="showDetail" sourceId="cover"
+		                       namespace="ns" navigationTransition="zoom">
+			<Image source="<%= image %>" resizable="true" scaledToFill="true"
+			       navigationTransition="zoom" sourceId="cover" namespace="ns"
+			       toolbarVisibility="hidden" ignoresSafeArea="true" />
+		</NavigationDestination>
+	</NavigationStack>
+</Window>
