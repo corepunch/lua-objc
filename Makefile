@@ -207,6 +207,16 @@ clean:
 screenshot: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) --screenshot=$(or $(OUT),/tmp/screenshot.png) $(ARGS)
 
+DOC_SRC = lua/embedded/AppKit.lua
+DOC_OUT = docs/reference/generated
+
+docs:
+	python3 scripts/docs/generate.py --src $(DOC_SRC) --out $(DOC_OUT)
+	python3 -m mkdocs build
+
+docs-check:
+	python3 scripts/docs/generate.py --src $(DOC_SRC) --check
+
 parity-check:
 	python3 scripts/parity/validate_manifest.py
 
@@ -223,7 +233,7 @@ parity-report: parity-check
 		$(if $(REFERENCE_PNG),--reference-png "$(REFERENCE_PNG)") \
 		--out "build/parity/macos/$(CASE)/report.json" --strict
 
-.PHONY: all uikit run clean test parity-check parity-case parity-report run-hello run-list run-live run-weather run-welcome run-mail run-layout run-diskmap screenshot ios-host ios-packager ios-packager-run ios-run ios-internal-screenshot ios-screenshot ios ios-reset
+.PHONY: all uikit run clean test docs docs-check parity-check parity-case parity-report run-hello run-list run-live run-weather run-welcome run-mail run-layout run-diskmap screenshot ios-host ios-packager ios-packager-run ios-run ios-internal-screenshot ios-screenshot ios ios-reset
 
 # Standalone iPad development app (no Mac packager required).
 .PHONY: ipad ipad-simulator ipad-run ipad-deploy list-devices

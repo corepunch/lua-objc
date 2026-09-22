@@ -348,6 +348,21 @@ function AppKit.TabView(props)
 	return applyLayout(tv, props)
 end
 
+--- A view that arranges its subviews in a vertical line.
+---
+--- Children in the array part stack top-to-bottom with 8pt sibling
+--- spacing and no implicit outer padding. Set `padding` explicitly when
+--- the group needs margins. Hidden children consume no space and add no
+--- spacing.
+--- @tag VStack
+--- @prop spacing number optional. Sibling spacing in points.
+--- @prop padding number optional. Explicit outer margins.
+--- @prop alignment string optional. Cross-axis alignment.
+--- @prop fillWidth boolean optional. Expand to the parent width.
+--- @prop fillHeight boolean optional. Expand to the parent height.
+--- @platform AppKit NSView (vertical layout). UIKit UIView (vertical layout).
+--- @example ns.VStack { ns.Text "Line 1", ns.Text "Line 2" }
+--- @see HStack, ZStack, FlowStack, Spacer
 function AppKit.VStack(props)
 	local view = bridge._vstack()
 	if type(props) == "table" then
@@ -590,6 +605,25 @@ function AppKit.ForEach(data, content)
 	return views
 end
 
+--- A view that displays one or more lines of read-only text.
+---
+--- Accepts a plain string or a table whose first element is the string.
+--- Use `size` and `weight` for hierarchy; prefer system typography over
+--- hard-coded custom fonts. Long text wraps under the parent width
+--- proposal unless `lineLimit` truncates it.
+--- @tag Text
+--- @prop [1] string required. Label content.
+--- @prop size number optional. System font size in points.
+--- @prop weight string optional. System font weight (e.g. "bold", "semibold").
+--- @prop color string optional. Semantic system color name.
+--- @prop alignment string optional. One of "leading", "center", "trailing".
+--- @prop lineLimit number optional. Maximum lines; 0 means unlimited.
+--- @prop truncation string optional. One of "head", "middle", "tail".
+--- @prop wrapping string optional. "word" (default) or "character".
+--- @platform AppKit NSTextField (non-editable, bezel-less). UIKit UILabel.
+--- @example ns.Text "Hello"
+--- @example ns.Text { "Hello", size = 16, weight = "bold" }
+--- @see Title, Label, TextField
 function AppKit.Text(arg)
 	local text, size, weight
 	if type(arg) == "table" then
@@ -879,6 +913,24 @@ function AppKit.ToolbarItem(window, identifier)
 	return item
 end
 
+--- A push button backed by a native button control.
+---
+--- The optional `action` callback fires via target-action and receives
+--- the sender as its first argument. Make the most likely safe action
+--- primary; never make a destructive action primary. Prefer `Link` for
+--- navigation and `Toggle` for on/off state.
+--- @tag Button
+--- @prop title string required. Button label. Use a precise verb.
+--- @prop action function optional. Called with sender: `function(btn) ... end`.
+--- @prop style string optional. "plain", "link", "primary", or "row".
+--- @prop systemImage string optional. SF Symbol name shown beside the title.
+--- @prop size number optional. Title font size; omit for system default.
+--- @prop weight string optional. Title font weight.
+--- @prop disabled boolean optional. Disables the control when true.
+--- @prop accessibilityLabel string optional. VoiceOver label.
+--- @platform AppKit NSButton (rounded) or LuaActionButton (compound). UIKit UIButton.
+--- @example ns.Button { title = "Save", action = function() save() end }
+--- @see Link, Toggle, Toolbar
 function AppKit.Button(props)
 	local title = type(props) == "table" and (props.title or props[1] or "") or ""
 	local action = type(props) == "table" and props.action or nil

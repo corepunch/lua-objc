@@ -3,3 +3,5 @@ lua-objc
 build/
 __pycache__/
 node_modules
+# MkDocs build output; published via the existing web/ Pages deploy.
+web/docs/

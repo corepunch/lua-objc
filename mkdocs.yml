@@ -1,0 +1,36 @@
+site_name: lua-objc
+site_description: Native Apple apps in Lua — component reference and guides.
+docs_dir: docs
+# Built HTML lands inside web/ so the existing GitHub Pages deploy
+# (Jekyll from ./web) publishes it as a subpath with no workflow fork.
+site_dir: web/docs
+use_directory_urls: true
+# Jekyll leftovers in docs/ are not documentation pages.
+exclude_docs: |
+  _config.yml
+
+theme:
+  name: material
+
+plugins:
+  - search
+
+markdown_extensions:
+  - tables
+  - fenced_code
+
+nav:
+  - Home: index.md
+  - Guides:
+      - Agent quickstart: agents/quickstart.md
+      - Application architecture: agents/application-architecture.md
+      - XML syntax: agents/xml-syntax.md
+      - Apple UI checklist: agents/apple-ui-checklist.md
+      - Table behavior: tableview_swiftui.md
+      - iOS host and hot reload: ios.md
+      - Project reference: PROJECT_REFERENCE.md
+  - Reference:
+      - Overview: reference/generated/index.md
+      - Button: reference/generated/Button.md
+      - Text: reference/generated/Text.md
+      - VStack: reference/generated/VStack.md
