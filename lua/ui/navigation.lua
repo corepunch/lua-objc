@@ -17,6 +17,8 @@ function Navigation.new()
         stack = {},
         sheetStack = {},
         destinations = {},
+        presented = {},
+        zoom = {},
     }, Navigation)
 end
 
@@ -64,6 +66,40 @@ end
 -- Get current sheet
 function Navigation:currentSheet()
     return self.sheetStack[#self.sheetStack]
+end
+
+-- Boolean navigationDestination(isPresented:) from the SwiftUI zoom recipe.
+function Navigation:registerPresented(name, handler, opts)
+    opts = opts or {}
+    self.destinations[name] = handler
+    self.presented[name] = false
+    self.zoom[name] = {
+        sourceId = opts.sourceId,
+        namespace = opts.namespace,
+        transition = opts.transition or "zoom",
+    }
+end
+
+function Navigation:setPresented(name, isPresented)
+    local was = self.presented[name]
+    self.presented[name] = isPresented and true or false
+    if was ~= self.presented[name] then
+        if self.presented[name] then
+            local zoom = self.zoom[name] or {}
+            self:push(name, {
+                sourceId = zoom.sourceId,
+                namespace = zoom.namespace,
+                transition = zoom.transition,
+            })
+        else
+            self:pop()
+        end
+    end
+    return self.presented[name]
+end
+
+function Navigation:isPresented(name)
+    return self.presented[name] == true
 end
 
 -- Push vs Replace (one-way door)
