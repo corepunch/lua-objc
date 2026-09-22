@@ -46,6 +46,13 @@ static const CGFloat kPreviewBezel = 10.0;
 static const CGFloat kPreviewScreenRadius = 42.0;
 static const CGFloat kPreviewMargin = 16.0;
 static const CGFloat kPreviewTrimWidth = 2.0;
+static const CGFloat kSidebarIconSize = 20.0;
+static const CGFloat kSidebarIconSlotWidth = 32.0;
+static const CGFloat kSidebarRowPadding = 8.0;
+static const CGFloat kSidebarExpandedPadding = 18.0;
+static const CGFloat kSidebarCollapsedPadding = 8.0;
+static const CGFloat kSidebarExpandedWidth = 238.0;
+static const CGFloat kSidebarCollapsedWidth = 64.0;
 static int bridge_UIKitNavigation_stack(lua_State *L);
 static int bridge_UIKitNavigation_push(lua_State *L);
 static int bridge_UIKitNavigation_pop(lua_State *L);
@@ -192,5 +199,19 @@ int luaopen_UIKitNative(lua_State *L) {
 #include "structs.m"
 #undef GEN_STRUCT_REGISTER
 	luaL_newlib(L, bridge_lib);
+	lua_pushnumber(L, kSidebarIconSize);
+	lua_setfield(L, -2, "sidebarIconSize");
+	lua_pushnumber(L, kSidebarIconSlotWidth);
+	lua_setfield(L, -2, "sidebarIconSlotWidth");
+	lua_pushnumber(L, kSidebarRowPadding);
+	lua_setfield(L, -2, "sidebarRowPadding");
+	lua_pushnumber(L, kSidebarExpandedPadding);
+	lua_setfield(L, -2, "sidebarExpandedPadding");
+	lua_pushnumber(L, kSidebarCollapsedPadding);
+	lua_setfield(L, -2, "sidebarCollapsedPadding");
+	lua_pushnumber(L, kSidebarExpandedWidth);
+	lua_setfield(L, -2, "sidebarExpandedWidth");
+	lua_pushnumber(L, kSidebarCollapsedWidth);
+	lua_setfield(L, -2, "sidebarCollapsedWidth");
 	return 1;
 }

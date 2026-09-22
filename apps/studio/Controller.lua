@@ -15,7 +15,7 @@ local SEED = {"init.lua", "Model.lua", "Controller.lua", "views/Window.etlua"}
 
 function Controller.new()
 	return setmetatable({
-		sidebar = SidebarController.new(),
+		sidebar = SidebarController.new(ns.SidebarMetrics),
 		previewPane = PreviewController.new(),
 		chat = ChatController.new(),
 	}, Controller)

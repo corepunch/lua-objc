@@ -1,28 +1,28 @@
-<VStack padding="18" spacing="16" fixedWidth="238" fillHeight="true" alignment="leading">
+<VStack padding="<%= collapsed and metrics.collapsedPadding or metrics.expandedPadding %>" spacing="16" fixedWidth="<%= collapsed and metrics.collapsedWidth or metrics.expandedWidth %>" fillHeight="true" alignment="leading">
 	<HStack padding="0" spacing="10" fillWidth="true">
-		<SystemImage name="hammer.fill" size="26" />
+		<SystemImage name="hammer.fill" size="<%= metrics.iconSize + 6 %>" fixedWidth="<%= metrics.iconSlotWidth %>" />
+		<% if not collapsed then %>
 		<VStack padding="0" spacing="1" alignment="leading">
 			<Label text="Lua Studio" size="20" weight="bold" />
 			<Label text="IDEA → APP → PREVIEW" size="10" color="secondary" />
 		</VStack>
+		<% end %>
 	</HStack>
+	<% if not collapsed then %>
 	<Button title="New Project" systemImage="plus" style="borderedProminent" fillWidth="true" />
 	<Label text="RECENT PROJECTS" size="11" weight="semibold" color="secondary" />
+	<% end %>
 	<VStack padding="0" spacing="5" fillWidth="true" alignment="leading">
-		<% for index, project in ipairs(projects) do %>
-		<% if index == 1 then %>
-		<VStack padding="8" spacing="0" background="background" cornerRadius="10" fillWidth="true" alignment="leading">
-			<Button title="<%= project.name %>" subtitle="<%= project.detail %>" systemImage="<%= project.icon %>" style="plain" fillWidth="true" />
-		</VStack>
-		<% else %>
-		<Button title="<%= project.name %>" subtitle="<%= project.detail %>" systemImage="<%= project.icon %>" style="plain" fillWidth="true" />
-		<% end %>
+		<% for _, project in ipairs(projects) do %>
+		<%- partial("SidebarItem.etlua", {item = project, collapsed = collapsed, metrics = metrics}) %>
 		<% end %>
 	</VStack>
 	<Spacer />
 	<Divider />
 	<% for _, item in ipairs(links) do %>
-	<Button title="<%= item.name %>" systemImage="<%= item.icon %>" style="plain" fillWidth="true" />
+	<%- partial("SidebarItem.etlua", {item = item, collapsed = collapsed, metrics = metrics}) %>
 	<% end %>
+	<% if not collapsed then %>
 	<Label text="Documents · local workspace" size="11" color="secondary" lines="2" />
+	<% end %>
 </VStack>

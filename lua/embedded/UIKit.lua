@@ -3,6 +3,15 @@ local bridge = require("UIKitNative")
 local UIKit = bridge
 local Scope = require("ui.scope")(bridge)
 UIKit.Scope = Scope
+UIKit.SidebarMetrics = {
+	iconSize = bridge.sidebarIconSize,
+	iconSlotWidth = bridge.sidebarIconSlotWidth,
+	rowPadding = bridge.sidebarRowPadding,
+	expandedPadding = bridge.sidebarExpandedPadding,
+	collapsedPadding = bridge.sidebarCollapsedPadding,
+	expandedWidth = bridge.sidebarExpandedWidth,
+	collapsedWidth = bridge.sidebarCollapsedWidth,
+}
 
 local function resumeCoroutine(co, ...)
 	local ok, err = coroutine.resume(co, ...)
