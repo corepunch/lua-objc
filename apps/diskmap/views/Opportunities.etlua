@@ -1,10 +1,12 @@
-<VStack fillWidth="true" spacing="14" alignment="leading">
-          <% for _, suggestion in ipairs(suggestions) do %>
-          <%- partial("Suggestion.etlua", {suggestion = suggestion}) %>
-          <Divider />
-          <% end %>
-          <% if #suggestions == 0 then %>
-          <Label text="No recognized resources meet the review thresholds. Suggestions update after each complete scan." size="12" color="secondary" fillWidth="true" lines="0" />
-          <% end %>
-
+<VStack fillWidth="true" spacing="12" alignment="leading">
+  <% for _, suggestion in ipairs(suggestions) do %>
+  <%- partial("Suggestion.etlua", {suggestion = suggestion}) %>
+  <% end %>
+  <% if #suggestions == 0 then %>
+  <GroupBox fillWidth="true">
+    <VStack fillWidth="true" padding="12">
+      <Label text="No recognized resources meet the review thresholds. Suggestions update after each complete scan." size="12" color="secondary" fillWidth="true" lines="0" />
+    </VStack>
+  </GroupBox>
+  <% end %>
 </VStack>

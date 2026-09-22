@@ -875,6 +875,11 @@ function AppKit.Button(props)
 		button = bridge._button(title)
 	end
 	if type(props) == "table" then
+		if props.size then
+			button.font = bridge._font(props.size, props.weight)
+			if compound then button.titleLabel.font = button.font end
+			button.size = button.fittingSize
+		end
 		if not compound and (props.style == "plain" or props.style == "link") then
 			button.bordered = false
 		end

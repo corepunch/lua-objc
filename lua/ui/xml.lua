@@ -588,6 +588,8 @@ local TAG_SCHEMA = {
     Button = {
         constructor = "Button",
         props = {
+            size        = "num",
+            weight      = "str",
             title       = { aliases = { "label" }, default = "", type = "str" },
             subtitle    = "str",
             systemImage = "str",
@@ -789,6 +791,7 @@ local TAG_SCHEMA = {
         props = {
             header          = { default = true, type = "bool" },
             alternatingRows = { default = true, type = "bool" },
+            drawsBackground = "bool",
             rowHeight = "num",
             style           = "str",
             bordered        = "bool",
@@ -814,6 +817,7 @@ local TAG_SCHEMA = {
         props = {
             header          = { default = true, type = "bool" },
             alternatingRows = { default = true, type = "bool" },
+            drawsBackground = "bool",
             rowHeight = "num",
             style           = "str",
             bordered        = "bool",

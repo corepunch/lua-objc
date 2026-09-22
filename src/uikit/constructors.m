@@ -348,6 +348,7 @@ static int bridge_UIKitControls_linearGradient(lua_State *L) {
 
 static int bridge_UIKitControls_button(lua_State *L) {
 	const char *title = luaL_checkstring(L, 1);
+	UIFont *font = lua_isnoneornil(L, 6) ? nil : lua_to_objc_value(L, 6);
 	BOOL has_callback = !lua_isnoneornil(L, 2);
 	const char *style = luaL_optstring(L, 3, "default");
 	const char *systemImage = luaL_optstring(L, 4, "");
@@ -370,6 +371,10 @@ static int bridge_UIKitControls_button(lua_State *L) {
 	}
 	if (configuration) {
 		configuration.title = buttonTitle;
+		// Configured buttons rebuild their title label; keep typography on the
+		// configuration so state changes retain the requested font.
+		if (font) configuration.attributedTitle = [[NSAttributedString alloc]
+			initWithString:buttonTitle attributes:@{NSFontAttributeName:font}];
 		if (systemImage[0])
 			configuration.image = [UIImage systemImageNamed:
 				[NSString stringWithUTF8String:systemImage]];
@@ -378,6 +383,7 @@ static int bridge_UIKitControls_button(lua_State *L) {
 		obj.configuration = configuration;
 	} else {
 		[obj setTitle:buttonTitle forState:UIControlStateNormal];
+		if (font) obj.titleLabel.font = font;
 	}
 	[obj sizeToFit];
 	if (callback) {

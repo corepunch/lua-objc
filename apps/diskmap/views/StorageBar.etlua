@@ -1,4 +1,5 @@
-<VStack fillWidth="true" spacing="10" alignment="leading">
+<GroupBox ref="storageSummary" fillWidth="true">
+<VStack fillWidth="true" padding="8" spacing="6" alignment="leading">
   <% if #segments > 0 then %>
   <HStack fillWidth="true" fixedHeight="16" spacing="1" cornerRadius="5" clipsToBounds="true">
     <% for _, segment in ipairs(segments) do %>
@@ -12,7 +13,7 @@
     <% for index = first, math.min(first + 5, #segments) do local segment = segments[index] %>
     <HStack spacing="6" alignment="center">
       <SystemImage name="circle.fill" size="9" color="<%= segment.color %>" />
-      <Button title="<%= segment.name %>" style="link" action="category_<%= segment.id %>" />
+      <Button title="<%= segment.name %>" style="link" size="11" action="category_<%= segment.id %>" />
     </HStack>
     <% end %>
   </HStack>
@@ -21,3 +22,4 @@
   <Label text="<%= explanation %>" size="12" color="secondary" fillWidth="true" lines="2" />
   <% end %>
 </VStack>
+</GroupBox>

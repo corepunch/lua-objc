@@ -647,6 +647,10 @@ ns.Button {
 }
 ```
 
+Button `size` and `weight` set the native title font, including in XML:
+`<Button title="Applications" style="link" size="11" />`. Omitting them preserves
+the standard system button typography.
+
 ### `Toggle{...}`
 
 Creates an `NSButton` checkbox. Keys: `label` (string), `is_on` (bool),
@@ -907,6 +911,8 @@ two-line rows, inline charts, and other compound native content. Numbers are
 converted to strings automatically.
 Column alignment can be `"leading"` (default), `"center"`, or `"trailing"`;
 the header and reusable native cells use the same alignment.
+`drawsBackground="false"` on `<List>` or `<OutlineView>` lets the owning native
+container supply its background, for example inside a `<GroupBox>`.
 For tables and outlines, `<Column controlSize="small">` uses the small system
 font. `<Column loadingKey="calculating">` binds a boolean row field to a native
 spinning progress indicator beside the cell text. Supply the loading label in
