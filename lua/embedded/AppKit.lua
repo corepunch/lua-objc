@@ -23,6 +23,8 @@ end
 local layout_properties = {
 	"padding",
 	"paddingHorizontal",
+	"paddingLeading",
+	"paddingTrailing",
 	"paddingVertical",
 	"paddingTop",
 	"paddingBottom",

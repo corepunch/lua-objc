@@ -1,4 +1,4 @@
-<VStack fillWidth="true" fillHeight="true" spacing="0" paddingVertical="12">
+<VStack fillWidth="true" fillHeight="true" spacing="0" paddingTop="12" paddingBottom="0">
   <List ref="navigation" style="sourceList" header="false" alternatingRows="false" rowHeight="36" flexGrow="1" fillWidth="true">
     <Column id="name" title="Sections" imageKey="icon" imageSize="20" />
   </List>

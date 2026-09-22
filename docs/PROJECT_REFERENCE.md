@@ -347,7 +347,9 @@ including wrapping. Previous frames are never an intrinsic minimum. HStack
 negotiates constrained widths and native scroll containers measure their documents
 independently from the viewport. Explicit zero dimensions remain zero. AppKit
 uses bottom-left native coordinates internally; asymmetric padding still has the
-same top/bottom meaning as UIKit.
+same top/bottom meaning as UIKit. `paddingLeading` and `paddingTrailing`
+override `paddingHorizontal` independently (including explicit zero), resolve
+with the native layout direction, and participate in measurement and placement.
 
 `NavigationStack { content = view, title = "Title" }` owns native page history:
 `NSPageController` on AppKit and `UINavigationController` on UIKit. Push with

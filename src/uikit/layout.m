@@ -49,6 +49,12 @@ static CGFloat view_padding_horizontal(UIView *view) {
 	return value ? value.doubleValue : view_padding(view);
 }
 
+static CGFloat view_padding_edge(UIView *view, BOOL left) {
+	BOOL rtl = view.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
+	NSNumber *value = objc_getAssociatedObject(view, left != rtl ? &kPaddingLeadingKey : &kPaddingTrailingKey);
+	return value ? value.doubleValue : view_padding_horizontal(view);
+}
+
 static CGFloat view_padding_vertical(UIView *view) {
 	NSNumber *value = objc_getAssociatedObject(view, &kPaddingVerticalKey);
 	return value ? value.doubleValue : view_padding(view);
@@ -128,7 +134,7 @@ static CGSize measure_size(UIView *view, CGSize proposal) {
 	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
 	CGSize size = CGSizeZero;
 	if (axis) {
-		CGFloat padX = 2 * view_padding_horizontal(view);
+		CGFloat padX = view_padding_edge(view, YES) + view_padding_edge(view, NO);
 		CGFloat padY = view_padding_top(view) + view_padding_bottom(view);
 		CGSize inner = CGSizeMake(MAX(0, proposal.width - padX), MAX(0, proposal.height - padY));
 		NSUInteger count = 0;
@@ -204,10 +210,11 @@ static void layout_recursive(UIView *view, CGFloat width) {
 
 	NSMutableArray<UIView *> *children = [NSMutableArray array];
 	for (UIView *child in view.subviews) if (!child.hidden) [children addObject:child];
-	CGFloat padX = view_padding_horizontal(view);
+	CGFloat padX = view_padding_edge(view, YES);
+	CGFloat padRight = view_padding_edge(view, NO);
 	CGFloat padTop = view_padding_top(view);
 	CGFloat padBottom = view_padding_bottom(view);
-	CGFloat contentW = MAX(0, availableWidth - 2 * padX);
+	CGFloat contentW = MAX(0, availableWidth - (padX + padRight));
 	CGFloat contentH = MAX(0, availableHeight - padTop - padBottom);
 		NSString *alignment = view_alignment(view);
 

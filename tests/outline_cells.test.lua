@@ -17,6 +17,7 @@ outline:replaceRows(rows)
 t.assertEqual(outline.rowCount, 2, "replace preserves user expansion by identity")
 t.assertEqual(outline.documentView.selectedRow, 1, "replace preserves selection")
 local frames = bridge._tableCellFrames(outline, 0)
+t.expect(frames[1].x - frames.disclosureMaxX >= 8, "native disclosure leaves breathing space before content")
 t.expect(frames[2].maxX <= 501, "outline columns fit native viewport")
 t.assertEqual(frames.disclosureMidY, frames.rowMidY, "native disclosure centers on the whole subtitle row")
 t.expect(cell.textField.frame.origin.x - cell.imageView.frame.origin.x - cell.imageView.frame.size.width >= 8,

@@ -15,6 +15,8 @@ static char kCallbackKey;
 static char kResizeObserverKey;
 static char kPaddingKey;
 static char kPaddingHorizontalKey;
+static char kPaddingLeadingKey;
+static char kPaddingTrailingKey;
 static char kPaddingVerticalKey;
 static char kPaddingTopKey;
 static char kPaddingBottomKey;

@@ -57,3 +57,13 @@ directory; unrecognized classes and preinstalled assets remain residual.
   data. Normal app startup was also inspected with partial measurement results.
 - Long category subtitles intentionally truncate in the outline; selection exposes
   the description in the inspector. Native scrollers retain access at smaller sizes.
+
+## 2026-09-22 — spacing and framework contract
+
+Added shared leading/trailing padding on AppKit and UIKit and an 8 pt native
+outline disclosure/content gap. The coverage pane has a 16 pt trailing inset.
+Settings retains its native source-list row metrics with no extra bottom padding.
+Verified screenshots at 1024×768, 1000×640 dark, and 1440×1000 light; the
+minimum-size layout dump confirms the coverage inset and bottom Settings frame.
+Regression coverage checks edge overrides, explicit zero, mutation isolation,
+disclosure geometry, and app insets. Both platform runtimes build.

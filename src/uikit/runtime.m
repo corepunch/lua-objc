@@ -13,6 +13,8 @@ static void layout_recursive(UIView *view, CGFloat width);
 @interface UIView (LuaLayoutProperties)
 @property(nonatomic) CGFloat padding;
 @property(nonatomic) CGFloat paddingHorizontal;
+@property(nonatomic) CGFloat paddingLeading;
+@property(nonatomic) CGFloat paddingTrailing;
 @property(nonatomic) CGFloat paddingVertical;
 @property(nonatomic) CGFloat paddingTop;
 @property(nonatomic) CGFloat paddingBottom;
@@ -50,6 +52,10 @@ static void layout_recursive(UIView *view, CGFloat width);
 - (void)setPaddingHorizontal:(CGFloat)value { objc_setAssociatedObject(self, &kPaddingHorizontalKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
 - (CGFloat)paddingVertical { return [objc_getAssociatedObject(self, &kPaddingVerticalKey) doubleValue]; }
 - (void)setPaddingVertical:(CGFloat)value { objc_setAssociatedObject(self, &kPaddingVerticalKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
+- (CGFloat)paddingLeading { return [objc_getAssociatedObject(self, &kPaddingLeadingKey) doubleValue]; }
+- (void)setPaddingLeading:(CGFloat)value { objc_setAssociatedObject(self, &kPaddingLeadingKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
+- (CGFloat)paddingTrailing { return [objc_getAssociatedObject(self, &kPaddingTrailingKey) doubleValue]; }
+- (void)setPaddingTrailing:(CGFloat)value { objc_setAssociatedObject(self, &kPaddingTrailingKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
 - (CGFloat)paddingTop { return [objc_getAssociatedObject(self, &kPaddingTopKey) doubleValue]; }
 - (void)setPaddingTop:(CGFloat)value { objc_setAssociatedObject(self, &kPaddingTopKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
 - (CGFloat)paddingBottom { return [objc_getAssociatedObject(self, &kPaddingBottomKey) doubleValue]; }

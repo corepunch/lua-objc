@@ -1,7 +1,7 @@
 <VStack fillWidth="true" fillHeight="true" flexGrow="1" flexBasis="0" flexShrink="1" spacing="16" padding="16">
   <VStack ref="storageBar" fillWidth="true" spacing="0" />
   <HSplit flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true" fillHeight="true">
-    <VStack minWidth="390" flexGrow="1" fillHeight="true" fillWidth="true" spacing="12">
+    <VStack ref="categoriesPane" paddingTrailing="16" minWidth="390" flexGrow="1" fillHeight="true" fillWidth="true" spacing="12">
       <HStack spacing="10" fillWidth="true" paddingVertical="8" alignment="center">
         <SystemImage ref="headingIcon" name="<%= icon %>" size="28" badgeColor="<%= color %>" />
         <VStack spacing="4" flexGrow="1" flexBasis="0" flexShrink="1" alignment="leading">
@@ -13,7 +13,7 @@
         <Column id="name" title="Category" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" imageSize="32" minWidth="210" />
         <Column id="size" title="On disk" width="125" minWidth="110" alignment="right" />
       </OutlineView>
-      <GroupBox fillWidth="true">
+      <GroupBox ref="coveragePanel" fillWidth="true">
         <HStack fillWidth="true" spacing="12" padding="10">
           <SystemImage name="checkmark.shield" size="28" color="systemTeal" />
           <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="4" alignment="leading">
