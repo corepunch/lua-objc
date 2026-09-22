@@ -1,5 +1,5 @@
 local Inspector = require("apps.diskmap.models.Inspector")
-local Preferences = require("apps.diskmap.models.Preferences")
+local Cleanup = require("apps.diskmap.models.Cleanup")
 local Controller = {}; Controller.__index = Controller
 function Controller.new(model, service, refresh)
 	return setmetatable({model = model, service = service, refresh = refresh}, Controller)
@@ -10,12 +10,13 @@ function Controller:select(id)
 	return data
 end
 function Controller:manage()
-	local row = self.model.byId[self.selectedId]
-	if not row or row.children then return false end
+	local row = self.model.resources:find(self.selectedId)
+	if not row or not row:isLeaf() then return false end
 	if row.action == "trash" then
-		if not Preferences.canTrash(self.model, row.id) or not self.service.confirmTrash(row) then return false end
-		local ok, err = self.service.trash(row.path)
-		if not ok then self.service.showError("Could not move to Trash", err or "Check permissions."); return false end
+		local valid, validation = row:validateTrash()
+		if not valid or not self.service.confirmTrash(row) then return false end
+		local ok, err = Cleanup.moveToTrash(self.model, row.id, self.service)
+		if not ok then self.service.showError("Could not move to Trash", err and err.message or "Check permissions."); return false end
 		self.refresh()
 	elseif row.action == "settings" then self.service.openSettings(row.settingsSection)
 	elseif row.action == "xcode" or row.action == "docker" then self.service.openOwner(row.action)

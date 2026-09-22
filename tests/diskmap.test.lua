@@ -11,25 +11,25 @@ local Inventory = require("apps.diskmap.models.Inventory")
 local System = require("apps.diskmap.services.System")
 local Controller = require("apps.diskmap.Controller")
 local model = Model.new("/Users/test")
-t.expect(#model.leaves > 60, "catalog describes macOS and developer storage")
+t.expect(#model.resources:leaves() > 60, "catalog describes macOS and developer storage")
 local unique = {}
-for _, row in ipairs(model.leaves) do
+for _, row in ipairs(model.resources:leaves()) do
 	t.expect(not unique[row.id], "stable unique resource " .. row.id); unique[row.id] = true
 	t.expect(row.subtitle ~= nil, "resource explains purpose")
 	if row.action == "trash" then t.expect(row.id == "derived" or row.id == "npm" or row.id == "pip" or row.id == "brew" or row.id == "documentation" or row.id == "opencode-downloads" or row.id == "codex-cache" or row.id == "opencode-cache" or row.id == "grok-cache", "only verified caches or offline documentation can be trashed") end
 end
-t.assertEqual(model.byId['codex-worktrees'].action, "finder", "worktrees never treated as cache")
-t.assertEqual(model.byId['preboot'].action, "settings", "boot assets system managed")
-t.assertEqual(model.byId['xcode-app'].action, "xcode", "bundled SDKs managed as installation")
+t.assertEqual(model.resources:find('codex-worktrees').action, "finder", "worktrees never treated as cache")
+t.assertEqual(model.resources:find('preboot').action, "settings", "boot assets system managed")
+t.assertEqual(model.resources:find('xcode-app').action, "xcode", "bundled SDKs managed as installation")
 t.assertEqual(Model.size(1e9), "1.0 GB", "decimal bytes")
 t.assertEqual(Model.size(nil), "Not measured", "unknown is not zero")
 Inventory.apply(model, {"derived", "archives"}, {trees = {{kb = 100}, {kb = 200, partial = true}}, rootStates = {"measured", "unreadable"}})
 t.assertEqual(model.measurements.derived.bytes, 102400, "normalizes worker units")
 t.assertEqual(Model.total(model), 307200, "disjoint ledger totals")
-t.expect(Preferences.canTrash(model, "derived"), "complete cache eligible")
-t.expect(not Preferences.canTrash(model, "archives"), "personal history never eligible")
+t.expect(model.resources:find("derived"):validateTrash(), "complete cache eligible")
+t.expect(not model.resources:find("archives"):validateTrash(), "personal history never eligible")
 model.kept.xcode = true
-t.expect(not Preferences.canTrash(model, "derived"), "kept parent protects descendants")
+t.expect(not model.resources:find("derived"):validateTrash(), "kept parent protects descendants")
 model.kept.xcode = nil
 local filtered = Categories.rows(model, nil, "DerivedData")
 t.assertEqual(#filtered, 1, "search preserves one semantic ancestor")
@@ -37,7 +37,7 @@ t.assertEqual(filtered[1].id, "developer", "search retains category")
 t.assertEqual(filtered[1].bytes, 307200, "filter does not change category total")
 t.assertEqual(#Categories.rows(model, nil, "["), 0, "search is literal")
 Inventory.apply(model, {"derived"}, {failure = "cancelled"})
-t.expect(not Preferences.canTrash(model, "derived"), "failed measurement disables removal")
+t.expect(not model.resources:find("derived"):validateTrash(), "failed measurement disables removal")
 t.assertEqual(model.measurements.derived.bytes, nil, "failure discards old bytes")
 Inventory.apply(model, {"derived"}, {trees = {}, rootStates = {"missing"}})
 t.assertEqual(model.measurements.derived.bytes, 0, "confirmed missing is zero")
@@ -45,7 +45,7 @@ Inventory.apply(model, {"derived"}, {trees = {}, rootStates = {"unreadable"}})
 t.assertEqual(model.measurements.derived.bytes, nil, "denied is unknown")
 local paths, ids = Inventory.plan(model)
 local targets = {}; for i, path in ipairs(paths) do targets[ids[i]] = path end
-for _, row in ipairs(model.leaves) do
+for _, row in ipairs(model.resources:leaves()) do
 	if row.path and not row.mediaAccess then t.assertEqual(targets[row.id], row.path, "startup includes " .. row.id) end
 end
 t.assertEqual(targets["home-other"], "/Users/test", "unrecognized home files are measured")
@@ -150,12 +150,12 @@ t.assertEqual(scanned.trees[1].children, nil, "inventory retains no folder tree"
 for _, path in ipairs({hostile, root .. "/cache/link", root .. "/cache", root .. "/outside", root}) do os.remove(path) end
 local features = Model.new("/Users/test")
 local uniquePaths = {}
-for _, leaf in ipairs(features.leaves) do
+for _, leaf in ipairs(features.resources:leaves()) do
 	if leaf.path then t.expect(not uniquePaths[leaf.path], "one catalog owner per exact path"); uniquePaths[leaf.path] = true end
 end
-t.assertEqual(features.byId["vscode-cache"].appIcon, "com.microsoft.VSCode", "resource inherits owning application icon")
-t.assertEqual(features.byId["temporary"].color, "systemYellow", "temporary files have yellow badge")
-t.assertEqual(features.byId["dictation-1"].policy, "System managed", "recognition assets never become disposable caches")
+t.assertEqual(features.resources:find("vscode-cache").appIcon, "com.microsoft.VSCode", "resource inherits owning application icon")
+t.assertEqual(features.resources:find("temporary").color, "systemYellow", "temporary files have yellow badge")
+t.assertEqual(features.resources:find("dictation-1").policy, "System managed", "recognition assets never become disposable caches")
 features.measurements["siri-assets-1"] = {bytes = 1200, status = "complete"}
 features.measurements["dictation-1"] = {bytes = 800, status = "complete"}
 local rolled = Categories.rows(features, "intelligence")

@@ -1,17 +1,16 @@
 local Model = require("apps.diskmap.Model")
 local Cleanup = require("apps.diskmap.models.Cleanup")
-local Preferences = require("apps.diskmap.models.Preferences")
 local Inspector = {}
 function Inspector.details(model, id)
-	local row = model.byId[id]; if not row then return nil end
+	local row = model.resources:find(id); if not row then return nil end
 	local m = model.measurements[id]
-	local text = row.consequence or row.subtitle .. ". " .. (row.children and "Expand to inspect the measured resources." or "Review this data in its owning app. Size alone does not establish that it is disposable.")
+	local text = row.consequence or row.subtitle .. ". " .. (row:isLeaf() and "Review this data in its owning app. Size alone does not establish that it is disposable." or "Expand to inspect the measured resources.")
 	for _, candidate in ipairs(Cleanup.suggestions(model)) do
 		if candidate.id == id then text = candidate.evidence .. "\n\n" .. candidate.subtitle .. "\n\n" .. text; break end
 	end
 	return {name = row.name, text = text, location = (row.path or "Multiple known locations") .. (m and "\n" .. Model.size(m.bytes) .. " · " .. m.status or ""),
 		manageTitle = row.action == "simulators" and "Manage simulators…" or row.action == "trash" and "Review Move to Trash…" or row.action == "settings" and (({siri = "Open Siri Settings", dictation = "Open Dictation Settings", voices = "Open Accessibility Settings"})[row.settingsSection] or "Open System Settings") or row.action == "xcode" and "Open Xcode" or row.action == "docker" and "Open Docker" or "Reveal in Finder",
-		canManage = not row.children and (row.action ~= "trash" or Preferences.canTrash(model, id)) and (row.path ~= nil or row.action == "settings"),
+		canManage = row:isLeaf() and (row.action ~= "trash" or row:validateTrash()) and (row.path ~= nil or row.action == "settings"),
 		keepTitle = model.kept[id] and "Stop keeping this resource" or "Keep this resource"}
 end
 return Inspector

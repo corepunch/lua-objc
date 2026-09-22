@@ -12,13 +12,13 @@ local Management = require("apps.diskmap.controllers.ManagementController")
 local SimulatorController = require("apps.diskmap.controllers.SimulatorsController")
 local model = Model.new("/Users/test")
 local paths, ids = {}, {}
-for _, row in ipairs(model.leaves) do
+for _, row in ipairs(model.resources:leaves()) do
 	t.expect(not ids[row.id], "unique ID: " .. row.id); ids[row.id] = true
 	if row.path then t.expect(not paths[row.path], "unique measured path: " .. row.id); paths[row.path] = row.id end
 end
 local runtimePath = "/System/Library/AssetsV2/com_apple_MobileAsset_iOSSimulatorRuntime"
 t.assertEqual(paths[runtimePath], "runtime-assets", "runtime asset has one ledger owner")
-t.assertEqual(model.byId["runtime-assets"].parentId, "runtimes", "downloaded runtime contributes to runtime category")
+t.assertEqual(model.resources:find("runtime-assets"):getParent().id, "runtimes", "downloaded runtime contributes to runtime category")
 model.measurements["runtime-images"] = {bytes = 4096, status = "complete"}
 model.measurements["runtime-assets"] = {bytes = 8.5e9, status = "complete"}
 model.measurements["runtime-bundles"] = {bytes = 0, status = "complete"}
@@ -31,11 +31,11 @@ t.expect(candidates.simulators and candidates["documentation-assets"] and candid
 t.assertEqual(candidates["siri-assets-6"].impact, "Needs review", "protected assets only suggest review")
 t.expect(candidates["codex-plugins"] and candidates["opencode-other"], "opaque agent storage surfaces for review")
 model.kept["system-data"] = true
-t.expect(not require("apps.diskmap.models.Preferences").canTrash(model, "siri-assets-6"), "system asset has no trash path")
+t.expect(not model.resources:find("siri-assets-6"):validateTrash(), "system asset has no trash path")
 local fixture = {{agent = "codex", name = "state_99.sqlite", path = "/Users/test/.codex/state_99.sqlite"}, {agent = "opencode", name = "opencode.db-wal", path = "/Users/test/.local/share/opencode/opencode.db-wal"}}
-AgentFiles.add(model, fixture); local leafCount = #model.leaves; AgentFiles.add(model, fixture)
-t.assertEqual(#model.leaves, leafCount, "metadata discovery is idempotent")
-local row = model.byId["codex-file-state_99.sqlite"]
+AgentFiles.add(model, fixture); local leafCount = #model.resources:leaves(); AgentFiles.add(model, fixture)
+t.assertEqual(#model.resources:leaves(), leafCount, "metadata discovery is idempotent")
+local row = model.resources:find("codex-file-state_99.sqlite")
 t.expect(row and row.name:find("Database", 1, true), "new database versions have named paths")
 t.assertEqual(row.action, "finder", "persistent SQLite files cannot be cleared as cache")
 local _, _, exclusions = Inventory.plan(model); local found = false
@@ -44,7 +44,7 @@ t.expect(found, "discovered file is excluded from agent residual")
 t.assertEqual(#Categories.managementRows(model, "codex", "state_99.sqlite"), 1, "management searches exact paths")
 t.assertEqual(#Categories.managementRows(model, "codex", "["), 0, "management search is literal")
 t.assertEqual(#Categories.managementRows(model, "runtimes", nil, "Safe/rebuildable"), 0, "runtime cannot appear under safe reclaim")
-t.expect(model.byId["grok-other"] ~= nil, "Grok known local root is scanned")
+t.expect(model.resources:find("grok-other") ~= nil, "Grok known local root is scanned")
 local uid = "12345678-ABCD-1234-ABCD-123456789ABC"
 local other = "12345678-ABCD-1234-ABCD-123456789ABD"
 local data = {runtimes = {{identifier = "ios", name = "iOS 26"}}, devices = {ios = {

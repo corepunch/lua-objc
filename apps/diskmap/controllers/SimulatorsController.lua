@@ -1,7 +1,6 @@
 local ns = require("AppKit")
 local xml = require("ui.xml")
 local Simulators = require("apps.diskmap.models.Simulators")
-local Preferences = require("apps.diskmap.models.Preferences")
 local Controller = {}; Controller.__index = Controller
 function Controller.new(model, service, changed)
 	return setmetatable({model = model, service = service, changed = changed, generation = 0, inventory = {}, query = ""}, Controller)
@@ -14,11 +13,11 @@ function Controller:close()
 end
 function Controller:buttons()
 	if not self.refs then return end
-	local allowed = not self.busy and not self.error and not Preferences.isKept(self.model, "simulators")
-	self.refs.erase.enabled = allowed and Simulators.command("erase", self.selected) ~= nil
-	self.refs.delete.enabled = allowed and Simulators.command("delete", self.selected) ~= nil
+	local allowed = not self.busy and not self.error
+	self.refs.erase.enabled = allowed and Simulators.command("erase", self.selected, self.model) ~= nil
+	self.refs.delete.enabled = allowed and Simulators.command("delete", self.selected, self.model) ~= nil
 	local count = 0
-	for _, row in ipairs(Simulators.rows(self.inventory, nil, "Unavailable")) do if Simulators.command("delete", row) then count = count + 1 end end
+	for _, row in ipairs(Simulators.rows(self.inventory, nil, "Unavailable")) do if Simulators.command("delete", row, self.model) then count = count + 1 end end
 	self.refs.unavailable.enabled = allowed and count > 0
 	self.refs.refresh.enabled = not self.busy
 end
@@ -45,12 +44,13 @@ function Controller:load()
 	end)
 end
 function Controller:perform(action, unavailable)
-	if self.busy or self.error or Preferences.isKept(self.model, "simulators") then return false end
+	if self.busy or self.error then return false end
 	local targets = unavailable and Simulators.rows(self.inventory, nil, "Unavailable") or {self.selected}
 	local commands, names = {}, {}
 	for _, row in ipairs(targets) do
-		local command = Simulators.command(action, row)
-		if command then commands[#commands + 1] = command; names[#names + 1] = row.name .. " · " .. row.id end
+		local command = Simulators.command(action, row, self.model)
+		if not command then return false end
+		commands[#commands + 1] = command; names[#names + 1] = row.name .. " · " .. row.id
 	end
 	if #commands == 0 then return false end
 	local title = unavailable and "Delete unavailable simulators" or action == "erase" and "Erase simulator contents" or "Delete simulator device"
@@ -62,6 +62,11 @@ function Controller:perform(action, unavailable)
 		if index > #commands then
 			self.changed()
 			if generation == self.generation then self.busy = false; self:load() end
+			return
+		end
+		local valid = Simulators.validate(action, targets[index], self.model)
+		if not valid then
+			if generation == self.generation then self.busy = false; self:update() end
 			return
 		end
 		self.service.command(commands[index], function(ok, output)

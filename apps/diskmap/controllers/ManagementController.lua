@@ -14,7 +14,7 @@ function Controller:close()
 end
 function Controller:select(id)
 	self.selectedId = id
-	local row, detail = self.model.byId[id], Inspector.details(self.model, id)
+	local row, detail = self.model.resources:find(id), Inspector.details(self.model, id)
 	if not detail then return end
 	local refs = self.refs
 	refs.detail.text = row.consequence or row.subtitle; refs.path.text = detail.location
@@ -49,14 +49,14 @@ function Controller:open(parent, id, filter)
 	self.scope = ns.Scope.new()
 	ns.Scope.withScope(self.scope, function()
 		self.sheet, self.refs = xml.renderFile("apps/diskmap/views/Management.etlua", {
-			title = self.model.byId[id] and self.model.byId[id].name or "Safe reclaim potential", filters = self.filters,
+			title = self.model.resources:find(id) and self.model.resources:find(id).name or "Safe reclaim potential", filters = self.filters,
 			actions = {
 				search = function(value) self.query = value; self:update() end,
 				done = function() self:close() end,
-				reveal = function() local row = self.model.byId[self.selectedId]; if row and row.path then self.service.reveal(row.path) end end,
+				reveal = function() local row = self.model.resources:find(self.selectedId); if row and row.path then self.service.reveal(row.path) end end,
 				keep = function() if self.selectedId then local selected = self.selectedId; self.keep(selected); self:select(selected) end end,
 				manage = function()
-					local row = self.model.byId[self.selectedId]; if not row then return end
+					local row = self.model.resources:find(self.selectedId); if not row then return end
 					if row.action == "simulators" then self:close(); self.simulators(); return end
 					local inspector = InspectorController.new(self.model, self.service, self.refresh)
 					inspector:select(row.id); inspector:manage()

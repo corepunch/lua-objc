@@ -1,5 +1,6 @@
 local Model = require("apps.diskmap.Model")
 local Simulators = {}
+local UUID = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
 function Simulators.rows(inventory, query, filter)
 	local rows, runtimes, needle = {}, {}, (query or ""):lower()
 	for _, runtime in ipairs(inventory.runtimes or {}) do runtimes[runtime.identifier] = runtime.name end
@@ -20,10 +21,21 @@ function Simulators.rows(inventory, query, filter)
 	table.sort(rows, function(a, b) if (a.bytes or 0) ~= (b.bytes or 0) then return (a.bytes or 0) > (b.bytes or 0) end; return (a.id or "") < (b.id or "") end)
 	return rows
 end
-function Simulators.command(action, row)
-	if not row or row.running or type(row.id) ~= "string" or not row.id:match("^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$") then return nil end
-	if action ~= "erase" and action ~= "delete" then return nil end
-	if action == "erase" and not row.available then return nil end
+function Simulators.validate(action, row, model)
+	if action ~= "erase" and action ~= "delete" then return false, {code = "unsupported_action", message = "Simulator action is not supported."} end
+	if not row then return false, {code = "missing_device", message = "No simulator device is selected."} end
+	if type(row.id) ~= "string" or not row.id:match(UUID) then return false, {code = "invalid_uuid", message = "Simulator identifier is not a UUID."} end
+	if row.running then return false, {code = "device_running", message = "Shut down the simulator before changing it."} end
+	if action == "erase" and not row.available then return false, {code = "device_unavailable", message = "Unavailable simulators cannot be erased."} end
+	if model then
+		local catalog = model.resources:find("simulators")
+		if catalog and catalog:isKept() then return false, {code = "kept_resource", message = "Keep protects simulator storage."} end
+	end
+	return true
+end
+function Simulators.command(action, row, model)
+	local ok, err = Simulators.validate(action, row, model)
+	if not ok then return nil, err end
 	return {"/usr/bin/xcrun", "simctl", action, row.id}
 end
 function Simulators.impact(action, row)

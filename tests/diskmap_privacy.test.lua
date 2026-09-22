@@ -8,7 +8,7 @@ local function set(values) local result = {}; for _, value in ipairs(values) do 
 local paths, ids, exclusions = Inventory.plan(model)
 local roots, blocked = set(paths), set(exclusions)
 for _, id in ipairs({"pictures", "music", "movies"}) do
-	local path = model.byId[id].path
+	local path = model.resources:find(id).path
 	t.expect(not roots[path], "default scan never opens " .. id)
 	t.expect(blocked[path], "parent residual cannot enter " .. id)
 	t.assertEqual(model.measurements[id].status, "excluded", "excluded library is visibly unknown")
@@ -19,7 +19,7 @@ t.expect(blocked["/Users/test/Library/Containers/com.apple.Music"], "Music conta
 for _, row in ipairs(Categories.rows(model)) do if row.id == "media" then t.assertEqual(row.size, "Not scanned", "media category communicates opt-in status") end end
 model.includeMedia = true
 paths, ids = Inventory.plan(model); roots = set(paths)
-for _, id in ipairs({"pictures", "music", "movies"}) do t.expect(roots[model.byId[id].path], "session opt-in includes " .. id) end
+for _, id in ipairs({"pictures", "music", "movies"}) do t.expect(roots[model.resources:find(id).path], "session opt-in includes " .. id) end
 Inventory.begin(model, ids)
 t.assertEqual(model.measurements.music.status, "calculating", "opt-in starts a fresh measurement")
 model.measurements.music = {bytes = 12345, status = "complete"}

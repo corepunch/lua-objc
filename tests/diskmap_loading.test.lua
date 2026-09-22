@@ -16,12 +16,12 @@ for _, row in ipairs(Categories.rows(model)) do
 	t.expect(row.calculating or row.status == "excluded", "category starts calculating unless excluded: " .. row.id)
 	t.assertEqual(row.size, row.status == "excluded" and "Not scanned" or "Calculating…", "pending category never shows old bytes")
 end
-local first = model.tree[1]
+local first = model.resources:roots()[1]
 local function belongs(id)
-	local row = model.byId[id]
+	local row = model.resources:find(id)
 	while row do
 		if row.id == first.id then return true end
-		row = model.byId[row.parentId]
+		row = row:getParent()
 	end
 end
 local result = {completed = 0, total = #ids, trees = {}, rootStates = {}}

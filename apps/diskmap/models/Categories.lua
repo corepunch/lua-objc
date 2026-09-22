@@ -1,15 +1,20 @@
 local Model = require("apps.diskmap.Model")
 local Categories = {}
+local function projection(source)
+	return {id = source.id, name = source.name, subtitle = source.subtitle, path = source.path, policy = source.policy,
+		action = source.action, consequence = source.consequence, settingsSection = source.settingsSection,
+		reviewThreshold = source.reviewThreshold, agent = source.agent, icon = source.icon, color = source.color, appIcon = source.appIcon}
+end
 function Categories.rows(model, rootId, query)
 	local needle = (query or ""):lower()
 	local function build(source, inheritedMatch)
-		local row = {}; for k, v in pairs(source) do if k ~= "children" then row[k] = v end end
+		local row = projection(source)
 		local matches = inheritedMatch or (source.name .. " " .. source.subtitle .. " " .. (source.path or "")):lower():find(needle, 1, true) ~= nil
 		local m = model.measurements[source.id] or {}
 		row.bytes, row.status = m.bytes, m.status or "notMeasured"
-		if source.children then
+		if not source:isLeaf() then
 			row.children = {}; local total, measured, complete, attempted, calculating, failed, excluded = 0, false, true, false, false, false, true
-			for _, child in ipairs(source.children) do
+			for _, child in ipairs(source:getChildren()) do
 				local value, visible = build(child, matches)
 				if value.bytes then total = total + value.bytes; measured = true end
 				if value.status ~= "excluded" then excluded = false end
@@ -33,8 +38,8 @@ function Categories.rows(model, rootId, query)
 		row.kept = model.kept[row.id] == true
 		return row, matches or row.children and #row.children > 0
 	end
-	local source = rootId and model.byId[rootId]
-	local rows = source and (source.children or {source}) or model.tree
+	local source = rootId and model.resources:find(rootId)
+	local rows = source and (source:isLeaf() and {source} or source:getChildren()) or model.resources:roots()
 	local result = {}
 	for _, row in ipairs(rows) do local value, visible = build(row, false); if visible then result[#result + 1] = value end end
 	return result
@@ -63,19 +68,19 @@ end
 function Categories.managementRows(model, rootId, query, filter)
 	local result, needle = {}, (query or ""):lower()
 	local function visit(row, owner)
-		if row.children then
-			for _, child in ipairs(row.children) do visit(child, row.name) end
+		if not row:isLeaf() then
+			for _, child in ipairs(row:getChildren()) do visit(child, row.name) end
 		else
 			local m = model.measurements[row.id] or {}
 			local impact = row.policy == "Essential" and "Essential to keep" or row.policy == "Rebuildable" and "Safe/rebuildable" or "Needs review"
 			if (not filter or filter == "All" or filter == impact) and (row.name .. " " .. (owner or "") .. " " .. (row.path or "")):lower():find(needle, 1, true) then
-				result[#result + 1] = {id = row.id, name = row.name, subtitle = owner, path = row.path or "System managed", impact = impact,
+				result[#result + 1] = {id = row.id, name = row.name, subtitle = owner, path = row.path or "System managed", icon = row.icon, color = row.color, appIcon = row.appIcon, impact = impact,
 					size = m.status == "excluded" and "Not scanned" or m.status == "calculating" and "Calculating…" or m.status == "denied" and "Access restricted" or (m.status == "partial" and "≥ " or "") .. Model.size(m.bytes),
 					bytes = m.bytes, partial = m.status == "partial", calculating = m.status == "calculating"}
 			end
 		end
 	end
-	if rootId and model.byId[rootId] then visit(model.byId[rootId]) else for _, row in ipairs(model.tree) do visit(row) end end
+	if rootId and model.resources:find(rootId) then visit(model.resources:find(rootId)) else for _, row in ipairs(model.resources:roots()) do visit(row) end end
 	return result
 end
 return Categories

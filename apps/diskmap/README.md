@@ -77,7 +77,9 @@ cancellation, preference persistence failures, action routing and fresh startup 
 | Module | Owns |
 | --- | --- |
 | `catalog/` | Independent category definitions, paths, ownership and consequences |
-| `Model.lua` | Indexed inventory state and byte aggregation |
+| `Model.lua` | Live measurements, Keep state, scan state and byte aggregation |
+| `models/Resources.lua` | Per-model canonical resource collection, ordered relations and registration |
+| `models/Constraints.lua` | Named validation results for registration, Keep changes and Trash mutations |
 | `models/Inventory.lua` | Scan plans, measurement transitions and current diagnostics |
 | `models/Categories.lua` | Category queries and capacity distribution |
 | `models/Cleanup.lua`, `knowledge/CleanupRules.lua` | Recognized resources, review thresholds, evidence and tailored advice |
@@ -86,6 +88,24 @@ cancellation, preference persistence failures, action routing and fresh startup 
 | `controllers/` | Small coordinators with injected IO and navigation callbacks |
 | `services/System.lua`, `services/Scanner.lua`, `src/plugins/storage/StorageScan.m` | Native integration and bulk metadata enumeration |
 | `views/` | All presentation, etlua loops and reusable partials |
+
+`Model.resources` owns one canonical row for every catalog resource. Use
+`resources:find(id)`, `resources:roots()` and `resources:leaves()` for collection
+queries; rows expose `getParent()`, `getChildren()`, `isLeaf()`, `getMeasurement()`,
+`isKept()` and `validateTrash()`. Relation sequences are snapshots for reading,
+and structural registration goes through `resources:add(parentId, definition)` so
+IDs, exact paths and parent links remain atomic and model-local. Discovered agent
+metadata uses the same registration path, making repeated discovery idempotent.
+Rows do not expose mutable child arrays, parent IDs or model references. Feature
+models explicitly project row fields into presentation tables, so relation caches
+and collection ownership never leak into views.
+
+Review suggestions and filesystem mutations are separate policies. Cleanup rules
+decide when measured storage is worth reviewing, including partial lower bounds;
+`Cleanup.moveToTrash` independently validates the current leaf, action, absolute
+path, complete positive measurement and inherited Keep immediately before calling
+the injected service. Controllers may confirm and present errors, but they do not
+provide an alternate filesystem mutation path.
 
 Cleanup thresholds are review criteria, not claims that data is unnecessary.
 Complete measurements and explicit partial lower bounds qualify for review. Partial measurements never authorize Move to Trash. A large unrecognized folder or required app

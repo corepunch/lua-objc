@@ -97,8 +97,8 @@ end
 function System.agentEntries(model)
 	local entries = {}
 	for _, id in ipairs({"codex", "opencode", "grok"}) do
-		local root = model.byId[id .. "-other"]
-		for _, entry in ipairs(ns.readDirectory(root.path, 0) or {}) do
+		local root = model.resources:find(id .. "-other")
+		for _, entry in ipairs(root and ns.readDirectory(root.path, 0) or {}) do
 			entry.agent = id; entries[#entries + 1] = entry
 		end
 	end

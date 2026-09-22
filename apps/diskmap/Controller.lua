@@ -89,7 +89,7 @@ function Controller:showSection(section, rootId)
 		end))
 		return
 	end
-	local root = self.rootId and self.model.byId[self.rootId]
+	local root = self.rootId and self.model.resources:find(self.rootId)
 	self.page = Template.new(self.content, "apps/diskmap/views/Dashboard.etlua", ns)
 	local _, refs = self.page:update({title = root and root.name or section == "Cleanup" and "Cleanup" or "Storage categories",
 		subtitle = root and root.subtitle or "Understand what is stored, why it exists, and how to manage it.", icon = root and root.icon or "chart.pie.fill", color = root and root.color or "systemBlue",
@@ -112,7 +112,7 @@ end
 function Controller:createWindow()
 	self.scan.disk = self.service.diskSpace(self.scan.home)
 	if self.service.loadKeep then
-		for id, kept in pairs(self.service.loadKeep()) do if self.model.byId[id] and kept == true then self.model.kept[id] = true end end
+		for id, kept in pairs(self.service.loadKeep()) do if self.model.resources:find(id) and kept == true then self.model.kept[id] = true end end
 	end
 	local cfg, windowRefs = render("Window", {capacity = self.categories:capacity(self.scan.disk),
 		actions = {search = function(value) self.query = value; self:updateRows() end}})

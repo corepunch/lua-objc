@@ -2,7 +2,7 @@ local Inventory = {}
 -- Always use one complete batch: hard links must keep a single owner across refreshes.
 function Inventory.plan(model)
 	local paths, ids, exclusions = {}, {}, {"/Volumes", "/dev", "/System/Volumes"}
-	for _, row in ipairs(model.leaves) do
+	for _, row in ipairs(model.resources:leaves()) do
 		if row.path then
 			if not row.mediaAccess or model.includeMedia then
 				paths[#paths + 1] = row.path; ids[#ids + 1] = row.id

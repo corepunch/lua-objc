@@ -1,4 +1,5 @@
 local Catalog = require("apps.diskmap.Catalog")
+local Resources = require("apps.diskmap.models.Resources")
 local Model = {}
 function Model.size(bytes)
 	if bytes == nil then return "Not measured" end
@@ -7,22 +8,14 @@ function Model.size(bytes)
 	return string.format("%.0f KB", bytes / 1000)
 end
 function Model.new(home)
-	local self = {home = home, includeMedia = false, tree = Catalog.tree(home), byId = {}, leaves = {}, measurements = {}, kept = {}, scan = {}}
-	local function index(rows, parent)
-		for _, row in ipairs(rows) do
-			row.parentId = parent and parent.id
-			row.icon = row.icon or parent and parent.icon or "doc"
-			row.color = row.color or parent and parent.color or "systemGray"
-			row.appIcon = row.appIcon or parent and parent.appIcon
-			self.byId[row.id] = row
-			if row.children then index(row.children, row) else
-				self.leaves[#self.leaves + 1] = row
-				if row.mediaAccess then self.measurements[row.id] = {status = "excluded"} end
-				if row.measurement then self.measurements[row.id] = {status = row.measurement} end
-			end
-		end
+	local self = {home = home, includeMedia = false, measurements = {}, kept = {}, scan = {}}
+	local resources, err = Resources.new(self, Catalog.tree(home))
+	assert(resources, err and err.message or "Could not build Diskmap resources")
+	self.resources = resources
+	for _, row in ipairs(resources:leaves()) do
+		if row.mediaAccess then self.measurements[row.id] = {status = "excluded"} end
+		if row.measurement then self.measurements[row.id] = {status = row.measurement} end
 	end
-	index(self.tree)
 	return self
 end
 function Model.total(model)

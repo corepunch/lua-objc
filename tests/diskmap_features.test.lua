@@ -13,7 +13,7 @@ local SettingsController = require("apps.diskmap.controllers.SettingsController"
 local Rules = require("apps.diskmap.knowledge.CleanupRules")
 local model = Model.new("/Users/test")
 for id, rule in pairs(Rules) do
-	t.expect(model.byId[id] ~= nil, "rule has a known resource: " .. id)
+	t.expect(model.resources:find(id) ~= nil, "rule has a known resource: " .. id)
 	model.measurements[id] = {bytes = rule.threshold - 1, status = "complete"}
 end
 t.assertEqual(#Cleanup.suggestions(model), 0, "below-threshold resources produce no suggestions")
