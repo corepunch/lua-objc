@@ -4,11 +4,29 @@ local PREFIX = "apps/playground/"
 local REQUIRED = { "init.lua", "Model.lua", "Controller.lua", "views/Window.etlua" }
 local LIMITS = { fileBytes = 128 * 1024, totalBytes = 1024 * 1024, history = 20 }
 local DEFAULT_MODEL = "openrouter/free"
+local SAVED_PREFIX = "examples/playground/"
 
 local function copy(files)
 	local result = {}
 	for path, source in pairs(files) do result[path] = source end
 	return result
+end
+
+local function migrateSavedFiles(files)
+	if type(files) ~= "table" then return files, false end
+	local migrated, changed = {}, false
+	for path, source in pairs(files) do
+		local canonical = path
+		if type(path) == "string" and path:sub(1, #SAVED_PREFIX) == SAVED_PREFIX then
+			canonical = PREFIX .. path:sub(#SAVED_PREFIX + 1)
+			changed = true
+		end
+		if migrated[canonical] ~= nil then
+			return nil, false, "Saved project has conflicting paths after moving to apps/playground: " .. canonical
+		end
+		migrated[canonical] = source
+	end
+	return migrated, changed
 end
 
 function Model.validPath(path)
@@ -25,9 +43,16 @@ function Model.new(storage, seed)
 		model = DEFAULT_MODEL, revision = 0 }, Model)
 	local saved = storage.load()
 	if saved then
-		local ok, err = self:validate(saved.files)
+		local files, changed, migrationError = migrateSavedFiles(saved.files)
+		if migrationError then error(migrationError) end
+		local ok, err = self:validate(files)
 		if not ok then error("Saved project is invalid: " .. err) end
-		self.files = copy(saved.files)
+		if changed then
+			local canonical = { files = files, model = saved.model }
+			local written, writeError = storage.save(canonical)
+			if not written then error("Could not save migrated project paths: " .. tostring(writeError)) end
+		end
+		self.files = copy(files)
 		if type(saved.model) == "string" then self.model = saved.model end
 	end
 	return self
