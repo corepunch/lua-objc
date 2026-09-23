@@ -414,8 +414,6 @@ local TAG_SCHEMA = {
         constructor = "VStack",
         children    = "array",
         props = {
-            reorderable = "bool",
-            reorder_container = "str",
         },
     },
     FlowStack = {
@@ -426,8 +424,6 @@ local TAG_SCHEMA = {
         constructor = "HStack",
         children    = "array",
         props = {
-            reorderable = "bool",
-            reorder_container = "str",
         },
     },
     Section = {
@@ -479,10 +475,6 @@ local TAG_SCHEMA = {
     HSplit = {
         constructor = "HSplit",
         children    = "array",
-        props = {
-            reorderable = "bool",
-            reorder_container = "str",
-        },
     },
     Spacer = {
         constructor = "Spacer",
@@ -795,6 +787,7 @@ local TAG_SCHEMA = {
     List = {
         constructor = "List",
         props = {
+            data = "str",
             header          = { default = true, type = "bool" },
             alternatingRows = { default = true, type = "bool" },
             drawsBackground = "bool",
@@ -803,7 +796,7 @@ local TAG_SCHEMA = {
             bordered        = "bool",
             gridLines       = "str",
             reorderable = "bool",
-            reorder_container = "str",
+            reorderContainer = "str",
         },
         collect = function(props, children)
             local columns = {}
@@ -817,6 +810,18 @@ local TAG_SCHEMA = {
             end
             props.columns = columns
         end,
+        transform = function(props, attrs)
+            if attrs.data and renderData then
+                props.data = renderData[attrs.data]
+            end
+            if attrs.reorderContainer then
+                props.onReorder = renderData and renderData.actions
+                    and renderData.actions[attrs.reorderContainer]
+            end
+            if props.reorderable and type(props.onReorder) ~= "function" then
+                error("xml: reorderable <List> requires a valid reorderContainer action")
+            end
+        end,
     },
     OutlineView = {
         constructor = "OutlineView",
@@ -828,8 +833,6 @@ local TAG_SCHEMA = {
             style           = "str",
             bordered        = "bool",
             gridLines       = "str",
-            reorderable = "bool",
-            reorder_container = "str",
         },
         collect = function(props, children)
             local columns = {}

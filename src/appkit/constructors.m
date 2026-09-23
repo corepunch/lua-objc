@@ -342,6 +342,21 @@ static int bridge_NSScrollView_onRowSelect(lua_State *L) {
 	return 0;
 }
 
+static int bridge_NSScrollView_onRowMove(lua_State *L) {
+	id obj = check_objc(L, 1);
+	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
+	if (![src isKindOfClass:[LuaTableViewSource class]])
+		return luaL_error(L, "onRowMove requires a table view");
+	NSScrollView *scroll = table_scrollview(obj);
+	bridge_set_optional_callback(L, scroll, &kKeys[kTableMoveKey], 2);
+	if (!lua_isnoneornil(L, 2)) {
+		NSTableView *table = (NSTableView *)scroll.documentView;
+		[table registerForDraggedTypes:@[NSPasteboardTypeString]];
+		[table setDraggingSourceOperationMask:NSDragOperationMove forLocal:YES];
+	}
+	return 0;
+}
+
 static int bridge_NSScrollView_onColumnSort(lua_State *L) {
 	id obj = check_objc(L, 1);
 	if (!objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]))

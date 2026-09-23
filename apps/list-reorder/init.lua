@@ -1,2 +1,2 @@
 -- Drag-to-reorder list example
-return require("Controller")
+return require("apps.list-reorder.Controller")

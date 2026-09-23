@@ -48,6 +48,15 @@ static int bridge_tableview(lua_State *L) {
 	return 1;
 }
 
+static int bridge_tableview_on_row_move(lua_State *L) {
+	UITableView *table = check_objc(L, 1);
+	LuaTableViewSource *src = objc_getAssociatedObject(table, &kTableSourceKey);
+	if (!src) return luaL_error(L, "onRowMove requires a table view");
+	src.moveReg = lua_reg_opt(L, 2);
+	if (src.moveReg) [table setEditing:YES animated:NO];
+	return 0;
+}
+
 static int bridge_tableview_add(lua_State *L) {
 	id obj = check_objc(L, 1);
 	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kTableSourceKey);
@@ -72,4 +81,3 @@ static int bridge_tableview_clear(lua_State *L) {
 	[src clearRows];
 	return 0;
 }
-

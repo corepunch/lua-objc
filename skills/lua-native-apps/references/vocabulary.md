@@ -9,10 +9,10 @@ app-side substitute.
 | Concept | lua-objc API or status |
 |---|---|
 | SwiftUI stacks and controls | XML tags in this reference, rendered by `lua/ui/xml.lua` |
-| SwiftUI `List` / native table | `<List>` and `<ListRow>`; use for data-driven rows |
+| SwiftUI `List` / native table | `<List>` with `<Column>` children and data records |
 | Expo Router / `NavigationStack` path values | Not yet available; see issue [#8](https://github.com/corepunch/lua-objc/issues/8) |
 | Sheets with detents and drag indicator | Not yet available as a shared presentation API; see issue [#8](https://github.com/corepunch/lua-objc/issues/8) |
-| `reorderable()` | Not yet available as native container drag-reorder; see issue [#5](https://github.com/corepunch/lua-objc/issues/5) |
+| Native List row reordering | `<List reorderable="true" reorderContainer="actionName">`; stacks and grids are not supported |
 | Liquid Glass / glass button style | Not yet available; see issue [#6](https://github.com/corepunch/lua-objc/issues/6) |
 | `WebView` / observable `WebPage` | Not yet available; see issue [#7](https://github.com/corepunch/lua-objc/issues/7) |
 | Lazy containers and large-list virtualization | Do not use eager `VStack` for unbounded rows; see issue [#9](https://github.com/corepunch/lua-objc/issues/9) |
@@ -290,23 +290,19 @@ Dropdown menu with items.
 ## Lists & Collections
 
 ### List
-Scrollable list of rows (uses platform list view for virtualization).
-- `ref`: string (optional) — store view reference
+Native table/list backed by `NSTableView` on AppKit and `UITableView` on UIKit.
+The XML form takes `<Column>` definitions and a named record array from template
+data. `List` dequeues native cells; it is a table API, not a generic row-view
+container.
 
 ```xml
-<List ref="myList">
-  <% for _, item in ipairs(items) do %>
-    <ListRow>
-      <Label><%= item.title %></Label>
-    </ListRow>
-  <% end %>
+<List ref="myList" data="items" header="false">
+  <Column id="title" title="Title" />
 </List>
 ```
 
-### LazyVStack
-Virtualized vertical list (creates/recycles views as scrolled).
-- `spacing`: number (optional)
-- `alignment`: "leading" | "center" | "trailing" (optional)
+`LazyVStack` and `LazyVGrid` are not current XML tags. Large-list performance
+and lazy containers are tracked in [issue #9](https://github.com/corepunch/lua-objc/issues/9).
 
 Use `LazyVStack` for large dynamic lists; use `VStack` + `ScrollView` for small static content.
 
@@ -438,7 +434,7 @@ All elements support:
 
 These are planned but not yet available:
 
-- Drag-to-reorder `.reorderable()` — see issue #5
+- Drag-to-reorder for lazy stacks, grids, and custom containers — see issue #5
 - Glass effect modifiers and button styles — see issue #6
 - Custom transitions/animations beyond built-in platform defaults
 - Text selection styling (`SelectionShapeStyle`)

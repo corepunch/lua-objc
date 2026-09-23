@@ -787,6 +787,16 @@ function UIKit.List(props)
 			end
 		end
 	end
+	if props.reorderable then
+		assert(type(props.onReorder) == "function",
+			"List reorderable requires an onReorder callback")
+		local Difference = require("ui.reorder").Difference
+		tv:onRowMove(function(_, from, to)
+			local difference = Difference.new()
+			difference:move(from, to)
+			props.onReorder(difference)
+		end)
+	end
 	return applyLayout(tv, props)
 end
 

@@ -344,6 +344,53 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	return (NSInteger)_rows.count;
 }
 
+- (BOOL)tableView:(NSTableView *)tableView writeRowsWithIndexes:(NSIndexSet *)rowIndexes
+		 toPasteboard:(NSPasteboard *)pasteboard {
+	NSScrollView *scroll = tableView.enclosingScrollView;
+	LuaReg *reg = objc_getAssociatedObject(scroll, &kKeys[kTableMoveKey]);
+	if (!lua_reg_live_state(reg) || rowIndexes.count != 1) return NO;
+	[pasteboard clearContents];
+	[pasteboard setString:[NSString stringWithFormat:@"%ld", (long)rowIndexes.firstIndex]
+				 forType:NSPasteboardTypeString];
+	return YES;
+}
+
+- (NSDragOperation)tableView:(NSTableView *)tableView validateDrop:(id<NSDraggingInfo>)info
+		 proposedRow:(NSInteger)row proposedDropOperation:(NSTableViewDropOperation)operation {
+	if (operation != NSTableViewDropAbove || row < 0 || row > (NSInteger)_rows.count)
+		return NSDragOperationNone;
+	NSString *source = [info.draggingPasteboard stringForType:NSPasteboardTypeString];
+	NSInteger from = source.integerValue;
+	if (!source || from < 0 || from >= (NSInteger)_rows.count) return NSDragOperationNone;
+	return NSDragOperationMove;
+}
+
+- (BOOL)tableView:(NSTableView *)tableView acceptDrop:(id<NSDraggingInfo>)info
+				row:(NSInteger)row dropOperation:(NSTableViewDropOperation)operation {
+	NSString *source = [info.draggingPasteboard stringForType:NSPasteboardTypeString];
+	NSInteger from = source.integerValue;
+	if (operation != NSTableViewDropAbove || from < 0 || from >= (NSInteger)_rows.count
+		|| row < 0 || row > (NSInteger)_rows.count) return NO;
+	NSInteger to = row > from ? row - 1 : row;
+	if (from == to) return NO;
+	id moved = _rows[(NSUInteger)from];
+	[_rows removeObjectAtIndex:(NSUInteger)from];
+	[_rows insertObject:moved atIndex:(NSUInteger)to];
+	[tableView moveRowAtIndex:from toIndex:to];
+	[self updateTableFrame];
+
+	NSScrollView *scroll = tableView.enclosingScrollView;
+	LuaReg *reg = objc_getAssociatedObject(scroll, &kKeys[kTableMoveKey]);
+	lua_State *callL = lua_reg_live_state(reg);
+	if (callL && lua_reg_push(reg)) {
+		push_objc(callL, scroll, "nsview");
+		lua_pushinteger(callL, (lua_Integer)from + 1);
+		lua_pushinteger(callL, (lua_Integer)to + 1);
+		lua_objc_pcall(callL, 3, 0, "table row move");
+	}
+	return YES;
+}
+
 - (CGFloat)horizontalCellOverhead {
 	/*
 	 * Native table styles apply row-cell insets, and NSTableView places

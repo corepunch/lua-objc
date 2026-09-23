@@ -1,0 +1,7 @@
+<VStack spacing="12" padding="20" fillWidth="true" fillHeight="true">
+  <Title>Tasks</Title>
+  <Label>Drag a row to change its position.</Label>
+  <List ref="tasks" data="tasks" reorderable="true" reorderContainer="reorderTasks" header="false" style="plain" flexGrow="1" fillWidth="true">
+    <Column id="title" title="Task" />
+  </List>
+</VStack>

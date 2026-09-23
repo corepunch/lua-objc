@@ -1101,6 +1101,16 @@ function AppKit.List(props)
 	if type(props.onActivate) == "function" then
 		tv:onRowActivate(props.onActivate)
 	end
+	if props.reorderable then
+		assert(type(props.onReorder) == "function",
+			"List reorderable requires an onReorder callback")
+		local Difference = require("ui.reorder").Difference
+		tv:onRowMove(function(_, from, to)
+			local difference = Difference.new()
+			difference:move(from, to)
+			props.onReorder(difference)
+		end)
+	end
 
 	if props.refresh and type(props.refresh) == "function" then
 		local refresh_fn = props.refresh

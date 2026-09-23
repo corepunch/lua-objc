@@ -1,53 +1,35 @@
---[[
-  Model for the reorderable list example.
-
-  Represents a collection of tasks that can be reordered via drag-and-drop.
-  Each task has an _id, title, and done status.
-]]
+local reorder = require("ui.reorder")
 
 local Model = {}
+Model.__index = Model
 
--- Initial task list
-Model.tasks = {
-  { _id = "1", title = "Design new onboarding flow", done = false, priority = "high" },
-  { _id = "2", title = "Review PR #42", done = true, priority = "medium" },
-  { _id = "3", title = "Update API documentation", done = false, priority = "low" },
-  { _id = "4", title = "Fix layout bugs in settings", done = false, priority = "high" },
-  { _id = "5", title = "Merge develop into main", done = false, priority = "medium" },
-  { _id = "6", title = "Deploy to staging", done = true, priority = "high" },
+local initialTasks = {
+	{ _id = "1", title = "Design new onboarding flow", done = false },
+	{ _id = "2", title = "Review the latest pull request", done = true },
+	{ _id = "3", title = "Update API documentation", done = false },
+	{ _id = "4", title = "Fix layout bugs in settings", done = false },
+	{ _id = "5", title = "Merge the current release branch", done = false },
+	{ _id = "6", title = "Deploy to staging", done = true },
 }
 
--- Find a task by ID
-function Model.find(id)
-  for _, task in ipairs(Model.tasks) do
-    if task._id == id then return task end
-  end
+function Model.new(tasks)
+	local rows = {}
+	for index, task in ipairs(tasks or initialTasks) do
+		rows[index] = {
+			_id = task._id,
+			title = task.title,
+			done = task.done,
+		}
+	end
+	return setmetatable({ tasks = rows }, Model)
 end
 
--- Toggle a task's done status
-function Model.toggleDone(id)
-  local task = Model.find(id)
-  if task then
-    task.done = not task.done
-  end
-end
-
--- Get the current order as an array of IDs (for comparison with new state)
-function Model.getOrder()
-  local order = {}
-  for i, task in ipairs(Model.tasks) do
-    order[i] = task._id
-  end
-  return order
-end
-
--- Apply a reorder difference to the tasks array
-function Model.applyReorder(difference)
-  if not difference then return end
-  local reorder = require("ui.reorder")
-  if getmetatable(difference) == reorder.Difference then
-    difference:apply(Model.tasks)
-  end
+function Model:applyReorder(difference)
+	if getmetatable(difference) ~= reorder.Difference then
+		return false
+	end
+	difference:apply(self.tasks)
+	return true
 end
 
 return Model

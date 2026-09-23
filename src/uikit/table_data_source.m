@@ -4,6 +4,7 @@
 @property (nonatomic, strong) NSMutableArray *rows;
 @property (nonatomic, strong) NSMutableArray *columns;
 @property (nonatomic, weak) UITableView *tableView;
+@property (nonatomic, strong) LuaReg *moveReg;
 @end
 
 @implementation LuaTableViewSource
@@ -23,6 +24,26 @@
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
 	return (NSInteger)_rows.count;
+}
+
+- (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)indexPath {
+	return lua_reg_live_state(_moveReg) != NULL;
+}
+
+- (void)tableView:(UITableView *)tableView moveRowAtIndexPath:(NSIndexPath *)sourceIndexPath
+		 toIndexPath:(NSIndexPath *)destinationIndexPath {
+	NSInteger from = sourceIndexPath.row;
+	NSInteger to = destinationIndexPath.row;
+	if (from < 0 || from >= (NSInteger)_rows.count || to < 0 || to >= (NSInteger)_rows.count || from == to) return;
+	id moved = _rows[(NSUInteger)from];
+	[_rows removeObjectAtIndex:(NSUInteger)from];
+	[_rows insertObject:moved atIndex:(NSUInteger)to];
+	lua_State *callL = lua_reg_live_state(_moveReg);
+	if (!callL || !lua_reg_push(_moveReg)) return;
+	push_objc(callL, tableView, "uiview");
+	lua_pushinteger(callL, (lua_Integer)from + 1);
+	lua_pushinteger(callL, (lua_Integer)to + 1);
+	lua_objc_pcall(callL, 3, 0, "table row move");
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView
@@ -61,4 +82,3 @@
 }
 
 @end
-

@@ -2,7 +2,7 @@
   ui/reorder.lua — Drag-to-reorder difference object and utilities.
 
   Provides a structured way to express reorder operations (move, insert, remove)
-  and apply them to a collection of items. Used with reorder_container() callbacks.
+  and apply them to a collection of items. Used with List onReorder callbacks.
 
   Usage:
     local reorder = require("ui.reorder")

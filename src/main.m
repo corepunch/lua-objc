@@ -48,6 +48,7 @@ enum {
 	kTableActivationKey,
 	kTableRefreshKey,
 	kTableSortKey,
+	kTableMoveKey,
 	kTextChangeKey,
 	kTextChangeObserverKey,
 	kTextFieldDelegateKey,

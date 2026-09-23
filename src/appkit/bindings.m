@@ -19,6 +19,7 @@ static int bridge_AppKitControls_button(lua_State *L);
 static int bridge_AppKitControls_toggle(lua_State *L);
 static int bridge_NSScrollView_onRefresh(lua_State *L);
 static int bridge_NSScrollView_onRowSelect(lua_State *L);
+static int bridge_NSScrollView_onRowMove(lua_State *L);
 static int bridge_NSScrollView_onRowActivate(lua_State *L);
 static int bridge_NSScrollView_onColumnSort(lua_State *L);
 static int bridge_NSScrollView_setSortIndicator(lua_State *L);
@@ -609,6 +610,7 @@ static int bridge_NSView_splitProportions(lua_State *L) {
 static MethodEntry TableMethods[] = {
 	{"onRefresh",	bridge_NSScrollView_onRefresh},
 	{"onRowSelect",	bridge_NSScrollView_onRowSelect},
+	{"onRowMove",	bridge_NSScrollView_onRowMove},
 	{"onRowActivate",	bridge_NSScrollView_onRowActivate},
 	{"onColumnSort",	bridge_NSScrollView_onColumnSort},
 	{"setSortIndicator",	bridge_NSScrollView_setSortIndicator},
