@@ -13,6 +13,7 @@ local examples = {
 	"apps/list-reorder/init.lua",
 	"apps/glass-materials/init.lua",
 	"apps/browser/init.lua",
+	"apps/navigation-path/init.lua",
 	"apps/mail/init.lua",
 	"apps/layout/init.lua",
 	"apps/welcome/init.lua",

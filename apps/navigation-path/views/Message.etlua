@@ -1,0 +1,4 @@
+<VStack padding="24" spacing="12" alignment="leading">
+  <Label text="<%= message.title %>" />
+  <Label text="This destination was resolved from a model value." />
+</VStack>

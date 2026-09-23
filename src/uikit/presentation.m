@@ -39,7 +39,14 @@ static int bridge_UIKitPresentation_presentSheet(lua_State *L) {
 			if (detents.count > 0) presentation.detents = detents;
 		}
 		lua_pop(L, 1);
-		presentation.prefersGrabberVisible = YES;
+		lua_getfield(L, 2, "dragIndicator");
+		if (lua_isboolean(L, -1))
+			presentation.prefersGrabberVisible = lua_toboolean(L, -1);
+		else if (lua_isstring(L, -1))
+			presentation.prefersGrabberVisible = strcmp(lua_tostring(L, -1), "hidden") != 0;
+		else
+			presentation.prefersGrabberVisible = YES;
+		lua_pop(L, 1);
 	}
 	push_objc(L, sheet, "uiviewcontroller");
 	return 1;

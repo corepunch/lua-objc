@@ -44,6 +44,24 @@ local function testNavigation()
     assert(sheet == nil)
     print("✓ Dismiss sheet")
 
+    -- Value path retains domain values and resolves them through builders.
+    local path = Navigation.Path.new()
+    local unrelated = { selected = "inbox" }
+    path:registerDestination("message", function(value) return value.id end)
+    local native = {}
+    local remove = Navigation.bindPath(path,
+        function(value, builder) native[#native + 1] = builder(value) end,
+        function() table.remove(native) end)
+    path:push({ type = "message", id = 42, title = "Message" })
+    assert(native[1] == 42 and path:current().id == 42)
+    assert(unrelated.selected == "inbox")
+    path:replace({ type = "message", id = 7 })
+    assert(#native == 1 and native[1] == 7)
+    path:pop()
+    assert(#native == 0 and path:count() == 0)
+    remove()
+    print("✓ Value path push, replace, pop, and destination binding")
+
     print("\nAll navigation tests passed!")
     return true
 end

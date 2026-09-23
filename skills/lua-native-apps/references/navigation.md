@@ -42,6 +42,12 @@ owns the transition and the Back behavior. Preserve domain state in the model,
 not in a screen's temporary widget refs. See `docs/PROJECT_REFERENCE.md` for the
 current `NavigationStack` API.
 
+For data-driven destinations, use `require("ui.navigation").Path` and map a
+stable value type to a controller-owned builder. The path contains model values,
+never views. `push` adds a Back destination, `replace` removes the current route
+for a one-way transition, and `reset` rebuilds the stack after logout or another
+root change. Keep unrelated model state outside the path.
+
 ## Tabs and split views
 
 Use `<TabView>` for native tab navigation where the registry supports the
@@ -52,12 +58,10 @@ reference for the exact properties supported by the current host.
 
 ## Sheets
 
-UIKit exposes `ns.presentSheet(content, props)` and system
-`UISheetPresentationController` behavior. AppKit exposes `ns.Sheet` and
-`ns.presentSheet(sheet, parent)`. Build sheet content from `.etlua` templates.
-Detent customization and a shared `presentationDetents`-shaped API are tracked
-in [issue #8](https://github.com/corepunch/lua-objc/issues/8); do not invent
-those attributes until the bridge documents them.
+UIKit exposes `ns.presentSheet(content, { detents = { "medium", "large" },
+dragIndicator = true })` backed by `UISheetPresentationController`. AppKit
+exposes `ns.Sheet` and `ns.presentSheet(sheet, parent)` as a native sheet-window
+equivalent. Build sheet content from `.etlua` templates.
 
 Choose navigation by user intent: push when the user should go deeper and return
 with Back, a sheet for a temporary focused task, tabs for peer destinations,

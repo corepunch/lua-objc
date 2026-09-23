@@ -997,7 +997,17 @@ local TAG_SCHEMA = {
             largeTitle = "bool",
             hidesTabBar = "bool",
             hidesNavigationBar = "bool",
+            path = "str",
+            destinations = "str",
         },
+        transform = function(props)
+            if renderData then
+                if type(props.path) == "string" then props.path = renderData[props.path] end
+                if type(props.destinations) == "string" then
+                    props.destinations = renderData[props.destinations]
+                end
+            end
+        end,
     },
     NavigationLink = {
         constructor = "NavigationLink",

@@ -172,6 +172,8 @@ local sheetScopes = {}
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
 --- @prop content value optional. Rendered child content or the control’s text value.
+--- @prop path table optional. A `ui.navigation`.Path value path.
+--- @prop destinations table optional. Map path types to destination view builders.
 --- @prop hidesNavigationBar boolean optional. Hides the navigation bar when true.
 --- @prop hidesTabBar boolean optional. Hides the tab bar when true.
 --- @prop largeTitle boolean optional. Uses the large navigation title style when true.
@@ -190,6 +192,17 @@ function UIKit.NavigationStack(props)
 		root.hidesBottomBarWhenPushed = props.hidesTabBar
 	end
 	navScreenScopes[navigation] = {}
+	if props.path then
+		for kind, builder in pairs(props.destinations or {}) do
+			props.path:registerDestination(kind, builder)
+		end
+		require("ui.navigation").bindPath(props.path,
+			function(value, builder)
+				UIKit.pushScreen(navigation, type(value) == "table" and value.title or nil,
+					function() return builder(value) end)
+			end,
+			function() UIKit.popScreen(navigation) end)
+	end
 	return navigation
 end
 

@@ -392,6 +392,14 @@ with the native layout direction, and participate in measurement and placement.
 navigation titles and Back behavior. Application components must not create a new
 window to navigate.
 
+For model-driven routes, `require("ui.navigation").Path` stores plain values
+and maps each `value.type` to a destination builder. Pass the path and builders
+to `NavigationStack { path = path, destinations = { message = function(value)
+... end } }`. Calling `path:push(value)`, `path:pop()`, `path:replace(value)`, or
+`path:reset(values)` drives native screen pushes and pops; each builder returns
+the destination view for that value. Use push when Back should return to the
+previous screen, replace for a one-way transition, and a sheet for a short task.
+
 UIKit `TabView` accepts `minimizeBehavior = "automatic"`, `"never"`,
 `"onScrollDown"`, or `"onScrollUp"` to set the native tab bar minimization
 behavior. AppKit window tabs continue to use public `NSWindow` tabbing APIs.
@@ -1789,7 +1797,9 @@ row data in native tables and outlines. Reused cells clear previous icon state.
 `<Sheet width="880" height="620">…</Sheet>` / `AppKit.Sheet(props)` create an
 ordinary AppKit panel with an opaque semantic content background. Present it with
 `AppKit.presentSheet(sheet, parentWindow)` and dismiss with `AppKit.dismiss(sheet)`.
-AppKit owns sheet attachment, focus, frame, corners and shadow. Headless mode
+For UIKit, `UIKit.presentSheet(content, { detents = { "medium", "large" },
+dragIndicator = true })` uses `UISheetPresentationController`. AppKit's panel
+sheet is its native equivalent. AppKit owns sheet attachment, focus, frame, corners and shadow. Headless mode
 constructs content without presentation. Callers own their callback scope and
 close it when dismissing. Floating `Panel` presentation keeps its separate native
 material. Native List/Outline selection and activation callbacks preserve row
