@@ -373,6 +373,14 @@ Lua's heap only, not Objective-C allocations or process peak memory. The run
 does not measure first-frame latency, scrolling, or compare an equivalent
 SwiftUI implementation; do not use it as an FPS or memory claim.
 
+## Private API research
+
+Private navigation palettes and `LazyLayout` remain research only. No private
+selectors are shipped or called, and there is no runtime opt-in switch. A
+future experiment must be explicitly enabled, isolated, version-gated, and
+paired with a public fallback. Private APIs can trigger App Review rejection
+and can break without notice; see [`docs/PRIVATE_API_RESEARCH.md`](docs/PRIVATE_API_RESEARCH.md).
+
 ## Testing
 
 Run the headless regression suites:

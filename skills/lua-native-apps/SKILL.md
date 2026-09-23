@@ -223,7 +223,10 @@ Fix approach:
   view trees.
 - Use native platform behavior for navigation, materials, animation, and
   gestures only when the bridge exposes it. Never bring Reanimated worklets,
-  React Native components, SwiftUI wrappers, or private APIs into app code.
+  React Native components, or SwiftUI wrappers into app code. Private APIs are
+  unsupported by default; a specifically authorized experiment must follow
+  [`references/navigation.md`](references/navigation.md) and show the risk in
+  [`docs/PRIVATE_API_RESEARCH.md`](../../docs/PRIVATE_API_RESEARCH.md).
 - Prefer lazy/native data containers for unbounded collections. An eager stack
   creates every child and is for small, fixed groups.
 - Before calling a UI change done, follow

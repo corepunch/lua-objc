@@ -56,6 +56,12 @@ layouts. Do not recreate system tab or navigation bars with segmented controls,
 custom drawing, or private classes. Check the XML vocabulary and platform
 reference for the exact properties supported by the current host.
 
+Navigation-bar palettes are private research only and have no implementation
+or runtime opt-in in this version. Prefer the public `UINavigationItem`,
+navigation toolbar, and search APIs. Any future private experiment requires
+explicit opt-in and the App Review/OS compatibility warning in
+[`docs/PRIVATE_API_RESEARCH.md`](../../../../docs/PRIVATE_API_RESEARCH.md).
+
 ## Sheets
 
 UIKit exposes `ns.presentSheet(content, { detents = { "medium", "large" },
