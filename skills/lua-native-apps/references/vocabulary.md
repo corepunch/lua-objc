@@ -13,7 +13,8 @@ app-side substitute.
 | Expo Router / `NavigationStack` path values | Not yet available; see issue [#8](https://github.com/corepunch/lua-objc/issues/8) |
 | Sheets with detents and drag indicator | Not yet available as a shared presentation API; see issue [#8](https://github.com/corepunch/lua-objc/issues/8) |
 | Native List row reordering | `<List reorderable="true" reorderContainer="actionName">`; stacks and grids are not supported |
-| Liquid Glass / glass button style | Not yet available; see issue [#6](https://github.com/corepunch/lua-objc/issues/6) |
+| System Liquid Glass | `<GlassEffect style="regular|clear">`; use `style="glass"` for a glass button |
+| Native toolbar spacing/overflow | `<ToolbarSpacer />`, native toolbar overflow, and `ToolbarItem visibilityPriority`; on iOS set `TabView minimizeBehavior="onScroll"` for its tab bar |
 | `WebView` / observable `WebPage` | Not yet available; see issue [#7](https://github.com/corepunch/lua-objc/issues/7) |
 | Lazy containers and large-list virtualization | Do not use eager `VStack` for unbounded rows; see issue [#9](https://github.com/corepunch/lua-objc/issues/9) |
 | Native animation, haptics, and motion preferences | Use only existing documented bridge operations; broader surface is tracked in issue [#10](https://github.com/corepunch/lua-objc/issues/10) |
@@ -435,7 +436,6 @@ All elements support:
 These are planned but not yet available:
 
 - Drag-to-reorder for lazy stacks, grids, and custom containers — see issue #5
-- Glass effect modifiers and button styles — see issue #6
 - Custom transitions/animations beyond built-in platform defaults
 - Text selection styling (`SelectionShapeStyle`)
 - Advanced gesture recognizers beyond tap/long-press

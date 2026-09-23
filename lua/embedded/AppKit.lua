@@ -1259,7 +1259,25 @@ function AppKit.Button(props)
 	if type(props) == "table" and props.disabled ~= nil then
 		button.enabled = not props.disabled
 	end
+	if type(props) == "table" and props.style == "glass" then
+		button = bridge._glassEffect(button, "regular", props.cornerRadius or 0)
+	end
 	return applyLayout(button, props)
+end
+
+--- Embeds a view in the current system glass effect.
+--- @tag GlassEffect
+--- @prop content value required. The view rendered inside the glass effect.
+--- @prop style string optional. `regular` or `clear`.
+--- @prop cornerRadius number optional. Native glass corner curvature.
+--- @example <GlassEffect style="regular"><VStack>...</VStack></GlassEffect>
+--- @platform AppKit NSGlassEffectView (macOS 26+).
+function AppKit.GlassEffect(props)
+	props = props or {}
+	local content = props.content or props[1]
+	assert(content, "GlassEffect requires content")
+	return applyLayout(bridge._glassEffect(content, props.style or "regular",
+		props.cornerRadius or 0), props)
 end
 
 --- Opens or navigates to a destination when activated.

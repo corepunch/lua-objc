@@ -1,30 +1,20 @@
-local Model = require("Model")
+local ns = require("ns")
 local xml = require("ui.xml")
+local Model = require("apps.glass-materials.Model")
 
 local Controller = {}
+Controller.__index = Controller
 
 function Controller.new()
-    return setmetatable({
-        model = Model.new(),
-    }, { __index = Controller })
+	return setmetatable({ model = Model.new() }, Controller)
 end
 
 function Controller:createWindow()
-    local view, refs = xml.renderFile("apps/glass-materials/views/Main.etlua", {
-        materials = self.model.materials,
-        selectedMaterial = self.model.selectedMaterial,
-        isMinimizedOnScroll = self.model.isMinimizedOnScroll,
-        actions = {
-            selectMaterial = function(value)
-                self.model.selectedMaterial = value
-            end,
-            toggleMinimized = function(enabled)
-                self.model.isMinimizedOnScroll = enabled
-            end,
-        },
-    }, require("ns"))
-
-    return view, refs
+	local config = xml.renderFile("apps/glass-materials/views/Main.etlua", {
+		materials = self.model.materials,
+	}, ns)
+	self.window = ns.Window(config)
+	return self.window
 end
 
 return Controller

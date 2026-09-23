@@ -48,6 +48,8 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 	if ([identifier isEqualToString:kToggleSidebarAlias]) {
 		return NSToolbarToggleSidebarItemIdentifier;
 	}
+	if ([identifier isEqualToString:@"flexibleSpace"])
+		return NSToolbarFlexibleSpaceItemIdentifier;
 	return identifier;
 }
 
@@ -119,9 +121,12 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 										 splitView:_trackingSplitView
 									  dividerIndex:_trackingDividerIndex];
 	}
+	if ([identifier isEqualToString:NSToolbarFlexibleSpaceItemIdentifier]) {
+		return [[NSToolbarItem alloc] initWithItemIdentifier:identifier];
+	}
 
 	for (NSDictionary *item in _items) {
-		if ([item[@"id"] isEqualToString:identifier]) {
+		if ([toolbar_item_identifier(item[@"id"]) isEqualToString:identifier]) {
 			NSToolbarItem *ti = [item[@"type"] isEqualToString:@"search"]
 				? [[NSSearchToolbarItem alloc] initWithItemIdentifier:identifier]
 				: [[LuaToolbarItem alloc] initWithItemIdentifier:identifier];
@@ -130,6 +135,8 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 			ti.toolTip = item[@"tooltip"];
 			ti.autovalidates = NO;
 			ti.enabled = YES;
+			if (item[@"visibilityPriority"])
+				ti.visibilityPriority = [item[@"visibilityPriority"] integerValue];
 
 			if ([ti isKindOfClass:NSSearchToolbarItem.class]) return ti;
 

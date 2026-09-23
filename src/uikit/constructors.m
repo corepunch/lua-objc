@@ -29,6 +29,27 @@ static int bridge_UIKitControls_materialView(lua_State *L) {
 	return 1;
 }
 
+static int bridge_UIKitControls_glassEffect(lua_State *L) {
+	UIView *content = check_view(L, 1);
+	const char *styleName = luaL_optstring(L, 2, "regular");
+	CGFloat cornerRadius = luaL_optnumber(L, 3, 0);
+	UIGlassEffectStyle style;
+	if (strcmp(styleName, "regular") == 0) style = UIGlassEffectStyleRegular;
+	else if (strcmp(styleName, "clear") == 0) style = UIGlassEffectStyleClear;
+	else return luaL_error(L, "glass style must be 'regular' or 'clear'");
+	UIVisualEffectView *view = [[UIVisualEffectView alloc]
+		initWithEffect:[UIGlassEffect effectWithStyle:style]];
+	view.layer.cornerRadius = MAX(0, cornerRadius);
+	view.clipsToBounds = cornerRadius > 0;
+	content.frame = view.contentView.bounds;
+	content.autoresizingMask = UIViewAutoresizingFlexibleWidth
+		| UIViewAutoresizingFlexibleHeight;
+	[view.contentView addSubview:content];
+	[view sizeToFit];
+	push_objc(L, view, "uiview");
+	return 1;
+}
+
 static int bridge_UIKitControls_datePicker(lua_State *L) {
 	UIDatePicker *picker = [[UIDatePicker alloc] initWithFrame:CGRectZero];
 	picker.datePickerMode = UIDatePickerModeDate;
@@ -376,6 +397,10 @@ static int bridge_UIKitControls_button(lua_State *L) {
 		configuration.baseForegroundColor = UIColor.labelColor;
 	} else if (strcmp(style, "borderedProminent") == 0) {
 		configuration = [UIButtonConfiguration borderedProminentButtonConfiguration];
+	} else if (strcmp(style, "glass") == 0) {
+		configuration = [UIButtonConfiguration glassButtonConfiguration];
+	} else if (strcmp(style, "glassProminent") == 0) {
+		configuration = [UIButtonConfiguration prominentGlassButtonConfiguration];
 	} else if (strcmp(style, "plain") == 0 || strcmp(style, "link") == 0) {
 		configuration = [UIButtonConfiguration plainButtonConfiguration];
 		configuration.baseForegroundColor = UIColor.labelColor;

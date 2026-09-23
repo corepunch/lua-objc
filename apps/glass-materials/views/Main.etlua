@@ -1,101 +1,25 @@
-<Window title="Glass & Materials Demo" width="600" height="700">
-  <VStack>
-    <!-- Toolbar with glass button styles -->
-    <Toolbar>
-      <ToolbarItem id="save" label="Save" systemImage="checkmark" />
-      <ToolbarItem id="NSToolbarFlexibleSpaceItem" />
-      <ToolbarItem id="settings" label="Settings" systemImage="gear" />
-    </Toolbar>
-
-    <!-- Main content with materials demo -->
-    <ScrollView vertical="true">
-      <VStack spacing="24" padding="20">
-        <!-- Glass effect section -->
-        <VStack>
-          <Label size="18" weight="bold">Glass Effects</Label>
-          <Label color="gray" size="14">Blur materials with system appearance</Label>
-        </VStack>
-
-        <!-- Material selection -->
-        <VStack spacing="12">
-          <Label weight="semibold">Select Material</Label>
-          <% for _, mat in ipairs(materials) do %>
-            <Button
-                title="<%= mat.name %> Glass"
-                style="<% if mat.value == selectedMaterial then %>filled<% else %>plain<% end %>"
-                action="selectMaterial"
-                />
-          <% end %>
-        </VStack>
-
-        <!-- Glass demonstration -->
-        <VStack
-            glassEffect="<%= selectedMaterial %>"
-            glassShape="roundedRect"
-            glassCornerRadius="12"
-            padding="16"
-            spacing="12">
-          <Label weight="bold">This is glass effect</Label>
-          <Label size="13" color="gray">
-            With <%= selectedMaterial %> material blur
-          </Label>
-          <Button
-              title="Glass-styled Button"
-              style="glass"
-              />
-        </VStack>
-
-        <!-- Toolbar demo section -->
-        <VStack>
-          <Label size="18" weight="bold">Toolbar Features</Label>
-          <Label color="gray" size="14">Modern toolbar styling</Label>
-        </VStack>
-
-        <!-- Toggle minimize on scroll -->
-        <VStack spacing="8">
-          <Label weight="semibold">Toolbar Minimize on Scroll</Label>
-          <Toggle
-              label="Minimize toolbar when scrolling"
-              value="<% tostring(isMinimizedOnScroll) %>"
-              action="toggleMinimized"
-              />
-          <Label size="13" color="gray">
-            When enabled, toolbar collapses out of view on scroll
-          </Label>
-        </VStack>
-
-        <!-- Glass buttons demo -->
-        <VStack>
-          <Label size="18" weight="bold">Button Styles</Label>
-          <VStack spacing="8">
-            <Button title="Default Style" />
-            <Button title="Plain Button" style="plain" />
-            <Button title="Bordered Button" style="bordered" />
-            <Button title="Filled Button" style="filled" />
-            <Button title="Glass Button" style="glass" />
-            <Button title="Tinted Button" style="tinted" />
-          </VStack>
-        </VStack>
-
-        <!-- Content behind glass effect -->
-        <VStack
-            glassEffect="thin"
-            glassShape="roundedRect"
-            glassCornerRadius="16"
-            padding="16">
-          <Label weight="bold" size="16">Premium Experience</Label>
-          <Label size="14">
-            This demonstrates modern iOS 26 + macOS 26 styling with glass effects and material blur.
-          </Label>
-          <VStack spacing="8" paddingTop="12">
-            <Button title="Learn More" style="glass" />
-            <Button title="Dismiss" style="plain" />
-          </VStack>
-        </VStack>
-
-        <!-- Spacer at bottom -->
-        <Spacer />
+<Window title="Glass Materials" width="620" height="520" toolbarLabels="false">
+  <Toolbar>
+    <ToolbarItem id="refresh" label="Refresh" icon="arrow.clockwise" visibilityPriority="10" />
+    <ToolbarSpacer />
+    <ToolbarItem id="settings" label="Settings" icon="gear" />
+  </Toolbar>
+  <VStack spacing="20" padding="24" fillWidth="true" fillHeight="true">
+    <Title text="System glass" />
+    <Label text="Use the platform glass effect. The control and its tint remain native." />
+    <GlassEffect style="regular" cornerRadius="18" fillWidth="true">
+      <VStack spacing="12" padding="20">
+        <Label text="Regular glass" weight="bold" />
+        <Label text="AppKit uses NSGlassEffectView. UIKit uses UIGlassEffect." />
+        <Button title="Glass button" style="glass" systemImage="sparkles" />
       </VStack>
-    </ScrollView>
+    </GlassEffect>
+    <GlassEffect style="clear" cornerRadius="18" fillWidth="true">
+      <VStack spacing="8" padding="20">
+        <Label text="Clear glass" weight="bold" />
+        <Label text="System material appearance adapts to the active appearance." />
+      </VStack>
+    </GlassEffect>
+    <Spacer />
   </VStack>
 </Window>

@@ -591,6 +591,7 @@ local TAG_SCHEMA = {
             subtitle    = "str",
             systemImage = "str",
             style       = "str",
+            cornerRadius = "num",
             role        = "str",
             detail      = "str",
             truncation  = "str",
@@ -648,6 +649,11 @@ local TAG_SCHEMA = {
         constructor = "MaterialView",
         children = "content",
         props = { material = "str" },
+    },
+    GlassEffect = {
+        constructor = "GlassEffect",
+        children = "content",
+        props = { style = "str", cornerRadius = "num" },
     },
     Slider = {
         constructor = "Slider",
@@ -859,6 +865,7 @@ local TAG_SCHEMA = {
             tooltip = { default = "", type = "str" },
             action  = "str",
             bordered = "bool",
+            visibilityPriority = "num",
         },
         collect = function(rec, children)
             if #children == 1 then
@@ -872,6 +879,13 @@ local TAG_SCHEMA = {
         kind     = "record",
         flag     = "__toolbar",
         children = "items",
+    },
+    ToolbarSpacer = {
+        kind = "record",
+        flag = "__toolbarItem",
+        props = {
+            id = { default = "flexibleSpace", type = "str" },
+        },
     },
     Sheet = {
         constructor = "Sheet",
@@ -922,6 +936,15 @@ local TAG_SCHEMA = {
                 cfg.content = props
             end
         end,
+        transform = function(cfg)
+            if renderData and renderData.actions then
+                for _, item in ipairs(cfg.toolbar or {}) do
+                    if type(item.action) == "string" then
+                        item.action = renderData.actions[item.action]
+                    end
+                end
+            end
+        end,
     },
 
     -- Charts
@@ -947,8 +970,9 @@ local TAG_SCHEMA = {
     TabView = {
         constructor = "TabView",
         props = {
-            style    = "str",
+            style = "str",
             selected = "str",
+            minimizeBehavior = "str",
         },
         collect = function(props, children)
             local tabs = {}

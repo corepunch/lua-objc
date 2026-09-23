@@ -392,6 +392,10 @@ with the native layout direction, and participate in measurement and placement.
 navigation titles and Back behavior. Application components must not create a new
 window to navigate.
 
+UIKit `TabView` accepts `minimizeBehavior = "automatic"`, `"never"`,
+`"onScrollDown"`, or `"onScrollUp"` to set the native tab bar minimization
+behavior. AppKit window tabs continue to use public `NSWindow` tabbing APIs.
+
 `TextField { value = "", placeholder = "Command", onChange = function(value, field)
 end, onCommand = function(command, field) return command == "submit" end }` uses
 native editing events on both platforms. `submit` represents keyboard Return;
@@ -429,6 +433,12 @@ Creates an `NSWindow`. Table keys:
 | `toolbar` | `{{id, label, icon?, tooltip?, action?}}` | none | Native NSToolbar items; `id = "toggleSidebar"` uses AppKit's standard sidebar command |
 | `toolbarLabels` | bool | `false` | Show labels below toolbar icons |
 | `toolbarContentDividerAfter` | string | none | Continue a vertical content split divider through the toolbar after this item ID |
+
+Toolbar item descriptors also accept `visibilityPriority` to control native
+overflow ordering. Use `id = "flexibleSpace"` (or `<ToolbarSpacer />` in XML)
+for AppKit's standard flexible space item; the native toolbar distributes space
+and handles overflow. Glass buttons use the system button configuration, and
+`GlassEffect` wraps content in the platform's native glass effect.
 
 The array part of the table holds child views (added to a VStack inside the
 window's content view). After building the view tree, calls `bridge._show(win)`
@@ -660,6 +670,25 @@ ns.Button {
 Button `size` and `weight` set the native title font, including in XML:
 `<Button title="Applications" style="link" size="11" />`. Omitting them preserves
 the standard system button typography.
+
+Use `style="glass"` for the native system glass button treatment. The UIKit
+bridge uses `UIButtonConfiguration.glassButtonConfiguration`; AppKit keeps the
+`NSButton` and embeds it in `NSGlassEffectView`.
+
+### `GlassEffect{...}`
+
+Wrap content in the current system Liquid Glass effect. AppKit uses
+`NSGlassEffectView`; UIKit uses `UIGlassEffect` through
+`UIVisualEffectView`. Both platforms support `style = "regular"` or `"clear"`.
+AppKit also supports `cornerRadius`; UIKit clips the effect view to that radius.
+These APIs require macOS 26 or iOS 26. Do not replace them with blur and
+opacity layers.
+
+```xml
+<GlassEffect style="regular" cornerRadius="18">
+  <VStack padding="16"><Label text="Native glass" /></VStack>
+</GlassEffect>
+```
 
 ### `Toggle{...}`
 
@@ -1310,6 +1339,7 @@ Templates use the `.etlua` extension to reflect that they contain etlua
 | `<Title text="…">` | `ns.Title` | `ns.Title` |
 | `<TextField>` | `ns.TextField` | `ns.TextField` |
 | `<Button title="…">` | `ns.Button` | `ns.Button` |
+| `<GlassEffect>` | `NSGlassEffectView` | `UIVisualEffectView` + `UIGlassEffect` |
 | `<VStack>` / `<HStack>` | flex containers | flex containers |
 | `<FlowStack>` | wrapping rows of native views | wrapping rows of native views |
 | `<HSplit>` | `ns.HSplit` (NSSplitView) | — |
@@ -1398,7 +1428,8 @@ returns `(config, refs)` instead of `(view, refs)`:
 `toolbarLabels`, `visible`, `sidebarWidth`, `toolbarContentDividerAfter`.
 
 **ToolbarItem attributes:** `id`, `label`, `icon`, `tooltip`, `action`,
-`bordered`. A `ToolbarItem` accepts at most one view child, installed by
+`bordered`, `visibilityPriority`. `<ToolbarSpacer />` creates the native
+flexible space item. A `ToolbarItem` accepts at most one view child, installed by
 `AppKit.Window` as the item's custom control — toolbar content is declared in
 etlua, never assembled in controller code:
 

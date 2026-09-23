@@ -490,6 +490,10 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 				MAX(0, constraint.width - margins.width * 2), 0, constraint.widthMode, LuaMeasureUndefined});
 			natural = NSMakeSize(content.width + margins.width * 2, content.height + margins.height * 2);
 		}
+		if ([view isKindOfClass:NSGlassEffectView.class]) {
+			natural = measure_view(((NSGlassEffectView *)view).contentView,
+				constraint);
+		}
 		if ([view isKindOfClass:LuaLabel.class]) {
 			NSTextField *label = (NSTextField *)view;
 			/* Match the native drawing mode to the negotiated line count. A
@@ -943,6 +947,13 @@ static void layout_recursive(NSView *view, CGFloat width) {
 		if ([view isKindOfClass:NSBox.class] && ((NSBox *)view).boxType == NSBoxPrimary) {
 			[view layoutSubtreeIfNeeded];
 			NSView *content = ((NSBox *)view).contentView;
+			layout_recursive(content, content.bounds.size.width);
+			return;
+		}
+		if ([view isKindOfClass:NSGlassEffectView.class]) {
+			NSGlassEffectView *glass = (NSGlassEffectView *)view;
+			NSView *content = glass.contentView;
+			content.frame = glass.bounds;
 			layout_recursive(content, content.bounds.size.width);
 			return;
 		}

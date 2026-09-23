@@ -1,2 +1,1 @@
--- Glass effects and materials demo
-return require("Controller")
+return require("apps.glass-materials.Controller")

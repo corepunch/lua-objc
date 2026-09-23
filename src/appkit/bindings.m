@@ -38,6 +38,7 @@ static int bridge_add_hover_tooltip(lua_State *L);
 static int bridge_tableview(lua_State *L);
 static int bridge_action_button(lua_State *L);
 static int bridge_panel(lua_State *L);
+static int bridge_glass_effect(lua_State *L);
 static int bridge_panel_style_state(lua_State *L);
 static int bridge_menu_item(lua_State *L);
 static int bridge_text_field_callbacks(lua_State *L);
@@ -144,6 +145,10 @@ static int bridge_AppKit_action_button(lua_State *L) {
 
 static int bridge_AppKit_panel(lua_State *L) {
 	return bridge_panel(L);
+}
+
+static int bridge_AppKit_glass_effect(lua_State *L) {
+	return bridge_glass_effect(L);
 }
 
 static int bridge_AppKit_panel_style_state(lua_State *L) {

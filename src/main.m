@@ -283,6 +283,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_addHoverTooltip", bridge_AppKit_add_hover_tooltip},
 	{"_tableview", bridge_AppKit_tableview},
 	{"_actionButton", bridge_AppKit_action_button},
+	{"_glassEffect", bridge_AppKit_glass_effect},
 	{"_panel", bridge_AppKit_panel},
 	{"_sheet", bridge_sheet},
 	{"_panelStyleState", bridge_AppKit_panel_style_state},

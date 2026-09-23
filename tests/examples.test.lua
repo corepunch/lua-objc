@@ -11,6 +11,7 @@ local examples = {
 	"apps/controls/init.lua",
 	"apps/list/init.lua",
 	"apps/list-reorder/init.lua",
+	"apps/glass-materials/init.lua",
 	"apps/mail/init.lua",
 	"apps/layout/init.lua",
 	"apps/welcome/init.lua",

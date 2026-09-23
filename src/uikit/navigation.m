@@ -30,6 +30,18 @@ static char kTabBarDelegateKey;
 
 static int bridge_tabview(lua_State *L) {
 	UITabBarController *tbc = [[UITabBarController alloc] init];
+	const char *behavior = luaL_optstring(L, 1, "automatic");
+	if (strcmp(behavior, "automatic") == 0)
+		tbc.tabBarMinimizeBehavior = UITabBarMinimizeBehaviorAutomatic;
+	else if (strcmp(behavior, "never") == 0)
+		tbc.tabBarMinimizeBehavior = UITabBarMinimizeBehaviorNever;
+	else if (strcmp(behavior, "onScroll") == 0
+		|| strcmp(behavior, "onScrollDown") == 0)
+		tbc.tabBarMinimizeBehavior = UITabBarMinimizeBehaviorOnScrollDown;
+	else if (strcmp(behavior, "onScrollUp") == 0)
+		tbc.tabBarMinimizeBehavior = UITabBarMinimizeBehaviorOnScrollUp;
+	else
+		return luaL_error(L, "minimizeBehavior must be 'automatic', 'never', 'onScroll', or 'onScrollUp'");
 	push_objc(L, tbc, "uiviewcontroller");
 	return 1;
 }

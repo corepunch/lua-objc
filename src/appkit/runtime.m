@@ -5,6 +5,7 @@
 static int bridge_tableview_add(lua_State *L);
 static int bridge_tableview_remove(lua_State *L);
 static int bridge_tableview_clear(lua_State *L);
+static int bridge_glass_effect(lua_State *L);
 static int bridge_table_show_loading(lua_State *L);
 static int bridge_table_hide_loading(lua_State *L);
 static int bridge_table_column_widths(lua_State *L);
