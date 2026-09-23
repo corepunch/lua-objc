@@ -1,7 +1,7 @@
 CC = clang
 CFLAGS = -fobjc-arc -Wall -O2 $(shell pkg-config --cflags lua 2>/dev/null || echo "-I/opt/homebrew/include/lua")
 HOST_CFLAGS = -Wall -O2
-LDFLAGS = $(shell pkg-config --libs lua 2>/dev/null || echo "-L/opt/homebrew/lib -llua -lm") -framework Cocoa -framework WebKit
+LDFLAGS = $(shell pkg-config --libs lua 2>/dev/null || echo "-L/opt/homebrew/lib -llua -lm") -framework Cocoa -framework WebKit -framework QuartzCore
 MODULE_LDFLAGS = -dynamiclib -undefined dynamic_lookup
 IOS_SIM_SDK = $(shell xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null)
 

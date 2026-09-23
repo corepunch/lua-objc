@@ -6,6 +6,7 @@
     <% if featured then %>
     <ZStack ref="hero" fixedHeight="500" fillWidth="true" clipsToBounds="true">
       <Image path="<%= featured.cover %>" contentMode="fill" fillWidth="true" fixedHeight="500" />
+      <LinearGradient ref="heroGradient" topAlpha="0" middleAlpha="0.18" middleLocation="0.42" bottomAlpha="0.88" fillWidth="true" fillHeight="true" />
       <Button title="" action="featured" style="plain" accessibilityLabel="Open <%= featured.title %>" ref="featuredCoverButton" fillWidth="true" fixedHeight="500" />
       <VStack allowsHitTesting="false" paddingHorizontal="20" paddingTop="0" paddingBottom="8" spacing="4" alignment="leading" fillWidth="true" fillHeight="true">
         <Spacer flexGrow="1" />
