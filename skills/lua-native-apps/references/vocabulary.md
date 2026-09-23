@@ -1,5 +1,30 @@
 # XML Vocabulary & Modifiers
 
+## Framework mapping
+
+Use this table to translate a design idea into APIs this repository actually
+provides. An unimplemented item is a framework gap, not permission to invent an
+app-side substitute.
+
+| Concept | lua-objc API or status |
+|---|---|
+| SwiftUI stacks and controls | XML tags in this reference, rendered by `lua/ui/xml.lua` |
+| SwiftUI `List` / native table | `<List>` and `<ListRow>`; use for data-driven rows |
+| Expo Router / `NavigationStack` path values | Not yet available; see issue [#8](https://github.com/corepunch/lua-objc/issues/8) |
+| Sheets with detents and drag indicator | Not yet available as a shared presentation API; see issue [#8](https://github.com/corepunch/lua-objc/issues/8) |
+| `reorderable()` | Not yet available as native container drag-reorder; see issue [#5](https://github.com/corepunch/lua-objc/issues/5) |
+| Liquid Glass / glass button style | Not yet available; see issue [#6](https://github.com/corepunch/lua-objc/issues/6) |
+| `WebView` / observable `WebPage` | Not yet available; see issue [#7](https://github.com/corepunch/lua-objc/issues/7) |
+| Lazy containers and large-list virtualization | Do not use eager `VStack` for unbounded rows; see issue [#9](https://github.com/corepunch/lua-objc/issues/9) |
+| Native animation, haptics, and motion preferences | Use only existing documented bridge operations; broader surface is tracked in issue [#10](https://github.com/corepunch/lua-objc/issues/10) |
+| Private navigation palettes / private `LazyLayout` | Research only, opt-in proposal; never use in default app code. See issue [#11](https://github.com/corepunch/lua-objc/issues/11) |
+| Swipe actions on non-List containers | Not yet available; see issue [#12](https://github.com/corepunch/lua-objc/issues/12) |
+| State observation / invalidation | Controller actions update retained refs or render the affected template; see `ARCHITECTURE.md` and issue [#12](https://github.com/corepunch/lua-objc/issues/12) |
+
+For tabs, read the current XML registry and [project reference](../../../docs/PROJECT_REFERENCE.md)
+before assuming a tag or presentation behavior exists. For iOS builds and
+streamed simulator reloads, follow [`docs/ios.md`](../../../docs/ios.md).
+
 This document lists every supported XML tag and modifier attribute. If a tag is not listed here, it does not exist in the bridge — extend `xml.registry` in the appropriate platform module instead of inventing SwiftUI modifiers the bridge does not implement.
 
 ## Layout Containers

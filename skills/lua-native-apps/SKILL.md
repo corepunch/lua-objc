@@ -9,14 +9,29 @@ Build user-facing apps in Lua only. Keep AppKit/UIKit work behind the bridge
 and keep the app shell thin enough that most behavior lives in reusable Lua
 modules.
 
-## Quick Start
+## Start with the current framework
 
-1. **Vocabulary**: See [references/vocabulary.md](references/vocabulary.md) for all XML tags and modifiers
-2. **Navigation**: See [references/navigation.md](references/navigation.md) for routing patterns
-3. **Performance**: See [references/performance.md](references/performance.md) for list and animation rules
-4. **Motion**: See [references/motion.md](references/motion.md) for Core Animation patterns
-5. **Accessibility**: See [references/accessibility.md](references/accessibility.md) for WCAG compliance
-6. **Verification**: See [references/verification.md](references/verification.md) before shipping
+Read only the references needed for the task. The bridge exposes native
+AppKit/UIKit controls through Lua and etlua; it is not SwiftUI, React Native, or
+a web router. Never invent a modifier or use another framework's source code as
+the implementation path. Check [references/vocabulary.md](references/vocabulary.md)
+before using an XML tag or modifier, and extend `xml.registry` when the shared
+XML renderer needs a new tag.
+
+| Need | lua-objc path |
+|---|---|
+| App structure | `apps/<app>/init.lua`, `Model.lua`, `Controller.lua`, `views/*.etlua` |
+| Native views | Cross-platform XML tags rendered by `lua/ui/xml.lua` |
+| Repeated rows | `<List>` with etlua loops; see [performance](references/performance.md) |
+| Navigation | Existing controller rendering and native windows; check [navigation](references/navigation.md) for supported patterns |
+| Accessibility | Native control labels and traits; see [accessibility](references/accessibility.md) |
+| Layout and visual QA | `--dump-layout`, `--screenshot`, and headless tests; see [verification](references/verification.md) |
+| Framework gaps | Implement in the shared Lua/native bridge, with regression coverage; do not patch around it in an app |
+
+SwiftUI-shaped concepts that are not implemented must stay explicit gaps. Check
+the “Not yet available” section in the vocabulary before proposing a workaround.
+Do not substitute emoji, custom drawing, blur/opacity tricks, or a second
+navigation/state framework for a missing native API.
 
 ## Laravel-style MVC with etlua views
 
@@ -198,3 +213,19 @@ Fix approach:
 - Test both Lua plugin loading and native provider loading when an IDE plugin
   depends on a dylib; a successful dylib build alone does not verify the Lua
   module ABI.
+
+## Native product rules
+
+- Use system controls, metrics, semantic colors, SF Symbols, keyboard behavior,
+  and accessibility labels. Do not use emoji as icons or draw fake system chrome.
+- Keep screens and reusable views in `.etlua` templates. Controllers prepare
+  data, render templates, retain refs, and bind actions; they do not construct
+  view trees.
+- Use native platform behavior for navigation, materials, animation, and
+  gestures only when the bridge exposes it. Never bring Reanimated worklets,
+  React Native components, SwiftUI wrappers, or private APIs into app code.
+- Prefer lazy/native data containers for unbounded collections. An eager stack
+  creates every child and is for small, fixed groups.
+- Before calling a UI change done, follow
+  [references/verification.md](references/verification.md): headless regression
+  coverage plus screenshots and layout inspection for affected examples.
