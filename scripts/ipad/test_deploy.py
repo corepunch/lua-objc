@@ -1,6 +1,6 @@
 """Fast, offline regression checks for iOS app packaging and deployment."""
 import unittest
-from bundle import copy_tree
+from bundle import copy_tree, resolve_app_and_entry
 from deploy import device_list_command, select_device
 from sign import matches, signing_entitlements
 from simulator_entitlements import entitlements
@@ -73,6 +73,15 @@ class DiscoveryTests(unittest.TestCase):
             self.assertTrue((workspace / 'lua/embedded/UIKit.lua').is_file())
             self.assertTrue((workspace / 'apps/adventure-arena/init.lua').is_file())
             self.assertTrue((workspace / 'apps/adventure-arena/assets/zork1.jpg').is_file())
+
+    def test_app_slug_resolves_to_apps_directory_and_entry(self):
+        app, entry = resolve_app_and_entry('adventure-arena', 'adventure-arena/init.lua')
+        self.assertEqual(app, 'apps/adventure-arena')
+        self.assertEqual(entry, 'apps/adventure-arena/init.lua')
+
+    def test_missing_app_fails_instead_of_creating_empty_bundle(self):
+        with self.assertRaisesRegex(ValueError, 'app directory does not exist'):
+            resolve_app_and_entry('missing-app', 'missing-app/init.lua')
 
     def test_profile_identifiers(self):
         self.assertTrue(matches('TEAM.org.luaobjc.*', 'TEAM.org.luaobjc.studio'))

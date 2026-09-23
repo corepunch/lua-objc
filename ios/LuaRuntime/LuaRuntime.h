@@ -33,7 +33,8 @@ UIWindow * _Nullable LRTApplicationWindow(void);
 + (instancetype)shared;
 - (BOOL)ping:(NSError * _Nullable * _Nullable)error;
 - (nullable NSData *)dataForPath:(NSString *)rel error:(NSError * _Nullable * _Nullable)error;
-- (nullable NSString *)sourceForModule:(NSString *)name error:(NSError * _Nullable * _Nullable)error;
+- (nullable NSString *)sourceForModule:(NSString *)name searchPath:(NSString *)searchPath
+	 error:(NSError * _Nullable * _Nullable)error;
 - (nullable NSString *)entryPath:(NSError * _Nullable * _Nullable)error;
 - (void)dropCacheForPath:(NSString *)rel;
 @end

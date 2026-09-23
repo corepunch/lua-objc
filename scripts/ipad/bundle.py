@@ -19,6 +19,21 @@ def copy_tree(source, workspace, lua_only=False):
         shutil.copy2(path, target)
 
 
+def resolve_app_and_entry(app, entry):
+    """Resolve app slugs while keeping app and entry paths in sync."""
+    source = Path(app)
+    if not source.is_dir() and (Path('apps') / source).is_dir():
+        source = Path('apps') / source
+        if entry == f'{app}/init.lua':
+            entry = f'{source.as_posix()}/init.lua'
+    if not source.is_dir():
+        raise ValueError(f'app directory does not exist: {app}')
+    # Entry paths are workspace-relative (for example apps/foo/init.lua).
+    if not Path(entry).is_file():
+        raise ValueError(f'app entry does not exist: {entry}')
+    return source.as_posix(), entry
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('binary', 'bundle', 'sdk', 'identifier', 'minimum'):
@@ -29,6 +44,10 @@ def main():
     parser.add_argument('--device-family', type=int, choices=(1, 2), required=True)
     parser.add_argument('--file-sharing', action='store_true')
     args = parser.parse_args()
+    try:
+        args.app, args.entry = resolve_app_and_entry(args.app, args.entry)
+    except ValueError as error:
+        parser.error(str(error))
     bundle = Path(args.bundle)
     bundle.mkdir(parents=True, exist_ok=True)
     shutil.copy2(args.binary, bundle / 'LuaStudio')

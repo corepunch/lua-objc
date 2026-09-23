@@ -117,8 +117,13 @@ UIWindow *LRTApplicationWindow(void) {
 
 static int searcher_packager(lua_State *L) {
 	const char *name = luaL_checkstring(L, 1);
+	lua_getglobal(L, "package");
+	lua_getfield(L, -1, "path");
+	const char *searchPath = lua_tostring(L, -1);
 	NSError *err = nil;
-	NSString *src = [LRTResourceLoader.shared sourceForModule:@(name) error:&err];
+	NSString *src = [LRTResourceLoader.shared sourceForModule:@(name)
+		searchPath:searchPath ? @(searchPath) : @"" error:&err];
+	lua_pop(L, 2);
 	if (!src) {
 		lua_pushstring(L, err.localizedDescription.UTF8String ?: "not found");
 		return 1;

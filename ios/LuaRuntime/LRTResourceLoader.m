@@ -99,17 +99,24 @@
 	return data;
 }
 
-- (NSString *)sourceForModule:(NSString *)name error:(NSError **)error {
-	if (self.localRoot) {
-		NSString *rel = [name stringByReplacingOccurrencesOfString:@"." withString:@"/"];
-		NSArray *candidates = [name isEqualToString:@"UIKit"] ? @[@"lua/embedded/UIKit.lua"] : @[
-			[rel stringByAppendingString:@".lua"],
-			[NSString stringWithFormat:@"lua/%@.lua", rel],
-			[NSString stringWithFormat:@"lua/%@/init.lua", rel]];
-		for (NSString *path in candidates) {
-			NSData *data = [self dataForPath:path error:nil];
-			if (data) return [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+- (NSString *)sourceForModule:(NSString *)name searchPath:(NSString *)searchPath error:(NSError **)error {
+	NSString *rel = [name stringByReplacingOccurrencesOfString:@"." withString:@"/"];
+	NSMutableArray<NSString *> *candidates = [NSMutableArray array];
+	for (NSString *pattern in [searchPath componentsSeparatedByString:@";"]) {
+		if (pattern.length) {
+			[candidates addObject:[pattern stringByReplacingOccurrencesOfString:@"?" withString:rel]];
 		}
+	}
+	if ([name isEqualToString:@"UIKit"]) [candidates addObject:@"lua/embedded/UIKit.lua"];
+	[candidates addObjectsFromArray:@[
+		[rel stringByAppendingString:@".lua"],
+		[NSString stringWithFormat:@"lua/%@.lua", rel],
+		[NSString stringWithFormat:@"lua/%@/init.lua", rel]]];
+	for (NSString *path in candidates) {
+		NSData *data = [self dataForPath:path error:nil];
+		if (data) return [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+	}
+	if (self.localRoot) {
 		if (error) *error = [NSError errorWithDomain:@"LRTResourceLoader" code:1
 			userInfo:@{NSLocalizedDescriptionKey:[@"Module not found: " stringByAppendingString:name]}];
 		return nil;
