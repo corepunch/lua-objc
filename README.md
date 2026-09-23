@@ -276,8 +276,8 @@ apps/<app>/
 `init.lua` never self-starts. It returns the class; the framework calls
 `class.new():createWindow()`.
 
-For larger apps that compose focused feature controllers, see the
-[feature-oriented MVC guide](docs/APP_STRUCTURE.md), based on Diskmap and Studio.
+For the full app structure—including focused feature controllers, models, and
+services—see the [application architecture guide](docs/agents/application-architecture.md).
 
 ### A PHP reference point: Laravel with Blade
 
