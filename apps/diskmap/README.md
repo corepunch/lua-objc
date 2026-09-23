@@ -36,7 +36,7 @@ scanning the real disk. If some locations stay inaccessible, the snapshot is
 marked partial and remains a lower bound. Restarting Mock HDD restores the
 saved snapshot before simulated deletes or Trash operations.
 
-`--mock` uses the bundled synthetic `mock-hdd.json`; `--mock-file` reads only
+`--mock` uses the bundled synthetic `mock-hdd.bin`; `--mock-file` reads only
 the selected binary snapshot. Both modes avoid the native scanner and shell commands, and show
 “Mock HDD” in the window title. File sizes, installed apps, project outputs,
 simulators, capacity and snapshots are synthetic. Trash, cache and simulator
