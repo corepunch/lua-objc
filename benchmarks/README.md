@@ -51,6 +51,17 @@ that anecdote used unspecified row complexity and is not a controlled
 comparison. SwiftUI's lazy containers used less memory than lua-objc List in
 this run. Callback cadence is a pacing measurement, not presented FPS.
 
+An Instruments **Animation Hitches** trace of the 5,000-row lua-objc List on
+the same phone reported 116, 120, 120, 119, 120, 118, and 120 display surface
+swaps in the seven full seconds from trace time 2 through 9 (119 per second on
+average). It attributed two 8.34 ms potential hitches to the benchmark
+process in the first two seconds. The display swap table is device-wide, so
+this is evidence of near-120 Hz foreground presentation rather than an exact
+per-app frame count. Record with `xcrun xctrace record --template 'Animation
+Hitches' --device DEVICE_ID --attach PID --time-limit 10s --output
+/tmp/list.trace`; use `xcrun xctrace export --input /tmp/list.trace --toc` to
+locate `displayed-surfaces-per-second` and `hitches`.
+
 Build a self-contained lua-objc benchmark bundle and a matching SwiftUI bundle:
 
 ```sh

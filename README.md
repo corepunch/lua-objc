@@ -388,6 +388,10 @@ display-link callbacks per second and a 32.1 MiB peak footprint while
 scrolling. The matching SwiftUI List recorded 119.7 callbacks per second and
 16.9 MiB; SwiftUI `LazyVStack` recorded 120.1 callbacks per second and 15.5
 MiB. These are one-run pacing samples, not presented-frame FPS.
+An Instruments Animation Hitches trace of the foreground lua-objc List showed
+119 display surface swaps per second on average during seven steady seconds
+and two potential 8.34 ms hitches early in the capture. See the benchmark
+notes for the trace method and scope of that device-wide counter.
 
 ## Private API research
 
