@@ -118,6 +118,23 @@ static int bridge_UIKitControls_webViewAction(lua_State *L) {
 			else { lua_pushnil(state); lua_pushnil(state); }
 			if (lua_pcall(state, 2, 0, 0) != LUA_OK) report_lua_error(state, "WebView JavaScript callback");
 		}];
+	} else if (strcmp(action, "find") == 0) {
+		NSString *query = [NSString stringWithUTF8String:luaL_checkstring(L, 3)];
+		WKFindConfiguration *config = [[WKFindConfiguration alloc] init];
+		config.backwards = lua_toboolean(L, 4);
+		config.caseSensitive = lua_toboolean(L, 5);
+		config.wraps = lua_toboolean(L, 6);
+		LuaReg *callback = lua_isfunction(L, 7) ? lua_reg_create(L, 7, YES) : nil;
+		[view findString:query withConfiguration:config completionHandler:^(WKFindResult *result) {
+			if (!callback || !lua_reg_push(callback)) return;
+			lua_State *state = callback.owner.L;
+			lua_pushboolean(state, result.matchFound);
+			if (lua_pcall(state, 1, 0, 0) != LUA_OK) report_lua_error(state, "WebView find callback");
+		}];
+	} else if (strcmp(action, "setPageZoom") == 0) {
+		CGFloat zoom = (CGFloat)luaL_checknumber(L, 3);
+		if (zoom <= 0) return luaL_error(L, "page zoom must be positive");
+		view.pageZoom = zoom;
 	} else return luaL_error(L, "unknown WebView action: %s", action);
 	return 0;
 }

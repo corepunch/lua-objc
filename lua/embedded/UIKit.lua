@@ -604,6 +604,7 @@ function UIKit.SearchField(props)
 	if props.accessibilityLabel then
 		v.accessibilityLabel = props.accessibilityLabel
 	end
+	bridge._textFieldCallbacks(v, props.onChange, props.onCommand)
 	return applyLayout(v, props)
 end
 
@@ -878,6 +879,7 @@ function UIKit.WebView(props)
 		if target then target:_nativeEvent(event, value) end
 	end)
 	view.allowsBackForwardNavigationGestures = props.allowsBackForwardNavigation ~= false
+	if props.pageZoom then view.pageZoom = props.pageZoom end
 	if props.contentBackground == "hidden" then
 		view.backgroundColor = bridge._systemColor("clear")
 		view.scrollView.backgroundColor = bridge._systemColor("clear")

@@ -15,7 +15,7 @@ app-side substitute.
 | Native List row reordering | `<List reorderable="true" reorderContainer="actionName">`; stacks and grids are not supported |
 | System Liquid Glass | `<GlassEffect style="regular|clear">`; use `style="glass"` for a glass button |
 | Native toolbar spacing/overflow | `<ToolbarSpacer />`, native toolbar overflow, and `ToolbarItem visibilityPriority`; on iOS set `TabView minimizeBehavior="onScroll"` for its tab bar |
-| `WebView` / observable `WebPage` | `<WebView page="page" />`; native `WKWebView` on both platforms. No find navigator or magnification API yet |
+| `WebView` / observable `WebPage` | `<WebView page="page" />`; native `WKWebView` with `page:find(...)` and `page:setPageZoom(...)` on both platforms, plus AppKit magnification |
 | Lazy containers and large-list virtualization | Do not use eager `VStack` for unbounded rows; see issue [#9](https://github.com/corepunch/lua-objc/issues/9) |
 | Native motion and gestures | `onTap`/`onDrag`, `ui.haptics`, and Reduce Motion; no general implicit animation API |
 | Private navigation palettes / `LazyLayout` | Research only; unverified signatures and OS support, no runtime switch. Use public toolbar/SearchController/List APIs |

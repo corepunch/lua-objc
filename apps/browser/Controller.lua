@@ -10,6 +10,7 @@ function Controller.new()
         model = Model.new(),
         page = WebPage.new("https://example.com"),
         urlInput = "https://example.com",
+        searchQuery = "",
         showFavorites = false,
     }, { __index = Controller })
 end
@@ -42,6 +43,25 @@ function Controller:reload()
     self.page:reload()
 end
 
+function Controller:setSearchQuery(query)
+    self.searchQuery = query or ""
+end
+
+function Controller:findNext()
+    if self.searchQuery == "" then return end
+    self.page:find(self.searchQuery, { wraps = true }, function(found)
+        self.lastFindMatch = found
+    end)
+end
+
+function Controller:zoomIn()
+    self.page:setPageZoom(math.min(3, self.page.pageZoom + 0.25))
+end
+
+function Controller:zoomOut()
+    self.page:setPageZoom(math.max(0.5, self.page.pageZoom - 0.25))
+end
+
 function Controller:goHome()
     self:navigate(self.model.homepageURL)
 end
@@ -64,6 +84,10 @@ function Controller:createWindow()
             goBack = function() self:goBack() end,
             goForward = function() self:goForward() end,
             reload = function() self:reload() end,
+            setSearchQuery = function(query) self:setSearchQuery(query) end,
+            findNext = function() self:findNext() end,
+            zoomIn = function() self:zoomIn() end,
+            zoomOut = function() self:zoomOut() end,
             goHome = function() self:goHome() end,
             toggleFavorites = function() self:toggleFavorites() end,
         },

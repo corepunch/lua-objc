@@ -1313,6 +1313,10 @@ function AppKit.WebView(props)
 		if target then target:_nativeEvent(event, value) end
 	end)
 	view.allowsBackForwardNavigationGestures = props.allowsBackForwardNavigation ~= false
+	if props.allowsMagnification ~= nil then
+		view.allowsMagnification = props.allowsMagnification
+	end
+	if props.pageZoom then view.pageZoom = props.pageZoom end
 	if props.contentBackground == "hidden" then view.underPageBackgroundColor = bridge._systemColor("clear") end
 	if page then page:_attachNative(view, bridge._webViewAction) end
 	return applyLayout(view, props)

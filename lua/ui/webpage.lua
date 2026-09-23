@@ -22,6 +22,7 @@ function WebPage.new(url)
         title = "Loading...",
         progress = 0,
         isLoading = false,
+        pageZoom = 1,
 
         -- Internal state
         _history = {},
@@ -43,6 +44,7 @@ function WebPage:_attachNative(view, action)
     self._nativeAction = function(name, ...)
         action(view, name, ...)
     end
+    if self.pageZoom ~= 1 then self._nativeAction("setPageZoom", self.pageZoom) end
 end
 
 function WebPage:_nativeEvent(event, value)
@@ -204,6 +206,36 @@ function WebPage:evaluateJavaScript(script, callback)
     end
     self._nativeAction("evaluateJavaScript", script, callback)
     return true
+end
+
+-- Search the currently loaded document through WebKit's native find API.
+-- The callback receives true when WebKit finds a match, or false otherwise.
+function WebPage:find(query, options, callback)
+    assert(type(query) == "string", "find requires a query string")
+    if type(options) == "function" then callback, options = options, nil end
+    options = options or {}
+    assert(type(options) == "table", "find options must be a table")
+    if not self._nativeAction then
+        if type(callback) == "function" then callback(false, "WebPage is not attached to a WebView") end
+        return false
+    end
+    self._nativeAction("find", query, options.backwards == true,
+        options.caseSensitive == true, options.wraps ~= false, callback)
+    return true
+end
+
+-- CSS page zoom works on AppKit and UIKit. Gesture magnification is AppKit only.
+function WebPage:setPageZoom(zoom)
+    assert(type(zoom) == "number" and zoom > 0, "page zoom must be positive")
+    self.pageZoom = zoom
+    notifyObservers(self, "pageZoom")
+    if self._nativeAction then self._nativeAction("setPageZoom", zoom) end
+end
+
+function WebPage:setMagnification(scale)
+    assert(type(scale) == "number" and scale > 0, "magnification must be positive")
+    assert(self._nativeAction, "WebPage is not attached to a WebView")
+    self._nativeAction("setMagnification", scale)
 end
 
 -- Get current URL

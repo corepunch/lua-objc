@@ -6,6 +6,12 @@
       <Button title="Reload" action="reload" style="bordered" />
       <TextField value="<%= page.url %>" placeholder="Enter a URL" flexGrow="1" />
     </HStack>
+    <HStack spacing="8" padding="10">
+      <SearchField placeholder="Find in page" onChange="setSearchQuery" flexGrow="1" />
+      <Button title="Find Next" action="findNext" style="bordered" />
+      <Button title="Zoom Out" action="zoomOut" style="bordered" />
+      <Button title="Zoom In" action="zoomIn" style="bordered" />
+    </HStack>
     <WebView page="page" fillWidth="true" fillHeight="true" />
   </VStack>
 </Window>

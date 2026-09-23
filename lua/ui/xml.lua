@@ -585,6 +585,12 @@ local TAG_SCHEMA = {
             size        = "num",
 			disabled    = "bool",
         },
+        transform = function(props, attrs)
+            if renderData and renderData.actions then
+                if attrs.onChange then props.onChange = renderData.actions[attrs.onChange] end
+                if attrs.onCommand then props.onCommand = renderData.actions[attrs.onCommand] end
+            end
+        end,
     },
     Button = {
         constructor = "Button",
@@ -962,6 +968,8 @@ local TAG_SCHEMA = {
             url = "str",
             contentBackground = "str",
             allowsBackForwardNavigation = { default = true, type = "bool" },
+            pageZoom = "num",
+            allowsMagnification = "bool",
         },
         transform = function(props)
             if type(props.page) == "string" and renderData then

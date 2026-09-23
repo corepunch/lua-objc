@@ -709,14 +709,19 @@ local page = WebPage.new("file:///path/to/content.html")
 local view = ns.WebView { page = page, flexGrow = 1 }
 page:loadURL("https://example.com")
 page:evaluateJavaScript("document.title", function(result, err) end)
+page:find("Example", { backwards = false, caseSensitive = false, wraps = true },
+  function(found) end)
+page:setPageZoom(1.25)
 ```
 
 The page reports URL, title, progress, loading, and native back/forward state
 through `page:observe(callback)`. It exposes `loadURL`, `goBack`, `goForward`,
-`reload`, `stop`, and `evaluateJavaScript`. XML templates can bind an object in
+`reload`, `stop`, `evaluateJavaScript`, `find`, and `setPageZoom`. On AppKit,
+`setMagnification` controls viewport scale and `<WebView
+allowsMagnification="true" />` enables native magnify gestures. `find` uses
+WebKit's page search and reports whether a match was found. XML templates can bind an object in
 render data with `<WebView page="page" />`. Use an embedded view for a real
 in-app browsing workflow; open a normal external link in the system browser.
-Find-in-page and magnification controls are not exposed yet.
 
 ### `Toggle{...}`
 
