@@ -30,8 +30,8 @@ function Catalog.tree(home)
 	return tree
 end
 -- Discovery rules are intentionally separate from fixed catalog paths. They
--- add individually measured generated folders only after their project marker
--- is observed, while the Developer root remains the residual owner.
+-- add individually measured generated folders after their project marker is
+-- observed and app bundles by name, while parent roots remain residual owners.
 function Catalog.discoveryRules(home)
 	local generated = require("apps.diskmap.catalog.Definitions").generated
 	return {
@@ -41,7 +41,8 @@ function Catalog.discoveryRules(home)
 			generated("CMakeCache.txt", "build", {name = "CMake build output", subtitle = "Generated build files for a project; review before removing"}),
 			generated("pyproject.toml", ".venv", {name = "Python virtual environment", subtitle = "Installed project environment; review packages before removing"}),
 		}},
-		{root = "/Applications", parentId = "applications", appInstallers = true},
+		{root = "/Applications", parentId = "apps-system", applications = true},
+		{root = home .. "/Applications", parentId = "apps-user", applications = true},
 	}
 end
 return Catalog

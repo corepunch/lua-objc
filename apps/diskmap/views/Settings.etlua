@@ -1,20 +1,37 @@
 <ScrollView vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true">
-<VStack fillWidth="true" padding="24" spacing="18" alignment="leading">
+<VStack fillWidth="true" padding="24" spacing="14" alignment="leading">
   <Label fillWidth="true" text="Settings" size="23" weight="bold" />
-  <Label fillWidth="true" text="Background suggestions" size="16" weight="semibold" />
-  <Label fillWidth="true" text="While Diskmap is open, measure all storage categories every 15 minutes. Scans run in a background worker and never delete files automatically." size="13" lines="4" />
-  <Button title="<%= monitoring and 'Pause background checks' or 'Enable background checks' %>" action="monitor" />
-  <Label fillWidth="true" text="Media library privacy" size="16" weight="semibold" />
-  <Label fillWidth="true" text="Photos, Music and Movies folders and known media support folders are excluded by default. Folder metadata alone cannot tell us the size of a library’s contents. Including these folders may trigger macOS access prompts; their sizes otherwise remain unknown." size="13" lines="0" />
-  <Button title="<%= mediaEnabled and 'Exclude media libraries' or 'Include media libraries…' %>" action="media" />
-  <Label fillWidth="true" text="This choice lasts only until Diskmap quits. You can also inspect media totals in System Settings without granting Diskmap access." size="12" color="secondary" lines="0" />
-  <Label fillWidth="true" text="Access and estimates" size="16" weight="semibold" />
-  <Label fillWidth="true" text="Scans include other personal folders, app containers, backups, Trash and unclassified files. macOS may ask for access to those locations. You can decline; restricted sizes remain unknown. Full Disk Access is optional for a comprehensive scan." size="13" lines="20" />
-  <Label fillWidth="true" text="Sizes measure allocated file blocks. APFS clones, compression, snapshots, and concurrent changes can make actual reclaimed space differ. Cloud-only files are not downloaded. Scans skip symbolic links and other mounted volumes." size="13" lines="20" />
-  <Label fillWidth="true" text="How Diskmap decides" size="16" weight="semibold" />
-  <Label fillWidth="true" text="Diskmap names data only when its owner or project markers are recognized. A review suggestion means the measured size crossed a review threshold; it does not mean the data is unnecessary or guarantee recovered space. Cleanup requires a separate confirmation and uses Finder or a supported owner command. Diskmap never deletes automatically." size="13" lines="20" />
-  <Label fillWidth="true" text="Time Machine" size="16" weight="semibold" />
-  <Label fillWidth="true" text="macOS counts local snapshots as available space and removes them as needed. They are restore points, not junk. Use Time Machine settings to manage backups; Diskmap never deletes snapshots or protected system assets." size="13" lines="20" />
+  <GroupBox header="Background checks" fillWidth="true">
+    <VStack fillWidth="true" padding="12" spacing="8" alignment="leading">
+      <Label fillWidth="true" text="When enabled, Diskmap refreshes storage every 15 minutes while it is open. Scanning runs in the background; files are never deleted automatically." size="13" lines="0" />
+      <Button title="<%= monitoring and 'Pause background checks' or 'Enable background checks' %>" action="monitor" />
+    </VStack>
+  </GroupBox>
+  <GroupBox header="Media libraries" fillWidth="true">
+    <VStack fillWidth="true" padding="12" spacing="8" alignment="leading">
+      <Label fillWidth="true" text="Photos, Music and Movies stay excluded by default. To measure them, Diskmap must enumerate their files; macOS may ask for access." size="13" lines="0" />
+      <Button title="<%= mediaEnabled and 'Exclude media libraries' or 'Include media libraries for this session…' %>" action="media" />
+      <Label fillWidth="true" text="The choice resets when Diskmap quits. System Settings can show media totals without granting Diskmap access." size="12" color="secondary" lines="0" />
+    </VStack>
+  </GroupBox>
+  <GroupBox header="Scan access" fillWidth="true">
+    <VStack fillWidth="true" padding="12" spacing="8" alignment="leading">
+      <Label fillWidth="true" text="Scans cover personal folders, app containers, backups, Trash and unclassified files. Full Disk Access is optional and may improve coverage; protected or unavailable files can still be omitted." size="13" lines="0" />
+      <Button title="Open Privacy &amp; Security…" action="privacy" />
+    </VStack>
+  </GroupBox>
+  <DisclosureGroup label="Measurement limits" expanded="false" fillWidth="true">
+    <VStack fillWidth="true" padding="12" spacing="8" alignment="leading">
+      <Label fillWidth="true" text="Sizes measure allocated file blocks. APFS clones, compression, snapshots and concurrent changes can make actual reclaimed space differ. Cloud-only files are not downloaded. Scans skip symbolic links and other mounted volumes." size="13" lines="0" />
+      <Label fillWidth="true" text="Not attributed is the difference between measured categories and macOS disk usage. It can include unreadable files, snapshots and filesystem accounting; it is not a cleanup estimate." size="13" lines="0" />
+    </VStack>
+  </DisclosureGroup>
+  <DisclosureGroup label="Recommendations and safety" expanded="false" fillWidth="true">
+    <VStack fillWidth="true" padding="12" spacing="8" alignment="leading">
+      <Label fillWidth="true" text="Diskmap names data only when its owner or project markers are recognized. A review suggestion crossed a size threshold; it does not mean the data is unnecessary or promise recovered space. Every cleanup action needs separate confirmation." size="13" lines="0" />
+      <Label fillWidth="true" text="macOS manages local Time Machine snapshots and removes them as needed. They are restore points, not junk. Manage backups in Time Machine settings; Diskmap never deletes snapshots or protected system assets." size="13" lines="0" />
+    </VStack>
+  </DisclosureGroup>
   <Button title="Open Storage Settings" action="storage" />
 </VStack>
 

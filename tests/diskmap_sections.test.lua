@@ -10,6 +10,12 @@ local function render(name, data)
 end
 local model = Model.new("/Users/test")
 local categories = Categories.new(model, function() end)
+model.scan.errors = 3
+local coverage = categories:coverage({totalKb = 1000000, freeKb = 500000})
+t.expect(coverage:find("At least ", 1, true) == 1, "partial inventories mark the measured total as a lower bound")
+t.expect(coverage:find("3 filesystem read issues", 1, true) ~= nil, "coverage reports read issues without calling them inaccessible locations")
+t.expect(coverage:find("not attributed", 1, true) ~= nil, "capacity difference uses a plain-language label")
+model.scan.errors = 0
 local summary, summaryRefs = render("StorageBar", categories:bar({totalKb = 1000000, freeKb = 500000}))
 t.assertEqual(summaryRefs.storageSummary.className, "NSBox", "storage summary uses the native rounded group")
 summary.size = ns.Size(788, 100); summary:layout(788)
@@ -58,6 +64,9 @@ t.assertEqual(nameCell.textField.font.pointSize, 13, "category title uses the re
 t.assertEqual(sizeCell.textField.font.pointSize, 13, "size and loading text use the regular system font")
 t.assertEqual(refs.heading, nil, "storage list omits its redundant heading")
 t.expect(nameCell.textField.font.pointSize > buttons[1].font.pointSize, "only legend text uses the smaller primary font")
+
+local settings, settingsRefs = render("Settings", {monitoring = true, mediaEnabled = false, actions = {}})
+t.expect(settingsRefs ~= nil and settings ~= nil, "settings reorganized into concise groups still render")
 
 for _, height in ipairs({220, 500}) do
 	refs.categoriesPanel.size = ns.Size(400, height); refs.categoriesPanel:layout(400)

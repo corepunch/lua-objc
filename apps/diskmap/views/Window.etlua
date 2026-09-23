@@ -14,7 +14,7 @@
     <ToolbarItem id="refresh" label="Refresh" icon="arrow.clockwise" />
     <ToolbarItem id="cancel" label="Cancel" icon="xmark.circle" />
     <ToolbarItem id="search" label="Search">
-      <SearchField ref="search" placeholder="Filter results…" fixedWidth="210" accessibilityLabel="Filter storage results" onChange="search" />
+      <SearchField ref="search" placeholder="Search categories, resources or paths…" fixedWidth="265" accessibilityLabel="Search categories, resources or paths" onChange="search" />
     </ToolbarItem>
   </Toolbar>
 </Window>

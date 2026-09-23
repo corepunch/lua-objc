@@ -14,6 +14,7 @@ end
 function Scan:start()
 	self:cancel(true)
 	local generation = self.generation
+	self.startedAt = os.time()
 	if rawget(self.service, "agentEntries") then
 		local added, err = require("apps.diskmap.models.AgentFiles").add(self.model, self.service.agentEntries(self.model))
 		if not added then self.status = "Could not register discovered resource: " .. (err and err.message or "unknown error"); self:notify(); return end
@@ -33,12 +34,16 @@ function Scan:start()
 			if generation ~= self.generation then return end
 			self.job = nil; Inventory.apply(self.model, ids, result)
 			self.disk = self.service.diskSpace(self.home)
-			self.status = result.failure and result.failure ~= "" and result.failure or "Measured " .. os.date("%H:%M") .. " · " .. (result.errors or 0) .. " unavailable locations"
+			local seconds = math.max(0, math.floor(result.seconds or (os.time() - self.startedAt)))
+			local elapsed = seconds < 60 and (seconds .. " sec") or (math.floor(seconds / 60) .. " min " .. (seconds % 60) .. " sec")
+			self.status = result.failure and result.failure ~= "" and result.failure or "Measured " .. os.date("%H:%M") .. " · finished in " .. elapsed
 			self:notify()
 		end, function(progress)
-			if generation ~= self.generation or not progress or not progress.total then return end
+			if generation ~= self.generation or type(progress) ~= "table" or type(progress.total) ~= "number" or progress.total <= 0 then return end
 			Inventory.progress(self.model, ids, progress)
-			self.status = string.format("Measuring all categories · %d/%d locations", progress.completed, progress.total)
+			local completed = math.min(progress.completed or 0, progress.total)
+			local percent = math.floor(completed * 100 / progress.total)
+			self.status = string.format("Scanning %d of %d locations (%d%%)", completed, progress.total, percent)
 			self:notify()
 		end)
 	end

@@ -16,6 +16,7 @@
     </HStack>
     <% end %>
   </FlowStack>
+  <Label text="Not attributed can include unreadable files, snapshots and filesystem accounting differences; it is not a cleanup estimate." size="11" color="secondary" fillWidth="true" lines="2" />
   <% else %>
   <Label text="<%= explanation %>" size="12" color="secondary" fillWidth="true" lines="2" />
   <% end %>

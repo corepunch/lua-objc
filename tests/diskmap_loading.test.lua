@@ -31,6 +31,8 @@ for i, id in ipairs(ids) do
 end
 t.expect(result.completed > 0 and result.completed < #ids, "fixture completes exactly one category")
 Inventory.progress(model, ids, result)
+t.assertEqual(model.scan.completed, result.completed, "live scan exposes completed locations")
+t.assertEqual(model.scan.total, #ids, "live scan exposes total locations")
 local rows = Categories.rows(model)
 t.expect(not rows[1].calculating and rows[1].size == "0 KB", "completed zero category stops spinning")
 t.expect(rows[2].calculating, "unrelated pending category keeps spinning")
@@ -56,7 +58,19 @@ scanner:start()
 pending.progress(result)
 t.expect(not Categories.rows(model)[1].calculating, "controller applies incremental measurement")
 t.expect(Categories.rows(model)[2].calculating, "controller leaves other categories pending")
+t.expect(scanner.status:find(string.format("Scanning %d of %d locations", result.completed, result.total), 1, true) == 1, "scan status gives clear completed and total counts")
 scanner:cancel()
+local completion
+local finished = Scan.new(model, {
+	start = function() return {} end,
+	await = function(job, done) completion = done end,
+	cancel = function() end,
+	diskSpace = function() return {totalKb = 100, freeKb = 50} end,
+}, "/Users/test")
+finished:start()
+completion({trees = {}, rootStates = {}, errors = 3, seconds = 70})
+t.expect(finished.status:find("finished in 1 min 10 sec", 1, true) ~= nil, "finished scan reports elapsed time")
+t.expect(finished.status:find("filesystem read issues", 1, true) == nil, "finished status does not duplicate the coverage issue count")
 local failure = Scan.new(model, {start = function() error("No worker") end}, "/Users/test")
 failure:start()
 t.assertEqual(Model.total(model), 0, "start failure does not retain old measurements")

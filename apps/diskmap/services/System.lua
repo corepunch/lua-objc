@@ -148,7 +148,7 @@ function System.discoverEntries(home, completion)
 			end
 			argv[#argv + 1] = ")"; argv[#argv + 1] = "-prune"; argv[#argv + 1] = "-print"
 		else
-			argv = {"/usr/bin/find", location.root, "-maxdepth", "1", "-type", "d", "-name", "Install macOS *.app", "-print"}
+			argv = {"/usr/bin/find", location.root, "-maxdepth", "1", "-type", "d", "-name", "*.app", "-print"}
 		end
 		System.command(argv, function(ok, output)
 			if ok then
@@ -165,9 +165,12 @@ function System.discoverEntries(home, completion)
 								break
 							end
 						end
-					elseif name:match("^Install macOS .+%.app$") then
-						discovered[#discovered + 1] = {id = hexId(path), name = name, subtitle = "Full macOS installer app; review after confirming the update completed", path = path,
-							policy = "Review", action = "finder", reviewThreshold = 5e9, consequence = "Each installer is usually large. Keep it if you still need the installer; macOS Software Update can download it again later.", icon = "macwindow", color = "systemBlue"}
+					elseif name:match("%.app$") then
+						local installer = name:match("^Install macOS .+%.app$")
+						discovered[#discovered + 1] = {id = hexId(path), name = name, subtitle = installer and "Full macOS installer app" or "Installed application",
+							parentId = location.parentId, path = path, policy = "Review", action = "finder", reviewThreshold = installer and 5e9 or 1e9,
+							consequence = installer and "Each installer is usually large. Keep it if you still need the installer; macOS Software Update can download it again later."
+								or "Review this application in Finder or its own uninstaller. Diskmap will not remove installed applications.", icon = "app.fill", color = "systemBlue"}
 					end
 				end
 			end

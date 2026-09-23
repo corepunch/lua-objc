@@ -52,6 +52,7 @@ function Controller:updateRows()
 	self.refs.results:replaceRows(rows)
 	if self.capacity then self.capacity.text = self.categories:capacity(self.scan.disk); self.toolbarTitle:layout() end
 	self.refs.coverage.text = self.categories:coverage(self.scan.disk); self.refs.status.text = (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status
+	self.refs.access.title = (self.model.scan.errors or 0) > 0 and "Review scan access…" or "Scan access…"
 	self.opportunities:update(self.cleanup:presentation())
 	self.storageBar:update(self.categories:bar(self.scan.disk))
 	self.tipPanel:update(self.tips:presentation(self.scan.disk))
@@ -81,7 +82,7 @@ function Controller:showSection(section, rootId)
 		self.page = Template.new(self.content, "apps/diskmap/views/Settings.etlua", ns)
 		self.page:update(self.settings:presentation(function()
 			if self.settings:toggle() then self:showSection("Settings") else self.service.showError("Could not save Settings", "Try again.") end
-		end, function() self.service.openSettings() end, self.model.includeMedia, function()
+		end, function() self.service.openSettings() end, function() self.service.openSettings("privacy") end, self.model.includeMedia, function()
 			if self.model.includeMedia or self.service.confirmAction("Include media libraries", "Measuring Photos, Music and Movies requires enumerating their files. macOS may ask for access. Diskmap reads metadata only. Enable for this session?") then
 				self.model.includeMedia = not self.model.includeMedia
 				self.scan:start(); self:showSection("Settings")

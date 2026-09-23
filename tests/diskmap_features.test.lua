@@ -54,6 +54,8 @@ t.assertEqual(#Tips.forInventory(model, {totalKb = 100, freeKb = 40}), 1, "ordin
 model.scan.errors = 4
 local tips = Tips.forInventory(model, {totalKb = 100, freeKb = 9})
 t.assertEqual(tips[1].id, "access", "access evidence produces a targeted tip")
+t.expect(tips[1].title == "Some files could not be measured" and tips[1].text:find("Full Disk Access may improve coverage", 1, true) ~= nil,
+	"access guidance describes filesystem issues and keeps Full Disk Access optional")
 t.assertEqual(tips[2].id, "capacity", "low available space produces a separate tip")
 local routed
 local tipsController = TipsController.new(model, function(action) routed = action end)
@@ -98,7 +100,7 @@ local scanner = Scan.new(Model.new("/Users/test"), {
 }, "/Users/test")
 scanner:start()
 pending[1].progress({completed = 3, total = 153})
-t.expect(scanner.status:find("3/153", 1, true) ~= nil, "worker progress is independently observable")
+t.expect(scanner.status:find("Scanning 3 of 153 locations (1%)", 1, true) == 1, "worker progress reports location and percent in plain language")
 scanner:start(); local status = scanner.status
 pending[1].progress({completed = 100, total = 153}); pending[1].done({failure = "Old failure"})
 t.assertEqual(scanner.status, status, "cancelled generation cannot overwrite status")

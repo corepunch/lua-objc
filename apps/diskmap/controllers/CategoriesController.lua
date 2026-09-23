@@ -19,11 +19,12 @@ function Controller:capacity(disk)
 end
 function Controller:coverage(disk)
 	local measured = Model.total(self.model)
-	local text = Model.size(measured) .. " measured"
-	if (self.model.scan.errors or 0) > 0 then text = string.format("Scan quality warning: %d inaccessible · ", self.model.scan.errors) .. text end
+	local partial = (self.model.scan.errors or 0) > 0
+	local text = (partial and "At least " or "") .. Model.size(measured) .. " measured"
+	if partial then text = text .. string.format(" · %d filesystem read issues", self.model.scan.errors) end
 	if disk then
 		local difference = (disk.totalKb - disk.freeKb) * 1024 - measured
-		text = text .. " · " .. (difference < 0 and "−" or "") .. Model.size(math.abs(difference)) .. " unreconciled"
+		text = text .. " · " .. (difference < 0 and "−" or "") .. Model.size(math.abs(difference)) .. " not attributed"
 	end
 	return text
 end
