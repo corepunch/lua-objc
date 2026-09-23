@@ -67,10 +67,7 @@ function Difference:apply(items)
     error("reorder.Difference:apply() requires a collection")
   end
 
-  -- Process operations in order, adjusting indices as needed
-  -- Keep track of cumulative offset to handle multiple moves
-  local offset = 0
-
+  -- Operations address the array produced by the preceding operation.
   for _, op in ipairs(self.operations) do
     if op.op == "move" then
       -- Move operation: remove from 'from' and insert at 'to'
@@ -88,7 +85,7 @@ function Difference:apply(items)
     elseif op.op == "insert" then
       -- Insert operation: add item at index
       local idx = op.index
-      if idx >= 1 and idx <= (#items + 1) and op.item then
+      if idx >= 1 and idx <= (#items + 1) and op.item ~= nil then
         table.insert(items, idx, op.item)
       end
 
@@ -136,55 +133,49 @@ M.Difference = Difference
 
 -- ── Utilities ────────────────────────────────────────────────────────────
 
--- Create a difference from array indices that changed position
--- oldItems and newItems should be arrays with a unique identifier field (e.g., _id)
--- identifierKey: field name to match items (default: "_id")
+-- Create an ordered edit script keyed by stable, unique identifiers. A move
+-- changes several positions at once, so comparing each item's old and new
+-- index independently produces an edit script that cannot be applied.
 function M.fromArrayDiff(oldItems, newItems, identifierKey)
   identifierKey = identifierKey or "_id"
   local diff = Difference.new()
+  if not oldItems or not newItems then return diff end
 
-  if not oldItems or not newItems then
-    return diff
+  local function identifiers(items, label)
+    local ids, seen = {}, {}
+    for index, item in ipairs(items) do
+      local id = type(item) == "table" and item[identifierKey]
+      if id == nil or seen[id] then
+        error(label .. " requires unique " .. identifierKey .. " values at index " .. index)
+      end
+      ids[index], seen[id] = id, true
+    end
+    return ids, seen
   end
 
-  -- Build a map of id -> old_index
-  local oldMap = {}
-  for i, item in ipairs(oldItems) do
-    local id = item[identifierKey]
-    if id then oldMap[id] = i end
-  end
-
-  -- Build a map of id -> new_index
-  local newMap = {}
-  for i, item in ipairs(newItems) do
-    local id = item[identifierKey]
-    if id then newMap[id] = i end
-  end
-
-  -- Detect moves by comparing positions
-  for id, newIdx in pairs(newMap) do
-    local oldIdx = oldMap[id]
-    if oldIdx and oldIdx ~= newIdx then
-      diff:move(oldIdx, newIdx)
+  local working, _ = identifiers(oldItems, "oldItems")
+  local desired, desiredSet = identifiers(newItems, "newItems")
+  for index = #working, 1, -1 do
+    if not desiredSet[working[index]] then
+      diff:remove(index)
+      table.remove(working, index)
     end
   end
-
-  -- Detect inserts (items in new but not in old)
-  for i, item in ipairs(newItems) do
-    local id = item[identifierKey]
-    if id and not oldMap[id] then
-      diff:insert(i, item)
+  for index, id in ipairs(desired) do
+    if working[index] ~= id then
+      local found
+      for candidate = index + 1, #working do
+        if working[candidate] == id then found = candidate; break end
+      end
+      if found then
+        diff:move(found, index)
+        table.insert(working, index, table.remove(working, found))
+      else
+        diff:insert(index, newItems[index])
+        table.insert(working, index, id)
+      end
     end
   end
-
-  -- Detect removes (items in old but not in new)
-  for i, item in ipairs(oldItems) do
-    local id = item[identifierKey]
-    if id and not newMap[id] then
-      diff:remove(i)
-    end
-  end
-
   return diff
 end
 

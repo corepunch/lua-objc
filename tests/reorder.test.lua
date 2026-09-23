@@ -150,6 +150,32 @@ function M.run()
   arrayEqual(result, { 4, 2, 1, 3 }, "chaining works")
   passed = passed + 1
 
+	-- A single move shifts several indices; the generated script must still
+	-- reproduce the exact target order when applied in sequence.
+	tests = tests + 1
+	old = { { _id = "a" }, { _id = "b" }, { _id = "c" } }
+	new = { old[3], old[1], old[2] }
+	diff = reorder.fromArrayDiff(old, new)
+	local moved = diff:applyTo(old)
+	equal(moved[1] == new[1] and moved[2] == new[2] and moved[3] == new[3],
+		true, "generated move reproduces target order")
+	passed = passed + 1
+
+	tests = tests + 1
+	old = { { _id = "a" }, { _id = "b" }, { _id = "c" }, { _id = "d" } }
+	new = { old[4], { _id = "x" }, old[2] }
+	diff = reorder.fromArrayDiff(old, new)
+	local changed = diff:applyTo(old)
+	equal(#changed == #new and changed[1] == new[1] and changed[2] == new[2]
+		and changed[3] == new[3], true, "mixed generated edit script reproduces target")
+	passed = passed + 1
+
+	tests = tests + 1
+	local unique = pcall(function()
+		reorder.fromArrayDiff({ { _id = "a" }, { _id = "a" } }, new)
+	end)
+	if not unique then passed = passed + 1 end
+
   print(string.format("Reorder tests: %d/%d passed", passed, tests))
   return passed == tests
 end

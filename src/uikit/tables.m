@@ -53,7 +53,11 @@ static int bridge_tableview_on_row_move(lua_State *L) {
 	LuaTableViewSource *src = objc_getAssociatedObject(table, &kTableSourceKey);
 	if (!src) return luaL_error(L, "onRowMove requires a table view");
 	src.moveReg = lua_reg_opt(L, 2);
-	if (src.moveReg) [table setEditing:YES animated:NO];
+	if (src.moveReg) {
+		table.dragDelegate = src;
+		table.dropDelegate = src;
+		table.dragInteractionEnabled = YES;
+	}
 	return 0;
 }
 

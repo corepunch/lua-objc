@@ -1,7 +1,8 @@
 # Native List row reordering
 
-`<List>` supports native row dragging on AppKit and native row movement on
-UIKit. The controller receives a `ui.reorder.Difference` from its
+`<List>` supports native row dragging on AppKit and UIKit. UIKit uses table
+drag and drop with the system row preview and move animation. The controller receives a
+`ui.reorder.Difference` from its
 `reorderContainer` action and applies it to the same row array used to render
 the list.
 
@@ -23,6 +24,10 @@ Indices passed to `Difference:move(from, to)` are one-based. `move` mutates the
 array passed to `apply`; `applyTo` returns a reordered copy. The platform updates
 its visible native table before invoking the action, so the model update should
 be synchronous.
+
+`ui.reorder.fromArrayDiff(oldItems, newItems, idKey)` builds an ordered edit
+script containing moves, inserts, and removes from stable unique IDs. It
+rejects missing or duplicate IDs, since those make a reorder ambiguous.
 
 Lazy stacks, grids, arbitrary layout containers, cross-container drags, and
 custom drag previews are not supported. Keep large collections in a native

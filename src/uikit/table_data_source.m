@@ -1,6 +1,7 @@
 #pragma mark - LuaTableViewSource (iOS UITableView)
 
-@interface LuaTableViewSource : NSObject <UITableViewDataSource, UITableViewDelegate>
+@interface LuaTableViewSource : NSObject <UITableViewDataSource, UITableViewDelegate,
+	UITableViewDragDelegate, UITableViewDropDelegate>
 @property (nonatomic, strong) NSMutableArray *rows;
 @property (nonatomic, strong) NSMutableArray *columns;
 @property (nonatomic, weak) UITableView *tableView;
@@ -14,6 +15,7 @@
 @property (nonatomic) BOOL leadingFullSwipe;
 @property (nonatomic) BOOL trailingFullSwipe;
 - (BOOL)invokeSwipeAtRow:(NSInteger)row leading:(BOOL)leading;
+- (void)moveRowFrom:(NSInteger)from to:(NSInteger)to;
 @end
 
 @implementation LuaTableViewSource
@@ -89,18 +91,61 @@
 
 - (void)tableView:(UITableView *)tableView moveRowAtIndexPath:(NSIndexPath *)sourceIndexPath
 		 toIndexPath:(NSIndexPath *)destinationIndexPath {
-	NSInteger from = sourceIndexPath.row;
-	NSInteger to = destinationIndexPath.row;
+	(void)tableView;
+	[self moveRowFrom:sourceIndexPath.row to:destinationIndexPath.row];
+}
+
+- (void)moveRowFrom:(NSInteger)from to:(NSInteger)to {
 	if (from < 0 || from >= (NSInteger)_rows.count || to < 0 || to >= (NSInteger)_rows.count || from == to) return;
 	id moved = _rows[(NSUInteger)from];
 	[_rows removeObjectAtIndex:(NSUInteger)from];
 	[_rows insertObject:moved atIndex:(NSUInteger)to];
 	lua_State *callL = lua_reg_live_state(_moveReg);
 	if (!callL || !lua_reg_push(_moveReg)) return;
-	push_objc(callL, tableView, "uiview");
+	push_objc(callL, self.tableView, "uiview");
 	lua_pushinteger(callL, (lua_Integer)from + 1);
 	lua_pushinteger(callL, (lua_Integer)to + 1);
 	lua_objc_pcall(callL, 3, 0, "table row move");
+}
+
+- (NSArray<UIDragItem *> *)tableView:(UITableView *)tableView
+		itemsForBeginningDragSession:(id<UIDragSession>)session
+		atIndexPath:(NSIndexPath *)indexPath {
+	(void)tableView; (void)session;
+	if (!lua_reg_live_state(_moveReg) || indexPath.row >= (NSInteger)_rows.count) return @[];
+	NSItemProvider *provider = [[NSItemProvider alloc] initWithObject:
+		[NSString stringWithFormat:@"lua-objc-row-%ld", (long)indexPath.row]];
+	UIDragItem *item = [[UIDragItem alloc] initWithItemProvider:provider];
+	item.localObject = self;
+	return @[item];
+}
+
+- (UITableViewDropProposal *)tableView:(UITableView *)tableView
+		dropSessionDidUpdate:(id<UIDropSession>)session
+		withDestinationIndexPath:(NSIndexPath *)destinationIndexPath {
+	(void)tableView; (void)destinationIndexPath;
+	if (!lua_reg_live_state(_moveReg) || !session.localDragSession ||
+		session.items.count != 1 || session.items.firstObject.localObject != self)
+		return [[UITableViewDropProposal alloc] initWithDropOperation:UIDropOperationCancel];
+	return [[UITableViewDropProposal alloc] initWithDropOperation:UIDropOperationMove
+		intent:UITableViewDropIntentInsertAtDestinationIndexPath];
+}
+
+- (void)tableView:(UITableView *)tableView
+		performDropWithCoordinator:(id<UITableViewDropCoordinator>)coordinator {
+	id<UITableViewDropItem> item = coordinator.items.firstObject;
+	NSIndexPath *source = item.sourceIndexPath;
+	if (!source || item.dragItem.localObject != self || _rows.count == 0) return;
+	NSInteger to = coordinator.destinationIndexPath
+		? coordinator.destinationIndexPath.row : (NSInteger)_rows.count - 1;
+	to = MIN(MAX(to, 0), (NSInteger)_rows.count - 1);
+	if (source.row == to) return;
+	NSIndexPath *destination = [NSIndexPath indexPathForRow:to inSection:0];
+	[tableView performBatchUpdates:^{
+		[tableView moveRowAtIndexPath:source toIndexPath:destination];
+	} completion:nil];
+	[self moveRowFrom:source.row to:to];
+	[coordinator dropItem:item.dragItem toRowAtIndexPath:destination];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView

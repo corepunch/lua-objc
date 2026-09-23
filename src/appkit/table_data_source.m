@@ -399,6 +399,7 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 		 proposedRow:(NSInteger)row proposedDropOperation:(NSTableViewDropOperation)operation {
 	if (operation != NSTableViewDropAbove || row < 0 || row > (NSInteger)_rows.count)
 		return NSDragOperationNone;
+	if (info.draggingSource != tableView) return NSDragOperationNone;
 	NSString *source = [info.draggingPasteboard stringForType:NSPasteboardTypeString];
 	NSInteger from = source.integerValue;
 	if (!source || from < 0 || from >= (NSInteger)_rows.count) return NSDragOperationNone;
@@ -407,6 +408,7 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 
 - (BOOL)tableView:(NSTableView *)tableView acceptDrop:(id<NSDraggingInfo>)info
 				row:(NSInteger)row dropOperation:(NSTableViewDropOperation)operation {
+	if (info.draggingSource != tableView) return NO;
 	NSString *source = [info.draggingPasteboard stringForType:NSPasteboardTypeString];
 	NSInteger from = source.integerValue;
 	if (operation != NSTableViewDropAbove || from < 0 || from >= (NSInteger)_rows.count
