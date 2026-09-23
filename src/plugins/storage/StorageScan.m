@@ -15,6 +15,15 @@ static const NSUInteger ScanBufferSize = 64 * 1024;
 static const NSUInteger ScanIssueLimit = 1000;
 static const NSUInteger ScanDepthLimit = 256;
 static const NSTimeInterval ScanTimeout = 600;
+static const char SnapshotMagic[8] = {'D', 'M', 'O', 'C', 'K', '0', '0', '1'};
+static const uint32_t SnapshotVersion = 1;
+
+static void writeLittle32(uint8_t *bytes, uint32_t value) {
+	for (NSUInteger index = 0; index < 4; index++) bytes[index] = (uint8_t)(value >> (index * 8));
+}
+static void writeLittle64(uint8_t *bytes, uint64_t value) {
+	for (NSUInteger index = 0; index < 8; index++) bytes[index] = (uint8_t)(value >> (index * 8));
+}
 
 // getattrlistbulk packs fields on four-byte boundaries, including 64-bit sizes.
 #pragma pack(push, 4)
@@ -50,6 +59,7 @@ typedef struct { uint64_t inode; dev_t device; } ScanIdentity;
 @property int exportFD;
 @property NSString *exportPath;
 @property NSString *exportTemporaryPath;
+@property NSData *lastExportPathData;
 @property NSDictionary<NSString *, NSString *> *logicalRoots;
 @property uint64_t capacityBytes, availableBytes;
 @property NSUInteger exportedFiles;
@@ -120,27 +130,61 @@ static NSUInteger identityHash(ScanIdentity key) {
 	}
 	return YES;
 }
+- (BOOL)writeExportBytes:(const void *)bytes length:(size_t)length {
+	if (!length) return YES;
+	return [self writeExportData:[NSData dataWithBytes:bytes length:length]];
+}
 - (BOOL)exportFile:(NSString *)path allocated:(uint64_t)allocated counted:(uint64_t)counted {
 	if (!self.exporting || self.exportWriteFailed) return NO;
-	NSDictionary *entry = @{@"path": path, @"allocatedBytes": @(allocated), @"countedBytes": @(counted)};
-	NSError *error = nil;
-	NSData *data = [NSJSONSerialization dataWithJSONObject:entry options:NSJSONWritingFragmentsAllowed error:&error];
-	if (!data) {
+	NSData *pathData = [path dataUsingEncoding:NSUTF8StringEncoding];
+	if (!pathData || pathData.length > UINT32_MAX) {
 		self.exportWriteFailed = YES;
-		self.failure = [NSString stringWithFormat:@"Could not encode a file name for the local mock snapshot: %@", error.localizedDescription ?: @"invalid metadata"];
+		self.failure = @"A file path is not valid UTF-8 or is too long for the local mock snapshot.";
 		return NO;
 	}
-	if (self.exportedFiles && ![self writeExportData:[@"," dataUsingEncoding:NSUTF8StringEncoding]]) return NO;
-	if (![self writeExportData:data]) return NO;
+	const uint8_t *current = pathData.bytes;
+	const uint8_t *previous = self.lastExportPathData.bytes;
+	NSUInteger common = 0;
+	NSUInteger limit = MIN(pathData.length, self.lastExportPathData.length);
+	while (common < limit && current[common] == previous[common]) common++;
+	uint8_t record[24];
+	writeLittle32(record, (uint32_t)common);
+	writeLittle32(record + 4, (uint32_t)(pathData.length - common));
+	writeLittle64(record + 8, allocated);
+	writeLittle64(record + 16, counted);
+	if (![self writeExportBytes:record length:sizeof(record)] ||
+		![self writeExportBytes:current + common length:pathData.length - common]) return NO;
+	self.lastExportPathData = pathData;
 	self.exportedFiles++;
+	return YES;
+}
+- (BOOL)writeExportSummary {
+	uint8_t summary[44];
+	uint32_t flags = (self.errors > 0 || self.failure.length > 0 || self.cancelled) ? 1 : 0;
+	writeLittle32(summary, flags);
+	writeLittle64(summary + 4, self.capacityBytes);
+	writeLittle64(summary + 12, self.availableBytes);
+	writeLittle64(summary + 20, self.exportedFiles);
+	writeLittle64(summary + 28, self.errors);
+	writeLittle64(summary + 36, self.visited);
+	size_t remaining = sizeof(summary);
+	const uint8_t *cursor = summary;
+	off_t offset = 12;
+	while (remaining) {
+		ssize_t written = pwrite(self.exportFD, cursor, remaining, offset);
+		if (written < 0 && errno == EINTR) continue;
+		if (written <= 0) {
+			self.exportWriteFailed = YES;
+			self.failure = [NSString stringWithFormat:@"Could not finish the local mock snapshot header: %s", strerror(errno)];
+			return NO;
+		}
+		cursor += written; remaining -= (size_t)written; offset += written;
+	}
 	return YES;
 }
 - (void)finishExport {
 	if (!self.exporting || self.exportFD < 0) return;
-	BOOL partial = self.errors > 0 || self.failure.length > 0 || self.cancelled;
-	NSString *footer = [NSString stringWithFormat:@"],\"partial\":%@,\"errors\":%lu,\"visited\":%lu}",
-		partial ? @"true" : @"false", (unsigned long)self.errors, (unsigned long)self.visited];
-	if (!self.exportWriteFailed && ![self writeExportData:[footer dataUsingEncoding:NSUTF8StringEncoding]]) self.exportWriteFailed = YES;
+	if (!self.exportWriteFailed) [self writeExportSummary];
 	if (!self.exportWriteFailed && fsync(self.exportFD) != 0) {
 		self.exportWriteFailed = YES;
 		self.failure = [NSString stringWithFormat:@"Could not flush the local mock snapshot: %s", strerror(errno)];
@@ -469,9 +513,12 @@ static int exportStart(lua_State *L) {
 	NSMutableSet *exclusions = [job.exclusions mutableCopy];
 	[exclusions addObject:outputPath]; [exclusions addObject:job.exportTemporaryPath];
 	job.exclusions = exclusions.copy;
-	NSString *header = [NSString stringWithFormat:@"{\"format\":1,\"capacityBytes\":%llu,\"availableBytes\":%llu,\"items\":[",
-		(unsigned long long)job.capacityBytes, (unsigned long long)job.availableBytes];
-	if (![job writeExportData:[header dataUsingEncoding:NSUTF8StringEncoding]]) {
+	uint8_t header[56] = {0};
+	memcpy(header, SnapshotMagic, sizeof(SnapshotMagic));
+	writeLittle32(header + 8, SnapshotVersion);
+	writeLittle64(header + 16, job.capacityBytes);
+	writeLittle64(header + 24, job.availableBytes);
+	if (![job writeExportBytes:header length:sizeof(header)]) {
 		NSString *failure = job.failure; close(job.exportFD); job.exportFD = -1;
 		unlink(job.exportTemporaryPath.fileSystemRepresentation);
 		return luaL_error(L, "%s", failure.UTF8String);

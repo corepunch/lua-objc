@@ -22,21 +22,22 @@ Create a local Mock HDD snapshot of this Mac's internal volumes, then launch
 Diskmap against that saved metadata:
 
 ```sh
-./lua-objc --export-mock=/private/tmp/diskmap-mock-hdd.json apps/diskmap/init.lua
-./lua-objc --mock-file=/private/tmp/diskmap-mock-hdd.json apps/diskmap/init.lua
+./lua-objc --export-mock=/private/tmp/diskmap-mock-hdd.bin apps/diskmap/init.lua
+./lua-objc --mock-file=/private/tmp/diskmap-mock-hdd.bin apps/diskmap/init.lua
 ```
 
-The export stores file paths and allocated sizes, plus disk capacity and a
-hard-link accounting value. It never opens file contents, invokes a shell, or
-uploads the snapshot. The file is written with owner-only permissions. macOS
-may request access while the one-time export traverses protected folders; the
-saved mock can then be reopened without scanning the real disk. If some
-locations stay inaccessible, the snapshot is marked partial and remains a
-lower bound. Restarting Mock HDD restores the saved snapshot before simulated
-deletes or Trash operations.
+The export is a versioned binary file (`DMOCK001`) containing file paths,
+allocated sizes, disk capacity, hard-link accounting, and scan completeness.
+Paths are UTF-8 and prefix-compressed against the preceding path. It never opens
+file contents, invokes a shell, or uploads the snapshot. The file is written
+with owner-only permissions. macOS may request access while the one-time export
+traverses protected folders; the saved mock can then be reopened without
+scanning the real disk. If some locations stay inaccessible, the snapshot is
+marked partial and remains a lower bound. Restarting Mock HDD restores the
+saved snapshot before simulated deletes or Trash operations.
 
 `--mock` uses the bundled synthetic `mock-hdd.json`; `--mock-file` reads only
-the selected snapshot. Both modes avoid the native scanner and shell commands, and show
+the selected binary snapshot. Both modes avoid the native scanner and shell commands, and show
 “Mock HDD” in the window title. File sizes, installed apps, project outputs,
 simulators, capacity and snapshots are synthetic. Trash, cache and simulator
 actions change only the provider's in-memory copy; restarting restores the
