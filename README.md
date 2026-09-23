@@ -359,19 +359,35 @@ Key features:
 
 Use native `List` for unbounded or 1,000-plus row collections. Eager stacks
 construct every child; this project does not expose lazy stacks or grids.
-`./lua-objc benchmarks/list.lua` compares eager `VStack` construction with
-native `List` construction without opening a window. One local run on macOS
-27.0 (2026-09-23) reported:
+`benchmarks/run_list.sh` compares equal simple text rows in lua-objc and the
+[`SwiftUI source`](benchmarks/swiftui_list.swift). One macOS 27.0 / Apple M1
+run at an 800 × 600 initial layout (2026-09-23) reported:
 
-| Rows | Eager VStack | Native List |
-|---:|---:|---:|
-| 1,000 | 0.074 s, 1,025 KiB Lua heap delta | 0.008 s, 1 KiB Lua heap delta |
-| 5,000 | 0.335 s, 4,513 KiB Lua heap delta | 0.005 s, 1 KiB Lua heap delta |
+| Rows | Implementation | Initial construction + layout | Peak process RSS |
+|---:|---|---:|---:|
+| 1,000 | lua-objc eager VStack | 0.229 s | 79.8 MB |
+| 1,000 | lua-objc native List | 0.027 s | 46.1 MB |
+| 1,000 | SwiftUI eager VStack | 0.238 s | 66.1 MB |
+| 1,000 | SwiftUI LazyVStack | 0.029 s | 41.9 MB |
+| 1,000 | SwiftUI List | 0.046 s | 41.4 MB |
+| 5,000 | lua-objc eager VStack | 1.082 s | 207.6 MB |
+| 5,000 | lua-objc native List | 0.014 s | 47.2 MB |
+| 5,000 | SwiftUI eager VStack | 0.736 s | 179.5 MB |
+| 5,000 | SwiftUI LazyVStack | 0.022 s | 42.0 MB |
+| 5,000 | SwiftUI List | 0.023 s | 41.9 MB |
 
-These are construction timings from one headless run. The heap column tracks
-Lua's heap only, not Objective-C allocations or process peak memory. The run
-does not measure first-frame latency, scrolling, or compare an equivalent
-SwiftUI implementation; do not use it as an FPS or memory claim.
+These are single-process samples, with startup included in RSS. They do not
+measure first presentation or scrolling. The native List uses much less time
+and memory than either eager stack in this simple-row test, while SwiftUI's
+lazy containers use slightly less memory. See
+[`benchmarks/README.md`](benchmarks/README.md) for device measurements and
+the exact method.
+
+On an iPhone 14 Pro Max at 120 Hz, the 5,000-row native List recorded 119.6
+display-link callbacks per second and a 32.1 MiB peak footprint while
+scrolling. The matching SwiftUI List recorded 119.7 callbacks per second and
+16.9 MiB; SwiftUI `LazyVStack` recorded 120.1 callbacks per second and 15.5
+MiB. These are one-run pacing samples, not presented-frame FPS.
 
 ## Private API research
 

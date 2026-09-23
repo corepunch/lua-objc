@@ -252,8 +252,8 @@ running while the app is open for file loading and hot reload.
   process is still alive and serving port 8081, then relaunch the host after
   the packager is ready. A packager that exited with status 141 received
   `SIGPIPE`; restart it with `trap '' PIPE` as above.
-- If the iOS host fails to link symbols for `WKWebView` or
-  `WKFindConfiguration`, link the `WebKit` framework in the host build command.
+- If an iOS build fails to link symbols for `WKWebView` or
+  `WKFindConfiguration`, make sure the relevant `FRAMEWORKS` list links `WebKit`.
 
 ### Run a bundled app in iPad Simulator
 
@@ -272,11 +272,47 @@ specific simulator by name or UDID with `IPAD_DEVICE`:
 make ipad-run APP=adventure-arena IPAD_DEVICE="iPad Pro 13-inch (M5)"
 ```
 
-If `open -a Simulator` fails but `simctl` can access CoreSimulator, build the
-bundle and use the explicit-UDID fallback described above. The simulator app
-bundle is `build/ipad/iphonesimulator-arm64/adventure-arena.app`; install it with
-`xcrun simctl install` and launch bundle ID `org.luaobjc.adventure-arena`.
+If `open -a Simulator` fails but `simctl` can access CoreSimulator, build and
+launch the app with an explicit simulator UDID:
+
+```sh
+make ipad-simulator APP=adventure-arena
+SIMULATOR_UDID="paste-the-selected-device-udid-here"
+xcrun simctl boot "$SIMULATOR_UDID" || true
+xcrun simctl bootstatus "$SIMULATOR_UDID" -b
+xcrun simctl install "$SIMULATOR_UDID" \
+  build/ipad/iphonesimulator-arm64/adventure-arena.app
+xcrun simctl launch --terminate-running-process \
+  "$SIMULATOR_UDID" org.luaobjc.adventure-arena
+```
+
 Simulator builds do not need a signing profile.
+
+### Capture and compare iOS Simulator screenshots
+
+`simctl io screenshot` captures the active display of a booted simulator
+directly. **Simulator.app does not need to be open or visible on the Mac.**
+Launch the candidate app on a known device, then capture its screen:
+
+```sh
+SIMULATOR_UDID="paste-the-selected-device-udid-here"
+xcrun simctl io "$SIMULATOR_UDID" screenshot /tmp/candidate.png
+sips -g pixelWidth -g pixelHeight /tmp/candidate.png
+```
+
+This is how the Adventure Arena simulator image was captured: `simctl launch`
+started the app on the booted iPhone 17, then
+`xcrun simctl io "$SIMULATOR_UDID" screenshot /tmp/adventure-arena-simulator.png`
+saved the simulator display as a PNG. The Simulator window itself was not
+visible. If a restricted shell reports a CoreSimulator connection error, run
+the `simctl` command with elevated sandbox permissions and retry.
+
+For a visual comparison with a SwiftUI reference, capture both apps on the
+same simulator device and iOS runtime, with matching appearance, orientation,
+content, and interaction state. Put one app in the foreground and capture it,
+then launch the other app on that same simulator and capture the reference.
+Compare PNGs at their native pixel size; do not compare an iPhone capture with
+an iPad capture or a Simulator screenshot with a macOS window screenshot.
 
 ### Deploy a bundled app to a physical iPad or iPhone
 

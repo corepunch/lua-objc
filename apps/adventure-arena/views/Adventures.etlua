@@ -10,7 +10,7 @@
       <Button title="" action="featured" style="plain" accessibilityLabel="Open <%= featured.title %>" ref="featuredCoverButton" fillWidth="true" fixedHeight="500" />
       <VStack allowsHitTesting="false" paddingHorizontal="20" paddingTop="0" paddingBottom="8" spacing="4" alignment="leading" fillWidth="true" fillHeight="true">
         <Spacer flexGrow="1" />
-        <Label text="<%= featured.genres[1]:upper() %>" size="12" color="white" fillWidth="true" />
+        <Label text="<%= featured.genre:upper() %>" size="12" color="white" fillWidth="true" />
         <Label text="<%= featured.title %>" size="28" weight="bold" color="white" lines="2" fillWidth="true" />
         <Label text="<%= featured.shortDescription %>" size="16" color="white" lines="2" fillWidth="true" />
         <HStack spacing="6">

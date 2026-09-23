@@ -10,6 +10,7 @@ local examples = {
 	"apps/hello/init.lua",
 	"apps/controls/init.lua",
 	"apps/list/init.lua",
+	"apps/list-benchmark/init.lua",
 	"apps/list-reorder/init.lua",
 	"apps/swipe-actions/init.lua",
 	"apps/glass-materials/init.lua",

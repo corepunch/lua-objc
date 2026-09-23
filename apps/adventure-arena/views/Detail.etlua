@@ -3,7 +3,7 @@
     <Image path="<%= game.cover %>" fillWidth="true" fixedHeight="280" contentMode="fill" cornerRadius="16" />
     <Label ref="title" text="<%= game.title %>" size="30" weight="bold" lines="2" fillWidth="true" />
     <HStack spacing="8">
-      <Label text="<%= game.genres[1] %>" size="12" color="secondary" fillWidth="true" />
+      <Label text="<%= game.genre %>" size="12" color="secondary" fillWidth="true" />
       <Label text="<%= game.author %>" size="12" color="secondary" fillWidth="true" />
       <Label text="<%= game.year %>" size="12" color="secondary" fillWidth="true" />
     </HStack>

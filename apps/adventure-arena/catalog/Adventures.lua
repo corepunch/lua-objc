@@ -25,9 +25,7 @@ return {
 				body = "Steve Meretzky's debut game is a triumph. The writing is witty, the world is richly described, and the puzzles are fair.",
 			},
 		},
-		genres = {
-			"Sci-Fi Adventure",
-		},
+		genre = "Sci-Fi Adventure",
 		cover = "apps/adventure-arena/assets/planetfall.jpg",
 	},
 	{
@@ -55,9 +53,7 @@ return {
 				body = "Give it an hour before judging. The first chapter is setting up something deeply twisted, and when it all clicks, it's unforgettable.",
 			},
 		},
-		genres = {
-			"Psychological Horror",
-		},
+		genre = "Psychological Horror",
 		cover = "apps/adventure-arena/assets/sanitarium.jpg",
 	},
 	{
@@ -84,9 +80,7 @@ return {
 				body = "The Enchanter trilogy ends on a high note. The spell system is ingenious and the puzzles are well-crafted, if extremely tough.",
 			},
 		},
-		genres = {
-			"Fantasy Adventure",
-		},
+		genre = "Fantasy Adventure",
 		cover = "apps/adventure-arena/assets/spellbreaker.jpg",
 	},
 	{
@@ -120,9 +114,7 @@ return {
 				body = "The puzzles are approachable, but the ending choices still made me pause. A lovely all-ages adventure.",
 			},
 		},
-		genres = {
-			"Whimsical Adventure",
-		},
+		genre = "Whimsical Adventure",
 		cover = "apps/adventure-arena/assets/wondertown.jpg",
 	},
 	{
@@ -156,9 +148,7 @@ return {
 				body = "I got stuck on the cipher puzzle for an hour, but when I figured it out, I felt like a genius. The game gives you all the clues you need — you just have to find them.",
 			},
 		},
-		genres = {
-			"Victorian Mystery",
-		},
+		genre = "Victorian Mystery",
 		cover = "apps/adventure-arena/assets/limehouse.jpg",
 	},
 	{
@@ -185,9 +175,7 @@ return {
 				body = "The best-written Infocom game I've played. The blizzard setting, the creepy campus, the ancient evil — it all works beautifully.",
 			},
 		},
-		genres = {
-			"Psychological Horror",
-		},
+		genre = "Psychological Horror",
 		cover = "apps/adventure-arena/assets/lurkinghorror.jpg",
 	},
 	{
@@ -220,9 +208,7 @@ return {
 				body = "Zork rewards patience and lateral thinking. A few puzzles are obtuse by modern standards, but the atmosphere and writing more than make up for it.",
 			},
 		},
-		genres = {
-			"Classic Adventure",
-		},
+		genre = "Classic Adventure",
 		cover = "apps/adventure-arena/assets/zork1.jpg",
 	},
 	{
@@ -249,9 +235,7 @@ return {
 				body = "The puzzles here are harder and more abstract. The Carousel Room alone is a rite of passage for any text adventure fan.",
 			},
 		},
-		genres = {
-			"Classic Adventure",
-		},
+		genre = "Classic Adventure",
 		cover = "apps/adventure-arena/assets/zork2.jpg",
 	},
 	{
@@ -278,9 +262,7 @@ return {
 				body = "Not as iconic as Zork I, but the somber, mysterious tone sets it apart. The ending is genuinely satisfying.",
 			},
 		},
-		genres = {
-			"Classic Adventure",
-		},
+		genre = "Classic Adventure",
 		cover = "apps/adventure-arena/assets/zork3.jpg",
 	},
 }

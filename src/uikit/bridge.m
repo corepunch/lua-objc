@@ -1,6 +1,7 @@
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 #import <Security/Security.h>
+#import <QuartzCore/QuartzCore.h>
 
 #include <lua.h>
 #include <lualib.h>
@@ -55,6 +56,12 @@ static const CGFloat kSidebarCollapsedPadding = 8.0;
 static const CGFloat kSidebarExpandedWidth = 208.0;
 static const CGFloat kSidebarCompactWidth = 184.0;
 static const CGFloat kSidebarCollapsedWidth = 64.0;
+static const CGFloat kBenchmarkScrollPointsPerSecond = 1500.0;
+static const CGFloat kBenchmarkMinimumFrameRate = 60.0;
+static const CGFloat kBenchmarkPreferredFrameRate = 120.0;
+static const CGFloat kBenchmarkHitchFrameCount = 2.0;
+static const NSTimeInterval kBenchmarkDuration = 4.0;
+static const NSTimeInterval kBenchmarkTraceDuration = 30.0;
 static int bridge_UIKitNavigation_stack(lua_State *L);
 static int bridge_UIKitNavigation_push(lua_State *L);
 static int bridge_UIKitNavigation_pop(lua_State *L);
@@ -91,6 +98,7 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #include "workspace.m"
 #include "navigation.m"
 #include "private_navigation_palettes.m"
+#include "performance_probe.m"
 #include "presentation.m"
 #include "../shared/parity_batch.m"
 #include "parity_batch.m"
@@ -177,6 +185,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_tabViewOnChange", bridge_UIKitTabView_onChange},
 	{"_navigationStack", bridge_UIKitNavigation_stack},
 	{"_navigationPalette", bridge_UIKitNavigation_palette},
+	{"_benchmarkScroll", bridge_UIKitBenchmark_scroll},
+	{"_benchmarkStart", bridge_UIKitBenchmark_start},
 	{"_navigationLink", bridge_UIKitNavigation_link},
 	{"_presentSheet", bridge_UIKitPresentation_presentSheet},
 	{"_dismiss", bridge_UIKitPresentation_dismiss},

@@ -1,0 +1,7 @@
+<ScrollView>
+  <VStack fillWidth="true">
+    <% for _, item in ipairs(items) do %>
+      <Label text="<%= item.title %>" />
+    <% end %>
+  </VStack>
+</ScrollView>
