@@ -342,6 +342,34 @@ static int bridge_NSScrollView_onRowSelect(lua_State *L) {
 	return 0;
 }
 
+static int bridge_NSScrollView_onColumnSort(lua_State *L) {
+	id obj = check_objc(L, 1);
+	if (!objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]))
+		return luaL_error(L, "not a table view");
+	bridge_set_optional_callback(L, table_scrollview(obj), &kKeys[kTableSortKey], 2);
+	return 0;
+}
+
+static int bridge_NSScrollView_setSortIndicator(lua_State *L) {
+	id obj = check_objc(L, 1);
+	if (!objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]))
+		return luaL_error(L, "not a table view");
+	NSScrollView *scroll = table_scrollview(obj);
+	NSTableView *table = (NSTableView *)scroll.documentView;
+	NSString *identifier = [NSString stringWithUTF8String:luaL_checkstring(L, 2)];
+	BOOL ascending = lua_toboolean(L, 3);
+	NSTableColumn *target = nil;
+	for (NSTableColumn *column in table.tableColumns) {
+		[table setIndicatorImage:nil inTableColumn:column];
+		if ([column.identifier isEqualToString:identifier]) target = column;
+	}
+	if (target) {
+		NSString *name = ascending ? @"NSAscendingSortIndicator" : @"NSDescendingSortIndicator";
+		[table setIndicatorImage:[NSImage imageNamed:name] inTableColumn:target];
+	}
+	return 0;
+}
+
 static int bridge_pathView(lua_State *L) {
 	CGFloat w = (CGFloat)luaL_optnumber(L, 1, 100);
 	CGFloat h = (CGFloat)luaL_optnumber(L, 2, 100);

@@ -85,11 +85,32 @@ t.expect(controller.error:find("device busy", 1, true), "command failures remain
 controller:load(); local pending = calls[#calls]; controller:close(); pending.done(true, "{}");
 t.assertEqual(controller.inventory.devices, nil, "late results cannot populate a closed sheet")
 -- Native controls and resize contracts, without showing windows.
+model.measurements.archives = {bytes = 20e9, status = "complete"}
+model.measurements.derived = {bytes = 12e9, status = "complete"}
 local manager = Management.new(model, service, function() end, function() end, function() end)
 local parent = ns.Window {visible = false, width = 1000, height = 700}
 manager:open(parent, "developer")
 t.assertEqual(manager.sheet.className, "LuaPanel", "management uses a native sheet-capable panel")
 t.assertEqual(manager.refs.tabs.className, "LuaTabView", "impact tabs are native")
+local function resourceAt(index)
+	return bridge._tableCell(manager.refs.rows1, 0, index).textField.stringValue
+end
+t.assertEqual(resourceAt(0), "Archives", "management starts with largest measured resource")
+manager:sortBy("name")
+local positions = {}
+for index = 0, manager.refs.rows1.rowCount - 1 do positions[resourceAt(index)] = index end
+t.expect(positions.Archives < positions["Xcode DerivedData"], "resource header sorts names ascending")
+manager:sortBy("name")
+positions = {}
+for index = 0, manager.refs.rows1.rowCount - 1 do positions[resourceAt(index)] = index end
+t.expect(positions["Xcode DerivedData"] < positions.Archives, "repeated resource sort reverses direction")
+manager:sortBy("impact")
+local previousImpact = ""
+for index = 0, manager.refs.rows1.rowCount - 1 do
+	local impact = bridge._tableCell(manager.refs.rows1, 1, index).textField.stringValue:lower()
+	t.expect(previousImpact <= impact, "impact header sorts impact values")
+	previousImpact = impact
+end
 manager:select("runtime-assets")
 t.expect(manager.refs.manage.enabled, "runtime can be revealed for inspection")
 t.expect(manager.refs.detail.text ~= "", "selected resource has consequences")

@@ -439,6 +439,17 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	return table_cell_view(tableView, column, _rows[row], self);
 }
 
+- (void)tableView:(NSTableView *)tableView didClickTableColumn:(NSTableColumn *)column {
+	if (![objc_getAssociatedObject(column, &kKeys[kColumnSortableKey]) boolValue]) return;
+	NSScrollView *scroll = tableView.enclosingScrollView;
+	LuaReg *reg = objc_getAssociatedObject(scroll, &kKeys[kTableSortKey]);
+	lua_State *callL = lua_reg_live_state(reg);
+	if (!callL || !lua_reg_push(reg)) return;
+	push_objc(callL, scroll, "nsview");
+	lua_pushstring(callL, column.identifier.UTF8String);
+	lua_objc_pcall(callL, 2, 0, "table column sort");
+}
+
 - (void)addRow:(NSDictionary *)row {
 	[_rows addObject:row];
 	NSInteger idx = (NSInteger)_rows.count - 1;

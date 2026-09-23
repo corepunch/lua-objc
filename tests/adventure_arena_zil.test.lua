@@ -1,9 +1,9 @@
 _G.__headless = true
 
 local t = require("TestKit")
-local Model = require("apps.adventure-arena.Model")
-local catalog = Model.new()
-local ZIL = require("apps.adventure-arena.ZIL")
+local Adventures = require("apps.adventure-arena.models.Adventures")
+local catalog = Adventures.new()
+local ZILRuntime = require("apps.adventure-arena.services.ZILRuntime")
 local originalOpen, originalPath, originalZilPath = io.open, package.path, package.zilpath
 local reads = 0
 local function readFile(path)
@@ -15,7 +15,7 @@ local function readFile(path)
 	return body
 end
 
-local ok, session = pcall(function() return ZIL.new(catalog:game("books.wondertown"), readFile) end)
+local ok, session = pcall(function() return ZILRuntime.new(catalog:find("books.wondertown"), readFile) end)
 t.expect(ok, "ZIL runtime loads the bundled Zork source")
 t.expect(reads > 0, "runtime uses the injected file reader without a UI platform")
 if ok then
@@ -35,7 +35,7 @@ t.assertEqual(io.open, originalOpen, "runtime restores host file IO")
 t.assertEqual(package.path, originalPath, "runtime restores Lua import paths")
 t.assertEqual(package.zilpath, originalZilPath, "runtime restores ZIL import paths")
 t.assertThrows(function()
-	ZIL.new(catalog:game("books.wondertown"), function() error("fixture read failure") end)
+	ZILRuntime.new(catalog:find("books.wondertown"), function() error("fixture read failure") end)
 end, "stream read failures propagate")
 t.assertEqual(io.open, originalOpen, "failed streamed load restores file IO")
 t.assertEqual(package.path, originalPath, "failed streamed load restores Lua paths")

@@ -3,8 +3,9 @@ _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
 local xml = require("ui.xml")
-local Model = require("apps.adventure-arena.Model")
-local catalog = Model.new()
+local Adventures = require("apps.adventure-arena.models.Adventures")
+local Session = require("apps.adventure-arena.models.Session")
+local catalog = Adventures.new()
 local Controller = require("apps.adventure-arena.Controller")
 local renderFile, button = xml.renderFile, ns.Button
 local rendered, callbacks = {}, {}
@@ -26,13 +27,13 @@ local function click(ref)
 	if callback then callback() end
 end
 
-local model = Model.new({ engineFactory = function()
+local sessionModel = Session.new({ engineFactory = function()
 	return { start = function()
 		return { resume = function(_, command) return 'Response <&> "' .. command .. '"' end }, "Opening <&>"
 	end }
 end })
-local controller = Controller.new { model = model, ns = ns }
-local config, refs = xml.renderFile("apps/adventure-arena/views/Window.etlua", controller:homeData(), ns)
+local controller = Controller.new { adventures = catalog, sessionModel = sessionModel, ns = ns }
+local config, refs = xml.renderFile("apps/adventure-arena/views/Window.etlua", controller.library:presentation(), ns)
 controller.navigation = refs.navigation
 local tabs = refs.tabs
 for _, size in ipairs({ { 640, 720 }, { 420, 360 }, { 1000, 900 } }) do
@@ -47,8 +48,8 @@ end
 tabs:selectTab(0)
 click("featuredCoverButton")
 t.assertEqual(controller.navigation.depth, 2, "featured cover opens detail")
-t.assertEqual(rendered.refs.title.text, catalog:listGames()[1].title, "detail renders selected game")
-t.assertEqual(rendered.refs.description.text, catalog:listGames()[1].description, "detail preserves full description")
+t.assertEqual(rendered.refs.title.text, catalog:list()[1].title, "detail renders selected game")
+t.assertEqual(rendered.refs.description.text, catalog:list()[1].description, "detail preserves full description")
 click("play")
 t.assertEqual(controller.navigation.depth, 3, "detail play opens session")
 t.assertEqual(rendered.refs.output.text, "Opening <&>", "transcript escapes XML characters")
@@ -65,29 +66,36 @@ t.assertEqual(rendered.refs.output.text, transcript, "empty submission leaves tr
 t.expect(not ns._textFieldTestCommand(rendered.refs.input, "cancel"), "unhandled keys retain native behavior")
 click("close")
 t.assertEqual(controller.navigation.depth, 2, "close returns to detail")
-t.assertEqual(controller.model:transcript(), transcript, "navigation preserves session state")
+t.assertEqual(controller.sessionModel:transcript(), transcript, "navigation preserves session state")
 controller.navigation:pop()
-controller.model = Model.new({ engineFactory = function() error('Missing <story> & "engine"', 0) end })
-controller:showSession(catalog:listGames()[1].id)
+controller.sessionModel.engineFactory = function() error('Missing <story> & "engine"', 0) end
+controller.sessionController:show(catalog:list()[1].id)
 t.assertEqual(controller.navigation.depth, 2, "failed start opens template error state")
 click("back")
 t.assertEqual(controller.navigation.depth, 1, "error back restores catalog")
 t.assertEqual(controller.window, nil, "template components never create windows")
 
 local game = {}
-for key, value in pairs(catalog:listGames()[1]) do game[key] = value end
+for key, value in pairs(catalog:list()[1]) do game[key] = value end
 game.title = 'An <Adventure> & "Quotes"'
 game.description = string.rep("A long description & more. ", 40)
-controller.model = Model.new { games = { game } }
-controller:showGame(game.id)
+local oneAdventure = Adventures.new { games = { game } }
+controller.adventures = oneAdventure
+controller.library.model = oneAdventure
+controller.sessionModel.engineFactory = function()
+	return { start = function()
+		return { resume = function(_, command) return 'Response <&> "' .. command .. '"' end }, "Opening <&>"
+	end }
+end
+controller.library:showGame(game.id)
 t.assertEqual(rendered.refs.title.text, game.title, "detail round-trips special characters")
 t.assertEqual(rendered.refs.description.text, game.description, "detail preserves long text")
 click("back")
 t.assertEqual(controller.navigation.depth, 1, "detail back restores catalog")
-t.expect(not controller:showGame("missing"), "missing detail record is rejected")
-t.expect(not controller:showSession("missing"), "missing session record is rejected")
+t.expect(not controller.library:showGame("missing"), "missing detail record is rejected")
+t.expect(not controller.sessionController:show("missing"), "missing session record is rejected")
 t.assertEqual(controller.navigation.depth, 1, "missing records do not disturb navigation")
-local data = controller:homeData()
+local data = controller.library:presentation()
 t.assertEqual(#data.games, 1, "controller queries its injected model catalog")
 t.assertEqual(data.featured.id, game.id, "controller uses the injected featured query")
 t.assertEqual(game.stars, nil, "presentation does not decorate domain records with symbols")
@@ -96,7 +104,7 @@ controller:home()
 click("coverButton_1")
 t.assertEqual(rendered.refs.title.text, game.title, "catalog actions resolve stable game ids")
 
-local empty = Controller.new { model = Model.new { games = {} }, ns = ns }
+local empty = Controller.new { adventures = Adventures.new { games = {} }, sessionModel = Session.new(), ns = ns }
 empty:home()
 t.expect(rendered.refs.emptyCatalog ~= nil, "empty model renders the etlua empty state")
 t.assertEqual(empty.navigation.depth, 1, "empty catalog retains navigation root")

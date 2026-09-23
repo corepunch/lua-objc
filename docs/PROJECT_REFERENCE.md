@@ -1337,7 +1337,7 @@ every tag and forwarded to `applyLayout`.
 | `bordered` | bool | `false` | Bezel around the scroll view |
 | `gridLines` | string | — | `"horizontal"` `"vertical"` `"both"` |
 
-**`<Column>` attributes:** `id` (required, matches row dict key), `title`, `width`, `minWidth`, `alignment`.
+**`<Column>` attributes:** `id` (required, matches row dict key), `title`, `width`, `minWidth`, `alignment`, and `sortable` (enables the native header click callback on AppKit). A list registers `onColumnSort(callback)` to receive the clicked column ID and can set its native arrow with `setSortIndicator(columnId, ascending)`.
 
 **`<Slider>` attributes:** `min`, `max`, `value`, `tickMarks`,
 `allowsTickMarkValuesOnly`.

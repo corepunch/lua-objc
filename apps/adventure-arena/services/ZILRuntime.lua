@@ -1,4 +1,4 @@
-local ZIL = {}
+local ZILRuntime = {}
 
 local function remoteOpen(readFile, fallback)
 	if not readFile then return fallback end
@@ -37,7 +37,7 @@ local function withContext(readFile, paths, operation)
 	return table.unpack(result, 2, result.n)
 end
 
-function ZIL.new(game, readFile)
+function ZILRuntime.new(game, readFile)
 	local sourceBase = game.id:gsub("%.", "/")
 	local base = game.base or sourceBase
 	local paths = {
@@ -87,4 +87,4 @@ function ZIL.new(game, readFile)
 	end)
 end
 
-return ZIL
+return ZILRuntime

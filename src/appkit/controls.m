@@ -187,6 +187,7 @@ static int bridge_tableview(lua_State *L) {
 		NSString *colTitle = column[@"title"] ?: colId;
 		NSString *colAlignment = column[@"alignment"];
 		NSString *systemImage = column[@"systemImage"];
+		BOOL sortable = [column[@"sortable"] boolValue];
 		NSDictionary *cellSpec = [column[@"cell"] isKindOfClass:NSDictionary.class]
 			? column[@"cell"] : nil;
 		NSNumber *width = column[@"width"];
@@ -208,6 +209,8 @@ static int bridge_tableview(lua_State *L) {
 			: NSTextAlignmentLeft;
 		col.headerCell.alignment = alignment;
 		objc_setAssociatedObject(col, &kKeys[kColumnAlignmentKey], @(alignment),
+			OBJC_ASSOCIATION_RETAIN);
+		objc_setAssociatedObject(col, &kKeys[kColumnSortableKey], @(sortable),
 			OBJC_ASSOCIATION_RETAIN);
 		if (systemImage) {
 			objc_setAssociatedObject(col, &kKeys[kColumnSystemImageKey],

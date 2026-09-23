@@ -20,6 +20,8 @@ static int bridge_AppKitControls_toggle(lua_State *L);
 static int bridge_NSScrollView_onRefresh(lua_State *L);
 static int bridge_NSScrollView_onRowSelect(lua_State *L);
 static int bridge_NSScrollView_onRowActivate(lua_State *L);
+static int bridge_NSScrollView_onColumnSort(lua_State *L);
+static int bridge_NSScrollView_setSortIndicator(lua_State *L);
 static int bridge_table_column_widths(lua_State *L);
 static int bridge_table_cell_frames(lua_State *L);
 static int bridge_table_spinner_frame(lua_State *L);
@@ -608,6 +610,8 @@ static MethodEntry TableMethods[] = {
 	{"onRefresh",	bridge_NSScrollView_onRefresh},
 	{"onRowSelect",	bridge_NSScrollView_onRowSelect},
 	{"onRowActivate",	bridge_NSScrollView_onRowActivate},
+	{"onColumnSort",	bridge_NSScrollView_onColumnSort},
+	{"setSortIndicator",	bridge_NSScrollView_setSortIndicator},
 	{NULL, NULL}
 };
 

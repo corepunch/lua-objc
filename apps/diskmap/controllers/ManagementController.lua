@@ -4,8 +4,41 @@ local Categories = require("apps.diskmap.models.Categories")
 local Inspector = require("apps.diskmap.models.Inspector")
 local InspectorController = require("apps.diskmap.controllers.InspectorController")
 local Controller = {}; Controller.__index = Controller
+
+local function sortRows(rows, column, ascending)
+	local function value(row)
+		if column == "size" then return row.bytes end
+		return row[column]
+	end
+	table.sort(rows, function(left, right)
+		local a, b = value(left), value(right)
+		if a == nil or b == nil then
+			if a == nil and b ~= nil then return false end
+			if a ~= nil and b == nil then return true end
+		else
+			if type(a) == "string" then a, b = a:lower(), b:lower() end
+			if a ~= b then
+				if ascending then return a < b end
+				return a > b
+			end
+		end
+		local leftName, rightName = left.name:lower(), right.name:lower()
+		if leftName ~= rightName then return leftName < rightName end
+		return left.id < right.id
+	end)
+	return rows
+end
+
 function Controller.new(model, service, refresh, keep, simulators)
-	return setmetatable({model = model, service = service, refresh = refresh, keep = keep, simulators = simulators}, Controller)
+	return setmetatable({model = model, service = service, refresh = refresh, keep = keep, simulators = simulators,
+		sortColumn = "size", sortAscending = false}, Controller)
+end
+
+function Controller:sortBy(column)
+	if column ~= "name" and column ~= "impact" and column ~= "size" then return end
+	if self.sortColumn == column then self.sortAscending = not self.sortAscending
+	else self.sortColumn = column; self.sortAscending = true end
+	self:update()
 end
 function Controller:close()
 	if self.sheet then ns.dismiss(self.sheet); self.sheet = nil end
@@ -30,7 +63,10 @@ function Controller:update()
 	local selectionVisible = false
 	for index, filter in ipairs(self.filters) do
 		local rows = Categories.managementRows(self.model, self.rootId, self.query, filter)
-		self.refs["rows" .. index]:replaceRows(rows)
+		rows = sortRows(rows, self.sortColumn, self.sortAscending)
+		local list = self.refs["rows" .. index]
+		list:replaceRows(rows)
+		list:setSortIndicator(self.sortColumn, self.sortAscending)
 		if self.refs.tabs.selectedTabViewItem.label == filter then
 			for offset, row in ipairs(rows) do if row.id == selected then
 				selectionVisible = true; self.refs["rows" .. index]:selectRow(offset - 1)
@@ -65,7 +101,9 @@ function Controller:open(parent, id, filter)
 		self.refs.done.keyEquivalent = "\r"
 		self.sheet.defaultButtonCell = self.refs.done.cell
 		for index in ipairs(self.filters) do
-			self.refs["rows" .. index]:onRowSelect(function(_, _, row) if row then self:select(row.id) end end)
+			local list = self.refs["rows" .. index]
+			list:onRowSelect(function(_, _, row) if row then self:select(row.id) end end)
+			list:onColumnSort(function(_, column) self:sortBy(column) end)
 		end
 		self.refs.tabs:onChange(function() self.selectedId = nil; self.refs.manage.enabled = false; self.refs.reveal.enabled = false; self.refs.keep.enabled = false end)
 	end)

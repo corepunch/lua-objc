@@ -1,5 +1,8 @@
-local Model = require("apps.adventure-arena.Model")
-local ZIL = require("apps.adventure-arena.ZIL")
+local Adventures = require("apps.adventure-arena.models.Adventures")
+local Session = require("apps.adventure-arena.models.Session")
+local ZILRuntime = require("apps.adventure-arena.services.ZILRuntime")
+local LibraryController = require("apps.adventure-arena.controllers.LibraryController")
+local SessionController = require("apps.adventure-arena.controllers.SessionController")
 local xml = require("ui.xml")
 
 local Controller = {}
@@ -8,11 +11,32 @@ Controller.__index = Controller
 function Controller.new(options)
 	options = options or {}
 	local ns = options.ns or require("ns")
+	local adventures = options.adventures or Adventures.new { games = options.games }
 	local readFile = ns._readFile
-	local model = options.model or Model.new {
-		engineFactory = function(game) return ZIL.new(game, readFile) end,
+	local sessionModel = options.sessionModel or Session.new {
+		engineFactory = options.engineFactory or function(game)
+			return ZILRuntime.new(game, readFile)
+		end,
 	}
-	return setmetatable({ model = model, ns = ns }, Controller)
+	local self = setmetatable({ ns = ns, adventures = adventures, sessionModel = sessionModel }, Controller)
+	local function push(template, data, title)
+		return self:push(template, data, title)
+	end
+	local function back() return self:back() end
+	self.library = LibraryController.new {
+		model = adventures,
+		push = push,
+		back = back,
+		openSession = function(id) return self.sessionController:show(id) end,
+	}
+	self.sessionController = SessionController.new {
+		model = sessionModel,
+		findGame = function(id) return self.adventures:find(id) end,
+		push = push,
+		back = back,
+		ns = ns,
+	}
+	return self
 end
 
 function Controller:push(template, data, title)
@@ -25,70 +49,14 @@ function Controller:back()
 	self.navigation:pop()
 end
 
-function Controller:showGame(id)
-	local game = self.model:game(id)
-	if not game then return false end
-	self:push("Detail", { game = game, actions = {
-		play = function() self:showSession(id) end,
-		back = function() self:back() end,
-	} }, game.title)
-	return true
-end
-
-function Controller:showSession(id)
-	local game = self.model:game(id)
-	if not game then return false end
-	local ok, err = self.model:startSession(id)
-	if not ok then
-		self:push("SessionError", {
-			message = err, actions = { back = function() self:back() end },
-		}, game.title)
-		return false
-	end
-	local actions = {
-		submit = function() self:submitCommand(self.sessionRefs.input.text) end,
-		look = function() self:submitCommand("look") end,
-		inventory = function() self:submitCommand("inventory") end,
-		close = function() self:back() end,
-	}
-	self.sessionView, self.sessionRefs = self:push("Session", {
-		transcript = self.model:transcript(), actions = actions,
-	}, game.title)
-	self.sessionRefs.input.accessibilityLabel = "Command"
-	self.ns._textFieldCallbacks(self.sessionRefs.input, nil, function(command)
-		if command ~= "submit" then return false end
-		actions.submit()
-		return true
-	end)
-	return true
-end
-
-function Controller:submitCommand(command)
-	local ok, err = self.model:submit(command)
-	self.sessionRefs.output.text = self.model:transcript()
-	self.sessionRefs.input.text = ""
-	self.sessionView:layout()
-	return ok, err
-end
-
-function Controller:homeData()
-	local games, featured = self.model:listGames(), self.model:featured()[1]
-	local actions = {}
-	if featured then actions.featured = function() self:showGame(featured.id) end end
-	for _, game in ipairs(games) do
-		actions[game.id] = function() self:showGame(game.id) end
-	end
-	return { games = games, featured = featured, actions = actions }
-end
-
 function Controller:home()
-	local _, refs = xml.renderFile("apps/adventure-arena/views/Home.etlua", self:homeData(), self.ns)
+	local _, refs = xml.renderFile("apps/adventure-arena/views/Home.etlua", self.library:presentation(), self.ns)
 	self.navigation = refs.navigation
 	return self.navigation
 end
 
 function Controller:createWindow()
-	local config, refs = xml.renderFile("apps/adventure-arena/views/Window.etlua", self:homeData(), self.ns)
+	local config, refs = xml.renderFile("apps/adventure-arena/views/Window.etlua", self.library:presentation(), self.ns)
 	self.navigation = refs.navigation
 	self.window = self.ns.Window(config)
 	return self.window

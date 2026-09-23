@@ -765,6 +765,7 @@ local TAG_SCHEMA = {
         props = {
             id        = "str",
             title     = { default = "", type = "str" },
+            sortable  = "bool",
             width     = "num",
             minWidth  = "num",
             alignment = "str",
