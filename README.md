@@ -401,7 +401,7 @@ the root instructions.
 
 ### Develop apps from an iPad
 
-`make ipad-deploy` builds **Lua Studio**, automatically finds one connected iPad,
+`make ipad-deploy` builds **Lua Studio**, automatically finds one available physical iPad,
 signs with a matching installed development profile, and installs/launches it.
 Use `make ipad-run` for the simulator. The app includes an interactive phone-sized
 UIKit preview, an OpenRouter coding agent, system keyboard dictation, source

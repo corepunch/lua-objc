@@ -27,8 +27,9 @@ failed signing/install steps stop the command.
 ## Use
 
 Lua Studio currently presents a visual workspace prototype: project navigation,
-a live starter-app preview, and a chat panel. The workspace buttons are
-placeholders and do not perform actions. The preview controls inside the phone
+a live starter-app preview, and a chat panel. Focus Preview, Compact sidebar,
+and Run work from the shared top toolbar. Project creation, Git, Share, Deploy,
+and chat controls remain placeholders. The preview controls inside the phone
 remain interactive.
 
 ## Project and runtime

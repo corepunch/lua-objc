@@ -39,6 +39,10 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   template refs, and bind actions only. If a view needs a new visual branch,
   add or update an `.etlua` template; do not add a controller-side view
   builder, helper, or fallback path.
+  Application controllers must not call `ns` view constructors such as
+  `ns.VStack`, `ns.Text`, `ns.List`, or `ns.Button`. The XML renderer is the
+  sole application-layer caller that maps template tags to platform view
+  constructors. The app entry point/controller may create `ns.Window` only.
   Only the app entry point (`init.lua` or the `App` object) creates an
   `ns.Window`. A component that creates a window is wrong.
 - **Apps live in `apps/<appname>/`.** Every app has its own folder with

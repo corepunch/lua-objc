@@ -9,24 +9,32 @@ import sys
 import tempfile
 
 
+def device_list_command(requested, output):
+    command = ['xcrun', 'devicectl', 'list', 'devices']
+    if not requested:
+        # Match devicectl's displayed State; tunnel and transport can remain
+        # connected for paired devices that are unavailable for deployment.
+        command += ['--filter', "State BEGINSWITH 'available' OR State = 'connected'"]
+    return command + ['--json-output', output]
+
+
 def select_ipad(devices, requested=None):
     candidates = []
     for device in devices:
         hardware = device.get('hardwareProperties', {})
         properties = device.get('deviceProperties', {})
-        connection = device.get('connectionProperties', {})
         identity = device.get('identifier', '')
         name = properties.get('name', '')
         is_ipad = hardware.get('deviceType') == 'iPad' or 'ipad' in hardware.get('marketingName', '').lower()
-        if not is_ipad:
+        if not is_ipad or hardware.get('reality') != 'physical':
             continue
         if requested:
             if requested in (identity, name, hardware.get('udid')):
                 candidates.append(identity)
-        elif connection.get('tunnelState') == 'connected' or connection.get('transportType') in ('wired', 'usb'):
+        else:
             candidates.append(identity)
     if len(candidates) != 1:
-        raise ValueError(f'Expected exactly one connected iPad; found {len(candidates)}. '
+        raise ValueError(f'Expected exactly one available physical iPad; found {len(candidates)}. '
                          'Run make list-devices and set IPAD_DEVICE=<identifier>.')
     return candidates[0]
 
@@ -65,7 +73,7 @@ def main():
         return
     with tempfile.TemporaryDirectory() as temporary:
         output = Path(temporary) / 'devices.json'
-        run('xcrun', 'devicectl', 'list', 'devices', '--json-output', output)
+        run(*device_list_command(args.device, output))
         payload = json.loads(output.read_text())
     device = select_ipad(payload['result']['devices'], args.device)
     print('Selected iPad ' + device, flush=True)

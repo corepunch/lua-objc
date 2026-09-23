@@ -1,12 +1,8 @@
-<!-- GENERATED from lua/embedded/AppKit.lua:608 — do not edit by hand. -->
+<!-- GENERATED from lua/embedded/AppKit.lua:776 — do not edit by hand. -->
 
 # Text
 
 A view that displays one or more lines of read-only text.
-
-```lua
-ns.Text { ... }
-```
 
 ```xml
 <Text ... />
@@ -36,12 +32,12 @@ proposal unless `lineLimit` truncates it.
 
 ## Example
 
-```lua
-ns.Text "Hello"
+```etlua
+<Label>Hello</Label>
 ```
 
-```lua
-ns.Text { "Hello", size = 16, weight = "bold" }
+```etlua
+<Label size="16" weight="bold">Hello</Label>
 ```
 
 ## Platform notes
@@ -50,10 +46,10 @@ ns.Text { "Hello", size = 16, weight = "bold" }
 
 ## See Also
 
-- `Title`
-- `Label`
-- `TextField`
+- [Title](Title.md)
+- [Label](Label.md)
+- [TextField](TextField.md)
 
 ---
 
-_Source: `lua/embedded/AppKit.lua:608` (`AppKit.Text`)_
+_Source: `lua/embedded/AppKit.lua:776` (`AppKit.Text`)_

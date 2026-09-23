@@ -1,12 +1,8 @@
-<!-- GENERATED from lua/embedded/AppKit.lua:916 — do not edit by hand. -->
+<!-- GENERATED from lua/embedded/AppKit.lua:1196 — do not edit by hand. -->
 
 # Button
 
 A push button backed by a native button control.
-
-```lua
-ns.Button { ... }
-```
 
 ```xml
 <Button ... />
@@ -36,8 +32,8 @@ navigation and `Toggle` for on/off state.
 
 ## Example
 
-```lua
-ns.Button { title = "Save", action = function() save() end }
+```etlua
+<Button title="Save" action="save" />
 ```
 
 ## Platform notes
@@ -46,10 +42,10 @@ ns.Button { title = "Save", action = function() save() end }
 
 ## See Also
 
-- `Link`
-- `Toggle`
+- [Link](Link.md)
+- [Toggle](Toggle.md)
 - `Toolbar`
 
 ---
 
-_Source: `lua/embedded/AppKit.lua:916` (`AppKit.Button`)_
+_Source: `lua/embedded/AppKit.lua:1196` (`AppKit.Button`)_

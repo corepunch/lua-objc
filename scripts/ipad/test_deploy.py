@@ -1,14 +1,15 @@
 """Fast, offline regression checks for iPad deployment selection."""
 import unittest
-from deploy import select_ipad
+from deploy import device_list_command, select_ipad
 from sign import matches, signing_entitlements
 from simulator_entitlements import entitlements
 
 
-def device(identifier, kind='iPad', state='connected', transport='localNetwork'):
-    return {'identifier': identifier, 'hardwareProperties': {'deviceType': kind, 'udid': 'udid-' + identifier},
+def device(identifier, kind='iPad', reality='physical'):
+    return {'identifier': identifier, 'hardwareProperties': {'deviceType': kind, 'reality': reality,
+                                                             'udid': 'udid-' + identifier},
             'deviceProperties': {'name': 'name-' + identifier},
-            'connectionProperties': {'tunnelState': state, 'transportType': transport}}
+            'connectionProperties': {'tunnelState': 'connected', 'transportType': 'wired'}}
 
 
 class DiscoveryTests(unittest.TestCase):
@@ -29,11 +30,19 @@ class DiscoveryTests(unittest.TestCase):
     def test_ipad_ignores_iphone(self):
         self.assertEqual(select_ipad([device('phone', 'iPhone'), device('tablet')]), 'tablet')
 
-    def test_wired_ipad_without_tunnel(self):
-        self.assertEqual(select_ipad([device('tablet', state='disconnected', transport='wired')]), 'tablet')
+    def test_auto_discovery_uses_displayed_availability(self):
+        self.assertEqual(device_list_command(None, '/tmp/devices.json'),
+                         ['xcrun', 'devicectl', 'list', 'devices', '--filter',
+                          "State BEGINSWITH 'available' OR State = 'connected'",
+                          '--json-output', '/tmp/devices.json'])
+        self.assertEqual(device_list_command('tablet', '/tmp/devices.json'),
+                         ['xcrun', 'devicectl', 'list', 'devices', '--json-output', '/tmp/devices.json'])
+
+    def test_simulated_connected_ipad_is_not_a_candidate(self):
+        self.assertEqual(select_ipad([device('simulator', reality='simulated'), device('tablet')]), 'tablet')
 
     def test_no_or_multiple_devices(self):
-        for devices in ([], [device('a'), device('b')], [device('a', state='disconnected')]):
+        for devices in ([], [device('a'), device('b')], [device('simulator', reality='simulated')]):
             with self.assertRaises(ValueError):
                 select_ipad(devices)
 
@@ -42,6 +51,8 @@ class DiscoveryTests(unittest.TestCase):
             self.assertEqual(select_ipad([device('a'), device('b')], selector), 'b')
         with self.assertRaises(ValueError):
             select_ipad([device('a', 'iPhone')], 'a')
+        with self.assertRaises(ValueError):
+            select_ipad([device('a', reality='simulated')], 'a')
 
     def test_profile_identifiers(self):
         self.assertTrue(matches('TEAM.org.luaobjc.*', 'TEAM.org.luaobjc.studio'))

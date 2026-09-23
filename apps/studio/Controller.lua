@@ -21,6 +21,17 @@ function Controller.new()
 	}, Controller)
 end
 
+function Controller:reloadPreview()
+	local controller, err = self.preview:render(self.model.files)
+	if controller then
+		self.refs.preview.content = controller
+		self.refs.previewStatus.text = "Ready"
+		return true
+	end
+	self.refs.previewStatus.text = "Preview failed: " .. tostring(err)
+	return nil, err
+end
+
 function Controller:createWindow()
 	assert(ns.Preview, "Lua Studio requires the iPad runtime. Use make ipad-run.")
 	local device, seed = Device.new(ns), {}
@@ -40,15 +51,16 @@ function Controller:createWindow()
 		actions = {
 			toggleChat = function()
 				refs.chatPane.hidden = not refs.chatPane.hidden
-				refs.chatVisibility.title = refs.chatPane.hidden and "Show Chat" or "Focus Preview"
+				refs.chatVisibility.accessibilityLabel = refs.chatPane.hidden and "Show Chat" or "Focus Preview"
 				ns._layout(refs.workspace)
 			end,
 			toggleSidebarWidth = function()
 				local compact = refs.sidebar.fixedWidth ~= self.sidebar.metrics.compactWidth
 				refs.sidebar.fixedWidth = compact and self.sidebar.metrics.compactWidth or self.sidebar.metrics.expandedWidth
-				refs.sidebarWidth.title = compact and "Widen sidebar" or "Compact sidebar"
+				refs.sidebarWidth.accessibilityLabel = compact and "Widen sidebar" or "Compact sidebar"
 				ns._layout(refs.workspace)
 			end,
+			reloadPreview = function() self:reloadPreview() end,
 		},
 	}, ns)
 	local controller, err = self.preview:render(self.model.files)

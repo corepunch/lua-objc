@@ -1,58 +1,42 @@
-<VStack ref="chatPane" padding="12" spacing="8" flexGrow="1" flexBasis="0" minWidth="330" fillWidth="true" fillHeight="true" alignment="leading" background="background" cornerRadius="16">
-	<HStack padding="0" spacing="8" fillWidth="true">
-		<Label text="Chat" size="17" weight="semibold" />
-		<Label text="Code" size="17" color="secondary" />
+<VStack ref="chatPane" padding="12" spacing="10" flexGrow="1" flexBasis="0" minWidth="330" fillWidth="true" fillHeight="true" alignment="leading" background="background">
+	<HStack padding="0" spacing="6" fillWidth="true">
+		<Label text="CONVERSATION" size="10" weight="semibold" color="secondary" />
 		<Spacer />
-		<Button title="Git" systemImage="point.3.connected.trianglepath.dotted" style="bordered" />
-		<Button title="Share" systemImage="square.and.arrow.up" style="bordered" />
-		<Button title="Deploy" systemImage="paperplane" style="borderedProminent" />
+		<Label ref="previewStatus" text="<%= status %>" size="11" color="secondary" />
 	</HStack>
-	<HStack padding="0" spacing="18" fillWidth="true">
-		<% for _, tab in ipairs(tabs) do %>
-		<Label text="<%= tab %>" size="13" color="secondary" />
-		<% end %>
-		<Spacer />
-		<Label text="<%= status %>" size="11" color="secondary" />
-	</HStack>
-	<Divider />
-	<GroupBox padding="14" background="secondaryBackground" cornerRadius="16" fillWidth="true">
-		<Label text="<%= prompt %>" size="14" fillWidth="true" lines="5" />
-	</GroupBox>
-	<HStack padding="0" spacing="10" fillWidth="true" alignment="top">
-		<SystemImage name="sparkles" size="24" color="accent" />
-		<Label text="<%= response %>" size="14" fillWidth="true" lines="5" />
-	</HStack>
-	<GroupBox padding="10" background="secondaryBackground" cornerRadius="12" fillWidth="true">
-		<VStack padding="0" spacing="0" fillWidth="true" alignment="leading">
-			<HStack padding="4" spacing="8" fillWidth="true">
-				<SystemImage name="chevron.down" size="11" color="secondary" />
-				<Label text="Created 6 files" size="13" weight="semibold" fillWidth="true" />
+	<ScrollView flexGrow="1" fillWidth="true" fillHeight="true">
+		<VStack padding="0" spacing="14" fillWidth="true" alignment="leading">
+			<GroupBox padding="14" background="secondaryBackground" cornerRadius="14" fillWidth="true">
+				<Label text="<%= prompt %>" size="14" fillWidth="true" lines="5" />
+			</GroupBox>
+			<HStack padding="0" spacing="10" fillWidth="true" alignment="top">
+				<SystemImage name="sparkles" size="20" color="accent" label="Agent" />
+				<Label text="<%= response %>" size="14" fillWidth="true" lines="5" />
 			</HStack>
-			<% for _, file in ipairs(files) do %>
-			<HStack padding="4" spacing="8" fillWidth="true">
-				<SystemImage name="<%= file:find('/') and 'folder.fill' or 'doc.text' %>" size="14" color="accent" />
-				<Label text="<%= file %>" size="13" fillWidth="true" />
-				<% if file:find('/') or file == 'App.lua' or file == 'Info.plist' then %>
-				<SystemImage name="plus" size="12" color="secondary" />
-				<% end %>
-			</HStack>
-			<% end %>
+			<GroupBox padding="12" background="secondaryBackground" cornerRadius="14" fillWidth="true">
+				<VStack padding="0" spacing="5" fillWidth="true" alignment="leading">
+					<Label text="<%= #files %> files created" size="13" weight="semibold" />
+					<% for _, file in ipairs(files) do %>
+					<HStack padding="2" spacing="8" fillWidth="true">
+						<SystemImage name="<%= file:find('/') and 'folder.fill' or 'doc.text' %>" size="14" color="accent" />
+						<Label text="<%= file %>" size="13" fillWidth="true" />
+					</HStack>
+					<% end %>
+				</VStack>
+			</GroupBox>
+			<Label text="The app is ready. Run it in the preview to try it out. It uses local storage to save your habits and progress." size="13" fillWidth="true" lines="3" />
 		</VStack>
-	</GroupBox>
-	<Label text="The app is ready. Run it in the preview to try it out. It uses local storage to save your habits and progress." size="14" fillWidth="true" lines="3" />
+	</ScrollView>
+	<Divider />
 	<Label text="SUGGESTIONS" size="10" weight="semibold" color="secondary" />
 	<HStack padding="0" spacing="6" fillWidth="true">
 		<% for _, suggestion in ipairs(suggestions) do %>
 			<Button title="<%= suggestion %>" size="12" style="bordered" />
 		<% end %>
 	</HStack>
-	<GroupBox padding="4" background="secondaryBackground" cornerRadius="14" fillWidth="true">
-		<TextEditor ref="composer" text="" size="15" fixedHeight="90" fillWidth="true" />
-	</GroupBox>
-	<HStack padding="0" spacing="8" fillWidth="true">
-		<Button title="Dictate" systemImage="mic" />
-		<Spacer />
-		<Button title="Stop" />
-		<Button title="Send" systemImage="arrow.up" style="borderedProminent" />
+	<HStack padding="6" spacing="8" fillWidth="true" alignment="center" background="secondaryBackground" cornerRadius="14">
+		<TextField ref="composer" text="" placeholder="Ask anything…" size="14" flexGrow="1" fillWidth="true" />
+		<Button title="" systemImage="mic" accessibilityLabel="Dictate" style="bordered" />
+		<Button title="" systemImage="arrow.up" accessibilityLabel="Send" style="borderedProminent" />
 	</HStack>
 </VStack>

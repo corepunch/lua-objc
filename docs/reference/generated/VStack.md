@@ -1,12 +1,8 @@
-<!-- GENERATED from lua/embedded/AppKit.lua:351 — do not edit by hand. -->
+<!-- GENERATED from lua/embedded/AppKit.lua:418 — do not edit by hand. -->
 
 # VStack
 
 A view that arranges its subviews in a vertical line.
-
-```lua
-ns.VStack { ... }
-```
 
 ```xml
 <VStack ... />
@@ -33,8 +29,8 @@ spacing.
 
 ## Example
 
-```lua
-ns.VStack { ns.Text "Line 1", ns.Text "Line 2" }
+```etlua
+<VStack><Label>Line 1</Label><Label>Line 2</Label></VStack>
 ```
 
 ## Platform notes
@@ -43,11 +39,11 @@ ns.VStack { ns.Text "Line 1", ns.Text "Line 2" }
 
 ## See Also
 
-- `HStack`
-- `ZStack`
-- `FlowStack`
-- `Spacer`
+- [HStack](HStack.md)
+- [ZStack](ZStack.md)
+- [FlowStack](FlowStack.md)
+- [Spacer](Spacer.md)
 
 ---
 
-_Source: `lua/embedded/AppKit.lua:351` (`AppKit.VStack`)_
+_Source: `lua/embedded/AppKit.lua:418` (`AppKit.VStack`)_

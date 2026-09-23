@@ -1,9 +1,29 @@
-<Window title="Lua Studio" width="1366" height="900" minWidth="980" minHeight="640" appearance="light">
-	<HStack ref="workspace" padding="8" spacing="8" flexGrow="1" fillWidth="true" fillHeight="true" alignment="top" background="secondaryBackground">
-		<%- partial("Sidebar.etlua", sidebar) %>
-		<Divider orientation="vertical" />
-		<%- partial("PreviewPane.etlua", preview) %>
-		<Divider orientation="vertical" />
-		<%- partial("ChatPane.etlua", chat) %>
-	</HStack>
+<Window title="Lua Studio" width="1366" height="900" minWidth="980" minHeight="640">
+	<VStack padding="0" spacing="0" flexGrow="1" fillWidth="true" fillHeight="true" background="background">
+		<HStack ref="toolbar" paddingHorizontal="12" paddingVertical="8" spacing="8" fixedHeight="56" fillWidth="true" alignment="center">
+			<SystemImage name="hammer.fill" size="20" color="accent" label="Lua Studio" />
+			<Label text="Lua Studio" size="18" weight="bold" />
+			<Button ref="chatVisibility" title="" systemImage="rectangle.rightthird.inset.filled" accessibilityLabel="Focus Preview" action="toggleChat" style="bordered" />
+			<Button ref="sidebarWidth" title="" systemImage="sidebar.left" accessibilityLabel="Compact sidebar" action="toggleSidebarWidth" style="bordered" />
+			<Divider orientation="vertical" />
+			<Button title="<%= preview.device %>" systemImage="iphone" style="bordered" />
+			<Button ref="runButton" title="<%= preview.runLabel %>" systemImage="play.fill" action="reloadPreview" style="borderedProminent" />
+			<Label text="<%= preview.zoom %>" size="12" color="secondary" />
+			<Spacer />
+			<Label text="Chat" size="14" weight="semibold" />
+			<Label text="Code" size="14" color="secondary" />
+			<Divider orientation="vertical" />
+			<Button title="Git" systemImage="point.3.connected.trianglepath.dotted" style="bordered" />
+			<Button title="Share" systemImage="square.and.arrow.up" style="bordered" />
+			<Button title="Deploy" systemImage="paperplane" style="borderedProminent" />
+		</HStack>
+		<Divider />
+		<HStack ref="workspace" padding="0" spacing="0" flexGrow="1" fillWidth="true" fillHeight="true" alignment="top">
+			<%- partial("Sidebar.etlua", sidebar) %>
+			<Divider orientation="vertical" />
+			<%- partial("PreviewPane.etlua", preview) %>
+			<Divider orientation="vertical" />
+			<%- partial("ChatPane.etlua", chat) %>
+		</HStack>
+	</VStack>
 </Window>

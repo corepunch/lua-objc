@@ -592,6 +592,7 @@ local TAG_SCHEMA = {
     Button = {
         constructor = "Button",
         props = {
+            accessibilityLabel = "str",
             size        = "num",
             weight      = "str",
             title       = { aliases = { "label" }, default = "", type = "str" },

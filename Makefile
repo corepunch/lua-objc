@@ -207,7 +207,7 @@ clean:
 screenshot: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) --screenshot=$(or $(OUT),/tmp/screenshot.png) $(ARGS)
 
-DOC_SRC = lua/embedded/AppKit.lua
+DOC_SRC = lua/embedded/AppKit.lua lua/embedded/UIKit.lua
 DOC_OUT = docs/reference/generated
 
 docs:
@@ -215,7 +215,7 @@ docs:
 	python3 -m mkdocs build
 
 docs-check:
-	python3 scripts/docs/generate.py --src $(DOC_SRC) --check
+	python3 scripts/docs/generate.py --src $(DOC_SRC) --check --strict
 
 parity-check:
 	python3 scripts/parity/validate_manifest.py

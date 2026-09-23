@@ -1,16 +1,7 @@
-<VStack ref="sidebar" padding="<%= collapsed and metrics.collapsedPadding or metrics.expandedPadding %>" spacing="10" fixedWidth="<%= collapsed and metrics.collapsedWidth or metrics.expandedWidth %>" fillHeight="true" alignment="leading">
-	<HStack padding="0" spacing="10" fillWidth="true">
-		<SystemImage name="hammer.fill" size="<%= metrics.iconSize %>" color="accent" fixedWidth="<%= metrics.iconSlotWidth %>" label="Lua Studio" />
-		<% if not collapsed then %>
-		<VStack padding="0" spacing="1" alignment="leading">
-			<Label text="Lua Studio" size="20" weight="bold" />
-			<Label text="IDEA → APP → PREVIEW" size="10" color="secondary" />
-		</VStack>
-		<% end %>
-	</HStack>
+<VStack ref="sidebar" padding="<%= collapsed and metrics.collapsedPadding or metrics.expandedPadding %>" spacing="10" fixedWidth="<%= collapsed and metrics.collapsedWidth or metrics.expandedWidth %>" fillHeight="true" alignment="leading" background="secondaryBackground">
 	<% if not collapsed then %>
 	<Button title="New Project" systemImage="plus" style="borderedProminent" fillWidth="true" />
-	<Label text="RECENT PROJECTS" size="11" weight="semibold" color="secondary" />
+	<Label text="RECENT PROJECTS" size="10" weight="semibold" color="secondary" />
 	<% end %>
 	<VStack padding="0" spacing="5" fillWidth="true" alignment="leading">
 		<% for _, project in ipairs(projects) do %>
@@ -23,8 +14,6 @@
 	<%- partial("SidebarItem.etlua", {item = item, collapsed = collapsed, metrics = metrics}) %>
 	<% end %>
 	<% if not collapsed then %>
-	<Button ref="chatVisibility" title="Focus Preview" systemImage="rectangle.rightthird.inset.filled" action="toggleChat" style="bordered" fillWidth="true" />
-	<Button ref="sidebarWidth" title="Compact sidebar" systemImage="sidebar.left" action="toggleSidebarWidth" style="bordered" fillWidth="true" />
-	<Label text="Documents · local workspace" size="11" color="secondary" lines="2" />
+	<Label text="Documents · local workspace" size="10" color="secondary" lines="2" />
 	<% end %>
 </VStack>

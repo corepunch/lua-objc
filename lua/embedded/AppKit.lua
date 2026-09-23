@@ -103,6 +103,32 @@ local function resolveImage(name)
 	return name
 end
 
+--- Creates the app window and hosts the rendered root view.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop appearance string optional. Window appearance: `system`, `light`, or `dark`.
+--- @prop content value optional. Rendered child content or the control’s text value.
+--- @prop contentAccessory table optional. Accessory view attached to the window content area.
+--- @prop detail table optional. Rendered detail pane view.
+--- @prop detailWidth number optional. Requested width of the detail pane, in points.
+--- @prop height number optional. Component-specific setting passed to the native control.
+--- @prop hideTitle boolean optional. Component-specific setting passed to the native control.
+--- @prop minHeight number optional. Component-specific setting passed to the native control.
+--- @prop minWidth number optional. Component-specific setting passed to the native control.
+--- @prop sidebar table optional. Rendered navigation sidebar view.
+--- @prop sidebarWidth number optional. Component-specific setting passed to the native control.
+--- @prop size number optional. Component-specific setting passed to the native control.
+--- @prop tabbingIdentifier string optional. Identifier used to group tabbing windows.
+--- @prop tabbingMode string optional. Window tabbing mode.
+--- @prop title value optional. Component-specific setting passed to the native control.
+--- @prop toolbar table optional. Toolbar item descriptors.
+--- @prop toolbarContentDividerAfter value optional. Toolbar item identifier after which the content divider appears.
+--- @prop toolbarLabels boolean optional. Component-specific setting passed to the native control.
+--- @prop transparentTitlebar boolean optional. Uses a transparent title bar when true.
+--- @prop visible boolean optional. Component-specific setting passed to the native control.
+--- @prop width number optional. Component-specific setting passed to the native control.
+--- @example <Window title="Example" />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Window(props)
 	local scope = Scope.push()
 	local title = props.title or "Window"
@@ -228,6 +254,14 @@ function AppKit.selectWindowTab(window)
 	return window
 end
 
+--- Creates a floating utility panel with native AppKit panel behavior.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop height number optional. Component-specific setting passed to the native control.
+--- @prop material string optional. Component-specific setting passed to the native control.
+--- @prop width number optional. Component-specific setting passed to the native control.
+--- @example <Panel title="Example" />
+--- @platform AppKit uses the AppKit implementation.
 function AppKit.Panel(props)
 	props = props or {}
 	local width = props.width or 480
@@ -244,6 +278,13 @@ function AppKit.Panel(props)
 	return panel, content
 end
 
+--- Creates a sheet window for presentation from a parent window.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop height number optional. Component-specific setting passed to the native control.
+--- @prop width number optional. Component-specific setting passed to the native control.
+--- @example <Sheet title="Example" />
+--- @platform AppKit uses the AppKit implementation.
 function AppKit.Sheet(props)
 	props = props or {}
 	local sheet = bridge._sheet(props.width or 480, props.height or 240)
@@ -288,6 +329,15 @@ function AppKit.relayout(view, width)
 	return view:layout(width)
 end
 
+--- Creates a native menu command with a keyboard equivalent and action.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop action function optional. Component-specific setting passed to the native control.
+--- @prop keyEquivalent value optional. Keyboard equivalent for the menu command.
+--- @prop menu string optional. Menu name that owns this item.
+--- @prop modifiers table optional. Keyboard modifiers required with the key equivalent.
+--- @prop title value optional. Component-specific setting passed to the native control.
+--- @platform AppKit uses the AppKit implementation.
 function AppKit.MenuItem(props)
 	props = props or {}
 	local modifiers = props.modifiers or { "command" }
@@ -305,6 +355,14 @@ end
 -- #Preview equivalent: renders a named preview in the IDE canvas.
 -- In a real window context it behaves like Window; in canvas eval the
 -- bridge intercepts it the same way it intercepts Window.
+--- Creates a fixed-size preview root for the IDE canvas.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop content value optional. Rendered child content or the control’s text value.
+--- @prop height number optional. Component-specific setting passed to the native control.
+--- @prop width number optional. Component-specific setting passed to the native control.
+--- @example <Preview />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Preview(props)
 	props = props or {}
 	local width  = props.width  or 393   -- iPhone 16 logical width
@@ -326,6 +384,15 @@ function AppKit.Preview(props)
 	return root
 end
 
+--- Presents mutually exclusive content in native tabs.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop onChange function optional. Callback invoked when the value changes.
+--- @prop selected table optional. Selected option, tab, or row identifier.
+--- @prop style string optional. Component-specific setting passed to the native control.
+--- @prop tabs table optional. Tab definitions containing a title and content.
+--- @example <TabView />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.TabView(props)
 	local style = props and props.style or "top"
 	local tv = bridge._tabview(400, 200, style)
@@ -361,7 +428,7 @@ end
 --- @prop fillWidth boolean optional. Expand to the parent width.
 --- @prop fillHeight boolean optional. Expand to the parent height.
 --- @platform AppKit NSView (vertical layout). UIKit UIView (vertical layout).
---- @example ns.VStack { ns.Text "Line 1", ns.Text "Line 2" }
+--- @example <VStack><Label>Line 1</Label><Label>Line 2</Label></VStack>
 --- @see HStack, ZStack, FlowStack, Spacer
 function AppKit.VStack(props)
 	local view = bridge._vstack()
@@ -372,6 +439,11 @@ function AppKit.VStack(props)
 	return view
 end
 
+--- Arranges child views horizontally with sibling spacing.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @example <HStack />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.HStack(props)
 	local view = bridge._hstack()
 	if type(props) == "table" then
@@ -381,6 +453,13 @@ function AppKit.HStack(props)
 	return view
 end
 
+--- Wraps child views into additional rows or columns as space runs out.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop alignment value optional. Component-specific setting passed to the native control.
+--- @prop spacing number optional. Component-specific setting passed to the native control.
+--- @example <FlowStack />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.FlowStack(props)
 	local view = bridge._flowStack()
 	if type(props) == "table" then
@@ -402,11 +481,23 @@ local function stackChildren(props, header)
 	return content
 end
 
+--- Groups related content and may display a header.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop header table optional. Section or group heading.
+--- @example <Section />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Section(props)
 	props = props or {}
 	return AppKit.VStack(stackChildren(props, props.header))
 end
 
+--- Groups related controls inside a titled native box.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop header table optional. Section or group heading.
+--- @example <GroupBox />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.GroupBox(props)
 	props = props or {}
 	local box = bridge._box()
@@ -416,6 +507,13 @@ function AppKit.GroupBox(props)
 	return applyLayout(box, props)
 end
 
+--- Arranges controls as a settings or data-entry form.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop alignment value optional. Component-specific setting passed to the native control.
+--- @prop spacing number optional. Component-specific setting passed to the native control.
+--- @example <Form />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Form(props)
 	props = props or {}
 	local content = {
@@ -426,6 +524,14 @@ function AppKit.Form(props)
 	return applyLayout(AppKit.VStack(content), props)
 end
 
+--- Pairs a descriptive label with its value or child controls.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop label value optional. Component-specific setting passed to the native control.
+--- @prop labelWeight value optional. System font weight for the label.
+--- @prop spacing number optional. Component-specific setting passed to the native control.
+--- @example <LabeledContent />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.LabeledContent(props)
 	props = props or {}
 	local row = { spacing = props.spacing or 12, alignment = "center" }
@@ -436,6 +542,13 @@ function AppKit.LabeledContent(props)
 	return applyLayout(AppKit.HStack(row), props)
 end
 
+--- Groups related controls into a compact row.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop alignment value optional. Component-specific setting passed to the native control.
+--- @prop spacing number optional. Component-specific setting passed to the native control.
+--- @example <ControlGroup />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.ControlGroup(props)
 	props = props or {}
 	local row = { spacing = props.spacing or 8, alignment = props.alignment or "center" }
@@ -443,6 +556,16 @@ function AppKit.ControlGroup(props)
 	return applyLayout(AppKit.HStack(row), props)
 end
 
+--- Shows a header that expands or collapses its child content.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop alignment value optional. Component-specific setting passed to the native control.
+--- @prop expanded boolean optional. Component-specific setting passed to the native control.
+--- @prop header table optional. Section or group heading.
+--- @prop label value optional. Component-specific setting passed to the native control.
+--- @prop spacing number optional. Component-specific setting passed to the native control.
+--- @example <DisclosureGroup />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.DisclosureGroup(props)
 	props = props or {}
 	local content = AppKit.VStack({
@@ -489,6 +612,16 @@ local function outlineItems(ns, items, expanded)
 	return views
 end
 
+--- Builds a nested disclosure hierarchy from tree data.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop alignment value optional. Component-specific setting passed to the native control.
+--- @prop data table optional. Input rows or values consumed by the component.
+--- @prop expanded boolean optional. Component-specific setting passed to the native control.
+--- @prop items table optional. Component-specific setting passed to the native control.
+--- @prop spacing number optional. Component-specific setting passed to the native control.
+--- @example <OutlineGroup />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.OutlineGroup(props)
 	props = props or {}
 	local data = props.data or props.items or {}
@@ -499,6 +632,16 @@ function AppKit.OutlineGroup(props)
 	return applyLayout(AppKit.VStack(content), props)
 end
 
+--- Adds native scrolling around one content view.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop content value optional. Rendered child content or the control’s text value.
+--- @prop contentHeight number optional. Scroll content height; zero lets the content size itself.
+--- @prop contentWidth number optional. Scroll content width; zero lets the content size itself.
+--- @prop horizontal boolean optional. Component-specific setting passed to the native control.
+--- @prop vertical boolean optional. Component-specific setting passed to the native control.
+--- @example <ScrollView />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.ScrollView(props)
 	assert(type(props) == "table", "ScrollView requires a property table")
 	local content = props.content or props[1]
@@ -522,6 +665,12 @@ function AppKit.ScrollView(props)
 	return applyLayout(view, props)
 end
 
+--- Places panes side by side in a native split view.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop proportions table optional. Initial split pane proportions; values are normalized by the split view.
+--- @example <HSplit />
+--- @platform AppKit uses the AppKit implementation.
 function AppKit.HSplit(props)
 	local view = bridge._hsplit()
 	if type(props) == "table" then
@@ -536,6 +685,12 @@ end
 
 -- VSplit: NSSplitView splitting top-to-bottom (vertical=NO in AppKit terms).
 -- Mirrors Xcode's DVTSplitView used to stack editor + debug area.
+--- Places panes vertically in a native split view.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop proportions table optional. Initial split pane proportions; values are normalized by the split view.
+--- @example <VSplit />
+--- @platform AppKit uses the AppKit implementation.
 function AppKit.VSplit(props)
 	local view = bridge._vsplit()
 	if type(props) == "table" then
@@ -550,6 +705,11 @@ end
 
 -- Separator: 1pt NSBox rule, fills available width.
 -- Mirrors Xcode's thin dividers between ControlBar areas.
+--- Draws a native separator between adjacent content.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @example <Separator />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Separator(props)
 	return applyLayout(bridge._separator(), props)
 end
@@ -560,6 +720,14 @@ function AppKit.Group(children)
 	return children
 end
 
+--- Aligns child views into rows and columns.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop alignment value optional. Component-specific setting passed to the native control.
+--- @prop content value optional. Rendered child content or the control’s text value.
+--- @prop spacing number optional. Component-specific setting passed to the native control.
+--- @example <Grid />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Grid(props)
 	props = props or {}
 	local columnWidths = {}
@@ -621,8 +789,8 @@ end
 --- @prop truncation string optional. One of "head", "middle", "tail".
 --- @prop wrapping string optional. "word" (default) or "character".
 --- @platform AppKit NSTextField (non-editable, bezel-less). UIKit UILabel.
---- @example ns.Text "Hello"
---- @example ns.Text { "Hello", size = 16, weight = "bold" }
+--- @example <Label>Hello</Label>
+--- @example <Label size="16" weight="bold">Hello</Label>
 --- @see Title, Label, TextField
 function AppKit.Text(arg)
 	local text, size, weight
@@ -688,6 +856,11 @@ function AppKit.Text(arg)
 	return result
 end
 
+--- Layers child views in the same coordinate area.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @example <ZStack />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.ZStack(props)
 	local view = bridge._zstack()
 	if type(props) == "table" then
@@ -697,6 +870,26 @@ function AppKit.ZStack(props)
 	return view
 end
 
+--- Edits a single line of text.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop accessibilityLabel value optional. Component-specific setting passed to the native control.
+--- @prop bezeled boolean optional. Shows the native bezel when true.
+--- @prop bordered boolean optional. Shows the native border when true.
+--- @prop disabled boolean optional. Component-specific setting passed to the native control.
+--- @prop drawsBackground boolean optional. Draws the control’s background when true.
+--- @prop editable boolean optional. Allows text editing when true.
+--- @prop focusRing boolean optional. Shows the native keyboard focus ring when true.
+--- @prop onChange function optional. Callback invoked when the value changes.
+--- @prop onCommand function optional. Callback invoked for the corresponding keyboard command.
+--- @prop placeholder string optional. Component-specific setting passed to the native control.
+--- @prop secure boolean optional. Masks entered text when true.
+--- @prop selectable boolean optional. Allows text or rows to be selected when true.
+--- @prop size number optional. Component-specific setting passed to the native control.
+--- @prop value table optional. Current selected, edited, or measured value.
+--- @prop weight value optional. Component-specific setting passed to the native control.
+--- @example <TextField />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.TextField(props)
 	if type(props) ~= "table" then
 		props = { value = tostring(props or "") }
@@ -731,6 +924,17 @@ local search_control_sizes = {
 	extraLarge = 4,
 }
 
+--- Provides native search input and search-specific behavior.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop accessibilityLabel value optional. Component-specific setting passed to the native control.
+--- @prop controlSize string optional. Component-specific setting passed to the native control.
+--- @prop onChange function optional. Callback invoked when the value changes.
+--- @prop onCommand function optional. Callback invoked for the corresponding keyboard command.
+--- @prop placeholder string optional. Component-specific setting passed to the native control.
+--- @prop value table optional. Current selected, edited, or measured value.
+--- @example <SearchField />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.SearchField(props)
 	props = props or {}
 	local field = bridge._searchField()
@@ -748,6 +952,19 @@ function AppKit.SearchField(props)
 	return applyLayout(field, props)
 end
 
+--- Edits multiline text.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop drawsBackground boolean optional. Draws the control’s background when true.
+--- @prop editable boolean optional. Allows text editing when true.
+--- @prop language string optional. Component-specific setting passed to the native control.
+--- @prop selectable boolean optional. Allows text or rows to be selected when true.
+--- @prop size number optional. Component-specific setting passed to the native control.
+--- @prop text string optional. Initial or displayed text value.
+--- @prop weight value optional. Component-specific setting passed to the native control.
+--- @prop wrapMode string optional. Text wrapping mode.
+--- @example <TextEditor />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.TextEditor(props)
 	props = props or {}
 	local view = bridge._textView()
@@ -773,6 +990,10 @@ function AppKit.TextEditor(props)
 	return applyLayout(view, props)
 end
 
+--- Displays prominent window or section title text.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Title(arg)
 	return AppKit.Text({
 		type(arg) == "table" and arg[1] or arg,
@@ -781,6 +1002,13 @@ function AppKit.Title(arg)
 	})
 end
 
+--- Displays a raster or vector image asset.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop contentMode string optional. Image scaling mode such as fit or fill.
+--- @prop fileIcon string optional. Displays a system file icon for the path.
+--- @example <Image />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Image(arg)
 	local path
 	local props
@@ -797,6 +1025,11 @@ function AppKit.Image(arg)
 	return applyLayout(view, props)
 end
 
+--- Displays an SF Symbol using the platform image system.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @example <SystemImage />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.SystemImage(arg)
 	if type(arg) ~= "table" then
 		arg = { tostring(arg) }
@@ -812,10 +1045,34 @@ function AppKit.SystemImage(arg)
 	return applyLayout(view, arg)
 end
 
+--- Consumes flexible space between neighboring views.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @example <Spacer />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Spacer(props)
 	return applyLayout(bridge._spacer(), props)
 end
 
+--- Displays rows of data in a native table or list control.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop alternatingRows boolean optional. Alternates row backgrounds when supported by the selected list style.
+--- @prop bordered boolean optional. Shows the native border when true.
+--- @prop columns table optional. Column descriptors defining the table structure.
+--- @prop data table optional. Input rows or values consumed by the component.
+--- @prop drawsBackground boolean optional. Draws the control’s background when true.
+--- @prop gridLines value optional. Grid line configuration for the table.
+--- @prop header table optional. Section or group heading.
+--- @prop height number optional. Component-specific setting passed to the native control.
+--- @prop onActivate function optional. Callback invoked when a row or item is activated.
+--- @prop onSelect function optional. Callback invoked when row selection changes.
+--- @prop refresh function optional. Callback invoked to refresh the displayed data.
+--- @prop rowHeight number optional. Requested table row height, in points.
+--- @prop style string optional. Component-specific setting passed to the native control.
+--- @prop width number optional. Component-specific setting passed to the native control.
+--- @example <List />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.List(props)
 	local columns = props.columns
 	if not columns or type(columns) ~= "table" then
@@ -870,6 +1127,25 @@ function AppKit.readDirectory(path, depth)
 	return bridge._listDirectory(path, depth or 0)
 end
 
+--- Displays hierarchical rows in a native outline control.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop alternatingRows boolean optional. Alternates row backgrounds when supported by the selected list style.
+--- @prop bordered boolean optional. Shows the native border when true.
+--- @prop columns table optional. Column descriptors defining the table structure.
+--- @prop data table optional. Input rows or values consumed by the component.
+--- @prop drawsBackground boolean optional. Draws the control’s background when true.
+--- @prop gridLines value optional. Grid line configuration for the table.
+--- @prop header table optional. Section or group heading.
+--- @prop height number optional. Component-specific setting passed to the native control.
+--- @prop indentation number optional. Indentation per outline depth, in points.
+--- @prop onActivate function optional. Callback invoked when a row or item is activated.
+--- @prop onSelect function optional. Callback invoked when row selection changes.
+--- @prop rowHeight number optional. Requested table row height, in points.
+--- @prop style string optional. Component-specific setting passed to the native control.
+--- @prop width number optional. Component-specific setting passed to the native control.
+--- @example <OutlineView />
+--- @platform AppKit uses the AppKit implementation.
 function AppKit.OutlineView(props)
 	local columns = props.columns
 	if not columns or type(columns) ~= "table" then
@@ -905,6 +1181,10 @@ function AppKit.OutlineView(props)
 	return applyLayout(tv, props)
 end
 
+--- Creates or retrieves an item in a window toolbar.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @platform AppKit uses the AppKit implementation.
 function AppKit.ToolbarItem(window, identifier)
 	local item = bridge._toolbar_item(window, identifier)
 	if not item then
@@ -929,7 +1209,7 @@ end
 --- @prop disabled boolean optional. Disables the control when true.
 --- @prop accessibilityLabel string optional. VoiceOver label.
 --- @platform AppKit NSButton (rounded) or LuaActionButton (compound). UIKit UIButton.
---- @example ns.Button { title = "Save", action = function() save() end }
+--- @example <Button title="Save" action="save" />
 --- @see Link, Toggle, Toolbar
 function AppKit.Button(props)
 	local title = type(props) == "table" and (props.title or props[1] or "") or ""
@@ -972,6 +1252,14 @@ function AppKit.Button(props)
 	return applyLayout(button, props)
 end
 
+--- Opens or navigates to a destination when activated.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop label value optional. Component-specific setting passed to the native control.
+--- @prop title value optional. Component-specific setting passed to the native control.
+--- @prop url string optional. Component-specific setting passed to the native control.
+--- @example <Link />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Link(props)
 	props = props or {}
 	assert(props.url, "Link requires a URL")
@@ -979,6 +1267,16 @@ function AppKit.Link(props)
 		props.url), props)
 end
 
+--- Presents a native empty, unavailable, or no-results state.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop description value optional. Secondary explanatory text for an unavailable state.
+--- @prop imageSize number optional. Symbol or image size in points.
+--- @prop lines number optional. Maximum number of visible text lines.
+--- @prop spacing number optional. Component-specific setting passed to the native control.
+--- @prop systemImage string optional. Component-specific setting passed to the native control.
+--- @prop title value optional. Component-specific setting passed to the native control.
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.ContentUnavailable(props)
 	props = props or {}
 	local content = { spacing = props.spacing or 8, alignment = "center" }
@@ -1004,6 +1302,15 @@ end
 
 AppKit.ActionButton = AppKit.Button
 
+--- Represents an on/off value with a native switch or checkbox.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop action function optional. Component-specific setting passed to the native control.
+--- @prop disabled boolean optional. Component-specific setting passed to the native control.
+--- @prop is_on value optional. Current on/off value (legacy spelling).
+--- @prop label value optional. Component-specific setting passed to the native control.
+--- @example <Toggle />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Toggle(props)
 	local label = type(props) == "table" and (props.label or props[1] or "") or ""
 	local is_on = type(props) == "table" and props.is_on or false
@@ -1018,6 +1325,18 @@ function AppKit.Toggle(props)
 	return applyLayout(toggle, props)
 end
 
+--- Selects a numeric value within a continuous range.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop action function optional. Component-specific setting passed to the native control.
+--- @prop allowsTickMarkValuesOnly boolean optional. Restricts slider values to tick marks when true.
+--- @prop disabled boolean optional. Component-specific setting passed to the native control.
+--- @prop max number optional. Component-specific setting passed to the native control.
+--- @prop min number optional. Component-specific setting passed to the native control.
+--- @prop tickMarks table optional. Slider tick mark positions.
+--- @prop value table optional. Current selected, edited, or measured value.
+--- @example <Slider />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Slider(props)
 	props = props or {}
 	local slider = bridge._slider(
@@ -1033,6 +1352,19 @@ function AppKit.Slider(props)
 	return applyLayout(slider, props)
 end
 
+--- Increments or decrements a numeric value.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop action function optional. Component-specific setting passed to the native control.
+--- @prop autorepeat boolean optional. Repeats stepper actions while the user holds a step button.
+--- @prop disabled boolean optional. Component-specific setting passed to the native control.
+--- @prop increment number optional. Component-specific setting passed to the native control.
+--- @prop max number optional. Component-specific setting passed to the native control.
+--- @prop min number optional. Component-specific setting passed to the native control.
+--- @prop value table optional. Current selected, edited, or measured value.
+--- @prop wraps boolean optional. Component-specific setting passed to the native control.
+--- @example <Stepper />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Stepper(props)
 	props = props or {}
 	local stepper = bridge._stepper(
@@ -1047,6 +1379,15 @@ function AppKit.Stepper(props)
 	return applyLayout(stepper, props)
 end
 
+--- Selects one value from a set of options.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop action function optional. Component-specific setting passed to the native control.
+--- @prop disabled boolean optional. Component-specific setting passed to the native control.
+--- @prop options table optional. Selectable options or menu entries.
+--- @prop value table optional. Current selected, edited, or measured value.
+--- @example <Picker />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Picker(props)
 	assert(type(props) == "table", "Picker requires a property table")
 	assert(type(props.options) == "table", "Picker requires an options array")
@@ -1058,6 +1399,15 @@ function AppKit.Picker(props)
 	return applyLayout(picker, props)
 end
 
+--- Selects a date or time value.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop disabled boolean optional. Component-specific setting passed to the native control.
+--- @prop onChange function optional. Callback invoked when the value changes.
+--- @prop time value optional. Whether the date picker includes time selection.
+--- @prop timestamp number optional. Date value represented as a Unix timestamp.
+--- @example <DatePicker />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.DatePicker(props)
 	props = props or {}
 	local picker = bridge._datePicker(props.timestamp or props.time, props.onChange)
@@ -1065,6 +1415,14 @@ function AppKit.DatePicker(props)
 	return applyLayout(picker, props)
 end
 
+--- Selects a color using the platform color control.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop color color optional. Component-specific setting passed to the native control.
+--- @prop disabled boolean optional. Component-specific setting passed to the native control.
+--- @prop onChange function optional. Callback invoked when the value changes.
+--- @example <ColorPicker />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.ColorPicker(props)
 	props = props or {}
 	local picker = bridge._colorPicker(props.color, props.onChange)
@@ -1072,6 +1430,11 @@ function AppKit.ColorPicker(props)
 	return applyLayout(picker, props)
 end
 
+--- Draws a native separator between adjacent content.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @example <Separator />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Separator(props)
 	local v = bridge._box()
 	v.boxType = 2
@@ -1080,6 +1443,12 @@ function AppKit.Separator(props)
 	return applyLayout(v, props)
 end
 
+--- Draws a horizontal or vertical native divider.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop orientation string optional. Component-specific setting passed to the native control.
+--- @example <Divider />
+--- @platform AppKit uses the AppKit implementation.
 function AppKit.Divider(props)
 	props = props or {}
 	local v = bridge._box()
@@ -1094,6 +1463,13 @@ function AppKit.Divider(props)
 	return applyLayout(v, props)
 end
 
+--- Shows determinate or indeterminate progress.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop indeterminate boolean optional. Component-specific setting passed to the native control.
+--- @prop value table optional. Current selected, edited, or measured value.
+--- @example <ProgressView />
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.ProgressView(props)
 	props = props or {}
 	local v = bridge._progressIndicator()
@@ -1105,6 +1481,15 @@ function AppKit.ProgressView(props)
 	return applyLayout(v, props)
 end
 
+--- Displays a filesystem path as a navigable or inspectable view.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop fillColor color optional. Component-specific setting passed to the native control.
+--- @prop height number optional. Component-specific setting passed to the native control.
+--- @prop lineWidth number optional. Stroke width in points.
+--- @prop strokeColor color optional. Component-specific setting passed to the native control.
+--- @prop width number optional. Component-specific setting passed to the native control.
+--- @platform AppKit uses the AppKit implementation.
 function AppKit.PathView(props)
 	props = props or {}
 	local w = props.width or 100
@@ -1124,6 +1509,21 @@ function AppKit.PathView(props)
 	return applyLayout(v, props)
 end
 
+--- Renders a data-driven curve in a native drawing surface.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop chartPadding number optional. Inset around the plotted data, in points.
+--- @prop data table optional. Input rows or values consumed by the component.
+--- @prop fallbackMessage string optional. Message shown when no chart data can be rendered.
+--- @prop fillArea boolean optional. Fills the area under the plotted curve.
+--- @prop fillColor color optional. Component-specific setting passed to the native control.
+--- @prop fillWidth boolean optional. Component-specific setting passed to the native control.
+--- @prop fixedHeight value optional. Component-specific setting passed to the native control.
+--- @prop height number optional. Component-specific setting passed to the native control.
+--- @prop lineWidth number optional. Stroke width in points.
+--- @prop strokeColor color optional. Component-specific setting passed to the native control.
+--- @prop width number optional. Component-specific setting passed to the native control.
+--- @platform AppKit uses the AppKit implementation.
 function AppKit.Curve(props)
 	props = props or {}
 	local raw = props.data or {}
@@ -1288,6 +1688,12 @@ end
 -- the screen, not the window.
 local navScreenScopes = setmetatable({}, { __mode = "k" })
 
+--- Manages a stack of screens and navigation transitions.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop content value optional. Rendered child content or the control’s text value.
+--- @prop title value optional. Component-specific setting passed to the native control.
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.NavigationStack(props)
 	props = props or {}
 	local root = AppKit.HostingController(props.content or props[1])
@@ -1345,6 +1751,14 @@ function AppKit.copyToClipboard(text)
 	bridge._clipboardCopy(text)
 end
 
+--- Presents a native alert and returns the selected response.
+---
+--- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop buttons table optional. Alert button titles, in display order.
+--- @prop message string optional. Explanatory message shown in an alert.
+--- @prop title value optional. Component-specific setting passed to the native control.
+--- @example <Alert title="Example" />
+--- @platform AppKit uses the AppKit implementation.
 function AppKit.Alert(props)
 	props = props or {}
 	return bridge._alert(

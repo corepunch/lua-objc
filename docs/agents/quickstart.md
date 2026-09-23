@@ -45,28 +45,16 @@ Use a semantic window split when the app has navigation and primary content:
 local ns = require("AppKit")
 local xml = require("ui.xml")
 
-local cfg = xml.renderFile("apps/weather/views/Window.etlua")
-local sidebar = ns.VStack {
-    ns.SearchField { placeholder = "Search", accessibilityLabel = "Search locations" },
-    ns.List {
-        style = "sourceList",
-        header = false,
-        flexGrow = 1,
-        columns = {{ id = "name", title = "Location" }},
-    },
-}
-
-return ns.Window {
-    title = "Weather",
-    sidebar = sidebar,
-    content = ns.VStack { flexGrow = 1, ns.Text "Select a location" },
-    sidebarWidth = 240,
-    toolbar = cfg.toolbar,
-}
+local config, refs = xml.renderFile("apps/weather/views/Window.etlua", data, ns)
+local window = ns.Window(config)
 ```
 
-The semantic sidebar owns its native appearance and split geometry. Do not
-wrap it in a visual-effect material or manually set pane frames.
+All view trees come from `.etlua` templates rendered through `ui.xml`.
+Controllers must not call `ns` view constructors (`VStack`, `Text`, `List`,
+`Button`, and similar); they may create the top-level `ns.Window` and use
+non-view services and operations. The semantic sidebar owns its native
+appearance and split geometry. Do not wrap it in a visual-effect material or
+manually set pane frames.
 
 ## 3. Prefer XML for stable view structure
 

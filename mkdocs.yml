@@ -31,6 +31,3 @@ nav:
       - Project reference: PROJECT_REFERENCE.md
   - Reference:
       - Overview: reference/generated/index.md
-      - Button: reference/generated/Button.md
-      - Text: reference/generated/Text.md
-      - VStack: reference/generated/VStack.md

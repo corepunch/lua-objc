@@ -31,6 +31,17 @@ import sys
 
 FUNC_RE = re.compile(r"^function\s+([\w\.]+)\s*[\(:]")
 PROP_RE = re.compile(r"^(\S+)\s+(\S+)\s+(required\.|optional\.)\s*(.*)$")
+UI_CONSTRUCTORS = {
+    "Window", "Panel", "Sheet", "MenuItem", "Preview", "TabView", "VStack",
+    "HStack", "FlowStack", "Section", "GroupBox", "Form", "LabeledContent",
+    "ControlGroup", "DisclosureGroup", "OutlineGroup", "ScrollView", "HSplit",
+    "VSplit", "Separator", "Divider", "Grid", "Text", "ZStack", "TextField",
+    "SearchField", "TextEditor", "Title", "Image", "SystemImage", "Spacer",
+    "List", "OutlineView", "Button", "Link", "ContentUnavailable", "Toggle",
+    "Slider", "Stepper", "Picker", "DatePicker", "ColorPicker", "ProgressView",
+    "PathView", "Curve", "NavigationStack", "NavigationLink", "Alert", "Label",
+    "PageControl", "LinearGradient", "Menu", "MaterialView", "ToolbarItem",
+}
 
 
 def parse_file(path):
@@ -78,6 +89,20 @@ def parse_file(path):
                 # Non-comment, non-function line: docblock was dangling.
                 pending = []
         i += 1
+    documented = {block["func"] for block in blocks}
+    # Every exported, capitalized Lua entry point gets a page. Docblocks add
+    # authored API detail; the function declaration still provides a useful
+    # index entry when detail has not been written yet.
+    for name, lineno in public_funcs:
+        leaf = name.split(".")[-1]
+        if leaf[:1].isupper() and name not in documented:
+            blocks.append({
+                "tag": leaf,
+                "summary": "%s API entry point." % leaf,
+                "overview": "This public entry point is indexed automatically from its Lua declaration. Add a docblock above the implementation to describe its behavior, properties, and examples.",
+                "props": [], "methods": [], "examples": [], "platforms": [], "see": [],
+                "func": name, "source": "%s:%d" % (path, lineno),
+            })
     return blocks, public_funcs
 
 
@@ -143,10 +168,6 @@ def render_markdown(block, known_tags=None):
     if block["summary"]:
         out.append(block["summary"])
         out.append("")
-    out.append("```lua")
-    out.append("ns.%s { ... }" % tag)
-    out.append("```")
-    out.append("")
     out.append("```xml")
     out.append("<%s ... />" % tag)
     out.append("```")
@@ -181,7 +202,7 @@ def render_markdown(block, known_tags=None):
         out.append("## Example")
         out.append("")
         for ex in block["examples"]:
-            out.append("```lua")
+            out.append("```etlua")
             out.append(ex)
             out.append("```")
             out.append("")
@@ -218,9 +239,9 @@ def render_index(blocks):
     out.append("")
     out.append("# Reference")
     out.append("")
-    out.append("One page per component, generated from `---` docblocks in Lua sources.")
-    out.append("Mirrors the SwiftUI page shape: summary, declaration, overview,")
-    out.append("grouped topics, platform notes, and see-also links.")
+    out.append("Every exported component and public API entry point is indexed here.")
+    out.append("Pages include authored details when available and are discovered from")
+    out.append("the AppKit and UIKit Lua modules.")
     out.append("")
     out.append("| Component | Summary |")
     out.append("|---|---|")
@@ -239,7 +260,7 @@ def main(argv=None):
     ap.add_argument("--check", action="store_true",
                     help="Validate only; do not write output")
     ap.add_argument("--strict", action="store_true",
-                    help="With --check, fail on undocumented public functions")
+                    help="With --check, fail on public functions missing authored docblocks")
     args = ap.parse_args(argv)
 
     if not args.check and not args.out:
@@ -256,29 +277,34 @@ def main(argv=None):
         for b in blocks:
             if not b["summary"]:
                 errors.append("%s: @tag %s has no summary line" % (b["source"], b["tag"]))
-        seen = set()
-        for b in blocks:
-            if b["tag"] in seen:
-                errors.append("%s: duplicate @tag %s" % (b["source"], b["tag"]))
-            seen.add(b["tag"])
         all_blocks.extend(blocks)
         all_funcs.extend([(src, n, ln) for (n, ln) in funcs])
 
+    documented_funcs = set(b["func"] for b in all_blocks
+                           if not b["overview"].startswith("This public entry point is indexed automatically"))
+
+    # Collapse platform duplicates and aliases onto one reference page. Prefer
+    # an authored docblock over an automatically indexed declaration.
+    unique_blocks = {}
+    for block in all_blocks:
+        previous = unique_blocks.get(block["tag"])
+        if previous is None or (previous["overview"].startswith("This public entry point is indexed automatically")
+                                and not block["overview"].startswith("This public entry point is indexed automatically")):
+            unique_blocks[block["tag"]] = block
+    all_blocks = list(unique_blocks.values())
+
     # Undocumented public functions (heuristic: Module.Name assignments).
     if args.strict:
-        documented = set(b["func"] for b in all_blocks)
         for (src, name, ln) in all_funcs:
-            if name not in documented and not name.startswith("_"):
-                # Only require docs for capitalized component constructors.
+            if name not in documented_funcs and not name.startswith("_"):
                 leaf = name.split(".")[-1]
-                if leaf and leaf[0].isupper():
+                if leaf in UI_CONSTRUCTORS:
                     errors.append("%s:%d: %s has no --- docblock" % (src, ln, name))
 
     if args.check:
         for e in errors:
             print("docs: error: %s" % e, file=sys.stderr)
         if args.strict:
-            documented_funcs = set(b["func"] for b in all_blocks)
             total = sum(1 for (_, n, _) in all_funcs
                         if n.split(".")[-1][:1].isupper())
             print("docs: %d pages, %d public constructors, %d error(s)"
