@@ -1,8 +1,8 @@
 local Model = {}
 
-function Model.presentation()
+function Model.presentation(projects)
 	return {
-		projects = {
+		projects = projects or {
 			{name = "playground", title = "playground", detail = "Current project", icon = "app.fill", selected = true},
 			{name = "HabitPal", title = "HabitPal", detail = "Today, 09:15", icon = "square.grid.2x2"},
 			{name = "PixelPaint", title = "PixelPaint", detail = "Yesterday", icon = "paintpalette"},

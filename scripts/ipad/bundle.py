@@ -29,7 +29,7 @@ def main():
     for folder in ('lua', 'apps/studio', 'apps/playground'):
         source = Path(folder)
         for path in source.rglob('*'):
-            if path.is_file() and '.git' not in path.parts and path.suffix in ('.lua', '.etlua'):
+            if path.is_file() and '.git' not in path.parts and (path.suffix in ('.lua', '.etlua') or folder == 'apps/studio' and 'Documents' in path.parts):
                 target = workspace / path
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(path, target)

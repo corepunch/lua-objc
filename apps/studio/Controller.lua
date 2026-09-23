@@ -6,6 +6,7 @@ local Preview = require("apps.studio.services.Preview")
 local SidebarController = require("apps.studio.controllers.SidebarController")
 local PreviewController = require("apps.studio.controllers.PreviewController")
 local ChatController = require("apps.studio.controllers.ChatController")
+local Projects = require("apps.studio.models.Projects")
 
 local Controller = {}
 Controller.__index = Controller
@@ -40,12 +41,18 @@ function Controller:createWindow()
 		seed[path] = assert(ns._readFile(path))
 	end
 	self.model = Model.new(device.storage, seed)
+	local function readProjectFile(path)
+		local value = ns._documentRead(path)
+		if value then return value end
+		return ns._readFile("apps/studio/Documents/" .. path)
+	end
+	local projects = Projects.list(readProjectFile, ns.json_parse, ns._jsonEncode, ns._documentWrite)
 	self.preview = Preview.new(ns, ns._readFile)
 
 	local refs
 	local config
 	config, refs = xml.renderFile(VIEWS .. "Window.etlua", {
-		sidebar = self.sidebar:presentation(),
+		sidebar = self.sidebar:presentation(projects),
 		preview = self.previewPane:presentation(),
 		chat = self.chat:presentation(),
 		actions = {

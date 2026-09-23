@@ -2,11 +2,15 @@
 
 static NSString *document_path(lua_State *L) {
 	NSString *name = @(luaL_checkstring(L, 1));
-	if (!name.length || ![name.lastPathComponent isEqualToString:name] || [name isEqualToString:@".."])
-		luaL_error(L, "document name must be a filename");
+	if (!name.length || [name hasPrefix:@"/"] || [name containsString:@"\\"])
+		luaL_error(L, "document path must be relative");
+	for (NSString *part in [name componentsSeparatedByString:@"/"])
+		if (!part.length || [part isEqualToString:@"."] || [part isEqualToString:@".."])
+			luaL_error(L, "invalid document path");
 	NSString *root = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
-	[[NSFileManager defaultManager] createDirectoryAtPath:root withIntermediateDirectories:YES attributes:nil error:nil];
-	return [root stringByAppendingPathComponent:name];
+	NSString *path = [root stringByAppendingPathComponent:name];
+	[[NSFileManager defaultManager] createDirectoryAtPath:path.stringByDeletingLastPathComponent withIntermediateDirectories:YES attributes:nil error:nil];
+	return path;
 }
 static int bridge_document_read(lua_State *L) {
 	NSError *error = nil;

@@ -120,4 +120,16 @@ t.expect(description.source:find("minWidth=\"300\"", 1, true) ~= nil, "preview k
 t.expect(description.source:find("minWidth=\"330\"", 1, true) ~= nil, "chat keeps a usable minimum width")
 t.expect(description.source:find("toggleChat", 1, true) ~= nil, "chat visibility customization remains available")
 t.expect(description.source:find("toggleSidebarWidth", 1, true) ~= nil, "sidebar width customization remains available")
+local Projects = require("apps.studio.models.Projects")
+local writes = {}
+local listed = Projects.list(function(path)
+	if path == "projects.json" then return '["Demo"]' end
+	if path == "Demo/project.lua" then return 'return { name = "Demo", bundleId = "org.example.demo" }' end
+end, ns.json_parse, ns._jsonEncode, function(path, value) writes[path] = value; return true end)
+t.assertEqual(listed[1].appIcon, "app.dashed", "projects get a consistent default app icon")
+t.assertEqual(listed[1].bundleId, "org.example.demo", "Lua metadata loads bundle identifier")
+local ok = Projects.save(function(path, value) writes[path] = value; return true end, "Demo", {
+	name = "Demo App", bundleId = "org.example.demo", appIcon = "checklist",
+})
+t.expect(ok and writes["Demo/project.lua"]:find('appIcon = "checklist"', 1, true), "project settings persist as readable Lua")
 os.exit(t.summary() and 0 or 1)
