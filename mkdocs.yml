@@ -17,7 +17,12 @@ plugins:
 
 markdown_extensions:
   - tables
-  - fenced_code
+  - pymdownx.highlight:
+      use_pygments: true
+      extend_pygments_lang:
+        - name: etlua
+          lang: rhtml
+  - pymdownx.superfences
 
 nav:
   - Home: index.md
