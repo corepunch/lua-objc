@@ -1,0 +1,55 @@
+{
+  "format": 1,
+  "capacityBytes": 1000000000000,
+  "availableBytes": 360000000000,
+  "snapshotCount": 2,
+  "snapshotDates": [
+    "com.apple.TimeMachine.20260915-091500.local",
+    "com.apple.TimeMachine.20260922-184200.local"
+  ],
+  "items": [
+    {"path": "/Applications/Mock Video Studio.app", "allocatedBytes": 3400000000},
+    {"path": "/Applications/Mock Notes.app", "allocatedBytes": 1200000000},
+    {"path": "~/Applications/Mock Game.app", "allocatedBytes": 4600000000},
+    {"path": "~/Downloads/Old macOS Installer.dmg", "allocatedBytes": 7200000000},
+    {"path": "~/Downloads/Design Assets.zip", "allocatedBytes": 2100000000},
+    {"path": "~/Documents/Tax Archive.zip", "allocatedBytes": 850000000},
+    {"path": "~/Desktop/Launch Recording.mov", "allocatedBytes": 1100000000},
+    {"path": "~/Developer/MockProject/node_modules/vite/index.js", "allocatedBytes": 640000000},
+    {"path": "~/Developer/MockProject/target/release/mock-app", "allocatedBytes": 1600000000},
+    {"path": "~/Library/Developer/Xcode/DerivedData/MockProject/Build/Products/App.app", "allocatedBytes": 2800000000},
+    {"path": "~/Library/Developer/Shared/Documentation/SwiftUI/index.sqlite", "allocatedBytes": 1300000000},
+    {"path": "~/.npm/_cacache/content-v2/mock-package", "allocatedBytes": 1400000000},
+    {"path": "~/Library/Caches/pip/http-v2/mock-wheel.whl", "allocatedBytes": 650000000},
+    {"path": "~/Library/Caches/Homebrew/mock-bottle.tar.gz", "allocatedBytes": 430000000},
+    {"path": "~/Library/Developer/CoreSimulator/Devices/11111111-2222-4333-8444-555555555555/data/Containers/Data/Application/mock-db", "allocatedBytes": 8800000000},
+    {"path": "~/Library/Developer/CoreSimulator/Devices/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/data/Containers/Data/Application/mock-cache", "allocatedBytes": 2400000000},
+    {"path": "~/Library/Application Support/MobileSync/Backup/mock-phone/Manifest.db", "allocatedBytes": 16400000000},
+    {"path": "~/.Trash/Previous Mock Project/Project.xcarchive", "allocatedBytes": 2400000000},
+    {"path": "~/Pictures/Mock Photos.photoslibrary/originals/image.heic", "allocatedBytes": 35000000000},
+    {"path": "~/Music/Mock Music Library.musiclibrary/library.musicdb", "allocatedBytes": 8000000000},
+    {"path": "~/Movies/Mock Film Library/film.mov", "allocatedBytes": 19000000000},
+    {"path": "~/Library/Application Support/Code/User/settings.json", "allocatedBytes": 12000},
+    {"path": "~/Library/Application Support/Mock App/Database/store.sqlite", "allocatedBytes": 740000000},
+    {"path": "~/Library/Caches/Google/Chrome/Default/Cache/data_0", "allocatedBytes": 620000000},
+    {"path": "~/mock-archive.tar", "allocatedBytes": 320000000}
+  ],
+  "discovery": [
+    {"id": "mock-video-studio", "name": "Mock Video Studio.app", "subtitle": "Installed application", "parentId": "apps-system", "path": "/Applications/Mock Video Studio.app", "policy": "Review", "action": "finder", "reviewThreshold": 1000000000, "consequence": "Review this synthetic application in Mock HDD. No application is installed on this Mac.", "icon": "app.fill", "color": "systemBlue"},
+    {"id": "mock-notes-app", "name": "Mock Notes.app", "subtitle": "Installed application", "parentId": "apps-system", "path": "/Applications/Mock Notes.app", "policy": "Review", "action": "finder", "reviewThreshold": 1000000000, "consequence": "Review this synthetic application in Mock HDD. No application is installed on this Mac.", "icon": "app.fill", "color": "systemBlue"},
+    {"id": "mock-game-app", "name": "Mock Game.app", "subtitle": "Installed application", "parentId": "apps-user", "path": "~/Applications/Mock Game.app", "policy": "Review", "action": "finder", "reviewThreshold": 1000000000, "consequence": "Review this synthetic application in Mock HDD. No application is installed on this Mac.", "icon": "app.fill", "color": "systemBlue"},
+    {"id": "mock-node-modules", "name": "Node modules · MockProject", "subtitle": "Installed JavaScript dependencies for a project; review before removing", "parentId": "developer", "path": "~/Developer/MockProject/node_modules", "policy": "Review", "action": "finder", "reviewThreshold": 500000000, "icon": "folder", "color": "systemOrange"},
+    {"id": "mock-cargo-target", "name": "Rust build output · MockProject", "subtitle": "Generated Cargo artifacts for a project; review before removing", "parentId": "developer", "path": "~/Developer/MockProject/target", "policy": "Review", "action": "finder", "reviewThreshold": 500000000, "icon": "folder", "color": "systemOrange"}
+  ],
+  "simulators": {
+    "devices": {
+      "com.apple.CoreSimulator.SimRuntime.iOS-26-0": [
+        {"name": "iPhone 17 Pro", "udid": "11111111-2222-4333-8444-555555555555", "state": "Shutdown", "isAvailable": true, "lastUsedAt": "2026-09-20T16:20:00Z", "dataPath": "~/Library/Developer/CoreSimulator/Devices/11111111-2222-4333-8444-555555555555/data", "dataPathSize": 8800000000},
+        {"name": "iPad mini (A17 Pro)", "udid": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", "state": "Shutdown", "isAvailable": true, "lastUsedAt": "2026-09-18T08:10:00Z", "dataPath": "~/Library/Developer/CoreSimulator/Devices/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/data", "dataPathSize": 2400000000}
+      ]
+    },
+    "runtimes": [
+      {"identifier": "com.apple.CoreSimulator.SimRuntime.iOS-26-0", "name": "iOS 26.0", "version": "26.0", "isAvailable": true}
+    ]
+  }
+}

@@ -435,6 +435,9 @@ int lua_objc_main(int argc, char *argv[]) {
 			} else if (script_arg_count < (int)(sizeof(script_args) / sizeof(script_args[0]))) {
 				script_args[script_arg_count++] = argv[i];
 			}
+		} else if (script_arg_count < (int)(sizeof(script_args) / sizeof(script_args[0]))) {
+			/* Preserve app-level switches supplied before the entry point. */
+			script_args[script_arg_count++] = argv[i];
 		}
 	}
 

@@ -1,11 +1,11 @@
-<Window title="Diskmap" width="1024" height="768" minWidth="1000" minHeight="640" sidebarWidth="180">
+<Window title="<%= windowTitle or "Diskmap" %>" width="1024" height="768" minWidth="1000" minHeight="640" sidebarWidth="180">
   <Toolbar>
     <ToolbarItem id="toggleSidebar" />
     <ToolbarItem id="drive" label="Storage" bordered="false">
       <HStack ref="toolbarTitle" spacing="10" alignment="center">
         <SystemImage name="internaldrive" size="22" color="secondary" />
         <VStack spacing="2" alignment="leading">
-          <Label text="Diskmap" size="15" weight="semibold" lines="1" />
+          <Label text="<%= windowTitle or "Diskmap" %>" size="15" weight="semibold" lines="1" />
           <Label ref="capacity" text="<%= capacity %>" size="11" color="secondary" fillWidth="true" lines="1" />
         </VStack>
       </HStack>
