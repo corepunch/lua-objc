@@ -10,8 +10,25 @@ make
 make diskmap-app
 ```
 
+Launch against a bundled synthetic disk for development and UI walkthroughs:
+
+```sh
+./lua-objc --mock apps/diskmap/init.lua
+# The equivalent app-argument form also works:
+./lua-objc apps/diskmap/init.lua --mock
+```
+
+Mock HDD uses the `mock-hdd.json` fixture in this app folder. It reads only that
+fixture, does not load the native scanner or run shell commands, and shows
+“Mock HDD” in the window title. File sizes, installed apps, project outputs,
+simulators, capacity and snapshots are synthetic. Trash, cache and simulator
+actions change only the provider's in-memory copy; restarting restores the
+fixture. Finder, owner apps, System Settings and real device commands are not
+launched. The real provider remains the default when the mock switch is absent.
+
 Every launch starts a fresh inventory. Photos, Music, Movies and known media support locations are excluded by default; opt in for the current session in Settings. Excluded sizes are unknown, never zero. Diskmap has no directory
-argument, saved-inventory replay, or scan-result cache.
+argument or live scan-result cache. The explicit mock fixture is a synthetic
+filesystem for repeatable testing, not a saved scan of this Mac.
 
 `Catalog.lua` composes independent providers in `catalog/` into the macOS knowledge tree, including Xcode runtimes, devices, bundled SDKs, archives, package managers, AI coding tools, mobile toolchains, system assets, app support, backups, media and boot data. Startup also discovers project-local generated folders when their parent project marker exists and application bundles directly inside `/Applications` and `~/Applications`; each discovered path is measured as its own review-only resource and excluded from its broader residual measurement.
 New layouts remain review-only until their ownership and cleanup policy are
@@ -90,7 +107,7 @@ cancellation, preference persistence failures, action routing and fresh startup 
 | `models/Tips.lua` | Contextual access, capacity, Keep and system-storage guidance |
 | `models/Inspector.lua`, `models/Preferences.lua` | Resource details and action eligibility |
 | `controllers/` | Small coordinators with injected IO and navigation callbacks |
-| `services/System.lua`, `services/Scanner.lua`, `src/plugins/storage/StorageScan.m` | Native integration and bulk metadata enumeration |
+| `services/Provider.lua`, `services/Mock.lua`, `services/System.lua`, `services/Scanner.lua`, `src/plugins/storage/StorageScan.m` | Provider selection, synthetic filesystem, actual system integration and native bulk metadata enumeration |
 | `views/` | All presentation, etlua loops and reusable partials |
 
 `Model.resources` owns one canonical row for every catalog resource. Use

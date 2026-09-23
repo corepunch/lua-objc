@@ -1,8 +1,9 @@
 local ns = require("AppKit")
+local App = require("App")
 local xml = require("ui.xml")
 local Template = require("ui.template")
 local Model = require("apps.diskmap.Model")
-local System = require("apps.diskmap.services.System")
+local Provider = require("apps.diskmap.services.Provider")
 local ScanController = require("apps.diskmap.controllers.ScanController")
 local CategoriesController = require("apps.diskmap.controllers.CategoriesController")
 local CleanupController = require("apps.diskmap.controllers.CleanupController")
@@ -19,9 +20,12 @@ local sections = {
 }
 function Controller.new(service)
 	if service == Controller then service = nil end
-	service = service or System
+	service = service or Provider.select(App.args())
 	local home = os.getenv("HOME") or "/Users"
 	local self = setmetatable({service = service, model = Model.new(home), section = "Storage", query = ""}, Controller)
+	if service.mock then
+		for _, row in ipairs(self.model.resources:leaves()) do row.appIcon = nil end
+	end
 	self.scan = ScanController.new(self.model, service, home, function() self:updateRows() end)
 	self.settings = SettingsController.new(service)
 	self.categories = CategoriesController.new(self.model, function(id)
@@ -51,8 +55,10 @@ function Controller:updateRows()
 	for _, row in ipairs(rows) do row.children = nil end
 	self.refs.results:replaceRows(rows)
 	if self.capacity then self.capacity.text = self.categories:capacity(self.scan.disk); self.toolbarTitle:layout() end
-	self.refs.coverage.text = self.categories:coverage(self.scan.disk); self.refs.status.text = (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status
-	self.refs.access.title = (self.model.scan.errors or 0) > 0 and "Review scan access…" or "Scan access…"
+	self.refs.coverage.text = self.categories:coverage(self.scan.disk)
+	self.refs.status.text = (self.service.mock and "Mock HDD · " or "") .. (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status
+	self.refs.access.title = self.service.mock and "Mock HDD active" or (self.model.scan.errors or 0) > 0 and "Review scan access…" or "Scan access…"
+	self.refs.access.enabled = not self.service.mock
 	self.opportunities:update(self.cleanup:presentation())
 	self.storageBar:update(self.categories:bar(self.scan.disk))
 	self.tipPanel:update(self.tips:presentation(self.scan.disk))
@@ -83,7 +89,8 @@ function Controller:showSection(section, rootId)
 		self.page:update(self.settings:presentation(function()
 			if self.settings:toggle() then self:showSection("Settings") else self.service.showError("Could not save Settings", "Try again.") end
 		end, function() self.service.openSettings() end, function() self.service.openSettings("privacy") end, self.model.includeMedia, function()
-			if self.model.includeMedia or self.service.confirmAction("Include media libraries", "Measuring Photos, Music and Movies requires enumerating their files. macOS may ask for access. Diskmap reads metadata only. Enable for this session?") then
+			local message = self.service.mock and "Include the synthetic Photos, Music and Movies entries in this session? Mock HDD reads only its bundled fixture." or "Measuring Photos, Music and Movies requires enumerating their files. macOS may ask for access. Diskmap reads metadata only. Enable for this session?"
+			if self.model.includeMedia or self.service.confirmAction("Include media libraries", message) then
 				self.model.includeMedia = not self.model.includeMedia
 				self.scan:start(); self:showSection("Settings")
 			end
@@ -116,6 +123,7 @@ function Controller:createWindow()
 		for id, kept in pairs(self.service.loadKeep()) do if self.model.resources:find(id) and kept == true then self.model.kept[id] = true end end
 	end
 	local cfg, windowRefs = render("Window", {capacity = self.categories:capacity(self.scan.disk),
+		windowTitle = self.service.mock and "Diskmap — Mock HDD" or "Diskmap",
 		actions = {search = function(value) self.query = value; self:updateRows() end}})
 	local sidebar, sidebarRefs = render("Sidebar")
 	local content, contentRefs = render("ContentPane")
