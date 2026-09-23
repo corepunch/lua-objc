@@ -483,7 +483,10 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 }
 
 - (NSView *)tableView:(NSTableView *)tableView viewForTableColumn:(NSTableColumn *)column row:(NSInteger)row {
-	return table_cell_view(tableView, column, _rows[row], self);
+	LUA_OBJC_PERF_BEGIN("appkit.cell.dequeue", signpost);
+	NSView *cell = table_cell_view(tableView, column, _rows[row], self);
+	LUA_OBJC_PERF_END("appkit.cell.dequeue", signpost);
+	return cell;
 }
 
 - (void)tableView:(NSTableView *)tableView didClickTableColumn:(NSTableColumn *)column {

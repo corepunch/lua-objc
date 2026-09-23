@@ -1,5 +1,7 @@
 #pragma mark - Layout helpers
 
+static void layout_recursive(UIView *view, CGFloat width);
+
 static NSNumber *axis_flex_grow(UIView *view, BOOL horizontal) {
 	/* Flex weight belongs to the parent's main axis, not the cross axis of
 	 * a nested stack. Explicit fillWidth/fillHeight remain axis-specific. */
@@ -226,7 +228,7 @@ static CGFloat view_fixed_height(UIView *view) {
 	return h ? h.doubleValue : 0;
 }
 
-static void layout_recursive(UIView *view, CGFloat width) {
+static void layout_recursive_impl(UIView *view, CGFloat width) {
 	if (!view) return;
 
 	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
@@ -357,4 +359,10 @@ static void layout_recursive(UIView *view, CGFloat width) {
 			}
 		}
 	}
+}
+
+static void layout_recursive(UIView *view, CGFloat width) {
+	LUA_OBJC_PERF_BEGIN("uikit.layout", signpost);
+	layout_recursive_impl(view, width);
+	LUA_OBJC_PERF_END("uikit.layout", signpost);
 }

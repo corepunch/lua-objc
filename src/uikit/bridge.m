@@ -71,6 +71,7 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #include "../shared/lua_bridge_support.m"
 #include "../shared/lua_error.m"
 #include "../shared/lua_async.m"
+#include "../shared/performance_signpost.m"
 #include "../shared/lua_dealloc_watch.m"
 
 #include "table_data_source.m"

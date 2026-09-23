@@ -49,6 +49,7 @@
 - (UITableViewCell *)tableView:(UITableView *)tableView
 		 cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
+	LUA_OBJC_PERF_BEGIN("uikit.cell.dequeue", signpost);
 	NSDictionary *rowData = _rows[indexPath.row];
 	UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"cell"
 														   forIndexPath:indexPath];
@@ -60,6 +61,7 @@
 		[values addObject:val ? [val description] : @""];
 	}
 	cell.textLabel.text = [values componentsJoinedByString:@"  "];
+	LUA_OBJC_PERF_END("uikit.cell.dequeue", signpost);
 	return cell;
 }
 

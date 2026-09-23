@@ -1,3 +1,4 @@
+static void layout_recursive(NSView *view, CGFloat width);
 static void position_table_spinner(NSScrollView *sv);
 
 static int bridge_object_add_impl(lua_State *L) {
@@ -720,7 +721,7 @@ static void apply_initial_split_proportions(NSSplitView *split) {
 	}
 }
 
-static void layout_recursive(NSView *view, CGFloat width) {
+static void layout_recursive_impl(NSView *view, CGFloat width) {
 	if (!view) return;
 
 	LayoutAxis axis = layout_axis(view);
@@ -1006,6 +1007,12 @@ static void layout_recursive(NSView *view, CGFloat width) {
 			}
 		}
 	}
+}
+
+static void layout_recursive(NSView *view, CGFloat width) {
+	LUA_OBJC_PERF_BEGIN("appkit.layout", signpost);
+	layout_recursive_impl(view, width);
+	LUA_OBJC_PERF_END("appkit.layout", signpost);
 }
 
 static void toolbar_size_content(NSView *view) {

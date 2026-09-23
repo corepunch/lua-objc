@@ -1,22 +1,28 @@
 # Performance
 
 Create only the views the user needs. XML loops and eager stacks create every
-child; they do not virtualize or recycle rows. Use the native `<List>` for
-data-driven content where its current row API fits. Do not claim `LazyVStack` or
-`LazyVGrid` support until the renderer and platform bridge expose them.
+child; they do not virtualize or recycle rows. Do not use `VStack` + `ForEach`
+for unbounded or 1,000-plus row data. Use native `<List>` for collections; its
+table implementation owns cell reuse. This framework does not implement
+`LazyVStack` or `LazyVGrid`, so never invent lazy behavior in app code.
 
 ## Choose containers by data size
 
 - Use `VStack` / `HStack` for small, bounded groups such as a form or toolbar.
 - Use `<List>` for native table-style collections. Check
   `docs/tableview_swiftui.md` for row and sizing behavior.
-- Avoid emitting thousands of eager XML children. Large-list virtualization,
-  dequeue measurements, and benchmark results are tracked in
-  [issue #9](https://github.com/corepunch/lua-objc/issues/9).
+- Avoid emitting thousands of eager XML children. Run
+  `./lua-objc benchmarks/list.lua` to measure local eager-stack and List
+  construction time and Lua heap deltas. It does not measure frame rate or
+whole-process peak memory.
 
-Never publish FPS or memory comparisons without measuring the same row content,
-device, OS version, and test conditions. The repository does not currently
-publish a reproducible SwiftUI comparison.
+For runtime traces in Instruments, filter the `org.luaobjc` / `Performance`
+signpost category. Layout intervals use `appkit.layout` or `uikit.layout`; cell
+creation intervals use `appkit.cell.dequeue` or `uikit.cell.dequeue`.
+
+Never publish FPS or process-memory comparisons without measuring the same row
+content, device, OS version, and test conditions. Headless construction numbers
+are not evidence of scrolling performance or a SwiftUI comparison.
 
 ## Keep work off interaction hot paths
 

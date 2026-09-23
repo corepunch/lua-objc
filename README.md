@@ -355,6 +355,24 @@ Key features:
 - **Template inheritance**: `extends()` / `block()` / `yield()` for layouts
 - **Partials**: `partial()` for reusable components
 
+## Large collections
+
+Use native `List` for unbounded or 1,000-plus row collections. Eager stacks
+construct every child; this project does not expose lazy stacks or grids.
+`./lua-objc benchmarks/list.lua` compares eager `VStack` construction with
+native `List` construction without opening a window. One local run on macOS
+27.0 (2026-09-23) reported:
+
+| Rows | Eager VStack | Native List |
+|---:|---:|---:|
+| 1,000 | 0.074 s, 1,025 KiB Lua heap delta | 0.008 s, 1 KiB Lua heap delta |
+| 5,000 | 0.335 s, 4,513 KiB Lua heap delta | 0.005 s, 1 KiB Lua heap delta |
+
+These are construction timings from one headless run. The heap column tracks
+Lua's heap only, not Objective-C allocations or process peak memory. The run
+does not measure first-frame latency, scrolling, or compare an equivalent
+SwiftUI implementation; do not use it as an FPS or memory claim.
+
 ## Testing
 
 Run the headless regression suites:

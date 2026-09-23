@@ -197,6 +197,7 @@ static const CGFloat kStackSpacing = 8.0;
 #include "shared/lua_bridge_support.m"
 #include "shared/lua_error.m"
 #include "shared/lua_async.m"
+#include "shared/performance_signpost.m"
 #include "shared/lua_dealloc_watch.m"
 
 /* Replaces any previously registered LuaReg at `key`. */
