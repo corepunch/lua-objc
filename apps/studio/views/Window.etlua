@@ -1,6 +1,6 @@
 <Window title="Lua Studio" width="1366" height="900" minWidth="980" minHeight="640">
-	<VStack padding="0" spacing="0" flexGrow="1" fillWidth="true" fillHeight="true" background="background">
-		<HStack ref="toolbar" paddingHorizontal="12" paddingVertical="8" spacing="8" fixedHeight="56" fillWidth="true" alignment="center">
+	<VStack padding="0" spacing="0" flexGrow="1" maxWidth="infinity" maxHeight="infinity" background="background">
+		<HStack ref="toolbar" paddingHorizontal="12" paddingVertical="8" spacing="8" height="56" maxWidth="infinity" alignment="center">
 			<SystemImage name="hammer.fill" size="20" color="accent" label="Lua Studio" />
 			<Label text="Lua Studio" size="18" weight="bold" />
 			<Button ref="chatVisibility" title="" systemImage="rectangle.rightthird.inset.filled" accessibilityLabel="Focus Preview" action="toggleChat" style="bordered" />
@@ -18,7 +18,7 @@
 			<Button title="Deploy" systemImage="paperplane" style="borderedProminent" />
 		</HStack>
 		<Divider />
-		<HStack ref="workspace" padding="0" spacing="0" flexGrow="1" fillWidth="true" fillHeight="true" alignment="top">
+		<HStack ref="workspace" padding="0" spacing="0" flexGrow="1" maxWidth="infinity" maxHeight="infinity" alignment="top">
 			<%- partial("Sidebar.etlua", sidebar) %>
 			<Divider orientation="vertical" />
 			<%- partial("PreviewPane.etlua", preview) %>

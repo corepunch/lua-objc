@@ -11,12 +11,12 @@ row record for `List`, or the declared `id` and row record for `SwipeRow`.
   <Column id="title" title="Task" />
 </List>
 
-<VStack fillWidth="true">
+<VStack maxWidth="infinity">
   <% for _, task in ipairs(smallTaskGroup) do %>
     <SwipeRow ref="row_<%= task.id %>" id="<%= task.id %>"
               title="<%= task.title %>" status="<%= task.status %>"
               swipeLeading="archiveSmallTask" swipeTrailing="completeSmallTask"
-              fullSwipe="true" fillWidth="true" />
+              fullSwipe="true" maxWidth="infinity" />
   <% end %>
 </VStack>
 ```

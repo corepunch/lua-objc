@@ -21,7 +21,7 @@ t.assertEqual(summaryRefs.storageSummary.className, "NSBox", "storage summary us
 summary.size = ns.Size(788, 100); summary:layout(788)
 local buttons = {}
 local function collect(view)
-	if view.className == "NSButton" then buttons[#buttons + 1] = view end
+	if view.className == "NSButton" then table.insert(buttons, view) end
 	for _, child in ipairs(view.subviews or {}) do collect(child) end
 end
 collect(summary)

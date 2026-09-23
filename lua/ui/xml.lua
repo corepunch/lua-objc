@@ -88,7 +88,7 @@ local function parseXML(src, opts)
             text = text:match("^%s*(.-)%s*$")
         end
         if #text > 0 then
-            current().children[#current().children + 1] = { kind = "text", value = text }
+            table.insert(current().children, { kind = "text", value = text })
         end
     end
 
@@ -145,10 +145,10 @@ local function parseXML(src, opts)
             local attrs = parseAttrs(rest or "")
 
             local node = { kind = "element", tag = tag, attrs = attrs, children = {} }
-            current().children[#current().children + 1] = node
+            table.insert(current().children, node)
 
             if not selfClose then
-                stack[#stack + 1] = node
+                table.insert(stack, node)
             end
             pos = gt + 1
         end
@@ -162,7 +162,7 @@ end
 local function splitPath(path)
     local parts = {}
     for seg in tostring(path):gmatch("[^/]+") do
-        if seg ~= "" and seg ~= "." then parts[#parts + 1] = seg end
+        if seg ~= "" and seg ~= "." then table.insert(parts, seg) end
     end
     return parts
 end
@@ -170,7 +170,7 @@ end
 local function elementChildren(node)
     local out = {}
     for _, child in ipairs(node.children or {}) do
-        if child.kind == "element" then out[#out + 1] = child end
+        if child.kind == "element" then table.insert(out, child) end
     end
     return out
 end
@@ -185,7 +185,7 @@ local function selectNodes(node, path)
         for _, parent in ipairs(current) do
             for _, child in ipairs(parent.children or {}) do
                 if child.kind == "element" and child.tag == seg then
-                    nextNodes[#nextNodes + 1] = child
+                    table.insert(nextNodes, child)
                 end
             end
         end
@@ -200,7 +200,7 @@ local function collectText(node)
     local function walk(n)
         for _, child in ipairs(n.children or {}) do
             if child.kind == "text" then
-                parts[#parts + 1] = child.value
+                table.insert(parts, child.value)
             elseif child.kind == "element" then
                 walk(child)
             end
@@ -299,7 +299,7 @@ decodeWithSchema = function(node, spec)
 
         local out = {}
         for _, child in ipairs(nodes) do
-            out[#out + 1] = decodeWithSchema(child, itemSpec)
+            table.insert(out, (decodeWithSchema(child, itemSpec)))
         end
         if #out == 0 and spec.default ~= nil then return spec.default end
         return out
@@ -342,15 +342,42 @@ local function layoutProps(attrs)
     local lp = {
         "padding", "paddingHorizontal", "paddingVertical", "paddingLeading", "paddingTrailing", "paddingTop", "paddingBottom",
         "spacing", "alignment",
-        "fixedWidth", "fixedHeight", "minWidth", "minHeight",
-        "maxWidth", "maxHeight",
         "flexGrow", "flexShrink", "flexBasis",
-        "fillWidth", "fillHeight", "hidden", "allowsHitTesting", "background", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick", "onTap", "onDrag",
+        "hidden", "allowsHitTesting", "background", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick", "onTap", "onDrag",
     }
     local props = {}
     for _, k in ipairs(lp) do
         if attrs[k] then props[k] = coerce(attrs[k]) end
     end
+	-- Templates use SwiftUI dimension names; fixed/fill flags belong to the
+	-- native layout engine. Infinity is a proposal, never a native frame size.
+	for _, axis in ipairs({ "Width", "Height" }) do
+		local dimension = axis:lower()
+		if attrs[dimension] then
+			local value = tonumber(attrs[dimension])
+			if not value or value < 0 or value ~= value or value == math.huge then
+				error("xml: " .. dimension .. " requires a nonnegative finite number")
+			end
+			props["fixed" .. axis] = value
+		end
+		local maximum = "max" .. axis
+		local minimum = "min" .. axis
+		for _, key in ipairs({ minimum, maximum }) do
+			if attrs[key] == "infinity" and key == maximum then
+				props["fill" .. axis] = true
+			elseif attrs[key] then
+				local value = tonumber(attrs[key])
+				if not value or value < 0 or value ~= value or value == math.huge then
+					error("xml: " .. key .. " requires a nonnegative finite number"
+						.. (key == maximum and " or infinity" or ""))
+				end
+				props[key] = value
+			end
+		end
+		if props[minimum] and props[maximum] and props[minimum] > props[maximum] then
+			error("xml: " .. minimum .. " exceeds " .. maximum)
+		end
+	end
     if attrs.onClick and type(attrs.onClick) == "string"
         and renderData and renderData.actions then
 
@@ -374,6 +401,11 @@ local function compile(nodes, ns, registry, refs)
     local views = {}
     for _, node in ipairs(nodes) do
         if node.kind == "element" then
+			for _, key in ipairs({ "fillWidth", "fillHeight", "fixedWidth", "fixedHeight" }) do
+				if node.attrs[key] ~= nil then
+					error("xml: " .. key .. " was removed; use width/height or maxWidth/maxHeight=\"infinity\"")
+				end
+			end
             local handler = registry[node.tag]
             if not handler then
                 error("xml: unknown tag <" .. node.tag .. ">")
@@ -391,7 +423,7 @@ local function compile(nodes, ns, registry, refs)
 						view.accessibilityIdentifier = node.attrs.ref
 					end)
 				end
-				views[#views + 1] = view
+				table.insert(views, view)
             end
         end
     end
@@ -594,6 +626,13 @@ local TAG_SCHEMA = {
     },
     Button = {
         constructor = "Button",
+        collect = function(props, children)
+			if #children > 1 then error("xml: Button accepts one label view; group siblings in a stack") end
+			props.content = children[1]
+			if props.content and props.style ~= "plain" then
+				error("xml: a Button with a label view requires style=\"plain\"")
+			end
+		end,
         props = {
             accessibilityLabel = "str",
             size        = "num",
@@ -707,7 +746,7 @@ local TAG_SCHEMA = {
             props.options = {}
             for _, child in ipairs(children) do
                 if type(child) == "table" and child.__pickerOption then
-                    props.options[#props.options + 1] = child.title
+                    table.insert(props.options, child.title)
                 end
             end
             if #props.options == 0 then
@@ -745,6 +784,7 @@ local TAG_SCHEMA = {
     },
     Image = {
         constructor = "Image",
+        props = { resizable = "bool" },
         transform = function(props, a, _, ns)
             if a.system or a.symbol then
                 props[1] = a.system or a.symbol
@@ -828,7 +868,7 @@ local TAG_SCHEMA = {
             local columns = {}
             for _, c in ipairs(children) do
                 if type(c) == "table" and c.__column then
-                    columns[#columns + 1] = c
+                    table.insert(columns, c)
                 end
             end
             if #columns == 0 then
@@ -906,7 +946,7 @@ local TAG_SCHEMA = {
             local columns = {}
             for _, c in ipairs(children) do
                 if type(c) == "table" and c.__column then
-                    columns[#columns + 1] = c
+                    table.insert(columns, c)
                 end
             end
             if #columns == 0 then
@@ -980,11 +1020,11 @@ local TAG_SCHEMA = {
                 if type(c) == "table" and c.__toolbar then
                     for _, item in ipairs(c.items or {}) do
                         if type(item) == "table" and item.__toolbarItem then
-                            toolbarItems[#toolbarItems + 1] = item
+                            table.insert(toolbarItems, item)
                         end
                     end
                 elseif type(c) == "userdata" or type(c) == "table" then
-                    contentViews[#contentViews + 1] = c
+                    table.insert(contentViews, c)
                 end
             end
 
@@ -994,7 +1034,7 @@ local TAG_SCHEMA = {
                 cfg.content = contentViews[1]
             elseif #contentViews > 1 then
                 local props = {}
-                for _, v in ipairs(contentViews) do props[#props + 1] = v end
+                for _, v in ipairs(contentViews) do table.insert(props, v) end
                 cfg.content = props
             end
         end,
@@ -1047,7 +1087,7 @@ local TAG_SCHEMA = {
             local tabs = {}
             for _, c in ipairs(children) do
                 if type(c) == "table" and c.__tab then
-                    tabs[#tabs + 1] = c
+                    table.insert(tabs, c)
                 end
             end
             props.tabs = tabs
@@ -1226,7 +1266,7 @@ local function makeSchemaHandler(tag, def)
 
         if def.children == "array" then
             for _, c in ipairs(children) do
-                props[#props + 1] = c
+                table.insert(props, c)
             end
         elseif def.children == "content" then
             local content = children[1]
@@ -1447,7 +1487,7 @@ function M.renderDescription(description, ns)
     else
         -- multiple root nodes: wrap in VStack
         local props = {}
-        for _, v in ipairs(views) do props[#props + 1] = v end
+        for _, v in ipairs(views) do table.insert(props, v) end
         root = ns.VStack(props)
     end
     return root, refs

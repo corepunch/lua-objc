@@ -19,7 +19,7 @@ Path.__index = Path
 
 function Path.new(values)
     local path = setmetatable({ values = {}, destinations = {}, observers = {} }, Path)
-    for _, value in ipairs(values or {}) do path.values[#path.values + 1] = value end
+    for _, value in ipairs(values or {}) do table.insert(path.values, value) end
     return path
 end
 
@@ -41,7 +41,7 @@ end
 
 function Path:observe(callback)
     assert(type(callback) == "function", "path observer must be a function")
-    self.observers[#self.observers + 1] = callback
+    table.insert(self.observers, callback)
     return function()
         for i, observer in ipairs(self.observers) do
             if observer == callback then table.remove(self.observers, i); break end
@@ -55,7 +55,7 @@ end
 
 function Path:push(value)
     assert(value ~= nil, "navigation path cannot contain nil")
-    self.values[#self.values + 1] = value
+    table.insert(self.values, value)
     self:_notify("push", value)
 end
 
@@ -76,7 +76,7 @@ end
 
 function Path:reset(values)
     self.values = {}
-    for _, value in ipairs(values or {}) do self.values[#self.values + 1] = value end
+    for _, value in ipairs(values or {}) do table.insert(self.values, value) end
     self:_notify("reset", self:valuesCopy())
 end
 
@@ -101,7 +101,7 @@ function Navigation.bindPath(path, pushScreen, popScreen)
         local builder = path:destination(value)
         assert(builder, "no navigation destination registered for " .. tostring(valueType(value)))
         pushScreen(value, builder)
-        mounted[#mounted + 1] = value
+        table.insert(mounted, value)
     end
     local function popValue()
         if #mounted == 0 then return end

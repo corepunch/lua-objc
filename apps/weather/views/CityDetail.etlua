@@ -1,7 +1,7 @@
 <% if city then -%>
 <VStack flexGrow="1" padding="28" spacing="18" alignment="leading">
     <HStack spacing="18" alignment="center">
-        <Image src="<%= city.icon %>" fixedWidth="84" fixedHeight="84" label="<%= city.cond %>" />
+        <Image src="<%= city.icon %>" width="84" height="84" label="<%= city.cond %>" />
         <VStack spacing="3" alignment="leading" flexGrow="1">
             <Label text="<%= city.city %>" size="26" weight="bold" />
             <Label text="<%= city.cond or "Unknown" %>" size="15" color="secondary" />
@@ -15,37 +15,37 @@
     <Divider />
     <Label text="Current conditions" size="14" weight="semibold" />
     <HStack spacing="22" alignment="top">
-        <VStack spacing="3" alignment="leading" fixedWidth="112">
+        <VStack spacing="3" alignment="leading" width="112">
             <Label text="Humidity" size="11" color="secondary" />
             <Label text="<%= city.humid %>%" size="16" />
         </VStack>
-        <VStack spacing="3" alignment="leading" fixedWidth="128">
+        <VStack spacing="3" alignment="leading" width="128">
             <Label text="Wind" size="11" color="secondary" />
             <Label text="<%= city.wind %> km/h <%= city.windDir %>" size="16" />
         </VStack>
-        <VStack spacing="3" alignment="leading" fixedWidth="110">
+        <VStack spacing="3" alignment="leading" width="110">
             <Label text="Visibility" size="11" color="secondary" />
             <Label text="<%= city.visibility %> km" size="16" />
         </VStack>
-        <VStack spacing="3" alignment="leading" fixedWidth="110">
+        <VStack spacing="3" alignment="leading" width="110">
             <Label text="Pressure" size="11" color="secondary" />
             <Label text="<%= city.pressure %> mb" size="16" />
         </VStack>
     </HStack>
     <HStack spacing="22" alignment="top">
-        <VStack spacing="3" alignment="leading" fixedWidth="112">
+        <VStack spacing="3" alignment="leading" width="112">
             <Label text="UV index" size="11" color="secondary" />
             <Label text="<%= city.uvIndex %>" size="16" />
         </VStack>
-        <VStack spacing="3" alignment="leading" fixedWidth="128">
+        <VStack spacing="3" alignment="leading" width="128">
             <Label text="Cloud cover" size="11" color="secondary" />
             <Label text="<%= city.cloudCover %>%" size="16" />
         </VStack>
-        <VStack spacing="3" alignment="leading" fixedWidth="110">
+        <VStack spacing="3" alignment="leading" width="110">
             <Label text="Precipitation" size="11" color="secondary" />
             <Label text="<%= city.precip %> mm" size="16" />
         </VStack>
-        <VStack spacing="3" alignment="leading" fixedWidth="110">
+        <VStack spacing="3" alignment="leading" width="110">
             <Label text="Observed" size="11" color="secondary" />
             <Label text="<%= city.observationTime %>" size="16" />
         </VStack>
@@ -53,12 +53,12 @@
     <% if #city.forecast > 0 then -%>
     <Divider />
         <Label text="7-day forecast" size="14" weight="semibold" />
-        <ScrollView contentWidth="772" contentHeight="188" fixedHeight="200" fillWidth="true" horizontal="true">
-    <HStack spacing="12" alignment="top" fixedWidth="772">
+        <ScrollView contentWidth="772" contentHeight="188" height="200" maxWidth="infinity" horizontal="true">
+    <HStack spacing="12" alignment="top" width="772">
         <% for _, day in ipairs(city.forecast) do -%>
-        <VStack spacing="4" alignment="center" fixedWidth="100">
+        <VStack spacing="4" alignment="center" width="100">
             <Label text="<%= day.date %>" size="11" color="secondary" />
-            <Image src="<%= day.icon %>" fixedWidth="28" fixedHeight="28" label="<%= day.desc %>" />
+            <Image src="<%= day.icon %>" width="28" height="28" label="<%= day.desc %>" />
             <Label text="<%= day.tempMax or "--" %>°" size="16" weight="medium" />
             <Label text="<%= day.tempMin or "--" %>°" size="13" color="secondary" />
             <Label text="<%= day.desc %>" size="11" lines="2" />

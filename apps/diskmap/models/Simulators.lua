@@ -10,11 +10,11 @@ function Simulators.rows(inventory, query, filter)
 			local runtimeName = runtimes[runtime] or runtime:gsub("com.apple.CoreSimulator.SimRuntime.", ""):gsub("%-", " ")
 			local available = device.isAvailable == true
 			if (filter ~= "Unavailable" or not available) and (name .. " " .. runtimeName .. " " .. (device.udid or "")):lower():find(needle, 1, true) then
-				rows[#rows + 1] = {id = device.udid, name = name, runtime = runtimeName,
+				table.insert(rows, {id = device.udid, name = name, runtime = runtimeName,
 					state = available and (device.state or "Unknown") or "Unavailable",
 					available = available, running = device.state ~= "Shutdown", path = device.dataPath,
 					bytes = device.dataPathSize, size = Model.size(device.dataPathSize),
-					lastUse = device.lastUsedAt and device.lastUsedAt:gsub("T", " "):gsub("Z$", " UTC") or "Not recorded"}
+					lastUse = device.lastUsedAt and device.lastUsedAt:gsub("T", " "):gsub("Z$", " UTC") or "Not recorded"})
 			end
 		end
 	end

@@ -1,14 +1,14 @@
-<VStack fillWidth="true" fillHeight="true" spacing="8">
+<VStack spacing="8">
   <ScrollView>
-    <VStack padding="20" spacing="14" fillWidth="true">
-      <Label ref="output" text="<%= transcript %>" size="16" lines="0" fillWidth="true" />
+    <VStack padding="20" spacing="14" alignment="leading">
+      <Label ref="output" text="<%= transcript %>" size="16" lines="0" />
     </VStack>
   </ScrollView>
-  <HStack paddingHorizontal="16" fillWidth="true">
-    <TextField ref="input" placeholder="What do you want to do?" fillWidth="true" />
+  <HStack paddingHorizontal="16">
+    <TextField ref="input" placeholder="What do you want to do?" />
     <Button ref="send" title="Send" action="submit" />
   </HStack>
-  <HStack paddingHorizontal="16" paddingBottom="8" fillWidth="true">
+  <HStack paddingHorizontal="16" paddingBottom="8">
     <Button ref="look" title="look" action="look" />
     <Button ref="inventory" title="inventory" action="inventory" />
     <Spacer />

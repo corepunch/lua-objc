@@ -11,13 +11,13 @@ function SystemDetails.parseSnapshotDates(output)
 	local dates = {}
 	for line in output:gmatch("[^\n]+") do
 		local snapshot = line:match("^(com%.apple%.TimeMachine%.[%d%-]+%.local)$")
-		if snapshot then dates[#dates + 1] = snapshot end
+		if snapshot then table.insert(dates, snapshot) end
 	end
 	table.sort(dates)
 	return dates
 end
 local function leaves(row, result)
-	if row:isLeaf() then result[#result + 1] = row; return end
+	if row:isLeaf() then table.insert(result, row); return end
 	for _, child in ipairs(row:getChildren()) do leaves(child, result) end
 end
 -- Ledger-only breakdown of the System Data group: ranked measured
@@ -33,7 +33,7 @@ function SystemDetails.explain(model)
 		local m = model.measurements[row.id]
 		if m and m.status == "complete" and (m.bytes or 0) > 0 then
 			totalBytes = totalBytes + m.bytes
-			contributors[#contributors + 1] = {id = row.id, name = row.name, bytes = m.bytes, size = Model.size(m.bytes)}
+			table.insert(contributors, {id = row.id, name = row.name, bytes = m.bytes, size = Model.size(m.bytes)})
 		end
 	end
 	table.sort(contributors, function(a, b) return a.bytes > b.bytes end)
@@ -51,19 +51,19 @@ end
 function SystemDetails.format(explanation, snapshots)
 	local lines = {}
 	if explanation.total then
-		lines[#lines + 1] = "Measured System Data allocation is " .. explanation.total.size .. " across " .. explanation.measuredLocations .. " of " .. explanation.knownLocations .. " known locations."
+		table.insert(lines, "Measured System Data allocation is " .. explanation.total.size .. " across " .. explanation.measuredLocations .. " of " .. explanation.knownLocations .. " known locations.")
 	else
-		lines[#lines + 1] = "System Data is still being measured across " .. explanation.knownLocations .. " known locations."
+		table.insert(lines, "System Data is still being measured across " .. explanation.knownLocations .. " known locations.")
 	end
 	for _, contributor in ipairs(explanation.contributors) do
-		lines[#lines + 1] = "· " .. contributor.name .. " — " .. contributor.size
+		table.insert(lines, "· " .. contributor.name .. " — " .. contributor.size)
 	end
-	if explanation.vm then lines[#lines + 1] = "· Virtual memory (swap) — " .. explanation.vm.size end
+	if explanation.vm then table.insert(lines, "· Virtual memory (swap) — " .. explanation.vm.size) end
 	if snapshots ~= nil then
-		lines[#lines + 1] = snapshots == 0 and "No local Time Machine snapshots are currently held." or
-			(tostring(snapshots) .. " local Time Machine snapshot" .. (snapshots == 1 and " is" or "s are") .. " currently held; macOS manages their lifetime and file scans cannot attribute their exclusive allocation.")
+		table.insert(lines, snapshots == 0 and "No local Time Machine snapshots are currently held." or
+			(tostring(snapshots) .. " local Time Machine snapshot" .. (snapshots == 1 and " is" or "s are") .. " currently held; macOS manages their lifetime and file scans cannot attribute their exclusive allocation."))
 	else
-		lines[#lines + 1] = "Local snapshots are system managed; file scans cannot attribute their exclusive allocation."
+		table.insert(lines, "Local snapshots are system managed; file scans cannot attribute their exclusive allocation.")
 	end
 	return table.concat(lines, "\n")
 end

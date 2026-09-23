@@ -30,7 +30,7 @@ t.expect(toolbar:find('action="reloadPreview"', 1, true) ~= nil,
 	"Run reloads the preview from the top toolbar")
 t.expect(toolbar:find('accessibilityLabel="Focus Preview"', 1, true) ~= nil,
 	"icon-only preview action retains an accessible name")
-t.expect(source:find('fixedWidth="208"', 1, true) ~= nil,
+t.expect(source:find('width="208"', 1, true) ~= nil,
 	"expanded sidebar applies its configured width")
 
 local Root = require("apps.studio.Controller")

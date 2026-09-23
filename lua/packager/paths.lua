@@ -36,7 +36,7 @@ local function split(path)
 			if #parts == 0 then return nil end
 			table.remove(parts)
 		elseif seg ~= "" and seg ~= "." then
-			parts[#parts + 1] = seg
+			table.insert(parts, seg)
 		end
 	end
 	return parts

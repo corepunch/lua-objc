@@ -9,6 +9,11 @@ Keep application behavior in Lua. Change native code only for framework
 infrastructure, platform integration, or a real AppKit/UIKit-backed leaf
 control.
 
+In Lua framework code, wrappers, and tests, append with
+`table.insert(items, value)` rather than `items[#items + 1] = value`.
+Parenthesize calls that can return multiple results to retain the original
+single-value assignment behavior: `table.insert(items, (fn()))`.
+
 ## Locate the subsystem
 
 Read `src/README.md`, then search for the exact bridge symbol:
@@ -88,7 +93,7 @@ Tags are handler functions in `xml.registry`:
 xml.registry["MyWidget"] = function(ns, attrs, children)
     local props = layoutProps(attrs)  -- auto-coerces padding, spacing, etc.
     props.title = attrs.title or ""
-    for _, c in ipairs(children) do props[#props + 1] = c end
+    for _, c in ipairs(children) do table.insert(props, c) end
     return ns.MyWidget(props)
 end
 ```

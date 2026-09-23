@@ -1,10 +1,10 @@
 <Window title="SwiftUI parity" width="480" height="160" minWidth="320" minHeight="120">
 	<% if caseId == "text.single.default" then %>
-	<VStack padding="24" spacing="12" fillWidth="true">
+	<VStack padding="24" spacing="12" maxWidth="infinity">
 	<Label text="<%= body %>" size="24" ref="text.node" />
 	</VStack>
 	<% elseif caseId == "stack.h.spacing.default-text-spacer" then %>
-	<HStack padding="24" spacing="12" fillWidth="true" alignment="center">
+	<HStack padding="24" spacing="12" maxWidth="infinity" alignment="center">
 		<Label text="<%= left %>" ref="left" />
 		<Spacer />
 		<Label text="<%= right %>" ref="right" />
@@ -15,29 +15,29 @@
 		<Label text="Count: 0" ref="counter" />
 	</VStack>
 	<% elseif caseId == "surface.background-rounded" then %>
-	<VStack padding="24" spacing="12" fillWidth="true" background="systemGreen" cornerRadius="16" clipsToBounds="true">
+	<VStack padding="24" spacing="12" maxWidth="infinity" background="systemGreen" cornerRadius="16" clipsToBounds="true">
 		<Label text="<%= body %>" size="20" ref="surface" />
 	</VStack>
 	<% elseif caseId == "grid.two-by-two" then %>
-	<Grid padding="24" spacing="12" alignment="center" fillWidth="true">
+	<Grid padding="24" spacing="12" alignment="center" maxWidth="infinity">
 		<GridRow spacing="24"><Label text="<%= cells[1] %>" ref="A1" /><Label text="<%= cells[2] %>" ref="B1" /></GridRow>
 		<GridRow spacing="24"><Label text="<%= cells[3] %>" ref="A2" /><Label text="<%= cells[4] %>" ref="B2" /></GridRow>
 	</Grid>
 	<% elseif caseId == "text.long-ellipsis-italic" then %>
-	<VStack padding="24" fillWidth="true" alignment="center">
+	<VStack padding="24" maxWidth="infinity" alignment="center">
 		<Label text="<%= body %>" size="18" italic="true" alignment="center" lines="1" truncation="tail" ref="styled" />
 	</VStack>
 	<% elseif caseId == "image.system-icon" then %>
-	<VStack padding="24" spacing="12" fillWidth="true" alignment="center">
+	<VStack padding="24" spacing="12" maxWidth="infinity" alignment="center">
 		<SystemImage name="<%= name %>" size="32" color="accent" label="<%= label %>" ref="icon" />
 		<Label text="<%= label %>" />
 	</VStack>
 	<% elseif caseId == "padding.vertical-edges" then %>
-	<VStack paddingTop="8" paddingBottom="40" fillWidth="true" alignment="center" background="systemGreen" cornerRadius="12">
+	<VStack paddingTop="8" paddingBottom="40" maxWidth="infinity" alignment="center" background="systemGreen" cornerRadius="12">
 		<Label text="<%= body %>" ref="padded" />
 	</VStack>
 	<% elseif caseId == "container.section-groupbox" then %>
-	<VStack padding="16" spacing="12" fillWidth="true">
+	<VStack padding="16" spacing="12" maxWidth="infinity">
 		<Section header="Overview" ref="section">
 			<Label text="<%= body %>" />
 		</Section>
@@ -46,13 +46,13 @@
 		</GroupBox>
 	</VStack>
 	<% elseif caseId == "container.disclosure-expanded" then %>
-	<VStack padding="16" fillWidth="true">
+	<VStack padding="16" maxWidth="infinity">
 		<DisclosureGroup label="Advanced" expanded="true">
 			<Label text="<%= body %>" ref="content" />
 		</DisclosureGroup>
 	</VStack>
 	<% elseif caseId == "container.form-labeled-control-group" then %>
-	<Form padding="16" spacing="12" fillWidth="true">
+	<Form padding="16" spacing="12" maxWidth="infinity">
 		<LabeledContent label="Name" spacing="12">
 			<Label text="<%= body %>" />
 		</LabeledContent>
@@ -62,17 +62,17 @@
 		</ControlGroup>
 	</Form>
 	<% elseif caseId == "input.native-editor-picker-search" then %>
-	<VStack padding="16" spacing="10" fillWidth="true" alignment="leading">
+	<VStack padding="16" spacing="10" maxWidth="infinity" alignment="leading">
 		<SearchField value="<%= search %>" placeholder="Search" />
 		<Picker value="1">
 			<Option title="<%= options[1] %>" />
 			<Option title="<%= options[2] %>" />
 			<Option title="<%= options[3] %>" />
 		</Picker>
-		<TextEditor text="<%= text %>" fixedHeight="72" />
+		<TextEditor text="<%= text %>" height="72" />
 	</VStack>
 	<% elseif caseId == "input.date-and-color-pickers" then %>
-	<VStack padding="16" spacing="12" fillWidth="true" alignment="leading">
+	<VStack padding="16" spacing="12" maxWidth="infinity" alignment="leading">
 		<DatePicker timestamp="<%= timestamp %>" />
 		<ColorPicker color="<%= color %>" />
 	</VStack>

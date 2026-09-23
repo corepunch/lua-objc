@@ -117,11 +117,11 @@ t.expect(v ~= nil, "HSplit creates a view")
 
 -- ── Layout props propagation ───────────────────────────────────────────────
 
-v = render([[<VStack flexGrow="1" padding="16" fixedWidth="200" />]])
+v = render([[<VStack flexGrow="1" padding="16" width="200" />]])
 t.expect(v ~= nil, "VStack accepts layout props")
 
-v = render([[<Label text="X" fixedWidth="100" fixedHeight="32" />]])
-t.expect(v ~= nil, "Label accepts fixedWidth/fixedHeight")
+v = render([[<Label text="X" width="100" height="32" />]])
+t.expect(v ~= nil, "Label accepts width/height")
 
 -- ── ref= attribute ─────────────────────────────────────────────────────────
 
@@ -186,7 +186,7 @@ cfg, r = xml.render([[
 <Window title="Toolbar View Test" width="640" height="480">
     <Toolbar>
         <ToolbarItem id="search" label="Search">
-            <SearchField ref="query" placeholder="Filter…" fixedWidth="210" fixedHeight="28" onChange="search" />
+            <SearchField ref="query" placeholder="Filter…" width="210" height="28" onChange="search" />
         </ToolbarItem>
     </Toolbar>
     <Label text="Body" />

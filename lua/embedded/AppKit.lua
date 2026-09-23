@@ -479,9 +479,9 @@ local function stackChildren(props, header)
 		alignment = props.alignment or "leading",
 	}
 	if header and header ~= "" then
-		content[#content + 1] = AppKit.Text({ header, weight = "bold" })
+		table.insert(content, (AppKit.Text({ header, weight = "bold" })))
 	end
-	for _, child in ipairs(props) do content[#content + 1] = child end
+	for _, child in ipairs(props) do table.insert(content, child) end
 	return content
 end
 
@@ -524,7 +524,7 @@ function AppKit.Form(props)
 		spacing = props.spacing or 12,
 		alignment = props.alignment or "leading",
 	}
-	for _, child in ipairs(props) do content[#content + 1] = child end
+	for _, child in ipairs(props) do table.insert(content, child) end
 	return applyLayout(AppKit.VStack(content), props)
 end
 
@@ -540,9 +540,9 @@ function AppKit.LabeledContent(props)
 	props = props or {}
 	local row = { spacing = props.spacing or 12, alignment = "center" }
 	if props.label and props.label ~= "" then
-		row[#row + 1] = AppKit.Text({ props.label, weight = props.labelWeight })
+		table.insert(row, (AppKit.Text({ props.label, weight = props.labelWeight })))
 	end
-	for _, child in ipairs(props) do row[#row + 1] = child end
+	for _, child in ipairs(props) do table.insert(row, child) end
 	return applyLayout(AppKit.HStack(row), props)
 end
 
@@ -556,7 +556,7 @@ end
 function AppKit.ControlGroup(props)
 	props = props or {}
 	local row = { spacing = props.spacing or 8, alignment = props.alignment or "center" }
-	for _, child in ipairs(props) do row[#row + 1] = child end
+	for _, child in ipairs(props) do table.insert(row, child) end
 	return applyLayout(AppKit.HStack(row), props)
 end
 
@@ -604,13 +604,13 @@ local function outlineItems(ns, items, expanded)
 			for _, child in ipairs(outlineItems(ns, children, expanded)) do
 				nested:add(child)
 			end
-			views[#views + 1] = ns.DisclosureGroup {
+			table.insert(views, (ns.DisclosureGroup {
 				label = title,
 				expanded = expanded,
 				nested,
-			}
+			}))
 		else
-			views[#views + 1] = ns.Text(title)
+			table.insert(views, (ns.Text(title)))
 		end
 	end
 	return views
@@ -749,13 +749,13 @@ function AppKit.Grid(props)
 			if columnWidths[column] and columnWidths[column] > 0 then
 				child.fixedWidth = columnWidths[column]
 			end
-			rowProps[#rowProps + 1] = child
+			table.insert(rowProps, child)
 		end
-		rows[#rows + 1] = AppKit.HStack(rowProps)
+		table.insert(rows, (AppKit.HStack(rowProps)))
 	end
 	props.content = nil
 	for i = #props, 1, -1 do props[i] = nil end
-	for _, row in ipairs(rows) do props[#props + 1] = row end
+	for _, row in ipairs(rows) do table.insert(props, row) end
 	return AppKit.VStack(props)
 end
 
@@ -771,7 +771,7 @@ function AppKit.ForEach(data, content)
 		local result = content(value, index, #data)
 		if type(result) == "userdata"
 			or (type(result) == "table" and result.__appkitGroup) then
-			views[#views + 1] = result
+			table.insert(views, result)
 		end
 	end
 	return views
@@ -914,6 +914,8 @@ function AppKit.TextField(props)
 	end
 	bridge._textFieldCallbacks(field, props.onChange, props.onCommand)
 	if props.disabled ~= nil then field.enabled = not props.disabled end
+	-- SwiftUI text fields accept the available width while keeping native height.
+	field.fillWidth = true
 	return applyLayout(field, props)
 end
 
@@ -1026,6 +1028,9 @@ function AppKit.Image(arg)
 	end
 	local view = bridge._image(resolveImage(path), nil, props and props.fileIcon or false)
 	if props and props.contentMode then view.contentModeName = props.contentMode end
+	if props and props.resizable then
+		view.fillWidth, view.fillHeight = true, true
+	end
 	return applyLayout(view, props)
 end
 
@@ -1066,9 +1071,12 @@ end
 --- @platform AppKit uses the AppKit implementation.
 function AppKit.LinearGradient(props)
 	props = props or {}
-	return applyLayout(bridge._linearGradient(props.topAlpha or 0,
+	local view = bridge._linearGradient(props.topAlpha or 0,
 		props.middleAlpha or 0.5, props.middleLocation or 0.6,
-		props.bottomAlpha or 0.82), props)
+		props.bottomAlpha or 0.82)
+	-- Gradients have no intrinsic size and accept both proposed dimensions.
+	view.fillWidth, view.fillHeight = true, true
+	return applyLayout(view, props)
 end
 
 --- Displays rows of data in a native table or list control.
@@ -1292,10 +1300,8 @@ function AppKit.Button(props)
 			props.style or "plain",
 			props.detail or "",
 			action)
-	elseif action then
-		button = bridge._button(title, action)
 	else
-		button = bridge._button(title)
+		button = bridge._button(title, action, type(props) == "table" and props.content or nil)
 	end
 	if type(props) == "table" then
 		if props.size then
@@ -1390,21 +1396,21 @@ function AppKit.ContentUnavailable(props)
 	props = props or {}
 	local content = { spacing = props.spacing or 8, alignment = "center" }
 	if props.systemImage then
-		content[#content + 1] = AppKit.SystemImage {
+		table.insert(content, (AppKit.SystemImage {
 			props.systemImage,
 			size = props.imageSize or 28,
 			color = "secondary",
 			accessibilityLabel = props.title or "",
-		}
+		}))
 	end
-	if props.title then content[#content + 1] = AppKit.Title(props.title) end
+	if props.title then table.insert(content, (AppKit.Title(props.title))) end
 	if props.description then
-		content[#content + 1] = AppKit.Text {
+		table.insert(content, (AppKit.Text {
 			props.description,
 			alignment = "center",
 			color = "secondary",
 			lineLimit = props.lines or 0,
-		}
+		}))
 	end
 	return applyLayout(AppKit.VStack(content), props)
 end
@@ -1639,7 +1645,7 @@ function AppKit.Curve(props)
 	local data = {}
 	for _, v in ipairs(raw) do
 		if v ~= nil then
-			data[#data + 1] = v
+			table.insert(data, v)
 		end
 	end
 	if #data < 2 then

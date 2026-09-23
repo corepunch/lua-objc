@@ -1,5 +1,5 @@
 <HStack paddingHorizontal="12" paddingVertical="8" spacing="10" alignment="center">
-    <VStack fixedWidth="36" fixedHeight="36" alignment="center"
+    <VStack width="36" height="36" alignment="center"
             flexGrow="0" flexShrink="0">
         <Label text="<%= initials %>" size="13" weight="semibold"
                color="<%= unread and 'accent' or 'secondary' %>" />

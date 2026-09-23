@@ -1,12 +1,12 @@
 <Sheet width="920" height="600">
-  <VStack fillWidth="true" fillHeight="true" padding="24" spacing="14">
-    <Label text="Simulator devices" size="22" weight="semibold" fillWidth="true" />
-    <Label text="Review installed test apps and device data. Installed runtimes are kept." size="12" color="secondary" fillWidth="true" lines="2" />
-    <SearchField ref="search" placeholder="Search device, runtime or identifier" accessibilityLabel="Search simulators" onChange="search" fillWidth="true" />
-    <TabView ref="tabs" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true" fillHeight="true">
+  <VStack maxWidth="infinity" maxHeight="infinity" padding="24" spacing="14">
+    <Label text="Simulator devices" size="22" weight="semibold" maxWidth="infinity" />
+    <Label text="Review installed test apps and device data. Installed runtimes are kept." size="12" color="secondary" maxWidth="infinity" lines="2" />
+    <SearchField ref="search" placeholder="Search device, runtime or identifier" accessibilityLabel="Search simulators" onChange="search" maxWidth="infinity" />
+    <TabView ref="tabs" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
       <% for index, title in ipairs(filters) do %>
       <Tab title="<%= title %>">
-        <List ref="rows<%= index %>" style="fullWidth" alternatingRows="true" rowHeight="32" flexGrow="1" fillWidth="true" fillHeight="true">
+        <List ref="rows<%= index %>" style="fullWidth" alternatingRows="true" rowHeight="32" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
           <Column id="name" title="Device" minWidth="170" />
           <Column id="runtime" title="Runtime" width="105" minWidth="90" />
           <Column id="state" title="State" width="105" minWidth="90" />
@@ -16,9 +16,9 @@
       </Tab>
       <% end %>
     </TabView>
-    <Label ref="status" text="Reading simulator inventory…" size="12" color="secondary" fillWidth="true" lines="2" />
-    <Label ref="detail" text="Erase removes apps, accounts and data. Delete also removes the device. Shut down running devices first. These actions cannot be undone." size="12" fillWidth="true" lines="3" />
-    <HStack fillWidth="true" spacing="10">
+    <Label ref="status" text="Reading simulator inventory…" size="12" color="secondary" maxWidth="infinity" lines="2" />
+    <Label ref="detail" text="Erase removes apps, accounts and data. Delete also removes the device. Shut down running devices first. These actions cannot be undone." size="12" maxWidth="infinity" lines="3" />
+    <HStack maxWidth="infinity" spacing="10">
       <Button ref="refresh" title="Refresh" action="refresh" />
       <Button ref="unavailable" title="Delete unavailable…" action="unavailable" disabled="true" />
       <Button ref="erase" title="Erase contents…" action="erase" disabled="true" />

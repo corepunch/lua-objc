@@ -341,7 +341,7 @@ so templates can iterate data without needing a `ForEach` widget:
 
 ```xml
 <% for _, article in ipairs(newsColumns) do %>
-<VStack fixedHeight="64" fillWidth="true">
+<VStack height="64" maxWidth="infinity">
     <Label text="<%= article.title %>" size="13" weight="semibold" lines="2" />
     <Label text="<%= article.source %>" size="10" color="secondary" />
 </VStack>

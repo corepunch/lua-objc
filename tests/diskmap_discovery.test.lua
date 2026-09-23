@@ -14,7 +14,7 @@ t.expect(rules[2].applications, "shared app bundles are individually discovered"
 t.assertEqual(rules[3].root, "/Users/test/Applications", "personal application discovery uses the user's Applications folder")
 local originalCommand, finds = System.command, {}
 System.command = function(argv, done)
-	finds[#finds + 1] = argv
+	table.insert(finds, argv)
 	local output = argv[2] == "/Applications" and "/Applications/Editor.app\n/Applications/Install macOS Tahoe.app\n" or
 		argv[2] == "/Users/test/Applications" and "/Users/test/Applications/Personal Editor.app\n" or ""
 	done(true, output)

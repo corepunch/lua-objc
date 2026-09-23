@@ -1,12 +1,12 @@
 <Sheet width="880" height="620">
-  <VStack fillWidth="true" fillHeight="true" padding="24" spacing="14">
-    <Label text="<%= title %>" size="22" weight="semibold" fillWidth="true" />
-    <Label text="Review measured storage by impact. Installed runtimes and personal work are preserved." size="12" color="secondary" fillWidth="true" lines="2" />
-    <SearchField ref="search" placeholder="Search names, owners or paths" accessibilityLabel="Search category resources" onChange="search" fillWidth="true" />
-    <TabView ref="tabs" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true" fillHeight="true">
+  <VStack maxWidth="infinity" maxHeight="infinity" padding="24" spacing="14">
+    <Label text="<%= title %>" size="22" weight="semibold" maxWidth="infinity" />
+    <Label text="Review measured storage by impact. Installed runtimes and personal work are preserved." size="12" color="secondary" maxWidth="infinity" lines="2" />
+    <SearchField ref="search" placeholder="Search names, owners or paths" accessibilityLabel="Search category resources" onChange="search" maxWidth="infinity" />
+    <TabView ref="tabs" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
       <% for index, title in ipairs(filters) do %>
       <Tab title="<%= title %>">
-        <List ref="rows<%= index %>" style="fullWidth" alternatingRows="true" rowHeight="38" flexGrow="1" fillWidth="true" fillHeight="true">
+        <List ref="rows<%= index %>" style="fullWidth" alternatingRows="true" rowHeight="38" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
           <Column id="name" title="Resource" subtitleKey="subtitle" minWidth="250" sortable="true" />
           <Column id="impact" title="Impact" width="155" minWidth="155" sortable="true" />
           <Column id="size" title="On disk" width="125" minWidth="125" alignment="trailing" loadingKey="calculating" sortable="true" />
@@ -14,10 +14,10 @@
       </Tab>
       <% end %>
     </TabView>
-    <Label ref="status" text="Select a resource to see its exact path and available action." size="12" color="secondary" fillWidth="true" lines="2" />
-    <Label ref="detail" text="Size is measured storage, not guaranteed free space." size="12" fillWidth="true" lines="3" />
-    <Label ref="path" text="" size="11" color="secondary" wrapping="character" fillWidth="true" lines="2" />
-    <HStack fillWidth="true" spacing="10">
+    <Label ref="status" text="Select a resource to see its exact path and available action." size="12" color="secondary" maxWidth="infinity" lines="2" />
+    <Label ref="detail" text="Size is measured storage, not guaranteed free space." size="12" maxWidth="infinity" lines="3" />
+    <Label ref="path" text="" size="11" color="secondary" wrapping="character" maxWidth="infinity" lines="2" />
+    <HStack maxWidth="infinity" spacing="10">
       <Button ref="reveal" title="Show in Finder" action="reveal" disabled="true" />
       <Button ref="manage" title="Review…" action="manage" disabled="true" />
       <Button ref="keep" title="Keep" action="keep" disabled="true" />

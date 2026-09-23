@@ -4,17 +4,17 @@
     <ToolbarSpacer />
     <ToolbarItem id="settings" label="Settings" icon="gear" />
   </Toolbar>
-  <VStack spacing="20" padding="24" fillWidth="true" fillHeight="true">
+  <VStack spacing="20" padding="24" maxWidth="infinity" maxHeight="infinity">
     <Title text="System glass" />
     <Label text="Use the platform glass effect. The control and its tint remain native." />
-    <GlassEffect style="regular" cornerRadius="18" fillWidth="true">
+    <GlassEffect style="regular" cornerRadius="18" maxWidth="infinity">
       <VStack spacing="12" padding="20">
         <Label text="Regular glass" weight="bold" />
         <Label text="AppKit uses NSGlassEffectView. UIKit uses UIGlassEffect." />
         <Button title="Glass button" style="glass" systemImage="sparkles" />
       </VStack>
     </GlassEffect>
-    <GlassEffect style="clear" cornerRadius="18" fillWidth="true">
+    <GlassEffect style="clear" cornerRadius="18" maxWidth="infinity">
       <VStack spacing="8" padding="20">
         <Label text="Clear glass" weight="bold" />
         <Label text="System material appearance adapts to the active appearance." />

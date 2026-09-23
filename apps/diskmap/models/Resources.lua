@@ -19,14 +19,14 @@ local function checkDefinition(definition, context, active, prepared)
 	if not ok then return false, err end
 	active[definition] = true
 	local node = {definition = definition, parent = context.parent, children = {}, parentId = context.parentId}
-	prepared[#prepared + 1] = node
+	table.insert(prepared, node)
 	context.ids[definition.id] = true
 	if definition.path then context.paths[definition.path] = true end
 	for _, child in ipairs(definition.children or {}) do
 		local childNodeIndex = #prepared + 1
 		local childOk, childErr = checkDefinition(child, {ids = context.ids, paths = context.paths, parent = node, parentId = definition.id}, active, prepared)
 		if not childOk then return false, childErr end
-		node.children[#node.children + 1] = prepared[childNodeIndex]
+		table.insert(node.children, prepared[childNodeIndex])
 	end
 	active[definition] = nil
 	return true
@@ -53,12 +53,12 @@ local function bind(collection, node, parentRow)
 	if definition.children ~= nil then state.childrenByRow[row] = {} end
 	if parentRow then
 		local children = state.childrenByRow[parentRow]
-		children[#children + 1] = row
+		table.insert(children, row)
 	else
-		state.rootRows[#state.rootRows + 1] = row
+		table.insert(state.rootRows, row)
 	end
 	if definition.children == nil then
-		state.leafRows[#state.leafRows + 1] = row
+		table.insert(state.leafRows, row)
 	end
 	for _, child in ipairs(node.children) do bind(collection, child, row) end
 	return row

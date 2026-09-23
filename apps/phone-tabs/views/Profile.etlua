@@ -1,20 +1,20 @@
-<VStack padding="20" spacing="16" fillWidth="true" alignment="leading">
+<VStack padding="20" spacing="16" maxWidth="infinity" alignment="leading">
     <Label text="Profile" size="28" weight="bold" />
-    <Image path="<%= profile.cover %>" fixedWidth="335" fixedHeight="150" />
+    <Image path="<%= profile.cover %>" width="335" height="150" />
     <HStack spacing="12" alignment="center">
-        <Image path="<%= profile.avatar %>" fixedWidth="72" fixedHeight="72" />
+        <Image path="<%= profile.avatar %>" width="72" height="72" />
         <VStack spacing="2" alignment="leading">
             <Label text="<%= profile.name %>" size="19" weight="semibold" />
             <Label text="<%= profile.email %>" size="13" color="secondary" />
         </VStack>
     </HStack>
-    <VStack spacing="8" fillWidth="true" padding="16">
+    <VStack spacing="8" maxWidth="infinity" padding="16">
         <HStack spacing="8">
-            <SystemImage name="doc" size="18" fixedWidth="24" color="accent" />
+            <SystemImage name="doc" size="18" width="24" color="accent" />
             <Label text="<%= profile.files %> files" size="15" />
         </HStack>
         <HStack spacing="8">
-            <SystemImage name="internaldrive" size="18" fixedWidth="24" color="accent" />
+            <SystemImage name="internaldrive" size="18" width="24" color="accent" />
             <Label text="<%= profile.storage %>" size="15" />
         </HStack>
     </VStack>

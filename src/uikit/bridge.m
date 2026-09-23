@@ -39,6 +39,7 @@ static char kIgnoresSafeAreaKey;
 static char kHostSafeAreaTopKey;
 static char kImageLayoutSizeKey;
 static char kScrollContentKey;
+static char kButtonContentKey;
 static const CGFloat kImageMaxWidth = 400.0;
 static const CGFloat kStackSpacing = 8.0;
 static const CGFloat kSeparatorThickness = 1.0;

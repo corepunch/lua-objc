@@ -16,6 +16,12 @@ static BOOL grows_on_axis(UIView *view, BOOL horizontal) {
 	NSNumber *grow = axis_flex_grow(view, horizontal);
 	if (grow) return grow.doubleValue > 0;
 	if ([objc_getAssociatedObject(view, horizontal ? &kFillWidthKey : &kFillHeightKey) boolValue]) return YES;
+	UIView *label = objc_getAssociatedObject(view, &kButtonContentKey);
+	if (label) return grows_on_axis(label, horizontal);
+	if (objc_getAssociatedObject(view, &kScrollContentKey)) {
+		UIScrollView *scroll = (UIScrollView *)view;
+		if (scroll.alwaysBounceHorizontal && !scroll.alwaysBounceVertical) return horizontal;
+	}
 	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
 	if ([axis isEqualToString:@"hstack"] || [axis isEqualToString:@"vstack"] || [axis isEqualToString:@"zstack"]) {
 		for (UIView *child in view.subviews) {
@@ -197,6 +203,14 @@ static CGSize measure_size(UIView *view, CGSize proposal) {
 			if (intrinsic.width >= 0) size.width = intrinsic.width;
 			if (intrinsic.height >= 0) size.height = intrinsic.height;
 		}
+		UIView *scrollContent = objc_getAssociatedObject(view, &kScrollContentKey);
+		UIView *buttonContent = objc_getAssociatedObject(view, &kButtonContentKey);
+		if (buttonContent) size = measure_size(buttonContent, proposal);
+		if (scrollContent) {
+			UIScrollView *scroll = (UIScrollView *)view;
+			if (scroll.alwaysBounceHorizontal && !scroll.alwaysBounceVertical)
+				size.height = measure_size(scrollContent, CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)).height;
+		}
 	}
 	if (fixedW) size.width = MAX(0, fixedW.doubleValue);
 	if (fixedH) size.height = MAX(0, fixedH.doubleValue);
@@ -263,8 +277,11 @@ static void layout_recursive_impl(UIView *view, CGFloat width) {
 				CGFloat childH = fills_axis(sv, NO) ? contentH : natural.height;
 				CGFloat childX = padX + (contentW - childW) / 2;
 				CGFloat childY = padTop + (contentH - childH) / 2;
-				if ([alignment isEqualToString:@"leading"]) childX = padX;
-				if ([alignment isEqualToString:@"trailing"]) childX = padX + contentW - childW;
+				NSString *position = alignment.lowercaseString;
+				if ([position containsString:@"leading"]) childX = padX;
+				if ([position containsString:@"trailing"]) childX = padX + contentW - childW;
+				if ([position containsString:@"top"]) childY = padTop;
+				if ([position containsString:@"bottom"]) childY = padTop + contentH - childH;
 				sv.frame = CGRectMake(childX, childY, childW, childH);
 				layout_recursive(sv, childW);
 			}
@@ -348,6 +365,12 @@ static void layout_recursive_impl(UIView *view, CGFloat width) {
 			}
 		}
 	} else {
+		UIView *buttonContent = objc_getAssociatedObject(view, &kButtonContentKey);
+		if (buttonContent) {
+			buttonContent.frame = view.bounds;
+			layout_recursive(buttonContent, buttonContent.bounds.size.width);
+			return;
+		}
 		if ([view isKindOfClass:UIScrollView.class]) {
 			[view setNeedsLayout];
 			[view layoutIfNeeded];

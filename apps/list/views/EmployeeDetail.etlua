@@ -7,15 +7,15 @@
     <Divider />
     <VStack spacing="12" alignment="leading">
         <HStack spacing="8" alignment="center">
-            <Label text="Department" size="12" color="secondary" fixedWidth="100" />
+            <Label text="Department" size="12" color="secondary" width="100" />
             <Label text="<%= employee.dept %>" size="14" />
         </HStack>
         <HStack spacing="8" alignment="center">
-            <Label text="Role" size="12" color="secondary" fixedWidth="100" />
+            <Label text="Role" size="12" color="secondary" width="100" />
             <Label text="<%= employee.role %>" size="14" />
         </HStack>
         <HStack spacing="8" alignment="center">
-            <Label text="Employee ID" size="12" color="secondary" fixedWidth="100" />
+            <Label text="Employee ID" size="12" color="secondary" width="100" />
             <Label text="<%= employee._id %>" size="14" />
         </HStack>
     </VStack>

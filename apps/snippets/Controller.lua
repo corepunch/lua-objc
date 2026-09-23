@@ -34,17 +34,17 @@ local function buildTagButtons(self)
 	local tags = Model.tagRows(self.selectedFolder)
 	local children = {}
 	for _, tag in ipairs(tags) do
-		children[#children + 1] = ns.Button {
+		table.insert(children, (ns.Button {
 			title = tag.name,
 			style = "plain",
 			action = function()
 				self.query = tag.name
 				self:refreshSnippets()
 			end,
-		}
+		}))
 	end
 	if #children == 0 then
-		children[#children + 1] = ns.Text "No tags in this folder"
+		table.insert(children, (ns.Text "No tags in this folder"))
 	end
 	return ns.HStack {
 		spacing = 8,
@@ -107,13 +107,13 @@ function Controller:refreshSnippets()
 	if not self.snippetList then return end
 	local rows = {}
 	for _, snippet in ipairs(Model.filterSnippets(self.selectedFolder, self.query)) do
-		rows[#rows + 1] = {
+		table.insert(rows, {
 			_id = snippet.id,
 			name = snippet.title,
 			language = snippet.language,
 			summary = snippet.summary,
 			favorite = snippet.favorite and "★" or "",
-		}
+		})
 	end
 	self.snippetList:replaceRows(rows)
 	if #rows == 0 then
@@ -148,7 +148,7 @@ function Controller:newSnippet()
 		tags = { "custom" },
 		code = "-- New snippet\nprint(\"hello from lua-objc\")\n",
 	}
-	Model.snippets[#Model.snippets + 1] = snippet
+	table.insert(Model.snippets, snippet)
 	self.selectedSnippetId = id
 	self.selectedFolder = "all"
 	self.query = ""

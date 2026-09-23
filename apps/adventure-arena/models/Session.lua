@@ -22,8 +22,8 @@ function Session:submit(command)
 	command = tostring(command or ""):match("^%s*(.-)%s*$")
 	if command == "" or not self.engine then return false end
 	local ok, response = pcall(function() return self.engine:resume(command) end)
-	self.messages[#self.messages + 1] = "> " .. command
-	self.messages[#self.messages + 1] = tostring(response or "")
+	table.insert(self.messages, "> " .. command)
+	table.insert(self.messages, tostring(response or ""))
 	return ok, response
 end
 

@@ -2,7 +2,7 @@ _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
 local xml = require("ui.xml")
-local sheet, refs = xml.render('<Sheet width="600" height="400"><VStack fillWidth="true" fillHeight="true"><Label text="Review"/><List ref="list" flexGrow="1" fillWidth="true"><Column id="name"/></List><Button ref="done" title="Done"/></VStack></Sheet>', {}, ns)
+local sheet, refs = xml.render('<Sheet width="600" height="400"><VStack maxWidth="infinity" maxHeight="infinity"><Label text="Review"/><List ref="list" flexGrow="1" maxWidth="infinity"><Column id="name"/></List><Button ref="done" title="Done"/></VStack></Sheet>', {}, ns)
 t.assertEqual(sheet.className, "LuaPanel", "Sheet is an ordinary native NSPanel")
 t.assertEqual(sheet.contentView.className, "NSView", "sheet has no translucent visual-effect background")
 t.expect(sheet.opaque, "sheet owns an opaque content surface")

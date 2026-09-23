@@ -4,13 +4,13 @@
     <Label text="Private palettes are enabled for this example." />
   </VStack>
   <TopPalette>
-    <HStack spacing="12" alignment="center" fillWidth="true" paddingHorizontal="16">
+    <HStack spacing="12" alignment="center" maxWidth="infinity" paddingHorizontal="16">
       <Label text="Top palette" />
       <Label text="Featured" />
     </HStack>
   </TopPalette>
   <BottomPalette>
-    <HStack spacing="12" alignment="center" fillWidth="true" paddingHorizontal="16">
+    <HStack spacing="12" alignment="center" maxWidth="infinity" paddingHorizontal="16">
       <Label text="For You" />
       <Label text="Following" />
     </HStack>

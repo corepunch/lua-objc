@@ -60,7 +60,7 @@ function Model.buildTree(entries, parentPath)
 		else
 			node.path = fullPath
 		end
-		tree[#tree + 1] = node
+		table.insert(tree, node)
 	end
 	table.sort(tree, function(a, b)
 		if a.children and not b.children then return true end

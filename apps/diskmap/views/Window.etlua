@@ -6,7 +6,7 @@
         <SystemImage name="internaldrive" size="22" color="secondary" />
         <VStack spacing="2" alignment="leading">
           <Label text="<%= windowTitle or "Diskmap" %>" size="15" weight="semibold" lines="1" />
-          <Label ref="capacity" text="<%= capacity %>" size="11" color="secondary" fillWidth="true" lines="1" />
+          <Label ref="capacity" text="<%= capacity %>" size="11" color="secondary" maxWidth="infinity" lines="1" />
         </VStack>
       </HStack>
     </ToolbarItem>
@@ -14,7 +14,7 @@
     <ToolbarItem id="refresh" label="Refresh" icon="arrow.clockwise" />
     <ToolbarItem id="cancel" label="Cancel" icon="xmark.circle" />
     <ToolbarItem id="search" label="Search">
-      <SearchField ref="search" placeholder="Search categories, resources or paths…" fixedWidth="265" accessibilityLabel="Search categories, resources or paths" onChange="search" />
+      <SearchField ref="search" placeholder="Search categories, resources or paths…" width="265" accessibilityLabel="Search categories, resources or paths" onChange="search" />
     </ToolbarItem>
   </Toolbar>
 </Window>

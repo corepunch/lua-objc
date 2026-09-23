@@ -36,7 +36,7 @@ function Projects.list(read, decode, encode, write)
 			metadata.title = metadata.name
 			metadata.icon = metadata.appIcon
 			metadata.selected = #result == 0
-			result[#result + 1] = metadata
+			table.insert(result, metadata)
 		end
 	end
 	return result

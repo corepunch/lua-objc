@@ -56,7 +56,7 @@ local function readBinaryFixture(file)
 				position = 1
 			end
 			local count = math.min(remaining, #buffer - position + 1)
-			chunks[#chunks + 1] = buffer:sub(position, position + count - 1)
+			table.insert(chunks, (buffer:sub(position, position + count - 1)))
 			position = position + count
 			remaining = remaining - count
 		end
@@ -139,7 +139,7 @@ local function json(value)
 		for index = 1, max do result[index] = json(value[index]) end
 		return "[" .. table.concat(result, ",") .. "]"
 	end
-	for key, child in pairs(value) do result[#result + 1] = json(tostring(key)) .. ":" .. json(child) end
+	for key, child in pairs(value) do table.insert(result, json(tostring(key)) .. ":" .. json(child)) end
 	return "{" .. table.concat(result, ",") .. "}"
 end
 
@@ -199,7 +199,7 @@ function Mock:scan(paths, exclusions)
 		local relevantExclusions = {}
 		for _, rawExclusion in ipairs(exclusions or {}) do
 			local exclusion = absolute(rawExclusion, self.home)
-			if exclusion ~= root and within(exclusion, root) then relevantExclusions[#relevantExclusions + 1] = exclusion end
+			if exclusion ~= root and within(exclusion, root) then table.insert(relevantExclusions, exclusion) end
 		end
 		table.sort(relevantExclusions, function(a, b) return #a < #b end)
 		local selectedExclusions = {}
@@ -209,7 +209,7 @@ function Mock:scan(paths, exclusions)
 			if not covered then
 				bytes = bytes - (self.totals[exclusion] or 0)
 				count = count - (self.fileCounts[exclusion] or 0)
-				selectedExclusions[#selectedExclusions + 1] = exclusion
+				table.insert(selectedExclusions, exclusion)
 			end
 		end
 		visited = visited + count
@@ -319,7 +319,7 @@ function Mock:removeUnder(path)
 	local kept, removed = {}, countUnder(self, path)
 	for _, item in ipairs(self.items) do
 		if within(item.path, path) then
-		else kept[#kept + 1] = item end
+		else table.insert(kept, item) end
 	end
 	self.items = kept
 	self.reindex()
@@ -330,7 +330,7 @@ function Mock:trash(path)
 	path = absolute(path, self.home)
 	local moved = {}
 	for _, item in ipairs(self.items) do
-		if within(item.path, path) then moved[#moved + 1] = item end
+		if within(item.path, path) then table.insert(moved, item) end
 	end
 	if #moved == 0 then return false, "That virtual path is empty." end
 	local name = path:match("([^/]+)$") or "Mock item"
@@ -341,7 +341,7 @@ function Mock:trash(path)
 	for _, item in ipairs(moved) do
 		local relative = item.path == path and "" or item.path:sub(#path + 2)
 		item.path = relative == "" and destination or destination .. "/" .. relative
-		self.items[#self.items + 1] = item
+		table.insert(self.items, item)
 	end
 	self.reindex()
 	return true

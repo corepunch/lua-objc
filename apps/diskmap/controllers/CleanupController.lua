@@ -8,7 +8,7 @@ function Controller:rows(query, limit)
 	local rows, needle = {}, (query or ""):lower()
 	for _, row in ipairs(Cleanup.suggestions(self.model)) do
 		if (row.name .. " " .. row.subtitle):lower():find(needle, 1, true) then
-			rows[#rows + 1] = row
+			table.insert(rows, row)
 			if limit and #rows >= limit then break end
 		end
 	end
@@ -20,12 +20,12 @@ function Controller:presentation()
 	local groups = {{name = "Safe/rebuildable", rows = {}}, {name = "Needs review", rows = {}}, {name = "Essential to keep", rows = {}}}
 	for _, row in ipairs(rows) do
 		local group = row.impact == "Safe/rebuildable" and groups[1] or groups[2]
-		group.rows[#group.rows + 1] = row
+		table.insert(group.rows, row)
 	end
 	for _, row in ipairs(require("apps.diskmap.models.Categories").managementRows(self.model, "runtimes")) do
 		if (row.bytes or 0) > 0 then
 			row.icon = "iphone"; row.color = "systemBlue"; row.subtitle = "Keep installed runtimes required by your projects."
-			groups[3].rows[#groups[3].rows + 1] = row
+			table.insert(groups[3].rows, row)
 			actions["review_" .. row.id] = function() self.review("runtimes") end
 		end
 	end

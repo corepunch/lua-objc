@@ -114,7 +114,7 @@ function Controller:open(parent, id, filter)
 			if count == nil or self.sheet ~= sheet or not self.refs then return end
 			local note = count == 0 and "No local snapshots" or (tostring(count) .. " local snapshots")
 			if count > 0 and dates and #dates > 0 then
-				local shown = {}; for index = math.max(1, #dates - 3), #dates do shown[#shown + 1] = dates[index]:match("TimeMachine%.(.+)%.local$") end
+				local shown = {}; for index = math.max(1, #dates - 3), #dates do table.insert(shown, (dates[index]:match("TimeMachine%.(.+)%.local$"))) end
 				note = note .. " · " .. table.concat(shown, ", ") .. (#dates > #shown and " …" or "")
 			end
 			self.refs.status.text = note .. " (system managed) · " .. self.refs.status.text

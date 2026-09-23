@@ -1,55 +1,55 @@
-<VStack fillWidth="true" fillHeight="true" flexGrow="1" flexBasis="0" flexShrink="1" spacing="16" padding="16">
-  <VStack ref="storageBar" fillWidth="true" spacing="0" />
-  <GroupBox ref="coveragePanel" fillWidth="true">
-    <HStack fillWidth="true" spacing="12" padding="10" alignment="center">
+<VStack maxWidth="infinity" maxHeight="infinity" flexGrow="1" flexBasis="0" flexShrink="1" spacing="16" padding="16">
+  <VStack ref="storageBar" maxWidth="infinity" spacing="0" />
+  <GroupBox ref="coveragePanel" maxWidth="infinity">
+    <HStack maxWidth="infinity" spacing="12" padding="10" alignment="center">
       <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="4" alignment="leading">
-        <Label ref="coverage" text="<%= coverage %>" size="12" fillWidth="true" lines="2" />
-        <Label ref="status" text="<%= status %>" size="11" color="secondary" fillWidth="true" lines="2" />
+        <Label ref="coverage" text="<%= coverage %>" size="12" maxWidth="infinity" lines="2" />
+        <Label ref="status" text="<%= status %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
       </VStack>
       <Button ref="access" title="Scan access…" action="access" />
     </HStack>
   </GroupBox>
-  <HSplit flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true" fillHeight="true">
-    <VStack ref="categoriesPane" paddingTrailing="16" minWidth="390" flexGrow="1" fillHeight="true" fillWidth="true" spacing="12">
+  <HSplit flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+    <VStack ref="categoriesPane" paddingTrailing="16" minWidth="390" flexGrow="1" maxHeight="infinity" maxWidth="infinity" spacing="12">
       <% if title ~= "Storage categories" then %>
-      <HStack spacing="10" fillWidth="true" paddingVertical="8" alignment="center">
+      <HStack spacing="10" maxWidth="infinity" paddingVertical="8" alignment="center">
         <SystemImage ref="headingIcon" name="<%= icon %>" size="28" badgeColor="<%= color %>" />
         <VStack spacing="4" flexGrow="1" flexBasis="0" flexShrink="1" alignment="leading">
-          <Label ref="heading" text="<%= title %>" size="19" weight="semibold" fillWidth="true" />
-          <Label ref="subtitle" text="<%= subtitle %>" size="12" color="secondary" fillWidth="true" lines="2" />
+          <Label ref="heading" text="<%= title %>" size="19" weight="semibold" maxWidth="infinity" />
+          <Label ref="subtitle" text="<%= subtitle %>" size="12" color="secondary" maxWidth="infinity" lines="2" />
         </VStack>
       </HStack>
       <% end %>
-      <GroupBox ref="categoriesPanel" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true" fillHeight="true">
-      <List ref="results" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" rowHeight="44" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true">
+      <GroupBox ref="categoriesPanel" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+      <List ref="results" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" rowHeight="44" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity">
         <Column id="name" title="Category" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" imageSize="32" minWidth="210" />
         <Column id="size" title="On disk" width="135" minWidth="125" alignment="trailing" loadingKey="calculating" />
       </List>
       </GroupBox>
 
     </VStack>
-    <VStack minWidth="300" flexGrow="0.7" fillWidth="true" fillHeight="true" spacing="0">
-      <ScrollView ref="opportunitiesScroll" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true">
-        <VStack fillWidth="true" spacing="16" paddingHorizontal="16" paddingVertical="8" alignment="leading">
-          <GroupBox ref="inspector" hidden="true" fillWidth="true">
-          <VStack fillWidth="true" padding="12" spacing="10" alignment="leading">
-          <Label ref="detailName" text="Select a category" size="17" weight="semibold" fillWidth="true" lines="0" />
-          <Label ref="detailText" text="Understand what is stored and how it is managed." size="12" fillWidth="true" lines="0" />
-          <Button ref="measure" title="Refresh measurements" action="measure" fillWidth="true" />
-          <Button ref="manage" title="Review in Finder" action="manage" fillWidth="true" disabled="true" />
-          <Button ref="keep" title="Keep this resource" action="keep" fillWidth="true" disabled="true" />
-          <Label ref="location" wrapping="character" text="" size="11" color="secondary" fillWidth="true" lines="0" />
+    <VStack minWidth="300" flexGrow="0.7" maxWidth="infinity" maxHeight="infinity" spacing="0">
+      <ScrollView ref="opportunitiesScroll" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity">
+        <VStack maxWidth="infinity" spacing="16" paddingHorizontal="16" paddingVertical="8" alignment="leading">
+          <GroupBox ref="inspector" hidden="true" maxWidth="infinity">
+          <VStack maxWidth="infinity" padding="12" spacing="10" alignment="leading">
+          <Label ref="detailName" text="Select a category" size="17" weight="semibold" maxWidth="infinity" lines="0" />
+          <Label ref="detailText" text="Understand what is stored and how it is managed." size="12" maxWidth="infinity" lines="0" />
+          <Button ref="measure" title="Refresh measurements" action="measure" maxWidth="infinity" />
+          <Button ref="manage" title="Review in Finder" action="manage" maxWidth="infinity" disabled="true" />
+          <Button ref="keep" title="Keep this resource" action="keep" maxWidth="infinity" disabled="true" />
+          <Label ref="location" wrapping="character" text="" size="11" color="secondary" maxWidth="infinity" lines="0" />
           </VStack>
           </GroupBox>
-          <HStack spacing="10" fillWidth="true" alignment="center">
+          <HStack spacing="10" maxWidth="infinity" alignment="center">
             <SystemImage name="sparkles" size="24" color="accent" />
             <VStack flexGrow="1" spacing="4" alignment="leading">
-              <Label text="Safe reclaim potential" size="16" weight="semibold" fillWidth="true" />
-              <Label text="Measured candidates grouped by impact; no guaranteed reclaim total." size="11" color="secondary" fillWidth="true" lines="2" />
+              <Label text="Safe reclaim potential" size="16" weight="semibold" maxWidth="infinity" />
+              <Label text="Measured candidates grouped by impact; no guaranteed reclaim total." size="11" color="secondary" maxWidth="infinity" lines="2" />
             </VStack>
           </HStack>
-          <VStack ref="opportunities" fillWidth="true" spacing="0" />
-          <VStack ref="tips" fillWidth="true" spacing="0" />
+          <VStack ref="opportunities" maxWidth="infinity" spacing="0" />
+          <VStack ref="tips" maxWidth="infinity" spacing="0" />
         </VStack>
       </ScrollView>
     </VStack>

@@ -13,7 +13,7 @@ local providers = {
 }
 function Catalog.tree(home)
 	local tree = {}
-	for _, provider in ipairs(providers) do tree[#tree + 1] = provider() end
+	for _, provider in ipairs(providers) do table.insert(tree, (provider())) end
 	local owners = {
 		xcode = "com.apple.dt.Xcode", ["vscode-data"] = "com.microsoft.VSCode",
 		["vscode-extensions"] = "com.microsoft.VSCode", cursor = "com.todesktop.230313mzl4w4u92",

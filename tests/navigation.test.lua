@@ -50,7 +50,7 @@ local function testNavigation()
     path:registerDestination("message", function(value) return value.id end)
     local native = {}
     local remove = Navigation.bindPath(path,
-        function(value, builder) native[#native + 1] = builder(value) end,
+        function(value, builder) table.insert(native, (builder(value))) end,
         function() table.remove(native) end)
     path:push({ type = "message", id = 42, title = "Message" })
     assert(native[1] == 42 and path:current().id == 42)

@@ -200,7 +200,7 @@ end
 local function PeopleList(props)
 	local children = {}
 	for _, person in ipairs(props.people) do
-		children[#children + 1] = PersonRow { person = person }
+		table.insert(children, (PersonRow { person = person }))
 	end
 	return VStack(children)
 end
@@ -1395,7 +1395,7 @@ Templates use the `.etlua` extension to reflect that they contain etlua
 | `<Window>` | window config table | window config table |
 | `<Toolbar>` + `<ToolbarItem>` | toolbar items | toolbar items |
 
-All layout attributes (`flexGrow`, `padding`, `fixedWidth`, etc.) are accepted on
+All layout attributes (`flexGrow`, `padding`, `width`, `height`, `maxWidth="infinity"`, etc.) are accepted on
 every tag and forwarded to `applyLayout`.
 
 **`<List>` attributes:**
@@ -1477,7 +1477,7 @@ etlua, never assembled in controller code:
 ```xml
 <ToolbarItem id="search" label="Search">
     <SearchField ref="search" placeholder="Filter results…"
-                 fixedWidth="210" fixedHeight="28" onChange="search" />
+                 width="210" height="28" onChange="search" />
 </ToolbarItem>
 ```
 
@@ -1757,10 +1757,10 @@ end
 ```xml
 <!-- apps/mail/views/Window.etlua -->
 <HSplit>
-    <List ref="mailboxList" fixedWidth="180" style="sourceList" header="false">
+    <List ref="mailboxList" width="180" style="sourceList" header="false">
         <Column id="name" title="Mailbox" />
     </List>
-    <List ref="messageList" fixedWidth="280" style="plain" header="false">
+    <List ref="messageList" width="280" style="plain" header="false">
         <Column id="from" title="From" />
     </List>
     <VStack ref="detailPane" flexGrow="1" />

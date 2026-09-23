@@ -1,5 +1,5 @@
-<HStack padding="<%= metrics.rowPadding %>" spacing="<%= collapsed and 0 or 10 %>" fillWidth="true" alignment="center" background="<%= item.selected and 'background' or 'secondaryBackground' %>" cornerRadius="10">
-	<SystemImage name="<%= item.icon %>" size="<%= metrics.iconSize %>" fixedWidth="<%= metrics.iconSlotWidth %>" label="<%= item.title %>" />
+<HStack padding="<%= metrics.rowPadding %>" spacing="<%= collapsed and 0 or 10 %>" maxWidth="infinity" alignment="center" background="<%= item.selected and 'background' or 'secondaryBackground' %>" cornerRadius="10">
+	<SystemImage name="<%= item.icon %>" size="<%= metrics.iconSize %>" width="<%= metrics.iconSlotWidth %>" label="<%= item.title %>" />
 	<% if not collapsed then %>
 	<VStack padding="0" spacing="1" flexGrow="1" alignment="leading">
 		<Label text="<%= item.title %>" size="14" />

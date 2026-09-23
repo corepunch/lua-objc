@@ -48,7 +48,7 @@ local function openMeteoForecast(latitude, longitude)
 	local forecast = {}
 	for index, date in ipairs(daily.time) do
 		local condition = conditionForCode(daily.weather_code and daily.weather_code[index])
-		forecast[#forecast + 1] = {
+		table.insert(forecast, {
 			date = date,
 			tempMax = daily.temperature_2m_max and daily.temperature_2m_max[index] or "--",
 			tempMin = daily.temperature_2m_min and daily.temperature_2m_min[index] or "--",
@@ -58,7 +58,7 @@ local function openMeteoForecast(latitude, longitude)
 			rain = daily.rain_sum and daily.rain_sum[index] or "--",
 			wind = daily.windspeed_10m_max and daily.windspeed_10m_max[index] or "--",
 			uvIndex = daily.uv_index_max and daily.uv_index_max[index] or "--",
-		}
+		})
 	end
 	return #forecast > 0 and forecast or nil
 end
@@ -108,7 +108,7 @@ function Model.fetchCity(city)
 				f.desc = mid.weatherDesc and mid.weatherDesc[1] and mid.weatherDesc[1].value or "--"
 				f.icon = iconForCondition(f.desc)
 			end
-			forecast[#forecast + 1] = f
+			table.insert(forecast, f)
 		end
 	end
 

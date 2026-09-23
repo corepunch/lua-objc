@@ -29,14 +29,14 @@ local function build(node, probes, ids)
 	local probe
 	if node.kind ~= "spacer" then
 		probe = { id = node.id }
-		probes[#probes + 1] = probe
+		table.insert(probes, probe)
 	end
 	if node.kind == "text" then
 		assert(node.text == nil or type(node.text) == "string", "text must be a string")
 		props[1] = node.text or ""
 	else
 		for _, child in ipairs(node.children or {}) do
-			props[#props + 1] = build(child, probes, ids)
+			table.insert(props, (build(child, probes, ids)))
 		end
 	end
 	local view = constructors[node.kind](props)

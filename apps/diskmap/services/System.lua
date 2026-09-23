@@ -9,8 +9,8 @@ local function json(value)
 	if type(value) == "number" or type(value) == "boolean" then return tostring(value) end
 	if type(value) ~= "table" then return "null" end
 	local out = {}
-	if #value > 0 then for _, v in ipairs(value) do out[#out + 1] = json(v) end; return "[" .. table.concat(out, ",") .. "]" end
-	for k, v in pairs(value) do out[#out + 1] = json(k) .. ":" .. json(v) end
+	if #value > 0 then for _, v in ipairs(value) do table.insert(out, (json(v))) end; return "[" .. table.concat(out, ",") .. "]" end
+	for k, v in pairs(value) do table.insert(out, json(k) .. ":" .. json(v)) end
 	return "{" .. table.concat(out, ",") .. "}"
 end
 function System.loadKeep()
@@ -134,7 +134,7 @@ function System.agentEntries(model)
 	for _, id in ipairs({"codex", "opencode", "grok", "claude"}) do
 		local root = model.resources:find(id .. "-other")
 		for _, entry in ipairs(root and ns.readDirectory(root.path, 0) or {}) do
-			entry.agent = id; entries[#entries + 1] = entry
+			entry.agent = id; table.insert(entries, entry)
 		end
 	end
 	return entries
@@ -146,7 +146,7 @@ local function lines(output)
 	local result = {}
 	for path in (output or ""):gmatch("([^\n]+)") do
 		path = path:gsub("\r$", "")
-		if path ~= "" then result[#result + 1] = path end
+		if path ~= "" then table.insert(result, path) end
 	end
 	return result
 end
@@ -161,9 +161,9 @@ function System.discoverEntries(home, completion)
 		if location.rules then
 			argv = {"/usr/bin/find", location.root, "-type", "d", "(", "-name", location.rules[1].dirName}
 			for ruleIndex = 2, #location.rules do
-				argv[#argv + 1] = "-o"; argv[#argv + 1] = "-name"; argv[#argv + 1] = location.rules[ruleIndex].dirName
+				table.insert(argv, "-o"); table.insert(argv, "-name"); table.insert(argv, location.rules[ruleIndex].dirName)
 			end
-			argv[#argv + 1] = ")"; argv[#argv + 1] = "-prune"; argv[#argv + 1] = "-print"
+			table.insert(argv, ")"); table.insert(argv, "-prune"); table.insert(argv, "-print")
 		else
 			argv = {"/usr/bin/find", location.root, "-maxdepth", "1", "-type", "d", "-name", "*.app", "-print"}
 		end
@@ -177,17 +177,17 @@ function System.discoverEntries(home, completion)
 							local marker = name == rule.dirName and io.open(parent .. "/" .. rule.markerFile, "r")
 							if marker then
 								marker:close()
-								discovered[#discovered + 1] = {id = hexId(path), name = rule.name .. " · " .. (parent:match("([^/]+)$") or parent), subtitle = rule.subtitle, path = path,
-									policy = "Review", action = "finder", reviewThreshold = 500e6, icon = "shippingbox", color = "systemOrange"}
+								table.insert(discovered, {id = hexId(path), name = rule.name .. " · " .. (parent:match("([^/]+)$") or parent), subtitle = rule.subtitle, path = path,
+									policy = "Review", action = "finder", reviewThreshold = 500e6, icon = "shippingbox", color = "systemOrange"})
 								break
 							end
 						end
 					elseif name:match("%.app$") then
 						local installer = name:match("^Install macOS .+%.app$")
-						discovered[#discovered + 1] = {id = hexId(path), name = name, subtitle = installer and "Full macOS installer app" or "Installed application",
+						table.insert(discovered, {id = hexId(path), name = name, subtitle = installer and "Full macOS installer app" or "Installed application",
 							parentId = location.parentId, path = path, policy = "Review", action = "finder", reviewThreshold = installer and 5e9 or 1e9,
 							consequence = installer and "Each installer is usually large. Keep it if you still need the installer; macOS Software Update can download it again later."
-								or "Review this application in Finder or its own uninstaller. Diskmap will not remove installed applications.", icon = "app.fill", color = "systemBlue"}
+								or "Review this application in Finder or its own uninstaller. Diskmap will not remove installed applications.", icon = "app.fill", color = "systemBlue"})
 					end
 				end
 			end

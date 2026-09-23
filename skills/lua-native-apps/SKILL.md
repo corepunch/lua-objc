@@ -9,6 +9,11 @@ Build user-facing apps in Lua only. Keep AppKit/UIKit work behind the bridge
 and keep the app shell thin enough that most behavior lives in reusable Lua
 modules.
 
+Append to Lua sequences with `table.insert(items, value)` rather than
+`items[#items + 1] = value`, including models, controllers, services, and tests.
+When a value-producing call can return multiple results, parenthesize it to
+retain one value: `table.insert(items, (fn()))`.
+
 ## Start with the current framework
 
 Read only the references needed for the task. The bridge exposes native

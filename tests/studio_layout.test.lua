@@ -39,7 +39,7 @@ local _, verticalDividerCount = workspace:gsub('<Divider orientation="vertical"'
 t.assertEqual(verticalDividerCount, 2, "workspace keeps one divider between each pane")
 t.expect(description.source:find('<ScrollView flexGrow="1"', 1, true) ~= nil,
 	"chat history scrolls independently of the composer")
-t.expect(description.source:find('ref="toolbar"', 1, true) ~= nil and description.source:find('fixedHeight="56"', 1, true) ~= nil,
+t.expect(description.source:find('ref="toolbar"', 1, true) ~= nil and description.source:find('height="56"', 1, true) ~= nil,
 	"top actions share a fixed-height toolbar")
 t.expect(description.source:find('1 files created', 1, true) ~= nil,
 	"file summary reflects the presented files")

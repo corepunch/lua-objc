@@ -66,7 +66,7 @@ end
 local function precomputeNewsColumns(articles)
 	local columns = {{}, {}}
 	for index, article in ipairs(articles or {}) do
-		columns[(index - 1) % 2 + 1][#columns[(index - 1) % 2 + 1] + 1] = article
+		table.insert(columns[(index - 1) % 2 + 1], article)
 	end
 	return columns
 end
@@ -121,7 +121,7 @@ function Controller:visibleRows()
 		if query == "" or symbol:lower():find(query, 1, true)
 			or data.name:lower():find(query, 1, true) then
 			local gain = (data.changePct or 0) >= 0
-			rows[#rows + 1] = {
+			table.insert(rows, {
 				_id = symbol,
 				symbol = symbol,
 				name = data.name,
@@ -129,7 +129,7 @@ function Controller:visibleRows()
 				change = string.format("%+.2f%%", data.changePct or 0),
 				changeColor = gain and "systemGreen" or "systemRed",
 				chartData = data.chartData or {},
-			}
+			})
 		end
 	end
 	return rows

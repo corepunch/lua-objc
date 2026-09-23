@@ -1,14 +1,14 @@
 <VStack flexGrow="1" padding="18" spacing="9" alignment="leading">
 	<Label weight="bold" size="26" text="Business News" />
 	<Label color="secondary" size="13" text="Latest market and company stories" />
-	<HStack fillWidth="true" flexGrow="1" spacing="22" alignment="top">
+	<HStack maxWidth="infinity" flexGrow="1" spacing="22" alignment="top">
 		<% for _, column in ipairs(newsColumns) do %>
 		<VStack flexGrow="1" spacing="9" alignment="leading">
 			<% for _, article in ipairs(column) do %>
-			<VStack fixedHeight="108" fillWidth="true" spacing="2" alignment="leading">
+			<VStack height="108" maxWidth="infinity" spacing="2" alignment="leading">
 				<Label color="secondary" size="10" text="<%= article.source %>" />
-				<Label weight="semibold" size="13" lines="2" fixedHeight="32" fillWidth="true" text="<%= article.title %>" />
-				<Label color="secondary" size="12" lines="3" fixedHeight="42" fillWidth="true" text="<%= article.summary %>" />
+				<Label weight="semibold" size="13" lines="2" height="32" maxWidth="infinity" text="<%= article.title %>" />
+				<Label color="secondary" size="12" lines="3" height="42" maxWidth="infinity" text="<%= article.summary %>" />
 				<Label color="secondary" size="10" text="<%= article.time %>" />
 			</VStack>
 			<% end %>

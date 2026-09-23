@@ -50,7 +50,7 @@ function Controller:perform(action, unavailable)
 	for _, row in ipairs(targets) do
 		local command = Simulators.command(action, row, self.model)
 		if not command then return false end
-		commands[#commands + 1] = command; names[#names + 1] = row.name .. " · " .. row.id
+		table.insert(commands, command); table.insert(names, row.name .. " · " .. row.id)
 	end
 	if #commands == 0 then return false end
 	local title = unavailable and "Delete unavailable simulators" or action == "erase" and "Erase simulator contents" or "Delete simulator device"

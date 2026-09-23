@@ -47,10 +47,10 @@ local M = {}
 local LAYOUT_PROPS = {
     "padding", "paddingHorizontal", "paddingVertical", "paddingLeading", "paddingTrailing",
     "spacing", "alignment",
-    "fixedWidth", "fixedHeight", "minWidth", "minHeight",
+    "width", "height", "minWidth", "minHeight",
     "maxWidth", "maxHeight",
     "flexGrow", "flexShrink", "flexBasis",
-    "fillWidth", "fillHeight", "hidden",
+    "hidden",
 }
 
 local function extractLayoutProps(attrs)
@@ -72,11 +72,11 @@ local function describeNodes(nodes)
     for _, node in ipairs(nodes) do
         if node.kind == "element" then
             local desc = describeNode(node)
-            if desc then result[#result + 1] = desc end
+            if desc then table.insert(result, desc) end
         elseif node.kind == "text" then
             local text = node.value:match("^%s*(.-)%s*$")
             if #text > 0 then
-                result[#result + 1] = { tag = "__text", value = text }
+                table.insert(result, { tag = "__text", value = text })
             end
         end
     end
@@ -90,15 +90,13 @@ function describeNode(node)
 
     -- Text/Label
     if tag == "Label" or tag == "Text" then
+		local props = extractLayoutProps(attrs)
+		props.text = attrs.text or attrs.value or ""
+		props.size = attrs.size and tonumber(attrs.size) or nil
+		props.weight, props.color, props.key = attrs.weight, attrs.color, attrs.key
         return {
             tag = tag,
-            props = {
-                text = attrs.text or attrs.value or "",
-                size = attrs.size and tonumber(attrs.size) or nil,
-                weight = attrs.weight,
-                color = attrs.color,
-                key = attrs.key,
-            },
+            props = props,
             children = children,
         }
     end
@@ -186,7 +184,7 @@ function describeNode(node)
         local columns = {}
         for _, c in ipairs(children) do
             if c.tag == "__column" then
-                columns[#columns + 1] = c.props
+                table.insert(columns, c.props)
             end
         end
         props.columns = columns
@@ -242,7 +240,7 @@ local function parseXMLDesc(src)
     local function pushText(text)
         text = text:match("^%s*(.-)%s*$")
         if #text > 0 then
-            current().children[#current().children + 1] = { kind = "text", value = text }
+            table.insert(current().children, { kind = "text", value = text })
         end
     end
 
@@ -281,10 +279,10 @@ local function parseXMLDesc(src)
             end
 
             local node = { kind = "element", tag = tag, attrs = attrs, children = {} }
-            current().children[#current().children + 1] = node
+            table.insert(current().children, node)
 
             if not selfClose then
-                stack[#stack + 1] = node
+                table.insert(stack, node)
             end
             pos = gt + 1
         end
@@ -338,24 +336,24 @@ function M.diff(old, new, path)
     local patches = {}
 
     if not old and new then
-        patches[#patches + 1] = { op = "create", path = path, desc = new }
+        table.insert(patches, { op = "create", path = path, desc = new })
         return patches
     end
 
     if old and not new then
-        patches[#patches + 1] = { op = "remove", path = path }
+        table.insert(patches, { op = "remove", path = path })
         return patches
     end
 
     -- Both exist: check if tag changed (full replace)
     if old.tag ~= new.tag then
-        patches[#patches + 1] = { op = "replace", path = path, desc = new }
+        table.insert(patches, { op = "replace", path = path, desc = new })
         return patches
     end
 
     -- Same tag: check props
     if not deepEqual(old.props, new.props) then
-        patches[#patches + 1] = { op = "update", path = path, props = new.props }
+        table.insert(patches, { op = "update", path = path, props = new.props })
     end
 
     -- Diff children
@@ -365,12 +363,12 @@ function M.diff(old, new, path)
 
     for i = 1, maxLen do
         local childPath = {}
-        for _, p in ipairs(path) do childPath[#childPath + 1] = p end
-        childPath[#childPath + 1] = i
+        for _, p in ipairs(path) do table.insert(childPath, p) end
+        table.insert(childPath, i)
 
         local childPatches = M.diff(oldChildren[i], newChildren[i], childPath)
         for _, p in ipairs(childPatches) do
-            patches[#patches + 1] = p
+            table.insert(patches, p)
         end
     end
 
@@ -408,21 +406,21 @@ function M.serialize(desc)
     -- Simple JSON-like serialization (no external deps)
     if type(desc) ~= "table" then return tostring(desc) end
     local parts = {}
-    parts[#parts + 1] = "{"
+    table.insert(parts, "{")
     local first = true
     for k, v in pairs(desc) do
-        if not first then parts[#parts + 1] = "," end
+        if not first then table.insert(parts, ",") end
         first = false
-        parts[#parts + 1] = '"' .. tostring(k) .. '":'
+        table.insert(parts, '"' .. tostring(k) .. '":')
         if type(v) == "string" then
-            parts[#parts + 1] = '"' .. v:gsub('"', '\\"') .. '"'
+            table.insert(parts, '"' .. v:gsub('"', '\\"') .. '"')
         elseif type(v) == "table" then
-            parts[#parts + 1] = M.serialize(v)
+            table.insert(parts, (M.serialize(v)))
         else
-            parts[#parts + 1] = tostring(v)
+            table.insert(parts, tostring(v))
         end
     end
-    parts[#parts + 1] = "}"
+    table.insert(parts, "}")
     return table.concat(parts)
 end
 

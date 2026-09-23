@@ -12,6 +12,8 @@ enum {
 	kAxisKey,
 	kNavigationControllerKey,
 	kScrollViewportSizeKey,
+	kScrollContentKey,
+	kButtonContentKey,
 	kFlexibleKey,
 	kTableSourceKey,
 	kCallbackKey,

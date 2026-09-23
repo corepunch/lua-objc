@@ -5,16 +5,16 @@ function Inventory.plan(model)
 	for _, row in ipairs(model.resources:leaves()) do
 		if row.path then
 			if not row.mediaAccess or model.includeMedia then
-				paths[#paths + 1] = row.path; ids[#ids + 1] = row.id
+				table.insert(paths, row.path); table.insert(ids, row.id)
 			else
 				model.measurements[row.id] = {status = "excluded"}
 			end
-			exclusions[#exclusions + 1] = row.path
+			table.insert(exclusions, row.path)
 		end
 	end
 	if not model.includeMedia then
 		for _, relative in ipairs({"/Library/Photos", "/Library/Music", "/Library/MediaLibrary", "/Library/Containers/com.apple.Photos", "/Library/Containers/com.apple.Music", "/Library/Containers/com.apple.AMPArtworkAgent", "/Library/Group Containers/group.com.apple.Photos", "/Library/Group Containers/group.com.apple.Music"}) do
-			exclusions[#exclusions + 1] = model.home .. relative
+			table.insert(exclusions, model.home .. relative)
 		end
 	end
 	return paths, ids, exclusions

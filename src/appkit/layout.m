@@ -174,6 +174,14 @@ static CGFloat clamp_dimension(CGFloat value, CGFloat minimum, CGFloat maximum) 
 static CGFloat view_flex_grow(NSView *view, BOOL horizontal);
 
 static BOOL default_grows_on_axis(NSView *view, BOOL horizontal) {
+	NSView *label = objc_getAssociatedObject(view, &kKeys[kButtonContentKey]);
+	if (label) return view_flex_grow(label, horizontal) > 0;
+	if (objc_getAssociatedObject(view, &kKeys[kScrollContentKey])) {
+		NSScrollView *scroll = (NSScrollView *)view;
+		// A horizontal strip gets its height from its content, including when
+		// nested in a vertical scroll view with no proposed height.
+		if (scroll.hasHorizontalScroller && !scroll.hasVerticalScroller) return horizontal;
+	}
 	LayoutAxis axis = layout_axis(view);
 	if (axis == LayoutAxisHStack || axis == LayoutAxisVStack || axis == LayoutAxisZStack) {
 		for (NSView *child in view.subviews) {
@@ -486,6 +494,21 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		natural.height *= MAX(0, scale);
 	} else if (layout_axis(view) == LayoutAxisNone) {
 		natural = measure_leaf(view);
+		NSView *buttonContent = objc_getAssociatedObject(view, &kKeys[kButtonContentKey]);
+		if (buttonContent) natural = measure_view(buttonContent, constraint);
+		NSView *scrollContent = objc_getAssociatedObject(view, &kKeys[kScrollContentKey]);
+		if (scrollContent) {
+			NSScrollView *scroll = (NSScrollView *)view;
+			if (scroll.hasHorizontalScroller && !scroll.hasVerticalScroller) {
+				NSSize content = measure_view(scrollContent, (LuaLayoutConstraint){
+					.widthMode = LuaMeasureUndefined, .heightMode = LuaMeasureUndefined });
+				natural.height = [NSScrollView frameSizeForContentSize:content
+					horizontalScrollerClass:scroll.horizontalScroller.class
+					verticalScrollerClass:Nil borderType:scroll.borderType
+					controlSize:scroll.horizontalScroller.controlSize
+					scrollerStyle:scroll.scrollerStyle].height;
+			}
+		}
 		if ([view isKindOfClass:NSBox.class] && ((NSBox *)view).boxType == NSBoxPrimary) {
 			NSBox *box = (NSBox *)view;
 			NSSize margins = box.contentViewMargins;
@@ -878,16 +901,13 @@ static void layout_recursive_impl(NSView *view, CGFloat width) {
 					? contentH : MIN(natural.height, contentH);
 				if (view_fixed_width(sv) > 0) childW = view_fixed_width(sv);
 				if (view_fixed_height(sv) > 0) childH = view_fixed_height(sv);
-				CGFloat childX = padX;
-				CGFloat childY = padBottom;
-				if ([alignment isEqualToString:@"center"]) {
-					childX = padX + (contentW - childW) / 2;
-					childY = padBottom + (contentH - childH) / 2;
-				} else if ([alignment isEqualToString:@"trailing"]) {
-					childX = padX + contentW - childW;
-				} else if ([alignment isEqualToString:@"top"]) {
-					childY = padBottom + contentH - childH;
-				}
+				CGFloat childX = padX + (contentW - childW) / 2;
+				CGFloat childY = padBottom + (contentH - childH) / 2;
+				NSString *position = alignment.lowercaseString;
+				if ([position containsString:@"leading"]) childX = padX;
+				if ([position containsString:@"trailing"]) childX = padX + contentW - childW;
+				if ([position containsString:@"bottom"]) childY = padBottom;
+				if ([position containsString:@"top"]) childY = padBottom + contentH - childH;
 				sv.frame = NSMakeRect(childX, childY, childW, childH);
 				layout_recursive(sv, childW);
 			}
@@ -937,6 +957,12 @@ static void layout_recursive_impl(NSView *view, CGFloat width) {
 		if (objc_getAssociatedObject(view, &kKeys[kNavigationControllerKey])) {
 			view.needsLayout = YES;
 			[view layoutSubtreeIfNeeded];
+			return;
+		}
+		NSView *buttonContent = objc_getAssociatedObject(view, &kKeys[kButtonContentKey]);
+		if (buttonContent) {
+			buttonContent.frame = view.bounds;
+			layout_recursive(buttonContent, buttonContent.bounds.size.width);
 			return;
 		}
 		if ([view isKindOfClass:[NSTabView class]]) {

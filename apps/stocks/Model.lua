@@ -52,7 +52,7 @@ local function sampleNews(symbol, limit)
 	local included = {}
 	for _, article in ipairs(SAMPLE_NEWS) do
 		if not symbol or contains(article.symbols, symbol) or symbol == "^IXIC" then
-			result[#result + 1] = article
+			table.insert(result, article)
 			included[article] = true
 			if limit and #result >= limit then break end
 		end
@@ -60,7 +60,7 @@ local function sampleNews(symbol, limit)
 	if limit and #result < limit then
 		for _, article in ipairs(SAMPLE_NEWS) do
 			if not included[article] then
-				result[#result + 1] = article
+				table.insert(result, article)
 				if #result >= limit then break end
 			end
 		end
@@ -123,13 +123,13 @@ function Model.fetchNews(symbol, count)
 	local articles = {}
 	for i, n in ipairs(newsItems) do
 		if count and i > count then break end
-		articles[#articles + 1] = {
+		table.insert(articles, {
 			title = n.title or "",
 			source = n.publisher or "",
 			summary = n.description or "",
 			time = n.providerPublishTime and relativeTime(n.providerPublishTime) or "",
 			symbols = n.relatedTickers or {},
-		}
+		})
 	end
 	return #articles > 0 and articles or nil
 end
@@ -210,7 +210,7 @@ function Model.fetchStock(symbol)
 			for index = 1, count do
 				local v = raw[index]
 				if v ~= nil then
-					chartData[#chartData + 1] = v
+					table.insert(chartData, v)
 				end
 			end
 		end

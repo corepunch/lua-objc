@@ -93,7 +93,7 @@ local settings = SettingsController.new({loadSettings = function() return true e
 t.expect(not settings:toggle() and settings.enabled, "failed setting save preserves previous state")
 local pending, cancelled = {}, 0
 local scanner = Scan.new(Model.new("/Users/test"), {
-	start = function(paths) local job = {}; pending[#pending + 1] = job; return job end,
+	start = function(paths) local job = {}; table.insert(pending, job); return job end,
 	await = function(job, done, progress) job.done = done; job.progress = progress end,
 	cancel = function() cancelled = cancelled + 1 end,
 	diskSpace = function() return {totalKb = 100, freeKb = 50} end,

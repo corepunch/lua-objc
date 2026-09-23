@@ -106,7 +106,7 @@ end)]],
 for _, item in ipairs(items) do
 	for _, tag in ipairs(item.tags or {}) do
 		tags[tag] = tags[tag] or {}
-		tags[tag][#tags[tag] + 1] = item
+		table.insert(tags[tag], item)
 	end
 end
 
@@ -209,23 +209,23 @@ function Model.saveState()
 	}
 	local favorites = {}
 	for id, enabled in pairs(Model.state.favorites) do
-		if enabled then favorites[#favorites + 1] = id end
+		if enabled then table.insert(favorites, id) end
 	end
 	table.sort(favorites)
 	for i, id in ipairs(favorites) do
-		lines[#lines + 1] = string.format("    [%q] = true%s", id, i == #favorites and "" or ",")
+		table.insert(lines, string.format("    [%q] = true%s", id, i == #favorites and "" or ","))
 	end
-	lines[#lines + 1] = "  },"
-	lines[#lines + 1] = "  recents = {"
+	table.insert(lines, "  },")
+	table.insert(lines, "  recents = {")
 	for i, id in ipairs(Model.state.recents or {}) do
-		lines[#lines + 1] = string.format("    [%d] = %q%s", i, id, i == #Model.state.recents and "" or ",")
+		table.insert(lines, string.format("    [%d] = %q%s", i, id, i == #Model.state.recents and "" or ","))
 	end
-	lines[#lines + 1] = "  },"
-	lines[#lines + 1] = string.format("  selectedFolder = %q,", Model.state.selectedFolder or "all")
+	table.insert(lines, "  },")
+	table.insert(lines, string.format("  selectedFolder = %q,", Model.state.selectedFolder or "all"))
 	if Model.state.selectedSnippetId then
-		lines[#lines + 1] = string.format("  selectedSnippetId = %q,", Model.state.selectedSnippetId)
+		table.insert(lines, string.format("  selectedSnippetId = %q,", Model.state.selectedSnippetId))
 	end
-	lines[#lines + 1] = "}"
+	table.insert(lines, "}")
 	file:write(table.concat(lines, "\n"))
 	file:close()
 	return true
@@ -242,7 +242,7 @@ function Model.initialize()
 			for key, value in pairs(snippet) do copy[key] = value end
 			copy.favorite = Model.state.favorites[copy.id] == true or copy.favorite == true
 			Model.state.favorites[copy.id] = copy.favorite and true or false
-			Model.snippets[#Model.snippets + 1] = copy
+			table.insert(Model.snippets, copy)
 		end
 	end
 	for _, snippet in ipairs(Model.snippets) do
@@ -284,12 +284,12 @@ function Model.folderRows()
 	local counts = Model.groupCounts()
 	local rows = {}
 	for _, group in ipairs(Model.groups) do
-		rows[#rows + 1] = {
+		table.insert(rows, {
 			_id = group.id,
 			name = group.name,
 			count = tostring(counts[group.id] or 0),
 			icon = group.icon,
-		}
+		})
 	end
 	return rows
 end
@@ -304,7 +304,7 @@ function Model.tagRows(folderId)
 				local key = tag:lower()
 				if not index[key] then
 					index[key] = true
-					tags[#tags + 1] = { _id = key, name = tag }
+					table.insert(tags, { _id = key, name = tag })
 				end
 			end
 		end
@@ -323,7 +323,7 @@ end
 function Model.recentSnippets()
 	local items = {}
 	for _, id in ipairs(Model.state.recents or {}) do
-		items[#items + 1] = id
+		table.insert(items, id)
 	end
 	return items
 end
@@ -335,10 +335,10 @@ function Model.recordRecent(id)
 	for _, current in ipairs(Model.state.recents or {}) do
 		if current ~= id and not seen[current] then
 			seen[current] = true
-			recent[#recent + 1] = current
+			table.insert(recent, current)
 		end
 	end
-	recent[#recent + 1] = id
+	table.insert(recent, id)
 	if #recent > 12 then
 		table.remove(recent, 1)
 	end
@@ -390,7 +390,7 @@ function Model.filterSnippets(folderId, query, favoritesOnly, recentOnly)
 		local text = ((snippet.title or "") .. " " .. (snippet.summary or "") .. " " .. (table.concat(snippet.tags or {}, " ")) .. " " .. (snippet.code or "")):lower()
 		local matchesQuery = q == "" or text:find(q, 1, true) ~= nil
 		if matchesFolder and matchesQuery then
-			results[#results + 1] = snippet
+			table.insert(results, snippet)
 		end
 	end
 	if recentOnly then
@@ -400,7 +400,7 @@ function Model.filterSnippets(folderId, query, favoritesOnly, recentOnly)
 		for _, id in ipairs(Model.state.recents or {}) do
 			for _, snippet in ipairs(results) do
 				if snippet.id == id then
-					ordered[#ordered + 1] = snippet
+					table.insert(ordered, snippet)
 					break
 				end
 			end
@@ -434,9 +434,9 @@ function Model.executeSnippet(snippet)
 		print = function(...)
 			local parts = {}
 			for i = 1, select("#", ...) do
-				parts[#parts + 1] = tostring(select(i, ...))
+				table.insert(parts, tostring(select(i, ...)))
 			end
-			output[#output + 1] = table.concat(parts, "\t")
+			table.insert(output, table.concat(parts, "\t"))
 		end,
 		math = math,
 		table = table,
@@ -460,7 +460,7 @@ function Model.executeSnippet(snippet)
 		return table.concat(output, "\n"), "Runtime error: " .. message
 	end
 	if result ~= nil then
-		output[#output + 1] = tostring(result)
+		table.insert(output, tostring(result))
 	end
 	local body = table.concat(output, "\n")
 	if body == "" then

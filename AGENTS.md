@@ -103,6 +103,11 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   non-native effect.
 - Primary content consumes flexible space. Stacks add sibling spacing, not
   implicit outer margins.
+- SwiftUI parity includes implicit sizing: omit dimensions and expansion
+  attributes wherever the reference omits them. Fix shared layout defaults
+  instead of adding repeated sizing instructions to application templates.
+- When XML API design is ambiguous, refer to WPF property and content
+  conventions, retaining camelCase names and SwiftUI-style native behavior.
 - Let native containers own their geometry. In particular, do not fight
   `NSSplitView` with custom pane frames.
 - Use edge-to-edge `plain`/`fullWidth` tables for primary data, `sourceList`
@@ -116,6 +121,9 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
 
 ## Code conventions
 
+- Append to Lua sequences with `table.insert(items, value)`, never
+  `items[#items + 1] = value`. Preserve single-value semantics when the value
+  is a call that can return multiple results: `table.insert(items, (fn()))`.
 - New public Lua APIs and properties use camelCase. Preserve documented legacy
   names such as `fetch_json` and `Toggle.is_on` until an intentional migration.
 - Repeated template siblings use etlua loops; reusable view structure uses

@@ -18,7 +18,7 @@ function Cleanup.suggestions(model, rules)
 			value.priority, value.threshold = rule.priority, rule.threshold
 			value.subtitle = rule.advice
 			value.evidence = "Measured " .. value.size .. " · Review threshold " .. Model.size(rule.threshold)
-			result[#result + 1] = value
+			table.insert(result, value)
 		end
 	end
 	table.sort(result, function(a, b)

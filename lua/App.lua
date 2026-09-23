@@ -79,7 +79,7 @@ local function encodeJsonValue(value)
 		if arrayLike then
 			local parts = {}
 			for i = 1, count do
-				parts[#parts + 1] = encodeJsonValue(value[i])
+				table.insert(parts, (encodeJsonValue(value[i])))
 			end
 			return "[" .. table.concat(parts, ",") .. "]"
 		end
@@ -87,13 +87,13 @@ local function encodeJsonValue(value)
 		local keys = {}
 		for key, item in pairs(value) do
 			if type(key) == "string" then
-				keys[#keys + 1] = key
+				table.insert(keys, key)
 			end
 		end
 		table.sort(keys)
 		local parts = {}
 		for _, key in ipairs(keys) do
-			parts[#parts + 1] = "\"" .. jsonEscape(key) .. "\":" .. encodeJsonValue(value[key])
+			table.insert(parts, "\"" .. jsonEscape(key) .. "\":" .. encodeJsonValue(value[key]))
 		end
 		return "{" .. table.concat(parts, ",") .. "}"
 	end
@@ -153,7 +153,7 @@ function RecentStore:itemsOfKind(kind)
 	local items = {}
 	for _, item in ipairs(self.items) do
 		if kind == nil or item.kind == kind then
-			items[#items + 1] = item
+			table.insert(items, item)
 		end
 	end
 	return items
@@ -168,7 +168,7 @@ function RecentStore:touch(entry)
 	updated[1] = entry
 	for _, item in ipairs(self.items) do
 		if not (item.kind == entry.kind and item.path == entry.path) then
-			updated[#updated + 1] = item
+			table.insert(updated, item)
 		end
 	end
 
@@ -240,7 +240,7 @@ local function normalizeExtensions(list)
 	local result = {}
 	for _, ext in ipairs(list) do
 		if type(ext) == "string" and ext ~= "" then
-			result[#result + 1] = ext:lower():gsub("^%.*", "")
+			table.insert(result, (ext:lower():gsub("^%.*", "")))
 		end
 	end
 	if #result == 0 then return nil end
@@ -343,7 +343,7 @@ local function _pluginList(kind)
 	local plugins = {}
 	for _, spec in pairs(_plugins) do
 		if kind == nil or spec.kind == kind then
-			plugins[#plugins + 1] = spec
+			table.insert(plugins, spec)
 		end
 	end
 	table.sort(plugins, function(a, b)
@@ -442,11 +442,11 @@ function App.loadPluginsFromDirectory(dir)
 	for name in fh:lines() do
 		if name:match("%.lua$") then
 			local filepath = pathJoin(dir, name)
-			entries[#entries + 1] = {
+			table.insert(entries, {
 				name = name:gsub("%.lua$", ""),
 				filepath = filepath,
 				priority = parsePluginPriority(filepath),
-			}
+			})
 		end
 	end
 	fh:close()
@@ -463,7 +463,7 @@ function App.loadPluginsFromDirectory(dir)
 	for _, entry in ipairs(entries) do
 		local ok, result = pcall(require, prefix .. "." .. entry.name)
 		if ok then
-			loaded[#loaded + 1] = entry.name
+			table.insert(loaded, entry.name)
 		end
 	end
 	return loaded

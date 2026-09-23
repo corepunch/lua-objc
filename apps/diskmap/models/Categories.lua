@@ -22,7 +22,7 @@ function Categories.rows(model, rootId, query)
 				if value.status == "calculating" then calculating = true end
 				if value.status ~= "complete" then complete = false end
 				if value.status ~= "notMeasured" then attempted = true end
-				if visible then row.children[#row.children + 1] = value end
+				if visible then table.insert(row.children, value) end
 			end
 			row.bytes = measured and total or nil
 			row.status = excluded and "excluded" or calculating and "calculating" or complete and "complete" or measured and "partial" or failed and "failed" or attempted and "denied" or "notMeasured"
@@ -41,7 +41,7 @@ function Categories.rows(model, rootId, query)
 	local source = rootId and model.resources:find(rootId)
 	local rows = source and (source:isLeaf() and {source} or source:getChildren()) or model.resources:roots()
 	local result = {}
-	for _, row in ipairs(rows) do local value, visible = build(row, false); if visible then result[#result + 1] = value end end
+	for _, row in ipairs(rows) do local value, visible = build(row, false); if visible then table.insert(result, value) end end
 	return result
 end
 -- Capacity is partitioned into measured categories, a visible residual and free space.
@@ -56,12 +56,12 @@ function Categories.distribution(model, disk)
 	for _, row in ipairs(categories) do
 		local id = row.id
 		local bytes = row.bytes or 0; assigned = assigned + bytes
-		segments[#segments + 1] = {id = id, name = id == "media" and "Photos" or row.name, color = id == "macos" and "secondary" or row.color,
-			bytes = bytes, weight = bytes / total, size = row.size}
+		table.insert(segments, {id = id, name = id == "media" and "Photos" or row.name, color = id == "macos" and "secondary" or row.color,
+			bytes = bytes, weight = bytes / total, size = row.size})
 	end
 	local other = total - free - assigned
-	segments[#segments + 1] = {id = "unreconciled", name = "Not attributed", color = "tertiary", bytes = other, weight = other / total, size = Model.size(other)}
-	segments[#segments + 1] = {id = "free", name = "Free", color = "quaternaryLabel", bytes = free, weight = free / total, size = Model.size(free)}
+	table.insert(segments, {id = "unreconciled", name = "Not attributed", color = "tertiary", bytes = other, weight = other / total, size = Model.size(other)})
+	table.insert(segments, {id = "free", name = "Free", color = "quaternaryLabel", bytes = free, weight = free / total, size = Model.size(free)})
 	return segments, "Not attributed can include inaccessible files, snapshots and filesystem accounting differences. Category measurements may be partial."
 end
 -- Flat management rows retain their owner and exact path; totals stay in the ledger.
@@ -74,9 +74,9 @@ function Categories.managementRows(model, rootId, query, filter)
 			local m = model.measurements[row.id] or {}
 			local impact = row.policy == "Essential" and "Essential to keep" or row.policy == "Rebuildable" and "Safe/rebuildable" or "Needs review"
 			if (not filter or filter == "All" or filter == impact) and (row.name .. " " .. (owner or "") .. " " .. (row.path or "")):lower():find(needle, 1, true) then
-				result[#result + 1] = {id = row.id, name = row.name, subtitle = owner, path = row.path or "System managed", icon = row.icon, color = row.color, appIcon = row.appIcon, impact = impact,
+				table.insert(result, {id = row.id, name = row.name, subtitle = owner, path = row.path or "System managed", icon = row.icon, color = row.color, appIcon = row.appIcon, impact = impact,
 					size = m.status == "excluded" and "Not scanned" or m.status == "calculating" and "Calculating…" or m.status == "denied" and "Access restricted" or (m.status == "partial" and "≥ " or "") .. Model.size(m.bytes),
-					bytes = m.bytes, partial = m.status == "partial", calculating = m.status == "calculating"}
+					bytes = m.bytes, partial = m.status == "partial", calculating = m.status == "calculating"})
 			end
 		end
 	end

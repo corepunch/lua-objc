@@ -65,7 +65,7 @@ t.expect(not Simulators.command("delete", rows[1]), "running devices cannot be d
 rows[1].running = false; rows[1].id = "all"
 t.expect(not Simulators.command("delete", rows[1]), "wildcard deletion is forbidden")
 local calls, confirmed, refreshed = {}, false, 0
-local service = {command = function(argv, completion) calls[#calls + 1] = {argv = argv, done = completion} end,
+local service = {command = function(argv, completion) table.insert(calls, {argv = argv, done = completion}) end,
 	decode = function() return data end, confirmAction = function() return confirmed end,
 	reveal = function() end, openSettings = function() end}
 local controller = SimulatorController.new(model, service, function() refreshed = refreshed + 1 end)

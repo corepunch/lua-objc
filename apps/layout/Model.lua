@@ -20,7 +20,7 @@ function Model.itemsForSection(sectionId)
 	local result = {}
 	for _, item in ipairs(Model.contentItems) do
 		if item.section == sectionId then
-			result[#result + 1] = item
+			table.insert(result, item)
 		end
 	end
 	return result

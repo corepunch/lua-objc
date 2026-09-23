@@ -37,7 +37,7 @@ local state = Session.new({ engineFactory = function(game, ...)
 	t.assertEqual(select("#", ...), 0, "engine receives domain data without a UI platform")
 	return { start = function()
 		return { resume = function(_, command)
-			commands[#commands + 1] = command
+			table.insert(commands, command)
 			if command == "fail" then error("command failure") end
 			return "You look around."
 		end }, "An opening."

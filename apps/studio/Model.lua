@@ -93,7 +93,7 @@ end
 
 function Model:listFiles()
 	local result = {}
-	for path in pairs(self.files) do result[#result + 1] = path end
+	for path in pairs(self.files) do table.insert(result, path) end
 	table.sort(result)
 	return result
 end
@@ -103,7 +103,7 @@ function Model:commit(files)
 	if not ok then return nil, err end
 	ok, err = self.storage.save({ files = files, model = self.model })
 	if not ok then return nil, err or "Could not save project" end
-	self.history[#self.history + 1] = copy(self.files)
+	table.insert(self.history, (copy(self.files)))
 	if #self.history > LIMITS.history then table.remove(self.history, 1) end
 	self.files = copy(files)
 	self.revision = self.revision + 1
@@ -142,12 +142,12 @@ function Model:setModel(value)
 end
 
 function Model:message(role, text)
-	self.messages[#self.messages + 1] = { role = role, text = text }
+	table.insert(self.messages, { role = role, text = text })
 end
 
 function Model:transcript()
 	local lines = {}
-	for _, item in ipairs(self.messages) do lines[#lines + 1] = item.role .. "\n" .. item.text end
+	for _, item in ipairs(self.messages) do table.insert(lines, item.role .. "\n" .. item.text) end
 	return table.concat(lines, "\n\n")
 end
 return Model

@@ -30,7 +30,7 @@ return function(bridge)
 				table.remove(self.regs, i)
 			end
 		end
-		self.regs[#self.regs + 1] = r
+		table.insert(self.regs, r)
 		return r
 	end
 

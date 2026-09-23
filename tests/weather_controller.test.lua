@@ -10,8 +10,8 @@ local loadingCalls = {}
 local rows
 local controller = Controller.new()
 controller.weatherList = {
-	showLoading = function() loadingCalls[#loadingCalls + 1] = "show" end,
-	hideLoading = function() loadingCalls[#loadingCalls + 1] = "hide" end,
+	showLoading = function() table.insert(loadingCalls, "show") end,
+	hideLoading = function() table.insert(loadingCalls, "hide") end,
 	clearRows = function() rows = nil end,
 	replaceRows = function(_, value) rows = value end,
 }

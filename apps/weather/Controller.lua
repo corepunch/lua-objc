@@ -55,13 +55,13 @@ function Controller:refresh()
 			for _, city in ipairs(Model.cities) do
 				local data = Model.fetchCity(city)
 				self.weatherData[city.name] = data
-				rows[#rows + 1] = {
+				table.insert(rows, {
 					_id = city.name,
 					city = city.name,
 					summary = data and (data.temp .. "°C  ·  " .. data.cond) or "Unavailable",
 					temp = data and (tonumber(data.temp) and string.format("%.0f", data.temp) .. "°C" or "--") or "--",
 					cond = data and data.cond or "unreachable",
-			}
+			})
 			end
 
 			self.weatherList:replaceRows(rows)

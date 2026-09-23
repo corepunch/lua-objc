@@ -1,17 +1,17 @@
 <Window title="Swipe Actions" width="520" height="480" minWidth="400" minHeight="360">
-  <VStack spacing="0" fillWidth="true" fillHeight="true">
+  <VStack spacing="0" maxWidth="infinity" maxHeight="infinity">
     <Label text="Swipe right to archive or left to delete" padding="12" />
-    <List ref="items" data="items" header="false" style="plain" alternatingRows="false" fillWidth="true" flexGrow="1"
+    <List ref="items" data="items" header="false" style="plain" alternatingRows="false" maxWidth="infinity" flexGrow="1"
           swipeLeading="archive" swipeLeadingTitle="Archive"
           swipeTrailing="delete" swipeTrailingTitle="Delete" swipeTrailingRole="destructive"
           fullSwipe="true">
       <Column id="title" title="Item" />
     </List>
     <Label text="Swipeable rows in a VStack" padding="12" />
-    <VStack fillWidth="true">
+    <VStack maxWidth="infinity">
       <% for _, item in ipairs(stackItems) do %>
         <SwipeRow ref="stack_<%= item.id %>" id="<%= item.id %>"
-                  title="<%= item.title %>" status="<%= item.status %>" fillWidth="true"
+                  title="<%= item.title %>" status="<%= item.status %>" maxWidth="infinity"
                   swipeLeading="archiveStack" swipeLeadingTitle="Archive"
                   swipeTrailing="completeStack" swipeTrailingTitle="Complete"
                   swipeTrailingRole="normal" fullSwipe="true" />

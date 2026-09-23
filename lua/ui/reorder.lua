@@ -30,32 +30,32 @@ end
 -- Record a move operation: from_index -> to_index
 -- Moves element at from_index to position to_index, shifting others as needed.
 function Difference:move(from_index, to_index)
-  self.operations[#self.operations + 1] = {
+  table.insert(self.operations, {
     op = "move",
     from = from_index,
     to = to_index,
-  }
+  })
   return self
 end
 
 -- Record an insert operation: insert at index, item reference
 -- Typically used when a new item is added during reorder.
 function Difference:insert(index, item)
-  self.operations[#self.operations + 1] = {
+  table.insert(self.operations, {
     op = "insert",
     index = index,
     item = item,
-  }
+  })
   return self
 end
 
 -- Record a remove operation: remove item at index
 -- Typically used when an item is deleted during reorder.
 function Difference:remove(index)
-  self.operations[#self.operations + 1] = {
+  table.insert(self.operations, {
     op = "remove",
     index = index,
-  }
+  })
   return self
 end
 

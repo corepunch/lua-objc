@@ -1,5 +1,5 @@
 <Window title="Browser" width="900" height="640" minWidth="620" minHeight="420">
-  <VStack spacing="0" fillWidth="true" fillHeight="true">
+  <VStack spacing="0" maxWidth="infinity" maxHeight="infinity">
     <HStack spacing="8" padding="10">
       <Button title="Back" action="goBack" style="bordered" />
       <Button title="Forward" action="goForward" style="bordered" />
@@ -12,6 +12,6 @@
       <Button title="Zoom Out" action="zoomOut" style="bordered" />
       <Button title="Zoom In" action="zoomIn" style="bordered" />
     </HStack>
-    <WebView page="page" fillWidth="true" fillHeight="true" />
+    <WebView page="page" maxWidth="infinity" maxHeight="infinity" />
   </VStack>
 </Window>

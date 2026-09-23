@@ -26,12 +26,62 @@ XML attributes are strings when parsed. The registry coerces layout numbers and
 boolean values for supported attributes. Unknown tags are errors; unsupported
 attributes are ignored unless the tag documents them below.
 
+## Sizing
+
+Use [WPF layout conventions](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/alignment-margins-and-padding-overview)
+as the reference when an XML API design is ambiguous. Keep camelCase names and
+the SwiftUI-style native behavior documented here.
+
+Use `width` and `height` for fixed dimensions, `minWidth`/`minHeight` for
+minimums, and `maxWidth`/`maxHeight` for maximums. Set a maximum to `infinity`
+to expand along that axis, corresponding to SwiftUI's `.frame(maxWidth:
+.infinity)` or `.frame(maxHeight: .infinity)`. Omitting a dimension keeps the
+control's natural sizing behavior. Fixed dimensions must be finite,
+nonnegative numbers; zero is supported.
+
+```etlua
+<VStack padding="20" spacing="14" alignment="leading">
+  <Image path="<%= game.cover %>" maxWidth="infinity" height="280"
+         contentMode="fill" cornerRadius="16" />
+</VStack>
+```
+
+Omit sizing wherever the SwiftUI reference omits it. A stack derives its size
+from its children; labels keep their intrinsic width and wrap against the
+parent proposal. Use stack `alignment="leading"` for leading text, not an
+infinite width on each label. Text fields accept available width by default.
+Gradients fill both proposed dimensions. `Image resizable="true"` accepts its
+parent's proposal; `contentMode` chooses how the image draws in that rectangle.
+A horizontal-only `ScrollView` derives its height from its content, so do not
+calculate content width from item counts or hard-code the strip height.
+
+A plain native button can contain one label view (including a stack). Its size
+and flexibility come from that content. This is the XML equivalent of a SwiftUI
+button label closure and follows WPF's content-control convention:
+
+```etlua
+<Button style="plain" action="open" accessibilityLabel="Open adventure">
+  <VStack width="142" spacing="8" alignment="leading">
+    <Image path="<%= game.cover %>" resizable="true" contentMode="fill"
+           width="130" height="176" />
+    <Label text="<%= game.title %>" lines="1" />
+  </VStack>
+</Button>
+```
+
+Use `ZStack alignment="bottomLeading"` to position naturally sized overlay
+content; do not stretch it and add a spacer just to position it at the bottom.
+
+The removed `fillWidth`, `fillHeight`, `fixedWidth`, and `fixedHeight`
+attributes are errors. These names belong to native layout storage, not the
+XML vocabulary. `Window` and `Column` retain their own dimension properties.
+
 ## Containers
 
 | Tag | Purpose | Important attributes |
 |---|---|---|
 | `Window` | Window configuration and root content | `title`, `width`, `height`, `minWidth`, `minHeight`, `maxWidth`, `maxHeight`, `appearance`, `tabbingMode`, `tabbingIdentifier`, `toolbarLabels`, `visible`, `sidebarWidth` |
-| `VStack` | Vertical native stack | `padding`, `paddingHorizontal`, `paddingVertical`, `spacing`, `alignment`, `flexGrow`, `flexShrink`, `fixedWidth`, `fixedHeight`, `minWidth`, `minHeight`, `maxWidth`, `maxHeight`, `fillWidth`, `fillHeight`, `hidden` |
+| `VStack` | Vertical native stack | `padding`, `paddingHorizontal`, `paddingVertical`, `spacing`, `alignment`, `flexGrow`, `flexShrink`, `width`, `height`, `minWidth`, `minHeight`, `maxWidth`, `maxHeight`, `hidden` |
 | `HStack` | Horizontal native stack | Same layout attributes as `VStack` |
 | `HSplit` | Horizontal split container | Same layout attributes as `VStack`; use `Window sidebar/content` for a window-level sidebar |
 | `ScrollView` | Native scroll container for one content child | `contentWidth`, `contentHeight`, `horizontal`, `vertical`, plus layout attributes |
@@ -56,7 +106,7 @@ caller rather than creating a window directly in the XML compiler.
 | `Stepper` | AppKit `NSStepper` | `min`, `max`, `value`, `increment`, `wraps`, `autorepeat`, plus layout attributes |
 | `Picker` | AppKit `NSPopUpButton` | zero-based `value`, plus one or more `Option` children |
 | `Option` | Child descriptor consumed by `Picker` | `title`, `label`, or `value` |
-| `Image` | Native image view or SF Symbol | `src`/`path`, or `system`/`symbol`; `label`, `size`, `weight`, `color` |
+| `Image` | Native image view or SF Symbol | `src`/`path`, or `system`/`symbol`; `label`, `size`, `weight`, `color`, `resizable`, `contentMode` |
 | `SystemImage` | Native SF Symbol image | `name` or `symbol`, `label`, `size`, `weight`, `color` |
 | `Chart` | Pre-built chart supplied in render data | `data` key, default `chart` |
 

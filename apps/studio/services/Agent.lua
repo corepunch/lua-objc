@@ -61,7 +61,7 @@ function Agent:send(text, key)
 	self.generation = self.generation + 1
 	local generation, rounds = self.generation, 0
 	self.model:message("You", text)
-	self.conversation[#self.conversation + 1] = { role = "user", content = text }
+	table.insert(self.conversation, { role = "user", content = text })
 	local function fail(message)
 		self.model:message("Error", message)
 		self:stop()
@@ -79,15 +79,15 @@ function Agent:send(text, key)
 			if err then fail(err); return end
 			local message = response and response.choices and response.choices[1] and response.choices[1].message
 			if type(message) ~= "table" then fail("OpenRouter returned no assistant message"); return end
-			self.conversation[#self.conversation + 1] = message
+			table.insert(self.conversation, message)
 			if type(message.content) == "string" and message.content ~= "" then self.model:message("Agent", message.content) end
 			local calls = message.tool_calls
 			if type(calls) == "table" and #calls > 0 then
 				for _, call in ipairs(calls) do
 					if type(call.id) ~= "string" then fail("Invalid tool call ID"); return end
 					local ok, result = pcall(self.execute, self, call)
-					self.conversation[#self.conversation + 1] = { role = "tool", tool_call_id = call.id,
-						content = self.json.encode(ok and { result = result } or { error = tostring(result) }) }
+					table.insert(self.conversation, { role = "tool", tool_call_id = call.id,
+						content = self.json.encode(ok and { result = result } or { error = tostring(result) }) })
 				end
 				step()
 			else

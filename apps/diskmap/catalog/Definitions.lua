@@ -29,9 +29,9 @@ local function assets(id, name, subtitle, icon, color, classes)
 	}
 	local children = {}
 	for index, class in ipairs(classes) do
-		children[#children + 1] = item(id .. "-" .. index, class:gsub("_", " "),
+		table.insert(children, (item(id .. "-" .. index, class:gsub("_", " "),
 			"System-managed asset class · " .. name,
-			"/System/Library/AssetsV2/com_apple_MobileAsset_" .. class, system)
+			"/System/Library/AssetsV2/com_apple_MobileAsset_" .. class, system)))
 		if guidance[id] then
 			children[#children].settingsSection = guidance[id][1]
 			children[#children].consequence = guidance[id][2]
@@ -85,7 +85,7 @@ local function tool(id, name, root)
 	for _, spec in ipairs(specs) do
 		local row = item(id .. "-" .. spec[1], spec[2], spec[4], root .. spec[3], spec[5])
 		row.agent = id
-		children[#children + 1] = row
+		table.insert(children, row)
 	end
 	return group(id, name, "Paths and data types; sessions and worktrees require review", "terminal", "systemPurple", children)
 end

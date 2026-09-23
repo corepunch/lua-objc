@@ -45,7 +45,7 @@ if src then
 		local stripped = line:match("^%s*(.-)%s*$")
 		local doc = stripped:match("^%-%-%-%s?(.*)$")
 		if doc ~= nil then
-			pending[#pending + 1] = doc
+			table.insert(pending, doc)
 		elseif stripped == "" then
 			-- Blank line ends the block unless more --- lines follow;
 			-- simplified: keep pending (generator only skips blanks

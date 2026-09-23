@@ -104,7 +104,7 @@ local function testWebPage()
     attached:observe(function(property, value) observed[property] = value end)
     local calls = {}
     attached:_attachNative({}, function(_, action, ...)
-        calls[#calls + 1] = { action, ... }
+        table.insert(calls, { action, ... })
     end)
     attached:loadURL("file:///tmp/second.html")
     assert(calls[#calls][1] == "load" and calls[#calls][2] == "file:///tmp/second.html")

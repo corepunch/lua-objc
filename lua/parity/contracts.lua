@@ -84,8 +84,8 @@ function M.run(ns)
 	end
 	local changes, commands = {}, {}
 	local field = ns.TextField { value = "Initial", placeholder = "Command",
-		onChange = function(value) changes[#changes + 1] = value end,
-		onCommand = function(command) commands[#commands + 1] = command; return command == "submit" end,
+		onChange = function(value) table.insert(changes, value) end,
+		onCommand = function(command) table.insert(commands, command); return command == "submit" end,
 	}
 	equal(field.text, "Initial", "text field value is independent of placeholder")
 	equal(field.placeholder, "Command", "native placeholder is preserved")

@@ -1,41 +1,41 @@
-<VStack ref="chatPane" padding="12" spacing="10" flexGrow="1" flexBasis="0" minWidth="330" fillWidth="true" fillHeight="true" alignment="leading" background="background">
-	<HStack padding="0" spacing="6" fillWidth="true">
+<VStack ref="chatPane" padding="12" spacing="10" flexGrow="1" flexBasis="0" minWidth="330" maxWidth="infinity" maxHeight="infinity" alignment="leading" background="background">
+	<HStack padding="0" spacing="6" maxWidth="infinity">
 		<Label text="CONVERSATION" size="10" weight="semibold" color="secondary" />
 		<Spacer />
 		<Label ref="previewStatus" text="<%= status %>" size="11" color="secondary" />
 	</HStack>
-	<ScrollView flexGrow="1" fillWidth="true" fillHeight="true">
-		<VStack padding="0" spacing="14" fillWidth="true" alignment="leading">
-			<GroupBox padding="14" background="secondaryBackground" cornerRadius="14" fillWidth="true">
-				<Label text="<%= prompt %>" size="14" fillWidth="true" lines="5" />
+	<ScrollView flexGrow="1" maxWidth="infinity" maxHeight="infinity">
+		<VStack padding="0" spacing="14" maxWidth="infinity" alignment="leading">
+			<GroupBox padding="14" background="secondaryBackground" cornerRadius="14" maxWidth="infinity">
+				<Label text="<%= prompt %>" size="14" maxWidth="infinity" lines="5" />
 			</GroupBox>
-			<HStack padding="0" spacing="10" fillWidth="true" alignment="top">
+			<HStack padding="0" spacing="10" maxWidth="infinity" alignment="top">
 				<SystemImage name="sparkles" size="20" color="accent" label="Agent" />
-				<Label text="<%= response %>" size="14" fillWidth="true" lines="5" />
+				<Label text="<%= response %>" size="14" maxWidth="infinity" lines="5" />
 			</HStack>
-			<GroupBox padding="12" background="secondaryBackground" cornerRadius="14" fillWidth="true">
-				<VStack padding="0" spacing="5" fillWidth="true" alignment="leading">
+			<GroupBox padding="12" background="secondaryBackground" cornerRadius="14" maxWidth="infinity">
+				<VStack padding="0" spacing="5" maxWidth="infinity" alignment="leading">
 					<Label text="<%= #files %> files created" size="13" weight="semibold" />
 					<% for _, file in ipairs(files) do %>
-					<HStack padding="2" spacing="8" fillWidth="true">
+					<HStack padding="2" spacing="8" maxWidth="infinity">
 						<SystemImage name="<%= file:find('/') and 'folder.fill' or 'doc.text' %>" size="14" color="accent" />
-						<Label text="<%= file %>" size="13" fillWidth="true" />
+						<Label text="<%= file %>" size="13" maxWidth="infinity" />
 					</HStack>
 					<% end %>
 				</VStack>
 			</GroupBox>
-			<Label text="The app is ready. Run it in the preview to try it out. It uses local storage to save your habits and progress." size="13" fillWidth="true" lines="3" />
+			<Label text="The app is ready. Run it in the preview to try it out. It uses local storage to save your habits and progress." size="13" maxWidth="infinity" lines="3" />
 		</VStack>
 	</ScrollView>
 	<Divider />
 	<Label text="SUGGESTIONS" size="10" weight="semibold" color="secondary" />
-	<HStack padding="0" spacing="6" fillWidth="true">
+	<HStack padding="0" spacing="6" maxWidth="infinity">
 		<% for _, suggestion in ipairs(suggestions) do %>
 			<Button title="<%= suggestion %>" size="12" style="bordered" />
 		<% end %>
 	</HStack>
-	<HStack padding="6" spacing="8" fillWidth="true" alignment="center" background="secondaryBackground" cornerRadius="14">
-		<TextField ref="composer" text="" placeholder="Ask anything…" size="14" flexGrow="1" fillWidth="true" />
+	<HStack padding="6" spacing="8" maxWidth="infinity" alignment="center" background="secondaryBackground" cornerRadius="14">
+		<TextField ref="composer" text="" placeholder="Ask anything…" size="14" flexGrow="1" maxWidth="infinity" />
 		<Button title="" systemImage="mic" accessibilityLabel="Dictate" style="bordered" />
 		<Button title="" systemImage="arrow.up" accessibilityLabel="Send" style="borderedProminent" />
 	</HStack>

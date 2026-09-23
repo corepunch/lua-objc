@@ -81,12 +81,12 @@ function WindowController:loadMessages(mailboxId)
 	local rows = {}
 	for _, msg in ipairs(Model.byMailbox(mailboxId)) do
 		if (not self.unreadOnlyFilter) or msg.unread then
-			rows[#rows + 1] = {
+			table.insert(rows, {
 				_id     = msg.id,
 				from    = msg.from,
 				subject = msg.subject,
 				date    = msg.date,
-			}
+			})
 		end
 	end
 	self.messageList:replaceRows(rows)
@@ -112,12 +112,12 @@ function WindowController:createWindow()
 
 	local mailboxRows = {}
 	for _, mb in ipairs(Model.mailboxes) do
-		mailboxRows[#mailboxRows + 1] = {
+		table.insert(mailboxRows, {
 			_id = mb.id,
 			name = mb.name,
 			count = tostring(mb.count),
 			icon = mb.icon,
-		}
+		})
 	end
 	self.mailboxList:replaceRows(mailboxRows)
 

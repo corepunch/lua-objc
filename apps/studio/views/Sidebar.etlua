@@ -1,9 +1,9 @@
-<VStack ref="sidebar" padding="<%= collapsed and metrics.collapsedPadding or metrics.expandedPadding %>" spacing="10" fixedWidth="<%= collapsed and metrics.collapsedWidth or metrics.expandedWidth %>" fillHeight="true" alignment="leading" background="secondaryBackground">
+<VStack ref="sidebar" padding="<%= collapsed and metrics.collapsedPadding or metrics.expandedPadding %>" spacing="10" width="<%= collapsed and metrics.collapsedWidth or metrics.expandedWidth %>" maxHeight="infinity" alignment="leading" background="secondaryBackground">
 	<% if not collapsed then %>
-	<Button title="New Project" systemImage="plus" style="borderedProminent" fillWidth="true" />
+	<Button title="New Project" systemImage="plus" style="borderedProminent" maxWidth="infinity" />
 	<Label text="RECENT PROJECTS" size="10" weight="semibold" color="secondary" />
 	<% end %>
-	<VStack padding="0" spacing="5" fillWidth="true" alignment="leading">
+	<VStack padding="0" spacing="5" maxWidth="infinity" alignment="leading">
 		<% for _, project in ipairs(projects) do %>
 		<%- partial("SidebarItem.etlua", {item = project, collapsed = collapsed, metrics = metrics}) %>
 		<% end %>

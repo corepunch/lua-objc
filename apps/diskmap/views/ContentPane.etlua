@@ -1,1 +1,1 @@
-<VStack ref="content" minWidth="440" flexGrow="1" fillWidth="true" fillHeight="true" spacing="0" />
+<VStack ref="content" minWidth="440" flexGrow="1" maxWidth="infinity" maxHeight="infinity" spacing="0" />

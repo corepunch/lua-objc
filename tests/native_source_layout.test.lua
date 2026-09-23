@@ -19,9 +19,9 @@ local function checkFolder(path)
 		if entry.directory then
 			checkFolder(entry.path)
 		elseif entry.name:match("%.h$") then
-			headers[#headers + 1] = entry.name
+			table.insert(headers, entry.name)
 		elseif entry.name:match("%.m$") then
-			implementations[#implementations + 1] = entry.path
+			table.insert(implementations, entry.path)
 		end
 	end
 	if #implementations == 0 then return end

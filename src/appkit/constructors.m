@@ -102,6 +102,7 @@ static int bridge_AppKitControls_scrollView(lua_State *L) {
 	obj.borderType = NSNoBorder;
 	obj.drawsBackground = NO;
 	obj.documentView = content;
+	objc_setAssociatedObject(obj, &kKeys[kScrollContentKey], content, OBJC_ASSOCIATION_RETAIN);
 	objc_setAssociatedObject(obj, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 	/* Assigning documentView can restore AppKit's default vertical scroller;
 	 * apply the requested axis policy after the document is installed. */
@@ -344,14 +345,27 @@ static int bridge_AppKitControls_colorPicker(lua_State *L) {
 	return 1;
 }
 
+// NSButton owns tracking, keyboard activation, focus, and accessibility. Its
+// declarative label must not intercept the native control's mouse events.
+@interface LuaContentButton : NSButton
+@end
+@implementation LuaContentButton
+- (NSView *)hitTest:(NSPoint)point { return [super hitTest:point] ? self : nil; }
+@end
+
 static int bridge_AppKitControls_button(lua_State *L) {
 	const char *title = luaL_checkstring(L, 1);
-
-	NSButton *obj = [[NSButton alloc] initWithFrame:NSZeroRect];
+	NSView *content = lua_isnoneornil(L, 3) ? nil : check_view(L, 3);
+	NSButton *obj = content ? [[LuaContentButton alloc] initWithFrame:NSZeroRect]
+		: [[NSButton alloc] initWithFrame:NSZeroRect];
 	obj.title = [NSString stringWithUTF8String:title];
 	obj.bezelStyle = NSBezelStyleRounded;
 	[obj sizeToFit];
 	configure_control_callback(obj, L, 2);
+	if (content) {
+		[obj addSubview:content];
+		objc_setAssociatedObject(obj, &kKeys[kButtonContentKey], content, OBJC_ASSOCIATION_RETAIN);
+	}
 	push_objc(L, obj, "nsview");
 	return 1;
 }

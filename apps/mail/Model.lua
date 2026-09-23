@@ -65,7 +65,7 @@ local mailboxIndex = syncMailboxCounts()
 function Model.byMailbox(id)
 	local result = {}
 	for _, m in ipairs(Model.messages) do
-		if m.mailbox == id then result[#result + 1] = m end
+		if m.mailbox == id then table.insert(result, m) end
 	end
 	return result
 end
@@ -84,7 +84,7 @@ end
 
 function Model.addMessage(msg)
 	msg.id = #Model.messages + 1
-	Model.messages[#Model.messages + 1] = msg
+	table.insert(Model.messages, msg)
 	local mailbox = mailboxIndex[msg.mailbox]
 	if mailbox then mailbox.count = mailbox.count + 1 end
 end

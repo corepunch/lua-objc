@@ -520,6 +520,7 @@ static int bridge_UIKitControls_linearGradient(lua_State *L) {
 
 static int bridge_UIKitControls_button(lua_State *L) {
 	const char *title = luaL_checkstring(L, 1);
+	UIView *content = lua_isnoneornil(L, 7) ? nil : check_view(L, 7);
 	UIFont *font = lua_isnoneornil(L, 6) ? nil : lua_to_objc_value(L, 6);
 	BOOL has_callback = !lua_isnoneornil(L, 2);
 	const char *style = luaL_optstring(L, 3, "default");
@@ -564,6 +565,11 @@ static int bridge_UIKitControls_button(lua_State *L) {
 		if (font) obj.titleLabel.font = font;
 	}
 	[obj sizeToFit];
+	if (content) {
+		content.userInteractionEnabled = NO;
+		[obj addSubview:content];
+		objc_setAssociatedObject(obj, &kButtonContentKey, content, OBJC_ASSOCIATION_RETAIN);
+	}
 	if (callback) {
 		lua_reg_store(obj, &kCallbackKey, callback);
 		[obj addTarget:[LuaButtonTarget shared] action:@selector(onAction:) forControlEvents:UIControlEventTouchUpInside];

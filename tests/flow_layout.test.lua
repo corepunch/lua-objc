@@ -3,11 +3,11 @@ local t = require("TestKit")
 local ns = require("AppKit")
 local xml = require("ui.xml")
 local root, refs = xml.render([[
-<VStack spacing="0" fillWidth="true">
-  <FlowStack ref="flow" fillWidth="true" spacing="10">
-    <VStack ref="a" fixedWidth="60" fixedHeight="20" />
-    <VStack ref="b" fixedWidth="80" fixedHeight="30" />
-    <VStack ref="c" fixedWidth="40" fixedHeight="10" />
+<VStack spacing="0" maxWidth="infinity">
+  <FlowStack ref="flow" maxWidth="infinity" spacing="10">
+    <VStack ref="a" width="60" height="20" />
+    <VStack ref="b" width="80" height="30" />
+    <VStack ref="c" width="40" height="10" />
   </FlowStack>
   <Label ref="after" text="After the flow" />
 </VStack>]], {}, ns)
@@ -46,7 +46,7 @@ t.assertEqual(refs.flow.size.height, 30, "zero-size round trip does not retain s
 local empty = xml.render('<FlowStack padding="0" spacing="10"/>', {}, ns)
 empty:layout(150)
 t.assertEqual(empty.size.height, 0, "empty flow adds no row spacing")
-local padded, p = xml.render('<VStack><FlowStack ref="flow" padding="5" spacing="10" fillWidth="true"><VStack fixedWidth="60" fixedHeight="20"/><VStack fixedWidth="80" fixedHeight="30"/></FlowStack></VStack>', {}, ns)
+local padded, p = xml.render('<VStack><FlowStack ref="flow" padding="5" spacing="10" maxWidth="infinity"><VStack width="60" height="20"/><VStack width="80" height="30"/></FlowStack></VStack>', {}, ns)
 padded.size = ns.Size(160, 150); padded:layout(160)
 t.assertEqual(p.flow.size.height, 40, "padding is applied once around an exact-fit row")
 t.assertEqual(p.flow.subviews[1].frame.origin.x, 5, "flow respects leading padding")
