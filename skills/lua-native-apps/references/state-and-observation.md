@@ -1,6 +1,10 @@
-# State & Observation (No Framework)
+# State and Invalidation
 
-lua-objc does not port Combine or Swift Observation. Instead, it uses direct controller references and explicit invalidation—simpler to reason about, faster to implement.
+lua-objc state is ordinary Lua data on controllers and models. Property reads do
+not establish subscriptions, and mutations do not trigger rendering by
+themselves. Controllers explicitly invalidate after an action or model change.
+This is an observation-shaped state invalidation contract; it does not port
+Combine or Swift Observation.
 
 ## State Lives on the Controller
 
@@ -34,7 +38,10 @@ end
 
 ## Views Observe State Through Templates
 
-Controllers pass state to etlua templates. Templates are re-rendered when state changes—**no automatic dependency tracking needed**.
+Controllers pass state to etlua templates. Views update when the controller
+explicitly asks them to. Prefer updating a retained ref or a native collection
+for a local change. A full window render rebuilds its view tree and should be
+reserved for structural changes.
 
 ```xml
 <VStack>
@@ -56,7 +63,7 @@ Controllers pass state to etlua templates. Templates are re-rendered when state 
 
 ## When to Invalidate (Trigger Re-render)
 
-Call `updateUI()` or `renderWindow()` only when:
+Call a full-window `updateUI()` or `renderWindow()` only when:
 
 1. **User action** — button tap, gesture, text input
 2. **Model mutation** — item added/removed, status changed
@@ -66,7 +73,7 @@ Call `updateUI()` or `renderWindow()` only when:
 **Do not** invalidate on:
 - Animation frames (animations run natively)
 - Scroll events (scroll is native, just track position if needed)
-- Every keystroke if you're just buffering
+- Every keystroke when the view does not need immediate feedback
 - Reduce Motion / appearance changes (use system dark mode)
 
 ```lua
@@ -103,7 +110,7 @@ Text fields, toggles, and other inputs are bound via etlua attributes that feed 
 ```lua
 function Controller:updateName(newValue)
     self.formData.name = newValue
-    -- Update happens immediately; re-render on action buttons only
+    -- Buffer the edit; update a retained ref only if immediate feedback is needed.
 end
 ```
 
@@ -304,7 +311,7 @@ end
 |---------|-----|-------|
 | **Local state on controller** | Selection, form, UI mode | Shared global state |
 | **Explicit invalidation** | After user action, model change | Every animation frame |
-| **Template re-rendering** | Full window updates | Incremental property binding |
+| **Template re-rendering** | Structural changes | Full-window updates on every keystroke |
 | **Ref updates** | Single element changes | Re-rendering entire list |
 | **Direct action callbacks** | Controllers call model directly | Props drilling |
 | **Test as Lua table** | Verify state mutations | Mock framework |

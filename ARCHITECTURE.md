@@ -387,6 +387,23 @@ UI gaps belong in the framework. When native controls or layout do not meet
 the SwiftUI-style contract, improve the shared implementation and its tests
 instead of adding app-specific positioning or substitute controls.
 
+#### State invalidation contract
+
+Application state is ordinary Lua data held by a controller or model. It does
+not subscribe to property reads and it does not invalidate views automatically.
+Controllers explicitly choose when to update the interface after an action or
+model mutation. This is observation-shaped state management, not a port of
+Combine or Swift Observation.
+
+Use the narrowest update available: mutate a retained view ref for a local
+change, refresh a native collection for row changes, or call the controller's
+full render path when the view structure changes. A full render reconstructs
+the window's view tree; calling it for each text-field keystroke can make input
+laggy and discard native control state. Buffer edits in the controller/model
+when the UI need not react immediately, or update the specific retained ref.
+Invalidate after a meaningful user action, completed async result, or
+structural state change. Do not invalidate from scroll or animation callbacks.
+
 The IDE example is organized as:
 
 ```text
