@@ -5,16 +5,16 @@ export DEVELOPER_DIR
 SDK ?= iphoneos
 ARCH ?= arm64
 IOS_MIN ?= 26.5
-APP ?= apps/studio
-APP_SLUG := $(notdir $(patsubst %/,%,$(APP)))
-BUNDLE_ID ?= $(if $(filter apps/studio,$(APP)),org.luaobjc.studio,org.luaobjc.$(APP_SLUG))
+APP ?= studio
+APP_DIR := apps/$(APP)
+BUNDLE_ID ?= $(if $(filter studio,$(APP)),org.luaobjc.studio,org.luaobjc.$(APP))
 TEAM ?=
 PROFILE ?=
 IPAD_DEVICE ?=
 DEVICE_TYPE ?= iPad
-APP_ENTRY ?= $(APP)/init.lua
-APP_DISPLAY_NAME ?= $(if $(filter apps/studio,$(APP)),Lua Studio,$(if $(filter apps/adventure-arena,$(APP)),Adventure Arena,$(APP_SLUG)))
-APP_BUNDLE ?= $(if $(filter apps/studio,$(APP)),LuaStudio,$(APP_SLUG))
+APP_ENTRY ?= $(APP_DIR)/init.lua
+APP_DISPLAY_NAME ?= $(if $(filter studio,$(APP)),Lua Studio,$(if $(filter adventure-arena,$(APP)),Adventure Arena,$(APP)))
+APP_BUNDLE ?= $(if $(filter studio,$(APP)),LuaStudio,$(APP))
 DEVICE_FAMILY ?= 2
 FILE_SHARING ?= 1
 DEPLOY_DEVICE := $(IPAD_DEVICE)
@@ -53,7 +53,7 @@ $(ROOT)/LuaStudio: $(OBJECTS) $(HOST) ios/LuaRuntime/LuaRuntime.h src/uikit_modu
 	xcrun --sdk $(SDK) clang $(FLAGS) -fobjc-arc -Iios/LuaRuntime -Isrc -Ibuild $(HOST) src/uikit_module.m $(OBJECTS) $(FRAMEWORKS) $(SIM_LINK_FLAGS) -o $@
 app: $(ROOT)/LuaStudio
 	python3 scripts/ipad/bundle.py --binary $< --bundle $(BUNDLE) --sdk $(SDK) \
-		--identifier $(BUNDLE_ID) --minimum $(IOS_MIN) --app "$(APP)" \
+		--identifier $(BUNDLE_ID) --minimum $(IOS_MIN) --app "$(APP_DIR)" \
 		--entry "$(APP_ENTRY)" --display-name "$(APP_DISPLAY_NAME)" \
 		--device-family $(DEVICE_FAMILY) $(if $(filter 1,$(FILE_SHARING)),--file-sharing)
 ifeq ($(SDK),iphonesimulator)

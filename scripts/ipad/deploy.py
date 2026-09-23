@@ -35,9 +35,11 @@ def select_device(devices, device_type, requested=None):
         else:
             candidates.append(identity)
     if len(candidates) != 1:
-        variable = 'IPHONE_DEVICE' if device_type == 'iPhone' else 'IPAD_DEVICE'
-        raise ValueError(f'Expected exactly one available physical {device_type}; found {len(candidates)}. '
-                         f'Run make list-devices and set {variable}=<identifier>.')
+        if device_type == 'iPhone':
+            guidance = 'Connect exactly one available physical iPhone; run make list-devices to inspect devices.'
+        else:
+            guidance = 'Run make list-devices and set IPAD_DEVICE=<identifier>.'
+        raise ValueError(f'Expected exactly one available physical {device_type}; found {len(candidates)}. {guidance}')
     return candidates[0]
 
 
@@ -64,7 +66,7 @@ def main():
             devices = [d for d in devices if args.device in (d['udid'], d['name'])]
         devices.sort(key=lambda d: (d['state'] != 'Booted', d['name']))
         if not devices:
-            raise SystemExit('No available iPad simulator. Install an iOS runtime in Xcode.')
+            raise SystemExit(f'No available {args.device_type} simulator. Install an iOS runtime in Xcode.')
         device = devices[0]
         if device['state'] != 'Booted':
             run('xcrun', 'simctl', 'boot', device['udid'])

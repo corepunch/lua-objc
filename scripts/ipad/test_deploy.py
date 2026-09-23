@@ -34,6 +34,10 @@ class DiscoveryTests(unittest.TestCase):
     def test_iphone_ignores_ipad(self):
         self.assertEqual(select_device([device('tablet'), device('phone', 'iPhone')], 'iPhone'), 'phone')
 
+    def test_iphone_discovery_needs_no_device_selector(self):
+        with self.assertRaisesRegex(ValueError, 'Connect exactly one available physical iPhone'):
+            select_device([device('phone-a', 'iPhone'), device('phone-b', 'iPhone')], 'iPhone')
+
     def test_auto_discovery_uses_displayed_availability(self):
         self.assertEqual(device_list_command(None, '/tmp/devices.json'),
                          ['xcrun', 'devicectl', 'list', 'devices', '--filter',

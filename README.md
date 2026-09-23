@@ -407,3 +407,7 @@ Use `make ipad-run` for the simulator. The app includes an interactive phone-siz
 UIKit preview, an OpenRouter coding agent, system keyboard dictation, source
 editing, and undo. Projects run and save locally without the Mac packager.
 See [Lua Studio](apps/studio/README.md) for setup and current boundaries.
+
+Deploy an app from `apps/<name>/` to an iPhone with
+`make iphone-deploy APP=adventure-arena`. It uses the same build, signing, and
+install flow and automatically selects the only available physical iPhone.
