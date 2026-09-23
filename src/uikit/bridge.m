@@ -90,6 +90,7 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #include "preview.m"
 #include "workspace.m"
 #include "navigation.m"
+#include "private_navigation_palettes.m"
 #include "presentation.m"
 #include "../shared/parity_batch.m"
 #include "parity_batch.m"
@@ -175,6 +176,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_tabViewTabCount", bridge_UIKitTabView_tabCount},
 	{"_tabViewOnChange", bridge_UIKitTabView_onChange},
 	{"_navigationStack", bridge_UIKitNavigation_stack},
+	{"_navigationPalette", bridge_UIKitNavigation_palette},
 	{"_navigationLink", bridge_UIKitNavigation_link},
 	{"_presentSheet", bridge_UIKitPresentation_presentSheet},
 	{"_dismiss", bridge_UIKitPresentation_dismiss},

@@ -1,48 +1,47 @@
 # Private navigation palettes and LazyLayout
 
-**Status:** Research only; no private selectors are called by lua-objc.
-**Runtime:** No private implementation or experimental runtime switch is shipped.
+**Status:** Experimental opt-in navigation palettes; `LazyLayout` remains research only.
 **Reviewed:** 2026-09-23.
 
-## Findings and limits
+## Selector spike
 
-Community reports describe navigation-bar top and bottom palettes and an
-internal lazy-layout protocol. The referenced examples are not Apple API
-documentation. The exact class/selector signatures, supported OS versions, and
-behavior across releases have not been verified against an SDK or device in
-this repository. This document therefore records no confirmed availability
-range and includes no selector implementation.
+The [community sample](https://github.com/AlexChekel1337/navigation-bar-palette)
+uses `_UINavigationBarPalette`, `initWithContentView:`, and
+`UINavigationItem._setBottomPalette:`. Reverse-engineered runtime headers also
+list `_setTopPalette:`. These names are not Apple API contracts. The bridge
+checks for the class and selectors at runtime before calling them.
 
-The previous draft listed guessed `_setTopPalette:` / `_setBottomPalette:`
-selectors and claimed an iOS 17–26 support range. Those claims were not
-substantiated and have been removed. Treat `_UINavigationBarPalette`,
-`_topPalette`, `_bottomPalette`, and `LazyLayout` as unverified names from
-community research, not callable APIs.
+The private path is gated to iOS 26.5, the only simulator runtime available for
+this spike. Both palettes appeared in an iPhone 17 simulator screenshot; the
+public fallback was also viewed with the flag off. No behavior or support
+range is claimed for other iOS versions or physical devices.
+`LazyLayout` has no verified selector or protocol signature, so no runtime
+implementation is included.
 
-## Public path
+## Public fallback and opt-in
 
-Use `UINavigationItem` and `UINavigationController` for navigation-bar
-content, search, and toolbar items. Apple documents
-[`UINavigationItem.searchController`](https://developer.apple.com/documentation/uikit/uinavigationitem/searchcontroller)
-and its navigation interface guidance. Use native `List` for virtualized
-collections; lua-objc maps it to public AppKit/UIKit table controls. These are
-the supported paths in app code.
+`<NavigationStack>` accepts nested `<TopPalette>` and `<BottomPalette>` views.
+By default, public `UINavigationItem.titleView` hosts the top content and a
+public `UIToolbar` hosts the bottom content. Set
+`enablePrivateNavigationPalettes="true"` to try the private palette. A missing
+class, selector, or supported runtime automatically uses the public placement.
+All private runtime calls live in `src/uikit/private_navigation_palettes.m`.
 
-## Opt-in policy
+```xml
+<NavigationStack title="Discover" enablePrivateNavigationPalettes="true">
+  <VStack><Label text="Discover" /></VStack>
+  <BottomPalette><HStack><Label text="For You" /></HStack></BottomPalette>
+</NavigationStack>
+```
 
-`enablePrivateNavigationPalettes` and `enablePrivateLazyLayout` are documented
-as **false by default**. They are planning flags only; there is no runtime
-implementation to enable in this revision. Do not add app examples or test
-fixtures that invoke private selectors. A future experiment must be isolated in
-one Objective-C source file, gated before every invocation, version-checked,
-covered by a public fallback, and kept out of the default app/test path.
+The opt-in example is `apps/private-palettes/`; it is excluded from the
+default example list. Public `UINavigationItem` and `UINavigationController`
+APIs remain the supported production path. For large collections use native
+`List`, not private `LazyLayout`.
 
-Private APIs are unsupported and may change or disappear in any OS release.
-Using them can cause App Review rejection or removal after an OS update. A
-future opt-in implementation must surface this risk before enabling the code.
+## Risk
 
-## LazyLayout
-
-No private protocol implementation or version claim is included. Keep using
-`List` until a public layout API or a separately authorized, device-verified
-experiment demonstrates a need that public collections cannot meet.
+Private APIs are unsupported and can change or disappear in any OS release.
+Using them can cause App Review rejection or removal after an update. The
+presence check does not guarantee layout, accessibility, or future behavior.
+Do not enable this option in an App Store app unless you accept that risk.

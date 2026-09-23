@@ -18,7 +18,7 @@ app-side substitute.
 | `WebView` / observable `WebPage` | `<WebView page="page" />`; native `WKWebView` with `page:find(...)` and `page:setPageZoom(...)` on both platforms, plus AppKit magnification |
 | Lazy containers and large-list virtualization | Do not use eager `VStack` for unbounded rows; see issue [#9](https://github.com/corepunch/lua-objc/issues/9) |
 | Native motion and gestures | `onTap`/`onDrag`, `ui.haptics`, and Reduce Motion; no general implicit animation API |
-| Private navigation palettes / `LazyLayout` | Research only; unverified signatures and OS support, no runtime switch. Use public toolbar/SearchController/List APIs |
+| Private navigation palettes / `LazyLayout` | `<TopPalette>` / `<BottomPalette>` use public placement by default; private palette requires explicit `enablePrivateNavigationPalettes="true"` and the risk warning in `navigation.md`. `LazyLayout` remains research only |
 | Native swipe actions | `<List swipeLeading="archive" swipeTrailing="delete">` or `<SwipeRow>` inside a `VStack`; UIKit supports `fullSwipe="true"` |
 | State observation / invalidation | Controller actions update retained refs, native collections, or rerender when structure changes; see `ARCHITECTURE.md` and `state-and-observation.md` |
 

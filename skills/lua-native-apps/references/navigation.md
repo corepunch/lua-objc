@@ -56,10 +56,13 @@ layouts. Do not recreate system tab or navigation bars with segmented controls,
 custom drawing, or private classes. Check the XML vocabulary and platform
 reference for the exact properties supported by the current host.
 
-Navigation-bar palettes are private research only and have no implementation
-or runtime opt-in in this version. Prefer the public `UINavigationItem`,
-navigation toolbar, and search APIs. Any future private experiment requires
-explicit opt-in and the App Review/OS compatibility warning in
+Use public `UINavigationItem`, toolbar, and search APIs for navigation chrome.
+`<TopPalette>` and `<BottomPalette>` use public `titleView` and `UIToolbar` by
+default. The experimental `enablePrivateNavigationPalettes="true"` option is
+restricted to the iOS 26.5 runtime. Private APIs can change without notice,
+break accessibility or layout, and cause App Review rejection. Do not suggest
+that option unless the user explicitly requests private APIs and you show this
+risk paragraph. See
 [`docs/PRIVATE_API_RESEARCH.md`](../../../../docs/PRIVATE_API_RESEARCH.md).
 
 ## Sheets

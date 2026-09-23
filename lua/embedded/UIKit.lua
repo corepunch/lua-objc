@@ -198,6 +198,14 @@ function UIKit.NavigationStack(props)
 	if props.hidesTabBar ~= nil then
 		root.hidesBottomBarWhenPushed = props.hidesTabBar
 	end
+	if props.topPalette then
+		bridge._navigationPalette(navigation, props.topPalette, "top",
+			props.enablePrivateNavigationPalettes == true)
+	end
+	if props.bottomPalette then
+		bridge._navigationPalette(navigation, props.bottomPalette, "bottom",
+			props.enablePrivateNavigationPalettes == true)
+	end
 	navScreenScopes[navigation] = {}
 	if props.path then
 		for kind, builder in pairs(props.destinations or {}) do

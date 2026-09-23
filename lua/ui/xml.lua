@@ -1055,7 +1055,7 @@ local TAG_SCHEMA = {
     },
     NavigationStack = {
         constructor = "NavigationStack",
-        children = "content",
+        children = "array",
         props = {
             title = "str",
             largeTitle = "bool",
@@ -1063,7 +1063,23 @@ local TAG_SCHEMA = {
             hidesNavigationBar = "bool",
             path = "str",
             destinations = "str",
+            enablePrivateNavigationPalettes = "bool",
         },
+        collect = function(props, children)
+            local content
+            for _, child in ipairs(children) do
+                if type(child) == "table" and child.__navigationPalette then
+                    props[child.edge .. "Palette"] = child.content
+                elseif content == nil then
+                    content = child
+                else
+                    error("xml: <NavigationStack> requires one content child")
+                end
+            end
+            if not content then error("xml: <NavigationStack> requires one content child") end
+            props.content = content
+            for index = #props, 1, -1 do props[index] = nil end
+        end,
         transform = function(props)
             if renderData then
                 if type(props.path) == "string" then props.path = renderData[props.path] end
@@ -1071,6 +1087,20 @@ local TAG_SCHEMA = {
                     props.destinations = renderData[props.destinations]
                 end
             end
+        end,
+    },
+    TopPalette = {
+        kind = "record", flag = "__navigationPalette",
+        collect = function(props, children)
+            if #children ~= 1 then error("xml: <TopPalette> requires one view") end
+            props.edge, props.content = "top", children[1]
+        end,
+    },
+    BottomPalette = {
+        kind = "record", flag = "__navigationPalette",
+        collect = function(props, children)
+            if #children ~= 1 then error("xml: <BottomPalette> requires one view") end
+            props.edge, props.content = "bottom", children[1]
         end,
     },
     NavigationLink = {

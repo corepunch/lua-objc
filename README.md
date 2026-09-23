@@ -375,11 +375,12 @@ SwiftUI implementation; do not use it as an FPS or memory claim.
 
 ## Private API research
 
-Private navigation palettes and `LazyLayout` remain research only. No private
-selectors are shipped or called, and there is no runtime opt-in switch. A
-future experiment must be explicitly enabled, isolated, version-gated, and
-paired with a public fallback. Private APIs can trigger App Review rejection
-and can break without notice; see [`docs/PRIVATE_API_RESEARCH.md`](docs/PRIVATE_API_RESEARCH.md).
+Navigation palettes have an experimental
+`enablePrivateNavigationPalettes="true"` opt-in on iOS 26.5. The flag defaults
+to false; public `titleView` and `UIToolbar` host the same views otherwise.
+Private APIs can trigger App Review rejection and break without notice, so
+do not use the opt-in in a production app. `LazyLayout` remains research only;
+see [`docs/PRIVATE_API_RESEARCH.md`](docs/PRIVATE_API_RESEARCH.md).
 
 ## Testing
 
