@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Find an iPad, then sign/install/launch Lua Studio. Every failed step stops deployment."""
+"""Find a physical iPhone or iPad, then sign/install/launch a bundled Lua app."""
 import argparse
 import json
 from pathlib import Path
@@ -18,15 +18,16 @@ def device_list_command(requested, output):
     return command + ['--json-output', output]
 
 
-def select_ipad(devices, requested=None):
+def select_device(devices, device_type, requested=None):
     candidates = []
     for device in devices:
         hardware = device.get('hardwareProperties', {})
         properties = device.get('deviceProperties', {})
         identity = device.get('identifier', '')
         name = properties.get('name', '')
-        is_ipad = hardware.get('deviceType') == 'iPad' or 'ipad' in hardware.get('marketingName', '').lower()
-        if not is_ipad or hardware.get('reality') != 'physical':
+        is_target_type = (hardware.get('deviceType') == device_type
+                          or device_type.lower() in hardware.get('marketingName', '').lower())
+        if not is_target_type or hardware.get('reality') != 'physical':
             continue
         if requested:
             if requested in (identity, name, hardware.get('udid')):
@@ -34,8 +35,9 @@ def select_ipad(devices, requested=None):
         else:
             candidates.append(identity)
     if len(candidates) != 1:
-        raise ValueError(f'Expected exactly one available physical iPad; found {len(candidates)}. '
-                         'Run make list-devices and set IPAD_DEVICE=<identifier>.')
+        variable = 'IPHONE_DEVICE' if device_type == 'iPhone' else 'IPAD_DEVICE'
+        raise ValueError(f'Expected exactly one available physical {device_type}; found {len(candidates)}. '
+                         f'Run make list-devices and set {variable}=<identifier>.')
     return candidates[0]
 
 
@@ -47,6 +49,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--bundle', type=Path, required=True)
     parser.add_argument('--device')
+    parser.add_argument('--device-type', choices=('iPhone', 'iPad'), default='iPad')
     parser.add_argument('--team')
     parser.add_argument('--profile')
     parser.add_argument('--simulator', action='store_true')
@@ -56,7 +59,7 @@ def main():
     if args.simulator:
         payload = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', 'available', '-j']))
         devices = [d for group in payload['devices'].values() for d in group
-                   if 'iPad' in d['name'] and d.get('isAvailable')]
+                   if args.device_type in d['name'] and d.get('isAvailable')]
         if args.device:
             devices = [d for d in devices if args.device in (d['udid'], d['name'])]
         devices.sort(key=lambda d: (d['state'] != 'Booted', d['name']))
@@ -75,8 +78,8 @@ def main():
         output = Path(temporary) / 'devices.json'
         run(*device_list_command(args.device, output))
         payload = json.loads(output.read_text())
-    device = select_ipad(payload['result']['devices'], args.device)
-    print('Selected iPad ' + device, flush=True)
+    device = select_device(payload['result']['devices'], args.device_type, args.device)
+    print('Selected ' + args.device_type + ' ' + device, flush=True)
     sign = [sys.executable, 'scripts/ipad/sign.py', str(bundle), '--device', device]
     # The signer checks provisioning device UDIDs after resolving CoreDevice's identifier below.
     matching = next(d for d in payload['result']['devices'] if d['identifier'] == device)
@@ -96,4 +99,4 @@ if __name__ == '__main__':
     except ValueError as error:
         raise SystemExit(str(error))
     except subprocess.CalledProcessError as error:
-        raise SystemExit(f'Deployment step failed (exit {error.returncode}). See the tool error above; unlock the iPad if launch was denied.')
+        raise SystemExit(f'Deployment step failed (exit {error.returncode}). See the tool error above; unlock the device if launch was denied.')

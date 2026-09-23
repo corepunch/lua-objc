@@ -5,13 +5,22 @@ export DEVELOPER_DIR
 SDK ?= iphoneos
 ARCH ?= arm64
 IOS_MIN ?= 26.5
-BUNDLE_ID ?= org.luaobjc.studio
+APP ?= apps/studio
+APP_SLUG := $(notdir $(patsubst %/,%,$(APP)))
+BUNDLE_ID ?= $(if $(filter apps/studio,$(APP)),org.luaobjc.studio,org.luaobjc.$(APP_SLUG))
 TEAM ?=
 PROFILE ?=
 IPAD_DEVICE ?=
+DEVICE_TYPE ?= iPad
+APP_ENTRY ?= $(APP)/init.lua
+APP_DISPLAY_NAME ?= $(if $(filter apps/studio,$(APP)),Lua Studio,$(if $(filter apps/adventure-arena,$(APP)),Adventure Arena,$(APP_SLUG)))
+APP_BUNDLE ?= $(if $(filter apps/studio,$(APP)),LuaStudio,$(APP_SLUG))
+DEVICE_FAMILY ?= 2
+FILE_SHARING ?= 1
+DEPLOY_DEVICE := $(IPAD_DEVICE)
 SDK_PATH := $(shell xcrun --sdk $(SDK) --show-sdk-path)
 ROOT := build/ipad/$(SDK)-$(ARCH)
-BUNDLE := $(ROOT)/LuaStudio.app
+BUNDLE := $(ROOT)/$(APP_BUNDLE).app
 LUA := vendor/lua-5.4.8/src
 LUA_SOURCES := $(filter-out $(LUA)/lua.c $(LUA)/luac.c,$(wildcard $(LUA)/*.c))
 OBJECTS := $(patsubst $(LUA)/%.c,$(ROOT)/lua/%.o,$(LUA_SOURCES))
@@ -43,12 +52,15 @@ build/generated/UIKit.lua.h: lua/embedded/UIKit.lua
 $(ROOT)/LuaStudio: $(OBJECTS) $(HOST) ios/LuaRuntime/LuaRuntime.h src/uikit_module.m $(FRAGMENTS) build/generated/UIKit.lua.h scripts/ipad/build.mk $(SIM_ENTITLEMENTS) $(SIM_DER)
 	xcrun --sdk $(SDK) clang $(FLAGS) -fobjc-arc -Iios/LuaRuntime -Isrc -Ibuild $(HOST) src/uikit_module.m $(OBJECTS) $(FRAMEWORKS) $(SIM_LINK_FLAGS) -o $@
 app: $(ROOT)/LuaStudio
-	python3 scripts/ipad/bundle.py --binary $< --bundle $(BUNDLE) --sdk $(SDK) --identifier $(BUNDLE_ID) --minimum $(IOS_MIN)
+	python3 scripts/ipad/bundle.py --binary $< --bundle $(BUNDLE) --sdk $(SDK) \
+		--identifier $(BUNDLE_ID) --minimum $(IOS_MIN) --app "$(APP)" \
+		--entry "$(APP_ENTRY)" --display-name "$(APP_DISPLAY_NAME)" \
+		--device-family $(DEVICE_FAMILY) $(if $(filter 1,$(FILE_SHARING)),--file-sharing)
 ifeq ($(SDK),iphonesimulator)
 	codesign --force --sign - $(BUNDLE)
 endif
 run: app
-	python3 scripts/ipad/deploy.py --simulator --bundle $(BUNDLE) $(if $(IPAD_DEVICE),--device "$(IPAD_DEVICE)")
+	python3 scripts/ipad/deploy.py --simulator --device-type "$(DEVICE_TYPE)" --bundle $(BUNDLE) $(if $(DEPLOY_DEVICE),--device "$(DEPLOY_DEVICE)")
 deploy: app
 	@test "$(SDK)" = iphoneos || { echo 'Deploy requires SDK=iphoneos'; exit 1; }
-	python3 scripts/ipad/deploy.py --bundle $(BUNDLE) $(if $(IPAD_DEVICE),--device "$(IPAD_DEVICE)") $(if $(TEAM),--team "$(TEAM)") $(if $(PROFILE),--profile "$(PROFILE)")
+	python3 scripts/ipad/deploy.py --device-type "$(DEVICE_TYPE)" --bundle $(BUNDLE) $(if $(DEPLOY_DEVICE),--device "$(DEPLOY_DEVICE)") $(if $(TEAM),--team "$(TEAM)") $(if $(PROFILE),--profile "$(PROFILE)")

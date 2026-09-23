@@ -237,6 +237,12 @@ parity-report: parity-check
 
 # Standalone iPad development app (no Mac packager required).
 .PHONY: ipad ipad-simulator ipad-run ipad-deploy list-devices
+.PHONY: iphone-deploy
+iphone-deploy:
+	$(MAKE) -f scripts/ipad/build.mk SDK=iphoneos DEVICE_TYPE=iPhone \
+		APP="$(or $(APP),apps/adventure-arena)" DEVICE_FAMILY=1 FILE_SHARING=0 \
+		TEAM="$(TEAM)" PROFILE="$(PROFILE)" deploy
+
 ipad:
 	$(MAKE) -f scripts/ipad/build.mk SDK=iphoneos app
 ipad-simulator:
