@@ -190,6 +190,138 @@ make run ARGS="apps/hello/init.lua"
 ./lua-objc --screenshot=/tmp/screenshot.png apps/stocks/init.lua
 ```
 
+### Run an app in iPhone Simulator
+
+The streaming UIKit host runs an app entry point from the Mac packager. Use
+`PROJECT` (not `ARGS`) to select the app:
+
+```sh
+make ios-run PROJECT=apps/hello
+make ios-run PROJECT=apps/adventure-arena
+```
+
+The command builds `build/ios/LuaRuntime.app` if needed, starts the packager on
+port 8081, boots the configured simulator, installs the host, and launches it.
+Lua, templates, and assets are served from the working tree. Keep the packager
+running while the app is open for file loading and hot reload.
+
+#### Simulator troubleshooting
+
+- Confirm the selected Xcode and SDK with `xcode-select -p` and
+  `xcrun --sdk iphonesimulator --show-sdk-version`.
+- List installed simulator runtimes and devices with
+  `xcrun simctl list devices available`. If Xcode Settings shows an installed
+  runtime but this command reports `CoreSimulatorService connection became
+  invalid` or `Connection refused`, retry `simctl` with elevated sandbox
+  permissions. A restricted shell may not be allowed to connect to the host's
+  CoreSimulator XPC service. That error does not mean the runtime is absent.
+- `make ios-run` also expects
+  `$DEVELOPER_DIR/Applications/Simulator.app`. If that GUI app path is missing
+  but `simctl` can list devices, boot and launch by explicit device UDID instead
+  of treating the simulator runtime as unavailable:
+
+  ```sh
+  xcrun simctl list devices available
+  SIMULATOR_UDID="paste-the-selected-device-udid-here"
+  xcrun simctl boot "$SIMULATOR_UDID" || true
+  xcrun simctl bootstatus "$SIMULATOR_UDID" -b
+  make ios-host ios-packager
+  ```
+
+  Start the packager in a separate terminal, using the same app entry point:
+
+  ```sh
+  trap '' PIPE
+  build/lua-objc-packager --root "$PWD" --port 8081 \
+    --entry apps/adventure-arena
+  ```
+
+  Ignoring `SIGPIPE` keeps a disconnected hot-reload WebSocket from terminating
+  the local packager. Then install and launch the host explicitly:
+
+  ```sh
+  xcrun simctl install "$SIMULATOR_UDID" build/ios/LuaRuntime.app
+  SIMCTL_CHILD_LUA_OBJC_APP=apps/adventure-arena \
+  SIMCTL_CHILD_LUA_OBJC_PACKAGER=http://127.0.0.1:8081 \
+    xcrun simctl launch --terminate-running-process \
+      "$SIMULATOR_UDID" org.luaobjc.host
+  xcrun simctl io "$SIMULATOR_UDID" screenshot /tmp/ios-simulator.png
+  ```
+
+- If the screen says it is waiting for the packager, confirm the packager
+  process is still alive and serving port 8081, then relaunch the host after
+  the packager is ready. A packager that exited with status 141 received
+  `SIGPIPE`; restart it with `trap '' PIPE` as above.
+- If the iOS host fails to link symbols for `WKWebView` or
+  `WKFindConfiguration`, link the `WebKit` framework in the host build command.
+
+### Run a bundled app in iPad Simulator
+
+Use the standalone app bundle when you want the app and its Lua files bundled
+together, without the Mac packager:
+
+```sh
+make ipad-run APP=adventure-arena
+```
+
+This builds for `iphonesimulator`, bundles `apps/adventure-arena/` and the Lua
+framework, then installs and launches on an available iPad simulator. Choose a
+specific simulator by name or UDID with `IPAD_DEVICE`:
+
+```sh
+make ipad-run APP=adventure-arena IPAD_DEVICE="iPad Pro 13-inch (M5)"
+```
+
+If `open -a Simulator` fails but `simctl` can access CoreSimulator, build the
+bundle and use the explicit-UDID fallback described above. The simulator app
+bundle is `build/ipad/iphonesimulator-arm64/adventure-arena.app`; install it with
+`xcrun simctl install` and launch bundle ID `org.luaobjc.adventure-arena`.
+Simulator builds do not need a signing profile.
+
+### Deploy a bundled app to a physical iPad or iPhone
+
+First pair and trust the device with the Mac, unlock it, and inspect available
+devices:
+
+```sh
+make list-devices
+```
+
+Deploy an app to an iPad:
+
+```sh
+make ipad-deploy APP=adventure-arena
+```
+
+The target builds for `iphoneos`, finds exactly one available physical iPad,
+signs the app with a matching installed Apple Development certificate and
+provisioning profile, then installs and launches it. If multiple iPads are
+available, select one by name or identifier:
+
+```sh
+make ipad-deploy APP=adventure-arena IPAD_DEVICE="iPad device name or identifier"
+```
+
+If automatic signing selection cannot find a matching profile, install a
+development profile that includes the target device and app identifier, or
+pass its path and, if needed, the Apple Developer team ID:
+
+```sh
+make ipad-deploy APP=adventure-arena \
+  IPAD_DEVICE="iPad device name or identifier" \
+  PROFILE="/path/to/development.mobileprovision" TEAM="TEAMID1234"
+```
+
+Deploy to a physical iPhone with the matching target:
+
+```sh
+make iphone-deploy APP=adventure-arena
+```
+
+It expects exactly one available physical iPhone; use `make list-devices` if
+selection or pairing fails. `make ipad` only builds the device app bundle;
+`make ipad-deploy` performs signing, installation, and launch.
+
 ### Inspect computed AppKit layout
 
 Use the native layout dump whenever a macOS view is clipped, misplaced, or
