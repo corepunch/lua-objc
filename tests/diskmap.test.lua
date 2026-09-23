@@ -1,6 +1,7 @@
 local Categories = require("apps.diskmap.models.Categories")
 local Preferences = require("apps.diskmap.models.Preferences")
 local Cleanup = require("apps.diskmap.models.Cleanup")
+local Inspector = require("apps.diskmap.models.Inspector")
 _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
@@ -38,6 +39,15 @@ t.assertEqual(#filtered, 1, "search preserves one semantic ancestor")
 t.assertEqual(filtered[1].id, "developer", "search retains category")
 t.assertEqual(filtered[1].bytes, 307200, "filter does not change category total")
 t.assertEqual(#Categories.rows(model, nil, "["), 0, "search is literal")
+local downloadSearch = Categories.rows(model, nil, "Downloads")
+local documents
+for _, row in ipairs(downloadSearch) do if row.id == "documents" then documents = row end end
+t.expect(documents and documents.forceExpanded, "resource search expands its semantic category")
+local downloadFound = false
+for _, child in ipairs(documents and documents.children or {}) do if child.id == "downloads" then downloadFound = true end end
+t.expect(downloadFound, "storage search returns the matching resource, not only its category")
+t.expect(Inspector.details(model, "applications").text:find("Open Manage category", 1, true) ~= nil,
+	"category guidance names the visible path to its detailed resource list")
 Inventory.apply(model, {"derived"}, {failure = "cancelled"})
 t.expect(not model.resources:find("derived"):validateTrash(), "failed measurement disables removal")
 t.assertEqual(model.measurements.derived.bytes, nil, "failure discards old bytes")
@@ -45,6 +55,10 @@ Inventory.apply(model, {"derived"}, {trees = {}, rootStates = {"missing"}})
 t.assertEqual(model.measurements.derived.bytes, 0, "confirmed missing is zero")
 Inventory.apply(model, {"derived"}, {trees = {}, rootStates = {"unreadable"}})
 t.assertEqual(model.measurements.derived.bytes, nil, "denied is unknown")
+Inventory.apply(model, {"derived"}, {trees = {{kb = 125}}, rootStates = {"measured"}})
+model.measurements.derived.status = "partial"
+t.expect(Inspector.details(model, "derived").location:find("At least 128 KB measured · partial", 1, true) ~= nil,
+	"inspector describes partial size as a measured lower bound")
 local paths, ids = Inventory.plan(model)
 local targets = {}; for i, path in ipairs(paths) do targets[ids[i]] = path end
 for _, row in ipairs(model.resources:leaves()) do
@@ -54,7 +68,7 @@ t.assertEqual(targets["home-other"], "/Users/test", "unrecognized home files are
 t.assertEqual(targets["root-system"], "/", "root residual closes inventory gaps")
 t.assertEqual(model.measurements.snapshots.status, "unsupported", "snapshot allocation is explicitly system managed")
 local chartModel = Model.new("/Users/test")
-chartModel.measurements["apps-system"] = {bytes = 58e9, status = "complete"}
+chartModel.measurements["apps-system-other"] = {bytes = 58e9, status = "complete"}
 chartModel.measurements.derived = {bytes = 4.9e9, status = "complete"}
 local disk = {totalKb = 494e9 / 1024, freeKb = 157e9 / 1024}
 local segments = Categories.distribution(chartModel, disk)
@@ -115,6 +129,10 @@ end
 t.expect(atTop(), "new opportunity content starts at top")
 ui:updateRows(); t.expect(atTop(), "unchanged model preserves scroll position")
 t.expect(ui.refs.coveragePanel.frame.size.width > ui.refs.categoriesPane.frame.size.width, "scan quality spans the dashboard beside the totals")
+t.assertEqual(ui.refs.access.title, "Scan access…", "access settings are offered without implying Full Disk Access is required")
+ui.model.scan.errors = 7; ui:updateRows()
+t.assertEqual(ui.refs.access.title, "Review scan access…", "access guidance becomes specific when scan issues exist")
+ui.model.scan.errors = 0; ui:updateRows()
 ui:select("developer")
 t.expect(not ui.refs.inspector.hidden, "selection exposes the inspector")
 t.expect(ui.refs.measure.enabled, "selection allows a fresh measurement")

@@ -13,9 +13,9 @@ make diskmap-app
 Every launch starts a fresh inventory. Photos, Music, Movies and known media support locations are excluded by default; opt in for the current session in Settings. Excluded sizes are unknown, never zero. Diskmap has no directory
 argument, saved-inventory replay, or scan-result cache.
 
-`Catalog.lua` composes independent providers in `catalog/` into the macOS knowledge tree, including Xcode runtimes, devices, bundled SDKs, archives, package managers, AI coding tools, mobile toolchains, system assets, app support, backups, media and boot data. Startup also discovers project-local generated folders when their parent project marker exists, and full macOS installer apps directly inside `/Applications`; each discovered path is measured as its own reviewable resource and excluded from its broader residual measurement.
+`Catalog.lua` composes independent providers in `catalog/` into the macOS knowledge tree, including Xcode runtimes, devices, bundled SDKs, archives, package managers, AI coding tools, mobile toolchains, system assets, app support, backups, media and boot data. Startup also discovers project-local generated folders when their parent project marker exists and application bundles directly inside `/Applications` and `~/Applications`; each discovered path is measured as its own review-only resource and excluded from its broader residual measurement.
 New layouts remain review-only until their ownership and cleanup policy are
-verified. Arbitrary custom installations and every third-party app are not yet
+verified. Nested app bundles and arbitrary custom installations are not
 automatically discovered. Known asset classes give Siri, Dictation/shared speech recognition, voices,
 Apple Intelligence, translation, Photos models, wallpapers, fonts and dictionaries
 separate totals. Unrecognized classes remain in an explicit residual bucket.
@@ -52,7 +52,11 @@ and mounted descendants, and deduplicate hard links across the whole batch.
 Confirmed missing paths count as zero, permission failures remain partial or
 unknown, and snapshot exclusive allocation is explicitly system managed. APFS
 shared extents and snapshots can still prevent physical-capacity parity. The
-signed unreconciled difference is displayed, never called disposable junk.
+difference from macOS storage usage is labeled Not attributed; it can include
+access gaps, snapshots and filesystem accounting differences, and is never
+presented as disposable storage. Partial resource measurements show a lower
+bound. Search in Storage matches category names, descriptions, resource names
+and paths; matching resources appear under their semantic categories.
 Category refresh also scans the full ledger so independent batches cannot
 reassign hard-link ownership and corrupt totals.
 

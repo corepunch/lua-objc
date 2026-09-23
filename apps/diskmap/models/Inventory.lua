@@ -35,7 +35,8 @@ local function measurement(node, state)
 		status = state == "skipped" and "skipped" or state == "missing" and "complete" or type(node) == "table" and (node.partial and "partial" or "complete") or "denied"}
 end
 function Inventory.progress(model, ids, result)
-	model.scan.errors = result.errors or 0
+	model.scan = {errors = result.errors or 0, visited = result.visited or 0,
+		completed = result.completed or 0, total = result.total or #ids, seconds = result.seconds or 0}
 	for i = 1, math.min(result.completed or 0, #ids) do
 		local state = result.rootStates and result.rootStates[i]
 		if state then

@@ -60,9 +60,9 @@ function Categories.distribution(model, disk)
 			bytes = bytes, weight = bytes / total, size = row.size}
 	end
 	local other = total - free - assigned
-	segments[#segments + 1] = {id = "unreconciled", name = "Unreconciled", color = "tertiary", bytes = other, weight = other / total, size = Model.size(other)}
+	segments[#segments + 1] = {id = "unreconciled", name = "Not attributed", color = "tertiary", bytes = other, weight = other / total, size = Model.size(other)}
 	segments[#segments + 1] = {id = "free", name = "Free", color = "quaternaryLabel", bytes = free, weight = free / total, size = Model.size(free)}
-	return segments, "Unreconciled includes inaccessible files, snapshots and filesystem accounting differences. Category measurements may be partial."
+	return segments, "Not attributed can include inaccessible files, snapshots and filesystem accounting differences. Category measurements may be partial."
 end
 -- Flat management rows retain their owner and exact path; totals stay in the ledger.
 function Categories.managementRows(model, rootId, query, filter)

@@ -2,9 +2,9 @@ local Tips = {}
 function Tips.forInventory(model, disk)
 	local tips = {}
 	if (model.scan.errors or 0) > 0 then
-		tips[#tips + 1] = {id = "access", icon = "lock.shield", title = "Some locations are restricted",
-			text = tostring(model.scan.errors) .. " locations could not be fully read. Review Full Disk Access for Diskmap in Privacy & Security, then refresh. Denied files remain in the unreconciled total.",
-			action = "settings", actionTitle = "Review access settings"}
+		tips[#tips + 1] = {id = "access", icon = "lock.shield", title = "Some files could not be measured",
+			text = tostring(model.scan.errors) .. " filesystem read issues were reported. Full Disk Access may improve coverage; some locations can still be unavailable. Refresh to retry. The unassigned amount is not a cleanup estimate.",
+			action = "settings", actionTitle = "Review access options"}
 	end
 	if disk and disk.totalKb > 0 and disk.freeKb / disk.totalKb < 0.1 then
 		tips[#tips + 1] = {id = "capacity", icon = "externaldrive.badge.exclamationmark", title = "Available space is low",

@@ -6,7 +6,7 @@
         <Label ref="coverage" text="<%= coverage %>" size="12" fillWidth="true" lines="2" />
         <Label ref="status" text="<%= status %>" size="11" color="secondary" fillWidth="true" lines="2" />
       </VStack>
-      <Button title="Full Disk Access…" action="access" />
+      <Button ref="access" title="Scan access…" action="access" />
     </HStack>
   </GroupBox>
   <HSplit flexGrow="1" flexBasis="0" flexShrink="1" fillWidth="true" fillHeight="true">
