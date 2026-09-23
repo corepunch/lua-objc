@@ -22,8 +22,9 @@ function Controller.new(service)
 	if service == Controller then service = nil end
 	service = service or Provider.select(App.args())
 	local home = os.getenv("HOME") or "/Users"
-	local self = setmetatable({service = service, model = Model.new(home), section = "Storage", query = ""}, Controller)
-	if service.mock then
+	local self = setmetatable({service = service, mock = rawget(service, "mock") == true,
+		model = Model.new(home), section = "Storage", query = ""}, Controller)
+	if self.mock then
 		for _, row in ipairs(self.model.resources:leaves()) do row.appIcon = nil end
 	end
 	self.scan = ScanController.new(self.model, service, home, function() self:updateRows() end)
@@ -56,9 +57,9 @@ function Controller:updateRows()
 	self.refs.results:replaceRows(rows)
 	if self.capacity then self.capacity.text = self.categories:capacity(self.scan.disk); self.toolbarTitle:layout() end
 	self.refs.coverage.text = self.categories:coverage(self.scan.disk)
-	self.refs.status.text = (self.service.mock and "Mock HDD · " or "") .. (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status
-	self.refs.access.title = self.service.mock and "Mock HDD active" or (self.model.scan.errors or 0) > 0 and "Review scan access…" or "Scan access…"
-	self.refs.access.enabled = not self.service.mock
+	self.refs.status.text = (self.mock and "Mock HDD · " or "") .. (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status
+	self.refs.access.title = self.mock and "Mock HDD active" or (self.model.scan.errors or 0) > 0 and "Review scan access…" or "Scan access…"
+	self.refs.access.enabled = not self.mock
 	self.opportunities:update(self.cleanup:presentation())
 	self.storageBar:update(self.categories:bar(self.scan.disk))
 	self.tipPanel:update(self.tips:presentation(self.scan.disk))
@@ -89,7 +90,7 @@ function Controller:showSection(section, rootId)
 		self.page:update(self.settings:presentation(function()
 			if self.settings:toggle() then self:showSection("Settings") else self.service.showError("Could not save Settings", "Try again.") end
 		end, function() self.service.openSettings() end, function() self.service.openSettings("privacy") end, self.model.includeMedia, function()
-			local message = self.service.mock and "Include the synthetic Photos, Music and Movies entries in this session? Mock HDD reads only its bundled fixture." or "Measuring Photos, Music and Movies requires enumerating their files. macOS may ask for access. Diskmap reads metadata only. Enable for this session?"
+			local message = self.mock and "Include the synthetic Photos, Music and Movies entries in this session? Mock HDD reads only its bundled fixture." or "Measuring Photos, Music and Movies requires enumerating their files. macOS may ask for access. Diskmap reads metadata only. Enable for this session?"
 			if self.model.includeMedia or self.service.confirmAction("Include media libraries", message) then
 				self.model.includeMedia = not self.model.includeMedia
 				self.scan:start(); self:showSection("Settings")
@@ -123,7 +124,7 @@ function Controller:createWindow()
 		for id, kept in pairs(self.service.loadKeep()) do if self.model.resources:find(id) and kept == true then self.model.kept[id] = true end end
 	end
 	local cfg, windowRefs = render("Window", {capacity = self.categories:capacity(self.scan.disk),
-		windowTitle = self.service.mock and "Diskmap — Mock HDD" or "Diskmap",
+		windowTitle = self.mock and "Diskmap — Mock HDD" or "Diskmap",
 		actions = {search = function(value) self.query = value; self:updateRows() end}})
 	local sidebar, sidebarRefs = render("Sidebar")
 	local content, contentRefs = render("ContentPane")
@@ -139,7 +140,21 @@ function Controller:createWindow()
 	self.navigation:onRowSelect(function(_, _, row) if row and row.name ~= self.section then self:showSection(row.name) end end)
 	self.window = ns.Window(cfg); self.toolbarTitle = windowRefs.toolbarTitle; self.capacity = windowRefs.capacity
 	self:showSection("Storage")
-	self.scan:start()
+	local exportPath = Provider.exportPath(App.args())
+	if exportPath then
+		self.scan.status = "Creating a local metadata-only Mock HDD snapshot…"; self:updateRows()
+		self.service.exportMockSnapshot(exportPath, function(result)
+			if result.failure and result.failure ~= "" then
+				self.scan.status = "Mock snapshot failed: " .. result.failure
+			else
+				self.scan.status = string.format("Saved %d file names and allocated sizes%s",
+					result.exportedFiles or 0, result.partial and " · partial; some locations were inaccessible" or "")
+			end
+			self:updateRows()
+		end)
+	else
+		self.scan:start()
+	end
 	local scope = ns.Scope.current()
 	if scope then scope:add(self.scan); scope:add({dispose = function() if self.page then self.page:dispose() end; self.management:close(); self.simulators:close() end}) end
 	self.service.monitor(function() return self.window.visible end, function()

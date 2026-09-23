@@ -42,6 +42,23 @@ function System.await(job, completion, progress)
 		end
 	end)
 end
+function System.exportMockSnapshot(outputPath, completion)
+	local disk = ns.diskSpace("/")
+	if not disk then completion({failure = "Could not read internal disk capacity."}); return end
+	local paths = {
+		"/", "/Users", "/Applications", "/Library", "/private", "/opt", "/usr/local",
+		"/System/Volumes/Data", "/System/Volumes/Preboot", "/System/Volumes/Recovery",
+		"/System/Volumes/Update", "/System/Volumes/xarts", "/System/Volumes/Hardware", "/System/Volumes/iSCPreboot",
+	}
+	local exclusions = {"/Volumes", "/dev", "/System/Volumes"}
+	local ok, job = pcall(Scanner.startExport, paths, exclusions, outputPath, {
+		capacityBytes = disk.totalKb * 1024,
+		availableBytes = disk.freeKb * 1024,
+		logicalRoots = { ["/System/Volumes/Data"] = "/" },
+	})
+	if not ok then completion({failure = tostring(job)}); return end
+	System.await(job, completion)
+end
 function System.loadSettings()
 	local file = io.open((os.getenv("HOME") or "") .. "/Library/Application Support/Diskmap/background", "r")
 	if not file then return true end

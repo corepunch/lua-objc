@@ -70,6 +70,7 @@ local finished = Scan.new(model, {
 finished:start()
 completion({trees = {}, rootStates = {}, errors = 3, seconds = 70})
 t.expect(finished.status:find("finished in 1 min 10 sec", 1, true) ~= nil, "finished scan reports elapsed time")
+t.expect(finished.status:find("Partial lower bound", 1, true) == 1, "partial snapshots identify the finished measurement as a lower bound")
 t.expect(finished.status:find("filesystem read issues", 1, true) == nil, "finished status does not duplicate the coverage issue count")
 local failure = Scan.new(model, {start = function() error("No worker") end}, "/Users/test")
 failure:start()

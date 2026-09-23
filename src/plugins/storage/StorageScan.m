@@ -5,6 +5,7 @@
 #import <sys/vnode.h>
 #import <sys/stat.h>
 #import <fcntl.h>
+#import <math.h>
 #import <unistd.h>
 #import <dlfcn.h>
 #import <lua.h>
@@ -44,6 +45,14 @@ typedef struct { uint64_t inode; dev_t device; } ScanIdentity;
 @property NSString *failure;
 @property NSDictionary *snapshot;
 @property BOOL done;
+@property BOOL exporting;
+@property BOOL exportWriteFailed;
+@property int exportFD;
+@property NSString *exportPath;
+@property NSString *exportTemporaryPath;
+@property NSDictionary<NSString *, NSString *> *logicalRoots;
+@property uint64_t capacityBytes, availableBytes;
+@property NSUInteger exportedFiles;
 - (void)run;
 - (void)publish:(BOOL)done;
 @end
@@ -52,11 +61,11 @@ typedef struct { uint64_t inode; dev_t device; } ScanIdentity;
 - (instancetype)init {
 	if ((self = [super init])) {
 		_trees = [NSMutableArray array]; _states = [NSMutableArray array]; _issues = [NSMutableArray array];
-		_failure = @"";
+		_failure = @""; _exportFD = -1;
 	}
 	return self;
 }
-- (void)dealloc { free(_seen); }
+- (void)dealloc { free(_seen); if (_exportFD >= 0) close(_exportFD); }
 static NSUInteger identityHash(ScanIdentity key) {
 	uint64_t x = key.inode ^ ((uint64_t)(uint32_t)key.device << 32);
 	x = (x ^ (x >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
@@ -95,6 +104,57 @@ static NSUInteger identityHash(ScanIdentity key) {
 		self.failure = @"Scan exceeded ten minutes."; return YES;
 	}
 	return NO;
+}
+- (BOOL)writeExportData:(NSData *)data {
+	const uint8_t *cursor = data.bytes;
+	size_t remaining = data.length;
+	while (remaining) {
+		ssize_t written = write(self.exportFD, cursor, remaining);
+		if (written < 0 && errno == EINTR) continue;
+		if (written <= 0) {
+			self.exportWriteFailed = YES;
+			self.failure = [NSString stringWithFormat:@"Could not write the local mock snapshot: %s", strerror(errno)];
+			return NO;
+		}
+		cursor += written; remaining -= (size_t)written;
+	}
+	return YES;
+}
+- (BOOL)exportFile:(NSString *)path allocated:(uint64_t)allocated counted:(uint64_t)counted {
+	if (!self.exporting || self.exportWriteFailed) return NO;
+	NSDictionary *entry = @{@"path": path, @"allocatedBytes": @(allocated), @"countedBytes": @(counted)};
+	NSError *error = nil;
+	NSData *data = [NSJSONSerialization dataWithJSONObject:entry options:NSJSONWritingFragmentsAllowed error:&error];
+	if (!data) {
+		self.exportWriteFailed = YES;
+		self.failure = [NSString stringWithFormat:@"Could not encode a file name for the local mock snapshot: %@", error.localizedDescription ?: @"invalid metadata"];
+		return NO;
+	}
+	if (self.exportedFiles && ![self writeExportData:[@"," dataUsingEncoding:NSUTF8StringEncoding]]) return NO;
+	if (![self writeExportData:data]) return NO;
+	self.exportedFiles++;
+	return YES;
+}
+- (void)finishExport {
+	if (!self.exporting || self.exportFD < 0) return;
+	BOOL partial = self.errors > 0 || self.failure.length > 0 || self.cancelled;
+	NSString *footer = [NSString stringWithFormat:@"],\"partial\":%@,\"errors\":%lu,\"visited\":%lu}",
+		partial ? @"true" : @"false", (unsigned long)self.errors, (unsigned long)self.visited];
+	if (!self.exportWriteFailed && ![self writeExportData:[footer dataUsingEncoding:NSUTF8StringEncoding]]) self.exportWriteFailed = YES;
+	if (!self.exportWriteFailed && fsync(self.exportFD) != 0) {
+		self.exportWriteFailed = YES;
+		self.failure = [NSString stringWithFormat:@"Could not flush the local mock snapshot: %s", strerror(errno)];
+	}
+	if (close(self.exportFD) != 0 && !self.exportWriteFailed) {
+		self.exportWriteFailed = YES;
+		self.failure = [NSString stringWithFormat:@"Could not close the local mock snapshot: %s", strerror(errno)];
+	}
+	self.exportFD = -1;
+	if (!self.exportWriteFailed && rename(self.exportTemporaryPath.fileSystemRepresentation, self.exportPath.fileSystemRepresentation) != 0) {
+		self.exportWriteFailed = YES;
+		self.failure = [NSString stringWithFormat:@"Could not publish the local mock snapshot: %s", strerror(errno)];
+	}
+	if (self.exportWriteFailed) unlink(self.exportTemporaryPath.fileSystemRepresentation);
 }
 - (uint64_t)directory:(int)fd path:(NSString *)path device:(dev_t)device depth:(NSUInteger)depth {
 	if ([self stopped]) return 0;
@@ -146,7 +206,10 @@ static NSUInteger identityHash(ScanIdentity key) {
 				}
 				self.visited++;
 				if (allocated < 0) { [self issue:child code:EIO]; continue; }
-				if (![self seenInode:inode device:device]) bytes += (uint64_t)allocated;
+				BOOL alreadyCounted = [self seenInode:inode device:device];
+				uint64_t fileBytes = (uint64_t)allocated;
+				if (!alreadyCounted) bytes += fileBytes;
+				[self exportFile:child allocated:fileBytes counted:alreadyCounted ? 0 : fileBytes];
 			}
 		} }
 	}
@@ -178,12 +241,17 @@ static NSUInteger identityHash(ScanIdentity key) {
 		} else if (S_ISDIR(st.st_mode)) {
 			int fd = openat(parent, name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
 			uint64_t bytes = 0;
+			NSString *logicalPath = self.logicalRoots[path] ?: path;
 			if (fd < 0) [self issue:path code:errno];
-			else { bytes = [self directory:fd path:path device:st.st_dev depth:0]; close(fd); }
+			else { bytes = [self directory:fd path:logicalPath device:st.st_dev depth:0]; close(fd); }
 			tree = @{@"kb": @(bytes / 1024.0), @"partial": @(self.errors > before)};
 		} else if (S_ISREG(st.st_mode)) {
 			self.visited++;
-			tree = @{@"kb": @([self seenInode:st.st_ino device:st.st_dev] ? 0 : st.st_blocks / 2.0)};
+			BOOL alreadyCounted = [self seenInode:st.st_ino device:st.st_dev];
+			uint64_t fileBytes = (uint64_t)st.st_blocks * 512;
+			NSString *logicalPath = self.logicalRoots[path] ?: path;
+			[self exportFile:logicalPath allocated:fileBytes counted:alreadyCounted ? 0 : fileBytes];
+			tree = @{@"kb": @(alreadyCounted ? 0 : fileBytes / 1024.0)};
 		} else state = @"skipped";
 		close(parent);
 	} else if (!state) { state = @"unreadable"; [self issue:path code:errno]; }
@@ -197,7 +265,9 @@ static NSUInteger identityHash(ScanIdentity key) {
 		@"completed": @(self.states.count), @"total": @(self.roots.count), @"issues": self.issues.copy,
 		@"errors": @(self.errors), @"visited": @(self.visited), @"bulkCalls": @(self.bulkCalls),
 		@"seconds": @(NSProcessInfo.processInfo.systemUptime - self.started),
-		@"failure": self.cancelled ? @"Measurement cancelled." : self.failure};
+		@"failure": self.cancelled ? @"Measurement cancelled." : self.failure,
+		@"exportedFiles": @(self.exportedFiles), @"exportPath": self.exportPath ?: @"",
+		@"partial": @(self.errors > 0 || self.failure.length > 0 || self.cancelled)};
 	@synchronized(self) { self.snapshot = snapshot; self.done = done; }
 }
 - (void)run {
@@ -209,6 +279,7 @@ static NSUInteger identityHash(ScanIdentity key) {
 				@autoreleasepool { [self root:path]; [self publish:NO]; }
 			}
 		} @catch (NSException *exception) { self.failure = exception.reason ?: @"Native scan failed."; }
+		[self finishExport];
 		[self publish:YES];
 		free(_seen); _seen = NULL; _seenCount = 0; _seenCapacity = 0;
 	}
@@ -305,6 +376,16 @@ static void validatePaths(lua_State *L, int index) {
 		lua_pop(L, 1); luaL_argcheck(L, valid, index, "paths must be absolute UTF-8 strings without NUL or dot components");
 	}
 }
+static NSString *absolutePathArgument(lua_State *L, int index, int argument) {
+	size_t length = 0;
+	const char *text = luaL_checklstring(L, index, &length);
+	NSString *path = [[NSString alloc] initWithBytes:text length:length encoding:NSUTF8StringEncoding];
+	NSArray *parts = [path componentsSeparatedByString:@"/"];
+	BOOL valid = length && text[0] == '/' && !memchr(text, 0, length) && path &&
+		![parts containsObject:@".."] && ![parts containsObject:@"."];
+	luaL_argcheck(L, valid, argument, "path must be an absolute UTF-8 string without NUL or dot components");
+	return [NSString pathWithComponents:path.pathComponents];
+}
 static NSArray *paths(lua_State *L, int index) {
 	NSUInteger count = lua_rawlen(L, index);
 	NSMutableArray *result = [NSMutableArray arrayWithCapacity:count];
@@ -338,6 +419,68 @@ static int start(lua_State *L) {
 	dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{ [job run]; });
 	return 1;
 }
+static int exportStart(lua_State *L) {
+	StorageScanJob *job = newJob(L);
+	NSString *outputPath = absolutePathArgument(L, 3, 3);
+	luaL_argcheck(L, outputPath.length > 1, 3, "snapshot output path cannot be the filesystem root");
+	luaL_checktype(L, 4, LUA_TTABLE);
+	lua_getfield(L, 4, "capacityBytes");
+	double capacity = luaL_checknumber(L, -1); lua_pop(L, 1);
+	lua_getfield(L, 4, "availableBytes");
+	double available = luaL_checknumber(L, -1); lua_pop(L, 1);
+	luaL_argcheck(L, isfinite(capacity) && capacity >= 0 && capacity <= 9007199254740991.0 && floor(capacity) == capacity,
+		4, "capacityBytes must be a nonnegative integer no larger than 2^53");
+	luaL_argcheck(L, isfinite(available) && available >= 0 && available <= 9007199254740991.0 && floor(available) == available,
+		4, "availableBytes must be a nonnegative integer no larger than 2^53");
+	NSMutableDictionary *logicalRoots = [NSMutableDictionary dictionary];
+	lua_getfield(L, 4, "logicalRoots");
+	if (!lua_isnil(L, -1)) {
+		luaL_checktype(L, -1, LUA_TTABLE);
+		int mappings = lua_gettop(L);
+		lua_pushnil(L);
+		while (lua_next(L, mappings)) {
+			luaL_checktype(L, -2, LUA_TSTRING); luaL_checktype(L, -1, LUA_TSTRING);
+			NSString *physical = absolutePathArgument(L, -2, 4);
+			NSString *logical = absolutePathArgument(L, -1, 4);
+			luaL_argcheck(L, [job.roots containsObject:physical], 4, "logicalRoots keys must also be scan roots");
+			logicalRoots[physical] = logical;
+			lua_pop(L, 1);
+		}
+	}
+	lua_pop(L, 1);
+	job.exportPath = outputPath;
+	job.logicalRoots = logicalRoots.copy;
+	job.capacityBytes = (uint64_t)capacity;
+	job.availableBytes = (uint64_t)available;
+	NSString *template = [outputPath stringByAppendingString:@".tmp.XXXXXX"];
+	char *temporary = strdup(template.fileSystemRepresentation);
+	int fd = temporary ? mkstemp(temporary) : -1;
+	if (fd < 0) {
+		int code = errno ?: ENOMEM; free(temporary);
+		return luaL_error(L, "Could not create a private snapshot file: %s", strerror(code));
+	}
+	job.exportTemporaryPath = @(temporary);
+	free(temporary);
+	job.exportFD = fd; job.exporting = YES;
+	if (fchmod(fd, S_IRUSR | S_IWUSR) != 0) {
+		int code = errno; close(fd); job.exportFD = -1; unlink(job.exportTemporaryPath.fileSystemRepresentation);
+		return luaL_error(L, "Could not protect the local snapshot file: %s", strerror(code));
+	}
+	NSMutableSet *exclusions = [job.exclusions mutableCopy];
+	[exclusions addObject:outputPath]; [exclusions addObject:job.exportTemporaryPath];
+	job.exclusions = exclusions.copy;
+	NSString *header = [NSString stringWithFormat:@"{\"format\":1,\"capacityBytes\":%llu,\"availableBytes\":%llu,\"items\":[",
+		(unsigned long long)job.capacityBytes, (unsigned long long)job.availableBytes];
+	if (![job writeExportData:[header dataUsingEncoding:NSUTF8StringEncoding]]) {
+		NSString *failure = job.failure; close(job.exportFD); job.exportFD = -1;
+		unlink(job.exportTemporaryPath.fileSystemRepresentation);
+		return luaL_error(L, "%s", failure.UTF8String);
+	}
+	CFTypeRef *ref = lua_newuserdatauv(L, sizeof(CFTypeRef), 0); *ref = CFBridgingRetain(job);
+	luaL_setmetatable(L, JobMetatable);
+	dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{ [job run]; });
+	return 1;
+}
 static int scan(lua_State *L) { StorageScanJob *job = newJob(L); [job run]; pushValue(L, job.snapshot); return 1; }
 static int poll(lua_State *L) {
 	StorageScanJob *job = checkJob(L); NSDictionary *snapshot; BOOL done;
@@ -362,7 +505,7 @@ int luaopen_StorageScan(lua_State *L) {
 	lua_pushcfunction(L, commandCollect); lua_setfield(L, -2, "__gc"); lua_pop(L, 1);
 	luaL_newmetatable(L, JobMetatable);
 	lua_pushcfunction(L, collect); lua_setfield(L, -2, "__gc"); lua_pop(L, 1);
-	const luaL_Reg functions[] = {{"commandStart", commandStart}, {"commandPoll", commandPoll}, {"start", start}, {"poll", poll}, {"cancel", cancel}, {"scan", scan}, {NULL, NULL}};
+	const luaL_Reg functions[] = {{"commandStart", commandStart}, {"commandPoll", commandPoll}, {"start", start}, {"exportStart", exportStart}, {"poll", poll}, {"cancel", cancel}, {"scan", scan}, {NULL, NULL}};
 	luaL_newlib(L, functions); lua_pushliteral(L, "getattrlistbulk"); lua_setfield(L, -2, "backend");
 	return 1;
 }
