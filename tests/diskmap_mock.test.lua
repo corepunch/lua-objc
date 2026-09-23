@@ -9,15 +9,18 @@ local selected = Provider.select(args)
 t.expect(selected.mock, "--mock selects the virtual provider")
 t.assertEqual(package.loaded["apps.diskmap.services.System"], nil, "mock selection does not load the real disk provider")
 t.assertEqual(Provider.select({[1] = "-mock"}).mock, true, "single-dash mock spelling is accepted")
-local fixturePath = "apps/diskmap/mock-hdd.json"
+local fixturePath = "apps/diskmap/mock-hdd.bin"
 t.assertEqual(Provider.select({[1] = "--mock-file=" .. fixturePath}).mock, true, "--mock-file loads a selected local snapshot")
-t.assertEqual(Provider.exportPath({[1] = "--export-mock=/private/tmp/example.json"}), "/private/tmp/example.json", "export switch selects its local destination")
+t.assertEqual(Provider.exportPath({[1] = "--export-mock=/private/tmp/example.bin"}), "/private/tmp/example.bin", "export switch selects its local destination")
 t.assertEqual(package.loaded["apps.diskmap.services.System"], nil, "loading a saved mock snapshot never loads the real provider")
+local bundledFixture = assert(io.open(fixturePath, "rb"))
+t.assertEqual(bundledFixture:read(8), "DMOCK001", "bundled Mock HDD fixture is binary")
+bundledFixture:close()
 
 local mock = Mock.new({home = home})
 local discoveries
 mock.discoverEntries(home, function(entries) discoveries = entries end)
-t.assertEqual(#discoveries, 5, "mock discovery comes from the fixture rather than host filesystem traversal")
+t.assertEqual(#discoveries, 5, "mock discovery comes from the bundled profile rather than host filesystem traversal")
 t.assertEqual(discoveries[1].path, "/Applications/Mock Video Studio.app", "mock app paths remain virtual")
 local initialFree = mock.availableBytes
 local initialDocumentation = mock.scan({"~/Library/Developer/Shared/Documentation"}, {})

@@ -40,7 +40,7 @@ end
 
 local function fixturePath()
 	local source = assert(package.searchpath("apps.diskmap.services.Mock", package.path), "Cannot locate Diskmap mock provider")
-	return (source:gsub("services/Mock.lua$", "mock-hdd.json"))
+	return (source:gsub("services/Mock.lua$", "mock-hdd.bin"))
 end
 
 local MAX_SAFE_INTEGER = 9007199254740991
@@ -87,13 +87,13 @@ local function readBinaryFixture(file)
 		local allocatedBytes, countedBytes = little64(record, 9), little64(record, 17)
 		assert(prefixLength <= #previous, "Mock HDD snapshot path prefix is invalid")
 		local path = previous:sub(1, prefixLength) .. readExact(suffixLength)
-		assert(path:sub(1, 1) == "/" and not path:find("\0", 1, true), "Mock HDD snapshot path is invalid")
+		local rooted = path:sub(1, 1) == "/" or path == "~" or path:sub(1, 2) == "~/"
+		assert(rooted and not path:find("\0", 1, true), "Mock HDD snapshot path is invalid")
 		items[index] = {path = path, allocatedBytes = allocatedBytes, countedBytes = countedBytes}
 		previous = path
 	end
 	assert(position > #buffer and file:read(1) == nil, "Mock HDD snapshot has trailing data")
 	return {
-		format = 1,
 		capacityBytes = capacityBytes,
 		availableBytes = availableBytes,
 		partial = flags % 2 == 1,
@@ -106,19 +106,17 @@ end
 local function loadFixture(path)
 	local selectedPath = path or fixturePath()
 	local file = assert(io.open(selectedPath, "rb"), "Cannot read the Mock HDD snapshot")
-	local ok, fixture = pcall(function()
-		if path then return readBinaryFixture(file) end
-		local body = file:read("*a")
-		local decoded, value = pcall(ns.json_parse, body)
-		assert(decoded and type(value) == "table" and value.format == 1 and type(value.items) == "table"
-			and type(value.capacityBytes) == "number" and type(value.availableBytes) == "number", "Mock HDD snapshot is invalid")
-		return value
-	end)
+	local ok, fixture = pcall(readBinaryFixture, file)
 	file:close()
 	assert(ok, fixture)
+	if not path then
+		local profile = require("apps.diskmap.services.MockProfile")
+		for key, value in pairs(profile) do fixture[key] = copy(value) end
+	end
 	assert(type(fixture.capacityBytes) == "number" and fixture.capacityBytes >= 0 and fixture.capacityBytes <= MAX_SAFE_INTEGER
 		and type(fixture.availableBytes) == "number" and fixture.availableBytes >= 0 and fixture.availableBytes <= MAX_SAFE_INTEGER,
 		"Mock HDD snapshot capacity metadata is invalid")
+	assert(type(fixture.items) == "table", "Mock HDD snapshot is invalid")
 	return fixture
 end
 
