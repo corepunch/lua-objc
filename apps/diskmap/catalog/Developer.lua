@@ -62,7 +62,7 @@ return function()
 		item("jetbrains", "JetBrains", "IDE caches and project indexes", "~/Library/Caches/JetBrains"),
 	}),
 	group("containers", "Containers & virtual machines", "Owner-managed disks may contain databases and personal work", "shippingbox.fill", "systemOrange", {
-		item("docker", "Docker Desktop", "Virtual disk, images, containers and persistent volumes", "~/Library/Containers/com.docker.docker", {action = "docker"}),
+		item("docker", "Docker Desktop", "Default data location; virtual disk, images, containers, logs and persistent volumes", "~/Library/Containers/com.docker.docker", {action = "docker", consequence = "Review the disk image's current location and actual use in Docker Desktop > Settings > Resources > Advanced; the image can be moved, so Diskmap may not measure a custom location. Docker's log paths belong to its Linux daemon and are not separately measured; review logs in Docker Desktop. Prune only data you identify as unused. Volumes and the virtual disk can contain databases or personal work. Never move or delete the disk image directly in Finder."}),
 		item("colima", "Colima", "Virtual machines and container storage", "~/.colima"),
 		item("parallels", "Parallels virtual machines", "Guest operating systems and their data", "~/Parallels"),
 	}),
