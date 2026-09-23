@@ -345,7 +345,7 @@ local function layoutProps(attrs)
         "fixedWidth", "fixedHeight", "minWidth", "minHeight",
         "maxWidth", "maxHeight",
         "flexGrow", "flexShrink", "flexBasis",
-        "fillWidth", "fillHeight", "hidden", "allowsHitTesting", "background", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick",
+        "fillWidth", "fillHeight", "hidden", "allowsHitTesting", "background", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick", "onTap", "onDrag",
     }
     local props = {}
     for _, k in ipairs(lp) do
@@ -355,6 +355,11 @@ local function layoutProps(attrs)
         and renderData and renderData.actions then
 
         props.onClick = renderData.actions[attrs.onClick]
+    end
+    for _, key in ipairs({ "onTap", "onDrag" }) do
+        if attrs[key] and type(attrs[key]) == "string" and renderData and renderData.actions then
+            props[key] = renderData.actions[attrs[key]]
+        end
     end
     return props
 end
@@ -752,6 +757,8 @@ local TAG_SCHEMA = {
         constructor = "LinearGradient",
         props = {
             topAlpha = "num",
+            middleAlpha = "num",
+            middleLocation = "num",
             bottomAlpha = "num",
         },
     },

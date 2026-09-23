@@ -14,6 +14,7 @@ local examples = {
 	"apps/glass-materials/init.lua",
 	"apps/browser/init.lua",
 	"apps/navigation-path/init.lua",
+	"apps/motion-feedback/init.lua",
 	"apps/mail/init.lua",
 	"apps/layout/init.lua",
 	"apps/welcome/init.lua",

@@ -1,6 +1,38 @@
 /* Native constructors exported by the UIKit module. */
 #import <WebKit/WebKit.h>
 
+static int bridge_UIKit_hapticsAvailable(lua_State *L) {
+	lua_pushboolean(L, UIImpactFeedbackGenerator.class != nil);
+	return 1;
+}
+static int bridge_UIKit_reduceMotionEnabled(lua_State *L) {
+	lua_pushboolean(L, UIAccessibilityIsReduceMotionEnabled());
+	return 1;
+}
+static int bridge_UIKit_hapticImpact(lua_State *L) {
+	const char *style = luaL_optstring(L, 1, "medium");
+	UIImpactFeedbackStyle value = UIImpactFeedbackStyleMedium;
+	if (strcmp(style, "light") == 0) value = UIImpactFeedbackStyleLight;
+	else if (strcmp(style, "heavy") == 0) value = UIImpactFeedbackStyleHeavy;
+	UIImpactFeedbackGenerator *generator = [[UIImpactFeedbackGenerator alloc] initWithStyle:value];
+	[generator prepare]; [generator impactOccurred];
+	return 0;
+}
+static int bridge_UIKit_hapticSelection(lua_State *L) {
+	UISelectionFeedbackGenerator *generator = [[UISelectionFeedbackGenerator alloc] init];
+	[generator prepare]; [generator selectionChanged];
+	return 0;
+}
+static int bridge_UIKit_hapticNotification(lua_State *L) {
+	const char *kind = luaL_optstring(L, 1, "success");
+	UINotificationFeedbackType value = UINotificationFeedbackTypeSuccess;
+	if (strcmp(kind, "warning") == 0) value = UINotificationFeedbackTypeWarning;
+	else if (strcmp(kind, "error") == 0) value = UINotificationFeedbackTypeError;
+	UINotificationFeedbackGenerator *generator = [[UINotificationFeedbackGenerator alloc] init];
+	[generator prepare]; [generator notificationOccurred:value];
+	return 0;
+}
+
 @interface LuaWebView : WKWebView <WKNavigationDelegate>
 @property (nonatomic, strong) LuaReg *stateCallback;
 @end

@@ -47,6 +47,8 @@ local layout_properties = {
 	"cornerRadius",
 	"clipsToBounds",
 	"onClick",
+	"onTap",
+	"onDrag",
 	"onDoubleClick",
 	"contextMenu",
 	"hoverTooltip",
@@ -58,8 +60,10 @@ local function applyLayout(view, props)
 		if props[key] ~= nil then
 			if key == "background" then
 				view.backgroundColor = bridge._systemColor(props[key])
-			elseif key == "onClick" then
+			elseif key == "onClick" or key == "onTap" then
 				bridge._addClick(view, props[key])
+			elseif key == "onDrag" then
+				bridge._addDrag(view, props[key])
 			elseif key == "onDoubleClick" then
 				bridge._addDoubleClick(view, props[key])
 			elseif key == "contextMenu" then
@@ -1052,6 +1056,19 @@ end
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Spacer(props)
 	return applyLayout(bridge._spacer(), props)
+end
+
+--- Fills content with a vertical black fade.
+--- @prop bottomAlpha number optional. Opacity at the bottom edge.
+--- @prop middleAlpha number optional. Opacity at the middle stop.
+--- @prop middleLocation number optional. Position of the middle stop, from 0 to 1.
+--- @prop topAlpha number optional. Opacity at the top edge.
+--- @platform AppKit uses the AppKit implementation.
+function AppKit.LinearGradient(props)
+	props = props or {}
+	return applyLayout(bridge._linearGradient(props.topAlpha or 0,
+		props.middleAlpha or 0.5, props.middleLocation or 0.6,
+		props.bottomAlpha or 0.82), props)
 end
 
 --- Displays rows of data in a native table or list control.

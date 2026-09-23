@@ -225,6 +225,7 @@ static void bridge_set_optional_callback(
 #include "appkit/tabview.m"
 #include "appkit/navigation.m"
 #include "appkit/platform.m"
+#include "appkit/haptics.m"
 #include "appkit/webview.m"
 
 #include "appkit/workspace.m"
@@ -234,6 +235,11 @@ static void bridge_set_optional_callback(
 #pragma mark - Module registration
 
 static const luaL_Reg bridge_lib[] = {
+	{"_hapticsAvailable", bridge_haptics_available},
+	{"_reduceMotionEnabled", bridge_reduce_motion_enabled},
+	{"_hapticImpact", bridge_haptic_impact},
+	{"_hapticSelection", bridge_haptic_selection},
+	{"_hapticNotification", bridge_haptic_notification},
 	{"_webView", bridge_webview},
 	{"_webViewAction", bridge_webview_action},
 	{"_parityMeasure", bridge_parity_measure},
@@ -253,6 +259,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_vsplit", bridge_AppKitControls_vsplit},
 	{"_separator", bridge_AppKitControls_separator},
 	{"_spacer", bridge_AppKitControls_spacer},
+	{"_linearGradient", bridge_AppKitControls_linearGradient},
 	{"_hitTestTarget", bridge_hit_test_target},
 	{"_hostingController", bridge_hosting_controller},
 	{"_navigationStack", bridge_navigation_stack},
@@ -284,6 +291,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_systemImage", bridge_AppKit_system_image},
 	{"_systemColor", bridge_AppKit_system_color},
 	{"_addDoubleClick", bridge_AppKit_add_double_click},
+	{"_addDrag", bridge_add_drag},
 	{"_addHoverTooltip", bridge_AppKit_add_hover_tooltip},
 	{"_tableview", bridge_AppKit_tableview},
 	{"_actionButton", bridge_AppKit_action_button},

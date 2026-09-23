@@ -10,18 +10,21 @@ local Transition = {}
 
 local sources = setmetatable({}, { __mode = "k" })
 local destinations = setmetatable({}, { __mode = "k" })
-local reduceMotion = false
+local reduceMotionOverride
 
 function Transition.setReduceMotion(value)
-	reduceMotion = value and true or false
+	if value == nil then reduceMotionOverride = nil
+	else reduceMotionOverride = value and true or false end
 end
 
 function Transition.reduceMotion()
-	return reduceMotion
+	if reduceMotionOverride ~= nil then return reduceMotionOverride end
+	local ok, haptics = pcall(require, "ui.haptics")
+	return ok and haptics.isReduceMotionEnabled() or false
 end
 
 function Transition.shouldZoom()
-	return not reduceMotion
+	return not Transition.reduceMotion()
 end
 
 local Namespace = {}

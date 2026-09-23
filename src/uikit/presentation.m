@@ -20,7 +20,7 @@ static int bridge_UIKitPresentation_presentSheet(lua_State *L) {
 			sheet.title = [NSString stringWithUTF8String:luaL_checkstring(L, -1)];
 		lua_pop(L, 1);
 	}
-	[presenter presentViewController:sheet animated:NO completion:nil];
+	[presenter presentViewController:sheet animated:!UIAccessibilityIsReduceMotionEnabled() completion:nil];
 	UISheetPresentationController *presentation = sheet.sheetPresentationController;
 	if (presentation && lua_istable(L, 2)) {
 		lua_getfield(L, 2, "detents");
@@ -55,7 +55,7 @@ static int bridge_UIKitPresentation_presentSheet(lua_State *L) {
 static int bridge_UIKitPresentation_dismiss(lua_State *L) {
 	UIViewController *presenter = lua_uikit_presenter();
 	if (presenter.presentingViewController)
-		[presenter dismissViewControllerAnimated:NO completion:nil];
+		[presenter dismissViewControllerAnimated:!UIAccessibilityIsReduceMotionEnabled() completion:nil];
 	return 0;
 }
 

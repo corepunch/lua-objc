@@ -17,7 +17,7 @@ app-side substitute.
 | Native toolbar spacing/overflow | `<ToolbarSpacer />`, native toolbar overflow, and `ToolbarItem visibilityPriority`; on iOS set `TabView minimizeBehavior="onScroll"` for its tab bar |
 | `WebView` / observable `WebPage` | `<WebView page="page" />`; native `WKWebView` on both platforms |
 | Lazy containers and large-list virtualization | Do not use eager `VStack` for unbounded rows; see issue [#9](https://github.com/corepunch/lua-objc/issues/9) |
-| Native animation, haptics, and motion preferences | Use only existing documented bridge operations; broader surface is tracked in issue [#10](https://github.com/corepunch/lua-objc/issues/10) |
+| Native motion and gestures | `onTap`/`onDrag`, `ui.haptics`, and Reduce Motion; no general implicit animation API |
 | Private navigation palettes / private `LazyLayout` | Research only, opt-in proposal; never use in default app code. See issue [#11](https://github.com/corepunch/lua-objc/issues/11) |
 | Swipe actions on non-List containers | Not yet available; see issue [#12](https://github.com/corepunch/lua-objc/issues/12) |
 | State observation / invalidation | Controller actions update retained refs or render the affected template; see `ARCHITECTURE.md` and issue [#12](https://github.com/corepunch/lua-objc/issues/12) |

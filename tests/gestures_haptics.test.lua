@@ -1,58 +1,31 @@
-local function testHapticsModule()
-    _G.__headless = true
-    package.path = "./?.lua;" .. package.path
+_G.__headless = true
+package.path = "./?.lua;./lua/?.lua;" .. package.path
 
-    local haptics = require("ui.haptics")
+local t = require("TestKit")
+local haptics = require("ui.haptics")
+local Transition = require("ui.transition")
 
-    -- Test 1: Impact haptics
-    haptics.impact("light")
-    haptics.impact("medium")
-    haptics.impact("heavy")
-    print("✓ Impact haptics")
+local requests = haptics._setTestEnvironment(false, true)
+haptics.impact("light")
+haptics.selection()
+haptics.notification("success")
+t.assertEqual(#requests, 3, "native haptic operations are requested")
+t.assertEqual(requests[1][1], "_hapticImpact", "impact uses native provider")
+t.assertEqual(requests[2][1], "_hapticSelection", "selection uses native provider")
+t.assertEqual(requests[3][1], "_hapticNotification", "notification uses native provider")
+t.expect(haptics.isAvailable(), "availability reflects the provider")
 
-    -- Test 2: Selection haptics
-    haptics.selection()
-    print("✓ Selection haptics")
+requests = haptics._setTestEnvironment(true, true)
+t.expect(haptics.isReduceMotionEnabled(), "system motion preference is observable")
+t.expect(not Transition.shouldZoom(), "Reduce Motion disables zoom transitions")
+haptics.impact("heavy")
+haptics.selection()
+t.assertEqual(#requests, 0, "Reduce Motion suppresses decorative haptic requests")
 
-    -- Test 3: Notification haptics
-    haptics.notification("success")
-    haptics.notification("warning")
-    haptics.notification("error")
-    print("✓ Notification haptics")
+Transition.setReduceMotion(false)
+t.expect(Transition.shouldZoom(), "explicit override supports controlled test scenarios")
+Transition.setReduceMotion(nil)
+t.expect(not Transition.shouldZoom(), "clearing the override restores system preference")
+haptics._setTestEnvironment(nil)
 
-    -- Test 4: Convenience methods
-    haptics.tap()
-    print("✓ Tap convenience")
-
-    haptics.confirm()
-    print("✓ Confirm convenience")
-
-    haptics.reject()
-    print("✓ Reject convenience")
-
-    -- Test 5: Availability check
-    local available = haptics.isAvailable()
-    -- Should return true or false without crashing
-    print("✓ Availability check: " .. tostring(available))
-
-    -- Test 6: Sequence
-    haptics.sequence({
-        { 0.05, "light" },
-        { 0.1, nil },
-        { 0.05, "medium" },
-    })
-    print("✓ Haptics sequence")
-
-    -- Test 7: Empty sequence (should not crash)
-    haptics.sequence({})
-    print("✓ Empty sequence")
-
-    -- Test 8: Nil sequence (should not crash)
-    haptics.sequence(nil)
-    print("✓ Nil sequence")
-
-    print("\nAll haptics tests passed!")
-    return true
-end
-
-os.exit(testHapticsModule() and 0 or 1)
+os.exit(t.summary() and 0 or 1)

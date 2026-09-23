@@ -1,4 +1,5 @@
 /* Native constructors exported by the AppKit module. */
+#import <QuartzCore/QuartzCore.h>
 
 /* AppKit has no KVC property to exclude a container subtree from hit testing.
  * Keep the native NSView traversal and opt out before it visits descendants. */
@@ -155,6 +156,47 @@ static int bridge_AppKitControls_spacer(lua_State *L) {
 	objc_setAssociatedObject(obj, &kKeys[kFlexibleKey], @YES, OBJC_ASSOCIATION_RETAIN);
 	objc_setAssociatedObject(obj, &kKeys[kFlexBasisKey], @0, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, obj, "nsview");
+	return 1;
+}
+
+@interface LuaGradientView : NSView
+@property(nonatomic, strong) CAGradientLayer *gradient;
+@end
+
+@implementation LuaGradientView
+- (instancetype)initWithFrame:(NSRect)frame {
+	self = [super initWithFrame:frame];
+	if (self) {
+		self.wantsLayer = YES;
+		self.layer = [CALayer layer];
+		self.layer.masksToBounds = YES;
+	}
+	return self;
+}
+- (void)setFrameSize:(NSSize)size {
+	[super setFrameSize:size];
+	self.gradient.frame = self.bounds;
+}
+- (NSView *)hitTest:(NSPoint)point { return nil; }
+@end
+
+static int bridge_AppKitControls_linearGradient(lua_State *L) {
+	CGFloat topAlpha = (CGFloat)luaL_optnumber(L, 1, 0);
+	CGFloat middleAlpha = (CGFloat)luaL_optnumber(L, 2, 0.5);
+	CGFloat middleLocation = (CGFloat)luaL_optnumber(L, 3, 0.6);
+	CGFloat bottomAlpha = (CGFloat)luaL_optnumber(L, 4, 0.82);
+	LuaGradientView *view = [[LuaGradientView alloc] initWithFrame:NSZeroRect];
+	CAGradientLayer *gradient = [CAGradientLayer layer];
+	gradient.colors = @[(id)[NSColor colorWithWhite:0 alpha:topAlpha].CGColor,
+		(id)[NSColor colorWithWhite:0 alpha:topAlpha].CGColor,
+		(id)[NSColor colorWithWhite:0 alpha:middleAlpha].CGColor,
+		(id)[NSColor colorWithWhite:0 alpha:bottomAlpha].CGColor];
+	gradient.locations = @[@0.0, @0.3, @(middleLocation), @1.0];
+	gradient.startPoint = CGPointMake(0.5, 1);
+	gradient.endPoint = CGPointMake(0.5, 0);
+	view.gradient = gradient;
+	[view.layer addSublayer:gradient];
+	push_objc(L, view, "nsview");
 	return 1;
 }
 
@@ -339,6 +381,15 @@ static int bridge_NSScrollView_onRowSelect(lua_State *L) {
 	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
 	bridge_set_optional_callback(L, table_scrollview(obj), &kKeys[kTableSelectionKey], 2);
+	return 0;
+}
+
+static int bridge_NSScrollView_addRow(lua_State *L) {
+	id obj = check_objc(L, 1);
+	LuaTableViewSource *source = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
+	if (!source) return luaL_error(L, "addRow requires a table view");
+	luaL_checktype(L, 2, LUA_TTABLE);
+	[source addRow:lua_table_to_dict(L, 2)];
 	return 0;
 }
 

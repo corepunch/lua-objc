@@ -855,6 +855,48 @@ static int bridge_add_double_click(lua_State *L) {
 	return 0;
 }
 
+@interface LuaPanGestureTarget : NSObject
+@property (nonatomic, strong) LuaReg *callback;
+- (void)fire:(NSPanGestureRecognizer *)recognizer;
+@end
+
+@implementation LuaPanGestureTarget
+- (void)fire:(NSPanGestureRecognizer *)recognizer {
+	lua_State *L = lua_reg_live_state(self.callback);
+	if (!L || !lua_reg_push(self.callback)) return;
+	lua_newtable(L);
+	const char *state = "changed";
+	if (recognizer.state == NSGestureRecognizerStateBegan) state = "began";
+	else if (recognizer.state == NSGestureRecognizerStateEnded) state = "ended";
+	else if (recognizer.state == NSGestureRecognizerStateCancelled) state = "cancelled";
+	lua_pushstring(L, state); lua_setfield(L, -2, "state");
+	NSPoint location = [recognizer locationInView:recognizer.view];
+	lua_newtable(L); lua_pushnumber(L, location.x); lua_setfield(L, -2, "x");
+	lua_pushnumber(L, location.y); lua_setfield(L, -2, "y"); lua_setfield(L, -2, "location");
+	NSPoint translation = [recognizer translationInView:recognizer.view];
+	NSPoint velocity = [recognizer velocityInView:recognizer.view];
+	lua_newtable(L); lua_pushnumber(L, translation.x); lua_setfield(L, -2, "x");
+	lua_pushnumber(L, translation.y); lua_setfield(L, -2, "y"); lua_setfield(L, -2, "translation");
+	lua_newtable(L); lua_pushnumber(L, velocity.x); lua_setfield(L, -2, "x");
+	lua_pushnumber(L, velocity.y); lua_setfield(L, -2, "y"); lua_setfield(L, -2, "velocity");
+	if (lua_pcall(L, 1, 0, 0) != LUA_OK) report_lua_error(L, "drag gesture callback");
+}
+@end
+
+static int bridge_add_drag(lua_State *L) {
+	NSView *view = check_view(L, 1);
+	LuaReg *callback = lua_reg_opt(L, 2);
+	if (!callback) return 0;
+	LuaPanGestureTarget *target = [LuaPanGestureTarget new];
+	target.callback = callback;
+	NSPanGestureRecognizer *recognizer = [[NSPanGestureRecognizer alloc]
+		initWithTarget:target action:@selector(fire:)];
+	[view addGestureRecognizer:recognizer];
+	objc_setAssociatedObject(recognizer, &kKeys[kCallbackKey], target,
+		OBJC_ASSOCIATION_RETAIN);
+	return 0;
+}
+
 #pragma mark - Hover Tooltip (NSPopover)
 
 #define kHoverTooltipMinWidth  60

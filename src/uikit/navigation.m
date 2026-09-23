@@ -76,13 +76,13 @@ static int bridge_UIKitNavigation_push(lua_State *L) {
 	UIViewController *controller = check_view_controller(L, 2);
 	const char *title = luaL_optstring(L, 3, "");
 	if (title && title[0]) controller.title = [NSString stringWithUTF8String:title];
-	[nav pushViewController:controller animated:NO];
+	[nav pushViewController:controller animated:!UIAccessibilityIsReduceMotionEnabled()];
 	return 0;
 }
 
 static int bridge_UIKitNavigation_pop(lua_State *L) {
 	UINavigationController *nav = (UINavigationController *)check_objc(L, 1);
-	[nav popViewControllerAnimated:NO];
+	[nav popViewControllerAnimated:!UIAccessibilityIsReduceMotionEnabled()];
 	return 0;
 }
 

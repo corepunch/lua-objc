@@ -50,6 +50,9 @@ local layout_properties = {
 	"ignoresSafeArea",
 	"contentModeName",
 	"background",
+	"onTap",
+	"onClick",
+	"onDrag",
 }
 
 local function applyLayout(view, props)
@@ -58,6 +61,10 @@ local function applyLayout(view, props)
 		if props[key] ~= nil then
 			if key == "background" then
 				view.backgroundColor = bridge._systemColor(props[key])
+			elseif key == "onTap" or key == "onClick" then
+				bridge._addTap(view, props[key])
+			elseif key == "onDrag" then
+				bridge._addDrag(view, props[key])
 			else
 				view[key] = props[key]
 			end

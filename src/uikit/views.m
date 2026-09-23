@@ -1,5 +1,68 @@
 #pragma mark - Bridge functions (UIKit)
 
+@interface LuaGestureTarget : NSObject
+@property (nonatomic, strong) LuaReg *callback;
+- (void)tap:(UITapGestureRecognizer *)recognizer;
+- (void)drag:(UIPanGestureRecognizer *)recognizer;
+@end
+
+@implementation LuaGestureTarget
+- (void)fire:(UIGestureRecognizer *)recognizer state:(NSString *)state {
+	lua_State *L = lua_reg_live_state(self.callback);
+	if (!L || !lua_reg_push(self.callback)) return;
+	lua_newtable(L);
+	lua_pushstring(L, state.UTF8String); lua_setfield(L, -2, "state");
+	CGPoint location = [recognizer locationInView:recognizer.view];
+	lua_newtable(L); lua_pushnumber(L, location.x); lua_setfield(L, -2, "x");
+	lua_pushnumber(L, location.y); lua_setfield(L, -2, "y"); lua_setfield(L, -2, "location");
+	if ([recognizer isKindOfClass:UIPanGestureRecognizer.class]) {
+		UIPanGestureRecognizer *pan = (UIPanGestureRecognizer *)recognizer;
+		CGPoint translation = [pan translationInView:pan.view];
+		CGPoint velocity = [pan velocityInView:pan.view];
+		lua_newtable(L); lua_pushnumber(L, translation.x); lua_setfield(L, -2, "x");
+		lua_pushnumber(L, translation.y); lua_setfield(L, -2, "y"); lua_setfield(L, -2, "translation");
+		lua_newtable(L); lua_pushnumber(L, velocity.x); lua_setfield(L, -2, "x");
+		lua_pushnumber(L, velocity.y); lua_setfield(L, -2, "y"); lua_setfield(L, -2, "velocity");
+	}
+	if (lua_pcall(L, 1, 0, 0) != LUA_OK) report_lua_error(L, "gesture callback");
+}
+- (void)tap:(UITapGestureRecognizer *)recognizer {
+	(void)recognizer;
+	lua_State *L = lua_reg_live_state(self.callback);
+	if (L && lua_reg_push(self.callback)) lua_objc_pcall(L, 0, 0, "tap gesture");
+}
+- (void)drag:(UIPanGestureRecognizer *)recognizer {
+	NSString *state = @"changed";
+	if (recognizer.state == UIGestureRecognizerStateBegan) state = @"began";
+	else if (recognizer.state == UIGestureRecognizerStateEnded) state = @"ended";
+	else if (recognizer.state == UIGestureRecognizerStateCancelled) state = @"cancelled";
+	[self fire:recognizer state:state];
+}
+@end
+
+static int bridge_UIKit_addTap(lua_State *L) {
+	UIView *view = check_view(L, 1);
+	LuaReg *callback = lua_reg_opt(L, 2);
+	if (!callback) return 0;
+	LuaGestureTarget *target = [LuaGestureTarget new]; target.callback = callback;
+	UITapGestureRecognizer *recognizer = [[UITapGestureRecognizer alloc] initWithTarget:target action:@selector(tap:)];
+	recognizer.cancelsTouchesInView = NO;
+	[view addGestureRecognizer:recognizer]; view.userInteractionEnabled = YES;
+	objc_setAssociatedObject(recognizer, &kCallbackKey, target, OBJC_ASSOCIATION_RETAIN);
+	return 0;
+}
+
+static int bridge_UIKit_addDrag(lua_State *L) {
+	UIView *view = check_view(L, 1);
+	LuaReg *callback = lua_reg_opt(L, 2);
+	if (!callback) return 0;
+	LuaGestureTarget *target = [LuaGestureTarget new]; target.callback = callback;
+	UIPanGestureRecognizer *recognizer = [[UIPanGestureRecognizer alloc] initWithTarget:target action:@selector(drag:)];
+	[view addGestureRecognizer:recognizer];
+	objc_setAssociatedObject(recognizer, &kCallbackKey, target, OBJC_ASSOCIATION_RETAIN);
+	return 0;
+}
+
 static int bridge_window(lua_State *L) {
 	const char *title = luaL_checkstring(L, 1);
 	CGFloat width = luaL_checknumber(L, 2);

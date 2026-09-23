@@ -9,6 +9,7 @@ static int bridge_AppKitControls_hsplit(lua_State *L);
 static int bridge_AppKitControls_vsplit(lua_State *L);
 static int bridge_AppKitControls_separator(lua_State *L);
 static int bridge_AppKitControls_spacer(lua_State *L);
+static int bridge_AppKitControls_linearGradient(lua_State *L);
 static int bridge_AppKitControls_textField(lua_State *L);
 static int bridge_AppKitControls_searchField(lua_State *L);
 static int bridge_AppKitControls_box(lua_State *L);
@@ -19,6 +20,7 @@ static int bridge_AppKitControls_button(lua_State *L);
 static int bridge_AppKitControls_toggle(lua_State *L);
 static int bridge_NSScrollView_onRefresh(lua_State *L);
 static int bridge_NSScrollView_onRowSelect(lua_State *L);
+static int bridge_NSScrollView_addRow(lua_State *L);
 static int bridge_NSScrollView_onRowMove(lua_State *L);
 static int bridge_NSScrollView_onRowActivate(lua_State *L);
 static int bridge_NSScrollView_onColumnSort(lua_State *L);
@@ -613,6 +615,7 @@ static int bridge_NSView_splitProportions(lua_State *L) {
 /* --- MethodEntry dispatch arrays --- */
 #if defined(GEN_CLASS_ARRAYS)
 static MethodEntry TableMethods[] = {
+	{"addRow",	bridge_NSScrollView_addRow},
 	{"onRefresh",	bridge_NSScrollView_onRefresh},
 	{"onRowSelect",	bridge_NSScrollView_onRowSelect},
 	{"onRowMove",	bridge_NSScrollView_onRowMove},
