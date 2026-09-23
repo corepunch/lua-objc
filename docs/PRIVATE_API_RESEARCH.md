@@ -1,7 +1,7 @@
 # Private navigation palettes and LazyLayout
 
 **Status:** Research only; no private selectors are called by lua-objc.
-**Default:** Disabled. No experimental runtime switch is shipped.
+**Runtime:** No private implementation or experimental runtime switch is shipped.
 **Reviewed:** 2026-09-23.
 
 ## Findings and limits

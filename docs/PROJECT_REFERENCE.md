@@ -716,6 +716,7 @@ through `page:observe(callback)`. It exposes `loadURL`, `goBack`, `goForward`,
 `reload`, `stop`, and `evaluateJavaScript`. XML templates can bind an object in
 render data with `<WebView page="page" />`. Use an embedded view for a real
 in-app browsing workflow; open a normal external link in the system browser.
+Find-in-page and magnification controls are not exposed yet.
 
 ### `Toggle{...}`
 

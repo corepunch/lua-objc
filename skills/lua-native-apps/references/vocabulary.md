@@ -10,17 +10,17 @@ app-side substitute.
 |---|---|
 | SwiftUI stacks and controls | XML tags in this reference, rendered by `lua/ui/xml.lua` |
 | SwiftUI `List` / native table | `<List>` with `<Column>` children and data records |
-| Expo Router / `NavigationStack` path values | Not yet available; see issue [#8](https://github.com/corepunch/lua-objc/issues/8) |
-| Sheets with detents and drag indicator | Not yet available as a shared presentation API; see issue [#8](https://github.com/corepunch/lua-objc/issues/8) |
+| Value-based `NavigationStack` paths | `require("ui.navigation").Path` with registered destinations; see `navigation.md` |
+| Sheet detents and drag indicator | UIKit `ns.presentSheet(content, { detents = { "medium", "large" }, dragIndicator = true })`; AppKit uses native sheet windows |
 | Native List row reordering | `<List reorderable="true" reorderContainer="actionName">`; stacks and grids are not supported |
 | System Liquid Glass | `<GlassEffect style="regular|clear">`; use `style="glass"` for a glass button |
 | Native toolbar spacing/overflow | `<ToolbarSpacer />`, native toolbar overflow, and `ToolbarItem visibilityPriority`; on iOS set `TabView minimizeBehavior="onScroll"` for its tab bar |
-| `WebView` / observable `WebPage` | `<WebView page="page" />`; native `WKWebView` on both platforms |
+| `WebView` / observable `WebPage` | `<WebView page="page" />`; native `WKWebView` on both platforms. No find navigator or magnification API yet |
 | Lazy containers and large-list virtualization | Do not use eager `VStack` for unbounded rows; see issue [#9](https://github.com/corepunch/lua-objc/issues/9) |
 | Native motion and gestures | `onTap`/`onDrag`, `ui.haptics`, and Reduce Motion; no general implicit animation API |
 | Private navigation palettes / `LazyLayout` | Research only; unverified signatures and OS support, no runtime switch. Use public toolbar/SearchController/List APIs |
-| Swipe actions on non-List containers | Not yet available; see issue [#12](https://github.com/corepunch/lua-objc/issues/12) |
-| State observation / invalidation | Controller actions update retained refs or render the affected template; see `ARCHITECTURE.md` and issue [#12](https://github.com/corepunch/lua-objc/issues/12) |
+| Native swipe actions | Not yet available on `List` or stack rows; see issue [#12](https://github.com/corepunch/lua-objc/issues/12) |
+| State observation / invalidation | Controller actions update retained refs, native collections, or rerender when structure changes; see `ARCHITECTURE.md` and `state-and-observation.md` |
 
 For tabs, read the current XML registry and [project reference](../../../docs/PROJECT_REFERENCE.md)
 before assuming a tag or presentation behavior exists. For iOS builds and
