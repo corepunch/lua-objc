@@ -43,13 +43,82 @@ local function fixturePath()
 	return (source:gsub("services/Mock.lua$", "mock-hdd.json"))
 end
 
+local MAX_SAFE_INTEGER = 9007199254740991
+local function readBinaryFixture(file)
+	local buffer, position = "", 1
+	local function readExact(length)
+		assert(length >= 0 and length <= 1024 * 1024, "Mock HDD snapshot record is too large")
+		if length == 0 then return "" end
+		local chunks, remaining = {}, length
+		while remaining > 0 do
+			if position > #buffer then
+				buffer = assert(file:read(64 * 1024), "Mock HDD snapshot is truncated")
+				position = 1
+			end
+			local count = math.min(remaining, #buffer - position + 1)
+			chunks[#chunks + 1] = buffer:sub(position, position + count - 1)
+			position = position + count
+			remaining = remaining - count
+		end
+		return #chunks == 1 and chunks[1] or table.concat(chunks)
+	end
+	local function little32(bytes, offset)
+		local a, b, c, d = bytes:byte(offset, offset + 3)
+		return a + b * 256 + c * 65536 + d * 16777216
+	end
+	local function little64(bytes, offset)
+		local low, high = little32(bytes, offset), little32(bytes, offset + 4)
+		assert(high <= 2097151, "Mock HDD snapshot number exceeds Lua's exact integer range")
+		return high * 4294967296 + low
+	end
+
+	local header = readExact(56)
+	assert(header:sub(1, 8) == "DMOCK001", "Mock HDD snapshot magic is invalid")
+	assert(little32(header, 9) == 1, "Mock HDD snapshot version is unsupported")
+	local flags = little32(header, 13)
+	assert(flags < 2, "Mock HDD snapshot flags are unsupported")
+	local capacityBytes, availableBytes = little64(header, 17), little64(header, 25)
+	local itemCount, errors, visited = little64(header, 33), little64(header, 41), little64(header, 49)
+	assert(itemCount <= 50000000, "Mock HDD snapshot has too many entries")
+	local items, previous = {}, ""
+	for index = 1, itemCount do
+		local record = readExact(24)
+		local prefixLength, suffixLength = little32(record, 1), little32(record, 5)
+		local allocatedBytes, countedBytes = little64(record, 9), little64(record, 17)
+		assert(prefixLength <= #previous, "Mock HDD snapshot path prefix is invalid")
+		local path = previous:sub(1, prefixLength) .. readExact(suffixLength)
+		assert(path:sub(1, 1) == "/" and not path:find("\0", 1, true), "Mock HDD snapshot path is invalid")
+		items[index] = {path = path, allocatedBytes = allocatedBytes, countedBytes = countedBytes}
+		previous = path
+	end
+	assert(position > #buffer and file:read(1) == nil, "Mock HDD snapshot has trailing data")
+	return {
+		format = 1,
+		capacityBytes = capacityBytes,
+		availableBytes = availableBytes,
+		partial = flags % 2 == 1,
+		errors = errors,
+		visited = visited,
+		items = items,
+	}
+end
+
 local function loadFixture(path)
-	local file = assert(io.open(path or fixturePath(), "rb"), "Cannot read the Mock HDD snapshot")
-	local body = file:read("*a")
+	local selectedPath = path or fixturePath()
+	local file = assert(io.open(selectedPath, "rb"), "Cannot read the Mock HDD snapshot")
+	local ok, fixture = pcall(function()
+		if path then return readBinaryFixture(file) end
+		local body = file:read("*a")
+		local decoded, value = pcall(ns.json_parse, body)
+		assert(decoded and type(value) == "table" and value.format == 1 and type(value.items) == "table"
+			and type(value.capacityBytes) == "number" and type(value.availableBytes) == "number", "Mock HDD snapshot is invalid")
+		return value
+	end)
 	file:close()
-	local ok, fixture = pcall(ns.json_parse, body)
-	assert(ok and type(fixture) == "table" and fixture.format == 1 and type(fixture.items) == "table"
-		and type(fixture.capacityBytes) == "number" and type(fixture.availableBytes) == "number", "Mock HDD snapshot is invalid")
+	assert(ok, fixture)
+	assert(type(fixture.capacityBytes) == "number" and fixture.capacityBytes >= 0 and fixture.capacityBytes <= MAX_SAFE_INTEGER
+		and type(fixture.availableBytes) == "number" and fixture.availableBytes >= 0 and fixture.availableBytes <= MAX_SAFE_INTEGER,
+		"Mock HDD snapshot capacity metadata is invalid")
 	return fixture
 end
 

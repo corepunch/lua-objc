@@ -26,8 +26,10 @@ ledger when it finishes.
 and small headless regression fixtures. UI code must use `start`/`poll`.
 
 `exportStart(roots, exclusions, outputPath, metadata)` streams only file paths and
-allocated byte counts into a private temporary JSON file, then atomically renames it
-to `outputPath`. It also records disk capacity, partial-scan status, and a
+allocated byte counts into a private temporary versioned binary file, then atomically
+renames it to `outputPath`. The `DMOCK001` header records format version, disk
+capacity, available bytes, item count, scan errors, and visited count. Each record
+stores a common UTF-8 path prefix, the remaining path bytes, allocated size, and a
 `countedBytes` value so hard links do not inflate mock totals. `metadata.logicalRoots`
 can map a physical scan root to its user-visible path. The writer does not retain the
 full file list in memory and does not open file contents. `poll(job)` reports the
