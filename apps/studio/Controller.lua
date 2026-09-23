@@ -37,7 +37,7 @@ function Controller:createWindow()
 	assert(ns.Preview, "Lua Studio requires the iPad runtime. Use make ipad-run.")
 	local device, seed = Device.new(ns), {}
 	for _, name in ipairs(SEED) do
-		local path = "apps/playground/" .. name
+		local path = "demo/playground/" .. name
 		seed[path] = assert(ns._readFile(path))
 	end
 	self.model = Model.new(device.storage, seed)

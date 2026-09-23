@@ -9,7 +9,7 @@ local function read(path)
 end
 local seed = {}
 for _, name in ipairs({ "init.lua", "Model.lua", "Controller.lua", "views/Window.etlua" }) do
-	seed["apps/playground/" .. name] = read("apps/playground/" .. name)
+	seed["demo/playground/" .. name] = read("demo/playground/" .. name)
 end
 local saved, failSave
 local storage = { load = function() return nil end, save = function(value)
@@ -19,17 +19,17 @@ end }
 local model = Model.new(storage, seed)
 t.assertEqual(model.model, "openrouter/free", "new workspaces start with OpenRouter free router")
 t.assertEqual(#model:listFiles(), 4, "starter has four MVC files")
-for _, path in ipairs({ "../secret.lua", "/tmp/file.lua", "apps/playground/../studio/Model.lua", "apps/playground//a.lua", "apps/playground/evil.txt", "apps/playground/a\\b.lua" }) do
+for _, path in ipairs({ "../secret.lua", "/tmp/file.lua", "demo/playground/../studio/Model.lua", "demo/playground//a.lua", "demo/playground/evil.txt", "demo/playground/a\\b.lua" }) do
 	t.expect(not Model.validPath(path), "reject unsafe path " .. path)
 end
-local path = "apps/playground/Model.lua"
+local path = "demo/playground/Model.lua"
 local original = model.files[path]
 local ok = model:apply({ { path = path, content = "invalid lua !" } })
 t.expect(not ok, "invalid Lua rejected")
 t.assertEqual(model.files[path], original, "failed edits preserve project")
 ok = model:apply({ { path = path, content = "return {}" }, { path = path, content = "return {}" } })
 t.expect(not ok, "duplicate edits rejected")
-ok = model:apply({ { path = path, content = "return {}" }, { path = "apps/playground/views/Broken.etlua", content = "<% if %>" } })
+ok = model:apply({ { path = path, content = "return {}" }, { path = "demo/playground/views/Broken.etlua", content = "<% if %>" } })
 t.expect(not ok, "template syntax error rejects whole batch")
 t.assertEqual(model.files[path], original, "atomic syntax validation")
 failSave = true
@@ -39,7 +39,7 @@ t.assertEqual(#model.history, 0, "failed persistence does not create undo histor
 failSave = false
 t.expect(model:apply({ { path = path, content = "return {}" } }), "valid edits save")
 t.assertEqual(saved.files[path], "return {}", "changes persist")
-t.assertEqual(model.files["apps/playground/init.lua"], seed["apps/playground/init.lua"], "unrelated file unchanged")
+t.assertEqual(model.files["demo/playground/init.lua"], seed["demo/playground/init.lua"], "unrelated file unchanged")
 t.expect(model:undo(), "undo succeeds")
 t.assertEqual(model.files[path], original, "undo restores original")
 t.expect(not model:undo(), "empty undo is safe")
@@ -63,7 +63,7 @@ t.expect(not agent:send("again", "test-key"), "concurrent sends rejected")
 t.assertEqual(payload.model, "provider/test-model", "configured model used")
 t.assertEqual(#payload.tools, 4, "tools sent with request")
 pending({ choices = { { message = { role = "assistant", tool_calls = {
-	{ id = "call-1", ["function"] = { name = "readFile", arguments = '{"path":"apps/playground/Model.lua"}' } },
+	{ id = "call-1", ["function"] = { name = "readFile", arguments = '{"path":"demo/playground/Model.lua"}' } },
 } } } } })
 t.assertEqual(encoded.result, original, "readFile returns actual source")
 t.assertEqual(payload.messages[#payload.messages].tool_call_id, "call-1", "tool result tied to call")
@@ -81,7 +81,7 @@ t.expect(agent:send("Try again", "test-key"), "restart after cancellation")
 pending(nil, "offline")
 t.expect(not agent.busy, "network errors clear busy state")
 t.expect(model:transcript():find("offline", 1, true) ~= nil, "network error visible")
-local result = agent:execute({ ["function"] = { name = "applyFiles", arguments = '{"files":[{"path":"apps/playground/Model.lua","content":"return {}"}]}' } })
+local result = agent:execute({ ["function"] = { name = "applyFiles", arguments = '{"files":[{"path":"demo/playground/Model.lua","content":"return {}"}]}' } })
 t.expect(result.saved, "tool applies files")
 t.assertEqual(reloads, 1, "tool reloads preview")
 model:undo()

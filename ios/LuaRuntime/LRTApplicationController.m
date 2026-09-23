@@ -67,7 +67,7 @@ UIWindow *LRTApplicationWindow(void) {
 	NSError *err = nil;
 	if (![LRTResourceLoader.shared ping:&err]) {
 		[self showError:[NSString stringWithFormat:
-			@"Waiting for packager at %@\n\nOn your Mac, leave this running:\n  make ios-run PROJECT=apps/hello\n\nThen this screen updates by itself.\n\n%@",
+			@"Waiting for packager at %@\n\nOn your Mac, leave this running:\n  make ios-run PROJECT=demo/hello\n\nThen this screen updates by itself.\n\n%@",
 			self.packagerURL,
 			err.localizedDescription ?: @"Could not connect to the server."]];
 		if (_retrying) return;

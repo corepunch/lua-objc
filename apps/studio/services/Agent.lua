@@ -2,7 +2,7 @@ local Agent = {}
 Agent.__index = Agent
 local PROMPT = [[You develop the user's Lua app running in a live UIKit preview on iPad.
 Use listFiles and readFile before editing. Apply complete files with applyFiles; changes reload immediately.
-Use apps/playground/init.lua returning Controller; Model.lua owns domain logic; Controller.lua binds actions;
+Use demo/playground/init.lua returning Controller; Model.lua owns domain logic; Controller.lua binds actions;
 views/*.etlua own ALL view trees. Use require("ns") and require("ui.xml"). Only createWindow calls ns.Window.
 Templates support Window, VStack, HStack, Spacer, Label, Button, TextField, TextEditor, Toggle, ScrollView,
 Divider, SystemImage. Use native controls and semantic colors. Flexible content uses flexGrow="1".

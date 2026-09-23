@@ -1,6 +1,6 @@
 local Model = {}
 Model.__index = Model
-local PREFIX = "apps/playground/"
+local PREFIX = "demo/playground/"
 local REQUIRED = { "init.lua", "Model.lua", "Controller.lua", "views/Window.etlua" }
 local LIMITS = { fileBytes = 128 * 1024, totalBytes = 1024 * 1024, history = 20 }
 local DEFAULT_MODEL = "openrouter/free"
@@ -22,15 +22,15 @@ local function migrateSavedFiles(files)
 			changed = true
 		end
 		if type(source) == "string" then
-			local current = source:gsub("examples%.playground", "apps.playground")
-			current = current:gsub("examples/playground", "apps/playground")
+			local current = source:gsub("examples%.playground", "demo.playground")
+			current = current:gsub("examples/playground", "demo/playground")
 			if current ~= source then
 				source = current
 				changed = true
 			end
 		end
 		if migrated[canonical] ~= nil then
-			return nil, false, "Saved project has conflicting paths after moving to apps/playground: " .. canonical
+			return nil, false, "Saved project has conflicting paths after moving to demo/playground: " .. canonical
 		end
 		migrated[canonical] = source
 	end

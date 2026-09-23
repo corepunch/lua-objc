@@ -500,7 +500,7 @@ local window = ns.Window {
 `SearchField.controlSize` accepts `"mini"`, `"small"`, `"regular"`,
 `"large"`, or macOS 26's native `"extraLarge"` size.
 
-This is the pattern used by `apps/mail` and `apps/stocks`. Keep
+This is the pattern used by `demo/mail` and `apps/stocks`. Keep
 `style = "sourceList"` limited to navigation; primary data belongs in a
 `plain` or `fullWidth` table in the content column.
 
@@ -601,8 +601,8 @@ controller action receives a `ui.reorder.Difference` with one-based indexes.
 The model applies the difference, then the controller updates its retained
 etlua template. Native table/collection drag and drop provide previews and
 move animations; ordinary containers use platform drag interactions. Empty
-and one-item containers are valid. See `apps/container-reorder/` and
-`apps/lazy-reorder/` for complete MVC examples.
+and one-item containers are valid. See `demo/container-reorder/` and
+`demo/lazy-reorder/` for complete MVC examples.
 
 ### `ScrollView{...}`
 
@@ -916,7 +916,7 @@ ns.Curve {
 
 The IDE example intentionally stays small: a native source-list `OutlineView`
 shows folder contents in the sidebar, and a native `TextEditor` displays the
-selected file in the content pane. See `apps/ide/` and the agent-facing
+selected file in the content pane. See `demo/ide/` and the agent-facing
 [quickstart](index.md) for the supported workflow.
 
 ## Lua API — List (NSTableView)
@@ -1232,9 +1232,9 @@ Requires:
 
 ```sh
 make          # build ./lua-objc
-make run      # run apps/hello.lua
-make run ARGS="apps/hello.lua"
-make run ARGS="apps/list.lua"
+make run      # run demo/hello.lua
+make run ARGS="demo/hello.lua"
+make run ARGS="demo/list.lua"
 make clean
 ```
 
@@ -1546,7 +1546,7 @@ renders via `yield()`. This is similar to PHP's Blade/Twig template inheritance.
 </Window>
 ```
 
-**Child template** (`apps/hello/views/Window.etlua`):
+**Child template** (`demo/hello/views/Window.etlua`):
 
 ```lua
 <% extends("views/AppWindow.etlua", { title = "Hello", width = 480, height = 420 }) %>
@@ -1652,16 +1652,16 @@ local xml = require("ui.xml")
 local view = xml.render(xmlString, data, ns)
 
 -- Render from a file path (relative to cwd)
-local view = xml.renderFile("apps/mail/views/Window.etlua", rowData, ns)
+local view = xml.renderFile("demo/mail/views/Window.etlua", rowData, ns)
 
 -- When XML root is <Window>, returns (config, refs) instead of (view, refs)
-local cfg, refs = xml.renderFile("apps/mail/views/Window.etlua")
+local cfg, refs = xml.renderFile("demo/mail/views/Window.etlua")
 
 -- Decode data XML into Lua tables via schema
 local data = xml.decode(xmlString, schema)
 
 -- Decode from file path
-local data = xml.decodeFile("apps/mail/share/messages.xml", schema)
+local data = xml.decodeFile("demo/mail/share/messages.xml", schema)
 ```
 
 The returned value is a single view userdata. When the XML root has multiple
@@ -1718,7 +1718,7 @@ local schema = {
   },
 }
 
-local data = xml.decodeFile("apps/mail/share/messages.xml", schema)
+local data = xml.decodeFile("demo/mail/share/messages.xml", schema)
 ```
 
 This API decodes XML entities in attributes/text and preserves multiline CDATA
@@ -1753,13 +1753,13 @@ apps/<appname>/
 ### Example: mail app
 
 ```lua
--- apps/mail/init.lua
-local WindowController = require("apps.mail.Controller")
+-- demo/mail/init.lua
+local WindowController = require("demo.mail.Controller")
 return WindowController.new():createWindow()
 ```
 
 ```lua
--- apps/mail/Controller.lua  (abridged)
+-- demo/mail/Controller.lua  (abridged)
 local WindowController = {}
 WindowController.__index = WindowController
 
@@ -1781,7 +1781,7 @@ end
 ```
 
 ```xml
-<!-- apps/mail/views/Window.etlua -->
+<!-- demo/mail/views/Window.etlua -->
 <HSplit>
     <List ref="mailboxList" width="180" style="sourceList" header="false">
         <Column id="name" title="Mailbox" />
@@ -1794,7 +1794,7 @@ end
 ```
 
 ```xml
-<!-- apps/mail/views/MessageDetail.etlua -->
+<!-- demo/mail/views/MessageDetail.etlua -->
 <VStack flexGrow="1" padding="24" spacing="16" alignment="leading">
     <Label text="<%= subject %>" size="18" weight="semibold" />
     <HStack spacing="8">

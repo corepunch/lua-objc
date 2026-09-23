@@ -10,7 +10,7 @@ rm -f "$OUT_PATH"
 
 SIMCTL_CHILD_LUA_OBJC_INTERNAL_SCREENSHOT="$CAPTURE_PATH" \
 	LUA_OBJC_RUN_NONBLOCKING=1 \
-	PROJECT="${PROJECT:-apps/hello}" \
+	PROJECT="${PROJECT:-demo/hello}" \
 	DEVICE="${DEVICE:-iPhone 17}" \
 	"$ROOT/scripts/ios-run.sh"
 

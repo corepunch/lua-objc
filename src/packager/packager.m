@@ -10,7 +10,7 @@
 #include <lualib.h>
 
 static NSString *gRoot;
-static NSString *gEntry = @"apps/hello";
+static NSString *gEntry = @"demo/hello";
 static uint16_t gPort = 8081;
 static lua_State *gL;
 static NSMutableArray<NSNumber *> *gClients;

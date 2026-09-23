@@ -137,7 +137,7 @@ scripts/parity/
   run.*                      reproducible build/run/capture orchestration
   compare.*                  frame and image comparisons
   report.*                   local HTML evidence report and machine JSON
-apps/swiftui_parity/
+demo/swiftui_parity/
   init.lua                   requires and returns Controller class
   Model.lua                  deterministic fixture inputs/state
   Controller.lua             fixture selection, actions, single root window
@@ -567,7 +567,7 @@ foreground cases competing for the same Simulator's state.
 | `scripts/parity/batch_reference_build.sh` | Build macOS executable or iOS reference app |
 | `lua/parity/batch.lua` | Production Lua view construction and sequential candidate measurement |
 | `scripts/parity/batch_candidate.lua` | macOS candidate batch entry point |
-| `apps/parity_batch/` | Streamed iOS candidate batch entry point; no application Lua bundled in the host |
+| `test/parity_batch/` | Streamed iOS candidate batch entry point; no application Lua bundled in the host |
 | `src/appkit/parity_batch.m`, `src/uikit/parity_batch.m` | Native coordinate conversion and measurement of actual views |
 | `src/shared/parity_batch.m` | Shared JSON/output helpers |
 | `tests/parity/batch/test_protocol.py` | Evidence acceptance negative controls |
@@ -759,7 +759,7 @@ Capture never installs a bundle. It copies fixture JSON into the installed
 app's data container, launches once, waits for a nonce-matched `done.json`,
 copies results back, and terminates the batch app. The native application
 contains no Lua fixtures/assets. Candidate execution uses a dedicated packager
-on a dynamically selected local port and streams `apps/parity_batch`.
+on a dynamically selected local port and streams `test/parity_batch`.
 The coordinator owns and closes that packager; it does not kill unrelated
 port-8081 listeners. Installation is repeated only when the corresponding
 native host changes. Reference captures can be reused across candidate fixes.

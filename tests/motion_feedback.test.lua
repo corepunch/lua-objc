@@ -2,7 +2,7 @@ _G.__headless = true
 package.path = "./?.lua;./lua/?.lua;" .. package.path
 
 local t = require("TestKit")
-local Controller = require("apps.motion-feedback.Controller")
+local Controller = require("demo.motion-feedback.Controller")
 local controller = Controller.new()
 local ok, err = pcall(function() controller:createWindow() end)
 t.expect(ok, "motion feedback example renders in headless mode")

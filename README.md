@@ -68,21 +68,21 @@ with the iPhone Simulator SDK.
 ```sh
 make
 make test
-make run ARGS="apps/hello"
+make run ARGS="demo/hello"
 make run-ide
 
 # Or directly (directory path auto-discovers init.lua):
-./lua-objc apps/hello
-./lua-objc apps/mail
+./lua-objc demo/hello
+./lua-objc demo/mail
 ```
 
 iPhone Simulator (host is a runtime; Lua and assets stream from a Mac packager). After the host exists, a save reloads the app **in place** — the process does not quit:
 
 ```sh
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
-make ios-run ARGS=apps/hello
+make ios-run ARGS=demo/hello
 # watch Xcode’s Simulator window (not the terminal)
-# edit apps/hello/views/Window.etlua, save — UI updates without quitting
+# edit demo/hello/views/Window.etlua, save — UI updates without quitting
 ```
 
 See [`docs/ios.md`](docs/ios.md) for the host, packager protocol, and coverage contract.
@@ -109,7 +109,7 @@ Capture an app's native content and computed layout:
 
 ```sh
 ./lua-objc --internal-screenshot=/tmp/content.png --width=800 --height=600 \
-  apps/layout/init.lua
+  demo/layout/init.lua
 
 # Dump AppKit's computed native hierarchy, frames, and table-cell cropping.
 ./lua-objc --dump-layout=/tmp/layout.xml apps/stocks/init.lua
@@ -131,11 +131,12 @@ point. See [preview behavior](ARCHITECTURE.md#--preview-cli-mode).
 | Change async state ownership, HTTP, timers, or JSON | `src/shared/lua_async.m` |
 | Change CLI preview rendering | `src/main.m`, `src/appkit/platform.m` |
 | Change editor highlighting | `src/appkit/syntax_highlight.m` |
-| Add an IDE editor surface | `apps/ide/` |
+| Add an IDE editor surface | `demo/ide/` |
 | Write or modify XML view templates | `lua/ui/xml.lua`, `apps/<app>/views/` |
 | Use template inheritance or partials | `views/AppWindow.etlua`, `views/partials/` |
-| Add a new example app | `apps/<app>/init.lua`, `AGENTS.md` (MVC layout rules) |
-| Change app startup or recents | `lua/App.lua`, `apps/ide/` |
+| Add a new product app | `apps/<app>/init.lua`, `AGENTS.md` (MVC layout rules) |
+| Add a framework test app | `test/<app>/init.lua`, `AGENTS.md` (MVC layout rules) |
+| Change app startup or recents | `lua/App.lua`, `demo/ide/` |
 | Add UIKit coverage | `src/uikit/`, `src/uikit_module.m`, `lua/embedded/UIKit.lua` |
 | Run on iPhone Simulator / in-process reload | [`docs/ios.md`](docs/ios.md) |
 | Understand runtime ownership | `ARCHITECTURE.md` |
@@ -209,7 +210,9 @@ extension does not define an architectural layer:
 | `src/shared/` | Common bridge conversion, state ownership, async services, errors |
 | `ios/LuaRuntime/` | iOS process lifecycle, source loading, reload, capture |
 | `src/packager/` | Mac development server for Lua and assets |
-| `apps/<app>/` | Application behavior and composition in Lua |
+| `apps/<app>/` | Product application behavior and composition in Lua |
+| `demo/<name>/` | Runnable framework examples and feature demos |
+| `test/<name>/` | Runnable apps used specifically as test harnesses |
 
 Nested subsystem folders are fine when they make navigation easier. Use
 one shared `.h` per folder that needs cross-file declarations, with the
@@ -296,9 +299,9 @@ interface.
 | Reusable view components | etlua partials emitting native view trees |
 | Routes dispatch actions | Native callbacks invoke controller methods |
 
-The [hello controller](apps/hello/Controller.lua) shows the basic flow:
+The [hello controller](demo/hello/Controller.lua) shows the basic flow:
 take model data, render a template, and create a window. The
-[mail controller](apps/mail/Controller.lua) adds interaction: selecting
+[mail controller](demo/mail/Controller.lua) adds interaction: selecting
 a message marks it read and updates the detail pane in the existing window.
 
 **The key difference is lifetime.** Laravel's web flow handles a request and
@@ -360,7 +363,7 @@ Key features:
 Use native `List` for table-style collections. Use `<LazyVStack>` or
 `<LazyVGrid>` when rows need arbitrary etlua views; their native collection
 hosts create item views only as they become visible. Eager `<VStack>` and
-`<Grid>` construct every child. The [reorder examples](apps/lazy-reorder/README.md)
+`<Grid>` construct every child. The [reorder examples](demo/lazy-reorder/README.md)
 show the lazy containers and difference callbacks.
 `benchmarks/run_list.sh` compares equal simple text rows in lua-objc and the
 [`SwiftUI source`](benchmarks/swiftui_list.swift). One macOS 27.0 / Apple M1
@@ -438,7 +441,9 @@ lua/embedded/           public declarative framework layers
 lua/ui/                 cross-platform XML template renderer
 lua/vendor/             vendored Lua libraries (etlua submodule)
 lua/App.lua             app lifecycle and recent-item persistence
-apps/               runnable Lua applications
+apps/               product applications
+demo/               runnable framework examples and feature demos
+test/               runnable test harness apps
 tests/                  headless Lua integration tests
 docs/                   detailed, opt-in reference material
 ```

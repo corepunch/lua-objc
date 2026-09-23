@@ -4,7 +4,7 @@ set -e
 DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 export DEVELOPER_DIR
 DEVICE="${DEVICE:-iPhone 17}"
-ENTRY="${PROJECT:-apps/hello}"
+ENTRY="${PROJECT:-demo/hello}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SIMAPP="$DEVELOPER_DIR/Applications/Simulator.app"
 PACKAGER="$ROOT/build/lua-objc-packager"

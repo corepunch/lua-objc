@@ -7,7 +7,9 @@ frameworks are Mach-O dylibs loaded by Lua; their declarative conveniences are
 authored in Lua and embedded into the corresponding library at build time.
 
 ```
-apps/<app>/             Lua Model, Controller, and views
+apps/<app>/             product apps: Lua Model, Controller, and views
+demo/<name>/            runnable framework examples and feature demos
+test/<name>/            runnable test harness apps
 src/host.c                  Tiny macOS executable loader
 src/main.m                  AppKit translation-unit root and registration
 src/appkit/*.m              Focused bridge fragments included by main.m
@@ -332,7 +334,7 @@ fillWidth, fillHeight
 
 ---
 
-## IDE example (`apps/ide`)
+## IDE example (`demo/ide`)
 
 The IDE is an intentionally small Lua application, not a separate framework.
 It uses one native semantic sidebar for folder contents and one native editor
@@ -363,7 +365,7 @@ instantiates the class returned by `init.lua`; its `createWindow()` method
 and does not self-start. Reusable view components do not create windows.
 
 **MVC example layout.** Every standalone example lives under
-`apps/<appname>/` with this layout:
+`apps/<appname>/`, `demo/<name>/`, or `test/<name>/` with this layout:
 
 ```text
 init.lua        ← requires and returns Controller class (framework instantiates)
@@ -407,7 +409,7 @@ structural state change. Do not invalidate from scroll or animation callbacks.
 The IDE example is organized as:
 
 ```text
-apps/ide/
+demo/ide/
 ├── init.lua          # entry point
 ├── Model.lua         # file access and language detection
 ├── Controller.lua    # folder sidebar, editor, file watching, and saving
@@ -426,7 +428,7 @@ feature-oriented MVC with controller composition—see the
 ### XML view templates (`lua/ui/xml.lua`)
 
 A cross-platform XML renderer sits between the app layer and the `ns.*` APIs.
-Templates live in `apps/<app>/views/*.etlua`. The renderer:
+Templates live in `<app-root>/<app>/views/*.etlua`. The renderer:
 
 - Applies etlua (`lua/vendor/etlua`, git submodule) to the XML source first,
   substituting `<%= expr %>` and `<% stmt %>` blocks.
@@ -493,7 +495,7 @@ Child templates can extend a parent layout, defining blocks that the parent
 renders via `yield()`:
 
 ```lua
--- Child: apps/hello/views/Window.etlua
+-- Child: demo/hello/views/Window.etlua
 <% extends("views/AppWindow.etlua", { title = "Hello", width = 480 }) %>
 <% block("content", [[
     <VStack padding="24">
@@ -557,7 +559,7 @@ interpolation.
 
 ---
 
-## IDE layout (`apps/ide`)
+## IDE layout (`demo/ide`)
 
 ```
 ns.Window
@@ -581,7 +583,8 @@ and requires a returned native view. It lays out that view and renders PNG
 without running the application event loop. Async-loaded data is not awaited.
 
 This path does not instantiate a Controller class returned by a thin app entry
-point. Use `--screenshot` or `--dump-layout` for `apps/<app>/init.lua` apps;
+point. Use `--screenshot` or `--dump-layout` for an `apps/`, `demo/`, or
+`test/` app entry point;
 those paths exercise framework startup and real window geometry. There is no
 current `canvas_state_create`, `bridge_eval`, or isolated IDE canvas subsystem.
 

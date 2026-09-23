@@ -2,7 +2,7 @@ _G.__headless = true
 
 local t = require("TestKit")
 local App = require("App")
-local Model = require("apps.mail.Model")
+local Model = require("demo.mail.Model")
 
 t.expect(App.sharePath("messages.xml"):match("tests/share/messages%.xml$") ~= nil,
 	"sharePath resolves relative to the caller by default")

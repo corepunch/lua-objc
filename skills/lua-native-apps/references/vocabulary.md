@@ -320,7 +320,7 @@ small, bounded content. For native swipe actions in a stack, use `<SwipeRow>`
 and controller actions as shown in [`docs/swipe_actions.md`](../../../docs/swipe_actions.md).
 
 ### LazyVGrid
-Virtualized native grid layout. See `apps/lazy-reorder/` for a 1,000-item
+Virtualized native grid layout. See `demo/lazy-reorder/` for a 1,000-item
 stack and grid example with native drag preview and model updates.
 
 ## Images & Graphics

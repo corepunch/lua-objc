@@ -471,7 +471,7 @@ int lua_objc_main(int argc, char *argv[]) {
 		}
 	}
 
-	if (!script) script = "apps/hello";
+	if (!script) script = "demo/hello";
 
 	// If script path is a directory, look for init.lua inside it.
 	{

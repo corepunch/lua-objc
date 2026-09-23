@@ -1,8 +1,8 @@
 _G.__headless = true
 
 local t = require("TestKit")
-local Controller = require("apps.glass-materials.Controller")
-local Model = require("apps.glass-materials.Model")
+local Controller = require("demo.glass-materials.Controller")
+local Model = require("demo.glass-materials.Model")
 
 local model = Model.new()
 t.assertEqual(model.materials[1].value, "regular", "regular glass is available")

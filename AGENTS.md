@@ -45,8 +45,9 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   constructors. The app entry point/controller may create `ns.Window` only.
   Only the app entry point (`init.lua` or the `App` object) creates an
   `ns.Window`. A component that creates a window is wrong.
-- **Apps live in `apps/<appname>/`.** Every app has its own folder with
-  `init.lua` as the entry point. Flat `apps/<appname>.lua` files are
+- **Product apps live in `apps/<appname>/`, demos in `demo/<name>/`, and test
+  apps in `test/<name>/`.** Each has its own folder with `init.lua` as the
+  entry point. Flat app files are
   forbidden. There are no forwarding shims.
 - **Improve the framework, never patch around it in apps.** If a UI API is missing
   or behaves unlike its SwiftUI counterpart, fix the shared framework and add
@@ -61,11 +62,11 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   focused services for IO/runtime integration; keep controller actions thin.
 - **MVC folder layout inside each app:**
   ```
-  apps/<app>/
-    init.lua        ← requires and returns Controller class (framework instantiates)
-    Model.lua       ← data, queries, mutations
-    Controller.lua  ← wires model → views, owns actions
-    views/          ← etlua templates only, including reusable partials
+  apps/<app>/, demo/<name>/, or test/<name>/
+    init.lua       ← requires and returns Controller class (framework instantiates)
+    Model.lua      ← data, queries, mutations
+    Controller.lua ← wires model → views, owns actions
+    views/         ← etlua templates only, including reusable partials
   ```
   init.lua never self-starts. It returns the class; the framework calls
   `class.new():createWindow()`.
@@ -139,7 +140,7 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   width = 520, rowHeight = 28 }`) rather than separate `local SCREAMING_SNAKE`
   variables. Prefer flat camelCase keys.
 - Comments explain design reasons, edge cases, and existing prior art.
-- Keep `apps/<app>/init.lua` thin — entry point only. Put UI bricks in
+- Keep each app's `init.lua` thin — entry point only. Put UI bricks in
   `views/`, state in `Model.lua`, and wiring in `Controller.lua`.
 - Native `.m` sources expose existing Cocoa classes to Lua. New classes are
   implemented in Lua whenever possible. Only reach for `.m` when the
@@ -193,8 +194,8 @@ metadata layers.
 ```sh
 make
 make test
-make run ARGS="apps/hello/init.lua"
-./lua-objc --preview --out=/tmp/preview.png apps/hello/init.lua
+make run ARGS="demo/hello/init.lua"
+./lua-objc --preview --out=/tmp/preview.png demo/hello/init.lua
 ./lua-objc --screenshot=/tmp/screenshot.png apps/stocks/init.lua
 ```
 
@@ -204,7 +205,7 @@ The streaming UIKit host runs an app entry point from the Mac packager. Use
 `PROJECT` (not `ARGS`) to select the app:
 
 ```sh
-make ios-run PROJECT=apps/hello
+make ios-run PROJECT=demo/hello
 make ios-run PROJECT=apps/adventure-arena
 ```
 

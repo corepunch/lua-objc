@@ -3,7 +3,7 @@ _G.__headless = true
 local ns = require("AppKit")
 local t = require("TestKit")
 local xml = require("ui.xml")
-local Controller = require("apps.swipe-actions.Controller")
+local Controller = require("demo.swipe-actions.Controller")
 
 local controller = Controller.new()
 controller:createWindow()

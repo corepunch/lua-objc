@@ -13,7 +13,7 @@ app. Read it before writing application code.
 
 ## 1. Choose the app shape
 
-Create a folder under `apps/`:
+Create a product app under `apps/` or a framework example under `test/`:
 
 ```text
 apps/weather/
@@ -94,12 +94,12 @@ simulate progress.
 
 ## 6. iPhone Simulator
 
-The same `apps/<app>/` tree runs on iOS. The Simulator host is a runtime;
+The same `apps/<app>/` and `test/<app>/` trees run on iOS. The Simulator host is a runtime;
 Lua, templates, and assets stream from a Mac packager. After `make ios-run`,
 a save reloads the running app **without quitting**:
 
 ```sh
-make ios-run ARGS=apps/hello
+make ios-run ARGS=demo/hello
 ```
 
 Do not copy Lua into the `.app`. Do not rebuild the host because a view or

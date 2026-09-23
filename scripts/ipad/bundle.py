@@ -70,7 +70,7 @@ def main():
     copy_tree('lua', workspace, lua_only=True)
     copy_tree(args.app, workspace)
     if args.app == 'apps/studio':
-        copy_tree('apps/playground', workspace)
+        copy_tree('demo/playground', workspace)
     (bundle / 'PkgInfo').write_bytes(b'APPL????')
 
 

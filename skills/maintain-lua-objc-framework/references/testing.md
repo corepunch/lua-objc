@@ -61,7 +61,7 @@ _G.__headless = true
 
 local t = require("TestKit")
 local ns = require("AppKit")
-local Controller = require("apps.mail.Controller")
+local Controller = require("demo.mail.Controller")
 
 local controller = Controller.new()
 local window = controller:createWindow()

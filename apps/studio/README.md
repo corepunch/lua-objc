@@ -40,7 +40,7 @@ missing icons use the `app.dashed` SF Symbol. Example project metadata is bundle
 under `apps/studio/Documents/` and copied into the app's bundled workspace by
 the iPad build.
 
-The preview loads `apps/playground/` from the locally saved workspace, falling
+The preview loads `demo/playground/` from the locally saved workspace, falling
 back to the bundled starter project when no saved workspace exists. Each preview
 load creates fresh project state. Native capabilities still require a host build.
 

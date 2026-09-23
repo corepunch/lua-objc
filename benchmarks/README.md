@@ -15,7 +15,7 @@ peak process resident memory. It is not a first-frame or scroll benchmark.
 
 ## iPhone ProMotion run
 
-`apps/list-benchmark/` is a bundled iPhone benchmark app. Its native probe
+`demo/list-benchmark/` is a bundled iPhone benchmark app. Its native probe
 programmatically scrolls a `UITableView` or `UIScrollView` at 1,500 points per
 second. It reports the first four seconds and keeps scrolling for 30 seconds
 so Instruments can attach. `benchmarks/swiftui_device.swift` applies the same

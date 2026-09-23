@@ -34,7 +34,7 @@ The same attributes work on `VStack`, `Grid`, `FlowStack`, `LazyVStack`, and
 lazy collections use `NSCollectionView` or `UICollectionView` with native move
 animation and cell reuse. For these structural views, apply the difference in
 the model and update a retained `ui.template` mount so etlua reflects the new
-order. See `apps/container-reorder/` and `apps/lazy-reorder/`.
+order. See `demo/container-reorder/` and `demo/lazy-reorder/`.
 
 Cross-container moves are not part of this single-container API. The built-in
 system drag preview is used; there is no custom preview styling option.

@@ -1,7 +1,7 @@
 _G.__headless = true
 
 local t = require("TestKit")
-local Model = require("apps.list-reorder.Model")
+local Model = require("demo.list-reorder.Model")
 local reorder = require("ui.reorder")
 
 local model = Model.new({
@@ -19,7 +19,7 @@ t.expect(model.tasks[1] == originalSecond, "move preserves row identity")
 t.assertEqual(model.tasks[3]._id, "c", "unrelated row order stays unchanged")
 t.expect(not model:applyReorder({}), "model rejects values outside the Difference API")
 
-local Controller = require("apps.list-reorder.Controller")
+local Controller = require("demo.list-reorder.Controller")
 local controller = Controller.new()
 local ok, err = pcall(function() controller:createWindow() end)
 t.expect(ok, "example renders its native list in headless mode")

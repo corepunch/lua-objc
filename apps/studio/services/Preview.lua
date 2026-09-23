@@ -69,7 +69,7 @@ function Preview:render(files)
 		if ticks > 500 then error("Preview exceeded its execution budget") end
 	end, "", 10000)
 	local ok, result = xpcall(function()
-		local controller = requireModule("apps.playground.init").new()
+		local controller = requireModule("demo.playground.init").new()
 		return controller:createWindow()
 	end, debug.traceback)
 	debug.sethook(oldHook, mask, count)

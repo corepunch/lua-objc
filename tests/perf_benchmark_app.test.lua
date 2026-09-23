@@ -1,7 +1,7 @@
 _G.__headless = true
 
 local t = require("TestKit")
-local Controller = require("apps.list-benchmark.Controller")
+local Controller = require("demo.list-benchmark.Controller")
 
 for _, count in ipairs({ 1000, 5000 }) do
 	local list = Controller.new { kind = "list", count = count }

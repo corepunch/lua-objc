@@ -34,7 +34,7 @@ All private runtime calls live in `src/uikit/private_navigation_palettes.m`.
 </NavigationStack>
 ```
 
-The opt-in example is `apps/private-palettes/`; it is excluded from the
+The opt-in example is `demo/private-palettes/`; it is excluded from the
 default example list. Public `UINavigationItem` and `UINavigationController`
 APIs remain the supported production path. For large collections use native
 `List`, not private `LazyLayout`.

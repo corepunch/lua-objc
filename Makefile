@@ -63,10 +63,10 @@ run: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	./$(TARGET) $(ARGS)
 
 run-hello: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) apps/hello/init.lua
+	./$(TARGET) demo/hello/init.lua
 
 run-list: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) apps/list/init.lua
+	./$(TARGET) demo/list/init.lua
 
 run-stocks: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) apps/stocks/init.lua
@@ -75,16 +75,16 @@ run-weather: $(TARGET) $(FRAMEWORK_MODULES)
 	./$(TARGET) apps/weather/init.lua
 
 run-welcome: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) apps/welcome/init.lua
+	./$(TARGET) demo/welcome/init.lua
 
 run-mail: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) apps/mail/init.lua
+	./$(TARGET) demo/mail/init.lua
 
 run-layout: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) apps/layout/init.lua
+	./$(TARGET) demo/layout/init.lua
 
 run-ide: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) apps/ide/init.lua
+	./$(TARGET) demo/ide/init.lua
 
 # Usage: make run-diskmap                      # scans this repo (~28ms)
 #        make run-diskmap DIR=~/Developer/icui  # scan a specific dir
@@ -171,19 +171,19 @@ ios-host: $(HOST_BINARY)
 ios-packager: $(PACKAGER)
 
 ios-packager-run: ios-packager
-	./$(PACKAGER) --root "$(CURDIR)" --port 8081 --entry "$(or $(PROJECT),apps/hello)"
+	./$(PACKAGER) --root "$(CURDIR)" --port 8081 --entry "$(or $(PROJECT),demo/hello)"
 
 ios-packager-stop:
 	@if [ -f build/ios/packager.pid ]; then kill $$(cat build/ios/packager.pid) 2>/dev/null || true; rm -f build/ios/packager.pid; fi
 
 ios-run: ios-host ios-packager
 	chmod +x scripts/ios-run.sh
-	DEVELOPER_DIR=$(DEVELOPER_DIR) DEVICE="$(DEVICE)" PROJECT="$(or $(PROJECT),apps/hello)" \
+	DEVELOPER_DIR=$(DEVELOPER_DIR) DEVICE="$(DEVICE)" PROJECT="$(or $(PROJECT),demo/hello)" \
 		scripts/ios-run.sh
 
 ios-internal-screenshot: ios-host ios-packager
 	DEVELOPER_DIR=$(DEVELOPER_DIR) OUT="$(or $(OUT),/tmp/ios-internal-screenshot.png)" \
-		PROJECT="$(or $(PROJECT),apps/hello)" DEVICE="$(DEVICE)" \
+		PROJECT="$(or $(PROJECT),demo/hello)" DEVICE="$(DEVICE)" \
 		scripts/ios-internal-screenshot.sh
 
 ios-screenshot:

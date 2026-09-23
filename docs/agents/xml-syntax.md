@@ -19,7 +19,7 @@ Render a file with:
 
 ```lua
 local xml = require("ui.xml")
-local view, refs = xml.renderFile("apps/mail/views/Window.etlua", data, ns)
+local view, refs = xml.renderFile("demo/mail/views/Window.etlua", data, ns)
 ```
 
 XML attributes are strings when parsed. The registry coerces layout numbers and

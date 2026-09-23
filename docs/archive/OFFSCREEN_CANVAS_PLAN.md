@@ -264,8 +264,8 @@ past `lua_close`, this is safe.
 |---|---|
 | `src/main.m` | Add `offscreen_render()`, `bridge_render_to_png()`, `--preview` branch in `main()`, `bridge_watch_file()`, register `_renderToPNG` + `_watchFile` |
 | `lua/embedded/IDEKit.lua` | Add `IDEKit.renderCanvas()`, `editor.watchFile` tracking in `IDEKit.Editor` |
-| `apps/ide.lua` | Call `editor.watchFile(path)` inside `openInEditor` |
-| `apps/preview.lua` | Minimal example: `return ns.VStack { ... }` usable as `./lua-objc --preview apps/preview.lua` |
+| `demo/ide.lua` | Call `editor.watchFile(path)` inside `openInEditor` |
+| `demo/preview.lua` | Minimal example: `return ns.VStack { ... }` usable as `./lua-objc --preview demo/preview.lua` |
 
 No new files needed in `src/` — consistent with the current single-translation-unit style.
 
