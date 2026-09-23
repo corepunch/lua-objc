@@ -1128,6 +1128,16 @@ function AppKit.List(props)
 			props.onReorder(difference)
 		end)
 	end
+	if props.onSwipeLeading then
+		tv:onRowSwipe("leading", props.swipeLeadingTitle or "Archive",
+			props.swipeLeadingRole or "normal", props.fullSwipe == true,
+			function(_, index, row) props.onSwipeLeading(index, row) end)
+	end
+	if props.onSwipeTrailing then
+		tv:onRowSwipe("trailing", props.swipeTrailingTitle or "Delete",
+			props.swipeTrailingRole or "destructive", props.fullSwipe == true,
+			function(_, index, row) props.onSwipeTrailing(index, row) end)
+	end
 
 	if props.refresh and type(props.refresh) == "function" then
 		local refresh_fn = props.refresh
@@ -1148,6 +1158,35 @@ function AppKit.List(props)
 	end
 
 	return applyLayout(tv, props)
+end
+
+--- A native swipeable table row that can sit inside a VStack or another stack.
+--- The table owns swipe chrome, gesture handling, and accessibility.
+function AppKit.SwipeRow(props)
+	props = props or {}
+	local view = AppKit.List {
+		columns = { { id = "title", title = "" }, { id = "status", title = "" } },
+		data = { { title = props.title or "", status = props.status or "" } },
+		header = false,
+		alternatingRows = false,
+		style = "plain",
+		rowHeight = props.rowHeight,
+		onSwipeLeading = props.onSwipeLeading and function(_, row)
+			props.onSwipeLeading(props.id, row)
+		end,
+		onSwipeTrailing = props.onSwipeTrailing and function(_, row)
+			props.onSwipeTrailing(props.id, row)
+		end,
+		swipeLeadingTitle = props.swipeLeadingTitle,
+		swipeTrailingTitle = props.swipeTrailingTitle,
+		swipeLeadingRole = props.swipeLeadingRole,
+		swipeTrailingRole = props.swipeTrailingRole,
+		fullSwipe = props.fullSwipe,
+	}
+	view.fixedHeight = props.rowHeight or view.documentView.rowHeight
+	view.hasVerticalScroller = false
+	view.hasHorizontalScroller = false
+	return applyLayout(view, props)
 end
 
 function AppKit.readDirectory(path, depth)

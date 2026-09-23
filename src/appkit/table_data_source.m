@@ -5,9 +5,16 @@
 @property (nonatomic, strong) NSMutableArray *columns;
 @property (nonatomic, weak) NSTableView *tableView;
 @property (nonatomic, weak) LuaStateOwner *owner;
+@property (nonatomic, strong) LuaReg *leadingSwipeReg;
+@property (nonatomic, strong) LuaReg *trailingSwipeReg;
+@property (nonatomic, copy) NSString *leadingSwipeTitle;
+@property (nonatomic, copy) NSString *trailingSwipeTitle;
+@property (nonatomic) BOOL leadingSwipeDestructive;
+@property (nonatomic) BOOL trailingSwipeDestructive;
 - (void)updateTableFrame;
 - (void)replaceRows:(NSArray *)rows;
 - (void)activateSelectedRow:(id)sender;
+- (BOOL)invokeSwipeAtRow:(NSInteger)row leading:(BOOL)leading;
 @end
 
 @interface LuaTableCellView : NSTableCellView
@@ -342,6 +349,39 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView {
 	return (NSInteger)_rows.count;
+}
+
+- (BOOL)invokeSwipeAtRow:(NSInteger)row leading:(BOOL)leading {
+	if (row < 0 || row >= (NSInteger)_rows.count) return NO;
+	LuaReg *reg = leading ? self.leadingSwipeReg : self.trailingSwipeReg;
+	lua_State *callL = lua_reg_live_state(reg);
+	if (!callL || !lua_reg_push(reg)) return NO;
+	push_objc(callL, self.tableView.enclosingScrollView, "nsview");
+	lua_pushinteger(callL, (lua_Integer)row + 1);
+	lua_newtable(callL);
+	NSDictionary *rowData = self.rows[(NSUInteger)row];
+	for (NSString *key in rowData) {
+		push_objc_value(callL, rowData[key]);
+		lua_setfield(callL, -2, key.UTF8String);
+	}
+	return lua_objc_pcall(callL, 3, 0, "table row swipe") == LUA_OK;
+}
+
+- (NSArray<NSTableViewRowAction *> *)tableView:(NSTableView *)tableView
+		rowActionsForRow:(NSInteger)row edge:(NSTableRowActionEdge)edge {
+	if (row < 0 || row >= (NSInteger)_rows.count) return @[];
+	BOOL leading = edge == NSTableRowActionEdgeLeading;
+	LuaReg *reg = leading ? self.leadingSwipeReg : self.trailingSwipeReg;
+	if (!lua_reg_live_state(reg)) return @[];
+	NSString *title = leading ? self.leadingSwipeTitle : self.trailingSwipeTitle;
+	BOOL destructive = leading ? self.leadingSwipeDestructive : self.trailingSwipeDestructive;
+	NSTableViewRowAction *action = [NSTableViewRowAction rowActionWithStyle:
+		(destructive ? NSTableViewRowActionStyleDestructive : NSTableViewRowActionStyleRegular)
+		title:title ?: @"Action" handler:^(NSTableViewRowAction *selected, NSInteger index) {
+		(void)selected;
+		[self invokeSwipeAtRow:index leading:leading];
+	}];
+	return @[action];
 }
 
 - (BOOL)tableView:(NSTableView *)tableView writeRowsWithIndexes:(NSIndexSet *)rowIndexes

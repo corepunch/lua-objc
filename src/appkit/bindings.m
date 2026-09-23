@@ -22,6 +22,7 @@ static int bridge_NSScrollView_onRefresh(lua_State *L);
 static int bridge_NSScrollView_onRowSelect(lua_State *L);
 static int bridge_NSScrollView_addRow(lua_State *L);
 static int bridge_NSScrollView_onRowMove(lua_State *L);
+static int bridge_NSScrollView_onRowSwipe(lua_State *L);
 static int bridge_NSScrollView_onRowActivate(lua_State *L);
 static int bridge_NSScrollView_onColumnSort(lua_State *L);
 static int bridge_NSScrollView_setSortIndicator(lua_State *L);
@@ -619,6 +620,7 @@ static MethodEntry TableMethods[] = {
 	{"onRefresh",	bridge_NSScrollView_onRefresh},
 	{"onRowSelect",	bridge_NSScrollView_onRowSelect},
 	{"onRowMove",	bridge_NSScrollView_onRowMove},
+	{"onRowSwipe",	bridge_NSScrollView_onRowSwipe},
 	{"onRowActivate",	bridge_NSScrollView_onRowActivate},
 	{"onColumnSort",	bridge_NSScrollView_onColumnSort},
 	{"setSortIndicator",	bridge_NSScrollView_setSortIndicator},

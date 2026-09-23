@@ -242,6 +242,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_hapticNotification", bridge_haptic_notification},
 	{"_webView", bridge_webview},
 	{"_webViewAction", bridge_webview_action},
+	{"_testRowSwipe", bridge_test_row_swipe},
 	{"_parityMeasure", bridge_parity_measure},
 	{"_parityWrite", bridge_parity_write},
 	{"_parityJSON", bridge_parity_json},

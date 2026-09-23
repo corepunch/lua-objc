@@ -1,1 +1,1 @@
-return require("Controller")
+return require("apps.swipe-actions.Controller")

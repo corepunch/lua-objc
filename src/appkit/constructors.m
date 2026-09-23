@@ -408,6 +408,39 @@ static int bridge_NSScrollView_onRowMove(lua_State *L) {
 	return 0;
 }
 
+static int bridge_NSScrollView_onRowSwipe(lua_State *L) {
+	id obj = check_objc(L, 1);
+	LuaTableViewSource *source = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
+	if (!source) return luaL_error(L, "onRowSwipe requires a table view");
+	const char *edge = luaL_checkstring(L, 2);
+	NSString *title = [NSString stringWithUTF8String:luaL_checkstring(L, 3)];
+	BOOL destructive = strcmp(luaL_optstring(L, 4, "normal"), "destructive") == 0;
+	(void)lua_toboolean(L, 5); // AppKit owns the row action's full-swipe behavior.
+	LuaReg *callback = lua_reg_opt(L, 6);
+	if (strcmp(edge, "leading") == 0) {
+		source.leadingSwipeReg = callback;
+		source.leadingSwipeTitle = title;
+		source.leadingSwipeDestructive = destructive;
+	} else if (strcmp(edge, "trailing") == 0) {
+		source.trailingSwipeReg = callback;
+		source.trailingSwipeTitle = title;
+		source.trailingSwipeDestructive = destructive;
+	} else return luaL_error(L, "swipe edge must be leading or trailing");
+	return 0;
+}
+
+static int bridge_test_row_swipe(lua_State *L) {
+	id obj = check_objc(L, 1);
+	LuaTableViewSource *source = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
+	if (!source) return luaL_error(L, "row swipe test requires a table view");
+	NSInteger row = (NSInteger)luaL_checkinteger(L, 2) - 1;
+	const char *edge = luaL_checkstring(L, 3);
+	if (strcmp(edge, "leading") != 0 && strcmp(edge, "trailing") != 0)
+		return luaL_error(L, "swipe edge must be leading or trailing");
+	lua_pushboolean(L, [source invokeSwipeAtRow:row leading:strcmp(edge, "leading") == 0]);
+	return 1;
+}
+
 static int bridge_NSScrollView_onColumnSort(lua_State *L) {
 	id obj = check_objc(L, 1);
 	if (!objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]))

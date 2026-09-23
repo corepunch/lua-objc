@@ -816,6 +816,13 @@ local TAG_SCHEMA = {
             gridLines       = "str",
             reorderable = "bool",
             reorderContainer = "str",
+            swipeLeading = "str",
+            swipeTrailing = "str",
+            swipeLeadingTitle = "str",
+            swipeTrailingTitle = "str",
+            swipeLeadingRole = "str",
+            swipeTrailingRole = "str",
+            fullSwipe = "bool",
         },
         collect = function(props, children)
             local columns = {}
@@ -839,6 +846,48 @@ local TAG_SCHEMA = {
             end
             if props.reorderable and type(props.onReorder) ~= "function" then
                 error("xml: reorderable <List> requires a valid reorderContainer action")
+            end
+            if attrs.swipeLeading then
+                props.onSwipeLeading = renderData and renderData.actions
+                    and renderData.actions[attrs.swipeLeading]
+                if type(props.onSwipeLeading) ~= "function" then
+                    error("xml: swipeLeading requires a valid controller action")
+                end
+            end
+            if attrs.swipeTrailing then
+                props.onSwipeTrailing = renderData and renderData.actions
+                    and renderData.actions[attrs.swipeTrailing]
+                if type(props.onSwipeTrailing) ~= "function" then
+                    error("xml: swipeTrailing requires a valid controller action")
+                end
+            end
+        end,
+    },
+    SwipeRow = {
+        constructor = "SwipeRow",
+        props = {
+            id = "str",
+            title = { default = "", type = "str" },
+            status = "str",
+            rowHeight = "num",
+            swipeLeading = "str",
+            swipeTrailing = "str",
+            swipeLeadingTitle = "str",
+            swipeTrailingTitle = "str",
+            swipeLeadingRole = "str",
+            swipeTrailingRole = "str",
+            fullSwipe = "bool",
+        },
+        transform = function(props, attrs)
+            for _, edge in ipairs({ "Leading", "Trailing" }) do
+                local name = attrs["swipe" .. edge]
+                if name then
+                    props["onSwipe" .. edge] = renderData and renderData.actions
+                        and renderData.actions[name]
+                    if type(props["onSwipe" .. edge]) ~= "function" then
+                        error("xml: swipe" .. edge .. " requires a valid controller action")
+                    end
+                end
             end
         end,
     },

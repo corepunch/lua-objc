@@ -163,6 +163,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_layout", bridge_layout},
 	{"_setContentSize", bridge_set_content_size},
 	{"_tableview", bridge_tableview},
+	{"_testRowSwipe", bridge_test_row_swipe},
 	{"_show", bridge_show},
 	{"_font", bridge_font},
 	{"_timerAfter", bridge_timer_after},

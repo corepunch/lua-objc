@@ -5,6 +5,15 @@
 @property (nonatomic, strong) NSMutableArray *columns;
 @property (nonatomic, weak) UITableView *tableView;
 @property (nonatomic, strong) LuaReg *moveReg;
+@property (nonatomic, strong) LuaReg *leadingSwipeReg;
+@property (nonatomic, strong) LuaReg *trailingSwipeReg;
+@property (nonatomic, copy) NSString *leadingSwipeTitle;
+@property (nonatomic, copy) NSString *trailingSwipeTitle;
+@property (nonatomic) BOOL leadingSwipeDestructive;
+@property (nonatomic) BOOL trailingSwipeDestructive;
+@property (nonatomic) BOOL leadingFullSwipe;
+@property (nonatomic) BOOL trailingFullSwipe;
+- (BOOL)invokeSwipeAtRow:(NSInteger)row leading:(BOOL)leading;
 @end
 
 @implementation LuaTableViewSource
@@ -24,6 +33,54 @@
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
 	return (NSInteger)_rows.count;
+}
+
+- (BOOL)invokeSwipeAtRow:(NSInteger)row leading:(BOOL)leading {
+	if (row < 0 || row >= (NSInteger)_rows.count) return NO;
+	LuaReg *reg = leading ? self.leadingSwipeReg : self.trailingSwipeReg;
+	lua_State *callL = lua_reg_live_state(reg);
+	if (!callL || !lua_reg_push(reg)) return NO;
+	push_objc(callL, self.tableView, "uiview");
+	lua_pushinteger(callL, (lua_Integer)row + 1);
+	lua_newtable(callL);
+	NSDictionary *rowData = self.rows[(NSUInteger)row];
+	for (NSString *key in rowData) {
+		push_objc_value(callL, rowData[key]);
+		lua_setfield(callL, -2, key.UTF8String);
+	}
+	return lua_objc_pcall(callL, 3, 0, "table row swipe") == LUA_OK;
+}
+
+- (UISwipeActionsConfiguration *)swipeConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
+		leading:(BOOL)leading {
+	if (indexPath.row < 0 || indexPath.row >= (NSInteger)_rows.count) return nil;
+	LuaReg *reg = leading ? self.leadingSwipeReg : self.trailingSwipeReg;
+	if (!lua_reg_live_state(reg)) return nil;
+	NSString *title = leading ? self.leadingSwipeTitle : self.trailingSwipeTitle;
+	BOOL destructive = leading ? self.leadingSwipeDestructive : self.trailingSwipeDestructive;
+	BOOL fullSwipe = leading ? self.leadingFullSwipe : self.trailingFullSwipe;
+	UIContextualAction *action = [UIContextualAction contextualActionWithStyle:
+		(destructive ? UIContextualActionStyleDestructive : UIContextualActionStyleNormal)
+		title:title ?: @"Action" handler:^(UIContextualAction *selected, UIView *sourceView,
+		void (^completion)(BOOL)) {
+		(void)selected; (void)sourceView;
+		completion([self invokeSwipeAtRow:indexPath.row leading:leading]);
+	}];
+	UISwipeActionsConfiguration *configuration = [UISwipeActionsConfiguration configurationWithActions:@[action]];
+	configuration.performsFirstActionWithFullSwipe = fullSwipe;
+	return configuration;
+}
+
+- (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
+		leadingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
+	(void)tableView;
+	return [self swipeConfigurationForRowAtIndexPath:indexPath leading:YES];
+}
+
+- (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
+		trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
+	(void)tableView;
+	return [self swipeConfigurationForRowAtIndexPath:indexPath leading:NO];
 }
 
 - (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)indexPath {

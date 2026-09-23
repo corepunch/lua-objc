@@ -958,6 +958,10 @@ row colors, a header, and a vertical scroller. Table keys:
 | `data` | `{{key=val}}` | `{}` | Initial rows (array of string-keyed tables) |
 | `rowHeight` | number | native default | Height of each native table row |
 | `refresh` | `function(list)` | `nil` | See SwiftUI-like async refresh below |
+| `onSwipeLeading`, `onSwipeTrailing` | `function(index, row)` | `nil` | Native row action callbacks with one-based indices |
+| `swipeLeadingTitle`, `swipeTrailingTitle` | string | `Archive`, `Delete` | Native action labels |
+| `swipeLeadingRole`, `swipeTrailingRole` | `"normal"` or `"destructive"` | `normal`, `destructive` | Native action style |
+| `fullSwipe` | bool | `false` | UIKit first action triggers on a full swipe |
 
 ```lua
 List {
@@ -981,6 +985,10 @@ string value of `row[id]`, unless the column has a `cell` callback. A callback
 receives the row table and returns a native view; this supports compact
 two-line rows, inline charts, and other compound native content. Numbers are
 converted to strings automatically.
+Use `<SwipeRow>` for one native swipeable row inside a `VStack`. Both platforms
+use their table row action APIs, so the row keeps system gesture behavior and
+appearance. See [`docs/swipe_actions.md`](swipe_actions.md) for XML and model
+callbacks.
 Column alignment can be `"leading"` (default), `"center"`, or `"trailing"`;
 the header and reusable native cells use the same alignment.
 `drawsBackground="false"` on `<List>` or `<OutlineView>` lets the owning native

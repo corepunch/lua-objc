@@ -1,55 +1,43 @@
+local ns = require("ns")
 local xml = require("ui.xml")
+local Model = require("apps.swipe-actions.Model")
 
 local Controller = {}
+Controller.__index = Controller
 
 function Controller.new()
-    return setmetatable({
-        items = {
-            { id = 1, title = "First item", completed = false },
-            { id = 2, title = "Second item", completed = false },
-            { id = 3, title = "Third item", completed = false },
-        },
-    }, { __index = Controller })
+	return setmetatable({ model = Model.new() }, Controller)
 end
 
-function Controller:archiveItem(id)
-    for i, item in ipairs(self.items) do
-        if item.id == id then
-            table.remove(self.items, i)
-            break
-        end
-    end
+function Controller:removeItem(index, row)
+	if not self.model:removeAt(index, row.id) then return false end
+	self.refs.items:removeRow(index - 1)
+	return true
 end
 
-function Controller:deleteItem(id)
-    for i, item in ipairs(self.items) do
-        if item.id == id then
-            table.remove(self.items, i)
-            break
-        end
-    end
-end
-
-function Controller:markComplete(id)
-    for _, item in ipairs(self.items) do
-        if item.id == id then
-            item.completed = not item.completed
-            break
-        end
-    end
+function Controller:setStackStatus(id, status)
+	local item = self.model:setStackStatus(id, status)
+	if not item then return false end
+	local rowView = self.refs["stack_" .. id]
+	rowView:clearRows()
+	rowView:addRow({ title = item.title, status = item.status })
+	return true
 end
 
 function Controller:createWindow()
-    local view, refs = xml.renderFile("views/Main.etlua", {
-        items = self.items,
-        actions = {
-            archive = function(id) self:archiveItem(id) end,
-            delete = function(id) self:deleteItem(id) end,
-            complete = function(id) self:markComplete(id) end,
-        },
-    }, require("ns"))
-
-    return view, refs
+	local config, refs = xml.renderFile("apps/swipe-actions/views/Main.etlua", {
+		items = self.model.items,
+		stackItems = self.model.stackItems,
+		actions = {
+			archive = function(index, row) self:removeItem(index, row) end,
+			delete = function(index, row) self:removeItem(index, row) end,
+			archiveStack = function(id) self:setStackStatus(id, "Archived") end,
+			completeStack = function(id) self:setStackStatus(id, "Complete") end,
+		},
+	}, ns)
+	self.refs = refs
+	self.window = ns.Window(config)
+	return self.window
 end
 
 return Controller

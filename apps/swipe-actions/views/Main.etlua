@@ -1,18 +1,21 @@
-<Window title="Swipe Actions" width="400" height="600">
-  <VStack padding="0" spacing="0">
-    <Label padding="16" size="16" weight="bold">Swipe left to delete</Label>
-
-    <List>
-      <% for _, item in ipairs(items) do %>
-        <ListRow
-            swipeLeading="archive"
-            swipeTrailing="delete"
-            ref="item_<%= item.id %>">
-          <Label
-              text="<% if item.completed then %>[✓] <% end %><%= item.title %>"
-              color="<% if item.completed then %>gray<% else %>black<% end %>" />
-        </ListRow>
-      <% end %>
+<Window title="Swipe Actions" width="520" height="480" minWidth="400" minHeight="360">
+  <VStack spacing="0" fillWidth="true" fillHeight="true">
+    <Label text="Swipe right to archive or left to delete" padding="12" />
+    <List ref="items" data="items" header="false" style="plain" alternatingRows="false" fillWidth="true" flexGrow="1"
+          swipeLeading="archive" swipeLeadingTitle="Archive"
+          swipeTrailing="delete" swipeTrailingTitle="Delete" swipeTrailingRole="destructive"
+          fullSwipe="true">
+      <Column id="title" title="Item" />
     </List>
+    <Label text="Swipeable rows in a VStack" padding="12" />
+    <VStack fillWidth="true">
+      <% for _, item in ipairs(stackItems) do %>
+        <SwipeRow ref="stack_<%= item.id %>" id="<%= item.id %>"
+                  title="<%= item.title %>" status="<%= item.status %>" fillWidth="true"
+                  swipeLeading="archiveStack" swipeLeadingTitle="Archive"
+                  swipeTrailing="completeStack" swipeTrailingTitle="Complete"
+                  swipeTrailingRole="normal" fullSwipe="true" />
+      <% end %>
+    </VStack>
   </VStack>
 </Window>

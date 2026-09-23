@@ -19,7 +19,7 @@ app-side substitute.
 | Lazy containers and large-list virtualization | Do not use eager `VStack` for unbounded rows; see issue [#9](https://github.com/corepunch/lua-objc/issues/9) |
 | Native motion and gestures | `onTap`/`onDrag`, `ui.haptics`, and Reduce Motion; no general implicit animation API |
 | Private navigation palettes / `LazyLayout` | Research only; unverified signatures and OS support, no runtime switch. Use public toolbar/SearchController/List APIs |
-| Native swipe actions | Not yet available on `List` or stack rows; see issue [#12](https://github.com/corepunch/lua-objc/issues/12) |
+| Native swipe actions | `<List swipeLeading="archive" swipeTrailing="delete">` or `<SwipeRow>` inside a `VStack`; UIKit supports `fullSwipe="true"` |
 | State observation / invalidation | Controller actions update retained refs, native collections, or rerender when structure changes; see `ARCHITECTURE.md` and `state-and-observation.md` |
 
 For tabs, read the current XML registry and [project reference](../../../docs/PROJECT_REFERENCE.md)
@@ -312,7 +312,9 @@ container.
 `LazyVStack` and `LazyVGrid` are not current XML tags. Large-list performance
 and lazy containers are tracked in [issue #9](https://github.com/corepunch/lua-objc/issues/9).
 
-Use `LazyVStack` for large dynamic lists; use `VStack` + `ScrollView` for small static content.
+Use `List` for large dynamic collections; use `VStack` + `ScrollView` for
+small, bounded content. For native swipe actions in a stack, use `<SwipeRow>`
+and controller actions as shown in [`docs/swipe_actions.md`](../../../docs/swipe_actions.md).
 
 ### LazyVGrid
 Virtualized grid layout.

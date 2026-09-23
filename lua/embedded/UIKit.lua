@@ -818,7 +818,42 @@ function UIKit.List(props)
 			props.onReorder(difference)
 		end)
 	end
+	if props.onSwipeLeading then
+		tv:onRowSwipe("leading", props.swipeLeadingTitle or "Archive",
+			props.swipeLeadingRole or "normal", props.fullSwipe == true,
+			function(_, index, row) props.onSwipeLeading(index, row) end)
+	end
+	if props.onSwipeTrailing then
+		tv:onRowSwipe("trailing", props.swipeTrailingTitle or "Delete",
+			props.swipeTrailingRole or "destructive", props.fullSwipe == true,
+			function(_, index, row) props.onSwipeTrailing(index, row) end)
+	end
 	return applyLayout(tv, props)
+end
+
+--- A native swipeable table row for use inside a VStack or other stack.
+function UIKit.SwipeRow(props)
+	props = props or {}
+	local view = UIKit.List {
+		columns = { { id = "title", title = "" }, { id = "status", title = "" } },
+		data = { { title = props.title or "", status = props.status or "" } },
+		header = false,
+		style = "plain",
+		onSwipeLeading = props.onSwipeLeading and function(_, row)
+			props.onSwipeLeading(props.id, row)
+		end,
+		onSwipeTrailing = props.onSwipeTrailing and function(_, row)
+			props.onSwipeTrailing(props.id, row)
+		end,
+		swipeLeadingTitle = props.swipeLeadingTitle,
+		swipeTrailingTitle = props.swipeTrailingTitle,
+		swipeLeadingRole = props.swipeLeadingRole,
+		swipeTrailingRole = props.swipeTrailingRole,
+		fullSwipe = props.fullSwipe,
+	}
+	view.fixedHeight = props.rowHeight or view.rowHeight
+	view.scrollEnabled = false
+	return applyLayout(view, props)
 end
 
 --- Runs an action when the user activates a native button.

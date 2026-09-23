@@ -1,6 +1,7 @@
 #pragma mark - nsview metatable (UIKit uses "uiview")
 
 static int bridge_tableview_on_row_move(lua_State *L);
+static int bridge_tableview_on_row_swipe(lua_State *L);
 
 static int nsview_index(lua_State *L) {
 	id obj = lua_objc_live_ptr(L, 1, lua_touserdata(L, 1));
@@ -58,6 +59,10 @@ static int nsview_index(lua_State *L) {
 		}
 		if (strcmp(key, "onRowMove") == 0) {
 			lua_pushcfunction(L, bridge_tableview_on_row_move);
+			return 1;
+		}
+		if (strcmp(key, "onRowSwipe") == 0) {
+			lua_pushcfunction(L, bridge_tableview_on_row_swipe);
 			return 1;
 		}
 		if (strcmp(key, "rowCount") == 0) {

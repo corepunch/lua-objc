@@ -213,7 +213,9 @@ static CGFloat view_flex_shrink(NSView *view, BOOL horizontal) {
 	}
 	NSNumber *shrink = objc_getAssociatedObject(view, &kKeys[kFlexShrinkKey]);
 	if (shrink) return MAX(0, shrink.doubleValue);
-	return is_flexible(view) ? 1 : 0;
+	/* A stack that fills its parent must be able to give space back when the
+	 * window shrinks, even when the stack itself has no flexible native leaf. */
+	return (is_flexible(view) || view_flex_grow(view, horizontal) > 0) ? 1 : 0;
 }
 
 static BOOL view_fills_cross_axis(NSView *view, BOOL horizontal) {
