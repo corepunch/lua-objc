@@ -12,11 +12,11 @@ app-side substitute.
 | SwiftUI `List` / native table | `<List>` with `<Column>` children and data records |
 | Value-based `NavigationStack` paths | `require("ui.navigation").Path` with registered destinations; see `navigation.md` |
 | Sheet detents and drag indicator | UIKit `ns.presentSheet(content, { detents = { "medium", "large" }, dragIndicator = true })`; AppKit uses native sheet windows |
-| Native List row reordering | `<List reorderable="true" reorderContainer="actionName">`; stacks and grids are not supported |
+| Native drag reordering | `reorderable="true"` and `reorderContainer="actionName"` on `List`, stack, grid, flow, and lazy collection tags |
 | System Liquid Glass | `<GlassEffect style="regular|clear">`; use `style="glass"` for a glass button |
 | Native toolbar spacing/overflow | `<ToolbarSpacer />`, native toolbar overflow, and `ToolbarItem visibilityPriority`; on iOS set `TabView minimizeBehavior="onScroll"` for its tab bar |
 | `WebView` / observable `WebPage` | `<WebView page="page" />`; native `WKWebView` with `page:find(...)` and `page:setPageZoom(...)` on both platforms, plus AppKit magnification |
-| Lazy containers and large-list virtualization | Do not use eager `VStack` for unbounded rows; see issue [#9](https://github.com/corepunch/lua-objc/issues/9) |
+| Lazy containers and large-list virtualization | Use native `<List>` for tables or `<LazyVStack>` / `<LazyVGrid>` for custom item views; avoid eager `VStack` for unbounded rows |
 | Native motion and gestures | `onTap`/`onDrag`, `ui.haptics`, and Reduce Motion; no general implicit animation API |
 | Private navigation palettes / `LazyLayout` | `<TopPalette>` / `<BottomPalette>` use public placement by default; private palette requires explicit `enablePrivateNavigationPalettes="true"` and the risk warning in `navigation.md`. `LazyLayout` remains research only |
 | Native swipe actions | `<List swipeLeading="archive" swipeTrailing="delete">` or `<SwipeRow>` inside a `VStack`; UIKit supports `fullSwipe="true"` |
@@ -309,15 +309,19 @@ container.
 </List>
 ```
 
-`LazyVStack` and `LazyVGrid` are not current XML tags. Large-list performance
-and lazy containers are tracked in [issue #9](https://github.com/corepunch/lua-objc/issues/9).
+`<LazyVStack>` and `<LazyVGrid>` use native collection views and create item
+views only for visible cells. Etlua still expands item descriptions up front.
+Set a fixed `rowHeight`; grids also accept `columns` (default 2). Use
+`reorderable="true"` with a named `reorderContainer` controller action to
+receive a `ui.reorder.Difference`.
 
 Use `List` for large dynamic collections; use `VStack` + `ScrollView` for
 small, bounded content. For native swipe actions in a stack, use `<SwipeRow>`
 and controller actions as shown in [`docs/swipe_actions.md`](../../../docs/swipe_actions.md).
 
 ### LazyVGrid
-Virtualized grid layout.
+Virtualized native grid layout. See `apps/lazy-reorder/` for a 1,000-item
+stack and grid example with native drag preview and model updates.
 
 ## Images & Graphics
 
@@ -444,7 +448,6 @@ All elements support:
 
 These are planned but not yet available:
 
-- Drag-to-reorder for lazy stacks, grids, and custom containers — see issue #5
 - Custom transitions/animations beyond built-in platform defaults
 - Text selection styling (`SelectionShapeStyle`)
 - Advanced gesture recognizers beyond tap/long-press

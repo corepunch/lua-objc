@@ -228,6 +228,13 @@ static int bridge_layout(lua_State *L) {
 	return 0;
 }
 
+static int bridge_clear_container(lua_State *L) {
+	UIView *container = check_objc(L, 1);
+	for (UIView *child in [container.subviews copy]) [child removeFromSuperview];
+	layout_recursive(container, container.bounds.size.width);
+	return 0;
+}
+
 static int bridge_set_content_size(lua_State *L) {
 	id obj = check_objc(L, 1);
 	CGFloat width = luaL_checknumber(L, 2);

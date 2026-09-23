@@ -1,0 +1,6 @@
+<LazyVGrid columns="3" rowHeight="64" spacing="8" reorderable="true"
+           reorderContainer="reorderItems" maxWidth="infinity" flexGrow="1">
+  <% for _, item in ipairs(items) do %>
+  <Label text="<%= item.title %>" />
+  <% end %>
+</LazyVGrid>

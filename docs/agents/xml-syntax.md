@@ -83,6 +83,9 @@ XML vocabulary. `Window` and `Column` retain their own dimension properties.
 | `Window` | Window configuration and root content | `title`, `width`, `height`, `minWidth`, `minHeight`, `maxWidth`, `maxHeight`, `appearance`, `tabbingMode`, `tabbingIdentifier`, `toolbarLabels`, `visible`, `sidebarWidth` |
 | `VStack` | Vertical native stack | `padding`, `paddingHorizontal`, `paddingVertical`, `spacing`, `alignment`, `flexGrow`, `flexShrink`, `width`, `height`, `minWidth`, `minHeight`, `maxWidth`, `maxHeight`, `hidden` |
 | `HStack` | Horizontal native stack | Same layout attributes as `VStack` |
+| `LazyVStack` | Virtualized native vertical collection | `rowHeight`, `spacing`, `reorderable`, `reorderContainer`, plus layout attributes |
+| `LazyVGrid` | Virtualized native grid collection | `columns`, `rowHeight`, `spacing`, `reorderable`, `reorderContainer`, plus layout attributes |
+| `Grid` / `FlowStack` | Eager grid / wrapping layout | `spacing`, `reorderable`, `reorderContainer`, plus layout attributes |
 | `HSplit` | Horizontal split container | Same layout attributes as `VStack`; use `Window sidebar/content` for a window-level sidebar |
 | `ScrollView` | Native scroll container for one content child | `contentWidth`, `contentHeight`, `horizontal`, `vertical`, plus layout attributes |
 | `Spacer` | Flexible spacing view | Layout attributes |
@@ -91,6 +94,13 @@ XML vocabulary. `Window` and `Column` retain their own dimension properties.
 Stacks contain child tags. `Window` may contain one content view, multiple
 content views, and a `Toolbar` block. It returns window configuration to the
 caller rather than creating a window directly in the XML compiler.
+
+Use `reorderable="true"` with `reorderContainer="actionName"` on a stack,
+grid, flow layout, or `List`. The controller action receives a one-based
+`ui.reorder.Difference`; apply it in the model and refresh a retained template.
+Lazy collection children must each render one view. Their item descriptions
+are parsed up front, but native views are created only for visible cells.
+`rowHeight` is fixed, so provide enough room for the supported text sizes.
 
 ## Content and input
 

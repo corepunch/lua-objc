@@ -146,7 +146,7 @@ for a width the scroll view no longer occupies.
 | Column sorting (`SortDescriptor`) | `NSTableColumn.sortDescriptorPrototype` | Not yet mapped |
 | `.searchable` | `NSSearchField` in toolbar/header | Not yet mapped |
 | `TableColumn` with custom `content`  | `viewForTableColumn:row:` returning custom NSView | Not yet mapped |
-| Drag-to-reorder rows | `NSTableViewDataSource` drag methods | Not yet mapped |
+| Drag-to-reorder rows | `NSTableViewDataSource` drag methods | `<List reorderable="true" reorderContainer="actionName">` sends a `ui.reorder.Difference` |
 
 ## Key takeaways
 

@@ -1,0 +1,26 @@
+<VStack spacing="16" maxWidth="infinity">
+  <Label text="Drag rows to reorder" size="20" weight="bold" />
+  <Label text="Stack" size="15" weight="semibold" />
+  <VStack reorderable="true" reorderContainer="reorderstack" spacing="6" maxWidth="infinity">
+    <% for _, item in ipairs(stack) do %>
+    <Label text="<%= item.title %>" height="30" maxWidth="infinity" />
+    <% end %>
+  </VStack>
+  <Label text="Grid" size="15" weight="semibold" />
+  <Grid reorderable="true" reorderContainer="reordergrid" spacing="6" maxWidth="infinity">
+    <% for index = 1, #grid, 2 do %>
+    <GridRow>
+      <Label text="<%= grid[index].title %>" height="30" />
+      <% if grid[index + 1] then %>
+      <Label text="<%= grid[index + 1].title %>" height="30" />
+      <% end %>
+    </GridRow>
+    <% end %>
+  </Grid>
+  <Label text="Flow layout" size="15" weight="semibold" />
+  <FlowStack reorderable="true" reorderContainer="reorderflow" spacing="8" maxWidth="infinity">
+    <% for _, item in ipairs(flow) do %>
+    <Label text="<%= item.title %>" height="30" />
+    <% end %>
+  </FlowStack>
+</VStack>

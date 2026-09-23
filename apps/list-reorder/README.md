@@ -5,6 +5,7 @@ This example uses the public native table/list reordering behavior through
 action with `reorderContainer`. The bridge sends the controller a
 `ui.reorder.Difference`; the model applies that operation to its ordered rows.
 
-The current bridge supports native `List` rows. Reordering arbitrary stack and
-grid children requires a lazy/reconciled container API and is not advertised as
-available.
+Stacks, grids, flow layouts, and lazy collection views use the same
+`reorderable` and `reorderContainer` attributes. See
+[`apps/container-reorder/`](../container-reorder/README.md) and
+[`apps/lazy-reorder/`](../lazy-reorder/README.md) for those examples.

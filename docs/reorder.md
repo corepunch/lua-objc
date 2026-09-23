@@ -1,4 +1,4 @@
-# Native List row reordering
+# Native container reordering
 
 `<List>` supports native row dragging on AppKit and UIKit. UIKit uses table
 drag and drop with the system row preview and move animation. The controller receives a
@@ -29,7 +29,12 @@ be synchronous.
 script containing moves, inserts, and removes from stable unique IDs. It
 rejects missing or duplicate IDs, since those make a reorder ambiguous.
 
-Lazy stacks, grids, arbitrary layout containers, cross-container drags, and
-custom drag previews are not supported. Keep large collections in a native
-table; see [issue #5](https://github.com/corepunch/lua-objc/issues/5) for the
-remaining container work.
+The same attributes work on `VStack`, `Grid`, `FlowStack`, `LazyVStack`, and
+`LazyVGrid`. Stack-style containers use native platform drag interactions;
+lazy collections use `NSCollectionView` or `UICollectionView` with native move
+animation and cell reuse. For these structural views, apply the difference in
+the model and update a retained `ui.template` mount so etlua reflects the new
+order. See `apps/container-reorder/` and `apps/lazy-reorder/`.
+
+Cross-container moves are not part of this single-container API. The built-in
+system drag preview is used; there is no custom preview styling option.

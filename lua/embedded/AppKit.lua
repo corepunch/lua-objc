@@ -443,6 +443,39 @@ function AppKit.VStack(props)
 	return view
 end
 
+function AppKit.attachReorder(container, children, onReorder)
+	assert(type(onReorder) == "function", "reorder container requires an action")
+	local Difference = require("ui.reorder").Difference
+	bridge._attachReorder(container, children, function(from, to)
+		onReorder(Difference.new():move(from, to))
+	end)
+	return container
+end
+
+local function lazyCollection(props, isGrid)
+	props = props or {}
+	assert(type(props.itemFactory) == "function", "lazy collection requires itemFactory")
+	local onMove
+	if props.reorderable then
+		assert(type(props.onReorder) == "function", "lazy collection requires onReorder")
+		local Difference = require("ui.reorder").Difference
+		onMove = function(from, to)
+			props.onReorder(Difference.new():move(from, to))
+		end
+	end
+	local view = bridge._lazyCollection(props.itemCount or 0, props.columns,
+		props.rowHeight, props.spacing, props.itemFactory, onMove, isGrid)
+	return applyLayout(view, props)
+end
+
+function AppKit.LazyVStack(props)
+	return lazyCollection(props, false)
+end
+
+function AppKit.LazyVGrid(props)
+	return lazyCollection(props, true)
+end
+
 --- Arranges child views horizontally with sibling spacing.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.

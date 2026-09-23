@@ -104,6 +104,13 @@ static const CGFloat kStackSpacing = 8.0;
 #define kTableIntercellSpacingV          2
 #define kLayoutDebugGeometryTolerance  0.75
 #define kLayoutDebugMaxTableRows          4
+#define kLazyCollectionWidth            400
+#define kLazyCollectionHeight           200
+#define kLazyRowHeight                   44
+#define kLazyItemSpacing                  8
+#define kLazyMinimumItemWidth             1
+#define kLazyStackColumns                 1
+#define kLazyGridColumns                  2
 #define kOutlineRowHeight              24
 #define kOutlineIndentation            16
 #define kOutlineDisclosureContentGap    8
@@ -232,6 +239,8 @@ static void bridge_set_optional_callback(
 
 #include "appkit/workspace.m"
 #include "appkit/constructors.m"
+#include "appkit/reorder_container.m"
+#include "appkit/lazy_collection.m"
 #include "shared/parity_batch.m"
 #include "appkit/parity_batch.m"
 #pragma mark - Module registration
@@ -297,6 +306,10 @@ static const luaL_Reg bridge_lib[] = {
 	{"_addDrag", bridge_add_drag},
 	{"_addHoverTooltip", bridge_AppKit_add_hover_tooltip},
 	{"_tableview", bridge_AppKit_tableview},
+	{"_attachReorder", bridge_AppKitReorder_attach},
+	{"_testReorderMove", bridge_AppKitReorder_testMove},
+	{"_lazyCollection", bridge_AppKitLazy_collection},
+	{"_lazyCollectionStats", bridge_AppKitLazy_stats},
 	{"_actionButton", bridge_AppKit_action_button},
 	{"_glassEffect", bridge_AppKit_glass_effect},
 	{"_panel", bridge_AppKit_panel},

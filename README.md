@@ -357,8 +357,11 @@ Key features:
 
 ## Large collections
 
-Use native `List` for unbounded or 1,000-plus row collections. Eager stacks
-construct every child; this project does not expose lazy stacks or grids.
+Use native `List` for table-style collections. Use `<LazyVStack>` or
+`<LazyVGrid>` when rows need arbitrary etlua views; their native collection
+hosts create item views only as they become visible. Eager `<VStack>` and
+`<Grid>` construct every child. The [reorder examples](apps/lazy-reorder/README.md)
+show the lazy containers and difference callbacks.
 `benchmarks/run_list.sh` compares equal simple text rows in lua-objc and the
 [`SwiftUI source`](benchmarks/swiftui_list.swift). One macOS 27.0 / Apple M1
 run at an 800 × 600 initial layout (2026-09-23) reported:
@@ -376,7 +379,8 @@ run at an 800 × 600 initial layout (2026-09-23) reported:
 | 5,000 | SwiftUI LazyVStack | 0.022 s | 42.0 MB |
 | 5,000 | SwiftUI List | 0.023 s | 41.9 MB |
 
-These are single-process samples, with startup included in RSS. They do not
+These samples predate the lazy collection API. Each ran in a fresh process,
+with startup included in RSS. They do not
 measure first presentation or scrolling. The native List uses much less time
 and memory than either eager stack in this simple-row test, while SwiftUI's
 lazy containers use slightly less memory. See

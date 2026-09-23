@@ -1,17 +1,22 @@
 # Performance
 
-Create only the views the user needs. XML loops and eager stacks create every
-child; they do not virtualize or recycle rows. Do not use `VStack` + `ForEach`
-for unbounded or 1,000-plus row data. Use native `<List>` for collections; its
-table implementation owns cell reuse. This framework does not implement
-`LazyVStack` or `LazyVGrid`, so never invent lazy behavior in app code.
+Create only the views the user needs. Eager stacks create every native child.
+Do not use `VStack` + `ForEach` for unbounded or 1,000-plus row data. Use
+native `<List>` for table-style data; its table implementation owns cell reuse.
+Use `<LazyVStack>` or `<LazyVGrid>` for custom etlua item views; their native
+collection hosts create views on demand. Etlua still expands and parses the
+item descriptions up front, so large data sets still have template cost.
 
 ## Choose containers by data size
 
 - Use `VStack` / `HStack` for small, bounded groups such as a form or toolbar.
 - Use `<List>` for native table-style collections. Check
   `docs/tableview_swiftui.md` for row and sizing behavior.
-- Avoid emitting thousands of eager XML children. Run
+- Use `<LazyVStack rowHeight="44">` or `<LazyVGrid columns="3"
+  rowHeight="64">` when each visible item needs a composed native view.
+  Item heights are fixed; choose a size that fits text at supported Dynamic
+  Type sizes.
+- Avoid emitting thousands of eager stack children. Run
   `./lua-objc benchmarks/list.lua` to measure local eager-stack and List
   construction time and Lua heap deltas. It does not measure frame rate or
 whole-process peak memory.

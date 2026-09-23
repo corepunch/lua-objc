@@ -1,0 +1,6 @@
+<LazyVStack rowHeight="44" spacing="2" reorderable="true"
+            reorderContainer="reorderItems" maxWidth="infinity" flexGrow="1">
+  <% for _, item in ipairs(items) do %>
+  <Label text="<%= item.title %>" />
+  <% end %>
+</LazyVStack>

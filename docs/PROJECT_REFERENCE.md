@@ -578,6 +578,32 @@ Use `fillWidth = true` to wrap against the parent's available width. Resizing
 reflows the existing controls without recreating them. Available on AppKit and
 UIKit, including the `<FlowStack>` etlua tag.
 
+### Lazy stacks, grids, and native reordering
+
+`<LazyVStack>` and `<LazyVGrid>` use `NSCollectionView` on macOS and
+`UICollectionView` on iOS. Their etlua children are parsed up front, while
+native child views are made only as cells become visible. Both tags accept
+`rowHeight` for a fixed item height; `<LazyVGrid>` also accepts `columns`
+(default 2). Set `spacing` and normal layout attributes on the collection.
+
+```etlua
+<LazyVGrid columns="3" rowHeight="64" maxWidth="infinity"
+           reorderable="true" reorderContainer="reorderItems">
+  <% for _, item in ipairs(items) do %>
+  <Label text="<%= item.title %>" />
+  <% end %>
+</LazyVGrid>
+```
+
+`reorderable="true"` and `reorderContainer="actionName"` also work on
+ordinary `<VStack>`, `<Grid>`, and `<FlowStack>` containers. The named
+controller action receives a `ui.reorder.Difference` with one-based indexes.
+The model applies the difference, then the controller updates its retained
+etlua template. Native table/collection drag and drop provide previews and
+move animations; ordinary containers use platform drag interactions. Empty
+and one-item containers are valid. See `apps/container-reorder/` and
+`apps/lazy-reorder/` for complete MVC examples.
+
 ### `ScrollView{...}`
 
 Creates a native scroll view around one content view. It scrolls vertically by

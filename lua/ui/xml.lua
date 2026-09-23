@@ -410,9 +410,56 @@ local function compile(nodes, ns, registry, refs)
             if not handler then
                 error("xml: unknown tag <" .. node.tag .. ">")
             end
-			local children = compile(node.children, ns, registry, refs)
+			local lazy = node.tag == "LazyVStack" or node.tag == "LazyVGrid"
+			local children
+			if lazy then
+				local itemNodes = {}
+				for _, child in ipairs(node.children) do
+					if child.kind == "element" then itemNodes[#itemNodes + 1] = child end
+				end
+				local itemData = renderData
+				children = {
+					count = #itemNodes,
+					factory = function(index)
+						local previous = renderData
+						renderData = itemData
+						local ok, item = pcall(function()
+							return compile({ itemNodes[index] }, ns, registry, {})[1]
+						end)
+							renderData = previous
+							if not ok then error(item) end
+							if type(item) ~= "userdata" then
+								error("xml: lazy collection items must render one native view")
+							end
+							return item
+					end,
+				}
+			else
+				children = compile(node.children, ns, registry, refs)
+			end
 			local view = handler(ns, node.attrs, children)
 			if view then
+				if node.attrs.reorderable == "true" and node.tag ~= "List" and not lazy then
+					local name = node.attrs.reorderContainer
+					local action = name and renderData and renderData.actions
+						and renderData.actions[name]
+					if type(action) ~= "function" then
+						error("xml: reorderable <" .. node.tag ..
+							"> requires a valid reorderContainer action")
+					end
+					local items = {}
+					local function append(childrenToAdd)
+						for _, child in ipairs(childrenToAdd) do
+							if type(child) == "table" and child.__appkitGroup then
+								append(child)
+							else
+								items[#items + 1] = child
+							end
+						end
+					end
+					append(children)
+					view = ns.attachReorder(view, items, action)
+				end
 				if node.attrs.ref then
 					refs[node.attrs.ref] = view
 					-- Keep the declarative identity on the native view as well as
@@ -452,6 +499,39 @@ local TAG_SCHEMA = {
         children    = "array",
         props = {
         },
+    },
+    LazyVStack = {
+        constructor = "LazyVStack",
+        props = { rowHeight = "num", reorderable = "bool", reorderContainer = "str" },
+        collect = function(props, children)
+            props.itemCount, props.itemFactory = children.count, children.factory
+        end,
+        transform = function(props, attrs)
+            if attrs.reorderable == "true" then
+                props.onReorder = attrs.reorderContainer and renderData
+                    and renderData.actions and renderData.actions[attrs.reorderContainer]
+                if type(props.onReorder) ~= "function" then
+                    error("xml: reorderable <LazyVStack> requires a valid reorderContainer action")
+                end
+            end
+        end,
+    },
+    LazyVGrid = {
+        constructor = "LazyVGrid",
+        props = { columns = "num", rowHeight = "num", reorderable = "bool",
+            reorderContainer = "str" },
+        collect = function(props, children)
+            props.itemCount, props.itemFactory = children.count, children.factory
+        end,
+        transform = function(props, attrs)
+            if attrs.reorderable == "true" then
+                props.onReorder = attrs.reorderContainer and renderData
+                    and renderData.actions and renderData.actions[attrs.reorderContainer]
+                if type(props.onReorder) ~= "function" then
+                    error("xml: reorderable <LazyVGrid> requires a valid reorderContainer action")
+                end
+            end
+        end,
     },
     FlowStack = {
         constructor = "FlowStack",

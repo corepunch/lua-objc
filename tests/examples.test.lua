@@ -12,6 +12,8 @@ local examples = {
 	"apps/list/init.lua",
 	"apps/list-benchmark/init.lua",
 	"apps/list-reorder/init.lua",
+	"apps/container-reorder/init.lua",
+	"apps/lazy-reorder/init.lua",
 	"apps/swipe-actions/init.lua",
 	"apps/glass-materials/init.lua",
 	"apps/browser/init.lua",
