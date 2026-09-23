@@ -1280,6 +1280,27 @@ function AppKit.GlassEffect(props)
 		props.cornerRadius or 0), props)
 end
 
+--- Displays a native WKWebView and optionally binds it to a WebPage.
+--- @tag WebView
+--- @prop page table optional. Observable `ui.webpage` state object.
+--- @prop url string optional. Initial URL when no page object is supplied.
+--- @example <WebView page="page" />
+--- @platform AppKit WKWebView.
+function AppKit.WebView(props)
+	props = props or {}
+	local page = props.page
+	local url = props.url or (page and page.url) or "about:blank"
+	local weakPage = setmetatable({ page }, { __mode = "v" })
+	local view = bridge._webView(url, function(event, value)
+		local target = weakPage[1]
+		if target then target:_nativeEvent(event, value) end
+	end)
+	view.allowsBackForwardNavigationGestures = props.allowsBackForwardNavigation ~= false
+	if props.contentBackground == "hidden" then view.underPageBackgroundColor = bridge._systemColor("clear") end
+	if page then page:_attachNative(view, bridge._webViewAction) end
+	return applyLayout(view, props)
+end
+
 --- Opens or navigates to a destination when activated.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.

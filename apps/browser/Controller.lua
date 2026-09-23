@@ -1,6 +1,7 @@
-local Model = require("Model")
+local Model = require("apps.browser.Model")
 local WebPage = require("ui.webpage")
 local xml = require("ui.xml")
+local ns = require("ns")
 
 local Controller = {}
 
@@ -50,7 +51,7 @@ function Controller:toggleFavorites()
 end
 
 function Controller:createWindow()
-    local view, refs = xml.renderFile("views/Main.etlua", {
+    local config, refs = xml.renderFile("apps/browser/views/Main.etlua", {
         page = self.page,
         urlInput = self.urlInput,
         showFavorites = self.showFavorites,
@@ -66,9 +67,10 @@ function Controller:createWindow()
             goHome = function() self:goHome() end,
             toggleFavorites = function() self:toggleFavorites() end,
         },
-    }, require("ns"))
-
-    return view, refs
+    }, ns)
+    self.refs = refs
+    self.window = ns.Window(config)
+    return self.window
 end
 
 return Controller

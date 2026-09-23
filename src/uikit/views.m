@@ -57,6 +57,7 @@ static int bridge_image(lua_State *L) {
 
 static UIColor *lua_objc_uikit_system_color(const char *name) {
 	if (!name) return UIColor.labelColor;
+	if (strcmp(name, "clear") == 0) return UIColor.clearColor;
 	if (strcmp(name, "systemRed") == 0) return UIColor.systemRedColor;
 	if (strcmp(name, "systemGreen") == 0) return UIColor.systemGreenColor;
 	if (strcmp(name, "systemBlue") == 0) return UIColor.systemBlueColor;

@@ -842,6 +842,31 @@ function UIKit.Button(props)
 	return applyLayout(button, props)
 end
 
+--- Displays a native WKWebView and optionally binds it to a WebPage.
+--- @tag WebView
+--- @prop page table optional. Observable `ui.webpage` state object.
+--- @prop url string optional. Initial URL when no page object is supplied.
+--- @example <WebView page="page" />
+--- @platform UIKit WKWebView.
+function UIKit.WebView(props)
+	props = props or {}
+	local page = props.page
+	local url = props.url or (page and page.url) or "about:blank"
+	local weakPage = setmetatable({ page }, { __mode = "v" })
+	local view = bridge._webView(url, function(event, value)
+		local target = weakPage[1]
+		if target then target:_nativeEvent(event, value) end
+	end)
+	view.allowsBackForwardNavigationGestures = props.allowsBackForwardNavigation ~= false
+	if props.contentBackground == "hidden" then
+		view.backgroundColor = bridge._systemColor("clear")
+		view.scrollView.backgroundColor = bridge._systemColor("clear")
+		view.opaque = false
+	end
+	if page then page:_attachNative(view, bridge._webViewAction) end
+	return applyLayout(view, props)
+end
+
 --- Embeds a view in the current system glass effect.
 --- @tag GlassEffect
 --- @prop content value required. The view rendered inside the glass effect.

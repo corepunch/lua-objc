@@ -690,6 +690,25 @@ opacity layers.
 </GlassEffect>
 ```
 
+### `WebView{...}` and `ui.webpage`
+
+`WebView` embeds the platform's `WKWebView`. Pass a URL directly or bind a
+`WebPage` from `ui.webpage`:
+
+```lua
+local WebPage = require("ui.webpage")
+local page = WebPage.new("file:///path/to/content.html")
+local view = ns.WebView { page = page, flexGrow = 1 }
+page:loadURL("https://example.com")
+page:evaluateJavaScript("document.title", function(result, err) end)
+```
+
+The page reports URL, title, progress, loading, and native back/forward state
+through `page:observe(callback)`. It exposes `loadURL`, `goBack`, `goForward`,
+`reload`, `stop`, and `evaluateJavaScript`. XML templates can bind an object in
+render data with `<WebView page="page" />`. Use an embedded view for a real
+in-app browsing workflow; open a normal external link in the system browser.
+
 ### `Toggle{...}`
 
 Creates an `NSButton` checkbox. Keys: `label` (string), `is_on` (bool),

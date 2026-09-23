@@ -136,6 +136,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_menu", bridge_UIKitControls_menu},
 	{"_materialView", bridge_UIKitControls_materialView},
 	{"_glassEffect", bridge_UIKitControls_glassEffect},
+	{"_webView", bridge_UIKitControls_webView},
+	{"_webViewAction", bridge_UIKitControls_webViewAction},
 	{"_toggle", bridge_UIKitControls_toggle},
 	{"_slider", bridge_UIKitControls_slider},
 	{"_stepper", bridge_UIKitControls_stepper},

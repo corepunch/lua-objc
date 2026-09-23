@@ -1,2 +1,2 @@
 -- In-app web browser example
-return require("Controller")
+return require("apps.browser.Controller")

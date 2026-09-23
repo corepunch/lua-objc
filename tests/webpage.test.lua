@@ -98,6 +98,27 @@ local function testWebPage()
     assert(#hist == 1, "Should not duplicate same URL in history")
     print("✓ No duplicate history")
 
+    -- A native view adapter updates observable state and receives page actions.
+    local observed = {}
+    local attached = WebPage.new { url = "file:///tmp/first.html" }
+    attached:observe(function(property, value) observed[property] = value end)
+    local calls = {}
+    attached:_attachNative({}, function(_, action, ...)
+        calls[#calls + 1] = { action, ... }
+    end)
+    attached:loadURL("file:///tmp/second.html")
+    assert(calls[#calls][1] == "load" and calls[#calls][2] == "file:///tmp/second.html")
+    attached:_nativeEvent("state", {
+        url = "file:///tmp/second.html", title = "Local page", progress = 0.6,
+        canGoBack = true, canGoForward = false,
+    })
+    assert(attached.title == "Local page" and attached.progress == 0.6)
+    assert(attached:canGoBack() and not attached:canGoForward())
+    assert(observed.title == "Local page" and observed.progress == 0.6)
+    attached:evaluateJavaScript("document.title", function() end)
+    assert(calls[#calls][1] == "evaluateJavaScript")
+    print("✓ Native WebView binding and state observation")
+
     print("\nAll WebPage tests passed!")
     return true
 end

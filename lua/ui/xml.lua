@@ -956,6 +956,11 @@ local TAG_SCHEMA = {
             contentBackground = "str",
             allowsBackForwardNavigation = { default = true, type = "bool" },
         },
+        transform = function(props)
+            if type(props.page) == "string" and renderData then
+                props.page = renderData[props.page]
+            end
+        end,
     },
 
     Chart = {

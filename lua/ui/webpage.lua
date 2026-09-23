@@ -13,8 +13,10 @@
 
 local WebPage = {}
 WebPage.__index = WebPage
+local notifyObservers
 
 function WebPage.new(url)
+    if type(url) == "table" then url = url.url end
     local self = setmetatable({
         url = url or "",
         title = "Loading...",
@@ -35,8 +37,34 @@ function WebPage.new(url)
     return self
 end
 
+-- Bind a native WKWebView without making it part of the domain model.
+function WebPage:_attachNative(view, action)
+    self._nativeView = view
+    self._nativeAction = function(name, ...)
+        action(view, name, ...)
+    end
+end
+
+function WebPage:_nativeEvent(event, value)
+    if event == "state" and type(value) == "table" then
+        for _, key in ipairs({ "url", "title", "progress" }) do
+            if value[key] ~= nil and self[key] ~= value[key] then
+                self[key] = value[key]
+                notifyObservers(self, key)
+            end
+        end
+        self._nativeCanGoBack = value.canGoBack
+        self._nativeCanGoForward = value.canGoForward
+    elseif event == "loading" then
+        self.isLoading = value == true
+        notifyObservers(self, "isLoading")
+    elseif event == "error" then
+        self:_didFailLoad(value)
+    end
+end
+
 -- Notify observers that a property changed
-local function notifyObservers(self, propertyName)
+notifyObservers = function(self, propertyName)
     for _, callback in ipairs(self._observers) do
         if type(callback) == "function" then
             callback(propertyName, self[propertyName])
@@ -70,7 +98,10 @@ function WebPage:loadURL(url)
         end
 
         notifyObservers(self, "url")
+        notifyObservers(self, "title")
+        notifyObservers(self, "progress")
         notifyObservers(self, "isLoading")
+        if self._nativeAction then self._nativeAction("load", url) end
     end
 end
 
@@ -112,7 +143,10 @@ function WebPage:goBack()
         self.progress = 0
         self.isLoading = true
         notifyObservers(self, "url")
+        notifyObservers(self, "title")
+        notifyObservers(self, "progress")
         notifyObservers(self, "isLoading")
+        if self._nativeAction then self._nativeAction("back") end
     end
 end
 
@@ -126,17 +160,22 @@ function WebPage:goForward()
         self.progress = 0
         self.isLoading = true
         notifyObservers(self, "url")
+        notifyObservers(self, "title")
+        notifyObservers(self, "progress")
         notifyObservers(self, "isLoading")
+        if self._nativeAction then self._nativeAction("forward") end
     end
 end
 
 -- Check if back is possible
 function WebPage:canGoBack()
+    if self._nativeCanGoBack ~= nil then return self._nativeCanGoBack end
     return self._historyIndex > 1
 end
 
 -- Check if forward is possible
 function WebPage:canGoForward()
+    if self._nativeCanGoForward ~= nil then return self._nativeCanGoForward end
     return self._historyIndex < #self._history
 end
 
@@ -146,21 +185,25 @@ function WebPage:reload()
     self.progress = 0
     self.isLoading = true
     notifyObservers(self, "isLoading")
+    if self._nativeAction then self._nativeAction("reload") end
 end
 
 -- Stop loading
 function WebPage:stop()
     self.isLoading = false
     notifyObservers(self, "isLoading")
+    if self._nativeAction then self._nativeAction("stop") end
 end
 
 -- Evaluate JavaScript (returns result to callback)
 function WebPage:evaluateJavaScript(script, callback)
-    -- Placeholder for native implementation
-    -- Would need to call bridge._evaluateJavaScript(script, callback)
-    if type(callback) == "function" then
-        callback(nil, "JavaScript evaluation not yet implemented")
+    assert(type(script) == "string", "evaluateJavaScript requires a script string")
+    if not self._nativeAction then
+        if type(callback) == "function" then callback(nil, "WebPage is not attached to a WebView") end
+        return false
     end
+    self._nativeAction("evaluateJavaScript", script, callback)
+    return true
 end
 
 -- Get current URL

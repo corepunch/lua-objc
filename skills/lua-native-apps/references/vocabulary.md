@@ -15,7 +15,7 @@ app-side substitute.
 | Native List row reordering | `<List reorderable="true" reorderContainer="actionName">`; stacks and grids are not supported |
 | System Liquid Glass | `<GlassEffect style="regular|clear">`; use `style="glass"` for a glass button |
 | Native toolbar spacing/overflow | `<ToolbarSpacer />`, native toolbar overflow, and `ToolbarItem visibilityPriority`; on iOS set `TabView minimizeBehavior="onScroll"` for its tab bar |
-| `WebView` / observable `WebPage` | Not yet available; see issue [#7](https://github.com/corepunch/lua-objc/issues/7) |
+| `WebView` / observable `WebPage` | `<WebView page="page" />`; native `WKWebView` on both platforms |
 | Lazy containers and large-list virtualization | Do not use eager `VStack` for unbounded rows; see issue [#9](https://github.com/corepunch/lua-objc/issues/9) |
 | Native animation, haptics, and motion preferences | Use only existing documented bridge operations; broader surface is tracked in issue [#10](https://github.com/corepunch/lua-objc/issues/10) |
 | Private navigation palettes / private `LazyLayout` | Research only, opt-in proposal; never use in default app code. See issue [#11](https://github.com/corepunch/lua-objc/issues/11) |
@@ -27,6 +27,13 @@ before assuming a tag or presentation behavior exists. For iOS builds and
 streamed simulator reloads, follow [`docs/ios.md`](../../../docs/ios.md).
 
 This document lists every supported XML tag and modifier attribute. If a tag is not listed here, it does not exist in the bridge — extend `xml.registry` in the appropriate platform module instead of inventing SwiftUI modifiers the bridge does not implement.
+
+Use `WebView` when the application owns an embedded browsing workflow or needs
+to display trusted web content as part of its interface. Open ordinary links
+outside the app with the platform browser (`NSWorkspace.openURL` on macOS or
+`UIApplication.open` on iOS) rather than building browser chrome for a simple
+link. `WebPage` tracks URL, title, progress, and back/forward capability for an
+embedded view; it does not own the native view.
 
 ## Layout Containers
 
@@ -439,7 +446,6 @@ These are planned but not yet available:
 - Custom transitions/animations beyond built-in platform defaults
 - Text selection styling (`SelectionShapeStyle`)
 - Advanced gesture recognizers beyond tap/long-press
-- WebView with observable state — see issue #7
 
 When an XML tag or modifier is not available, extend the platform module rather than inventing cross-platform fiction:
 

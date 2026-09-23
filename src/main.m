@@ -224,6 +224,7 @@ static void bridge_set_optional_callback(
 #include "appkit/tabview.m"
 #include "appkit/navigation.m"
 #include "appkit/platform.m"
+#include "appkit/webview.m"
 
 #include "appkit/workspace.m"
 #include "appkit/constructors.m"
@@ -232,6 +233,8 @@ static void bridge_set_optional_callback(
 #pragma mark - Module registration
 
 static const luaL_Reg bridge_lib[] = {
+	{"_webView", bridge_webview},
+	{"_webViewAction", bridge_webview_action},
 	{"_parityMeasure", bridge_parity_measure},
 	{"_parityWrite", bridge_parity_write},
 	{"_parityJSON", bridge_parity_json},
