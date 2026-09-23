@@ -25,6 +25,15 @@ ledger when it finishes.
 `scan(roots, exclusions)` runs the same engine synchronously for command-line tools
 and small headless regression fixtures. UI code must use `start`/`poll`.
 
+`exportStart(roots, exclusions, outputPath, metadata)` streams only file paths and
+allocated byte counts into a private temporary JSON file, then atomically renames it
+to `outputPath`. It also records disk capacity, partial-scan status, and a
+`countedBytes` value so hard links do not inflate mock totals. `metadata.logicalRoots`
+can map a physical scan root to its user-visible path. The writer does not retain the
+full file list in memory and does not open file contents. `poll(job)` reports the
+exported file count when the job completes; cancellation publishes a valid partial
+snapshot when the file writer itself is healthy.
+
 All paths must be absolute UTF-8 strings without NUL, `.` or `..` components.
 Exclusions apply to descendants; an explicitly requested root is always attempted.
 Hard links and duplicate roots share a device/inode ledger within one scan. A new

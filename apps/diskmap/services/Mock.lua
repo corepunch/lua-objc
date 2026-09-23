@@ -15,6 +15,21 @@ local function within(path, root)
 	return path:sub(1, #root + 1) == root .. "/"
 end
 
+local function buildIndex(items)
+	local totals, counts = {}, {}
+	for _, item in ipairs(items) do
+		local ancestor = item.path
+		while ancestor and ancestor ~= "" do
+			totals[ancestor] = (totals[ancestor] or 0) + item.countedBytes
+			counts[ancestor] = (counts[ancestor] or 0) + 1
+			if ancestor == "/" then break end
+			local slash = ancestor:match("^.*()/")
+			ancestor = slash == 1 and "/" or slash and ancestor:sub(1, slash - 1)
+		end
+	end
+	return totals, counts
+end
+
 local function absolute(path, home)
 	assert(type(path) == "string", "Mock paths must be strings")
 	assert(path:sub(1, 1) == "/" or path == "~" or path:sub(1, 2) == "~/", "Mock paths must be absolute or home-relative")
@@ -29,11 +44,12 @@ local function fixturePath()
 end
 
 local function loadFixture(path)
-	local file = assert(io.open(path or fixturePath(), "rb"), "Cannot read the bundled Mock HDD fixture")
+	local file = assert(io.open(path or fixturePath(), "rb"), "Cannot read the Mock HDD snapshot")
 	local body = file:read("*a")
 	file:close()
 	local ok, fixture = pcall(ns.json_parse, body)
-	assert(ok and type(fixture) == "table" and fixture.format == 1 and type(fixture.items) == "table", "Mock HDD fixture is invalid")
+	assert(ok and type(fixture) == "table" and fixture.format == 1 and type(fixture.items) == "table"
+		and type(fixture.capacityBytes) == "number" and type(fixture.availableBytes) == "number", "Mock HDD snapshot is invalid")
 	return fixture
 end
 
@@ -64,11 +80,20 @@ function Mock.new(options)
 	options = options or {}
 	local home = options.home or os.getenv("HOME") or "/Users"
 	local fixture = loadFixture(options.fixturePath)
-	local items = {}
+	local items = fixture.items
 	for _, item in ipairs(fixture.items) do
 		assert(type(item.path) == "string" and type(item.allocatedBytes) == "number" and item.allocatedBytes >= 0, "Mock HDD entries need a path and nonnegative allocatedBytes")
-		items[#items + 1] = {path = absolute(item.path, home), allocatedBytes = item.allocatedBytes}
+		local countedBytes = item.countedBytes == nil and item.allocatedBytes or item.countedBytes
+		assert(type(countedBytes) == "number" and countedBytes >= 0, "Mock HDD entries need nonnegative countedBytes")
+		item.path = absolute(item.path, home)
+		item.countedBytes = countedBytes
+		for key in pairs(item) do
+			if key ~= "path" and key ~= "allocatedBytes" and key ~= "countedBytes" then item[key] = nil end
+		end
 	end
+	fixture.items = nil
+	collectgarbage("collect")
+	local totals, counts = buildIndex(items)
 	local discovery = copy(fixture.discovery or {})
 	for _, entry in ipairs(discovery) do entry.path = absolute(entry.path, home) end
 	local agents = copy(fixture.agentEntries or {})
@@ -79,6 +104,8 @@ function Mock.new(options)
 		home = home,
 		fixture = fixture,
 		items = items,
+		totals = totals,
+		fileCounts = counts,
 		discovery = discovery,
 		agents = agents,
 		availableBytes = fixture.availableBytes,
@@ -100,27 +127,35 @@ end
 function Mock:scan(paths, exclusions)
 	local trees, rootStates, visited = {}, {}, 0
 	for index, rawRoot in ipairs(paths) do
-		local root, exists, bytes = absolute(rawRoot, self.home), false, 0
-		for _, item in ipairs(self.items) do
-			if within(item.path, root) then
-				exists = true
-				local excluded = false
-				for _, rawExclusion in ipairs(exclusions or {}) do
-					local exclusion = absolute(rawExclusion, self.home)
-					if exclusion ~= root and within(exclusion, root) and within(item.path, exclusion) then excluded = true; break end
-				end
-				if not excluded then bytes = bytes + item.allocatedBytes; visited = visited + 1 end
+		local root = absolute(rawRoot, self.home)
+		local bytes, count = self.totals[root] or 0, self.fileCounts[root] or 0
+		local relevantExclusions = {}
+		for _, rawExclusion in ipairs(exclusions or {}) do
+			local exclusion = absolute(rawExclusion, self.home)
+			if exclusion ~= root and within(exclusion, root) then relevantExclusions[#relevantExclusions + 1] = exclusion end
+		end
+		table.sort(relevantExclusions, function(a, b) return #a < #b end)
+		local selectedExclusions = {}
+		for _, exclusion in ipairs(relevantExclusions) do
+			local covered = false
+			for _, parent in ipairs(selectedExclusions) do if within(exclusion, parent) then covered = true; break end end
+			if not covered then
+				bytes = bytes - (self.totals[exclusion] or 0)
+				count = count - (self.fileCounts[exclusion] or 0)
+				selectedExclusions[#selectedExclusions + 1] = exclusion
 			end
 		end
+		visited = visited + count
+		local exists = self.fileCounts[root] ~= nil
 		if exists then
-			trees[index] = {kb = bytes / 1024}
+			trees[index] = {kb = math.max(0, bytes) / 1024, partial = self.fixture.partial == true}
 			rootStates[index] = "measured"
 		else
-			rootStates[index] = "missing"
+			rootStates[index] = self.fixture.partial == true and "unreadable" or "missing"
 		end
 	end
 	return {trees = trees, rootStates = rootStates, completed = #paths, total = #paths, visited = visited,
-		seconds = 0, errors = 0, issues = {}, failure = ""}
+		seconds = 0, errors = self.fixture.errors or 0, issues = {}, failure = "", partial = self.fixture.partial == true}
 end
 
 function Mock:start(paths, exclusions)
@@ -205,19 +240,22 @@ function Mock:reveal(path)
 	return true
 end
 
-local function countUnder(items, path)
-	local total = 0
-	for _, item in ipairs(items) do if within(item.path, path) then total = total + item.allocatedBytes end end
-	return total
+function Mock:reindex()
+	self.totals, self.fileCounts = buildIndex(self.items)
+end
+
+local function countUnder(service, path)
+	return service.totals[path] or 0
 end
 
 function Mock:removeUnder(path)
-	local kept, removed = {}, 0
+	local kept, removed = {}, countUnder(self, path)
 	for _, item in ipairs(self.items) do
-		if within(item.path, path) then removed = removed + item.allocatedBytes
+		if within(item.path, path) then
 		else kept[#kept + 1] = item end
 	end
 	self.items = kept
+	self.reindex()
 	return removed
 end
 
@@ -231,13 +269,14 @@ function Mock:trash(path)
 	local name = path:match("([^/]+)$") or "Mock item"
 	local destination = self.home .. "/.Trash/" .. name
 	local suffix = 2
-	while countUnder(self.items, destination) > 0 do destination = self.home .. "/.Trash/" .. name .. " (" .. suffix .. ")"; suffix = suffix + 1 end
+	while (self.fileCounts[destination] or 0) > 0 do destination = self.home .. "/.Trash/" .. name .. " (" .. suffix .. ")"; suffix = suffix + 1 end
 	self.removeUnder(path)
 	for _, item in ipairs(moved) do
 		local relative = item.path == path and "" or item.path:sub(#path + 2)
 		item.path = relative == "" and destination or destination .. "/" .. relative
 		self.items[#self.items + 1] = item
 	end
+	self.reindex()
 	return true
 end
 
@@ -276,7 +315,7 @@ function Mock:command(arguments, completion)
 			for _, device in ipairs(devices) do
 				if device.dataPath then
 					device.dataPath = absolute(device.dataPath, self.home)
-					device.dataPathSize = countUnder(self.items, device.dataPath)
+					device.dataPathSize = countUnder(self, device.dataPath)
 				end
 			end
 		end

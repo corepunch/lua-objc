@@ -36,7 +36,8 @@ function Scan:start()
 			self.disk = self.service.diskSpace(self.home)
 			local seconds = math.max(0, math.floor(result.seconds or (os.time() - self.startedAt)))
 			local elapsed = seconds < 60 and (seconds .. " sec") or (math.floor(seconds / 60) .. " min " .. (seconds % 60) .. " sec")
-			self.status = result.failure and result.failure ~= "" and result.failure or "Measured " .. os.date("%H:%M") .. " · finished in " .. elapsed
+			local label = (result.partial == true or (result.errors or 0) > 0) and "Partial lower bound" or "Measured"
+			self.status = result.failure and result.failure ~= "" and result.failure or label .. " " .. os.date("%H:%M") .. " · finished in " .. elapsed
 			self:notify()
 		end, function(progress)
 			if generation ~= self.generation or type(progress) ~= "table" or type(progress.total) ~= "number" or progress.total <= 0 then return end

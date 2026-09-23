@@ -18,8 +18,25 @@ Launch against a bundled synthetic disk for development and UI walkthroughs:
 ./lua-objc apps/diskmap/init.lua --mock
 ```
 
-Mock HDD uses the `mock-hdd.json` fixture in this app folder. It reads only that
-fixture, does not load the native scanner or run shell commands, and shows
+Create a local Mock HDD snapshot of this Mac's internal volumes, then launch
+Diskmap against that saved metadata:
+
+```sh
+./lua-objc --export-mock=/private/tmp/diskmap-mock-hdd.json apps/diskmap/init.lua
+./lua-objc --mock-file=/private/tmp/diskmap-mock-hdd.json apps/diskmap/init.lua
+```
+
+The export stores file paths and allocated sizes, plus disk capacity and a
+hard-link accounting value. It never opens file contents, invokes a shell, or
+uploads the snapshot. The file is written with owner-only permissions. macOS
+may request access while the one-time export traverses protected folders; the
+saved mock can then be reopened without scanning the real disk. If some
+locations stay inaccessible, the snapshot is marked partial and remains a
+lower bound. Restarting Mock HDD restores the saved snapshot before simulated
+deletes or Trash operations.
+
+`--mock` uses the bundled synthetic `mock-hdd.json`; `--mock-file` reads only
+the selected snapshot. Both modes avoid the native scanner and shell commands, and show
 “Mock HDD” in the window title. File sizes, installed apps, project outputs,
 simulators, capacity and snapshots are synthetic. Trash, cache and simulator
 actions change only the provider's in-memory copy; restarting restores the
@@ -28,7 +45,8 @@ launched. The real provider remains the default when the mock switch is absent.
 
 Every launch starts a fresh inventory. Photos, Music, Movies and known media support locations are excluded by default; opt in for the current session in Settings. Excluded sizes are unknown, never zero. Diskmap has no directory
 argument or live scan-result cache. The explicit mock fixture is a synthetic
-filesystem for repeatable testing, not a saved scan of this Mac.
+filesystem for repeatable testing; use `--export-mock` to create a local snapshot
+of this Mac.
 
 `Catalog.lua` composes independent providers in `catalog/` into the macOS knowledge tree, including Xcode runtimes, devices, bundled SDKs, archives, package managers, AI coding tools, mobile toolchains, system assets, app support, backups, media and boot data. Startup also discovers project-local generated folders when their parent project marker exists and application bundles directly inside `/Applications` and `~/Applications`; each discovered path is measured as its own review-only resource and excluded from its broader residual measurement.
 New layouts remain review-only until their ownership and cleanup policy are

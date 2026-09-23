@@ -33,6 +33,27 @@ write(file, string.rep("b", 16384))
 local second = native.scan({file})
 t.assertEqual(first.trees[1].kb, 8, "first scan measures original allocation")
 t.assertEqual(second.trees[1].kb, 16, "new scan measures changed allocation without a cache")
+local snapshotPath = root .. "/mock-snapshot.json"
+local export = native.exportStart({file}, {}, snapshotPath, {capacityBytes = 1000000, availableBytes = 250000})
+local exported, exportResult = false, nil
+local exportDeadline = os.clock() + 0.5
+repeat
+	exported, exportResult = native.poll(export)
+until exported or os.clock() >= exportDeadline
+t.expect(exported, "metadata snapshot export completes asynchronously")
+t.assertEqual(exportResult.exportedFiles, 1, "snapshot includes each scanned regular file once")
+local snapshotFile = assert(io.open(snapshotPath, "rb"))
+local snapshotBody = snapshotFile:read("*a"); snapshotFile:close()
+local snapshot = System.decode(snapshotBody)
+t.assertEqual(snapshot.format, 1, "snapshot uses the Mock HDD format")
+t.assertEqual(snapshot.capacityBytes, 1000000, "snapshot preserves internal disk capacity metadata")
+t.assertEqual(snapshot.items[1].path, file, "snapshot stores the absolute file path")
+t.assertEqual(snapshot.items[1].allocatedBytes, 16384, "snapshot stores allocated bytes without opening file contents")
+t.assertEqual(snapshot.items[1].countedBytes, 16384, "snapshot records one hard-link accounting charge")
+t.expect(not snapshotBody:find(string.rep("b", 32), 1, true), "snapshot does not contain file contents")
+local importedMock = require("apps.diskmap.services.Mock").new({fixturePath = snapshotPath})
+t.assertEqual(importedMock.scan({root}, {}).trees[1].kb, 16, "exported snapshot loads through the Mock provider")
+os.remove(snapshotPath)
 local sparse = root .. "/sparse"
 local f = assert(io.open(sparse, "wb")); f:seek("set", 32 * 1024 * 1024); f:write("x"); f:close()
 local allocation = native.scan({sparse})

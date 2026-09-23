@@ -4,6 +4,9 @@ local Scanner = {}
 function Scanner.start(paths, exclusions)
 	return {handle = native.start(paths, exclusions or {})}
 end
+function Scanner.startExport(paths, exclusions, outputPath, metadata)
+	return {handle = native.exportStart(paths, exclusions or {}, outputPath, metadata)}
+end
 function Scanner.cancel(job)
 	if not job then return end
 	job.cancelled = true
