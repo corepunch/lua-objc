@@ -2,7 +2,7 @@
   <HStack id="sessionHeader" paddingHorizontal="12" paddingVertical="8" spacing="12" alignment="center">
     <Button id="back" title="" systemImage="chevron.left" accessibilityLabel="Back" action="close" style="plain" width="52" height="52" background="secondaryBackground" cornerRadius="26" clipsToBounds="true" />
     <VStack maxWidth="infinity" spacing="2" alignment="center">
-      <Label id="sessionTitle" text="<%= roomTitle %>" size="20" weight="bold" lines="1" alignment="center" />
+      <Label id="sessionTitle" text="<%= gameTitle %>" size="20" weight="bold" lines="1" alignment="center" />
       <Label id="progress" text="<%= progress %>" size="12" color="secondary" lines="1" alignment="center" />
     </VStack>
     <Button id="readingSettings" title="AA" accessibilityLabel="Reading settings" action="readingSettings" style="plain" size="23" weight="bold" width="52" height="52" background="secondaryBackground" cornerRadius="26" clipsToBounds="true" />
@@ -11,6 +11,8 @@
   <SafeAreaInset id="sessionContent" edge="bottom" flexGrow="1">
     <ScrollView id="transcriptScroll" flexGrow="1">
       <VStack paddingHorizontal="20" paddingTop="16" paddingBottom="12" spacing="12" alignment="leading">
+        <Label id="gameTitle" text="<%= gameTitle %>" size="20" weight="bold" paddingLeading="32" lines="2" />
+        <Label id="gameDescription" text="<%= gameDescription %>" size="17" lines="0" />
         <Label id="roomTitle" text="<%= roomTitle %>" size="20" weight="bold" paddingLeading="32" lines="2" />
         <Label id="output" text="<%= transcript %>" size="17" lines="0" />
       </VStack>

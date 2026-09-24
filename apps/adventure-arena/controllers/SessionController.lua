@@ -1,3 +1,5 @@
+local CompassGesture = require("apps.adventure-arena.services.CompassGesture")
+
 local Controller = {}
 Controller.__index = Controller
 
@@ -48,14 +50,14 @@ function Controller:show(id)
 		dictate = function() self:toggleDictation() end,
 		close = function() self:close() end,
 		readingSettings = function() self:showReadingSettings() end,
-		northwest = function() self:submitCommand("go northwest") end,
-		north = function() self:submitCommand("go north") end,
-		northeast = function() self:submitCommand("go northeast") end,
-		west = function() self:submitCommand("go west") end,
-		east = function() self:submitCommand("go east") end,
-		southwest = function() self:submitCommand("go southwest") end,
-		south = function() self:submitCommand("go south") end,
-		southeast = function() self:submitCommand("go southeast") end,
+		compassDrag = function(gesture)
+			if type(gesture) ~= "table" or gesture.state ~= "ended" then return end
+			local coordinateSpace = self.ns.platform == "AppKit" and "bottom-left" or "top-left"
+			local direction = CompassGesture.direction(gesture.translation, coordinateSpace)
+			if direction and self.model:hasExit(direction) then
+				self:submitCommand("go " .. direction)
+			end
+		end,
 	}
 	local presentation = self.model:presentation()
 	presentation.speechAvailable = speechAvailable
@@ -205,6 +207,10 @@ function Controller:applyReadingSettings()
 	self.refs.transcriptScroll.backgroundColor = background
 	self.refs.output.font = self.ns._font(settings.fontSize, nil, false, settings.font)
 	self.refs.output.textColor = primary
+	self.refs.gameTitle.font = self.ns._font(settings.fontSize + 3, "bold", false, settings.font)
+	self.refs.gameTitle.textColor = primary
+	self.refs.gameDescription.font = self.ns._font(settings.fontSize, nil, false, settings.font)
+	self.refs.gameDescription.textColor = primary
 	self.refs.roomTitle.font = self.ns._font(settings.fontSize + 3, "bold", false, settings.font)
 	self.refs.roomTitle.textColor = primary
 	self.refs.progress.textColor = secondary

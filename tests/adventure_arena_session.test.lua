@@ -46,4 +46,31 @@ t.assertEqual(titled:presentation().roomTitle, "Sanitarium", "command updates re
 t.assertEqual(titled:presentation().transcript,
 	"The rusted gate stands open.\n\n> look\n\nThe room is quiet.",
 	"command updates preserve the formatted transcript body")
+local progressEngine = {
+	score = 4, moves = 2, maxScore = 20, exits = { "n", "east" }, room = "Sanitarium Gate",
+}
+local tracked = Session.new({ engineFactory = function()
+	return { start = function()
+		return {
+			resume = function(_, command)
+				progressEngine.moves = progressEngine.moves + 1
+				if command == "solve" then progressEngine.score = 5 end
+				return "Updated."
+			end,
+			progress = function() return progressEngine end,
+			exits = function() return progressEngine.exits end,
+			roomName = function() return progressEngine.room end,
+		}, "Welcome."
+	end }
+end })
+t.expect(tracked:start(game), "session starts with game progress")
+t.assertEqual(tracked:presentation().progress, "Score 4/20 | Moves 2", "presentation uses engine score and move totals")
+t.expect(tracked:hasExit("north"), "full exit names are available to the compass")
+t.expect(tracked:hasExit("e"), "exit abbreviations normalize for compass selection")
+t.expect(not tracked:hasExit("south"), "unavailable exits stay disabled")
+t.assertEqual(tracked:presentation().roomTitle, "Sanitarium Gate", "runtime room name replaces the game title")
+t.assertEqual(tracked:presentation().gameDescription, game.description or "", "intro synopsis comes from the selected game")
+t.expect(tracked:submit("solve"), "tracked session accepts a command")
+t.assertEqual(tracked:presentation().progress, "Score 5/20 | Moves 3", "commands refresh live engine progress")
+
 os.exit(t.summary() and 0 or 1)

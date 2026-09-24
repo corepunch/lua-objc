@@ -80,6 +80,42 @@ function ZILRuntime.new(game, readFile)
 						resume = function(_, command)
 							return withContext(readFile, paths, function() return engine:resume(command) end)
 						end,
+						progress = function()
+							return {
+								score = tonumber(env.SCORE) or 0,
+								moves = tonumber(env.MOVES) or 0,
+								maxScore = tonumber(env["SCORE-MAX"]) or 0,
+							}
+						end,
+						roomName = function()
+							return withContext(readFile, paths, function()
+								local here, descId = env.HERE, env.PQDESC
+								if here and descId and type(env.GETP) == "function" then
+									local ok, desc = pcall(env.GETP, here, descId)
+									if ok and type(desc) == "number" and env.mem then
+										local readOK, name = pcall(function() return env.mem:string(desc) end)
+										if readOK then return tostring(name or "") end
+									elseif ok and type(desc) == "string" then
+										return desc
+									end
+								end
+								return ""
+							end)
+						end,
+						exits = function()
+							return withContext(readFile, paths, function()
+								local ok, exits = pcall(function() return engine:resume("room-exits") end)
+								local directions = {}
+								if ok and type(exits) == "table" then
+									for _, exit in ipairs(exits) do
+										if type(exit) == "table" and exit[1] then
+											table.insert(directions, tostring(exit[1]):lower())
+										end
+									end
+								end
+								return directions
+							end)
+						end,
 					}, opening
 				end)
 			end,

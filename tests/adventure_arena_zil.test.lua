@@ -26,6 +26,15 @@ if ok then
 	if started then
 		t.expect(tostring(opening):find("workshop", 1, true) ~= nil,
 			"Wondertown opening text reaches the Lua UI")
+		local progress = engine:progress()
+		t.assertEqual(progress.score, 0, "runtime reports the game's starting score")
+		t.assertEqual(progress.moves, 0, "runtime reports the game's starting move count")
+		local roomName = engine:roomName()
+		t.expect(type(roomName) == "string" and roomName:lower():find("workshop", 1, true) ~= nil,
+			"runtime reports the current room name: " .. tostring(roomName))
+		local exits = engine:exits()
+		t.expect(type(exits) == "table" and #exits > 0,
+			"runtime exposes current room exits for the compass")
 		local resumed, response = pcall(function() return engine:resume("look") end)
 		t.expect(resumed and type(response) == "string", "typed commands reach the runtime")
 	end

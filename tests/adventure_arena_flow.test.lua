@@ -8,7 +8,8 @@ local Session = require("apps.adventure-arena.models.Session")
 local catalog = Adventures.new()
 local Controller = require("apps.adventure-arena.Controller")
 local renderFile, button, menu = xml.renderFile, ns.Button, ns.Menu
-local rendered, callbacks, menus = {}, {}, {}
+local addDrag = ns._addDrag
+local rendered, callbacks, menus, drags = {}, {}, {}, {}
 
 -- Capture the callbacks actually supplied by the XML renderer to native buttons.
 ns.Button = function(props)
@@ -21,6 +22,7 @@ ns.Menu = function(props)
 	menus[view] = props.items
 	return view
 end
+ns._addDrag = function(view, callback) drags[view] = callback end
 xml.renderFile = function(...)
 	local view, refs = renderFile(...)
 	rendered = { view = view, refs = refs }
@@ -45,7 +47,10 @@ end
 
 local sessionModel = Session.new({ engineFactory = function()
 	return { start = function()
-		return { resume = function(_, command) return 'Response <&> "' .. command .. '"' end }, "Opening <&>"
+		return {
+			resume = function(_, command) return 'Response <&> "' .. command .. '"' end,
+			exits = function() return { "north" } end,
+		}, "Opening <&>"
 	end }
 end })
 local controller = Controller.new { adventures = catalog, sessionModel = sessionModel, ns = ns }
@@ -68,6 +73,7 @@ t.assertEqual(rendered.refs.title.text, catalog:list()[1].title, "detail renders
 t.assertEqual(rendered.refs.description.text, catalog:list()[1].description, "detail preserves full description")
 click("play")
 t.assertEqual(controller.navigation.depth, 3, "detail play opens session")
+t.assertEqual(rendered.refs.sessionTitle.text, catalog:list()[1].title, "session header retains the game title")
 t.assertEqual(rendered.refs.output.text, "Opening <&>", "transcript escapes XML characters")
 t.assertEqual(rendered.refs.input.accessibilityLabel, "Command", "composer retains accessibility label")
 t.assertEqual(rendered.refs.input.bezeled, false, "glass composer owns the visible border")
@@ -78,6 +84,15 @@ t.assertEqual(rendered.refs.send.enabled, true, "typing enables sending")
 click("send")
 t.expect(rendered.refs.output.text:find('Response <&> "inventory"', 1, true), "send updates transcript")
 t.assertEqual(rendered.refs.input.text, "", "send clears input")
+local compassDrag = drags[rendered.refs.compassControl]
+t.expect(type(compassDrag) == "function", "compass binds the native drag gesture")
+if compassDrag then
+	compassDrag({ state = "ended", translation = { x = 0, y = 24 } })
+	t.expect(rendered.refs.output.text:find("> go north", 1, true), "compass drag submits an available direction")
+	local compassTranscript = rendered.refs.output.text
+	compassDrag({ state = "ended", translation = { x = 24, y = 0 } })
+	t.assertEqual(rendered.refs.output.text, compassTranscript, "compass ignores unavailable directions")
+end
 chooseMenu("Look")
 t.expect(rendered.refs.output.text:find('Response <&> "look"', 1, true), "quick command reaches session")
 	local transcript = rendered.refs.output.text
@@ -128,6 +143,6 @@ local empty = Controller.new { adventures = Adventures.new { games = {} }, sessi
 empty:home()
 t.expect(rendered.refs.emptyCatalog ~= nil, "empty model renders the etlua empty state")
 t.assertEqual(empty.navigation.depth, 1, "empty catalog retains navigation root")
-ns.Button, ns.Menu, xml.renderFile = button, menu, renderFile
+ns.Button, ns.Menu, ns._addDrag, xml.renderFile = button, menu, addDrag, renderFile
 
 os.exit(t.summary() and 0 or 1)
