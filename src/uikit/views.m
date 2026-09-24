@@ -4,6 +4,7 @@
 @property (nonatomic, strong) LuaReg *callback;
 - (void)tap:(UITapGestureRecognizer *)recognizer;
 - (void)drag:(UIPanGestureRecognizer *)recognizer;
+- (void)edgeSwipe:(UIScreenEdgePanGestureRecognizer *)recognizer;
 @end
 
 @implementation LuaGestureTarget
@@ -38,6 +39,14 @@
 	else if (recognizer.state == UIGestureRecognizerStateCancelled) state = @"cancelled";
 	[self fire:recognizer state:state];
 }
+- (void)edgeSwipe:(UIScreenEdgePanGestureRecognizer *)recognizer {
+	if (recognizer.state != UIGestureRecognizerStateEnded) return;
+	CGPoint movement = [recognizer translationInView:recognizer.view];
+	if (movement.x < kEdgeSwipeBackDistance ||
+		movement.x <= fabs(movement.y) * kEdgeSwipeHorizontalRatio) return;
+	lua_State *L = lua_reg_live_state(self.callback);
+	if (L && lua_reg_push(self.callback)) lua_objc_pcall(L, 0, 0, "edge swipe");
+}
 @end
 
 static int bridge_UIKit_addTap(lua_State *L) {
@@ -58,6 +67,19 @@ static int bridge_UIKit_addDrag(lua_State *L) {
 	if (!callback) return 0;
 	LuaGestureTarget *target = [LuaGestureTarget new]; target.callback = callback;
 	UIPanGestureRecognizer *recognizer = [[UIPanGestureRecognizer alloc] initWithTarget:target action:@selector(drag:)];
+	[view addGestureRecognizer:recognizer];
+	objc_setAssociatedObject(recognizer, &kCallbackKey, target, OBJC_ASSOCIATION_RETAIN);
+	return 0;
+}
+
+static int bridge_UIKit_addEdgeSwipe(lua_State *L) {
+	UIView *view = check_view(L, 1);
+	LuaReg *callback = lua_reg_opt(L, 2);
+	if (!callback) return 0;
+	LuaGestureTarget *target = [LuaGestureTarget new]; target.callback = callback;
+	UIScreenEdgePanGestureRecognizer *recognizer = [[UIScreenEdgePanGestureRecognizer alloc]
+		initWithTarget:target action:@selector(edgeSwipe:)];
+	recognizer.edges = UIRectEdgeLeft;
 	[view addGestureRecognizer:recognizer];
 	objc_setAssociatedObject(recognizer, &kCallbackKey, target, OBJC_ASSOCIATION_RETAIN);
 	return 0;
@@ -133,6 +155,12 @@ static UIColor *lua_objc_uikit_system_color(const char *name) {
 	if (strcmp(name, "systemRed") == 0) return UIColor.systemRedColor;
 	if (strcmp(name, "systemGreen") == 0) return UIColor.systemGreenColor;
 	if (strcmp(name, "systemBlue") == 0) return UIColor.systemBlueColor;
+	if (strcmp(name, "systemOrange") == 0) return UIColor.systemOrangeColor;
+	if (strcmp(name, "systemPurple") == 0) return UIColor.systemPurpleColor;
+	if (strcmp(name, "systemTeal") == 0) return UIColor.systemTealColor;
+	if (strcmp(name, "systemIndigo") == 0) return UIColor.systemIndigoColor;
+	if (strcmp(name, "systemBrown") == 0) return UIColor.systemBrownColor;
+	if (strcmp(name, "systemGray") == 0) return UIColor.systemGrayColor;
 	if (strcmp(name, "systemYellow") == 0) return UIColor.systemYellowColor;
 	if (strcmp(name, "secondary") == 0) return UIColor.secondaryLabelColor;
 	if (strcmp(name, "tertiary") == 0) return UIColor.tertiaryLabelColor;

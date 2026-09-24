@@ -45,6 +45,15 @@ function Controller:close()
 	if self.scope then self.scope:close(); self.scope = nil end
 	self.refs = nil
 end
+function Controller:updateCategory()
+	if not self.refs or not self.refs.categoryText then return end
+	local detail = Inspector.details(self.model, self.rootId)
+	if not detail then return end
+	self.refs.categoryText.text = detail.text
+	self.refs.categoryLocation.text = detail.location
+	self.refs.categoryKeep.title = detail.keepTitle
+	self.sheet:layout()
+end
 function Controller:select(id)
 	self.selectedId = id
 	local row, detail = self.model.resources:find(id), Inspector.details(self.model, id)
@@ -59,6 +68,7 @@ function Controller:select(id)
 end
 function Controller:update()
 	if not self.refs then return end
+	self:updateCategory()
 	local total, selected = 0, self.selectedId
 	local selectionVisible = false
 	for index, filter in ipairs(self.filters) do
@@ -85,10 +95,13 @@ function Controller:open(parent, id, filter)
 	self.scope = ns.Scope.new()
 	ns.Scope.withScope(self.scope, function()
 		self.sheet, self.refs = xml.renderFile("apps/diskmap/views/Management.etlua", {
-			title = self.model.resources:find(id) and self.model.resources:find(id).name or "Safe reclaim potential", filters = self.filters,
+			title = self.model.resources:find(id) and self.model.resources:find(id).name or "Safe reclaim potential",
+			category = Inspector.details(self.model, id), filters = self.filters,
 			actions = {
 				search = function(value) self.query = value; self:update() end,
 				done = function() self:close() end,
+				categoryRefresh = function() self.refresh() end,
+				categoryKeep = function() self.keep(self.rootId); self:updateCategory() end,
 				reveal = function() local row = self.model.resources:find(self.selectedId); if row and row.path then self.service.reveal(row.path) end end,
 				keep = function() if self.selectedId then local selected = self.selectedId; self.keep(selected); self:select(selected) end end,
 				manage = function()

@@ -59,6 +59,10 @@ function Categories.distribution(model, disk)
 		table.insert(segments, {id = id, name = id == "media" and "Photos" or row.name, color = id == "macos" and "secondary" or row.color,
 			bytes = bytes, weight = bytes / total, size = row.size})
 	end
+	table.sort(segments, function(left, right)
+		if left.bytes ~= right.bytes then return left.bytes > right.bytes end
+		return left.id < right.id
+	end)
 	local other = total - free - assigned
 	table.insert(segments, {id = "unreconciled", name = "Not attributed", color = "tertiary", bytes = other, weight = other / total, size = Model.size(other)})
 	table.insert(segments, {id = "free", name = "Free", color = "quaternaryLabel", bytes = free, weight = free / total, size = Model.size(free)})

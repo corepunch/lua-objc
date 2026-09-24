@@ -26,6 +26,7 @@ static void layout_recursive(UIView *view, CGFloat width);
 @property(nonatomic) NSNumber *maxWidth;
 @property(nonatomic) NSNumber *maxHeight;
 @property(nonatomic) CGFloat spacing;
+@property(nonatomic) NSInteger maxRows;
 @property(nonatomic) CGFloat flexGrow;
 @property(nonatomic) CGFloat flexShrink;
 @property(nonatomic) NSNumber *flexBasis;
@@ -36,6 +37,8 @@ static void layout_recursive(UIView *view, CGFloat width);
 @property(nonatomic, copy) NSString *ignoresSafeArea;
 @property(nonatomic, copy) NSString *contentModeName;
 @property(nonatomic) BOOL safeAreaInsetBottom;
+@property(nonatomic) CGFloat offsetX;
+@property(nonatomic) CGFloat offsetY;
 @end
 
 @implementation UIView (LuaLayoutProperties)
@@ -63,6 +66,18 @@ static void layout_recursive(UIView *view, CGFloat width);
 - (void)setPaddingBottom:(CGFloat)value { objc_setAssociatedObject(self, &kPaddingBottomKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
 - (BOOL)safeAreaInsetBottom { return [objc_getAssociatedObject(self, &kSafeAreaInsetBottomKey) boolValue]; }
 - (void)setSafeAreaInsetBottom:(BOOL)value { objc_setAssociatedObject(self, &kSafeAreaInsetBottomKey, @(value), OBJC_ASSOCIATION_RETAIN); }
+- (CGFloat)offsetX { return self.transform.tx; }
+- (void)setOffsetX:(CGFloat)value {
+	CGAffineTransform transform = self.transform;
+	transform.tx = value;
+	self.transform = transform;
+}
+- (CGFloat)offsetY { return self.transform.ty; }
+- (void)setOffsetY:(CGFloat)value {
+	CGAffineTransform transform = self.transform;
+	transform.ty = value;
+	self.transform = transform;
+}
 - (NSString *)alignment {
 	return objc_getAssociatedObject(self, &kAlignmentKey) ?: @"center";
 }
@@ -100,6 +115,8 @@ static void layout_recursive(UIView *view, CGFloat width);
 	objc_setAssociatedObject(self, &kSpacingKey, @(MAX(0, value)),
 		OBJC_ASSOCIATION_RETAIN);
 }
+- (NSInteger)maxRows { return [objc_getAssociatedObject(self, &kFlowMaxRowsKey) integerValue]; }
+- (void)setMaxRows:(NSInteger)value { objc_setAssociatedObject(self, &kFlowMaxRowsKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
 - (CGFloat)flexGrow {
 	return [objc_getAssociatedObject(self, &kFlexGrowKey) doubleValue];
 }

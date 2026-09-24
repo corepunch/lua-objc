@@ -16,7 +16,12 @@ t.expect(coverage:find("At least ", 1, true) == 1, "partial inventories mark the
 t.expect(coverage:find("3 filesystem read issues", 1, true) ~= nil, "coverage reports read issues without calling them inaccessible locations")
 t.expect(coverage:find("not attributed", 1, true) ~= nil, "capacity difference uses a plain-language label")
 model.scan.errors = 0
-local summary, summaryRefs = render("StorageBar", categories:bar({totalKb = 1000000, freeKb = 500000}))
+for id, bytes in pairs({["apps-system-other"] = 30e9, derived = 20e9, ["codex-cache"] = 10e9,
+	downloads = 5e9, ["user-caches"] = 4e9}) do
+	model.measurements[id] = {bytes = bytes, status = "complete"}
+end
+local bar = categories:bar({totalKb = 200e9 / 1024, freeKb = 100e9 / 1024})
+local summary, summaryRefs = render("StorageBar", bar)
 t.assertEqual(summaryRefs.storageSummary.className, "NSBox", "storage summary uses the native rounded group")
 summary.size = ns.Size(788, 100); summary:layout(788)
 local buttons = {}
@@ -25,37 +30,42 @@ local function collect(view)
 	for _, child in ipairs(view.subviews or {}) do collect(child) end
 end
 collect(summary)
-t.assertEqual(#buttons, 11, "all storage legend destinations remain buttons")
+t.assertEqual(#buttons, 5, "legend contains measured categories with storage")
+t.assertEqual(bar.legend[1].id, "applications", "largest category leads the legend")
+t.assertEqual(bar.legend[2].id, "developer", "next largest category follows")
+t.assertEqual(bar.legend[3].id, "ai-agents", "AI agents have their own storage segment")
 for _, button in ipairs(buttons) do
 	t.assertEqual(button.font.pointSize, 11, "legend uses the smaller font")
 	t.expect(not button.bordered and button.enabled, "legend keeps native link interaction")
 	t.expect(button.frame.size.width >= button.intrinsicContentSize.width, "legend title fits without truncation")
 end
--- The same legend fills wider rows and wraps only when an item cannot fit.
+-- A single row keeps complete leading items and restores hidden ones on resize.
 local legend = summaryRefs.legend
 local itemCount = #legend.subviews
-local function rowCount()
-	local rows = {}
-	for _, item in ipairs(legend.subviews) do rows[item.frame.origin.y] = true end
-	local count = 0; for _ in pairs(rows) do count = count + 1 end
+local function visibleCount()
+	local count = 0
+	for _, item in ipairs(legend.subviews) do
+		if not item.hidden then
+			count = count + 1
+			t.expect(item.frame.origin.x + item.size.width <= legend.size.width, "visible legend item fits completely")
+		end
+	end
 	return count
 end
 summary.size = ns.Size(1300, 100); summary:layout(1300)
-t.assertEqual(rowCount(), 1, "wide legend uses one row for all categories")
+t.assertEqual(visibleCount(), itemCount, "wide legend shows all measured categories")
 t.assertEqual(#legend.subviews, itemCount, "wide legend preserves every destination")
-summary.size = ns.Size(788, 100); summary:layout(788)
-t.expect(rowCount() > 1, "minimum window wraps the legend")
-local firstRow = 0
-for _, item in ipairs(legend.subviews) do
-	if item.frame.origin.y == legend.subviews[1].frame.origin.y then firstRow = firstRow + 1 end
-	t.expect(item.frame.origin.x + item.size.width <= legend.size.width, "legend item stays within available width")
-end
-t.expect(firstRow > 6, "legend uses the space beyond the former six-item limit")
+summary.size = ns.Size(360, 100); summary:layout(360)
+t.expect(visibleCount() < itemCount, "narrow legend omits trailing categories instead of wrapping")
+t.expect(not legend.subviews[1].hidden and legend.subviews[itemCount].hidden, "largest categories remain visible first")
+t.assertEqual(legend.size.height, legend.subviews[1].size.height, "legend remains one row high")
+summary.size = ns.Size(1300, 100); summary:layout(1300)
+t.assertEqual(visibleCount(), itemCount, "widening restores all category links")
 local _, refs = render("Dashboard", {title = "Storage categories", subtitle = "Current inventory",
 	icon = "chart.pie.fill", color = "systemBlue", coverage = "Measuring", status = "Calculating…", actions = {}})
 t.assertEqual(refs.categoriesPanel.className, "NSBox", "category rows share a native rounded section")
-t.assertEqual(refs.inspector.className, "NSBox", "inspector uses a native rounded section")
-t.expect(refs.inspector.hidden, "unselected inspector leaves no empty card")
+t.expect(not refs.openCategory.enabled, "category management waits for a selection")
+t.assertEqual(refs.inspector, nil, "category detail does not displace dashboard suggestions")
 t.expect(not refs.results.drawsBackground, "outline lets its native group background show through")
 refs.results:replaceRows({{id = "apps", name = "Applications", size = "Calculating…", calculating = true}})
 local nameCell = bridge._tableCell(refs.results, 0, 0)

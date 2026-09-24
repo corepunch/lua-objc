@@ -29,6 +29,8 @@ static char kMinHeightKey;
 static char kMaxWidthKey;
 static char kMaxHeightKey;
 static char kSpacingKey;
+static char kFlowMaxRowsKey;
+static char kFlowOverflowKey;
 static char kFlexGrowKey;
 static char kFlexShrinkKey;
 static char kFlexBasisKey;
@@ -63,6 +65,8 @@ static const CGFloat kSidebarExpandedWidth = 208.0;
 static const CGFloat kSidebarCompactWidth = 184.0;
 static const CGFloat kSidebarCollapsedWidth = 64.0;
 static const CGFloat kBenchmarkScrollPointsPerSecond = 1500.0;
+static const CGFloat kEdgeSwipeBackDistance = 80.0;
+static const CGFloat kEdgeSwipeHorizontalRatio = 1.5;
 static const CGFloat kBenchmarkMinimumFrameRate = 60.0;
 static const CGFloat kBenchmarkPreferredFrameRate = 120.0;
 static const CGFloat kBenchmarkHitchFrameCount = 2.0;
@@ -176,6 +180,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_hapticNotification", bridge_UIKit_hapticNotification},
 	{"_addTap", bridge_UIKit_addTap},
 	{"_addDrag", bridge_UIKit_addDrag},
+	{"_addEdgeSwipe", bridge_UIKit_addEdgeSwipe},
 	{"_toggle", bridge_UIKitControls_toggle},
 	{"_slider", bridge_UIKitControls_slider},
 	{"_stepper", bridge_UIKitControls_stepper},

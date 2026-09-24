@@ -16,5 +16,8 @@ t.expect(bridge:find('{"_materialView", bridge_UIKitControls_materialView}', 1, 
 	"UIKit MaterialView bridge is registered")
 t.expect(xml:find("MaterialView =", 1, true) ~= nil,
 	"XML registers MaterialView")
+t.expect(src:find("props.interactive == true", 1, true) ~= nil
+	and native:find("effect.interactive = interactive", 1, true) ~= nil,
+	"UIKit forwards interactive glass to the native effect")
 
 os.exit(t.summary() and 0 or 1)

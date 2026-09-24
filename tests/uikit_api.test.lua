@@ -140,6 +140,15 @@ t.expect(hosting:find("luaRoot.topAnchor constraintEqualToAnchor:self.view.topAn
 t.expect(hosting:find("viewSafeAreaInsetsDidChange", 1, true) ~= nil
 	and hosting:find("kHostSafeAreaTopKey", 1, true) ~= nil,
 	"hosting converts the status-bar inset into top layout padding")
+t.expect(hosting:find("CGRectGetMinY(tabFrame) >= CGRectGetMaxY(self.luaRoot.frame)", 1, true) ~= nil
+	and hosting:find("bottomInset = 0", 1, true) ~= nil,
+	"bottom inset does not count an external tab bar twice")
+local gestures = assert(io.open("src/uikit/views.m", "r")):read("*a")
+t.expect(gestures:find('strcmp(name, "systemIndigo") == 0', 1, true) ~= nil,
+	"UIKit resolves the AI category's semantic color")
+t.expect(gestures:find("UIScreenEdgePanGestureRecognizer", 1, true) ~= nil
+	and gestures:find("kEdgeSwipeBackDistance", 1, true) ~= nil,
+	"session back navigation uses a native left-edge recognizer")
 t.expect(presentation:find("if (presenter.presentingViewController)", 1, true) ~= nil,
 	"dismiss targets the presented controller")
 t.expect(preview:find("addChildViewController", 1, true) ~= nil

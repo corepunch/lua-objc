@@ -87,11 +87,24 @@ t.assertEqual(controller.inventory.devices, nil, "late results cannot populate a
 -- Native controls and resize contracts, without showing windows.
 model.measurements.archives = {bytes = 20e9, status = "complete"}
 model.measurements.derived = {bytes = 12e9, status = "complete"}
-local manager = Management.new(model, service, function() end, function() end, function() end)
+local categoryRefreshes = 0
+local manager = Management.new(model, service, function() categoryRefreshes = categoryRefreshes + 1 end,
+	function(id) model.kept[id] = not model.kept[id] end, function() end)
 local parent = ns.Window {visible = false, width = 1000, height = 700}
 manager:open(parent, "developer")
 t.assertEqual(manager.sheet.className, "LuaPanel", "management uses a native sheet-capable panel")
 t.assertEqual(manager.refs.tabs.className, "LuaTabView", "impact tabs are native")
+t.assertEqual(manager.refs.categoryName.text, "Developer", "sheet identifies the managed category")
+t.expect(manager.refs.categoryText.text:find("Review its measured resources", 1, true) ~= nil, "sheet explains the category")
+t.assertEqual(manager.refs.categoryKeep.title, "Keep this resource", "sheet offers category Keep")
+t.expect(manager.refs.categoryRefresh.enabled, "category can be remeasured from its sheet")
+ns._invokeAction(manager.refs.categoryRefresh)
+t.assertEqual(categoryRefreshes, 1, "category sheet refresh invokes a new measurement")
+ns._invokeAction(manager.refs.categoryKeep)
+t.expect(model.kept.developer, "category sheet Keep applies to the category")
+t.assertEqual(manager.refs.categoryKeep.title, "Stop keeping this resource", "category Keep label updates in place")
+ns._invokeAction(manager.refs.categoryKeep)
+t.expect(not model.kept.developer, "category sheet can stop keeping the category")
 local function resourceAt(index)
 	return bridge._tableCell(manager.refs.rows1, 0, index).textField.stringValue
 end

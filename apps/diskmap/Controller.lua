@@ -64,18 +64,12 @@ function Controller:updateRows()
 	self.storageBar:update(self.categories:bar(self.scan.disk))
 	self.tipPanel:update(self.tips:presentation(self.scan.disk))
 	self.management:update()
-	if self.inspector.selectedId then self:select(self.inspector.selectedId, false) end
+	if self.inspector.selectedId then self:select(self.inspector.selectedId) end
 end
-function Controller:select(id, scroll)
-	if not self.refs or not self.refs.detailName then return end
-	local data = self.inspector:select(id)
-	if not data then return end
-	self.refs.detailName.text = data.name; self.refs.detailText.text = data.text
-	self.refs.location.text = data.location
-	self.refs.manage.title = "Manage category…"; self.refs.manage.enabled = true
-	self.refs.keep.enabled = true; self.refs.keep.title = data.keepTitle
-	self.refs.inspector.hidden = false; self.refs.inspector:layout()
-	if scroll ~= false then self.refs.detailName:scrollIntoView() end
+function Controller:select(id)
+	if not self.refs or not self.refs.openCategory then return end
+	if not self.inspector:select(id) then return end
+	self.refs.openCategory.enabled = true
 end
 function Controller:showSection(section, rootId)
 	if self.section ~= section or self.rootId ~= rootId then self.inspector.selectedId = nil end
@@ -103,10 +97,8 @@ function Controller:showSection(section, rootId)
 	local _, refs = self.page:update({title = root and root.name or section == "Cleanup" and "Cleanup" or "Storage categories",
 		subtitle = root and root.subtitle or "Understand what is stored, why it exists, and how to manage it.", icon = root and root.icon or "chart.pie.fill", color = root and root.color or "systemBlue",
 		coverage = self.categories:coverage(self.scan.disk), status = self.scan.status, actions = {
-			measure = function() self.scan:start() end,
-			manage = function() self:openManagement(self.inspector.selectedId) end,
+			openCategory = function() if self.inspector.selectedId then self:openManagement(self.inspector.selectedId) end end,
 			access = function() self.service.openSettings("privacy") end,
-			keep = function() self.cleanup:toggleKeep(self.inspector.selectedId) end,
 		}})
 	self.refs = refs
 	ns.Scope.withScope(self.page.scope, function()

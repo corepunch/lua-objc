@@ -70,10 +70,20 @@ tabs:selectTab(0)
 click("featuredCoverButton")
 t.assertEqual(controller.navigation.depth, 2, "featured cover opens detail")
 t.assertEqual(rendered.refs.title.text, catalog:list()[1].title, "detail renders selected game")
+t.assertEqual(rendered.refs.cover.clipsToBounds, true, "detail cover clips aspect-fill overflow before title")
 t.assertEqual(rendered.refs.description.text, catalog:list()[1].description, "detail preserves full description")
 click("play")
 t.assertEqual(controller.navigation.depth, 3, "detail play opens session")
 t.assertEqual(rendered.refs.sessionTitle.text, catalog:list()[1].title, "session header retains the game title")
+local compassParent = rendered.refs.compassControl.superview
+local reachesOverlay, entersInset = false, false
+while compassParent do
+	if compassParent == rendered.refs.sessionOverlay then reachesOverlay = true end
+	if compassParent == rendered.refs.sessionContent then entersInset = true end
+	compassParent = compassParent.superview
+end
+t.expect(reachesOverlay and not entersInset,
+	"compass overlays the transcript without reserving bottom-inset height")
 t.assertEqual(rendered.refs.gameTitle.text, catalog:list()[1].title, "session content repeats the game title")
 t.assertEqual(rendered.refs.gameDescription.text, catalog:list()[1].description,
 	"session content includes the complete game synopsis")

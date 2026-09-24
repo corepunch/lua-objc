@@ -49,12 +49,13 @@ argument or live scan-result cache. The explicit mock fixture is a synthetic
 filesystem for repeatable testing; use `--export-mock` to create a local snapshot
 of this Mac.
 
-`Catalog.lua` composes independent providers in `catalog/` into the macOS knowledge tree, including Xcode runtimes, devices, bundled SDKs, archives, package managers, AI coding tools, mobile toolchains, system assets, app support, backups, media and boot data. Startup also discovers project-local generated folders when their parent project marker exists and application bundles directly inside `/Applications` and `~/Applications`; each discovered path is measured as its own review-only resource and excluded from its broader residual measurement.
+`Catalog.lua` composes independent providers in `catalog/` into the macOS knowledge tree, including Xcode runtimes, devices, bundled SDKs, archives, package managers, a separate AI agents category for coding tools, Apple Intelligence and Siri, mobile toolchains, system assets, app support, backups, media and boot data. Startup also discovers project-local generated folders when their parent project marker exists and application bundles directly inside `/Applications` and `~/Applications`; each discovered path is measured as its own review-only resource and excluded from its broader residual measurement.
 New layouts remain review-only until their ownership and cleanup policy are
 verified. Nested app bundles and arbitrary custom installations are not
 automatically discovered. Known asset classes give Siri, Dictation/shared speech recognition, voices,
 Apple Intelligence, translation, Photos models, wallpapers, fonts and dictionaries
-separate totals. Unrecognized classes remain in an explicit residual bucket.
+separate totals. Dictation and downloaded voices remain under System Data's
+speech resources. Unrecognized classes remain in an explicit residual bucket.
 Rounded semantic badges use white SF Symbols; app-owned resources use artwork
 resolved from installed application bundles, with a symbol fallback.
 
@@ -75,7 +76,9 @@ Applications, Documents, media, backups, Trash, developer projects, system data,
 and residual roots for files outside named categories. Parent buckets exclude
 all separately classified descendants. This closes the former startup allowlist
 gap without double counting folders. Every measured category has its own bar
-segment; Unreconciled is separate from measured Other files.
+segment; Not attributed is separate from measured Other files. The chart ranks
+measured categories by size, and its single-line legend shows the largest
+measured categories that fit at the current width.
 
 The app loads the native `StorageScan.dylib` plugin built by `make` and included
 in `make diskmap-app`. Its worker uses `getattrlistbulk` to fetch metadata

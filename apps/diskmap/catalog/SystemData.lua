@@ -1,10 +1,8 @@
 local D = require("apps.diskmap.catalog.Definitions")
-local item, group, cache, xcode, system, assets, tool = D.item, D.group, D.cache, D.xcode, D.system, D.assets, D.tool
+local item, group, system, assets = D.item, D.group, D.system, D.assets
 return function()
 	return group("system-data", "System Data", "macOS feature assets, application support, caches and diagnostics", "gearshape.2.fill", "systemRed", {
-	group("intelligence", "Apple Intelligence & Siri", "On-device models, Siri, Dictation and downloaded voices", "sparkles", "systemPurple", {
-		assets("foundation-models", "Apple Intelligence models", "Language, visual and coding models; shared across features", "brain", "systemPurple", {"UAF_FM_GenerativeModels", "UAF_FM_Visual", "UAF_FM_CodeLM", "UAF_FM_Overrides", "UAF_IF_Planner", "UAF_IF_PlannerOverrides", "UAF_SummarizationKitConfiguration"}),
-		assets("siri-assets", "Siri", "Understanding, responses, voice activation and dialogue", "waveform", "systemPurple", {"UAF_Siri_AnswerSynthesis", "UAF_Siri_DialogAssets", "UAF_Siri_FindMyConfigurationFiles", "UAF_Siri_PlatformAssets", "UAF_Siri_TextToSpeech", "UAF_Siri_Understanding", "UAF_Siri_UnderstandingASRHammer", "UAF_Siri_UnderstandingNLOverrides", "Trial_Siri_SiriDialogAssets", "Trial_Siri_SiriFindMyConfigurationFiles", "Trial_Siri_SiriTextToSpeech", "Trial_Siri_SiriUnderstandingAsrAssistant", "Trial_Siri_SiriUnderstandingAttentionAssets", "Trial_Siri_SiriUnderstandingMorphun", "Trial_Siri_SiriUnderstandingNL", "Trial_Siri_SiriUnderstandingNLOverrides", "VoiceTriggerAssetsASMac", "VoiceTriggerAssetsMac", "VoiceTriggerAssetsStudioDisplay"}),
+	group("speech-assets", "Speech & voices", "Dictation, speech recognition and downloaded voices", "waveform", "systemTeal", {
 		assets("dictation", "Dictation & speech recognition", "Shared recognition models used by Dictation and voice features", "mic.fill", "systemBlue", {"EmbeddedSpeechMac", "SpeechEndpointMacOSAssets", "UAF_Speech_AutomaticSpeechRecognition"}),
 		assets("voices", "Downloaded voices & Personal Voice", "Spoken content, accessibility and speech synthesis", "speaker.wave.2.fill", "systemTeal", {"MacinTalkVoiceAssets", "VoiceServicesVocalizerVoice", "VoiceServices_CombinedVocalizerVoices", "VoiceServices_CustomVoice", "VoiceServices_GryphonVoice", "VoiceServices_VoiceResources", "TTSAXResourceModelAssets"}),
 		item("speech", "Built-in speech resources", "Speech engines and bundled voices; separate from downloaded assets", "/System/Library/Speech", system),

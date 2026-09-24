@@ -23,4 +23,16 @@ t.assertEqual(CompassGesture.direction({ x = 4, y = 4 }), nil,
 t.assertEqual(CompassGesture.direction({ x = 0, y = 24 }, "bottom-left"), "north",
 	"AppKit drag coordinates invert the vertical axis")
 
+local x, y = CompassGesture.offset({ x = 0, y = 24 })
+t.assertEqual(x, 0, "vertical drag has no horizontal displacement")
+t.expect(y > 0 and y < 14, "compass movement resists and caps a short drag")
+local largeX, largeY = CompassGesture.offset({ x = 200, y = 0 })
+t.expect(largeX > 13 and largeX < 14 and largeY == 0,
+	"long drag approaches the same bounded distance as SwiftUI")
+local invertedX, invertedY = CompassGesture.offset({ x = 4, y = 12 }, "bottom-left")
+t.expect(invertedX > 0 and invertedY < 0, "AppKit movement uses top-left visual coordinates")
+local zeroX, zeroY = CompassGesture.offset({ x = 0, y = 0 })
+t.assertEqual(zeroX, 0, "released compass returns to its horizontal origin")
+t.assertEqual(zeroY, 0, "released compass returns to its vertical origin")
+
 os.exit(t.summary() and 0 or 1)

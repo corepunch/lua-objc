@@ -46,8 +46,8 @@ t.expect(documents and documents.forceExpanded, "resource search expands its sem
 local downloadFound = false
 for _, child in ipairs(documents and documents.children or {}) do if child.id == "downloads" then downloadFound = true end end
 t.expect(downloadFound, "storage search returns the matching resource, not only its category")
-t.expect(Inspector.details(model, "applications").text:find("Open Manage category", 1, true) ~= nil,
-	"category guidance names the visible path to its detailed resource list")
+t.expect(Inspector.details(model, "applications").text:find("Review its measured resources", 1, true) ~= nil,
+	"category guidance points to resources in the management sheet")
 Inventory.apply(model, {"derived"}, {failure = "cancelled"})
 t.expect(not model.resources:find("derived"):validateTrash(), "failed measurement disables removal")
 t.assertEqual(model.measurements.derived.bytes, nil, "failure discards old bytes")
@@ -70,13 +70,22 @@ t.assertEqual(model.measurements.snapshots.status, "unsupported", "snapshot allo
 local chartModel = Model.new("/Users/test")
 chartModel.measurements["apps-system-other"] = {bytes = 58e9, status = "complete"}
 chartModel.measurements.derived = {bytes = 4.9e9, status = "complete"}
+chartModel.measurements["codex-cache"] = {bytes = 10e9, status = "complete"}
+chartModel.measurements["siri-assets-1"] = {bytes = 3e9, status = "complete"}
+chartModel.measurements["dictation-1"] = {bytes = 2e9, status = "complete"}
 local disk = {totalKb = 494e9 / 1024, freeKb = 157e9 / 1024}
 local segments = Categories.distribution(chartModel, disk)
 local sum = 0
 for _, segment in ipairs(segments) do sum = sum + segment.weight end
 t.expect(math.abs(sum - 1) < 0.000001, "breakdown accounts for all capacity")
 t.assertEqual(segments[1].color, "systemBlue", "applications retain blue category color")
-t.assertEqual(segments[2].color, "systemPurple", "developer retains purple category color")
+t.assertEqual(segments[1].id, "applications", "measured categories rank by size")
+local byId = {}; for _, segment in ipairs(segments) do byId[segment.id] = segment end
+t.assertEqual(segments[2].id, "ai-agents", "AI agents rank by their measured size")
+t.assertEqual(byId.developer.color, "systemPurple", "developer retains purple category color")
+t.assertEqual(byId["ai-agents"].bytes, 13e9, "AI tools and Siri share one category total")
+t.assertEqual(byId["system-data"].bytes, 2e9, "Dictation remains in System Data without double counting Siri")
+t.assertEqual(byId.developer.bytes, 4.9e9, "Developer excludes AI coding tools")
 t.assertEqual(segments[#segments].bytes, 157e9, "free space represented separately")
 t.expect(segments[#segments-1].bytes > 0, "unclassified and other bytes remain visible")
 t.assertEqual(#Categories.distribution(chartModel, {totalKb = 1, freeKb = 0}), 0, "overcount does not fabricate a capacity chart")
@@ -133,9 +142,14 @@ t.assertEqual(ui.refs.access.title, "Scan access…", "access settings are offer
 ui.model.scan.errors = 7; ui:updateRows()
 t.assertEqual(ui.refs.access.title, "Review scan access…", "access guidance becomes specific when scan issues exist")
 ui.model.scan.errors = 0; ui:updateRows()
+local suggestionsY = ui.refs.opportunities.frame.origin.y
 ui:select("developer")
-t.expect(not ui.refs.inspector.hidden, "selection exposes the inspector")
-t.expect(ui.refs.measure.enabled, "selection allows a fresh measurement")
+t.expect(ui.refs.openCategory.enabled, "selection enables category management")
+t.assertEqual(ui.refs.opportunities.frame.origin.y, suggestionsY, "selection keeps reclaim suggestions in place")
+ns._invokeAction(ui.refs.openCategory)
+t.assertEqual(ui.management.rootId, "developer", "dashboard opens the selected category sheet")
+t.assertEqual(ui.management.refs.categoryName.text, "Developer", "selected category appears in its sheet")
+ui.management:close()
 local sizeCell = bridge._tableCell(ui.refs.results, 1, 0)
 t.assertEqual(sizeCell.textField.alignment, 2, "Diskmap values use native right alignment")
 t.expect(sizeCell.loadingIndicator.hidden, "loaded category has no spinner")
@@ -144,7 +158,7 @@ Inventory.begin(ui.model, loadingIds); ui:updateRows()
 sizeCell = bridge._tableCell(ui.refs.results, 1, 0)
 t.expect(not sizeCell.loadingIndicator.hidden, "pending category has its own native spinner")
 t.assertEqual(sizeCell.textField.stringValue, "Calculating…", "loading replaces numeric value")
-t.assertEqual(ui.refs.results.rowCount, 9, "per-category loading preserves category rows")
+t.assertEqual(ui.refs.results.rowCount, 10, "per-category loading preserves category rows")
 Inventory.cancel(ui.model); ui:updateRows()
 t.expect(bridge._tableCell(ui.refs.results, 1, 0).loadingIndicator.hidden, "cancel removes category spinner")
 ui:showSection("Developer"); ui.query = "no match"; ui:updateRows()
@@ -180,7 +194,11 @@ features.measurements["siri-assets-1"] = {bytes = 1200, status = "complete"}
 features.measurements["dictation-1"] = {bytes = 800, status = "complete"}
 local rolled = Categories.rows(features, "intelligence")
 t.assertEqual(rolled[2].bytes, 1200, "Siri has independent measured total")
-t.assertEqual(rolled[3].bytes, 800, "Dictation has independent measured total")
 t.assertEqual(rolled[2].status, "partial", "unmeasured asset classes remain explicit")
+local speech = Categories.rows(features, "speech-assets")
+t.assertEqual(speech[1].bytes, 800, "Dictation remains independently measured with speech resources")
+t.assertEqual(features.resources:find("intelligence"):getParent().id, "ai-agents", "Apple Intelligence and Siri belong to AI agents")
+t.assertEqual(features.resources:find("codex"):getParent():getParent().id, "ai-agents", "AI coding tools belong to AI agents")
+t.assertEqual(features.resources:find("cursor"):getParent():getParent().id, "ai-agents", "Cursor is counted with AI tools")
 t.assertEqual(#Cleanup.suggestions(features), 0, "system feature data is never a cleanup suggestion")
 os.exit(t.summary() and 0 or 1)

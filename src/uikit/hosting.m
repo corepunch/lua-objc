@@ -26,8 +26,16 @@ __attribute__((weak)) UIWindow *LRTApplicationWindow(void) {
 
 - (void)updateBottomSafeAreaPaddingInView:(UIView *)view {
 	if (view.safeAreaInsetBottom) {
+		CGFloat bottomInset = self.view.safeAreaInsets.bottom;
+		UITabBar *tabBar = self.tabBarController.tabBar;
+		if (tabBar && !tabBar.hidden && tabBar.window == self.view.window) {
+			CGRect tabFrame = [tabBar.superview convertRect:tabBar.frame toView:self.view];
+			// The hosted root already ends where the external tab bar begins.
+			if (CGRectGetMinY(tabFrame) >= CGRectGetMaxY(self.luaRoot.frame) - 1)
+				bottomInset = 0;
+		}
 		objc_setAssociatedObject(view, &kHostSafeAreaBottomKey,
-			@(self.view.safeAreaInsets.bottom), OBJC_ASSOCIATION_RETAIN);
+			@(bottomInset), OBJC_ASSOCIATION_RETAIN);
 	}
 	for (UIView *child in view.subviews) {
 		[self updateBottomSafeAreaPaddingInView:child];

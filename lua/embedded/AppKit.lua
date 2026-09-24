@@ -30,6 +30,7 @@ local layout_properties = {
 	"paddingTop",
 	"paddingBottom",
 	"spacing",
+	"maxRows",
 	"alignment",
 	"fixedWidth",
 	"fixedHeight",

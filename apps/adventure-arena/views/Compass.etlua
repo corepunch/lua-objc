@@ -1,5 +1,5 @@
-<GlassEffect id="compassControl" style="regular" cornerRadius="36" width="72" height="72" onDrag="compassDrag">
+<GlassEffect id="compassControl" style="regular" interactive="true" cornerRadius="32" width="64" height="64" onDrag="compassDrag" accessibilityLabel="Compass">
   <ZStack maxWidth="infinity" maxHeight="infinity" alignment="center">
-    <Image id="compassImage" path="apps/adventure-arena/assets/compass.png" resizable="true" contentMode="fit" width="42" height="42" />
+    <Image id="compassImage" path="apps/adventure-arena/assets/compass.png" resizable="true" contentMode="fit" width="40" height="40" />
   </ZStack>
 </GlassEffect>

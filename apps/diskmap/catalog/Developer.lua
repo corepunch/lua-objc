@@ -1,7 +1,7 @@
 local D = require("apps.diskmap.catalog.Definitions")
-local item, group, cache, ownerCache, xcode, system, assets, tool = D.item, D.group, D.cache, D.ownerCache, D.xcode, D.system, D.assets, D.tool
+local item, group, cache, ownerCache, xcode, system, assets = D.item, D.group, D.cache, D.ownerCache, D.xcode, D.system, D.assets
 return function()
-	return group("developer", "Developer", "Xcode, AI coding tools, package managers and environments", "hammer.fill", "systemPurple", {
+	return group("developer", "Developer", "Xcode, package managers, editors and environments", "hammer.fill", "systemPurple", {
 	item("projects", "Developer projects", "Source repositories and local build outputs", "~/Developer"),
 	item("usr-local", "Local development tools", "Locally installed command-line tools and packages", "/usr/local"),
 	group("xcode", "Xcode", "Simulators, SDKs, device support and build history", "hammer.fill", "systemBlue", {
@@ -19,14 +19,6 @@ return function()
 		assets("developer-assets", "Downloaded developer assets", "Documentation, simulator runtimes and optional toolchains", "hammer.fill", "systemBlue", {"MetalToolchain", "SourceEditorAssets"}),
 		item("documentation", "Offline developer documentation", "Downloaded reference documentation; online documentation remains available", "~/Library/Developer/Shared/Documentation", {action = "trash", policy = "Rebuildable", consequence = "Quit developer tools first. Removes offline documentation; download it again when needed. Moving to Trash does not free space until Finder empties it."}),
 		item("documentation-assets", "Offline Apple documentation", "AppleDeveloperDocumentation downloaded by macOS", "/System/Library/AssetsV2/com_apple_MobileAsset_AppleDeveloperDocumentation", {action = "settings", settingsSection = "storage", consequence = "Review Developer storage in System Settings to remove optional offline documentation where offered. Online documentation remains available. Protected asset files are managed by macOS."}),
-	}),
-	group("ai-tools", "AI coding tools", "Caches, conversations and work kept separate", "sparkles", "systemPurple", {
-		tool("codex", "Codex", "~/.codex"), tool("opencode", "OpenCode", "~/.local/share/opencode"), tool("grok", "Grok", "~/.grok"),
-		item("opencode-downloads", "OpenCode download cache", "Downloaded tools and model metadata", "~/.cache/opencode", cache),
-		item("grok-support", "Grok application data", "Local app data if present; does not measure cloud conversations", "~/Library/Application Support/Grok"),
-		item("grok-app-cache", "Grok application cache", "Review app-owned downloads before removing", "~/Library/Caches/ai.x.grok"),
-		item("opencode-config", "OpenCode configuration", "Project and tool configuration; review only", "~/.opencode"),
-		tool("claude", "Claude Code", "~/.claude"),
 	}),
 	group("packages", "Package managers", "Downloaded packages are separate from installed environments", "shippingbox", "systemOrange", {
 		item("npm", "npm downloads", "Content-addressed package download cache", "~/.npm/_cacache", {policy = ownerCache.policy, action = ownerCache.action, commandId = "npm-cache", consequence = ownerCache.consequence}),
@@ -58,7 +50,6 @@ return function()
 			item("vscode", "VS Code settings & work", "Settings, databases and recovery data; excludes listed caches", "~/Library/Application Support/Code"),
 		}),
 		item("vscode-extensions", "VS Code extensions", "Installed editor extensions", "~/.vscode/extensions"),
-		tool("cursor", "Cursor", "~/Library/Application Support/Cursor"),
 		item("jetbrains", "JetBrains", "IDE caches and project indexes", "~/Library/Caches/JetBrains"),
 	}),
 	group("containers", "Containers & virtual machines", "Owner-managed disks may contain databases and personal work", "shippingbox.fill", "systemOrange", {

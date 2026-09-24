@@ -335,7 +335,7 @@ static NSSize measure_horizontal_children(NSView *view, LuaLayoutConstraint cons
 // from the current proposal, never from a previous layout or an item count.
 static NSSize layout_flow_children(NSView *view, CGFloat width, BOOL place) {
 	NSMutableArray<NSView *> *children = [NSMutableArray array];
-	for (NSView *child in view.subviews) if (!child.hidden) [children addObject:child];
+	for (NSView *child in view.subviews) if (!child.hidden || objc_getAssociatedObject(child, &kKeys[kFlowOverflowKey])) [children addObject:child];
 	CGSize *sizes = calloc(MAX(1, children.count), sizeof(CGSize));
 	CGRect *frames = place ? calloc(MAX(1, children.count), sizeof(CGRect)) : NULL;
 	for (NSUInteger i = 0; i < children.count; i++) {
@@ -344,11 +344,19 @@ static NSSize layout_flow_children(NSView *view, CGFloat width, BOOL place) {
 			.widthMode = width < CGFLOAT_MAX ? LuaMeasureAtMost : LuaMeasureUndefined,
 			.heightMode = LuaMeasureUndefined});
 	}
-	CGSize result = flow_layout(sizes, frames, children.count, width, view_spacing(view));
+	NSUInteger maxRows = [objc_getAssociatedObject(view, &kKeys[kFlowMaxRowsKey]) unsignedIntegerValue];
+	CGSize result = flow_layout(sizes, frames, children.count, width, view_spacing(view), maxRows);
 	if (place) {
 		BOOL rtl = view.userInterfaceLayoutDirection == NSUserInterfaceLayoutDirectionRightToLeft;
 		for (NSUInteger i = 0; i < children.count; i++) {
 			CGRect frame = frames[i];
+			if (CGRectIsNull(frame)) {
+				children[i].hidden = YES;
+				objc_setAssociatedObject(children[i], &kKeys[kFlowOverflowKey], @YES, OBJC_ASSOCIATION_RETAIN);
+				continue;
+			}
+			children[i].hidden = NO;
+			objc_setAssociatedObject(children[i], &kKeys[kFlowOverflowKey], nil, OBJC_ASSOCIATION_RETAIN);
 			frame.origin.x = view_padding_edge(view, YES) + (rtl ? width - CGRectGetMaxX(frame) : frame.origin.x);
 			CGFloat top = view_padding_top(view) + frame.origin.y;
 			frame.origin.y = view.isFlipped ? top : view.bounds.size.height - top - frame.size.height;

@@ -14,7 +14,7 @@ need to discover a hidden directory before they can understand its contents.
 The app knows the conventions of macOS and the tools installed on it. It turns
 that knowledge into useful names, explanations, ownership, and supported
 management actions. Expanding Developer → Xcode → Simulator Runtimes lists
-runtimes; expanding Developer → AI Coding Tools → Codex lists recognized kinds
+runtimes; expanding AI agents → AI coding tools → Codex lists recognized kinds
 of Codex data. Neither operation walks the user through directory levels.
 
 The ambition is to explain every byte. The contract is to show the boundaries
@@ -42,7 +42,7 @@ become app features. Feature shutdown is not a promise of immediate asset remova
 | User need | Product flow | Completion criterion |
 | --- | --- | --- |
 | “What is this huge System Data category?” | Open System Data; expand feature assets, caches, diagnostics, backups, and the unexplained remainder. | Every row explains ownership, measurement status, and available action; discrepancies are visible. |
-| “Find developer junk without breaking my iOS setup.” | Open Developer; inspect Xcode, package managers, containers, and AI coding tools. Mark needed resources Keep. | Caches, SDKs, runtimes, simulator devices, archives, and user work are distinct; retained resources never enter cleanup selections. |
+| “Find developer junk without breaking my iOS setup.” | Open Developer for Xcode, package managers and containers; open AI agents for coding tools and Apple models. Mark needed resources Keep. | Caches, SDKs, runtimes, simulator devices, archives, and user work are distinct; retained resources never enter cleanup selections. |
 | “I do not use Siri or Dictation; why are their assets here?” | Select the feature; read its purpose and local footprint; open its supported management destination. | No manual deletion of protected assets; after returning, remeasure and report whether storage changed. |
 | “I want a quick routine cleanup.” | Open Cleanup or Changes; review new growth and eligible resources, respecting previous Keep and Ignore choices. | The user can repeat maintenance without rediscovering paths or reviewing the same dismissed recommendation every launch. |
 | “Can I trust these numbers and actions?” | Inspect a category's contributing resources, classification evidence, locations, and last measurement; compare before and after. | No double counting within an accounting view, no invented zeroes, and no claim that moving to Trash has freed space. |
@@ -74,13 +74,14 @@ Storage
 │   │   ├── Device Support → Platform and version
 │   │   ├── Archives → App, version, and archive date
 │   │   └── Documentation & Optional Components
-│   ├── AI Coding Tools → Codex / OpenCode / Other recognized tools
-│   │   └── Cache / Sessions & History / Generated Files / Worktrees / Settings
 │   ├── Editors & IDEs → Application and recognized data kinds
 │   ├── Package Managers → Downloads / Installed Packages / Environments
 │   └── Containers & Virtual Machines → Managed resources and local disk images
+├── AI agents
+│   ├── AI coding tools → Codex / OpenCode / Claude Code / Cursor / Grok
+│   │   └── Cache / Sessions & History / Generated Files / Worktrees / Settings
+│   └── Apple Intelligence & Siri → Downloaded models and assistant assets
 ├── System Data
-│   ├── Apple Intelligence & Siri
 │   ├── Dictation & Downloaded Voices
 │   ├── Other Feature Assets → Recognized feature
 │   ├── Application Support → Owner not classified elsewhere

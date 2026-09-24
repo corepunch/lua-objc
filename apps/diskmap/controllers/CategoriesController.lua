@@ -7,11 +7,12 @@ end
 function Controller:rows(root, query) return Categories.rows(self.model, root, query) end
 function Controller:bar(disk)
 	local segments, explanation = Categories.distribution(self.model, disk)
-	local actions = {}
+	local actions, legend = {}, {}
 	for _, segment in ipairs(segments) do
 		actions["category_" .. segment.id] = function() self.navigate(segment.id) end
+		if segment.id ~= "unreconciled" and segment.id ~= "free" and segment.bytes > 0 then table.insert(legend, segment) end
 	end
-	return {segments = segments, explanation = explanation, actions = actions}
+	return {segments = segments, legend = legend, explanation = explanation, actions = actions}
 end
 function Controller:capacity(disk)
 	if not disk then return "Capacity unavailable" end

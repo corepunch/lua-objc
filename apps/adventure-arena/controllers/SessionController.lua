@@ -51,8 +51,21 @@ function Controller:show(id)
 		close = function() self:close() end,
 		readingSettings = function() self:showReadingSettings() end,
 		compassDrag = function(gesture)
-			if type(gesture) ~= "table" or gesture.state ~= "ended" then return end
+			if type(gesture) ~= "table" or not self.refs then return end
 			local coordinateSpace = self.ns.platform == "AppKit" and "bottom-left" or "top-left"
+			if gesture.state == "changed" or gesture.state == "began" then
+				if self.ns.platform == "UIKit" then
+					local x, y = CompassGesture.offset(gesture.translation, coordinateSpace)
+					self.refs.compassImage.offsetX = x
+					self.refs.compassImage.offsetY = y
+				end
+				return
+			end
+			if self.ns.platform == "UIKit" then
+				self.refs.compassImage.offsetX = 0
+				self.refs.compassImage.offsetY = 0
+			end
+			if gesture.state ~= "ended" then return end
 			local direction = CompassGesture.direction(gesture.translation, coordinateSpace)
 			if direction and self.model:hasExit(direction) then
 				self:submitCommand("go " .. direction)

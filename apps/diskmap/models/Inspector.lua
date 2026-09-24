@@ -6,7 +6,7 @@ function Inspector.details(model, id)
 	local row = model.resources:find(id); if not row then return nil end
 	local m = model.measurements[id]
 	local ownerCleanupReady = row.action ~= "ownerCleanup" or (m and m.status == "complete" and (m.bytes or 0) > 0)
-	local text = row.consequence or row.subtitle .. ". " .. (row:isLeaf() and "Review this data in its owning app. Size alone does not establish that it is disposable." or "Open Manage category to review its measured resources by impact.")
+	local text = row.consequence or row.subtitle .. ". " .. (row:isLeaf() and "Review this data in its owning app. Size alone does not establish that it is disposable." or "Review its measured resources by impact below.")
 	for _, candidate in ipairs(Cleanup.suggestions(model)) do
 		if candidate.id == id then text = candidate.evidence .. "\n\n" .. candidate.subtitle .. "\n\n" .. text; break end
 	end

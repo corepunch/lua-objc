@@ -581,7 +581,8 @@ vertically centered within each row. `spacing` applies between items and rows,
 and `padding` adds explicit outer margins. Hidden children consume no space.
 Use `fillWidth = true` to wrap against the parent's available width. Resizing
 reflows the existing controls without recreating them. Available on AppKit and
-UIKit, including the `<FlowStack>` etlua tag.
+UIKit, including the `<FlowStack>` etlua tag. `maxRows = 1` keeps only complete
+leading items that fit on one line; overflow items return when the view widens.
 
 ### Lazy stacks, grids, and native reordering
 

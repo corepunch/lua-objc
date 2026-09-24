@@ -341,9 +341,9 @@ end
 local function layoutProps(attrs)
     local lp = {
         "padding", "paddingHorizontal", "paddingVertical", "paddingLeading", "paddingTrailing", "paddingTop", "paddingBottom",
-        "spacing", "alignment",
+        "spacing", "alignment", "maxRows",
         "flexGrow", "flexShrink", "flexBasis",
-        "hidden", "allowsHitTesting", "background", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick", "onTap", "onDrag",
+        "hidden", "allowsHitTesting", "background", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick", "onTap", "onDrag", "onEdgeSwipe",
     }
     local props = {}
     for _, k in ipairs(lp) do
@@ -383,7 +383,7 @@ local function layoutProps(attrs)
 
         props.onClick = renderData.actions[attrs.onClick]
     end
-    for _, key in ipairs({ "onTap", "onDrag" }) do
+    for _, key in ipairs({ "onTap", "onDrag", "onEdgeSwipe" }) do
         if attrs[key] and type(attrs[key]) == "string" and renderData and renderData.actions then
             props[key] = renderData.actions[attrs[key]]
         end
@@ -806,7 +806,7 @@ local TAG_SCHEMA = {
     GlassEffect = {
         constructor = "GlassEffect",
         children = "content",
-        props = { style = "str", cornerRadius = "num" },
+		props = { style = "str", cornerRadius = "num", interactive = "bool", accessibilityLabel = "str" },
     },
     GlassEffectContainer = {
 		constructor = "GlassEffectContainer",

@@ -188,12 +188,14 @@ static int bridge_UIKitControls_glassEffect(lua_State *L) {
 	UIView *content = check_view(L, 1);
 	const char *styleName = luaL_optstring(L, 2, "regular");
 	CGFloat cornerRadius = luaL_optnumber(L, 3, 0);
+	BOOL interactive = lua_toboolean(L, 4);
 	UIGlassEffectStyle style;
 	if (strcmp(styleName, "regular") == 0) style = UIGlassEffectStyleRegular;
 	else if (strcmp(styleName, "clear") == 0) style = UIGlassEffectStyleClear;
 	else return luaL_error(L, "glass style must be 'regular' or 'clear'");
-	LuaGlassEffectView *view = [[LuaGlassEffectView alloc]
-		initWithEffect:[UIGlassEffect effectWithStyle:style]];
+	UIGlassEffect *effect = [UIGlassEffect effectWithStyle:style];
+	effect.interactive = interactive;
+	LuaGlassEffectView *view = [[LuaGlassEffectView alloc] initWithEffect:effect];
 	if (lua_isnoneornil(L, 3)) view.cornerConfiguration = UICornerConfiguration.capsuleConfiguration;
 	else view.cornerRadius = cornerRadius;
 	content.frame = view.contentView.bounds;

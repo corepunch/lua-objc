@@ -50,4 +50,21 @@ local padded, p = xml.render('<VStack><FlowStack id="flow" padding="5" spacing="
 padded.size = ns.Size(160, 150); padded:layout(160)
 t.assertEqual(p.flow.size.height, 40, "padding is applied once around an exact-fit row")
 t.assertEqual(p.flow.subviews[1].frame.origin.x, 5, "flow respects leading padding")
+local limited, items = xml.render([[
+<VStack spacing="0" maxWidth="infinity">
+  <FlowStack id="flow" maxRows="1" maxWidth="infinity" spacing="10">
+    <VStack id="first" width="60" height="20" />
+    <VStack id="second" width="80" height="20" />
+    <VStack id="third" width="40" height="20" />
+  </FlowStack>
+</VStack>]], {}, ns)
+limited.size = ns.Size(150, 80); limited:layout(150)
+t.assertEqual(items.flow.size.height, 20, "limited flow keeps one row")
+t.expect(not items.first.hidden and not items.second.hidden and items.third.hidden, "limited flow hides items that do not fit completely")
+limited.size = ns.Size(210, 80); limited:layout(210)
+t.expect(not items.third.hidden, "widening restores an overflow item")
+limited.size = ns.Size(100, 80); limited:layout(100)
+t.expect(items.second.hidden and items.third.hidden, "shrinking hides lower-priority trailing items")
+limited.size = ns.Size(50, 80); limited:layout(50)
+t.expect(items.first.hidden and items.second.hidden, "a row narrower than its first item shows no clipped item")
 os.exit(t.summary() and 0 or 1)

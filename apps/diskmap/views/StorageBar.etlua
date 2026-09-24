@@ -8,8 +8,8 @@
     <% end %>
     <% end %>
   </HStack>
-  <FlowStack id="legend" maxWidth="infinity" spacing="12">
-    <% for _, segment in ipairs(segments) do %>
+  <FlowStack id="legend" maxRows="1" maxWidth="infinity" spacing="12">
+    <% for _, segment in ipairs(legend) do %>
     <HStack spacing="6" alignment="center">
       <SystemImage name="circle.fill" size="9" color="<%= segment.color %>" />
       <Button title="<%= segment.name %>" style="link" size="11" action="category_<%= segment.id %>" />

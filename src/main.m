@@ -29,6 +29,8 @@ enum {
 	kPaddingTopKey,
 	kPaddingBottomKey,
 	kSpacingKey,
+	kFlowMaxRowsKey,
+	kFlowOverflowKey,
 	kAlignmentKey,
 	kFixedWidthKey,
 	kFixedHeightKey,

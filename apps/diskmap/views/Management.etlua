@@ -1,7 +1,16 @@
-<Sheet width="880" height="620">
+<Sheet width="880" height="700">
   <VStack maxWidth="infinity" maxHeight="infinity" padding="24" spacing="14">
-    <Label text="<%= title %>" size="22" weight="semibold" maxWidth="infinity" />
+    <Label id="categoryName" text="<%= title %>" size="22" weight="semibold" maxWidth="infinity" />
+    <% if category then %>
+    <Label id="categoryText" text="<%= category.text %>" size="12" maxWidth="infinity" lines="0" />
+    <Label id="categoryLocation" text="<%= category.location %>" size="11" color="secondary" maxWidth="infinity" lines="2" wrapping="character" />
+    <HStack maxWidth="infinity" spacing="10">
+      <Button id="categoryRefresh" title="Refresh measurements" action="categoryRefresh" />
+      <Button id="categoryKeep" title="<%= category.keepTitle %>" action="categoryKeep" />
+    </HStack>
+    <% else %>
     <Label text="Review measured storage by impact. Installed runtimes and personal work are preserved." size="12" color="secondary" maxWidth="infinity" lines="2" />
+    <% end %>
     <SearchField id="search" placeholder="Search names, owners or paths" accessibilityLabel="Search category resources" onChange="search" maxWidth="infinity" />
     <TabView id="tabs" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
       <% for index, title in ipairs(filters) do %>

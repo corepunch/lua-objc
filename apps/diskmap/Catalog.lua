@@ -3,6 +3,7 @@ local Catalog = {}
 local providers = {
 	(require("apps.diskmap.catalog.Applications")),
 	(require("apps.diskmap.catalog.Developer")),
+	(require("apps.diskmap.catalog.AIAgents")),
 	(require("apps.diskmap.catalog.Documents")),
 	(require("apps.diskmap.catalog.Media")),
 	(require("apps.diskmap.catalog.SystemData")),

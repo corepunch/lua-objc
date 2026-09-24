@@ -1,7 +1,7 @@
 <SafeAreaInset id="detail" edge="bottom" ignoresSafeArea="top">
   <ScrollView id="detailScrollView">
     <VStack spacing="0" alignment="leading">
-      <Image id="cover" path="<%= game.cover %>" resizable="true" contentMode="fill" maxWidth="infinity" height="280" />
+      <Image id="cover" path="<%= game.cover %>" resizable="true" contentMode="fill" maxWidth="infinity" height="280" clipsToBounds="true" />
       <VStack padding="20" spacing="20" alignment="leading">
         <VStack spacing="8" alignment="leading">
           <Label id="title" text="<%= game.title %>" size="30" weight="bold" lines="2" />

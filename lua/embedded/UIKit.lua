@@ -32,6 +32,7 @@ local layout_properties = {
 	"paddingTop",
 	"paddingBottom",
 	"spacing",
+	"maxRows",
 	"alignment",
 	"fixedWidth",
 	"fixedHeight",
@@ -54,6 +55,7 @@ local layout_properties = {
 	"onTap",
 	"onClick",
 	"onDrag",
+	"onEdgeSwipe",
 }
 
 local function applyLayout(view, props)
@@ -66,6 +68,8 @@ local function applyLayout(view, props)
 				bridge._addTap(view, props[key])
 			elseif key == "onDrag" then
 				bridge._addDrag(view, props[key])
+			elseif key == "onEdgeSwipe" then
+				bridge._addEdgeSwipe(view, props[key])
 			else
 				view[key] = props[key]
 			end
@@ -1022,6 +1026,7 @@ end
 --- @tag GlassEffect
 --- @prop content value required. The view rendered inside the glass effect.
 --- @prop style string optional. `regular` or `clear`.
+--- @prop interactive boolean optional. Enables native interactive glass feedback.
 --- @prop cornerRadius number optional. Native glass corner radius; omitted uses a capsule. Does not clip content.
 --- @example <GlassEffect style="regular"><VStack>...</VStack></GlassEffect>
 --- @platform UIKit UIGlassEffect and UIVisualEffectView (iOS 26+).
@@ -1029,8 +1034,10 @@ function UIKit.GlassEffect(props)
 	props = props or {}
 	local content = props.content or props[1]
 	assert(content, "GlassEffect requires content")
-	return applyLayout(bridge._glassEffect(content, props.style or "regular",
-		props.cornerRadius), props)
+	local view = bridge._glassEffect(content, props.style or "regular",
+		props.cornerRadius, props.interactive == true)
+	if props.accessibilityLabel then view.accessibilityLabel = props.accessibilityLabel end
+	return applyLayout(view, props)
 end
 
 --- Groups nearby native glass surfaces into one system effect.

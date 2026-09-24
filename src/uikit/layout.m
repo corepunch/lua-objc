@@ -139,18 +139,25 @@ static CGSize measure_horizontal_children(UIView *view, CGSize proposal, CGSize 
 // from the current proposal, never from a previous layout or an item count.
 static CGSize layout_flow_children(UIView *view, CGFloat width, BOOL place) {
 	NSMutableArray<UIView *> *children = [NSMutableArray array];
-	for (UIView *child in view.subviews) if (!child.hidden) [children addObject:child];
+	for (UIView *child in view.subviews) if (!child.hidden || objc_getAssociatedObject(child, &kFlowOverflowKey)) [children addObject:child];
 	CGSize *sizes = calloc(MAX(1, children.count), sizeof(CGSize));
 	CGRect *frames = place ? calloc(MAX(1, children.count), sizeof(CGRect)) : NULL;
 	for (NSUInteger i = 0; i < children.count; i++) {
 		UIView *child = children[i];
 		sizes[i] = measure_size(child, CGSizeMake(width, CGFLOAT_MAX));
 	}
-	CGSize result = flow_layout(sizes, frames, children.count, width, view_spacing(view));
+	CGSize result = flow_layout(sizes, frames, children.count, width, view_spacing(view), view.maxRows);
 	if (place) {
 		BOOL rtl = view.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
 		for (NSUInteger i = 0; i < children.count; i++) {
 			CGRect frame = frames[i];
+			if (CGRectIsNull(frame)) {
+				children[i].hidden = YES;
+				objc_setAssociatedObject(children[i], &kFlowOverflowKey, @YES, OBJC_ASSOCIATION_RETAIN);
+				continue;
+			}
+			children[i].hidden = NO;
+			objc_setAssociatedObject(children[i], &kFlowOverflowKey, nil, OBJC_ASSOCIATION_RETAIN);
 			frame.origin.x = view_padding_edge(view, YES) + (rtl ? width - CGRectGetMaxX(frame) : frame.origin.x);
 			CGFloat top = view_padding_top(view) + frame.origin.y;
 			frame.origin.y = top;
