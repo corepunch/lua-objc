@@ -16,6 +16,8 @@ t.expect(src:find("UIKit.Label(label)", 1, true) ~= nil
 	and src:find("control.enabled = not props.disabled", 1, true) ~= nil,
 	"UIKit Toggle pairs its native switch with a one-line visible label and preserves disabled state")
 t.expect(src:find("function UIKit.SystemImage") ~= nil, "UIKit.SystemImage exists")
+t.expect(src:find('arg.color or "primary"', 1, true) ~= nil,
+	"UIKit system images inherit the primary foreground color by default")
 t.expect(src:find("function UIKit.HostingController") ~= nil, "UIKit.HostingController exists")
 t.expect(src:find("bridge%._installScene") ~= nil, "Window installs the scene")
 t.expect(not src:find("bridge%._window%("), "480x360 _window path is gone")

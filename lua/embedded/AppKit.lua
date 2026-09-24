@@ -356,6 +356,27 @@ function AppKit.MenuItem(props)
 		assert(props.action, "MenuItem requires an action"))
 end
 
+--- Presents commands in a native pop-up menu.
+--- @tag Menu
+--- @prop items table required. MenuItem descriptions and actions.
+--- @prop title string optional. Menu button label.
+--- @prop systemImage string optional. SF Symbol shown on the menu button.
+--- @prop style string optional. `plain` or `glass` button appearance.
+--- @prop symbolSize number optional. SF Symbol point size.
+--- @platform AppKit NSPopUpButton and NSMenu.
+function AppKit.Menu(props)
+	props = props or {}
+	assert(props.style == nil or props.style == "plain" or props.style == "glass",
+		"menu style must be 'plain' or 'glass'")
+	local button = bridge._menu(props.items or props.children or {},
+		props.title or "Menu", props.systemImage or "", props.symbolSize)
+	if props.accessibilityLabel then button.accessibilityLabel = props.accessibilityLabel end
+	if props.style == "glass" then
+		button = bridge._glassEffect(button, "regular", 0)
+	end
+	return applyLayout(button, props)
+end
+
 -- #Preview equivalent: renders a named preview in the IDE canvas.
 -- In a real window context it behaves like Window; in canvas eval the
 -- bridge intercepts it the same way it intercepts Window.
@@ -920,6 +941,7 @@ end
 --- @prop onChange function optional. Callback invoked when the value changes.
 --- @prop onCommand function optional. Callback invoked for the corresponding keyboard command.
 --- @prop placeholder string optional. Component-specific setting passed to the native control.
+--- @prop style string optional. `plain` removes the field bezel and background; `roundedBorder` keeps the system field bezel.
 --- @prop secure boolean optional. Masks entered text when true.
 --- @prop selectable boolean optional. Allows text or rows to be selected when true.
 --- @prop size number optional. Component-specific setting passed to the native control.
@@ -931,15 +953,18 @@ function AppKit.TextField(props)
 	if type(props) ~= "table" then
 		props = { value = tostring(props or "") }
 	end
+	assert(props.style == nil or props.style == "plain" or props.style == "roundedBorder",
+		"TextField style must be 'plain' or 'roundedBorder'")
+	local plain = props.style == "plain"
 	local field = props.secure and bridge._secureTextField()
 		or bridge._textField()
 	field.text = props.value or props[1] or ""
 	field.placeholder = props.placeholder or ""
 	field.editable = props.editable ~= false
 	field.selectable = props.selectable ~= false
-	field.bezeled = props.bezeled ~= false
-	field.bordered = props.bordered ~= false
-	field.drawsBackground = props.drawsBackground ~= false
+	field.bezeled = not plain and props.bezeled ~= false
+	field.bordered = not plain and props.bordered ~= false
+	field.drawsBackground = not plain and props.drawsBackground ~= false
 	if props.focusRing == false then field.focusRingType = 1 end
 	if props.size then field.font = bridge._font(props.size, props.weight) end
 	if props.accessibilityLabel then
@@ -1346,7 +1371,9 @@ function AppKit.Button(props)
 			button.bordered = false
 		end
 		if not compound and props.systemImage then
-			button.image = AppKit.SystemImage { props.systemImage }.image
+			button.image = AppKit.SystemImage {
+				props.systemImage, size = props.symbolSize,
+			}.image
 			button.imagePosition = title == "" and 1 or 2
 		end
 		if props.accessibilityLabel then button.accessibilityLabel = props.accessibilityLabel end
@@ -1373,6 +1400,18 @@ function AppKit.GlassEffect(props)
 	assert(content, "GlassEffect requires content")
 	return applyLayout(bridge._glassEffect(content, props.style or "regular",
 		props.cornerRadius or 0), props)
+end
+
+--- Groups nearby native glass surfaces into one system effect.
+--- @tag GlassEffectContainer
+--- @prop content value required. View containing the glass surfaces.
+--- @prop spacing number optional. Distance at which neighboring effects begin to merge.
+--- @platform AppKit NSGlassEffectContainerView (macOS 26+).
+function AppKit.GlassEffectContainer(props)
+	props = props or {}
+	local content = props.content or props[1]
+	assert(content, "GlassEffectContainer requires content")
+	return applyLayout(bridge._glassEffectContainer(content, props.spacing or 0), props)
 end
 
 --- Displays a native WKWebView and optionally binds it to a WebPage.

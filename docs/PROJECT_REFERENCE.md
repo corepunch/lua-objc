@@ -392,6 +392,11 @@ with the native layout direction, and participate in measurement and placement.
 navigation titles and Back behavior. Application components must not create a new
 window to navigate.
 
+For a pushed UIKit screen that owns the full bottom edge, pass
+`{ hidesTabBar = true }` as the third argument to `ns.HostingController(view,
+onDisappear, options)` before calling `navigation:push(...)`. This sets the
+destination controller's native `hidesBottomBarWhenPushed` property.
+
 For model-driven routes, `require("ui.navigation").Path` stores plain values
 and maps each `value.type` to a destination builder. Pass the path and builders
 to `NavigationStack { path = path, destinations = { message = function(value)
@@ -703,7 +708,8 @@ ns.Button {
 
 Button `size` and `weight` set the native title font, including in XML:
 `<Button title="Applications" style="link" size="11" />`. Omitting them preserves
-the standard system button typography.
+the standard system button typography. `symbolSize` sets an SF Symbol's point
+size independently of title text.
 
 UIKit buttons use the native unbordered system appearance when `style` is
 omitted. Set `style="bordered"` or `style="borderedProminent"` when the design
@@ -723,11 +729,24 @@ AppKit also supports `cornerRadius`; UIKit clips the effect view to that radius.
 These APIs require macOS 26 or iOS 26. Do not replace them with blur and
 opacity layers.
 
+`<GlassEffectContainer spacing="14">` groups nearby glass surfaces using
+`NSGlassEffectContainerView` or `UIGlassContainerEffect`, matching SwiftUI's
+`GlassEffectContainer`. Its spacing controls when the surfaces begin to merge.
+
+Inside a glass input capsule, use `<TextField style="plain" />` so its native
+bezel and background do not draw a second border. The default text field keeps
+its platform bezel for standalone use.
+
 ```xml
 <GlassEffect style="regular" cornerRadius="18">
   <VStack padding="16"><Label text="Native glass" /></VStack>
 </GlassEffect>
 ```
+
+`<Menu>` presents native `UIMenu` actions on UIKit and an `NSPopUpButton` menu
+on AppKit. Use `systemImage` and `style="glass"` for an icon-only glass trigger;
+each `<MenuItem action="name" />` resolves `name` through the template's
+`actions` table.
 
 ### `UIKit.SpeechRecognizer(callback, locale)`
 
@@ -1422,6 +1441,7 @@ Templates use the `.etlua` extension to reflect that they contain etlua
 | `<TextField>` | `ns.TextField` | `ns.TextField` |
 | `<Button title="…">` | `ns.Button` | `ns.Button` |
 | `<GlassEffect>` | `NSGlassEffectView` | `UIVisualEffectView` + `UIGlassEffect` |
+| `<GlassEffectContainer>` | `NSGlassEffectContainerView` | `UIVisualEffectView` + `UIGlassContainerEffect` |
 | `<VStack>` / `<HStack>` | flex containers | flex containers |
 | `<FlowStack>` | wrapping rows of native views | wrapping rows of native views |
 | `<HSplit>` | `ns.HSplit` (NSSplitView) | — |

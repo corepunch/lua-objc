@@ -7,13 +7,18 @@ local Adventures = require("apps.adventure-arena.models.Adventures")
 local Session = require("apps.adventure-arena.models.Session")
 local catalog = Adventures.new()
 local Controller = require("apps.adventure-arena.Controller")
-local renderFile, button = xml.renderFile, ns.Button
-local rendered, callbacks = {}, {}
+local renderFile, button, menu = xml.renderFile, ns.Button, ns.Menu
+local rendered, callbacks, menus = {}, {}, {}
 
 -- Capture the callbacks actually supplied by the XML renderer to native buttons.
 ns.Button = function(props)
 	local view = button(props)
 	callbacks[view] = props.action
+	return view
+end
+ns.Menu = function(props)
+	local view = menu(props)
+	menus[view] = props.items
 	return view
 end
 xml.renderFile = function(...)
@@ -25,6 +30,17 @@ local function click(ref)
 	local callback = callbacks[rendered.refs[ref]]
 	t.expect(type(callback) == "function", ref .. " has a bound action")
 	if callback then callback() end
+end
+local function chooseMenu(title)
+	local items = menus[rendered.refs.quickActions] or {}
+	for _, item in ipairs(items) do
+		if item.title == title then
+			t.expect(type(item.action) == "function", title .. " has a bound menu action")
+			if item.action then item.action() end
+			return
+		end
+	end
+	t.expect(false, title .. " appears in the quick actions menu")
 end
 
 local sessionModel = Session.new({ engineFactory = function()
@@ -54,17 +70,21 @@ click("play")
 t.assertEqual(controller.navigation.depth, 3, "detail play opens session")
 t.assertEqual(rendered.refs.output.text, "Opening <&>", "transcript escapes XML characters")
 t.assertEqual(rendered.refs.input.accessibilityLabel, "Command", "composer retains accessibility label")
+t.assertEqual(rendered.refs.input.bezeled, false, "glass composer owns the visible border")
+t.assertEqual(rendered.refs.input.bordered, false, "plain input has no inner border")
+t.assertEqual(rendered.refs.send.enabled, false, "empty composer disables sending")
 ns._textFieldTestInput(rendered.refs.input, "inventory")
+t.assertEqual(rendered.refs.send.enabled, true, "typing enables sending")
 click("send")
 t.expect(rendered.refs.output.text:find('Response <&> "inventory"', 1, true), "send updates transcript")
 t.assertEqual(rendered.refs.input.text, "", "send clears input")
-click("look")
+chooseMenu("Look")
 t.expect(rendered.refs.output.text:find('Response <&> "look"', 1, true), "quick command reaches session")
 local transcript = rendered.refs.output.text
 click("send")
 t.assertEqual(rendered.refs.output.text, transcript, "empty submission leaves transcript unchanged")
 t.expect(not ns._textFieldTestCommand(rendered.refs.input, "cancel"), "unhandled keys retain native behavior")
-click("close")
+chooseMenu("End session")
 t.assertEqual(controller.navigation.depth, 2, "close returns to detail")
 t.assertEqual(controller.sessionModel:transcript(), transcript, "navigation preserves session state")
 controller.navigation:pop()
@@ -108,6 +128,6 @@ local empty = Controller.new { adventures = Adventures.new { games = {} }, sessi
 empty:home()
 t.expect(rendered.refs.emptyCatalog ~= nil, "empty model renders the etlua empty state")
 t.assertEqual(empty.navigation.depth, 1, "empty catalog retains navigation root")
-ns.Button, xml.renderFile = button, renderFile
+ns.Button, ns.Menu, xml.renderFile = button, menu, renderFile
 
 os.exit(t.summary() and 0 or 1)

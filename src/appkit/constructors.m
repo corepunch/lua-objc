@@ -258,6 +258,75 @@ static int bridge_AppKitControls_popUpButton(lua_State *L) {
 	return 1;
 }
 
+@interface LuaPopupMenuTarget : NSObject
+@property(nonatomic, strong) NSArray *callbacks;
+@end
+
+@implementation LuaPopupMenuTarget
+- (void)onAction:(NSPopUpButton *)sender {
+	NSInteger index = sender.indexOfSelectedItem;
+	if (index <= 0 || index > (NSInteger)self.callbacks.count) return;
+	id callback = self.callbacks[index - 1];
+	if (![callback isKindOfClass:LuaReg.class]) return;
+	lua_State *L = lua_reg_live_state(callback);
+	if (L && lua_reg_push(callback))
+		lua_objc_pcall(L, 0, 0, "menu");
+}
+- (void)dealloc {
+	for (id callback in _callbacks)
+		if ([callback isKindOfClass:LuaReg.class]) [callback dispose];
+}
+@end
+
+static int bridge_AppKitControls_menu(lua_State *L) {
+	luaL_checktype(L, 1, LUA_TTABLE);
+	const char *title = luaL_optstring(L, 2, "Menu");
+	const char *systemImage = luaL_optstring(L, 3, "");
+	CGFloat symbolSize = (CGFloat)luaL_optnumber(L, 4, kDefaultSymbolPointSize);
+	if (symbolSize <= 0) return luaL_error(L, "menu symbolSize must be positive");
+	NSPopUpButton *button = [[NSPopUpButton alloc]
+		initWithFrame:NSZeroRect pullsDown:YES];
+	button.bordered = NO;
+	[button removeAllItems];
+	[button addItemWithTitle:[NSString stringWithUTF8String:title]];
+	if (systemImage[0]) {
+		NSImage *image = [NSImage imageWithSystemSymbolName:
+			[NSString stringWithUTF8String:systemImage] accessibilityDescription:nil];
+		[button itemAtIndex:0].image = [image imageWithSymbolConfiguration:
+			[NSImageSymbolConfiguration configurationWithPointSize:symbolSize
+				weight:NSFontWeightRegular]];
+	}
+	NSMutableArray *callbacks = [NSMutableArray array];
+	NSInteger count = (NSInteger)luaL_len(L, 1);
+	for (NSInteger index = 1; index <= count; index++) {
+		lua_rawgeti(L, 1, index);
+		lua_getfield(L, -1, "title");
+		const char *itemTitle = luaL_optstring(L, -1, "");
+		lua_pop(L, 1);
+		[button addItemWithTitle:[NSString stringWithUTF8String:itemTitle]];
+		NSMenuItem *item = [button itemAtIndex:index];
+		lua_getfield(L, -1, "systemImage");
+		const char *itemSymbol = luaL_optstring(L, -1, "");
+		if (itemSymbol[0]) item.image = [NSImage imageWithSystemSymbolName:
+			[NSString stringWithUTF8String:itemSymbol] accessibilityDescription:nil];
+		lua_pop(L, 1);
+		lua_getfield(L, -1, "action");
+		LuaReg *callback = lua_reg_opt(L, -1);
+		[callbacks addObject:callback ?: NSNull.null];
+		if (!callback) item.enabled = NO;
+		lua_pop(L, 2);
+	}
+	LuaPopupMenuTarget *target = [[LuaPopupMenuTarget alloc] init];
+	target.callbacks = callbacks;
+	button.target = target;
+	button.action = @selector(onAction:);
+	objc_setAssociatedObject(button, &kKeys[kCallbackKey], target,
+		OBJC_ASSOCIATION_RETAIN);
+	[button sizeToFit];
+	push_objc(L, button, "nsview");
+	return 1;
+}
+
 static void configure_control_callback(
 	NSControl *control, lua_State *L, int callbackIndex
 ) {

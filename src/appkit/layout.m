@@ -176,6 +176,10 @@ static CGFloat view_flex_grow(NSView *view, BOOL horizontal);
 static BOOL default_grows_on_axis(NSView *view, BOOL horizontal) {
 	NSView *label = objc_getAssociatedObject(view, &kKeys[kButtonContentKey]);
 	if (label) return view_flex_grow(label, horizontal) > 0;
+	if ([view isKindOfClass:NSGlassEffectView.class])
+		return view_flex_grow(((NSGlassEffectView *)view).contentView, horizontal) > 0;
+	if ([view isKindOfClass:NSGlassEffectContainerView.class])
+		return view_flex_grow(((NSGlassEffectContainerView *)view).contentView, horizontal) > 0;
 	if (objc_getAssociatedObject(view, &kKeys[kScrollContentKey])) {
 		NSScrollView *scroll = (NSScrollView *)view;
 		// A horizontal strip gets its height from its content, including when
@@ -518,6 +522,10 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		}
 		if ([view isKindOfClass:NSGlassEffectView.class]) {
 			natural = measure_view(((NSGlassEffectView *)view).contentView,
+				constraint);
+		}
+		if ([view isKindOfClass:NSGlassEffectContainerView.class]) {
+			natural = measure_view(((NSGlassEffectContainerView *)view).contentView,
 				constraint);
 		}
 		if ([view isKindOfClass:LuaLabel.class]) {
@@ -983,6 +991,13 @@ static void layout_recursive_impl(NSView *view, CGFloat width) {
 			NSGlassEffectView *glass = (NSGlassEffectView *)view;
 			NSView *content = glass.contentView;
 			content.frame = glass.bounds;
+			layout_recursive(content, content.bounds.size.width);
+			return;
+		}
+		if ([view isKindOfClass:NSGlassEffectContainerView.class]) {
+			NSGlassEffectContainerView *container = (NSGlassEffectContainerView *)view;
+			NSView *content = container.contentView;
+			content.frame = container.bounds;
 			layout_recursive(content, content.bounds.size.width);
 			return;
 		}

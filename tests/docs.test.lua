@@ -100,7 +100,8 @@ for _, name in ipairs(PILOT) do
 		t.expect(page:find("GENERATED", 1, true) ~= nil, name .. ".md carries a generated marker")
 		t.expect(page:find("## Overview", 1, true) ~= nil, name .. ".md has an Overview section")
 		t.expect(page:find("## Example", 1, true) ~= nil, name .. ".md has an Example section")
-		t.expect(page:find("ns." .. name, 1, true) ~= nil, name .. ".md shows a Lua declaration")
+		t.expect(page:find("<" .. name .. " ... />", 1, true) ~= nil,
+			name .. ".md shows its XML tag declaration")
 		t.expect(page:find(SRC, 1, true) ~= nil, name .. ".md links back to its Lua source")
 	end
 	if index then
@@ -112,10 +113,8 @@ end
 local mkdocs = readFile("mkdocs.yml")
 t.expect(mkdocs ~= nil, "mkdocs.yml exists")
 if mkdocs then
-	for _, name in ipairs(PILOT) do
-		t.expect(mkdocs:find("reference/generated/" .. name .. ".md", 1, true) ~= nil,
-			"mkdocs nav includes " .. name)
-	end
+	t.expect(mkdocs:find("Overview: reference/generated/index.md", 1, true) ~= nil,
+		"mkdocs nav publishes the generated reference index")
 end
 
 os.exit(t.summary() and 0 or 1)

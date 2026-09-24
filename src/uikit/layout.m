@@ -18,6 +18,8 @@ static BOOL grows_on_axis(UIView *view, BOOL horizontal) {
 	if ([objc_getAssociatedObject(view, horizontal ? &kFillWidthKey : &kFillHeightKey) boolValue]) return YES;
 	UIView *label = objc_getAssociatedObject(view, &kButtonContentKey);
 	if (label) return grows_on_axis(label, horizontal);
+	UIView *effectContent = objc_getAssociatedObject(view, &kVisualEffectContentKey);
+	if (effectContent) return grows_on_axis(effectContent, horizontal);
 	if (objc_getAssociatedObject(view, &kScrollContentKey)) {
 		UIScrollView *scroll = (UIScrollView *)view;
 		if (scroll.alwaysBounceHorizontal && !scroll.alwaysBounceVertical) return horizontal;
@@ -206,6 +208,8 @@ static CGSize measure_size(UIView *view, CGSize proposal) {
 		UIView *scrollContent = objc_getAssociatedObject(view, &kScrollContentKey);
 		UIView *buttonContent = objc_getAssociatedObject(view, &kButtonContentKey);
 		if (buttonContent) size = measure_size(buttonContent, proposal);
+		UIView *effectContent = objc_getAssociatedObject(view, &kVisualEffectContentKey);
+		if (effectContent) size = measure_size(effectContent, proposal);
 		if (scrollContent) {
 			UIScrollView *scroll = (UIScrollView *)view;
 			if (scroll.alwaysBounceHorizontal && !scroll.alwaysBounceVertical)
@@ -365,6 +369,13 @@ static void layout_recursive_impl(UIView *view, CGFloat width) {
 			}
 		}
 	} else {
+		UIView *effectContent = objc_getAssociatedObject(view, &kVisualEffectContentKey);
+		if (effectContent) {
+			UIVisualEffectView *effectView = (UIVisualEffectView *)view;
+			effectContent.frame = effectView.contentView.bounds;
+			layout_recursive(effectContent, effectContent.bounds.size.width);
+			return;
+		}
 		UIView *buttonContent = objc_getAssociatedObject(view, &kButtonContentKey);
 		if (buttonContent) {
 			buttonContent.frame = view.bounds;

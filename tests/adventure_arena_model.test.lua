@@ -29,7 +29,7 @@ for _, game in ipairs(catalog:list()) do
 	t.expect(#game.description > 200, "complete source description for " .. game.id)
 end
 t.assertEqual(reviews, 21, "all individual source reviews are preserved")
-t.assertEqual(catalog:find("books.limehouse-killings").genres[1], "Victorian Mystery")
+t.assertEqual(catalog:find("books.limehouse-killings").genre, "Victorian Mystery")
 
 local commands = {}
 local state = Session.new({ engineFactory = function(game, ...)

@@ -274,6 +274,19 @@ static int bridge_glass_effect(lua_State *L) {
 	return 1;
 }
 
+static int bridge_glass_effect_container(lua_State *L) {
+	NSView *content = check_view(L, 1);
+	CGFloat spacing = (CGFloat)luaL_optnumber(L, 2, 0);
+	if (spacing < 0) return luaL_error(L, "glass container spacing must be nonnegative");
+	NSGlassEffectContainerView *container = [NSGlassEffectContainerView new];
+	container.spacing = spacing;
+	container.contentView = content;
+	container.frame = NSMakeRect(0, 0, content.fittingSize.width,
+		content.fittingSize.height);
+	push_objc(L, container, "nsview");
+	return 1;
+}
+
 /* The spinner is an overlay of the scroll view rather than part of the
  * document view, so its frame must follow the visible viewport when the
  * containing window or split pane is laid out. Center it in the table body,

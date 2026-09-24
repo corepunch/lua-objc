@@ -33,6 +33,12 @@ function Controller:show(id)
 	end
 	local actions = {
 		submit = function() self:submitCommand(self.refs.input.text) end,
+		inputChanged = function(text) self:updateComposer(text) end,
+		inputCommand = function(command)
+			if command ~= "submit" then return false end
+			self:submitCommand(self.refs.input.text)
+			return true
+		end,
 		look = function() self:submitCommand("look") end,
 		inventory = function() self:submitCommand("inventory") end,
 		dictate = function() self:toggleDictation() end,
@@ -44,12 +50,18 @@ function Controller:show(id)
 		actions = actions,
 	}, game.title)
 	self.refs.input.accessibilityLabel = "Command"
-	self.ns._textFieldCallbacks(self.refs.input, nil, function(command)
-		if command ~= "submit" then return false end
-		actions.submit()
-		return true
-	end)
+	self:updateComposer(self.refs.input.text)
 	return true
+end
+
+function Controller:updateComposer(text)
+	if not self.refs then return end
+	local hasText = type(text) == "string" and text:find("%S") ~= nil
+	local showSend = not self.refs.dictate or (hasText and not self.dictationActive)
+	self.refs.send.hidden = not showSend
+	self.refs.send.enabled = hasText
+	if self.refs.dictate then self.refs.dictate.hidden = showSend end
+	self.view:layout()
 end
 
 function Controller:onSpeechEvent(state, text, message)
@@ -76,7 +88,7 @@ function Controller:onSpeechEvent(state, text, message)
 		self.dictationActive = false
 		self.refs.dictationStatus.text = ""
 	end
-	self.view:layout()
+	self:updateComposer(self.refs.input.text)
 end
 
 function Controller:toggleDictation()
@@ -89,7 +101,7 @@ function Controller:toggleDictation()
 		self.dictationActive = true
 		self.speech:start()
 	end
-	self.view:layout()
+	self:updateComposer(self.refs.input.text)
 end
 
 function Controller:cancelDictation()
@@ -110,12 +122,13 @@ function Controller:onDisappear()
 end
 
 function Controller:submitCommand(command)
+	if type(command) ~= "string" or not command:find("%S") then return false end
 	self:cancelDictation()
 	local ok, err = self.model:submit(command)
 	self.refs.output.text = self.model:transcript()
 	self.refs.input.text = ""
 	self.refs.dictationStatus.text = ""
-	self.view:layout()
+	self:updateComposer("")
 	return ok, err
 end
 
