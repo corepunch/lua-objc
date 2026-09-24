@@ -41,14 +41,15 @@ end
 
 function Controller:push(template, data, title)
 	local view, refs = xml.renderFile("apps/adventure-arena/views/" .. template .. ".etlua", data, self.ns)
-	local hostingController
-	if template == "Session" and self.ns.SpeechRecognizer then
-		hostingController = self.ns.HostingController(view, function()
+	local onDisappear
+	if template == "Session" then
+		onDisappear = function()
 			self.sessionController:onDisappear()
-		end)
-	else
-		hostingController = self.ns.HostingController(view)
+		end
 	end
+	local hostingController = self.ns.HostingController(view, onDisappear, {
+		hidesTabBar = template == "Session",
+	})
 	self.navigation:push(hostingController, title)
 	return view, refs
 end

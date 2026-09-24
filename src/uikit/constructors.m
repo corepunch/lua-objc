@@ -164,6 +164,8 @@ static int bridge_UIKitControls_materialView(lua_State *L) {
 		initWithEffect:[UIBlurEffect effectWithStyle:style]];
 	view.luaContent = content;
 	[view.contentView addSubview:content];
+	objc_setAssociatedObject(view, &kVisualEffectContentKey, content,
+		OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, view, "uiview");
 	return 1;
 }
@@ -184,6 +186,26 @@ static int bridge_UIKitControls_glassEffect(lua_State *L) {
 	content.autoresizingMask = UIViewAutoresizingFlexibleWidth
 		| UIViewAutoresizingFlexibleHeight;
 	[view.contentView addSubview:content];
+	objc_setAssociatedObject(view, &kVisualEffectContentKey, content,
+		OBJC_ASSOCIATION_RETAIN);
+	[view sizeToFit];
+	push_objc(L, view, "uiview");
+	return 1;
+}
+
+static int bridge_UIKitControls_glassEffectContainer(lua_State *L) {
+	UIView *content = check_view(L, 1);
+	CGFloat spacing = (CGFloat)luaL_optnumber(L, 2, 0);
+	if (spacing < 0) return luaL_error(L, "glass container spacing must be nonnegative");
+	UIGlassContainerEffect *effect = [[UIGlassContainerEffect alloc] init];
+	effect.spacing = spacing;
+	UIVisualEffectView *view = [[UIVisualEffectView alloc] initWithEffect:effect];
+	content.frame = view.contentView.bounds;
+	content.autoresizingMask = UIViewAutoresizingFlexibleWidth
+		| UIViewAutoresizingFlexibleHeight;
+	[view.contentView addSubview:content];
+	objc_setAssociatedObject(view, &kVisualEffectContentKey, content,
+		OBJC_ASSOCIATION_RETAIN);
 	[view sizeToFit];
 	push_objc(L, view, "uiview");
 	return 1;
@@ -529,6 +551,7 @@ static int bridge_UIKitControls_button(lua_State *L) {
 	const char *style = luaL_optstring(L, 3, "default");
 	const char *systemImage = luaL_optstring(L, 4, "");
 	const char *role = luaL_optstring(L, 5, "");
+	CGFloat symbolSize = (CGFloat)luaL_optnumber(L, 8, 0);
 	LuaReg *callback = has_callback ? lua_reg_create(L, 2, YES) : nil;
 
 	UIButton *obj = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -536,17 +559,19 @@ static int bridge_UIKitControls_button(lua_State *L) {
 	UIButtonConfiguration *configuration = nil;
 	if (strcmp(style, "bordered") == 0) {
 		configuration = [UIButtonConfiguration borderedButtonConfiguration];
-		/* Neutral button styles use the label color; prominent carries the app tint. */
-		configuration.baseForegroundColor = UIColor.labelColor;
+		configuration.baseForegroundColor = UIColor.tintColor;
 	} else if (strcmp(style, "borderedProminent") == 0) {
 		configuration = [UIButtonConfiguration borderedProminentButtonConfiguration];
 	} else if (strcmp(style, "glass") == 0) {
 		configuration = [UIButtonConfiguration glassButtonConfiguration];
 	} else if (strcmp(style, "glassProminent") == 0) {
 		configuration = [UIButtonConfiguration prominentGlassButtonConfiguration];
-	} else if (strcmp(style, "plain") == 0 || strcmp(style, "link") == 0) {
+	} else if (strcmp(style, "default") == 0 || strcmp(style, "plain") == 0
+		|| strcmp(style, "link") == 0) {
 		configuration = [UIButtonConfiguration plainButtonConfiguration];
-		configuration.baseForegroundColor = UIColor.labelColor;
+		configuration.contentInsets = NSDirectionalEdgeInsetsZero;
+		configuration.baseForegroundColor = strcmp(style, "default") == 0
+			? UIColor.tintColor : UIColor.labelColor;
 		obj.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
 	} else if (systemImage[0] || role[0]) {
 		configuration = [UIButtonConfiguration plainButtonConfiguration];
@@ -560,8 +585,17 @@ static int bridge_UIKitControls_button(lua_State *L) {
 		if (systemImage[0])
 			configuration.image = [UIImage systemImageNamed:
 				[NSString stringWithUTF8String:systemImage]];
-		if (strcmp(role, "destructive") == 0)
-			configuration.baseForegroundColor = UIColor.systemRedColor;
+		if (symbolSize > 0)
+			configuration.preferredSymbolConfigurationForImage =
+				[UIImageSymbolConfiguration configurationWithPointSize:symbolSize];
+		if (strcmp(role, "destructive") == 0) {
+			if (strcmp(style, "borderedProminent") == 0) {
+				configuration.baseBackgroundColor = UIColor.systemRedColor;
+				configuration.baseForegroundColor = UIColor.whiteColor;
+			} else {
+				configuration.baseForegroundColor = UIColor.systemRedColor;
+			}
+		}
 		obj.configuration = configuration;
 	} else {
 		[obj setTitle:buttonTitle forState:UIControlStateNormal];
@@ -617,6 +651,12 @@ static int bridge_UIKitControls_link(lua_State *L) {
 static int bridge_UIKitControls_menu(lua_State *L) {
 	luaL_checktype(L, 1, LUA_TTABLE);
 	const char *buttonTitle = luaL_optstring(L, 2, "Menu");
+	const char *systemImage = luaL_optstring(L, 3, "");
+	const char *style = luaL_optstring(L, 4, "plain");
+	CGFloat symbolSize = (CGFloat)luaL_optnumber(L, 5, kMenuSymbolPointSize);
+	if (strcmp(style, "plain") != 0 && strcmp(style, "glass") != 0)
+		return luaL_error(L, "menu style must be 'plain' or 'glass'");
+	if (symbolSize <= 0) return luaL_error(L, "menu symbolSize must be positive");
 	NSMutableArray<UIMenuElement *> *elements = [NSMutableArray array];
 	NSMutableArray<LuaReg *> *regs = [NSMutableArray array];
 	NSInteger count = (NSInteger)luaL_len(L, 1);
@@ -643,19 +683,31 @@ static int bridge_UIKitControls_menu(lua_State *L) {
 			image:(symbol[0] ? [UIImage systemImageNamed:[NSString stringWithUTF8String:symbol]] : nil)
 			identifier:nil
 			handler:^(__unused UIAction *selected) {
+				if (!itemReg) return;
 				lua_State *callL = lua_reg_live_state(itemReg);
 				if (!callL || !lua_reg_push(itemReg)) return;
 				lua_objc_pcall(callL, 0, 0, "menu");
 			}];
+		if (!itemReg) action.attributes = UIMenuElementAttributesDisabled;
 		if (strcmp(role, "destructive") == 0)
-			action.attributes = UIMenuElementAttributesDestructive;
+			action.attributes |= UIMenuElementAttributesDestructive;
 		[elements addObject:action];
 		lua_pop(L, 1);
 	}
 
 	UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
-	[button setTitle:[NSString stringWithUTF8String:buttonTitle]
-		forState:UIControlStateNormal];
+	UIButtonConfiguration *configuration = strcmp(style, "glass") == 0
+		? [UIButtonConfiguration glassButtonConfiguration]
+		: [UIButtonConfiguration plainButtonConfiguration];
+	configuration.title = [NSString stringWithUTF8String:buttonTitle];
+	configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+	if (systemImage[0]) {
+		configuration.image = [UIImage systemImageNamed:
+			[NSString stringWithUTF8String:systemImage]];
+		configuration.preferredSymbolConfigurationForImage =
+			[UIImageSymbolConfiguration configurationWithPointSize:symbolSize];
+	}
+	button.configuration = configuration;
 	button.menu = [UIMenu menuWithTitle:@"" children:elements];
 	button.showsMenuAsPrimaryAction = YES;
 	LuaMenuStore *store = [[LuaMenuStore alloc] init];

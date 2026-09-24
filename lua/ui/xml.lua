@@ -690,6 +690,7 @@ local TAG_SCHEMA = {
         props = {
             value       = { aliases = { "text" }, default = "", type = "str" },
             placeholder = { default = "", type = "str" },
+			style       = "str",
 					editable    = "bool",
 					secure     = "bool",
             bezeled     = "bool",
@@ -720,6 +721,7 @@ local TAG_SCHEMA = {
             title       = { aliases = { "label" }, default = "", type = "str" },
             subtitle    = "str",
             systemImage = "str",
+			symbolSize = "num",
             style       = "str",
             cornerRadius = "num",
             role        = "str",
@@ -751,7 +753,13 @@ local TAG_SCHEMA = {
     Menu = {
         constructor = "Menu",
         children = "items",
-        props = { title = "str" },
+        props = {
+			title = "str",
+			systemImage = "str",
+			style = "str",
+			symbolSize = "num",
+			accessibilityLabel = "str",
+		},
         collect = function(props, children)
             props.items = children
         end,
@@ -764,6 +772,11 @@ local TAG_SCHEMA = {
             systemImage = "str",
             role = "str",
         },
+		transform = function(props, attrs)
+			if attrs.action and renderData and renderData.actions then
+				props.action = renderData.actions[attrs.action]
+			end
+		end,
     },
     ContentUnavailable = {
         constructor = "ContentUnavailable",
@@ -785,6 +798,11 @@ local TAG_SCHEMA = {
         children = "content",
         props = { style = "str", cornerRadius = "num" },
     },
+    GlassEffectContainer = {
+		constructor = "GlassEffectContainer",
+		children = "content",
+		props = { spacing = "num" },
+	},
     Slider = {
         constructor = "Slider",
         props = {
@@ -1312,6 +1330,7 @@ local function makeSchemaHandler(tag, def)
             if def.flag then rec[def.flag] = true end
             if def.children == "items" then rec.items = children end
             if def.collect then def.collect(rec, children) end
+			if def.transform then def.transform(rec, attrs, children, ns) end
             return rec
         end
 

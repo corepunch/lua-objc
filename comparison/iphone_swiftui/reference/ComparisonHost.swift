@@ -367,6 +367,7 @@ private struct ComparisonView: View {
 		}
 		.background(Color(uiColor: .systemBackground))
 		.preferredColorScheme(.light)
+		.statusBarHidden(false)
 		.environment(\.locale, Locale(identifier: contract.environment.locale))
 		.environment(\.layoutDirection, .leftToRight)
 		.environment(\.dynamicTypeSize, .large)

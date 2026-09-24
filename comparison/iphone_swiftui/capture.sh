@@ -18,6 +18,7 @@ REFERENCE_ID="org.luaobjc.comparison.swiftui"
 LUA_ID="org.luaobjc.host"
 PACKAGER_PORT="${PACKAGER_PORT:-18082}"
 PACKAGER_URL="http://127.0.0.1:$PACKAGER_PORT"
+CAPTURE_SETTLE_SECONDS="${CAPTURE_SETTLE_SECONDS:-6}"
 CAPTURE_TMP="$ROOT/build/comparison/iphone_swiftui/captures/ios-26.5-iphone-17"
 OUTPUT="$ROOT/comparison/iphone_swiftui/captures/ios-26.5-iphone-17"
 mkdir -p "$CAPTURE_TMP"
@@ -70,7 +71,7 @@ for fixture in "$@"; do
 	sleep 0.5
 	SIMCTL_CHILD_SWIFTUI_COMPARISON_FIXTURE="$fixture" \
 		xcrun simctl launch --terminate-running-process "$DEVICE" "$REFERENCE_ID"
-	sleep 2
+	sleep "$CAPTURE_SETTLE_SECONDS"
 	xcrun simctl io "$DEVICE" screenshot "$CAPTURE_TMP/swiftui-$fixture.png"
 	xcrun simctl launch --terminate-running-process "$DEVICE" com.apple.springboard >/dev/null
 	sleep 0.5
@@ -78,7 +79,7 @@ for fixture in "$@"; do
 	SIMCTL_CHILD_LUA_OBJC_PACKAGER="$PACKAGER_URL" \
 	SIMCTL_CHILD_LUA_OBJC_COMPARISON_FIXTURE="$fixture" \
 		xcrun simctl launch --terminate-running-process "$DEVICE" "$LUA_ID"
-	sleep 2
+	sleep "$CAPTURE_SETTLE_SECONDS"
 	xcrun simctl io "$DEVICE" screenshot "$CAPTURE_TMP/lua-objc-$fixture.png"
 done
 

@@ -40,7 +40,9 @@ static char kHostSafeAreaTopKey;
 static char kImageLayoutSizeKey;
 static char kScrollContentKey;
 static char kButtonContentKey;
+static char kVisualEffectContentKey;
 static const CGFloat kImageMaxWidth = 400.0;
+static const CGFloat kMenuSymbolPointSize = 17.0;
 static const CGFloat kStackSpacing = 8.0;
 static const CGFloat kSeparatorThickness = 1.0;
 static const CGFloat kPreviewWidth = 393.0;
@@ -158,6 +160,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_menu", bridge_UIKitControls_menu},
 	{"_materialView", bridge_UIKitControls_materialView},
 	{"_glassEffect", bridge_UIKitControls_glassEffect},
+	{"_glassEffectContainer", bridge_UIKitControls_glassEffectContainer},
 	{"_speechRecognizer", bridge_UIKitSpeechRecognition_create},
 	{"_speechRecognizerAction", bridge_UIKitSpeechRecognition_action},
 	{"_webView", bridge_UIKitControls_webView},

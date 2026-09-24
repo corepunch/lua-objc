@@ -168,8 +168,12 @@ function UIKit.Preview(props)
 	return applyLayout(bridge._preview(), props or {})
 end
 
-function UIKit.HostingController(view, onDisappear)
-	return bridge._hostingController(view, onDisappear)
+function UIKit.HostingController(view, onDisappear, props)
+	local controller = bridge._hostingController(view, onDisappear)
+	if props and props.hidesTabBar ~= nil then
+		controller.hidesBottomBarWhenPushed = props.hidesTabBar == true
+	end
+	return controller
 end
 
 local navScreenScopes = setmetatable({}, { __mode = "k" })
@@ -584,6 +588,7 @@ end
 --- @prop onChange function optional. Callback invoked when the value changes.
 --- @prop onCommand function optional. Callback invoked for the corresponding keyboard command.
 --- @prop placeholder string optional. Component-specific setting passed to the native control.
+--- @prop style string optional. `plain` removes the field border; `roundedBorder` keeps the system field bezel.
 --- @prop secure boolean optional. Masks entered text when true.
 --- @prop size number optional. Component-specific setting passed to the native control.
 --- @prop value table optional. Current selected, edited, or measured value.
@@ -592,9 +597,11 @@ end
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function UIKit.TextField(props)
 	if type(props) ~= "table" then props = { value = tostring(props or "") } end
+	assert(props.style == nil or props.style == "plain" or props.style == "roundedBorder",
+		"TextField style must be 'plain' or 'roundedBorder'")
 	local field = bridge._textField(props.value or props[1] or "")
 	field.placeholder = props.placeholder or ""
-	field.borderStyle = props.bezeled == false and 0 or 3
+	field.borderStyle = (props.style == "plain" or props.bezeled == false) and 0 or 3
 	field.secureTextEntry = props.secure == true
 	field.enabled = props.disabled ~= true and props.editable ~= false
 	if props.size then field.font = bridge._font(props.size, props.weight) end
@@ -666,6 +673,7 @@ end
 --- @prop size number optional. Component-specific setting passed to the native control.
 --- @prop spacing number optional. Component-specific setting passed to the native control.
 --- @prop systemImage string optional. Component-specific setting passed to the native control.
+--- @prop symbolSize number optional. SF Symbol point size for an image-only button.
 --- @prop truncation string optional. Text truncation position: `head`, `middle`, or `tail`.
 --- @prop weight value optional. Component-specific setting passed to the native control.
 --- @prop wrapping boolean optional. Component-specific setting passed to the native control.
@@ -786,7 +794,7 @@ function UIKit.SystemImage(arg)
 	local description = arg.accessibilityLabel or arg.label or name
 	local size = arg.size or 17
 	local weight = arg.weight or "regular"
-	local color = arg.color or "accent"
+	local color = arg.color or "primary"
 	return applyLayout(
 		bridge._systemImage(name, description, size, weight, color),
 		arg)
@@ -932,10 +940,12 @@ function UIKit.Button(props)
 	local style = type(props) == "table" and props.style or nil
 	if action then
 		button = bridge._button(title, action, style or "default",
-			props.systemImage or "", props.role or "", font, props.content)
+			props.systemImage or "", props.role or "", font, props.content,
+			props.symbolSize or 0)
 	else
 		button = bridge._button(title, nil, style or "default",
-			props.systemImage or "", props.role or "", font, props.content)
+			props.systemImage or "", props.role or "", font, props.content,
+			props.symbolSize or 0)
 	end
 	if type(props) == "table" and props.truncation then
 		local modes = { head = 3, tail = 4, middle = 5 }
@@ -992,6 +1002,22 @@ function UIKit.GlassEffect(props)
 		props.cornerRadius or 0), props)
 end
 
+--- Groups nearby native glass surfaces into one system effect.
+--- @tag GlassEffectContainer
+--- @prop content value required. View containing the glass surfaces.
+--- @prop spacing number optional. Distance at which neighboring effects begin to merge.
+--- @platform UIKit UIGlassContainerEffect and UIVisualEffectView (iOS 26+).
+function UIKit.GlassEffectContainer(props)
+	props = props or {}
+	local content = props.content or props[1]
+	assert(content, "GlassEffectContainer requires content")
+	local layout = {}
+	for key, value in pairs(props) do
+		if key ~= "spacing" then layout[key] = value end
+	end
+	return applyLayout(bridge._glassEffectContainer(content, props.spacing or 0), layout)
+end
+
 --- Creates a speech-to-text session that does not present the software keyboard.
 --- @prop onEvent function required. Receives `(state, text, message)` updates.
 --- @prop locale string optional. Locale identifier; defaults to the system locale.
@@ -1034,12 +1060,19 @@ end
 --- @prop children table optional. Component-specific setting passed to the native control.
 --- @prop items table optional. Component-specific setting passed to the native control.
 --- @prop title value optional. Component-specific setting passed to the native control.
+--- @prop systemImage string optional. SF Symbol shown on the menu button.
+--- @prop style string optional. `plain` or native `glass` button appearance.
+--- @prop symbolSize number optional. SF Symbol point size.
+--- @prop accessibilityLabel string optional. VoiceOver label for an icon-only menu.
 --- @example <Menu />
 --- @platform UIKit uses the UIKit implementation.
 function UIKit.Menu(props)
 	props = props or {}
-	return applyLayout(bridge._menu(props.items or props.children or {},
-		props.title or "Menu"), props)
+	local button = bridge._menu(props.items or props.children or {},
+		props.title or "Menu", props.systemImage or "", props.style or "plain",
+		props.symbolSize)
+	if props.accessibilityLabel then button.accessibilityLabel = props.accessibilityLabel end
+	return applyLayout(button, props)
 end
 
 --- Presents a native empty, unavailable, or no-results state.
