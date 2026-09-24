@@ -924,6 +924,7 @@ end
 --- @prop action function optional. Component-specific setting passed to the native control.
 --- @prop disabled boolean optional. Component-specific setting passed to the native control.
 --- @prop role string optional. Semantic action role, such as destructive.
+--- @prop foregroundStyle string optional. Semantic foreground color, such as `accent`.
 --- @prop size number optional. Component-specific setting passed to the native control.
 --- @prop style string optional. Component-specific setting passed to the native control.
 --- @prop systemImage string optional. Component-specific setting passed to the native control.
@@ -941,11 +942,11 @@ function UIKit.Button(props)
 	if action then
 		button = bridge._button(title, action, style or "default",
 			props.systemImage or "", props.role or "", font, props.content,
-			props.symbolSize or 0)
+			props.symbolSize or 0, props.foregroundStyle, props.weight)
 	else
 		button = bridge._button(title, nil, style or "default",
 			props.systemImage or "", props.role or "", font, props.content,
-			props.symbolSize or 0)
+			props.symbolSize or 0, props.foregroundStyle, props.weight)
 	end
 	if type(props) == "table" and props.truncation then
 		local modes = { head = 3, tail = 4, middle = 5 }
@@ -991,7 +992,7 @@ end
 --- @tag GlassEffect
 --- @prop content value required. The view rendered inside the glass effect.
 --- @prop style string optional. `regular` or `clear`.
---- @prop cornerRadius number optional. Clips the effect to the requested shape.
+--- @prop cornerRadius number optional. Native glass corner radius; omitted uses a capsule. Does not clip content.
 --- @example <GlassEffect style="regular"><VStack>...</VStack></GlassEffect>
 --- @platform UIKit UIGlassEffect and UIVisualEffectView (iOS 26+).
 function UIKit.GlassEffect(props)
@@ -999,7 +1000,7 @@ function UIKit.GlassEffect(props)
 	local content = props.content or props[1]
 	assert(content, "GlassEffect requires content")
 	return applyLayout(bridge._glassEffect(content, props.style or "regular",
-		props.cornerRadius or 0), props)
+		props.cornerRadius), props)
 end
 
 --- Groups nearby native glass surfaces into one system effect.

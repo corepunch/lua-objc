@@ -709,12 +709,18 @@ ns.Button {
 Button `size` and `weight` set the native title font, including in XML:
 `<Button title="Applications" style="link" size="11" />`. Omitting them preserves
 the standard system button typography. `symbolSize` sets an SF Symbol's point
-size independently of title text.
+size independently of title text. `weight` applies to the title and symbol.
+Explicit symbol sizes use the standard medium symbol scale on both platforms;
+UIKit button configurations must not inherit a larger icon scale.
 
 UIKit buttons use the native unbordered system appearance when `style` is
 omitted. Set `style="bordered"` or `style="borderedProminent"` when the design
 calls for a native button surface; `style="plain"` intentionally has no border.
 The XML renderer forwards these styles to `UIButton.Configuration`.
+An image-only action can use `foregroundStyle="accent"` for the system tint.
+For a circular send control, use the native `arrow.up.circle.fill` symbol with
+`style="plain"` and `symbolSize="31"`; the symbol supplies the circle without
+adding a bordered button platter inside the glass input capsule.
 
 Use `style="glass"` for the native system glass button treatment. The UIKit
 bridge uses `UIButtonConfiguration.glassButtonConfiguration`; AppKit keeps the
@@ -725,7 +731,10 @@ bridge uses `UIButtonConfiguration.glassButtonConfiguration`; AppKit keeps the
 Wrap content in the current system Liquid Glass effect. AppKit uses
 `NSGlassEffectView`; UIKit uses `UIGlassEffect` through
 `UIVisualEffectView`. Both platforms support `style = "regular"` or `"clear"`.
-AppKit also supports `cornerRadius`; UIKit clips the effect view to that radius.
+Both platforms support `cornerRadius`. UIKit configures the material with
+`UICornerConfiguration`; omitting the radius uses its native capsule shape.
+The effect does not clip its child content. Use `clipsToBounds` explicitly when
+clipping is part of the design.
 These APIs require macOS 26 or iOS 26. Do not replace them with blur and
 opacity layers.
 

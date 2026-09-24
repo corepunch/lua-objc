@@ -1372,9 +1372,12 @@ function AppKit.Button(props)
 		end
 		if not compound and props.systemImage then
 			button.image = AppKit.SystemImage {
-				props.systemImage, size = props.symbolSize,
+				props.systemImage, size = props.symbolSize, weight = props.weight,
 			}.image
 			button.imagePosition = title == "" and 1 or 2
+		end
+		if props.foregroundStyle then
+			button.contentTintColor = bridge._systemColor(props.foregroundStyle)
 		end
 		if props.accessibilityLabel then button.accessibilityLabel = props.accessibilityLabel end
 	end

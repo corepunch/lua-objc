@@ -722,6 +722,7 @@ local TAG_SCHEMA = {
             subtitle    = "str",
             systemImage = "str",
 			symbolSize = "num",
+            foregroundStyle = "str",
             style       = "str",
             cornerRadius = "num",
             role        = "str",

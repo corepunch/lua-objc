@@ -170,6 +170,20 @@ static int bridge_UIKitControls_materialView(lua_State *L) {
 	return 1;
 }
 
+@interface LuaGlassEffectView : UIVisualEffectView
+@end
+
+@implementation LuaGlassEffectView
+- (void)setCornerRadius:(CGFloat)value {
+	CGFloat radius = MAX(0, value);
+	objc_setAssociatedObject(self, &kCornerRadiusKey, @(radius), OBJC_ASSOCIATION_RETAIN);
+	// Glass owns the material's shape. The ordinary UIView cornerRadius alias
+	// also masks content, which is a different modifier from glassEffect.
+	self.cornerConfiguration = [UICornerConfiguration configurationWithUniformRadius:
+		[UICornerRadius fixedRadius:radius]];
+}
+@end
+
 static int bridge_UIKitControls_glassEffect(lua_State *L) {
 	UIView *content = check_view(L, 1);
 	const char *styleName = luaL_optstring(L, 2, "regular");
@@ -178,10 +192,10 @@ static int bridge_UIKitControls_glassEffect(lua_State *L) {
 	if (strcmp(styleName, "regular") == 0) style = UIGlassEffectStyleRegular;
 	else if (strcmp(styleName, "clear") == 0) style = UIGlassEffectStyleClear;
 	else return luaL_error(L, "glass style must be 'regular' or 'clear'");
-	UIVisualEffectView *view = [[UIVisualEffectView alloc]
+	LuaGlassEffectView *view = [[LuaGlassEffectView alloc]
 		initWithEffect:[UIGlassEffect effectWithStyle:style]];
-	view.layer.cornerRadius = MAX(0, cornerRadius);
-	view.clipsToBounds = cornerRadius > 0;
+	if (lua_isnoneornil(L, 3)) view.cornerConfiguration = UICornerConfiguration.capsuleConfiguration;
+	else view.cornerRadius = cornerRadius;
 	content.frame = view.contentView.bounds;
 	content.autoresizingMask = UIViewAutoresizingFlexibleWidth
 		| UIViewAutoresizingFlexibleHeight;
@@ -552,6 +566,8 @@ static int bridge_UIKitControls_button(lua_State *L) {
 	const char *systemImage = luaL_optstring(L, 4, "");
 	const char *role = luaL_optstring(L, 5, "");
 	CGFloat symbolSize = (CGFloat)luaL_optnumber(L, 8, 0);
+	const char *foregroundStyle = luaL_optstring(L, 9, "");
+	const char *weightName = luaL_optstring(L, 10, "regular");
 	LuaReg *callback = has_callback ? lua_reg_create(L, 2, YES) : nil;
 
 	UIButton *obj = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -572,7 +588,9 @@ static int bridge_UIKitControls_button(lua_State *L) {
 		configuration.contentInsets = NSDirectionalEdgeInsetsZero;
 		configuration.baseForegroundColor = strcmp(style, "default") == 0
 			? UIColor.tintColor : UIColor.labelColor;
-		obj.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+		obj.contentHorizontalAlignment = buttonTitle.length == 0 && systemImage[0]
+			? UIControlContentHorizontalAlignmentCenter
+			: UIControlContentHorizontalAlignmentLeft;
 	} else if (systemImage[0] || role[0]) {
 		configuration = [UIButtonConfiguration plainButtonConfiguration];
 	}
@@ -587,7 +605,11 @@ static int bridge_UIKitControls_button(lua_State *L) {
 				[NSString stringWithUTF8String:systemImage]];
 		if (symbolSize > 0)
 			configuration.preferredSymbolConfigurationForImage =
-				[UIImageSymbolConfiguration configurationWithPointSize:symbolSize];
+				[UIImageSymbolConfiguration configurationWithPointSize:symbolSize
+					weight:lua_objc_uikit_symbol_weight(weightName) scale:UIImageSymbolScaleMedium];
+		if (foregroundStyle[0]) configuration.baseForegroundColor =
+			strcmp(foregroundStyle, "accent") == 0
+				? obj.tintColor : lua_objc_uikit_system_color(foregroundStyle);
 		if (strcmp(role, "destructive") == 0) {
 			if (strcmp(style, "borderedProminent") == 0) {
 				configuration.baseBackgroundColor = UIColor.systemRedColor;
@@ -705,7 +727,8 @@ static int bridge_UIKitControls_menu(lua_State *L) {
 		configuration.image = [UIImage systemImageNamed:
 			[NSString stringWithUTF8String:systemImage]];
 		configuration.preferredSymbolConfigurationForImage =
-			[UIImageSymbolConfiguration configurationWithPointSize:symbolSize];
+			[UIImageSymbolConfiguration configurationWithPointSize:symbolSize
+				weight:UIImageSymbolWeightRegular scale:UIImageSymbolScaleMedium];
 	}
 	button.configuration = configuration;
 	button.menu = [UIMenu menuWithTitle:@"" children:elements];

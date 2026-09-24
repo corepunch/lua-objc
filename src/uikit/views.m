@@ -162,13 +162,7 @@ static int bridge_image_data(lua_State *L) {
 	return 1;
 }
 
-static int bridge_system_image(lua_State *L) {
-	const char *symbol = luaL_checkstring(L, 1);
-	const char *description = luaL_optstring(L, 2, symbol);
-	CGFloat pointSize = luaL_optnumber(L, 3, 17);
-	const char *weightName = luaL_optstring(L, 4, "regular");
-	const char *colorName = luaL_optstring(L, 5, "accent");
-
+static UIImageSymbolWeight lua_objc_uikit_symbol_weight(const char *weightName) {
 	UIImageSymbolWeight weight = UIImageSymbolWeightRegular;
 	if (strcmp(weightName, "bold") == 0) weight = UIImageSymbolWeightBold;
 	else if (strcmp(weightName, "semibold") == 0)
@@ -177,10 +171,19 @@ static int bridge_system_image(lua_State *L) {
 		weight = UIImageSymbolWeightLight;
 	else if (strcmp(weightName, "heavy") == 0)
 		weight = UIImageSymbolWeightHeavy;
+	return weight;
+}
+
+static int bridge_system_image(lua_State *L) {
+	const char *symbol = luaL_checkstring(L, 1);
+	const char *description = luaL_optstring(L, 2, symbol);
+	CGFloat pointSize = luaL_optnumber(L, 3, 17);
+	const char *weightName = luaL_optstring(L, 4, "regular");
+	const char *colorName = luaL_optstring(L, 5, "accent");
 
 	UIImageSymbolConfiguration *configuration =
 		[UIImageSymbolConfiguration configurationWithPointSize:pointSize
-														weight:weight];
+			weight:lua_objc_uikit_symbol_weight(weightName) scale:UIImageSymbolScaleMedium];
 	UIImage *image = [UIImage systemImageNamed:
 		[NSString stringWithUTF8String:symbol]
 		withConfiguration:configuration];

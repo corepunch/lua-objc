@@ -18,7 +18,7 @@
           <% if speechAvailable then %>
           <Button ref="dictate" title="" systemImage="mic" symbolSize="22" accessibilityLabel="Dictate command" action="dictate" style="plain" width="38" height="44" />
           <% end %>
-          <Button ref="send" title="" systemImage="arrow.up" symbolSize="20" accessibilityLabel="Send command" action="submit" style="borderedProminent" width="40" height="40" hidden="<%= speechAvailable and 'true' or 'false' %>" disabled="true" />
+          <Button ref="send" title="" systemImage="arrow.up.circle.fill" symbolSize="31" weight="semibold" foregroundStyle="accent" accessibilityLabel="Send command" action="submit" style="plain" width="38" height="44" hidden="<%= speechAvailable and 'true' or 'false' %>" disabled="true" />
         </HStack>
       </GlassEffect>
     </HStack>
