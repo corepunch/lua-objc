@@ -1,6 +1,7 @@
 -- UIKitNative is registered by the host before this layer runs.
 local bridge = require("UIKitNative")
 local UIKit = bridge
+UIKit.platform = "UIKit"
 local Scope = require("ui.scope")(bridge)
 UIKit.Scope = Scope
 UIKit.SidebarMetrics = {
@@ -169,11 +170,22 @@ function UIKit.Preview(props)
 end
 
 function UIKit.HostingController(view, onDisappear, props)
-	local controller = bridge._hostingController(view, onDisappear)
+	props = props or {}
+	local controller = bridge._hostingController(view, onDisappear,
+		props.hidesNavigationBar == true)
 	if props and props.hidesTabBar ~= nil then
 		controller.hidesBottomBarWhenPushed = props.hidesTabBar == true
 	end
 	return controller
+end
+
+--- Describes content for a platform sheet presentation.
+--- @platform AppKit creates a native sheet panel. UIKit hosts its single child view controller.
+function UIKit.Sheet(props)
+	props = props or {}
+	assert(type(props[1]) == "userdata" and props[2] == nil,
+		"Sheet requires exactly one content child")
+	return props[1]
 end
 
 local navScreenScopes = setmetatable({}, { __mode = "k" })
@@ -578,6 +590,23 @@ function UIKit.ScrollView(props)
 		props.contentHeight or 0, props.horizontal == true, props.vertical ~= false), props)
 end
 
+--- Pins the second child to a safe-area edge while the first child uses the remaining space.
+---
+--- The bottom edge includes the hosting controller's safe-area inset. Use a flexible
+--- scroll view as the first child and the persistent control as the second child.
+--- @prop edge string optional. Currently `bottom`.
+--- @platform UIKit.
+function UIKit.SafeAreaInset(props)
+	props = props or {}
+	assert(props.edge == nil or props.edge == "bottom", "SafeAreaInset currently supports edge=bottom")
+	assert(type(props[1]) == "userdata" and type(props[2]) == "userdata" and props[3] == nil,
+		"SafeAreaInset requires content and inset children")
+	local children = { spacing = 0, fillWidth = true, fillHeight = true, props[1], props[2] }
+	local view = UIKit.VStack(children)
+	view.safeAreaInsetBottom = true
+	return applyLayout(view, props)
+end
+
 --- Edits a single line of text.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
@@ -604,7 +633,7 @@ function UIKit.TextField(props)
 	field.borderStyle = (props.style == "plain" or props.bezeled == false) and 0 or 3
 	field.secureTextEntry = props.secure == true
 	field.enabled = props.disabled ~= true and props.editable ~= false
-	if props.size then field.font = bridge._font(props.size, props.weight) end
+	if props.size then field.font = bridge._font(props.size, props.weight, false, props.design) end
 	if props.accessibilityLabel then field.accessibilityLabel = props.accessibilityLabel end
 	bridge._textFieldCallbacks(field, props.onChange, props.onCommand)
 	field:sizeToFit()
@@ -632,7 +661,7 @@ function UIKit.TextEditor(props)
 	local v = bridge._textEditor(props.text or props.value or "",
 		props.editable, props.selectable, props.drawsBackground)
 	if props.size and props.size > 0 then
-		v.font = bridge._font(props.size, props.weight, props.italic)
+		v.font = bridge._font(props.size, props.weight, props.italic, props.design)
 	end
 	if props.wrapMode == false then
 		v.textContainer.lineBreakMode = 1
@@ -701,7 +730,7 @@ function UIKit.Label(arg)
 				color = props.color,
 			}),
 			UIKit.Label({ text, size = props.size, weight = props.weight,
-				italic = props.italic, color = props.color,
+				italic = props.italic, design = props.design, color = props.color,
 				lineLimit = props.lineLimit, truncation = props.truncation, wrapping = props.wrapping }),
 		}
 		return applyLayout(UIKit.HStack(row), props)
@@ -709,7 +738,7 @@ function UIKit.Label(arg)
 	local v = bridge._label(text)
 	if type(props) == "table" then
 		if props.size and props.size > 0 then
-			v.font = bridge._font(props.size, props.weight, props.italic)
+			v.font = bridge._font(props.size, props.weight, props.italic, props.design)
 		end
 		local lines = props.lineLimit or props.lines
 		if lines then
@@ -937,7 +966,8 @@ function UIKit.Button(props)
 	local title = type(props) == "table" and (props.title or props[1] or "") or ""
 	local action = type(props) == "table" and props.action or nil
 	local button
-	local font = type(props) == "table" and props.size and bridge._font(props.size, props.weight) or nil
+	local font = type(props) == "table" and props.size
+		and bridge._font(props.size, props.weight, false, props.design) or nil
 	local style = type(props) == "table" and props.style or nil
 	if action then
 		button = bridge._button(title, action, style or "default",
@@ -1169,8 +1199,12 @@ end
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function UIKit.Slider(props)
 	props = props or {}
+	local onChange
+	if type(props.onChange) == "function" then
+		onChange = function(slider) props.onChange(slider.value) end
+	end
 	local slider = bridge._slider(props.min or 0, props.max or 1,
-		props.value or props.min or 0, props.onChange)
+		props.value or props.min or 0, onChange)
 	if props.disabled ~= nil then slider.enabled = not props.disabled end
 	return applyLayout(slider, props)
 end
@@ -1206,7 +1240,8 @@ end
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function UIKit.Picker(props)
 	props = props or {}
-	local picker = bridge._picker(props.options or {}, props.value or 0, props.action,
+	local picker = bridge._picker(props.options or {}, props.value or 0,
+		props.onChange or props.action,
 		props.style or "automatic")
 	if props.disabled ~= nil then picker.userInteractionEnabled = not props.disabled end
 	return applyLayout(picker, props)
@@ -1264,10 +1299,14 @@ UIKit.Divider = UIKit.Separator
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function UIKit.ProgressView(props)
 	props = props or {}
+	local view
 	if props.value ~= nil then
-		return applyLayout(bridge._progressView(props.value), props)
+		view = bridge._progressView(props.value)
+	else
+		view = bridge._progressIndicator()
 	end
-	return applyLayout(bridge._progressIndicator(), props)
+	if props.tint then view.progressTintColor = bridge._systemColor(props.tint) end
+	return applyLayout(view, props)
 end
 
 function UIKit.Group(children)

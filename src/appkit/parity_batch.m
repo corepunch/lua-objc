@@ -42,3 +42,25 @@ static int bridge_parity_measure(lua_State *L) {
 		return parity_push_json(L, result);
 	}
 }
+
+static int bridge_parity_capture_png(lua_State *L) {
+	@autoreleasepool {
+		NSView *root = check_view(L, 1);
+		NSString *path = [NSString stringWithUTF8String:luaL_checkstring(L, 2)];
+		CGFloat width = luaL_checknumber(L, 3);
+		CGFloat height = luaL_checknumber(L, 4);
+		if (width <= 0 || height <= 0) return luaL_error(L, "parity PNG dimensions must be positive");
+		root.appearance = [NSAppearance appearanceNamed:NSAppearanceNameAqua];
+		root.userInterfaceLayoutDirection = NSUserInterfaceLayoutDirectionLeftToRight;
+		root.frame = NSMakeRect(0, 0, width, height);
+		root.bounds = NSMakeRect(0, 0, width, height);
+		layout_recursive(root, width);
+		NSData *png = offscreen_render(root, width, height);
+		NSError *error = nil;
+		if (!png || ![png writeToFile:path options:NSDataWritingAtomic error:&error]) {
+			return luaL_error(L, "parity PNG write failed: %s",
+				(error.localizedDescription ?: @"could not encode PNG").UTF8String);
+		}
+		return 0;
+	}
+}

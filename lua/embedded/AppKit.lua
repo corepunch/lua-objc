@@ -6,6 +6,7 @@ local bridge = require("AppKitNative")
 -- declarative components whose behavior cannot be expressed as a native class
 -- declaration.
 local AppKit = bridge
+AppKit.platform = "AppKit"
 local Scope = require("ui.scope")(bridge)
 AppKit.Scope = Scope
 
@@ -723,6 +724,20 @@ function AppKit.ScrollView(props)
 	return applyLayout(view, props)
 end
 
+--- Pins the second child to a safe-area edge while the first child uses the remaining space.
+---
+--- The bottom edge is laid out above the containing window's content boundary.
+--- @prop edge string optional. Currently `bottom`.
+--- @platform AppKit.
+function AppKit.SafeAreaInset(props)
+	props = props or {}
+	assert(props.edge == nil or props.edge == "bottom", "SafeAreaInset currently supports edge=bottom")
+	assert(type(props[1]) == "userdata" and type(props[2]) == "userdata" and props[3] == nil,
+		"SafeAreaInset requires content and inset children")
+	local children = { spacing = 0, fillWidth = true, fillHeight = true, props[1], props[2] }
+	return applyLayout(AppKit.VStack(children), props)
+end
+
 --- Places panes side by side in a native split view.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
@@ -889,7 +904,9 @@ function AppKit.Text(arg)
 	v.lineBreakMode = 0
 
 	if size and size > 0 then
-		v.font = bridge._font(size, weight, type(arg) == "table" and arg.italic)
+		v.font = bridge._font(size, weight,
+			type(arg) == "table" and arg.italic,
+			type(arg) == "table" and arg.design)
 	end
 	if type(arg) == "table" and arg.color then
 		v.textColor = bridge._systemColor(arg.color)
@@ -966,7 +983,7 @@ function AppKit.TextField(props)
 	field.bordered = not plain and props.bordered ~= false
 	field.drawsBackground = not plain and props.drawsBackground ~= false
 	if props.focusRing == false then field.focusRingType = 1 end
-	if props.size then field.font = bridge._font(props.size, props.weight) end
+	if props.size then field.font = bridge._font(props.size, props.weight, false, props.design) end
 	if props.accessibilityLabel then
 		field.accessibilityLabel = props.accessibilityLabel
 	end
@@ -1037,7 +1054,7 @@ function AppKit.TextEditor(props)
 	if props.text then view.text = props.text end
 	if props.wrapMode ~= nil then view.wrapMode = props.wrapMode end
 	if props.size then
-		textView.font = bridge._font(props.size, props.weight)
+		textView.font = bridge._font(props.size, props.weight, false, props.design)
 	end
 	if props.editable ~= nil then
 		textView.editable = props.editable ~= false
@@ -1529,11 +1546,16 @@ end
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Slider(props)
 	props = props or {}
+	local onChange = props.onChange or props.action
+	local callback
+	if type(onChange) == "function" then
+		callback = function(slider) onChange(slider.doubleValue) end
+	end
 	local slider = bridge._slider(
 		props.min or 0,
 		props.max or 1,
 		props.value or props.min or 0,
-		props.action)
+		callback)
 	if props.tickMarks then slider.numberOfTickMarks = props.tickMarks end
 	if props.allowsTickMarkValuesOnly then
 		slider.allowsTickMarkValuesOnly = true
@@ -1581,10 +1603,15 @@ end
 function AppKit.Picker(props)
 	assert(type(props) == "table", "Picker requires a property table")
 	assert(type(props.options) == "table", "Picker requires an options array")
+	local onChange = props.onChange or props.action
+	local callback
+	if type(onChange) == "function" then
+		callback = function(picker) onChange(picker.indexOfSelectedItem) end
+	end
 	local picker = bridge._picker(
 		props.options,
 		props.value or 0,
-		props.action)
+		callback)
 	if props.disabled ~= nil then picker.enabled = not props.disabled end
 	return applyLayout(picker, props)
 end

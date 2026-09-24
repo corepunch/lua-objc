@@ -8,6 +8,10 @@ function Controller.new(options)
 		push = assert(options.push, "navigation push callback is required"),
 		back = assert(options.back, "navigation back callback is required"),
 		ns = assert(options.ns, "native platform module is required"),
+		readingSettings = assert(options.readingSettings, "reading settings model is required"),
+		renderTemplate = assert(options.renderTemplate, "template renderer is required"),
+		presentSheet = assert(options.presentSheet, "sheet presenter is required"),
+		dismissSheet = assert(options.dismissSheet, "sheet dismisser is required"),
 		speech = nil,
 		dictationActive = false,
 		dictationPrefix = "",
@@ -43,13 +47,22 @@ function Controller:show(id)
 		inventory = function() self:submitCommand("inventory") end,
 		dictate = function() self:toggleDictation() end,
 		close = function() self:close() end,
+		readingSettings = function() self:showReadingSettings() end,
+		northwest = function() self:submitCommand("go northwest") end,
+		north = function() self:submitCommand("go north") end,
+		northeast = function() self:submitCommand("go northeast") end,
+		west = function() self:submitCommand("go west") end,
+		east = function() self:submitCommand("go east") end,
+		southwest = function() self:submitCommand("go southwest") end,
+		south = function() self:submitCommand("go south") end,
+		southeast = function() self:submitCommand("go southeast") end,
 	}
-	self.view, self.refs = self.push("Session", {
-		transcript = self.model:transcript(),
-		speechAvailable = speechAvailable,
-		actions = actions,
-	}, game.title)
+	local presentation = self.model:presentation()
+	presentation.speechAvailable = speechAvailable
+	presentation.actions = actions
+	self.view, self.refs = self.push("Session", presentation, game.title)
 	self.refs.input.accessibilityLabel = "Command"
+	self:applyReadingSettings()
 	self:updateComposer(self.refs.input.text)
 	return true
 end
@@ -125,11 +138,87 @@ function Controller:submitCommand(command)
 	if type(command) ~= "string" or not command:find("%S") then return false end
 	self:cancelDictation()
 	local ok, err = self.model:submit(command)
-	self.refs.output.text = self.model:transcript()
+	local presentation = self.model:presentation()
+	self.refs.roomTitle.text = presentation.roomTitle
+	self.refs.output.text = presentation.transcript
+	self.refs.progress.text = presentation.progress
 	self.refs.input.text = ""
 	self.refs.dictationStatus.text = ""
 	self:updateComposer("")
 	return ok, err
+end
+
+function Controller:showReadingSettings()
+	local data = self.readingSettings:presentation()
+	data.actions = {
+		fontChanged = function(index)
+			if self.readingSettings:setFontIndex(index) then self:updateReadingSettings() end
+		end,
+		sizeChanged = function(value)
+			if self.readingSettings:setFontSize(value) then self:updateReadingSettings() end
+		end,
+		decreaseSize = function()
+			self.readingSettings:adjustFontSize(-1)
+			self:updateReadingSettings()
+		end,
+		increaseSize = function()
+			self.readingSettings:adjustFontSize(1)
+			self:updateReadingSettings()
+		end,
+		themeChanged = function(index)
+			if self.readingSettings:setThemeIndex(index) then self:updateReadingSettings() end
+		end,
+		done = function() self:closeReadingSettings() end,
+	}
+	local sheet, refs = self.renderTemplate("ReadingSettings", data)
+	self.readingSettingsRefs = refs
+	self.readingSettingsSheet = self.presentSheet(sheet, { "medium", "large" })
+	self:updateReadingSettings()
+	return true
+end
+
+function Controller:updateReadingSettings()
+	self:applyReadingSettings()
+	local refs = self.readingSettingsRefs
+	if not refs then return end
+	local settings = self.readingSettings:presentation()
+	if self.ns.platform == "UIKit" then
+		refs.sizeSlider.value = settings.fontSize
+	else
+		refs.sizeSlider.doubleValue = settings.fontSize
+	end
+	refs.sizeValue.text = tostring(settings.fontSize)
+	refs.preview.backgroundColor = self.ns._systemColor(settings.backgroundColor)
+	refs.previewTitle.font = self.ns._font(settings.fontSize + 3, "bold", false, settings.font)
+	refs.previewTitle.textColor = self.ns._systemColor(settings.primaryTextColor)
+	refs.previewBody.font = self.ns._font(settings.fontSize, nil, false, settings.font)
+	refs.previewBody.textColor = self.ns._systemColor(settings.primaryTextColor)
+end
+
+function Controller:applyReadingSettings()
+	if not self.refs then return end
+	local settings = self.readingSettings:presentation()
+	local background = self.ns._systemColor(settings.backgroundColor)
+	local primary = self.ns._systemColor(settings.primaryTextColor)
+	local secondary = self.ns._systemColor(settings.secondaryTextColor)
+	self.view.backgroundColor = background
+	self.refs.transcriptScroll.backgroundColor = background
+	self.refs.output.font = self.ns._font(settings.fontSize, nil, false, settings.font)
+	self.refs.output.textColor = primary
+	self.refs.roomTitle.font = self.ns._font(settings.fontSize + 3, "bold", false, settings.font)
+	self.refs.roomTitle.textColor = primary
+	self.refs.progress.textColor = secondary
+	self.refs.dictationStatus.textColor = secondary
+	self.refs.input.font = self.ns._font(math.max(15, math.min(settings.fontSize, 20)), nil, false, settings.font)
+	self.refs.input.textColor = primary
+	if self.ns.platform == "UIKit" then
+		self.view.overrideUserInterfaceStyle = settings.appearance
+	end
+end
+
+function Controller:closeReadingSettings()
+	self.dismissSheet(self.readingSettingsSheet)
+	self.readingSettingsSheet, self.readingSettingsRefs = nil, nil
 end
 
 return Controller

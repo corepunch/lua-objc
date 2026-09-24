@@ -29,12 +29,19 @@ static int bridge_font(lua_State *L) {
 	CGFloat size = luaL_checknumber(L, 1);
 	const char *weightStr = luaL_optstring(L, 2, NULL);
 	BOOL italic = lua_toboolean(L, 3);
+	const char *designName = luaL_optstring(L, 4, "default");
 
 	NSFontWeight w = weightStr
 		? lookupFontWeight([NSString stringWithUTF8String:weightStr])
 		: NSFontWeightRegular;
 
 	NSFont *font = [NSFont systemFontOfSize:size weight:w];
+	NSFontDescriptorSystemDesign design = NSFontDescriptorSystemDesignDefault;
+	if (strcmp(designName, "serif") == 0) design = NSFontDescriptorSystemDesignSerif;
+	else if (strcmp(designName, "rounded") == 0) design = NSFontDescriptorSystemDesignRounded;
+	else if (strcmp(designName, "monospaced") == 0) design = NSFontDescriptorSystemDesignMonospaced;
+	NSFontDescriptor *designed = [font.fontDescriptor fontDescriptorWithDesign:design];
+	if (designed) font = [NSFont fontWithDescriptor:designed size:size];
 	if (italic) {
 		font = [[NSFontManager sharedFontManager]
 			convertFont:font toHaveTrait:NSItalicFontMask];

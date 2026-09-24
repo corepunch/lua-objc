@@ -120,6 +120,15 @@ static int bridge_image(lua_State *L) {
 
 static UIColor *lua_objc_uikit_system_color(const char *name) {
 	if (!name) return UIColor.labelColor;
+	if (name[0] == '#' && strlen(name + 1) == 6) {
+		char *end = NULL;
+		unsigned long rgb = strtoul(name + 1, &end, 16);
+		if (end && *end == '\0') {
+			return [UIColor colorWithRed:((rgb >> 16) & 0xff) / 255.0
+				green:((rgb >> 8) & 0xff) / 255.0
+				blue:(rgb & 0xff) / 255.0 alpha:1.0];
+		}
+	}
 	if (strcmp(name, "clear") == 0) return UIColor.clearColor;
 	if (strcmp(name, "systemRed") == 0) return UIColor.systemRedColor;
 	if (strcmp(name, "systemGreen") == 0) return UIColor.systemGreenColor;

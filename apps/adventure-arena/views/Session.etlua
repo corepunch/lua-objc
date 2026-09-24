@@ -1,26 +1,46 @@
-<VStack spacing="8">
-  <ScrollView>
-    <VStack padding="20" spacing="14" alignment="leading">
-      <Label id="output" text="<%= transcript %>" size="16" lines="0" />
+<VStack id="session" maxWidth="infinity" maxHeight="infinity" spacing="0">
+  <HStack id="sessionHeader" paddingHorizontal="12" paddingVertical="8" spacing="12" alignment="center">
+    <Button id="back" title="" systemImage="chevron.left" accessibilityLabel="Back" action="close" style="plain" width="52" height="52" background="secondaryBackground" cornerRadius="26" clipsToBounds="true" />
+    <VStack maxWidth="infinity" spacing="2" alignment="center">
+      <Label id="sessionTitle" text="<%= roomTitle %>" size="20" weight="bold" lines="1" alignment="center" />
+      <Label id="progress" text="<%= progress %>" size="12" color="secondary" lines="1" alignment="center" />
     </VStack>
-  </ScrollView>
-  <Label id="dictationStatus" text="" size="13" color="secondary" paddingHorizontal="20" lines="2" />
-  <GlassEffectContainer spacing="14">
-    <HStack paddingHorizontal="12" paddingBottom="8" spacing="8" alignment="bottom">
-      <Menu id="quickActions" title="" systemImage="plus" symbolSize="31" style="glass" accessibilityLabel="More commands" width="52" height="52">
-        <MenuItem title="Look" systemImage="eye" action="look" />
-        <MenuItem title="Inventory" systemImage="shippingbox" action="inventory" />
-        <MenuItem title="End session" systemImage="xmark.circle" action="close" />
-      </Menu>
-      <GlassEffect style="regular" cornerRadius="26" maxWidth="infinity">
-        <HStack paddingLeading="16" paddingTrailing="5" spacing="8" minHeight="52">
-          <TextField id="input" placeholder="What do you want to do?" style="plain" maxWidth="infinity" onChange="inputChanged" onCommand="inputCommand" />
-          <% if speechAvailable then %>
-          <Button id="dictate" title="" systemImage="mic" symbolSize="22" accessibilityLabel="Dictate command" action="dictate" style="plain" width="38" height="44" />
-          <% end %>
-          <Button id="send" title="" systemImage="arrow.up.circle.fill" symbolSize="31" weight="semibold" foregroundStyle="accent" accessibilityLabel="Send command" action="submit" style="plain" width="38" height="44" hidden="<%= speechAvailable and 'true' or 'false' %>" disabled="true" />
-        </HStack>
-      </GlassEffect>
-    </HStack>
-  </GlassEffectContainer>
+    <Button id="readingSettings" title="AA" accessibilityLabel="Reading settings" action="readingSettings" style="plain" size="23" weight="bold" width="52" height="52" background="secondaryBackground" cornerRadius="26" clipsToBounds="true" />
+  </HStack>
+
+  <SafeAreaInset id="sessionContent" edge="bottom" flexGrow="1">
+    <ScrollView id="transcriptScroll" flexGrow="1">
+      <VStack paddingHorizontal="20" paddingTop="16" paddingBottom="12" spacing="12" alignment="leading">
+        <Label id="roomTitle" text="<%= roomTitle %>" size="20" weight="bold" paddingLeading="32" lines="2" />
+        <Label id="output" text="<%= transcript %>" size="17" lines="0" />
+      </VStack>
+    </ScrollView>
+
+    <ZStack alignment="bottomTrailing">
+      <VStack spacing="0" maxWidth="infinity">
+        <Label id="dictationStatus" text="" size="13" color="secondary" paddingHorizontal="20" lines="2" />
+        <GlassEffectContainer spacing="14">
+          <HStack paddingHorizontal="12" paddingBottom="8" spacing="8" alignment="bottom">
+            <Menu id="quickActions" title="" systemImage="plus" symbolSize="31" style="glass" accessibilityLabel="More commands" width="52" height="52">
+              <MenuItem title="Look" systemImage="eye" action="look" />
+              <MenuItem title="Inventory" systemImage="shippingbox" action="inventory" />
+              <MenuItem title="End session" systemImage="xmark.circle" action="close" />
+            </Menu>
+            <GlassEffect style="regular" cornerRadius="26" maxWidth="infinity">
+              <HStack paddingLeading="16" paddingTrailing="5" spacing="8" minHeight="52">
+                <TextField id="input" placeholder="What do you want to do?" style="plain" maxWidth="infinity" onChange="inputChanged" onCommand="inputCommand" />
+                <% if speechAvailable then %>
+                <Button id="dictate" title="" systemImage="mic" symbolSize="22" accessibilityLabel="Dictate command" action="dictate" style="plain" width="38" height="44" />
+                <% end %>
+                <Button id="send" title="" systemImage="arrow.up.circle.fill" symbolSize="31" weight="semibold" foregroundStyle="accent" accessibilityLabel="Send command" action="submit" style="plain" width="38" height="44" hidden="<%= speechAvailable and 'true' or 'false' %>" disabled="true" />
+              </HStack>
+            </GlassEffect>
+          </HStack>
+        </GlassEffectContainer>
+      </VStack>
+      <VStack paddingBottom="132" paddingTrailing="12">
+        <%- partial("Compass.etlua", { actions = actions }) %>
+      </VStack>
+    </ZStack>
+  </SafeAreaInset>
 </VStack>

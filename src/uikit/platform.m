@@ -12,6 +12,7 @@ static int bridge_font(lua_State *L) {
 	CGFloat size = luaL_checknumber(L, 1);
 	const char *weightStr = luaL_optstring(L, 2, NULL);
 	BOOL italic = lua_toboolean(L, 3);
+	const char *designName = luaL_optstring(L, 4, "default");
 
 	UIFontWeight w = UIFontWeightRegular;
 	if (weightStr) {
@@ -22,6 +23,12 @@ static int bridge_font(lua_State *L) {
 	}
 
 	UIFont *font = [UIFont systemFontOfSize:size weight:w];
+	UIFontDescriptorSystemDesign design = UIFontDescriptorSystemDesignDefault;
+	if (strcmp(designName, "serif") == 0) design = UIFontDescriptorSystemDesignSerif;
+	else if (strcmp(designName, "rounded") == 0) design = UIFontDescriptorSystemDesignRounded;
+	else if (strcmp(designName, "monospaced") == 0) design = UIFontDescriptorSystemDesignMonospaced;
+	UIFontDescriptor *designed = [font.fontDescriptor fontDescriptorWithDesign:design];
+	if (designed) font = [UIFont fontWithDescriptor:designed size:size];
 	if (italic) {
 		UIFontDescriptor *descriptor = [font.fontDescriptor
 			fontDescriptorWithSymbolicTraits:UIFontDescriptorTraitItalic];

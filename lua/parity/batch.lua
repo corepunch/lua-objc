@@ -46,7 +46,7 @@ local function build(node, probes, ids)
 	return view
 end
 
-function batch.measure(case, runId)
+function batch.measure(case, runId, screenshotPath)
 	assert(type(runId) == "string" and runId ~= "", "runId must be a nonempty string")
 	assert(type(case.id) == "string" and case.id:match("^[%w_.-]+$")
 		and case.id ~= "." and case.id ~= "..", "unsafe case id")
@@ -58,9 +58,13 @@ function batch.measure(case, runId)
 	-- measures and centers the tree; assigning bounds to the tree would mask
 	-- intrinsic root text sizes and fixed-size root overflow.
 	local viewport = ns.ZStack { root }
-	return ns._parityMeasure(viewport, probes, {
+	local result = ns._parityMeasure(viewport, probes, {
 		schema = 1, runId = runId, id = case.id, width = case.width, height = case.height,
 	})
+	if screenshotPath then
+		ns._parityCapturePNG(viewport, screenshotPath, case.width, case.height)
+	end
+	return result
 end
 
 function batch.run(input, output)
@@ -69,13 +73,15 @@ function batch.run(input, output)
 	assert(type(input.cases) == "table", "missing cases")
 	assert(type(output) == "string" and output ~= "", "missing output directory")
 	local ids = {}
+	local captureScreenshots = os.getenv("PARITY_BATCH_SCREENSHOTS") == "1"
 	for _, case in ipairs(input.cases) do
 		assert(not ids[case.id], "duplicate case id")
 		ids[case.id] = true
 	end
 	local ok, err = pcall(function()
 		for _, case in ipairs(input.cases) do
-			local json = batch.measure(case, input.runId)
+			local screenshotPath = captureScreenshots and (output .. "/" .. case.id .. ".png") or nil
+			local json = batch.measure(case, input.runId, screenshotPath)
 			ns._parityWrite(output .. "/" .. case.id .. ".json", json)
 			collectgarbage("collect")
 		end

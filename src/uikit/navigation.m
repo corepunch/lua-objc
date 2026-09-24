@@ -46,8 +46,6 @@ static int bridge_tabview(lua_State *L) {
 	return 1;
 }
 
-static char kNavigationBarHiddenKey;
-
 @interface LuaNavigationController : UINavigationController <UINavigationControllerDelegate>
 @property(nonatomic, readonly) NSInteger depth;
 @property(nonatomic, readonly) UIViewController *currentController;

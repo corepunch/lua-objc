@@ -35,6 +35,7 @@ static void layout_recursive(UIView *view, CGFloat width);
 @property(nonatomic) CGFloat cornerRadius;
 @property(nonatomic, copy) NSString *ignoresSafeArea;
 @property(nonatomic, copy) NSString *contentModeName;
+@property(nonatomic) BOOL safeAreaInsetBottom;
 @end
 
 @implementation UIView (LuaLayoutProperties)
@@ -60,6 +61,8 @@ static void layout_recursive(UIView *view, CGFloat width);
 - (void)setPaddingTop:(CGFloat)value { objc_setAssociatedObject(self, &kPaddingTopKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
 - (CGFloat)paddingBottom { return [objc_getAssociatedObject(self, &kPaddingBottomKey) doubleValue]; }
 - (void)setPaddingBottom:(CGFloat)value { objc_setAssociatedObject(self, &kPaddingBottomKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
+- (BOOL)safeAreaInsetBottom { return [objc_getAssociatedObject(self, &kSafeAreaInsetBottomKey) boolValue]; }
+- (void)setSafeAreaInsetBottom:(BOOL)value { objc_setAssociatedObject(self, &kSafeAreaInsetBottomKey, @(value), OBJC_ASSOCIATION_RETAIN); }
 - (NSString *)alignment {
 	return objc_getAssociatedObject(self, &kAlignmentKey) ?: @"center";
 }

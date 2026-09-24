@@ -80,13 +80,13 @@ t.expect(rendered.refs.output.text:find('Response <&> "inventory"', 1, true), "s
 t.assertEqual(rendered.refs.input.text, "", "send clears input")
 chooseMenu("Look")
 t.expect(rendered.refs.output.text:find('Response <&> "look"', 1, true), "quick command reaches session")
-local transcript = rendered.refs.output.text
+	local transcript = rendered.refs.output.text
 click("send")
 t.assertEqual(rendered.refs.output.text, transcript, "empty submission leaves transcript unchanged")
 t.expect(not ns._textFieldTestCommand(rendered.refs.input, "cancel"), "unhandled keys retain native behavior")
 chooseMenu("End session")
 t.assertEqual(controller.navigation.depth, 2, "close returns to detail")
-t.assertEqual(controller.sessionModel:transcript(), transcript, "navigation preserves session state")
+	t.assertEqual(controller.sessionModel:presentation().transcript, transcript, "navigation preserves session state")
 controller.navigation:pop()
 controller.sessionModel.engineFactory = function() error('Missing <story> & "engine"', 0) end
 controller.sessionController:show(catalog:list()[1].id)

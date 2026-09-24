@@ -1,4 +1,5 @@
 local Adventures = require("apps.adventure-arena.models.Adventures")
+local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
 local Session = require("apps.adventure-arena.models.Session")
 local ZILRuntime = require("apps.adventure-arena.services.ZILRuntime")
 local LibraryController = require("apps.adventure-arena.controllers.LibraryController")
@@ -19,6 +20,7 @@ function Controller.new(options)
 		end,
 	}
 	local self = setmetatable({ ns = ns, adventures = adventures, sessionModel = sessionModel }, Controller)
+	self.readingSettings = ReadingSettings.new()
 	local function push(template, data, title)
 		return self:push(template, data, title)
 	end
@@ -35,6 +37,20 @@ function Controller.new(options)
 		push = push,
 		back = back,
 		ns = ns,
+		readingSettings = self.readingSettings,
+		renderTemplate = function(template, data)
+			return xml.renderFile("apps/adventure-arena/views/" .. template .. ".etlua", data, ns)
+		end,
+		presentSheet = function(sheet, detents)
+			if ns.platform == "UIKit" then
+				return ns.presentSheet(sheet, { detents = detents })
+			end
+			return ns.presentSheet(sheet, self.window)
+		end,
+		dismissSheet = function(sheet)
+			if ns.platform == "UIKit" then return ns.dismiss() end
+			if sheet then return ns.dismiss(sheet) end
+		end,
 	}
 	return self
 end
@@ -49,6 +65,7 @@ function Controller:push(template, data, title)
 	end
 	local hostingController = self.ns.HostingController(view, onDisappear, {
 		hidesTabBar = template == "Session",
+		hidesNavigationBar = template == "Session",
 	})
 	self.navigation:push(hostingController, title)
 	return view, refs

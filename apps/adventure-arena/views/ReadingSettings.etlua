@@ -1,0 +1,51 @@
+<Sheet width="540" height="700">
+  <NavigationStack hidesNavigationBar="true">
+    <ScrollView>
+      <VStack padding="20" spacing="22" alignment="leading">
+        <HStack spacing="8" alignment="center">
+          <Label text="Reading" size="20" weight="bold" />
+          <Spacer />
+          <Button id="done" title="Done" action="done" style="plain" size="17" weight="semibold" />
+        </HStack>
+
+        <VStack spacing="10" alignment="leading">
+          <Label text="Font" size="15" weight="semibold" color="secondary" />
+          <Picker id="fontPicker" value="<%= fontIndex %>" style="segmented" onChange="fontChanged" maxWidth="infinity">
+            <Option title="System" />
+            <Option title="Serif" />
+            <Option title="Rounded" />
+            <Option title="Mono" />
+          </Picker>
+        </VStack>
+
+        <VStack spacing="10" alignment="leading">
+          <Label text="Size" size="15" weight="semibold" color="secondary" />
+          <HStack spacing="14" alignment="center">
+            <Button title="" systemImage="minus" accessibilityLabel="Decrease font size" action="decreaseSize" style="plain" width="48" height="48" background="secondaryBackground" cornerRadius="14" clipsToBounds="true" />
+            <Slider id="sizeSlider" min="14" max="24" value="<%= fontSize %>" onChange="sizeChanged" flexGrow="1" />
+            <Button title="" systemImage="plus" accessibilityLabel="Increase font size" action="increaseSize" style="plain" width="48" height="48" background="secondaryBackground" cornerRadius="14" clipsToBounds="true" />
+            <Label id="sizeValue" text="<%= fontSize %>" size="18" weight="semibold" design="monospaced" alignment="trailing" width="30" />
+          </HStack>
+        </VStack>
+
+        <VStack spacing="10" alignment="leading">
+          <Label text="Theme" size="15" weight="semibold" color="secondary" />
+          <Picker id="themePicker" value="<%= themeIndex %>" style="segmented" onChange="themeChanged" maxWidth="infinity">
+            <Option title="System" />
+            <Option title="White" />
+            <Option title="Sepia" />
+            <Option title="Black" />
+          </Picker>
+        </VStack>
+
+        <VStack spacing="8" alignment="leading">
+          <Label text="Preview" size="15" weight="semibold" color="secondary" />
+          <VStack id="preview" padding="14" spacing="8" alignment="leading" background="<%= backgroundColor %>" cornerRadius="14">
+            <Label id="previewTitle" text="West of House" size="20" weight="bold" design="<%= font %>" color="<%= primaryTextColor %>" />
+            <Label id="previewBody" text="You are standing in an open field west of a white house, with a boarded front door." size="<%= fontSize %>" design="<%= font %>" color="<%= primaryTextColor %>" lines="0" />
+          </VStack>
+        </VStack>
+      </VStack>
+    </ScrollView>
+  </NavigationStack>
+</Sheet>

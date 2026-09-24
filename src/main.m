@@ -255,6 +255,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_webViewAction", bridge_webview_action},
 	{"_testRowSwipe", bridge_test_row_swipe},
 	{"_parityMeasure", bridge_parity_measure},
+	{"_parityCapturePNG", bridge_parity_capture_png},
 	{"_parityWrite", bridge_parity_write},
 	{"_parityJSON", bridge_parity_json},
 	{"_parityReadJSON", bridge_parity_read_json},

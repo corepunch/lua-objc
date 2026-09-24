@@ -18,6 +18,7 @@ NATIVE_PLUGINS = build/StorageScan.dylib
 IOS_FRAMEWORK_MODULE = $(if $(strip $(IOS_SIM_SDK)),build/UIKit.dylib)
 EMBEDDED_LUA_DIR = lua/embedded
 GENERATED_DIR = build/generated
+PARITY_IMAGE_DIFF = build/parity/image_diff
 
 all: $(TARGET) $(FRAMEWORK_MODULES) $(IOS_FRAMEWORK_MODULE) $(NATIVE_PLUGINS)
 
@@ -93,7 +94,7 @@ run-diskmap: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 
 TEST_FILES = $(wildcard tests/*.test.lua)
 
-test: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
+test: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS) $(PARITY_IMAGE_DIFF)
 	@passed=0; failed=0; \
 	for t in $(TEST_FILES); do \
 		echo "--- $$t ---"; \
@@ -220,6 +221,18 @@ docs-check:
 parity-check:
 	python3 scripts/parity/validate_manifest.py
 
+$(PARITY_IMAGE_DIFF): scripts/parity/image_diff.c
+	mkdir -p $(dir $@)
+	$(CC) -std=c11 -Wall -Wextra -O2 -fconstant-cfstrings \
+		-framework CoreFoundation -framework CoreGraphics -framework ImageIO \
+		-o $@ $<
+
+parity-image-diff: $(PARITY_IMAGE_DIFF)
+
+parity-visual:
+	PLATFORM="$(or $(PLATFORM),macos)" DEVICE="$(or $(DEVICE),booted)" SPEC="$(SPEC)" \
+		sh scripts/parity/run_visual.sh
+
 parity-case: parity-check $(TARGET) $(FRAMEWORK_MODULES)
 	CASE=$(CASE) scripts/parity/capture_macos_case.sh
 
@@ -233,7 +246,7 @@ parity-report: parity-check
 		$(if $(REFERENCE_PNG),--reference-png "$(REFERENCE_PNG)") \
 		--out "build/parity/macos/$(CASE)/report.json" --strict
 
-.PHONY: all uikit run clean test docs docs-check parity-check parity-case parity-report run-hello run-list run-live run-weather run-welcome run-mail run-layout run-diskmap screenshot ios-host ios-packager ios-packager-run ios-run ios-internal-screenshot ios-screenshot ios ios-reset
+.PHONY: all uikit run clean test docs docs-check parity-check parity-case parity-report parity-image-diff parity-visual run-hello run-list run-live run-weather run-welcome run-mail run-layout run-diskmap screenshot ios-host ios-packager ios-packager-run ios-run ios-internal-screenshot ios-screenshot ios ios-reset
 
 # Standalone iPad development app (no Mac packager required).
 .PHONY: ipad ipad-simulator ipad-run ipad-deploy list-devices

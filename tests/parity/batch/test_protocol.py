@@ -1,12 +1,17 @@
 """Negative controls for evidence acceptance, not implementation string checks."""
 import copy
 import importlib.util
+import json
 from pathlib import Path
+import struct
+import subprocess
 import tempfile
+import zlib
 import unittest
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[3]
+IMAGE_DIFF = ROOT / "build/parity/image_diff"
 loader = importlib.util.spec_from_file_location("batch", ROOT / "scripts/parity/batch.py")
 batch = importlib.util.module_from_spec(loader)
 loader.loader.exec_module(batch)
@@ -83,6 +88,41 @@ class ProtocolTests(unittest.TestCase):
             batch.save(root / "results/sample.json", dict(self.value, runId="old-run"))
             with self.assertRaises(ValueError):
                 batch.load_run(root, spec, "reference")
+
+    @unittest.skipUnless(IMAGE_DIFF.is_file(), "make parity-image-diff builds the native PNG comparator")
+    def test_pixel_comparator_reports_exact_pixels_and_writes_diff(self):
+        def write_rgba_png(path, pixel):
+            def chunk(kind, data):
+                body = kind + data
+                return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body) & 0xffffffff)
+
+            png = b"\x89PNG\r\n\x1a\n"
+            png += chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 6, 0, 0, 0))
+            png += chunk(b"IDAT", zlib.compress(b"\0" + bytes(pixel)))
+            png += chunk(b"IEND", b"")
+            path.write_bytes(png)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            reference = root / "reference.png"
+            same = root / "same.png"
+            changed = root / "changed.png"
+            diff = root / "diff.png"
+            write_rgba_png(reference, (20, 40, 60, 255))
+            write_rgba_png(same, (20, 40, 60, 255))
+            write_rgba_png(changed, (20, 40, 61, 255))
+
+            identical = subprocess.run([str(IMAGE_DIFF), str(reference), str(same), "--diff", str(diff)],
+                                       check=True, capture_output=True, text=True)
+            self.assertEqual(json.loads(identical.stdout)["status"], "identical")
+            self.assertTrue(diff.is_file())
+
+            different = subprocess.run([str(IMAGE_DIFF), str(reference), str(changed)],
+                                       check=True, capture_output=True, text=True)
+            metrics = json.loads(different.stdout)
+            self.assertEqual(metrics["status"], "different")
+            self.assertEqual(metrics["differentPixels"], 1)
+            self.assertEqual(metrics["differentChannels"], 1)
 
 
 if __name__ == "__main__":

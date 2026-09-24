@@ -608,6 +608,7 @@ local TAG_SCHEMA = {
         props = {
             value = "num",
             indeterminate = "bool",
+            tint = "str",
         },
     },
     Divider = {
@@ -626,15 +627,21 @@ local TAG_SCHEMA = {
             vertical      = "bool",
         },
     },
+    SafeAreaInset = {
+        constructor = "SafeAreaInset",
+        children = "array",
+        props = { edge = "str" },
+    },
 
     -- Text & Typography
     Label = {
         constructor = "Text",
         positional  = { "text", "value", default = "" },
 		props = {
-			size       = "num",
-			weight     = "str",
-			italic     = "bool",
+            size       = "num",
+            weight     = "str",
+			design     = "str",
+            italic     = "bool",
 			systemImage = "str",
 			iconSize   = "num",
 			iconWeight = "str",
@@ -664,6 +671,7 @@ local TAG_SCHEMA = {
             text            = { aliases = { "value" }, default = "", type = "str" },
             size            = "num",
             weight          = "str",
+			design          = "str",
             editable        = "bool",
             selectable      = "bool",
             wrapMode        = "bool",
@@ -696,6 +704,7 @@ local TAG_SCHEMA = {
             bezeled     = "bool",
             bordered    = "bool",
             size        = "num",
+			design      = "str",
 			disabled    = "bool",
         },
         transform = function(props, attrs)
@@ -814,6 +823,11 @@ local TAG_SCHEMA = {
             allowsTickMarkValuesOnly = "bool",
 			disabled                = "bool",
         },
+		transform = function(props, attrs)
+			if attrs.onChange and renderData and renderData.actions then
+				props.onChange = renderData.actions[attrs.onChange]
+			end
+		end,
     },
     Stepper = {
         constructor = "Stepper",
@@ -852,6 +866,11 @@ local TAG_SCHEMA = {
                 error("xml: <Picker> requires at least one <Option> child")
             end
         end,
+		transform = function(props, attrs)
+			if attrs.onChange and renderData and renderData.actions then
+				props.action = renderData.actions[attrs.onChange]
+			end
+		end,
     },
     DatePicker = {
         constructor = "DatePicker",

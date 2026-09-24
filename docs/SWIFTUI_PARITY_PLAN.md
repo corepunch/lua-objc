@@ -681,8 +681,8 @@ half a physical pixel (`0.5 / scale` points), capped by the optional
 physical-pixel rounding at the actual scale before any tighter calibration.
 Never widen a tolerance to cover incorrect size negotiation.
 
-Results say `geometry-pass` or `geometry-fail`, with `visual` and `interaction`
-still `unverified`. Equal rectangles do not establish equal glyphs, wrapping,
+Geometry-only results say `geometry-pass` or `geometry-fail`, with `visual` and
+`interaction` still `unverified`. Equal rectangles do not establish equal glyphs, wrapping,
 ellipsis, clipping, colors, controls, accessibility, or behavior. Add screenshots
 and actual input-driven tests for those contracts. Keep the suite's final
 SwiftUI parity status separate from geometry-only pass counts.
@@ -697,19 +697,20 @@ make
 scripts/parity/batch_reference_build.sh --macos
 python3 scripts/parity/batch.py generate --out build/parity/batch-cases.json
 
-python3 scripts/parity/batch.py capture --engine reference \
+python3 scripts/parity/batch.py capture --engine reference --screenshots \
   --spec build/parity/batch-cases.json --out build/parity/runs/reference-001
-python3 scripts/parity/batch.py capture --engine candidate \
+python3 scripts/parity/batch.py capture --engine candidate --screenshots \
   --spec build/parity/batch-cases.json --out build/parity/runs/candidate-001
-python3 scripts/parity/batch.py compare \
+make parity-image-diff
+python3 scripts/parity/batch.py compare --visual \
   --spec build/parity/batch-cases.json \
   --reference build/parity/runs/reference-001 \
   --candidate build/parity/runs/candidate-001 \
   --out build/parity/runs/comparison-001.json
 ```
 
-Exit status **0** means valid geometry agreement for the supplied cases;
-**1** means valid evidence with geometry mismatches; **2** means invalid or
+Exit status **0** means valid agreement for the checked contracts; **1** means
+valid evidence with geometry or pixel mismatches; **2** means invalid or
 incomplete input/evidence/host execution. Inspect `stderr.log`/`stdout.log`
 for a failed capture. Each capture output path must be new. A failed output
 directory is retained for diagnosis and must not be reused as an accepted run.
@@ -721,12 +722,25 @@ and recapture SwiftUI only when its interpreter, spec, SDK/OS/environment, or
 reference semantics change. Changing input parameters changes the spec hash;
 that correctly requires a new reference batch.
 
-`--screenshots` on reference capture requests per-case PNGs without relaunching.
-Use a small spec subset for visual investigation. Candidate geometry runs do
-not yet produce screenshots; use the native screenshot paths for corresponding
-integration fixtures until candidate screenshot support is added. Do not
-claim image comparison from a geometry report. The batch CLI does not need
-Pillow, Screen Recording permission, desktop pixel capture, or private APIs.
+`--screenshots` on either engine capture requests per-case PNGs. Use a small spec
+subset for visual investigation, or pass the generated 224-case matrix for a
+full run. Candidate screenshots are captured from the measured native viewport;
+on iOS, the capture uses the Simulator display scale and semantic system
+background. Captured files are hashed into `complete.json` and revalidated before
+comparison.
+
+Run the full suite with `make parity-visual` on macOS or
+`make parity-visual PLATFORM=ios DEVICE=booted` on a booted Simulator. The target
+builds the hosts, captures both engines with `--screenshots`, and passes `--visual`
+to `compare`. For manual or smaller runs, build the comparator with
+`make parity-image-diff`. The native C utility
+decodes both PNGs through CoreGraphics/ImageIO, checks every normalized RGBA
+pixel, and writes a red difference image beside the JSON report. Visual pass
+requires exact pixel equality; geometry still reports separately. A mismatch is
+evidence to inspect, not an automatic diagnosis, because text rasterization and
+native control appearance can differ while semantic layout is correct. This
+path needs no Pillow, Screen Recording permission, desktop pixel capture, or
+private APIs.
 
 ### 11.6 iOS commands — install once, execute batches
 
@@ -743,12 +757,13 @@ xcrun simctl install booted build/ios/LuaRuntime.app
 xcrun simctl install booted build/parity/batch/SwiftUIBatchReference-iOS.app
 
 python3 scripts/parity/batch.py capture --platform ios --device booted \
-  --engine reference --spec build/parity/batch-cases.json \
+  --engine reference --screenshots --spec build/parity/batch-cases.json \
   --out build/parity/runs/ios-reference-001
 python3 scripts/parity/batch.py capture --platform ios --device booted \
-  --engine candidate --spec build/parity/batch-cases.json \
+  --engine candidate --screenshots --spec build/parity/batch-cases.json \
   --out build/parity/runs/ios-candidate-001
-python3 scripts/parity/batch.py compare \
+make parity-image-diff
+python3 scripts/parity/batch.py compare --visual \
   --spec build/parity/batch-cases.json \
   --reference build/parity/runs/ios-reference-001 \
   --candidate build/parity/runs/ios-candidate-001 \

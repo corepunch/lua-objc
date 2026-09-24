@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import shutil
 import socket
+import struct
 import subprocess
 import sys
 import time
@@ -31,6 +32,17 @@ def save(path, value):
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(value, indent=2, ensure_ascii=False, allow_nan=False) + "\n")
     temporary.replace(path)
+
+
+def file_hash(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def png_dimensions(path):
+    data = Path(path).read_bytes()
+    if len(data) < 24 or data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR":
+        raise ValueError(f"invalid PNG: {path}")
+    return struct.unpack(">II", data[16:24])
 
 
 def read(path):
@@ -242,6 +254,8 @@ def capture_ios(args, root, results):
             launch_env = {"SIMCTL_CHILD_PARITY_BATCH_INPUT": str(device_root / "input.json"),
                           "SIMCTL_CHILD_PARITY_BATCH_OUTPUT": str(output),
                           "SIMCTL_CHILD_LUA_OBJC_PACKAGER": f"http://127.0.0.1:{port}"}
+            if args.screenshots:
+                launch_env["SIMCTL_CHILD_PARITY_BATCH_SCREENSHOTS"] = "1"
         command = ["launch", "--terminate-running-process", args.device, bundle_id]
         if args.engine == "reference":
             command += ["--input", str(device_root / "input.json"), "--output", str(output)]
@@ -277,8 +291,6 @@ def capture_ios(args, root, results):
 
 
 def capture(args):
-    if args.screenshots and args.engine != "reference":
-        raise ValueError("candidate batch PNG capture is not implemented; use the native integration screenshot path")
     spec = validate(read(args.spec))
     source_before = source_hash(args.engine)
     root = Path(args.out).resolve()
@@ -303,6 +315,8 @@ def capture(args):
         binary = ROOT / "lua-objc"
         command = [str(binary), "--test", "scripts/parity/batch_candidate.lua"]
         env.update(PARITY_BATCH_INPUT=str(root / "input.json"), PARITY_BATCH_OUTPUT=str(results))
+        if args.screenshots:
+            env["PARITY_BATCH_SCREENSHOTS"] = "1"
         binary = ROOT / "build/AppKit.dylib"
         build_hash = hashlib.sha256(binary.read_bytes()).hexdigest()
     if args.platform != "ios":
@@ -320,28 +334,53 @@ def capture(args):
         hashes[case["id"]] = digest(value)
     if len(environments) != 1:
         raise ValueError("environment changed within batch")
+    image_hashes = {}
+    if args.screenshots:
+        for case in spec["cases"]:
+            image_path = results / (case["id"] + ".png")
+            if not image_path.is_file() or image_path.stat().st_size == 0:
+                raise ValueError(f"missing or invalid screenshot for {case['id']}")
+            result = read(results / (case["id"] + ".json"))
+            actual_dimensions = png_dimensions(image_path)
+            expected_dimensions = (round(case["width"] * result["scale"]),
+                                   round(case["height"] * result["scale"]))
+            if actual_dimensions != expected_dimensions:
+                raise ValueError(f"{case['id']}: screenshot dimensions {actual_dimensions} do not match {expected_dimensions}")
+            image_hashes[case["id"]] = file_hash(image_path)
     if source_hash(args.engine) != source_before:
         raise ValueError("source changed during capture; rerun the batch")
     if hashlib.sha256(Path(binary).read_bytes()).hexdigest() != build_hash:
         raise ValueError("binary changed during capture; rerun the batch")
     manifest = {"schema": 1, "engine": args.engine, "runId": run_id, "specHash": digest(spec),
                 "buildHash": build_hash, "binary": str(binary), "sourceHash": source_before, "environment": list(environments.pop()),
-                "seconds": time.monotonic() - started, "count": len(spec["cases"]), "results": hashes}
+                "seconds": time.monotonic() - started, "count": len(spec["cases"]),
+                "screenshots": args.screenshots, "images": image_hashes, "results": hashes}
     save(root / "complete.json", manifest)
-    print(json.dumps({k: v for k, v in manifest.items() if k != "results"}, indent=2))
+    print(json.dumps({k: v for k, v in manifest.items() if k not in {"results", "images"}}, indent=2))
 
 
-def load_run(path, spec, engine):
+def load_run(path, spec, engine, require_images=False):
     root = Path(path)
     meta = read(root / "complete.json")
     if meta.get("schema") != 1 or meta.get("engine") != engine or meta.get("specHash") != digest(spec) or not meta.get("runId"):
         raise ValueError("wrong engine or changed specification; recapture")
     if meta.get("sourceHash") != source_hash(engine):
         raise ValueError(f"{engine} source changed after capture; rerun that engine")
+    expected_ids = {c["id"] for c in spec["cases"]}
+    if require_images and meta.get("screenshots") is not True:
+        raise ValueError(f"{engine} run has no screenshots; recapture it with --screenshots")
+    image_hashes = meta.get("images", {})
+    if meta.get("screenshots") is True:
+        if set(image_hashes) != expected_ids:
+            raise ValueError(f"{engine} screenshot set is incomplete")
+        for case in spec["cases"]:
+            image_path = root / "results" / (case["id"] + ".png")
+            if not image_path.is_file() or file_hash(image_path) != image_hashes[case["id"]]:
+                raise ValueError(f"{engine} screenshot changed or is missing: {case['id']}")
     if hashlib.sha256(Path(meta["binary"]).read_bytes()).hexdigest() != meta["buildHash"]:
         raise ValueError(f"{engine} binary changed after capture; rerun that engine")
     data = {}
-    if set(meta.get("results", {})) != {c["id"] for c in spec["cases"]}:
+    if set(meta.get("results", {})) != expected_ids:
         raise ValueError("incomplete batch")
     for case in spec["cases"]:
         value = read(root / "results" / (case["id"] + ".json"))
@@ -373,6 +412,9 @@ def main():
     for flag in ("spec", "reference", "candidate", "out"):
         cmp.add_argument("--" + flag, required=True)
     cmp.add_argument("--tolerance", type=float, default=0.5)
+    cmp.add_argument("--visual", action="store_true", help="compare captured PNGs pixel by pixel and write diff images")
+    cmp.add_argument("--image-diff", default=str(ROOT / "build/parity/image_diff"),
+                     help="path to the CoreGraphics/ImageIO pixel comparator")
     args = parser.parse_args()
     try:
         if args.command == "generate":
@@ -383,10 +425,30 @@ def main():
             capture(args)
         else:
             spec = validate(read(args.spec))
-            reference = load_run(args.reference, spec, "reference")
-            candidate = load_run(args.candidate, spec, "candidate")
+            reference = load_run(args.reference, spec, "reference", args.visual)
+            candidate = load_run(args.candidate, spec, "candidate", args.visual)
             reports = [compare(c, reference[c["id"]], candidate[c["id"]], args.tolerance) for c in spec["cases"]]
             failed = sum(r["status"] == "geometry-fail" for r in reports)
+            visual_failed = 0
+            if args.visual:
+                image_binary = Path(args.image_diff).resolve()
+                if not image_binary.is_file() or not os.access(image_binary, os.X_OK):
+                    raise ValueError(f"pixel comparator is missing; run make parity-image-diff ({image_binary})")
+                image_dir = Path(args.out).resolve().with_suffix("").with_name(Path(args.out).stem + "-images")
+                image_dir.mkdir(parents=True, exist_ok=True)
+                for item in reports:
+                    case_id = item["id"]
+                    reference_png = Path(args.reference) / "results" / (case_id + ".png")
+                    candidate_png = Path(args.candidate) / "results" / (case_id + ".png")
+                    diff_png = image_dir / (case_id + ".diff.png")
+                    result = subprocess.run([str(image_binary), str(reference_png), str(candidate_png),
+                                             "--diff", str(diff_png)], check=True,
+                                            capture_output=True, text=True)
+                    pixels = json.loads(result.stdout)
+                    pixels["diffImage"] = str(diff_png) if diff_png.is_file() else None
+                    item["visual"] = pixels
+                    if pixels["status"] != "identical":
+                        visual_failed += 1
             groups = {}
             for report in reports:
                 for failure in report["failures"]:
@@ -397,10 +459,17 @@ def main():
                     if report["id"] not in group["cases"]:
                         group["cases"].append(report["id"])
             save(args.out, {"schema": 1, "cases": reports, "failed": failed,
-                            "passed": len(reports) - failed, "scope": "geometry-only",
+                            "passed": len(reports) - failed,
+                            "visualFailed": visual_failed if args.visual else None,
+                            "visualPassed": len(reports) - visual_failed if args.visual else None,
+                            "scope": "geometry-and-pixel" if args.visual else "geometry-only",
                             "failureGroups": groups})
-            print(f"{len(reports) - failed} geometry pass, {failed} geometry fail; visuals/interactions unverified")
-            return int(failed > 0)
+            if args.visual:
+                print(f"{len(reports) - failed} geometry pass, {failed} geometry fail; "
+                      f"{len(reports) - visual_failed} pixel-identical, {visual_failed} pixel-different")
+            else:
+                print(f"{len(reports) - failed} geometry pass, {failed} geometry fail; visuals/interactions unverified")
+            return int(failed > 0 or visual_failed > 0)
     except (ValueError, OSError, KeyError, TypeError, subprocess.SubprocessError) as error:
         print(f"batch invalid: {error}", file=sys.stderr)
         return 2

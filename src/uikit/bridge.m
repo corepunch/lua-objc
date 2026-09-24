@@ -37,6 +37,9 @@ static char kFillHeightKey;
 static char kCornerRadiusKey;
 static char kIgnoresSafeAreaKey;
 static char kHostSafeAreaTopKey;
+static char kHostSafeAreaBottomKey;
+static char kSafeAreaInsetBottomKey;
+static char kNavigationBarHiddenKey;
 static char kImageLayoutSizeKey;
 static char kScrollContentKey;
 static char kButtonContentKey;
@@ -132,6 +135,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_focus", bridge_focus},
 	{"_hitTestTarget", bridge_hit_test_target},
 	{"_parityMeasure", bridge_parity_measure},
+	{"_parityCapturePNG", bridge_parity_capture_png},
 	{"_parityWrite", bridge_parity_write},
 	{"_parityJSON", bridge_parity_json},
 	{"_parityReadJSON", bridge_parity_read_json},

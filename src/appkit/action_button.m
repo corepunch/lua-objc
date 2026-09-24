@@ -129,6 +129,15 @@ static LayoutAxis layout_axis(NSView *view) {
 #pragma mark - Compound action button
 
 static NSColor *semantic_color(NSString *name) {
+	if ([name hasPrefix:@"#"] && name.length == 7) {
+		unsigned int rgb = 0;
+		NSScanner *scanner = [NSScanner scannerWithString:[name substringFromIndex:1]];
+		if ([scanner scanHexInt:&rgb] && scanner.isAtEnd) {
+			return [NSColor colorWithSRGBRed:((rgb >> 16) & 0xff) / 255.0
+				green:((rgb >> 8) & 0xff) / 255.0
+				blue:(rgb & 0xff) / 255.0 alpha:1.0];
+		}
+	}
 	if ([name isEqualToString:@"clear"]) return NSColor.clearColor;
 	if ([name isEqualToString:@"systemGray"])   return NSColor.systemGrayColor;
 	if ([name isEqualToString:@"systemGreen"])  return NSColor.systemGreenColor;
@@ -154,6 +163,7 @@ static NSColor *semantic_color(NSString *name) {
 	if ([name isEqualToString:@"background"])        return NSColor.windowBackgroundColor;
 	if ([name isEqualToString:@"windowBackground"])  return NSColor.windowBackgroundColor;
 	if ([name isEqualToString:@"controlBackground"]) return NSColor.controlBackgroundColor;
+	if ([name isEqualToString:@"secondaryBackground"]) return NSColor.controlBackgroundColor;
 	if ([name isEqualToString:@"textBackground"])    return NSColor.textBackgroundColor;
 	if ([name isEqualToString:@"underPageBackground"]) return NSColor.underPageBackgroundColor;
 	if ([name isEqualToString:@"gridColor"])         return NSColor.gridColor;

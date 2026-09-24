@@ -1,0 +1,17 @@
+<VStack padding="4" spacing="0" background="secondaryBackground" cornerRadius="52" clipsToBounds="true">
+  <HStack spacing="0">
+    <Button title="" systemImage="arrow.up.left" accessibilityLabel="Go northwest" action="northwest" style="plain" symbolSize="14" width="32" height="32" />
+    <Button title="" systemImage="arrow.up" accessibilityLabel="Go north" action="north" style="plain" symbolSize="14" width="32" height="32" />
+    <Button title="" systemImage="arrow.up.right" accessibilityLabel="Go northeast" action="northeast" style="plain" symbolSize="14" width="32" height="32" />
+  </HStack>
+  <HStack spacing="0">
+    <Button title="" systemImage="arrow.left" accessibilityLabel="Go west" action="west" style="plain" symbolSize="14" width="32" height="32" />
+    <Image system="location.north.fill" size="14" color="secondary" width="32" height="32" />
+    <Button title="" systemImage="arrow.right" accessibilityLabel="Go east" action="east" style="plain" symbolSize="14" width="32" height="32" />
+  </HStack>
+  <HStack spacing="0">
+    <Button title="" systemImage="arrow.down.left" accessibilityLabel="Go southwest" action="southwest" style="plain" symbolSize="14" width="32" height="32" />
+    <Button title="" systemImage="arrow.down" accessibilityLabel="Go south" action="south" style="plain" symbolSize="14" width="32" height="32" />
+    <Button title="" systemImage="arrow.down.right" accessibilityLabel="Go southeast" action="southeast" style="plain" symbolSize="14" width="32" height="32" />
+  </HStack>
+</VStack>

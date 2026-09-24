@@ -50,3 +50,54 @@ static int bridge_parity_measure(lua_State *L) {
 		return parity_push_json(L, result);
 	}
 }
+
+static int bridge_parity_capture_png(lua_State *L) {
+	@autoreleasepool {
+		UIView *root = check_view(L, 1);
+		NSString *path = [NSString stringWithUTF8String:luaL_checkstring(L, 2)];
+		CGFloat width = luaL_checknumber(L, 3);
+		CGFloat height = luaL_checknumber(L, 4);
+		if (width <= 0 || height <= 0) return luaL_error(L, "parity PNG dimensions must be positive");
+		root.overrideUserInterfaceStyle = UIUserInterfaceStyleLight;
+		root.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+		root.frame = CGRectMake(0, 0, width, height);
+		root.bounds = CGRectMake(0, 0, width, height);
+		[root layoutIfNeeded];
+		layout_recursive(root, width);
+		[root layoutIfNeeded];
+
+		CGFloat scale = root.window.screen.scale;
+		if (scale <= 0) {
+			for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+				if ([scene isKindOfClass:UIWindowScene.class]) {
+					scale = ((UIWindowScene *)scene).screen.scale;
+					break;
+				}
+			}
+		}
+		if (scale <= 0) scale = root.traitCollection.displayScale;
+		if (scale <= 0) scale = 1.0;
+
+		UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
+		format.scale = scale;
+		format.opaque = YES;
+		UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc]
+			initWithSize:root.bounds.size format:format];
+		UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
+			UITraitCollection *lightTraits = [UITraitCollection
+				traitCollectionWithUserInterfaceStyle:UIUserInterfaceStyleLight];
+			UIColor *background = [[UIColor systemBackgroundColor]
+				resolvedColorWithTraitCollection:lightTraits];
+			CGContextSetFillColorWithColor(context.CGContext, background.CGColor);
+			CGContextFillRect(context.CGContext, (CGRect){CGPointZero, root.bounds.size});
+			[root.layer renderInContext:context.CGContext];
+		}];
+		NSData *png = UIImagePNGRepresentation(image);
+		NSError *error = nil;
+		if (!png || ![png writeToFile:path options:NSDataWritingAtomic error:&error]) {
+			return luaL_error(L, "parity PNG write failed: %s",
+				(error.localizedDescription ?: @"could not encode PNG").UTF8String);
+		}
+		return 0;
+	}
+}

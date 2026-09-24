@@ -54,3 +54,48 @@ The bundle identifier is `org.luaobjc.parity.batch-reference`.
 Use `scripts/parity/batch.py capture` for managed launches, validation, and
 cleanup. The full workflow, cache contract, comparison semantics, and Luna
 handoff are in `docs/SWIFTUI_PARITY_PLAN.md`, section 11.
+
+## Pixel comparisons
+
+The generated batch contains 224 SwiftUI-versus-lua-objc layout scenes. Build
+the native PNG comparator once, then request screenshots from both engines and
+pass `--visual` to `compare`:
+
+```sh
+make parity-visual
+make parity-visual PLATFORM=ios DEVICE=booted
+make parity-visual PLATFORM=ios DEVICE=booted SPEC=tests/parity/batch/visual-smoke.json
+```
+
+That target builds the hosts, captures all 224 scenes, compares their geometry
+and PNG pixels, and prints the artifact directory. The iOS run expects an
+already booted Simulator and installs the two batch hosts on that device. To
+capture a smaller subset or reuse a reference run, use the lower-level commands
+below:
+
+```sh
+make parity-image-diff
+python3 scripts/parity/batch.py generate --out build/parity/batch-cases.json
+scripts/parity/batch_reference_build.sh --macos
+python3 scripts/parity/batch.py capture --engine reference --screenshots \
+	--spec build/parity/batch-cases.json --out build/parity/runs/reference-visual
+python3 scripts/parity/batch.py capture --engine candidate --screenshots \
+	--spec build/parity/batch-cases.json --out build/parity/runs/candidate-visual
+python3 scripts/parity/batch.py compare --visual \
+	--spec build/parity/batch-cases.json \
+	--reference build/parity/runs/reference-visual \
+	--candidate build/parity/runs/candidate-visual \
+	--out build/parity/runs/comparison-visual.json
+```
+
+Each case report counts exact RGBA pixel differences, reports mean and maximum
+channel error, and links a red-on-transparent difference PNG under the matching
+`comparison-visual-images/` directory. Pixel equality is a strict signal; an
+image difference does not by itself identify whether the cause is layout,
+font rasterization, or a control appearance change. The geometry probes remain
+a separate result in the same report.
+
+For iOS, use `--ios` when building the SwiftUI reference, install both host
+bundles once on the booted Simulator, and add `--platform ios --device booted`
+to each capture command. The Simulator app window can stay closed; `simctl`
+launches each batch host and the coordinator retrieves its result files.

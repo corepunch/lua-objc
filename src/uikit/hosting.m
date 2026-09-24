@@ -21,6 +21,17 @@ __attribute__((weak)) UIWindow *LRTApplicationWindow(void) {
 	CGFloat topInset = [self ignoresTopSafeArea] ? 0 : self.view.safeAreaInsets.top;
 	objc_setAssociatedObject(self.luaRoot, &kHostSafeAreaTopKey, @(topInset),
 		OBJC_ASSOCIATION_RETAIN);
+	[self updateBottomSafeAreaPaddingInView:self.luaRoot];
+}
+
+- (void)updateBottomSafeAreaPaddingInView:(UIView *)view {
+	if (view.safeAreaInsetBottom) {
+		objc_setAssociatedObject(view, &kHostSafeAreaBottomKey,
+			@(self.view.safeAreaInsets.bottom), OBJC_ASSOCIATION_RETAIN);
+	}
+	for (UIView *child in view.subviews) {
+		[self updateBottomSafeAreaPaddingInView:child];
+	}
 }
 
 - (instancetype)initWithLuaView:(UIView *)view {
@@ -35,9 +46,8 @@ __attribute__((weak)) UIWindow *LRTApplicationWindow(void) {
 	if (!self.luaRoot) return;
 	[self.view addSubview:self.luaRoot];
 	self.luaRoot.translatesAutoresizingMaskIntoConstraints = NO;
-	// The Lua root owns the entire window so the system status and home-indicator
-	// regions keep the app background. Its top layout padding is updated from
-	// safeAreaInsets below, keeping content clear of the status indicators.
+	// The Lua root owns the full window so safe-area regions keep the app
+	// background. Insets are handed to the layout engine.
 	[NSLayoutConstraint activateConstraints:@[
 		[self.luaRoot.topAnchor constraintEqualToAnchor:self.view.topAnchor],
 		[self.luaRoot.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
@@ -91,8 +101,11 @@ static UIViewController *check_view_controller(lua_State *L, int idx) {
 }
 
 static int bridge_hosting_controller(lua_State *L) {
+	BOOL hidesNavigationBar = lua_toboolean(L, 3);
 	id obj = check_objc(L, 1);
 	if ([obj isKindOfClass:[UIViewController class]]) {
+		objc_setAssociatedObject(obj, &kNavigationBarHiddenKey,
+			@(hidesNavigationBar), OBJC_ASSOCIATION_RETAIN);
 		push_objc(L, obj, "uiviewcontroller");
 		return 1;
 	}
@@ -102,6 +115,8 @@ static int bridge_hosting_controller(lua_State *L) {
 	UIView *view = (UIView *)obj;
 	LuaHostingController *vc =
 		[[LuaHostingController alloc] initWithLuaView:view];
+	objc_setAssociatedObject(vc, &kNavigationBarHiddenKey,
+		@(hidesNavigationBar), OBJC_ASSOCIATION_RETAIN);
 	if (lua_isfunction(L, 2))
 		vc.disappearCallback = lua_reg_create(L, 2, YES);
 	push_objc(L, vc, "uiviewcontroller");
