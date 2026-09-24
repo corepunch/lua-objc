@@ -74,6 +74,12 @@ t.assertEqual(rendered.refs.description.text, catalog:list()[1].description, "de
 click("play")
 t.assertEqual(controller.navigation.depth, 3, "detail play opens session")
 t.assertEqual(rendered.refs.sessionTitle.text, catalog:list()[1].title, "session header retains the game title")
+t.assertEqual(rendered.refs.gameTitle.text, catalog:list()[1].title, "session content repeats the game title")
+t.assertEqual(rendered.refs.gameDescription.text, catalog:list()[1].description,
+	"session content includes the complete game synopsis")
+t.assertEqual(rendered.refs.roomTitle.text, catalog:list()[1].title,
+	"session content shows the current room heading")
+t.assertEqual(rendered.refs.progress.text, "Score 0 | Moves 0", "session starts with live engine progress")
 t.assertEqual(rendered.refs.output.text, "Opening <&>", "transcript escapes XML characters")
 t.assertEqual(rendered.refs.input.accessibilityLabel, "Command", "composer retains accessibility label")
 t.assertEqual(rendered.refs.input.bezeled, false, "glass composer owns the visible border")
@@ -84,6 +90,7 @@ t.assertEqual(rendered.refs.send.enabled, true, "typing enables sending")
 click("send")
 t.expect(rendered.refs.output.text:find('Response <&> "inventory"', 1, true), "send updates transcript")
 t.assertEqual(rendered.refs.input.text, "", "send clears input")
+t.assertEqual(rendered.refs.progress.text, "Score 0 | Moves 1", "session refreshes progress after a command")
 local compassDrag = drags[rendered.refs.compassControl]
 t.expect(type(compassDrag) == "function", "compass binds the native drag gesture")
 if compassDrag then
