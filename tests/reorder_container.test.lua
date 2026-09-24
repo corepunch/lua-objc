@@ -13,7 +13,7 @@ local actions = {
 	end,
 }
 local view, refs = xml.render([[
-<VStack ref="stack" reorderable="true" reorderContainer="move">
+<VStack id="stack" reorderable="true" reorderContainer="move">
 	<Label text="One"/><Label text="Two"/><Label text="Three"/>
 </VStack>]], { actions = actions }, ns)
 t.expect(view == refs.stack, "reorderable stack preserves the native view ref")

@@ -12,7 +12,7 @@ destinations are rendered from templates. Keep a reference to the native stack
 and use `ns.pushScreen` / `ns.popScreen` for page history:
 
 ```xml
-<NavigationStack ref="navigation" title="Library">
+<NavigationStack id="navigation" title="Library">
   <VStack>
     <Button title="Open item" action="showItem" />
   </VStack>

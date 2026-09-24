@@ -901,10 +901,10 @@ function UIKit.SwipeRow(props)
 		header = false,
 		style = "plain",
 		onSwipeLeading = props.onSwipeLeading and function(_, row)
-			props.onSwipeLeading(props.id, row)
+			props.onSwipeLeading(props.rowId, row)
 		end,
 		onSwipeTrailing = props.onSwipeTrailing and function(_, row)
-			props.onSwipeTrailing(props.id, row)
+			props.onSwipeTrailing(props.rowId, row)
 		end,
 		swipeLeadingTitle = props.swipeLeadingTitle,
 		swipeTrailingTitle = props.swipeTrailingTitle,

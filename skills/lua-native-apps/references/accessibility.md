@@ -280,7 +280,7 @@ Forms must be fully accessible:
     <TextField 
         placeholder="user@example.com"
         accessibilityLabel="Email address"
-        ref="emailField" />
+        id="emailField" />
   </LabeledContent>
   
   <LabeledContent label="Password">
@@ -288,7 +288,7 @@ Forms must be fully accessible:
         placeholder="••••••••"
         secure="true"
         accessibilityLabel="Password"
-        ref="passwordField" />
+        id="passwordField" />
   </LabeledContent>
   
   <LabeledContent label="Stay signed in">

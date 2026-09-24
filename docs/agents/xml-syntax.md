@@ -122,7 +122,7 @@ are parsed up front, but native views are created only for visible cells.
 
 XML callbacks are normally attached in the controller after rendering. Keep
 business logic out of templates. For a button or toggle whose callback must be
-attached after rendering, use `ref` and the returned `refs` table; do not
+attached after rendering, use `id` and the returned `refs` table; do not
 rebuild the surrounding view tree in the controller.
 
 `Slider`, `Stepper`, and `Picker` are currently AppKit-only. Do not place them

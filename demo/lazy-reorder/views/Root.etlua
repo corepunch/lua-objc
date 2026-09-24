@@ -1,4 +1,4 @@
 <VStack spacing="8" maxWidth="infinity" maxHeight="infinity" padding="12">
   <Label text="Lazy <%= kind %> · drag to reorder" size="17" weight="semibold" />
-  <VStack ref="host" flexGrow="1" maxWidth="infinity" />
+  <VStack id="host" flexGrow="1" maxWidth="infinity" />
 </VStack>

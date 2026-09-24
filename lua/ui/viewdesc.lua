@@ -55,6 +55,7 @@ local LAYOUT_PROPS = {
 
 local function extractLayoutProps(attrs)
     local props = {}
+    if attrs.id then props.id = attrs.id end
     for _, k in ipairs(LAYOUT_PROPS) do
         if attrs[k] then
             local v = attrs[k]
@@ -173,7 +174,7 @@ function describeNode(node)
     -- List (simplified — columns become props)
     if tag == "List" then
         local props = extractLayoutProps(attrs)
-        props.ref = attrs.ref
+        props.id = attrs.id
         props.style = attrs.style
         props.header = attrs.header ~= "false"
         props.alternatingRows = attrs.alternatingRows ~= "false"
@@ -212,11 +213,11 @@ function describeNode(node)
     -- Generic: include all attributes
     local props = extractLayoutProps(attrs)
     for k, v in pairs(attrs) do
-        if not props[k] and k ~= "ref" then
+        if not props[k] and k ~= "id" then
             props[k] = v
         end
     end
-    if attrs.ref then props.ref = attrs.ref end
+    if attrs.id then props.id = attrs.id end
 
     return {
         tag = tag,

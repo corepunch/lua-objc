@@ -1,7 +1,7 @@
 <ScrollView>
   <VStack padding="20" spacing="14" alignment="leading">
     <Image path="<%= game.cover %>" maxWidth="infinity" height="280" contentMode="fill" cornerRadius="16" />
-    <Label ref="title" text="<%= game.title %>" size="30" weight="bold" lines="2" />
+    <Label id="title" text="<%= game.title %>" size="30" weight="bold" lines="2" />
     <HStack spacing="8">
       <Label text="<%= game.genre %>" size="12" color="secondary" />
       <Label text="<%= game.author %>" size="12" color="secondary" />
@@ -10,8 +10,8 @@
     <%- partial("Rating.etlua", { game = game }) %>
     <Divider />
     <Label text="About this Game" size="21" weight="bold" />
-    <Label ref="description" text="<%= game.description %>" size="16" color="secondary" lines="0" />
-    <Button ref="play" title="Play Adventure" action="play" />
-    <Button ref="back" title="Back to Adventures" action="back" />
+    <Label id="description" text="<%= game.description %>" size="16" color="secondary" lines="0" />
+    <Button id="play" title="Play Adventure" action="play" />
+    <Button id="back" title="Back to Adventures" action="back" />
   </VStack>
 </ScrollView>

@@ -2,10 +2,10 @@
 
 `List` rows and `SwipeRow` elements inside a `VStack` use native AppKit/UIKit
 table swipe actions. The controller receives a one-based row index and a plain
-row record for `List`, or the declared `id` and row record for `SwipeRow`.
+row record for `List`, or the declared `rowId` and row record for `SwipeRow`.
 
 ```etlua
-<List ref="tasks" data="tasks" swipeLeading="archive" swipeTrailing="delete"
+<List id="tasks" data="tasks" swipeLeading="archive" swipeTrailing="delete"
       swipeLeadingTitle="Archive" swipeTrailingTitle="Delete"
       swipeTrailingRole="destructive" fullSwipe="true">
   <Column id="title" title="Task" />
@@ -13,7 +13,7 @@ row record for `List`, or the declared `id` and row record for `SwipeRow`.
 
 <VStack maxWidth="infinity">
   <% for _, task in ipairs(smallTaskGroup) do %>
-    <SwipeRow ref="row_<%= task.id %>" id="<%= task.id %>"
+    <SwipeRow id="row_<%= task.id %>" rowId="<%= task.id %>"
               title="<%= task.title %>" status="<%= task.status %>"
               swipeLeading="archiveSmallTask" swipeTrailing="completeSmallTask"
               fullSwipe="true" maxWidth="infinity" />

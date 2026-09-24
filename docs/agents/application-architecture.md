@@ -125,8 +125,8 @@ services.
 ## Rendering and updates
 
 Use `xml.renderFile(path, data, ns)` for a one-time render. It returns a native
-view or window configuration plus a `refs` table for named `ref="..."`
-elements. The injected `ns` selects AppKit or UIKit; templates using shared
+view or window configuration plus a `refs` table for rendered views named with
+`id="..."`. The injected `ns` selects AppKit or UIKit; templates using shared
 tags do not need platform conditionals.
 
 For a template mounted in a host container and updated over time, use
@@ -149,7 +149,8 @@ subtree, disposing the old branch's scope. This is an explicit retained
 template boundary, not automatic model observation or keyed diffing: the
 controller decides when to call `update`.
 
-Use `ref` for the small amount of imperative wiring that native widgets need.
+Use `id` for the small amount of imperative wiring that native widgets need;
+the returned table is named `refs`.
 Pass action functions in the template data's `actions` table and refer to them
 by name in template attributes such as `action="save"`. Keep callbacks and
 native refs in controllers, not models.

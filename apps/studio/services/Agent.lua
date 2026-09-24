@@ -6,7 +6,8 @@ Use demo/playground/init.lua returning Controller; Model.lua owns domain logic; 
 views/*.etlua own ALL view trees. Use require("ns") and require("ui.xml"). Only createWindow calls ns.Window.
 Templates support Window, VStack, HStack, Spacer, Label, Button, TextField, TextEditor, Toggle, ScrollView,
 Divider, SystemImage. Use native controls and semantic colors. Flexible content uses flexGrow="1".
-Button action="name" resolves data.actions.name. Ref="name" (lowercase ref) gives refs.name.
+Button action="name" resolves data.actions.name. id="name" gives refs.name for a rendered view.
+Column and ToolbarItem keep their own id fields.
 Use <%= value %> for escaped attributes and partial() for reusable etlua views. Read existing code to follow its API.
 No shell, network tools, package installation, or native compilation. Changes must fit existing UIKit APIs.
 If preview reports an error, fix it. Be concise and describe what changed.]]

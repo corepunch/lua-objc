@@ -439,12 +439,13 @@ Templates live in `<app-root>/<app>/views/*.etlua`. The renderer:
 - Custom tags: `xml.registry["MyTag"] = function(ns, attrs, children) ... end`
 - API: `xml.render(src, data, ns)` and `xml.renderFile(path, data, ns)`
 
-#### ref= attribute and named view handles
+#### id= attribute and named view handles
 
-Any element may carry `ref="name"`. `xml.render` and `xml.renderFile` return
-two values: the root view and a `refs` table `{ [name] = view }`. Controllers
-use refs to attach callbacks and call methods on specific views without
-scanning the tree manually:
+Any rendered view may carry `id="name"`. `xml.render` and `xml.renderFile`
+return two values: the root view and a `refs` table `{ [name] = view }`.
+Controllers use refs to attach callbacks and call methods on specific views
+without scanning the tree manually. Descriptor tags such as `Column` and
+`ToolbarItem` keep their own `id` meaning:
 
 ```lua
 local layout, refs = xml.renderFile("views/Window.etlua")
@@ -452,7 +453,8 @@ refs.messageList:onRowSelect(function(_, _, row) ... end)
 refs.detailPane:clearContainer()
 ```
 
-`ref` is consumed by the renderer and never forwarded to the native layer.
+`id` is consumed by the renderer and used as the native accessibility
+identifier; it is not forwarded as a view property.
 
 #### Window config from XML (NIB-style)
 
@@ -466,7 +468,7 @@ Xcode NIB/Storyboard files:
                      icon="square.and.pencil" tooltip="New Message" />
     </Toolbar>
     <HSplit>
-        <List ref="mailboxList" ... />
+        <List id="mailboxList" ... />
     </HSplit>
 </Window>
 ```
@@ -517,7 +519,7 @@ Include reusable sub-templates with `partial()`:
 
 ```lua
 <%= partial("views/partials/SimpleList.etlua", {
-    ref = "employeeList",
+    id = "employeeList",
     columns = {
         { id = "name", title = "Name" },
         { id = "role", title = "Role" },

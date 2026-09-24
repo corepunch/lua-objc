@@ -1,5 +1,5 @@
 <Window title="<%= title %>" width="480" height="720">
-	<NavigationStack ref="stack" title="<%= title %>">
+	<NavigationStack id="stack" title="<%= title %>">
 		<VStack padding="24" spacing="16" alignment="center">
 			<Image system="<%= image %>" size="64" label="Cover" />
 			<Label text="Tap the cover to zoom into detail." size="13" color="secondary" />

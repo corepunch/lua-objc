@@ -1,4 +1,4 @@
-<VStack ref="sidebar" padding="<%= collapsed and metrics.collapsedPadding or metrics.expandedPadding %>" spacing="10" width="<%= collapsed and metrics.collapsedWidth or metrics.expandedWidth %>" maxHeight="infinity" alignment="leading" background="secondaryBackground">
+<VStack id="sidebar" padding="<%= collapsed and metrics.collapsedPadding or metrics.expandedPadding %>" spacing="10" width="<%= collapsed and metrics.collapsedWidth or metrics.expandedWidth %>" maxHeight="infinity" alignment="leading" background="secondaryBackground">
 	<% if not collapsed then %>
 	<Button title="New Project" systemImage="plus" style="borderedProminent" maxWidth="infinity" />
 	<Label text="RECENT PROJECTS" size="10" weight="semibold" color="secondary" />

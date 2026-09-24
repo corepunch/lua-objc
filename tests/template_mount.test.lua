@@ -5,7 +5,7 @@ local xml = require("ui.xml")
 local Template = require("ui.template")
 local path = os.tmpname() .. ".etlua"
 local file = assert(io.open(path, "w"))
-file:write('<VStack><Label ref="label" text="<%= title %>"/><% if visible then %><Button ref="button" title="Review" action="review"/><% end %></VStack>'); file:close()
+file:write('<VStack><Label id="label" text="<%= title %>"/><% if visible then %><Button id="button" title="Review" action="review"/><% end %></VStack>'); file:close()
 local parent = ns.Scope.new()
 local host = xml.render('<VStack maxWidth="infinity"/>', {}, ns)
 local mount = ns.Scope.withScope(parent, Template.new, host, path, ns)

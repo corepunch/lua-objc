@@ -304,7 +304,7 @@ data. `List` dequeues native cells; it is a table API, not a generic row-view
 container.
 
 ```xml
-<List ref="myList" data="items" header="false">
+<List id="myList" data="items" header="false">
   <Column id="title" title="Title" />
 </List>
 ```
@@ -432,12 +432,13 @@ Toolbar button container (macOS) / action bar (iOS).
 
 All elements support:
 
-- `ref`: string (optional) — store view reference in `refs` table
+- `id`: string (optional) — stable identifier for a rendered view; stores that
+  view in the returned `refs` table and sets its accessibility identifier.
+  Descriptor tags such as `Column` and `ToolbarItem` use `id` for their own
+  configuration.
   ```xml
-  <TextField ref="nameField" />
+  <TextField id="nameField" />
   ```
-
-- `id`: string (optional) — stable identifier for this element
 
 - Accessibility attributes:
   - `accessibilityLabel`: string — label for screen readers

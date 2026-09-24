@@ -393,7 +393,7 @@ end
 
 -- ── Node → view compilation ───────────────────────────────────────────────
 --
--- refs: table populated during compile; any element with a ref="name" attr
+-- refs: table populated during compile; any view with an id="name" attr
 -- has its produced view stored as refs[name]. Callers use refs to attach
 -- callbacks after rendering without scanning the view tree.
 
@@ -460,14 +460,14 @@ local function compile(nodes, ns, registry, refs)
 					append(children)
 					view = ns.attachReorder(view, items, action)
 				end
-				if node.attrs.ref then
-					refs[node.attrs.ref] = view
+				if node.attrs.id and type(view) == "userdata" then
+					refs[node.attrs.id] = view
 					-- Keep the declarative identity on the native view as well as
 					-- in the returned refs table. Diagnostics and accessibility
 					-- tooling can then locate the same semantic node without
 					-- depending on child order or implementation classes.
 					pcall(function()
-						view.accessibilityIdentifier = node.attrs.ref
+						view.accessibilityIdentifier = node.attrs.id
 					end)
 				end
 				table.insert(views, view)
@@ -1005,7 +1005,7 @@ local TAG_SCHEMA = {
     SwipeRow = {
         constructor = "SwipeRow",
         props = {
-            id = "str",
+            rowId = "str",
             title = { default = "", type = "str" },
             status = "str",
             rowHeight = "num",

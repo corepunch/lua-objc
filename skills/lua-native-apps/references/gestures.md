@@ -25,7 +25,7 @@ began. Use the velocity when choosing a final model state; do not assign a
 position every event to imitate a native spring.
 
 ```xml
-<Image ref="photo" systemImage="photo" onDrag="movePhoto" />
+<Image id="photo" systemImage="photo" onDrag="movePhoto" />
 ```
 
 ```lua

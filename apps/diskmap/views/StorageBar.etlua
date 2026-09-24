@@ -1,4 +1,4 @@
-<GroupBox ref="storageSummary" maxWidth="infinity">
+<GroupBox id="storageSummary" maxWidth="infinity">
 <VStack maxWidth="infinity" padding="8" spacing="6" alignment="leading">
   <% if #segments > 0 then %>
   <HStack maxWidth="infinity" height="16" spacing="1" cornerRadius="5" clipsToBounds="true">
@@ -8,7 +8,7 @@
     <% end %>
     <% end %>
   </HStack>
-  <FlowStack ref="legend" maxWidth="infinity" spacing="12">
+  <FlowStack id="legend" maxWidth="infinity" spacing="12">
     <% for _, segment in ipairs(segments) do %>
     <HStack spacing="6" alignment="center">
       <SystemImage name="circle.fill" size="9" color="<%= segment.color %>" />

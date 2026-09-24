@@ -71,7 +71,7 @@ for the complete supported tag list.
 </Window>
 ```
 
-Use `ref="name"` on an XML element when the controller needs to attach a
+Use `id="name"` on an XML element when the controller needs to attach a
 callback or mutate the resulting native view after rendering.
 
 ## 4. Apply layout deliberately

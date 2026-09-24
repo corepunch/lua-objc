@@ -275,7 +275,7 @@ lays out nested children; its focused construction/layout test passes.
 the title on both platforms, including icon sizing/weight and accessibility
 forwarding through the XML schema.
 
-The parity XML compiler now propagates each `ref` into the native view's
+The parity XML compiler now propagates each `id` into the native view's
 accessibility identifier. AppKit layout dumps include that identifier, making
 candidate/reference frame matching semantic and independent of native child
 ordering; the XML regression suite covers the round trip.

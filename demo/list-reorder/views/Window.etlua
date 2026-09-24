@@ -1,7 +1,7 @@
 <VStack spacing="12" padding="20" maxWidth="infinity" maxHeight="infinity">
   <Title>Tasks</Title>
   <Label>Drag a row to change its position.</Label>
-  <List ref="tasks" data="tasks" reorderable="true" reorderContainer="reorderTasks" header="false" style="plain" flexGrow="1" maxWidth="infinity">
+  <List id="tasks" data="tasks" reorderable="true" reorderContainer="reorderTasks" header="false" style="plain" flexGrow="1" maxWidth="infinity">
     <Column id="title" title="Task" />
   </List>
 </VStack>

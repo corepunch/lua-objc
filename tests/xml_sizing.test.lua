@@ -5,10 +5,10 @@ local xml = require("ui.xml")
 
 local root, refs = xml.render([[
 <VStack padding="10" spacing="8">
-	<Image ref="cover" symbol="photo" maxWidth="infinity" height="280" />
-	<HStack ref="row" maxWidth="infinity" height="40" spacing="0">
-		<Label ref="fixed" text="Fixed" width="80" height="20" />
-		<TextField ref="input" value="Unchanged" maxWidth="infinity" height="20" />
+	<Image id="cover" symbol="photo" maxWidth="infinity" height="280" />
+	<HStack id="row" maxWidth="infinity" height="40" spacing="0">
+		<Label id="fixed" text="Fixed" width="80" height="20" />
+		<TextField id="input" value="Unchanged" maxWidth="infinity" height="20" />
 	</HStack>
 </VStack>]], {}, ns)
 local function resize(width)
@@ -31,20 +31,20 @@ t.assertEqual(refs.row.spacing, 0, "sizing leaves sibling spacing unchanged")
 
 local vertical, v = xml.render([[
 <VStack spacing="0">
-	<VStack ref="space" width="30" maxHeight="infinity" />
-	<VStack ref="footer" width="30" height="20" />
+	<VStack id="space" width="30" maxHeight="infinity" />
+	<VStack id="footer" width="30" height="20" />
 </VStack>]], {}, ns)
 vertical.size = ns.Size(100, 240)
 vertical:layout(100)
 t.assertSize(v.space, 30, 220, "maxHeight infinity expands only vertically")
 t.assertSize(v.footer, 30, 20, "vertical expansion preserves fixed siblings")
 
-local zero, z = xml.render('<VStack spacing="0"><VStack ref="zero" width="0" height="0" /></VStack>', {}, ns)
+local zero, z = xml.render('<VStack spacing="0"><VStack id="zero" width="0" height="0" /></VStack>', {}, ns)
 zero.size = ns.Size(100, 100)
 zero:layout(100)
 t.assertSize(z.zero, 0, 0, "zero dimensions are explicit rather than missing")
 
-local bounded, b = xml.render('<VStack><Label ref="text" text="A long label to constrain" minWidth="30" maxWidth="60" minHeight="12" maxHeight="24" /></VStack>', {}, ns)
+local bounded, b = xml.render('<VStack><Label id="text" text="A long label to constrain" minWidth="30" maxWidth="60" minHeight="12" maxHeight="24" /></VStack>', {}, ns)
 bounded.size = ns.Size(400, 200)
 bounded:layout(400)
 local w, h = b.text.size.width, b.text.size.height

@@ -5,11 +5,11 @@ local xml = require("ui.xml")
 
 local root, refs = xml.render([[
 <VStack alignment="leading" spacing="0">
-	<Label ref="short" text="Short" />
-	<Label ref="long" text="This paragraph must wrap at the available width without requesting an infinite frame." lines="0" />
-	<HStack ref="composer" spacing="8">
-		<TextField ref="input" value="Keep me" />
-		<Button ref="send" title="Send" />
+	<Label id="short" text="Short" />
+	<Label id="long" text="This paragraph must wrap at the available width without requesting an infinite frame." lines="0" />
+	<HStack id="composer" spacing="8">
+		<TextField id="input" value="Keep me" />
+		<Button id="send" title="Send" />
 	</HStack>
 </VStack>]], {}, ns)
 root.size = ns.Size(240, 300); root:layout(240)
@@ -25,11 +25,11 @@ t.assertEqual(refs.input.size.width + refs.send.size.width + 8, 480, "implicit t
 
 local hero, h = xml.render([[
 <VStack spacing="0">
-	<Button ref="button" style="plain" accessibilityLabel="Open adventure" action="open">
-		<ZStack ref="hero" height="280" alignment="bottomLeading">
-			<Image ref="image" path="apps/adventure-arena/assets/planetfall.jpg" resizable="true" contentMode="fill" />
-			<LinearGradient ref="gradient" />
-			<VStack ref="caption" alignment="leading" padding="12"><Label text="Caption" /></VStack>
+	<Button id="button" style="plain" accessibilityLabel="Open adventure" action="open">
+		<ZStack id="hero" height="280" alignment="bottomLeading">
+			<Image id="image" path="apps/adventure-arena/assets/planetfall.jpg" resizable="true" contentMode="fill" />
+			<LinearGradient id="gradient" />
+			<VStack id="caption" alignment="leading" padding="12"><Label text="Caption" /></VStack>
 		</ZStack>
 	</Button>
 </VStack>]], { actions = { open = function() end } }, ns)
@@ -52,14 +52,14 @@ t.expect(not h.button.enabled, "content button retains native disabled state")
 
 local list, l = xml.render([[
 <VStack spacing="0">
-	<ScrollView ref="strip" horizontal="true" vertical="false">
-		<HStack ref="cards" spacing="12">
+	<ScrollView id="strip" horizontal="true" vertical="false">
+		<HStack id="cards" spacing="12">
 			<VStack width="130" height="176" />
 			<VStack width="130" height="200" />
 			<VStack width="130" height="176" />
 		</HStack>
 	</ScrollView>
-	<Label ref="after" text="Below the strip" />
+	<Label id="after" text="Below the strip" />
 </VStack>]], {}, ns)
 list.size = ns.Size(240, 400); list:layout(240)
 t.assertEqual(l.cards.size.width, 414, "scroll content measures its width without item-count arithmetic")

@@ -21,7 +21,7 @@ local source = xml.describeFile("apps/studio/views/Window.etlua", {
 }).source
 t.expect(source:find('name="hammer.fill"', 1, true) ~= nil,
 	"Lua Studio identity remains visible in the toolbar")
-local toolbar = assert(source:match('(<HStack ref="toolbar".-</HStack>)'))
+local toolbar = assert(source:match('(<HStack id="toolbar".-</HStack>)'))
 t.expect(toolbar:find('action="toggleChat"', 1, true) ~= nil,
 	"preview focus action is in the top toolbar")
 t.expect(toolbar:find('action="toggleSidebarWidth"', 1, true) ~= nil,

@@ -6,15 +6,15 @@ local config, refs = xml.render([[
 <Window title="Intrinsic toolbar" width="1000" height="640">
   <Toolbar>
     <ToolbarItem id="summary" bordered="false">
-      <HStack ref="summary" spacing="10" alignment="center">
+      <HStack id="summary" spacing="10" alignment="center">
         <SystemImage name="internaldrive" size="22" />
         <VStack spacing="2" alignment="leading">
-          <Label ref="title" text="Diskmap" size="15" />
-          <Label ref="capacity" text="245.1 GB total · 191.3 GB used · 53.8 GB available" size="11" lines="1" />
+          <Label id="title" text="Diskmap" size="15" />
+          <Label id="capacity" text="245.1 GB total · 191.3 GB used · 53.8 GB available" size="11" lines="1" />
         </VStack>
       </HStack>
     </ToolbarItem>
-    <ToolbarItem id="search"><SearchField ref="search" placeholder="Filter results…" /></ToolbarItem>
+    <ToolbarItem id="search"><SearchField id="search" placeholder="Filter results…" /></ToolbarItem>
   </Toolbar>
   <Label text="Body" />
 </Window>

@@ -1,5 +1,5 @@
 <Window title="Navigation Path" width="520" height="360">
-  <NavigationStack title="Library" ref="navigation" path="path" destinations="destinations">
+  <NavigationStack title="Library" id="navigation" path="path" destinations="destinations">
     <VStack padding="24" spacing="12" alignment="leading">
       <Label text="Library" />
       <Button title="Open welcome message" action="openMessage" />

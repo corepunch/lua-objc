@@ -38,9 +38,9 @@ v = render([[<Label text="Hello" />]])
 t.expect(v ~= nil, "Label creates a view")
 t.assertEqual(v.text, "Hello", "Label sets text property")
 
-v = render([[<Label text="Identified" ref="semantic.label" />]])
+v = render([[<Label text="Identified" id="semantic.label" />]])
 t.assertEqual(v.accessibilityIdentifier, "semantic.label",
-	"ref propagates to native accessibility identifier")
+	"id propagates to native accessibility identifier")
 
 v = render([[<Text text="Hello" />]])
 t.expect(v ~= nil, "Text creates a view")
@@ -123,33 +123,33 @@ t.expect(v ~= nil, "VStack accepts layout props")
 v = render([[<Label text="X" width="100" height="32" />]])
 t.expect(v ~= nil, "Label accepts width/height")
 
--- ── ref= attribute ─────────────────────────────────────────────────────────
+-- ── id= attribute ─────────────────────────────────────────────────────────
 
-local view, r = render([[<Label ref="myLabel" text="Ref Test" />]])
-t.expect(r.myLabel ~= nil, "ref= attribute stores view in refs table")
+local view, r = render([[<Label id="myLabel" text="Ref Test" />]])
+t.expect(r.myLabel ~= nil, "id= attribute stores view in refs table")
 t.assertEqual(r.myLabel.text, "Ref Test", "refs.myLabel points to the rendered view")
 
 view, r = render([[
 <VStack>
-    <Label ref="top" text="Top" />
-    <Label ref="bottom" text="Bottom" />
+    <Label id="top" text="Top" />
+    <Label id="bottom" text="Bottom" />
 </VStack>
 ]])
-t.expect(r.top ~= nil, "first ref= is captured")
-t.expect(r.bottom ~= nil, "second ref= is captured")
-t.assertEqual(r.top.text, "Top", "ref=top points to correct view")
-t.assertEqual(r.bottom.text, "Bottom", "ref=bottom points to correct view")
+t.expect(r.top ~= nil, "first id= is captured")
+t.expect(r.bottom ~= nil, "second id= is captured")
+t.assertEqual(r.top.text, "Top", "id=top points to correct view")
+t.assertEqual(r.bottom.text, "Bottom", "id=bottom points to correct view")
 
 -- ── List with Columns ──────────────────────────────────────────────────────
 
 v, r = render([[
-<List ref="myList" style="plain" header="true">
+<List id="myList" style="plain" header="true">
     <Column id="name" title="Name" />
     <Column id="role" title="Role" width="120" />
 </List>
 ]])
 t.expect(v ~= nil, "List with Columns creates a view")
-t.expect(r.myList ~= nil, "List ref= is captured")
+t.expect(r.myList ~= nil, "List id= is captured")
 
 -- ── Window config detection ────────────────────────────────────────────────
 
@@ -186,7 +186,7 @@ cfg, r = xml.render([[
 <Window title="Toolbar View Test" width="640" height="480">
     <Toolbar>
         <ToolbarItem id="search" label="Search">
-            <SearchField ref="query" placeholder="Filter…" width="210" height="28" onChange="search" />
+            <SearchField id="query" placeholder="Filter…" width="210" height="28" onChange="search" />
         </ToolbarItem>
     </Toolbar>
     <Label text="Body" />
@@ -311,7 +311,7 @@ t.expect(#patches > 0, "Adding a child produces patches")
 -- ── List description ───────────────────────────────────────────────────────
 
 desc = viewdesc.fromString([[
-<List ref="table" style="inset" header="false">
+<List id="table" style="inset" header="false">
     <Column id="name" title="Name" />
     <Column id="value" title="Value" width="80" />
 </List>

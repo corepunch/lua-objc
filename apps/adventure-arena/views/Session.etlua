@@ -1,24 +1,24 @@
 <VStack spacing="8">
   <ScrollView>
     <VStack padding="20" spacing="14" alignment="leading">
-      <Label ref="output" text="<%= transcript %>" size="16" lines="0" />
+      <Label id="output" text="<%= transcript %>" size="16" lines="0" />
     </VStack>
   </ScrollView>
-  <Label ref="dictationStatus" text="" size="13" color="secondary" paddingHorizontal="20" lines="2" />
+  <Label id="dictationStatus" text="" size="13" color="secondary" paddingHorizontal="20" lines="2" />
   <GlassEffectContainer spacing="14">
     <HStack paddingHorizontal="12" paddingBottom="8" spacing="8" alignment="bottom">
-      <Menu ref="quickActions" title="" systemImage="plus" symbolSize="31" style="glass" accessibilityLabel="More commands" width="52" height="52">
+      <Menu id="quickActions" title="" systemImage="plus" symbolSize="31" style="glass" accessibilityLabel="More commands" width="52" height="52">
         <MenuItem title="Look" systemImage="eye" action="look" />
         <MenuItem title="Inventory" systemImage="shippingbox" action="inventory" />
         <MenuItem title="End session" systemImage="xmark.circle" action="close" />
       </Menu>
       <GlassEffect style="regular" cornerRadius="26" maxWidth="infinity">
         <HStack paddingLeading="16" paddingTrailing="5" spacing="8" minHeight="52">
-          <TextField ref="input" placeholder="What do you want to do?" style="plain" maxWidth="infinity" onChange="inputChanged" onCommand="inputCommand" />
+          <TextField id="input" placeholder="What do you want to do?" style="plain" maxWidth="infinity" onChange="inputChanged" onCommand="inputCommand" />
           <% if speechAvailable then %>
-          <Button ref="dictate" title="" systemImage="mic" symbolSize="22" accessibilityLabel="Dictate command" action="dictate" style="plain" width="38" height="44" />
+          <Button id="dictate" title="" systemImage="mic" symbolSize="22" accessibilityLabel="Dictate command" action="dictate" style="plain" width="38" height="44" />
           <% end %>
-          <Button ref="send" title="" systemImage="arrow.up.circle.fill" symbolSize="31" weight="semibold" foregroundStyle="accent" accessibilityLabel="Send command" action="submit" style="plain" width="38" height="44" hidden="<%= speechAvailable and 'true' or 'false' %>" disabled="true" />
+          <Button id="send" title="" systemImage="arrow.up.circle.fill" symbolSize="31" weight="semibold" foregroundStyle="accent" accessibilityLabel="Send command" action="submit" style="plain" width="38" height="44" hidden="<%= speechAvailable and 'true' or 'false' %>" disabled="true" />
         </HStack>
       </GlassEffect>
     </HStack>

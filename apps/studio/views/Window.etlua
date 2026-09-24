@@ -1,13 +1,13 @@
 <Window title="Lua Studio" width="1366" height="900" minWidth="980" minHeight="640">
 	<VStack padding="0" spacing="0" flexGrow="1" maxWidth="infinity" maxHeight="infinity" background="background">
-		<HStack ref="toolbar" paddingHorizontal="12" paddingVertical="8" spacing="8" height="56" maxWidth="infinity" alignment="center">
+		<HStack id="toolbar" paddingHorizontal="12" paddingVertical="8" spacing="8" height="56" maxWidth="infinity" alignment="center">
 			<SystemImage name="hammer.fill" size="20" color="accent" label="Lua Studio" />
 			<Label text="Lua Studio" size="18" weight="bold" />
-			<Button ref="chatVisibility" title="" systemImage="rectangle.rightthird.inset.filled" accessibilityLabel="Focus Preview" action="toggleChat" style="bordered" />
-			<Button ref="sidebarWidth" title="" systemImage="sidebar.left" accessibilityLabel="Compact sidebar" action="toggleSidebarWidth" style="bordered" />
+			<Button id="chatVisibility" title="" systemImage="rectangle.rightthird.inset.filled" accessibilityLabel="Focus Preview" action="toggleChat" style="bordered" />
+			<Button id="sidebarWidth" title="" systemImage="sidebar.left" accessibilityLabel="Compact sidebar" action="toggleSidebarWidth" style="bordered" />
 			<Divider orientation="vertical" />
 			<Button title="<%= preview.device %>" systemImage="iphone" style="bordered" />
-			<Button ref="runButton" title="<%= preview.runLabel %>" systemImage="play.fill" action="reloadPreview" style="borderedProminent" />
+			<Button id="runButton" title="<%= preview.runLabel %>" systemImage="play.fill" action="reloadPreview" style="borderedProminent" />
 			<Label text="<%= preview.zoom %>" size="12" color="secondary" />
 			<Spacer />
 			<Label text="Chat" size="14" weight="semibold" />
@@ -18,7 +18,7 @@
 			<Button title="Deploy" systemImage="paperplane" style="borderedProminent" />
 		</HStack>
 		<Divider />
-		<HStack ref="workspace" padding="0" spacing="0" flexGrow="1" maxWidth="infinity" maxHeight="infinity" alignment="top">
+		<HStack id="workspace" padding="0" spacing="0" flexGrow="1" maxWidth="infinity" maxHeight="infinity" alignment="top">
 			<%- partial("Sidebar.etlua", sidebar) %>
 			<Divider orientation="vertical" />
 			<%- partial("PreviewPane.etlua", preview) %>

@@ -1500,12 +1500,13 @@ one or more `<Option title="…" />` children:
 `Slider`, `Stepper`, and `Picker` are currently AppKit-only XML tags. Using
 them with UIKit raises the normal unsupported-constructor error.
 
-**`ref=` attribute (all tags):** Storing `ref="name"` on any element causes `xml.renderFile`
-to return that view as `refs["name"]`. Controllers use refs to attach callbacks after
-rendering without building views in Lua code:
+**`id` attribute (rendered views):** Storing `id="name"` on a rendered view causes
+`xml.renderFile` to return it as `refs["name"]`. The renderer also sets the native
+accessibility identifier. Descriptor tags such as `Column` and `ToolbarItem`
+continue to use `id` for their own configuration:
 
 ```xml
-<List ref="messageList" style="plain" header="false">
+<List id="messageList" style="plain" header="false">
     <Column id="from" title="From" />
 </List>
 ```
@@ -1529,7 +1530,7 @@ returns `(config, refs)` instead of `(view, refs)`:
                      icon="square.and.pencil" tooltip="New Message" />
     </Toolbar>
     <HSplit>
-        <List ref="mailboxList" ... />
+        <List id="mailboxList" ... />
     </HSplit>
 </Window>
 ```
@@ -1546,7 +1547,7 @@ etlua, never assembled in controller code:
 
 ```xml
 <ToolbarItem id="search" label="Search">
-    <SearchField ref="search" placeholder="Filter results…"
+    <SearchField id="search" placeholder="Filter results…"
                  width="210" height="28" onChange="search" />
 </ToolbarItem>
 ```
@@ -1616,7 +1617,7 @@ Include reusable sub-templates with `partial()`. This is similar to PHP's
 
 ```lua
 <%= partial("views/partials/SimpleList.etlua", {
-    ref = "employeeList",
+    id = "employeeList",
     columns = {
         { id = "name", title = "Name" },
         { id = "role", title = "Role" },
@@ -1630,7 +1631,7 @@ own file location.
 **Example partial** (`views/partials/SimpleList.etlua`):
 
 ```xml
-<List ref="<%= ref or 'list' %>" flexGrow="1"
+<List id="<%= id or 'list' %>" flexGrow="1"
       <% if style then %>style="<%= style %>"<% end %>
       header="false" alternatingRows="false">
     <% for _, col in ipairs(columns) do %>
@@ -1791,8 +1792,8 @@ apps/<appname>/
   construction is delegated to XML templates via `xml.renderFile`.
 - Controllers must not call `ns.VStack`, `ns.HStack`, `ns.List`, or any other
   view constructor. Use `xml.renderFile` and wire behaviour through `refs`.
-- XML templates in `views/` express the complete view hierarchy. `ref="name"`
-  on any element surfaces that view to the controller for callback wiring.
+- XML templates in `views/` express the complete view hierarchy. A rendered
+  view's `id="name"` surfaces it to the controller for callback wiring.
 
 ### Example: mail app
 
@@ -1827,13 +1828,13 @@ end
 ```xml
 <!-- demo/mail/views/Window.etlua -->
 <HSplit>
-    <List ref="mailboxList" width="180" style="sourceList" header="false">
+    <List id="mailboxList" width="180" style="sourceList" header="false">
         <Column id="name" title="Mailbox" />
     </List>
-    <List ref="messageList" width="280" style="plain" header="false">
+    <List id="messageList" width="280" style="plain" header="false">
         <Column id="from" title="From" />
     </List>
-    <VStack ref="detailPane" flexGrow="1" />
+    <VStack id="detailPane" flexGrow="1" />
 </HSplit>
 ```
 

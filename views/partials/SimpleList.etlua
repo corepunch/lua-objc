@@ -1,4 +1,4 @@
-<List ref="<%= ref or "list" %>"
+<List id="<%= id or "list" %>"
       flexGrow="1"
       <% if style then %>style="<%= style %>"<% end %>
       header="false"

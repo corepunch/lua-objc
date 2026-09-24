@@ -1,8 +1,8 @@
-<VStack ref="chatPane" padding="12" spacing="10" flexGrow="1" flexBasis="0" minWidth="330" maxWidth="infinity" maxHeight="infinity" alignment="leading" background="background">
+<VStack id="chatPane" padding="12" spacing="10" flexGrow="1" flexBasis="0" minWidth="330" maxWidth="infinity" maxHeight="infinity" alignment="leading" background="background">
 	<HStack padding="0" spacing="6" maxWidth="infinity">
 		<Label text="CONVERSATION" size="10" weight="semibold" color="secondary" />
 		<Spacer />
-		<Label ref="previewStatus" text="<%= status %>" size="11" color="secondary" />
+		<Label id="previewStatus" text="<%= status %>" size="11" color="secondary" />
 	</HStack>
 	<ScrollView flexGrow="1" maxWidth="infinity" maxHeight="infinity">
 		<VStack padding="0" spacing="14" maxWidth="infinity" alignment="leading">
@@ -35,7 +35,7 @@
 		<% end %>
 	</HStack>
 	<HStack padding="6" spacing="8" maxWidth="infinity" alignment="center" background="secondaryBackground" cornerRadius="14">
-		<TextField ref="composer" text="" placeholder="Ask anything…" size="14" flexGrow="1" maxWidth="infinity" />
+		<TextField id="composer" text="" placeholder="Ask anything…" size="14" flexGrow="1" maxWidth="infinity" />
 		<Button title="" systemImage="mic" accessibilityLabel="Dictate" style="bordered" />
 		<Button title="" systemImage="arrow.up" accessibilityLabel="Send" style="borderedProminent" />
 	</HStack>

@@ -1,4 +1,4 @@
-<TabView ref="tabs">
+<TabView id="tabs">
   <Tab title="Adventures" systemImage="gamecontroller">
     <%- partial("Home.etlua", { games = games, featured = featured }) %>
   </Tab>

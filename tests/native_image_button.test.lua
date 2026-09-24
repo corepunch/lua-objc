@@ -28,7 +28,7 @@ row:layout(200)
 t.expect(label.cell.usesSingleLineMode, "widening restores native drawing mode")
 
 local xml = require("ui.xml")
-local path, pathRefs = xml.render('<VStack><Label ref="label" text="/Users/example/Library/Developer/CoreSimulator/Devices" size="11" maxWidth="infinity" lines="0" wrapping="character" /></VStack>', {}, ns)
+local path, pathRefs = xml.render('<VStack><Label id="label" text="/Users/example/Library/Developer/CoreSimulator/Devices" size="11" maxWidth="infinity" lines="0" wrapping="character" /></VStack>', {}, ns)
 path.frameSize = ns.Size(200, 100); path:layout(200)
 t.assertEqual(pathRefs.label.lineBreakMode, 1, "character wrapping reaches the native text cell")
 t.expect(pathRefs.label.size.height >= 26, "unbroken paths wrap instead of losing their final characters")

@@ -1,7 +1,7 @@
 <Window title="Native Motion Feedback" width="520" height="400">
   <VStack spacing="12" padding="16" maxWidth="infinity" maxHeight="infinity">
     <Button title="Add item" action="addItem" />
-    <List ref="items" data="items" style="plain" flexGrow="1" maxWidth="infinity">
+    <List id="items" data="items" style="plain" flexGrow="1" maxWidth="infinity">
       <Column id="title" title="Items" />
     </List>
   </VStack>
