@@ -1295,6 +1295,7 @@ UIKit.Divider = UIKit.Separator
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
 --- @prop value table optional. Current selected, edited, or measured value.
+--- @prop tint color optional. Progress color for determinate progress or activity color for the spinner.
 --- @example <ProgressView />
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function UIKit.ProgressView(props)
@@ -1305,7 +1306,10 @@ function UIKit.ProgressView(props)
 	else
 		view = bridge._progressIndicator()
 	end
-	if props.tint then view.progressTintColor = bridge._systemColor(props.tint) end
+	if props.tint then
+		local color = bridge._systemColor(props.tint)
+		if props.value ~= nil then view.progressTintColor = color else view.color = color end
+	end
 	return applyLayout(view, props)
 end
 
