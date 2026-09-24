@@ -41,11 +41,20 @@ end
 
 function Controller:push(template, data, title)
 	local view, refs = xml.renderFile("apps/adventure-arena/views/" .. template .. ".etlua", data, self.ns)
-	self.navigation:push(self.ns.HostingController(view), title)
+	local hostingController
+	if template == "Session" and self.ns.SpeechRecognizer then
+		hostingController = self.ns.HostingController(view, function()
+			self.sessionController:onDisappear()
+		end)
+	else
+		hostingController = self.ns.HostingController(view)
+	end
+	self.navigation:push(hostingController, title)
 	return view, refs
 end
 
 function Controller:back()
+	self.sessionController:cancelDictation()
 	self.navigation:pop()
 end
 

@@ -1,4 +1,19 @@
 <Window title="UI Comparison" appearance="light">
+	<% if id == "tabs" then -%>
+	<TabView selected="<%= selectedIndex or 0 %>" minimizeBehavior="never">
+		<% for _, tab in ipairs(tabs) do -%>
+		<Tab id="<%= tab.id %>" title="<%= tab.title %>" systemImage="<%= tab.symbol %>">
+			<ScrollView vertical="true" flexGrow="1" maxWidth="infinity">
+				<VStack padding="<%= contract.layout.horizontalInset %>" spacing="<%= contract.layout.sectionSpacing %>" alignment="leading" flexGrow="1" maxWidth="infinity">
+					<Label text="<%= tab.heading %>" size="24" weight="bold" />
+					<Label text="<%= tab.subtitle %>" size="16" />
+					<Label text="<%= tab.detail %>" size="14" color="secondary" />
+				</VStack>
+			</ScrollView>
+		</Tab>
+		<% end -%>
+	</TabView>
+	<% else -%>
 	<ScrollView vertical="true" flexGrow="1" maxWidth="infinity">
 		<VStack padding="<%= contract.layout.horizontalInset %>" spacing="<%= contract.layout.stackSpacing %>" alignment="leading" flexGrow="1" maxWidth="infinity">
 			<Label text="<%= title %>" size="28" weight="bold" />
@@ -20,15 +35,32 @@
 			<% elseif id == "buttons" then -%>
 			<VStack spacing="<%= contract.layout.buttonSpacing %>" alignment="leading" maxWidth="infinity">
 				<% for _, button in ipairs(buttons) do -%>
-				<% if button.disabled then -%>
-				<Button title="<%= button.title %>" style="<%= button.style %>" disabled="true" />
-				<% elseif button.symbol then -%>
-				<Button title="<%= button.title %>" style="<%= button.style %>" systemImage="<%= button.symbol %>" action="noop" />
+				<% if button.accessibilityLabel then -%>
+				<Button title="<%= button.title %>" style="<%= button.style %>" systemImage="<%= button.symbol or '' %>" role="<%= button.role or '' %>" size="<%= button.size or '' %>" accessibilityLabel="<%= button.accessibilityLabel %>" disabled="<%= button.disabled and 'true' or 'false' %>" action="noop" />
 				<% else -%>
-				<Button title="<%= button.title %>" style="<%= button.style %>" action="noop" />
+				<Button title="<%= button.title %>" style="<%= button.style %>" systemImage="<%= button.symbol or '' %>" role="<%= button.role or '' %>" size="<%= button.size or '' %>" disabled="<%= button.disabled and 'true' or 'false' %>" action="noop" />
 				<% end -%>
 				<% end -%>
 			</VStack>
+			<% elseif id == "toggles" then -%>
+			<VStack spacing="<%= contract.layout.controlSpacing %>" alignment="leading" maxWidth="infinity">
+				<% for _, toggle in ipairs(toggles) do -%>
+				<Toggle label="<%= toggle.label %>" value="<%= toggle.value %>" disabled="<%= toggle.disabled and 'true' or 'false' %>" />
+				<% end -%>
+			</VStack>
+			<% elseif id == "grid" then -%>
+			<Grid spacing="<%= contract.layout.gridSpacing %>" alignment="center" maxWidth="infinity">
+				<% for _, row in ipairs(grid) do -%>
+				<GridRow>
+					<% for _, cell in ipairs(row) do -%>
+					<VStack spacing="<%= contract.layout.gridCellSpacing %>" alignment="center" flexGrow="1">
+						<SystemImage name="<%= cell.symbol %>" size="20" color="blue" label="<%= cell.title %>" />
+						<Label text="<%= cell.title %>" size="12" />
+					</VStack>
+					<% end -%>
+				</GridRow>
+				<% end -%>
+			</Grid>
 			<% elseif id == "stacks" then -%>
 			<VStack spacing="<%= contract.layout.sectionSpacing %>" alignment="leading" maxWidth="infinity">
 				<Label text="HStack with Spacer" size="15" weight="semibold" />
@@ -44,6 +76,16 @@
 					<Label text="<%= nestedSubtitle %>" size="14" color="secondary" />
 				</VStack>
 				<Divider />
+				<Label text="HStack with spaced metrics" size="15" weight="semibold" />
+				<HStack spacing="<%= contract.layout.stackRowSpacing %>" alignment="top" maxWidth="infinity">
+					<% for _, condition in ipairs(quickConditions) do -%>
+					<VStack spacing="<%= contract.layout.nestedSpacing %>" alignment="leading" flexGrow="1">
+						<Label text="<%= condition.title %>" size="12" color="secondary" />
+						<Label text="<%= condition.value %>" size="14" weight="medium" />
+					</VStack>
+					<% end -%>
+				</HStack>
+				<Divider />
 				<Label text="ZStack overlay" size="15" weight="semibold" />
 				<ZStack width="<%= contract.layout.overlaySize %>" height="<%= contract.layout.overlaySize %>">
 					<SystemImage name="circle.fill" size="48" color="blue" label="Background" />
@@ -54,7 +96,7 @@
 			<VStack spacing="<%= contract.layout.controlSpacing %>" alignment="leading" maxWidth="infinity">
 				<TextField value="<%= field.value %>" placeholder="<%= field.placeholder %>" />
 				<Toggle label="<%= toggle.label %>" value="<%= toggle.value %>" />
-				<VStack spacing="4" alignment="leading" maxWidth="infinity">
+				<VStack spacing="<%= contract.layout.sliderRowSpacing %>" alignment="leading" maxWidth="infinity">
 					<HStack spacing="<%= contract.layout.horizontalSpacing %>" alignment="center" maxWidth="infinity">
 						<Label text="<%= slider.label %>" size="15" />
 						<Spacer />
@@ -62,7 +104,7 @@
 					</HStack>
 					<Slider min="<%= slider.min %>" max="<%= slider.max %>" value="<%= slider.value %>" />
 				</VStack>
-				<VStack spacing="8" alignment="leading" maxWidth="infinity">
+				<VStack spacing="<%= contract.layout.progressSpacing %>" alignment="leading" maxWidth="infinity">
 					<Label text="<%= progress.label %>" size="15" />
 					<ProgressView value="<%= progress.value %>" />
 				</VStack>
@@ -70,4 +112,5 @@
 			<% end -%>
 		</VStack>
 	</ScrollView>
+	<% end -%>
 </Window>

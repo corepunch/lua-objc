@@ -705,6 +705,11 @@ Button `size` and `weight` set the native title font, including in XML:
 `<Button title="Applications" style="link" size="11" />`. Omitting them preserves
 the standard system button typography.
 
+UIKit buttons use the native unbordered system appearance when `style` is
+omitted. Set `style="bordered"` or `style="borderedProminent"` when the design
+calls for a native button surface; `style="plain"` intentionally has no border.
+The XML renderer forwards these styles to `UIButton.Configuration`.
+
 Use `style="glass"` for the native system glass button treatment. The UIKit
 bridge uses `UIButtonConfiguration.glassButtonConfiguration`; AppKit keeps the
 `NSButton` and embeds it in `NSGlassEffectView`.
@@ -723,6 +728,16 @@ opacity layers.
   <VStack padding="16"><Label text="Native glass" /></VStack>
 </GlassEffect>
 ```
+
+### `UIKit.SpeechRecognizer(callback, locale)`
+
+Creates a microphone dictation session that writes recognition results through
+the callback without focusing a text field or opening the software keyboard.
+The callback receives `(state, text, message)` with states `starting`,
+`listening`, `partial`, `processing`, `finished`, `error`, or `idle`. Call
+`start()`, `stop()`, or `cancel()` on the returned session. The locale defaults
+to the device's current locale. The host app must include the microphone and
+speech recognition usage descriptions in its `Info.plist`.
 
 ### `WebView{...}` and `ui.webpage`
 

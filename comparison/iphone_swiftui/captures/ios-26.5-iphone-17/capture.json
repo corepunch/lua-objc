@@ -13,11 +13,17 @@
   "screenshots": [
     "lua-objc-buttons.png",
     "lua-objc-controls.png",
+    "lua-objc-grid.png",
     "lua-objc-labels.png",
     "lua-objc-stacks.png",
+    "lua-objc-tabs.png",
+    "lua-objc-toggles.png",
     "swiftui-buttons.png",
     "swiftui-controls.png",
+    "swiftui-grid.png",
     "swiftui-labels.png",
-    "swiftui-stacks.png"
+    "swiftui-stacks.png",
+    "swiftui-tabs.png",
+    "swiftui-toggles.png"
   ]
 }

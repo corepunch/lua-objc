@@ -30,6 +30,9 @@ private struct Layout: Decodable {
 	let sliderRowSpacing: CGFloat
 	let progressSpacing: CGFloat
 	let overlaySize: CGFloat
+	let gridSpacing: CGFloat
+	let gridCellSpacing: CGFloat
+	let stackRowSpacing: CGFloat
 }
 
 private struct Screen: Decodable, Identifiable {
@@ -47,6 +50,11 @@ private struct Screen: Decodable, Identifiable {
 	let toggle: ToggleFixture?
 	let slider: SliderFixture?
 	let progress: ProgressFixture?
+	let toggles: [ToggleFixture]?
+	let tabs: [TabFixture]?
+	let selectedIndex: Int?
+	let grid: [[Sample]]?
+	let quickConditions: [ConditionFixture]?
 }
 
 private struct Sample: Decodable, Identifiable {
@@ -60,6 +68,8 @@ private struct Sample: Decodable, Identifiable {
 	let style: String?
 	let symbol: String?
 	let disabled: Bool?
+	let role: String?
+	let accessibilityLabel: String?
 }
 
 private struct SystemLabel: Decodable {
@@ -77,6 +87,22 @@ private struct Field: Decodable {
 private struct ToggleFixture: Decodable {
 	let label: String
 	let value: Bool
+	let disabled: Bool?
+}
+
+private struct TabFixture: Decodable, Identifiable {
+	let id: String
+	let title: String
+	let symbol: String
+	let heading: String
+	let subtitle: String
+	let detail: String
+}
+
+private struct ConditionFixture: Decodable, Identifiable {
+	let id: String
+	let title: String
+	let value: String
 }
 
 private struct SliderFixture: Decodable {
@@ -135,6 +161,13 @@ private func sampleFont(_ sample: Sample) -> Font {
 private struct ComparisonView: View {
 	let contract: Contract
 	let screen: Screen
+	@State private var selectedTab: Int
+
+	init(contract: Contract, screen: Screen) {
+		self.contract = contract
+		self.screen = screen
+		_selectedTab = State(initialValue: screen.selectedIndex ?? 0)
+	}
 
 	@ViewBuilder
 	private var fixtureContent: some View {
@@ -158,6 +191,32 @@ private struct ComparisonView: View {
 					buttonView(button)
 				}
 			}
+		case "toggles":
+			VStack(alignment: .leading, spacing: contract.layout.controlSpacing) {
+				ForEach(Array((screen.toggles ?? []).enumerated()), id: \.offset) { item in
+					let toggle = item.element
+					Toggle(toggle.label, isOn: .constant(toggle.value))
+						.disabled(toggle.disabled ?? false)
+				}
+			}
+		case "grid":
+			Grid(horizontalSpacing: contract.layout.gridSpacing,
+				verticalSpacing: contract.layout.gridSpacing) {
+				ForEach(Array((screen.grid ?? []).enumerated()), id: \.offset) { row in
+					GridRow {
+						ForEach(row.element) { cell in
+							VStack(spacing: contract.layout.gridCellSpacing) {
+								Image(systemName: cell.symbol ?? "circle.fill")
+									.font(.system(size: 20))
+									.foregroundStyle(.blue)
+								Text(cell.title ?? "")
+									.font(.system(size: 12))
+							}
+							.frame(maxWidth: .infinity)
+						}
+					}
+				}
+			}
 		case "stacks":
 			VStack(alignment: .leading, spacing: contract.layout.sectionSpacing) {
 				Text("HStack with Spacer")
@@ -177,6 +236,18 @@ private struct ComparisonView: View {
 						.foregroundStyle(.secondary)
 				}
 				Divider()
+				Text("HStack with spaced metrics")
+					.font(.system(size: 15, weight: .semibold))
+				HStack(alignment: .top, spacing: contract.layout.stackRowSpacing) {
+					ForEach(screen.quickConditions ?? []) { condition in
+						VStack(alignment: .leading, spacing: contract.layout.nestedSpacing) {
+							Text(condition.title).font(.system(size: 12)).foregroundStyle(.secondary)
+							Text(condition.value).font(.system(size: 14, weight: .medium))
+						}
+						.frame(maxWidth: .infinity, alignment: .leading)
+					}
+				}
+				Divider()
 				Text("ZStack overlay")
 					.font(.system(size: 15, weight: .semibold))
 				ZStack {
@@ -189,6 +260,8 @@ private struct ComparisonView: View {
 				}
 				.frame(width: contract.layout.overlaySize, height: contract.layout.overlaySize)
 			}
+		case "tabs":
+			EmptyView()
 		case "controls":
 			VStack(alignment: .leading, spacing: contract.layout.controlSpacing) {
 				if let field = screen.field {
@@ -230,28 +303,67 @@ private struct ComparisonView: View {
 		} else {
 			label = AnyView(Text(button.title ?? ""))
 		}
-		let base = Button {} label: { label }
+		let role: ButtonRole? = button.role.flatMap { value in
+			switch value {
+			case "destructive": return .destructive
+			case "cancel": return .cancel
+			default: return nil
+			}
+		}
+		let base = Button(role: role) {} label: { label }
+		let styled: AnyView
 		switch button.style ?? "default" {
-		case "bordered": return AnyView(base.buttonStyle(.bordered).disabled(button.disabled ?? false))
-		case "borderedProminent": return AnyView(base.buttonStyle(.borderedProminent).disabled(button.disabled ?? false))
-		case "plain": return AnyView(base.buttonStyle(.plain).disabled(button.disabled ?? false))
-		default: return AnyView(base.buttonStyle(.automatic).disabled(button.disabled ?? false))
+		case "bordered": styled = AnyView(base.buttonStyle(.bordered))
+		case "borderedProminent": styled = AnyView(base.buttonStyle(.borderedProminent))
+		case "plain": styled = AnyView(base.buttonStyle(.plain))
+		default: styled = AnyView(base.buttonStyle(.automatic))
+		}
+		let sized = button.size.map { AnyView(styled.font(.system(size: $0))) } ?? styled
+		let accessible = sized.disabled(button.disabled ?? false)
+		if let accessibilityLabel = button.accessibilityLabel {
+			return AnyView(accessible.accessibilityLabel(accessibilityLabel))
+		}
+		return AnyView(accessible)
 	}
-}
+
+	private var tabsContent: some View {
+		TabView(selection: $selectedTab) {
+			ForEach(Array((screen.tabs ?? []).enumerated()), id: \.element.id) { item in
+				let tab = item.element
+				ScrollView {
+					VStack(alignment: .leading, spacing: contract.layout.sectionSpacing) {
+						Text(tab.heading).font(.system(size: 24, weight: .bold))
+						Text(tab.subtitle).font(.system(size: 16))
+						Text(tab.detail).font(.system(size: 14)).foregroundStyle(.secondary)
+					}
+					.frame(maxWidth: .infinity, alignment: .leading)
+					.padding(contract.layout.horizontalInset)
+				}
+				.tabItem { Label(tab.title, systemImage: tab.symbol) }
+				.tag(item.offset)
+			}
+		}
+	}
 
 	var body: some View {
-		ScrollView {
-			VStack(alignment: .leading, spacing: contract.layout.stackSpacing) {
-				Text(screen.title)
-					.font(.system(size: 28, weight: .bold))
-				Text("Same fixture contract · \(contract.environment.device) · \(contract.environment.runtime)")
-					.font(.system(size: 13))
-					.foregroundStyle(.secondary)
-				Divider()
-				fixtureContent
+		Group {
+			if screen.id == "tabs" {
+				tabsContent
+			} else {
+				ScrollView {
+					VStack(alignment: .leading, spacing: contract.layout.stackSpacing) {
+						Text(screen.title)
+							.font(.system(size: 28, weight: .bold))
+						Text("Same fixture contract · \(contract.environment.device) · \(contract.environment.runtime)")
+							.font(.system(size: 13))
+							.foregroundStyle(.secondary)
+						Divider()
+						fixtureContent
+					}
+					.frame(maxWidth: .infinity, alignment: .leading)
+					.padding(contract.layout.horizontalInset)
+				}
 			}
-			.frame(maxWidth: .infinity, alignment: .leading)
-			.padding(contract.layout.horizontalInset)
 		}
 		.background(Color(uiColor: .systemBackground))
 		.preferredColorScheme(.light)

@@ -8,9 +8,9 @@ FIXTURES="${1:-all}"
 export DEVELOPER_DIR
 
 case "$FIXTURES" in
-	all) set -- labels buttons stacks controls ;;
-	labels|buttons|stacks|controls) set -- "$FIXTURES" ;;
-	*) echo "usage: capture.sh [all|labels|buttons|stacks|controls]" >&2; exit 2 ;;
+	all) set -- labels buttons toggles tabs grid stacks controls ;;
+	labels|buttons|toggles|tabs|grid|stacks|controls) set -- "$FIXTURES" ;;
+	*) echo "usage: capture.sh [all|labels|buttons|toggles|tabs|grid|stacks|controls]" >&2; exit 2 ;;
 esac
 
 APP="$("$ROOT/comparison/iphone_swiftui/build_reference.sh")"

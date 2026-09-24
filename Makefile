@@ -158,7 +158,7 @@ $(HOST_BINARY): $(IOS_LUA_A) $(IOS_HOST_SRCS) ios/LuaRuntime/LuaRuntime.h $(UIKI
 	@echo "Building iOS host..."
 	@mkdir -p $(HOST_BUNDLE)
 	@$(IOS_CC) $(IOS_CFLAGS) \
-		-framework UIKit -framework Foundation -framework CoreGraphics -framework QuartzCore -framework Security -framework WebKit \
+		-framework UIKit -framework Foundation -framework CoreGraphics -framework QuartzCore -framework Security -framework WebKit -framework AVFoundation -framework Speech \
 		-o $(HOST_BUNDLE)/LuaRuntime \
 		$(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) $(IOS_LUA_A)
 	@cp ios/LuaRuntime/Info.plist $(HOST_BUNDLE)/Info.plist

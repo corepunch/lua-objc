@@ -168,8 +168,8 @@ function UIKit.Preview(props)
 	return applyLayout(bridge._preview(), props or {})
 end
 
-function UIKit.HostingController(view)
-	return bridge._hostingController(view)
+function UIKit.HostingController(view, onDisappear)
+	return bridge._hostingController(view, onDisappear)
 end
 
 local navScreenScopes = setmetatable({}, { __mode = "k" })
@@ -992,6 +992,27 @@ function UIKit.GlassEffect(props)
 		props.cornerRadius or 0), props)
 end
 
+--- Creates a speech-to-text session that does not present the software keyboard.
+--- @prop onEvent function required. Receives `(state, text, message)` updates.
+--- @prop locale string optional. Locale identifier; defaults to the system locale.
+--- @example local speech = UIKit.SpeechRecognizer(onEvent); speech:start()
+--- @platform UIKit Speech and AVAudioSession.
+function UIKit.SpeechRecognizer(onEvent, locale)
+	assert(type(onEvent) == "function", "SpeechRecognizer requires an event callback")
+	local session = bridge._speechRecognizer(onEvent, locale or "")
+	local recognizer = {}
+	function recognizer:start()
+		bridge._speechRecognizerAction(session, "start")
+	end
+	function recognizer:stop()
+		bridge._speechRecognizerAction(session, "stop")
+	end
+	function recognizer:cancel()
+		bridge._speechRecognizerAction(session, "cancel")
+	end
+	return recognizer
+end
+
 --- Opens or navigates to a destination when activated.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
@@ -1080,14 +1101,26 @@ function UIKit.Toggle(props)
 	local label = type(props) == "table" and (props.label or props[1] or "") or ""
 	local is_on = type(props) == "table" and props.is_on or false
 	local action = type(props) == "table" and props.action or nil
-	local toggle
+	local control
 	if action then
-		toggle = bridge._toggle(label, is_on, action)
+		control = bridge._toggle(label, is_on, action)
 	else
-		toggle = bridge._toggle(label, is_on)
+		control = bridge._toggle(label, is_on)
 	end
-	if type(props) == "table" and props.disabled ~= nil then toggle.enabled = not props.disabled end
-	return applyLayout(toggle, props)
+	if type(props) == "table" and props.disabled ~= nil then
+		control.enabled = not props.disabled
+	end
+	if label == "" then return applyLayout(control, props) end
+	local labelView = UIKit.Label(label)
+	labelView.numberOfLines = 1
+	labelView.lineBreakMode = 4
+	local row = UIKit.HStack {
+		alignment = "center",
+		labelView,
+		UIKit.Spacer(),
+		control,
+	}
+	return applyLayout(row, props)
 end
 
 --- Selects a numeric value within a continuous range.

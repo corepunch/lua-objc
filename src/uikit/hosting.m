@@ -6,6 +6,7 @@ __attribute__((weak)) UIWindow *LRTApplicationWindow(void) {
 
 @interface LuaHostingController : UIViewController
 @property (nonatomic, strong) UIView *luaRoot;
+@property (nonatomic, strong) LuaReg *disappearCallback;
 @end
 
 @implementation LuaHostingController
@@ -56,6 +57,22 @@ __attribute__((weak)) UIWindow *LRTApplicationWindow(void) {
 	[self updateHostSafeAreaPadding];
 	layout_recursive(self.luaRoot, self.luaRoot.bounds.size.width);
 }
+
+- (void)viewDidDisappear:(BOOL)animated {
+	[super viewDidDisappear:animated];
+	if (!self.isMovingFromParentViewController && !self.isBeingDismissed) return;
+	LuaReg *callback = self.disappearCallback;
+	self.disappearCallback = nil;
+	if (!callback) return;
+	lua_State *L = lua_reg_live_state(callback);
+	if (L && lua_reg_push(callback))
+		lua_objc_pcall(L, 0, 0, "hosting controller disappear");
+	[callback dispose];
+}
+
+- (void)dealloc {
+	[_disappearCallback dispose];
+}
 @end
 
 static UIViewController *check_view_controller(lua_State *L, int idx) {
@@ -85,6 +102,8 @@ static int bridge_hosting_controller(lua_State *L) {
 	UIView *view = (UIView *)obj;
 	LuaHostingController *vc =
 		[[LuaHostingController alloc] initWithLuaView:view];
+	if (lua_isfunction(L, 2))
+		vc.disappearCallback = lua_reg_create(L, 2, YES);
 	push_objc(L, vc, "uiviewcontroller");
 	return 1;
 }

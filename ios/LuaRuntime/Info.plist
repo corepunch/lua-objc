@@ -42,6 +42,10 @@
 	<string>26.5</string>
 	<key>NSAllowsLocalNetworking</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>The app uses the microphone to transcribe speech into text.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>The app uses speech recognition to turn spoken input into text.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

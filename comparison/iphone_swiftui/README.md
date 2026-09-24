@@ -6,10 +6,11 @@ contract fixes sample text, font sizes and weights, control styles and values,
 fixture order, and the capture environment. The two view trees are implemented
 separately so their output can be compared without sharing layout code.
 
-The first comparison covers text styles and wrapping, SF Symbol labels, button
-styles and disabled state, `VStack`/`HStack`/`ZStack` composition, and native
-text field, toggle, slider, and progress controls. Each family is a launch
-selectable fixture, which gives it the full iPhone viewport in the screenshot.
+The comparison covers text styles and wrapping, SF Symbol labels, button styles
+and roles, enabled and disabled toggles, native tabs, a three-column weather
+grid, nested and spaced stacks, and native text field, slider, and progress
+controls. Each family is a launch-selectable fixture, which gives it the full
+iPhone viewport in the screenshot.
 
 The reference app uses SwiftUI controls. The candidate app uses the public
 lua-objc UIKit API and etlua templates. Both run on the same booted Simulator;
@@ -26,6 +27,7 @@ Capture one fixture:
 
 ```sh
 comparison/iphone_swiftui/capture.sh buttons
+comparison/iphone_swiftui/capture.sh tabs
 ```
 
 The generated image pairs and environment record live under
@@ -36,8 +38,11 @@ a new baseline on a different device or OS runtime.
 | Fixture | Focus | lua-objc composition |
 |---|---|---|
 | `labels` | Font sizes, weights, secondary text, wrapping, SF Symbol label | `views/Window.etlua` labels branch |
-| `buttons` | Automatic, bordered, prominent, plain, symbol, disabled | `views/Window.etlua` buttons branch |
-| `stacks` | Flexible horizontal spacing, nested stacks, symbol overlay | `views/Window.etlua` stacks branch |
+| `buttons` | Automatic, bordered, prominent, plain, destructive, cancel, symbol, disabled, font sizes | `views/Window.etlua` buttons branch |
+| `toggles` | On, off, disabled on, disabled off | `views/Window.etlua` toggles branch |
+| `tabs` | Three native tabs with SF Symbols and distinct content | `views/Window.etlua` tabs branch |
+| `grid` | Three-column by three-row weather-symbol grid | `views/Window.etlua` grid branch |
+| `stacks` | Spacer, nested `VStack`, spaced `HStack` metrics, `ZStack` overlay | `views/Window.etlua` stacks branch |
 | `controls` | Text field, toggle, slider, progress | `views/Window.etlua` controls branch |
 
 The status bar is normalized to 9:41 with full signal and battery. Appearance,

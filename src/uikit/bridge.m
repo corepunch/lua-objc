@@ -101,6 +101,7 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #include "tables.m"
 #include "platform.m"
 #include "constructors.m"
+#include "speech_recognition.m"
 #include "text_field.m"
 #include "hosting.m"
 #include "preview.m"
@@ -157,6 +158,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_menu", bridge_UIKitControls_menu},
 	{"_materialView", bridge_UIKitControls_materialView},
 	{"_glassEffect", bridge_UIKitControls_glassEffect},
+	{"_speechRecognizer", bridge_UIKitSpeechRecognition_create},
+	{"_speechRecognizerAction", bridge_UIKitSpeechRecognition_action},
 	{"_webView", bridge_UIKitControls_webView},
 	{"_webViewAction", bridge_UIKitControls_webViewAction},
 	{"_hapticsAvailable", bridge_UIKit_hapticsAvailable},
