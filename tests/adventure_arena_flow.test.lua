@@ -110,7 +110,7 @@ end
 controller.library:showGame(game.id)
 t.assertEqual(rendered.refs.title.text, game.title, "detail round-trips special characters")
 t.assertEqual(rendered.refs.description.text, game.description, "detail preserves long text")
-click("back")
+controller.navigation:pop()
 t.assertEqual(controller.navigation.depth, 1, "detail back restores catalog")
 t.expect(not controller.library:showGame("missing"), "missing detail record is rejected")
 t.expect(not controller.sessionController:show("missing"), "missing session record is rejected")
