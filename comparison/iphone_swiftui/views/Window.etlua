@@ -1,0 +1,73 @@
+<Window title="UI Comparison" appearance="light">
+	<ScrollView vertical="true" flexGrow="1" maxWidth="infinity">
+		<VStack padding="<%= contract.layout.horizontalInset %>" spacing="<%= contract.layout.stackSpacing %>" alignment="leading" flexGrow="1" maxWidth="infinity">
+			<Label text="<%= title %>" size="28" weight="bold" />
+			<Label text="Same fixture contract · iPhone 17 · iOS 26.5" size="13" color="secondary" />
+			<Divider />
+			<% if id == "labels" then -%>
+			<VStack spacing="<%= contract.layout.sectionSpacing %>" alignment="leading" maxWidth="infinity">
+				<% for _, sample in ipairs(samples) do -%>
+				<VStack spacing="<%= contract.layout.sampleSpacing %>" alignment="leading" maxWidth="infinity">
+					<% if sample.color then -%>
+					<Label text="<%= sample.text %>" size="<%= sample.size %>" weight="<%= sample.weight %>" color="<%= sample.color %>" lines="<%= sample.lines or 0 %>" />
+					<% else -%>
+					<Label text="<%= sample.text %>" size="<%= sample.size %>" weight="<%= sample.weight %>" lines="<%= sample.lines or 0 %>" />
+					<% end -%>
+				</VStack>
+				<% end -%>
+				<Label text="<%= systemLabel.title %>" systemImage="<%= systemLabel.symbol %>" size="16" />
+			</VStack>
+			<% elseif id == "buttons" then -%>
+			<VStack spacing="<%= contract.layout.buttonSpacing %>" alignment="leading" maxWidth="infinity">
+				<% for _, button in ipairs(buttons) do -%>
+				<% if button.disabled then -%>
+				<Button title="<%= button.title %>" style="<%= button.style %>" disabled="true" />
+				<% elseif button.symbol then -%>
+				<Button title="<%= button.title %>" style="<%= button.style %>" systemImage="<%= button.symbol %>" action="noop" />
+				<% else -%>
+				<Button title="<%= button.title %>" style="<%= button.style %>" action="noop" />
+				<% end -%>
+				<% end -%>
+			</VStack>
+			<% elseif id == "stacks" then -%>
+			<VStack spacing="<%= contract.layout.sectionSpacing %>" alignment="leading" maxWidth="infinity">
+				<Label text="HStack with Spacer" size="15" weight="semibold" />
+				<HStack spacing="<%= contract.layout.horizontalSpacing %>" alignment="center" maxWidth="infinity">
+					<Label text="<%= leading %>" size="16" />
+					<Spacer />
+					<Label text="<%= trailing %>" size="16" weight="semibold" />
+				</HStack>
+				<Divider />
+				<Label text="Nested VStack" size="15" weight="semibold" />
+				<VStack spacing="<%= contract.layout.nestedSpacing %>" alignment="leading">
+					<Label text="<%= nestedTitle %>" size="16" weight="medium" />
+					<Label text="<%= nestedSubtitle %>" size="14" color="secondary" />
+				</VStack>
+				<Divider />
+				<Label text="ZStack overlay" size="15" weight="semibold" />
+				<ZStack width="<%= contract.layout.overlaySize %>" height="<%= contract.layout.overlaySize %>">
+					<SystemImage name="circle.fill" size="48" color="blue" label="Background" />
+					<SystemImage name="<%= overlaySymbol %>" size="22" color="white" label="Sun" />
+				</ZStack>
+			</VStack>
+			<% elseif id == "controls" then -%>
+			<VStack spacing="<%= contract.layout.controlSpacing %>" alignment="leading" maxWidth="infinity">
+				<TextField value="<%= field.value %>" placeholder="<%= field.placeholder %>" />
+				<Toggle label="<%= toggle.label %>" value="<%= toggle.value %>" />
+				<VStack spacing="4" alignment="leading" maxWidth="infinity">
+					<HStack spacing="<%= contract.layout.horizontalSpacing %>" alignment="center" maxWidth="infinity">
+						<Label text="<%= slider.label %>" size="15" />
+						<Spacer />
+						<Label text="<%= slider.value %>%" size="14" color="secondary" />
+					</HStack>
+					<Slider min="<%= slider.min %>" max="<%= slider.max %>" value="<%= slider.value %>" />
+				</VStack>
+				<VStack spacing="8" alignment="leading" maxWidth="infinity">
+					<Label text="<%= progress.label %>" size="15" />
+					<ProgressView value="<%= progress.value %>" />
+				</VStack>
+			</VStack>
+			<% end -%>
+		</VStack>
+	</ScrollView>
+</Window>

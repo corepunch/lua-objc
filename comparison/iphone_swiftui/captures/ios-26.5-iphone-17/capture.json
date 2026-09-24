@@ -1,0 +1,23 @@
+{
+  "device": "iPhone 17",
+  "udid": "BBCF85EC-D271-4623-9E3A-6D577C91B170",
+  "runtime": "26.5",
+  "runtimeBuild": "23F77",
+  "xcode": "Xcode 27.0\nBuild version 27A266a",
+  "appearance": "light",
+  "increaseContrast": "disabled",
+  "locale": "en_US",
+  "layoutDirection": "leftToRight",
+  "dynamicType": "large",
+  "statusBarTime": "9:41",
+  "screenshots": [
+    "lua-objc-buttons.png",
+    "lua-objc-controls.png",
+    "lua-objc-labels.png",
+    "lua-objc-stacks.png",
+    "swiftui-buttons.png",
+    "swiftui-controls.png",
+    "swiftui-labels.png",
+    "swiftui-stacks.png"
+  ]
+}

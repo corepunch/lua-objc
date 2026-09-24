@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "environment": {
+    "device": "iPhone 17",
+    "runtime": "iOS 26.5",
+    "appearance": "light",
+    "locale": "en_US",
+    "layoutDirection": "leftToRight",
+    "dynamicType": "large",
+    "statusBarTime": "9:41"
+  },
+  "layout": {
+    "horizontalInset": 20,
+    "stackSpacing": 14,
+    "sectionSpacing": 16,
+    "sampleSpacing": 2,
+    "buttonSpacing": 12,
+    "nestedSpacing": 3,
+    "horizontalSpacing": 0,
+    "controlSpacing": 18,
+    "sliderRowSpacing": 4,
+    "progressSpacing": 8,
+    "overlaySize": 52
+  },
+  "screens": [
+    {
+      "id": "labels",
+      "title": "Text and labels",
+      "samples": [
+        {"id":"large-title","text":"Weather today","size":28,"weight":"bold"},
+        {"id":"section-title","text":"Copenhagen","size":20,"weight":"semibold"},
+        {"id":"body","text":"Sunny intervals through the afternoon.","size":16,"weight":"regular"},
+        {"id":"secondary","text":"Updated 9:41 AM","size":14,"weight":"regular","color":"secondary"},
+        {"id":"caption","text":"High 18°  ·  Low 11°","size":12,"weight":"medium","color":"secondary"},
+        {"id":"wrapped","text":"A longer label wraps naturally across the available phone width.","size":15,"weight":"regular","lines":2}
+      ],
+      "systemLabel": {"id":"system-label","title":"Location","symbol":"location.fill"}
+    },
+    {
+      "id": "buttons",
+      "title": "Buttons",
+      "buttons": [
+        {"id":"default","title":"Default button","style":"default"},
+        {"id":"bordered","title":"Bordered","style":"bordered"},
+        {"id":"prominent","title":"Prominent","style":"borderedProminent"},
+        {"id":"plain","title":"Plain action","style":"plain"},
+        {"id":"symbol","title":"Add location","style":"bordered","symbol":"plus"},
+        {"id":"disabled","title":"Unavailable","style":"borderedProminent","disabled":true}
+      ]
+    },
+    {
+      "id": "stacks",
+      "title": "Stacks",
+      "leading": "Monday",
+      "trailing": "18°",
+      "nestedTitle": "Current conditions",
+      "nestedSubtitle": "Partly cloudy",
+      "overlaySymbol": "sun.max.fill"
+    },
+    {
+      "id": "controls",
+      "title": "Controls",
+      "field": {"label":"City","placeholder":"Search cities","value":"Copenhagen"},
+      "toggle": {"label":"Daily summary","value":true},
+      "slider": {"label":"Alert level","min":0,"max":100,"value":62},
+      "progress": {"label":"Download","value":0.68}
+    }
+  ]
+}

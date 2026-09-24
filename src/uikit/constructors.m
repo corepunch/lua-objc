@@ -297,13 +297,16 @@ static int bridge_UIKitControls_zstack(lua_State *L) {
 	self.contentInset = UIEdgeInsetsZero;
 	self.scrollIndicatorInsets = UIEdgeInsetsZero;
 	CGSize viewport = self.bounds.size;
+	CGFloat topInset = view_padding_top(self);
 	CGSize measured = measure_size(self.luaContent, CGSizeMake(
 		self.alwaysBounceHorizontal ? CGFLOAT_MAX : viewport.width,
 		self.alwaysBounceVertical ? CGFLOAT_MAX : viewport.height));
+	CGFloat minimumHeight = MAX(measured.height, self.minimumContentSize.height);
 	CGSize content = CGSizeMake(
 		self.alwaysBounceHorizontal ? MAX(viewport.width, MAX(measured.width, self.minimumContentSize.width)) : viewport.width,
-		self.alwaysBounceVertical ? MAX(viewport.height, MAX(measured.height, self.minimumContentSize.height)) : viewport.height);
-	self.luaContent.frame = (CGRect){CGPointZero, content};
+		self.alwaysBounceVertical ? MAX(viewport.height, topInset + minimumHeight) : viewport.height);
+	self.luaContent.frame = CGRectMake(0, topInset, content.width,
+		MAX(minimumHeight, content.height - topInset));
 	layout_recursive(self.luaContent, content.width);
 	self.contentSize = content;
 

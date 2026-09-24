@@ -80,12 +80,18 @@ t.expect(constructors:find("scroll.contentInset = UIEdgeInsetsZero", 1, true) ~=
 	"UIKit scroll views start content at their declared edge")
 t.expect(constructors:find("self.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever", 1, true) ~= nil,
 	"UIKit scroll views retain edge placement after layout")
+t.expect(constructors:find("CGFloat topInset = view_padding_top(self)", 1, true) ~= nil
+	and constructors:find("MAX(viewport.height, topInset + minimumHeight)", 1, true) ~= nil
+	and constructors:find("CGRectMake(0, topInset, content.width", 1, true) ~= nil,
+	"UIKit root scroll views place content below the host safe area")
 -- Relayout must preserve user scrolling; offsets are owned by UIScrollView.
 t.expect(constructors:find("gradient.locations", 1, true) ~= nil,
 	"UIKit gradients preserve SwiftUI-like stop locations")
 t.expect(constructors:find("view.backgroundColor = UIColor.clearColor", 1, true) ~= nil,
 	"UIKit page controls render dots without a capsule")
-t.expect(constructors:find("view.layer.cornerRadius", 1, true) == nil,
+local pageControlImplementation = constructors:match("(static int bridge_UIKitControls_pageControl.-)\n@interface")
+t.expect(pageControlImplementation ~= nil
+	and pageControlImplementation:find("cornerRadius", 1, true) == nil,
 	"UIKit page controls do not add custom capsule corners")
 
 local hosting = assert(io.open("src/uikit/hosting.m", "r")):read("*a")
