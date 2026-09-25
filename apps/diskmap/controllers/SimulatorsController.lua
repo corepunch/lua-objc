@@ -25,22 +25,42 @@ function Controller:update()
 	if not self.refs then return end
 	for index, filter in ipairs(self.filters) do self.refs["rows" .. index]:replaceRows(Simulators.rows(self.inventory, self.query, filter)) end
 	self.selected = nil
-	self.refs.status.text = self.busy and "Working…" or self.error or (#Simulators.rows(self.inventory, self.query) == 0 and "No matching devices." or "Device data is reported by simctl; it is not added again to disk totals. Last use is UTC, when recorded.")
+	self.refs.status.text = self.busy and "Working…" or self.error or (#Simulators.rows(self.inventory, self.query) == 0 and "No matching devices." or "Device data is the size of each simulator folder. It is already included in Simulator devices. Last use comes from device.plist when that file is present.")
 	if self.busy then for index in ipairs(self.filters) do self.refs["rows" .. index]:showLoading() end
 	else for index in ipairs(self.filters) do self.refs["rows" .. index]:hideLoading() end end
 	self:buttons()
+end
+function Controller:finish(generation, inventory)
+	if generation ~= self.generation then return end
+	self.busy = false
+	if type(inventory) == "table" and type(inventory.devices) == "table" then self.inventory = inventory
+	else self.error = "Simulator folders could not be read." end
+	self:update()
 end
 function Controller:load()
 	if self.busy then return end
 	self.busy = true; self.error = nil; self.inventory = {}; self:update()
 	local generation = self.generation
-	self.service.command({"/usr/bin/xcrun", "simctl", "list", "--json"}, function(ok, output)
+	if type(self.service.simulatorInventory) == "function" then
+		self.service.simulatorInventory(self.model.home, function(inventory) self:finish(generation, inventory) end)
+		return
+	end
+	local ok, inventory = pcall(Simulators.discover, self.service, self.model.home)
+	if not ok then self:finish(generation, nil); return end
+	local paths, slots = {}, {}
+	for _, devices in pairs(inventory.devices or {}) do
+		for _, device in ipairs(devices) do
+			if device.dataPathSize == nil and device.measurePath then
+				table.insert(paths, device.measurePath)
+				table.insert(slots, device)
+			end
+		end
+	end
+	if #paths == 0 or type(self.service.measure) ~= "function" then self:finish(generation, inventory); return end
+	self.service.measure(paths, function(sizes)
 		if generation ~= self.generation then return end
-		self.busy = false
-		local decoded, value = pcall(self.service.decode, output)
-		if ok and decoded and type(value) == "table" and type(value.devices) == "table" then self.inventory = value
-		else self.error = "Simulator inventory unavailable. Check xcode-select and CoreSimulator, then Refresh. " .. tostring(output):sub(1, 180) end
-		self:update()
+		for index, device in ipairs(slots) do device.dataPathSize = sizes[index] or 0 end
+		self:finish(generation, inventory)
 	end)
 end
 function Controller:perform(action, unavailable)

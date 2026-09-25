@@ -1291,6 +1291,10 @@ function AppKit.readDirectory(path, depth)
 	return bridge._listDirectory(path, depth or 0)
 end
 
+function AppKit.readPropertyList(path)
+	return bridge._readPropertyList(path)
+end
+
 --- Displays hierarchical rows in a native outline control.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.

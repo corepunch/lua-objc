@@ -25,6 +25,7 @@ static int bridge_NSScrollView_onRowMove(lua_State *L);
 static int bridge_NSScrollView_onRowSwipe(lua_State *L);
 static int bridge_NSScrollView_onRowActivate(lua_State *L);
 static int bridge_NSScrollView_onColumnSort(lua_State *L);
+static int bridge_NSScrollView_onColumnButton(lua_State *L);
 static int bridge_NSScrollView_setSortIndicator(lua_State *L);
 static int bridge_table_column_widths(lua_State *L);
 static int bridge_table_cell_frames(lua_State *L);
@@ -58,6 +59,7 @@ static int bridge_pick_folder(lua_State *L);
 static int bridge_pick_file(lua_State *L);
 static int bridge_outlineview(lua_State *L);
 static int bridge_list_directory(lua_State *L);
+static int bridge_read_property_list(lua_State *L);
 static int bridge_timer_after(lua_State *L);
 static int bridge_http_get(lua_State *L);
 static int bridge_json_parse(lua_State *L);
@@ -217,6 +219,10 @@ static int bridge_AppKit_outlineview(lua_State *L) {
 
 static int bridge_AppKit_list_directory(lua_State *L) {
 	return bridge_list_directory(L);
+}
+
+static int bridge_AppKit_read_property_list(lua_State *L) {
+	return bridge_read_property_list(L);
 }
 
 static int bridge_AppKit_timer_after(lua_State *L) {
@@ -628,6 +634,7 @@ static MethodEntry TableMethods[] = {
 	{"onRowSwipe",	bridge_NSScrollView_onRowSwipe},
 	{"onRowActivate",	bridge_NSScrollView_onRowActivate},
 	{"onColumnSort",	bridge_NSScrollView_onColumnSort},
+	{"onColumnButton",	bridge_NSScrollView_onColumnButton},
 	{"setSortIndicator",	bridge_NSScrollView_setSortIndicator},
 	{NULL, NULL}
 };

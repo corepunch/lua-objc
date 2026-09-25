@@ -370,6 +370,64 @@ function Mock.decode(body)
 	return ns.json_parse(body)
 end
 
+function Mock:children(path)
+	path = absolute(path, self.home)
+	if path ~= "/" and path:sub(-1) == "/" then path = path:sub(1, -2) end
+	local prefix = path == "/" and "/" or path .. "/"
+	local seen, rows = {}, {}
+	for _, item in ipairs(self.items) do
+		if item.path:sub(1, #prefix) == prefix then
+			local name = item.path:sub(#prefix + 1):match("^([^/]+)")
+			if name and not seen[name] then
+				seen[name] = true
+				local child = prefix .. name
+				table.insert(rows, {name = name, path = child, bytes = self.totals[child] or 0})
+			end
+		end
+	end
+	table.sort(rows, function(a, b) return a.name < b.name end)
+	return rows
+end
+
+function Mock:bundles(root, kind)
+	if kind ~= "sdk" then return {} end
+	root = absolute(root, self.home)
+	if root ~= "/" and root:sub(-1) == "/" then root = root:sub(1, -2) end
+	local prefix = root .. "/"
+	local found = {}
+	for _, item in ipairs(self.items) do
+		if item.path:sub(1, #prefix) == prefix then
+			local relative = item.path:sub(#prefix + 1)
+			local sdk = relative:match("^(.-%.sdk)")
+			if sdk and (sdk:match("/SDKs/[^/]+%.sdk$") or sdk:match("^SDKs/[^/]+%.sdk$") or sdk:match("^[^/]+%.sdk$")) then found[sdk] = true end
+		end
+	end
+	local rows = {}
+	for sdk in pairs(found) do
+		local path = prefix .. sdk
+		table.insert(rows, {name = sdk:match("([^/]+)%.sdk$"), path = path, bytes = self.totals[path] or 0})
+	end
+	table.sort(rows, function(a, b)
+		if a.bytes ~= b.bytes then return a.bytes > b.bytes end
+		return a.name < b.name
+	end)
+	return rows
+end
+
+function Mock:simulatorRecord(udid)
+	local simulators = self.fixture.simulators
+	if not simulators then return nil end
+	for runtime, devices in pairs(simulators.devices or {}) do
+		for _, device in ipairs(devices) do
+			if device.udid == udid then return device, runtime end
+		end
+	end
+end
+
+function Mock:readPropertyList(path)
+	return ns.readPropertyList(absolute(path, self.home))
+end
+
 function Mock:command(arguments, completion)
 	if arguments[1] ~= "/usr/bin/xcrun" or arguments[2] ~= "simctl" then
 		completion(false, "Mock HDD never runs external commands.")
@@ -397,7 +455,18 @@ function Mock:command(arguments, completion)
 		end
 		if device then break end
 	end
-	if not device or (action ~= "erase" and action ~= "delete") then completion(false, "Mock simulator action is unavailable."); return end
+	local deviceRoot = self.home .. "/Library/Developer/CoreSimulator/Devices/" .. tostring(id or "")
+	if not device then
+		if (action ~= "erase" and action ~= "delete") or (self.fileCounts[deviceRoot] or 0) == 0 then
+			completion(false, "Mock simulator action is unavailable.")
+			return
+		end
+		local removed = self.removeUnder(action == "erase" and (deviceRoot .. "/data") or deviceRoot)
+		self.availableBytes = math.min(self.fixture.capacityBytes, self.availableBytes + removed)
+		completion(true, "Mock simulator " .. action .. " completed.")
+		return
+	end
+	if action ~= "erase" and action ~= "delete" then completion(false, "Mock simulator action is unavailable."); return end
 	local path = absolute(device.dataPath or ("~/Library/Developer/CoreSimulator/Devices/" .. id .. "/data"), self.home)
 	if action == "erase" then
 		local removed = self.removeUnder(path)

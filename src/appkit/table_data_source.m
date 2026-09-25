@@ -23,12 +23,21 @@
 @property (nonatomic, strong) NSLevelIndicator *levelIndicator;
 @property (nonatomic) CGFloat imageWidth;
 @property (nonatomic, strong) NSProgressIndicator *loadingIndicator;
+@property (nonatomic, strong) NSButton *actionButton;
 @end
 
 @implementation LuaTableCellView
 
 - (void)layout {
 	[super layout];
+	if (self.actionButton && !self.actionButton.hidden) {
+		CGFloat side = kTableInfoButtonSide;
+		self.actionButton.frame = NSMakeRect(
+			floor((self.bounds.size.width - side) / 2),
+			floor((self.bounds.size.height - side) / 2),
+			side, side);
+		return;
+	}
 	NSTextField *text = self.textField;
 	if (!text) return;
 	if (_curveView && !_curveView.hidden) {
@@ -93,6 +102,43 @@
 @end
 
 static NSColor *semantic_color(NSString *name);
+static void column_button_invoke(NSScrollView *scroll, NSButton *button) {
+	LuaReg *reg = objc_getAssociatedObject(scroll, &kKeys[kTableColumnButtonKey]);
+	lua_State *L = lua_reg_live_state(reg);
+	if (!scroll || !L || !lua_reg_push(reg)) return;
+	push_objc(L, scroll, "nsview");
+	lua_pushstring(L, button.identifier.UTF8String ?: "");
+	NSDictionary *rowData = objc_getAssociatedObject(button, &kKeys[kButtonContentKey]);
+	lua_newtable(L);
+	if ([rowData isKindOfClass:[NSDictionary class]]) {
+		for (NSString *key in rowData) {
+			push_objc_value(L, rowData[key]);
+			lua_setfield(L, -2, key.UTF8String);
+		}
+	}
+	lua_objc_pcall(L, 3, 0, "table column button");
+}
+
+/* info.circle already draws the ring Settings uses, so the cell button stays
+ * borderless. An extra circular bezel would put a second ring around it. */
+@interface LuaColumnButtonTarget : NSObject
++ (instancetype)shared;
+- (void)pressed:(NSButton *)sender;
+@end
+@implementation LuaColumnButtonTarget
++ (instancetype)shared {
+	static LuaColumnButtonTarget *instance = nil;
+	static dispatch_once_t once;
+	dispatch_once(&once, ^{ instance = [[self alloc] init]; });
+	return instance;
+}
+- (void)pressed:(NSButton *)sender {
+	NSView *view = sender;
+	while (view && ![view isKindOfClass:[NSTableView class]]) view = view.superview;
+	if (!view) return;
+	column_button_invoke(((NSTableView *)view).enclosingScrollView, sender);
+}
+@end
 
 // Shared symbol presentation for standalone images and reusable data cells.
 @interface LuaSymbolImageView : NSImageView
@@ -180,7 +226,7 @@ static void table_update_curve(
 	[curve setNeedsDisplay:YES];
 }
 
-static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NSDictionary *rowData, id owner) {
+static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NSDictionary *rowData, id owner, NSInteger rowIndex) {
 
 	NSString *colId = column.identifier;
 	id value = rowData[colId];
@@ -254,8 +300,38 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 		imageView.contentTintColor = NSColor.secondaryLabelColor;
 		[cell addSubview:imageView];
 		cell.imageView = imageView;
+
+		NSString *buttonSymbol = cellSpec[@"button"];
+		if (buttonSymbol.length > 0) {
+			NSButton *button = [[NSButton alloc] initWithFrame:NSMakeRect(0, 0, kTableInfoButtonSide, kTableInfoButtonSide)];
+			NSImage *image = [NSImage imageWithSystemSymbolName:buttonSymbol accessibilityDescription:@"Info"];
+			NSImageSymbolConfiguration *configuration = [NSImageSymbolConfiguration configurationWithPointSize:kTableInfoButtonPointSize weight:NSFontWeightRegular];
+			button.image = [image imageWithSymbolConfiguration:configuration];
+			button.imagePosition = NSImageOnly;
+			button.bordered = NO;
+			button.title = @"";
+			button.identifier = colId;
+			button.contentTintColor = NSColor.secondaryLabelColor;
+			button.accessibilityLabel = @"Info";
+			button.target = [LuaColumnButtonTarget shared];
+			button.action = @selector(pressed:);
+			[cell addSubview:button];
+			cell.actionButton = button;
+		}
 	}
 	cell.imageWidth = [cellSpec[@"imageSize"] doubleValue];
+	if (cell.actionButton) {
+		cell.actionButton.tag = rowIndex;
+		cell.actionButton.hidden = NO;
+		objc_setAssociatedObject(cell.actionButton, &kKeys[kButtonContentKey], rowData, OBJC_ASSOCIATION_RETAIN);
+		cell.textField.hidden = YES;
+		cell.imageView.hidden = YES;
+		cell.secondaryTextField.hidden = YES;
+		[cell setNeedsLayout:YES];
+		return cell;
+	}
+	cell.textField.hidden = NO;
+	cell.imageView.hidden = NO;
 	cell.textField.stringValue = text;
 	NSString *secondaryKey = cellSpec[@"secondary"];
 	id secondaryValue = secondaryKey ? rowData[secondaryKey] : nil;
@@ -530,7 +606,7 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 
 - (NSView *)tableView:(NSTableView *)tableView viewForTableColumn:(NSTableColumn *)column row:(NSInteger)row {
 	LUA_OBJC_PERF_BEGIN("appkit.cell.dequeue", signpost);
-	NSView *cell = table_cell_view(tableView, column, _rows[row], self);
+	NSView *cell = table_cell_view(tableView, column, _rows[row], self, row);
 	LUA_OBJC_PERF_END("appkit.cell.dequeue", signpost);
 	return cell;
 }

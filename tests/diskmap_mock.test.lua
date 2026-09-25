@@ -2,6 +2,7 @@ _G.__headless = true
 local t = require("TestKit")
 local Provider = require("apps.diskmap.services.Provider")
 local Mock = require("apps.diskmap.services.Mock")
+local Simulators = require("apps.diskmap.models.Simulators")
 
 local home = "/Users/mock-diskmap"
 local args = {[0] = "apps/diskmap/init.lua", [1] = "--mock"}
@@ -73,6 +74,11 @@ fresh.command({"/usr/bin/xcrun", "simctl", "list", "--json"}, function(ok, outpu
 t.expect(listOK, "simulator inventory is provided from Mock HDD data")
 local simulators = fresh.decode(simulatorJSON)
 t.assertEqual(simulators.devices["com.apple.CoreSimulator.SimRuntime.iOS-26-0"][1].dataPathSize, 8800000000, "simulator sizes come from virtual entries")
+local discovered = Simulators.discover(fresh, home)
+local discoveredRows = Simulators.rows(discovered)
+t.assertEqual(#discoveredRows, 2, "mock review lists simulator folders without calling simctl")
+t.assertEqual(discoveredRows[1].name, "iPhone 17 Pro", "bundled simulator metadata supplies the device name")
+t.assertEqual(discoveredRows[1].bytes, 8800000000, "review size is the device folder total")
 local erased
 fresh.command({"/usr/bin/xcrun", "simctl", "erase", "11111111-2222-4333-8444-555555555555"}, function(ok) erased = ok end)
 t.expect(erased, "simulator erase is simulated in memory")

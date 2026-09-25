@@ -182,10 +182,14 @@ and provides `view:scrollIntoView()` through AppKit. No Swift or SwiftUI is used
 
 ## Category management
 
-Simulator devices are read asynchronously with `xcrun simctl list --json`: name,
-runtime, installed apps/data allocation and last use (UTC, or Not recorded).
-Erase/delete use validated individual UUIDs, confirmation with impact, and no
-wildcard selectors. Running devices are disabled. Delete unavailable lists the
+Simulator devices are the UUID folders under `~/Library/Developer/CoreSimulator/Devices`.
+Each row's size is that folder's measured allocation, already included in the
+Simulator devices total. Names, runtimes and last use come from `device.plist`
+when the file is present; a mock snapshot without plist contents shows the UUID
+and the snapshot size. Bundled SDKs are the `*.sdk` directories inside Xcode
+and the Command Line Tools. Erase and delete still go through `simctl` on a
+real Mac, and through the in-memory snapshot in mock mode, using one validated
+UUID at a time. Running devices are disabled. Delete unavailable lists the
 exact devices before confirmation; unavailable does not mean disposable.
 Installed runtimes remain Essential to keep. CoreSimulator images, registered
 bundles and MobileAsset iOSSimulatorRuntime downloads share one runtime category

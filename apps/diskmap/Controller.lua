@@ -11,6 +11,7 @@ local TipsController = require("apps.diskmap.controllers.TipsController")
 local InspectorController = require("apps.diskmap.controllers.InspectorController")
 local ManagementController = require("apps.diskmap.controllers.ManagementController")
 local SimulatorsController = require("apps.diskmap.controllers.SimulatorsController")
+local SdksController = require("apps.diskmap.controllers.SdksController")
 local SettingsController = require("apps.diskmap.controllers.SettingsController")
 local Controller = {}; Controller.__index = Controller
 local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
@@ -44,8 +45,10 @@ function Controller.new(service)
 	end)
 	self.inspector = InspectorController.new(self.model, service, function() self.scan:start() end)
 	self.simulators = SimulatorsController.new(self.model, service, function() self.scan:start() end)
+	self.sdks = SdksController.new(self.model, service)
 	self.management = ManagementController.new(self.model, service, function() self.scan:start() end,
-		function(id) self.cleanup:toggleKeep(id) end, function() self.simulators:open(self.window) end)
+		function(id) self.cleanup:toggleKeep(id) end, function() self.simulators:open(self.window) end,
+		function(row) self.sdks:open(self.window, row) end)
 	return self
 end
 function Controller:openManagement(id, filter)
@@ -156,6 +159,7 @@ function Controller:mountDashboard()
 		self.storageBar = Template.new(refs.storageBar, "apps/diskmap/views/StorageBar.etlua", ns)
 		refs.results:onRowSelect(function(_, _, row) if row then self:select(row.id) end end)
 		refs.results:onRowActivate(function(_, _, row) if row then self:openManagement(row.id) end end)
+		refs.results:onColumnButton(function(_, _, row) if row then self:openManagement(row.id) end end)
 	end)
 	self:updateRows()
 end
@@ -197,7 +201,7 @@ function Controller:createWindow()
 	local scope = ns.Scope.current()
 	if scope then scope:add(self.scan); scope:add({dispose = function()
 		if self.page then self.page:dispose() end
-		self:closeReclaim(); self:closeSettings(); self.management:close(); self.simulators:close()
+		self:closeReclaim(); self:closeSettings(); self.management:close(); self.simulators:close(); self.sdks:close()
 	end}) end
 	self.service.monitor(function() return self.window.visible end, function()
 		if self.settings.enabled and not self.scan.job then self.scan:start() end

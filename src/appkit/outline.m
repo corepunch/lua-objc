@@ -216,3 +216,40 @@ static int bridge_list_directory(lua_State *L) {
 	list_dir_into_table(L, raw, depth);
 	return 1;
 }
+
+static id property_list_value(id value) {
+	if ([value isKindOfClass:[NSDate class]]) {
+		NSISO8601DateFormatter *formatter = [NSISO8601DateFormatter new];
+		formatter.formatOptions = NSISO8601DateFormatWithInternetDateTime;
+		return [formatter stringFromDate:(NSDate *)value] ?: @"";
+	}
+	if ([value isKindOfClass:[NSDictionary class]]) {
+		NSMutableDictionary *converted = [NSMutableDictionary dictionary];
+		[(NSDictionary *)value enumerateKeysAndObjectsUsingBlock:^(id key, id item, BOOL *stop) {
+			id child = property_list_value(item);
+			if (child && [key isKindOfClass:[NSString class]]) converted[key] = child;
+		}];
+		return converted;
+	}
+	if ([value isKindOfClass:[NSArray class]]) {
+		NSMutableArray *converted = [NSMutableArray array];
+		for (id item in (NSArray *)value) {
+			id child = property_list_value(item);
+			if (child) [converted addObject:child];
+		}
+		return converted;
+	}
+	if ([value isKindOfClass:[NSString class]] || [value isKindOfClass:[NSNumber class]]) return value;
+	return nil;
+}
+
+static int bridge_read_property_list(lua_State *L) {
+	NSString *path = [NSString stringWithUTF8String:luaL_checkstring(L, 1)];
+	NSData *data = [NSData dataWithContentsOfFile:path];
+	if (!data) { lua_pushnil(L); return 1; }
+	id parsed = [NSPropertyListSerialization propertyListWithData:data options:NSPropertyListImmutable format:nil error:nil];
+	id value = property_list_value(parsed);
+	if (!value) { lua_pushnil(L); return 1; }
+	push_objc_value(L, value);
+	return 1;
+}

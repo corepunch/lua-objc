@@ -528,6 +528,14 @@ static int bridge_test_row_swipe(lua_State *L) {
 	return 1;
 }
 
+static int bridge_NSScrollView_onColumnButton(lua_State *L) {
+	id obj = check_objc(L, 1);
+	if (!objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]))
+		return luaL_error(L, "not a table view");
+	bridge_set_optional_callback(L, table_scrollview(obj), &kKeys[kTableColumnButtonKey], 2);
+	return 0;
+}
+
 static int bridge_NSScrollView_onColumnSort(lua_State *L) {
 	id obj = check_objc(L, 1);
 	if (!objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]))

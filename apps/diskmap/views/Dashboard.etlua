@@ -12,6 +12,7 @@
       <List id="results" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44" maxWidth="infinity">
         <Column id="name" title="Category" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" fileIconKey="fileIcon" imageSize="28" minWidth="210" />
         <Column id="size" title="On disk" width="120" minWidth="110" alignment="trailing" loadingKey="calculating" />
+        <Column id="info" title="" width="44" minWidth="44" buttonSymbol="info.circle" />
       </List>
     </GroupBox>
   </VStack>

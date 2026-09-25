@@ -482,6 +482,25 @@ static int bridge_table_cell(lua_State *L) {
 	return 1;
 }
 
+static int bridge_press_column_button(lua_State *L) {
+	NSScrollView *scroll = check_objc(L, 1);
+	id source = objc_getAssociatedObject(scroll, &kKeys[kTableSourceKey]);
+	if (!source) return luaL_error(L, "not a table view");
+	NSTableView *table = (NSTableView *)scroll.documentView;
+	NSInteger column = luaL_checkinteger(L, 2), row = luaL_checkinteger(L, 3);
+	if (column < 0 || column >= (NSInteger)table.tableColumns.count || row < 0 || row >= table.numberOfRows)
+		return luaL_error(L, "table cell out of bounds");
+	NSView *cell = [source tableView:table viewForTableColumn:table.tableColumns[column] row:row];
+	for (NSView *subview in cell.subviews) {
+		if (![subview isKindOfClass:[NSButton class]]) continue;
+		column_button_invoke(scroll, (NSButton *)subview);
+		lua_pushboolean(L, 1);
+		return 1;
+	}
+	lua_pushboolean(L, 0);
+	return 1;
+}
+
 static int bridge_table_cell_frames(lua_State *L) {
 	id obj = check_objc(L, 1);
 	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);

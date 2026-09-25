@@ -28,7 +28,7 @@
     <Label id="path" text="" size="11" color="secondary" wrapping="character" maxWidth="infinity" lines="2" />
     <HStack maxWidth="infinity" spacing="10">
       <Button id="reveal" title="Show in Finder" action="reveal" disabled="true" />
-      <Button id="manage" title="Review…" action="manage" disabled="true" />
+      <Button id="manage" systemImage="info.circle" symbolSize="16" foregroundStyle="secondary" accessibilityLabel="Review" style="plain" action="manage" disabled="true" />
       <Button id="keep" title="Keep" action="keep" disabled="true" />
       <Spacer />
       <Button id="done" title="Done" action="done" />

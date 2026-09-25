@@ -67,7 +67,8 @@ t.expect(not Simulators.command("delete", rows[1]), "wildcard deletion is forbid
 local calls, confirmed, refreshed = {}, false, 0
 local service = {command = function(argv, completion) table.insert(calls, {argv = argv, done = completion}) end,
 	decode = function() return data end, confirmAction = function() return confirmed end,
-	reveal = function() end, openSettings = function() end}
+	reveal = function() end, openSettings = function() end,
+	simulatorInventory = function(_, completion) table.insert(calls, {done = function(inventory) completion(inventory) end}) end}
 local controller = SimulatorController.new(model, service, function() refreshed = refreshed + 1 end)
 controller.filters = {"All devices", "Unavailable"}; controller.inventory = data; controller.selected = Simulators.rows(data)[1]
 t.expect(not controller:perform("erase"), "cancel confirmation never launches a command")
@@ -82,7 +83,7 @@ t.expect(not controller:perform("delete", true), "duplicate clicks cannot start 
 calls[1].done(false, "device busy")
 t.assertEqual(refreshed, 1, "failed action refreshes potentially changed totals")
 t.expect(controller.error:find("device busy", 1, true), "command failures remain visible")
-controller:load(); local pending = calls[#calls]; controller:close(); pending.done(true, "{}");
+controller:load(); local pending = calls[#calls]; controller:close(); pending.done({devices = {}});
 t.assertEqual(controller.inventory.devices, nil, "late results cannot populate a closed sheet")
 -- Native controls and resize contracts, without showing windows.
 model.measurements.archives = {bytes = 20e9, status = "complete"}
@@ -150,7 +151,7 @@ t.expect(finderCell and finderCell.imageView.resolvedAppIcon, "application manag
 manager:close()
 local simulatorUI = SimulatorController.new(model, service, function() end)
 simulatorUI:open(parent)
-calls[#calls].done(true, "{}")
+calls[#calls].done(data)
 simulatorUI.refs.rows1:selectRow(0)
 t.expect(simulatorUI.refs.erase.enabled and simulatorUI.refs.delete.enabled, "native selection enables actions for a shutdown device")
 t.assertEqual(simulatorUI.refs.done.keyEquivalent, "\r", "sheet Done is the native default action")

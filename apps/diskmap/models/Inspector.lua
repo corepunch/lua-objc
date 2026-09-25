@@ -21,7 +21,7 @@ function Inspector.details(model, id)
 		else measurement = "\n" .. m.status end
 	end
 	return {name = row.name, text = text, location = (row.path or "Multiple known locations") .. measurement,
-		manageTitle = row.action == "simulators" and "Manage simulators…" or row.action == "trash" and "Review Move to Trash…" or row.action == "empty" and "Empty Trash…" or row.action == "ownerCleanup" and "Clear Cache…" or row.action == "settings" and (({siri = "Open Siri Settings", dictation = "Open Dictation Settings", voices = "Open Accessibility Settings"})[row.settingsSection] or "Open System Settings") or row.action == "xcode" and "Open Xcode" or row.action == "docker" and "Open Docker" or "Reveal in Finder",
+		manageTitle = row.action == "simulators" and "Show simulators" or row.action == "sdks" and "Show SDKs" or row.action == "trash" and "Review Move to Trash…" or row.action == "empty" and "Empty Trash…" or row.action == "ownerCleanup" and "Clear Cache…" or row.action == "settings" and (({siri = "Open Siri Settings", dictation = "Open Dictation Settings", voices = "Open Accessibility Settings"})[row.settingsSection] or "Open System Settings") or row.action == "xcode" and "Open Xcode" or row.action == "docker" and "Open Docker" or "Reveal in Finder",
 		canManage = row:isLeaf() and ownerCleanupReady and (row.action ~= "trash" or row:validateTrash()) and (row.action ~= "empty" or row:validateEmpty()) and (row.path ~= nil or row.action == "settings"),
 		keepTitle = model.kept[id] and "Stop keeping this resource" or "Keep this resource"}
 end

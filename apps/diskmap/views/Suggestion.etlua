@@ -5,5 +5,5 @@
     <Label text="<%= suggestion.subtitle %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
   </VStack>
   <Label text="<%= suggestion.size %>" size="12" />
-  <Button title="Review…" style="link" action="review_<%= suggestion.id %>" />
+  <Button systemImage="info.circle" symbolSize="16" foregroundStyle="secondary" accessibilityLabel="Review <%= suggestion.name %>" style="plain" action="review_<%= suggestion.id %>" />
 </HStack>

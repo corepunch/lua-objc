@@ -180,7 +180,7 @@
 
 // Outlines and tables share native cells, including subtitles and row-bound symbols.
 - (NSView *)outlineView:(NSOutlineView *)ov viewForTableColumn:(NSTableColumn *)column item:(id)item {
-	return table_cell_view(ov, column, item, self);
+	return table_cell_view(ov, column, item, self, [ov rowForItem:item]);
 }
 
 - (void)outlineViewSelectionDidChange:(NSNotification *)notification {

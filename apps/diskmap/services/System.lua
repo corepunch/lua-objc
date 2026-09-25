@@ -150,6 +150,53 @@ local function lines(output)
 	end
 	return result
 end
+local function expand(path)
+	local home = os.getenv("HOME") or "/Users"
+	if path == "~" then return home end
+	if type(path) == "string" and path:sub(1, 2) == "~/" then return home .. path:sub(2) end
+	return path
+end
+function System.children(path)
+	local listed = ns.readDirectory(expand(path), 0) or {}
+	local rows = {}
+	for _, entry in ipairs(listed) do
+		if entry.directory then table.insert(rows, {name = entry.name, path = entry.path}) end
+	end
+	table.sort(rows, function(a, b) return a.name < b.name end)
+	return rows
+end
+function System.bundles(root, kind)
+	if kind ~= "sdk" then return {} end
+	root = expand(root)
+	local rows = {}
+	local function add(directory)
+		local listed = ns.readDirectory(directory, 0)
+		if not listed then return end
+		for _, entry in ipairs(listed) do
+			if entry.directory and entry.name:match("%.sdk$") then
+				table.insert(rows, {name = entry.name:gsub("%.sdk$", ""), path = entry.path})
+			end
+		end
+	end
+	add(root .. "/SDKs")
+	for _, platform in ipairs(ns.readDirectory(root .. "/Contents/Developer/Platforms", 0) or {}) do
+		if platform.directory then add(platform.path .. "/Developer/SDKs") end
+	end
+	return rows
+end
+function System.readPropertyList(path)
+	return ns.readPropertyList(expand(path))
+end
+function System.measure(paths, completion)
+	local job = Scanner.start(paths, {})
+	System.await(job, function(result)
+		local sizes = {}
+		for index, tree in ipairs(result.trees or {}) do
+			sizes[index] = tree and math.floor((tree.kb or 0) * 1024 + 0.5) or 0
+		end
+		completion(sizes)
+	end)
+end
 function System.discoverEntries(home, completion)
 	local catalog = require("apps.diskmap.Catalog")
 	local locations = catalog.discoveryRules(home)

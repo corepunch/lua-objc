@@ -29,8 +29,8 @@ local function sortRows(rows, column, ascending)
 	return rows
 end
 
-function Controller.new(model, service, refresh, keep, simulators)
-	return setmetatable({model = model, service = service, refresh = refresh, keep = keep, simulators = simulators,
+function Controller.new(model, service, refresh, keep, simulators, sdks)
+	return setmetatable({model = model, service = service, refresh = refresh, keep = keep, simulators = simulators, sdks = sdks,
 		sortColumn = "size", sortAscending = false}, Controller)
 end
 
@@ -61,7 +61,9 @@ function Controller:select(id)
 	local refs = self.refs
 	refs.detail.text = row.consequence or row.subtitle; refs.path.text = detail.location
 	refs.manage.hidden = row.action == "finder"
-	refs.manage.title = detail.manageTitle; refs.manage.enabled = detail.canManage
+	refs.manage.accessibilityLabel = detail.manageTitle
+	refs.manage.toolTip = detail.manageTitle
+	refs.manage.enabled = detail.canManage
 	refs.reveal.enabled = row.path ~= nil
 	refs.keep.enabled = true; refs.keep.title = detail.keepTitle
 	self.sheet:layout()
@@ -107,6 +109,7 @@ function Controller:open(parent, id, filter)
 				manage = function()
 					local row = self.model.resources:find(self.selectedId); if not row then return end
 					if row.action == "simulators" then self:close(); self.simulators(); return end
+					if row.action == "sdks" then if self.sdks then self:close(); self.sdks(row) end; return end
 					local inspector = InspectorController.new(self.model, self.service, self.refresh)
 					inspector:select(row.id); inspector:manage()
 				end,
