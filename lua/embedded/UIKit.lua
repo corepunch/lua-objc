@@ -173,10 +173,6 @@ function UIKit.Preview(props)
 	return applyLayout(bridge._preview(), props or {})
 end
 
-function UIKit.installNavigationChrome(controller, titleView, readingSettings)
-	bridge._navigationChrome(controller, titleView, readingSettings)
-end
-
 function UIKit.HostingController(view, onDisappear, props)
 	props = props or {}
 	local controller = bridge._hostingController(view, onDisappear,
@@ -184,6 +180,31 @@ function UIKit.HostingController(view, onDisappear, props)
 	if props and props.hidesTabBar ~= nil then
 		controller.hidesBottomBarWhenPushed = props.hidesTabBar == true
 	end
+	return controller
+end
+
+--- A navigation destination: one content view plus its title, toolbar items
+--- and presentation, as SwiftUI's `.navigationTitle` and `.toolbar` modifiers.
+--- Push the returned controller onto a NavigationStack.
+--- @tag Page
+--- @prop title string optional. Navigation title.
+--- @prop toolbar table optional. ToolbarItem records; `placement` is principal, primaryAction, topBarLeading, topBarTrailing, cancellationAction or confirmationAction.
+--- @prop hidesTabBar boolean optional. Hides the tab bar while the page is visible.
+--- @prop titleDisplayMode string optional. automatic, inline or large.
+--- @prop backButtonDisplayMode string optional. default, generic or minimal.
+--- @prop onDisappear function optional. Called once when the page leaves the stack.
+--- @platform AppKit puts toolbar items and a back item in the window toolbar. UIKit uses the navigation bar.
+function UIKit.Page(props)
+	assert(type(props) == "table" and type(props.content) == "userdata", "Page requires one content view")
+	local controller = UIKit.HostingController(props.content, props.onDisappear, {
+		hidesTabBar = props.hidesTabBar,
+		hidesNavigationBar = props.hidesNavigationBar,
+	})
+	controller.title = props.title or ""
+	bridge._pageToolbar(controller, props.toolbar or {}, {
+		titleDisplayMode = props.titleDisplayMode,
+		backButtonDisplayMode = props.backButtonDisplayMode,
+	})
 	return controller
 end
 

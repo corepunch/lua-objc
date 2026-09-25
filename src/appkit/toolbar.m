@@ -55,6 +55,11 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 
 @interface LuaToolbarDelegate : NSObject <NSToolbarDelegate>
 @property (nonatomic, strong) NSArray *items;
+/* Items contributed by the visible navigation page, and the toolbar items
+ * inserted for them, so a page change swaps only its own items. */
+@property (nonatomic, strong) NSArray *pageItems;
+@property (nonatomic, strong) NSMutableArray<NSToolbarItem *> *installedPageItems;
+@property (nonatomic) BOOL ownedByNavigation;
 @property (nonatomic, strong) NSSplitView *trackingSplitView;
 @property (nonatomic, strong) NSSplitView *sidebarTrackingSplitView;
 @property (nonatomic, copy) NSString *trackingAfterIdentifier;
@@ -77,7 +82,30 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 	return self;
 }
 
+static BOOL page_item_is_leading(NSDictionary *item) {
+	NSString *placement = item[@"placement"];
+	return [item[@"navigational"] boolValue] || [placement isEqualToString:@"navigation"]
+		|| [placement isEqualToString:@"topBarLeading"] || [placement isEqualToString:@"cancellationAction"];
+}
+
 - (NSArray<NSString *> *)toolbarDefaultItemIdentifiers:(NSToolbar *)toolbar {
+	NSMutableArray *ids = [NSMutableArray array];
+	for (NSDictionary *item in _pageItems)
+		if (page_item_is_leading(item)) [ids addObject:item[@"id"]];
+	[ids addObjectsFromArray:[self baseItemIdentifiers]];
+	BOOL trailing = NO;
+	for (NSDictionary *item in _pageItems)
+		if (!page_item_is_leading(item) && ![item[@"placement"] isEqualToString:@"principal"]) trailing = YES;
+	for (NSDictionary *item in _pageItems)
+		if ([item[@"placement"] isEqualToString:@"principal"]) [ids addObject:item[@"id"]];
+	if (trailing) [ids addObject:NSToolbarFlexibleSpaceItemIdentifier];
+	for (NSDictionary *item in _pageItems)
+		if (!page_item_is_leading(item) && ![item[@"placement"] isEqualToString:@"principal"])
+			[ids addObject:item[@"id"]];
+	return ids;
+}
+
+- (NSArray<NSString *> *)baseItemIdentifiers {
 	NSMutableArray *ids = [NSMutableArray array];
 	BOOL insertedTrackingSeparator = NO;
 	for (NSDictionary *item in _items) {
@@ -125,7 +153,7 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 		return [[NSToolbarItem alloc] initWithItemIdentifier:identifier];
 	}
 
-	for (NSDictionary *item in _items) {
+	for (NSDictionary *item in [_items arrayByAddingObjectsFromArray:_pageItems ?: @[]]) {
 		if ([toolbar_item_identifier(item[@"id"]) isEqualToString:identifier]) {
 			NSView *content = item[@"view"];
 			NSToolbarItem *ti = ([item[@"type"] isEqualToString:@"search"]
@@ -142,6 +170,7 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 			if (item[@"bordered"]) ti.bordered = [item[@"bordered"] boolValue];
 			if (item[@"visibilityPriority"])
 				ti.visibilityPriority = [item[@"visibilityPriority"] integerValue];
+			if ([item[@"navigational"] boolValue]) ti.navigational = YES;
 
 			if ([ti isKindOfClass:NSSearchToolbarItem.class]) {
 				if (content) {
@@ -157,6 +186,16 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 				lua_reg_store(ti, &kKeys[kCallbackKey], actionReg);
 				ti.target = [LuaButtonTarget shared];
 				ti.action = @selector(onAction:);
+			}
+			// Native actions (the navigation back item) name a target/selector.
+			if (item[@"target"]) {
+				ti.target = item[@"target"];
+				ti.action = NSSelectorFromString(item[@"selector"]);
+				if (!content) {
+					ti.image = [NSImage imageWithSystemSymbolName:item[@"icon"]
+						accessibilityDescription:ti.label];
+					return ti;
+				}
 			}
 			if (content) {
 				ti.view = content;
@@ -256,3 +295,95 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 }
 
 @end
+
+#pragma mark - Toolbar construction
+
+/* Converts Lua toolbar item descriptors (from <Toolbar>/<ToolbarItem>) into
+ * the dictionaries LuaToolbarDelegate builds items from. */
+static NSMutableArray<NSDictionary *> *toolbar_items_from_lua(lua_State *L, int idx) {
+	idx = lua_absindex(L, idx);
+	luaL_checktype(L, idx, LUA_TTABLE);
+	NSMutableArray *items = [NSMutableArray array];
+	lua_Integer count = luaL_len(L, idx);
+	for (lua_Integer i = 1; i <= count; i++) {
+		lua_rawgeti(L, idx, i);
+		int item = lua_gettop(L);
+		NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+		for (NSString *key in @[@"id", @"label", @"icon", @"tooltip", @"type", @"value", @"placement"]) {
+			lua_getfield(L, item, key.UTF8String);
+			if (lua_type(L, -1) == LUA_TSTRING) dict[key] = @(lua_tostring(L, -1));
+			lua_pop(L, 1);
+		}
+		lua_getfield(L, item, "bordered");
+		if (!lua_isnil(L, -1)) dict[@"bordered"] = @(lua_toboolean(L, -1));
+		lua_pop(L, 1);
+		lua_getfield(L, item, "view");
+		if (!lua_isnil(L, -1)) dict[@"view"] = check_view(L, -1);
+		lua_pop(L, 1);
+		lua_getfield(L, item, "visibilityPriority");
+		if (lua_isnumber(L, -1)) dict[@"visibilityPriority"] = @(lua_tointeger(L, -1));
+		lua_pop(L, 1);
+		lua_getfield(L, item, "minWidth");
+		if (lua_isnumber(L, -1)) dict[@"minWidth"] = @(lua_tonumber(L, -1));
+		lua_pop(L, 1);
+		lua_getfield(L, item, "action");
+		if (lua_isfunction(L, -1)) dict[@"actionReg"] = lua_reg_create(L, -1, YES);
+		lua_pop(L, 1);
+		lua_getfield(L, item, "onSubmit");
+		if (lua_isfunction(L, -1)) dict[@"submitReg"] = lua_reg_create(L, -1, YES);
+		lua_pop(L, 1);
+		[items addObject:dict];
+		lua_settop(L, item - 1);
+	}
+	return items;
+}
+
+static LuaToolbarDelegate *window_install_toolbar(NSWindow *window, NSArray *items, BOOL labels) {
+	LuaToolbarDelegate *delegate = [[LuaToolbarDelegate alloc] initWithItems:items];
+	/* Document tabs own independent tracking separators. A shared toolbar
+	 * family identifier makes AppKit duplicate those non-repeatable items
+	 * when a second document joins the native window tab group. */
+	NSString *identifier = [NSString stringWithFormat:@"lua-objc.%@", NSUUID.UUID.UUIDString];
+	NSToolbar *toolbar = [[NSToolbar alloc] initWithIdentifier:identifier];
+	toolbar.displayMode = labels ? NSToolbarDisplayModeIconAndLabel : NSToolbarDisplayModeIconOnly;
+	toolbar.delegate = delegate;
+	window.toolbar = toolbar;
+	window.toolbarStyle = NSWindowToolbarStyleUnified;
+	objc_setAssociatedObject(window, &kKeys[kToolbarDelegateKey], delegate, OBJC_ASSOCIATION_RETAIN);
+	return delegate;
+}
+
+/* SwiftUI on macOS puts a navigation destination's toolbar items, and the
+ * back button, in the window toolbar. Swap the previous page's items for
+ * these; window-level items and tracking separators stay in place. */
+static void window_set_page_toolbar_items(NSWindow *window, NSArray<NSDictionary *> *pageItems) {
+	LuaToolbarDelegate *delegate = objc_getAssociatedObject(window, &kKeys[kToolbarDelegateKey]);
+	if (!delegate) {
+		if (pageItems.count == 0) return;
+		delegate = window_install_toolbar(window, @[], NO);
+		delegate.ownedByNavigation = YES;
+	}
+	NSToolbar *toolbar = window.toolbar;
+	for (NSToolbarItem *installed in delegate.installedPageItems) {
+		NSUInteger index = [toolbar.items indexOfObjectIdenticalTo:installed];
+		if (index != NSNotFound) [toolbar removeItemAtIndex:(NSInteger)index];
+	}
+	delegate.installedPageItems = [NSMutableArray array];
+	if (pageItems.count == 0 && delegate.ownedByNavigation) {
+		window.toolbar = nil;
+		objc_setAssociatedObject(window, &kKeys[kToolbarDelegateKey], nil, OBJC_ASSOCIATION_RETAIN);
+		return;
+	}
+	delegate.pageItems = pageItems;
+	NSSet *base = [NSSet setWithArray:[delegate baseItemIdentifiers]];
+	NSArray *identifiers = [delegate toolbarDefaultItemIdentifiers:toolbar];
+	NSMutableSet *centered = [NSMutableSet set];
+	for (NSUInteger index = 0; index < identifiers.count; index++) {
+		if ([base containsObject:identifiers[index]]) continue;
+		[toolbar insertItemWithItemIdentifier:identifiers[index] atIndex:(NSInteger)index];
+		[delegate.installedPageItems addObject:toolbar.items[index]];
+	}
+	for (NSDictionary *item in pageItems)
+		if ([item[@"placement"] isEqualToString:@"principal"]) [centered addObject:item[@"id"]];
+	toolbar.centeredItemIdentifiers = centered;
+}

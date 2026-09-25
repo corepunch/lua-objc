@@ -1,3 +1,4 @@
+<Page title="<%= game.title %>">
 <SafeAreaInset id="detail" edge="bottom" ignoresSafeArea="top">
   <ScrollView id="detailScrollView">
     <VStack spacing="0" alignment="leading">
@@ -48,3 +49,4 @@
     </Button>
   </VStack>
 </SafeAreaInset>
+</Page>

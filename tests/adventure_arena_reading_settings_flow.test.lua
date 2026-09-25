@@ -7,8 +7,13 @@ local Session = require("apps.adventure-arena.models.Session")
 local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
 local SessionController = require("apps.adventure-arena.controllers.SessionController")
 
-local button, slider, picker = ns.Button, ns.Slider, ns.Picker
-local buttonActions, pickerControls, sliderControls = {}, {}, {}
+local button, slider, picker, page = ns.Button, ns.Slider, ns.Picker, ns.Page
+local buttonActions, pickerControls, sliderControls, toolbarActions = {}, {}, {}, {}
+-- Toolbar items belong to the Page, not the content tree; capture their actions.
+ns.Page = function(props)
+	for _, item in ipairs(props.toolbar or {}) do toolbarActions[item.id] = item.action end
+	return page(props)
+end
 ns.Button = function(props)
 	local view = button(props)
 	buttonActions[view] = props.action
@@ -79,8 +84,8 @@ t.assertEqual(sessionRefs.gameDescription.text, game.description, "session readi
 t.assertEqual(sessionRefs.roomTitle.text, "Sanitarium Gate", "session content identifies the active room")
 t.assertEqual(sessionRefs.progress.text, "Score 2/10 | Moves 3", "session header shows engine score and moves")
 
-local openSettings = buttonActions[sessionRefs.readingSettings]
-t.expect(type(openSettings) == "function", "reading settings button has a native action")
+local openSettings = toolbarActions.readingSettings
+t.expect(type(openSettings) == "function", "reading settings toolbar item has an action")
 if openSettings then openSettings() end
 t.assertEqual(currentTemplate, "ReadingSettings", "reading settings opens its etlua sheet")
 t.expect(presentedSheet ~= nil, "reading settings sheet is presented")
@@ -122,5 +127,5 @@ if done then done() end
 t.assertEqual(dismissedSheet, presentedSheet, "Done dismisses the presented settings sheet")
 t.assertEqual(controller.readingSettingsRefs, nil, "closing the sheet releases its template refs")
 
-ns.Button, ns.Slider, ns.Picker = button, slider, picker
+ns.Button, ns.Slider, ns.Picker, ns.Page = button, slider, picker, page
 os.exit(t.summary() and 0 or 1)

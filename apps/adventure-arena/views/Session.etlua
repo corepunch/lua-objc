@@ -1,15 +1,11 @@
-<VStack id="session" maxWidth="infinity" maxHeight="infinity" spacing="0"<% if not systemNavigation then %> onEdgeSwipe="close"<% end %>>
-  <% if not systemNavigation then %>
-  <HStack id="sessionHeader" paddingHorizontal="12" paddingVertical="8" spacing="12" alignment="center">
-    <Button id="back" title="" systemImage="chevron.left" accessibilityLabel="Back" action="close" style="glass" width="52" height="52" />
-    <VStack maxWidth="infinity" spacing="2" alignment="center">
-      <Label id="sessionTitle" text="<%= gameTitle %>" size="20" weight="bold" lines="1" alignment="center" />
-      <Label id="progress" text="<%= progress %>" size="12" color="secondary" lines="1" alignment="center" />
-    </VStack>
-    <Button id="readingSettings" title="" systemImage="textformat.size" symbolSize="22" accessibilityLabel="Reading settings" action="readingSettings" style="glass" width="52" height="52" />
-  </HStack>
-  <% end %>
-
+<Page title="<%= gameTitle %>" hidesTabBar="true" titleDisplayMode="inline" backButtonDisplayMode="minimal" onDisappear="disappear">
+<Toolbar>
+  <ToolbarItem id="sessionTitle" placement="principal" label="<%= gameTitle %>">
+    <%- partial("SessionTitle.etlua", { gameTitle = gameTitle, progress = progress }) %>
+  </ToolbarItem>
+  <ToolbarItem id="readingSettings" placement="primaryAction" icon="textformat.size" label="Reading settings" action="readingSettings" />
+</Toolbar>
+<VStack id="session" maxWidth="infinity" maxHeight="infinity" spacing="0">
   <ZStack id="sessionOverlay" alignment="bottomTrailing" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
   <SafeAreaInset id="sessionContent" edge="bottom" minimumBottomInset="24" keyboardBottomInset="12" horizontalInset="12" matchBottomHorizontalInset="true" maxWidth="infinity" maxHeight="infinity">
     <ScrollView id="transcriptScroll" flexGrow="1" scrollOnKeyboard="true">
@@ -48,3 +44,4 @@
   </VStack>
   </ZStack>
 </VStack>
+</Page>

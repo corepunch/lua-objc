@@ -75,8 +75,8 @@ t.assertEqual(rendered.refs.description.text, catalog:list()[1].description, "de
 click("play")
 t.assertEqual(controller.navigation.depth, 3, "detail play opens session")
 t.assertEqual(rendered.refs.sessionTitle.text, catalog:list()[1].title, "session header retains the game title")
-t.expect(rendered.refs.back.className:find("Glass", 1, true) ~= nil,
-	"back button is a system glass circle")
+t.expect(rendered.refs.back == nil and rendered.refs.sessionHeader == nil,
+	"the system navigation owns the back button; the screen draws no header")
 local compassParent = rendered.refs.compassControl.superview
 local reachesOverlay, entersInset = false, false
 while compassParent do
@@ -180,9 +180,10 @@ empty:home()
 t.expect(rendered.refs.emptyCatalog ~= nil, "empty model renders the etlua empty state")
 t.assertEqual(empty.navigation.depth, 1, "empty catalog retains navigation root")
 local _, systemRefs = renderFile("apps/adventure-arena/views/Session.etlua", {
-	systemNavigation = true, gameTitle = "Zork", gameDescription = "A story",
+	gameTitle = "Zork", gameDescription = "A story",
 	roomTitle = "Gate", transcript = "Hello", progress = "Score 0 | Moves 0",
-	speechAvailable = false, actions = {}, availableDirections = {}, compassSegments = {},
+	speechAvailable = false, availableDirections = {}, compassSegments = {},
+	actions = { disappear = function() end, readingSettings = function() end },
 }, ns)
 t.expect(systemRefs.back == nil, "the navigation bar owns the back button")
 local _, titleRefs = renderFile("apps/adventure-arena/views/SessionTitle.etlua", {

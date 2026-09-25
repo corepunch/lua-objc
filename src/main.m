@@ -292,6 +292,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_hitTestTarget", bridge_hit_test_target},
 	{"_hostingController", bridge_hosting_controller},
 	{"_navigationStack", bridge_navigation_stack},
+	{"_navigationOnBack", bridge_navigation_on_back},
 	{"_label", bridge_AppKitControls_label},
 	{"_textField", bridge_AppKitControls_textField},
 	{"_secureTextField", bridge_AppKitControls_secureTextField},

@@ -46,6 +46,10 @@ static int bridge_tabview(lua_State *L) {
 	return 1;
 }
 
+/* A page's back-button display mode applies to the previous page's item,
+ * which UIKit renders as this page's back button. */
+static char kPageBackButtonModeKey;
+
 @interface LuaNavigationController : UINavigationController <UINavigationControllerDelegate>
 @property(nonatomic, readonly) NSInteger depth;
 @property(nonatomic, readonly) UIViewController *currentController;
@@ -55,6 +59,10 @@ static int bridge_tabview(lua_State *L) {
 - (UIViewController *)currentController { return self.topViewController; }
 - (void)navigationController:(UINavigationController *)navigation willShowViewController:(UIViewController *)controller animated:(BOOL)animated {
 	[navigation setNavigationBarHidden:[objc_getAssociatedObject(controller, &kNavigationBarHiddenKey) boolValue] animated:animated];
+	NSNumber *backMode = objc_getAssociatedObject(controller, &kPageBackButtonModeKey);
+	NSUInteger index = [navigation.viewControllers indexOfObject:controller];
+	if (backMode && index != NSNotFound && index > 0)
+		navigation.viewControllers[index - 1].navigationItem.backButtonDisplayMode = backMode.integerValue;
 }
 @end
 
@@ -78,38 +86,84 @@ static int bridge_UIKitNavigation_push(lua_State *L) {
 	return 0;
 }
 
-static int bridge_UIKitNavigation_chrome(lua_State *L) {
+static UIView *page_toolbar_view(UIView *view, CGFloat maxWidth) {
+	CGSize size = measure_size(view, CGSizeMake(maxWidth, CGFLOAT_MAX));
+	view.frame = CGRectMake(0, 0, size.width, size.height);
+	layout_recursive(view, size.width);
+	return view;
+}
+
+/* SwiftUI .toolbar placements for a navigation destination. `principal`
+ * becomes the title view; leading placements sit beside the back button. */
+static int bridge_UIKitNavigation_page_toolbar(lua_State *L) {
 	UIViewController *controller = check_view_controller(L, 1);
-	UIView *titleView = lua_isnoneornil(L, 2) ? nil : check_view(L, 2);
-	LuaReg *readingSettings = lua_reg_opt(L, 3);
-	controller.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
-	if (titleView) {
-		CGSize size = measure_size(titleView, CGSizeMake(240, CGFLOAT_MAX));
-		titleView.frame = CGRectMake(0, 0, size.width, size.height);
-		layout_recursive(titleView, size.width);
-		controller.navigationItem.titleView = titleView;
+	luaL_checktype(L, 2, LUA_TTABLE);
+	UINavigationItem *navigationItem = controller.navigationItem;
+	NSMutableArray<UIBarButtonItem *> *leading = [NSMutableArray array];
+	NSMutableArray<UIBarButtonItem *> *trailing = [NSMutableArray array];
+	lua_Integer count = luaL_len(L, 2);
+	for (lua_Integer i = 1; i <= count; i++) {
+		lua_rawgeti(L, 2, i);
+		int item = lua_gettop(L);
+		lua_getfield(L, item, "placement");
+		NSString *placement = lua_isstring(L, -1) ? @(lua_tostring(L, -1)) : @"automatic";
+		lua_getfield(L, item, "view");
+		UIView *view = lua_isnil(L, -1) ? nil : check_view(L, -1);
+		lua_getfield(L, item, "icon");
+		NSString *icon = lua_isstring(L, -1) ? @(lua_tostring(L, -1)) : @"";
+		lua_getfield(L, item, "label");
+		NSString *label = lua_isstring(L, -1) ? @(lua_tostring(L, -1)) : @"";
+		lua_getfield(L, item, "action");
+		LuaReg *action = lua_isfunction(L, -1) ? lua_reg_create(L, -1, YES) : nil;
+		if ([placement isEqualToString:@"principal"]) {
+			if (view) navigationItem.titleView = page_toolbar_view(view, kNavigationTitleMaxWidth);
+		} else {
+			UIBarButtonItem *barItem;
+			if (view) {
+				barItem = [[UIBarButtonItem alloc] initWithCustomView:page_toolbar_view(view, kNavigationTitleMaxWidth)];
+			} else {
+				UIImageSymbolConfiguration *symbol = [UIImageSymbolConfiguration
+					configurationWithPointSize:kNavigationSymbolPointSize weight:UIImageSymbolWeightRegular];
+				UIImage *image = icon.length ? [[UIImage systemImageNamed:icon] imageByApplyingSymbolConfiguration:symbol] : nil;
+				barItem = image
+					? [[UIBarButtonItem alloc] initWithImage:image style:UIBarButtonItemStylePlain
+						target:[LuaButtonTarget shared] action:@selector(onAction:)]
+					: [[UIBarButtonItem alloc] initWithTitle:label style:UIBarButtonItemStylePlain
+						target:[LuaButtonTarget shared] action:@selector(onAction:)];
+				if (action) objc_setAssociatedObject(barItem, &kCallbackKey, action, OBJC_ASSOCIATION_RETAIN);
+			}
+			barItem.accessibilityLabel = label.length ? label : nil;
+			BOOL isLeading = [placement isEqualToString:@"topBarLeading"]
+				|| [placement isEqualToString:@"navigation"]
+				|| [placement isEqualToString:@"cancellationAction"];
+			[isLeading ? leading : trailing addObject:barItem];
+		}
+		lua_settop(L, item - 1);
 	}
-	if (readingSettings) {
-		UIImageSymbolConfiguration *symbol = [UIImageSymbolConfiguration
-			configurationWithPointSize:kNavigationSymbolPointSize
-			weight:UIImageSymbolWeightRegular];
-		UIImage *image = [[UIImage systemImageNamed:@"textformat.size"]
-			imageByApplyingSymbolConfiguration:symbol];
-		UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithImage:image
-			style:UIBarButtonItemStylePlain target:[LuaButtonTarget shared]
-			action:@selector(onAction:)];
-		item.accessibilityLabel = @"Reading settings";
-		objc_setAssociatedObject(item, &kCallbackKey, readingSettings,
-			OBJC_ASSOCIATION_RETAIN);
-		controller.navigationItem.rightBarButtonItem = item;
-	}
-	/* The system back button is the previous screen's item. Keep it a
-	 * chevron circle in that same leading slot. */
-	UINavigationController *navigation = controller.navigationController;
-	if (navigation.viewControllers.count >= 2) {
-		UIViewController *previous = navigation.viewControllers[navigation.viewControllers.count - 2];
-		previous.navigationItem.backButtonDisplayMode = UINavigationItemBackButtonDisplayModeMinimal;
-		previous.navigationItem.backButtonTitle = @"";
+	navigationItem.leftItemsSupplementBackButton = YES;
+	navigationItem.leftBarButtonItems = leading;
+	navigationItem.rightBarButtonItems = trailing;
+
+	if (lua_istable(L, 3)) {
+		lua_getfield(L, 3, "titleDisplayMode");
+		const char *titleMode = lua_tostring(L, -1);
+		if (titleMode) {
+			if (strcmp(titleMode, "inline") == 0) navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
+			else if (strcmp(titleMode, "large") == 0) navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeAlways;
+			else if (strcmp(titleMode, "automatic") == 0) navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeAutomatic;
+			else return luaL_error(L, "titleDisplayMode must be 'automatic', 'inline', or 'large'");
+		}
+		lua_getfield(L, 3, "backButtonDisplayMode");
+		const char *backMode = lua_tostring(L, -1);
+		if (backMode) {
+			UINavigationItemBackButtonDisplayMode mode;
+			if (strcmp(backMode, "minimal") == 0) mode = UINavigationItemBackButtonDisplayModeMinimal;
+			else if (strcmp(backMode, "generic") == 0) mode = UINavigationItemBackButtonDisplayModeGeneric;
+			else if (strcmp(backMode, "default") == 0) mode = UINavigationItemBackButtonDisplayModeDefault;
+			else return luaL_error(L, "backButtonDisplayMode must be 'default', 'generic', or 'minimal'");
+			objc_setAssociatedObject(controller, &kPageBackButtonModeKey, @(mode), OBJC_ASSOCIATION_RETAIN);
+		}
+		lua_pop(L, 2);
 	}
 	return 0;
 }

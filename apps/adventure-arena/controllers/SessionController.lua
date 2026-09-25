@@ -26,8 +26,8 @@ function Controller:show(id)
 	local ok, err = self.model:start(game)
 	if not ok then
 		self.push("SessionError", {
-			message = err, actions = { back = self.back },
-		}, game.title)
+			title = game.title, message = err, actions = { back = self.back },
+		})
 		return false
 	end
 	self:cancelDictation()
@@ -73,12 +73,9 @@ function Controller:show(id)
 	local presentation = self.model:presentation()
 	presentation.speechAvailable = speechAvailable
 	presentation.compassSegments = CompassGesture.segments()
-	presentation.systemNavigation = self.ns.platform == "UIKit"
+	actions.disappear = function() self:onDisappear() end
 	presentation.actions = actions
-	self.view, self.refs = self.push("Session", presentation, game.title, {
-		hidesTabBar = true,
-		onDisappear = function() self:onDisappear() end,
-	})
+	self.page, self.refs = self.push("Session", presentation)
 	self:applyReadingSettings()
 	self:updateComposer(self.refs.input.text)
 	self:updateCompass(nil)
@@ -170,7 +167,7 @@ function Controller:onDisappear()
 	self:cancelDictation()
 	self.speech = nil
 	self.refs = nil
-	self.view = nil
+	self.page = nil
 end
 
 function Controller:submitCommand(command)
@@ -238,7 +235,7 @@ function Controller:applyReadingSettings()
 	local background = self.ns.Color(settings.backgroundColor)
 	local primary = self.ns.Color(settings.primaryTextColor)
 	local secondary = self.ns.Color(settings.secondaryTextColor)
-	self.view.backgroundColor = background
+	self.refs.session.backgroundColor = background
 	self.refs.transcriptScroll.backgroundColor = background
 	self.refs.output.font = self.ns.Font { size = settings.fontSize, design = settings.font }
 	self.refs.output.textColor = primary
@@ -253,7 +250,7 @@ function Controller:applyReadingSettings()
 	self.refs.input.font = self.ns.Font { size = math.max(15, math.min(settings.fontSize, 20)), design = settings.font }
 	self.refs.input.textColor = primary
 	if self.ns.platform == "UIKit" then
-		self.view.overrideUserInterfaceStyle = settings.appearance
+		self.refs.session.overrideUserInterfaceStyle = settings.appearance
 	end
 end
 

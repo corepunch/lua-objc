@@ -1151,6 +1151,7 @@ local TAG_SCHEMA = {
             icon    = { default = "", type = "str" },
             tooltip = { default = "", type = "str" },
             action  = "str",
+            placement = "str",
             bordered = "bool",
             visibilityPriority = "num",
         },
@@ -1173,6 +1174,43 @@ local TAG_SCHEMA = {
         props = {
             id = { default = "flexibleSpace", type = "str" },
         },
+    },
+    -- A navigation destination. One <Toolbar> child carries its toolbar items
+    -- (SwiftUI .toolbar placements); exactly one view child is its content.
+    Page = {
+        constructor = "Page",
+        props = {
+            title = "str",
+            hidesTabBar = "bool",
+            hidesNavigationBar = "bool",
+            titleDisplayMode = "str",
+            backButtonDisplayMode = "str",
+        },
+        collect = function(props, children)
+            for _, child in ipairs(children) do
+                if type(child) == "table" and child.__toolbar then
+                    if props.toolbar then error("xml: <Page> accepts one <Toolbar>") end
+                    props.toolbar = child.items or {}
+                elseif type(child) == "userdata" then
+                    if props.content then error("xml: <Page> accepts one content view") end
+                    props.content = child
+                end
+            end
+            if not props.content then error("xml: <Page> requires one content view") end
+        end,
+        transform = function(props, attrs)
+            bindActions(props, attrs, { "onDisappear" })
+            local actions = renderData and renderData.actions
+            for _, item in ipairs(props.toolbar or {}) do
+                if type(item.action) == "string" and actions then
+                    local action = actions[item.action]
+                    if type(action) ~= "function" then
+                        error("xml: ToolbarItem action=\"" .. item.action .. "\" requires a controller action")
+                    end
+                    item.action = action
+                end
+            end
+        end,
     },
     Sheet = {
         constructor = "Sheet",

@@ -2030,6 +2030,24 @@ function AppKit.HostingController(view)
 	return bridge._hostingController(view)
 end
 
+--- A navigation destination: one content view plus its title, toolbar items
+--- and presentation, as SwiftUI's `.navigationTitle` and `.toolbar` modifiers.
+--- Push the returned controller onto a NavigationStack.
+--- @tag Page
+--- @prop title string optional. Navigation title.
+--- @prop toolbar table optional. ToolbarItem records; `placement` is principal, primaryAction, topBarLeading, topBarTrailing, cancellationAction or confirmationAction.
+--- @prop hidesTabBar boolean optional. Hides the tab bar while the page is visible (UIKit).
+--- @prop titleDisplayMode string optional. automatic, inline or large (UIKit).
+--- @prop backButtonDisplayMode string optional. default, generic or minimal (UIKit).
+--- @prop onDisappear function optional. Called once when the page leaves the stack.
+--- @platform AppKit puts toolbar items and a navigational back item in the window toolbar. UIKit uses the navigation bar.
+function AppKit.Page(props)
+	assert(type(props) == "table" and type(props.content) == "userdata", "Page requires one content view")
+	local controller = bridge._hostingController(props.content, props.onDisappear, props.toolbar or {})
+	controller.title = props.title or ""
+	return controller
+end
+
 -- Per-screen scopes. Each pushed screen gets its own Scope; popping closes
 -- it so the popped screen's callbacks do not live until window close.
 -- Builder runs inside the new scope so content constructed there binds to
@@ -2050,6 +2068,8 @@ function AppKit.NavigationStack(props)
 	root.title = props.title or ""
 	local host = applyLayout(bridge._navigationStack(root), props)
 	navScreenScopes[host] = {}
+	-- The toolbar back item pops like popScreen so screen scopes close.
+	bridge._navigationOnBack(host, function() AppKit.popScreen(host) end)
 	if props.path then
 		for kind, builder in pairs(props.destinations or {}) do
 			props.path:registerDestination(kind, builder)

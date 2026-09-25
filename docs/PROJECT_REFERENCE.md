@@ -1911,6 +1911,51 @@ default button) or `"cancelAction"` (Escape), and `defaultFocus="true"` on a
 `TextField`/`SearchField` focuses it when the sheet appears. Floating `Panel`
 presentation keeps its separate native material.
 
+### Automatic layout
+
+Controllers never call `layout()`. A Lua write that changes a view's measured
+size (`text`, `title`, `font`, `image`, `hidden`, padding, spacing, fixed/min/max
+sizes, flex) and `add`/`clearContainer` mark the view dirty. AppKit relays out
+each dirty view's layout owner once per run-loop turn, just before the loop
+sleeps, and Lua geometry reads (`frame`, `bounds`, `size`, `fittingSize`) flush
+first, so tests observe the layout their writes imply. UIKit marks the view and
+its ancestors `setNeedsLayout`; the hosting controller lays the root out at its
+real width. Paint-only writes (colors, alpha, `offsetX`/`offsetY`, `enabled`)
+never schedule layout, so per-frame gesture updates stay cheap.
+`view:layout(width)` remains for framework code and tests that lay out a
+detached tree at an explicit width.
+
+`<List scrollDisabled="true">` (SwiftUI `.scrollDisabled`) keeps its rows in
+place and is as tall as all of them, re-measuring when rows change; place it in
+a scrolling page that owns the overflow.
+
+### Navigation pages
+
+A pushed screen is a `<Page>`: one content view plus an optional `<Toolbar>`,
+equivalent to SwiftUI's `.navigationTitle` and `.toolbar` on a destination.
+
+```xml
+<Page title="<%= gameTitle %>" hidesTabBar="true" titleDisplayMode="inline"
+      backButtonDisplayMode="minimal" onDisappear="disappear">
+  <Toolbar>
+    <ToolbarItem id="heading" placement="principal" label="<%= gameTitle %>">
+      <%- partial("SessionTitle.etlua", { gameTitle = gameTitle, progress = progress }) %>
+    </ToolbarItem>
+    <ToolbarItem id="settings" placement="primaryAction" icon="textformat.size"
+                 label="Reading settings" action="readingSettings" />
+  </Toolbar>
+  <VStack id="session">…</VStack>
+</Page>
+```
+
+Controllers render the page and push it: `navigation:push(page)`. Placements are
+`principal`, `primaryAction`/`topBarTrailing`/`confirmationAction` (trailing) and
+`topBarLeading`/`cancellationAction` (leading). UIKit maps them onto the
+navigation item; AppKit inserts them, with a navigational back item, into the
+window toolbar while the page is visible and restores the window's own items
+afterwards. `onDisappear` runs once when the page leaves the stack, whether a
+controller pops it or the user presses the system back button.
+
 List and TabView events bind controller actions from XML like any other
 control: `<List onSelect="select" onActivate="open" onSort="sort">` and
 `<TabView onChange="tabChanged">`. When actions are supplied, a misspelt name

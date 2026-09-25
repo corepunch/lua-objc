@@ -166,6 +166,10 @@ for _, app in ipairs(apps) do
 	table.insert(controllers, app .. "/Controller.lua")
 	for _, path in ipairs(controllers) do
 		if exists(path) then
+			-- Layout follows writes automatically; controllers never request it.
+			local source = code(read(path))
+			check(not source:find(":layout%s*%(") and not source:find("%f[%w_]ns%._layout%s*%("),
+				path .. " calls layout()")
 			for name in pairs(constructorCalls(read(path))) do
 				check(name == "Window" and path == app .. "/Controller.lua",
 					path .. " constructs ns." .. name)

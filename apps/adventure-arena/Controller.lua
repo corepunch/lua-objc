@@ -21,8 +21,8 @@ function Controller.new(options)
 	}
 	local self = setmetatable({ ns = ns, adventures = adventures, sessionModel = sessionModel }, Controller)
 	self.readingSettings = ReadingSettings.new()
-	local function push(template, data, title, options)
-		return self:push(template, data, title, options)
+	local function push(template, data)
+		return self:push(template, data)
 	end
 	local function back() return self:back() end
 	self.library = LibraryController.new {
@@ -51,24 +51,12 @@ function Controller.new(options)
 	return self
 end
 
--- `options` carries per-screen navigation behavior from the controller that
--- owns the screen: onDisappear, hidesTabBar, hidesNavigationBar.
-function Controller:push(template, data, title, options)
-	options = options or {}
-	local view, refs = xml.renderFile("apps/adventure-arena/views/" .. template .. ".etlua", data, self.ns)
-	local hostingController = self.ns.HostingController(view, options.onDisappear, {
-		hidesTabBar = options.hidesTabBar == true,
-		hidesNavigationBar = options.hidesNavigationBar == true,
-	})
-	self.navigation:push(hostingController, title)
-	if data.systemNavigation and self.ns.installNavigationChrome then
-		local titleView, titleRefs = xml.renderFile(
-			"apps/adventure-arena/views/SessionTitle.etlua", data, self.ns)
-		for key, value in pairs(titleRefs) do refs[key] = value end
-		self.ns.installNavigationChrome(hostingController, titleView,
-			data.actions and data.actions.readingSettings)
-	end
-	return view, refs
+-- Screens are <Page> templates: title, toolbar and presentation are declared
+-- there, so pushing is render-and-push.
+function Controller:push(template, data)
+	local page, refs = xml.renderFile("apps/adventure-arena/views/" .. template .. ".etlua", data, self.ns)
+	self.navigation:push(page)
+	return page, refs
 end
 
 function Controller:back()
