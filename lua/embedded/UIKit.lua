@@ -590,8 +590,39 @@ function UIKit.ScrollView(props)
 	assert(type(props) == "table", "ScrollView requires a property table")
 	local content = props.content or props[1]
 	assert(type(content) == "userdata", "ScrollView requires one content view")
-	return applyLayout(bridge._scrollView(content, props.contentWidth or 0,
-		props.contentHeight or 0, props.horizontal == true, props.vertical ~= false), props)
+	local view = bridge._scrollView(content, props.contentWidth or 0,
+		props.contentHeight or 0, props.horizontal == true, props.vertical ~= false)
+	if props.scrollOnKeyboard then view.scrollOnKeyboard = true end
+	return applyLayout(view, props)
+end
+
+--- Draws a circular arc in screen coordinates.
+---
+--- Angles are degrees, clockwise from east, in a y-down view. Equal angles
+--- close the circle. `stroke` is a semantic color name.
+--- @prop endAngle number optional. Ending angle in degrees.
+--- @prop height number optional. Component-specific setting passed to the native control.
+--- @prop lineCap string optional. `butt` or `round`.
+--- @prop lineWidth number optional. Stroke width in points.
+--- @prop startAngle number optional. Starting angle in degrees.
+--- @prop stroke string optional. Semantic stroke color.
+--- @prop strokeAlpha number optional. Stroke opacity from 0 to 1.
+--- @prop width number optional. Component-specific setting passed to the native control.
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
+function UIKit.Arc(props)
+	props = props or {}
+	if props.width and not props.fixedWidth then props.fixedWidth = props.width end
+	if props.height and not props.fixedHeight then props.fixedHeight = props.height end
+	local width = props.fixedWidth or 48
+	local height = props.fixedHeight or width
+	local view = bridge._arc(width, height)
+	view.startAngle = props.startAngle or 0
+	view.endAngle = props.endAngle or 0
+	if props.lineWidth then view.lineWidth = props.lineWidth end
+	if props.stroke then view.stroke = props.stroke end
+	if props.strokeAlpha then view.strokeAlpha = props.strokeAlpha end
+	if props.lineCap then view.lineCap = props.lineCap end
+	return applyLayout(view, props)
 end
 
 --- Pins the second child to a safe-area edge while the first child uses the remaining space.
@@ -631,6 +662,7 @@ end
 --- @prop editable boolean optional. Allows text editing when true.
 --- @prop onChange function optional. Callback invoked when the value changes.
 --- @prop onCommand function optional. Callback invoked for the corresponding keyboard command.
+--- @prop onFocus function optional. Callback invoked when editing begins and the keyboard is shown.
 --- @prop placeholder string optional. Component-specific setting passed to the native control.
 --- @prop style string optional. `plain` removes the field border; `roundedBorder` keeps the system field bezel.
 --- @prop secure boolean optional. Masks entered text when true.
@@ -650,7 +682,7 @@ function UIKit.TextField(props)
 	field.enabled = props.disabled ~= true and props.editable ~= false
 	if props.size then field.font = bridge._font(props.size, props.weight, false, props.design) end
 	if props.accessibilityLabel then field.accessibilityLabel = props.accessibilityLabel end
-	bridge._textFieldCallbacks(field, props.onChange, props.onCommand)
+	bridge._textFieldCallbacks(field, props.onChange, props.onCommand, props.onFocus)
 	field:sizeToFit()
 	-- SwiftUI text fields accept the available width while keeping native height.
 	field.fillWidth = true

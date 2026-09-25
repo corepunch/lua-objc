@@ -6,6 +6,20 @@ local DIRECTIONS = {
 }
 
 local DRAG = { maximumDistance = 14, rubberBandResistance = 22 }
+local SEGMENT = { span = 45 }
+
+function CompassGesture.segments()
+	local segments = {}
+	for index, direction in ipairs(DIRECTIONS) do
+		local center = (index - 1) * SEGMENT.span
+		table.insert(segments, {
+			direction = direction,
+			startAngle = center - SEGMENT.span / 2,
+			endAngle = center + SEGMENT.span / 2,
+		})
+	end
+	return segments
+end
 
 function CompassGesture.offset(translation, coordinateSpace)
 	if type(translation) ~= "table" then return 0, 0 end

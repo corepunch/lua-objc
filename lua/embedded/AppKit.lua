@@ -722,6 +722,7 @@ function AppKit.ScrollView(props)
 	else
 		view.hasVerticalScroller = false
 	end
+	if props.scrollOnKeyboard then view.scrollOnKeyboard = true end
 	return applyLayout(view, props)
 end
 
@@ -964,6 +965,7 @@ end
 --- @prop focusRing boolean optional. Shows the native keyboard focus ring when true.
 --- @prop onChange function optional. Callback invoked when the value changes.
 --- @prop onCommand function optional. Callback invoked for the corresponding keyboard command.
+--- @prop onFocus function optional. Callback invoked when editing begins and the keyboard is shown.
 --- @prop placeholder string optional. Component-specific setting passed to the native control.
 --- @prop style string optional. `plain` removes the field bezel and background; `roundedBorder` keeps the system field bezel.
 --- @prop secure boolean optional. Masks entered text when true.
@@ -994,7 +996,7 @@ function AppKit.TextField(props)
 	if props.accessibilityLabel then
 		field.accessibilityLabel = props.accessibilityLabel
 	end
-	bridge._textFieldCallbacks(field, props.onChange, props.onCommand)
+	bridge._textFieldCallbacks(field, props.onChange, props.onCommand, props.onFocus)
 	if props.disabled ~= nil then field.enabled = not props.disabled end
 	-- SwiftUI text fields accept the available width while keeping native height.
 	field.fillWidth = true
@@ -1036,7 +1038,7 @@ function AppKit.SearchField(props)
 	if props.accessibilityLabel then
 		field.accessibilityLabel = props.accessibilityLabel
 	end
-	bridge._textFieldCallbacks(field, props.onChange, props.onCommand)
+	bridge._textFieldCallbacks(field, props.onChange, props.onCommand, props.onFocus)
 	return applyLayout(field, props)
 end
 
@@ -1763,6 +1765,35 @@ function AppKit.PathView(props)
 		v:setLineWidth(props.lineWidth)
 	end
 	return applyLayout(v, props)
+end
+
+--- Draws a circular arc in screen coordinates.
+---
+--- Angles are degrees, clockwise from east, in a y-down view. Equal angles
+--- close the circle. `stroke` is a semantic color name.
+--- @prop endAngle number optional. Ending angle in degrees.
+--- @prop height number optional. Component-specific setting passed to the native control.
+--- @prop lineCap string optional. `butt` or `round`.
+--- @prop lineWidth number optional. Stroke width in points.
+--- @prop startAngle number optional. Starting angle in degrees.
+--- @prop stroke string optional. Semantic stroke color.
+--- @prop strokeAlpha number optional. Stroke opacity from 0 to 1.
+--- @prop width number optional. Component-specific setting passed to the native control.
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
+function AppKit.Arc(props)
+	props = props or {}
+	if props.width and not props.fixedWidth then props.fixedWidth = props.width end
+	if props.height and not props.fixedHeight then props.fixedHeight = props.height end
+	local width = props.fixedWidth or 48
+	local height = props.fixedHeight or width
+	local view = bridge._arc(width, height)
+	view.startAngle = props.startAngle or 0
+	view.endAngle = props.endAngle or 0
+	if props.lineWidth then view.lineWidth = props.lineWidth end
+	if props.stroke then view.stroke = props.stroke end
+	if props.strokeAlpha then view.strokeAlpha = props.strokeAlpha end
+	if props.lineCap then view.lineCap = props.lineCap end
+	return applyLayout(view, props)
 end
 
 --- Renders a data-driven curve in a native drawing surface.
