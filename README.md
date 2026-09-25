@@ -492,13 +492,18 @@ xcodebuild -project ios/AdventureArena/AdventureArena.xcodeproj \
 python3 -m unittest discover -s scripts/ipad -p 'test_*.py'
 ```
 
-For automatic TestFlight delivery, first add the app record and an internal
-tester group in App Store Connect. In Xcode, configure the first Xcode Cloud
-workflow for the checked-in `AdventureArena` scheme and connect the GitHub
-repository. Then configure a release workflow with a Git tag start condition
-matching `release/*`, a Release archive action for iOS with **TestFlight
-(Internal Testing Only)** deployment preparation, and a TestFlight postaction
-for the internal tester group. The `ci_pre_xcodebuild.sh` script reads tags in
-the form `release/1.2.3` and sets the app version to `1.2.3`; Xcode Cloud
-assigns increasing build numbers. Push the tag only after the release commit
-and submodules are available from the connected repository.
+The App Store Connect record is **Elsewhere: Text Adventures**. Its external
+TestFlight group is **Public Beta**, with an open invitation link at
+https://testflight.apple.com/join/dvkhrmXh. Apple requires an internal group
+before creating an external group, but testers can join Public Beta through
+the link without being added to the App Store Connect team.
+
+The **Adventure Arena Release** Xcode Cloud workflow connects the GitHub
+repository to the checked-in `AdventureArena` scheme. Tags beginning with
+`release/` trigger an iOS archive prepared for **App Store Connect** and a
+**TestFlight External Testing** post-action targeting Public Beta. The first
+external build must pass Apple's Beta App Review before the public link can
+install it. The `ci_pre_xcodebuild.sh` script reads tags in the form
+`release/1.2.3` and sets the app version to `1.2.3`; Xcode Cloud assigns
+increasing build numbers. Push the tag only after the release commit and
+submodules are available from the connected repository.
