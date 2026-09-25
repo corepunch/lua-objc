@@ -70,10 +70,14 @@ enum {
 	kWorkspaceSafeAreaContentKey,
 	kTextViewSourceKey,
 	kWindowCloseKey,
+	kScrollAnchorKey,
+	kScrollOnKeyboardKey,
 	kKeyCount
 };
 static char kKeys[kKeyCount];
 static const CGFloat kStackSpacing = 8.0;
+static const CGFloat kArcFullCircleDegrees = 359.0;
+static const NSTimeInterval kScrollToAnimationDuration = 0.2;
 
 /* Every value that controls visual appearance or layout has a named constant
  * so that tuning across the codebase is a single-section edit. Add new constants
@@ -328,6 +332,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_textFieldCallbacks", bridge_AppKit_text_field_callbacks},
 	{"_textFieldTestInput", bridge_AppKit_text_field_test_input},
 	{"_textFieldTestCommand", bridge_AppKit_text_field_test_command},
+	{"_textFieldTestFocus", bridge_AppKit_text_field_test_focus},
 	{"_textView", bridge_AppKit_text_view},
 	{"_symbolToggle", bridge_AppKit_symbol_toggle},
 	{"_symbolButton", bridge_AppKit_symbol_button},
@@ -343,6 +348,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_jsonParse", bridge_AppKit_json_parse},
 	{"_font", bridge_AppKit_font},
 	{"_pathView", bridge_pathView},
+	{"_arc", bridge_arc},
 	{"_setCurrentScope", bridge_set_current_scope},
 	{"_invokeAction", bridge_invoke_action},
 	{"_onWindowClose", bridge_on_window_close},

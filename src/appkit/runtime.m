@@ -25,6 +25,8 @@ static int bridge_menu_item(lua_State *L);
 static int bridge_text_field_callbacks(lua_State *L);
 static int bridge_text_field_test_input(lua_State *L);
 static int bridge_text_field_test_command(lua_State *L);
+static int bridge_text_field_test_focus(lua_State *L);
+static int bridge_NSScrollView_scrollTo(lua_State *L);
 static int bridge_object_add_impl(lua_State *L);
 static int bridge_object_layout_impl(lua_State *L);
 static int bridge_object_set_content_size_impl(lua_State *L);
@@ -61,6 +63,8 @@ static void layout_recursive(NSView *view, CGFloat width);
 @property(nonatomic, retain) NSColor *backgroundColor;
 @property(nonatomic) CGFloat cornerRadius;
 @property(nonatomic) BOOL clipsToBounds;
+@property(nonatomic) CGFloat offsetX;
+@property(nonatomic) CGFloat offsetY;
 @end
 
 @implementation NSView (LuaSurfaceProperties)
@@ -92,6 +96,25 @@ static void layout_recursive(NSView *view, CGFloat width);
 		OBJC_ASSOCIATION_RETAIN);
 	self.wantsLayer = YES;
 	self.layer.masksToBounds = value;
+}
+- (CGFloat)offsetX {
+	return self.wantsLayer ? self.layer.affineTransform.tx : 0;
+}
+- (void)setOffsetX:(CGFloat)value {
+	self.wantsLayer = YES;
+	CGAffineTransform transform = self.layer.affineTransform;
+	transform.tx = value;
+	self.layer.affineTransform = transform;
+}
+- (CGFloat)offsetY {
+	/* Layer y grows upward. Match UIKit: positive offsetY moves the view down. */
+	return self.wantsLayer ? -self.layer.affineTransform.ty : 0;
+}
+- (void)setOffsetY:(CGFloat)value {
+	self.wantsLayer = YES;
+	CGAffineTransform transform = self.layer.affineTransform;
+	transform.ty = -value;
+	self.layer.affineTransform = transform;
 }
 @end
 

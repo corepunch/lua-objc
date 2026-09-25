@@ -3,6 +3,11 @@
 static int bridge_tableview_on_row_move(lua_State *L);
 static int bridge_tableview_on_row_swipe(lua_State *L);
 static int bridge_clear_container(lua_State *L);
+static int bridge_uikit_scroll_to(lua_State *L);
+static int bridge_LuaArcView_arcBounds(lua_State *L);
+
+@interface LuaArcView : UIView
+@end
 
 static int nsview_index(lua_State *L) {
 	id obj = lua_objc_live_ptr(L, 1, lua_touserdata(L, 1));
@@ -37,6 +42,14 @@ static int nsview_index(lua_State *L) {
 	}
 	if (strcmp(key, "setContentSize") == 0) {
 		lua_pushcfunction(L, bridge_set_content_size);
+		return 1;
+	}
+	if (strcmp(key, "scrollTo") == 0 && [obj isKindOfClass:[UIScrollView class]]) {
+		lua_pushcfunction(L, bridge_uikit_scroll_to);
+		return 1;
+	}
+	if (strcmp(key, "arcBounds") == 0 && [obj isKindOfClass:[LuaArcView class]]) {
+		lua_pushcfunction(L, bridge_LuaArcView_arcBounds);
 		return 1;
 	}
 	if (strcmp(key, "show") == 0 && [obj isKindOfClass:[UIWindow class]]) {

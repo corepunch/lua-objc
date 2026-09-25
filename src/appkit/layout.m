@@ -1037,6 +1037,16 @@ static void layout_recursive_impl(NSView *view, CGFloat width) {
 				layout_recursive(document, content.width);
 				NSPoint origin = scroll.contentView.bounds.origin;
 				if (!document.isFlipped) origin.y = MAX(0, content.height - viewport.height - distanceFromTop);
+				NSString *anchor = objc_getAssociatedObject(scroll, &kKeys[kScrollAnchorKey]);
+				if (anchor && content.height > 0 && viewport.height > 0) {
+					CGFloat limit = MAX(0, content.height - viewport.height);
+					if ([anchor isEqualToString:@"bottom"])
+						origin.y = document.isFlipped ? limit : 0;
+					else if ([anchor isEqualToString:@"top"])
+						origin.y = document.isFlipped ? 0 : limit;
+					objc_setAssociatedObject(scroll, &kKeys[kScrollAnchorKey], nil,
+						OBJC_ASSOCIATION_RETAIN);
+				}
 				[scroll.contentView scrollToPoint:origin];
 				objc_setAssociatedObject(scroll, &kKeys[kScrollViewportSizeKey],
 					[NSValue valueWithSize:viewport], OBJC_ASSOCIATION_RETAIN);
@@ -1064,6 +1074,62 @@ static void layout_recursive(NSView *view, CGFloat width) {
 	LUA_OBJC_PERF_BEGIN("appkit.layout", signpost);
 	layout_recursive_impl(view, width);
 	LUA_OBJC_PERF_END("appkit.layout", signpost);
+}
+
+static NSView *view_with_identifier(NSView *view, NSString *identifier) {
+	if (identifier.length == 0) return nil;
+	if ([view.accessibilityIdentifier isEqualToString:identifier]) return view;
+	for (NSView *child in view.subviews) {
+		NSView *found = view_with_identifier(child, identifier);
+		if (found) return found;
+	}
+	return nil;
+}
+
+static CGFloat clamp_scroll_offset(CGFloat value, CGFloat limit) {
+	if (value < 0) return 0;
+	if (value > limit) return limit;
+	return value;
+}
+
+static void scroll_view_apply_target(NSScrollView *scroll, NSString *target, BOOL animated) {
+	NSView *document = scroll.documentView;
+	if (!document || target.length == 0) return;
+	[scroll tile];
+	CGFloat viewport = scroll.contentSize.height;
+	CGFloat limit = MAX(0, document.frame.size.height - viewport);
+	NSPoint origin = scroll.contentView.bounds.origin;
+	if ([target isEqualToString:@"bottom"]) origin.y = document.isFlipped ? limit : 0;
+	else if ([target isEqualToString:@"top"]) origin.y = document.isFlipped ? 0 : limit;
+	else {
+		NSView *match = view_with_identifier(document, target);
+		if (!match) return;
+		NSRect rect = [document convertRect:match.bounds fromView:match];
+		CGFloat y = document.isFlipped ? NSMaxY(rect) - viewport : NSMinY(rect);
+		origin.y = clamp_scroll_offset(y, limit);
+	}
+	origin.x = 0;
+	if (animated && scroll.window) {
+		[NSAnimationContext runAnimationGroup:^(NSAnimationContext *context) {
+			context.duration = kScrollToAnimationDuration;
+			[[scroll.contentView animator] setBoundsOrigin:origin];
+		} completionHandler:nil];
+	} else {
+		[scroll.contentView scrollToPoint:origin];
+		[scroll reflectScrolledClipView:scroll.contentView];
+	}
+}
+
+static int bridge_NSScrollView_scrollTo(lua_State *L) {
+	NSScrollView *scroll = lua_objc_check_object(L, 1, [NSScrollView class], "ScrollView");
+	NSString *target = [NSString stringWithUTF8String:luaL_checkstring(L, 2)];
+	BOOL animated = lua_toboolean(L, 3);
+	if ([target isEqualToString:@"bottom"] || [target isEqualToString:@"top"]) {
+		objc_setAssociatedObject(scroll, &kKeys[kScrollAnchorKey], target,
+			OBJC_ASSOCIATION_RETAIN);
+	}
+	scroll_view_apply_target(scroll, target, animated);
+	return 0;
 }
 
 static void toolbar_size_content(NSView *view) {

@@ -327,3 +327,111 @@ static int bridge_on_window_close(lua_State *L) {
 	existing.closeReg = lua_reg_opt_unscoped(L, 2);
 	return 0;
 }
+
+#include <math.h>
+
+static CGFloat arc_normalize_degrees(CGFloat degrees) {
+	CGFloat wrapped = fmod(degrees, 360.0);
+	if (wrapped < 0) wrapped += 360.0;
+	return wrapped;
+}
+
+static void arc_add_clockwise(UIBezierPath *path, CGPoint center, CGFloat radius,
+		CGFloat startDegrees, CGFloat sweepDegrees) {
+	CGFloat angle = startDegrees;
+	CGFloat remaining = sweepDegrees;
+	BOOL moved = !path.isEmpty;
+	while (remaining > 0.01) {
+		CGFloat step = MIN(90.0, remaining);
+		CGFloat a1 = angle * M_PI / 180.0;
+		CGFloat a2 = (angle + step) * M_PI / 180.0;
+		CGFloat handle = (4.0 / 3.0) * tan((a2 - a1) / 4.0);
+		CGPoint start = CGPointMake(center.x + radius * cos(a1), center.y + radius * sin(a1));
+		CGPoint end = CGPointMake(center.x + radius * cos(a2), center.y + radius * sin(a2));
+		CGPoint tangentStart = CGPointMake(-sin(a1), cos(a1));
+		CGPoint tangentEnd = CGPointMake(-sin(a2), cos(a2));
+		if (!moved) {
+			[path moveToPoint:start];
+			moved = YES;
+		}
+		[path addCurveToPoint:end
+			controlPoint1:CGPointMake(start.x + handle * radius * tangentStart.x,
+				start.y + handle * radius * tangentStart.y)
+			controlPoint2:CGPointMake(end.x - handle * radius * tangentEnd.x,
+				end.y - handle * radius * tangentEnd.y)];
+		angle += step;
+		remaining -= step;
+	}
+}
+
+@interface LuaArcView ()
+@property(nonatomic) CGFloat startAngle;
+@property(nonatomic) CGFloat endAngle;
+@property(nonatomic) CGFloat lineWidth;
+@property(nonatomic) CGFloat strokeAlpha;
+@property(nonatomic, copy) NSString *stroke;
+@property(nonatomic, copy) NSString *lineCap;
+@end
+
+@implementation LuaArcView
+
+- (instancetype)initWithFrame:(CGRect)frame {
+	self = [super initWithFrame:frame];
+	if (self) {
+		_lineWidth = 1;
+		_strokeAlpha = 1;
+		_stroke = @"accent";
+		_lineCap = @"butt";
+		self.backgroundColor = UIColor.clearColor;
+		self.opaque = NO;
+	}
+	return self;
+}
+
+- (UIBezierPath *)arcPath {
+	CGRect bounds = self.bounds;
+	CGPoint center = CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds));
+	CGFloat radius = MIN(bounds.size.width, bounds.size.height) / 2.0;
+	UIBezierPath *path = [UIBezierPath bezierPath];
+	if (radius <= 0) return path;
+	CGFloat start = arc_normalize_degrees(self.startAngle);
+	CGFloat end = arc_normalize_degrees(self.endAngle);
+	CGFloat sweep = end - start;
+	if (sweep <= 0) sweep += 360.0;
+	if (sweep >= kArcFullCircleDegrees) {
+		[path appendPath:[UIBezierPath bezierPathWithOvalInRect:CGRectMake(
+			center.x - radius, center.y - radius, radius * 2.0, radius * 2.0)]];
+	} else {
+		arc_add_clockwise(path, center, radius, start, sweep);
+	}
+	path.lineWidth = self.lineWidth;
+	path.lineCapStyle = [self.lineCap isEqualToString:@"round"] ? kCGLineCapRound : kCGLineCapButt;
+	return path;
+}
+
+- (void)drawRect:(CGRect)rect {
+	(void)rect;
+	if (self.strokeAlpha <= 0) return;
+	UIBezierPath *path = [self arcPath];
+	if (path.isEmpty) return;
+	NSString *name = self.stroke ?: @"accent";
+	[[lua_objc_uikit_system_color(name.UTF8String)
+		colorWithAlphaComponent:MIN(1, MAX(0, self.strokeAlpha))] setStroke];
+	[path stroke];
+}
+
+@end
+
+static int bridge_arc(lua_State *L) {
+	CGFloat width = (CGFloat)luaL_optnumber(L, 1, 48);
+	CGFloat height = (CGFloat)luaL_optnumber(L, 2, width);
+	LuaArcView *view = [[LuaArcView alloc] initWithFrame:CGRectMake(0, 0, width, height)];
+	push_objc(L, view, "uiview");
+	return 1;
+}
+
+static int bridge_LuaArcView_arcBounds(lua_State *L) {
+	LuaArcView *view = lua_objc_check_object(L, 1, [LuaArcView class], "Arc");
+	push_CGRect(L, view.arcPath.bounds);
+	return 1;
+}

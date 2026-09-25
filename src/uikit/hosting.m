@@ -7,7 +7,10 @@ __attribute__((weak)) UIWindow *LRTApplicationWindow(void) {
 @interface LuaHostingController : UIViewController
 @property (nonatomic, strong) UIView *luaRoot;
 @property (nonatomic, strong) LuaReg *disappearCallback;
+@property (nonatomic) BOOL keyboardWasVisible;
 @end
+
+static void uikit_scroll_mark_keyboard(UIView *view);
 
 @implementation LuaHostingController
 - (BOOL)ignoresTopSafeArea {
@@ -81,6 +84,14 @@ __attribute__((weak)) UIWindow *LRTApplicationWindow(void) {
 
 - (void)viewDidLayoutSubviews {
 	[super viewDidLayoutSubviews];
+	/* The keyboard guide has already shortened the root. Mark opted-in
+	 * transcripts before layout so the latest line stays in view. */
+	BOOL keyboardVisible = CGRectGetHeight(self.luaRoot.bounds) > 0
+		&& CGRectGetMaxY(self.luaRoot.frame)
+			< CGRectGetMaxY(self.view.bounds) - kHostLayoutEdgeTolerance;
+	if (keyboardVisible && !self.keyboardWasVisible)
+		uikit_scroll_mark_keyboard(self.luaRoot);
+	self.keyboardWasVisible = keyboardVisible;
 	[self updateHostSafeAreaPadding];
 	layout_recursive(self.luaRoot, self.luaRoot.bounds.size.width);
 }

@@ -359,9 +359,67 @@ static int bridge_UIKitControls_zstack(lua_State *L) {
 		MAX(minimumHeight, content.height - topInset));
 	layout_recursive(self.luaContent, content.width);
 	self.contentSize = content;
-
+	NSString *anchor = objc_getAssociatedObject(self, &kScrollAnchorKey);
+	if (anchor && self.bounds.size.height > 0 && self.contentSize.height > 0) {
+		objc_setAssociatedObject(self, &kScrollAnchorKey, nil, OBJC_ASSOCIATION_RETAIN);
+		CGFloat limit = MAX(0, self.contentSize.height - self.bounds.size.height);
+		CGFloat y = [anchor isEqualToString:@"top"] ? 0 : limit;
+		if ([anchor isEqualToString:@"bottom"] || [anchor isEqualToString:@"top"])
+			self.contentOffset = CGPointMake(0, y);
+	}
 }
 @end
+
+@interface UIScrollView (LuaKeyboardScroll)
+@property(nonatomic) BOOL scrollOnKeyboard;
+@end
+@implementation UIScrollView (LuaKeyboardScroll)
+- (BOOL)scrollOnKeyboard {
+	return [objc_getAssociatedObject(self, &kScrollOnKeyboardKey) boolValue];
+}
+- (void)setScrollOnKeyboard:(BOOL)value {
+	objc_setAssociatedObject(self, &kScrollOnKeyboardKey, @(value), OBJC_ASSOCIATION_RETAIN);
+}
+@end
+
+static UIView *uikit_view_with_identifier(UIView *view, NSString *identifier) {
+	if (identifier.length == 0) return nil;
+	if ([view.accessibilityIdentifier isEqualToString:identifier]) return view;
+	for (UIView *child in view.subviews) {
+		UIView *found = uikit_view_with_identifier(child, identifier);
+		if (found) return found;
+	}
+	return nil;
+}
+
+static void uikit_scroll_mark_keyboard(UIView *view) {
+	if ([view isKindOfClass:[UIScrollView class]] && ((UIScrollView *)view).scrollOnKeyboard)
+		objc_setAssociatedObject(view, &kScrollAnchorKey, @"bottom", OBJC_ASSOCIATION_RETAIN);
+	for (UIView *child in view.subviews) uikit_scroll_mark_keyboard(child);
+}
+
+static int bridge_uikit_scroll_to(lua_State *L) {
+	UIScrollView *scroll = lua_objc_check_object(L, 1, [UIScrollView class], "ScrollView");
+	NSString *target = [NSString stringWithUTF8String:luaL_checkstring(L, 2)];
+	BOOL animated = lua_toboolean(L, 3);
+	CGFloat limit = MAX(0, scroll.contentSize.height - scroll.bounds.size.height);
+	CGFloat y = scroll.contentOffset.y;
+	if ([target isEqualToString:@"bottom"]) y = limit;
+	else if ([target isEqualToString:@"top"]) y = 0;
+	else if ([scroll isKindOfClass:[LuaUIKitScrollView class]]) {
+		UIView *content = ((LuaUIKitScrollView *)scroll).luaContent;
+		UIView *match = uikit_view_with_identifier(content, target);
+		if (!match) return 0;
+		CGRect rect = [match convertRect:match.bounds toView:content];
+		y = MIN(MAX(0, CGRectGetMaxY(rect) - scroll.bounds.size.height), limit);
+	} else {
+		return 0;
+	}
+	if ([target isEqualToString:@"bottom"] || [target isEqualToString:@"top"])
+		objc_setAssociatedObject(scroll, &kScrollAnchorKey, target, OBJC_ASSOCIATION_RETAIN);
+	[scroll setContentOffset:CGPointMake(0, y) animated:animated];
+	return 0;
+}
 
 static int bridge_UIKitControls_scrollView(lua_State *L) {
 	UIView *content = check_view(L, 1);

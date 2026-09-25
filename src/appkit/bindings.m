@@ -47,6 +47,7 @@ static int bridge_menu_item(lua_State *L);
 static int bridge_text_field_callbacks(lua_State *L);
 static int bridge_text_field_test_input(lua_State *L);
 static int bridge_text_field_test_command(lua_State *L);
+static int bridge_text_field_test_focus(lua_State *L);
 static int bridge_text_view(lua_State *L);
 static int bridge_symbol_toggle(lua_State *L);
 static int bridge_symbol_button(lua_State *L);
@@ -172,6 +173,10 @@ static int bridge_AppKit_text_field_test_input(lua_State *L) {
 
 static int bridge_AppKit_text_field_test_command(lua_State *L) {
 	return bridge_text_field_test_command(L);
+}
+
+static int bridge_AppKit_text_field_test_focus(lua_State *L) {
+	return bridge_text_field_test_focus(L);
 }
 
 static int bridge_AppKit_text_view(lua_State *L) {
@@ -757,6 +762,22 @@ if (objc_getAssociatedObject(obj, &kKeys[kNavigationControllerKey])) {
 	if ([obj isKindOfClass:[NSPopUpButton class]]) {
 		lua_CFunction _m = lookupMethod(key, PopUpButtonMethods);
 		if (_m) { lua_pushcfunction(L, _m); return 1; }
+	}
+}
+
+{
+	if ([obj isKindOfClass:[NSScrollView class]] && strcmp(key, "scrollTo") == 0) {
+		lua_pushcfunction(L, bridge_NSScrollView_scrollTo);
+		return 1;
+	}
+}
+
+{
+	if ([obj isKindOfClass:[LuaArcView class]]) {
+		if (strcmp(key, "arcBounds") == 0) {
+			lua_pushcfunction(L, bridge_LuaArcView_arcBounds);
+			return 1;
+		}
 	}
 }
 

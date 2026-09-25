@@ -3,6 +3,7 @@
 @interface LuaTextFieldDelegate : NSObject <NSTextFieldDelegate>
 @property (nonatomic, strong) LuaReg *changeReg;
 @property (nonatomic, strong) LuaReg *commandReg;
+@property (nonatomic, strong) LuaReg *focusReg;
 - (BOOL)dispatchCommand:(NSString *)command field:(NSTextField *)field;
 @end
 
@@ -11,6 +12,14 @@
 - (void)dealloc {
 	[_changeReg dispose];
 	[_commandReg dispose];
+	[_focusReg dispose];
+}
+
+- (void)controlTextDidBeginEditing:(NSNotification *)notification {
+	(void)notification;
+	lua_State *callL = lua_reg_live_state(_focusReg);
+	if (!callL || !lua_reg_push(_focusReg)) return;
+	lua_objc_pcall(callL, 0, 0, "text field focus");
 }
 
 - (void)controlTextDidChange:(NSNotification *)notification {
@@ -62,6 +71,7 @@ static int bridge_text_field_callbacks(lua_State *L) {
 	LuaTextFieldDelegate *delegate = [[LuaTextFieldDelegate alloc] init];
 	delegate.changeReg = lua_reg_opt(L, 2);
 	delegate.commandReg = lua_reg_opt(L, 3);
+	delegate.focusReg = lua_reg_opt(L, 4);
 	NSTextField *field = (NSTextField *)obj;
 	field.delegate = delegate;
 	objc_setAssociatedObject(field, &kKeys[kTextFieldDelegateKey], delegate,
@@ -95,4 +105,16 @@ static int bridge_text_field_test_command(lua_State *L) {
 				 field:(NSTextField *)obj];
 	lua_pushboolean(L, handled);
 	return 1;
+}
+
+static int bridge_text_field_test_focus(lua_State *L) {
+	id obj = check_objc(L, 1);
+	if (![obj isKindOfClass:[NSTextField class]]) {
+		return luaL_error(L, "textFieldTestFocus requires an NSTextField");
+	}
+	NSTextField *field = (NSTextField *)obj;
+	[text_field_delegate(field) controlTextDidBeginEditing:
+		[NSNotification notificationWithName:NSControlTextDidBeginEditingNotification
+			object:field]];
+	return 0;
 }

@@ -48,12 +48,15 @@ static char kHorizontalInsetKey;
 static char kNavigationBarHiddenKey;
 static char kImageLayoutSizeKey;
 static char kScrollContentKey;
+static char kScrollAnchorKey;
+static char kScrollOnKeyboardKey;
 static char kButtonContentKey;
 static char kVisualEffectContentKey;
 static const CGFloat kImageMaxWidth = 400.0;
 static const CGFloat kMenuSymbolPointSize = 17.0;
 static const CGFloat kStackSpacing = 8.0;
 static const CGFloat kHostLayoutEdgeTolerance = 1.0;
+static const CGFloat kArcFullCircleDegrees = 359.0;
 static const CGFloat kSeparatorThickness = 1.0;
 static const CGFloat kPreviewWidth = 393.0;
 static const CGFloat kPreviewHeight = 740.0;
@@ -160,6 +163,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_textFieldCallbacks", bridge_text_field_callbacks},
 	{"_textFieldTestInput", bridge_text_field_test_input},
 	{"_textFieldTestCommand", bridge_text_field_test_command},
+	{"_textFieldTestFocus", bridge_text_field_test_focus},
+	{"_arc", bridge_arc},
 	{"_textField", bridge_UIKitControls_textField},
 	{"_searchField", bridge_UIKitControls_searchField},
 	{"_textEditor", bridge_UIKitControls_textEditor},
