@@ -133,6 +133,10 @@ t.expect(bridge:find("GEN_STRUCT_REGISTER", 1, true) ~= nil,
 	"UIKit registers struct metatables at module load")
 t.expect(hosting:find("keyboardLayoutGuide.topAnchor", 1, true) ~= nil,
 	"hosting bounds account for the software keyboard")
+t.expect(hosting:find("keyboardLayoutGuide.usesBottomSafeArea = NO", 1, true) ~= nil
+	and hosting:find("MAX(self.view.safeAreaInsets.bottom, view.minimumBottomInset)", 1, true) ~= nil
+	and hosting:find("CGFloat bottomInset = keyboardVisible ? 0", 1, true) ~= nil,
+	"keyboard guide does not double-count the home indicator and the composer clears the keyboard")
 t.expect(hosting:find("luaRoot.topAnchor constraintEqualToAnchor:self.view.topAnchor", 1, true) ~= nil
 	and hosting:find("luaRoot.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor", 1, true) ~= nil
 	and hosting:find("luaRoot.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor", 1, true) ~= nil,

@@ -26,12 +26,17 @@ __attribute__((weak)) UIWindow *LRTApplicationWindow(void) {
 
 - (void)updateBottomSafeAreaPaddingInView:(UIView *)view {
 	if (view.safeAreaInsetBottom) {
-		CGFloat bottomInset = self.view.safeAreaInsets.bottom;
+		// The keyboard guide shortens the hosted root when the keyboard is up.
+		// Its inset belongs only below a root that reaches the view bottom.
+		BOOL keyboardVisible = CGRectGetMaxY(self.luaRoot.frame)
+			< CGRectGetMaxY(self.view.bounds) - kHostLayoutEdgeTolerance;
+		CGFloat bottomInset = keyboardVisible ? 0
+			: MAX(self.view.safeAreaInsets.bottom, view.minimumBottomInset);
 		UITabBar *tabBar = self.tabBarController.tabBar;
 		if (tabBar && !tabBar.hidden && tabBar.window == self.view.window) {
 			CGRect tabFrame = [tabBar.superview convertRect:tabBar.frame toView:self.view];
 			// The hosted root already ends where the external tab bar begins.
-			if (CGRectGetMinY(tabFrame) >= CGRectGetMaxY(self.luaRoot.frame) - 1)
+			if (CGRectGetMinY(tabFrame) >= CGRectGetMaxY(self.luaRoot.frame) - kHostLayoutEdgeTolerance)
 				bottomInset = 0;
 		}
 		objc_setAssociatedObject(view, &kHostSafeAreaBottomKey,
@@ -54,8 +59,10 @@ __attribute__((weak)) UIWindow *LRTApplicationWindow(void) {
 	if (!self.luaRoot) return;
 	[self.view addSubview:self.luaRoot];
 	self.luaRoot.translatesAutoresizingMaskIntoConstraints = NO;
+	self.view.keyboardLayoutGuide.usesBottomSafeArea = NO;
 	// The Lua root owns the full window so safe-area regions keep the app
-	// background. Insets are handed to the layout engine.
+	// background. Insets are handed to the layout engine once, including
+	// when the keyboard is hidden.
 	[NSLayoutConstraint activateConstraints:@[
 		[self.luaRoot.topAnchor constraintEqualToAnchor:self.view.topAnchor],
 		[self.luaRoot.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],

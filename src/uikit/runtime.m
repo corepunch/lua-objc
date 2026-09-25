@@ -37,6 +37,7 @@ static void layout_recursive(UIView *view, CGFloat width);
 @property(nonatomic, copy) NSString *ignoresSafeArea;
 @property(nonatomic, copy) NSString *contentModeName;
 @property(nonatomic) BOOL safeAreaInsetBottom;
+@property(nonatomic) CGFloat minimumBottomInset;
 @property(nonatomic) CGFloat offsetX;
 @property(nonatomic) CGFloat offsetY;
 @end
@@ -66,6 +67,8 @@ static void layout_recursive(UIView *view, CGFloat width);
 - (void)setPaddingBottom:(CGFloat)value { objc_setAssociatedObject(self, &kPaddingBottomKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
 - (BOOL)safeAreaInsetBottom { return [objc_getAssociatedObject(self, &kSafeAreaInsetBottomKey) boolValue]; }
 - (void)setSafeAreaInsetBottom:(BOOL)value { objc_setAssociatedObject(self, &kSafeAreaInsetBottomKey, @(value), OBJC_ASSOCIATION_RETAIN); }
+- (CGFloat)minimumBottomInset { return [objc_getAssociatedObject(self, &kMinimumBottomInsetKey) doubleValue]; }
+- (void)setMinimumBottomInset:(CGFloat)value { objc_setAssociatedObject(self, &kMinimumBottomInsetKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
 - (CGFloat)offsetX { return self.transform.tx; }
 - (void)setOffsetX:(CGFloat)value {
 	CGAffineTransform transform = self.transform;

@@ -599,6 +599,7 @@ end
 --- The bottom edge includes the hosting controller's safe-area inset. Use a flexible
 --- scroll view as the first child and the persistent control as the second child.
 --- @prop edge string optional. Currently `bottom`.
+--- @prop minimumBottomInset number optional. Minimum resting clearance on devices without a bottom safe-area inset; the keyboard removes it.
 --- @platform UIKit.
 function UIKit.SafeAreaInset(props)
 	props = props or {}
@@ -608,6 +609,7 @@ function UIKit.SafeAreaInset(props)
 	local children = { spacing = 0, fillWidth = true, fillHeight = true, props[1], props[2] }
 	local view = UIKit.VStack(children)
 	view.safeAreaInsetBottom = true
+	view.minimumBottomInset = props.minimumBottomInset or 0
 	return applyLayout(view, props)
 end
 

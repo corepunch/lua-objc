@@ -729,13 +729,15 @@ end
 ---
 --- The bottom edge is laid out above the containing window's content boundary.
 --- @prop edge string optional. Currently `bottom`.
+--- @prop minimumBottomInset number optional. Minimum clearance below the accessory.
 --- @platform AppKit.
 function AppKit.SafeAreaInset(props)
 	props = props or {}
 	assert(props.edge == nil or props.edge == "bottom", "SafeAreaInset currently supports edge=bottom")
 	assert(type(props[1]) == "userdata" and type(props[2]) == "userdata" and props[3] == nil,
 		"SafeAreaInset requires content and inset children")
-	local children = { spacing = 0, fillWidth = true, fillHeight = true, props[1], props[2] }
+	local children = { spacing = 0, fillWidth = true, fillHeight = true,
+		paddingBottom = props.minimumBottomInset or 0, props[1], props[2] }
 	return applyLayout(AppKit.VStack(children), props)
 end
 
