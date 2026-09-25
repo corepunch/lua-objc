@@ -45,6 +45,7 @@ function Controller:show(id)
 			self:submitCommand(self.refs.input.text)
 			return true
 		end,
+		inputFocused = function() self:scrollTranscript(true) end,
 		look = function() self:submitCommand("look") end,
 		inventory = function() self:submitCommand("inventory") end,
 		dictate = function() self:toggleDictation() end,
@@ -53,20 +54,18 @@ function Controller:show(id)
 		compassDrag = function(gesture)
 			if type(gesture) ~= "table" or not self.refs then return end
 			local coordinateSpace = self.ns.platform == "AppKit" and "bottom-left" or "top-left"
+			local direction = CompassGesture.direction(gesture.translation, coordinateSpace)
 			if gesture.state == "changed" or gesture.state == "began" then
-				if self.ns.platform == "UIKit" then
-					local x, y = CompassGesture.offset(gesture.translation, coordinateSpace)
-					self.refs.compassImage.offsetX = x
-					self.refs.compassImage.offsetY = y
-				end
+				local x, y = CompassGesture.offset(gesture.translation, coordinateSpace)
+				self.refs.compassImage.offsetX = x
+				self.refs.compassImage.offsetY = y
+				self:updateCompass(direction)
 				return
 			end
-			if self.ns.platform == "UIKit" then
-				self.refs.compassImage.offsetX = 0
-				self.refs.compassImage.offsetY = 0
-			end
+			self.refs.compassImage.offsetX = 0
+			self.refs.compassImage.offsetY = 0
+			self:updateCompass(nil)
 			if gesture.state ~= "ended" then return end
-			local direction = CompassGesture.direction(gesture.translation, coordinateSpace)
 			if direction and self.model:hasExit(direction) then
 				self:submitCommand("go " .. direction)
 			end
@@ -74,12 +73,36 @@ function Controller:show(id)
 	}
 	local presentation = self.model:presentation()
 	presentation.speechAvailable = speechAvailable
+	presentation.compassSegments = CompassGesture.segments()
 	presentation.actions = actions
 	self.view, self.refs = self.push("Session", presentation, game.title)
 	self.refs.input.accessibilityLabel = "Command"
 	self:applyReadingSettings()
 	self:updateComposer(self.refs.input.text)
+	self:updateCompass(nil)
+	self:scrollTranscript(false)
 	return true
+end
+
+function Controller:scrollTranscript(animated)
+	local scroll = self.refs and self.refs.transcriptScroll
+	if not scroll then return end
+	scroll:scrollTo("bottom", animated == true)
+end
+
+function Controller:updateCompass(activeDirection)
+	if not self.refs then return end
+	for _, segment in ipairs(CompassGesture.segments()) do
+		local exitArc = self.refs["compassExit_" .. segment.direction]
+		local dragArc = self.refs["compassDrag_" .. segment.direction]
+		local available = self.model:hasExit(segment.direction)
+		if exitArc then exitArc.strokeAlpha = available and 1 or 0 end
+		if dragArc then
+			local active = activeDirection == segment.direction
+			dragArc.strokeAlpha = active and 1 or 0
+			if active then dragArc.stroke = available and "accent" or "tertiary" end
+		end
+	end
 end
 
 function Controller:updateComposer(text)
@@ -159,6 +182,8 @@ function Controller:submitCommand(command)
 	self.refs.progress.text = presentation.progress
 	self.refs.input.text = ""
 	self.refs.dictationStatus.text = ""
+	self:updateCompass(nil)
+	self:scrollTranscript(true)
 	self:updateComposer("")
 	return ok, err
 end

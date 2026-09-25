@@ -31,6 +31,13 @@ t.expect(largeX > 13 and largeX < 14 and largeY == 0,
 	"long drag approaches the same bounded distance as SwiftUI")
 local invertedX, invertedY = CompassGesture.offset({ x = 4, y = 12 }, "bottom-left")
 t.expect(invertedX > 0 and invertedY < 0, "AppKit movement uses top-left visual coordinates")
+local north
+for _, segment in ipairs(CompassGesture.segments()) do
+	if segment.direction == "north" then north = segment end
+end
+t.assertEqual(north.startAngle, 247.5, "north section is centered on the top of the compass")
+t.assertEqual(north.endAngle, 292.5, "north section spans one compass sector")
+
 local zeroX, zeroY = CompassGesture.offset({ x = 0, y = 0 })
 t.assertEqual(zeroX, 0, "released compass returns to its horizontal origin")
 t.assertEqual(zeroY, 0, "released compass returns to its vertical origin")
