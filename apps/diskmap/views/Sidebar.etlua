@@ -1,8 +1,0 @@
-<VStack maxWidth="infinity" maxHeight="infinity" spacing="0" paddingTop="12" paddingBottom="0">
-  <List id="navigation" style="sourceList" header="false" alternatingRows="false" rowHeight="36" flexGrow="1" maxWidth="infinity">
-    <Column id="name" title="Sections" imageKey="icon" imageSize="20" />
-  </List>
-  <List id="settings" style="sourceList" header="false" alternatingRows="false" rowHeight="36" height="48" maxWidth="infinity">
-    <Column id="name" title="Settings" imageKey="icon" imageSize="20" />
-  </List>
-</VStack>

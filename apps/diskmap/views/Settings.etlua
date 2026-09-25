@@ -1,16 +1,18 @@
-<ScrollView vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity">
+<Sheet width="640" height="680">
+<VStack maxWidth="infinity" maxHeight="infinity" spacing="0">
+<ScrollView vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
 <VStack maxWidth="infinity" padding="24" spacing="14" alignment="leading">
   <Label maxWidth="infinity" text="Settings" size="23" weight="bold" />
   <GroupBox header="Background checks" maxWidth="infinity">
     <VStack maxWidth="infinity" padding="12" spacing="8" alignment="leading">
       <Label maxWidth="infinity" text="When enabled, Diskmap refreshes storage every 15 minutes while it is open. Scanning runs in the background; files are never deleted automatically." size="13" lines="0" />
-      <Button title="<%= monitoring and 'Pause background checks' or 'Enable background checks' %>" action="monitor" />
+      <Button id="monitor" title="<%= monitoring and 'Pause background checks' or 'Enable background checks' %>" action="monitor" />
     </VStack>
   </GroupBox>
   <GroupBox header="Media libraries" maxWidth="infinity">
     <VStack maxWidth="infinity" padding="12" spacing="8" alignment="leading">
       <Label maxWidth="infinity" text="Photos, Music and Movies stay excluded by default. To measure them, Diskmap must enumerate their files; macOS may ask for access." size="13" lines="0" />
-      <Button title="<%= mediaEnabled and 'Exclude media libraries' or 'Include media libraries for this session…' %>" action="media" />
+      <Button id="media" title="<%= mediaEnabled and 'Exclude media libraries' or 'Include media libraries for this session…' %>" action="media" />
       <Label maxWidth="infinity" text="The choice resets when Diskmap quits. System Settings can show media totals without granting Diskmap access." size="12" color="secondary" lines="0" />
     </VStack>
   </GroupBox>
@@ -34,5 +36,10 @@
   </DisclosureGroup>
   <Button title="Open Storage Settings" action="storage" />
 </VStack>
-
 </ScrollView>
+<HStack maxWidth="infinity" padding="16">
+  <Spacer />
+  <Button id="done" title="Done" action="done" />
+</HStack>
+</VStack>
+</Sheet>

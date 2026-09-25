@@ -101,7 +101,7 @@ for _, width in ipairs({490, 700}) do
 		"summary actions stay compact within their native groups")
 end
 local _, reclaimRefs = render("Reclaim", {})
-t.expect(reclaimRefs.opportunities ~= nil and reclaimRefs.tips ~= nil, "Reclaim page provides dedicated content mounts")
+t.expect(reclaimRefs.opportunities ~= nil and reclaimRefs.tips ~= nil, "cleanup sheet provides dedicated content mounts")
 local suggestions = render("Opportunities", {groups = {{name = "Safe/rebuildable", size = "4.9 GB", index = 1, rows = {{id = "derived", name = "Xcode DerivedData",
 	subtitle = "Build products can be recreated.", size = "4.9 GB", icon = "hammer", color = "systemBlue"}}}}, actions = {}})
 suggestions.size = ns.Size(292, 300); suggestions:layout(292)

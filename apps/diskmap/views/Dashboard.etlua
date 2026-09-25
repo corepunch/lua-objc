@@ -10,21 +10,15 @@
     </HStack>
   </GroupBox>
   <VStack id="categoriesPane" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity" maxWidth="infinity" spacing="12">
-    <% if title ~= "Storage categories" then %>
-    <HStack spacing="10" maxWidth="infinity" paddingVertical="8" alignment="center">
-      <SystemImage id="headingIcon" name="<%= icon %>" size="28" badgeColor="<%= color %>" />
-      <VStack spacing="4" flexGrow="1" flexBasis="0" flexShrink="1" alignment="leading">
-        <Label id="heading" text="<%= title %>" size="19" weight="semibold" maxWidth="infinity" />
-        <Label id="subtitle" text="<%= subtitle %>" size="12" color="secondary" maxWidth="infinity" lines="2" />
-      </VStack>
-    </HStack>
-    <% end %>
     <GroupBox id="categoriesPanel" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
       <List id="results" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" rowHeight="44" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity">
         <Column id="name" title="Category" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" fileIconKey="fileIcon" imageSize="32" minWidth="210" />
         <Column id="size" title="On disk" width="135" minWidth="125" alignment="trailing" loadingKey="calculating" />
       </List>
     </GroupBox>
-    <Button id="openCategory" title="Manage selected category…" action="openCategory" disabled="true" maxWidth="infinity" />
+    <HStack maxWidth="infinity" spacing="10">
+      <Button id="openCategory" title="Manage selected category…" action="openCategory" disabled="true" />
+      <Button id="openReclaim" title="Suggested cleanups…" action="reclaim" />
+    </HStack>
   </VStack>
 </VStack>

@@ -49,11 +49,12 @@ become app features. Feature shutdown is not a promise of immediate asset remova
 
 ## Navigation and category hierarchy
 
-The sidebar contains Storage, Reclaim, Developer, Applications, and
-Settings. Storage is the initial destination. Reclaim presents measured
-candidates and contextual tips on a dedicated page. Developer and Applications
-are focused views of the same inventory, not independent scans or additional totals.
-Large Files is a filter within an inventory view, not a competing navigation model.
+The window is the storage map: capacity, coverage, and the category list.
+Choosing a category opens its resources in a sheet. Suggested cleanups open
+from a button on that window, grouped by impact, with contextual tips.
+Developer and Applications are categories in that list. Settings opens from
+the toolbar. Large Files is a filter within an inventory view, not a competing
+navigation model.
 
 The following is the target category vocabulary. Children appear when detected;
 unmeasured supported categories remain available with an explicit status.
@@ -127,9 +128,9 @@ there. There is no separate folder-hunting workflow required to finish cleanup.
 
 ## Window and interaction design
 
-Use a native three-pane macOS window: source-list navigation, a flexible main
-content pane, and a collapsible inspector. The owning NSSplitViewItems supply
-sidebar appearance and geometry. All screens and partials are etlua.
+Use one native window for the storage map. Category management, suggested
+cleanups, simulator devices, and Diskmap settings are sheets. All screens and
+partials are etlua.
 
 The main pane contains a compact volume summary and an edge-to-edge native
 outline/table. Columns are Name, On Disk, Cleanup Status, and optionally Change.
