@@ -30,7 +30,7 @@ __attribute__((weak)) UIWindow *LRTApplicationWindow(void) {
 		// Its inset belongs only below a root that reaches the view bottom.
 		BOOL keyboardVisible = CGRectGetMaxY(self.luaRoot.frame)
 			< CGRectGetMaxY(self.view.bounds) - kHostLayoutEdgeTolerance;
-		CGFloat bottomInset = keyboardVisible ? 0
+		CGFloat bottomInset = keyboardVisible ? view.keyboardBottomInset
 			: MAX(self.view.safeAreaInsets.bottom, view.minimumBottomInset);
 		UITabBar *tabBar = self.tabBarController.tabBar;
 		if (tabBar && !tabBar.hidden && tabBar.window == self.view.window) {
@@ -41,6 +41,8 @@ __attribute__((weak)) UIWindow *LRTApplicationWindow(void) {
 		}
 		objc_setAssociatedObject(view, &kHostSafeAreaBottomKey,
 			@(bottomInset), OBJC_ASSOCIATION_RETAIN);
+		if (view.matchBottomHorizontalInset)
+			view.paddingHorizontal = keyboardVisible ? view.horizontalInset : bottomInset;
 	}
 	for (UIView *child in view.subviews) {
 		[self updateBottomSafeAreaPaddingInView:child];

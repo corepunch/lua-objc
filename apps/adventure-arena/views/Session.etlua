@@ -9,7 +9,7 @@
   </HStack>
 
   <ZStack id="sessionOverlay" alignment="bottomTrailing" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
-  <SafeAreaInset id="sessionContent" edge="bottom" minimumBottomInset="24" maxWidth="infinity" maxHeight="infinity">
+  <SafeAreaInset id="sessionContent" edge="bottom" minimumBottomInset="24" keyboardBottomInset="12" horizontalInset="12" matchBottomHorizontalInset="true" maxWidth="infinity" maxHeight="infinity">
     <ScrollView id="transcriptScroll" flexGrow="1">
       <VStack paddingHorizontal="20" paddingTop="16" paddingBottom="12" spacing="12" alignment="leading">
         <Label id="gameTitle" text="<%= gameTitle %>" size="20" weight="bold" paddingLeading="32" lines="2" />
@@ -22,7 +22,7 @@
       <VStack spacing="0" maxWidth="infinity">
         <Label id="dictationStatus" text="" size="13" color="secondary" paddingHorizontal="20" lines="2" />
         <GlassEffectContainer spacing="14">
-          <HStack paddingHorizontal="12" spacing="8" alignment="bottom">
+          <HStack spacing="8" alignment="bottom">
             <Menu id="quickActions" title="" systemImage="plus" symbolSize="31" style="glass" accessibilityLabel="More commands" width="52" height="52">
               <MenuItem title="Look" systemImage="eye" action="look" />
               <MenuItem title="Inventory" systemImage="shippingbox" action="inventory" />

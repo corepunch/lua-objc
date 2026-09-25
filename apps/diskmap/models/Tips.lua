@@ -8,7 +8,7 @@ function Tips.forInventory(model, disk)
 	end
 	if disk and disk.totalKb > 0 and disk.freeKb / disk.totalKb < 0.1 then
 		table.insert(tips, {id = "capacity", icon = "externaldrive.badge.exclamationmark", title = "Available space is low",
-			text = "Less than 10% of this disk is available. Review measured opportunities and back up personal data before removing anything.", action = "cleanup", actionTitle = "Review opportunities"})
+			text = "Less than 10% of this disk is available. Review the measured candidates on this page and back up personal data before removing anything."})
 	end
 	local count = 0; for _, kept in pairs(model.kept) do if kept then count = count + 1 end end
 	if count > 0 then

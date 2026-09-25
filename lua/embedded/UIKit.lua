@@ -599,18 +599,27 @@ end
 --- The bottom edge includes the hosting controller's safe-area inset. Use a flexible
 --- scroll view as the first child and the persistent control as the second child.
 --- @prop edge string optional. Currently `bottom`.
---- @prop minimumBottomInset number optional. Minimum resting clearance on devices without a bottom safe-area inset; the keyboard removes it.
+--- @prop minimumBottomInset number optional. Minimum resting clearance on devices without a bottom safe-area inset.
+--- @prop keyboardBottomInset number optional. Clearance above the software keyboard.
+--- @prop horizontalInset number optional. Horizontal clearance while the keyboard is visible.
+--- @prop matchBottomHorizontalInset boolean optional. Match resting horizontal clearance to the bottom safe-area inset.
 --- @platform UIKit.
 function UIKit.SafeAreaInset(props)
 	props = props or {}
 	assert(props.edge == nil or props.edge == "bottom", "SafeAreaInset currently supports edge=bottom")
 	assert(type(props[1]) == "userdata" and type(props[2]) == "userdata" and props[3] == nil,
 		"SafeAreaInset requires content and inset children")
-	local children = { spacing = 0, fillWidth = true, fillHeight = true, props[1], props[2] }
-	local view = UIKit.VStack(children)
-	view.safeAreaInsetBottom = true
-	view.minimumBottomInset = props.minimumBottomInset or 0
-	return applyLayout(view, props)
+	local accessory = UIKit.VStack {
+		spacing = 0, fillWidth = true, paddingHorizontal = props.horizontalInset or 0, props[2],
+	}
+	accessory.safeAreaInsetBottom = true
+	accessory.minimumBottomInset = props.minimumBottomInset or 0
+	accessory.keyboardBottomInset = props.keyboardBottomInset or 0
+	accessory.horizontalInset = props.horizontalInset or 0
+	accessory.matchBottomHorizontalInset = props.matchBottomHorizontalInset == true
+	return applyLayout(UIKit.VStack {
+		spacing = 0, fillWidth = true, fillHeight = true, props[1], accessory,
+	}, props)
 end
 
 --- Edits a single line of text.

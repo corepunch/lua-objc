@@ -15,8 +15,7 @@ local SettingsController = require("apps.diskmap.controllers.SettingsController"
 local Controller = {}; Controller.__index = Controller
 local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
 local sections = {
-	{name = "Storage", icon = "chart.pie.fill"}, {name = "Cleanup", icon = "trash"},
-	{name = "Reclaim", icon = "sparkles"},
+	{name = "Storage", icon = "chart.pie.fill"}, {name = "Reclaim", icon = "sparkles"},
 	{name = "Developer", icon = "hammer"}, {name = "Applications", icon = "app"},
 }
 function Controller.new(service)
@@ -39,7 +38,6 @@ function Controller.new(service)
 	end)
 	self.tips = TipsController.new(self.model, function(action)
 		if action == "settings" then self.service.openSettings("privacy")
-		elseif action == "cleanup" then self:showSection("Cleanup")
 		else self:showSection("Storage", action == "system" and "macos" or nil) end
 	end)
 	self.inspector = InspectorController.new(self.model, service, function() self.scan:start() end)
@@ -54,7 +52,7 @@ end
 function Controller:updateRows()
 	if not self.refs then return end
 	if self.refs.results then
-		local rows = self.section == "Cleanup" and self.cleanup:rows(self.query) or self.categories:rows(self.rootId, self.query)
+		local rows = self.categories:rows(self.rootId, self.query)
 		for _, row in ipairs(rows) do row.children = nil end
 		self.refs.results:replaceRows(rows)
 	end
@@ -80,7 +78,7 @@ function Controller:showSection(section, rootId)
 	if self.section ~= section or self.rootId ~= rootId then self.inspector.selectedId = nil end
 	self.section = section
 	self.settingsNavigation:selectRow(section == "Settings" and 0 or nil)
-	self.navigation:selectRow(({Storage = 0, Cleanup = 1, Reclaim = 2, Developer = 3, Applications = 4})[section])
+	self.navigation:selectRow(({Storage = 0, Reclaim = 1, Developer = 2, Applications = 3})[section])
 	self.rootId = rootId or (section == "Developer" and "developer" or section == "Applications" and "applications" or nil)
 	if self.page then self.page:dispose() end
 	self.refs = {}
@@ -111,7 +109,7 @@ function Controller:showSection(section, rootId)
 	end
 	local root = self.rootId and self.model.resources:find(self.rootId)
 	self.page = Template.new(self.content, "apps/diskmap/views/Dashboard.etlua", ns)
-	local _, refs = self.page:update({title = root and root.name or section == "Cleanup" and "Cleanup" or "Storage categories",
+	local _, refs = self.page:update({title = root and root.name or "Storage categories",
 		subtitle = root and root.subtitle or "Understand what is stored, why it exists, and how to manage it.", icon = root and root.icon or "chart.pie.fill", color = root and root.color or "systemBlue",
 		coverage = self.categories:coverage(self.scan.disk), status = self.scan.status, actions = {
 			openCategory = function() if self.inspector.selectedId then self:openManagement(self.inspector.selectedId) end end,

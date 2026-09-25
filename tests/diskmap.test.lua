@@ -133,7 +133,11 @@ ui.navigation:selectRow(0)
 t.assertEqual(ui.section, "Storage", "Storage can be revisited from Settings")
 t.assertEqual(ui.settingsNavigation.documentView.selectedRow, -1, "main navigation clears Settings selection")
 t.assertEqual(ui.refs.opportunities, nil, "storage dashboard has no duplicate reclaim panel")
-ui.navigation:selectRow(2)
+t.assertEqual(ui.navigation.rowCount, 4, "sidebar has one page for measured candidates")
+for index, name in ipairs({"Storage", "Reclaim", "Developer", "Applications"}) do
+	t.assertEqual(bridge._tableCell(ui.navigation, 0, index - 1).textField.stringValue, name, "sidebar keeps " .. name)
+end
+ui.navigation:selectRow(1)
 t.assertEqual(ui.section, "Reclaim", "Reclaim has its own sidebar destination")
 t.assertEqual(ui.refs.results, nil, "Reclaim page replaces category rows")
 t.expect(ui.refs.opportunities ~= nil and ui.refs.tips ~= nil, "Reclaim page owns opportunities and tips")

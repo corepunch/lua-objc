@@ -291,9 +291,21 @@ static int bridge_UIKitControls_colorPicker(lua_State *L) {
 }
 @end
 
+@interface LuaLayoutView : UIView
+@end
+
+@implementation LuaLayoutView
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+	UIView *target = [super hitTest:point withEvent:event];
+	// A stack has no surface of its own. Empty padding in an overlay must
+	// let touches reach siblings behind it, while explicit gestures still work.
+	return target == self && self.gestureRecognizers.count == 0 ? nil : target;
+}
+@end
+
 static int bridge_UIKitControls_vstack(lua_State *L) {
 
-	UIView *obj = [[UIView alloc] initWithFrame:CGRectZero];
+	UIView *obj = [[LuaLayoutView alloc] initWithFrame:CGRectZero];
 	objc_setAssociatedObject(obj, &kAxisKey, @"vstack", OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, obj, "uiview");
 	return 1;
@@ -301,7 +313,7 @@ static int bridge_UIKitControls_vstack(lua_State *L) {
 
 static int bridge_UIKitControls_hstack(lua_State *L) {
 
-	UIView *obj = [[UIView alloc] initWithFrame:CGRectZero];
+	UIView *obj = [[LuaLayoutView alloc] initWithFrame:CGRectZero];
 	objc_setAssociatedObject(obj, &kAxisKey, @"hstack", OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, obj, "uiview");
 	return 1;
@@ -309,14 +321,14 @@ static int bridge_UIKitControls_hstack(lua_State *L) {
 
 static int bridge_UIKitControls_flowStack(lua_State *L) {
 
-	UIView *obj = [[UIView alloc] initWithFrame:CGRectZero];
+	UIView *obj = [[LuaLayoutView alloc] initWithFrame:CGRectZero];
 	objc_setAssociatedObject(obj, &kAxisKey, @"flow", OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, obj, "uiview");
 	return 1;
 }
 
 static int bridge_UIKitControls_zstack(lua_State *L) {
-	UIView *obj = [[UIView alloc] initWithFrame:CGRectZero];
+	UIView *obj = [[LuaLayoutView alloc] initWithFrame:CGRectZero];
 	objc_setAssociatedObject(obj, &kAxisKey, @"zstack", OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, obj, "uiview");
 	return 1;
