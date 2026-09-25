@@ -57,6 +57,7 @@ t.assertEqual(tips[1].id, "access", "access evidence produces a targeted tip")
 t.expect(tips[1].title == "Some files could not be measured" and tips[1].text:find("Full Disk Access may improve coverage", 1, true) ~= nil,
 	"access guidance describes filesystem issues and keeps Full Disk Access optional")
 t.assertEqual(tips[2].id, "capacity", "low available space produces a separate tip")
+t.assertEqual(tips[2].action, nil, "low-space guidance stays on the opportunities page")
 local routed
 local tipsController = TipsController.new(model, function(action) routed = action end)
 tipsController:presentation({totalKb = 100, freeKb = 9}).actions.tip_access()

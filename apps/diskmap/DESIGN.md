@@ -44,12 +44,12 @@ become app features. Feature shutdown is not a promise of immediate asset remova
 | “What is this huge System Data category?” | Open System Data; expand feature assets, caches, diagnostics, backups, and the unexplained remainder. | Every row explains ownership, measurement status, and available action; discrepancies are visible. |
 | “Find developer junk without breaking my iOS setup.” | Open Developer for Xcode, package managers and containers; open AI agents for coding tools and Apple models. Mark needed resources Keep. | Caches, SDKs, runtimes, simulator devices, archives, and user work are distinct; retained resources never enter cleanup selections. |
 | “I do not use Siri or Dictation; why are their assets here?” | Select the feature; read its purpose and local footprint; open its supported management destination. | No manual deletion of protected assets; after returning, remeasure and report whether storage changed. |
-| “I want a quick routine cleanup.” | Open Cleanup or Changes; review new growth and eligible resources, respecting previous Keep and Ignore choices. | The user can repeat maintenance without rediscovering paths or reviewing the same dismissed recommendation every launch. |
+| “I want a quick routine cleanup.” | Open Reclaim; review measured candidates, respecting previous Keep choices. | The user can repeat maintenance without rediscovering paths or reviewing the same dismissed recommendation every launch. |
 | “Can I trust these numbers and actions?” | Inspect a category's contributing resources, classification evidence, locations, and last measurement; compare before and after. | No double counting within an accounting view, no invented zeroes, and no claim that moving to Trash has freed space. |
 
 ## Navigation and category hierarchy
 
-The sidebar contains Storage, Cleanup, Reclaim, Developer, Applications, and
+The sidebar contains Storage, Reclaim, Developer, Applications, and
 Settings. Storage is the initial destination. Reclaim presents measured
 candidates and contextual tips on a dedicated page. Developer and Applications
 are focused views of the same inventory, not independent scans or additional totals.
@@ -251,7 +251,7 @@ changes are observed separately and may include unrelated activity. This follows
 
 Maintain an inventory ledger independent of every UI view. Each measured resource
 has one canonical accounting owner. References in Applications, Developer,
-Cleanup, search, or an explanatory System Data view point to that same resource.
+Reclaim, search, or an explanatory System Data view point to that same resource.
 
 Rules must prevent overlapping roots from duplicating allocation. For example,
 an Xcode installation and its SDK children cannot both contribute their full

@@ -22,14 +22,17 @@ t.assertEqual(refs.accessory.frame.origin.y, 0,
 t.assertSize(refs.content, 320, 540, "main content receives the space above the accessory")
 
 local spaced, spacedRefs = xml.render([[
-<SafeAreaInset edge="bottom" minimumBottomInset="24">
+<SafeAreaInset edge="bottom" minimumBottomInset="24" keyboardBottomInset="12" horizontalInset="12" matchBottomHorizontalInset="true">
 	<ScrollView id="content"><VStack><Label text="Scrollable content" /></VStack></ScrollView>
 	<VStack id="accessory" height="60"><Label text="Persistent action" /></VStack>
 </SafeAreaInset>]], {}, ns)
 spaced.size = ns.Size(320, 600)
 spaced:layout(320)
 t.assertEqual(spaced.paddingBottom, 24, "minimum bottom clearance is available in the shared template API")
-t.assertSize(spacedRefs.content, 320, 516, "minimum clearance reduces the scrolling region")
+t.assertEqual(spacedRefs.accessory.superview.paddingHorizontal, 12,
+	"composer horizontal clearance belongs to the accessory alone")
+t.assertEqual(spacedRefs.content.frame.origin.x, 0, "scrolling content remains edge to edge")
+t.assertSize(spacedRefs.content, 320, 516, "bottom inset reduces the scrolling region")
 
 local accepted = pcall(function()
 	xml.render([[<SafeAreaInset edge="top"><VStack /><VStack /></SafeAreaInset>]], {}, ns)

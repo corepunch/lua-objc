@@ -630,7 +630,8 @@ local TAG_SCHEMA = {
     SafeAreaInset = {
         constructor = "SafeAreaInset",
         children = "array",
-        props = { edge = "str", minimumBottomInset = "num" },
+        props = { edge = "str", minimumBottomInset = "num", keyboardBottomInset = "num",
+            horizontalInset = "num", matchBottomHorizontalInset = "bool" },
     },
 
     -- Text & Typography

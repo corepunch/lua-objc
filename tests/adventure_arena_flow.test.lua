@@ -94,6 +94,12 @@ t.assertEqual(rendered.refs.output.text, "Opening <&>", "transcript escapes XML 
 t.assertEqual(rendered.refs.input.accessibilityLabel, "Command", "composer retains accessibility label")
 t.assertEqual(rendered.refs.input.bezeled, false, "glass composer owns the visible border")
 t.assertEqual(rendered.refs.input.bordered, false, "plain input has no inner border")
+local composerAncestor, composerHorizontalInset = rendered.refs.quickActions.superview, false
+while composerAncestor and composerAncestor ~= rendered.refs.sessionContent do
+	if composerAncestor.paddingHorizontal == 12 then composerHorizontalInset = true end
+	composerAncestor = composerAncestor.superview
+end
+t.expect(composerHorizontalInset, "composer horizontal clearance is owned by the safe-area inset")
 t.assertEqual(rendered.refs.send.enabled, false, "empty composer disables sending")
 ns._textFieldTestInput(rendered.refs.input, "inventory")
 t.assertEqual(rendered.refs.send.enabled, true, "typing enables sending")

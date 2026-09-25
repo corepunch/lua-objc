@@ -135,8 +135,12 @@ t.expect(hosting:find("keyboardLayoutGuide.topAnchor", 1, true) ~= nil,
 	"hosting bounds account for the software keyboard")
 t.expect(hosting:find("keyboardLayoutGuide.usesBottomSafeArea = NO", 1, true) ~= nil
 	and hosting:find("MAX(self.view.safeAreaInsets.bottom, view.minimumBottomInset)", 1, true) ~= nil
-	and hosting:find("CGFloat bottomInset = keyboardVisible ? 0", 1, true) ~= nil,
-	"keyboard guide does not double-count the home indicator and the composer clears the keyboard")
+	and hosting:find("keyboardVisible ? view.keyboardBottomInset", 1, true) ~= nil
+	and hosting:find("keyboardVisible ? view.horizontalInset : bottomInset", 1, true) ~= nil,
+	"keyboard guide gives the composer its own bottom and horizontal clearance")
+t.expect(src:find("accessory.safeAreaInsetBottom = true", 1, true) ~= nil
+	and src:find("accessory.matchBottomHorizontalInset = props.matchBottomHorizontalInset == true", 1, true) ~= nil,
+	"only the accessory receives dynamic safe-area clearance")
 t.expect(hosting:find("luaRoot.topAnchor constraintEqualToAnchor:self.view.topAnchor", 1, true) ~= nil
 	and hosting:find("luaRoot.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor", 1, true) ~= nil
 	and hosting:find("luaRoot.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor", 1, true) ~= nil,
@@ -148,6 +152,11 @@ t.expect(hosting:find("CGRectGetMinY(tabFrame) >= CGRectGetMaxY(self.luaRoot.fra
 	and hosting:find("bottomInset = 0", 1, true) ~= nil,
 	"bottom inset does not count an external tab bar twice")
 local gestures = assert(io.open("src/uikit/views.m", "r")):read("*a")
+local constructors = assert(io.open("src/uikit/constructors.m", "r")):read("*a")
+t.expect(constructors:find("@interface LuaLayoutView : UIView", 1, true) ~= nil
+	and constructors:find("target == self && self.gestureRecognizers.count == 0 ? nil : target", 1, true) ~= nil
+	and select(2, constructors:gsub("%[%[LuaLayoutView alloc%] initWithFrame:CGRectZero%]", "")) == 4,
+	"empty stack padding passes taps through overlays while stack gestures remain active")
 t.expect(gestures:find('strcmp(name, "systemIndigo") == 0', 1, true) ~= nil,
 	"UIKit resolves the AI category's semantic color")
 t.expect(gestures:find("UIScreenEdgePanGestureRecognizer", 1, true) ~= nil

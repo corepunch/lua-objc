@@ -38,6 +38,9 @@ static void layout_recursive(UIView *view, CGFloat width);
 @property(nonatomic, copy) NSString *contentModeName;
 @property(nonatomic) BOOL safeAreaInsetBottom;
 @property(nonatomic) CGFloat minimumBottomInset;
+@property(nonatomic) CGFloat keyboardBottomInset;
+@property(nonatomic) BOOL matchBottomHorizontalInset;
+@property(nonatomic) CGFloat horizontalInset;
 @property(nonatomic) CGFloat offsetX;
 @property(nonatomic) CGFloat offsetY;
 @end
@@ -69,6 +72,12 @@ static void layout_recursive(UIView *view, CGFloat width);
 - (void)setSafeAreaInsetBottom:(BOOL)value { objc_setAssociatedObject(self, &kSafeAreaInsetBottomKey, @(value), OBJC_ASSOCIATION_RETAIN); }
 - (CGFloat)minimumBottomInset { return [objc_getAssociatedObject(self, &kMinimumBottomInsetKey) doubleValue]; }
 - (void)setMinimumBottomInset:(CGFloat)value { objc_setAssociatedObject(self, &kMinimumBottomInsetKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
+- (CGFloat)keyboardBottomInset { return [objc_getAssociatedObject(self, &kKeyboardBottomInsetKey) doubleValue]; }
+- (void)setKeyboardBottomInset:(CGFloat)value { objc_setAssociatedObject(self, &kKeyboardBottomInsetKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
+- (BOOL)matchBottomHorizontalInset { return [objc_getAssociatedObject(self, &kMatchBottomHorizontalInsetKey) boolValue]; }
+- (void)setMatchBottomHorizontalInset:(BOOL)value { objc_setAssociatedObject(self, &kMatchBottomHorizontalInsetKey, @(value), OBJC_ASSOCIATION_RETAIN); }
+- (CGFloat)horizontalInset { return [objc_getAssociatedObject(self, &kHorizontalInsetKey) doubleValue]; }
+- (void)setHorizontalInset:(CGFloat)value { objc_setAssociatedObject(self, &kHorizontalInsetKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
 - (CGFloat)offsetX { return self.transform.tx; }
 - (void)setOffsetX:(CGFloat)value {
 	CGAffineTransform transform = self.transform;
