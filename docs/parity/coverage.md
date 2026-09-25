@@ -26,14 +26,14 @@ not additional user-facing controls. Data-only services are excluded.
 | Navigation | `TabView`, `NavigationStack`, `NavigationLink` | `TabView`, `Tab` | `TabView` | `TabView`, `NavigationStack`, `NavigationLink` | `TabView`, `NavigationStack`, `NavigationSplitView` | implemented-unverified |
 | Presentation | `present`, `dismiss`, focus helpers | none | yes | partial hosting | sheets, popovers, alerts, panels | implemented-unverified |
 | Toolbar | `ToolbarItem`, toolbar config | `Toolbar`, `ToolbarItem` | yes | not equivalent | `ToolbarItem` and placements | implemented-unverified |
-| Shapes/drawing | `PathView`, `Curve`, `LinearGradient`, `Chart` | `LinearGradient`, `Chart` | yes | partial | `Shape`, `Canvas`, `Chart`, gradients | implemented-unverified |
+| Shapes/drawing | `PathView`, `Curve`, `LinearGradient`, `MeshGradient`, `TimelineView`, `Chart` | `LinearGradient`, `MeshGradient`, `MeshPoint`, `TimelineView`, `Chart` | yes | mesh rasterizer shared | `MeshGradient`, `TimelineView(.animation)`, `Canvas` | implemented-unverified |
 
 ## XML vocabulary
 
 The schema currently defines these tags: `VStack`, `HStack`, `ZStack`, `HSplit`,
 `Spacer`, `PageControl`, `Divider`, `ScrollView`, `Label`, `Title`, `TextEditor`,
 `TextField`, `Button`, `Toggle`, `Slider`, `Stepper`, `Option`, `Picker`,
-`SystemImage`, `Image`, `LinearGradient`, `Column`, `List`, `ToolbarItem`,
+`SystemImage`, `Image`, `LinearGradient`, `MeshGradient`, `MeshPoint`, `TimelineView`, `Column`, `List`, `ToolbarItem`,
 `Toolbar`, `Window`, `Chart`, `TabView`, `Tab`, `Section`, `GroupBox`, `Form`,
 `LabeledContent`, `ControlGroup`, `DisclosureGroup`, and the recursive
 `OutlineGroup` Lua composition. `Text` and `Switch` are
