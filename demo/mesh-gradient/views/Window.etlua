@@ -1,3 +1,10 @@
+<%
+-- SwiftUI:
+--   TimelineView(.animation) { MeshGradient(width: 3, height: 3, ...)
+--     .ignoresSafeArea()
+--     .background(.black)
+-- lua-objc uses the same pieces as XML attributes / wrapper tags.
+%>
 <Window title="<%= title %>" width="390" height="844" background="black" ignoresSafeArea="all">
 	<TimelineView schedule="animation" ignoresSafeArea="all" background="black">
 		<MeshGradient width="3" height="3" animated="true" ignoresSafeArea="all">

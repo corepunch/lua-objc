@@ -22,6 +22,8 @@ Open the narrowest document that answers the task:
   fixtures, native behavior tests, visual comparisons, and coverage gates.
 - `ios.md` — iPhone Simulator host, UIKit coverage for AdventureArena-class
   apps, streamed Lua/assets, and in-process reload (the host does not quit).
+- `reference/mesh-gradient.md` — SwiftUI `MeshGradient` + `TimelineView(.animation)`
+  mapping, XML example, and safe-area / background modifiers.
 - `research/XCODE_UI_ARCHITECTURE.md` — Xcode inspection notes for IDE parity
   work; this is research, not the lua-objc implementation contract.
 - `archive/OFFSCREEN_CANVAS_PLAN.md` — historical implementation plan retained
