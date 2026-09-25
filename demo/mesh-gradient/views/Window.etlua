@@ -1,6 +1,6 @@
-<Window title="<%= title %>" width="390" height="844" background="black">
-	<TimelineView schedule="animation">
-		<MeshGradient width="3" height="3" animated="true">
+<Window title="<%= title %>" width="390" height="844" background="black" ignoresSafeArea="all">
+	<TimelineView schedule="animation" ignoresSafeArea="all" background="black">
+		<MeshGradient width="3" height="3" animated="true" ignoresSafeArea="all">
 			<MeshPoint x="0" y="0" red="0.01" green="0.01" blue="0.03" />
 			<MeshPoint x="0.5" y="0" red="0.12" green="0.04" blue="0.28" />
 			<MeshPoint x="1" y="0" red="0.02" green="0.02" blue="0.06" />
