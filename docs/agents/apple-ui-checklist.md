@@ -21,7 +21,9 @@ iPhone/iPad later.
 ## Controls
 
 - Use real controls: `List`, `TextField`, `SearchField`, `Button`, `Toggle`,
-  `TextEditor`, `ToolbarItem`, and `SystemImage`.
+  `TextEditor`, `ToolbarItem`, `SystemImage`, `GlassEffect`, and `MeshGradient`.
+- Prefer `<GlassEffect>` over hand-drawn blur. Prefer `<MeshGradient>` over a
+  custom canvas when the design is a colored control-point mesh.
 - Use concise verb labels for actions and noun phrases for headings.
 - Use SF Symbols with meaningful labels and tooltips for toolbar actions.
 - Never imitate separators, checkboxes, progress indicators, or icons with text,
