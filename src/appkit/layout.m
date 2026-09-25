@@ -99,6 +99,7 @@ static int bridge_object_add_impl(lua_State *L) {
 		return 0;
 	}
 	[container addSubview:child];
+	invalidate_layout(container);
 	return 0;
 }
 }
@@ -180,6 +181,9 @@ static BOOL default_grows_on_axis(NSView *view, BOOL horizontal) {
 		return view_flex_grow(((NSGlassEffectView *)view).contentView, horizontal) > 0;
 	if ([view isKindOfClass:NSGlassEffectContainerView.class])
 		return view_flex_grow(((NSGlassEffectContainerView *)view).contentView, horizontal) > 0;
+	// A list that does not scroll takes its rows' height, never the proposal.
+	if ([view isKindOfClass:NSScrollView.class] && ((NSScrollView *)view).scrollDisabled)
+		return horizontal;
 	if (objc_getAssociatedObject(view, &kKeys[kScrollContentKey])) {
 		NSScrollView *scroll = (NSScrollView *)view;
 		// A horizontal strip gets its height from its content, including when
@@ -520,6 +524,24 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 					controlSize:scroll.horizontalScroller.controlSize
 					scrollerStyle:scroll.scrollerStyle].height;
 			}
+		}
+		if ([view isKindOfClass:NSScrollView.class] && ((NSScrollView *)view).scrollDisabled
+			&& [((NSScrollView *)view).documentView isKindOfClass:NSTableView.class]) {
+			NSScrollView *scroll = (NSScrollView *)view;
+			NSTableView *table = (NSTableView *)scroll.documentView;
+			// Size to the final row count: an animated insert has not reached the
+			// table yet, so extend by uniform rows past those it has laid out.
+			NSInteger laidOut = table.numberOfRows;
+			NSInteger rows = [table.dataSource respondsToSelector:@selector(numberOfRowsInTableView:)]
+				? [table.dataSource numberOfRowsInTableView:table] : laidOut;
+			CGFloat height = laidOut > 0 ? NSMaxY([table rectOfRow:laidOut - 1]) : 0;
+			if (rows > laidOut)
+				height += (rows - laidOut) * (table.rowHeight + table.intercellSpacing.height);
+			if (table.headerView) height += table.headerView.frame.size.height;
+			natural.height = [NSScrollView frameSizeForContentSize:NSMakeSize(natural.width, height)
+				horizontalScrollerClass:Nil verticalScrollerClass:Nil
+				borderType:scroll.borderType controlSize:NSControlSizeRegular
+				scrollerStyle:scroll.scrollerStyle].height;
 		}
 		if ([view isKindOfClass:NSBox.class] && ((NSBox *)view).boxType == NSBoxPrimary) {
 			NSBox *box = (NSBox *)view;
@@ -1140,6 +1162,95 @@ static void toolbar_size_content(NSView *view) {
 	layout_recursive(view, size.width);
 }
 
+// A nested stack's changed intrinsic size affects its siblings. Its layout
+// owner is the nearest ancestor that is not a stack, scroll or group box,
+// stopping at the pane geometry owned by NSSplitView.
+static NSView *layout_owner(NSView *view) {
+	while (view.superview && ![view.superview isKindOfClass:NSSplitView.class]) {
+		NSView *parent = view.superview;
+		if (layout_axis(parent) == LayoutAxisNone && ![parent isKindOfClass:NSClipView.class]
+			&& ![parent isKindOfClass:NSScrollView.class] && ![parent isKindOfClass:NSBox.class]) break;
+		view = parent;
+	}
+	return view;
+}
+
+static void relayout_view(NSView *view, CGFloat width) {
+	// A toolbar owns its item's placement, but content determines its size.
+	// Recompute after title/subtitle mutations instead of retaining the old frame.
+	for (NSToolbarItem *item in view.window.toolbar.items) {
+		if (item.view != view) continue;
+		NSSize size = measure_view(view, (LuaLayoutConstraint){
+			.widthMode = LuaMeasureUndefined, .heightMode = LuaMeasureUndefined });
+		[view invalidateIntrinsicContentSize];
+		[view setFrameSize:size];
+		width = size.width;
+		break;
+	}
+	layout_recursive(view, width);
+}
+
+#pragma mark - Automatic invalidation
+
+/* SwiftUI never asks an app to lay out. A Lua write that changes a view's
+ * measured size marks it dirty; one pass per run-loop turn, just before the
+ * loop sleeps (where Core Animation commits), relayouts each dirty view's
+ * owner. Lua geometry reads flush first, so code and tests observe the
+ * layout their writes imply without calling layout(). */
+static NSHashTable<NSView *> *pendingLayout;
+static BOOL flushingLayout;
+
+static void flush_pending_layout(void) {
+	if (flushingLayout || pendingLayout.count == 0) return;
+	flushingLayout = YES;
+	NSArray<NSView *> *dirty = pendingLayout.allObjects;
+	[pendingLayout removeAllObjects];
+	NSMutableOrderedSet<NSView *> *owners = [NSMutableOrderedSet orderedSet];
+	for (NSView *view in dirty) [owners addObject:layout_owner(view)];
+	for (NSView *owner in owners) {
+		// An owner inside another dirty owner is laid out by that pass.
+		BOOL nested = NO;
+		for (NSView *other in owners) {
+			if (other != owner && [owner isDescendantOf:other]) { nested = YES; break; }
+		}
+		if (!nested) relayout_view(owner, owner.bounds.size.width);
+	}
+	flushingLayout = NO;
+}
+
+static void invalidate_layout(NSView *view) {
+	if (!view || flushingLayout) return;
+	if (!pendingLayout) {
+		pendingLayout = [NSHashTable weakObjectsHashTable];
+		CFRunLoopObserverRef observer = CFRunLoopObserverCreateWithHandler(NULL,
+			kCFRunLoopBeforeWaiting, true, 0, ^(CFRunLoopObserverRef o, CFRunLoopActivity a) {
+				flush_pending_layout();
+			});
+		CFRunLoopAddObserver(CFRunLoopGetMain(), observer, kCFRunLoopCommonModes);
+		CFRelease(observer);
+	}
+	[pendingLayout addObject:view];
+}
+
+static int bridge_flush_layout(lua_State *L) {
+	(void)L;
+	flush_pending_layout();
+	return 0;
+}
+
+// Test hook: the number of views awaiting the next layout pass.
+static int bridge_pending_layout_count(lua_State *L) {
+	lua_pushinteger(L, (lua_Integer)pendingLayout.count);
+	return 1;
+}
+
+// A layout pass satisfies every pending invalidation inside its root.
+static void satisfy_pending_layout(NSView *root) {
+	for (NSView *dirty in pendingLayout.allObjects) {
+		if (dirty == root || [dirty isDescendantOf:root]) [pendingLayout removeObject:dirty];
+	}
+}
+
 static int bridge_object_layout_impl(lua_State *L) {
 	id obj = check_objc(L, 1);
 	CGFloat width = luaL_optnumber(L, 2, kLayoutDefaultWidth);
@@ -1160,35 +1271,18 @@ static int bridge_object_layout_impl(lua_State *L) {
 				NSView *pane = item.viewController.view;
 				layout_recursive(pane, pane.bounds.size.width);
 			}
+			satisfy_pending_layout(view);
 			return 0;
 		}
 	} else {
 		view = (NSView *)obj;
 		if (lua_isnoneornil(L, 2)) {
-			// A nested stack's changed intrinsic size affects its siblings. Remeasure
-			// its layout owner, stopping at the pane geometry owned by NSSplitView.
-			while (view.superview && ![view.superview isKindOfClass:NSSplitView.class]) {
-				NSView *parent = view.superview;
-				if (layout_axis(parent) == LayoutAxisNone && ![parent isKindOfClass:NSClipView.class]
-					&& ![parent isKindOfClass:NSScrollView.class] && ![parent isKindOfClass:NSBox.class]) break;
-				view = parent;
-			}
+			view = layout_owner(view);
 			width = view.bounds.size.width;
 		}
 	}
-
-	// A toolbar owns its item's placement, but content determines its size.
-	// Recompute after title/subtitle mutations instead of retaining the old frame.
-	for (NSToolbarItem *item in view.window.toolbar.items) {
-		if (item.view != view) continue;
-		NSSize size = measure_view(view, (LuaLayoutConstraint){
-			.widthMode = LuaMeasureUndefined, .heightMode = LuaMeasureUndefined });
-		[view invalidateIntrinsicContentSize];
-		[view setFrameSize:size];
-		width = size.width;
-		break;
-	}
-	layout_recursive(view, width);
+	relayout_view(view, width);
+	satisfy_pending_layout(view);
 	return 0;
 }
 

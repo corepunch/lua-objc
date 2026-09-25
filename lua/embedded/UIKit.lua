@@ -979,6 +979,7 @@ function UIKit.List(props)
 		header = props.header ~= false,
 		bordered = props.bordered == true,
 	})
+	if props.scrollDisabled then tv.scrollEnabled = false end
 	if props.data and type(props.data) == "table" then
 		for _, row in ipairs(props.data) do
 			if type(row) == "table" then

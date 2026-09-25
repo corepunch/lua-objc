@@ -471,15 +471,6 @@ static int bridge_NSScrollView_onRowSelect(lua_State *L) {
 	return 0;
 }
 
-static int bridge_NSScrollView_addRow(lua_State *L) {
-	id obj = check_objc(L, 1);
-	LuaTableViewSource *source = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
-	if (!source) return luaL_error(L, "addRow requires a table view");
-	luaL_checktype(L, 2, LUA_TTABLE);
-	[source addRow:lua_table_to_dict(L, 2)];
-	return 0;
-}
-
 static int bridge_NSScrollView_onRowMove(lua_State *L) {
 	id obj = check_objc(L, 1);
 	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);

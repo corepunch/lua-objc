@@ -114,7 +114,6 @@ function Controller:updateComposer(text)
 	self.refs.send.hidden = not showSend
 	self.refs.send.enabled = hasText
 	if self.refs.dictate then self.refs.dictate.hidden = showSend end
-	self.view:layout()
 end
 
 function Controller:onSpeechEvent(state, text, message)

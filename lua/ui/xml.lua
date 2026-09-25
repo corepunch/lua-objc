@@ -1034,6 +1034,7 @@ local TAG_SCHEMA = {
             alternatingRows = { default = true, type = "bool" },
             drawsBackground = "bool",
             rowHeight = "num",
+            scrollDisabled  = "bool",
             style           = "str",
             bordered        = "bool",
             gridLines       = "str",

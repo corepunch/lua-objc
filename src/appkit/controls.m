@@ -343,6 +343,7 @@ static int bridge_tableview_add(lua_State *L) {
 	} else {
 		[(LuaTableViewSource *)src addRow:row];
 	}
+	table_rows_changed(obj);
 	return 0;
 }
 
@@ -353,6 +354,7 @@ static int bridge_tableview_remove(lua_State *L) {
 
 	int idx = (int)luaL_checkinteger(L, 2);
 	[src removeRowAtIndex:(NSInteger)idx];
+	table_rows_changed(obj);
 	return 0;
 }
 
@@ -366,6 +368,7 @@ static int bridge_tableview_clear(lua_State *L) {
 	} else {
 		[(LuaTableViewSource *)src clearRows];
 	}
+	table_rows_changed(obj);
 	return 0;
 }
 
@@ -390,6 +393,7 @@ static int bridge_tableview_replace(lua_State *L) {
 	} else {
 		[(LuaTableViewSource *)src replaceRows:rows];
 	}
+	table_rows_changed(obj);
 	return 0;
 }
 
@@ -438,6 +442,7 @@ static int bridge_table_hide_loading(lua_State *L) {
 }
 
 static int bridge_table_column_widths(lua_State *L) {
+	flush_pending_layout();
 	id obj = check_objc(L, 1);
 	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");
@@ -465,6 +470,7 @@ static int bridge_table_column_widths(lua_State *L) {
 // Native cell inspection for headless tests; NSTableView does not materialize
 // visible rows without a window, so ask its real delegate for the cell.
 static int bridge_table_cell(lua_State *L) {
+	flush_pending_layout();
 	NSScrollView *scroll = check_objc(L, 1);
 	id source = objc_getAssociatedObject(scroll, &kKeys[kTableSourceKey]);
 	if (!source) return luaL_error(L, "not a table view");
@@ -502,6 +508,7 @@ static int bridge_press_column_button(lua_State *L) {
 }
 
 static int bridge_table_cell_frames(lua_State *L) {
+	flush_pending_layout();
 	id obj = check_objc(L, 1);
 	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
 	if (!src) return luaL_error(L, "not a table view");

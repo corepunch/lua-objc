@@ -254,6 +254,7 @@ static int bridge_add(lua_State *L) {
 	} else {
 		UIView *container = (UIView *)parent;
 		[container addSubview:child];
+		uikit_invalidate_layout(container);
 	}
 
 	return 0;
@@ -271,7 +272,7 @@ static int bridge_layout(lua_State *L) {
 static int bridge_clear_container(lua_State *L) {
 	UIView *container = check_objc(L, 1);
 	for (UIView *child in [container.subviews copy]) [child removeFromSuperview];
-	layout_recursive(container, container.bounds.size.width);
+	uikit_invalidate_layout(container);
 	return 0;
 }
 

@@ -61,13 +61,6 @@ function Controller:updateRows()
 	end
 	if self.capacity then
 		self.capacity.text = self.categories:capacity(self.scan.disk)
-		if self.toolbarTitle then self.toolbarTitle:layout() end
-	end
-	if self.refs.results then
-		-- The page scrolls. The list is only as tall as its rows and has no scroller of its own.
-		self.refs.results.hasVerticalScroller = false
-		self.refs.results.fixedHeight = math.max(self.refs.results.rowCount, 1) * 46
-		if self.refs.page then self.refs.page:layout() end
 	end
 	if self.refs.coverage then
 		self.refs.coverage.text = self.categories:coverage(self.scan.disk)

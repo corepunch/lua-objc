@@ -1058,7 +1058,7 @@ static int bridge_NSView_clearContainer_impl(lua_State *L) {
 	for (NSView *sub in [container.subviews copy]) {
 		[sub removeFromSuperview];
 	}
-	layout_recursive(container, container.bounds.size.width);
+	invalidate_layout(container);
 }
 	return 0;
 }

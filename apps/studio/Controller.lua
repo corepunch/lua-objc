@@ -59,13 +59,11 @@ function Controller:createWindow()
 			toggleChat = function()
 				refs.chatPane.hidden = not refs.chatPane.hidden
 				refs.chatVisibility.accessibilityLabel = refs.chatPane.hidden and "Show Chat" or "Focus Preview"
-				ns._layout(refs.workspace)
 			end,
 			toggleSidebarWidth = function()
 				local compact = refs.sidebar.fixedWidth ~= self.sidebar.metrics.compactWidth
 				refs.sidebar.fixedWidth = compact and self.sidebar.metrics.compactWidth or self.sidebar.metrics.expandedWidth
 				refs.sidebarWidth.accessibilityLabel = compact and "Widen sidebar" or "Compact sidebar"
-				ns._layout(refs.workspace)
 			end,
 			reloadPreview = function() self:reloadPreview() end,
 		},

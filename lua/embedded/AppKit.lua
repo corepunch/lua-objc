@@ -1244,6 +1244,7 @@ end
 --- @prop onSelect function optional. Callback invoked when row selection changes.
 --- @prop onSort function optional. Callback invoked with the column id when a sortable header is clicked.
 --- @prop onColumnButton function optional. Callback invoked when a row's column button is clicked.
+--- @prop scrollDisabled boolean optional. The list does not scroll and is as tall as all its rows (SwiftUI `.scrollDisabled`).
 --- @prop refresh function optional. Callback invoked to refresh the displayed data.
 --- @prop rowHeight number optional. Requested table row height, in points.
 --- @prop style string optional. Component-specific setting passed to the native control.
@@ -1268,6 +1269,7 @@ function AppKit.List(props)
 		style = props.style,
 	})
 	if props.rowHeight then tv.documentView.rowHeight = props.rowHeight end
+	if props.scrollDisabled then tv.scrollDisabled = true end
 
 	if props.data and type(props.data) == "table" then
 		tv:replaceRows(props.data)

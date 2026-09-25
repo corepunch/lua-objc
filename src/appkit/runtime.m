@@ -414,6 +414,31 @@ static MethodEntry TableDataMethods[] = {
 	{NULL, NULL}
 };
 
+static void invalidate_layout(NSView *view);
+static void flush_pending_layout(void);
+
+/* SwiftUI `.scrollDisabled(true)`: the list keeps its rows in place and is
+ * as tall as all of them, leaving overflow to a scrolling ancestor. */
+static char kScrollDisabledKey;
+@interface NSScrollView (LuaScrollDisabled)
+@property(nonatomic) BOOL scrollDisabled;
+@end
+@implementation NSScrollView (LuaScrollDisabled)
+- (BOOL)scrollDisabled {
+	return [objc_getAssociatedObject(self, &kScrollDisabledKey) boolValue];
+}
+- (void)setScrollDisabled:(BOOL)value {
+	objc_setAssociatedObject(self, &kScrollDisabledKey, @(value), OBJC_ASSOCIATION_RETAIN);
+	if (value) self.hasVerticalScroller = NO;
+}
+@end
+
+// Row count determines the height of a list that does not scroll.
+static void table_rows_changed(id obj) {
+	if ([obj isKindOfClass:NSScrollView.class] && ((NSScrollView *)obj).scrollDisabled)
+		invalidate_layout((NSView *)obj);
+}
+
 static int nsview_index(lua_State *L) {
 @autoreleasepool {
 	id obj = lua_objc_live_ptr(L, 1, lua_touserdata(L, 1));
@@ -425,6 +450,7 @@ static int nsview_index(lua_State *L) {
 #include "bindings.m"
 #undef GEN_CLASS_INDEX
 
+	if (lua_objc_key_reads_geometry(key)) flush_pending_layout();
 	NSString *kvcKey = [NSString stringWithUTF8String:key];
 	@try {
 		id value = [obj valueForKey:kvcKey];
@@ -468,6 +494,8 @@ static int nsview_newindex(lua_State *L) {
 	id value = lua_to_kvc_value(L, 3);
 	@try {
 		[obj setValue:value forKey:kvcKey];
+		if ([obj isKindOfClass:NSView.class] && lua_objc_key_affects_layout(key))
+			invalidate_layout((NSView *)obj);
 		return 0;
 	} @catch (NSException *exception) {
 		return luaL_error(L, "cannot set '%s' on %s: %s",

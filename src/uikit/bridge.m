@@ -103,6 +103,7 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #define LUA_OBJC_WINDOW_METATABLE "uiwindow"
 #define LUA_OBJC_VIEWCONTROLLER_METATABLE "uiviewcontroller"
 #include "../shared/lua_bridge_support.m"
+#include "../shared/layout_invalidation.m"
 #include "../shared/lua_error.m"
 #include "../shared/lua_async.m"
 #include "../shared/performance_signpost.m"

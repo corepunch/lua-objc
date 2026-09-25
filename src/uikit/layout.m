@@ -223,6 +223,12 @@ static CGSize measure_size(UIView *view, CGSize proposal) {
 			if (scroll.alwaysBounceHorizontal && !scroll.alwaysBounceVertical)
 				size.height = measure_size(scrollContent, CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)).height;
 		}
+		// A list that does not scroll is as tall as all its rows.
+		if ([view isKindOfClass:UITableView.class] && !((UITableView *)view).scrollEnabled) {
+			UITableView *table = (UITableView *)view;
+			[table layoutIfNeeded];
+			size.height = table.contentSize.height;
+		}
 	}
 	if (fixedW) size.width = MAX(0, fixedW.doubleValue);
 	if (fixedH) size.height = MAX(0, fixedH.doubleValue);
@@ -401,6 +407,21 @@ static void layout_recursive_impl(UIView *view, CGFloat width) {
 			}
 		}
 	}
+}
+
+/* Lua writes that change measured size mark the view and every ancestor.
+ * UIKit coalesces them into its next layout pass, where the hosting
+ * controller's viewDidLayoutSubviews lays the Lua root out at its real width. */
+static void uikit_invalidate_layout(UIView *view) {
+	for (UIView *ancestor = view; ancestor; ancestor = ancestor.superview)
+		[ancestor setNeedsLayout];
+}
+
+/* Geometry reads observe pending layout, like AppKit's flush. */
+static void uikit_layout_if_needed(UIView *view) {
+	UIView *root = view;
+	while (root.superview) root = root.superview;
+	if (root.window) [root layoutIfNeeded];
 }
 
 static void layout_recursive(UIView *view, CGFloat width) {

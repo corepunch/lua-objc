@@ -213,6 +213,7 @@ static const NSTimeInterval kScrollToAnimationDuration = 0.2;
 #define LUA_OBJC_WINDOW_METATABLE "nswindow"
 
 #include "shared/lua_bridge_support.m"
+#include "shared/layout_invalidation.m"
 #include "shared/lua_error.m"
 #include "shared/lua_async.m"
 #include "shared/performance_signpost.m"
@@ -364,6 +365,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_deallocCount", bridge_dealloc_count},
 	{"_deallocReset", bridge_dealloc_reset},
 	{"_runLoopTick", bridge_runloop_tick},
+	{"_flushLayout", bridge_flush_layout},
+	{"_pendingLayoutCount", bridge_pending_layout_count},
 	{"_addContextMenu", bridge_AppKit_add_context_menu},
 	{"_addClick", bridge_AppKit_add_click},
 	{"_revealInFinder", bridge_AppKit_reveal_in_finder},

@@ -54,7 +54,6 @@ function Controller:updateCategory()
 	self.refs.categoryText.text = detail.text
 	self.refs.categoryLocation.text = detail.location
 	self.refs.categoryKeep.title = detail.keepTitle
-	self.sheet:layout()
 end
 function Controller:select(id)
 	self.selectedId = id
@@ -68,7 +67,6 @@ function Controller:select(id)
 	refs.manage.enabled = detail.canManage
 	refs.reveal.enabled = row.path ~= nil
 	refs.keep.enabled = true; refs.keep.title = detail.keepTitle
-	self.sheet:layout()
 end
 function Controller:update()
 	if not self.refs then return end
@@ -133,7 +131,6 @@ function Controller:open(parent, id, filter)
 				note = note .. " · " .. table.concat(shown, ", ") .. (#dates > #shown and " …" or "")
 			end
 			self.refs.status.text = note .. " (system managed) · " .. self.refs.status.text
-			self.sheet:layout()
 		end)
 	end
 end
