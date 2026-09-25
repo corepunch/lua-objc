@@ -185,7 +185,7 @@ function System.discoverEntries(home, completion)
 					elseif name:match("%.app$") then
 						local installer = name:match("^Install macOS .+%.app$")
 						table.insert(discovered, {id = hexId(path), name = name, subtitle = installer and "Full macOS installer app" or "Installed application",
-							parentId = location.parentId, path = path, policy = "Review", action = "finder", reviewThreshold = installer and 5e9 or 1e9,
+							parentId = location.parentId, path = path, fileIcon = path, policy = "Review", action = "finder", reviewThreshold = installer and 5e9 or 1e9,
 							consequence = installer and "Each installer is usually large. Keep it if you still need the installer; macOS Software Update can download it again later."
 								or "Review this application in Finder or its own uninstaller. Diskmap will not remove installed applications.", icon = "app.fill", color = "systemBlue"})
 					end

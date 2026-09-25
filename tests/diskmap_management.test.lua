@@ -136,6 +136,18 @@ manager.query = "no such resource"; manager:update()
 t.assertEqual(manager.refs.rows1.rowCount, 0, "empty management search")
 t.expect(not manager.refs.manage.enabled and not manager.refs.reveal.enabled, "empty result clears destructive and reveal actions")
 manager:close()
+local finderPath = "/System/Library/CoreServices/Finder.app"
+local app, appError = model.resources:add("apps-system", {id = "finder-icon-test", name = "Finder.app", subtitle = "Installed application",
+	path = finderPath, fileIcon = finderPath, icon = "app.fill", color = "systemBlue", policy = "Review", action = "finder"})
+t.expect(app ~= nil, appError and appError.message or "application registered for icon verification")
+manager:open(parent, "applications")
+local finderCell
+for index = 0, manager.refs.rows1.rowCount - 1 do
+	local cell = bridge._tableCell(manager.refs.rows1, 0, index)
+	if cell.textField.stringValue == "Finder.app" then finderCell = cell end
+end
+t.expect(finderCell and finderCell.imageView.resolvedAppIcon, "application management shows the installed app icon")
+manager:close()
 local simulatorUI = SimulatorController.new(model, service, function() end)
 simulatorUI:open(parent)
 calls[#calls].done(true, "{}")

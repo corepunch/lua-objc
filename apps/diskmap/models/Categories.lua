@@ -3,7 +3,7 @@ local Categories = {}
 local function projection(source)
 	return {id = source.id, name = source.name, subtitle = source.subtitle, path = source.path, policy = source.policy,
 		action = source.action, consequence = source.consequence, settingsSection = source.settingsSection,
-		reviewThreshold = source.reviewThreshold, agent = source.agent, icon = source.icon, color = source.color, appIcon = source.appIcon}
+		reviewThreshold = source.reviewThreshold, agent = source.agent, icon = source.icon, color = source.color, appIcon = source.appIcon, fileIcon = source.fileIcon}
 end
 function Categories.rows(model, rootId, query)
 	local needle = (query or ""):lower()
@@ -78,7 +78,7 @@ function Categories.managementRows(model, rootId, query, filter)
 			local m = model.measurements[row.id] or {}
 			local impact = row.policy == "Essential" and "Essential to keep" or row.policy == "Rebuildable" and "Safe/rebuildable" or "Needs review"
 			if (not filter or filter == "All" or filter == impact) and (row.name .. " " .. (owner or "") .. " " .. (row.path or "")):lower():find(needle, 1, true) then
-				table.insert(result, {id = row.id, name = row.name, subtitle = owner, path = row.path or "System managed", icon = row.icon, color = row.color, appIcon = row.appIcon, impact = impact,
+				table.insert(result, {id = row.id, name = row.name, subtitle = owner, path = row.path or "System managed", icon = row.icon, color = row.color, appIcon = row.appIcon, fileIcon = row.fileIcon, impact = impact,
 					size = m.status == "excluded" and "Not scanned" or m.status == "calculating" and "Calculating…" or m.status == "denied" and "Access restricted" or (m.status == "partial" and "≥ " or "") .. Model.size(m.bytes),
 					bytes = m.bytes, partial = m.status == "partial", calculating = m.status == "calculating"})
 			end

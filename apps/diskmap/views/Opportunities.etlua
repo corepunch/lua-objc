@@ -1,7 +1,15 @@
 <VStack maxWidth="infinity" spacing="12" alignment="leading">
-  <% for _, group in ipairs(groups) do %>
-  <Button title="<%= group.name %> · <%= group.size %>" action="group_<%= group.index %>" maxWidth="infinity" />
-  <% end %>
+  <HStack id="impactSummary" maxWidth="infinity" spacing="10" alignment="top">
+    <% for _, group in ipairs(groups) do %>
+    <GroupBox id="group<%= group.index %>" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity">
+      <VStack maxWidth="infinity" padding="10" spacing="4" alignment="leading">
+        <Label text="<%= group.name %>" size="11" color="secondary" maxWidth="infinity" lines="1" />
+        <Label text="<%= group.size %>" size="16" weight="semibold" maxWidth="infinity" />
+        <Button id="groupAction<%= group.index %>" title="View…" accessibilityLabel="View <%= group.name %> resources" style="link" action="group_<%= group.index %>" />
+      </VStack>
+    </GroupBox>
+    <% end %>
+  </HStack>
   <Label text="Amounts describe measured storage, not space guaranteed to be freed." size="11" color="secondary" maxWidth="infinity" lines="2" />
   <% for _, group in ipairs(groups) do %>
   <Label text="<%= group.name %>" size="13" weight="semibold" maxWidth="infinity" />

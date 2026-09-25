@@ -49,9 +49,10 @@ become app features. Feature shutdown is not a promise of immediate asset remova
 
 ## Navigation and category hierarchy
 
-The sidebar contains Storage, Cleanup, Developer, Applications, Changes, and
-Settings. Storage is the initial destination. Developer and Applications are
-focused views of the same inventory, not independent scans or additional totals.
+The sidebar contains Storage, Cleanup, Reclaim, Developer, Applications, and
+Settings. Storage is the initial destination. Reclaim presents measured
+candidates and contextual tips on a dedicated page. Developer and Applications
+are focused views of the same inventory, not independent scans or additional totals.
 Large Files is a filter within an inventory view, not a competing navigation model.
 
 The following is the target category vocabulary. Children appear when detected;

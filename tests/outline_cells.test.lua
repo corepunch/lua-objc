@@ -49,7 +49,7 @@ t.expect(refs.sibling.frame.origin.y + refs.sibling.frame.size.height <= refs.dy
 local wrapped = xml.render('<VStack><Label id="label" text="Long native text must wrap at its final proposed width" lines="3" maxWidth="infinity" /></VStack>', {}, ns)
 wrapped.size = ns.Size(100, 100); wrapped:layout(100)
 t.expect(wrapped.subviews[1].cell.wraps, "final label proposal restores native wrapping")
-local badged = xml.render('<OutlineView><Column id="name" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" imageSize="32" /></OutlineView>', {}, ns)
+local badged = xml.render('<OutlineView><Column id="name" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" fileIconKey="fileIcon" imageSize="32" /></OutlineView>', {}, ns)
 badged:replaceRows({{id = "badge", name = "Siri", icon = "waveform", color = "systemPurple"}})
 local image = bridge._tableCell(badged, 0, 0).imageView
 t.assertEqual(image.badgeColorName, "systemPurple", "category badge binds semantic color")
@@ -58,9 +58,13 @@ badged:replaceRows({{id = "badge", name = "Finder", icon = "folder", appIcon = "
 image = bridge._tableCell(badged, 0, 0).imageView
 t.expect(image.resolvedAppIcon, "installed app artwork comes from NSWorkspace")
 t.expect(image.contentTintColor == nil, "real app artwork retains its colors")
-badged:replaceRows({{id = "badge", name = "Missing app", icon = "folder", color = "systemTeal", appIcon = "invalid.diskmap.missing"}})
+badged:replaceRows({{id = "badge", name = "Finder at path", icon = "folder", color = "systemTeal", appIcon = "invalid.diskmap.missing", fileIcon = "/System/Library/CoreServices/Finder.app"}})
 image = bridge._tableCell(badged, 0, 0).imageView
-t.expect(not image.resolvedAppIcon and image.image ~= nil, "missing application falls back to symbol")
+t.expect(image.resolvedAppIcon and image.image ~= nil, "existing app path takes precedence over bundle identifier fallback")
+t.expect(image.contentTintColor == nil, "file artwork retains native colors")
+badged:replaceRows({{id = "badge", name = "Missing app", icon = "folder", color = "systemTeal", appIcon = "invalid.diskmap.missing", fileIcon = "/not-an-installed-app/Absent.app"}})
+image = bridge._tableCell(badged, 0, 0).imageView
+t.expect(not image.resolvedAppIcon and image.image ~= nil, "missing application path falls back to symbol")
 t.assertEqual(image.badgeColorName, "systemTeal", "reused cell updates badge")
 local colored = ns.List {columns = {{id = "name", cell = {color = "color"}}}, data = {{name = "Brown", color = "systemBrown"}}}
 local coloredCell = bridge._tableCell(colored, 0, 0)

@@ -16,7 +16,7 @@
       <% for index, title in ipairs(filters) do %>
       <Tab title="<%= title %>">
         <List id="rows<%= index %>" style="fullWidth" alternatingRows="true" rowHeight="38" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
-          <Column id="name" title="Resource" subtitleKey="subtitle" minWidth="250" sortable="true" />
+          <Column id="name" title="Resource" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" fileIconKey="fileIcon" imageSize="24" minWidth="250" sortable="true" />
           <Column id="impact" title="Impact" width="155" minWidth="155" sortable="true" />
           <Column id="size" title="On disk" width="125" minWidth="125" alignment="trailing" loadingKey="calculating" sortable="true" />
         </List>

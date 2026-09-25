@@ -1,4 +1,4 @@
-<Window title="<%= windowTitle or "Diskmap" %>" width="1024" height="768" minWidth="1000" minHeight="640" sidebarWidth="180">
+<Window title="<%= windowTitle or "Diskmap" %>" width="800" height="720" minWidth="720" minHeight="640" sidebarWidth="180">
   <Toolbar>
     <ToolbarItem id="toggleSidebar" />
     <ToolbarItem id="drive" label="Storage" bordered="false">

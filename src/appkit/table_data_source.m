@@ -307,10 +307,7 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 		? rowData[imageKey] : objc_getAssociatedObject(column, &kKeys[kColumnSystemImageKey]);
 	NSString *fileKey = cellSpec[@"fileIcon"];
 	NSString *filePath = fileKey && [rowData[fileKey] isKindOfClass:NSString.class] ? rowData[fileKey] : nil;
-	if (filePath.length > 0) {
-		cell.imageView.image = [NSWorkspace.sharedWorkspace iconForFile:filePath];
-		cell.imageView.contentTintColor = nil;
-	} else if (symbolName.length > 0) {
+	if (symbolName.length > 0) {
 		NSImage *image = [NSImage imageWithSystemSymbolName:symbolName
 			accessibilityDescription:text];
 		NSImageSymbolConfiguration *configuration =
@@ -323,7 +320,14 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	LuaSymbolImageView *symbolView = (LuaSymbolImageView *)cell.imageView;
 	symbolView.badgeColorName = cellSpec[@"badgeColor"] ? rowData[cellSpec[@"badgeColor"]] : nil;
 	symbolView.appBundleId = cellSpec[@"appIcon"] ? rowData[cellSpec[@"appIcon"]] : nil;
-	if (filePath.length) { symbolView.resolvedAppIcon = YES; symbolView.contentTintColor = nil; }
+	if (filePath.length && [NSFileManager.defaultManager fileExistsAtPath:filePath]) {
+		NSImage *fileIcon = [NSWorkspace.sharedWorkspace iconForFile:filePath];
+		if (fileIcon) {
+			symbolView.image = fileIcon;
+			symbolView.resolvedAppIcon = YES;
+			symbolView.contentTintColor = nil;
+		}
+	}
 	NSNumber *alignment = objc_getAssociatedObject(column, &kKeys[kColumnAlignmentKey]);
 	cell.textField.alignment = alignment
 		? (NSTextAlignment)alignment.integerValue : NSTextAlignmentLeft;

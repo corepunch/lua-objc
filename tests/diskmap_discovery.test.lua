@@ -3,6 +3,7 @@ local t = require("TestKit")
 local Model = require("apps.diskmap.Model")
 local Scan = require("apps.diskmap.controllers.ScanController")
 local Catalog = require("apps.diskmap.Catalog")
+local Categories = require("apps.diskmap.models.Categories")
 local Inventory = require("apps.diskmap.models.Inventory")
 local System = require("apps.diskmap.services.System")
 
@@ -28,6 +29,7 @@ t.assertEqual(finds[2][#finds[2]], "-print", "application search returns paths o
 local appEntries = {}; for _, entry in ipairs(discovered) do appEntries[entry.path] = entry end
 t.expect(appEntries["/Applications/Editor.app"] and appEntries["/Users/test/Applications/Personal Editor.app"], "individual shared and personal apps are recognized")
 t.assertEqual(appEntries["/Applications/Editor.app"].parentId, "apps-system", "shared app paths belong to shared Applications")
+t.assertEqual(appEntries["/Applications/Editor.app"].fileIcon, "/Applications/Editor.app", "discovered apps use their bundle paths for native artwork")
 t.assertEqual(appEntries["/Users/test/Applications/Personal Editor.app"].parentId, "apps-user", "personal app paths belong to personal Applications")
 t.assertEqual(appEntries["/Applications/Editor.app"].reviewThreshold, 1e9, "regular app review uses its threshold")
 t.assertEqual(appEntries["/Applications/Install macOS Tahoe.app"].reviewThreshold, 5e9, "installer receives installer-specific review threshold")
@@ -39,7 +41,7 @@ local scanner = Scan.new(model, {
 		done({
 			{id = "discovered-node-modules", parentId = "developer", name = "Node modules · demo", subtitle = "Project dependencies", path = "/Users/test/Developer/demo/node_modules", action = "finder", policy = "Review"},
 			{id = "discovered-installer", parentId = "apps-system", name = "Install macOS Tahoe.app", subtitle = "Full installer", path = "/Applications/Install macOS Tahoe.app", action = "finder", policy = "Review", reviewThreshold = 5e9},
-			{id = "discovered-editor", parentId = "apps-system", name = "Visual Studio Code.app", subtitle = "Installed application", path = "/Applications/Visual Studio Code.app", action = "finder", policy = "Review", reviewThreshold = 1e9},
+			{id = "discovered-editor", parentId = "apps-system", name = "Visual Studio Code.app", subtitle = "Installed application", path = "/Applications/Visual Studio Code.app", fileIcon = "/Applications/Visual Studio Code.app", action = "finder", policy = "Review", reviewThreshold = 1e9},
 			{id = "discovered-personal-app", parentId = "apps-user", name = "Editor.app", subtitle = "Installed application", path = "/Users/test/Applications/Editor.app", action = "finder", policy = "Review", reviewThreshold = 1e9},
 		})
 	end,
@@ -59,6 +61,12 @@ t.assertEqual(model.resources:find("discovered-editor"):getParent().id, "apps-sy
 t.assertEqual(model.resources:find("discovered-personal-app"):getParent().id, "apps-user", "personal apps belong to the personal Applications category")
 t.assertEqual(model.resources:find("discovered-editor").reviewThreshold, 1e9, "large installed apps become review suggestions without cleanup eligibility")
 t.assertEqual(model.resources:find("discovered-editor").action, "finder", "installed apps remain review-only")
+local categoryApp
+for _, row in ipairs(Categories.rows(model, "apps-system")) do if row.id == "discovered-editor" then categoryApp = row end end
+t.assertEqual(categoryApp.fileIcon, "/Applications/Visual Studio Code.app", "application rows retain their native icon path")
+local managedApp
+for _, row in ipairs(Categories.managementRows(model, "applications")) do if row.id == "discovered-editor" then managedApp = row end end
+t.assertEqual(managedApp.fileIcon, "/Applications/Visual Studio Code.app", "management rows retain their native icon path")
 local paths = {}; for _, path in ipairs(measuredPaths) do paths[path] = true end
 t.expect(paths["/Users/test/Developer/demo/node_modules"], "generated folders receive independent measurements")
 t.expect(paths["/Applications/Install macOS Tahoe.app"], "installer apps receive independent measurements")

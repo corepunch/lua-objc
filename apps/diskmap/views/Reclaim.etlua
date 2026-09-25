@@ -1,0 +1,13 @@
+<ScrollView id="opportunitiesScroll" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+  <VStack maxWidth="infinity" spacing="16" padding="16" alignment="leading">
+    <HStack spacing="10" maxWidth="infinity" alignment="center">
+      <SystemImage name="sparkles" size="28" color="accent" />
+      <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="4" alignment="leading">
+        <Label text="Safe reclaim potential" size="19" weight="semibold" maxWidth="infinity" />
+        <Label text="Measured candidates grouped by impact; no guaranteed reclaim total." size="12" color="secondary" maxWidth="infinity" lines="2" />
+      </VStack>
+    </HStack>
+    <VStack id="opportunities" maxWidth="infinity" spacing="0" />
+    <VStack id="tips" maxWidth="infinity" spacing="0" />
+  </VStack>
+</ScrollView>

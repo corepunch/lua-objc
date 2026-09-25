@@ -64,6 +64,7 @@ t.assertEqual(visibleCount(), itemCount, "widening restores all category links")
 local _, refs = render("Dashboard", {title = "Storage categories", subtitle = "Current inventory",
 	icon = "chart.pie.fill", color = "systemBlue", coverage = "Measuring", status = "Calculating…", actions = {}})
 t.assertEqual(refs.categoriesPanel.className, "NSBox", "category rows share a native rounded section")
+t.assertEqual(refs.opportunities, nil, "category pages do not repeat reclaim content")
 t.expect(not refs.openCategory.enabled, "category management waits for a selection")
 t.assertEqual(refs.inspector, nil, "category detail does not displace dashboard suggestions")
 t.expect(not refs.results.drawsBackground, "outline lets its native group background show through")
@@ -86,6 +87,21 @@ for _, height in ipairs({220, 500}) do
 end
 local empty = render("Opportunities", {groups = {{name = "Needs review", size = "0 KB", index = 1, rows = {}}}, actions = {}})
 t.expect(empty ~= nil, "empty review group renders")
+local overview, overviewRefs = render("Opportunities", {groups = {
+	{name = "Safe/rebuildable", size = "6.2 GB", index = 1, rows = {}},
+	{name = "Needs review", size = "49.0 GB", index = 2, rows = {}},
+	{name = "Essential to keep", size = "0 KB", index = 3, rows = {}},
+}, actions = {}})
+for _, width in ipairs({490, 700}) do
+	overview.size = ns.Size(width, 600); overview:layout(width)
+	t.assertEqual(overviewRefs.group1.frame.origin.y, overviewRefs.group3.frame.origin.y, "impact summaries stay in one horizontal row")
+	t.expect(overviewRefs.group3.frame.origin.x + overviewRefs.group3.size.width <= overviewRefs.impactSummary.size.width + 1,
+		"impact summaries fit the available width")
+	t.expect(overviewRefs.groupAction1.size.width < overviewRefs.group1.size.width / 2,
+		"summary actions stay compact within their native groups")
+end
+local _, reclaimRefs = render("Reclaim", {})
+t.expect(reclaimRefs.opportunities ~= nil and reclaimRefs.tips ~= nil, "Reclaim page provides dedicated content mounts")
 local suggestions = render("Opportunities", {groups = {{name = "Safe/rebuildable", size = "4.9 GB", index = 1, rows = {{id = "derived", name = "Xcode DerivedData",
 	subtitle = "Build products can be recreated.", size = "4.9 GB", icon = "hammer", color = "systemBlue"}}}}, actions = {}})
 suggestions.size = ns.Size(292, 300); suggestions:layout(292)

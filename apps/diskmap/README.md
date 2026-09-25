@@ -1,8 +1,13 @@
 # Diskmap
 
 A native macOS 26 storage manager organized by semantic categories, not folders.
-Open Developer, System Data, Applications, Backups and other categories in native management sheets. Search names, owners and paths, and filter by Safe/rebuildable, Needs review or Essential to keep. Settings stays at the bottom of the
-native sidebar. The inspector exposes locations only as supporting evidence.
+Storage and category pages show the disk breakdown and category list. Reclaim is
+a separate sidebar page for measured candidates grouped by impact, with review
+actions and contextual tips. Open Developer, System Data, Applications, Backups
+and other categories in native management sheets. Search names, owners and paths,
+and filter by Safe/rebuildable, Needs review or Essential to keep. Settings stays
+at the bottom of the native sidebar. The inspector exposes locations only as
+supporting evidence.
 
 ```sh
 make

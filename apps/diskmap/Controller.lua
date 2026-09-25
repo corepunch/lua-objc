@@ -16,6 +16,7 @@ local Controller = {}; Controller.__index = Controller
 local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
 local sections = {
 	{name = "Storage", icon = "chart.pie.fill"}, {name = "Cleanup", icon = "trash"},
+	{name = "Reclaim", icon = "sparkles"},
 	{name = "Developer", icon = "hammer"}, {name = "Applications", icon = "app"},
 }
 function Controller.new(service)
@@ -51,20 +52,24 @@ function Controller:openManagement(id, filter)
 	if id == "simulators" then self.simulators:open(self.window) else self.management:open(self.window, id, filter) end
 end
 function Controller:updateRows()
-	if not self.refs or not self.refs.results then return end
-	local rows = self.section == "Cleanup" and self.cleanup:rows(self.query) or self.categories:rows(self.rootId, self.query)
-	for _, row in ipairs(rows) do row.children = nil end
-	self.refs.results:replaceRows(rows)
+	if not self.refs then return end
+	if self.refs.results then
+		local rows = self.section == "Cleanup" and self.cleanup:rows(self.query) or self.categories:rows(self.rootId, self.query)
+		for _, row in ipairs(rows) do row.children = nil end
+		self.refs.results:replaceRows(rows)
+	end
 	if self.capacity then self.capacity.text = self.categories:capacity(self.scan.disk); self.toolbarTitle:layout() end
-	self.refs.coverage.text = self.categories:coverage(self.scan.disk)
-	self.refs.status.text = (self.mock and "Mock HDD · " or "") .. (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status
-	self.refs.access.title = self.mock and "Mock HDD active" or (self.model.scan.errors or 0) > 0 and "Review scan access…" or "Scan access…"
-	self.refs.access.enabled = not self.mock
-	self.opportunities:update(self.cleanup:presentation())
-	self.storageBar:update(self.categories:bar(self.scan.disk))
-	self.tipPanel:update(self.tips:presentation(self.scan.disk))
+	if self.refs.coverage then
+		self.refs.coverage.text = self.categories:coverage(self.scan.disk)
+		self.refs.status.text = (self.mock and "Mock HDD · " or "") .. (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status
+		self.refs.access.title = self.mock and "Mock HDD active" or (self.model.scan.errors or 0) > 0 and "Review scan access…" or "Scan access…"
+		self.refs.access.enabled = not self.mock
+	end
+	if self.opportunities then self.opportunities:update(self.cleanup:presentation(self.query)) end
+	if self.storageBar then self.storageBar:update(self.categories:bar(self.scan.disk)) end
+	if self.tipPanel then self.tipPanel:update(self.tips:presentation(self.scan.disk)) end
 	self.management:update()
-	if self.inspector.selectedId then self:select(self.inspector.selectedId) end
+	if self.refs.results and self.inspector.selectedId then self:select(self.inspector.selectedId) end
 end
 function Controller:select(id)
 	if not self.refs or not self.refs.openCategory then return end
@@ -75,10 +80,11 @@ function Controller:showSection(section, rootId)
 	if self.section ~= section or self.rootId ~= rootId then self.inspector.selectedId = nil end
 	self.section = section
 	self.settingsNavigation:selectRow(section == "Settings" and 0 or nil)
-	self.navigation:selectRow(({Storage = 0, Cleanup = 1, Developer = 2, Applications = 3})[section])
+	self.navigation:selectRow(({Storage = 0, Cleanup = 1, Reclaim = 2, Developer = 3, Applications = 4})[section])
 	self.rootId = rootId or (section == "Developer" and "developer" or section == "Applications" and "applications" or nil)
 	if self.page then self.page:dispose() end
 	self.refs = {}
+	self.opportunities = nil; self.storageBar = nil; self.tipPanel = nil
 	if section == "Settings" then
 		self.page = Template.new(self.content, "apps/diskmap/views/Settings.etlua", ns)
 		self.page:update(self.settings:presentation(function()
@@ -92,6 +98,17 @@ function Controller:showSection(section, rootId)
 		end))
 		return
 	end
+	if section == "Reclaim" then
+		self.page = Template.new(self.content, "apps/diskmap/views/Reclaim.etlua", ns)
+		local _, refs = self.page:update({})
+		self.refs = refs
+		ns.Scope.withScope(self.page.scope, function()
+			self.opportunities = Template.new(refs.opportunities, "apps/diskmap/views/Opportunities.etlua", ns)
+			self.tipPanel = Template.new(refs.tips, "apps/diskmap/views/Tips.etlua", ns)
+		end)
+		self:updateRows()
+		return
+	end
 	local root = self.rootId and self.model.resources:find(self.rootId)
 	self.page = Template.new(self.content, "apps/diskmap/views/Dashboard.etlua", ns)
 	local _, refs = self.page:update({title = root and root.name or section == "Cleanup" and "Cleanup" or "Storage categories",
@@ -102,9 +119,7 @@ function Controller:showSection(section, rootId)
 		}})
 	self.refs = refs
 	ns.Scope.withScope(self.page.scope, function()
-		self.opportunities = Template.new(refs.opportunities, "apps/diskmap/views/Opportunities.etlua", ns)
 		self.storageBar = Template.new(refs.storageBar, "apps/diskmap/views/StorageBar.etlua", ns)
-		self.tipPanel = Template.new(refs.tips, "apps/diskmap/views/Tips.etlua", ns)
 		refs.results:onRowSelect(function(_, _, row) if row then self:select(row.id) end end)
 		refs.results:onRowActivate(function(_, _, row) if row then self:openManagement(row.id) end end)
 	end)
