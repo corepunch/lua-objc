@@ -4,6 +4,8 @@ from bundle import copy_tree, resolve_app_and_entry
 from deploy import device_list_command, select_device
 from sign import matches, signing_entitlements
 from simulator_entitlements import entitlements
+from release_version import version_from_tag, set_version
+from xcode_bundle import populate
 
 
 def device(identifier, kind='iPad', reality='physical'):
@@ -14,6 +16,35 @@ def device(identifier, kind='iPad', reality='physical'):
 
 
 class DiscoveryTests(unittest.TestCase):
+    def test_release_tag_sets_archive_version(self):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        import plistlib
+
+        self.assertEqual(version_from_tag('release/1.2.3'), '1.2.3')
+        for tag in ('v1.2.3', 'release/1.2', 'release/1.2.3/extra'):
+            with self.assertRaises(ValueError):
+                version_from_tag(tag)
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / 'Info.plist'
+            path.write_bytes(plistlib.dumps({'CFBundleShortVersionString': '1.0', 'CFBundleVersion': '1'}))
+            set_version(path, version_from_tag('release/1.2.3'))
+            info = plistlib.loads(path.read_bytes())
+            self.assertEqual(info['CFBundleShortVersionString'], '1.2.3')
+            self.assertEqual(info['CFBundleVersion'], '1')
+
+    def test_xcode_bundle_has_runtime_and_app(self):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            bundle = Path(directory) / 'AdventureArena.app'
+            bundle.mkdir()
+            populate(bundle)
+            self.assertTrue((bundle / 'Workspace/lua/embedded/UIKit.lua').is_file())
+            self.assertTrue((bundle / 'Workspace/apps/adventure-arena/init.lua').is_file())
+            self.assertTrue((bundle / 'Workspace/apps/adventure-arena/zilscript/zilscript/bootstrap.lua').is_file())
+
     def test_simulator_keychain(self):
         result = entitlements('org.luaobjc.test')
         self.assertEqual(result['application-identifier'], 'SIMULATOR.org.luaobjc.test')

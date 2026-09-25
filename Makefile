@@ -250,6 +250,10 @@ parity-report: parity-check
 
 # Standalone iPad development app (no Mac packager required).
 .PHONY: ipad ipad-simulator ipad-run ipad-deploy list-devices
+.PHONY: adventure-arena-xcode
+adventure-arena-xcode:
+	premake5 xcode4
+	python3 scripts/ipad/fix_premake_xcode.py
 .PHONY: iphone-deploy
 iphone-deploy:
 	$(MAKE) ipad-deploy DEVICE_TYPE=iPhone APP="$(or $(APP),adventure-arena)" \

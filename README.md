@@ -467,3 +467,38 @@ See [Lua Studio](apps/studio/README.md) for setup and current boundaries.
 Deploy an app from `apps/<name>/` to an iPhone with
 `make iphone-deploy APP=adventure-arena`. It uses the same build, signing, and
 install flow and automatically selects the only available physical iPhone.
+
+### Adventure Arena TestFlight releases
+
+The checked-in [Xcode project](ios/AdventureArena/AdventureArena.xcodeproj/project.pbxproj)
+builds the same native UIKit host and bundles `apps/adventure-arena/`, its
+`zilscript` submodule, and the Lua framework. It targets iPhone, uses bundle ID
+`org.luaobjc.adventure-arena` on team `BM2R8F5YHC`, and has a shared archive
+scheme. Premake 5.0.0-beta8 generates the project; regenerate it with
+`make adventure-arena-xcode` after changing native source files. The small
+postprocessor corrects Premake's iOS build settings and asset catalog phase.
+Commit the generated project alongside its Premake definition so Xcode Cloud
+can discover a stable project.
+
+To verify an unsigned device archive locally:
+
+```sh
+xcodebuild -project ios/AdventureArena/AdventureArena.xcodeproj \
+  -scheme AdventureArena -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath /tmp/adventure-arena-derived \
+  -archivePath /tmp/AdventureArena.xcarchive \
+  CODE_SIGNING_ALLOWED=NO archive
+python3 -m unittest discover -s scripts/ipad -p 'test_*.py'
+```
+
+For automatic TestFlight delivery, first add the app record and an internal
+tester group in App Store Connect. In Xcode, configure the first Xcode Cloud
+workflow for the checked-in `AdventureArena` scheme and connect the GitHub
+repository. Then configure a release workflow with a Git tag start condition
+matching `release/*`, a Release archive action for iOS with **TestFlight
+(Internal Testing Only)** deployment preparation, and a TestFlight postaction
+for the internal tester group. The `ci_pre_xcodebuild.sh` script reads tags in
+the form `release/1.2.3` and sets the app version to `1.2.3`; Xcode Cloud
+assigns increasing build numbers. Push the tag only after the release commit
+and submodules are available from the connected repository.

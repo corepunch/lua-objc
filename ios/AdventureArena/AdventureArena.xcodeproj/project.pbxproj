@@ -1,0 +1,553 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		AA0000000000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CDC39886912F5A38CFD2FEC6 /* Assets.xcassets */; };
+		01FDDF259A4AC4D7C891C565 /* lvm.c in Sources */ = {isa = PBXBuildFile; fileRef = 9941744DDD9019BF1FB7528D /* lvm.c */; };
+		02083BE71CD4AA9920A54227 /* linit.c in Sources */ = {isa = PBXBuildFile; fileRef = 80C507EFEDED1661EF80062F /* linit.c */; };
+		05633F35794BB6E79B996575 /* loadlib.c in Sources */ = {isa = PBXBuildFile; fileRef = 42B7975D09458ECF7747B59D /* loadlib.c */; };
+		0BAB900C65ACA6FE2CF39E4C /* LRTSceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 9BCE1874B69A8726BA6B1EB4 /* LRTSceneDelegate.m */; };
+		105276152B1EE4C72EEF7C55 /* lcode.c in Sources */ = {isa = PBXBuildFile; fileRef = F34A923D6072A0AF6205907D /* lcode.c */; };
+		18C5AD98AEEEBF8A70551BD8 /* LRTApplicationDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = BC1481406F0A8AF2C02CE780 /* LRTApplicationDelegate.m */; };
+		1BC73023FAE44A55D6EDA663 /* lzio.c in Sources */ = {isa = PBXBuildFile; fileRef = 72F7BD6B0585875D6E5E2BAB /* lzio.c */; };
+		1DF129791D940CAB57E8BFB9 /* ldblib.c in Sources */ = {isa = PBXBuildFile; fileRef = D1CB54612930C753DB3EE2A1 /* ldblib.c */; };
+		23A6F788802DFBFA08D0B5C8 /* LRTReloadConnection.m in Sources */ = {isa = PBXBuildFile; fileRef = 2065CD30304AF9621CBE8370 /* LRTReloadConnection.m */; };
+		24E6E70F2489CA415EDE7D4F /* ltable.c in Sources */ = {isa = PBXBuildFile; fileRef = 0CEA8997644FFC89165E17D7 /* ltable.c */; };
+		2576E148929EEFBA9431DF88 /* Speech.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8B5B6FF0D8BE66224EDD6630 /* Speech.framework */; };
+		2C8357330BA07165E7A9CD73 /* lapi.c in Sources */ = {isa = PBXBuildFile; fileRef = 7683AB7B0911756D71EA19BB /* lapi.c */; };
+		2DD77BB421D6C526A6C1D9F4 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 783E4F9CBC5220CEB023A5DC /* AVFoundation.framework */; };
+		36907E8AFDF5397C88AD0CCA /* LRTApplicationController.m in Sources */ = {isa = PBXBuildFile; fileRef = 65AF4E125316E0C4F010D452 /* LRTApplicationController.m */; };
+		3C4D0D4DB03584FFD283338D /* lstring.c in Sources */ = {isa = PBXBuildFile; fileRef = 88510FF54EDF0767BCE12E35 /* lstring.c */; };
+		48E5DCF9BCCE54ABDF1C0339 /* lparser.c in Sources */ = {isa = PBXBuildFile; fileRef = 21F17AE1E87F725356819921 /* lparser.c */; };
+		5348BA0819D6B17A87D8D848 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AC8F36B04205F5E2B0A24CF0 /* Security.framework */; };
+		6CE4EABD4C0204EF280B60FD /* lmem.c in Sources */ = {isa = PBXBuildFile; fileRef = 48215965DAAF23574387C7A5 /* lmem.c */; };
+		74E1CB5984C6F78B713A8199 /* lopcodes.c in Sources */ = {isa = PBXBuildFile; fileRef = EA02DE418BEC7A3383138C81 /* lopcodes.c */; };
+		76976B71763A4EA3B08F01B1 /* loslib.c in Sources */ = {isa = PBXBuildFile; fileRef = 6B8D2AD9C2F29DCB7500B919 /* loslib.c */; };
+		7B6886B85A0B222A0EED24F8 /* LRTResourceLoader.m in Sources */ = {isa = PBXBuildFile; fileRef = 3E8C37603E2F1A927883CDA0 /* LRTResourceLoader.m */; };
+		7B8D88191D77240B149E3659 /* uikit_module.m in Sources */ = {isa = PBXBuildFile; fileRef = FE432A81CC667E335374D0C1 /* uikit_module.m */; };
+		86CFF77B96B523AD8328ADBB /* lutf8lib.c in Sources */ = {isa = PBXBuildFile; fileRef = 1BFCA743BDE64335B50D5583 /* lutf8lib.c */; };
+		8C12E2D16B2FFD0347395911 /* llex.c in Sources */ = {isa = PBXBuildFile; fileRef = E28DF639751BC02BDDF46479 /* llex.c */; };
+		8FFA651328474AC5568E4B53 /* lgc.c in Sources */ = {isa = PBXBuildFile; fileRef = DB5F6A5B1FAE0FCD61D5489B /* lgc.c */; };
+		9130093853F069AAB1254778 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8B91C4E06FD8CD12F3C5FB20 /* QuartzCore.framework */; };
+		94ACFD23A49229559105B363 /* lbaselib.c in Sources */ = {isa = PBXBuildFile; fileRef = 69873E6B0B70DA5D0297ECAB /* lbaselib.c */; };
+		9534D76BB001461DB3D1DDAB /* ldump.c in Sources */ = {isa = PBXBuildFile; fileRef = 3D29B533AA51C3A5ABE4B373 /* ldump.c */; };
+		95EFFE0C89EF477E0EDA5C4C /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 74A9A874B8BD79A6AC8EFEB4 /* CoreGraphics.framework */; };
+		9C0ED41F0FF74BD13244FA5F /* lstrlib.c in Sources */ = {isa = PBXBuildFile; fileRef = 1D49F2A7E3D7EA1951DA10E7 /* lstrlib.c */; };
+		9EDF105112C7880335153691 /* lundump.c in Sources */ = {isa = PBXBuildFile; fileRef = 508AA4B917189C2B851AC2F9 /* lundump.c */; };
+		A03BA6DB14241E8D3671CD1B /* ltablib.c in Sources */ = {isa = PBXBuildFile; fileRef = 6448B7A32AD6AF1598D8D5E3 /* ltablib.c */; };
+		A26CA5A0138F4692C955F3E0 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = C282B2C8EABD6B7AD258F908 /* main.m */; };
+		AA25CB4D1E0E42FF405BF18D /* lobject.c in Sources */ = {isa = PBXBuildFile; fileRef = 25DCEDF5EC6AE5675A6D0C35 /* lobject.c */; };
+		B0920B57CB5E7A09CF2F1197 /* lfunc.c in Sources */ = {isa = PBXBuildFile; fileRef = 8B24785FF84C86D1F9DF769F /* lfunc.c */; };
+		BDAA66E6806AC758DD9FA526 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4B74DEAE2FBBE6E0B3A914EE /* Foundation.framework */; };
+		C1044CCDC0A72FFFFAFBE30D /* ldebug.c in Sources */ = {isa = PBXBuildFile; fileRef = C9F360752158D367D366EEB5 /* ldebug.c */; };
+		CA1958D3D9FE8505C6720F13 /* lcorolib.c in Sources */ = {isa = PBXBuildFile; fileRef = BE06871B5FF0230D5717355B /* lcorolib.c */; };
+		CB1F5258BC16C04A281A4098 /* LRTViewCapture.m in Sources */ = {isa = PBXBuildFile; fileRef = 3EB7D200D704B7B2054BB840 /* LRTViewCapture.m */; };
+		CC7CF92439A507963B37F764 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5EE1680CAC445E3E22635E4C /* WebKit.framework */; };
+		CF86E289CF29C5BB097E78C9 /* lctype.c in Sources */ = {isa = PBXBuildFile; fileRef = CD299471248F0763D69D22B1 /* lctype.c */; };
+		DE9C6F295284E6DB74D29569 /* lauxlib.c in Sources */ = {isa = PBXBuildFile; fileRef = 40B302110740F98375432051 /* lauxlib.c */; };
+		E25CB8617AA99E13A8F09EA1 /* ltm.c in Sources */ = {isa = PBXBuildFile; fileRef = B62C87C9FA7B2D3B3CA26609 /* ltm.c */; };
+		E648E0857E95C637ACDCC6C5 /* ldo.c in Sources */ = {isa = PBXBuildFile; fileRef = BBAC8FADFFFB351F42226DED /* ldo.c */; };
+		F471DA6486FFA456EFD848A4 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3076B44CF3E275FE32861A8C /* UIKit.framework */; };
+		F6745D8C8C9D6F7E4E03CBCC /* LRTErrorViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 6C41C3F41F37CDA6705A2A34 /* LRTErrorViewController.m */; };
+		F6FD6981F6A04CB330F4FFC1 /* lstate.c in Sources */ = {isa = PBXBuildFile; fileRef = 8B26DFE9E28C52DB949A6E29 /* lstate.c */; };
+		F951E75DF8F4CA8F33497D9D /* liolib.c in Sources */ = {isa = PBXBuildFile; fileRef = C8F9AA05205F1CF7D26D3845 /* liolib.c */; };
+		FA8BA1410A70CD73F6E45781 /* lmathlib.c in Sources */ = {isa = PBXBuildFile; fileRef = 135321A9B53CBD9BAC63CFE9 /* lmathlib.c */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0CEA8997644FFC89165E17D7 /* ltable.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = ltable.c; path = "../../vendor/lua-5.4.8/src/ltable.c"; sourceTree = "<group>"; };
+		135321A9B53CBD9BAC63CFE9 /* lmathlib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lmathlib.c; path = "../../vendor/lua-5.4.8/src/lmathlib.c"; sourceTree = "<group>"; };
+		1BFCA743BDE64335B50D5583 /* lutf8lib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lutf8lib.c; path = "../../vendor/lua-5.4.8/src/lutf8lib.c"; sourceTree = "<group>"; };
+		1D49F2A7E3D7EA1951DA10E7 /* lstrlib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lstrlib.c; path = "../../vendor/lua-5.4.8/src/lstrlib.c"; sourceTree = "<group>"; };
+		2065CD30304AF9621CBE8370 /* LRTReloadConnection.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = LRTReloadConnection.m; path = ../LuaRuntime/LRTReloadConnection.m; sourceTree = "<group>"; };
+		21F17AE1E87F725356819921 /* lparser.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lparser.c; path = "../../vendor/lua-5.4.8/src/lparser.c"; sourceTree = "<group>"; };
+		25DCEDF5EC6AE5675A6D0C35 /* lobject.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lobject.c; path = "../../vendor/lua-5.4.8/src/lobject.c"; sourceTree = "<group>"; };
+		3076B44CF3E275FE32861A8C /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		3D29B533AA51C3A5ABE4B373 /* ldump.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = ldump.c; path = "../../vendor/lua-5.4.8/src/ldump.c"; sourceTree = "<group>"; };
+		3E8C37603E2F1A927883CDA0 /* LRTResourceLoader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = LRTResourceLoader.m; path = ../LuaRuntime/LRTResourceLoader.m; sourceTree = "<group>"; };
+		3EB7D200D704B7B2054BB840 /* LRTViewCapture.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = LRTViewCapture.m; path = ../LuaRuntime/LRTViewCapture.m; sourceTree = "<group>"; };
+		40B302110740F98375432051 /* lauxlib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lauxlib.c; path = "../../vendor/lua-5.4.8/src/lauxlib.c"; sourceTree = "<group>"; };
+		42B7975D09458ECF7747B59D /* loadlib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = loadlib.c; path = "../../vendor/lua-5.4.8/src/loadlib.c"; sourceTree = "<group>"; };
+		48215965DAAF23574387C7A5 /* lmem.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lmem.c; path = "../../vendor/lua-5.4.8/src/lmem.c"; sourceTree = "<group>"; };
+		4B74DEAE2FBBE6E0B3A914EE /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		508AA4B917189C2B851AC2F9 /* lundump.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lundump.c; path = "../../vendor/lua-5.4.8/src/lundump.c"; sourceTree = "<group>"; };
+		5EE1680CAC445E3E22635E4C /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
+		6448B7A32AD6AF1598D8D5E3 /* ltablib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = ltablib.c; path = "../../vendor/lua-5.4.8/src/ltablib.c"; sourceTree = "<group>"; };
+		65AF4E125316E0C4F010D452 /* LRTApplicationController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = LRTApplicationController.m; path = ../LuaRuntime/LRTApplicationController.m; sourceTree = "<group>"; };
+		69873E6B0B70DA5D0297ECAB /* lbaselib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lbaselib.c; path = "../../vendor/lua-5.4.8/src/lbaselib.c"; sourceTree = "<group>"; };
+		6B8D2AD9C2F29DCB7500B919 /* loslib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = loslib.c; path = "../../vendor/lua-5.4.8/src/loslib.c"; sourceTree = "<group>"; };
+		6C41C3F41F37CDA6705A2A34 /* LRTErrorViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = LRTErrorViewController.m; path = ../LuaRuntime/LRTErrorViewController.m; sourceTree = "<group>"; };
+		72F7BD6B0585875D6E5E2BAB /* lzio.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lzio.c; path = "../../vendor/lua-5.4.8/src/lzio.c"; sourceTree = "<group>"; };
+		74A9A874B8BD79A6AC8EFEB4 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		7683AB7B0911756D71EA19BB /* lapi.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lapi.c; path = "../../vendor/lua-5.4.8/src/lapi.c"; sourceTree = "<group>"; };
+		783E4F9CBC5220CEB023A5DC /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		80C507EFEDED1661EF80062F /* linit.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = linit.c; path = "../../vendor/lua-5.4.8/src/linit.c"; sourceTree = "<group>"; };
+		88510FF54EDF0767BCE12E35 /* lstring.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lstring.c; path = "../../vendor/lua-5.4.8/src/lstring.c"; sourceTree = "<group>"; };
+		8B24785FF84C86D1F9DF769F /* lfunc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lfunc.c; path = "../../vendor/lua-5.4.8/src/lfunc.c"; sourceTree = "<group>"; };
+		8B26DFE9E28C52DB949A6E29 /* lstate.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lstate.c; path = "../../vendor/lua-5.4.8/src/lstate.c"; sourceTree = "<group>"; };
+		8B5B6FF0D8BE66224EDD6630 /* Speech.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Speech.framework; path = System/Library/Frameworks/Speech.framework; sourceTree = SDKROOT; };
+		8B91C4E06FD8CD12F3C5FB20 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		9941744DDD9019BF1FB7528D /* lvm.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lvm.c; path = "../../vendor/lua-5.4.8/src/lvm.c"; sourceTree = "<group>"; };
+		9BCE1874B69A8726BA6B1EB4 /* LRTSceneDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = LRTSceneDelegate.m; path = ../LuaRuntime/LRTSceneDelegate.m; sourceTree = "<group>"; };
+		AC8F36B04205F5E2B0A24CF0 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
+		ACC2AED4C3D54A06B3F14514 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = Info.plist; sourceTree = "<group>"; };
+		B07543407E9896F205A6E980 /* LuaRuntime.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = LuaRuntime.h; path = ../LuaRuntime/LuaRuntime.h; sourceTree = "<group>"; };
+		B10F588D079CC2FFE015D6CD /* AdventureArena.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = AdventureArena.app; path = AdventureArena.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B62C87C9FA7B2D3B3CA26609 /* ltm.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = ltm.c; path = "../../vendor/lua-5.4.8/src/ltm.c"; sourceTree = "<group>"; };
+		BBAC8FADFFFB351F42226DED /* ldo.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = ldo.c; path = "../../vendor/lua-5.4.8/src/ldo.c"; sourceTree = "<group>"; };
+		BC1481406F0A8AF2C02CE780 /* LRTApplicationDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = LRTApplicationDelegate.m; path = ../LuaRuntime/LRTApplicationDelegate.m; sourceTree = "<group>"; };
+		BE06871B5FF0230D5717355B /* lcorolib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lcorolib.c; path = "../../vendor/lua-5.4.8/src/lcorolib.c"; sourceTree = "<group>"; };
+		C282B2C8EABD6B7AD258F908 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = main.m; path = ../LuaRuntime/main.m; sourceTree = "<group>"; };
+		C8F9AA05205F1CF7D26D3845 /* liolib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = liolib.c; path = "../../vendor/lua-5.4.8/src/liolib.c"; sourceTree = "<group>"; };
+		C9F360752158D367D366EEB5 /* ldebug.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = ldebug.c; path = "../../vendor/lua-5.4.8/src/ldebug.c"; sourceTree = "<group>"; };
+		CD299471248F0763D69D22B1 /* lctype.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lctype.c; path = "../../vendor/lua-5.4.8/src/lctype.c"; sourceTree = "<group>"; };
+		CDC39886912F5A38CFD2FEC6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = Assets.xcassets; sourceTree = "<group>"; };
+		D1CB54612930C753DB3EE2A1 /* ldblib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = ldblib.c; path = "../../vendor/lua-5.4.8/src/ldblib.c"; sourceTree = "<group>"; };
+		DB5F6A5B1FAE0FCD61D5489B /* lgc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lgc.c; path = "../../vendor/lua-5.4.8/src/lgc.c"; sourceTree = "<group>"; };
+		E28DF639751BC02BDDF46479 /* llex.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = llex.c; path = "../../vendor/lua-5.4.8/src/llex.c"; sourceTree = "<group>"; };
+		EA02DE418BEC7A3383138C81 /* lopcodes.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lopcodes.c; path = "../../vendor/lua-5.4.8/src/lopcodes.c"; sourceTree = "<group>"; };
+		F34A923D6072A0AF6205907D /* lcode.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lcode.c; path = "../../vendor/lua-5.4.8/src/lcode.c"; sourceTree = "<group>"; };
+		FE432A81CC667E335374D0C1 /* uikit_module.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = uikit_module.m; path = ../../src/uikit_module.m; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		2A590F7D23BF10EF175A6DBD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F471DA6486FFA456EFD848A4 /* UIKit.framework in Frameworks */,
+				BDAA66E6806AC758DD9FA526 /* Foundation.framework in Frameworks */,
+				95EFFE0C89EF477E0EDA5C4C /* CoreGraphics.framework in Frameworks */,
+				9130093853F069AAB1254778 /* QuartzCore.framework in Frameworks */,
+				5348BA0819D6B17A87D8D848 /* Security.framework in Frameworks */,
+				CC7CF92439A507963B37F764 /* WebKit.framework in Frameworks */,
+				2DD77BB421D6C526A6C1D9F4 /* AVFoundation.framework in Frameworks */,
+				2576E148929EEFBA9431DF88 /* Speech.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		FAA63329E592591B2D782169 /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXGroup section */
+		17575C93483B54855B538AD3 /* lua-5.4.8 */ = {
+			isa = PBXGroup;
+			children = (
+				D3F150C62F32A438028CEF06 /* src */,
+			);
+			name = "lua-5.4.8";
+			sourceTree = "<group>";
+		};
+		3BA156C03017CDF27EEB6D00 /* .. */ = {
+			isa = PBXGroup;
+			children = (
+				5E13CB4BC8264D3D6151398B /* .. */,
+				E9C6AE1FD4B2D4111C989C5F /* LuaRuntime */,
+			);
+			name = ..;
+			sourceTree = "<group>";
+		};
+		5E13CB4BC8264D3D6151398B /* .. */ = {
+			isa = PBXGroup;
+			children = (
+				D4A72D0E77F2B64092C3834E /* src */,
+				DFACC49A829AEB4C11C0CADA /* vendor */,
+			);
+			name = ..;
+			sourceTree = "<group>";
+		};
+		A6C936B49B3FADE6EA134CF4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B10F588D079CC2FFE015D6CD /* AdventureArena.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		AF4E3695FF61CB4781DFFCD5 /* AdventureArena */ = {
+			isa = PBXGroup;
+			children = (
+				3BA156C03017CDF27EEB6D00 /* .. */,
+				CDC39886912F5A38CFD2FEC6 /* Assets.xcassets */,
+				ACC2AED4C3D54A06B3F14514 /* Info.plist */,
+				BBF76781A7E87333FA200DC1 /* Frameworks */,
+				A6C936B49B3FADE6EA134CF4 /* Products */,
+			);
+			name = AdventureArena;
+			sourceTree = "<group>";
+		};
+		BBF76781A7E87333FA200DC1 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				3076B44CF3E275FE32861A8C /* UIKit.framework */,
+				4B74DEAE2FBBE6E0B3A914EE /* Foundation.framework */,
+				74A9A874B8BD79A6AC8EFEB4 /* CoreGraphics.framework */,
+				8B91C4E06FD8CD12F3C5FB20 /* QuartzCore.framework */,
+				AC8F36B04205F5E2B0A24CF0 /* Security.framework */,
+				5EE1680CAC445E3E22635E4C /* WebKit.framework */,
+				783E4F9CBC5220CEB023A5DC /* AVFoundation.framework */,
+				8B5B6FF0D8BE66224EDD6630 /* Speech.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		D3F150C62F32A438028CEF06 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				7683AB7B0911756D71EA19BB /* lapi.c */,
+				40B302110740F98375432051 /* lauxlib.c */,
+				69873E6B0B70DA5D0297ECAB /* lbaselib.c */,
+				F34A923D6072A0AF6205907D /* lcode.c */,
+				BE06871B5FF0230D5717355B /* lcorolib.c */,
+				CD299471248F0763D69D22B1 /* lctype.c */,
+				D1CB54612930C753DB3EE2A1 /* ldblib.c */,
+				C9F360752158D367D366EEB5 /* ldebug.c */,
+				BBAC8FADFFFB351F42226DED /* ldo.c */,
+				3D29B533AA51C3A5ABE4B373 /* ldump.c */,
+				8B24785FF84C86D1F9DF769F /* lfunc.c */,
+				DB5F6A5B1FAE0FCD61D5489B /* lgc.c */,
+				80C507EFEDED1661EF80062F /* linit.c */,
+				C8F9AA05205F1CF7D26D3845 /* liolib.c */,
+				E28DF639751BC02BDDF46479 /* llex.c */,
+				135321A9B53CBD9BAC63CFE9 /* lmathlib.c */,
+				48215965DAAF23574387C7A5 /* lmem.c */,
+				42B7975D09458ECF7747B59D /* loadlib.c */,
+				25DCEDF5EC6AE5675A6D0C35 /* lobject.c */,
+				EA02DE418BEC7A3383138C81 /* lopcodes.c */,
+				6B8D2AD9C2F29DCB7500B919 /* loslib.c */,
+				21F17AE1E87F725356819921 /* lparser.c */,
+				8B26DFE9E28C52DB949A6E29 /* lstate.c */,
+				88510FF54EDF0767BCE12E35 /* lstring.c */,
+				1D49F2A7E3D7EA1951DA10E7 /* lstrlib.c */,
+				0CEA8997644FFC89165E17D7 /* ltable.c */,
+				6448B7A32AD6AF1598D8D5E3 /* ltablib.c */,
+				B62C87C9FA7B2D3B3CA26609 /* ltm.c */,
+				508AA4B917189C2B851AC2F9 /* lundump.c */,
+				1BFCA743BDE64335B50D5583 /* lutf8lib.c */,
+				9941744DDD9019BF1FB7528D /* lvm.c */,
+				72F7BD6B0585875D6E5E2BAB /* lzio.c */,
+			);
+			name = src;
+			sourceTree = "<group>";
+		};
+		D4A72D0E77F2B64092C3834E /* src */ = {
+			isa = PBXGroup;
+			children = (
+				FE432A81CC667E335374D0C1 /* uikit_module.m */,
+			);
+			name = src;
+			sourceTree = "<group>";
+		};
+		DFACC49A829AEB4C11C0CADA /* vendor */ = {
+			isa = PBXGroup;
+			children = (
+				17575C93483B54855B538AD3 /* lua-5.4.8 */,
+			);
+			name = vendor;
+			sourceTree = "<group>";
+		};
+		E9C6AE1FD4B2D4111C989C5F /* LuaRuntime */ = {
+			isa = PBXGroup;
+			children = (
+				65AF4E125316E0C4F010D452 /* LRTApplicationController.m */,
+				BC1481406F0A8AF2C02CE780 /* LRTApplicationDelegate.m */,
+				6C41C3F41F37CDA6705A2A34 /* LRTErrorViewController.m */,
+				2065CD30304AF9621CBE8370 /* LRTReloadConnection.m */,
+				3E8C37603E2F1A927883CDA0 /* LRTResourceLoader.m */,
+				9BCE1874B69A8726BA6B1EB4 /* LRTSceneDelegate.m */,
+				3EB7D200D704B7B2054BB840 /* LRTViewCapture.m */,
+				B07543407E9896F205A6E980 /* LuaRuntime.h */,
+				C282B2C8EABD6B7AD258F908 /* main.m */,
+			);
+			name = LuaRuntime;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		7BD7D2D3C448B70508E78913 /* AdventureArena */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 189457DC11FA594E0595B61C /* Build configuration list for PBXNativeTarget "AdventureArena" */;
+			buildPhases = (
+				9607AE1010C857E500CD1376 /* Prebuild */,
+				9A40901D93A6918F8741EE5D /* Resources */,
+				03EDA974FD53AAE6F0EF07B4 /* Sources */,
+				2A590F7D23BF10EF175A6DBD /* Frameworks */,
+				FAA63329E592591B2D782169 /* Embed Libraries */,
+				9607AE3710C85E8F00CD1376 /* Postbuild */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AdventureArena;
+			productInstallPath = /Applications;
+			productName = AdventureArena;
+			productReference = B10F588D079CC2FFE015D6CD /* AdventureArena.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		08FB7793FE84155DC02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "AdventureArena" */;
+			compatibilityVersion = "Xcode 3.2";
+			hasScannedForEncodings = 1;
+			mainGroup = AF4E3695FF61CB4781DFFCD5 /* AdventureArena */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7BD7D2D3C448B70508E78913 /* AdventureArena.app */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		9A40901D93A6918F8741EE5D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA0000000000000000000001 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		9607AE1010C857E500CD1376 /* Prebuild */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = Prebuild;
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nif [ \"${CONFIGURATION}\" = \"Debug\" ]; then\ncd \"$PROJECT_DIR/../..\" && mkdir -p build/generated && xxd -i -n UIKit_lua lua/embedded/UIKit.lua build/generated/UIKit.lua.h\nfi\nif [ \"${CONFIGURATION}\" = \"Release\" ]; then\ncd \"$PROJECT_DIR/../..\" && mkdir -p build/generated && xxd -i -n UIKit_lua lua/embedded/UIKit.lua build/generated/UIKit.lua.h\nfi";
+		};
+		9607AE3710C85E8F00CD1376 /* Postbuild */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = Postbuild;
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nif [ \"${CONFIGURATION}\" = \"Debug\" ]; then\ncd \"$PROJECT_DIR/../..\" && python3 scripts/ipad/xcode_bundle.py --bundle \"$TARGET_BUILD_DIR/$WRAPPER_NAME\"\nfi\nif [ \"${CONFIGURATION}\" = \"Release\" ]; then\ncd \"$PROJECT_DIR/../..\" && python3 scripts/ipad/xcode_bundle.py --bundle \"$TARGET_BUILD_DIR/$WRAPPER_NAME\"\nfi";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		03EDA974FD53AAE6F0EF07B4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7B8D88191D77240B149E3659 /* uikit_module.m in Sources */,
+				2C8357330BA07165E7A9CD73 /* lapi.c in Sources */,
+				DE9C6F295284E6DB74D29569 /* lauxlib.c in Sources */,
+				94ACFD23A49229559105B363 /* lbaselib.c in Sources */,
+				105276152B1EE4C72EEF7C55 /* lcode.c in Sources */,
+				CA1958D3D9FE8505C6720F13 /* lcorolib.c in Sources */,
+				CF86E289CF29C5BB097E78C9 /* lctype.c in Sources */,
+				1DF129791D940CAB57E8BFB9 /* ldblib.c in Sources */,
+				C1044CCDC0A72FFFFAFBE30D /* ldebug.c in Sources */,
+				E648E0857E95C637ACDCC6C5 /* ldo.c in Sources */,
+				9534D76BB001461DB3D1DDAB /* ldump.c in Sources */,
+				B0920B57CB5E7A09CF2F1197 /* lfunc.c in Sources */,
+				8FFA651328474AC5568E4B53 /* lgc.c in Sources */,
+				02083BE71CD4AA9920A54227 /* linit.c in Sources */,
+				F951E75DF8F4CA8F33497D9D /* liolib.c in Sources */,
+				8C12E2D16B2FFD0347395911 /* llex.c in Sources */,
+				FA8BA1410A70CD73F6E45781 /* lmathlib.c in Sources */,
+				6CE4EABD4C0204EF280B60FD /* lmem.c in Sources */,
+				05633F35794BB6E79B996575 /* loadlib.c in Sources */,
+				AA25CB4D1E0E42FF405BF18D /* lobject.c in Sources */,
+				74E1CB5984C6F78B713A8199 /* lopcodes.c in Sources */,
+				76976B71763A4EA3B08F01B1 /* loslib.c in Sources */,
+				48E5DCF9BCCE54ABDF1C0339 /* lparser.c in Sources */,
+				F6FD6981F6A04CB330F4FFC1 /* lstate.c in Sources */,
+				3C4D0D4DB03584FFD283338D /* lstring.c in Sources */,
+				9C0ED41F0FF74BD13244FA5F /* lstrlib.c in Sources */,
+				24E6E70F2489CA415EDE7D4F /* ltable.c in Sources */,
+				A03BA6DB14241E8D3671CD1B /* ltablib.c in Sources */,
+				E25CB8617AA99E13A8F09EA1 /* ltm.c in Sources */,
+				9EDF105112C7880335153691 /* lundump.c in Sources */,
+				86CFF77B96B523AD8328ADBB /* lutf8lib.c in Sources */,
+				01FDDF259A4AC4D7C891C565 /* lvm.c in Sources */,
+				1BC73023FAE44A55D6EDA663 /* lzio.c in Sources */,
+				36907E8AFDF5397C88AD0CCA /* LRTApplicationController.m in Sources */,
+				18C5AD98AEEEBF8A70551BD8 /* LRTApplicationDelegate.m in Sources */,
+				F6745D8C8C9D6F7E4E03CBCC /* LRTErrorViewController.m in Sources */,
+				23A6F788802DFBFA08D0B5C8 /* LRTReloadConnection.m in Sources */,
+				7B6886B85A0B222A0EED24F8 /* LRTResourceLoader.m in Sources */,
+				0BAB900C65ACA6FE2CF39E4C /* LRTSceneDelegate.m in Sources */,
+				CB1F5258BC16C04A281A4098 /* LRTViewCapture.m in Sources */,
+				A26CA5A0138F4692C955F3E0 /* main.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		12EEDEC413A1DBB68783AD04 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(NATIVE_ARCH_ACTUAL)";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEVELOPMENT_TEAM = BM2R8F5YHC;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					LUA_USE_IOS,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = "org.luaobjc.adventure-arena";
+				TARGETED_DEVICE_FAMILY = 1;
+				HEADER_SEARCH_PATHS = (
+					../LuaRuntime,
+					../../src,
+					../../build,
+					"../../vendor/lua-5.4.8/src",
+				);
+			};
+			name = Debug;
+		};
+		603F16A25A00D31493FFD4E2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = BM2R8F5YHC;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				INSTALL_PATH = /Applications;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				PRODUCT_BUNDLE_IDENTIFIER = "org.luaobjc.adventure-arena";
+				PRODUCT_NAME = AdventureArena;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				MARKETING_VERSION = 1.0;
+				CURRENT_PROJECT_VERSION = 1;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		7E8979FE77EF7B706B8AD83E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(NATIVE_ARCH_ACTUAL)";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = BM2R8F5YHC;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					LUA_USE_IOS,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				ONLY_ACTIVE_ARCH = NO;
+				PRODUCT_BUNDLE_IDENTIFIER = "org.luaobjc.adventure-arena";
+				TARGETED_DEVICE_FAMILY = 1;
+				HEADER_SEARCH_PATHS = (
+					../LuaRuntime,
+					../../src,
+					../../build,
+					"../../vendor/lua-5.4.8/src",
+				);
+			};
+			name = Release;
+		};
+		B322621C2445030EDA0BB05C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = BM2R8F5YHC;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				INSTALL_PATH = /Applications;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				PRODUCT_BUNDLE_IDENTIFIER = "org.luaobjc.adventure-arena";
+				PRODUCT_NAME = AdventureArena;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				MARKETING_VERSION = 1.0;
+				CURRENT_PROJECT_VERSION = 1;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		189457DC11FA594E0595B61C /* Build configuration list for PBXNativeTarget "AdventureArena.app" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				603F16A25A00D31493FFD4E2 /* Debug */,
+				B322621C2445030EDA0BB05C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "AdventureArena" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				12EEDEC413A1DBB68783AD04 /* Debug */,
+				7E8979FE77EF7B706B8AD83E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+};
+rootObject = 08FB7793FE84155DC02AAC07 /* Project object */;
+}
