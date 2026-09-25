@@ -17,6 +17,21 @@ local bundledFixture = assert(io.open(fixturePath, "rb"))
 t.assertEqual(bundledFixture:read(8), "DMOCK001", "bundled Mock HDD fixture is binary")
 bundledFixture:close()
 
+local originalSnapshotPath = Provider.savedSnapshotPath
+Provider.savedSnapshotPath = function() return fixturePath end
+_G.__headless = false
+local saved = Provider.select({[1] = "--mock"})
+local savedDiscoveries
+saved.discoverEntries(home, function(entries) savedDiscoveries = entries end)
+t.expect(saved.mock, "a saved disk snapshot still uses the mock provider")
+t.assertEqual(#savedDiscoveries, 0, "a saved disk snapshot does not invent synthetic apps")
+_G.__headless = true
+local headlessSaved = Provider.select({[1] = "--mock"})
+local headlessDiscoveries
+headlessSaved.discoverEntries(home, function(entries) headlessDiscoveries = entries end)
+t.assertEqual(headlessDiscoveries[1].path, "/Applications/Mock Video Studio.app", "headless runs keep the synthetic fixture")
+Provider.savedSnapshotPath = originalSnapshotPath
+
 local mock = Mock.new({home = home})
 local discoveries
 mock.discoverEntries(home, function(entries) discoveries = entries end)
