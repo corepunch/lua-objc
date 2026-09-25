@@ -752,6 +752,7 @@ local TAG_SCHEMA = {
         props = {
             value = { prop = "is_on", aliases = { "checked" }, type = "bool", default = false },
 			disabled = "bool",
+			style = "str",
         },
     },
     Link = {
@@ -1114,6 +1115,7 @@ local TAG_SCHEMA = {
             tooltip = { default = "", type = "str" },
             action  = "str",
             bordered = "bool",
+            background = "str",
             visibilityPriority = "num",
         },
         collect = function(rec, children)
@@ -1156,6 +1158,7 @@ local TAG_SCHEMA = {
             tabbingMode                = "str",
             tabbingIdentifier          = "str",
             toolbarLabels              = "bool",
+            hideTitle                  = "bool",
             visible                    = "bool",
             sidebarWidth               = "num",
             detailWidth                = "num",

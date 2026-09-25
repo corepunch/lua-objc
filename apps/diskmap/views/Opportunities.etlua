@@ -1,10 +1,10 @@
-<VStack maxWidth="infinity" spacing="12" alignment="leading">
+<VStack maxWidth="infinity" spacing="16" alignment="leading">
   <HStack id="impactSummary" maxWidth="infinity" spacing="10" alignment="top">
     <% for _, group in ipairs(groups) do %>
     <GroupBox id="group<%= group.index %>" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity">
-      <VStack maxWidth="infinity" padding="10" spacing="4" alignment="leading">
+      <VStack maxWidth="infinity" padding="10" spacing="2" alignment="leading">
         <Label text="<%= group.name %>" size="11" color="secondary" maxWidth="infinity" lines="1" />
-        <Label text="<%= group.size %>" size="16" weight="semibold" maxWidth="infinity" />
+        <Label text="<%= group.size %>" size="15" weight="semibold" maxWidth="infinity" />
         <Button id="groupAction<%= group.index %>" title="View…" accessibilityLabel="View <%= group.name %> resources" style="link" action="group_<%= group.index %>" />
       </VStack>
     </GroupBox>
@@ -12,12 +12,19 @@
   </HStack>
   <Label text="Amounts describe measured storage, not space guaranteed to be freed." size="11" color="secondary" maxWidth="infinity" lines="2" />
   <% for _, group in ipairs(groups) do %>
-  <Label text="<%= group.name %>" size="13" weight="semibold" maxWidth="infinity" />
-  <% for _, suggestion in ipairs(group.rows) do %>
-  <%- partial("Suggestion.etlua", {suggestion = suggestion}) %>
-  <% end %>
-  <% if #group.rows == 0 then %>
-  <Label text="No measured candidates in this group." size="11" color="secondary" maxWidth="infinity" lines="2" />
-  <% end %>
+  <VStack maxWidth="infinity" spacing="6" alignment="leading">
+    <Label text="<%= group.name %>" size="11" weight="semibold" color="secondary" />
+    <GroupBox maxWidth="infinity">
+      <VStack maxWidth="infinity" spacing="0" alignment="leading">
+        <% if #group.rows == 0 then %>
+        <Label text="No measured candidates in this group." size="11" color="secondary" maxWidth="infinity" padding="10" lines="2" />
+        <% end %>
+        <% for index, suggestion in ipairs(group.rows) do %>
+        <%- partial("Suggestion.etlua", {suggestion = suggestion}) %>
+        <% if index < #group.rows then %><Divider /><% end %>
+        <% end %>
+      </VStack>
+    </GroupBox>
+  </VStack>
   <% end %>
 </VStack>

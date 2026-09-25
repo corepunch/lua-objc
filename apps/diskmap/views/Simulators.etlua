@@ -1,8 +1,8 @@
-<Sheet width="920" height="600">
-  <VStack maxWidth="infinity" maxHeight="infinity" padding="24" spacing="14">
-    <Label text="Simulator devices" size="22" weight="semibold" maxWidth="infinity" />
+<Sheet width="880" height="560">
+  <VStack maxWidth="infinity" maxHeight="infinity" padding="20" spacing="12">
+    <Label text="Simulator devices" size="15" weight="semibold" maxWidth="infinity" />
     <Label text="Review installed test apps and device data. Installed runtimes are kept." size="12" color="secondary" maxWidth="infinity" lines="2" />
-    <SearchField id="search" placeholder="Search device, runtime or identifier" accessibilityLabel="Search simulators" onChange="search" maxWidth="infinity" />
+    <SearchField id="search" placeholder="Search" accessibilityLabel="Search simulators" onChange="search" maxWidth="infinity" />
     <TabView id="tabs" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
       <% for index, title in ipairs(filters) do %>
       <Tab title="<%= title %>">

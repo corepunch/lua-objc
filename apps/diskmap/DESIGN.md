@@ -64,9 +64,16 @@ Storage
 ├── Applications
 │   └── Application → Installation / User Data / Offline Content / Caches
 ├── Documents & Downloads
-│   └── Documents / Downloads / Installers & Archives
-├── Photos, Music & Video
-│   └── Libraries / Local Downloads / Creative Projects
+│   └── Documents / Downloads / Desktop
+├── iCloud Drive
+├── iOS Files → Finder device backups
+├── Mail → Mailboxes / Mail app data
+├── Messages → History / App data
+├── Music → Music library
+├── Music Creation → GarageBand / Logic / Apple Loops
+├── Photos → Pictures
+├── Podcasts
+├── TV → TV library / Other videos
 ├── Developer
 │   ├── Xcode
 │   │   ├── Installation & Bundled SDKs
@@ -90,7 +97,7 @@ Storage
 │   ├── Caches → Owner not classified elsewhere
 │   ├── Logs & Diagnostics
 │   └── Temporary Data
-├── Backups → Device Backups / Local Snapshots
+├── Backups → Local Snapshots
 ├── macOS & Required System Data → System / Boot & Recovery / Virtual Memory
 ├── Other Users & Shared Data
 ├── Trash

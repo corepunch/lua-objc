@@ -1,14 +1,20 @@
-<VStack maxWidth="infinity" spacing="12" alignment="leading">
-  <% for _, tip in ipairs(tips) do %>
+<VStack maxWidth="infinity" spacing="6" alignment="leading">
+  <Label text="Tips" size="11" weight="semibold" color="secondary" />
   <GroupBox maxWidth="infinity">
-    <VStack padding="12" spacing="8" maxWidth="infinity" alignment="leading">
-      <SystemImage name="<%= tip.icon %>" size="24" color="accent" />
-      <Label text="<%= tip.title %>" size="12" weight="semibold" maxWidth="infinity" lines="0" />
-      <Label text="<%= tip.text %>" size="12" maxWidth="infinity" lines="0" />
-      <% if tip.actionTitle then %>
-      <Button title="<%= tip.actionTitle %>" style="link" action="tip_<%= tip.id %>" />
+    <VStack maxWidth="infinity" spacing="0" alignment="leading">
+      <% for index, tip in ipairs(tips) do %>
+      <HStack maxWidth="infinity" padding="10" spacing="8" alignment="center">
+        <SystemImage name="<%= tip.icon %>" size="18" color="accent" />
+        <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="1" alignment="leading">
+          <Label text="<%= tip.title %>" size="13" maxWidth="infinity" lines="2" />
+          <Label text="<%= tip.text %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
+        </VStack>
+        <% if tip.actionTitle then %>
+        <Button title="<%= tip.actionTitle %>" style="link" action="tip_<%= tip.id %>" />
+        <% end %>
+      </HStack>
+      <% if index < #tips then %><Divider /><% end %>
       <% end %>
     </VStack>
   </GroupBox>
-  <% end %>
 </VStack>

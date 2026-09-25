@@ -38,10 +38,8 @@ return function()
 	item("support", "Application support", "Other app databases, documents and settings", "~/Library/Application Support"),
 	item("app-containers", "Sandboxed application data", "Documents and settings belonging to sandboxed apps", "~/Library/Containers"),
 	item("group-containers", "Shared application data", "Data shared by related apps", "~/Library/Group Containers"),
-	item("mail", "Mail", "Downloaded messages and attachments; manage in Mail", "~/Library/Mail"),
 	item("library-user", "Other user library data", "Preferences and other local application data", "~/Library"),
 	item("library-shared", "Other shared library data", "Shared application and system support files", "/Library"),
 	item("private-other", "Other system working data", "System-managed databases and working files", "/private", system),
-	item("messages", "Messages", "Conversation history and attachments", "~/Library/Messages"),
 })
 end

@@ -1,20 +1,21 @@
-<Window title="<%= windowTitle or "Diskmap" %>" width="800" height="720" minWidth="720" minHeight="640">
+<Window title="<%= windowTitle or "Diskmap" %>" hideTitle="true" width="700" height="720" minWidth="620" minHeight="640">
   <Toolbar>
-    <ToolbarItem id="drive" label="Storage" bordered="false">
-      <HStack id="toolbarTitle" spacing="10" alignment="center">
-        <SystemImage name="internaldrive" size="22" color="secondary" />
-        <VStack spacing="2" alignment="leading">
-          <Label text="<%= windowTitle or "Diskmap" %>" size="15" weight="semibold" lines="1" />
+    <ToolbarItem id="drive" label="Storage" bordered="false" background="plain">
+      <HStack id="toolbarTitle" spacing="8" alignment="center">
+        <SystemImage name="internaldrive" size="18" color="secondary" />
+        <VStack spacing="1" alignment="leading">
+          <Label text="<%= windowTitle or "Diskmap" %>" size="13" weight="semibold" lines="1" />
           <Label id="capacity" text="<%= capacity %>" size="11" color="secondary" maxWidth="infinity" lines="1" />
         </VStack>
       </HStack>
     </ToolbarItem>
-    <ToolbarItem id="NSToolbarFlexibleSpaceItem" />
-    <ToolbarItem id="settings" label="Settings" icon="gearshape" tooltip="Diskmap settings" action="settings" />
+    <ToolbarSpacer />
+    <ToolbarItem id="reclaim" label="Clean Up" icon="sparkles" tooltip="Suggested cleanups" action="reclaim" />
+    <ToolbarItem id="settings" label="Settings" icon="gearshape" tooltip="Settings" action="settings" />
     <ToolbarItem id="refresh" label="Refresh" icon="arrow.clockwise" action="refresh" />
     <ToolbarItem id="cancel" label="Cancel" icon="xmark.circle" action="cancel" />
     <ToolbarItem id="search" label="Search">
-      <SearchField id="search" placeholder="Search categories, resources or paths…" width="265" accessibilityLabel="Search categories, resources or paths" onChange="search" />
+      <SearchField id="search" placeholder="Search" width="160" accessibilityLabel="Search" onChange="search" />
     </ToolbarItem>
   </Toolbar>
 </Window>

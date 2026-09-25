@@ -1,24 +1,18 @@
-<VStack maxWidth="infinity" maxHeight="infinity" flexGrow="1" flexBasis="0" flexShrink="1" spacing="16" padding="16">
-  <VStack id="storageBar" maxWidth="infinity" spacing="0" />
-  <GroupBox id="coveragePanel" maxWidth="infinity">
-    <HStack maxWidth="infinity" spacing="12" padding="10" alignment="center">
-      <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="4" alignment="leading">
+<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+  <VStack id="pageContent" maxWidth="infinity" spacing="12" padding="16" alignment="leading">
+    <VStack id="storageBar" maxWidth="infinity" spacing="0" />
+    <HStack id="coveragePanel" maxWidth="infinity" spacing="12" alignment="center">
+      <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
         <Label id="coverage" text="<%= coverage %>" size="12" maxWidth="infinity" lines="2" />
         <Label id="status" text="<%= status %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
       </VStack>
-      <Button id="access" title="Scan access…" action="access" />
+      <Button id="access" title="Scan access…" style="link" action="access" />
     </HStack>
-  </GroupBox>
-  <VStack id="categoriesPane" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity" maxWidth="infinity" spacing="12">
-    <GroupBox id="categoriesPanel" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
-      <List id="results" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" rowHeight="44" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity">
-        <Column id="name" title="Category" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" fileIconKey="fileIcon" imageSize="32" minWidth="210" />
-        <Column id="size" title="On disk" width="135" minWidth="125" alignment="trailing" loadingKey="calculating" />
+    <GroupBox id="categoriesPanel" maxWidth="infinity">
+      <List id="results" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" rowHeight="44" maxWidth="infinity">
+        <Column id="name" title="Category" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" fileIconKey="fileIcon" imageSize="28" minWidth="210" />
+        <Column id="size" title="On disk" width="120" minWidth="110" alignment="trailing" loadingKey="calculating" />
       </List>
     </GroupBox>
-    <HStack maxWidth="infinity" spacing="10">
-      <Button id="openCategory" title="Manage selected category…" action="openCategory" disabled="true" />
-      <Button id="openReclaim" title="Suggested cleanups…" action="reclaim" />
-    </HStack>
   </VStack>
-</VStack>
+</ScrollView>

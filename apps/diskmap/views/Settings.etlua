@@ -1,45 +1,53 @@
-<Sheet width="640" height="680">
-<VStack maxWidth="infinity" maxHeight="infinity" spacing="0">
-<ScrollView vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
-<VStack maxWidth="infinity" padding="24" spacing="14" alignment="leading">
-  <Label maxWidth="infinity" text="Settings" size="23" weight="bold" />
-  <GroupBox header="Background checks" maxWidth="infinity">
-    <VStack maxWidth="infinity" padding="12" spacing="8" alignment="leading">
-      <Label maxWidth="infinity" text="When enabled, Diskmap refreshes storage every 15 minutes while it is open. Scanning runs in the background; files are never deleted automatically." size="13" lines="0" />
-      <Button id="monitor" title="<%= monitoring and 'Pause background checks' or 'Enable background checks' %>" action="monitor" />
+<Sheet width="460" height="448">
+  <VStack maxWidth="infinity" maxHeight="infinity" padding="20" spacing="16" alignment="leading">
+    <Label text="Settings" size="15" weight="semibold" />
+    <VStack maxWidth="infinity" spacing="6" alignment="leading">
+      <Label text="Scanning" size="11" weight="semibold" color="secondary" />
+      <GroupBox maxWidth="infinity">
+        <VStack maxWidth="infinity" padding="12" spacing="10" alignment="leading">
+          <HStack maxWidth="infinity" spacing="12" alignment="center">
+            <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+              <Label text="Refresh while Diskmap is open" size="13" maxWidth="infinity" />
+              <Label text="Every 15 minutes. Files are never deleted." size="11" color="secondary" maxWidth="infinity" lines="2" />
+            </VStack>
+            <Toggle id="monitor" style="switch" label="Refresh while Diskmap is open" value="<%= monitoring and "true" or "false" %>" action="monitor" />
+          </HStack>
+          <Divider />
+          <HStack maxWidth="infinity" spacing="12" alignment="center">
+            <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+              <Label text="Include media libraries" size="13" maxWidth="infinity" />
+              <Label text="Photos, Music and TV libraries for this session." size="11" color="secondary" maxWidth="infinity" lines="2" />
+            </VStack>
+            <Toggle id="media" style="switch" label="Include media libraries" value="<%= mediaEnabled and "true" or "false" %>" action="media" />
+          </HStack>
+        </VStack>
+      </GroupBox>
     </VStack>
-  </GroupBox>
-  <GroupBox header="Media libraries" maxWidth="infinity">
-    <VStack maxWidth="infinity" padding="12" spacing="8" alignment="leading">
-      <Label maxWidth="infinity" text="Photos, Music and Movies stay excluded by default. To measure them, Diskmap must enumerate their files; macOS may ask for access." size="13" lines="0" />
-      <Button id="media" title="<%= mediaEnabled and 'Exclude media libraries' or 'Include media libraries for this session…' %>" action="media" />
-      <Label maxWidth="infinity" text="The choice resets when Diskmap quits. System Settings can show media totals without granting Diskmap access." size="12" color="secondary" lines="0" />
+    <VStack maxWidth="infinity" spacing="6" alignment="leading">
+      <Label text="System" size="11" weight="semibold" color="secondary" />
+      <GroupBox maxWidth="infinity">
+        <VStack maxWidth="infinity" padding="12" spacing="10" alignment="leading">
+          <HStack maxWidth="infinity" spacing="12" alignment="center">
+            <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+              <Label text="Full Disk Access" size="13" maxWidth="infinity" />
+              <Label text="Optional. Protected files can still be omitted." size="11" color="secondary" maxWidth="infinity" lines="2" />
+            </VStack>
+            <Button title="Open…" action="privacy" />
+          </HStack>
+          <Divider />
+          <HStack maxWidth="infinity" spacing="12" alignment="center">
+            <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+              <Label text="Storage" size="13" maxWidth="infinity" />
+              <Label text="macOS storage settings." size="11" color="secondary" maxWidth="infinity" lines="2" />
+            </VStack>
+            <Button title="Open…" action="storage" />
+          </HStack>
+        </VStack>
+      </GroupBox>
     </VStack>
-  </GroupBox>
-  <GroupBox header="Scan access" maxWidth="infinity">
-    <VStack maxWidth="infinity" padding="12" spacing="8" alignment="leading">
-      <Label maxWidth="infinity" text="Scans cover personal folders, app containers, backups, Trash and unclassified files. Full Disk Access is optional and may improve coverage; protected or unavailable files can still be omitted." size="13" lines="0" />
-      <Button title="Open Privacy &amp; Security…" action="privacy" />
-    </VStack>
-  </GroupBox>
-  <DisclosureGroup label="Measurement limits" expanded="false" maxWidth="infinity">
-    <VStack maxWidth="infinity" padding="12" spacing="8" alignment="leading">
-      <Label maxWidth="infinity" text="Sizes measure allocated file blocks. APFS clones, compression, snapshots and concurrent changes can make actual reclaimed space differ. Cloud-only files are not downloaded. Scans skip symbolic links and other mounted volumes." size="13" lines="0" />
-      <Label maxWidth="infinity" text="Not attributed is the difference between measured categories and macOS disk usage. It can include unreadable files, snapshots and filesystem accounting; it is not a cleanup estimate." size="13" lines="0" />
-    </VStack>
-  </DisclosureGroup>
-  <DisclosureGroup label="Recommendations and safety" expanded="false" maxWidth="infinity">
-    <VStack maxWidth="infinity" padding="12" spacing="8" alignment="leading">
-      <Label maxWidth="infinity" text="Diskmap names data only when its owner or project markers are recognized. A review suggestion crossed a size threshold; it does not mean the data is unnecessary or promise recovered space. Every cleanup action needs separate confirmation." size="13" lines="0" />
-      <Label maxWidth="infinity" text="macOS manages local Time Machine snapshots and removes them as needed. They are restore points, not junk. Manage backups in Time Machine settings; Diskmap never deletes snapshots or protected system assets." size="13" lines="0" />
-    </VStack>
-  </DisclosureGroup>
-  <Button title="Open Storage Settings" action="storage" />
-</VStack>
-</ScrollView>
-<HStack maxWidth="infinity" padding="16">
-  <Spacer />
-  <Button id="done" title="Done" action="done" />
-</HStack>
-</VStack>
+    <HStack maxWidth="infinity">
+      <Spacer />
+      <Button id="done" title="Done" action="done" />
+    </HStack>
+  </VStack>
 </Sheet>

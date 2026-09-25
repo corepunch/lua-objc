@@ -1,11 +1,9 @@
-<GroupBox maxWidth="infinity">
-<VStack maxWidth="infinity" padding="10" spacing="6" alignment="leading">
-  <HStack maxWidth="infinity" spacing="8" alignment="center">
-    <SystemImage name="<%= suggestion.icon %>" size="24" badgeColor="<%= suggestion.color %>" appIcon="<%= suggestion.appIcon or "" %>" />
-    <Label text="<%= suggestion.name %>" size="12" weight="semibold" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" lines="2" />
-    <Label text="<%= suggestion.size %>" size="12" weight="semibold" />
-  </HStack>
-  <Label text="<%= suggestion.subtitle %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
-  <Button title="Review…" action="review_<%= suggestion.id %>" />
-</VStack>
-</GroupBox>
+<HStack maxWidth="infinity" paddingHorizontal="10" paddingVertical="8" spacing="8" alignment="center">
+  <SystemImage name="<%= suggestion.icon %>" size="20" badgeColor="<%= suggestion.color %>" appIcon="<%= suggestion.appIcon or "" %>" />
+  <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="1" alignment="leading">
+    <Label text="<%= suggestion.name %>" size="13" maxWidth="infinity" lines="1" />
+    <Label text="<%= suggestion.subtitle %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
+  </VStack>
+  <Label text="<%= suggestion.size %>" size="12" />
+  <Button title="Review…" style="link" action="review_<%= suggestion.id %>" />
+</HStack>

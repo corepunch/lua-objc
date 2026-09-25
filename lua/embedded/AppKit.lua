@@ -1558,8 +1558,11 @@ function AppKit.Toggle(props)
 	local label = type(props) == "table" and (props.label or props[1] or "") or ""
 	local is_on = type(props) == "table" and props.is_on or false
 	local action = type(props) == "table" and props.action or nil
+	local style = type(props) == "table" and props.style or nil
 	local toggle
-	if action then
+	if style == "switch" then
+		toggle = bridge._toggle(label, is_on, action, "switch")
+	elseif action then
 		toggle = bridge._toggle(label, is_on, action)
 	else
 		toggle = bridge._toggle(label, is_on)

@@ -93,6 +93,11 @@ static int bridge_window(lua_State *L) {
 
 			lua_pop(L, 1);
 
+			lua_getfield(L, -3, "background");
+			const char *background = lua_tostring(L, -1);
+			if (background) dict[@"background"] = [NSString stringWithUTF8String:background];
+			lua_pop(L, 1);
+
 			lua_getfield(L, -3, "tooltip");
 			const char *tooltip = lua_tostring(L, -1);
 			if (tooltip) {

@@ -14,11 +14,8 @@ local SimulatorsController = require("apps.diskmap.controllers.SimulatorsControl
 local SettingsController = require("apps.diskmap.controllers.SettingsController")
 local Controller = {}; Controller.__index = Controller
 local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
-local function monitorTitle(enabled)
-	return enabled and "Pause background checks" or "Enable background checks"
-end
-local function mediaTitle(enabled)
-	return enabled and "Exclude media libraries" or "Include media libraries for this session…"
+local function setSwitch(control, on)
+	if control then control.state = on and 1 or 0 end
 end
 function Controller.new(service)
 	if service == Controller then service = nil end
@@ -61,11 +58,21 @@ function Controller:updateRows()
 		for _, row in ipairs(rows) do row.children = nil end
 		self.refs.results:replaceRows(rows)
 	end
-	if self.capacity then self.capacity.text = self.categories:capacity(self.scan.disk); self.toolbarTitle:layout() end
+	if self.capacity then
+		self.capacity.text = self.categories:capacity(self.scan.disk)
+		if self.toolbarTitle then self.toolbarTitle:layout() end
+	end
+	if self.refs.results then
+		-- The page scrolls. The list is only as tall as its rows and has no scroller of its own.
+		self.refs.results.hasVerticalScroller = false
+		self.refs.results.fixedHeight = math.max(self.refs.results.rowCount, 1) * 46
+		if self.refs.page then self.refs.page:layout() end
+	end
 	if self.refs.coverage then
 		self.refs.coverage.text = self.categories:coverage(self.scan.disk)
 		self.refs.status.text = (self.mock and "Mock HDD · " or "") .. (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status
-		self.refs.access.title = self.mock and "Mock HDD active" or (self.model.scan.errors or 0) > 0 and "Review scan access…" or "Scan access…"
+		self.refs.access.hidden = self.mock == true
+		self.refs.access.title = (self.model.scan.errors or 0) > 0 and "Review scan access…" or "Scan access…"
 		self.refs.access.enabled = not self.mock
 	end
 	if self.opportunities then self.opportunities:update(self.cleanup:presentation(self.reclaimQuery)) end
@@ -75,9 +82,8 @@ function Controller:updateRows()
 	if self.refs.results and self.inspector.selectedId then self:select(self.inspector.selectedId) end
 end
 function Controller:select(id)
-	if not self.refs or not self.refs.openCategory then return end
-	if not self.inspector:select(id) then return end
-	self.refs.openCategory.enabled = true
+	if not self.refs or not self.refs.results then return end
+	self.inspector:select(id)
 end
 function Controller:closeReclaim()
 	if self.reclaimSheet then ns.dismiss(self.reclaimSheet); self.reclaimSheet = nil end
@@ -110,15 +116,22 @@ function Controller:openSettings()
 	self:closeReclaim(); self:closeSettings()
 	self.settingsScope = ns.Scope.new()
 	local data = self.settings:presentation(function()
-		if self.settings:toggle() then
-			if self.settingsRefs then self.settingsRefs.monitor.title = monitorTitle(self.settings.enabled) end
-		else self.service.showError("Could not save Settings", "Try again.") end
+		if not self.settings:toggle() then
+			setSwitch(self.settingsRefs and self.settingsRefs.monitor, self.settings.enabled)
+			self.service.showError("Could not save Settings", "Try again.")
+		end
 	end, function() self.service.openSettings() end, function() self.service.openSettings("privacy") end, self.model.includeMedia, function()
-		local message = self.mock and "Include the synthetic Photos, Music and Movies entries in this session? Mock HDD reads only its bundled fixture." or "Measuring Photos, Music and Movies requires enumerating their files. macOS may ask for access. Diskmap reads metadata only. Enable for this session?"
-		if self.model.includeMedia or self.service.confirmAction("Include media libraries", message) then
-			self.model.includeMedia = not self.model.includeMedia
-			if self.settingsRefs then self.settingsRefs.media.title = mediaTitle(self.model.includeMedia) end
+		if self.model.includeMedia then
+			self.model.includeMedia = false
 			self.scan:start()
+			return
+		end
+		local message = self.mock and "Include the synthetic Photos, Music and TV libraries in this session? Mock HDD reads only its bundled fixture." or "Measuring Photos, Music and TV libraries requires enumerating their files. macOS may ask for access. Diskmap reads metadata only. Enable for this session?"
+		if self.service.confirmAction("Include media libraries", message) then
+			self.model.includeMedia = true
+			self.scan:start()
+		else
+			setSwitch(self.settingsRefs and self.settingsRefs.media, false)
 		end
 	end)
 	data.actions.done = function() self:closeSettings() end
@@ -136,8 +149,6 @@ function Controller:mountDashboard()
 	self.page = Template.new(self.content, "apps/diskmap/views/Dashboard.etlua", ns)
 	local _, refs = self.page:update({
 		coverage = self.categories:coverage(self.scan.disk), status = self.scan.status, actions = {
-			openCategory = function() if self.inspector.selectedId then self:openManagement(self.inspector.selectedId) end end,
-			reclaim = function() self:openReclaim() end,
 			access = function() self.service.openSettings("privacy") end,
 		}})
 	self.refs = refs
@@ -159,11 +170,14 @@ function Controller:createWindow()
 			search = function(value) self.query = value; self:updateRows() end,
 			refresh = function() self.scan:start() end,
 			cancel = function() self.scan:cancel() end,
+			reclaim = function() self:openReclaim() end,
 			settings = function() self:openSettings() end,
 		}})
 	local content, contentRefs = render("ContentPane")
 	cfg.content = content; self.content = contentRefs.content
-	self.window = ns.Window(cfg); self.toolbarTitle = windowRefs.toolbarTitle; self.capacity = windowRefs.capacity
+	self.window = ns.Window(cfg)
+	self.toolbarTitle = windowRefs.toolbarTitle
+	self.capacity = windowRefs.capacity
 	self:mountDashboard()
 	local exportPath = Provider.exportPath(App.args())
 	if exportPath then

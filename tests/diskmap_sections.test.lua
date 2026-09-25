@@ -65,7 +65,7 @@ local _, refs = render("Dashboard", {title = "Storage categories", subtitle = "C
 	icon = "chart.pie.fill", color = "systemBlue", coverage = "Measuring", status = "Calculating…", actions = {}})
 t.assertEqual(refs.categoriesPanel.className, "NSBox", "category rows share a native rounded section")
 t.assertEqual(refs.opportunities, nil, "category pages do not repeat reclaim content")
-t.expect(not refs.openCategory.enabled, "category management waits for a selection")
+t.expect(refs.openCategory == nil, "a category opens from the list, not a trailing button")
 t.assertEqual(refs.inspector, nil, "category detail does not displace dashboard suggestions")
 t.expect(not refs.results.drawsBackground, "outline lets its native group background show through")
 refs.results:replaceRows({{id = "apps", name = "Applications", size = "Calculating…", calculating = true}})
@@ -78,13 +78,16 @@ t.expect(nameCell.textField.font.pointSize > buttons[1].font.pointSize, "only le
 
 local settings, settingsRefs = render("Settings", {monitoring = true, mediaEnabled = false, actions = {}})
 t.expect(settingsRefs ~= nil and settings ~= nil, "settings reorganized into concise groups still render")
+t.assertEqual(settingsRefs.monitor.className, "NSSwitch", "background checks use a switch")
+t.assertEqual(settingsRefs.monitor.state, 1, "background checks start enabled")
+t.assertEqual(settingsRefs.media.className, "NSSwitch", "media libraries use a switch")
+t.assertEqual(settingsRefs.media.state, 0, "media libraries start off")
 
-for _, height in ipairs({220, 500}) do
-	refs.categoriesPanel.size = ns.Size(400, height); refs.categoriesPanel:layout(400)
-	t.expect(refs.results.frame.size.height >= height - 20, "category list consumes group content height after resize")
-	t.expect(refs.results.frame.size.width <= 400, "category list stays within native group margins")
-	t.expect(not bridge._tableCell(refs.results, 1, 0).loadingIndicator.hidden, "section background preserves per-row loading")
-end
+refs.results.fixedHeight = 44
+refs.page.size = ns.Size(400, 500); refs.page:layout(400)
+t.expect(refs.results.frame.size.height < 80, "category rows keep their height instead of filling the window")
+t.expect(refs.results.frame.size.width <= 400, "category list stays within the page width")
+t.expect(not bridge._tableCell(refs.results, 1, 0).loadingIndicator.hidden, "section background preserves per-row loading")
 local empty = render("Opportunities", {groups = {{name = "Needs review", size = "0 KB", index = 1, rows = {}}}, actions = {}})
 t.expect(empty ~= nil, "empty review group renders")
 local overview, overviewRefs = render("Opportunities", {groups = {

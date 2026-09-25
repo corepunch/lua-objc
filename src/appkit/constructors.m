@@ -442,6 +442,18 @@ static int bridge_AppKitControls_button(lua_State *L) {
 static int bridge_AppKitControls_toggle(lua_State *L) {
 	const char *label = luaL_checkstring(L, 1);
 	BOOL is_on = (BOOL)lua_toboolean(L, 2);
+	const char *style = luaL_optstring(L, 4, "");
+
+	/* System Settings rows use NSSwitch. A titled checkbox remains the default. */
+	if (strcmp(style, "switch") == 0) {
+		NSSwitch *control = [[NSSwitch alloc] initWithFrame:NSZeroRect];
+		control.state = is_on ? NSControlStateValueOn : NSControlStateValueOff;
+		if (label[0]) control.accessibilityLabel = [NSString stringWithUTF8String:label];
+		[control sizeToFit];
+		configure_control_callback(control, L, 3);
+		push_objc(L, control, "nsview");
+		return 1;
+	}
 
 	NSButton *obj = [NSButton checkboxWithTitle:[NSString stringWithUTF8String:label] target:nil action:nil];
 	obj.state = is_on ? NSControlStateValueOn : NSControlStateValueOff;

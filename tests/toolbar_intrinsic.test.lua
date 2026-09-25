@@ -5,7 +5,7 @@ local xml = require("ui.xml")
 local config, refs = xml.render([[
 <Window title="Intrinsic toolbar" width="1000" height="640">
   <Toolbar>
-    <ToolbarItem id="summary" bordered="false">
+    <ToolbarItem id="summary" bordered="false" background="plain">
       <HStack id="summary" spacing="10" alignment="center">
         <SystemImage name="internaldrive" size="22" />
         <VStack spacing="2" alignment="leading">
@@ -20,6 +20,19 @@ local config, refs = xml.render([[
 </Window>
 ]], {}, ns)
 local window = ns.Window(config)
+window:layout()
+local host = refs.summary
+while host and host.className ~= "NSGlassContainerView" do host = host.superview end
+if host then
+	local clear = false
+	for _, subview in ipairs(host.subviews or {}) do
+		if subview.className:find("GlassEffect", 1, true) then
+			t.expect(subview.hidden, "plain toolbar title hides the glass capsule")
+			clear = true
+		end
+	end
+	t.expect(clear, "plain toolbar title finds its glass capsule")
+end
 t.assertEqual(ns.ToolbarItem(window, "search").className, "NSSearchToolbarItem", "search uses the native toolbar item")
 t.expect(refs.search.bezeled, "native search bezel remains enabled")
 local initial = refs.summary.size

@@ -56,7 +56,7 @@ function Categories.distribution(model, disk)
 	for _, row in ipairs(categories) do
 		local id = row.id
 		local bytes = row.bytes or 0; assigned = assigned + bytes
-		table.insert(segments, {id = id, name = id == "media" and "Photos" or row.name, color = id == "macos" and "secondary" or row.color,
+		table.insert(segments, {id = id, name = row.name, color = id == "macos" and "secondary" or row.color,
 			bytes = bytes, weight = bytes / total, size = row.size})
 	end
 	table.sort(segments, function(left, right)

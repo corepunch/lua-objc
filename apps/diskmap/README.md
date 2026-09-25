@@ -48,7 +48,7 @@ actions change only the provider's in-memory copy; restarting restores the
 fixture. Finder, owner apps, System Settings and real device commands are not
 launched. The real provider remains the default when the mock switch is absent.
 
-Every launch starts a fresh inventory. Photos, Music, Movies and known media support locations are excluded by default; opt in for the current session in Settings. Excluded sizes are unknown, never zero. Diskmap has no directory
+Every launch starts a fresh inventory. The category list follows macOS Storage: Applications, Trash, Books, Developer, Documents, iCloud Drive, iOS Files, Mail, Messages, Music, Music Creation, Photos, Podcasts, TV, Other Users & Shared, macOS and System Data, plus AI agents and snapshot backups. Photos, Music, TV and known media support locations are excluded by default; opt in for the current session in Settings. Excluded sizes are unknown, never zero. Diskmap has no directory
 argument or live scan-result cache. The explicit mock fixture is a synthetic
 filesystem for repeatable testing; use `--export-mock` to create a local snapshot
 of this Mac.
