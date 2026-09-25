@@ -21,6 +21,7 @@ See [object and state ownership](../ARCHITECTURE.md#object-and-state-ownership).
 | `appkit/navigation.m` / `uikit/navigation.m` | native page history and navigation stacks | `LuaPageController`, `LuaNavigationController` |
 | `appkit/views.m` | windows, stacks, splits, images, basic view creation | `bridge_window`, `LuaImageViewerView` |
 | `appkit/layout.m` | measurement, flex distribution, frame placement | `measure_view`, `layout_recursive` |
+| `appkit/scroll_view.m` | nested wheel routing and viewport resize preservation | `LuaScrollView` |
 | `appkit/controls.m` | buttons, tables, loading, refresh, selection | `bridge_button`, `bridge_tableview` |
 | `appkit/outline.m` | outline view and directory tree conversion | `bridge_outlineview`, `bridge_list_directory` |
 | `appkit/editor.m` | show/KVC helpers, text editor, symbol controls | `bridge_text_view`, `bridge_symbol_toggle` |

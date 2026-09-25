@@ -78,6 +78,42 @@ static int bridge_UIKitNavigation_push(lua_State *L) {
 	return 0;
 }
 
+static int bridge_UIKitNavigation_chrome(lua_State *L) {
+	UIViewController *controller = check_view_controller(L, 1);
+	UIView *titleView = lua_isnoneornil(L, 2) ? nil : check_view(L, 2);
+	LuaReg *readingSettings = lua_reg_opt(L, 3);
+	controller.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
+	if (titleView) {
+		CGSize size = measure_size(titleView, CGSizeMake(240, CGFLOAT_MAX));
+		titleView.frame = CGRectMake(0, 0, size.width, size.height);
+		layout_recursive(titleView, size.width);
+		controller.navigationItem.titleView = titleView;
+	}
+	if (readingSettings) {
+		UIImageSymbolConfiguration *symbol = [UIImageSymbolConfiguration
+			configurationWithPointSize:kNavigationSymbolPointSize
+			weight:UIImageSymbolWeightRegular];
+		UIImage *image = [[UIImage systemImageNamed:@"textformat.size"]
+			imageByApplyingSymbolConfiguration:symbol];
+		UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithImage:image
+			style:UIBarButtonItemStylePlain target:[LuaButtonTarget shared]
+			action:@selector(onAction:)];
+		item.accessibilityLabel = @"Reading settings";
+		objc_setAssociatedObject(item, &kCallbackKey, readingSettings,
+			OBJC_ASSOCIATION_RETAIN);
+		controller.navigationItem.rightBarButtonItem = item;
+	}
+	/* The system back button is the previous screen's item. Keep it a
+	 * chevron circle in that same leading slot. */
+	UINavigationController *navigation = controller.navigationController;
+	if (navigation.viewControllers.count >= 2) {
+		UIViewController *previous = navigation.viewControllers[navigation.viewControllers.count - 2];
+		previous.navigationItem.backButtonDisplayMode = UINavigationItemBackButtonDisplayModeMinimal;
+		previous.navigationItem.backButtonTitle = @"";
+	}
+	return 0;
+}
+
 static int bridge_UIKitNavigation_pop(lua_State *L) {
 	UINavigationController *nav = (UINavigationController *)check_objc(L, 1);
 	[nav popViewControllerAnimated:!UIAccessibilityIsReduceMotionEnabled()];

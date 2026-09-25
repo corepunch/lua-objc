@@ -352,7 +352,7 @@ local sourceTree = ns.OutlineView {
 		{ name = "main.lua" },
 	},
 }
-t.assertEqual(sourceTree.className, "NSScrollView",
+t.assertEqual(sourceTree.className, "LuaScrollView",
 	"source list leaves sidebar material to NSSplitViewController")
 t.expect(not sourceTree.drawsBackground,
 	"source list remains transparent over native sidebar glass")
@@ -895,7 +895,7 @@ local mailbox = ns.List {
 		{ name = "Sent",   count = "" },
 	},
 }
-t.assertEqual(mailbox.className, "NSScrollView",
+t.assertEqual(mailbox.className, "LuaScrollView",
 	"source-list tables do not insert a visual-effect wrapper")
 t.expect(not mailbox.drawsBackground,
 	"source-list table scroll view is transparent")

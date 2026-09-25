@@ -173,6 +173,10 @@ function UIKit.Preview(props)
 	return applyLayout(bridge._preview(), props or {})
 end
 
+function UIKit.installNavigationChrome(controller, titleView, readingSettings)
+	bridge._navigationChrome(controller, titleView, readingSettings)
+end
+
 function UIKit.HostingController(view, onDisappear, props)
 	props = props or {}
 	local controller = bridge._hostingController(view, onDisappear,

@@ -1,6 +1,6 @@
 <Window title="<%= windowTitle or "Diskmap" %>" hideTitle="true" width="700" height="720" minWidth="620" minHeight="640">
   <Toolbar>
-    <ToolbarItem id="drive" label="Storage" bordered="false" background="plain">
+    <ToolbarItem id="drive" label="Storage" bordered="false">
       <HStack id="toolbarTitle" spacing="8" alignment="center">
         <SystemImage name="internaldrive" size="18" color="secondary" />
         <VStack spacing="1" alignment="leading">

@@ -1,0 +1,4 @@
+<VStack spacing="1" alignment="center" width="220">
+  <Label id="sessionTitle" text="<%= gameTitle %>" size="17" weight="semibold" lines="1" alignment="center" maxWidth="infinity" />
+  <Label id="progress" text="<%= progress %>" size="11" color="secondary" lines="1" alignment="center" maxWidth="infinity" />
+</VStack>

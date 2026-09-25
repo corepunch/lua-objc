@@ -74,6 +74,7 @@ function Controller:show(id)
 	local presentation = self.model:presentation()
 	presentation.speechAvailable = speechAvailable
 	presentation.compassSegments = CompassGesture.segments()
+	presentation.systemNavigation = self.ns.platform == "UIKit"
 	presentation.actions = actions
 	self.view, self.refs = self.push("Session", presentation, game.title)
 	self.refs.input.accessibilityLabel = "Command"

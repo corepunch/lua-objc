@@ -4,25 +4,9 @@ static const char kToolbarFieldDelegateKey;
 static const char kToolbarContentKey;
 static void toolbar_size_content(NSView *view);
 
-/* macOS 26 draws a glass capsule around every toolbar item. background="plain"
- * hides that effect and leaves the item's own view. */
 @interface LuaToolbarItem : NSToolbarItem
-@property (nonatomic) BOOL plainBackground;
 @end
 @implementation LuaToolbarItem
-- (void)applyPlainBackground {
-	if (!self.plainBackground || !self.view) return;
-	// macOS 26 wraps the item in a glass container. Hide that effect view only;
-	// the label stays in the sibling content view.
-	for (NSView *view = self.view; view; view = view.superview) {
-		if (![NSStringFromClass(view.class) isEqualToString:@"NSGlassContainerView"]) continue;
-		for (NSView *subview in view.subviews) {
-			if ([NSStringFromClass(subview.class) containsString:@"GlassEffect"])
-				subview.hidden = YES;
-		}
-		break;
-	}
-}
 - (void)setView:(NSView *)view {
 	if (self.view) objc_setAssociatedObject(self.view, &kToolbarContentKey, nil, OBJC_ASSOCIATION_RETAIN);
 	if (view) {
@@ -30,17 +14,8 @@ static void toolbar_size_content(NSView *view);
 		toolbar_size_content(view);
 	}
 	[super setView:view];
-	[self applyPlainBackground];
 }
 @end
-
-void lua_toolbar_apply_plain(NSToolbar *toolbar) {
-	if (!toolbar) return;
-	for (NSToolbarItem *item in toolbar.items) {
-		if ([item isKindOfClass:LuaToolbarItem.class])
-			[(LuaToolbarItem *)item applyPlainBackground];
-	}
-}
 
 @interface LuaToolbarFieldDelegate : NSObject <NSTextFieldDelegate>
 @property (nonatomic, strong) LuaReg *submitReg;
@@ -152,7 +127,9 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 
 	for (NSDictionary *item in _items) {
 		if ([toolbar_item_identifier(item[@"id"]) isEqualToString:identifier]) {
-			NSToolbarItem *ti = [item[@"type"] isEqualToString:@"search"]
+			NSView *content = item[@"view"];
+			NSToolbarItem *ti = ([item[@"type"] isEqualToString:@"search"]
+				|| [content isKindOfClass:NSSearchField.class])
 				? [[NSSearchToolbarItem alloc] initWithItemIdentifier:identifier]
 				: [[LuaToolbarItem alloc] initWithItemIdentifier:identifier];
 			ti.label = item[@"label"] ?: identifier;
@@ -160,15 +137,31 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 			ti.toolTip = item[@"tooltip"];
 			ti.autovalidates = NO;
 			ti.enabled = YES;
-			if ([item[@"background"] isEqualToString:@"plain"] && [ti isKindOfClass:LuaToolbarItem.class]) {
-				((LuaToolbarItem *)ti).plainBackground = YES;
-				ti.bordered = NO;
-				ti.style = NSToolbarItemStylePlain;
-			}
+			// AppKit chooses the glass grouping when the item is inserted. Both
+			// the border policy and custom content must be configured beforehand.
+			if (item[@"bordered"]) ti.bordered = [item[@"bordered"] boolValue];
 			if (item[@"visibilityPriority"])
 				ti.visibilityPriority = [item[@"visibilityPriority"] integerValue];
 
-			if ([ti isKindOfClass:NSSearchToolbarItem.class]) return ti;
+			if ([ti isKindOfClass:NSSearchToolbarItem.class]) {
+				if (content) {
+					NSSearchToolbarItem *search = (NSSearchToolbarItem *)ti;
+					search.searchField = (NSSearchField *)content;
+					NSNumber *width = objc_getAssociatedObject(content, &kKeys[kFixedWidthKey]);
+					if (width) search.preferredWidthForSearchField = width.doubleValue;
+				}
+				return ti;
+			}
+			LuaReg *actionReg = item[@"actionReg"];
+			if (actionReg) {
+				lua_reg_store(ti, &kKeys[kCallbackKey], actionReg);
+				ti.target = [LuaButtonTarget shared];
+				ti.action = @selector(onAction:);
+			}
+			if (content) {
+				ti.view = content;
+				return ti;
+			}
 
 			// ── Field item ────────────────────────────────────────────────
 			if ([item[@"type"] isEqualToString:@"field"]) {
@@ -200,12 +193,7 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 										accessibilityDescription:ti.label];
 			}
 
-			LuaReg *actionReg = item[@"actionReg"];
 			if (actionReg) {
-				lua_reg_store(ti, &kKeys[kCallbackKey], actionReg);
-				ti.target = [LuaButtonTarget shared];
-				ti.action = @selector(onAction:);
-
 				NSButton *btn = [[NSButton alloc] initWithFrame:NSZeroRect];
 				btn.bezelStyle = NSBezelStyleToolbar;
 				btn.image = img;

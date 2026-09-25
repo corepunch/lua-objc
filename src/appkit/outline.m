@@ -136,7 +136,7 @@ static int bridge_outlineview(lua_State *L) {
 		initWithOutlineView:ov columns:colSpecs];
 	src.owner = owner_for_state(L);
 
-	NSScrollView *sv = [[NSScrollView alloc]
+	NSScrollView *sv = [[LuaScrollView alloc]
 		initWithFrame:NSMakeRect(0, 0, width, height)];
 	sv.documentView = ov;
 	sv.clipsToBounds = YES;

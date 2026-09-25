@@ -93,9 +93,16 @@ static int bridge_window(lua_State *L) {
 
 			lua_pop(L, 1);
 
-			lua_getfield(L, -3, "background");
-			const char *background = lua_tostring(L, -1);
-			if (background) dict[@"background"] = [NSString stringWithUTF8String:background];
+			lua_getfield(L, -3, "bordered");
+			if (!lua_isnil(L, -1)) dict[@"bordered"] = @(lua_toboolean(L, -1));
+			lua_pop(L, 1);
+
+			lua_getfield(L, -3, "view");
+			if (!lua_isnil(L, -1)) dict[@"view"] = check_view(L, -1);
+			lua_pop(L, 1);
+
+			lua_getfield(L, -3, "visibilityPriority");
+			if (lua_isnumber(L, -1)) dict[@"visibilityPriority"] = @(lua_tointeger(L, -1));
 			lua_pop(L, 1);
 
 			lua_getfield(L, -3, "tooltip");

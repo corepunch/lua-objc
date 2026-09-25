@@ -75,6 +75,8 @@ t.assertEqual(rendered.refs.description.text, catalog:list()[1].description, "de
 click("play")
 t.assertEqual(controller.navigation.depth, 3, "detail play opens session")
 t.assertEqual(rendered.refs.sessionTitle.text, catalog:list()[1].title, "session header retains the game title")
+t.expect(rendered.refs.back.className:find("Glass", 1, true) ~= nil,
+	"back button is a system glass circle")
 local compassParent = rendered.refs.compassControl.superview
 local reachesOverlay, entersInset = false, false
 while compassParent do
@@ -109,10 +111,21 @@ t.assertEqual(rendered.refs.input.text, "", "send clears input")
 t.assertEqual(rendered.refs.progress.text, "Score 0 | Moves 1", "session refreshes progress after a command")
 local compassDrag = drags[rendered.refs.compassControl]
 t.expect(type(compassDrag) == "function", "compass binds the native drag gesture")
+t.assertEqual(rendered.refs.compassExit_north.strokeAlpha, 1, "compass marks the north exit")
+t.assertEqual(rendered.refs.compassExit_east.strokeAlpha, 0, "compass hides exits the player cannot take")
+t.assertEqual(rendered.refs.compassTrack.stroke, "secondary", "compass keeps the full direction ring")
 if compassDrag then
+	compassDrag({ state = "changed", translation = { x = 0, y = 24 } })
+	t.assertEqual(rendered.refs.compassDrag_north.strokeAlpha, 1, "dragging north highlights that section")
+	t.assertEqual(rendered.refs.compassDrag_north.stroke, "accent", "an available drag uses the accent section")
+	t.expect(rendered.refs.compassImage.offsetY < 0, "compass follows a north drag")
 	compassDrag({ state = "ended", translation = { x = 0, y = 24 } })
 	t.expect(rendered.refs.output.text:find("> go north", 1, true), "compass drag submits an available direction")
+	t.assertEqual(rendered.refs.compassDrag_north.strokeAlpha, 0, "releasing the compass clears the highlight")
+	t.assertEqual(rendered.refs.compassImage.offsetY, 0, "released compass returns to center")
 	local compassTranscript = rendered.refs.output.text
+	compassDrag({ state = "changed", translation = { x = 24, y = 0 } })
+	t.assertEqual(rendered.refs.compassDrag_east.stroke, "tertiary", "an unavailable drag uses the tertiary section")
 	compassDrag({ state = "ended", translation = { x = 24, y = 0 } })
 	t.assertEqual(rendered.refs.output.text, compassTranscript, "compass ignores unavailable directions")
 end
@@ -166,6 +179,17 @@ local empty = Controller.new { adventures = Adventures.new { games = {} }, sessi
 empty:home()
 t.expect(rendered.refs.emptyCatalog ~= nil, "empty model renders the etlua empty state")
 t.assertEqual(empty.navigation.depth, 1, "empty catalog retains navigation root")
+local _, systemRefs = renderFile("apps/adventure-arena/views/Session.etlua", {
+	systemNavigation = true, gameTitle = "Zork", gameDescription = "A story",
+	roomTitle = "Gate", transcript = "Hello", progress = "Score 0 | Moves 0",
+	speechAvailable = false, actions = {}, availableDirections = {}, compassSegments = {},
+}, ns)
+t.expect(systemRefs.back == nil, "the navigation bar owns the back button")
+local _, titleRefs = renderFile("apps/adventure-arena/views/SessionTitle.etlua", {
+	gameTitle = "Zork", progress = "Score 0 | Moves 0",
+}, ns)
+t.assertEqual(titleRefs.sessionTitle.text, "Zork", "navigation title keeps the game name")
+t.assertEqual(titleRefs.progress.text, "Score 0 | Moves 0", "navigation title keeps the score")
 ns.Button, ns.Menu, ns._addDrag, xml.renderFile = button, menu, addDrag, renderFile
 
 os.exit(t.summary() and 0 or 1)

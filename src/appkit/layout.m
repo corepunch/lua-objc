@@ -1189,9 +1189,6 @@ static int bridge_object_layout_impl(lua_State *L) {
 		break;
 	}
 	layout_recursive(view, width);
-	// Apply after AppKit configures toolbar viewers, or the glass capsule comes back.
-	void lua_toolbar_apply_plain(NSToolbar *toolbar);
-	lua_toolbar_apply_plain(view.window.toolbar);
 	return 0;
 }
 

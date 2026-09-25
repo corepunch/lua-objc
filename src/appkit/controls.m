@@ -238,7 +238,7 @@ static int bridge_tableview(lua_State *L) {
 																   columns:colSpecs];
 	src.owner = owner_for_state(L);
 
-	NSScrollView *sv = [[NSScrollView alloc] initWithFrame:NSMakeRect(0, 0, width, height)];
+	NSScrollView *sv = [[LuaScrollView alloc] initWithFrame:NSMakeRect(0, 0, width, height)];
 	sv.clipsToBounds = YES;
 	sv.contentView.clipsToBounds = YES;
 	sv.documentView = tv;

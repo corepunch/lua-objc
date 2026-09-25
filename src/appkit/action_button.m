@@ -39,9 +39,9 @@ typedef struct {
 } NameValueEntry;
 
 static NameValueEntry GridLinesMap[] = {
-	{@"horizontal", 1},
-	{@"vertical",   2},
-	{@"both",       3},
+	{@"horizontal", NSTableViewSolidHorizontalGridLineMask},
+	{@"vertical",   NSTableViewSolidVerticalGridLineMask},
+	{@"both",       NSTableViewSolidHorizontalGridLineMask | NSTableViewSolidVerticalGridLineMask},
 	{nil, 0}
 };
 

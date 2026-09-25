@@ -371,6 +371,7 @@ static void arc_add_clockwise(UIBezierPath *path, CGPoint center, CGFloat radius
 @property(nonatomic) CGFloat strokeAlpha;
 @property(nonatomic, copy) NSString *stroke;
 @property(nonatomic, copy) NSString *lineCap;
+- (UIBezierPath *)arcPath;
 @end
 
 @implementation LuaArcView

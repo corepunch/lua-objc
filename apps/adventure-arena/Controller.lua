@@ -65,9 +65,15 @@ function Controller:push(template, data, title)
 	end
 	local hostingController = self.ns.HostingController(view, onDisappear, {
 		hidesTabBar = template == "Session",
-		hidesNavigationBar = template == "Session",
 	})
 	self.navigation:push(hostingController, title)
+	if data.systemNavigation and self.ns.installNavigationChrome then
+		local titleView, titleRefs = xml.renderFile(
+			"apps/adventure-arena/views/SessionTitle.etlua", data, self.ns)
+		for key, value in pairs(titleRefs) do refs[key] = value end
+		self.ns.installNavigationChrome(hostingController, titleView,
+			data.actions and data.actions.readingSettings)
+	end
 	return view, refs
 end
 

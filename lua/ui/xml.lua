@@ -1128,7 +1128,6 @@ local TAG_SCHEMA = {
             tooltip = { default = "", type = "str" },
             action  = "str",
             bordered = "bool",
-            background = "str",
             visibilityPriority = "num",
         },
         collect = function(rec, children)

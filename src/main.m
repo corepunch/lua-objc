@@ -234,6 +234,7 @@ static void bridge_set_optional_callback(
 #include "shared/flow_layout.m"
 #include "appkit/layout.m"
 #include "appkit/layout_debug.m"
+#include "appkit/scroll_view.m"
 #include "appkit/controls.m"
 #include "appkit/outline.m"
 #include "appkit/editor.m"
@@ -275,6 +276,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_flowStack", bridge_AppKitControls_flowStack},
 	{"_zstack", bridge_AppKitControls_zstack},
 	{"_scrollView", bridge_AppKitControls_scrollView},
+	{"_testScrollWheel", bridge_test_scroll_wheel},
 	{"_hsplit", bridge_AppKitControls_hsplit},
 	{"_vsplit", bridge_AppKitControls_vsplit},
 	{"_separator", bridge_AppKitControls_separator},

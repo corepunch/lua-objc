@@ -54,6 +54,7 @@ static char kButtonContentKey;
 static char kVisualEffectContentKey;
 static const CGFloat kImageMaxWidth = 400.0;
 static const CGFloat kMenuSymbolPointSize = 17.0;
+static const CGFloat kNavigationSymbolPointSize = 22.0;
 static const CGFloat kStackSpacing = 8.0;
 static const CGFloat kHostLayoutEdgeTolerance = 1.0;
 static const CGFloat kArcFullCircleDegrees = 359.0;
@@ -224,6 +225,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_tabViewTabCount", bridge_UIKitTabView_tabCount},
 	{"_tabViewOnChange", bridge_UIKitTabView_onChange},
 	{"_navigationStack", bridge_UIKitNavigation_stack},
+	{"_navigationChrome", bridge_UIKitNavigation_chrome},
 	{"_navigationPalette", bridge_UIKitNavigation_palette},
 	{"_benchmarkScroll", bridge_UIKitBenchmark_scroll},
 	{"_benchmarkStart", bridge_UIKitBenchmark_start},
