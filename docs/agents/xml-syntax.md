@@ -72,6 +72,19 @@ button label closure and follows WPF's content-control convention:
 Use `ZStack alignment="bottomLeading"` to position naturally sized overlay
 content; do not stretch it and add a spacer just to position it at the bottom.
 
+Layout modifiers shared by visual tags (SwiftUI-style, as attributes):
+
+| Attribute | SwiftUI | Values |
+|---|---|---|
+| `background` | `.background(.black)` | semantic color name (`black`, `systemBackground`, …) |
+| `ignoresSafeArea` | `.ignoresSafeArea()` | `top`, `bottom`, `all`. `true` / `edges` mean `all` |
+| `cornerRadius` / `clipsToBounds` | `.clipShape` | number / bool |
+| `hidden` | `.hidden()` | bool |
+
+`.ignoresSafeArea()` with no edges argument is `ignoresSafeArea="all"`. The
+hosting controller then skips top and bottom safe-area padding so a full-bleed
+hero or mesh can sit under the status bar and home indicator.
+
 The removed `fillWidth`, `fillHeight`, `fixedWidth`, and `fixedHeight`
 attributes are errors. These names belong to native layout storage, not the
 XML vocabulary. `Window` and `Column` retain their own dimension properties.
@@ -80,7 +93,7 @@ XML vocabulary. `Window` and `Column` retain their own dimension properties.
 
 | Tag | Purpose | Important attributes |
 |---|---|---|
-| `Window` | Window configuration and root content | `title`, `width`, `height`, `minWidth`, `minHeight`, `maxWidth`, `maxHeight`, `appearance`, `tabbingMode`, `tabbingIdentifier`, `toolbarLabels`, `visible`, `sidebarWidth` |
+| `Window` | Window configuration and root content | `title`, `width`, `height`, `minWidth`, `minHeight`, `maxWidth`, `maxHeight`, `appearance`, `tabbingMode`, `tabbingIdentifier`, `toolbarLabels`, `visible`, `sidebarWidth`, `background`, `ignoresSafeArea` |
 | `VStack` | Vertical native stack | `padding`, `paddingHorizontal`, `paddingVertical`, `spacing`, `alignment`, `flexGrow`, `flexShrink`, `width`, `height`, `minWidth`, `minHeight`, `maxWidth`, `maxHeight`, `hidden` |
 | `HStack` | Horizontal native stack | Same layout attributes as `VStack` |
 | `LazyVStack` | Virtualized native vertical collection | `rowHeight`, `spacing`, `reorderable`, `reorderContainer`, plus layout attributes |
@@ -88,8 +101,14 @@ XML vocabulary. `Window` and `Column` retain their own dimension properties.
 | `Grid` / `FlowStack` | Eager grid / wrapping layout | `spacing`, `reorderable`, `reorderContainer`, plus layout attributes |
 | `HSplit` | Horizontal split container | Same layout attributes as `VStack`; use `Window sidebar/content` for a window-level sidebar |
 | `ScrollView` | Native scroll container for one content child | `contentWidth`, `contentHeight`, `horizontal`, `vertical`, plus layout attributes |
+| `SafeAreaInset` | Pins a child to a safe-area edge (composer, CTA) | `edge` (`bottom`), `minimumBottomInset` |
+| `ZStack` | Layers children in one rectangle | `alignment`, plus layout attributes |
 | `Spacer` | Flexible spacing view | Layout attributes |
 | `Divider` | Native separator | `orientation`, plus layout attributes |
+| `GlassEffect` | iOS/macOS 26 system liquid glass | `style` (`regular`/`clear`), `cornerRadius`, `interactive` |
+| `GlassEffectContainer` | Merges neighboring glass surfaces | `spacing` |
+| `MaterialView` | System material / blur chrome | `material` |
+| `TimelineView` | Applies a schedule to its child | `schedule` (`animation` starts a display-link MeshGradient) |
 
 Stacks contain child tags. `Window` may contain one content view, multiple
 content views, and a `Toolbar` block. It returns window configuration to the
@@ -119,6 +138,10 @@ are parsed up front, but native views are created only for visible cells.
 | `Image` | Native image view or SF Symbol | `src`/`path`, or `system`/`symbol`; `label`, `size`, `weight`, `color`, `resizable`, `contentMode` |
 | `SystemImage` | Native SF Symbol image | `name` or `symbol`, `label`, `size`, `weight`, `color` |
 | `Chart` | Pre-built chart supplied in render data | `data` key, default `chart` |
+| `LinearGradient` | Vertical wash used as a fill | `topAlpha`, `middleAlpha`, `middleLocation`, `bottomAlpha` |
+| `MeshGradient` | Grid of colored control points (SwiftUI `MeshGradient`) | `width`, `height`, `animated`; children are `MeshPoint` |
+| `MeshPoint` | One control point consumed by `MeshGradient` | `x`, `y` in 0…1; `red`, `green`, `blue`, `alpha` |
+| `SearchField` | Native search field | `value`/`text`, `placeholder`, `onChange` |
 
 XML callbacks are normally attached in the controller after rendering. Keep
 business logic out of templates. For a button or toggle whose callback must be
@@ -127,6 +150,41 @@ rebuild the surrounding view tree in the controller.
 
 `Slider`, `Stepper`, and `Picker` are currently AppKit-only. Do not place them
 in a template that must render on UIKit until matching UIKit controls exist.
+
+Full-bleed animated mesh (SwiftUI `TimelineView(.animation)` + `MeshGradient`
++ `.ignoresSafeArea()` + `.background(.black)`):
+
+```xml
+<Window background="black" ignoresSafeArea="all">
+  <TimelineView schedule="animation" ignoresSafeArea="all" background="black">
+    <MeshGradient width="3" height="3" animated="true">
+      <MeshPoint x="0" y="0" red="0.01" green="0.01" blue="0.03" />
+      <MeshPoint x="0.5" y="0.5" red="0.85" green="0.78" blue="1.00" />
+      <MeshPoint x="1" y="1" red="0.01" green="0.02" blue="0.05" />
+    </MeshGradient>
+  </TimelineView>
+</Window>
+```
+
+`width` × `height` is the control-point grid (minimum 2×2). Coordinates are
+normalized. `animated="true"` or `TimelineView schedule="animation"` moves the
+interior points on a display link; corner points stay pinned. See
+`demo/mesh-gradient` and [mesh gradient](../reference/mesh-gradient.md).
+
+Glass composer (SwiftUI `.glassEffect()` around a text field):
+
+```xml
+<SafeAreaInset edge="bottom">
+  <ScrollView><!-- thread --></ScrollView>
+  <GlassEffect style="regular" cornerRadius="24">
+    <HStack spacing="8" padding="8">
+      <Button systemImage="plus" style="plain" accessibilityLabel="Attach" />
+      <TextField style="plain" placeholder="Type a message…" />
+      <Button systemImage="arrow.up.circle.fill" style="plain" />
+    </HStack>
+  </GlassEffect>
+</SafeAreaInset>
+```
 
 ```xml
 <Slider min="0" max="100" value="60" tickMarks="6" />
@@ -146,6 +204,10 @@ in a template that must render on UIKit until matching UIKit controls exist.
 | `Column` | Child column descriptor consumed by `List` | `id`, `title`, `width`, `minWidth`, `alignment` |
 | `Toolbar` | Toolbar item collection consumed by `Window` | No attributes |
 | `ToolbarItem` | Native toolbar descriptor; accepts at most one view child as its custom control | `id`, `label`, `icon`, `tooltip`, `action`, `bordered` |
+| `NavigationStack` | UIKit navigation stack | `title`, `largeTitle`, `hidesNavigationBar`, `hidesTabBar` |
+| `NavigationLink` | Pushes a destination | `value`, `destination`, `title` |
+| `Sheet` | Sheet content (presented from the controller) | `width`, `height` |
+| `TabView` / `Tab` | Native tabs | `style`, `selected`, `title`, `systemImage` |
 
 A `List` requires at least one `Column`. Rows are supplied by the controller at
 runtime with `list:replaceRows(rows)`. Use `style="sourceList"` for sidebar
