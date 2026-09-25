@@ -16,6 +16,13 @@ def device(identifier, kind='iPad', reality='physical'):
 
 
 class DiscoveryTests(unittest.TestCase):
+    def test_xcode_app_declares_exempt_encryption(self):
+        from pathlib import Path
+        import plistlib
+
+        info = plistlib.loads(Path('ios/AdventureArena/Info.plist').read_bytes())
+        self.assertIs(info['ITSAppUsesNonExemptEncryption'], False)
+
     def test_release_tag_sets_archive_version(self):
         from tempfile import TemporaryDirectory
         from pathlib import Path
