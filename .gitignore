@@ -5,3 +5,5 @@ __pycache__/
 node_modules
 # MkDocs build output; published via the existing web/ Pages deploy.
 web/docs/
+**/xcuserdata/
+**/xcshareddata/xcodecloud/manifest.json
