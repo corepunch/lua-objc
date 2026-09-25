@@ -133,8 +133,8 @@ t.assertEqual(ui.navigation, nil, "category list is the only destination")
 t.expect(ui.refs.openReclaim == nil and ui.refs.openCategory == nil, "the storage list has no trailing command buttons")
 local categoryRows = ui.refs.results.rowCount
 ui:openReclaim()
-t.expect(ui.reclaimSheet ~= nil, "suggested cleanups open in a sheet")
-t.expect(ui.reclaimRefs.opportunities ~= nil and ui.reclaimRefs.tips ~= nil, "cleanup sheet owns opportunities and tips")
+t.expect(ui.reclaim.sheet ~= nil, "suggested cleanups open in a sheet")
+t.expect(ui.reclaim.refs.opportunities ~= nil and ui.reclaim.refs.tips ~= nil, "cleanup sheet owns opportunities and tips")
 t.assertEqual(ui.refs.results.rowCount, categoryRows, "cleanup sheet leaves the category list in place")
 ui.capacity.text = "stale"
 ui:updateRows()
@@ -144,20 +144,20 @@ t.expect(ui.refs.results.fixedHeight >= categoryRows * 44, "category rows extend
 local filteredReclaim = ui.cleanup:presentation("DerivedData")
 t.assertEqual(#filteredReclaim.groups[1].rows, 1, "cleanup search finds a matching measured candidate")
 t.assertEqual(#ui.cleanup:presentation("no match").groups[1].rows, 0, "cleanup search can show an empty group")
-local scroll = ui.reclaimRefs.opportunitiesScroll
+local scroll = ui.reclaim.refs.opportunitiesScroll
 local function atTop()
 	return math.abs(scroll.documentView.size.height - scroll.contentSize.height - scroll.contentView.bounds.origin.y) < 1
 end
 t.expect(atTop(), "new opportunity content starts at top")
 ui:updateRows(); t.expect(atTop(), "unchanged model preserves scroll position")
-ui:closeReclaim()
-t.assertEqual(ui.reclaimSheet, nil, "closing cleanups returns to the category list")
-t.assertEqual(ui.opportunities, nil, "closing cleanups removes the suggestion list")
+ui.reclaim:close()
+t.assertEqual(ui.reclaim.sheet, nil, "closing cleanups returns to the category list")
+t.assertEqual(ui.reclaim.opportunities, nil, "closing cleanups removes the suggestion list")
 t.assertEqual(ui.refs.results.rowCount, categoryRows, "category rows remain after closing cleanups")
 ui:openSettings()
-t.expect(ui.settingsSheet ~= nil and ui.settingsRefs.monitor ~= nil, "settings open in a sheet")
+t.expect(ui.settings.sheet ~= nil and ui.settings.refs.monitor ~= nil, "settings open in a sheet")
 t.assertEqual(ui.refs.results.rowCount, categoryRows, "settings leave the category list in place")
-ui:closeSettings()
+ui.settings:close()
 t.assertEqual(ui.refs.coveragePanel.frame.size.width, ui.refs.categoriesPanel.frame.size.width, "scan status and categories use one content column")
 t.assertEqual(ui.refs.access.title, "Scan access…", "access settings are offered without implying Full Disk Access is required")
 ui.model.scan.errors = 7; ui:updateRows()

@@ -41,9 +41,11 @@ function Controller:sortBy(column)
 	self:update()
 end
 function Controller:close()
-	if self.sheet then ns.dismiss(self.sheet); self.sheet = nil end
-	if self.scope then self.scope:close(); self.scope = nil end
-	self.refs = nil
+	if self.sheet then ns.dismiss(self.sheet) end
+	self.sheet, self.refs = nil, nil
+end
+function Controller:disableActions()
+	self.refs.manage.enabled = false; self.refs.reveal.enabled = false; self.refs.keep.enabled = false
 end
 function Controller:updateCategory()
 	if not self.refs or not self.refs.categoryText then return end
@@ -87,20 +89,22 @@ function Controller:update()
 		if index == 1 then total = #rows end
 	end
 	self.refs.status.text = total == 0 and "No matching resources. Try another name or path." or total .. " resources · Review amounts are not guaranteed reclaimable space."
-	self.refs.manage.enabled = false; self.refs.reveal.enabled = false; self.refs.keep.enabled = false
+	self:disableActions()
 	self.selectedId = nil
 	if selectionVisible then self:select(selected) end
 end
 function Controller:open(parent, id, filter)
 	self:close(); self.rootId = id; self.query = ""
 	self.filters = {"All", "Safe/rebuildable", "Needs review", "Essential to keep"}
-	self.scope = ns.Scope.new()
-	ns.Scope.withScope(self.scope, function()
-		self.sheet, self.refs = xml.renderFile("apps/diskmap/views/Management.etlua", {
+	self.sheet, self.refs = ns.presentSheet(function()
+		local sheet, refs = xml.renderFile("apps/diskmap/views/Management.etlua", {
 			title = self.model.resources:find(id) and self.model.resources:find(id).name or "Safe reclaim potential",
 			category = Inspector.details(self.model, id), filters = self.filters,
 			actions = {
 				search = function(value) self.query = value; self:update() end,
+				select = function(_, _, row) if row then self:select(row.id) end end,
+				sort = function(_, column) self:sortBy(column) end,
+				tabChanged = function() self.selectedId = nil; self:disableActions() end,
 				done = function() self:close() end,
 				categoryRefresh = function() self.refresh() end,
 				categoryKeep = function() self.keep(self.rootId); self:updateCategory() end,
@@ -114,16 +118,11 @@ function Controller:open(parent, id, filter)
 					inspector:select(row.id); inspector:manage()
 				end,
 			}}, ns)
-		self.refs.done.keyEquivalent = "\r"
-		self.sheet.defaultButtonCell = self.refs.done.cell
-		for index in ipairs(self.filters) do
-			local list = self.refs["rows" .. index]
-			list:onRowSelect(function(_, _, row) if row then self:select(row.id) end end)
-			list:onColumnSort(function(_, column) self:sortBy(column) end)
-		end
-		self.refs.tabs:onChange(function() self.selectedId = nil; self.refs.manage.enabled = false; self.refs.reveal.enabled = false; self.refs.keep.enabled = false end)
-	end)
-	self:update()
+		self.sheet, self.refs = sheet, refs
+		self:update()
+		if filter then for index, name in ipairs(self.filters) do if name == filter then refs.tabs:selectTab(index - 1) end end end
+		return sheet, refs
+	end, {parent = parent})
 	if id == "system-data" and self.service.snapshotCount then
 		local sheet = self.sheet
 		self.service.snapshotCount(function(count, dates)
@@ -137,7 +136,5 @@ function Controller:open(parent, id, filter)
 			self.sheet:layout()
 		end)
 	end
-	if filter then for index, name in ipairs(self.filters) do if name == filter then self.refs.tabs:selectTab(index - 1) end end end
-	ns.presentSheet(self.sheet, parent); ns.focus(self.sheet, self.refs.search)
 end
 return Controller

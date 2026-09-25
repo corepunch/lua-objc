@@ -221,8 +221,8 @@ static int bridge_read_file(lua_State *L) {
 			userInfo:@{NSLocalizedDescriptionKey: @"class has no new()"}];
 		return NO;
 	}
-	lua_pushvalue(_L, -2);
-	if (lua_pcall(_L, 1, 1, 0) != LUA_OK) {
+	/* class.new() takes no arguments; see src/main.m. */
+	if (lua_pcall(_L, 0, 1, 0) != LUA_OK) {
 		if (error) *error = [self luaError:@"new"];
 		return NO;
 	}

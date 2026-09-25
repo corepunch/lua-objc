@@ -1,0 +1,4 @@
+<VStack>
+  <Label text="Measured <%= count %> cases" />
+  <Label text="<%= runId %>" />
+</VStack>

@@ -32,7 +32,7 @@
             </Menu>
             <GlassEffect style="regular" cornerRadius="26" maxWidth="infinity">
               <HStack paddingLeading="16" paddingTrailing="5" spacing="8" minHeight="52">
-                <TextField id="input" placeholder="What do you want to do?" style="plain" maxWidth="infinity" onChange="inputChanged" onCommand="inputCommand" onFocus="inputFocused" />
+                <TextField id="input" placeholder="What do you want to do?" accessibilityLabel="Command" style="plain" maxWidth="infinity" onChange="inputChanged" onCommand="inputCommand" onFocus="inputFocused" />
                 <% if speechAvailable then %>
                 <Button id="dictate" title="" systemImage="mic" symbolSize="22" accessibilityLabel="Dictate command" action="dictate" style="plain" width="38" height="44" />
                 <% end %>

@@ -338,6 +338,23 @@ local function coerce(v)
     return v
 end
 
+-- Event attributes name controller actions. When a controller supplies
+-- actions, a misspelt name fails at render time instead of silently leaving
+-- the control unbound; static renders (previews, layout tests) have none.
+local function bindActions(props, attrs, names)
+    local actions = renderData and renderData.actions
+    if not actions then return end
+    for _, name in ipairs(names) do
+        if attrs[name] then
+            local action = actions[attrs[name]]
+            if type(action) ~= "function" then
+                error("xml: " .. name .. "=\"" .. attrs[name] .. "\" requires a controller action")
+            end
+            props[name] = action
+        end
+    end
+end
+
 local function layoutProps(attrs)
     local lp = {
         "padding", "paddingHorizontal", "paddingVertical", "paddingLeading", "paddingTrailing", "paddingTop", "paddingBottom",
@@ -697,6 +714,7 @@ local TAG_SCHEMA = {
             value = { aliases = { "text" }, default = "", type = "str" },
             placeholder = { default = "Search", type = "str" },
             accessibilityLabel = "str",
+            defaultFocus = "bool",
         },
         transform = function(props, attrs)
             if attrs.onChange and renderData and renderData.actions then
@@ -719,6 +737,8 @@ local TAG_SCHEMA = {
             size        = "num",
 			design      = "str",
 			disabled    = "bool",
+			accessibilityLabel = "str",
+			defaultFocus = "bool",
         },
         transform = function(props, attrs)
             if renderData and renderData.actions then
@@ -752,6 +772,7 @@ local TAG_SCHEMA = {
             detail      = "str",
             truncation  = "str",
             disabled    = "bool",
+			keyboardShortcut = "str",
         },
         transform = function(props, attrs)
             if attrs.action and renderData and renderData.actions then
@@ -1042,6 +1063,7 @@ local TAG_SCHEMA = {
             if attrs.data and renderData then
                 props.data = renderData[attrs.data]
             end
+            bindActions(props, attrs, { "onSelect", "onActivate", "onSort", "onColumnButton" })
             if attrs.reorderContainer then
                 props.onReorder = renderData and renderData.actions
                     and renderData.actions[attrs.reorderContainer]
@@ -1246,6 +1268,9 @@ local TAG_SCHEMA = {
             selected = "str",
             minimizeBehavior = "str",
         },
+        transform = function(props, attrs)
+            bindActions(props, attrs, { "onChange" })
+        end,
         collect = function(props, children)
             local tabs = {}
             for _, c in ipairs(children) do

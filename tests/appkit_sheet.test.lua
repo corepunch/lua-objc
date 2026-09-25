@@ -11,7 +11,7 @@ t.assertEqual(sheet.size.width, 600, "declarative sheet width")
 t.assertEqual(sheet.size.height, 400, "declarative sheet height")
 t.expect(refs.list.contentView.clipsToBounds, "native table clips rows to its viewport")
 local parent = ns.Window {visible = false, width = 900, height = 700}
-ns.presentSheet(sheet, parent)
+ns.presentSheet(sheet, {parent = parent})
 t.expect(sheet.sheetParent == nil, "headless construction never presents a sheet")
 sheet:resize(780, 500); sheet:layout()
 t.expect(refs.list.size.width > 600, "sheet content follows native resizing")

@@ -2,7 +2,7 @@
   <VStack maxWidth="infinity" maxHeight="infinity" padding="20" spacing="12">
     <Label text="Suggested cleanups" size="15" weight="semibold" maxWidth="infinity" />
     <Label text="Measured candidates grouped by impact. Amounts are not guaranteed free space." size="12" color="secondary" maxWidth="infinity" lines="2" />
-    <SearchField id="search" placeholder="Search" accessibilityLabel="Search suggested cleanups" onChange="search" maxWidth="infinity" />
+    <SearchField id="search" placeholder="Search" accessibilityLabel="Search suggested cleanups" onChange="search" defaultFocus="true" maxWidth="infinity" />
     <ScrollView id="opportunitiesScroll" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
       <VStack maxWidth="infinity" spacing="16" alignment="leading">
         <VStack id="opportunities" maxWidth="infinity" spacing="0" />
@@ -11,7 +11,7 @@
     </ScrollView>
     <HStack maxWidth="infinity">
       <Spacer />
-      <Button id="done" title="Done" action="done" />
+      <Button id="done" title="Done" action="done" keyboardShortcut="defaultAction" />
     </HStack>
   </VStack>
 </Sheet>

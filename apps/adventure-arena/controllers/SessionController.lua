@@ -53,10 +53,9 @@ function Controller:show(id)
 		readingSettings = function() self:showReadingSettings() end,
 		compassDrag = function(gesture)
 			if type(gesture) ~= "table" or not self.refs then return end
-			local coordinateSpace = self.ns.platform == "AppKit" and "bottom-left" or "top-left"
-			local direction = CompassGesture.direction(gesture.translation, coordinateSpace)
+			local direction = CompassGesture.direction(gesture.translation)
 			if gesture.state == "changed" or gesture.state == "began" then
-				local x, y = CompassGesture.offset(gesture.translation, coordinateSpace)
+				local x, y = CompassGesture.offset(gesture.translation)
 				self.refs.compassImage.offsetX = x
 				self.refs.compassImage.offsetY = y
 				self:updateCompass(direction)
@@ -76,8 +75,10 @@ function Controller:show(id)
 	presentation.compassSegments = CompassGesture.segments()
 	presentation.systemNavigation = self.ns.platform == "UIKit"
 	presentation.actions = actions
-	self.view, self.refs = self.push("Session", presentation, game.title)
-	self.refs.input.accessibilityLabel = "Command"
+	self.view, self.refs = self.push("Session", presentation, game.title, {
+		hidesTabBar = true,
+		onDisappear = function() self:onDisappear() end,
+	})
 	self:applyReadingSettings()
 	self:updateComposer(self.refs.input.text)
 	self:updateCompass(nil)
@@ -223,38 +224,34 @@ function Controller:updateReadingSettings()
 	local refs = self.readingSettingsRefs
 	if not refs then return end
 	local settings = self.readingSettings:presentation()
-	if self.ns.platform == "UIKit" then
-		refs.sizeSlider.value = settings.fontSize
-	else
-		refs.sizeSlider.doubleValue = settings.fontSize
-	end
+	refs.sizeSlider.value = settings.fontSize
 	refs.sizeValue.text = tostring(settings.fontSize)
-	refs.preview.backgroundColor = self.ns._systemColor(settings.backgroundColor)
-	refs.previewTitle.font = self.ns._font(settings.fontSize + 3, "bold", false, settings.font)
-	refs.previewTitle.textColor = self.ns._systemColor(settings.primaryTextColor)
-	refs.previewBody.font = self.ns._font(settings.fontSize, nil, false, settings.font)
-	refs.previewBody.textColor = self.ns._systemColor(settings.primaryTextColor)
+	refs.preview.backgroundColor = self.ns.Color(settings.backgroundColor)
+	refs.previewTitle.font = self.ns.Font { size = settings.fontSize + 3, weight = "bold", design = settings.font }
+	refs.previewTitle.textColor = self.ns.Color(settings.primaryTextColor)
+	refs.previewBody.font = self.ns.Font { size = settings.fontSize, design = settings.font }
+	refs.previewBody.textColor = self.ns.Color(settings.primaryTextColor)
 end
 
 function Controller:applyReadingSettings()
 	if not self.refs then return end
 	local settings = self.readingSettings:presentation()
-	local background = self.ns._systemColor(settings.backgroundColor)
-	local primary = self.ns._systemColor(settings.primaryTextColor)
-	local secondary = self.ns._systemColor(settings.secondaryTextColor)
+	local background = self.ns.Color(settings.backgroundColor)
+	local primary = self.ns.Color(settings.primaryTextColor)
+	local secondary = self.ns.Color(settings.secondaryTextColor)
 	self.view.backgroundColor = background
 	self.refs.transcriptScroll.backgroundColor = background
-	self.refs.output.font = self.ns._font(settings.fontSize, nil, false, settings.font)
+	self.refs.output.font = self.ns.Font { size = settings.fontSize, design = settings.font }
 	self.refs.output.textColor = primary
-	self.refs.gameTitle.font = self.ns._font(settings.fontSize + 3, "bold", false, settings.font)
+	self.refs.gameTitle.font = self.ns.Font { size = settings.fontSize + 3, weight = "bold", design = settings.font }
 	self.refs.gameTitle.textColor = primary
-	self.refs.gameDescription.font = self.ns._font(settings.fontSize, nil, false, settings.font)
+	self.refs.gameDescription.font = self.ns.Font { size = settings.fontSize, design = settings.font }
 	self.refs.gameDescription.textColor = primary
-	self.refs.roomTitle.font = self.ns._font(settings.fontSize + 3, "bold", false, settings.font)
+	self.refs.roomTitle.font = self.ns.Font { size = settings.fontSize + 3, weight = "bold", design = settings.font }
 	self.refs.roomTitle.textColor = primary
 	self.refs.progress.textColor = secondary
 	self.refs.dictationStatus.textColor = secondary
-	self.refs.input.font = self.ns._font(math.max(15, math.min(settings.fontSize, 20)), nil, false, settings.font)
+	self.refs.input.font = self.ns.Font { size = math.max(15, math.min(settings.fontSize, 20)), design = settings.font }
 	self.refs.input.textColor = primary
 	if self.ns.platform == "UIKit" then
 		self.view.overrideUserInterfaceStyle = settings.appearance

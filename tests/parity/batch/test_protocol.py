@@ -34,7 +34,7 @@ class ProtocolTests(unittest.TestCase):
     def test_candidate_provenance_includes_streamed_fixture_sources(self):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(batch, "ROOT", Path(tmp)):
             previous = batch.source_hash("candidate")
-            for relative in ("test/parity_batch/Model.lua", "scripts/parity/batch_candidate.lua"):
+            for relative in ("test/parity_batch/services/Batch.lua", "scripts/parity/batch_candidate.lua"):
                 source = Path(tmp) / relative
                 source.parent.mkdir(parents=True, exist_ok=True)
                 source.write_text("return {}")

@@ -360,7 +360,8 @@ immediately when one was provided, or show a welcome screen with recent items
 and an open-folder picker otherwise.
 
 **Scene separation rule.** App components are etlua partials emitting view trees. The framework
-instantiates the class returned by `init.lua`; its `createWindow()` method
+instantiates the class returned by `init.lua` by calling `new()` with no arguments
+(constructors may take optional dependency tables for tests); its `createWindow()` method
 (or the root `App` lifecycle) creates the window. `init.lua` itself stays thin
 and does not self-start. Reusable view components do not create windows.
 
@@ -373,6 +374,13 @@ Model.lua       ← data, queries, mutations (no ns.* calls)
 Controller.lua  ← defines Controller class; wires model → views, owns actions
 views/          ← etlua templates and reusable partials only
 ```
+
+`tests/app_architecture.test.lua` enforces this contract for every folder
+under `apps/`, `demo/` and `test/`: a one-line `init.lua`, a `Controller.lua`,
+etlua-only `views/`, models that never require or reference the platform module,
+and controllers that never call a view constructor (`ns.VStack`, `ns.List`, …;
+the root `Controller.lua` alone may create `ns.Window`). Pre-existing violations
+are listed in the test and the list may only shrink.
 
 `init.lua` never self-starts. It returns the class; the framework calls
 `class.new():createWindow()`. No module-level function controllers, no loose

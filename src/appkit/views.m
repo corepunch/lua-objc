@@ -882,15 +882,20 @@ static int bridge_add_double_click(lua_State *L) {
 	else if (recognizer.state == NSGestureRecognizerStateEnded) state = "ended";
 	else if (recognizer.state == NSGestureRecognizerStateCancelled) state = "cancelled";
 	lua_pushstring(L, state); lua_setfield(L, -2, "state");
-	NSPoint location = [recognizer locationInView:recognizer.view];
+	/* SwiftUI DragGesture and UIKit report y growing downward. Normalize
+	 * unflipped AppKit views so gesture handlers never branch on platform. */
+	NSView *view = recognizer.view;
+	CGFloat down = view.isFlipped ? 1 : -1;
+	NSPoint location = [recognizer locationInView:view];
+	if (!view.isFlipped) location.y = view.bounds.size.height - location.y;
 	lua_newtable(L); lua_pushnumber(L, location.x); lua_setfield(L, -2, "x");
 	lua_pushnumber(L, location.y); lua_setfield(L, -2, "y"); lua_setfield(L, -2, "location");
-	NSPoint translation = [recognizer translationInView:recognizer.view];
-	NSPoint velocity = [recognizer velocityInView:recognizer.view];
+	NSPoint translation = [recognizer translationInView:view];
+	NSPoint velocity = [recognizer velocityInView:view];
 	lua_newtable(L); lua_pushnumber(L, translation.x); lua_setfield(L, -2, "x");
-	lua_pushnumber(L, translation.y); lua_setfield(L, -2, "y"); lua_setfield(L, -2, "translation");
+	lua_pushnumber(L, translation.y * down); lua_setfield(L, -2, "y"); lua_setfield(L, -2, "translation");
 	lua_newtable(L); lua_pushnumber(L, velocity.x); lua_setfield(L, -2, "x");
-	lua_pushnumber(L, velocity.y); lua_setfield(L, -2, "y"); lua_setfield(L, -2, "velocity");
+	lua_pushnumber(L, velocity.y * down); lua_setfield(L, -2, "y"); lua_setfield(L, -2, "velocity");
 	if (lua_pcall(L, 1, 0, 0) != LUA_OK) report_lua_error(L, "drag gesture callback");
 }
 @end

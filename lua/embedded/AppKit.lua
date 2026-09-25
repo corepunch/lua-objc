@@ -279,9 +279,62 @@ function AppKit.Sheet(props)
 	return sheet
 end
 
-function AppKit.presentSheet(sheet, parent)
-	if not _G.__headless then sheet:presentSheet(parent) end
-	return sheet
+-- A sheet owns the callbacks created while it is built. Presenting from a
+-- builder scopes those closures to the sheet and releases them on dismiss,
+-- so controllers never manage a Scope. UIKit.presentSheet shares this
+-- signature; `parent` is the AppKit window the sheet attaches to.
+local sheetScopes = setmetatable({}, { __mode = "k" })
+local defaultFocusViews = setmetatable({}, { __mode = "k" })
+
+local function buildScoped(contentOrBuilder)
+	if type(contentOrBuilder) ~= "function" then
+		return nil, table.pack(contentOrBuilder)
+	end
+	local scope = Scope.new()
+	local results = table.pack(pcall(Scope.withScope, scope, contentOrBuilder))
+	if not results[1] then
+		scope:dispose()
+		error(results[2], 3)
+	end
+	return scope, table.pack(table.unpack(results, 2, results.n))
+end
+
+-- SwiftUI `.defaultFocus`: the first marked field inside the window receives
+-- keyboard focus when it is presented.
+local function applyDefaultFocus(window)
+	for view in pairs(defaultFocusViews) do
+		-- Weak keys can outlive their native object until collection.
+		local ok, owner = pcall(function() return view.window end)
+		if not ok then
+			defaultFocusViews[view] = nil
+		elseif owner == window then
+			window:focus(view)
+			return
+		end
+	end
+end
+
+--- Resolves a font value for assignment to a text view's `font`.
+--- Keys match the XML text attributes: size, weight, italic, design.
+function AppKit.Font(props)
+	assert(type(props) == "table" and tonumber(props.size), "Font requires a size")
+	return bridge._font(props.size, props.weight, props.italic == true, props.design)
+end
+
+--- Resolves a semantic name ("primary", "accent") or #RRGGBB hex to a color.
+function AppKit.Color(name)
+	return bridge._systemColor(name)
+end
+
+function AppKit.presentSheet(contentOrBuilder, options)
+	options = options or {}
+	assert(options.parent, "presentSheet requires options.parent on AppKit")
+	local scope, results = buildScoped(contentOrBuilder)
+	local sheet = results[1]
+	if scope then sheetScopes[sheet] = scope end
+	if not _G.__headless then sheet:presentSheet(options.parent) end
+	applyDefaultFocus(sheet)
+	return table.unpack(results, 1, results.n)
 end
 
 function AppKit.present(panel, parent, props)
@@ -290,7 +343,10 @@ function AppKit.present(panel, parent, props)
 end
 
 function AppKit.dismiss(window)
-	return window:dismiss()
+	window:dismiss()
+	local scope = sheetScopes[window]
+	sheetScopes[window] = nil
+	if scope then scope:close() end
 end
 
 function AppKit.focus(window, view)
@@ -936,6 +992,7 @@ end
 --- @prop accessibilityLabel value optional. Component-specific setting passed to the native control.
 --- @prop bezeled boolean optional. Shows the native bezel when true.
 --- @prop bordered boolean optional. Shows the native border when true.
+--- @prop defaultFocus boolean optional. Receives keyboard focus when its sheet is presented (SwiftUI `.defaultFocus`).
 --- @prop disabled boolean optional. Component-specific setting passed to the native control.
 --- @prop drawsBackground boolean optional. Draws the control’s background when true.
 --- @prop editable boolean optional. Allows text editing when true.
@@ -975,6 +1032,7 @@ function AppKit.TextField(props)
 	end
 	bridge._textFieldCallbacks(field, props.onChange, props.onCommand, props.onFocus)
 	if props.disabled ~= nil then field.enabled = not props.disabled end
+	if props.defaultFocus then defaultFocusViews[field] = true end
 	-- SwiftUI text fields accept the available width while keeping native height.
 	field.fillWidth = true
 	return applyLayout(field, props)
@@ -996,6 +1054,7 @@ local search_control_sizes = {
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
 --- @prop accessibilityLabel value optional. Component-specific setting passed to the native control.
 --- @prop controlSize string optional. Component-specific setting passed to the native control.
+--- @prop defaultFocus boolean optional. Receives keyboard focus when its sheet is presented (SwiftUI `.defaultFocus`).
 --- @prop onChange function optional. Callback invoked when the value changes.
 --- @prop onCommand function optional. Callback invoked for the corresponding keyboard command.
 --- @prop placeholder string optional. Component-specific setting passed to the native control.
@@ -1016,6 +1075,7 @@ function AppKit.SearchField(props)
 		field.accessibilityLabel = props.accessibilityLabel
 	end
 	bridge._textFieldCallbacks(field, props.onChange, props.onCommand, props.onFocus)
+	if props.defaultFocus then defaultFocusViews[field] = true end
 	return applyLayout(field, props)
 end
 
@@ -1182,6 +1242,8 @@ end
 --- @prop height number optional. Component-specific setting passed to the native control.
 --- @prop onActivate function optional. Callback invoked when a row or item is activated.
 --- @prop onSelect function optional. Callback invoked when row selection changes.
+--- @prop onSort function optional. Callback invoked with the column id when a sortable header is clicked.
+--- @prop onColumnButton function optional. Callback invoked when a row's column button is clicked.
 --- @prop refresh function optional. Callback invoked to refresh the displayed data.
 --- @prop rowHeight number optional. Requested table row height, in points.
 --- @prop style string optional. Component-specific setting passed to the native control.
@@ -1215,6 +1277,12 @@ function AppKit.List(props)
 	end
 	if type(props.onActivate) == "function" then
 		tv:onRowActivate(props.onActivate)
+	end
+	if type(props.onSort) == "function" then
+		tv:onColumnSort(props.onSort)
+	end
+	if type(props.onColumnButton) == "function" then
+		tv:onColumnButton(props.onColumnButton)
 	end
 	if props.reorderable then
 		assert(type(props.onReorder) == "function",
@@ -1361,6 +1429,8 @@ function AppKit.ToolbarItem(window, identifier)
 	return item
 end
 
+local keyboardShortcuts = { defaultAction = "\r", cancelAction = "\27" }
+
 --- A push button backed by a native button control.
 ---
 --- The optional `action` callback fires via target-action and receives
@@ -1376,6 +1446,7 @@ end
 --- @prop weight string optional. Title font weight.
 --- @prop disabled boolean optional. Disables the control when true.
 --- @prop accessibilityLabel string optional. VoiceOver label.
+--- @prop keyboardShortcut string optional. `defaultAction` (Return) or `cancelAction` (Escape), as SwiftUI `.keyboardShortcut`.
 --- @platform AppKit NSButton (rounded) or LuaActionButton (compound). UIKit UIButton.
 --- @example <Button title="Save" action="save" />
 --- @see Link, Toggle, Toolbar
@@ -1416,6 +1487,13 @@ function AppKit.Button(props)
 			button.contentTintColor = bridge._systemColor(props.foregroundStyle)
 		end
 		if props.accessibilityLabel then button.accessibilityLabel = props.accessibilityLabel end
+		if props.keyboardShortcut then
+			-- SwiftUI `.keyboardShortcut(.defaultAction/.cancelAction)`. AppKit
+			-- draws a Return-equivalent button as the window's default button.
+			local key = keyboardShortcuts[props.keyboardShortcut]
+			assert(key, "Button keyboardShortcut must be 'defaultAction' or 'cancelAction'")
+			button.keyEquivalent = key
+		end
 	end
 	if type(props) == "table" and props.disabled ~= nil then
 		button.enabled = not props.disabled
@@ -1571,7 +1649,7 @@ function AppKit.Slider(props)
 	local onChange = props.onChange or props.action
 	local callback
 	if type(onChange) == "function" then
-		callback = function(slider) onChange(slider.doubleValue) end
+		callback = function(slider) onChange(slider.value) end
 	end
 	local slider = bridge._slider(
 		props.min or 0,

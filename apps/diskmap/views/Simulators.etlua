@@ -2,11 +2,11 @@
   <VStack maxWidth="infinity" maxHeight="infinity" padding="20" spacing="12">
     <Label text="Simulator devices" size="15" weight="semibold" maxWidth="infinity" />
     <Label text="Review installed test apps and device data. Installed runtimes are kept." size="12" color="secondary" maxWidth="infinity" lines="2" />
-    <SearchField id="search" placeholder="Search" accessibilityLabel="Search simulators" onChange="search" maxWidth="infinity" />
-    <TabView id="tabs" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+    <SearchField id="search" placeholder="Search" accessibilityLabel="Search simulators" onChange="search" defaultFocus="true" maxWidth="infinity" />
+    <TabView id="tabs" onChange="tabChanged" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
       <% for index, title in ipairs(filters) do %>
       <Tab title="<%= title %>">
-        <List id="rows<%= index %>" style="fullWidth" alternatingRows="true" rowHeight="32" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
+        <List id="rows<%= index %>" onSelect="select" style="fullWidth" alternatingRows="true" rowHeight="32" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
           <Column id="name" title="Device" minWidth="170" />
           <Column id="runtime" title="Runtime" width="105" minWidth="90" />
           <Column id="state" title="State" width="105" minWidth="90" />
@@ -24,7 +24,7 @@
       <Button id="erase" title="Erase contents…" action="erase" disabled="true" />
       <Button id="delete" title="Delete device…" action="delete" disabled="true" />
       <Spacer />
-      <Button id="done" title="Done" action="done" />
+      <Button id="done" title="Done" action="done" keyboardShortcut="defaultAction" />
     </HStack>
   </VStack>
 </Sheet>

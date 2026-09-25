@@ -47,6 +47,12 @@ function Template:update(data)
 	self.host:layout()
 	return view, refs
 end
+-- Mount a retained template into one of this template's refs. The child
+-- lives in this template's scope, so a structural re-render disposes it.
+function Template:child(ref, path)
+	assert(self.refs and self.refs[ref], "Template child requires a mounted ref: " .. tostring(ref))
+	return self.ns.Scope.withScope(self.scope, Template.new, self.refs[ref], path, self.ns)
+end
 function Template:isDisposed() return self.closed == true end
 function Template:dispose()
 	if self.closed then return end

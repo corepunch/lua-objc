@@ -115,11 +115,11 @@ t.assertEqual(rendered.refs.compassExit_north.strokeAlpha, 1, "compass marks the
 t.assertEqual(rendered.refs.compassExit_east.strokeAlpha, 0, "compass hides exits the player cannot take")
 t.assertEqual(rendered.refs.compassTrack.stroke, "secondary", "compass keeps the full direction ring")
 if compassDrag then
-	compassDrag({ state = "changed", translation = { x = 0, y = 24 } })
+	compassDrag({ state = "changed", translation = { x = 0, y = -24 } })
 	t.assertEqual(rendered.refs.compassDrag_north.strokeAlpha, 1, "dragging north highlights that section")
 	t.assertEqual(rendered.refs.compassDrag_north.stroke, "accent", "an available drag uses the accent section")
 	t.expect(rendered.refs.compassImage.offsetY < 0, "compass follows a north drag")
-	compassDrag({ state = "ended", translation = { x = 0, y = 24 } })
+	compassDrag({ state = "ended", translation = { x = 0, y = -24 } })
 	t.expect(rendered.refs.output.text:find("> go north", 1, true), "compass drag submits an available direction")
 	t.assertEqual(rendered.refs.compassDrag_north.strokeAlpha, 0, "releasing the compass clears the highlight")
 	t.assertEqual(rendered.refs.compassImage.offsetY, 0, "released compass returns to center")

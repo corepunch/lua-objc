@@ -668,9 +668,9 @@ int lua_objc_main(int argc, char *argv[]) {
 
 	/*
 	 * If the script returned a table with a `new` method, treat it as an
-	 * app class: call class.new() then instance:createWindow().
-	 * Scripts that self-start (creating a window as a side effect) return
-	 * nil or a window — this path is skipped for backward compatibility.
+	 * app class: call class.new() with no arguments, then
+	 * instance:createWindow(). Constructors take optional dependency tables
+	 * for tests, so the class itself must never arrive as the first argument.
 	 */
 	/*
 	 * require() pushes two values: the module and the filename it was loaded
@@ -681,8 +681,7 @@ int lua_objc_main(int argc, char *argv[]) {
 	if (lua_istable(L, -1)) {
 		lua_getfield(L, -1, "new");
 		if (lua_isfunction(L, -1)) {
-			lua_pushvalue(L, -2);  /* class as self */
-			if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
+			if (lua_pcall(L, 0, 1, 0) != LUA_OK) {
 				report_lua_error(L, "new");
 			} else if (lua_istable(L, -1)) {
 				lua_getfield(L, -1, "createWindow");

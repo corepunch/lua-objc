@@ -47,7 +47,7 @@
     </VStack>
     <HStack maxWidth="infinity">
       <Spacer />
-      <Button id="done" title="Done" action="done" />
+      <Button id="done" title="Done" action="done" keyboardShortcut="defaultAction" />
     </HStack>
   </VStack>
 </Sheet>

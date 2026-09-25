@@ -7,9 +7,8 @@ function Controller.new(model, service, changed)
 end
 function Controller:close()
 	self.generation = self.generation + 1
-	if self.sheet then ns.dismiss(self.sheet); self.sheet = nil end
-	if self.scope then self.scope:close(); self.scope = nil end
-	self.refs = nil
+	if self.sheet then ns.dismiss(self.sheet) end
+	self.sheet, self.refs = nil, nil
 end
 function Controller:buttons()
 	if not self.refs then return end
@@ -102,18 +101,16 @@ function Controller:perform(action, unavailable)
 end
 function Controller:open(parent)
 	self:close(); self.busy = false; self.query = ""; self.filters = {"All devices", "Unavailable"}
-	self.scope = ns.Scope.new()
-	ns.Scope.withScope(self.scope, function()
-		self.sheet, self.refs = xml.renderFile("apps/diskmap/views/Simulators.etlua", {filters = self.filters, actions = {
+	self.sheet, self.refs = ns.presentSheet(function()
+		local sheet, refs = xml.renderFile("apps/diskmap/views/Simulators.etlua", {filters = self.filters, actions = {
 			search = function(value) self.query = value; self:update() end, done = function() self:close() end,
+			select = function(_, _, row) self.selected = row; self:buttons() end,
+			tabChanged = function() self.selected = nil; self:buttons() end,
 			refresh = function() self:load() end, erase = function() self:perform("erase") end,
 			delete = function() self:perform("delete") end, unavailable = function() self:perform("delete", true) end,
 		}}, ns)
-		self.refs.done.keyEquivalent = "\r"
-		self.sheet.defaultButtonCell = self.refs.done.cell
-		for index in ipairs(self.filters) do self.refs["rows" .. index]:onRowSelect(function(_, _, row) self.selected = row; self:buttons() end) end
-		self.refs.tabs:onChange(function() self.selected = nil; self:buttons() end)
-	end)
-	ns.presentSheet(self.sheet, parent); ns.focus(self.sheet, self.refs.search); self:load()
+		return sheet, refs
+	end, {parent = parent})
+	self:load()
 end
 return Controller

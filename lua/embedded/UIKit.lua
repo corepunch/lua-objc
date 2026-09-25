@@ -289,24 +289,23 @@ function UIKit.NavigationLink(props)
 		props.title or props.label or props[1] or "Open"), props)
 end
 
-function UIKit.presentSheet(contentOrBuilder, props)
-	local content = contentOrBuilder
-	if type(contentOrBuilder) == "function" then
-		local sheetScope = Scope.push()
-		local ok, built = pcall(contentOrBuilder)
-		if not ok then
-			sheetScope:close()
-			error(built, 2)
-		end
-		content = built
-		local sheet = bridge._presentSheet(asViewController(content), props or {})
-		table.insert(sheetScopes, sheetScope)
-		return sheet
-	end
+-- Shares AppKit.presentSheet's signature. `options.detents` selects sheet
+-- heights; `options.parent` is ignored because UIKit presents from the
+-- active view controller. Builder results (sheet, refs) are returned intact.
+function UIKit.presentSheet(contentOrBuilder, options)
+	options = options or {}
 	local sheetScope = Scope.push()
-	local sheet = bridge._presentSheet(asViewController(content), props or {})
+	local results = table.pack(true, contentOrBuilder)
+	if type(contentOrBuilder) == "function" then
+		results = table.pack(pcall(contentOrBuilder))
+		if not results[1] then
+			sheetScope:close()
+			error(results[2], 2)
+		end
+	end
+	bridge._presentSheet(asViewController(results[2]), options)
 	table.insert(sheetScopes, sheetScope)
-	return sheet
+	return table.unpack(results, 2, results.n)
 end
 
 function UIKit.dismiss()
@@ -314,6 +313,15 @@ function UIKit.dismiss()
 	local ok, err = pcall(bridge._dismiss)
 	if sheetScope then sheetScope:close() end
 	if not ok then error(err, 2) end
+end
+
+function UIKit.Font(props)
+	assert(type(props) == "table" and tonumber(props.size), "Font requires a size")
+	return bridge._font(props.size, props.weight, props.italic == true, props.design)
+end
+
+function UIKit.Color(name)
+	return bridge._systemColor(name)
 end
 
 function UIKit.confirm(props)

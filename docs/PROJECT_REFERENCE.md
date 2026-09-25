@@ -259,6 +259,15 @@ before replacing the old subtree and disposing its callbacks. A render failure
 preserves the previously mounted view. `dispose()` is idempotent; a current parent
 Scope also owns the mount. Root templates for mounts must produce a view, not a Window.
 
+`panel:child("slotRef", path)` mounts a nested retained template into one of the
+panel's refs, inside the panel's scope, so a structural re-render of the panel
+disposes the child too. Controllers never reach into `template.scope`.
+
+Controllers that restyle retained refs use public values rather than bridge
+internals: `ns.Font { size = 17, weight = "bold", design = "serif" }` and
+`ns.Color("secondary")` / `ns.Color("#F5E8D1")`. `Slider.value` is the position
+on both platforms.
+
 `xml.describe`, `xml.describeFile`, and `xml.renderDescription` separate etlua
 evaluation from native construction. Template evaluation does not mutate the
 caller's data. Application controllers own plain data, refs and actions; this shared
@@ -1881,12 +1890,29 @@ row data in native tables and outlines. Reused cells clear previous icon state.
 ### Native management sheets
 
 `<Sheet width="880" height="620">…</Sheet>` / `AppKit.Sheet(props)` create an
-ordinary AppKit panel with an opaque semantic content background. Present it with
-`AppKit.presentSheet(sheet, parentWindow)` and dismiss with `AppKit.dismiss(sheet)`.
-For UIKit, `UIKit.presentSheet(content, { detents = { "medium", "large" },
-dragIndicator = true })` uses `UISheetPresentationController`. AppKit's panel
-sheet is its native equivalent. AppKit owns sheet attachment, focus, frame, corners and shadow. Headless mode
-constructs content without presentation. Callers own their callback scope and
-close it when dismissing. Floating `Panel` presentation keeps its separate native
-material. Native List/Outline selection and activation callbacks preserve row
+ordinary AppKit panel with an opaque semantic content background. Both platforms
+share one presentation API:
+
+```lua
+self.sheet, self.refs = ns.presentSheet(function()
+	return xml.renderFile("views/Settings.etlua", data, ns)
+end, { parent = self.window, detents = { "medium", "large" } })
+-- later
+ns.dismiss(self.sheet)
+```
+
+Pass a builder so every callback, timer and retained `Template` it creates is
+scoped to the sheet and released by `ns.dismiss`; `presentSheet` returns the
+builder's results (sheet, refs). AppKit requires `parent`; UIKit ignores it and
+reads `detents`. AppKit owns sheet attachment, frame, corners and shadow.
+Headless mode constructs content without presentation. Keyboard behavior is
+declarative: `<Button keyboardShortcut="defaultAction">` (Return, drawn as the
+default button) or `"cancelAction"` (Escape), and `defaultFocus="true"` on a
+`TextField`/`SearchField` focuses it when the sheet appears. Floating `Panel`
+presentation keeps its separate native material.
+
+List and TabView events bind controller actions from XML like any other
+control: `<List onSelect="select" onActivate="open" onSort="sort">` and
+`<TabView onChange="tabChanged">`. When actions are supplied, a misspelt name
+fails at render time. Native List/Outline selection and activation callbacks preserve row
 boolean, numeric and structured values rather than stringifying them.

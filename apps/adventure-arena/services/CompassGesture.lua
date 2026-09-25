@@ -21,10 +21,10 @@ function CompassGesture.segments()
 	return segments
 end
 
-function CompassGesture.offset(translation, coordinateSpace)
+-- Translations use top-left coordinates on every platform (y grows downward).
+function CompassGesture.offset(translation)
 	if type(translation) ~= "table" then return 0, 0 end
 	local x, y = tonumber(translation.x) or 0, tonumber(translation.y) or 0
-	if coordinateSpace == "bottom-left" then y = -y end
 	local distance = math.sqrt(x * x + y * y)
 	if distance == 0 then return 0, 0 end
 	local rubberBandedDistance = DRAG.maximumDistance *
@@ -33,10 +33,9 @@ function CompassGesture.offset(translation, coordinateSpace)
 	return x * scale, y * scale
 end
 
-function CompassGesture.direction(translation, coordinateSpace)
+function CompassGesture.direction(translation)
 	if type(translation) ~= "table" then return nil end
 	local x, y = tonumber(translation.x) or 0, tonumber(translation.y) or 0
-	if coordinateSpace == "bottom-left" then y = -y end
 	if math.sqrt(x * x + y * y) < 10 then return nil end
 	local degrees = math.deg(math.atan(y, x)) % 360
 	local sector = math.floor((degrees + 22.5) / 45) % #DIRECTIONS

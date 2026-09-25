@@ -21,8 +21,8 @@ function Controller.new(options)
 	}
 	local self = setmetatable({ ns = ns, adventures = adventures, sessionModel = sessionModel }, Controller)
 	self.readingSettings = ReadingSettings.new()
-	local function push(template, data, title)
-		return self:push(template, data, title)
+	local function push(template, data, title, options)
+		return self:push(template, data, title, options)
 	end
 	local function back() return self:back() end
 	self.library = LibraryController.new {
@@ -42,29 +42,23 @@ function Controller.new(options)
 			return xml.renderFile("apps/adventure-arena/views/" .. template .. ".etlua", data, ns)
 		end,
 		presentSheet = function(sheet, detents)
-			if ns.platform == "UIKit" then
-				return ns.presentSheet(sheet, { detents = detents })
-			end
-			return ns.presentSheet(sheet, self.window)
+			return ns.presentSheet(sheet, { parent = self.window, detents = detents })
 		end,
 		dismissSheet = function(sheet)
-			if ns.platform == "UIKit" then return ns.dismiss() end
 			if sheet then return ns.dismiss(sheet) end
 		end,
 	}
 	return self
 end
 
-function Controller:push(template, data, title)
+-- `options` carries per-screen navigation behavior from the controller that
+-- owns the screen: onDisappear, hidesTabBar, hidesNavigationBar.
+function Controller:push(template, data, title, options)
+	options = options or {}
 	local view, refs = xml.renderFile("apps/adventure-arena/views/" .. template .. ".etlua", data, self.ns)
-	local onDisappear
-	if template == "Session" then
-		onDisappear = function()
-			self.sessionController:onDisappear()
-		end
-	end
-	local hostingController = self.ns.HostingController(view, onDisappear, {
-		hidesTabBar = template == "Session",
+	local hostingController = self.ns.HostingController(view, options.onDisappear, {
+		hidesTabBar = options.hidesTabBar == true,
+		hidesNavigationBar = options.hidesNavigationBar == true,
 	})
 	self.navigation:push(hostingController, title)
 	if data.systemNavigation and self.ns.installNavigationChrome then
