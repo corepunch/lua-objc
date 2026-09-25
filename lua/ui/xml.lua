@@ -927,6 +927,34 @@ local TAG_SCHEMA = {
             bottomAlpha = "num",
         },
     },
+    MeshPoint = {
+        kind = "record", flag = "__meshPoint",
+        props = { x = "num", y = "num", red = "num", green = "num", blue = "num", alpha = "num" },
+    },
+    MeshGradient = {
+        constructor = "MeshGradient", children = "array",
+        props = { width = "num", height = "num", animated = "bool" },
+        collect = function(props, children)
+            if #children == 0 then return end
+            props.points, props.colors = {}, {}
+            for _, child in ipairs(children) do
+                if not child.__meshPoint then error("xml: <MeshGradient> accepts only <MeshPoint> children") end
+                table.insert(props.points, { child.x, child.y })
+                table.insert(props.colors, {
+                    red = child.red, green = child.green, blue = child.blue, alpha = child.alpha,
+                })
+            end
+            for index = #props, 1, -1 do props[index] = nil end
+        end,
+        transform = function(props)
+            -- width and height are mesh grid dimensions, not view frame dimensions.
+            props.fixedWidth, props.fixedHeight = nil, nil
+        end,
+    },
+    TimelineView = {
+        constructor = "TimelineView", children = "content",
+        props = { schedule = "str" },
+    },
 
     -- List & Table structures
     Column = {

@@ -115,6 +115,7 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #include "tables.m"
 #include "platform.m"
 #include "constructors.m"
+#include "mesh_gradient.m"
 #include "speech_recognition.m"
 #include "text_field.m"
 #include "hosting.m"
@@ -168,6 +169,9 @@ static const luaL_Reg bridge_lib[] = {
 	{"_progressView", bridge_UIKitControls_progressView},
 	{"_pageControl", bridge_UIKitControls_pageControl},
 	{"_linearGradient", bridge_UIKitControls_linearGradient},
+	{"_meshGradient", bridge_UIKitControls_meshGradient},
+	{"_meshGradientConfigure", bridge_UIKitControls_meshGradientConfigure},
+	{"_meshGradientSample", bridge_UIKitControls_meshGradientSample},
 	{"_button", bridge_UIKitControls_button},
 	{"_link", bridge_UIKitControls_link},
 	{"_menu", bridge_UIKitControls_menu},

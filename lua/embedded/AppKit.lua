@@ -1161,6 +1161,35 @@ function AppKit.LinearGradient(props)
 	return applyLayout(view, props)
 end
 
+--- Renders a native animated color mesh from a grid of control points.
+--- @prop width number required. Number of grid columns.
+--- @prop height number required. Number of grid rows.
+--- @prop points table optional. Normalized point coordinates in row-major order.
+--- @prop colors table optional. Colors in row-major order.
+--- @prop animated boolean optional. Animate interior points when true.
+--- @platform AppKit and UIKit.
+function AppKit.MeshGradient(props)
+	props = props or {}
+	local width, height = props.width or 3, props.height or 3
+	local view = bridge._meshGradient(width, height)
+	bridge._meshGradientConfigure(view, width, height, props.points, props.colors,
+		props.animated == true)
+	view.fillWidth, view.fillHeight = true, true
+	return applyLayout(view, props)
+end
+
+--- Hosts content on the requested update schedule.
+--- @prop schedule string optional. `animation` animates a mesh child.
+--- @prop content value required. Hosted view.
+--- @platform AppKit and UIKit.
+function AppKit.TimelineView(props)
+	props = props or {}
+	local content = props.content or props[1]
+	assert(content, "TimelineView requires content")
+	if props.schedule == "animation" then content.animated = true end
+	return applyLayout(content, props)
+end
+
 --- Displays rows of data in a native table or list control.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.

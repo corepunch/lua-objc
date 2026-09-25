@@ -60,3 +60,5 @@ local withPoints = xml.render([[
 ]], {}, ns)
 local wr, wg, wb = ns._meshGradientSample(withPoints, 0, 0)
 t.expect(wr > 0.8 and wg < 0.2 and wb < 0.2, "MeshPoint children configure corner colors")
+
+os.exit(t.summary() and 0 or 1)

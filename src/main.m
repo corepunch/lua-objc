@@ -241,6 +241,7 @@ static void bridge_set_optional_callback(
 
 #include "appkit/workspace.m"
 #include "appkit/constructors.m"
+#include "appkit/mesh_gradient.m"
 #include "appkit/reorder_container.m"
 #include "appkit/lazy_collection.m"
 #include "shared/parity_batch.m"
@@ -275,6 +276,9 @@ static const luaL_Reg bridge_lib[] = {
 	{"_separator", bridge_AppKitControls_separator},
 	{"_spacer", bridge_AppKitControls_spacer},
 	{"_linearGradient", bridge_AppKitControls_linearGradient},
+	{"_meshGradient", bridge_AppKitControls_meshGradient},
+	{"_meshGradientConfigure", bridge_AppKitControls_meshGradientConfigure},
+	{"_meshGradientSample", bridge_AppKitControls_meshGradientSample},
 	{"_hitTestTarget", bridge_hit_test_target},
 	{"_hostingController", bridge_hosting_controller},
 	{"_navigationStack", bridge_navigation_stack},

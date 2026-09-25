@@ -20,6 +20,50 @@ static const LuaMeshNode kMeshGradientDefaultNodes[9] = {
 	{1.00f, 1.00f, 0.01f, 0.02f, 0.05f, 1},
 };
 
+static LuaMeshNode *mesh_gradient_nodes_from_lua(lua_State *L, int width, int height,
+	int pointArg, int colorArg)
+{
+	int count = width * height;
+	LuaMeshNode *nodes = malloc(sizeof(LuaMeshNode) * (size_t)count);
+	if (!nodes) luaL_error(L, "MeshGradient could not allocate grid nodes");
+	for (int i = 0; i < count; i++) {
+		nodes[i] = kMeshGradientDefaultNodes[i % 9];
+		nodes[i].x = (float)(i % width) / (float)(width - 1);
+		nodes[i].y = (float)(i / width) / (float)(height - 1);
+	}
+	if (lua_istable(L, pointArg)) {
+		for (int i = 0; i < count; i++) {
+			lua_rawgeti(L, pointArg, i + 1);
+			if (lua_istable(L, -1)) {
+				lua_rawgeti(L, -1, 1);
+				lua_rawgeti(L, -2, 2);
+				nodes[i].x = (float)luaL_optnumber(L, -2, nodes[i].x);
+				nodes[i].y = (float)luaL_optnumber(L, -1, nodes[i].y);
+				lua_pop(L, 2);
+			}
+			lua_pop(L, 1);
+		}
+	}
+	if (lua_istable(L, colorArg)) {
+		for (int i = 0; i < count; i++) {
+			lua_rawgeti(L, colorArg, i + 1);
+			if (lua_istable(L, -1)) {
+				lua_getfield(L, -1, "red");
+				lua_getfield(L, -2, "green");
+				lua_getfield(L, -3, "blue");
+				lua_getfield(L, -4, "alpha");
+				nodes[i].r = (float)luaL_optnumber(L, -4, nodes[i].r);
+				nodes[i].g = (float)luaL_optnumber(L, -3, nodes[i].g);
+				nodes[i].b = (float)luaL_optnumber(L, -2, nodes[i].b);
+				nodes[i].a = (float)luaL_optnumber(L, -1, 1);
+				lua_pop(L, 4);
+			}
+			lua_pop(L, 1);
+		}
+	}
+	return nodes;
+}
+
 static void mesh_gradient_animate_points(LuaMeshNode *nodes, int width, int height,
 	NSTimeInterval t)
 {
