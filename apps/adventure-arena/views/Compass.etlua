@@ -1,5 +1,15 @@
+<%
+  local RING = { track = 48, selection = 72, trackWidth = 3, selectionWidth = 4, trackAlpha = 0.24 }
+  local open = {}
+  for _, direction in ipairs(availableDirections or {}) do open[direction] = true end
+%>
 <GlassEffect id="compassControl" style="regular" interactive="true" cornerRadius="32" width="64" height="64" onDrag="compassDrag" accessibilityLabel="Compass">
   <ZStack maxWidth="infinity" maxHeight="infinity" alignment="center">
+    <Arc id="compassTrack" startAngle="0" endAngle="360" lineWidth="<%= RING.trackWidth %>" stroke="secondary" strokeAlpha="<%= RING.trackAlpha %>" lineCap="butt" width="<%= RING.track %>" height="<%= RING.track %>" />
+    <% for _, segment in ipairs(compassSegments or {}) do %>
+    <Arc id="compassExit_<%= segment.direction %>" startAngle="<%= segment.startAngle %>" endAngle="<%= segment.endAngle %>" lineWidth="<%= RING.trackWidth %>" stroke="accent" strokeAlpha="<%= open[segment.direction] and 1 or 0 %>" lineCap="butt" width="<%= RING.track %>" height="<%= RING.track %>" />
+    <Arc id="compassDrag_<%= segment.direction %>" startAngle="<%= segment.startAngle %>" endAngle="<%= segment.endAngle %>" lineWidth="<%= RING.selectionWidth %>" stroke="accent" strokeAlpha="0" lineCap="round" width="<%= RING.selection %>" height="<%= RING.selection %>" />
+    <% end %>
     <Image id="compassImage" path="apps/adventure-arena/assets/compass.png" resizable="true" contentMode="fit" width="40" height="40" />
   </ZStack>
 </GlassEffect>

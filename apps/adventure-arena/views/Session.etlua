@@ -10,7 +10,7 @@
 
   <ZStack id="sessionOverlay" alignment="bottomTrailing" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
   <SafeAreaInset id="sessionContent" edge="bottom" minimumBottomInset="24" keyboardBottomInset="12" horizontalInset="12" matchBottomHorizontalInset="true" maxWidth="infinity" maxHeight="infinity">
-    <ScrollView id="transcriptScroll" flexGrow="1">
+    <ScrollView id="transcriptScroll" flexGrow="1" scrollOnKeyboard="true">
       <VStack paddingHorizontal="20" paddingTop="16" paddingBottom="12" spacing="12" alignment="leading">
         <Label id="gameTitle" text="<%= gameTitle %>" size="20" weight="bold" paddingLeading="32" lines="2" />
         <Label id="gameDescription" text="<%= gameDescription %>" size="17" lines="0" />
@@ -30,7 +30,7 @@
             </Menu>
             <GlassEffect style="regular" cornerRadius="26" maxWidth="infinity">
               <HStack paddingLeading="16" paddingTrailing="5" spacing="8" minHeight="52">
-                <TextField id="input" placeholder="What do you want to do?" style="plain" maxWidth="infinity" onChange="inputChanged" onCommand="inputCommand" />
+                <TextField id="input" placeholder="What do you want to do?" style="plain" maxWidth="infinity" onChange="inputChanged" onCommand="inputCommand" onFocus="inputFocused" />
                 <% if speechAvailable then %>
                 <Button id="dictate" title="" systemImage="mic" symbolSize="22" accessibilityLabel="Dictate command" action="dictate" style="plain" width="38" height="44" />
                 <% end %>
@@ -42,7 +42,7 @@
       </VStack>
   </SafeAreaInset>
   <VStack paddingBottom="104" paddingTrailing="12">
-    <%- partial("Compass.etlua", { actions = actions }) %>
+    <%- partial("Compass.etlua", { actions = actions, availableDirections = availableDirections, compassSegments = compassSegments }) %>
   </VStack>
   </ZStack>
 </VStack>

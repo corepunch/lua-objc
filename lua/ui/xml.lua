@@ -625,6 +625,18 @@ local TAG_SCHEMA = {
             contentHeight = "num",
             horizontal    = "bool",
             vertical      = "bool",
+            scrollOnKeyboard = "bool",
+        },
+    },
+    Arc = {
+        constructor = "Arc",
+        props = {
+            startAngle = "num",
+            endAngle = "num",
+            lineWidth = "num",
+            stroke = "str",
+            strokeAlpha = "num",
+            lineCap = "str",
         },
     },
     SafeAreaInset = {
@@ -712,6 +724,7 @@ local TAG_SCHEMA = {
             if renderData and renderData.actions then
                 if attrs.onChange then props.onChange = renderData.actions[attrs.onChange] end
                 if attrs.onCommand then props.onCommand = renderData.actions[attrs.onCommand] end
+                if attrs.onFocus then props.onFocus = renderData.actions[attrs.onFocus] end
             end
         end,
     },
