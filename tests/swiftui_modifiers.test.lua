@@ -1,6 +1,6 @@
 _G.__headless = true
 
--- SwiftUI modifiers and controls added for Diskmap: Gauge, .help,
+-- SwiftUI modifiers and controls added for Diskmap: Gauge, segmented Picker, .help,
 -- .monospacedDigit, .navigationSubtitle, .borderedProminent, .controlSize,
 -- a native DisclosureGroup triangle, and Section headers in sidebar lists.
 local t = require("TestKit")
@@ -68,6 +68,19 @@ t.assertEqual(triangle.state, 1, "clicking the label turns the triangle down")
 t.expect(not refs.body.superview.hidden, "expanding shows the content")
 ns._invokeAction(label)
 t.expect(refs.body.superview.hidden, "clicking again collapses the content")
+
+-- .pickerStyle(.segmented) is NSSegmentedControl; the default stays a pop-up.
+local picked
+local segmented = xml.render('<Picker style="segmented" value="1" onChange="pick"><Option title="All" /><Option title="Unavailable" /><Option title="Unused" /></Picker>',
+	{actions = {pick = function(index) picked = index end}}, ns)
+t.assertEqual(segmented.className, "NSSegmentedControl", "a segmented picker is a native segmented control")
+t.assertEqual(segmented.segmentCount, 3, "each option is a segment")
+t.assertEqual(segmented.selectedSegment, 1, "the value selects a segment")
+t.expect(segmented.frame.size.width >= segmented.fittingSize.width - 1, "segments fit their labels")
+segmented.selectedSegment = 2
+ns._invokeAction(segmented)
+t.assertEqual(picked, 2, "the change callback receives the zero-based segment")
+t.assertEqual(xml.render('<Picker><Option title="A" /></Picker>', {}, ns).className, "NSPopUpButton", "the default picker is a pop-up")
 
 -- Sidebar sections are native group rows.
 local list = xml.render('<List style="sourceList" header="false"><Column id="name" /></List>', {}, ns)

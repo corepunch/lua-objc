@@ -1739,6 +1739,7 @@ end
 --- @prop action function optional. Component-specific setting passed to the native control.
 --- @prop disabled boolean optional. Component-specific setting passed to the native control.
 --- @prop options table optional. Selectable options or menu entries.
+--- @prop style string optional. `menu` (default, NSPopUpButton) or `segmented` (NSSegmentedControl).
 --- @prop value table optional. Current selected, edited, or measured value.
 --- @example <Picker />
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
@@ -1746,11 +1747,16 @@ function AppKit.Picker(props)
 	assert(type(props) == "table", "Picker requires a property table")
 	assert(type(props.options) == "table", "Picker requires an options array")
 	local onChange = props.onChange or props.action
+	local segmented = props.style == "segmented"
 	local callback
 	if type(onChange) == "function" then
-		callback = function(picker) onChange(picker.indexOfSelectedItem) end
+		callback = function(picker)
+			onChange(segmented and picker.selectedSegment or picker.indexOfSelectedItem)
+		end
 	end
-	local picker = bridge._picker(
+	-- SwiftUI `.pickerStyle(.segmented)` is NSSegmentedControl; the default
+	-- menu style is NSPopUpButton. Both report a zero-based index.
+	local picker = (segmented and bridge._segmentedPicker or bridge._picker)(
 		props.options,
 		props.value or 0,
 		callback)

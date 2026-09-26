@@ -95,7 +95,7 @@ for _, chapter in ipairs(Guide.chapters) do
 		for _, id in ipairs(topic.resources or {}) do
 			t.expect(model.resources:find(id) ~= nil, "guide topic " .. topic.id .. " cites registered resource " .. id)
 		end
-		if topic.open and topic.open ~= "simulators" then
+		if topic.open and topic.open ~= "simulators" and topic.open ~= "updates" then
 			t.expect(model.resources:find(topic.open) ~= nil, "guide topic " .. topic.id .. " opens a registered category")
 		end
 	end

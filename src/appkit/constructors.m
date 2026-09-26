@@ -400,6 +400,28 @@ static int bridge_AppKitControls_picker(lua_State *L) {
 	return 1;
 }
 
+// SwiftUI `.pickerStyle(.segmented)`: one labelled segment per option,
+// selecting exactly one, with the same callback wiring as the pop-up picker.
+static int bridge_AppKitControls_segmentedPicker(lua_State *L) {
+	luaL_checktype(L, 1, LUA_TTABLE);
+	NSInteger selectedIndex = (NSInteger)luaL_optinteger(L, 2, 0);
+	id titles = lua_to_objc_value(L, 1);
+	if (![titles isKindOfClass:[NSArray class]]) {
+		return luaL_error(L, "Picker options must be an array");
+	}
+	NSSegmentedControl *control = [NSSegmentedControl
+		segmentedControlWithLabels:titles
+		trackingMode:NSSegmentSwitchTrackingSelectOne
+		target:nil action:nil];
+	if (selectedIndex >= 0 && selectedIndex < control.segmentCount) {
+		control.selectedSegment = selectedIndex;
+	}
+	configure_control_callback(control, L, 3);
+	[control sizeToFit];
+	push_objc(L, control, "nsview");
+	return 1;
+}
+
 static int bridge_AppKitControls_datePicker(lua_State *L) {
 	NSDatePicker *picker = [[NSDatePicker alloc] initWithFrame:NSZeroRect];
 	picker.datePickerStyle = NSDatePickerStyleTextFieldAndStepper;

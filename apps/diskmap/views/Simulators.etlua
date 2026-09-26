@@ -1,28 +1,56 @@
-<Sheet width="620" height="560">
-  <VStack maxWidth="infinity" maxHeight="infinity" padding="16" spacing="8">
-    <Label text="Simulator devices" size="15" weight="semibold" maxWidth="infinity" />
-    <SearchField id="search" placeholder="Search" accessibilityLabel="Search simulators" onChange="search" defaultFocus="true" maxWidth="infinity" />
-    <TabView id="tabs" onChange="tabChanged" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
-      <% for index, title in ipairs(filters) do %>
-      <Tab title="<%= title %>">
-        <List id="rows<%= index %>" onSelect="select" style="fullWidth" alternatingRows="true" rowHeight="32" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
-          <Column id="name" title="Device" minWidth="120" />
-          <Column id="runtime" title="Runtime" width="96" minWidth="80" />
-          <Column id="state" title="State" width="96" minWidth="80" />
-          <Column id="size" title="Apps &amp; data" width="100" minWidth="90" alignment="trailing" />
-          <Column id="lastUse" title="Last used" width="130" minWidth="110" />
-        </List>
-      </Tab>
-      <% end %>
-    </TabView>
-    <Label id="status" text="Reading simulator inventory…" size="11" color="secondary" maxWidth="infinity" lines="1" />
-    <HStack maxWidth="infinity" spacing="8">
-      <Button id="reveal" title="Reveal in Finder" action="reveal" disabled="true" />
-      <Button id="erase" title="Erase…" action="erase" disabled="true" />
-      <Button id="delete" title="Delete…" action="delete" disabled="true" />
-      <Button id="unavailable" title="Delete Unavailable…" action="unavailable" disabled="true" />
-      <Spacer />
-      <Button id="done" title="Done" action="done" keyboardShortcut="defaultAction" />
+<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+  <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
+    <HStack maxWidth="infinity" spacing="14" alignment="center">
+      <SystemImage name="iphone" size="36" badgeColor="systemBlue" />
+      <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+        <Label text="Simulators" size="22" weight="semibold" />
+        <Label id="summary" text="Reading simulator devices and runtimes…" size="13" color="secondary" monospacedDigit="true" maxWidth="infinity" lines="2" />
+      </VStack>
+      <Button id="components" title="Xcode Components…" action="components" help="Manage runtimes in Xcode › Settings › Components" />
     </HStack>
+    <HStack id="stats" maxWidth="infinity" spacing="12" alignment="top">
+      <%- partial("StatTile.etlua", {id = "devicesTile", icon = "iphone", color = "systemBlue", title = "Devices", value = "—", detail = "Apps and data inside simulators"}) %>
+      <%- partial("StatTile.etlua", {id = "runtimesTile", icon = "iphone.gen3", color = "systemIndigo", title = "Runtimes", value = "—", detail = "Simulator operating systems"}) %>
+      <%- partial("StatTile.etlua", {id = "unavailableTile", icon = "exclamationmark.triangle", color = "systemOrange", title = "Unavailable", value = "—", detail = "Devices whose runtime is gone", actionTitle = "Delete Unavailable…", action = "unavailable"}) %>
+    </HStack>
+    <VStack id="devicesSection" maxWidth="infinity" spacing="8" alignment="leading">
+      <HStack maxWidth="infinity" spacing="12" alignment="center">
+        <%- partial("SectionHeader.etlua", {title = "Devices", detail = "Erase keeps a device and removes its apps and data; Delete removes the device.", detailId = "devicesDetail"}) %>
+        <Picker id="filter" style="segmented" onChange="filter">
+          <% for _, title in ipairs(filters) do %><Option title="<%= title %>" /><% end %>
+        </Picker>
+      </HStack>
+      <GroupBox maxWidth="infinity">
+        <List id="devices" onSelect="select" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="true" alternatingRows="false" gridLines="horizontal" rowHeight="40" maxWidth="infinity">
+          <Column id="name" title="Device" subtitleKey="runtime" minWidth="180" />
+          <Column id="state" title="State" width="110" minWidth="90" />
+          <Column id="lastUse" title="Last used" width="150" minWidth="120" />
+          <Column id="size" title="Apps &amp; data" width="110" minWidth="100" alignment="trailing" />
+        </List>
+      </GroupBox>
+      <HStack maxWidth="infinity" spacing="8" alignment="center">
+        <Button id="reveal" title="Show in Finder" action="reveal" disabled="true" />
+        <Button id="erase" title="Erase…" action="erase" disabled="true" />
+        <Button id="delete" title="Delete…" action="delete" disabled="true" />
+        <Spacer />
+        <Label id="status" text="" size="11" color="secondary" lines="1" truncation="tail" flexShrink="1" />
+      </HStack>
+    </VStack>
+    <VStack id="runtimesSection" maxWidth="infinity" spacing="8" alignment="leading">
+      <%- partial("SectionHeader.etlua", {title = "Runtimes", detail = "Each runtime is a full operating system image. Devices on a deleted runtime become unavailable.", detailId = "runtimesDetail"}) %>
+      <GroupBox maxWidth="infinity">
+        <List id="runtimes" onSelect="selectRuntime" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="true" alternatingRows="false" gridLines="horizontal" rowHeight="40" maxWidth="infinity">
+          <Column id="name" title="Runtime" subtitleKey="subtitle" minWidth="180" />
+          <Column id="deviceText" title="Devices" width="110" minWidth="90" />
+          <Column id="lastUse" title="Last used" width="120" minWidth="100" />
+          <Column id="size" title="On disk" width="110" minWidth="100" alignment="trailing" />
+        </List>
+      </GroupBox>
+      <HStack maxWidth="infinity" spacing="8" alignment="center">
+        <Button id="deleteRuntime" title="Delete Runtime…" action="deleteRuntime" disabled="true" />
+        <Spacer />
+        <Label id="runtimeStatus" text="" size="11" color="secondary" lines="1" truncation="tail" flexShrink="1" />
+      </HStack>
+    </VStack>
   </VStack>
-</Sheet>
+</ScrollView>

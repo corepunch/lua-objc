@@ -16,6 +16,17 @@ It answers three questions, one sidebar destination each:
   devices, simulator runtimes, Xcode and its SDKs, DerivedData, device support,
   archives, package managers, containers and AI coding tools, each with its
   measured size, a capacity gauge and the sheet that manages it.
+- **Simulators** — every simulator device with its runtime, state, last use
+  and data size, filtered by All, Unavailable or Unused for 90 days, with
+  Erase, Delete and Delete Unavailable. Installed runtimes come from
+  `xcrun simctl runtime list`: size, build, last use and the devices each one
+  serves. Runtimes simctl reports as deletable can be deleted after a
+  confirmation that names the devices they strand; Keep protects them.
+- **Updates & Snapshots** — what Software Update last found (from its own
+  preferences, without contacting Apple), the measured storage an update passes
+  through (downloaded assets, the Update volume, Preboot), full "Install macOS"
+  apps, and the local Time Machine snapshots held on the disk, with shortcuts to
+  Software Update and Time Machine settings.
 - **Storage Guide — where does macOS keep things?** Topics on the APFS volume
   layout, Preboot, Recovery, where software updates are downloaded and staged,
   swap, local snapshots, free versus available space, System Data, caches,
@@ -139,8 +150,8 @@ The app and framework changes are described in [DESIGN.md](DESIGN.md).
 ## Component boundaries
 
 The root controller composes focused controllers: sidebar navigation, one page
-controller per destination (overview, largest items, developer, guide),
-category management sheets, simulator and SDK sheets, scan lifecycle, category
+controller per destination (overview, largest items, developer, simulators,
+updates and snapshots, guide), category management sheets, the SDK sheet, scan lifecycle, category
 presentation, cleanup, contextual tips, inspector actions, and settings. Pages
 mount retained templates into the content pane; the root disposes the previous
 page before mounting the next. The guide re-renders only when its search
@@ -159,6 +170,8 @@ cancellation, preference persistence failures, action routing and fresh startup 
 | `models/Overview.lua` | Volume summary, donut marks and legend, cleanup headline, ranked categories and largest items |
 | `models/Developer.lua` | Developer tiles: catalog resources, sizes and managing destinations |
 | `models/Guide.lua`, `knowledge/Guide.lua` | Storage Guide topics, search and live topic sizes |
+| `models/Simulators.lua` | Device and runtime inventory, filters, summaries and validated `simctl` commands |
+| `models/Updates.lua` | Software Update record, update staging storage, installers and local snapshots |
 | `models/Cleanup.lua`, `knowledge/CleanupRules.lua` | Recognized resources, review thresholds, evidence and tailored advice |
 | `models/Tips.lua` | Contextual access, capacity, Keep and system-storage guidance |
 | `models/Inspector.lua`, `models/Preferences.lua` | Resource details and action eligibility |

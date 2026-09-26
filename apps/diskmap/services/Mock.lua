@@ -434,6 +434,17 @@ function Mock:command(arguments, completion)
 		return
 	end
 	local simulators = self.fixture.simulators or {runtimes = {}, devices = {}}
+	if arguments[3] == "runtime" and arguments[4] == "delete" then
+		local images = self.fixture.simulatorRuntimes or {}
+		local image = images[arguments[5]]
+		if not image or image.deletable ~= true then completion(false, "Mock runtime is unavailable."); return end
+		images[arguments[5]] = nil
+		self.availableBytes = math.min(self.fixture.capacityBytes, self.availableBytes + (image.sizeBytes or 0))
+		-- As with simctl, devices on a deleted runtime remain but become unavailable.
+		for _, device in ipairs((simulators.devices or {})[image.runtimeIdentifier] or {}) do device.isAvailable = false end
+		completion(true, "Mock runtime deleted.")
+		return
+	end
 	if arguments[3] == "list" and arguments[4] == "--json" then
 		local value = copy(simulators)
 		for _, devices in pairs(value.devices or {}) do
@@ -478,6 +489,14 @@ function Mock:command(arguments, completion)
 		table.remove(matchGroup, matchIndex)
 	end
 	completion(true, "Mock simulator " .. action .. " completed.")
+end
+
+function Mock:simulatorRuntimes(completion)
+	completion(copy(self.fixture.simulatorRuntimes or {}))
+end
+
+function Mock:softwareUpdateStatus()
+	return copy(self.fixture.softwareUpdate)
 end
 
 function Mock:openSettings(section)

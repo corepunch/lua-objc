@@ -3,7 +3,7 @@ local xml = require("ui.xml")
 local Controller = {}; Controller.__index = Controller
 
 -- Sidebar destinations in the order they matter: what uses storage, the
--- developer tools behind it, then how macOS lays it out. Section rows are
+-- developer tools behind it, system-managed storage, then how macOS lays it out. Section rows are
 -- native source-list group headers and cannot be selected.
 Controller.destinations = {
 	{section = true, title = "Storage"},
@@ -11,6 +11,9 @@ Controller.destinations = {
 	{id = "largest", name = "Largest Items", icon = "chart.bar.fill"},
 	{section = true, title = "Tools"},
 	{id = "developer", name = "Developer", icon = "hammer.fill"},
+	{id = "simulators", name = "Simulators", icon = "iphone"},
+	{section = true, title = "System"},
+	{id = "updates", name = "Updates & Snapshots", icon = "arrow.triangle.2.circlepath"},
 	{section = true, title = "Learn"},
 	{id = "guide", name = "Storage Guide", icon = "book.fill"},
 }

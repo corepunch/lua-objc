@@ -67,10 +67,9 @@ t.expect(not Simulators.command("delete", rows[1]), "wildcard deletion is forbid
 local calls, confirmed, refreshed = {}, false, 0
 local service = {command = function(argv, completion) table.insert(calls, {argv = argv, done = completion}) end,
 	decode = function() return data end, confirmAction = function() return confirmed end,
-	reveal = function() end, openSettings = function() end,
-	simulatorInventory = function(_, completion) table.insert(calls, {done = function(inventory) completion(inventory) end}) end}
+	reveal = function() end, openSettings = function() end, openOwner = function() end}
 local controller = SimulatorController.new(model, service, function() refreshed = refreshed + 1 end)
-controller.filters = {"All devices", "Unavailable"}; controller.inventory = data; controller.selected = Simulators.rows(data)[1]
+controller.inventory = data; controller.selected = Simulators.rows(data)[1]
 t.expect(not controller:perform("erase"), "cancel confirmation never launches a command")
 t.assertEqual(#calls, 0, "cancel has no side effects")
 confirmed = true; model.kept.simulators = true
@@ -83,8 +82,9 @@ t.expect(not controller:perform("delete", true), "duplicate clicks cannot start 
 calls[1].done(false, "device busy")
 t.assertEqual(refreshed, 1, "failed action refreshes potentially changed totals")
 t.expect(controller.error:find("device busy", 1, true), "command failures remain visible")
-controller:load(); local pending = calls[#calls]; controller:close(); pending.done({devices = {}});
-t.assertEqual(controller.inventory.devices, nil, "late results cannot populate a closed sheet")
+service.simulatorRuntimes = function(completion) table.insert(calls, {done = completion}) end
+controller:load(); local pending = calls[#calls]; controller:dispose(); pending.done({})
+t.assertEqual(controller.runtimeList, nil, "late results cannot populate a closed page")
 -- Native controls and resize contracts, without showing windows.
 model.measurements.archives = {bytes = 20e9, status = "complete"}
 model.measurements.derived = {bytes = 12e9, status = "complete"}
@@ -165,21 +165,43 @@ for index = 0, manager.refs.rows1.rowCount - 1 do
 end
 t.expect(finderCell and finderCell.imageView.resolvedAppIcon, "application management shows the installed app icon")
 manager:close()
+local runtimeId = "0A1B2C3D-4E5F-4A6B-8C7D-9E0F1A2B3C4D"
+local runtimeList = {[runtimeId] = {identifier = runtimeId, runtimeIdentifier = "ios", version = "26.0", build = "23A339",
+	platformIdentifier = "com.apple.platform.iphonesimulator", deletable = true, sizeBytes = 8.4e9}}
+service.simulatorRuntimes = function(completion) completion(runtimeList) end
+local host = ns.VStack {}
 local simulatorUI = SimulatorController.new(model, service, function() end)
-simulatorUI:open(parent)
-calls[#calls].done(data)
-simulatorUI.refs.rows1:selectRow(0)
+simulatorUI:mount(host, {query = ""})
+simulatorUI:finish(simulatorUI.generation, data, runtimeList)
+t.assertEqual(simulatorUI.refs.filter.className, "NSSegmentedControl", "device filters are a segmented control")
+t.assertEqual(simulatorUI.refs.devices.rowCount, 2, "every device is listed")
+t.assertEqual(simulatorUI.refs.runtimes.rowCount, 1, "installed runtimes are listed")
+t.assertEqual(simulatorUI.refs.devicesTileValue.text, "11.0 GB", "the devices tile totals measured device data")
+t.assertEqual(simulatorUI.refs.runtimesTileValue.text, "8.4 GB", "the runtimes tile totals runtime images")
+t.assertEqual(simulatorUI.refs.unavailableTileValue.text, "1", "the unavailable tile counts devices without a runtime")
+t.expect(simulatorUI.refs.unavailableTileAction.enabled, "unavailable devices can be deleted together")
+simulatorUI.refs.devices:selectRow(0)
 t.expect(simulatorUI.refs.erase.enabled and simulatorUI.refs.delete.enabled, "native selection enables actions for a shutdown device")
-t.assertEqual(simulatorUI.refs.reveal.title, "Reveal in Finder", "a device can be revealed in Finder")
-t.expect(simulatorUI.refs.refresh == nil, "the device list does not keep a refresh button")
-for _, name in ipairs({"reveal", "erase", "delete", "unavailable", "done"}) do
+t.assertEqual(simulatorUI.refs.reveal.title, "Show in Finder", "a device can be revealed in Finder")
+simulatorUI.refs.devices:selectRow(1)
+t.expect(not simulatorUI.refs.erase.enabled and simulatorUI.refs.delete.enabled, "unavailable device allows delete but not erase")
+simulatorUI.refs.runtimes:selectRow(0)
+t.expect(simulatorUI.refs.deleteRuntime.enabled, "a deletable runtime can be deleted")
+model.kept.runtimes = true
+simulatorUI.refs.runtimes:selectRow(0)
+t.expect(not simulatorUI.refs.deleteRuntime.enabled, "Keep protects runtimes")
+t.expect(simulatorUI.refs.runtimeStatus.text:find("Keep", 1, true) ~= nil, "a disabled runtime action explains why")
+model.kept.runtimes = nil
+for _, name in ipairs({"reveal", "erase", "delete", "deleteRuntime", "unavailableTileAction", "components"}) do
 	local button = simulatorUI.refs[name]
 	t.expect(button.frame.size.width + 1 >= button.fittingSize.width, button.title .. " is shown in full")
 end
-t.assertEqual(simulatorUI.refs.done.keyEquivalent, "\r", "sheet Done is the native default action")
-simulatorUI.refs.rows1:selectRow(1)
-t.expect(not simulatorUI.refs.erase.enabled and simulatorUI.refs.delete.enabled, "unavailable device allows delete but not erase")
-simulatorUI:close(); parent:close()
+simulatorUI:update({query = "old"})
+t.assertEqual(simulatorUI.refs.devices.rowCount, 1, "search filters devices without reloading")
+t.assertEqual(simulatorUI.refs.runtimes.rowCount, 0, "search filters runtimes too")
+simulatorUI:dispose()
+t.assertEqual(simulatorUI.refs, nil, "disposing the page releases its refs")
+parent:close()
 local native = require("StorageScan")
 t.assertThrows(function() native.commandStart({}) end, "empty command rejected")
 t.assertThrows(function() native.commandStart({"/bin/echo", "bad\0argument"}) end, "NUL command arguments rejected")

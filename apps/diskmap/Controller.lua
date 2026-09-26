@@ -19,6 +19,7 @@ local OverviewController = require("apps.diskmap.controllers.OverviewController"
 local LargestController = require("apps.diskmap.controllers.LargestController")
 local DeveloperController = require("apps.diskmap.controllers.DeveloperController")
 local GuideController = require("apps.diskmap.controllers.GuideController")
+local UpdatesController = require("apps.diskmap.controllers.UpdatesController")
 local Controller = {}; Controller.__index = Controller
 local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
 function Controller.new(service)
@@ -48,7 +49,7 @@ function Controller.new(service)
 	self.simulators = SimulatorsController.new(self.model, service, function() self.scan:start() end)
 	self.sdks = SdksController.new(self.model, service)
 	self.management = ManagementController.new(self.model, service, function() self.scan:start() end,
-		function(id) self.cleanup:toggleKeep(id) end, function() self.simulators:open(self.window) end,
+		function(id) self.cleanup:toggleKeep(id) end, function() self:show("simulators") end,
 		function(row) self.sdks:open(self.window, row) end)
 	self.navigation = NavigationController.new(function(id) self:show(id) end)
 	local open = function(id) self:openManagement(id) end
@@ -60,15 +61,21 @@ function Controller.new(service)
 		}),
 		largest = LargestController.new(self.model, service, open),
 		developer = DeveloperController.new(self.model, {open = open,
-			simulators = function() self.simulators:open(self.window) end,
+			simulators = function() self:show("simulators") end,
 			sdks = function(row) if row then self.sdks:open(self.window, row) end end,
 		}),
+		simulators = self.simulators,
+		updates = UpdatesController.new(self.model, service),
 		guide = GuideController.new(self.model, open),
 	}
 	return self
 end
+-- Destinations that open a sidebar page rather than a category sheet: the
+-- simulator device resource is managed on its page, and "updates" names the
+-- Updates & Snapshots page. Developer stays a sheet so its page can list it.
+local PAGE_ROUTES = {simulators = true, updates = true}
 function Controller:openManagement(id, filter)
-	if id == "simulators" then self.simulators:open(self.window) else self.management:open(self.window, id, filter) end
+	if PAGE_ROUTES[id] then self.management:close(); self:show(id) else self.management:open(self.window, id, filter) end
 end
 -- Everything a page needs to present the current scan, in one value.
 function Controller:state()
@@ -143,7 +150,7 @@ function Controller:createWindow()
 	local scope = ns.Scope.current()
 	if scope then scope:add(self.scan); scope:add({dispose = function()
 		if self.page then self.page:dispose() end
-		self.reclaim:close(); self.settings:close(); self.management:close(); self.simulators:close(); self.sdks:close()
+		self.reclaim:close(); self.settings:close(); self.management:close(); self.sdks:close()
 	end}) end
 	self.service.monitor(function() return self.window.visible end, function()
 		if self.settings.enabled and not self.scan.job then self.scan:start() end
