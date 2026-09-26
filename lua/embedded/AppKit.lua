@@ -326,7 +326,7 @@ end
 function AppKit.Font(props)
 	assert(type(props) == "table" and tonumber(props.size), "Font requires a size")
 	return bridge._font(props.size, props.weight, props.italic == true, props.design,
-		props.monospacedDigit == true)
+		props.monospacedDigit == true, props.fontName)
 end
 
 --- Resolves a semantic name ("primary", "accent") or #RRGGBB hex to a color.
@@ -975,7 +975,8 @@ function AppKit.Text(arg)
 		v.font = bridge._font(size, weight,
 			type(arg) == "table" and arg.italic,
 			type(arg) == "table" and arg.design,
-			type(arg) == "table" and arg.monospacedDigit == true)
+			type(arg) == "table" and arg.monospacedDigit == true,
+			type(arg) == "table" and arg.fontName or nil)
 	end
 	if type(arg) == "table" and arg.color then
 		v.textColor = bridge._systemColor(arg.color)

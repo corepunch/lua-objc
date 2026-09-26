@@ -687,7 +687,16 @@ with an optional `size` and `weight` key for custom fonts:
 ns.Text "Hello"                          -- default font
 ns.Text { "Hello", size = 16 }           -- 16pt system font
 ns.Text { "Hello", size = 18, weight = "bold" }  -- 18pt bold
+ns.Text { "W", size = 58, fontName = "SnellRoundhand-Bold", design = "serif" }
 ```
+
+`fontName` selects a face the OS ships by PostScript or family name (for
+example Snell Roundhand, Didot, Baskerville). It is typography, not a custom
+control: use it for display text such as an illuminated initial. An unknown
+name falls back to the system font with the given `design`, so text never
+disappears on a platform that lacks the face. In XML:
+`<Label text="W" size="58" fontName="SnellRoundhand-Bold" design="serif" />`.
+`ns.Font` accepts the same `fontName` key.
 
 ### `Title "string"`
 

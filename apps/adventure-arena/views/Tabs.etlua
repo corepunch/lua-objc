@@ -1,6 +1,6 @@
 <TabView id="tabs">
-  <Tab title="Adventures" systemImage="gamecontroller">
-    <%- partial("Home.etlua", { games = games, featured = featured }) %>
+  <Tab title="Adventures" systemImage="books.vertical">
+    <%- partial("Home.etlua", { library = library }) %>
   </Tab>
   <Tab title="Ongoing" systemImage="clock.arrow.circlepath">
     <ContentUnavailable title="No Saved Games" systemImage="clock.arrow.circlepath" description="Start an adventure to begin playing." />
@@ -16,5 +16,8 @@
       <Label text="Settings" size="30" weight="bold" />
       <Label text="Reading preferences and accessibility." color="secondary" />
     </VStack>
+  </Tab>
+  <Tab title="Search" systemImage="magnifyingglass">
+    <%- partial("Search.etlua", {}) %>
   </Tab>
 </TabView>

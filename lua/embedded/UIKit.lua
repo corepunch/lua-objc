@@ -339,7 +339,7 @@ end
 function UIKit.Font(props)
 	assert(type(props) == "table" and tonumber(props.size), "Font requires a size")
 	return bridge._font(props.size, props.weight, props.italic == true, props.design,
-		props.monospacedDigit == true)
+		props.monospacedDigit == true, props.fontName)
 end
 
 function UIKit.Color(name)
@@ -820,7 +820,7 @@ function UIKit.Label(arg)
 			}),
 			UIKit.Label({ text, size = props.size, weight = props.weight,
 				italic = props.italic, design = props.design, color = props.color,
-				monospacedDigit = props.monospacedDigit,
+				monospacedDigit = props.monospacedDigit, fontName = props.fontName,
 				lineLimit = props.lineLimit, truncation = props.truncation, wrapping = props.wrapping }),
 		}
 		return applyLayout(UIKit.HStack(row), props)
@@ -829,7 +829,7 @@ function UIKit.Label(arg)
 	if type(props) == "table" then
 		if props.size and props.size > 0 then
 			v.font = bridge._font(props.size, props.weight, props.italic, props.design,
-				props.monospacedDigit == true)
+				props.monospacedDigit == true, props.fontName)
 		end
 		local lines = props.lineLimit or props.lines
 		if lines then

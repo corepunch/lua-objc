@@ -5,20 +5,30 @@
   </ToolbarItem>
   <ToolbarItem id="readingSettings" placement="primaryAction" icon="textformat.size" label="Reading settings" action="readingSettings" />
 </Toolbar>
-<VStack id="session" maxWidth="infinity" maxHeight="infinity" spacing="0">
-  <ZStack id="sessionOverlay" alignment="bottomTrailing" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
+<ZStack id="session" maxWidth="infinity" maxHeight="infinity">
+  <%
+    -- The "Cover" reading theme: the cover art of the game, blurred by the system
+    -- material, becomes the page — the way Music lays album art behind lyrics.
+  %>
+  <ZStack id="backdrop" maxWidth="infinity" maxHeight="infinity" hidden="<%= backdrop and 'false' or 'true' %>" clipsToBounds="true">
+    <% if cover then %>
+    <Image id="backdropImage" path="<%= cover %>" resizable="true" contentMode="fill" />
+    <% end %>
+    <MaterialView material="thick" maxWidth="infinity" maxHeight="infinity">
+      <Spacer />
+    </MaterialView>
+  </ZStack>
+  <ZStack id="sessionOverlay" alignment="bottomTrailing" maxWidth="infinity" maxHeight="infinity">
   <SafeAreaInset id="sessionContent" edge="bottom" minimumBottomInset="24" keyboardBottomInset="12" horizontalInset="12" matchBottomHorizontalInset="true" maxWidth="infinity" maxHeight="infinity">
     <ScrollView id="transcriptScroll" flexGrow="1" scrollOnKeyboard="true">
-      <VStack paddingHorizontal="20" paddingTop="16" paddingBottom="12" spacing="12" alignment="leading">
-        <Label id="gameTitle" text="<%= gameTitle %>" size="20" weight="bold" paddingLeading="32" lines="2" />
-        <Label id="gameDescription" text="<%= gameDescription %>" size="17" lines="0" />
-        <Label id="roomTitle" text="<%= roomTitle %>" size="20" weight="bold" paddingLeading="32" lines="2" />
-        <Label id="output" text="<%= transcript %>" size="17" lines="0" />
-      </VStack>
+      <VStack id="transcript" maxWidth="infinity" />
     </ScrollView>
 
       <VStack spacing="0" maxWidth="infinity">
         <Label id="dictationStatus" text="" size="13" color="secondary" paddingHorizontal="20" lines="2" />
+        <ScrollView id="suggestionScroll" horizontal="true" vertical="false" maxWidth="infinity">
+          <HStack id="suggestions" paddingBottom="8" />
+        </ScrollView>
         <GlassEffectContainer spacing="14">
           <HStack spacing="8" alignment="bottom">
             <Menu id="quickActions" title="" systemImage="plus" symbolSize="31" style="glass" accessibilityLabel="More commands" width="52" height="52">
@@ -39,9 +49,9 @@
         </GlassEffectContainer>
       </VStack>
   </SafeAreaInset>
-  <VStack paddingBottom="104" paddingTrailing="12">
+  <VStack paddingBottom="148" paddingTrailing="12">
     <%- partial("Compass.etlua", { actions = actions, availableDirections = availableDirections, compassSegments = compassSegments }) %>
   </VStack>
   </ZStack>
-</VStack>
+</ZStack>
 </Page>

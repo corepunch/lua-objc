@@ -690,6 +690,7 @@ local TAG_SCHEMA = {
             size       = "num",
             weight     = "str",
 			design     = "str",
+			fontName   = "str",
             italic     = "bool",
 			systemImage = "str",
 			iconSize   = "num",

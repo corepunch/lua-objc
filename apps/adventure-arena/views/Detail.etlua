@@ -5,12 +5,15 @@
       <Image id="cover" path="<%= game.cover %>" resizable="true" contentMode="fill" maxWidth="infinity" height="280" clipsToBounds="true" />
       <VStack padding="20" spacing="20" alignment="leading">
         <VStack spacing="8" alignment="leading">
-          <Label id="title" text="<%= game.title %>" size="30" weight="bold" lines="2" />
-          <HStack spacing="8">
+          <Label id="title" text="<%= game.title %>" size="30" weight="bold" design="serif" lines="2" />
+          <FlowStack spacing="8" maxWidth="infinity">
             <%- partial("MetadataChip.etlua", { text = game.genre, systemImage = "tag" }) %>
+            <% if game.difficulty then %>
+            <%- partial("MetadataChip.etlua", { text = game.difficulty, systemImage = "gauge.with.dots.needle.33percent" }) %>
+            <% end %>
             <%- partial("MetadataChip.etlua", { text = game.author, systemImage = "person" }) %>
             <%- partial("MetadataChip.etlua", { text = tostring(game.year), systemImage = "calendar" }) %>
-          </HStack>
+          </FlowStack>
         </VStack>
 
         <Divider />
@@ -38,12 +41,24 @@
         </VStack>
         <% end %>
       </VStack>
+      <% if related and #related > 0 then %>
+      <VStack paddingBottom="24" spacing="10" alignment="leading" maxWidth="infinity">
+        <Label text="More in <%= game.collection or game.genre %>" size="17" weight="bold" paddingHorizontal="20" />
+        <ScrollView horizontal="true" vertical="false">
+          <HStack spacing="14" paddingHorizontal="20" alignment="top">
+            <% for index, other in ipairs(related) do %>
+            <%- partial("CoverCard.etlua", { game = other, action = "related_" .. index, id = "related_" .. index }) %>
+            <% end %>
+          </HStack>
+        </ScrollView>
+      </VStack>
+      <% end %>
     </VStack>
   </ScrollView>
 
   <VStack paddingHorizontal="20" paddingVertical="12" background="secondaryBackground">
     <Button id="play" action="play" style="plain" maxWidth="infinity" accessibilityLabel="Play Adventure">
-      <ZStack maxWidth="infinity" height="52" alignment="center" background="accent" cornerRadius="14" clipsToBounds="true">
+      <ZStack maxWidth="infinity" height="52" alignment="center" background="<%= game.tint or 'accent' %>" cornerRadius="14" clipsToBounds="true">
         <Label text="Play Adventure" systemImage="play.fill" size="17" weight="bold" color="white" alignment="center" />
       </ZStack>
     </Button>

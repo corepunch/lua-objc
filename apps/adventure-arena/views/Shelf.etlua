@@ -1,0 +1,16 @@
+<VStack paddingTop="28" spacing="10" alignment="leading" maxWidth="infinity">
+  <HStack paddingHorizontal="16" spacing="8" alignment="bottom" maxWidth="infinity">
+    <VStack spacing="2" alignment="leading" flexGrow="1">
+      <Label text="<%= shelf.title %>" size="22" weight="bold" lines="1" truncation="tail" />
+      <Label text="<%= shelf.count == 1 and '1 adventure' or (shelf.count .. ' adventures') %>" size="13" color="secondary" />
+    </VStack>
+    <Button id="seeAll_<%= index %>" title="See All" action="shelf_<%= index %>" style="plain" size="15" accessibilityLabel="See all <%= shelf.title %>" />
+  </HStack>
+  <ScrollView horizontal="true" vertical="false">
+    <HStack spacing="14" paddingHorizontal="16" alignment="top">
+      <% for gameIndex, game in ipairs(shelf.games) do %>
+      <%- partial("CoverCard.etlua", { game = game, action = game.id, id = "cover_" .. index .. "_" .. gameIndex }) %>
+      <% end %>
+    </HStack>
+  </ScrollView>
+</VStack>

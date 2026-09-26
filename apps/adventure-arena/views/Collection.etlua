@@ -1,0 +1,12 @@
+<Page title="<%= title %>">
+<ScrollView id="collectionScroll">
+  <VStack padding="16" spacing="16" alignment="leading" maxWidth="infinity">
+    <Label text="<%= #games == 1 and '1 adventure' or (#games .. ' adventures') %>" size="15" color="secondary" />
+    <FlowStack spacing="16" maxWidth="infinity">
+      <% for index, game in ipairs(games) do %>
+      <%- partial("CoverCard.etlua", { game = game, action = game.id, id = "collectionCover_" .. index }) %>
+      <% end %>
+    </FlowStack>
+  </VStack>
+</ScrollView>
+</Page>

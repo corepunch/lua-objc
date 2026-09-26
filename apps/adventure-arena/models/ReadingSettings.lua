@@ -2,7 +2,10 @@ local ReadingSettings = {}
 ReadingSettings.__index = ReadingSettings
 
 local FONTS = { "default", "serif", "rounded", "monospaced" }
+-- "cover" lays the reading page over the game's blurred cover art; the
+-- others are solid pages in the manner of Apple Books.
 local THEMES = {
+	{ id = "cover", background = "background", primary = "primary", secondary = "secondary", appearance = 0, backdrop = true },
 	{ id = "system", background = "background", primary = "primary", secondary = "secondary", appearance = 0 },
 	{ id = "white", background = "#FFFFFF", primary = "#000000", secondary = "#4A4A4A", appearance = 1 },
 	{ id = "sepia", background = "#F5E8D1", primary = "#2B1F14", secondary = "#6B4F33", appearance = 1 },
@@ -62,6 +65,9 @@ function ReadingSettings:presentation()
 		primaryTextColor = theme.primary,
 		secondaryTextColor = theme.secondary,
 		appearance = theme.appearance,
+		backdrop = theme.backdrop == true,
+		-- The page must be transparent for the cover art to show through.
+		pageColor = theme.backdrop and "clear" or theme.background,
 	}
 end
 

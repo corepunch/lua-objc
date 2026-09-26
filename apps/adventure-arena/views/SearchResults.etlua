@@ -1,0 +1,18 @@
+<% if query == "" then %>
+<ScrollView>
+  <VStack padding="16" spacing="12" alignment="leading" maxWidth="infinity">
+    <Label text="Browse by Genre" size="22" weight="bold" />
+    <%- partial("GenreGrid.etlua", { genres = genres }) %>
+  </VStack>
+</ScrollView>
+<% elseif #results == 0 then %>
+<ContentUnavailable id="noResults" title="No Results" systemImage="magnifyingglass" description="No adventures match “<%= query %>”. Try a title, author, or genre." />
+<% else %>
+<ScrollView>
+  <VStack paddingHorizontal="16" spacing="0" maxWidth="infinity">
+    <% for index, game in ipairs(results) do %>
+    <%- partial("GameRow.etlua", { game = game, action = "result_" .. index, id = "result_" .. index, divider = index < #results }) %>
+    <% end %>
+  </VStack>
+</ScrollView>
+<% end %>

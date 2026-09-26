@@ -1,0 +1,24 @@
+<%
+  local ROW = { rankWidth = 28, thumbWidth = 52, thumbHeight = 78, cornerRadius = 6 }
+%>
+<VStack spacing="0" maxWidth="infinity">
+  <Button id="<%= id %>" action="<%= action %>" style="plain" maxWidth="infinity" accessibilityLabel="<%= rank and (rank .. '. ') or '' %><%= game.title %>">
+    <HStack spacing="12" paddingVertical="8" alignment="center" maxWidth="infinity">
+      <% if rank then %>
+      <Label text="<%= rank %>" size="20" weight="bold" design="rounded" color="secondary" width="<%= ROW.rankWidth %>" />
+      <% end %>
+      <Image path="<%= game.cover %>" resizable="true" contentMode="fill" cornerRadius="<%= ROW.cornerRadius %>" width="<%= ROW.thumbWidth %>" height="<%= ROW.thumbHeight %>" clipsToBounds="true" />
+      <VStack spacing="3" alignment="leading" flexGrow="1">
+        <Label text="<%= game.title %>" size="16" weight="semibold" lines="2" />
+        <Label text="<%= game.genre %> · <%= game.year %>" size="13" color="secondary" lines="1" truncation="tail" />
+        <HStack spacing="4">
+          <%- partial("Stars.etlua", { rating = game.rating, size = 10 }) %>
+          <Label text="<%= string.format('%.1f', game.rating) %>" size="12" color="secondary" />
+        </HStack>
+      </VStack>
+    </HStack>
+  </Button>
+  <% if divider then %>
+  <Divider />
+  <% end %>
+</VStack>
