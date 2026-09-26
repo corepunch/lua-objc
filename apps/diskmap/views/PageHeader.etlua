@@ -1,0 +1,10 @@
+<HStack maxWidth="infinity" spacing="14" alignment="center">
+  <SystemImage name="<%= icon %>" size="36" badgeColor="<%= color %>" />
+  <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+    <Label text="<%= title %>" size="22" weight="semibold" />
+    <Label id="<%= summaryId or "summary" %>" text="<%= summary or "" %>" size="13" color="secondary" monospacedDigit="true" maxWidth="infinity" lines="0" />
+  </VStack>
+  <% if actionTitle then %>
+  <Button id="<%= actionId or "headerAction" %>" title="<%= actionTitle %>" action="<%= action %>"<% if help then %> help="<%= help %>"<% end %> />
+  <% end %>
+</HStack>

@@ -18,7 +18,7 @@
         <Button id="showLargest" title="Show All" style="link" action="showLargest" />
       </HStack>
       <GroupBox id="largestPanel" maxWidth="infinity">
-        <%- partial("LargestList.etlua", {id = "largest", scrollDisabled = true}) %>
+        <%- partial("ResourceList.etlua", {id = "largest", menu = "largestMenu", activate = "openLargest", header = false, detailTitle = "Status"}) %>
       </GroupBox>
     </VStack>
     <HStack id="statusBar" maxWidth="infinity" spacing="12" alignment="center">

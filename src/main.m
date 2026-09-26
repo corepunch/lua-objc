@@ -54,6 +54,7 @@ enum {
 	kTableRefreshKey,
 	kTableSortKey,
 	kTableColumnButtonKey,
+	kTableRowMenuKey,
 	kTableMoveKey,
 	kTextChangeKey,
 	kTextChangeObserverKey,
@@ -107,6 +108,7 @@ static const NSTimeInterval kScrollToAnimationDuration = 0.2;
 #define kTableCellLevelHeight           12
 #define kTableInfoButtonSide            22
 #define kTableInfoButtonPointSize       15
+#define kTableRowMenuOffset             2
 #define kTableCellCurveInsetH            4
 #define kTableCellCurveInsetV           10
 #define kTableCellCurvePathWidth       100
@@ -319,6 +321,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_link", bridge_AppKitControls_link},
 	{"_toggle", bridge_AppKitControls_toggle},
 	{"_tableColumnWidths", bridge_AppKit_table_column_widths},
+	{"_tableRowMenu", bridge_table_row_menu},
 	{"_tableCell", bridge_table_cell},
 	{"_pressColumnButton", bridge_press_column_button},
 	{"_viewMidlineFill", bridge_view_midline_fill},
@@ -362,6 +365,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_outlineview", bridge_AppKit_outlineview},
 	{"_listDirectory", bridge_AppKit_list_directory},
 	{"_readPropertyList", bridge_AppKit_read_property_list},
+	{"_parsePropertyList", bridge_parse_property_list},
 	{"_timerAfter", bridge_AppKit_timer_after},
 	{"_httpGet", bridge_AppKit_http_get},
 	{"_jsonParse", bridge_AppKit_json_parse},

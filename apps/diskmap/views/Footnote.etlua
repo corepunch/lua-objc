@@ -1,0 +1,4 @@
+<HStack maxWidth="infinity" spacing="8" alignment="center">
+  <SystemImage name="<%= icon or "lightbulb" %>" size="13" color="secondary" />
+  <Label <% if id then %>id="<%= id %>" <% end %>text="<%= text %>" size="11" color="secondary" flexGrow="1" flexBasis="0" flexShrink="1" lines="0" />
+</HStack>

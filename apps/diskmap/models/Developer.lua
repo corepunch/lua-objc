@@ -1,64 +1,86 @@
 local Model = require("apps.diskmap.Model")
 local Categories = require("apps.diskmap.models.Categories")
+local Cleanup = require("apps.diskmap.models.Cleanup")
 local Developer = {}
 
--- Developer tools grouped by the decision a developer makes about them. Each
--- tile names a catalog resource (leaf or group) and the Diskmap destination
--- that manages it; nothing here grants removal on its own. `open` is either a
--- dedicated sheet (simulators, sdks) or a category to review.
-Developer.tiles = {
-	{id = "simulators", title = "Simulator devices", icon = "iphone", color = "systemBlue", open = "simulators",
-		actionTitle = "Manage Devices…",
-		detail = "Apps and data inside each simulator. Erase or delete devices you no longer test on."},
-	{id = "runtimes", title = "Simulator runtimes", icon = "iphone.gen3", color = "systemBlue", open = "runtimes",
-		actionTitle = "Review Runtimes…",
-		detail = "iOS, watchOS and visionOS images. Remove old ones in Xcode › Settings › Components."},
-	{id = "xcode-app", title = "Xcode & SDKs", icon = "hammer.fill", color = "systemBlue", open = "sdks",
-		actionTitle = "Show SDKs…",
-		detail = "The Xcode app and the SDKs bundled inside it. Remove only by uninstalling that Xcode."},
-	{id = "derived", title = "DerivedData", icon = "gearshape.2.fill", color = "systemGreen", open = "xcode",
-		actionTitle = "Review…",
-		detail = "Build products and indexes. Safe to rebuild; the next build takes longer."},
-	{id = "devices", title = "Device support", icon = "cable.connector", color = "systemTeal", open = "xcode",
-		actionTitle = "Review…",
-		detail = "Debug symbols copied from connected devices. Xcode copies them again when needed."},
-	{id = "archives", title = "Archives", icon = "archivebox.fill", color = "systemOrange", open = "xcode",
-		actionTitle = "Review…",
-		detail = "Shipped builds and their debug symbols. Keep archives you may need to symbolicate."},
-	{id = "packages", title = "Package managers", icon = "shippingbox", color = "systemOrange", open = "packages",
-		actionTitle = "Review…",
-		detail = "npm, pip, Homebrew, CocoaPods, Cargo and friends. Download caches refill on demand."},
-	{id = "containers", title = "Containers & VMs", icon = "shippingbox.fill", color = "systemOrange", open = "containers",
-		actionTitle = "Review…",
-		detail = "Docker, Colima and virtual machines. Prune from the owning tool; disks may hold databases."},
-	{id = "ai-tools", title = "AI coding tools", icon = "terminal", color = "systemIndigo", open = "ai-tools",
-		actionTitle = "Review…",
-		detail = "Codex, Claude Code, Cursor and others. Caches are separated from sessions and worktrees."},
+-- Developer storage grouped by the decision a developer makes about it. Each
+-- section lists catalog groups; their leaves appear as rows and nested groups
+-- (a simulator runtime set, one AI tool) roll up into a single row that opens
+-- its own list. `roots` lists groups whose direct leaves only are shown.
+Developer.sections = {
+	{id = "xcode", title = "Xcode & simulators", detail = "Build data, device support and simulators. Runtimes and SDKs are managed by Xcode.", groups = {"xcode"}},
+	{id = "packages", title = "Packages & toolchains", detail = "Download caches refill on demand; installed toolchains are removed with their version manager.", groups = {"packages", "toolchains", "test-browsers", "mobile-dev"}},
+	{id = "projects", title = "Projects & editors", detail = "Source, generated project folders and editor data. Review before removing anything here.", roots = {"developer"}, groups = {"editors"}},
+	{id = "containers", title = "Containers & virtual machines", detail = "Prune from the owning tool. Virtual disks can hold databases and personal work.", groups = {"containers"}},
+	{id = "ai", title = "AI tools & models", detail = "Coding-agent caches are separated from sessions and worktrees; model weights download again.", groups = {"ai-tools", "local-models"}},
 }
 
-local measured = Categories.row
+local POLICY = {Rebuildable = "Rebuildable", Essential = "Keep", ["System managed"] = "System managed"}
 
--- Tile presentation in catalog order, with each tile's measured size and a
--- share bar relative to the largest tile. Tiles whose resource is absent from
--- the catalog are omitted rather than shown as zero.
-function Developer.presentation(model)
-	local tiles, largest = {}, 0
-	for index, tile in ipairs(Developer.tiles) do
-		local row = measured(model, tile.id)
-		if row then
-			local value = {index = index, id = tile.id, title = tile.title, icon = tile.icon, color = tile.color,
-				detail = tile.detail, actionTitle = tile.actionTitle, open = tile.open,
-				size = row.size, bytes = row.bytes or 0, calculating = row.calculating == true}
-			largest = math.max(largest, value.bytes)
-			table.insert(tiles, value)
+local function row(model, resource)
+	local measured = Categories.row(model, resource.id)
+	if not measured then return nil end
+	local leaf = resource:isLeaf()
+	local value = {id = resource.id, name = resource.name, subtitle = resource.subtitle, icon = resource.icon or "doc",
+		color = resource.color or "systemGray", appIcon = resource.appIcon, bytes = measured.bytes or 0, size = measured.size,
+		calculating = measured.calculating == true, status = measured.status, group = not leaf,
+		detail = model.kept[resource.id] and "Kept" or not leaf and "Group" or POLICY[resource.policy] or "Review"}
+	if value.status == "complete" and value.bytes == 0 then return nil end
+	if value.status == "notMeasured" or value.status == "excluded" then return nil end
+	return value
+end
+
+-- Page presentation: sections of rows, largest first, with share bars
+-- compared across the whole page so sections can be read against each other.
+function Developer.presentation(model, query)
+	local needle = (query or ""):lower()
+	local sections, largest, total, calculating = {}, 0, 0, false
+	for _, section in ipairs(Developer.sections) do
+		local rows = {}
+		local function add(resource)
+			local value = row(model, resource)
+			if value and (needle == "" or (value.name .. " " .. (value.subtitle or "") .. " " .. (resource.path or "")):lower():find(needle, 1, true)) then
+				table.insert(rows, value)
+			end
+		end
+		for _, id in ipairs(section.roots or {}) do
+			local root = model.resources:find(id)
+			for _, child in ipairs(root and root:getChildren() or {}) do if child:isLeaf() then add(child) end end
+		end
+		for _, id in ipairs(section.groups) do
+			local group = model.resources:find(id)
+			for _, child in ipairs(group and group:getChildren() or {}) do add(child) end
+		end
+		table.sort(rows, function(a, b) if a.bytes ~= b.bytes then return a.bytes > b.bytes end return a.name < b.name end)
+		local bytes = 0
+		for _, value in ipairs(rows) do
+			bytes = bytes + value.bytes; largest = math.max(largest, value.bytes)
+			calculating = calculating or value.calculating
+		end
+		total = total + bytes
+		if #rows > 0 then
+			table.insert(sections, {id = section.id, title = section.title, detail = section.detail, rows = rows,
+				bytes = bytes, size = Model.size(bytes)})
 		end
 	end
-	for _, tile in ipairs(tiles) do tile.relative = largest > 0 and tile.bytes / largest or 0 end
-	local developer = measured(model, "developer")
-	local agents = measured(model, "ai-tools")
-	local bytes = (developer and developer.bytes or 0) + (agents and agents.bytes or 0)
-	return {tiles = tiles, total = Model.size(bytes), bytes = bytes,
-		calculating = (developer and developer.calculating) or (agents and agents.calculating) or false}
+	for _, section in ipairs(sections) do
+		for _, value in ipairs(section.rows) do
+			value.relative = largest > 0 and value.bytes / largest or 0
+			value.shareText = total > 0 and string.format("%d%%", math.floor(value.bytes * 100 / total + 0.5)) or ""
+			if value.shareText == "0%" and value.bytes > 0 then value.shareText = "<1%" end
+		end
+	end
+	local rebuildable = 0
+	for _, suggestion in ipairs(Cleanup.suggestions(model)) do
+		local resource = model.resources:find(suggestion.id)
+		local root = resource
+		while root and root:getParent() do root = root:getParent() end
+		if root and (root.id == "developer" or root.id == "ai-agents") and suggestion.impact == "Safe/rebuildable" then
+			rebuildable = rebuildable + suggestion.bytes
+		end
+	end
+	return {sections = sections, total = Model.size(total), bytes = total, rebuildable = rebuildable,
+		rebuildableSize = Model.size(rebuildable), calculating = calculating}
 end
 
 return Developer

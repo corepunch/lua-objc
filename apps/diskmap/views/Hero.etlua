@@ -43,7 +43,7 @@
           <Label id="reclaimTitle" text="<%= reclaim.title %>" size="13" weight="semibold" monospacedDigit="true" maxWidth="infinity" lines="1" />
           <Label id="reclaimDetail" text="<%= reclaim.detail %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
         </VStack>
-        <Button id="cleanUp" title="Review Cleanup…" style="borderedProminent" controlSize="large" action="reclaim" help="Suggested cleanups, grouped by impact" />
+        <Button id="cleanUp" title="Review Cleanup" style="borderedProminent" controlSize="large" action="reclaim" help="Open Clean Up: suggestions grouped by impact" />
       </HStack>
     </VStack>
   </HStack>

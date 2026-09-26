@@ -1,0 +1,29 @@
+<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+  <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
+    <%- partial("PageHeader.etlua", {icon = "square.grid.3x3.fill", color = "systemBlue", title = "Applications", summary = "Reading installed applications…"}) %>
+    <HStack id="stats" maxWidth="infinity" spacing="12" alignment="top">
+      <%- partial("StatTile.etlua", {id = "appsTile", icon = "app.fill", color = "systemBlue", title = "Apps", value = "—", detail = "Application bundles"}) %>
+      <%- partial("StatTile.etlua", {id = "dataTile", icon = "folder.fill", color = "systemTeal", title = "App data", value = "—", detail = "Containers, support files and caches"}) %>
+      <%- partial("StatTile.etlua", {id = "unusedTile", icon = "hourglass", color = "systemOrange", title = "Unused", value = "—", detail = "Not opened in 6 months"}) %>
+      <%- partial("StatTile.etlua", {id = "leftoversTile", icon = "questionmark.folder.fill", color = "systemGray", title = "Leftovers", value = "—", detail = "Data of apps no longer installed"}) %>
+    </HStack>
+    <VStack maxWidth="infinity" spacing="8" alignment="leading">
+      <HStack maxWidth="infinity" spacing="12" alignment="center">
+        <%- partial("SectionHeader.etlua", {title = "Installed", detail = "Each app with the data it keeps in your Library.", detailId = "installedDetail"}) %>
+        <Picker id="filter" style="segmented" onChange="filter">
+          <% for _, title in ipairs(filters) do %><Option title="<%= title %>" /><% end %>
+        </Picker>
+      </HStack>
+      <GroupBox maxWidth="infinity">
+        <%- partial("ResourceList.etlua", {id = "apps", menu = "appMenu", activate = "revealApp", header = true, nameTitle = "Application", detailTitle = "Last used", shareTitle = "Data", sizeTitle = "Total"}) %>
+      </GroupBox>
+    </VStack>
+    <VStack id="leftoversSection" maxWidth="infinity" spacing="8" alignment="leading">
+      <%- partial("SectionHeader.etlua", {title = "Possible leftovers", detail = "Data folders named for an app that Spotlight cannot find anywhere on this Mac. Check that the app is not on another disk before moving one to the Trash.", detailId = "leftoversDetail"}) %>
+      <GroupBox maxWidth="infinity">
+        <%- partial("ResourceList.etlua", {id = "leftovers", menu = "leftoverMenu", activate = "revealLeftover", header = false, detailTitle = "Location"}) %>
+      </GroupBox>
+    </VStack>
+    <%- partial("Footnote.etlua", {text = "Last used comes from Spotlight, as Finder's Last Opened. Apps outside /Applications and ~/Applications are not listed; their data never counts as a leftover."}) %>
+  </VStack>
+</ScrollView>

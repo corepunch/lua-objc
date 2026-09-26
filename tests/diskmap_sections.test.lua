@@ -52,7 +52,7 @@ t.expect(emptyRefs.legendExplanation ~= nil, "an overcounted inventory explains 
 t.expect(emptyRefs.lowSpace ~= nil and heroRefs.lowSpace == nil, "only a nearly full disk shows the low-space warning")
 t.assertEqual(#emptyRefs.chart.subviews, 2, "an empty chart keeps its track ring and centered total")
 local _, refs = render("Overview", {status = "Calculating…", actions = {select = function() end, open = function() end,
-	selectLargest = function() end, openLargest = function() end, showLargest = function() end, access = function() end}})
+	largestMenu = function() return {} end, openLargest = function() end, showLargest = function() end, access = function() end}})
 t.assertEqual(refs.categoriesPanel.className, "NSBox", "category rows share a native rounded section")
 t.assertEqual(refs.opportunities, nil, "the overview does not repeat reclaim content")
 t.expect(not refs.results.drawsBackground, "the category list lets its native group background show through")
@@ -75,25 +75,27 @@ refs.page.size = ns.Size(400, 500); refs.page:layout(400)
 t.expect(refs.results.frame.size.height < 80, "category rows keep their height instead of filling the window")
 t.expect(refs.results.frame.size.width <= 400, "category list stays within the page width")
 t.expect(not bridge._tableCell(refs.results, 2, 0).loadingIndicator.hidden, "section background preserves per-row loading")
-local empty = render("Opportunities", {groups = {{name = "Needs review", size = "0 KB", index = 1, rows = {}}}, actions = {}})
-t.expect(empty ~= nil, "empty review group renders")
-local overview, overviewRefs = render("Opportunities", {groups = {
-	{name = "Safe/rebuildable", size = "6.2 GB", index = 1, rows = {}},
-	{name = "Needs review", size = "49.0 GB", index = 2, rows = {}},
-	{name = "Essential to keep", size = "0 KB", index = 3, rows = {}},
-}, actions = {}})
-for _, width in ipairs({490, 700}) do
-	overview.size = ns.Size(width, 600); overview:layout(width)
-	t.assertEqual(overviewRefs.group1.frame.origin.y, overviewRefs.group3.frame.origin.y, "impact summaries stay in one horizontal row")
-	t.expect(overviewRefs.group3.frame.origin.x + overviewRefs.group3.size.width <= overviewRefs.impactSummary.size.width + 1,
-		"impact summaries fit the available width")
-	t.expect(overviewRefs.groupAction1.size.width < overviewRefs.group1.size.width / 2,
-		"summary actions stay compact within their native groups")
+-- Every ranking page shares one list: a non-scrolling table whose actions live
+-- in a row menu, so the page itself scrolls and no buttons sit under lists.
+local menuRows = 0
+local _, listRefs = render("ResourceList", {id = "items", menu = "rowMenu", activate = "open", header = true, detailTitle = "Status", actions = {
+	rowMenu = function(_, _, row) menuRows = menuRows + 1; return {{title = "Show " .. row.name, action = function() end}} end,
+	open = function() end}})
+local items = listRefs.items
+t.expect(items.scrollDisabled, "shared lists never scroll inside a page")
+items:replaceRows({{id = "derived", name = "Xcode DerivedData", subtitle = "Developer › Xcode", detail = "Rebuildable", size = "4.9 GB", relative = 1, shareText = "", color = "systemBlue", icon = "hammer.fill"}})
+t.assertEqual(bridge._tableRowMenu(items, 1)[1].title, "Show Xcode DerivedData", "the row menu describes its row")
+t.assertEqual(menuRows, 1, "row menus are built when opened")
+local more = bridge._tableCell(items, 4, 0)
+t.expect(more.actionButton ~= nil and more.actionButton.accessibilityLabel == "More", "each row has a More button")
+items.size = ns.Size(560, 200); items:layout(560)
+local widths = bridge._tableColumnWidths(items)
+local total = 0
+for _, column in ipairs(widths) do total = total + column.width end
+t.expect(total <= 560 + 1, "shared list columns fit a narrow page")
+for _, name in ipairs({"Largest", "Files", "Cleanup", "Applications", "Disks"}) do
+	local data = {summary = "", filters = {"All"}, threshold = "50 MB", health = {}, actions = setmetatable({}, {__index = function() return function() return {} end end})}
+	local page, pageRefs = render(name, data)
+	t.expect(page ~= nil and pageRefs.page ~= nil, name .. " renders as one scrolling page")
 end
-local _, reclaimRefs = render("Reclaim", {})
-t.expect(reclaimRefs.opportunities ~= nil and reclaimRefs.tips ~= nil, "cleanup sheet provides dedicated content mounts")
-local suggestions = render("Opportunities", {groups = {{name = "Safe/rebuildable", size = "4.9 GB", index = 1, rows = {{id = "derived", name = "Xcode DerivedData",
-	subtitle = "Build products can be recreated.", size = "4.9 GB", icon = "hammer", color = "systemBlue"}}}}, actions = {}})
-suggestions.size = ns.Size(292, 300); suggestions:layout(292)
-for _, child in ipairs(suggestions.subviews) do t.expect(child.frame.size.width <= 292, "recommendation fits a narrow inspector") end
 os.exit(t.summary() and 0 or 1)

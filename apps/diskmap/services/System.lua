@@ -111,6 +111,7 @@ function System.runOwnerCleanup(commandId, home, completion)
 	local commands = {
 		["npm-cache"] = {"/usr/bin/env", "npm", "cache", "clean", "--force", "--cache", home .. "/.npm"},
 		["pip-cache"] = {"/usr/bin/env", "python3", "-m", "pip", "--cache-dir", home .. "/Library/Caches/pip", "cache", "purge"},
+		["xcode-previews"] = {"/usr/bin/xcrun", "simctl", "--set", "previews", "delete", "all"},
 	}
 	local argv = commands[commandId]
 	if not argv then completion(false, "Unsupported package-manager cache operation."); return end
@@ -275,6 +276,73 @@ function System.simulatorRuntimes(completion)
 		local parsed, value = pcall(ns.json_parse, output)
 		completion(parsed and type(value) == "table" and value or nil)
 	end)
+end
+-- Bundle identifier and version from each app's Info.plist, plus Spotlight's
+-- last-used date, which Finder shows as "Last opened". One mdls call covers
+-- every app; apps never opened have no date.
+function System.applicationInfo(paths, completion)
+	local info = {}
+	for _, path in ipairs(paths) do
+		local plist = ns.readPropertyList(path .. "/Contents/Info.plist") or {}
+		info[path] = {bundleId = plist.CFBundleIdentifier, version = plist.CFBundleShortVersionString or plist.CFBundleVersion}
+	end
+	if #paths == 0 then completion(info); return end
+	local argv = {"/usr/bin/mdls", "-raw", "-name", "kMDItemLastUsedDate"}
+	for _, path in ipairs(paths) do table.insert(argv, path) end
+	System.command(argv, function(ok, output)
+		if ok then
+			for path, lastUsed in pairs(require("apps.diskmap.models.Applications").parseLastUsed(output, paths)) do
+				info[path].lastUsed = lastUsed
+			end
+		end
+		completion(info)
+	end)
+end
+-- Every application bundle Spotlight has indexed, anywhere on the Mac, so a
+-- data folder is only called a leftover when no installed app claims it.
+-- Completes with nil when Spotlight is unavailable.
+function System.installedBundleIds(completion)
+	System.command({"/usr/bin/mdfind", "kMDItemContentType == 'com.apple.application-bundle'"}, function(ok, output)
+		if not ok then completion(nil); return end
+		local paths = lines(output)
+		if #paths == 0 then completion(nil); return end
+		local argv = {"/usr/bin/mdls", "-raw", "-name", "kMDItemCFBundleIdentifier"}
+		for _, path in ipairs(paths) do table.insert(argv, path) end
+		System.command(argv, function(listed, values)
+			if not listed then completion(nil); return end
+			local ids = {}
+			for value in ((values or "") .. "\0"):gmatch("([^%z]*)%z") do
+				if value ~= "" and value ~= "(null)" then table.insert(ids, value) end
+			end
+			completion(ids)
+		end)
+	end)
+end
+-- Startup disk facts from diskutil and other mounted volumes. Reading them
+-- changes nothing; repairs stay in Disk Utility.
+function System.volumes(completion)
+	System.command({"/usr/sbin/diskutil", "info", "-plist", "/"}, function(ok, infoText)
+		local info = ok and ns.parsePropertyList(infoText) or nil
+		System.command({"/usr/sbin/diskutil", "apfs", "list", "-plist"}, function(listed, listText)
+			local external = {}
+			for _, entry in ipairs(ns.readDirectory("/Volumes", 0) or {}) do
+				local space = entry.directory and ns.diskSpace(entry.path)
+				local root = ns.diskSpace("/")
+				-- The startup volume also appears under /Volumes; skip it.
+				if space and not (root and space.totalKb == root.totalKb and space.freeKb == root.freeKb) then
+					table.insert(external, {name = entry.name, path = entry.path, totalBytes = space.totalKb * 1024, freeBytes = space.freeKb * 1024})
+				end
+			end
+			completion({info = info, apfs = listed and ns.parsePropertyList(listText) or nil, external = external})
+		end)
+	end)
+end
+function System.openDiskUtility()
+	os.execute("/usr/bin/open -a " .. System.quote("Disk Utility"))
+end
+function System.copy(text) ns.copyToClipboard(text) end
+function System.confirmTrashPath(title, path, message)
+	return ns.Alert {title = title, message = path .. "\n\n" .. message, buttons = {"Cancel", "Move to Trash"}} == 2
 end
 System.decode = ns.json_parse
 function System.confirmAction(title, message)

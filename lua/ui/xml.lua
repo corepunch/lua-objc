@@ -1037,9 +1037,10 @@ local TAG_SCHEMA = {
             loadingKey = "str",
             controlSize = "str",
             buttonSymbol = "str",
+            buttonMenu = "bool",
         },
         collect = function(props)
-            for key, field in pairs({loadingKey = "loading", controlSize = "controlSize", buttonSymbol = "button", badgeColorKey = "badgeColor", appIconKey = "appIcon", subtitleKey = "secondary", fileIconKey = "fileIcon", imageKey = "image", imageColorKey = "imageColor", imageSize = "imageSize", levelKey = "level", levelColorKey = "levelColor"}) do
+            for key, field in pairs({loadingKey = "loading", controlSize = "controlSize", buttonSymbol = "button", buttonMenu = "buttonMenu", badgeColorKey = "badgeColor", appIconKey = "appIcon", subtitleKey = "secondary", fileIconKey = "fileIcon", imageKey = "image", imageColorKey = "imageColor", imageSize = "imageSize", levelKey = "level", levelColorKey = "levelColor"}) do
                 if props[key] then
                     props.cell = props.cell or {}
                     props.cell[field] = props[key]
@@ -1069,6 +1070,7 @@ local TAG_SCHEMA = {
             swipeLeadingRole = "str",
             swipeTrailingRole = "str",
             fullSwipe = "bool",
+            rowMenu = "str",
         },
         collect = function(props, children)
             local columns = {}
@@ -1086,7 +1088,7 @@ local TAG_SCHEMA = {
             if attrs.data and renderData then
                 props.data = renderData[attrs.data]
             end
-            bindActions(props, attrs, { "onSelect", "onActivate", "onSort", "onColumnButton" })
+            bindActions(props, attrs, { "onSelect", "onActivate", "onSort", "onColumnButton", "rowMenu" })
             if attrs.reorderContainer then
                 props.onReorder = renderData and renderData.actions
                     and renderData.actions[attrs.reorderContainer]

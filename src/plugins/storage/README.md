@@ -22,6 +22,23 @@ Lua state. The code image is pinned until process exit to cover workers completi
 filesystem calls after state teardown. The worker releases its per-scan identity
 ledger when it finishes.
 
+`start(roots, exclusions, options)` and `scan(roots, exclusions, options)` accept
+optional summaries computed during the same walk, published only with the final
+snapshot:
+
+- `files = N`, `minimumFileBytes = B`: `largeFiles`, the N largest counted
+  regular files of at least B bytes (capped at 2,000), each `{path, bytes,
+  modified, used}`; `used` is the later of modification and access time.
+- `oldBefore = seconds`: `oldFiles` ranks files last used before that time the
+  same way, and `oldBytes`/`oldCount` total all of them.
+- `extensions = true`: `extensions`, one `{extension, bytes, count, oldBytes}`
+  row per lowercase extension (at most 4,096 rows; the rest join `""`).
+- `breakdown = true`: `breakdowns[i]` lists root i's immediate children as
+  `{name, kb, directory}` (at most 5,000 per root), excluding excluded paths.
+
+Hard-linked files count once in every summary, as in `trees`. Dates come from
+the same `getattrlistbulk` records; no file is opened.
+
 `scan(roots, exclusions)` runs the same engine synchronously for command-line tools
 and small headless regression fixtures. UI code must use `start`/`poll`.
 

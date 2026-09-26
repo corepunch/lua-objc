@@ -16,17 +16,21 @@ end
 function M.iosFiles()
 	return group("ios-files", "iOS Files", "iPhone and iPad backups made by Finder", "iphone", "systemBlue", {
 		item("device-backups", "iPhone & iPad backups", "Review connected-device backups in Finder", "~/Library/Application Support/MobileSync/Backup"),
+		item("iphone-updates", "iPhone software updates", "Restore images Finder downloaded to update or restore an iPhone", "~/Library/iTunes/iPhone Software Updates", D.cache),
+		item("ipad-updates", "iPad software updates", "Restore images Finder downloaded to update or restore an iPad", "~/Library/iTunes/iPad Software Updates", D.cache),
 	})
 end
 function M.mail()
 	return group("mail-library", "Mail", "Downloaded messages and attachments. Manage them in Mail.", "envelope.fill", "systemBlue", {
 		item("mail", "Mailboxes", "Local mailboxes and downloaded messages", "~/Library/Mail"),
+		item("mail-downloads", "Opened attachments", "Copies of attachments Mail saved when you opened them", "~/Library/Containers/com.apple.mail/Data/Library/Mail Downloads", {policy = "Rebuildable", action = "trash", reviewThreshold = 500e6, consequence = "These are copies made when you opened an attachment; the original stays in its message and Mail copies it again on the next open. Quit Mail first. Moving to Trash does not free space until you empty it."}),
 		item("mail-container", "Mail app data", "Sandboxed Mail data, excluding diagnostic logs", "~/Library/Containers/com.apple.mail"),
 	})
 end
 function M.messages()
 	return group("messages-library", "Messages", "Conversations and attachments. Manage them in Messages.", "message.fill", "systemGreen", {
-		item("messages", "Message history", "Conversations, attachments and message index", "~/Library/Messages"),
+		item("messages-attachments", "Message attachments", "Photos, videos and files received in conversations", "~/Library/Messages/Attachments", {action = "settings", reviewThreshold = 5e9, consequence = "Review large attachments in System Settings › General › Storage › Messages, or set Messages › Settings › General › Keep messages to one year. Deleting files here in Finder leaves broken conversations."}),
+		item("messages", "Message history", "Conversations and the message index", "~/Library/Messages"),
 		item("messages-container", "Messages app data", "Sandboxed Messages data", "~/Library/Containers/com.apple.MobileSMS"),
 	})
 end

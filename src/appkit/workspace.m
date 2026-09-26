@@ -2,27 +2,10 @@
 
 static const char kContextMenuDelegateKey;
 
-@interface LuaContextMenuBuilder : NSObject <NSMenuDelegate>
-@property (nonatomic) LuaReg *reg;
-@end
-
-@implementation LuaContextMenuBuilder
-
-- (void)dealloc {
-	[_reg dispose];
-}
-
-- (void)menuNeedsUpdate:(NSMenu *)menu {
-	[menu removeAllItems];
-	lua_State *L = lua_reg_live_state(_reg);
-	if (!L || !lua_reg_push(_reg)) return;
-
-	if (lua_pcall(L, 0, 1, 0) != LUA_OK) {
-		fprintf(stderr, "context menu error: %s\n", lua_tostring(L, -1));
-		lua_pop(L, 1);
-		return;
-	}
-
+/* Appends `{title, action, systemImage, disabled, separator}` records from the
+ * array on top of the stack, then pops it. View context menus and table row
+ * menus share this vocabulary. */
+static void lua_menu_fill_from_stack(lua_State *L, NSMenu *menu) {
 	if (!lua_istable(L, -1)) { lua_pop(L, 1); return; }
 
 	int n = (int)lua_rawlen(L, -1);
@@ -75,6 +58,24 @@ static const char kContextMenuDelegateKey;
 		lua_pop(L, 1);
 	}
 	lua_pop(L, 1);
+}
+
+@interface LuaContextMenuBuilder : NSObject <NSMenuDelegate>
+@property (nonatomic) LuaReg *reg;
+@end
+
+@implementation LuaContextMenuBuilder
+
+- (void)dealloc {
+	[_reg dispose];
+}
+
+- (void)menuNeedsUpdate:(NSMenu *)menu {
+	[menu removeAllItems];
+	lua_State *L = lua_reg_live_state(_reg);
+	if (!L || !lua_reg_push(_reg)) return;
+	if (lua_objc_pcall(L, 0, 1, "context menu") != LUA_OK) return;
+	lua_menu_fill_from_stack(L, menu);
 }
 
 @end

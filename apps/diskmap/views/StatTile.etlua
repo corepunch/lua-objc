@@ -5,7 +5,7 @@
       <Label text="<%= title %>" size="13" weight="semibold" flexGrow="1" flexBasis="0" flexShrink="1" lines="1" />
     </HStack>
     <Label id="<%= id %>Value" text="<%= value %>" size="20" weight="semibold" design="rounded" monospacedDigit="true" lines="1" />
-    <Label id="<%= id %>Detail" text="<%= detail %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
+    <Label id="<%= id %>Detail" text="<%= detail %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
     <% if actionTitle then %>
     <Button id="<%= id %>Action" title="<%= actionTitle %>" action="<%= action %>" disabled="true" />
     <% end %>
