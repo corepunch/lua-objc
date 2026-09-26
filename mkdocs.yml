@@ -33,6 +33,7 @@ nav:
       - Apple UI checklist: agents/apple-ui-checklist.md
       - Table behavior: tableview_swiftui.md
       - iOS host and hot reload: ios.md
+      - Swift/SwiftUI pain points: SWIFTUI_PAIN_POINTS.md
       - Project reference: PROJECT_REFERENCE.md
   - Reference:
       - Overview: reference/generated/index.md
