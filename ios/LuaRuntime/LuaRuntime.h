@@ -47,8 +47,13 @@ typedef void (^LRTReloadEventHandler)(NSDictionary *event);
 - (void)disconnect;
 @end
 
+/* userInfo key on LRTResourceLoader errors: the project path requested. */
+extern NSString *const LRTResourceLoaderPathKey;
+
 @interface LRTErrorViewController : UIViewController
-- (instancetype)initWithMessage:(NSString *)message;
+- (instancetype)initWithTitle:(NSString *)title message:(NSString *)message
+	details:(nullable NSString *)details retry:(nullable void (^)(void))retry;
+- (instancetype)initWaitingForPackager:(NSString *)url;
 @end
 
 /* Renders the live view hierarchy without using Simulator or Screen Recording. */

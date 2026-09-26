@@ -22,6 +22,7 @@ UIWindow *LRTApplicationWindow(void) {
 	id _preservedModel;
 	BOOL _booted;
 	BOOL _retrying;
+	BOOL _waiting;
 }
 
 + (instancetype)shared {
@@ -66,10 +67,7 @@ UIWindow *LRTApplicationWindow(void) {
 	if (_booted) return;
 	NSError *err = nil;
 	if (![LRTResourceLoader.shared ping:&err]) {
-		[self showError:[NSString stringWithFormat:
-			@"Waiting for packager at %@\n\nOn your Mac, leave this running:\n  make ios-run PROJECT=demo/hello\n\nThen this screen updates by itself.\n\n%@",
-			self.packagerURL,
-			err.localizedDescription ?: @"Could not connect to the server."]];
+		[self showWaiting];
 		if (_retrying) return;
 		_retrying = YES;
 		__weak typeof(self) weakSelf = self;
@@ -84,10 +82,11 @@ UIWindow *LRTApplicationWindow(void) {
 	}
 	NSLog(@"[lua-objc] resources available");
 	if (![self boot:&err]) {
-		[self showError:err.localizedDescription ?: @"boot failed"];
+		[self showError:err];
 		return;
 	}
 	_booted = YES;
+	_waiting = NO;
 	NSLog(@"[lua-objc] boot ok");
 	if (LRTResourceLoader.shared.localRoot) return;
 	NSString *reloadURLString = [self.packagerURL stringByReplacingOccurrencesOfString:@"https://"
@@ -108,11 +107,42 @@ UIWindow *LRTApplicationWindow(void) {
 	}
 }
 
-- (void)showError:(NSString *)message {
-	NSLog(@"[lua-objc] %@", message);
-	_window.rootViewController =
-		[[LRTErrorViewController alloc] initWithMessage:message];
+- (void)showWaiting {
+	if ([_window.rootViewController isKindOfClass:LRTErrorViewController.class]
+		&& _waiting) return;
+	_waiting = YES;
+	_window.rootViewController = [[LRTErrorViewController alloc] initWaitingForPackager:self.packagerURL];
 	[_window makeKeyAndVisible];
+}
+
+/* Plain-language status for a failed boot or reload. The raw message, such
+ * as a Lua traceback, is kept for Copy Details. */
+- (void)showError:(NSError *)error {
+	NSString *details = error.localizedDescription ?: @"Unknown error";
+	NSLog(@"[lua-objc] %@", details);
+	NSString *title = @"Couldn’t Load App";
+	NSString *message = [details componentsSeparatedByString:@"\n"].firstObject;
+	if ([error.domain isEqualToString:@"LRTResourceLoader"] && error.code == 404) {
+		title = @"File Not Found";
+		message = [NSString stringWithFormat:
+			@"The packager at %@ has no %@. It may be serving a project that was moved or deleted; restart it with make ios-run PROJECT=<app>.",
+			self.packagerURL, error.userInfo[LRTResourceLoaderPathKey] ?: @"such file"];
+	} else if ([error.domain isEqualToString:@"LRTApplicationController"]) {
+		title = @"Lua Error";
+	}
+	_waiting = NO;
+	__weak typeof(self) weakSelf = self;
+	_window.rootViewController = [[LRTErrorViewController alloc] initWithTitle:title
+		message:message details:details retry:^{ [weakSelf restart]; }];
+	[_window makeKeyAndVisible];
+}
+
+// Try Again: rebuild the Lua state from the packager's current entry.
+- (void)restart {
+	[_reloadConnection disconnect];
+	_reloadConnection = nil;
+	_booted = NO;
+	[self tryBoot];
 }
 
 static int searcher_packager(lua_State *L) {
@@ -327,7 +357,7 @@ static int bridge_read_file(lua_State *L) {
 	NSError *err = nil;
 	if ([kind isEqualToString:@"model"] || [kind isEqualToString:@"init"]) {
 		if (![self boot:&err]) {
-			[self showError:err.localizedDescription];
+			[self showError:err];
 		}
 		return;
 	}
@@ -340,24 +370,24 @@ static int bridge_read_file(lua_State *L) {
 		lua_setfield(_L, -2, "UIKit");
 		lua_pop(_L, 2);
 		if (luaL_dostring(_L, "local u = require('UIKit'); package.loaded.ns = u; package.loaded.AppKit = u; package.loaded.UIKit = u") != LUA_OK) {
-			[self showError:[self luaError:@"reload UIKit"].localizedDescription];
+			[self showError:[self luaError:@"reload UIKit"]];
 			return;
 		}
 	}
 	NSString *entry = [LRTResourceLoader.shared entryPath:&err];
 	NSData *src = entry ? [LRTResourceLoader.shared dataForPath:entry error:&err] : nil;
 	if (!src) {
-		[self showError:err.localizedDescription ?: @"reload failed"];
+		[self showError:err];
 		return;
 	}
 	NSString *chunk = [NSString stringWithFormat:@"@%@", entry];
 	if (luaL_loadbuffer(_L, src.bytes, src.length, chunk.UTF8String) != LUA_OK
 		|| lua_pcall(_L, 0, 1, 0) != LUA_OK) {
-		[self showError:[self luaError:@"reload"].localizedDescription];
+		[self showError:[self luaError:@"reload"]];
 		return;
 	}
 	if (![self instantiate:&err]) {
-		[self showError:err.localizedDescription];
+		[self showError:err];
 	}
 }
 

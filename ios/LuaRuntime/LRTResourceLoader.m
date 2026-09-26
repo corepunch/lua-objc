@@ -1,5 +1,15 @@
 #import "LuaRuntime.h"
 
+NSString *const LRTResourceLoaderPathKey = @"LRTResourceLoaderPath";
+
+// "/file?path=apps/x/init.lua" -> "apps/x/init.lua"; other requests unchanged.
+static NSString *request_path(NSString *pathQuery) {
+	NSURLComponents *components = [NSURLComponents componentsWithString:pathQuery];
+	for (NSURLQueryItem *item in components.queryItems)
+		if ([item.name isEqualToString:@"path"] && item.value.length) return item.value;
+	return pathQuery ?: @"";
+}
+
 @implementation LRTResourceLoader {
 	NSURLSession *_session;
 	NSMutableDictionary<NSString *, NSData *> *_cache;
@@ -58,7 +68,8 @@
 			code:status
 			userInfo:@{NSLocalizedDescriptionKey:
 				[NSString stringWithFormat:@"HTTP %ld %@",
-					(long)status, pathQuery]}];
+					(long)status, pathQuery],
+				LRTResourceLoaderPathKey: request_path(pathQuery)}];
 		return nil;
 	}
 	return body;
