@@ -1,0 +1,23 @@
+<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+  <VStack id="pageContent" maxWidth="infinity" spacing="20" padding="24" alignment="leading">
+    <%- partial("PageHeader.etlua", {icon = "doc.fill", color = "systemTeal", title = "Large Files", summary = "Measuring files…"}) %>
+    <HStack id="stats" maxWidth="infinity" spacing="12" alignment="top">
+      <%- partial("StatTile.etlua", {id = "largeTile", icon = "doc.fill", color = "systemTeal", title = "Over " .. threshold, value = "—", detail = "Individual files, largest first"}) %>
+      <%- partial("StatTile.etlua", {id = "oldTile", icon = "clock.fill", color = "systemOrange", title = "Unused for a year", value = "—", detail = "Not opened or changed since"}) %>
+      <%- partial("StatTile.etlua", {id = "movableTile", icon = "trash.fill", color = "systemRed", title = "Yours to review", value = "—", detail = "Unused documents you can move to the Trash"}) %>
+    </HStack>
+    <VStack maxWidth="infinity" spacing="8" alignment="leading">
+      <HStack maxWidth="infinity" spacing="12" alignment="center">
+        <%- partial("SectionHeader.etlua", {title = "Files", detail = "", detailId = "filterDetail"}) %>
+        <Button id="clearKind" title="Show All Kinds" style="link" action="clearKind" hidden="true" />
+        <Picker id="filter" style="segmented" onChange="filter">
+          <% for _, title in ipairs(filters) do %><Option title="<%= title %>" /><% end %>
+        </Picker>
+      </HStack>
+      <GroupBox maxWidth="infinity">
+        <%- partial("ResourceList.etlua", {id = "files", menu = "rowMenu", activate = "reveal", header = true, nameTitle = "File", detailTitle = "Last used", shareTitle = "Size", fileIcons = true}) %>
+      </GroupBox>
+    </VStack>
+    <%- partial("Footnote.etlua", {text = "Diskmap reads only names, sizes and dates. Files inside apps, libraries and hidden tool folders are listed for context and managed by their owners; only your own documents can be moved to the Trash here."}) %>
+  </VStack>
+</ScrollView>

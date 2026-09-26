@@ -565,6 +565,61 @@ static int bridge_NSScrollView_onColumnButton(lua_State *L) {
 	return 0;
 }
 
+static const char kTableRowMenuDelegateKey;
+static int bridge_NSScrollView_onRowMenu(lua_State *L) {
+	id obj = check_objc(L, 1);
+	if (!objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]))
+		return luaL_error(L, "not a table view");
+	NSScrollView *scroll = table_scrollview(obj);
+	NSTableView *table = (NSTableView *)scroll.documentView;
+	bridge_set_optional_callback(L, scroll, &kKeys[kTableRowMenuKey], 2);
+	LuaTableRowMenuDelegate *delegate = nil;
+	if (!lua_isnoneornil(L, 2)) {
+		delegate = [LuaTableRowMenuDelegate new];
+		delegate.scroll = scroll;
+	}
+	NSMenu *menu = nil;
+	if (delegate) {
+		menu = [[NSMenu alloc] init];
+		menu.autoenablesItems = NO;
+		menu.delegate = delegate;
+	}
+	table.menu = menu;
+	objc_setAssociatedObject(table, &kTableRowMenuDelegateKey, delegate, OBJC_ASSOCIATION_RETAIN);
+	return 0;
+}
+
+/* Headless tests read a row menu exactly as AppKit would build it, then
+ * perform one item, without opening a menu. Indices are 1-based. */
+static int bridge_table_row_menu(lua_State *L) {
+	id obj = check_objc(L, 1);
+	if (!objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]))
+		return luaL_error(L, "not a table view");
+	NSMenu *menu = [[NSMenu alloc] init];
+	table_row_menu_fill(table_scrollview(obj), menu, (NSInteger)luaL_checkinteger(L, 2) - 1);
+	NSInteger perform = (NSInteger)luaL_optinteger(L, 3, 0);
+	if (perform > 0) {
+		if (perform > menu.numberOfItems) return luaL_error(L, "row menu has no item %d", (int)perform);
+		NSMenuItem *item = [menu itemAtIndex:perform - 1];
+		if (!item.enabled || !item.action) return luaL_error(L, "row menu item %d is not enabled", (int)perform);
+		[NSApp sendAction:item.action to:item.target from:item];
+		return 0;
+	}
+	lua_createtable(L, (int)menu.numberOfItems, 0);
+	for (NSInteger index = 0; index < menu.numberOfItems; index++) {
+		NSMenuItem *item = [menu itemAtIndex:index];
+		lua_newtable(L);
+		if (item.separatorItem) {
+			lua_pushboolean(L, 1); lua_setfield(L, -2, "separator");
+		} else {
+			lua_pushstring(L, item.title.UTF8String); lua_setfield(L, -2, "title");
+			lua_pushboolean(L, !item.enabled); lua_setfield(L, -2, "disabled");
+		}
+		lua_rawseti(L, -2, index + 1);
+	}
+	return 1;
+}
+
 static int bridge_NSScrollView_onColumnSort(lua_State *L) {
 	id obj = check_objc(L, 1);
 	if (!objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]))

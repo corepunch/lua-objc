@@ -1,16 +1,9 @@
-<VStack id="page" flexGrow="1" maxWidth="infinity" maxHeight="infinity" spacing="12" padding="24" alignment="leading">
-  <HStack maxWidth="infinity" spacing="14" alignment="center">
-    <SystemImage name="chart.bar.fill" size="36" badgeColor="systemOrange" />
-    <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
-      <Label text="Largest Items" size="22" weight="semibold" />
-      <Label id="largestSummary" text="<%= summary %>" size="13" color="secondary" maxWidth="infinity" lines="2" />
-    </VStack>
-  </HStack>
-  <%- partial("LargestList.etlua", {id = "largest", scrollDisabled = false}) %>
-  <HStack maxWidth="infinity" spacing="8" alignment="center">
-    <Button id="reveal" title="Show in Finder" action="reveal" disabled="true" />
-    <Button id="openCategory" title="Open Category…" action="openCategory" disabled="true" />
-    <Spacer />
-    <Label id="selection" text="" size="11" color="secondary" lines="1" truncation="middle" flexShrink="1" />
-  </HStack>
-</VStack>
+<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+  <VStack id="pageContent" maxWidth="infinity" spacing="20" padding="24" alignment="leading">
+    <%- partial("PageHeader.etlua", {icon = "chart.bar.fill", color = "systemOrange", title = "Largest Items", summaryId = "largestSummary", summary = summary}) %>
+    <GroupBox maxWidth="infinity">
+      <%- partial("ResourceList.etlua", {id = "largest", menu = "rowMenu", activate = "open", header = true, nameTitle = "Item", detailTitle = "Status"}) %>
+    </GroupBox>
+    <%- partial("Footnote.etlua", {text = "Known locations measured individually, across every category. Open an item's menu to show it in Finder, review it, or keep it out of suggestions."}) %>
+  </VStack>
+</ScrollView>

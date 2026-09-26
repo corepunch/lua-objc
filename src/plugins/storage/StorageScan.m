@@ -15,6 +15,12 @@ static const NSUInteger ScanBufferSize = 64 * 1024;
 static const NSUInteger ScanIssueLimit = 1000;
 static const NSUInteger ScanDepthLimit = 256;
 static const NSTimeInterval ScanTimeout = 600;
+// Summaries are bounded so a disk with millions of files still publishes a
+// small result: a ranked list of large files and one row per extension.
+static const NSUInteger ScanFileLimit = 2000;
+static const NSUInteger ScanExtensionLimit = 4096;
+static const NSUInteger ScanExtensionLength = 12;
+static const NSUInteger ScanBreakdownLimit = 5000;
 static const char SnapshotMagic[8] = {'D', 'M', 'O', 'C', 'K', '0', '0', '1'};
 static const uint32_t SnapshotVersion = 1;
 
@@ -33,6 +39,8 @@ typedef struct {
 	uint32_t error;
 	attrreference_t name;
 	fsobj_type_t type;
+	struct timespec modified;
+	struct timespec accessed;
 	uint64_t inode;
 	off_t allocated;
 } ScanEntry;
@@ -63,6 +71,16 @@ typedef struct { uint64_t inode; dev_t device; } ScanIdentity;
 @property NSDictionary<NSString *, NSString *> *logicalRoots;
 @property uint64_t capacityBytes, availableBytes;
 @property NSUInteger exportedFiles;
+// Optional summaries requested through `start(roots, exclusions, options)`.
+@property NSUInteger fileLimit;
+@property uint64_t minimumFileBytes;
+@property NSTimeInterval oldBefore;
+@property BOOL collectsExtensions, collectsBreakdown;
+@property NSMutableArray<NSDictionary *> *largeFiles, *oldFiles;
+@property NSMutableDictionary<NSString *, NSMutableArray *> *extensions;
+@property NSMutableArray *breakdowns;
+@property NSMutableArray *currentBreakdown;
+@property uint64_t oldBytes, oldCount;
 - (void)run;
 - (void)publish:(BOOL)done;
 @end
@@ -72,6 +90,8 @@ typedef struct { uint64_t inode; dev_t device; } ScanIdentity;
 	if ((self = [super init])) {
 		_trees = [NSMutableArray array]; _states = [NSMutableArray array]; _issues = [NSMutableArray array];
 		_failure = @""; _exportFD = -1;
+		_largeFiles = [NSMutableArray array]; _oldFiles = [NSMutableArray array];
+		_extensions = [NSMutableDictionary dictionary]; _breakdowns = [NSMutableArray array];
 	}
 	return self;
 }
@@ -107,6 +127,41 @@ static NSUInteger identityHash(ScanIdentity key) {
 - (void)issue:(NSString *)path code:(int)code {
 	self.errors++;
 	if (self.issues.count < ScanIssueLimit) [self.issues addObject:@{@"path": path, @"reason": @(strerror(code))}];
+}
+// Keeps `files` sorted largest first and at most `fileLimit` long.
+- (void)rank:(NSDictionary *)file bytes:(uint64_t)bytes into:(NSMutableArray *)files {
+	if (files.count >= self.fileLimit && bytes <= [files.lastObject[@"bytes"] unsignedLongLongValue]) return;
+	NSUInteger index = [files indexOfObject:file inSortedRange:NSMakeRange(0, files.count)
+		options:NSBinarySearchingInsertionIndex usingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
+			return [b[@"bytes"] compare:a[@"bytes"]];
+		}];
+	[files insertObject:file atIndex:index];
+	if (files.count > self.fileLimit) [files removeLastObject];
+}
+// Records one counted regular file in the optional summaries. A file's last
+// use is the later of modification and access, so a file read yesterday is
+// never reported as old.
+- (void)summarize:(NSString *)path name:(const char *)name bytes:(uint64_t)bytes modified:(struct timespec)modified accessed:(struct timespec)accessed {
+	NSTimeInterval changed = modified.tv_sec + modified.tv_nsec / 1e9;
+	NSTimeInterval used = MAX(changed, accessed.tv_sec + accessed.tv_nsec / 1e9);
+	BOOL old = self.oldBefore > 0 && used > 0 && used < self.oldBefore;
+	if (old) { self.oldBytes += bytes; self.oldCount++; }
+	if (self.collectsExtensions) {
+		const char *dot = strrchr(name, '.');
+		NSString *extension = @"";
+		if (dot && dot != name && dot[1] && strlen(dot + 1) <= ScanExtensionLength)
+			extension = [[NSString alloc] initWithUTF8String:dot + 1].lowercaseString ?: @"";
+		if (!self.extensions[extension] && self.extensions.count >= ScanExtensionLimit) extension = @"";
+		NSMutableArray *totals = self.extensions[extension];
+		if (!totals) { totals = [NSMutableArray arrayWithObjects:@0, @0, @0, nil]; self.extensions[extension] = totals; }
+		totals[0] = @([totals[0] unsignedLongLongValue] + bytes);
+		totals[1] = @([totals[1] unsignedLongLongValue] + 1);
+		if (old) totals[2] = @([totals[2] unsignedLongLongValue] + bytes);
+	}
+	if (self.fileLimit == 0 || bytes < self.minimumFileBytes) return;
+	NSDictionary *file = @{@"path": path, @"bytes": @(bytes), @"modified": @(changed), @"used": @(used)};
+	[self rank:file bytes:bytes into:self.largeFiles];
+	if (old) [self rank:file bytes:bytes into:self.oldFiles];
 }
 - (BOOL)stopped {
 	if (self.cancelled || self.failure.length) return YES;
@@ -212,7 +267,7 @@ static NSUInteger identityHash(ScanIdentity key) {
 	void *buffer = malloc(ScanBufferSize);
 	if (!buffer) { self.failure = @"Not enough memory for directory metadata."; return bytes; }
 	struct attrlist attrs = {.bitmapcount = ATTR_BIT_MAP_COUNT,
-		.commonattr = ATTR_CMN_RETURNED_ATTRS | ATTR_CMN_ERROR | ATTR_CMN_NAME | ATTR_CMN_OBJTYPE | ATTR_CMN_FILEID,
+		.commonattr = ATTR_CMN_RETURNED_ATTRS | ATTR_CMN_ERROR | ATTR_CMN_NAME | ATTR_CMN_OBJTYPE | ATTR_CMN_MODTIME | ATTR_CMN_ACCTIME | ATTR_CMN_FILEID,
 		.fileattr = ATTR_FILE_ALLOCSIZE};
 	while (![self stopped]) {
 		int count = getattrlistbulk(fd, &attrs, buffer, ScanBufferSize, FSOPT_PACK_INVAL_ATTRS);
@@ -239,25 +294,39 @@ static NSUInteger identityHash(ScanIdentity key) {
 			if (entry.type == VDIR) {
 				int childFD = openat(fd, name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
 				if (childFD < 0) { [self issue:child code:errno]; continue; }
-				bytes += [self directory:childFD path:child device:device depth:depth + 1]; close(childFD);
+				uint64_t childBytes = [self directory:childFD path:child device:device depth:depth + 1]; close(childFD);
+				bytes += childBytes;
+				if (depth == 0) [self breakdown:component bytes:childBytes directory:YES];
 			} else if (entry.type == VREG) {
 				uint64_t inode = entry.inode; off_t allocated = entry.allocated;
+				struct timespec modified = entry.modified, accessed = entry.accessed;
 				if (!(entry.returned.commonattr & ATTR_CMN_FILEID) || !(entry.returned.fileattr & ATTR_FILE_ALLOCSIZE)) {
 					struct stat fileStat;
 					if (fstatat(fd, name, &fileStat, AT_SYMLINK_NOFOLLOW)) { [self issue:child code:errno]; continue; }
 					if (!S_ISREG(fileStat.st_mode) || fileStat.st_dev != device) continue;
 					inode = fileStat.st_ino; allocated = fileStat.st_blocks * 512;
+					modified = fileStat.st_mtimespec; accessed = fileStat.st_atimespec;
 				}
 				self.visited++;
 				if (allocated < 0) { [self issue:child code:EIO]; continue; }
 				BOOL alreadyCounted = [self seenInode:inode device:device];
 				uint64_t fileBytes = (uint64_t)allocated;
-				if (!alreadyCounted) bytes += fileBytes;
+				if (!alreadyCounted) {
+					bytes += fileBytes;
+					[self summarize:child name:name bytes:fileBytes modified:modified accessed:accessed];
+				}
+				if (depth == 0) [self breakdown:component bytes:alreadyCounted ? 0 : fileBytes directory:NO];
 				[self exportFile:child allocated:fileBytes counted:alreadyCounted ? 0 : fileBytes];
 			}
 		} }
 	}
 	free(buffer); return bytes;
+}
+// Immediate children of a scanned root, so a category can be opened one level
+// deeper without a second scan.
+- (void)breakdown:(NSString *)name bytes:(uint64_t)bytes directory:(BOOL)directory {
+	if (!self.currentBreakdown || self.currentBreakdown.count >= ScanBreakdownLimit || !name) return;
+	[self.currentBreakdown addObject:@{@"name": name, @"kb": @(bytes / 1024.0), @"directory": @(directory)}];
 }
 - (void)root:(NSString *)path {
 	NSString *state = nil; NSDictionary *tree = nil;
@@ -286,6 +355,7 @@ static NSUInteger identityHash(ScanIdentity key) {
 			int fd = openat(parent, name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
 			uint64_t bytes = 0;
 			NSString *logicalPath = self.logicalRoots[path] ?: path;
+			self.currentBreakdown = self.collectsBreakdown ? [NSMutableArray array] : nil;
 			if (fd < 0) [self issue:path code:errno];
 			else { bytes = [self directory:fd path:logicalPath device:st.st_dev depth:0]; close(fd); }
 			tree = @{@"kb": @(bytes / 1024.0), @"partial": @(self.errors > before)};
@@ -294,6 +364,7 @@ static NSUInteger identityHash(ScanIdentity key) {
 			BOOL alreadyCounted = [self seenInode:st.st_ino device:st.st_dev];
 			uint64_t fileBytes = (uint64_t)st.st_blocks * 512;
 			NSString *logicalPath = self.logicalRoots[path] ?: path;
+			if (!alreadyCounted) [self summarize:logicalPath name:name bytes:fileBytes modified:st.st_mtimespec accessed:st.st_atimespec];
 			[self exportFile:logicalPath allocated:fileBytes counted:alreadyCounted ? 0 : fileBytes];
 			tree = @{@"kb": @(alreadyCounted ? 0 : fileBytes / 1024.0)};
 		} else state = @"skipped";
@@ -301,6 +372,8 @@ static NSUInteger identityHash(ScanIdentity key) {
 	} else if (!state) { state = @"unreadable"; [self issue:path code:errno]; }
 	// A cancelled or timed-out root never becomes a complete measurement.
 	if ([self stopped]) return;
+	if (self.collectsBreakdown) [self.breakdowns addObject:self.currentBreakdown ?: @[]];
+	self.currentBreakdown = nil;
 	[self.trees addObject:tree ?: NSNull.null];
 	[self.states addObject:state ?: (self.errors > before ? @"unreadable" : @"measured")];
 }
@@ -312,6 +385,21 @@ static NSUInteger identityHash(ScanIdentity key) {
 		@"failure": self.cancelled ? @"Measurement cancelled." : self.failure,
 		@"exportedFiles": @(self.exportedFiles), @"exportPath": self.exportPath ?: @"",
 		@"partial": @(self.errors > 0 || self.failure.length > 0 || self.cancelled)};
+	// Summaries describe the whole batch, so they are published once at the end.
+	if (done && (self.fileLimit || self.collectsExtensions || self.collectsBreakdown || self.oldBefore > 0)) {
+		NSMutableDictionary *complete = [snapshot mutableCopy];
+		if (self.fileLimit) { complete[@"largeFiles"] = self.largeFiles.copy; complete[@"oldFiles"] = self.oldFiles.copy; }
+		if (self.collectsExtensions) {
+			NSMutableArray *rows = [NSMutableArray arrayWithCapacity:self.extensions.count];
+			[self.extensions enumerateKeysAndObjectsUsingBlock:^(NSString *extension, NSMutableArray *totals, BOOL *stop) {
+				[rows addObject:@{@"extension": extension, @"bytes": totals[0], @"count": totals[1], @"oldBytes": totals[2]}];
+			}];
+			complete[@"extensions"] = rows;
+		}
+		if (self.collectsBreakdown) complete[@"breakdowns"] = self.breakdowns.copy;
+		if (self.oldBefore > 0) { complete[@"oldBytes"] = @(self.oldBytes); complete[@"oldCount"] = @(self.oldCount); }
+		snapshot = complete;
+	}
 	@synchronized(self) { self.snapshot = snapshot; self.done = done; }
 }
 - (void)run {
@@ -447,6 +535,20 @@ static StorageScanJob *newJob(lua_State *L) {
 	NSArray *roots = paths(L, 1);
 	NSArray *excluded = lua_isnoneornil(L, 2) ? @[] : paths(L, 2);
 	StorageScanJob *job = [StorageScanJob new]; job.roots = roots; job.exclusions = [NSSet setWithArray:excluded];
+	if (lua_istable(L, 3)) {
+		lua_getfield(L, 3, "files");
+		lua_Integer files = luaL_optinteger(L, -1, 0); lua_pop(L, 1);
+		luaL_argcheck(L, files >= 0, 3, "files must be nonnegative");
+		job.fileLimit = MIN((NSUInteger)files, ScanFileLimit);
+		lua_getfield(L, 3, "minimumFileBytes");
+		job.minimumFileBytes = (uint64_t)MAX(0, luaL_optnumber(L, -1, 0)); lua_pop(L, 1);
+		lua_getfield(L, 3, "oldBefore");
+		job.oldBefore = luaL_optnumber(L, -1, 0); lua_pop(L, 1);
+		lua_getfield(L, 3, "extensions");
+		job.collectsExtensions = lua_toboolean(L, -1); lua_pop(L, 1);
+		lua_getfield(L, 3, "breakdown");
+		job.collectsBreakdown = lua_toboolean(L, -1); lua_pop(L, 1);
+	}
 	return job;
 }
 static const char *JobMetatable = "StorageScan.Job";

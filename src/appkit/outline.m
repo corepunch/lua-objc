@@ -243,6 +243,19 @@ static id property_list_value(id value) {
 	return nil;
 }
 
+/* Tools such as `diskutil -plist` print property lists; parsing the captured
+ * text avoids a temporary file. Accepts XML, binary and OpenStep plists. */
+static int bridge_parse_property_list(lua_State *L) {
+	size_t length = 0;
+	const char *bytes = luaL_checklstring(L, 1, &length);
+	NSData *data = [NSData dataWithBytes:bytes length:length];
+	id parsed = [NSPropertyListSerialization propertyListWithData:data options:NSPropertyListImmutable format:nil error:nil];
+	id value = property_list_value(parsed);
+	if (!value) { lua_pushnil(L); return 1; }
+	push_objc_value(L, value);
+	return 1;
+}
+
 static int bridge_read_property_list(lua_State *L) {
 	NSString *path = [NSString stringWithUTF8String:luaL_checkstring(L, 1)];
 	NSData *data = [NSData dataWithContentsOfFile:path];

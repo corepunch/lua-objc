@@ -3,12 +3,21 @@ local Resources = require("apps.diskmap.models.Resources")
 local Model = {}
 function Model.size(bytes)
 	if bytes == nil then return "Not measured" end
+	if bytes >= 1e12 then return string.format("%.2f TB", bytes / 1e12) end
 	if bytes >= 1e9 then return string.format("%.1f GB", bytes / 1e9) end
 	if bytes >= 1e6 then return string.format("%.1f MB", bytes / 1e6) end
 	return string.format("%.0f KB", bytes / 1000)
 end
+-- Counts with thousands separators, as Finder shows item counts.
+function Model.count(value)
+	local text = tostring(math.floor(value or 0))
+	local result = text:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+	return (result:gsub("^,", ""))
+end
 function Model.new(home)
-	local self = {home = home, includeMedia = false, measurements = {}, kept = {}, scan = {}}
+	-- `files` holds the last finished scan's large-file and extension
+	-- summaries; `breakdowns` maps a resource id to its immediate children.
+	local self = {home = home, includeMedia = false, measurements = {}, kept = {}, scan = {}, breakdowns = {}}
 	local resources, err = Resources.new(self, Catalog.tree(home))
 	assert(resources, err and err.message or "Could not build Diskmap resources")
 	self.resources = resources

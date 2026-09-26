@@ -1,0 +1,16 @@
+<% --[[ One list presentation for every page that ranks storage: icon, name
+  and where it lives, an optional detail column, a share bar, the size, and a
+  "More" button that opens the row's actions. The list never scrolls on its
+  own; the page scrolls as one surface. Fixed columns total 350 points so the
+  name keeps at least 180 points in the minimum window. ]]
+  local COLUMNS = { name = 180, detail = 110, share = 120, size = 80, more = 40 }
+%>
+<List id="<%= id %>" rowMenu="<%= menu %>"<% if activate then %> onActivate="<%= activate %>"<% end %> scrollDisabled="true" drawsBackground="false" style="fullWidth" header="<%= header and "true" or "false" %>" alternatingRows="false" gridLines="horizontal" rowHeight="44" maxWidth="infinity">
+  <Column id="name" title="<%= nameTitle or "Name" %>" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon"<% if fileIcons then %> fileIconKey="fileIcon"<% end %> imageSize="28" minWidth="<%= COLUMNS.name %>" />
+  <% if detailTitle then %>
+  <Column id="detail" title="<%= detailTitle %>" width="<%= COLUMNS.detail %>" minWidth="<%= COLUMNS.detail %>" />
+  <% end %>
+  <Column id="shareText" title="<%= shareTitle or "Share" %>" width="<%= COLUMNS.share %>" minWidth="<%= COLUMNS.share %>" levelKey="relative" levelColorKey="color" />
+  <Column id="size" title="<%= sizeTitle or "On disk" %>" width="<%= COLUMNS.size %>" minWidth="<%= COLUMNS.size %>" alignment="trailing" loadingKey="calculating" />
+  <Column id="more" title="" width="<%= COLUMNS.more %>" minWidth="<%= COLUMNS.more %>" buttonSymbol="ellipsis.circle" buttonMenu="true" />
+</List>

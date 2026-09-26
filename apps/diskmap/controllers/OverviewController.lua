@@ -8,8 +8,8 @@ local Controller = {}; Controller.__index = Controller
 local LARGEST = {preview = 6}
 
 -- `handlers` routes user intent back to the root controller: open(id) opens a
--- category, reclaim() the cleanup sheet, access() privacy settings, and
--- navigate(id) another sidebar destination.
+-- category, reclaim() the Clean Up page, access() privacy settings,
+-- navigate(id) another sidebar destination and menu(id) a resource's actions.
 function Controller.new(model, categories, handlers)
 	return setmetatable({model = model, categories = categories, handlers = handlers}, Controller)
 end
@@ -21,7 +21,7 @@ function Controller:mount(host, state)
 		access = function() handlers.access() end,
 		select = function(_, _, row) if row then self.selectedId = row.id end end,
 		open = function(_, _, row) if row then handlers.open(row.id) end end,
-		selectLargest = function(_, _, row) if row then self.selectedId = row.id end end,
+		largestMenu = function(_, _, row) return handlers.menu(row.id) end,
 		openLargest = function(_, _, row) if row then handlers.open(row.parentId) end end,
 		showLargest = function() handlers.navigate("largest") end,
 	}})

@@ -1,41 +1,9 @@
-local Cleanup = require("apps.diskmap.models.Cleanup")
 local Preferences = require("apps.diskmap.models.Preferences")
 local Controller = {}; Controller.__index = Controller
-function Controller.new(model, service, review, changed)
-	return setmetatable({model = model, service = service, review = review, changed = changed or function() end}, Controller)
-end
-function Controller:rows(query, limit)
-	local rows, needle = {}, (query or ""):lower()
-	for _, row in ipairs(Cleanup.suggestions(self.model)) do
-		if (row.name .. " " .. row.subtitle):lower():find(needle, 1, true) then
-			table.insert(rows, row)
-			if limit and #rows >= limit then break end
-		end
-	end
-	return rows
-end
-function Controller:presentation(query)
-	local rows, actions = self:rows(query), {}
-	for _, row in ipairs(rows) do actions["review_" .. row.id] = function() self.review(row.id) end end
-	local groups = {{name = "Safe/rebuildable", rows = {}}, {name = "Needs review", rows = {}}, {name = "Essential to keep", rows = {}}}
-	for _, row in ipairs(rows) do
-		local group = row.impact == "Safe/rebuildable" and groups[1] or groups[2]
-		table.insert(group.rows, row)
-	end
-	local needle = (query or ""):lower()
-	for _, row in ipairs(require("apps.diskmap.models.Categories").managementRows(self.model, "runtimes")) do
-		if (row.bytes or 0) > 0 and (row.name .. " " .. row.subtitle):lower():find(needle, 1, true) then
-			row.icon = "iphone"; row.color = "systemBlue"; row.subtitle = "Keep installed runtimes required by your projects."
-			table.insert(groups[3].rows, row)
-			actions["review_" .. row.id] = function() self.review("runtimes") end
-		end
-	end
-	for index, group in ipairs(groups) do
-		local bytes, partial = 0, false; for _, row in ipairs(group.rows) do bytes = bytes + (row.bytes or 0); partial = partial or row.partial end
-		group.index = index; group.size = (partial and "≥ " or "") .. require("apps.diskmap.Model").size(bytes)
-		actions["group_" .. index] = function() self.review(nil, group.name) end
-	end
-	return {suggestions = rows, groups = groups, actions = actions}
+-- Keep changes and their persistence. `changed(message)` reports a save
+-- failure, or nil, after the model changes.
+function Controller.new(model, service, changed)
+	return setmetatable({model = model, service = service, changed = changed or function() end}, Controller)
 end
 function Controller:toggleKeep(id)
 	if not Preferences.toggle(self.model, id) then return false end

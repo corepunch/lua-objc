@@ -34,6 +34,12 @@ function Provider.select(arguments)
 	return require("apps.diskmap.services.System")
 end
 
+-- `--page=<id>` opens a sidebar destination at launch, so screenshots and
+-- walkthroughs can start on any page.
+function Provider.page(arguments)
+	return argumentValue(arguments, "--page")
+end
+
 function Provider.exportPath(arguments)
 	return argumentValue(arguments, "--export-mock")
 end

@@ -114,10 +114,15 @@ function Overview.reclaim(model)
 	if count == 0 then
 		result.title = "No cleanup suggestions yet"
 		result.detail = "Suggestions appear once measured caches or build data exceed their review thresholds."
-	else
+	elseif rebuildable > 0 then
 		result.title = Model.size(rebuildable) .. " rebuildable"
 		result.detail = count .. (count == 1 and " suggestion" or " suggestions")
 			.. (review > 0 and (" · " .. Model.size(review) .. " more to review") or "")
+	else
+		-- Nothing is rebuildable yet; lead with what can be reviewed rather
+		-- than a zero.
+		result.title = Model.size(review) .. " to review"
+		result.detail = count .. (count == 1 and " suggestion" or " suggestions") .. " · nothing rebuildable without review"
 	end
 	return result
 end
@@ -149,6 +154,7 @@ function Overview.largest(model, disk, limit, query)
 					impact = row.policy == "Essential" and "Keep" or row.policy == "Rebuildable" and "Rebuildable"
 						or row.policy == "System managed" and "System managed" or "Review",
 					kept = row:isKept()})
+				rows[#rows].detail = rows[#rows].kept and "Kept" or rows[#rows].impact
 			end
 		end
 	end

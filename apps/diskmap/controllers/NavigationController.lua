@@ -2,17 +2,24 @@ local ns = require("AppKit")
 local xml = require("ui.xml")
 local Controller = {}; Controller.__index = Controller
 
--- Sidebar destinations in the order they matter: what uses storage, the
--- developer tools behind it, system-managed storage, then how macOS lays it out. Section rows are
--- native source-list group headers and cannot be selected.
+-- Sidebar destinations in the order they matter: what uses storage, what to
+-- do about it, the developer tools behind it, the disk and system-managed
+-- storage, then how macOS lays it out. Section rows are native source-list
+-- group headers and cannot be selected.
 Controller.destinations = {
 	{section = true, title = "Storage"},
 	{id = "overview", name = "Overview", icon = "chart.pie.fill"},
 	{id = "largest", name = "Largest Items", icon = "chart.bar.fill"},
-	{section = true, title = "Tools"},
+	{id = "files", name = "Large Files", icon = "doc.fill"},
+	{id = "kinds", name = "File Types", icon = "square.grid.2x2.fill"},
+	{section = true, title = "Clean Up"},
+	{id = "cleanup", name = "Recommendations", icon = "sparkles"},
+	{id = "applications", name = "Applications", icon = "square.grid.3x3.fill"},
+	{section = true, title = "Developer"},
 	{id = "developer", name = "Developer", icon = "hammer.fill"},
 	{id = "simulators", name = "Simulators", icon = "iphone"},
 	{section = true, title = "System"},
+	{id = "disks", name = "Disks & Volumes", icon = "internaldrive.fill"},
 	{id = "updates", name = "Updates & Snapshots", icon = "arrow.triangle.2.circlepath"},
 	{section = true, title = "Learn"},
 	{id = "guide", name = "Storage Guide", icon = "book.fill"},

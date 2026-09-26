@@ -22,4 +22,11 @@ rule({"codex-cache", "claude-cache", "cursor-cache", "cursor-cached-data", "curs
 rule({"codex-sessions", "codex-archives"}, 1e9, 2, "Session rollouts accumulate without bound, including completed subagent histories. Review old sessions in Codex and keep conversations you still need.")
 rule({"opencode-snapshots"}, 1e9, 2, "Snapshot storage tracks working trees and can retain orphaned temporary packs after interrupted operations. Review snapshot contents in OpenCode; snapshots rebuild on next use.")
 rule({"claude-projects", "claude-history"}, 1e9, 3, "Session transcripts and file-history checkpoints accumulate, and checkpoints can balloon during stuck sessions. Review old entries in Claude Code after moving durable notes elsewhere.")
+rule({"sim-caches"}, 1e9, 1, "CoreSimulator rebuilds its shared dyld and runtime caches the next time a simulator boots. Quit Xcode and Simulator first.")
+rule({"xcode-previews"}, 1e9, 1, "Preview devices are recreated by the next SwiftUI preview. Clearing them through simctl is the supported path; deleting the folder in Finder can leave CoreSimulator confused.")
+rule({"watch-devices", "device-logs"}, 2e9, 2, "Keep support files and logs for devices and OS versions you still debug. Xcode copies them again when you connect a device.")
+rule({"bun-cache", "uv-cache", "go-build", "deno-cache", "carthage-cache", "node-gyp"}, 500e6, 1, "Downloaded or compiled packages come back on the next install or build, which takes longer. Close the owning tool first.")
+rule({"playwright", "puppeteer", "cypress", "electron-cache"}, 1e9, 1, "Test runners download one browser build per version and never remove old ones. The version your project pins downloads again on the next install.")
+rule({"iphone-updates", "ipad-updates"}, 1e9, 1, "Restore images are only needed while an update or restore is in progress. Finder downloads the current one again when needed.")
+rule({"mail-downloads"}, 500e6, 1, "Opened-attachment copies; originals stay in their messages. Quit Mail before reviewing.")
 return Rules

@@ -117,7 +117,7 @@ _G.arg = originalArgs
 t.expect(app.service.mock, "Diskmap chooses its provider from application arguments")
 t.assertEqual(package.loaded["apps.diskmap.services.System"], nil, "constructing Mock Diskmap never loads the real scanner")
 app.scan:start()
-t.assertEqual(app.model.measurements.downloads.bytes, 9300000000, "Diskmap inventory scans the synthetic Downloads tree")
+t.assertEqual(app.model.measurements.downloads.bytes, 12080000000, "Diskmap inventory scans the synthetic Downloads tree")
 t.assertEqual(app.model.measurements["mock-video-studio"].bytes, 3400000000, "discovered applications are measured from the mock fixture")
 t.assertEqual(app.model.measurements.simulators.bytes, 11200000000, "simulator allocation is measured without simctl")
 local runtimeList

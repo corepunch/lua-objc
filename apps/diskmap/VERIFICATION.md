@@ -1,3 +1,26 @@
+# Large Files, File Types, Clean Up, Applications and Disks — September 26, 2026
+
+Sidebar sections Storage, Clean Up, Developer, System and Learn; one shared
+list design with row menus; native scan summaries; catalog and guide
+knowledge from Reddit, Stack Exchange and Apple forum reports.
+
+- `make` passes. Diskmap tests, `storage_scan` and the new `table_row_menu`
+  and `diskmap_insights` (138 assertions) pass; the only failures are the six
+  pre-existing `backups` assertions above. `make test` also fails six
+  adventure-arena files that need `MaterialView`, which exists only in
+  uncommitted work outside this branch.
+- Screenshots against the synthetic Mock HDD: every page in light mode at the
+  default size and in dark mode at 880×580. Fixed during review: shared list
+  columns clipped the size and More columns at 880 pt; four-up stat tile
+  titles truncated; mock APFS volumes did not match the fixture's capacity.
+- Real provider on this Mac: Disks & Volumes parsed `diskutil` (SMART
+  Verified, FileVault on, sealed, six volumes) and listed mounted installer
+  images. Scan summaries over ~/Library, ~/Downloads and ~/Developer
+  (761,705 items) cost 1–2 s on a warm 25 s scan.
+- Not verified live: `mdls`/`mdfind` for Applications on a full real scan
+  (the screenshot flag settles before the scan finishes), and moving real
+  files or leftovers to the Trash.
+
 # macOS verification of the redesign — September 26, 2026
 
 - `make` passes. `make test`: 132 of 134 files pass. The two failures

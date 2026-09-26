@@ -19,9 +19,18 @@ function Inventory.plan(model)
 	end
 	return paths, ids, exclusions
 end
+-- The same walk that measures categories also ranks large files, totals file
+-- extensions and lists each location's immediate children, so Large Files,
+-- File Types and Applications never need a second pass over the disk.
+Inventory.summary = {files = 500, minimumFileBytes = 50e6, oldDays = 365}
+function Inventory.options(now)
+	return {files = Inventory.summary.files, minimumFileBytes = Inventory.summary.minimumFileBytes,
+		oldBefore = (now or os.time()) - Inventory.summary.oldDays * 86400, extensions = true, breakdown = true}
+end
 -- A refresh discards old values before any new result can become visible.
 function Inventory.begin(model, ids)
 	model.scan = {}
+	model.files, model.breakdowns = nil, {}
 	for _, id in ipairs(ids) do model.measurements[id] = {status = "calculating"} end
 end
 function Inventory.cancel(model)
@@ -47,6 +56,16 @@ function Inventory.progress(model, ids, result)
 end
 function Inventory.apply(model, ids, result)
 	model.scan = {completedAt = os.time(), errors = result.errors or 0, visited = result.visited or 0, seconds = result.seconds or 0, issues = result.issues or {}, failure = result.failure}
+	-- Summaries arrive only with a finished batch; a cancelled scan has none.
+	if result.largeFiles or result.extensions then
+		model.files = {large = result.largeFiles or {}, old = result.oldFiles or {}, extensions = result.extensions or {},
+			oldBytes = result.oldBytes or 0, oldCount = result.oldCount or 0, partial = result.partial == true}
+	end
+	model.breakdowns = {}
+	for i, id in ipairs(ids) do
+		local children = result.breakdowns and result.breakdowns[i]
+		if type(children) == "table" then model.breakdowns[id] = children end
+	end
 	for i, id in ipairs(ids) do
 		local node = result.trees and result.trees[i]
 		local state = result.rootStates and result.rootStates[i]

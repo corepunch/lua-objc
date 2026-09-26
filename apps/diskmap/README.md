@@ -1,7 +1,8 @@
 # Diskmap
 
 A native macOS 26 storage manager organized by semantic categories, not folders.
-It answers three questions, one sidebar destination each:
+The sidebar has five sections — Storage, Clean Up, Developer, System and
+Learn — with one question per destination:
 
 - **Overview — what uses my storage?** A donut of the whole startup disk by
   category, with free space as the empty track and unattributed usage in gray,
@@ -9,19 +10,39 @@ It answers three questions, one sidebar destination each:
   categories ranked by size with share bars, the six largest individual items,
   and the rebuildable-versus-review cleanup headline with a prominent
   Review Cleanup button.
-- **Largest Items** — the hundred largest measured resources across every
-  category, each with its semantic owner, cleanup status and share bar. Show in
-  Finder or open the category that manages it.
-- **Developer — what can I do about Xcode and friends?** Tiles for simulator
-  devices, simulator runtimes, Xcode and its SDKs, DerivedData, device support,
-  archives, package managers, containers and AI coding tools, each with its
-  measured size, a capacity gauge and the sheet that manages it.
+- **Largest Items** — the hundred largest measured locations across every
+  category, each with its semantic owner, cleanup status and share bar.
+- **Large Files** — the individual files over 50 MB found by the same scan,
+  with when each was last used, filtered by All, Unused for a year, Installers &
+  archives and Media. Your own documents (not files inside ~/Library, hidden
+  tool folders or packages such as a Photos library) can be moved to the Trash
+  after confirmation.
+- **File Types** — every measured byte grouped by kind (videos, disk images
+  and installers, archives, AI models, virtual machine disks, …) in a donut,
+  with advice for the largest actionable kind and the top twelve extensions.
+  Opening a kind shows its largest files.
+- **Clean Up (Recommendations)** — rebuildable and review suggestions from the
+  cleanup rules, pointers to unused documents, installers, unused apps and app
+  leftovers, the full checklist of known space hogs that were measured within
+  their limits (or kept, or absent), and contextual tips.
+- **Applications** — each app in /Applications and ~/Applications with the data
+  it keeps in Containers, Group Containers, Application Support and Caches,
+  its version and when it was last opened (Spotlight's Last Opened), filtered
+  by All, Unused for 6 months and Most data. Possible leftovers are data
+  folders named like a bundle identifier that no app Spotlight knows claims.
+- **Developer — what can I do about Xcode and friends?** Sections for Xcode &
+  simulators, packages & toolchains, projects & editors, containers & virtual
+  machines, and AI tools & models, each a ranked list of catalog locations.
 - **Simulators** — every simulator device with its runtime, state, last use
   and data size, filtered by All, Unavailable or Unused for 90 days, with
   Erase, Delete and Delete Unavailable. Installed runtimes come from
   `xcrun simctl runtime list`: size, build, last use and the devices each one
   serves. Runtimes simctl reports as deletable can be deleted after a
   confirmation that names the devices they strand; Keep protects them.
+- **Disks & Volumes** — drive health (SMART), FileVault, the sealed system
+  volume and drive type from `diskutil info -plist /`; every APFS volume of the
+  startup container from `diskutil apfs list -plist`; other mounted disks; and
+  a shortcut to Disk Utility's First Aid. Read-only.
 - **Updates & Snapshots** — what Software Update last found (from its own
   preferences, without contacting Apple), the measured storage an update passes
   through (downloaded assets, the Update volume, Preboot), full "Install macOS"
@@ -30,14 +51,24 @@ It answers three questions, one sidebar destination each:
 - **Storage Guide — where does macOS keep things?** Topics on the APFS volume
   layout, Preboot, Recovery, where software updates are downloaded and staged,
   swap, local snapshots, free versus available space, System Data, caches,
-  containers, device backups and developer storage. Each topic explains what it
-  is, why it grows and what to do, shows its live size on this Mac and opens the
-  category that manages it.
+  containers, device backups and developer storage; common culprits people
+  report (runaway logs, local AI models, restore images, app leftovers, the
+  Spotlight index, document versions); and what classic disk utilities
+  (defragmenting, Disk Doctor, secure wipe, undelete, cleaners) mean on a
+  modern Mac. Each topic shows its live size and opens the category that
+  manages it.
+
+Every ranking uses one list design: icon, name and location, a status column,
+a share bar, the size and a "More" (⋯) button. A row's actions — its primary
+action, Show in Finder, the owning category, Keep and Copy Path — live in that
+menu and in the row's contextual menu, so lists never scroll inside a page and
+no buttons sit beneath them.
 
 Categories open their resources in a sheet with Safe/rebuildable, Needs review
 and Essential to keep filters. Refresh, Stop, Clean Up, Settings and Search live
 in the toolbar; search applies to the current page. The window subtitle shows
-free space.
+free space. `--page=<id>` (for example `--page=files`) opens a destination at
+launch for screenshots and walkthroughs.
 
 ```sh
 make
@@ -145,14 +176,30 @@ Keep suppresses suggestions for a resource and its descendants and persists
 locally. Background checks run every 15 minutes while open and can be paused.
 No file contents are read or uploaded; cloud-only files are not downloaded.
 
-The app and framework changes are described in [DESIGN.md](DESIGN.md).
+The same scan also ranks the 500 largest files over 50 MB, the largest files
+not used for a year, per-extension totals and each location's immediate
+children (see the [StorageScan options](../../src/plugins/storage/README.md)).
+Nothing about individual files is kept after the app quits. Individual files
+may be moved to the Trash only when `Files.validateTrash` accepts them: in the
+home folder, outside ~/Library, hidden folders and packages, below no kept,
+essential or system-managed location, and measured by the latest scan. A
+possible app leftover may be moved to the Trash only while it is still an
+unclaimed, measured data folder (`Applications.validateLeftover`); its
+confirmation warns that an app on another disk would lose that data.
+Applications reads each bundle's Info.plist and one `mdls` query for last-used
+dates; leftovers compare against `mdfind`'s list of every installed app.
+Disks & Volumes runs `diskutil info -plist /` and `diskutil apfs list -plist`.
+
+The app and framework changes are described in [DESIGN.md](DESIGN.md); the research behind the features and their sources are in [VISION.md](VISION.md).
 
 ## Component boundaries
 
 The root controller composes focused controllers: sidebar navigation, one page
-controller per destination (overview, largest items, developer, simulators,
-updates and snapshots, guide), category management sheets, the SDK sheet, scan lifecycle, category
-presentation, cleanup, contextual tips, inspector actions, and settings. Pages
+controller per destination (overview, largest items, large files, file types,
+clean up, applications, developer, simulators, disks and volumes, updates and
+snapshots, guide), category management sheets, the SDK sheet, scan lifecycle,
+category presentation, Keep persistence, contextual tips, row menus
+(`ActionsController`), inspector actions, and settings. Pages
 mount retained templates into the content pane; the root disposes the previous
 page before mounting the next. The guide re-renders only when its search
 changes, so scan progress never collapses the topic being read. Their
@@ -168,7 +215,11 @@ cancellation, preference persistence failures, action routing and fresh startup 
 | `models/Inventory.lua` | Scan plans, measurement transitions and current diagnostics |
 | `models/Categories.lua` | Category queries, rolled-up rows and capacity distribution |
 | `models/Overview.lua` | Volume summary, donut marks and legend, cleanup headline, ranked categories and largest items |
-| `models/Developer.lua` | Developer tiles: catalog resources, sizes and managing destinations |
+| `models/Developer.lua` | Developer sections: catalog groups, ranked rows and rebuildable total |
+| `models/Files.lua`, `knowledge/FileKinds.lua` | Large and unused files, kinds by extension, file ages and per-file Trash eligibility |
+| `models/Applications.lua` | Installed apps, their data folders, last use, possible leftovers and Spotlight date parsing |
+| `models/Recommendations.lua` | Clean Up sections: suggestions, file and app pointers, and the checked knowledge list |
+| `models/Volumes.lua` | Drive health facts, APFS volume rows and other mounted disks |
 | `models/Guide.lua`, `knowledge/Guide.lua` | Storage Guide topics, search and live topic sizes |
 | `models/Simulators.lua` | Device and runtime inventory, filters, summaries and validated `simctl` commands |
 | `models/Updates.lua` | Software Update record, update staging storage, installers and local snapshots |

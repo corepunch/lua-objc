@@ -36,19 +36,22 @@ model.measurements.simulators.status = "complete"
 model.kept.xcode = true
 t.assertEqual(#Cleanup.suggestions(model), 0, "keeping parent suppresses all descendant recommendations")
 model.kept.xcode = nil
-local selected, saved, refreshed = nil, 0, 0
+local saved, refreshed = 0, 0
 local keepMessage
-local cleanup = CleanupController.new(model, {saveKeep = function() saved = saved + 1; return true end}, function(id) selected = id end, function(message) keepMessage = message end)
-local presentation = cleanup:presentation(); presentation.actions.review_simulators()
-t.assertEqual(selected, "simulators", "review callback keeps resource identity")
-t.assertEqual(#cleanup:rows("unfindable"), 0, "cleanup filter is independent")
+local cleanup = CleanupController.new(model, {saveKeep = function() saved = saved + 1; return true end}, function(message) keepMessage = message end)
+local Recommendations = require("apps.diskmap.models.Recommendations")
+t.assertEqual(Recommendations.presentation(model).review[1].id, "simulators", "clean up keeps resource identity")
+t.assertEqual(#Recommendations.presentation(model, "unfindable").review, 0, "clean up search is independent")
 cleanup:toggleKeep("simulators")
+t.assertEqual(#Cleanup.suggestions(model), 0, "a kept resource leaves the suggestions")
+local keptRow; for _, row in ipairs(Recommendations.presentation(model).checked) do if row.id == "simulators" then keptRow = row end end
+t.assertEqual(keptRow and keptRow.detail, "Kept", "a kept resource is listed as checked and kept")
 t.assertEqual(saved, 1, "keep change persists the preference")
 t.assertEqual(model.measurements.projects.bytes, 900e9, "keep preserves unrelated measured state")
 cleanup:toggleKeep("simulators")
 t.assertEqual(saved, 2, "unkeep change also saves")
 t.assertEqual(keepMessage, nil, "successful persistence does not report an error")
-t.assertEqual(#cleanup:rows(), 1, "unkeep restores eligible resource")
+t.assertEqual(#Cleanup.suggestions(model), 1, "unkeep restores eligible resource")
 t.assertEqual(#Tips.forInventory(model, {totalKb = 100, freeKb = 40}), 1, "ordinary capacity gets the system tip")
 model.scan.errors = 4
 local tips = Tips.forInventory(model, {totalKb = 100, freeKb = 9})

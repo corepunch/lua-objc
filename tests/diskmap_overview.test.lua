@@ -71,20 +71,33 @@ t.assertEqual(rows[1].relative, 1, "the largest category has a full bar")
 t.assertEqual(rows[#rows].relative, nil, "unmeasured categories have no bar")
 t.assertEqual(rows[1].children, nil, "overview rows are flat")
 
--- Developer tiles name catalog resources and route to managed destinations.
+-- Developer sections list catalog resources, largest first, with bars compared
+-- across the whole page.
 local developer = Developer.presentation(model)
-t.assertEqual(#developer.tiles, #Developer.tiles, "every developer tile maps to a catalog resource")
-local tiles = {}
-for _, tile in ipairs(developer.tiles) do tiles[tile.id] = tile end
-t.assertEqual(tiles.simulators.relative, 1, "the largest developer tile has a full gauge")
-t.assertEqual(tiles.simulators.open, "simulators", "simulator devices open the device sheet")
-t.assertEqual(tiles["xcode-app"].open, "sdks", "Xcode opens its SDK list")
-t.assertEqual(tiles.derived.size, "4.9 GB", "tiles show measured sizes")
-t.assertEqual(developer.total, "25.9 GB", "developer total includes AI coding tools")
-for _, tile in ipairs(Developer.tiles) do
-	t.expect(tile.open == "simulators" or tile.open == "sdks" or model.resources:find(tile.open) ~= nil,
-		"developer tile opens a registered destination: " .. tile.id)
+t.expect(#developer.sections > 0, "developer storage is grouped into sections")
+local sectionsById, rowsById = {}, {}
+for _, section in ipairs(developer.sections) do
+	sectionsById[section.id] = section
+	for index, row in ipairs(section.rows) do
+		rowsById[row.id] = row
+		if index > 1 then t.expect(section.rows[index - 1].bytes >= row.bytes, "section rows are largest first: " .. section.id) end
+		t.expect(model.resources:find(row.id) ~= nil, "developer rows name catalog resources: " .. row.id)
+	end
 end
+t.expect(sectionsById.xcode ~= nil, "Xcode storage has its own section")
+t.assertEqual(rowsById.simulators.relative, 1, "the largest developer row has a full bar")
+t.assertEqual(rowsById.derived.size, "4.9 GB", "rows show measured sizes")
+t.assertEqual(rowsById.derived.detail, "Rebuildable", "rows state their cleanup policy")
+t.assertEqual(developer.total, "25.9 GB", "developer total includes AI coding tools")
+for _, section in ipairs(Developer.sections) do
+	for _, id in ipairs(section.groups) do t.expect(model.resources:find(id) ~= nil, "developer section cites a registered group: " .. id) end
+end
+t.assertEqual(#Developer.presentation(model, "deriveddata").sections, 1, "search narrows developer sections")
+model.measurements["runtime-images"] = {status = "complete", bytes = 1e9}
+local rolled
+for _, row in ipairs(Developer.presentation(model).sections[1].rows) do if row.id == "runtimes" then rolled = row end end
+t.expect(rolled and rolled.group and rolled.detail == "Group", "nested groups roll up into one row")
+model.measurements["runtime-images"] = nil
 
 -- The guide cites only registered resources and measures them live.
 local topics = 0

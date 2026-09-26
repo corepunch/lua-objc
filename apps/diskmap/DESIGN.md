@@ -137,9 +137,18 @@ there. There is no separate folder-hunting workflow required to finish cleanup.
 
 ## Window and interaction design
 
-Use one native window with a source-list sidebar. Category management,
-suggested cleanups, simulator devices, SDKs and Diskmap settings are sheets.
+Use one native window with a source-list sidebar. Category management, SDKs
+and Diskmap settings are sheets; suggested cleanups are the Clean Up page.
 All screens and partials are etlua.
+
+Every page scrolls as one surface. Lists inside a page are `scrollDisabled`
+and share one row design (`views/ResourceList.etlua`): icon, name and
+location, a status column, a share bar, the size and a "More" (⋯) button.
+Row actions live in that button's menu and the row's contextual menu, built
+by `ActionsController` from the same rules the sheets use, so the same data
+reads the same way on Largest Items, Large Files, Developer, Clean Up,
+Applications and Disks, and no action buttons sit beneath a list. Stat tiles
+summarize a page above its lists.
 
 The overview leads with a donut (SwiftUI `SectorMark`, drawn with native arcs)
 of the whole volume: categories in their colors, the unattributed residual in

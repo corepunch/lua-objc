@@ -1,0 +1,34 @@
+<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+  <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
+    <%- partial("PageHeader.etlua", {icon = "internaldrive.fill", color = "systemGray", title = "Disks & Volumes", summary = "Reading disk information…", actionTitle = "Open Disk Utility", actionId = "diskUtility", action = "diskUtility", help = "Run First Aid or erase a disk in Disk Utility"}) %>
+    <% if #health > 0 then %>
+    <HStack id="health" maxWidth="infinity" spacing="12" alignment="top">
+      <% for _, fact in ipairs(health) do %>
+      <GroupBox id="fact_<%= fact.id %>" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity">
+        <VStack maxWidth="infinity" padding="14" spacing="6" alignment="leading">
+          <HStack maxWidth="infinity" spacing="8" alignment="center">
+            <SystemImage name="<%= fact.icon %>" size="22" badgeColor="<%= fact.color %>" />
+            <Label text="<%= fact.title %>" size="13" weight="semibold" flexGrow="1" flexBasis="0" flexShrink="1" lines="1" />
+          </HStack>
+          <Label text="<%= fact.value %>" size="20" weight="semibold" design="rounded" lines="1" />
+          <Label text="<%= fact.detail %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
+        </VStack>
+      </GroupBox>
+      <% end %>
+    </HStack>
+    <% end %>
+    <VStack id="volumesSection" maxWidth="infinity" spacing="8" alignment="leading">
+      <%- partial("SectionHeader.etlua", {title = "Startup disk volumes", detail = "Every volume shares one APFS container and draws from the same free space.", detailId = "containerDetail"}) %>
+      <GroupBox maxWidth="infinity">
+        <%- partial("ResourceList.etlua", {id = "volumes", menu = "volumeMenu", header = false, detailTitle = "Device", shareTitle = "Of container"}) %>
+      </GroupBox>
+    </VStack>
+    <VStack id="externalSection" maxWidth="infinity" spacing="8" alignment="leading">
+      <%- partial("SectionHeader.etlua", {title = "Other disks", detail = "Mounted external drives and disk images. Diskmap measures only the startup disk."}) %>
+      <GroupBox maxWidth="infinity">
+        <%- partial("ResourceList.etlua", {id = "external", menu = "externalMenu", activate = "revealExternal", header = false, shareTitle = "Used", sizeTitle = "Used"}) %>
+      </GroupBox>
+    </VStack>
+    <%- partial("Footnote.etlua", {icon = "stethoscope", text = "If apps freeze or files go missing, back up and run First Aid in Disk Utility. SSDs never need defragmenting, and FileVault makes erased data unrecoverable, so secure-erase tools are unnecessary."}) %>
+  </VStack>
+</ScrollView>

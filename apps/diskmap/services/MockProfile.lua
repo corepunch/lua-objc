@@ -1,4 +1,61 @@
 return {
+	-- Files layered over the binary fixture for Large Files, File Types,
+	-- Applications and the new catalog entries. `usedDaysAgo` dates each file's
+	-- last use; fixture files use `fileAges` or `defaultAgeDays`.
+	["defaultAgeDays"] = 12,
+	["fileAges"] = {
+		["~/Downloads/Old macOS Installer.dmg"] = 540,
+		["~/Downloads/Design Assets.zip"] = 210,
+		["~/Documents/Tax Archive.zip"] = 820,
+		["~/mock-archive.tar"] = 1100,
+		["~/Desktop/Launch Recording.mov"] = 400,
+		["~/.Trash/Previous Mock Project/Project.xcarchive"] = 700,
+	},
+	["extraItems"] = {
+		{path = "~/Library/iTunes/iPhone Software Updates/iPhone17,1_26.0_23A341_Restore.ipsw", bytes = 5400000000, usedDaysAgo = 380},
+		{path = "~/.ollama/models/blobs/sha256-6a0746a1ec1a", bytes = 3800000000, usedDaysAgo = 95},
+		{path = "~/.cache/huggingface/hub/models--mock--vision/blobs/model.safetensors", bytes = 2400000000, usedDaysAgo = 510},
+		{path = "~/Library/Caches/ms-playwright/chromium-1140/chrome-mac/Chromium.app/Contents/Frameworks/Chromium Framework", bytes = 1250000000, usedDaysAgo = 300},
+		{path = "~/Library/Developer/CoreSimulator/Caches/dyld/23A339/dyld_sim_shared_cache_arm64e", bytes = 1800000000, usedDaysAgo = 20},
+		{path = "~/Library/Containers/com.mock.VideoStudio/Data/Library/Caches/render.cache", bytes = 2200000000, usedDaysAgo = 30},
+		{path = "~/Library/Containers/com.mock.RemovedEditor/Data/Library/Caches/thumbnails.db", bytes = 1200000000, usedDaysAgo = 640},
+		{path = "~/Library/Application Support/com.mock.OldGame/saves.dat", bytes = 900000000, usedDaysAgo = 900},
+		{path = "~/Library/Messages/Attachments/4f/15/IMG_0412.MOV", bytes = 1600000000, usedDaysAgo = 760},
+		{path = "~/Downloads/ubuntu-24.04-desktop-arm64.iso", bytes = 2600000000, usedDaysAgo = 700},
+		{path = "~/Downloads/Zoom Installer.pkg", bytes = 180000000, usedDaysAgo = 450},
+		{path = "/opt/homebrew/var/log/mock-service.log", bytes = 1100000000, usedDaysAgo = 2},
+	},
+	-- Installed applications as Launch Services and Spotlight report them.
+	["applications"] = {
+		["/Applications/Mock Video Studio.app"] = {bundleId = "com.mock.VideoStudio", version = "4.2", lastUsedDaysAgo = 30},
+		["/Applications/Mock Notes.app"] = {bundleId = "com.mock.Notes", version = "1.8", lastUsedDaysAgo = 2},
+		["~/Applications/Mock Game.app"] = {bundleId = "com.mock.Game", version = "2.0", lastUsedDaysAgo = 410},
+	},
+	-- `diskutil info -plist /` and `diskutil apfs list -plist`, abridged.
+	["volumes"] = {
+		["info"] = {
+			["DeviceIdentifier"] = "disk3s1s1", ["DeviceNode"] = "/dev/disk3s1s1", ["VolumeName"] = "Mock HDD",
+			["FilesystemName"] = "APFS", ["FilesystemUserVisibleName"] = "APFS", ["SolidState"] = true,
+			["SMARTStatus"] = "Verified", ["Internal"] = true, ["Encryption"] = true, ["FileVault"] = true,
+			["BusProtocol"] = "Apple Fabric", ["APFSContainerReference"] = "disk3", ["Sealed"] = "Yes",
+		},
+		["apfs"] = {
+			["Containers"] = {{
+				["ContainerReference"] = "disk3", ["CapacityCeiling"] = 245107195904, ["CapacityFree"] = 16900000000,
+				["Volumes"] = {
+					{["Name"] = "Mock HDD", ["Roles"] = {"System"}, ["CapacityInUse"] = 11800000000, ["DeviceIdentifier"] = "disk3s1"},
+					{["Name"] = "Preboot", ["Roles"] = {"Preboot"}, ["CapacityInUse"] = 7300000000, ["DeviceIdentifier"] = "disk3s2"},
+					{["Name"] = "Recovery", ["Roles"] = {"Recovery"}, ["CapacityInUse"] = 1100000000, ["DeviceIdentifier"] = "disk3s3"},
+					{["Name"] = "Data", ["Roles"] = {"Data"}, ["CapacityInUse"] = 204600000000, ["DeviceIdentifier"] = "disk3s5"},
+					{["Name"] = "VM", ["Roles"] = {"VM"}, ["CapacityInUse"] = 2100000000, ["DeviceIdentifier"] = "disk3s6"},
+					{["Name"] = "Update", ["Roles"] = {"Update"}, ["CapacityInUse"] = 1300000000, ["DeviceIdentifier"] = "disk3s4"},
+				},
+			}},
+		},
+		["external"] = {
+			{["name"] = "Backup Drive", ["path"] = "/Volumes/Backup Drive", ["totalBytes"] = 2000000000000, ["freeBytes"] = 612000000000, ["filesystem"] = "APFS", ["removable"] = true},
+		},
+	},
 	["snapshotCount"] = 2,
 	["snapshotDates"] = {
 		"com.apple.TimeMachine.20260915-091500.local",

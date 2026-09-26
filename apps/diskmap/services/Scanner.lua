@@ -1,8 +1,8 @@
 local App = require("App")
 local native = App.loadNativePlugin(assert(package.searchpath("StorageScan", package.cpath)), "StorageScan")
 local Scanner = {}
-function Scanner.start(paths, exclusions)
-	return {handle = native.start(paths, exclusions or {})}
+function Scanner.start(paths, exclusions, options)
+	return {handle = native.start(paths, exclusions or {}, options)}
 end
 function Scanner.startExport(paths, exclusions, outputPath, metadata)
 	return {handle = native.exportStart(paths, exclusions or {}, outputPath, metadata)}

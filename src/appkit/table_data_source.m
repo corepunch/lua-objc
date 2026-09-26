@@ -119,6 +119,40 @@ static void column_button_invoke(NSScrollView *scroll, NSButton *button) {
 	lua_objc_pcall(L, 3, 0, "table column button");
 }
 
+/* Row menus are one Lua description shared by the table's contextual menu and
+ * an optional per-row "More" button, like SwiftUI's `.contextMenu` beside a
+ * `Menu` inside the row. The builder runs each time AppKit opens the menu, so
+ * items always describe the row's current state. The item vocabulary is the
+ * one `contextMenu` uses; it is defined with that builder in workspace.m. */
+static void lua_menu_fill_from_stack(lua_State *L, NSMenu *menu);
+static void table_row_menu_fill(NSScrollView *scroll, NSMenu *menu, NSInteger row) {
+	[menu removeAllItems];
+	LuaTableViewSource *source = objc_getAssociatedObject(scroll, &kKeys[kTableSourceKey]);
+	LuaReg *reg = objc_getAssociatedObject(scroll, &kKeys[kTableRowMenuKey]);
+	lua_State *L = lua_reg_live_state(reg);
+	if (!source || !L || row < 0 || row >= (NSInteger)source.rows.count || !lua_reg_push(reg)) return;
+	push_objc(L, scroll, "nsview");
+	lua_pushinteger(L, (lua_Integer)row);
+	lua_newtable(L);
+	NSDictionary *rowData = source.rows[row];
+	for (NSString *key in rowData) {
+		push_objc_value(L, rowData[key]);
+		lua_setfield(L, -2, key.UTF8String);
+	}
+	if (lua_objc_pcall(L, 3, 1, "table row menu") != LUA_OK) return;
+	lua_menu_fill_from_stack(L, menu);
+}
+
+@interface LuaTableRowMenuDelegate : NSObject <NSMenuDelegate>
+@property (nonatomic, weak) NSScrollView *scroll;
+@end
+@implementation LuaTableRowMenuDelegate
+- (void)menuNeedsUpdate:(NSMenu *)menu {
+	NSTableView *table = (NSTableView *)self.scroll.documentView;
+	table_row_menu_fill(self.scroll, menu, table.clickedRow);
+}
+@end
+
 /* info.circle already draws the ring Settings uses, so the cell button stays
  * borderless. An extra circular bezel would put a second ring around it. */
 @interface LuaColumnButtonTarget : NSObject
@@ -137,6 +171,18 @@ static void column_button_invoke(NSScrollView *scroll, NSButton *button) {
 	while (view && ![view isKindOfClass:[NSTableView class]]) view = view.superview;
 	if (!view) return;
 	column_button_invoke(((NSTableView *)view).enclosingScrollView, sender);
+}
+/* A menu button opens the row menu directly below itself, the way a
+ * borderless `ellipsis.circle` pull-down does in Finder and Mail rows. */
+- (void)pressedMenu:(NSButton *)sender {
+	NSView *view = sender;
+	while (view && ![view isKindOfClass:[NSTableView class]]) view = view.superview;
+	if (!view) return;
+	NSMenu *menu = [[NSMenu alloc] init];
+	menu.autoenablesItems = NO;
+	table_row_menu_fill(((NSTableView *)view).enclosingScrollView, menu, sender.tag);
+	if (menu.numberOfItems == 0) return;
+	[menu popUpMenuPositioningItem:nil atLocation:NSMakePoint(0, NSHeight(sender.bounds) + kTableRowMenuOffset) inView:sender];
 }
 @end
 
@@ -329,9 +375,11 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 			button.title = @"";
 			button.identifier = colId;
 			button.contentTintColor = NSColor.secondaryLabelColor;
-			button.accessibilityLabel = @"Info";
+			BOOL opensMenu = [cellSpec[@"buttonMenu"] boolValue];
+			button.accessibilityLabel = opensMenu ? @"More" : @"Info";
+			button.toolTip = opensMenu ? @"More" : nil;
 			button.target = [LuaColumnButtonTarget shared];
-			button.action = @selector(pressed:);
+			button.action = opensMenu ? @selector(pressedMenu:) : @selector(pressed:);
 			[cell addSubview:button];
 			cell.actionButton = button;
 		}
