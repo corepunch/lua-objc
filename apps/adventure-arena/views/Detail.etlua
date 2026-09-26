@@ -1,49 +1,64 @@
-<Page title="<%= game.title %>">
-<SafeAreaInset id="detail" edge="bottom" ignoresSafeArea="top">
+<%
+  -- A book’s product page, arranged as the App Store arranges an app: the
+  -- cover runs under the navigation bar, a strip of facts, the blurb set as
+  -- prose, reader reviews, and more from the same shelf. The primary action
+  -- floats in Liquid Glass over the page instead of sitting on a slab.
+  local HEADER = { height = 440, side = 20, bottom = 26 }
+  local REVIEW = { width = 300, radius = 22, padding = 16 }
+%>
+<Page title="<%= game.title %>" titleDisplayMode="inline">
+<SafeAreaInset id="detail" edge="bottom" ignoresSafeArea="top" horizontalInset="20" minimumBottomInset="12">
   <ScrollView id="detailScrollView">
-    <VStack spacing="0" alignment="leading">
-      <Image id="cover" path="<%= game.cover %>" resizable="true" contentMode="fill" maxWidth="infinity" height="280" clipsToBounds="true" />
-      <VStack padding="20" spacing="20" alignment="leading">
-        <VStack spacing="8" alignment="leading">
-          <Label id="title" text="<%= game.title %>" size="30" weight="bold" design="serif" lines="2" />
-          <FlowStack spacing="8" maxWidth="infinity">
-            <%- partial("MetadataChip.etlua", { text = game.genre, systemImage = "tag" }) %>
-            <% if game.difficulty then %>
-            <%- partial("MetadataChip.etlua", { text = game.difficulty, systemImage = "gauge.with.dots.needle.33percent" }) %>
-            <% end %>
-            <%- partial("MetadataChip.etlua", { text = game.author, systemImage = "person" }) %>
-            <%- partial("MetadataChip.etlua", { text = tostring(game.year), systemImage = "calendar" }) %>
-          </FlowStack>
+    <VStack spacing="0" alignment="leading" paddingBottom="96">
+      <ZStack id="header" height="<%= HEADER.height %>" maxWidth="infinity" alignment="bottomLeading" clipsToBounds="true" background="<%= game.tint %>">
+        <Image id="cover" path="<%= game.cover %>" resizable="true" contentMode="fill" />
+        <LinearGradient topAlpha="0.35" middleAlpha="0.05" middleLocation="0.45" bottomAlpha="0.9" />
+        <VStack paddingHorizontal="<%= HEADER.side %>" paddingBottom="<%= HEADER.bottom %>" spacing="6" alignment="leading" maxWidth="infinity">
+          <Label text="<%= (game.collection or game.genre):upper() %>" size="12" weight="semibold" color="white" />
+          <Label id="title" text="<%= game.title %>" size="34" weight="bold" design="serif" color="white" lines="3" />
+          <Label text="<%= game.author %> · <%= game.year %>" size="15" color="white" />
         </VStack>
+      </ZStack>
 
-        <Divider />
+      <ScrollView id="facts" horizontal="true" vertical="false">
+        <HStack spacing="0" paddingHorizontal="8" paddingVertical="14" alignment="center">
+          <%- partial("Fact.etlua", { caption = "Rating", value = string.format("%.1f", game.rating), detail = game.reviewCount .. " ratings", divider = true }) %>
+          <%- partial("Fact.etlua", { caption = "Difficulty", value = game.difficulty or "—", detail = "Infocom level", divider = true }) %>
+          <%- partial("Fact.etlua", { caption = "Genre", value = game.genre:gsub(" Adventure$", ""), detail = "Adventure", divider = true }) %>
+          <%- partial("Fact.etlua", { caption = "Released", value = tostring(game.year), detail = game.author, divider = false }) %>
+        </HStack>
+      </ScrollView>
+      <Divider />
 
-        <%- partial("Rating.etlua", { game = game }) %>
-
-        <Divider />
-
-        <VStack spacing="8" alignment="leading">
-          <Label text="About this Game" size="17" weight="bold" />
-          <Label id="description" text="<%= game.description %>" size="16" color="secondary" lines="0" />
-        </VStack>
-
-        <% if game.reviews and #game.reviews > 0 then %>
-        <Divider />
-        <VStack spacing="16" alignment="leading">
-          <Label text="Reviews" size="17" weight="bold" />
-          <% for _, review in ipairs(game.reviews) do %>
-          <VStack spacing="6" alignment="leading">
-            <Label text="<%= review.title %>" size="16" weight="semibold" />
-            <Label text="<%= review.body %>" size="15" color="secondary" lines="0" />
-            <Label text="<%= review.author %>" size="12" color="secondary" />
-          </VStack>
-          <% end %>
-        </VStack>
-        <% end %>
+      <VStack padding="20" spacing="12" alignment="leading" maxWidth="infinity">
+        <Label text="About this Story" size="22" weight="bold" />
+        <Paragraph id="description" text="<%= game.description %>" size="17" lineSpacing="4" color="secondary" />
       </VStack>
+
+      <% if game.reviews and #game.reviews > 0 then %>
+      <VStack paddingTop="8" spacing="12" alignment="leading" maxWidth="infinity">
+        <HStack paddingHorizontal="20" spacing="8" alignment="bottom" maxWidth="infinity">
+          <Label text="Ratings &amp; Reviews" size="22" weight="bold" flexGrow="1" />
+          <Label text="<%= game.reviewCount %> ratings" size="15" color="secondary" />
+        </HStack>
+        <ScrollView horizontal="true" vertical="false" scrollTargetBehavior="viewAligned">
+          <HStack spacing="12" paddingHorizontal="20" alignment="top">
+            <% for index, review in ipairs(game.reviews) do %>
+            <VStack id="review_<%= index %>" width="<%= REVIEW.width %>" padding="<%= REVIEW.padding %>" spacing="6" alignment="leading" background="secondaryBackground" cornerRadius="<%= REVIEW.radius %>" clipsToBounds="true">
+              <Label text="<%= review.title %>" size="16" weight="semibold" lines="1" truncation="tail" />
+              <HStack spacing="2"><%- partial("Stars.etlua", { rating = review.rating or 5, size = 11 }) %></HStack>
+              <Label text="<%= review.body %>" size="15" color="secondary" lines="5" truncation="tail" />
+              <Label text="<%= review.author %>" size="12" color="tertiary" />
+            </VStack>
+            <% end %>
+          </HStack>
+        </ScrollView>
+      </VStack>
+      <% end %>
+
       <% if related and #related > 0 then %>
-      <VStack paddingBottom="24" spacing="10" alignment="leading" maxWidth="infinity">
-        <Label text="More in <%= game.collection or game.genre %>" size="17" weight="bold" paddingHorizontal="20" />
+      <VStack paddingTop="28" spacing="10" alignment="leading" maxWidth="infinity">
+        <Label text="More in <%= game.collection or game.genre %>" size="22" weight="bold" paddingHorizontal="20" />
         <ScrollView horizontal="true" vertical="false">
           <HStack spacing="14" paddingHorizontal="20" alignment="top">
             <% for index, other in ipairs(related) do %>
@@ -56,12 +71,13 @@
     </VStack>
   </ScrollView>
 
-  <VStack paddingHorizontal="20" paddingVertical="12" background="secondaryBackground">
-    <Button id="play" action="play" style="plain" maxWidth="infinity" accessibilityLabel="Play Adventure">
-      <ZStack maxWidth="infinity" height="52" alignment="center" background="<%= game.tint or 'accent' %>" cornerRadius="14" clipsToBounds="true">
-        <Label text="Play Adventure" systemImage="play.fill" size="17" weight="bold" color="white" alignment="center" />
-      </ZStack>
-    </Button>
-  </VStack>
+  <GlassEffectContainer spacing="12">
+    <HStack spacing="12" alignment="center" maxWidth="infinity">
+      <% if saved then %>
+      <Button id="restart" title="" systemImage="arrow.counterclockwise" symbolSize="20" style="glass" action="restart" accessibilityLabel="Start over" width="52" height="52" />
+      <% end %>
+      <Button id="play" title="<%= saved and ('Continue · ' .. saved.place) or 'Start Reading' %>" systemImage="<%= saved and 'book.fill' or 'book' %>" style="glassProminent" tint="<%= game.tint %>" size="17" weight="semibold" truncation="tail" action="play" accessibilityLabel="<%= saved and ('Continue ' .. game.title) or ('Start reading ' .. game.title) %>" maxWidth="infinity" height="52" />
+    </HStack>
+  </GlassEffectContainer>
 </SafeAreaInset>
 </Page>

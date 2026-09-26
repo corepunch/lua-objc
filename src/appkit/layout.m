@@ -253,6 +253,26 @@ typedef struct {
 	LuaMeasureMode heightMode;
 } LuaLayoutConstraint;
 
+/* SwiftUI containerRelativeFrame(.horizontal): a view inside a horizontal
+ * scroll view takes a fraction of the scroll view's visible width, less the
+ * content's own horizontal padding, so one card fills a phone and several
+ * share an iPad or Mac window. Resolved per proposal, never cached. */
+static void apply_container_relative_widths(NSView *view, CGFloat available) {
+	for (NSView *child in view.subviews) {
+		NSNumber *fraction = objc_getAssociatedObject(child, &kKeys[kContainerRelativeWidthKey]);
+		if (fraction.doubleValue > 0)
+			objc_setAssociatedObject(child, &kKeys[kFixedWidthKey],
+				@(floor(MAX(0, available) * fraction.doubleValue)), OBJC_ASSOCIATION_RETAIN);
+		if (![child isKindOfClass:NSScrollView.class]) apply_container_relative_widths(child, available);
+	}
+}
+
+static void apply_scroll_container_widths(NSView *document, CGFloat viewportWidth) {
+	if (!document || viewportWidth <= 0 || viewportWidth >= CGFLOAT_MAX / 2) return;
+	apply_container_relative_widths(document,
+		viewportWidth - view_padding_edge(document, YES) - view_padding_edge(document, NO));
+}
+
 static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint);
 
 static CGFloat constrained_result(CGFloat natural, CGFloat proposal,
@@ -521,6 +541,8 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		if (scrollContent) {
 			NSScrollView *scroll = (NSScrollView *)view;
 			if (scroll.hasHorizontalScroller && !scroll.hasVerticalScroller) {
+				if (constraint.widthMode != LuaMeasureUndefined)
+					apply_scroll_container_widths(scrollContent, constraint.width);
 				NSSize content = measure_view(scrollContent, (LuaLayoutConstraint){
 					.widthMode = LuaMeasureUndefined, .heightMode = LuaMeasureUndefined });
 				natural.height = [NSScrollView frameSizeForContentSize:content
@@ -563,6 +585,10 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 			natural = measure_view(((NSGlassEffectContainerView *)view).contentView,
 				constraint);
 		}
+		/* Prose answers a width proposal with its height, as SwiftUI Text does. */
+		if ([view isKindOfClass:LuaParagraphView.class])
+			natural = [(LuaParagraphView *)view sizeForProposedWidth:
+				constraint.widthMode == LuaMeasureUndefined ? CGFLOAT_MAX : constraint.width];
 		if ([view isKindOfClass:LuaLabel.class]) {
 			NSTextField *label = (NSTextField *)view;
 			/* Match the native drawing mode to the negotiated line count. A
@@ -1053,6 +1079,7 @@ static void layout_recursive_impl(NSView *view, CGFloat width) {
 				// height, or a resize is mistaken for a user scroll.
 				CGFloat distanceFromTop = previousViewport ? MAX(0, previous.size.height
 					- scroll.contentView.bounds.origin.y - viewport.height) : 0;
+				apply_scroll_container_widths(document, viewport.width);
 				NSSize content = measure_view(document, (LuaLayoutConstraint){
 					.width = viewport.width, .height = viewport.height,
 					.widthMode = scroll.hasHorizontalScroller ? LuaMeasureUndefined : LuaMeasureAtMost,
@@ -1316,3 +1343,12 @@ static int bridge_object_set_content_size_impl(lua_State *L) {
 }
 
 #pragma mark - Button, toggle, separator
+
+/* Whether the layout engine arranges this view's children (a stack) rather
+ * than measuring it as a leaf. The XML renderer pads leaves by wrapping them,
+ * as SwiftUI's .padding wraps any view. */
+static int bridge_has_layout_axis(lua_State *L) {
+	NSView *view = check_view(L, 1);
+	lua_pushboolean(L, layout_axis(view) != LayoutAxisNone);
+	return 1;
+}

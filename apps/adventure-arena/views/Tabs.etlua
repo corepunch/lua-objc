@@ -1,23 +1,31 @@
-<TabView id="tabs">
-  <Tab title="Adventures" systemImage="books.vertical">
+<%
+  -- iOS 26 tabs: Search is its own trailing tab, and the story being read
+  -- rides above the bar in a Liquid Glass accessory, as Music’s player does.
+  -- The bar minimizes while reading down a shelf.
+%>
+<TabView id="tabs" minimizeBehavior="onScrollDown" onChange="tabChanged">
+  <Tab title="Discover" systemImage="sparkles">
     <%- partial("Home.etlua", { library = library }) %>
   </Tab>
-  <Tab title="Ongoing" systemImage="clock.arrow.circlepath">
-    <ContentUnavailable title="No Saved Games" systemImage="clock.arrow.circlepath" description="Start an adventure to begin playing." />
+  <Tab title="Library" systemImage="books.vertical">
+    <NavigationStack id="bookshelfNavigation" title="Library" largeTitle="true">
+      <VStack id="bookshelf" maxWidth="infinity" maxHeight="infinity" />
+    </NavigationStack>
   </Tab>
-  <Tab title="Create Game" systemImage="plus.circle">
-    <VStack padding="20" spacing="14" alignment="leading">
-      <Label text="Create a Game" size="30" weight="bold" />
-      <Label text="Bring your own ZIL adventure to the arena." color="secondary" />
-    </VStack>
+  <Tab title="Create" systemImage="square.and.pencil">
+    <NavigationStack id="createNavigation" title="Create" largeTitle="true">
+      <ContentUnavailable title="Write an Adventure" systemImage="square.and.pencil" description="Bring your own ZIL story to the arena. Authoring tools are on the way." />
+    </NavigationStack>
   </Tab>
   <Tab title="Settings" systemImage="gearshape">
-    <VStack padding="20" spacing="14" alignment="leading">
-      <Label text="Settings" size="30" weight="bold" />
-      <Label text="Reading preferences and accessibility." color="secondary" />
-    </VStack>
+    <NavigationStack id="settingsNavigation" title="Settings" largeTitle="true">
+      <VStack id="settings" maxWidth="infinity" maxHeight="infinity" />
+    </NavigationStack>
   </Tab>
-  <Tab title="Search" systemImage="magnifyingglass">
+  <Tab title="Search" systemImage="magnifyingglass" role="search">
     <%- partial("Search.etlua", {}) %>
   </Tab>
+  <TabAccessory hidden="true">
+    <VStack id="nowReading" maxWidth="infinity" maxHeight="infinity" />
+  </TabAccessory>
 </TabView>

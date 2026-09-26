@@ -138,6 +138,19 @@ static LayoutAxis layout_axis(NSView *view) {
 #pragma mark - Compound action button
 
 static NSColor *semantic_color(NSString *name) {
+	/* "light|dark" pairs resolve against the drawing appearance, like an
+	 * asset-catalog colour with Any and Dark variants. */
+	if (!name) return NSColor.labelColor;
+	NSRange bar = [name rangeOfString:@"|"];
+	if (bar.length > 0) {
+		NSColor *light = semantic_color([name substringToIndex:bar.location]);
+		NSColor *dark = semantic_color([name substringFromIndex:NSMaxRange(bar)]);
+		return [NSColor colorWithName:nil dynamicProvider:^NSColor *(NSAppearance *appearance) {
+			NSAppearanceName match = [appearance bestMatchFromAppearancesWithNames:
+				@[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]];
+			return [match isEqualToString:NSAppearanceNameDarkAqua] ? dark : light;
+		}];
+	}
 	if ([name hasPrefix:@"#"] && name.length == 7) {
 		unsigned int rgb = 0;
 		NSScanner *scanner = [NSScanner scannerWithString:[name substringFromIndex:1]];

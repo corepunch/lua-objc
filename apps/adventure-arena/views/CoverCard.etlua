@@ -1,9 +1,9 @@
 <%
   -- Book-cover proportions (2:3) read as "a story" at a glance.
-  local COVER = { width = 128, height = 192, cornerRadius = 10, cardWidth = 132 }
+  local COVER = { width = 132, height = 198, cornerRadius = 12 }
 %>
-<Button id="<%= id %>" action="<%= action %>" style="plain" accessibilityLabel="Open <%= game.title %>">
-  <VStack width="<%= COVER.cardWidth %>" spacing="6" alignment="leading">
+<Button id="<%= id %>" action="<%= action %>" style="plain" accessibilityLabel="<%= game.title %>">
+  <VStack width="<%= COVER.width %>" spacing="6" alignment="leading">
     <Image path="<%= game.cover %>" resizable="true" contentMode="fill" cornerRadius="<%= COVER.cornerRadius %>" width="<%= COVER.width %>" height="<%= COVER.height %>" clipsToBounds="true" />
     <Label text="<%= game.title %>" size="14" weight="semibold" lines="1" truncation="tail" />
     <Label text="<%= game.difficulty and (game.difficulty .. ' · ' .. game.genre) or game.genre %>" size="12" color="secondary" lines="1" truncation="tail" />

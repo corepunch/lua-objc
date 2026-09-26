@@ -136,7 +136,7 @@ t.expect(hosting:find("keyboardLayoutGuide.topAnchor", 1, true) ~= nil,
 t.expect(hosting:find("keyboardLayoutGuide.usesBottomSafeArea = NO", 1, true) ~= nil
 	and hosting:find("MAX(self.view.safeAreaInsets.bottom, view.minimumBottomInset)", 1, true) ~= nil
 	and hosting:find("keyboardVisible ? view.keyboardBottomInset", 1, true) ~= nil
-	and hosting:find("keyboardVisible ? view.horizontalInset : bottomInset", 1, true) ~= nil,
+	and hosting:find("MAX(view.horizontalInset, MIN(bottomInset, deviceInset))", 1, true) ~= nil,
 	"keyboard guide gives the composer its own bottom and horizontal clearance")
 t.expect(src:find("accessory.safeAreaInsetBottom = true", 1, true) ~= nil
 	and src:find("accessory.matchBottomHorizontalInset = props.matchBottomHorizontalInset == true", 1, true) ~= nil,

@@ -22,6 +22,7 @@
 
 local etlua = require("etlua")
 local renderData = nil
+local padLeaf
 
 local function renderTemplate(src, data, sourceName)
     local parser = etlua.Parser()
@@ -360,7 +361,7 @@ local function layoutProps(attrs)
         "padding", "paddingHorizontal", "paddingVertical", "paddingLeading", "paddingTrailing", "paddingTop", "paddingBottom",
         "spacing", "alignment", "maxRows",
         "flexGrow", "flexShrink", "flexBasis",
-        "hidden", "allowsHitTesting", "background", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick", "onTap", "onDrag", "onEdgeSwipe",
+        "containerRelativeWidth", "hidden", "allowsHitTesting", "background", "tint", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick", "onTap", "onDrag", "onEdgeSwipe",
         "help",
     }
     local props = {}
@@ -407,6 +408,32 @@ local function layoutProps(attrs)
         end
     end
     return props
+end
+
+-- SwiftUI applies .padding to any view. Stacks inset their children
+-- natively, but a leaf (a label, a paragraph, an image) draws edge to edge in
+-- its frame, so a padded leaf is wrapped in a stack that carries the padding
+-- and the leaf's expansion. The leaf keeps its id, so refs still reach it.
+local paddedLeaves = setmetatable({}, { __mode = "k" })
+local PADDING_KEYS = { "padding", "paddingHorizontal", "paddingVertical", "paddingLeading",
+    "paddingTrailing", "paddingTop", "paddingBottom" }
+
+padLeaf = function(view, props, ns)
+    if type(view) ~= "userdata" or type(ns._hasLayoutAxis) ~= "function" then return view end
+    local wrapper = { spacing = 0, alignment = "leading" }
+    local padded = false
+    for _, key in ipairs(PADDING_KEYS) do
+        if props[key] ~= nil then wrapper[key] = props[key]; padded = true end
+    end
+    if not padded or ns._hasLayoutAxis(view) then return view end
+    for _, key in ipairs({ "fillWidth", "fillHeight", "flexGrow", "containerRelativeWidth" }) do
+        wrapper[key] = props[key]
+    end
+    view.containerRelativeWidth = 0
+    table.insert(wrapper, view)
+    local stack = ns.VStack(wrapper)
+    paddedLeaves[stack] = view
+    return stack
 end
 
 -- ── Node → view compilation ───────────────────────────────────────────────
@@ -479,13 +506,14 @@ local function compile(nodes, ns, registry, refs)
 					view = ns.attachReorder(view, items, action)
 				end
 				if node.attrs.id and type(view) == "userdata" then
-					refs[node.attrs.id] = view
+					local target = paddedLeaves[view] or view
+					refs[node.attrs.id] = target
 					-- Keep the declarative identity on the native view as well as
 					-- in the returned refs table. Diagnostics and accessibility
 					-- tooling can then locate the same semantic node without
 					-- depending on child order or implementation classes.
 					pcall(function()
-						view.accessibilityIdentifier = node.attrs.id
+						target.accessibilityIdentifier = node.attrs.id
 					end)
 				end
 				table.insert(views, view)
@@ -651,6 +679,7 @@ local TAG_SCHEMA = {
             horizontal    = "bool",
             vertical      = "bool",
             scrollOnKeyboard = "bool",
+            scrollTargetBehavior = "str",
         },
     },
     -- SwiftUI Charts SectorMark: a pie or donut built from native arcs.
@@ -703,12 +732,25 @@ local TAG_SCHEMA = {
             truncation = "str",
             wrapping = "str",
             monospacedDigit = "bool",
+            smallCaps = "bool",
         },
         transform = function(props, a)
             if a.lines and (num(a.lines) or 0) > 1 then
                 props.lineBreakMode = 0
             end
         end,
+    },
+    -- Long-form prose: selectable, with leading, hyphenation and drop caps.
+    Paragraph = {
+        constructor = "Paragraph",
+        positional  = { "text", "value", default = "" },
+        props = {
+            size = "num", weight = "str", design = "str", fontName = "str", italic = "bool",
+            smallCaps = "bool", color = "str", lineSpacing = "num", alignment = "str",
+            hyphenation = "bool", selectable = "bool", accessibilityLabel = "str",
+            dropCap = "bool", dropCapLines = "num", dropCapFontName = "str",
+            dropCapDesign = "str", dropCapWeight = "str", dropCapColor = "str",
+        },
     },
     Title = {
         constructor = "Title",
@@ -795,6 +837,7 @@ local TAG_SCHEMA = {
             disabled    = "bool",
 			keyboardShortcut = "str",
 			controlSize = "str",
+			tint = "str",
         },
         transform = function(props, attrs)
             if attrs.action and renderData and renderData.actions then
@@ -810,6 +853,11 @@ local TAG_SCHEMA = {
 			disabled = "bool",
 			style = "str",
         },
+		transform = function(props, attrs)
+			if attrs.onChange and renderData and renderData.actions then
+				props.onChange = renderData.actions[attrs.onChange]
+			end
+		end,
     },
     Link = {
         constructor = "Link",
@@ -1338,6 +1386,9 @@ local TAG_SCHEMA = {
             for _, c in ipairs(children) do
                 if type(c) == "table" and c.__tab then
                     table.insert(tabs, c)
+                elseif type(c) == "table" and c.__tabAccessory then
+                    if props.accessory then error("xml: <TabView> accepts one <TabAccessory>") end
+                    props.accessory = c
                 end
             end
             props.tabs = tabs
@@ -1379,6 +1430,15 @@ local TAG_SCHEMA = {
             end
         end,
     },
+    -- SwiftUI tabViewBottomAccessory: one view shown above the tab bar.
+    TabAccessory = {
+        kind = "record", flag = "__tabAccessory",
+        props = { hidden = "bool" },
+        collect = function(props, children)
+            if #children ~= 1 then error("xml: <TabAccessory> requires one view") end
+            props.content = children[1]
+        end,
+    },
     TopPalette = {
         kind = "record", flag = "__navigationPalette",
         collect = function(props, children)
@@ -1409,6 +1469,8 @@ local TAG_SCHEMA = {
             id          = "str",
             title       = { aliases = { "label" }, default = "", type = "str" },
             systemImage = "str",
+            -- SwiftUI Tab(role: .search): iOS 26 sets it apart from the bar.
+            role        = "str",
         },
         collect = function(props, children)
             if #children == 1 then
@@ -1540,7 +1602,7 @@ local function makeSchemaHandler(tag, def)
             return ctor(props[1])
         end
 
-        return ctor(props)
+        return padLeaf(ctor(props), props, ns)
     end
 end
 

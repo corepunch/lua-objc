@@ -37,7 +37,22 @@ local function withContext(readFile, paths, operation)
 	return table.unpack(result, 2, result.n)
 end
 
-function ZILRuntime.new(game, readFile)
+-- A private Park–Miller generator: an autosave replays its commands against
+-- the same sequence, and nothing else in the app can advance it between turns
+-- the way the shared math.random could.
+function ZILRuntime.random(seed)
+	local state = math.floor(tonumber(seed) or 1) % 2147483647
+	if state <= 0 then state = state + 2147483646 end
+	return function(m, n)
+		state = state * 48271 % 2147483647
+		local unit = (state - 1) / 2147483646
+		if m == nil then return unit end
+		if n == nil then m, n = 1, m end
+		return m + math.floor(unit * (n - m + 1))
+	end
+end
+
+function ZILRuntime.new(game, readFile, seed)
 	local sourceBase = game.id:gsub("%.", "/")
 	local base = game.base or sourceBase
 	local paths = {
@@ -51,6 +66,8 @@ function ZILRuntime.new(game, readFile)
 		local runtime = require("zilscript.runtime")
 		local env = runtime.create_game_env()
 		env.rawget, env.rawset, env.rawequal = rawget, rawset, rawequal
+		env.math = setmetatable({ random = ZILRuntime.random(seed or os.time()),
+			randomseed = function() end }, { __index = math })
 		local bootstrapPath = "apps/adventure-arena/zilscript/zilscript/bootstrap.lua"
 		local bootstrap = readFile and readFile(bootstrapPath)
 		if bootstrap then

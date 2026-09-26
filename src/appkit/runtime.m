@@ -139,6 +139,8 @@ LUA_NUMBER_ACCESSORS(flexGrow, setFlexGrow, kFlexGrowKey, 0, MAX(0, value))
 LUA_NUMBER_ACCESSORS(flexShrink, setFlexShrink,
 	kFlexShrinkKey, 1, MAX(0, value))
 LUA_BOOL_ACCESSORS(fillWidth, setFillWidth, kFillWidthKey)
+LUA_NUMBER_ACCESSORS(containerRelativeWidth, setContainerRelativeWidth,
+	kContainerRelativeWidthKey, 0, MAX(0, value))
 LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
 
 - (NSNumber *)maxWidth {

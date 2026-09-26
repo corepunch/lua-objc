@@ -1,3 +1,0 @@
-<HStack paddingHorizontal="8" paddingVertical="4" spacing="6" alignment="center" background="secondaryBackground" cornerRadius="16" clipsToBounds="true">
-  <Label text="<%= text %>" systemImage="<%= systemImage %>" size="12" iconSize="12" color="secondary" />
-</HStack>

@@ -94,7 +94,21 @@ scroll = rendered.refs.transcriptScroll
 scroll.frameSize = ns.Size(320, 120)
 scroll:layout(320)
 t.assertEqual(scroll.contentView.bounds.origin.y, 0, "loading a session shows the latest line")
-t.assertEqual(loaded.transcript.refs.lead_1.text:sub(1, 20), " long opening paragr", "a loaded session keeps its opening")
-t.expect(loaded.transcript.refs.paragraph_1_1.text:find("> inventory", 1, true) ~= nil, "a loaded session keeps its commands")
+local page = loaded.transcript.refs
+t.assertEqual(page.paragraph_1_1.text:sub(1, 20), "A long opening parag", "a loaded session keeps its opening, first letter included")
+t.expect(page.paragraph_1_1.dropCap == true, "the chapter's first paragraph drops its initial")
+t.expect(page.paragraph_1_1.initialView.hidden == false, "the initial is drawn beside the wrapped lines")
+t.expect(page.paragraph_1_2.dropCap ~= true, "later paragraphs run as plain prose")
+t.expect(page.paragraph_1_2.text:find("> inventory", 1, true) ~= nil, "a loaded session keeps its commands")
+t.expect(page.titlePage ~= nil and page.gameTitle.text == "Zork", "the story opens on a title page")
+
+-- Commands read as stage directions, not chat bubbles.
+local command = controller.transcript.refs.command_2
+t.assertEqual(command.text, "look", "the command keeps the reader's words")
+t.assertEqual(command.accessibilityLabel, "You: look", "VoiceOver says who spoke")
+t.expect(command.superview.backgroundColor == nil or command.superview.backgroundColor.alphaComponent == 0,
+	"a command has no bubble behind it")
+t.expect(command.font.fontDescriptor.fontAttributes.NSCTFontFeatureSettingsAttribute ~= nil,
+	"a command is set in small capitals")
 
 os.exit(t.summary() and 0 or 1)

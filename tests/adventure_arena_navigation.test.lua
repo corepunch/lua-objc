@@ -7,8 +7,10 @@ local catalog = Adventures.new()
 local sessionModel = Session.new({ engineFactory = function()
 	return { start = function() return { resume = function(_, command) return "Response to " .. command end }, "Opening" end }
 end })
+local function memoryStore() local value return { load = function() return value end, save = function(v) value = v end } end
 local controller = require("apps.adventure-arena.Controller").new {
 	adventures = catalog, sessionModel = sessionModel, ns = ns,
+	saveStore = memoryStore(), readingStore = memoryStore(), after = function() end,
 }
 t.assertEqual(controller.sessionModel, sessionModel, "controller uses injected session model")
 local home = controller:home()

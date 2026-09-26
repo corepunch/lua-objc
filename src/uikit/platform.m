@@ -19,6 +19,7 @@ static int bridge_font(lua_State *L) {
 	if (weightStr) {
 		if (strcmp(weightStr, "bold") == 0) w = UIFontWeightBold;
 		else if (strcmp(weightStr, "semibold") == 0) w = UIFontWeightSemibold;
+		else if (strcmp(weightStr, "medium") == 0) w = UIFontWeightMedium;
 		else if (strcmp(weightStr, "light") == 0) w = UIFontWeightLight;
 		else if (strcmp(weightStr, "heavy") == 0) w = UIFontWeightHeavy;
 	}
@@ -45,6 +46,18 @@ static int bridge_font(lua_State *L) {
 		UIFontDescriptor *descriptor = [font.fontDescriptor
 			fontDescriptorWithSymbolicTraits:UIFontDescriptorTraitItalic];
 		if (descriptor) font = [UIFont fontWithDescriptor:descriptor size:size];
+	}
+	// SwiftUI `Font.smallCaps()`: the OpenType small-capital forms, so
+	// lowercase letters are drawn as capitals at x-height, as in a book's
+	// running heads. Faces without the feature keep their lowercase.
+	if (lua_toboolean(L, 7)) {
+		UIFontDescriptor *descriptor = [font.fontDescriptor fontDescriptorByAddingAttributes:@{
+			UIFontDescriptorFeatureSettingsAttribute: @[@{
+				(__bridge NSString *)kCTFontOpenTypeFeatureTag: @"smcp",
+				(__bridge NSString *)kCTFontOpenTypeFeatureValue: @1,
+			}],
+		}];
+		font = [UIFont fontWithDescriptor:descriptor size:size];
 	}
 	push_objc(L, font, "nsobject");
 	return 1;

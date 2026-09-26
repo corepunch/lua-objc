@@ -60,6 +60,18 @@ static int bridge_font(lua_State *L) {
 		font = [[NSFontManager sharedFontManager]
 			convertFont:font toHaveTrait:NSItalicFontMask];
 	}
+	// SwiftUI `Font.smallCaps()`: the OpenType small-capital forms, so
+	// lowercase letters are drawn as capitals at x-height, as in a book's
+	// running heads. Faces without the feature keep their lowercase.
+	if (lua_toboolean(L, 7)) {
+		NSFontDescriptor *descriptor = [font.fontDescriptor fontDescriptorByAddingAttributes:@{
+			NSFontFeatureSettingsAttribute: @[@{
+				(__bridge NSString *)kCTFontOpenTypeFeatureTag: @"smcp",
+				(__bridge NSString *)kCTFontOpenTypeFeatureValue: @1,
+			}],
+		}];
+		font = [NSFont fontWithDescriptor:descriptor size:size] ?: font;
+	}
 	push_objc(L, font, "nsobject");
 	return 1;
 }

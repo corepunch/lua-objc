@@ -74,12 +74,23 @@ enum {
 	kWindowCloseKey,
 	kScrollAnchorKey,
 	kScrollOnKeyboardKey,
+	kContainerRelativeWidthKey,
 	kKeyCount
 };
 static char kKeys[kKeyCount];
 static const CGFloat kStackSpacing = 8.0;
 static const CGFloat kArcFullCircleDegrees = 359.0;
 static const NSTimeInterval kScrollToAnimationDuration = 0.2;
+/* Space between a dropped initial and the text wrapping beside it, and the
+ * number of lines it drops through when the template does not say. */
+static const CGFloat kParagraphDropCapGap = 6.0;
+static const NSInteger kParagraphDropCapLines = 3;
+/* Size at which an initial's ink is measured before it is scaled to fit, the
+ * share of that size below the baseline that counts as a descender, and the
+ * margin its view keeps around the ink so antialiased edges are not clipped. */
+static const CGFloat kParagraphDropCapReferenceSize = 100.0;
+static const CGFloat kParagraphDropCapDescentFraction = 0.05;
+static const CGFloat kParagraphDropCapInkOutset = 2.0;
 
 /* Every value that controls visual appearance or layout has a named constant
  * so that tuning across the codebase is a single-section edit. Add new constants
@@ -222,6 +233,12 @@ static const NSTimeInterval kScrollToAnimationDuration = 0.2;
 #include "shared/layout_invalidation.m"
 #include "shared/lua_error.m"
 #include "shared/lua_async.m"
+/* A Mac app has no private Documents folder; keep documents with
+ * App.recentStore under Application Support. */
+#define LUA_OBJC_DOCUMENT_ROOT() [[NSSearchPathForDirectoriesInDomains( \
+	NSApplicationSupportDirectory, NSUserDomainMask, YES).firstObject \
+	stringByAppendingPathComponent:@"lua-objc"] stringByAppendingPathComponent:@"Documents"]
+#include "shared/lua_documents.m"
 #include "shared/performance_signpost.m"
 #include "shared/lua_dealloc_watch.m"
 
@@ -241,6 +258,7 @@ static void bridge_set_optional_callback(
 #include "appkit/presentation.m"
 #include "appkit/text_field.m"
 #include "appkit/views.m"
+#include "appkit/paragraph.m"
 #include "shared/flow_layout.m"
 #include "appkit/layout.m"
 #include "appkit/layout_debug.m"
@@ -300,6 +318,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_navigationStack", bridge_navigation_stack},
 	{"_navigationOnBack", bridge_navigation_on_back},
 	{"_label", bridge_AppKitControls_label},
+	{"_paragraph", bridge_AppKitControls_paragraph},
+	{"_hasLayoutAxis", bridge_has_layout_axis},
 	{"_textField", bridge_AppKitControls_textField},
 	{"_secureTextField", bridge_AppKitControls_secureTextField},
 	{"_searchField", bridge_AppKitControls_searchField},
@@ -381,6 +401,9 @@ static const luaL_Reg bridge_lib[] = {
 	{"_addContextMenu", bridge_AppKit_add_context_menu},
 	{"_addClick", bridge_AppKit_add_click},
 	{"_revealInFinder", bridge_AppKit_reveal_in_finder},
+	{"_documentRead", bridge_document_read},
+	{"_documentWrite", bridge_document_write},
+	{"_jsonEncode", bridge_json_encode},
 	{"_openPath", bridge_AppKit_open_path},
 	{"_moveToTrash", bridge_AppKit_move_to_trash},
 	{"_clipboardCopy", bridge_AppKit_clipboard_copy},

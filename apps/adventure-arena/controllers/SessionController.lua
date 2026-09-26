@@ -3,6 +3,9 @@ local CompassGesture = require("apps.adventure-arena.services.CompassGesture")
 local Controller = {}
 Controller.__index = Controller
 
+-- How long the "+5 points" glass capsule stays over the page.
+local TOAST = { seconds = 2.2 }
+
 function Controller.new(options)
 	return setmetatable({
 		model = assert(options.model, "session model is required"),
@@ -11,20 +14,29 @@ function Controller.new(options)
 		back = assert(options.back, "navigation back callback is required"),
 		ns = assert(options.ns, "native platform module is required"),
 		readingSettings = assert(options.readingSettings, "reading settings model is required"),
+		readingOptions = options.readingOptions,
+		savedGames = options.savedGames,
 		renderTemplate = assert(options.renderTemplate, "template renderer is required"),
 		mountTemplate = assert(options.mountTemplate, "template mount is required"),
 		presentSheet = assert(options.presentSheet, "sheet presenter is required"),
 		dismissSheet = assert(options.dismissSheet, "sheet dismisser is required"),
+		-- Moments: a haptic and a toast when the score changes.
+		haptics = options.haptics,
+		after = options.after or function() end,
+		onProgress = options.onProgress or function() end,
 		speech = nil,
 		dictationActive = false,
 		dictationPrefix = "",
 	}, Controller)
 end
 
-function Controller:show(id)
+-- Opens a story at its last page when it has an autosave, or from its title
+-- page when `fresh` is set or nothing is saved.
+function Controller:show(id, fresh)
 	local game = self.findGame(id)
 	if not game then return false end
-	local ok, err = self.model:start(game)
+	local saved = not fresh and self.savedGames and self.savedGames:find(id) or nil
+	local ok, err = self.model:start(game, saved)
 	if not ok then
 		self.push("SessionError", {
 			title = game.title, message = err, actions = { back = self.back },
@@ -74,7 +86,6 @@ function Controller:show(id)
 	local presentation = self.model:presentation()
 	presentation.speechAvailable = speechAvailable
 	presentation.compassSegments = CompassGesture.segments()
-	presentation.backdrop = self.readingSettings:presentation().backdrop
 	actions.disappear = function() self:onDisappear() end
 	presentation.actions = actions
 	self.page, self.refs = self.push("Session", presentation)
@@ -84,7 +95,12 @@ function Controller:show(id)
 	self:updateComposer(self.refs.input.text)
 	self:updateCompass(nil)
 	self:scrollTranscript(false)
+	self.onProgress()
 	return true
+end
+
+function Controller:isOpen()
+	return self.refs ~= nil
 end
 
 function Controller:scrollTranscript(animated)
@@ -146,8 +162,9 @@ function Controller:renderTranscript()
 	local data = self.model:presentation()
 	local settings = self.readingSettings:presentation()
 	data.reading = {
-		font = settings.font, fontSize = settings.fontSize,
-		primary = settings.primaryTextColor, secondary = settings.secondaryTextColor,
+		font = settings.font, fontSize = settings.fontSize, lineSpacing = settings.lineSpacing,
+		alignment = settings.alignment, primary = settings.primaryTextColor,
+		secondary = settings.secondaryTextColor, rule = settings.ruleColor,
 	}
 	data.actions = {}
 	return self.transcript:update(data)
@@ -155,6 +172,7 @@ end
 
 function Controller:onSpeechEvent(state, text, message)
 	if not self.refs then return end
+	self.refs.dictationStatus.hidden = state == "idle" or state == "finished"
 	if state == "listening" then
 		self.dictationActive = true
 		self.refs.dictationStatus.text = "Listening… Tap the microphone to finish."
@@ -211,6 +229,7 @@ function Controller:onDisappear()
 	self.refs = nil
 	self.page = nil
 	self.transcript, self.suggestions, self.currentSuggestions = nil, nil, nil
+	self.onProgress()
 end
 
 function Controller:submitCommand(command)
@@ -219,81 +238,78 @@ function Controller:submitCommand(command)
 	local ok, err = self.model:submit(command)
 	local presentation = self.model:presentation()
 	self.refs.progress.text = presentation.progress
+	self.refs.sessionPlace.text = presentation.chapterLabel ~= ""
+		and (presentation.chapterLabel .. " · " .. presentation.roomTitle) or presentation.roomTitle
 	self.refs.input.text = ""
 	self.refs.dictationStatus.text = ""
+	self.refs.dictationStatus.hidden = true
 	self:renderTranscript()
 	self:updateCompass(nil)
 	self:scrollTranscript(true)
 	self:updateComposer("")
+	self:announceScore(presentation.scoreChange)
+	if self.savedGames then self.savedGames:record(self.model:snapshot()) end
+	self.onProgress()
 	return ok, err
 end
 
+-- Points are a moment: a success haptic and a glass capsule over the page
+-- that fades after a beat, as Game Center achievements announce themselves.
+function Controller:announceScore(change)
+	if not self.refs or type(change) ~= "number" or change == 0 then return end
+	local points = math.abs(change) == 1 and "point" or "points"
+	self.refs.scoreToastText.text = string.format("%s%d %s", change > 0 and "+" or "−", math.abs(change), points)
+	self.refs.scoreToast.hidden = false
+	if self.haptics then
+		if change > 0 then self.haptics.notification("success") else self.haptics.notification("warning") end
+	end
+	self.toastGeneration = (self.toastGeneration or 0) + 1
+	local generation = self.toastGeneration
+	self.after(TOAST.seconds, function()
+		if self.refs and self.toastGeneration == generation then self.refs.scoreToast.hidden = true end
+	end)
+end
+
 function Controller:showReadingSettings()
-	local data = self.readingSettings:presentation()
-	data.actions = {
-		fontChanged = function(index)
-			if self.readingSettings:setFontIndex(index) then self:updateReadingSettings() end
-		end,
-		sizeChanged = function(value)
-			if self.readingSettings:setFontSize(value) then self:updateReadingSettings() end
-		end,
-		decreaseSize = function()
-			self.readingSettings:adjustFontSize(-1)
-			self:updateReadingSettings()
-		end,
-		increaseSize = function()
-			self.readingSettings:adjustFontSize(1)
-			self:updateReadingSettings()
-		end,
-		themeChanged = function(index)
-			if self.readingSettings:setThemeIndex(index) then self:updateReadingSettings() end
-		end,
-		done = function() self:closeReadingSettings() end,
-	}
-	local sheet, refs = self.renderTemplate("ReadingSettings", data)
+	local sheet, refs = self.renderTemplate("ReadingSettings", {
+		actions = { done = function() self:closeReadingSettings() end },
+	})
 	self.readingSettingsRefs = refs
+	if self.readingOptions then
+		self.readingSettingsOptions = self.readingOptions:mount(refs.readingOptions, false)
+	end
 	self.readingSettingsSheet = self.presentSheet(sheet, { "medium", "large" })
-	self:updateReadingSettings()
 	return true
 end
 
-function Controller:updateReadingSettings()
-	self:applyReadingSettings()
-	local refs = self.readingSettingsRefs
-	if not refs then return end
-	local settings = self.readingSettings:presentation()
-	refs.sizeSlider.value = settings.fontSize
-	refs.sizeValue.text = tostring(settings.fontSize)
-	refs.preview.backgroundColor = self.ns.Color(settings.backgroundColor)
-	refs.previewTitle.font = self.ns.Font { size = settings.fontSize + 3, weight = "bold", design = settings.font }
-	refs.previewTitle.textColor = self.ns.Color(settings.primaryTextColor)
-	refs.previewBody.font = self.ns.Font { size = settings.fontSize, design = settings.font }
-	refs.previewBody.textColor = self.ns.Color(settings.primaryTextColor)
-end
-
+-- Page colour, ink, face, size and leading belong to the transcript's
+-- description, so a change re-renders the page rather than restyling labels.
 function Controller:applyReadingSettings()
 	if not self.refs then return end
 	local settings = self.readingSettings:presentation()
-	local primary = self.ns.Color(settings.primaryTextColor)
-	local secondary = self.ns.Color(settings.secondaryTextColor)
-	self.refs.session.backgroundColor = self.ns.Color(settings.backgroundColor)
-	self.refs.backdrop.hidden = not settings.backdrop
-	self.refs.transcriptScroll.backgroundColor = self.ns.Color(settings.pageColor)
-	self.refs.progress.textColor = secondary
-	self.refs.dictationStatus.textColor = secondary
+	self.refs.session.backgroundColor = self.ns.Color(settings.pageColor)
+	self.refs.progress.textColor = self.ns.Color(settings.secondaryTextColor)
+	self.refs.dictationStatus.textColor = self.ns.Color(settings.secondaryTextColor)
 	self.refs.input.font = self.ns.Font { size = math.max(15, math.min(settings.fontSize, 20)), design = settings.font }
-	self.refs.input.textColor = primary
+	self.refs.input.textColor = self.ns.Color(settings.primaryTextColor)
 	if self.ns.platform == "UIKit" then
+		-- A Night page is dark whatever the system says: the page, its view
+		-- controller (so the status bar turns light) and the running head
+		-- in the navigation bar all take the page's appearance.
 		self.refs.session.overrideUserInterfaceStyle = settings.appearance
+		if self.page then self.page.overrideUserInterfaceStyle = settings.appearance end
+		self.refs.sessionTitle.overrideUserInterfaceStyle = settings.appearance
+		self.refs.sessionPlace.overrideUserInterfaceStyle = settings.appearance
 	end
-	-- Typeface, size and ink belong to the transcript description, so a
-	-- settings change re-renders the page rather than restyling labels.
 	self:renderTranscript()
 end
 
 function Controller:closeReadingSettings()
+	if self.readingOptions and self.readingSettingsOptions then
+		self.readingOptions:unmount(self.readingSettingsOptions)
+	end
 	self.dismissSheet(self.readingSettingsSheet)
-	self.readingSettingsSheet, self.readingSettingsRefs = nil, nil
+	self.readingSettingsSheet, self.readingSettingsRefs, self.readingSettingsOptions = nil, nil, nil
 end
 
 return Controller

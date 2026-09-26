@@ -5,12 +5,31 @@ Adventures.__index = Adventures
 -- list nobody finishes, so the rest lives behind the shelf's "See All".
 local LIBRARY = { featured = 3, shelf = 10, chart = 5, related = 6 }
 
+-- Genre tiles carry an SF Symbol, as Apple Books' category tiles do.
+local GENRE_SYMBOLS = {
+	["Sci-Fi Adventure"] = "sparkles",
+	["Psychological Horror"] = "eye.fill",
+	["Fantasy Adventure"] = "wand.and.stars",
+	["Whimsical Adventure"] = "gearshape.2.fill",
+	["Victorian Mystery"] = "magnifyingglass",
+	["Classic Adventure"] = "map.fill",
+}
+
 function Adventures.new(options)
 	options = options or {}
 	local games = options.games or require("apps.adventure-arena.catalog.Adventures")
 	local gamesById = {}
-	for _, game in ipairs(games) do gamesById[game.id] = game end
+	for _, game in ipairs(games) do
+		gamesById[game.id] = game
+		-- Tinted type on a page: the catalog's dark variant keeps it legible
+		-- when the page is dark.
+		game.ink = game.ink or (game.tint and game.tintDark and (game.tint .. "|" .. game.tintDark)) or game.tint
+	end
 	return setmetatable({ games = games, gamesById = gamesById }, Adventures)
+end
+
+function Adventures.genreSymbol(genre)
+	return GENRE_SYMBOLS[genre] or "book.fill"
 end
 
 function Adventures:list()
@@ -66,7 +85,8 @@ function Adventures:genres()
 	for _, game in ipairs(self.games) do
 		if game.genre and not seen[game.genre] then
 			seen[game.genre] = true
-			table.insert(genres, { id = game.genre, title = game.genre, tint = game.tint, count = #self:collection(game.genre) })
+			table.insert(genres, { id = game.genre, title = game.genre, tint = game.tint,
+				symbol = Adventures.genreSymbol(game.genre), count = #self:collection(game.genre) })
 		end
 	end
 	return genres
