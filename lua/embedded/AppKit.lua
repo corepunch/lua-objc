@@ -9,6 +9,7 @@ local AppKit = bridge
 AppKit.platform = "AppKit"
 local Scope = require("ui.scope")(bridge)
 AppKit.Scope = Scope
+local commands = require("ui.commands")
 
 -- Native timers and network callbacks resume suspended Lua work later. Lua's
 -- coroutine.resume returns failures instead of raising them, so centralize the
@@ -118,6 +119,7 @@ end
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
 --- @prop appearance string optional. Window appearance: `system`, `light`, or `dark`.
+--- @prop commands table optional. Application menu bar from `<Commands>` (SwiftUI `.commands`): `appName`, `CommandGroup` edits, `CommandMenu` menus and Help search topics.
 --- @prop content value optional. Rendered child content or the control’s text value.
 --- @prop contentAccessory table optional. Accessory view attached to the window content area.
 --- @prop detail table optional. Rendered detail pane view.
@@ -160,6 +162,13 @@ function AppKit.Window(props)
 	end
 	local hide_title = props.hideTitle
 	if hide_title == nil then hide_title = transparent_titlebar end
+
+	-- The menu bar belongs to the app, not the window: the first window
+	-- installs the standard menus under the app's name, and a window that
+	-- declares `commands` (SwiftUI `.commands` on its scene) replaces them.
+	if props.commands or not AppKit._commandsInstalled then
+		AppKit.setCommands(props.commands)
+	end
 
 	local toolbar = props.toolbar
 	local win
@@ -229,6 +238,16 @@ function AppKit.Window(props)
 		scope:close()
 	end)
 	return win
+end
+
+--- Installs the application menu bar from a `<Commands>` spec: standard
+--- macOS menus named after the app, `CommandGroup` edits and `CommandMenu`
+--- additions, plus topics offered by the Help menu's search field.
+function AppKit.setCommands(spec)
+	local built = commands.build(spec)
+	bridge._setMainMenu(built.appName, built.menus, built.helpTopics)
+	AppKit._commandsInstalled = true
+	return built
 end
 
 function AppKit.addTabbedWindow(window, tabbedWindow, order)
@@ -375,29 +394,6 @@ end
 
 function AppKit.relayout(view, width)
 	return view:layout(width)
-end
-
---- Creates a native menu command with a keyboard equivalent and action.
----
---- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
---- @prop action function optional. Component-specific setting passed to the native control.
---- @prop keyEquivalent value optional. Keyboard equivalent for the menu command.
---- @prop menu string optional. Menu name that owns this item.
---- @prop modifiers table optional. Keyboard modifiers required with the key equivalent.
---- @prop title value optional. Component-specific setting passed to the native control.
---- @platform AppKit uses the AppKit implementation.
-function AppKit.MenuItem(props)
-	props = props or {}
-	local modifiers = props.modifiers or { "command" }
-	if type(modifiers) == "table" then
-		modifiers = table.concat(modifiers, ",")
-	end
-	return bridge._menuItem(
-		props.menu or "Application",
-		props.title or "",
-		props.keyEquivalent or "",
-		modifiers,
-		assert(props.action, "MenuItem requires an action"))
 end
 
 --- Presents commands in a native pop-up menu.

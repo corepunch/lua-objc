@@ -1,2 +1,11 @@
 <Window title="IDE" width="1024" height="768" minWidth="640" minHeight="420"
-        sidebarWidth="240" />
+        sidebarWidth="240">
+  <Commands appName="IDE">
+    <CommandGroup replacing="newItem">
+      <MenuItem title="Open Folder…" keyEquivalent="o" action="openFolder" />
+    </CommandGroup>
+    <CommandGroup before="saveItem">
+      <MenuItem title="Save" keyEquivalent="s" action="save" />
+    </CommandGroup>
+  </Commands>
+</Window>

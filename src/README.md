@@ -16,7 +16,7 @@ See [object and state ownership](../ARCHITECTURE.md#object-and-state-ownership).
 | `appkit/action_button.m` | callback target, lookup tables, compound action button | `LuaButtonTarget`, `LuaActionButton` |
 | `appkit/toolbar.m` | native toolbar item construction | `LuaToolbarDelegate` |
 | `appkit/runtime.m` | userdata conversion, KVC, metatables, shared helpers | `push_objc`, `nsview_index` |
-| `appkit/presentation.m` | generic adaptive panels, focus, and menu items | `LuaPanel`, `bridge_present_panel` |
+| `appkit/presentation.m` | generic adaptive panels, focus, and the main menu bar | `LuaPanel`, `bridge_present_panel`, `bridge_set_main_menu`, `LuaHelpSearch` |
 | `appkit/text_field.m` / `uikit/text_field.m` | native editing events and semantic command routing | `LuaTextFieldDelegate` |
 | `appkit/navigation.m` / `uikit/navigation.m` | native page history and navigation stacks | `LuaPageController`, `LuaNavigationController` |
 | `appkit/views.m` | windows, stacks, splits, images, basic view creation | `bridge_window`, `LuaImageViewerView` |

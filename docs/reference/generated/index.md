@@ -35,7 +35,6 @@ the AppKit and UIKit Lua modules.
 | [List](List.md) | Displays rows of data in a native table or list control. |
 | [MaterialView](MaterialView.md) | Displays content using a native visual material. |
 | [Menu](Menu.md) | Presents a native menu of related commands. |
-| [MenuItem](MenuItem.md) | Creates a native menu command with a keyboard equivalent and action. |
 | [NavigationLink](NavigationLink.md) | Navigates to a destination within a navigation stack. |
 | [NavigationStack](NavigationStack.md) | Manages a stack of screens and navigation transitions. |
 | [OutlineGroup](OutlineGroup.md) | Builds a nested disclosure hierarchy from tree data. |

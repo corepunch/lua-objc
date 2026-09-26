@@ -880,6 +880,11 @@ local TAG_SCHEMA = {
             props.items = children
         end,
     },
+    -- A menu command. Nested <MenuItem> children form a submenu (WPF
+    -- MenuItem). In the menu bar, `keyEquivalent` plus `modifiers`
+    -- ("command,shift") is SwiftUI's `.keyboardShortcut`, and `validate`
+    -- names an action returning `enabled, checked` whenever AppKit validates
+    -- the item.
     MenuItem = {
         kind = "record",
         flag = "__menuItem",
@@ -887,12 +892,73 @@ local TAG_SCHEMA = {
             title = { aliases = { "label" }, default = "", type = "str" },
             systemImage = "str",
             role = "str",
+            keyEquivalent = "str",
+            modifiers = "str",
+            checked = "bool",
+            disabled = "bool",
         },
+        collect = function(rec, children)
+            if #children > 0 then rec.items = children end
+        end,
 		transform = function(props, attrs)
 			if attrs.action and renderData and renderData.actions then
 				props.action = renderData.actions[attrs.action]
 			end
+			bindActions(props, attrs, { "validate" })
 		end,
+    },
+    Separator = {
+        kind = "record",
+        flag = "__menuItem",
+        transform = function(props) props.separator = true end,
+    },
+    -- The application menu bar (SwiftUI `.commands`). Only a <Window> may
+    -- carry it; the app menu, Hide and Quit items take `appName`.
+    Commands = {
+        kind = "record",
+        flag = "__commands",
+        props = { appName = "str" },
+        collect = function(rec, children)
+            rec.groups, rec.menus, rec.helpTopics = {}, {}, {}
+            for _, child in ipairs(children) do
+                if type(child) ~= "table" then
+                    error("xml: <Commands> accepts CommandGroup, CommandMenu and HelpTopic")
+                elseif child.__commandGroup then table.insert(rec.groups, child)
+                elseif child.__commandMenu then table.insert(rec.menus, child)
+                elseif child.__helpTopic then table.insert(rec.helpTopics, child)
+                else error("xml: <Commands> accepts CommandGroup, CommandMenu and HelpTopic") end
+            end
+        end,
+    },
+    -- Edits a standard group: `replacing`, `before` or `after` names a
+    -- SwiftUI CommandGroupPlacement such as "appSettings" or "sidebar".
+    CommandGroup = {
+        kind = "record",
+        flag = "__commandGroup",
+        children = "items",
+        transform = function(rec, attrs)
+            for _, position in ipairs({ "replacing", "before", "after" }) do
+                if attrs[position] then
+                    if rec.placement then error("xml: <CommandGroup> takes one of replacing, before or after") end
+                    rec.placement, rec.position = attrs[position], position
+                end
+            end
+            if not rec.placement then error("xml: <CommandGroup> requires replacing, before or after") end
+        end,
+    },
+    CommandMenu = {
+        kind = "record",
+        flag = "__commandMenu",
+        children = "items",
+        props = { title = "str" },
+    },
+    -- A result offered by the Help menu's search field beside matching menu
+    -- items; `keywords` widen the match and `action` opens the topic.
+    HelpTopic = {
+        kind = "record",
+        flag = "__helpTopic",
+        props = { title = "str", keywords = "str" },
+        transform = function(rec, attrs) bindActions(rec, attrs, { "action" }) end,
     },
     ContentUnavailable = {
         constructor = "ContentUnavailable",
@@ -1314,7 +1380,10 @@ local TAG_SCHEMA = {
         collect = function(cfg, children)
             local toolbarItems, contentViews = {}, {}
             for _, c in ipairs(children) do
-                if type(c) == "table" and c.__toolbar then
+                if type(c) == "table" and c.__commands then
+                    if cfg.commands then error("xml: <Window> accepts one <Commands>") end
+                    cfg.commands = c
+                elseif type(c) == "table" and c.__toolbar then
                     for _, item in ipairs(c.items or {}) do
                         if type(item) == "table" and item.__toolbarItem then
                             table.insert(toolbarItems, item)

@@ -95,7 +95,10 @@ function Controller:loadFolder(folder)
 end
 
 function Controller:createWindow()
-	local cfg = xml.renderFile(VIEWS .. "Window.etlua")
+	local cfg = xml.renderFile(VIEWS .. "Window.etlua", {actions = {
+		openFolder = function() self:openFolder() end,
+		save = function() self:saveFile() end,
+	}})
 
 	local files = {}
 	local folder = _G.arg and _G.arg[1]
@@ -119,14 +122,6 @@ function Controller:createWindow()
 	end
 
 	self.window = ns.Window(cfg)
-
-	ns.MenuItem {
-		menu = "File",
-		title = "Save",
-		keyEquivalent = "s",
-		modifiers = { "command" },
-		action = function() self:saveFile() end,
-	}
 
 	return self.window
 end
