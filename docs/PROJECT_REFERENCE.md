@@ -862,6 +862,60 @@ on AppKit. Use `systemImage` and `style="glass"` for an icon-only glass trigger;
 each `<MenuItem action="name" />` resolves `name` through the template's
 `actions` table.
 
+### Menu bar: `<Commands>`
+
+The macOS menu bar is declared on the app's `<Window>`, like SwiftUI's
+`.commands` on a scene. The first window installs the standard menus even
+without `<Commands>`; a window that declares them replaces the menu bar.
+
+```xml
+<Window title="Diskmap">
+  <Commands appName="Diskmap">
+    <CommandGroup replacing="appSettings">
+      <MenuItem title="Settings…" keyEquivalent="," action="settings" />
+    </CommandGroup>
+    <CommandMenu title="Storage">
+      <MenuItem title="Refresh" keyEquivalent="r" action="refresh" validate="canRefresh" />
+      <Separator />
+      <MenuItem title="Empty Trash…" keyEquivalent="delete" modifiers="command,shift" action="emptyTrash" />
+      <MenuItem title="Sort By">
+        <MenuItem title="Size" action="sortSize" checked="true" />
+      </MenuItem>
+    </CommandMenu>
+    <HelpTopic title="Empty the Trash" keywords="delete space" action="helpTrash" />
+  </Commands>
+</Window>
+```
+
+- `appName` names the app menu, About, Hide and Quit, and the process. When
+  omitted it comes from the entry folder (`apps/adventure-arena` →
+  "Adventure Arena"). A bundled app's `CFBundleName` should match it.
+- Standard menus, in HIG order: app (About, Settings, Services, Hide, Hide
+  Others, Show All, Quit), File (Close), Edit (Undo, Redo, pasteboard, Find),
+  View (Show Toolbar, Customize Toolbar, Show Sidebar, Enter Full Screen),
+  Window (Minimize, Zoom, Bring All to Front, window list) and Help (search
+  field, "App Help"). Standard items send AppKit selectors through the
+  responder chain, so AppKit validates and retitles them.
+- `<CommandGroup replacing|before|after="placement">` edits a group named
+  after SwiftUI's `CommandGroupPlacement`: `appInfo`, `appSettings`,
+  `systemServices`, `appVisibility`, `appTermination`, `newItem`, `saveItem`,
+  `importExport`, `printItem`, `undoRedo`, `pasteboard`, `textEditing`,
+  `toolbar`, `sidebar`, `fullScreen`, `windowSize`, `windowArrangement`,
+  `help`. Emptied File, Edit and View menus disappear.
+- `<CommandMenu title>` adds a top-level menu between View and Window.
+- `<MenuItem>` takes `keyEquivalent` (a character, or `delete`,
+  `forwardDelete`, `return`, `escape`, `tab`, `space`, `left`, `right`,
+  `up`, `down`), `modifiers` (default `command`), `systemImage`, `checked`,
+  `disabled` and `validate`: an action returning `enabled, checked`, called
+  whenever AppKit validates the item. Nested `<MenuItem>`s form a submenu;
+  `<Separator />` divides items.
+- `<HelpTopic title keywords action>` entries appear in the Help menu's
+  search field beside matching menu items (`NSUserInterfaceItemSearching`).
+
+Headless tests read the installed bar with `bridge._mainMenuSnapshot()`,
+choose an item with `bridge._performMainMenuItem("Menu", "Item", ...)` and
+query help search with `bridge._searchHelp(query[, perform])`.
+
 ### `UIKit.SpeechRecognizer(callback, locale)`
 
 Creates a microphone dictation session that writes recognition results through

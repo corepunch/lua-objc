@@ -135,7 +135,10 @@ t.assertEqual(#Simulators.runtimeRows(runtimeList, {}), 2, "a deleted runtime le
 local update = require("apps.diskmap.models.Updates").softwareUpdate(app.service.softwareUpdateStatus())
 t.assertEqual(update.title, "macOS Tahoe 26.1 is available", "the mock reports a pending macOS update")
 local xml, ns = require("ui.xml"), require("AppKit")
-local window = xml.renderFile("apps/diskmap/views/Window.etlua", {subtitle = "360 GB free of 1 TB", windowTitle = "Diskmap — Mock HDD", actions = {search = function() end}}, ns)
+local windowData = app.commands:data()
+windowData.subtitle, windowData.windowTitle = "360 GB free of 1 TB", "Diskmap — Mock HDD"
+windowData.actions = setmetatable({search = function() end, reclaim = function() end}, {__index = app.commandActions})
+local window = xml.renderFile("apps/diskmap/views/Window.etlua", windowData, ns)
 t.assertEqual(window.title, "Diskmap — Mock HDD", "the active provider is visible in the window title")
 
 os.exit(t.summary() and 0 or 1)

@@ -25,6 +25,8 @@ local DeveloperController = require("apps.diskmap.controllers.DeveloperControlle
 local DisksController = require("apps.diskmap.controllers.DisksController")
 local GuideController = require("apps.diskmap.controllers.GuideController")
 local UpdatesController = require("apps.diskmap.controllers.UpdatesController")
+local HelpController = require("apps.diskmap.controllers.HelpController")
+local CommandsController = require("apps.diskmap.controllers.CommandsController")
 local Controller = {}; Controller.__index = Controller
 local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
 function Controller.new(service)
@@ -94,7 +96,32 @@ function Controller.new(service)
 		updates = UpdatesController.new(self.model, service),
 		guide = GuideController.new(self.model, open),
 	}
+	self.commands = CommandsController.new(self.model, service, {
+		show = function(id) self:show(id) end,
+		destination = function() return self.destination end,
+		scanning = function() return self.scan.job ~= nil end,
+		refresh = function() self.scan:start() end,
+		cancel = function() self.scan:cancel() end,
+		settings = function() self:openSettings() end,
+		find = function() self:focusSearch() end,
+		search = function(id, text) self:search(id, text) end,
+		emptyTrash = function() self.inspector:select("user-trash"); self.inspector:manage() end,
+	})
+	self.commandActions = self.commands:actions()
+	self.pages.help = HelpController.new(function(target)
+		if self.pages[target] then self:show(target) else self.commandActions[target]() end
+	end, function() return self.shortcuts or {} end, CommandsController.links())
 	return self
+end
+-- Shows a page filtered to `text`, as if typed into the toolbar search:
+-- how Help menu search results open their topic.
+function Controller:search(id, text)
+	self.query = text or ""
+	if self.searchField then self.searchField.stringValue = self.query end
+	self:show(id, true)
+end
+function Controller:focusSearch()
+	if self.window and self.searchField then self.window:focus(self.searchField) end
 end
 -- Destinations that open a sidebar page rather than a category sheet: the
 -- simulator device resource is managed on its page, and "updates" names the
@@ -141,15 +168,17 @@ function Controller:createWindow()
 	if self.service.loadKeep then
 		for id, kept in pairs(self.service.loadKeep()) do if self.model.resources:find(id) and kept == true then self.model.kept[id] = true end end
 	end
-	local cfg = render("Window", {windowTitle = self.mock and "Diskmap — Mock HDD" or "Diskmap",
-		subtitle = Overview.summary(self.model, self.scan.disk).subtitle or "",
-		actions = {
-			search = function(value) self.query = value or ""; self:updateRows() end,
-			refresh = function() self.scan:start() end,
-			cancel = function() self.scan:cancel() end,
-			reclaim = function() self:show("cleanup") end,
-			settings = function() self:openSettings() end,
-		}})
+	local actions = setmetatable({
+		search = function(value) self.query = value or ""; self:updateRows() end,
+		reclaim = function() self:show("cleanup") end,
+	}, {__index = self.commandActions})
+	local data = self.commands:data()
+	data.windowTitle = self.mock and "Diskmap — Mock HDD" or "Diskmap"
+	data.subtitle = Overview.summary(self.model, self.scan.disk).subtitle or ""
+	data.actions = actions
+	local cfg, windowRefs = render("Window", data)
+	self.searchField = windowRefs and windowRefs.search
+	self.shortcuts = self.commands:shortcuts(cfg.commands)
 	local content, contentRefs = render("Content")
 	cfg.content, cfg.sidebar = content, self.navigation:render()
 	self.content = contentRefs.content

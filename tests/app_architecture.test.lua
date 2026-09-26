@@ -98,7 +98,6 @@ local KNOWN = {
 	["apps/weather/Controller.lua constructs ns.VStack"] = true,
 	["apps/weather/Model.lua requires \"AppKit\""] = true,
 	["apps/weather/Model.lua references ns"] = true,
-	["demo/ide/Controller.lua constructs ns.MenuItem"] = true,
 	["demo/ide/Controller.lua constructs ns.OutlineView"] = true,
 	["demo/ide/Controller.lua constructs ns.TextEditor"] = true,
 	["demo/ide/Model.lua requires \"AppKit\""] = true,

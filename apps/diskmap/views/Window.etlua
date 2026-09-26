@@ -1,4 +1,41 @@
 <Window title="<%= windowTitle or "Diskmap" %>" subtitle="<%= subtitle or "" %>" hideTitle="false" width="1100" height="760" minWidth="880" minHeight="580" sidebarWidth="210">
+  <Commands appName="Diskmap">
+    <CommandGroup replacing="appSettings">
+      <MenuItem title="Settings…" keyEquivalent="," action="settings" />
+    </CommandGroup>
+    <CommandGroup replacing="textEditing">
+      <MenuItem title="Find">
+        <MenuItem title="Find…" keyEquivalent="f" action="find" />
+      </MenuItem>
+    </CommandGroup>
+    <CommandMenu title="Go">
+      <% for index, section in ipairs(sections) do %>
+      <% if index > 1 then %><Separator /><% end %>
+      <% for _, page in ipairs(section.pages) do %>
+      <MenuItem title="<%= page.name %>" systemImage="<%= page.icon %>" keyEquivalent="<%= page.key or "" %>" action="page_<%= page.id %>" validate="isPage_<%= page.id %>" />
+      <% end %>
+      <% end %>
+    </CommandMenu>
+    <CommandMenu title="Storage">
+      <MenuItem title="Refresh" keyEquivalent="r" action="refresh" validate="canRefresh" />
+      <MenuItem title="Stop Measuring" keyEquivalent="." action="cancel" validate="canCancel" />
+      <Separator />
+      <MenuItem title="Empty Trash…" keyEquivalent="delete" modifiers="command,shift" action="emptyTrash" validate="canEmptyTrash" />
+      <Separator />
+      <MenuItem title="Storage Settings…" action="storageSettings" />
+      <MenuItem title="Full Disk Access Settings…" action="privacy" />
+      <MenuItem title="Open Disk Utility" action="diskUtility" />
+    </CommandMenu>
+    <CommandGroup replacing="help">
+      <MenuItem title="Diskmap Help" keyEquivalent="?" action="help" />
+      <MenuItem title="Keyboard Shortcuts" action="shortcuts" />
+      <Separator />
+      <MenuItem title="Storage Guide" action="guide" />
+    </CommandGroup>
+    <% for _, topic in ipairs(helpTopics) do %>
+    <HelpTopic title="<%= topic.title %>" keywords="<%= topic.keywords %>" action="<%= topic.action %>" />
+    <% end %>
+  </Commands>
   <Toolbar>
     <ToolbarItem id="toggleSidebar" />
     <ToolbarSpacer />

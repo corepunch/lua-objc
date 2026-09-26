@@ -369,7 +369,10 @@ static const luaL_Reg bridge_lib[] = {
 	{"_panel", bridge_AppKit_panel},
 	{"_sheet", bridge_sheet},
 	{"_panelStyleState", bridge_AppKit_panel_style_state},
-	{"_menuItem", bridge_AppKit_menu_item},
+	{"_setMainMenu", bridge_set_main_menu},
+	{"_mainMenuSnapshot", bridge_main_menu_snapshot},
+	{"_performMainMenuItem", bridge_perform_main_menu_item},
+	{"_searchHelp", bridge_search_help},
 	{"_textFieldCallbacks", bridge_AppKit_text_field_callbacks},
 	{"_textFieldTestInput", bridge_AppKit_text_field_test_input},
 	{"_textFieldTestCommand", bridge_AppKit_text_field_test_command},
@@ -449,41 +452,6 @@ int luaopen_bridge(lua_State *L) {
  */
 int lua_objc_main(int argc, char *argv[]) {
 	[NSApplication sharedApplication];
-
-	/* Standard main menu with Edit menu so keyboard shortcuts
-	 * (Cmd+C/V/X/Z/Shift+Z/A) work for NSTextView code editors.
-	 * NSTextView handles cut:/copy:/paste:/undo:/redo:/selectAll:
-	 * natively through the responder chain. */
-	NSMenu *mainMenu = [[NSMenu alloc] init];
-	NSMenuItem *appItem = [[NSMenuItem alloc] init];
-	[mainMenu addItem:appItem];
-
-	NSMenu *appMenu = [[NSMenu alloc] init];
-	appItem.submenu = appMenu;
-	[appMenu addItemWithTitle:@"Quit" action:@selector(terminate:)
-		keyEquivalent:@"q"];
-
-	NSMenuItem *editItem = [[NSMenuItem alloc] init];
-	editItem.title = @"Edit";
-	[mainMenu addItem:editItem];
-
-	NSMenu *editMenu = [[NSMenu alloc] initWithTitle:@"Edit"];
-	editItem.submenu = editMenu;
-	[editMenu addItemWithTitle:@"Undo" action:@selector(undo:)
-		keyEquivalent:@"z"];
-	[editMenu addItemWithTitle:@"Redo" action:@selector(redo:)
-		keyEquivalent:@"Z"];  /* Cmd+Shift+Z */
-	[editMenu addItem:[NSMenuItem separatorItem]];
-	[editMenu addItemWithTitle:@"Cut" action:@selector(cut:)
-		keyEquivalent:@"x"];
-	[editMenu addItemWithTitle:@"Copy" action:@selector(copy:)
-		keyEquivalent:@"c"];
-	[editMenu addItemWithTitle:@"Paste" action:@selector(paste:)
-		keyEquivalent:@"v"];
-	[editMenu addItemWithTitle:@"Select All" action:@selector(selectAll:)
-		keyEquivalent:@"a"];
-
-	NSApp.mainMenu = mainMenu;
 
 	const char *appearance = NULL;
 	const char *script = NULL;

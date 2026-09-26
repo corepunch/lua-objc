@@ -57,6 +57,19 @@ Learn — with one question per destination:
   (defragmenting, Disk Doctor, secure wipe, undelete, cleaners) mean on a
   modern Mac. Each topic shows its live size and opens the category that
   manages it.
+- **Diskmap Help — how do I use Diskmap?** Task-based topics in the style of
+  Apple's user guides (get started, see what uses space, free up space
+  safely, apps and developer tools, your Mac's disk, privacy and shortcuts),
+  each with numbered steps and a button to the page or command it describes.
+  The keyboard-shortcut topic is generated from the menu bar.
+
+The menu bar keeps every classic macOS entry (About, Settings…, Services,
+Hide, Quit; Close; Undo through Find; toolbar, sidebar and full screen;
+Minimize, Zoom and the window list) and adds **Go** (every page, ⌘1–⌘9, with a
+checkmark on the current one) and **Storage** (Refresh ⌘R, Stop Measuring ⌘.,
+Empty Trash… ⇧⌘⌫, Storage and Full Disk Access settings, Disk Utility). The
+Help menu opens Diskmap Help (⌘?) and the Storage Guide, and its search field
+finds help and guide topics as well as menu items.
 
 Every ranking uses one list design: icon, name and location, a status column,
 a share bar, the size and a "More" (⋯) button. A row's actions — its primary

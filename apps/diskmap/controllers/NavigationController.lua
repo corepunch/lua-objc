@@ -4,25 +4,27 @@ local Controller = {}; Controller.__index = Controller
 
 -- Sidebar destinations in the order they matter: what uses storage, what to
 -- do about it, the developer tools behind it, the disk and system-managed
--- storage, then how macOS lays it out. Section rows are native source-list
--- group headers and cannot be selected.
+-- storage, then how macOS lays it out and how to use Diskmap. Section rows
+-- are native source-list group headers and cannot be selected. `key` is the
+-- page's ⌘-digit shortcut in the Go menu.
 Controller.destinations = {
 	{section = true, title = "Storage"},
-	{id = "overview", name = "Overview", icon = "chart.pie.fill"},
-	{id = "largest", name = "Largest Items", icon = "chart.bar.fill"},
-	{id = "files", name = "Large Files", icon = "doc.fill"},
-	{id = "kinds", name = "File Types", icon = "square.grid.2x2.fill"},
+	{id = "overview", name = "Overview", icon = "chart.pie.fill", key = "1"},
+	{id = "largest", name = "Largest Items", icon = "chart.bar.fill", key = "2"},
+	{id = "files", name = "Large Files", icon = "doc.fill", key = "3"},
+	{id = "kinds", name = "File Types", icon = "square.grid.2x2.fill", key = "4"},
 	{section = true, title = "Clean Up"},
-	{id = "cleanup", name = "Recommendations", icon = "sparkles"},
-	{id = "applications", name = "Applications", icon = "square.grid.3x3.fill"},
+	{id = "cleanup", name = "Recommendations", icon = "sparkles", key = "5"},
+	{id = "applications", name = "Applications", icon = "square.grid.3x3.fill", key = "6"},
 	{section = true, title = "Developer"},
-	{id = "developer", name = "Developer", icon = "hammer.fill"},
-	{id = "simulators", name = "Simulators", icon = "iphone"},
+	{id = "developer", name = "Developer", icon = "hammer.fill", key = "7"},
+	{id = "simulators", name = "Simulators", icon = "iphone", key = "8"},
 	{section = true, title = "System"},
-	{id = "disks", name = "Disks & Volumes", icon = "internaldrive.fill"},
+	{id = "disks", name = "Disks & Volumes", icon = "internaldrive.fill", key = "9"},
 	{id = "updates", name = "Updates & Snapshots", icon = "arrow.triangle.2.circlepath"},
 	{section = true, title = "Learn"},
 	{id = "guide", name = "Storage Guide", icon = "book.fill"},
+	{id = "help", name = "Diskmap Help", icon = "questionmark.circle.fill"},
 }
 
 -- `show(id)` mounts the destination; the root controller owns page lifetime.

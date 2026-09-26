@@ -46,7 +46,10 @@ static int bridge_action_button(lua_State *L);
 static int bridge_panel(lua_State *L);
 static int bridge_glass_effect(lua_State *L);
 static int bridge_panel_style_state(lua_State *L);
-static int bridge_menu_item(lua_State *L);
+static int bridge_set_main_menu(lua_State *L);
+static int bridge_main_menu_snapshot(lua_State *L);
+static int bridge_perform_main_menu_item(lua_State *L);
+static int bridge_search_help(lua_State *L);
 static int bridge_text_field_callbacks(lua_State *L);
 static int bridge_text_field_test_input(lua_State *L);
 static int bridge_text_field_test_command(lua_State *L);
@@ -163,9 +166,6 @@ static int bridge_AppKit_panel_style_state(lua_State *L) {
 	return bridge_panel_style_state(L);
 }
 
-static int bridge_AppKit_menu_item(lua_State *L) {
-	return bridge_menu_item(L);
-}
 
 static int bridge_AppKit_text_field_callbacks(lua_State *L) {
 	return bridge_text_field_callbacks(L);
