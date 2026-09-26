@@ -170,8 +170,12 @@ static NSColor *semantic_color(NSString *name);
 	shape.lineCap = [self.lineCap isEqualToString:@"round"] ? kCALineCapRound : kCALineCapButt;
 	shape.masksToBounds = NO;
 	[self.effectiveAppearance performAsCurrentDrawingAppearance:^{
-		shape.strokeColor = [semantic_color(self.stroke ?: @"accent")
-			colorWithAlphaComponent:MIN(1, MAX(0, self.strokeAlpha))].CGColor;
+		// Label colors carry their own translucency (tertiary, quaternary);
+		// strokeAlpha scales it rather than replacing it with opaque ink.
+		NSColor *color = [semantic_color(self.stroke ?: @"accent")
+			colorUsingColorSpace:NSColorSpace.sRGBColorSpace];
+		shape.strokeColor = [color colorWithAlphaComponent:
+			color.alphaComponent * MIN(1, MAX(0, self.strokeAlpha))].CGColor;
 	}];
 }
 
@@ -187,7 +191,8 @@ static NSColor *semantic_color(NSString *name);
 @end
 
 // Test hook: ink bounds of the Arc's rendered layer in view coordinates
-// (y down), on a canvas extended by `margin` so unclipped strokes show.
+// (y down), on a canvas extended by `margin` so unclipped strokes show, and
+// the peak ink alpha (0...1) so translucent strokes can be told from opaque.
 static int bridge_arc_ink_bounds(lua_State *L) {
 	LuaArcView *view = lua_objc_check_object(L, 1, [LuaArcView class], "Arc");
 	CGFloat margin = luaL_optnumber(L, 2, 8);
@@ -210,17 +215,22 @@ static int bridge_arc_ink_bounds(lua_State *L) {
 	[view.layer renderInContext:context];
 	const uint8_t *pixels = CGBitmapContextGetData(context);
 	NSInteger minX = width, minY = height, maxX = -1, maxY = -1;
+	uint8_t peak = 0;
 	for (NSInteger y = 0; y < height; y++)
-		for (NSInteger x = 0; x < width; x++)
-			if (pixels[(y * width + x) * 4 + 3] > 12) {
+		for (NSInteger x = 0; x < width; x++) {
+			uint8_t alpha = pixels[(y * width + x) * 4 + 3];
+			peak = MAX(peak, alpha);
+			if (alpha > 12) {
 				minX = MIN(minX, x); maxX = MAX(maxX, x);
 				minY = MIN(minY, y); maxY = MAX(maxY, y);
 			}
+		}
 	CGContextRelease(context);
 	if (maxX < 0) { lua_pushnil(L); return 1; }
 	// Bitmap rows run top-down in memory; report y-down view coordinates.
 	push_NSRect(L, NSMakeRect(minX - margin, minY - margin, maxX - minX + 1, maxY - minY + 1));
-	return 1;
+	lua_pushnumber(L, peak / 255.0);
+	return 2;
 }
 
 static int bridge_arc(lua_State *L) {

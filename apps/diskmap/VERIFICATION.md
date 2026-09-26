@@ -1,3 +1,35 @@
+# macOS verification of the redesign — September 26, 2026
+
+- `make` passes. `make test`: 132 of 134 files pass. The two failures
+  (`diskmap_loading`, `diskmap_startup`, "backups") also fail on untouched
+  `main`: the Backups row reads this Mac's real snapshot access and reports
+  `denied`.
+- Fixed during verification: the native DisclosureGroup called an unbridged
+  `sizeToFit` (crashed Storage Guide, `outline_group`, `swiftui_modifiers`);
+  `Arc` replaced a label color's alpha instead of scaling it, so the donut's
+  "Not attributed" and free-space arcs drew opaque black (white in dark
+  mode) on AppKit and UIKit. `tests/arc.test.lua` now checks stroke alpha.
+  Two tests were corrected: the Simulators button-width test now lays out its
+  host, and the category sheet test checks the 80 pt clamp on a narrow window
+  (the 1100 pt default window no longer needs it).
+- Field names confirmed on Xcode's `simctl runtime list -j`: `sizeBytes`,
+  `deletable`, `runtimeIdentifier`, `platformIdentifier`, `lastUsedAt`. The
+  real iOS 26.5 runtime parses to 8.5 GB with a well-formed delete command
+  (not run). `/Library/Preferences/com.apple.SoftwareUpdate.plist` has
+  `RecommendedUpdates`, `LastSuccessfulDate` (read as an ISO string) and
+  `AutomaticDownload`; the real page shows "No updates waiting · Last checked
+  Sep 26, 2026". `RecommendedUpdates` was empty, so its per-entry keys
+  (`Display Name`, `Display Version`) were not confirmed live.
+- Screenshots: all six pages, light and dark, 880×580, plus 1400×900, against
+  the bundled Mock HDD profile; Simulators and Updates against real data.
+- Open visual defects: single-line legend link buttons compress without
+  truncation at 880 pt ("Devel", "Applica"); page subtitles with `lines="2"`
+  (Guide, Updates) and Developer tile descriptions clip their last line with
+  no ellipsis; while loading, the Runtimes tile says "simctl runtime list is
+  unavailable"; the empty runtimes table leaves a large gap; Developer's
+  "Simulator runtimes" tile shows 0 KB in Mock mode while Simulators shows
+  20.6 GB.
+
 # Simulators and Updates & Snapshots pages — September 26, 2026
 
 Two sidebar pages, a segmented `Picker` style in the framework, runtime

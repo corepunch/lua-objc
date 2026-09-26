@@ -52,6 +52,18 @@ t.expect(northInk.origin.y < 0 and northInk.origin.y + northInk.size.height < 12
 local eastInk = bridge._arcInkBounds(arc(-22.5, 22.5), 8)
 t.expect(eastInk.origin.x + eastInk.size.width > 48, "the east section renders past the right edge, unclipped")
 
+-- Label colors are translucent by design; the default strokeAlpha of 1 keeps
+-- that translucency instead of turning a tertiary track into opaque ink.
+local opaque = arc(0, 360)
+local _, opaqueAlpha = bridge._arcInkBounds(opaque, 8)
+t.expect(opaqueAlpha > 0.95, "an accent stroke renders opaque")
+local track = arc(0, 360); track.stroke = "tertiary"
+local _, trackAlpha = bridge._arcInkBounds(track, 8)
+t.expect(trackAlpha < 0.6, "a tertiary stroke keeps its label-color translucency")
+track.strokeAlpha = 0.5
+local _, fadedAlpha = bridge._arcInkBounds(track, 8)
+t.expect(fadedAlpha < trackAlpha, "strokeAlpha scales a translucent color's own alpha")
+
 -- UIKit draws through the same unclipped shape layer.
 local file = assert(io.open("src/uikit/views.m")); local uikit = file:read("*a"); file:close()
 local arcView = uikit:match("@implementation LuaArcView(.-)@end")

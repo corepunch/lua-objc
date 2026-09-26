@@ -188,10 +188,12 @@ t.expect(not simulatorUI.refs.erase.enabled and simulatorUI.refs.delete.enabled,
 simulatorUI.refs.runtimes:selectRow(0)
 t.expect(simulatorUI.refs.deleteRuntime.enabled, "a deletable runtime can be deleted")
 model.kept.runtimes = true
-simulatorUI.refs.runtimes:selectRow(0)
+-- Reselecting the same row is not a selection change, so re-evaluate directly.
+simulatorUI:buttons()
 t.expect(not simulatorUI.refs.deleteRuntime.enabled, "Keep protects runtimes")
 t.expect(simulatorUI.refs.runtimeStatus.text:find("Keep", 1, true) ~= nil, "a disabled runtime action explains why")
 model.kept.runtimes = nil
+host.size = ns.Size(880, 580); host:layout(880)
 for _, name in ipairs({"reveal", "erase", "delete", "deleteRuntime", "unavailableTileAction", "components"}) do
 	local button = simulatorUI.refs[name]
 	t.expect(button.frame.size.width + 1 >= button.fittingSize.width, button.title .. " is shown in full")

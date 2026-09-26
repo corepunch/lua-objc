@@ -431,9 +431,11 @@ static void arc_add_clockwise(UIBezierPath *path, CGPoint center, CGFloat radius
 	shape.fillColor = nil;
 	shape.lineWidth = self.lineWidth;
 	shape.lineCap = [self.lineCap isEqualToString:@"round"] ? kCALineCapRound : kCALineCapButt;
+	// Label colors carry their own translucency; strokeAlpha scales it.
 	UIColor *color = [lua_objc_uikit_system_color((self.stroke ?: @"accent").UTF8String)
-		colorWithAlphaComponent:MIN(1, MAX(0, self.strokeAlpha))];
-	shape.strokeColor = [color resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+		resolvedColorWithTraitCollection:self.traitCollection];
+	shape.strokeColor = [color colorWithAlphaComponent:
+		CGColorGetAlpha(color.CGColor) * MIN(1, MAX(0, self.strokeAlpha))].CGColor;
 }
 
 - (void)layoutSubviews {
