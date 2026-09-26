@@ -693,7 +693,7 @@ function AppKit.DisclosureGroup(props)
 	triangle.bezelStyle = 5 -- NSBezelStyleDisclosure
 	triangle.buttonType = 1 -- NSButtonTypePushOnPushOff
 	triangle.state = expanded and 1 or 0
-	triangle:sizeToFit()
+	triangle.size = triangle.fittingSize
 	triangle.accessibilityLabel = props.label or props.header or "Details"
 	label = AppKit.Button {
 		title = props.label or props.header or "Details",

@@ -165,8 +165,16 @@ ui.model.scan.errors = 0; ui:updateRows()
 ui:openManagement("developer")
 t.assertEqual(ui.management.rootId, "developer", "opening a category shows its sheet")
 t.assertEqual(ui.management.refs.categoryName.text, "Developer", "selected category appears in its sheet")
-t.assertEqual(ui.management.sheet.size.width, ui.window.size.width - 80, "category sheet is 80 points narrower than the window")
+local naturalSheetWidth = ui.management.sheet.size.width
+t.expect(naturalSheetWidth <= ui.window.size.width - 80, "category sheet fits 80 points inside a wide window")
 ui.management:close()
+-- A window narrower than the sheet plus its margin clamps the sheet.
+local wideWindow = ui.window.size
+ui.window.size = ns.Size(naturalSheetWidth, wideWindow.height)
+ui:openManagement("developer")
+t.assertEqual(ui.management.sheet.size.width, ui.window.size.width - 80, "category sheet is 80 points narrower than a narrow window")
+ui.management:close()
+ui.window.size = wideWindow
 local sizeCell = bridge._tableCell(ui.refs.results, 2, 0)
 t.assertEqual(sizeCell.textField.alignment, 2, "Diskmap values use native right alignment")
 t.expect(bridge._pressColumnButton(ui.refs.results, 3, 0), "category rows open with a trailing button")
