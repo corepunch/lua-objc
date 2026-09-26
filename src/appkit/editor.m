@@ -30,12 +30,17 @@ static int bridge_font(lua_State *L) {
 	const char *weightStr = luaL_optstring(L, 2, NULL);
 	BOOL italic = lua_toboolean(L, 3);
 	const char *designName = luaL_optstring(L, 4, "default");
+	// SwiftUI `.monospacedDigit()`: fixed-width figures keep live numbers
+	// from shifting while the rest of the text keeps proportional spacing.
+	BOOL monospacedDigit = lua_toboolean(L, 5);
 
 	NSFontWeight w = weightStr
 		? lookupFontWeight([NSString stringWithUTF8String:weightStr])
 		: NSFontWeightRegular;
 
-	NSFont *font = [NSFont systemFontOfSize:size weight:w];
+	NSFont *font = monospacedDigit
+		? [NSFont monospacedDigitSystemFontOfSize:size weight:w]
+		: [NSFont systemFontOfSize:size weight:w];
 	NSFontDescriptorSystemDesign design = NSFontDescriptorSystemDesignDefault;
 	if (strcmp(designName, "serif") == 0) design = NSFontDescriptorSystemDesignSerif;
 	else if (strcmp(designName, "rounded") == 0) design = NSFontDescriptorSystemDesignRounded;

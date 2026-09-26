@@ -1,0 +1,50 @@
+<%
+  local HERO = { chart = 196, hole = 0.7, gap = 1.5 }
+  local half = math.ceil(#chart.legend / 2)
+  local columns = { {}, {} }
+  for index, item in ipairs(chart.legend) do table.insert(columns[index <= half and 1 or 2], item) end
+%>
+<GroupBox id="heroCard" maxWidth="infinity">
+  <HStack maxWidth="infinity" padding="20" spacing="28" alignment="center">
+    <SectorChart id="chart" width="<%= HERO.chart %>" height="<%= HERO.chart %>" innerRadius="<%= HERO.hole %>" angularInset="<%= HERO.gap %>" accessibilityLabel="<%= chart.accessibilityLabel %>">
+      <% for _, mark in ipairs(chart.marks) do %>
+      <SectorMark value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" />
+      <% end %>
+      <VStack spacing="0" alignment="center">
+        <Label id="usedTotal" text="<%= summary.used %>" size="26" weight="semibold" design="rounded" monospacedDigit="true" />
+        <Label text="<%= summary.caption %>" size="11" color="secondary" />
+      </VStack>
+    </SectorChart>
+    <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="14" alignment="leading">
+      <VStack maxWidth="infinity" spacing="2" alignment="leading">
+        <Label text="<%= volumeName %>" size="22" weight="semibold" />
+        <Label id="freeSpace" text="<%= summary.subtitle or summary.caption %>" size="13" color="secondary" monospacedDigit="true" />
+        <% if summary.lowSpace then %>
+        <Label id="lowSpace" text="Less than 10% of this disk is free" systemImage="exclamationmark.triangle.fill" size="12" color="systemOrange" />
+        <% end %>
+      </VStack>
+      <% if #chart.legend > 0 then %>
+      <HStack id="legend" maxWidth="infinity" spacing="20" alignment="top">
+        <% for column = 1, 2 do %>
+        <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="6" alignment="leading">
+          <% for _, item in ipairs(columns[column]) do %>
+          <%- partial("LegendRow.etlua", {item = item}) %>
+          <% end %>
+        </VStack>
+        <% end %>
+      </HStack>
+      <% else %>
+      <Label id="legendExplanation" text="<%= chart.explanation %>" size="12" color="secondary" maxWidth="infinity" lines="3" />
+      <% end %>
+      <Divider />
+      <HStack maxWidth="infinity" spacing="12" alignment="center">
+        <SystemImage name="sparkles" size="18" color="accent" />
+        <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="1" alignment="leading">
+          <Label id="reclaimTitle" text="<%= reclaim.title %>" size="13" weight="semibold" monospacedDigit="true" maxWidth="infinity" lines="1" />
+          <Label id="reclaimDetail" text="<%= reclaim.detail %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
+        </VStack>
+        <Button id="cleanUp" title="Review Cleanup…" style="borderedProminent" controlSize="large" action="reclaim" help="Suggested cleanups, grouped by impact" />
+      </HStack>
+    </VStack>
+  </HStack>
+</GroupBox>

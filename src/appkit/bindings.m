@@ -14,6 +14,7 @@ static int bridge_AppKitControls_textField(lua_State *L);
 static int bridge_AppKitControls_searchField(lua_State *L);
 static int bridge_AppKitControls_box(lua_State *L);
 static int bridge_AppKitControls_progressIndicator(lua_State *L);
+static int bridge_AppKitControls_levelIndicator(lua_State *L);
 static int bridge_AppKitControls_tableCellView(lua_State *L);
 static int bridge_AppKitControls_popUpButton(lua_State *L);
 static int bridge_AppKitControls_button(lua_State *L);

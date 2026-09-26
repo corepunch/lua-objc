@@ -162,7 +162,22 @@
 		id val = rowData[key];
 		[values addObject:val ? [val description] : @""];
 	}
-	cell.textLabel.text = [values componentsJoinedByString:@"  "];
+	// A `section` row is the AppKit group-row header; reused cells reset the
+	// header styling before showing an ordinary row.
+	id section = rowData[@"section"];
+	BOOL isSection = [section respondsToSelector:@selector(boolValue)] && [section boolValue];
+	if (isSection) {
+		id title = rowData[@"title"] ?: rowData[@"name"];
+		cell.textLabel.text = title ? [title description] : @"";
+		cell.textLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
+		cell.textLabel.textColor = UIColor.secondaryLabelColor;
+		cell.selectionStyle = UITableViewCellSelectionStyleNone;
+	} else {
+		cell.textLabel.text = [values componentsJoinedByString:@"  "];
+		cell.textLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
+		cell.textLabel.textColor = UIColor.labelColor;
+		cell.selectionStyle = UITableViewCellSelectionStyleDefault;
+	}
 	LUA_OBJC_PERF_END("uikit.cell.dequeue", signpost);
 	return cell;
 }

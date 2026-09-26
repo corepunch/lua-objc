@@ -1,0 +1,4 @@
+<VStack maxWidth="infinity" spacing="2" alignment="leading">
+  <Label text="<%= heading %>" size="11" weight="semibold" color="secondary" />
+  <Label text="<%= text %>" size="12" maxWidth="infinity" lines="0" />
+</VStack>

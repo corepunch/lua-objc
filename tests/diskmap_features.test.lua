@@ -6,7 +6,6 @@ local Tips = require("apps.diskmap.models.Tips")
 local Inspector = require("apps.diskmap.models.Inspector")
 local Scan = require("apps.diskmap.controllers.ScanController")
 local CleanupController = require("apps.diskmap.controllers.CleanupController")
-local CategoriesController = require("apps.diskmap.controllers.CategoriesController")
 local InspectorController = require("apps.diskmap.controllers.InspectorController")
 local TipsController = require("apps.diskmap.controllers.TipsController")
 local SettingsController = require("apps.diskmap.controllers.SettingsController")
@@ -62,10 +61,10 @@ local routed
 local tipsController = TipsController.new(model, function(action) routed = action end)
 tipsController:presentation({totalKb = 100, freeKb = 9}).actions.tip_access()
 t.assertEqual(routed, "settings", "tip controller routes the model action")
-local categories = CategoriesController.new(model, function(id) routed = id end)
-local bar = categories:bar({totalKb = 2e12, freeKb = 1e12})
-bar.actions.category_documents()
-t.assertEqual(routed, "documents", "category navigation is testable without widgets")
+local legend = require("apps.diskmap.models.Overview").chart(model, {totalKb = 2e12 / 1024, freeKb = 1e12 / 1024}).legend
+for _, item in ipairs(legend) do
+	t.expect(item.id == "other" or model.resources:find(item.id) ~= nil, "chart legend opens a registered category: " .. item.id)
+end
 local details = Inspector.details(model, "simulators")
 t.expect(details.text:find("Review threshold", 1, true) ~= nil, "inspector reuses cleanup evidence")
 t.expect(details.canManage, "fresh measurement allows live actions")

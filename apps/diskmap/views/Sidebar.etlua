@@ -1,0 +1,3 @@
+<List id="sidebar" style="sourceList" header="false" alternatingRows="false" onSelect="navigate" maxWidth="infinity" maxHeight="infinity">
+  <Column id="name" title="" imageKey="icon" />
+</List>

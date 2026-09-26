@@ -1,0 +1,11 @@
+<HStack maxWidth="infinity" spacing="6" alignment="center">
+  <SystemImage name="circle.fill" size="9" color="<%= item.color %>" />
+  <% if item.id == "other" then %>
+  <Label text="<%= item.name %>" size="12" color="secondary" lines="1" />
+  <% else %>
+  <Button title="<%= item.name %>" style="link" size="12" action="category_<%= item.id %>" help="Show <%= item.name %>" />
+  <% end %>
+  <Spacer />
+  <Label text="<%= item.size %>" size="12" monospacedDigit="true" />
+  <Label text="<%= item.share %>" size="11" color="secondary" monospacedDigit="true" width="34" alignment="trailing" />
+</HStack>

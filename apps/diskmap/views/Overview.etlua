@@ -1,0 +1,30 @@
+<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+  <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
+    <VStack id="hero" maxWidth="infinity" spacing="0" />
+    <VStack id="categoriesSection" maxWidth="infinity" spacing="8" alignment="leading">
+      <%- partial("SectionHeader.etlua", {title = "Categories", detail = "Measured by owner, largest first", detailId = "coverage"}) %>
+      <GroupBox id="categoriesPanel" maxWidth="infinity">
+        <List id="results" onSelect="select" onActivate="open" onColumnButton="open" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44" maxWidth="infinity">
+          <Column id="name" title="Category" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" fileIconKey="fileIcon" imageSize="28" minWidth="200" />
+          <Column id="shareText" title="Share" width="150" minWidth="120" levelKey="relative" levelColorKey="color" />
+          <Column id="size" title="On disk" width="110" minWidth="100" alignment="trailing" loadingKey="calculating" />
+          <Column id="info" title="" width="40" minWidth="40" buttonSymbol="chevron.right.circle" />
+        </List>
+      </GroupBox>
+    </VStack>
+    <VStack id="largestSection" maxWidth="infinity" spacing="8" alignment="leading">
+      <HStack maxWidth="infinity" spacing="8" alignment="bottom">
+        <%- partial("SectionHeader.etlua", {title = "Largest items", detail = "Individual resources across every category"}) %>
+        <Button id="showLargest" title="Show All" style="link" action="showLargest" />
+      </HStack>
+      <GroupBox id="largestPanel" maxWidth="infinity">
+        <%- partial("LargestList.etlua", {id = "largest", scrollDisabled = true}) %>
+      </GroupBox>
+    </VStack>
+    <HStack id="statusBar" maxWidth="infinity" spacing="12" alignment="center">
+      <SystemImage name="info.circle" size="13" color="secondary" />
+      <Label id="status" text="<%= status %>" size="11" color="secondary" flexGrow="1" flexBasis="0" flexShrink="1" lines="2" />
+      <Button id="access" title="Scan access…" style="link" action="access" />
+    </HStack>
+  </VStack>
+</ScrollView>

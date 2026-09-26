@@ -1,3 +1,21 @@
+# Sidebar redesign — September 26, 2026
+
+Overview, Largest Items, Developer and Storage Guide destinations; donut
+overview; `SectorChart`, `Gauge`, `help`, `monospacedDigit`, window
+`subtitle`, `borderedProminent`, `controlSize`, native disclosure triangles
+and source-list section rows in the framework.
+
+- Written in a Linux container without Xcode, so `make`, `make test`,
+  screenshots and layout dumps were **not** run for this change.
+- Run with stock Lua 5.4 and a stub view layer: the real controllers,
+  models and etlua templates rendered every page, navigated the sidebar,
+  opened each sheet route and filtered by search, for both a scripted
+  inventory and the Mock HDD provider. `tests/diskmap_overview.test.lua`
+  (148 assertions) and the `SectorChart` geometry pass under stock Lua.
+- Before merging on macOS: `make && make test`, then screenshots of each
+  destination in light and dark at 880×580 and 1400×900, a layout dump of
+  the overview, and a VoiceOver pass over the chart, gauges and sidebar.
+
 # Cache removal — September 22, 2026
 
 Saved-inventory replay and scan-result persistence have been removed. Every

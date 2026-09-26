@@ -44,6 +44,16 @@ function Categories.rows(model, rootId, query)
 	for _, row in ipairs(rows) do local value, visible = build(row, false); if visible then table.insert(result, value) end end
 	return result
 end
+-- One rolled-up row (leaf or group) by id, with the same status and size text
+-- the category lists show.
+function Categories.row(model, id)
+	local resource = model.resources:find(id)
+	if not resource then return nil end
+	local parent = resource:getParent()
+	for _, row in ipairs(Categories.rows(model, parent and parent.id or nil)) do
+		if row.id == id then return row end
+	end
+end
 -- Capacity is partitioned into measured categories, a visible residual and free space.
 -- Shared-block overcounts cannot be truthfully drawn as a partition of capacity.
 function Categories.distribution(model, disk)

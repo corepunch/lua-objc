@@ -1,0 +1,4 @@
+<VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+  <Label text="<%= title %>" size="15" weight="semibold" />
+  <Label <% if detailId then %>id="<%= detailId %>" <% end %>text="<%= detail %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
+</VStack>

@@ -338,7 +338,8 @@ end
 
 function UIKit.Font(props)
 	assert(type(props) == "table" and tonumber(props.size), "Font requires a size")
-	return bridge._font(props.size, props.weight, props.italic == true, props.design)
+	return bridge._font(props.size, props.weight, props.italic == true, props.design,
+		props.monospacedDigit == true)
 end
 
 function UIKit.Color(name)
@@ -658,6 +659,14 @@ function UIKit.Arc(props)
 	return applyLayout(view, props)
 end
 
+--- Draws a pie or donut chart from `SectorMark` records (SwiftUI Charts).
+--- @prop innerRadius number optional. Hole radius as a fraction of the outer radius (0 draws a pie).
+--- @prop angularInset number optional. Gap between neighbouring sectors, in points.
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
+function UIKit.SectorChart(props)
+	return require("ui.sectors").chart(UIKit, props)
+end
+
 --- Pins the second child to a safe-area edge while the first child uses the remaining space.
 ---
 --- The bottom edge includes the hosting controller's safe-area inset. Use a flexible
@@ -811,6 +820,7 @@ function UIKit.Label(arg)
 			}),
 			UIKit.Label({ text, size = props.size, weight = props.weight,
 				italic = props.italic, design = props.design, color = props.color,
+				monospacedDigit = props.monospacedDigit,
 				lineLimit = props.lineLimit, truncation = props.truncation, wrapping = props.wrapping }),
 		}
 		return applyLayout(UIKit.HStack(row), props)
@@ -818,7 +828,8 @@ function UIKit.Label(arg)
 	local v = bridge._label(text)
 	if type(props) == "table" then
 		if props.size and props.size > 0 then
-			v.font = bridge._font(props.size, props.weight, props.italic, props.design)
+			v.font = bridge._font(props.size, props.weight, props.italic, props.design,
+				props.monospacedDigit == true)
 		end
 		local lines = props.lineLimit or props.lines
 		if lines then
@@ -1423,6 +1434,19 @@ function UIKit.ProgressView(props)
 		local color = bridge._systemColor(props.tint)
 		if props.value ~= nil then view.progressTintColor = color else view.color = color end
 	end
+	return applyLayout(view, props)
+end
+
+--- Shows a value within a range as a read-only capacity bar (SwiftUI `Gauge`).
+--- @platform AppKit NSLevelIndicator. UIKit UIProgressView.
+function UIKit.Gauge(props)
+	props = props or {}
+	local low, high = props.minValue or 0, props.maxValue or 1
+	local value = tonumber(props.value) or low
+	local fraction = high > low and (math.max(low, math.min(high, value)) - low) / (high - low) or 0
+	local view = bridge._progressView(fraction)
+	if props.tint then view.progressTintColor = bridge._systemColor(props.tint) end
+	if props.accessibilityLabel then view.accessibilityLabel = props.accessibilityLabel end
 	return applyLayout(view, props)
 end
 

@@ -1,0 +1,38 @@
+<%
+  local GRID = { columns = 3 }
+  local rows = {}
+  for index, tile in ipairs(tiles) do
+    local row = math.ceil(index / GRID.columns)
+    rows[row] = rows[row] or {}
+    table.insert(rows[row], tile)
+  end
+%>
+<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+  <VStack id="pageContent" maxWidth="infinity" spacing="20" padding="24" alignment="leading">
+    <HStack maxWidth="infinity" spacing="14" alignment="center">
+      <SystemImage name="hammer.fill" size="36" badgeColor="systemPurple" />
+      <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+        <Label text="Developer" size="22" weight="semibold" />
+        <Label id="developerTotal" text="<%= calculating and "Measuring developer storage…" or (total .. " across Xcode, package managers, containers and AI tools") %>" size="13" color="secondary" monospacedDigit="true" maxWidth="infinity" lines="2" />
+      </VStack>
+      <Button id="showAll" title="All Developer Storage…" action="showAll" />
+    </HStack>
+    <VStack id="tiles" maxWidth="infinity" spacing="12" alignment="leading">
+      <% for _, row in ipairs(rows) do %>
+      <HStack maxWidth="infinity" spacing="12" alignment="top">
+        <% for column = 1, GRID.columns do %>
+        <% if row[column] then %>
+        <%- partial("DeveloperTile.etlua", {tile = row[column]}) %>
+        <% else %>
+        <Spacer flexGrow="1" flexBasis="0" />
+        <% end %>
+        <% end %>
+      </HStack>
+      <% end %>
+    </VStack>
+    <HStack maxWidth="infinity" spacing="8" alignment="center">
+      <SystemImage name="lightbulb" size="13" color="secondary" />
+      <Label text="Diskmap never removes simulator runtimes, SDKs or archives on its own. Rebuildable data is moved to the Trash only after you review it." size="11" color="secondary" flexGrow="1" flexBasis="0" flexShrink="1" lines="2" />
+    </HStack>
+  </VStack>
+</ScrollView>
