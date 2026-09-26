@@ -49,7 +49,7 @@ for i, arguments in ipairs({{}, {"-cache=/missing/inventory.json"},
 	app.scan.job.complete(result)
 	t.assertEqual(app.model.measurements.derived.bytes, i * 102400, "launch displays its own fresh result")
 	t.assertEqual(app.scan.job, nil, "completed scan is released without saving an inventory")
-	t.expect(bridge._tableCell(app.refs.results, 1, 0).loadingIndicator.hidden, "fresh completion stops row spinner")
+	t.expect(bridge._tableCell(app.refs.results, 2, 0).loadingIndicator.hidden, "fresh completion stops row spinner")
 	app.scan:dispose(); window:close()
 end
 t.assertEqual(capacityReads, 8, "capacity is queried at startup and completion for every launch")

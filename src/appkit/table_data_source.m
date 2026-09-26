@@ -623,7 +623,47 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	sv.hasHorizontalScroller = overflows;
 }
 
+// SwiftUI `Section` inside a sidebar List: a row whose `section` field is true
+// is a native group row. AppKit styles and floats it, never selects it, and
+// asks for one full-width view with a nil column.
+- (BOOL)isSectionRow:(NSInteger)row {
+	if (row < 0 || row >= (NSInteger)_rows.count) return NO;
+	id value = ((NSDictionary *)_rows[(NSUInteger)row])[@"section"];
+	return [value respondsToSelector:@selector(boolValue)] && [value boolValue];
+}
+
+- (BOOL)tableView:(NSTableView *)tableView isGroupRow:(NSInteger)row {
+	(void)tableView;
+	return [self isSectionRow:row];
+}
+
+- (BOOL)tableView:(NSTableView *)tableView shouldSelectRow:(NSInteger)row {
+	(void)tableView;
+	return ![self isSectionRow:row];
+}
+
+- (NSView *)sectionHeaderForTableView:(NSTableView *)tableView row:(NSInteger)row {
+	LuaTableCellView *header = [tableView makeViewWithIdentifier:@"section-header" owner:self];
+	if (!header) {
+		header = [[LuaTableCellView alloc] initWithFrame:
+			NSMakeRect(0, 0, tableView.bounds.size.width, tableView.rowHeight)];
+		header.identifier = @"section-header";
+		NSTextField *title = [NSTextField labelWithString:@""];
+		title.font = [NSFont systemFontOfSize:kTableSectionHeaderFontSize
+			weight:NSFontWeightSemibold];
+		title.textColor = NSColor.secondaryLabelColor;
+		title.lineBreakMode = NSLineBreakByTruncatingTail;
+		[header addSubview:title];
+		header.textField = title;
+	}
+	NSDictionary *rowData = _rows[(NSUInteger)row];
+	id title = rowData[@"title"] ?: rowData[@"name"];
+	header.textField.stringValue = title ? [title description] : @"";
+	return header;
+}
+
 - (NSView *)tableView:(NSTableView *)tableView viewForTableColumn:(NSTableColumn *)column row:(NSInteger)row {
+	if ([self isSectionRow:row]) return [self sectionHeaderForTableView:tableView row:row];
 	LUA_OBJC_PERF_BEGIN("appkit.cell.dequeue", signpost);
 	NSView *cell = table_cell_view(tableView, column, _rows[row], self, row);
 	LUA_OBJC_PERF_END("appkit.cell.dequeue", signpost);

@@ -1,0 +1,27 @@
+<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+  <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
+    <HStack maxWidth="infinity" spacing="14" alignment="center">
+      <SystemImage name="book.fill" size="36" badgeColor="systemTeal" />
+      <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+        <Label text="Storage Guide" size="22" weight="semibold" />
+        <Label text="Where macOS keeps things, why they grow and what is safe to do about them. Sizes are measured on this Mac." size="13" color="secondary" maxWidth="infinity" lines="2" />
+      </VStack>
+    </HStack>
+    <% if empty then %>
+    <ContentUnavailable id="noTopics" title="No Topics Found" systemImage="magnifyingglass" description="No guide topic mentions “<%= query %>”." maxWidth="infinity" />
+    <% end %>
+    <% for _, chapter in ipairs(chapters) do %>
+    <VStack maxWidth="infinity" spacing="8" alignment="leading">
+      <Label text="<%= chapter.title %>" systemImage="<%= chapter.icon %>" size="15" weight="semibold" />
+      <GroupBox maxWidth="infinity">
+        <VStack maxWidth="infinity" spacing="0" alignment="leading">
+          <% for index, topic in ipairs(chapter.topics) do %>
+          <%- partial("GuideTopic.etlua", {topic = topic, expanded = expandAll}) %>
+          <% if index < #chapter.topics then %><Divider /><% end %>
+          <% end %>
+        </VStack>
+      </GroupBox>
+    </VStack>
+    <% end %>
+  </VStack>
+</ScrollView>

@@ -361,6 +361,7 @@ local function layoutProps(attrs)
         "spacing", "alignment", "maxRows",
         "flexGrow", "flexShrink", "flexBasis",
         "hidden", "allowsHitTesting", "background", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick", "onTap", "onDrag", "onEdgeSwipe",
+        "help",
     }
     local props = {}
     for _, k in ipairs(lp) do
@@ -592,6 +593,8 @@ local TAG_SCHEMA = {
             label = "str",
             header = "str",
             expanded = "bool",
+            labelWeight = "str",
+            labelSize = "num",
         },
     },
     Grid = {
@@ -628,6 +631,11 @@ local TAG_SCHEMA = {
             tint = "str",
         },
     },
+    -- SwiftUI Gauge (linear capacity style).
+    Gauge = {
+        constructor = "Gauge",
+        props = { value = "num", minValue = "num", maxValue = "num", tint = "str", accessibilityLabel = "str" },
+    },
     Divider = {
         constructor = "Divider",
         props = {
@@ -644,6 +652,17 @@ local TAG_SCHEMA = {
             vertical      = "bool",
             scrollOnKeyboard = "bool",
         },
+    },
+    -- SwiftUI Charts SectorMark: a pie or donut built from native arcs.
+    -- Non-mark children are centered over the chart.
+    SectorChart = {
+        constructor = "SectorChart",
+        children = "array",
+        props = { innerRadius = "num", angularInset = "num", accessibilityLabel = "str" },
+    },
+    SectorMark = {
+        kind = "record", flag = "__sectorMark",
+        props = { value = "num", color = "str", label = "str" },
     },
     Arc = {
         constructor = "Arc",
@@ -682,6 +701,7 @@ local TAG_SCHEMA = {
             lines      = { prop = "lineLimit", type = "num" },
             truncation = "str",
             wrapping = "str",
+            monospacedDigit = "bool",
         },
         transform = function(props, a)
             if a.lines and (num(a.lines) or 0) > 1 then
@@ -773,6 +793,7 @@ local TAG_SCHEMA = {
             truncation  = "str",
             disabled    = "bool",
 			keyboardShortcut = "str",
+			controlSize = "str",
         },
         transform = function(props, attrs)
             if attrs.action and renderData and renderData.actions then
@@ -1222,6 +1243,7 @@ local TAG_SCHEMA = {
         flag  = "__isWindowConfig",
         props = {
             title                      = "str",
+            subtitle                   = "str",
             width                      = "num",
             height                     = "num",
             minWidth                   = "num",

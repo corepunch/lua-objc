@@ -121,7 +121,7 @@ t.assertEqual(app.model.measurements.downloads.bytes, 9300000000, "Diskmap inven
 t.assertEqual(app.model.measurements["mock-video-studio"].bytes, 3400000000, "discovered applications are measured from the mock fixture")
 t.assertEqual(app.model.measurements.simulators.bytes, 11200000000, "simulator allocation is measured without simctl")
 local xml, ns = require("ui.xml"), require("AppKit")
-local window = xml.renderFile("apps/diskmap/views/Window.etlua", {capacity = "1 TB", windowTitle = "Diskmap — Mock HDD", actions = {search = function() end}}, ns)
+local window = xml.renderFile("apps/diskmap/views/Window.etlua", {subtitle = "360 GB free of 1 TB", windowTitle = "Diskmap — Mock HDD", actions = {search = function() end}}, ns)
 t.assertEqual(window.title, "Diskmap — Mock HDD", "the active provider is visible in the window title")
 
 os.exit(t.summary() and 0 or 1)

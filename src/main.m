@@ -97,6 +97,9 @@ static const NSTimeInterval kScrollToAnimationDuration = 0.2;
 #define kTableCellTextTrailingInset      8
 #define kTableCellSymbolPointSize       13
 #define kTableCellSecondaryFontSize     11
+#define kTableSectionHeaderFontSize     11
+/* Gauge thresholds above maxValue keep the capacity fill in its tint color. */
+#define kGaugeNoThreshold                2
 #define kTableCellLoadingGap             4
 #define kTableCellLineSpacing            2
 #define kTableCellLevelTextWidth        38
@@ -302,6 +305,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_searchField", bridge_AppKitControls_searchField},
 	{"_box", bridge_AppKitControls_box},
 	{"_progressIndicator", bridge_AppKitControls_progressIndicator},
+	{"_levelIndicator", bridge_AppKitControls_levelIndicator},
 	{"_tableCellView", bridge_AppKitControls_tableCellView},
 	{"_popUpButton", bridge_AppKitControls_popUpButton},
 	{"_menu", bridge_AppKitControls_menu},

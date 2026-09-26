@@ -54,6 +54,7 @@ local layout_properties = {
 	"onDoubleClick",
 	"contextMenu",
 	"hoverTooltip",
+	"help",
 }
 
 local function applyLayout(view, props)
@@ -73,6 +74,9 @@ local function applyLayout(view, props)
 			elseif key == "hoverTooltip" then
 				local tt = props[key]
 				bridge._addHoverTooltip(view, tt.title or "", tt.detail or "")
+			elseif key == "help" then
+				-- SwiftUI `.help(_:)` is the view's native AppKit tooltip.
+				view.toolTip = props[key]
 			else
 				view[key] = props[key]
 			end
@@ -123,6 +127,7 @@ end
 --- @prop minWidth number optional. Component-specific setting passed to the native control.
 --- @prop sidebar table optional. Rendered navigation sidebar view.
 --- @prop sidebarWidth number optional. Component-specific setting passed to the native control.
+--- @prop subtitle string optional. Secondary window title (SwiftUI `.navigationSubtitle`); assign `window.subtitle` to update it.
 --- @prop size number optional. Component-specific setting passed to the native control.
 --- @prop tabbingIdentifier string optional. Identifier used to group tabbing windows.
 --- @prop tabbingMode string optional. Window tabbing mode.
@@ -166,6 +171,8 @@ function AppKit.Window(props)
 			transparent_titlebar, hide_title)
 	end
 	win.size = AppKit.Size(width, height)
+	-- SwiftUI `.navigationSubtitle`: AppKit draws it beneath the window title.
+	if props.subtitle then win.subtitle = props.subtitle end
 	if props.minWidth or props.minHeight then
 		win.contentMinSize = AppKit.Size(
 			props.minWidth or width,
@@ -318,7 +325,8 @@ end
 --- Keys match the XML text attributes: size, weight, italic, design.
 function AppKit.Font(props)
 	assert(type(props) == "table" and tonumber(props.size), "Font requires a size")
-	return bridge._font(props.size, props.weight, props.italic == true, props.design)
+	return bridge._font(props.size, props.weight, props.italic == true, props.design,
+		props.monospacedDigit == true)
 end
 
 --- Resolves a semantic name ("primary", "accent") or #RRGGBB hex to a color.
@@ -668,16 +676,33 @@ function AppKit.DisclosureGroup(props)
 	for _, child in ipairs(props) do content:add(child) end
 	local container = AppKit.VStack { spacing = 8, alignment = "leading" }
 	local expanded = props.expanded ~= false
-	local button = AppKit.Button {
+	-- SwiftUI's macOS DisclosureGroup is AppKit's disclosure triangle beside a
+	-- clickable label; both toggle the same state.
+	local triangle, label
+	local function toggle(fromTriangle)
+		if fromTriangle then
+			expanded = triangle.state == 1
+		else
+			expanded = not expanded
+			triangle.state = expanded and 1 or 0
+		end
+		content.hidden = not expanded
+		container:layout()
+	end
+	triangle = AppKit.Button { title = "", action = function() toggle(true) end }
+	triangle.bezelStyle = 5 -- NSBezelStyleDisclosure
+	triangle.buttonType = 1 -- NSButtonTypePushOnPushOff
+	triangle.state = expanded and 1 or 0
+	triangle:sizeToFit()
+	triangle.accessibilityLabel = props.label or props.header or "Details"
+	label = AppKit.Button {
 		title = props.label or props.header or "Details",
 		style = "plain",
-		action = function()
-			expanded = not expanded
-			content.hidden = not expanded
-			container:layout()
-		end,
+		weight = props.labelWeight,
+		size = props.labelSize or (props.labelWeight and 13 or nil),
+		action = function() toggle(false) end,
 	}
-	container:add(button)
+	container:add(AppKit.HStack { spacing = 4, alignment = "center", triangle, label })
 	container:add(content)
 	content.hidden = not expanded
 	return applyLayout(container, props)
@@ -902,6 +927,7 @@ end
 --- @prop lineLimit number optional. Maximum lines; 0 means unlimited.
 --- @prop truncation string optional. One of "head", "middle", "tail".
 --- @prop wrapping string optional. "word" (default) or "character".
+--- @prop monospacedDigit boolean optional. Uses fixed-width digits so changing numbers do not shift (SwiftUI `.monospacedDigit()`); requires `size`.
 --- @platform AppKit NSTextField (non-editable, bezel-less). UIKit UILabel.
 --- @example <Label>Hello</Label>
 --- @example <Label size="16" weight="bold">Hello</Label>
@@ -929,7 +955,8 @@ function AppKit.Text(arg)
 				color = arg.color,
 			}),
 			AppKit.Text({ text, size = arg.size, weight = arg.weight,
-				italic = arg.italic, color = arg.color,
+				italic = arg.italic, color = arg.color, design = arg.design,
+				monospacedDigit = arg.monospacedDigit,
 				lineLimit = arg.lineLimit, truncation = arg.truncation, wrapping = arg.wrapping }),
 		}
 		return applyLayout(AppKit.HStack(row), arg)
@@ -947,7 +974,8 @@ function AppKit.Text(arg)
 	if size and size > 0 then
 		v.font = bridge._font(size, weight,
 			type(arg) == "table" and arg.italic,
-			type(arg) == "table" and arg.design)
+			type(arg) == "table" and arg.design,
+			type(arg) == "table" and arg.monospacedDigit == true)
 	end
 	if type(arg) == "table" and arg.color then
 		v.textColor = bridge._systemColor(arg.color)
@@ -1479,6 +1507,18 @@ function AppKit.Button(props)
 		if not compound and (props.style == "plain" or props.style == "link") then
 			button.bordered = false
 		end
+		-- SwiftUI `.borderedProminent` is AppKit's accent-filled push button;
+		-- UIKit maps the same style to its prominent button configuration.
+		if not compound and props.style == "borderedProminent" then
+			button.bezelColor = bridge._systemColor("accent")
+		end
+		if props.controlSize then
+			-- SwiftUI `.controlSize`: NSControlSize small, regular, large.
+			local sizes = { mini = 2, small = 1, regular = 0, large = 3 }
+			button.controlSize = assert(sizes[props.controlSize],
+				"Button controlSize must be mini, small, regular or large")
+			button.size = button.fittingSize
+		end
 		if not compound and props.systemImage then
 			button.image = AppKit.SystemImage {
 				props.systemImage, size = props.symbolSize, weight = props.weight,
@@ -1800,6 +1840,29 @@ function AppKit.ProgressView(props)
 	return applyLayout(v, props)
 end
 
+--- Shows a value within a range as a read-only capacity bar.
+---
+--- SwiftUI `Gauge` with `.linearCapacity`; AppKit uses a continuous-capacity
+--- `NSLevelIndicator`, the control Finder and Disk Utility use for storage.
+--- @prop value number required. Current value between `minValue` and `maxValue`.
+--- @prop minValue number optional. Lower bound, default 0.
+--- @prop maxValue number optional. Upper bound, default 1.
+--- @prop tint string optional. Semantic fill color.
+--- @prop accessibilityLabel string optional. What the gauge measures.
+--- @example <Gauge value="0.42" tint="systemBlue" />
+--- @platform AppKit NSLevelIndicator. UIKit UIProgressView.
+function AppKit.Gauge(props)
+	props = props or {}
+	local v = bridge._levelIndicator()
+	v.minValue = props.minValue or 0
+	v.maxValue = props.maxValue or 1
+	local value = tonumber(props.value) or v.minValue
+	v.doubleValue = math.max(v.minValue, math.min(v.maxValue, value))
+	if props.tint then v.fillColor = bridge._systemColor(props.tint) end
+	if props.accessibilityLabel then v.accessibilityLabel = props.accessibilityLabel end
+	return applyLayout(v, props)
+end
+
 --- Displays a filesystem path as a navigable or inspectable view.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
@@ -1855,6 +1918,19 @@ function AppKit.Arc(props)
 	if props.strokeAlpha then view.strokeAlpha = props.strokeAlpha end
 	if props.lineCap then view.lineCap = props.lineCap end
 	return applyLayout(view, props)
+end
+
+--- Draws a pie or donut chart from `SectorMark` records (SwiftUI Charts).
+---
+--- Each sector is a native Arc stroke; array views other than marks are
+--- centered over the chart, typically a total inside the hole.
+--- @prop innerRadius number optional. Hole radius as a fraction of the outer radius (0 draws a pie).
+--- @prop angularInset number optional. Gap between neighbouring sectors, in points.
+--- @prop accessibilityLabel string optional. Summary read by VoiceOver.
+--- @example <SectorChart width="180" height="180" innerRadius="0.62"><SectorMark value="40" color="systemBlue" /></SectorChart>
+--- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
+function AppKit.SectorChart(props)
+	return require("ui.sectors").chart(AppKit, props)
 end
 
 --- Renders a data-driven curve in a native drawing surface.

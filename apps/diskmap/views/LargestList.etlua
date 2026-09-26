@@ -1,0 +1,7 @@
+<List id="<%= id %>" onSelect="selectLargest" onActivate="openLargest" onColumnButton="openLargest" <% if scrollDisabled then %>scrollDisabled="true" <% end %>drawsBackground="false" style="fullWidth" header="<%= scrollDisabled and "false" or "true" %>" alternatingRows="false" gridLines="horizontal" rowHeight="40" maxWidth="infinity"<% if not scrollDisabled then %> flexGrow="1" maxHeight="infinity"<% end %>>
+  <Column id="name" title="Item" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" imageSize="24" minWidth="200" />
+  <Column id="impact" title="Status" width="120" minWidth="100" />
+  <Column id="shareText" title="Share" width="150" minWidth="120" levelKey="relative" levelColorKey="color" />
+  <Column id="size" title="On disk" width="110" minWidth="100" alignment="trailing" />
+  <Column id="info" title="" width="40" minWidth="40" buttonSymbol="chevron.right.circle" />
+</List>

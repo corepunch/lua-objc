@@ -1,9 +1,8 @@
 local ns = require("AppKit")
-local Sheet = require("apps.diskmap.Sheet")
 local App = require("App")
 local xml = require("ui.xml")
-local Template = require("ui.template")
 local Model = require("apps.diskmap.Model")
+local Overview = require("apps.diskmap.models.Overview")
 local Provider = require("apps.diskmap.services.Provider")
 local ScanController = require("apps.diskmap.controllers.ScanController")
 local CategoriesController = require("apps.diskmap.controllers.CategoriesController")
@@ -15,6 +14,11 @@ local SimulatorsController = require("apps.diskmap.controllers.SimulatorsControl
 local SdksController = require("apps.diskmap.controllers.SdksController")
 local SettingsController = require("apps.diskmap.controllers.SettingsController")
 local ReclaimController = require("apps.diskmap.controllers.ReclaimController")
+local NavigationController = require("apps.diskmap.controllers.NavigationController")
+local OverviewController = require("apps.diskmap.controllers.OverviewController")
+local LargestController = require("apps.diskmap.controllers.LargestController")
+local DeveloperController = require("apps.diskmap.controllers.DeveloperController")
+local GuideController = require("apps.diskmap.controllers.GuideController")
 local Controller = {}; Controller.__index = Controller
 local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
 function Controller.new(service)
@@ -27,9 +31,7 @@ function Controller.new(service)
 	end
 	self.scan = ScanController.new(self.model, service, home, function() self:updateRows() end)
 	self.settings = SettingsController.new(service, self.model, function() self.scan:start() end)
-	self.categories = CategoriesController.new(self.model, function(id)
-		if id == "free" or id == "unreconciled" then self:openSettings() else self:openManagement(id) end
-	end)
+	self.categories = CategoriesController.new(self.model)
 	self.cleanup = CleanupController.new(self.model, service, function(id, filter)
 		self.reclaim:close(); self:openManagement(id, filter)
 	end, function(error)
@@ -38,7 +40,7 @@ function Controller.new(service)
 	end)
 	self.tips = TipsController.new(self.model, function(action)
 		if action == "settings" then self.service.openSettings("privacy")
-		elseif action == "system" then self.reclaim:close(); self:openManagement("macos")
+		elseif action == "system" then self.reclaim:close(); self:show("guide")
 		elseif action == "storage" then self.reclaim:close() end
 	end)
 	self.reclaim = ReclaimController.new(self.cleanup, self.tips, function() return self.scan.disk end)
@@ -48,35 +50,52 @@ function Controller.new(service)
 	self.management = ManagementController.new(self.model, service, function() self.scan:start() end,
 		function(id) self.cleanup:toggleKeep(id) end, function() self.simulators:open(self.window) end,
 		function(row) self.sdks:open(self.window, row) end)
+	self.navigation = NavigationController.new(function(id) self:show(id) end)
+	local open = function(id) self:openManagement(id) end
+	self.pages = {
+		overview = OverviewController.new(self.model, self.categories, {
+			open = open, navigate = function(id) self:show(id) end,
+			reclaim = function() self:openReclaim() end,
+			access = function() self.service.openSettings("privacy") end,
+		}),
+		largest = LargestController.new(self.model, service, open),
+		developer = DeveloperController.new(self.model, {open = open,
+			simulators = function() self.simulators:open(self.window) end,
+			sdks = function(row) if row then self.sdks:open(self.window, row) end end,
+		}),
+		guide = GuideController.new(self.model, open),
+	}
 	return self
 end
 function Controller:openManagement(id, filter)
 	if id == "simulators" then self.simulators:open(self.window) else self.management:open(self.window, id, filter) end
 end
+-- Everything a page needs to present the current scan, in one value.
+function Controller:state()
+	return {disk = self.scan.disk, query = self.query, mock = self.mock, volumeName = self.mock and "Mock HDD" or "Startup Disk",
+		status = (self.mock and "Mock HDD · " or "") .. (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status}
+end
 function Controller:updateRows()
-	if not self.refs then return end
-	if self.refs.results then
-		local rows = self.categories:rows(nil, self.query)
-		for _, row in ipairs(rows) do row.children = nil end
-		self.refs.results:replaceRows(rows)
-	end
-	if self.capacity then
-		self.capacity.text = self.categories:capacity(self.scan.disk)
-	end
-	if self.refs.coverage then
-		self.refs.coverage.text = self.categories:coverage(self.scan.disk)
-		self.refs.status.text = (self.mock and "Mock HDD · " or "") .. (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status
-		self.refs.access.hidden = self.mock == true
-		self.refs.access.title = (self.model.scan.errors or 0) > 0 and "Review scan access…" or "Scan access…"
-		self.refs.access.enabled = not self.mock
-	end
+	if self.window then self.window.subtitle = Overview.summary(self.model, self.scan.disk).subtitle or "" end
+	-- A page may re-render its template, so its refs are read after updating.
+	if self.page then self.page:update(self:state()); self.refs = self.page.refs end
 	self.reclaim:update()
-	if self.storageBar then self.storageBar:update(self.categories:bar(self.scan.disk)) end
 	self.management:update()
-	if self.refs.results and self.inspector.selectedId then self:select(self.inspector.selectedId) end
+end
+-- Mounts a sidebar destination into the content pane. Pages own their
+-- templates; the previous page is disposed before the next one mounts.
+function Controller:show(id)
+	local page = self.pages[id]
+	if not page or not self.content then return end
+	if self.destination == id and self.page then return end
+	if self.page then self.page:dispose() end
+	self.destination, self.page = id, page
+	self.refs = page:mount(self.content, self:state())
+	self.navigation:select(id)
+	self:updateRows()
 end
 function Controller:select(id)
-	if not self.refs or not self.refs.results then return end
+	if self.pages.overview.refs then self.pages.overview.selectedId = id end
 	self.inspector:select(id)
 end
 function Controller:openReclaim()
@@ -87,41 +106,25 @@ function Controller:openSettings()
 	self.reclaim:close()
 	self.settings:open(self.window)
 end
-function Controller:mountDashboard()
-	if self.page then self.page:dispose() end
-	self.refs = {}
-	self.storageBar = nil
-	self.page = Template.new(self.content, "apps/diskmap/views/Dashboard.etlua", ns)
-	local _, refs = self.page:update({
-		coverage = self.categories:coverage(self.scan.disk), status = self.scan.status, actions = {
-			access = function() self.service.openSettings("privacy") end,
-			select = function(_, _, row) if row then self:select(row.id) end end,
-			open = function(_, _, row) if row then self:openManagement(row.id) end end,
-		}})
-	self.refs = refs
-	self.storageBar = self.page:child("storageBar", "apps/diskmap/views/StorageBar.etlua")
-	self:updateRows()
-end
 function Controller:createWindow()
 	self.scan.disk = self.service.diskSpace(self.scan.home)
 	if self.service.loadKeep then
 		for id, kept in pairs(self.service.loadKeep()) do if self.model.resources:find(id) and kept == true then self.model.kept[id] = true end end
 	end
-	local cfg, windowRefs = render("Window", {capacity = self.categories:capacity(self.scan.disk),
-		windowTitle = self.mock and "Diskmap — Mock HDD" or "Diskmap",
+	local cfg = render("Window", {windowTitle = self.mock and "Diskmap — Mock HDD" or "Diskmap",
+		subtitle = Overview.summary(self.model, self.scan.disk).subtitle or "",
 		actions = {
-			search = function(value) self.query = value; self:updateRows() end,
+			search = function(value) self.query = value or ""; self:updateRows() end,
 			refresh = function() self.scan:start() end,
 			cancel = function() self.scan:cancel() end,
 			reclaim = function() self:openReclaim() end,
 			settings = function() self:openSettings() end,
 		}})
-	local content, contentRefs = render("ContentPane")
-	cfg.content = content; self.content = contentRefs.content
+	local content, contentRefs = render("Content")
+	cfg.content, cfg.sidebar = content, self.navigation:render()
+	self.content = contentRefs.content
 	self.window = ns.Window(cfg)
-	self.toolbarTitle = windowRefs.toolbarTitle
-	self.capacity = windowRefs.capacity
-	self:mountDashboard()
+	self:show("overview")
 	local exportPath = Provider.exportPath(App.args())
 	if exportPath then
 		self.scan.status = "Creating a local metadata-only Mock HDD snapshot…"; self:updateRows()

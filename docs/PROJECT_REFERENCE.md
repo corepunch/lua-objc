@@ -802,6 +802,46 @@ WebKit's page search and reports whether a match was found. XML templates can bi
 render data with `<WebView page="page" />`. Use an embedded view for a real
 in-app browsing workflow; open a normal external link in the system browser.
 
+### `SectorChart{...}` and `Gauge{...}`
+
+`<SectorChart>` is SwiftUI Charts' `SectorMark`: a pie or donut composed from
+native `Arc` strokes in a `ZStack`, on AppKit and UIKit alike (`lua/ui/sectors.lua`).
+Each `<SectorMark value="…" color="…" label="…" />` becomes one arc; the first
+starts at 12 o'clock and marks advance clockwise in data order. `innerRadius`
+is the hole as a fraction of the outer radius (0 draws a pie) and
+`angularInset` is the gap between neighbours in points. Non-positive values
+occupy no angle, a lone mark is a closed ring, and a chart without positive
+values draws its empty ring in `quaternaryLabel`. Any other child view is
+centered over the chart, typically a total in the hole:
+
+```xml
+<SectorChart width="196" height="196" innerRadius="0.7" angularInset="1.5" accessibilityLabel="Storage by category">
+  <SectorMark value="58" color="systemBlue" label="Applications" />
+  <SectorMark value="16" color="systemPurple" label="Developer" />
+  <Label text="337 GB" size="26" weight="semibold" design="rounded" monospacedDigit="true" />
+</SectorChart>
+```
+
+`<Gauge value="0.4" tint="systemBlue" />` is SwiftUI `Gauge` with the linear
+capacity style: a read-only continuous-capacity `NSLevelIndicator` on AppKit
+(the control Finder and Disk Utility use for storage) and a tinted
+`UIProgressView` on UIKit. `minValue`/`maxValue` default to 0 and 1; values are
+clamped.
+
+### SwiftUI modifiers on XML views
+
+| Attribute | SwiftUI | AppKit | UIKit |
+|---|---|---|---|
+| `help="…"` on any view | `.help(_:)` | `toolTip` | ignored |
+| `monospacedDigit="true"` on `<Label>` (with `size`) | `.monospacedDigit()` | `monospacedDigitSystemFont` | `monospacedDigitSystemFont` |
+| `subtitle="…"` on `<Window>` | `.navigationSubtitle(_:)` | `NSWindow.subtitle`; assign `window.subtitle` to update | ignored |
+| `style="borderedProminent"` on `<Button>` | `.buttonStyle(.borderedProminent)` | accent `bezelColor` | prominent button configuration |
+| `controlSize` (`mini`, `small`, `regular`, `large`) on `<Button>` | `.controlSize(_:)` | `NSControlSize` | ignored |
+
+`<DisclosureGroup label="…" expanded="false">` draws AppKit's disclosure
+triangle beside a clickable label; both toggle the content. `labelWeight` and
+`labelSize` style the label.
+
 ### `Toggle{...}`
 
 Creates an `NSButton` checkbox. Keys: `label` (string), `is_on` (bool),
@@ -1058,6 +1098,11 @@ List {
     }
 }
 ```
+
+A row with `section = true` is a SwiftUI `Section` header: a native group row
+showing its `title` (or `name`), styled by the list and never selectable. Use
+it for sidebar sections in `sourceList` lists; UIKit styles it as a footnote
+header.
 
 Each column `id` must match a key in the row data tables. Cells render the
 string value of `row[id]`, unless the column has a `cell` callback. A callback
@@ -1472,6 +1517,8 @@ Templates use the `.etlua` extension to reflect that they contain etlua
 | `<Image symbol="…">` / `<SystemImage>` | `ns.SystemImage` | `ns.SystemImage` |
 | `<Toggle>` / `<Switch>` | `ns.Toggle` | `ns.Toggle` |
 | `<List>` + `<Column>` children | `ns.List` (NSTableView) | — |
+| `<SectorChart>` + `<SectorMark>` children | native `Arc`s in a `ZStack` | native `Arc`s in a `ZStack` |
+| `<Gauge>` | `NSLevelIndicator` (continuous capacity) | `UIProgressView` |
 | `<Window>` | window config table | window config table |
 | `<Toolbar>` + `<ToolbarItem>` | toolbar items | toolbar items |
 

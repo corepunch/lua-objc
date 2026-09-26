@@ -1,0 +1,23 @@
+<VStack id="topic_<%= topic.id %>" maxWidth="infinity" padding="12" spacing="6" alignment="leading">
+  <HStack maxWidth="infinity" spacing="10" alignment="center">
+    <SystemImage name="<%= topic.icon %>" size="18" color="accent" />
+    <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="1" alignment="leading">
+      <Label text="<%= topic.title %>" size="13" weight="semibold" maxWidth="infinity" lines="1" />
+      <Label text="<%= topic.summary %>" size="12" color="secondary" maxWidth="infinity" lines="2" />
+    </VStack>
+    <% if topic.measurement then %>
+    <Label text="<%= topic.measurement %>" size="11" color="secondary" monospacedDigit="true" lines="1" />
+    <% end %>
+    <% if topic.open then %>
+    <Button systemImage="arrow.right.circle" symbolSize="15" foregroundStyle="secondary" style="plain" accessibilityLabel="Show <%= topic.title %> in Diskmap" help="Show in Diskmap" action="open_<%= topic.id %>" />
+    <% end %>
+  </HStack>
+  <DisclosureGroup id="details_<%= topic.id %>" label="Details" expanded="<%= expanded and "true" or "false" %>" spacing="8" paddingLeading="28" maxWidth="infinity">
+    <%- partial("GuideParagraph.etlua", {heading = "What it is", text = topic.what}) %>
+    <%- partial("GuideParagraph.etlua", {heading = "Why it grows", text = topic.why}) %>
+    <%- partial("GuideParagraph.etlua", {heading = "What to do", text = topic.action}) %>
+    <% if topic.paths ~= "" then %>
+    <Label text="<%= topic.paths %>" size="11" design="monospaced" color="secondary" maxWidth="infinity" lines="0" />
+    <% end %>
+  </DisclosureGroup>
+</VStack>

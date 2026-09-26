@@ -49,12 +49,14 @@ become app features. Feature shutdown is not a promise of immediate asset remova
 
 ## Navigation and category hierarchy
 
-The window is the storage map: capacity, coverage, and the category list.
-Choosing a category opens its resources in a sheet. Suggested cleanups open
-from a button on that window, grouped by impact, with contextual tips.
-Developer and Applications are categories in that list. Settings opens from
-the toolbar. Large Files is a filter within an inventory view, not a competing
-navigation model.
+The window has a native sidebar with one destination per user goal:
+Overview (what uses storage), Largest Items (the individual resources behind
+it), Developer (SDKs, simulators, runtimes and other developer data) and
+Storage Guide (how macOS lays out its disk). Choosing a category anywhere opens
+its resources in a sheet. Suggested cleanups open from the toolbar and from the
+overview's call to action, grouped by impact, with contextual tips. Settings
+opens from the toolbar. Largest Items ranks catalog resources; it is not a
+folder browser.
 
 The following is the target category vocabulary. Children appear when detected;
 unmeasured supported categories remain available with an explicit status.
@@ -135,15 +137,17 @@ there. There is no separate folder-hunting workflow required to finish cleanup.
 
 ## Window and interaction design
 
-Use one native window for the storage map. Category management, suggested
-cleanups, simulator devices, and Diskmap settings are sheets. All screens and
-partials are etlua.
+Use one native window with a source-list sidebar. Category management,
+suggested cleanups, simulator devices, SDKs and Diskmap settings are sheets.
+All screens and partials are etlua.
 
-The main pane contains a compact volume summary and an edge-to-edge native
-outline/table. Columns are Name, On Disk, Cleanup Status, and optionally Change.
-Use native SF Symbols and semantic colors; all statuses also have text. The
-outline and exact numbers are the primary visualization. No sunburst, treemap,
-or custom folder diagram is necessary.
+The overview leads with a donut (SwiftUI `SectorMark`, drawn with native arcs)
+of the whole volume: categories in their colors, the unattributed residual in
+gray and free space as the empty track, with the used total in the hole. The
+legend and a ranked category table with share bars carry the exact numbers;
+the chart is never the only way to read them. Sunbursts, treemaps and folder
+diagrams remain out of scope. Use native SF Symbols and semantic colors; all
+statuses also have text.
 
 The volume summary shows scope, used capacity, available capacity, coverage, and
 last update. “Available” and raw free space must retain the meaning supplied by

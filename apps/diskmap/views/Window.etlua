@@ -1,21 +1,13 @@
-<Window title="<%= windowTitle or "Diskmap" %>" hideTitle="true" width="700" height="720" minWidth="620" minHeight="640">
+<Window title="<%= windowTitle or "Diskmap" %>" subtitle="<%= subtitle or "" %>" hideTitle="false" width="1100" height="760" minWidth="880" minHeight="580" sidebarWidth="210">
   <Toolbar>
-    <ToolbarItem id="drive" label="Storage" bordered="false">
-      <HStack id="toolbarTitle" spacing="8" alignment="center">
-        <SystemImage name="internaldrive" size="18" color="secondary" />
-        <VStack spacing="1" alignment="leading">
-          <Label text="<%= windowTitle or "Diskmap" %>" size="13" weight="semibold" lines="1" />
-          <Label id="capacity" text="<%= capacity %>" size="11" color="secondary" maxWidth="infinity" lines="1" />
-        </VStack>
-      </HStack>
-    </ToolbarItem>
+    <ToolbarItem id="toggleSidebar" />
     <ToolbarSpacer />
+    <ToolbarItem id="refresh" label="Refresh" icon="arrow.clockwise" tooltip="Measure all storage again" action="refresh" />
+    <ToolbarItem id="cancel" label="Stop" icon="stop.circle" tooltip="Stop measuring" action="cancel" />
     <ToolbarItem id="reclaim" label="Clean Up" icon="sparkles" tooltip="Suggested cleanups" action="reclaim" />
     <ToolbarItem id="settings" label="Settings" icon="gearshape" tooltip="Settings" action="settings" />
-    <ToolbarItem id="refresh" label="Refresh" icon="arrow.clockwise" action="refresh" />
-    <ToolbarItem id="cancel" label="Cancel" icon="xmark.circle" action="cancel" />
     <ToolbarItem id="search" label="Search">
-      <SearchField id="search" placeholder="Search" width="160" accessibilityLabel="Search" onChange="search" />
+      <SearchField id="search" placeholder="Search" width="180" accessibilityLabel="Search storage and guide" onChange="search" />
     </ToolbarItem>
   </Toolbar>
 </Window>

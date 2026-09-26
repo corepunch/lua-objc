@@ -1,12 +1,32 @@
 # Diskmap
 
 A native macOS 26 storage manager organized by semantic categories, not folders.
-The window shows the disk breakdown and category list. Open a category to manage
-its resources in a sheet. Suggested cleanups open from a button on that window,
-grouped by impact, with review actions and contextual tips. Search names, owners
-and paths, and filter a category by Safe/rebuildable, Needs review or Essential
-to keep. Settings opens from the toolbar. Locations stay inside the sheet for
-the resource you are reviewing.
+It answers three questions, one sidebar destination each:
+
+- **Overview — what uses my storage?** A donut of the whole startup disk by
+  category, with free space as the empty track and unattributed usage in gray,
+  the used total in its hole, and a legend that opens each category. Below it:
+  categories ranked by size with share bars, the six largest individual items,
+  and the rebuildable-versus-review cleanup headline with a prominent
+  Review Cleanup button.
+- **Largest Items** — the hundred largest measured resources across every
+  category, each with its semantic owner, cleanup status and share bar. Show in
+  Finder or open the category that manages it.
+- **Developer — what can I do about Xcode and friends?** Tiles for simulator
+  devices, simulator runtimes, Xcode and its SDKs, DerivedData, device support,
+  archives, package managers, containers and AI coding tools, each with its
+  measured size, a capacity gauge and the sheet that manages it.
+- **Storage Guide — where does macOS keep things?** Topics on the APFS volume
+  layout, Preboot, Recovery, where software updates are downloaded and staged,
+  swap, local snapshots, free versus available space, System Data, caches,
+  containers, device backups and developer storage. Each topic explains what it
+  is, why it grows and what to do, shows its live size on this Mac and opens the
+  category that manages it.
+
+Categories open their resources in a sheet with Safe/rebuildable, Needs review
+and Essential to keep filters. Refresh, Stop, Clean Up, Settings and Search live
+in the toolbar; search applies to the current page. The window subtitle shows
+free space.
 
 ```sh
 make
@@ -81,10 +101,10 @@ Startup and refresh measure every catalog path in one background batch, includin
 Applications, Documents, media, backups, Trash, developer projects, system data,
 and residual roots for files outside named categories. Parent buckets exclude
 all separately classified descendants. This closes the former startup allowlist
-gap without double counting folders. Every measured category has its own bar
-segment; Not attributed is separate from measured Other files. The chart ranks
-measured categories by size, and its single-line legend shows the largest
-measured categories that fit at the current width.
+gap without double counting folders. The overview ring names the seven largest
+measured categories and groups the rest; Not attributed is separate from
+measured Other files, and free space is the ring's empty track. When measured
+allocation exceeds reported usage the ring draws no partition and explains why.
 
 The app loads the native `StorageScan.dylib` plugin built by `make` and included
 in `make diskmap-app`. Its worker uses `getattrlistbulk` to fetch metadata
@@ -118,8 +138,13 @@ The app and framework changes are described in [DESIGN.md](DESIGN.md).
 
 ## Component boundaries
 
-The root controller composes focused controllers for category management sheets, simulator management, and scan lifecycle, category
-presentation, cleanup, contextual tips, inspector actions, and settings. Their
+The root controller composes focused controllers: sidebar navigation, one page
+controller per destination (overview, largest items, developer, guide),
+category management sheets, simulator and SDK sheets, scan lifecycle, category
+presentation, cleanup, contextual tips, inspector actions, and settings. Pages
+mount retained templates into the content pane; the root disposes the previous
+page before mounting the next. The guide re-renders only when its search
+changes, so scan progress never collapses the topic being read. Their
 models contain no native controls. Services are injected, so tests can exercise
 cancellation, preference persistence failures, action routing and fresh startup independently.
 
@@ -130,7 +155,10 @@ cancellation, preference persistence failures, action routing and fresh startup 
 | `models/Resources.lua` | Per-model canonical resource collection, ordered relations and registration |
 | `models/Constraints.lua` | Named validation results for registration, Keep changes and Trash mutations |
 | `models/Inventory.lua` | Scan plans, measurement transitions and current diagnostics |
-| `models/Categories.lua` | Category queries and capacity distribution |
+| `models/Categories.lua` | Category queries, rolled-up rows and capacity distribution |
+| `models/Overview.lua` | Volume summary, donut marks and legend, cleanup headline, ranked categories and largest items |
+| `models/Developer.lua` | Developer tiles: catalog resources, sizes and managing destinations |
+| `models/Guide.lua`, `knowledge/Guide.lua` | Storage Guide topics, search and live topic sizes |
 | `models/Cleanup.lua`, `knowledge/CleanupRules.lua` | Recognized resources, review thresholds, evidence and tailored advice |
 | `models/Tips.lua` | Contextual access, capacity, Keep and system-storage guidance |
 | `models/Inspector.lua`, `models/Preferences.lua` | Resource details and action eligibility |

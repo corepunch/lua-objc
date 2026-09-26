@@ -160,11 +160,14 @@ static UIColor *lua_objc_uikit_system_color(const char *name) {
 	if (strcmp(name, "systemPink") == 0) return UIColor.systemPinkColor;
 	if (strcmp(name, "systemTeal") == 0) return UIColor.systemTealColor;
 	if (strcmp(name, "systemIndigo") == 0) return UIColor.systemIndigoColor;
+	if (strcmp(name, "systemMint") == 0) return UIColor.systemMintColor;
+	if (strcmp(name, "systemCyan") == 0) return UIColor.systemCyanColor;
 	if (strcmp(name, "systemBrown") == 0) return UIColor.systemBrownColor;
 	if (strcmp(name, "systemGray") == 0) return UIColor.systemGrayColor;
 	if (strcmp(name, "systemYellow") == 0) return UIColor.systemYellowColor;
 	if (strcmp(name, "secondary") == 0) return UIColor.secondaryLabelColor;
 	if (strcmp(name, "tertiary") == 0) return UIColor.tertiaryLabelColor;
+	if (strcmp(name, "quaternaryLabel") == 0) return UIColor.quaternaryLabelColor;
 	if (strcmp(name, "accent") == 0) return UIColor.tintColor;
 	if (strcmp(name, "red") == 0) return UIColor.systemRedColor;
 	if (strcmp(name, "blue") == 0) return UIColor.systemBlueColor;
