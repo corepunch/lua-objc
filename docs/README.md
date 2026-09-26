@@ -20,6 +20,9 @@ Open the narrowest document that answers the task:
 - `tableview_swiftui.md` — NSTableView sizing, scrolling, and style behavior.
 - `SWIFTUI_PARITY_PLAN.md` — Luna execution plan for paired SwiftUI/etlua
   fixtures, native behavior tests, visual comparisons, and coverage gates.
+- `SWIFTUI_PAIN_POINTS.md` — catalog of Swift/SwiftUI/Xcode complaints and the
+  lua-objc responses (hot reload, native controls, navigation, lists) we should
+  ship against to attract people off that stack.
 - `ios.md` — iPhone Simulator host, UIKit coverage for AdventureArena-class
   apps, streamed Lua/assets, and in-process reload (the host does not quit).
 - `reference/mesh-gradient.md` — SwiftUI `MeshGradient` + `TimelineView(.animation)`
