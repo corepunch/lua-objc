@@ -21,8 +21,8 @@ function Controller.new(options)
 	}
 	local self = setmetatable({ ns = ns, adventures = adventures, sessionModel = sessionModel }, Controller)
 	self.readingSettings = ReadingSettings.new()
-	local function push(template, data, title)
-		return self:push(template, data, title)
+	local function push(template, data)
+		return self:push(template, data)
 	end
 	local function back() return self:back() end
 	self.library = LibraryController.new {
@@ -42,39 +42,21 @@ function Controller.new(options)
 			return xml.renderFile("apps/adventure-arena/views/" .. template .. ".etlua", data, ns)
 		end,
 		presentSheet = function(sheet, detents)
-			if ns.platform == "UIKit" then
-				return ns.presentSheet(sheet, { detents = detents })
-			end
-			return ns.presentSheet(sheet, self.window)
+			return ns.presentSheet(sheet, { parent = self.window, detents = detents })
 		end,
 		dismissSheet = function(sheet)
-			if ns.platform == "UIKit" then return ns.dismiss() end
 			if sheet then return ns.dismiss(sheet) end
 		end,
 	}
 	return self
 end
 
-function Controller:push(template, data, title)
-	local view, refs = xml.renderFile("apps/adventure-arena/views/" .. template .. ".etlua", data, self.ns)
-	local onDisappear
-	if template == "Session" then
-		onDisappear = function()
-			self.sessionController:onDisappear()
-		end
-	end
-	local hostingController = self.ns.HostingController(view, onDisappear, {
-		hidesTabBar = template == "Session",
-	})
-	self.navigation:push(hostingController, title)
-	if data.systemNavigation and self.ns.installNavigationChrome then
-		local titleView, titleRefs = xml.renderFile(
-			"apps/adventure-arena/views/SessionTitle.etlua", data, self.ns)
-		for key, value in pairs(titleRefs) do refs[key] = value end
-		self.ns.installNavigationChrome(hostingController, titleView,
-			data.actions and data.actions.readingSettings)
-	end
-	return view, refs
+-- Screens are <Page> templates: title, toolbar and presentation are declared
+-- there, so pushing is render-and-push.
+function Controller:push(template, data)
+	local page, refs = xml.renderFile("apps/adventure-arena/views/" .. template .. ".etlua", data, self.ns)
+	self.navigation:push(page)
+	return page, refs
 end
 
 function Controller:back()

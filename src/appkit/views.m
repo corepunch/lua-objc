@@ -73,90 +73,8 @@ static int bridge_window(lua_State *L) {
 		}
 		}];
 
-	if (!lua_isnoneornil(L, 6)) {
-		luaL_checktype(L, 6, LUA_TTABLE);
-		int n = (int)luaL_len(L, 6);
-		NSMutableArray *items = [NSMutableArray array];
-		for (int i = 1; i <= n; i++) {
-			lua_rawgeti(L, 6, i);
-			lua_getfield(L, -1, "id");
-			lua_getfield(L, -2, "label");
-			lua_getfield(L, -3, "icon");
-			const char *iid = lua_tostring(L, -3);
-			const char *ilabel = lua_tostring(L, -2);
-			const char *iicon = lua_tostring(L, -1);
-
-			NSMutableDictionary *dict = [NSMutableDictionary dictionary];
-			if (iid) dict[@"id"] = [NSString stringWithUTF8String:iid];
-			if (ilabel) dict[@"label"] = [NSString stringWithUTF8String:ilabel];
-			if (iicon) dict[@"icon"] = [NSString stringWithUTF8String:iicon];
-
-			lua_pop(L, 1);
-
-			lua_getfield(L, -3, "bordered");
-			if (!lua_isnil(L, -1)) dict[@"bordered"] = @(lua_toboolean(L, -1));
-			lua_pop(L, 1);
-
-			lua_getfield(L, -3, "view");
-			if (!lua_isnil(L, -1)) dict[@"view"] = check_view(L, -1);
-			lua_pop(L, 1);
-
-			lua_getfield(L, -3, "visibilityPriority");
-			if (lua_isnumber(L, -1)) dict[@"visibilityPriority"] = @(lua_tointeger(L, -1));
-			lua_pop(L, 1);
-
-			lua_getfield(L, -3, "tooltip");
-			const char *tooltip = lua_tostring(L, -1);
-			if (tooltip) {
-				dict[@"tooltip"] = [NSString stringWithUTF8String:tooltip];
-			}
-			lua_pop(L, 1);
-
-			lua_getfield(L, -3, "action");
-			if (lua_isfunction(L, -1)) {
-				dict[@"actionReg"] = lua_reg_create(L, -1, YES);
-			}
-			lua_pop(L, 1);
-
-			lua_getfield(L, -3, "type");
-			const char *itype = lua_tostring(L, -1);
-			if (itype) dict[@"type"] = [NSString stringWithUTF8String:itype];
-			lua_pop(L, 1);
-
-			lua_getfield(L, -3, "minWidth");
-			if (lua_isnumber(L, -1)) dict[@"minWidth"] = @(lua_tonumber(L, -1));
-			lua_pop(L, 1);
-
-			lua_getfield(L, -3, "value");
-			const char *ivalue = lua_tostring(L, -1);
-			if (ivalue) dict[@"value"] = [NSString stringWithUTF8String:ivalue];
-			lua_pop(L, 1);
-
-			lua_getfield(L, -3, "onSubmit");
-			if (lua_isfunction(L, -1))
-				dict[@"submitReg"] = lua_reg_create(L, -1, YES);
-			lua_pop(L, 1);
-
-			[items addObject:dict];
-			lua_pop(L, 3);
-		}
-
-		LuaToolbarDelegate *del = [[LuaToolbarDelegate alloc] initWithItems:items];
-		/* Document tabs own independent tracking separators. A shared toolbar
-		 * family identifier makes AppKit duplicate those non-repeatable items
-		 * when a second document joins the native window tab group. */
-		NSString *toolbarIdentifier = [NSString stringWithFormat:
-			@"lua-objc.%@", NSUUID.UUID.UUIDString];
-		NSToolbar *tb = [[NSToolbar alloc]
-			initWithIdentifier:toolbarIdentifier];
-		tb.displayMode = lua_toboolean(L, 7)
-			? NSToolbarDisplayModeIconAndLabel : NSToolbarDisplayModeIconOnly;
-		tb.delegate = del;
-		w.toolbar = tb;
-		w.toolbarStyle = NSWindowToolbarStyleUnified;
-		objc_setAssociatedObject(w, &kKeys[kToolbarDelegateKey], del,
-			OBJC_ASSOCIATION_RETAIN);
-	}
+	if (!lua_isnoneornil(L, 6))
+		window_install_toolbar(w, toolbar_items_from_lua(L, 6), lua_toboolean(L, 7));
 
 	push_objc(L, w, "nswindow");
 	return 1;
@@ -904,15 +822,20 @@ static int bridge_add_double_click(lua_State *L) {
 	else if (recognizer.state == NSGestureRecognizerStateEnded) state = "ended";
 	else if (recognizer.state == NSGestureRecognizerStateCancelled) state = "cancelled";
 	lua_pushstring(L, state); lua_setfield(L, -2, "state");
-	NSPoint location = [recognizer locationInView:recognizer.view];
+	/* SwiftUI DragGesture and UIKit report y growing downward. Normalize
+	 * unflipped AppKit views so gesture handlers never branch on platform. */
+	NSView *view = recognizer.view;
+	CGFloat down = view.isFlipped ? 1 : -1;
+	NSPoint location = [recognizer locationInView:view];
+	if (!view.isFlipped) location.y = view.bounds.size.height - location.y;
 	lua_newtable(L); lua_pushnumber(L, location.x); lua_setfield(L, -2, "x");
 	lua_pushnumber(L, location.y); lua_setfield(L, -2, "y"); lua_setfield(L, -2, "location");
-	NSPoint translation = [recognizer translationInView:recognizer.view];
-	NSPoint velocity = [recognizer velocityInView:recognizer.view];
+	NSPoint translation = [recognizer translationInView:view];
+	NSPoint velocity = [recognizer velocityInView:view];
 	lua_newtable(L); lua_pushnumber(L, translation.x); lua_setfield(L, -2, "x");
-	lua_pushnumber(L, translation.y); lua_setfield(L, -2, "y"); lua_setfield(L, -2, "translation");
+	lua_pushnumber(L, translation.y * down); lua_setfield(L, -2, "y"); lua_setfield(L, -2, "translation");
 	lua_newtable(L); lua_pushnumber(L, velocity.x); lua_setfield(L, -2, "x");
-	lua_pushnumber(L, velocity.y); lua_setfield(L, -2, "y"); lua_setfield(L, -2, "velocity");
+	lua_pushnumber(L, velocity.y * down); lua_setfield(L, -2, "y"); lua_setfield(L, -2, "velocity");
 	if (lua_pcall(L, 1, 0, 0) != LUA_OK) report_lua_error(L, "drag gesture callback");
 }
 @end
@@ -1075,7 +998,7 @@ static int bridge_NSView_clearContainer_impl(lua_State *L) {
 	for (NSView *sub in [container.subviews copy]) {
 		[sub removeFromSuperview];
 	}
-	layout_recursive(container, container.bounds.size.width);
+	invalidate_layout(container);
 }
 	return 0;
 }

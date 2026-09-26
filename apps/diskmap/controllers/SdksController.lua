@@ -8,9 +8,8 @@ function Controller.new(model, service)
 end
 function Controller:close()
 	self.generation = self.generation + 1
-	if self.sheet then ns.dismiss(self.sheet); self.sheet = nil end
-	if self.scope then self.scope:close(); self.scope = nil end
-	self.refs = nil
+	if self.sheet then ns.dismiss(self.sheet) end
+	self.sheet, self.refs = nil, nil
 end
 function Controller:show()
 	if not self.refs then return end
@@ -42,17 +41,14 @@ function Controller:open(parent, row)
 	self:close()
 	self.root = row.path
 	self.query = ""
-	self.scope = ns.Scope.new()
-	ns.Scope.withScope(self.scope, function()
-		self.sheet, self.refs = xml.renderFile("apps/diskmap/views/Sdks.etlua", {
+	self.sheet, self.refs = Sheet.present(function()
+		return xml.renderFile("apps/diskmap/views/Sdks.etlua", {
 			title = row.name, actions = {
 				search = function(value) self.query = value or ""; self:show() end,
 				done = function() self:close() end,
 			},
 		}, ns)
-		self.refs.done.keyEquivalent = "\r"
-		self.sheet.defaultButtonCell = self.refs.done.cell
-	end)
-	Sheet.present(self.sheet, parent); ns.focus(self.sheet, self.refs.search); self:load()
+	end, parent)
+	self:load()
 end
 return Controller

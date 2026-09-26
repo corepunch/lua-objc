@@ -55,6 +55,8 @@ static char kVisualEffectContentKey;
 static const CGFloat kImageMaxWidth = 400.0;
 static const CGFloat kMenuSymbolPointSize = 17.0;
 static const CGFloat kNavigationSymbolPointSize = 22.0;
+/* Widest proposal for a navigation bar title or custom bar-item view. */
+static const CGFloat kNavigationTitleMaxWidth = 240.0;
 static const CGFloat kStackSpacing = 8.0;
 static const CGFloat kHostLayoutEdgeTolerance = 1.0;
 static const CGFloat kArcFullCircleDegrees = 359.0;
@@ -103,6 +105,7 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #define LUA_OBJC_WINDOW_METATABLE "uiwindow"
 #define LUA_OBJC_VIEWCONTROLLER_METATABLE "uiviewcontroller"
 #include "../shared/lua_bridge_support.m"
+#include "../shared/layout_invalidation.m"
 #include "../shared/lua_error.m"
 #include "../shared/lua_async.m"
 #include "../shared/performance_signpost.m"
@@ -225,7 +228,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_tabViewTabCount", bridge_UIKitTabView_tabCount},
 	{"_tabViewOnChange", bridge_UIKitTabView_onChange},
 	{"_navigationStack", bridge_UIKitNavigation_stack},
-	{"_navigationChrome", bridge_UIKitNavigation_chrome},
+	{"_pageToolbar", bridge_UIKitNavigation_page_toolbar},
 	{"_navigationPalette", bridge_UIKitNavigation_palette},
 	{"_benchmarkScroll", bridge_UIKitBenchmark_scroll},
 	{"_benchmarkStart", bridge_UIKitBenchmark_start},

@@ -102,6 +102,8 @@ static int bridge_tableview_add(lua_State *L) {
 	if (!src) return luaL_error(L, "not a table view");
 	luaL_checktype(L, 2, LUA_TTABLE);
 	[src addRow:lua_table_to_dict(L, 2)];
+	if ([obj isKindOfClass:UITableView.class] && !((UITableView *)obj).scrollEnabled)
+		uikit_invalidate_layout((UIView *)obj);
 	return 0;
 }
 
@@ -110,6 +112,8 @@ static int bridge_tableview_remove(lua_State *L) {
 	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kTableSourceKey);
 	if (!src) return luaL_error(L, "not a table view");
 	[src removeRowAtIndex:(NSInteger)luaL_checkinteger(L, 2)];
+	if ([obj isKindOfClass:UITableView.class] && !((UITableView *)obj).scrollEnabled)
+		uikit_invalidate_layout((UIView *)obj);
 	return 0;
 }
 
@@ -118,5 +122,7 @@ static int bridge_tableview_clear(lua_State *L) {
 	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kTableSourceKey);
 	if (!src) return luaL_error(L, "not a table view");
 	[src clearRows];
+	if ([obj isKindOfClass:UITableView.class] && !((UITableView *)obj).scrollEnabled)
+		uikit_invalidate_layout((UIView *)obj);
 	return 0;
 }

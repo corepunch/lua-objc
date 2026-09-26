@@ -26,7 +26,7 @@ function Controller:showGame(id)
 	self.push("Detail", { game = game, actions = {
 		play = function() self.openSession(id) end,
 		back = self.back,
-	} }, game.title)
+	} })
 	return true
 end
 

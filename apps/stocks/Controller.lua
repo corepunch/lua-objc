@@ -149,7 +149,6 @@ function Controller:showNews()
 	})
 	self.detailPane:clearContainer()
 	self.detailPane:add(view)
-	self.detailPane:layout()
 end
 
 function Controller:showDetail(data)
@@ -175,7 +174,6 @@ function Controller:showDetail(data)
 	})
 	self.detailPane:clearContainer()
 	self.detailPane:add(view)
-	self.detailPane:layout()
 end
 
 function Controller:refresh()

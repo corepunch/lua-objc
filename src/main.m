@@ -215,6 +215,7 @@ static const NSTimeInterval kScrollToAnimationDuration = 0.2;
 #define LUA_OBJC_WINDOW_METATABLE "nswindow"
 
 #include "shared/lua_bridge_support.m"
+#include "shared/layout_invalidation.m"
 #include "shared/lua_error.m"
 #include "shared/lua_async.m"
 #include "shared/performance_signpost.m"
@@ -293,6 +294,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_hitTestTarget", bridge_hit_test_target},
 	{"_hostingController", bridge_hosting_controller},
 	{"_navigationStack", bridge_navigation_stack},
+	{"_navigationOnBack", bridge_navigation_on_back},
 	{"_label", bridge_AppKitControls_label},
 	{"_textField", bridge_AppKitControls_textField},
 	{"_secureTextField", bridge_AppKitControls_secureTextField},
@@ -367,6 +369,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_deallocCount", bridge_dealloc_count},
 	{"_deallocReset", bridge_dealloc_reset},
 	{"_runLoopTick", bridge_runloop_tick},
+	{"_flushLayout", bridge_flush_layout},
+	{"_pendingLayoutCount", bridge_pending_layout_count},
 	{"_addContextMenu", bridge_AppKit_add_context_menu},
 	{"_addClick", bridge_AppKit_add_click},
 	{"_revealInFinder", bridge_AppKit_reveal_in_finder},
@@ -671,9 +675,9 @@ int lua_objc_main(int argc, char *argv[]) {
 
 	/*
 	 * If the script returned a table with a `new` method, treat it as an
-	 * app class: call class.new() then instance:createWindow().
-	 * Scripts that self-start (creating a window as a side effect) return
-	 * nil or a window — this path is skipped for backward compatibility.
+	 * app class: call class.new() with no arguments, then
+	 * instance:createWindow(). Constructors take optional dependency tables
+	 * for tests, so the class itself must never arrive as the first argument.
 	 */
 	/*
 	 * require() pushes two values: the module and the filename it was loaded
@@ -684,8 +688,7 @@ int lua_objc_main(int argc, char *argv[]) {
 	if (lua_istable(L, -1)) {
 		lua_getfield(L, -1, "new");
 		if (lua_isfunction(L, -1)) {
-			lua_pushvalue(L, -2);  /* class as self */
-			if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
+			if (lua_pcall(L, 0, 1, 0) != LUA_OK) {
 				report_lua_error(L, "new");
 			} else if (lua_istable(L, -1)) {
 				lua_getfield(L, -1, "createWindow");

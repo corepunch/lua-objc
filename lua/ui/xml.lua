@@ -338,6 +338,23 @@ local function coerce(v)
     return v
 end
 
+-- Event attributes name controller actions. When a controller supplies
+-- actions, a misspelt name fails at render time instead of silently leaving
+-- the control unbound; static renders (previews, layout tests) have none.
+local function bindActions(props, attrs, names)
+    local actions = renderData and renderData.actions
+    if not actions then return end
+    for _, name in ipairs(names) do
+        if attrs[name] then
+            local action = actions[attrs[name]]
+            if type(action) ~= "function" then
+                error("xml: " .. name .. "=\"" .. attrs[name] .. "\" requires a controller action")
+            end
+            props[name] = action
+        end
+    end
+end
+
 local function layoutProps(attrs)
     local lp = {
         "padding", "paddingHorizontal", "paddingVertical", "paddingLeading", "paddingTrailing", "paddingTop", "paddingBottom",
@@ -697,6 +714,7 @@ local TAG_SCHEMA = {
             value = { aliases = { "text" }, default = "", type = "str" },
             placeholder = { default = "Search", type = "str" },
             accessibilityLabel = "str",
+            defaultFocus = "bool",
         },
         transform = function(props, attrs)
             if attrs.onChange and renderData and renderData.actions then
@@ -719,6 +737,8 @@ local TAG_SCHEMA = {
             size        = "num",
 			design      = "str",
 			disabled    = "bool",
+			accessibilityLabel = "str",
+			defaultFocus = "bool",
         },
         transform = function(props, attrs)
             if renderData and renderData.actions then
@@ -752,6 +772,7 @@ local TAG_SCHEMA = {
             detail      = "str",
             truncation  = "str",
             disabled    = "bool",
+			keyboardShortcut = "str",
         },
         transform = function(props, attrs)
             if attrs.action and renderData and renderData.actions then
@@ -1013,6 +1034,7 @@ local TAG_SCHEMA = {
             alternatingRows = { default = true, type = "bool" },
             drawsBackground = "bool",
             rowHeight = "num",
+            scrollDisabled  = "bool",
             style           = "str",
             bordered        = "bool",
             gridLines       = "str",
@@ -1042,6 +1064,7 @@ local TAG_SCHEMA = {
             if attrs.data and renderData then
                 props.data = renderData[attrs.data]
             end
+            bindActions(props, attrs, { "onSelect", "onActivate", "onSort", "onColumnButton" })
             if attrs.reorderContainer then
                 props.onReorder = renderData and renderData.actions
                     and renderData.actions[attrs.reorderContainer]
@@ -1128,6 +1151,7 @@ local TAG_SCHEMA = {
             icon    = { default = "", type = "str" },
             tooltip = { default = "", type = "str" },
             action  = "str",
+            placement = "str",
             bordered = "bool",
             visibilityPriority = "num",
         },
@@ -1150,6 +1174,43 @@ local TAG_SCHEMA = {
         props = {
             id = { default = "flexibleSpace", type = "str" },
         },
+    },
+    -- A navigation destination. One <Toolbar> child carries its toolbar items
+    -- (SwiftUI .toolbar placements); exactly one view child is its content.
+    Page = {
+        constructor = "Page",
+        props = {
+            title = "str",
+            hidesTabBar = "bool",
+            hidesNavigationBar = "bool",
+            titleDisplayMode = "str",
+            backButtonDisplayMode = "str",
+        },
+        collect = function(props, children)
+            for _, child in ipairs(children) do
+                if type(child) == "table" and child.__toolbar then
+                    if props.toolbar then error("xml: <Page> accepts one <Toolbar>") end
+                    props.toolbar = child.items or {}
+                elseif type(child) == "userdata" then
+                    if props.content then error("xml: <Page> accepts one content view") end
+                    props.content = child
+                end
+            end
+            if not props.content then error("xml: <Page> requires one content view") end
+        end,
+        transform = function(props, attrs)
+            bindActions(props, attrs, { "onDisappear" })
+            local actions = renderData and renderData.actions
+            for _, item in ipairs(props.toolbar or {}) do
+                if type(item.action) == "string" and actions then
+                    local action = actions[item.action]
+                    if type(action) ~= "function" then
+                        error("xml: ToolbarItem action=\"" .. item.action .. "\" requires a controller action")
+                    end
+                    item.action = action
+                end
+            end
+        end,
     },
     Sheet = {
         constructor = "Sheet",
@@ -1246,6 +1307,9 @@ local TAG_SCHEMA = {
             selected = "str",
             minimizeBehavior = "str",
         },
+        transform = function(props, attrs)
+            bindActions(props, attrs, { "onChange" })
+        end,
         collect = function(props, children)
             local tabs = {}
             for _, c in ipairs(children) do

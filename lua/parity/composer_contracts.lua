@@ -5,9 +5,12 @@ local M = {}
 
 function M.run(ns)
 	local xml = require("ui.xml")
-	local root, refs = xml.renderFile("apps/adventure-arena/views/Session.etlua", {
-		transcript = "Opening scene", speechAvailable = true, actions = {},
+	local _, refs = xml.renderFile("apps/adventure-arena/views/Session.etlua", {
+		transcript = "Opening scene", speechAvailable = true,
+		actions = { disappear = function() end, readingSettings = function() end },
 	}, ns)
+	-- Session.etlua is a <Page>; measure its content view.
+	local root = refs.session
 	local count = 0
 	local function expect(value, message)
 		assert(value, message)

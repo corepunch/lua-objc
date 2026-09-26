@@ -87,7 +87,6 @@ function Controller:showDetail(data, cityName)
 		local view = xml.renderFile(VIEWS .. "CityDetail.etlua", { city = nil })
 		self.detailPane:add(view)
 	end
-	self.detailPane:layout()
 end
 
 function Controller:createWindow()

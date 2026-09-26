@@ -259,6 +259,15 @@ before replacing the old subtree and disposing its callbacks. A render failure
 preserves the previously mounted view. `dispose()` is idempotent; a current parent
 Scope also owns the mount. Root templates for mounts must produce a view, not a Window.
 
+`panel:child("slotRef", path)` mounts a nested retained template into one of the
+panel's refs, inside the panel's scope, so a structural re-render of the panel
+disposes the child too. Controllers never reach into `template.scope`.
+
+Controllers that restyle retained refs use public values rather than bridge
+internals: `ns.Font { size = 17, weight = "bold", design = "serif" }` and
+`ns.Color("secondary")` / `ns.Color("#F5E8D1")`. `Slider.value` is the position
+on both platforms.
+
 `xml.describe`, `xml.describeFile`, and `xml.renderDescription` separate etlua
 evaluation from native construction. Template evaluation does not mutate the
 caller's data. Application controllers own plain data, refs and actions; this shared
@@ -1881,12 +1890,74 @@ row data in native tables and outlines. Reused cells clear previous icon state.
 ### Native management sheets
 
 `<Sheet width="880" height="620">…</Sheet>` / `AppKit.Sheet(props)` create an
-ordinary AppKit panel with an opaque semantic content background. Present it with
-`AppKit.presentSheet(sheet, parentWindow)` and dismiss with `AppKit.dismiss(sheet)`.
-For UIKit, `UIKit.presentSheet(content, { detents = { "medium", "large" },
-dragIndicator = true })` uses `UISheetPresentationController`. AppKit's panel
-sheet is its native equivalent. AppKit owns sheet attachment, focus, frame, corners and shadow. Headless mode
-constructs content without presentation. Callers own their callback scope and
-close it when dismissing. Floating `Panel` presentation keeps its separate native
-material. Native List/Outline selection and activation callbacks preserve row
+ordinary AppKit panel with an opaque semantic content background. Both platforms
+share one presentation API:
+
+```lua
+self.sheet, self.refs = ns.presentSheet(function()
+	return xml.renderFile("views/Settings.etlua", data, ns)
+end, { parent = self.window, detents = { "medium", "large" } })
+-- later
+ns.dismiss(self.sheet)
+```
+
+Pass a builder so every callback, timer and retained `Template` it creates is
+scoped to the sheet and released by `ns.dismiss`; `presentSheet` returns the
+builder's results (sheet, refs). AppKit requires `parent`; UIKit ignores it and
+reads `detents`. AppKit owns sheet attachment, frame, corners and shadow.
+Headless mode constructs content without presentation. Keyboard behavior is
+declarative: `<Button keyboardShortcut="defaultAction">` (Return, drawn as the
+default button) or `"cancelAction"` (Escape), and `defaultFocus="true"` on a
+`TextField`/`SearchField` focuses it when the sheet appears. Floating `Panel`
+presentation keeps its separate native material.
+
+### Automatic layout
+
+Controllers never call `layout()`. A Lua write that changes a view's measured
+size (`text`, `title`, `font`, `image`, `hidden`, padding, spacing, fixed/min/max
+sizes, flex) and `add`/`clearContainer` mark the view dirty. AppKit relays out
+each dirty view's layout owner once per run-loop turn, just before the loop
+sleeps, and Lua geometry reads (`frame`, `bounds`, `size`, `fittingSize`) flush
+first, so tests observe the layout their writes imply. UIKit marks the view and
+its ancestors `setNeedsLayout`; the hosting controller lays the root out at its
+real width. Paint-only writes (colors, alpha, `offsetX`/`offsetY`, `enabled`)
+never schedule layout, so per-frame gesture updates stay cheap.
+`view:layout(width)` remains for framework code and tests that lay out a
+detached tree at an explicit width.
+
+`<List scrollDisabled="true">` (SwiftUI `.scrollDisabled`) keeps its rows in
+place and is as tall as all of them, re-measuring when rows change; place it in
+a scrolling page that owns the overflow.
+
+### Navigation pages
+
+A pushed screen is a `<Page>`: one content view plus an optional `<Toolbar>`,
+equivalent to SwiftUI's `.navigationTitle` and `.toolbar` on a destination.
+
+```xml
+<Page title="<%= gameTitle %>" hidesTabBar="true" titleDisplayMode="inline"
+      backButtonDisplayMode="minimal" onDisappear="disappear">
+  <Toolbar>
+    <ToolbarItem id="heading" placement="principal" label="<%= gameTitle %>">
+      <%- partial("SessionTitle.etlua", { gameTitle = gameTitle, progress = progress }) %>
+    </ToolbarItem>
+    <ToolbarItem id="settings" placement="primaryAction" icon="textformat.size"
+                 label="Reading settings" action="readingSettings" />
+  </Toolbar>
+  <VStack id="session">…</VStack>
+</Page>
+```
+
+Controllers render the page and push it: `navigation:push(page)`. Placements are
+`principal`, `primaryAction`/`topBarTrailing`/`confirmationAction` (trailing) and
+`topBarLeading`/`cancellationAction` (leading). UIKit maps them onto the
+navigation item; AppKit inserts them, with a navigational back item, into the
+window toolbar while the page is visible and restores the window's own items
+afterwards. `onDisappear` runs once when the page leaves the stack, whether a
+controller pops it or the user presses the system back button.
+
+List and TabView events bind controller actions from XML like any other
+control: `<List onSelect="select" onActivate="open" onSort="sort">` and
+`<TabView onChange="tabChanged">`. When actions are supplied, a misspelt name
+fails at render time. Native List/Outline selection and activation callbacks preserve row
 boolean, numeric and structured values rather than stringifying them.

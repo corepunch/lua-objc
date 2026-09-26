@@ -1,2 +1,2 @@
 -- Gestures and haptics demo
-return require("Controller")
+return require("demo.gestures-demo.Controller")

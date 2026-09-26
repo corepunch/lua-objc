@@ -7,11 +7,11 @@
       <Button id="categoryKeep" title="<%= category.keepTitle %>" action="categoryKeep" />
       <% end %>
     </HStack>
-    <SearchField id="search" placeholder="Search" accessibilityLabel="Search names, owners or paths" onChange="search" maxWidth="infinity" />
-    <TabView id="tabs" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+    <SearchField id="search" placeholder="Search" accessibilityLabel="Search names, owners or paths" onChange="search" defaultFocus="true" maxWidth="infinity" />
+    <TabView id="tabs" onChange="tabChanged" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
       <% for index, title in ipairs(filters) do %>
       <Tab title="<%= title %>">
-        <List id="rows<%= index %>" style="fullWidth" alternatingRows="true" rowHeight="38" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
+        <List id="rows<%= index %>" onSelect="select" onActivate="review" onColumnButton="review" onSort="sort" style="fullWidth" alternatingRows="true" rowHeight="38" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
           <Column id="name" title="Resource" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" fileIconKey="fileIcon" imageSize="24" minWidth="180" sortable="true" />
           <Column id="impact" title="Impact" width="140" minWidth="130" sortable="true" />
           <Column id="size" title="On disk" width="125" minWidth="125" alignment="trailing" loadingKey="calculating" sortable="true" />
@@ -26,7 +26,7 @@
       <Button id="manage" systemImage="info.circle" symbolSize="16" foregroundStyle="secondary" accessibilityLabel="Review" style="plain" action="manage" disabled="true" />
       <Button id="keep" title="Keep" action="keep" disabled="true" />
       <Spacer />
-      <Button id="done" title="Done" action="done" />
+      <Button id="done" title="Done" action="done" keyboardShortcut="defaultAction" />
     </HStack>
   </VStack>
 </Sheet>

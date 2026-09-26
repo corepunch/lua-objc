@@ -27,6 +27,15 @@ static int bridge_invoke_action(lua_State *L) {
 	ObjCRef *ref = lua_objc_test_ref(L, 1);
 	if (!ref) return luaL_typeerror(L, 1, "Objective-C object");
 	id obj = lua_objc_live_ptr(L, 1, ref);
+	// Natively targeted items (the navigation back item) perform their own action.
+	if ([obj respondsToSelector:@selector(target)] && [obj respondsToSelector:@selector(action)]) {
+		id target = [obj target];
+		SEL action = [obj action];
+		if (target && action && target != [LuaButtonTarget shared]) {
+			[[NSApplication sharedApplication] sendAction:action to:target from:obj];
+			return 0;
+		}
+	}
 	[[LuaButtonTarget shared] onAction:obj];
 	return 0;
 }

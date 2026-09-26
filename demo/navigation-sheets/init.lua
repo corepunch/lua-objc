@@ -1,1 +1,1 @@
-return require("Controller")
+return require("demo.navigation-sheets.Controller")

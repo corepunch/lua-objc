@@ -74,7 +74,6 @@ function WindowController:showDetail(msg)
 	self.detailPane:clearContainer()
 	local view = xml.renderFile(VIEWS .. "MessageDetail.etlua", msg)
 	self.detailPane:add(view)
-	self.detailPane:layout()
 end
 
 function WindowController:loadMessages(mailboxId)
@@ -126,8 +125,7 @@ function WindowController:createWindow()
 		self.selectedMailbox = { id = row._id }
 		self:loadMessages(row._id)
 		self.detailPane:clearContainer()
-		self.detailPane:layout()
-	end)
+		end)
 
 	self:loadMessages(self.selectedMailbox.id)
 

@@ -173,10 +173,6 @@ function UIKit.Preview(props)
 	return applyLayout(bridge._preview(), props or {})
 end
 
-function UIKit.installNavigationChrome(controller, titleView, readingSettings)
-	bridge._navigationChrome(controller, titleView, readingSettings)
-end
-
 function UIKit.HostingController(view, onDisappear, props)
 	props = props or {}
 	local controller = bridge._hostingController(view, onDisappear,
@@ -184,6 +180,31 @@ function UIKit.HostingController(view, onDisappear, props)
 	if props and props.hidesTabBar ~= nil then
 		controller.hidesBottomBarWhenPushed = props.hidesTabBar == true
 	end
+	return controller
+end
+
+--- A navigation destination: one content view plus its title, toolbar items
+--- and presentation, as SwiftUI's `.navigationTitle` and `.toolbar` modifiers.
+--- Push the returned controller onto a NavigationStack.
+--- @tag Page
+--- @prop title string optional. Navigation title.
+--- @prop toolbar table optional. ToolbarItem records; `placement` is principal, primaryAction, topBarLeading, topBarTrailing, cancellationAction or confirmationAction.
+--- @prop hidesTabBar boolean optional. Hides the tab bar while the page is visible.
+--- @prop titleDisplayMode string optional. automatic, inline or large.
+--- @prop backButtonDisplayMode string optional. default, generic or minimal.
+--- @prop onDisappear function optional. Called once when the page leaves the stack.
+--- @platform AppKit puts toolbar items and a back item in the window toolbar. UIKit uses the navigation bar.
+function UIKit.Page(props)
+	assert(type(props) == "table" and type(props.content) == "userdata", "Page requires one content view")
+	local controller = UIKit.HostingController(props.content, props.onDisappear, {
+		hidesTabBar = props.hidesTabBar,
+		hidesNavigationBar = props.hidesNavigationBar,
+	})
+	controller.title = props.title or ""
+	bridge._pageToolbar(controller, props.toolbar or {}, {
+		titleDisplayMode = props.titleDisplayMode,
+		backButtonDisplayMode = props.backButtonDisplayMode,
+	})
 	return controller
 end
 
@@ -289,24 +310,23 @@ function UIKit.NavigationLink(props)
 		props.title or props.label or props[1] or "Open"), props)
 end
 
-function UIKit.presentSheet(contentOrBuilder, props)
-	local content = contentOrBuilder
-	if type(contentOrBuilder) == "function" then
-		local sheetScope = Scope.push()
-		local ok, built = pcall(contentOrBuilder)
-		if not ok then
-			sheetScope:close()
-			error(built, 2)
-		end
-		content = built
-		local sheet = bridge._presentSheet(asViewController(content), props or {})
-		table.insert(sheetScopes, sheetScope)
-		return sheet
-	end
+-- Shares AppKit.presentSheet's signature. `options.detents` selects sheet
+-- heights; `options.parent` is ignored because UIKit presents from the
+-- active view controller. Builder results (sheet, refs) are returned intact.
+function UIKit.presentSheet(contentOrBuilder, options)
+	options = options or {}
 	local sheetScope = Scope.push()
-	local sheet = bridge._presentSheet(asViewController(content), props or {})
+	local results = table.pack(true, contentOrBuilder)
+	if type(contentOrBuilder) == "function" then
+		results = table.pack(pcall(contentOrBuilder))
+		if not results[1] then
+			sheetScope:close()
+			error(results[2], 2)
+		end
+	end
+	bridge._presentSheet(asViewController(results[2]), options)
 	table.insert(sheetScopes, sheetScope)
-	return sheet
+	return table.unpack(results, 2, results.n)
 end
 
 function UIKit.dismiss()
@@ -314,6 +334,15 @@ function UIKit.dismiss()
 	local ok, err = pcall(bridge._dismiss)
 	if sheetScope then sheetScope:close() end
 	if not ok then error(err, 2) end
+end
+
+function UIKit.Font(props)
+	assert(type(props) == "table" and tonumber(props.size), "Font requires a size")
+	return bridge._font(props.size, props.weight, props.italic == true, props.design)
+end
+
+function UIKit.Color(name)
+	return bridge._systemColor(name)
 end
 
 function UIKit.confirm(props)
@@ -971,6 +1000,7 @@ function UIKit.List(props)
 		header = props.header ~= false,
 		bordered = props.bordered == true,
 	})
+	if props.scrollDisabled then tv.scrollEnabled = false end
 	if props.data and type(props.data) == "table" then
 		for _, row in ipairs(props.data) do
 			if type(row) == "table" then

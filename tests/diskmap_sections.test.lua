@@ -62,7 +62,7 @@ t.assertEqual(legend.size.height, legend.subviews[1].size.height, "legend remain
 summary.size = ns.Size(1300, 100); summary:layout(1300)
 t.assertEqual(visibleCount(), itemCount, "widening restores all category links")
 local _, refs = render("Dashboard", {title = "Storage categories", subtitle = "Current inventory",
-	icon = "chart.pie.fill", color = "systemBlue", coverage = "Measuring", status = "Calculating…", actions = {}})
+	icon = "chart.pie.fill", color = "systemBlue", coverage = "Measuring", status = "Calculating…", actions = {select = function() end, open = function() end}})
 t.assertEqual(refs.categoriesPanel.className, "NSBox", "category rows share a native rounded section")
 t.assertEqual(refs.opportunities, nil, "category pages do not repeat reclaim content")
 t.expect(refs.openCategory == nil, "a category opens from the list, not a trailing button")

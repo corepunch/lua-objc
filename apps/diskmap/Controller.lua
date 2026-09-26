@@ -14,36 +14,34 @@ local ManagementController = require("apps.diskmap.controllers.ManagementControl
 local SimulatorsController = require("apps.diskmap.controllers.SimulatorsController")
 local SdksController = require("apps.diskmap.controllers.SdksController")
 local SettingsController = require("apps.diskmap.controllers.SettingsController")
+local ReclaimController = require("apps.diskmap.controllers.ReclaimController")
 local Controller = {}; Controller.__index = Controller
 local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
-local function setSwitch(control, on)
-	if control then control.state = on and 1 or 0 end
-end
 function Controller.new(service)
-	if service == Controller then service = nil end
 	service = service or Provider.select(App.args())
 	local home = os.getenv("HOME") or "/Users"
 	local self = setmetatable({service = service, mock = rawget(service, "mock") == true,
-		model = Model.new(home), query = "", reclaimQuery = ""}, Controller)
+		model = Model.new(home), query = ""}, Controller)
 	if self.mock then
 		for _, row in ipairs(self.model.resources:leaves()) do row.appIcon = nil end
 	end
 	self.scan = ScanController.new(self.model, service, home, function() self:updateRows() end)
-	self.settings = SettingsController.new(service)
+	self.settings = SettingsController.new(service, self.model, function() self.scan:start() end)
 	self.categories = CategoriesController.new(self.model, function(id)
 		if id == "free" or id == "unreconciled" then self:openSettings() else self:openManagement(id) end
 	end)
 	self.cleanup = CleanupController.new(self.model, service, function(id, filter)
-		self:closeReclaim(); self:openManagement(id, filter)
+		self.reclaim:close(); self:openManagement(id, filter)
 	end, function(error)
 		if error then self.scan.status = error end
 		self:updateRows()
 	end)
 	self.tips = TipsController.new(self.model, function(action)
 		if action == "settings" then self.service.openSettings("privacy")
-		elseif action == "system" then self:closeReclaim(); self:openManagement("macos")
-		elseif action == "storage" then self:closeReclaim() end
+		elseif action == "system" then self.reclaim:close(); self:openManagement("macos")
+		elseif action == "storage" then self.reclaim:close() end
 	end)
+	self.reclaim = ReclaimController.new(self.cleanup, self.tips, function() return self.scan.disk end)
 	self.inspector = InspectorController.new(self.model, service, function() self.scan:start() end)
 	self.simulators = SimulatorsController.new(self.model, service, function() self.scan:start() end)
 	self.sdks = SdksController.new(self.model, service)
@@ -64,13 +62,6 @@ function Controller:updateRows()
 	end
 	if self.capacity then
 		self.capacity.text = self.categories:capacity(self.scan.disk)
-		if self.toolbarTitle then self.toolbarTitle:layout() end
-	end
-	if self.refs.results then
-		-- The page scrolls. The list is only as tall as its rows and has no scroller of its own.
-		self.refs.results.hasVerticalScroller = false
-		self.refs.results.fixedHeight = math.max(self.refs.results.rowCount, 1) * 46
-		if self.refs.page then self.refs.page:layout() end
 	end
 	if self.refs.coverage then
 		self.refs.coverage.text = self.categories:coverage(self.scan.disk)
@@ -79,9 +70,8 @@ function Controller:updateRows()
 		self.refs.access.title = (self.model.scan.errors or 0) > 0 and "Review scan access…" or "Scan access…"
 		self.refs.access.enabled = not self.mock
 	end
-	if self.opportunities then self.opportunities:update(self.cleanup:presentation(self.reclaimQuery)) end
+	self.reclaim:update()
 	if self.storageBar then self.storageBar:update(self.categories:bar(self.scan.disk)) end
-	if self.tipPanel then self.tipPanel:update(self.tips:presentation(self.scan.disk)) end
 	self.management:update()
 	if self.refs.results and self.inspector.selectedId then self:select(self.inspector.selectedId) end
 end
@@ -89,62 +79,13 @@ function Controller:select(id)
 	if not self.refs or not self.refs.results then return end
 	self.inspector:select(id)
 end
-function Controller:closeReclaim()
-	if self.reclaimSheet then ns.dismiss(self.reclaimSheet); self.reclaimSheet = nil end
-	if self.reclaimScope then self.reclaimScope:close(); self.reclaimScope = nil end
-	self.reclaimRefs, self.opportunities, self.tipPanel = nil, nil, nil
-end
 function Controller:openReclaim()
-	self:closeSettings(); self:closeReclaim()
-	self.reclaimQuery = ""
-	self.reclaimScope = ns.Scope.new()
-	ns.Scope.withScope(self.reclaimScope, function()
-		self.reclaimSheet, self.reclaimRefs = render("Reclaim", {actions = {
-			search = function(value) self.reclaimQuery = value or ""; self:updateRows() end,
-			done = function() self:closeReclaim() end,
-		}})
-		self.reclaimRefs.done.keyEquivalent = "\r"
-		self.reclaimSheet.defaultButtonCell = self.reclaimRefs.done.cell
-		self.opportunities = Template.new(self.reclaimRefs.opportunities, "apps/diskmap/views/Opportunities.etlua", ns)
-		self.tipPanel = Template.new(self.reclaimRefs.tips, "apps/diskmap/views/Tips.etlua", ns)
-	end)
-	self:updateRows()
-	Sheet.present(self.reclaimSheet, self.window); ns.focus(self.reclaimSheet, self.reclaimRefs.search)
-end
-function Controller:closeSettings()
-	if self.settingsSheet then ns.dismiss(self.settingsSheet); self.settingsSheet = nil end
-	if self.settingsScope then self.settingsScope:close(); self.settingsScope = nil end
-	self.settingsRefs = nil
+	self.settings:close()
+	self.reclaim:open(self.window)
 end
 function Controller:openSettings()
-	self:closeReclaim(); self:closeSettings()
-	self.settingsScope = ns.Scope.new()
-	local data = self.settings:presentation(function()
-		if not self.settings:toggle() then
-			setSwitch(self.settingsRefs and self.settingsRefs.monitor, self.settings.enabled)
-			self.service.showError("Could not save Settings", "Try again.")
-		end
-	end, function() self.service.openSettings() end, function() self.service.openSettings("privacy") end, self.model.includeMedia, function()
-		if self.model.includeMedia then
-			self.model.includeMedia = false
-			self.scan:start()
-			return
-		end
-		local message = self.mock and "Include the synthetic Photos, Music and TV libraries in this session? Mock HDD reads only its bundled fixture." or "Measuring Photos, Music and TV libraries requires enumerating their files. macOS may ask for access. Diskmap reads metadata only. Enable for this session?"
-		if self.service.confirmAction("Include media libraries", message) then
-			self.model.includeMedia = true
-			self.scan:start()
-		else
-			setSwitch(self.settingsRefs and self.settingsRefs.media, false)
-		end
-	end)
-	data.actions.done = function() self:closeSettings() end
-	ns.Scope.withScope(self.settingsScope, function()
-		self.settingsSheet, self.settingsRefs = render("Settings", data)
-		self.settingsRefs.done.keyEquivalent = "\r"
-		self.settingsSheet.defaultButtonCell = self.settingsRefs.done.cell
-	end)
-	Sheet.present(self.settingsSheet, self.window)
+	self.reclaim:close()
+	self.settings:open(self.window)
 end
 function Controller:mountDashboard()
 	if self.page then self.page:dispose() end
@@ -154,14 +95,11 @@ function Controller:mountDashboard()
 	local _, refs = self.page:update({
 		coverage = self.categories:coverage(self.scan.disk), status = self.scan.status, actions = {
 			access = function() self.service.openSettings("privacy") end,
+			select = function(_, _, row) if row then self:select(row.id) end end,
+			open = function(_, _, row) if row then self:openManagement(row.id) end end,
 		}})
 	self.refs = refs
-	ns.Scope.withScope(self.page.scope, function()
-		self.storageBar = Template.new(refs.storageBar, "apps/diskmap/views/StorageBar.etlua", ns)
-		refs.results:onRowSelect(function(_, _, row) if row then self:select(row.id) end end)
-		refs.results:onRowActivate(function(_, _, row) if row then self:openManagement(row.id) end end)
-		refs.results:onColumnButton(function(_, _, row) if row then self:openManagement(row.id) end end)
-	end)
+	self.storageBar = self.page:child("storageBar", "apps/diskmap/views/StorageBar.etlua")
 	self:updateRows()
 end
 function Controller:createWindow()
@@ -202,7 +140,7 @@ function Controller:createWindow()
 	local scope = ns.Scope.current()
 	if scope then scope:add(self.scan); scope:add({dispose = function()
 		if self.page then self.page:dispose() end
-		self:closeReclaim(); self:closeSettings(); self.management:close(); self.simulators:close(); self.sdks:close()
+		self.reclaim:close(); self.settings:close(); self.management:close(); self.simulators:close(); self.sdks:close()
 	end}) end
 	self.service.monitor(function() return self.window.visible end, function()
 		if self.settings.enabled and not self.scan.job then self.scan:start() end

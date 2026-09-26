@@ -1,3 +1,4 @@
+local ns    = require("ns")
 local xml   = require("ui.xml")
 local Model = require("demo.preview.Model")
 
@@ -11,7 +12,12 @@ function Controller.new()
 end
 
 function Controller:render()
-	return xml.renderFile(VIEWS .. "PreviewView.etlua")
+	return xml.renderFile(VIEWS .. "PreviewView.etlua", {}, ns)
+end
+
+function Controller:createWindow()
+	self.window = ns.Window { title = "Preview", width = 480, height = 360, content = self:render() }
+	return self.window
 end
 
 return Controller

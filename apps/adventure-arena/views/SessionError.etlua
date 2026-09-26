@@ -1,4 +1,6 @@
+<Page title="<%= title %>">
 <VStack>
   <ContentUnavailable title="Couldn’t start adventure" systemImage="exclamationmark.triangle" description="<%= message %>" />
   <Button id="back" title="Back" action="back" />
 </VStack>
+</Page>

@@ -40,7 +40,6 @@ function Controller:showDetail(employee)
 	self.detailPane:clearContainer()
 	local view = xml.renderFile(VIEWS .. "EmployeeDetail.etlua", { employee = employee })
 	self.detailPane:add(view)
-	self.detailPane:layout()
 end
 
 function Controller:createWindow()

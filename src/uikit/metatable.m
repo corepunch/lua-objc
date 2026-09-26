@@ -20,6 +20,8 @@ static int nsview_index(lua_State *L) {
 		return 1;
 	}
 
+	if ([obj isKindOfClass:UIView.class] && lua_objc_key_reads_geometry(key))
+		uikit_layout_if_needed((UIView *)obj);
 	NSString *kvcKey = [NSString stringWithUTF8String:key];
 	@try {
 		id value = [obj valueForKey:kvcKey];
@@ -106,6 +108,8 @@ static int nsview_newindex(lua_State *L) {
 	} @catch (NSException *e) {
 		return luaL_error(L, "cannot set '%s': %s", key, e.description.UTF8String);
 	}
+	if ([obj isKindOfClass:UIView.class] && lua_objc_key_affects_layout(key))
+		uikit_invalidate_layout((UIView *)obj);
 
 	return 0;
 }
