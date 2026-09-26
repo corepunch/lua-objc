@@ -44,6 +44,7 @@ local layout_properties = {
 	"flexShrink",
 	"flexBasis",
 	"fillWidth",
+	"containerRelativeWidth",
 	"fillHeight",
 	"hidden",
 	"allowsHitTesting",
@@ -52,6 +53,7 @@ local layout_properties = {
 	"ignoresSafeArea",
 	"contentModeName",
 	"background",
+	"tint",
 	"onTap",
 	"onClick",
 	"onDrag",
@@ -64,6 +66,10 @@ local function applyLayout(view, props)
 		if props[key] ~= nil then
 			if key == "background" then
 				view.backgroundColor = bridge._systemColor(props[key])
+			elseif key == "tint" then
+				-- SwiftUI `.tint`: descendants that draw in the accent colour
+				-- (UIColor.tintColor) take this colour instead.
+				view.tintColor = bridge._systemColor(props[key])
 			elseif key == "onTap" or key == "onClick" then
 				bridge._addTap(view, props[key])
 			elseif key == "onDrag" then
@@ -143,6 +149,7 @@ end
 --- @prop onChange function optional. Callback invoked when the value changes.
 --- @prop selected table optional. Selected option, tab, or row identifier.
 --- @prop tabs table optional. Tab definitions containing a title and content.
+--- @prop accessory table optional. A `TabAccessory` record: SwiftUI `tabViewBottomAccessory`.
 --- @example <TabView />
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function UIKit.TabView(props)
@@ -152,7 +159,7 @@ function UIKit.TabView(props)
 	for _, tab in ipairs(tabs) do
 		if type(tab) == "table" and tab.__tab then
 			local vc = asViewController(tab.content)
-			bridge._tabViewAddTab(tbc, vc, tab.title or "", tab.systemImage or "")
+			bridge._tabViewAddTab(tbc, vc, tab.title or "", tab.systemImage or "", tab.role or "")
 		end
 	end
 	if props.selected ~= nil then
@@ -160,6 +167,9 @@ function UIKit.TabView(props)
 	end
 	if type(props.onChange) == "function" then
 		bridge._tabViewOnChange(tbc, props.onChange)
+	end
+	if props.accessory then
+		bridge._tabViewAccessory(tbc, props.accessory.content, props.accessory.hidden == true)
 	end
 	return tbc
 end
@@ -339,7 +349,7 @@ end
 function UIKit.Font(props)
 	assert(type(props) == "table" and tonumber(props.size), "Font requires a size")
 	return bridge._font(props.size, props.weight, props.italic == true, props.design,
-		props.monospacedDigit == true, props.fontName)
+		props.monospacedDigit == true, props.fontName, props.smallCaps == true)
 end
 
 function UIKit.Color(name)
@@ -627,6 +637,9 @@ function UIKit.ScrollView(props)
 	local view = bridge._scrollView(content, props.contentWidth or 0,
 		props.contentHeight or 0, props.horizontal == true, props.vertical ~= false)
 	if props.scrollOnKeyboard then view.scrollOnKeyboard = true end
+	-- SwiftUI scrollTargetBehavior: `viewAligned` settles on a child of the
+	-- content stack; `paging` pages by the visible width.
+	if props.scrollTargetBehavior then view.scrollTargetBehavior = props.scrollTargetBehavior end
 	return applyLayout(view, props)
 end
 
@@ -807,7 +820,8 @@ function UIKit.Label(arg)
 	else
 		text = tostring(arg)
 	end
-	if type(props) == "table" and props.systemImage then
+	-- An empty symbol name is no symbol, so templates can bind it conditionally.
+	if type(props) == "table" and props.systemImage and props.systemImage ~= "" then
 		local row = {
 			spacing = props.spacing or 6,
 			alignment = "center",
@@ -820,7 +834,7 @@ function UIKit.Label(arg)
 			}),
 			UIKit.Label({ text, size = props.size, weight = props.weight,
 				italic = props.italic, design = props.design, color = props.color,
-				monospacedDigit = props.monospacedDigit, fontName = props.fontName,
+				monospacedDigit = props.monospacedDigit, fontName = props.fontName, smallCaps = props.smallCaps,
 				lineLimit = props.lineLimit, truncation = props.truncation, wrapping = props.wrapping }),
 		}
 		return applyLayout(UIKit.HStack(row), props)
@@ -829,7 +843,7 @@ function UIKit.Label(arg)
 	if type(props) == "table" then
 		if props.size and props.size > 0 then
 			v.font = bridge._font(props.size, props.weight, props.italic, props.design,
-				props.monospacedDigit == true, props.fontName)
+				props.monospacedDigit == true, props.fontName, props.smallCaps == true)
 		end
 		local lines = props.lineLimit or props.lines
 		if lines then
@@ -847,12 +861,58 @@ function UIKit.Label(arg)
 		if props.alignment then
 			v.textAlignment = ({ leading = 0, center = 1, trailing = 2 })[props.alignment] or 0
 		end
+		if props.accessibilityLabel then v.accessibilityLabel = props.accessibilityLabel end
 		v:sizeToFit()
 	end
 	return applyLayout(v, props)
 end
 
 UIKit.Text = UIKit.Label
+
+local PARAGRAPH_ALIGNMENT = { leading = 4, center = 1, trailing = 2, justified = 3 }
+
+--- Long-form prose set as a book sets it: selectable text with explicit
+--- leading, optional hyphenation, and an optional dropped initial that the
+--- following lines wrap around. Use `Label` for short text and UI copy.
+--- @tag Paragraph
+--- @prop text string required. The paragraph's text.
+--- @prop size number optional. Body point size; defaults to 17.
+--- @prop design string optional. `default`, `serif`, `rounded` or `monospaced`.
+--- @prop fontName string optional. An OS-bundled face; falls back to `design`.
+--- @prop color string optional. Semantic or hex text colour.
+--- @prop lineSpacing number optional. Extra points between lines (SwiftUI `lineSpacing`).
+--- @prop alignment string optional. `leading`, `center`, `trailing` or `justified`.
+--- @prop hyphenation boolean optional. Hyphenates long words at line ends.
+--- @prop dropCap boolean optional. Drops the first letter through `dropCapLines` lines.
+--- @prop dropCapLines number optional. Lines the initial spans; defaults to 3.
+--- @prop dropCapFontName string optional. Face for the initial; defaults to bold body.
+--- @prop dropCapColor string optional. Colour of the initial; defaults to the tint.
+--- @example <Paragraph text="Once upon a time…" design="serif" lineSpacing="5" dropCap="true" />
+--- @platform UIKit non-scrolling UITextView (TextKit 1 exclusion paths). AppKit non-editable NSTextView.
+function UIKit.Paragraph(props)
+	props = props or {}
+	local view = bridge._paragraph(props.text or props[1] or "")
+	view.font = bridge._font(props.size or 17, props.weight, props.italic == true, props.design,
+		false, props.fontName, props.smallCaps == true)
+	if props.color then view.textColor = bridge._systemColor(props.color) end
+	if props.lineSpacing then view.lineSpacing = props.lineSpacing end
+	if props.hyphenation ~= nil then view.hyphenation = props.hyphenation end
+	if props.alignment then view.textAlignment = PARAGRAPH_ALIGNMENT[props.alignment] or 4 end
+	if props.selectable == false then view.selectable = false end
+	if props.dropCap then
+		if props.dropCapFontName or props.dropCapDesign or props.dropCapWeight then
+			view.dropCapFont = bridge._font(props.size or 17, props.dropCapWeight or "bold", false,
+				props.dropCapDesign or props.design, false, props.dropCapFontName)
+		end
+		if props.dropCapColor then view.dropCapColor = bridge._systemColor(props.dropCapColor) end
+		if props.dropCapLines then view.dropCapLines = props.dropCapLines end
+		view.dropCap = true
+	end
+	if props.accessibilityLabel then view.accessibilityLabel = props.accessibilityLabel end
+	-- Prose fills the column it is given and wraps to it.
+	view.fillWidth = true
+	return applyLayout(view, props)
+end
 
 --- Displays prominent window or section title text.
 ---
@@ -1110,6 +1170,10 @@ function UIKit.Button(props)
 	if type(props) == "table" and props.accessibilityLabel then
 		button.accessibilityLabel = props.accessibilityLabel
 	end
+	-- SwiftUI `.tint`: prominent styles fill with it, plain styles draw in it.
+	if type(props) == "table" and props.tint then
+		button.tintColor = bridge._systemColor(props.tint)
+	end
 	return applyLayout(button, props)
 end
 
@@ -1290,6 +1354,10 @@ function UIKit.Toggle(props)
 	local is_on = type(props) == "table" and props.is_on or false
 	local action = type(props) == "table" and props.action or nil
 	local control
+	-- SwiftUI `onChange`: the handler receives the switch's new state.
+	if type(props) == "table" and type(props.onChange) == "function" then
+		action = function() props.onChange(control.on == true) end
+	end
 	if action then
 		control = bridge._toggle(label, is_on, action)
 	else

@@ -337,9 +337,51 @@ static int bridge_UIKitControls_zstack(lua_State *L) {
 @interface LuaUIKitScrollView : UIScrollView
 @property (nonatomic, strong) UIView *luaContent;
 @property (nonatomic) CGSize minimumContentSize;
+@property (nonatomic, copy) NSString *scrollTargetBehavior;
+@end
+
+/* SwiftUI scrollTargetBehavior(.viewAligned): a released drag settles with a
+ * child of the content stack at the content's leading padding, advancing at
+ * least one child in the direction of a flick, as App Store cards do.
+ * `.paging` is UIScrollView's own paging by the visible width. */
+@interface LuaScrollTargetDelegate : NSObject <UIScrollViewDelegate>
+@end
+@implementation LuaScrollTargetDelegate
+- (void)scrollViewWillEndDragging:(UIScrollView *)scroll withVelocity:(CGPoint)velocity
+		targetContentOffset:(inout CGPoint *)target {
+	if (![scroll isKindOfClass:LuaUIKitScrollView.class]) return;
+	LuaUIKitScrollView *owner = (LuaUIKitScrollView *)scroll;
+	if (![owner.scrollTargetBehavior isEqualToString:@"viewAligned"]) return;
+	UIView *content = owner.luaContent;
+	CGFloat limit = MAX(0, scroll.contentSize.width - scroll.bounds.size.width);
+	CGFloat inset = view_padding_edge(content, YES);
+	CGFloat current = scroll.contentOffset.x, proposed = target->x;
+	CGFloat nearest = proposed, nearestDistance = CGFLOAT_MAX;
+	CGFloat forward = limit, backward = 0;
+	BOOL hasForward = NO, hasBackward = NO;
+	for (UIView *child in content.subviews) {
+		if (child.hidden) continue;
+		CGFloat offset = MIN(limit, MAX(0, child.frame.origin.x - inset));
+		if (fabs(offset - proposed) < nearestDistance) { nearest = offset; nearestDistance = fabs(offset - proposed); }
+		if (offset > current + 1 && (!hasForward || offset < forward)) { forward = offset; hasForward = YES; }
+		if (offset < current - 1 && (!hasBackward || offset > backward)) { backward = offset; hasBackward = YES; }
+	}
+	if (velocity.x > kScrollTargetFlickVelocity && hasForward) nearest = MAX(nearest, forward);
+	else if (velocity.x < -kScrollTargetFlickVelocity && hasBackward) nearest = MIN(nearest, backward);
+	target->x = nearest;
+}
 @end
 
 @implementation LuaUIKitScrollView
+- (void)setScrollTargetBehavior:(NSString *)behavior {
+	_scrollTargetBehavior = [behavior copy];
+	BOOL aligned = [behavior isEqualToString:@"viewAligned"];
+	self.pagingEnabled = [behavior isEqualToString:@"paging"];
+	self.decelerationRate = aligned ? UIScrollViewDecelerationRateFast : UIScrollViewDecelerationRateNormal;
+	LuaScrollTargetDelegate *delegate = aligned ? [[LuaScrollTargetDelegate alloc] init] : nil;
+	objc_setAssociatedObject(self, &kScrollTargetDelegateKey, delegate, OBJC_ASSOCIATION_RETAIN);
+	self.delegate = delegate;
+}
 - (void)layoutSubviews {
 	[super layoutSubviews];
 	if (!self.luaContent) return;
@@ -347,6 +389,7 @@ static int bridge_UIKitControls_zstack(lua_State *L) {
 	self.contentInset = UIEdgeInsetsZero;
 	self.scrollIndicatorInsets = UIEdgeInsetsZero;
 	CGSize viewport = self.bounds.size;
+	if (self.alwaysBounceHorizontal) apply_scroll_container_widths(self.luaContent, viewport.width);
 	CGFloat topInset = view_padding_top(self);
 	CGSize measured = measure_size(self.luaContent, CGSizeMake(
 		self.alwaysBounceHorizontal ? CGFLOAT_MAX : viewport.width,
@@ -437,6 +480,17 @@ static int bridge_UIKitControls_scrollView(lua_State *L) {
 	scroll.minimumContentSize = CGSizeMake(contentWidth, contentHeight);
 	scroll.alwaysBounceHorizontal = horizontal;
 	scroll.alwaysBounceVertical = vertical;
+	/* A horizontal shelf is a row of buttons: deliver touches at once so a
+	 * quick tap opens the card, while a horizontal drag still scrolls. */
+	if (horizontal && !vertical) {
+		scroll.delaysContentTouches = NO;
+		/* A shelf scrolls sideways within the page; iOS 26 edge effects belong
+		 * to the page's own scroll view under the bars, never to a shelf. */
+		scroll.topEdgeEffect.hidden = YES;
+		scroll.bottomEdgeEffect.hidden = YES;
+		scroll.leftEdgeEffect.hidden = YES;
+		scroll.rightEdgeEffect.hidden = YES;
+	}
 	scroll.showsHorizontalScrollIndicator = horizontal;
 	scroll.showsVerticalScrollIndicator = vertical;
 	[scroll addSubview:content];
@@ -654,6 +708,8 @@ static int bridge_UIKitControls_button(lua_State *L) {
 		configuration = [UIButtonConfiguration glassButtonConfiguration];
 	} else if (strcmp(style, "glassProminent") == 0) {
 		configuration = [UIButtonConfiguration prominentGlassButtonConfiguration];
+		/* SwiftUI .glassProminent: white type on glass filled with the tint. */
+		configuration.baseForegroundColor = UIColor.whiteColor;
 	} else if (strcmp(style, "default") == 0 || strcmp(style, "plain") == 0
 		|| strcmp(style, "link") == 0) {
 		configuration = [UIButtonConfiguration plainButtonConfiguration];

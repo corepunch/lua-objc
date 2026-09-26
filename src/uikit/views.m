@@ -142,6 +142,18 @@ static int bridge_image(lua_State *L) {
 
 static UIColor *lua_objc_uikit_system_color(const char *name) {
 	if (!name) return UIColor.labelColor;
+	/* "light|dark" pairs resolve against the trait collection, like an
+	 * asset-catalog colour with Any and Dark variants. */
+	const char *bar = strchr(name, '|');
+	if (bar) {
+		NSString *pair = @(name);
+		NSRange split = [pair rangeOfString:@"|"];
+		UIColor *light = lua_objc_uikit_system_color([pair substringToIndex:split.location].UTF8String);
+		UIColor *dark = lua_objc_uikit_system_color([pair substringFromIndex:NSMaxRange(split)].UTF8String);
+		return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traits) {
+			return traits.userInterfaceStyle == UIUserInterfaceStyleDark ? dark : light;
+		}];
+	}
 	if (name[0] == '#' && strlen(name + 1) == 6) {
 		char *end = NULL;
 		unsigned long rgb = strtoul(name + 1, &end, 16);

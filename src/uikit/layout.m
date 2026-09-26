@@ -93,6 +93,26 @@ static CGFloat view_spacing(UIView *view) {
 
 static CGFloat view_fixed_width(UIView *view);
 
+/* SwiftUI containerRelativeFrame(.horizontal): a view inside a horizontal
+ * scroll view takes a fraction of the scroll view's visible width, less the
+ * content's own horizontal padding, so one card fills a phone and several
+ * share an iPad. Resolved per proposal, never cached. */
+static void apply_container_relative_widths(UIView *view, CGFloat available) {
+	for (UIView *child in view.subviews) {
+		NSNumber *fraction = objc_getAssociatedObject(child, &kContainerRelativeWidthKey);
+		if (fraction.doubleValue > 0)
+			objc_setAssociatedObject(child, &kFixedWidthKey,
+				@(floor(MAX(0, available) * fraction.doubleValue)), OBJC_ASSOCIATION_RETAIN);
+		if (![child isKindOfClass:UIScrollView.class]) apply_container_relative_widths(child, available);
+	}
+}
+
+static void apply_scroll_container_widths(UIView *content, CGFloat viewportWidth) {
+	if (!content || viewportWidth <= 0 || viewportWidth >= CGFLOAT_MAX / 2) return;
+	apply_container_relative_widths(content,
+		viewportWidth - view_padding_edge(content, YES) - view_padding_edge(content, NO));
+}
+
 static CGSize measure_size(UIView *view, CGSize proposal);
 
 static CGSize measure_horizontal_children(UIView *view, CGSize proposal, CGSize *sizes) {
@@ -220,8 +240,10 @@ static CGSize measure_size(UIView *view, CGSize proposal) {
 		if (effectContent) size = measure_size(effectContent, proposal);
 		if (scrollContent) {
 			UIScrollView *scroll = (UIScrollView *)view;
-			if (scroll.alwaysBounceHorizontal && !scroll.alwaysBounceVertical)
+			if (scroll.alwaysBounceHorizontal && !scroll.alwaysBounceVertical) {
+				apply_scroll_container_widths(scrollContent, proposal.width);
 				size.height = measure_size(scrollContent, CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)).height;
+			}
 		}
 		// A list that does not scroll is as tall as all its rows.
 		if ([view isKindOfClass:UITableView.class] && !((UITableView *)view).scrollEnabled) {
@@ -428,4 +450,13 @@ static void layout_recursive(UIView *view, CGFloat width) {
 	LUA_OBJC_PERF_BEGIN("uikit.layout", signpost);
 	layout_recursive_impl(view, width);
 	LUA_OBJC_PERF_END("uikit.layout", signpost);
+}
+
+/* Whether the layout engine arranges this view's children (a stack) rather
+ * than measuring it as a leaf. The XML renderer pads leaves by wrapping them,
+ * as SwiftUI's .padding wraps any view. */
+static int bridge_has_layout_axis(lua_State *L) {
+	UIView *view = check_view(L, 1);
+	lua_pushboolean(L, objc_getAssociatedObject(view, &kAxisKey) != nil);
+	return 1;
 }

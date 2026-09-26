@@ -1,11 +1,13 @@
 <%
-  -- Two tiles per row on iPhone; FlowStack adds more columns on wider screens.
-  local TILE = { width = 168, height = 76, cornerRadius = 14 }
+  -- Two tiles per row on iPhone; FlowStack adds columns on wider screens.
+  -- Each tile takes the colour of its first story and a symbol for its world.
+  local TILE = { width = 176, height = 92, cornerRadius = 20, symbol = 26 }
 %>
 <FlowStack spacing="12" maxWidth="infinity">
   <% for index, genre in ipairs(genres) do %>
   <Button id="genre_<%= index %>" action="genre_<%= index %>" style="plain" accessibilityLabel="<%= genre.title %>, <%= genre.count %> adventures">
-    <VStack width="<%= TILE.width %>" height="<%= TILE.height %>" padding="12" spacing="2" alignment="leading" background="<%= genre.tint or 'accent' %>" cornerRadius="<%= TILE.cornerRadius %>" clipsToBounds="true">
+    <VStack width="<%= TILE.width %>" height="<%= TILE.height %>" padding="14" spacing="2" alignment="leading" background="<%= genre.tint or 'accent' %>" cornerRadius="<%= TILE.cornerRadius %>" clipsToBounds="true">
+      <SystemImage name="<%= genre.symbol or 'book.fill' %>" size="<%= TILE.symbol %>" color="white" label="<%= genre.title %>" />
       <Spacer />
       <Label text="<%= genre.title %>" size="16" weight="bold" color="white" lines="2" />
     </VStack>

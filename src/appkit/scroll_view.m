@@ -1,4 +1,7 @@
 @interface LuaScrollView : NSScrollView
+/* SwiftUI scrollTargetBehavior; recorded for parity, since Mac wheel and
+ * trackpad scrolling stays continuous as it does in SwiftUI on macOS. */
+@property(nonatomic, copy) NSString *scrollTargetBehavior;
 @end
 @implementation LuaScrollView
 - (void)scrollWheel:(NSEvent *)event {

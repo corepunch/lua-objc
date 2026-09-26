@@ -31,6 +31,7 @@ static void layout_recursive(UIView *view, CGFloat width);
 @property(nonatomic) CGFloat flexShrink;
 @property(nonatomic) NSNumber *flexBasis;
 @property(nonatomic) BOOL fillWidth;
+@property(nonatomic) CGFloat containerRelativeWidth;
 @property(nonatomic) BOOL allowsHitTesting;
 @property(nonatomic) BOOL fillHeight;
 @property(nonatomic) CGFloat cornerRadius;
@@ -140,6 +141,8 @@ static void layout_recursive(UIView *view, CGFloat width);
 - (void)setFlexShrink:(CGFloat)value { objc_setAssociatedObject(self, &kFlexShrinkKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
 - (NSNumber *)flexBasis { return objc_getAssociatedObject(self, &kFlexBasisKey); }
 - (void)setFlexBasis:(NSNumber *)value { objc_setAssociatedObject(self, &kFlexBasisKey, value, OBJC_ASSOCIATION_RETAIN); }
+- (CGFloat)containerRelativeWidth { return [objc_getAssociatedObject(self, &kContainerRelativeWidthKey) doubleValue]; }
+- (void)setContainerRelativeWidth:(CGFloat)value { objc_setAssociatedObject(self, &kContainerRelativeWidthKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
 - (BOOL)fillWidth {
 	return [objc_getAssociatedObject(self, &kFillWidthKey) boolValue];
 }

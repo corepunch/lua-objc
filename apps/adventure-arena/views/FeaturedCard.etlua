@@ -1,0 +1,26 @@
+<%
+  -- An App Store-style editorial card: the cover fills it edge to edge, the
+  -- story’s name sits on a shaded foot, and a Liquid Glass capsule floats on
+  -- the art. The carousel sizes each card to the visible width.
+  local CARD = { height = 460, cornerRadius = 28, inset = 20, spacing = 6 }
+%>
+<Button id="featured_<%= index %>" action="featured_<%= index %>" style="plain" containerRelativeWidth="1" accessibilityLabel="<%= game.title %>, <%= game.genre %>. <%= game.shortDescription %>">
+  <ZStack height="<%= CARD.height %>" maxWidth="infinity" alignment="bottomLeading" cornerRadius="<%= CARD.cornerRadius %>" clipsToBounds="true" background="<%= game.tint %>">
+    <Image path="<%= game.cover %>" resizable="true" contentMode="fill" />
+    <LinearGradient topAlpha="0" middleAlpha="0.1" middleLocation="0.42" bottomAlpha="0.88" />
+    <VStack padding="<%= CARD.inset %>" spacing="<%= CARD.spacing %>" alignment="leading" maxWidth="infinity">
+      <Label text="<%= (index == 1 and 'Featured' or (game.collection or game.genre)):upper() %>" size="12" weight="semibold" color="white" />
+      <Label text="<%= game.title %>" size="32" weight="bold" design="serif" color="white" lines="2" />
+      <Label text="<%= game.shortDescription %>" size="16" color="white" lines="2" />
+      <HStack spacing="10" alignment="center" paddingTop="8">
+        <GlassEffect style="clear" cornerRadius="18">
+          <HStack paddingHorizontal="14" paddingVertical="8">
+            <Label text="Read" systemImage="book.fill" size="15" weight="semibold" color="white" />
+          </HStack>
+        </GlassEffect>
+        <Label text="<%= string.format('%.1f', game.rating) %>" systemImage="star.fill" iconSize="12" spacing="4" size="13" weight="semibold" color="white" accessibilityLabel="Rated <%= string.format('%.1f', game.rating) %> out of 5" />
+        <Label text="<%= game.difficulty or game.genre %>" size="13" weight="medium" color="white" />
+      </HStack>
+    </VStack>
+  </ZStack>
+</Button>

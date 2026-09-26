@@ -1,57 +1,59 @@
+<%
+  -- The reader. A page of the book fills the screen; the navigation bar is a
+  -- running head (the story, then the chapter and room). Everything that is
+  -- not the story floats in one Liquid Glass group at the foot of the page:
+  -- quick actions, the command field and the compass, with suggestion chips
+  -- above them and the status line set small like a book’s folio.
+  local BAR = { height = 52, radius = 26, merge = 14 }
+%>
 <Page title="<%= gameTitle %>" hidesTabBar="true" titleDisplayMode="inline" backButtonDisplayMode="minimal" onDisappear="disappear">
 <Toolbar>
   <ToolbarItem id="sessionTitle" placement="principal" label="<%= gameTitle %>">
-    <%- partial("SessionTitle.etlua", { gameTitle = gameTitle, progress = progress }) %>
+    <%- partial("SessionTitle.etlua", { gameTitle = gameTitle, chapterLabel = chapterLabel, roomTitle = roomTitle }) %>
   </ToolbarItem>
-  <ToolbarItem id="readingSettings" placement="primaryAction" icon="textformat.size" label="Reading settings" action="readingSettings" />
+  <ToolbarItem id="readingSettings" placement="primaryAction" icon="textformat.size" label="Themes and settings" action="readingSettings" />
 </Toolbar>
-<ZStack id="session" maxWidth="infinity" maxHeight="infinity">
-  <%
-    -- The "Cover" reading theme: the cover art of the game, blurred by the system
-    -- material, becomes the page — the way Music lays album art behind lyrics.
-  %>
-  <ZStack id="backdrop" maxWidth="infinity" maxHeight="infinity" hidden="<%= backdrop and 'false' or 'true' %>" clipsToBounds="true">
-    <% if cover then %>
-    <Image id="backdropImage" path="<%= cover %>" resizable="true" contentMode="fill" />
-    <% end %>
-    <MaterialView material="thick" maxWidth="infinity" maxHeight="infinity">
-      <Spacer />
-    </MaterialView>
-  </ZStack>
-  <ZStack id="sessionOverlay" alignment="bottomTrailing" maxWidth="infinity" maxHeight="infinity">
+<ZStack id="session" maxWidth="infinity" maxHeight="infinity" alignment="top" tint="<%= ink %>">
   <SafeAreaInset id="sessionContent" edge="bottom" minimumBottomInset="24" keyboardBottomInset="12" horizontalInset="12" matchBottomHorizontalInset="true" maxWidth="infinity" maxHeight="infinity">
     <ScrollView id="transcriptScroll" flexGrow="1" scrollOnKeyboard="true">
       <VStack id="transcript" maxWidth="infinity" />
     </ScrollView>
 
-      <VStack spacing="0" maxWidth="infinity">
-        <Label id="dictationStatus" text="" size="13" color="secondary" paddingHorizontal="20" lines="2" />
-        <ScrollView id="suggestionScroll" horizontal="true" vertical="false" maxWidth="infinity">
-          <HStack id="suggestions" paddingBottom="8" />
-        </ScrollView>
-        <GlassEffectContainer spacing="14">
-          <HStack spacing="8" alignment="bottom">
-            <Menu id="quickActions" title="" systemImage="plus" symbolSize="31" style="glass" accessibilityLabel="More commands" width="52" height="52">
-              <MenuItem title="Look" systemImage="eye" action="look" />
-              <MenuItem title="Inventory" systemImage="shippingbox" action="inventory" />
-              <MenuItem title="End session" systemImage="xmark.circle" action="close" />
-            </Menu>
-            <GlassEffect style="regular" cornerRadius="26" maxWidth="infinity">
-              <HStack paddingLeading="16" paddingTrailing="5" spacing="8" minHeight="52">
-                <TextField id="input" placeholder="What do you want to do?" accessibilityLabel="Command" style="plain" maxWidth="infinity" onChange="inputChanged" onCommand="inputCommand" onFocus="inputFocused" />
-                <% if speechAvailable then %>
-                <Button id="dictate" title="" systemImage="mic" symbolSize="22" accessibilityLabel="Dictate command" action="dictate" style="plain" width="38" height="44" />
-                <% end %>
-                <Button id="send" title="" systemImage="arrow.up.circle.fill" symbolSize="31" weight="semibold" foregroundStyle="accent" accessibilityLabel="Send command" action="submit" style="plain" width="38" height="44" hidden="<%= speechAvailable and 'true' or 'false' %>" disabled="true" />
-              </HStack>
-            </GlassEffect>
-          </HStack>
-        </GlassEffectContainer>
-      </VStack>
+    <VStack spacing="8" maxWidth="infinity">
+      <Label id="progress" text="<%= progress %>" size="12" color="secondary" monospacedDigit="true" alignment="center" maxWidth="infinity" lines="1" />
+      <Label id="dictationStatus" text="" size="13" color="secondary" paddingHorizontal="20" lines="2" hidden="true" />
+      <ScrollView id="suggestionScroll" horizontal="true" vertical="false" maxWidth="infinity" clipsToBounds="false">
+        <HStack id="suggestions" />
+      </ScrollView>
+      <GlassEffectContainer spacing="<%= BAR.merge %>">
+        <HStack spacing="8" alignment="center" maxWidth="infinity">
+          <Menu id="quickActions" title="" systemImage="plus" symbolSize="22" style="glass" accessibilityLabel="More commands" width="<%= BAR.height %>" height="<%= BAR.height %>">
+            <MenuItem title="Look Around" systemImage="eye" action="look" />
+            <MenuItem title="Inventory" systemImage="bag" action="inventory" />
+            <MenuItem title="Close Book" systemImage="book.closed" action="close" />
+          </Menu>
+          <GlassEffect style="regular" cornerRadius="<%= BAR.radius %>" maxWidth="infinity">
+            <HStack paddingLeading="18" paddingTrailing="5" spacing="4" minHeight="<%= BAR.height %>">
+              <TextField id="input" placeholder="What do you do?" accessibilityLabel="Command" style="plain" maxWidth="infinity" onChange="inputChanged" onCommand="inputCommand" onFocus="inputFocused" />
+              <% if speechAvailable then %>
+              <Button id="dictate" title="" systemImage="mic" symbolSize="20" accessibilityLabel="Dictate command" action="dictate" style="plain" width="40" height="44" />
+              <% end %>
+              <Button id="send" title="" systemImage="arrow.up.circle.fill" symbolSize="30" weight="semibold" foregroundStyle="accent" tint="<%= tint %>" accessibilityLabel="Send command" action="submit" style="plain" width="40" height="44" hidden="<%= speechAvailable and 'true' or 'false' %>" disabled="true" />
+            </HStack>
+          </GlassEffect>
+          <%- partial("Compass.etlua", { availableDirections = availableDirections, compassSegments = compassSegments, size = BAR.height }) %>
+        </HStack>
+      </GlassEffectContainer>
+    </VStack>
   </SafeAreaInset>
-  <VStack paddingBottom="148" paddingTrailing="12">
-    <%- partial("Compass.etlua", { actions = actions, availableDirections = availableDirections, compassSegments = compassSegments }) %>
+
+  <VStack id="toastLayer" paddingTop="8" allowsHitTesting="false" maxWidth="infinity" alignment="center">
+    <GlassEffect id="scoreToast" style="regular" hidden="true" accessibilityLabel="Score">
+      <HStack paddingHorizontal="16" paddingVertical="10" spacing="8" alignment="center">
+        <SystemImage name="sparkles" size="15" color="<%= ink %>" label="Points" />
+        <Label id="scoreToastText" text="" size="15" weight="semibold" monospacedDigit="true" />
+      </HStack>
+    </GlassEffect>
   </VStack>
-  </ZStack>
 </ZStack>
 </Page>

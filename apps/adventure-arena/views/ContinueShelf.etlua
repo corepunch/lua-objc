@@ -1,0 +1,27 @@
+<%
+  -- Stories in progress, newest first: the first thing a returning reader
+  -- wants, as Books’ "Continue" row is. Hidden until something is saved.
+  local CARD = { width = 300, cover = { width = 64, height = 96, radius = 8 }, radius = 22, padding = 12 }
+%>
+<% if #continueGames > 0 then %>
+<VStack paddingTop="28" spacing="10" alignment="leading" maxWidth="infinity">
+  <Label text="Continue Reading" size="22" weight="bold" paddingHorizontal="16" />
+  <ScrollView horizontal="true" vertical="false" scrollTargetBehavior="viewAligned">
+    <HStack spacing="12" paddingHorizontal="16" alignment="top">
+      <% for index, entry in ipairs(continueGames) do %>
+      <Button id="continue_<%= index %>" action="continue_<%= index %>" style="plain" accessibilityLabel="Continue <%= entry.game.title %>, <%= entry.place %>">
+        <HStack width="<%= CARD.width %>" padding="<%= CARD.padding %>" spacing="12" alignment="center" background="secondaryBackground" cornerRadius="<%= CARD.radius %>" clipsToBounds="true">
+          <Image path="<%= entry.game.cover %>" resizable="true" contentMode="fill" width="<%= CARD.cover.width %>" height="<%= CARD.cover.height %>" cornerRadius="<%= CARD.cover.radius %>" clipsToBounds="true" />
+          <VStack spacing="4" alignment="leading" flexGrow="1">
+            <Label text="<%= entry.game.title %>" size="16" weight="semibold" lines="2" />
+            <Label text="<%= entry.place %>" size="13" color="secondary" lines="1" truncation="tail" />
+            <ProgressView value="<%= entry.progress %>" tint="<%= entry.game.tint %>" paddingTop="6" maxWidth="infinity" />
+            <Label text="<%= entry.status %>" size="12" color="secondary" lines="1" truncation="tail" />
+          </VStack>
+        </HStack>
+      </Button>
+      <% end %>
+    </HStack>
+  </ScrollView>
+</VStack>
+<% end %>

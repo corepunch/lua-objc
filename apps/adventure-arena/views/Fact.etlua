@@ -1,0 +1,15 @@
+<%
+  -- One column of the App Store’s information strip: a caption in small
+  -- capitals, the fact itself, and a line of detail.
+  local FACT = { width = 112, rule = 36 }
+%>
+<HStack spacing="0" alignment="center">
+  <VStack width="<%= FACT.width %>" spacing="3" alignment="center">
+    <Label text="<%= caption %>" size="11" weight="semibold" color="secondary" smallCaps="true" lines="1" />
+    <Label text="<%= value %>" size="20" weight="bold" design="rounded" lines="1" truncation="tail" alignment="center" />
+    <Label text="<%= detail %>" size="12" color="secondary" lines="1" truncation="tail" alignment="center" />
+  </VStack>
+  <% if divider then %>
+  <Divider orientation="vertical" height="<%= FACT.rule %>" />
+  <% end %>
+</HStack>

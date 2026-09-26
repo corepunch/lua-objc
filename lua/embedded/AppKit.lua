@@ -42,6 +42,7 @@ local layout_properties = {
 	"flexShrink",
 	"flexBasis",
 	"fillWidth",
+	"containerRelativeWidth",
 	"fillHeight",
 	"hidden",
 	"allowsHitTesting",
@@ -326,7 +327,7 @@ end
 function AppKit.Font(props)
 	assert(type(props) == "table" and tonumber(props.size), "Font requires a size")
 	return bridge._font(props.size, props.weight, props.italic == true, props.design,
-		props.monospacedDigit == true, props.fontName)
+		props.monospacedDigit == true, props.fontName, props.smallCaps == true)
 end
 
 --- Resolves a semantic name ("primary", "accent") or #RRGGBB hex to a color.
@@ -459,8 +460,9 @@ end
 --- @prop selected table optional. Selected option, tab, or row identifier.
 --- @prop style string optional. Component-specific setting passed to the native control.
 --- @prop tabs table optional. Tab definitions containing a title and content.
+--- @prop accessory table optional. A `TabAccessory` record: SwiftUI `tabViewBottomAccessory`.
 --- @example <TabView />
---- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
+--- @platform AppKit retains the accessory for its refs without showing it (macOS has no tab-bar accessory). UIKit uses `UITabBarController.bottomAccessory`.
 function AppKit.TabView(props)
 	local style = props and props.style or "top"
 	local tv = bridge._tabview(400, 200, style)
@@ -479,6 +481,10 @@ function AppKit.TabView(props)
 	end
 	if props and type(props.onChange) == "function" then
 		tv:onChange(props.onChange)
+	end
+	if props and props.accessory then
+		tv.accessoryView = props.accessory.content
+		tv.accessoryHidden = props.accessory.hidden == true
 	end
 	return applyLayout(tv, props)
 end
@@ -781,6 +787,9 @@ function AppKit.ScrollView(props)
 		view.hasVerticalScroller = false
 	end
 	if props.scrollOnKeyboard then view.scrollOnKeyboard = true end
+	-- Trackpad and wheel scrolling on the Mac is continuous; SwiftUI's
+	-- scrollTargetBehavior only snaps touch scrolling, so AppKit records it.
+	if props.scrollTargetBehavior then view.scrollTargetBehavior = props.scrollTargetBehavior end
 	return applyLayout(view, props)
 end
 
@@ -943,7 +952,8 @@ function AppKit.Text(arg)
 	else
 		text = tostring(arg)
 	end
-	if type(arg) == "table" and arg.systemImage then
+	-- An empty symbol name is no symbol, so templates can bind it conditionally.
+	if type(arg) == "table" and arg.systemImage and arg.systemImage ~= "" then
 		local row = {
 			spacing = arg.spacing or 6,
 			alignment = "center",
@@ -956,7 +966,7 @@ function AppKit.Text(arg)
 			}),
 			AppKit.Text({ text, size = arg.size, weight = arg.weight,
 				italic = arg.italic, color = arg.color, design = arg.design,
-				monospacedDigit = arg.monospacedDigit,
+				monospacedDigit = arg.monospacedDigit, fontName = arg.fontName, smallCaps = arg.smallCaps,
 				lineLimit = arg.lineLimit, truncation = arg.truncation, wrapping = arg.wrapping }),
 		}
 		return applyLayout(AppKit.HStack(row), arg)
@@ -976,10 +986,14 @@ function AppKit.Text(arg)
 			type(arg) == "table" and arg.italic,
 			type(arg) == "table" and arg.design,
 			type(arg) == "table" and arg.monospacedDigit == true,
-			type(arg) == "table" and arg.fontName or nil)
+			type(arg) == "table" and arg.fontName or nil,
+			type(arg) == "table" and arg.smallCaps == true)
 	end
 	if type(arg) == "table" and arg.color then
 		v.textColor = bridge._systemColor(arg.color)
+	end
+	if type(arg) == "table" and arg.accessibilityLabel then
+		v.accessibilityLabel = arg.accessibilityLabel
 	end
 	if type(arg) == "table" and arg.lineLimit then
 		v.lineLimit = arg.lineLimit
@@ -999,6 +1013,51 @@ function AppKit.Text(arg)
 		result.textAlignment = ({ leading = 0, center = 2, trailing = 1 })[arg.alignment] or 0
 	end
 	return result
+end
+
+local PARAGRAPH_ALIGNMENT = { leading = 4, center = 2, trailing = 1, justified = 3 }
+
+--- Long-form prose set as a book sets it: selectable text with explicit
+--- leading, optional hyphenation, and an optional dropped initial that the
+--- following lines wrap around. Use `Label` for short text and UI copy.
+--- @tag Paragraph
+--- @prop text string required. The paragraph's text.
+--- @prop size number optional. Body point size; defaults to 13.
+--- @prop design string optional. `default`, `serif`, `rounded` or `monospaced`.
+--- @prop fontName string optional. An OS-bundled face; falls back to `design`.
+--- @prop color string optional. Semantic or hex text colour.
+--- @prop lineSpacing number optional. Extra points between lines (SwiftUI `lineSpacing`).
+--- @prop alignment string optional. `leading`, `center`, `trailing` or `justified`.
+--- @prop hyphenation boolean optional. Hyphenates long words at line ends.
+--- @prop dropCap boolean optional. Drops the first letter through `dropCapLines` lines.
+--- @prop dropCapLines number optional. Lines the initial spans; defaults to 3.
+--- @prop dropCapFontName string optional. Face for the initial; defaults to bold body.
+--- @prop dropCapColor string optional. Colour of the initial; defaults to the accent.
+--- @example <Paragraph text="Once upon a time…" design="serif" lineSpacing="5" dropCap="true" />
+--- @platform AppKit non-editable NSTextView (TextKit 1 exclusion paths). UIKit non-scrolling UITextView.
+function AppKit.Paragraph(props)
+	props = props or {}
+	local view = bridge._paragraph(props.text or props[1] or "")
+	view.font = bridge._font(props.size or 13, props.weight, props.italic == true, props.design,
+		false, props.fontName, props.smallCaps == true)
+	if props.color then view.textColor = bridge._systemColor(props.color) end
+	if props.lineSpacing then view.lineSpacing = props.lineSpacing end
+	if props.hyphenation ~= nil then view.hyphenation = props.hyphenation end
+	if props.alignment then view.textAlignment = PARAGRAPH_ALIGNMENT[props.alignment] or 4 end
+	if props.selectable == false then view.selectable = false end
+	if props.dropCap then
+		if props.dropCapFontName or props.dropCapDesign or props.dropCapWeight then
+			view.dropCapFont = bridge._font(props.size or 13, props.dropCapWeight or "bold", false,
+				props.dropCapDesign or props.design, false, props.dropCapFontName)
+		end
+		if props.dropCapColor then view.dropCapColor = bridge._systemColor(props.dropCapColor) end
+		if props.dropCapLines then view.dropCapLines = props.dropCapLines end
+		view.dropCap = true
+	end
+	if props.accessibilityLabel then view.accessibilityLabel = props.accessibilityLabel end
+	-- Prose fills the column it is given and wraps to it.
+	view.fillWidth = true
+	return applyLayout(view, props)
 end
 
 --- Layers child views in the same coordinate area.
@@ -1510,8 +1569,12 @@ function AppKit.Button(props)
 		end
 		-- SwiftUI `.borderedProminent` is AppKit's accent-filled push button;
 		-- UIKit maps the same style to its prominent button configuration.
-		if not compound and props.style == "borderedProminent" then
-			button.bezelColor = bridge._systemColor("accent")
+		-- `glassProminent` is the same control on the Mac: macOS 26 draws
+		-- prominent push buttons in Liquid Glass. SwiftUI `.tint` fills it.
+		if not compound and (props.style == "borderedProminent" or props.style == "glassProminent") then
+			button.bezelColor = bridge._systemColor(props.tint or "accent")
+		elseif props.tint then
+			button.contentTintColor = bridge._systemColor(props.tint)
 		end
 		if props.controlSize then
 			-- SwiftUI `.controlSize`: NSControlSize small, regular, large.
@@ -1664,6 +1727,10 @@ function AppKit.Toggle(props)
 	local action = type(props) == "table" and props.action or nil
 	local style = type(props) == "table" and props.style or nil
 	local toggle
+	-- SwiftUI `onChange`: the handler receives the new state.
+	if type(props) == "table" and type(props.onChange) == "function" then
+		action = function() props.onChange(toggle.state == 1) end
+	end
 	if style == "switch" then
 		toggle = bridge._toggle(label, is_on, action, "switch")
 	elseif action then

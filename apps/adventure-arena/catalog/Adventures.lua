@@ -1,15 +1,20 @@
 -- Catalog content from AdventureArena e7805e87, sorted by title.
 -- Artwork paths are local; descriptions and reviews preserve the source text.
 -- `collection` groups the library into shelves, `difficulty` uses Infocom's
--- published levels, `tint` is the game's accent (it must carry white text at
--- 4.5:1), and `initialFont` names the OS-bundled face used for its initials.
+-- published levels, `tint` is the game's jewel-tone accent taken from its cover
+-- (it must carry white text at 4.5:1), `tintDark` is the same hue lightened to
+-- read as ink on a dark page, and `initialFont` names the OS-bundled face used
+-- for its drop caps. `statusLine = "time"` marks games whose MOVES global is a
+-- clock (Planetfall's chronometer), as their own status lines show.
 return {
 	{
 		id = "infocom.planetfall",
 		collection = "Infocom Classics",
 		difficulty = "Standard",
-		tint = "#1F6F66",
+		tint = "#0E7490",
+		tintDark = "#67E8F9",
 		initialFont = "Futura-CondensedExtraBold",
+		statusLine = "time",
 		title = "Planetfall",
 		shortDescription = "Survive a crash landing on an alien world.",
 		description = "Ensign Seventh Class of the Stellar Patrol — that's you. Your ship, the S.P.S. Feinstein, has been destroyed. You escaped in a life pod and crash-landed on a strange, seemingly abandoned planet. Explore the ruins of a lost civilization, befriend an unforgettable robot named Floyd, and unravel the mystery of what happened here. A landmark in interactive storytelling with genuine emotional depth.",
@@ -39,7 +44,8 @@ return {
 		id = "books.blackwood-horror",
 		collection = "Arena Originals",
 		difficulty = "Standard",
-		tint = "#7A1F2B",
+		tint = "#047857",
+		tintDark = "#6EE7B7",
 		initialFont = "Baskerville-SemiBoldItalic",
 		title = "Sanitarium",
 		shortDescription = "A psychological horror adventure.",
@@ -71,7 +77,8 @@ return {
 		id = "infocom.spellbreaker",
 		collection = "Infocom Classics",
 		difficulty = "Expert",
-		tint = "#5B3FA8",
+		tint = "#6D28D9",
+		tintDark = "#C4B5FD",
 		initialFont = "SnellRoundhand-Black",
 		title = "Spellbreaker",
 		shortDescription = "Magic itself is failing — save it.",
@@ -102,7 +109,8 @@ return {
 		id = "books.wondertown",
 		collection = "Arena Originals",
 		difficulty = "Introductory",
-		tint = "#A94A16",
+		tint = "#A21CAF",
+		tintDark = "#F0ABFC",
 		initialFont = "Chalkduster",
 		title = "The Last Toymaker's Apprentice",
 		shortDescription = "Save a toy workshop's magic before dawn.",
@@ -140,7 +148,8 @@ return {
 		id = "books.limehouse-killings",
 		collection = "Arena Originals",
 		difficulty = "Standard",
-		tint = "#6B5230",
+		tint = "#334155",
+		tintDark = "#CBD5E1",
 		initialFont = "Didot-Bold",
 		title = "The Limehouse Killings",
 		shortDescription = "Solve a Victorian murder in fog-shrouded London.",
@@ -178,7 +187,8 @@ return {
 		id = "infocom.lurkinghorror",
 		collection = "Infocom Classics",
 		difficulty = "Standard",
-		tint = "#2F6B3E",
+		tint = "#B91C1C",
+		tintDark = "#FCA5A5",
 		initialFont = "Baskerville-SemiBoldItalic",
 		title = "The Lurking Horror",
 		shortDescription = "Something ancient stirs beneath the campus.",
@@ -209,7 +219,8 @@ return {
 		id = "infocom.zork1",
 		collection = "The Zork Trilogy",
 		difficulty = "Standard",
-		tint = "#8A5A00",
+		tint = "#4338CA",
+		tintDark = "#A5B4FC",
 		initialFont = "SnellRoundhand-Bold",
 		title = "Zork I: The Great Underground Empire",
 		shortDescription = "Explore the Great Underground Empire.",
@@ -246,7 +257,8 @@ return {
 		id = "infocom.zork2",
 		collection = "The Zork Trilogy",
 		difficulty = "Advanced",
-		tint = "#9C3D1A",
+		tint = "#BE185D",
+		tintDark = "#F9A8D4",
 		initialFont = "SnellRoundhand-Bold",
 		title = "Zork II: The Wizard of Frobozz",
 		shortDescription = "Confront the capricious Wizard of Frobozz.",
@@ -277,7 +289,8 @@ return {
 		id = "infocom.zork3",
 		collection = "The Zork Trilogy",
 		difficulty = "Advanced",
-		tint = "#2F5D7C",
+		tint = "#1D4ED8",
+		tintDark = "#93C5FD",
 		initialFont = "SnellRoundhand-Bold",
 		title = "Zork III: The Dungeon Master",
 		shortDescription = "The final chapter of the Zork trilogy.",

@@ -52,7 +52,7 @@ build/UIKit.dylib: $(UIKIT_RUNTIME_SRC) $(UIKIT_RUNTIME_FRAGMENTS) $(GENERATED_D
 		{ echo "UIKit.dylib requires the iPhone Simulator SDK from Xcode"; exit 1; }
 	mkdir -p build
 	xcrun --sdk iphonesimulator $(CC) $(CFLAGS) $(MODULE_LDFLAGS) \
-		-Ibuild -framework UIKit -framework WebKit -framework Foundation -framework QuartzCore -framework Security -o $@ $(UIKIT_RUNTIME_SRC)
+		-Ibuild -framework UIKit -framework CoreText -framework WebKit -framework Foundation -framework QuartzCore -framework Security -o $@ $(UIKIT_RUNTIME_SRC)
 
 uikit: build/UIKit.dylib
 
@@ -159,7 +159,7 @@ $(HOST_BINARY): $(IOS_LUA_A) $(IOS_HOST_SRCS) ios/LuaRuntime/LuaRuntime.h $(UIKI
 	@echo "Building iOS host..."
 	@mkdir -p $(HOST_BUNDLE)
 	@$(IOS_CC) $(IOS_CFLAGS) \
-		-framework UIKit -framework Foundation -framework CoreGraphics -framework QuartzCore -framework Security -framework WebKit -framework AVFoundation -framework Speech \
+		-framework UIKit -framework CoreText -framework Foundation -framework CoreGraphics -framework QuartzCore -framework Security -framework WebKit -framework AVFoundation -framework Speech \
 		-o $(HOST_BUNDLE)/LuaRuntime \
 		$(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) $(IOS_LUA_A)
 	@cp ios/LuaRuntime/Info.plist $(HOST_BUNDLE)/Info.plist

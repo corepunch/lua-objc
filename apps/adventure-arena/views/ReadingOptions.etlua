@@ -1,0 +1,62 @@
+<%
+  -- Apple Books’ "Themes & Settings": type size, page themes shown as pages,
+  -- the face, the leading and justification. Used by the in-book sheet and the
+  -- Settings tab; `preview` adds a sample page for when no book is behind it.
+  local SWATCH = { width = 74, height = 92, radius = 16, sample = 26 }
+%>
+<VStack spacing="24" alignment="leading" maxWidth="infinity">
+  <VStack spacing="10" alignment="leading" maxWidth="infinity">
+    <Label text="Text Size" size="13" weight="semibold" color="secondary" smallCaps="true" />
+    <GlassEffectContainer spacing="12">
+      <HStack spacing="12" alignment="center" maxWidth="infinity">
+        <Button id="decreaseSize" title="" systemImage="textformat.size.smaller" symbolSize="20" style="glass" action="decreaseSize" accessibilityLabel="Smaller text" width="56" height="44" disabled="<%= fontSize <= minimumFontSize and 'true' or 'false' %>" />
+        <Slider id="sizeSlider" min="<%= minimumFontSize %>" max="<%= maximumFontSize %>" value="<%= fontSize %>" onChange="sizeChanged" flexGrow="1" />
+        <Button id="increaseSize" title="" systemImage="textformat.size.larger" symbolSize="20" style="glass" action="increaseSize" accessibilityLabel="Larger text" width="56" height="44" disabled="<%= fontSize >= maximumFontSize and 'true' or 'false' %>" />
+      </HStack>
+    </GlassEffectContainer>
+  </VStack>
+
+  <VStack spacing="10" alignment="leading" maxWidth="infinity">
+    <Label text="Theme" size="13" weight="semibold" color="secondary" smallCaps="true" />
+    <FlowStack spacing="12" maxWidth="infinity">
+      <% for _, theme in ipairs(themes) do %>
+      <Button id="theme_<%= theme.id %>" action="theme_<%= theme.index %>" style="plain" accessibilityLabel="<%= theme.title %> theme<%= theme.selected and ', selected' or '' %>">
+        <VStack spacing="6" alignment="center">
+          <ZStack width="<%= SWATCH.width %>" height="<%= SWATCH.height %>" background="<%= theme.page %>" cornerRadius="<%= SWATCH.radius %>" clipsToBounds="true" alignment="center">
+            <Label text="Aa" size="<%= SWATCH.sample %>" design="serif" weight="semibold" color="<%= theme.ink %>" />
+          </ZStack>
+          <Label text="<%= theme.title %>" size="13" weight="<%= theme.selected and 'semibold' or 'regular' %>" color="<%= theme.selected and 'accent' or 'secondary' %>" systemImage="<%= theme.selected and 'checkmark.circle.fill' or '' %>" iconSize="13" />
+        </VStack>
+      </Button>
+      <% end %>
+    </FlowStack>
+  </VStack>
+
+  <VStack spacing="10" alignment="leading" maxWidth="infinity">
+    <Label text="Font" size="13" weight="semibold" color="secondary" smallCaps="true" />
+    <Picker id="fontPicker" value="<%= fontIndex %>" style="segmented" onChange="fontChanged" maxWidth="infinity">
+      <Option title="Serif" />
+      <Option title="Sans" />
+      <Option title="Rounded" />
+      <Option title="Mono" />
+    </Picker>
+  </VStack>
+
+  <VStack spacing="10" alignment="leading" maxWidth="infinity">
+    <Label text="Line Spacing" size="13" weight="semibold" color="secondary" smallCaps="true" />
+    <Picker id="spacingPicker" value="<%= spacingIndex %>" style="segmented" onChange="spacingChanged" maxWidth="infinity">
+      <Option title="Compact" />
+      <Option title="Normal" />
+      <Option title="Relaxed" />
+    </Picker>
+    <Toggle id="justifyToggle" label="Justify Text" value="<%= justified and 'true' or 'false' %>" onChange="justifyChanged" maxWidth="infinity" />
+  </VStack>
+
+  <% if preview then %>
+  <VStack id="preview" padding="20" spacing="0" alignment="leading" background="<%= pageColor %>" cornerRadius="22" clipsToBounds="true" maxWidth="infinity">
+    <Label text="Chapter I" size="<%= fontSize - 3 %>" weight="semibold" color="systemIndigo|systemIndigo" smallCaps="true" />
+    <Label text="West of House" size="<%= fontSize + 6 %>" weight="semibold" design="serif" color="<%= primaryTextColor %>" paddingTop="2" paddingBottom="<%= math.floor(fontSize * 0.7) %>" />
+    <Paragraph id="previewBody" text="You are standing in an open field west of a white house, with a boarded front door. There is a small mailbox here." size="<%= fontSize %>" design="<%= font %>" color="<%= primaryTextColor %>" lineSpacing="<%= lineSpacing %>" alignment="<%= alignment %>" hyphenation="<%= justified and 'true' or 'false' %>" dropCap="true" dropCapFontName="SnellRoundhand-Bold" dropCapColor="systemIndigo" selectable="false" />
+  </VStack>
+  <% end %>
+</VStack>

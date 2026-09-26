@@ -1,0 +1,17 @@
+<%
+  -- The tab bar accessory: the story in progress, one tap from its last page.
+  -- The system draws the glass capsule; this is only its content.
+  local ROW = { cover = { width = 26, height = 38, radius = 5 }, side = 12 }
+%>
+<% if game then %>
+<Button id="nowReadingButton" action="resume" style="plain" maxWidth="infinity" maxHeight="infinity" accessibilityLabel="Continue <%= game.title %>, <%= place %>">
+  <HStack paddingHorizontal="<%= ROW.side %>" spacing="10" alignment="center" maxWidth="infinity" maxHeight="infinity">
+    <Image path="<%= game.cover %>" resizable="true" contentMode="fill" width="<%= ROW.cover.width %>" height="<%= ROW.cover.height %>" cornerRadius="<%= ROW.cover.radius %>" clipsToBounds="true" />
+    <VStack spacing="1" alignment="leading" flexGrow="1">
+      <Label id="nowReadingTitle" text="<%= game.title %>" size="15" weight="semibold" lines="1" truncation="tail" />
+      <Label id="nowReadingPlace" text="<%= place %>" size="12" color="secondary" lines="1" truncation="tail" />
+    </VStack>
+    <SystemImage name="book.fill" size="17" color="<%= game.ink or game.tint %>" label="Continue reading" />
+  </HStack>
+</Button>
+<% end %>

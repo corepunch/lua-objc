@@ -10,14 +10,13 @@
 }
 
 - (void)tabBarController:(UITabBarController *)tabBarController
- didSelectViewController:(UIViewController *)viewController {
+		didSelectTab:(UITab *)selectedTab previousTab:(UITab *)previousTab {
 	lua_State *L = lua_reg_live_state(_selection);
 	if (!L) return;
 	int top = lua_gettop(L);
 	if (!lua_reg_push(_selection)) return;
 	push_objc(L, tabBarController, "uiviewcontroller");
-	lua_pushinteger(L,
-		[tabBarController.viewControllers indexOfObject:viewController]);
+	lua_pushinteger(L, [tabBarController.tabs indexOfObject:selectedTab]);
 	if (lua_pcall(L, 2, 0, 0) != LUA_OK) {
 		fprintf(stderr, "tab selection error: %s\n", lua_tostring(L, -1));
 		lua_pop(L, 1);
@@ -28,8 +27,48 @@
 
 static char kTabBarDelegateKey;
 
+/* SwiftUI `tabViewBottomAccessory`: iOS 26 floats the accessory in its own
+ * Liquid Glass capsule above the tab bar, and moves it inline beside the
+ * minimized bar while content scrolls. UIKit sizes the capsule, so the host
+ * lays out the Lua content whenever the system changes that size. */
+@interface LuaTabAccessoryHost : UIView
+@property(nonatomic, strong) UIView *luaContent;
+@end
+@implementation LuaTabAccessoryHost
+- (void)layoutSubviews {
+	[super layoutSubviews];
+	self.luaContent.frame = self.bounds;
+	layout_recursive(self.luaContent, self.bounds.size.width);
+}
+@end
+
+/* `accessoryHidden` is SwiftUI's `tabViewBottomAccessory(isEnabled:)`: the
+ * accessory keeps its content and state while it is removed from the bar. */
+@interface LuaTabBarController : UITabBarController
+@property(nonatomic, strong) UITabAccessory *luaAccessory;
+@property(nonatomic) BOOL accessoryHidden;
+@end
+@implementation LuaTabBarController
+- (void)setAccessoryHidden:(BOOL)hidden {
+	_accessoryHidden = hidden;
+	[self setBottomAccessory:hidden ? nil : self.luaAccessory
+		animated:self.viewIfLoaded.window != nil && !UIAccessibilityIsReduceMotionEnabled()];
+}
+@end
+
+static int bridge_tabview_accessory(lua_State *L) {
+	LuaTabBarController *tbc = lua_objc_check_object(L, 1, [LuaTabBarController class], "TabView");
+	UIView *content = check_view(L, 2);
+	LuaTabAccessoryHost *host = [[LuaTabAccessoryHost alloc] initWithFrame:CGRectZero];
+	host.luaContent = content;
+	[host addSubview:content];
+	tbc.luaAccessory = [[UITabAccessory alloc] initWithContentView:host];
+	tbc.accessoryHidden = lua_toboolean(L, 3);
+	return 0;
+}
+
 static int bridge_tabview(lua_State *L) {
-	UITabBarController *tbc = [[UITabBarController alloc] init];
+	LuaTabBarController *tbc = [[LuaTabBarController alloc] init];
 	const char *behavior = luaL_optstring(L, 1, "automatic");
 	if (strcmp(behavior, "automatic") == 0)
 		tbc.tabBarMinimizeBehavior = UITabBarMinimizeBehaviorAutomatic;
@@ -56,6 +95,9 @@ static char kPageBackButtonModeKey;
 @end
 @implementation LuaNavigationController
 - (NSInteger)depth { return self.viewControllers.count; }
+/* The page decides the status bar: a page forced dark (a reader's Night
+ * theme) needs light status text whatever the system appearance is. */
+- (UIViewController *)childViewControllerForStatusBarStyle { return self.topViewController; }
 - (UIViewController *)currentController { return self.topViewController; }
 - (void)navigationController:(UINavigationController *)navigation willShowViewController:(UIViewController *)controller animated:(BOOL)animated {
 	[navigation setNavigationBarHidden:[objc_getAssociatedObject(controller, &kNavigationBarHiddenKey) boolValue] animated:animated];
@@ -206,45 +248,38 @@ static int bridge_UIKitNavigation_link(lua_State *L) {
 	return 1;
 }
 
+/* Tabs use the iOS 18+ UITab API so a `search` role becomes a UISearchTab:
+ * iOS 26 separates it from the other tabs as its own Liquid Glass button,
+ * and keeps it beside the minimized bar while content scrolls. */
 static int bridge_UIKitTabView_addTab(lua_State *L) {
-	id obj = check_objc(L, 1);
-	UITabBarController *tbc = (UITabBarController *)obj;
+	UITabBarController *tbc = lua_objc_check_object(L, 1, [UITabBarController class], "TabView");
 	UIViewController *vc = check_view_controller(L, 2);
-	const char *title = luaL_optstring(L, 3, "");
-	const char *systemImage = luaL_optstring(L, 4, "");
-
-	vc.tabBarItem = [[UITabBarItem alloc]
-		initWithTitle:[NSString stringWithUTF8String:title]
-		image:nil
-		tag:(NSInteger)tbc.viewControllers.count];
-
-	if (systemImage && strlen(systemImage) > 0) {
-		vc.tabBarItem.image = [UIImage
-			systemImageNamed:[NSString stringWithUTF8String:systemImage]];
-	}
-
-	NSMutableArray *children = [NSMutableArray arrayWithArray:tbc.viewControllers ?: @[]];
-	[children addObject:vc];
-	tbc.viewControllers = children;
-
+	NSString *title = @(luaL_optstring(L, 3, ""));
+	NSString *systemImage = @(luaL_optstring(L, 4, ""));
+	BOOL search = strcmp(luaL_optstring(L, 5, ""), "search") == 0;
+	UIViewController *(^provider)(UITab *) = ^UIViewController *(UITab *tab) { return vc; };
+	UITab *tab = search
+		? [[UISearchTab alloc] initWithViewControllerProvider:provider]
+		: [[UITab alloc] initWithTitle:title
+			image:systemImage.length ? [UIImage systemImageNamed:systemImage] : nil
+			identifier:[NSString stringWithFormat:@"tab.%lu", (unsigned long)tbc.tabs.count]
+			viewControllerProvider:provider];
+	if (search && title.length) tab.title = title;
+	tbc.tabs = [(tbc.tabs ?: @[]) arrayByAddingObject:tab];
 	push_objc(L, vc, "uiviewcontroller");
 	return 1;
 }
 
 static int bridge_UIKitTabView_selectTab(lua_State *L) {
-	id obj = check_objc(L, 1);
-	UITabBarController *tbc = (UITabBarController *)obj;
+	UITabBarController *tbc = lua_objc_check_object(L, 1, [UITabBarController class], "TabView");
 	NSInteger index = (NSInteger)luaL_checkinteger(L, 2);
-	if (index >= 0 && index < (NSInteger)tbc.viewControllers.count) {
-		tbc.selectedIndex = index;
-	}
+	if (index >= 0 && index < (NSInteger)tbc.tabs.count) tbc.selectedTab = tbc.tabs[index];
 	return 0;
 }
 
 static int bridge_UIKitTabView_tabCount(lua_State *L) {
-	id obj = check_objc(L, 1);
-	UITabBarController *tbc = (UITabBarController *)obj;
-	lua_pushinteger(L, (lua_Integer)tbc.viewControllers.count);
+	UITabBarController *tbc = lua_objc_check_object(L, 1, [UITabBarController class], "TabView");
+	lua_pushinteger(L, (lua_Integer)tbc.tabs.count);
 	return 1;
 }
 

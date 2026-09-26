@@ -417,6 +417,23 @@ previous screen, replace for a one-way transition, and a sheet for a short task.
 UIKit `TabView` accepts `minimizeBehavior = "automatic"`, `"never"`,
 `"onScrollDown"`, or `"onScrollUp"` to set the native tab bar minimization
 behavior. AppKit window tabs continue to use public `NSWindow` tabbing APIs.
+UIKit tabs are built with the `UITab` API; `<Tab role="search">` (SwiftUI
+`Tab(role: .search)`) becomes a `UISearchTab`, which iOS 26 sets apart as its
+own Liquid Glass button.
+
+`<TabAccessory hidden="true"><VStack id="nowReading" /></TabAccessory>` inside a
+`<TabView>` is SwiftUI's `tabViewBottomAccessory`: UIKit's
+`UITabBarController.bottomAccessory`, a glass capsule above the tab bar that
+moves inline beside the minimized bar while content scrolls. Toggle it with
+`tabs.accessoryHidden = false` (`tabViewBottomAccessory(isEnabled:)`); the
+content keeps its state and refs while hidden. macOS has no tab-bar accessory,
+so AppKit retains the view for its refs without showing it.
+
+`ns._documentRead(name)` / `ns._documentWrite(name, text)` keep small UTF-8
+documents (settings, autosaves) under a relative name that cannot escape the
+root: the app sandbox's Documents on iOS, `~/Library/Application
+Support/lua-objc/Documents` on the Mac. `ns._jsonEncode(value)` is available
+on both platforms (`src/shared/lua_documents.m`).
 
 `TextField { value = "", placeholder = "Command", onChange = function(value, field)
 end, onCommand = function(command, field) return command == "submit" end }` uses
@@ -639,6 +656,34 @@ ns.ScrollView {
 }
 ```
 
+#### Carousels: `containerRelativeWidth` and `scrollTargetBehavior`
+
+SwiftUI's `containerRelativeFrame(.horizontal)` and
+`scrollTargetBehavior(.viewAligned)` for App Store-style card carousels:
+
+```xml
+<ScrollView horizontal="true" vertical="false" scrollTargetBehavior="viewAligned">
+  <HStack spacing="12" paddingHorizontal="16">
+    <Button containerRelativeWidth="1" ...>…</Button>   <!-- one card per screen -->
+    <VStack containerRelativeWidth="0.5" />             <!-- two per screen -->
+  </HStack>
+</ScrollView>
+```
+
+`containerRelativeWidth` is a fraction of the horizontal scroll view's visible
+width, less the content stack's own horizontal padding; it is re-resolved on
+every layout, so cards follow window and rotation changes. Outside a
+horizontal scroll view it has no effect. `scrollTargetBehavior="viewAligned"`
+settles a released drag on a child of the content stack (a flick advances at
+least one card); `"paging"` is UIKit paging by the visible width. Mac wheel and
+trackpad scrolling stays continuous, as in SwiftUI on macOS. Horizontal shelves
+deliver touches immediately (`delaysContentTouches = NO`) and hide iOS 26 scroll
+edge effects, which belong to the page's own scroll view.
+
+The first vertical scroll view in a page is registered as its content scroll
+view (`setContentScrollView:forEdge:`), so iOS 26 draws the scroll edge effect
+under the navigation and tab bars and collapses large titles while scrolling.
+
 ### `ForEach(data, content)` / `Group{...}`
 
 Use `ForEach` whenever sibling views share the same structure and differ only
@@ -697,6 +742,47 @@ name falls back to the system font with the given `design`, so text never
 disappears on a platform that lacks the face. In XML:
 `<Label text="W" size="58" fontName="SnellRoundhand-Bold" design="serif" />`.
 `ns.Font` accepts the same `fontName` key.
+
+`smallCaps="true"` (`ns.Font { smallCaps = true }`) is SwiftUI's
+`Font.smallCaps()`: the OpenType `smcp` feature, for running heads and
+chapter labels. Faces without small capitals keep their lowercase.
+
+`accessibilityLabel` on `<Label>` replaces what VoiceOver reads, for example
+`"You: open mailbox"` for a command set as a stage direction.
+
+### `Paragraph{...}` — long-form prose
+
+`Label` is for UI text. `Paragraph` sets prose as a book does: selectable (for
+Look Up and copy), with explicit leading, optional justification and
+hyphenation, and an optional **drop cap** that the following lines wrap
+around.
+
+```xml
+<Paragraph text="You are standing in an open field…" size="18" design="serif"
+  lineSpacing="6" alignment="justified" hyphenation="true"
+  dropCap="true" dropCapLines="3" dropCapFontName="SnellRoundhand-Bold" dropCapColor="#4338CA|#A5B4FC" />
+```
+
+| Attribute | Meaning |
+|---|---|
+| `text` | the paragraph, first letter included (`view.text` reads and writes it) |
+| `size`, `weight`, `design`, `fontName`, `italic`, `smallCaps`, `color` | body typography |
+| `lineSpacing` | extra points between lines (SwiftUI `lineSpacing`) |
+| `alignment` | `leading`, `center`, `trailing` or `justified` |
+| `hyphenation` | hyphenates at line ends (use with `justified`) |
+| `dropCap`, `dropCapLines` (default 3) | drop the first letter through N lines |
+| `dropCapFontName`, `dropCapDesign`, `dropCapWeight`, `dropCapColor` | the initial's face and colour |
+
+The initial is sized by its **ink**, not font metrics: a plain capital spans
+from the first line's cap height to the last line's baseline, as in print; a
+script capital that swashes below its baseline (Snell Roundhand's *Y*) fits its
+whole glyph between the first line's cap height and the last line's
+descender. Its view frames the ink, so no stroke is clipped, and exactly
+`dropCapLines` lines wrap beside it. Only a letter is dropped; a paragraph that
+opens with a quotation mark or digit is set normally. Empty text takes no
+space. Implementation: a non-scrolling `UITextView` / non-editable
+`NSTextView` on TextKit 1 with `NSTextContainer.exclusionPaths`
+(`src/uikit/paragraph.m`, `src/appkit/paragraph.m`).
 
 ### `Title "string"`
 
@@ -846,6 +932,15 @@ clamped.
 | `subtitle="…"` on `<Window>` | `.navigationSubtitle(_:)` | `NSWindow.subtitle`; assign `window.subtitle` to update | ignored |
 | `style="borderedProminent"` on `<Button>` | `.buttonStyle(.borderedProminent)` | accent `bezelColor` | prominent button configuration |
 | `controlSize` (`mini`, `small`, `regular`, `large`) on `<Button>` | `.controlSize(_:)` | `NSControlSize` | ignored |
+| `style="glass"` / `style="glassProminent"` on `<Button>` | `.buttonStyle(.glass)` / `.glassProminent` | glass effect / prominent push button | `glassButtonConfiguration` / `prominentGlassButtonConfiguration` (white type) |
+| `tint="…"` on `<Button>` | `.tint(_:)` | prominent fill or content tint | `tintColor` |
+| `tint="…"` on any view | `.tint(_:)` | ignored | `tintColor`, inherited by accent-drawn descendants |
+| `padding*` on a leaf (`<Label>`, `<Paragraph>`, `<Image>`) | `.padding(_:)` | wrapped in a padded stack; the id still names the leaf | same |
+| `color="#FBF9F4\|#1C1B1F"` (any colour attribute) | asset colour with a Dark variant | dynamic `NSColor` | dynamic `UIColor` |
+
+Colour values accept `light|dark` pairs of hex or semantic names, resolved
+against the drawing appearance. Use them for paper-and-ink themes and for
+tints that must stay legible on dark pages.
 
 `<DisclosureGroup label="…" expanded="false">` draws AppKit's disclosure
 triangle beside a clickable label; both toggle the content. `labelWeight` and
@@ -853,9 +948,11 @@ triangle beside a clickable label; both toggle the content. `labelWeight` and
 
 ### `Toggle{...}`
 
-Creates an `NSButton` checkbox. Keys: `label` (string), `is_on` (bool),
-`action` (function, optional). **Callbacks receive the sender NSButton** —
-read `btn.state == 1` to get the current toggle state.
+Creates an `NSButton` checkbox (a `UISwitch` row on UIKit). Keys: `label`
+(string), `is_on` (bool), `action` (function, optional), `onChange`
+(function, optional). **`action` callbacks receive the sender NSButton** —
+read `btn.state == 1` to get the current toggle state. `onChange` (XML
+`onChange="name"`) receives the new state as a boolean on both platforms.
 
 ```lua
 ns.Toggle { label = "Show on launch", is_on = true }

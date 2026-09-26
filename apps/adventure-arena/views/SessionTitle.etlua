@@ -1,4 +1,8 @@
-<VStack spacing="1" alignment="center" width="220">
-  <Label id="sessionTitle" text="<%= gameTitle %>" size="17" weight="semibold" lines="1" alignment="center" maxWidth="infinity" />
-  <Label id="progress" text="<%= progress %>" size="11" color="secondary" lines="1" alignment="center" maxWidth="infinity" />
+<%
+  -- A running head: the book’s title over the chapter and room, as printed
+  -- books carry the title on one page and the chapter on the facing one.
+%>
+<VStack spacing="1" alignment="center" width="230">
+  <Label id="sessionTitle" text="<%= gameTitle %>" size="15" weight="semibold" lines="1" truncation="tail" alignment="center" maxWidth="infinity" />
+  <Label id="sessionPlace" text="<%= chapterLabel ~= '' and (chapterLabel .. ' · ' .. roomTitle) or roomTitle %>" size="11" color="secondary" lines="1" truncation="tail" alignment="center" maxWidth="infinity" />
 </VStack>

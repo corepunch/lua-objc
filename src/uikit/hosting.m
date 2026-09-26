@@ -44,12 +44,26 @@ static void uikit_scroll_mark_keyboard(UIView *view);
 		}
 		objc_setAssociatedObject(view, &kHostSafeAreaBottomKey,
 			@(bottomInset), OBJC_ASSOCIATION_RETAIN);
-		if (view.matchBottomHorizontalInset)
-			view.paddingHorizontal = keyboardVisible ? view.horizontalInset : bottomInset;
+		/* Concentric with the display's corners: match the device's own bottom
+		 * inset (the home indicator), never a tab bar's, which is far taller. */
+		if (view.matchBottomHorizontalInset) {
+			CGFloat deviceInset = MAX(self.view.window.safeAreaInsets.bottom, view.minimumBottomInset);
+			view.paddingHorizontal = keyboardVisible ? view.horizontalInset
+				: MAX(view.horizontalInset, MIN(bottomInset, deviceInset));
+		}
 	}
 	for (UIView *child in view.subviews) {
 		[self updateBottomSafeAreaPaddingInView:child];
 	}
+}
+
+/* A page that overrides its appearance re-derives the status bar style,
+ * which follows the page's resolved trait collection. */
+- (void)setOverrideUserInterfaceStyle:(UIUserInterfaceStyle)style {
+	[super setOverrideUserInterfaceStyle:style];
+	[self setNeedsStatusBarAppearanceUpdate];
+	[self.navigationController setNeedsStatusBarAppearanceUpdate];
+	[self.tabBarController setNeedsStatusBarAppearanceUpdate];
 }
 
 - (instancetype)initWithLuaView:(UIView *)view {
@@ -94,6 +108,29 @@ static void uikit_scroll_mark_keyboard(UIView *view);
 	self.keyboardWasVisible = keyboardVisible;
 	[self updateHostSafeAreaPadding];
 	layout_recursive(self.luaRoot, self.luaRoot.bounds.size.width);
+	[self registerContentScrollView];
+}
+
+/* The page's primary vertical scroll view is its content scroll view, as a
+ * SwiftUI ScrollView is: iOS 26 then draws the scroll edge effect under the
+ * navigation and tab bars, and collapses a large title while it scrolls. */
+static UIScrollView *uikit_primary_scroll_view(UIView *view) {
+	if ([view isKindOfClass:UIScrollView.class] && !view.hidden) {
+		UIScrollView *scroll = (UIScrollView *)view;
+		if (!(scroll.alwaysBounceHorizontal && !scroll.alwaysBounceVertical)) return scroll;
+		return nil;
+	}
+	for (UIView *child in view.subviews) {
+		UIScrollView *found = uikit_primary_scroll_view(child);
+		if (found) return found;
+	}
+	return nil;
+}
+
+- (void)registerContentScrollView {
+	UIScrollView *scroll = uikit_primary_scroll_view(self.luaRoot);
+	if ([self contentScrollViewForEdge:NSDirectionalRectEdgeTop] == scroll) return;
+	[self setContentScrollView:scroll forEdge:NSDirectionalRectEdgeTop | NSDirectionalRectEdgeBottom];
 }
 
 - (void)viewDidDisappear:(BOOL)animated {

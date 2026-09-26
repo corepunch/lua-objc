@@ -38,14 +38,18 @@ end
 
 function Session.new(options)
 	options = options or {}
-	local self = setmetatable({ engineFactory = options.engineFactory }, Session)
+	local self = setmetatable({
+		engineFactory = options.engineFactory,
+		-- A saved game replays its commands against the same random sequence.
+		newSeed = options.newSeed or function() return os.time() end,
+	}, Session)
 	self:reset()
 	return self
 end
 
 function Session:reset()
 	self.entries, self.history = {}, {}
-	self.moves, self.score, self.maxScore, self.chapters = 0, 0, 0, 0
+	self.moves, self.score, self.maxScore, self.chapters, self.scoreChange = 0, 0, 0, 0, 0
 	self.availableDirections, self.exitList = {}, {}
 	self.items, self.knownItems, self.knownByNoun = {}, {}, {}
 	self.roomTitle, self.scene, self.openEntry = nil, nil, nil
@@ -107,7 +111,7 @@ end
 -- ── Transcript structure ────────────────────────────────────────────────
 -- The engine prints plain text. Books give the reader structure, so the
 -- transcript is parsed into a title-page banner, scenes (a new room opens a
--- chapter with an illuminated initial), the player's own commands, and
+-- chapter whose first letter is set as a drop cap), the player's own commands, and
 -- narration.
 
 local function trim(text)
@@ -211,17 +215,25 @@ function Session:appendOutput(text, openingTitle)
 	end
 end
 
-function Session:start(game)
+-- `saved` is a snapshot from `Session:snapshot()`. The story is restored by
+-- replaying its commands against an engine seeded as before, which rebuilds
+-- the chapters exactly as the reader first saw them.
+function Session:start(game, saved)
 	if not game then return false, "Adventure not found." end
 	if not self.engineFactory then return false, "No session engine configured." end
+	local seed = saved and tonumber(saved.seed) or self.newSeed()
 	local ok, engine, opening = pcall(function()
-		return self.engineFactory(game):start()
+		return self.engineFactory(game, seed):start()
 	end)
 	if not ok then return false, tostring(engine) end
 	self:reset()
-	self.engine, self.currentGame = engine, game
+	self.engine, self.currentGame, self.seed = engine, game, seed
 	self:refreshEngineState()
 	self:appendOutput(opening, game.title)
+	for _, command in ipairs(saved and saved.commands or {}) do
+		self:submit(command)
+	end
+	self.scoreChange = 0
 	return true
 end
 
@@ -232,13 +244,27 @@ function Session:submit(command)
 	table.insert(self.history, command)
 	table.insert(self.entries, { kind = "command", text = command })
 	self.openEntry = nil
-	local movesBefore = self.moves
+	local movesBefore, scoreBefore = self.moves, self.score
 	self:refreshEngineState()
 	if type(self.engine.progress) ~= "function" then
 		self.moves = movesBefore + 1
 	end
+	self.scoreChange = self.score - scoreBefore
 	self:appendOutput(response)
 	return ok, response
+end
+
+-- Everything needed to resume, as plain values for the save store.
+function Session:snapshot()
+	local game = self.currentGame
+	if not game or not self.engine then return nil end
+	local commands = {}
+	for _, command in ipairs(self.history) do table.insert(commands, command) end
+	return {
+		gameId = game.id, seed = self.seed, commands = commands,
+		chapter = self.chapters, room = self.roomTitle or (self.scene and self.scene.title) or game.title,
+		score = self.score, maxScore = self.maxScore, moves = self.moves,
+	}
 end
 
 function Session:suggestions(input)
@@ -247,54 +273,55 @@ function Session:suggestions(input)
 	})
 end
 
--- The first letter of a scene is set as an illuminated initial; the rest of
--- that paragraph (the "lead") runs beside it, like an old storybook.
-local function illuminate(scene)
-	local first = scene.paragraphs[1] or ""
-	local initial, lead = first:match("^(%a)(.*)$")
-	local rest = {}
-	for index = initial and 2 or 1, #scene.paragraphs do table.insert(rest, scene.paragraphs[index]) end
-	return {
-		kind = "scene", chapter = scene.chapter, chapterLabel = scene.chapterLabel, title = scene.title,
-		initial = initial and initial:upper(), lead = initial and lead or nil, paragraphs = rest,
-	}
-end
-
 function Session:transcript(limit)
 	limit = limit or TRANSCRIPT.limit
 	local entries = {}
 	for index = math.max(1, #self.entries - limit + 1), #self.entries do
-		local entry = self.entries[index]
-		if entry.kind == "scene" then
-			table.insert(entries, illuminate(entry))
-		else
-			table.insert(entries, entry)
-		end
+		table.insert(entries, self.entries[index])
 	end
 	return entries, math.max(0, #self.entries - limit)
 end
 
+-- Infocom status lines: "Score 12 of 350 · 41 moves". Planetfall's MOVES is
+-- the ship's chronometer, so its line reads "Time 4602" as the game's does.
+function Session.statusLine(game, score, maxScore, moves)
+	local scoreText = maxScore > 0
+		and string.format("Score %d of %d", score, maxScore)
+		or string.format("Score %d", score)
+	if game and game.statusLine == "time" then
+		return string.format("%s · Time %d", scoreText, moves)
+	end
+	return string.format("%s · %d %s", scoreText, moves, moves == 1 and "move" or "moves")
+end
+
 function Session:presentation()
 	local game = self.currentGame or {}
-	local scoreText = self.maxScore > 0
-		and string.format("Score %d/%d", self.score, self.maxScore)
-		or string.format("Score %d", self.score)
 	local directions = {}
 	for direction in pairs(self.availableDirections) do table.insert(directions, direction) end
 	table.sort(directions)
 	local entries, earlier = self:transcript()
+	local scene = self.scene
 	return {
+		gameId = game.id,
 		gameTitle = game.title or "",
-		gameDescription = game.description or "",
+		gameDescription = game.shortDescription or game.description or "",
 		gameAuthor = game.author or "",
 		gameYear = game.year and tostring(game.year) or "",
+		gameGenre = game.genre or "",
 		cover = game.cover,
 		tint = game.tint or "accent",
+		ink = game.ink or game.tint or "accent",
 		initialFont = game.initialFont,
-		roomTitle = self.roomTitle or (self.scene and self.scene.title) or game.title or "",
+		roomTitle = self.roomTitle or (scene and scene.title) or game.title or "",
+		chapterLabel = scene and scene.chapterLabel or "",
 		entries = entries,
 		earlierEntries = earlier,
-		progress = string.format("%s | Moves %d", scoreText, self.moves),
+		score = self.score,
+		maxScore = self.maxScore,
+		moves = self.moves,
+		scoreChange = self.scoreChange,
+		progressFraction = self.maxScore > 0 and math.max(0, math.min(1, self.score / self.maxScore)) or 0,
+		progress = Session.statusLine(game, self.score, self.maxScore, self.moves),
 		availableDirections = directions,
 	}
 end
