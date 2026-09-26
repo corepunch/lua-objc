@@ -30,7 +30,7 @@ project "AdventureArena"
 	links {
 		"UIKit.framework", "Foundation.framework", "CoreGraphics.framework",
 		"QuartzCore.framework", "Security.framework", "WebKit.framework",
-		"AVFoundation.framework", "Speech.framework",
+		"AVFoundation.framework", "Speech.framework", "CoreText.framework",
 	}
 	xcodebuildresources { "ios/AdventureArena/Assets.xcassets" }
 	xcodebuildsettings {

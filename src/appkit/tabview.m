@@ -39,7 +39,12 @@ static void configure_segmented_control(NSSegmentedControl *selector) {
 
 /* NSTabView owns selection and pane frames; bridge stacks need their layout
  * pass after that native lifecycle finishes, including keyboard selection. */
+/* macOS has no tab-bar accessory (SwiftUI's tabViewBottomAccessory is iOS
+ * only), so the view is retained for its template refs but not displayed;
+ * Mac apps surface the same state in the toolbar or their content. */
 @interface LuaTabView : NSTabView
+@property(nonatomic, strong) NSView *accessoryView;
+@property(nonatomic) BOOL accessoryHidden;
 @end
 @implementation LuaTabView
 - (void)layout {

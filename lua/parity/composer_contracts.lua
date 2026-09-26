@@ -6,7 +6,9 @@ local M = {}
 function M.run(ns)
 	local xml = require("ui.xml")
 	local _, refs = xml.renderFile("apps/adventure-arena/views/Session.etlua", {
-		transcript = "Opening scene", speechAvailable = true,
+		gameTitle = "Zork I", chapterLabel = "Chapter I", roomTitle = "West of House",
+		progress = "Score 0 · 0 moves", tint = "#4338CA", ink = "#4338CA|#A5B4FC",
+		speechAvailable = true, availableDirections = {}, compassSegments = {},
 		actions = { disappear = function() end, readingSettings = function() end },
 	}, ns)
 	-- Session.etlua is a <Page>; measure its content view.
@@ -36,7 +38,7 @@ function M.run(ns)
 			}, { schema = 1, runId = "composer-contract", id = "composer", width = width, height = 600 })
 			local result = ns._jsonParse(json)
 			local action, field = result.probes[1], result.probes[2]
-			expect(action.width == 38 and action.height == 44, "composer preserves the SwiftUI action frame")
+			expect(action.width == 40 and action.height == 44, "composer preserves the SwiftUI action frame")
 			expect(field.width > 0 and field.x + field.width <= action.x, "input and action do not overlap")
 			expect(action.x + action.width <= width, "action remains within the screen after resize")
 			if result.platform == "ios" then

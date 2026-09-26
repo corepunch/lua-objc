@@ -2,6 +2,7 @@
 #import <objc/runtime.h>
 #import <Security/Security.h>
 #import <QuartzCore/QuartzCore.h>
+#import <CoreText/CoreText.h>
 
 #include <lua.h>
 #include <lualib.h>
@@ -52,6 +53,8 @@ static char kScrollAnchorKey;
 static char kScrollOnKeyboardKey;
 static char kButtonContentKey;
 static char kVisualEffectContentKey;
+static char kContainerRelativeWidthKey;
+static char kScrollTargetDelegateKey;
 static const CGFloat kImageMaxWidth = 400.0;
 static const CGFloat kMenuSymbolPointSize = 17.0;
 static const CGFloat kNavigationSymbolPointSize = 22.0;
@@ -61,6 +64,18 @@ static const CGFloat kStackSpacing = 8.0;
 static const CGFloat kHostLayoutEdgeTolerance = 1.0;
 static const CGFloat kArcFullCircleDegrees = 359.0;
 static const CGFloat kSeparatorThickness = 1.0;
+/* Points per millisecond past which a released drag advances a whole card. */
+static const CGFloat kScrollTargetFlickVelocity = 0.2;
+/* Space between a dropped initial and the text wrapping beside it, and the
+ * number of lines it drops through when the template does not say. */
+static const CGFloat kParagraphDropCapGap = 6.0;
+static const NSInteger kParagraphDropCapLines = 3;
+/* Size at which an initial's ink is measured before it is scaled to fit, the
+ * share of that size below the baseline that counts as a descender, and the
+ * margin its view keeps around the ink so antialiased edges are not clipped. */
+static const CGFloat kParagraphDropCapReferenceSize = 100.0;
+static const CGFloat kParagraphDropCapDescentFraction = 0.05;
+static const CGFloat kParagraphDropCapInkOutset = 2.0;
 static const CGFloat kPreviewWidth = 393.0;
 static const CGFloat kPreviewHeight = 740.0;
 static const CGFloat kPreviewBezel = 10.0;
@@ -108,6 +123,9 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #include "../shared/layout_invalidation.m"
 #include "../shared/lua_error.m"
 #include "../shared/lua_async.m"
+#define LUA_OBJC_DOCUMENT_ROOT() \
+	NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject
+#include "../shared/lua_documents.m"
 #include "../shared/performance_signpost.m"
 #include "../shared/lua_dealloc_watch.m"
 
@@ -122,6 +140,7 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #include "tables.m"
 #include "platform.m"
 #include "constructors.m"
+#include "paragraph.m"
 #include "mesh_gradient.m"
 #include "speech_recognition.m"
 #include "text_field.m"
@@ -173,6 +192,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_searchField", bridge_UIKitControls_searchField},
 	{"_textEditor", bridge_UIKitControls_textEditor},
 	{"_label", bridge_UIKitControls_label},
+	{"_paragraph", bridge_UIKitControls_paragraph},
+	{"_hasLayoutAxis", bridge_has_layout_axis},
 	{"_separator", bridge_UIKitControls_separator},
 	{"_progressIndicator", bridge_UIKitControls_progressIndicator},
 	{"_progressView", bridge_UIKitControls_progressView},
@@ -223,6 +244,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_httpGet", bridge_http_get},
 	{"_jsonParse", bridge_json_parse},
 	{"_tabview", bridge_tabview},
+	{"_tabViewAccessory", bridge_tabview_accessory},
 	{"_tabViewAddTab", bridge_UIKitTabView_addTab},
 	{"_tabViewSelectTab", bridge_UIKitTabView_selectTab},
 	{"_tabViewTabCount", bridge_UIKitTabView_tabCount},

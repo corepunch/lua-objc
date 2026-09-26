@@ -1,0 +1,33 @@
+<%
+  -- The Library tab: every story in progress, newest first, each resumed
+  -- at its last page. A row’s menu starts it over or removes it.
+  local ROW = { cover = { width = 60, height = 90, radius = 8 }, side = 16 }
+%>
+<% if #entries == 0 then %>
+<ContentUnavailable id="emptyBookshelf" title="No Stories in Progress" systemImage="book.closed" description="Stories you begin are saved at the last page you read and wait for you here." />
+<% else %>
+<ScrollView id="bookshelfScroll">
+  <VStack paddingHorizontal="<%= ROW.side %>" paddingBottom="24" spacing="0" maxWidth="infinity">
+    <% for index, entry in ipairs(entries) do %>
+    <HStack spacing="8" alignment="center" maxWidth="infinity">
+      <Button id="shelfRow_<%= index %>" action="continue_<%= index %>" style="plain" flexGrow="1" accessibilityLabel="Continue <%= entry.game.title %>, <%= entry.place %>">
+        <HStack paddingVertical="10" spacing="14" alignment="center" maxWidth="infinity">
+          <Image path="<%= entry.game.cover %>" resizable="true" contentMode="fill" width="<%= ROW.cover.width %>" height="<%= ROW.cover.height %>" cornerRadius="<%= ROW.cover.radius %>" clipsToBounds="true" />
+          <VStack spacing="4" alignment="leading" flexGrow="1">
+            <Label text="<%= entry.game.title %>" size="17" weight="semibold" lines="2" />
+            <Label text="<%= entry.place %>" size="14" color="secondary" lines="1" truncation="tail" />
+            <ProgressView value="<%= entry.progress %>" tint="<%= entry.game.tint %>" paddingTop="4" maxWidth="infinity" />
+            <Label text="<%= entry.status %>" size="12" color="secondary" lines="1" truncation="tail" />
+          </VStack>
+        </HStack>
+      </Button>
+      <Menu id="shelfMenu_<%= index %>" title="" systemImage="ellipsis.circle" symbolSize="22" style="plain" accessibilityLabel="More for <%= entry.game.title %>" width="36" height="44">
+        <MenuItem title="Start Over" systemImage="arrow.counterclockwise" action="restart_<%= index %>" />
+        <MenuItem title="Remove from Library" systemImage="trash" role="destructive" action="remove_<%= index %>" />
+      </Menu>
+    </HStack>
+    <% if index < #entries then %><Divider /><% end %>
+    <% end %>
+  </VStack>
+</ScrollView>
+<% end %>
