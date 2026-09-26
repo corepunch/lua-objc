@@ -1,4 +1,5 @@
 local ns = require("AppKit")
+local Sheet = require("apps.diskmap.Sheet")
 local xml = require("ui.xml")
 local Sdks = require("apps.diskmap.models.Sdks")
 local Controller = {}; Controller.__index = Controller
@@ -15,7 +16,7 @@ function Controller:show()
 	if not self.refs then return end
 	local rows = Sdks.filter(self.rows, self.query)
 	self.refs.rows:replaceRows(rows)
-	self.refs.status.text = #rows == 0 and "No matching SDKs." or (#rows .. " SDKs · sizes are the SDK bundles inside this installation, already included in its total.")
+	self.refs.status.text = #rows == 0 and "No matching SDKs." or (#rows .. (#rows == 1 and " SDK" or " SDKs"))
 end
 function Controller:load()
 	self.rows = Sdks.discover(self.service, self.root)
@@ -52,6 +53,6 @@ function Controller:open(parent, row)
 		self.refs.done.keyEquivalent = "\r"
 		self.sheet.defaultButtonCell = self.refs.done.cell
 	end)
-	ns.presentSheet(self.sheet, parent); ns.focus(self.sheet, self.refs.search); self:load()
+	Sheet.present(self.sheet, parent); ns.focus(self.sheet, self.refs.search); self:load()
 end
 return Controller

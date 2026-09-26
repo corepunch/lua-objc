@@ -830,6 +830,28 @@ static int bridge_system_image(lua_State *L) {
 	return 1;
 }
 
+static int bridge_view_midline_fill(lua_State *L) {
+	NSView *view = check_view(L, 1);
+	NSRect bounds = view.bounds;
+	NSInteger width = MAX(1, (NSInteger)llround(bounds.size.width));
+	NSInteger height = MAX(1, (NSInteger)llround(bounds.size.height));
+	NSBitmapImageRep *rep = [[NSBitmapImageRep alloc] initWithBitmapDataPlanes:NULL
+		pixelsWide:width pixelsHigh:height bitsPerSample:8 samplesPerPixel:4
+		hasAlpha:YES isPlanar:NO colorSpaceName:NSDeviceRGBColorSpace
+		bytesPerRow:0 bitsPerPixel:0];
+	[NSGraphicsContext saveGraphicsState];
+	[NSGraphicsContext setCurrentContext:[NSGraphicsContext graphicsContextWithBitmapImageRep:rep]];
+	[view drawRect:bounds];
+	[NSGraphicsContext restoreGraphicsState];
+	NSInteger y = height / 2;
+	NSInteger filled = 0;
+	for (NSInteger x = 0; x < width; x++) {
+		if ([[rep colorAtX:x y:y] alphaComponent] > 0.05) filled++;
+	}
+	lua_pushnumber(L, (double)filled / (double)width);
+	return 1;
+}
+
 static int bridge_system_color(lua_State *L) {
 	const char *name = luaL_checkstring(L, 1);
 	NSColor *color = semantic_color([NSString stringWithUTF8String:name]);

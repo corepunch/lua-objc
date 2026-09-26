@@ -146,6 +146,7 @@ static NSColor *semantic_color(NSString *name) {
 	if ([name isEqualToString:@"systemYellow"]) return NSColor.systemYellowColor;
 	if ([name isEqualToString:@"systemOrange"]) return NSColor.systemOrangeColor;
 	if ([name isEqualToString:@"systemPurple"]) return NSColor.systemPurpleColor;
+	if ([name isEqualToString:@"systemPink"])   return NSColor.systemPinkColor;
 	if ([name isEqualToString:@"systemTeal"])   return NSColor.systemTealColor;
 	if ([name isEqualToString:@"systemBrown"])  return NSColor.systemBrownColor;
 	if ([name isEqualToString:@"systemIndigo"]) return NSColor.systemIndigoColor;

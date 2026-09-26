@@ -317,11 +317,16 @@ static NSSize measure_horizontal_children(NSView *view, LuaLayoutConstraint cons
 			CGFloat totalWeight = 0;
 			if (weight > 0) for (NSUInteger next = order.count - left; next < order.count; next++)
 				totalWeight += view_flex_grow(children[order[next].unsignedIntegerValue], YES);
-			CGFloat offer = MAX(0, round((weight > 0 ? remaining * weight / totalWeight : remaining / left) * scale) / scale);
+			/* Fixed children keep the width of their title. Only flexible
+			 * siblings share what remains, so a button is not truncated while
+			 * a spacer still has room. */
+			CGFloat offer = weight > 0
+				? MAX(0, round((remaining * weight / totalWeight) * scale) / scale)
+				: remaining;
 			sizes[i] = measure_view(children[i], (LuaLayoutConstraint){
 				.width = offer, .widthMode = LuaMeasureAtMost,
 				.height = constraint.height, .heightMode = constraint.heightMode });
-			if (view_flex_grow(children[i], YES) > 0) sizes[i].width = offer;
+			if (weight > 0) sizes[i].width = offer;
 			remaining -= sizes[i].width;
 		}
 		result.width += sizes[i].width;

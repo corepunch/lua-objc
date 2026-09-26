@@ -1,4 +1,5 @@
 local ns = require("AppKit")
+local Sheet = require("apps.diskmap.Sheet")
 local App = require("App")
 local xml = require("ui.xml")
 local Template = require("ui.template")
@@ -108,7 +109,7 @@ function Controller:openReclaim()
 		self.tipPanel = Template.new(self.reclaimRefs.tips, "apps/diskmap/views/Tips.etlua", ns)
 	end)
 	self:updateRows()
-	ns.presentSheet(self.reclaimSheet, self.window); ns.focus(self.reclaimSheet, self.reclaimRefs.search)
+	Sheet.present(self.reclaimSheet, self.window); ns.focus(self.reclaimSheet, self.reclaimRefs.search)
 end
 function Controller:closeSettings()
 	if self.settingsSheet then ns.dismiss(self.settingsSheet); self.settingsSheet = nil end
@@ -143,7 +144,7 @@ function Controller:openSettings()
 		self.settingsRefs.done.keyEquivalent = "\r"
 		self.settingsSheet.defaultButtonCell = self.settingsRefs.done.cell
 	end)
-	ns.presentSheet(self.settingsSheet, self.window)
+	Sheet.present(self.settingsSheet, self.window)
 end
 function Controller:mountDashboard()
 	if self.page then self.page:dispose() end

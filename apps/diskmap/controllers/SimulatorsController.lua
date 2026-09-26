@@ -1,4 +1,5 @@
 local ns = require("AppKit")
+local Sheet = require("apps.diskmap.Sheet")
 local xml = require("ui.xml")
 local Simulators = require("apps.diskmap.models.Simulators")
 local Controller = {}; Controller.__index = Controller
@@ -19,13 +20,14 @@ function Controller:buttons()
 	local count = 0
 	for _, row in ipairs(Simulators.rows(self.inventory, nil, "Unavailable")) do if Simulators.command("delete", row, self.model) then count = count + 1 end end
 	self.refs.unavailable.enabled = allowed and count > 0
-	self.refs.refresh.enabled = not self.busy
+	self.refs.reveal.enabled = allowed and self.selected ~= nil and type(self.selected.path) == "string"
 end
 function Controller:update()
 	if not self.refs then return end
 	for index, filter in ipairs(self.filters) do self.refs["rows" .. index]:replaceRows(Simulators.rows(self.inventory, self.query, filter)) end
 	self.selected = nil
-	self.refs.status.text = self.busy and "Working…" or self.error or (#Simulators.rows(self.inventory, self.query) == 0 and "No matching devices." or "Device data is the size of each simulator folder. It is already included in Simulator devices. Last use comes from device.plist when that file is present.")
+	local count = #Simulators.rows(self.inventory, self.query)
+	self.refs.status.text = self.busy and "Working…" or self.error or (count == 0 and "No matching devices." or count .. (count == 1 and " device" or " devices"))
 	if self.busy then for index in ipairs(self.filters) do self.refs["rows" .. index]:showLoading() end
 	else for index in ipairs(self.filters) do self.refs["rows" .. index]:hideLoading() end end
 	self:buttons()
@@ -106,7 +108,8 @@ function Controller:open(parent)
 	ns.Scope.withScope(self.scope, function()
 		self.sheet, self.refs = xml.renderFile("apps/diskmap/views/Simulators.etlua", {filters = self.filters, actions = {
 			search = function(value) self.query = value; self:update() end, done = function() self:close() end,
-			refresh = function() self:load() end, erase = function() self:perform("erase") end,
+			reveal = function() if self.selected and self.selected.path then self.service.reveal(self.selected.path) end end,
+			erase = function() self:perform("erase") end,
 			delete = function() self:perform("delete") end, unavailable = function() self:perform("delete", true) end,
 		}}, ns)
 		self.refs.done.keyEquivalent = "\r"
@@ -114,6 +117,6 @@ function Controller:open(parent)
 		for index in ipairs(self.filters) do self.refs["rows" .. index]:onRowSelect(function(_, _, row) self.selected = row; self:buttons() end) end
 		self.refs.tabs:onChange(function() self.selected = nil; self:buttons() end)
 	end)
-	ns.presentSheet(self.sheet, parent); ns.focus(self.sheet, self.refs.search); self:load()
+	Sheet.present(self.sheet, parent); ns.focus(self.sheet, self.refs.search); self:load()
 end
 return Controller

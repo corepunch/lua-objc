@@ -87,6 +87,8 @@ static const NSTimeInterval kScrollToAnimationDuration = 0.2;
 /* ----- Table / Outline cells ----- */
 #define kIconBadgeCornerFraction       0.23
 #define kIconBadgeSymbolScale          0.66
+/* Workspace icons leave a clear margin around the squircle: 108 of 128 pixels. */
+#define kAppIconArtworkFraction        0.84375
 #define kTableCellImageWidth            18
 #define kTableCellImageTextGap           8
 #define kTableCellImageLeadingInset      0
@@ -311,6 +313,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_tableColumnWidths", bridge_AppKit_table_column_widths},
 	{"_tableCell", bridge_table_cell},
 	{"_pressColumnButton", bridge_press_column_button},
+	{"_viewMidlineFill", bridge_view_midline_fill},
 	{"_tableCellFrames", bridge_AppKit_table_cell_frames},
 	{"_tableSpinnerFrame", bridge_AppKit_table_spinner_frame},
 	{"_toolbar_item", bridge_AppKit_toolbar_item},

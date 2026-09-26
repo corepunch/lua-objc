@@ -180,6 +180,23 @@ static void column_button_invoke(NSScrollView *scroll, NSButton *button) {
 	[self setNeedsDisplay:YES];
 }
 - (void)drawRect:(NSRect)dirtyRect {
+	if (_resolvedAppIcon && self.image) {
+		// The squircle sits inside the icon canvas. Scale it up and clip to the
+		// badge shape so installed apps match the symbol badges beside them.
+		CGFloat radius = MIN(self.bounds.size.width, self.bounds.size.height) * kIconBadgeCornerFraction;
+		NSBezierPath *clip = [NSBezierPath bezierPathWithRoundedRect:self.bounds xRadius:radius yRadius:radius];
+		[NSGraphicsContext saveGraphicsState];
+		[clip addClip];
+		CGFloat scale = 1.0 / kAppIconArtworkFraction;
+		NSRect destination = self.bounds;
+		destination.size.width *= scale;
+		destination.size.height *= scale;
+		destination.origin.x -= (destination.size.width - self.bounds.size.width) / 2.0;
+		destination.origin.y -= (destination.size.height - self.bounds.size.height) / 2.0;
+		[self.image drawInRect:destination fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1 respectFlipped:YES hints:nil];
+		[NSGraphicsContext restoreGraphicsState];
+		return;
+	}
 	BOOL badge = _badgeColorName.length && !_resolvedAppIcon && self.image;
 	if (!badge) { [super drawRect:dirtyRect]; return; }
 	[semantic_color(_badgeColorName) setFill];
@@ -321,8 +338,10 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	}
 	cell.imageWidth = [cellSpec[@"imageSize"] doubleValue];
 	if (cell.actionButton) {
+		id info = rowData[@"info"];
+		BOOL showInfo = ![info respondsToSelector:@selector(boolValue)] || [(NSNumber *)info boolValue];
 		cell.actionButton.tag = rowIndex;
-		cell.actionButton.hidden = NO;
+		cell.actionButton.hidden = !showInfo;
 		objc_setAssociatedObject(cell.actionButton, &kKeys[kButtonContentKey], rowData, OBJC_ASSOCIATION_RETAIN);
 		cell.textField.hidden = YES;
 		cell.imageView.hidden = YES;

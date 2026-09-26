@@ -93,10 +93,15 @@ local manager = Management.new(model, service, function() categoryRefreshes = ca
 	function(id) model.kept[id] = not model.kept[id] end, function() end)
 local parent = ns.Window {visible = false, width = 1000, height = 700}
 manager:open(parent, "developer")
+t.assertEqual(manager.sheet.size.width, 620, "a wide window keeps the default sheet 80 points inside a 700 point window")
+local narrow = ns.Window {visible = false, width = 600, height = 700}
+manager:close(); manager:open(narrow, "developer")
+t.assertEqual(manager.sheet.size.width, 520, "a narrower window keeps the sheet 80 points inside it")
+manager:close(); narrow:close(); manager:open(parent, "developer")
 t.assertEqual(manager.sheet.className, "LuaPanel", "management uses a native sheet-capable panel")
 t.assertEqual(manager.refs.tabs.className, "LuaTabView", "impact tabs are native")
 t.assertEqual(manager.refs.categoryName.text, "Developer", "sheet identifies the managed category")
-t.expect(manager.refs.categoryText.text:find("Review its measured resources", 1, true) ~= nil, "sheet explains the category")
+t.assertEqual(manager.refs.categoryText, nil, "the sheet uses its rows instead of an explanation")
 t.assertEqual(manager.refs.categoryKeep.title, "Keep this resource", "sheet offers category Keep")
 t.expect(manager.refs.categoryRefresh.enabled, "category can be remeasured from its sheet")
 ns._invokeAction(manager.refs.categoryRefresh)
@@ -127,7 +132,7 @@ for index = 0, manager.refs.rows1.rowCount - 1 do
 end
 manager:select("runtime-assets")
 t.expect(manager.refs.manage.enabled, "runtime can be revealed for inspection")
-t.expect(manager.refs.detail.text ~= "", "selected resource has consequences")
+t.expect(manager.refs.status.text:find("iOSSimulatorRuntime", 1, true) ~= nil, "selected resource shows its location")
 for _, size in ipairs({{800, 560}, {1100, 780}}) do
 	manager.sheet:resize(size[1], size[2]); manager.sheet:layout()
 	local width, height = manager.refs.rows1.size.width, manager.refs.rows1.size.height
@@ -136,6 +141,17 @@ end
 manager.query = "no such resource"; manager:update()
 t.assertEqual(manager.refs.rows1.rowCount, 0, "empty management search")
 t.expect(not manager.refs.manage.enabled and not manager.refs.reveal.enabled, "empty result clears destructive and reveal actions")
+manager:close()
+local openedSimulators = 0
+manager = Management.new(model, service, function() end, function(id) model.kept[id] = not model.kept[id] end, function() openedSimulators = openedSimulators + 1 end)
+manager:open(parent, "developer")
+local simulatorRow
+for index = 0, manager.refs.rows1.rowCount - 1 do
+	if resourceAt(index) == "Simulator devices" then simulatorRow = index end
+end
+t.expect(simulatorRow ~= nil, "developer review lists simulator devices")
+t.expect(bridge._pressColumnButton(manager.refs.rows1, 3, simulatorRow), "simulator row has an info button")
+t.assertEqual(openedSimulators, 1, "simulator info opens the installed device list")
 manager:close()
 local finderPath = "/System/Library/CoreServices/Finder.app"
 local app, appError = model.resources:add("apps-system", {id = "finder-icon-test", name = "Finder.app", subtitle = "Installed application",
@@ -154,6 +170,12 @@ simulatorUI:open(parent)
 calls[#calls].done(data)
 simulatorUI.refs.rows1:selectRow(0)
 t.expect(simulatorUI.refs.erase.enabled and simulatorUI.refs.delete.enabled, "native selection enables actions for a shutdown device")
+t.assertEqual(simulatorUI.refs.reveal.title, "Reveal in Finder", "a device can be revealed in Finder")
+t.expect(simulatorUI.refs.refresh == nil, "the device list does not keep a refresh button")
+for _, name in ipairs({"reveal", "erase", "delete", "unavailable", "done"}) do
+	local button = simulatorUI.refs[name]
+	t.expect(button.frame.size.width + 1 >= button.fittingSize.width, button.title .. " is shown in full")
+end
 t.assertEqual(simulatorUI.refs.done.keyEquivalent, "\r", "sheet Done is the native default action")
 simulatorUI.refs.rows1:selectRow(1)
 t.expect(not simulatorUI.refs.erase.enabled and simulatorUI.refs.delete.enabled, "unavailable device allows delete but not erase")

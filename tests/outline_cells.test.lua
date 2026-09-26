@@ -57,6 +57,10 @@ t.expect(not image.resolvedAppIcon, "ordinary category uses a symbol badge")
 badged:replaceRows({{id = "badge", name = "Finder", icon = "folder", appIcon = "com.apple.finder"}})
 image = bridge._tableCell(badged, 0, 0).imageView
 t.expect(image.resolvedAppIcon, "installed app artwork comes from NSWorkspace")
+local icon = xml.render('<SystemImage name="folder" size="32" appIcon="com.apple.finder" />', {}, ns)
+local badge = xml.render('<SystemImage name="folder" size="32" badgeColor="systemOrange" />', {}, ns)
+t.expect(bridge._viewMidlineFill(icon) >= 0.95, "app icons fill the same width as symbol badges")
+t.expect(bridge._viewMidlineFill(badge) >= 0.95, "symbol badges fill their frame")
 t.expect(image.contentTintColor == nil, "real app artwork retains its colors")
 badged:replaceRows({{id = "badge", name = "Finder at path", icon = "folder", color = "systemTeal", appIcon = "invalid.diskmap.missing", fileIcon = "/System/Library/CoreServices/Finder.app"}})
 image = bridge._tableCell(badged, 0, 0).imageView
@@ -69,6 +73,7 @@ t.assertEqual(image.badgeColorName, "systemTeal", "reused cell updates badge")
 local colored = ns.List {columns = {{id = "name", cell = {color = "color"}}}, data = {{name = "Brown", color = "systemBrown"}}}
 local coloredCell = bridge._tableCell(colored, 0, 0)
 t.assertEqual(coloredCell.textField.textColor.description, ns._systemColor("systemBrown").description, "table colors use the same semantic palette as standalone views")
+t.expect(ns._systemColor("systemPink").description ~= ns._systemColor("not-a-color").description, "systemPink is a real badge color, not the label fallback")
 local standalone = xml.render('<SystemImage name="mic.fill" size="32" badgeColor="systemBlue" appIcon="invalid.diskmap.missing"/>', {}, ns)
 t.assertEqual(standalone.badgeColorName, "systemBlue", "standalone and table icons share badge API")
 t.expect(not standalone.resolvedAppIcon, "standalone fallback retains badge")

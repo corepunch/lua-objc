@@ -1,14 +1,13 @@
-<Sheet width="720" height="480">
-  <VStack maxWidth="infinity" maxHeight="infinity" padding="20" spacing="12">
+<Sheet width="620" height="480">
+  <VStack maxWidth="infinity" maxHeight="infinity" padding="16" spacing="8">
     <Label text="<%= title %>" size="15" weight="semibold" maxWidth="infinity" />
-    <Label text="SDKs found in this installation. They belong to the toolchain; do not remove them individually." size="12" color="secondary" maxWidth="infinity" lines="2" />
     <SearchField id="search" placeholder="Search" accessibilityLabel="Search SDKs" onChange="search" maxWidth="infinity" />
     <List id="rows" style="fullWidth" alternatingRows="true" rowHeight="32" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
       <Column id="name" title="SDK" minWidth="180" />
       <Column id="platform" title="Platform" width="160" minWidth="120" />
       <Column id="size" title="On disk" width="120" minWidth="100" alignment="trailing" />
     </List>
-    <Label id="status" text="Reading SDK folders…" size="12" color="secondary" maxWidth="infinity" lines="2" />
+    <Label id="status" text="Reading SDK folders…" size="11" color="secondary" maxWidth="infinity" lines="1" />
     <HStack maxWidth="infinity" spacing="10">
       <Spacer />
       <Button id="done" title="Done" action="done" />

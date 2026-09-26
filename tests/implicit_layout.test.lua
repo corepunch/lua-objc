@@ -19,6 +19,7 @@ t.expect(refs.long.size.width <= 240 and refs.long.size.height > refs.short.size
 	"text wraps against the parent proposal without maxWidth")
 t.assertEqual(refs.composer.size.width, 240, "stack inherits text field flexibility")
 t.assertEqual(refs.input.size.width + refs.send.size.width + 8, 240, "text field takes remaining width by default")
+t.expect(refs.send.frame.size.width + 1 >= refs.send.fittingSize.width, "button keeps the width of its title")
 root.size = ns.Size(480, 300); root:layout(480)
 t.assertEqual(refs.input.text, "Keep me", "implicit resize preserves editing state")
 t.assertEqual(refs.input.size.width + refs.send.size.width + 8, 480, "implicit text field expands after resize")

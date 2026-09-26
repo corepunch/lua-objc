@@ -1,4 +1,5 @@
 local ns = require("AppKit")
+local Sheet = require("apps.diskmap.Sheet")
 local xml = require("ui.xml")
 local Categories = require("apps.diskmap.models.Categories")
 local Inspector = require("apps.diskmap.models.Inspector")
@@ -46,20 +47,27 @@ function Controller:close()
 	self.refs = nil
 end
 function Controller:updateCategory()
-	if not self.refs or not self.refs.categoryText then return end
+	if not self.refs or not self.refs.categoryKeep then return end
 	local detail = Inspector.details(self.model, self.rootId)
 	if not detail then return end
-	self.refs.categoryText.text = detail.text
-	self.refs.categoryLocation.text = detail.location
 	self.refs.categoryKeep.title = detail.keepTitle
 	self.sheet:layout()
+end
+function Controller:review(id, manage)
+	local row = self.model.resources:find(id)
+	if not row then return end
+	if row.action == "simulators" then self:close(); if self.simulators then self.simulators() end; return end
+	if row.action == "sdks" then self:close(); if self.sdks then self.sdks(row) end; return end
+	if not manage then return end
+	local inspector = InspectorController.new(self.model, self.service, self.refresh)
+	inspector:select(row.id); inspector:manage()
 end
 function Controller:select(id)
 	self.selectedId = id
 	local row, detail = self.model.resources:find(id), Inspector.details(self.model, id)
 	if not detail then return end
 	local refs = self.refs
-	refs.detail.text = row.consequence or row.subtitle; refs.path.text = detail.location
+	refs.status.text = detail.location
 	refs.manage.hidden = row.action == "finder"
 	refs.manage.accessibilityLabel = detail.manageTitle
 	refs.manage.toolTip = detail.manageTitle
@@ -86,7 +94,7 @@ function Controller:update()
 		end
 		if index == 1 then total = #rows end
 	end
-	self.refs.status.text = total == 0 and "No matching resources. Try another name or path." or total .. " resources · Review amounts are not guaranteed reclaimable space."
+	self.refs.status.text = total == 0 and "No matching resources." or total .. (total == 1 and " resource" or " resources")
 	self.refs.manage.enabled = false; self.refs.reveal.enabled = false; self.refs.keep.enabled = false
 	self.selectedId = nil
 	if selectionVisible then self:select(selected) end
@@ -106,19 +114,15 @@ function Controller:open(parent, id, filter)
 				categoryKeep = function() self.keep(self.rootId); self:updateCategory() end,
 				reveal = function() local row = self.model.resources:find(self.selectedId); if row and row.path then self.service.reveal(row.path) end end,
 				keep = function() if self.selectedId then local selected = self.selectedId; self.keep(selected); self:select(selected) end end,
-				manage = function()
-					local row = self.model.resources:find(self.selectedId); if not row then return end
-					if row.action == "simulators" then self:close(); self.simulators(); return end
-					if row.action == "sdks" then if self.sdks then self:close(); self.sdks(row) end; return end
-					local inspector = InspectorController.new(self.model, self.service, self.refresh)
-					inspector:select(row.id); inspector:manage()
-				end,
+				manage = function() self:review(self.selectedId, true) end,
 			}}, ns)
 		self.refs.done.keyEquivalent = "\r"
 		self.sheet.defaultButtonCell = self.refs.done.cell
 		for index in ipairs(self.filters) do
 			local list = self.refs["rows" .. index]
 			list:onRowSelect(function(_, _, row) if row then self:select(row.id) end end)
+			list:onRowActivate(function(_, _, row) if row then self:review(row.id) end end)
+			list:onColumnButton(function(_, _, row) if row then self:review(row.id) end end)
 			list:onColumnSort(function(_, column) self:sortBy(column) end)
 		end
 		self.refs.tabs:onChange(function() self.selectedId = nil; self.refs.manage.enabled = false; self.refs.reveal.enabled = false; self.refs.keep.enabled = false end)
@@ -133,11 +137,11 @@ function Controller:open(parent, id, filter)
 				local shown = {}; for index = math.max(1, #dates - 3), #dates do table.insert(shown, (dates[index]:match("TimeMachine%.(.+)%.local$"))) end
 				note = note .. " · " .. table.concat(shown, ", ") .. (#dates > #shown and " …" or "")
 			end
-			self.refs.status.text = note .. " (system managed) · " .. self.refs.status.text
+			self.refs.status.text = note .. " · " .. self.refs.status.text
 			self.sheet:layout()
 		end)
 	end
 	if filter then for index, name in ipairs(self.filters) do if name == filter then self.refs.tabs:selectTab(index - 1) end end end
-	ns.presentSheet(self.sheet, parent); ns.focus(self.sheet, self.refs.search)
+	Sheet.present(self.sheet, parent); ns.focus(self.sheet, self.refs.search)
 end
 return Controller

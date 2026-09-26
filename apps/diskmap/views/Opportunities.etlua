@@ -10,7 +10,6 @@
     </GroupBox>
     <% end %>
   </HStack>
-  <Label text="Amounts describe measured storage, not space guaranteed to be freed." size="11" color="secondary" maxWidth="infinity" lines="2" />
   <% for _, group in ipairs(groups) do %>
   <VStack maxWidth="infinity" spacing="6" alignment="leading">
     <Label text="<%= group.name %>" size="11" weight="semibold" color="secondary" />
