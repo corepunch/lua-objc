@@ -12,6 +12,7 @@ function Controller.new(options)
 		ns = assert(options.ns, "native platform module is required"),
 		readingSettings = assert(options.readingSettings, "reading settings model is required"),
 		renderTemplate = assert(options.renderTemplate, "template renderer is required"),
+		mountTemplate = assert(options.mountTemplate, "template mount is required"),
 		presentSheet = assert(options.presentSheet, "sheet presenter is required"),
 		dismissSheet = assert(options.dismissSheet, "sheet dismisser is required"),
 		speech = nil,
@@ -73,9 +74,12 @@ function Controller:show(id)
 	local presentation = self.model:presentation()
 	presentation.speechAvailable = speechAvailable
 	presentation.compassSegments = CompassGesture.segments()
+	presentation.backdrop = self.readingSettings:presentation().backdrop
 	actions.disappear = function() self:onDisappear() end
 	presentation.actions = actions
 	self.page, self.refs = self.push("Session", presentation)
+	self.transcript = self.mountTemplate(self.refs.transcript, "Transcript")
+	self.suggestions = self.mountTemplate(self.refs.suggestions, "Suggestions")
 	self:applyReadingSettings()
 	self:updateComposer(self.refs.input.text)
 	self:updateCompass(nil)
@@ -111,6 +115,42 @@ function Controller:updateComposer(text)
 	self.refs.send.hidden = not showSend
 	self.refs.send.enabled = hasText
 	if self.refs.dictate then self.refs.dictate.hidden = showSend end
+	self:renderSuggestions(text)
+end
+
+-- Suggestions follow every keystroke. A whole command ("north", "open
+-- mailbox") runs on tap; a completion replaces the composer text so the
+-- player can keep typing.
+function Controller:renderSuggestions(text)
+	if not self.suggestions or self.suggestions:isDisposed() then return end
+	local suggestions = self.model:suggestions(type(text) == "string" and text or "")
+	local actions = {}
+	for index, suggestion in ipairs(suggestions) do
+		actions["suggest_" .. index] = function() self:applySuggestion(suggestion) end
+	end
+	self.currentSuggestions = suggestions
+	self.suggestions:update({ suggestions = suggestions, actions = actions })
+	self.refs.suggestionScroll.hidden = #suggestions == 0
+end
+
+function Controller:applySuggestion(suggestion)
+	if not self.refs or type(suggestion) ~= "table" then return false end
+	if suggestion.submit then return self:submitCommand(suggestion.text) end
+	self.refs.input.text = suggestion.text
+	self:updateComposer(suggestion.text)
+	return true
+end
+
+function Controller:renderTranscript()
+	if not self.transcript or self.transcript:isDisposed() then return end
+	local data = self.model:presentation()
+	local settings = self.readingSettings:presentation()
+	data.reading = {
+		font = settings.font, fontSize = settings.fontSize,
+		primary = settings.primaryTextColor, secondary = settings.secondaryTextColor,
+	}
+	data.actions = {}
+	return self.transcript:update(data)
 end
 
 function Controller:onSpeechEvent(state, text, message)
@@ -165,9 +205,12 @@ end
 
 function Controller:onDisappear()
 	self:cancelDictation()
+	if self.transcript then self.transcript:dispose() end
+	if self.suggestions then self.suggestions:dispose() end
 	self.speech = nil
 	self.refs = nil
 	self.page = nil
+	self.transcript, self.suggestions, self.currentSuggestions = nil, nil, nil
 end
 
 function Controller:submitCommand(command)
@@ -175,11 +218,10 @@ function Controller:submitCommand(command)
 	self:cancelDictation()
 	local ok, err = self.model:submit(command)
 	local presentation = self.model:presentation()
-	self.refs.roomTitle.text = presentation.roomTitle
-	self.refs.output.text = presentation.transcript
 	self.refs.progress.text = presentation.progress
 	self.refs.input.text = ""
 	self.refs.dictationStatus.text = ""
+	self:renderTranscript()
 	self:updateCompass(nil)
 	self:scrollTranscript(true)
 	self:updateComposer("")
@@ -232,19 +274,11 @@ end
 function Controller:applyReadingSettings()
 	if not self.refs then return end
 	local settings = self.readingSettings:presentation()
-	local background = self.ns.Color(settings.backgroundColor)
 	local primary = self.ns.Color(settings.primaryTextColor)
 	local secondary = self.ns.Color(settings.secondaryTextColor)
-	self.refs.session.backgroundColor = background
-	self.refs.transcriptScroll.backgroundColor = background
-	self.refs.output.font = self.ns.Font { size = settings.fontSize, design = settings.font }
-	self.refs.output.textColor = primary
-	self.refs.gameTitle.font = self.ns.Font { size = settings.fontSize + 3, weight = "bold", design = settings.font }
-	self.refs.gameTitle.textColor = primary
-	self.refs.gameDescription.font = self.ns.Font { size = settings.fontSize, design = settings.font }
-	self.refs.gameDescription.textColor = primary
-	self.refs.roomTitle.font = self.ns.Font { size = settings.fontSize + 3, weight = "bold", design = settings.font }
-	self.refs.roomTitle.textColor = primary
+	self.refs.session.backgroundColor = self.ns.Color(settings.backgroundColor)
+	self.refs.backdrop.hidden = not settings.backdrop
+	self.refs.transcriptScroll.backgroundColor = self.ns.Color(settings.pageColor)
 	self.refs.progress.textColor = secondary
 	self.refs.dictationStatus.textColor = secondary
 	self.refs.input.font = self.ns.Font { size = math.max(15, math.min(settings.fontSize, 20)), design = settings.font }
@@ -252,6 +286,9 @@ function Controller:applyReadingSettings()
 	if self.ns.platform == "UIKit" then
 		self.refs.session.overrideUserInterfaceStyle = settings.appearance
 	end
+	-- Typeface, size and ink belong to the transcript description, so a
+	-- settings change re-renders the page rather than restyling labels.
+	self:renderTranscript()
 end
 
 function Controller:closeReadingSettings()

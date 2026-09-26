@@ -1,0 +1,6 @@
+<NavigationStack id="searchNavigation" title="Search" largeTitle="true">
+  <VStack spacing="0" maxWidth="infinity" maxHeight="infinity">
+    <SearchField id="searchField" placeholder="Titles, authors, genres" accessibilityLabel="Search adventures" onChange="search" paddingHorizontal="16" paddingBottom="8" />
+    <VStack id="searchResults" maxWidth="infinity" maxHeight="infinity" />
+  </VStack>
+</NavigationStack>

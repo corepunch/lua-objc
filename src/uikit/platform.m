@@ -23,15 +23,24 @@ static int bridge_font(lua_State *L) {
 		else if (strcmp(weightStr, "heavy") == 0) w = UIFontWeightHeavy;
 	}
 
-	UIFont *font = monospacedDigit
-		? [UIFont monospacedDigitSystemFontOfSize:size weight:w]
-		: [UIFont systemFontOfSize:size weight:w];
-	UIFontDescriptorSystemDesign design = UIFontDescriptorSystemDesignDefault;
-	if (strcmp(designName, "serif") == 0) design = UIFontDescriptorSystemDesignSerif;
-	else if (strcmp(designName, "rounded") == 0) design = UIFontDescriptorSystemDesignRounded;
-	else if (strcmp(designName, "monospaced") == 0) design = UIFontDescriptorSystemDesignMonospaced;
-	UIFontDescriptor *designed = [font.fontDescriptor fontDescriptorWithDesign:design];
-	if (designed) font = [UIFont fontWithDescriptor:designed size:size];
+	// A named face (PostScript or family name) selects one of the fonts the
+	// OS ships, such as Snell Roundhand for illuminated initials. An unknown
+	// name falls back to the system design so text never disappears.
+	const char *fontName = luaL_optstring(L, 6, NULL);
+	UIFont *font = fontName
+		? [UIFont fontWithName:[NSString stringWithUTF8String:fontName] size:size]
+		: nil;
+	if (!font) {
+		font = monospacedDigit
+			? [UIFont monospacedDigitSystemFontOfSize:size weight:w]
+			: [UIFont systemFontOfSize:size weight:w];
+		UIFontDescriptorSystemDesign design = UIFontDescriptorSystemDesignDefault;
+		if (strcmp(designName, "serif") == 0) design = UIFontDescriptorSystemDesignSerif;
+		else if (strcmp(designName, "rounded") == 0) design = UIFontDescriptorSystemDesignRounded;
+		else if (strcmp(designName, "monospaced") == 0) design = UIFontDescriptorSystemDesignMonospaced;
+		UIFontDescriptor *designed = [font.fontDescriptor fontDescriptorWithDesign:design];
+		if (designed) font = [UIFont fontWithDescriptor:designed size:size];
+	}
 	if (italic) {
 		UIFontDescriptor *descriptor = [font.fontDescriptor
 			fontDescriptorWithSymbolicTraits:UIFontDescriptorTraitItalic];

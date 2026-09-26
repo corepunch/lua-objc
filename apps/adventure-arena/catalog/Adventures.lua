@@ -1,8 +1,15 @@
 -- Catalog content from AdventureArena e7805e87, sorted by title.
 -- Artwork paths are local; descriptions and reviews preserve the source text.
+-- `collection` groups the library into shelves, `difficulty` uses Infocom's
+-- published levels, `tint` is the game's accent (it must carry white text at
+-- 4.5:1), and `initialFont` names the OS-bundled face used for its initials.
 return {
 	{
 		id = "infocom.planetfall",
+		collection = "Infocom Classics",
+		difficulty = "Standard",
+		tint = "#1F6F66",
+		initialFont = "Futura-CondensedExtraBold",
 		title = "Planetfall",
 		shortDescription = "Survive a crash landing on an alien world.",
 		description = "Ensign Seventh Class of the Stellar Patrol — that's you. Your ship, the S.P.S. Feinstein, has been destroyed. You escaped in a life pod and crash-landed on a strange, seemingly abandoned planet. Explore the ruins of a lost civilization, befriend an unforgettable robot named Floyd, and unravel the mystery of what happened here. A landmark in interactive storytelling with genuine emotional depth.",
@@ -30,6 +37,10 @@ return {
 	},
 	{
 		id = "books.blackwood-horror",
+		collection = "Arena Originals",
+		difficulty = "Standard",
+		tint = "#7A1F2B",
+		initialFont = "Baskerville-SemiBoldItalic",
 		title = "Sanitarium",
 		shortDescription = "A psychological horror adventure.",
 		description = "Something is very wrong. You wake up in a place that shouldn't exist, surrounded by people who seem to know you — but you don't remember them. Navigate through fractured realities, solve deeply unsettling puzzles, and piece together the truth about who you really are.\n\nSanitarium is a slow-burn psychological horror experience where the most terrifying thing isn't what lurks in the shadows — it's what you might discover about yourself.",
@@ -58,6 +69,10 @@ return {
 	},
 	{
 		id = "infocom.spellbreaker",
+		collection = "Infocom Classics",
+		difficulty = "Expert",
+		tint = "#5B3FA8",
+		initialFont = "SnellRoundhand-Black",
 		title = "Spellbreaker",
 		shortDescription = "Magic itself is failing — save it.",
 		description = "Ten years after the events of Enchanter, the very foundations of magic itself seem to be failing. As leader of the Circle of Enchanters, you must uncover the cause of this paralyzing chaos. Journey through the black foundation of magic itself in a perilous quest to save your world. Spellbreaker is the riveting conclusion to the Enchanter trilogy, and Infocom's most challenging game.",
@@ -85,6 +100,10 @@ return {
 	},
 	{
 		id = "books.wondertown",
+		collection = "Arena Originals",
+		difficulty = "Introductory",
+		tint = "#A94A16",
+		initialFont = "Chalkduster",
 		title = "The Last Toymaker's Apprentice",
 		shortDescription = "Save a toy workshop's magic before dawn.",
 		description = "You are Pip, a wind-up apprentice no taller than a teacup, working for Grandfather Tolliver, the last toymaker in Wrenfold. Every night after the shop closes, the toys wake up, and Pip keeps the workshop running until morning.\n\nTonight, Tolliver is missing and the workshop key has stopped ticking on its hook. Without it, the toys will fall silent by sunrise. Find out what happened, recover the key, and rewind the town's heart before dawn.",
@@ -119,6 +138,10 @@ return {
 	},
 	{
 		id = "books.limehouse-killings",
+		collection = "Arena Originals",
+		difficulty = "Standard",
+		tint = "#6B5230",
+		initialFont = "Didot-Bold",
 		title = "The Limehouse Killings",
 		shortDescription = "Solve a Victorian murder in fog-shrouded London.",
 		description = "The year is 1888. Lord Ashworth, a wealthy industrialist, has been found dead in his locked study at Ashworth Manor in the Limehouse district. Scotland Yard is baffled. Lady Ashworth has hired you to investigate before the press gets wind of the scandal.\n\nAs a private detective in Victorian London, you must explore the manor, gather evidence, and interrogate three suspects: the nervous butler Mr. Hudson, the cold Lady Ashworth, and the arrogant Dr. Moriarty. Five key pieces of evidence point to the killer, but can you connect the clues before they escape?",
@@ -153,6 +176,10 @@ return {
 	},
 	{
 		id = "infocom.lurkinghorror",
+		collection = "Infocom Classics",
+		difficulty = "Standard",
+		tint = "#2F6B3E",
+		initialFont = "Baskerville-SemiBoldItalic",
 		title = "The Lurking Horror",
 		shortDescription = "Something ancient stirs beneath the campus.",
 		description = "A blizzard rages outside G.U.E. Tech. You brave the storm to reach the computer lab and finish your term paper, but your file has been corrupted — partially overwritten by the Department of Alchemy's files. As you investigate, you descend into steam tunnels and ancient chambers where something ancient and malevolent stirs. Infocom's only horror game, inspired by the works of H.P. Lovecraft.",
@@ -180,6 +207,10 @@ return {
 	},
 	{
 		id = "infocom.zork1",
+		collection = "The Zork Trilogy",
+		difficulty = "Standard",
+		tint = "#8A5A00",
+		initialFont = "SnellRoundhand-Bold",
 		title = "Zork I: The Great Underground Empire",
 		shortDescription = "Explore the Great Underground Empire.",
 		description = "You are standing in an open field west of a white house, with a boarded front door. You are about to begin a legendary adventure that started it all — a journey into the Great Underground Empire. Navigate treacherous mazes, collect treasures, and outwit the fearsome Grues that lurk in the dark.\n\nOriginally created at MIT in the late 1970s, Zork pioneered the text adventure genre and established many of the conventions still used in interactive fiction today.",
@@ -213,6 +244,10 @@ return {
 	},
 	{
 		id = "infocom.zork2",
+		collection = "The Zork Trilogy",
+		difficulty = "Advanced",
+		tint = "#9C3D1A",
+		initialFont = "SnellRoundhand-Bold",
 		title = "Zork II: The Wizard of Frobozz",
 		shortDescription = "Confront the capricious Wizard of Frobozz.",
 		description = "The Wizard appears, floating nonchalantly in the air beside you. He grins sideways at you. As you explore deeper into the Great Underground Empire, you'll face the Wizard's unpredictable magic, navigate treacherous new mazes, and uncover secrets even darker than those of Zork I. The sequel that expanded the legend.",
@@ -240,6 +275,10 @@ return {
 	},
 	{
 		id = "infocom.zork3",
+		collection = "The Zork Trilogy",
+		difficulty = "Advanced",
+		tint = "#2F5D7C",
+		initialFont = "SnellRoundhand-Bold",
 		title = "Zork III: The Dungeon Master",
 		shortDescription = "The final chapter of the Zork trilogy.",
 		description = "You have reached the final test. The deepest and most mysterious reaches of the Great Underground Empire await. Nothing is as it seems, and the one responsible for the shadow and darkness — the Dungeon Master — embodies the greatest mystery of all. In this test of wisdom and courage, you will face countless dangers. But what awaits you at the culmination of your odyssey is well worth risking all.",

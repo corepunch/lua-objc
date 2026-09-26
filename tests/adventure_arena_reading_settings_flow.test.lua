@@ -6,6 +6,7 @@ local xml = require("ui.xml")
 local Session = require("apps.adventure-arena.models.Session")
 local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
 local SessionController = require("apps.adventure-arena.controllers.SessionController")
+local Template = require("ui.template")
 
 local button, slider, picker, page = ns.Button, ns.Slider, ns.Picker, ns.Page
 local buttonActions, pickerControls, sliderControls, toolbarActions = {}, {}, {}, {}
@@ -70,6 +71,9 @@ local controller = SessionController.new {
 		sheetRefs = refs
 		return view, refs
 	end,
+	mountTemplate = function(host, template)
+		return Template.new(host, "apps/adventure-arena/views/" .. template .. ".etlua", ns)
+	end,
 	presentSheet = function(sheet, detents)
 		presentedSheet, presentedDetents = sheet, detents
 		return sheet
@@ -79,9 +83,10 @@ local controller = SessionController.new {
 
 t.expect(controller:show(game.id), "session screen opens for the selected game")
 t.assertEqual(sessionRefs.sessionTitle.text, game.title, "session navigation title uses the game title")
-t.assertEqual(sessionRefs.gameTitle.text, game.title, "session reading content starts with the game title")
-t.assertEqual(sessionRefs.gameDescription.text, game.description, "session reading content includes the full synopsis")
-t.assertEqual(sessionRefs.roomTitle.text, "Sanitarium Gate", "session content identifies the active room")
+local function page() return controller.transcript.refs end
+t.assertEqual(page().gameTitle.text, game.title, "session reading content starts with the game title")
+t.assertEqual(page().gameDescription.text, game.description, "session reading content includes the full synopsis")
+t.assertEqual(page().sceneTitle_1.text, "Sanitarium Gate", "the first chapter identifies the active room")
 t.assertEqual(sessionRefs.progress.text, "Score 2/10 | Moves 3", "session header shows engine score and moves")
 
 local openSettings = toolbarActions.readingSettings
@@ -93,7 +98,7 @@ t.assertEqual(table.concat(presentedDetents or {}, ","), "medium,large", "readin
 t.assertEqual(#pickerControls, 2, "reading sheet renders native font and theme pickers")
 t.assertEqual(table.concat(pickerControls[1].options, ","), "System,Serif,Rounded,Mono",
 	"font picker matches the reading options")
-t.assertEqual(table.concat(pickerControls[2].options, ","), "System,White,Sepia,Black",
+t.assertEqual(table.concat(pickerControls[2].options, ","), "Cover,System,White,Sepia,Black",
 	"theme picker matches the appearance options")
 t.assertEqual(#sliderControls, 1, "reading sheet renders one font-size slider")
 t.assertEqual(sliderControls[1].min, 14, "font-size slider uses the supported minimum")
@@ -107,16 +112,16 @@ t.assertEqual(controller.readingSettings:presentation().fontSize, 20, "font-size
 t.assertEqual(sheetRefs.sizeValue.text, "20", "sheet displays the updated font size")
 t.assertEqual(sheetRefs.sizeSlider.value, 20, "sheet slider tracks the chosen font size")
 t.assertEqual(sheetRefs.previewBody.font.pointSize, 20, "preview applies the selected font size")
-t.assertEqual(sessionRefs.output.font.pointSize, 20, "session transcript applies the selected font size")
-t.assertEqual(sessionRefs.gameDescription.font.pointSize, 20, "session synopsis applies the selected font size")
+t.assertEqual(page().lead_1.font.pointSize, 20, "session transcript applies the selected font size")
+t.assertEqual(page().gameDescription.font.pointSize, 19, "session synopsis follows the selected size")
 
-pickerControls[2].action(2)
+pickerControls[2].action(3)
 t.assertEqual(controller.readingSettings:presentation().theme, "sepia", "theme control updates reading preferences")
 t.expect(math.abs(sheetRefs.preview.backgroundColor.redComponent - 245 / 255) < 0.01,
 	"preview uses the sepia paper background")
 t.expect(math.abs(sessionRefs.transcriptScroll.backgroundColor.redComponent - 245 / 255) < 0.01,
 	"session reading surface uses the same sepia background")
-t.assertEqual(sessionRefs.output.text, "The rusted gate stands open.",
+t.assertEqual(page().initial_1.text .. page().lead_1.text, "The rusted gate stands open.",
 	"changing reading preferences preserves the game transcript")
 t.assertEqual(sessionRefs.progress.text, "Score 2/10 | Moves 3",
 	"changing reading preferences preserves session progress")

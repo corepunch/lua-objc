@@ -6,6 +6,10 @@ local xml = require("ui.xml")
 local Session = require("apps.adventure-arena.models.Session")
 local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
 local SessionController = require("apps.adventure-arena.controllers.SessionController")
+local Template = require("ui.template")
+local function mountTemplate(host, template)
+	return Template.new(host, "apps/adventure-arena/views/" .. template .. ".etlua", ns)
+end
 
 local opening = string.rep("A long opening paragraph. ", 40)
 local function engine()
@@ -33,6 +37,7 @@ local controller = SessionController.new {
 	ns = ns,
 	readingSettings = ReadingSettings.new(),
 	renderTemplate = function() end,
+	mountTemplate = mountTemplate,
 	presentSheet = function() end,
 	dismissSheet = function() end,
 }
@@ -54,7 +59,8 @@ controller:submitCommand("look")
 scroll.frameSize = ns.Size(320, 120)
 scroll:layout(320)
 t.assertEqual(scroll.contentView.bounds.origin.y, 0, "a new message returns to the latest line")
-t.expect(rendered.refs.output.text:find("> look", 1, true) ~= nil, "the submitted command is in the transcript")
+t.assertEqual(controller.transcript.refs.command_2.text, "look", "the submitted command is in the transcript")
+t.assertEqual(controller.transcript.refs.paragraph_3_1.text, "Response look", "the response follows the command")
 t.assertEqual(rendered.refs.compassExit_north.strokeAlpha, 1, "loaded exits stay marked after a command")
 t.assertEqual(rendered.refs.compassExit_south.strokeAlpha, 0, "closed exits stay unmarked after a command")
 
@@ -79,6 +85,7 @@ local loaded = SessionController.new {
 	ns = ns,
 	readingSettings = ReadingSettings.new(),
 	renderTemplate = function() end,
+	mountTemplate = mountTemplate,
 	presentSheet = function() end,
 	dismissSheet = function() end,
 }
@@ -87,6 +94,7 @@ scroll = rendered.refs.transcriptScroll
 scroll.frameSize = ns.Size(320, 120)
 scroll:layout(320)
 t.assertEqual(scroll.contentView.bounds.origin.y, 0, "loading a session shows the latest line")
-t.expect(rendered.refs.output.text:find("> inventory", 1, true) ~= nil, "a loaded session keeps its commands")
+t.assertEqual(loaded.transcript.refs.lead_1.text:sub(1, 20), " long opening paragr", "a loaded session keeps its opening")
+t.expect(loaded.transcript.refs.paragraph_1_1.text:find("> inventory", 1, true) ~= nil, "a loaded session keeps its commands")
 
 os.exit(t.summary() and 0 or 1)

@@ -54,15 +54,23 @@ local sessionModel = Session.new({ engineFactory = function()
 	end }
 end })
 local controller = Controller.new { adventures = catalog, sessionModel = sessionModel, ns = ns }
-local config, refs = xml.renderFile("apps/adventure-arena/views/Window.etlua", controller.library:presentation(), ns)
+local config, refs = xml.renderFile("apps/adventure-arena/views/Window.etlua", controller:libraryData(), ns)
 controller.navigation = refs.navigation
+controller.navigations = { library = refs.navigation, search = refs.searchNavigation }
 local tabs = refs.tabs
+-- The transcript and suggestion strip are retained templates inside the page.
+local function page() return controller.sessionController.transcript.refs end
+local function chips() return controller.sessionController.suggestions.refs end
+local function lastEntry()
+	local entries = controller.sessionModel:presentation().entries
+	return #entries, entries[#entries]
+end
 for _, size in ipairs({ { 640, 720 }, { 420, 360 }, { 1000, 900 } }) do
 	tabs.frameSize = ns.Size(size[1], size[2])
 	tabs:layout(size[1])
 	t.assertSize(tabs, size[1], size[2], "template tabs consume available space")
 end
-for index, title in ipairs({ "Adventures", "Ongoing", "Create Game", "Settings" }) do
+for index, title in ipairs({ "Adventures", "Ongoing", "Create Game", "Settings", "Search" }) do
 	tabs:selectTab(index - 1)
 	t.assertEqual(tabs.selectedTabViewItem.label, title, "template preserves tab title and order")
 end
@@ -86,13 +94,15 @@ while compassParent do
 end
 t.expect(reachesOverlay and not entersInset,
 	"compass overlays the transcript without reserving bottom-inset height")
-t.assertEqual(rendered.refs.gameTitle.text, catalog:list()[1].title, "session content repeats the game title")
-t.assertEqual(rendered.refs.gameDescription.text, catalog:list()[1].description,
-	"session content includes the complete game synopsis")
-t.assertEqual(rendered.refs.roomTitle.text, catalog:list()[1].title,
-	"session content shows the current room heading")
+t.assertEqual(page().gameTitle.text, catalog:list()[1].title, "the title page names the game")
+t.assertEqual(page().gameDescription.text, catalog:list()[1].description,
+	"the title page includes the complete game synopsis")
+t.assertEqual(page().sceneTitle_1.text, catalog:list()[1].title, "the opening chapter is named")
+t.assertEqual(page().initial_1.text, "O", "the opening starts with an illuminated initial")
+t.assertEqual(page().lead_1.text, "pening <&>", "transcript escapes XML characters")
+t.assertEqual(rendered.refs.backdrop.hidden, false, "the cover theme shows the blurred cover art")
 t.assertEqual(rendered.refs.progress.text, "Score 0 | Moves 0", "session starts with live engine progress")
-t.assertEqual(rendered.refs.output.text, "Opening <&>", "transcript escapes XML characters")
+t.expect(chips().suggestion_1 ~= nil, "the suggestion strip offers commands before typing")
 t.assertEqual(rendered.refs.input.accessibilityLabel, "Command", "composer retains accessibility label")
 t.assertEqual(rendered.refs.input.bezeled, false, "glass composer owns the visible border")
 t.assertEqual(rendered.refs.input.bordered, false, "plain input has no inner border")
@@ -103,10 +113,13 @@ while composerAncestor and composerAncestor ~= rendered.refs.sessionContent do
 end
 t.expect(composerHorizontalInset, "composer horizontal clearance is owned by the safe-area inset")
 t.assertEqual(rendered.refs.send.enabled, false, "empty composer disables sending")
+ns._textFieldTestInput(rendered.refs.input, "inv")
+t.assertEqual(chips().suggestion_1.title, "inventory", "typing narrows the suggestions")
 ns._textFieldTestInput(rendered.refs.input, "inventory")
 t.assertEqual(rendered.refs.send.enabled, true, "typing enables sending")
 click("send")
-t.expect(rendered.refs.output.text:find('Response <&> "inventory"', 1, true), "send updates transcript")
+t.assertEqual(page().command_2.text, "inventory", "the command appears as a sent message")
+t.assertEqual(page().paragraph_3_1.text, 'Response <&> "inventory"', "send updates transcript")
 t.assertEqual(rendered.refs.input.text, "", "send clears input")
 t.assertEqual(rendered.refs.progress.text, "Score 0 | Moves 1", "session refreshes progress after a command")
 local compassDrag = drags[rendered.refs.compassControl]
@@ -120,24 +133,34 @@ if compassDrag then
 	t.assertEqual(rendered.refs.compassDrag_north.stroke, "accent", "an available drag uses the accent section")
 	t.expect(rendered.refs.compassImage.offsetY < 0, "compass follows a north drag")
 	compassDrag({ state = "ended", translation = { x = 0, y = -24 } })
-	t.expect(rendered.refs.output.text:find("> go north", 1, true), "compass drag submits an available direction")
+	t.assertEqual(select(2, lastEntry()).paragraphs[1], 'Response <&> "go north"', "compass drag submits an available direction")
 	t.assertEqual(rendered.refs.compassDrag_north.strokeAlpha, 0, "releasing the compass clears the highlight")
 	t.assertEqual(rendered.refs.compassImage.offsetY, 0, "released compass returns to center")
-	local compassTranscript = rendered.refs.output.text
+	local compassTranscript = lastEntry()
 	compassDrag({ state = "changed", translation = { x = 24, y = 0 } })
 	t.assertEqual(rendered.refs.compassDrag_east.stroke, "tertiary", "an unavailable drag uses the tertiary section")
 	compassDrag({ state = "ended", translation = { x = 24, y = 0 } })
-	t.assertEqual(rendered.refs.output.text, compassTranscript, "compass ignores unavailable directions")
+	t.assertEqual(lastEntry(), compassTranscript, "compass ignores unavailable directions")
 end
 chooseMenu("Look")
-t.expect(rendered.refs.output.text:find('Response <&> "look"', 1, true), "quick command reaches session")
-	local transcript = rendered.refs.output.text
+local lookIndex = lastEntry()
+t.assertEqual(page()["paragraph_" .. lookIndex .. "_1"].text, 'Response <&> "look"', "quick command reaches session")
+local transcript = lastEntry()
 click("send")
-t.assertEqual(rendered.refs.output.text, transcript, "empty submission leaves transcript unchanged")
+t.assertEqual(lastEntry(), transcript, "empty submission leaves transcript unchanged")
+local chip = controller.sessionController.currentSuggestions[1]
+t.expect(chip and chip.submit, "an empty composer offers a one-tap command")
+if chip then
+	local callbackBefore = lastEntry()
+	controller.sessionController:applySuggestion(chip)
+	t.assertEqual(lastEntry(), callbackBefore + 2, "a one-tap suggestion plays the command")
+end
+transcript = lastEntry()
 t.expect(not ns._textFieldTestCommand(rendered.refs.input, "cancel"), "unhandled keys retain native behavior")
 chooseMenu("End session")
 t.assertEqual(controller.navigation.depth, 2, "close returns to detail")
-	t.assertEqual(controller.sessionModel:presentation().transcript, transcript, "navigation preserves session state")
+t.assertEqual(lastEntry(), transcript, "navigation preserves session state")
+t.assertEqual(controller.sessionController.transcript, nil, "closing releases the transcript template")
 controller.navigation:pop()
 controller.sessionModel.engineFactory = function() error('Missing <story> & "engine"', 0) end
 controller.sessionController:show(catalog:list()[1].id)
@@ -172,7 +195,7 @@ t.assertEqual(data.featured.id, game.id, "controller uses the injected featured 
 t.assertEqual(game.stars, nil, "presentation does not decorate domain records with symbols")
 t.assertEqual(game.ratingLabel, nil, "presentation does not decorate domain records with formatting")
 controller:home()
-click("coverButton_1")
+click("cover_1_1")
 t.assertEqual(rendered.refs.title.text, game.title, "catalog actions resolve stable game ids")
 
 local empty = Controller.new { adventures = Adventures.new { games = {} }, sessionModel = Session.new(), ns = ns }

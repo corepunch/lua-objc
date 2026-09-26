@@ -23,7 +23,9 @@ t.assertEqual(controller.window, nil, "component navigation never creates a wind
 ns._textFieldTestInput(controller.sessionController.refs.input, "look")
 t.expect(ns._textFieldTestCommand(controller.sessionController.refs.input, "submit"), "return submits typed command")
 t.assertEqual(controller.sessionController.refs.input.text, "", "successful submission clears composer")
-t.expect(controller.sessionController.refs.output.text:find("Response to look", 1, true), "native transcript receives model output")
+local transcript = controller.sessionController.transcript.refs
+t.assertEqual(transcript.command_2.text, "look", "the command appears in the native transcript")
+t.assertEqual(transcript.paragraph_3_1.text, "Response to look", "native transcript receives model output")
 home:pop()
 t.assertEqual(home.depth, 2, "ending session returns to detail")
 home:pop()

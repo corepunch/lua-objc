@@ -2,6 +2,13 @@ _G.__headless = true
 local t = require("TestKit")
 local Session = require("apps.adventure-arena.models.Session")
 
+local function kinds(session)
+	local list = {}
+	for _, entry in ipairs(session:presentation().entries) do table.insert(list, entry.kind) end
+	return table.concat(list, ",")
+end
+
+-- Plain engine: no room names, so the opening still opens Chapter I.
 local session = Session.new({ engineFactory = function()
 	return { start = function()
 		return { resume = function(_, command)
@@ -11,43 +18,100 @@ local session = Session.new({ engineFactory = function()
 		end }, "Welcome."
 	end }
 end })
-local game = { id = "test" }
+local game = { id = "test", title = "Test Story" }
 t.expect(session:start(game), "session starts with an opening message")
 t.assertEqual(session:presentation().progress, "Score 0 | Moves 0", "new session starts with empty progress")
+local opening = session:presentation().entries[1]
+t.assertEqual(opening.kind, "scene", "the opening starts a chapter")
+t.assertEqual(opening.chapterLabel, "Chapter I", "chapters are numbered in roman numerals")
+t.assertEqual(opening.title, "Test Story", "without a room name the chapter takes the game title")
+t.assertEqual(opening.initial, "W", "the first letter becomes the illuminated initial")
+t.assertEqual(opening.lead, "elcome.", "the rest of the paragraph runs beside the initial")
 t.expect(session:submit("  look  "), "trimmed command succeeds")
 t.assertEqual(session:presentation().progress, "Score 0 | Moves 1", "submitted commands increment the move count")
-t.assertEqual(#session.messages, 3, "command and first response append exactly two entries")
-t.assertEqual(session:presentation().transcript, "Welcome.\n\n> look\n\nA doorway appears.",
-	"presentation preserves opening, command, and response order")
+t.assertEqual(kinds(session), "scene,command,narration", "a command and its response append two entries")
+t.assertEqual(session:presentation().entries[2].text, "look", "commands are stored trimmed")
+t.assertEqual(session:presentation().entries[3].paragraphs[1], "A doorway appears.", "extra engine results are ignored")
 t.expect(session:submit("wait"), "nil response is a successful command")
-t.assertEqual(#session.messages, 5, "nil response appends an empty message without a hole")
-t.assertEqual(session.messages[5], "", "nil response is normalized to an empty string")
+t.assertEqual(kinds(session), "scene,command,narration,command", "a silent response adds no empty narration")
 t.expect(not session:submit("fail"), "engine failure is reported")
 t.assertEqual(session:presentation().progress, "Score 0 | Moves 3", "failed game commands still count as moves")
-t.assertEqual(session.messages[6], "> fail", "failed command stays in sequence")
-t.assertEqual(session.messages[7], "Engine failure", "error response follows failed command")
-local before = session:presentation().transcript
+local entries = session:presentation().entries
+t.assertEqual(entries[#entries - 1].text, "fail", "failed command stays in sequence")
+t.assertEqual(entries[#entries].paragraphs[1], "Engine failure", "error response follows failed command")
+local count = #session.entries
 t.expect(not session:submit("   "), "blank commands are rejected")
-t.assertEqual(session:presentation().transcript, before, "rejected command leaves transcript unchanged")
+t.assertEqual(#session.entries, count, "rejected command leaves transcript unchanged")
 t.assertEqual(session.currentGame, game, "appending messages preserves game identity")
-t.assertEqual(#Session.new().messages, 0, "session histories remain independent")
+t.assertEqual(#Session.new().entries, 0, "session histories remain independent")
+t.assertEqual(session.history[1], "look", "command history is kept for the player")
 
-local titled = Session.new({ engineFactory = function()
+-- Real Infocom output: banner paragraph, then a heading line naming the room.
+local room = "Deck Nine"
+local banner = "PLANETFALL\nInfocom interactive fiction - a science fiction story\n"
+	.. "Copyright (c) 1983 by Infocom, Inc. All rights reserved.\nRelease 0 / Serial number 000000"
+local story = Session.new({ engineFactory = function()
 	return { start = function()
-		return { resume = function() return "The room is quiet." end },
-			"Sanitarium\n\nThe rusted gate stands open."
+		return {
+			resume = function(_, command)
+				if command == "up" then room = "Gangway" return "Gangway\nA steep gangway.\n\n" end
+				if command == "starboard" then room = "Reactor" return "The reactor hums.\n\n" end
+				if command == "look" then return room .. "\nStill here.\n\n" end
+				return "You can't go that way.\n\n"
+			end,
+			roomName = function() return room end,
+		}, banner .. "\n\nAnother routine day.\n\nDeck Nine\nA featureless corridor.\nA brush lies here.\n\n"
 	end }
 end })
-t.expect(titled:start({ id = "sanitarium", title = "Sanitarium" }), "titled session starts")
-t.assertEqual(titled:presentation().roomTitle, "Sanitarium", "presentation separates the room heading")
-t.assertEqual(titled:presentation().transcript, "The rusted gate stands open.", "presentation separates the room description")
-t.expect(titled:submit("look"), "titled session accepts a command")
-t.assertEqual(titled:presentation().roomTitle, "Sanitarium", "command updates retain the room heading")
-t.assertEqual(titled:presentation().transcript,
-	"The rusted gate stands open.\n\n> look\n\nThe room is quiet.",
-	"command updates preserve the formatted transcript body")
+t.expect(story:start({ id = "planetfall", title = "Planetfall" }), "banner opening starts")
+t.assertEqual(kinds(story), "banner,narration,scene", "banner, prologue, then the first room")
+local entries = story:presentation().entries
+t.assertEqual(entries[1].title, "PLANETFALL", "the banner keeps the story title")
+t.assertEqual(#entries[1].lines, 3, "the banner keeps its credit lines")
+t.assertEqual(entries[2].paragraphs[1], "Another routine day.", "prologue precedes the first chapter")
+t.assertEqual(entries[3].title, "Deck Nine", "a heading line names the chapter")
+t.assertEqual(entries[3].initial, "A", "the room description gets the initial")
+t.assertEqual(entries[3].lead, " featureless corridor.\nA brush lies here.", "the heading line is not repeated")
+t.assertEqual(story:presentation().roomTitle, "Deck Nine", "presentation names the active room")
+story:submit("north")
+t.assertEqual(kinds(story), "banner,narration,scene,command,narration", "a failed move is narration")
+story:submit("look")
+entries = story:presentation().entries
+t.assertEqual(entries[#entries].kind, "narration", "looking again does not open a new chapter")
+t.assertEqual(entries[#entries].paragraphs[1], "Still here.", "the repeated heading line is dropped")
+story:submit("up")
+entries = story:presentation().entries
+t.assertEqual(entries[#entries].chapterLabel, "Chapter II", "a printed heading opens the next chapter")
+t.assertEqual(entries[#entries].title, "Gangway", "the new chapter is named for the new room")
+story:submit("starboard")
+entries = story:presentation().entries
+t.assertEqual(entries[#entries].title, "Reactor", "a room change without a heading still opens a chapter")
+t.assertEqual(entries[#entries].initial, "T", "that chapter still gets an initial")
+t.assertEqual(Session.roman(1994), "MCMXCIV", "roman numerals cover long games")
+
+-- Openings that start with punctuation keep it and skip the initial.
+local quoted = Session.new({ engineFactory = function()
+	return { start = function() return { resume = function() return "" end }, "\"Hello,\" says a voice." end }
+end })
+quoted:start({ id = "q", title = "Q" })
+t.assertEqual(quoted:presentation().entries[1].initial, nil, "non-letter openings have no initial")
+t.assertEqual(quoted:presentation().entries[1].paragraphs[1], "\"Hello,\" says a voice.", "the text is untouched")
+
+-- Long sessions: the reader renders only the most recent entries.
+local long = Session.new({ engineFactory = function()
+	return { start = function() return { resume = function(_, c) return "Echo " .. c end }, "Start." end }
+end })
+long:start({ id = "long", title = "Long" })
+for index = 1, 100 do long:submit("wait " .. index) end
+local recent, earlier = long:transcript(50)
+t.assertEqual(#recent, 50, "the transcript is bounded")
+t.assertEqual(earlier, 201 - 50, "the count of hidden entries is reported")
+t.assertEqual(recent[#recent].paragraphs[1], "Echo wait 100", "the newest entry is kept")
+t.assertEqual(long:presentation().earlierEntries, 201 - 120, "the default bound keeps 120 entries")
+
 local progressEngine = {
-	score = 4, moves = 2, maxScore = 20, exits = { "n", "east" }, room = "Sanitarium Gate",
+	score = 4, moves = 2, maxScore = 20, exits = { "n", "east", "u" }, room = "Sanitarium Gate",
+	items = { { "rusted gate", { "OPEN", "CLOSE" }, {} }, { "brass plaque", { "READ" }, {} } },
 }
 local tracked = Session.new({ engineFactory = function()
 	return { start = function()
@@ -55,11 +119,13 @@ local tracked = Session.new({ engineFactory = function()
 			resume = function(_, command)
 				progressEngine.moves = progressEngine.moves + 1
 				if command == "solve" then progressEngine.score = 5 end
+				if command == "take plaque" then progressEngine.items = { progressEngine.items[1] } end
 				return "Updated."
 			end,
 			progress = function() return progressEngine end,
 			exits = function() return progressEngine.exits end,
 			roomName = function() return progressEngine.room end,
+			items = function() return progressEngine.items end,
 		}, "Welcome."
 	end }
 end })
@@ -67,10 +133,19 @@ t.expect(tracked:start(game), "session starts with game progress")
 t.assertEqual(tracked:presentation().progress, "Score 4/20 | Moves 2", "presentation uses engine score and move totals")
 t.expect(tracked:hasExit("north"), "full exit names are available to the compass")
 t.expect(tracked:hasExit("e"), "exit abbreviations normalize for compass selection")
+t.expect(tracked:hasExit("up"), "vertical exits are recognised")
 t.expect(not tracked:hasExit("south"), "unavailable exits stay disabled")
+t.assertEqual(table.concat(tracked.exitList, ","), "north,east,up", "exits are listed in compass order")
 t.assertEqual(tracked:presentation().roomTitle, "Sanitarium Gate", "runtime room name replaces the game title")
-t.assertEqual(tracked:presentation().gameDescription, game.description or "", "intro synopsis comes from the selected game")
+t.assertEqual(tracked:presentation().gameDescription, "", "missing synopsis renders as empty text")
+t.assertEqual(#tracked.items, 2, "visible objects come from the engine")
 t.expect(tracked:submit("solve"), "tracked session accepts a command")
 t.assertEqual(tracked:presentation().progress, "Score 5/20 | Moves 3", "commands refresh live engine progress")
+tracked:submit("take plaque")
+t.assertEqual(#tracked.items, 1, "objects that left the room are no longer visible")
+t.assertEqual(#tracked.knownItems, 2, "objects seen earlier stay suggestible")
+local chips = {}
+for _, chip in ipairs(tracked:suggestions("read ")) do table.insert(chips, chip.title) end
+t.assertEqual(table.concat(chips, ","), "plaque", "suggestions use the remembered objects")
 
 os.exit(t.summary() and 0 or 1)

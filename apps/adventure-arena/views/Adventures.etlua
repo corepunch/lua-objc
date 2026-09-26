@@ -1,46 +1,51 @@
+<%
+  -- One scrolling "storefront", modeled on the App Store and Apple Books:
+  -- a featured hero, editorial shelves, a chart, and genre tiles. Each band
+  -- stays short, so 30 titles remain browsable without an endless grid.
+  local HERO = { height = 520, textBottom = 56, textSide = 20 }
+%>
 <% if #games == 0 then %>
-<ContentUnavailable id="emptyCatalog" title="No Adventures" systemImage="gamecontroller" description="No adventures are available." />
+<ContentUnavailable id="emptyCatalog" title="No Adventures" systemImage="books.vertical" description="No adventures are available." />
 <% else %>
-<ScrollView ignoresSafeArea="top">
-  <VStack spacing="0">
+<ScrollView id="libraryScroll" ignoresSafeArea="top">
+  <VStack spacing="0" paddingBottom="32">
     <% if featured then %>
     <Button action="featured" style="plain" accessibilityLabel="Open <%= featured.title %>" id="featuredCoverButton">
-      <ZStack id="hero" height="500" maxWidth="infinity" alignment="bottomLeading" clipsToBounds="true">
+      <ZStack id="hero" height="<%= HERO.height %>" maxWidth="infinity" alignment="bottomLeading" clipsToBounds="true">
         <Image path="<%= featured.cover %>" resizable="true" contentMode="fill" />
         <LinearGradient id="heroGradient" />
-        <VStack paddingHorizontal="20" paddingBottom="56" spacing="6" alignment="leading">
-          <Label text="<%= featured.genre:upper() %>" size="12" color="white" />
-          <Label text="<%= featured.title %>" size="28" weight="bold" color="white" lines="2" />
+        <VStack paddingHorizontal="<%= HERO.textSide %>" paddingBottom="<%= HERO.textBottom %>" spacing="6" alignment="leading">
+          <Label text="<%= ('Featured · ' .. featured.genre):upper() %>" size="12" weight="semibold" color="white" />
+          <Label text="<%= featured.title %>" size="34" weight="bold" design="serif" color="white" lines="2" />
           <Label text="<%= featured.shortDescription %>" size="16" color="white" lines="2" />
           <HStack spacing="6">
             <%- partial("Stars.etlua", { rating = featured.rating, size = 13 }) %>
-            <Label text="<%= string.format('%.1f · Play', featured.rating) %>" size="13" weight="bold" color="white" />
+            <Label text="<%= string.format('%.1f · %s', featured.rating, featured.difficulty or featured.genre) %>" size="13" weight="semibold" color="white" />
           </HStack>
         </VStack>
       </ZStack>
     </Button>
     <% end %>
-    <VStack paddingBottom="24" spacing="0" alignment="leading">
-      <VStack paddingTop="24" paddingBottom="8" paddingHorizontal="16" spacing="0" alignment="leading">
-        <Label text="All Adventures" size="23" weight="bold" color="primary" />
+    <% for index, shelf in ipairs(shelves) do %>
+    <%- partial("Shelf.etlua", { shelf = shelf, index = index }) %>
+    <% end %>
+    <% if #topRated > 0 then %>
+    <VStack paddingTop="28" paddingHorizontal="16" spacing="4" alignment="leading" maxWidth="infinity">
+      <Label text="Top Rated" size="22" weight="bold" />
+      <Label text="The adventures players love most" size="15" color="secondary" />
+      <VStack paddingTop="8" spacing="0" maxWidth="infinity">
+        <% for index, entry in ipairs(topRated) do %>
+        <%- partial("GameRow.etlua", { game = entry.game, rank = entry.rank, action = "chart_" .. index, id = "chartRow_" .. index, divider = index < #topRated }) %>
+        <% end %>
       </VStack>
-      <ScrollView horizontal="true" vertical="false">
-        <HStack spacing="12" paddingHorizontal="16" alignment="top">
-          <% for index, game in ipairs(games) do %>
-          <Button action="<%= game.id %>" accessibilityLabel="Open <%= game.title %>" id="coverButton_<%= index %>" style="plain">
-            <VStack width="142" spacing="8" alignment="leading">
-              <Image id="cover_<%= index %>" path="<%= game.cover %>" resizable="true" contentMode="fill" cornerRadius="10" width="130" height="176" />
-              <Label text="<%= game.title %>" size="13" weight="bold" color="primary" lines="1" truncation="tail" height="16" />
-              <HStack spacing="4">
-                <%- partial("Stars.etlua", { rating = game.rating, size = 9 }) %>
-                <Label text="<%= string.format('%.1f', game.rating) %>" size="12" color="secondary" />
-              </HStack>
-            </VStack>
-          </Button>
-          <% end %>
-        </HStack>
-      </ScrollView>
     </VStack>
+    <% end %>
+    <% if #genres > 0 then %>
+    <VStack paddingTop="28" paddingHorizontal="16" spacing="12" alignment="leading" maxWidth="infinity">
+      <Label text="Browse by Genre" size="22" weight="bold" />
+      <%- partial("GenreGrid.etlua", { genres = genres }) %>
+    </VStack>
+    <% end %>
   </VStack>
 </ScrollView>
 <% end %>

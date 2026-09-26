@@ -102,6 +102,14 @@ function ZILRuntime.new(game, readFile)
 								return ""
 							end)
 						end,
+						-- Visible objects with the verbs the story accepts for
+						-- them; nested entries are the contents of open things.
+						items = function()
+							return withContext(readFile, paths, function()
+								local ok, items = pcall(function() return engine:resume("room-items") end)
+								return ok and type(items) == "table" and items or {}
+							end)
+						end,
 						exits = function()
 							return withContext(readFile, paths, function()
 								local ok, exits = pcall(function() return engine:resume("room-exits") end)

@@ -30,6 +30,13 @@ for _, game in ipairs(catalog:list()) do
 end
 t.assertEqual(reviews, 21, "all individual source reviews are preserved")
 t.assertEqual(catalog:find("books.limehouse-killings").genre, "Victorian Mystery")
+for _, game in ipairs(catalog:list()) do
+	t.expect(type(game.collection) == "string", "every game belongs to a library shelf: " .. game.id)
+	t.expect(game.tint:match("^#%x%x%x%x%x%x$") ~= nil, "every game has a hex accent: " .. game.id)
+	t.expect(type(game.initialFont) == "string", "every game names its initial typeface: " .. game.id)
+	t.expect(({ Introductory = true, Standard = true, Advanced = true, Expert = true })[game.difficulty],
+		"difficulty uses Infocom's published levels: " .. game.id)
+end
 
 local commands = {}
 local state = Session.new({ engineFactory = function(game, ...)
@@ -43,25 +50,34 @@ local state = Session.new({ engineFactory = function(game, ...)
 		end }, "An opening."
 	end }
 end })
+local function transcriptText(session)
+	local parts = {}
+	for _, entry in ipairs(session:presentation().entries) do
+		if entry.kind == "command" then table.insert(parts, "> " .. entry.text) end
+		if entry.initial then table.insert(parts, entry.initial .. entry.lead) end
+		for _, paragraph in ipairs(entry.paragraphs or {}) do table.insert(parts, paragraph) end
+	end
+	return table.concat(parts, "\n\n")
+end
 t.expect(state:start(catalog:list()[1]), "session starts through injected runtime")
-t.assertEqual(state:presentation().transcript, "An opening.", "opening belongs to model")
+t.assertEqual(transcriptText(state), "An opening.", "opening belongs to model")
 t.expect(not state:submit("   "), "empty commands do not advance engine")
 t.assertEqual(#commands, 0, "empty input leaves runtime untouched")
 t.expect(state:submit("  look  "), "typed commands reach runtime")
 t.assertEqual(commands[1], "look", "input is trimmed before execution")
-t.expect(state:presentation().transcript:find("> look", 1, true), "transcript retains command")
+t.expect(transcriptText(state):find("> look", 1, true), "transcript retains command")
 t.expect(not state:submit("fail"), "runtime errors are reported without dropping prior output")
-t.expect(state:presentation().transcript:find("An opening.", 1, true), "errors preserve prior transcript")
-local before = state:presentation().transcript
+t.expect(transcriptText(state):find("An opening.", 1, true), "errors preserve prior transcript")
+local before = transcriptText(state)
 state.engineFactory = function() error("start failure") end
 t.expect(not state:start(catalog:list()[2]), "startup errors are caught")
-t.assertEqual(state:presentation().transcript, before, "failed startup preserves current session")
+t.assertEqual(transcriptText(state), before, "failed startup preserves current session")
 t.assertEqual(state.currentGame.id, catalog:list()[1].id, "failed startup preserves game identity")
 
 local engine = state.engine
 t.expect(not state:start(nil), "missing game is rejected before startup")
 t.assertEqual(state.engine, engine, "missing game preserves current engine")
-t.assertEqual(state:presentation().transcript, before, "missing game preserves transcript")
+t.assertEqual(transcriptText(state), before, "missing game preserves transcript")
 
 local empty = Adventures.new { games = {} }
 t.assertEqual(#empty:list(), 0, "empty catalog stays empty")

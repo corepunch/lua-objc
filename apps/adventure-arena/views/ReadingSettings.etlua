@@ -31,6 +31,7 @@
         <VStack spacing="10" alignment="leading">
           <Label text="Theme" size="15" weight="semibold" color="secondary" />
           <Picker id="themePicker" value="<%= themeIndex %>" style="segmented" onChange="themeChanged" maxWidth="infinity">
+            <Option title="Cover" />
             <Option title="System" />
             <Option title="White" />
             <Option title="Sepia" />
