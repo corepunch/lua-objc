@@ -45,7 +45,7 @@ return {
 			action = "Keep it. Without Recovery you cannot reinstall macOS from this Mac."},
 		{id = "updates", title = "Where software updates go", icon = "arrow.down.circle",
 			paths = {"/System/Library/AssetsV2/com_apple_MobileAsset_MacSoftwareUpdate", "/System/Volumes/Update", "/Applications/Install macOS ….app"},
-			resources = {"update-assets"}, open = "system-data",
+			resources = {"update-assets", "update-volume"}, open = "updates",
 			summary = "Downloaded, prepared, then installed, in three places.",
 			what = "Software Update downloads macOS updates into the system asset store (AssetsV2). While \"Preparing\", it expands them into the Update and Preboot volumes. A full installer from the App Store is a separate \"Install macOS\" app in /Applications.",
 			why = "A download that is paused, deferred or failed can stay in the asset store and in Preboot until macOS retries or purges it. That often shows up as unexplained System Data. Before Big Sur, updates went to /Library/Updates.",

@@ -89,6 +89,8 @@ function System.openSettings(section)
 		siri = "com.apple.Siri-Settings.extension",
 		dictation = "com.apple.Keyboard-Settings.extension",
 		voices = "com.apple.Accessibility-Settings.extension",
+		softwareupdate = "com.apple.Software-Update-Settings.extension",
+		timemachine = "com.apple.Time-Machine-Settings.extension",
 	}
 	local target = "x-apple.systempreferences:" .. (targets[section] or "com.apple.settings.Storage")
 	os.execute("/usr/bin/open " .. System.quote(target))
@@ -258,6 +260,20 @@ function System.snapshotCount(completion)
 		local details = require("apps.diskmap.models.SystemDetails")
 		local dates = ok and details.parseSnapshotDates(output) or nil
 		completion(dates and #dates or nil, dates)
+	end)
+end
+-- Software Update's record of its last check. It is world-readable and
+-- offline, unlike `softwareupdate --list`, which contacts Apple.
+function System.softwareUpdateStatus()
+	return ns.readPropertyList("/Library/Preferences/com.apple.SoftwareUpdate.plist")
+end
+-- Installed simulator runtime images with their sizes (Xcode 14 and later).
+-- Completes with nil when Xcode's tools are missing or the output is unreadable.
+function System.simulatorRuntimes(completion)
+	System.command({"/usr/bin/xcrun", "simctl", "runtime", "list", "-j"}, function(ok, output)
+		if not ok or type(output) ~= "string" then completion(nil); return end
+		local parsed, value = pcall(ns.json_parse, output)
+		completion(parsed and type(value) == "table" and value or nil)
 	end)
 end
 System.decode = ns.json_parse

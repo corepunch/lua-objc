@@ -1554,6 +1554,10 @@ one or more `<Option title="…" />` children:
 </Picker>
 ```
 
+`style="segmented"` renders the options as an `NSSegmentedControl`
+(SwiftUI `.pickerStyle(.segmented)`); the default is the pop-up menu. Both
+report the zero-based index to `onChange`.
+
 `Slider`, `Stepper`, and `Picker` are currently AppKit-only XML tags. Using
 them with UIKit raises the normal unsupported-constructor error.
 

@@ -1,0 +1,63 @@
+<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+  <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
+    <HStack maxWidth="infinity" spacing="14" alignment="center">
+      <SystemImage name="arrow.triangle.2.circlepath" size="36" badgeColor="systemGray" />
+      <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+        <Label text="Updates &amp; Snapshots" size="22" weight="semibold" />
+        <Label text="Storage macOS uses to download and install updates, and the restore points Time Machine keeps on this disk." size="13" color="secondary" maxWidth="infinity" lines="2" />
+      </VStack>
+    </HStack>
+    <VStack maxWidth="infinity" spacing="8" alignment="leading">
+      <Label text="Software Update" systemImage="gearshape.arrow.triangle.2.circlepath" size="15" weight="semibold" />
+      <GroupBox maxWidth="infinity">
+        <VStack maxWidth="infinity" spacing="0" alignment="leading">
+          <HStack maxWidth="infinity" padding="12" spacing="10" alignment="center">
+            <SystemImage name="<%= #softwareUpdate.updates > 0 and "arrow.down.app.fill" or "checkmark.circle" %>" size="18" color="<%= #softwareUpdate.updates > 0 and "accent" or "systemGreen" %>" />
+            <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="1" alignment="leading">
+              <Label id="updateTitle" text="<%= softwareUpdate.title %>" size="13" weight="semibold" maxWidth="infinity" lines="1" />
+              <Label id="updateDetail" text="<%= softwareUpdate.detail %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
+            </VStack>
+            <Button id="openSoftwareUpdate" title="Software Update…" action="openSoftwareUpdate" />
+          </HStack>
+          <% for _, stage in ipairs(stages) do %>
+          <Divider />
+          <%- partial("InfoRow.etlua", {id = "stage_" .. stage.index, icon = stage.icon, title = stage.title, detail = stage.detail, value = stage.size}) %>
+          <% end %>
+        </VStack>
+      </GroupBox>
+    </VStack>
+    <VStack maxWidth="infinity" spacing="8" alignment="leading">
+      <Label text="macOS Installers" systemImage="externaldrive.badge.plus" size="15" weight="semibold" />
+      <GroupBox maxWidth="infinity">
+        <VStack maxWidth="infinity" spacing="0" alignment="leading">
+          <% if #installers == 0 then %>
+          <Label id="noInstallers" text="No “Install macOS” apps in Applications." size="12" color="secondary" padding="12" maxWidth="infinity" />
+          <% end %>
+          <% for index, installer in ipairs(installers) do %>
+          <%- partial("InfoRow.etlua", {id = "installer_" .. index, icon = "app.dashed", title = installer.name, detail = "Full installer, removable once you no longer need it. The App Store can download it again.", value = installer.size, actionTitle = "Show in Finder", action = "reveal_" .. index}) %>
+          <% if index < #installers then %><Divider /><% end %>
+          <% end %>
+        </VStack>
+      </GroupBox>
+    </VStack>
+    <VStack maxWidth="infinity" spacing="8" alignment="leading">
+      <HStack maxWidth="infinity" spacing="8" alignment="center">
+        <Label id="snapshotTitle" text="<%= snapshotTitle %>" systemImage="clock.arrow.circlepath" size="15" weight="semibold" flexGrow="1" flexShrink="1" />
+        <Button id="openTimeMachine" title="Time Machine Settings…" action="openTimeMachine" />
+      </HStack>
+      <GroupBox maxWidth="infinity">
+        <VStack maxWidth="infinity" spacing="0" alignment="leading">
+          <% for index, snapshot in ipairs(snapshots) do %>
+          <HStack maxWidth="infinity" paddingHorizontal="12" paddingVertical="8" spacing="10" alignment="center">
+            <SystemImage name="clock" size="15" color="secondary" />
+            <Label text="<%= snapshot.name %>" size="13" monospacedDigit="true" flexGrow="1" flexShrink="1" lines="1" />
+            <Label text="<%= snapshot.id %>" size="11" design="monospaced" color="tertiary" lines="1" truncation="middle" flexShrink="1" />
+          </HStack>
+          <Divider />
+          <% end %>
+          <Label text="Snapshots keep the blocks of files you deleted since they were taken, so deleting a file may not free space at once. macOS removes them automatically when space runs low; no file scan can measure how much each one holds." size="11" color="secondary" padding="12" maxWidth="infinity" lines="0" />
+        </VStack>
+      </GroupBox>
+    </VStack>
+  </VStack>
+</ScrollView>

@@ -1,3 +1,22 @@
+# Simulators and Updates & Snapshots pages — September 26, 2026
+
+Two sidebar pages, a segmented `Picker` style in the framework, runtime
+listing and deletion through `simctl runtime`, and Software Update status
+read from its preferences file.
+
+- Same environment as the redesign below: no Xcode, so nothing was built,
+  run under `make test`, or screenshotted.
+- Under stock Lua with a stub view layer, both pages rendered and acted
+  against the Mock HDD provider: filters, device selection, runtime deletion
+  (which marks its devices unavailable and frees its image), the Software
+  Update record and snapshot listing. `tests/diskmap_system_pages.test.lua`
+  (53 assertions) and `tests/diskmap_overview.test.lua` (148) pass.
+- On macOS, also confirm the `simctl runtime list -j` field names
+  (`sizeBytes`, `deletable`, `runtimeIdentifier`, `platformIdentifier`) and
+  the `RecommendedUpdates` / `LastSuccessfulDate` keys in
+  `/Library/Preferences/com.apple.SoftwareUpdate.plist` on the installed
+  Xcode and macOS versions.
+
 # Sidebar redesign — September 26, 2026
 
 Overview, Largest Items, Developer and Storage Guide destinations; donut

@@ -7,6 +7,7 @@ return function()
 	item("system", "Operating system", "Protected macOS installation", "/System", system),
 	item("preboot", "Preboot", "Boot support; never manually remove", "/System/Volumes/Preboot", system),
 	item("recovery", "Recovery", "macOS recovery environment", "/System/Volumes/Recovery", system),
+	item("update-volume", "Update volume", "Where macOS stages an update while preparing and installing it", "/System/Volumes/Update", system),
 	item("vm", "Virtual memory", "Swap and system memory backing", "/private/var/vm", system),
 })
 end

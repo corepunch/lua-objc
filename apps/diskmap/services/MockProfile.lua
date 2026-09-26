@@ -69,6 +69,38 @@ return {
 			["color"] = "systemOrange",
 		},
 	},
+	-- `xcrun simctl runtime list -j` and the Software Update preferences, as
+	-- macOS reports them. Mock actions change only this in-memory copy.
+	["simulatorRuntimes"] = {
+		["5B0E6C62-9E4B-4C57-9B63-2D5F3A4E7A11"] = {
+			["identifier"] = "5B0E6C62-9E4B-4C57-9B63-2D5F3A4E7A11",
+			["runtimeIdentifier"] = "com.apple.CoreSimulator.SimRuntime.iOS-26-0",
+			["platformIdentifier"] = "com.apple.platform.iphonesimulator",
+			["version"] = "26.0", ["build"] = "23A339", ["kind"] = "Disk Image", ["state"] = "Ready",
+			["deletable"] = true, ["sizeBytes"] = 8420000000, ["lastUsedAt"] = "2026-09-20T16:20:00Z",
+		},
+		["9C4A1F0B-3D2E-4B8A-8F61-7E5D9C0B2A34"] = {
+			["identifier"] = "9C4A1F0B-3D2E-4B8A-8F61-7E5D9C0B2A34",
+			["runtimeIdentifier"] = "com.apple.CoreSimulator.SimRuntime.iOS-18-4",
+			["platformIdentifier"] = "com.apple.platform.iphonesimulator",
+			["version"] = "18.4", ["build"] = "22E238", ["kind"] = "Disk Image", ["state"] = "Ready",
+			["deletable"] = true, ["sizeBytes"] = 7910000000, ["lastUsedAt"] = "2025-11-02T09:00:00Z",
+		},
+		["E2F7B1C8-6A40-4D93-A5B2-1C9E8F3D6B70"] = {
+			["identifier"] = "E2F7B1C8-6A40-4D93-A5B2-1C9E8F3D6B70",
+			["runtimeIdentifier"] = "com.apple.CoreSimulator.SimRuntime.watchOS-26-0",
+			["platformIdentifier"] = "com.apple.platform.watchsimulator",
+			["version"] = "26.0", ["build"] = "23R341", ["kind"] = "Disk Image", ["state"] = "Ready",
+			["deletable"] = true, ["sizeBytes"] = 4260000000,
+		},
+	},
+	["softwareUpdate"] = {
+		["AutomaticDownload"] = true,
+		["LastSuccessfulDate"] = "2026-09-24 08:12:00 +0000",
+		["RecommendedUpdates"] = {
+			{["Display Name"] = "macOS Tahoe 26.1", ["Display Version"] = "26.1", ["Identifier"] = "MSU_UPDATE_25B78_patch_26.1"},
+		},
+	},
 	["simulators"] = {
 		["devices"] = {
 			["com.apple.CoreSimulator.SimRuntime.iOS-26-0"] = {
