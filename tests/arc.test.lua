@@ -38,4 +38,24 @@ t.assertEqual(circle.strokeAlpha, 0, "an unavailable section can be hidden witho
 circle.stroke = "tertiary"
 t.assertEqual(circle.stroke, "tertiary", "a drag preview can recolor one section")
 
+-- SwiftUI centers a stroke on the shape's path and never clips it to the
+-- frame: a 3 pt ring in a 48 pt frame draws 1.5 pt past every edge.
+local bridge = require("AppKitNative")
+local ink = bridge._arcInkBounds(arc(0, 360), 8)
+t.expect(ink.origin.x <= -1 and ink.origin.y <= -1, "the ring's stroke extends past the top-left of its frame")
+t.expect(ink.origin.x + ink.size.width >= 49 and ink.origin.y + ink.size.height >= 49,
+	"the ring's stroke extends past the bottom-right of its frame")
+t.expect(ink.size.width >= 50, "a full circle uses its lineWidth, not a 1 pt default")
+local northInk = bridge._arcInkBounds(arc(247.5, 292.5), 8)
+t.expect(northInk.origin.y < 0 and northInk.origin.y + northInk.size.height < 12,
+	"the north section renders at the top, unclipped")
+local eastInk = bridge._arcInkBounds(arc(-22.5, 22.5), 8)
+t.expect(eastInk.origin.x + eastInk.size.width > 48, "the east section renders past the right edge, unclipped")
+
+-- UIKit draws through the same unclipped shape layer.
+local file = assert(io.open("src/uikit/views.m")); local uikit = file:read("*a"); file:close()
+local arcView = uikit:match("@implementation LuaArcView(.-)@end")
+t.expect(arcView:find("layerClass { return CAShapeLayer.class; }", 1, true) ~= nil, "UIKit Arc is backed by a shape layer")
+t.expect(not arcView:find("drawRect", 1, true), "UIKit Arc never draws into its clipped backing store")
+
 os.exit(t.summary() and 0 or 1)

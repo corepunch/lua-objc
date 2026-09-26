@@ -376,7 +376,12 @@ static void arc_add_clockwise(UIBezierPath *path, CGPoint center, CGFloat radius
 - (UIBezierPath *)arcPath;
 @end
 
+/* SwiftUI strokes a shape centered on its path and never clips it to the
+ * frame, so an Arc stroke extends lineWidth/2 past its bounds. drawRect is
+ * clipped to the view's backing store; a CAShapeLayer is not. */
 @implementation LuaArcView
+
++ (Class)layerClass { return CAShapeLayer.class; }
 
 - (instancetype)initWithFrame:(CGRect)frame {
 	self = [super initWithFrame:frame];
@@ -387,6 +392,11 @@ static void arc_add_clockwise(UIBezierPath *path, CGPoint center, CGFloat radius
 		_lineCap = @"butt";
 		self.backgroundColor = UIColor.clearColor;
 		self.opaque = NO;
+		self.clipsToBounds = NO;
+		self.userInteractionEnabled = NO;
+		[self registerForTraitChanges:@[UITraitUserInterfaceStyle.class]
+			withAction:@selector(updateShape)];
+		[self updateShape];
 	}
 	return self;
 }
@@ -412,16 +422,28 @@ static void arc_add_clockwise(UIBezierPath *path, CGPoint center, CGFloat radius
 	return path;
 }
 
-- (void)drawRect:(CGRect)rect {
-	(void)rect;
-	if (self.strokeAlpha <= 0) return;
-	UIBezierPath *path = [self arcPath];
-	if (path.isEmpty) return;
-	NSString *name = self.stroke ?: @"accent";
-	[[lua_objc_uikit_system_color(name.UTF8String)
-		colorWithAlphaComponent:MIN(1, MAX(0, self.strokeAlpha))] setStroke];
-	[path stroke];
+- (void)updateShape {
+	CAShapeLayer *shape = (CAShapeLayer *)self.layer;
+	shape.path = self.arcPath.CGPath;
+	shape.fillColor = nil;
+	shape.lineWidth = self.lineWidth;
+	shape.lineCap = [self.lineCap isEqualToString:@"round"] ? kCALineCapRound : kCALineCapButt;
+	UIColor *color = [lua_objc_uikit_system_color((self.stroke ?: @"accent").UTF8String)
+		colorWithAlphaComponent:MIN(1, MAX(0, self.strokeAlpha))];
+	shape.strokeColor = [color resolvedColorWithTraitCollection:self.traitCollection].CGColor;
 }
+
+- (void)layoutSubviews {
+	[super layoutSubviews];
+	[self updateShape];
+}
+
+- (void)setStartAngle:(CGFloat)value { _startAngle = value; [self updateShape]; }
+- (void)setEndAngle:(CGFloat)value { _endAngle = value; [self updateShape]; }
+- (void)setLineWidth:(CGFloat)value { _lineWidth = value; [self updateShape]; }
+- (void)setStrokeAlpha:(CGFloat)value { _strokeAlpha = value; [self updateShape]; }
+- (void)setStroke:(NSString *)value { _stroke = [value copy]; [self updateShape]; }
+- (void)setLineCap:(NSString *)value { _lineCap = [value copy]; [self updateShape]; }
 
 @end
 

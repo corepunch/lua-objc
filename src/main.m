@@ -1,4 +1,5 @@
 #import <Cocoa/Cocoa.h>
+#import <QuartzCore/QuartzCore.h>
 #import <objc/runtime.h>
 
 #include <dlfcn.h>
@@ -316,6 +317,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_tableCell", bridge_table_cell},
 	{"_pressColumnButton", bridge_press_column_button},
 	{"_viewMidlineFill", bridge_view_midline_fill},
+	{"_arcInkBounds", bridge_arc_ink_bounds},
 	{"_tableCellFrames", bridge_AppKit_table_cell_frames},
 	{"_tableSpinnerFrame", bridge_AppKit_table_spinner_frame},
 	{"_toolbar_item", bridge_AppKit_toolbar_item},
