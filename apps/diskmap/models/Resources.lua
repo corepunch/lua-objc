@@ -97,6 +97,22 @@ function Resources:leaves()
 	return copySequence(states[self].leafRows)
 end
 
+-- The measured resource that owns an absolute path: the deepest catalog
+-- location at or above it. Scans exclude nested locations from their
+-- parents, so this is also the resource whose total includes the path.
+function Resources:owner(path)
+	local byPath = states[self].byPath
+	local current = path
+	while current and current ~= "" do
+		local row = byPath[current]
+		if row then return row end
+		if current == "/" then break end
+		local slash = current:match("^.*()/")
+		current = slash == 1 and "/" or slash and current:sub(1, slash - 1) or nil
+	end
+	return nil
+end
+
 function Resources:add(parentId, definition)
 	local state = states[self]
 	local parent = state.byId[parentId]

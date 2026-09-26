@@ -1,9 +1,0 @@
-<HStack maxWidth="infinity" paddingHorizontal="10" paddingVertical="8" spacing="8" alignment="center">
-  <SystemImage name="<%= suggestion.icon %>" size="20" badgeColor="<%= suggestion.color %>" appIcon="<%= suggestion.appIcon or "" %>" />
-  <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="1" alignment="leading">
-    <Label text="<%= suggestion.name %>" size="13" maxWidth="infinity" lines="1" />
-    <Label text="<%= suggestion.subtitle %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
-  </VStack>
-  <Label text="<%= suggestion.size %>" size="12" />
-  <Button systemImage="info.circle" symbolSize="16" foregroundStyle="secondary" accessibilityLabel="Review <%= suggestion.name %>" style="plain" action="review_<%= suggestion.id %>" />
-</HStack>

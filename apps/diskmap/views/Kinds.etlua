@@ -1,0 +1,43 @@
+<%
+  local CHART = { size = 180, hole = 0.64, gap = 1.5 }
+%>
+<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+  <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
+    <%- partial("PageHeader.etlua", {icon = "square.grid.2x2.fill", color = "systemPink", title = "File Types", summary = summary}) %>
+    <% if #kinds == 0 then %>
+    <ContentUnavailable title="Measuring files…" systemImage="square.grid.2x2" description="File types appear when the scan finishes." />
+    <% else %>
+    <GroupBox id="kindsCard" maxWidth="infinity">
+      <HStack maxWidth="infinity" padding="20" spacing="28" alignment="center">
+        <SectorChart id="kindsChart" width="<%= CHART.size %>" height="<%= CHART.size %>" innerRadius="<%= CHART.hole %>" angularInset="<%= CHART.gap %>" accessibilityLabel="<%= accessibilityLabel %>">
+          <% for _, kind in ipairs(kinds) do %>
+          <SectorMark value="<%= kind.bytes %>" color="<%= kind.color %>" label="<%= kind.name %>" />
+          <% end %>
+          <VStack spacing="0" alignment="center">
+            <Label text="<%= total %>" size="22" weight="semibold" design="rounded" monospacedDigit="true" />
+            <Label text="in files" size="11" color="secondary" />
+          </VStack>
+        </SectorChart>
+        <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="8" alignment="leading">
+          <Label text="<%= headline.title %>" size="15" weight="semibold" maxWidth="infinity" lines="0" />
+          <Label text="<%= headline.advice %>" size="12" color="secondary" maxWidth="infinity" lines="0" />
+          <Button id="showHeadline" title="Show Largest Files" style="link" action="kind_<%= headline.id %>" />
+        </VStack>
+      </HStack>
+    </GroupBox>
+    <% end %>
+    <VStack maxWidth="infinity" spacing="8" alignment="leading">
+      <%- partial("SectionHeader.etlua", {title = "Kinds", detail = "Grouped by file extension, the way Finder's Kind column groups them. Open a kind to see its largest files."}) %>
+      <GroupBox maxWidth="infinity">
+        <%- partial("ResourceList.etlua", {id = "kinds", menu = "kindMenu", activate = "openKind", header = false, detailTitle = "Files"}) %>
+      </GroupBox>
+    </VStack>
+    <VStack maxWidth="infinity" spacing="8" alignment="leading">
+      <%- partial("SectionHeader.etlua", {title = "Top extensions", detail = "The twelve extensions that use the most space"}) %>
+      <GroupBox maxWidth="infinity">
+        <%- partial("ResourceList.etlua", {id = "extensions", menu = "kindMenu", activate = "openKind", header = false, detailTitle = "Files"}) %>
+      </GroupBox>
+    </VStack>
+    <%- partial("Footnote.etlua", {text = "Totals cover every measured location, including files inside app bundles and libraries. Excluded media libraries are not counted."}) %>
+  </VStack>
+</ScrollView>

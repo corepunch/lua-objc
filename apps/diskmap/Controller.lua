@@ -13,11 +13,16 @@ local ManagementController = require("apps.diskmap.controllers.ManagementControl
 local SimulatorsController = require("apps.diskmap.controllers.SimulatorsController")
 local SdksController = require("apps.diskmap.controllers.SdksController")
 local SettingsController = require("apps.diskmap.controllers.SettingsController")
-local ReclaimController = require("apps.diskmap.controllers.ReclaimController")
+local ActionsController = require("apps.diskmap.controllers.ActionsController")
 local NavigationController = require("apps.diskmap.controllers.NavigationController")
 local OverviewController = require("apps.diskmap.controllers.OverviewController")
 local LargestController = require("apps.diskmap.controllers.LargestController")
+local FilesController = require("apps.diskmap.controllers.FilesController")
+local KindsController = require("apps.diskmap.controllers.KindsController")
+local CleanupPageController = require("apps.diskmap.controllers.CleanupPageController")
+local ApplicationsController = require("apps.diskmap.controllers.ApplicationsController")
 local DeveloperController = require("apps.diskmap.controllers.DeveloperController")
+local DisksController = require("apps.diskmap.controllers.DisksController")
 local GuideController = require("apps.diskmap.controllers.GuideController")
 local UpdatesController = require("apps.diskmap.controllers.UpdatesController")
 local Controller = {}; Controller.__index = Controller
@@ -33,18 +38,15 @@ function Controller.new(service)
 	self.scan = ScanController.new(self.model, service, home, function() self:updateRows() end)
 	self.settings = SettingsController.new(service, self.model, function() self.scan:start() end)
 	self.categories = CategoriesController.new(self.model)
-	self.cleanup = CleanupController.new(self.model, service, function(id, filter)
-		self.reclaim:close(); self:openManagement(id, filter)
-	end, function(error)
+	self.cleanup = CleanupController.new(self.model, service, function(error)
 		if error then self.scan.status = error end
 		self:updateRows()
 	end)
 	self.tips = TipsController.new(self.model, function(action)
 		if action == "settings" then self.service.openSettings("privacy")
-		elseif action == "system" then self.reclaim:close(); self:show("guide")
-		elseif action == "storage" then self.reclaim:close() end
+		elseif action == "system" then self:show("guide")
+		elseif action == "storage" then self:show("overview") end
 	end)
-	self.reclaim = ReclaimController.new(self.cleanup, self.tips, function() return self.scan.disk end)
 	self.inspector = InspectorController.new(self.model, service, function() self.scan:start() end)
 	self.simulators = SimulatorsController.new(self.model, service, function() self.scan:start() end)
 	self.sdks = SdksController.new(self.model, service)
@@ -53,18 +55,42 @@ function Controller.new(service)
 		function(row) self.sdks:open(self.window, row) end)
 	self.navigation = NavigationController.new(function(id) self:show(id) end)
 	local open = function(id) self:openManagement(id) end
+	self.actions = ActionsController.new(self.model, service, {
+		open = open,
+		show = function(id) self:show(id) end,
+		keep = function(id) self.cleanup:toggleKeep(id) end,
+		refresh = function() self.scan:start() end,
+	})
+	local files = FilesController.new(self.model, service, self.actions)
+	local applications = ApplicationsController.new(self.model, service, self.actions, function(remeasure)
+		if remeasure then self.scan:start() else self:updateRows() end
+	end)
 	self.pages = {
 		overview = OverviewController.new(self.model, self.categories, {
 			open = open, navigate = function(id) self:show(id) end,
-			reclaim = function() self:openReclaim() end,
+			reclaim = function() self:show("cleanup") end,
 			access = function() self.service.openSettings("privacy") end,
+			menu = function(id) return self.actions:resource(id) end,
 		}),
-		largest = LargestController.new(self.model, service, open),
-		developer = DeveloperController.new(self.model, {open = open,
+		largest = LargestController.new(self.model, self.actions, open),
+		files = files,
+		kinds = KindsController.new(self.model, function(kind) files:focus(kind); self:show("files", true) end),
+		cleanup = CleanupPageController.new(self.model, self.actions, self.tips, {
+			open = open,
+			show = function(id, filter)
+				if id == "files" then files:focus(nil); files.filterIndex = filter or 1
+				elseif id == "applications" then applications:focus(filter) end
+				self:show(id, true)
+			end,
+			apps = function() return applications:summary() end,
+		}),
+		applications = applications,
+		developer = DeveloperController.new(self.model, self.actions, {open = open,
 			simulators = function() self:show("simulators") end,
 			sdks = function(row) if row then self.sdks:open(self.window, row) end end,
 		}),
 		simulators = self.simulators,
+		disks = DisksController.new(service, self.actions),
 		updates = UpdatesController.new(self.model, service),
 		guide = GuideController.new(self.model, open),
 	}
@@ -84,17 +110,19 @@ function Controller:state()
 end
 function Controller:updateRows()
 	if self.window then self.window.subtitle = Overview.summary(self.model, self.scan.disk).subtitle or "" end
+	-- App facts load once the scan has measured the data folders they need.
+	if self.model.files then self.pages.applications:load() end
 	-- A page may re-render its template, so its refs are read after updating.
 	if self.page then self.page:update(self:state()); self.refs = self.page.refs end
-	self.reclaim:update()
 	self.management:update()
 end
 -- Mounts a sidebar destination into the content pane. Pages own their
 -- templates; the previous page is disposed before the next one mounts.
-function Controller:show(id)
+-- `remount` presents a page again after another page changed its focus.
+function Controller:show(id, remount)
 	local page = self.pages[id]
 	if not page or not self.content then return end
-	if self.destination == id and self.page then return end
+	if self.destination == id and self.page and not remount then return end
 	if self.page then self.page:dispose() end
 	self.destination, self.page = id, page
 	self.refs = page:mount(self.content, self:state())
@@ -105,12 +133,7 @@ function Controller:select(id)
 	if self.pages.overview.refs then self.pages.overview.selectedId = id end
 	self.inspector:select(id)
 end
-function Controller:openReclaim()
-	self.settings:close()
-	self.reclaim:open(self.window)
-end
 function Controller:openSettings()
-	self.reclaim:close()
 	self.settings:open(self.window)
 end
 function Controller:createWindow()
@@ -124,14 +147,14 @@ function Controller:createWindow()
 			search = function(value) self.query = value or ""; self:updateRows() end,
 			refresh = function() self.scan:start() end,
 			cancel = function() self.scan:cancel() end,
-			reclaim = function() self:openReclaim() end,
+			reclaim = function() self:show("cleanup") end,
 			settings = function() self:openSettings() end,
 		}})
 	local content, contentRefs = render("Content")
 	cfg.content, cfg.sidebar = content, self.navigation:render()
 	self.content = contentRefs.content
 	self.window = ns.Window(cfg)
-	self:show("overview")
+	self:show(Provider.page(App.args()) or "overview")
 	local exportPath = Provider.exportPath(App.args())
 	if exportPath then
 		self.scan.status = "Creating a local metadata-only Mock HDD snapshot…"; self:updateRows()
@@ -150,7 +173,7 @@ function Controller:createWindow()
 	local scope = ns.Scope.current()
 	if scope then scope:add(self.scan); scope:add({dispose = function()
 		if self.page then self.page:dispose() end
-		self.reclaim:close(); self.settings:close(); self.management:close(); self.sdks:close()
+		self.settings:close(); self.management:close(); self.sdks:close()
 	end}) end
 	self.service.monitor(function() return self.window.visible end, function()
 		if self.settings.enabled and not self.scan.job then self.scan:start() end

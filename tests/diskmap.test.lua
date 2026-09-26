@@ -17,7 +17,14 @@ local unique = {}
 for _, row in ipairs(model.resources:leaves()) do
 	t.expect(not unique[row.id], "stable unique resource " .. row.id); unique[row.id] = true
 	t.expect(row.subtitle ~= nil, "resource explains purpose")
-	if row.action == "trash" then t.expect(row.id == "derived" or row.id == "brew" or row.id == "documentation" or row.id == "opencode-downloads" or row.id == "codex-cache" or row.id == "grok-cache" or row.id == "claude-cache" or row.id == "cursor-cache" or row.id == "cursor-cached-data" or row.id == "cursor-gpu-cache" or row.id == "pnpm-store" or row.id == "yarn-cache" or row.id == "swiftpm-cache" or row.id == "flutter-pub", "only verified caches or offline documentation can be trashed: " .. row.id) end
+	local trashable = {derived = true, brew = true, documentation = true, ["opencode-downloads"] = true, ["codex-cache"] = true,
+		["grok-cache"] = true, ["claude-cache"] = true, ["cursor-cache"] = true, ["cursor-cached-data"] = true, ["cursor-gpu-cache"] = true,
+		["pnpm-store"] = true, ["yarn-cache"] = true, ["swiftpm-cache"] = true, ["flutter-pub"] = true,
+		-- Download and build caches whose owners document them as re-creatable.
+		["sim-caches"] = true, ["bun-cache"] = true, ["uv-cache"] = true, ["go-build"] = true, ["deno-cache"] = true,
+		["carthage-cache"] = true, ["node-gyp"] = true, playwright = true, puppeteer = true, cypress = true, ["electron-cache"] = true,
+		["iphone-updates"] = true, ["ipad-updates"] = true, ["mail-downloads"] = true}
+	if row.action == "trash" then t.expect(trashable[row.id], "only verified caches or offline documentation can be trashed: " .. row.id) end
 end
 t.assertEqual(model.resources:find("npm").action, "ownerCleanup", "npm cache uses npm's cache command")
 t.assertEqual(model.resources:find("pip").action, "ownerCleanup", "pip cache uses pip's cache command")
@@ -127,34 +134,29 @@ t.expect(toolbarIds.toggleSidebar, "the sidebar can be collapsed from the toolba
 t.expect(toolbarIds.settings and toolbarIds.reclaim and toolbarIds.refresh and toolbarIds.search, "window-wide actions live in the toolbar")
 t.assertEqual(ui.destination, "overview", "the overview is the first destination")
 local sidebar = ui.navigation.refs.sidebar
-t.assertEqual(sidebar.rowCount, 10, "sidebar lists sections and destinations")
+t.assertEqual(sidebar.rowCount, 16, "sidebar lists sections and destinations")
 t.assertEqual(sidebar.documentView.selectedRow, 1, "the overview row starts selected")
 t.assertEqual(bridge._tableCell(sidebar, 0, 0).textField.stringValue, "Storage", "sidebar sections are native group headers")
 t.expect(ui.refs.results ~= nil and ui.refs.largest ~= nil, "overview shows categories and largest items")
 t.expect(ui.pages.overview.hero.refs.chart ~= nil, "overview leads with the storage chart")
 local categoryRows = ui.refs.results.rowCount
-ui:openReclaim()
-t.expect(ui.reclaim.sheet ~= nil, "suggested cleanups open in a sheet")
-t.expect(ui.reclaim.refs.opportunities ~= nil and ui.reclaim.refs.tips ~= nil, "cleanup sheet owns opportunities and tips")
-t.assertEqual(ui.refs.results.rowCount, categoryRows, "cleanup sheet leaves the category list in place")
-window.subtitle = "stale"
-ui:updateRows()
-t.assertEqual(window.subtitle, "5.1 MB free of 10.2 MB", "scan updates continue while cleanups are open")
 t.expect(not ui.refs.results.hasVerticalScroller, "the category list has no scrollbar of its own")
 t.expect(ui.refs.results.scrollDisabled, "the category list is declared scrollDisabled")
 t.expect(ui.refs.results.frame.size.height >= categoryRows * 44, "category rows extend with the page")
-local filteredReclaim = ui.cleanup:presentation("DerivedData")
-t.assertEqual(#filteredReclaim.groups[1].rows, 1, "cleanup search finds a matching measured candidate")
-t.assertEqual(#ui.cleanup:presentation("no match").groups[1].rows, 0, "cleanup search can show an empty group")
-local scroll = ui.reclaim.refs.opportunitiesScroll
-local function atTop()
-	return math.abs(scroll.documentView.size.height - scroll.contentSize.height - scroll.contentView.bounds.origin.y) < 1
-end
-t.expect(atTop(), "new opportunity content starts at top")
-ui:updateRows(); t.expect(atTop(), "unchanged model preserves scroll position")
-ui.reclaim:close()
-t.assertEqual(ui.reclaim.sheet, nil, "closing cleanups returns to the overview")
-t.assertEqual(ui.refs.results.rowCount, categoryRows, "category rows remain after closing cleanups")
+-- Clean Up is a sidebar page; the toolbar button and the hero both open it.
+ui:show("cleanup")
+t.assertEqual(ui.destination, "cleanup", "suggested cleanups open as a page")
+t.expect(ui.refs.list_rebuildable ~= nil and ui.refs.list_checked ~= nil and ui.refs.tips ~= nil, "clean up lists suggestions, the checked list and tips")
+t.expect(ui.refs.list_rebuildable.scrollDisabled and ui.refs.page ~= nil, "clean up scrolls as one page")
+window.subtitle = "stale"
+ui:updateRows()
+t.assertEqual(window.subtitle, "5.1 MB free of 10.2 MB", "scan updates continue while clean up is shown")
+local Recommendations = require("apps.diskmap.models.Recommendations")
+t.assertEqual(#Recommendations.presentation(ui.model, "DerivedData").rebuildable, 1, "clean up search finds a matching measured candidate")
+t.assertEqual(#Recommendations.presentation(ui.model, "no match").rebuildable, 0, "clean up search can empty a section")
+t.expect(#bridge._tableRowMenu(ui.refs.list_rebuildable, 1) > 0, "each suggestion has a row menu")
+ui:show("overview")
+t.assertEqual(ui.refs.results.rowCount, categoryRows, "category rows remain after returning from clean up")
 ui:openSettings()
 t.expect(ui.settings.sheet ~= nil and ui.settings.refs.monitor ~= nil, "settings open in a sheet")
 ui.settings:close()
@@ -196,23 +198,37 @@ ui.query = "no match"; ui:updateRows()
 t.assertEqual(ui.refs.results.rowCount, 0, "empty category search")
 t.expect(ui.refs.largestSection.hidden, "largest items hide when nothing matches")
 ui.query = ""; ui:updateRows()
-sidebar:selectRow(4)
+ui.model.measurements.derived = {status = "complete", bytes = 4900000}
+sidebar:selectRow(9)
 t.assertEqual(ui.destination, "developer", "selecting a sidebar row shows its page")
-t.expect(ui.refs.tile_simulators ~= nil and ui.refs.tile_derived ~= nil, "developer tiles present Xcode resources")
-sidebar:selectRow(5)
+t.expect(ui.refs.list_xcode ~= nil and ui.refs.list_xcode.scrollDisabled, "developer sections are lists inside the page scroll")
+local developerRows = {}
+for index = 1, ui.refs.list_xcode.rowCount do developerRows[bridge._tableCell(ui.refs.list_xcode, 0, index - 1).textField.stringValue] = true end
+t.expect(developerRows["Xcode DerivedData"], "developer lists present Xcode resources")
+local developerMenu = bridge._tableRowMenu(ui.refs.list_xcode, 1)
+t.expect(#developerMenu >= 3, "developer rows keep their actions in the row menu")
+sidebar:selectRow(10)
 t.assertEqual(ui.destination, "simulators", "simulators are a sidebar destination")
 t.expect(ui.refs.devices ~= nil and ui.refs.runtimes ~= nil and ui.refs.filter.className == "NSSegmentedControl",
 	"the simulators page lists devices and runtimes with a segmented filter")
-sidebar:selectRow(7)
+sidebar:selectRow(13)
 t.assertEqual(ui.destination, "updates", "updates and snapshots are a sidebar destination")
 t.expect(ui.refs.updateTitle ~= nil and ui.refs.snapshotTitle ~= nil, "the updates page shows Software Update and snapshots")
-t.assertEqual(bridge._tableCell(sidebar, 0, 6).textField.stringValue, "System", "system pages have their own section")
-sidebar:selectRow(9)
+t.assertEqual(bridge._tableCell(sidebar, 0, 11).textField.stringValue, "System", "system pages have their own section")
+sidebar:selectRow(12)
+t.assertEqual(ui.destination, "disks", "disks and volumes are a sidebar destination")
+sidebar:selectRow(15)
 t.assertEqual(ui.destination, "guide", "the storage guide is a sidebar destination")
 t.expect(ui.refs.topic_preboot ~= nil and ui.refs.details_preboot ~= nil, "guide topics disclose their details")
+for index, id in pairs({[3] = "files", [4] = "kinds", [6] = "cleanup", [7] = "applications"}) do
+	sidebar:selectRow(index)
+	t.assertEqual(ui.destination, id, "sidebar opens " .. id)
+	t.expect(ui.refs.page ~= nil and ui.refs.page.documentView ~= nil, id .. " scrolls as one page")
+end
 sidebar:selectRow(2)
 t.assertEqual(ui.destination, "largest", "largest items are a sidebar destination")
-t.expect(not ui.refs.reveal.enabled, "no selection disables Show in Finder")
+t.expect(ui.refs.largest.scrollDisabled and ui.refs.page.documentView ~= nil, "largest items scroll with the page, not inside it")
+t.assertEqual(ui.refs.reveal, nil, "largest items keep actions in row menus instead of buttons under the list")
 sidebar:selectRow(1)
 window.size = ns.Size(900, 600); window:layout()
 t.expect(ui.refs.page.frame.origin.y >= 0, "small window keeps the overview within content")

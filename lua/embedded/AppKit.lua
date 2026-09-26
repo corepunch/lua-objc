@@ -1273,6 +1273,7 @@ end
 --- @prop onSelect function optional. Callback invoked when row selection changes.
 --- @prop onSort function optional. Callback invoked with the column id when a sortable header is clicked.
 --- @prop onColumnButton function optional. Callback invoked when a row's column button is clicked.
+--- @prop rowMenu function optional. `(list, index, row) -> items` builds the row's context menu (SwiftUI `.contextMenu`) from `{title, action, systemImage, disabled}` and `{separator = true}` records. A column with `buttonMenu` opens the same menu from its row button.
 --- @prop scrollDisabled boolean optional. The list does not scroll and is as tall as all its rows (SwiftUI `.scrollDisabled`).
 --- @prop refresh function optional. Callback invoked to refresh the displayed data.
 --- @prop rowHeight number optional. Requested table row height, in points.
@@ -1314,6 +1315,9 @@ function AppKit.List(props)
 	end
 	if type(props.onColumnButton) == "function" then
 		tv:onColumnButton(props.onColumnButton)
+	end
+	if type(props.rowMenu) == "function" then
+		tv:onRowMenu(props.rowMenu)
 	end
 	if props.reorderable then
 		assert(type(props.onReorder) == "function",
@@ -1392,6 +1396,11 @@ end
 
 function AppKit.readPropertyList(path)
 	return bridge._readPropertyList(path)
+end
+
+--- Parses property-list text or data, such as `diskutil -plist` output; nil when invalid.
+function AppKit.parsePropertyList(text)
+	return bridge._parsePropertyList(text)
 end
 
 --- Displays hierarchical rows in a native outline control.

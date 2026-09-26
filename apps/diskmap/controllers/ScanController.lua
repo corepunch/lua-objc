@@ -24,7 +24,7 @@ function Scan:start()
 		local paths, ids, exclusions = Inventory.plan(self.model)
 		if #paths == 0 then return end
 		Inventory.begin(self.model, ids)
-		local ok, job = pcall(self.service.start, paths, exclusions)
+		local ok, job = pcall(self.service.start, paths, exclusions, Inventory.options())
 		if not ok then
 			Inventory.apply(self.model, ids, {failure = tostring(job)})
 			self.status = "Could not start measurement: " .. tostring(job); self:notify(); return

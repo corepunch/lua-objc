@@ -158,7 +158,19 @@ function Mock.new(options)
 			if key ~= "path" and key ~= "allocatedBytes" and key ~= "countedBytes" then item[key] = nil end
 		end
 	end
-	fixture.items = nil
+	-- The synthetic profile layers extra files over the binary fixture and
+	-- dates files by days since last use; exported snapshots carry no dates.
+	local now = os.time()
+	for _, extra in ipairs(fixture.extraItems or {}) do
+		table.insert(items, {path = absolute(extra.path, home), allocatedBytes = extra.bytes, countedBytes = extra.bytes})
+	end
+	local ages = {}
+	for path, days in pairs(fixture.fileAges or {}) do ages[absolute(path, home)] = days end
+	for _, extra in ipairs(fixture.extraItems or {}) do ages[absolute(extra.path, home)] = extra.usedDaysAgo end
+	for _, item in ipairs(items) do
+		item.used = now - (ages[item.path] or fixture.defaultAgeDays or 0) * 86400
+	end
+	fixture.items, fixture.extraItems = nil, nil
 	collectgarbage("collect")
 	local totals, counts = buildIndex(items)
 	local discovery = copy(fixture.discovery or {})
@@ -191,7 +203,7 @@ function Mock.new(options)
 	return service
 end
 
-function Mock:scan(paths, exclusions)
+function Mock:scan(paths, exclusions, options)
 	local trees, rootStates, visited = {}, {}, 0
 	for index, rawRoot in ipairs(paths) do
 		local root = absolute(rawRoot, self.home)
@@ -221,12 +233,81 @@ function Mock:scan(paths, exclusions)
 			rootStates[index] = self.fixture.partial == true and "unreadable" or "missing"
 		end
 	end
-	return {trees = trees, rootStates = rootStates, completed = #paths, total = #paths, visited = visited,
+	local result = {trees = trees, rootStates = rootStates, completed = #paths, total = #paths, visited = visited,
 		seconds = 0, errors = self.fixture.errors or 0, issues = {}, failure = "", partial = self.fixture.partial == true}
+	if options then self.summarize(result, paths, exclusions, options) end
+	return result
 end
 
-function Mock:start(paths, exclusions)
-	return {result = self.scan(paths, exclusions), cancelled = false}
+-- The native scanner's optional summaries over the in-memory file list. Each
+-- file belongs to the deepest requested root above it; an exclusion met first
+-- hides it, exactly as the native walk never descends into excluded paths.
+function Mock:summarize(result, paths, exclusions, options)
+	local roots, excluded = {}, {}
+	for index, path in ipairs(paths) do roots[absolute(path, self.home)] = index end
+	for _, path in ipairs(exclusions or {}) do excluded[absolute(path, self.home)] = true end
+	local limit, minimum, before = math.min(options.files or 0, 2000), options.minimumFileBytes or 0, options.oldBefore or 0
+	local large, old, extensions, breakdowns = {}, {}, {}, {}
+	local oldBytes, oldCount = 0, 0
+	for index in ipairs(paths) do breakdowns[index] = {} end
+	for _, item in ipairs(self.items) do
+		local ancestor, owner, child = item.path, nil, nil
+		while ancestor do
+			if roots[ancestor] then owner = roots[ancestor]; break end
+			if excluded[ancestor] then break end
+			child = ancestor
+			local slash = ancestor:match("^.*()/")
+			ancestor = slash == 1 and ancestor ~= "/" and "/" or slash and slash > 1 and ancestor:sub(1, slash - 1) or nil
+		end
+		if owner and item.countedBytes > 0 then
+			local bytes = item.countedBytes
+			local isOld = before > 0 and item.used and item.used < before
+			if isOld then oldBytes, oldCount = oldBytes + bytes, oldCount + 1 end
+			if options.extensions then
+				local extension = (item.path:match("[^/]%.([^./]+)$") or ""):lower()
+				if #extension > 12 then extension = "" end
+				local row = extensions[extension] or {extension = extension, bytes = 0, count = 0, oldBytes = 0}
+				row.bytes, row.count = row.bytes + bytes, row.count + 1
+				if isOld then row.oldBytes = row.oldBytes + bytes end
+				extensions[extension] = row
+			end
+			if limit > 0 and bytes >= minimum then
+				local file = {path = item.path, bytes = bytes, modified = item.used, used = item.used}
+				table.insert(large, file)
+				if isOld then table.insert(old, file) end
+			end
+			if options.breakdown and child then
+				local name = child:match("([^/]+)$")
+				local rows = breakdowns[owner]
+				rows[name] = rows[name] or {name = name, kb = 0, directory = child ~= item.path}
+				rows[name].kb = rows[name].kb + bytes / 1024
+			end
+		end
+	end
+	local function ranked(files)
+		table.sort(files, function(a, b) if a.bytes ~= b.bytes then return a.bytes > b.bytes end return a.path < b.path end)
+		while #files > limit do table.remove(files) end
+		return files
+	end
+	if limit > 0 then result.largeFiles, result.oldFiles = ranked(large), ranked(old) end
+	if options.extensions then
+		result.extensions = {}
+		for _, row in pairs(extensions) do table.insert(result.extensions, row) end
+	end
+	if options.breakdown then
+		result.breakdowns = {}
+		for index, rows in ipairs(breakdowns) do
+			local list = {}
+			for _, row in pairs(rows) do table.insert(list, row) end
+			table.sort(list, function(a, b) return a.name < b.name end)
+			result.breakdowns[index] = list
+		end
+	end
+	if before > 0 then result.oldBytes, result.oldCount = oldBytes, oldCount end
+end
+
+function Mock:start(paths, exclusions, options)
+	return {result = self.scan(paths, exclusions, options), cancelled = false}
 end
 
 function Mock:cancel(job)
@@ -354,7 +435,8 @@ function Mock:emptyTrash()
 end
 
 function Mock:runOwnerCleanup(commandId, home, completion)
-	local paths = { ["npm-cache"] = home .. "/.npm/_cacache", ["pip-cache"] = home .. "/Library/Caches/pip" }
+	local paths = { ["npm-cache"] = home .. "/.npm/_cacache", ["pip-cache"] = home .. "/Library/Caches/pip",
+		["xcode-previews"] = home .. "/Library/Developer/Xcode/UserData/Previews" }
 	local path = paths[commandId]
 	if not path then completion(false, "Unsupported mock cache operation."); return end
 	local removed = self.removeUnder(path)
@@ -493,6 +575,51 @@ end
 
 function Mock:simulatorRuntimes(completion)
 	completion(copy(self.fixture.simulatorRuntimes or {}))
+end
+
+function Mock:applicationInfo(paths, completion)
+	local info, now = {}, os.time()
+	local known = {}
+	for path, value in pairs(self.fixture.applications or {}) do known[absolute(path, self.home)] = value end
+	for _, path in ipairs(paths) do
+		local value = known[path]
+		info[path] = value and {bundleId = value.bundleId, version = value.version,
+			lastUsed = value.lastUsedDaysAgo and now - value.lastUsedDaysAgo * 86400} or {}
+	end
+	completion(info)
+end
+
+function Mock:installedBundleIds(completion)
+	local ids = {"com.apple.Safari", "com.apple.mail"}
+	for _, value in pairs(self.fixture.applications or {}) do table.insert(ids, value.bundleId) end
+	completion(ids)
+end
+
+function Mock:volumes(completion)
+	local volumes = copy(self.fixture.volumes or {})
+	-- The container matches the fixture's capacity and follows mock cleanup:
+	-- the Data volume holds whatever the fixed-size volumes leave.
+	for _, container in ipairs(volumes.apfs and volumes.apfs.Containers or {}) do
+		container.CapacityCeiling, container.CapacityFree = self.fixture.capacityBytes, self.availableBytes
+		local others, data = 0, nil
+		for _, volume in ipairs(container.Volumes or {}) do
+			if volume.Roles and volume.Roles[1] == "Data" then data = volume else others = others + (volume.CapacityInUse or 0) end
+		end
+		if data then data.CapacityInUse = math.max(0, self.fixture.capacityBytes - self.availableBytes - others) end
+	end
+	completion(volumes)
+end
+
+function Mock:openDiskUtility()
+	ns.Alert {title = "Mock HDD", message = "Mock mode does not open Disk Utility.", buttons = {"OK"}}
+end
+
+function Mock:copy(text)
+	ns.copyToClipboard(text)
+end
+
+function Mock:confirmTrashPath(title, path)
+	return ns.Alert {title = title, message = path .. "\n\nOnly the in-memory mock inventory changes. Restarting restores the fixture.", buttons = {"Cancel", "Move to Trash"}} == 2
 end
 
 function Mock:softwareUpdateStatus()

@@ -105,6 +105,42 @@ t.expect(not isDone and update == snapshot, "next location publishes new progres
 finished = true
 isDone, update = service.poll(pending)
 t.expect(isDone and update == snapshot and pending.handle == nil, "final result is delivered even with unchanged location count")
+-- Optional summaries: ranked large files, old files, extension totals and one
+-- level of per-root breakdown, published only with the final result.
+local summary = root .. "/summary"
+mkdir(summary); mkdir(summary .. "/Movies"); mkdir(summary .. "/Movies/Nested")
+write(summary .. "/Movies/clip.MOV", string.rep("m", 64 * 1024))
+write(summary .. "/Movies/Nested/older.mov", string.rep("o", 32 * 1024))
+write(summary .. "/archive.zip", string.rep("z", 16 * 1024))
+write(summary .. "/tiny.txt", "t")
+write(summary .. "/.hidden", string.rep("h", 8192))
+assert(os.execute("/usr/bin/touch -t 202001010000 " .. System.quote(summary .. "/Movies/Nested/older.mov")))
+local plain = native.scan({summary})
+t.expect(plain.largeFiles == nil and plain.extensions == nil and plain.breakdowns == nil, "summaries are off unless requested")
+local cutoff = os.time() - 365 * 24 * 3600
+local summarized = native.scan({summary}, {}, {files = 2, minimumFileBytes = 12 * 1024, oldBefore = cutoff, extensions = true, breakdown = true})
+t.assertEqual(#summarized.largeFiles, 2, "large files are capped at the requested count")
+t.assertEqual(summarized.largeFiles[1].path, summary .. "/Movies/clip.MOV", "large files are ranked largest first")
+t.assertEqual(summarized.largeFiles[2].path, summary .. "/Movies/Nested/older.mov", "the ranking keeps the next largest file")
+t.assertEqual(summarized.largeFiles[1].bytes, 64 * 1024, "large files carry allocated bytes")
+t.expect(summarized.largeFiles[1].used >= cutoff, "recent files carry their last use time")
+t.assertEqual(#summarized.oldFiles, 1, "only files unused since the cutoff are old")
+t.assertEqual(summarized.oldFiles[1].path, summary .. "/Movies/Nested/older.mov", "old files keep their path")
+t.assertEqual(summarized.oldBytes, 32 * 1024, "old bytes total every old file")
+local byExtension = {}
+for _, row in ipairs(summarized.extensions) do byExtension[row.extension] = row end
+t.assertEqual(byExtension.mov.bytes, 96 * 1024, "extensions are case-insensitive and summed")
+t.assertEqual(byExtension.mov.count, 2, "extension rows count files")
+t.assertEqual(byExtension.mov.oldBytes, 32 * 1024, "extension rows keep their old share")
+t.assertEqual(byExtension.zip.bytes, 16 * 1024, "each extension has its own row")
+t.expect(byExtension[""] and byExtension[""].count == 1, "dot files have no extension")
+local children = {}
+for _, child in ipairs(summarized.breakdowns[1]) do children[child.name] = child end
+t.assertEqual(#summarized.breakdowns[1], 4, "the breakdown lists each immediate child once")
+t.expect(children.Movies.directory == true and children["archive.zip"].directory == false, "breakdown marks directories")
+t.expect(children.Movies.kb >= 96 and children.Nested == nil, "breakdown sums descendants without listing them")
+t.assertEqual(children["archive.zip"].kb, 16, "top-level files appear in the breakdown")
+for _, path in ipairs({"/Movies/Nested/older.mov", "/Movies/clip.MOV", "/archive.zip", "/tiny.txt", "/.hidden", "/Movies/Nested", "/Movies", ""}) do os.remove(summary .. path) end
 for i = 1, 1200 do os.remove(files .. "/" .. i) end
 for _, path in ipairs({files, file, sparse, blocked, root}) do os.remove(path) end
 os.exit(t.summary() and 0 or 1)
