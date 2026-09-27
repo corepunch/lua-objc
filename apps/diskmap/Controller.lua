@@ -37,6 +37,8 @@ local HelpController = require("apps.diskmap.controllers.HelpController")
 local NotificationsController = require("apps.diskmap.controllers.NotificationsController")
 local CommandsController = require("apps.diskmap.controllers.CommandsController")
 local SnapshotController = require("apps.diskmap.controllers.SnapshotController")
+local WatchlistController = require("apps.diskmap.controllers.WatchlistController")
+local WatchedController = require("apps.diskmap.controllers.WatchedController")
 local Controller = {}; Controller.__index = Controller
 local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
 -- Services grow optional features; a provider that lacks one simply does not
@@ -87,11 +89,13 @@ function Controller.new(service)
 		function(id) self.cleanup:toggleKeep(id) end, function() self:show("simulators") end,
 		function(row) self.sdks:open(self.window, row) end)
 	self.navigation = NavigationController.new(function(id, fromHistory) self:show(id, false, fromHistory) end)
+	self.watchlist = WatchlistController.new(self.model, service, function() self:updateRows() end)
 	local open = function(id) self:openManagement(id) end
 	self.actions = ActionsController.new(self.model, service, {
 		open = open,
 		show = function(id) self:show(id) end,
 		keep = function(id) self.cleanup:toggleKeep(id) end,
+		watch = function(entry) return self.watchlist:menuItem(entry) end,
 		refresh = function() self.scan:start() end,
 	}, self.review)
 	-- A live scan compares with the saved Mock HDD snapshot, the previous
@@ -134,6 +138,9 @@ function Controller.new(service)
 		disks = DisksController.new(service, self.actions),
 		updates = UpdatesController.new(self.model, service, self.actions),
 		guide = GuideController.new(self.model, open),
+		watched = WatchedController.new(self.model, service, self.watchlist, self.actions, {
+			open = open, closed = function() self:show("overview") end,
+		}),
 	}
 	self.commands = CommandsController.new(self.model, service, {
 		show = function(id) self:show(id) end,
@@ -212,6 +219,7 @@ function Controller:updateRows()
 	-- A page may re-render its template, so its refs are read after updating.
 	if self.page then self.page:update(self:state()); self.refs = self.page.refs end
 	self.navigation:setBadges(self:badges())
+	self.navigation:setWatched(self.watchlist:rows())
 	self.management:update()
 end
 -- A mark changes the title, the collector and the marked state shown on the
@@ -284,6 +292,7 @@ function Controller:scanFinished()
 		self.changes = nil
 	end
 	if self.snapshots then self.snapshots:compare() end
+	self.watchlist:scanFinished()
 end
 -- Changes since a snapshot replace history's category totals on the
 -- overview: they name locations, not only categories.
@@ -302,10 +311,15 @@ end
 -- Pages cross-fade: the old page's root leaves and the new one enters in
 -- one transaction, and charts on the new page draw themselves in.
 local PAGE_ANIMATION = ns.Animation.smooth(0.35)
+-- A watched location's sidebar row, "watched:<key>", opens the Watched
+-- page focused on that location.
 function Controller:show(id, remount, fromHistory)
-	local page = self.pages[id]
+	local key = id:match("^watched:(.+)$")
+	local page = self.pages[key and "watched" or id]
 	if not page or not self.content then return end
+	if key and not self.watchlist:find(key) then return end
 	if self.destination == id and self.page and not remount then return end
+	if key then page:focus(key) end
 	ns.withAnimation(PAGE_ANIMATION, function()
 		if self.page then self.page:dispose() end
 		self.destination, self.page = id, page
@@ -387,6 +401,7 @@ function Controller:createWindow()
 		dropToMark = function(paths) return self:dropToMark(paths) end,
 		review = function() self:openReview() end,
 	}})
+	self.navigation:setWatched(self.watchlist:rows())
 	cfg.content, cfg.sidebar = content, self.navigation:render()
 	self.content, self.collector = contentRefs.content, contentRefs
 	self:basketChanged()

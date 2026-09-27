@@ -37,7 +37,7 @@ example sizes, usage dates, version numbers, and suggested savings are not
 product facts. Broad cache deletion and disabling system protection do not
 become app features. Feature shutdown is not a promise of immediate asset removal.
 
-## Five core user stories
+## Six core user stories
 
 | User need | Product flow | Completion criterion |
 | --- | --- | --- |
@@ -45,6 +45,7 @@ become app features. Feature shutdown is not a promise of immediate asset remova
 | “Find developer junk without breaking my iOS setup.” | Open Developer for Xcode, package managers and containers; open AI agents for coding tools and Apple models. Mark needed resources Keep. | Caches, SDKs, runtimes, simulator devices, archives, and user work are distinct; retained resources never enter cleanup selections. |
 | “I do not use Siri or Dictation; why are their assets here?” | Select the feature; read its purpose and local footprint; open its supported management destination. | No manual deletion of protected assets; after returning, remeasure and report whether storage changed. |
 | “I want a quick routine cleanup.” | Open Reclaim; review measured candidates, respecting previous Keep choices. | The user can repeat maintenance without rediscovering paths or reviewing the same dismissed recommendation every launch. |
+| “What grew since I last looked?” | Watch a category or folder (SDKs, macOS installers, a project); reopen Diskmap and select it under Watched. | The change since the previous session is shown per location, from complete measurements only, without keeping file names. |
 | “Can I trust these numbers and actions?” | Inspect a category's contributing resources, classification evidence, locations, and last measurement; compare before and after. | No double counting within an accounting view, no invented zeroes, and no claim that moving to Trash has freed space. |
 
 ## Navigation and category hierarchy

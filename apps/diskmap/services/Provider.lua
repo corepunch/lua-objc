@@ -11,7 +11,7 @@ end
 -- A one-time export lives outside the repo so personal paths are not committed.
 -- Headless tests keep the bundled synthetic fixture.
 function Provider.savedSnapshotPath()
-	return (os.getenv("HOME") or "") .. "/Library/Application Support/Diskmap/mock-hdd.bin"
+	return require("apps.diskmap.services.System").supportPath("mock-hdd.bin")
 end
 
 local function savedSnapshot()

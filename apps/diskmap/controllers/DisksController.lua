@@ -65,11 +65,11 @@ end
 -- Measures one external disk's top level: another disk's scope, beside
 -- the startup disk Diskmap otherwise describes.
 function Controller:analyze(volume)
-	if not rawget(self.service, "analyzeVolume") then return end
+	if not rawget(self.service, "analyzeFolder") then return end
 	self.analyzed = {name = volume.name, path = volume.path, loading = true}
 	self:showContents()
 	local generation = self.generation
-	self.service.analyzeVolume(volume.path, function(entries, failure)
+	self.service.analyzeFolder(volume.path, function(entries, failure)
 		if generation ~= self.generation or not self.analyzed or self.analyzed.path ~= volume.path then return end
 		self.analyzed.loading, self.analyzed.entries, self.analyzed.failure = false, entries or {}, failure
 		self:showContents()

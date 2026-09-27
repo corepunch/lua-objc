@@ -434,6 +434,11 @@ documents (settings, autosaves) under a relative name that cannot escape the
 root: the app sandbox's Documents on iOS, `~/Library/Application
 Support/lua-objc/Documents` on the Mac. `ns._jsonEncode(value)` is available
 on both platforms (`src/shared/lua_documents.m`).
+`ns.applicationSupportDirectory(name)` (AppKit) returns an app's own folder in
+Application Support, created on first use, as `NSFileManager` resolves it (a
+sandboxed build gets its container). Use it for data an app keeps between
+launches that is neither a document nor regenerable; `name` is one path
+component.
 
 `TextField { value = "", placeholder = "Command", onChange = function(value, field)
 end, onCommand = function(command, field) return command == "submit" end }` uses

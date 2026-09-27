@@ -9,7 +9,9 @@ local Controller = {}; Controller.__index = Controller
 -- page can scroll as one surface and every list offers the same verbs in the
 -- same order: the primary action, Finder, the owning category, Keep, Copy.
 -- `handlers.open(id)` opens a category, `handlers.show(page)` a sidebar page,
--- `handlers.keep(id)` toggles Keep and `handlers.refresh()` remeasures.
+-- `handlers.keep(id)` toggles Keep, `handlers.watch(entry)` returns the
+-- Watch/Stop Watching item for a resource or folder entry, and
+-- `handlers.refresh()` remeasures.
 -- `review` is the cleanup basket (ReviewController): "Mark for Cleanup"
 -- adds a row to it, and nothing touches the disk until its review sheet.
 function Controller.new(model, service, handlers, review)
@@ -71,6 +73,11 @@ function Controller:reveal(path)
 	return {title = "Show in Finder", systemImage = "folder", action = function() self.service.reveal(path) end}
 end
 
+-- Watch/Stop Watching; nil when the page was built without a watchlist.
+function Controller:watch(entry)
+	return self.handlers.watch and self.handlers.watch(entry) or nil
+end
+
 function Controller:copyPath(path)
 	return {title = "Copy Path", systemImage = "doc.on.doc", action = function() self.service.copy(path) end}
 end
@@ -106,6 +113,7 @@ function Controller:resource(id)
 	table.insert(items, separator())
 	table.insert(items, {title = self.model.kept[id] and "Stop Keeping" or "Keep", systemImage = "checkmark.shield",
 		action = function() self.handlers.keep(id) end})
+	table.insert(items, self:watch({kind = "resource", id = id}))
 	if row.path then table.insert(items, self:copyPath(row.path)) end
 	return items
 end
@@ -151,6 +159,8 @@ function Controller:folder(row, trash, mark)
 	if mark then table.insert(items, self:mark(mark)) end
 	table.insert(items, self:reveal(row.path))
 	table.insert(items, separator())
+	-- Folders only: a single file's size is not worth a sidebar row.
+	if row.directory ~= false then table.insert(items, self:watch({kind = "folder", path = row.path, name = row.name})) end
 	table.insert(items, self:copyPath(row.path))
 	return items
 end

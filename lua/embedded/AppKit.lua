@@ -2418,6 +2418,13 @@ function AppKit.latestEventId()
 	return bridge._latestEventId()
 end
 
+--- The app's own folder in Application Support (`name` is one path
+--- component), created on first use; nil and a message when unavailable.
+--- Resolved by NSFileManager, so a sandboxed app gets its container's folder.
+function AppKit.applicationSupportDirectory(name)
+	return bridge._applicationSupportDirectory(name)
+end
+
 function AppKit.diskSpace(path)
 	return bridge._diskSpace(path)
 end

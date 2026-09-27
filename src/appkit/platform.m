@@ -266,6 +266,30 @@ static int bridge_resolve_bookmark(lua_State *L) {
 	return 2;
 }
 
+#pragma mark - Application Support
+
+/* `_applicationSupportDirectory(name)`: the app's own folder in Application
+ * Support, created on first use. NSFileManager resolves the location, so a
+ * sandboxed build gets its container's folder rather than the home folder's.
+ * Apple's File System Programming Guide places app-created data the person
+ * does not manage as documents here; regenerable data belongs in Caches. */
+static int bridge_application_support_directory(lua_State *L) {
+	NSString *name = [NSString stringWithUTF8String:luaL_checkstring(L, 1)];
+	if (!name.length || [name containsString:@"/"] || [name isEqualToString:@"."] || [name isEqualToString:@".."])
+		return luaL_error(L, "application support folder name must be one path component");
+	NSError *error = nil;
+	NSURL *root = [NSFileManager.defaultManager URLForDirectory:NSApplicationSupportDirectory
+		inDomain:NSUserDomainMask appropriateForURL:nil create:YES error:&error];
+	NSURL *url = [root URLByAppendingPathComponent:name isDirectory:YES];
+	if (!url || ![NSFileManager.defaultManager createDirectoryAtURL:url withIntermediateDirectories:YES attributes:nil error:&error]) {
+		lua_pushnil(L);
+		lua_pushstring(L, error.localizedDescription.UTF8String ?: "Application Support is unavailable.");
+		return 2;
+	}
+	lua_pushstring(L, url.path.UTF8String);
+	return 1;
+}
+
 static int bridge_pick_file(lua_State *L) {
 	const char *titleC = luaL_optstring(L, 1, "Open File");
 	NSOpenPanel *panel = [NSOpenPanel openPanel];
