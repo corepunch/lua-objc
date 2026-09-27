@@ -1,0 +1,5 @@
+<VStack id="rows" spacing="4" alignment="leading" maxWidth="infinity">
+  <% for _, row in ipairs(rows) do %>
+  <Label text="<%= row %>" />
+  <% end %>
+</VStack>

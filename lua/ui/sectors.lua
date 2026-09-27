@@ -133,26 +133,51 @@ function Sectors.hit(sectors, diameter, x, y)
 	end
 end
 
--- Builds the chart with the platform module `ns`. Array entries of `props` are
--- `SectorMark` records or overlay views centered on the chart, like SwiftUI's
--- `chartBackground` content in the hole. With no positive values, the empty
--- ring is drawn in the quaternary label color so the chart keeps its shape.
--- `onSelect(id, clickCount)`, `onHover(id)` and `onCenter()` make it
--- interactive; hovering dims the other sectors.
-function Sectors.chart(ns, props)
-	props = props or {}
-	local diameter = math.min(props.fixedWidth or props.fixedHeight or 160,
-		props.fixedHeight or props.fixedWidth or 160)
+-- Charts keep their marks, sectors and arcs so `Sectors.update` can move the
+-- arcs to new values in place, as SwiftUI Charts does when its data changes,
+-- instead of rebuilding the chart and replaying its entrance.
+local charts = setmetatable({}, {__mode = "k"})
+
+-- The arcs to draw: one per sector, or the empty ring in the quaternary
+-- label color when no value is positive, so the chart keeps its shape.
+local function arcSpecs(sectors, ring)
+	if #sectors == 0 then
+		return {{startAngle = TOP, endAngle = TOP, lineWidth = ring.lineWidth, stroke = "quaternaryLabel", frame = ring.frame, alpha = 1}}
+	end
+	local specs = {}
+	for _, sector in ipairs(sectors) do
+		table.insert(specs, {startAngle = sector.startAngle, endAngle = sector.endAngle, lineWidth = sector.lineWidth,
+			stroke = sector.color or "accent", frame = sector.frame, alpha = sector.alpha})
+	end
+	return specs
+end
+
+local function splitChildren(children)
 	local marks, overlays = {}, {}
-	for _, child in ipairs(props) do
+	for _, child in ipairs(children) do
 		if type(child) == "table" and child.__sectorMark then
 			table.insert(marks, child)
 		else
 			table.insert(overlays, child)
 		end
 	end
-	local ring = Sectors.ring(diameter, props.innerRadius)
-	local sectors = Sectors.layout(marks, diameter, props.innerRadius, props.angularInset)
+	return marks, overlays
+end
+
+-- Builds the chart with the platform module `ns`. Array entries of `props` are
+-- `SectorMark` records or overlay views centered on the chart, like SwiftUI's
+-- `chartBackground` content in the hole. `onSelect(id, clickCount)`,
+-- `onHover(id)` and `onCenter()` make it interactive; hovering dims the
+-- other sectors.
+function Sectors.chart(ns, props)
+	props = props or {}
+	local diameter = math.min(props.fixedWidth or props.fixedHeight or 160,
+		props.fixedHeight or props.fixedWidth or 160)
+	local marks, overlays = splitChildren(props)
+	local state = {ns = ns, diameter = diameter, innerRadius = props.innerRadius, angularInset = props.angularInset,
+		marks = marks, arcs = {}}
+	state.ring = Sectors.ring(diameter, props.innerRadius)
+	state.sectors = Sectors.layout(marks, diameter, props.innerRadius, props.angularInset)
 	local stack = {alignment = "center", fixedWidth = diameter, fixedHeight = diameter}
 	for key, value in pairs(props) do
 		if type(key) == "string" and stack[key] == nil and key ~= "innerRadius" and key ~= "angularInset"
@@ -160,41 +185,37 @@ function Sectors.chart(ns, props)
 			stack[key] = value
 		end
 	end
-	if #sectors == 0 then
-		table.insert(stack, (ns.Arc {startAngle = TOP, endAngle = TOP, lineWidth = ring.lineWidth,
-			stroke = "quaternaryLabel", width = ring.frame, height = ring.frame}))
-	end
-	local arcs = {}
-	for index, sector in ipairs(sectors) do
-		arcs[index] = ns.Arc {startAngle = sector.startAngle, endAngle = sector.endAngle, strokeAlpha = sector.alpha,
-			lineWidth = sector.lineWidth, stroke = sector.color or "accent", width = sector.frame, height = sector.frame}
-		table.insert(stack, arcs[index])
+	for index, spec in ipairs(arcSpecs(state.sectors, state.ring)) do
+		state.arcs[index] = ns.Arc {startAngle = spec.startAngle, endAngle = spec.endAngle, strokeAlpha = spec.alpha,
+			lineWidth = spec.lineWidth, stroke = spec.stroke, width = spec.frame, height = spec.frame}
+		table.insert(stack, state.arcs[index])
 	end
 	for _, overlay in ipairs(overlays) do table.insert(stack, overlay) end
 	local interactive = props.onSelect or props.onHover or props.onCenter or props.dragItem
 	if interactive and type(ns.PointerView) == "function" then
 		local ChartKeys = require("ui.chartkeys")
-		local highlighted, keys
+		local highlighted
 		-- Hovering or keyboard focus dims the other sectors; a typed filter
 		-- dims sectors whose label does not match.
 		local function restyle()
-			for index, arc in ipairs(arcs) do
-				local sector, alpha = sectors[index], sectors[index].alpha
+			for index, sector in ipairs(state.sectors) do
+				local arc, alpha = state.arcs[index], sector.alpha
 				if highlighted and sector ~= highlighted then alpha = alpha * STYLE.dimmedAlpha end
-				local mark = keys and keys:find(sector.id)
-				if mark and not keys:matches(mark) then alpha = alpha * STYLE.dimmedAlpha end
-				arc.strokeAlpha = alpha
+				local mark = state.keys and state.keys:find(sector.id)
+				if mark and not state.keys:matches(mark) then alpha = alpha * STYLE.dimmedAlpha end
+				if arc then arc.strokeAlpha = alpha end
 			end
 		end
+		state.restyle = restyle
 		local function highlight(sector)
 			if sector == highlighted then return end
 			highlighted = sector
 			restyle()
 		end
 		local function sectorFor(id)
-			for _, sector in ipairs(sectors) do if sector.id == id then return sector end end
+			for _, sector in ipairs(state.sectors) do if sector.id == id then return sector end end
 		end
-		keys = ChartKeys.new(marks, {
+		state.keys = ChartKeys.new(marks, {
 			focus = function(id)
 				highlight(id and sectorFor(id))
 				if props.onHover then props.onHover(id) end
@@ -203,29 +224,68 @@ function Sectors.chart(ns, props)
 			back = function() if props.onCenter then props.onCenter() end end,
 			filtered = restyle,
 		})
+		state.unhighlight = function() highlighted = nil end
 		table.insert(stack, (ns.PointerView {width = diameter, height = diameter,
 			onClick = function(_, x, y, count)
-				local sector = Sectors.hit(sectors, diameter, x, y)
+				local sector = Sectors.hit(state.sectors, diameter, x, y)
 				if sector then
 					if props.onSelect then props.onSelect(sector.id, count) end
-				elseif x and math.sqrt((x - diameter / 2) ^ 2 + (y - diameter / 2) ^ 2) < ring.inner then
+				elseif x and math.sqrt((x - diameter / 2) ^ 2 + (y - diameter / 2) ^ 2) < state.ring.inner then
 					if props.onCenter then props.onCenter() end
 				end
 			end,
 			onHover = function(_, x, y)
-				local sector = Sectors.hit(sectors, diameter, x, y)
+				local sector = Sectors.hit(state.sectors, diameter, x, y)
 				highlight(sector)
 				if props.onHover then props.onHover(sector and sector.id or nil) end
 			end,
 			onDrag = props.dragItem and function(_, x, y)
-				local sector = Sectors.hit(sectors, diameter, x, y)
+				local sector = Sectors.hit(state.sectors, diameter, x, y)
 				return sector and props.dragItem(sector.id) or nil
 			end,
-			onKey = function(_, key) return keys:handle(key) end}))
+			onKey = function(_, key) return state.keys:handle(key) end}))
 	end
 	local view = ns.ZStack(stack)
 	if props.accessibilityLabel then view.accessibilityLabel = props.accessibilityLabel end
+	charts[view] = state
 	return view
+end
+
+-- Applies new `SectorMark` records to a chart built by `Sectors.chart`: arcs
+-- keep their views and take the new angles, and arcs are added or removed at
+-- the end of the ring, below the overlay. Inside an animation transaction
+-- the changes animate. Returns false for a view this module did not build.
+function Sectors.update(view, records)
+	local state = charts[view]
+	if not state then return false end
+	local ns = state.ns
+	local marks = splitChildren(records)
+	state.marks = marks
+	state.sectors = Sectors.layout(marks, state.diameter, state.innerRadius, state.angularInset)
+	local specs = arcSpecs(state.sectors, state.ring)
+	for index, spec in ipairs(specs) do
+		local arc = state.arcs[index]
+		if arc then
+			arc.fixedWidth, arc.fixedHeight = spec.frame, spec.frame
+			arc.startAngle, arc.endAngle = spec.startAngle, spec.endAngle
+			arc.lineWidth, arc.stroke, arc.strokeAlpha = spec.lineWidth, spec.stroke, spec.alpha
+		else
+			arc = ns.Arc {startAngle = spec.startAngle, endAngle = spec.endAngle, strokeAlpha = spec.alpha,
+				lineWidth = spec.lineWidth, stroke = spec.stroke, width = spec.frame, height = spec.frame}
+			state.arcs[index] = arc
+			ns._motionInsert(view, arc, index)
+		end
+	end
+	for index = #state.arcs, #specs + 1, -1 do
+		ns._motionRemove(state.arcs[index])
+		state.arcs[index] = nil
+	end
+	if state.keys then
+		state.keys.marks = marks
+		state.unhighlight()
+		state.restyle()
+	end
+	return true
 end
 
 return Sectors

@@ -12,3 +12,7 @@ static void motion_flush_layout(NSArray<NSView *> *owners) {
 	(void)owners;
 	flush_pending_layout();
 }
+
+static void motion_invalidate_layout(NSView *view) {
+	invalidate_layout(view);
+}

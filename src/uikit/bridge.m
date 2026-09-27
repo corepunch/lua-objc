@@ -155,6 +155,10 @@ static void motion_flush_layout(NSArray<UIView *> *owners) {
 		[owner layoutIfNeeded];
 	}
 }
+
+static void motion_invalidate_layout(UIView *view) {
+	if (view) uikit_invalidate_layout(view);
+}
 #include "metatable.m"
 #include "views.m"
 #include "controls.m"

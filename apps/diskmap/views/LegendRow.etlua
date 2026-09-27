@@ -1,4 +1,8 @@
-<HStack maxWidth="infinity" spacing="6" alignment="center">
+<% --[[ Rows are keyed by category so a re-ranked legend moves rows instead of
+  rewriting their text. The size has a fixed width: "Calculating…" and
+  "≥ 998.9 MB" occupy the same space, so values never shift while a scan runs. ]]
+  local LEGEND = { size = 84, share = 34 } %>
+<HStack key="legend-<%= item.id %>" maxWidth="infinity" spacing="6" alignment="center">
   <SystemImage name="circle.fill" size="9" color="<%= item.color %>" />
   <% if item.id == "other" then %>
   <Label text="<%= item.name %>" size="12" color="secondary" lines="1" />
@@ -6,6 +10,6 @@
   <Button title="<%= item.name %>" style="link" size="12" action="category_<%= item.id %>" help="Show <%= item.name %>" />
   <% end %>
   <Spacer />
-  <Label text="<%= item.size %>" size="12" monospacedDigit="true" />
-  <Label text="<%= item.share %>" size="11" color="secondary" monospacedDigit="true" width="34" alignment="trailing" />
+  <Label text="<%= item.size %>" size="12" monospacedDigit="true" width="<%= LEGEND.size %>" alignment="trailing" lines="1" />
+  <Label text="<%= item.share %>" size="11" color="secondary" monospacedDigit="true" width="<%= LEGEND.share %>" alignment="trailing" />
 </HStack>

@@ -334,6 +334,9 @@ static LuaMotionTransaction *motion_current(void) {
 
 static MotionView *motion_layout_owner(MotionView *view);
 static void motion_flush_layout(NSArray<MotionView *> *owners);
+/* Structural changes move siblings like any layout-affecting write: the
+ * container is laid out in the next pass, before the frame is drawn. */
+static void motion_invalidate_layout(MotionView *view);
 
 /* Content a contentTransition cross-fades or rolls: text, titles, images. */
 static id motion_content(MotionView *view) {
@@ -687,7 +690,9 @@ static void motion_finish_removal(MotionView *view) {
 	if (!motion_is_leaving(view)) return;
 	objc_setAssociatedObject(view, &kMotionLeavingKey, nil, OBJC_ASSOCIATION_RETAIN);
 	motion_remove_animations(view.layer);
+	MotionView *container = view.superview;
 	[view removeFromSuperview];
+	motion_invalidate_layout(container);
 }
 
 static void motion_finish_hide(MotionView *view) {
@@ -822,7 +827,9 @@ static void motion_remove(MotionView *view) {
 	motion_will_change(view.superview, YES);
 	NSDictionary *removal = objc_getAssociatedObject(view, &kMotionRemovalKey);
 	if (!txn || txn.disabled || !removal.count || view.hidden) {
+		MotionView *container = view.superview;
 		[view removeFromSuperview];
+		motion_invalidate_layout(container);
 		return;
 	}
 	objc_setAssociatedObject(view, &kMotionLeavingKey, @YES, OBJC_ASSOCIATION_RETAIN);
@@ -851,6 +858,7 @@ static void motion_insert(MotionView *container, MotionView *child, NSInteger in
 	if (before) [container addSubview:child positioned:NSWindowBelow relativeTo:before];
 	else [container addSubview:child];
 #endif
+	motion_invalidate_layout(container);
 }
 
 /* ----- Lua bindings ----- */

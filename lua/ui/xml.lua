@@ -727,6 +727,9 @@ local TAG_SCHEMA = {
         constructor = "SectorChart",
         children = "array",
         props = { innerRadius = "num", angularInset = "num", accessibilityLabel = "str" },
+        -- New marks move the existing arcs, like SwiftUI Charts, instead of
+        -- rebuilding the chart (see ui/sectors.lua).
+        updateRecords = function(view, records) return require("ui.sectors").update(view, records) end,
         transform = function(props, attrs)
             bindActions(props, attrs, { "onSelect", "onHover", "onCenter", "dragItem" })
         end,
@@ -2022,6 +2025,9 @@ local INNER = {
         if not hasProperty(view, "enabled") then return nil end
         return function() view.enabled = not (v ~= nil and bool(v)) end
     end,
+    -- VoiceOver text often carries live values (a chart's totals); it
+    -- updates in place like SwiftUI's `.accessibilityLabel`.
+    accessibilityLabel = function(view, v) return function() view.accessibilityLabel = v or "" end end,
     symbolEffect = function() return function() end end,
     symbolEffectActive = function() return function() end end,
     symbolEffectValue = function() return function() end end,
@@ -2146,9 +2152,47 @@ local function disposeNode(node)
     if node.scope then node.scope:dispose() end
 end
 
+local function isRecord(node)
+    local entry = TAG_SCHEMA[node.tag]
+    return entry ~= nil and entry.kind == "record"
+end
+
+local function sameRecords(oldRecords, newRecords, ns)
+    if #oldRecords ~= #newRecords then return false end
+    for index, record in ipairs(newRecords) do
+        if not reconcileNode(oldRecords[index], record, ns, { ops = {}, removals = {}, built = {} }, true) then return false end
+    end
+    return true
+end
+
+-- A view whose schema entry has `updateRecords(view, records)` takes new
+-- record children (chart marks) in place; its view children reconcile as
+-- usual. Returns nil when the tag has no such hook.
+local function reconcileRecordsInPlace(old, new, ns, plan)
+    local entry = TAG_SCHEMA[old.tag]
+    if not (entry and entry.updateRecords) then return nil end
+    local oldRecords, oldViews, newRecords, newViews = {}, {}, {}, {}
+    for _, child in ipairs(elements(old.children)) do table.insert(isRecord(child) and oldRecords or oldViews, child) end
+    for _, child in ipairs(elements(new.children)) do table.insert(isRecord(child) and newRecords or newViews, child) end
+    if #oldViews ~= #newViews then return false end
+    for index, child in ipairs(newViews) do
+        if not reconcileNode(oldViews[index], child, ns, plan) then return false end
+    end
+    if not sameRecords(oldRecords, newRecords, ns) then
+        local records = compile(newRecords, ns, registry, {})
+        local view = old.target
+        table.insert(plan.ops, function()
+            if not entry.updateRecords(view, records) then error("xml: <" .. old.tag .. "> could not take new records in place") end
+        end)
+    end
+    return true
+end
+
 local function reconcileChildren(old, new, ns, plan)
     local oldChildren, newChildren = elements(old.children), elements(new.children)
     if textOf(old) ~= textOf(new) then return false end
+    local inPlace = reconcileRecordsInPlace(old, new, ns, plan)
+    if inPlace ~= nil then return inPlace end
     for _, child in ipairs(oldChildren) do
         if type(child.view) ~= "userdata" then
             -- Records (columns, marks, options) configure their parent.
