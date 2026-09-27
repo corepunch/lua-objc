@@ -295,8 +295,11 @@ end
 function M.fromString(src, data)
     local etlua = require("etlua")
     if data then
-        local ok, result = pcall(etlua.render, src, data)
+        -- etlua.render returns nil plus a message for compile errors and
+        -- throws for runtime errors; both must fail the caller.
+        local ok, result, err = pcall(etlua.render, src, data)
         if not ok then error("viewdesc: template error: " .. tostring(result)) end
+        if result == nil then error("viewdesc: template error: " .. tostring(err)) end
         src = result
     end
     src = src:gsub("^%s*<%?xml[^?]*%?>%s*", "")
