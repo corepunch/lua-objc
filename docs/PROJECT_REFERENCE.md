@@ -990,7 +990,10 @@ other sectors. Hit testing uses the same geometry that drew the arcs
 `<Treemap>` draws a squarified treemap from `<TreemapNode id parent value
 color label detail hatched />` records (`lua/ui/treemap.lua` lays it out; the
 native `LuaTreemapView` only paints). Children nest inside their parent below
-a label strip; colors are muted semantic colors that lighten with depth,
+a one-line header band holding the parent's label and right-aligned detail; a
+parent too short for the band shows no label. The layout emits each cell's
+`labelFrame`/`detailFrame` and omits labels that would not fit, so labels never
+overlap. Colors are muted semantic colors that lighten with depth,
 `hatched` marks reclaimable space with diagonal lines, and the selected or
 hovered cell gets an accent outline. `onSelect(id, clickCount)` and
 `onHover(id)` report the deepest cell under the pointer. Give it a width and

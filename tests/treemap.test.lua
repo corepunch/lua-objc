@@ -50,6 +50,78 @@ t.assertEqual(Treemap.hit(cells, 1000, 1000), nil, "points outside hit nothing")
 local tiny = Treemap.layout(nodes, 40, 30)
 for _, cell in ipairs(tiny) do t.expect(cell.depth == 0, "small parents do not nest children") end
 
+-- Labels never overlap: a group's header label sits in the band above its
+-- children, and every label stays inside its own tile.
+local function intersects(a, b)
+	return a.x < b.x + b.w and b.x < a.x + a.w and a.y < b.y + b.h and b.y < a.y + a.h
+end
+local function inside(frame, cell)
+	return frame.x >= cell.x - 1e-9 and frame.y >= cell.y - 1e-9
+		and frame.x + frame.w <= cell.x + cell.w + 1e-9 and frame.y + frame.h <= cell.y + cell.h + 1e-9
+end
+local nested = {
+	{id = "dev", value = 45, label = "Developer", detail = "45.4 GB"},
+	{id = "ios", value = 22, label = "iOS Files", detail = "21.8 GB"},
+	{id = "xcode", parent = "dev", value = 30, label = "Xcode", detail = "28.3 GB"},
+	{id = "pkg", parent = "dev", value = 15, label = "Package managers", detail = "3.6 GB"},
+	{id = "support", parent = "xcode", value = 12, label = "Device support", detail = "11.5 GB"},
+	{id = "derived", parent = "xcode", value = 8, label = "DerivedData", detail = "8.0 GB"},
+	{id = "sims", parent = "xcode", value = 10, label = "Simulator devices", detail = "11.2 GB"},
+	{id = "backups", parent = "ios", value = 16, label = "Backups", detail = "16.4 GB"},
+	{id = "updates", parent = "ios", value = 5, label = "Updates", detail = "5.4 GB"},
+	{id = "npm", parent = "pkg", value = 1, label = "npm", detail = "1.4 GB"},
+}
+local function checkLabels(width, height)
+	local laid = Treemap.layout(nested, width, height)
+	local cellById, parentOf = {}, {}
+	for _, node in ipairs(nested) do parentOf[node.id] = node.parent end
+	for _, cell in ipairs(laid) do cellById[cell.id] = cell end
+	local headers = 0
+	for _, cell in ipairs(laid) do
+		for _, key in ipairs({"labelFrame", "detailFrame"}) do
+			if cell[key] then
+				t.expect(inside(cell[key], cell), cell.id .. " " .. key .. " stays inside its tile at " .. width .. "x" .. height)
+			end
+		end
+		if cell.header then headers = headers + 1 end
+		-- Walk every ancestor: no descendant label may cross a header label.
+		local ancestor = cellById[parentOf[cell.id]]
+		while ancestor do
+			t.expect(ancestor.labelFrame == nil or ancestor.header, ancestor.id .. " draws a header, not leaf lines, above children")
+			t.expect(intersects(cell, ancestor) and cell.y >= ancestor.y, cell.id .. " nests inside " .. ancestor.id)
+			if ancestor.labelFrame then
+				t.expect(not intersects(cell, ancestor.labelFrame),
+					cell.id .. " tile stays below " .. ancestor.id .. " header at " .. width .. "x" .. height)
+				for _, key in ipairs({"labelFrame", "detailFrame"}) do
+					if cell[key] then
+						t.expect(not intersects(cell[key], ancestor.labelFrame),
+							cell.id .. " " .. key .. " clears " .. ancestor.id .. " header at " .. width .. "x" .. height)
+					end
+				end
+			end
+			ancestor = cellById[parentOf[ancestor.id]]
+		end
+	end
+	return laid, cellById, headers
+end
+local _, big, headers = checkLabels(900, 540)
+t.expect(headers >= 2, "large groups draw header labels")
+t.expect(big.xcode.header and big.support.labelFrame, "nested headers and their children are both labelled")
+t.expect(big.support.y >= big.xcode.labelFrame.y + big.xcode.labelFrame.h, "children start below the header band")
+t.expect(big.support.detailFrame ~= nil, "roomy leaves show their detail line")
+t.assertEqual(big.xcode.detailFrame, nil, "a header draws its detail on its own line, not below it")
+checkLabels(400, 260)
+checkLabels(160, 90)
+local _, cramped = checkLabels(60, 60)
+for _, cell in pairs(cramped) do
+	if cell.depth > 0 then
+		t.assertEqual(cell.labelFrame, nil, "children of an unbanded parent are too small to label")
+	end
+end
+for _, cell in ipairs(Treemap.layout(nested, 50, 20)) do
+	t.assertEqual(cell.labelFrame, nil, "tiles too small for a label line show none")
+end
+
 -- The native view lays out on resize and reports clicks and hovers.
 local selected, hovered
 local view, refs = xml.render([[<Treemap id="map" width="400" height="300">

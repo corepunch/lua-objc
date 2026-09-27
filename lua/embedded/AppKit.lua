@@ -2051,7 +2051,7 @@ end
 
 --- Draws a squarified treemap from `TreemapNode` records.
 ---
---- Nested nodes (`parent`) are drawn inside their parent below a label strip.
+--- Nested nodes (`parent`) are drawn inside their parent below a header band holding their label.
 --- Colors are muted semantic colors that lighten with depth; `hatched` marks
 --- reclaimable space. Clicking selects a cell and hovering outlines it.
 --- @prop onSelect function optional. `onSelect(id, clickCount)`.

@@ -199,6 +199,12 @@ static CGFloat treemap_number(NSDictionary *cell, NSString *key) {
 	id value = cell[key];
 	return [value respondsToSelector:@selector(doubleValue)] ? [value doubleValue] : 0;
 }
+static NSRect treemap_frame(NSDictionary *cell, NSString *key) {
+	NSDictionary *frame = [cell[key] isKindOfClass:NSDictionary.class] ? cell[key] : nil;
+	if (!frame) return NSZeroRect;
+	return NSMakeRect(treemap_number(frame, @"x"), treemap_number(frame, @"y"),
+		treemap_number(frame, @"w"), treemap_number(frame, @"h"));
+}
 - (void)drawRect:(NSRect)dirty {
 	NSDictionary *nameAttributes = @{
 		NSFontAttributeName: [NSFont systemFontOfSize:kTreemapLabelFontSize weight:NSFontWeightSemibold],
@@ -243,17 +249,29 @@ static CGFloat treemap_number(NSDictionary *cell, NSString *key) {
 			[NSColor.controlAccentColor setStroke];
 			[outline stroke];
 		}
+		// Label frames come from the Lua layout, which reserves a header band
+		// for groups and omits labels that would not fit.
 		NSString *label = [cell[@"label"] isKindOfClass:NSString.class] ? cell[@"label"] : nil;
-		if (label.length && rect.size.width >= kTreemapLabelMinWidth && rect.size.height >= kTreemapLabelMinHeight) {
-			NSRect text = NSInsetRect(rect, kTreemapLabelInset, kTreemapLabelInset);
-			NSStringDrawingOptions options = NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingTruncatesLastVisibleLine;
-			[label drawWithRect:NSMakeRect(NSMinX(text), NSMinY(text), text.size.width, kTreemapLabelLineHeight)
-				options:options attributes:nameAttributes context:nil];
-			NSString *detail = [cell[@"detail"] isKindOfClass:NSString.class] ? cell[@"detail"] : nil;
-			if (detail.length && text.size.height >= 2 * kTreemapLabelLineHeight) {
-				[detail drawWithRect:NSMakeRect(NSMinX(text), NSMinY(text) + kTreemapLabelLineHeight,
-					text.size.width, kTreemapLabelLineHeight) options:options attributes:detailAttributes context:nil];
+		NSString *detail = [cell[@"detail"] isKindOfClass:NSString.class] ? cell[@"detail"] : nil;
+		NSRect labelFrame = treemap_frame(cell, @"labelFrame");
+		NSRect detailFrame = treemap_frame(cell, @"detailFrame");
+		NSStringDrawingOptions options = NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingTruncatesLastVisibleLine;
+		if (label.length && !NSIsEmptyRect(labelFrame)) {
+			// A group header shares its line: detail right-aligned, the name
+			// truncating first so the size stays readable.
+			if ([cell[@"header"] respondsToSelector:@selector(boolValue)] && [cell[@"header"] boolValue] && detail.length) {
+				CGFloat detailWidth = ceil([detail sizeWithAttributes:detailAttributes].width);
+				CGFloat nameWidth = [label sizeWithAttributes:nameAttributes].width;
+				if (detailWidth + kTreemapHeaderDetailSpacing + MIN(nameWidth, labelFrame.size.width / 2) <= labelFrame.size.width) {
+					[detail drawWithRect:NSMakeRect(NSMaxX(labelFrame) - detailWidth, NSMinY(labelFrame), detailWidth, labelFrame.size.height)
+						options:options attributes:detailAttributes context:nil];
+					labelFrame.size.width -= detailWidth + kTreemapHeaderDetailSpacing;
+				}
 			}
+			[label drawWithRect:labelFrame options:options attributes:nameAttributes context:nil];
+		}
+		if (detail.length && !NSIsEmptyRect(detailFrame)) {
+			[detail drawWithRect:detailFrame options:options attributes:detailAttributes context:nil];
 		}
 	}
 }

@@ -131,10 +131,7 @@ static const CGFloat kParagraphDropCapInkOutset = 2.0;
 #define kTreemapHatchAlpha            0.22
 #define kTreemapSelectionWidth           2
 #define kTreemapLabelFontSize           11
-#define kTreemapLabelLineHeight         14
-#define kTreemapLabelInset               5
-#define kTreemapLabelMinWidth           56
-#define kTreemapLabelMinHeight          24
+#define kTreemapHeaderDetailSpacing      6
 #define kTableCellLoadingGap             4
 #define kTableCellLineSpacing            2
 #define kTableCellLevelTextWidth        38
