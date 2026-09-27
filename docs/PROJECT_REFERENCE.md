@@ -974,7 +974,9 @@ native `Arc` strokes in a `ZStack`, on AppKit and UIKit alike (`lua/ui/sectors.l
 Each `<SectorMark value="…" color="…" label="…" />` becomes one arc; the first
 starts at 12 o'clock and marks advance clockwise in data order. `innerRadius`
 is the hole as a fraction of the outer radius (0 draws a pie) and
-`angularInset` is the gap between neighbours in points. Non-positive values
+`angularInset` is the gap between neighbours in points, measured at each
+ring's inner edge so no separator is thinner; sunburst rings are 2pt apart.
+Non-positive values
 occupy no angle, a lone mark is a closed ring, and a chart without positive
 values draws its empty ring in `quaternaryLabel`. Any other child view is
 centered over the chart, typically a total in the hole:
@@ -986,6 +988,18 @@ centered over the chart, typically a total in the hole:
   <Label text="337 GB" size="26" weight="semibold" design="rounded" monospacedDigit="true" />
 </SectorChart>
 ```
+
+A positive `depth="14"` draws the chart **raised** instead (AppKit,
+`src/appkit/sector_scene.m`): one SceneKit view renders each sector as a
+square-edged extruded solid, seen through a camera tilted down like Excel's
+3-D pie. Every ring stands the same height, so a wall never runs into the
+ring in front of it, and the first sector starts at half past one. `angularInset` becomes a parallel-sided gap of the same width between
+neighbours and between rings. Each slice carries its own diagonal gradient; a
+key light and a soft contact shadow on a shadow-only floor do the rest. Mark
+opacity blends towards the window background rather than making solids
+translucent. The pointer is unprojected onto each ring's top face, so hover,
+selection and drag use the same flat geometry as the arcs, and the hovered
+sector slides out.
 
 `<Gauge value="0.4" tint="systemBlue" />` is SwiftUI `Gauge` with the linear
 capacity style: a read-only continuous-capacity `NSLevelIndicator` on AppKit

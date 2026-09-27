@@ -25,14 +25,36 @@ end
 t.expect(window.subtitle:find("available of", 1, true) ~= nil, "the subtitle includes purgeable storage as available")
 t.expect(app.pages.overview.hero.refs.hiddenSpace ~= nil, "the overview lists hidden space")
 
--- Map: rings by default, drill in and out, switch to rectangles.
+-- Map: rings by default, drill in and out, switch to raised rings and rectangles.
 app:show("map")
 t.expect(page().sunburst ~= nil, "the map starts as rings")
 t.expect(page().mapList.rowCount > 5, "the map lists the focus's children")
+-- Slivers fold into "Other" so every mark is wide enough to see and point at.
+local MapTree = require("apps.diskmap.models.MapTree")
+local mapNodes, mapTotal = MapTree.nodes(app.model, "")
+for _, node in ipairs(mapNodes) do
+	t.expect(node.value / mapTotal >= MapTree.minimumShare or (node.other and node.ring == 1),
+		"map node " .. node.id .. " is not a sliver")
+end
+local mapById, childCount = {}, {}
+for _, node in ipairs(mapNodes) do
+	mapById[node.id] = node
+	if node.parent then childCount[node.parent] = (childCount[node.parent] or 0) + 1 end
+end
+for _, node in ipairs(mapNodes) do
+	if node.other and node.parent then
+		t.expect(childCount[node.parent] > 1, node.id .. " is never its parent's only child")
+		t.assertEqual(node.color, mapById[node.parent].color, node.id .. " keeps its parent's hue")
+	end
+end
 app.page.template.actions.chartSelect("developer", 1)
 t.assertEqual(app.pages.map.focus, "developer", "clicking a group focuses it")
 t.assertEqual(page().mapFocus.text, "Developer", "the breadcrumb ends at the focus")
 app.page.template.actions.style(1)
+t.assertEqual(app.pages.map.style, "raised", "the second style raises the rings")
+t.expect(page().sunburst ~= nil and page().sunburst.subviews[1].className == "LuaSectorSceneView",
+	"raised rings render in SceneKit")
+app.page.template.actions.style(2)
 t.expect(page().treemap ~= nil and page().sunburst == nil, "rectangles replace the rings")
 app.page.template.actions.chartHover("xcode")
 t.expect(page().mapHover.text:find("Developer › Xcode", 1, true) == 1, "hover describes a node in place")

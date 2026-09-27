@@ -24,7 +24,11 @@ t.assertEqual(sectors[2].fraction, 0.75, "fractions are shares of the total")
 
 local inset = Sectors.layout({{value = 1}, {value = 1}}, 180, 0.6, 2)
 local gap = inset[2].startAngle - inset[1].endAngle
-t.expect(math.abs(math.rad(gap) * 72 - 2) < 1e-9, "angular inset is a point gap at the mid-radius")
+t.expect(math.abs(math.rad(gap) * 54 - 2) < 1e-9, "angular inset is a point gap at the inner edge, so no separator is thinner")
+local pie = Sectors.layout({{value = 1}, {value = 1}}, 180, 0, 2)
+t.expect(math.abs(math.rad(pie[2].startAngle - pie[1].endAngle) * 45 - 2) < 1e-9, "a pie measures its inset at mid-radius")
+local band = Sectors.band(200, 0.5, 1, 3)
+t.expect(math.abs((band.outer - band.inner) - band.lineWidth - 2) < 1e-9, "rings are separated by a 2pt gap, not a hairline")
 t.expect(math.abs((inset[1].startAngle + inset[1].endAngle) / 2 - 0) < 1e-9, "insets keep each sector centred on its share")
 
 local lone = Sectors.layout({{value = 0}, {value = 5}, {value = -2}}, 100, 0.5, 4)
@@ -77,6 +81,29 @@ t.assertEqual(byId.orphan, nil, "a child without a drawn parent is not drawn")
 t.assertEqual(Sectors.hit(rings, 200, 100, 40).id, "a", "a point in the first ring hits its sector")
 t.assertEqual(Sectors.hit(rings, 200, 190, 100).id, "a1", "a point in the second ring hits the child")
 t.assertEqual(Sectors.hit(rings, 200, 100, 100), nil, "the hole hits nothing")
+
+-- A parent's only child still gives up half a gap at each end, so the gap to
+-- a cousin under the next parent is as wide as between siblings.
+local lone = Sectors.layout({
+	{id = "a", value = 1}, {id = "b", value = 1},
+	{id = "a1", parent = "a", ring = 2, value = 1}, {id = "b1", parent = "b", ring = 2, value = 1}, {id = "b2", parent = "b", ring = 2, value = 1},
+}, 200, 0.5, 2)
+local lonely = {}
+for _, sector in ipairs(lone) do lonely[sector.id] = sector end
+local siblingGap = lonely.b2.startAngle - lonely.b1.endAngle
+t.expect(lonely.a1.startAngle > lonely.a1.spanStart, "a lone child is inset from its parent's boundary")
+t.expect(math.abs((lonely.b1.startAngle - lonely.a1.endAngle) - siblingGap) < 1e-9, "cousins are as far apart as siblings")
+-- A closed first ring keeps the chart's start, and its children follow it.
+local closed = Sectors.layout({{id = "a", value = 1}, {id = "a1", parent = "a", ring = 2, value = 1}, {id = "a2", parent = "a", ring = 2, value = 1}},
+	200, 0.5, 0, -45)
+t.assertEqual(closed[1].spanStart, -45, "a lone ring starts where the chart starts")
+t.assertEqual(closed[2].startAngle, -45, "its children start there too")
+-- Children worth more than their parent are scaled into its angle.
+local overflow = Sectors.layout({{id = "a", value = 1}, {id = "b", value = 1},
+	{id = "a1", parent = "a", ring = 2, value = 2}, {id = "a2", parent = "a", ring = 2, value = 2}}, 200, 0.5, 0)
+local over = {}
+for _, sector in ipairs(overflow) do over[sector.id] = sector end
+t.expect(math.abs(over.a2.endAngle - over.a.endAngle) < 1e-9, "overflowing children end at their parent's edge")
 
 -- Interactive charts dim other sectors on hover and report selection.
 local chosen, hoveredId, centered
@@ -131,6 +158,48 @@ t.expect(chartTemplate.refs.chart == mountedChart, "changed marks keep the chart
 t.assertEqual(chartTemplate.refs.total.stringValue, "4 GB", "the overlay updates in place")
 t.assertEqual(#mountedChart.subviews, 4, "three arcs and the overlay")
 t.assertEqual(mountedChart.accessibilityLabel, "Used 4 GB", "the VoiceOver summary updates in place")
+
+-- A positive depth draws raised sectors in SceneKit, all one height, starting at
+-- half past one; the flat arcs are not built.
+local raisedMarks = {
+	{__sectorMark = true, id = "a", value = 3, color = "systemBlue"},
+	{__sectorMark = true, id = "b", value = 1, color = "systemGreen"},
+	{__sectorMark = true, id = "a1", parent = "a", ring = 2, value = 1, color = "systemBlue", opacity = 0.5},
+}
+local raisedHovered
+local raised = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.4, depth = 10,
+	raisedMarks[1], raisedMarks[2], raisedMarks[3], ns.Text {text = "Total"},
+	onHover = function(id) raisedHovered = id end}
+local scene = raised.subviews[1]
+t.assertEqual(scene.className, "LuaSectorSceneView", "depth renders sectors in one SceneKit view")
+t.assertEqual(raised.subviews[#raised.subviews].className, "LuaPointerView", "the pointer view stays on top")
+local nodes = ns._sectorSceneNodes(scene)
+t.assertEqual(#nodes, 3, "one solid per sector")
+t.assertEqual(nodes[1].height, 10, "the inner ring is the chart's depth")
+t.assertEqual(nodes[3].height, 10, "every ring stands the same height, so rings never run into each other")
+t.assertEqual(nodes[1].z, 5, "solids stand on the floor")
+t.assertEqual(nodes[1].chamfer, 0, "sectors have square edges")
+t.assertEqual(nodes[3].alpha, 0.5, "mark opacity carries into the scene")
+local raisedLayout = Sectors.layout({{value = 1}, {value = 1}}, 200, 0.4, 0, -45)
+t.assertEqual(raisedLayout[1].startAngle, -45, "layout can start at another angle")
+-- The tilted camera maps a pointer back onto the flat chart: the view's
+-- center is over the hole, and a point low in the view hits the front of
+-- the chart.
+local cx, cy = ns._sectorScenePoint(scene, 100, 100, 10)
+t.expect(cx and math.abs(cx - 100) < 1 and math.abs(cy - 100) < 20, "the view center unprojects near the chart center")
+local _, frontY = ns._sectorScenePoint(scene, 100, 160, 10)
+t.expect(frontY > 150, "a point below the center lands on the front of the chart")
+local raisedPointer = raised.subviews[#raised.subviews]
+bridge._pointerSend(raisedPointer, "hover", 100, 100)
+t.assertEqual(raisedHovered, nil, "the hole hovers nothing")
+-- a1 spans the first third of a, from half past one to half past four.
+bridge._pointerSend(raisedPointer, "hover", 185, 100)
+t.assertEqual(raisedHovered, "a1", "the outer ring hovers through the camera")
+nodes = ns._sectorSceneNodes(scene)
+t.expect(nodes[3].z > 5 and nodes[1].alpha < 1, "the hovered sector lifts and the others dim")
+t.expect(Sectors.update(raised, {raisedMarks[1], raisedMarks[2]}), "a raised chart takes new marks")
+t.assertEqual(#ns._sectorSceneNodes(scene), 2, "removed marks remove their solids")
+t.assertEqual(raised.subviews[1], scene, "the scene view is kept")
 
 -- UIKit composes the same chart from its own Arc and ZStack.
 local file = assert(io.open("lua/embedded/UIKit.lua")); local uikit = file:read("*a"); file:close()

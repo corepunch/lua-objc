@@ -81,6 +81,38 @@ enum {
 static char kKeys[kKeyCount];
 static const CGFloat kStackSpacing = 8.0;
 static const CGFloat kArcFullCircleDegrees = 359.0;
+/* Raised SectorChart (appkit/sector_scene.m): arc tessellation, how far a
+ * highlighted sector slides out and rises, the camera's downward tilt and
+ * lens, each slice's gradient (the darkest multiplied shade, the brightest
+ * emitted glow and how far across the slice it reaches, and the direction
+ * from dark to light), the surface, the two overhead lights and the key
+ * light's soft shadow.
+ * Distances are points, angles radians except the field of view and the
+ * gradient (degrees). */
+static const CGFloat kSectorSceneFlatness = 0.04;
+static const CGFloat kSectorSceneLiftDistance = 8.0;
+static const CGFloat kSectorSceneLiftHeight = 6.0;
+static const NSTimeInterval kSectorSceneLiftDuration = 0.18;
+static const CGFloat kSectorSceneTilt = 0.5;
+static const CGFloat kSectorSceneFieldOfView = 24.0;
+static const CGFloat kSectorSceneFitMargin = 1.08;
+static const CGFloat kSectorSceneFarPlane = 100000.0;
+static const CGFloat kSectorSceneGradientShade = 0.62;
+static const CGFloat kSectorSceneGradientGlow = 0.22;
+static const CGFloat kSectorSceneGradientGlowReach = 0.6;
+static const CGFloat kSectorSceneGradientAngle = 135.0;
+static const CGFloat kSectorSceneRoughness = 0.55;
+static const CGFloat kSectorSceneKeyIntensity = 900.0;
+static const CGFloat kSectorSceneKeyPitch = -0.35;
+static const CGFloat kSectorSceneKeyYaw = -0.25;
+static const CGFloat kSectorSceneFillIntensity = 700.0;
+static const CGFloat kSectorSceneFillPitch = 0.6;
+static const CGFloat kSectorSceneShadowOpacity = 0.3;
+static const CGFloat kSectorSceneShadowRadius = 12.0;
+static const NSUInteger kSectorSceneShadowSamples = 32;
+static const CGFloat kSectorSceneShadowMapSize = 2048.0;
+static const CGFloat kSectorSceneShadowCoverage = 1.4;
+static const CGFloat kSectorSceneShadowDistance = 1000.0;
 static const NSTimeInterval kScrollToAnimationDuration = 0.2;
 /* Space between a dropped initial and the text wrapping beside it, and the
  * number of lines it drops through when the template does not say. */
@@ -301,6 +333,7 @@ static void bridge_set_optional_callback(
 #include "appkit/motion.m"
 #include "appkit/charts.m"
 #include "appkit/mesh_gradient.m"
+#include "appkit/sector_scene.m"
 #include "appkit/reorder_container.m"
 #include "appkit/lazy_collection.m"
 #include "shared/parity_batch.m"
@@ -437,6 +470,10 @@ static const luaL_Reg bridge_lib[] = {
 	{"_font", bridge_AppKit_font},
 	{"_pathView", bridge_pathView},
 	{"_arc", bridge_arc},
+	{"_sectorScene", bridge_sector_scene},
+	{"_sectorSceneConfigure", bridge_sector_scene_configure},
+	{"_sectorSceneNodes", bridge_sector_scene_nodes},
+	{"_sectorScenePoint", bridge_sector_scene_point},
 	{"_setCurrentScope", bridge_set_current_scope},
 	{"_invokeAction", bridge_invoke_action},
 	{"_onWindowClose", bridge_on_window_close},
