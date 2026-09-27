@@ -373,6 +373,10 @@ static int bridge_UIKitControls_zstack(lua_State *L) {
 @end
 
 @implementation LuaUIKitScrollView
+- (void)safeAreaInsetsDidChange {
+	[super safeAreaInsetsDidChange];
+	[self setNeedsLayout];
+}
 - (void)setScrollTargetBehavior:(NSString *)behavior {
 	_scrollTargetBehavior = [behavior copy];
 	BOOL aligned = [behavior isEqualToString:@"viewAligned"];
@@ -387,19 +391,20 @@ static int bridge_UIKitControls_zstack(lua_State *L) {
 	if (!self.luaContent) return;
 	self.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
 	self.contentInset = UIEdgeInsetsZero;
-	self.scrollIndicatorInsets = UIEdgeInsetsZero;
 	CGSize viewport = self.bounds.size;
 	if (self.alwaysBounceHorizontal) apply_scroll_container_widths(self.luaContent, viewport.width);
 	CGFloat topInset = view_padding_top(self);
+	CGFloat bottomInset = self.alwaysBounceVertical ? uikit_scroll_bottom_inset(self) : 0;
+	self.scrollIndicatorInsets = UIEdgeInsetsMake(0, 0, bottomInset, 0);
 	CGSize measured = measure_size(self.luaContent, CGSizeMake(
 		self.alwaysBounceHorizontal ? CGFLOAT_MAX : viewport.width,
 		self.alwaysBounceVertical ? CGFLOAT_MAX : viewport.height));
 	CGFloat minimumHeight = MAX(measured.height, self.minimumContentSize.height);
 	CGSize content = CGSizeMake(
 		self.alwaysBounceHorizontal ? MAX(viewport.width, MAX(measured.width, self.minimumContentSize.width)) : viewport.width,
-		self.alwaysBounceVertical ? MAX(viewport.height, topInset + minimumHeight) : viewport.height);
+		self.alwaysBounceVertical ? MAX(viewport.height, topInset + minimumHeight + bottomInset) : viewport.height);
 	self.luaContent.frame = CGRectMake(0, topInset, content.width,
-		MAX(minimumHeight, content.height - topInset));
+		MAX(minimumHeight, content.height - topInset - bottomInset));
 	layout_recursive(self.luaContent, content.width);
 	self.contentSize = content;
 	NSString *anchor = objc_getAssociatedObject(self, &kScrollAnchorKey);
