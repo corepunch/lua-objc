@@ -40,6 +40,7 @@ local SnapshotController = require("apps.diskmap.controllers.SnapshotController"
 local WatchlistController = require("apps.diskmap.controllers.WatchlistController")
 local WatchedController = require("apps.diskmap.controllers.WatchedController")
 local Controller = {}; Controller.__index = Controller
+local SCAN_ANIMATION = ns.Animation.snappy()
 local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
 -- Services grow optional features; a provider that lacks one simply does not
 -- offer it. rawget keeps strict test doubles from reporting a probe as a call.
@@ -57,8 +58,11 @@ function Controller.new(service)
 	end
 	local loadFolders = optional(service, "loadFolders")
 	self.model.projectRoots = loadFolders and loadFolders("projects") or {}
-	self.scan = ScanController.new(self.model, service, home, function() self:updateRows() end,
-		function() self:scanFinished() end)
+	-- Only measurement animates: sizes arriving from a scan move the charts
+	-- and numbers. Navigation and other refreshes apply immediately.
+	self.scan = ScanController.new(self.model, service, home, function()
+		ns.withAnimation(SCAN_ANIMATION, function() self:updateRows() end)
+	end, function() self:scanFinished() end)
 	self.notifications = NotificationsController.new(self.model, service, {
 		mark = function(items) self.actions:markAll(items) end,
 		review = function() self:openReview() end,
@@ -308,9 +312,7 @@ end
 -- templates; the previous page is disposed before the next one mounts.
 -- `remount` presents a page again after another page changed its focus;
 -- `fromHistory` is set by Back and Forward, which must not record a visit.
--- Pages cross-fade: the old page's root leaves and the new one enters in
--- one transaction, and charts on the new page draw themselves in.
-local PAGE_ANIMATION = ns.Animation.smooth(0.35)
+-- Pages switch instantly, like any sidebar destination; charts appear drawn.
 -- A watched location's sidebar row, "watched:<key>", opens the Watched
 -- page focused on that location.
 function Controller:show(id, remount, fromHistory)
@@ -320,13 +322,11 @@ function Controller:show(id, remount, fromHistory)
 	if key and not self.watchlist:find(key) then return end
 	if self.destination == id and self.page and not remount then return end
 	if key then page:focus(key) end
-	ns.withAnimation(PAGE_ANIMATION, function()
-		if self.page then self.page:dispose() end
-		self.destination, self.page = id, page
-		self.refs = page:mount(self.content, self:state())
-		self.navigation:select(id, fromHistory)
-		self:updateRows()
-	end)
+	if self.page then self.page:dispose() end
+	self.destination, self.page = id, page
+	self.refs = page:mount(self.content, self:state())
+	self.navigation:select(id, fromHistory)
+	self:updateRows()
 end
 function Controller:select(id)
 	if self.pages.overview.refs then self.pages.overview.selectedId = id end

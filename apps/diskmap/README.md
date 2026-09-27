@@ -126,8 +126,8 @@ local snapshots and unreadable locations. With **Keep storage history** on in
 Settings, category totals are recorded after each scan (no file names), and
 the overview shows what grew.
 
-Pages animate in with a short slide, the donut draws itself on first
-appearance, and disclosures animate open. All animation goes through the
+Pages and map levels switch instantly; only measurement animates, as sizes
+arrive during a scan, and disclosures animate open. All animation goes through the
 framework's `withAnimation` and `transition`, so Reduce Motion turns it off.
 
 ```sh

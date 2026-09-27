@@ -27,13 +27,11 @@ local function isGroup(model, id)
 	return resource ~= nil and not resource:isLeaf()
 end
 
--- Drilling in or out animates: the chart undraws and the new level draws
--- itself in, and the breadcrumb slides.
-local FOCUS_ANIMATION = ns.Animation.snappy()
+-- Drilling in or out shows the new level at once; only measurement animates.
 function Controller:setFocus(id)
 	if id ~= "" and not isGroup(self.model, id) then return end
 	self.focus = id or ""
-	ns.withAnimation(FOCUS_ANIMATION, function() self:update(self.state) end)
+	self:update(self.state)
 end
 
 function Controller:up()
@@ -88,7 +86,7 @@ function Controller:update(state)
 	local actions = {
 		style = function(index)
 			self.style = STYLES[(index or 0) + 1] or STYLES[1]
-			ns.withAnimation(FOCUS_ANIMATION, function() self:update(self.state) end)
+			self:update(self.state)
 		end,
 		chartSelect = function(id, count) if count and count > 1 then self:activate(id) elseif isGroup(self.model, id) then self:setFocus(id) else self:describe(id) end end,
 		chartHover = function(id) self:describe(id) end,
