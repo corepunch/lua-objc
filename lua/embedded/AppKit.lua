@@ -1323,6 +1323,29 @@ function AppKit.MeshGradient(props)
 	return applyLayout(view, props)
 end
 
+--- Draws a Metal fragment shader every display frame, like SwiftUI's
+--- `TimelineView(.animation)` around a `ShaderLibrary` color effect.
+--- The source defines `fragment float4 name(ShaderVertex in [[stage_in]],
+--- constant ShaderInputs &inputs [[buffer(0)]])`; `inputs` carries `size`
+--- (pixels), `time` (seconds), `count` and `values[256]`. Assign `values`
+--- from Lua to animate it. The view is transparent where the shader is.
+--- @prop source string required. Path of a `.metal` file with the fragment function.
+--- @prop function string required. Fragment function name.
+--- @prop values table optional. Initial floats for `inputs.values`.
+--- @platform AppKit.
+function AppKit.ShaderView(props)
+	props = props or {}
+	local file = assert(io.open(assert(props.source, "ShaderView requires source"), "r"),
+		"ShaderView: cannot read " .. tostring(props.source))
+	local text = file:read("a")
+	file:close()
+	local view = bridge._shaderView(text, assert(props["function"], "ShaderView requires function"))
+	if props.values then view.values = props.values end
+	-- Like a gradient, a shader has no intrinsic size and fills its proposal.
+	view.fillWidth, view.fillHeight = true, true
+	return applyLayout(view, props)
+end
+
 --- Hosts content on the requested update schedule.
 --- @prop schedule string optional. `animation` animates a mesh child.
 --- @prop content value required. Hosted view.
@@ -1748,6 +1771,9 @@ AppKit.ActionButton = AppKit.Button
 --- @prop disabled boolean optional. Component-specific setting passed to the native control.
 --- @prop is_on value optional. Current on/off value (legacy spelling).
 --- @prop label value optional. Component-specific setting passed to the native control.
+--- @prop tint string optional. Semantic color of the checked state, SwiftUI `.tint`.
+--- @prop style string optional. `switch`, or `button` for a push-on/push-off button that fills while on (SwiftUI `.toggleStyle(.button)`).
+--- @prop systemImage string optional. SF Symbol shown above a `button` style label.
 --- @example <Toggle />
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Toggle(props)
@@ -1760,14 +1786,29 @@ function AppKit.Toggle(props)
 	if type(props) == "table" and type(props.onChange) == "function" then
 		action = function() props.onChange(toggle.state == 1) end
 	end
-	if style == "switch" then
-		toggle = bridge._toggle(label, is_on, action, "switch")
+	-- SwiftUI `.tint` is the checked fill. A button-style toggle would tint
+	-- its bezel in both states, so it carries the tint only while on and
+	-- reads as a lit or unlit pad.
+	local tint = type(props) == "table" and props.tint and bridge._systemColor(props.tint) or nil
+	local function light()
+		if tint then toggle.bezelColor = toggle.state == 1 and tint or nil end
+	end
+	if style == "button" and tint then
+		local changed = action
+		action = function(...)
+			light()
+			if changed then changed(...) end
+		end
+	end
+	if style == "switch" or style == "button" then
+		toggle = bridge._toggle(label, is_on, action, style, props.systemImage)
 	elseif action then
 		toggle = bridge._toggle(label, is_on, action)
 	else
 		toggle = bridge._toggle(label, is_on)
 	end
 	if type(props) == "table" and props.disabled ~= nil then toggle.enabled = not props.disabled end
+	if style == "button" then light() elseif tint then toggle.bezelColor = tint end
 	return applyLayout(toggle, props)
 end
 
@@ -1780,6 +1821,8 @@ end
 --- @prop max number optional. Component-specific setting passed to the native control.
 --- @prop min number optional. Component-specific setting passed to the native control.
 --- @prop tickMarks table optional. Slider tick mark positions.
+--- @prop tint string optional. Semantic color filling the track, SwiftUI `.tint`.
+--- @prop style string optional. `level` for an editable fill bar (a continuous capacity level indicator).
 --- @prop value table optional. Current selected, edited, or measured value.
 --- @example <Slider />
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
@@ -1788,18 +1831,25 @@ function AppKit.Slider(props)
 	local onChange = props.onChange or props.action
 	local callback
 	if type(onChange) == "function" then
-		callback = function(slider) onChange(slider.value) end
+		-- doubleValue is shared by NSSlider and the level-bar NSLevelIndicator.
+		callback = function(slider) onChange(slider.doubleValue) end
 	end
 	local slider = bridge._slider(
 		props.min or 0,
 		props.max or 1,
 		props.value or props.min or 0,
-		callback)
+		callback,
+		props.style)
 	if props.tickMarks then slider.numberOfTickMarks = props.tickMarks end
 	if props.allowsTickMarkValuesOnly then
 		slider.allowsTickMarkValuesOnly = true
 	end
 	if props.disabled ~= nil then slider.enabled = not props.disabled end
+	if props.tint then
+		-- The track fill for sliders and knobs; the fill for a level bar.
+		local color = bridge._systemColor(props.tint)
+		if props.style == "level" then slider.fillColor = color else slider.trackFillColor = color end
+	end
 	return applyLayout(slider, props)
 end
 

@@ -333,6 +333,7 @@ static void bridge_set_optional_callback(
 #include "appkit/motion.m"
 #include "appkit/charts.m"
 #include "appkit/mesh_gradient.m"
+#include "appkit/shader_view.m"
 #include "appkit/sector_scene.m"
 #include "appkit/reorder_container.m"
 #include "appkit/lazy_collection.m"
@@ -372,6 +373,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_meshGradient", bridge_AppKitControls_meshGradient},
 	{"_meshGradientConfigure", bridge_AppKitControls_meshGradientConfigure},
 	{"_meshGradientSample", bridge_AppKitControls_meshGradientSample},
+	{"_shaderView", bridge_AppKitControls_shaderView},
 	{"_hitTestTarget", bridge_hit_test_target},
 	{"_hostingController", bridge_hosting_controller},
 	{"_navigationStack", bridge_navigation_stack},

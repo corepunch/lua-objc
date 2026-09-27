@@ -1,7 +1,7 @@
 CC = clang
 CFLAGS = -fobjc-arc -Wall -O2 $(shell pkg-config --cflags lua 2>/dev/null || echo "-I/opt/homebrew/include/lua")
 HOST_CFLAGS = -Wall -O2
-LDFLAGS = $(shell pkg-config --libs lua 2>/dev/null || echo "-L/opt/homebrew/lib -llua -lm") -framework Cocoa -framework WebKit -framework QuartzCore -framework SceneKit -framework Symbols -framework UserNotifications
+LDFLAGS = $(shell pkg-config --libs lua 2>/dev/null || echo "-L/opt/homebrew/lib -llua -lm") -framework Cocoa -framework WebKit -framework QuartzCore -framework Metal -framework MetalKit -framework SceneKit -framework Symbols -framework UserNotifications
 MODULE_LDFLAGS = -dynamiclib -undefined dynamic_lookup
 IOS_SIM_SDK = $(shell xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null)
 
@@ -14,7 +14,7 @@ UIKIT_RUNTIME_SRC = src/uikit_module.m
 UIKIT_RUNTIME_DIRS = src/uikit src/shared
 UIKIT_RUNTIME_FRAGMENTS = $(shell find $(UIKIT_RUNTIME_DIRS) -type f -name '*.m')
 FRAMEWORK_MODULES = build/AppKit.dylib
-NATIVE_PLUGINS = build/StorageScan.dylib build/ReelNative.dylib
+NATIVE_PLUGINS = build/StorageScan.dylib build/AudioStream.dylib build/ReelNative.dylib
 IOS_FRAMEWORK_MODULE = $(if $(strip $(IOS_SIM_SDK)),build/UIKit.dylib)
 EMBEDDED_LUA_DIR = lua/embedded
 GENERATED_DIR = build/generated
@@ -59,6 +59,10 @@ uikit: build/UIKit.dylib
 build/StorageScan.dylib: src/plugins/storage/StorageScan.m src/plugins/storage/Duplicates.m Makefile
 	mkdir -p build
 	$(CC) $(CFLAGS) -mmacosx-version-min=26.0 $(MODULE_LDFLAGS) -framework Foundation -lcompression -o $@ $<
+
+build/AudioStream.dylib: src/plugins/audio/AudioStream.m Makefile
+	mkdir -p build
+	$(CC) $(CFLAGS) -mmacosx-version-min=26.0 $(MODULE_LDFLAGS) -framework Foundation -framework AVFAudio -framework Accelerate -o $@ $<
 
 # The Reel motion package's native half (modules/reel): offscreen drawing,
 # images and H.264. Standalone like StorageScan; the runtime never loads it.

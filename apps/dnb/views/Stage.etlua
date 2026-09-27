@@ -1,0 +1,23 @@
+<ZStack alignment="top" maxWidth="infinity" minHeight="320" maxHeight="infinity" cornerRadius="24" clipsToBounds="true">
+	<ShaderView id="visualizer" source="apps/dnb/shaders/Visualizer.metal" function="visualizer" />
+	<HStack padding="18" spacing="12" alignment="top" maxWidth="infinity">
+		<GlassEffect style="clear" cornerRadius="18">
+			<VStack paddingHorizontal="18" paddingVertical="14" spacing="4" alignment="leading" width="300">
+				<Label text="NOW PLAYING" size="11" weight="bold" color="secondary" />
+				<Label id="section" text="<%= section %>" size="34" weight="heavy" />
+				<Label id="detail" text="<%= detail %>" size="13" color="secondary" />
+				<ProgressView id="progress" value="<%= progress %>" maxWidth="infinity" />
+			</VStack>
+		</GlassEffect>
+		<Spacer />
+		<GlassEffect style="clear" cornerRadius="18">
+			<VStack paddingHorizontal="18" paddingVertical="14" spacing="2" alignment="trailing">
+				<HStack spacing="6" alignment="lastTextBaseline">
+					<Label id="tempo" text="<%= tempo %>" size="34" weight="heavy" monospacedDigit="true" />
+					<Label text="BPM" size="12" weight="bold" color="secondary" />
+				</HStack>
+				<Label id="position" text="<%= position %>" size="13" color="secondary" monospacedDigit="true" />
+			</VStack>
+		</GlassEffect>
+	</HStack>
+</ZStack>

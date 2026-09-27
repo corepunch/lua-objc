@@ -912,6 +912,8 @@ local TAG_SCHEMA = {
             value = { prop = "is_on", aliases = { "checked" }, type = "bool", default = false },
 			disabled = "bool",
 			style = "str",
+			tint = "str",
+			systemImage = "str",
         },
 		transform = function(props, attrs)
 			bindActions(props, attrs, { "onChange" })
@@ -1052,6 +1054,8 @@ local TAG_SCHEMA = {
             tickMarks                = "num",
             allowsTickMarkValuesOnly = "bool",
 			disabled                = "bool",
+			tint                    = "str",
+			style                   = "str",
         },
 		transform = function(props, attrs)
 			if attrs.onChange and renderData and renderData.actions then
@@ -1179,6 +1183,10 @@ local TAG_SCHEMA = {
             -- width and height are mesh grid dimensions, not view frame dimensions.
             props.fixedWidth, props.fixedHeight = nil, nil
         end,
+    },
+    ShaderView = {
+        constructor = "ShaderView",
+        props = { source = "str", ["function"] = "str" },
     },
     TimelineView = {
         constructor = "TimelineView", children = "content",
