@@ -26,6 +26,10 @@
 - (NSSize)fittingSize {
 	return objc_getAssociatedObject(self, &kToolbarContentKey) ? self.intrinsicContentSize : [super fittingSize];
 }
+- (void)layout {
+	[super layout];
+	layout_from_appkit();
+}
 - (NSView *)hitTest:(NSPoint)point { return _allowsHitTesting ? [super hitTest:point] : nil; }
 static NSArray<NSString *> *stack_drop_paths(id<NSDraggingInfo> info) {
 	NSArray<NSURL *> *urls = [info.draggingPasteboard readObjectsForClasses:@[NSURL.class]

@@ -155,6 +155,22 @@ first.opacity, second.opacity = 1, 1
 t.expect(not pcall(ns.withAnimation, Animation.linear(), function() error("boom") end), "errors inside withAnimation propagate")
 t.expect(not pcall(ns.withAnimation, Animation.linear()), "withAnimation requires a body")
 
+-- A view mounted outside a transaction is laid out before the next one
+-- snapshots it: a later animated update must not grow it from the zero
+-- frame it had before its first layout pass.
+local host = stack({ns.Text { "Host", size = 13 }})
+local page = ns.VStack { spacing = 0, alignment = "leading" }
+local pageTitle = ns.Text { "Page", size = 13 }
+local pageDetail = ns.Text { "Detail", size = 13 }
+page:add(pageTitle)
+page:add(pageDetail)
+host:add(page)
+ns.withAnimation(Animation.snappy(), function() pageTitle.text = "Page" end)
+t.expect(moved(page, pageTitle, pageDetail) == nil and animations(pageDetail).bounds == nil,
+	"a page mounted before a transaction does not animate in from its unlaid frame")
+t.expect(pageDetail.frame.size.height > 0, "the mounted page is laid out")
+ns._motionSettle()
+
 -- Visual modifiers compose into one transform about the view's centre.
 local badge = ns.Text { "Badge", size = 13 }
 stack({badge})
