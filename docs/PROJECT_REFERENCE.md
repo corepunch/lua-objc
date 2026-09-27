@@ -1005,28 +1005,23 @@ height (or `maxWidth="infinity"`); it relays out whenever its size changes.
 
 ### Animation: `withAnimation` and `transition`
 
-SwiftUI-style animation, in `lua/ui/animation.lua`:
+The full guide is [animation.md](animation.md): transactions, animation
+values, transitions, motion attributes, how retained templates reconcile
+(what patches in place and what rebuilds), layout after structural changes,
+keeping live updates steady, and test hooks. In short:
 
-- `ns.withAnimation(animation, fn)` runs `fn` in one AppKit animation group.
-  Frame, alpha and layout changes made in `fn` animate; the layout engine
-  applies pending layout inside the group, so views slide to their new frames.
-  `animation` is `ns.Animation.easeInOut(d)`, `.easeOut`, `.easeIn`, `.linear`
-  or `.spring(d)`, or nil for the default.
-- The `transition` attribute on any XML view plays an insertion transition on
-  the view's **first appearance**: `opacity`, `slide` (fade while rising a few
-  points) or `drawOn` (arcs inside the view stroke themselves in, staggered).
-  `transitionDelay="0.1"` staggers sections. Retained templates re-render with
-  transitions suppressed, so live updates never flash.
-- `ns.transition(view, name, {delay, animation})` is the imperative form.
-- Transitions animate from an offset to the laid-out state and never change
-  model values, so an interrupted animation leaves the view exactly as laid
-  out. Reduce Motion makes every animation immediate (`ns.reduceMotion()`).
-- `DisclosureGroup` reveals its content inside `withAnimation`.
-- UIKit exposes the same functions; they currently apply changes without
-  animating.
+- `ns.withAnimation(animation, body, completion)` animates every frame,
+  opacity, transform, colour and content change `body` causes, on AppKit and
+  UIKit; `template:update(data)` inside it is SwiftUI's
+  `withAnimation { state = … }`.
+- `transition="…"` plays on insertion and removal inside an animated
+  transaction (`opacity`, `scale(0.8)`, `slide`, `move(edge)`, `push(edge)`,
+  `offset(x, y)`, `drawOn`, `a+b`, `asymmetric(a, b)`).
+- Model values never change during an animation; frames are final as soon as
+  the body returns. Reduce Motion keeps fades and makes movement immediate.
 
 ```xml
-<VStack id="pageContent" transition="slide">…</VStack>
+<VStack id="pageContent" transition="opacity">…</VStack>
 <SectorChart transition="drawOn" …>…</SectorChart>
 ```
 
@@ -2238,34 +2233,8 @@ boolean, numeric and structured values rather than stringifying them.
 
 ### Animation (SwiftUI transactions)
 
-`ns.withAnimation(animation, body, completion)` animates every frame,
-opacity, transform, colour and content change `body` causes; retained
-templates reconcile inside the transaction, so
-`ns.withAnimation(a, function() template:update(data) end)` is SwiftUI's
-`withAnimation { state = … }`. `ns.Animation` offers `linear`, `easeIn`,
-`easeOut`, `easeInOut`, `timingCurve`, `spring` (`{duration, bounce}` or
-`{response, dampingFraction}`), `smooth`, `snappy`, `bouncy`,
-`interactiveSpring`, `interpolatingSpring` and `default`, with `:delay`,
-`:speed`, `:repeatCount` and `:repeatForever`. `ns.withTransaction` takes
-`{animation, disablesAnimations}`.
-
-XML attributes: `opacity`, `scaleEffect`, `rotationEffect`, `offsetX`,
-`offsetY`; `transition` (`opacity`, `scale(0.8)`, `slide`, `move(top)`,
-`offset(x, y)`, `push(edge)`, `drawOn`, `a+b`, `asymmetric(a, b)`), played on
-insertion and removal inside an animated transaction, including `hidden`
-changes; `animation` with `animationValue` (`.animation(_:value:)`);
-`matchedGeometry` and `matchedGeometryNamespace`; `contentTransition`
-(`opacity`, `numericText`, `interpolate`); `symbolEffect` with optional
-`symbolEffectValue` (discrete) or `symbolEffectActive`. Lua:
-`ns.keyframeAnimation(view, {tracks = {scaleEffect = {{type = "spring",
-value = 1.2, duration = 0.2}}}})` and `ns.phaseAnimation(view, {phases,
-animation})`. The engine is `src/shared/motion.m` (AppKit and UIKit);
-Reduce Motion keeps fades and makes movement immediate.
-
-Retained templates now reconcile node by node (`xml.mount`,
-`xml.reconcile`): matched nodes keep their native views and take changed
-attributes in place; stacks insert, move and remove keyed children
-(`id` or `key`); other structural changes rebuild only that node.
+See [animation.md](animation.md) and the summary under
+[Animation: `withAnimation` and `transition`](#animation-withanimation-and-transition).
 
 Other additions: `ns.watch(paths, callback, {since})` (FSEvents, Scope
 owned), `ns.notifications` (UNUserNotificationCenter; unavailable without an

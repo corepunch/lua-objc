@@ -18,6 +18,9 @@ Open the narrowest document that answers the task:
 - `weather_app_example.md` — async HTTP, native table loading, selection, XML
   detail views, and the framework gaps exposed by the example.
 - `tableview_swiftui.md` — NSTableView sizing, scrolling, and style behavior.
+- `animation.md` — `withAnimation`, transitions, motion attributes, retained
+  template reconciliation, layout after structural changes, and keeping live
+  updates steady.
 - `SWIFTUI_PARITY_PLAN.md` — Luna execution plan for paired SwiftUI/etlua
   fixtures, native behavior tests, visual comparisons, and coverage gates.
 - `SWIFTUI_PAIN_POINTS.md` — catalog of Swift/SwiftUI/Xcode complaints and the
