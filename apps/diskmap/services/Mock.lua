@@ -44,7 +44,13 @@ local function fixturePath()
 end
 
 local MAX_SAFE_INTEGER = 9007199254740991
-local function readBinaryFixture(file)
+-- The 72-byte header is read directly; path records come from the native
+-- LZFSE decoder in decoded chunks (see src/plugins/storage/README.md).
+local HEADER_SIZE = 72
+local function readBinaryFixture(file, path, pause)
+	local header = file:read(HEADER_SIZE)
+	assert(header and #header == HEADER_SIZE, "Mock HDD snapshot is truncated")
+	local nextChunk = require("apps.diskmap.services.Scanner").snapshotRecords(path)
 	local buffer, position = "", 1
 	local function readExact(length)
 		assert(length >= 0 and length <= 1024 * 1024, "Mock HDD snapshot record is too large")
@@ -52,7 +58,7 @@ local function readBinaryFixture(file)
 		local chunks, remaining = {}, length
 		while remaining > 0 do
 			if position > #buffer then
-				buffer = assert(file:read(64 * 1024), "Mock HDD snapshot is truncated")
+				buffer = assert(nextChunk(), "Mock HDD snapshot is truncated")
 				position = 1
 			end
 			local count = math.min(remaining, #buffer - position + 1)
@@ -72,13 +78,13 @@ local function readBinaryFixture(file)
 		return high * 4294967296 + low
 	end
 
-	local header = readExact(56)
-	assert(header:sub(1, 8) == "DMOCK001", "Mock HDD snapshot magic is invalid")
-	assert(little32(header, 9) == 1, "Mock HDD snapshot version is unsupported")
+	assert(header:sub(1, 8) == "DMOCK002", "Mock HDD snapshot magic is invalid")
+	assert(little32(header, 9) == 2, "Mock HDD snapshot version is unsupported")
 	local flags = little32(header, 13)
 	assert(flags < 2, "Mock HDD snapshot flags are unsupported")
 	local capacityBytes, availableBytes = little64(header, 17), little64(header, 25)
 	local itemCount, errors, visited = little64(header, 33), little64(header, 41), little64(header, 49)
+	local createdAt = little64(header, 57)
 	assert(itemCount <= 50000000, "Mock HDD snapshot has too many entries")
 	local items, previous = {}, ""
 	for index = 1, itemCount do
@@ -91,22 +97,24 @@ local function readBinaryFixture(file)
 		assert(rooted and not path:find("\0", 1, true), "Mock HDD snapshot path is invalid")
 		items[index] = {path = path, allocatedBytes = allocatedBytes, countedBytes = countedBytes}
 		previous = path
+		pause(index)
 	end
-	assert(position > #buffer and file:read(1) == nil, "Mock HDD snapshot has trailing data")
+	assert(position > #buffer and nextChunk() == nil, "Mock HDD snapshot has trailing data")
 	return {
 		capacityBytes = capacityBytes,
 		availableBytes = availableBytes,
 		partial = flags % 2 == 1,
 		errors = errors,
 		visited = visited,
+		createdAt = createdAt > 0 and createdAt or nil,
 		items = items,
 	}
 end
 
-local function loadFixture(path)
+local function loadFixture(path, pause)
 	local selectedPath = path or fixturePath()
 	local file = assert(io.open(selectedPath, "rb"), "Cannot read the Mock HDD snapshot")
-	local ok, fixture = pcall(readBinaryFixture, file)
+	local ok, fixture = pcall(readBinaryFixture, file, selectedPath, pause)
 	file:close()
 	assert(ok, fixture)
 	if not path then
@@ -146,9 +154,14 @@ end
 function Mock.new(options)
 	options = options or {}
 	local home = options.home or os.getenv("HOME") or "/Users"
-	local fixture = loadFixture(options.fixturePath)
+	-- `yield` lets a caller running in a coroutine keep the window drawing
+	-- while a large snapshot decodes; it runs every `yieldEvery` records.
+	local yield, every = options.yield, options.yieldEvery or 25000
+	local function pause(index) if yield and index % every == 0 then yield() end end
+	local fixture = loadFixture(options.fixturePath, pause)
 	local items = fixture.items
-	for _, item in ipairs(fixture.items) do
+	for index, item in ipairs(fixture.items) do
+		pause(index)
 		assert(type(item.path) == "string" and type(item.allocatedBytes) == "number" and item.allocatedBytes >= 0, "Mock HDD entries need a path and nonnegative allocatedBytes")
 		local countedBytes = item.countedBytes == nil and item.allocatedBytes or item.countedBytes
 		assert(type(countedBytes) == "number" and countedBytes >= 0, "Mock HDD entries need nonnegative countedBytes")
@@ -600,6 +613,8 @@ end
 function Mock:loadHistorySetting() return self.historyEnabled == true end
 function Mock:saveHistorySetting(enabled) self.historyEnabled = enabled == true; return true end
 function Mock:loadHistory() return self.history or "" end
+function Mock:loadSnapshotSummary() return self.snapshotSummary or "" end
+function Mock:saveSnapshotSummary(text) self.snapshotSummary = text; return true end
 function Mock:saveHistory(text) self.history = text; return true end
 
 -- Opt-in flags, notifications and watches live in memory; tests read

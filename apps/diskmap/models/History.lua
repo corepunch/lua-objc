@@ -75,7 +75,8 @@ function History.changes(model, entries, days, limit, now)
 	end)
 	while #rows > (limit or 4) do table.remove(rows) end
 	if #rows == 0 then return nil end
-	return {rows = rows, since = os.date("%b %e", base.time):gsub("  ", " "), scans = #entries}
+	local since = (os.date("%b %e", base.time):gsub("  ", " "))
+	return {rows = rows, since = since, scans = #entries, detail = "Since " .. since .. " · " .. #entries .. " scans recorded"}
 end
 
 return History

@@ -131,7 +131,15 @@ function Resources:add(parentId, definition)
 		for _, child in ipairs(node.children) do commit(child, row) end
 	end
 	commit(prepared[1], parent)
+	state.added = state.added or {}
+	table.insert(state.added, {parentId = parentId, definition = definition})
 	return first
+end
+
+-- Resources added after the catalog loaded — discovered apps, projects and
+-- tool files — in order, so another model can register the same locations.
+function Resources:added()
+	return copySequence(states[self].added or {})
 end
 
 function rowMethods:getParent()

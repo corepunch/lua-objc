@@ -34,6 +34,7 @@ local second = native.scan({file})
 t.assertEqual(first.trees[1].kb, 8, "first scan measures original allocation")
 t.assertEqual(second.trees[1].kb, 16, "new scan measures changed allocation without a cache")
 local snapshotPath = root .. "/mock-snapshot.bin"
+local exportStartedAt = os.time()
 local export = native.exportStart({file}, {}, snapshotPath, {capacityBytes = 1000000, availableBytes = 250000})
 local exported, exportResult = false, nil
 local exportDeadline = os.clock() + 0.5
@@ -45,7 +46,7 @@ t.assertEqual(exportResult.exportedFiles, 1, "snapshot includes each scanned reg
 local snapshotFile = assert(io.open(snapshotPath, "rb"))
 local snapshotBody = snapshotFile:read("*a"); snapshotFile:close()
 local magic = snapshotBody:sub(1, 8)
-t.assertEqual(magic, "DMOCK001", "snapshot uses the versioned binary Mock HDD format")
+t.assertEqual(magic, "DMOCK002", "snapshot uses the compressed Mock HDD format")
 t.expect(not snapshotBody:find(string.rep("b", 32), 1, true), "snapshot does not contain file contents")
 local importedMock = require("apps.diskmap.services.Mock").new({fixturePath = snapshotPath})
 t.assertEqual(importedMock.fixture.capacityBytes, 1000000, "snapshot preserves internal disk capacity metadata")
@@ -53,7 +54,67 @@ t.assertEqual(importedMock.items[1].path, file, "snapshot stores the absolute fi
 t.assertEqual(importedMock.items[1].allocatedBytes, 16384, "snapshot stores allocated bytes without opening file contents")
 t.assertEqual(importedMock.items[1].countedBytes, 16384, "snapshot records one hard-link accounting charge")
 t.assertEqual(importedMock.scan({root}, {}).trees[1].kb, 16, "exported snapshot loads through the Mock provider")
+t.expect(importedMock.fixture.createdAt >= exportStartedAt and importedMock.fixture.createdAt <= os.time(), "snapshot records when it was taken")
+local function exportSnapshot(roots, path)
+	local job = native.exportStart(roots, {}, path, {capacityBytes = 1000000, availableBytes = 250000})
+	local done, result = false, nil
+	local deadline = os.clock() + 2
+	repeat done, result = native.poll(job) until done or os.clock() >= deadline
+	return done, result
+end
+local function corrupt(path, edit)
+	local handle = assert(io.open(path, "rb")); local bytes = handle:read("*a"); handle:close()
+	local broken = root .. "/broken.bin"
+	handle = assert(io.open(broken, "wb")); handle:write(edit(bytes)); handle:close()
+	local ok, err = pcall(require("apps.diskmap.services.Mock").new, {fixturePath = broken})
+	os.remove(broken)
+	return ok, tostring(err)
+end
+local ok, err = corrupt(snapshotPath, function(bytes) return bytes:sub(1, #bytes - 4) end)
+t.expect(not ok and err:find("truncated", 1, true), "a truncated snapshot is rejected: " .. err)
+ok, err = corrupt(snapshotPath, function(bytes) return bytes .. "extra" end)
+t.expect(not ok and err:find("trailing", 1, true), "bytes after the compressed stream are rejected")
+ok = corrupt(snapshotPath, function(bytes) return bytes:sub(1, 64) .. string.rep("\255", #bytes - 64) end)
+t.expect(not ok, "a corrupt compressed stream is rejected")
 os.remove(snapshotPath)
+
+-- Lua-written snapshots share the format with disk exports.
+local writtenPath = root .. "/written.bin"
+native.snapshotWrite(writtenPath, {capacityBytes = 5000, availableBytes = 1000, createdAt = 1790000000},
+	{{path = "/Applications/Example.app/Contents/MacOS/Example", allocatedBytes = 4096},
+	 {path = "~/Library/Caches/example", allocatedBytes = 8192, countedBytes = 0}})
+local written = require("apps.diskmap.services.Mock").new({fixturePath = writtenPath})
+t.assertEqual(written.fixture.createdAt, 1790000000, "a written snapshot keeps its creation time")
+t.assertEqual(#written.items, 2, "a written snapshot keeps every record")
+t.assertEqual(written.items[2].countedBytes, 0, "counted bytes survive for hard-linked files")
+t.expect(not pcall(native.snapshotWrite, writtenPath, {capacityBytes = 1, availableBytes = 1}, {{path = "relative/file", allocatedBytes = 1}}),
+	"relative snapshot paths are rejected")
+os.remove(writtenPath)
+
+-- Many records: the encoder fills several output buffers and the reader
+-- decodes several chunks, and prefix-shared paths compress well.
+local many = root .. "/many"
+os.execute("mkdir -p '" .. many .. "'")
+local names = {}
+for index = 1, 4000 do
+	local name = string.format("%08x-%s.dat", index * 2654435761 % 4294967296, string.rep(string.char(97 + index % 26), 40))
+	local handle = assert(io.open(many .. "/" .. name, "wb")); handle:close()
+	table.insert(names, many .. "/" .. name)
+end
+local manyPath = root .. "/many.bin"
+local manyDone, manyResult = exportSnapshot({many}, manyPath)
+t.expect(manyDone and manyResult.exportedFiles == 4000, "a large export completes")
+local manyHandle = assert(io.open(manyPath, "rb")); local manySize = #manyHandle:read("*a"); manyHandle:close()
+t.expect(manySize < 4000 * 24, "records are compressed below their raw size")
+local manyMock = require("apps.diskmap.services.Mock").new({fixturePath = manyPath})
+t.assertEqual(#manyMock.items, 4000, "every record decodes across several chunks")
+local decoded = {}
+for _, item in ipairs(manyMock.items) do decoded[item.path] = true end
+local allFound = true
+for _, name in ipairs(names) do if not decoded[name] then allFound = false end end
+t.expect(allFound, "decoded paths match the files on disk")
+os.remove(manyPath)
+os.execute("rm -rf '" .. many .. "'")
 local sparse = root .. "/sparse"
 local f = assert(io.open(sparse, "wb")); f:seek("set", 32 * 1024 * 1024); f:write("x"); f:close()
 local allocation = native.scan({sparse})

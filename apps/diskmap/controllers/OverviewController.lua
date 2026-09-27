@@ -10,7 +10,8 @@ local LARGEST = {preview = 6}
 
 -- `handlers` routes user intent back to the root controller: open(id) opens a
 -- category, reclaim() the Clean Up page, access() privacy settings,
--- navigate(id) another sidebar destination and menu(id) a resource's actions.
+-- navigate(id) another sidebar destination, menu(id) a resource's actions and
+-- changes() the full list of changes since the snapshot.
 function Controller.new(model, categories, handlers)
 	return setmetatable({model = model, categories = categories, handlers = handlers}, Controller)
 end
@@ -51,7 +52,7 @@ function Controller:update(state)
 	self.hero:update({summary = Overview.summary(self.model, state.disk, state.capacity), chart = chart,
 		hidden = Overview.hidden(state.disk, state.capacity, state.snapshotCount, self.model.scan.errors, Inventory.cloud(self.model)),
 		reclaim = Overview.reclaim(self.model), volumeName = state.volumeName, actions = actions})
-	self.changes:update({changes = state.changes})
+	self.changes:update({changes = state.changes, actions = {showAllChanges = function() self.handlers.changes() end}})
 end
 
 function Controller:dispose()

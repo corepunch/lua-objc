@@ -15,7 +15,7 @@ t.assertEqual(Provider.select({[1] = "--mock-file=" .. fixturePath}).mock, true,
 t.assertEqual(Provider.exportPath({[1] = "--export-mock=/private/tmp/example.bin"}), "/private/tmp/example.bin", "export switch selects its local destination")
 t.assertEqual(package.loaded["apps.diskmap.services.System"], nil, "loading a saved mock snapshot never loads the real provider")
 local bundledFixture = assert(io.open(fixturePath, "rb"))
-t.assertEqual(bundledFixture:read(8), "DMOCK001", "bundled Mock HDD fixture is binary")
+t.assertEqual(bundledFixture:read(8), "DMOCK002", "bundled Mock HDD fixture uses the compressed snapshot format")
 bundledFixture:close()
 
 local originalSnapshotPath = Provider.savedSnapshotPath

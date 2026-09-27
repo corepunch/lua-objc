@@ -1,6 +1,11 @@
 <% if changes then %>
 <VStack id="changesSection" transition="opacity" maxWidth="infinity" spacing="8" alignment="leading">
-  <%- partial("SectionHeader.etlua", {title = "Changes", detail = "Since " .. changes.since .. " · " .. changes.scans .. " scans recorded"}) %>
+  <HStack maxWidth="infinity" spacing="12" alignment="center">
+    <%- partial("SectionHeader.etlua", {title = "Changes", detail = changes.detail}) %>
+    <% if changes.all then %>
+    <Button id="showAllChanges" title="Show All" action="showAllChanges" help="List every location that changed since the snapshot" />
+    <% end %>
+  </HStack>
   <HStack maxWidth="infinity" spacing="12" alignment="top">
     <% for _, row in ipairs(changes.rows) do %>
     <GroupBox flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity">

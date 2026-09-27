@@ -44,14 +44,21 @@ and small headless regression fixtures. UI code must use `start`/`poll`.
 
 `exportStart(roots, exclusions, outputPath, metadata)` streams only file paths and
 allocated byte counts into a private temporary versioned binary file, then atomically
-renames it to `outputPath`. The `DMOCK001` header records format version, disk
-capacity, available bytes, item count, scan errors, and visited count. Each record
-stores a common UTF-8 path prefix, the remaining path bytes, allocated size, and a
-`countedBytes` value so hard links do not inflate mock totals. `metadata.logicalRoots`
-can map a physical scan root to its user-visible path. The writer does not retain the
-full file list in memory and does not open file contents. `poll(job)` reports the
-exported file count when the job completes; cancellation publishes a valid partial
-snapshot when the file writer itself is healthy.
+renames it to `outputPath`. The uncompressed 72-byte `DMOCK002` header records format
+version, flags, disk capacity, available bytes, item count, scan errors, visited count,
+creation time (Unix seconds) and the length of the compressed body. The body is one
+LZFSE stream (Compression.framework) of records; each stores a common UTF-8 path prefix,
+the remaining path bytes, allocated size, and a `countedBytes` value so hard links do not
+inflate mock totals. Prefix-shared paths compress to about a fifth of their raw size.
+`metadata.logicalRoots` can map a physical scan root to its user-visible path. The writer
+does not retain the full file list in memory and does not open file contents.
+`poll(job)` reports the exported file count when the job completes; cancellation
+publishes a valid partial snapshot when the file writer itself is healthy.
+
+`snapshotRecords(path)` returns a function that yields the snapshot's decoded record
+bytes in chunks, then `nil`. It checks the recorded body length against the file, so
+truncated, corrupt and trailing data raise an error. The Lua reader parses the header
+and records (`apps/diskmap/services/Mock.lua`).
 
 All paths must be absolute UTF-8 strings without NUL, `.` or `..` components.
 Exclusions apply to descendants; an explicitly requested root is always attempted.

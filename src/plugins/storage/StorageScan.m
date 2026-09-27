@@ -12,6 +12,7 @@
 #import <lauxlib.h>
 #import <os/lock.h>
 #import <sys/resource.h>
+#import <compression.h>
 
 static const NSUInteger ScanBufferSize = 64 * 1024;
 static const NSUInteger ScanIssueLimit = 1000;
@@ -27,8 +28,23 @@ static const NSUInteger ScanBreakdownLimit = 5000;
 // calls block in the kernel, so several in flight keep the storage busy;
 // deeper levels run on the thread that reached them, which bounds threads.
 static const NSUInteger ScanParallelDepth = 4;
-static const char SnapshotMagic[8] = {'D', 'M', 'O', 'C', 'K', '0', '0', '1'};
-static const uint32_t SnapshotVersion = 1;
+// Snapshots keep a small uncompressed header, so capacity and the creation
+// time read without decoding, followed by one LZFSE stream of path records.
+// Prefix-shared paths compress to about a fifth of their raw size. The header
+// records the stream's length: LZFSE stops at its end marker without
+// reporting bytes after it, so the length is what exposes truncation and
+// trailing data.
+static const char SnapshotMagic[8] = {'D', 'M', 'O', 'C', 'K', '0', '0', '2'};
+static const uint32_t SnapshotVersion = 2;
+enum {
+	SnapshotHeaderSize = 72,
+	SnapshotSummaryOffset = 12,
+	SnapshotCreatedOffset = 56,
+	SnapshotBodyLengthOffset = 64,
+	SnapshotStreamBufferSize = 64 * 1024,
+	SnapshotChunkSize = 256 * 1024,
+};
+static const char *SnapshotReaderMetatable = "StorageScan.SnapshotReader";
 
 static void writeLittle32(uint8_t *bytes, uint32_t value) {
 	for (NSUInteger index = 0; index < 4; index++) bytes[index] = (uint8_t)(value >> (index * 8));
@@ -82,6 +98,8 @@ typedef struct { uint64_t inode; dev_t device; } ScanIdentity;
 @property NSDictionary<NSString *, NSString *> *logicalRoots;
 @property uint64_t capacityBytes, availableBytes;
 @property NSUInteger exportedFiles;
+@property BOOL exportStreamOpen;
+@property uint64_t exportBodyBytes;
 // Optional summaries requested through `start(roots, exclusions, options)`.
 @property NSUInteger fileLimit;
 @property uint64_t minimumFileBytes;
@@ -98,6 +116,11 @@ typedef struct { uint64_t inode; dev_t device; } ScanIdentity;
 - (void)run;
 - (void)publish:(BOOL)done;
 @end
+@interface StorageScanJob () {
+	compression_stream _exportStream;
+	uint8_t _exportOutput[SnapshotStreamBufferSize];
+}
+@end
 
 @implementation StorageScanJob
 - (instancetype)init {
@@ -109,7 +132,11 @@ typedef struct { uint64_t inode; dev_t device; } ScanIdentity;
 	}
 	return self;
 }
-- (void)dealloc { free(_seen); if (_exportFD >= 0) close(_exportFD); }
+- (void)dealloc {
+	free(_seen);
+	if (_exportStreamOpen) compression_stream_destroy(&_exportStream);
+	if (_exportFD >= 0) close(_exportFD);
+}
 static NSUInteger identityHash(ScanIdentity key) {
 	uint64_t x = key.inode ^ ((uint64_t)(uint32_t)key.device << 32);
 	x = (x ^ (x >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
@@ -217,9 +244,43 @@ static NSUInteger identityHash(ScanIdentity key) {
 	}
 	return YES;
 }
+- (BOOL)openExportStream {
+	if (compression_stream_init(&_exportStream, COMPRESSION_STREAM_ENCODE, COMPRESSION_LZFSE) != COMPRESSION_STATUS_OK) {
+		self.exportWriteFailed = YES;
+		self.failure = @"Could not start compressing the local mock snapshot.";
+		return NO;
+	}
+	_exportStream.dst_ptr = _exportOutput; _exportStream.dst_size = sizeof(_exportOutput);
+	self.exportStreamOpen = YES;
+	return YES;
+}
+// Feeds record bytes to the encoder and writes each filled output buffer.
+// `finalize` flushes the encoder's tail once every record has been added.
+- (BOOL)compressExportBytes:(const void *)bytes length:(size_t)length finalize:(BOOL)finalize {
+	if (!self.exportStreamOpen) return NO;
+	_exportStream.src_ptr = bytes; _exportStream.src_size = length;
+	while (YES) {
+		compression_status status = compression_stream_process(&_exportStream, finalize ? COMPRESSION_STREAM_FINALIZE : 0);
+		if (status == COMPRESSION_STATUS_ERROR) {
+			self.exportWriteFailed = YES;
+			self.failure = @"Could not compress the local mock snapshot.";
+			return NO;
+		}
+		BOOL end = status == COMPRESSION_STATUS_END;
+		size_t produced = sizeof(_exportOutput) - _exportStream.dst_size;
+		if (produced && (_exportStream.dst_size == 0 || end)) {
+			if (![self writeExportData:[NSData dataWithBytesNoCopy:_exportOutput length:produced freeWhenDone:NO]]) return NO;
+			self.exportBodyBytes += produced;
+			_exportStream.dst_ptr = _exportOutput; _exportStream.dst_size = sizeof(_exportOutput);
+		}
+		if (end) return YES;
+		// Without finalize the encoder may keep input buffered; more records follow.
+		if (!finalize && _exportStream.src_size == 0 && _exportStream.dst_size > 0) return YES;
+	}
+}
 - (BOOL)writeExportBytes:(const void *)bytes length:(size_t)length {
 	if (!length) return YES;
-	return [self writeExportData:[NSData dataWithBytes:bytes length:length]];
+	return [self compressExportBytes:bytes length:length finalize:NO];
 }
 - (BOOL)exportFile:(NSString *)path allocated:(uint64_t)allocated counted:(uint64_t)counted {
 	if (!self.exporting || self.exportWriteFailed) return NO;
@@ -245,18 +306,7 @@ static NSUInteger identityHash(ScanIdentity key) {
 	self.exportedFiles++;
 	return YES;
 }
-- (BOOL)writeExportSummary {
-	uint8_t summary[44];
-	uint32_t flags = (self.errors > 0 || self.failure.length > 0 || self.cancelled) ? 1 : 0;
-	writeLittle32(summary, flags);
-	writeLittle64(summary + 4, self.capacityBytes);
-	writeLittle64(summary + 12, self.availableBytes);
-	writeLittle64(summary + 20, self.exportedFiles);
-	writeLittle64(summary + 28, self.errors);
-	writeLittle64(summary + 36, self.visited);
-	size_t remaining = sizeof(summary);
-	const uint8_t *cursor = summary;
-	off_t offset = 12;
+- (BOOL)patchExportHeader:(const uint8_t *)cursor length:(size_t)remaining at:(off_t)offset {
 	while (remaining) {
 		ssize_t written = pwrite(self.exportFD, cursor, remaining, offset);
 		if (written < 0 && errno == EINTR) continue;
@@ -269,8 +319,24 @@ static NSUInteger identityHash(ScanIdentity key) {
 	}
 	return YES;
 }
+- (BOOL)writeExportSummary {
+	uint8_t length[8];
+	writeLittle64(length, self.exportBodyBytes);
+	if (![self patchExportHeader:length length:sizeof(length) at:SnapshotBodyLengthOffset]) return NO;
+	uint8_t summary[SnapshotCreatedOffset - SnapshotSummaryOffset];
+	uint32_t flags = (self.errors > 0 || self.failure.length > 0 || self.cancelled) ? 1 : 0;
+	writeLittle32(summary, flags);
+	writeLittle64(summary + 4, self.capacityBytes);
+	writeLittle64(summary + 12, self.availableBytes);
+	writeLittle64(summary + 20, self.exportedFiles);
+	writeLittle64(summary + 28, self.errors);
+	writeLittle64(summary + 36, self.visited);
+	return [self patchExportHeader:summary length:sizeof(summary) at:SnapshotSummaryOffset];
+}
 - (void)finishExport {
 	if (!self.exporting || self.exportFD < 0) return;
+	if (!self.exportWriteFailed) [self compressExportBytes:NULL length:0 finalize:YES];
+	if (self.exportStreamOpen) { compression_stream_destroy(&_exportStream); self.exportStreamOpen = NO; }
 	if (!self.exportWriteFailed) [self writeExportSummary];
 	if (!self.exportWriteFailed && fsync(self.exportFD) != 0) {
 		self.exportWriteFailed = YES;
@@ -690,12 +756,13 @@ static int exportStart(lua_State *L) {
 	NSMutableSet *exclusions = [job.exclusions mutableCopy];
 	[exclusions addObject:outputPath]; [exclusions addObject:job.exportTemporaryPath];
 	job.exclusions = exclusions.copy;
-	uint8_t header[56] = {0};
+	uint8_t header[SnapshotHeaderSize] = {0};
 	memcpy(header, SnapshotMagic, sizeof(SnapshotMagic));
 	writeLittle32(header + 8, SnapshotVersion);
 	writeLittle64(header + 16, job.capacityBytes);
 	writeLittle64(header + 24, job.availableBytes);
-	if (![job writeExportBytes:header length:sizeof(header)]) {
+	writeLittle64(header + SnapshotCreatedOffset, (uint64_t)time(NULL));
+	if (![job writeExportData:[NSData dataWithBytes:header length:sizeof(header)]] || ![job openExportStream]) {
 		NSString *failure = job.failure; close(job.exportFD); job.exportFD = -1;
 		unlink(job.exportTemporaryPath.fileSystemRepresentation);
 		return luaL_error(L, "%s", failure.UTF8String);
@@ -717,6 +784,160 @@ static int collect(lua_State *L) {
 	if (*ref) { ((__bridge StorageScanJob *)*ref).cancelled = YES; CFRelease(*ref); *ref = NULL; }
 	return 0;
 }
+// Decodes a snapshot's LZFSE record stream for the Lua reader. The
+// returned function yields the next decoded chunk, then nil at the end;
+// the Lua side parses records and the uncompressed header itself.
+typedef struct {
+	int fd;
+	BOOL open, finished;
+	uint64_t remaining;
+	compression_stream stream;
+	uint8_t input[SnapshotStreamBufferSize];
+} SnapshotReader;
+static void snapshotReaderClose(SnapshotReader *reader) {
+	if (reader->open) compression_stream_destroy(&reader->stream);
+	if (reader->fd >= 0) close(reader->fd);
+	reader->open = NO; reader->fd = -1;
+}
+static int snapshotReaderCollect(lua_State *L) {
+	snapshotReaderClose(luaL_checkudata(L, 1, SnapshotReaderMetatable));
+	return 0;
+}
+static int snapshotReaderNext(lua_State *L) {
+	SnapshotReader *reader = luaL_checkudata(L, lua_upvalueindex(1), SnapshotReaderMetatable);
+	if (reader->finished || !reader->open) { lua_pushnil(L); return 1; }
+	luaL_Buffer buffer;
+	uint8_t *output = (uint8_t *)luaL_buffinitsize(L, &buffer, SnapshotChunkSize);
+	reader->stream.dst_ptr = output; reader->stream.dst_size = SnapshotChunkSize;
+	while (reader->stream.dst_size > 0) {
+		BOOL atEnd = NO;
+		if (reader->stream.src_size == 0) {
+			ssize_t count;
+			size_t want = (size_t)MIN((uint64_t)sizeof(reader->input), reader->remaining);
+			do { count = want ? read(reader->fd, reader->input, want) : 0; } while (count < 0 && errno == EINTR);
+			if (count < 0) { snapshotReaderClose(reader); return luaL_error(L, "Could not read the Mock HDD snapshot: %s", strerror(errno)); }
+			if (count == 0 && want) { snapshotReaderClose(reader); return luaL_error(L, "Mock HDD snapshot is truncated"); }
+			reader->remaining -= (uint64_t)count;
+			reader->stream.src_ptr = reader->input; reader->stream.src_size = (size_t)count;
+			atEnd = count == 0;
+		}
+		compression_status status = compression_stream_process(&reader->stream, atEnd ? COMPRESSION_STREAM_FINALIZE : 0);
+		if (status == COMPRESSION_STATUS_ERROR) { snapshotReaderClose(reader); return luaL_error(L, "Mock HDD snapshot data is corrupt"); }
+		if (status == COMPRESSION_STATUS_END) { reader->finished = YES; break; }
+		if (atEnd && reader->stream.dst_size > 0) { snapshotReaderClose(reader); return luaL_error(L, "Mock HDD snapshot is truncated"); }
+	}
+	size_t produced = SnapshotChunkSize - reader->stream.dst_size;
+	if (reader->finished) {
+		BOOL trailing = reader->stream.src_size > 0 || reader->remaining > 0;
+		snapshotReaderClose(reader);
+		if (trailing) return luaL_error(L, "Mock HDD snapshot has trailing data");
+	}
+	if (produced == 0) { lua_pushnil(L); return 1; }
+	luaL_pushresultsize(&buffer, produced);
+	return 1;
+}
+static int snapshotRecords(lua_State *L) {
+	const char *path = luaL_checkstring(L, 1);
+	SnapshotReader *reader = lua_newuserdatauv(L, sizeof(SnapshotReader), 0);
+	memset(reader, 0, sizeof(*reader)); reader->fd = -1;
+	luaL_setmetatable(L, SnapshotReaderMetatable);
+	reader->fd = open(path, O_RDONLY | O_CLOEXEC);
+	if (reader->fd < 0) return luaL_error(L, "Cannot read the Mock HDD snapshot: %s", strerror(errno));
+	uint8_t header[SnapshotHeaderSize];
+	struct stat info;
+	if (fstat(reader->fd, &info) != 0 || pread(reader->fd, header, sizeof(header), 0) != (ssize_t)sizeof(header)) {
+		snapshotReaderClose(reader); return luaL_error(L, "Mock HDD snapshot is truncated");
+	}
+	uint64_t length = 0;
+	for (NSUInteger index = 0; index < 8; index++) length |= (uint64_t)header[SnapshotBodyLengthOffset + index] << (index * 8);
+	uint64_t available = (uint64_t)info.st_size - SnapshotHeaderSize;
+	if (length > available) { snapshotReaderClose(reader); return luaL_error(L, "Mock HDD snapshot is truncated"); }
+	if (length < available) { snapshotReaderClose(reader); return luaL_error(L, "Mock HDD snapshot has trailing data"); }
+	reader->remaining = length;
+	if (lseek(reader->fd, (off_t)SnapshotHeaderSize, SEEK_SET) != (off_t)SnapshotHeaderSize) {
+		snapshotReaderClose(reader); return luaL_error(L, "Mock HDD snapshot is truncated");
+	}
+	if (compression_stream_init(&reader->stream, COMPRESSION_STREAM_DECODE, COMPRESSION_LZFSE) != COMPRESSION_STATUS_OK) {
+		snapshotReaderClose(reader); return luaL_error(L, "Could not start decoding the Mock HDD snapshot");
+	}
+	reader->open = YES;
+	lua_pushcclosure(L, snapshotReaderNext, 1);
+	return 1;
+}
+// Writes a complete snapshot from Lua records `{path, allocatedBytes,
+// countedBytes}`: fixtures and in-memory Mock HDD inventories use the same
+// format a disk export produces. Paths are rooted at "/" or at "~", as the
+// reader accepts; sorted input shares longer prefixes.
+static uint64_t snapshotIntegerField(lua_State *L, int table, const char *key, int argument) {
+	lua_getfield(L, table, key);
+	double value = lua_isnil(L, -1) ? 0 : luaL_checknumber(L, -1);
+	lua_pop(L, 1);
+	luaL_argcheck(L, isfinite(value) && value >= 0 && value <= 9007199254740991.0 && floor(value) == value,
+		argument, "snapshot numbers must be nonnegative integers no larger than 2^53");
+	return (uint64_t)value;
+}
+static int snapshotWrite(lua_State *L) {
+	NSString *path = absolutePathArgument(L, 1, 1);
+	luaL_checktype(L, 2, LUA_TTABLE);
+	luaL_checktype(L, 3, LUA_TTABLE);
+	NSMutableData *records = [NSMutableData data];
+	NSData *previous = [NSData data];
+	lua_Integer count = luaL_len(L, 3);
+	for (lua_Integer index = 1; index <= count; index++) {
+		lua_geti(L, 3, index);
+		luaL_argcheck(L, lua_istable(L, -1), 3, "snapshot items must be tables");
+		int item = lua_gettop(L);
+		lua_getfield(L, item, "path");
+		size_t pathLength = 0;
+		const char *text = luaL_checklstring(L, -1, &pathLength);
+		BOOL rooted = pathLength && (text[0] == '/' || (text[0] == '~' && (pathLength == 1 || text[1] == '/')));
+		luaL_argcheck(L, rooted && !memchr(text, 0, pathLength), 3, "snapshot paths must start with / or ~ and contain no NUL");
+		NSData *pathData = [NSData dataWithBytes:text length:pathLength];
+		lua_pop(L, 1);
+		const uint8_t *current = pathData.bytes, *before = previous.bytes;
+		NSUInteger common = 0, limit = MIN(pathData.length, previous.length);
+		while (common < limit && current[common] == before[common]) common++;
+		uint8_t record[24];
+		writeLittle32(record, (uint32_t)common);
+		writeLittle32(record + 4, (uint32_t)(pathData.length - common));
+		uint64_t allocated = snapshotIntegerField(L, item, "allocatedBytes", 3);
+		lua_getfield(L, item, "countedBytes");
+		BOOL hasCounted = !lua_isnil(L, -1);
+		lua_pop(L, 1);
+		writeLittle64(record + 8, allocated);
+		writeLittle64(record + 16, hasCounted ? snapshotIntegerField(L, item, "countedBytes", 3) : allocated);
+		[records appendBytes:record length:sizeof(record)];
+		[records appendBytes:current + common length:pathData.length - common];
+		previous = pathData;
+		lua_pop(L, 1);
+	}
+	size_t capacity = records.length + records.length / 2 + 4096;
+	uint8_t *body = malloc(capacity);
+	size_t bodyLength = body ? compression_encode_buffer(body, capacity, records.bytes, records.length, NULL, COMPRESSION_LZFSE) : 0;
+	if (!bodyLength) { free(body); return luaL_error(L, "Could not compress the Mock HDD snapshot"); }
+	uint8_t header[SnapshotHeaderSize] = {0};
+	memcpy(header, SnapshotMagic, sizeof(SnapshotMagic));
+	writeLittle32(header + 8, SnapshotVersion);
+	lua_getfield(L, 2, "partial");
+	writeLittle32(header + 12, lua_toboolean(L, -1) ? 1 : 0);
+	lua_pop(L, 1);
+	writeLittle64(header + 16, snapshotIntegerField(L, 2, "capacityBytes", 2));
+	writeLittle64(header + 24, snapshotIntegerField(L, 2, "availableBytes", 2));
+	writeLittle64(header + 32, (uint64_t)count);
+	writeLittle64(header + 40, snapshotIntegerField(L, 2, "errors", 2));
+	writeLittle64(header + 48, snapshotIntegerField(L, 2, "visited", 2));
+	uint64_t created = snapshotIntegerField(L, 2, "createdAt", 2);
+	writeLittle64(header + SnapshotCreatedOffset, created ? created : (uint64_t)time(NULL));
+	writeLittle64(header + SnapshotBodyLengthOffset, bodyLength);
+	NSMutableData *file = [NSMutableData dataWithBytes:header length:sizeof(header)];
+	[file appendBytes:body length:bodyLength];
+	free(body);
+	NSError *error = nil;
+	if (![file writeToFile:path options:NSDataWritingAtomic error:&error])
+		return luaL_error(L, "Could not write the Mock HDD snapshot: %s", error.localizedDescription.UTF8String);
+	[NSFileManager.defaultManager setAttributes:@{NSFilePosixPermissions: @(S_IRUSR | S_IWUSR)} ofItemAtPath:path error:nil];
+	return 0;
+}
 #include "Duplicates.m"
 
 int luaopen_StorageScan(lua_State *L) {
@@ -731,9 +952,11 @@ int luaopen_StorageScan(lua_State *L) {
 	lua_pushcfunction(L, commandCollect); lua_setfield(L, -2, "__gc"); lua_pop(L, 1);
 	luaL_newmetatable(L, JobMetatable);
 	lua_pushcfunction(L, collect); lua_setfield(L, -2, "__gc"); lua_pop(L, 1);
+	luaL_newmetatable(L, SnapshotReaderMetatable);
+	lua_pushcfunction(L, snapshotReaderCollect); lua_setfield(L, -2, "__gc"); lua_pop(L, 1);
 	luaL_newmetatable(L, DuplicateMetatable);
 	lua_pushcfunction(L, duplicatesCollect); lua_setfield(L, -2, "__gc"); lua_pop(L, 1);
-	const luaL_Reg functions[] = {{"commandStart", commandStart}, {"commandPoll", commandPoll}, {"start", start}, {"exportStart", exportStart}, {"poll", poll}, {"cancel", cancel}, {"scan", scan},
+	const luaL_Reg functions[] = {{"commandStart", commandStart}, {"commandPoll", commandPoll}, {"start", start}, {"exportStart", exportStart}, {"snapshotRecords", snapshotRecords}, {"snapshotWrite", snapshotWrite}, {"poll", poll}, {"cancel", cancel}, {"scan", scan},
 		{"duplicatesStart", duplicatesStart}, {"duplicates", duplicates}, {"duplicatesPoll", duplicatesPoll},
 		{"duplicatesCancel", duplicatesCancel}, {NULL, NULL}};
 	luaL_newlib(L, functions); lua_pushliteral(L, "getattrlistbulk"); lua_setfield(L, -2, "backend");

@@ -58,7 +58,7 @@ uikit: build/UIKit.dylib
 
 build/StorageScan.dylib: src/plugins/storage/StorageScan.m src/plugins/storage/Duplicates.m Makefile
 	mkdir -p build
-	$(CC) $(CFLAGS) -mmacosx-version-min=26.0 $(MODULE_LDFLAGS) -framework Foundation -o $@ $<
+	$(CC) $(CFLAGS) -mmacosx-version-min=26.0 $(MODULE_LDFLAGS) -framework Foundation -lcompression -o $@ $<
 
 run: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	./$(TARGET) $(ARGS)
