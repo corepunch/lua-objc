@@ -1,0 +1,17 @@
+<ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+  <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
+    <%- partial("PageHeader.etlua", {icon = watched.icon, color = watched.color, title = watched.name, summaryId = "watchedSummary", summary = summary, buttons = buttons}) %>
+    <% if contents then %>
+    <VStack id="contentsSection" maxWidth="infinity" spacing="8" alignment="leading">
+      <VStack maxWidth="infinity" spacing="2" alignment="leading">
+        <Label text="Contents" size="15" weight="semibold" />
+        <Label id="contentsDetail" text="<%= contents %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
+      </VStack>
+      <GroupBox maxWidth="infinity">
+        <%- partial("ResourceList.etlua", {id = "contents", menu = "contentsMenu", activate = "openContents", header = true, nameTitle = "Item", detailTitle = detailTitle}) %>
+      </GroupBox>
+    </VStack>
+    <% end %>
+    <%- partial("Footnote.etlua", {icon = "eye", text = "Diskmap stores each watched location's size after every scan and shows how it changed the next time you open it. Only the location and its size are kept, never file names inside it."}) %>
+  </VStack>
+</ScrollView>

@@ -13,20 +13,49 @@ local function json(value)
 	for k, v in pairs(value) do table.insert(out, json(k) .. ":" .. json(v)) end
 	return "{" .. table.concat(out, ",") .. "}"
 end
-function System.loadKeep()
-	local f = io.open((os.getenv("HOME") or "") .. "/Library/Application Support/Diskmap/kept.json", "r")
-	if not f then return {} end
+-- Diskmap's folder in Application Support, resolved by NSFileManager once
+-- per launch. Everything Diskmap keeps between launches lives there except
+-- the operations log, which stays in ~/Library/Logs where Console finds it.
+local supportDirectory
+function System.supportPath(name)
+	supportDirectory = supportDirectory or assert(ns.applicationSupportDirectory("Diskmap"))
+	return supportDirectory .. "/" .. name
+end
+local function readJson(name, fallback)
+	local f = io.open(System.supportPath(name), "r")
+	if not f then return fallback end
 	local body = f:read("*a"); f:close()
 	local ok, value = pcall(ns.json_parse, body)
-	return ok and type(value) == "table" and value or {}
+	return ok and type(value) == "table" and value or fallback
 end
-function System.saveKeep(kept)
-	local directory = (os.getenv("HOME") or "") .. "/Library/Application Support/Diskmap"
-	if not os.execute("/bin/mkdir -p " .. System.quote(directory)) then return false end
-	local path = directory .. "/kept.json"
+local function writeJson(name, value)
+	local path = System.supportPath(name)
 	local file = io.open(path .. ".tmp", "w"); if not file then return false end
-	file:write(json(kept)); file:close()
+	file:write(json(value)); file:close()
 	return os.rename(path .. ".tmp", path)
+end
+function System.loadKeep() return readJson("kept.json", {}) end
+function System.saveKeep(kept) return writeJson("kept.json", kept) end
+-- Watched locations: resources by id, folders by path plus a bookmark that
+-- follows the folder when it is moved or renamed.
+function System.loadWatchlist()
+	local entries = readJson("watchlist.json", {})
+	for _, entry in ipairs(entries) do
+		if entry.kind == "folder" and type(entry.bookmark) == "string" and entry.bookmark ~= "" then
+			entry.path = ns.resolveBookmark(entry.bookmark) or entry.path
+		end
+	end
+	return entries
+end
+function System.saveWatchlist(entries)
+	local stored = {}
+	for _, entry in ipairs(entries) do
+		local copy = {}
+		for key, value in pairs(entry) do copy[key] = value end
+		if copy.kind == "folder" then copy.bookmark = ns.bookmark(copy.path) end
+		table.insert(stored, copy)
+	end
+	return writeJson("watchlist.json", stored)
 end
 local Scanner = require("apps.diskmap.services.Scanner")
 System.start = Scanner.start
@@ -60,16 +89,13 @@ function System.exportMockSnapshot(outputPath, completion)
 	System.await(job, completion)
 end
 function System.loadSettings()
-	local file = io.open((os.getenv("HOME") or "") .. "/Library/Application Support/Diskmap/background", "r")
+	local file = io.open(System.supportPath("background"), "r")
 	if not file then return true end
 	local value = file:read("*l"); file:close()
 	return value ~= "paused"
 end
 function System.saveSettings(enabled)
-	local directory = (os.getenv("HOME") or "") .. "/Library/Application Support/Diskmap"
-	local ok = os.execute("/bin/mkdir -p " .. System.quote(directory))
-	if not ok then return false end
-	local file = io.open(directory .. "/background", "w")
+	local file = io.open(System.supportPath("background"), "w")
 	if not file then return false end
 	file:write(enabled and "enabled" or "paused"); file:close()
 	return true
@@ -339,9 +365,10 @@ function System.volumes(completion)
 		end)
 	end)
 end
--- The top level of another disk, one folder level deep, measured like the
--- startup disk: metadata only, staying on that volume.
-function System.analyzeVolume(path, completion)
+-- A folder's immediate children, such as another disk's top level or a
+-- watched folder, measured like the startup disk: metadata only, staying on
+-- that volume.
+function System.analyzeFolder(path, completion)
 	local ok, job = pcall(Scanner.start, {path}, {}, {breakdown = true})
 	if not ok then completion(nil, tostring(job)); return end
 	System.await(job, function(result)
@@ -356,9 +383,7 @@ function System.copy(text) ns.copyToClipboard(text) end
 function System.confirmTrashPath(title, path, message)
 	return ns.Alert {title = title, message = path .. "\n\n" .. message, buttons = {"Cancel", "Move to Trash"}} == 2
 end
-local function support(name)
-	return (os.getenv("HOME") or "") .. "/Library/Application Support/Diskmap/" .. name
-end
+local support = System.supportPath
 local function readFile(path)
 	local file = io.open(path, "r")
 	if not file then return nil end

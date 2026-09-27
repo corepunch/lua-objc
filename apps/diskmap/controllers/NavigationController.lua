@@ -34,15 +34,29 @@ Controller.destinations = {
 -- `show(id)` mounts the destination; the root controller owns page lifetime.
 -- Back and forward follow destinations the way a browser follows pages.
 function Controller.new(show)
-	return setmetatable({show = show, history = {}, position = 0, badges = {}}, Controller)
+	return setmetatable({show = show, history = {}, position = 0, badges = {}, watched = {}}, Controller)
+end
+
+-- Watched locations lead the sidebar, as Favorites lead Finder's: they are
+-- what the person chose to come back to. The section appears only once
+-- something is watched. Each row's badge is its current size.
+function Controller:list()
+	if #self.watched == 0 then return Controller.destinations end
+	local list = {{section = true, title = "Watched"}}
+	for _, row in ipairs(self.watched) do
+		table.insert(list, {id = row.id, name = row.name, icon = row.icon, color = row.color,
+			badge = not row.calculating and row.size or nil})
+	end
+	for _, row in ipairs(Controller.destinations) do table.insert(list, row) end
+	return list
 end
 
 function Controller:rows()
 	local rows = {}
-	for _, row in ipairs(Controller.destinations) do
+	for _, row in ipairs(self:list()) do
 		local copy = {}
 		for key, value in pairs(row) do copy[key] = value end
-		copy.badge = row.id and self.badges[row.id] or nil
+		copy.badge = row.badge or row.id and self.badges[row.id] or nil
 		table.insert(rows, copy)
 	end
 	return rows
@@ -58,7 +72,7 @@ function Controller:render()
 end
 
 function Controller:index(id)
-	for index, row in ipairs(Controller.destinations) do
+	for index, row in ipairs(self:list()) do
 		if row.id == id then return index - 1 end
 	end
 end
@@ -66,6 +80,7 @@ end
 -- Keeps the sidebar selection in step with navigation that starts elsewhere,
 -- such as "Show All" on the overview, and records the visit.
 function Controller:select(id, fromHistory)
+	self.current = id
 	if not fromHistory and self.history[self.position] ~= id then
 		for index = #self.history, self.position + 1, -1 do table.remove(self.history, index) end
 		table.insert(self.history, id)
@@ -103,14 +118,31 @@ function Controller:setBadges(badges)
 	end
 	if not changed then return false end
 	self.badges = badges
-	if self.refs then
-		local selected = self.refs.sidebar.documentView.selectedRow
-		self.refs.sidebar:replaceRows(self:rows())
-		if selected and selected >= 0 and self.refs.sidebar.documentView.selectedRow ~= selected then
-			self.refs.sidebar:selectRow(selected)
-		end
-	end
+	self:reload()
 	return true
+end
+
+-- Replaces the Watched section. Adding the section shifts every row below
+-- it, so the selection follows the current destination, not its index.
+-- A watch removed while its row is selected leaves nothing selected.
+function Controller:setWatched(rows)
+	rows = rows or {}
+	local function signature(list)
+		local parts = {}
+		for _, row in ipairs(list) do table.insert(parts, row.id .. "\t" .. row.name .. "\t" .. tostring(not row.calculating and row.size or "")) end
+		return table.concat(parts, "\n")
+	end
+	if signature(rows) == signature(self.watched) then return false end
+	self.watched = rows
+	self:reload()
+	return true
+end
+
+function Controller:reload()
+	if not self.refs then return end
+	self.refs.sidebar:replaceRows(self:rows())
+	local index = self.current and self:index(self.current)
+	if index and self.refs.sidebar.documentView.selectedRow ~= index then self.refs.sidebar:selectRow(index) end
 end
 
 return Controller

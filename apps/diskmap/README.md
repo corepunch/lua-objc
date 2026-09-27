@@ -103,6 +103,15 @@ standard folders, and never follows symlinks. It then offers to empty the
 Trash and reports how much more free space macOS actually sees. Every action
 is appended to `~/Library/Logs/Diskmap/operations.log` and shown in History.
 
+**Watch** in any category's or folder's menu adds it to a Watched section at
+the top of the sidebar, like Finder's Favorites, with its current size as the
+badge. Selecting a watched location shows how much it grew or shrank since
+the previous session and what it holds one level down. A category lists its
+locations; a folder is measured when its page opens. Only complete
+measurements count, so an interrupted scan never looks like shrinkage. A
+watched folder that disappears stays listed as Missing, and a bookmark follows
+it when it is moved or renamed.
+
 Categories open their resources in a sheet with Safe/rebuildable, Needs review
 and Essential to keep filters. Refresh, Stop, Clean Up, Settings and Search live
 in the toolbar; search applies to the current page. The window subtitle shows
@@ -197,7 +206,9 @@ resolved from installed application bundles, with a symbol fallback.
 Every startup and refresh recalculates the inventory. Each pending category
 shows a native spinner and “Calculating…” in place of its size, then displays
 its fresh result once all of its locations finish. No scan results or diagnostics
-are retained between launches. Only Keep choices and the background-check setting persist.
+are retained between launches. Only Keep choices, watched locations with their
+last size and the background-check setting persist, in Diskmap's Application
+Support folder (resolved by `NSFileManager`, so a sandboxed build uses its container).
 
 Headless tests inject scanner results through the service interface, without
 reading saved inventories, opening windows, or waiting for live disk scans.
@@ -244,7 +255,8 @@ No file contents are read or uploaded; cloud-only files are not downloaded.
 The same scan also ranks the 500 largest files over 50 MB, the largest files
 not used for a year, per-extension totals and each location's immediate
 children (see the [StorageScan options](../../src/plugins/storage/README.md)).
-Nothing about individual files is kept after the app quits. Individual files
+Nothing about individual files is kept after the app quits, except the
+locations you watch: their path and last measured size. Individual files
 may be moved to the Trash only when `Files.validateTrash` accepts them: in the
 home folder, outside ~/Library, hidden folders and packages, below no kept,
 essential or system-managed location, and measured by the latest scan. A
@@ -276,7 +288,7 @@ cancellation, preference persistence failures, action routing and fresh startup 
 | `catalog/` | Independent category definitions, paths, ownership and consequences |
 | `Model.lua` | Live measurements, Keep state, scan state and byte aggregation |
 | `models/Resources.lua` | Per-model canonical resource collection, ordered relations and registration |
-| `models/Constraints.lua` | Named validation results for registration, Keep changes and Trash mutations |
+| `models/Constraints.lua` | Named validation results for registration, Keep and Watch changes and Trash mutations |
 | `models/Inventory.lua` | Scan plans, measurement transitions and current diagnostics |
 | `models/Categories.lua` | Category queries, rolled-up rows and capacity distribution |
 | `models/Overview.lua` | Volume summary, donut marks and legend, cleanup headline, ranked categories and largest items |
@@ -295,6 +307,7 @@ cancellation, preference persistence failures, action routing and fresh startup 
 | `models/OperationLog.lua`, `models/History.lua` | Action log lines and opt-in category history |
 | `models/Updates.lua` | Software Update record, update staging storage, installers and local snapshots |
 | `models/Cleanup.lua`, `knowledge/CleanupRules.lua` | Recognized resources, review thresholds, evidence and tailored advice |
+| `models/Watchlist.lua` | Watched resources and folders, their previous-session baseline and change |
 | `models/Tips.lua` | Contextual access, capacity, Keep and system-storage guidance |
 | `models/Inspector.lua`, `models/Preferences.lua` | Resource details and action eligibility |
 | `controllers/` | Small coordinators with injected IO and navigation callbacks |

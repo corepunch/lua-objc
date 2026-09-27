@@ -205,6 +205,7 @@ function Mock.new(options)
 		agents = agents,
 		availableBytes = fixture.availableBytes,
 		kept = {},
+		watchlist = {},
 		monitoring = false,
 	}, Mock)
 	for name, method in pairs(Mock) do
@@ -359,6 +360,15 @@ end
 
 function Mock:saveKeep(kept)
 	self.kept = copy(kept)
+	return true
+end
+
+function Mock:loadWatchlist()
+	return copy(self.watchlist)
+end
+
+function Mock:saveWatchlist(entries)
+	self.watchlist = copy(entries)
 	return true
 end
 
@@ -727,9 +737,14 @@ function Mock:installedBundleIds(completion)
 	completion(ids)
 end
 
-function Mock:analyzeVolume(path, completion)
+-- A fixture volume's top level, or any other folder's immediate children
+-- summarized from the virtual file list, as the native breakdown reports them.
+function Mock:analyzeFolder(path, completion)
 	local contents = self.fixture.volumeContents and self.fixture.volumeContents[path]
-	completion(contents and copy(contents) or {}, nil, 0)
+	if contents then completion(copy(contents), nil, 0); return end
+	local result = {}
+	self.summarize(result, {path}, {}, {breakdown = true})
+	completion(result.breakdowns[1], nil, 0)
 end
 
 function Mock:volumes(completion)

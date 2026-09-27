@@ -424,6 +424,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_onNavigationGesture", bridge_on_navigation_gesture},
 	{"_navigationGesture", bridge_navigation_gesture},
 	{"_resolveBookmark", bridge_resolve_bookmark},
+	{"_applicationSupportDirectory", bridge_application_support_directory},
 	{"_unwatch", bridge_unwatch},
 	{"_latestEventId", bridge_latest_event_id},
 	{"_pickFolder", bridge_AppKit_pick_folder},

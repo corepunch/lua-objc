@@ -32,7 +32,7 @@ function VolumeContents.rows(volumePath, entries)
 		table.insert(rows, {id = volumePath .. "/" .. entry.name, path = volumePath .. "/" .. entry.name, bytes = bytes, size = Model.size(bytes),
 			name = known and known.name or entry.name, subtitle = known and (entry.name .. " · " .. known.detail) or (entry.directory and "Folder" or "File"),
 			icon = known and known.icon or (entry.directory and "folder.fill" or "doc.fill"), color = known and known.color or "systemBlue",
-			detail = known and "System" or "", system = known ~= nil, action = known and known.action})
+			detail = known and "System" or "", system = known ~= nil, action = known and known.action, directory = entry.directory == true})
 	end
 	table.sort(rows, function(a, b)
 		if a.bytes ~= b.bytes then return a.bytes > b.bytes end
