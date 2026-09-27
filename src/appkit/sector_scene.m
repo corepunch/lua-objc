@@ -23,6 +23,9 @@ static NSColor *semantic_color(NSString *name);
 @property(nonatomic, copy) NSArray<NSDictionary *> *sectors;
 @property(nonatomic, strong) SCNNode *chartNode;
 @property(nonatomic, strong) SCNNode *keyNode;
+/* Whether the key light casts the soft contact shadow; on by default.
+ * (NSView already owns `shadow`, an NSShadow.) */
+@property(nonatomic) BOOL castsShadow;
 @end
 
 static SCNNode *sector_scene_light(SCNLightType type, CGFloat intensity) {
@@ -106,6 +109,7 @@ static NSImage *sector_scene_glow(void) {
 		key.zFar = kSectorSceneShadowDistance * 2;
 		[scene.rootNode addChildNode:keyNode];
 		self.keyNode = keyNode;
+		_castsShadow = YES;
 		SCNNode *fillNode = sector_scene_light(SCNLightTypeDirectional, kSectorSceneFillIntensity);
 		fillNode.eulerAngles = SCNVector3Make(kSectorSceneFillPitch, 0, 0);
 		[scene.rootNode addChildNode:fillNode];
@@ -117,6 +121,11 @@ static NSImage *sector_scene_glow(void) {
 		[self updateCamera];
 	}
 	return self;
+}
+
+- (void)setCastsShadow:(BOOL)castsShadow {
+	_castsShadow = castsShadow;
+	self.keyNode.light.castsShadow = castsShadow;
 }
 
 - (BOOL)isOpaque { return NO; }

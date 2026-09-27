@@ -995,7 +995,8 @@ square-edged extruded solid, seen through a camera tilted down like Excel's
 3-D pie. Every ring stands the same height, so a wall never runs into the
 ring in front of it, and the first sector starts at half past one. `angularInset` becomes a parallel-sided gap of the same width between
 neighbours and between rings. Each slice carries its own diagonal gradient; a
-key light and a soft contact shadow on a shadow-only floor do the rest. Mark
+key light and a soft contact shadow on a shadow-only floor do the rest;
+`shadow="false"` drops the shadow. Mark
 opacity blends towards the window background rather than making solids
 translucent. The pointer is unprojected onto each ring's top face, so hover,
 selection and drag use the same flat geometry as the arcs, and the hovered

@@ -41,7 +41,7 @@
         <% end %>
       </Treemap>
       <% else %>
-      <SectorChart id="sunburst" transition="<%= style == "raised" and "opacity" or "drawOn" %>" width="<%= MAP.chart %>" height="<%= MAP.chart %>" innerRadius="<%= MAP.hole %>" angularInset="<%= style == "raised" and MAP.raisedGap or MAP.gap %>" depth="<%= style == "raised" and MAP.depth or 0 %>" onSelect="chartSelect" onHover="chartHover" onCenter="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
+      <SectorChart id="sunburst" transition="<%= style == "raised" and "opacity" or "drawOn" %>" width="<%= MAP.chart %>" height="<%= MAP.chart %>" innerRadius="<%= MAP.hole %>" angularInset="<%= style == "raised" and MAP.raisedGap or MAP.gap %>" depth="<%= style == "raised" and MAP.depth or 0 %>" shadow="false" onSelect="chartSelect" onHover="chartHover" onCenter="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
         <% for _, node in ipairs(nodes) do %>
         <SectorMark id="<%= node.id %>" ring="<%= node.ring %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" opacity="<%= (ringOpacity[node.ring] or 0.5) * (node.other and node.parent and otherFade or 1) %>" label="<%= node.label %>" />
         <% end %>

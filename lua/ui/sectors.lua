@@ -234,7 +234,8 @@ end
 -- `onHover(id)` and `onCenter()` make it interactive; hovering dims the
 -- other sectors. A positive `depth` draws raised sectors `depth`
 -- points deep in a SceneKit view instead of flat arcs; the geometry, hit
--- testing and interaction are the same.
+-- testing and interaction are the same. `shadow = false` drops its contact
+-- shadow.
 function Sectors.chart(ns, props)
 	props = props or {}
 	local diameter = math.min(props.fixedWidth or props.fixedHeight or 160,
@@ -248,7 +249,7 @@ function Sectors.chart(ns, props)
 	state.sectors = Sectors.layout(marks, diameter, props.innerRadius, props.angularInset, state.start)
 	local stack = {alignment = "center", fixedWidth = diameter, fixedHeight = diameter}
 	for key, value in pairs(props) do
-		if type(key) == "string" and stack[key] == nil and key ~= "innerRadius" and key ~= "angularInset" and key ~= "depth"
+		if type(key) == "string" and stack[key] == nil and key ~= "innerRadius" and key ~= "angularInset" and key ~= "depth" and key ~= "shadow"
 			and key ~= "accessibilityLabel" and key ~= "onSelect" and key ~= "onHover" and key ~= "onCenter" and key ~= "dragItem" then
 			stack[key] = value
 		end
@@ -257,7 +258,7 @@ function Sectors.chart(ns, props)
 	state.rings = ringCount(state.sectors)
 	if depth > 0 then
 		assert(type(ns.SectorScene) == "function", "SectorChart depth needs a SectorScene view on this platform")
-		state.scene = ns.SectorScene {width = diameter, height = diameter, sectors = sceneSpecs(state)}
+		state.scene = ns.SectorScene {width = diameter, height = diameter, shadow = props.shadow, sectors = sceneSpecs(state)}
 		table.insert(stack, state.scene)
 	else
 		for index, spec in ipairs(state.specs) do

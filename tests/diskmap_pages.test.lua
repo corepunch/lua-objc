@@ -54,6 +54,7 @@ app.page.template.actions.style(1)
 t.assertEqual(app.pages.map.style, "raised", "the second style raises the rings")
 t.expect(page().sunburst ~= nil and page().sunburst.subviews[1].className == "LuaSectorSceneView",
 	"raised rings render in SceneKit")
+t.expect(not page().sunburst.subviews[1].castsShadow, "the Map's raised rings cast no shadow")
 app.page.template.actions.style(2)
 t.expect(page().treemap ~= nil and page().sunburst == nil, "rectangles replace the rings")
 app.page.template.actions.chartHover("xcode")
