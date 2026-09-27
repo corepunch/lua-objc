@@ -100,14 +100,14 @@ function Controller:update(state)
 	local all = Applications.rows(self.model, self.info, "All")
 	local summary = Applications.summary(all, Applications.leftovers(self.model, self.installed))
 	refs.summary.text = summary.count == 0 and "No applications measured yet."
-		or string.format("%d apps use %s, and their data another %s.", summary.count, Model.size(summary.apps), Model.size(summary.data))
+		or string.format("%s %s %s, and their data another %s.", Model.plural(summary.count, "app"), summary.count == 1 and "uses" or "use", Model.size(summary.apps), Model.size(summary.data))
 	refs.appsTileValue.text = Model.size(summary.apps)
-	refs.appsTileDetail.text = summary.count .. " application bundles"
+	refs.appsTileDetail.text = Model.plural(summary.count, "application bundle")
 	refs.dataTileValue.text = self.model.files and Model.size(summary.data) or "—"
 	refs.unusedTileValue.text = self.info and tostring(summary.unused) or "—"
-	refs.unusedTileDetail.text = self.info and ("Apps not opened in 6 months · " .. Model.size(summary.unusedBytes)) or "Reading last-used dates…"
+	refs.unusedTileDetail.text = self.info and (Model.size(summary.unusedBytes) .. " not opened in 6 months") or "Reading last-used dates…"
 	refs.leftoversTileValue.text = summary.leftovers and Model.size(summary.leftoverBytes) or "—"
-	refs.leftoversTileDetail.text = summary.leftovers and (summary.leftovers .. " folders of apps not installed") or "Checking installed apps…"
+	refs.leftoversTileDetail.text = summary.leftovers and (Model.plural(summary.leftovers, "folder") .. " of apps not installed") or "Checking installed apps…"
 end
 
 function Controller:marksChanged() self:update(self.state) end

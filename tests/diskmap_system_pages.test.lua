@@ -29,15 +29,15 @@ local inventory = {runtimes = {}, devices = {
 	},
 }}
 
-local runtimes = Simulators.runtimeRows(list, inventory)
+local runtimes = Simulators.runtimeRows(list, inventory, nil, os.time({year = 2026, month = 9, day = 25, hour = 12}))
 t.assertEqual(#runtimes, 2, "malformed runtime entries are skipped")
 t.assertEqual(runtimes[1].name, "iOS 26.0", "runtime names come from platform and version")
 t.assertEqual(runtimes[1].subtitle, "Build 23A339 · Disk Image · Ready", "runtime details name build, kind and state")
 t.assertEqual(runtimes[1].deviceText, "3 devices", "runtimes count the devices that use them")
-t.assertEqual(runtimes[1].lastUse, "2026-09-20", "runtime last use is a date")
+t.assertEqual(runtimes[1].lastUse, "5 days ago", "runtime last use reads like Large Files and Applications")
 t.assertEqual(runtimes[2].name, "watchOS 26.0", "watch runtimes are named for their platform")
 t.assertEqual(runtimes[2].size, "Not measured", "a runtime without a size is not zero")
-t.assertEqual(runtimes[2].lastUse, "Not recorded", "unknown last use is never invented")
+t.assertEqual(runtimes[2].lastUse, "—", "unknown last use is never invented")
 t.assertEqual(#Simulators.runtimeRows(nil, inventory), 0, "no runtime list shows no runtimes")
 t.assertEqual(#Simulators.runtimeRows(list, inventory, "watch"), 1, "runtime search matches platform names")
 

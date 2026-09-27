@@ -19,7 +19,7 @@
     <VStack id="section_<%= section.id %>" maxWidth="infinity" spacing="8" alignment="leading">
       <%- partial("SectionHeader.etlua", {title = section.title, detail = section.detail, detailId = "detail_" .. section.id}) %>
       <GroupBox maxWidth="infinity">
-        <%- partial("ResourceList.etlua", {id = "list_" .. section.id, menu = "menu_" .. section.id, activate = "open_" .. section.id, header = false, detailTitle = "Status"}) %>
+        <%- partial("ResourceList.etlua", {id = "list_" .. section.id, menu = "menu_" .. section.id, activate = "open_" .. section.id, header = false, status = true}) %>
       </GroupBox>
     </VStack>
     <% end %>

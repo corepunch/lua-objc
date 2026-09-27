@@ -98,6 +98,39 @@ local widths = bridge._tableColumnWidths(items)
 local total = 0
 for _, column in ipairs(widths) do total = total + column.width end
 t.expect(total <= 560 + 1, "shared list columns fit a narrow page")
+-- Status lists show one colour-coded symbol per row; the status word stays
+-- available as tooltip and accessibility label instead of truncated text.
+local Status = require("apps.diskmap.models.Status")
+local _, statusRefs = render("ResourceList", {id = "statuses", menu = "rowMenu", status = true, header = true, actions = {rowMenu = function() return {} end}})
+local statuses = statusRefs.statuses
+statuses:replaceRows({Status.apply({id = "derived", name = "Xcode DerivedData", detail = "Rebuildable", size = "≥ 999.9 MB", relative = 1, shareText = "", color = "systemBlue", icon = "hammer.fill"}),
+	Status.apply({id = "group", name = "Simulator runtimes", detail = "Group", size = "8.5 GB", relative = 0.5, shareText = "", color = "systemBlue", icon = "hammer.fill"})})
+local statusCell = bridge._tableCell(statuses, 1, 0)
+t.expect(statusCell.textField.hidden, "an icon-only status hides its word")
+t.expect(statusCell.imageView.image ~= nil, "a status is drawn as a symbol")
+t.assertEqual(statusCell.imageView.toolTip, "Rebuildable", "the status word is the symbol's tooltip")
+t.assertEqual(statusCell.imageView.accessibilityLabel, "Rebuildable", "VoiceOver reads the status word")
+t.expect(bridge._tableCell(statuses, 1, 1).imageView.image == nil, "a rolled-up group has no status symbol")
+local bar = bridge._tableCell(statuses, 2, 0)
+bar:layout()
+t.expect(bar.levelIndicator.frame.origin.x <= 8, "a share bar without a label starts at the column edge")
+statuses.size = ns.Size(560, 200); statuses:layout(560)
+local statusWidths = {}
+for _, column in ipairs(bridge._tableColumnWidths(statuses)) do statusWidths[column.id] = column.width end
+t.expect(statusWidths.detail <= 48, "the status column is one symbol wide")
+t.expect(statusWidths.size >= 104, "the size column fits a lower-bound size such as ≥ 999.9 MB")
+for status, style in pairs(Status.styles) do
+	t.expect(style.icon:find("%.fill$") ~= nil and style.color ~= nil, status .. " has a filled, coloured symbol")
+end
+t.assertEqual(Status.apply({detail = "Under 5.0 GB"}, "Within").statusColor, "systemGreen", "a location within limits is green")
+t.assertEqual(Status.apply({detail = "Review"}).statusColor, "systemOrange", "review is orange")
+t.assertEqual(Status.apply({detail = "Keep"}).statusColor, "systemRed", "required data is red")
+local XcodeController = require("apps.diskmap.controllers.XcodeController")
+for _, status in ipairs({"Newest · keep", "Older", "Missing", "Present", "Unknown"}) do
+	t.expect(Status.styles[XcodeController.statuses[status]] ~= nil, "Xcode status " .. status .. " has a symbol")
+end
+t.assertEqual(Status.styles[XcodeController.statuses.Missing].color, "systemGreen", "build data of a missing project is safe to remove")
+
 for _, name in ipairs({"Largest", "Files", "Cleanup", "Applications", "Disks"}) do
 	local data = {summary = "", filters = {"All"}, threshold = "50 MB", health = {}, actions = setmetatable({}, {__index = function() return function() return {} end end})}
 	local page, pageRefs = render(name, data)

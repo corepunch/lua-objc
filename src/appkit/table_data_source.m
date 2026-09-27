@@ -27,6 +27,7 @@
 @property (nonatomic, strong) NSProgressIndicator *loadingIndicator;
 @property (nonatomic, strong) NSButton *actionButton;
 @property (nonatomic, strong) NSTextField *badgeField;
+@property (nonatomic) BOOL iconOnly;
 @end
 
 @implementation LuaTableCellView
@@ -49,9 +50,12 @@
 		return;
 	}
 	if (_levelIndicator) {
+		/* A bar without a label starts at the column edge, so bars in lists
+		 * that omit the percentage do not float after an empty gutter. */
+		BOOL labelled = text.stringValue.length > 0;
 		CGFloat height = ceil(text.intrinsicContentSize.height);
-		text.frame = NSMakeRect(0, floor((self.bounds.size.height - height) / 2), kTableCellLevelTextWidth, height);
-		CGFloat x = kTableCellLevelTextWidth + kTableCellLevelGap;
+		text.frame = NSMakeRect(0, floor((self.bounds.size.height - height) / 2), labelled ? kTableCellLevelTextWidth : 0, height);
+		CGFloat x = labelled ? kTableCellLevelTextWidth + kTableCellLevelGap : kTableCellTextLeadingInset;
 		_levelIndicator.frame = NSMakeRect(x, floor((self.bounds.size.height - kTableCellLevelHeight) / 2), MAX(0, self.bounds.size.width - x - kTableCellTextTrailingInset), kTableCellLevelHeight);
 		return;
 	}
@@ -68,6 +72,13 @@
 	}
 	NSImageView *image = self.imageView;
 	CGFloat imageWidth = image.image ? (_imageWidth > 0 ? _imageWidth : kTableCellImageWidth) : 0;
+	/* SwiftUI's `.labelStyle(.iconOnly)`: the symbol is centred in the
+	 * column and the title survives as tooltip and accessibility label. */
+	if (_iconOnly) {
+		image.frame = NSMakeRect(floor((self.bounds.size.width - imageWidth) / 2),
+			floor((self.bounds.size.height - imageWidth) / 2), imageWidth, imageWidth);
+		return;
+	}
 	CGFloat imageGap = imageWidth > 0 ? kTableCellImageTextGap : 0;
 	CGFloat textInset = imageWidth > 0 ? kTableCellImageLeadingInset : kTableCellTextLeadingInset;
 	CGFloat textX = textInset + imageWidth + imageGap;
@@ -421,12 +432,14 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 		[cell setNeedsLayout:YES];
 		return cell;
 	}
-	cell.textField.hidden = NO;
+	cell.iconOnly = [cellSpec[@"labelStyle"] isEqual:@"iconOnly"];
+	cell.textField.hidden = cell.iconOnly;
 	cell.imageView.hidden = NO;
 	cell.textField.stringValue = text;
 	NSString *badgeKey = cellSpec[@"badge"];
 	id badgeValue = badgeKey ? rowData[badgeKey] : nil;
 	cell.badgeField.stringValue = badgeValue ? [badgeValue description] : @"";
+	cell.imageView.toolTip = cell.iconOnly && text.length ? text : nil;
 	NSString *secondaryKey = cellSpec[@"secondary"];
 	id secondaryValue = secondaryKey ? rowData[secondaryKey] : nil;
 	cell.secondaryTextField.stringValue = secondaryValue
@@ -484,6 +497,7 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 		[NSImageSymbolConfiguration configurationWithPointSize:(cell.imageWidth > 0 ? cell.imageWidth - 3 : kTableCellSymbolPointSize)
 													 weight:NSFontWeightRegular];
 		cell.imageView.image = [image imageWithSymbolConfiguration:configuration];
+		if (cell.iconOnly) cell.imageView.accessibilityLabel = text;
 	} else {
 		cell.imageView.image = nil;
 	}

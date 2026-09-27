@@ -33,7 +33,7 @@ function Categories.rows(model, rootId, query)
 			row.forceExpanded = needle ~= ""
 		end
 		row.size = (row.status == "partial" and "≥ " or "") .. Model.size(row.bytes)
-		if row.status == "excluded" then row.size = "Not scanned" elseif row.status == "skipped" then row.size = "Linked location" elseif row.status == "unsupported" then row.size = "System managed" elseif row.status == "denied" then row.size = "Access restricted" elseif row.status == "failed" then row.size = "Unavailable" end
+		if row.status == "excluded" then row.size = "Not scanned" elseif row.status == "skipped" then row.size = "Linked location" elseif row.status == "unsupported" then row.size = "System managed" elseif row.status == "denied" then row.size = "No access" elseif row.status == "failed" then row.size = "Unavailable" end
 		row.calculating = row.status == "calculating"
 		if row.calculating then row.size = "Calculating…" end
 		row.color = source.color or "secondary"
@@ -92,7 +92,7 @@ function Categories.managementRows(model, rootId, query, filter)
 			local impact = row.policy == "Essential" and "Essential to keep" or row.policy == "Rebuildable" and "Safe/rebuildable" or "Needs review"
 			if (not filter or filter == "All" or filter == impact) and (row.name .. " " .. (owner or "") .. " " .. (row.path or "")):lower():find(needle, 1, true) then
 				table.insert(result, {id = row.id, name = row.name, subtitle = owner, path = row.path or "System managed", icon = row.icon, color = row.color, appIcon = row.appIcon, fileIcon = row.fileIcon, info = row.action == "simulators" or row.action == "sdks", impact = impact,
-					size = m.status == "excluded" and "Not scanned" or m.status == "calculating" and "Calculating…" or m.status == "denied" and "Access restricted" or (m.status == "partial" and "≥ " or "") .. Model.size(m.bytes),
+					size = m.status == "excluded" and "Not scanned" or m.status == "calculating" and "Calculating…" or m.status == "denied" and "No access" or (m.status == "partial" and "≥ " or "") .. Model.size(m.bytes),
 					bytes = m.bytes, partial = m.status == "partial", calculating = m.status == "calculating"})
 			end
 		end

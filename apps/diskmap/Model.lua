@@ -9,6 +9,31 @@ function Model.size(bytes)
 	return string.format("%.0f KB", bytes / 1000)
 end
 -- Counts with thousands separators, as Finder shows item counts.
+-- Whole percentages, "<1%" for a sliver, so share labels stay one width
+-- across every list.
+function Model.percent(bytes, total)
+	if not bytes or bytes <= 0 or not total or total <= 0 then return "" end
+	local value = bytes * 100 / total
+	if value < 1 then return "<1%" end
+	return string.format("%d%%", math.floor(value + 0.5))
+end
+
+-- "1 app", "3 apps": `count` may already be a formatted number.
+function Model.plural(count, word)
+	return count .. " " .. word .. (tostring(count) == "1" and "" or "s")
+end
+
+-- "3 days ago", "5 months ago", "2 years ago": the precision a person needs
+-- to decide whether something is still in use.
+function Model.ago(days)
+	local plural = Model.plural
+	if days < 1 then return "Today" end
+	if days < 2 then return "Yesterday" end
+	if days < 31 then return days .. " days ago" end
+	if days < 365 then return plural(math.floor(days / 30.4), "month") .. " ago" end
+	return plural(math.floor(days / 365), "year") .. " ago"
+end
+
 function Model.count(value)
 	local text = tostring(math.floor(value or 0))
 	local result = text:reverse():gsub("(%d%d%d)", "%1,"):reverse()
