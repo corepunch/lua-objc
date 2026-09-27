@@ -59,17 +59,20 @@ static int bridge_NSView_renderToPNG_impl(lua_State *L) {
 	return 1;
 }
 
-#pragma mark - File watcher
+#pragma mark - File system watcher
 
-static NSMutableDictionary *gFileWatchers = nil;
+/* FSEvents for a file or a directory tree. Each watch is its own stream with
+ * its own callback, stopped by `_unwatch(token)` or when its Scope closes;
+ * the Lua handle in AppKit.watch owns that lifetime. `since` replays events
+ * recorded after an earlier event ID, so a watcher can learn what changed
+ * while the app was not running. */
 
-@interface LuaFileWatcher : NSObject
+@interface LuaWatcher : NSObject
 @property (nonatomic) FSEventStreamRef stream;
 @property (nonatomic, strong) LuaReg *reg;
-@property (nonatomic, copy) NSString *path;
 @end
 
-@implementation LuaFileWatcher
+@implementation LuaWatcher
 - (void)stop {
 	if (_stream) {
 		FSEventStreamStop(_stream);
@@ -80,68 +83,82 @@ static NSMutableDictionary *gFileWatchers = nil;
 	[_reg dispose];
 	_reg = nil;
 }
-- (void)dealloc {
-	[self stop];
-}
+- (void)dealloc { [self stop]; }
 @end
 
-static void file_watcher_callback(ConstFSEventStreamRef streamRef,
-	void *clientCallBackInfo, size_t numEvents, void *eventPaths,
-	const FSEventStreamEventFlags *eventFlags,
-	const FSEventStreamEventId *eventIds)
-{
-	(void)streamRef; (void)numEvents; (void)eventPaths;
-	(void)eventFlags; (void)eventIds;
-	NSValue *boxed = (__bridge NSValue *)clientCallBackInfo;
-	NSString *path = (__bridge NSString *)(void *)boxed.pointerValue;
+static NSMutableDictionary<NSNumber *, LuaWatcher *> *gWatchers = nil;
+static NSInteger gNextWatcher = 0;
 
-	LuaFileWatcher *watcher = gFileWatchers[path];
+static void watcher_callback(ConstFSEventStreamRef streamRef, void *info, size_t count, void *eventPaths,
+	const FSEventStreamEventFlags *flags, const FSEventStreamEventId *ids) {
+	(void)streamRef;
+	LuaWatcher *watcher = gWatchers[@((NSInteger)(intptr_t)info)];
 	lua_State *L = lua_reg_live_state(watcher.reg);
 	if (!L || !lua_reg_push(watcher.reg)) return;
-	lua_pushstring(L, path.UTF8String);
-	lua_objc_pcall(L, 1, 0, "watchFile");
+	char **paths = eventPaths;
+	lua_createtable(L, (int)count, 0);
+	for (size_t i = 0; i < count; i++) {
+		FSEventStreamEventFlags f = flags[i];
+		lua_createtable(L, 0, 9);
+		lua_pushstring(L, paths[i]); lua_setfield(L, -2, "path");
+		lua_pushnumber(L, (lua_Number)ids[i]); lua_setfield(L, -2, "id");
+		lua_pushboolean(L, (f & kFSEventStreamEventFlagItemCreated) != 0); lua_setfield(L, -2, "created");
+		lua_pushboolean(L, (f & kFSEventStreamEventFlagItemRemoved) != 0); lua_setfield(L, -2, "removed");
+		lua_pushboolean(L, (f & kFSEventStreamEventFlagItemRenamed) != 0); lua_setfield(L, -2, "renamed");
+		lua_pushboolean(L, (f & (kFSEventStreamEventFlagItemModified | kFSEventStreamEventFlagItemInodeMetaMod)) != 0); lua_setfield(L, -2, "modified");
+		lua_pushboolean(L, (f & kFSEventStreamEventFlagItemIsDir) != 0); lua_setfield(L, -2, "directory");
+		lua_pushboolean(L, (f & kFSEventStreamEventFlagMustScanSubDirs) != 0); lua_setfield(L, -2, "rescan");
+		lua_pushboolean(L, (f & kFSEventStreamEventFlagHistoryDone) != 0); lua_setfield(L, -2, "historyDone");
+		lua_rawseti(L, -2, (lua_Integer)i + 1);
+	}
+	lua_objc_pcall(L, 1, 0, "watch");
 }
 
-static int bridge_watch_file(lua_State *L) {
-	const char *pathC = luaL_checkstring(L, 1);
-	NSString *path = [NSString stringWithUTF8String:pathC];
-
-	if (!gFileWatchers) {
-		gFileWatchers = [NSMutableDictionary dictionary];
+// _watch(paths, callback, since, latency) -> token. `since` is an event ID
+// or nil for events from now on.
+static int bridge_watch(lua_State *L) {
+	NSMutableArray<NSString *> *paths = [NSMutableArray array];
+	if (lua_istable(L, 1)) {
+		for (lua_Integer i = 1; ; i++) {
+			lua_rawgeti(L, 1, i);
+			if (lua_isnil(L, -1)) { lua_pop(L, 1); break; }
+			[paths addObject:[NSString stringWithUTF8String:luaL_checkstring(L, -1)]];
+			lua_pop(L, 1);
+		}
+	} else {
+		[paths addObject:[NSString stringWithUTF8String:luaL_checkstring(L, 1)]];
 	}
-
-	LuaFileWatcher *existing = gFileWatchers[path];
-	if (existing) {
-		[existing stop];
-		[gFileWatchers removeObjectForKey:path];
-	}
-
-	if (lua_isnoneornil(L, 2)) return 0;
-
-	LuaReg *reg = lua_reg_create(L, 2, YES);
-
-	FSEventStreamContext ctx = {
-		.version = 0,
-		.info = (__bridge void *)([NSValue valueWithPointer:(__bridge void *)path]),
-		.retain = NULL,
-		.release = NULL,
-		.copyDescription = NULL,
-	};
-
-	CFArrayRef paths = (__bridge CFArrayRef)@[path];
-	FSEventStreamRef stream = FSEventStreamCreate(
-		NULL, file_watcher_callback, &ctx,
-		paths, kFSEventStreamEventIdSinceNow, kFSWatcherLatency,
+	if (paths.count == 0) return luaL_error(L, "watch requires a path");
+	luaL_checktype(L, 2, LUA_TFUNCTION);
+	FSEventStreamEventId since = lua_isnumber(L, 3) ? (FSEventStreamEventId)lua_tonumber(L, 3) : kFSEventStreamEventIdSinceNow;
+	CFTimeInterval latency = luaL_optnumber(L, 4, kFSWatcherLatency);
+	if (!gWatchers) gWatchers = [NSMutableDictionary dictionary];
+	NSInteger token = ++gNextWatcher;
+	FSEventStreamContext ctx = {.version = 0, .info = (void *)(intptr_t)token};
+	FSEventStreamRef stream = FSEventStreamCreate(NULL, watcher_callback, &ctx, (__bridge CFArrayRef)paths, since, latency,
 		kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagNoDefer);
+	if (!stream) return luaL_error(L, "could not watch %s", paths.firstObject.UTF8String);
+	LuaWatcher *watcher = [LuaWatcher new];
+	watcher.stream = stream;
+	watcher.reg = lua_reg_create(L, 2, NO);
+	gWatchers[@(token)] = watcher;
 	FSEventStreamSetDispatchQueue(stream, dispatch_get_main_queue());
 	FSEventStreamStart(stream);
+	lua_pushinteger(L, token);
+	return 1;
+}
 
-	LuaFileWatcher *watcher = [[LuaFileWatcher alloc] init];
-	watcher.stream = stream;
-	watcher.reg = reg;
-	watcher.path = path;
-	gFileWatchers[path] = watcher;
+static int bridge_unwatch(lua_State *L) {
+	NSNumber *token = @(luaL_checkinteger(L, 1));
+	[(LuaWatcher *)gWatchers[token] stop];
+	[gWatchers removeObjectForKey:token];
 	return 0;
+}
+
+// The newest event ID on this Mac: store it to ask later what changed since.
+static int bridge_latest_event_id(lua_State *L) {
+	lua_pushnumber(L, (lua_Number)FSEventsGetCurrentEventId());
+	return 1;
 }
 
 static int bridge_pick_folder(lua_State *L) {
@@ -163,6 +180,92 @@ static int bridge_pick_folder(lua_State *L) {
 	return 1;
 }
 
+#pragma mark - Navigation gestures
+
+/* Buttons 4 and 5 of a mouse (buttonNumber 3 and 4) and a two-finger swipe
+ * are how a Mac user goes back and forward in any browsing window. The
+ * monitor sees only events for its own window and ends with the window. */
+static char kNavigationMonitorKey;
+
+@interface LuaNavigationMonitor : NSObject
+@property (nonatomic, strong) id monitor;
+@property (nonatomic, strong) LuaReg *back;
+@property (nonatomic, strong) LuaReg *forward;
+@end
+@implementation LuaNavigationMonitor
+- (void)dealloc {
+	if (_monitor) [NSEvent removeMonitor:_monitor];
+	[_back dispose]; [_forward dispose];
+}
+- (BOOL)navigate:(BOOL)forward {
+	LuaReg *reg = forward ? self.forward : self.back;
+	lua_State *L = lua_reg_live_state(reg);
+	if (!L || !lua_reg_push(reg)) return NO;
+	lua_objc_pcall(L, 0, 0, forward ? "navigate forward" : "navigate back");
+	return YES;
+}
+@end
+
+// _onNavigationGesture(window, back, forward)
+static int bridge_on_navigation_gesture(lua_State *L) {
+	NSWindow *window = lua_objc_check_object(L, 1, [NSWindow class], "window");
+	LuaNavigationMonitor *navigation = [LuaNavigationMonitor new];
+	navigation.back = lua_reg_opt(L, 2);
+	navigation.forward = lua_reg_opt(L, 3);
+	__weak NSWindow *weakWindow = window;
+	__weak LuaNavigationMonitor *weakNavigation = navigation;
+	navigation.monitor = [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskOtherMouseDown | NSEventMaskSwipe
+		handler:^NSEvent *(NSEvent *event) {
+			if (event.window != weakWindow) return event;
+			if (event.type == NSEventTypeOtherMouseDown && (event.buttonNumber == 3 || event.buttonNumber == 4))
+				return [weakNavigation navigate:event.buttonNumber == 4] ? nil : event;
+			if (event.type == NSEventTypeSwipe && event.deltaX != 0)
+				return [weakNavigation navigate:event.deltaX < 0] ? nil : event;
+			return event;
+		}];
+	objc_setAssociatedObject(window, &kNavigationMonitorKey, navigation, OBJC_ASSOCIATION_RETAIN);
+	return 0;
+}
+
+// Test hook: _navigationGesture(window, "back" | "forward")
+static int bridge_navigation_gesture(lua_State *L) {
+	NSWindow *window = lua_objc_check_object(L, 1, [NSWindow class], "window");
+	LuaNavigationMonitor *navigation = objc_getAssociatedObject(window, &kNavigationMonitorKey);
+	lua_pushboolean(L, [navigation navigate:strcmp(luaL_checkstring(L, 2), "forward") == 0]);
+	return 1;
+}
+
+#pragma mark - Security-scoped bookmarks
+
+/* A folder the person chose stays reachable across launches, even in a
+ * sandbox, through a security-scoped bookmark. `_bookmark(path)` returns the
+ * bookmark as base64 text to store; `_resolveBookmark(text)` returns the path
+ * (after moves and renames), whether the bookmark is stale and should be
+ * recreated, and starts access for the rest of the process's life. */
+static int bridge_bookmark(lua_State *L) {
+	NSURL *url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:luaL_checkstring(L, 1)]];
+	NSError *error = nil;
+	NSData *data = [url bookmarkDataWithOptions:NSURLBookmarkCreationWithSecurityScope
+		includingResourceValuesForKeys:nil relativeToURL:nil error:&error];
+	if (!data) { lua_pushnil(L); lua_pushstring(L, error.localizedDescription.UTF8String); return 2; }
+	lua_pushstring(L, [data base64EncodedStringWithOptions:0].UTF8String);
+	return 1;
+}
+
+static int bridge_resolve_bookmark(lua_State *L) {
+	NSData *data = [[NSData alloc] initWithBase64EncodedString:[NSString stringWithUTF8String:luaL_checkstring(L, 1)] options:0];
+	if (!data) { lua_pushnil(L); lua_pushboolean(L, 0); lua_pushstring(L, "Not a bookmark."); return 3; }
+	BOOL stale = NO;
+	NSError *error = nil;
+	NSURL *url = [NSURL URLByResolvingBookmarkData:data options:NSURLBookmarkResolutionWithSecurityScope | NSURLBookmarkResolutionWithoutUI
+		relativeToURL:nil bookmarkDataIsStale:&stale error:&error];
+	if (!url) { lua_pushnil(L); lua_pushboolean(L, 0); lua_pushstring(L, error.localizedDescription.UTF8String); return 3; }
+	[url startAccessingSecurityScopedResource];
+	lua_pushstring(L, url.path.UTF8String);
+	lua_pushboolean(L, stale);
+	return 2;
+}
+
 static int bridge_pick_file(lua_State *L) {
 	const char *titleC = luaL_optstring(L, 1, "Open File");
 	NSOpenPanel *panel = [NSOpenPanel openPanel];
@@ -178,6 +281,17 @@ static int bridge_pick_file(lua_State *L) {
 		return 1;
 	}
 
+	lua_pushstring(L, panel.URL.path.UTF8String);
+	return 1;
+}
+
+// _saveFile(title, defaultName) -> path or nil: the standard save panel.
+static int bridge_save_file(lua_State *L) {
+	NSSavePanel *panel = [NSSavePanel savePanel];
+	panel.title = [NSString stringWithUTF8String:luaL_optstring(L, 1, "Save")];
+	panel.nameFieldStringValue = [NSString stringWithUTF8String:luaL_optstring(L, 2, "Untitled")];
+	panel.canCreateDirectories = YES;
+	if ([panel runModal] != NSModalResponseOK || !panel.URL) { lua_pushnil(L); return 1; }
 	lua_pushstring(L, panel.URL.path.UTF8String);
 	return 1;
 }

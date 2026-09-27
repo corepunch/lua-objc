@@ -39,9 +39,24 @@ function Inventory.cancel(model)
 		if m.status == "calculating" then model.measurements[id] = {status = "notMeasured"} end
 	end
 end
+-- Allocated bytes are what a resource costs this disk; the logical size and
+-- the files iCloud evicted explain the difference from what Finder shows.
 local function measurement(node, state)
+	local tree = type(node) == "table" and node or {}
 	return {bytes = type(node) == "table" and node.kb * 1024 or state == "missing" and 0 or nil,
+		logicalBytes = tree.logicalKb and math.floor(tree.logicalKb * 1024 + 0.5) or nil,
+		cloudBytes = tree.cloudKb and math.floor(tree.cloudKb * 1024 + 0.5) or nil, cloudFiles = tree.cloudFiles,
 		status = state == "skipped" and "skipped" or state == "missing" and "complete" or type(node) == "table" and (node.partial and "partial" or "complete") or "denied"}
+end
+-- Files evicted to iCloud across every measured resource: they use no space
+-- on this Mac and would download if opened.
+function Inventory.cloud(model)
+	local bytes, files = 0, 0
+	for _, row in ipairs(model.resources:leaves()) do
+		local m = model.measurements[row.id]
+		if m and m.cloudFiles then bytes, files = bytes + (m.cloudBytes or 0), files + m.cloudFiles end
+	end
+	return bytes, files
 end
 function Inventory.progress(model, ids, result)
 	model.scan = {errors = result.errors or 0, visited = result.visited or 0,

@@ -28,6 +28,7 @@ static int bridge_NSScrollView_onRowActivate(lua_State *L);
 static int bridge_NSScrollView_onColumnSort(lua_State *L);
 static int bridge_NSScrollView_onColumnButton(lua_State *L);
 static int bridge_NSScrollView_onRowMenu(lua_State *L);
+static int bridge_NSScrollView_setDragKey(lua_State *L);
 static int bridge_NSScrollView_setSortIndicator(lua_State *L);
 static int bridge_table_column_widths(lua_State *L);
 static int bridge_table_cell_frames(lua_State *L);
@@ -59,7 +60,6 @@ static int bridge_symbol_toggle(lua_State *L);
 static int bridge_symbol_button(lua_State *L);
 static int bridge_tabview(lua_State *L);
 static int bridge_segmented_control(lua_State *L);
-static int bridge_watch_file(lua_State *L);
 static int bridge_pick_folder(lua_State *L);
 static int bridge_pick_file(lua_State *L);
 static int bridge_outlineview(lua_State *L);
@@ -201,10 +201,6 @@ static int bridge_AppKit_tabview(lua_State *L) {
 
 static int bridge_AppKit_segmented_control(lua_State *L) {
 	return bridge_segmented_control(L);
-}
-
-static int bridge_AppKit_watch_file(lua_State *L) {
-	return bridge_watch_file(L);
 }
 
 static int bridge_AppKit_pick_folder(lua_State *L) {
@@ -637,6 +633,7 @@ static MethodEntry TableMethods[] = {
 	{"onColumnSort",	bridge_NSScrollView_onColumnSort},
 	{"onColumnButton",	bridge_NSScrollView_onColumnButton},
 	{"onRowMenu",	bridge_NSScrollView_onRowMenu},
+	{"setDragKey",	bridge_NSScrollView_setDragKey},
 	{"setSortIndicator",	bridge_NSScrollView_setSortIndicator},
 	{NULL, NULL}
 };

@@ -1,5 +1,8 @@
--- Retained etlua component boundary. Unchanged descriptions preserve native
--- identity; structural/binding changes replace a scoped subtree atomically.
+-- Retained etlua component boundary. The first update mounts the template;
+-- later updates reconcile the new description with the mounted views (see
+-- xml.reconcile): unchanged nodes keep their native views, changed
+-- attributes apply in place, and only nodes whose structure changed are
+-- rebuilt. Updates made inside `ns.withAnimation` animate.
 local xml = require("ui.xml")
 local Template = {}; Template.__index = Template
 local function copy(value)
@@ -35,30 +38,38 @@ function Template:update(data)
 		return self.view, self.refs
 	end
 	description.data.actions = self.dispatch
-	local scope = self.ns.Scope.new()
-	local ok, view, refs = pcall(self.ns.Scope.withScope, scope, xml.renderDescription, description, self.ns)
-	if not ok then scope:dispose(); error(view) end
-	if type(view) == "table" then scope:dispose(); error("Template mounts require a view root, not a Window") end
-	local previous = self.scope
-	self.host:clearContainer(); self.host:add(view)
-	self.scope, self.view, self.refs = scope, view, refs
-	self.description, self.bindings, self.actions = description, bindings, data.actions or {}
-	if previous then previous:dispose() end
-	self.host:layout()
-	return view, refs
+	-- Actions must be current before reconciliation: new controls bind
+	-- through the dispatch table, and a failure keeps the previous actions.
+	local previousActions = self.actions
+	self.actions = data.actions or {}
+	local ok, err
+	if self.mounted then
+		ok, err = pcall(self.ns.Scope.withScope, self.scope, xml.reconcile, self.mounted, description, self.ns, self.host)
+	else
+		local scope = self.ns.Scope.new()
+		ok, err = pcall(self.ns.Scope.withScope, scope, xml.mount, description, self.ns, self.host)
+		if ok then self.scope, self.mounted = scope, err else scope:dispose() end
+	end
+	if not ok then self.actions = previousActions; error(err, 0) end
+	self.view, self.refs = self.mounted.view, self.mounted.refs
+	self.description, self.bindings = description, bindings
+	return self.view, self.refs
 end
 -- Mount a retained template into one of this template's refs. The child
--- lives in this template's scope, so a structural re-render disposes it.
+-- lives in the scope of the node that owns the ref, so rebuilding that node
+-- disposes the child too.
 function Template:child(ref, path)
 	assert(self.refs and self.refs[ref], "Template child requires a mounted ref: " .. tostring(ref))
-	return self.ns.Scope.withScope(self.scope, Template.new, self.refs[ref], path, self.ns)
+	local scope = xml.scopeOf(self.mounted, ref) or self.scope
+	return self.ns.Scope.withScope(scope, Template.new, self.refs[ref], path, self.ns)
 end
 function Template:isDisposed() return self.closed == true end
+-- Disposing inside `ns.withAnimation` plays the root's removal transition.
 function Template:dispose()
 	if self.closed then return end
 	self.closed = true
+	if self.mounted then xml.unmount(self.mounted, self.ns) end
 	if self.scope then self.scope:dispose() end
-	self.host:clearContainer()
-	self.view, self.refs, self.description, self.bindings, self.actions = nil, nil, nil, nil, {}
+	self.view, self.refs, self.mounted, self.description, self.bindings, self.actions = nil, nil, nil, nil, nil, {}
 end
 return Template

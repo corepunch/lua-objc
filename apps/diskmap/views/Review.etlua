@@ -1,0 +1,26 @@
+<Sheet width="620" height="560">
+  <VStack maxWidth="infinity" maxHeight="infinity" padding="20" spacing="12">
+    <HStack maxWidth="infinity" spacing="12" alignment="center">
+      <SystemImage name="tray.full.fill" size="28" badgeColor="systemBlue" />
+      <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+        <Label text="Marked for Cleanup" size="17" weight="semibold" />
+        <Label id="reviewSummary" text="<%= summary %>" size="12" color="secondary" monospacedDigit="true" maxWidth="infinity" lines="2" />
+      </VStack>
+      <Button id="history" title="History…" action="history" help="Every action Diskmap has taken" />
+    </HStack>
+    <List id="items" onSelect="select" style="inset" header="true" alternatingRows="false" rowHeight="44" flexGrow="1" flexBasis="0" maxWidth="infinity" maxHeight="infinity">
+      <Column id="name" title="Item" subtitleKey="subtitle" minWidth="220" />
+      <Column id="result" title="" width="120" minWidth="90" />
+      <Column id="size" title="On disk" width="100" minWidth="90" alignment="trailing" />
+    </List>
+    <Label id="consequence" text="Items move to the Trash one at a time and are checked again first. Nothing is deleted until you empty the Trash." size="11" color="secondary" maxWidth="infinity" lines="3" />
+    <HStack maxWidth="infinity" spacing="8" alignment="center">
+      <Button id="remove" title="Remove" action="remove" disabled="true" />
+      <Button id="clear" title="Clear All" action="clear" />
+      <Spacer />
+      <Button id="emptyTrash" title="Empty Trash…" action="emptyTrash" hidden="true" />
+      <Button id="cancel" title="Close" action="close" keyboardShortcut="cancelAction" />
+      <Button id="trash" title="Move to Trash" style="borderedProminent" action="trash" keyboardShortcut="defaultAction" />
+    </HStack>
+  </VStack>
+</Sheet>

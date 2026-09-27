@@ -50,6 +50,11 @@ local layout_properties = {
 	"background",
 	"cornerRadius",
 	"clipsToBounds",
+	"opacity",
+	"scaleEffect",
+	"rotationEffect",
+	"offsetX",
+	"offsetY",
 	"onClick",
 	"onTap",
 	"onDrag",
@@ -57,6 +62,7 @@ local layout_properties = {
 	"contextMenu",
 	"hoverTooltip",
 	"help",
+	"onDrop",
 }
 
 local function applyLayout(view, props)
@@ -76,6 +82,9 @@ local function applyLayout(view, props)
 			elseif key == "hoverTooltip" then
 				local tt = props[key]
 				bridge._addHoverTooltip(view, tt.title or "", tt.detail or "")
+			elseif key == "onDrop" then
+				-- SwiftUI `.dropDestination`: files dropped on the stack.
+				bridge._setDropHandler(view, props[key])
 			elseif key == "help" then
 				-- SwiftUI `.help(_:)` is the view's native AppKit tooltip.
 				view.toolTip = props[key]
@@ -136,6 +145,8 @@ end
 --- @prop tabbingMode string optional. Window tabbing mode.
 --- @prop title value optional. Component-specific setting passed to the native control.
 --- @prop toolbar table optional. Toolbar item descriptors.
+--- @prop onBack function optional. The mouse's back button or a swipe right navigates back.
+--- @prop onForward function optional. The mouse's forward button or a swipe left navigates forward.
 --- @prop toolbarContentDividerAfter value optional. Toolbar item identifier after which the content divider appears.
 --- @prop toolbarLabels boolean optional. Component-specific setting passed to the native control.
 --- @prop transparentTitlebar boolean optional. Uses a transparent title bar when true.
@@ -233,6 +244,11 @@ function AppKit.Window(props)
 		bridge._timerAfter(0, function()
 			win:show()
 		end)
+	end
+	-- The mouse's back and forward buttons and two-finger horizontal swipes
+	-- navigate history, as in Finder and Safari.
+	if props.onBack or props.onForward then
+		bridge._onNavigationGesture(win, props.onBack, props.onForward)
 	end
 	bridge._onWindowClose(win, function()
 		scope:close()
@@ -676,6 +692,7 @@ function AppKit.DisclosureGroup(props)
 		alignment = props.alignment or "leading",
 	})
 	for _, child in ipairs(props) do content:add(child) end
+	AppKit.transition(content, "opacity")
 	local container = AppKit.VStack { spacing = 8, alignment = "leading" }
 	local expanded = props.expanded ~= false
 	-- SwiftUI's macOS DisclosureGroup is AppKit's disclosure triangle beside a
@@ -688,8 +705,11 @@ function AppKit.DisclosureGroup(props)
 			expanded = not expanded
 			triangle.state = expanded and 1 or 0
 		end
-		content.hidden = not expanded
-		container:layout()
+		-- The reveal animates: the content fades and siblings below slide to
+		-- their new frames.
+		AppKit.withAnimation(AppKit.Animation.snappy(), function()
+			content.hidden = not expanded
+		end)
 	end
 	triangle = AppKit.Button { title = "", action = function() toggle(true) end }
 	triangle.bezelStyle = 5 -- NSBezelStyleDisclosure
@@ -1374,6 +1394,8 @@ function AppKit.List(props)
 	if type(props.rowMenu) == "function" then
 		tv:onRowMenu(props.rowMenu)
 	end
+	-- SwiftUI `.draggable`: rows drag as the file at row[dragKey].
+	if props.dragKey then tv:setDragKey(props.dragKey) end
 	if props.reorderable then
 		assert(type(props.onReorder) == "function",
 			"List reorderable requires an onReorder callback")
@@ -1999,6 +2021,58 @@ function AppKit.Arc(props)
 	return applyLayout(view, props)
 end
 
+-- SwiftUI animation: Animation values, withAnimation, withTransaction,
+-- AnyTransition and the per-view motion modifiers (see ui/animation.lua).
+require("ui.animation").install(AppKit, bridge)
+-- Local notifications (see ui/notifications.lua).
+require("ui.notifications").install(AppKit, bridge)
+
+--- A transparent view reporting clicks and hover positions.
+---
+--- `onClick(view, x, y, clickCount)` and `onHover(view, x, y)` receive
+--- top-left coordinates; hover reports nil coordinates when the pointer
+--- leaves. Charts place one over their marks to hit test in Lua.
+--- @prop onClick function optional. Click callback.
+--- @prop onHover function optional. Hover callback.
+--- @prop onDrag function optional. `onDrag(view, x, y) -> path`: dragging from that point drags the file.
+--- @prop onKey function optional. `onKey(view, key) -> handled`; the view takes keyboard focus when clicked.
+--- @platform AppKit uses the AppKit implementation.
+function AppKit.PointerView(props)
+	props = props or {}
+	if props.width and not props.fixedWidth then props.fixedWidth = props.width end
+	if props.height and not props.fixedHeight then props.fixedHeight = props.height end
+	local view = bridge._pointerView(props.onClick, props.onHover, props.onDrag, props.onKey)
+	local layoutProps = {}
+	for key, value in pairs(props) do
+		if key ~= "onClick" and key ~= "onHover" and key ~= "onDrag" and key ~= "onKey" then layoutProps[key] = value end
+	end
+	return applyLayout(view, layoutProps)
+end
+
+--- Draws a squarified treemap from `TreemapNode` records.
+---
+--- Nested nodes (`parent`) are drawn inside their parent below a label strip.
+--- Colors are muted semantic colors that lighten with depth; `hatched` marks
+--- reclaimable space. Clicking selects a cell and hovering outlines it.
+--- @prop onSelect function optional. `onSelect(id, clickCount)`.
+--- @prop onHover function optional. `onHover(id)`; nil when leaving.
+--- @prop selected string optional. Id of the initially selected cell.
+--- @prop onBack function optional. Delete goes up a level (keyboard).
+--- @prop dragItem function optional. `dragItem(id) -> path`: dragging a cell drags its file.
+--- @prop accessibilityLabel string optional. Summary read by VoiceOver.
+--- @example <Treemap maxWidth="infinity" height="320"><TreemapNode id="a" value="3" color="systemBlue" label="Apps" /></Treemap>
+--- @platform AppKit uses the AppKit implementation.
+function AppKit.Treemap(props)
+	return require("ui.treemap").view(bridge, applyLayout, props)
+end
+
+--- Returns the volume's capacities in bytes: `total`, `available` (free),
+--- `important` (free plus purgeable storage macOS will release) and
+--- `opportunistic`. Nil when the path is not on a readable volume.
+function AppKit.volumeCapacity(path)
+	return bridge._volumeCapacity(path)
+end
+
 --- Draws a pie or donut chart from `SectorMark` records (SwiftUI Charts).
 ---
 --- Each sector is a native Arc stroke; array views other than marks are
@@ -2301,6 +2375,47 @@ function AppKit.Alert(props)
 		props.title or "",
 		props.message or "",
 		props.buttons or { "OK" })
+end
+
+--- Watches files or directory trees for changes (FSEvents).
+---
+--- `callback(events)` receives batches of `{path, id, created, removed,
+--- renamed, modified, directory, rescan, historyDone}`. Options: `since`, an
+--- event ID from `AppKit.latestEventId()` to replay what changed after it,
+--- and `latency` in seconds. Returns a handle whose `cancel()` stops the
+--- watch; the current Scope cancels it when disposed, so a watch lives as
+--- long as the window or controller that made it.
+--- @platform AppKit FSEvents. UIKit does not support file system watching.
+function AppKit.watch(paths, callback, options)
+	options = options or {}
+	local token = bridge._watch(paths, callback, options.since, options.latency)
+	local handle = {}
+	function handle.cancel()
+		if token then bridge._unwatch(token); token = nil end
+	end
+	function handle:dispose() handle.cancel() end
+	function handle:isDisposed() return token == nil end
+	local scope = Scope.current()
+	if scope then scope:add(handle) end
+	return handle
+end
+
+--- A security-scoped bookmark for `path`, as text to store; nil and a
+--- message when the item cannot be bookmarked.
+function AppKit.bookmark(path)
+	return bridge._bookmark(path)
+end
+
+--- Resolves a bookmark from `AppKit.bookmark`: the item's current path and
+--- whether the bookmark is stale (recreate and store it again), or nil,
+--- false and a message. Access to the item lasts until the app quits.
+function AppKit.resolveBookmark(text)
+	return bridge._resolveBookmark(text)
+end
+
+--- The newest file system event ID; store it and pass it as `since` later.
+function AppKit.latestEventId()
+	return bridge._latestEventId()
 end
 
 function AppKit.diskSpace(path)

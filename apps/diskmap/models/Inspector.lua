@@ -2,6 +2,8 @@ local Model = require("apps.diskmap.Model")
 local Cleanup = require("apps.diskmap.models.Cleanup")
 local SystemDetails = require("apps.diskmap.models.SystemDetails")
 local Inspector = {}
+-- Logical sizes this much larger than the allocation are worth mentioning.
+Inspector.logicalThreshold = 100e6
 function Inspector.details(model, id)
 	local row = model.resources:find(id); if not row then return nil end
 	local m = model.measurements[id]
@@ -19,6 +21,14 @@ function Inspector.details(model, id)
 		elseif m.status == "calculating" then measurement = "\nCalculating…"
 		elseif m.status == "excluded" then measurement = "\nNot scanned"
 		else measurement = "\n" .. m.status end
+		-- Sparse files and disk images are smaller on disk than they say.
+		if m.logicalBytes and m.bytes and m.logicalBytes - m.bytes >= Inspector.logicalThreshold then
+			measurement = measurement .. " · " .. Model.size(m.logicalBytes) .. " logical size (sparse files use less on disk)"
+		end
+		if m.cloudFiles and m.cloudFiles > 0 then
+			measurement = measurement .. "\n" .. Model.count(m.cloudFiles) .. (m.cloudFiles == 1 and " file" or " files")
+				.. " in iCloud only (" .. Model.size(m.cloudBytes or 0) .. "); they use no space on this Mac and are never downloaded to measure them"
+		end
 	end
 	return {name = row.name, text = text, location = (row.path or "Multiple known locations") .. measurement,
 		manageTitle = row.action == "simulators" and "Show simulators" or row.action == "sdks" and "Show SDKs" or row.action == "trash" and "Review Move to Trash…" or row.action == "empty" and "Empty Trash…" or row.action == "ownerCleanup" and "Clear Cache…" or row.action == "settings" and (({siri = "Open Siri Settings", dictation = "Open Dictation Settings", voices = "Open Accessibility Settings"})[row.settingsSection] or "Open System Settings") or row.action == "xcode" and "Open Xcode" or row.action == "docker" and "Open Docker" or "Reveal in Finder",

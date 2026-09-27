@@ -11,6 +11,8 @@
 @property (nonatomic, copy) NSString *trailingSwipeTitle;
 @property (nonatomic) BOOL leadingSwipeDestructive;
 @property (nonatomic) BOOL trailingSwipeDestructive;
+// Rows drag as the file at row[dragKey], as Finder items (SwiftUI `.draggable`).
+@property (nonatomic, copy) NSString *dragKey;
 - (void)updateTableFrame;
 - (void)replaceRows:(NSArray *)rows;
 - (void)activateSelectedRow:(id)sender;
@@ -24,6 +26,7 @@
 @property (nonatomic) CGFloat imageWidth;
 @property (nonatomic, strong) NSProgressIndicator *loadingIndicator;
 @property (nonatomic, strong) NSButton *actionButton;
+@property (nonatomic, strong) NSTextField *badgeField;
 @end
 
 @implementation LuaTableCellView
@@ -52,6 +55,17 @@
 		_levelIndicator.frame = NSMakeRect(x, floor((self.bounds.size.height - kTableCellLevelHeight) / 2), MAX(0, self.bounds.size.width - x - kTableCellTextTrailingInset), kTableCellLevelHeight);
 		return;
 	}
+	// A trailing badge (SwiftUI `.badge`) keeps its fitting width; the title
+	// truncates before it.
+	CGFloat badgeReserve = 0;
+	if (_badgeField && _badgeField.stringValue.length > 0 && !_badgeField.hidden) {
+		CGFloat badgeWidth = ceil(_badgeField.fittingSize.width);
+		CGFloat badgeHeight = ceil(_badgeField.intrinsicContentSize.height);
+		_badgeField.frame = NSMakeRect(
+			MAX(0, self.bounds.size.width - kTableCellTextTrailingInset - badgeWidth),
+			floor((self.bounds.size.height - badgeHeight) / 2), badgeWidth, badgeHeight);
+		badgeReserve = badgeWidth + kTableCellBadgeGap;
+	}
 	NSImageView *image = self.imageView;
 	CGFloat imageWidth = image.image ? (_imageWidth > 0 ? _imageWidth : kTableCellImageWidth) : 0;
 	CGFloat imageGap = imageWidth > 0 ? kTableCellImageTextGap : 0;
@@ -68,7 +82,7 @@
 	text.frame = NSMakeRect(
 		textX,
 		textY,
-		MAX(0, self.bounds.size.width - textX - kTableCellTextTrailingInset),
+		MAX(0, self.bounds.size.width - textX - kTableCellTextTrailingInset - badgeReserve),
 		height);
 	if (_loadingIndicator && !_loadingIndicator.hidden) {
 		[_loadingIndicator sizeToFit];
@@ -87,7 +101,7 @@
 			textX,
 			floor((self.bounds.size.height - totalHeight) / 2),
 			MAX(0, self.bounds.size.width - textX
-				- kTableCellTextTrailingInset),
+				- kTableCellTextTrailingInset - badgeReserve),
 			secondaryHeight);
 	}
 	if (image) {
@@ -358,6 +372,16 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 			cell.curveView = curve;
 		}
 
+		if (cellSpec[@"badge"]) {
+			NSTextField *badge = [NSTextField labelWithString:@""];
+			badge.font = [NSFont monospacedDigitSystemFontOfSize:kTableCellSecondaryFontSize
+				weight:NSFontWeightRegular];
+			badge.textColor = NSColor.secondaryLabelColor;
+			badge.alignment = NSTextAlignmentRight;
+			[cell addSubview:badge];
+			cell.badgeField = badge;
+		}
+
 		NSImageView *imageView = [[LuaSymbolImageView alloc] initWithFrame:NSZeroRect];
 		imageView.imageScaling = NSImageScaleProportionallyDown;
 		imageView.contentTintColor = NSColor.secondaryLabelColor;
@@ -400,6 +424,9 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	cell.textField.hidden = NO;
 	cell.imageView.hidden = NO;
 	cell.textField.stringValue = text;
+	NSString *badgeKey = cellSpec[@"badge"];
+	id badgeValue = badgeKey ? rowData[badgeKey] : nil;
+	cell.badgeField.stringValue = badgeValue ? [badgeValue description] : @"";
 	NSString *secondaryKey = cellSpec[@"secondary"];
 	id secondaryValue = secondaryKey ? rowData[secondaryKey] : nil;
 	cell.secondaryTextField.stringValue = secondaryValue
@@ -531,15 +558,19 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	return @[action];
 }
 
-- (BOOL)tableView:(NSTableView *)tableView writeRowsWithIndexes:(NSIndexSet *)rowIndexes
-		 toPasteboard:(NSPasteboard *)pasteboard {
-	NSScrollView *scroll = tableView.enclosingScrollView;
-	LuaReg *reg = objc_getAssociatedObject(scroll, &kKeys[kTableMoveKey]);
-	if (!lua_reg_live_state(reg) || rowIndexes.count != 1) return NO;
-	[pasteboard clearContents];
-	[pasteboard setString:[NSString stringWithFormat:@"%ld", (long)rowIndexes.firstIndex]
-				 forType:NSPasteboardTypeString];
-	return YES;
+/* A reorderable list drags its row index within itself; a list with a
+ * dragKey drags the row's file to anywhere that takes files. */
+- (id<NSPasteboardWriting>)tableView:(NSTableView *)tableView pasteboardWriterForRow:(NSInteger)row {
+	if (row < 0 || row >= (NSInteger)_rows.count) return nil;
+	LuaReg *reg = objc_getAssociatedObject(tableView.enclosingScrollView, &kKeys[kTableMoveKey]);
+	if (lua_reg_live_state(reg)) {
+		NSPasteboardItem *item = [NSPasteboardItem new];
+		[item setString:[NSString stringWithFormat:@"%ld", (long)row] forType:NSPasteboardTypeString];
+		return item;
+	}
+	NSDictionary *data = [_rows[(NSUInteger)row] isKindOfClass:NSDictionary.class] ? _rows[(NSUInteger)row] : nil;
+	NSString *path = self.dragKey ? data[self.dragKey] : nil;
+	return [path isKindOfClass:NSString.class] && path.length ? [NSURL fileURLWithPath:path] : nil;
 }
 
 - (NSDragOperation)tableView:(NSTableView *)tableView validateDrop:(id<NSDraggingInfo>)info

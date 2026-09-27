@@ -112,6 +112,29 @@ static const CGFloat kParagraphDropCapInkOutset = 2.0;
 #define kTableSectionHeaderFontSize     11
 /* Gauge thresholds above maxValue keep the capacity fill in its tint color. */
 #define kGaugeNoThreshold                2
+#define kTableCellBadgeGap               6
+/* ----- Motion ----- */
+#define kMotionDefaultDuration        0.35
+#define kMotionContentMaxDuration     0.35
+#define kPointerDragThreshold         3.0
+#define kPointerDragIconSize          32.0
+/* ----- Treemap ----- */
+#define kTreemapGap                      1
+#define kTreemapCornerRadius             3
+#define kTreemapBaseAlpha             0.55
+#define kTreemapDepthFade             0.12
+#define kTreemapMinAlpha              0.18
+#define kTreemapDimmedAlpha           0.3
+#define kDropHighlightWidth           3.0
+#define kTreemapHatchSpacing             6
+#define kTreemapHatchWidth               1
+#define kTreemapHatchAlpha            0.22
+#define kTreemapSelectionWidth           2
+#define kTreemapLabelFontSize           11
+#define kTreemapLabelLineHeight         14
+#define kTreemapLabelInset               5
+#define kTreemapLabelMinWidth           56
+#define kTreemapLabelMinHeight          24
 #define kTableCellLoadingGap             4
 #define kTableCellLineSpacing            2
 #define kTableCellLevelTextWidth        38
@@ -256,6 +279,8 @@ static void bridge_set_optional_callback(
 #include "appkit/outline_data_source.m"
 #include "appkit/action_button.m"
 #include "appkit/runtime.m"
+#include "shared/motion.m"
+#include "shared/notifications.m"
 #include "appkit/toolbar.m"
 #include "appkit/presentation.m"
 #include "appkit/text_field.m"
@@ -276,6 +301,8 @@ static void bridge_set_optional_callback(
 
 #include "appkit/workspace.m"
 #include "appkit/constructors.m"
+#include "appkit/motion.m"
+#include "appkit/charts.m"
 #include "appkit/mesh_gradient.m"
 #include "appkit/reorder_container.m"
 #include "appkit/lazy_collection.m"
@@ -335,6 +362,16 @@ static const luaL_Reg bridge_lib[] = {
 	{"_stepper", bridge_AppKitControls_stepper},
 	{"_picker", bridge_AppKitControls_picker},
 	{"_segmentedPicker", bridge_AppKitControls_segmentedPicker},
+	LUA_OBJC_MOTION_FUNCTIONS
+	LUA_OBJC_NOTIFICATION_FUNCTIONS
+	{"_pointerView", bridge_pointer_view},
+	{"_pointerSend", bridge_pointer_send},
+	{"_treemap", bridge_treemap},
+	{"_treemapRefresh", bridge_treemap_refresh},
+	{"_tableDragPath", bridge_table_drag_path},
+	{"_setDropHandler", bridge_set_drop_handler},
+	{"_dropFiles", bridge_drop_files},
+	{"_volumeCapacity", bridge_volume_capacity},
 	{"_datePicker", bridge_AppKitControls_datePicker},
 	{"_colorPicker", bridge_AppKitControls_colorPicker},
 	{"_button", bridge_AppKitControls_button},
@@ -382,9 +419,16 @@ static const luaL_Reg bridge_lib[] = {
 	{"_symbolButton", bridge_AppKit_symbol_button},
 	{"_tabview", bridge_AppKit_tabview},
 	{"_segmentedControl", bridge_AppKit_segmented_control},
-	{"_watchFile", bridge_AppKit_watch_file},
+	{"_watch", bridge_watch},
+	{"_bookmark", bridge_bookmark},
+	{"_onNavigationGesture", bridge_on_navigation_gesture},
+	{"_navigationGesture", bridge_navigation_gesture},
+	{"_resolveBookmark", bridge_resolve_bookmark},
+	{"_unwatch", bridge_unwatch},
+	{"_latestEventId", bridge_latest_event_id},
 	{"_pickFolder", bridge_AppKit_pick_folder},
 	{"_pickFile", bridge_AppKit_pick_file},
+	{"_saveFile", bridge_save_file},
 	{"_outlineview", bridge_AppKit_outlineview},
 	{"_listDirectory", bridge_AppKit_list_directory},
 	{"_readPropertyList", bridge_AppKit_read_property_list},

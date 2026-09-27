@@ -77,24 +77,36 @@ local function sized(model, id)
 	return row.size
 end
 
--- Full macOS installers found in Applications. They are ordinary files the
--- App Store can download again, but Diskmap still only reveals them.
-function Updates.installers(model)
+-- Full macOS installers in Applications, plus disk images and installer
+-- packages found in Downloads, Desktop and Documents (`files`, each
+-- {path, bytes}). They are ordinary files that can be downloaded again.
+function Updates.installers(model, files)
 	local rows = {}
 	for _, row in ipairs(model.resources:leaves()) do
 		if row.path and row.name:match("^Install macOS .+%.app$") then
 			local m = model.measurements[row.id]
-			table.insert(rows, {id = row.id, name = row.name:gsub("%.app$", ""), path = row.path,
+			table.insert(rows, {id = row.id, name = (row.name:gsub("%.app$", "")), path = row.path, kind = "macOS installer app",
 				bytes = m and m.bytes, size = m and m.status == "calculating" and "Calculating…" or Model.size(m and m.bytes)})
 		end
 	end
-	table.sort(rows, function(a, b) return a.name < b.name end)
+	for _, file in ipairs(files or {}) do
+		local name = file.path:match("([^/]+)$") or file.path
+		local extension = (name:match("%.(%w+)$") or ""):lower()
+		local kinds = {dmg = "Disk image", pkg = "Installer package", xip = "Xcode archive (xip)", iso = "Disc image"}
+		table.insert(rows, {id = file.path, name = name, path = file.path,
+			kind = (kinds[extension] or "Installer") .. " in " .. (file.path:match("/([^/]+)/[^/]+$") or "a folder"),
+			bytes = file.bytes, size = Model.size(file.bytes)})
+	end
+	table.sort(rows, function(a, b)
+		if (a.bytes or 0) ~= (b.bytes or 0) then return (a.bytes or 0) > (b.bytes or 0) end
+		return a.name < b.name
+	end)
 	return rows
 end
 
 -- Everything the Updates & Snapshots page shows. `snapshotDates` is nil while
 -- tmutil has not answered, and false when it failed.
-function Updates.presentation(model, plist, snapshotDates)
+function Updates.presentation(model, plist, snapshotDates, installerFiles)
 	local stages = {}
 	for index, stage in ipairs(Updates.stages) do
 		table.insert(stages, {index = index, id = stage.id, title = stage.title, icon = stage.icon,
@@ -107,7 +119,7 @@ function Updates.presentation(model, plist, snapshotDates)
 	elseif #snapshots == 0 then snapshotTitle = "No local snapshots"
 	else snapshotTitle = #snapshots .. (#snapshots == 1 and " local snapshot" or " local snapshots") end
 	return {softwareUpdate = Updates.softwareUpdate(plist), stages = stages,
-		installers = Updates.installers(model), snapshots = snapshots, snapshotTitle = snapshotTitle}
+		installers = Updates.installers(model, installerFiles), snapshots = snapshots, snapshotTitle = snapshotTitle}
 end
 
 return Updates

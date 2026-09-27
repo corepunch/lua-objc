@@ -24,10 +24,18 @@ data.actions.review = function() called = called + 10 end
 local same, sameRefs = mount:update(data)
 t.expect(same == view and sameRefs.label == refs.label, "unchanged description preserves native identity")
 mount.dispatch.review(); t.assertEqual(called, 11, "retained native callbacks route to current actions")
+local buttonScope = xml.scopeOf(mount.mounted, "button")
+local label = refs.label
 data.visible = false
 local changed, changedRefs = mount:update(data)
-t.expect(changed ~= view and changedRefs.button == nil, "structural branch reconciles at template boundary")
-t.expect(scope.closed, "removed native callbacks are disposed with their subtree")
+t.expect(changed == view and changedRefs.label == label, "a structural change keeps the views it did not change")
+t.expect(changedRefs.button == nil and #view.subviews == 1, "a removed branch leaves the stack")
+t.expect(buttonScope.closed and not scope.closed, "removed native callbacks are disposed with their subtree only")
+data.visible, data.title = true, "Second"
+local _, reshown = mount:update(data)
+t.expect(reshown.label == label and label.text == "Second", "changed text applies to the existing label")
+t.expect(reshown.button ~= nil and view.subviews[2] == reshown.button, "an inserted branch takes its place in the stack")
+data.visible = false; mount:update(data)
 t.expect(not data.__baseDir and not data.partial, "template evaluation does not mutate controller data")
 file = assert(io.open(path, "w")); file:write('<% error("render failed") %>'); file:close()
 local ok = pcall(mount.update, mount, data)

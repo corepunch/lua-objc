@@ -225,3 +225,30 @@ static int bridge_disk_space(lua_State *L) {
 	lua_setfield(L, -2, "totalKb");
 	return 1;
 }
+
+#pragma mark - Volume capacity
+
+/* Total and available capacity as Finder reports them. `important` includes
+ * purgeable storage macOS will free for an app that needs it; `available` is
+ * the file system's free space. Their difference is purgeable space. */
+static int bridge_volume_capacity(lua_State *L) {
+	NSURL *url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:luaL_checkstring(L, 1)]];
+	NSDictionary *values = [url resourceValuesForKeys:@[
+		NSURLVolumeTotalCapacityKey, NSURLVolumeAvailableCapacityKey,
+		NSURLVolumeAvailableCapacityForImportantUsageKey,
+		NSURLVolumeAvailableCapacityForOpportunisticUsageKey] error:nil];
+	if (!values) { lua_pushnil(L); return 1; }
+	lua_newtable(L);
+	NSDictionary<NSString *, NSString *> *names = @{
+		NSURLVolumeTotalCapacityKey: @"total",
+		NSURLVolumeAvailableCapacityKey: @"available",
+		NSURLVolumeAvailableCapacityForImportantUsageKey: @"important",
+		NSURLVolumeAvailableCapacityForOpportunisticUsageKey: @"opportunistic"};
+	for (NSString *key in names) {
+		NSNumber *number = values[key];
+		if (![number isKindOfClass:NSNumber.class]) continue;
+		lua_pushnumber(L, number.doubleValue);
+		lua_setfield(L, -2, names[key].UTF8String);
+	}
+	return 1;
+}

@@ -24,6 +24,20 @@ return {
 		{path = "~/Downloads/ubuntu-24.04-desktop-arm64.iso", bytes = 2600000000, usedDaysAgo = 700},
 		{path = "~/Downloads/Zoom Installer.pkg", bytes = 180000000, usedDaysAgo = 450},
 		{path = "/opt/homebrew/var/log/mock-service.log", bytes = 1100000000, usedDaysAgo = 2},
+		-- Xcode device support and archives, a DerivedData folder whose project
+		-- is gone, a project file, and data left by uninstalled apps.
+		{path = "~/Library/Developer/Xcode/iOS DeviceSupport/iPhone17,1 26.0 (23A341)/Symbols", bytes = 3800000000, usedDaysAgo = 60},
+		{path = "~/Library/Developer/Xcode/iOS DeviceSupport/18.6 (22G86)/Symbols", bytes = 4100000000, usedDaysAgo = 240},
+		{path = "~/Library/Developer/Xcode/iOS DeviceSupport/17.5 (21F79)/Symbols", bytes = 3600000000, usedDaysAgo = 600},
+		{path = "~/Library/Developer/Xcode/watchOS DeviceSupport/Watch7,1 11.5 (22T572)/Symbols", bytes = 1900000000, usedDaysAgo = 60},
+		{path = "~/Library/Developer/Xcode/DerivedData/OldGame-bxqkzkjrvlqumvfhdgdmsgsdlbmd/Build", bytes = 5200000000, usedDaysAgo = 400},
+		{path = "~/Library/Developer/Xcode/Archives/2025-03-14/MockApp 3-14-25, 10.02.xcarchive/Products", bytes = 1200000000, usedDaysAgo = 560},
+		{path = "~/Library/Developer/Xcode/Archives/2026-08-02/MockApp 8-2-26, 16.40.xcarchive/Products", bytes = 1400000000, usedDaysAgo = 55},
+		{path = "~/Developer/MockProject/MockProject.xcodeproj/project.pbxproj", bytes = 40000, usedDaysAgo = 4},
+		{path = "~/Library/Containers/com.oldvendor.PhotoTool/Data/Library", bytes = 2300000000, usedDaysAgo = 700},
+		{path = "~/Library/Group Containers/ABCDE12345.com.oldvendor.shared/Library", bytes = 400000000, usedDaysAgo = 700},
+		{path = "~/Library/Saved Application State/com.oldvendor.PhotoTool.savedState/data.data", bytes = 2000000, usedDaysAgo = 700},
+		{path = "~/Library/Caches/com.mock.oldeditor/Cache.db", bytes = 900000000, usedDaysAgo = 500},
 	},
 	-- Installed applications as Launch Services and Spotlight report them.
 	["applications"] = {
@@ -54,6 +68,17 @@ return {
 		},
 		["external"] = {
 			{["name"] = "Backup Drive", ["path"] = "/Volumes/Backup Drive", ["totalBytes"] = 2000000000000, ["freeBytes"] = 612000000000, ["filesystem"] = "APFS", ["removable"] = true},
+		},
+	},
+	-- The Backup Drive's top level, as Analyze Contents measures it.
+	["volumeContents"] = {
+		["/Volumes/Backup Drive"] = {
+			{["name"] = "Backups.backupdb", ["kb"] = 1250000000, ["directory"] = true},
+			{["name"] = "Photos Archive", ["kb"] = 96000000, ["directory"] = true},
+			{["name"] = ".Trashes", ["kb"] = 18400000, ["directory"] = true},
+			{["name"] = ".Spotlight-V100", ["kb"] = 2100000, ["directory"] = true},
+			{["name"] = ".fseventsd", ["kb"] = 42000, ["directory"] = true},
+			{["name"] = "notes.txt", ["kb"] = 4, ["directory"] = false},
 		},
 	},
 	["snapshotCount"] = 2,
@@ -107,6 +132,8 @@ return {
 			["subtitle"] = "Installed JavaScript dependencies for a project; review before removing",
 			["parentId"] = "developer",
 			["path"] = "~/Developer/MockProject/node_modules",
+			["project"] = "~/Developer/MockProject",
+			["artifact"] = "Node modules",
 			["policy"] = "Review",
 			["action"] = "finder",
 			["reviewThreshold"] = 500000000,
@@ -119,6 +146,8 @@ return {
 			["subtitle"] = "Generated Cargo artifacts for a project; review before removing",
 			["parentId"] = "developer",
 			["path"] = "~/Developer/MockProject/target",
+			["project"] = "~/Developer/MockProject",
+			["artifact"] = "Rust build output",
 			["policy"] = "Review",
 			["action"] = "finder",
 			["reviewThreshold"] = 500000000,
@@ -126,6 +155,18 @@ return {
 			["color"] = "systemOrange",
 		},
 	},
+	["plists"] = {
+		["~/Library/Developer/Xcode/DerivedData/MockProject/info.plist"] = {["WorkspacePath"] = "~/Developer/MockProject/MockProject.xcodeproj"},
+		["~/Library/Developer/Xcode/DerivedData/OldGame-bxqkzkjrvlqumvfhdgdmsgsdlbmd/info.plist"] = {["WorkspacePath"] = "~/Developer/OldGame/OldGame.xcodeproj"},
+		["~/Library/Developer/Xcode/Archives/2025-03-14/MockApp 3-14-25, 10.02.xcarchive/Info.plist"] = {["Name"] = "MockApp", ["CreationDate"] = "2025-03-14T10:02:00Z",
+			["ApplicationProperties"] = {["CFBundleShortVersionString"] = "1.4", ["CFBundleVersion"] = "88"}},
+		["~/Library/Developer/Xcode/Archives/2026-08-02/MockApp 8-2-26, 16.40.xcarchive/Info.plist"] = {["Name"] = "MockApp", ["CreationDate"] = "2026-08-02T16:40:00Z",
+			["ApplicationProperties"] = {["CFBundleShortVersionString"] = "2.0", ["CFBundleVersion"] = "131"}},
+	},
+	["projects"] = {
+		["~/Developer/MockProject"] = {["modified"] = 1735689600, ["git"] = "## main...origin/main [ahead 1]\n M src/main.rs\n"},
+	},
+	["purgeableBytes"] = 18000000000,
 	-- `xcrun simctl runtime list -j` and the Software Update preferences, as
 	-- macOS reports them. Mock actions change only this in-memory copy.
 	["simulatorRuntimes"] = {

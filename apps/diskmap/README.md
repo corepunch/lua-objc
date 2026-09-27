@@ -33,6 +33,22 @@ Learn — with one question per destination:
 - **Developer — what can I do about Xcode and friends?** Sections for Xcode &
   simulators, packages & toolchains, projects & editors, containers & virtual
   machines, and AI tools & models, each a ranked list of catalog locations.
+- **Map** — the same semantic tree as a sunburst or a squarified treemap
+  (segmented Rings / Rectangles), beside a list of the focused node's
+  children. Click a group to look inside, click the center or the breadcrumb
+  to go back, hover for the path, size and share. Colors are muted category
+  colors that lighten with depth; hatching marks rebuildable data. "Worth a
+  look" lists the largest rebuildable resources under the focus.
+- **Xcode** — Device Support per OS version (the newest per platform is
+  kept), DerivedData per project with projects that no longer exist flagged,
+  and Archives oldest first. Bulk actions mark older device support and
+  build data of missing projects.
+- **Projects** — build folders found beside their project files (Node, Rust,
+  Maven, Gradle, CMake, SwiftPM, Python, Dart, Next.js, Turborepo, Godot, Zig,
+  Elixir, Stack, Unity) in `~/Developer` and folders you add, grouped by
+  project with git state (via `git status`, only when the developer tools are
+  installed) and last change. Projects with uncommitted or unpushed work are
+  never marked in bulk.
 - **Simulators** — every simulator device with its runtime, state, last use
   and data size, filtered by All, Unavailable or Unused for 90 days, with
   Erase, Delete and Delete Unavailable. Installed runtimes come from
@@ -77,11 +93,33 @@ action, Show in Finder, the owning category, Keep and Copy Path — live in that
 menu and in the row's contextual menu, so lists never scroll inside a page and
 no buttons sit beneath them.
 
+**Mark, review, act, confirm.** Mark for Cleanup on the Map, Largest Items,
+Applications, Xcode, Projects, Duplicates, Disks and Updates pages, or a drop on
+the collector bar under every page, adds items to one basket;
+marking never touches the disk. The Marked toolbar sheet lists them with their
+consequences and moves them to the Trash one at a time, checking each again
+first. It refuses the disk root, system folders, mount points and your home's
+standard folders, and never follows symlinks. It then offers to empty the
+Trash and reports how much more free space macOS actually sees. Every action
+is appended to `~/Library/Logs/Diskmap/operations.log` and shown in History.
+
 Categories open their resources in a sheet with Safe/rebuildable, Needs review
 and Essential to keep filters. Refresh, Stop, Clean Up, Settings and Search live
 in the toolbar; search applies to the current page. The window subtitle shows
 free space. `--page=<id>` (for example `--page=files`) opens a destination at
 launch for screenshots and walkthroughs.
+and Essential to keep filters. Back, Forward, Refresh, Stop, Clean Up,
+Marked, Settings and Search live in the toolbar; search applies to the current
+page. The window subtitle shows free and available space (available includes
+purgeable storage) and how many items are marked. Sidebar rows show sizes as
+badges. The overview explains space no scan can attribute: purgeable storage,
+local snapshots and unreadable locations. With **Keep storage history** on in
+Settings, category totals are recorded after each scan (no file names), and
+the overview shows what grew.
+
+Pages animate in with a short slide, the donut draws itself on first
+appearance, and disclosures animate open. All animation goes through the
+framework's `withAnimation` and `transition`, so Reduce Motion turns it off.
 
 ```sh
 make
@@ -235,6 +273,12 @@ cancellation, preference persistence failures, action routing and fresh startup 
 | `models/Volumes.lua` | Drive health facts, APFS volume rows and other mounted disks |
 | `models/Guide.lua`, `knowledge/Guide.lua` | Storage Guide topics, search and live topic sizes |
 | `models/Simulators.lua` | Device and runtime inventory, filters, summaries and validated `simctl` commands |
+| `models/MapTree.lua` | Map nodes for a focus, breadcrumb, roll-ups and "Worth a look" |
+| `models/Leftovers.lua` | Leftover classification with confidence tiers |
+| `models/Xcode.lua` | Device Support versions, DerivedData projects and archives |
+| `models/Projects.lua` | Project artifacts grouped by project, git state and age |
+| `models/Basket.lua` | Marked items, location refusals and parent/child de-duplication |
+| `models/OperationLog.lua`, `models/History.lua` | Action log lines and opt-in category history |
 | `models/Updates.lua` | Software Update record, update staging storage, installers and local snapshots |
 | `models/Cleanup.lua`, `knowledge/CleanupRules.lua` | Recognized resources, review thresholds, evidence and tailored advice |
 | `models/Tips.lua` | Contextual access, capacity, Keep and system-storage guidance |
@@ -330,3 +374,22 @@ Diskmap access.
 
 Native sheets use the shared `<Sheet>` / `AppKit.presentSheet` API and AppKit
 window presentation. Their views are etlua; controllers do not build view trees.
+
+## Added for issues #36 and #37
+
+- **Applications** leftovers carry High, Medium or Low confidence; Mark High
+  Confidence marks the certain ones.
+- **Duplicates** compares files byte for byte, only in folders you add, and
+  counts only unshared (non-clone) blocks as reclaimable.
+- **Disks & Volumes** analyzes an external disk's top level on request and
+  explains `.Trashes`, `.Spotlight-V100` and other hidden system folders.
+- **File › Open Scan…, Compare with Scan… and Export Scan…** use the
+  metadata-only format of `--export-mock`.
+- **Settings › Notifications**: an opt-in monthly reminder of what grew, and an
+  opt-in offer to mark an app's leftovers when it is moved to the Trash. Both
+  need the app bundle (`make diskmap-app`).
+- The scan reports logical sizes (sparse files) and iCloud-only files and never
+  downloads them; see `docs/research/STORAGE_SCAN_BENCHMARK.md` for the
+  concurrent scanner's benchmark.
+- Lists and the map drag as Finder items; the map takes keyboard navigation
+  and type-to-filter; mouse back/forward buttons and ⌘[ ⌘] navigate.

@@ -977,6 +977,67 @@ capacity style: a read-only continuous-capacity `NSLevelIndicator` on AppKit
 `UIProgressView` on UIKit. `minValue`/`maxValue` default to 0 and 1; values are
 clamped.
 
+Marks can form a **sunburst**: `<SectorMark id="xcode" parent="developer" ring="2" value="…" />`
+draws inside its parent's angle, sized by its share of the parent's value, on
+a ring outside the parent's; `opacity` lightens deeper rings. Give the chart
+`onSelect="action"` (`action(id, clickCount)`), `onHover` (`action(id)`, nil
+on exit) and `onCenter` (the hole) to make it interactive; hovering dims the
+other sectors. Hit testing uses the same geometry that drew the arcs
+(`Sectors.hit`), through a transparent `PointerView` on top.
+
+### `Treemap{...}`
+
+`<Treemap>` draws a squarified treemap from `<TreemapNode id parent value
+color label detail hatched />` records (`lua/ui/treemap.lua` lays it out; the
+native `LuaTreemapView` only paints). Children nest inside their parent below
+a label strip; colors are muted semantic colors that lighten with depth,
+`hatched` marks reclaimable space with diagonal lines, and the selected or
+hovered cell gets an accent outline. `onSelect(id, clickCount)` and
+`onHover(id)` report the deepest cell under the pointer. Give it a width and
+height (or `maxWidth="infinity"`); it relays out whenever its size changes.
+
+```xml
+<Treemap maxWidth="infinity" height="360" onSelect="drill" onHover="describe">
+  <TreemapNode id="dev" value="39" color="systemPurple" label="Developer" detail="39 GB" />
+  <TreemapNode id="derived" parent="dev" value="8" color="systemPurple" label="DerivedData" hatched="true" />
+</Treemap>
+```
+
+### Animation: `withAnimation` and `transition`
+
+SwiftUI-style animation, in `lua/ui/animation.lua`:
+
+- `ns.withAnimation(animation, fn)` runs `fn` in one AppKit animation group.
+  Frame, alpha and layout changes made in `fn` animate; the layout engine
+  applies pending layout inside the group, so views slide to their new frames.
+  `animation` is `ns.Animation.easeInOut(d)`, `.easeOut`, `.easeIn`, `.linear`
+  or `.spring(d)`, or nil for the default.
+- The `transition` attribute on any XML view plays an insertion transition on
+  the view's **first appearance**: `opacity`, `slide` (fade while rising a few
+  points) or `drawOn` (arcs inside the view stroke themselves in, staggered).
+  `transitionDelay="0.1"` staggers sections. Retained templates re-render with
+  transitions suppressed, so live updates never flash.
+- `ns.transition(view, name, {delay, animation})` is the imperative form.
+- Transitions animate from an offset to the laid-out state and never change
+  model values, so an interrupted animation leaves the view exactly as laid
+  out. Reduce Motion makes every animation immediate (`ns.reduceMotion()`).
+- `DisclosureGroup` reveals its content inside `withAnimation`.
+- UIKit exposes the same functions; they currently apply changes without
+  animating.
+
+```xml
+<VStack id="pageContent" transition="slide">…</VStack>
+<SectorChart transition="drawOn" …>…</SectorChart>
+```
+
+### `PointerView{...}` and `volumeCapacity`
+
+`ns.PointerView { onClick = fn(view, x, y, clicks), onHover = fn(view, x, y) }`
+is a transparent view reporting top-left coordinates, for charts that hit test
+in Lua. `ns.volumeCapacity(path)` returns `total`, `available` (free),
+`important` (free plus purgeable storage macOS releases on demand) and
+`opportunistic`, in bytes.
+
 ### SwiftUI modifiers on XML views
 
 | Attribute | SwiftUI | AppKit | UIKit |
@@ -995,6 +1056,7 @@ clamped.
 Colour values accept `light|dark` pairs of hex or semantic names, resolved
 against the drawing appearance. Use them for paper-and-ink themes and for
 tints that must stay legible on dark pages.
+| `badgeKey` on a list `<Column>` | `.badge(_:)` | trailing secondary text in the row | ignored |
 
 `<DisclosureGroup label="…" expanded="false">` draws AppKit's disclosure
 triangle beside a clickable label; both toggle the content. `labelWeight` and
@@ -1679,6 +1741,7 @@ Templates use the `.etlua` extension to reflect that they contain etlua
 | `<List>` + `<Column>` children | `ns.List` (NSTableView) | — |
 | `<SectorChart>` + `<SectorMark>` children | native `Arc`s in a `ZStack` | native `Arc`s in a `ZStack` |
 | `<Gauge>` | `NSLevelIndicator` (continuous capacity) | `UIProgressView` |
+| `<Treemap>` + `<TreemapNode>` children | `LuaTreemapView` (squarified, drawn natively) | — |
 | `<Window>` | window config table | window config table |
 | `<Toolbar>` + `<ToolbarItem>` | toolbar items | toolbar items |
 
@@ -2172,3 +2235,40 @@ control: `<List onSelect="select" onActivate="open" onSort="sort">` and
 `<TabView onChange="tabChanged">`. When actions are supplied, a misspelt name
 fails at render time. Native List/Outline selection and activation callbacks preserve row
 boolean, numeric and structured values rather than stringifying them.
+
+### Animation (SwiftUI transactions)
+
+`ns.withAnimation(animation, body, completion)` animates every frame,
+opacity, transform, colour and content change `body` causes; retained
+templates reconcile inside the transaction, so
+`ns.withAnimation(a, function() template:update(data) end)` is SwiftUI's
+`withAnimation { state = … }`. `ns.Animation` offers `linear`, `easeIn`,
+`easeOut`, `easeInOut`, `timingCurve`, `spring` (`{duration, bounce}` or
+`{response, dampingFraction}`), `smooth`, `snappy`, `bouncy`,
+`interactiveSpring`, `interpolatingSpring` and `default`, with `:delay`,
+`:speed`, `:repeatCount` and `:repeatForever`. `ns.withTransaction` takes
+`{animation, disablesAnimations}`.
+
+XML attributes: `opacity`, `scaleEffect`, `rotationEffect`, `offsetX`,
+`offsetY`; `transition` (`opacity`, `scale(0.8)`, `slide`, `move(top)`,
+`offset(x, y)`, `push(edge)`, `drawOn`, `a+b`, `asymmetric(a, b)`), played on
+insertion and removal inside an animated transaction, including `hidden`
+changes; `animation` with `animationValue` (`.animation(_:value:)`);
+`matchedGeometry` and `matchedGeometryNamespace`; `contentTransition`
+(`opacity`, `numericText`, `interpolate`); `symbolEffect` with optional
+`symbolEffectValue` (discrete) or `symbolEffectActive`. Lua:
+`ns.keyframeAnimation(view, {tracks = {scaleEffect = {{type = "spring",
+value = 1.2, duration = 0.2}}}})` and `ns.phaseAnimation(view, {phases,
+animation})`. The engine is `src/shared/motion.m` (AppKit and UIKit);
+Reduce Motion keeps fades and makes movement immediate.
+
+Retained templates now reconcile node by node (`xml.mount`,
+`xml.reconcile`): matched nodes keep their native views and take changed
+attributes in place; stacks insert, move and remove keyed children
+(`id` or `key`); other structural changes rebuild only that node.
+
+Other additions: `ns.watch(paths, callback, {since})` (FSEvents, Scope
+owned), `ns.notifications` (UNUserNotificationCenter; unavailable without an
+app bundle), `ns.bookmark`/`ns.resolveBookmark` (security-scoped
+bookmarks), List `dragKey`, stack `onDrop`, chart `dragItem` and keyboard
+navigation, and `<Window onBack onForward>` for mouse buttons and swipes.

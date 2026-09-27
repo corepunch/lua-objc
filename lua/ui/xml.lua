@@ -362,6 +362,7 @@ local function layoutProps(attrs)
         "spacing", "alignment", "maxRows",
         "flexGrow", "flexShrink", "flexBasis",
         "containerRelativeWidth", "hidden", "allowsHitTesting", "background", "tint", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick", "onTap", "onDrag", "onEdgeSwipe",
+        "opacity", "scaleEffect", "rotationEffect", "offsetX", "offsetY",
         "help",
     }
     local props = {}
@@ -402,6 +403,7 @@ local function layoutProps(attrs)
 
         props.onClick = renderData.actions[attrs.onClick]
     end
+    bindActions(props, attrs, { "onDrop" })
     for _, key in ipairs({ "onTap", "onDrag", "onEdgeSwipe" }) do
         if attrs[key] and type(attrs[key]) == "string" and renderData and renderData.actions then
             props[key] = renderData.actions[attrs[key]]
@@ -442,6 +444,28 @@ end
 -- has its produced view stored as refs[name]. Callers use refs to attach
 -- callbacks after rendering without scanning the view tree.
 
+-- While a retained template compiles (xml.mount, xml.reconcile), each element
+-- node records the view it produced and renders its callbacks in its own
+-- Scope, so the reconciler can replace or remove one node's subtree and
+-- dispose exactly the callbacks it owned.
+local tracking = false
+
+-- SwiftUI's motion modifiers: metadata the animation engine reads when a
+-- transaction inserts, removes or changes the view.
+local function applyMotion(view, target, attrs, ns)
+    if type(view) ~= "userdata" then return end
+    if attrs.transition and ns.transition then ns.transition(view, attrs.transition) end
+    if attrs.matchedGeometry and ns.matchedGeometry then
+        ns.matchedGeometry(view, attrs.matchedGeometry, attrs.matchedGeometryNamespace)
+    end
+    if attrs.contentTransition and ns.contentTransition then ns.contentTransition(target, attrs.contentTransition) end
+    -- An indefinite symbol effect runs while the view exists; one with a
+    -- value plays each time the value changes (see xml.reconcile).
+    if attrs.symbolEffect and ns.symbolEffect and not attrs.symbolEffectValue and attrs.symbolEffectActive ~= "false" then
+        ns.symbolEffect(target, attrs.symbolEffect, { repeating = true })
+    end
+end
+
 local function compile(nodes, ns, registry, refs)
     local views = {}
     for _, node in ipairs(nodes) do
@@ -479,10 +503,22 @@ local function compile(nodes, ns, registry, refs)
 							return item
 					end,
 				}
-			else
-				children = compile(node.children, ns, registry, refs)
 			end
-			local view = handler(ns, node.attrs, children)
+			local nodeScope
+			if tracking then
+				nodeScope = ns.Scope.new()
+				local parent = ns.Scope.current()
+				if parent then parent:add(nodeScope) end
+			end
+			local view
+			if nodeScope then
+				if not lazy then children = ns.Scope.withScope(nodeScope, compile, node.children, ns, registry, refs) end
+				view = ns.Scope.withScope(nodeScope, handler, ns, node.attrs, children)
+			else
+				if not lazy then children = compile(node.children, ns, registry, refs) end
+				view = handler(ns, node.attrs, children)
+			end
+			applyMotion(view, paddedLeaves[view] or view, node.attrs, ns)
 			if view then
 				if node.attrs.reorderable == "true" and node.tag ~= "List" and not lazy then
 					local name = node.attrs.reorderContainer
@@ -504,6 +540,9 @@ local function compile(nodes, ns, registry, refs)
 					end
 					append(children)
 					view = ns.attachReorder(view, items, action)
+				end
+				if tracking then
+					node.view, node.target, node.scope = view, paddedLeaves[view] or view, nodeScope
 				end
 				if node.attrs.id and type(view) == "userdata" then
 					local target = paddedLeaves[view] or view
@@ -688,10 +727,27 @@ local TAG_SCHEMA = {
         constructor = "SectorChart",
         children = "array",
         props = { innerRadius = "num", angularInset = "num", accessibilityLabel = "str" },
+        transform = function(props, attrs)
+            bindActions(props, attrs, { "onSelect", "onHover", "onCenter", "dragItem" })
+        end,
     },
+    -- `ring` 2+ with a `parent` id draws a sunburst level inside the parent.
     SectorMark = {
         kind = "record", flag = "__sectorMark",
-        props = { value = "num", color = "str", label = "str" },
+        props = { id = "str", value = "num", color = "str", label = "str", ring = "num", parent = "str", opacity = "num" },
+    },
+    -- Squarified treemap; nested nodes name their `parent`.
+    Treemap = {
+        constructor = "Treemap",
+        children = "array",
+        props = { selected = "str", accessibilityLabel = "str" },
+        transform = function(props, attrs)
+            bindActions(props, attrs, { "onSelect", "onHover", "onBack", "dragItem" })
+        end,
+    },
+    TreemapNode = {
+        kind = "record", flag = "__treemapNode",
+        props = { id = "str", parent = "str", value = "num", color = "str", label = "str", detail = "str", hatched = "bool" },
     },
     Arc = {
         constructor = "Arc",
@@ -854,9 +910,7 @@ local TAG_SCHEMA = {
 			style = "str",
         },
 		transform = function(props, attrs)
-			if attrs.onChange and renderData and renderData.actions then
-				props.onChange = renderData.actions[attrs.onChange]
-			end
+			bindActions(props, attrs, { "onChange" })
 		end,
     },
     Link = {
@@ -1152,9 +1206,10 @@ local TAG_SCHEMA = {
             controlSize = "str",
             buttonSymbol = "str",
             buttonMenu = "bool",
+            badgeKey = "str",
         },
         collect = function(props)
-            for key, field in pairs({loadingKey = "loading", controlSize = "controlSize", buttonSymbol = "button", buttonMenu = "buttonMenu", badgeColorKey = "badgeColor", appIconKey = "appIcon", subtitleKey = "secondary", fileIconKey = "fileIcon", imageKey = "image", imageColorKey = "imageColor", imageSize = "imageSize", levelKey = "level", levelColorKey = "levelColor"}) do
+            for key, field in pairs({badgeKey = "badge", loadingKey = "loading", controlSize = "controlSize", buttonSymbol = "button", buttonMenu = "buttonMenu", badgeColorKey = "badgeColor", appIconKey = "appIcon", subtitleKey = "secondary", fileIconKey = "fileIcon", imageKey = "image", imageColorKey = "imageColor", imageSize = "imageSize", levelKey = "level", levelColorKey = "levelColor"}) do
                 if props[key] then
                     props.cell = props.cell or {}
                     props.cell[field] = props[key]
@@ -1185,6 +1240,7 @@ local TAG_SCHEMA = {
             swipeTrailingRole = "str",
             fullSwipe = "bool",
             rowMenu = "str",
+            dragKey = "str",
         },
         collect = function(props, children)
             local columns = {}
@@ -1376,6 +1432,8 @@ local TAG_SCHEMA = {
             sidebarWidth               = "num",
             detailWidth                = "num",
             toolbarContentDividerAfter = "str",
+            onBack                     = "str",
+            onForward                  = "str",
         },
         collect = function(cfg, children)
             local toolbarItems, contentViews = {}, {}
@@ -1404,7 +1462,10 @@ local TAG_SCHEMA = {
                 cfg.content = props
             end
         end,
-        transform = function(cfg)
+        transform = function(cfg, attrs)
+            -- Mouse back/forward buttons and horizontal swipes.
+            cfg.onBack, cfg.onForward = nil, nil
+            bindActions(cfg, attrs, { "onBack", "onForward" })
             if renderData and renderData.actions then
                 for _, item in ipairs(cfg.toolbar or {}) do
                     if type(item.action) == "string" then
@@ -1875,6 +1936,400 @@ function M.renderDescription(description, ns)
         root = ns.VStack(props)
     end
     return root, refs
+end
+
+-- ── Retained reconciliation ──────────────────────────────────────────────
+--
+-- A retained template (ui/template.lua) mounts once and then reconciles each
+-- new description against the mounted node tree, like SwiftUI's view graph:
+--
+--   * nodes match by tag and `id` (or `key`), otherwise by tag and order;
+--   * a matched node whose changed attributes can be applied to its view in
+--     place keeps its native view, state and focus;
+--   * stacks insert, move and remove children individually; any other node
+--     whose structure changed is rebuilt and replaces the old one;
+--   * everything happens inside the current animation transaction, so
+--     changes animate and inserted or removed views play their transitions;
+--     a node with `animation="…"` animates the update when its
+--     `animationValue` changed, like SwiftUI's `.animation(_:value:)`.
+--
+-- Planning builds new subtrees and validates every change first; nothing on
+-- screen changes if planning fails, so a render error keeps the old view.
+
+local function elements(list)
+    local result = {}
+    for _, child in ipairs(list) do if child.kind == "element" then table.insert(result, child) end end
+    return result
+end
+
+local function textOf(node)
+    local parts = {}
+    for _, child in ipairs(node.children) do if child.kind == "text" then table.insert(parts, child.value) end end
+    return table.concat(parts)
+end
+
+local function identity(node) return node.attrs.id or node.attrs.key end
+
+-- Stacks whose native subviews are exactly their element children, in order.
+local CONTAINERS = { VStack = true, HStack = true, ZStack = true, FlowStack = true }
+
+-- Attributes that only describe animation; changing them patches metadata.
+local MOTION_ATTRS = { animation = true, animationValue = true, key = true }
+
+local function hasProperty(view, name)
+    local ok, value = pcall(function() return view[name] end)
+    return ok and value ~= nil
+end
+
+local function setter(name, convert)
+    return function(view, value, ns)
+        if not hasProperty(view, name) then return nil end
+        local converted = convert and convert(value, ns) or value
+        return function() view[name] = converted end
+    end
+end
+
+local function number(fallback) return function(v) return v == nil and fallback or num(v) end end
+
+-- Attributes applied to the view the parent holds (a padded leaf's wrapper).
+local OUTER = {
+    hidden = function(view, v) return function() view.hidden = v ~= nil and bool(v) end end,
+    opacity = setter("opacity", number(1)),
+    scaleEffect = setter("scaleEffect", number(1)),
+    rotationEffect = setter("rotationEffect", number(0)),
+    offsetX = setter("offsetX", number(0)),
+    offsetY = setter("offsetY", number(0)),
+    cornerRadius = setter("cornerRadius", number(0)),
+    background = function(view, v, ns)
+        local color = v and ns.Color(v) or nil
+        return function() view.backgroundColor = color end
+    end,
+    transition = function(view, v, ns) return function() ns.transition(view, v) end end,
+    matchedGeometry = function(view, v, ns, attrs)
+        return function() ns.matchedGeometry(view, v, attrs.matchedGeometryNamespace) end
+    end,
+}
+OUTER.matchedGeometryNamespace = function(view, _, ns, attrs)
+    return function() ns.matchedGeometry(view, attrs.matchedGeometry, attrs.matchedGeometryNamespace) end
+end
+
+-- Attributes applied to the view the tag produced.
+local TEXT = setter("text", function(v) return v or "" end)
+local INNER = {
+    contentTransition = function(view, v, ns) return function() ns.contentTransition(view, v) end end,
+    disabled = function(view, v)
+        if not hasProperty(view, "enabled") then return nil end
+        return function() view.enabled = not (v ~= nil and bool(v)) end
+    end,
+    symbolEffect = function() return function() end end,
+    symbolEffectActive = function() return function() end end,
+    symbolEffectValue = function() return function() end end,
+}
+local TAG_INNER = {
+    Label = { text = TEXT, value = TEXT },
+    Paragraph = { text = TEXT, value = TEXT },
+    TextField = { text = TEXT, value = TEXT },
+    Button = { title = setter("title", function(v) return v or "" end), label = setter("title", function(v) return v or "" end) },
+    ProgressView = { value = function(view, v)
+        for _, name in ipairs({ "doubleValue", "progress" }) do
+            if hasProperty(view, name) then return function() view[name] = num(v) or 0 end end
+        end
+    end },
+    Gauge = { value = setter("doubleValue", number(0)) },
+    Slider = { value = setter("value", number(0)) },
+    Picker = { value = function(view, v)
+        for _, name in ipairs({ "selectedSegment", "selectedSegmentIndex" }) do
+            if hasProperty(view, name) then return function() view[name] = num(v) or 0 end end
+        end
+    end },
+}
+
+-- Layout attributes a view reads from itself. Padding needs a stack (a
+-- padded leaf is wrapped when it is built); dimensions are rewritten
+-- together because width, maxWidth="infinity" and flex interact.
+local DIMENSIONS = { width = true, height = true, minWidth = true, minHeight = true, maxWidth = true, maxHeight = true }
+local STACK_LAYOUT = { padding = true, paddingHorizontal = true, paddingVertical = true, paddingLeading = true,
+    paddingTrailing = true, paddingTop = true, paddingBottom = true, spacing = true, alignment = true }
+local FLEX = { flexGrow = true, flexShrink = true, flexBasis = true }
+
+local function layoutPatch(node, attrs, changed, ns)
+    local view = node.view
+    local isStack = type(ns._hasLayoutAxis) == "function" and ns._hasLayoutAxis(view)
+    local ops, dimensions = {}, false
+    for key in pairs(changed) do
+        if STACK_LAYOUT[key] then
+            if not isStack or attrs[key] == nil then return nil end
+            local value = coerce(attrs[key])
+            table.insert(ops, function() view[key] = value end)
+        elseif FLEX[key] then
+            if node.view ~= node.target then return nil end
+            local value = attrs[key] and num(attrs[key])
+            if key == "flexShrink" then value = value or 1 elseif key == "flexGrow" then value = value or 0 end
+            table.insert(ops, function() view[key] = value end)
+        elseif DIMENSIONS[key] then
+            if node.view ~= node.target then return nil end
+            dimensions = true
+        end
+    end
+    if dimensions then
+        local props = layoutProps(attrs)
+        table.insert(ops, function()
+            view.fixedWidth, view.fixedHeight = props.fixedWidth or 0, props.fixedHeight or 0
+            view.minWidth, view.minHeight = props.minWidth or 0, props.minHeight or 0
+            view.maxWidth, view.maxHeight = props.maxWidth, props.maxHeight
+            view.fillWidth, view.fillHeight = props.fillWidth == true, props.fillHeight == true
+        end)
+    end
+    return ops
+end
+
+-- Operations that apply a node's changed attributes, or nil when a change
+-- cannot be applied in place and the node must be rebuilt.
+local function attributePatch(old, new, ns)
+    local changed = {}
+    for key, value in pairs(old.attrs) do if new.attrs[key] ~= value then changed[key] = true end end
+    for key, value in pairs(new.attrs) do if old.attrs[key] ~= value then changed[key] = true end end
+    local ops, layout = {}, {}
+    local tagInner = TAG_INNER[new.tag] or {}
+    for key in pairs(changed) do
+        local value = new.attrs[key]
+        local plan
+        if MOTION_ATTRS[key] then
+            plan = function() end
+        elseif OUTER[key] then
+            plan = OUTER[key](old.view, value, ns, new.attrs)
+        elseif tagInner[key] then
+            plan = tagInner[key](old.target, value, ns, new.attrs)
+        elseif INNER[key] then
+            plan = INNER[key](old.target, value, ns, new.attrs)
+        elseif STACK_LAYOUT[key] or FLEX[key] or DIMENSIONS[key] then
+            layout[key] = true
+            plan = function() end
+        end
+        if not plan then return nil end
+        table.insert(ops, plan)
+    end
+    if next(layout) then
+        local layoutOps = layoutPatch(old, new.attrs, layout, ns)
+        if not layoutOps then return nil end
+        for _, op in ipairs(layoutOps) do table.insert(ops, op) end
+    end
+    -- A discrete symbol effect plays when its value changes.
+    if changed.symbolEffectValue and new.attrs.symbolEffect and ns.symbolEffect then
+        table.insert(ops, function() ns.symbolEffect(old.target, new.attrs.symbolEffect) end)
+    elseif (changed.symbolEffect or changed.symbolEffectActive) and ns.symbolEffect and not new.attrs.symbolEffectValue then
+        table.insert(ops, function()
+            ns.symbolEffect(old.target, nil)
+            if new.attrs.symbolEffect and new.attrs.symbolEffectActive ~= "false" then
+                ns.symbolEffect(old.target, new.attrs.symbolEffect, { repeating = true })
+            end
+        end)
+    end
+    return ops, changed
+end
+
+local reconcileNode
+
+-- Builds a new node's subtree (without inserting it).
+local function build(node, ns, plan)
+    local views = compile({ node }, ns, registry, {})
+    if #views ~= 1 or type(views[1]) ~= "userdata" or node.view ~= views[1] then
+        if node.scope then node.scope:dispose() end
+        error("xml: <" .. node.tag .. "> must render one native view to be reconciled")
+    end
+    table.insert(plan.built, node)
+    return node
+end
+
+local function disposeNode(node)
+    if node.scope then node.scope:dispose() end
+end
+
+local function reconcileChildren(old, new, ns, plan)
+    local oldChildren, newChildren = elements(old.children), elements(new.children)
+    if textOf(old) ~= textOf(new) then return false end
+    for _, child in ipairs(oldChildren) do
+        if type(child.view) ~= "userdata" then
+            -- Records (columns, marks, options) configure their parent.
+            if #oldChildren ~= #newChildren then return false end
+            for index, other in ipairs(newChildren) do
+                if not reconcileNode(oldChildren[index], other, ns, plan, true) then return false end
+            end
+            return true
+        end
+    end
+    if not CONTAINERS[old.tag] then
+        if #oldChildren ~= #newChildren then return false end
+        for index, child in ipairs(newChildren) do
+            if not reconcileNode(oldChildren[index], child, ns, plan) then return false end
+        end
+        return true
+    end
+    local keyed, ordered, used = {}, {}, {}
+    for _, child in ipairs(oldChildren) do
+        local id = identity(child)
+        if id then keyed[child.tag .. "#" .. id] = child
+        else ordered[child.tag] = ordered[child.tag] or {}; table.insert(ordered[child.tag], child) end
+    end
+    local results = {}
+    for index, child in ipairs(newChildren) do
+        local id, match = identity(child), nil
+        if id then match = keyed[child.tag .. "#" .. id]
+        elseif ordered[child.tag] then match = table.remove(ordered[child.tag], 1) end
+        local result = match and reconcileNode(match, child, ns, plan)
+        if match then used[match] = true end
+        if not result then
+            result = build(child, ns, plan)
+            if match then
+                table.insert(plan.removals, match)
+                if child.attrs.animation and match.attrs.animationValue ~= child.attrs.animationValue then
+                    plan.animation = plan.animation or child.attrs.animation
+                end
+            end
+        end
+        results[index] = result
+    end
+    for _, child in ipairs(oldChildren) do
+        if not used[child] then table.insert(plan.removals, child) end
+    end
+    local container = old.target
+    for index, child in ipairs(results) do
+        table.insert(plan.ops, function() ns._motionInsert(container, child.view, index) end)
+    end
+    return true
+end
+
+-- Reconciles `old` with `new`; returns the node to keep (the old views,
+-- patched, carried by `new`) or nil when `new` must be built. `record`
+-- nodes (columns, marks) must be identical.
+reconcileNode = function(old, new, ns, plan, record)
+    if old.tag ~= new.tag or identity(old) ~= identity(new) then return nil end
+    if record then
+        local same = true
+        for key, value in pairs(old.attrs) do if new.attrs[key] ~= value then same = false end end
+        for key, value in pairs(new.attrs) do if old.attrs[key] ~= value then same = false end end
+        if not same then return nil end
+        return reconcileChildren(old, new, ns, plan) and new or nil
+    end
+    if type(old.view) ~= "userdata" or old.tag == "LazyVStack" or old.tag == "LazyVGrid" then
+        -- Lazy collections own their items; rebuild on any change.
+        return nil
+    end
+    local ops, changed = attributePatch(old, new, ns)
+    if not ops then return nil end
+    local childPlan = { ops = {}, removals = {}, built = {}, animation = plan.animation }
+    if not reconcileChildren(old, new, ns, childPlan) then
+        for _, node in ipairs(childPlan.built) do disposeNode(node) end
+        return nil
+    end
+    for _, op in ipairs(ops) do table.insert(plan.ops, op) end
+    for _, op in ipairs(childPlan.ops) do table.insert(plan.ops, op) end
+    for _, node in ipairs(childPlan.removals) do table.insert(plan.removals, node) end
+    for _, node in ipairs(childPlan.built) do table.insert(plan.built, node) end
+    plan.animation = plan.animation or childPlan.animation
+    if not plan.animation and new.attrs.animation and changed.animationValue then
+        plan.animation = new.attrs.animation
+    end
+    new.view, new.target, new.scope = old.view, old.target, old.scope
+    return new
+end
+
+local function collectRefs(node, refs)
+    if node.attrs.id and type(node.target) == "userdata" then refs[node.attrs.id] = node.target end
+    for _, child in ipairs(elements(node.children)) do collectRefs(child, refs) end
+end
+
+local function findNode(node, id)
+    if node.attrs.id == id then return node end
+    for _, child in ipairs(elements(node.children)) do
+        local found = findNode(child, id)
+        if found then return found end
+    end
+end
+
+-- A template that renders nothing or several siblings is hosted in a
+-- stack, as xml.renderDescription hosts it.
+local function rootNode(description)
+    local nodes = parseXML(description.source)
+    local roots = elements(nodes)
+    if #roots == 1 then return roots[1] end
+    return { kind = "element", tag = "VStack", attrs = {}, children = nodes }
+end
+
+--- Mounts a description into `host` for later reconciliation. Returns the
+--- mounted tree, whose `view` and `refs` are current after each reconcile.
+function M.mount(description, ns, host)
+    ns = ns or require("ns")
+    local root = rootNode(description)
+    local previous, previousTracking = renderData, tracking
+    renderData, tracking = description.data, true
+    local ok, err = pcall(compile, { root }, ns, registry, {})
+    renderData, tracking = previous, previousTracking
+    if not ok then
+        if root.scope then root.scope:dispose() end
+        error(err)
+    end
+    if type(root.view) ~= "userdata" then error("Template mounts require a view root, not a Window") end
+    local mounted = { root = root, view = root.view, refs = {} }
+    collectRefs(root, mounted.refs)
+    ns._motionInsert(host, root.view, 1)
+    return mounted
+end
+
+--- Reconciles `mounted` with a new description. Changes apply inside the
+--- current transaction, or inside the animation of a changed
+--- `animationValue` when no transaction is open.
+function M.reconcile(mounted, description, ns, host)
+    ns = ns or require("ns")
+    local root = rootNode(description)
+    local plan = { ops = {}, removals = {}, built = {} }
+    local previous, previousTracking = renderData, tracking
+    renderData, tracking = description.data, true
+    local ok, result = pcall(function()
+        local kept = reconcileNode(mounted.root, root, ns, plan)
+        if kept then return kept end
+        build(root, ns, plan)
+        table.insert(plan.removals, mounted.root)
+        table.insert(plan.ops, function() ns._motionInsert(host, root.view, 1) end)
+        return root
+    end)
+    renderData, tracking = previous, previousTracking
+    if not ok then
+        for _, node in ipairs(plan.built) do disposeNode(node) end
+        error(result)
+    end
+    local function apply()
+        for _, op in ipairs(plan.ops) do op() end
+        for _, node in ipairs(plan.removals) do
+            ns._motionRemove(node.view)
+            disposeNode(node)
+        end
+    end
+    local animation = require("ui.animation")
+    if plan.animation and not animation.inTransaction() then
+        ns.withAnimation(animation.Animation.parse(plan.animation), apply)
+    else
+        apply()
+    end
+    mounted.root, mounted.view = result, result.view
+    for key in pairs(mounted.refs) do mounted.refs[key] = nil end
+    collectRefs(result, mounted.refs)
+    return mounted
+end
+
+--- Removes a mounted tree, playing its root's removal transition when a
+--- transaction is animating, and disposes its callbacks.
+function M.unmount(mounted, ns)
+    ns = ns or require("ns")
+    ns._motionRemove(mounted.root.view)
+    disposeNode(mounted.root)
+end
+
+--- The Scope that owns the node with `id`, for mounting nested templates
+--- that must be disposed when that node is rebuilt.
+function M.scopeOf(mounted, id)
+    local node = findNode(mounted.root, id)
+    return node and node.scope
 end
 
 function M.render(src, data, ns, sourceName)

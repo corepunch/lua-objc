@@ -1,8 +1,10 @@
 local ns = require("AppKit")
 local App = require("App")
 local xml = require("ui.xml")
-local Model = require("apps.diskmap.Model")
 local Overview = require("apps.diskmap.models.Overview")
+local Categories = require("apps.diskmap.models.Categories")
+local History = require("apps.diskmap.models.History")
+local Model = require("apps.diskmap.Model")
 local Provider = require("apps.diskmap.services.Provider")
 local ScanController = require("apps.diskmap.controllers.ScanController")
 local CategoriesController = require("apps.diskmap.controllers.CategoriesController")
@@ -14,21 +16,34 @@ local SimulatorsController = require("apps.diskmap.controllers.SimulatorsControl
 local SdksController = require("apps.diskmap.controllers.SdksController")
 local SettingsController = require("apps.diskmap.controllers.SettingsController")
 local ActionsController = require("apps.diskmap.controllers.ActionsController")
+local ReviewController = require("apps.diskmap.controllers.ReviewController")
+local HistoryController = require("apps.diskmap.controllers.HistoryController")
 local NavigationController = require("apps.diskmap.controllers.NavigationController")
 local OverviewController = require("apps.diskmap.controllers.OverviewController")
+local MapController = require("apps.diskmap.controllers.MapController")
 local LargestController = require("apps.diskmap.controllers.LargestController")
 local FilesController = require("apps.diskmap.controllers.FilesController")
 local KindsController = require("apps.diskmap.controllers.KindsController")
 local CleanupPageController = require("apps.diskmap.controllers.CleanupPageController")
 local ApplicationsController = require("apps.diskmap.controllers.ApplicationsController")
 local DeveloperController = require("apps.diskmap.controllers.DeveloperController")
+local XcodeController = require("apps.diskmap.controllers.XcodeController")
+local ProjectsController = require("apps.diskmap.controllers.ProjectsController")
 local DisksController = require("apps.diskmap.controllers.DisksController")
+local DuplicatesController = require("apps.diskmap.controllers.DuplicatesController")
 local GuideController = require("apps.diskmap.controllers.GuideController")
 local UpdatesController = require("apps.diskmap.controllers.UpdatesController")
 local HelpController = require("apps.diskmap.controllers.HelpController")
+local NotificationsController = require("apps.diskmap.controllers.NotificationsController")
 local CommandsController = require("apps.diskmap.controllers.CommandsController")
 local Controller = {}; Controller.__index = Controller
 local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
+-- Services grow optional features; a provider that lacks one simply does not
+-- offer it. rawget keeps strict test doubles from reporting a probe as a call.
+local function optional(service, name)
+	local fn = rawget(service, name)
+	return type(fn) == "function" and fn or nil
+end
 function Controller.new(service)
 	service = service or Provider.select(App.args())
 	local home = os.getenv("HOME") or "/Users"
@@ -37,8 +52,16 @@ function Controller.new(service)
 	if self.mock then
 		for _, row in ipairs(self.model.resources:leaves()) do row.appIcon = nil end
 	end
-	self.scan = ScanController.new(self.model, service, home, function() self:updateRows() end)
-	self.settings = SettingsController.new(service, self.model, function() self.scan:start() end)
+	local loadFolders = optional(service, "loadFolders")
+	self.model.projectRoots = loadFolders and loadFolders("projects") or {}
+	self.scan = ScanController.new(self.model, service, home, function() self:updateRows() end,
+		function() self:scanFinished() end)
+	self.notifications = NotificationsController.new(self.model, service, {
+		mark = function(items) self.actions:markAll(items) end,
+		review = function() self:openReview() end,
+		show = function() if self.window then self.window:show() end end,
+	})
+	self.settings = SettingsController.new(service, self.model, function() self.scan:start() end, self.notifications)
 	self.categories = CategoriesController.new(self.model)
 	self.cleanup = CleanupController.new(self.model, service, function(error)
 		if error then self.scan.status = error end
@@ -50,19 +73,26 @@ function Controller.new(service)
 		elseif action == "storage" then self:show("overview") end
 	end)
 	self.inspector = InspectorController.new(self.model, service, function() self.scan:start() end)
+	self.history = HistoryController.new(service)
+	self.review = ReviewController.new(self.model, service, {
+		changed = function() self:basketChanged() end,
+		rescan = function() self.scan:start() end,
+		history = function() self.review:close(); self.history:open(self.window) end,
+	})
 	self.simulators = SimulatorsController.new(self.model, service, function() self.scan:start() end)
+	self.simulators.log = function(...) self.review:log(...) end
 	self.sdks = SdksController.new(self.model, service)
 	self.management = ManagementController.new(self.model, service, function() self.scan:start() end,
 		function(id) self.cleanup:toggleKeep(id) end, function() self:show("simulators") end,
 		function(row) self.sdks:open(self.window, row) end)
-	self.navigation = NavigationController.new(function(id) self:show(id) end)
+	self.navigation = NavigationController.new(function(id, fromHistory) self:show(id, false, fromHistory) end)
 	local open = function(id) self:openManagement(id) end
 	self.actions = ActionsController.new(self.model, service, {
 		open = open,
 		show = function(id) self:show(id) end,
 		keep = function(id) self.cleanup:toggleKeep(id) end,
 		refresh = function() self.scan:start() end,
-	})
+	}, self.review)
 	local files = FilesController.new(self.model, service, self.actions)
 	local applications = ApplicationsController.new(self.model, service, self.actions, function(remeasure)
 		if remeasure then self.scan:start() else self:updateRows() end
@@ -74,9 +104,11 @@ function Controller.new(service)
 			access = function() self.service.openSettings("privacy") end,
 			menu = function(id) return self.actions:resource(id) end,
 		}),
+		map = MapController.new(self.model, self.actions),
 		largest = LargestController.new(self.model, self.actions, open),
 		files = files,
 		kinds = KindsController.new(self.model, function(kind) files:focus(kind); self:show("files", true) end),
+		duplicates = DuplicatesController.new(self.model, service, self.actions),
 		cleanup = CleanupPageController.new(self.model, self.actions, self.tips, {
 			open = open,
 			show = function(id, filter)
@@ -91,9 +123,11 @@ function Controller.new(service)
 			simulators = function() self:show("simulators") end,
 			sdks = function(row) if row then self.sdks:open(self.window, row) end end,
 		}),
+		xcode = XcodeController.new(self.model, service, self.actions),
+		projects = ProjectsController.new(self.model, service, self.actions, function() self.scan:start() end),
 		simulators = self.simulators,
 		disks = DisksController.new(service, self.actions),
-		updates = UpdatesController.new(self.model, service),
+		updates = UpdatesController.new(self.model, service, self.actions),
 		guide = GuideController.new(self.model, open),
 	}
 	self.commands = CommandsController.new(self.model, service, {
@@ -106,6 +140,12 @@ function Controller.new(service)
 		find = function() self:focusSearch() end,
 		search = function(id, text) self:search(id, text) end,
 		emptyTrash = function() self.inspector:select("user-trash"); self.inspector:manage() end,
+		navigation = self.navigation,
+		review = function() self:openReview() end,
+		history = function() self.history:open(self.window) end,
+		openScan = function() self:openScan() end,
+		compareScan = function() self:compareScan() end,
+		exportScan = function() self:exportScan() end,
 	})
 	self.commandActions = self.commands:actions()
 	self.pages.help = HelpController.new(function(target)
@@ -124,49 +164,209 @@ function Controller:focusSearch()
 	if self.window and self.searchField then self.window:focus(self.searchField) end
 end
 -- Destinations that open a sidebar page rather than a category sheet: the
--- simulator device resource is managed on its page, and "updates" names the
--- Updates & Snapshots page. Developer stays a sheet so its page can list it.
-local PAGE_ROUTES = {simulators = true, updates = true}
+-- simulator device resource is managed on its page, "updates" names the
+-- Updates & Snapshots page, and apps with their leftovers are presented by
+-- the Applications page. Developer and Xcode stay sheets so they list
+-- everything in them, including simulators and SDKs.
+local PAGE_ROUTES = {simulators = true, updates = true, applications = true}
 function Controller:openManagement(id, filter)
 	if PAGE_ROUTES[id] then self.management:close(); self:show(id) else self.management:open(self.window, id, filter) end
 end
 -- Everything a page needs to present the current scan, in one value.
 function Controller:state()
-	return {disk = self.scan.disk, query = self.query, mock = self.mock, volumeName = self.mock and "Mock HDD" or "Startup Disk",
+	return {disk = self.scan.disk, capacity = self.capacity, snapshotCount = self.snapshotCount, changes = self.changes,
+		query = self.query, mock = self.mock, volumeName = self.mock and "Mock HDD" or "Startup Disk",
 		status = (self.mock and "Mock HDD · " or "") .. (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status}
 end
+function Controller:subtitle()
+	local text = Overview.summary(self.model, self.scan.disk, self.capacity).subtitle or ""
+	local marked = self.review:count()
+	if marked > 0 then text = text .. " · " .. marked .. " marked for cleanup" end
+	return text
+end
+-- Sidebar sizes come from measured categories and from pages that have
+-- already loaded their own inventory.
+function Controller:badges()
+	local badges = {}
+	local summary = Overview.summary(self.model, self.scan.disk, self.capacity)
+	if summary.available then badges.overview = summary.used end
+	for id, category in pairs({developer = "developer", simulators = "simulators"}) do
+		local row = Categories.row(self.model, category)
+		if row and row.bytes and row.bytes > 0 and not row.calculating then badges[id] = row.size end
+	end
+	for _, id in ipairs({"xcode", "projects"}) do
+		local page = self.pages[id]
+		if page.badge then badges[id] = page:badge() end
+	end
+	return badges
+end
 function Controller:updateRows()
-	if self.window then self.window.subtitle = Overview.summary(self.model, self.scan.disk).subtitle or "" end
+	if self.window then self.window.subtitle = self:subtitle() end
 	-- App facts load once the scan has measured the data folders they need.
 	if self.model.files then self.pages.applications:load() end
 	-- A page may re-render its template, so its refs are read after updating.
 	if self.page then self.page:update(self:state()); self.refs = self.page.refs end
+	self.navigation:setBadges(self:badges())
 	self.management:update()
+end
+-- A mark changes the title, the collector and the marked state shown on the
+-- current page.
+function Controller:basketChanged()
+	if self.window then self.window.subtitle = self:subtitle() end
+	if self.collector then
+		local count = self.review:count()
+		ns.withAnimation(ns.Animation.snappy(), function()
+			self.collector.collectorText.text = count == 0 and "Drag items here to mark them for cleanup" or self.review:summary()
+			self.collector.collectorReview.enabled = count > 0
+		end)
+	end
+	if self.page and self.page.marksChanged then self.page:marksChanged() end
+end
+-- Files dropped on the collector are marked for cleanup. A catalog location
+-- keeps its cleanup rules; any other file or folder is measured first and
+-- then validated like everything else in the basket.
+function Controller:dropToMark(paths)
+	local refused, pending, accepted = {}, {}, 0
+	for _, path in ipairs(paths) do
+		local resource
+		for _, row in ipairs(self.model.resources:leaves()) do
+			if row.path == path then resource = row; break end
+		end
+		local item
+		if resource and self.actions:markableResource(resource) then
+			local measured = self.model.measurements[resource.id]
+			item = {path = path, name = resource.name, bytes = measured and measured.bytes, resourceId = resource.id,
+				source = "Dropped", consequence = resource.consequence}
+		else
+			item = {path = path, name = path:match("([^/]+)$") or path, source = "Dropped"}
+			table.insert(pending, item)
+		end
+		if self.review:isMarked(path) then
+			accepted = accepted + 1
+		else
+			local ok, reason = self.review:toggle(item)
+			if ok then accepted = accepted + 1 else table.insert(refused, (item.name or path) .. ": " .. tostring(reason)) end
+		end
+	end
+	if #refused > 0 then self.service.showError("Some items were not marked", table.concat(refused, "\n")) end
+	local measure = optional(self.service, "measure")
+	if #pending > 0 and measure then
+		local list = {}
+		for _, item in ipairs(pending) do table.insert(list, item.path) end
+		measure(list, function(sizes)
+			for index, item in ipairs(pending) do item.bytes = sizes[index] end
+			self:basketChanged()
+		end)
+	end
+	return accepted > 0
+end
+-- After each measurement: refresh capacity and snapshots for hidden space,
+-- and record category totals when history is on.
+function Controller:scanFinished()
+	local capacity = optional(self.service, "volumeCapacity")
+	self.capacity = capacity and capacity(self.model.home) or nil
+	local snapshots = optional(self.service, "snapshotCount")
+	if snapshots then snapshots(function(count) self.snapshotCount = count; self:updateRows() end) end
+	if self.settings.history then
+		local load, save = optional(self.service, "loadHistory"), optional(self.service, "saveHistory")
+		if load and save then
+			local entries = History.append(History.decode(load()), History.snapshot(self.model))
+			save(History.encode(entries))
+			self.changes = History.changes(self.model, entries, 30, 4)
+			self.notifications:historyRecorded(entries)
+		end
+	else
+		self.changes = nil
+	end
 end
 -- Mounts a sidebar destination into the content pane. Pages own their
 -- templates; the previous page is disposed before the next one mounts.
--- `remount` presents a page again after another page changed its focus.
-function Controller:show(id, remount)
+-- `remount` presents a page again after another page changed its focus;
+-- `fromHistory` is set by Back and Forward, which must not record a visit.
+-- Pages cross-fade: the old page's root leaves and the new one enters in
+-- one transaction, and charts on the new page draw themselves in.
+local PAGE_ANIMATION = ns.Animation.smooth(0.35)
+function Controller:show(id, remount, fromHistory)
 	local page = self.pages[id]
 	if not page or not self.content then return end
 	if self.destination == id and self.page and not remount then return end
-	if self.page then self.page:dispose() end
-	self.destination, self.page = id, page
-	self.refs = page:mount(self.content, self:state())
-	self.navigation:select(id)
-	self:updateRows()
+	ns.withAnimation(PAGE_ANIMATION, function()
+		if self.page then self.page:dispose() end
+		self.destination, self.page = id, page
+		self.refs = page:mount(self.content, self:state())
+		self.navigation:select(id, fromHistory)
+		self:updateRows()
+	end)
 end
 function Controller:select(id)
 	if self.pages.overview.refs then self.pages.overview.selectedId = id end
 	self.inspector:select(id)
 end
+-- Exported scans (#37 item 20): metadata only, the format --export-mock
+-- writes. Open shows one in its own window; Compare measures it and shows
+-- what changed since, like opt-in history without keeping history.
+function Controller:exportScan()
+	local pick = optional(self.service, "pickSaveFile")
+	local path = pick and pick("Export Scan", os.date("Diskmap %Y-%m-%d.diskmapscan"))
+	if not path then return end
+	self.scan.status = "Exporting a metadata-only scan…"; self:updateRows()
+	self.service.exportMockSnapshot(path, function(result)
+		self.scan.status = result.failure and result.failure ~= "" and ("Export failed: " .. result.failure)
+			or string.format("Exported %d file names and sizes", result.exportedFiles or 0)
+		self:updateRows()
+	end)
+end
+local function measureScan(path)
+	local Mock = require("apps.diskmap.services.Mock")
+	local service = Mock.new({fixturePath = path})
+	return service
+end
+function Controller:openScan()
+	local pick = optional(self.service, "pickFile")
+	local path = pick and pick("Open Scan")
+	if not path then return end
+	local ok, service = pcall(measureScan, path)
+	if not ok then self.service.showError("Could not open the scan", tostring(service)); return end
+	Controller.new(service):createWindow()
+end
+function Controller:compareScan(path)
+	local pick = optional(self.service, "pickFile")
+	path = path or (pick and pick("Compare with Scan"))
+	if not path then return end
+	local ok, service = pcall(measureScan, path)
+	if not ok then self.service.showError("Could not open the scan", tostring(service)); return end
+	local other = Controller.new(service)
+	other.scan.disk = service.diskSpace(other.scan.home)
+	other.scan.changed = function() end
+	other.scan.finished = function()
+		local before = History.snapshot(other.model, 0)
+		local now = History.snapshot(self.model)
+		before.time = now.time - 1
+		local changes = History.changes(self.model, {before, now}, 36500, 4)
+		if changes then changes.since = "the compared scan" end
+		self.changes = changes
+		self:show("overview", true)
+	end
+	other.scan:start()
+end
 function Controller:openSettings()
+	self.review:close()
 	self.settings:open(self.window)
+end
+function Controller:openReview()
+	self.settings:close()
+	self.review:open(self.window)
 end
 function Controller:createWindow()
 	self.scan.disk = self.service.diskSpace(self.scan.home)
 	if self.service.loadKeep then
 		for id, kept in pairs(self.service.loadKeep()) do if self.model.resources:find(id) and kept == true then self.model.kept[id] = true end end
+	end
+	local capacity = optional(self.service, "volumeCapacity")
+	self.capacity = capacity and capacity(self.model.home) or nil
+	if self.settings.history then
+		local load = optional(self.service, "loadHistory")
+		if load then self.changes = History.changes(self.model, History.decode(load()), 30, 4) end
 	end
 	local actions = setmetatable({
 		search = function(value) self.query = value or ""; self:updateRows() end,
@@ -174,14 +374,18 @@ function Controller:createWindow()
 	}, {__index = self.commandActions})
 	local data = self.commands:data()
 	data.windowTitle = self.mock and "Diskmap — Mock HDD" or "Diskmap"
-	data.subtitle = Overview.summary(self.model, self.scan.disk).subtitle or ""
+	data.subtitle = self:subtitle()
 	data.actions = actions
 	local cfg, windowRefs = render("Window", data)
 	self.searchField = windowRefs and windowRefs.search
 	self.shortcuts = self.commands:shortcuts(cfg.commands)
-	local content, contentRefs = render("Content")
+	local content, contentRefs = render("Content", {actions = {
+		dropToMark = function(paths) return self:dropToMark(paths) end,
+		review = function() self:openReview() end,
+	}})
 	cfg.content, cfg.sidebar = content, self.navigation:render()
-	self.content = contentRefs.content
+	self.content, self.collector = contentRefs.content, contentRefs
+	self:basketChanged()
 	self.window = ns.Window(cfg)
 	self:show(Provider.page(App.args()) or "overview")
 	local exportPath = Provider.exportPath(App.args())
@@ -203,7 +407,9 @@ function Controller:createWindow()
 	if scope then scope:add(self.scan); scope:add({dispose = function()
 		if self.page then self.page:dispose() end
 		self.settings:close(); self.management:close(); self.sdks:close()
+		self.review:close(); self.history:close(); self.notifications:stop()
 	end}) end
+	self.notifications:apply()
 	self.service.monitor(function() return self.window.visible end, function()
 		if self.settings.enabled and not self.scan.job then self.scan:start() end
 	end)

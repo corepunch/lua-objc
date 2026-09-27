@@ -67,6 +67,10 @@ ns._invokeAction(label)
 t.assertEqual(triangle.state, 1, "clicking the label turns the triangle down")
 t.expect(not refs.body.superview.hidden, "expanding shows the content")
 ns._invokeAction(label)
+if not ns.reduceMotion() then
+	t.expect(ns._motionIsLeaving(refs.body.superview), "collapsing fades the content out of layout first")
+end
+ns._motionSettle()
 t.expect(refs.body.superview.hidden, "clicking again collapses the content")
 
 -- .pickerStyle(.segmented) is NSSegmentedControl; the default stays a pop-up.
@@ -93,6 +97,26 @@ local tableSource = read("src/appkit/table_data_source.m")
 t.expect(tableSource:find("isGroupRow:(NSInteger)row", 1, true) ~= nil, "AppKit marks section rows as group rows")
 t.expect(tableSource:find("shouldSelectRow:(NSInteger)row", 1, true) ~= nil, "section rows cannot be selected")
 t.expect(read("src/uikit/table_data_source.m"):find('rowData[@"section"]', 1, true) ~= nil, "UIKit styles section rows too")
+
+-- Toggle reports each change through onChange with its new state.
+local toggled
+local toggle = xml.render('<Toggle style="switch" label="History" onChange="flip" />', {actions = {flip = function(on) toggled = on end}}, ns)
+toggle.state = 1
+ns._invokeAction(toggle)
+t.assertEqual(toggled, true, "a Toggle's onChange runs with its new state")
+t.expect(not pcall(xml.render, '<Toggle label="x" onChange="missing" />', {actions = {}}, ns), "a misspelt Toggle action fails at render time")
+
+-- Trailing row badges (SwiftUI .badge) in lists.
+local badged = xml.render('<List style="sourceList" header="false"><Column id="name" badgeKey="size" /></List>', {}, ns)
+badged:replaceRows({{name = "Developer", size = "39 GB"}, {name = "Guide"}})
+t.assertEqual(bridge._tableCell(badged, 0, 0).badgeField.stringValue, "39 GB", "a row shows its badge")
+t.assertEqual(bridge._tableCell(badged, 0, 1).badgeField.stringValue, "", "rows without a badge show none")
+
+-- Volume capacity as Finder reports it.
+local capacity = ns.volumeCapacity("/")
+t.expect(capacity and capacity.total > 0 and capacity.available > 0, "the startup volume reports its capacity")
+t.expect(capacity.important == nil or capacity.important >= capacity.available, "available for important use includes free space")
+t.assertEqual(ns.volumeCapacity("/no/such/volume/here"), nil, "unknown paths have no capacity")
 
 -- New semantic colors resolve on both platforms.
 t.expect(tostring(ns.Color("systemMint").description):find("Mint", 1, true) ~= nil, "systemMint is a semantic color")

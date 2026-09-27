@@ -58,6 +58,13 @@ local sparse = root .. "/sparse"
 local f = assert(io.open(sparse, "wb")); f:seek("set", 32 * 1024 * 1024); f:write("x"); f:close()
 local allocation = native.scan({sparse})
 t.expect(allocation.trees[1].kb > 0 and allocation.trees[1].kb < 32768, "sparse files use allocated bytes, not logical length")
+t.expect(allocation.trees[1].logicalKb > 32768, "the logical length is reported beside the allocation")
+t.assertEqual(allocation.trees[1].cloudFiles, 0, "a local file is not in iCloud")
+local sparseFolder = root .. "/sparse-folder"
+mkdir(sparseFolder); os.rename(sparse, sparseFolder .. "/disk.img")
+local folderAllocation = native.scan({sparseFolder})
+t.expect(folderAllocation.trees[1].logicalKb > 32768 and folderAllocation.trees[1].kb < 32768, "folders total logical and allocated sizes separately")
+os.rename(sparseFolder .. "/disk.img", sparse); os.remove(sparseFolder)
 local duplicate = native.scan({file, file})
 t.assertEqual(duplicate.trees[1].kb + duplicate.trees[2].kb, 16, "duplicate roots share one identity ledger")
 local blocked = root .. "/blocked"
@@ -141,6 +148,23 @@ t.expect(children.Movies.directory == true and children["archive.zip"].directory
 t.expect(children.Movies.kb >= 96 and children.Nested == nil, "breakdown sums descendants without listing them")
 t.assertEqual(children["archive.zip"].kb, 16, "top-level files appear in the breakdown")
 for _, path in ipairs({"/Movies/Nested/older.mov", "/Movies/clip.MOV", "/archive.zip", "/tiny.txt", "/.hidden", "/Movies/Nested", "/Movies", ""}) do os.remove(summary .. path) end
+-- Shallow subdirectories are walked concurrently: totals, breakdowns and
+-- hard-link deduplication must match a one-at-a-time walk exactly.
+local wide = root .. "/wide"
+mkdir(wide)
+write(wide .. "/shared", string.rep("s", 16384))
+for i = 1, 24 do
+	mkdir(wide .. "/d" .. i); mkdir(wide .. "/d" .. i .. "/inner")
+	write(wide .. "/d" .. i .. "/inner/own", string.rep("o", 4096 * i))
+	assert(os.execute("/bin/ln " .. System.quote(wide .. "/shared") .. " " .. System.quote(wide .. "/d" .. i .. "/link")))
+end
+local parallel = native.scan({wide}, {}, {breakdown = true})
+local expected = 16
+for i = 1, 24 do expected = expected + 4 * i end
+t.expect(parallel.trees[1].kb >= expected and parallel.trees[1].kb < expected + 24 * 8 + 16, "concurrent walks count a hard-linked file once")
+t.assertEqual(parallel.visited, 1 + 1 + 24 * 4, "every directory and file is visited exactly once")
+t.assertEqual(#parallel.breakdowns[1], 25, "the root's breakdown lists every child after concurrent walks")
+os.execute("/bin/rm -rf " .. System.quote(wide))
 for i = 1, 1200 do os.remove(files .. "/" .. i) end
 for _, path in ipairs({files, file, sparse, blocked, root}) do os.remove(path) end
 os.exit(t.summary() and 0 or 1)

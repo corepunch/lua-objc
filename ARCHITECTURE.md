@@ -602,7 +602,7 @@ current `canvas_state_create`, `bridge_eval`, or isolated IDE canvas subsystem.
 
 ## File watcher
 
-`bridge._watchFile(path, callback)` uses `FSEventStreamCreate` with `kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagNoDefer`. One stream per path, stored in `gFileWatchers` (global `NSMutableDictionary`). Callbacks fire on the main queue. Passing `nil` as callback cancels the watcher.
+`ns.watch(paths, callback, {since, latency})` creates one `FSEventStreamCreate` stream per call (file and directory events, `kFSEventStreamCreateFlagNoDefer`) and returns a handle. `cancel()` stops it, and the Scope current at creation disposes it, so a watch lives as long as its window or controller. Callbacks fire on the main queue with batches of `{path, id, created, removed, renamed, modified, directory}`. `since` (an ID from `ns.latestEventId()`) replays what changed while the app was not watching.
 
 ---
 

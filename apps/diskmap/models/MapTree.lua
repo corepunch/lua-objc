@@ -1,0 +1,97 @@
+local Model = require("apps.diskmap.Model")
+local Categories = require("apps.diskmap.models.Categories")
+local MapTree = {}
+
+-- The Map shows Diskmap's semantic tree from a focus node downwards: the
+-- whole disk, a category, or a group. Rings and rectangles draw the same
+-- nodes. Tiny nodes fold into one "Other" node per parent so every mark is
+-- big enough to see and to point at.
+MapTree.depth = 3
+MapTree.minimumShare = 0.004
+
+local function measured(row)
+	return row.bytes ~= nil and row.bytes > 0
+end
+
+-- The focused row and its ancestors, root first, for the breadcrumb.
+function MapTree.path(model, focus)
+	local trail = {}
+	local resource = focus and model.resources:find(focus)
+	while resource do
+		table.insert(trail, 1, {id = resource.id, name = resource.name})
+		resource = resource:getParent()
+	end
+	table.insert(trail, 1, {id = "", name = "All Storage"})
+	return trail
+end
+
+-- Nodes {id, parent, value, color, label, detail, ring, hatched, leaf} for
+-- the focus. The top level is the focus's children (or the categories).
+function MapTree.nodes(model, focus, depth)
+	depth = depth or MapTree.depth
+	local top = Categories.rows(model, focus ~= "" and focus or nil)
+	local total = 0
+	for _, row in ipairs(top) do if measured(row) then total = total + row.bytes end end
+	local nodes = {}
+	local function visit(rows, parent, ring, color)
+		local other, otherBytes = 0, 0
+		for _, row in ipairs(rows) do
+			if measured(row) then
+				if total > 0 and row.bytes / total < MapTree.minimumShare then
+					other, otherBytes = other + 1, otherBytes + row.bytes
+				else
+					local resource = model.resources:find(row.id)
+					local leaf = resource and resource:isLeaf()
+					local rowColor = ring == 1 and (row.color or "systemGray") or color
+					table.insert(nodes, {id = row.id, parent = parent, value = row.bytes, color = rowColor,
+						label = row.name, detail = row.size, ring = ring, leaf = leaf,
+						hatched = leaf and resource.policy == "Rebuildable" or false})
+					if row.children and ring < depth then visit(row.children, row.id, ring + 1, rowColor) end
+				end
+			end
+		end
+		if other > 0 then
+			table.insert(nodes, {id = (parent or "top") .. "#other", parent = parent, value = otherBytes, color = "systemGray",
+				label = other .. " smaller", detail = Model.size(otherBytes), ring = ring, leaf = true, other = true})
+		end
+	end
+	visit(top, nil, 1, nil)
+	return nodes, total
+end
+
+-- Largest rebuildable resources under the focus: the "Worth a look" list.
+function MapTree.worthALook(model, focus, limit)
+	local rows = {}
+	local root = focus ~= "" and focus and model.resources:find(focus)
+	local function within(resource)
+		if not root then return true end
+		while resource do
+			if resource == root then return true end
+			resource = resource:getParent()
+		end
+		return false
+	end
+	for _, resource in ipairs(model.resources:leaves()) do
+		local m = model.measurements[resource.id]
+		if resource.policy == "Rebuildable" and m and m.status == "complete" and (m.bytes or 0) > 0
+			and within(resource) and not resource:isKept() then
+			table.insert(rows, {id = resource.id, name = resource.name, path = resource.path, bytes = m.bytes,
+				size = Model.size(m.bytes), action = resource.action})
+		end
+	end
+	table.sort(rows, function(a, b) return a.bytes > b.bytes end)
+	while #rows > (limit or 3) do table.remove(rows) end
+	return rows
+end
+
+-- One line describing a node for the hover bar.
+function MapTree.describe(model, id, total)
+	local row = id and Categories.row(model, id)
+	if not row then return nil end
+	local share = total and total > 0 and row.bytes and string.format(" · %.1f%%", row.bytes * 100 / total) or ""
+	local trail = {}
+	for _, step in ipairs(MapTree.path(model, id)) do if step.id ~= "" then table.insert(trail, step.name) end end
+	return table.concat(trail, " › ") .. " · " .. row.size .. share
+end
+
+return MapTree

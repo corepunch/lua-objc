@@ -52,6 +52,29 @@ knowledge from Reddit, Stack Exchange and Apple forum reports.
   unavailable"; the empty runtimes table leaves a large gap; Developer's
   "Simulator runtimes" tile shows 0 KB in Mock mode while Simulators shows
   20.6 GB.
+# Competitive roadmap (issue #36) — September 27, 2026
+
+Map (rings and rectangles), Applications leftovers, Xcode, Projects, the marked-items
+review with Trash, empty and measured free space, operation history, hidden
+space, opt-in storage history, sidebar badges, back and forward, installers
+and local AI model stores. Framework: `withAnimation`, `transition`,
+multi-ring interactive `SectorChart`, `Treemap`, `PointerView`,
+`volumeCapacity`, list badges, and a `Toggle` action-binding fix.
+
+- Written without Xcode again: nothing was compiled, `make test` was not run,
+  and no screenshots were taken. `src/appkit/motion.m` and the table badge
+  are new native code that needs a first build.
+- Under stock Lua with a stub view layer, every page rendered and acted
+  against the Mock HDD provider. `tests/diskmap_cleanup_models.test.lua` (94),
+  `tests/diskmap_pages.test.lua` (35), `tests/diskmap_overview.test.lua` (149)
+  and `tests/diskmap_system_pages.test.lua` (53) pass. The treemap layout,
+  sunburst geometry and hit testing were checked the same way.
+  `tests/animation.test.lua`, `tests/treemap.test.lua`, `tests/sector_chart.test.lua`
+  and `tests/swiftui_modifiers.test.lua` need the native bridge.
+- On macOS, check: animation feel and Reduce Motion; treemap label contrast in
+  light and dark; that sidebar badges keep the selection; the git prompt guard
+  on a Mac without developer tools; and `NSURLVolumeAvailableCapacityForImportantUsageKey`
+  on the startup volume.
 
 # Simulators and Updates & Snapshots pages — September 26, 2026
 
@@ -237,3 +260,12 @@ reconciliation; these remain explicit, rather than invented measured values.
   perf_large_list, webpage, gestures_haptics. The native sheet and typed table-selection suites passed. These broad-suite results are not a clean full-suite pass.
 
 - Final live sheet uses an opaque semantic `controlBackgroundColor` surface and a native default Done button. Both row selection and activation preserve booleans/numbers; shutdown simulator actions enable correctly.
+
+## macOS verification of PR 38 (2026-09-27)
+
+Rebased onto main, built and tested on an M1 Mac with macOS 26 and Xcode:
+`make`, `make uikit`, `make ios-host` build; `make test` passes all 158 test
+files. Screenshots of Overview, Map, Largest Items, Applications, Xcode,
+Projects and Updates were checked against the Mock HDD. Not yet checked by
+eye: animation feel with Reduce Motion on and off, dark mode, and
+notifications in the bundled app.

@@ -269,6 +269,7 @@ static int bridge_add(lua_State *L) {
 		child.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 	} else {
 		UIView *container = (UIView *)parent;
+		motion_will_change(container, YES);
 		[container addSubview:child];
 		uikit_invalidate_layout(container);
 	}

@@ -29,7 +29,7 @@ FLAGS := -isysroot $(SDK_PATH) -arch $(ARCH) $(MIN_FLAG) -O2 -Wall -DLUA_USE_IOS
 HOST := $(wildcard ios/LuaRuntime/*.m)
 FRAGMENTS := $(shell find src/uikit src/shared -name '*.m')
 FRAMEWORKS := -framework UIKit -framework Foundation -framework CoreGraphics \
-	-framework QuartzCore -framework Security -framework WebKit \
+	-framework QuartzCore -framework Symbols -framework UserNotifications -framework Security -framework WebKit \
 	-framework AVFoundation -framework Speech
 ifeq ($(SDK),iphonesimulator)
 SIM_ENTITLEMENTS := $(ROOT)/$(BUNDLE_ID).entitlements.plist

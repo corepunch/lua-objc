@@ -1,6 +1,7 @@
-<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+<ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
   <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
-    <%- partial("PageHeader.etlua", {icon = "hammer.fill", color = "systemPurple", title = "Developer", summaryId = "developerTotal", summary = "", actionTitle = "Simulators…", actionId = "showSimulators", action = "simulators"}) %>
+    <%- partial("PageHeader.etlua", {icon = "hammer.fill", color = "systemPurple", title = "Developer", summaryId = "developerTotal", summary = "",
+      buttons = {{id = "showSimulators", title = "Simulators…", action = "simulators"}}}) %>
     <% if #sections == 0 then %>
     <ContentUnavailable title="<%= calculating and "Measuring developer storage…" or "No developer storage found" %>" systemImage="hammer" description="Xcode, package managers, containers and AI tools appear here once measured." />
     <% end %>

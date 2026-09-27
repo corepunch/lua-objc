@@ -1,3 +1,9 @@
+/* A view playing its removal transition stays on screen but no longer
+ * takes part in layout, as a removed SwiftUI view does. */
+static BOOL uikit_is_hidden(UIView *view) {
+	return view.hidden || motion_is_leaving(view);
+}
+
 #pragma mark - Layout helpers
 
 static void layout_recursive(UIView *view, CGFloat width);
@@ -27,7 +33,7 @@ static BOOL grows_on_axis(UIView *view, BOOL horizontal) {
 	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
 	if ([axis isEqualToString:@"hstack"] || [axis isEqualToString:@"vstack"] || [axis isEqualToString:@"zstack"]) {
 		for (UIView *child in view.subviews) {
-			if (child.hidden) continue;
+			if (uikit_is_hidden(child)) continue;
 			if (grows_on_axis(child, horizontal)) return YES;
 		}
 		return NO;
@@ -121,7 +127,7 @@ static CGSize measure_horizontal_children(UIView *view, CGSize proposal, CGSize 
 	NSMutableArray<NSNumber *> *flexibility = [NSMutableArray array];
 	for (NSUInteger i = 0; i < children.count; i++) {
 		UIView *child = children[i];
-		if (child.hidden) { [flexibility addObject:@0]; continue; }
+		if (uikit_is_hidden(child)) { [flexibility addObject:@0]; continue; }
 		sizes[i] = measure_size(child, CGSizeMake(CGFLOAT_MAX, proposal.height));
 		[flexibility addObject:@(is_flexible(child) ? INFINITY : sizes[i].width)];
 		[order addObject:@(i)];
@@ -159,7 +165,7 @@ static CGSize measure_horizontal_children(UIView *view, CGSize proposal, CGSize 
 // from the current proposal, never from a previous layout or an item count.
 static CGSize layout_flow_children(UIView *view, CGFloat width, BOOL place) {
 	NSMutableArray<UIView *> *children = [NSMutableArray array];
-	for (UIView *child in view.subviews) if (!child.hidden || objc_getAssociatedObject(child, &kFlowOverflowKey)) [children addObject:child];
+	for (UIView *child in view.subviews) if ((!child.hidden || objc_getAssociatedObject(child, &kFlowOverflowKey)) && !motion_is_leaving(child)) [children addObject:child];
 	CGSize *sizes = calloc(MAX(1, children.count), sizeof(CGSize));
 	CGRect *frames = place ? calloc(MAX(1, children.count), sizeof(CGRect)) : NULL;
 	for (NSUInteger i = 0; i < children.count; i++) {
@@ -212,7 +218,7 @@ static CGSize measure_size(UIView *view, CGSize proposal) {
 			free(sizes);
 		} else {
 			for (UIView *child in view.subviews) {
-				if (child.hidden) continue;
+				if (uikit_is_hidden(child)) continue;
 				CGSize childSize = measure_size(child, CGSizeMake(inner.width,
 					[axis isEqualToString:@"vstack"] ? CGFLOAT_MAX : inner.height));
 				size.width = MAX(size.width, childSize.width);
@@ -300,7 +306,7 @@ static void layout_recursive_impl(UIView *view, CGFloat width) {
 		[axis isEqualToString:@"hsplit"]) {
 
 	NSMutableArray<UIView *> *children = [NSMutableArray array];
-	for (UIView *child in view.subviews) if (!child.hidden) [children addObject:child];
+	for (UIView *child in view.subviews) if (!uikit_is_hidden(child)) [children addObject:child];
 	CGFloat padX = view_padding_edge(view, YES);
 	CGFloat padRight = view_padding_edge(view, NO);
 	CGFloat padTop = view_padding_top(view);
@@ -311,7 +317,7 @@ static void layout_recursive_impl(UIView *view, CGFloat width) {
 
 		if ([axis isEqualToString:@"zstack"]) {
 			for (UIView *sv in children) {
-				if (sv.hidden) continue;
+				if (uikit_is_hidden(sv)) continue;
 				CGSize natural = measure_size(sv, CGSizeMake(contentW, contentH));
 				CGFloat childW = fills_axis(sv, YES) ? contentW : natural.width;
 				CGFloat childH = fills_axis(sv, NO) ? contentH : natural.height;

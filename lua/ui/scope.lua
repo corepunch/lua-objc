@@ -34,6 +34,10 @@ return function(bridge)
 		return r
 	end
 
+	function Scope:isDisposed()
+		return self.closed == true
+	end
+
 	function Scope:dispose()
 		if self.closed then return end
 		self.closed = true

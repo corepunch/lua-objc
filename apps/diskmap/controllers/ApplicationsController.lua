@@ -53,12 +53,25 @@ function Controller:trashLeftover(row)
 	self.changed(true)
 end
 
+function Controller:leftoverItem(row)
+	return {path = row.path, name = row.name, bytes = row.bytes, source = "Leftovers · " .. row.source,
+		consequence = "Settings, caches and documents of an app that is no longer installed. Reinstalling the app starts it fresh. Confidence: "
+			.. row.confidence .. " (" .. row.reason .. ")."}
+end
+
 function Controller:mount(host, state)
 	self.template = Template.new(host, "apps/diskmap/views/Applications.etlua", ns)
 	local _, refs = self.template:update({filters = Applications.filters, actions = {
 		filter = function(index) self.filterIndex = (index or 0) + 1; self:update(self.state) end,
 		appMenu = function(_, _, row) return self.actions:application(row) end,
-		leftoverMenu = function(_, _, row) return self.actions:folder(row, function(value) self:trashLeftover(value) end) end,
+		leftoverMenu = function(_, _, row) return self.actions:folder(row, function(value) self:trashLeftover(value) end, self:leftoverItem(row)) end,
+		markHigh = function()
+			local items = {}
+			for _, row in ipairs(Applications.leftovers(self.model, self.installed) or {}) do
+				if row.tier == "high" then table.insert(items, self:leftoverItem(row)) end
+			end
+			self.actions:markAll(items)
+		end,
 		revealApp = function(_, _, row) if row then self.service.reveal(row.path) end end,
 		revealLeftover = function(_, _, row) if row then self.service.reveal(row.path) end end,
 	}})
@@ -77,8 +90,13 @@ function Controller:update(state)
 	local rows = Applications.rows(self.model, self.info, Applications.filters[self.filterIndex], query)
 	refs.apps:replaceRows(rows)
 	local leftovers = Applications.leftovers(self.model, self.installed, query)
-	refs.leftovers:replaceRows(leftovers or {})
+	refs.leftovers:replaceRows(self.actions:annotate(leftovers or {}))
 	refs.leftoversSection.hidden = not leftovers or #leftovers == 0
+	local unmarkedHigh = false
+	for _, row in ipairs(leftovers or {}) do
+		if row.tier == "high" and not self.actions:isMarked(row.path) then unmarkedHigh = true end
+	end
+	refs.markHigh.enabled = unmarkedHigh
 	local all = Applications.rows(self.model, self.info, "All")
 	local summary = Applications.summary(all, Applications.leftovers(self.model, self.installed))
 	refs.summary.text = summary.count == 0 and "No applications measured yet."
@@ -91,6 +109,8 @@ function Controller:update(state)
 	refs.leftoversTileValue.text = summary.leftovers and Model.size(summary.leftoverBytes) or "—"
 	refs.leftoversTileDetail.text = summary.leftovers and (summary.leftovers .. " folders of apps not installed") or "Checking installed apps…"
 end
+
+function Controller:marksChanged() self:update(self.state) end
 
 function Controller:dispose()
 	if self.template then self.template:dispose() end

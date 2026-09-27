@@ -1,4 +1,4 @@
-<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+<ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
   <VStack id="pageContent" maxWidth="infinity" spacing="20" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {icon = "chart.bar.fill", color = "systemOrange", title = "Largest Items", summaryId = "largestSummary", summary = summary}) %>
     <GroupBox maxWidth="infinity">

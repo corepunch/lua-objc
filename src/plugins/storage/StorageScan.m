@@ -10,6 +10,8 @@
 #import <dlfcn.h>
 #import <lua.h>
 #import <lauxlib.h>
+#import <os/lock.h>
+#import <sys/resource.h>
 
 static const NSUInteger ScanBufferSize = 64 * 1024;
 static const NSUInteger ScanIssueLimit = 1000;
@@ -21,6 +23,10 @@ static const NSUInteger ScanFileLimit = 2000;
 static const NSUInteger ScanExtensionLimit = 4096;
 static const NSUInteger ScanExtensionLength = 12;
 static const NSUInteger ScanBreakdownLimit = 5000;
+// Subdirectories this shallow are measured concurrently. Directory metadata
+// calls block in the kernel, so several in flight keep the storage busy;
+// deeper levels run on the thread that reached them, which bounds threads.
+static const NSUInteger ScanParallelDepth = 4;
 static const char SnapshotMagic[8] = {'D', 'M', 'O', 'C', 'K', '0', '0', '1'};
 static const uint32_t SnapshotVersion = 1;
 
@@ -41,7 +47,9 @@ typedef struct {
 	fsobj_type_t type;
 	struct timespec modified;
 	struct timespec accessed;
+	uint32_t flags;
 	uint64_t inode;
+	off_t logical;
 	off_t allocated;
 } ScanEntry;
 #pragma pack(pop)
@@ -50,6 +58,9 @@ typedef struct { uint64_t inode; dev_t device; } ScanIdentity;
 @interface StorageScanJob : NSObject {
 	ScanIdentity *_seen;
 	NSUInteger _seenCount, _seenCapacity;
+	// Guards the identity table, counters, issues and summaries, which
+	// concurrent directory walks share.
+	os_unfair_lock _lock;
 }
 @property(atomic) BOOL cancelled;
 @property NSArray<NSString *> *roots;
@@ -81,6 +92,9 @@ typedef struct { uint64_t inode; dev_t device; } ScanIdentity;
 @property NSMutableArray *breakdowns;
 @property NSMutableArray *currentBreakdown;
 @property uint64_t oldBytes, oldCount;
+// Per root: logical size of counted files (sparse files and disk images are
+// smaller on disk), and files iCloud evicted, which use no local space.
+@property uint64_t rootLogical, rootCloudBytes, rootCloudCount;
 - (void)run;
 - (void)publish:(BOOL)done;
 @end
@@ -103,6 +117,17 @@ static NSUInteger identityHash(ScanIdentity key) {
 	return x ^ (x >> 31);
 }
 - (BOOL)seenInode:(uint64_t)inode device:(dev_t)device {
+	os_unfair_lock_lock(&_lock);
+	BOOL seen = [self seenInodeLocked:inode device:device];
+	os_unfair_lock_unlock(&_lock);
+	return seen;
+}
+- (void)countLogical:(uint64_t)bytes { os_unfair_lock_lock(&_lock); self.rootLogical += bytes; os_unfair_lock_unlock(&_lock); }
+- (void)countCloud:(uint64_t)bytes files:(uint64_t)files {
+	os_unfair_lock_lock(&_lock); self.rootCloudBytes += bytes; self.rootCloudCount += files; os_unfair_lock_unlock(&_lock);
+}
+- (void)countVisited { os_unfair_lock_lock(&_lock); self.visited++; os_unfair_lock_unlock(&_lock); }
+- (BOOL)seenInodeLocked:(uint64_t)inode device:(dev_t)device {
 	if (!inode) { self.failure = @"Filesystem returned an invalid file identity."; return YES; }
 	if (!_seenCapacity || (_seenCount + 1) * 2 >= _seenCapacity) {
 		NSUInteger capacity = _seenCapacity ? _seenCapacity * 2 : 4096;
@@ -125,8 +150,10 @@ static NSUInteger identityHash(ScanIdentity key) {
 	return NO;
 }
 - (void)issue:(NSString *)path code:(int)code {
+	os_unfair_lock_lock(&_lock);
 	self.errors++;
 	if (self.issues.count < ScanIssueLimit) [self.issues addObject:@{@"path": path, @"reason": @(strerror(code))}];
+	os_unfair_lock_unlock(&_lock);
 }
 // Keeps `files` sorted largest first and at most `fileLimit` long.
 - (void)rank:(NSDictionary *)file bytes:(uint64_t)bytes into:(NSMutableArray *)files {
@@ -142,6 +169,11 @@ static NSUInteger identityHash(ScanIdentity key) {
 // use is the later of modification and access, so a file read yesterday is
 // never reported as old.
 - (void)summarize:(NSString *)path name:(const char *)name bytes:(uint64_t)bytes modified:(struct timespec)modified accessed:(struct timespec)accessed {
+	os_unfair_lock_lock(&_lock);
+	[self summarizeLocked:path name:name bytes:bytes modified:modified accessed:accessed];
+	os_unfair_lock_unlock(&_lock);
+}
+- (void)summarizeLocked:(NSString *)path name:(const char *)name bytes:(uint64_t)bytes modified:(struct timespec)modified accessed:(struct timespec)accessed {
 	NSTimeInterval changed = modified.tv_sec + modified.tv_nsec / 1e9;
 	NSTimeInterval used = MAX(changed, accessed.tv_sec + accessed.tv_nsec / 1e9);
 	BOOL old = self.oldBefore > 0 && used > 0 && used < self.oldBefore;
@@ -255,34 +287,41 @@ static NSUInteger identityHash(ScanIdentity key) {
 	}
 	if (self.exportWriteFailed) unlink(self.exportTemporaryPath.fileSystemRepresentation);
 }
+// Scans read metadata only: never let the file system download an evicted
+// iCloud file or folder to answer them. The policy is per thread, so every
+// thread that walks directories sets it.
+static void scanNeverMaterialize(void) {
+	setiopolicy_np(IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES, IOPOL_SCOPE_THREAD, IOPOL_MATERIALIZE_DATALESS_FILES_OFF);
+}
 - (uint64_t)directory:(int)fd path:(NSString *)path device:(dev_t)device depth:(NSUInteger)depth {
 	if ([self stopped]) return 0;
 	if (depth > ScanDepthLimit) { [self issue:path code:ELOOP]; return 0; }
 	struct stat st;
 	if (fstat(fd, &st)) { [self issue:path code:errno]; return 0; }
 	if (st.st_dev != device) return 0;
-	self.visited++;
+	[self countVisited];
 	if ([self seenInode:st.st_ino device:device]) return 0;
 	uint64_t bytes = (uint64_t)st.st_blocks * 512;
 	void *buffer = malloc(ScanBufferSize);
+	NSMutableArray<NSString *> *childNames = [NSMutableArray array], *childPaths = [NSMutableArray array];
 	if (!buffer) { self.failure = @"Not enough memory for directory metadata."; return bytes; }
 	struct attrlist attrs = {.bitmapcount = ATTR_BIT_MAP_COUNT,
-		.commonattr = ATTR_CMN_RETURNED_ATTRS | ATTR_CMN_ERROR | ATTR_CMN_NAME | ATTR_CMN_OBJTYPE | ATTR_CMN_MODTIME | ATTR_CMN_ACCTIME | ATTR_CMN_FILEID,
-		.fileattr = ATTR_FILE_ALLOCSIZE};
+		.commonattr = ATTR_CMN_RETURNED_ATTRS | ATTR_CMN_ERROR | ATTR_CMN_NAME | ATTR_CMN_OBJTYPE | ATTR_CMN_MODTIME | ATTR_CMN_ACCTIME | ATTR_CMN_FLAGS | ATTR_CMN_FILEID,
+		.fileattr = ATTR_FILE_TOTALSIZE | ATTR_FILE_ALLOCSIZE};
 	while (![self stopped]) {
 		int count = getattrlistbulk(fd, &attrs, buffer, ScanBufferSize, FSOPT_PACK_INVAL_ATTRS);
-		self.bulkCalls++;
+		os_unfair_lock_lock(&_lock); self.bulkCalls++; os_unfair_lock_unlock(&_lock);
 		if (count <= 0) { if (count < 0) [self issue:path code:errno]; break; }
 		char *cursor = buffer, *end = cursor + ScanBufferSize;
 		for (int i = 0; i < count && ![self stopped]; i++) { @autoreleasepool {
-			if (end - cursor < offsetof(ScanEntry, allocated)) { [self issue:path code:EIO]; break; }
-			ScanEntry entry = {0}; memcpy(&entry, cursor, offsetof(ScanEntry, allocated));
-			NSUInteger fixedSize = entry.type == VREG ? sizeof(entry) : offsetof(ScanEntry, allocated);
+			if (end - cursor < offsetof(ScanEntry, logical)) { [self issue:path code:EIO]; break; }
+			ScanEntry entry = {0}; memcpy(&entry, cursor, offsetof(ScanEntry, logical));
+			NSUInteger fixedSize = entry.type == VREG ? sizeof(entry) : offsetof(ScanEntry, logical);
 			if (entry.length < fixedSize || entry.length > end - cursor) { [self issue:path code:EIO]; break; }
 			int64_t nameOffset = offsetof(ScanEntry, name) + (int64_t)entry.name.attr_dataoffset;
 			if (!(entry.returned.commonattr & ATTR_CMN_NAME) || nameOffset < fixedSize ||
 				entry.name.attr_length < 1 || nameOffset + entry.name.attr_length > entry.length) { [self issue:path code:EIO]; cursor += entry.length; continue; }
-			if (entry.type == VREG) memcpy(&entry.allocated, cursor + offsetof(ScanEntry, allocated), sizeof(entry.allocated));
+			if (entry.type == VREG) memcpy(&entry.logical, cursor + offsetof(ScanEntry, logical), sizeof(entry.logical) + sizeof(entry.allocated));
 			const char *name = cursor + nameOffset;
 			if (name[entry.name.attr_length - 1] != '\0' || strchr(name, '/')) { [self issue:path code:EIO]; cursor += entry.length; continue; }
 			NSString *component = [[NSString alloc] initWithBytes:name length:strlen(name) encoding:NSUTF8StringEncoding];
@@ -291,28 +330,36 @@ static NSUInteger identityHash(ScanIdentity key) {
 			if (!strcmp(name, ".") || !strcmp(name, "..") || [self.exclusions containsObject:child]) continue;
 			if (entry.error) { [self issue:child code:entry.error]; continue; }
 			if (!(entry.returned.commonattr & ATTR_CMN_OBJTYPE)) { [self issue:child code:ENOTSUP]; continue; }
+			BOOL dataless = (entry.returned.commonattr & ATTR_CMN_FLAGS) && (entry.flags & SF_DATALESS);
+			if (entry.type == VDIR && dataless) {
+				// An evicted iCloud folder: entering it would download it.
+				[self countCloud:0 files:0];
+				continue;
+			}
 			if (entry.type == VDIR) {
-				int childFD = openat(fd, name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
-				if (childFD < 0) { [self issue:child code:errno]; continue; }
-				uint64_t childBytes = [self directory:childFD path:child device:device depth:depth + 1]; close(childFD);
-				bytes += childBytes;
-				if (depth == 0) [self breakdown:component bytes:childBytes directory:YES];
+				// Subdirectories are walked after this directory's entries,
+				// concurrently when shallow.
+				[childNames addObject:component ?: @""];
+				[childPaths addObject:child];
 			} else if (entry.type == VREG) {
-				uint64_t inode = entry.inode; off_t allocated = entry.allocated;
+				uint64_t inode = entry.inode; off_t allocated = entry.allocated, logical = entry.logical;
 				struct timespec modified = entry.modified, accessed = entry.accessed;
 				if (!(entry.returned.commonattr & ATTR_CMN_FILEID) || !(entry.returned.fileattr & ATTR_FILE_ALLOCSIZE)) {
 					struct stat fileStat;
 					if (fstatat(fd, name, &fileStat, AT_SYMLINK_NOFOLLOW)) { [self issue:child code:errno]; continue; }
 					if (!S_ISREG(fileStat.st_mode) || fileStat.st_dev != device) continue;
-					inode = fileStat.st_ino; allocated = fileStat.st_blocks * 512;
+					inode = fileStat.st_ino; allocated = fileStat.st_blocks * 512; logical = fileStat.st_size;
+					dataless = (fileStat.st_flags & SF_DATALESS) != 0;
 					modified = fileStat.st_mtimespec; accessed = fileStat.st_atimespec;
 				}
-				self.visited++;
+				[self countVisited];
 				if (allocated < 0) { [self issue:child code:EIO]; continue; }
 				BOOL alreadyCounted = [self seenInode:inode device:device];
 				uint64_t fileBytes = (uint64_t)allocated;
 				if (!alreadyCounted) {
 					bytes += fileBytes;
+					if (dataless) [self countCloud:(uint64_t)MAX(0, logical) files:1];
+					else [self countLogical:(uint64_t)MAX(0, logical)];
 					[self summarize:child name:name bytes:fileBytes modified:modified accessed:accessed];
 				}
 				if (depth == 0) [self breakdown:component bytes:alreadyCounted ? 0 : fileBytes directory:NO];
@@ -320,7 +367,30 @@ static NSUInteger identityHash(ScanIdentity key) {
 			}
 		} }
 	}
-	free(buffer); return bytes;
+	free(buffer);
+	NSUInteger count = childPaths.count;
+	uint64_t *sizes = calloc(count ?: 1, sizeof(uint64_t));
+	void (^walk)(size_t) = ^(size_t index) { @autoreleasepool {
+		if ([self stopped]) return;
+		scanNeverMaterialize();
+		NSString *child = childPaths[index];
+		int childFD = openat(fd, childNames[index].fileSystemRepresentation, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+		if (childFD < 0) { [self issue:child code:errno]; return; }
+		sizes[index] = [self directory:childFD path:child device:device depth:depth + 1];
+		close(childFD);
+	} };
+	// Exports are written in path order, so they walk one directory at a time.
+	if (count > 1 && depth < ScanParallelDepth && !self.exporting) {
+		dispatch_apply(count, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), walk);
+	} else {
+		for (NSUInteger index = 0; index < count; index++) walk(index);
+	}
+	for (NSUInteger index = 0; index < count; index++) {
+		bytes += sizes[index];
+		if (depth == 0) [self breakdown:childNames[index] bytes:sizes[index] directory:YES];
+	}
+	free(sizes);
+	return bytes;
 }
 // Immediate children of a scanned root, so a category can be opened one level
 // deeper without a second scan.
@@ -356,17 +426,21 @@ static NSUInteger identityHash(ScanIdentity key) {
 			uint64_t bytes = 0;
 			NSString *logicalPath = self.logicalRoots[path] ?: path;
 			self.currentBreakdown = self.collectsBreakdown ? [NSMutableArray array] : nil;
+			self.rootLogical = self.rootCloudBytes = self.rootCloudCount = 0;
 			if (fd < 0) [self issue:path code:errno];
 			else { bytes = [self directory:fd path:logicalPath device:st.st_dev depth:0]; close(fd); }
-			tree = @{@"kb": @(bytes / 1024.0), @"partial": @(self.errors > before)};
+			tree = @{@"kb": @(bytes / 1024.0), @"partial": @(self.errors > before), @"logicalKb": @(self.rootLogical / 1024.0),
+				@"cloudKb": @(self.rootCloudBytes / 1024.0), @"cloudFiles": @(self.rootCloudCount)};
 		} else if (S_ISREG(st.st_mode)) {
-			self.visited++;
+			[self countVisited];
 			BOOL alreadyCounted = [self seenInode:st.st_ino device:st.st_dev];
 			uint64_t fileBytes = (uint64_t)st.st_blocks * 512;
 			NSString *logicalPath = self.logicalRoots[path] ?: path;
 			if (!alreadyCounted) [self summarize:logicalPath name:name bytes:fileBytes modified:st.st_mtimespec accessed:st.st_atimespec];
 			[self exportFile:logicalPath allocated:fileBytes counted:alreadyCounted ? 0 : fileBytes];
-			tree = @{@"kb": @(alreadyCounted ? 0 : fileBytes / 1024.0)};
+			BOOL evicted = (st.st_flags & SF_DATALESS) != 0 && !alreadyCounted;
+			tree = @{@"kb": @(alreadyCounted ? 0 : fileBytes / 1024.0), @"logicalKb": @(alreadyCounted || evicted ? 0 : st.st_size / 1024.0),
+				@"cloudKb": @(evicted ? st.st_size / 1024.0 : 0), @"cloudFiles": @(evicted ? 1 : 0)};
 		} else state = @"skipped";
 		close(parent);
 	} else if (!state) { state = @"unreadable"; [self issue:path code:errno]; }
@@ -405,6 +479,7 @@ static NSUInteger identityHash(ScanIdentity key) {
 - (void)run {
 	@autoreleasepool {
 		self.started = NSProcessInfo.processInfo.systemUptime;
+		scanNeverMaterialize();
 		@try {
 			for (NSString *path in self.roots) {
 				if ([self stopped]) break;
@@ -642,6 +717,8 @@ static int collect(lua_State *L) {
 	if (*ref) { ((__bridge StorageScanJob *)*ref).cancelled = YES; CFRelease(*ref); *ref = NULL; }
 	return 0;
 }
+#include "Duplicates.m"
+
 int luaopen_StorageScan(lua_State *L) {
 	// Lua can close while a cancelled worker is finishing a filesystem call.
 	// Keep the code image mapped until process exit; workers retain no Lua state.
@@ -654,7 +731,11 @@ int luaopen_StorageScan(lua_State *L) {
 	lua_pushcfunction(L, commandCollect); lua_setfield(L, -2, "__gc"); lua_pop(L, 1);
 	luaL_newmetatable(L, JobMetatable);
 	lua_pushcfunction(L, collect); lua_setfield(L, -2, "__gc"); lua_pop(L, 1);
-	const luaL_Reg functions[] = {{"commandStart", commandStart}, {"commandPoll", commandPoll}, {"start", start}, {"exportStart", exportStart}, {"poll", poll}, {"cancel", cancel}, {"scan", scan}, {NULL, NULL}};
+	luaL_newmetatable(L, DuplicateMetatable);
+	lua_pushcfunction(L, duplicatesCollect); lua_setfield(L, -2, "__gc"); lua_pop(L, 1);
+	const luaL_Reg functions[] = {{"commandStart", commandStart}, {"commandPoll", commandPoll}, {"start", start}, {"exportStart", exportStart}, {"poll", poll}, {"cancel", cancel}, {"scan", scan},
+		{"duplicatesStart", duplicatesStart}, {"duplicates", duplicates}, {"duplicatesPoll", duplicatesPoll},
+		{"duplicatesCancel", duplicatesCancel}, {NULL, NULL}};
 	luaL_newlib(L, functions); lua_pushliteral(L, "getattrlistbulk"); lua_setfield(L, -2, "backend");
 	return 1;
 }

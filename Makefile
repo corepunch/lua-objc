@@ -1,7 +1,7 @@
 CC = clang
 CFLAGS = -fobjc-arc -Wall -O2 $(shell pkg-config --cflags lua 2>/dev/null || echo "-I/opt/homebrew/include/lua")
 HOST_CFLAGS = -Wall -O2
-LDFLAGS = $(shell pkg-config --libs lua 2>/dev/null || echo "-L/opt/homebrew/lib -llua -lm") -framework Cocoa -framework WebKit -framework QuartzCore
+LDFLAGS = $(shell pkg-config --libs lua 2>/dev/null || echo "-L/opt/homebrew/lib -llua -lm") -framework Cocoa -framework WebKit -framework QuartzCore -framework Symbols -framework UserNotifications
 MODULE_LDFLAGS = -dynamiclib -undefined dynamic_lookup
 IOS_SIM_SDK = $(shell xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null)
 
@@ -52,11 +52,11 @@ build/UIKit.dylib: $(UIKIT_RUNTIME_SRC) $(UIKIT_RUNTIME_FRAGMENTS) $(GENERATED_D
 		{ echo "UIKit.dylib requires the iPhone Simulator SDK from Xcode"; exit 1; }
 	mkdir -p build
 	xcrun --sdk iphonesimulator $(CC) $(CFLAGS) $(MODULE_LDFLAGS) \
-		-Ibuild -framework UIKit -framework CoreText -framework WebKit -framework Foundation -framework QuartzCore -framework Security -o $@ $(UIKIT_RUNTIME_SRC)
+		-Ibuild -framework UIKit -framework CoreText -framework WebKit -framework Foundation -framework QuartzCore -framework Symbols -framework UserNotifications -framework Security -o $@ $(UIKIT_RUNTIME_SRC)
 
 uikit: build/UIKit.dylib
 
-build/StorageScan.dylib: src/plugins/storage/StorageScan.m Makefile
+build/StorageScan.dylib: src/plugins/storage/StorageScan.m src/plugins/storage/Duplicates.m Makefile
 	mkdir -p build
 	$(CC) $(CFLAGS) -mmacosx-version-min=26.0 $(MODULE_LDFLAGS) -framework Foundation -o $@ $<
 
@@ -159,7 +159,7 @@ $(HOST_BINARY): $(IOS_LUA_A) $(IOS_HOST_SRCS) ios/LuaRuntime/LuaRuntime.h $(UIKI
 	@echo "Building iOS host..."
 	@mkdir -p $(HOST_BUNDLE)
 	@$(IOS_CC) $(IOS_CFLAGS) \
-		-framework UIKit -framework CoreText -framework Foundation -framework CoreGraphics -framework QuartzCore -framework Security -framework WebKit -framework AVFoundation -framework Speech \
+		-framework UIKit -framework CoreText -framework Foundation -framework CoreGraphics -framework QuartzCore -framework Symbols -framework UserNotifications -framework Security -framework WebKit -framework AVFoundation -framework Speech \
 		-o $(HOST_BUNDLE)/LuaRuntime \
 		$(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) $(IOS_LUA_A)
 	@cp ios/LuaRuntime/Info.plist $(HOST_BUNDLE)/Info.plist

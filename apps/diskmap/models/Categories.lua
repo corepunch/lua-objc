@@ -13,11 +13,12 @@ function Categories.rows(model, rootId, query)
 		local m = model.measurements[source.id] or {}
 		row.bytes, row.status = m.bytes, m.status or "notMeasured"
 		if not source:isLeaf() then
-			row.children = {}; local total, measured, complete, attempted, calculating, failed, excluded = 0, false, true, false, false, false, true
+			row.children = {}; local total, measured, complete, attempted, calculating, failed, excluded, unsupported = 0, false, true, false, false, false, true, true
 			for _, child in ipairs(source:getChildren()) do
 				local value, visible = build(child, matches)
 				if value.bytes then total = total + value.bytes; measured = true end
 				if value.status ~= "excluded" then excluded = false end
+				if value.status ~= "unsupported" then unsupported = false end
 				if value.status == "failed" then failed = true end
 				if value.status == "calculating" then calculating = true end
 				if value.status ~= "complete" then complete = false end
@@ -25,7 +26,9 @@ function Categories.rows(model, rootId, query)
 				if visible then table.insert(row.children, value) end
 			end
 			row.bytes = measured and total or nil
-			row.status = excluded and "excluded" or calculating and "calculating" or complete and "complete" or measured and "partial" or failed and "failed" or attempted and "denied" or "notMeasured"
+			-- A group of only system-managed resources (Backups holds just local
+			-- snapshots) is system managed, not restricted: nothing was denied.
+			row.status = excluded and "excluded" or unsupported and "unsupported" or calculating and "calculating" or complete and "complete" or measured and "partial" or failed and "failed" or attempted and "denied" or "notMeasured"
 			row.expanded = (source.id == "xcode" or source.id == "intelligence")
 			row.forceExpanded = needle ~= ""
 		end
