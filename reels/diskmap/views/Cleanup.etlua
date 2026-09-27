@@ -2,7 +2,7 @@
      checked, fly into the first card, and the payoff counter lands. -->
 <%
 local cleanup = captures:get("cleanup-dark")
-local width = cleanup:rows("list_rebuildable")[1].w
+local width = cleanup:row("list_rebuildable", 1).w
 local cards = { "rebuildableTile", "reviewTile", "checkedTile" }
 local menu = { x = 1134, y = 22 } -- where the check lands: the action menu of a row
 %>

@@ -4,7 +4,8 @@
 --   ./lua-objc reels/diskmap/init.lua render <out.mov> [from to]
 --
 -- The storyboard is views/Reel.etlua (scenes are partials), bespoke shots
--- are shots.lua, the music is Score.lua; captures/ comes from capture.sh.
+-- are shots.lua, the music is Score.lua; captures/ comes from the capture
+-- plan capture.lua.
 package.path = "modules/reel/?.lua;reels/diskmap/?.lua;" .. package.path
 local Reel = require("Reel")
 local Score = require("Score")
@@ -51,7 +52,7 @@ local music = {
 }
 
 local function load()
-	data.captures = Reel.captures(here .. "captures")
+	data.captures = Reel.captures(here .. "captures", "run make diskmap-reel-captures")
 	return Reel.load(here .. "views/Reel.etlua", data)
 end
 

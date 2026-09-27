@@ -12,6 +12,8 @@ local dump = file and file:read("*a") or ""
 if file then file:close() end
 os.remove(path)
 
+t.expect(dump:match('<Layout scale="%d+">') ~= nil,
+	"layout dump records the backing scale that --capture images use")
 t.expect(dump:find('<View class="NSSearchField"', 1, true) ~= nil,
 	"layout dump identifies native control classes")
 t.expect(dump:find('<View class="NSSearchField" frame="8 0 326 36"',

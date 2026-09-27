@@ -40,7 +40,7 @@ local rings = { {0, 56}, {56, 98}, {98, 142}, {142, 260} }
   <!-- Callouts: real list rows fly out of their own segment, rest, then
        home to their place in the growing window. -->
   <% for i, from in ipairs(callouts) do
-       local row = map:rows("mapList")[i]
+       local row = map:row("mapList", i)
        local pop = 5.5 + (i - 1) * 0.5
        local restX, restY = 140 + row.w * 1.55 / 2, 704 + (i - 1) * 78
        local homeX, homeY = row.x + row.w / 2 - sunX, row.y + row.h / 2 - sunY %>

@@ -41,15 +41,10 @@ function Reel.native()
 	return native
 end
 
--- captures(dir, scale): window captures made by the capture step.
-function Reel.captures(dir, scale)
-	return Captures.open(dir, Reel.native(), scale)
-end
-
--- Stores a `--screenshot` PNG and `--dump-layout` XML of one window as the
--- capture `<output>.jpg` + `<output>.layout.xml`.
-function Reel.importCapture(screenshot, dump, output, appearance, expected)
-	Captures.import(Reel.native(), screenshot, dump, output, appearance, expected)
+-- captures(dir, hint): window captures written by `lua-objc --capture` or a
+-- `--capture-plan`; `hint` tells the reader how to make missing ones.
+function Reel.captures(dir, hint)
+	return Captures.open(dir, Reel.native(), hint)
 end
 
 -- Values templates can use while rendering: the curves and the motion

@@ -1,11 +1,14 @@
 -- Window captures and the layout they were taken from.
 --
--- Each capture is `<name>.jpg`, a window-only screenshot at `scale` pixels
--- per point, and `<name>.layout.xml`, the `--dump-layout` of the same window
--- pruned to what a reel reads (see `Captures.pruneLayout`).
--- Pieces are cut by view identifier ("#treemap") or treemap cell
+-- Each capture is what `lua-objc --capture=<dir>/<name>` writes from one
+-- settled moment of an app window: `<name>.png`, the window's content view
+-- at backing scale, and `<name>.layout.xml`, its layout dump, whose `scale`
+-- attribute gives the image's pixels per point. Pieces are cut by view
+-- identifier ("#treemap"), table row ("#list/row/2") or treemap cell
 -- ("#treemap/developer") instead of hand-measured rectangles, so a layout
--- change in the app only needs fresh captures.
+-- change in the app only needs fresh captures. Anything a reel asks for that
+-- a capture lacks is an error, raised while the reel loads where possible,
+-- rather than a piece that silently never appears.
 local xml = require("ui.xml")
 
 local Captures = {}
@@ -14,15 +17,32 @@ Captures.__index = Captures
 local Capture = {}
 Capture.__index = Capture
 
--- open(dir, native, scale)
-function Captures.open(dir, native, scale)
-	return setmetatable({ dir = dir, native = native, scale = scale or 2, loaded = {} }, Captures)
+-- open(dir, native, hint): `hint` says how to make missing captures; by
+-- default a `lua-objc --capture` command.
+function Captures.open(dir, native, hint)
+	return setmetatable({ dir = dir, native = native, hint = hint, loaded = {} }, Captures)
 end
 
+local function exists(path)
+	local file = io.open(path, "r")
+	if file then file:close() end
+	return file ~= nil
+end
+
+-- get(name) -> a capture; both of its files must exist.
 function Captures:get(name)
 	local capture = self.loaded[name]
 	if not capture then
-		capture = setmetatable({ name = name, set = self, pieces = {} }, Capture)
+		local base = self.dir .. "/" .. name
+		local missing = {}
+		for _, path in ipairs({ base .. ".png", base .. ".layout.xml" }) do
+			if not exists(path) then table.insert(missing, path) end
+		end
+		if #missing > 0 then
+			error("reel: capture " .. name .. " is missing " .. table.concat(missing, " and ")
+				.. " (" .. (self.hint or ("write it with lua-objc --capture=" .. base)) .. ")", 0)
+		end
+		capture = setmetatable({ name = name, set = self, base = base, pieces = {} }, Capture)
 		self.loaded[name] = capture
 	end
 	return capture
@@ -38,33 +58,37 @@ local function rect(value)
 	return { x = number(x), y = number(y), w = number(w), h = number(h) }
 end
 
--- Indexes identified views and treemap cells by the dump's window frames.
+-- Reads the root size, the scale, identified views, and the table rows and
+-- treemap cells owned by the nearest identified view, in document order.
 local function readLayout(path)
-	local file = io.open(path, "r")
-	if not file then error("reel: no layout dump " .. path .. " (run the capture step)", 0) end
+	local file = assert(io.open(path, "r"))
 	local source = file:read("a")
 	file:close()
-	local views, cells, rows = {}, {}, {}
+	local layout = { views = {}, cells = {}, rows = {} }
 	local function walk(nodes, owner)
 		for _, node in ipairs(nodes) do
 			if node.kind == "element" then
 				local attrs = node.attrs
-				if node.tag == "View" then
+				if node.tag == "Layout" then
+					layout.scale = tonumber(attrs.scale)
+					walk(node.children, owner)
+				elseif node.tag == "View" then
 					local frame = rect(attrs.window)
+					layout.root = layout.root or frame
 					local id = attrs.identifier
-					if id and not views[id] then views[id] = frame end
+					if id and not layout.views[id] then layout.views[id] = frame end
 					-- Table rows belong to the nearest identified view (the
 					-- scroll view of a <List>), in display order.
 					if attrs.class == "NSTableRowView" and owner then
-						rows[owner] = rows[owner] or {}
-						table.insert(rows[owner], frame)
+						layout.rows[owner] = layout.rows[owner] or {}
+						table.insert(layout.rows[owner], frame)
 					end
 					walk(node.children, id or owner)
 				elseif node.tag == "TreemapCell" and owner then
-					cells[owner] = cells[owner] or {}
+					layout.cells[owner] = layout.cells[owner] or {}
 					local cell = rect(attrs.window)
 					cell.id, cell.depth, cell.label = attrs.id, number(attrs.depth), attrs.label
-					table.insert(cells[owner], cell)
+					table.insert(layout.cells[owner], cell)
 				else
 					walk(node.children, owner)
 				end
@@ -72,105 +96,75 @@ local function readLayout(path)
 		end
 	end
 	walk(xml.parse(source), nil)
-	return views, cells, rows
-end
-
-local function escape(value)
-	return (tostring(value):gsub("&", "&amp;"):gsub('"', "&quot;"):gsub("<", "&lt;")
-		:gsub(">", "&gt;"):gsub("\n", "&#10;"))
-end
-
--- Only these attributes are read back, in this order.
-local keptAttributes = {
-	View = { "class", "identifier", "window" },
-	TreemapCell = { "id", "depth", "window", "label" },
-}
-
--- pruneLayout(source) -> a `--dump-layout` reduced to what readLayout uses:
--- identified views, and the table rows and treemap cells owned by the
--- nearest identified view. A full window dump is mostly anonymous AppKit
--- wrappers; dropping them (their children move up to the nearest kept view)
--- keeps ownership and document order, so both read the same.
-function Captures.pruneLayout(source)
-	local function prune(nodes, owner, kept)
-		for _, node in ipairs(nodes) do
-			if node.kind == "element" then
-				local attrs = node.attrs
-				if node.tag == "View" then
-					local id = attrs.identifier
-					if id or (owner and attrs.class == "NSTableRowView") then
-						local view = { tag = "View", attrs = attrs, children = {} }
-						table.insert(kept, view)
-						prune(node.children, id or owner, view.children)
-					else
-						prune(node.children, owner, kept)
-					end
-				elseif node.tag == "TreemapCell" then
-					if owner then table.insert(kept, { tag = "TreemapCell", attrs = attrs, children = {} }) end
-				else
-					prune(node.children, owner, kept)
-				end
-			end
-		end
-		return kept
+	if not layout.scale or not layout.root then
+		error("reel: " .. path .. " is not a lua-objc --capture layout (no scale or root view)", 0)
 	end
-	local lines = { '<?xml version="1.0" encoding="UTF-8"?>', "<Layout>" }
-	local function write(nodes, depth)
-		for _, node in ipairs(nodes) do
-			local parts = { string.rep("  ", depth) .. "<" .. node.tag }
-			for _, name in ipairs(keptAttributes[node.tag]) do
-				local value = node.attrs[name]
-				if value then table.insert(parts, name .. '="' .. escape(value) .. '"') end
-			end
-			local open = table.concat(parts, " ")
-			if #node.children == 0 then
-				table.insert(lines, open .. " />")
-			else
-				table.insert(lines, open .. ">")
-				write(node.children, depth + 1)
-				table.insert(lines, string.rep("  ", depth) .. "</" .. node.tag .. ">")
-			end
-		end
-	end
-	write(prune(xml.parse(source), nil, {}), 1)
-	table.insert(lines, "</Layout>")
-	return table.concat(lines, "\n") .. "\n"
+	return layout
 end
 
+function Capture:layout()
+	self.parsed = self.parsed or readLayout(self.base .. ".layout.xml")
+	return self.parsed
+end
+
+-- The image must be the layout's root at the layout's scale, or every cut
+-- would land in the wrong place.
 function Capture:image()
 	if not self.pixels then
-		self.pixels = self.set.native.image(self.set.dir .. "/" .. self.name .. ".jpg", self.set.scale)
-		self.width, self.height = self.pixels:size()
+		local layout = self:layout()
+		local pixels = self.set.native.image(self.base .. ".png", layout.scale)
+		local pw, ph = pixels:pixelSize()
+		local ew, eh = math.floor(layout.root.w * layout.scale + 0.5), math.floor(layout.root.h * layout.scale + 0.5)
+		if pw ~= ew or ph ~= eh then
+			error(string.format("reel: %s.png is %dx%d px but its layout expects %dx%d px", self.base, pw, ph, ew, eh), 0)
+		end
+		self.pixels = pixels
 	end
 	return self.pixels
 end
 
+-- size() -> the window's width and height in points.
 function Capture:size()
-	self:image()
-	return self.width, self.height
+	local root = self:layout().root
+	return root.w, root.h
 end
 
-function Capture:layout()
-	if not self.viewFrames then
-		self.viewFrames, self.cellFrames, self.rowFrames = readLayout(self.set.dir .. "/" .. self.name .. ".layout.xml")
-	end
-	return self.viewFrames, self.cellFrames, self.rowFrames
+local function view(capture, viewId)
+	local frame = capture:layout().views[viewId]
+	if not frame then error("reel: " .. capture.name .. " has no view #" .. tostring(viewId), 0) end
+	return frame
 end
 
--- cells(viewId, depth) -> the treemap cells of a view, optionally one depth.
+-- An unknown view, or one with no cells (at that depth), is an error.
 function Capture:cells(viewId, depth)
-	local _, cells = self:layout()
+	view(self, viewId)
 	local list = {}
-	for _, cell in ipairs(cells[viewId] or {}) do
+	for _, cell in ipairs(self:layout().cells[viewId] or {}) do
 		if depth == nil or cell.depth == depth then table.insert(list, cell) end
+	end
+	if #list == 0 then
+		error("reel: " .. self.name .. " has no treemap cells in #" .. viewId
+			.. (depth and (" at depth " .. depth) or ""), 0)
 	end
 	return list
 end
 
--- rows(viewId) -> the table row frames under an identified view.
+-- rows(viewId) -> the table row frames under an identified view; an unknown
+-- view or one with no rows is an error.
 function Capture:rows(viewId)
-	local _, _, rows = self:layout()
-	return rows[viewId] or {}
+	view(self, viewId)
+	local rows = self:layout().rows[viewId]
+	if not rows then error("reel: " .. self.name .. " has no table rows in #" .. viewId, 0) end
+	return rows
+end
+
+-- row(viewId, n) -> the Nth row frame; a missing row is an error.
+function Capture:row(viewId, n)
+	local row = self:rows(viewId)[n]
+	if not row then
+		error(string.format("reel: %s has no row %s in #%s (%d rows)", self.name, tostring(n), viewId, #self:rows(viewId)), 0)
+	end
+	return row
 end
 
 -- rect(spec) -> x, y, w, h in window points. `spec` is "#view",
@@ -183,8 +177,7 @@ function Capture:rect(spec)
 	end
 	local rowView, rowIndex = spec:match("^#([^/]+)/row/(%d+)$")
 	if rowView then
-		local row = self:rows(rowView)[tonumber(rowIndex)]
-		if not row then error("reel: " .. self.name .. " has no " .. spec, 0) end
+		local row = self:row(rowView, tonumber(rowIndex))
 		return row.x, row.y, row.w, row.h
 	end
 	local viewId, cellId = spec:match("^#([^/]+)/(.+)$")
@@ -196,9 +189,7 @@ function Capture:rect(spec)
 	end
 	viewId = spec:match("^#(.+)$")
 	if viewId then
-		local views = self:layout()
-		local frame = views[viewId]
-		if not frame then error("reel: " .. self.name .. " has no view " .. spec, 0) end
+		local frame = view(self, viewId)
 		return frame.x, frame.y, frame.w, frame.h
 	end
 	local x, y, w, h = spec:match("^%s*([%d.%-]+)%s*,%s*([%d.%-]+)%s*,%s*([%d.%-]+)%s*,%s*([%d.%-]+)%s*$")
@@ -231,10 +222,11 @@ function Capture:piece(spec, options)
 	local image = self:image()
 	-- Crops land on whole pixels; keep the sprite's point size in step with
 	-- the pixels it actually holds so it never stretches.
-	local scale = self.set.scale
+	local scale = self:layout().scale
 	local px, py = math.floor(x * scale + 0.5), math.floor(y * scale + 0.5)
 	local pw, ph = math.floor((x + w) * scale + 0.5) - px, math.floor((y + h) * scale + 0.5) - py
-	local piece = (px == 0 and py == 0 and pw == self.width * scale and ph == self.height * scale)
+	local iw, ih = image:pixelSize()
+	local piece = (px == 0 and py == 0 and pw == iw and ph == ih)
 		and image or image:cropPixels(px, py, pw, ph, scale)
 	if options.key then
 		local r, g, b = self:sample(options.key[1], options.key[2])
@@ -245,29 +237,6 @@ function Capture:piece(spec, options)
 	sprite = { image = piece, x = px / scale, y = py / scale, w = pw / scale, h = ph / scale }
 	self.pieces[key] = sprite
 	return sprite
-end
-
--- import(native, screenshot, dump, output, appearance, expected) stores one
--- capture as `<output>.jpg` and `<output>.layout.xml`. The `--screenshot` PNG
--- (window plus shadow) becomes a window-only JPEG: the opaque window
--- rectangle, its rounded corners flattened onto a neutral colour for the
--- appearance (the renderer clips them again). The `--dump-layout` is pruned.
-function Captures.import(native, screenshot, dump, output, appearance, expected)
-	local image = native.image(screenshot, 1)
-	local x, y, w, h = image:opaqueBounds(250 / 255)
-	if not x then error("reel: " .. screenshot .. " has no opaque window", 0) end
-	if expected and (w ~= expected[1] or h ~= expected[2]) then
-		error(string.format("reel: %s: expected a %dx%d px window, found %dx%d", screenshot, expected[1], expected[2], w, h), 0)
-	end
-	local file = io.open(dump, "r")
-	if not file then error("reel: no layout dump " .. dump, 0) end
-	local layout = Captures.pruneLayout(file:read("a"))
-	file:close()
-	local neutral = appearance == "dark" and 0.12 or 0.93
-	image:cropPixels(x, y, w, h):flattened(neutral, neutral, neutral, 1):write(output .. ".jpg", 0.82)
-	file = assert(io.open(output .. ".layout.xml", "w"))
-	file:write(layout)
-	file:close()
 end
 
 return Captures

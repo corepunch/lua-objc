@@ -506,6 +506,9 @@ int lua_objc_main(int argc, char *argv[]) {
 	const char *preview_out = NULL;
 	const char *layout_out = NULL;
 	const char *screenshot_out = NULL;
+	const char *capture_out = NULL;
+	const char *capture_plan = NULL;
+	int app_ref = LUA_NOREF;
 	const char *internal_screenshot_out = NULL;
 	const char *script_args[256];
 	int script_arg_count = 0;
@@ -525,6 +528,10 @@ int lua_objc_main(int argc, char *argv[]) {
 			layout_out = argv[i] + 14;
 		} else if (strncmp(argv[i], "--screenshot=", 13) == 0) {
 			screenshot_out = argv[i] + 13;
+		} else if (strncmp(argv[i], "--capture=", 10) == 0) {
+			capture_out = argv[i] + 10;
+		} else if (strncmp(argv[i], "--capture-plan=", 15) == 0) {
+			capture_plan = argv[i] + 15;
 		} else if (strncmp(argv[i], "--internal-screenshot=", 22) == 0) {
 			internal_screenshot_out = argv[i] + 22;
 		} else if (strncmp(argv[i], "--appearance=", 13) == 0) {
@@ -750,7 +757,7 @@ int lua_objc_main(int argc, char *argv[]) {
 						 * whole window tree before AppKit has a chance to display it.
 						 */
 						lua_pushvalue(L, -2);
-						luaL_ref(L, LUA_REGISTRYINDEX);
+						app_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 						lua_pushvalue(L, -1);
 						luaL_ref(L, LUA_REGISTRYINDEX);
 					}
@@ -795,7 +802,8 @@ int lua_objc_main(int argc, char *argv[]) {
 
 	/* Resize before the settling interval, so WindowServer and native container
 	 * layout commit the requested geometry before either capture path runs. */
-	if ((screenshot_out || internal_screenshot_out) && (layout_width_set || layout_height_set)) {
+	if ((screenshot_out || internal_screenshot_out || capture_out || capture_plan)
+		&& (layout_width_set || layout_height_set)) {
 		NSWindow *window = lua_objc_app_window();
 		NSSize size = window.contentView.bounds.size;
 		if (layout_width_set) size.width = preview_width;
@@ -803,7 +811,36 @@ int lua_objc_main(int argc, char *argv[]) {
 		[window setContentSize:size];
 	}
 
-	if (internal_screenshot_out) {
+	if (capture_plan) {
+		/* One launch, many captures: ui/capture.lua runs the plan against the
+		 * app instance and its window once the launch has settled, and exits
+		 * when the plan finishes. */
+		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)),
+			dispatch_get_main_queue(), ^{
+			lua_getglobal(L, "require");
+			lua_pushstring(L, "ui.capture");
+			if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
+				report_lua_error(L, "capture plan");
+				exit(EXIT_FAILURE);
+			}
+			lua_getfield(L, -1, "run");
+			lua_pushstring(L, capture_plan);
+			lua_rawgeti(L, LUA_REGISTRYINDEX, app_ref);
+			push_objc(L, lua_objc_app_window(), "nsobject");
+			if (lua_pcall(L, 3, 0, 0) != LUA_OK) {
+				report_lua_error(L, "capture plan");
+				exit(EXIT_FAILURE);
+			}
+			lua_settop(L, 0);
+		});
+	} else if (capture_out) {
+		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)),
+			dispatch_get_main_queue(), ^{
+			BOOL captured = write_window_capture(lua_objc_app_window(), capture_out);
+			if (!captured) fprintf(stderr, "capture: cannot write %s\n", capture_out);
+			exit(captured ? EXIT_SUCCESS : EXIT_FAILURE);
+		});
+	} else if (internal_screenshot_out) {
 		NSString *screenshotPath = [NSString stringWithUTF8String:internal_screenshot_out];
 		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)),
 			dispatch_get_main_queue(), ^{

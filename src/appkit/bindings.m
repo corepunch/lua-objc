@@ -91,6 +91,7 @@ static int bridge_NSWindow_isFirstResponder_impl(lua_State *L);
 static int bridge_NSWindow_workspaceState_impl(lua_State *L);
 static int bridge_NSWindow_show_impl(lua_State *L);
 static int bridge_NSWindow_presentPanel_impl(lua_State *L);
+static BOOL write_window_capture(NSWindow *window, const char *prefix);
 static int bridge_NSView_renderToPNG_impl(lua_State *L);
 static int bridge_NSView_clearContainer_impl(lua_State *L);
 static int bridge_NSView_splitProportions_impl(lua_State *L);
@@ -403,6 +404,15 @@ static int bridge_NSWindow_addTabbedWindow(lua_State *L) {
 	return bridge_NSWindow_addTabbedWindow_impl(L);
 }
 
+/* window:capture(prefix) writes <prefix>.png and <prefix>.layout.xml, like
+ * --capture, so a --capture-plan can capture several states in one run. */
+static int bridge_NSWindow_capture(lua_State *L) {
+	NSWindow *window = (NSWindow *)lua_objc_check_object(L, 1, [NSWindow class], "Window");
+	const char *prefix = luaL_checkstring(L, 2);
+	if (!write_window_capture(window, prefix)) return luaL_error(L, "capture: cannot write %s", prefix);
+	return 0;
+}
+
 static int bridge_NSWindow_tabCount(lua_State *L) {
 	id _obj = lua_objc_check_object(L, 1, [NSWindow class], "Window");
 	NSWindow *self = (NSWindow *)_obj;
@@ -654,6 +664,7 @@ static MethodEntry TabViewMethods[] = {
 
 static MethodEntry WindowMethods[] = {
 	{"addTabbedWindow",	bridge_NSWindow_addTabbedWindow},
+	{"capture",	bridge_NSWindow_capture},
 	{"tabCount",	bridge_NSWindow_tabCount},
 	{"toggleSidebar",	bridge_NSWindow_toggleSidebar},
 	{"toggleDetail",	bridge_NSWindow_toggleDetail},

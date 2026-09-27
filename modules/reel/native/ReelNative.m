@@ -174,33 +174,6 @@ static int reel_image_downsampled(lua_State *L) {
 	return 1;
 }
 
-// opaqueBounds(threshold) -> x, y, w, h in pixels (top-left) of the pixels
-// whose alpha exceeds `threshold` (0...1); nil when there are none. A
-// `--screenshot` includes the window shadow, and this finds the window.
-static int reel_image_opaque_bounds(lua_State *L) {
-	ReelImage *image = reel_check_image(L, 1);
-	uint8_t threshold = (uint8_t)(luaL_optnumber(L, 2, 250.0 / 255) * 255);
-	CGContextRef context = reel_image_bitmap(image->image);
-	const uint8_t *p = CGBitmapContextGetData(context);
-	size_t width = CGBitmapContextGetWidth(context), height = CGBitmapContextGetHeight(context);
-	size_t minX = width, minY = height, maxX = 0, maxY = 0;
-	// Bitmap memory is top row first, so these are top-left pixel coordinates.
-	for (size_t y = 0; y < height; y++) {
-		for (size_t x = 0; x < width; x++) {
-			if (p[(y * width + x) * 4 + 3] <= threshold) continue;
-			minX = MIN(minX, x); maxX = MAX(maxX, x);
-			minY = MIN(minY, y); maxY = MAX(maxY, y);
-		}
-	}
-	CGContextRelease(context);
-	if (minX > maxX) { lua_pushnil(L); return 1; }
-	lua_pushinteger(L, (lua_Integer)minX);
-	lua_pushinteger(L, (lua_Integer)minY);
-	lua_pushinteger(L, (lua_Integer)(maxX - minX + 1));
-	lua_pushinteger(L, (lua_Integer)(maxY - minY + 1));
-	return 4;
-}
-
 // cropPixels(x, y, w, h, scale): a piece in pixels, carrying a new scale.
 static int reel_image_crop_pixels(lua_State *L) {
 	ReelImage *image = reel_check_image(L, 1);
@@ -209,21 +182,6 @@ static int reel_image_crop_pixels(lua_State *L) {
 	CGImageRef cropped = CGImageCreateWithImageInRect(image->image, rect);
 	if (!cropped) return luaL_error(L, "crop is outside the image");
 	reel_push_image(L, cropped, luaL_optnumber(L, 6, image->scale));
-	return 1;
-}
-
-// flattened(r, g, b): an opaque copy over a solid colour.
-static int reel_image_flattened(lua_State *L) {
-	ReelImage *image = reel_check_image(L, 1);
-	CGColorRef color = reel_color(L, 2);
-	size_t width = CGImageGetWidth(image->image), height = CGImageGetHeight(image->image);
-	CGContextRef context = reel_bitmap(width, height, NULL, width * 4);
-	CGContextSetFillColorWithColor(context, color);
-	CGContextFillRect(context, CGRectMake(0, 0, width, height));
-	CGContextDrawImage(context, CGRectMake(0, 0, width, height), image->image);
-	CGColorRelease(color);
-	reel_push_image(L, CGBitmapContextCreateImage(context), image->scale);
-	CGContextRelease(context);
 	return 1;
 }
 
@@ -1051,8 +1009,7 @@ int luaopen_ReelNative(lua_State *L) {
 	static const luaL_Reg imageMethods[] = {
 		{"size", reel_image_size}, {"pixelSize", reel_image_pixel_size}, {"crop", reel_image_crop},
 		{"cropPixels", reel_image_crop_pixels}, {"pixel", reel_image_pixel}, {"keyed", reel_image_keyed},
-		{"downsampled", reel_image_downsampled}, {"opaqueBounds", reel_image_opaque_bounds},
-		{"flattened", reel_image_flattened}, {"write", reel_image_write}, {NULL, NULL}};
+		{"downsampled", reel_image_downsampled}, {"write", reel_image_write}, {NULL, NULL}};
 	static const luaL_Reg pathMethods[] = {
 		{"moveTo", reel_path_move}, {"lineTo", reel_path_line}, {"curveTo", reel_path_curve},
 		{"close", reel_path_close}, {"rect", reel_path_rect}, {"roundedRect", reel_path_rounded},

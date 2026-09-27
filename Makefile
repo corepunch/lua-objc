@@ -283,11 +283,16 @@ diskmap-app: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	python3 scripts/diskmap/bundle.py
 
 # Diskmap showreel (reels/diskmap, rendered with modules/reel): `make
-# diskmap-reel` renders build/Diskmap-Showreel.mov from the committed
-# captures; `make diskmap-reel-captures` refreshes them after a UI change.
+# diskmap-reel` renders build/Diskmap-Showreel.mov, first capturing the pages
+# when reels/diskmap/captures is empty (generated, not committed). Capturing
+# runs reels/diskmap/capture.lua in one Diskmap launch, which opens its
+# window; `make diskmap-reel-captures` recaptures after a UI change.
+DISKMAP_CAPTURE = ./$(TARGET) --capture-plan=reels/diskmap/capture.lua --width=1440 --height=900 \
+	apps/diskmap/init.lua --showcase
 .PHONY: diskmap-reel diskmap-reel-captures
 diskmap-reel: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
+	@ls reels/diskmap/captures/*.png >/dev/null 2>&1 || $(DISKMAP_CAPTURE)
 	./$(TARGET) reels/diskmap/init.lua render build/Diskmap-Showreel.mov
 
 diskmap-reel-captures: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
-	reels/diskmap/capture.sh
+	$(DISKMAP_CAPTURE)

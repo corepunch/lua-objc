@@ -70,13 +70,23 @@ Elements.Cue = {
 	end,
 }
 
--- <Draw with="dive"/>: a bespoke shot, `shots.dive(pen, t, node)` from the
--- reel data, drawn in the node's units with its transform and motion.
+-- <Draw with="dive"/>: a bespoke shot from the reel data, drawn in the
+-- node's units with its transform and motion. A shot is a function
+-- `shots.dive(pen, t, node)`, or a table `{ setup = fn(node, context),
+-- draw = fn(pen, t, node) }` whose setup runs while the reel loads: it
+-- resolves captures and pieces up front, so a missing one fails the load
+-- instead of a render minutes in.
 Elements.Draw = {
 	setup = function(node, context)
 		local name = node.attrs.with or node:fail("needs with=\"shot\"")
-		node.shot = context.shots[name] or node:fail("no shot named " .. name .. " in data.shots")
+		local shot = context.shots[name] or node:fail("no shot named " .. name .. " in data.shots")
 		resolveCapture(node, context)
+		if type(shot) == "table" then
+			node.shot = shot.draw or node:fail("shot " .. name .. " needs a draw function")
+			if shot.setup then shot.setup(node, context) end
+		else
+			node.shot = shot
+		end
 	end,
 	paint = function(node, rc, t)
 		node.shot(rc.pen, t, node)
@@ -175,6 +185,9 @@ Elements.Piece = {
 			for n in node.attrs.part:gmatch("[^,%s]+") do table.insert(part, tonumber(n) or node:fail("bad part")) end
 			if #part ~= 4 then node:fail("part must be \"x, y, w, h\"") end
 		end
+		-- Resolve the rect now so a missing view fails the load; the pixels
+		-- are cut on first use.
+		node:capture():rect(node.attrs.rect)
 		node.sprite = function()
 			local sprite = node:capture():piece(node.attrs.rect,
 				{ outset = tonumber(node.attrs.outset), key = key and { tonumber(key[1]), tonumber(key[2]) }, part = part })
@@ -199,6 +212,10 @@ Elements.Piece = {
 Elements.Fill = {
 	setup = function(node, context)
 		resolveCapture(node, context)
+		if node.attrs.rect then
+			if not node:capture() then node:fail("rect=\"" .. node.attrs.rect .. "\" needs a capture") end
+			node:capture():rect(node.attrs.rect)
+		end
 		node.fill = node:color("color") or node:fail("needs a color")
 		node.outset = node:number("outset", 0)
 	end,

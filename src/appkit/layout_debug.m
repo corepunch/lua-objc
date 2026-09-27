@@ -186,16 +186,68 @@ static void append_layout_view(NSMutableString *out, NSView *view,
 	[out appendFormat:@"%@</View>\n", layout_indent(depth)];
 }
 
+/* `scale` is the window's backing scale: pixels per point in a capture of
+ * the same window (see write_window_capture). */
 static BOOL write_layout_debug_dump(NSWindow *window, const char *path) {
 	if (!window || !path) return NO;
 	NSView *root = window.contentView;
 	layout_recursive(root, root.bounds.size.width);
 	[root layoutSubtreeIfNeeded];
 	[root displayIfNeeded];
-	NSMutableString *out = [NSMutableString stringWithString:
-		@"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Layout>\n"];
+	NSMutableString *out = [NSMutableString stringWithFormat:
+		@"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Layout scale=\"%@\">\n",
+		layout_number(window.backingScaleFactor)];
 	append_layout_view(out, root, root, 1);
 	[out appendString:@"</Layout>\n"];
 	return [out writeToFile:[NSString stringWithUTF8String:path]
 		atomically:YES encoding:NSUTF8StringEncoding error:nil];
+}
+
+/* --capture=<prefix>: one settled moment of a window, for tools that cut its
+ * pixels by view (such as modules/reel). <prefix>.layout.xml is the layout
+ * dump and <prefix>.png is exactly the dump's root, the content view, at
+ * backing scale, so a dump rect times `scale` is a pixel rect. WindowServer
+ * does the capture because it composites materials and vibrancy that
+ * offscreen view rendering drops; `-o` leaves out the window shadow, and
+ * the image is cropped to the content view for windows with a separate
+ * title bar. The corners stay transparent where the window is rounded. */
+static BOOL write_window_capture(NSWindow *window, const char *prefix) {
+	if (!window || !prefix) return NO;
+	NSString *base = [NSString stringWithUTF8String:prefix];
+	NSString *layoutPath = [base stringByAppendingString:@".layout.xml"];
+	NSString *imagePath = [base stringByAppendingString:@".png"];
+	[[NSFileManager defaultManager] createDirectoryAtPath:base.stringByDeletingLastPathComponent
+		withIntermediateDirectories:YES attributes:nil error:nil];
+	if (!write_layout_debug_dump(window, layoutPath.fileSystemRepresentation)) return NO;
+	[window display];
+	NSString *shot = [NSTemporaryDirectory() stringByAppendingPathComponent:
+		[NSUUID.UUID.UUIDString stringByAppendingString:@".png"]];
+	NSTask *task = [[NSTask alloc] init];
+	task.executableURL = [NSURL fileURLWithPath:@"/usr/sbin/screencapture"];
+	task.arguments = @[@"-x", @"-o", @"-l", @(window.windowNumber).stringValue, shot];
+	if (![task launchAndReturnError:nil]) return NO;
+	[task waitUntilExit];
+	NSData *data = task.terminationStatus == 0 ? [NSData dataWithContentsOfFile:shot] : nil;
+	[[NSFileManager defaultManager] removeItemAtPath:shot error:nil];
+	NSBitmapImageRep *full = data ? [NSBitmapImageRep imageRepWithData:data] : nil;
+	if (!full.CGImage) return NO;
+	CGFloat scale = window.backingScaleFactor;
+	NSSize frameSize = window.frame.size;
+	if (full.pixelsWide != (NSInteger)llround(frameSize.width * scale)
+		|| full.pixelsHigh != (NSInteger)llround(frameSize.height * scale)) {
+		fprintf(stderr, "capture: window image is %ldx%ld px, expected %.0fx%.0f\n",
+			(long)full.pixelsWide, (long)full.pixelsHigh,
+			frameSize.width * scale, frameSize.height * scale);
+		return NO;
+	}
+	NSRect content = [window.contentView convertRect:window.contentView.bounds toView:nil];
+	CGRect crop = CGRectMake(llround(NSMinX(content) * scale),
+		llround((frameSize.height - NSMaxY(content)) * scale),
+		llround(NSWidth(content) * scale), llround(NSHeight(content) * scale));
+	CGImageRef cropped = CGImageCreateWithImageInRect(full.CGImage, crop);
+	if (!cropped) return NO;
+	NSBitmapImageRep *rep = [[NSBitmapImageRep alloc] initWithCGImage:cropped];
+	CGImageRelease(cropped);
+	NSData *png = [rep representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
+	return [png writeToFile:imagePath atomically:YES];
 }

@@ -32,7 +32,6 @@ must render any instant exactly and repeatably.
 | Window captures cut by identifier, table row or treemap cell | `reel/captures.lua` |
 | Offline mix: buses, sidechain, reverb, master | `reel/audio.lua` |
 | Synth voices: pad, pluck, bass, drums, risers, whooshes, pops, bells | `reel/instruments.lua` |
-| `--screenshot` + `--dump-layout` → capture (JPEG, pruned layout) | `tools/import.lua` |
 | Tests | `tests/reel.test.lua` |
 
 `reels/diskmap/` is the reference reel: a 30 s, 1080p piece in 11 scene
@@ -43,7 +42,7 @@ templates, one bespoke shot and a score.
 ```sh
 ./lua-objc reels/diskmap/init.lua stills /tmp 8.3,8.9,9.4
 ./lua-objc reels/diskmap/init.lua render build/Diskmap-Showreel.mov
-reels/diskmap/capture.sh            # refresh captures after a UI change
+make diskmap-reel-captures          # refresh captures after a UI change
 ```
 
 ```lua
@@ -130,16 +129,22 @@ only when given one; `sound = false` silences a duplicate.
 
 ## Bespoke shots
 
-A shot is `shots.name(pen, t, node)`. The pen draws in the node's units and
-tracks opacity and on-screen scale, so shadows and glints keep their screen
-size:
+A shot is `shots.name(pen, t, node)`, or `{ setup = fn(node, context),
+draw = fn(pen, t, node) }` when it uses captures: `setup` runs while the reel
+loads, so a missing capture or view fails the load instead of a render
+minutes in. The pen draws in the node's units and tracks opacity and
+on-screen scale, so shadows and glints keep their screen size:
 
 ```lua
-function shots.wall(pen, t, node)
-	local captures = node.context.captures
-	for i, name in ipairs(node.context.data.wallPages) do
+shots.wall = {}
+function shots.wall.setup(node, context)
+	node.pages = {}
+	for i, name in ipairs(context.data.wallPages) do node.pages[i] = context.captures:get(name) end
+end
+function shots.wall.draw(pen, t, node)
+	for i, page in ipairs(node.pages) do
 		pen:place({ x = …, y = …, scale = …, rotation = …, alpha = …, anchor = { 720, 450 } }, function()
-			pen:sprite(captures:get(name):piece("window", { downsample = 0.3 }), { radius = 24, shadow = 0.8 })
+			pen:sprite(page:piece("window", { downsample = 0.3 }), { radius = 24, shadow = 0.8 })
 		end)
 	end
 end
@@ -164,16 +169,19 @@ musical data, then `mix:master{kicks, gain}` returns two sample arrays for
 
 ## Captures
 
-`Reel.captures(dir)` reads `<name>.jpg` (a 2× window-only capture) and
-`<name>.layout.xml` (the `--dump-layout` of the same window). The layout
-gives each view's `window` rectangle (`"x y width height"` in top-left window
-points) and lists treemap cells; table rows belong to their nearest
-identified view. Pieces are cut by identifier and survive layout changes
-after a fresh capture.
+`Reel.captures(dir, hint)` reads what `lua-objc --capture=<dir>/<name>`, or
+`capture.shot` in a `--capture-plan`, writes: `<name>.png`, the window's
+content at backing scale, and `<name>.layout.xml`, its layout dump. The
+layout's `scale` maps points to pixels; each view's `window` rectangle is
+`"x y width height"` in top-left window points; treemap cells are listed and
+table rows belong to their nearest identified view. Pieces are cut by
+identifier and survive layout changes after a fresh capture. Captures are
+generated, so reels keep them out of git.
 
-`tools/import.lua` (`Reel.importCapture`) stores a capture from a
-`--screenshot` PNG and a `--dump-layout` XML. It prunes the layout to what
-reels read: identified views, the rows and treemap cells they own, and only
-`class`, `identifier`, `window` and the cell fields. A full window dump is
-mostly anonymous AppKit wrappers, about 20× larger. A raw dump still reads
-the same, so it works for experiments.
+Anything a reel expects and a capture lacks is an error naming it, raised
+while the reel loads wherever the template or a shot's `setup` asks for it: a
+missing capture file (with `hint` saying how to make it), an unknown view,
+row or treemap cell, a view with no rows or cells, a layout without a scale,
+or an image that is not the layout's root at that scale. `row(view, n)`,
+`rows(view)`, `cells(view, depth)` and `rect(spec)` never return an empty
+answer.

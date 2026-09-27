@@ -2,7 +2,7 @@
      rest leave while Xcode DerivedData lifts and lands in Clean Up. -->
 <%
 local largest = captures:get("largest-dark")
-local width = largest:rows("largest")[1].w
+local width = largest:row("largest", 1).w
 local bar = { x = 923, y = 15, w = 60, h = 16 } -- the size bar inside a row
 %>
 <Scene from="9.95" to="12.4">

@@ -82,15 +82,24 @@ function Controller:presentation()
 		accessibilityLabel = "Storage map of " .. trail[#trail].name .. ", " .. #nodes .. " areas"}
 end
 
+-- setStyle("rings" | "rectangles"), as the chart's segmented control does.
+function Controller:setStyle(style)
+	for _, known in ipairs(STYLES) do
+		if known == style then
+			self.style = style
+			if self.state then self:update(self.state) end
+			return
+		end
+	end
+	error("unknown map style " .. tostring(style), 2)
+end
+
 function Controller:update(state)
 	if not self.template then return end
 	self.state = state
 	local data = self:presentation()
 	local actions = {
-		style = function(index)
-			self.style = STYLES[(index or 0) + 1] or STYLES[1]
-			self:update(self.state)
-		end,
+		style = function(index) self:setStyle(STYLES[(index or 0) + 1]) end,
 		chartSelect = function(id, count) if count and count > 1 then self:activate(id) elseif isGroup(self.model, id) then self:setFocus(id) else self:describe(id) end end,
 		chartHover = function(id) self:describe(id) end,
 		up = function() self:up() end,
