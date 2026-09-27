@@ -24,6 +24,9 @@ local function savedSnapshot()
 end
 
 function Provider.select(arguments)
+	for _, argument in ipairs(arguments or {}) do
+		if argument == "--showcase" then return require("apps.diskmap.services.Mock").new({showcase = true}) end
+	end
 	local fixturePath = argumentValue(arguments, "--mock-file") or argumentValue(arguments, "-mock-file")
 	if fixturePath then return require("apps.diskmap.services.Mock").new({fixturePath = fixturePath}) end
 	for _, argument in ipairs(arguments or {}) do
@@ -38,6 +41,11 @@ end
 -- walkthroughs can start on any page.
 function Provider.page(arguments)
 	return argumentValue(arguments, "--page")
+end
+
+-- `--map-style=rectangles` opens the Map as a treemap.
+function Provider.mapStyle(arguments)
+	return argumentValue(arguments, "--map-style")
 end
 
 function Provider.exportPath(arguments)

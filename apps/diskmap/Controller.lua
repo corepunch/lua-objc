@@ -50,7 +50,8 @@ local function optional(service, name)
 end
 function Controller.new(service)
 	service = service or Provider.select(App.args())
-	local home = os.getenv("HOME") or "/Users"
+	-- A virtual disk brings its own home folder so catalog paths match it.
+	local home = rawget(service, "home") or os.getenv("HOME") or "/Users"
 	local self = setmetatable({service = service, mock = rawget(service, "mock") == true,
 		model = Model.new(home), query = ""}, Controller)
 	if self.mock then
@@ -117,7 +118,7 @@ function Controller.new(service)
 			menu = function(id) return self.actions:resource(id) end,
 			changes = function() if self.snapshots then self.snapshots:open(self.window) end end,
 		}),
-		map = MapController.new(self.model, self.actions),
+		map = MapController.new(self.model, self.actions, Provider.mapStyle(App.args())),
 		largest = LargestController.new(self.model, self.actions, open),
 		files = files,
 		kinds = KindsController.new(self.model, function(kind) files:focus(kind); self:show("files", true) end),
@@ -191,8 +192,8 @@ end
 -- Everything a page needs to present the current scan, in one value.
 function Controller:state()
 	return {disk = self.scan.disk, capacity = self.capacity, snapshotCount = self.snapshotCount, changes = self.snapshotChanges or self.changes,
-		query = self.query, mock = self.mock, volumeName = self.mock and "Mock HDD" or "Startup Disk",
-		status = (self.mock and "Mock HDD · " or "") .. (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status}
+		query = self.query, mock = self.mock, volumeName = self.mock and rawget(self.service, "label") or "Startup Disk",
+		status = (rawget(self.service, "badge") and (rawget(self.service, "badge") .. " · ") or "") .. (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status}
 end
 function Controller:subtitle()
 	local text = Overview.summary(self.model, self.scan.disk, self.capacity).subtitle or ""
@@ -391,7 +392,7 @@ function Controller:createWindow()
 		reclaim = function() self:show("cleanup") end,
 	}, {__index = self.commandActions})
 	local data = self.commands:data()
-	data.windowTitle = self.mock and "Diskmap — Mock HDD" or "Diskmap"
+	data.windowTitle = rawget(self.service, "badge") and ("Diskmap — " .. rawget(self.service, "badge")) or "Diskmap"
 	data.subtitle = self:subtitle()
 	data.actions = actions
 	local cfg, windowRefs = render("Window", data)
