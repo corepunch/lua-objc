@@ -1,0 +1,7 @@
+<!-- Drifting brand lights that breathe with the kick drum, under a vignette. -->
+<Backdrop color="#08080A" resolution="0.25">
+  <Glow color="#9B3FE0" radius="760" x="520 + 180 * sin(t * 0.35)" y="380 + 120 * cos(t * 0.27)" alpha="0.22 + 0.06 * pulse(t, kicks, 0.18)" />
+  <Glow color="#1E6BFF" radius="820" x="1450 + 160 * cos(t * 0.31)" y="700 + 140 * sin(t * 0.22)" alpha="0.22 + 0.06 * pulse(t, kicks, 0.18)" />
+  <Glow color="#1FB5A8" radius="700" x="1000 + 260 * sin(t * 0.19 + 2)" y="1050 + 60 * cos(t * 0.4)" alpha="0.22 + 0.06 * pulse(t, kicks, 0.18)" />
+  <Vignette inner="500" outer="1250" alpha="0.55" />
+</Backdrop>

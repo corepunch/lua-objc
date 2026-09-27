@@ -1,0 +1,58 @@
+<!-- 4–8 s: the sunburst draws on ring by ring, its categories fly out as
+     callouts, then the window grows around it and the callouts home to
+     their rows. -->
+<%
+local map = captures:get("map-dark")
+local bx, by, bw, bh = map:rect("#sunburst")
+local sunX, sunY = bx + bw / 2, by + bh / 2
+local ww, wh = map:size()
+local window = { x = 960, y = 612, scale = 0.78 }
+local rings = { {0, 56}, {56, 98}, {98, 142}, {142, 260} }
+%>
+<Scene from="3.98" to="8.2">
+  <Let name="sunS" value="2.0 * mix(0.7, 1, spring(t - 4, 1 / 1.5, 0.55)) * (1 + 0.014 * pulse(t, kicks, 0.14))" />
+  <Let name="q" value="inOutQuint(progress(t, 7.45, 8.0))" />
+  <Let name="ws" value="mixScale(sunS, <%= window.scale %>, q)" />
+  <Let name="ax" value="mix(1270, <%= window.x + (sunX - ww / 2) * window.scale %>, q)" />
+  <Let name="ay" value="mix(548, <%= window.y + (sunY - wh / 2) * window.scale %>, q)" />
+  <Let name="glowA" value="(0.45 + 0.2 * pulse(t, kicks, 0.2)) * clamp01((t - 4) / 0.3) * (1 - q)" />
+  <Glow x="1270" y="548" radius="620" locations="0, 0.45, 1"
+        colors="{rgb(0x8E44E8, glowA), rgb(0x2F6BFF, glowA * 0.4), rgb(0, 0)}" />
+
+  <Let name="reveal" value="outQuart(progress(t, 7.5, 7.98))" />
+  <Window capture="map-dark" from="7.45" to="7.98" x="ax" y="ay" anchor="<%= sunX %>, <%= sunY %>" scale="ws"
+          radius="24" shadow="reveal" clip="circle(<%= sunX %>, <%= sunY %>, mix(194, 1300, reveal))" />
+
+  <Group x="ax" y="ay" scale="t &lt; 7.45 and sunS or ws" alpha="1 - progress(t, 7.85, 7.98)">
+    <Piece capture="map-dark" rect="#sunburst" outset="12" key="700, 300" x="0" y="0"
+           clip="circle(192, 192, 56 * spring(t - 4, 1 / 2.4, 0.4))" />
+    <% for k = 2, 4 do local start = 4 + (k - 2) * 0.125 %>
+    <Piece capture="map-dark" rect="#sunburst" outset="12" key="700, 300" x="0" y="0" alpha="step(t - <%= start %>)"
+           rotation="-0.5 * (1 - spring(t - 4, 1 / 1.2, 0.62))"
+           clip="sector(192, 192, <%= rings[k][1] %>, <%= rings[k][2] %>, -pi / 2, outQuart(progress(t, <%= start %>, <%= start + 0.38 %>)) * 2 * pi)" />
+    <% end %>
+  </Group>
+
+  <Text style="big" text="Every byte," x="140" y="432" align="leading" at="4.5" exit="7.3" />
+  <Text style="bigBrand" text="mapped." x="140" y="552" align="leading" at="4.9" exit="7.34" />
+  <Text style="lede" text="Every category. Every folder. At a glance." x="142" y="626" align="leading" at="5.2" stagger="0.035" exit="7.2" />
+
+  <!-- Callouts: real list rows fly out of their own segment, rest, then
+       home to their place in the growing window. -->
+  <% for i, from in ipairs(callouts) do
+       local row = map:row("mapList", i)
+       local pop = 5.5 + (i - 1) * 0.5
+       local restX, restY = 140 + row.w * 1.55 / 2, 704 + (i - 1) * 78
+       local homeX, homeY = row.x + row.w / 2 - sunX, row.y + row.h / 2 - sunY %>
+  <Cue sound="pop" at="<%= pop %>" />
+  <Let name="call<%= i %>" value="spring(t - <%= pop %>, 1 / 1.8, 0.62)" />
+  <Let name="home<%= i %>" value="inOutCubic(progress(t, <%= 7.45 + (i - 1) * 0.03 %>, <%= 7.95 + (i - 1) * 0.03 %>))" />
+  <Piece capture="map-dark" rect="#mapList/row/<%= i %>" from="<%= pop %>"
+         x="home<%= i %> == 0 and mix(1270 + <%= from[1] %> * sunS, <%= restX %>, call<%= i %>) or mix(<%= restX %>, ax + <%= homeX %> * ws, home<%= i %>)"
+         y="home<%= i %> == 0 and mix(548 + <%= from[2] %> * sunS, <%= restY %>, call<%= i %>) or mix(<%= restY %>, ay + <%= homeY %> * ws, home<%= i %>)"
+         scale="home<%= i %> == 0 and mix(0.25, 1.55, call<%= i %>) or mixScale(1.55, ws, home<%= i %>)"
+         alpha="clamp01((t - <%= pop %>) / 0.08) * (1 - progress(t, 7.95, 8.05))"
+         radius="8 * (1 - home<%= i %>)" shadow="0.7 * (1 - home<%= i %>)" />
+  <% end %>
+  <Cue sound="whoosh" at="7.45" until="7.95" />
+</Scene>

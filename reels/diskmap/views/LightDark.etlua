@@ -1,0 +1,51 @@
+<!-- 20–24 s: light and dark. A divider hops across on the beat between the
+     two appearances while the page flips map → overview → treemap. -->
+<%
+local pages = { "map", "overview", "treemap" }
+local function windows(appearance, shadow)
+	local out = {}
+	local bounds = { "to=\"22.16\"", "from=\"22.16\" to=\"23.16\"", "from=\"23.16\"" }
+	for i, page in ipairs(pages) do
+		table.insert(out, string.format('      <Window capture="%s-%s" radius="24" shadow="%g" %s />', page, appearance, shadow, bounds[i]))
+	end
+	return table.concat(out, "\n")
+end
+local place = [[x="960" y="612 - ldLeave * 70" scale="0.8 * mix(0.55, 1, ldIn) * (1 - ldLeave * 0.62)" sx="flipX" motion="punch(22.16), punch(23.16)"]]
+%>
+<Scene from="19.98" to="24.1">
+  <Let name="dx" value="keys(t, 1990, dividerKeys, 'inOutExpo')" />
+  <Let name="flipX" value="flip(t, flips, 0.32)" />
+  <Let name="ldIn" value="spring(t - 20, 1 / 1.7, 0.6)" />
+  <Let name="ldLeave" value="inOutQuint(progress(t, 23.55, 24))" />
+  <Let name="knob" value="64 * (1 + 0.15 * pulse(t, dividerMoves, 0.15))" />
+  <% for _, move in ipairs(dividerMoves) do %>
+  <Cue sound="whoosh" at="<%= move - 0.02 %>" until="<%= move + 0.3 %>" />
+  <% end %>
+  <% for _, f in ipairs(flips) do %>
+  <Cue sound="pop" at="<%= f %>" />
+  <% end %>
+  <Group clip="rect(dx, 0, 1920 - dx + 1, 1080)">
+    <Backdrop color="#E8E8ED" />
+    <Glow x="1300" y="400" radius="900" color="#FFFFFF" alpha="0.9" />
+    <Group <%- place %>>
+<%- windows("light", 0.5) %>
+    </Group>
+    <Text style="lightHead" text="Beautiful in light. And dark." x="960" y="176" at="20.3" exit="23.45" />
+    <Text style="lightSub" text="Native macOS, down to the last control." x="960" y="236" at="20.5" stagger="0.035" exit="23.4" />
+  </Group>
+  <Group clip="rect(0, 0, dx, 1080)">
+    <Group <%- place %>>
+<%- windows("dark", 1) %>
+    </Group>
+    <Text style="head" text="Beautiful in light. And dark." x="960" y="176" at="20.3" exit="23.45" />
+    <Text style="sub" text="Native macOS, down to the last control." x="960" y="236" at="20.5" stagger="0.035" exit="23.4" />
+  </Group>
+  <!-- The divider, with an appearance knob. -->
+  <Group alpha="step(dx + 10) * step(1930 - dx)">
+    <Rect x="dx - 1.5" width="3" height="1080" color="#FFFFFFD9" />
+    <Glow x="dx" y="540" radius="260" color="#FFFFFF" alpha="0.35" />
+    <Circle x="dx" y="540" radius="knob / 2" color="#FFFFFF" shadowBlur="24" shadowY="6" shadowColor="#00000080" />
+    <Symbol name="circle.lefthalf.filled" x="dx" y="540" size="knob * 0.55" color="#1D1D1F" />
+  </Group>
+  <Cue sound="whoosh" at="23.55" until="23.95" />
+</Scene>

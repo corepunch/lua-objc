@@ -14,7 +14,7 @@ UIKIT_RUNTIME_SRC = src/uikit_module.m
 UIKIT_RUNTIME_DIRS = src/uikit src/shared
 UIKIT_RUNTIME_FRAGMENTS = $(shell find $(UIKIT_RUNTIME_DIRS) -type f -name '*.m')
 FRAMEWORK_MODULES = build/AppKit.dylib
-NATIVE_PLUGINS = build/StorageScan.dylib
+NATIVE_PLUGINS = build/StorageScan.dylib build/ReelNative.dylib
 IOS_FRAMEWORK_MODULE = $(if $(strip $(IOS_SIM_SDK)),build/UIKit.dylib)
 EMBEDDED_LUA_DIR = lua/embedded
 GENERATED_DIR = build/generated
@@ -59,6 +59,14 @@ uikit: build/UIKit.dylib
 build/StorageScan.dylib: src/plugins/storage/StorageScan.m src/plugins/storage/Duplicates.m Makefile
 	mkdir -p build
 	$(CC) $(CFLAGS) -mmacosx-version-min=26.0 $(MODULE_LDFLAGS) -framework Foundation -lcompression -o $@ $<
+
+# The Reel motion package's native half (modules/reel): offscreen drawing,
+# images and H.264. Standalone like StorageScan; the runtime never loads it.
+build/ReelNative.dylib: modules/reel/native/ReelNative.m Makefile
+	mkdir -p build
+	$(CC) $(CFLAGS) -mmacosx-version-min=26.0 $(MODULE_LDFLAGS) -framework AppKit -framework AVFoundation \
+		-framework CoreMedia -framework CoreVideo -framework CoreText -framework ImageIO \
+		-framework UniformTypeIdentifiers -o $@ $<
 
 run: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	./$(TARGET) $(ARGS)
@@ -274,17 +282,17 @@ list-devices:
 diskmap-app: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	python3 scripts/diskmap/bundle.py
 
-# Diskmap showreel: a 30 s motion piece built from real Diskmap captures.
-# `make diskmap-reel` renders build/Diskmap-Showreel.mov from the committed
-# captures; `make diskmap-reel-captures` refreshes them after a UI change.
-REEL_SOURCES := $(wildcard scripts/diskmap/reel/*.swift)
-build/diskmap-reel: $(REEL_SOURCES)
-	@mkdir -p build
-	swiftc -O $(REEL_SOURCES) -o $@
-
+# Diskmap showreel (reels/diskmap, rendered with modules/reel): `make
+# diskmap-reel` renders build/Diskmap-Showreel.mov, first capturing the pages
+# when reels/diskmap/captures is empty (generated, not committed). Capturing
+# runs reels/diskmap/capture.lua in one Diskmap launch, which opens its
+# window; `make diskmap-reel-captures` recaptures after a UI change.
+DISKMAP_CAPTURE = ./$(TARGET) --capture-plan=reels/diskmap/capture.lua --width=1440 --height=900 \
+	apps/diskmap/init.lua --showcase
 .PHONY: diskmap-reel diskmap-reel-captures
-diskmap-reel: build/diskmap-reel
-	build/diskmap-reel render scripts/diskmap/reel/captures build/Diskmap-Showreel.mov
+diskmap-reel: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
+	@ls reels/diskmap/captures/*.png >/dev/null 2>&1 || $(DISKMAP_CAPTURE)
+	./$(TARGET) reels/diskmap/init.lua render build/Diskmap-Showreel.mov
 
-diskmap-reel-captures: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS) build/diskmap-reel
-	scripts/diskmap/reel/capture.sh
+diskmap-reel-captures: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
+	$(DISKMAP_CAPTURE)

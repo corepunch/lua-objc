@@ -387,7 +387,10 @@ rg -n 'cropped="true"|outsideParent="true"|contentClipped="true"' /tmp/layout.xm
 
 The XML is generated automatically by Objective-C; application code must not
 manually construct a diagnostic tree. Each native view records its class,
-computed frame, intrinsic/fitting sizes, clipping state, and relevant text.
+`frame` and `window` rectangles (`"x y width height"`; `window` is in
+top-left window points), `intrinsic` and `fitting` sizes (`"width height"`),
+clipping state, and relevant text. Treemaps list their cells as
+`TreemapCell` records.
 `NSTableView` nodes additionally record computed column widths and visible cell
 text geometry with an explicit `cropped` flag. Inspect the dump before changing
 layout values and again afterward so the diagnosis and fix are both evidenced.
@@ -427,6 +430,25 @@ window geometry, split-view proportions, toolbar, and all live state. Use it to:
   ```sh
   ./lua-objc --screenshot=/tmp/small.png --width=760 --height=468 apps/stocks/init.lua
   ```
+
+### Window captures for tools
+
+`--capture=<prefix>` writes `<prefix>.png` and `<prefix>.layout.xml` from one
+settled moment of the window: the content view at backing scale without the
+window shadow, and its layout dump, whose `<Layout scale="2">` gives the
+image's pixels per point. A dump rect times `scale` is a pixel rect.
+
+`--capture-plan=<plan.lua>` captures several states in one launch. The plan
+returns `function(capture, app)`; `app` is the instance the framework created,
+so the plan navigates with the app's own methods, then calls
+`capture.appearance("dark")` and `capture.shot(prefix)`. See
+`lua/ui/capture.lua` and `reels/diskmap/capture.lua`:
+
+```sh
+./lua-objc --capture=/tmp/map --width=1440 --height=900 apps/diskmap/init.lua --showcase --page=map
+./lua-objc --capture-plan=reels/diskmap/capture.lua --width=1440 --height=900 \
+  apps/diskmap/init.lua --showcase
+```
 
 For UI changes, completion requires actual visual QA:
 

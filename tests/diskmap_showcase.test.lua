@@ -45,4 +45,14 @@ t.assertEqual(MapController.new(app.model, app.actions, "rectangles").style, "re
 t.assertEqual(MapController.new(app.model, app.actions, "hexagons").style, "rings", "unknown styles fall back to rings")
 t.assertEqual(MapController.new(app.model, app.actions).style, "rings", "rings stay the default")
 
+-- A capture plan switches the chart at runtime, as the segmented control does.
+app:show("map")
+app:setMapStyle("rectangles")
+t.assertEqual(app.pages.map.style, "rectangles", "setMapStyle switches the Map's chart")
+t.expect(app.page.refs.treemap ~= nil, "the Map page redraws as a treemap")
+app:setMapStyle("rings")
+t.expect(app.page.refs.treemap == nil and app.page.refs.sunburst ~= nil, "and back to rings")
+t.assertThrows(function() app:setMapStyle("hexagons") end, "an unknown map style is an error")
+t.assertEqual(app.pages.map.style, "rings", "a rejected style leaves the chart alone")
+
 os.exit(t.summary() and 0 or 1)

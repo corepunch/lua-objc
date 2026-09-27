@@ -445,6 +445,8 @@ lua/App.lua             app lifecycle and recent-item persistence
 apps/               product applications
 demo/               runnable framework examples and feature demos
 test/               runnable test harness apps
+modules/reel/           Reel: offline motion pieces from etlua (not part of the runtime)
+reels/              motion pieces rendered with modules/reel
 tests/                  headless Lua integration tests
 docs/                   detailed, opt-in reference material
 ```

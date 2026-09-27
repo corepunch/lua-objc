@@ -1,0 +1,39 @@
+<Reel width="1920" height="1080" fps="30" duration="30" bpm="120" subframes="5" shutter="0.5">
+  <Palette name="brand" colors="#C65BF0 #6E6BFF #2F8CFF #38D1C4" />
+  <Palette name="clean" colors="#34C759 #30D5C8 #64D2FF" />
+  <Style name="huge" size="150" weight="bold" color="#F5F5F7" tracking="-0.022" />
+  <Style name="hugeBrand" size="150" weight="bold" gradient="brand" tracking="-0.022" />
+  <Style name="big" size="112" weight="bold" color="#F5F5F7" tracking="-0.022" />
+  <Style name="bigBrand" size="112" weight="bold" gradient="brand" tracking="-0.022" />
+  <Style name="title" size="128" weight="bold" color="#F5F5F7" tracking="-0.022" />
+  <Style name="titleBrand" size="128" weight="bold" gradient="brand" tracking="-0.022" />
+  <Style name="head" size="78" weight="semibold" color="#F5F5F7" tracking="-0.022" />
+  <Style name="sub" size="32" weight="regular" color="#98989D" tracking="-0.022" />
+  <Style name="lede" size="34" weight="regular" color="#A1A1A6" tracking="-0.022" />
+  <Style name="lightHead" size="78" weight="semibold" color="#1D1D1F" tracking="-0.022" />
+  <Style name="lightSub" size="32" weight="regular" color="#6E6E73" tracking="-0.022" />
+  <Style name="counter" size="230" weight="heavy" gradient="clean" kern="-4.6" digits="true" />
+  <Style name="counterUnit" size="230" weight="heavy" gradient="clean" kern="-5" />
+  <Style name="caption" size="44" weight="medium" color="#C7C7CC" tracking="-0.022" />
+  <Style name="logo" size="124" weight="bold" color="#F5F5F7" kern="-2.5" />
+  <Style name="tagline" size="42" weight="semibold" gradient="brand" kern="-0.6" />
+
+  <%- partial("Stage.etlua", reel) %>
+  <!-- The drop, the counter and the wall knock the camera. -->
+  <Group x="shakeX(t, {4, 15.5, 24}, 12)" y="shakeY(t, {4, 15.5, 24}, 12)">
+    <%- partial("Intro.etlua", reel) %>
+    <%- partial("Map.etlua", reel) %>
+    <%- partial("Treemap.etlua", reel) %>
+    <%- partial("Largest.etlua", reel) %>
+    <%- partial("Cleanup.etlua", reel) %>
+    <%- partial("Developers.etlua", reel) %>
+    <%- partial("Simulators.etlua", reel) %>
+    <%- partial("Kinds.etlua", reel) %>
+    <%- partial("LightDark.etlua", reel) %>
+    <Draw with="wall" from="23.9" to="26.02" />
+  </Group>
+  <%- partial("End.etlua", reel) %>
+  <Burst at="4" x="1270" y="548" colors="#C65BF0 #3B82F6 #34C759 #FF453A #FFFFFF" count="120" speed="1900" seed="3" />
+  <Rect width="1920" height="1080" color="#FFFFFF" alpha="0.28 * exp(-max(0, t - 4) / 0.07) * step(t - 3.99999)" />
+  <Rect width="1920" height="1080" color="#000000" alpha="progress(t, 29.55, 30)" />
+</Reel>

@@ -329,6 +329,11 @@ function Controller:show(id, remount, fromHistory)
 	self.navigation:select(id, fromHistory)
 	self:updateRows()
 end
+-- setMapStyle("rings" | "rectangles") switches the Map page's chart.
+function Controller:setMapStyle(style)
+	self.pages.map:setStyle(style)
+end
+
 function Controller:select(id)
 	if self.pages.overview.refs then self.pages.overview.selectedId = id end
 	self.inspector:select(id)

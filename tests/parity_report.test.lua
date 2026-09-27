@@ -6,7 +6,7 @@ local referencePath = prefix .. ".json"
 local reportPath = prefix .. ".report.json"
 
 local candidate = assert(io.open(candidatePath, "w"))
-candidate:write([[<?xml version="1.0"?><Layout><View class="LuaTextField" identifier="text.node" x="10" y="20" width="30" height="40" contentClipped="false" outsideParent="false" /></Layout>]])
+candidate:write([[<?xml version="1.0"?><Layout><View class="LuaTextField" identifier="text.node" frame="10 20 30 40" contentClipped="false" outsideParent="false" /></Layout>]])
 candidate:close()
 local reference = assert(io.open(referencePath, "w"))
 reference:write([[{"fixture":"test.case","generation":"test","actionCount":0,"probes":[{"id":"text.node","x":10,"y":20,"width":30,"height":40}]}]])

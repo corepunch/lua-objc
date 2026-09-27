@@ -1,0 +1,46 @@
+<!-- 12–16 s: Clean Up. Stat cards slam in, rebuildable rows rise and get
+     checked, fly into the first card, and the payoff counter lands. -->
+<%
+local cleanup = captures:get("cleanup-dark")
+local width = cleanup:row("list_rebuildable", 1).w
+local cards = { "rebuildableTile", "reviewTile", "checkedTile" }
+local menu = { x = 1134, y = 22 } -- where the check lands: the action menu of a row
+%>
+<Scene from="12" to="16.3">
+  <Let name="away" value="inOutCubic(progress(t, 15.38, 15.55))" />
+  <Text style="head" text="Clean up with confidence." x="960" y="176" at="12.1" exit="13.85" />
+  <Text style="sub" text="Diskmap knows what’s rebuildable — and what’s your work." x="960" y="236" at="12.3" stagger="0.03" exit="13.8" />
+  <% for k, id in ipairs(cards) do %>
+  <Piece capture="cleanup-dark" rect="#<%= id %>" x="<%= 960 + (k - 2) * 560 %>" y="346" radius="12" shadow="0.7"
+         scale="1.38 * <%= k == 1 and '(1 + 0.09 * pulse(t, {15.28}, 0.12))' or '1' %> * (1 - 0.25 * away)" alpha="1 - away"
+         motion="slam(<%= 12 + (k - 1) * 0.5 %>, {from = 1.75, response = 1 / 2.3, damping = 0.5, drop = 34})" />
+  <% end %>
+  <% for i = 1, 7 do
+       local check = 14 + (i - 1) * 0.125
+       local fly = "fly" .. i %>
+  <Let name="<%= fly %>" value="inCubic(progress(t, <%= 14.9 + (i - 1) * 0.04 %>, <%= 15.25 + (i - 1) * 0.04 %>))" />
+  <Group x="mix(960, 400, <%= fly %>)" y="mix(<%= 492 + (i - 1) * 62 %>, 346, <%= fly %>)" scale="mix(1.18, 0.1, <%= fly %>)"
+         alpha="1 - <%= fly %> ^ 2" anchor="<%= width / 2 %>, 23"
+         <% if i == 1 then %>from="12.2"<% else %>motion="enter{at = <%= 13 + (i - 2) * 0.125 %>, y = 160, response = 1 / 1.9, damping = 0.6, fade = 0.08, sound = 'pop'}"<% end %>>
+    <Piece capture="cleanup-dark" rect="#list_rebuildable/row/<%= i %>" x="<%= width / 2 %>" y="23" radius="9" shadow="0.55" />
+    <Group from="<%= check %>">
+      <Circle x="<%= menu.x %>" y="<%= menu.y %>" radius="13" color="#2C2C2E" />
+      <Symbol name="checkmark.circle.fill" x="<%= menu.x %>" y="<%= menu.y %>" size="22" color="#34C759"
+              motion="pop(<%= check %>, {response = 1 / 2.6, damping = 0.4, fade = 0.0001})" />
+      <Rect width="<%= width %>" height="46" color="#34C759" alpha="0.18 * pulse(t, {<%= check %>}, 0.15)" />
+    </Group>
+  </Group>
+  <% end %>
+  <Cue sound="whoosh" at="14.9" until="15.35" />
+
+  <!-- The payoff: digits tick in fixed slots; the unit holds still. -->
+  <Cue sound="slam" at="15.5" />
+  <Cue sound="counter" at="15.5" />
+  <Group from="15.45" x="960" y="520" scale="mix(1.8, 1, spring(t - 15.5, 1 / 2.2, 0.45))"
+         alpha="clamp01((t - 15.45) / 0.08) * (1 - progress(t, 15.93, 16))">
+    <Counter y="80" style="counter" unitStyle="counterUnit" format="%.1f" final="19.8" unit=" GB"
+             value="floor(19.8 * outQuart(progress(t, 15.45, 15.85)) * 10 + 0.5) / 10" />
+  </Group>
+  <Text style="caption" text="rebuildable, ready to clear." x="960" y="690" at="15.62" stagger="0.04" exit="15.9" />
+  <Burst at="15.5" x="960" y="500" colors="#34C759 #30D5C8 #FFFFFF #64D2FF" count="110" speed="1700" seed="7" />
+</Scene>
