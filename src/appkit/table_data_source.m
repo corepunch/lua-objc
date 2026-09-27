@@ -13,6 +13,7 @@
 @property (nonatomic) BOOL trailingSwipeDestructive;
 // Rows drag as the file at row[dragKey], as Finder items (SwiftUI `.draggable`).
 @property (nonatomic, copy) NSString *dragKey;
+@property (nonatomic) BOOL retiling;
 - (void)updateTableFrame;
 - (void)replaceRows:(NSArray *)rows;
 - (void)activateSelectedRow:(id)sender;
@@ -714,6 +715,17 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 
 	NSScrollView *sv = _tableView.enclosingScrollView;
 	sv.hasHorizontalScroller = overflows;
+	/* New rows can make a legacy (always-visible) vertical scroller appear,
+	 * which narrows the clip view after the columns were sized; the last
+	 * column would then sit under the scroller. Tile now and size once more
+	 * for the width that is actually visible. */
+	if (self.retiling) return;
+	[sv tile];
+	if (fabs(clipView.bounds.size.width - viewport.width) > 0.5) {
+		self.retiling = YES;
+		[self updateTableFrame];
+		self.retiling = NO;
+	}
 }
 
 // SwiftUI `Section` inside a sidebar List: a row whose `section` field is true

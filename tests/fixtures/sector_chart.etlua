@@ -1,0 +1,6 @@
+<SectorChart id="chart" width="120" height="120" innerRadius="0.6" accessibilityLabel="<%= label %>">
+  <% for _, mark in ipairs(marks) do %>
+  <SectorMark id="<%= mark.id %>" value="<%= mark.value %>" color="<%= mark.color %>" />
+  <% end %>
+  <Label id="total" text="<%= total %>" />
+</SectorChart>

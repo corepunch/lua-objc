@@ -99,6 +99,39 @@ t.expect(chosen and chosen[1] == "a" and chosen[2] == 1, "clicking selects a sec
 bridge._pointerSend(pointer, "click", 100, 100, 1)
 t.expect(centered, "clicking the hole calls onCenter")
 
+-- New data moves the existing arcs, as SwiftUI Charts does, instead of
+-- rebuilding the chart and replaying its entrance.
+local Sectors = require("ui.sectors")
+local live = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.5,
+	{__sectorMark = true, id = "a", value = 1, color = "systemBlue"},
+	{__sectorMark = true, id = "b", value = 1, color = "systemGreen"},
+	onHover = function() end}
+local firstArc, secondArc = live.subviews[1], live.subviews[2]
+t.expect(Sectors.update(live, {{__sectorMark = true, id = "a", value = 3, color = "systemBlue"}, {__sectorMark = true, id = "b", value = 1, color = "systemGreen"}}),
+	"a chart built here takes new marks")
+t.expect(live.subviews[1] == firstArc and live.subviews[2] == secondArc, "arcs keep their views")
+t.expect(firstArc.endAngle - firstArc.startAngle > secondArc.endAngle - secondArc.startAngle, "arcs take the new angles")
+Sectors.update(live, {{__sectorMark = true, id = "a", value = 3, color = "systemBlue"}, {__sectorMark = true, id = "b", value = 1, color = "systemGreen"},
+	{__sectorMark = true, id = "c", value = 1, color = "systemRed"}})
+t.assertEqual(live.subviews[3].className, "LuaArcView", "a new mark adds an arc below the overlay")
+t.assertEqual(live.subviews[#live.subviews].className, "LuaPointerView", "the pointer view stays on top")
+Sectors.update(live, {})
+t.assertEqual(live.subviews[1].stroke, "quaternaryLabel", "no data draws the empty ring")
+t.assertEqual(live.subviews[2].className, "LuaPointerView", "extra arcs are removed")
+t.expect(not Sectors.update(ns.ZStack {}, {}), "a view the chart module did not build is refused")
+
+-- A retained template reconciles changed marks into the same chart.
+local Template = require("ui.template")
+local chartHost = ns.VStack {}
+local chartTemplate = Template.new(chartHost, "tests/fixtures/sector_chart.etlua", ns)
+chartTemplate:update({label = "Used 1 GB", total = "1 GB", marks = {{id = "a", value = 1, color = "systemBlue"}, {id = "b", value = 2, color = "systemGreen"}}})
+local mountedChart = chartTemplate.refs.chart
+chartTemplate:update({label = "Used 4 GB", total = "4 GB", marks = {{id = "a", value = 2, color = "systemBlue"}, {id = "b", value = 2, color = "systemGreen"}, {id = "c", value = 1, color = "systemRed"}}})
+t.expect(chartTemplate.refs.chart == mountedChart, "changed marks keep the chart view")
+t.assertEqual(chartTemplate.refs.total.stringValue, "4 GB", "the overlay updates in place")
+t.assertEqual(#mountedChart.subviews, 4, "three arcs and the overlay")
+t.assertEqual(mountedChart.accessibilityLabel, "Used 4 GB", "the VoiceOver summary updates in place")
+
 -- UIKit composes the same chart from its own Arc and ZStack.
 local file = assert(io.open("lua/embedded/UIKit.lua")); local uikit = file:read("*a"); file:close()
 t.expect(uikit:find('require("ui.sectors").chart(UIKit, props)', 1, true) ~= nil, "UIKit shares the sector geometry")

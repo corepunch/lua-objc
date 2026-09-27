@@ -51,6 +51,25 @@ t.expect(bridge._pendingLayoutCount() > 0, "removing children schedules layout")
 refs.row:add((xml.render('<Label text="C" />', {}, ns)))
 t.assertEqual(refs.row.frame.size.width > 0 and #refs.row.subviews, 1, "adding children lays out the container")
 
+-- Retained templates insert and remove views through the motion helpers;
+-- those change sibling placement and must schedule layout like a write, or
+-- a new view is drawn at its container's origin until something else lays
+-- the window out.
+local Template = require("ui.template")
+local host = xml.render('<VStack id="host" maxWidth="infinity" />', {}, ns)
+window:add(host)
+local template = Template.new(host, "tests/fixtures/motion_rows.etlua", ns)
+template:update({rows = {"One"}})
+window:layout()
+t.assertEqual(bridge._pendingLayoutCount(), 0, "a laid-out window has no pending work")
+template:update({rows = {"One", "Two"}})
+t.expect(bridge._pendingLayoutCount() > 0, "a reconciled insertion schedules layout")
+local rows = template.refs.rows.subviews
+t.expect(rows[2].frame.origin.x == rows[1].frame.origin.x and rows[2].frame.size.width > 0, "the inserted row is placed beside its sibling")
+template:update({rows = {"Two"}})
+t.expect(bridge._pendingLayoutCount() > 0, "a reconciled removal schedules layout")
+window:layout()
+
 refs.title.text = "pending"
 window:layout()
 t.assertEqual(bridge._pendingLayoutCount(), 0, "an explicit layout satisfies pending work inside it")
