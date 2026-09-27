@@ -200,6 +200,9 @@ t.expect(nodes[3].z > 5 and nodes[1].alpha < 1, "the hovered sector lifts and th
 t.expect(Sectors.update(raised, {raisedMarks[1], raisedMarks[2]}), "a raised chart takes new marks")
 t.assertEqual(#ns._sectorSceneNodes(scene), 2, "removed marks remove their solids")
 t.assertEqual(raised.subviews[1], scene, "the scene view is kept")
+t.expect(scene.castsShadow, "a raised chart casts a shadow by default")
+local unshadowed = ns.SectorChart {fixedWidth = 100, fixedHeight = 100, depth = 8, shadow = false, raisedMarks[1]}
+t.expect(not unshadowed.subviews[1].castsShadow, "shadow = false drops the contact shadow")
 
 -- UIKit composes the same chart from its own Arc and ZStack.
 local file = assert(io.open("lua/embedded/UIKit.lua")); local uikit = file:read("*a"); file:close()

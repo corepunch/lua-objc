@@ -2030,6 +2030,7 @@ end
 --- band, and the parallel-sided gap cut between neighbours. `ui/sectors.lua`
 --- computes them.
 --- @prop sectors table optional. Sector descriptions.
+--- @prop shadow boolean optional. Casts a soft contact shadow (default true).
 --- @platform AppKit.
 function AppKit.SectorScene(props)
 	props = props or {}
@@ -2037,6 +2038,7 @@ function AppKit.SectorScene(props)
 	if props.height and not props.fixedHeight then props.fixedHeight = props.height end
 	local width = props.fixedWidth or 160
 	local view = bridge._sectorScene(width, props.fixedHeight or width)
+	if props.shadow ~= nil then view.castsShadow = props.shadow end
 	bridge._sectorSceneConfigure(view, props.sectors or {}, false)
 	return applyLayout(view, props)
 end
@@ -2100,6 +2102,7 @@ end
 --- @prop innerRadius number optional. Hole radius as a fraction of the outer radius (0 draws a pie).
 --- @prop angularInset number optional. Gap between neighbouring sectors, in points.
 --- @prop depth number optional. Draws raised sectors this many points deep under a tilted camera (SceneKit), starting at half past one; 0 draws flat arcs.
+--- @prop shadow boolean optional. With `depth`, casts a soft contact shadow (default true).
 --- @prop accessibilityLabel string optional. Summary read by VoiceOver.
 --- @example <SectorChart width="180" height="180" innerRadius="0.62"><SectorMark value="40" color="systemBlue" /></SectorChart>
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
