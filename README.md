@@ -128,6 +128,7 @@ point. See [preview behavior](ARCHITECTURE.md#--preview-cli-mode).
 | Add a macOS native bridge primitive | `src/README.md`, then the matching `src/appkit/*.m` fragment |
 | Change flex layout | `src/appkit/layout.m` |
 | Change lists or outlines | `src/appkit/table_data_source.m`, `src/appkit/outline_data_source.m`, `src/appkit/controls.m`, `src/appkit/outline.m`, `docs/tableview_swiftui.md` |
+| Animate, add transitions, or stop a live view from jumping | `lua/ui/animation.lua`, `src/shared/motion.m`, `lua/ui/template.lua`, `lua/ui/xml.lua` (reconcile), [`docs/animation.md`](docs/animation.md) |
 | Change async state ownership, HTTP, timers, or JSON | `src/shared/lua_async.m` |
 | Change CLI preview rendering | `src/main.m`, `src/appkit/platform.m` |
 | Change editor highlighting | `src/appkit/syntax_highlight.m` |

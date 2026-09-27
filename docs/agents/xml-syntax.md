@@ -201,7 +201,7 @@ Glass composer (SwiftUI `.glassEffect()` around a text field):
 | Tag | Purpose | Important attributes |
 |---|---|---|
 | `List` | Native table/list | `style`, `header`, `alternatingRows`, `bordered`, `gridLines`, plus layout attributes |
-| `Column` | Child column descriptor consumed by `List` | `id`, `title`, `width`, `minWidth`, `alignment` |
+| `Column` | Child column descriptor consumed by `List` | `id`, `title`, `width`, `minWidth`, `alignment`, `sortable`, `systemImage`; row keys `subtitleKey`, `imageKey`, `imageColorKey`, `badgeColorKey`, `appIconKey`, `fileIconKey`, `imageSize`, `levelKey`, `levelColorKey`, `loadingKey`, `badgeKey`; `buttonSymbol`, `buttonMenu`, `controlSize`; `labelStyle="iconOnly"` shows only the row's symbol and keeps the text as tooltip and VoiceOver label |
 | `Toolbar` | Toolbar item collection consumed by `Window` | No attributes |
 | `ToolbarItem` | Native toolbar descriptor; accepts at most one view child as its custom control | `id`, `label`, `icon`, `tooltip`, `action`, `bordered` |
 | `NavigationStack` | UIKit navigation stack | `title`, `largeTitle`, `hidesNavigationBar`, `hidesTabBar` |
@@ -213,6 +213,33 @@ A `List` requires at least one `Column`. Rows are supplied by the controller at
 runtime with `list:replaceRows(rows)`. Use `style="sourceList"` for sidebar
 navigation, `style="plain"` or `style="fullWidth"` for primary data, and
 `style="inset"` for grouped settings.
+
+## Motion and identity
+
+Any view accepts these attributes; [`../animation.md`](../animation.md)
+explains transactions, reconciliation and live updates.
+
+| Attribute | Purpose |
+|---|---|
+| `transition` | Insertion/removal inside an animated transaction: `opacity`, `scale(0.8)`, `slide`, `move(top)`, `push(trailing)`, `offset(0, 20)`, `drawOn`, `a+b`, `asymmetric(a, b)` |
+| `animation`, `animationValue` | Animate this node's update with `animation` when `animationValue` changes (`.animation(_:value:)`) |
+| `opacity`, `scaleEffect`, `rotationEffect`, `offsetX`, `offsetY` | Paint-only effects; never change layout |
+| `matchedGeometry`, `matchedGeometryNamespace` | Grow a new view from its leaving match |
+| `contentTransition` | `opacity`, `numericText`, `interpolate`, `identity` |
+| `symbolEffect`, `symbolEffectActive`, `symbolEffectValue` | SF Symbol effects on `SystemImage` |
+| `key` | Identity for reconciliation when `id` is not wanted as a ref; keyed stack children move instead of being rewritten |
+
+```xml
+<VStack id="rows" spacing="6">
+  <% for _, row in ipairs(rows) do %>
+  <HStack key="row-<%= row.id %>" transition="opacity">
+    <Label text="<%= row.name %>" />
+    <Spacer />
+    <Label text="<%= row.size %>" width="84" alignment="trailing" monospacedDigit="true" />
+  </HStack>
+  <% end %>
+</VStack>
+```
 
 ## etlua helpers
 

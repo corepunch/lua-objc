@@ -14,6 +14,8 @@ Read only the material needed for the current task:
 - [docs/PROJECT_REFERENCE.md](docs/PROJECT_REFERENCE.md) — detailed API and
   implementation reference; consult the relevant heading, not the whole file
 - [docs/tableview_swiftui.md](docs/tableview_swiftui.md) — table behavior
+- [docs/animation.md](docs/animation.md) — animation, transitions, retained
+  template reconciliation and steady live updates
 - [docs/ios.md](docs/ios.md) — iPhone Simulator host, streamed Lua/assets,
   in-process reload (the host does not quit)
 - [docs/research/XCODE_UI_ARCHITECTURE.md](docs/research/XCODE_UI_ARCHITECTURE.md)
