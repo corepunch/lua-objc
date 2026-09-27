@@ -27,10 +27,21 @@
 @property(nonatomic) CGFloat lastLayoutWidth;
 @end
 @implementation LuaLazyCollectionView
+- (void)safeAreaInsetsDidChange {
+	[super safeAreaInsetsDidChange];
+	[self setNeedsLayout];
+}
 - (void)layoutSubviews {
 	if (self.lastLayoutWidth != self.bounds.size.width) {
 		self.lastLayoutWidth = self.bounds.size.width;
 		[self.collectionViewLayout invalidateLayout];
+	}
+	// Only the bottom edge: horizontal safe-area geometry is already applied
+	// by the containing view (see the constructor).
+	CGFloat bottomInset = uikit_scroll_bottom_inset(self);
+	if (self.contentInset.bottom != bottomInset) {
+		self.contentInset = UIEdgeInsetsMake(0, 0, bottomInset, 0);
+		self.scrollIndicatorInsets = UIEdgeInsetsMake(0, 0, bottomInset, 0);
 	}
 	[super layoutSubviews];
 }

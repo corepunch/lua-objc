@@ -88,6 +88,21 @@ static CGFloat view_padding_bottom(UIView *view) {
 	return declared + [objc_getAssociatedObject(view, &kHostSafeAreaBottomKey) doubleValue];
 }
 
+/* The part of a vertical scroll view that the tab bar, its bottom accessory,
+ * or the home indicator covers. UIKit folds all three into the owning view
+ * controller's safe area, as SwiftUI's ScrollView inset does, and recomputes
+ * it as the accessory appears, hides, or moves inline beside a minimized bar.
+ * The scroll view keeps its full frame so content stays visible through the
+ * glass; this distance becomes a content inset so the last row can scroll
+ * clear of the bars. An ancestor that already pads above the safe area leaves
+ * nothing to cover, so the inset is zero and never counted twice. */
+static CGFloat uikit_scroll_bottom_inset(UIScrollView *scroll) {
+	NSString *ignored = scroll.ignoresSafeArea;
+	if ([ignored isEqualToString:@"bottom"] || [ignored isEqualToString:@"all"]
+		|| [ignored isEqualToString:@"edges"]) return 0;
+	return MAX(0, scroll.safeAreaInsets.bottom);
+}
+
 static CGFloat view_fixed_height(UIView *view);
 
 static BOOL grows_vertically(UIView *view) { return grows_on_axis(view, NO); }

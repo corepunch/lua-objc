@@ -367,6 +367,7 @@ Safe area:
 - Default: root view fills the window so the app background continues behind the system status and home-indicator regions; only the top inset is added to content layout.
 - `ignoresSafeArea="top"` (XML / prop): pin to `view.bounds` on that edge so hero images bleed under the nav bar (AdventuresView / GameInfoView).
 - `safeAreaInset` edge bottom: extra bottom constraint (Create Game primary button, session composer). Prefer `keyboardLayoutGuide` for the composer.
+- Vertical scroll views (`ScrollView`, lazy stacks and grids) keep their full frame under the tab bar, its bottom accessory, and the home indicator, so content shows through the Liquid Glass. The scroll view's own live `safeAreaInsets.bottom` becomes bottom content and indicator inset, so the last row scrolls clear of the bars. The inset updates when the accessory appears, hides, or moves inline beside a minimized bar. `ignoresSafeArea="bottom"` (or `all`) opts out.
 
 Keyboard: use `UIView.keyboardLayoutGuide` (iOS 15+, current on iOS 26). No notification math.
 

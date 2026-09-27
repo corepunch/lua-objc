@@ -89,7 +89,7 @@ t.expect(constructors:find("scroll.contentInset = UIEdgeInsetsZero", 1, true) ~=
 t.expect(constructors:find("self.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever", 1, true) ~= nil,
 	"UIKit scroll views retain edge placement after layout")
 t.expect(constructors:find("CGFloat topInset = view_padding_top(self)", 1, true) ~= nil
-	and constructors:find("MAX(viewport.height, topInset + minimumHeight)", 1, true) ~= nil
+	and constructors:find("MAX(viewport.height, topInset + minimumHeight + bottomInset)", 1, true) ~= nil
 	and constructors:find("CGRectMake(0, topInset, content.width", 1, true) ~= nil,
 	"UIKit root scroll views place content below the host safe area")
 -- Relayout must preserve user scrolling; offsets are owned by UIScrollView.
