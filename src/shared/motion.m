@@ -353,13 +353,13 @@ static id motion_content(MotionView *view) {
  * displayed, so the view, not its layer, is the source of truth; the layer's
  * frame equals the view's frame in the superview's coordinates. */
 static void motion_geometry(MotionView *view, CGPoint *position, CGRect *bounds) {
-	CALayer *layer = motion_layer(view);
-	CGRect frame = view.frame;
-	CGPoint anchor = layer.anchorPoint;
 #if TARGET_OS_IPHONE
 	*position = view.center;
 	*bounds = view.bounds;
 #else
+	CALayer *layer = motion_layer(view);
+	CGRect frame = view.frame;
+	CGPoint anchor = layer.anchorPoint;
 	*position = CGPointMake(frame.origin.x + anchor.x * frame.size.width, frame.origin.y + anchor.y * frame.size.height);
 	*bounds = CGRectMake(layer.bounds.origin.x, layer.bounds.origin.y, frame.size.width, frame.size.height);
 #endif
