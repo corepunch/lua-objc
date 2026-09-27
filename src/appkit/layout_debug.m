@@ -110,6 +110,8 @@ static void append_layout_view(NSMutableString *out, NSView *view,
 					row:row makeIfNecessary:YES];
 				NSTextField *label = [cell isKindOfClass:NSTableCellView.class]
 					? ((NSTableCellView *)cell).textField : nil;
+				/* Icon-only cells keep their title as tooltip text only. */
+				if (label.hidden) label = nil;
 				[cell layoutSubtreeIfNeeded];
 				BOOL clipped = label
 					&& layout_text_has_insufficient_space(label);

@@ -42,10 +42,14 @@ local cleanup = CleanupController.new(model, {saveKeep = function() saved = save
 local Recommendations = require("apps.diskmap.models.Recommendations")
 t.assertEqual(Recommendations.presentation(model).review[1].id, "simulators", "clean up keeps resource identity")
 t.assertEqual(#Recommendations.presentation(model, "unfindable").review, 0, "clean up search is independent")
+local reviewRow = Recommendations.presentation(model).review[1]
+t.assertEqual(reviewRow.statusColor, "systemOrange", "a review suggestion carries an orange status symbol")
+t.assertEqual(reviewRow.shareText, "", "partial sizes say ≥ in the size column, never words in the share bar")
 cleanup:toggleKeep("simulators")
 t.assertEqual(#Cleanup.suggestions(model), 0, "a kept resource leaves the suggestions")
 local keptRow; for _, row in ipairs(Recommendations.presentation(model).checked) do if row.id == "simulators" then keptRow = row end end
 t.assertEqual(keptRow and keptRow.detail, "Kept", "a kept resource is listed as checked and kept")
+t.assertEqual(keptRow and keptRow.statusIcon, "pin.circle.fill", "a kept resource shows the kept symbol")
 t.assertEqual(saved, 1, "keep change persists the preference")
 t.assertEqual(model.measurements.projects.bytes, 900e9, "keep preserves unrelated measured state")
 cleanup:toggleKeep("simulators")

@@ -1,6 +1,7 @@
 local Model = require("apps.diskmap.Model")
 local Categories = require("apps.diskmap.models.Categories")
 local Cleanup = require("apps.diskmap.models.Cleanup")
+local Status = require("apps.diskmap.models.Status")
 local Developer = {}
 
 -- Developer storage grouped by the decision a developer makes about it. Each
@@ -26,6 +27,7 @@ local function row(model, resource)
 		calculating = measured.calculating == true, status = measured.status, group = not leaf,
 		detail = model.kept[resource.id] and "Kept" or not leaf and "Group" or POLICY[resource.policy] or "Review"}
 	if value.status == "complete" and value.bytes == 0 then return nil end
+	Status.apply(value)
 	if value.status == "notMeasured" or value.status == "excluded" then return nil end
 	return value
 end

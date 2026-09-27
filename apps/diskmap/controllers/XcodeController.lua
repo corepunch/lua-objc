@@ -2,22 +2,29 @@ local ns = require("AppKit")
 local Template = require("ui.template")
 local Model = require("apps.diskmap.Model")
 local Xcode = require("apps.diskmap.models.Xcode")
+local Status = require("apps.diskmap.models.Status")
 local Controller = {}; Controller.__index = Controller
 
 -- Three reviewable lists, in the order they are usually worth cleaning.
 local SECTIONS = {
-	{id = "support", title = "Device Support", column = "Version", icon = "iphone.gen3", color = "systemBlue",
+	{id = "support", title = "Device Support", column = "Version", status = true, icon = "iphone.gen3", color = "systemBlue",
 		detail = "Symbols Xcode copies from each device OS version you debug. The newest version per platform is kept.",
 		bulkTitle = "Mark Older Versions", bulkHelp = "Mark every version except the newest per platform",
 		consequence = "Debug symbols for one OS version. Xcode copies them again the next time you debug a device running it."},
-	{id = "derived", title = "DerivedData", column = "Project", icon = "hammer", color = "systemOrange",
+	{id = "derived", title = "DerivedData", column = "Project", status = true, icon = "hammer", color = "systemOrange",
 		detail = "Build products and indexes per project. Folders whose project no longer exists come first.",
 		bulkTitle = "Mark Missing Projects", bulkHelp = "Mark build data of projects that no longer exist",
 		consequence = "Build products and the code index. The next build and indexing of this project take longer."},
-	{id = "archives", title = "Archives", column = "App", icon = "archivebox", color = "systemPurple",
+	{id = "archives", title = "Archives", column = "App", detailTitle = "Created", icon = "archivebox", color = "systemPurple",
 		detail = "Shipped builds with their debug symbols, oldest first. Keep archives for versions people still run.",
 		consequence = "A shipped build and its dSYMs. Without it, crash reports for this version cannot be symbolicated."},
 }
+
+-- Row statuses as Status symbols: the newest device support stays (red);
+-- build data of a missing project is safe to remove (green); older versions
+-- and build data of a present or unknown project need a look (orange).
+local STATUS = {["Newest · keep"] = "Keep", Older = "Review", Missing = "Rebuildable", Present = "Review", Unknown = "Review"}
+Controller.statuses = STATUS
 
 -- The Xcode page: device support per OS version, DerivedData per project and
 -- archives, read from Xcode's folders when the page opens. Rows are marked
@@ -80,7 +87,12 @@ function Controller:show()
 	for _, section in ipairs(SECTIONS) do
 		local rows = self.actions:annotate(filtered(self.rows[section.id], self.query), section.icon, section.color)
 		for _, row in ipairs(rows) do
-			row.detail = row.status
+			if section.status then
+				row.detail = row.status
+				Status.apply(row, STATUS[row.status])
+			else
+				row.detail = row.date ~= "" and row.date or "—"
+			end
 			row.calculating = row.bytes == nil and self.measuring == true
 		end
 		self.refs["list_" .. section.id]:replaceRows(rows)

@@ -2,7 +2,7 @@
   <VStack id="pageContent" maxWidth="infinity" spacing="20" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {icon = "chart.bar.fill", color = "systemOrange", title = "Largest Items", summaryId = "largestSummary", summary = summary}) %>
     <GroupBox maxWidth="infinity">
-      <%- partial("ResourceList.etlua", {id = "largest", menu = "rowMenu", activate = "open", header = true, nameTitle = "Item", detailTitle = "Status"}) %>
+      <%- partial("ResourceList.etlua", {id = "largest", menu = "rowMenu", activate = "open", header = true, nameTitle = "Item", status = true}) %>
     </GroupBox>
     <%- partial("Footnote.etlua", {text = "Known locations measured individually, across every category. Open an item's menu to show it in Finder, review it, or keep it out of suggestions."}) %>
   </VStack>

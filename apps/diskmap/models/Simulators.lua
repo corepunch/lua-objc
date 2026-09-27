@@ -20,7 +20,7 @@ function Simulators.discover(service, home)
 	local devices, names = {}, {}
 	for _, entry in ipairs(children) do
 		if type(entry.name) == "string" and entry.name:lower():match(UUID) then
-			local info = {name = entry.name, runtime = "unknown", available = true, state = "Not recorded"}
+			local info = {name = entry.name, runtime = "unknown", available = true}
 			local plist = service.readPropertyList and service.readPropertyList(entry.path .. "/device.plist") or nil
 			local named = type(plist) == "table" and type(plist.name) == "string" and plist.name ~= ""
 			if named then
@@ -80,11 +80,11 @@ function Simulators.rows(inventory, query, filter, now)
 				and (filter ~= Simulators.filters[3] or (age ~= nil and age >= Simulators.staleDays))
 			if matchesFilter and (name .. " " .. runtimeName .. " " .. (device.udid or "")):lower():find(needle, 1, true) then
 				table.insert(rows, {id = device.udid, name = name, runtime = runtimeName,
-					state = available and (device.state or "Unknown") or "Unavailable",
+					state = available and (device.state or "—") or "Unavailable",
 					available = available, running = device.state == "Booted" or device.state == "Booting" or device.state == "Shutting Down", path = device.dataPath,
 					bytes = device.dataPathSize, size = Model.size(device.dataPathSize), age = age,
 					runtimeIdentifier = runtime,
-					lastUse = device.lastUsedAt and device.lastUsedAt:gsub("T", " "):gsub("Z$", " UTC") or "Not recorded"})
+					lastUse = age and Model.ago(age) or "—"})
 			end
 		end
 	end
@@ -99,7 +99,7 @@ local PLATFORMS = {
 -- Installed runtimes from `xcrun simctl runtime list -j`: an object keyed by
 -- runtime image UUID. Unknown fields stay unknown; sizes are never invented.
 -- Device counts come from the device inventory's runtime identifiers.
-function Simulators.runtimeRows(list, inventory, query)
+function Simulators.runtimeRows(list, inventory, query, now)
 	local rows, needle = {}, (query or ""):lower()
 	local counts = {}
 	for runtime, devices in pairs(inventory and inventory.devices or {}) do counts[runtime] = #devices end
@@ -110,6 +110,7 @@ function Simulators.runtimeRows(list, inventory, query)
 				or (type(entry.runtimeIdentifier) == "string" and entry.runtimeIdentifier:match("SimRuntime%.(%a+)%-")) or "Simulator"
 			local version = type(entry.version) == "string" and entry.version or "?"
 			local name = platform .. " " .. version
+			local age = Simulators.age(entry.lastUsedAt, now)
 			local build = type(entry.build) == "string" and entry.build or nil
 			local bytes = tonumber(entry.sizeBytes)
 			local devices = counts[entry.runtimeIdentifier] or 0
@@ -119,7 +120,7 @@ function Simulators.runtimeRows(list, inventory, query)
 					platform = platform, version = version, runtimeIdentifier = entry.runtimeIdentifier,
 					bytes = bytes, size = Model.size(bytes), deletable = entry.deletable == true,
 					devices = devices, deviceText = devices == 0 and "No devices" or (devices .. (devices == 1 and " device" or " devices")),
-					lastUse = type(entry.lastUsedAt) == "string" and entry.lastUsedAt:sub(1, 10) or "Not recorded",
+					lastUse = age and Model.ago(age) or "—",
 					path = type(entry.path) == "string" and entry.path or nil})
 			end
 		end

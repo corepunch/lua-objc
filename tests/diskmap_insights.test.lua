@@ -87,6 +87,17 @@ local share = 0
 for _, kind in ipairs(kinds) do share = share + kind.share end
 t.expect(math.abs(share - 1) < 1e-9, "kind shares add up to all measured files")
 t.assertEqual(kinds[1].relative, 1, "the largest kind has a full bar")
+for _, row in ipairs(top) do
+	t.expect(type(row.count) == "number" and row.count > 0, row.name .. " carries its file count for the Files column")
+	t.expect(not row.subtitle:find("%d"), row.name .. " does not repeat the count in its subtitle")
+end
+t.assertEqual(Model.plural(1, "app"), "1 app", "one app is singular")
+t.assertEqual(Model.plural("1,024", "file"), "1,024 files", "formatted counts pluralize")
+t.assertEqual(Model.ago(0), "Today", "same-day use reads Today")
+t.assertEqual(Model.percent(206, 1000), "21%", "share labels are whole percentages")
+t.assertEqual(Model.percent(1, 1000), "<1%", "a sliver reads <1%")
+for _, row in ipairs(top) do t.expect(not row.shareText:find(".", 1, true), row.name .. " share fits the bar label") end
+t.assertEqual(Model.ago(45), "1 month ago", "use a month ago reads in months")
 
 -- Applications, their data and leftovers.
 local info

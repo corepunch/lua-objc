@@ -2,6 +2,7 @@ local Model = require("apps.diskmap.Model")
 local Cleanup = require("apps.diskmap.models.Cleanup")
 local Files = require("apps.diskmap.models.Files")
 local Rules = require("apps.diskmap.knowledge.CleanupRules")
+local Status = require("apps.diskmap.models.Status")
 local Recommendations = {}
 
 local function matches(row, needle)
@@ -35,6 +36,7 @@ function Recommendations.checked(model, suggested, needle)
 					subtitle = rule and rule.advice or row.consequence or row.subtitle,
 					detail = row:isKept() and "Kept" or row.policy == "Essential" and "Essential" or ("Under " .. Model.size(threshold)),
 					shareText = ""}
+				Status.apply(value, (value.detail == "Kept" or value.detail == "Essential") and value.detail or "Within")
 				if matches(value, needle) then table.insert(rows, value) end
 			end
 		end
@@ -52,8 +54,10 @@ function Recommendations.presentation(model, query, apps)
 	local rebuildableBytes, reviewBytes = 0, 0
 	for _, row in ipairs(Cleanup.suggestions(model)) do
 		suggested[row.id] = true
+		-- A partial measurement already reads "≥" in the size column.
 		row.detail = row.impact == "Safe/rebuildable" and "Rebuildable" or "Review"
-		row.shareText = row.partial and "At least" or ""
+		row.shareText = ""
+		Status.apply(row)
 		if matches(row, needle) then
 			if row.impact == "Safe/rebuildable" then
 				table.insert(rebuildable, row); rebuildableBytes = rebuildableBytes + row.bytes
@@ -90,7 +94,11 @@ function Recommendations.presentation(model, query, apps)
 			icon = "hourglass", color = "systemBlue", bytes = apps.unusedBytes, size = Model.size(apps.unusedBytes), detail = "Applications", shareText = ""})
 	end
 	local visibleElsewhere = {}
-	for _, row in ipairs(elsewhere) do if matches(row, needle) then table.insert(visibleElsewhere, row) end end
+	for _, row in ipairs(elsewhere) do
+		row.detail = "Opens " .. row.detail
+		Status.apply(row, "Page")
+		if matches(row, needle) then table.insert(visibleElsewhere, row) end
+	end
 	local checked, absent, known = Recommendations.checked(model, suggested, needle)
 	return {rebuildable = relative(rebuildable), review = relative(review), elsewhere = relative(visibleElsewhere), checked = checked,
 		rebuildableBytes = rebuildableBytes, reviewBytes = reviewBytes, absent = absent, known = known,

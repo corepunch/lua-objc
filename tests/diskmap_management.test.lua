@@ -51,11 +51,12 @@ local data = {runtimes = {{identifier = "ios", name = "iOS 26"}}, devices = {ios
 	{udid = uid, name = "Test iPhone", dataPathSize = 11e9, lastUsedAt = "2026-09-22T11:40:44Z", isAvailable = true, state = "Shutdown"},
 	{udid = other, name = "Old iPad", isAvailable = false, state = "Shutdown"},
 }}}
-local rows = Simulators.rows(data)
+local rows = Simulators.rows(data, nil, nil, os.time({year = 2026, month = 9, day = 25, hour = 12}))
 t.assertEqual(rows[1].size, "11.0 GB", "simctl data size is shown")
 t.assertEqual(rows[1].runtime, "iOS 26", "runtime identifier resolves to display name")
-t.expect(rows[1].lastUse:find("UTC", 1, true), "last use has explicit timezone")
-t.assertEqual(rows[2].lastUse, "Not recorded", "unknown last use is never invented")
+t.assertEqual(rows[1].lastUse, "3 days ago", "last use is relative, never a raw timestamp")
+t.assertEqual(rows[1].state, "Shutdown", "a recorded state is shown")
+t.assertEqual(rows[2].lastUse, "—", "unknown last use is never invented")
 t.assertEqual(rows[2].size, "Not measured", "unknown size is not zero")
 t.assertEqual(#Simulators.rows(data, "old", "Unavailable"), 1, "unavailable tab filters and searches")
 t.assertEqual(Simulators.command("delete", rows[1])[4], uid, "command uses exact device ID")

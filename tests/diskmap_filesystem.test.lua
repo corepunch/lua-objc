@@ -63,7 +63,7 @@ local named = Simulators.discover(mock, home)
 local namedDevice = named.devices["com.apple.CoreSimulator.SimRuntime.iOS-26-0"][1]
 t.assertEqual(namedDevice.name, "iPhone 17", "device.plist supplies the simulator name")
 t.assertEqual(Simulators.rows(named)[1].runtime, "iOS 26.0", "runtime identifier becomes a version label")
-t.expect(Simulators.rows(named)[1].lastUse:find("2026-09-20", 1, true) ~= nil, "last use comes from device.plist")
+t.assertEqual(Simulators.rows(named, nil, nil, os.time({year = 2026, month = 9, day = 25, hour = 12}))[1].lastUse, "5 days ago", "last use comes from device.plist")
 t.assertEqual(namedDevice.dataPathSize, 5000000000, "plist metadata does not replace the snapshot size")
 
 local xcode = Sdks.discover(mock, "/Applications/Xcode.app")

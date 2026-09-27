@@ -1,18 +1,14 @@
 local Model = require("apps.diskmap.Model")
 local Categories = require("apps.diskmap.models.Categories")
 local Cleanup = require("apps.diskmap.models.Cleanup")
+local Status = require("apps.diskmap.models.Status")
 local Overview = {}
 
 -- The donut draws at most this many named categories; smaller measured
 -- categories share one "Other categories" sector so thin slivers stay legible.
 local CHART = {categories = 7}
 
-local function percent(bytes, total)
-	if not bytes or bytes <= 0 or not total or total <= 0 then return "" end
-	local value = bytes * 100 / total
-	if value > 0 and value < 1 then return "<1%" end
-	return string.format("%d%%", math.floor(value + 0.5))
-end
+local percent = Model.percent
 
 -- Volume summary for the hero card. Capacity numbers come from the system
 -- volume query; measured totals come from the ledger and never replace them.
@@ -185,6 +181,7 @@ function Overview.largest(model, disk, limit, query)
 						or row.policy == "System managed" and "System managed" or "Review",
 					kept = row:isKept()})
 				rows[#rows].detail = rows[#rows].kept and "Kept" or rows[#rows].impact
+				Status.apply(rows[#rows])
 			end
 		end
 	end

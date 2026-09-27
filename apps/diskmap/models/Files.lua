@@ -30,18 +30,12 @@ function Files.kindById(id)
 	for _, kind in ipairs(Kinds) do if kind.id == id then return kind end end
 end
 
-local function plural(count, word) return count .. " " .. word .. (tostring(count) == "1" and "" or "s") end
+local plural = Model.plural
 
--- "3 days ago", "5 months ago", "2 years ago": the precision a person needs
--- to decide whether a file is still in use.
+-- How long ago a file was last used, from its Unix time.
 function Files.age(seconds, now)
 	if not seconds or seconds <= 0 then return "Unknown" end
-	local days = math.floor(((now or os.time()) - seconds) / 86400)
-	if days < 1 then return "Today" end
-	if days < 2 then return "Yesterday" end
-	if days < 31 then return days .. " days ago" end
-	if days < 365 then return plural(math.floor(days / 30.4), "month") .. " ago" end
-	return plural(math.floor(days / 365), "year") .. " ago"
+	return Model.ago(math.floor(((now or os.time()) - seconds) / 86400))
 end
 
 -- A home-relative folder, so rows read like Finder's path bar.
@@ -156,26 +150,26 @@ function Files.kinds(model)
 		end
 		table.insert(rows, {id = total.kind.id, name = total.kind.name, icon = total.kind.icon, color = total.kind.color,
 			advice = total.kind.advice, bytes = total.bytes, size = Model.size(total.bytes), count = total.count, oldBytes = total.oldBytes,
-			subtitle = plural(Model.count(total.count), "file") .. (#top > 0 and (" · " .. table.concat(top, ", ")) or "")
-				.. (total.oldBytes > 0 and (" · " .. Model.size(total.oldBytes) .. " unused for a year") or ""),
+			subtitle = table.concat(top, ", ") .. (#top > 0 and total.oldBytes > 0 and " · " or "")
+				.. (total.oldBytes > 0 and (Model.size(total.oldBytes) .. " unused for a year") or ""),
 			share = all > 0 and total.bytes / all or 0})
 	end
 	table.sort(rows, function(a, b) if a.bytes ~= b.bytes then return a.bytes > b.bytes end return a.id < b.id end)
 	local largest = rows[1] and rows[1].bytes or 0
 	for _, row in ipairs(rows) do
 		row.relative = largest > 0 and row.bytes / largest or 0
-		local percent = all > 0 and row.bytes * 100 / all or 0
-		row.shareText = percent > 0 and percent < 1 and "<1%" or string.format("%d%%", math.floor(percent + 0.5))
+		row.shareText = Model.percent(row.bytes, all)
 	end
 	table.sort(extensions, function(a, b) return a.bytes > b.bytes end)
 	local top = {}
 	for _, row in ipairs(extensions) do
 		if row.extension ~= "" then
 			local kind = kindByExtension[row.extension] or OTHER
-			table.insert(top, {id = row.extension, name = "." .. row.extension, subtitle = kind.name .. " · " .. plural(Model.count(row.count), "file"),
-				icon = kind.icon, color = kind.color, bytes = row.bytes, size = Model.size(row.bytes), kindId = kind.id,
+			-- The Files column carries the count; the subtitle names the kind.
+			table.insert(top, {id = row.extension, name = "." .. row.extension, subtitle = kind.name,
+				icon = kind.icon, color = kind.color, bytes = row.bytes, size = Model.size(row.bytes), count = row.count, kindId = kind.id,
 				relative = extensions[1].bytes > 0 and row.bytes / extensions[1].bytes or 0,
-				shareText = all > 0 and string.format("%.1f%%", row.bytes * 100 / all) or ""})
+				shareText = Model.percent(row.bytes, all)})
 			if #top >= 12 then break end
 		end
 	end
