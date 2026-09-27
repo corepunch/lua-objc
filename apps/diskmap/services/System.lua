@@ -91,6 +91,7 @@ function System.openSettings(section)
 		voices = "com.apple.Accessibility-Settings.extension",
 		softwareupdate = "com.apple.Software-Update-Settings.extension",
 		timemachine = "com.apple.Time-Machine-Settings.extension",
+		spotlight = "com.apple.Spotlight-Settings.extension",
 	}
 	local target = "x-apple.systempreferences:" .. (targets[section] or "com.apple.settings.Storage")
 	os.execute("/usr/bin/open " .. System.quote(target))
@@ -200,9 +201,9 @@ function System.measure(paths, completion)
 		completion(sizes)
 	end)
 end
-function System.discoverEntries(home, completion)
+function System.discoverEntries(home, completion, projectRoots)
 	local catalog = require("apps.diskmap.Catalog")
-	local locations = catalog.discoveryRules(home)
+	local locations = catalog.discoveryRules(home, projectRoots)
 	local discovered = {}
 	local function runLocation(index)
 		local location = locations[index]
@@ -228,7 +229,8 @@ function System.discoverEntries(home, completion)
 							if marker then
 								marker:close()
 								table.insert(discovered, {id = hexId(path), name = rule.name .. " · " .. (parent:match("([^/]+)$") or parent), subtitle = rule.subtitle, path = path,
-									policy = "Review", action = "finder", reviewThreshold = 500e6, icon = "shippingbox", color = "systemOrange"})
+									policy = "Review", action = "finder", reviewThreshold = 500e6, icon = "shippingbox", color = "systemOrange",
+									project = parent, artifact = rule.name})
 								break
 							end
 						end
@@ -337,12 +339,141 @@ function System.volumes(completion)
 		end)
 	end)
 end
+-- The top level of another disk, one folder level deep, measured like the
+-- startup disk: metadata only, staying on that volume.
+function System.analyzeVolume(path, completion)
+	local ok, job = pcall(Scanner.start, {path}, {}, {breakdown = true})
+	if not ok then completion(nil, tostring(job)); return end
+	System.await(job, function(result)
+		local breakdown = result.breakdowns and result.breakdowns[1]
+		completion(breakdown, result.failure ~= "" and result.failure or nil, result.errors)
+	end)
+end
 function System.openDiskUtility()
 	os.execute("/usr/bin/open -a " .. System.quote("Disk Utility"))
 end
 function System.copy(text) ns.copyToClipboard(text) end
 function System.confirmTrashPath(title, path, message)
 	return ns.Alert {title = title, message = path .. "\n\n" .. message, buttons = {"Cancel", "Move to Trash"}} == 2
+end
+local function support(name)
+	return (os.getenv("HOME") or "") .. "/Library/Application Support/Diskmap/" .. name
+end
+local function readFile(path)
+	local file = io.open(path, "r")
+	if not file then return nil end
+	local body = file:read("*a"); file:close()
+	return body
+end
+local function writeFile(path, body, append)
+	local directory = path:match("^(.*)/[^/]+$")
+	if not os.execute("/bin/mkdir -p " .. System.quote(directory)) then return false end
+	local file = io.open(path, append and "a" or "w")
+	if not file then return false end
+	file:write(body); file:close()
+	return true
+end
+function System.exists(path)
+	local file = io.open(expand(path), "r")
+	if file then file:close(); return true end
+	return false
+end
+function System.volumeCapacity(path) return ns.volumeCapacity(path or "/") end
+function System.pickFolder(title) return ns._pickFolder(title) end
+function System.pickFile(title) return ns._pickFile(title) end
+function System.pickSaveFile(title, name) return ns._saveFile(title, name) end
+-- Folder lists the person chose ("projects", "duplicates"): one
+-- "path<TAB>bookmark" line each. The security-scoped bookmark follows a moved
+-- or renamed folder and keeps access should Diskmap run sandboxed.
+function System.loadFolders(name)
+	local roots = {}
+	for line in (readFile(support(name .. "-folders")) or ""):gmatch("[^\n]+") do
+		local path, bookmark = line:match("^([^\t]*)\t?(.*)$")
+		local resolved = bookmark ~= "" and ns.resolveBookmark(bookmark)
+		table.insert(roots, resolved or path)
+	end
+	return roots
+end
+function System.saveFolders(name, roots)
+	local lines = {}
+	for _, path in ipairs(roots) do table.insert(lines, path .. "\t" .. (ns.bookmark(path) or "")) end
+	return writeFile(support(name .. "-folders"), table.concat(lines, "\n"))
+end
+-- Duplicate files in chosen folders: reads their contents, so it runs only
+-- when asked and only there. Returns a job whose `cancel()` stops it.
+function System.findDuplicates(roots, completion, progress)
+	local job = Scanner.startDuplicates(roots, {minimumBytes = 1e6})
+	ns.async(function()
+		while not job.cancelled do
+			local done, result = Scanner.pollDuplicates(job)
+			if done then completion(result); return end
+			if result and progress then progress(result) end
+			ns.sleep(0.25)
+		end
+	end)
+	return {cancel = function() Scanner.cancelDuplicates(job) end}
+end
+-- Opt-in features stored as one small file each: "enabled" or absent.
+function System.loadFlag(name) return readFile(support("flag-" .. name)) == "enabled" end
+function System.saveFlag(name, enabled) return writeFile(support("flag-" .. name), enabled and "enabled" or "disabled") end
+-- Notifications need the Diskmap app bundle; the development runtime has none.
+function System.notificationsAvailable() return ns.notifications.available() end
+function System.requestNotifications(callback) ns.notifications.requestAuthorization(callback) end
+function System.notify(options, onResponse) return ns.notifications.post(options, onResponse) end
+function System.removeNotification(id) ns.notifications.remove(id) end
+-- Watches folders while Diskmap runs; the handle's cancel() stops it.
+function System.watch(paths, callback)
+	local expanded = {}
+	for _, path in ipairs(paths) do table.insert(expanded, expand(path)) end
+	return ns.watch(expanded, callback)
+end
+function System.loadHistorySetting() return readFile(support("history-enabled")) == "enabled" end
+function System.saveHistorySetting(enabled) return writeFile(support("history-enabled"), enabled and "enabled" or "disabled") end
+function System.loadHistory() return readFile(support("history")) or "" end
+function System.saveHistory(text) return writeFile(support("history"), text) end
+-- Actions are appended to a plain text log that Console can open too.
+local LOG = (os.getenv("HOME") or "") .. "/Library/Logs/Diskmap/operations.log"
+function System.logOperation(line) return writeFile(LOG, line .. "\n", true) end
+function System.operationLog()
+	local lines = {}
+	for line in (readFile(LOG) or ""):gmatch("[^\n]+") do table.insert(lines, line) end
+	return lines
+end
+-- /usr/bin/git is a shim that offers to install the developer tools when
+-- they are missing; ask xcode-select first so no installer prompt appears.
+local developerTools
+local function withDeveloperTools(completion)
+	if developerTools ~= nil then completion(developerTools); return end
+	System.command({"/usr/bin/xcode-select", "-p"}, function(ok)
+		developerTools = ok == true
+		completion(developerTools)
+	end)
+end
+-- Git state and last modification of a project folder, never touching files.
+function System.projectInfo(path, completion)
+	System.command({"/usr/bin/stat", "-f", "%m", path}, function(ok, output)
+		local modified = ok and tonumber((output or ""):match("%d+")) or nil
+		withDeveloperTools(function(available)
+			if not available then completion({modified = modified, loaded = true}); return end
+			System.command({"/usr/bin/git", "-C", path, "status", "--porcelain=v1", "--branch"}, function(gitOk, gitOutput)
+				completion({modified = modified, git = gitOk and require("apps.diskmap.models.Projects").parseGit(gitOutput) or nil, loaded = true})
+			end)
+		end)
+	end)
+end
+-- Disk images and installer packages in the places downloads end up.
+function System.findInstallers(home, completion)
+	local argv = {"/usr/bin/find", home .. "/Downloads", home .. "/Desktop", home .. "/Documents", "-maxdepth", "4", "-type", "f",
+		"(", "-iname", "*.dmg", "-o", "-iname", "*.pkg", "-o", "-iname", "*.xip", "-o", "-iname", "*.iso", ")", "-size", "+10M", "-print"}
+	System.command(argv, function(_, output)
+		local paths = lines(output or "")
+		if #paths == 0 then completion({}); return end
+		System.measure(paths, function(sizes)
+			local files = {}
+			for index, path in ipairs(paths) do table.insert(files, {path = path, bytes = sizes[index]}) end
+			completion(files)
+		end)
+	end)
 end
 System.decode = ns.json_parse
 function System.confirmAction(title, message)

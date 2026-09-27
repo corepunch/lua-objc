@@ -8,7 +8,8 @@ local Controller = {}; Controller.__index = Controller
 -- topics. Window.etlua lays the menus out; this controller supplies what
 -- they do. `handlers` come from the root controller:
 -- `show(id)`, `destination()`, `scanning()`, `refresh()`, `cancel()`,
--- `settings()`, `find()`, `search(page, text)` and `emptyTrash()`.
+-- `settings()`, `find()`, `search(page, text)`, `emptyTrash()`, `review()`,
+-- `history()` and `navigation`, the sidebar's back/forward history.
 function Controller.new(model, service, handlers)
 	return setmetatable({model = model, service = service, handlers = handlers}, Controller)
 end
@@ -46,6 +47,17 @@ function Controller:actions()
 		help = function() h.show("help") end,
 		shortcuts = function() h.search("help", "Keyboard shortcuts") end,
 		guide = function() h.show("guide") end,
+		back = function() h.navigation:back() end,
+		canGoBack = function() return h.navigation:canGoBack() end,
+		forward = function() h.navigation:forward() end,
+		canGoForward = function() return h.navigation:canGoForward() end,
+		review = h.review,
+		history = h.history,
+		openScan = h.openScan,
+		compareScan = h.compareScan,
+		canCompareScan = function() return not h.scanning() end,
+		exportScan = h.exportScan,
+		canExportScan = function() return not h.scanning() end,
 	}
 	for _, page in ipairs(Navigation.destinations) do
 		if page.id then

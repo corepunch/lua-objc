@@ -59,6 +59,8 @@ return function()
 		item("gradle", "Gradle", "Build caches and tool distributions", "~/.gradle"),
 		item("maven", "Maven repository", "Downloaded and locally published artifacts", "~/.m2/repository"),
 		item("go", "Go modules", "Downloaded module sources", "~/go/pkg/mod"),
+		item("mise-installs", "mise tool versions", "Installed language runtimes and tools", "~/.local/share/mise", {reviewThreshold = 2e9,
+			consequence = "Remove versions you no longer use with `mise uninstall` or `mise prune`."}),
 	}),
 	group("mobile-dev", "Cross-platform & mobile", "Android, Flutter and platform package data", "iphone.gen3", "systemGreen", {
 		item("android-sdk", "Android SDK", "Platforms, build tools and system images", "~/Library/Android/sdk"),

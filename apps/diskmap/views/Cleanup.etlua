@@ -7,7 +7,7 @@
     {id = "checked", title = "Checked and within limits", detail = "Known space hogs measured below their review threshold, or kept."},
   }
 %>
-<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+<ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
   <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {icon = "sparkles", color = "systemIndigo", title = "Clean Up", summary = ""}) %>
     <HStack id="stats" maxWidth="infinity" spacing="12" alignment="top">

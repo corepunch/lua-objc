@@ -42,8 +42,6 @@ static void layout_recursive(UIView *view, CGFloat width);
 @property(nonatomic) CGFloat keyboardBottomInset;
 @property(nonatomic) BOOL matchBottomHorizontalInset;
 @property(nonatomic) CGFloat horizontalInset;
-@property(nonatomic) CGFloat offsetX;
-@property(nonatomic) CGFloat offsetY;
 @end
 
 @implementation UIView (LuaLayoutProperties)
@@ -79,18 +77,6 @@ static void layout_recursive(UIView *view, CGFloat width);
 - (void)setMatchBottomHorizontalInset:(BOOL)value { objc_setAssociatedObject(self, &kMatchBottomHorizontalInsetKey, @(value), OBJC_ASSOCIATION_RETAIN); }
 - (CGFloat)horizontalInset { return [objc_getAssociatedObject(self, &kHorizontalInsetKey) doubleValue]; }
 - (void)setHorizontalInset:(CGFloat)value { objc_setAssociatedObject(self, &kHorizontalInsetKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
-- (CGFloat)offsetX { return self.transform.tx; }
-- (void)setOffsetX:(CGFloat)value {
-	CGAffineTransform transform = self.transform;
-	transform.tx = value;
-	self.transform = transform;
-}
-- (CGFloat)offsetY { return self.transform.ty; }
-- (void)setOffsetY:(CGFloat)value {
-	CGAffineTransform transform = self.transform;
-	transform.ty = value;
-	self.transform = transform;
-}
 - (NSString *)alignment {
 	return objc_getAssociatedObject(self, &kAlignmentKey) ?: @"center";
 }

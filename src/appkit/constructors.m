@@ -5,6 +5,10 @@
  * Keep the native NSView traversal and opt out before it visits descendants. */
 @interface LuaStackView : NSView
 @property(nonatomic) BOOL allowsHitTesting;
+// SwiftUI `.dropDestination(for: URL.self)`: files dropped on the stack go to
+// `onDrop(paths)`, which returns whether it took them.
+@property(nonatomic, strong) LuaReg *dropReg;
+@property(nonatomic) BOOL dropTargeted;
 @end
 @implementation LuaStackView
 - (instancetype)initWithFrame:(NSRect)frame {
@@ -23,12 +27,70 @@
 	return objc_getAssociatedObject(self, &kToolbarContentKey) ? self.intrinsicContentSize : [super fittingSize];
 }
 - (NSView *)hitTest:(NSPoint)point { return _allowsHitTesting ? [super hitTest:point] : nil; }
+static NSArray<NSString *> *stack_drop_paths(id<NSDraggingInfo> info) {
+	NSArray<NSURL *> *urls = [info.draggingPasteboard readObjectsForClasses:@[NSURL.class]
+		options:@{NSPasteboardURLReadingFileURLsOnlyKey: @YES}];
+	NSMutableArray *paths = [NSMutableArray array];
+	for (NSURL *url in urls) if (url.path.length) [paths addObject:url.path];
+	return paths;
+}
+// While files hover over it, the stack shows the system focus indicator.
+- (void)setDropTargeted:(BOOL)targeted {
+	_dropTargeted = targeted;
+	self.wantsLayer = YES;
+	self.layer.borderWidth = targeted ? kDropHighlightWidth : 0;
+	self.layer.borderColor = NSColor.keyboardFocusIndicatorColor.CGColor;
+}
+- (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
+	BOOL accepts = self.dropReg && stack_drop_paths(sender).count > 0;
+	self.dropTargeted = accepts;
+	return accepts ? NSDragOperationCopy : NSDragOperationNone;
+}
+- (void)draggingExited:(id<NSDraggingInfo>)sender { (void)sender; self.dropTargeted = NO; }
+- (BOOL)performDragOperation:(id<NSDraggingInfo>)sender {
+	self.dropTargeted = NO;
+	return stack_perform_drop(self, stack_drop_paths(sender));
+}
+static BOOL stack_perform_drop(LuaStackView *view, NSArray<NSString *> *paths) {
+	lua_State *L = lua_reg_live_state(view.dropReg);
+	if (!L || !paths.count || !lua_reg_push(view.dropReg)) return NO;
+	lua_createtable(L, (int)paths.count, 0);
+	for (NSUInteger i = 0; i < paths.count; i++) { lua_pushstring(L, paths[i].UTF8String); lua_rawseti(L, -2, (lua_Integer)i + 1); }
+	if (lua_objc_pcall(L, 1, 1, "drop") != LUA_OK) return NO;
+	BOOL accepted = lua_toboolean(L, -1);
+	lua_pop(L, 1);
+	return accepted;
+}
 - (void)viewDidChangeEffectiveAppearance {
 	[super viewDidChangeEffectiveAppearance];
 	NSColor *color = self.backgroundColor;
 	if (color) self.backgroundColor = color;
 }
 @end
+
+// _setDropHandler(stack, onDrop | nil)
+static int bridge_set_drop_handler(lua_State *L) {
+	LuaStackView *view = lua_objc_check_object(L, 1, [LuaStackView class], "stack");
+	view.dropReg = lua_reg_opt(L, 2);
+	if (view.dropReg) [view registerForDraggedTypes:@[NSPasteboardTypeFileURL]];
+	else [view unregisterDraggedTypes];
+	return 0;
+}
+
+// Test hook: _dropFiles(stack, paths) as if they were dropped on it.
+static int bridge_drop_files(lua_State *L) {
+	LuaStackView *view = lua_objc_check_object(L, 1, [LuaStackView class], "stack");
+	luaL_checktype(L, 2, LUA_TTABLE);
+	NSMutableArray *paths = [NSMutableArray array];
+	for (lua_Integer i = 1; ; i++) {
+		lua_rawgeti(L, 2, i);
+		if (lua_isnil(L, -1)) { lua_pop(L, 1); break; }
+		[paths addObject:[NSString stringWithUTF8String:luaL_checkstring(L, -1)]];
+		lua_pop(L, 1);
+	}
+	lua_pushboolean(L, stack_perform_drop(view, paths));
+	return 1;
+}
 
 static int bridge_hit_test_target(lua_State *L) {
 	NSView *view = check_view(L, 1);
@@ -522,6 +584,28 @@ static int bridge_NSScrollView_onRowMove(lua_State *L) {
 		[table setDraggingSourceOperationMask:NSDragOperationMove forLocal:YES];
 	}
 	return 0;
+}
+
+// setDragKey(key | nil): rows drag as the file at row[key].
+static int bridge_NSScrollView_setDragKey(lua_State *L) {
+	id obj = check_objc(L, 1);
+	LuaTableViewSource *source = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
+	if (![source isKindOfClass:[LuaTableViewSource class]]) return luaL_error(L, "setDragKey requires a table view");
+	const char *key = luaL_optstring(L, 2, NULL);
+	source.dragKey = key ? [NSString stringWithUTF8String:key] : nil;
+	NSTableView *table = (NSTableView *)table_scrollview(obj).documentView;
+	[table setDraggingSourceOperationMask:key ? NSDragOperationCopy | NSDragOperationGeneric : NSDragOperationNone forLocal:NO];
+	return 0;
+}
+
+// Test hook: _tableDragPath(list, row) → the path row `row` (1-based) drags.
+static int bridge_table_drag_path(lua_State *L) {
+	id obj = check_objc(L, 1);
+	LuaTableViewSource *source = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
+	NSTableView *table = (NSTableView *)table_scrollview(obj).documentView;
+	id writer = [source tableView:table pasteboardWriterForRow:(NSInteger)luaL_checkinteger(L, 2) - 1];
+	if ([writer isKindOfClass:NSURL.class]) lua_pushstring(L, ((NSURL *)writer).path.UTF8String); else lua_pushnil(L);
+	return 1;
 }
 
 static int bridge_NSScrollView_onRowSwipe(lua_State *L) {

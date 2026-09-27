@@ -1,13 +1,7 @@
-<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+<ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
   <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
-    <HStack maxWidth="infinity" spacing="14" alignment="center">
-      <SystemImage name="iphone" size="36" badgeColor="systemBlue" />
-      <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
-        <Label text="Simulators" size="22" weight="semibold" />
-        <Label id="summary" text="Reading simulator devices and runtimes…" size="13" color="secondary" monospacedDigit="true" maxWidth="infinity" lines="2" />
-      </VStack>
-      <Button id="components" title="Xcode Components…" action="components" help="Manage runtimes in Xcode › Settings › Components" />
-    </HStack>
+    <%- partial("PageHeader.etlua", {icon = "iphone", color = "systemBlue", title = "Simulators", summary = "Reading simulator devices and runtimes…", summaryId = "summary",
+      buttons = {{id = "components", title = "Xcode Components…", action = "components", help = "Manage runtimes in Xcode › Settings › Components"}}}) %>
     <HStack id="stats" maxWidth="infinity" spacing="12" alignment="top">
       <%- partial("StatTile.etlua", {id = "devicesTile", icon = "iphone", color = "systemBlue", title = "Devices", value = "—", detail = "Apps and data inside simulators"}) %>
       <%- partial("StatTile.etlua", {id = "runtimesTile", icon = "iphone.gen3", color = "systemIndigo", title = "Runtimes", value = "—", detail = "Simulator operating systems"}) %>

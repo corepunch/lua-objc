@@ -1,4 +1,4 @@
-<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+<ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
   <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {icon = "square.grid.3x3.fill", color = "systemBlue", title = "Applications", summary = "Reading installed applications…"}) %>
     <HStack id="stats" maxWidth="infinity" spacing="12" alignment="top">
@@ -19,9 +19,12 @@
       </GroupBox>
     </VStack>
     <VStack id="leftoversSection" maxWidth="infinity" spacing="8" alignment="leading">
-      <%- partial("SectionHeader.etlua", {title = "Possible leftovers", detail = "Data folders named for an app that Spotlight cannot find anywhere on this Mac. Check that the app is not on another disk before moving one to the Trash.", detailId = "leftoversDetail"}) %>
+      <HStack maxWidth="infinity" spacing="12" alignment="center">
+        <%- partial("SectionHeader.etlua", {title = "Possible leftovers", detail = "Data folders no app on this Mac claims. High means no app from that vendor is installed; review Medium and Low before removing anything.", detailId = "leftoversDetail"}) %>
+        <Button id="markHigh" title="Mark High Confidence" systemImage="plus.circle" action="markHigh" help="Mark every folder of an app whose vendor has no installed app" disabled="true" />
+      </HStack>
       <GroupBox maxWidth="infinity">
-        <%- partial("ResourceList.etlua", {id = "leftovers", menu = "leftoverMenu", activate = "revealLeftover", header = false, detailTitle = "Location"}) %>
+        <%- partial("ResourceList.etlua", {id = "leftovers", menu = "leftoverMenu", activate = "revealLeftover", header = true, nameTitle = "Folder", detailTitle = "Confidence"}) %>
       </GroupBox>
     </VStack>
     <%- partial("Footnote.etlua", {text = "Last used comes from Spotlight, as Finder's Last Opened. Apps outside /Applications and ~/Applications are not listed; their data never counts as a leftover."}) %>

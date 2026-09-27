@@ -174,7 +174,10 @@ function Mock.new(options)
 	collectgarbage("collect")
 	local totals, counts = buildIndex(items)
 	local discovery = copy(fixture.discovery or {})
-	for _, entry in ipairs(discovery) do entry.path = absolute(entry.path, home) end
+	for _, entry in ipairs(discovery) do
+		entry.path = absolute(entry.path, home)
+		if entry.project then entry.project = absolute(entry.project, home) end
+	end
 	local agents = copy(fixture.agentEntries or {})
 	for _, entry in ipairs(agents) do entry.path = absolute(entry.path, home) end
 	local service = setmetatable({
@@ -507,7 +510,121 @@ function Mock:simulatorRecord(udid)
 end
 
 function Mock:readPropertyList(path)
+	for virtual, plist in pairs(self.fixture.plists or {}) do
+		if absolute(virtual, self.home) == absolute(path, self.home) then
+			local value = copy(plist)
+			if type(value.WorkspacePath) == "string" then value.WorkspacePath = absolute(value.WorkspacePath, self.home) end
+			return value
+		end
+	end
 	return ns.readPropertyList(absolute(path, self.home))
+end
+
+function Mock:exists(path)
+	return (self.fileCounts[absolute(path, self.home)] or 0) > 0
+end
+
+function Mock:measure(paths, completion)
+	local sizes = {}
+	for index, path in ipairs(paths) do sizes[index] = self.totals[absolute(path, self.home)] or 0 end
+	completion(sizes)
+end
+
+function Mock:volumeCapacity()
+	return {total = self.fixture.capacityBytes, available = self.availableBytes,
+		important = self.availableBytes + (self.fixture.purgeableBytes or 0)}
+end
+
+
+function Mock:projectInfo(path, completion)
+	local info
+	for virtual, value in pairs(self.fixture.projects or {}) do
+		if absolute(virtual, self.home) == absolute(path, self.home) then info = value end
+	end
+	local Projects = require("apps.diskmap.models.Projects")
+	completion({modified = info and info.modified, git = info and Projects.parseGit(info.git) or nil, loaded = true})
+end
+
+function Mock:findInstallers(home, completion)
+	local files = {}
+	for _, item in ipairs(self.items) do
+		local lower = item.path:lower()
+		for _, folder in ipairs({"/Downloads/", "/Desktop/", "/Documents/"}) do
+			if item.path:sub(1, #home + #folder) == home .. folder
+				and (lower:match("%.dmg$") or lower:match("%.pkg$") or lower:match("%.xip$") or lower:match("%.iso$")) then
+				table.insert(files, {path = item.path, bytes = self.totals[item.path] or item.allocatedBytes})
+			end
+		end
+	end
+	table.sort(files, function(a, b) return a.path < b.path end)
+	completion(files)
+end
+
+function Mock:logOperation(line)
+	self.operations = self.operations or {}
+	table.insert(self.operations, line)
+	return true
+end
+
+function Mock:operationLog()
+	return copy(self.operations or {})
+end
+
+function Mock:loadFolders(name) return copy((self.folders or {})[name] or {}) end
+function Mock:saveFolders(name, roots) self.folders = self.folders or {}; self.folders[name] = copy(roots); return true end
+-- Virtual files share no contents to compare: files with the same name and
+-- size under the chosen folders stand in for identical copies.
+function Mock:findDuplicates(roots, completion)
+	local groups, byKey = {}, {}
+	for _, item in ipairs(self.items) do
+		for _, root in ipairs(roots) do
+			local prefix = absolute(root, self.home) .. "/"
+			if item.path:sub(1, #prefix) == prefix and (item.allocatedBytes or 0) >= 1e6 then
+				local key = (item.path:match("([^/]+)$") or "") .. "#" .. item.allocatedBytes
+				byKey[key] = byKey[key] or {bytes = item.allocatedBytes, files = {}}
+				table.insert(byKey[key].files, {path = item.path, privateBytes = item.allocatedBytes})
+			end
+		end
+	end
+	for _, group in pairs(byKey) do
+		if #group.files > 1 then
+			table.sort(group.files, function(a, b) return a.path < b.path end)
+			group.reclaimable = group.bytes * (#group.files - 1)
+			table.insert(groups, group)
+		end
+	end
+	table.sort(groups, function(a, b) return a.bytes > b.bytes end)
+	completion({groups = groups, examined = #self.items, failure = ""})
+	return {cancel = function() end}
+end
+function Mock:loadHistorySetting() return self.historyEnabled == true end
+function Mock:saveHistorySetting(enabled) self.historyEnabled = enabled == true; return true end
+function Mock:loadHistory() return self.history or "" end
+function Mock:saveHistory(text) self.history = text; return true end
+
+-- Opt-in flags, notifications and watches live in memory; tests read
+-- `posted` and fire `watchers` directly.
+function Mock:loadFlag(name) return (self.flags or {})[name] == true end
+function Mock:saveFlag(name, enabled) self.flags = self.flags or {}; self.flags[name] = enabled == true; return true end
+function Mock:notificationsAvailable() return true end
+function Mock:requestNotifications(callback) callback(true) end
+function Mock:notify(options, onResponse)
+	self.posted = self.posted or {}
+	self.posted[options.id] = {options = options, respond = onResponse}
+	return true
+end
+function Mock:removeNotification(id) if self.posted then self.posted[id] = nil end end
+function Mock:watch(paths, callback)
+	self.watchers = self.watchers or {}
+	local watcher = {paths = paths, callback = callback, active = true}
+	function watcher.cancel() watcher.active = false end
+	table.insert(self.watchers, watcher)
+	return watcher
+end
+
+function Mock:pickFolder()
+	ns.Alert {title = "Mock HDD", message = "Mock mode does not open folders on this Mac.", buttons = {"OK"}}
+	return nil
 end
 
 function Mock:command(arguments, completion)
@@ -593,6 +710,11 @@ function Mock:installedBundleIds(completion)
 	local ids = {"com.apple.Safari", "com.apple.mail"}
 	for _, value in pairs(self.fixture.applications or {}) do table.insert(ids, value.bundleId) end
 	completion(ids)
+end
+
+function Mock:analyzeVolume(path, completion)
+	local contents = self.fixture.volumeContents and self.fixture.volumeContents[path]
+	completion(contents and copy(contents) or {}, nil, 0)
 end
 
 function Mock:volumes(completion)

@@ -1,6 +1,7 @@
 local ns = require("AppKit")
 local Template = require("ui.template")
 local Overview = require("apps.diskmap.models.Overview")
+local Inventory = require("apps.diskmap.models.Inventory")
 local Controller = {}; Controller.__index = Controller
 
 -- The overview lists every largest item that fits a glance; the Largest Items
@@ -27,6 +28,7 @@ function Controller:mount(host, state)
 	}})
 	self.refs = refs
 	self.hero = self.template:child("hero", "apps/diskmap/views/Hero.etlua")
+	self.changes = self.template:child("changes", "apps/diskmap/views/Changes.etlua")
 	return refs
 end
 
@@ -46,13 +48,15 @@ function Controller:update(state)
 	for _, item in ipairs(chart.legend) do
 		actions["category_" .. item.id] = function() self.handlers.open(item.id) end
 	end
-	self.hero:update({summary = Overview.summary(self.model, state.disk), chart = chart,
+	self.hero:update({summary = Overview.summary(self.model, state.disk, state.capacity), chart = chart,
+		hidden = Overview.hidden(state.disk, state.capacity, state.snapshotCount, self.model.scan.errors, Inventory.cloud(self.model)),
 		reclaim = Overview.reclaim(self.model), volumeName = state.volumeName, actions = actions})
+	self.changes:update({changes = state.changes})
 end
 
 function Controller:dispose()
 	if self.template then self.template:dispose() end
-	self.template, self.hero, self.refs = nil, nil, nil
+	self.template, self.hero, self.changes, self.refs = nil, nil, nil, nil
 end
 
 return Controller

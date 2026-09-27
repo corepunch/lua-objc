@@ -28,7 +28,10 @@ t.assertEqual(chart.legend[2].id, "developer", "next largest category follows")
 t.assertEqual(chart.legend[3].id, "ai-agents", "AI agents have their own storage segment")
 t.assertEqual(chart.marks[#chart.marks].label, "Free", "free space closes the ring")
 local hero, heroRefs = render("Hero", {summary = Overview.summary(model, disk), chart = chart,
-	reclaim = Overview.reclaim(model), volumeName = "Startup Disk", actions = {}})
+	reclaim = Overview.reclaim(model), volumeName = "Startup Disk", actions = {},
+	hidden = Overview.hidden(disk, {important = 110e9}, 2, 3)})
+t.expect(heroRefs.hiddenSpace ~= nil, "the hero explains space no file scan can attribute")
+t.assertEqual(#heroRefs.hiddenSpace.subviews, 3, "purgeable space, snapshots and unreadable locations are listed")
 t.assertEqual(heroRefs.heroCard.className, "NSBox", "the hero uses the native rounded group")
 t.assertEqual(heroRefs.usedTotal.text, "100.0 GB", "the chart hole shows used capacity")
 t.expect(heroRefs.usedTotal.font.pointSize > 20, "used capacity is the page's largest number")
@@ -47,7 +50,7 @@ for _, button in ipairs(buttons) do
 end
 t.expect(heroRefs.chart.frame.size.width == heroRefs.chart.frame.size.height, "the donut keeps a square frame")
 local _, emptyRefs = render("Hero", {summary = Overview.summary(model, {totalKb = 1, freeKb = 0}),
-	chart = Overview.chart(model, {totalKb = 1, freeKb = 0}), reclaim = Overview.reclaim(model), volumeName = "Startup Disk", actions = {}})
+	chart = Overview.chart(model, {totalKb = 1, freeKb = 0}), reclaim = Overview.reclaim(model), volumeName = "Startup Disk", actions = {}, hidden = {}})
 t.expect(emptyRefs.legendExplanation ~= nil, "an overcounted inventory explains why no partition is drawn")
 t.expect(emptyRefs.lowSpace ~= nil and heroRefs.lowSpace == nil, "only a nearly full disk shows the low-space warning")
 t.assertEqual(#emptyRefs.chart.subviews, 2, "an empty chart keeps its track ring and centered total")
@@ -63,7 +66,9 @@ t.assertEqual(nameCell.textField.font.pointSize, 13, "category title uses the re
 t.assertEqual(sizeCell.textField.font.pointSize, 13, "size and loading text use the regular system font")
 t.expect(bridge._tableCell(refs.results, 1, 0).levelIndicator.hidden, "unmeasured categories have no share bar")
 
-local settings, settingsRefs = render("Settings", {monitoring = true, mediaEnabled = false, actions = {}})
+local settings, settingsRefs = render("Settings", {monitoring = true, mediaEnabled = false, historyEnabled = false,
+	actions = {monitor = function() end, media = function() end, history = function() end, reminder = function() end, sentinel = function() end, storage = function() end, privacy = function() end, done = function() end}})
+t.assertEqual(settingsRefs.history.state, 0, "storage history starts off")
 t.expect(settingsRefs ~= nil and settings ~= nil, "settings reorganized into concise groups still render")
 t.assertEqual(settingsRefs.monitor.className, "NSSwitch", "background checks use a switch")
 t.assertEqual(settingsRefs.monitor.state, 1, "background checks start enabled")

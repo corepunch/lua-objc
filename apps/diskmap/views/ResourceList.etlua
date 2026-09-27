@@ -5,7 +5,7 @@
   name keeps at least 180 points in the minimum window. ]]
   local COLUMNS = { name = 180, detail = 110, share = 120, size = 80, more = 40 }
 %>
-<List id="<%= id %>" rowMenu="<%= menu %>"<% if activate then %> onActivate="<%= activate %>"<% end %> scrollDisabled="true" drawsBackground="false" style="fullWidth" header="<%= header and "true" or "false" %>" alternatingRows="false" gridLines="horizontal" rowHeight="44" maxWidth="infinity">
+<List id="<%= id %>" rowMenu="<%= menu %>" dragKey="path"<% if activate then %> onActivate="<%= activate %>"<% end %> scrollDisabled="true" drawsBackground="false" style="fullWidth" header="<%= header and "true" or "false" %>" alternatingRows="false" gridLines="horizontal" rowHeight="44" maxWidth="infinity">
   <Column id="name" title="<%= nameTitle or "Name" %>" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon"<% if fileIcons then %> fileIconKey="fileIcon"<% end %> imageSize="28" minWidth="<%= COLUMNS.name %>" />
   <% if detailTitle then %>
   <Column id="detail" title="<%= detailTitle %>" width="<%= COLUMNS.detail %>" minWidth="<%= COLUMNS.detail %>" />

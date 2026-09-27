@@ -1,12 +1,13 @@
 <%
   local HERO = { chart = 196, hole = 0.7, gap = 1.5 }
+  local hiddenRows = hidden or {}
   local half = math.ceil(#chart.legend / 2)
   local columns = { {}, {} }
   for index, item in ipairs(chart.legend) do table.insert(columns[index <= half and 1 or 2], item) end
 %>
 <GroupBox id="heroCard" maxWidth="infinity">
   <HStack maxWidth="infinity" padding="20" spacing="28" alignment="center">
-    <SectorChart id="chart" width="<%= HERO.chart %>" height="<%= HERO.chart %>" innerRadius="<%= HERO.hole %>" angularInset="<%= HERO.gap %>" accessibilityLabel="<%= chart.accessibilityLabel %>">
+    <SectorChart id="chart" transition="drawOn" width="<%= HERO.chart %>" height="<%= HERO.chart %>" innerRadius="<%= HERO.hole %>" angularInset="<%= HERO.gap %>" accessibilityLabel="<%= chart.accessibilityLabel %>">
       <% for _, mark in ipairs(chart.marks) do %>
       <SectorMark value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" />
       <% end %>
@@ -35,6 +36,18 @@
       </HStack>
       <% else %>
       <Label id="legendExplanation" text="<%= chart.explanation %>" size="12" color="secondary" maxWidth="infinity" lines="3" />
+      <% end %>
+      <% if #hiddenRows > 0 then %>
+      <VStack id="hiddenSpace" maxWidth="infinity" spacing="4" alignment="leading">
+        <% for _, row in ipairs(hiddenRows) do %>
+        <HStack maxWidth="infinity" spacing="6" alignment="center" help="<%= row.detail %>">
+          <SystemImage name="<%= row.icon %>" size="11" color="tertiary" />
+          <Label text="<%= row.title %>" size="11" color="secondary" lines="1" />
+          <Spacer />
+          <Label text="<%= row.value %>" size="11" color="secondary" monospacedDigit="true" />
+        </HStack>
+        <% end %>
+      </VStack>
       <% end %>
       <Divider />
       <HStack maxWidth="infinity" spacing="12" alignment="center">

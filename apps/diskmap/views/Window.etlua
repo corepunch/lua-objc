@@ -1,7 +1,13 @@
-<Window title="<%= windowTitle or "Diskmap" %>" subtitle="<%= subtitle or "" %>" hideTitle="false" width="1100" height="760" minWidth="880" minHeight="580" sidebarWidth="210">
+<Window title="<%= windowTitle or "Diskmap" %>" subtitle="<%= subtitle or "" %>" hideTitle="false" width="1100" height="760" minWidth="880" minHeight="580" sidebarWidth="210" onBack="back" onForward="forward">
   <Commands appName="Diskmap">
     <CommandGroup replacing="appSettings">
       <MenuItem title="Settings…" keyEquivalent="," action="settings" />
+    </CommandGroup>
+    <CommandGroup replacing="importExport">
+      <MenuItem title="Open Scan…" keyEquivalent="o" action="openScan" />
+      <MenuItem title="Compare with Scan…" action="compareScan" validate="canCompareScan" />
+      <Separator />
+      <MenuItem title="Export Scan…" keyEquivalent="e" modifiers="command,shift" action="exportScan" validate="canExportScan" />
     </CommandGroup>
     <CommandGroup replacing="textEditing">
       <MenuItem title="Find">
@@ -9,6 +15,9 @@
       </MenuItem>
     </CommandGroup>
     <CommandMenu title="Go">
+      <MenuItem title="Back" systemImage="chevron.left" keyEquivalent="[" action="back" validate="canGoBack" />
+      <MenuItem title="Forward" systemImage="chevron.right" keyEquivalent="]" action="forward" validate="canGoForward" />
+      <Separator />
       <% for index, section in ipairs(sections) do %>
       <% if index > 1 then %><Separator /><% end %>
       <% for _, page in ipairs(section.pages) do %>
@@ -20,6 +29,8 @@
       <MenuItem title="Refresh" keyEquivalent="r" action="refresh" validate="canRefresh" />
       <MenuItem title="Stop Measuring" keyEquivalent="." action="cancel" validate="canCancel" />
       <Separator />
+      <MenuItem title="Review Marked Items…" keyEquivalent="m" modifiers="command,shift" action="review" />
+      <MenuItem title="Cleanup History…" action="history" />
       <MenuItem title="Empty Trash…" keyEquivalent="delete" modifiers="command,shift" action="emptyTrash" validate="canEmptyTrash" />
       <Separator />
       <MenuItem title="Storage Settings…" action="storageSettings" />
@@ -38,10 +49,13 @@
   </Commands>
   <Toolbar>
     <ToolbarItem id="toggleSidebar" />
+    <ToolbarItem id="back" label="Back" icon="chevron.left" tooltip="Show the previous page" action="back" />
+    <ToolbarItem id="forward" label="Forward" icon="chevron.right" tooltip="Show the next page" action="forward" />
     <ToolbarSpacer />
     <ToolbarItem id="refresh" label="Refresh" icon="arrow.clockwise" tooltip="Measure all storage again" action="refresh" />
     <ToolbarItem id="cancel" label="Stop" icon="stop.circle" tooltip="Stop measuring" action="cancel" />
     <ToolbarItem id="reclaim" label="Clean Up" icon="sparkles" tooltip="Suggested cleanups" action="reclaim" />
+    <ToolbarItem id="review" label="Marked" icon="tray.full" tooltip="Review items marked for cleanup" action="review" />
     <ToolbarItem id="settings" label="Settings" icon="gearshape" tooltip="Settings" action="settings" />
     <ToolbarItem id="search" label="Search">
       <SearchField id="search" placeholder="Search" width="180" accessibilityLabel="Search storage and guide" onChange="search" />

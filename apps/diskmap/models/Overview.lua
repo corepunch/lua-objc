@@ -16,7 +16,7 @@ end
 
 -- Volume summary for the hero card. Capacity numbers come from the system
 -- volume query; measured totals come from the ledger and never replace them.
-function Overview.summary(model, disk)
+function Overview.summary(model, disk, capacity)
 	local result = {measured = Model.size(Model.total(model))}
 	if not disk or not disk.totalKb or disk.totalKb <= 0 then
 		result.available = false
@@ -30,6 +30,11 @@ function Overview.summary(model, disk)
 	result.usedPercent = percent(total - free, total)
 	result.caption = "of " .. result.total .. " used"
 	result.subtitle = result.free .. " free of " .. result.total
+	-- Finder's "available" adds purgeable storage macOS will release on demand.
+	if capacity and capacity.important and capacity.important > free then
+		result.availableText = Model.size(capacity.important)
+		result.subtitle = result.free .. " free · " .. result.availableText .. " available of " .. result.total
+	end
 	result.lowSpace = free / total < 0.1
 	return result
 end
@@ -97,6 +102,31 @@ function Overview.categories(model, disk, query)
 	for _, row in ipairs(rows) do
 		row.shareText = row.bytes and percent(row.bytes, used) or ""
 		row.relative = row.bytes and largest > 0 and row.bytes / largest or nil
+	end
+	return rows
+end
+
+-- The part of used capacity that no file scan can attribute, split into what
+-- macOS reports separately: purgeable storage, local snapshots and locations
+-- Diskmap could not read. Sizes appear only where macOS provides them.
+function Overview.hidden(disk, capacity, snapshotCount, readErrors, cloudBytes, cloudFiles)
+	local rows = {}
+	if cloudFiles and cloudFiles > 0 then
+		table.insert(rows, {id = "icloud", icon = "icloud", title = "In iCloud only",
+			value = Model.size(cloudBytes or 0), detail = Model.count(cloudFiles) .. " evicted files use no space here; opening one downloads it"})
+	end
+	if disk and capacity and capacity.important and capacity.important > disk.freeKb * 1024 then
+		table.insert(rows, {id = "purgeable", icon = "arrow.3.trianglepath", title = "Purgeable",
+			value = Model.size(capacity.important - disk.freeKb * 1024),
+			detail = "Snapshots, iCloud copies and caches macOS frees when space is needed"})
+	end
+	if snapshotCount and snapshotCount > 0 then
+		table.insert(rows, {id = "snapshots", icon = "clock.arrow.circlepath", title = "Local snapshots",
+			value = tostring(snapshotCount), detail = "Hold deleted files' blocks; their size cannot be measured per file"})
+	end
+	if readErrors and readErrors > 0 then
+		table.insert(rows, {id = "unreadable", icon = "lock", title = "Unreadable locations",
+			value = tostring(readErrors), detail = "Full Disk Access lets Diskmap measure them"})
 	end
 	return rows
 end

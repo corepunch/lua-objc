@@ -1,7 +1,7 @@
 <%
   local CHART = { size = 180, hole = 0.64, gap = 1.5 }
 %>
-<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+<ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
   <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {icon = "square.grid.2x2.fill", color = "systemPink", title = "File Types", summary = summary}) %>
     <% if #kinds == 0 then %>

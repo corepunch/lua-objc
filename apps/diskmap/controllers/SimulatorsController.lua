@@ -140,6 +140,7 @@ function Controller:run(commands, targets, validate)
 			return
 		end
 		self.service.command(commands[index], function(ok, output)
+			if self.log then self.log(table.concat(commands[index], " ", 3), ok, targets[index].bytes, targets[index].name or targets[index].id, not ok and output or nil) end
 			if not ok then
 				self.changed()
 				if generation == self.generation then

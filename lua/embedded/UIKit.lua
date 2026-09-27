@@ -50,6 +50,11 @@ local layout_properties = {
 	"allowsHitTesting",
 	"cornerRadius",
 	"clipsToBounds",
+	"opacity",
+	"scaleEffect",
+	"rotationEffect",
+	"offsetX",
+	"offsetY",
 	"ignoresSafeArea",
 	"contentModeName",
 	"background",
@@ -671,6 +676,12 @@ function UIKit.Arc(props)
 	if props.lineCap then view.lineCap = props.lineCap end
 	return applyLayout(view, props)
 end
+
+-- SwiftUI animation: Animation values, withAnimation, withTransaction,
+-- AnyTransition and the per-view motion modifiers (see ui/animation.lua).
+require("ui.animation").install(UIKit, bridge)
+-- Local notifications (see ui/notifications.lua).
+require("ui.notifications").install(UIKit, bridge)
 
 --- Draws a pie or donut chart from `SectorMark` records (SwiftUI Charts).
 --- @prop innerRadius number optional. Hole radius as a fraction of the outer radius (0 draws a pie).

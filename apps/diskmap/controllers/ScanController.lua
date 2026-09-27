@@ -1,7 +1,10 @@
 local Inventory = require("apps.diskmap.models.Inventory")
 local Scan = {}; Scan.__index = Scan
-function Scan.new(model, service, home, changed)
+-- `finished(result)` runs after each completed measurement, before pages
+-- refresh, so callers can record history or remeasure related state.
+function Scan.new(model, service, home, changed, finished)
 	return setmetatable({model = model, service = service, home = home, changed = changed or function() end,
+		finished = finished or function() end,
 		generation = 0, status = "Preparing a complete storage inventory."}, Scan)
 end
 function Scan:notify() self.changed() end
@@ -38,6 +41,7 @@ function Scan:start()
 			local elapsed = seconds < 60 and (seconds .. " sec") or (math.floor(seconds / 60) .. " min " .. (seconds % 60) .. " sec")
 			local label = (result.partial == true or (result.errors or 0) > 0) and "Partial lower bound" or "Measured"
 			self.status = result.failure and result.failure ~= "" and result.failure or label .. " " .. os.date("%H:%M") .. " · finished in " .. elapsed
+			self.finished(result)
 			self:notify()
 		end, function(progress)
 			if generation ~= self.generation or type(progress) ~= "table" or type(progress.total) ~= "number" or progress.total <= 0 then return end
@@ -64,7 +68,7 @@ function Scan:start()
 				end
 			end
 			measure()
-		end)
+		end, self.model.projectRoots)
 	else
 		measure()
 	end

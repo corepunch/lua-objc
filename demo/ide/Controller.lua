@@ -47,11 +47,8 @@ function Controller:openFile(path)
 	self.editor.text = content
 	self.editor.language = Model.languageForPath(path)
 
-	if self._watchedPath then
-		bridge._watchFile(self._watchedPath, nil)
-	end
-	self._watchedPath = path
-	bridge._watchFile(path, function()
+	if self.watcher then self.watcher.cancel() end
+	self.watcher = ns.watch(path, function()
 		local updated = Model.readFile(path)
 		if updated then
 			self.editor.text = updated

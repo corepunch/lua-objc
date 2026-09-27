@@ -25,7 +25,7 @@ See [object and state ownership](../ARCHITECTURE.md#object-and-state-ownership).
 | `appkit/controls.m` | buttons, tables, loading, refresh, selection | `bridge_button`, `bridge_tableview` |
 | `appkit/outline.m` | outline view and directory tree conversion | `bridge_outlineview`, `bridge_list_directory` |
 | `appkit/editor.m` | show/KVC helpers, text editor, symbol controls | `bridge_text_view`, `bridge_symbol_toggle` |
-| `appkit/platform.m` | PNG rendering, file watching, open panels | `offscreen_render`, `bridge_watch_file` |
+| `appkit/platform.m` | PNG rendering, file watching, open panels | `offscreen_render`, `bridge_watch` |
 | `appkit/syntax_highlight.m` | editor syntax storage | `SyntaxTextStorage` |
 | `uikit/bridge.m` | UIKit keys, fragment includes, registration | `luaopen_UIKitNative`, `bridge_lib` |
 | `uikit/constructors.m` | UIKit native stack and leaf-control constructors | `bridge_UIKitControls_*` |

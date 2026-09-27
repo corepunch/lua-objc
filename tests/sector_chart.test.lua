@@ -4,6 +4,7 @@ local t = require("TestKit")
 local ns = require("AppKit")
 local xml = require("ui.xml")
 local Sectors = require("ui.sectors")
+local bridge = require("AppKitNative")
 
 -- Geometry: a donut is one Arc per sector, stroked at the ring's mid-radius.
 local ring = Sectors.ring(180, 0.6)
@@ -58,6 +59,45 @@ t.expect(math.abs(arcFrame.origin.x + arcFrame.size.width / 2 - 60) < 1, "arcs a
 local empty = xml.render([[<SectorChart width="80" height="80" innerRadius="0.5" />]], {}, ns)
 t.assertEqual(#empty.subviews, 1, "an empty chart keeps its track ring")
 t.assertEqual(empty.subviews[1].stroke, "quaternaryLabel", "the empty ring uses the quaternary label color")
+
+-- Sunburst rings: children share their parent's angle by value.
+local rings = Sectors.layout({
+	{id = "a", value = 3}, {id = "b", value = 1},
+	{id = "a1", parent = "a", ring = 2, value = 2, opacity = 0.7}, {id = "a2", parent = "a", ring = 2, value = 1},
+	{id = "orphan", parent = "missing", ring = 2, value = 5},
+}, 200, 0.5, 0)
+local byId = {}
+for _, sector in ipairs(rings) do byId[sector.id] = sector end
+t.assertEqual(byId.a.endAngle, 180, "the first ring spans the whole circle")
+t.assertEqual(byId.a1.startAngle, -90, "a child starts where its parent starts")
+t.assertEqual(byId.a2.endAngle, 180, "children fill their parent's angle")
+t.expect(byId.a1.inner >= byId.a.outer, "the second ring sits outside the first")
+t.assertEqual(byId.a1.alpha, 0.7, "marks carry their opacity")
+t.assertEqual(byId.orphan, nil, "a child without a drawn parent is not drawn")
+t.assertEqual(Sectors.hit(rings, 200, 100, 40).id, "a", "a point in the first ring hits its sector")
+t.assertEqual(Sectors.hit(rings, 200, 190, 100).id, "a1", "a point in the second ring hits the child")
+t.assertEqual(Sectors.hit(rings, 200, 100, 100), nil, "the hole hits nothing")
+
+-- Interactive charts dim other sectors on hover and report selection.
+local chosen, hoveredId, centered
+local interactive = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.5,
+	{__sectorMark = true, id = "a", value = 3, color = "systemBlue"},
+	{__sectorMark = true, id = "b", value = 1, color = "systemGreen"},
+	onSelect = function(id, count) chosen = {id, count} end,
+	onHover = function(id) hoveredId = id end,
+	onCenter = function() centered = true end}
+local pointer = interactive.subviews[#interactive.subviews]
+t.assertEqual(pointer.className, "LuaPointerView", "an interactive chart places a pointer view on top")
+bridge._pointerSend(pointer, "hover", 100, 40)
+t.assertEqual(hoveredId, "a", "hover names the sector under the pointer")
+t.assertEqual(interactive.subviews[1].strokeAlpha, 1, "the hovered sector stays opaque")
+t.expect(interactive.subviews[2].strokeAlpha < 1, "other sectors dim")
+bridge._pointerSend(pointer, "hover")
+t.assertEqual(interactive.subviews[2].strokeAlpha, 1, "leaving restores every sector")
+bridge._pointerSend(pointer, "click", 100, 40, 1)
+t.expect(chosen and chosen[1] == "a" and chosen[2] == 1, "clicking selects a sector")
+bridge._pointerSend(pointer, "click", 100, 100, 1)
+t.expect(centered, "clicking the hole calls onCenter")
 
 -- UIKit composes the same chart from its own Arc and ZStack.
 local file = assert(io.open("lua/embedded/UIKit.lua")); local uikit = file:read("*a"); file:close()

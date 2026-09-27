@@ -49,10 +49,9 @@ become app features. Feature shutdown is not a promise of immediate asset remova
 
 ## Navigation and category hierarchy
 
-The window has a native sidebar with one destination per user goal:
-Overview (what uses storage), Largest Items (the individual resources behind
-it), Developer (SDKs, simulators, runtimes and other developer data) and
-Storage Guide (how macOS lays out its disk). Choosing a category anywhere opens
+The window has a native sidebar grouped by user goal: Storage (Overview, Map,
+Largest Items), Apps (App Leftovers), Tools (Developer, Xcode, Projects,
+Simulators), System (Updates & Snapshots) and Learn (Storage Guide). Choosing a category anywhere opens
 its resources in a sheet. Suggested cleanups open from the toolbar and from the
 overview's call to action, grouped by impact, with contextual tips. Settings
 opens from the toolbar. Largest Items ranks catalog resources; it is not a
@@ -154,8 +153,11 @@ The overview leads with a donut (SwiftUI `SectorMark`, drawn with native arcs)
 of the whole volume: categories in their colors, the unattributed residual in
 gray and free space as the empty track, with the used total in the hole. The
 legend and a ranked category table with share bars carry the exact numbers;
-the chart is never the only way to read them. Sunbursts, treemaps and folder
-diagrams remain out of scope. Use native SF Symbols and semantic colors; all
+the chart is never the only way to read them. The Map page draws the same
+semantic tree as a sunburst or a squarified treemap beside a list; it never
+becomes a whole-disk folder browser. Its visuals follow the review in issue
+#36: flat, muted category colors, hatching for rebuildable data, and accent
+only for selection. Use native SF Symbols and semantic colors; all
 statuses also have text.
 
 The volume summary shows scope, used capacity, available capacity, coverage, and

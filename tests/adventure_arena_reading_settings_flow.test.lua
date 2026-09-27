@@ -123,7 +123,8 @@ t.assertEqual(#pickerControls, 2, "dragging the slider leaves the panel in place
 
 pickerControls[1].action(1)
 t.assertEqual(settings.font, "default", "font control updates reading preferences")
-t.assertEqual(#pickerControls, 4, "a discrete choice re-renders the panel to show it")
+t.assertEqual(#pickerControls, 2, "a discrete choice updates the panel's pickers in place")
+t.assertEqual(controller.readingSettingsOptions.refs.fontPicker.selectedSegment, 1, "the font picker shows the new choice")
 
 buttonActions[controller.readingSettingsOptions.refs.theme_night]()
 t.assertEqual(settings.theme, "night", "the Night swatch selects the night page")

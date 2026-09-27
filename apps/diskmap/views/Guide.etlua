@@ -1,12 +1,7 @@
-<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+<ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
   <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
-    <HStack maxWidth="infinity" spacing="14" alignment="center">
-      <SystemImage name="book.fill" size="36" badgeColor="systemTeal" />
-      <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
-        <Label text="Storage Guide" size="22" weight="semibold" />
-        <Label text="Where macOS keeps things, why they grow and what is safe to do about them. Sizes are measured on this Mac." size="13" color="secondary" maxWidth="infinity" lines="2" />
-      </VStack>
-    </HStack>
+    <%- partial("PageHeader.etlua", {icon = "book.fill", color = "systemTeal", title = "Storage Guide",
+      summary = "Where macOS keeps things, why they grow and what is safe to do about them. Sizes are measured on this Mac."}) %>
     <% if empty then %>
     <ContentUnavailable id="noTopics" title="No Topics Found" systemImage="magnifyingglass" description="No guide topic mentions “<%= query %>”." maxWidth="infinity" />
     <% end %>

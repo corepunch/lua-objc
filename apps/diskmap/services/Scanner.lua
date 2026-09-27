@@ -20,6 +20,15 @@ function Scanner.poll(job)
 	if result then job.completed = result.completed end
 	return done, result
 end
+function Scanner.startDuplicates(roots, options) return {handle = native.duplicatesStart(roots, options)} end
+function Scanner.pollDuplicates(job)
+	if not job.handle then return true, {failure = "Search cancelled.", groups = {}} end
+	return native.duplicatesPoll(job.handle)
+end
+function Scanner.cancelDuplicates(job)
+	job.cancelled = true
+	if job.handle then native.duplicatesCancel(job.handle); job.handle = nil end
+end
 Scanner.commandStart = native.commandStart
 Scanner.commandPoll = native.commandPoll
 return Scanner

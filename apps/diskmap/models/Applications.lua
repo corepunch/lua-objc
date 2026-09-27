@@ -1,5 +1,6 @@
 local Model = require("apps.diskmap.Model")
 local Files = require("apps.diskmap.models.Files")
+local Leftovers = require("apps.diskmap.models.Leftovers")
 local Applications = {}
 
 -- An app's data lives outside its bundle, in folders named by its bundle
@@ -15,13 +16,6 @@ Applications.filters = {"All", "Unused for 6 months", "Most data"}
 Applications.unusedDays = 180
 -- Folders smaller than this are not worth listing as possible leftovers.
 Applications.leftoverMinimum = 50e6
-
-local function reverseDNS(name)
-	return name:match("^[%w%-]+%.[%w%-]+%.[%w%.%-]+$") ~= nil
-end
-local function apple(name)
-	return name:lower():match("^com%.apple%.") ~= nil or name:lower():match("^group%.com%.apple%.") ~= nil
-end
 
 -- Installed application bundles: discovered `.app` resources, plus catalog
 -- apps such as Xcode when they exist. A bundle the scan found missing is not
@@ -100,39 +94,41 @@ function Applications.rows(model, info, filter, query, now)
 	return rows
 end
 
--- Data folders named like a bundle identifier that no installed app claims:
--- what AppCleaner and CleanMyMac call leftovers. `installed` is the list of
--- bundle identifiers Spotlight knows; without it nothing is reported, since
--- an unknown app is not evidence of an uninstalled one. Apple's own
--- identifiers are never listed.
+-- Data folders that no installed app claims: what AppCleaner and CleanMyMac
+-- call leftovers. `installed` is the list of bundle identifiers Spotlight
+-- knows; without it nothing is reported, since an unknown app is not
+-- evidence of an uninstalled one. Installed bundles found by the scan add
+-- their names, so "Google" or "Code" in Application Support stay claimed.
+-- Each row carries a confidence tier (see models/Leftovers.lua): only High
+-- means no app from that vendor is installed. Apple's own data is never listed.
 function Applications.leftovers(model, installed, query)
 	if not installed then return nil end
-	local known = {}
-	for _, id in ipairs(installed) do known[id:lower()] = true end
-	local function claimed(name)
-		local lower = name:lower():gsub("^group%.", "")
-		if known[lower] then return true end
-		-- Extensions and helpers use the host app's identifier as a prefix.
-		for id in pairs(known) do
-			if lower:sub(1, #id + 1) == id .. "." or id:sub(1, #lower + 1) == lower .. "." then return true end
-		end
-		return false
-	end
+	local apps = {}
+	for _, id in ipairs(installed) do table.insert(apps, {bundleId = id}) end
+	for _, bundle in ipairs(Applications.bundles(model)) do table.insert(apps, {name = bundle.name}) end
+	local index = Leftovers.index(apps)
 	local needle, rows = (query or ""):lower(), {}
 	for _, source in ipairs(Applications.dataSources) do
 		local root = model.resources:find(source.id)
 		for _, child in ipairs(root and model.breakdowns[source.id] or {}) do
 			local bytes = math.floor((child.kb or 0) * 1024 + 0.5)
-			if child.directory and bytes >= Applications.leftoverMinimum and reverseDNS(child.name) and not apple(child.name)
-				and not claimed(child.name) and (needle == "" or child.name:lower():find(needle, 1, true)) then
+			local tier = child.directory and bytes >= Applications.leftoverMinimum and Leftovers.classify(child.name, source.byName, index)
+			if tier and (needle == "" or child.name:lower():find(needle, 1, true)) then
+				local info = Leftovers.tiers[tier]
 				table.insert(rows, {id = root.path .. "/" .. child.name, path = root.path .. "/" .. child.name, name = child.name,
-					subtitle = source.label .. " · no installed app uses this identifier", bytes = bytes, size = Model.size(bytes),
-					icon = "questionmark.folder.fill", color = "systemGray", detail = source.label})
+					subtitle = source.label .. " · " .. info.label, bytes = bytes, size = Model.size(bytes),
+					tier = tier, rank = info.rank, confidence = info.confidence, reason = info.label, source = source.label,
+					icon = "questionmark.folder.fill", color = tier == "high" and "systemPink" or "systemGray", detail = info.confidence})
 			end
 		end
 	end
-	table.sort(rows, function(a, b) if a.bytes ~= b.bytes then return a.bytes > b.bytes end return a.name < b.name end)
-	local largest = rows[1] and rows[1].bytes or 0
+	table.sort(rows, function(a, b)
+		if a.rank ~= b.rank then return a.rank < b.rank end
+		if a.bytes ~= b.bytes then return a.bytes > b.bytes end
+		return a.name < b.name
+	end)
+	local largest = 0
+	for _, row in ipairs(rows) do largest = math.max(largest, row.bytes) end
 	for _, row in ipairs(rows) do row.relative = largest > 0 and row.bytes / largest or 0; row.shareText = "" end
 	return rows
 end
