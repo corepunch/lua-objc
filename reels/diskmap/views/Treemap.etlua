@@ -1,4 +1,4 @@
-<!-- 8–10.3 s: the sunburst spins away, the page turns into a treemap whose
+<!-- 8–10.3 s: the raised sunburst sinks away, the page turns into a treemap whose
     groups pop in one per 16th, then the window leaves for the next scene. -->
 <%
 -- Top-level groups pop one per 16th; slivers too thin to read ride along
@@ -24,7 +24,7 @@ local tile = [[<Piece rect="#treemap/%s" motion="pop(8.75, {response = 1 / 2.3, 
       <Sweep at="9.2" duration="0.55" />
     </Window>
     <Frame capture="map-dark">
-      <Piece rect="#sunburst" outset="12" key="700, 300" motion="spinOut(8.45, 0.33, 1.6)" />
+      <Piece rect="#sunburst" outset="12" key="700, 300" motion="leave{at = 8.45, duration = 0.33, y = 90, scale = 0.1, fade = true}" />
     </Frame>
   </Group>
   <Text style="head" text="Rings or rectangles." x="960" y="176" at="8.12" exit="9.72" />

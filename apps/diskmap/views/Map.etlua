@@ -1,8 +1,8 @@
 <%
-  local MAP = { chart = 360, hole = 0.3, gap = 2, raisedGap = 5, depth = 14, list = 300, treemapHeight = 420 }
+  local MAP = { chart = 360, hole = 0.3, gap = 5, depth = 14, list = 300, treemapHeight = 420 }
   -- Raised rings are already told apart by their gaps and shading, so outer
-  -- rings fade less.
-  local ringOpacity = style == "raised" and { 1, 0.84, 0.68 } or { 1, 0.72, 0.5 }
+  -- rings fade only a little.
+  local ringOpacity = { 1, 0.84, 0.68 }
   -- Smaller items folded under a parent take its hue, faded further.
   local otherFade = 0.55
 %>
@@ -18,9 +18,8 @@
     <% end %>
     <% end %>
     <Spacer />
-    <Picker id="mapStyle" style="segmented" value="<%= ({rings = 0, raised = 1, rectangles = 2})[style] %>" onChange="style">
+    <Picker id="mapStyle" style="segmented" value="<%= style == "rectangles" and 1 or 0 %>" onChange="style">
       <Option title="Rings" />
-      <Option title="3D" />
       <Option title="Rectangles" />
     </Picker>
   </HStack>
@@ -41,7 +40,7 @@
         <% end %>
       </Treemap>
       <% else %>
-      <SectorChart id="sunburst" transition="<%= style == "raised" and "opacity" or "drawOn" %>" width="<%= MAP.chart %>" height="<%= MAP.chart %>" innerRadius="<%= MAP.hole %>" angularInset="<%= style == "raised" and MAP.raisedGap or MAP.gap %>" depth="<%= style == "raised" and MAP.depth or 0 %>" shadow="false" onSelect="chartSelect" onHover="chartHover" onCenter="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
+      <SectorChart id="sunburst" transition="opacity" width="<%= MAP.chart %>" height="<%= MAP.chart %>" innerRadius="<%= MAP.hole %>" angularInset="<%= MAP.gap %>" depth="<%= MAP.depth %>" shadow="false" onSelect="chartSelect" onHover="chartHover" onCenter="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
         <% for _, node in ipairs(nodes) do %>
         <SectorMark id="<%= node.id %>" ring="<%= node.ring %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" opacity="<%= (ringOpacity[node.ring] or 0.5) * (node.other and node.parent and otherFade or 1) %>" label="<%= node.label %>" />
         <% end %>

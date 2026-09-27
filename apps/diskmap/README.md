@@ -33,8 +33,8 @@ Learn — with one question per destination:
 - **Developer — what can I do about Xcode and friends?** Sections for Xcode &
   simulators, packages & toolchains, projects & editors, containers & virtual
   machines, and AI tools & models, each a ranked list of catalog locations.
-- **Map** — the same semantic tree as a sunburst or a squarified treemap
-  (segmented Rings / Rectangles), beside a list of the focused node's
+- **Map** — the same semantic tree as a raised (3D) sunburst or a squarified
+  treemap (segmented Rings / Rectangles), beside a list of the focused node's
   children. Click a group to look inside, click the center or the breadcrumb
   to go back, hover for the path, size and share. Colors are muted category
   colors that lighten with depth; hatching marks rebuildable data. "Worth a

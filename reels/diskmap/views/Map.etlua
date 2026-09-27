@@ -1,13 +1,17 @@
-<!-- 4–8 s: the sunburst draws on ring by ring, its categories fly out as
-     callouts, then the window grows around it and the callouts home to
-     their rows. -->
+<!-- 4–8 s: the raised sunburst tilts up from edge-on while it sweeps on
+     clockwise from its first boundary, its categories fly out as callouts,
+     then the window grows around it and the callouts home to their rows. -->
 <%
 local map = captures:get("map-dark")
 local bx, by, bw, bh = map:rect("#sunburst")
 local sunX, sunY = bx + bw / 2, by + bh / 2
 local ww, wh = map:size()
 local window = { x = 960, y = 612, scale = 0.78 }
-local rings = { {0, 56}, {56, 98}, {98, 142}, {142, 260} }
+-- The chart is a perspective render, so it draws on as one clockwise sweep
+-- from the first boundary of a raised chart (half past one) rather than ring by
+-- ring: flat ring radii do not match its tilted ellipses. The sweep centre
+-- sits inside the hole, in piece points (the view plus the 12pt outset).
+local sweep = { x = 204, y = 196, radius = 300, start = -0.25, tilt = 0.12 }
 %>
 <Scene from="3.98" to="8.2">
   <Let name="sunS" value="2.0 * mix(0.7, 1, spring(t - 4, 1 / 1.5, 0.55)) * (1 + 0.014 * pulse(t, kicks, 0.14))" />
@@ -24,13 +28,10 @@ local rings = { {0, 56}, {56, 98}, {98, 142}, {142, 260} }
           radius="24" shadow="reveal" clip="circle(<%= sunX %>, <%= sunY %>, mix(194, 1300, reveal))" />
 
   <Group x="ax" y="ay" scale="t &lt; 7.45 and sunS or ws" alpha="1 - progress(t, 7.85, 7.98)">
-    <Piece capture="map-dark" rect="#sunburst" outset="12" key="700, 300" x="0" y="0"
-           clip="circle(192, 192, 56 * spring(t - 4, 1 / 2.4, 0.4))" />
-    <% for k = 2, 4 do local start = 4 + (k - 2) * 0.125 %>
-    <Piece capture="map-dark" rect="#sunburst" outset="12" key="700, 300" x="0" y="0" alpha="step(t - <%= start %>)"
-           rotation="-0.5 * (1 - spring(t - 4, 1 / 1.2, 0.62))"
-           clip="sector(192, 192, <%= rings[k][1] %>, <%= rings[k][2] %>, -pi / 2, outQuart(progress(t, <%= start %>, <%= start + 0.38 %>)) * 2 * pi)" />
-    <% end %>
+    <Group sy="t &lt; 7.45 and mix(<%= sweep.tilt %>, 1, spring(t - 4, 1 / 1.3, 0.58)) or 1">
+      <Piece capture="map-dark" rect="#sunburst" outset="12" key="700, 300" x="0" y="0"
+             clip="sector(<%= sweep.x %>, <%= sweep.y %>, 0, <%= sweep.radius %>, <%= sweep.start %> * pi, outQuart(progress(t, 4, 4.55)) * 2 * pi)" />
+    </Group>
   </Group>
 
   <Text style="big" text="Every byte," x="140" y="432" align="leading" at="4.5" exit="7.3" />
