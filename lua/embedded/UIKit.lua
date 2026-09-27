@@ -1402,11 +1402,13 @@ end
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function UIKit.Slider(props)
 	props = props or {}
-	local onChange
+	local slider, onChange
+	-- The native target reports no arguments; the handler reads the new value
+	-- from the control, as Toggle does.
 	if type(props.onChange) == "function" then
-		onChange = function(slider) props.onChange(slider.value) end
+		onChange = function() props.onChange(slider.value) end
 	end
-	local slider = bridge._slider(props.min or 0, props.max or 1,
+	slider = bridge._slider(props.min or 0, props.max or 1,
 		props.value or props.min or 0, onChange)
 	if props.disabled ~= nil then slider.enabled = not props.disabled end
 	return applyLayout(slider, props)
@@ -1425,8 +1427,12 @@ end
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function UIKit.Stepper(props)
 	props = props or {}
-	local stepper = bridge._stepper(props.min or 0, props.max or 100,
-		props.value or props.min or 0, props.step or 1, props.onChange)
+	local stepper, onChange
+	if type(props.onChange) == "function" then
+		onChange = function() props.onChange(stepper.value) end
+	end
+	stepper = bridge._stepper(props.min or 0, props.max or 100,
+		props.value or props.min or 0, props.step or 1, onChange)
 	if props.disabled ~= nil then stepper.enabled = not props.disabled end
 	return applyLayout(stepper, props)
 end
