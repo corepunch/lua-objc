@@ -1,0 +1,8 @@
+<Reel width="1920" height="1080" fps="30" duration="30" bpm="120" subframes="5" shutter="0.5">
+  <Palette name="brand" colors="#C65BF0 #6E6BFF #2F8CFF #38D1C4" />
+  <Style name="head" size="78" weight="semibold" color="#F5F5F7" tracking="-0.022" />
+  <Style name="sub" size="32" weight="regular" color="#98989D" tracking="-0.022" />
+
+  <%- partial("Stage.etlua", reel) %>
+  <%- partial("Treemap.etlua", reel) %>
+</Reel>

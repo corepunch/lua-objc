@@ -14,7 +14,7 @@ UIKIT_RUNTIME_SRC = src/uikit_module.m
 UIKIT_RUNTIME_DIRS = src/uikit src/shared
 UIKIT_RUNTIME_FRAGMENTS = $(shell find $(UIKIT_RUNTIME_DIRS) -type f -name '*.m')
 FRAMEWORK_MODULES = build/AppKit.dylib
-NATIVE_PLUGINS = build/StorageScan.dylib
+NATIVE_PLUGINS = build/StorageScan.dylib build/ReelNative.dylib
 IOS_FRAMEWORK_MODULE = $(if $(strip $(IOS_SIM_SDK)),build/UIKit.dylib)
 EMBEDDED_LUA_DIR = lua/embedded
 GENERATED_DIR = build/generated
@@ -59,6 +59,14 @@ uikit: build/UIKit.dylib
 build/StorageScan.dylib: src/plugins/storage/StorageScan.m src/plugins/storage/Duplicates.m Makefile
 	mkdir -p build
 	$(CC) $(CFLAGS) -mmacosx-version-min=26.0 $(MODULE_LDFLAGS) -framework Foundation -lcompression -o $@ $<
+
+# The Reel motion package's native half (modules/reel): offscreen drawing,
+# images and H.264. Standalone like StorageScan; the runtime never loads it.
+build/ReelNative.dylib: modules/reel/native/ReelNative.m Makefile
+	mkdir -p build
+	$(CC) $(CFLAGS) -mmacosx-version-min=26.0 $(MODULE_LDFLAGS) -framework AppKit -framework AVFoundation \
+		-framework CoreMedia -framework CoreVideo -framework CoreText -framework ImageIO \
+		-framework UniformTypeIdentifiers -o $@ $<
 
 run: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	./$(TARGET) $(ARGS)

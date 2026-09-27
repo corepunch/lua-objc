@@ -1,0 +1,20 @@
+<!-- 8–10.3 s: the sunburst spins away, the page turns into a treemap whose
+    groups pop in one per 16th, then the window leaves for the next scene. -->
+<% local tiles = captures:get("treemap-dark"):cells("treemap", 0) %>
+<Scene from="7.98" to="10.3">
+  <Group x="960" y="612" scale="0.78" motion="punch(8), leave{at = 9.95, duration = 0.3, x = -2300}">
+    <Window capture="map-dark" radius="24" shadow="1" to="8.62" />
+    <Window capture="treemap-dark" radius="24" shadow="1" motion="fadeIn(8.5, 0.12)">
+      <Fill rect="#treemap" color="sample(1000, 820)" outset="1" />
+      <% for i, tile in ipairs(tiles) do %>
+      <Piece rect="#treemap/<%= tile.id %>" motion="pop(<%= stagger(8.75, i) %>, {response = 1 / 2.3, damping = 0.5, turn = 0.25})" />
+      <% end %>
+      <Sweep at="9.2" duration="0.55" />
+    </Window>
+    <Frame capture="map-dark">
+      <Piece rect="#sunburst" outset="12" key="700, 300" motion="spinOut(8.45, 0.33, 1.6)" />
+    </Frame>
+  </Group>
+  <Text style="head" text="Rings or rectangles." x="960" y="176" at="8.12" exit="9.72" />
+  <Text style="sub" text="Click any group to look inside." x="960" y="236" at="8.32" stagger="0.035" exit="9.68" />
+</Scene>

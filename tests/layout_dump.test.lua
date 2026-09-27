@@ -39,5 +39,26 @@ t.expect(dump:find('text="Related News"', 1, true) ~= nil,
 	"layout dump exposes the related-news grid")
 t.expect(dump:find('outsideParent="', 1, true) ~= nil,
 	"layout dump reports view overflow explicitly")
+t.expect(dump:match('<View class="NSView" x="0.0" y="0.0" width="[%d.]+" height="[%d.]+" windowX="0.0" windowY="0.0"') ~= nil,
+	"layout dump places the root at the window origin")
+
+-- Window frames are top-left window points, matching a window capture, and
+-- treemap cells are listed with them (the Reel package cuts pieces by id).
+local treemapPath = os.tmpname() .. ".xml"
+ok = os.execute(string.format("./lua-objc --dump-layout=%q --width=1440 --height=900 "
+	.. "apps/diskmap/init.lua --showcase --page=map --map-style=rectangles >/dev/null 2>&1", treemapPath))
+t.expect(ok == true or ok == 0, "Diskmap treemap layout dump exits successfully")
+file = io.open(treemapPath, "r")
+local treemap = file and file:read("*a") or ""
+if file then file:close() end
+os.remove(treemapPath)
+local width, height, windowX, windowY = treemap:match('identifier="treemap" x="[%d.]+" y="[%d.]+" '
+	.. 'width="([%d.]+)" height="([%d.]+)" windowX="([%d.]+)" windowY="([%d.]+)"')
+width, height, windowX, windowY = tonumber(width), tonumber(height), tonumber(windowX), tonumber(windowY)
+t.expect(width ~= nil and windowX > 0 and windowY > 0 and windowY + height < 900,
+	"a view inside unflipped stacks reports a top-left window origin")
+local cellX, cellY = treemap:match('<TreemapCell id="[^"]+" depth="0" windowX="([%d.]+)" windowY="([%d.]+)"')
+t.expect(cellX ~= nil and tonumber(cellX) == windowX and tonumber(cellY) == windowY,
+	"the first top-level treemap cell starts at the treemap's window origin")
 
 os.exit(t.summary() and 0 or 1)

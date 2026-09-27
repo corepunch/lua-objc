@@ -1851,7 +1851,11 @@ local function injectTemplateHelpers(ctx, baseDir)
         if type(data) == "table" then
             injectTemplateHelpers(data, partialDir)
         end
-        return renderTemplate(src, data, fullPath)
+        -- A failed partial must fail its caller; returning nil would print
+        -- "nil" into the parent template and hide the error.
+        local rendered, err = renderTemplate(src, data, fullPath)
+        if rendered == nil then error("partial " .. fullPath .. ": " .. tostring(err), 0) end
+        return rendered
     end
 
     return ctx
@@ -2432,6 +2436,14 @@ function M.decode(src, schema)
     end
 
     return decodeWithSchema(target, schema)
+end
+
+-- Parses XML into plain element tables ({kind, tag, attrs, children}) for
+-- callers that interpret a vocabulary of their own rather than native views.
+function M.parse(src)
+    src = src:gsub("^%s*<%?xml[^?]*%?>%s*", "")
+             :gsub("^%s*<!DOCTYPE[^>]*>%s*", "")
+    return parseXML(src, { trimText = true, decodeText = true })
 end
 
 function M.decodeFile(path, schema)

@@ -53,8 +53,22 @@ static BOOL layout_text_uses_ellipsis(NSTextField *field) {
 		|| mode == NSLineBreakByTruncatingMiddle;
 }
 
+/* Converts a rect in `view` to the dump root's top-left coordinates, which
+ * match a window capture pixel for point: tools that cut pieces out of a
+ * `--screenshot` look views up by identifier instead of measuring them. */
+static NSRect layout_window_rect(NSView *view, NSRect rect, NSView *root) {
+	NSRect converted = [view convertRect:rect toView:root];
+	if (!root.isFlipped) converted.origin.y = NSHeight(root.bounds) - NSMaxY(converted);
+	return converted;
+}
+
+static CGFloat layout_cell_number(NSDictionary *cell, NSString *key) {
+	id value = cell[key];
+	return [value respondsToSelector:@selector(doubleValue)] ? [value doubleValue] : 0;
+}
+
 static void append_layout_view(NSMutableString *out, NSView *view,
-	NSUInteger depth) {
+	NSView *root, NSUInteger depth) {
 	[view layoutSubtreeIfNeeded];
 	NSRect frame = view.frame;
 	NSSize intrinsic = view.intrinsicContentSize;
@@ -78,12 +92,14 @@ static void append_layout_view(NSMutableString *out, NSView *view,
 	BOOL ellipsis = text
 		? layout_text_uses_ellipsis((NSTextField *)view) : NO;
 	NSString *identifier = view.accessibilityIdentifier;
+	NSRect windowFrame = layout_window_rect(view, view.bounds, root);
 	[out appendFormat:
-		@"%@<View class=\"%@\"%@ x=\"%.1f\" y=\"%.1f\" width=\"%.1f\" height=\"%.1f\" intrinsicWidth=\"%.1f\" intrinsicHeight=\"%.1f\" fittingWidth=\"%.1f\" fittingHeight=\"%.1f\" clipsToBounds=\"%@\" outsideParent=\"%@\" contentClipped=\"%@\"%@%@%@>\n",
+		@"%@<View class=\"%@\"%@ x=\"%.1f\" y=\"%.1f\" width=\"%.1f\" height=\"%.1f\" windowX=\"%.1f\" windowY=\"%.1f\" intrinsicWidth=\"%.1f\" intrinsicHeight=\"%.1f\" fittingWidth=\"%.1f\" fittingHeight=\"%.1f\" clipsToBounds=\"%@\" outsideParent=\"%@\" contentClipped=\"%@\"%@%@%@>\n",
 		layout_indent(depth), NSStringFromClass(view.class),
 		identifier ? [NSString stringWithFormat:@" identifier=\"%@\"",
 			layout_xml_escape(identifier)] : @"",
 		frame.origin.x, frame.origin.y, frame.size.width, frame.size.height,
+		windowFrame.origin.x, windowFrame.origin.y,
 		intrinsic.width, intrinsic.height, fitting.width, fitting.height,
 		view.clipsToBounds ? @"true" : @"false",
 		outside ? @"true" : @"false",
@@ -127,8 +143,25 @@ static void append_layout_view(NSMutableString *out, NSView *view,
 			}
 		}
 	}
+	/* The treemap paints cells laid out in Lua (lua/ui/treemap.lua) rather
+	 * than child views; list them so their geometry is inspectable too. */
+	Class treemapClass = NSClassFromString(@"LuaTreemapView");
+	if (treemapClass && [view isKindOfClass:treemapClass]) {
+		for (NSDictionary *cell in [view valueForKey:@"cells"]) {
+			if (![cell isKindOfClass:NSDictionary.class]) continue;
+			NSRect cellFrame = layout_window_rect(view, NSMakeRect(
+				layout_cell_number(cell, @"x"), layout_cell_number(cell, @"y"),
+				layout_cell_number(cell, @"w"), layout_cell_number(cell, @"h")), root);
+			NSString *label = [cell[@"label"] isKindOfClass:NSString.class] ? cell[@"label"] : @"";
+			[out appendFormat:
+				@"%@<TreemapCell id=\"%@\" depth=\"%.0f\" windowX=\"%.1f\" windowY=\"%.1f\" width=\"%.1f\" height=\"%.1f\" label=\"%@\" />\n",
+				layout_indent(depth + 1), layout_xml_escape([cell[@"id"] description]),
+				layout_cell_number(cell, @"depth"), cellFrame.origin.x, cellFrame.origin.y,
+				cellFrame.size.width, cellFrame.size.height, layout_xml_escape(label)];
+		}
+	}
 	for (NSView *child in view.subviews) {
-		append_layout_view(out, child, depth + 1);
+		append_layout_view(out, child, root, depth + 1);
 	}
 	[out appendFormat:@"%@</View>\n", layout_indent(depth)];
 }
@@ -141,7 +174,7 @@ static BOOL write_layout_debug_dump(NSWindow *window, const char *path) {
 	[root displayIfNeeded];
 	NSMutableString *out = [NSMutableString stringWithString:
 		@"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Layout>\n"];
-	append_layout_view(out, root, 1);
+	append_layout_view(out, root, root, 1);
 	[out appendString:@"</Layout>\n"];
 	return [out writeToFile:[NSString stringWithUTF8String:path]
 		atomically:YES encoding:NSUTF8StringEncoding error:nil];
