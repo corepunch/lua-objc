@@ -44,6 +44,11 @@
 @property(nonatomic) NSInteger dropCapLines;
 @property(nonatomic, strong) UIFont *dropCapFont;
 @property(nonatomic, strong) UIColor *dropCapColor;
+/* Characters shown so far, counted as Lua's utf8.len counts them; -1 shows
+ * the whole paragraph. See `paragraph_revealed_length`. */
+@property(nonatomic) NSInteger revealedCharacters;
+/* The revealed height last reported to layout. */
+@property(nonatomic) CGFloat revealedBottom;
 @property(nonatomic, strong) LuaDropCapView *initialView;
 /* The initial's ink in paragraph coordinates; lines wrap around it. */
 @property(nonatomic) CGRect initialInk;
@@ -72,6 +77,7 @@
 	_bodyAlignment = NSTextAlignmentNatural;
 	_dropCapLines = kParagraphDropCapLines;
 	_dropCapColor = UIColor.tintColor;
+	_revealedCharacters = -1;
 	_initialView = [[LuaDropCapView alloc] initWithFrame:CGRectZero];
 	_initialView.hidden = YES;
 	[self addSubview:_initialView];
@@ -92,6 +98,79 @@
 - (void)setDropCapLines:(NSInteger)value { _dropCapLines = MAX(2, value); [self rebuild]; }
 - (void)setDropCapFont:(UIFont *)font { _dropCapFont = font; [self rebuild]; }
 - (void)setDropCapColor:(UIColor *)color { _dropCapColor = color ?: UIColor.tintColor; [self rebuild]; }
+
+/* A typewriter reveal. The whole paragraph is always laid out, so words never
+ * jump between lines as they appear — the approach of SwiftUI typewriter
+ * effects built on TextRenderer. Unrevealed characters are drawn clear, and
+ * the paragraph measures only the lines revealed so far, so a scroll view
+ * anchored to its bottom follows the text line by line. Recolouring does not
+ * re-lay out the text; layout is invalidated only when a new line starts. */
+- (void)setRevealedCharacters:(NSInteger)value {
+	value = MAX(-1, value);
+	if (value == _revealedCharacters) return;
+	_revealedCharacters = value;
+	[self applyReveal];
+	/* A paragraph being built is measured when it is first laid out. */
+	if (!self.superview) return;
+	CGFloat bottom = [self revealedBottomInManager:self.layoutManager container:self.textContainer];
+	if (bottom != _revealedBottom) {
+		_revealedBottom = bottom;
+		[self invalidateIntrinsicContentSize];
+		uikit_invalidate_layout(self);
+	}
+}
+
+/* The UTF-16 length of the revealed prefix of `text`, never splitting a
+ * composed character or surrogate pair. */
+static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
+	if (scalars < 0) return text.length;
+	NSUInteger offset = 0;
+	for (; scalars > 0 && offset < text.length; scalars--)
+		offset += CFStringIsSurrogateHighCharacter([text characterAtIndex:offset]) && offset + 1 < text.length ? 2 : 1;
+	if (offset > 0 && offset < text.length)
+		offset = NSMaxRange([text rangeOfComposedCharacterSequenceAtIndex:offset - 1]);
+	return offset;
+}
+
+/* Revealed characters of the body, which excludes a dropped initial. */
+- (NSUInteger)revealedBodyLength {
+	NSUInteger revealed = paragraph_revealed_length(_paragraphText, _revealedCharacters);
+	NSUInteger initial = [self initialLetter].length;
+	return revealed > initial ? revealed - initial : 0;
+}
+
+- (void)applyReveal {
+	NSTextStorage *storage = self.textStorage;
+	NSUInteger shown = MIN([self revealedBodyLength], storage.length);
+	[storage beginEditing];
+	[storage addAttribute:NSForegroundColorAttributeName value:_bodyColor range:NSMakeRange(0, shown)];
+	[storage addAttribute:NSForegroundColorAttributeName value:UIColor.clearColor
+		range:NSMakeRange(shown, storage.length - shown)];
+	[storage endEditing];
+	_initialView.hidden = !([self initialLetter] && _revealedCharacters != 0);
+}
+
+/* The bottom of the last revealed line; the whole text's height once the
+ * reveal reaches the last line, so a finished reveal measures as unrevealed
+ * text does. A revealed initial still reserves its lines. */
+- (CGFloat)revealedBottomInManager:(NSLayoutManager *)manager container:(NSTextContainer *)container {
+	if (_revealedCharacters == 0 || _paragraphText.length == 0) return 0;
+	[manager ensureLayoutForTextContainer:container];
+	CGFloat bottom = CGRectGetMaxY([manager usedRectForTextContainer:container]);
+	NSUInteger body = [self revealedBodyLength];
+	if (_revealedCharacters > 0 && body < manager.textStorage.length) {
+		if (body == 0) bottom = 0;
+		else {
+			NSRange line;
+			CGRect used = [manager lineFragmentUsedRectForGlyphAtIndex:
+				[manager glyphIndexForCharacterAtIndex:body - 1] effectiveRange:&line];
+			if (NSMaxRange(line) < manager.numberOfGlyphs) bottom = CGRectGetMaxY(used);
+		}
+	}
+	if ([self initialLetter]) bottom = MAX(bottom, MAX(MAX(2, _dropCapLines) * (_bodyFont.lineHeight + _lineSpacing) - _lineSpacing,
+		CGRectGetMaxY(_initialInk)));
+	return bottom;
+}
 
 /* A letter is dropped only when the paragraph starts with one; quotes and
  * digits stay in the running text, as in print. */
@@ -192,6 +271,7 @@ static CGRect paragraph_ink_bounds(UIFont *font, NSString *letter) {
 		_initialInk = CGRectZero;
 		self.textContainer.exclusionPaths = @[];
 	}
+	[self applyReveal];
 	self.accessibilityValue = _paragraphText;
 	[self invalidateIntrinsicContentSize];
 	[self setNeedsLayout];
@@ -216,9 +296,7 @@ static CGRect paragraph_ink_bounds(UIFont *font, NSString *letter) {
 	CGRect used = [manager usedRectForTextContainer:container];
 	CGFloat scale = self.traitCollection.displayScale ?: 1;
 	/* A short paragraph still reserves the lines and ink of its initial. */
-	CGFloat height = CGRectGetMaxY(used);
-	if (letter) height = MAX(height, MAX(MAX(2, _dropCapLines) * (_bodyFont.lineHeight + _lineSpacing) - _lineSpacing,
-		CGRectGetMaxY(_initialInk)));
+	CGFloat height = [self revealedBottomInManager:manager container:container];
 	CGFloat resultWidth = unbounded ? CGRectGetMaxX(used) : width;
 	return CGSizeMake(ceil(resultWidth * scale) / scale, ceil(height * scale) / scale);
 }

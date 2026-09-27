@@ -273,6 +273,22 @@ function Session:suggestions(input)
 	})
 end
 
+function Session:entryCount()
+	return #self.entries
+end
+
+-- The prose paragraphs of entries from `first` on, in reading order: what a
+-- reader has not seen yet after a command. `entry` is the absolute index.
+function Session:paragraphsSince(first)
+	local paragraphs = {}
+	for index = math.max(1, first), #self.entries do
+		for paragraphIndex, text in ipairs(self.entries[index].paragraphs or {}) do
+			table.insert(paragraphs, { entry = index, paragraph = paragraphIndex, text = text })
+		end
+	end
+	return paragraphs
+end
+
 function Session:transcript(limit)
 	limit = limit or TRANSCRIPT.limit
 	local entries = {}

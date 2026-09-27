@@ -772,6 +772,7 @@ around.
 | `hyphenation` | hyphenates at line ends (use with `justified`) |
 | `dropCap`, `dropCapLines` (default 3) | drop the first letter through N lines |
 | `dropCapFontName`, `dropCapDesign`, `dropCapWeight`, `dropCapColor` | the initial's face and colour |
+| `revealedCharacters` | typewriter reveal: characters shown so far, counted as `utf8.len` counts them; `-1` (default) shows everything |
 
 The initial is sized by its **ink**, not font metrics: a plain capital spans
 from the first line's cap height to the last line's baseline, as in print; a
@@ -783,6 +784,16 @@ opens with a quotation mark or digit is set normally. Empty text takes no
 space. Implementation: a non-scrolling `UITextView` / non-editable
 `NSTextView` on TextKit 1 with `NSTextContainer.exclusionPaths`
 (`src/uikit/paragraph.m`, `src/appkit/paragraph.m`).
+
+**Typewriter reveal.** `revealedCharacters` is what SwiftUI typewriter
+effects build with `TextRenderer`: the whole paragraph is laid out once, so
+words never jump between lines as they appear, and unrevealed characters are
+drawn clear. The paragraph measures only the lines revealed so far (a
+revealed initial still reserves its lines; `0` takes no height), so a scroll
+view kept at its bottom follows the text line by line. Writing it recolours
+the text and invalidates layout only when a new line starts; retained
+templates patch it in place. Adventure Arena's reader drives it from
+`SessionController:typeNext`, hiding paragraphs that have not started.
 
 ### `Title "string"`
 

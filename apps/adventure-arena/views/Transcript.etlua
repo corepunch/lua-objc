@@ -9,6 +9,9 @@
   --    like a stage direction; the story answers in ordinary prose. Nothing
   --    is a bubble: the page is one continuous column of type.
   -- `reading` carries the reader’s face, size, leading, alignment and inks.
+  -- `reveal` holds the characters shown of paragraphs still typing, keyed
+  -- "entry_paragraph"; they, and entries in `reveal.waiting`, wait hidden
+  -- until typing reaches them.
   local size, lead = reading.fontSize, reading.lineSpacing
   local PAGE = {
     side = 24, top = 28, bottom = 24,
@@ -17,6 +20,14 @@
     dropCapLines = 3,
   }
   local hyphenate = reading.alignment == "justified" and "true" or "false"
+  reveal = reveal or { waiting = {} }
+  local function revealed(index, paragraphIndex)
+    local shown = reveal[index .. "_" .. paragraphIndex]
+    return string.format('revealedCharacters="%d" hidden="%s"', shown or -1, shown == 0 and "true" or "false")
+  end
+  local function waiting(index)
+    return string.format('hidden="%s"', reveal.waiting[tostring(index)] and "true" or "false")
+  end
 %>
 <VStack paddingHorizontal="<%= PAGE.side %>" paddingTop="<%= PAGE.top %>" paddingBottom="<%= PAGE.bottom %>" spacing="0" alignment="leading" maxWidth="infinity">
   <% if earlierEntries == 0 then %>
@@ -42,14 +53,14 @@
     <% end %>
   </VStack>
   <% elseif entry.kind == "scene" then %>
-  <VStack id="entry_<%= index %>" spacing="0" alignment="leading" maxWidth="infinity" paddingTop="<%= (index == 1 and earlierEntries == 0) and 0 or PAGE.chapter %>">
+  <VStack id="entry_<%= index %>" spacing="0" alignment="leading" maxWidth="infinity" paddingTop="<%= (index == 1 and earlierEntries == 0) and 0 or PAGE.chapter %>" <%- waiting(index) %>>
     <Label id="chapter_<%= index %>" text="<%= entry.chapterLabel %>" size="<%= size - 3 %>" design="serif" weight="semibold" smallCaps="true" color="<%= ink %>" />
     <VStack paddingTop="2" paddingBottom="<%= PAGE.paragraph + 2 %>" alignment="leading" maxWidth="infinity">
       <Label id="sceneTitle_<%= index %>" text="<%= entry.title %>" size="<%= size + 9 %>" design="serif" weight="semibold" color="<%= reading.primary %>" lines="0" />
     </VStack>
     <VStack spacing="<%= PAGE.paragraph %>" alignment="leading" maxWidth="infinity">
       <% for paragraphIndex, paragraph in ipairs(entry.paragraphs) do %>
-      <Paragraph id="paragraph_<%= index %>_<%= paragraphIndex %>" text="<%= paragraph %>" size="<%= size %>" design="<%= reading.font %>" color="<%= reading.primary %>" lineSpacing="<%= lead %>" alignment="<%= reading.alignment %>" hyphenation="<%= hyphenate %>" dropCap="<%= paragraphIndex == 1 and 'true' or 'false' %>" dropCapLines="<%= PAGE.dropCapLines %>" dropCapFontName="<%= initialFont or '' %>" dropCapColor="<%= ink %>" />
+      <Paragraph id="paragraph_<%= index %>_<%= paragraphIndex %>" text="<%= paragraph %>" size="<%= size %>" design="<%= reading.font %>" color="<%= reading.primary %>" lineSpacing="<%= lead %>" alignment="<%= reading.alignment %>" hyphenation="<%= hyphenate %>" dropCap="<%= paragraphIndex == 1 and 'true' or 'false' %>" dropCapLines="<%= PAGE.dropCapLines %>" dropCapFontName="<%= initialFont or '' %>" dropCapColor="<%= ink %>" <%- revealed(index, paragraphIndex) %> />
       <% end %>
     </VStack>
   </VStack>
@@ -58,9 +69,9 @@
     <Label id="command_<%= index %>" text="<%= entry.text %>" size="<%= size - 1 %>" design="serif" weight="semibold" smallCaps="true" color="<%= ink %>" lines="0" accessibilityLabel="You: <%= entry.text %>" />
   </VStack>
   <% else %>
-  <VStack id="entry_<%= index %>" spacing="<%= PAGE.paragraph %>" alignment="leading" maxWidth="infinity" paddingTop="<%= (entries[index - 1] and entries[index - 1].kind == 'command') and PAGE.afterCommand or PAGE.paragraph %>">
+  <VStack id="entry_<%= index %>" spacing="<%= PAGE.paragraph %>" alignment="leading" maxWidth="infinity" paddingTop="<%= (entries[index - 1] and entries[index - 1].kind == 'command') and PAGE.afterCommand or PAGE.paragraph %>" <%- waiting(index) %>>
     <% for paragraphIndex, paragraph in ipairs(entry.paragraphs) do %>
-    <Paragraph id="paragraph_<%= index %>_<%= paragraphIndex %>" text="<%= paragraph %>" size="<%= size %>" design="<%= reading.font %>" color="<%= reading.primary %>" lineSpacing="<%= lead %>" alignment="<%= reading.alignment %>" hyphenation="<%= hyphenate %>" />
+    <Paragraph id="paragraph_<%= index %>_<%= paragraphIndex %>" text="<%= paragraph %>" size="<%= size %>" design="<%= reading.font %>" color="<%= reading.primary %>" lineSpacing="<%= lead %>" alignment="<%= reading.alignment %>" hyphenation="<%= hyphenate %>" <%- revealed(index, paragraphIndex) %> />
     <% end %>
   </VStack>
   <% end %>

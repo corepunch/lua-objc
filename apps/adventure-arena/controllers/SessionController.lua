@@ -6,6 +6,28 @@ Controller.__index = Controller
 -- How long the "+5 points" glass capsule stays over the page.
 local TOAST = { seconds = 2.2 }
 
+-- The story types itself, as a terminal printed it: about 120 characters a
+-- second, a beat between paragraphs, and a soft tick at word starts no more
+-- than 7–8 times a second so the haptic reads as texture, not buzzing. A new
+-- story starts once the page has finished sliding in.
+local TYPING = {
+	tick = 1 / 30, charactersPerTick = 4, paragraphPause = 0.15,
+	hapticTicks = 4, openingDelay = 0.45,
+}
+
+local function characterCount(text)
+	return utf8.len(text) or #text
+end
+
+-- Whether characters `from + 1 … to` begin a word.
+local function beginsWord(text, from, to)
+	local first = utf8.offset(text, math.max(from, 1)) or 1
+	local last = (utf8.offset(text, to + 1) or (#text + 1)) - 1
+	local segment = text:sub(first, last)
+	if from == 0 then segment = " " .. segment end
+	return segment:find("%s%S") ~= nil
+end
+
 function Controller.new(options)
 	return setmetatable({
 		model = assert(options.model, "session model is required"),
@@ -23,6 +45,9 @@ function Controller.new(options)
 		-- Moments: a haptic and a toast when the score changes.
 		haptics = options.haptics,
 		after = options.after or function() end,
+		reduceMotion = options.reduceMotion or function()
+			return type(options.ns.reduceMotion) == "function" and options.ns.reduceMotion() == true
+		end,
 		onProgress = options.onProgress or function() end,
 		speech = nil,
 		dictationActive = false,
@@ -36,6 +61,7 @@ function Controller:show(id, fresh)
 	local game = self.findGame(id)
 	if not game then return false end
 	local saved = not fresh and self.savedGames and self.savedGames:find(id) or nil
+	self:finishTyping()
 	local ok, err = self.model:start(game, saved)
 	if not ok then
 		self.push("SessionError", {
@@ -91,6 +117,8 @@ function Controller:show(id, fresh)
 	self.page, self.refs = self.push("Session", presentation)
 	self.transcript = self.mountTemplate(self.refs.transcript, "Transcript")
 	self.suggestions = self.mountTemplate(self.refs.suggestions, "Suggestions")
+	-- A new story types its opening; a resumed one opens at its last line.
+	if not saved then self:beginTyping(1, TYPING.openingDelay) end
 	self:applyReadingSettings()
 	self:updateComposer(self.refs.input.text)
 	self:updateCompass(nil)
@@ -166,8 +194,91 @@ function Controller:renderTranscript()
 		alignment = settings.alignment, primary = settings.primaryTextColor,
 		secondary = settings.secondaryTextColor, rule = settings.ruleColor,
 	}
+	data.reveal = self:revealState(data.earlierEntries)
 	data.actions = {}
+	self.transcriptEarlier = data.earlierEntries
 	return self.transcript:update(data)
+end
+
+-- ── Typing ──────────────────────────────────────────────────────────────
+-- New prose is rendered whole and revealed by `revealedCharacters`, so its
+-- lines never reflow as it types; paragraphs still waiting are hidden, and
+-- so is a whole entry (a chapter heading with it) until typing reaches it. The
+-- template describes the reveal at each render (a command or a reading
+-- settings change); between renders each tick writes the one paragraph
+-- being typed.
+
+function Controller:beginTyping(firstEntry, delay)
+	local queue = {}
+	for _, item in ipairs(self.model:paragraphsSince(firstEntry)) do
+		item.length = characterCount(item.text)
+		table.insert(queue, item)
+	end
+	if #queue == 0 or self.reduceMotion() then return end
+	self.typingGeneration = (self.typingGeneration or 0) + 1
+	local generation = self.typingGeneration
+	self.typing = { queue = queue, position = 1, revealed = 0, ticks = 0, nextHaptic = 0, generation = generation }
+	self.after(delay or TYPING.tick, function() self:typeNext(generation) end)
+end
+
+-- Everything typed so far stays; what is left appears at the next render.
+function Controller:finishTyping()
+	self.typing = nil
+	self.typingGeneration = (self.typingGeneration or 0) + 1
+end
+
+function Controller:isTyping()
+	return self.typing ~= nil
+end
+
+-- Revealed characters for each paragraph still typing, keyed as the
+-- Transcript template's paragraph ids are ("3_1"), and each entry typing has
+-- not reached yet (`waiting["3"]`); absent paragraphs show whole.
+function Controller:revealState(earlier)
+	local reveal = { waiting = {} }
+	local typing = self.typing
+	if not typing then return reveal end
+	local current = typing.queue[typing.position]
+	for position = typing.position, #typing.queue do
+		local item = typing.queue[position]
+		reveal[(item.entry - earlier) .. "_" .. item.paragraph] = position == typing.position and typing.revealed or 0
+		if item.entry ~= current.entry or (item.paragraph == 1 and typing.revealed == 0) then
+			reveal.waiting[tostring(item.entry - earlier)] = true
+		end
+	end
+	return reveal
+end
+
+function Controller:typeNext(generation)
+	local typing = self.typing
+	if not typing or typing.generation ~= generation or not self.transcript or self.transcript:isDisposed() then return end
+	local item = typing.queue[typing.position]
+	local refs, index = self.transcript.refs, item.entry - (self.transcriptEarlier or 0)
+	local view = refs["paragraph_" .. index .. "_" .. item.paragraph]
+	local from = typing.revealed
+	if from == 0 and refs["entry_" .. index] then refs["entry_" .. index].hidden = false end
+	typing.revealed = math.min(item.length, from + TYPING.charactersPerTick)
+	typing.ticks = typing.ticks + 1
+	local finished = typing.revealed >= item.length
+	if view then
+		view.hidden = false
+		view.revealedCharacters = finished and -1 or typing.revealed
+	end
+	if self.haptics and typing.ticks >= typing.nextHaptic and beginsWord(item.text, from, typing.revealed) then
+		self.haptics.impact("soft")
+		typing.nextHaptic = typing.ticks + TYPING.hapticTicks
+	end
+	self:scrollTranscript(false)
+	local delay = TYPING.tick
+	if finished then
+		typing.position, typing.revealed = typing.position + 1, 0
+		if typing.position > #typing.queue then
+			self.typing = nil
+			return
+		end
+		delay = TYPING.paragraphPause
+	end
+	self.after(delay, function() self:typeNext(generation) end)
 end
 
 function Controller:onSpeechEvent(state, text, message)
@@ -223,6 +334,7 @@ end
 
 function Controller:onDisappear()
 	self:cancelDictation()
+	self:finishTyping()
 	if self.transcript then self.transcript:dispose() end
 	if self.suggestions then self.suggestions:dispose() end
 	self.speech = nil
@@ -235,7 +347,12 @@ end
 function Controller:submitCommand(command)
 	if type(command) ~= "string" or not command:find("%S") then return false end
 	self:cancelDictation()
+	-- A command sets the rest of the previous answer at once, then the new
+	-- answer types.
+	self:finishTyping()
+	local firstNew = self.model:entryCount() + 1
 	local ok, err = self.model:submit(command)
+	self:beginTyping(firstNew)
 	local presentation = self.model:presentation()
 	self.refs.progress.text = presentation.progress
 	self.refs.sessionPlace.text = presentation.chapterLabel ~= ""

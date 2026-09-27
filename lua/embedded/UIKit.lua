@@ -897,6 +897,7 @@ local PARAGRAPH_ALIGNMENT = { leading = 4, center = 1, trailing = 2, justified =
 --- @prop dropCap boolean optional. Drops the first letter through `dropCapLines` lines.
 --- @prop dropCapLines number optional. Lines the initial spans; defaults to 3.
 --- @prop dropCapFontName string optional. Face for the initial; defaults to bold body.
+--- @prop revealedCharacters number optional. Typewriter reveal: characters shown so far (as `utf8.len` counts them); -1, the default, shows all. Lines are those of the whole text; only revealed lines take height.
 --- @prop dropCapColor string optional. Colour of the initial; defaults to the tint.
 --- @example <Paragraph text="Once upon a time…" design="serif" lineSpacing="5" dropCap="true" />
 --- @platform UIKit non-scrolling UITextView (TextKit 1 exclusion paths). AppKit non-editable NSTextView.
@@ -919,6 +920,7 @@ function UIKit.Paragraph(props)
 		if props.dropCapLines then view.dropCapLines = props.dropCapLines end
 		view.dropCap = true
 	end
+	if props.revealedCharacters then view.revealedCharacters = props.revealedCharacters end
 	if props.accessibilityLabel then view.accessibilityLabel = props.accessibilityLabel end
 	-- Prose fills the column it is given and wraps to it.
 	view.fillWidth = true

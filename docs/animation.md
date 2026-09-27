@@ -135,7 +135,8 @@ How nodes match and what happens to them:
      metadata (`animation`, `animationValue`, `key`);
    - layout: `width`, `height`, `min…`/`max…`, `flexGrow`, `flexShrink`,
      `flexBasis`, and on stacks `padding…`, `spacing`, `alignment`;
-   - per tag: `Label`/`Paragraph`/`TextField` `text`, `Button` `title`,
+   - per tag: `Label`/`Paragraph`/`TextField` `text`, `Paragraph`
+     `revealedCharacters` (typewriter reveal), `Button` `title`,
      `ProgressView`/`Gauge`/`Slider`/`Picker` `value`.
 3. **Stacks** (`VStack`, `HStack`, `ZStack`, `FlowStack`) insert, move and
    remove children individually; keyed children move rather than being
