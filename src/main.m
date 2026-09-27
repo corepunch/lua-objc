@@ -136,7 +136,6 @@ static const CGFloat kParagraphDropCapInkOutset = 2.0;
 #define kTableCellLineSpacing            2
 #define kTableCellLevelTextWidth        38
 #define kTableCellLevelGap               8
-#define kTableCellLevelHeight           12
 #define kTableInfoButtonSide            22
 #define kTableInfoButtonPointSize       15
 #define kTableRowMenuOffset             2
@@ -272,6 +271,7 @@ static void bridge_set_optional_callback(
 }
 
 #include "appkit/bezier_path.m"
+#include "appkit/level_indicator.m"
 #include "appkit/table_data_source.m"
 #include "appkit/outline_data_source.m"
 #include "appkit/action_button.m"

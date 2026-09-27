@@ -15,7 +15,7 @@ end
 
 -- Gauge is AppKit's continuous capacity level indicator.
 local gauge = xml.render('<Gauge value="0.25" tint="systemMint" accessibilityLabel="Share of storage" />', {}, ns)
-t.assertEqual(gauge.className, "NSLevelIndicator", "Gauge is a native level indicator")
+t.assertEqual(gauge.className, "LuaLevelIndicator", "Gauge is a native level indicator")
 t.assertEqual(gauge.levelIndicatorStyle, 1, "Gauge uses the continuous capacity style")
 t.assertEqual(gauge.doubleValue, 0.25, "Gauge shows its value")
 t.expect(not gauge.editable, "Gauge is read-only")
@@ -25,6 +25,14 @@ t.assertEqual(xml.render('<Gauge value="3" />', {}, ns).doubleValue, 1, "Gauge c
 local ranged = xml.render('<Gauge value="50" minValue="0" maxValue="200" />', {}, ns)
 t.assertEqual(ranged.maxValue, 200, "Gauge accepts a custom range")
 t.assertEqual(ranged.doubleValue, 50, "a ranged Gauge keeps its value")
+
+-- NSLevelIndicator reports a 16 pt intrinsic height but its cell draws an
+-- 18 pt capsule; a shorter frame clipped the capsule's rounded top corners.
+local stack, stackRefs = xml.render('<VStack><Gauge id="gauge" value="0.5" /></VStack>', {}, ns)
+stack.size = ns.Size(200, 100); stack:layout(200)
+t.assertEqual(stackRefs.gauge.size.height, 18, "a laid-out Gauge is as tall as the capsule its cell draws")
+t.expect(not read("src/appkit/table_data_source.m"):find("NSLevelIndicator alloc", 1, true),
+	"table share bars use the Gauge's level indicator, not a clipped one-off")
 
 -- .help is the native tooltip on any view.
 t.assertEqual(xml.render('<Button title="Go" help="Opens the thing" />', {}, ns).toolTip, "Opens the thing",

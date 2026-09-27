@@ -23,7 +23,7 @@
 @interface LuaTableCellView : NSTableCellView
 @property (nonatomic, strong) NSTextField *secondaryTextField;
 @property (nonatomic, strong) LuaPathView *curveView;
-@property (nonatomic, strong) NSLevelIndicator *levelIndicator;
+@property (nonatomic, strong) LuaLevelIndicator *levelIndicator;
 @property (nonatomic) CGFloat imageWidth;
 @property (nonatomic, strong) NSProgressIndicator *loadingIndicator;
 @property (nonatomic, strong) NSButton *actionButton;
@@ -57,7 +57,8 @@
 		CGFloat height = ceil(text.intrinsicContentSize.height);
 		text.frame = NSMakeRect(0, floor((self.bounds.size.height - height) / 2), labelled ? kTableCellLevelTextWidth : 0, height);
 		CGFloat x = labelled ? kTableCellLevelTextWidth + kTableCellLevelGap : kTableCellTextLeadingInset;
-		_levelIndicator.frame = NSMakeRect(x, floor((self.bounds.size.height - kTableCellLevelHeight) / 2), MAX(0, self.bounds.size.width - x - kTableCellTextTrailingInset), kTableCellLevelHeight);
+		CGFloat levelHeight = _levelIndicator.intrinsicContentSize.height;
+		_levelIndicator.frame = NSMakeRect(x, floor((self.bounds.size.height - levelHeight) / 2), MAX(0, self.bounds.size.width - x - kTableCellTextTrailingInset), levelHeight);
 		return;
 	}
 	// A trailing badge (SwiftUI `.badge`) keeps its fitting width; the title
@@ -366,13 +367,7 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 		}
 		// Reusable native table cells own their embedded Cocoa controls.
 		if (cellSpec[@"level"]) {
-			NSLevelIndicator *level = [[NSLevelIndicator alloc] initWithFrame:NSZeroRect];
-			level.levelIndicatorStyle = NSLevelIndicatorStyleContinuousCapacity;
-			level.warningValue = 2;
-			level.criticalValue = 2;
-			level.minValue = 0;
-			level.maxValue = 1;
-			level.editable = NO;
+			LuaLevelIndicator *level = [[LuaLevelIndicator alloc] initWithFrame:NSZeroRect];
 			[cell addSubview:level];
 			cell.levelIndicator = level;
 		}

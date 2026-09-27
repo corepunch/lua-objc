@@ -302,17 +302,10 @@ static int bridge_AppKitControls_progressIndicator(lua_State *L) {
 	return 1;
 }
 
-// SwiftUI `Gauge` with the linear capacity style: AppKit's continuous
-// capacity level indicator, read-only and without warning thresholds.
+// SwiftUI `Gauge` with the linear capacity style.
 static int bridge_AppKitControls_levelIndicator(lua_State *L) {
 
-	NSLevelIndicator *obj = [[NSLevelIndicator alloc] initWithFrame:NSZeroRect];
-	obj.levelIndicatorStyle = NSLevelIndicatorStyleContinuousCapacity;
-	obj.minValue = 0;
-	obj.maxValue = 1;
-	obj.warningValue = kGaugeNoThreshold;
-	obj.criticalValue = kGaugeNoThreshold;
-	obj.editable = NO;
+	LuaLevelIndicator *obj = [[LuaLevelIndicator alloc] initWithFrame:NSZeroRect];
 	[obj sizeToFit];
 	push_objc(L, obj, "nsview");
 	return 1;
