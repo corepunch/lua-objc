@@ -286,7 +286,7 @@ static int bridge_UIKitControls_colorPicker(lua_State *L) {
 	LuaReg *reg = objc_getAssociatedObject(pickerView, &kCallbackKey);
 	lua_State *L = lua_reg_live_state(reg);
 	if (!L || !lua_reg_push(reg)) return;
-	push_objc(L, pickerView, "uiview");
+	lua_pushinteger(L, row);
 	lua_objc_pcall(L, 1, 0, "picker");
 }
 @end
@@ -956,10 +956,16 @@ static int bridge_UIKitControls_picker(lua_State *L) {
 			initWithItems:options];
 		segmented.selectedSegmentIndex = selected;
 		if (callback) {
+			/* Every picker style reports the zero-based index it selected, as
+			 * the menu and wheel styles do and as AppKit's Picker does. */
 			lua_reg_store(segmented, &kCallbackKey, callback);
-			[segmented addTarget:[LuaButtonTarget shared]
-				action:@selector(onAction:)
-				forControlEvents:UIControlEventValueChanged];
+			__weak UISegmentedControl *weakSegmented = segmented;
+			[segmented addAction:[UIAction actionWithHandler:^(__unused UIAction *action) {
+				lua_State *callL = lua_reg_live_state(callback);
+				if (!callL || !weakSegmented || !lua_reg_push(callback)) return;
+				lua_pushinteger(callL, weakSegmented.selectedSegmentIndex);
+				lua_objc_pcall(callL, 1, 0, "picker");
+			}] forControlEvents:UIControlEventValueChanged];
 		}
 		[segmented sizeToFit];
 		push_objc(L, segmented, "uiview");

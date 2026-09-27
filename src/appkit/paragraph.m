@@ -153,8 +153,12 @@ static NSRect paragraph_ink_bounds(NSFont *font, NSString *letter) {
 	NSFont *measure = [NSFont fontWithDescriptor:base.fontDescriptor size:reference] ?: base;
 	NSRect ink = paragraph_ink_bounds(measure, letter);
 	BOOL descends = NSMinY(ink) < -kParagraphDropCapDescentFraction * reference;
-	CGFloat inkHeight = descends ? NSHeight(ink) : NSMaxY(ink);
-	CGFloat scale = inkHeight > 0 ? ((descends ? lastBottom : lastBaseline) - capTop) / inkHeight : 1;
+	CGFloat scale = NSMaxY(ink) > 0 ? (lastBaseline - capTop) / NSMaxY(ink) : 1;
+	/* A capital whose foot overshoots the baseline further than the last
+	 * line's descent (Chalkduster's A) is fitted whole, like a descender,
+	 * so its ink never reaches into a following line. */
+	if ((descends || -NSMinY(ink) * scale > lastBottom - lastBaseline) && NSHeight(ink) > 0)
+		scale = (lastBottom - capTop) / NSHeight(ink);
 	NSFont *font = [NSFont fontWithDescriptor:base.fontDescriptor size:MAX(1, reference * scale)] ?: base;
 	NSRect scaled = NSMakeRect(NSMinX(ink) * scale, NSMinY(ink) * scale, NSWidth(ink) * scale, NSHeight(ink) * scale);
 	CGFloat baseline = capTop + NSMaxY(scaled);
@@ -172,10 +176,11 @@ static NSRect paragraph_ink_bounds(NSFont *font, NSString *letter) {
 	_initialInk = inkRect;
 }
 
-/* Whole lines stay beside the initial, so the next line returns to the margin. */
+/* Exactly `dropCapLines` whole lines stay beside the initial, whose ink is
+ * fitted inside them, so the next line returns to the margin. */
 - (NSArray<NSBezierPath *> *)exclusionForInitial {
 	CGFloat pitch = [self bodyLineHeight] + _lineSpacing;
-	CGFloat lines = MAX(MAX(2, _dropCapLines), ceil((NSMaxY(_initialInk) + _lineSpacing) / pitch));
+	CGFloat lines = MAX(2, _dropCapLines);
 	return @[[NSBezierPath bezierPathWithRect:NSMakeRect(0, 0, NSMaxX(_initialInk) + kParagraphDropCapGap,
 		lines * pitch - _lineSpacing / 2)]];
 }

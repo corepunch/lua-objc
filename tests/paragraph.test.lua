@@ -75,6 +75,29 @@ t.expect(view.frame.origin.x <= ink.origin.x and view.frame.origin.x + view.fram
 local exclusion = script.textContainer.exclusionPaths[1].bounds
 t.expect(exclusion.size.height <= 3 * pitch, "exactly three lines wrap beside the initial")
 
+-- A capital whose foot overshoots its baseline (Chalkduster's A) spans the
+-- same three lines as any other initial: its ink is fitted inside them
+-- rather than pushing a fourth line aside. Every face and leading agrees.
+local OVERSHOOT = "Abandoned shopfronts line the square, a bakery and a cobbler, each window displaying a toy frozen in its work."
+for _, face in ipairs({ "Chalkduster", "SnellRoundhand-Black", "Futura-CondensedExtraBold", "Didot-Bold" }) do
+	for _, size in ipairs({ 14, 18, 26 }) do
+		for _, lead in ipairs({ 3, 6, 13 }) do
+			for _, letter in ipairs({ "A", "Y", "Q" }) do
+				local initial = xml.render('<Paragraph text="' .. letter .. OVERSHOOT:sub(2) .. '" size="' .. size
+					.. '" design="serif" lineSpacing="' .. lead .. '" dropCap="true" dropCapFontName="' .. face .. '" />', {}, ns)
+				local column = ns.VStack { initial }
+				column.size = ns.Size(360, 1000); column:layout(360)
+				local linePitch = math.ceil(initial.font.ascender - initial.font.descender + initial.font.leading) + lead
+				local wrapped = initial.textContainer.exclusionPaths[1].bounds.size.height
+				local inkBottom = initial.initialInk.origin.y + initial.initialInk.size.height
+				local label = string.format("%s %s at %dpt, leading %d", face, letter, size, lead)
+				t.expect(math.abs(wrapped - (3 * linePitch - lead / 2)) < 0.5, label .. " wraps exactly three lines")
+				t.expect(inkBottom <= 3 * linePitch - lead + 0.5, label .. " keeps its ink inside those lines")
+			end
+		end
+	end
+end
+
 -- Font.smallCaps selects the OpenType small-capital feature.
 local caps = ns.Font { size = 13, smallCaps = true, design = "serif" }
 local settings = caps.fontDescriptor.fontAttributes.NSCTFontFeatureSettingsAttribute
