@@ -166,6 +166,6 @@ musical data, then `mix:master{kicks, gain}` returns two sample arrays for
 
 `Reel.captures(dir)` reads `<name>.jpg` (a 2× window-only capture) and
 `<name>.layout.xml` (`--dump-layout` of the same window). The dump records
-each view's `windowX`/`windowY` in top-left window points and lists treemap
-cells; table rows belong to their nearest identified view. Pieces are cut
-by identifier and survive layout changes after a fresh capture.
+each view's `window` rectangle (`"x y width height"` in top-left window
+points) and lists treemap cells; table rows belong to their nearest
+identified view. Pieces are cut by identifier and survive layout changes after a fresh capture.

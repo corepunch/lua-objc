@@ -387,9 +387,10 @@ rg -n 'cropped="true"|outsideParent="true"|contentClipped="true"' /tmp/layout.xm
 
 The XML is generated automatically by Objective-C; application code must not
 manually construct a diagnostic tree. Each native view records its class,
-computed frame, its frame in top-left window points (`windowX`, `windowY`),
-intrinsic/fitting sizes, clipping state, and relevant text. Treemaps list
-their cells as `TreemapCell` records.
+`frame` and `window` rectangles (`"x y width height"`; `window` is in
+top-left window points), `intrinsic` and `fitting` sizes (`"width height"`),
+clipping state, and relevant text. Treemaps list their cells as
+`TreemapCell` records.
 `NSTableView` nodes additionally record computed column widths and visible cell
 text geometry with an explicit `cropped` flag. Inspect the dump before changing
 layout values and again afterward so the diagnosis and fix are both evidenced.

@@ -130,12 +130,12 @@ page:fillRect(8, 4, 12, 8, 1, 0, 0, 1)
 page:snapshot():write(dir .. "/page-dark.jpg", 1)
 write(dir .. "/page-dark.layout.xml", [[<?xml version="1.0" encoding="UTF-8"?>
 <Layout>
-  <View class="NSView" x="0.0" y="0.0" width="20.0" height="10.0" windowX="0.0" windowY="0.0">
-    <View class="LuaStackView" identifier="box" x="4.0" y="4.0" width="6.0" height="4.0" windowX="4.0" windowY="2.0">
+  <View class="NSView" frame="0.0 0.0 20.0 10.0" window="0.0 0.0 20.0 10.0">
+    <View class="LuaStackView" identifier="box" frame="4.0 4.0 6.0 4.0" window="4.0 2.0 6.0 4.0">
     </View>
-    <View class="LuaTreemapView" identifier="map" x="12.0" y="0.0" width="8.0" height="10.0" windowX="12.0" windowY="0.0">
-      <TreemapCell id="big" depth="0" windowX="12.0" windowY="0.0" width="8.0" height="6.0" label="Big" />
-      <TreemapCell id="small" depth="1" windowX="12.0" windowY="6.0" width="8.0" height="4.0" label="Small" />
+    <View class="LuaTreemapView" identifier="map" frame="12.0 0.0 8.0 10.0" window="12.0 0.0 8.0 10.0">
+      <TreemapCell id="big" depth="0" window="12.0 0.0 8.0 6.0" label="Big" />
+      <TreemapCell id="small" depth="1" window="12.0 6.0 8.0 4.0" label="Small" />
     </View>
   </View>
 </Layout>
@@ -403,10 +403,10 @@ t.expect(counterLit > 20, "a counter draws its reading and unit")
 -- ── Capture rows and parts ───────────────────────────────────────────────
 
 write(dir .. "/rows-dark.layout.xml", [[<Layout>
-  <View class="LuaScrollView" identifier="list" windowX="0.0" windowY="0.0" width="20.0" height="10.0">
-    <View class="NSTableView" windowX="0.0" windowY="0.0" width="20.0" height="10.0">
-      <View class="NSTableRowView" windowX="0.0" windowY="0.0" width="20.0" height="5.0" />
-      <View class="NSTableRowView" windowX="0.0" windowY="5.0" width="20.0" height="5.0" />
+  <View class="LuaScrollView" identifier="list" window="0.0 0.0 20.0 10.0">
+    <View class="NSTableView" window="0.0 0.0 20.0 10.0">
+      <View class="NSTableRowView" window="0.0 0.0 20.0 5.0" />
+      <View class="NSTableRowView" window="0.0 5.0 20.0 5.0" />
     </View>
   </View>
 </Layout>]])

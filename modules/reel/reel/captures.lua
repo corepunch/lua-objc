@@ -31,6 +31,12 @@ local function number(value)
 	return tonumber(value) or 0
 end
 
+-- Layout dumps write rectangles as "x y width height".
+local function rect(value)
+	local x, y, w, h = (value or ""):match("(%S+) (%S+) (%S+) (%S+)")
+	return { x = number(x), y = number(y), w = number(w), h = number(h) }
+end
+
 -- Indexes identified views and treemap cells by the dump's window frames.
 local function readLayout(path)
 	local file = io.open(path, "r")
@@ -43,8 +49,7 @@ local function readLayout(path)
 			if node.kind == "element" then
 				local attrs = node.attrs
 				if node.tag == "View" then
-					local frame = { x = number(attrs.windowX), y = number(attrs.windowY),
-						w = number(attrs.width), h = number(attrs.height) }
+					local frame = rect(attrs.window)
 					local id = attrs.identifier
 					if id and not views[id] then views[id] = frame end
 					-- Table rows belong to the nearest identified view (the
@@ -56,8 +61,9 @@ local function readLayout(path)
 					walk(node.children, id or owner)
 				elseif node.tag == "TreemapCell" and owner then
 					cells[owner] = cells[owner] or {}
-					table.insert(cells[owner], { id = attrs.id, depth = number(attrs.depth), label = attrs.label,
-						x = number(attrs.windowX), y = number(attrs.windowY), w = number(attrs.width), h = number(attrs.height) })
+					local cell = rect(attrs.window)
+					cell.id, cell.depth, cell.label = attrs.id, number(attrs.depth), attrs.label
+					table.insert(cells[owner], cell)
 				else
 					walk(node.children, owner)
 				end

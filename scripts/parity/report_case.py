@@ -44,7 +44,8 @@ def png_metadata(path: Path | None) -> dict | None:
 
 
 def frame(node: ET.Element) -> dict:
-	return {key: float(node.attrib[key]) for key in ("x", "y", "width", "height")}
+	# Layout dumps write frames as "x y width height".
+	return dict(zip(("x", "y", "width", "height"), map(float, node.attrib["frame"].split())))
 
 
 def candidate_nodes(path: Path) -> dict[str, dict]:

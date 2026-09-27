@@ -94,12 +94,13 @@ static void append_layout_view(NSMutableString *out, NSView *view,
 	NSString *identifier = view.accessibilityIdentifier;
 	NSRect windowFrame = layout_window_rect(view, view.bounds, root);
 	[out appendFormat:
-		@"%@<View class=\"%@\"%@ x=\"%.1f\" y=\"%.1f\" width=\"%.1f\" height=\"%.1f\" windowX=\"%.1f\" windowY=\"%.1f\" intrinsicWidth=\"%.1f\" intrinsicHeight=\"%.1f\" fittingWidth=\"%.1f\" fittingHeight=\"%.1f\" clipsToBounds=\"%@\" outsideParent=\"%@\" contentClipped=\"%@\"%@%@%@>\n",
+		@"%@<View class=\"%@\"%@ frame=\"%.1f %.1f %.1f %.1f\" window=\"%.1f %.1f %.1f %.1f\" intrinsic=\"%.1f %.1f\" fitting=\"%.1f %.1f\" clipsToBounds=\"%@\" outsideParent=\"%@\" contentClipped=\"%@\"%@%@%@>\n",
 		layout_indent(depth), NSStringFromClass(view.class),
 		identifier ? [NSString stringWithFormat:@" identifier=\"%@\"",
 			layout_xml_escape(identifier)] : @"",
 		frame.origin.x, frame.origin.y, frame.size.width, frame.size.height,
 		windowFrame.origin.x, windowFrame.origin.y,
+		windowFrame.size.width, windowFrame.size.height,
 		intrinsic.width, intrinsic.height, fitting.width, fitting.height,
 		view.clipsToBounds ? @"true" : @"false",
 		outside ? @"true" : @"false",
@@ -154,7 +155,7 @@ static void append_layout_view(NSMutableString *out, NSView *view,
 				layout_cell_number(cell, @"w"), layout_cell_number(cell, @"h")), root);
 			NSString *label = [cell[@"label"] isKindOfClass:NSString.class] ? cell[@"label"] : @"";
 			[out appendFormat:
-				@"%@<TreemapCell id=\"%@\" depth=\"%.0f\" windowX=\"%.1f\" windowY=\"%.1f\" width=\"%.1f\" height=\"%.1f\" label=\"%@\" />\n",
+				@"%@<TreemapCell id=\"%@\" depth=\"%.0f\" window=\"%.1f %.1f %.1f %.1f\" label=\"%@\" />\n",
 				layout_indent(depth + 1), layout_xml_escape([cell[@"id"] description]),
 				layout_cell_number(cell, @"depth"), cellFrame.origin.x, cellFrame.origin.y,
 				cellFrame.size.width, cellFrame.size.height, layout_xml_escape(label)];
