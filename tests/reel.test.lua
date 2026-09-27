@@ -103,6 +103,13 @@ t.expect(canvas:pixel(10, 10) > 0.9, "the symbol fills its centre")
 t.assertThrows(function() canvas:symbol("no.such.symbol.reel", 10, 10, 16, 1, 1, 1, 1) end,
 	"an unknown SF Symbol is an error")
 
+canvas:clear(0.6, 0.6, 0.6, 1)
+canvas:blend("difference")
+canvas:fillRect(0, 0, 40, 20, 0.6, 0.6, 0.6, 1)
+canvas:blend("normal")
+t.expect((canvas:pixel(5, 5)) < 0.01, "difference blending cancels identical pixels")
+t.assertThrows(function() canvas:blend("sparkle") end, "an unknown blend mode is an error")
+
 -- ── Accumulator ──────────────────────────────────────────────────────────
 
 local accumulator = N.accumulator(40, 20)
@@ -268,13 +275,206 @@ t.expect(not ok and tostring(err):find("<Group> motion") ~= nil, "bad motion is 
 ok, err = pcall(reel, [[<Group />]])
 t.expect(not ok and tostring(err):find("<Reel> root") ~= nil, "a reel needs a <Reel> root")
 
--- Movie encoding writes an H.264 file with every frame.
+-- ── The toolkit: pen, shapes, colours ────────────────────────────────────
+
+local Pen, Shape = Reel.Pen, Reel.Shape
+local c1 = Reel.rgb(0xFF8000)
+t.expect(c1[1] == 1 and near(c1[2], 128 / 255, 1e-9) and c1[3] == 0 and c1[4] == 1, "rgb() reads hex numbers")
+t.assertEqual(Reel.rgb("#00FF0080")[4], 128 / 255, "rgb() reads #RRGGBBAA strings")
+t.assertEqual(Reel.rgb(0xFFFFFF, 0.5)[4], 0.5, "rgb() takes an alpha")
+
+local penCanvas = N.canvas(100, 100)
+local pen = Pen.new(penCanvas, N)
+penCanvas:clear(0, 0, 0, 1)
+pen:fill(Shape.sector(50, 50, 20, 40, -math.pi / 2, math.pi / 2), 0xFFFFFF)
+t.expect((penCanvas:pixel(65, 35)) > 0.9, "a sector covers its quarter")
+t.expect((penCanvas:pixel(35, 35)) < 0.1, "a sector leaves the rest")
+t.expect((penCanvas:pixel(52, 45)) < 0.1, "a sector keeps its hole")
+penCanvas:clear(0, 0, 0, 1)
+pen:fill(Shape.without(Shape.rect(40, 40, 20, 20)), 0xFFFFFF)
+t.expect((penCanvas:pixel(50, 50)) < 0.1 and (penCanvas:pixel(10, 10)) > 0.9, "without() cuts a hole in everything")
+penCanvas:clear(0, 0, 0, 1)
+pen:place({ x = 50, y = 50, scale = 2, alpha = 0.5, anchor = { 5, 5 } }, function(p)
+	p:rect(0, 0, 10, 10, 0xFFFFFF)
+	t.assertEqual(p.zoom, 2, "place() tracks the on-screen scale")
+end)
+t.expect(near((penCanvas:pixel(45, 45)), 0.5) and (penCanvas:pixel(35, 35)) < 0.1, "place() anchors, scales and fades")
+t.assertEqual(pen.zoom, 1, "place() restores the scale")
+pen:place({ alpha = 0 }, function() error("an invisible placement must not draw") end)
+penCanvas:clear(0, 0, 0, 1)
+pen:ring({ cx = 50, cy = 50, r = 30, width = 10, sweep = 1, segments = { { 50, 0xFF0000 }, { 50, 0x0000FF } }, gap = 0 })
+local rr, _, rb = penCanvas:pixel(80, 50)
+t.expect(rr > 0.9 and rb < 0.1, "a ring's first segment runs clockwise from 12 o'clock")
+rr, _, rb = penCanvas:pixel(20, 50)
+t.expect(rb > 0.9, "a ring's second segment follows")
+local function snapshotBurst()
+	penCanvas:clear(0, 0, 0, 1)
+	pen:burst({ at = 0, x = 50, y = 50, colors = { 0xFFFFFF }, count = 40, speed = 200, seed = 9 }, 0.2)
+	local lit = 0
+	for x = 0, 99, 3 do for y = 0, 99, 3 do if penCanvas:pixel(x, y) > 0.3 then lit = lit + 1 end end end
+	return lit
+end
+local burstLit = snapshotBurst()
+t.expect(burstLit > 0, "a burst throws particles")
+t.assertEqual(snapshotBurst(), burstLit, "a burst is the same every render")
+penCanvas:clear(0, 0, 0, 1)
+pen:chip("hammer.fill", 0x1C7CF4, 50, 50, 40)
+local _, _, chipBlue = penCanvas:pixel(35, 50)
+t.expect(chipBlue > 0.8, "a chip fills its rounded square")
+
+-- ── Curves for cues ──────────────────────────────────────────────────────
+
+local keys = { { 1, 2, 100 }, { 3, 4, 50 } }
+t.assertEqual(Curves.keys(0, 10, keys), 10, "keys() holds the start before the first move")
+t.assertEqual(Curves.keys(2.5, 10, keys), 100, "keys() holds each value between moves")
+t.assertEqual(Curves.keys(9, 10, keys), 50, "keys() ends on the last value")
+t.expect(near(Curves.keys(1.5, 10, keys, "linear"), 55, 1e-9), "keys() eases between values")
+local flipX, flips = Curves.flip(1.165, { 1 }, 0.32)
+t.expect(flipX < 0.1 and flips == 1, "a flip is edge-on halfway and counts from there")
+t.assertEqual((Curves.flip(2, { 1 }, 0.32)), 1, "a finished flip is flat again")
+
+-- ── Elements: variables, stagger, clips, text, shots, cues ───────────────
+
+local shotCalls = {}
+local vocab = reel([[<Reel width="80" height="40" subframes="1" background="#000000">
+  <Let name="half" value="t / 2" />
+  <Group x="half * 10" y="20" clip="rect(-5, -20, 10, 40)"><Rect x="-20" y="-20" width="40" height="40" color="#FFFFFF" /></Group>
+  <Group stagger="1"><Cue sound="tick" at="2" /><Cue sound="tick" at="2" until="3" /></Group>
+  <Draw with="probe" x="70" y="10" />
+</Reel>]], { shots = { probe = function(p, time, node) table.insert(shotCalls, { p, time, node.tag }) end } })
+local vocabCanvas = vocab:canvas()
+vocab:draw(vocabCanvas, 4)
+t.expect((vocabCanvas:pixel(20, 20)) > 0.9, "Let variables feed later attributes")
+t.expect((vocabCanvas:pixel(28, 20)) < 0.1, "clip limits a node and its children")
+t.expect(#shotCalls == 1 and shotCalls[1][2] == 4 and shotCalls[1][3] == "Draw", "a <Draw> shot receives the pen, t and its node")
+t.expect(vocab.events[1].time == 2 and vocab.events[2].time == 3 and vocab.events[2]["until"] == 4,
+	"stagger delays each child's events, including cue ends")
+t.assertThrows(function() reel([[<Reel><Draw with="missing" /></Reel>]], { shots = {} }) end, "an unknown shot is an error")
+t.assertThrows(function() reel([[<Reel><Let name="step" value="1" /></Reel>]]) end, "a Let cannot hide a helper")
+
+local staggered = reel([[<Reel width="40" height="20" subframes="1" background="#000000">
+  <Group stagger="1"><Group x="10" y="10" motion="pop(0)"><Glow radius="3" /></Group><Group x="30" y="10" motion="pop(0)"><Glow radius="3" /></Group></Group>
+</Reel>]])
+staggered:draw(frame, 0.5)
+t.expect((frame:pixel(9, 9)) > 0.3 and (frame:pixel(29, 9)) < 0.05, "stagger runs each child later than the one before")
+
+local stretched = reel([[<Reel width="40" height="20" subframes="1" background="#000000">
+  <Group x="20" y="10" sx="3" sy="2" anchorX="1 + t" anchorY="1"><Rect width="2" height="2" color="#FFFFFF" /></Group>
+</Reel>]])
+stretched:draw(frame, 0)
+t.expect((frame:pixel(22, 10)) > 0.9 and (frame:pixel(24, 10)) < 0.1 and (frame:pixel(20, 13)) < 0.1,
+	"sx and sy stretch around the anchor")
+stretched:draw(frame, 1)
+t.expect((frame:pixel(15, 10)) > 0.9 and (frame:pixel(21, 10)) < 0.1, "anchorX can move with t")
+
+local slammed = reel([[<Reel width="200" height="60" subframes="1" background="#000000">
+  <Style name="s" size="30" weight="bold" color="#FFFFFF" />
+  <Style name="red" size="30" weight="bold" color="#FF0000" />
+  <Slam style="s" style2="red" text="Go now" x="100" y="45" at="1, 2" />
+</Reel>]])
+t.expect(#slammed.events == 2 and slammed.events[2].kind == "slam", "every slammed word sounds")
+local slamCanvas = slammed:canvas()
+local function redAndWhite(time)
+	slammed:draw(slamCanvas, time)
+	local white, red = 0, 0
+	for x = 0, 199, 2 do for y = 0, 59, 2 do
+		local pr, pg = slamCanvas:pixel(x, y)
+		if pr > 0.6 and pg > 0.6 then white = white + 1 elseif pr > 0.6 then red = red + 1 end
+	end end
+	return white, red
+end
+local w1, r1 = redAndWhite(1.5)
+t.expect(w1 > 0 and r1 == 0, "a word waits for its own hit")
+local w2, r2 = redAndWhite(4)
+t.expect(w2 > 0 and r2 > 0, "per-word styles apply")
+t.assertThrows(function() reel([[<Reel><Style name="s" size="10" /><Slam style="s" text="a b" at="1" /></Reel>]]) end,
+	"a slam needs one hit per word")
+
+local counted = reel([[<Reel width="200" height="60" subframes="1" background="#000000">
+  <Style name="n" size="30" weight="bold" color="#FFFFFF" digits="true" />
+  <Counter style="n" x="100" y="45" value="t" format="%.1f" final="9.9" unit=" GB" />
+</Reel>]])
+local countCanvas = counted:canvas()
+counted:draw(countCanvas, 9.9)
+local counterLit = 0
+for x = 0, 199, 2 do for y = 0, 59, 2 do if countCanvas:pixel(x, y) > 0.5 then counterLit = counterLit + 1 end end end
+t.expect(counterLit > 20, "a counter draws its reading and unit")
+
+-- ── Capture rows and parts ───────────────────────────────────────────────
+
+write(dir .. "/rows-dark.layout.xml", [[<Layout>
+  <View class="LuaScrollView" identifier="list" windowX="0.0" windowY="0.0" width="20.0" height="10.0">
+    <View class="NSTableView" windowX="0.0" windowY="0.0" width="20.0" height="10.0">
+      <View class="NSTableRowView" windowX="0.0" windowY="0.0" width="20.0" height="5.0" />
+      <View class="NSTableRowView" windowX="0.0" windowY="5.0" width="20.0" height="5.0" />
+    </View>
+  </View>
+</Layout>]])
+page:snapshot():write(dir .. "/rows-dark.jpg", 1)
+local rows = captures:get("rows-dark")
+t.assertEqual(#rows:rows("list"), 2, "table rows belong to the nearest identified view")
+local rx, ry, rw, rh = rows:rect("#list/row/2")
+t.expect(rx == 0 and ry == 5 and rw == 20 and rh == 5, "rect(#view/row/N) reads the Nth row")
+t.assertThrows(function() rows:rect("#list/row/3") end, "a missing row is an error")
+local part = rows:piece("#list/row/1", { part = { 4, 2, 6, 3 } })
+t.expect(part.x == 4 and part.y == 2 and part.w == 6 and part.h == 3, "part narrows a piece to a sub-rectangle")
+local small = rows:piece("window", { downsample = 0.5 })
+local smallW = small.image:pixelSize()
+t.expect(small.w == 20 and smallW == 20, "downsample keeps the size in points with fewer pixels")
+
+-- ── Audio ────────────────────────────────────────────────────────────────
+
+local Audio, I = Reel.audio, Reel.instruments
+local mixA, mixB = Audio.new(1, 1000), Audio.new(1, 1000)
+local sameNoise = true
+for _ = 1, 50 do if mixA:noise() ~= mixB:noise() then sameNoise = false end end
+t.expect(sameNoise, "noise is deterministic")
+local first, last = mixA:range(0.25, 0.5)
+t.expect(first == 250 and last == 749, "range() covers the samples in an interval")
+mixA:add(10, 1, 0, 0.5)
+t.expect(mixA.dryL[11] == 2 and mixA.dryR[11] == 0 and mixA.sendL[11] == 1, "add() pans and sends")
+t.assertEqual(Audio.midiHz(69), 440, "A4 is 440 Hz")
+local drums = Audio.new(1, 8000)
+I.kick(drums, 0.5)
+local before, after = 0, 0
+for i = 1, 3900 do before = before + math.abs(drums.dryL[i]) end
+for i = 4001, 5000 do after = after + math.abs(drums.dryL[i]) end
+t.expect(before == 0 and after > 10, "a kick sounds from its time on")
+I.bell(drums, 0.1, 880, 0.5)
+I.whoosh(drums, 0.2, 0.4)
+local left, right = drums:master({ kicks = { 0.5 } })
+local peakLevel = 0
+for i = 1, #left do peakLevel = math.max(peakLevel, math.abs(left[i]), math.abs(right[i])) end
+t.expect(near(peakLevel, 0.89, 1e-6), "master normalises to its peak")
+
+-- Motion sounds only where a sound is implied or asked for.
+local quiet = reel([[<Reel><Group motion="enter{at = 1}, leave{at = 2}, pop(3, {sound = false})" /><Group motion="enter{at = 4, sound = 'pop'}" /></Reel>]])
+t.expect(#quiet.events == 1 and quiet.events[1].time == 4, "enter, leave and silenced pops make no sound unless asked")
+
+-- ── Movies ───────────────────────────────────────────────────────────────
+
+-- Movie encoding writes an H.264 file with every frame, with sound muxed in,
+-- and the frame reader decodes it back.
 local movieReel = reel([[<Reel width="64" height="32" fps="10" duration="0.5" subframes="1"><Backdrop color="#336699" /></Reel>]])
 local moviePath = dir .. "/tiny.mov"
-t.assertEqual(movieReel:movie(moviePath), 5, "movie() returns the frames written")
-local movieFile = io.open(moviePath, "rb")
-t.expect(movieFile and movieFile:seek("end") > 0, "the movie file exists")
-if movieFile then movieFile:close() end
+local wavPath = dir .. "/tiny.wav"
+local tone = Audio.new(0.5, 44100)
+I.tone(tone, 0, 440, { length = 0.5 })
+local toneL, toneR = tone:master()
+Reel.writeWav(wavPath, 44100, toneL, toneR)
+t.assertEqual(movieReel:movie(moviePath, { audio = wavPath }), 5, "movie() returns the frames written")
+local reader = N.frames(moviePath)
+local decoded, firstFrame = 0, nil
+while true do
+	local image = reader:next()
+	if not image then break end
+	decoded = decoded + 1
+	firstFrame = firstFrame or image
+end
+t.assertEqual(decoded, 5, "the frame reader decodes every frame")
+local fr2, fg2, fb2 = firstFrame:pixel(30, 15)
+t.expect(near(fr2, 0x33 / 255, 0.05) and near(fg2, 0x66 / 255, 0.05) and near(fb2, 0x99 / 255, 0.05),
+	"decoded frames keep their colour")
 
 os.execute("rm -rf " .. dir)
 os.exit(t.summary() and 0 or 1)

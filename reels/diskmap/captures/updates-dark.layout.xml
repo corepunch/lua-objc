@@ -1,0 +1,830 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Layout>
+  <View class="NSView" x="0.0" y="0.0" width="1440.0" height="900.0" windowX="0.0" windowY="0.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="1100.0" fittingHeight="52.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+    <View class="NSSplitView" x="0.0" y="0.0" width="1440.0" height="900.0" windowX="0.0" windowY="0.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="1100.0" fittingHeight="52.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+      <View class="_NSSplitViewItemViewWrapper" x="0.0" y="0.0" width="1440.0" height="900.0" windowX="0.0" windowY="0.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="210.0" fittingHeight="52.0" clipsToBounds="true" outsideParent="false" contentClipped="false">
+        <View class="NSView" x="0.0" y="0.0" width="1440.0" height="900.0" windowX="0.0" windowY="0.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="210.0" fittingHeight="52.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+          <View class="LuaStackView" x="210.0" y="0.0" width="1230.0" height="848.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+            <View class="LuaStackView" identifier="content" x="0.0" y="41.0" width="1230.0" height="807.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+              <View class="LuaScrollView" identifier="page" x="0.0" y="0.0" width="1230.0" height="807.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="true" outsideParent="false" contentClipped="false">
+                <View class="_TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B12BackdropView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="true" outsideParent="false" contentClipped="false">
+                </View>
+                <View class="NSClipView" x="0.0" y="0.0" width="1230.0" height="807.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="true" outsideParent="false" contentClipped="false">
+                  <View class="LuaStackView" identifier="pageContent" x="0.0" y="0.0" width="1230.0" height="807.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                    <View class="LuaStackView" identifier="pageHeader" x="24.0" y="739.0" width="1182.0" height="44.0" windowX="234.0" windowY="76.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                      <View class="LuaSymbolImageView" x="0.0" y="4.0" width="36.0" height="36.0" windowX="234.0" windowY="80.0" intrinsicWidth="36.0" intrinsicHeight="36.0" fittingWidth="37.0" fittingHeight="52.5" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                      </View>
+                      <View class="LuaStackView" x="50.0" y="0.0" width="1132.0" height="44.0" windowX="284.0" windowY="76.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaLabel" x="0.0" y="18.0" width="220.5" height="26.0" windowX="284.0" windowY="76.0" intrinsicWidth="216.5" intrinsicHeight="26.0" fittingWidth="220.5" fittingHeight="26.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Updates &amp; Snapshots">
+                          <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="220.5" height="26.0" windowX="284.0" windowY="76.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                        <View class="LuaLabel" identifier="summary" x="0.0" y="0.0" width="1132.0" height="16.0" windowX="284.0" windowY="104.0" intrinsicWidth="667.0" intrinsicHeight="16.0" fittingWidth="671.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Storage macOS uses to download and install updates, and the restore points Time Machine keeps on this disk.">
+                          <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="1132.0" height="16.0" windowX="284.0" windowY="104.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                    <View class="LuaStackView" x="24.0" y="460.0" width="1182.0" height="255.0" windowX="234.0" windowY="144.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                      <View class="LuaStackView" x="0.0" y="237.0" width="149.5" height="18.0" windowX="234.0" windowY="144.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaSymbolImageView" x="0.0" y="3.5" width="18.5" height="11.0" windowX="234.0" windowY="147.5" intrinsicWidth="18.5" intrinsicHeight="11.0" fittingWidth="19.0" fittingHeight="19.5" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        </View>
+                        <View class="LuaLabel" x="24.5" y="0.0" width="125.0" height="18.0" windowX="258.5" windowY="144.0" intrinsicWidth="121.0" intrinsicHeight="18.0" fittingWidth="125.0" fittingHeight="18.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Software Update">
+                          <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="125.0" height="18.0" windowX="258.5" windowY="144.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSBox" x="0.0" y="0.0" width="1182.0" height="229.0" windowX="234.0" windowY="170.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="10.0" fittingHeight="10.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="_TtGC6AppKit18_NSCoreHostingViewVS_P10$1a1c0a6a013AppKitBoxView_" x="0.0" y="0.0" width="1182.0" height="229.0" windowX="234.0" windowY="170.0" intrinsicWidth="20.0" intrinsicHeight="20.0" fittingWidth="20.0" fittingHeight="20.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        </View>
+                        <View class="LuaStackView" x="5.0" y="5.0" width="1172.0" height="219.0" windowX="239.0" windowY="175.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="LuaStackView" x="0.0" y="0.0" width="1172.0" height="219.0" windowX="239.0" windowY="175.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            <View class="LuaStackView" x="0.0" y="165.0" width="1172.0" height="54.0" windowX="239.0" windowY="175.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              <View class="LuaSymbolImageView" x="12.0" y="20.8" width="20.5" height="12.5" windowX="251.0" windowY="195.8" intrinsicWidth="20.5" intrinsicHeight="12.5" fittingWidth="21.0" fittingHeight="20.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              </View>
+                              <View class="LuaStackView" x="42.5" y="12.0" width="971.0" height="30.0" windowX="281.5" windowY="187.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                <View class="LuaLabel" identifier="updateTitle" x="0.0" y="14.0" width="971.0" height="16.0" windowX="281.5" windowY="187.0" intrinsicWidth="189.0" intrinsicHeight="16.0" fittingWidth="193.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="macOS Tahoe 26.1 is available">
+                                  <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="971.0" height="16.0" windowX="281.5" windowY="187.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                  </View>
+                                </View>
+                                <View class="LuaLabel" identifier="updateDetail" x="0.0" y="0.0" width="971.0" height="13.0" windowX="281.5" windowY="204.0" intrinsicWidth="284.0" intrinsicHeight="13.0" fittingWidth="288.0" fittingHeight="13.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Last checked Sep 24, 2026 · Downloads automatically">
+                                  <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="971.0" height="13.0" windowX="281.5" windowY="204.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                  </View>
+                                </View>
+                              </View>
+                              <View class="NSButton" identifier="openSoftwareUpdate" x="1023.5" y="15.0" width="136.5" height="24.0" windowX="1262.5" windowY="190.0" intrinsicWidth="136.5" intrinsicHeight="24.0" fittingWidth="136.5" fittingHeight="24.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                <View class="_TtGC6AppKit18_NSCoreHostingViewVS_12AppKitButton_" x="0.0" y="0.0" width="136.5" height="24.0" windowX="1262.5" windowY="190.0" intrinsicWidth="136.5" intrinsicHeight="24.0" fittingWidth="136.5" fittingHeight="24.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                </View>
+                              </View>
+                            </View>
+                            <View class="NSBox" x="0.0" y="164.0" width="1172.0" height="1.0" windowX="239.0" windowY="229.0" intrinsicWidth="-1.0" intrinsicHeight="1.0" fittingWidth="0.0" fittingHeight="5.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              <View class="_NSBoxSeparatorView" x="0.0" y="0.5" width="1172.0" height="1.0" windowX="239.0" windowY="228.5" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              </View>
+                            </View>
+                            <View class="LuaStackView" identifier="stage_1" x="0.0" y="110.0" width="1172.0" height="54.0" windowX="239.0" windowY="230.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              <View class="LuaSymbolImageView" x="12.0" y="20.8" width="21.0" height="12.5" windowX="251.0" windowY="250.8" intrinsicWidth="21.0" intrinsicHeight="12.5" fittingWidth="21.0" fittingHeight="21.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              </View>
+                              <View class="LuaStackView" x="43.0" y="12.0" width="1074.0" height="30.0" windowX="282.0" windowY="242.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                <View class="LuaLabel" x="0.0" y="14.0" width="1074.0" height="16.0" windowX="282.0" windowY="242.0" intrinsicWidth="128.0" intrinsicHeight="16.0" fittingWidth="132.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Downloaded updates">
+                                  <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="1074.0" height="16.0" windowX="282.0" windowY="242.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                  </View>
+                                </View>
+                                <View class="LuaLabel" x="0.0" y="0.0" width="1074.0" height="13.0" windowX="282.0" windowY="259.0" intrinsicWidth="629.5" intrinsicHeight="13.0" fittingWidth="633.5" fittingHeight="13.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Update payloads in the system asset store. A paused or failed download can stay here until macOS retries or removes it.">
+                                  <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="1074.0" height="13.0" windowX="282.0" windowY="259.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                  </View>
+                                </View>
+                              </View>
+                              <View class="LuaLabel" identifier="stage_1Value" x="1127.0" y="19.0" width="33.0" height="16.0" windowX="1366.0" windowY="249.0" intrinsicWidth="29.0" intrinsicHeight="16.0" fittingWidth="33.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="0 KB">
+                                <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="33.0" height="16.0" windowX="1366.0" windowY="249.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                </View>
+                              </View>
+                            </View>
+                            <View class="NSBox" x="0.0" y="109.0" width="1172.0" height="1.0" windowX="239.0" windowY="284.0" intrinsicWidth="-1.0" intrinsicHeight="1.0" fittingWidth="0.0" fittingHeight="5.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              <View class="_NSBoxSeparatorView" x="0.0" y="0.5" width="1172.0" height="1.0" windowX="239.0" windowY="283.5" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              </View>
+                            </View>
+                            <View class="LuaStackView" identifier="stage_2" x="0.0" y="55.0" width="1172.0" height="54.0" windowX="239.0" windowY="285.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              <View class="LuaSymbolImageView" x="12.0" y="20.8" width="22.0" height="12.5" windowX="251.0" windowY="305.8" intrinsicWidth="22.0" intrinsicHeight="12.5" fittingWidth="22.0" fittingHeight="23.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              </View>
+                              <View class="LuaStackView" x="44.0" y="12.0" width="1073.0" height="30.0" windowX="283.0" windowY="297.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                <View class="LuaLabel" x="0.0" y="14.0" width="1073.0" height="16.0" windowX="283.0" windowY="297.0" intrinsicWidth="101.0" intrinsicHeight="16.0" fittingWidth="105.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Prepared update">
+                                  <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="1073.0" height="16.0" windowX="283.0" windowY="297.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                  </View>
+                                </View>
+                                <View class="LuaLabel" x="0.0" y="0.0" width="1073.0" height="13.0" windowX="283.0" windowY="314.0" intrinsicWidth="583.5" intrinsicHeight="13.0" fittingWidth="587.5" fittingHeight="13.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="The Update volume holds an update while macOS prepares and installs it. It is normally small between updates.">
+                                  <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="1073.0" height="13.0" windowX="283.0" windowY="314.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                  </View>
+                                </View>
+                              </View>
+                              <View class="LuaLabel" identifier="stage_2Value" x="1127.0" y="19.0" width="33.0" height="16.0" windowX="1366.0" windowY="304.0" intrinsicWidth="29.0" intrinsicHeight="16.0" fittingWidth="33.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="0 KB">
+                                <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="33.0" height="16.0" windowX="1366.0" windowY="304.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                </View>
+                              </View>
+                            </View>
+                            <View class="NSBox" x="0.0" y="54.0" width="1172.0" height="1.0" windowX="239.0" windowY="339.0" intrinsicWidth="-1.0" intrinsicHeight="1.0" fittingWidth="0.0" fittingHeight="5.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              <View class="_NSBoxSeparatorView" x="0.0" y="0.5" width="1172.0" height="1.0" windowX="239.0" windowY="338.5" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              </View>
+                            </View>
+                            <View class="LuaStackView" identifier="stage_3" x="0.0" y="0.0" width="1172.0" height="54.0" windowX="239.0" windowY="340.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              <View class="LuaSymbolImageView" x="12.0" y="20.8" width="21.0" height="12.5" windowX="251.0" windowY="360.8" intrinsicWidth="21.0" intrinsicHeight="12.5" fittingWidth="21.0" fittingHeight="22.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              </View>
+                              <View class="LuaStackView" x="43.0" y="12.0" width="1074.0" height="30.0" windowX="282.0" windowY="352.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                <View class="LuaLabel" x="0.0" y="14.0" width="1074.0" height="16.0" windowX="282.0" windowY="352.0" intrinsicWidth="48.0" intrinsicHeight="16.0" fittingWidth="52.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Preboot">
+                                  <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="1074.0" height="16.0" windowX="282.0" windowY="352.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                  </View>
+                                </View>
+                                <View class="LuaLabel" x="0.0" y="0.0" width="1074.0" height="13.0" windowX="282.0" windowY="369.0" intrinsicWidth="588.5" intrinsicHeight="13.0" fittingWidth="592.5" fittingHeight="13.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Boot files, security cryptexes and any staged update. Never delete anything here; finishing the update shrinks it.">
+                                  <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="1074.0" height="13.0" windowX="282.0" windowY="369.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                  </View>
+                                </View>
+                              </View>
+                              <View class="LuaLabel" identifier="stage_3Value" x="1127.0" y="19.0" width="33.0" height="16.0" windowX="1366.0" windowY="359.0" intrinsicWidth="29.0" intrinsicHeight="16.0" fittingWidth="33.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="0 KB">
+                                <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="33.0" height="16.0" windowX="1366.0" windowY="359.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                </View>
+                              </View>
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                    <View class="LuaStackView" x="24.0" y="262.0" width="1182.0" height="174.0" windowX="234.0" windowY="423.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                      <View class="LuaStackView" x="0.0" y="156.0" width="203.0" height="18.0" windowX="234.0" windowY="423.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaSymbolImageView" x="0.0" y="3.5" width="22.0" height="11.0" windowX="234.0" windowY="426.5" intrinsicWidth="22.0" intrinsicHeight="11.0" fittingWidth="24.0" fittingHeight="19.5" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        </View>
+                        <View class="LuaLabel" x="28.0" y="0.0" width="175.0" height="18.0" windowX="262.0" windowY="423.0" intrinsicWidth="171.0" intrinsicHeight="18.0" fittingWidth="175.0" fittingHeight="18.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Installers &amp; Disk Images">
+                          <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="175.0" height="18.0" windowX="262.0" windowY="423.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSBox" x="0.0" y="0.0" width="1182.0" height="148.0" windowX="234.0" windowY="449.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="10.0" fittingHeight="10.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="_TtGC6AppKit18_NSCoreHostingViewVS_P10$1a1c0a6a013AppKitBoxView_" x="0.0" y="0.0" width="1182.0" height="148.0" windowX="234.0" windowY="449.0" intrinsicWidth="20.0" intrinsicHeight="20.0" fittingWidth="20.0" fittingHeight="20.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        </View>
+                        <View class="LuaStackView" x="5.0" y="5.0" width="1172.0" height="138.0" windowX="239.0" windowY="454.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="LuaStackView" x="0.0" y="0.0" width="1172.0" height="138.0" windowX="239.0" windowY="454.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            <View class="LuaScrollView" identifier="installers" x="0.0" y="0.0" width="1172.0" height="138.0" windowX="239.0" windowY="454.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="true" outsideParent="false" contentClipped="false">
+                              <View class="NSClipView" x="0.0" y="0.0" width="1172.0" height="138.0" windowX="239.0" windowY="454.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="true" outsideParent="false" contentClipped="false">
+                                <View class="NSTableView" x="0.0" y="0.0" width="1172.0" height="138.0" windowX="239.0" windowY="454.0" intrinsicWidth="-1.0" intrinsicHeight="138.0" fittingWidth="0.0" fittingHeight="138.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                  <Column id="name" width="774.0" minWidth="180.0" />
+                                  <Cell row="0" column="name" x="6.0" width="774.0" textWidth="150.0" textFrameWidth="730.0" cropped="false" ellipsis="false" text="Old macOS Installer.dmg" />
+                                  <Cell row="1" column="name" x="6.0" width="774.0" textWidth="205.5" textFrameWidth="730.0" cropped="false" ellipsis="false" text="ubuntu-24.04-desktop-arm64.iso" />
+                                  <Cell row="2" column="name" x="6.0" width="774.0" textWidth="112.0" textFrameWidth="730.0" cropped="false" ellipsis="false" text="Zoom Installer.pkg" />
+                                  <Column id="detail" width="110.0" minWidth="110.0" />
+                                  <Cell row="0" column="detail" x="783.0" width="110.0" textWidth="151.5" textFrameWidth="94.0" cropped="true" ellipsis="true" text="Disk image in Downloads" />
+                                  <Cell row="1" column="detail" x="783.0" width="110.0" textWidth="151.5" textFrameWidth="94.0" cropped="true" ellipsis="true" text="Disc image in Downloads" />
+                                  <Cell row="2" column="detail" x="783.0" width="110.0" textWidth="187.5" textFrameWidth="94.0" cropped="true" ellipsis="true" text="Installer package in Downloads" />
+                                  <Column id="shareText" width="110.0" minWidth="110.0" />
+                                  <Cell row="0" column="shareText" x="896.0" width="110.0" textWidth="0.0" textFrameWidth="0.0" cropped="false" ellipsis="false" text="" />
+                                  <Cell row="1" column="shareText" x="896.0" width="110.0" textWidth="0.0" textFrameWidth="0.0" cropped="false" ellipsis="false" text="" />
+                                  <Cell row="2" column="shareText" x="896.0" width="110.0" textWidth="0.0" textFrameWidth="0.0" cropped="false" ellipsis="false" text="" />
+                                  <Column id="size" width="120.0" minWidth="120.0" />
+                                  <Cell row="0" column="size" x="1009.0" width="120.0" textWidth="39.0" textFrameWidth="104.0" cropped="false" ellipsis="false" text="7.2 GB" />
+                                  <Cell row="1" column="size" x="1009.0" width="120.0" textWidth="41.0" textFrameWidth="104.0" cropped="false" ellipsis="false" text="2.6 GB" />
+                                  <Cell row="2" column="size" x="1009.0" width="120.0" textWidth="57.0" textFrameWidth="104.0" cropped="false" ellipsis="false" text="180.0 MB" />
+                                  <Column id="more" width="40.0" minWidth="40.0" />
+                                  <Cell row="0" column="more" x="1132.0" width="40.0" textWidth="0.0" textFrameWidth="0.0" cropped="false" ellipsis="false" text="" />
+                                  <Cell row="1" column="more" x="1132.0" width="40.0" textWidth="0.0" textFrameWidth="0.0" cropped="false" ellipsis="false" text="" />
+                                  <Cell row="2" column="more" x="1132.0" width="40.0" textWidth="0.0" textFrameWidth="0.0" cropped="false" ellipsis="false" text="" />
+                                  <View class="NSTableBackgroundView" x="0.0" y="138.0" width="400.0" height="62.0" windowX="239.0" windowY="592.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="true" contentClipped="false">
+                                  </View>
+                                  <View class="NSTableRowView" x="0.0" y="0.0" width="1172.0" height="46.0" windowX="239.0" windowY="454.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="46.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                    <View class="LuaTableCellView" x="6.0" y="1.0" width="774.0" height="44.0" windowX="245.0" windowY="455.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      <View class="NSTextField" x="36.0" y="22.0" width="730.0" height="16.0" windowX="281.0" windowY="461.0" intrinsicWidth="150.0" intrinsicHeight="16.0" fittingWidth="154.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Old macOS Installer.dmg">
+                                        <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="730.0" height="16.0" windowX="281.0" windowY="461.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="NSTextField" x="36.0" y="6.0" width="730.0" height="14.0" windowX="281.0" windowY="479.0" intrinsicWidth="285.5" intrinsicHeight="14.0" fittingWidth="289.5" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="/Users/appleseed/Downloads/Old macOS Installer.dmg">
+                                        <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="730.0" height="14.0" windowX="281.0" windowY="479.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="LuaSymbolImageView" x="0.0" y="8.0" width="28.0" height="28.0" windowX="245.0" windowY="463.0" intrinsicWidth="35.0" intrinsicHeight="17.5" fittingWidth="35.0" fittingHeight="25.0" clipsToBounds="false" outsideParent="false" contentClipped="true">
+                                      </View>
+                                    </View>
+                                    <View class="LuaTableCellView" x="783.0" y="1.0" width="110.0" height="44.0" windowX="1022.0" windowY="455.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      <View class="NSTextField" x="8.0" y="14.0" width="94.0" height="16.0" windowX="1030.0" windowY="469.0" intrinsicWidth="151.5" intrinsicHeight="16.0" fittingWidth="155.5" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="true" insufficientTextSpace="true" ellipsis="true" text="Disk image in Downloads">
+                                        <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="94.0" height="16.0" windowX="1030.0" windowY="469.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="LuaSymbolImageView" x="8.0" y="22.0" width="0.0" height="0.0" windowX="1030.0" windowY="477.0" intrinsicWidth="0.0" intrinsicHeight="0.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      </View>
+                                    </View>
+                                    <View class="LuaTableCellView" x="896.0" y="1.0" width="110.0" height="44.0" windowX="1135.0" windowY="455.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      <View class="NSTextField" x="0.0" y="14.0" width="0.0" height="16.0" windowX="1135.0" windowY="469.0" intrinsicWidth="0.0" intrinsicHeight="16.0" fittingWidth="4.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="">
+                                        <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="0.0" height="0.0" windowX="1135.0" windowY="469.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="NSLevelIndicator" x="8.0" y="16.0" width="94.0" height="12.0" windowX="1143.0" windowY="471.0" intrinsicWidth="-1.0" intrinsicHeight="16.0" fittingWidth="0.0" fittingHeight="18.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        <View class="NSWidgetView" x="0.0" y="0.0" width="94.0" height="12.0" windowX="1143.0" windowY="471.0" intrinsicWidth="11.0" intrinsicHeight="16.0" fittingWidth="11.0" fittingHeight="18.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                        <View class="_NSLevelIndicatorFillView" x="0.0" y="0.0" width="94.0" height="12.0" windowX="1143.0" windowY="471.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                        <View class="NSWidgetView" x="0.0" y="0.0" width="94.0" height="12.0" windowX="1143.0" windowY="471.0" intrinsicWidth="11.0" intrinsicHeight="16.0" fittingWidth="11.0" fittingHeight="18.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="LuaSymbolImageView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="1135.0" windowY="499.0" intrinsicWidth="0.0" intrinsicHeight="0.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      </View>
+                                    </View>
+                                    <View class="LuaTableCellView" x="1009.0" y="1.0" width="120.0" height="44.0" windowX="1248.0" windowY="455.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      <View class="NSTextField" x="8.0" y="14.0" width="104.0" height="16.0" windowX="1256.0" windowY="469.0" intrinsicWidth="39.0" intrinsicHeight="16.0" fittingWidth="43.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="7.2 GB">
+                                        <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="104.0" height="16.0" windowX="1256.0" windowY="469.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="NSProgressIndicator" x="0.0" y="0.0" width="16.0" height="16.0" windowX="1248.0" windowY="483.0" intrinsicWidth="16.0" intrinsicHeight="16.0" fittingWidth="16.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      </View>
+                                      <View class="LuaSymbolImageView" x="8.0" y="22.0" width="0.0" height="0.0" windowX="1256.0" windowY="477.0" intrinsicWidth="0.0" intrinsicHeight="0.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      </View>
+                                    </View>
+                                    <View class="LuaTableCellView" x="1132.0" y="1.0" width="40.0" height="44.0" windowX="1371.0" windowY="455.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      <View class="NSTextField" x="0.0" y="0.0" width="4.0" height="16.0" windowX="1371.0" windowY="483.0" intrinsicWidth="0.0" intrinsicHeight="16.0" fittingWidth="4.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="">
+                                        <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="4.0" height="16.0" windowX="1371.0" windowY="483.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="LuaSymbolImageView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="1371.0" windowY="499.0" intrinsicWidth="0.0" intrinsicHeight="0.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      </View>
+                                      <View class="NSButton" x="9.0" y="11.0" width="22.0" height="22.0" windowX="1380.0" windowY="466.0" intrinsicWidth="18.0" intrinsicHeight="10.5" fittingWidth="18.0" fittingHeight="18.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        <View class="NSButtonImageView" x="2.0" y="2.0" width="18.0" height="18.0" windowX="1382.0" windowY="468.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                    </View>
+                                    <View class="NSBackgroundColorView" x="0.0" y="45.0" width="1172.0" height="1.0" windowX="239.0" windowY="499.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                    </View>
+                                  </View>
+                                  <View class="NSTableRowView" x="0.0" y="46.0" width="1172.0" height="46.0" windowX="239.0" windowY="500.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="46.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                    <View class="LuaTableCellView" x="6.0" y="1.0" width="774.0" height="44.0" windowX="245.0" windowY="501.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      <View class="NSTextField" x="36.0" y="22.0" width="730.0" height="16.0" windowX="281.0" windowY="507.0" intrinsicWidth="205.5" intrinsicHeight="16.0" fittingWidth="209.5" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="ubuntu-24.04-desktop-arm64.iso">
+                                        <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="730.0" height="16.0" windowX="281.0" windowY="507.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="NSTextField" x="36.0" y="6.0" width="730.0" height="14.0" windowX="281.0" windowY="525.0" intrinsicWidth="334.0" intrinsicHeight="14.0" fittingWidth="338.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="/Users/appleseed/Downloads/ubuntu-24.04-desktop-arm64.iso">
+                                        <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="730.0" height="14.0" windowX="281.0" windowY="525.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="LuaSymbolImageView" x="0.0" y="8.0" width="28.0" height="28.0" windowX="245.0" windowY="509.0" intrinsicWidth="35.0" intrinsicHeight="17.5" fittingWidth="35.0" fittingHeight="25.0" clipsToBounds="false" outsideParent="false" contentClipped="true">
+                                      </View>
+                                    </View>
+                                    <View class="LuaTableCellView" x="783.0" y="1.0" width="110.0" height="44.0" windowX="1022.0" windowY="501.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      <View class="NSTextField" x="8.0" y="14.0" width="94.0" height="16.0" windowX="1030.0" windowY="515.0" intrinsicWidth="151.5" intrinsicHeight="16.0" fittingWidth="155.5" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="true" insufficientTextSpace="true" ellipsis="true" text="Disc image in Downloads">
+                                        <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="94.0" height="16.0" windowX="1030.0" windowY="515.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="LuaSymbolImageView" x="8.0" y="22.0" width="0.0" height="0.0" windowX="1030.0" windowY="523.0" intrinsicWidth="0.0" intrinsicHeight="0.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      </View>
+                                    </View>
+                                    <View class="LuaTableCellView" x="896.0" y="1.0" width="110.0" height="44.0" windowX="1135.0" windowY="501.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      <View class="NSTextField" x="0.0" y="14.0" width="0.0" height="16.0" windowX="1135.0" windowY="515.0" intrinsicWidth="0.0" intrinsicHeight="16.0" fittingWidth="4.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="">
+                                        <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="0.0" height="0.0" windowX="1135.0" windowY="515.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="NSLevelIndicator" x="8.0" y="16.0" width="94.0" height="12.0" windowX="1143.0" windowY="517.0" intrinsicWidth="-1.0" intrinsicHeight="16.0" fittingWidth="0.0" fittingHeight="18.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        <View class="NSWidgetView" x="0.0" y="0.0" width="94.0" height="12.0" windowX="1143.0" windowY="517.0" intrinsicWidth="11.0" intrinsicHeight="16.0" fittingWidth="11.0" fittingHeight="18.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                        <View class="_NSLevelIndicatorFillView" x="0.0" y="0.0" width="34.0" height="12.0" windowX="1143.0" windowY="517.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                        <View class="NSWidgetView" x="0.0" y="0.0" width="94.0" height="12.0" windowX="1143.0" windowY="517.0" intrinsicWidth="11.0" intrinsicHeight="16.0" fittingWidth="11.0" fittingHeight="18.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="LuaSymbolImageView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="1135.0" windowY="545.0" intrinsicWidth="0.0" intrinsicHeight="0.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      </View>
+                                    </View>
+                                    <View class="LuaTableCellView" x="1009.0" y="1.0" width="120.0" height="44.0" windowX="1248.0" windowY="501.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      <View class="NSTextField" x="8.0" y="14.0" width="104.0" height="16.0" windowX="1256.0" windowY="515.0" intrinsicWidth="41.0" intrinsicHeight="16.0" fittingWidth="45.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="2.6 GB">
+                                        <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="104.0" height="16.0" windowX="1256.0" windowY="515.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="NSProgressIndicator" x="0.0" y="0.0" width="16.0" height="16.0" windowX="1248.0" windowY="529.0" intrinsicWidth="16.0" intrinsicHeight="16.0" fittingWidth="16.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      </View>
+                                      <View class="LuaSymbolImageView" x="8.0" y="22.0" width="0.0" height="0.0" windowX="1256.0" windowY="523.0" intrinsicWidth="0.0" intrinsicHeight="0.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      </View>
+                                    </View>
+                                    <View class="LuaTableCellView" x="1132.0" y="1.0" width="40.0" height="44.0" windowX="1371.0" windowY="501.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      <View class="NSTextField" x="0.0" y="0.0" width="4.0" height="16.0" windowX="1371.0" windowY="529.0" intrinsicWidth="0.0" intrinsicHeight="16.0" fittingWidth="4.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="">
+                                        <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="4.0" height="16.0" windowX="1371.0" windowY="529.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="LuaSymbolImageView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="1371.0" windowY="545.0" intrinsicWidth="0.0" intrinsicHeight="0.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      </View>
+                                      <View class="NSButton" x="9.0" y="11.0" width="22.0" height="22.0" windowX="1380.0" windowY="512.0" intrinsicWidth="18.0" intrinsicHeight="10.5" fittingWidth="18.0" fittingHeight="18.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        <View class="NSButtonImageView" x="2.0" y="2.0" width="18.0" height="18.0" windowX="1382.0" windowY="514.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                    </View>
+                                    <View class="NSBackgroundColorView" x="0.0" y="45.0" width="1172.0" height="1.0" windowX="239.0" windowY="545.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                    </View>
+                                  </View>
+                                  <View class="NSTableRowView" x="0.0" y="92.0" width="1172.0" height="46.0" windowX="239.0" windowY="546.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="46.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                    <View class="LuaTableCellView" x="6.0" y="1.0" width="774.0" height="44.0" windowX="245.0" windowY="547.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      <View class="NSTextField" x="36.0" y="22.0" width="730.0" height="16.0" windowX="281.0" windowY="553.0" intrinsicWidth="112.0" intrinsicHeight="16.0" fittingWidth="116.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Zoom Installer.pkg">
+                                        <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="730.0" height="16.0" windowX="281.0" windowY="553.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="NSTextField" x="36.0" y="6.0" width="730.0" height="14.0" windowX="281.0" windowY="571.0" intrinsicWidth="253.0" intrinsicHeight="14.0" fittingWidth="257.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="/Users/appleseed/Downloads/Zoom Installer.pkg">
+                                        <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="730.0" height="14.0" windowX="281.0" windowY="571.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="LuaSymbolImageView" x="0.0" y="8.0" width="28.0" height="28.0" windowX="245.0" windowY="555.0" intrinsicWidth="35.0" intrinsicHeight="17.5" fittingWidth="35.0" fittingHeight="25.0" clipsToBounds="false" outsideParent="false" contentClipped="true">
+                                      </View>
+                                    </View>
+                                    <View class="LuaTableCellView" x="783.0" y="1.0" width="110.0" height="44.0" windowX="1022.0" windowY="547.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      <View class="NSTextField" x="8.0" y="14.0" width="94.0" height="16.0" windowX="1030.0" windowY="561.0" intrinsicWidth="187.5" intrinsicHeight="16.0" fittingWidth="191.5" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="true" insufficientTextSpace="true" ellipsis="true" text="Installer package in Downloads">
+                                        <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="94.0" height="16.0" windowX="1030.0" windowY="561.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="LuaSymbolImageView" x="8.0" y="22.0" width="0.0" height="0.0" windowX="1030.0" windowY="569.0" intrinsicWidth="0.0" intrinsicHeight="0.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      </View>
+                                    </View>
+                                    <View class="LuaTableCellView" x="896.0" y="1.0" width="110.0" height="44.0" windowX="1135.0" windowY="547.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      <View class="NSTextField" x="0.0" y="14.0" width="0.0" height="16.0" windowX="1135.0" windowY="561.0" intrinsicWidth="0.0" intrinsicHeight="16.0" fittingWidth="4.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="">
+                                        <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="0.0" height="0.0" windowX="1135.0" windowY="561.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="NSLevelIndicator" x="8.0" y="16.0" width="94.0" height="12.0" windowX="1143.0" windowY="563.0" intrinsicWidth="-1.0" intrinsicHeight="16.0" fittingWidth="0.0" fittingHeight="18.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        <View class="NSWidgetView" x="0.0" y="0.0" width="94.0" height="12.0" windowX="1143.0" windowY="563.0" intrinsicWidth="11.0" intrinsicHeight="16.0" fittingWidth="11.0" fittingHeight="18.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                        <View class="_NSLevelIndicatorFillView" x="0.0" y="0.0" width="2.0" height="12.0" windowX="1143.0" windowY="563.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                        <View class="NSWidgetView" x="0.0" y="0.0" width="94.0" height="12.0" windowX="1143.0" windowY="563.0" intrinsicWidth="11.0" intrinsicHeight="16.0" fittingWidth="11.0" fittingHeight="18.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="LuaSymbolImageView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="1135.0" windowY="591.0" intrinsicWidth="0.0" intrinsicHeight="0.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      </View>
+                                    </View>
+                                    <View class="LuaTableCellView" x="1009.0" y="1.0" width="120.0" height="44.0" windowX="1248.0" windowY="547.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      <View class="NSTextField" x="8.0" y="14.0" width="104.0" height="16.0" windowX="1256.0" windowY="561.0" intrinsicWidth="57.0" intrinsicHeight="16.0" fittingWidth="61.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="180.0 MB">
+                                        <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="104.0" height="16.0" windowX="1256.0" windowY="561.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="NSProgressIndicator" x="0.0" y="0.0" width="16.0" height="16.0" windowX="1248.0" windowY="575.0" intrinsicWidth="16.0" intrinsicHeight="16.0" fittingWidth="16.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      </View>
+                                      <View class="LuaSymbolImageView" x="8.0" y="22.0" width="0.0" height="0.0" windowX="1256.0" windowY="569.0" intrinsicWidth="0.0" intrinsicHeight="0.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      </View>
+                                    </View>
+                                    <View class="LuaTableCellView" x="1132.0" y="1.0" width="40.0" height="44.0" windowX="1371.0" windowY="547.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      <View class="NSTextField" x="0.0" y="0.0" width="4.0" height="16.0" windowX="1371.0" windowY="575.0" intrinsicWidth="0.0" intrinsicHeight="16.0" fittingWidth="4.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="">
+                                        <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="4.0" height="16.0" windowX="1371.0" windowY="575.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                      <View class="LuaSymbolImageView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="1371.0" windowY="591.0" intrinsicWidth="0.0" intrinsicHeight="0.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                      </View>
+                                      <View class="NSButton" x="9.0" y="11.0" width="22.0" height="22.0" windowX="1380.0" windowY="558.0" intrinsicWidth="18.0" intrinsicHeight="10.5" fittingWidth="18.0" fittingHeight="18.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        <View class="NSButtonImageView" x="2.0" y="2.0" width="18.0" height="18.0" windowX="1382.0" windowY="560.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                        </View>
+                                      </View>
+                                    </View>
+                                    <View class="NSBackgroundColorView" x="0.0" y="45.0" width="1172.0" height="1.0" windowX="239.0" windowY="591.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                    </View>
+                                  </View>
+                                </View>
+                              </View>
+                              <View class="NSScroller" x="-100.0" y="-100.0" width="17.0" height="200.0" windowX="139.0" windowY="354.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="true" contentClipped="false">
+                              </View>
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                    <View class="LuaStackView" x="24.0" y="80.0" width="1182.0" height="158.0" windowX="234.0" windowY="621.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                      <View class="LuaStackView" x="0.0" y="134.0" width="1182.0" height="24.0" windowX="234.0" windowY="621.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaStackView" identifier="snapshotTitle" x="0.0" y="3.0" width="1001.0" height="18.0" windowX="234.0" windowY="624.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="LuaSymbolImageView" x="0.0" y="3.5" width="18.5" height="11.0" windowX="234.0" windowY="627.5" intrinsicWidth="18.5" intrinsicHeight="11.0" fittingWidth="19.0" fittingHeight="19.5" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                          <View class="LuaLabel" x="24.5" y="0.0" width="129.0" height="18.0" windowX="258.5" windowY="624.0" intrinsicWidth="125.0" intrinsicHeight="18.0" fittingWidth="129.0" fittingHeight="18.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="2 local snapshots">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="129.0" height="18.0" windowX="258.5" windowY="624.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                        </View>
+                        <View class="NSButton" identifier="openTimeMachine" x="1009.0" y="0.0" width="173.0" height="24.0" windowX="1243.0" windowY="621.0" intrinsicWidth="173.0" intrinsicHeight="24.0" fittingWidth="173.0" fittingHeight="24.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="_TtGC6AppKit18_NSCoreHostingViewVS_12AppKitButton_" x="0.0" y="0.0" width="173.0" height="24.0" windowX="1243.0" windowY="621.0" intrinsicWidth="173.0" intrinsicHeight="24.0" fittingWidth="173.0" fittingHeight="24.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSBox" x="0.0" y="0.0" width="1182.0" height="126.0" windowX="234.0" windowY="653.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="10.0" fittingHeight="10.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="_TtGC6AppKit18_NSCoreHostingViewVS_P10$1a1c0a6a013AppKitBoxView_" x="0.0" y="0.0" width="1182.0" height="126.0" windowX="234.0" windowY="653.0" intrinsicWidth="20.0" intrinsicHeight="20.0" fittingWidth="20.0" fittingHeight="20.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        </View>
+                        <View class="LuaStackView" x="5.0" y="5.0" width="1172.0" height="116.0" windowX="239.0" windowY="658.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="LuaStackView" x="0.0" y="0.0" width="1172.0" height="116.0" windowX="239.0" windowY="658.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            <View class="LuaStackView" x="0.0" y="84.0" width="1172.0" height="32.0" windowX="239.0" windowY="658.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              <View class="LuaSymbolImageView" x="12.0" y="10.8" width="18.0" height="10.5" windowX="251.0" windowY="668.8" intrinsicWidth="18.0" intrinsicHeight="10.5" fittingWidth="18.0" fittingHeight="18.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              </View>
+                              <View class="LuaLabel" x="40.0" y="8.0" width="813.5" height="16.0" windowX="279.0" windowY="666.0" intrinsicWidth="138.5" intrinsicHeight="16.0" fittingWidth="142.5" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Sep 22, 2026 at 18:42">
+                                <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="813.5" height="16.0" windowX="279.0" windowY="666.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                </View>
+                              </View>
+                              <View class="LuaLabel" x="863.5" y="9.5" width="296.5" height="13.0" windowX="1102.5" windowY="667.5" intrinsicWidth="292.5" intrinsicHeight="13.0" fittingWidth="296.5" fittingHeight="13.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="com.apple.TimeMachine.20260922-184200.local">
+                                <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="296.5" height="13.0" windowX="1102.5" windowY="667.5" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                </View>
+                              </View>
+                            </View>
+                            <View class="NSBox" x="0.0" y="83.0" width="1172.0" height="1.0" windowX="239.0" windowY="690.0" intrinsicWidth="-1.0" intrinsicHeight="1.0" fittingWidth="0.0" fittingHeight="5.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              <View class="_NSBoxSeparatorView" x="0.0" y="0.5" width="1172.0" height="1.0" windowX="239.0" windowY="689.5" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              </View>
+                            </View>
+                            <View class="LuaStackView" x="0.0" y="51.0" width="1172.0" height="32.0" windowX="239.0" windowY="691.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              <View class="LuaSymbolImageView" x="12.0" y="10.8" width="18.0" height="10.5" windowX="251.0" windowY="701.8" intrinsicWidth="18.0" intrinsicHeight="10.5" fittingWidth="18.0" fittingHeight="18.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              </View>
+                              <View class="LuaLabel" x="40.0" y="8.0" width="813.5" height="16.0" windowX="279.0" windowY="699.0" intrinsicWidth="138.5" intrinsicHeight="16.0" fittingWidth="142.5" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Sep 15, 2026 at 09:15">
+                                <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="813.5" height="16.0" windowX="279.0" windowY="699.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                </View>
+                              </View>
+                              <View class="LuaLabel" x="863.5" y="9.5" width="296.5" height="13.0" windowX="1102.5" windowY="700.5" intrinsicWidth="292.5" intrinsicHeight="13.0" fittingWidth="296.5" fittingHeight="13.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="com.apple.TimeMachine.20260915-091500.local">
+                                <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="296.5" height="13.0" windowX="1102.5" windowY="700.5" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                </View>
+                              </View>
+                            </View>
+                            <View class="NSBox" x="0.0" y="50.0" width="1172.0" height="1.0" windowX="239.0" windowY="723.0" intrinsicWidth="-1.0" intrinsicHeight="1.0" fittingWidth="0.0" fittingHeight="5.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              <View class="_NSBoxSeparatorView" x="0.0" y="0.5" width="1172.0" height="1.0" windowX="239.0" windowY="722.5" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              </View>
+                            </View>
+                            <View class="LuaStackView" x="0.0" y="0.0" width="1172.0" height="50.0" windowX="239.0" windowY="724.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                              <View class="LuaLabel" x="12.0" y="12.0" width="1148.0" height="26.0" windowX="251.0" windowY="736.0" intrinsicWidth="1186.5" intrinsicHeight="13.0" fittingWidth="1190.5" fittingHeight="13.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Snapshots keep the blocks of files you deleted since they were taken, so deleting a file may not free space at once. macOS removes them automatically when space runs low; no file scan can measure how much each one holds.">
+                                <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="1148.0" height="26.0" windowX="251.0" windowY="736.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                                </View>
+                              </View>
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+                <View class="NSScrollPocket" x="0.0" y="0.0" width="0.0" height="0.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                  <View class="_TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B10PocketMask" x="0.0" y="0.0" width="0.0" height="0.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                    <View class="NSView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                      <View class="NSView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                      </View>
+                    </View>
+                  </View>
+                  <View class="_TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B10PocketBlur" x="0.0" y="0.0" width="0.0" height="0.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                    <View class="_TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B10PortalView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                    </View>
+                  </View>
+                  <View class="NSHardPocketView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                    <View class="_TtC6AppKitP33_EC3F85FAB7755D56E669206D2B17725B26_NSLayerBasedFillColorView" x="0.0" y="0.0" width="0.0" height="1.0" windowX="210.0" windowY="51.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="true" contentClipped="false">
+                    </View>
+                  </View>
+                  <View class="_TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B19LuminanceAdjustment" x="0.0" y="0.0" width="0.0" height="0.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                    <View class="NSView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                      <View class="NSView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="_TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B12BackdropView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="true" outsideParent="false" contentClipped="false">
+                        </View>
+                        <View class="_NSScrollViewContentBackgroundView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        </View>
+                      </View>
+                      <View class="NSView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="NSView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        </View>
+                        <View class="NSView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        </View>
+                      </View>
+                    </View>
+                    <View class="_TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B10PortalView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="210.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                    </View>
+                  </View>
+                </View>
+                <View class="NSScroller" x="873.0" y="0.0" width="17.0" height="615.0" windowX="1083.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                </View>
+                <View class="NSScroller" x="-100.0" y="-100.0" width="100.0" height="0.0" windowX="110.0" windowY="-48.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="true" contentClipped="false">
+                </View>
+              </View>
+            </View>
+            <View class="NSBox" x="0.0" y="40.0" width="1230.0" height="1.0" windowX="210.0" windowY="859.0" intrinsicWidth="-1.0" intrinsicHeight="1.0" fittingWidth="0.0" fittingHeight="5.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+              <View class="_NSBoxSeparatorView" x="0.0" y="0.5" width="1230.0" height="1.0" windowX="210.0" windowY="858.5" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+              </View>
+            </View>
+            <View class="LuaStackView" identifier="collector" x="0.0" y="0.0" width="1230.0" height="40.0" windowX="210.0" windowY="860.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+              <View class="LuaSymbolImageView" x="12.0" y="14.8" width="21.5" height="10.5" windowX="222.0" windowY="874.8" intrinsicWidth="21.5" intrinsicHeight="10.5" fittingWidth="22.0" fittingHeight="20.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+              </View>
+              <View class="LuaLabel" identifier="collectorText" x="41.5" y="12.5" width="1103.0" height="15.0" windowX="251.5" windowY="872.5" intrinsicWidth="235.5" intrinsicHeight="15.0" fittingWidth="239.5" fittingHeight="15.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Drag items here to mark them for cleanup">
+                <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="1103.0" height="15.0" windowX="251.5" windowY="872.5" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                </View>
+              </View>
+              <View class="NSButton" identifier="collectorReview" x="1152.5" y="10.0" width="65.5" height="20.0" windowX="1362.5" windowY="870.0" intrinsicWidth="65.5" intrinsicHeight="20.0" fittingWidth="65.5" fittingHeight="20.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                <View class="_TtGC6AppKit18_NSCoreHostingViewVS_12AppKitButton_" x="0.0" y="0.0" width="65.5" height="20.0" windowX="1362.5" windowY="870.0" intrinsicWidth="65.5" intrinsicHeight="20.0" fittingWidth="65.5" fittingHeight="20.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+      <View class="NSTitlebarBackgroundView" x="0.0" y="0.0" width="210.0" height="52.0" windowX="0.0" windowY="0.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+      </View>
+      <View class="NSTitlebarBackgroundView" x="210.0" y="0.0" width="1230.0" height="52.0" windowX="210.0" windowY="0.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+      </View>
+      <View class="_NSSplitViewShadowView" x="210.0" y="0.0" width="12.0" height="900.0" windowX="210.0" windowY="0.0" intrinsicWidth="12.0" intrinsicHeight="-1.0" fittingWidth="12.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+      </View>
+      <View class="_NSSplitViewItemViewWrapper" x="0.0" y="0.0" width="210.0" height="900.0" windowX="0.0" windowY="0.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="160.0" fittingHeight="52.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+        <View class="NSGlassEffectView" x="0.0" y="0.0" width="210.0" height="900.0" windowX="0.0" windowY="0.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="10.0" fittingHeight="52.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+          <View class="_TtCE6AppKitCSo17NSGlassEffectViewP33_92F0BB6107B916AA04C9A991F505A16417ContentHolderView" x="0.0" y="0.0" width="210.0" height="900.0" windowX="0.0" windowY="0.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+            <View class="NSView" x="0.0" y="0.0" width="210.0" height="900.0" windowX="0.0" windowY="0.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="52.0" clipsToBounds="true" outsideParent="false" contentClipped="false">
+              <View class="NSView" x="0.0" y="0.0" width="210.0" height="900.0" windowX="0.0" windowY="0.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="52.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                <View class="LuaScrollView" identifier="sidebar" x="0.0" y="0.0" width="210.0" height="848.0" windowX="0.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="true" outsideParent="false" contentClipped="false">
+                  <View class="_TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B12BackdropView" x="0.0" y="0.0" width="210.0" height="21.0" windowX="0.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="true" outsideParent="false" contentClipped="false">
+                  </View>
+                  <View class="NSClipView" x="0.0" y="0.0" width="210.0" height="848.0" windowX="0.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="true" outsideParent="false" contentClipped="false">
+                    <View class="NSTableView" x="0.0" y="0.0" width="226.0" height="848.0" windowX="0.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="583.0" fittingWidth="0.0" fittingHeight="583.0" clipsToBounds="false" outsideParent="true" contentClipped="false">
+                      <Column id="name" width="194.0" minWidth="40.0" />
+                      <Cell row="0" column="name" x="16.0" width="194.0" textWidth="43.0" textFrameWidth="207.0" cropped="false" ellipsis="false" text="Storage" />
+                      <Cell row="1" column="name" x="16.0" width="194.0" textWidth="56.5" textFrameWidth="99.0" cropped="false" ellipsis="false" text="Overview" />
+                      <Cell row="2" column="name" x="16.0" width="194.0" textWidth="26.5" textFrameWidth="160.0" cropped="false" ellipsis="false" text="Map" />
+                      <Cell row="3" column="name" x="16.0" width="194.0" textWidth="82.5" textFrameWidth="160.0" cropped="false" ellipsis="false" text="Largest Items" />
+                      <View class="NSTableRowView" x="0.0" y="21.0" width="226.0" height="26.0" windowX="0.0" windowY="73.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="26.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaTableCellView" x="16.0" y="1.0" width="194.0" height="24.0" windowX="16.0" windowY="74.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="26.0" y="4.0" width="99.0" height="16.0" windowX="42.0" windowY="78.0" intrinsicWidth="56.5" intrinsicHeight="16.0" fittingWidth="60.5" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Overview">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="99.0" height="16.0" windowX="42.0" windowY="78.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="NSTextField" x="131.0" y="5.0" width="55.0" height="14.0" windowX="147.0" windowY="79.0" intrinsicWidth="50.5" intrinsicHeight="14.0" fittingWidth="54.5" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="640.0 GB">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="55.0" height="14.0" windowX="147.0" windowY="79.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="LuaSymbolImageView" x="0.0" y="3.0" width="18.0" height="18.0" windowX="16.0" windowY="77.0" intrinsicWidth="15.0" intrinsicHeight="9.0" fittingWidth="15.0" fittingHeight="15.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSTableRowView" x="0.0" y="47.0" width="226.0" height="26.0" windowX="0.0" windowY="99.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="26.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaTableCellView" x="16.0" y="1.0" width="194.0" height="24.0" windowX="16.0" windowY="100.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="26.0" y="4.0" width="160.0" height="16.0" windowX="42.0" windowY="104.0" intrinsicWidth="26.5" intrinsicHeight="16.0" fittingWidth="30.5" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Map">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="160.0" height="16.0" windowX="42.0" windowY="104.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="NSTextField" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="108.0" intrinsicWidth="0.0" intrinsicHeight="14.0" fittingWidth="4.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="108.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="LuaSymbolImageView" x="0.0" y="3.0" width="18.0" height="18.0" windowX="16.0" windowY="103.0" intrinsicWidth="15.0" intrinsicHeight="9.0" fittingWidth="15.0" fittingHeight="15.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSTableRowView" x="0.0" y="73.0" width="226.0" height="26.0" windowX="0.0" windowY="125.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="26.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaTableCellView" x="16.0" y="1.0" width="194.0" height="24.0" windowX="16.0" windowY="126.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="26.0" y="4.0" width="160.0" height="16.0" windowX="42.0" windowY="130.0" intrinsicWidth="82.5" intrinsicHeight="16.0" fittingWidth="86.5" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Largest Items">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="160.0" height="16.0" windowX="42.0" windowY="130.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="NSTextField" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="134.0" intrinsicWidth="0.0" intrinsicHeight="14.0" fittingWidth="4.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="134.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="LuaSymbolImageView" x="0.0" y="3.0" width="18.0" height="18.0" windowX="16.0" windowY="129.0" intrinsicWidth="19.0" intrinsicHeight="9.0" fittingWidth="19.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="true">
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSTableRowView" x="0.0" y="99.0" width="226.0" height="26.0" windowX="0.0" windowY="151.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="26.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaTableCellView" x="16.0" y="1.0" width="194.0" height="24.0" windowX="16.0" windowY="152.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="26.0" y="4.0" width="160.0" height="16.0" windowX="42.0" windowY="156.0" intrinsicWidth="66.0" intrinsicHeight="16.0" fittingWidth="70.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Large Files">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="160.0" height="16.0" windowX="42.0" windowY="156.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="NSTextField" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="160.0" intrinsicWidth="0.0" intrinsicHeight="14.0" fittingWidth="4.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="160.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="LuaSymbolImageView" x="0.0" y="3.0" width="18.0" height="18.0" windowX="16.0" windowY="155.0" intrinsicWidth="14.0" intrinsicHeight="9.0" fittingWidth="14.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSTableRowView" x="0.0" y="125.0" width="226.0" height="26.0" windowX="0.0" windowY="177.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="26.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaTableCellView" x="16.0" y="1.0" width="194.0" height="24.0" windowX="16.0" windowY="178.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="26.0" y="4.0" width="160.0" height="16.0" windowX="42.0" windowY="182.0" intrinsicWidth="61.0" intrinsicHeight="16.0" fittingWidth="65.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="File Types">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="160.0" height="16.0" windowX="42.0" windowY="182.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="NSTextField" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="186.0" intrinsicWidth="0.0" intrinsicHeight="14.0" fittingWidth="4.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="186.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="LuaSymbolImageView" x="0.0" y="3.0" width="18.0" height="18.0" windowX="16.0" windowY="181.0" intrinsicWidth="15.0" intrinsicHeight="9.0" fittingWidth="15.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSTableRowView" x="0.0" y="151.0" width="226.0" height="26.0" windowX="0.0" windowY="203.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="26.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaTableCellView" x="16.0" y="1.0" width="194.0" height="24.0" windowX="16.0" windowY="204.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="26.0" y="4.0" width="160.0" height="16.0" windowX="42.0" windowY="208.0" intrinsicWidth="64.5" intrinsicHeight="16.0" fittingWidth="68.5" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Duplicates">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="160.0" height="16.0" windowX="42.0" windowY="208.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="NSTextField" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="212.0" intrinsicWidth="0.0" intrinsicHeight="14.0" fittingWidth="4.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="212.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="LuaSymbolImageView" x="0.0" y="3.0" width="18.0" height="18.0" windowX="16.0" windowY="207.0" intrinsicWidth="16.5" intrinsicHeight="9.0" fittingWidth="17.0" fittingHeight="19.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSTableRowView" x="0.0" y="190.0" width="226.0" height="21.0" windowX="0.0" windowY="242.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="21.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaTableCellView" x="1.0" y="1.0" width="223.0" height="19.0" windowX="1.0" windowY="243.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="8.0" y="2.0" width="207.0" height="14.0" windowX="9.0" windowY="246.0" intrinsicWidth="49.5" intrinsicHeight="14.0" fittingWidth="53.5" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Clean Up">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="207.0" height="14.0" windowX="9.0" windowY="246.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSTableRowView" x="0.0" y="211.0" width="226.0" height="26.0" windowX="0.0" windowY="263.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="26.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaTableCellView" x="16.0" y="1.0" width="194.0" height="24.0" windowX="16.0" windowY="264.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="26.0" y="4.0" width="160.0" height="16.0" windowX="42.0" windowY="268.0" intrinsicWidth="112.5" intrinsicHeight="16.0" fittingWidth="116.5" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Recommendations">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="160.0" height="16.0" windowX="42.0" windowY="268.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="NSTextField" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="272.0" intrinsicWidth="0.0" intrinsicHeight="14.0" fittingWidth="4.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="272.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="LuaSymbolImageView" x="0.0" y="3.0" width="18.0" height="18.0" windowX="16.0" windowY="267.0" intrinsicWidth="15.0" intrinsicHeight="9.0" fittingWidth="15.0" fittingHeight="17.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSTableRowView" x="0.0" y="237.0" width="226.0" height="26.0" windowX="0.0" windowY="289.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="26.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaTableCellView" x="16.0" y="1.0" width="194.0" height="24.0" windowX="16.0" windowY="290.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="26.0" y="4.0" width="160.0" height="16.0" windowX="42.0" windowY="294.0" intrinsicWidth="75.0" intrinsicHeight="16.0" fittingWidth="79.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Applications">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="160.0" height="16.0" windowX="42.0" windowY="294.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="NSTextField" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="298.0" intrinsicWidth="0.0" intrinsicHeight="14.0" fittingWidth="4.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="298.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="LuaSymbolImageView" x="0.0" y="3.0" width="18.0" height="18.0" windowX="16.0" windowY="293.0" intrinsicWidth="15.5" intrinsicHeight="9.0" fittingWidth="16.0" fittingHeight="15.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSTableRowView" x="0.0" y="276.0" width="226.0" height="21.0" windowX="0.0" windowY="328.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="21.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaTableCellView" x="1.0" y="1.0" width="223.0" height="19.0" windowX="1.0" windowY="329.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="8.0" y="2.0" width="207.0" height="14.0" windowX="9.0" windowY="332.0" intrinsicWidth="55.5" intrinsicHeight="14.0" fittingWidth="59.5" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Developer">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="207.0" height="14.0" windowX="9.0" windowY="332.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSTableRowView" x="0.0" y="297.0" width="226.0" height="26.0" windowX="0.0" windowY="349.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="26.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaTableCellView" x="16.0" y="1.0" width="194.0" height="24.0" windowX="16.0" windowY="350.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="26.0" y="4.0" width="106.0" height="16.0" windowX="42.0" windowY="354.0" intrinsicWidth="62.0" intrinsicHeight="16.0" fittingWidth="66.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Developer">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="106.0" height="16.0" windowX="42.0" windowY="354.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="NSTextField" x="138.0" y="5.0" width="48.0" height="14.0" windowX="154.0" windowY="355.0" intrinsicWidth="43.5" intrinsicHeight="14.0" fittingWidth="47.5" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="45.4 GB">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="48.0" height="14.0" windowX="154.0" windowY="355.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="LuaSymbolImageView" x="0.0" y="3.0" width="18.0" height="18.0" windowX="16.0" windowY="353.0" intrinsicWidth="19.0" intrinsicHeight="9.0" fittingWidth="19.0" fittingHeight="17.0" clipsToBounds="false" outsideParent="false" contentClipped="true">
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSTableRowView" x="0.0" y="323.0" width="226.0" height="26.0" windowX="0.0" windowY="375.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="26.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaTableCellView" x="16.0" y="1.0" width="194.0" height="24.0" windowX="16.0" windowY="376.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="26.0" y="4.0" width="160.0" height="16.0" windowX="42.0" windowY="380.0" intrinsicWidth="38.5" intrinsicHeight="16.0" fittingWidth="42.5" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Xcode">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="160.0" height="16.0" windowX="42.0" windowY="380.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="NSTextField" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="384.0" intrinsicWidth="0.0" intrinsicHeight="14.0" fittingWidth="4.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="384.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="LuaSymbolImageView" x="0.0" y="3.0" width="18.0" height="18.0" windowX="16.0" windowY="379.0" intrinsicWidth="15.0" intrinsicHeight="9.0" fittingWidth="15.0" fittingHeight="15.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSTableRowView" x="0.0" y="349.0" width="226.0" height="26.0" windowX="0.0" windowY="401.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="26.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaTableCellView" x="16.0" y="1.0" width="194.0" height="24.0" windowX="16.0" windowY="402.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="26.0" y="4.0" width="113.0" height="16.0" windowX="42.0" windowY="406.0" intrinsicWidth="50.0" intrinsicHeight="16.0" fittingWidth="54.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Projects">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="113.0" height="16.0" windowX="42.0" windowY="406.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="NSTextField" x="145.0" y="5.0" width="41.0" height="14.0" windowX="161.0" windowY="407.0" intrinsicWidth="36.5" intrinsicHeight="14.0" fittingWidth="40.5" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="2.2 GB">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="41.0" height="14.0" windowX="161.0" windowY="407.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="LuaSymbolImageView" x="0.0" y="3.0" width="18.0" height="18.0" windowX="16.0" windowY="405.0" intrinsicWidth="17.5" intrinsicHeight="9.0" fittingWidth="20.0" fittingHeight="15.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSTableRowView" x="0.0" y="375.0" width="226.0" height="26.0" windowX="0.0" windowY="427.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="26.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaTableCellView" x="16.0" y="1.0" width="194.0" height="24.0" windowX="16.0" windowY="428.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="26.0" y="4.0" width="106.0" height="16.0" windowX="42.0" windowY="432.0" intrinsicWidth="64.5" intrinsicHeight="16.0" fittingWidth="68.5" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Simulators">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="106.0" height="16.0" windowX="42.0" windowY="432.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="NSTextField" x="138.0" y="5.0" width="48.0" height="14.0" windowX="154.0" windowY="433.0" intrinsicWidth="43.5" intrinsicHeight="14.0" fittingWidth="47.5" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="11.2 GB">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="48.0" height="14.0" windowX="154.0" windowY="433.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="LuaSymbolImageView" x="0.0" y="3.0" width="18.0" height="18.0" windowX="16.0" windowY="431.0" intrinsicWidth="13.5" intrinsicHeight="9.0" fittingWidth="14.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSTableRowView" x="0.0" y="414.0" width="226.0" height="21.0" windowX="0.0" windowY="466.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="21.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaTableCellView" x="1.0" y="1.0" width="223.0" height="19.0" windowX="1.0" windowY="467.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="8.0" y="2.0" width="207.0" height="14.0" windowX="9.0" windowY="470.0" intrinsicWidth="41.0" intrinsicHeight="14.0" fittingWidth="45.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="System">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="207.0" height="14.0" windowX="9.0" windowY="470.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSTableRowView" x="0.0" y="435.0" width="226.0" height="26.0" windowX="0.0" windowY="487.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="26.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaTableCellView" x="16.0" y="1.0" width="194.0" height="24.0" windowX="16.0" windowY="488.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="26.0" y="4.0" width="160.0" height="16.0" windowX="42.0" windowY="492.0" intrinsicWidth="101.0" intrinsicHeight="16.0" fittingWidth="105.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Disks &amp; Volumes">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="160.0" height="16.0" windowX="42.0" windowY="492.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="NSTextField" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="496.0" intrinsicWidth="0.0" intrinsicHeight="14.0" fittingWidth="4.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="496.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="LuaSymbolImageView" x="0.0" y="3.0" width="18.0" height="18.0" windowX="16.0" windowY="491.0" intrinsicWidth="18.0" intrinsicHeight="9.0" fittingWidth="18.0" fittingHeight="13.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSTableRowView" x="0.0" y="461.0" width="226.0" height="26.0" windowX="0.0" windowY="513.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="26.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="NSVisualEffectView" x="10.0" y="0.0" width="206.0" height="26.0" windowX="10.0" windowY="513.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="true" outsideParent="false" contentClipped="false">
+                        </View>
+                        <View class="LuaTableCellView" x="16.0" y="1.0" width="194.0" height="24.0" windowX="16.0" windowY="514.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="26.0" y="4.0" width="160.0" height="16.0" windowX="42.0" windowY="518.0" intrinsicWidth="136.5" intrinsicHeight="16.0" fittingWidth="140.5" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Updates &amp; Snapshots">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="160.0" height="16.0" windowX="42.0" windowY="518.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="NSTextField" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="522.0" intrinsicWidth="0.0" intrinsicHeight="14.0" fittingWidth="4.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="522.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="LuaSymbolImageView" x="0.0" y="3.0" width="18.0" height="18.0" windowX="16.0" windowY="517.0" intrinsicWidth="15.0" intrinsicHeight="9.0" fittingWidth="16.0" fittingHeight="15.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSTableRowView" x="0.0" y="500.0" width="226.0" height="21.0" windowX="0.0" windowY="552.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="21.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaTableCellView" x="1.0" y="1.0" width="223.0" height="19.0" windowX="1.0" windowY="553.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="8.0" y="2.0" width="207.0" height="14.0" windowX="9.0" windowY="556.0" intrinsicWidth="31.0" intrinsicHeight="14.0" fittingWidth="35.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Learn">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="207.0" height="14.0" windowX="9.0" windowY="556.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSTableRowView" x="0.0" y="521.0" width="226.0" height="26.0" windowX="0.0" windowY="573.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="26.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaTableCellView" x="16.0" y="1.0" width="194.0" height="24.0" windowX="16.0" windowY="574.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="26.0" y="4.0" width="160.0" height="16.0" windowX="42.0" windowY="578.0" intrinsicWidth="87.0" intrinsicHeight="16.0" fittingWidth="91.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Storage Guide">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="160.0" height="16.0" windowX="42.0" windowY="578.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="NSTextField" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="582.0" intrinsicWidth="0.0" intrinsicHeight="14.0" fittingWidth="4.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="582.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="LuaSymbolImageView" x="0.0" y="3.0" width="18.0" height="18.0" windowX="16.0" windowY="577.0" intrinsicWidth="18.0" intrinsicHeight="9.0" fittingWidth="18.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                      <View class="NSTableRowView" x="0.0" y="547.0" width="226.0" height="26.0" windowX="0.0" windowY="599.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="26.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="LuaTableCellView" x="16.0" y="1.0" width="194.0" height="24.0" windowX="16.0" windowY="600.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSTextField" x="26.0" y="4.0" width="160.0" height="16.0" windowX="42.0" windowY="604.0" intrinsicWidth="84.0" intrinsicHeight="16.0" fittingWidth="88.0" fittingHeight="16.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Diskmap Help">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="160.0" height="16.0" windowX="42.0" windowY="604.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="NSTextField" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="608.0" intrinsicWidth="0.0" intrinsicHeight="14.0" fittingWidth="4.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="">
+                            <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="4.0" height="16.0" windowX="16.0" windowY="608.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                            </View>
+                          </View>
+                          <View class="LuaSymbolImageView" x="0.0" y="3.0" width="18.0" height="18.0" windowX="16.0" windowY="603.0" intrinsicWidth="15.0" intrinsicHeight="9.0" fittingWidth="15.0" fittingHeight="15.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                  <View class="NSScrollPocket" x="0.0" y="0.0" width="210.0" height="21.0" windowX="0.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                    <View class="_TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B10PocketMask" x="0.0" y="0.0" width="0.0" height="0.0" windowX="0.0" windowY="73.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                      <View class="NSView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="0.0" windowY="73.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="NSView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="0.0" windowY="73.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        </View>
+                      </View>
+                    </View>
+                    <View class="_TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B10PocketBlur" x="0.0" y="0.0" width="0.0" height="0.0" windowX="0.0" windowY="73.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                      <View class="_TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B10PortalView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="0.0" windowY="73.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                      </View>
+                    </View>
+                    <View class="NSHardPocketView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="0.0" windowY="73.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                      <View class="_TtC6AppKitP33_EC3F85FAB7755D56E669206D2B17725B26_NSLayerBasedFillColorView" x="0.0" y="0.0" width="0.0" height="1.0" windowX="0.0" windowY="72.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="true" contentClipped="false">
+                      </View>
+                    </View>
+                    <View class="_TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B19LuminanceAdjustment" x="0.0" y="0.0" width="0.0" height="0.0" windowX="0.0" windowY="73.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                      <View class="NSView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="0.0" windowY="73.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="NSView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="0.0" windowY="73.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="_TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B12BackdropView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="0.0" windowY="73.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="true" outsideParent="false" contentClipped="false">
+                          </View>
+                          <View class="_NSScrollViewContentBackgroundView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="0.0" windowY="73.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                        <View class="NSView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="0.0" windowY="73.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          <View class="NSView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="0.0" windowY="73.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                          <View class="NSView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="0.0" windowY="73.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                      <View class="_TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B10PortalView" x="0.0" y="0.0" width="0.0" height="0.0" windowX="0.0" windowY="73.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                      </View>
+                    </View>
+                  </View>
+                  <View class="_NSScrollViewFloatingSubviewsContainerView" x="0.0" y="0.0" width="210.0" height="848.0" windowX="0.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                    <View class="NSTableRowView" x="0.0" y="0.0" width="226.0" height="21.0" windowX="0.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="21.0" clipsToBounds="false" outsideParent="true" contentClipped="false">
+                      <View class="LuaTableCellView" x="1.0" y="1.0" width="223.0" height="19.0" windowX="1.0" windowY="53.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                        <View class="NSTextField" x="8.0" y="2.0" width="207.0" height="14.0" windowX="9.0" windowY="56.0" intrinsicWidth="43.0" intrinsicHeight="14.0" fittingWidth="47.0" fittingHeight="14.0" clipsToBounds="false" outsideParent="false" contentClipped="false" insufficientTextSpace="false" ellipsis="false" text="Storage">
+                          <View class="_TtC6AppKitP33_72EBFCF981BE77E1C6F26FD717D0893922NSTextFieldSimpleLabel" x="0.0" y="0.0" width="207.0" height="14.0" windowX="9.0" windowY="56.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                  <View class="NSScroller" x="383.0" y="0.0" width="17.0" height="200.0" windowX="383.0" windowY="52.0" intrinsicWidth="-1.0" intrinsicHeight="-1.0" fittingWidth="0.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="true" contentClipped="false">
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+          <View class="_TtGC6AppKit18_NSCoreHostingViewVES_CSo17NSGlassEffectViewP10$1a1c03df48RootView_" x="0.0" y="0.0" width="210.0" height="900.0" windowX="0.0" windowY="0.0" intrinsicWidth="10.0" intrinsicHeight="10.0" fittingWidth="10.0" fittingHeight="10.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+          </View>
+        </View>
+      </View>
+      <View class="NSSplitDividerView" x="209.5" y="0.0" width="0.5" height="900.0" windowX="209.5" windowY="0.0" intrinsicWidth="0.5" intrinsicHeight="-1.0" fittingWidth="0.5" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+      </View>
+      <View class="_NSSplitViewCollapsedInteractionsView" x="0.0" y="0.0" width="15.0" height="900.0" windowX="0.0" windowY="0.0" intrinsicWidth="15.0" intrinsicHeight="-1.0" fittingWidth="15.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+      </View>
+      <View class="_NSSplitViewCollapsedInteractionsView" x="1425.0" y="0.0" width="15.0" height="900.0" windowX="1425.0" windowY="0.0" intrinsicWidth="15.0" intrinsicHeight="-1.0" fittingWidth="15.0" fittingHeight="0.0" clipsToBounds="false" outsideParent="false" contentClipped="false">
+      </View>
+    </View>
+  </View>
+</Layout>

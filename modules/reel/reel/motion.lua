@@ -16,8 +16,12 @@ local function modifier(apply, events)
 	return { apply = apply, events = events or {} }
 end
 
-local function event(time, kind)
-	return { time = time, kind = kind }
+-- The sound a modifier implies: `default` unless options.sound names another
+-- or is false (a second copy of a node that should not sound twice).
+local function sound(time, options, default)
+	local kind = options.sound
+	if kind == false or (kind == nil and default == nil) then return {} end
+	return { { time = time, kind = kind or default } }
 end
 
 -- pop(at, {response, damping, from, turn, fade}): grows from `from` (0) to
@@ -33,7 +37,7 @@ function Motion.pop(at, options)
 		state.scale = state.scale * mix(from, 1, k)
 		state.rotation = state.rotation + turn * (1 - k)
 		state.alpha = state.alpha * clamp01((t - at) / fade)
-	end, { event(at, options.sound or "pop") })
+	end, sound(at, options, "pop"))
 end
 
 -- slam(at, {from, response, damping, drop, fade}): lands from `from` (1.75)
@@ -48,24 +52,26 @@ function Motion.slam(at, options)
 		state.scale = state.scale * mix(from, 1, k)
 		state.dy = state.dy - drop * (1 - k)
 		state.alpha = state.alpha * clamp01((t - at) / fade)
-	end, { event(at, options.sound or "slam") })
+	end, sound(at, options, "slam"))
 end
 
--- enter{at, x, y, response, damping}: springs in from an offset.
+-- enter{at, x, y, response, damping, fade, sound}: springs in from an
+-- offset, fading in over `fade` seconds when given.
 function Motion.enter(options)
 	local at = options.at
 	local response, damping = options.response or 0.53, options.damping or 0.68
-	local x, y = options.x or 0, options.y or 0
+	local x, y, fade = options.x or 0, options.y or 0, options.fade
 	return modifier(function(state, t)
 		if t < at then state.alpha = 0; return end
 		local k = spring(t - at, response, damping)
 		state.dx = state.dx + x * (1 - k)
 		state.dy = state.dy + y * (1 - k)
-	end, { event(at, options.sound or "whoosh") })
+		if fade then state.alpha = state.alpha * clamp01((t - at) / fade) end
+	end, sound(at, options))
 end
 
--- leave{at, duration, x, y, scale, curve}: travels by an offset (and to a
--- scale) and is gone afterwards.
+-- leave{at, duration, x, y, scale, curve, fade, stay, sound}: travels by an
+-- offset (and to a scale) and is gone afterwards unless `stay`.
 function Motion.leave(options)
 	local at, duration = options.at, options.duration or 0.3
 	local x, y, curve = options.x or 0, options.y or 0, options.curve or "inQuart"
@@ -77,7 +83,7 @@ function Motion.leave(options)
 		state.dy = state.dy + y * p
 		if toScale then state.scale = state.scale * mix(1, toScale, p) end
 		if fadeOut then state.alpha = state.alpha * (1 - p) end
-	end, { event(at, options.sound or "whoosh") })
+	end, sound(at, options))
 end
 
 -- fadeIn(at, duration) / fadeOut(at, duration)

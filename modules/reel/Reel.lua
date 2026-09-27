@@ -12,16 +12,26 @@
 -- attributes and motion are functions of time; frames are pure functions
 -- of `t`, averaged over several sub-frames for motion blur. See README.md.
 local xml = require("ui.xml")
+local Audio = require("reel.audio")
 local Captures = require("reel.captures")
 local Curves = require("reel.curves")
 local Elements = require("reel.elements")
+local Instruments = require("reel.instruments")
 local Motion = require("reel.motion")
+local Pen = require("reel.pen")
 local Scene = require("reel.scene")
 
+-- The toolkit, for bespoke shots and scores: curves and easing, motion
+-- presets, the pen and its shapes, the mix and its instruments.
 local Reel = {
 	curves = Curves,
 	motion = Motion,
 	elements = Elements,
+	Pen = Pen,
+	Shape = Pen.Shape,
+	rgb = Pen.rgb,
+	audio = Audio,
+	instruments = Instruments,
 }
 Reel.__index = Reel
 
@@ -101,13 +111,20 @@ function Reel:still(t, path)
 	canvas:snapshot():write(path)
 end
 
--- movie(path, {from, to, progress}): H.264 frames from `from` to `to`.
+-- writeWav(path, sampleRate, left, right)
+function Reel.writeWav(path, sampleRate, left, right)
+	Reel.native().writeWav(path, sampleRate, left, right)
+end
+
+-- movie(path, {from, to, audio, progress}): H.264 frames from `from` to
+-- `to`, with `audio` (a sound file) muxed in as AAC.
 function Reel:movie(path, options)
 	options = options or {}
 	local scene = self.scene
 	local from, to = options.from or 0, options.to or scene.duration
 	if to <= from then error("reel: nothing to render between " .. from .. " and " .. to, 2) end
-	local movie = Reel.native().movie({ path = path, width = scene.width, height = scene.height, fps = scene.fps })
+	local movie = Reel.native().movie({ path = path, width = scene.width, height = scene.height, fps = scene.fps,
+		audio = options.audio })
 	local canvas, accumulator = self:canvas(), self:accumulator()
 	local first, last = math.floor(from * scene.fps + 0.5), math.floor(to * scene.fps + 0.5) - 1
 	for frame = first, last do

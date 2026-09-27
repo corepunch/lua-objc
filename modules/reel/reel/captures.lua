@@ -37,7 +37,7 @@ local function readLayout(path)
 	if not file then error("reel: no layout dump " .. path .. " (run the capture step)", 0) end
 	local source = file:read("a")
 	file:close()
-	local views, cells = {}, {}
+	local views, cells, rows = {}, {}, {}
 	local function walk(nodes, owner)
 		for _, node in ipairs(nodes) do
 			if node.kind == "element" then
@@ -47,6 +47,12 @@ local function readLayout(path)
 						w = number(attrs.width), h = number(attrs.height) }
 					local id = attrs.identifier
 					if id and not views[id] then views[id] = frame end
+					-- Table rows belong to the nearest identified view (the
+					-- scroll view of a <List>), in display order.
+					if attrs.class == "NSTableRowView" and owner then
+						rows[owner] = rows[owner] or {}
+						table.insert(rows[owner], frame)
+					end
 					walk(node.children, id or owner)
 				elseif node.tag == "TreemapCell" and owner then
 					cells[owner] = cells[owner] or {}
@@ -59,7 +65,7 @@ local function readLayout(path)
 		end
 	end
 	walk(xml.parse(source), nil)
-	return views, cells
+	return views, cells, rows
 end
 
 function Capture:image()
@@ -77,9 +83,9 @@ end
 
 function Capture:layout()
 	if not self.viewFrames then
-		self.viewFrames, self.cellFrames = readLayout(self.set.dir .. "/" .. self.name .. ".layout.xml")
+		self.viewFrames, self.cellFrames, self.rowFrames = readLayout(self.set.dir .. "/" .. self.name .. ".layout.xml")
 	end
-	return self.viewFrames, self.cellFrames
+	return self.viewFrames, self.cellFrames, self.rowFrames
 end
 
 -- cells(viewId, depth) -> the treemap cells of a view, optionally one depth.
@@ -92,12 +98,25 @@ function Capture:cells(viewId, depth)
 	return list
 end
 
+-- rows(viewId) -> the table row frames under an identified view.
+function Capture:rows(viewId)
+	local _, _, rows = self:layout()
+	return rows[viewId] or {}
+end
+
 -- rect(spec) -> x, y, w, h in window points. `spec` is "#view",
--- "#view/cell", "window" or "x, y, w, h".
+-- "#view/row/N" (the Nth table row under the view), "#view/cell" (a treemap
+-- cell), "window" or "x, y, w, h".
 function Capture:rect(spec)
 	if spec == nil or spec == "window" then
 		local w, h = self:size()
 		return 0, 0, w, h
+	end
+	local rowView, rowIndex = spec:match("^#([^/]+)/row/(%d+)$")
+	if rowView then
+		local row = self:rows(rowView)[tonumber(rowIndex)]
+		if not row then error("reel: " .. self.name .. " has no " .. spec, 0) end
+		return row.x, row.y, row.w, row.h
 	end
 	local viewId, cellId = spec:match("^#([^/]+)/(.+)$")
 	if viewId then
@@ -126,14 +145,18 @@ end
 
 -- piece(spec, options) -> sprite {image, x, y, w, h} in window points.
 -- options.outset grows the rect; options.key = {x, y} keys out the colour
--- found at that window point, so the piece floats without its page.
+-- found at that window point, so the piece floats without its page;
+-- options.downsample keeps that fraction of the pixels.
 function Capture:piece(spec, options)
 	options = options or {}
 	local key = table.concat({ spec or "window", options.outset or 0,
-		options.key and (options.key[1] .. "," .. options.key[2]) or "" }, "|")
+		options.key and (options.key[1] .. "," .. options.key[2]) or "", options.downsample or 1,
+		options.part and table.concat(options.part, ",") or "" }, "|")
 	local sprite = self.pieces[key]
 	if sprite then return sprite end
 	local x, y, w, h = self:rect(spec)
+	-- `part` is a sub-rectangle relative to the rect's origin.
+	if options.part then x, y, w, h = x + options.part[1], y + options.part[2], options.part[3], options.part[4] end
 	local outset = options.outset or 0
 	x, y, w, h = x - outset, y - outset, w + outset * 2, h + outset * 2
 	local image = self:image()
@@ -148,6 +171,8 @@ function Capture:piece(spec, options)
 		local r, g, b = self:sample(options.key[1], options.key[2])
 		piece = piece:keyed(r, g, b)
 	end
+	-- Sprites that only ever appear small can carry fewer pixels.
+	if options.downsample then piece = piece:downsampled(options.downsample) end
 	sprite = { image = piece, x = px / scale, y = py / scale, w = pw / scale, h = ph / scale }
 	self.pieces[key] = sprite
 	return sprite

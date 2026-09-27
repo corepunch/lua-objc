@@ -1,0 +1,19 @@
+<!-- 18–19 s: simulator stat cards slam in on the 16ths; the devices table
+     rises under them. -->
+<%
+local sim = captures:get("simulators-dark")
+local cards = { "devicesTile", "runtimesTile", "unavailableTile" }
+%>
+<Scene from="17.98" to="19.05">
+  <Let name="simOut" value="inQuart(progress(t, 18.86, 19.02))" />
+  <Text style="head" text="Simulators &amp; runtimes." x="960" y="210" at="18.05" exit="18.8" />
+  <% for k, id in ipairs(cards) do local _, _, _, h = sim:rect("#" .. id) %>
+  <Piece capture="simulators-dark" rect="#<%= id %>" radius="12" shadow="0.7"
+         x="<%= 960 + (k - 2) * 556 %> - simOut * <%= 900 * (2 - k) %>" y="<%= 330 + h * 1.36 / 2 %>"
+         scale="1.36 * (1 - simOut * 0.3)" alpha="1 - simOut"
+         motion="slam(<%= 18 + (k - 1) * 0.25 %>, {from = 1.8, response = 1 / 2.4, damping = 0.48, drop = 34})" />
+  <% end %>
+  <Piece capture="simulators-dark" rect="#devices" from="18.5" x="960" y="mix(1250, 700, spring(t - 18.5, 1 / 1.8, 0.7))"
+         scale="1.36 * (1 - simOut * 0.3)" alpha="1 - simOut" radius="10" shadow="0.7" />
+  <Cue sound="whoosh" at="18.8" until="19.02" />
+</Scene>

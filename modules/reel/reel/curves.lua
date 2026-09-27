@@ -96,6 +96,35 @@ function Curves.shake(t, hits, amount)
 	return dx, dy
 end
 
+-- keys(t, start, {{t0, t1, value}…}, easing): holds a value and moves to
+-- each next one between t0 and t1 — a camera or divider hopping on cues.
+function Curves.keys(t, start, keys, name)
+	local x = start
+	for _, key in ipairs(keys) do
+		local t0, t1, target = key[1], key[2], key[3]
+		if t >= t1 then
+			x = target
+		elseif t >= t0 then
+			return x + (target - x) * Curves.ease(t, t0, t1, name or "inOutExpo")
+		else
+			break
+		end
+	end
+	return x
+end
+
+-- flip(t, times, duration) -> horizontal scale of a card turning over at
+-- each time (edge-on halfway), and how many flips have passed halfway.
+function Curves.flip(t, times, duration)
+	local sx, flips = 1, 0
+	for _, at in ipairs(times) do
+		local p = clamp01((t - at) / duration)
+		if p >= 0.5 then flips = flips + 1 end
+		if p > 0 and p < 1 then sx = math.max(0.004, math.abs(math.cos(math.pi * p))) end
+	end
+	return sx, flips
+end
+
 -- A beat grid: grid.beat and grid.bar in seconds, grid(n) the time of beat n.
 function Curves.grid(bpm)
 	local beat = 60 / bpm

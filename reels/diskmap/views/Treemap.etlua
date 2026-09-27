@@ -1,14 +1,26 @@
 <!-- 8–10.3 s: the sunburst spins away, the page turns into a treemap whose
     groups pop in one per 16th, then the window leaves for the next scene. -->
-<% local tiles = captures:get("treemap-dark"):cells("treemap", 0) %>
+<%
+-- Top-level groups pop one per 16th; slivers too thin to read ride along
+-- with the group before them, without a sound of their own.
+local groups = {}
+for _, cell in ipairs(captures:get("treemap-dark"):cells("treemap", 0)) do
+	if cell.w < 20 and #groups > 0 then table.insert(groups[#groups], cell) else table.insert(groups, { cell }) end
+end
+local tile = [[<Piece rect="#treemap/%s" motion="pop(8.75, {response = 1 / 2.3, damping = 0.5, turn = 0.25, sound = %s})" />]]
+%>
 <Scene from="7.98" to="10.3">
   <Group x="960" y="612" scale="0.78" motion="punch(8), leave{at = 9.95, duration = 0.3, x = -2300}">
     <Window capture="map-dark" radius="24" shadow="1" to="8.62" />
     <Window capture="treemap-dark" radius="24" shadow="1" motion="fadeIn(8.5, 0.12)">
       <Fill rect="#treemap" color="sample(1000, 820)" outset="1" />
-      <% for i, tile in ipairs(tiles) do %>
-      <Piece rect="#treemap/<%= tile.id %>" motion="pop(<%= stagger(8.75, i) %>, {response = 1 / 2.3, damping = 0.5, turn = 0.25})" />
-      <% end %>
+      <Group stagger="0.125">
+        <% for _, cells in ipairs(groups) do %>
+        <Group>
+          <% for n, cell in ipairs(cells) do %><%- tile:format(cell.id, n == 1 and "'pop'" or "false") %><% end %>
+        </Group>
+        <% end %>
+      </Group>
       <Sweep at="9.2" duration="0.55" />
     </Window>
     <Frame capture="map-dark">
@@ -17,4 +29,5 @@
   </Group>
   <Text style="head" text="Rings or rectangles." x="960" y="176" at="8.12" exit="9.72" />
   <Text style="sub" text="Click any group to look inside." x="960" y="236" at="8.32" stagger="0.035" exit="9.68" />
+  <Cue sound="whoosh" at="9.9" until="10.25" />
 </Scene>

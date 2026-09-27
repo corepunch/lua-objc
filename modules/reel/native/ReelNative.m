@@ -19,6 +19,7 @@ static const char *PathMetatable = "ReelNative.Path";
 static const char *TextMetatable = "ReelNative.Text";
 static const char *AccumulatorMetatable = "ReelNative.Accumulator";
 static const char *MovieMetatable = "ReelNative.Movie";
+static const char *FramesMetatable = "ReelNative.Frames";
 
 // SF Symbols are rasterised as masks at sizes on a 15 % ladder, so a chip
 // that grows on a spring reuses a handful of cached masks instead of one per
@@ -446,6 +447,15 @@ static int reel_canvas_scale(lua_State *L) {
 static int reel_canvas_rotate(lua_State *L) { CGContextRotateCTM(REEL_CONTEXT(L), REEL_ARG(2)); return 0; }
 static int reel_canvas_alpha(lua_State *L) { CGContextSetAlpha(REEL_CONTEXT(L), REEL_ARG(2)); return 0; }
 
+// blend(mode): how what follows combines with the pixels below.
+static int reel_canvas_blend(lua_State *L) {
+	static const char *const names[] = {"normal", "multiply", "screen", "overlay", "difference", "plusLighter", NULL};
+	static const CGBlendMode modes[] = {kCGBlendModeNormal, kCGBlendModeMultiply, kCGBlendModeScreen,
+		kCGBlendModeOverlay, kCGBlendModeDifference, kCGBlendModePlusLighter};
+	CGContextSetBlendMode(REEL_CONTEXT(L), modes[luaL_checkoption(L, 2, "normal", names)]);
+	return 0;
+}
+
 // shadow(dx, dy, blur, r, g, b, a) in canvas pixels (unaffected by the
 // transform, as in CoreGraphics); shadow() removes it.
 static int reel_canvas_shadow(lua_State *L) {
@@ -752,8 +762,26 @@ static int reel_accumulator_gc(lua_State *L) {
 @property (nonatomic) int32_t fps;
 @property (nonatomic) int64_t frames;
 @property (nonatomic) size_t width, height;
+@property (nonatomic, strong) AVAssetWriterInput *audio;
+@property (nonatomic, strong) AVAssetReader *reader;
+@property (nonatomic, strong) AVAssetReaderTrackOutput *audioOutput;
+@property (nonatomic) BOOL audioDone;
 @end
 @implementation ReelMovie
+// Audio is fed whenever the writer asks, between video frames, so the two
+// tracks interleave in the file.
+- (void)feedAudio {
+	while (self.audio && !self.audioDone && self.audio.readyForMoreMediaData) {
+		CMSampleBufferRef sample = [self.audioOutput copyNextSampleBuffer];
+		if (sample) {
+			[self.audio appendSampleBuffer:sample];
+			CFRelease(sample);
+		} else {
+			[self.audio markAsFinished];
+			self.audioDone = YES;
+		}
+	}
+}
 @end
 
 typedef struct { void *movie; } ReelMovieBox;
@@ -764,7 +792,8 @@ static ReelMovie *reel_check_movie(lua_State *L, int index) {
 	return (__bridge ReelMovie *)box->movie;
 }
 
-// movie{path, width, height, fps, bitrate}
+// movie{path, width, height, fps, bitrate, audio, audioBitrate}: `audio` is
+// a sound file (see writeWav) muxed in as AAC.
 static int reel_movie(lua_State *L) {
 	luaL_checktype(L, 1, LUA_TTABLE);
 	lua_getfield(L, 1, "path"); const char *path = luaL_checkstring(L, -1); lua_pop(L, 1);
@@ -772,6 +801,8 @@ static int reel_movie(lua_State *L) {
 	lua_getfield(L, 1, "height"); lua_Integer height = luaL_checkinteger(L, -1); lua_pop(L, 1);
 	lua_getfield(L, 1, "fps"); lua_Integer fps = luaL_optinteger(L, -1, 30); lua_pop(L, 1);
 	lua_getfield(L, 1, "bitrate"); lua_Integer bitrate = luaL_optinteger(L, -1, 24000000); lua_pop(L, 1);
+	lua_getfield(L, 1, "audio"); const char *audioPath = luaL_optstring(L, -1, NULL); lua_pop(L, 1);
+	lua_getfield(L, 1, "audioBitrate"); lua_Integer audioBitrate = luaL_optinteger(L, -1, 256000); lua_pop(L, 1);
 	NSURL *url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:path]];
 	[NSFileManager.defaultManager removeItemAtURL:url error:nil];
 	NSError *error = nil;
@@ -793,11 +824,43 @@ static int reel_movie(lua_State *L) {
 			(NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA),
 			(NSString *)kCVPixelBufferWidthKey: @(width), (NSString *)kCVPixelBufferHeightKey: @(height)}];
 	[writer addInput:video];
+	AVAssetWriterInput *audio = nil;
+	AVAssetReader *reader = nil;
+	AVAssetReaderTrackOutput *audioOutput = nil;
+	if (audioPath) {
+		AVURLAsset *asset = [AVURLAsset URLAssetWithURL:[NSURL fileURLWithPath:[NSString stringWithUTF8String:audioPath]] options:nil];
+		__block AVAssetTrack *track = nil;
+		dispatch_semaphore_t loaded = dispatch_semaphore_create(0);
+		[asset loadTracksWithMediaType:AVMediaTypeAudio completionHandler:^(NSArray<AVAssetTrack *> *tracks, NSError *loadError) {
+			track = tracks.firstObject;
+			dispatch_semaphore_signal(loaded);
+		}];
+		dispatch_semaphore_wait(loaded, DISPATCH_TIME_FOREVER);
+		if (!track) return luaL_error(L, "no audio in %s", audioPath);
+		CMAudioFormatDescriptionRef format = (__bridge CMAudioFormatDescriptionRef)track.formatDescriptions.firstObject;
+		const AudioStreamBasicDescription *basic = format ? CMAudioFormatDescriptionGetStreamBasicDescription(format) : NULL;
+		double sampleRate = basic ? basic->mSampleRate : 48000;
+		NSInteger channels = basic ? basic->mChannelsPerFrame : 2;
+		reader = [AVAssetReader assetReaderWithAsset:asset error:&error];
+		if (!reader) return luaL_error(L, "cannot read %s: %s", audioPath, error.localizedDescription.UTF8String);
+		audioOutput = [AVAssetReaderTrackOutput assetReaderTrackOutputWithTrack:track outputSettings:@{
+			AVFormatIDKey: @(kAudioFormatLinearPCM), AVLinearPCMBitDepthKey: @16, AVLinearPCMIsFloatKey: @NO,
+			AVLinearPCMIsBigEndianKey: @NO, AVLinearPCMIsNonInterleaved: @NO,
+			AVSampleRateKey: @(sampleRate), AVNumberOfChannelsKey: @(channels)}];
+		[reader addOutput:audioOutput];
+		audio = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeAudio outputSettings:@{
+			AVFormatIDKey: @(kAudioFormatMPEG4AAC), AVSampleRateKey: @(sampleRate),
+			AVNumberOfChannelsKey: @(channels), AVEncoderBitRateKey: @(audioBitrate)}];
+		audio.expectsMediaDataInRealTime = NO;
+		[writer addInput:audio];
+		[reader startReading];
+	}
 	if (![writer startWriting]) return luaL_error(L, "cannot start %s: %s", path, writer.error.localizedDescription.UTF8String);
 	[writer startSessionAtSourceTime:kCMTimeZero];
 	ReelMovie *movie = [ReelMovie new];
 	movie.writer = writer; movie.video = video; movie.adaptor = adaptor;
 	movie.fps = (int32_t)fps; movie.width = (size_t)width; movie.height = (size_t)height;
+	movie.audio = audio; movie.reader = reader; movie.audioOutput = audioOutput;
 	ReelMovieBox *box = lua_newuserdatauv(L, sizeof(ReelMovieBox), 0);
 	box->movie = (__bridge_retained void *)movie;
 	luaL_setmetatable(L, MovieMetatable);
@@ -812,8 +875,11 @@ static int reel_movie_append(lua_State *L) {
 	while (!movie.video.readyForMoreMediaData) {
 		if (movie.writer.status == AVAssetWriterStatusFailed)
 			return luaL_error(L, "encoding failed: %s", movie.writer.error.localizedDescription.UTF8String);
+		[movie feedAudio];
 		usleep(MovieBackpressureSleep);
 	}
+	if (!movie.adaptor.pixelBufferPool)
+		return luaL_error(L, "encoding failed: %s", movie.writer.error.localizedDescription.UTF8String ?: "no pixel buffers");
 	CVPixelBufferRef buffer = NULL;
 	CVPixelBufferPoolCreatePixelBuffer(NULL, movie.adaptor.pixelBufferPool, &buffer);
 	if (!buffer) return luaL_error(L, "no pixel buffer available");
@@ -828,6 +894,7 @@ static int reel_movie_append(lua_State *L) {
 	CVPixelBufferRelease(buffer);
 	if (!ok) return luaL_error(L, "encoding failed: %s", movie.writer.error.localizedDescription.UTF8String);
 	movie.frames++;
+	[movie feedAudio];
 	return 0;
 }
 
@@ -838,6 +905,11 @@ static int reel_movie_finish(lua_State *L) {
 	ReelMovie *movie = (__bridge_transfer ReelMovie *)box->movie;
 	box->movie = NULL;
 	[movie.video markAsFinished];
+	while (movie.audio && !movie.audioDone) {
+		if (movie.writer.status == AVAssetWriterStatusFailed) break;
+		[movie feedAudio];
+		if (!movie.audioDone) usleep(MovieBackpressureSleep);
+	}
 	[movie.writer endSessionAtSourceTime:CMTimeMake(movie.frames, movie.fps)];
 	dispatch_semaphore_t done = dispatch_semaphore_create(0);
 	[movie.writer finishWritingWithCompletionHandler:^{ dispatch_semaphore_signal(done); }];
@@ -855,6 +927,111 @@ static int reel_movie_gc(lua_State *L) {
 		box->movie = NULL;
 		[movie.writer cancelWriting];
 	}
+	return 0;
+}
+
+#pragma mark - Reading movies
+
+// Decoded frames of an existing movie, one at a time: recorded footage as a
+// source, or two renders compared frame by frame.
+@interface ReelFrames : NSObject
+@property (nonatomic, strong) AVAssetReader *reader;
+@property (nonatomic, strong) AVAssetReaderTrackOutput *output;
+@end
+@implementation ReelFrames
+@end
+
+typedef struct { void *frames; } ReelFramesBox;
+
+// frames(path) -> reader; reader:next() -> image or nil at the end.
+static int reel_frames(lua_State *L) {
+	const char *path = luaL_checkstring(L, 1);
+	AVURLAsset *asset = [AVURLAsset URLAssetWithURL:[NSURL fileURLWithPath:[NSString stringWithUTF8String:path]] options:nil];
+	__block AVAssetTrack *track = nil;
+	dispatch_semaphore_t loaded = dispatch_semaphore_create(0);
+	[asset loadTracksWithMediaType:AVMediaTypeVideo completionHandler:^(NSArray<AVAssetTrack *> *tracks, NSError *error) {
+		track = tracks.firstObject;
+		dispatch_semaphore_signal(loaded);
+	}];
+	dispatch_semaphore_wait(loaded, DISPATCH_TIME_FOREVER);
+	if (!track) return luaL_error(L, "no video in %s", path);
+	NSError *error = nil;
+	AVAssetReader *reader = [AVAssetReader assetReaderWithAsset:asset error:&error];
+	if (!reader) return luaL_error(L, "cannot read %s: %s", path, error.localizedDescription.UTF8String);
+	AVAssetReaderTrackOutput *output = [AVAssetReaderTrackOutput assetReaderTrackOutputWithTrack:track
+		outputSettings:@{(NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA)}];
+	[reader addOutput:output];
+	if (![reader startReading]) return luaL_error(L, "cannot read %s: %s", path, reader.error.localizedDescription.UTF8String);
+	ReelFrames *frames = [ReelFrames new];
+	frames.reader = reader;
+	frames.output = output;
+	ReelFramesBox *box = lua_newuserdatauv(L, sizeof(ReelFramesBox), 0);
+	box->frames = (__bridge_retained void *)frames;
+	luaL_setmetatable(L, FramesMetatable);
+	return 1;
+}
+
+static int reel_frames_next(lua_State *L) {
+	ReelFramesBox *box = luaL_checkudata(L, 1, FramesMetatable);
+	if (!box->frames) { lua_pushnil(L); return 1; }
+	ReelFrames *frames = (__bridge ReelFrames *)box->frames;
+	CMSampleBufferRef sample = [frames.output copyNextSampleBuffer];
+	if (!sample) { lua_pushnil(L); return 1; }
+	CVPixelBufferRef buffer = CMSampleBufferGetImageBuffer(sample);
+	CVPixelBufferLockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+	size_t width = CVPixelBufferGetWidth(buffer), height = CVPixelBufferGetHeight(buffer);
+	CGContextRef context = reel_bitmap(width, height, CVPixelBufferGetBaseAddress(buffer), CVPixelBufferGetBytesPerRow(buffer));
+	CGImageRef image = CGBitmapContextCreateImage(context);
+	CGContextRelease(context);
+	CVPixelBufferUnlockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+	CFRelease(sample);
+	reel_push_image(L, image, 1);
+	return 1;
+}
+
+static int reel_frames_gc(lua_State *L) {
+	ReelFramesBox *box = luaL_checkudata(L, 1, FramesMetatable);
+	if (box->frames) {
+		ReelFrames *frames = (__bridge_transfer ReelFrames *)box->frames;
+		box->frames = NULL;
+		[frames.reader cancelReading];
+	}
+	return 0;
+}
+
+#pragma mark - Audio
+
+// writeWav(path, sampleRate, left, right): 32-bit float stereo from two Lua
+// arrays of samples in -1...1.
+static int reel_write_wav(lua_State *L) {
+	const char *path = luaL_checkstring(L, 1);
+	double sampleRate = luaL_checknumber(L, 2);
+	luaL_checktype(L, 3, LUA_TTABLE);
+	luaL_checktype(L, 4, LUA_TTABLE);
+	lua_Integer frames = luaL_len(L, 3);
+	if (luaL_len(L, 4) != frames) return luaL_error(L, "left and right differ in length");
+	AVAudioFormat *format = [[AVAudioFormat alloc] initStandardFormatWithSampleRate:sampleRate channels:2];
+	NSError *error = nil;
+	NSURL *url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:path]];
+	[NSFileManager.defaultManager removeItemAtURL:url error:nil];
+	// The file is interleaved float; the buffer stays in the standard
+	// (deinterleaved) layout and AVAudioFile converts.
+	NSMutableDictionary *settings = [format.settings mutableCopy];
+	[settings removeObjectForKey:AVLinearPCMIsNonInterleaved];
+	AVAudioFile *file = [[AVAudioFile alloc] initForWriting:url settings:settings
+		commonFormat:AVAudioPCMFormatFloat32 interleaved:NO error:&error];
+	if (!file) return luaL_error(L, "cannot write %s: %s", path, error.localizedDescription.UTF8String);
+	AVAudioPCMBuffer *buffer = [[AVAudioPCMBuffer alloc] initWithPCMFormat:format frameCapacity:(AVAudioFrameCount)frames];
+	buffer.frameLength = (AVAudioFrameCount)frames;
+	for (int channel = 0; channel < 2; channel++) {
+		float *samples = buffer.floatChannelData[channel];
+		for (lua_Integer i = 0; i < frames; i++) {
+			lua_geti(L, 3 + channel, i + 1);
+			samples[i] = (float)lua_tonumber(L, -1);
+			lua_pop(L, 1);
+		}
+	}
+	if (![file writeFromBuffer:buffer error:&error]) return luaL_error(L, "cannot write %s: %s", path, error.localizedDescription.UTF8String);
 	return 0;
 }
 
@@ -884,7 +1061,7 @@ int luaopen_ReelNative(lua_State *L) {
 	static const luaL_Reg canvasMethods[] = {
 		{"size", reel_canvas_size}, {"clear", reel_canvas_clear}, {"save", reel_canvas_save},
 		{"restore", reel_canvas_restore}, {"translate", reel_canvas_translate}, {"scale", reel_canvas_scale},
-		{"rotate", reel_canvas_rotate}, {"alpha", reel_canvas_alpha}, {"shadow", reel_canvas_shadow},
+		{"rotate", reel_canvas_rotate}, {"alpha", reel_canvas_alpha}, {"blend", reel_canvas_blend}, {"shadow", reel_canvas_shadow},
 		{"fill", reel_canvas_fill}, {"stroke", reel_canvas_stroke}, {"clip", reel_canvas_clip},
 		{"clipRect", reel_canvas_clip_rect}, {"fillRect", reel_canvas_fill_rect},
 		{"linearGradient", reel_canvas_linear}, {"radialGradient", reel_canvas_radial},
@@ -893,15 +1070,17 @@ int luaopen_ReelNative(lua_State *L) {
 		{NULL, NULL}};
 	static const luaL_Reg accumulatorMethods[] = {{"add", reel_accumulator_add}, {"resolve", reel_accumulator_resolve}, {NULL, NULL}};
 	static const luaL_Reg movieMethods[] = {{"append", reel_movie_append}, {"finish", reel_movie_finish}, {NULL, NULL}};
+	static const luaL_Reg framesMethods[] = {{"next", reel_frames_next}, {NULL, NULL}};
 	reel_class(L, ImageMetatable, imageMethods, reel_image_gc);
 	reel_class(L, PathMetatable, pathMethods, reel_path_gc);
 	reel_class(L, TextMetatable, textMethods, reel_text_gc);
 	reel_class(L, CanvasMetatable, canvasMethods, reel_canvas_gc);
 	reel_class(L, AccumulatorMetatable, accumulatorMethods, reel_accumulator_gc);
 	reel_class(L, MovieMetatable, movieMethods, reel_movie_gc);
+	reel_class(L, FramesMetatable, framesMethods, reel_frames_gc);
 	static const luaL_Reg functions[] = {
 		{"image", reel_image}, {"path", reel_path}, {"text", reel_text}, {"canvas", reel_canvas},
-		{"accumulator", reel_accumulator}, {"movie", reel_movie}, {NULL, NULL}};
+		{"accumulator", reel_accumulator}, {"movie", reel_movie}, {"writeWav", reel_write_wav}, {"frames", reel_frames}, {NULL, NULL}};
 	luaL_newlib(L, functions);
 	return 1;
 }
