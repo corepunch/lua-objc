@@ -1,5 +1,5 @@
 <%
-  local CHART = { size = 180, hole = 0.64, gap = 1.5 }
+  local CHART = { size = 180, hole = 0.64, gap = 3, depth = 8 }
 %>
 <ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
   <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
@@ -9,7 +9,7 @@
     <% else %>
     <GroupBox id="kindsCard" maxWidth="infinity">
       <HStack maxWidth="infinity" padding="20" spacing="28" alignment="center">
-        <SectorChart id="kindsChart" width="<%= CHART.size %>" height="<%= CHART.size %>" innerRadius="<%= CHART.hole %>" angularInset="<%= CHART.gap %>" accessibilityLabel="<%= accessibilityLabel %>">
+        <SectorChart id="kindsChart" width="<%= CHART.size %>" height="<%= CHART.size %>" innerRadius="<%= CHART.hole %>" angularInset="<%= CHART.gap %>" depth="<%= CHART.depth %>" shadow="false" accessibilityLabel="<%= accessibilityLabel %>">
           <% for _, kind in ipairs(kinds) do %>
           <SectorMark value="<%= kind.bytes %>" color="<%= kind.color %>" label="<%= kind.name %>" />
           <% end %>

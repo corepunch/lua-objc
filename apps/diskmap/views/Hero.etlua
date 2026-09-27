@@ -1,5 +1,5 @@
 <%
-  local HERO = { chart = 196, hole = 0.7, gap = 1.5 }
+  local HERO = { chart = 196, hole = 0.7, gap = 3, depth = 8 }
   local hiddenRows = hidden or {}
   local half = math.ceil(#chart.legend / 2)
   local columns = { {}, {} }
@@ -7,7 +7,7 @@
 %>
 <GroupBox id="heroCard" maxWidth="infinity">
   <HStack maxWidth="infinity" padding="20" spacing="28" alignment="center">
-    <SectorChart id="chart" transition="drawOn" width="<%= HERO.chart %>" height="<%= HERO.chart %>" innerRadius="<%= HERO.hole %>" angularInset="<%= HERO.gap %>" accessibilityLabel="<%= chart.accessibilityLabel %>">
+    <SectorChart id="chart" transition="opacity" width="<%= HERO.chart %>" height="<%= HERO.chart %>" innerRadius="<%= HERO.hole %>" angularInset="<%= HERO.gap %>" depth="<%= HERO.depth %>" shadow="false" accessibilityLabel="<%= chart.accessibilityLabel %>">
       <% for _, mark in ipairs(chart.marks) do %>
       <SectorMark value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" />
       <% end %>
