@@ -4,10 +4,14 @@ local MapTree = {}
 
 -- The Map shows Diskmap's semantic tree from a focus node downwards: the
 -- whole disk, a category, or a group. Rings and rectangles draw the same
--- nodes. Tiny nodes fold into one "Other" node per parent so every mark is
--- big enough to see and to point at.
+-- nodes. Nodes under 1.5% of the map (about 5 degrees of the rings) fold into
+-- one "Other" node per parent so every mark is big enough to see and to
+-- point at. An outer-ring "Other" that is itself a sliver is left out: its
+-- parent's arc simply ends early, which reads as "and a little more". So is
+-- one that would be its parent's only child: a grey ring that repeats the
+-- parent says nothing, so the parent ends the map there like a leaf.
 MapTree.depth = 3
-MapTree.minimumShare = 0.004
+MapTree.minimumShare = 0.015
 
 local function measured(row)
 	return row.bytes ~= nil and row.bytes > 0
@@ -34,12 +38,13 @@ function MapTree.nodes(model, focus, depth)
 	for _, row in ipairs(top) do if measured(row) then total = total + row.bytes end end
 	local nodes = {}
 	local function visit(rows, parent, ring, color)
-		local other, otherBytes = 0, 0
+		local other, otherBytes, shown = 0, 0, 0
 		for _, row in ipairs(rows) do
 			if measured(row) then
 				if total > 0 and row.bytes / total < MapTree.minimumShare then
 					other, otherBytes = other + 1, otherBytes + row.bytes
 				else
+					shown = shown + 1
 					local resource = model.resources:find(row.id)
 					local leaf = resource and resource:isLeaf()
 					local rowColor = ring == 1 and (row.color or "systemGray") or color
@@ -50,8 +55,10 @@ function MapTree.nodes(model, focus, depth)
 				end
 			end
 		end
-		if other > 0 then
-			table.insert(nodes, {id = (parent or "top") .. "#other", parent = parent, value = otherBytes, color = "systemGray",
+		if other > 0 and (ring == 1 or (shown > 0 and otherBytes / total >= MapTree.minimumShare)) then
+			-- Nested smaller items are more of their parent, so they keep its
+			-- hue (the view fades them); only the top level has no family.
+			table.insert(nodes, {id = (parent or "top") .. "#other", parent = parent, value = otherBytes, color = color or "systemGray",
 				label = other .. " smaller", detail = Model.size(otherBytes), ring = ring, leaf = true, other = true})
 		end
 	end

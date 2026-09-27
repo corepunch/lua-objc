@@ -2023,6 +2023,24 @@ function AppKit.Arc(props)
 	return applyLayout(view, props)
 end
 
+--- Renders raised chart sectors in SceneKit for `SectorChart depth`.
+---
+--- Sectors are `{startAngle, endAngle, inner, outer, height, gap, color,
+--- alpha, lift}` in the chart's point geometry: each sector's whole share and
+--- band, and the parallel-sided gap cut between neighbours. `ui/sectors.lua`
+--- computes them.
+--- @prop sectors table optional. Sector descriptions.
+--- @platform AppKit.
+function AppKit.SectorScene(props)
+	props = props or {}
+	if props.width and not props.fixedWidth then props.fixedWidth = props.width end
+	if props.height and not props.fixedHeight then props.fixedHeight = props.height end
+	local width = props.fixedWidth or 160
+	local view = bridge._sectorScene(width, props.fixedHeight or width)
+	bridge._sectorSceneConfigure(view, props.sectors or {}, false)
+	return applyLayout(view, props)
+end
+
 -- SwiftUI animation: Animation values, withAnimation, withTransaction,
 -- AnyTransition and the per-view motion modifiers (see ui/animation.lua).
 require("ui.animation").install(AppKit, bridge)
@@ -2081,6 +2099,7 @@ end
 --- centered over the chart, typically a total inside the hole.
 --- @prop innerRadius number optional. Hole radius as a fraction of the outer radius (0 draws a pie).
 --- @prop angularInset number optional. Gap between neighbouring sectors, in points.
+--- @prop depth number optional. Draws raised sectors this many points deep under a tilted camera (SceneKit), starting at half past one; 0 draws flat arcs.
 --- @prop accessibilityLabel string optional. Summary read by VoiceOver.
 --- @example <SectorChart width="180" height="180" innerRadius="0.62"><SectorMark value="40" color="systemBlue" /></SectorChart>
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.

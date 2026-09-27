@@ -5,14 +5,14 @@ local MapTree = require("apps.diskmap.models.MapTree")
 local Model = require("apps.diskmap.Model")
 local Controller = {}; Controller.__index = Controller
 
-local STYLES = {"rings", "rectangles"}
+local STYLES = {"rings", "raised", "rectangles"}
 
--- The Map page: the semantic tree as rings or rectangles beside a list of the
+-- The Map page: the semantic tree as flat or raised rings or rectangles beside a list of the
 -- focused node's children. Clicking a group focuses it, the center or the
 -- breadcrumb goes back up, and hovering describes a node without
 -- re-rendering the chart. Activating a leaf opens its category sheet; list
 -- rows carry the same menu as every other resource list.
--- `style` ("rings" or "rectangles") picks the initial chart; unknown values
+-- `style` ("rings", "raised" or "rectangles") picks the initial chart; unknown values
 -- fall back to rings.
 function Controller.new(model, actions, style)
 	for _, known in ipairs(STYLES) do if known == style then return setmetatable({model = model, actions = actions, focus = "", style = style}, Controller) end end
