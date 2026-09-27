@@ -5,28 +5,11 @@ local Mock = require("apps.diskmap.services.Mock")
 local Simulators = require("apps.diskmap.models.Simulators")
 local Sdks = require("apps.diskmap.models.Sdks")
 
-local function u32(n)
-	return string.char(n % 256, math.floor(n / 256) % 256, math.floor(n / 65536) % 256, math.floor(n / 16777216) % 256)
-end
-local function u64(n)
-	return u32(n % 4294967296) .. u32(math.floor(n / 4294967296))
-end
 local function writeSnapshot(path, items)
 	table.sort(items, function(a, b) return a[1] < b[1] end)
-	local body, previous = {}, ""
-	for _, item in ipairs(items) do
-		local shared = 0
-		while shared < #previous and shared < #item[1] and previous:sub(shared + 1, shared + 1) == item[1]:sub(shared + 1, shared + 1) do
-			shared = shared + 1
-		end
-		local suffix = item[1]:sub(shared + 1)
-		table.insert(body, u32(shared) .. u32(#suffix) .. u64(item[2]) .. u64(item[2]) .. suffix)
-		previous = item[1]
-	end
-	local header = "DMOCK001" .. u32(1) .. u32(0) .. u64(1000000000000) .. u64(400000000000) .. u64(#items) .. u64(0) .. u64(#items)
-	local file = assert(io.open(path, "wb"))
-	file:write(header .. table.concat(body))
-	file:close()
+	local records = {}
+	for _, item in ipairs(items) do table.insert(records, {path = item[1], allocatedBytes = item[2]}) end
+	require("apps.diskmap.services.Scanner").writeSnapshot(path, {capacityBytes = 1000000000000, availableBytes = 400000000000, visited = #items}, records)
 end
 
 local home = "/tmp/diskmap-fs-test"

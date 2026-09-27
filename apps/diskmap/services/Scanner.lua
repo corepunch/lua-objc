@@ -7,6 +7,15 @@ end
 function Scanner.startExport(paths, exclusions, outputPath, metadata)
 	return {handle = native.exportStart(paths, exclusions or {}, outputPath, metadata)}
 end
+-- Decoded record chunks of a Mock HDD snapshot, then nil.
+function Scanner.snapshotRecords(path)
+	return native.snapshotRecords(path)
+end
+-- Writes a snapshot from `{path, allocatedBytes, countedBytes}` items in
+-- path order; `metadata` holds capacityBytes, availableBytes and createdAt.
+function Scanner.writeSnapshot(path, metadata, items)
+	native.snapshotWrite(path, metadata, items)
+end
 function Scanner.cancel(job)
 	if not job then return end
 	job.cancelled = true

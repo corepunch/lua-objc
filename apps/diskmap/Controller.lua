@@ -36,6 +36,7 @@ local UpdatesController = require("apps.diskmap.controllers.UpdatesController")
 local HelpController = require("apps.diskmap.controllers.HelpController")
 local NotificationsController = require("apps.diskmap.controllers.NotificationsController")
 local CommandsController = require("apps.diskmap.controllers.CommandsController")
+local SnapshotController = require("apps.diskmap.controllers.SnapshotController")
 local Controller = {}; Controller.__index = Controller
 local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
 -- Services grow optional features; a provider that lacks one simply does not
@@ -93,6 +94,9 @@ function Controller.new(service)
 		keep = function(id) self.cleanup:toggleKeep(id) end,
 		refresh = function() self.scan:start() end,
 	}, self.review)
+	-- A live scan compares with the saved Mock HDD snapshot, the previous
+	-- state of this Mac; Mock HDD itself has nothing earlier to compare with.
+	if not self.mock then self.snapshots = self:snapshotComparison(Provider.savedSnapshotPath(), true) end
 	local files = FilesController.new(self.model, service, self.actions)
 	local applications = ApplicationsController.new(self.model, service, self.actions, function(remeasure)
 		if remeasure then self.scan:start() else self:updateRows() end
@@ -103,6 +107,7 @@ function Controller.new(service)
 			reclaim = function() self:show("cleanup") end,
 			access = function() self.service.openSettings("privacy") end,
 			menu = function(id) return self.actions:resource(id) end,
+			changes = function() if self.snapshots then self.snapshots:open(self.window) end end,
 		}),
 		map = MapController.new(self.model, self.actions),
 		largest = LargestController.new(self.model, self.actions, open),
@@ -174,7 +179,7 @@ function Controller:openManagement(id, filter)
 end
 -- Everything a page needs to present the current scan, in one value.
 function Controller:state()
-	return {disk = self.scan.disk, capacity = self.capacity, snapshotCount = self.snapshotCount, changes = self.changes,
+	return {disk = self.scan.disk, capacity = self.capacity, snapshotCount = self.snapshotCount, changes = self.snapshotChanges or self.changes,
 		query = self.query, mock = self.mock, volumeName = self.mock and "Mock HDD" or "Startup Disk",
 		status = (self.mock and "Mock HDD · " or "") .. (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status}
 end
@@ -278,6 +283,17 @@ function Controller:scanFinished()
 	else
 		self.changes = nil
 	end
+	if self.snapshots then self.snapshots:compare() end
+end
+-- Changes since a snapshot replace history's category totals on the
+-- overview: they name locations, not only categories.
+function Controller:snapshotComparison(path, cache)
+	return SnapshotController.new(self.model, self.service, self.actions, {path = path, cache = cache,
+		changed = function(changes, failure)
+			self.snapshotChanges = changes
+			if failure then self.scan.status = "Could not compare with the snapshot: " .. failure end
+			self:updateRows()
+		end})
 end
 -- Mounts a sidebar destination into the content pane. Pages own their
 -- templates; the previous page is disposed before the next one mounts.
@@ -333,21 +349,9 @@ function Controller:compareScan(path)
 	local pick = optional(self.service, "pickFile")
 	path = path or (pick and pick("Compare with Scan"))
 	if not path then return end
-	local ok, service = pcall(measureScan, path)
-	if not ok then self.service.showError("Could not open the scan", tostring(service)); return end
-	local other = Controller.new(service)
-	other.scan.disk = service.diskSpace(other.scan.home)
-	other.scan.changed = function() end
-	other.scan.finished = function()
-		local before = History.snapshot(other.model, 0)
-		local now = History.snapshot(self.model)
-		before.time = now.time - 1
-		local changes = History.changes(self.model, {before, now}, 36500, 4)
-		if changes then changes.since = "the compared scan" end
-		self.changes = changes
-		self:show("overview", true)
-	end
-	other.scan:start()
+	self.snapshots = self:snapshotComparison(path, false)
+	self.snapshots:compare()
+	self:show("overview", true)
 end
 function Controller:openSettings()
 	self.review:close()

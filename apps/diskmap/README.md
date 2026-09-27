@@ -143,9 +143,11 @@ Diskmap against that saved metadata:
 ./lua-objc --mock-file=/private/tmp/diskmap-mock-hdd.bin apps/diskmap/init.lua
 ```
 
-The export is a versioned binary file (`DMOCK001`) containing file paths,
-allocated sizes, disk capacity, hard-link accounting, and scan completeness.
-Paths are UTF-8 and prefix-compressed against the preceding path. It never opens
+The export is a versioned binary file (`DMOCK002`) containing file paths,
+allocated sizes, disk capacity, hard-link accounting, scan completeness and the
+time it was taken. Paths are UTF-8 and prefix-compressed against the preceding
+path, and the records are LZFSE-compressed: a 218,000-file snapshot takes
+1.7 MB instead of 8.4 MB. It never opens
 file contents, invokes a shell, or uploads the snapshot. The file is written
 with owner-only permissions. macOS may request access while the one-time export
 traverses protected folders; the saved mock can then be reopened without
@@ -155,6 +157,18 @@ saved snapshot before simulated deletes or Trash operations.
 
 `--mock` uses `~/Library/Application Support/Diskmap/mock-hdd.bin` when that
 one-time export exists, and otherwise the bundled synthetic `mock-hdd.bin`.
+
+### Changes since the snapshot
+
+The saved export is also the previous state of this Mac. After a live scan,
+Diskmap measures the snapshot once with the same catalog — including the apps,
+projects and tool files the live scan discovered — and lists the locations
+that grew or shrank by 50 MB or more. The overview shows the four largest
+changes; Show All lists every one. The per-location totals are cached in
+`snapshot-summary` against the snapshot's creation time, so later launches
+compare without decoding it again. Export again to move the baseline forward.
+File › Compare with Scan… compares with any other export without touching the
+cached baseline.
 `--mock-file` reads only the selected binary snapshot. Headless tests always
 use the synthetic fixture. Both modes avoid the native scanner and shell commands, and show
 “Mock HDD” in the window title. File sizes, installed apps, project outputs,

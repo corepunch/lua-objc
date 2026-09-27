@@ -430,6 +430,9 @@ end
 function System.loadHistorySetting() return readFile(support("history-enabled")) == "enabled" end
 function System.saveHistorySetting(enabled) return writeFile(support("history-enabled"), enabled and "enabled" or "disabled") end
 function System.loadHistory() return readFile(support("history")) or "" end
+-- Per-location totals of the saved snapshot, keyed by its creation time.
+function System.loadSnapshotSummary() return readFile(support("snapshot-summary")) or "" end
+function System.saveSnapshotSummary(text) return writeFile(support("snapshot-summary"), text) end
 function System.saveHistory(text) return writeFile(support("history"), text) end
 -- Actions are appended to a plain text log that Console can open too.
 local LOG = (os.getenv("HOME") or "") .. "/Library/Logs/Diskmap/operations.log"
