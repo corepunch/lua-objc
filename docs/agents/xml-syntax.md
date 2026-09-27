@@ -130,8 +130,8 @@ are parsed up front, but native views are created only for visible cells.
 | `TextEditor` | Native editable text view | `text` or `value`, `size`, `weight`, `editable`, `selectable`, `wrapMode`, `drawsBackground`, plus layout attributes |
 | `TextField` | Native single-line field | `value` or `text`, `placeholder`, `editable`, `bezeled`, `bordered`, `size`, plus layout attributes |
 | `Button` | Native push button | `title` or `label`, `subtitle`, `systemImage`, `style`, `detail`, plus layout attributes |
-| `Toggle` / `Switch` | Native checkbox/toggle | `label`, `value` or `checked`, plus layout attributes |
-| `Slider` | AppKit `NSSlider` | `min`, `max`, `value`, `tickMarks`, `allowsTickMarkValuesOnly`, plus layout attributes |
+| `Toggle` / `Switch` | Native checkbox/toggle | `label`, `value` or `checked`, `style` (`switch`, `button`), `systemImage`, `tint`, plus layout attributes |
+| `Slider` | AppKit `NSSlider` | `min`, `max`, `value`, `style` (`level`), `tickMarks`, `allowsTickMarkValuesOnly`, `tint`, plus layout attributes |
 | `Stepper` | AppKit `NSStepper` | `min`, `max`, `value`, `increment`, `wraps`, `autorepeat`, plus layout attributes |
 | `Picker` | AppKit `NSPopUpButton` | zero-based `value`, plus one or more `Option` children |
 | `Option` | Child descriptor consumed by `Picker` | `title`, `label`, or `value` |
@@ -141,6 +141,7 @@ are parsed up front, but native views are created only for visible cells.
 | `LinearGradient` | Vertical wash used as a fill | `topAlpha`, `middleAlpha`, `middleLocation`, `bottomAlpha` |
 | `MeshGradient` | Grid of colored control points (SwiftUI `MeshGradient`) | `width`, `height`, `animated`; children are `MeshPoint` |
 | `MeshPoint` | One control point consumed by `MeshGradient` | `x`, `y` in 0…1; `red`, `green`, `blue`, `alpha` |
+| `ShaderView` | AppKit Metal fragment shader redrawn every display frame | `source` (`.metal` path), `function`, plus layout attributes; assign `values` from the controller |
 | `SearchField` | Native search field | `value`/`text`, `placeholder`, `onChange` |
 
 XML callbacks are normally attached in the controller after rendering. Keep
@@ -148,7 +149,7 @@ business logic out of templates. For a button or toggle whose callback must be
 attached after rendering, use `id` and the returned `refs` table; do not
 rebuild the surrounding view tree in the controller.
 
-`Slider`, `Stepper`, and `Picker` are currently AppKit-only. Do not place them
+`Slider`, `Stepper`, `Picker`, and `ShaderView` are currently AppKit-only. Do not place them
 in a template that must render on UIKit until matching UIKit controls exist.
 
 Full-bleed animated mesh (SwiftUI `TimelineView(.animation)` + `MeshGradient`
@@ -186,8 +187,40 @@ Glass composer (SwiftUI `.glassEffect()` around a text field):
 </SafeAreaInset>
 ```
 
+`tint` is SwiftUI's `.tint`: a semantic color (`systemPink`, `accent`, …)
+for a slider's filled track or a checked toggle.
+
+`Toggle style="button"` is SwiftUI's `.toggleStyle(.button)`: a push-on/push-off
+button whose whole bezel fills with the tint while on, like a drum-machine pad.
+`systemImage` puts an SF Symbol above its label. `Slider style="level"` is an
+editable continuous-capacity level indicator: a native bar that fills by
+percentage and is set by dragging or clicking.
+
 ```xml
-<Slider min="0" max="100" value="60" tickMarks="6" />
+<Toggle style="button" label="Kick" systemImage="circle.fill" tint="systemPink"
+        value="true" width="86" height="62" onChange="kick" />
+<Slider style="level" min="0" max="1" value="0.5" tint="systemCyan" onChange="filter" />
+```
+
+`ShaderView` is SwiftUI's `TimelineView(.animation)` around a `ShaderLibrary`
+color effect. The `.metal` file defines one fragment function; the runtime
+supplies the vertex stage and these inputs:
+
+```metal
+fragment float4 glow(ShaderVertex in [[stage_in]],
+                     constant ShaderInputs &inputs [[buffer(0)]]) {
+	// in.uv: 0…1 from the top-left. inputs.size: pixels. inputs.time: seconds.
+	// inputs.values[0 ..< inputs.count]: floats the controller assigned.
+	return float4(in.uv, 0.5 + 0.5 * sin(inputs.time + inputs.values[0]), 1.0);
+}
+```
+
+The controller animates it with `refs.fx.values = {…}` (at most 256 floats).
+Compiler errors are raised with line numbers in the app's source. See
+`apps/dnb/shaders/Visualizer.metal`.
+
+```xml
+<Slider min="0" max="100" value="60" tickMarks="6" tint="systemOrange" />
 <Stepper min="0" max="20" value="4" increment="1" />
 <Picker value="1">
   <Option title="Low" />

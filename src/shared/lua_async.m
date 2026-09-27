@@ -238,9 +238,11 @@ static int bridge_timer_after(lua_State *L) {
 
 	LuaReg *reg = lua_reg_create(L, 2, YES);
 
-	/* __block so the block can untrack itself after firing. */
+	/* __block so the block can untrack itself after firing. Common modes keep
+	 * Lua work (sleep loops, streamed audio) running while a slider or menu
+	 * tracks the mouse, as SwiftUI's `Timer.publish(on: .main, in: .common)`. */
 	__block NSTimer *timer = [NSTimer
-		scheduledTimerWithTimeInterval:delay
+		timerWithTimeInterval:delay
 		repeats:NO
 		block:^(NSTimer *t) {
 			[owner _untrack:timer];
@@ -251,6 +253,7 @@ static int bridge_timer_after(lua_State *L) {
 			}
 			[reg dispose];
 		}];
+	[NSRunLoop.currentRunLoop addTimer:timer forMode:NSRunLoopCommonModes];
 
 	[owner trackTimer:timer];
 	return 0;

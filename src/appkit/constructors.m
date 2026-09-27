@@ -412,10 +412,27 @@ static int bridge_AppKitControls_slider(lua_State *L) {
 		return luaL_error(L, "Slider maximum must be greater than or equal to minimum");
 	}
 
+	const char *style = luaL_optstring(L, 5, "");
+
+	/* `level`: an editable continuous capacity indicator, AppKit's native
+	 * fill bar. Dragging or clicking sets the value, like a drum machine's
+	 * level fader. */
+	if (strcmp(style, "level") == 0) {
+		LuaLevelIndicator *level = [[LuaLevelIndicator alloc] initWithFrame:NSZeroRect];
+		level.minValue = minimum;
+		level.maxValue = maximum;
+		level.doubleValue = MIN(MAX(value, minimum), maximum);
+		level.editable = YES;
+		level.continuous = YES;
+		configure_control_callback(level, L, 4);
+		push_objc(L, level, "nsview");
+		return 1;
+	}
 	NSSlider *slider = [[NSSlider alloc] initWithFrame:NSZeroRect];
 	slider.minValue = minimum;
 	slider.maxValue = maximum;
 	slider.doubleValue = MIN(MAX(value, minimum), maximum);
+	if (style[0]) return luaL_error(L, "Slider style must be level");
 	configure_control_callback(slider, L, 4);
 	push_objc(L, slider, "nsview");
 	return 1;
@@ -541,6 +558,26 @@ static int bridge_AppKitControls_toggle(lua_State *L) {
 		[control sizeToFit];
 		configure_control_callback(control, L, 3);
 		push_objc(L, control, "nsview");
+		return 1;
+	}
+
+	/* SwiftUI `.toggleStyle(.button)`: a push-on/push-off button whose bezel
+	 * fills with the tint while on, like a lit drum-machine pad. */
+	if (strcmp(style, "button") == 0) {
+		NSButton *pad = [NSButton buttonWithTitle:[NSString stringWithUTF8String:label] target:nil action:nil];
+		[pad setButtonType:NSButtonTypePushOnPushOff];
+		pad.bezelStyle = NSBezelStyleFlexiblePush;
+		const char *symbol = luaL_optstring(L, 5, "");
+		if (symbol[0]) {
+			pad.image = [NSImage imageWithSystemSymbolName:[NSString stringWithUTF8String:symbol]
+				accessibilityDescription:nil];
+			pad.imagePosition = NSImageAbove;
+			pad.imageHugsTitle = YES;
+		}
+		pad.state = is_on ? NSControlStateValueOn : NSControlStateValueOff;
+		[pad sizeToFit];
+		configure_control_callback(pad, L, 3);
+		push_objc(L, pad, "nsview");
 		return 1;
 	}
 

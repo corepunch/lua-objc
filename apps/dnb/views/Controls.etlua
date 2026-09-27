@@ -1,0 +1,17 @@
+<%
+local tints = {Groove = "systemOrange", Sound = "systemCyan"}
+local tint = tints[title]
+-%>
+<VStack spacing="12" alignment="leading" maxWidth="infinity">
+	<Label text="<%= title:upper() %>" size="11" weight="heavy" color="secondary" />
+	<% for _, control in ipairs(controls) do -%>
+	<VStack spacing="4" alignment="leading" maxWidth="infinity">
+		<HStack spacing="8" maxWidth="infinity">
+			<Label text="<%= control.label %>" size="12" weight="semibold" />
+			<Spacer />
+			<Label id="value_<%= control.id %>" text="<%= control.text %>" size="12" color="secondary" monospacedDigit="true" />
+		</HStack>
+		<Slider id="control_<%= control.id %>" style="level" min="<%= control.min %>" max="<%= control.max %>" value="<%= control.value %>" tint="<%= tint %>" maxWidth="infinity" onChange="control_<%= control.id %>" />
+	</VStack>
+	<% end -%>
+</VStack>

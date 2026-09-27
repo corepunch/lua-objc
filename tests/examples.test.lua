@@ -25,6 +25,7 @@ local examples = {
 	"demo/ide/init.lua",
 	"apps/weather/init.lua",
 	"apps/stocks/init.lua",
+	"apps/dnb/init.lua",
 	"demo/snippets/init.lua",
 	"apps/adventure-arena/init.lua",
 	"demo/phone-tabs/init.lua",

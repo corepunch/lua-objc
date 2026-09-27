@@ -324,10 +324,19 @@ static int bridge_save_file(lua_State *L) {
 
 /* Headless tests schedule real NSTimers but never run NSApp. Pumping the
  * current run loop lets a pending timer fire (or prove it was cancelled)
- * without showing a window. */
+ * without showing a window. `"eventTracking"` runs the mode AppKit uses
+ * while a slider or menu tracks the mouse. */
 static int bridge_runloop_tick(lua_State *L) {
 	double seconds = luaL_optnumber(L, 1, 0.05);
-	[[NSRunLoop currentRunLoop]
-		runUntilDate:[NSDate dateWithTimeIntervalSinceNow:seconds]];
+	const char *mode = luaL_optstring(L, 2, "default");
+	NSDate *limit = [NSDate dateWithTimeIntervalSinceNow:seconds];
+	if (strcmp(mode, "eventTracking") == 0) {
+		/* NSApplication registers event tracking as a common mode. */
+		[NSApplication sharedApplication];
+		while ([limit timeIntervalSinceNow] > 0
+			&& [NSRunLoop.currentRunLoop runMode:NSEventTrackingRunLoopMode beforeDate:limit]) {}
+	} else {
+		[NSRunLoop.currentRunLoop runUntilDate:limit];
+	}
 	return 0;
 }
