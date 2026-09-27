@@ -14,12 +14,12 @@ os.remove(path)
 
 t.expect(dump:find('<View class="NSSearchField"', 1, true) ~= nil,
 	"layout dump identifies native control classes")
-t.expect(dump:find('<View class="NSSearchField" frame="8.0 0.0 326.0 36.0"',
+t.expect(dump:find('<View class="NSSearchField" frame="8 0 326 36"',
 	1, true) ~= nil,
 	"layout dump proves the extra-large search field is pinned high in its inset wrapper")
 t.expect(dump:find('<Column id="price"', 1, true) ~= nil,
 	"layout dump includes computed quote columns")
-t.expect(dump:find('<Column id="symbol" width="131.0"', 1, true) ~= nil,
+t.expect(dump:find('<Column id="symbol" width="131"', 1, true) ~= nil,
 	"layout dump proves the edge-to-edge list gives spare width to stock names")
 t.expect(dump:find('cropped="', 1, true) ~= nil,
 	"layout dump reports cell cropping explicitly")
@@ -30,7 +30,7 @@ t.expect(dump:match('row="1" column="price"[^>]-cropped="false"[^>]-ellipsis="fa
 	"layout dump proves computed stock quotes do not receive ellipses")
 t.expect(dump:find('<Column id="chartData"', 1, true) ~= nil,
 	"layout dump includes the daily sparkline column")
-t.expect(dump:find('<View class="LuaPathView" frame="4.0 10.0 ', 1, true) ~= nil,
+t.expect(dump:find('<View class="LuaPathView" frame="4 10 ', 1, true) ~= nil,
 	"layout dump proves a daily sparkline is mounted in a stock row")
 t.expect(dump:find('text="Open"', 1, true) ~= nil
 	and dump:find('text="52W H"', 1, true) ~= nil,
@@ -39,8 +39,12 @@ t.expect(dump:find('text="Related News"', 1, true) ~= nil,
 	"layout dump exposes the related-news grid")
 t.expect(dump:find('outsideParent="', 1, true) ~= nil,
 	"layout dump reports view overflow explicitly")
-t.expect(dump:match('<View class="NSView" frame="0.0 0.0 [%d.]+ [%d.]+" window="0.0 0.0 ') ~= nil,
+t.expect(dump:match('<View class="NSView" frame="0 0 [%d.]+ [%d.]+" window="0 0 ') ~= nil,
 	"layout dump places the root at the window origin")
+for _, name in ipairs({ "frame", "window", "intrinsic", "fitting", "width", "x" }) do
+	t.expect(dump:match(" " .. name .. '="[-%d. ]-%d%.0[ "]') == nil,
+		"layout dump writes whole " .. name .. " points without a trailing .0")
+end
 
 -- Window frames are top-left window points, matching a window capture, and
 -- treemap cells are listed with them (the Reel package cuts pieces by id).

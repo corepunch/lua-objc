@@ -16,6 +16,25 @@ static NSString *layout_xml_escape(NSString *value) {
 	return out;
 }
 
+/* Points are rounded to tenths, and whole values drop the ".0" so frames
+ * read as "0 0 1440 900". A rounded -0 prints as 0. */
+static NSString *layout_number(CGFloat value) {
+	NSString *text = [NSString stringWithFormat:@"%.1f", value];
+	if ([text hasSuffix:@".0"]) text = [text substringToIndex:text.length - 2];
+	return [text isEqualToString:@"-0"] ? @"0" : text;
+}
+
+static NSString *layout_rect(NSRect rect) {
+	return [NSString stringWithFormat:@"%@ %@ %@ %@",
+		layout_number(rect.origin.x), layout_number(rect.origin.y),
+		layout_number(rect.size.width), layout_number(rect.size.height)];
+}
+
+static NSString *layout_size(NSSize size) {
+	return [NSString stringWithFormat:@"%@ %@",
+		layout_number(size.width), layout_number(size.height)];
+}
+
 static NSString *layout_indent(NSUInteger depth) {
 	return [@"  " stringByPaddingToLength:depth * 2
 		withString:@"  " startingAtIndex:0];
@@ -94,14 +113,12 @@ static void append_layout_view(NSMutableString *out, NSView *view,
 	NSString *identifier = view.accessibilityIdentifier;
 	NSRect windowFrame = layout_window_rect(view, view.bounds, root);
 	[out appendFormat:
-		@"%@<View class=\"%@\"%@ frame=\"%.1f %.1f %.1f %.1f\" window=\"%.1f %.1f %.1f %.1f\" intrinsic=\"%.1f %.1f\" fitting=\"%.1f %.1f\" clipsToBounds=\"%@\" outsideParent=\"%@\" contentClipped=\"%@\"%@%@%@>\n",
+		@"%@<View class=\"%@\"%@ frame=\"%@\" window=\"%@\" intrinsic=\"%@\" fitting=\"%@\" clipsToBounds=\"%@\" outsideParent=\"%@\" contentClipped=\"%@\"%@%@%@>\n",
 		layout_indent(depth), NSStringFromClass(view.class),
 		identifier ? [NSString stringWithFormat:@" identifier=\"%@\"",
 			layout_xml_escape(identifier)] : @"",
-		frame.origin.x, frame.origin.y, frame.size.width, frame.size.height,
-		windowFrame.origin.x, windowFrame.origin.y,
-		windowFrame.size.width, windowFrame.size.height,
-		intrinsic.width, intrinsic.height, fitting.width, fitting.height,
+		layout_rect(frame), layout_rect(windowFrame),
+		layout_size(intrinsic), layout_size(fitting),
 		view.clipsToBounds ? @"true" : @"false",
 		outside ? @"true" : @"false",
 		contentClipped ? @"true" : @"false",
@@ -118,9 +135,9 @@ static void append_layout_view(NSMutableString *out, NSView *view,
 			 columnIndex < table.tableColumns.count; columnIndex++) {
 			NSTableColumn *column = table.tableColumns[columnIndex];
 			[out appendFormat:
-				@"%@<Column id=\"%@\" width=\"%.1f\" minWidth=\"%.1f\" />\n",
+				@"%@<Column id=\"%@\" width=\"%@\" minWidth=\"%@\" />\n",
 				layout_indent(depth + 1), layout_xml_escape(column.identifier),
-				column.width, column.minWidth];
+				layout_number(column.width), layout_number(column.minWidth)];
 			for (NSInteger row = 0; row < rows; row++) {
 				NSRect cellFrame = [table frameOfCellAtColumn:(NSInteger)columnIndex row:row];
 				NSView *cell = [table viewAtColumn:(NSInteger)columnIndex
@@ -134,11 +151,13 @@ static void append_layout_view(NSMutableString *out, NSView *view,
 					&& layout_text_has_insufficient_space(label);
 				BOOL cellEllipsis = label && layout_text_uses_ellipsis(label);
 				[out appendFormat:
-					@"%@<Cell row=\"%ld\" column=\"%@\" x=\"%.1f\" width=\"%.1f\" textWidth=\"%.1f\" textFrameWidth=\"%.1f\" cropped=\"%@\" ellipsis=\"%@\" text=\"%@\" />\n",
+					@"%@<Cell row=\"%ld\" column=\"%@\" x=\"%@\" width=\"%@\" textWidth=\"%@\" textFrameWidth=\"%@\" cropped=\"%@\" ellipsis=\"%@\" text=\"%@\" />\n",
 					layout_indent(depth + 1), (long)row,
-					layout_xml_escape(column.identifier), cellFrame.origin.x,
-					cellFrame.size.width, label.intrinsicContentSize.width,
-					label.frame.size.width, clipped ? @"true" : @"false",
+					layout_xml_escape(column.identifier),
+					layout_number(cellFrame.origin.x),
+					layout_number(cellFrame.size.width),
+					layout_number(label.intrinsicContentSize.width),
+					layout_number(label.frame.size.width), clipped ? @"true" : @"false",
 					cellEllipsis ? @"true" : @"false",
 					layout_xml_escape(label.stringValue)];
 			}
@@ -155,10 +174,10 @@ static void append_layout_view(NSMutableString *out, NSView *view,
 				layout_cell_number(cell, @"w"), layout_cell_number(cell, @"h")), root);
 			NSString *label = [cell[@"label"] isKindOfClass:NSString.class] ? cell[@"label"] : @"";
 			[out appendFormat:
-				@"%@<TreemapCell id=\"%@\" depth=\"%.0f\" window=\"%.1f %.1f %.1f %.1f\" label=\"%@\" />\n",
+				@"%@<TreemapCell id=\"%@\" depth=\"%.0f\" window=\"%@\" label=\"%@\" />\n",
 				layout_indent(depth + 1), layout_xml_escape([cell[@"id"] description]),
-				layout_cell_number(cell, @"depth"), cellFrame.origin.x, cellFrame.origin.y,
-				cellFrame.size.width, cellFrame.size.height, layout_xml_escape(label)];
+				layout_cell_number(cell, @"depth"), layout_rect(cellFrame),
+				layout_xml_escape(label)];
 		}
 	}
 	for (NSView *child in view.subviews) {
