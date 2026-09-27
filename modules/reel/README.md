@@ -32,7 +32,7 @@ must render any instant exactly and repeatably.
 | Window captures cut by identifier, table row or treemap cell | `reel/captures.lua` |
 | Offline mix: buses, sidechain, reverb, master | `reel/audio.lua` |
 | Synth voices: pad, pluck, bass, drums, risers, whooshes, pops, bells | `reel/instruments.lua` |
-| `--screenshot` → window-only JPEG | `tools/import.lua` |
+| `--screenshot` + `--dump-layout` → capture (JPEG, pruned layout) | `tools/import.lua` |
 | Tests | `tests/reel.test.lua` |
 
 `reels/diskmap/` is the reference reel: a 30 s, 1080p piece in 11 scene
@@ -165,7 +165,15 @@ musical data, then `mix:master{kicks, gain}` returns two sample arrays for
 ## Captures
 
 `Reel.captures(dir)` reads `<name>.jpg` (a 2× window-only capture) and
-`<name>.layout.xml` (`--dump-layout` of the same window). The dump records
-each view's `window` rectangle (`"x y width height"` in top-left window
+`<name>.layout.xml` (the `--dump-layout` of the same window). The layout
+gives each view's `window` rectangle (`"x y width height"` in top-left window
 points) and lists treemap cells; table rows belong to their nearest
-identified view. Pieces are cut by identifier and survive layout changes after a fresh capture.
+identified view. Pieces are cut by identifier and survive layout changes
+after a fresh capture.
+
+`tools/import.lua` (`Reel.importCapture`) stores a capture from a
+`--screenshot` PNG and a `--dump-layout` XML. It prunes the layout to what
+reels read: identified views, the rows and treemap cells they own, and only
+`class`, `identifier`, `window` and the cell fields. A full window dump is
+mostly anonymous AppKit wrappers, about 20× larger. A raw dump still reads
+the same, so it works for experiments.

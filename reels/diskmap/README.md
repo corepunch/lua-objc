@@ -21,4 +21,4 @@ make diskmap-reel-captures   # refresh captures/ after a UI change
 | `Score.lua` | The music: chords and groove, plus the picture's pops, slams and cues |
 | `init.lua` | Reel data (kicks, logo ring, orbit, divider cues) and the render modes |
 | `capture.sh` | Captures every page in light and dark with `--showcase`, with layout dumps |
-| `captures/` | 2× window-only JPEGs (2880×1800) and their `--dump-layout` XML |
+| `captures/` | 2× window-only JPEGs (2880×1800) and their pruned `--dump-layout` XML |

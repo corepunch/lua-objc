@@ -46,9 +46,10 @@ function Reel.captures(dir, scale)
 	return Captures.open(dir, Reel.native(), scale)
 end
 
--- Turns a `--screenshot` PNG into a window-only capture JPEG.
-function Reel.importCapture(input, output, appearance, expected)
-	Captures.import(Reel.native(), input, output, appearance, expected)
+-- Stores a `--screenshot` PNG and `--dump-layout` XML of one window as the
+-- capture `<output>.jpg` + `<output>.layout.xml`.
+function Reel.importCapture(screenshot, dump, output, appearance, expected)
+	Captures.import(Reel.native(), screenshot, dump, output, appearance, expected)
 end
 
 -- Values templates can use while rendering: the curves and the motion

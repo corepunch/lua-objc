@@ -7,6 +7,7 @@ package.path = "modules/reel/?.lua;" .. package.path
 local t = require("TestKit")
 local Reel = require("Reel")
 local Curves = require("reel.curves")
+local Captures = require("reel.captures")
 local N = Reel.native()
 
 local function near(a, b, tolerance) return math.abs(a - b) <= (tolerance or 0.02) end
@@ -161,17 +162,79 @@ t.expect(keyed.w == 8, "outset grows a piece on every side")
 local _, _, _, keyedAlpha = keyed.image:pixel(0.25, 0.25)
 t.expect(keyedAlpha < 0.1, "keying clears the sampled page colour")
 
--- import(): the opaque window inside a screenshot with a transparent margin.
+-- pruneLayout(): a full dump reduced to what the reel reads. Anonymous
+-- wrappers go (their children move up), identified views keep their
+-- nesting, rows and cells stay with their owner, unowned ones go.
+local fullDump = [[<?xml version="1.0" encoding="UTF-8"?>
+<Layout>
+  <View class="NSView" frame="0 0 20 10" window="0 0 20 10" intrinsic="-1 -1" fitting="20 10" clipsToBounds="false">
+    <View class="NSTableRowView" frame="0 0 20 1" window="0 0 20 1" />
+    <TreemapCell id="stray" depth="0" window="0 0 1 1" label="Stray" />
+    <View class="NSClipView" frame="0 0 20 10" window="0 0 20 10">
+      <View class="LuaScrollView" identifier="list" frame="0 0 20 10" window="0 0 20 10" text="A &amp; &quot;B&quot;">
+        <View class="NSTableView" frame="0 0 20 10" window="0 0 20 10">
+          <Column id="name" width="20" minWidth="10" />
+          <Cell row="0" column="name" x="0" width="20" textWidth="5" textFrameWidth="20" cropped="false" ellipsis="false" text="Row" />
+          <View class="NSTableRowView" frame="0 0 20 5" window="0 0 20 5">
+            <View class="NSTableCellView" frame="0 0 20 5" window="0 0 20 5">
+              <View class="LuaLabel" identifier="rowLabel" frame="1 1 8 3" window="1 1 8 3" text="Row" />
+            </View>
+          </View>
+          <View class="NSTableRowView" frame="0 5 20 5" window="0 5 20 5" />
+        </View>
+      </View>
+      <View class="LuaTreemapView" identifier="map" frame="12 0 8 10" window="12 0 8 10">
+        <TreemapCell id="a&amp;b" depth="1" window="12 0 8 6" label="Docs &amp; &quot;Data&quot;" />
+      </View>
+    </View>
+  </View>
+</Layout>
+]]
+local pruned = Captures.pruneLayout(fullDump)
+t.assertEqual(pruned, [[<?xml version="1.0" encoding="UTF-8"?>
+<Layout>
+  <View class="LuaScrollView" identifier="list" window="0 0 20 10">
+    <View class="NSTableRowView" window="0 0 20 5">
+      <View class="LuaLabel" identifier="rowLabel" window="1 1 8 3" />
+    </View>
+    <View class="NSTableRowView" window="0 5 20 5" />
+  </View>
+  <View class="LuaTreemapView" identifier="map" window="12 0 8 10">
+    <TreemapCell id="a&amp;b" depth="1" window="12 0 8 6" label="Docs &amp; &quot;Data&quot;" />
+  </View>
+</Layout>
+]], "pruneLayout keeps identified views, owned rows and cells, and the attributes reels read")
+t.assertEqual(Captures.pruneLayout(pruned), pruned, "pruning a pruned layout changes nothing")
+t.assertEqual(Captures.pruneLayout("<Layout></Layout>"),
+	'<?xml version="1.0" encoding="UTF-8"?>\n<Layout>\n</Layout>\n', "an empty dump prunes to an empty layout")
+
+-- import(): one capture from a screenshot and a full dump. The screenshot's
+-- opaque window has a transparent margin; the dump is stored pruned.
 local shot = N.canvas(30, 20)
 shot:clear(0, 0, 0, 0)
 shot:fillRect(5, 4, 16, 10, 0.2, 0.4, 0.6, 1)
 shot:snapshot():write(dir .. "/shot.png")
-Reel.importCapture(dir .. "/shot.png", dir .. "/imported.jpg", "dark", { 16, 10 })
-local imported = N.image(dir .. "/imported.jpg")
+write(dir .. "/shot.layout.xml", fullDump)
+Reel.importCapture(dir .. "/shot.png", dir .. "/shot.layout.xml", dir .. "/imported-dark", "dark", { 16, 10 })
+local imported = N.image(dir .. "/imported-dark.jpg")
 local iw, ih = imported:pixelSize()
 t.expect(iw == 16 and ih == 10, "import keeps only the opaque window")
-t.assertThrows(function() Reel.importCapture(dir .. "/shot.png", dir .. "/bad.jpg", "dark", { 32, 20 }) end,
-	"import rejects a window of the wrong size")
+local importedLayout = io.open(dir .. "/imported-dark.layout.xml"):read("a")
+t.assertEqual(importedLayout, pruned, "import stores the pruned layout next to the image")
+local full = captures:get("full-dark")
+write(dir .. "/full-dark.layout.xml", fullDump)
+local importedCapture = captures:get("imported-dark")
+t.assertEqual(#importedCapture:rows("list"), #full:rows("list"), "a pruned layout reads the same rows as the full dump")
+t.assertEqual(select(2, importedCapture:rect("#rowLabel")), select(2, full:rect("#rowLabel")),
+	"a pruned layout reads the same view frames as the full dump")
+t.assertEqual(importedCapture:cells("map")[1].label, 'Docs & "Data"', "cell labels survive escaping")
+t.assertEqual(importedCapture:rect("#map/a&b"), 12, "cells are found by their unescaped id")
+t.assertThrows(function()
+	Reel.importCapture(dir .. "/shot.png", dir .. "/shot.layout.xml", dir .. "/bad-dark", "dark", { 32, 20 })
+end, "import rejects a window of the wrong size")
+t.assertThrows(function()
+	Reel.importCapture(dir .. "/shot.png", dir .. "/missing.layout.xml", dir .. "/bad-dark", "dark", { 16, 10 })
+end, "import needs the layout dump")
 
 -- ── Scene graph ──────────────────────────────────────────────────────────
 

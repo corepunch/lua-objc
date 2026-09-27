@@ -2,7 +2,8 @@
 # Captures the Diskmap pages the reel uses from the showcase disk
 # (`--showcase`: the synthetic Mock HDD with presentable names). For each
 # page and appearance it stores a window-only JPEG and the layout dump of the
-# same window, which the reel uses to cut pieces by view identifier.
+# same window, pruned to the identified views, table rows and treemap cells
+# the reel cuts pieces by.
 #
 #   reels/diskmap/capture.sh                 # every page, light and dark
 #   reels/diskmap/capture.sh map-dark treemap-dark
@@ -20,9 +21,10 @@ capture() { # name appearance lua-objc-arguments…
 	shift 2
 	./lua-objc --screenshot="$tmp/$name-$appearance.png" --appearance="$appearance" --width=1440 --height=900 \
 		apps/diskmap/init.lua --showcase "$@" >/dev/null
-	./lua-objc --dump-layout="$out/$name-$appearance.layout.xml" --appearance="$appearance" --width=1440 --height=900 \
+	./lua-objc --dump-layout="$tmp/$name-$appearance.layout.xml" --appearance="$appearance" --width=1440 --height=900 \
 		apps/diskmap/init.lua --showcase "$@" >/dev/null
-	./lua-objc modules/reel/tools/import.lua "$tmp/$name-$appearance.png" "$out/$name-$appearance.jpg" "$appearance" 2880 1800
+	./lua-objc modules/reel/tools/import.lua "$tmp/$name-$appearance.png" "$tmp/$name-$appearance.layout.xml" \
+		"$out/$name-$appearance" "$appearance" 2880 1800
 	echo "captures/$name-$appearance"
 }
 

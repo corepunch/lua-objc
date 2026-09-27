@@ -1,7 +1,8 @@
 -- Window captures and the layout they were taken from.
 --
 -- Each capture is `<name>.jpg`, a window-only screenshot at `scale` pixels
--- per point, and `<name>.layout.xml`, the `--dump-layout` of the same window.
+-- per point, and `<name>.layout.xml`, the `--dump-layout` of the same window
+-- pruned to what a reel reads (see `Captures.pruneLayout`).
 -- Pieces are cut by view identifier ("#treemap") or treemap cell
 -- ("#treemap/developer") instead of hand-measured rectangles, so a layout
 -- change in the app only needs fresh captures.
@@ -72,6 +73,68 @@ local function readLayout(path)
 	end
 	walk(xml.parse(source), nil)
 	return views, cells, rows
+end
+
+local function escape(value)
+	return (tostring(value):gsub("&", "&amp;"):gsub('"', "&quot;"):gsub("<", "&lt;")
+		:gsub(">", "&gt;"):gsub("\n", "&#10;"))
+end
+
+-- Only these attributes are read back, in this order.
+local keptAttributes = {
+	View = { "class", "identifier", "window" },
+	TreemapCell = { "id", "depth", "window", "label" },
+}
+
+-- pruneLayout(source) -> a `--dump-layout` reduced to what readLayout uses:
+-- identified views, and the table rows and treemap cells owned by the
+-- nearest identified view. A full window dump is mostly anonymous AppKit
+-- wrappers; dropping them (their children move up to the nearest kept view)
+-- keeps ownership and document order, so both read the same.
+function Captures.pruneLayout(source)
+	local function prune(nodes, owner, kept)
+		for _, node in ipairs(nodes) do
+			if node.kind == "element" then
+				local attrs = node.attrs
+				if node.tag == "View" then
+					local id = attrs.identifier
+					if id or (owner and attrs.class == "NSTableRowView") then
+						local view = { tag = "View", attrs = attrs, children = {} }
+						table.insert(kept, view)
+						prune(node.children, id or owner, view.children)
+					else
+						prune(node.children, owner, kept)
+					end
+				elseif node.tag == "TreemapCell" then
+					if owner then table.insert(kept, { tag = "TreemapCell", attrs = attrs, children = {} }) end
+				else
+					prune(node.children, owner, kept)
+				end
+			end
+		end
+		return kept
+	end
+	local lines = { '<?xml version="1.0" encoding="UTF-8"?>', "<Layout>" }
+	local function write(nodes, depth)
+		for _, node in ipairs(nodes) do
+			local parts = { string.rep("  ", depth) .. "<" .. node.tag }
+			for _, name in ipairs(keptAttributes[node.tag]) do
+				local value = node.attrs[name]
+				if value then table.insert(parts, name .. '="' .. escape(value) .. '"') end
+			end
+			local open = table.concat(parts, " ")
+			if #node.children == 0 then
+				table.insert(lines, open .. " />")
+			else
+				table.insert(lines, open .. ">")
+				write(node.children, depth + 1)
+				table.insert(lines, string.rep("  ", depth) .. "</" .. node.tag .. ">")
+			end
+		end
+	end
+	write(prune(xml.parse(source), nil, {}), 1)
+	table.insert(lines, "</Layout>")
+	return table.concat(lines, "\n") .. "\n"
 end
 
 function Capture:image()
@@ -184,18 +247,27 @@ function Capture:piece(spec, options)
 	return sprite
 end
 
--- Turns a `--screenshot` PNG (window plus shadow) into a window-only JPEG:
--- the opaque window rectangle, its rounded corners flattened onto a neutral
--- colour for the appearance (the renderer clips them again).
-function Captures.import(native, input, output, appearance, expected)
-	local image = native.image(input, 1)
+-- import(native, screenshot, dump, output, appearance, expected) stores one
+-- capture as `<output>.jpg` and `<output>.layout.xml`. The `--screenshot` PNG
+-- (window plus shadow) becomes a window-only JPEG: the opaque window
+-- rectangle, its rounded corners flattened onto a neutral colour for the
+-- appearance (the renderer clips them again). The `--dump-layout` is pruned.
+function Captures.import(native, screenshot, dump, output, appearance, expected)
+	local image = native.image(screenshot, 1)
 	local x, y, w, h = image:opaqueBounds(250 / 255)
-	if not x then error("reel: " .. input .. " has no opaque window", 0) end
+	if not x then error("reel: " .. screenshot .. " has no opaque window", 0) end
 	if expected and (w ~= expected[1] or h ~= expected[2]) then
-		error(string.format("reel: %s: expected a %dx%d px window, found %dx%d", input, expected[1], expected[2], w, h), 0)
+		error(string.format("reel: %s: expected a %dx%d px window, found %dx%d", screenshot, expected[1], expected[2], w, h), 0)
 	end
+	local file = io.open(dump, "r")
+	if not file then error("reel: no layout dump " .. dump, 0) end
+	local layout = Captures.pruneLayout(file:read("a"))
+	file:close()
 	local neutral = appearance == "dark" and 0.12 or 0.93
-	image:cropPixels(x, y, w, h):flattened(neutral, neutral, neutral, 1):write(output, 0.82)
+	image:cropPixels(x, y, w, h):flattened(neutral, neutral, neutral, 1):write(output .. ".jpg", 0.82)
+	file = assert(io.open(output .. ".layout.xml", "w"))
+	file:write(layout)
+	file:close()
 end
 
 return Captures
