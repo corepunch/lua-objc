@@ -809,6 +809,7 @@ local TAG_SCHEMA = {
             hyphenation = "bool", selectable = "bool", accessibilityLabel = "str",
             dropCap = "bool", dropCapLines = "num", dropCapFontName = "str",
             dropCapDesign = "str", dropCapWeight = "str", dropCapColor = "str",
+            revealedCharacters = "num",
         },
     },
     Title = {
@@ -2034,7 +2035,8 @@ local INNER = {
 }
 local TAG_INNER = {
     Label = { text = TEXT, value = TEXT },
-    Paragraph = { text = TEXT, value = TEXT },
+    Paragraph = { text = TEXT, value = TEXT,
+        revealedCharacters = setter("revealedCharacters", number(-1)) },
     TextField = { text = TEXT, value = TEXT },
     Button = { title = setter("title", function(v) return v or "" end), label = setter("title", function(v) return v or "" end) },
     ProgressView = { value = function(view, v)

@@ -37,6 +37,11 @@
 @property(nonatomic) NSInteger dropCapLines;
 @property(nonatomic, strong) NSFont *dropCapFont;
 @property(nonatomic, strong) NSColor *dropCapColor;
+/* Characters shown so far, counted as Lua's utf8.len counts them; -1 shows
+ * the whole paragraph. See `paragraph_revealed_length`. */
+@property(nonatomic) NSInteger revealedCharacters;
+/* The revealed height last reported to layout. */
+@property(nonatomic) CGFloat revealedBottom;
 @property(nonatomic, strong) LuaDropCapView *initialView;
 /* The initial's ink in paragraph coordinates; lines wrap around it. */
 @property(nonatomic) NSRect initialInk;
@@ -69,6 +74,7 @@
 	_textAlignment = NSTextAlignmentNatural;
 	_dropCapLines = kParagraphDropCapLines;
 	_dropCapColor = NSColor.controlAccentColor;
+	_revealedCharacters = -1;
 	_initialView = [[LuaDropCapView alloc] initWithFrame:NSZeroRect];
 	_initialView.hidden = YES;
 	[_initialView setAccessibilityElement:NO];
@@ -87,6 +93,27 @@
 - (void)setDropCapLines:(NSInteger)value { _dropCapLines = MAX(2, value); [self rebuild]; }
 - (void)setDropCapFont:(NSFont *)font { _dropCapFont = font; [self rebuild]; }
 - (void)setDropCapColor:(NSColor *)color { _dropCapColor = color ?: NSColor.controlAccentColor; [self rebuild]; }
+
+/* A typewriter reveal. The whole paragraph is always laid out, so words never
+ * jump between lines as they appear — the approach of SwiftUI typewriter
+ * effects built on TextRenderer. Unrevealed characters are drawn clear, and
+ * the paragraph measures only the lines revealed so far, so a scroll view
+ * anchored to its bottom follows the text line by line. Recolouring does not
+ * re-lay out the text; layout is invalidated only when a new line starts. */
+- (void)setRevealedCharacters:(NSInteger)value {
+	value = MAX(-1, value);
+	if (value == _revealedCharacters) return;
+	_revealedCharacters = value;
+	[self applyReveal];
+	/* A paragraph being built is measured when it is first laid out. */
+	if (!self.superview) return;
+	CGFloat bottom = [self revealedBottomInManager:self.layoutManager container:self.textContainer];
+	if (bottom != _revealedBottom) {
+		_revealedBottom = bottom;
+		[self invalidateIntrinsicContentSize];
+		invalidate_layout(self);
+	}
+}
 /* Lua writes `font` and `textColor` as it does for labels. */
 - (NSFont *)font { return _bodyFont; }
 - (void)setFont:(NSFont *)font { if (font && _initialView) self.bodyFont = font; else [super setFont:font]; }
@@ -100,6 +127,59 @@
 	NSString *letter = [_text substringWithRange:[_text rangeOfComposedCharacterSequenceAtIndex:0]];
 	if (![NSCharacterSet.letterCharacterSet characterIsMember:[letter characterAtIndex:0]]) return nil;
 	return letter;
+}
+
+/* The UTF-16 length of the revealed prefix of `text`, never splitting a
+ * composed character or surrogate pair. */
+static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
+	if (scalars < 0) return text.length;
+	NSUInteger offset = 0;
+	for (; scalars > 0 && offset < text.length; scalars--)
+		offset += CFStringIsSurrogateHighCharacter([text characterAtIndex:offset]) && offset + 1 < text.length ? 2 : 1;
+	if (offset > 0 && offset < text.length)
+		offset = NSMaxRange([text rangeOfComposedCharacterSequenceAtIndex:offset - 1]);
+	return offset;
+}
+
+/* Revealed characters of the body, which excludes a dropped initial. */
+- (NSUInteger)revealedBodyLength {
+	NSUInteger revealed = paragraph_revealed_length(_text, _revealedCharacters);
+	NSUInteger initial = [self initialLetter].length;
+	return revealed > initial ? revealed - initial : 0;
+}
+
+- (void)applyReveal {
+	NSTextStorage *storage = self.textStorage;
+	NSUInteger shown = MIN([self revealedBodyLength], storage.length);
+	[storage beginEditing];
+	[storage addAttribute:NSForegroundColorAttributeName value:_bodyColor range:NSMakeRange(0, shown)];
+	[storage addAttribute:NSForegroundColorAttributeName value:NSColor.clearColor
+		range:NSMakeRange(shown, storage.length - shown)];
+	[storage endEditing];
+	_initialView.hidden = !([self initialLetter] && _revealedCharacters != 0);
+	self.needsDisplay = YES;
+}
+
+/* The bottom of the last revealed line; the whole text's height once the
+ * reveal reaches the last line, so a finished reveal measures as unrevealed
+ * text does. A revealed initial still reserves its lines. */
+- (CGFloat)revealedBottomInManager:(NSLayoutManager *)manager container:(NSTextContainer *)container {
+	if (_revealedCharacters == 0 || _text.length == 0) return 0;
+	[manager ensureLayoutForTextContainer:container];
+	CGFloat bottom = NSMaxY([manager usedRectForTextContainer:container]);
+	NSUInteger body = [self revealedBodyLength];
+	if (_revealedCharacters > 0 && body < manager.textStorage.length) {
+		if (body == 0) bottom = 0;
+		else {
+			NSRange line;
+			NSRect used = [manager lineFragmentUsedRectForGlyphAtIndex:
+				[manager glyphIndexForCharacterAtIndex:body - 1] effectiveRange:&line];
+			if (NSMaxRange(line) < manager.numberOfGlyphs) bottom = NSMaxY(used);
+		}
+	}
+	if ([self initialLetter]) bottom = MAX(bottom, MAX(MAX(2, _dropCapLines) * ([self bodyLineHeight] + _lineSpacing) - _lineSpacing,
+		NSMaxY(_initialInk)));
+	return bottom;
 }
 
 - (CGFloat)bodyLineHeight {
@@ -198,6 +278,7 @@ static NSRect paragraph_ink_bounds(NSFont *font, NSString *letter) {
 		_initialInk = NSZeroRect;
 		self.textContainer.exclusionPaths = @[];
 	}
+	[self applyReveal];
 	[self setAccessibilityValue:_text];
 	[self invalidateIntrinsicContentSize];
 	self.needsDisplay = YES;
@@ -220,9 +301,7 @@ static NSRect paragraph_ink_bounds(NSFont *font, NSString *letter) {
 	[manager ensureLayoutForTextContainer:container];
 	NSRect used = [manager usedRectForTextContainer:container];
 	/* A short paragraph still reserves the lines and ink of its initial. */
-	CGFloat height = NSMaxY(used);
-	if (letter) height = MAX(height, MAX(MAX(2, _dropCapLines) * ([self bodyLineHeight] + _lineSpacing) - _lineSpacing,
-		NSMaxY(_initialInk)));
+	CGFloat height = [self revealedBottomInManager:manager container:container];
 	CGFloat scale = self.window.backingScaleFactor ?: NSScreen.mainScreen.backingScaleFactor ?: 1;
 	return NSMakeSize(ceil((unbounded ? NSMaxX(used) : width) * scale) / scale, ceil(height * scale) / scale);
 }

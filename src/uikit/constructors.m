@@ -13,6 +13,8 @@ static int bridge_UIKit_hapticImpact(lua_State *L) {
 	const char *style = luaL_optstring(L, 1, "medium");
 	UIImpactFeedbackStyle value = UIImpactFeedbackStyleMedium;
 	if (strcmp(style, "light") == 0) value = UIImpactFeedbackStyleLight;
+	else if (strcmp(style, "soft") == 0) value = UIImpactFeedbackStyleSoft;
+	else if (strcmp(style, "rigid") == 0) value = UIImpactFeedbackStyleRigid;
 	else if (strcmp(style, "heavy") == 0) value = UIImpactFeedbackStyleHeavy;
 	UIImpactFeedbackGenerator *generator = [[UIImpactFeedbackGenerator alloc] initWithStyle:value];
 	[generator prepare]; [generator impactOccurred];

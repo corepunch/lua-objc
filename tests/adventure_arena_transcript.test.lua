@@ -25,6 +25,12 @@ end
 
 local model = Session.new { engineFactory = function() return engine() end }
 local rendered = {}
+-- Typing advances on timers; tests run them to the end of the story.
+local timers = {}
+local function after(_, callback) table.insert(timers, callback) end
+local function finishTimers()
+	while #timers > 0 do table.remove(timers, 1)() end
+end
 local controller = SessionController.new {
 	model = model,
 	findGame = function() return { id = "zork", title = "Zork", description = "A story." } end,
@@ -40,8 +46,13 @@ local controller = SessionController.new {
 	mountTemplate = mountTemplate,
 	presentSheet = function() end,
 	dismissSheet = function() end,
+	after = after,
+	reduceMotion = function() return false end,
 }
 t.expect(controller:show("zork"), "new session opens")
+t.expect(controller:isTyping(), "a new story types its opening")
+finishTimers()
+t.expect(not controller:isTyping(), "the opening finishes typing")
 local scroll = rendered.refs.transcriptScroll
 scroll.frameSize = ns.Size(320, 120)
 scroll:layout(320)
@@ -88,8 +99,12 @@ local loaded = SessionController.new {
 	mountTemplate = mountTemplate,
 	presentSheet = function() end,
 	dismissSheet = function() end,
+	savedGames = { find = function() return { seed = 1, commands = {} } end, record = function() end },
+	after = after,
+	reduceMotion = function() return false end,
 }
 t.expect(loaded:show("zork"), "loading a session opens the transcript")
+t.expect(not loaded:isTyping(), "a resumed story opens already set, without typing")
 scroll = rendered.refs.transcriptScroll
 scroll.frameSize = ns.Size(320, 120)
 scroll:layout(320)
