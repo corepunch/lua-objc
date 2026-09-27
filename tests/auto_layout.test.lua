@@ -36,6 +36,15 @@ bridge._timerAfter(0.02, function() fired = true end)
 for _ = 1, 20 do if fired then break end bridge._runLoopTick(0.01) end
 t.assertEqual(bridge._pendingLayoutCount(), 0, "the run loop flushes pending layout before sleeping")
 
+-- AppKit's update cycle can draw a frame before the run loop idles, so its
+-- own layout pass must apply pending layout: a page mounted in that window
+-- would otherwise be drawn with its views unplaced.
+refs.left.text = "A longer leading label again"
+t.expect(refs.row.needsLayout, "a write marks the enclosing stack for AppKit layout")
+bridge._appkitLayout(window)
+t.assertEqual(bridge._pendingLayoutCount(), 0, "AppKit's layout pass applies pending layout")
+refs.left.text = "A"
+
 local belowY = refs.below.frame.origin.y
 refs.banner.hidden = true
 t.expect(refs.below.frame.origin.y ~= belowY, "hiding a view closes its gap")

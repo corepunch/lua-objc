@@ -44,6 +44,10 @@ read frames immediately after the body without waiting for the animation.
   true }, body)` is the explicit form.
 - Outside any transaction, writes apply immediately and inserted views appear
   without a transition.
+- A transaction first lays out anything still pending from writes made
+  outside it, so views mounted just before it (a page opened without
+  animation) start from their laid-out frames, not from the zero frame they
+  had before their first layout pass.
 
 ### Animation values
 
@@ -157,8 +161,9 @@ screen, so a render error keeps the old view.
 
 Inserting, moving or removing a view (`_motionInsert`, `_motionRemove`)
 schedules layout exactly like a layout-affecting property write. AppKit lays
-out dirty owners once per run-loop turn, before the loop sleeps and Core
-Animation commits; UIKit marks the owner `setNeedsLayout`. A view added by an
+out dirty owners in its own layout pass, which its update cycle runs before
+drawing each frame (the nearest stack is marked `needsLayout`), and again
+before the run loop sleeps; UIKit marks the owner `setNeedsLayout`. A view added by an
 update is therefore placed before it is first drawn, and never appears at its
 container's origin. A Lua geometry read (`frame`, `size`, `fittingSize`, …)
 flushes pending layout first. Apps never call `layout()`.

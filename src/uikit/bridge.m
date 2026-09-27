@@ -156,6 +156,15 @@ static void motion_flush_layout(NSArray<UIView *> *owners) {
 	}
 }
 
+/* UIKit marks invalid ancestors up to the window, which lays them out in
+ * its next pass; laying out every window applies them now. */
+static void motion_settle_layout(void) {
+	for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+		if (![scene isKindOfClass:UIWindowScene.class]) continue;
+		for (UIWindow *window in ((UIWindowScene *)scene).windows) [window layoutIfNeeded];
+	}
+}
+
 static void motion_invalidate_layout(UIView *view) {
 	if (view) uikit_invalidate_layout(view);
 }

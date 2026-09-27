@@ -1127,10 +1127,23 @@ static void layout_recursive_impl(NSView *view, CGFloat width) {
 	}
 }
 
+/* Nesting depth of the flex engine. AppKit may run its own layout pass
+ * while the engine measures or places native views; that pass must not
+ * start another engine pass against half-placed frames. */
+static int layoutDepth;
+
 static void layout_recursive(NSView *view, CGFloat width) {
 	LUA_OBJC_PERF_BEGIN("appkit.layout", signpost);
+	layoutDepth++;
 	layout_recursive_impl(view, width);
+	layoutDepth--;
 	LUA_OBJC_PERF_END("appkit.layout", signpost);
+}
+
+/* AppKit's layout pass, run before each frame is drawn, applies layout
+ * pending from Lua writes (see “Automatic invalidation”). */
+static void layout_from_appkit(void) {
+	if (layoutDepth == 0) flush_pending_layout();
 }
 
 static NSView *view_with_identifier(NSView *view, NSString *identifier) {
@@ -1228,10 +1241,17 @@ static void relayout_view(NSView *view, CGFloat width) {
 #pragma mark - Automatic invalidation
 
 /* SwiftUI never asks an app to lay out. A Lua write that changes a view's
- * measured size marks it dirty; one pass per run-loop turn, just before the
- * loop sleeps (where Core Animation commits), relayouts each dirty view's
- * owner. Lua geometry reads flush first, so code and tests observe the
- * layout their writes imply without calling layout(). */
+ * measured size marks it dirty, and one pass relayouts each dirty view's
+ * owner before the next frame is drawn. Lua geometry reads flush first, so
+ * code and tests observe the layout their writes imply without calling
+ * layout().
+ *
+ * The pass runs inside AppKit's own layout: invalidation marks the nearest
+ * stack as needing layout, and -[LuaStackView layout] flushes. macOS 26
+ * drives layout, display and commit from its update cycle, which can draw a
+ * frame between the write and the run loop going idle; a page mounted then
+ * showed its views unplaced, stacked at their origins, until the next frame.
+ * The run-loop observer remains for dirty views outside any stack. */
 static NSHashTable<NSView *> *pendingLayout;
 static BOOL flushingLayout;
 
@@ -1265,6 +1285,13 @@ static void invalidate_layout(NSView *view) {
 		CFRelease(observer);
 	}
 	[pendingLayout addObject:view];
+	static Class stackClass;
+	if (!stackClass) stackClass = NSClassFromString(@"LuaStackView");
+	for (NSView *ancestor = view; ancestor; ancestor = ancestor.superview) {
+		if (![ancestor isKindOfClass:stackClass]) continue;
+		ancestor.needsLayout = YES;
+		break;
+	}
 }
 
 static int bridge_flush_layout(lua_State *L) {
@@ -1277,6 +1304,14 @@ static int bridge_flush_layout(lua_State *L) {
 static int bridge_pending_layout_count(lua_State *L) {
 	lua_pushinteger(L, (lua_Integer)pendingLayout.count);
 	return 1;
+}
+
+// Test hook: runs AppKit's own layout pass over a window, as its update
+// cycle does before drawing a frame.
+static int bridge_appkit_layout(lua_State *L) {
+	NSWindow *window = check_objc(L, 1);
+	[window layoutIfNeeded];
+	return 0;
 }
 
 // A layout pass satisfies every pending invalidation inside its root.

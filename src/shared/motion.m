@@ -334,6 +334,9 @@ static LuaMotionTransaction *motion_current(void) {
 
 static MotionView *motion_layout_owner(MotionView *view);
 static void motion_flush_layout(NSArray<MotionView *> *owners);
+/* Lays out everything still pending from writes made outside a transaction,
+ * so a transaction's snapshot starts from the committed layout. */
+static void motion_settle_layout(void);
 /* Structural changes move siblings like any layout-affecting write: the
  * container is laid out in the next pass, before the frame is drawn. */
 static void motion_invalidate_layout(MotionView *view);
@@ -881,6 +884,12 @@ static int bridge_motion_transaction(lua_State *L) {
 	txn.spec = spec;
 	txn.disabled = disabled;
 	if (!motionStack) motionStack = [NSMutableArray array];
+	// Writes made before the transaction are not part of it: a page mounted
+	// outside any transaction has its views in the hierarchy but not laid
+	// out yet. Snapshotting those unlaid frames would animate the page in
+	// from its zero-sized origin, so settle pending layout first, as SwiftUI
+	// commits an unanimated update before the next transaction's body runs.
+	if (motionStack.count == 0) motion_settle_layout();
 	[motionStack addObject:txn];
 	[CATransaction begin];
 	[CATransaction setDisableActions:YES];

@@ -447,6 +447,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_runLoopTick", bridge_runloop_tick},
 	{"_flushLayout", bridge_flush_layout},
 	{"_pendingLayoutCount", bridge_pending_layout_count},
+	{"_appkitLayout", bridge_appkit_layout},
 	{"_addContextMenu", bridge_AppKit_add_context_menu},
 	{"_addClick", bridge_AppKit_add_click},
 	{"_revealInFinder", bridge_AppKit_reveal_in_finder},
