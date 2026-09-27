@@ -273,3 +273,18 @@ list-devices:
 .PHONY: diskmap-app
 diskmap-app: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	python3 scripts/diskmap/bundle.py
+
+# Diskmap showreel: a 30 s motion piece built from real Diskmap captures.
+# `make diskmap-reel` renders build/Diskmap-Showreel.mov from the committed
+# captures; `make diskmap-reel-captures` refreshes them after a UI change.
+REEL_SOURCES := $(wildcard scripts/diskmap/reel/*.swift)
+build/diskmap-reel: $(REEL_SOURCES)
+	@mkdir -p build
+	swiftc -O $(REEL_SOURCES) -o $@
+
+.PHONY: diskmap-reel diskmap-reel-captures
+diskmap-reel: build/diskmap-reel
+	build/diskmap-reel render scripts/diskmap/reel/captures build/Diskmap-Showreel.mov
+
+diskmap-reel-captures: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS) build/diskmap-reel
+	scripts/diskmap/reel/capture.sh

@@ -158,6 +158,13 @@ saved snapshot before simulated deletes or Trash operations.
 `--mock` uses `~/Library/Application Support/Diskmap/mock-hdd.bin` when that
 one-time export exists, and otherwise the bundled synthetic `mock-hdd.bin`.
 
+`--showcase` is the bundled synthetic disk with presentable names, for
+screenshots and promotional captures: the volume is “Macintosh HD”, the home
+folder is `/Users/appleseed`, demo apps and projects have ordinary names, and
+the window title carries no Mock HDD marker. It never reads a personal export.
+`--map-style=rectangles` opens the Map as a treemap. The showreel in
+[scripts/diskmap/reel](../../scripts/diskmap/reel/README.md) is captured this way.
+
 ### Changes since the snapshot
 
 The saved export is also the previous state of this Mac. After a live scan,

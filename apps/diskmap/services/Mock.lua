@@ -151,14 +151,54 @@ local function json(value)
 	return "{" .. table.concat(result, ",") .. "}"
 end
 
+-- Showcase mode is the synthetic disk with presentable names, for screenshots
+-- and promotional captures: same data, no "Mock" placeholders, a neutral home
+-- folder, and never the personal snapshot a `--mock` run may prefer.
+local SHOWCASE = {
+	label = "Macintosh HD",
+	home = "/Users/appleseed",
+	-- Plain substrings, in order: specific names first, then the generic
+	-- placeholder prefixes.
+	names = {{"Mock HDD", "Macintosh HD"}, {"Mock Video Studio", "Reel Studio"}, {"Mock Notes", "Notes Plus"},
+		{"Mock Game", "Chess Arena"}, {"MockProject", "Lumen"}, {"MockApp", "Lumen"}, {"Mock App", "Lumen"},
+		{"Mock Photos", "Photos Library"}, {"Previous Mock Project", "Old Prototype"}, {"Mock ", ""},
+		{"com.mock.", "com.acme."}, {"models--mock--", "models--acme--"}, {"mock-db", "data.db"}, {"mock-", ""}},
+}
+
+local function replacePlain(text, find, replacement)
+	local parts, start = {}, 1
+	while true do
+		local first, last = text:find(find, start, true)
+		if not first then break end
+		table.insert(parts, text:sub(start, first - 1))
+		table.insert(parts, replacement)
+		start = last + 1
+	end
+	if start == 1 then return text end
+	table.insert(parts, text:sub(start))
+	return table.concat(parts)
+end
+
+local function showcased(value)
+	if type(value) == "string" then
+		for _, pair in ipairs(SHOWCASE.names) do value = replacePlain(value, pair[1], pair[2]) end
+		return value
+	end
+	if type(value) ~= "table" then return value end
+	local renamed = {}
+	for key, child in pairs(value) do renamed[showcased(key)] = showcased(child) end
+	return renamed
+end
+
 function Mock.new(options)
 	options = options or {}
-	local home = options.home or os.getenv("HOME") or "/Users"
+	local home = options.home or (options.showcase and SHOWCASE.home) or os.getenv("HOME") or "/Users"
 	-- `yield` lets a caller running in a coroutine keep the window drawing
 	-- while a large snapshot decodes; it runs every `yieldEvery` records.
 	local yield, every = options.yield, options.yieldEvery or 25000
 	local function pause(index) if yield and index % every == 0 then yield() end end
 	local fixture = loadFixture(options.fixturePath, pause)
+	if options.showcase then fixture = showcased(fixture) end
 	local items = fixture.items
 	for index, item in ipairs(fixture.items) do
 		pause(index)
@@ -195,7 +235,10 @@ function Mock.new(options)
 	for _, entry in ipairs(agents) do entry.path = absolute(entry.path, home) end
 	local service = setmetatable({
 		mock = true,
-		label = "Mock HDD",
+		label = options.showcase and SHOWCASE.label or "Mock HDD",
+		-- Marks the window title and status so a virtual disk is never mistaken
+		-- for this Mac; showcase captures leave it out.
+		badge = not options.showcase and "Mock HDD" or nil,
 		home = home,
 		fixture = fixture,
 		items = items,
