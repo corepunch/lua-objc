@@ -1,5 +1,12 @@
 <%
-  local FOLDER = { chart = 360, hole = 0.3, gap = 5, depth = 14, list = 300, treemapHeight = 420, legendSize = 84, legendShare = 34 }
+  local FOLDER = { chart = 360, minimumHole = 0.3, ring = 0.7 / 3, centerText = { {28, 13}, {22, 11}, {17, 10} }, gap = 5, depth = 14, list = 300, treemapHeight = 420, legendSize = 84, legendShare = 34 }
+  -- Every ring keeps the thickness it has among three, so one ring of
+  -- files is a slim ring like the Overview donut, not a thick disc.
+  local rings = 1
+  for _, node in ipairs(nodes) do rings = math.max(rings, node.ring or 1) end
+  local hole = math.max(FOLDER.minimumHole, 1 - rings * FOLDER.ring)
+  -- The total grows with the hole it sits in (total, caption).
+  local center = FOLDER.centerText[math.min(rings, #FOLDER.centerText)]
   -- The Map page's ring fades: raised rings are told apart by their gaps and
   -- shading, and smaller items keep their folder's hue, faded further.
   local ringOpacity = { 1, 0.84, 0.68 }
@@ -8,7 +15,7 @@
 <VStack id="page" transition="opacity" flexGrow="1" maxWidth="infinity" maxHeight="infinity" spacing="16" padding="24" alignment="leading">
   <%- partial("PageHeader.etlua", {icon = "folder.fill", color = "systemBlue", title = title, summary = summary, summaryId = "folderSummary", buttons = buttons}) %>
   <% if state == "empty" then %>
-  <ContentUnavailable id="folderEmpty" title="Drop a Folder Here" systemImage="folder.badge.plus" description="Drag a folder or a disk from the Finder onto this window or onto Diskmap in the Dock, or choose File › Open Folder…, to see everything in it by size." maxWidth="infinity" flexGrow="1" />
+  <ContentUnavailable id="folderEmpty" title="Drop a Folder Here" systemImage="folder.badge.plus" description="Drag a folder or a disk from the Finder onto this window or onto Diskmap in the Dock, or choose File › Open Folder…, to see everything in it by size." />
   <% elseif state == "scanning" then %>
   <VStack id="folderScanning" flexGrow="1" maxWidth="infinity" maxHeight="infinity" spacing="10" alignment="center">
     <Spacer />
@@ -17,7 +24,7 @@
     <Spacer />
   </VStack>
   <% elseif state == "failed" then %>
-  <ContentUnavailable id="folderFailed" title="Could Not Measure This Folder" systemImage="exclamationmark.triangle" description="<%= failure %>" maxWidth="infinity" flexGrow="1" />
+  <ContentUnavailable id="folderFailed" title="Could Not Measure This Folder" systemImage="exclamationmark.triangle" description="<%= failure %>" />
   <% else %>
   <HStack id="folderBar" maxWidth="infinity" spacing="6" alignment="center">
     <% for index, step in ipairs(trail) do %>
@@ -49,7 +56,7 @@
     </GroupBox>
     <VStack flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity" spacing="12" alignment="center">
       <% if #nodes == 0 then %>
-      <ContentUnavailable id="folderNothing" title="Nothing Here Takes Space" systemImage="folder" description="This folder is empty, or everything in it is smaller than the map can show." maxWidth="infinity" flexGrow="1" />
+      <ContentUnavailable id="folderNothing" title="Nothing Here Takes Space" systemImage="folder" description="This folder is empty, or everything in it is smaller than the map can show." />
       <% elseif style == "rectangles" then %>
       <Treemap id="folderTreemap" transition="opacity" maxWidth="infinity" height="<%= FOLDER.treemapHeight %>" onSelect="chartSelect" onHover="chartHover" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
         <% for _, node in ipairs(nodes) do %>
@@ -57,13 +64,13 @@
         <% end %>
       </Treemap>
       <% else %>
-      <SectorChart id="folderSunburst" transition="opacity" width="<%= FOLDER.chart %>" height="<%= FOLDER.chart %>" innerRadius="<%= FOLDER.hole %>" angularInset="<%= FOLDER.gap %>" depth="<%= FOLDER.depth %>" shadow="false" onSelect="chartSelect" onHover="chartHover" onCenter="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
+      <SectorChart id="folderSunburst" transition="opacity" width="<%= FOLDER.chart %>" height="<%= FOLDER.chart %>" innerRadius="<%= hole %>" angularInset="<%= FOLDER.gap %>" depth="<%= FOLDER.depth %>" shadow="false" onSelect="chartSelect" onHover="chartHover" onCenter="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
         <% for _, node in ipairs(nodes) do %>
         <SectorMark id="<%= node.id %>" ring="<%= node.ring %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" opacity="<%= (ringOpacity[node.ring] or 0.5) * (node.other and node.parent and otherFade or 1) %>" label="<%= node.label %>" />
         <% end %>
         <VStack spacing="0" alignment="center">
-          <Label text="<%= total %>" size="17" weight="semibold" design="rounded" monospacedDigit="true" />
-          <Label text="<%= #trail > 1 and "Click to go up" or "Measured" %>" size="10" color="secondary" />
+          <Label text="<%= total %>" size="<%= center[1] %>" weight="semibold" design="rounded" monospacedDigit="true" />
+          <Label text="<%= #trail > 1 and "Click to go up" or "Measured" %>" size="<%= center[2] %>" color="secondary" />
         </VStack>
       </SectorChart>
       <% end %>

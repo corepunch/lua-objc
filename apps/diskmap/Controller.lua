@@ -325,7 +325,8 @@ end
 -- and record category totals when history is on.
 function Controller:scanFinished()
 	local access = optional(self.service, "hasFullDiskAccess")
-	self.fullDiskAccess = access and access() or nil
+	-- false (known missing) differs from nil (the provider cannot tell).
+	if access then self.fullDiskAccess = access() == true else self.fullDiskAccess = nil end
 	local capacity = optional(self.service, "volumeCapacity")
 	self.capacity = capacity and capacity(self.model.home) or nil
 	local snapshots = optional(self.service, "snapshotCount")
@@ -485,7 +486,7 @@ function Controller:createWindow()
 		-- First launch without Full Disk Access explains it before the first
 		-- scan and starts the scan once access is granted or declined.
 		self.onboarding = OnboardingController.new(self.service, function(granted)
-			self.fullDiskAccess = granted or nil
+			self.fullDiskAccess = granted == true
 			self.scan:start()
 		end)
 		if self.onboarding:needed() then self.onboarding:open(self.window) else self.scan:start() end

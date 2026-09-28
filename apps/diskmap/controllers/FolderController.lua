@@ -204,7 +204,7 @@ function Controller:summary()
 	return table.concat(parts, " · ")
 end
 
-function Controller:state()
+function Controller:phase()
 	if self.failure then return "failed" end
 	if self.tree then return "loaded" end
 	if self.loading then return "scanning" end
@@ -212,7 +212,7 @@ function Controller:state()
 end
 
 function Controller:presentation()
-	local state = self:state()
+	local state = self:phase()
 	local data = {state = state, style = self.style, title = self.tree and self.tree.root.name or (self.path and self:displayName(self.path)) or "Folder",
 		summary = self:summary(), progress = self:progressText(), failure = self.failure or "",
 		colorIndex = 0, colorings = FolderTree.colorings, nodes = {}, rows = {}, trail = {}, legend = {}, hover = "",
