@@ -146,6 +146,18 @@ static float noise(float2 p) {
 		mix(hash21(i + float2(0, 1)), hash21(i + float2(1, 1)), u.x), u.y);
 }
 
+// Value noise with its analytic gradient: (value, d/dx, d/dy). One lattice
+// lookup yields both, so surfaces get normals without central differences
+// (Quilez, "value noise derivatives").
+static float3 noised(float2 p) {
+	float2 i = floor(p), f = fract(p);
+	float2 u = f * f * (3.0 - 2.0 * f);
+	float2 du = 6.0 * f * (1.0 - f);
+	float a = hash21(i), b = hash21(i + float2(1, 0)), c = hash21(i + float2(0, 1)), d = hash21(i + float2(1, 1));
+	float k1 = b - a, k2 = c - a, k3 = a - b - c + d;
+	return float3(a + k1 * u.x + k2 * u.y + k3 * u.x * u.y, du * (float2(k1, k2) + k3 * u.yx));
+}
+
 static float fbm(float2 p, int octaves) {
 	float v = 0.0, a = 0.5;
 	for (int o = 0; o < octaves; o++) {

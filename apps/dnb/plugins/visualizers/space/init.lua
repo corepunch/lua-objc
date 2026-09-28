@@ -1,6 +1,6 @@
 -- A solar system in a nebula: the sun and its corona, lit planets on their
 -- orbits (one ringed), comets with dust and ion tails, and an asteroid belt,
--- seen from a camera circling the system.
+-- seen from a camera flying past one planet after another.
 local PLANETS = 5
 local COMETS = 3
 local TAIL_POINTS = 48

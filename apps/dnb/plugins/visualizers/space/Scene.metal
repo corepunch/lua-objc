@@ -1,8 +1,9 @@
 // Solar System — a sun, planets, comets and an asteroid belt in a nebula,
-// seen from a camera slowly circling the system. World units: the sun has
+// seen from a camera flying past one planet after another. World units: the sun has
 // radius SPACE_SUN at the origin, orbits lie near the xz plane, y is up.
-// Bodies are impostors: camera-facing quads whose fragments shade a sphere,
-// so planets stay perfectly round at any size. Distances advance with the
+// Bodies are impostors: camera-facing quads whose fragments intersect the
+// view ray with a sphere, so planets stay round and correctly foreshortened
+// even as the camera passes a few radii away. Distances advance with the
 // travelled distance, so the system turns faster when the music is loud.
 
 constant float SPACE_SUN = 0.55;
@@ -25,17 +26,60 @@ constant float SPACE_COMET_E[3] = {0.82, 0.88, 0.76};
 constant float SPACE_COMET_W[3] = {0.6, 2.9, 4.6};  // orientation of the long axis
 constant float SPACE_COMET_I[3] = {0.35, -0.25, 0.5};
 
-// The camera circles the sun above the orbital plane.
-static Camera spaceCamera(const thread Frame &f) {
-	float a = 0.7 + f.travel * 0.035 + f.t * 0.01;
-	float3 eye = float3(sin(a) * 9.4, 2.9 + 0.4 * sin(f.t * 0.05), cos(a) * 9.4);
-	return lookAt(eye, float3(0.0, -0.25, 0.0), 2.1);
-}
+constant int SPACE_TOUR[8] = {0, 1, 2, 3, 4, 3, 2, 1}; // planets visited, there and back
+constant float SPACE_FLYBY_RATE = 0.11;                // flybys per unit of travel
+constant float SPACE_FLYBY_BLEND = 0.3;                // the share of a flyby spent crossing to the next
 
 static float3 spacePlanetPosition(int i, const thread Frame &f) {
 	float r = SPACE_ORBIT[i];
 	float theta = SPACE_PHASE[i] + f.travel * SPACE_ORBIT_SPEED / (r * sqrt(r));
 	return float3(cos(theta) * r, sin(theta) * r * SPACE_TILT[i], sin(theta) * r);
+}
+
+struct SpaceShot {
+	float3 eye, target;
+	float roll;
+};
+
+// One flyby of the tour's k-th planet at s: −1 approaching, 0 closest,
+// 1 leaving, and beyond along the same line. The camera runs against the
+// planet's orbital motion, a few radii off its sunward or night side in
+// turn, tracks it through closest approach, then turns to face its course,
+// banking towards the planet as it passes.
+static SpaceShot spaceFlyby(int k, float s, const thread Frame &f) {
+	int i = SPACE_TOUR[k % 8];
+	float3 planet = spacePlanetPosition(i, f);
+	float radius = SPACE_SIZE[i];
+	float3 outward = normalize(float3(planet.x, 0.0, planet.z));
+	float3 along = float3(outward.z, 0.0, -outward.x); // against the orbital motion
+	// Sunward and night side in turn; flipped on the way back, so a planet
+	// visited twice is seen from both.
+	float side = ((k % 2 == 0) != (k % 8 >= 4)) ? -1.0 : 1.0;
+	float3 offset = outward * side * (radius * 3.2 + 0.3) + float3(0.0, 0.12 + radius * 0.8, 0.0);
+	float span = 2.6 + radius * 4.0;
+	SpaceShot shot;
+	shot.eye = planet + offset + along * s * span;
+	shot.target = mix(planet, shot.eye + along * 4.0 - offset * 0.5, smoothstep(0.0, 0.85, s));
+	float3 right = cross(float3(0.0, 1.0, 0.0), along);
+	shot.roll = -sign(dot(planet - shot.eye, right)) * 0.2 * exp(-3.0 * s * s);
+	return shot;
+}
+
+// The camera flies the tour: each flyby's departure blends into the next
+// one's approach, so the path stays continuous between planets.
+static Camera spaceCamera(const thread Frame &f) {
+	float phase = f.travel * SPACE_FLYBY_RATE;
+	int k = int(floor(phase));
+	float u = fract(phase);
+	SpaceShot shot = spaceFlyby(k, u * 2.0 - 1.0, f);
+	float w = smoothstep(1.0 - SPACE_FLYBY_BLEND, 1.0, u);
+	if (w > 0.0) {
+		SpaceShot next = spaceFlyby(k + 1, u * 2.0 - 3.0, f);
+		shot.eye = mix(shot.eye, next.eye, w);
+		shot.target = mix(shot.target, next.target, w);
+		shot.roll = mix(shot.roll, next.roll, w);
+	}
+	return lookAt(shot.eye, shot.target, 2.1, shot.roll);
 }
 
 // A comet on an eccentric orbit with the sun at a focus. The true anomaly
@@ -130,31 +174,44 @@ fragment float4 spaceOrbitFragment(SpaceLine in [[stage_in]]) {
 struct SpaceBody {
 	float4 position [[position]];
 	float2 local; // −1…1 across the quad
+	float3 world; // the quad point, for the view ray
 	float3 centre [[flat]];
 	float radius [[flat]];
 	int index [[flat]];
 };
 
+// A quad facing the camera at the body's depth. `grow` widens it to hold
+// the sphere's perspective silhouette, which swells beyond the radius close up.
 static SpaceBody spaceBillboard(uint vid, float3 centre, float radius, const thread Frame &f,
-		const thread Camera &cam) {
+		const thread Camera &cam, bool grow = true) {
 	float2 corners[6] = {float2(-1, -1), float2(1, -1), float2(-1, 1),
 		float2(1, -1), float2(1, 1), float2(-1, 1)};
 	float2 c = corners[vid % 6];
 	float3 v = cameraView(centre, cam);
+	float d = length(centre - cam.eye);
+	float extent = grow ? radius * min(d / sqrt(max(d * d - radius * radius, 1e-4)), 4.0) * 1.15 : radius;
+	float3 q = float3(v.xy + c * extent, v.z);
 	SpaceBody out;
-	out.position = viewClip(float3(v.xy + c * radius, v.z), f, cam);
+	out.position = viewClip(q, f, cam);
 	out.local = c;
+	out.world = cam.eye + q.x * cam.right + q.y * cam.up + q.z * cam.forward;
 	out.centre = centre;
 	out.radius = radius;
 	out.index = 0;
 	return out;
 }
 
-// The sphere's world normal under a quad point, or false outside the disc.
-static bool spaceNormal(float2 local, const thread Camera &cam, thread float3 &normal) {
-	float rr = dot(local, local);
-	if (rr > 1.0) return false;
-	normal = local.x * cam.right + local.y * cam.up - sqrt(1.0 - rr) * cam.forward;
+// The sphere's world normal where the view ray through the quad point
+// meets it, and the cosine between them; false where the ray misses.
+static bool spaceHit(const thread SpaceBody &in, const thread Camera &cam, thread float3 &normal,
+		thread float &mu) {
+	float3 ray = normalize(in.world - cam.eye);
+	float3 oc = cam.eye - in.centre;
+	float b = dot(oc, ray);
+	float h = b * b - (dot(oc, oc) - in.radius * in.radius);
+	if (h < 0.0) return false;
+	normal = (oc + ray * (-b - sqrt(h))) / in.radius;
+	mu = saturate(-dot(normal, ray));
 	return true;
 }
 
@@ -168,9 +225,9 @@ fragment float4 spaceSunFragment(SpaceBody in [[stage_in]], constant ShaderInput
 	Frame f = frameOf(inputs);
 	Camera cam = spaceCamera(f);
 	float3 n;
-	if (!spaceNormal(in.local, cam, n)) discard_fragment();
+	float mu;
+	if (!spaceHit(in, cam, n, mu)) discard_fragment();
 	// Boiling granulation over a limb-darkened disc, white-hot at the centre.
-	float mu = sqrt(max(1.0 - dot(in.local, in.local), 0.0));
 	float grain = fbm3(n * 7.0 + float3(0.0, f.t * 0.08, f.travel * 0.05), 4);
 	float3 hot = float3(1.0, 0.93, 0.78), cool = float3(1.0, 0.45, 0.12);
 	float3 colour = mix(cool, hot, pow(mu, 0.6)) * (0.55 + 0.45 * mu) * (0.8 + 0.5 * grain);
@@ -181,7 +238,7 @@ fragment float4 spaceSunFragment(SpaceBody in [[stage_in]], constant ShaderInput
 vertex SpaceBody spaceCoronaVertex(uint vid [[vertex_id]], constant ShaderInputs &inputs [[buffer(0)]]) {
 	Frame f = frameOf(inputs);
 	Camera cam = spaceCamera(f);
-	return spaceBillboard(vid, float3(0.0), SPACE_SUN * 6.0, f, cam);
+	return spaceBillboard(vid, float3(0.0), SPACE_SUN * 6.0, f, cam, false);
 }
 
 fragment float4 spaceCoronaFragment(SpaceBody in [[stage_in]], constant ShaderInputs &inputs [[buffer(0)]]) {
@@ -248,19 +305,24 @@ fragment float4 spacePlanetFragment(SpaceBody in [[stage_in]], constant ShaderIn
 	Frame f = frameOf(inputs);
 	Camera cam = spaceCamera(f);
 	float3 n;
-	float rr = dot(in.local, in.local);
+	float mu;
 	int i = in.index;
-	if (!spaceNormal(in.local, cam, n)) discard_fragment();
+	if (!spaceHit(in, cam, n, mu)) discard_fragment();
+	float rr = 1.0 - mu * mu; // towards 1 at the limb
 	float3 light = normalize(-in.centre);
 	float spin = f.travel * SPACE_SPIN[i] + SPACE_PHASE[i];
 	float c = cos(spin), s = sin(spin);
 	float3 body = float3(n.x * c - n.z * s, n.y, n.x * s + n.z * c);
 	float lit = saturate(dot(n, light));
-	float3 colour = spaceSurface(i, body, f) * (lit * 1.25 + 0.015);
+	float3 colour = spaceSurface(i, body, f) * (lit * 1.25 + 0.035);
 	// Atmosphere: a lit rim that pulses with its band of the spectrum.
 	float rim = pow(rr, 3.0) * smoothstep(-0.3, 0.4, dot(n, light));
 	float band = spectrumAt(inputs, float(i) / 5.0, f);
 	colour += SPACE_AIR[i] * rim * (0.6 + 1.2 * band * f.presence + 0.5 * f.kick * f.presence);
+	// Seen against the sun, the atmosphere scatters it forward: the night
+	// side passes show a bright ring around a dark disc, not a hole.
+	float backlit = pow(saturate(dot(normalize(in.world - cam.eye), light)), 3.0);
+	colour += (SPACE_AIR[i] + 0.08) * pow(rr, 6.0) * backlit * 2.5;
 	// The gas giant's rings cast a band of shadow across its face.
 	if (i == SPACE_RINGED) {
 		float3 axis = normalize(SPACE_RING_AXIS);

@@ -158,6 +158,13 @@ t.expect(meshScenes >= 3, "trails, space and the landscape are meshes, not full-
 for _, id in ipairs({"trails", "space", "landscape"}) do
 	t.expect(Visualizers:get(id).draws ~= nil, id .. " draws meshes")
 end
+-- Valley Flight's terrain is nested level-of-detail strips: a whole grid of
+-- 300² cells as triangles once cost ~540k vertices a frame.
+local terrain = Visualizers:get("landscape").draws[1]
+t.assertEqual(terrain.primitive, "triangleStrip", "the terrain draws instanced strips")
+t.expect(terrain.count * terrain.instances < 100000, "the terrain stays under 100k vertices a frame")
+local sky = Visualizers:get("landscape").draws[3]
+t.assertEqual(sky.depth, "test", "the sky draws last, only where terrain and water leave it uncovered")
 t.assertEqual(program.scenes[Visualizers:index("horizon")].wrapper, "horizonLayer",
 	"a full-screen scene gets a layer wrapper")
 t.assertEqual(program.scenes[Visualizers:index("space")].wrapper, nil, "a mesh scene needs none")

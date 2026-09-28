@@ -1,6 +1,11 @@
 -- A drone flyover of river valleys at sunset, banking through soft turns:
 -- a static terrain mesh, reflective water, a sky with clouds and cloud banks.
-local TERRAIN = {cells = 300, size = 180} -- grid cells per side, world units per side
+-- Terrain strips: the finest grid level whole, then each coarser level's
+-- ring around its hole (see Scene.metal); each strip is 32 cells.
+local TERRAIN = {side = 128, strip = 32, levels = 3}
+local perRow = TERRAIN.side // TERRAIN.strip
+local ring = TERRAIN.side // 4 * 2 * perRow + TERRAIN.side
+local STRIPS = TERRAIN.side * perRow + (TERRAIN.levels - 1) * ring
 local CLOUD_SIDE = 7                      -- cloud banks on a side × side world lattice
 
 return {
@@ -10,10 +15,10 @@ return {
 	shader = "Scene.metal",
 	sections = {"intro", "breakdown", "drop"},
 	draws = {
-		{vertex = "fullscreenVertex", fragment = "landscapeSkyFragment", count = 3},
 		{vertex = "landscapeTerrainVertex", fragment = "landscapeTerrainFragment", depth = "write",
-			count = TERRAIN.cells * TERRAIN.cells * 6, params = {TERRAIN.cells, TERRAIN.size}},
+			primitive = "triangleStrip", count = (TERRAIN.strip + 1) * 2, instances = STRIPS},
 		{vertex = "landscapeWaterVertex", fragment = "landscapeWaterFragment", depth = "write", count = 6},
+		{vertex = "landscapeSkyVertex", fragment = "landscapeSkyFragment", depth = "test", count = 3},
 		{vertex = "landscapeCloudVertex", fragment = "landscapeCloudFragment", blend = "alpha", depth = "test",
 			count = 6, instances = CLOUD_SIDE * CLOUD_SIDE, params = {CLOUD_SIDE}},
 	},

@@ -1,11 +1,17 @@
 // Valley Flight — a drone flyover of river valleys at sunset. World units:
-// y is up and the rivers' surface is y = 0. The terrain is fixed: a square
-// grid of uniform cells centred ahead of the drone and snapped to whole
-// cells, so every vertex sits on the same world lattice point frame after
-// frame and the mountains never resample as it flies. The drone wanders on
-// a smooth path, yawing through soft turns and banking into them. The water
-// is one plane, drawn after the terrain so the depth test leaves only the
-// flooded valleys. Distance fades into the same haze as the sky.
+// y is up and the rivers' surface is y = 0. The terrain never moves: it is
+// drawn as CDLOD-style nested grids (Strugar, "Continuous Distance-Dependent
+// Level of Detail"). Each level doubles the cell size of the one inside it
+// and keeps a hole where the finer level lies; all levels are snapped to the
+// coarsest cell, so every vertex sits on a fixed world lattice. Towards its
+// outer edge a level's odd vertices slide onto their even neighbours, so it
+// meets the next level without cracks or pops. Heights and normals come
+// from one pass of analytic-derivative noise per vertex. The water is one
+// plane, drawn after the terrain so the depth test leaves only the flooded
+// valleys, and the sky is drawn last at the far plane so its clouds are
+// shaded only where nothing covers them. Distance fades into the same haze
+// as the sky. The drone wanders on a smooth path, yawing through soft turns
+// and banking into them.
 
 constant float LAND_SPEED = 2.4;         // world units per unit of travel
 constant float LAND_WATER_FOG = 0.022;   // haze density per world unit
@@ -14,7 +20,12 @@ constant float LAND_FAR = 85.0;          // the haze is complete here
 constant float LAND_ALTITUDE = 4.6;      // the drone's cruise height, above every peak
 constant float LAND_BANK = 3.0;          // roll per unit of path curvature
 constant float LAND_MAX_BANK = 0.25;     // radians
-constant float LAND_GRID_AHEAD = 35.0;   // the grid's centre ahead of the drone
+constant float LAND_GRID_AHEAD = 10.0;   // the grids' centre ahead of the drone
+constant float LAND_CELL = 0.35;         // the finest level's cell
+constant int LAND_LEVELS = 3;            // nested grid levels, each twice as coarse
+constant int LAND_SIDE = 128;            // cells along a level's side
+constant int LAND_STRIP = 32;            // cells in one instanced triangle strip
+constant float LAND_MORPH = 16.0;        // cells over which a level morphs into the next
 constant float LAND_BANK_CELL = 18.0;    // one cloud bank per world cell at most
 
 // The drone's ground track at distance u: a forward drift with lateral and
@@ -37,20 +48,39 @@ static float3 landSun(const thread Frame &f) {
 	return normalize(float3(-0.28, 0.1 + 0.015 * sin(f.t * 0.02), 1.0));
 }
 
+static float2 landRotate(float2 q) {
+	return float2(q.x * 1.7 - q.y * 1.1, q.x * 1.1 + q.y * 1.7);
+}
+
 // Ridged mountains, lowered into valleys along a contour of broad noise:
-// the contour meanders and branches like a river network.
-static float landHeight(float2 p) {
+// the contour meanders and branches like a river network. Returns the
+// height and its gradient, carried through each octave's rotation.
+static float3 landTerrain(float2 p) {
 	float h = 0.0, a = 0.5;
+	float2 slope = 0.0;
 	float2 q = p * 0.075;
+	float2 qx = float2(0.075, 0.0), qz = float2(0.0, 0.075); // dq/dx, dq/dz
 	for (int o = 0; o < 5; o++) {
-		float n = 1.0 - abs(noise(q) * 2.0 - 1.0);
-		h += a * n * n;
-		q = float2(q.x * 1.7 - q.y * 1.1, q.x * 1.1 + q.y * 1.7) + 5.3;
+		float3 n = noised(q);
+		float r = 1.0 - abs(n.x * 2.0 - 1.0);
+		float2 dr = -2.0 * sign(n.x * 2.0 - 1.0) * n.yz;
+		h += a * r * r;
+		float2 g = 2.0 * a * r * dr;
+		slope += float2(dot(g, qx), dot(g, qz));
+		q = landRotate(q) + 5.3;
+		qx = landRotate(qx);
+		qz = landRotate(qz);
 		a *= 0.48;
 	}
-	float river = abs(noise(p * 0.02 + 3.7) - 0.5);
+	float3 m = noised(p * 0.02 + 3.7);
+	float river = abs(m.x - 0.5);
 	float valley = smoothstep(0.03, 0.2, river);
-	return -0.35 + h * 3.6 * (0.12 + 0.88 * valley) + 0.08 * noise(p * 0.9);
+	float t = saturate((river - 0.03) / 0.17);
+	float2 dValley = 6.0 * t * (1.0 - t) / 0.17 * sign(m.x - 0.5) * m.yz * 0.02;
+	float3 detail = noised(p * 0.9);
+	float w = 0.12 + 0.88 * valley;
+	return float3(-0.35 + h * 3.6 * w + 0.08 * detail.x,
+		3.6 * (slope * w + h * 0.88 * dValley) + 0.08 * 0.9 * detail.yz);
 }
 
 static Camera landCamera(const thread Frame &f) {
@@ -102,6 +132,16 @@ static float3 landFog(float3 colour, float3 world, const thread Camera &cam, con
 	return mix(colour, landSky(ray / d, cam.eye, f, false), amount);
 }
 
+// The sky's covering triangle at the far plane: drawn after the terrain and
+// water, the depth test shades only the uncovered pixels.
+vertex ShaderVertex landscapeSkyVertex(uint id [[vertex_id]]) {
+	float2 p = float2((id << 1) & 2, id & 2);
+	ShaderVertex out;
+	out.position = float4(p * 2.0 - 1.0, 1.0, 1.0);
+	out.uv = float2(p.x, 1.0 - p.y);
+	return out;
+}
+
 fragment float4 landscapeSkyFragment(ShaderVertex in [[stage_in]], constant ShaderInputs &inputs [[buffer(0)]]) {
 	Frame f = frameOf(inputs);
 	Camera cam = landCamera(f);
@@ -117,28 +157,50 @@ struct LandVertex {
 	float3 normal;
 };
 
-vertex LandVertex landscapeTerrainVertex(uint vid [[vertex_id]], constant ShaderInputs &inputs [[buffer(0)]],
-		constant float *params [[buffer(2)]]) {
+// Instances are strips of LAND_STRIP cells: the finest level whole, then
+// each coarser level as a ring around its hole — full-width rows above and
+// below, the outer quarters beside it.
+static int3 landStrip(int instance) {
+	int perRow = LAND_SIDE / LAND_STRIP, quarter = LAND_SIDE / 4;
+	int whole = LAND_SIDE * perRow;
+	if (instance < whole) return int3(0, instance / perRow, instance % perRow);
+	int ring = quarter * 2 * perRow + LAND_SIDE / 2 * 2;
+	int k = (instance - whole) % ring, level = 1 + (instance - whole) / ring;
+	int band = quarter * perRow;
+	if (k < band) return int3(level, k / perRow, k % perRow);
+	k -= band;
+	if (k < band) return int3(level, LAND_SIDE - quarter + k / perRow, k % perRow);
+	k -= band;
+	return int3(level, quarter + k / 2, (k % 2) * (perRow - 1));
+}
+
+vertex LandVertex landscapeTerrainVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
+		constant ShaderInputs &inputs [[buffer(0)]]) {
 	Frame f = frameOf(inputs);
 	Camera cam = landCamera(f);
-	int cells = int(params[0]);
-	float size = params[1];
-	int cell = int(vid / 6), corner = int(vid % 6);
-	int2 offsets[6] = {int2(0, 0), int2(1, 0), int2(0, 1), int2(1, 0), int2(1, 1), int2(0, 1)};
-	int2 at = int2(cell % cells, cell / cells) + offsets[corner];
-	// The grid follows the drone in whole cells, so its vertices stay on
-	// one world lattice and the terrain never moves.
-	float spacing = size / float(cells);
+	int3 strip = landStrip(int(iid));
+	float2 at = float2(strip.z * LAND_STRIP + int(vid / 2), strip.y + int(vid & 1));
+	float cell = LAND_CELL * exp2(float(strip.x));
+	float coarsest = LAND_CELL * exp2(float(LAND_LEVELS - 1));
+	// Every level is centred on the same point, snapped to the coarsest
+	// cell, so all of them stay on their world lattices.
 	float2 forward = normalize(float2(cam.forward.x, cam.forward.z) + 1e-4);
-	float2 centre = floor((cam.eye.xz + forward * LAND_GRID_AHEAD) / spacing) - float(cells / 2);
-	float2 p = (centre + float2(at)) * spacing;
-	float h = landHeight(p);
-	float e = spacing * 0.5;
-	float3 normal = normalize(float3(landHeight(p - float2(e, 0.0)) - landHeight(p + float2(e, 0.0)), 2.0 * e,
-		landHeight(p - float2(0.0, e)) - landHeight(p + float2(0.0, e))));
+	float2 centre = cam.eye.xz + forward * LAND_GRID_AHEAD;
+	float2 snapped = floor(centre / coarsest + 0.5) * coarsest;
+	float reach = float(LAND_SIDE / 2) * cell;
+	float2 p = snapped - reach + at * cell;
+	// Morph by the distance from the unsnapped centre, which moves smoothly:
+	// complete before the level's edge however the snap falls.
+	if (strip.x < LAND_LEVELS - 1) {
+		float edge = max(abs(p.x - centre.x), abs(p.y - centre.y));
+		float outer = reach - coarsest * 0.5;
+		float k = saturate((edge - (outer - LAND_MORPH * cell)) / (LAND_MORPH * cell));
+		p -= fract(at * 0.5) * 2.0 * cell * k;
+	}
+	float3 h = landTerrain(p);
 	LandVertex out;
-	out.world = float3(p.x, h, p.y);
-	out.normal = normal;
+	out.world = float3(p.x, h.x, p.y);
+	out.normal = normalize(float3(-h.y, 1.0, -h.z));
 	out.position = cameraClip(out.world, f, cam);
 	return out;
 }
@@ -180,9 +242,22 @@ vertex LandWater landscapeWaterVertex(uint vid [[vertex_id]], constant ShaderInp
 	return out;
 }
 
-static float landWaves(float2 p, const thread Frame &f) {
+// The wave field's gradient: three drifting octaves and a fast fine ripple.
+static float2 landWaves(float2 p, const thread Frame &f) {
 	float t = f.t * 0.6;
-	return fbm(p * 1.6 + float2(t, t * 0.4), 3) + 0.5 * noise(p * 6.0 - float2(t * 1.7, 0.0));
+	float2 q = p * 1.6 + float2(t, t * 0.4);
+	float2 qx = float2(1.6, 0.0), qz = float2(0.0, 1.6);
+	float2 slope = 0.0;
+	float a = 0.5;
+	for (int o = 0; o < 3; o++) {
+		float2 g = a * noised(q).yz;
+		slope += float2(dot(g, qx), dot(g, qz));
+		q = float2(q.x * 1.6 - q.y * 1.2, q.x * 1.2 + q.y * 1.6) + 3.1;
+		qx = float2(qx.x * 1.6 - qx.y * 1.2, qx.x * 1.2 + qx.y * 1.6);
+		qz = float2(qz.x * 1.6 - qz.y * 1.2, qz.x * 1.2 + qz.y * 1.6);
+		a *= 0.5;
+	}
+	return slope + 0.5 * 6.0 * noised(p * 6.0 - float2(t * 1.7, 0.0)).yz;
 }
 
 fragment float4 landscapeWaterFragment(LandWater in [[stage_in]], constant ShaderInputs &inputs [[buffer(0)]]) {
@@ -190,12 +265,9 @@ fragment float4 landscapeWaterFragment(LandWater in [[stage_in]], constant Shade
 	Camera cam = landCamera(f);
 	float3 view = normalize(in.world - cam.eye);
 	// Ripples from the wave field's slope, choppier with the highs.
-	float e = 0.03;
-	float2 p = in.world.xz;
-	float w = landWaves(p, f);
+	float2 slope = landWaves(in.world.xz, f);
 	float chop = 0.12 + 0.25 * f.high * f.presence;
-	float3 n = normalize(float3((w - landWaves(p + float2(e, 0.0), f)) * chop / e * 0.1, 1.0,
-		(w - landWaves(p + float2(0.0, e), f)) * chop / e * 0.1));
+	float3 n = normalize(float3(-slope.x * chop * 0.1, 1.0, -slope.y * chop * 0.1));
 	float3 r = reflect(view, n);
 	r.y = abs(r.y);
 	float fresnel = 0.03 + 0.97 * pow(1.0 - saturate(-dot(view, n)), 5.0);
@@ -243,7 +315,7 @@ vertex LandCloud landscapeCloudVertex(uint vid [[vertex_id]], uint iid [[instanc
 fragment float4 landscapeCloudFragment(LandCloud in [[stage_in]], constant ShaderInputs &inputs [[buffer(0)]]) {
 	Frame f = frameOf(inputs);
 	float2 p = in.local;
-	float shape = fbm(p * 1.6 + in.seed + f.t * 0.02, 4);
+	float shape = fbm(p * 1.6 + in.seed + f.t * 0.02, 3);
 	float density = saturate((1.0 - dot(p, p)) * 1.4 + shape - 0.9) * in.fade;
 	if (density <= 0.0) discard_fragment();
 	float lightSide = saturate(0.5 - p.y * 0.4 + shape * 0.4);
