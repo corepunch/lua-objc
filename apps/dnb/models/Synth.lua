@@ -971,8 +971,9 @@ function Synth:renderBass(first, last)
 	local MIX, BASS = self.mix, self.sound.bass
 	local sr = self.sr
 	local settings = self.settings
-	local reeseOn = settings:plays("reese") and not b.subOnly
-	local subOn = settings:plays("sub")
+	-- The sub always sounds the line; the reese lane layers its detuned,
+	-- filtered voice over notes it has not left on the sub alone.
+	local reeseOn = not b.subOnly
 	local cutoff = settings:value("cutoff")
 	local wobble = settings:value("wobble")
 	local drive = 1 + settings:value("drive") * 7
@@ -1023,7 +1024,7 @@ function Synth:renderBass(first, last)
 		end
 		sub = sub + freq / sr
 		if sub >= 1 then sub = sub - 1 end
-		if subOn then s = s + SINE[floor(sub * SINE_SIZE)] * MIX.sub end
+		s = s + SINE[floor(sub * SINE_SIZE)] * MIX.sub
 		s = s * env
 		duckL[k] = duckL[k] + s
 		duckR[k] = duckR[k] + s

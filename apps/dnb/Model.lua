@@ -1,18 +1,28 @@
--- Generator settings: the style, the parts it plays and how the sound is
+-- Generator settings: the style, which lanes sound and how the sound is
 -- shaped. The control table is the single source of truth for the sliders
 -- the window renders and the Synth's mix. A style (a plugin manifest)
--- narrows the tempo range, sets the controls' starting values and names the
--- parts it plays; the song, not the listener, decides what plays.
+-- narrows the tempo range and sets the controls' starting values; its
+-- arrangement, not the listener, decides what plays.
 local Model = {}
 Model.__index = Model
 
--- Every part a composer or the Synth can gate on: instruments and the
--- structural moves (arrangement, fills, risers…) a style may leave out.
-Model.parts = {
-	"kick", "snare", "ghosts", "hats", "ride", "percussion", "amen",
-	"sub", "reese", "pads", "keys", "stabs", "arp", "lead",
-	"arrangement", "fills", "risers", "halftime", "modulate", "throws", "chops",
+-- The lanes of an arrangement, in the timeline's order, by family: the
+-- instruments, then the structural moves (fills, risers, half-time…) that
+-- are blocks on the timeline too. Families match the Mix faders.
+Model.partGroups = {
+	{family = "drums", parts = {"kick", "snare", "ghosts", "hats", "ride", "percussion", "amen"}},
+	{family = "bass", parts = {"sub", "reese"}},
+	{family = "chords", parts = {"pads", "keys", "stabs"}},
+	{family = "melody", parts = {"arp", "lead"}},
+	{family = "structure", parts = {"fills", "risers", "halftime", "throws", "chops"}},
 }
+Model.parts, Model.family = {}, {}
+for _, group in ipairs(Model.partGroups) do
+	for _, id in ipairs(group.parts) do
+		table.insert(Model.parts, id)
+		Model.family[id] = group.family
+	end
+end
 
 -- `format` renders the value label beside each slider.
 local function percent(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end
@@ -60,11 +70,9 @@ function Model.new(seed, style)
 	return self
 end
 
--- Takes a style's parts, tempo range and control defaults; a style that
--- names no parts plays them all.
+-- Takes a style's tempo range and control defaults.
 function Model:setStyle(style)
 	self.style = style
-	self:setParts(style.parts or Model.parts)
 	local tempo = style.tempo
 	assert(tempo.min < tempo.max and tempo.default >= tempo.min and tempo.default <= tempo.max, "bad tempo range")
 	self.ranges.tempo = {min = tempo.min, max = tempo.max}
@@ -80,6 +88,8 @@ function Model:range(id)
 	return range.min, range.max
 end
 
+-- The lanes that sound; every lane does by default. Muting a lane silences
+-- its blocks without changing the arrangement.
 function Model:setParts(ids)
 	self.playing = {}
 	for _, id in ipairs(ids) do

@@ -158,11 +158,68 @@ for n = 16, 31 do
 end
 t.expect(highCount > lowCount, "energy adds hits and bass notes")
 
-local flat = playing(except("arrangement"))
-for _, n in ipairs({0, 8, 50, 57, first.length + 3}) do
-	t.assertEqual(composer:bar(n, flat).section, "drop", "without arrangement every bar is a drop")
+-- The arrangement: each track is a plan of lanes and blocks, fixed before
+-- its first bar plays, and bar n plays the blocks under it.
+local plan = composer:arrangement(0)
+t.expect(plan == composer:arrangement(0), "a track is arranged once")
+t.assertEqual(plan.length, first.length, "the plan spans its track")
+t.assertEqual(plan.start, first.start, "from the track's first bar")
+local ids = {}
+for _, section in ipairs(plan.sections) do table.insert(ids, section.id) end
+t.assertEqual(table.concat(ids, " ", 1, 5), "intro build drop breakdown build", "the ruler names the sections in order")
+t.assertEqual(ids[#ids], "outro", "and ends on the outro")
+local order, rank = {}, {}
+for i, id in ipairs(Model.parts) do rank[id] = i end
+for i, lane in ipairs(plan.lanes) do
+	order[i] = rank[lane.part]
+	if i > 1 then t.expect(order[i] > order[i - 1], "lanes follow the timeline's part order") end
 end
-t.assertEqual(composer:bar(first.length + 3, flat).track, 1, "and the set still moves on")
+t.assertEqual(plan.lanes[1].part, "kick", "the kick lane leads")
+local blocks = plan:blocksAt(17)
+t.assertEqual(blocks.kick.pattern, "kick.drop", "the drop's kick block is under bar 17")
+t.expect(blocks.sub and blocks.reese, "the drop rolls the reese over the sub")
+t.assertEqual(plan:blocksAt(50).kick, nil, "the breakdown has no kick block")
+t.assertEqual(plan:blocksAt(12).snare.pattern, "roll.snare", "the build rolls the snare")
+t.assertEqual(plan:blocksAt(12).risers.pattern, "riser.build", "under a riser")
+local sectionOf = plan:sectionAt(50)
+t.assertEqual(sectionOf.id .. " " .. sectionOf.start, "breakdown 48", "a bar finds its section")
+t.assertEqual(plan:sectionAt(0).id, "intro", "the first bar is the intro's")
+t.assertEqual(plan:sectionAt(first.length - 1).id, "outro", "the last bar is the outro's")
+for pos = 0, first.length - 1 do
+	local bar = composer:bar(first.start + pos, settings)
+	local section = plan:sectionAt(pos)
+	if bar.section ~= section.id or bar.sectionBar ~= pos - section.start then
+		t.expect(false, "bar " .. pos .. " plays its section of the plan")
+	end
+end
+local copy = dnb(9):arrangement(3)
+local reference = composer:arrangement(3)
+local function describe(p)
+	local parts = {}
+	for _, lane in ipairs(p.lanes) do
+		for _, block in ipairs(lane.blocks) do
+			table.insert(parts, lane.part .. block.start .. "+" .. block.length .. block.pattern)
+		end
+	end
+	return table.concat(parts, ",")
+end
+t.assertEqual(describe(copy), describe(reference), "the same seed arranges the same track")
+t.expect(describe(dnb(10):arrangement(3)) ~= describe(reference), "another seed arranges it differently")
+local controlled = Model.new(9)
+controlled:setValue("energy", 0.1)
+local lowPlan = dnb(9)
+lowPlan:bar(first.length * 3 + 20, controlled)
+t.assertEqual(describe(lowPlan:arrangement(3)), describe(reference), "the controls shape bars, not the plan")
+for k = 0, 8 do
+	for _, lane in ipairs(composer:arrangement(k).lanes) do
+		local stop = 0
+		for _, block in ipairs(lane.blocks) do
+			if block.start < stop then t.expect(false, "blocks never overlap in a lane") end
+			stop = block.start + block.length
+		end
+	end
+end
+
 local muted = playing({})
 for _, n in ipairs({20, 60, second.start, second.start + 20}) do
 	local empty = composer:bar(n, muted)
@@ -203,8 +260,12 @@ t.expect(#hits(jungleDrop, "kick") > 0, "under the programmed kick")
 t.assertEqual(#composer:bar(neuro.start + 17, settings).breaks, 0, "neurofunk leaves the break out")
 t.assertEqual(#composer:bar(liquid.start + 17, settings).breaks, 0, "liquid saves it for a later drop")
 local noAmen = playing(except("amen"))
-t.assertEqual(#composer:bar(jungle.start + 17, noAmen).breaks, 0, "a style without the Amen leaves the break out")
-t.expect(#hits(composer:bar(jungle.start + 1, noAmen), "kick") > 0, "and the intro falls back to the kit")
+t.assertEqual(#composer:bar(jungle.start + 17, noAmen).breaks, 0, "a muted Amen lane leaves the break out")
+local junglePlan = composer:arrangement(jungle.index)
+t.assertEqual(junglePlan:lane("kick").blocks[1].start, 4, "the jungle kit joins halfway through the intro")
+t.assertEqual(composer:arrangement(neuro.index):lane("amen"), nil, "neurofunk arranges no Amen lane")
+t.assertEqual(composer:arrangement(liquid.index):lane("amen").blocks[1].start, 16 + 32 + 16 + 8,
+	"liquid's first break block opens its second drop")
 
 -- Chops: complexity rearranges slices; off, the break plays straight.
 local chopped, straight = Model.new(9), playing(except("chops"))
@@ -273,8 +334,6 @@ for k = 0, 5 do
 	t.assertEqual(composer:bar(track.start + 16, settings).key, track.key, "a track's first drop is in its home key")
 end
 t.expect(moved, "modulation moves the key in later cycles")
-local home = playing(except("modulate"))
-t.assertEqual(composer:bar(72, home).key, first.key, "modulate off keeps the home key")
 
 -- Half-time: a switch-up inside the drop with the snare on beat three.
 local htBar
@@ -378,9 +437,10 @@ if #phraseEnd > 0 then
 end
 
 -- Synth: bounded, deterministic, silent when muted, sample-accurate bars.
-local function render(settingsModel, frames, seed)
+local function render(settingsModel, frames, seed, start)
 	local synth = Synth.new(settingsModel, SR)
 	synth:setComposer(dnb(seed or 9))
+	synth.composerBar = start or 0
 	local out = {}
 	synth:render(out, frames)
 	return out, synth
@@ -394,13 +454,13 @@ local function stats(out)
 	end
 	return peak, math.sqrt(sum / #out)
 end
-local full = playing(except("arrangement"))
-local out = render(full, SR * 2)
+local full = Model.new(9)
+local out = render(full, SR * 2, nil, 16)
 local peak, rms = stats(out)
 t.assertEqual(#out, SR * 4, "render writes interleaved stereo frames")
 t.expect(peak <= 1, "output is soft-clipped into range")
 t.expect(rms > 0.03, "a full drop is audible")
-local again = render(full, SR * 2)
+local again = render(full, SR * 2, nil, 16)
 local identical = true
 for i = 1, #out, 97 do if out[i] ~= again[i] then identical = false break end end
 t.expect(identical, "rendering is deterministic")
@@ -408,7 +468,6 @@ t.expect(identical, "rendering is deterministic")
 local silent = render(muted, SR)
 t.assertEqual(select(1, stats(silent)), 0, "no parts render silence")
 
-local drumsOnly = playing(except("arrangement", "sub", "reese", "pads", "stabs", "arp", "lead"))
 local kickOnly = playing({"kick"})
 kickOnly:setValue("space", 0)
 kickOnly:setValue("humanize", 0)
@@ -421,7 +480,7 @@ local function level(parts, fader, value)
 	local m = playing(parts)
 	m:setValue("space", 0)
 	m:setValue(fader, value)
-	return select(2, stats(render(m, SR // 2)))
+	return select(2, stats(render(m, SR // 2, nil, 16)))
 end
 t.assertEqual(level({"kick", "snare"}, "drums", 0), 0, "the Drums fader at zero silences the kit")
 t.expect(level({"kick", "snare"}, "drums", 1.5) > level({"kick", "snare"}, "drums", 1), "and above 100% boosts it")
@@ -434,6 +493,7 @@ local function echoTail(throws)
 	m:setValue("space", 0)
 	local synth = Synth.new(m, SR)
 	synth:setComposer(dnb(9))
+	synth.composerBar = 16 -- the first drop, whose fourth bar throws its snare
 	local out = {}
 	local barFrames = math.floor(16 * SR * 60 / 174 / 4 + 0.5)
 	synth:render({}, barFrames * 4 - barFrames // 8) -- up to the thrown snare's own tail
@@ -449,7 +509,7 @@ local melodic = playing({"lead", "arp"})
 do
 	local synth = Synth.new(melodic, SR)
 	synth:setComposer(dnb(9))
-	synth.composerBar = leadTrack.start + 16 -- the second half of a flat drop: arp and lead
+	synth.composerBar = leadTrack.start + 16 + 16 -- the drop's second half: arp and lead
 	local out = {}
 	synth:render(out, SR * 2)
 	local peak, level = stats(out)
@@ -459,7 +519,7 @@ end
 -- The Amen reaches the output on its own, pitched up to tempo. Played
 -- straight it is one continuous sampler voice; chops start new slices.
 local function soloRender(part, start, frames, configure)
-	local m = playing({part, "arrangement", "chops"})
+	local m = playing({part, "chops"})
 	if configure then configure(m) end
 	local synth = Synth.new(m, SR)
 	synth:setComposer(dnb(9))
@@ -474,7 +534,7 @@ local function soloRender(part, start, frames, configure)
 	return out, voices, synth
 end
 do
-	local out, voices, synth = soloRender("amen", jungle.start, SR * 2, function(m) m:setParts({"amen", "arrangement"}) end)
+	local out, voices, synth = soloRender("amen", jungle.start, SR * 2, function(m) m:setParts({"amen"}) end)
 	local peak, level = stats(out)
 	t.expect(level > 0.02 and peak <= 1, "the break is audible and bounded")
 	t.assertEqual(voices, 1, "a straight break plays as one continuous voice")
@@ -487,10 +547,11 @@ do
 end
 
 -- Chunked rendering matches one long render: blocks carry voice state.
-local chunked, whole = {}, render(full, 3000)
+local chunked, whole = {}, render(full, 3000, nil, 16)
 do
 	local synth = Synth.new(full, SR)
 	synth:setComposer(dnb(9))
+	synth.composerBar = 16
 	local part = {}
 	for _, size in ipairs({1, 999, 1000, 1000}) do
 		synth:render(part, size)

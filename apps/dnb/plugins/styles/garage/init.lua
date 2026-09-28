@@ -34,105 +34,125 @@ local function buildCycle(kit, rng, track)
 	}
 end
 
-local Composer = {}
-Composer.__index = Composer
+-- The arrangement ------------------------------------------------------------
 
-function Composer:cycle(track, index)
-	local kit = self.kit
-	return self.set:cycle(track, index, function(rng) return buildCycle(kit, rng, track) end)
-end
-function Composer:trackAt(n) return self.set:trackAt(n) end
-function Composer:trackStart(k) return self.set:trackStart(k) end
-
-function Composer:chordOf(track, n)
-	local cycle = self:cycle(track, track.cycles - 1)
-	return self.kit.chordAt(track.mode, cycle.progression, cycle.voicings, track.tonic, n),
-		self.kit.keyName(track.tonic, track.mode)
-end
-
-function Composer:bar(n, settings)
-	local kit, set = self.kit, self.set
-	local on = function(part) return settings:plays(part) end
-	local energy, complexity = settings:value("energy"), settings:value("complexity")
-	local humanize = settings:value("humanize")
-	local at = set:locate(n, settings)
-	local section, sectionBar, phraseBar = at.section, at.sectionBar, at.phraseBar
-	local track, tonic, flavour, mode = at.track, at.tonic, at.track.flavour, at.track.mode
-	local cycle = self:cycle(track, at.cycleIndex)
-	local chord = kit.chordAt(mode, cycle.progression, cycle.voicings, tonic, n)
-	local bar = kit.newBar(n, at, kit.random(self.seed, 2, n))
-	bar.progression, bar.chord = kit.progressionName(mode, cycle.progression), chord
-	local function hit(step, voice, gain, extra) return bar:hit(step, voice, gain, humanize, extra) end
-	local groove = at.full or at.outro or section == "intro"
-	local breakdown = section == "breakdown"
-	local throwBar = on("throws") and phraseBar % 4 == 3 and (at.full or breakdown)
-
-	if on("kick") and groove then
-		bar:pattern(phraseBar % 4 == 3 and cycle.altKicks or cycle.kicks, "kick", 0.9, humanize)
-	end
-	if on("snare") and (at.full or at.outro or (section == "intro" and sectionBar >= 4)) then
-		hit(4, "snare", 0.9)
-		hit(12, "snare", 0.9, {throw = throwBar or nil})
-		if flavour.id ~= "future" then hit(4, "clap", 0.5); hit(12, "clap", 0.5) end
-	end
-	if on("ghosts") and (at.full or at.outro) then
-		for _, step in ipairs({7, 15, 9}) do if step ~= 9 or complexity > 0.5 then hit(step, "rim", 0.35) end end
-	end
-	if on("hats") and not breakdown then
-		-- Shuffled 16ths (Swing moves the off ones late) with open hats
-		-- answering the kick.
-		for step = 0, 15 do
-			if step % 2 == 1 or energy > 0.5 then hit(step, "hat", step % 2 == 1 and 0.35 or 0.2) end
+local function arrange(kit, track, cycles)
+	local lanes = kit.lanes(track)
+	local flavour = track.flavour
+	kit.blendIn(lanes, track)
+	-- Future Garage keeps its pads under the whole track.
+	if flavour.id == "future" then lanes:fill("pads", 0, track.length, "pads.chords") end
+	for _, section in ipairs(track.sections) do
+		local id, cycle = section.id, cycles[section.cycle]
+		if id == "intro" then
+			lanes:within("kick", section, 0, nil, "kick")
+			lanes:within("snare", section, 4, nil, "snare")
+			lanes:within("hats", section, 0, nil, "hats")
+		elseif id == "build" then
+			lanes:within("snare", section, 0, nil, "roll.snare")
+			lanes:within("hats", section, 0, nil, "hats")
+			lanes:fill("pads", section.start, section.length, "pads.chords")
+		elseif id == "drop" then
+			lanes:within("kick", section, 0, nil, "kick")
+			lanes:within("snare", section, 0, nil, "snare")
+			lanes:within("ghosts", section, 0, nil, "rims")
+			lanes:within("hats", section, 0, nil, "hats")
+			lanes:within("percussion", section, 0, nil, "perc")
+			lanes:within("sub", section, 0, nil, "sub.line")
+			lanes:within("reese", section, 0, nil, "reese")
+			if cycle.keysOn then lanes:within("keys", section, 0, nil, "keys") end
+			if flavour.id == "speed" then lanes:within("stabs", section, 0, nil, "stabs") end
+			if cycle.leadOn then lanes:within("lead", section, 16, nil, "lead") end
+			lanes:phraseEnds("throws", section, 4, "throw")
+		elseif id == "breakdown" then
+			lanes:within("sub", section, 0, nil, "sub.hold")
+			lanes:fill("pads", section.start, section.length, "pads.chords")
+			if cycle.keysOn then lanes:within("keys", section, 0, nil, "keys") end
+			if cycle.leadOn then lanes:within("lead", section, 0, nil, "lead.soft") end
+			lanes:phraseEnds("throws", section, 4, "throw")
+		elseif id == "outro" then
+			lanes:within("kick", section, 0, nil, "kick")
+			lanes:within("snare", section, 0, nil, "snare")
+			lanes:within("ghosts", section, 0, nil, "rims")
+			lanes:within("hats", section, 0, nil, "hats")
+			lanes:within("sub", section, 0, 8, "sub.line")
+			lanes:within("reese", section, 0, 8, "reese")
+			if cycle.keysOn then lanes:within("keys", section, 0, nil, "keys") end
 		end
-		hit(14, "openHat", 0.4)
-		if complexity > 0.5 then hit(6, "openHat", 0.3) end
 	end
-	if on("percussion") and at.full then
-		for step = 2, 15, 4 do if complexity > 0.3 then hit(step, "shaker", 0.3) end end
-	end
-	if at.fillBar and on("snare") then for step = 13, 15 do hit(step, "snare", 0.5 + 0.12 * (step - 13)) end end
-	kit.punctuate(bar, at, settings, "snare", humanize)
+	kit.punctuate(lanes, track, function() return "fill.snares" end)
+	return lanes:done()
+end
 
-	if (at.full or (at.outro and sectionBar < 8)) and (on("sub") or on("reese")) then
-		for _, note in ipairs(cycle.bass) do
-			if note[1] == 0 or energy > 0.35 then
-				table.insert(bar.bass, {step = note[1], length = note[2], note = chord.root + note[3],
-					glide = note[3] ~= 0, reese = flavour.reese})
+-- The patterns -----------------------------------------------------------------
+
+local function lead(gain)
+	return function(bar, ctx)
+		for _, note in ipairs(ctx.cycle.lead[ctx.phraseBar % 4 + 1]) do
+			table.insert(bar.lead, {step = note.step, length = note.length, glide = true,
+				gain = gain, note = ctx.kit.leadPitch(ctx.mode, ctx.tonic, ctx.chord.degree, note.offset)})
+		end
+	end
+end
+
+local PATTERNS = {
+	-- The 2-step kick, answered every fourth bar.
+	{id = "kick", part = "kick", render = function(bar, ctx)
+		bar:sequence(ctx.phraseBar % 4 == 3 and ctx.cycle.altKicks or ctx.cycle.kicks, "kick", 0.9, ctx.humanize)
+	end},
+	-- The backbeat, layered with a clap except in Future Garage.
+	{id = "snare", part = "snare", render = function(_, ctx)
+		ctx.hit(4, "snare", 0.9)
+		ctx.hit(12, "snare", 0.9, {throw = ctx.throw})
+		if ctx.flavour.id ~= "future" then ctx.hit(4, "clap", 0.5); ctx.hit(12, "clap", 0.5) end
+	end},
+	{id = "fill.snares", part = "fills", render = function(_, ctx)
+		for step = 13, 15 do ctx.hit(step, "snare", 0.5 + 0.12 * (step - 13)) end
+	end},
+	{id = "rims", part = "ghosts", render = function(_, ctx)
+		for _, step in ipairs({7, 15, 9}) do if step ~= 9 or ctx.complexity > 0.5 then ctx.hit(step, "rim", 0.35) end end
+	end},
+	-- Shuffled 16ths: the off-16ths always, the rest with energy.
+	{id = "hats", part = "hats", render = function(_, ctx)
+		for step = 0, 15 do
+			if step % 2 == 1 or ctx.energy > 0.5 then ctx.hit(step, "hat", step % 2 == 1 and 0.35 or 0.2) end
+		end
+		ctx.hit(14, "openHat", 0.4)
+		if ctx.complexity > 0.5 then ctx.hit(6, "openHat", 0.3) end
+	end},
+	{id = "perc", part = "percussion", render = function(_, ctx)
+		if ctx.complexity <= 0.3 then return end
+		for step = 2, 15, 4 do ctx.hit(step, "shaker", 0.3) end
+	end},
+	{id = "sub.line", part = "sub", render = function(bar, ctx)
+		for _, note in ipairs(ctx.cycle.bass) do
+			if note[1] == 0 or ctx.energy > 0.35 then
+				table.insert(bar.bass, {step = note[1], length = note[2], note = ctx.chord.root + note[3],
+					glide = note[3] ~= 0, reese = ctx.flavour.reese, subOnly = true})
 			end
 		end
-	elseif breakdown and on("sub") then
-		table.insert(bar.bass, {step = 0, length = 16, note = chord.root, subOnly = true})
-	end
-
-	if on("pads") and n % 2 == 0 and (breakdown or section == "build" or flavour.id == "future") then bar.pad = chord.notes end
-	kit.blend(bar, at, settings, set, ARRANGEMENT.blendBars, function(t, m) return self:chordOf(t, m) end)
-	if on("keys") and cycle.keysOn and (at.full or breakdown or at.outro) then
-		for index, step in ipairs(cycle.comp) do
-			table.insert(bar.keys, {step = step, length = 2, notes = chord.notes, gain = index == 1 and 1 or 0.7})
+	end},
+	{id = "keys", part = "keys", render = function(bar, ctx)
+		for index, step in ipairs(ctx.cycle.comp) do
+			table.insert(bar.keys, {step = step, length = 2, notes = ctx.chord.notes, gain = index == 1 and 1 or 0.7})
 		end
-	end
-	if on("stabs") and at.full and flavour.id == "speed" then
-		table.insert(bar.stabs, {step = 6, notes = chord.notes, throw = throwBar or nil})
-	end
-	if on("lead") and cycle.leadOn and ((at.full and sectionBar >= 16) or breakdown) then
-		for _, note in ipairs(cycle.lead[phraseBar % 4 + 1]) do
-			table.insert(bar.lead, {step = note.step, length = note.length, glide = true,
-				gain = breakdown and 0.6 or 0.8, note = kit.leadPitch(mode, tonic, chord.degree, note.offset)})
-		end
-	end
-	return bar
-end
+	end},
+	-- The Speed Garage organ stab.
+	{id = "stabs", part = "stabs", render = function(bar, ctx)
+		table.insert(bar.stabs, {step = 6, notes = ctx.chord.notes, throw = ctx.throw})
+	end},
+	{id = "lead", part = "lead", bars = 4, render = lead(0.8)},
+	{id = "lead.soft", part = "lead", bars = 4, render = lead(0.6)},
+}
 
 return {
-	api = 1,
+	api = 2,
 	title = "UK Garage",
 	symbol = "figure.dance",
 	summary = "2-Step, Speed Garage and Future Garage shuffle",
 	tempo = {min = 128, max = 138, default = 132},
 	defaults = {energy = 0.6, complexity = 0.55, swing = 0.3, humanize = 0.35,
 		cutoff = 0.4, wobble = 0.15, drive = 0.3, space = 0.45},
-	parts = {"kick", "snare", "ghosts", "hats", "percussion", "sub", "reese", "pads", "keys", "stabs", "lead",
-		"arrangement", "fills", "risers", "modulate", "throws"},
 	sound = {
 		kick = {base = 50, sweep = 100, sweepTime = 0.02, decay = 0.2, drive = 1.8, click = 0.3, length = 0.38},
 		snare = {tone = 220, overtone = 360, bodyDecay = 0.045, noiseDecay = 0.08, noise = 0.45},
@@ -142,9 +162,8 @@ return {
 		lead = {glide = 0.001, vibratoDepth = 0.012, brightness = 0.07, square = 0.1},
 		mix = {duckDepth = 0.4, keys = 0.065, lead = 0.065, delaySteps = 3},
 	},
-	create = function(kit, seed)
-		return setmetatable({kit = kit, seed = seed, set = kit.newSet(seed, {
-			flavours = FLAVOURS, modes = {"minor", "dorian"}, arrangement = ARRANGEMENT, modulations = {0, 5},
-		})}, Composer)
-	end,
+	set = {flavours = FLAVOURS, modes = {"minor", "dorian"}, arrangement = ARRANGEMENT, modulations = {0, 5}},
+	material = buildCycle,
+	arrange = arrange,
+	patterns = PATTERNS,
 }

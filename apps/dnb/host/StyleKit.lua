@@ -1,8 +1,9 @@
 -- The host API every style plugin receives (read-only): seeded randomness,
--- music theory, the DJ set that sequences tracks, the bar score the Synth
--- plays, and the Amen break. Styles are pure composition on top of it; the
--- sound itself belongs to the Synth, which a style only tunes through its
--- manifest's `sound` table.
+-- music theory, the DJ set that sequences tracks and their sections, the
+-- lane builder a style arranges tracks with, the patterns every style
+-- shares, the bar score the Synth plays, and the Amen break. Styles are pure
+-- composition on top of it; the sound itself belongs to the Synth, which a
+-- style only tunes through its manifest's `sound` table.
 local Amen = require("apps.dnb.models.Amen")
 
 local StyleKit = {}
@@ -238,6 +239,30 @@ local DEFAULT_ARRANGEMENT = {
 local Set = {}
 Set.__index = Set
 
+-- A track's sections, the ruler above its lanes: intro → build → (drop →
+-- breakdown → build) … → drop → outro. `cycle` is the material a section
+-- plays; a rebuild belongs to the next cycle, so a key change lands with its
+-- riser rather than on the drop's first kick.
+local function sections(A, cycles)
+	local list, start = {}, 0
+	local function add(id, length, cycle)
+		table.insert(list, {id = id, start = start, length = length, cycle = cycle})
+		start = start + length
+	end
+	add("intro", A.introBars, 0)
+	add("build", A.buildBars, 0)
+	for cycle = 0, cycles - 1 do
+		add("drop", A.dropBars, cycle)
+		if cycle == cycles - 1 then
+			add("outro", A.outroBars, cycle)
+		else
+			add("breakdown", A.breakdownBars, cycle)
+			add("build", A.rebuildBars, cycle + 1)
+		end
+	end
+	return list
+end
+
 --- An endless DJ set: a sequence of tracks, each with a flavour (weighted
 --- parts of the style), a mode, a key harmonically mixed from the previous
 --- track, and an arrangement of intro → build → drops and breakdowns →
@@ -285,6 +310,8 @@ function Set:track(k)
 				cycleCache = {}, shifts = {[0] = 0},
 			}
 			track.key = StyleKit.keyName(track.tonic, track.mode)
+			track.sections = sections(A, cycles)
+			track.phraseBars, track.blendBars = A.phraseBars, A.blendBars
 			-- Its own stream, so the kit never shifts the composition.
 			track.drums = StyleKit.drumDesign(StyleKit.random(self.seed, 5, index), flavour)
 			self.tracks[index + 1] = track
@@ -308,33 +335,6 @@ function Set:trackStart(k)
 	return self:track(k).start
 end
 
---- Section of bar n within its track: name, bar in section, section length,
---- the cycle whose material it plays, and the track. Unarranged, every bar
---- is a drop.
-function Set:section(n, arranged)
-	local track = self:trackAt(n)
-	local pos = n - track.start
-	local A = self.arrangement
-	if not arranged then
-		return "drop", pos % A.dropBars, A.dropBars, (pos // A.dropBars) % track.cycles, track
-	end
-	if pos < A.introBars then return "intro", pos, A.introBars, 0, track end
-	pos = pos - A.introBars
-	if pos < A.buildBars then return "build", pos, A.buildBars, 0, track end
-	pos = pos - A.buildBars
-	for cycle = 0, track.cycles - 1 do
-		if pos < A.dropBars then return "drop", pos, A.dropBars, cycle, track end
-		pos = pos - A.dropBars
-		if cycle == track.cycles - 1 then return "outro", pos, A.outroBars, cycle, track end
-		if pos < A.breakdownBars then return "breakdown", pos, A.breakdownBars, cycle, track end
-		pos = pos - A.breakdownBars
-		-- The rebuild belongs to the next cycle, so a key change lands with
-		-- its riser rather than on the drop's first kick.
-		if pos < A.rebuildBars then return "build", pos, A.rebuildBars, cycle + 1, track end
-		pos = pos - A.rebuildBars
-	end
-end
-
 --- Semitones a track's key has moved by a cycle, accumulated from its first.
 function Set:shift(track, index)
 	for i = #track.shifts + 1, index do
@@ -350,22 +350,6 @@ function Set:cycle(track, index, build)
 	cached = build(StyleKit.random(self.seed, 1, track.index, index), track, index)
 	track.cycleCache[index] = cached
 	return cached
-end
-
---- Everything a composer derives from a bar's place in the set: section,
---- track, key (with modulation), the phrase position and fill bar.
-function Set:locate(n, settings)
-	local on = function(part) return settings:plays(part) end
-	local A = self.arrangement
-	local section, sectionBar, sectionLength, cycleIndex, track = self:section(n, on("arrangement"))
-	local tonic = (track.tonic + (on("modulate") and self:shift(track, cycleIndex) or 0)) % 12
-	local phraseBar = sectionBar % A.phraseBars
-	return {
-		section = section, sectionBar = sectionBar, sectionLength = sectionLength, cycleIndex = cycleIndex,
-		track = track, tonic = tonic, phraseBar = phraseBar,
-		full = section == "drop", outro = section == "outro", arranged = on("arrangement"),
-		fillBar = on("fills") and phraseBar == A.phraseBars - 1 and (section == "drop" or section == "outro"),
-	}
 end
 
 -- The score --------------------------------------------------------------
@@ -409,56 +393,173 @@ function Bar:hit(step, voice, gain, humanize, extra)
 	return h
 end
 
---- Adds one hit per step of a 16-character pattern (see `steps`); accents
+--- Adds one hit per step of a 16-character sequence (see `steps`); accents
 --- play at full gain.
-function Bar:pattern(pattern, voice, gain, humanize)
-	local steps, accents = StyleKit.steps(pattern)
+function Bar:sequence(sequence, voice, gain, humanize)
+	local steps, accents = StyleKit.steps(sequence)
 	for _, step in ipairs(steps) do self:hit(step, voice, accents[step] and 1 or gain, humanize) end
 end
 
--- Shared arrangement moves ------------------------------------------------
+function Bar:note(list, fields) table.insert(self[list], fields) end
 
---- The punctuation most styles share: a crash opening every 16 bars of a
---- drop or outro and each breakdown (Fills), a riser through builds and a
---- downlifter out of each impact (Risers), and a roll of `roll` hits
---- ("snare" or "clap") tightening through the build.
-function StyleKit.punctuate(bar, at, settings, roll, humanize)
-	local on = function(part) return settings:plays(part) end
-	local section, sectionBar, sectionLength = at.section, at.sectionBar, at.sectionLength
-	if on("fills") and (((at.full or at.outro) and sectionBar % 16 == 0) or (section == "breakdown" and sectionBar == 0)) then
-		bar:hit(0, "crash", 0.8)
+-- Arranging ----------------------------------------------------------------
+
+local Lanes = {}
+Lanes.__index = Lanes
+
+--- A builder for a track's lanes: `add` places blocks in any order, and
+--- `done()` returns them as {part, blocks} lanes (see host/Arrangement.lua).
+function StyleKit.lanes(track)
+	return setmetatable({track = track, list = {}, byPart = {}}, Lanes)
+end
+
+local function laneOf(self, part)
+	local lane = self.byPart[part]
+	if not lane then
+		lane = {part = part, blocks = {}}
+		self.byPart[part] = lane
+		table.insert(self.list, lane)
 	end
-	if on("risers") and at.arranged then
-		if section == "build" then
-			bar.riser = {from = sectionBar / sectionLength, to = (sectionBar + 1) / sectionLength}
-		elseif (at.full or section == "breakdown") and sectionBar == 0 then
-			bar.riser = {from = 1, to = 0}
+	return lane
+end
+
+--- A block of `pattern` on `part`'s lane over bars [start, start + length)
+--- of the track, clipped to the track. Blocks never overlap in a lane.
+function Lanes:add(part, start, length, pattern, variant)
+	local stop = math.min(start + length, self.track.length)
+	start = math.max(0, start)
+	if stop <= start then return end
+	local blocks = laneOf(self, part).blocks
+	local i = #blocks
+	while i > 0 and blocks[i].start > start do i = i - 1 end
+	local before, after = blocks[i], blocks[i + 1]
+	assert((not before or before.start + before.length <= start) and not (after and after.start < stop),
+		string.format("%s block %s at bar %d overlaps its lane", part, pattern, start))
+	table.insert(blocks, i + 1, {start = start, length = stop - start, pattern = pattern, variant = variant})
+end
+
+--- Blocks of `pattern` over whatever of [start, start + length) the lane
+--- leaves empty, so a background part can run around earlier blocks.
+function Lanes:fill(part, start, length, pattern, variant)
+	local stop = math.min(start + length, self.track.length)
+	local cursor = math.max(0, start)
+	local blocks = {table.unpack(laneOf(self, part).blocks)}
+	for _, block in ipairs(blocks) do
+		if block.start >= stop then break end
+		if block.start > cursor then self:add(part, cursor, block.start - cursor, pattern, variant) end
+		cursor = math.max(cursor, block.start + block.length)
+	end
+	if cursor < stop then self:add(part, cursor, stop - cursor, pattern, variant) end
+end
+
+--- Bars [from, to) of a section; `to` defaults to the section's end.
+function Lanes:within(part, section, from, to, pattern, variant)
+	to = math.min(to or section.length, section.length)
+	self:add(part, section.start + from, to - from, pattern, variant)
+end
+
+--- A one-bar block on the last bar of every `every` bars of a section.
+function Lanes:phraseEnds(part, section, every, pattern, variant)
+	for bar = every - 1, section.length - 1, every do self:add(part, section.start + bar, 1, pattern, variant) end
+end
+
+function Lanes:done() return self.list end
+
+--- The punctuation most styles share: on the fills lane, a crash opening
+--- every 16 bars of a drop or outro and each breakdown, and `fill(section,
+--- phrase)`'s pattern (or none) on each phrase's last bar of a drop or
+--- outro; on the risers lane, a riser through every build and a downlifter
+--- out of each impact.
+function StyleKit.punctuate(lanes, track, fill)
+	local phrase = track.phraseBars
+	for _, section in ipairs(track.sections) do
+		local id = section.id
+		if id == "drop" or id == "outro" then
+			for bar = 0, section.length - 1, 16 do lanes:add("fills", section.start + bar, 1, "fill.crash") end
+			for bar = phrase - 1, section.length - 1, phrase do
+				local pattern = fill and fill(section, bar // phrase)
+				if pattern then lanes:add("fills", section.start + bar, 1, pattern) end
+			end
+		elseif id == "breakdown" then
+			lanes:add("fills", section.start, 1, "fill.crash")
+		elseif id == "build" then
+			lanes:add("risers", section.start, section.length, "riser.build")
 		end
+		if id == "drop" or id == "breakdown" then lanes:add("risers", section.start, 1, "riser.down") end
 	end
-	if roll and on("snare") and section == "build" then
-		local progress = sectionBar / sectionLength
+end
+
+--- The DJ blend: through the first `blendBars` of a new track's intro the
+--- outgoing track's last chords keep sounding on the pads and, for the first
+--- half, the sub.
+function StyleKit.blendIn(lanes, track)
+	if track.index == 0 then return end
+	lanes:add("pads", 0, track.blendBars, "pads.blend")
+	lanes:add("sub", 0, track.blendBars // 2, "sub.blend")
+end
+
+-- Patterns every style shares. A pattern renders one bar of its part into
+-- the Bar; `ctx` is the bar's place (see host/Composer.lua). Structure
+-- patterns render before the instruments and leave flags on `ctx` for them.
+
+-- A roll tightening through a build: quarters, eighths, then 16ths.
+local function roll(voice)
+	return function(bar, ctx)
+		local bars = ctx.block.length
+		local progress = ctx.barInBlock / bars
 		local every = progress < 0.5 and 4 or (progress < 0.75 and 2 or 1)
 		for step = 0, 15, every do
-			bar:hit(step, roll, 0.35 + 0.6 * (sectionBar * 16 + step) / (sectionLength * 16), humanize)
+			bar:hit(step, voice, 0.35 + 0.6 * (ctx.barInBlock * 16 + step) / (bars * 16), ctx.humanize)
 		end
 	end
 end
 
---- A DJ blend: through the first `bars` of a new track's intro the outgoing
---- track's last chords (from `chordOf(track, n)`) keep sounding on the pads
---- and, for the first half, the sub.
-function StyleKit.blend(bar, at, settings, set, bars, chordOf)
-	local on = function(part) return settings:plays(part) end
-	if at.section ~= "intro" or at.track.index == 0 or at.sectionBar >= bars or not at.arranged then return end
-	local previous = set:track(at.track.index - 1)
-	local chord, key = chordOf(previous, bar.index)
-	bar.blend = {key = key, style = previous.flavour.name}
-	bar.pad = on("pads") and bar.index % 2 == 0 and chord.notes or nil
-	if on("sub") and at.sectionBar < bars / 2 then
-		table.insert(bar.bass, {step = 0, length = 16, note = chord.root, glide = false, subOnly = true})
-	end
+-- A pad sounds its chord on the first bar of every `bars`.
+local function pads(bar, ctx)
+	if ctx.loopBar == 0 then bar.pad = ctx.chord.notes end
 end
 
-function Bar:note(list, fields) table.insert(self[list], fields) end
+-- The outgoing track, named for the header while it mixes out.
+local function blend(bar, ctx)
+	local chord, key = ctx.outgoing()
+	bar.blend = {key = key, style = ctx.previous.flavour.name}
+	return chord
+end
+
+StyleKit.patterns = {
+	{id = "fill.crash", part = "fills", render = function(bar) bar:hit(0, "crash", 0.8) end},
+	{id = "riser.build", part = "risers", render = function(bar, ctx)
+		bar.riser = {from = ctx.barInBlock / ctx.block.length, to = (ctx.barInBlock + 1) / ctx.block.length}
+	end},
+	-- The downlifter washing out of an impact.
+	{id = "riser.down", part = "risers", render = function(bar) bar.riser = {from = 1, to = 0} end},
+	-- A dub echo: the parts that answer it throw their last hit into the delay.
+	{id = "throw", part = "throws", render = function(_, ctx) ctx.throw = true end},
+	-- The switch-up: the snare moves to beat three and the arrangement thins.
+	{id = "halftime", part = "halftime", render = function(bar, ctx) ctx.halftime, bar.halftime = true, true end},
+	-- Break edits: the amen pattern rearranges its slices under this block.
+	{id = "chops", part = "chops", render = function(_, ctx) ctx.chops = true end},
+	{id = "roll.snare", part = "snare", render = roll("snare")},
+	{id = "roll.clap", part = "snare", render = roll("clap")},
+	{id = "pads.chords", part = "pads", bars = 2, render = pads},
+	{id = "pads.long", part = "pads", bars = 4, render = pads},
+	{id = "pads.blend", part = "pads", bars = 2, render = function(bar, ctx)
+		local chord = blend(bar, ctx)
+		if ctx.loopBar == 0 then bar.pad = chord.notes end
+	end},
+	{id = "sub.blend", part = "sub", render = function(bar, ctx)
+		local chord = blend(bar, ctx)
+		table.insert(bar.bass, {step = 0, length = 16, note = chord.root, subOnly = true})
+	end},
+	-- One long sub note per bar: breakdowns and tails.
+	{id = "sub.hold", part = "sub", render = function(bar, ctx)
+		table.insert(bar.bass, {step = 0, length = 16, note = ctx.chord.root, subOnly = true})
+	end},
+	-- The reese voices the sub lane's line through its detuned, filtered
+	-- layer; without it the line plays on the sub alone.
+	{id = "reese", part = "reese", render = function(bar)
+		for _, note in ipairs(bar.bass) do note.subOnly = nil end
+	end},
+}
 
 return StyleKit

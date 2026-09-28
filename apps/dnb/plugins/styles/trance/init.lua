@@ -28,130 +28,146 @@ local function buildCycle(kit, rng, track)
 	}
 end
 
-local Composer = {}
-Composer.__index = Composer
-
-function Composer:cycle(track, index)
-	local kit = self.kit
-	-- One melody per track: the anthem comes back on every drop.
-	local first = self.set:cycle(track, 0, function(rng) return buildCycle(kit, rng, track) end)
-	if index == 0 then return first end
-	return self.set:cycle(track, index, function(rng)
-		local cycle = buildCycle(kit, rng, track)
-		cycle.lead, cycle.progression, cycle.voicings = first.lead, first.progression, first.voicings
-		cycle.leadOn = first.leadOn
-		return cycle
-	end)
-end
-function Composer:trackAt(n) return self.set:trackAt(n) end
-function Composer:trackStart(k) return self.set:trackStart(k) end
-
-function Composer:chordOf(track, n)
-	local cycle = self:cycle(track, track.cycles - 1)
-	return self.kit.chordAt(track.mode, cycle.progression, cycle.voicings, track.tonic, n),
-		self.kit.keyName(track.tonic, track.mode)
+-- Later cycles build new arps but keep the anthem: the first cycle's
+-- melody, progression and voicing return after every breakdown.
+local function material(kit, rng, track, first)
+	local cycle = buildCycle(kit, rng, track)
+	if first then
+		cycle.lead, cycle.progression, cycle.voicings, cycle.leadOn = first.lead, first.progression, first.voicings,
+			first.leadOn
+	end
+	return cycle
 end
 
-function Composer:bar(n, settings)
-	local kit, set = self.kit, self.set
-	local on = function(part) return settings:plays(part) end
-	local energy, complexity = settings:value("energy"), settings:value("complexity")
-	local humanize = settings:value("humanize")
-	local at = set:locate(n, settings)
-	local section, sectionBar, phraseBar = at.section, at.sectionBar, at.phraseBar
-	local track, tonic, flavour, mode = at.track, at.tonic, at.track.flavour, at.track.mode
-	local cycle = self:cycle(track, at.cycleIndex)
-	local chord = kit.chordAt(mode, cycle.progression, cycle.voicings, tonic, n)
-	local bar = kit.newBar(n, at, kit.random(self.seed, 2, n))
-	bar.progression, bar.chord = kit.progressionName(mode, cycle.progression), chord
-	local function hit(step, voice, gain, extra) return bar:hit(step, voice, gain, humanize, extra) end
-	local groove = at.full or at.outro or section == "intro"
-	local breakdown = section == "breakdown"
-	local throwBar = on("throws") and phraseBar % 8 == 7 and (at.full or breakdown)
+-- The arrangement ------------------------------------------------------------
 
-	if on("kick") and groove then
+local function arrange(kit, track, cycles)
+	local lanes = kit.lanes(track)
+	kit.blendIn(lanes, track)
+	for _, section in ipairs(track.sections) do
+		local id, cycle = section.id, cycles[section.cycle]
+		-- The arp runs from the intro's second phrase to the end of the track.
+		if cycle.arpOn then lanes:within("arp", section, id == "intro" and 8 or 0, nil, "arp") end
+		if id == "intro" then
+			lanes:within("kick", section, 0, nil, "kick")
+			lanes:within("hats", section, 0, nil, "hats")
+		elseif id == "build" then
+			lanes:within("snare", section, 0, nil, "roll.snare")
+			lanes:within("hats", section, 0, nil, "hats.full")
+			lanes:within("sub", section, 4, nil, "sub.pulse")
+			lanes:within("pads", section, 0, nil, "pads.chords")
+		elseif id == "drop" then
+			lanes:within("kick", section, 0, nil, "kick")
+			lanes:within("snare", section, 0, nil, "clap")
+			lanes:within("hats", section, 0, nil, "hats.full")
+			lanes:within("ride", section, 16, nil, "ride")
+			lanes:within("percussion", section, 0, nil, "perc")
+			lanes:within("sub", section, 0, nil, "sub.drive")
+			lanes:within("reese", section, 0, nil, "reese")
+			lanes:within("pads", section, 0, nil, "pads.chords")
+			lanes:within("stabs", section, 16, nil, "stabs")
+			-- The anthem waits for the drop's second half the first time round.
+			if cycle.leadOn then lanes:within("lead", section, section.cycle > 0 and 0 or 16, nil, "lead") end
+			lanes:phraseEnds("throws", section, 8, "throw")
+		elseif id == "breakdown" then
+			lanes:within("pads", section, 0, nil, "pads.chords")
+			if cycle.leadOn then lanes:within("lead", section, 8, nil, "lead.soft") end
+			lanes:phraseEnds("throws", section, 8, "throw")
+		elseif id == "outro" then
+			lanes:within("kick", section, 0, nil, "kick")
+			lanes:within("snare", section, 0, nil, "clap")
+			lanes:within("hats", section, 0, nil, "hats")
+			lanes:within("sub", section, 0, 8, "sub.drive")
+			lanes:within("reese", section, 0, 8, "reese")
+		end
+	end
+	kit.punctuate(lanes, track, function() return "fill.roll" end)
+	return lanes:done()
+end
+
+-- The patterns -----------------------------------------------------------------
+
+local function hats(full)
+	return function(_, ctx)
+		for step = 2, 14, 4 do ctx.hit(step, "openHat", 0.5) end
+		if full then
+			for step = 0, 15 do if step % 4 ~= 2 then ctx.hit(step, "hat", step % 2 == 0 and 0.3 or 0.18) end end
+		end
+	end
+end
+
+local function lead(gain)
+	return function(bar, ctx)
+		for _, note in ipairs(ctx.cycle.lead[ctx.phraseBar % 4 + 1]) do
+			table.insert(bar.lead, {step = note.step, length = note.length, glide = note.glide, gain = gain,
+				note = ctx.kit.leadPitch(ctx.mode, ctx.tonic, ctx.chord.degree, note.offset), throw = ctx.throw})
+		end
+	end
+end
+
+local PATTERNS = {
+	{id = "kick", part = "kick", render = function(_, ctx)
 		for step = 0, 12, 4 do
-			if not (at.fillBar and step == 12) then hit(step, "kick", 1) end
+			if not (ctx.fill and step == 12) then ctx.hit(step, "kick", 1) end
 		end
-	end
-	if on("snare") and (at.full or at.outro) then
-		hit(4, "clap", 0.75)
-		hit(12, "clap", 0.75, {throw = throwBar or nil})
-	end
-	if on("hats") and not breakdown then
-		for step = 2, 14, 4 do hit(step, "openHat", 0.5) end
-		if at.full or section == "build" then
-			for step = 0, 15 do if step % 4 ~= 2 then hit(step, "hat", step % 2 == 0 and 0.3 or 0.18) end end
-		end
-	end
-	if on("ride") and at.full and sectionBar >= 16 then
-		for step = 2, 15, 4 do hit(step, "ride", 0.35) end
-	end
-	if on("percussion") and at.full and complexity > 0.4 then
-		for _, step in ipairs({3, 7, 11, 15}) do if step ~= 7 or complexity > 0.7 then hit(step, "shaker", 0.3) end end
-	end
-	if at.fillBar and on("snare") then
-		for step = 12, 15.5, 0.5 do hit(step, "snare", 0.3 + 0.1 * (step - 12)) end
-	end
-	kit.punctuate(bar, at, settings, "snare", humanize)
-
-	-- Bass: the off-beat root, or the psy gallop filling every 16th but the
-	-- kick's.
-	if (at.full or (at.outro and sectionBar < 8)) and (on("sub") or on("reese")) then
+	end},
+	{id = "clap", part = "snare", render = function(_, ctx)
+		ctx.hit(4, "clap", 0.75)
+		ctx.hit(12, "clap", 0.75, {throw = ctx.throw})
+	end},
+	{id = "fill.roll", part = "fills", render = function(_, ctx)
+		ctx.fill = "roll"
+		for step = 12, 15.5, 0.5 do ctx.hit(step, "snare", 0.3 + 0.1 * (step - 12)) end
+	end},
+	{id = "hats", part = "hats", render = hats(false)},
+	{id = "hats.full", part = "hats", render = hats(true)},
+	{id = "ride", part = "ride", render = function(_, ctx)
+		for step = 2, 15, 4 do ctx.hit(step, "ride", 0.35) end
+	end},
+	{id = "perc", part = "percussion", render = function(_, ctx)
+		if ctx.complexity <= 0.4 then return end
+		for _, step in ipairs({3, 7, 11, 15}) do if step ~= 7 or ctx.complexity > 0.7 then ctx.hit(step, "shaker", 0.3) end end
+	end},
+	-- The off-beat bass, or Psytrance's gallop filling every 16th but the kick.
+	{id = "sub.drive", part = "sub", render = function(bar, ctx)
+		local gallop = ctx.flavour.gallop
 		for step = 0, 15 do
 			local offbeat = step % 4 == 2
-			local gallop = flavour.gallop and step % 4 ~= 0 and (energy > 0.3 or offbeat)
-			if offbeat or gallop then
-				table.insert(bar.bass, {step = step, length = offbeat and not flavour.gallop and 1.6 or 0.8,
-					note = chord.root + 12, reese = 0.9, accent = offbeat and flavour.gallop or nil})
+			if offbeat or (gallop and step % 4 ~= 0 and (ctx.energy > 0.3 or offbeat)) then
+				table.insert(bar.bass, {step = step, length = offbeat and not gallop and 1.6 or 0.8,
+					note = ctx.chord.root + 12, reese = 0.9, accent = offbeat and gallop or nil, subOnly = true})
 			end
 		end
-	elseif section == "build" and on("sub") and sectionBar >= 4 then
-		for step = 2, 14, 4 do table.insert(bar.bass, {step = step, length = 1, note = chord.root + 12, subOnly = true}) end
-	end
-
-	if on("pads") and n % 2 == 0 and (breakdown or section == "build" or at.full) then bar.pad = chord.notes end
-	kit.blend(bar, at, settings, set, ARRANGEMENT.blendBars, function(t, m) return self:chordOf(t, m) end)
-	if on("stabs") and at.full and sectionBar >= 16 and energy > 0.5 then
-		table.insert(bar.stabs, {step = 0, notes = chord.notes})
-	end
-
-	-- The gated arpeggio: 16ths climbing and falling through the chord with
-	-- its octave, the trance signature.
-	if on("arp") and cycle.arpOn and not (section == "intro" and sectionBar < 8) then
+	end},
+	{id = "sub.pulse", part = "sub", render = function(bar, ctx)
+		for step = 2, 14, 4 do table.insert(bar.bass, {step = step, length = 1, note = ctx.chord.root + 12, subOnly = true}) end
+	end},
+	{id = "stabs", part = "stabs", render = function(bar, ctx)
+		if ctx.energy > 0.5 then table.insert(bar.stabs, {step = 0, notes = ctx.chord.notes}) end
+	end},
+	{id = "arp", part = "arp", render = function(bar, ctx)
+		local order, notes = ctx.cycle.arp, ctx.chord.notes
+		local breakdown = ctx.section == "breakdown"
 		for step = 0, 15 do
-			if step % 2 == 0 or complexity > 0.3 or breakdown then
-				local index = cycle.arp[(step % #cycle.arp) + 1]
-				local note = chord.notes[(index - 1) % 4 + 1] + 12 * (1 + (index - 1) // 4)
-				table.insert(bar.arp, {step = step, note = note, length = 0.7,
-					gain = step % 4 == 0 and 1 or 0.65, pan = step % 2 == 0 and 0.3 or 0.7})
+			if step % 2 == 0 or ctx.complexity > 0.3 or breakdown then
+				local index = order[(step % #order) + 1]
+				table.insert(bar.arp, {step = step, note = notes[(index - 1) % 4 + 1] + 12 * (1 + (index - 1) // 4),
+					length = 0.7, gain = step % 4 == 0 and 1 or 0.65, pan = step % 2 == 0 and 0.3 or 0.7})
 			end
 		end
-	end
-	-- The anthem: softly in the second half of the breakdown, then full
-	-- once the drop that follows it lands.
-	local anthem = cycle.leadOn and ((breakdown and sectionBar >= 8) or (at.full and at.cycleIndex > 0) or
-		(at.full and sectionBar >= 16))
-	if on("lead") and anthem then
-		for _, note in ipairs(cycle.lead[phraseBar % 4 + 1]) do
-			table.insert(bar.lead, {step = note.step, length = note.length, glide = note.glide,
-				gain = breakdown and 0.7 or 1, note = kit.leadPitch(mode, tonic, chord.degree, note.offset),
-				throw = throwBar or nil})
-		end
-	end
-	return bar
-end
+	end},
+	{id = "lead", part = "lead", bars = 4, render = lead(1)},
+	{id = "lead.soft", part = "lead", bars = 4, render = lead(0.7)},
+}
 
 return {
-	api = 1,
+	api = 2,
 	title = "Trance",
 	symbol = "sparkles",
 	summary = "Uplifting, Progressive and Psy, with long breakdowns",
 	tempo = {min = 132, max = 145, default = 138},
 	defaults = {energy = 0.7, complexity = 0.6, swing = 0, humanize = 0.1,
 		cutoff = 0.4, wobble = 0, drive = 0.3, space = 0.6},
-	parts = {"kick", "snare", "hats", "ride", "percussion", "sub", "reese", "pads", "stabs", "arp", "lead",
-		"arrangement", "fills", "risers", "modulate", "throws"},
 	sound = {
 		kick = {base = 48, sweep = 150, sweepTime = 0.02, decay = 0.2, drive = 2.2, click = 0.45, length = 0.35},
 		hat = {scale = 2, decay = 0.012, openDecay = 0.06},
@@ -161,9 +177,8 @@ return {
 		lead = {detune = 0.008, brightness = 0.16, sweep = 0.3, vibratoDepth = 0.009, send = 0.8},
 		mix = {duckDepth = 0.7, pad = 0.07, arp = 0.09, lead = 0.08, delayFeedback = 0.45, reverbSend = 1.1},
 	},
-	create = function(kit, seed)
-		return setmetatable({kit = kit, seed = seed, set = kit.newSet(seed, {
-			flavours = FLAVOURS, modes = {"minor", "phrygian"}, arrangement = ARRANGEMENT, modulations = {2, 0},
-		})}, Composer)
-	end,
+	set = {flavours = FLAVOURS, modes = {"minor", "phrygian"}, arrangement = ARRANGEMENT, modulations = {2, 0}},
+	material = material,
+	arrange = arrange,
+	patterns = PATTERNS,
 }
