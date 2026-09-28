@@ -148,6 +148,16 @@ function System.emptyTrash()
 	return os.execute("/usr/bin/osascript -e 'tell application \"Finder\" to empty trash'")
 end
 function System.showError(title, message) ns.Alert {title = title, message = message} end
+-- What a cleanup checks just before each move (models/Verify.lua).
+System.fileIdentity = ns.fileIdentity
+function System.cleanupProbes()
+	local running = {}
+	for _, id in ipairs(ns.runningApplications() or {}) do running[id] = true end
+	-- Existence is lstat, never an open: opening another app's container
+	-- would make macOS ask for access to other apps' data.
+	return {running = running, appPath = ns.applicationPath, identity = ns.fileIdentity,
+		exists = function(path) return ns.fileIdentity(path) ~= nil end}
+end
 System.reveal = ns.revealInFinder
 System.diskSpace = ns.diskSpace
 function System.trash(path)

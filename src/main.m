@@ -6,6 +6,7 @@
 #include <dlfcn.h>
 #include <libgen.h>
 #include <limits.h>
+#include <sys/stat.h>
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
@@ -501,6 +502,9 @@ static const luaL_Reg bridge_lib[] = {
 	{"_quickLookItems", bridge_quick_look_items},
 	{"_onOpenFiles", bridge_on_open_files},
 	{"_openFiles", bridge_open_files},
+	{"_runningApplications", bridge_running_applications},
+	{"_applicationPath", bridge_application_path},
+	{"_fileIdentity", bridge_file_identity},
 	{"_clipboardCopy", bridge_AppKit_clipboard_copy},
 	{"_alert", bridge_AppKit_alert},
 	{"_diskSpace", bridge_AppKit_disk_space},
