@@ -1,6 +1,6 @@
 #pragma mark - Native drag-to-reorder for AppKit stack containers
 
-@interface LuaContainerReorder : NSObject <NSDraggingSource>
+@interface LuaContainerReorder : NSObject <NSDraggingSource, LuaStackReorder>
 @property(nonatomic, weak) NSView *container;
 @property(nonatomic, copy) NSArray<NSView *> *items;
 @property(nonatomic, strong) LuaReg *callback;
@@ -75,26 +75,11 @@
 }
 @end
 
-static char kAppKitReorderContainerKey;
-@implementation LuaStackView (ReorderContainer)
-- (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
-	LuaContainerReorder *delegate = objc_getAssociatedObject(self, &kAppKitReorderContainerKey);
-	return [delegate validateDrag:sender];
-}
-- (NSDragOperation)draggingUpdated:(id<NSDraggingInfo>)sender {
-	LuaContainerReorder *delegate = objc_getAssociatedObject(self, &kAppKitReorderContainerKey);
-	return [delegate validateDrag:sender];
-}
-- (BOOL)performDragOperation:(id<NSDraggingInfo>)sender {
-	LuaContainerReorder *delegate = objc_getAssociatedObject(self, &kAppKitReorderContainerKey);
-	return [delegate acceptDrag:sender];
-}
-@end
-
 static int bridge_AppKitReorder_attach(lua_State *L) {
-	NSView *container = check_view(L, 1);
-	if (![container isKindOfClass:LuaStackView.class])
+	NSView *view = check_view(L, 1);
+	if (![view isKindOfClass:LuaStackView.class])
 		return luaL_error(L, "reorder container requires a stack-style native layout");
+	LuaStackView *container = (LuaStackView *)view;
 	luaL_checktype(L, 2, LUA_TTABLE);
 	LuaReg *callback = lua_reg_opt(L, 3);
 	if (!callback) return luaL_error(L, "reorder container requires a callback");
@@ -114,15 +99,15 @@ static int bridge_AppKitReorder_attach(lua_State *L) {
 			initWithTarget:delegate action:@selector(dragItem:)];
 		[item addGestureRecognizer:gesture];
 	}
-	[container registerForDraggedTypes:@[@"org.luaobjc.reorder-item"]];
-	objc_setAssociatedObject(container, &kAppKitReorderContainerKey, delegate,
-		OBJC_ASSOCIATION_RETAIN);
+	container.reorder = delegate;
+	stack_register_drag_types(container);
 	return 0;
 }
 
 static int bridge_AppKitReorder_testMove(lua_State *L) {
 	NSView *container = check_view(L, 1);
-	LuaContainerReorder *delegate = objc_getAssociatedObject(container, &kAppKitReorderContainerKey);
+	LuaContainerReorder *delegate = [container isKindOfClass:LuaStackView.class]
+		? (LuaContainerReorder *)((LuaStackView *)container).reorder : nil;
 	if (!delegate) return luaL_error(L, "view has no reorder container");
 	lua_Integer from = luaL_checkinteger(L, 2);
 	lua_Integer to = luaL_checkinteger(L, 3);

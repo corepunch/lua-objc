@@ -74,6 +74,19 @@ local _, externalRefs = xml.render('<VStack id="zone" onDrop="drop" dropExternal
 t.expect(externalRefs.zone.dropExternalOnly, "dropExternalOnly reaches the native stack")
 t.expect(not targetRefs.zone.dropExternalOnly, "stacks take drags from anywhere by default")
 t.expect(ns._dropFiles(externalRefs.zone, {"/tmp/x"}), "files from the Finder still reach the handler")
+t.expect(not ns._dropFiles(externalRefs.zone, {"/tmp/x"}, true), "files dragged inside the app pass it by")
+
+-- A reorderable stack is still a file drop target: both features share the
+-- stack's one set of dragging-destination methods.
+local bothDropped
+local _, bothRefs = xml.render([[<VStack id="zone" onDrop="drop" reorderable="true" reorderContainer="move">
+  <Label text="A" /><Label text="B" />
+</VStack>]], {actions = {drop = function(paths) bothDropped = paths; return true end, move = function() end}}, ns)
+t.expect(ns._dropFiles(bothRefs.zone, {"/tmp/z"}), "a reorderable stack takes dropped files")
+t.assertEqual(bothDropped and bothDropped[1], "/tmp/z", "the file reaches onDrop, not the reorder")
+local types = {}
+for _, type in ipairs(bothRefs.zone.registeredDraggedTypes) do types[tostring(type)] = true end
+t.expect(types["public.file-url"] and types["org.luaobjc.reorder-item"], "the stack registers files and its items")
 
 -- Folders and files opened with the app (Dock icon, Open With) wait for a
 -- handler and then reach it.

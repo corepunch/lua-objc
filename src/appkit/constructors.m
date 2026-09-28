@@ -1,6 +1,17 @@
 /* Native constructors exported by the AppKit module. */
 #import <QuartzCore/QuartzCore.h>
 
+/* A stack is the drag destination for both of its drag features: files
+ * dropped on it (`onDrop`) and its own items dragged to reorder
+ * (reorder_container.m). AppKit sends one set of NSDraggingDestination
+ * messages per view, so the stack implements them once and routes each drag
+ * by its payload. A category method with the same selector would silently
+ * replace these, which is how file drops once stopped reaching `onDrop`. */
+@protocol LuaStackReorder <NSObject>
+- (NSDragOperation)validateDrag:(id<NSDraggingInfo>)info;
+- (BOOL)acceptDrag:(id<NSDraggingInfo>)info;
+@end
+
 /* AppKit has no KVC property to exclude a container subtree from hit testing.
  * Keep the native NSView traversal and opt out before it visits descendants. */
 @interface LuaStackView : NSView
@@ -12,6 +23,8 @@
 // Accept only drags from other applications: a drag that starts in this
 // app has a dragging source, one from the Finder has none.
 @property(nonatomic) BOOL dropExternalOnly;
+// Moves the stack's own items when one is dragged within it.
+@property(nonatomic, strong) id<LuaStackReorder> reorder;
 @end
 @implementation LuaStackView
 - (instancetype)initWithFrame:(NSRect)frame {
@@ -41,6 +54,14 @@ static NSArray<NSString *> *stack_drop_paths(id<NSDraggingInfo> info) {
 	for (NSURL *url in urls) if (url.path.length) [paths addObject:url.path];
 	return paths;
 }
+// Types the stack takes: file URLs for `onDrop`, its item type for reorder.
+static void stack_register_drag_types(LuaStackView *view) {
+	NSMutableArray *types = [NSMutableArray array];
+	if (view.dropReg) [types addObject:NSPasteboardTypeFileURL];
+	if (view.reorder) [types addObject:@"org.luaobjc.reorder-item"];
+	if (types.count) [view registerForDraggedTypes:types];
+	else [view unregisterDraggedTypes];
+}
 // While files hover over it, the stack shows the system focus indicator.
 - (void)setDropTargeted:(BOOL)targeted {
 	_dropTargeted = targeted;
@@ -48,16 +69,26 @@ static NSArray<NSString *> *stack_drop_paths(id<NSDraggingInfo> info) {
 	self.layer.borderWidth = targeted ? kDropHighlightWidth : 0;
 	self.layer.borderColor = NSColor.keyboardFocusIndicatorColor.CGColor;
 }
-- (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
-	BOOL accepts = self.dropReg && (!self.dropExternalOnly || sender.draggingSource == nil)
+- (BOOL)acceptsFileDrag:(id<NSDraggingInfo>)sender {
+	return self.dropReg && (!self.dropExternalOnly || sender.draggingSource == nil)
 		&& stack_drop_paths(sender).count > 0;
-	self.dropTargeted = accepts;
-	return accepts ? NSDragOperationCopy : NSDragOperationNone;
+}
+- (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
+	NSDragOperation reorder = [self.reorder validateDrag:sender];
+	if (reorder != NSDragOperationNone) return reorder;
+	self.dropTargeted = [self acceptsFileDrag:sender];
+	return self.dropTargeted ? NSDragOperationCopy : NSDragOperationNone;
+}
+- (NSDragOperation)draggingUpdated:(id<NSDraggingInfo>)sender {
+	NSDragOperation reorder = [self.reorder validateDrag:sender];
+	if (reorder != NSDragOperationNone) return reorder;
+	return self.dropTargeted ? NSDragOperationCopy : NSDragOperationNone;
 }
 - (void)draggingExited:(id<NSDraggingInfo>)sender { (void)sender; self.dropTargeted = NO; }
 - (BOOL)performDragOperation:(id<NSDraggingInfo>)sender {
 	self.dropTargeted = NO;
-	if (self.dropExternalOnly && sender.draggingSource != nil) return NO;
+	if ([self.reorder validateDrag:sender] != NSDragOperationNone) return [self.reorder acceptDrag:sender];
+	if (![self acceptsFileDrag:sender]) return NO;
 	return stack_perform_drop(self, stack_drop_paths(sender));
 }
 static BOOL stack_perform_drop(LuaStackView *view, NSArray<NSString *> *paths) {
@@ -82,23 +113,41 @@ static int bridge_set_drop_handler(lua_State *L) {
 	LuaStackView *view = lua_objc_check_object(L, 1, [LuaStackView class], "stack");
 	view.dropReg = lua_reg_opt(L, 2);
 	view.dropExternalOnly = lua_toboolean(L, 3);
-	if (view.dropReg) [view registerForDraggedTypes:@[NSPasteboardTypeFileURL]];
-	else [view unregisterDraggedTypes];
+	stack_register_drag_types(view);
 	return 0;
 }
 
-// Test hook: _dropFiles(stack, paths) as if they were dropped on it.
+/* The drag a test hook hands to a stack: files on a private pasteboard, from
+ * the Finder (no source) or from inside this app. Only the NSDraggingInfo
+ * members the stack reads are implemented. */
+@interface LuaTestFileDrag : NSObject
+@property(nonatomic, strong) NSPasteboard *draggingPasteboard;
+@property(nonatomic, strong) id draggingSource;
+@end
+@implementation LuaTestFileDrag
+@end
+
+// Test hook: _dropFiles(stack, paths[, fromThisApp]) delivers the drop
+// through the stack's own NSDraggingDestination methods, as AppKit does.
 static int bridge_drop_files(lua_State *L) {
 	LuaStackView *view = lua_objc_check_object(L, 1, [LuaStackView class], "stack");
 	luaL_checktype(L, 2, LUA_TTABLE);
-	NSMutableArray *paths = [NSMutableArray array];
+	NSMutableArray<NSURL *> *urls = [NSMutableArray array];
 	for (lua_Integer i = 1; ; i++) {
 		lua_rawgeti(L, 2, i);
 		if (lua_isnil(L, -1)) { lua_pop(L, 1); break; }
-		[paths addObject:[NSString stringWithUTF8String:luaL_checkstring(L, -1)]];
+		[urls addObject:[NSURL fileURLWithPath:[NSString stringWithUTF8String:luaL_checkstring(L, -1)]]];
 		lua_pop(L, 1);
 	}
-	lua_pushboolean(L, stack_perform_drop(view, paths));
+	LuaTestFileDrag *drag = [LuaTestFileDrag new];
+	drag.draggingPasteboard = [NSPasteboard pasteboardWithUniqueName];
+	[drag.draggingPasteboard clearContents];
+	[drag.draggingPasteboard writeObjects:urls];
+	if (lua_toboolean(L, 3)) drag.draggingSource = view;
+	id<NSDraggingInfo> info = (id<NSDraggingInfo>)drag;
+	BOOL accepted = [view draggingEntered:info] != NSDragOperationNone && [view performDragOperation:info];
+	[drag.draggingPasteboard releaseGlobally];
+	lua_pushboolean(L, accepted);
 	return 1;
 }
 
