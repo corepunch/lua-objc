@@ -49,8 +49,10 @@ end
 function Verify.check(item, resource, home, probes)
 	probes = probes or {}
 	local path = item.path
+	-- Compared as the basket compares: /etc is /private/etc, in any case.
+	local key = type(path) == "string" and Basket.normalize(path) .. "/" or ""
 	for _, prefix in ipairs(Verify.protected) do
-		if path:sub(1, #prefix) == prefix then return false, {code = "protected", reason = "it is in a protected system location"} end
+		if key:sub(1, #prefix) == prefix:lower() then return false, {code = "protected", reason = "it is in a protected system location"} end
 	end
 	local valid, why = Basket.validate(path, home)
 	if not valid then return false, {code = "location", reason = why:gsub("%.$", ""):lower()} end

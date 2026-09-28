@@ -95,10 +95,8 @@ static const CGFloat kArcFullCircleDegrees = 359.0;
  * Distances are points, angles radians except the field of view and the
  * gradient (degrees). */
 static const CGFloat kSectorSceneFlatness = 0.04;
-static const CGFloat kSectorSceneLiftDistance = 8.0;
-static const CGFloat kSectorSceneLiftHeight = 6.0;
-static const NSTimeInterval kSectorSceneLiftDuration = 0.18;
-static const CGFloat kSectorSceneLiftBrighten = 0.18;
+static const NSTimeInterval kSectorSceneHighlightDuration = 0.18;
+static const CGFloat kSectorSceneHighlightContrast = 0.22;
 /* How often a relaunch looks for its new instance, and how long it waits. */
 static const NSTimeInterval kRelaunchPollInterval = 0.25;
 static const NSTimeInterval kRelaunchTimeout = 10.0;

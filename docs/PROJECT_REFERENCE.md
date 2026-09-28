@@ -1001,8 +1001,12 @@ key light and a soft contact shadow on a shadow-only floor do the rest;
 `shadow="false"` drops the shadow. Mark
 opacity blends towards the window background rather than making solids
 translucent. The pointer is unprojected onto each ring's top face, so hover,
-selection and drag use the same flat geometry as the arcs, and the hovered
-sector slides out.
+selection and drag use the same flat geometry as the arcs. The hovered
+sector never moves, because a sector that rose or slid out read differently
+at the front and the back of the tilted chart: it takes its color at full
+strength and steps away from the backdrop, lighter in dark mode and deeper in
+light mode. `require("ui.sectors").highlight(chart, id)` highlights a sector
+from code, so a list beside the chart can point at it.
 
 `<Gauge value="0.4" tint="systemBlue" />` is SwiftUI `Gauge` with the linear
 capacity style: a read-only continuous-capacity `NSLevelIndicator` on AppKit

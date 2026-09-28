@@ -2,6 +2,7 @@ local ns = require("AppKit")
 local Template = require("ui.template")
 local FolderTree = require("apps.diskmap.models.FolderTree")
 local Model = require("apps.diskmap.Model")
+local Sectors = require("ui.sectors")
 local Controller = {}; Controller.__index = Controller
 
 local STYLES = {"rings", "rectangles"}
@@ -297,7 +298,9 @@ function Controller:update(state)
 		up = function() self:up() end,
 		selectRow = function(_, _, row)
 			if row and not row.other then self.selected = row.path end
-			if row then self:describe(row.id) end
+			if not row then return end
+			self:describe(row.id)
+			if self.refs.folderSunburst then Sectors.highlight(self.refs.folderSunburst, row.id) end
 		end,
 		drillRow = function(_, _, row) if row and not row.other then self:activate(row.id) end end,
 		rowMenu = function(_, _, row)

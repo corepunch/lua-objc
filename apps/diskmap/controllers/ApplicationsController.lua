@@ -106,7 +106,7 @@ function Controller:update(state)
 	refs.appsTileDetail.text = Model.plural(summary.count, "application bundle")
 	refs.dataTileValue.text = self.model.files and Model.size(summary.data) or "—"
 	refs.unusedTileValue.text = self.info and tostring(summary.unused) or "—"
-	refs.unusedTileDetail.text = self.info and (Model.size(summary.unusedBytes) .. " not opened in 6 months") or "Reading last-used dates…"
+	refs.unusedTileDetail.text = self.info and (Model.size(summary.unusedBytes) .. " not opened in 6 months, or never") or "Reading last-used dates…"
 	refs.leftoversTileValue.text = summary.leftovers and Model.size(summary.leftoverBytes) or "—"
 	refs.leftoversTileDetail.text = summary.leftovers and (Model.plural(summary.leftovers, "folder") .. " of apps not installed") or "Checking installed apps…"
 end

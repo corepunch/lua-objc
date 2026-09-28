@@ -1,7 +1,7 @@
 <ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
   <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {icon = "square.grid.3x3.fill", color = "systemBlue", title = "Applications", summary = "Reading installed applications…"}) %>
-    <HStack id="stats" maxWidth="infinity" spacing="12" alignment="top">
+    <HStack id="stats" maxWidth="infinity" fixedSize="vertical" spacing="12" alignment="top">
       <%- partial("StatTile.etlua", {id = "appsTile", icon = "app.fill", color = "systemBlue", title = "Apps", value = "—", detail = "Application bundles"}) %>
       <%- partial("StatTile.etlua", {id = "dataTile", icon = "folder.fill", color = "systemTeal", title = "App data", value = "—", detail = "Containers, support files and caches"}) %>
       <%- partial("StatTile.etlua", {id = "unusedTile", icon = "hourglass", color = "systemOrange", title = "Unused", value = "—", detail = "Not opened in 6 months"}) %>
@@ -27,6 +27,6 @@
         <%- partial("ResourceList.etlua", {id = "leftovers", menu = "leftoverMenu", activate = "revealLeftover", detailColumn = true}) %>
       </GroupBox>
     </VStack>
-    <%- partial("Footnote.etlua", {text = "Last used comes from Spotlight, as Finder's Last Opened. Apps outside /Applications and ~/Applications are not listed; their data never counts as a leftover."}) %>
+    <%- partial("Footnote.etlua", {text = "Last used comes from Spotlight, as Finder's Last Opened; an app Spotlight has not seen opened reads Never opened. Apps outside /Applications and ~/Applications are not listed; their data never counts as a leftover."}) %>
   </VStack>
 </ScrollView>

@@ -4,13 +4,14 @@ local xml = require("ui.xml")
 local Controller = {}; Controller.__index = Controller
 
 local MEDIA = {
-	mock = "Include the synthetic Photos, Music and TV libraries in this session? Mock HDD reads only its bundled fixture.",
-	system = "Measuring Photos, Music and TV libraries requires enumerating their files. macOS may ask for access. Diskmap reads metadata only. Enable for this session?",
+	mock = "Include the synthetic Photos, Music and TV libraries? Mock HDD reads only its bundled fixture.",
+	system = "Measuring Photos, Music and TV libraries requires enumerating their files. macOS may ask for access. Diskmap reads metadata only, and keeps measuring them until you turn this off.",
 }
 
 -- `rescan` restarts measurement after a setting changes what is scanned;
 -- `notifications` (NotificationsController) owns the opt-in notifications.
 function Controller.new(service, model, rescan, notifications)
+	if type(rawget(service, "loadFlag")) == "function" then model.includeMedia = service.loadFlag("media") == true end
 	return setmetatable({service = service, model = model, rescan = rescan, notifications = notifications,
 		enabled = not service.loadSettings or service.loadSettings(),
 		history = type(rawget(service, "loadHistorySetting")) == "function" and service.loadHistorySetting() == true}, Controller)
@@ -59,16 +60,19 @@ function Controller:toggleMonitoring()
 	self.service.showError("Could not save Settings", "Try again.")
 end
 
+-- The choice is kept between launches: someone whose disk is full of photos
+-- should not have to find the switch again every time.
+function Controller:setMedia(enabled)
+	self.model.includeMedia = enabled
+	if type(rawget(self.service, "saveFlag")) == "function" then self.service.saveFlag("media", enabled) end
+	self.rescan()
+end
+
 function Controller:toggleMedia()
-	if self.model.includeMedia then
-		self.model.includeMedia = false
-		self.rescan()
-		return
-	end
+	if self.model.includeMedia then self:setMedia(false); return end
 	local message = rawget(self.service, "mock") == true and MEDIA.mock or MEDIA.system
 	if self.service.confirmAction("Include media libraries", message) then
-		self.model.includeMedia = true
-		self.rescan()
+		self:setMedia(true)
 	else
 		self.refs.media.state = 0
 	end

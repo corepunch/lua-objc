@@ -1,6 +1,7 @@
 // A standalone Lua service plugin: no second UI runtime or Lua callbacks on workers.
 // Native bulk metadata enumeration and cancellation cannot be expressed by KVC.
 #import <Foundation/Foundation.h>
+#import <sys/mount.h>
 #import <sys/attr.h>
 #import <sys/vnode.h>
 #import <sys/stat.h>
@@ -533,6 +534,19 @@ static NSTimeInterval lastUse(struct timespec modified, struct timespec accessed
 	if (!self.currentBreakdown || self.currentBreakdown.count >= ScanBreakdownLimit || !name) return;
 	[self.currentBreakdown addObject:@{@"name": name, @"kb": @(bytes / 1024.0), @"directory": @(directory)}];
 }
+// The space a volume uses, when `path` is where it is mounted; 0 otherwise.
+// APFS reports a clone's blocks under every file that shares them, so the
+// files of a volume of clones (Preboot's cryptexes and staged updates) add
+// up to several times what the volume holds. The volume's own figure is the
+// one Disk Utility shows.
+static uint64_t volumeUsedBytes(NSString *path) {
+	struct statfs fs;
+	if (statfs(path.fileSystemRepresentation, &fs) || strcmp(fs.f_mntonname, path.fileSystemRepresentation)) return 0;
+	struct attrlist request = {.bitmapcount = ATTR_BIT_MAP_COUNT, .volattr = ATTR_VOL_INFO | ATTR_VOL_SPACEUSED};
+	struct { uint32_t length; off_t used; } __attribute__((aligned(4), packed)) reply;
+	if (getattrlist(path.fileSystemRepresentation, &request, &reply, sizeof reply, 0) || reply.used <= 0) return 0;
+	return (uint64_t)reply.used;
+}
 - (void)root:(NSString *)path {
 	NSString *state = nil; NSDictionary *tree = nil, *rootFolder = nil;
 	NSArray *parts = path.pathComponents;
@@ -566,14 +580,30 @@ static NSTimeInterval lastUse(struct timespec modified, struct timespec accessed
 			NSTimeInterval used = 0;
 			if (fd < 0) [self issue:path code:errno];
 			else { bytes = [self directory:fd path:logicalPath device:st.st_dev depth:0 node:folder latest:&used]; close(fd); }
+			// A whole volume never measures more than it uses: what its files
+			// claim beyond that is shared between clones, reported as
+			// `sharedKb`, and the children give it up in proportion so they
+			// still add up to their root.
+			uint64_t volume = fd < 0 ? 0 : volumeUsedBytes(path), shared = 0;
+			if (volume && bytes > volume) {
+				shared = bytes - volume;
+				double scale = (double)volume / (double)bytes;
+				for (NSUInteger index = 0; index < self.currentBreakdown.count; index++) {
+					NSMutableDictionary *child = [self.currentBreakdown[index] mutableCopy];
+					child[@"kb"] = @([child[@"kb"] doubleValue] * scale);
+					self.currentBreakdown[index] = child;
+				}
+				bytes = volume;
+			}
 			if (folder) {
 				folder[@"name"] = logicalPath.lastPathComponent; folder[@"kb"] = @(bytes / 1024.0);
 				folder[@"used"] = @(used); folder[@"directory"] = @YES;
 				if (!folder[@"children"]) folder[@"children"] = @[];
 				rootFolder = folder;
 			}
-			tree = @{@"kb": @(bytes / 1024.0), @"partial": @(self.errors > before), @"logicalKb": @(self.rootLogical / 1024.0),
-				@"cloudKb": @(self.rootCloudBytes / 1024.0), @"cloudFiles": @(self.rootCloudCount)};
+			tree = @{@"kb": @(bytes / 1024.0), @"partial": self.errors > before ? @YES : @NO, @"logicalKb": @(self.rootLogical / 1024.0),
+				@"cloudKb": @(self.rootCloudBytes / 1024.0), @"cloudFiles": @(self.rootCloudCount),
+				@"volumeKb": @(volume / 1024.0), @"sharedKb": @(shared / 1024.0)};
 		} else if (S_ISREG(st.st_mode)) {
 			[self countVisited];
 			BOOL alreadyCounted = [self seenInode:st.st_ino device:st.st_dev];
@@ -604,7 +634,7 @@ static NSTimeInterval lastUse(struct timespec modified, struct timespec accessed
 		@"seconds": @(NSProcessInfo.processInfo.systemUptime - self.started),
 		@"failure": self.cancelled ? @"Measurement cancelled." : self.failure,
 		@"exportedFiles": @(self.exportedFiles), @"exportPath": self.exportPath ?: @"",
-		@"partial": @(self.errors > 0 || self.failure.length > 0 || self.cancelled)};
+		@"partial": (self.errors > 0 || self.failure.length > 0 || self.cancelled) ? @YES : @NO};
 	// Summaries describe the whole batch, so they are published once at the end.
 	if (done && (self.fileLimit || self.collectsExtensions || self.collectsBreakdown || self.treeDepth || self.oldBefore > 0)) {
 		NSMutableDictionary *complete = [snapshot mutableCopy];
@@ -640,12 +670,21 @@ static NSTimeInterval lastUse(struct timespec modified, struct timespec accessed
 }
 @end
 
+// Results keep their types across the bridge. Strings carry their byte
+// length, so output with embedded NULs (`mdls -raw` separates values with
+// them) arrives whole. Counts arrive as Lua integers and print without ".0".
+// Only a CFBoolean is a Lua boolean: a flag boxed from a C expression
+// (`@(a > b)`) is an int that Lua would find truthy even when 0, so flags
+// are always built from @YES and @NO.
 static void pushValue(lua_State *L, id value) {
 	if (!value || value == NSNull.null) { lua_pushnil(L); return; }
-	if ([value isKindOfClass:NSString.class]) lua_pushstring(L, [value UTF8String]);
-	else if ([value isKindOfClass:NSNumber.class]) {
+	if ([value isKindOfClass:NSString.class]) {
+		NSData *bytes = [value dataUsingEncoding:NSUTF8StringEncoding allowLossyConversion:YES];
+		lua_pushlstring(L, bytes.bytes ?: "", bytes.length);
+	} else if ([value isKindOfClass:NSNumber.class]) {
 		if (CFGetTypeID((__bridge CFTypeRef)value) == CFBooleanGetTypeID()) lua_pushboolean(L, [value boolValue]);
-		else lua_pushnumber(L, [value doubleValue]);
+		else if (CFNumberIsFloatType((__bridge CFNumberRef)value)) lua_pushnumber(L, [value doubleValue]);
+		else lua_pushinteger(L, [value longLongValue]);
 	} else if ([value isKindOfClass:NSArray.class]) {
 		lua_createtable(L, (int)[value count], 0); NSUInteger i = 1;
 		for (id child in value) { pushValue(L, child); lua_rawseti(L, -2, i++); }
@@ -697,7 +736,7 @@ static int commandStart(lua_State *L) {
 			}
 			[job.task waitUntilExit];
 			NSString *output = overflow ? @"Command output exceeded the limit." : [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] ?: @"Invalid command output.";
-			@synchronized(job) { job.result = @{@"ok": @(!overflow && job.task.terminationStatus == 0), @"output": output}; job.done = YES; }
+			@synchronized(job) { job.result = @{@"ok": (!overflow && job.task.terminationStatus == 0) ? @YES : @NO, @"output": output}; job.done = YES; }
 		}
 	});
 	return 1;

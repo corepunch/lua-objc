@@ -687,6 +687,15 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 				NSRect text = [manager usedRectForTextContainer:container];
 				CGFloat scale = view.window.backingScaleFactor ?: NSScreen.mainScreen.backingScaleFactor ?: 1;
 				natural = NSMakeSize(ceil((text.size.width + textInsets) * scale) / scale, ceil(text.size.height * scale) / scale);
+				/* The cell breaks lines its own way when it draws (it avoids a
+				 * short last line, for one), so text that fits two lines in a
+				 * plain text container can draw as three, and the third was
+				 * clipped without an ellipsis. The label is as tall as the
+				 * taller of the two answers. */
+				if (field.cell.wraps) {
+					NSSize drawn = [field.cell cellSizeForBounds:NSMakeRect(0, 0, constraint.width, CGFLOAT_MAX)];
+					natural.height = MAX(natural.height, ceil(drawn.height * scale) / scale);
+				}
 
 				if (field.maximumNumberOfLines > 0) {
 					CGFloat lineHeight = ceil((field.font.ascender - field.font.descender + field.font.leading) * scale) / scale;

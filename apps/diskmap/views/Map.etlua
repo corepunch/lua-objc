@@ -1,5 +1,5 @@
 <%
-  local MAP = { chart = 360, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 34, caption = 13, totalScale = 13 / 34, captionScale = 0.77 }, gap = 5, depth = 14, list = 300, treemapHeight = 420 }
+  local MAP = { chart = 360, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 34, caption = 13, totalScale = 13 / 34, captionScale = 0.77 }, gap = 5, depth = 14, list = { minimum = 240, maximum = 330 }, treemapHeight = 420 }
   -- Every ring keeps the thickness it has among three, so one ring of
   -- files is a slim ring like the Overview donut, not a thick disc.
   local rings = 1
@@ -29,13 +29,21 @@
     </Picker>
   </HStack>
   <HStack id="mapBody" flexGrow="1" maxWidth="infinity" maxHeight="infinity" spacing="16" alignment="top">
-    <GroupBox width="<%= MAP.list %>" maxHeight="infinity">
-      <List id="mapList" onSelect="selectRow" onActivate="drillRow" rowMenu="rowMenu" dragKey="path" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="40" drawsBackground="false" maxWidth="infinity" maxHeight="infinity">
-        <Column id="name" title="Item" subtitleKey="size" imageKey="icon" badgeColorKey="color" imageSize="22" minWidth="140" />
-        <Column id="shareText" title="Share" width="92" minWidth="80" levelKey="relative" levelColorKey="color" />
-      </List>
+    <% --[[ The list gives way before the chart does: in the narrowest window it
+      keeps its name and share columns, and the chart its size. ]] %>
+    <GroupBox minWidth="<%= MAP.list.minimum %>" maxWidth="<%= MAP.list.maximum %>" flexGrow="1" flexShrink="1" maxHeight="infinity">
+      <VStack maxWidth="infinity" maxHeight="infinity" spacing="0">
+        <% if #rows == 0 and query ~= "" then %>
+        <ContentUnavailable id="mapNoResults" title="No Results" systemImage="magnifyingglass" description="Nothing at this level of the map matches “<%= query %>”." />
+        <% end %>
+        <List id="mapList" hidden="<%= #rows == 0 and query ~= "" and "true" or "false" %>" onSelect="selectRow" onActivate="drillRow" rowMenu="rowMenu" dragKey="path" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="40" drawsBackground="false" maxWidth="infinity" maxHeight="infinity">
+          <Column id="name" title="Item" subtitleKey="size" imageKey="icon" badgeColorKey="color" imageSize="22" minWidth="140" />
+          <Column id="shareText" title="Share" width="92" minWidth="80" levelKey="relative" levelColorKey="color" />
+        </List>
+      </VStack>
     </GroupBox>
-    <VStack flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity" spacing="12" alignment="center">
+    <ScrollView id="mapChartScroll" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" minWidth="<%= MAP.chart %>" maxHeight="infinity">
+    <VStack maxWidth="infinity" spacing="12" alignment="center">
       <% if #nodes == 0 then %>
       <ContentUnavailable id="mapEmpty" title="Nothing Measured Here Yet" systemImage="chart.pie" description="Sizes appear as Diskmap measures this part of your storage." />
       <% elseif style == "rectangles" then %>
@@ -71,5 +79,6 @@
       </GroupBox>
       <% end %>
     </VStack>
+    </ScrollView>
   </HStack>
 </VStack>

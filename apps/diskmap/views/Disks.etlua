@@ -2,9 +2,9 @@
   <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {icon = "internaldrive.fill", color = "systemGray", title = "Disks & Volumes", summary = "Reading disk information…", buttons = {{id = "diskUtility", title = "Open Disk Utility", action = "diskUtility", help = "Run First Aid or erase a disk in Disk Utility"}}}) %>
     <% if #health > 0 then %>
-    <HStack id="health" maxWidth="infinity" spacing="12" alignment="top">
+    <HStack id="health" maxWidth="infinity" fixedSize="vertical" spacing="12" alignment="top">
       <% for _, fact in ipairs(health) do %>
-      <GroupBox id="fact_<%= fact.id %>" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity">
+      <GroupBox id="fact_<%= fact.id %>" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
         <VStack maxWidth="infinity" padding="14" spacing="6" alignment="leading">
           <HStack maxWidth="infinity" spacing="8" alignment="center">
             <SystemImage name="<%= fact.icon %>" size="22" badgeColor="<%= fact.color %>" />

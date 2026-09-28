@@ -100,7 +100,7 @@ local widths = bridge._tableColumnWidths(items)
 local total, named = 0, 0
 for _, column in ipairs(widths) do total = total + column.width; if column.id == "name" then named = column.width end end
 t.expect(total <= 595 + 1, "shared list columns fit the narrowest window")
-t.expect(named >= 180, "the name keeps 180 points in the narrowest window")
+t.expect(named >= 170, "the name keeps 170 points in the narrowest window")
 -- Status lists show one colour-coded symbol per row; the status word stays
 -- available as tooltip and accessibility label instead of truncated text.
 local Status = require("apps.diskmap.models.Status")

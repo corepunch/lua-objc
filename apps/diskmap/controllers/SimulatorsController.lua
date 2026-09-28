@@ -61,19 +61,28 @@ function Controller:show()
 	refs.runtimes:replaceRows(self.runtimes)
 	refs.runtimesSection.hidden = self.runtimeList ~= nil and #Simulators.runtimeRows(self.runtimeList, self.inventory) == 0
 	local summary = Simulators.summary(self.inventory, Simulators.runtimeRows(self.runtimeList, self.inventory))
-	refs.devicesTileValue.text = Model.size(summary.deviceBytes)
-	refs.devicesTileDetail.text = summary.devices .. (summary.devices == 1 and " device" or " devices")
-		.. (summary.stale > 0 and (" · " .. summary.stale .. " unused for " .. Simulators.staleDays .. " days") or "")
-	refs.runtimesTileValue.text = self.runtimeList and Model.size(summary.runtimeBytes) or "Not measured"
-	refs.runtimesTileDetail.text = self.runtimeList and (summary.runtimes .. (summary.runtimes == 1 and " runtime installed" or " runtimes installed"))
-		or "simctl runtime list is unavailable"
-	refs.unavailableTileValue.text = tostring(summary.unavailable)
-	refs.unavailableTileDetail.text = summary.unavailable == 0 and "Every device has its runtime"
-		or (Model.size(summary.unavailableBytes) .. " of apps and data on devices whose runtime is gone")
-	refs.summary.text = self.busy and "Working…" or self.error
-		or string.format("%s in %d devices and %s in %d runtimes", Model.size(summary.deviceBytes), summary.devices,
-			self.runtimeList and Model.size(summary.runtimeBytes) or "unmeasured storage", summary.runtimes)
-	refs.status.text = #rows == 0 and "No matching devices." or (#rows .. (#rows == 1 and " device" or " devices"))
+	if self.loading then
+		-- Nothing is known yet: a zero here would read as a measurement.
+		for _, tile in ipairs({"devicesTile", "runtimesTile", "unavailableTile"}) do
+			refs[tile .. "Value"].text = "—"
+			refs[tile .. "Detail"].text = "Reading…"
+		end
+		refs.summary.text = "Reading simulator devices and runtimes…"
+	else
+		refs.devicesTileValue.text = Model.size(summary.deviceBytes)
+		refs.devicesTileDetail.text = Model.plural(summary.devices, "device")
+			.. (summary.stale > 0 and (" · " .. summary.stale .. " unused for " .. Simulators.staleDays .. " days") or "")
+		refs.runtimesTileValue.text = self.runtimeList and Model.size(summary.runtimeBytes) or "Not measured"
+		refs.runtimesTileDetail.text = self.runtimeList and (Model.plural(summary.runtimes, "runtime") .. " installed")
+			or "Xcode's command-line tools could not list runtimes"
+		refs.unavailableTileValue.text = tostring(summary.unavailable)
+		refs.unavailableTileDetail.text = summary.unavailable == 0 and "Every device has its runtime"
+			or (Model.size(summary.unavailableBytes) .. " of apps and data on devices whose runtime is gone")
+		refs.summary.text = self.error or ((self.busy and "Refreshing · " or "")
+			.. string.format("%s in %s and %s in %s", Model.size(summary.deviceBytes), Model.plural(summary.devices, "device"),
+				self.runtimeList and Model.size(summary.runtimeBytes) or "unmeasured storage", Model.plural(summary.runtimes, "runtime")))
+	end
+	refs.status.text = self.loading and "" or #rows == 0 and "No matching devices." or Model.plural(#rows, "device")
 	if self.busy then refs.devices:showLoading() else refs.devices:hideLoading() end
 	self.selected, self.selectedRuntime = nil, nil
 	self:buttons()
@@ -87,8 +96,8 @@ end
 
 function Controller:finish(generation, inventory, runtimeList)
 	if generation ~= self.generation then return end
-	self.busy = false
-	if type(inventory) == "table" and type(inventory.devices) == "table" then self.inventory = inventory
+	self.busy, self.loading = false, false
+	if type(inventory) == "table" and type(inventory.devices) == "table" then self.inventory = inventory; self.loaded = true
 	else self.error = "Simulator folders could not be read." end
 	self.runtimeList = runtimeList
 	self:show()
@@ -96,7 +105,12 @@ end
 
 function Controller:load()
 	if self.busy then return end
-	self.busy = true; self.error = nil; self.inventory = {}; self:show()
+	-- Coming back to the page shows what was read last time while it is
+	-- read again; only the first visit has nothing to show.
+	self.busy, self.loading = true, not self.loaded
+	self.error = nil
+	if not self.loaded then self.inventory = {} end
+	self:show()
 	local generation = self.generation
 	local runtimeList, inventory, pending = nil, nil, 2
 	local function done()

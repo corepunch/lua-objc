@@ -217,10 +217,12 @@ function Controller:badges()
 	local badges = {}
 	local summary = Overview.summary(self.model, self.scan.disk, self.capacity)
 	if summary.available then badges.overview = summary.used end
-	for id, category in pairs({developer = "developer", simulators = "simulators"}) do
-		local row = Categories.row(self.model, category)
-		if row and row.bytes and row.bytes > 0 and not row.calculating then badges[id] = row.size end
-	end
+	local simulators = Categories.row(self.model, "simulators")
+	if simulators and simulators.bytes and simulators.bytes > 0 and not simulators.calculating then badges.simulators = simulators.size end
+	-- The badge is the page's own total, AI tools included, so the sidebar
+	-- and the page header name one number.
+	local developer = Developer.presentation(self.model)
+	if developer.bytes > 0 and not developer.calculating then badges.developer = developer.total end
 	for _, id in ipairs({"xcode", "projects", "folder"}) do
 		local page = self.pages[id]
 		if page.badge then badges[id] = page:badge() end

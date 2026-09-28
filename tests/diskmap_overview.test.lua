@@ -39,7 +39,7 @@ for index, id in ipairs({"apps-system-other", "derived", "codex-cache", "downloa
 	if crowded.resources:find(id) then crowded.measurements[id] = {bytes = index * 1e9, status = "complete"} end
 end
 local crowdedChart = Overview.chart(crowded, disk)
-t.expect(#crowdedChart.legend <= 8, "at most seven categories and one aggregate are named")
+t.expect(#crowdedChart.legend <= 6, "at most five categories and one aggregate are named")
 t.assertEqual(#Overview.chart(model, {totalKb = 1, freeKb = 0}).marks, 0, "an overcount draws no partition")
 
 -- Cleanup headline keeps rebuildable and review-first bytes apart.

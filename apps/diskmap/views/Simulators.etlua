@@ -2,7 +2,7 @@
   <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {icon = "iphone", color = "systemBlue", title = "Simulators", summary = "Reading simulator devices and runtimes…", summaryId = "summary",
       buttons = {{id = "components", title = "Xcode Components…", action = "components", help = "Manage runtimes in Xcode › Settings › Components"}}}) %>
-    <HStack id="stats" maxWidth="infinity" spacing="12" alignment="top">
+    <HStack id="stats" maxWidth="infinity" fixedSize="vertical" spacing="12" alignment="top">
       <%- partial("StatTile.etlua", {id = "devicesTile", icon = "iphone", color = "systemBlue", title = "Devices", value = "—", detail = "Apps and data inside simulators"}) %>
       <%- partial("StatTile.etlua", {id = "runtimesTile", icon = "iphone.gen3", color = "systemIndigo", title = "Runtimes", value = "—", detail = "Simulator operating systems"}) %>
       <%- partial("StatTile.etlua", {id = "unavailableTile", icon = "exclamationmark.triangle", color = "systemOrange", title = "Unavailable", value = "—", detail = "Devices whose runtime is gone", actionTitle = "Delete Unavailable…", action = "unavailable"}) %>
@@ -16,7 +16,7 @@
       </HStack>
       <GroupBox maxWidth="infinity">
         <List id="devices" onSelect="select" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44" maxWidth="infinity">
-          <Column id="name" title="Device" subtitleKey="runtime" minWidth="180" />
+          <Column id="name" title="Device" subtitleKey="runtime" imageKey="icon" badgeColorKey="color" imageSize="28" minWidth="180" />
           <Column id="state" title="State" width="110" minWidth="90" />
           <Column id="lastUse" title="Last used" width="150" minWidth="120" />
           <Column id="size" title="Apps &amp; data" width="110" minWidth="100" alignment="trailing" />
@@ -34,7 +34,7 @@
       <%- partial("SectionHeader.etlua", {title = "Runtimes", detail = "Each runtime is a full operating system image. Devices on a deleted runtime become unavailable.", detailId = "runtimesDetail"}) %>
       <GroupBox maxWidth="infinity">
         <List id="runtimes" onSelect="selectRuntime" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44" maxWidth="infinity">
-          <Column id="name" title="Runtime" subtitleKey="subtitle" minWidth="180" />
+          <Column id="name" title="Runtime" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" imageSize="28" minWidth="180" />
           <Column id="deviceText" title="Devices" width="110" minWidth="90" />
           <Column id="lastUse" title="Last used" width="150" minWidth="120" />
           <Column id="size" title="On disk" width="110" minWidth="100" alignment="trailing" />

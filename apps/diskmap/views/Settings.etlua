@@ -16,7 +16,7 @@
           <HStack maxWidth="infinity" spacing="12" alignment="center">
             <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
               <Label text="Include media libraries" size="13" maxWidth="infinity" />
-              <Label text="Photos, Music and TV libraries for this session." size="11" color="secondary" maxWidth="infinity" lines="2" />
+              <Label text="Measure the Photos, Music and TV libraries too." size="11" color="secondary" maxWidth="infinity" lines="2" />
             </VStack>
             <Toggle id="media" style="switch" label="Include media libraries" value="<%= mediaEnabled and "true" or "false" %>" onChange="media" />
           </HStack>

@@ -1,6 +1,7 @@
 <VStack id="topic_<%= topic.id %>" maxWidth="infinity" padding="12" spacing="6" alignment="leading">
   <HStack maxWidth="infinity" spacing="10" alignment="center">
-    <SystemImage name="<%= topic.icon %>" size="18" color="accent" />
+    <% --[[ Symbols differ in width; a fixed column starts every title at one edge. ]] %>
+  <SystemImage name="<%= topic.icon %>" size="18" color="accent" width="26" />
     <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="1" alignment="leading">
       <Label text="<%= topic.title %>" size="13" weight="semibold" maxWidth="infinity" lines="1" />
       <Label text="<%= topic.summary %>" size="12" color="secondary" maxWidth="infinity" lines="2" />

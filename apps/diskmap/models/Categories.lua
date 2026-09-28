@@ -14,8 +14,10 @@ function Categories.rows(model, rootId, query)
 		row.bytes, row.status = m.bytes, m.status or "notMeasured"
 		if not source:isLeaf() then
 			row.children = {}; local total, measured, complete, attempted, calculating, failed, excluded, unsupported = 0, false, true, false, false, false, true, true
+			local denied = false
 			for _, child in ipairs(source:getChildren()) do
 				local value, visible = build(child, matches)
+				if value.status == "denied" then denied = true end
 				if value.bytes then total = total + value.bytes; measured = true end
 				if value.status ~= "excluded" then excluded = false end
 				if value.status ~= "unsupported" then unsupported = false end
@@ -26,6 +28,9 @@ function Categories.rows(model, rootId, query)
 				if visible then table.insert(row.children, value) end
 			end
 			row.bytes = measured and total or nil
+			-- A group whose readable locations are empty and whose others
+			-- could not be read has no access, not "≥ 0 KB".
+			if denied and total == 0 and not calculating then row.bytes, measured, complete = nil, false, false end
 			-- A group of only system-managed resources (Backups holds just local
 			-- snapshots) is system managed, not restricted: nothing was denied.
 			row.status = excluded and "excluded" or unsupported and "unsupported" or calculating and "calculating" or complete and "complete" or measured and "partial" or failed and "failed" or attempted and "denied" or "notMeasured"

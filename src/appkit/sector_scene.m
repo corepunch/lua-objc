@@ -133,8 +133,7 @@ static NSImage *sector_scene_glow(void) {
 - (NSView *)hitTest:(NSPoint)point { (void)point; return nil; }
 
 /* The camera sits on a tilted line through the chart's center, far enough
- * back that the outer radius, the tallest ring and a lifted sector fit the
- * narrower side. */
+ * back that the outer radius and the tallest ring fit the narrower side. */
 - (void)updateCamera {
 	CGFloat radius = MAX(MIN(self.bounds.size.width, self.bounds.size.height) / 2.0, 1);
 	CGFloat distance = radius * kSectorSceneFitMargin / tan(kSectorSceneFieldOfView * M_PI / 360.0);
@@ -196,6 +195,12 @@ static NSBezierPath *sector_scene_outline(CGFloat start, CGFloat end, CGFloat in
 	return path;
 }
 
+/* Relative luminance, which lightening raises even for a color whose
+ * brightest channel is already full. */
+static CGFloat sector_scene_luminance(NSColor *color) {
+	return 0.2126 * color.redComponent + 0.7152 * color.greenComponent + 0.0722 * color.blueComponent;
+}
+
 static CGFloat sector_scene_number(NSDictionary *spec, NSString *key, CGFloat fallback) {
 	NSNumber *value = spec[key];
 	return [value isKindOfClass:NSNumber.class] ? value.doubleValue : fallback;
@@ -221,7 +226,7 @@ static SCNMaterial *sector_scene_material(BOOL top) {
 	NSArray<NSDictionary *> *previous = self.sectors;
 	self.sectors = sectors;
 	[SCNTransaction begin];
-	SCNTransaction.animationDuration = animated ? kSectorSceneLiftDuration : 0;
+	SCNTransaction.animationDuration = animated ? kSectorSceneHighlightDuration : 0;
 	[self.effectiveAppearance performAsCurrentDrawingAppearance:^{
 		NSColor *backdrop = [NSColor.windowBackgroundColor colorUsingColorSpace:NSColorSpace.sRGBColorSpace];
 		[sectors enumerateObjectsUsingBlock:^(NSDictionary *spec, NSUInteger index, BOOL *stop) {
@@ -233,7 +238,7 @@ static SCNMaterial *sector_scene_material(BOOL top) {
 			CGFloat height = MAX(0, sector_scene_number(spec, @"height", 0));
 			CGFloat gap = MAX(0, sector_scene_number(spec, @"gap", 0));
 			CGFloat alpha = MIN(1, MAX(0, sector_scene_number(spec, @"alpha", 1)));
-			CGFloat lift = MIN(1, MAX(0, sector_scene_number(spec, @"lift", 0)));
+			CGFloat highlight = MIN(1, MAX(0, sector_scene_number(spec, @"highlight", 0)));
 			SCNNode *node = index < existing.count ? existing[index] : nil;
 			if (!node) {
 				node = [SCNNode node];
@@ -259,20 +264,21 @@ static SCNMaterial *sector_scene_material(BOOL top) {
 			}
 			NSColor *color = [semantic_color(spec[@"color"] ?: @"accent") colorUsingColorSpace:NSColorSpace.sRGBColorSpace];
 			CGFloat opacity = color.alphaComponent * alpha;
+			/* A highlighted sector stands out from the page where it stands,
+			 * top and walls alike: it takes its color at full strength, undoing
+			 * any fade towards the backdrop, and then steps further away from
+			 * the backdrop, lighter in dark mode and deeper in light mode. It
+			 * never moves: under the tilted camera a sector that rose or slid
+			 * out covered its neighbours at the back of the chart and left the
+			 * pointer at the front, so the highlight flickered and read
+			 * differently at every angle. */
+			opacity += (1 - opacity) * highlight;
 			NSColor *fill = [[color colorWithAlphaComponent:1] blendedColorWithFraction:1 - opacity ofColor:backdrop];
-			/* A lifted sector catches more light: it brightens as it rises
-			 * instead of every other sector dimming around it. */
-			fill = [fill blendedColorWithFraction:lift * kSectorSceneLiftBrighten ofColor:NSColor.whiteColor] ?: fill;
+			NSColor *contrast = sector_scene_luminance(backdrop) < 0.5 ? NSColor.whiteColor : NSColor.blackColor;
+			fill = [fill blendedColorWithFraction:highlight * kSectorSceneHighlightContrast ofColor:contrast] ?: fill;
 			for (SCNMaterial *material in node.geometry.materials) material.diffuse.contents = fill;
-			/* SCNShape extrudes about its center; the base rests on the floor.
-			 * A highlighted sector slides out along its middle and rises, like
-			 * an exploded pie slice. */
-			CGFloat middle = (start + (end > start ? end : start + 360)) / 2.0 * M_PI / 180.0;
-			/* A closed ring has no middle to slide along; it only rises. */
-			CGFloat sweep = end - start;
-			CGFloat distance = (sweep <= 0 || sweep >= kArcFullCircleDegrees) ? 0 : lift * kSectorSceneLiftDistance;
-			node.position = SCNVector3Make(cos(middle) * distance, -sin(middle) * distance,
-				height / 2.0 + lift * kSectorSceneLiftHeight);
+			/* SCNShape extrudes about its center; the base rests on the floor. */
+			node.position = SCNVector3Make(0, 0, height / 2.0);
 		}];
 	}];
 	for (NSUInteger index = existing.count; index > sectors.count; index--) {
@@ -292,7 +298,7 @@ static int bridge_sector_scene(lua_State *L) {
 }
 
 /* sectorSceneConfigure(view, sectors, animated): `sectors` is an array of
- * {startAngle, endAngle, inner, outer, height, gap, color, alpha, lift}. Nodes are
+ * {startAngle, endAngle, inner, outer, height, gap, color, alpha, highlight}. Nodes are
  * reused by index; geometry is rebuilt only when a sector's outline moves. */
 static int bridge_sector_scene_configure(lua_State *L) {
 	LuaSectorSceneView *view = lua_objc_check_object(L, 1, [LuaSectorSceneView class], "SectorScene");
@@ -304,7 +310,7 @@ static int bridge_sector_scene_configure(lua_State *L) {
 		lua_rawgeti(L, 2, index);
 		if (lua_istable(L, -1)) {
 			NSMutableDictionary *spec = [NSMutableDictionary dictionary];
-			for (NSString *key in @[@"startAngle", @"endAngle", @"inner", @"outer", @"height", @"gap", @"alpha", @"lift"]) {
+			for (NSString *key in @[@"startAngle", @"endAngle", @"inner", @"outer", @"height", @"gap", @"alpha", @"highlight"]) {
 				lua_getfield(L, -1, key.UTF8String);
 				if (lua_isnumber(L, -1)) spec[key] = @(lua_tonumber(L, -1));
 				lua_pop(L, 1);
@@ -358,9 +364,7 @@ static int bridge_sector_scene_nodes(lua_State *L) {
 		lua_pushnumber(L, node.position.z); lua_setfield(L, -2, "z");
 		NSColor *fill = [node.geometry.firstMaterial.diffuse.contents isKindOfClass:NSColor.class]
 			? [node.geometry.firstMaterial.diffuse.contents colorUsingColorSpace:NSColorSpace.sRGBColorSpace] : nil;
-		/* Relative luminance, which lightening raises even for a colour whose
-		 * brightest channel is already full. */
-		lua_pushnumber(L, fill ? 0.2126 * fill.redComponent + 0.7152 * fill.greenComponent + 0.0722 * fill.blueComponent : 0);
+		lua_pushnumber(L, fill ? sector_scene_luminance(fill) : 0);
 		lua_setfield(L, -2, "luminance");
 		lua_rawseti(L, -2, (lua_Integer)index + 1);
 	}

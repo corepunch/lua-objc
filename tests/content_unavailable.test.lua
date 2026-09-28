@@ -44,6 +44,17 @@ t.expect(math.abs(description.frame.origin.x - 150) < 1, "the description's half
 local bridge = require("AppKitNative")
 t.assertEqual(description.textAlignment, bridge._textAlignment("center"), "the description is centered by default")
 
+-- A wrapped label is as tall as the lines its cell draws (#59). The cell
+-- avoids a short last line, so this text takes three lines in 471 points
+-- where a plain text container fits it in two; the third line was clipped.
+local wrapped = render([[<VStack><ContentUnavailable title="No Duplicates Listed" systemImage="doc.on.doc"
+	description="Add a folder such as Downloads or Documents, then choose Find Duplicates. Files are compared byte for byte; nothing is read outside the folders you add." /></VStack>]], {}, ns)
+wrapped.size = ns.Size(942, 500); wrapped:layout(942)
+local text = wrapped.subviews[1].subviews[4].subviews[2]
+local line = ns.Text { "One line" }
+t.assertEqual(text.frame.size.width, 471, "the description wraps in half the pane")
+t.expect(text.frame.size.height >= 3 * math.floor(line.fittingSize.height), "a wrapped label is as tall as the lines it draws")
+
 -- NSTextAlignment numbers differ between Intel and Apple silicon, so
 -- alignment names resolve to the compiled constants, never Lua literals.
 local label = ns.Text { "Aligned", alignment = "center" }

@@ -7,9 +7,10 @@
   column into one colour-coded symbol per row (models/Status.lua); the status
   word remains its tooltip and accessibility label. The size column fits
   "≥ 999.9 MB", and a spinner with "Calculating…". The share
-  bar keeps most of the Overview's width. Fixed columns total at most 415 points so
-  the name keeps 180 points in the narrowest window's 595-point list. ]]
-  local COLUMNS = { name = 180, detail = 130, status = 48, share = 135, size = 110, more = 40, statusSymbol = 20 }
+  bar keeps most of the Overview's width. The detail column fits "Used 11
+  months ago". Fixed columns total at most 425 points so the name keeps 170
+  points in the narrowest window's 595-point list. ]]
+  local COLUMNS = { name = 170, detail = 150, status = 48, share = 125, size = 110, more = 40, statusSymbol = 20 }
 %>
 <List id="<%= id %>" rowMenu="<%= menu %>" dragKey="path"<% if activate then %> onActivate="<%= activate %>"<% end %> scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44" maxWidth="infinity">
   <Column id="name" title="Name" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon"<% if fileIcons then %> fileIconKey="fileIcon"<% end %> imageSize="28" minWidth="<%= COLUMNS.name %>" />

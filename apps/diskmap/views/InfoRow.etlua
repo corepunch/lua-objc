@@ -1,5 +1,6 @@
 <HStack id="<%= id %>" maxWidth="infinity" padding="12" spacing="10" alignment="center">
-  <SystemImage name="<%= icon %>" size="18" color="secondary" />
+  <% --[[ Symbols differ in width; a fixed column starts every title at one edge. ]] %>
+  <SystemImage name="<%= icon %>" size="18" color="secondary" width="26" />
   <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="1" alignment="leading">
     <Label text="<%= title %>" size="13" maxWidth="infinity" lines="1" />
     <Label text="<%= detail %>" size="11" color="secondary" maxWidth="infinity" lines="2" />

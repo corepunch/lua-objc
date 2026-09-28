@@ -226,6 +226,44 @@ t.expect(parallel.trees[1].kb >= expected and parallel.trees[1].kb < expected + 
 t.assertEqual(parallel.visited, 1 + 1 + 24 * 4, "every directory and file is visited exactly once")
 t.assertEqual(#parallel.breakdowns[1], 25, "the root's breakdown lists every child after concurrent walks")
 os.execute("/bin/rm -rf " .. System.quote(wide))
+-- Results keep their types across the bridge (#59): a flag is a boolean, so
+-- a failure is falsy; a count is an integer; a string keeps embedded NULs.
+local typed = native.scan({files, root .. "/missing"})
+t.assertEqual(typed.trees[1].partial, false, "a fully read root is not partial")
+t.assertEqual(typed.partial, false, "a scan without errors is not partial")
+t.assertEqual(native.scan({"/private/var/db/sudo"}).partial, true, "a scan with a denied root is partial")
+t.assertEqual(math.type(typed.visited), "integer", "counts are integers")
+t.assertEqual(tostring(typed.visited), "1201", "and print without a fraction")
+t.assertEqual(math.type(typed.trees[1].kb), "float", "sizes in kilobytes stay fractional")
+-- A volume of clones never measures more than the volume uses (#59):
+-- Preboot's files claim several times what Disk Utility shows for it.
+t.assertEqual(typed.trees[1].volumeKb, 0, "a folder is not a volume")
+local preboot = native.scan({"/System/Volumes/Preboot"}, {}, {breakdown = true})
+if preboot.rootStates[1] ~= "missing" and preboot.trees[1] and preboot.trees[1].volumeKb > 0 then
+	local tree = preboot.trees[1]
+	t.expect(tree.kb <= tree.volumeKb, "a volume root is capped at the space the volume uses")
+	t.expect(tree.sharedKb >= 0, "and reports what its clones share")
+	local children = 0
+	for _, child in ipairs(preboot.breakdowns[1]) do children = children + child.kb end
+	t.expect(children <= tree.kb + 1, "its children add up to no more than the volume")
+end
+local function run(argv)
+	local command = native.commandStart(argv)
+	local deadline = os.time() + 10
+	while os.time() <= deadline do
+		local finished, result = native.commandPoll(command)
+		if finished then return result end
+		os.execute("/bin/sleep 0.02")
+	end
+	error("command did not finish: " .. argv[1])
+end
+local succeeded = run({"/usr/bin/printf", "one\\0two\\0three"})
+t.assertEqual(succeeded.ok, true, "a command that exits 0 is ok")
+t.assertEqual(succeeded.output, "one\0two\0three", "output keeps the values after a NUL")
+t.assertEqual(#succeeded.output, 13, "at its full length")
+local failed = run({"/usr/bin/false"})
+t.assertEqual(failed.ok, false, "a command that exits non-zero is not ok, and falsy")
+t.assertEqual(run({"/nonexistent/tool"}).ok, false, "a command that cannot launch is not ok")
 for i = 1, 1200 do os.remove(files .. "/" .. i) end
 for _, path in ipairs({files, file, sparse, blocked, root}) do os.remove(path) end
 os.exit(t.summary() and 0 or 1)
