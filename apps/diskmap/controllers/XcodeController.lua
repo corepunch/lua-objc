@@ -7,15 +7,15 @@ local Controller = {}; Controller.__index = Controller
 
 -- Three reviewable lists, in the order they are usually worth cleaning.
 local SECTIONS = {
-	{id = "support", title = "Device Support", column = "Version", status = true, icon = "iphone.gen3", color = "systemBlue",
+	{id = "support", title = "Device Support", status = true, icon = "iphone.gen3", color = "systemBlue",
 		detail = "Symbols Xcode copies from each device OS version you debug. The newest version per platform is kept.",
 		bulkTitle = "Mark Older Versions", bulkHelp = "Mark every version except the newest per platform",
 		consequence = "Debug symbols for one OS version. Xcode copies them again the next time you debug a device running it."},
-	{id = "derived", title = "DerivedData", column = "Project", status = true, icon = "hammer", color = "systemOrange",
+	{id = "derived", title = "DerivedData", status = true, icon = "hammer", color = "systemOrange",
 		detail = "Build products and indexes per project. Folders whose project no longer exists come first.",
 		bulkTitle = "Mark Missing Projects", bulkHelp = "Mark build data of projects that no longer exist",
 		consequence = "Build products and the code index. The next build and indexing of this project take longer."},
-	{id = "archives", title = "Archives", column = "App", detailTitle = "Created", icon = "archivebox", color = "systemPurple",
+	{id = "archives", title = "Archives", detailColumn = true, icon = "archivebox", color = "systemPurple",
 		detail = "Shipped builds with their debug symbols, oldest first. Keep archives for versions people still run.",
 		consequence = "A shipped build and its dSYMs. Without it, crash reports for this version cannot be symbolicated."},
 }

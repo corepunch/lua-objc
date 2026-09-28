@@ -54,7 +54,7 @@ local data = {runtimes = {{identifier = "ios", name = "iOS 26"}}, devices = {ios
 local rows = Simulators.rows(data, nil, nil, os.time({year = 2026, month = 9, day = 25, hour = 12}))
 t.assertEqual(rows[1].size, "11.0 GB", "simctl data size is shown")
 t.assertEqual(rows[1].runtime, "iOS 26", "runtime identifier resolves to display name")
-t.assertEqual(rows[1].lastUse, "3 days ago", "last use is relative, never a raw timestamp")
+t.assertEqual(rows[1].lastUse, "Used 3 days ago", "last use is relative, never a raw timestamp")
 t.assertEqual(rows[1].state, "Shutdown", "a recorded state is shown")
 t.assertEqual(rows[2].lastUse, "—", "unknown last use is never invented")
 t.assertEqual(rows[2].size, "Not measured", "unknown size is not zero")

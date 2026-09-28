@@ -6,7 +6,7 @@
       <%- partial("SectionHeader.etlua", {title = "Identical files", detail = roots, detailId = "duplicateRoots"}) %>
       <ContentUnavailable id="duplicatesEmpty" title="No Duplicates Listed" systemImage="doc.on.doc" description="Add a folder such as Downloads or Documents, then choose Find Duplicates. Files are compared byte for byte; nothing is read outside the folders you add." />
       <GroupBox id="duplicatesList" maxWidth="infinity">
-        <%- partial("ResourceList.etlua", {id = "duplicates", menu = "menu", activate = "reveal", header = true, nameTitle = "File", detailTitle = "Copies", sizeTitle = "Can free"}) %>
+        <%- partial("ResourceList.etlua", {id = "duplicates", menu = "menu", activate = "reveal", detailColumn = true}) %>
       </GroupBox>
     </VStack>
     <%- partial("Footnote.etlua", {text = "Copies that are APFS clones share their storage with the original: removing one frees only what it does not share, which is what Can free shows."}) %>

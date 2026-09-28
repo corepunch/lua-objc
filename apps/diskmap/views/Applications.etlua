@@ -15,7 +15,7 @@
         </Picker>
       </HStack>
       <GroupBox maxWidth="infinity">
-        <%- partial("ResourceList.etlua", {id = "apps", menu = "appMenu", activate = "revealApp", header = true, nameTitle = "Application", detailTitle = "Last used", shareTitle = "Data", sizeTitle = "Total"}) %>
+        <%- partial("ResourceList.etlua", {id = "apps", menu = "appMenu", activate = "revealApp", detailColumn = true}) %>
       </GroupBox>
     </VStack>
     <VStack id="leftoversSection" maxWidth="infinity" spacing="8" alignment="leading">
@@ -24,7 +24,7 @@
         <Button id="markHigh" title="Mark High Confidence" systemImage="plus.circle" action="markHigh" help="Mark every folder of an app whose vendor has no installed app" disabled="true" />
       </HStack>
       <GroupBox maxWidth="infinity">
-        <%- partial("ResourceList.etlua", {id = "leftovers", menu = "leftoverMenu", activate = "revealLeftover", header = true, nameTitle = "Folder", detailTitle = "Confidence"}) %>
+        <%- partial("ResourceList.etlua", {id = "leftovers", menu = "leftoverMenu", activate = "revealLeftover", detailColumn = true}) %>
       </GroupBox>
     </VStack>
     <%- partial("Footnote.etlua", {text = "Last used comes from Spotlight, as Finder's Last Opened. Apps outside /Applications and ~/Applications are not listed; their data never counts as a leftover."}) %>

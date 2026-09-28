@@ -11,7 +11,7 @@
         <% end %>
       </HStack>
       <GroupBox maxWidth="infinity">
-        <%- partial("ResourceList.etlua", {id = "list_" .. section.id, menu = "menu_" .. section.id, activate = "reveal_" .. section.id, header = true, nameTitle = section.column, status = section.status, detailTitle = section.detailTitle}) %>
+        <%- partial("ResourceList.etlua", {id = "list_" .. section.id, menu = "menu_" .. section.id, activate = "reveal_" .. section.id, status = section.status, detailColumn = section.detailColumn}) %>
       </GroupBox>
     </VStack>
     <% end %>

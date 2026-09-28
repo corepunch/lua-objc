@@ -12,7 +12,7 @@
       </HStack>
       <ContentUnavailable id="projectsEmpty" title="No Build Folders Found" systemImage="folder.badge.gearshape" description="Projects appear here once Diskmap finds node_modules, target, .build and similar folders beside their project files." />
       <GroupBox id="projectsList" maxWidth="infinity">
-        <%- partial("ResourceList.etlua", {id = "projects", menu = "menu", activate = "reveal", header = true, nameTitle = "Project", detailTitle = "Git", sizeTitle = "Build data"}) %>
+        <%- partial("ResourceList.etlua", {id = "projects", menu = "menu", activate = "reveal", detailColumn = true}) %>
       </GroupBox>
     </VStack>
     <%- partial("Footnote.etlua", {text = "Only folders a project's tools create (node_modules, target, .build, …) are listed. Projects with uncommitted or unpushed work are never marked in bulk."}) %>

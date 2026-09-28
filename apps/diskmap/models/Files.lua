@@ -118,7 +118,7 @@ function Files.rows(model, filter, query, kind, now)
 				lastUse = Files.age(file.used, now), used = file.used, old = (file.used or now) < oldBefore,
 				kind = fileKind.name, kindId = fileKind.id, fileIcon = file.path, icon = fileKind.icon, color = fileKind.color,
 				trashable = (Files.validateTrash(model, file.path))}
-			row.detail = row.lastUse
+			row.detail = Model.used(row.lastUse)
 			if matches(row, needle) then table.insert(rows, row) end
 		end
 	end

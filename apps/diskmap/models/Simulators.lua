@@ -84,7 +84,7 @@ function Simulators.rows(inventory, query, filter, now)
 					available = available, running = device.state == "Booted" or device.state == "Booting" or device.state == "Shutting Down", path = device.dataPath,
 					bytes = device.dataPathSize, size = Model.size(device.dataPathSize), age = age,
 					runtimeIdentifier = runtime,
-					lastUse = age and Model.ago(age) or "—"})
+					lastUse = age and Model.used(Model.ago(age)) or "—"})
 			end
 		end
 	end
@@ -120,7 +120,7 @@ function Simulators.runtimeRows(list, inventory, query, now)
 					platform = platform, version = version, runtimeIdentifier = entry.runtimeIdentifier,
 					bytes = bytes, size = Model.size(bytes), deletable = entry.deletable == true,
 					devices = devices, deviceText = devices == 0 and "No devices" or (devices .. (devices == 1 and " device" or " devices")),
-					lastUse = age and Model.ago(age) or "—",
+					lastUse = age and Model.used(Model.ago(age)) or "—",
 					path = type(entry.path) == "string" and entry.path or nil})
 			end
 		end

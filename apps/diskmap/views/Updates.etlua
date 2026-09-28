@@ -29,7 +29,7 @@
           <Label id="noInstallers" text="<%= installersLoading and "Looking in Downloads, Desktop and Documents…" or "No macOS installers, disk images or installer packages found." %>" size="12" color="secondary" padding="12" maxWidth="infinity" />
           <% end %>
           <% if #installers > 0 then %>
-          <%- partial("ResourceList.etlua", {id = "installers", menu = "installerMenu", activate = "revealInstaller", header = false, detailTitle = "Kind"}) %>
+          <%- partial("ResourceList.etlua", {id = "installers", menu = "installerMenu", activate = "revealInstaller", detailColumn = true}) %>
           <% end %>
         </VStack>
       </GroupBox>

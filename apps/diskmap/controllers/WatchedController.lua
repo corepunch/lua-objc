@@ -66,7 +66,7 @@ function Controller:render()
 		contents = not row.missing and (self:group(row) or row.path) and self:contentsDetail() or nil,
 		-- A category's locations differ by policy; a folder's children are
 		-- already labeled Folder or File under their names.
-		detailTitle = self:group(row) and "Policy" or nil,
+		detailColumn = self:group(row) ~= nil,
 		actions = {
 			reveal = function() self.service.reveal(row.path) end,
 			openCategory = function() self.handlers.open(category.id) end,

@@ -8,7 +8,7 @@
         <Label id="contentsDetail" text="<%= contents %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
       </VStack>
       <GroupBox maxWidth="infinity">
-        <%- partial("ResourceList.etlua", {id = "contents", menu = "contentsMenu", activate = "openContents", header = true, nameTitle = "Item", detailTitle = detailTitle}) %>
+        <%- partial("ResourceList.etlua", {id = "contents", menu = "contentsMenu", activate = "openContents", detailColumn = detailColumn}) %>
       </GroupBox>
     </VStack>
     <% end %>

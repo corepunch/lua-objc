@@ -34,6 +34,13 @@ function Model.ago(days)
 	return plural(math.floor(days / 365), "year") .. " ago"
 end
 
+-- Lists have no column headers, so a relative age names its event.
+function Model.used(age)
+	if age == "—" then return age end
+	if age == "Unknown" then return "Last use unknown" end
+	return "Used " .. age:lower()
+end
+
 function Model.count(value)
 	local text = tostring(math.floor(value or 0))
 	local result = text:reverse():gsub("(%d%d%d)", "%1,"):reverse()

@@ -125,6 +125,24 @@ static id lua_to_objc_recursive(lua_State *L, int idx) {
 	return [NSMutableDictionary dictionary];
 }
 
+/* Test helper: the 1-based rows whose row view draws a horizontal rule.
+ * Row views paint only inside a window, so tests read the decision itself. */
+static int bridge_table_separator_rows(lua_State *L) {
+	NSScrollView *sv = (NSScrollView *)check_view(L, 1);
+	NSTableView *table = [sv isKindOfClass:NSScrollView.class] ? (NSTableView *)sv.documentView : (NSTableView *)sv;
+	if (![table isKindOfClass:NSTableView.class]) return luaL_error(L, "table view expected");
+	lua_newtable(L);
+	lua_Integer count = 0;
+	for (NSInteger row = 0; row < table.numberOfRows; row++) {
+		NSTableRowView *rowView = [table rowViewAtRow:row makeIfNecessary:YES];
+		if ([rowView isKindOfClass:LuaTableRowView.class] && ((LuaTableRowView *)rowView).drawsSeparator) {
+			lua_pushinteger(L, row + 1);
+			lua_rawseti(L, -2, ++count);
+		}
+	}
+	return 1;
+}
+
 static int bridge_tableview(lua_State *L) {
 	luaL_checktype(L, 1, LUA_TTABLE);
 	CGFloat width = luaL_checknumber(L, 2);

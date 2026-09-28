@@ -423,6 +423,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_viewMidlineFill", bridge_view_midline_fill},
 	{"_arcInkBounds", bridge_arc_ink_bounds},
 	{"_tableCellFrames", bridge_AppKit_table_cell_frames},
+	{"_tableSeparatorRows", bridge_table_separator_rows},
 	{"_tableSpinnerFrame", bridge_AppKit_table_spinner_frame},
 	{"_toolbar_item", bridge_AppKit_toolbar_item},
 	{"_window", bridge_AppKit_window},

@@ -15,7 +15,7 @@
         </Picker>
       </HStack>
       <GroupBox maxWidth="infinity">
-        <%- partial("ResourceList.etlua", {id = "files", menu = "rowMenu", activate = "reveal", header = true, nameTitle = "File", detailTitle = "Last used", shareTitle = "Size", fileIcons = true}) %>
+        <%- partial("ResourceList.etlua", {id = "files", menu = "rowMenu", activate = "reveal", detailColumn = true, fileIcons = true}) %>
       </GroupBox>
     </VStack>
     <%- partial("Footnote.etlua", {text = "Diskmap reads only names, sizes and dates. Files inside apps, libraries and hidden tool folders are listed for context and managed by their owners; only your own documents can be moved to the Trash here."}) %>

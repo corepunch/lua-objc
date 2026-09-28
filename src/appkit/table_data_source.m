@@ -544,6 +544,34 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 }
 
 
+/* A view-based table's horizontal grid is drawn by each row view, the last
+ * one included, so a list sized to its rows ends with a rule on its bottom
+ * edge. SwiftUI's List separates rows only; the enclosing container already
+ * bounds the last row. */
+@interface LuaTableRowView : NSTableRowView
+@end
+
+@implementation LuaTableRowView
+- (BOOL)drawsSeparator {
+	NSTableView *table = (NSTableView *)self.superview;
+	if (![table isKindOfClass:NSTableView.class]) return YES;
+	return (table.gridStyleMask & NSTableViewSolidHorizontalGridLineMask)
+		&& [table rowForView:self] != table.numberOfRows - 1;
+}
+- (void)drawSeparatorInRect:(NSRect)dirtyRect {
+	if (self.drawsSeparator) [super drawSeparatorInRect:dirtyRect];
+}
+@end
+
+/* Which row is last changes as rows arrive and leave; redraw the visible
+ * rows so the previous last row regains its rule and the new one drops it. */
+static void table_refresh_trailing_separator(NSTableView *table) {
+	if (!(table.gridStyleMask & NSTableViewSolidHorizontalGridLineMask)) return;
+	[table enumerateAvailableRowViewsUsingBlock:^(NSTableRowView *rowView, NSInteger row) {
+		rowView.needsDisplay = YES;
+	}];
+}
+
 @implementation LuaTableViewSource
 
 - (instancetype)initWithTableView:(NSTableView *)tv columns:(NSArray *)cols {
@@ -556,6 +584,18 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 		tv.delegate = self;
 	}
 	return self;
+}
+
+- (NSTableRowView *)tableView:(NSTableView *)tableView rowViewForRow:(NSInteger)row {
+	return [LuaTableRowView new];
+}
+
+- (void)tableView:(NSTableView *)tableView didAddRowView:(NSTableRowView *)rowView forRow:(NSInteger)row {
+	table_refresh_trailing_separator(tableView);
+}
+
+- (void)tableView:(NSTableView *)tableView didRemoveRowView:(NSTableRowView *)rowView forRow:(NSInteger)row {
+	table_refresh_trailing_separator(tableView);
 }
 
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView {

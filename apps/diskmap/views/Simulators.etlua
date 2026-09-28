@@ -15,7 +15,7 @@
         </Picker>
       </HStack>
       <GroupBox maxWidth="infinity">
-        <List id="devices" onSelect="select" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="true" alternatingRows="false" gridLines="horizontal" rowHeight="40" maxWidth="infinity">
+        <List id="devices" onSelect="select" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44" maxWidth="infinity">
           <Column id="name" title="Device" subtitleKey="runtime" minWidth="180" />
           <Column id="state" title="State" width="110" minWidth="90" />
           <Column id="lastUse" title="Last used" width="150" minWidth="120" />
@@ -33,10 +33,10 @@
     <VStack id="runtimesSection" maxWidth="infinity" spacing="8" alignment="leading">
       <%- partial("SectionHeader.etlua", {title = "Runtimes", detail = "Each runtime is a full operating system image. Devices on a deleted runtime become unavailable.", detailId = "runtimesDetail"}) %>
       <GroupBox maxWidth="infinity">
-        <List id="runtimes" onSelect="selectRuntime" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="true" alternatingRows="false" gridLines="horizontal" rowHeight="40" maxWidth="infinity">
+        <List id="runtimes" onSelect="selectRuntime" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44" maxWidth="infinity">
           <Column id="name" title="Runtime" subtitleKey="subtitle" minWidth="180" />
           <Column id="deviceText" title="Devices" width="110" minWidth="90" />
-          <Column id="lastUse" title="Last used" width="120" minWidth="100" />
+          <Column id="lastUse" title="Last used" width="150" minWidth="120" />
           <Column id="size" title="On disk" width="110" minWidth="100" alignment="trailing" />
         </List>
       </GroupBox>

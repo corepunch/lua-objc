@@ -70,7 +70,7 @@ function Applications.rows(model, info, filter, query, now)
 			appIcon = details.bundleId, fileIcon = bundle.path, icon = "app.fill", color = "systemBlue",
 			appBytes = appBytes, dataBytes = dataBytes, bytes = appBytes + dataBytes, folders = folders,
 			lastUsed = details.lastUsed, unused = unused == true, calculating = m.status == "calculating",
-			detail = details.lastUsed and Files.age(details.lastUsed, now) or (info and "Never opened" or "—")}
+			detail = details.lastUsed and Model.used(Files.age(details.lastUsed, now)) or (info and "Never opened" or "—")}
 		row.size = row.calculating and "Calculating…" or Model.size(row.bytes)
 		row.subtitle = (details.version and ("Version " .. details.version .. " · ") or "") .. "App " .. Model.size(appBytes)
 			.. (dataBytes > 0 and (" · Data " .. Model.size(dataBytes)) or "")
@@ -118,7 +118,7 @@ function Applications.leftovers(model, installed, query)
 				table.insert(rows, {id = root.path .. "/" .. child.name, path = root.path .. "/" .. child.name, name = child.name,
 					subtitle = source.label .. " · " .. info.label, bytes = bytes, size = Model.size(bytes),
 					tier = tier, rank = info.rank, confidence = info.confidence, reason = info.label, source = source.label,
-					icon = "questionmark.folder.fill", color = tier == "high" and "systemPink" or "systemGray", detail = info.confidence})
+					icon = "questionmark.folder.fill", color = tier == "high" and "systemPink" or "systemGray", detail = info.confidence .. " confidence"})
 			end
 		end
 	end

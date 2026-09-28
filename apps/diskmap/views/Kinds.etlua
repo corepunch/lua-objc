@@ -31,13 +31,13 @@
     <VStack maxWidth="infinity" spacing="8" alignment="leading">
       <%- partial("SectionHeader.etlua", {title = "Kinds", detail = "Grouped by file extension, the way Finder's Kind column groups them. Open a kind to see its largest files."}) %>
       <GroupBox maxWidth="infinity">
-        <%- partial("ResourceList.etlua", {id = "kinds", menu = "kindMenu", activate = "openKind", header = false, detailTitle = "Files"}) %>
+        <%- partial("ResourceList.etlua", {id = "kinds", menu = "kindMenu", activate = "openKind", detailColumn = true}) %>
       </GroupBox>
     </VStack>
     <VStack maxWidth="infinity" spacing="8" alignment="leading">
       <%- partial("SectionHeader.etlua", {title = "Top extensions", detail = "The twelve extensions that use the most space"}) %>
       <GroupBox maxWidth="infinity">
-        <%- partial("ResourceList.etlua", {id = "extensions", menu = "kindMenu", activate = "openKind", header = false, detailTitle = "Files"}) %>
+        <%- partial("ResourceList.etlua", {id = "extensions", menu = "kindMenu", activate = "openKind", detailColumn = true}) %>
       </GroupBox>
     </VStack>
     <%- partial("Footnote.etlua", {text = "Totals cover every measured location, including files inside app bundles and libraries. Excluded media libraries are not counted."}) %>

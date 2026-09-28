@@ -84,7 +84,7 @@ t.expect(not bridge._tableCell(refs.results, 2, 0).loadingIndicator.hidden, "sec
 -- Every ranking page shares one list: a non-scrolling table whose actions live
 -- in a row menu, so the page itself scrolls and no buttons sit under lists.
 local menuRows = 0
-local _, listRefs = render("ResourceList", {id = "items", menu = "rowMenu", activate = "open", header = true, detailTitle = "Status", actions = {
+local _, listRefs = render("ResourceList", {id = "items", menu = "rowMenu", activate = "open", detailColumn = true, actions = {
 	rowMenu = function(_, _, row) menuRows = menuRows + 1; return {{title = "Show " .. row.name, action = function() end}} end,
 	open = function() end}})
 local items = listRefs.items
@@ -102,7 +102,7 @@ t.expect(total <= 560 + 1, "shared list columns fit a narrow page")
 -- Status lists show one colour-coded symbol per row; the status word stays
 -- available as tooltip and accessibility label instead of truncated text.
 local Status = require("apps.diskmap.models.Status")
-local _, statusRefs = render("ResourceList", {id = "statuses", menu = "rowMenu", status = true, header = true, actions = {rowMenu = function() return {} end}})
+local _, statusRefs = render("ResourceList", {id = "statuses", menu = "rowMenu", status = true, actions = {rowMenu = function() return {} end}})
 local statuses = statusRefs.statuses
 statuses:replaceRows({Status.apply({id = "derived", name = "Xcode DerivedData", detail = "Rebuildable", size = "≥ 999.9 MB", relative = 1, shareText = "", color = "systemBlue", icon = "hammer.fill"}),
 	Status.apply({id = "group", name = "Simulator runtimes", detail = "Group", size = "8.5 GB", relative = 0.5, shareText = "", color = "systemBlue", icon = "hammer.fill"})})

@@ -7,7 +7,7 @@
         <Label text="<%= detail %>" size="12" color="secondary" maxWidth="infinity" lines="2" />
       </VStack>
     </HStack>
-    <List id="entries" style="inset" header="true" alternatingRows="false" rowHeight="40" flexGrow="1" flexBasis="0" maxWidth="infinity" maxHeight="infinity">
+    <List id="entries" style="inset" header="false" alternatingRows="false" rowHeight="44" flexGrow="1" flexBasis="0" maxWidth="infinity" maxHeight="infinity">
       <Column id="name" title="Action" subtitleKey="subtitle" minWidth="220" />
       <Column id="date" title="When" width="160" minWidth="130" />
       <Column id="result" title="Result" width="110" minWidth="80" />

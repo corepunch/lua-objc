@@ -178,6 +178,18 @@
 	return [((NSDictionary *)item)[@"children"] count] > 0;
 }
 
+- (NSTableRowView *)outlineView:(NSOutlineView *)ov rowViewForItem:(id)item {
+	return [LuaTableRowView new];
+}
+
+- (void)outlineView:(NSOutlineView *)ov didAddRowView:(NSTableRowView *)rowView forRow:(NSInteger)row {
+	table_refresh_trailing_separator(ov);
+}
+
+- (void)outlineView:(NSOutlineView *)ov didRemoveRowView:(NSTableRowView *)rowView forRow:(NSInteger)row {
+	table_refresh_trailing_separator(ov);
+}
+
 // Outlines and tables share native cells, including subtitles and row-bound symbols.
 - (NSView *)outlineView:(NSOutlineView *)ov viewForTableColumn:(NSTableColumn *)column item:(id)item {
 	return table_cell_view(ov, column, item, self, [ov rowForItem:item]);

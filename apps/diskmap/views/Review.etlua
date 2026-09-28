@@ -8,7 +8,7 @@
       </VStack>
       <Button id="history" title="History…" action="history" help="Every action Diskmap has taken" />
     </HStack>
-    <List id="items" onSelect="select" style="inset" header="true" alternatingRows="false" rowHeight="44" flexGrow="1" flexBasis="0" maxWidth="infinity" maxHeight="infinity">
+    <List id="items" onSelect="select" style="inset" header="false" alternatingRows="false" rowHeight="44" flexGrow="1" flexBasis="0" maxWidth="infinity" maxHeight="infinity">
       <Column id="name" title="Item" subtitleKey="subtitle" minWidth="220" />
       <Column id="result" title="" width="120" minWidth="90" />
       <Column id="size" title="On disk" width="100" minWidth="90" alignment="trailing" />

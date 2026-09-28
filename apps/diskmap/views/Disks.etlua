@@ -20,13 +20,13 @@
     <VStack id="volumesSection" maxWidth="infinity" spacing="8" alignment="leading">
       <%- partial("SectionHeader.etlua", {title = "Startup disk volumes", detail = "Every volume shares one APFS container and draws from the same free space.", detailId = "containerDetail"}) %>
       <GroupBox maxWidth="infinity">
-        <%- partial("ResourceList.etlua", {id = "volumes", menu = "volumeMenu", header = false, detailTitle = "Device", shareTitle = "Of container"}) %>
+        <%- partial("ResourceList.etlua", {id = "volumes", menu = "volumeMenu", detailColumn = true}) %>
       </GroupBox>
     </VStack>
     <VStack id="externalSection" maxWidth="infinity" spacing="8" alignment="leading">
       <%- partial("SectionHeader.etlua", {title = "Other disks", detail = "Mounted external drives and disk images. Choose Analyze Contents in a disk’s menu to measure it."}) %>
       <GroupBox maxWidth="infinity">
-        <%- partial("ResourceList.etlua", {id = "external", menu = "externalMenu", activate = "revealExternal", header = false, shareTitle = "Used", sizeTitle = "Used"}) %>
+        <%- partial("ResourceList.etlua", {id = "external", menu = "externalMenu", activate = "revealExternal", }) %>
       </GroupBox>
     </VStack>
     <VStack id="contentsSection" maxWidth="infinity" spacing="8" alignment="leading">
@@ -35,7 +35,7 @@
         <Label id="contentsDetail" text="" size="11" color="secondary" maxWidth="infinity" lines="2" />
       </VStack>
       <GroupBox maxWidth="infinity">
-        <%- partial("ResourceList.etlua", {id = "contents", menu = "contentsMenu", activate = "revealContents", header = true, nameTitle = "Item", detailTitle = "Kind"}) %>
+        <%- partial("ResourceList.etlua", {id = "contents", menu = "contentsMenu", activate = "revealContents", detailColumn = true}) %>
       </GroupBox>
     </VStack>
     <%- partial("Footnote.etlua", {icon = "stethoscope", text = "If apps freeze or files go missing, back up and run First Aid in Disk Utility. SSDs never need defragmenting, and FileVault makes erased data unrecoverable, so secure-erase tools are unnecessary."}) %>
