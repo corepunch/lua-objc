@@ -14,7 +14,7 @@ Model.partGroups = {
 	{family = "bass", parts = {"sub", "reese"}},
 	{family = "chords", parts = {"pads", "keys", "stabs"}},
 	{family = "melody", parts = {"arp", "lead"}},
-	{family = "structure", parts = {"fills", "risers", "halftime", "throws", "chops"}},
+	{family = "structure", parts = {"fills", "risers", "filter", "halftime", "throws", "chops"}},
 }
 Model.parts, Model.family = {}, {}
 for _, group in ipairs(Model.partGroups) do
@@ -23,6 +23,27 @@ for _, group in ipairs(Model.partGroups) do
 		Model.family[id] = group.family
 	end
 end
+
+-- The timeline's tracks, as an arrange window groups them: a track shows
+-- the blocks of its parts as clips and their notes inside. The switches
+-- (half-time, throws, chops) have no track; they show in the notes they
+-- change.
+Model.tracks = {
+	{id = "kick", parts = {"kick"}},
+	{id = "snare", parts = {"snare", "ghosts"}},
+	{id = "hats", parts = {"hats", "ride"}},
+	{id = "percussion", parts = {"percussion"}},
+	{id = "break", parts = {"amen"}},
+	{id = "bass", parts = {"sub", "reese"}},
+	{id = "pads", parts = {"pads"}},
+	{id = "keys", parts = {"keys"}},
+	{id = "stabs", parts = {"stabs"}},
+	{id = "arp", parts = {"arp"}},
+	{id = "lead", parts = {"lead"}},
+	{id = "fills", parts = {"fills"}},
+	{id = "fx", parts = {"risers"}},
+	{id = "filter", parts = {"filter"}},
+}
 
 -- `format` renders the value label beside each slider.
 local function percent(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end

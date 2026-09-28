@@ -2,8 +2,9 @@
 -- tracks. Two-step grooves with ghost notes, the Amen break layered and
 -- chopped, rolling reese and sub, voice-led extended chords, electric-piano
 -- comping, arpeggios and a call-and-response lead; half-time switch-ups and
--- dub throws. `arrange` lays each track out as blocks from the seed alone;
--- the patterns under a bar read Energy and Complexity as it plays.
+-- dub throws. `arrange` lays each track out as blocks from the seed alone,
+-- section by section, and the kit's producer moves cut, stagger and filter
+-- them; the patterns under a bar read Energy and Complexity as it plays.
 
 -- Flavours weight the parts a track leans on: whether the arrangement gives
 -- a part blocks at all, and how much of it they use. `snares`
@@ -216,6 +217,7 @@ local function arrange(kit, track, cycles)
 	kit.punctuate(lanes, track, function(section, phrase)
 		return "fill." .. cycles[section.cycle].fills[phrase + 1]
 	end)
+	kit.produce(lanes, track)
 	return lanes:done()
 end
 

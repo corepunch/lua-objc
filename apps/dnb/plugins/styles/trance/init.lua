@@ -82,6 +82,7 @@ local function arrange(kit, track, cycles)
 		end
 	end
 	kit.punctuate(lanes, track, function() return "fill.roll" end)
+	kit.produce(lanes, track)
 	return lanes:done()
 end
 
@@ -177,7 +178,9 @@ return {
 		lead = {detune = 0.008, brightness = 0.16, sweep = 0.3, vibratoDepth = 0.009, send = 0.8},
 		mix = {duckDepth = 0.7, pad = 0.07, arp = 0.09, lead = 0.08, delayFeedback = 0.45, reverbSend = 1.1},
 	},
-	set = {flavours = FLAVOURS, modes = {"minor", "phrygian"}, arrangement = ARRANGEMENT, modulations = {2, 0}},
+	set = {form = {openings = {"melodic", "melodic", "build"}, builds = {"roll", "roll", "rise"},
+		links = {"breakdown build"}, breakdown = {1, 1, 2}},
+		flavours = FLAVOURS, modes = {"minor", "phrygian"}, arrangement = ARRANGEMENT, modulations = {2, 0}},
 	material = material,
 	arrange = arrange,
 	patterns = PATTERNS,

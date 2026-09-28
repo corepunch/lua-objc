@@ -11,6 +11,9 @@ local Arrangement = require("apps.dnb.host.Arrangement")
 
 local kit = Plugins.readonly(StyleKit)
 
+-- The lists of a bar that hold notes, which take their block's automation.
+local NOTES = {"hits", "breaks", "bass", "stabs", "keys", "arp", "lead"}
+
 -- Structure lanes render first: they leave the flags (a fill, a throw,
 -- half-time, chops) the instruments read. Then the instruments, in lane order.
 local RENDER_ORDER = {}
@@ -42,10 +45,20 @@ local function library(style)
 	return patterns
 end
 
+-- A style's own number, from its title: two styles given one seed draw
+-- different forms.
+local function salt(style)
+	local sum = 0
+	for i = 1, #style.title do sum = sum * 31 + style.title:byte(i) end
+	return sum
+end
+
 function Composer.new(style, seed)
+	local spec = {salt = salt(style)}
+	for k, v in pairs(style.set) do spec[k] = v end
 	return setmetatable({
 		style = style, seed = seed, kit = kit,
-		set = StyleKit.newSet(seed, style.set),
+		set = StyleKit.newSet(seed, spec),
 		patterns = library(style),
 		barsPerChord = style.barsPerChord or 2,
 		plans = {},
@@ -73,7 +86,8 @@ function Composer:arrangement(k)
 	for i = 0, track.cycles - 1 do cycles[i] = self:cycle(track, i) end
 	local sections = {}
 	for i, section in ipairs(track.sections) do
-		sections[i] = {id = section.id, start = section.start, length = section.length, cycle = section.cycle}
+		sections[i] = {id = section.id, start = section.start, length = section.length, cycle = section.cycle,
+			kind = section.kind}
 	end
 	plan = Arrangement.new({track = k, start = track.start, length = track.length, sections = sections,
 		lanes = self.style.arrange(kit, track, cycles)}, self.patterns, Model.parts)
@@ -131,14 +145,40 @@ function Composer:bar(n, settings)
 		return self:chord(previous, last, n), kit.keyName(self:tonic(previous, last), previous.mode)
 	end
 	local blocks = plan:blocksAt(pos)
+	local counts = {}
 	for _, part in ipairs(RENDER_ORDER) do
 		local block = blocks[part]
 		if block and settings:plays(part) then
 			local pattern = self.patterns[block.pattern]
-			ctx.block, ctx.variant = block, block.variant
-			ctx.barInBlock = pos - block.start
+			local inBlock = pos - block.start
+			ctx.block, ctx.blockLength = block, block.whole or block.length
+			ctx.barInBlock = inBlock + (block.offset or 0)
 			ctx.loopBar = ctx.barInBlock % pattern.bars
+			-- The block's level and filter at a step of this bar.
+			function ctx.automation(step)
+				return Arrangement.automation(block, (inBlock + step / StyleKit.stepsPerBar) / block.length)
+			end
+			for _, list in ipairs(NOTES) do counts[list] = #bar[list] end
 			pattern.render(bar, ctx)
+			-- Every note the pattern wrote belongs to its part and rides the
+			-- block's automation from where it starts.
+			for _, list in ipairs(NOTES) do
+				local notes = bar[list]
+				for i = counts[list] + 1, #notes do
+					local note = notes[i]
+					local level, kind, filter = ctx.automation(note.step)
+					note.part = part
+					if level ~= 1 then note.level = level end
+					if kind then note[kind] = filter end
+				end
+			end
+			-- Held voices (a pad) ride it through the bar.
+			if block.level or block.filter then
+				local level, kind, from = ctx.automation(0)
+				local levelTo, kindTo, to = ctx.automation(1)
+				bar.automation[part] = {level = {from = level, to = levelTo}, kind = kind or kindTo,
+					filter = {from = from or 1, to = to or 1}}
+			end
 		end
 	end
 	return bar
