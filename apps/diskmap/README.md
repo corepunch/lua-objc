@@ -131,7 +131,14 @@ the collector bar under every page, adds items to one basket;
 marking never touches the disk. The Marked toolbar sheet lists them with their
 consequences and moves them to the Trash one at a time, checking each again
 first. It refuses the disk root, system folders, mount points and your home's
-standard folders, and never follows symlinks. It then offers to empty the
+standard folders, and never follows symlinks. Sizes are measured again before
+the move, and each item is checked just before it moves: one whose app is
+running (Xcode for DerivedData, a browser for its cache, the parent app of a
+helper), whose project file has gone, that was replaced since it was marked
+(its inode changed), whose app is installed again (a leftover) or that lies in
+a protected system location is skipped with its reason. The sheet then reports
+what moved, the skips grouped by reason and free space before, now and after
+emptying the Trash. It then offers to empty the
 Trash and reports how much more free space macOS actually sees. Every action
 is appended to `~/Library/Logs/Diskmap/operations.log` and shown in History.
 

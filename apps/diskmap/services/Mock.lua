@@ -880,6 +880,30 @@ function Mock:moveItem(path, folder, completion)
 	completion(true, nil, destination)
 end
 
+-- Identities stand in for inodes: stable per path until `replace(path)`
+-- puts a different item there. `runningApps` lists bundle identifiers.
+function Mock:fileIdentity(path)
+	path = absolute(path, self.home)
+	if (self.fileCounts[path] or 0) == 0 then return nil end
+	self.identities = self.identities or {}
+	if not self.identities[path] then self.nextInode = (self.nextInode or 100) + 1; self.identities[path] = self.nextInode end
+	return {inode = self.identities[path], device = 1, symlink = false}
+end
+function Mock:replace(path)
+	self.identities = self.identities or {}
+	self.nextInode = (self.nextInode or 100) + 1
+	self.identities[absolute(path, self.home)] = self.nextInode
+end
+function Mock:cleanupProbes()
+	local running = {}
+	for _, id in ipairs(self.runningApps or {}) do running[id] = true end
+	return {running = running, exists = self.exists, identity = self.fileIdentity,
+		appPath = function(id)
+			for path, app in pairs(self.fixture.applications or {}) do if app.bundleId == id then return absolute(path, self.home) end end
+			return nil
+		end}
+end
+
 -- Quick Look and opened files are recorded, never shown: tests read them.
 function Mock:quickLook(paths, index) self.quickLooked = {paths = copy(paths), index = index} end
 function Mock:onOpenFiles(handler) self.openHandler = handler end

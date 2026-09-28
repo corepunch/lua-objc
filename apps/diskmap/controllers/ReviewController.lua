@@ -5,6 +5,7 @@ local Model = require("apps.diskmap.Model")
 local Basket = require("apps.diskmap.models.Basket")
 local Cleanup = require("apps.diskmap.models.Cleanup")
 local OperationLog = require("apps.diskmap.models.OperationLog")
+local Verify = require("apps.diskmap.models.Verify")
 local Controller = {}; Controller.__index = Controller
 
 -- Owns the cleanup basket and its review sheet. Pages mark items through
@@ -34,6 +35,10 @@ function Controller:toggle(item)
 		self.handlers.changed()
 		return false
 	end
+	-- The item's identity when marked: a different item at the same path
+	-- later is never moved in its place.
+	local identity = rawget(self.service, "fileIdentity")
+	if type(identity) == "function" and not item.identity then item.identity = identity(item.path) end
 	local ok, reason = self.basket:add(item)
 	if ok then self.results[item.path] = nil end
 	self.handlers.changed()
@@ -83,47 +88,82 @@ function Controller:close()
 	self.sheet, self.refs = nil, nil
 end
 
--- Moves every marked item to the Trash, one at a time, checking each again
--- first: catalog resources through their cleanup constraints, discovered
--- folders through the basket's location rules and the service's symlink
--- check. Results are reported per item; nothing is rolled back or retried.
+-- Moves every marked item to the Trash. Sizes are measured again first,
+-- because a mark can be hours old, and each item is checked again just
+-- before it moves (models/Verify.lua): an item whose app is running, whose
+-- proof is gone or that was replaced is skipped with its reason. Results
+-- are reported per item and summarised; nothing is rolled back or retried.
 function Controller:trash()
+	if self.basket:count() == 0 or self.busy then return false end
+	local paths = {table.unpack(self.basket.order)}
+	local measure = rawget(self.service, "measure")
+	if type(measure) ~= "function" then return self:moveAll(paths) end
+	self.busy = true
+	self.status = "Measuring marked items again…"; self:show()
+	local finished
+	measure(paths, function(sizes)
+		self.busy = false
+		for index, path in ipairs(paths) do
+			local item = self.basket.items[path]
+			if item and sizes and sizes[index] and sizes[index] > 0 then item.bytes = sizes[index] end
+		end
+		self.status = nil
+		finished = self:moveAll(paths)
+	end)
+	return finished ~= false
+end
+
+function Controller:probes()
+	local probes = rawget(self.service, "cleanupProbes")
+	return type(probes) == "function" and probes() or {}
+end
+
+function Controller:moveAll(paths)
 	local rows, bytes = self.basket:rows()
-	if #rows == 0 or self.busy then return false end
+	if #rows == 0 then return false end
 	local names = {}
 	for index, row in ipairs(rows) do if index <= 12 then table.insert(names, "· " .. row.name .. " (" .. row.size .. ")") end end
 	if #rows > 12 then table.insert(names, "· and " .. (#rows - 12) .. " more") end
 	if not self.service.confirmAction("Move to Trash", table.concat(names, "\n") .. "\n\n" .. Model.size(bytes)
-		.. " moves to the Trash. You can put items back from the Trash in Finder until you empty it.") then return false end
+		.. " moves to the Trash. You can put items back from the Trash in Finder until you empty it.") then self:show(); return false end
 	self.busy = true
-	local moved, failed = 0, 0
-	for _, path in ipairs({table.unpack(self.basket.order)}) do
+	local before = self.service.diskSpace(self.model.home)
+	local probes = self:probes()
+	local result = {moved = 0, movedBytes = 0, skipped = {}}
+	for _, path in ipairs(paths) do
 		local item = self.basket.items[path]
-		local ok, message
-		local valid, reason = Basket.validate(path, self.model.home)
-		if not valid then
-			ok, message = false, reason
-		elseif item.resourceId then
-			local done, err = Cleanup.moveToTrash(self.model, item.resourceId, self.service)
-			ok, message = done, err and err.message
-		else
-			local pcallOk, result, detail = pcall(self.service.trash, path)
-			ok, message = pcallOk and result == true, pcallOk and detail or tostring(result)
-		end
-		self:log("Move to Trash", ok, item.bytes, path, message)
-		if ok then
-			moved = moved + (item.bytes or 0)
-			self.done[path] = "Moved to Trash"
-			self.basket:remove(path)
-		else
-			failed = failed + 1
-			self.results[path] = "Failed: " .. tostring(message or "unknown error")
+		if item then
+			local resource = item.resourceId and self.model.resources:find(item.resourceId)
+			local ok, message
+			local allowed, why = Verify.check(item, resource, self.model.home, probes)
+			if not allowed then
+				ok, message = false, "Skipped: " .. why.reason
+				table.insert(result.skipped, why.reason)
+			elseif item.resourceId then
+				local done, err = Cleanup.moveToTrash(self.model, item.resourceId, self.service)
+				ok, message = done, err and err.message
+			else
+				local pcallOk, moved, detail = pcall(self.service.trash, path)
+				ok, message = pcallOk and moved == true, pcallOk and detail or tostring(moved)
+			end
+			self:log("Move to Trash", ok, item.bytes, path, message)
+			if ok then
+				result.moved, result.movedBytes = result.moved + 1, result.movedBytes + (item.bytes or 0)
+				self.done[path] = "Moved to Trash"
+				self.basket:remove(path)
+			else
+				if allowed then table.insert(result.skipped, "it could not be moved (" .. tostring(message or "unknown error") .. ")") end
+				self.results[path] = allowed and ("Failed: " .. tostring(message or "unknown error")) or "Skipped"
+			end
 		end
 	end
+	local after = self.service.diskSpace(self.model.home)
+	result.freeBefore = before and before.freeKb and before.freeKb * 1024 or nil
+	result.freeNow = after and after.freeKb and after.freeKb * 1024 or nil
 	self.busy = false
-	self.movedBytes = (self.movedBytes or 0) + moved
-	self.status = "Moved " .. Model.size(moved) .. " to the Trash" .. (failed > 0 and (" · " .. failed .. " could not be moved") or "")
-		.. ". Empty the Trash to free the space."
+	self.movedBytes = (self.movedBytes or 0) + result.movedBytes
+	self.lastResult = result
+	self.status = Verify.summary(result)
 	self.handlers.changed()
 	self.handlers.rescan()
 	self:show()

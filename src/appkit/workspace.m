@@ -413,3 +413,40 @@ static int bridge_move_item(lua_State *L) {
 	});
 	return 0;
 }
+
+#pragma mark - Checks before moving
+
+// _runningApplications() -> bundle identifiers of the running apps, so a
+// cleanup can skip a cache while the app that writes it is open.
+static int bridge_running_applications(lua_State *L) {
+	NSArray<NSRunningApplication *> *apps = NSWorkspace.sharedWorkspace.runningApplications;
+	lua_createtable(L, (int)apps.count, 0);
+	lua_Integer index = 1;
+	for (NSRunningApplication *app in apps) {
+		if (!app.bundleIdentifier.length) continue;
+		lua_pushstring(L, app.bundleIdentifier.UTF8String);
+		lua_rawseti(L, -2, index++);
+	}
+	return 1;
+}
+
+// _applicationPath(bundleIdentifier) -> the installed app LaunchServices
+// knows for it, wherever it lives, or nil.
+static int bridge_application_path(lua_State *L) {
+	NSString *identifier = [NSString stringWithUTF8String:luaL_checkstring(L, 1)];
+	NSURL *url = [NSWorkspace.sharedWorkspace URLForApplicationWithBundleIdentifier:identifier];
+	if (url.path.length) lua_pushstring(L, url.path.UTF8String); else lua_pushnil(L);
+	return 1;
+}
+
+// _fileIdentity(path) -> {inode, device, symlink} from lstat, or nil when
+// the path is gone. A different inode at the same path is a different item.
+static int bridge_file_identity(lua_State *L) {
+	struct stat info;
+	if (lstat(luaL_checkstring(L, 1), &info) != 0) { lua_pushnil(L); return 1; }
+	lua_createtable(L, 0, 3);
+	lua_pushnumber(L, (lua_Number)info.st_ino); lua_setfield(L, -2, "inode");
+	lua_pushnumber(L, (lua_Number)info.st_dev); lua_setfield(L, -2, "device");
+	lua_pushboolean(L, S_ISLNK(info.st_mode)); lua_setfield(L, -2, "symlink");
+	return 1;
+}

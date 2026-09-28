@@ -54,7 +54,8 @@ function Controller:trashLeftover(row)
 end
 
 function Controller:leftoverItem(row)
-	return {path = row.path, name = row.name, bytes = row.bytes, source = "Leftovers · " .. row.source,
+	-- `leftover` lets the cleanup skip it if its app is installed again.
+	return {path = row.path, name = row.name, bytes = row.bytes, source = "Leftovers · " .. row.source, leftover = true,
 		consequence = "Settings, caches and documents of an app that is no longer installed. Reinstalling the app starts it fresh. Confidence: "
 			.. row.confidence .. " (" .. row.reason .. ")."}
 end

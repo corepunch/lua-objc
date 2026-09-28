@@ -2446,6 +2446,21 @@ function AppKit.quickLook(paths, index)
 	bridge._quickLook(paths or {}, index or 1)
 end
 
+-- Bundle identifiers of the running apps.
+function AppKit.runningApplications()
+	return bridge._runningApplications()
+end
+
+-- The installed app for a bundle identifier, wherever it lives, or nil.
+function AppKit.applicationPath(bundleIdentifier)
+	return bridge._applicationPath(bundleIdentifier)
+end
+
+-- `{inode, device, symlink}` for a path (lstat), or nil when it is gone.
+function AppKit.fileIdentity(path)
+	return bridge._fileIdentity(path)
+end
+
 -- `handler(paths)` receives folders and files opened with the app: dropped
 -- on its Dock icon or chosen with Open With in the Finder. Opens that
 -- arrive before a handler is set are delivered once it is.
