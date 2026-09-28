@@ -31,6 +31,24 @@ t.expect(type(ms) == "number" and ms >= 0, "a frame can be timed offscreen at an
 t.assertThrows(function() bridge._shaderFrameTime(view, 0, 48) end, "frame timing needs a positive size")
 t.assertThrows(function() bridge._shaderFrameTime(ns.VStack({}), 64, 48) end, "only shader views are timed")
 
+-- inputs.age: seconds since Lua assigned values, measured on the clock
+-- ns.uptime() reads, so shaders can extrapolate motion between updates.
+local aged = write("aged.metal", [==[
+fragment float4 aged(ShaderVertex in [[stage_in]], constant ShaderInputs &inputs [[buffer(0)]]) {
+	return float4(step(inputs.values[0], inputs.age), 0.0, 0.0, 1.0);
+}
+]==])
+local AGE = {threshold = 0.05}
+local clock = ns.ShaderView({source = aged, ["function"] = "aged", values = {AGE.threshold}})
+local start = ns.uptime()
+t.expect(type(start) == "number" and start > 0, "ns.uptime reads monotonic seconds")
+t.assertEqual(bridge._shaderPixel(clock, 8, 8, 4, 4), 0, "fresh values have no age")
+while ns.uptime() - start < AGE.threshold * 1.5 do end
+t.expect(ns.uptime() > start, "uptime advances")
+t.assertEqual(bridge._shaderPixel(clock, 8, 8, 4, 4), 1, "values age while the view draws")
+clock.values = {AGE.threshold}
+t.assertEqual(bridge._shaderPixel(clock, 8, 8, 4, 4), 0, "assigning values restarts their age")
+
 local bad = write("bad.metal", "fragment float4 broken( { }\n")
 local ok, err = pcall(ns.ShaderView, {source = bad, ["function"] = "broken"})
 t.expect(not ok and tostring(err):find("program_source:1", 1, true) ~= nil,

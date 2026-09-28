@@ -3,8 +3,8 @@
 // radius SPACE_SUN at the origin, orbits lie near the xz plane, y is up.
 // Bodies are impostors: camera-facing quads whose fragments intersect the
 // view ray with a sphere, so planets stay round and correctly foreshortened
-// even as the camera passes a few radii away. Distances advance with the
-// travelled distance, so the system turns faster when the music is loud.
+// even as the camera passes a few radii away. Orbits and the flyby advance
+// with the travelled distance, a steady cruise; the music drives light only.
 
 constant float SPACE_SUN = 0.55;
 constant int SPACE_PLANETS = 5;

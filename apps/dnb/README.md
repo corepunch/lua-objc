@@ -45,8 +45,10 @@ range, control defaults, the parts they play, pad labels and a `sound` that
 tunes the Synth. `create(kit, seed)` returns a composer whose `bar(n,
 settings)` is a pure function of seed, bar and settings. The kit
 ([`host/StyleKit.lua`](host/StyleKit.lua)) is the shared functionality:
-seeded randomness, modes, voice-led chords, a call-and-response melody
-writer, the DJ set that sequences tracks and sections, the bar score with
+seeded randomness, modes, voice-led chords, a drum kit for every track
+(a snare character from the flavour's `snares` — tight, fat, rimshot,
+roomy, crunchy, layered with a clap, vintage — and a retuned kick, hats and
+clap), a call-and-response melody writer, the DJ set that sequences tracks and sections, the bar score with
 humanized hits, arrangement punctuation (crashes, risers, build rolls), the
 blend into a new track, and the Amen break. Adding a genre is one folder and
 one line in [`host/Styles.lua`](host/Styles.lua).
@@ -83,7 +85,7 @@ stage rather than the window, and the picture continues behind the panels.
 | `host/Visualizers.lua` | The visualizer extension point, the program it links and the draws that show a scene on a layer |
 | `plugins/styles/*` | Drum & Bass, Techno, House, Trance, Dubstep, Breakbeat, UK Garage |
 | `plugins/visualizers/*` | Synthwave Horizon, Valley Flight, Solar System, Liquid Chrome, Light Trails, Tunnel, Crystals |
-| `models/Synth.lua` | Sample-accurate synthesis: designed kicks, snares, claps and hats per style, shared cymbals and percussion, the Amen loop and its slice sampler, reese/acid/wobble bass with resonance, filter envelope, accents and retriggered LFO, sub, pads, FM electric piano, stabs, arp plucks, a gliding lead, risers, ping-pong delay with throws, reverb, sidechain pump, soft clip |
+| `models/Synth.lua` | Sample-accurate synthesis: kicks, snares, claps and hats designed per style and voiced anew for every track, shared cymbals and percussion, the Amen loop and its slice sampler, reese/acid/wobble bass with resonance, filter envelope, accents and retriggered LFO, sub, pads, FM electric piano, stabs, arp plucks, a gliding lead, risers, ping-pong delay with throws, reverb, sidechain pump, soft clip |
 | `models/Amen.lua` | The recreated Amen break's four-bar pattern and slice bookkeeping |
 | `models/Visuals.lua` | Spectrum smoothing, peak holds, kick and snare flashes, the scene director with crossfades, and the shader value layout |
 | `services/AudioOutput.lua` | Speaker output through [AudioStream](../../src/plugins/audio/README.md) |
@@ -91,7 +93,13 @@ stage rather than the window, and the picture continues behind the panels.
 
 While playing, the controller tops up a 0.3 s audio queue (the latency for
 control changes), maps the device's played frame to the sounding bar for the
-header, and feeds the analysed spectrum to every open visualizer. Full
+header, and feeds the analysed spectrum to every open visualizer. Camera
+flights cruise at a steady speed, eased in on Play and out on Stop: the music
+drives light, colour and pulses, never motion. The controller's timer fires
+irregularly while synthesis runs, so each tick advances by the time measured
+with `ns.uptime()`, and shaders extrapolate travel by its speed times
+`inputs.age` (the seconds since values arrived) to move evenly on every
+display frame. Full
 synthesis costs about a fifth of one core at its busiest.
 
 Tests: `tests/dnb.test.lua` (the drum & bass set, composition, synthesis,

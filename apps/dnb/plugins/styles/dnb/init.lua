@@ -5,7 +5,8 @@
 -- dub throws. `bar(n)` is a pure function of seed, bar and settings.
 
 -- Flavours weight the parts a track leans on. Every part still answers to
--- its pad; a flavour only decides how much of it the track uses.
+-- its pad; a flavour only decides how much of it the track uses. `snares`
+-- are the characters its tracks' kits pick from (see StyleKit.snares).
 local FLAVOURS = {
 	{id = "liquid", name = "Liquid", amen = 0.45, keys = 1, reese = 0.55, lead = 0.9, arp = 0.9, stabs = 0.4, halftime = 0.25,
 		snares = {"roomy", "tight", "layered", "vintage"}},

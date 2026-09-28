@@ -245,7 +245,7 @@ local function renderKit(sr, sound)
 			v = v + (hp * 0.6 + sin(TAU * 1750 * t)) * snare.snap * (1 - t / 0.004)
 		end
 		if snare.clap > 0 then v = v + layer(t, s) * clap.level * snare.clap * 0.6 end
-		if snare.drive > 0 then v = softClip(v * (1 + 3 * snare.drive)) * driveNorm * 0.8 end
+		if snare.drive > 0 then v = softClip(v * (1 + 3 * snare.drive)) * driveNorm * 0.5 end
 		if snare.room > 0 then
 			local wet = 0
 			for _, c in ipairs(combs) do

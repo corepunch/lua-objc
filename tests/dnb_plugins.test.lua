@@ -140,6 +140,92 @@ t.expect(synth.sound == before, "a new sound waits for the bar line")
 synth:render({}, synth.nextBarFrame - synth.frame + 10)
 t.assertEqual(synth.sound.kick.decay, techno.sound.kick.decay, "and takes over on it")
 
+-- Track kits: every track draws its own snare character and reshapes the
+-- style's kick, hats and clap, so a set never plays one kit throughout.
+local StyleKit = require("apps.dnb.host.StyleKit")
+for _, style in ipairs(list) do
+	local composer = Styles:create(style.id, 11)
+	local characters, designs = {}, {}
+	for k = 0, 11 do
+		local track = composer.set:track(k)
+		local design = track.drums
+		t.expect(design and design.snare, style.title .. " track " .. k .. " has a kit design")
+		local allowed = track.flavour.snares or StyleKit.snares
+		local fits = false
+		for _, name in ipairs(allowed) do fits = fits or name == design.snare end
+		t.expect(fits, style.title .. " picks snares that suit the flavour")
+		characters[design.snare] = true
+		table.insert(designs, string.format("%s %.3f %.3f", design.snare, design.snareTune, design.kickTune))
+	end
+	local count = 0
+	for _ in pairs(characters) do count = count + 1 end
+	t.expect(count >= 3, style.title .. " varies the snare character across a set")
+	t.expect(designs[1] ~= designs[2], style.title .. " gives consecutive tracks different kits")
+	t.assertEqual(Styles:create(style.id, 11).set:track(3).drums.snareTune, composer.set:track(3).drums.snareTune,
+		style.title .. " kits are reproducible from the seed")
+	t.expect(composer:bar(0, Model.new(11, style)).drums == composer.set:track(0).drums, "bars carry their track's kit")
+end
+t.assertThrows(function() StyleKit.newSet(1, {flavours = {{id = "x", name = "X", snares = {"cowbell"}}}}) end,
+	"flavours name real snare characters")
+
+local base = Synth.sound()
+t.expect(Synth.drumVariant(base, nil) == base, "no design keeps the style's kit")
+local function design(snare, x)
+	local d = {snare = snare}
+	for _, key in ipairs({"snareTune", "kickTune", "kickLength", "kickDrive", "kickClick", "hatTone", "hatLength",
+		"hatNoise", "clapSpread", "clapLength", "clapTone"}) do d[key] = x or 0 end
+	return d
+end
+local roomy = Synth.drumVariant(base, design("roomy"))
+t.expect(roomy.snare.room > 0 and base.snare.room == 0, "a character reshapes the style's snare")
+t.expect(roomy.bass == base.bass and roomy.snare ~= base.snare, "and leaves the rest of the sound shared")
+local high = Synth.drumVariant(base, design("tight", 1))
+local low = Synth.drumVariant(base, design("tight", -1))
+t.expect(math.abs(high.snare.tone / low.snare.tone - 2 ^ (6 / 12)) < 1e-9, "snare tuning spans three semitones each way")
+t.expect(high.kick.base > base.kick.base and low.kick.base < base.kick.base, "the kick is retuned too")
+t.expect(high.hat.decay > low.hat.decay and high.clap.bursts == 4, "hats and the clap change with the kit")
+t.assertThrows(function() Synth.drumVariant(base, design("cowbell")) end, "unknown characters are rejected")
+
+-- Each character keeps the backbeat's level: its first 80 ms within 2.5 dB
+-- of the style's own snare.
+local function attack(data)
+	local n, sum = math.min(#data, math.floor(0.08 * SR)), 0
+	for i = 1, n do sum = sum + data[i] ^ 2 end
+	return math.sqrt(sum / n)
+end
+local levels = Synth.new(clapModel, SR)
+local reference = attack(levels.drums.snare)
+for _, name in ipairs(StyleKit.snares) do
+	levels:applyDrums(design(name))
+	local db = 20 * math.log(attack(levels.drums.snare) / reference, 10)
+	t.expect(math.abs(db) < 2.5, string.format("the %s snare sits %.1f dB from the style's", name, db))
+end
+local distinct = {}
+for _, name in ipairs(StyleKit.snares) do
+	levels:applyDrums(design(name))
+	distinct[levels.drums.snare] = true
+end
+local renders = 0
+for _ in pairs(distinct) do renders = renders + 1 end
+t.assertEqual(renders, #StyleKit.snares, "every character renders its own snare")
+
+-- The Synth switches kit on a track's first bar and holds it all track.
+local kitModel = Model.new(4, Styles:get("dnb"))
+local kitComposer = Styles:create("dnb", 4)
+local player = Synth.new(kitModel, SR)
+player:setComposer(kitComposer)
+player:render({}, 10)
+t.expect(player.design == kitComposer.set:track(0).drums, "the first track plays its own kit")
+local firstSnare = player.drums.snare
+player.composerBar = kitComposer:trackStart(1)
+player:render({}, player.nextBarFrame - player.frame + 10)
+t.expect(player.design == kitComposer.set:track(1).drums, "the next track brings its kit on its first bar")
+t.expect(player.drums.snare ~= firstSnare, "and its own snare")
+local held = player.drums.snare
+for k = 2, 11 do player:applyDrums(kitComposer.set:track(k).drums) end
+player:applyDrums(kitComposer.set:track(1).drums)
+t.expect(#held > 0 and #player.drums.snare > 0, "a bounded kit cache still plays every kit")
+
 -- Visualizers: plugins link into one Metal program and draw into layers.
 local scenes = Visualizers:list()
 t.expect(#scenes >= 7, "seven scene plugins ship")

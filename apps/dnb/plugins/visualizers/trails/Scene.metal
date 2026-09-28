@@ -27,8 +27,8 @@ fragment float4 trailsBackground(ShaderVertex in [[stage_in]]) {
 	return float4(0.015, 0.006, 0.04, 1.0);
 }
 
-// Light trails — ribbons tracing rose curves, their length set by the
-// travelled distance so they stretch as the music gets louder. Each trail is
+// Light trails — ribbons tracing rose curves, their heads running along
+// them with the travelled distance at a steady pace. Each trail is
 // a ribbon of quads along its curve (instance = trail): sample pair 0 caps
 // the head, pair j + 1 sits at sample j, and the fragment turns the
 // distance across the ribbon into the glow.
