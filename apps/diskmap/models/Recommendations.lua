@@ -25,6 +25,8 @@ function Recommendations.checked(model, suggested, needle)
 	for _, row in ipairs(model.resources:leaves()) do
 		local rule = Rules[row.id]
 		local threshold = rule and rule.threshold or row.reviewThreshold
+		-- Build folders are checked as their ecosystem's group.
+		if row.artifact then threshold = nil end
 		if threshold and not suggested[row.id] then
 			total = total + 1
 			local m = model.measurements[row.id] or {}

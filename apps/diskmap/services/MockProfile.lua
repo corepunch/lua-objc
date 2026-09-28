@@ -38,6 +38,15 @@ return {
 		{path = "~/Library/Group Containers/ABCDE12345.com.oldvendor.shared/Library", bytes = 400000000, usedDaysAgo = 700},
 		{path = "~/Library/Saved Application State/com.oldvendor.PhotoTool.savedState/data.data", bytes = 2000000, usedDaysAgo = 700},
 		{path = "~/Library/Caches/com.mock.oldeditor/Cache.db", bytes = 900000000, usedDaysAgo = 500},
+		-- A website someone installed once in Documents: its libraries are
+		-- many files, none large, which only the ecosystem total reveals.
+		{path = "~/Documents/website/package.json", bytes = 2000, usedDaysAgo = 200},
+		{path = "~/Documents/website/node_modules/.package-lock.json", bytes = 90000, usedDaysAgo = 200},
+		{path = "~/Documents/website/node_modules/esbuild/bin/esbuild", bytes = 40000000, usedDaysAgo = 200},
+		{path = "~/Documents/website/node_modules/typescript/lib/typescript.js", bytes = 30000000, usedDaysAgo = 200},
+		{path = "~/Documents/website/node_modules/next/dist/compiled.js", bytes = 45000000, usedDaysAgo = 200},
+		{path = "~/Documents/website/node_modules/@img/sharp/lib/sharp.node", bytes = 35000000, usedDaysAgo = 200},
+		{path = "~/Documents/website/node_modules/react-dom/cjs/react-dom.js", bytes = 20000000, usedDaysAgo = 200},
 	},
 	-- Installed applications as Launch Services and Spotlight report them.
 	["applications"] = {
@@ -138,6 +147,23 @@ return {
 			["action"] = "finder",
 			["reviewThreshold"] = 500000000,
 			["icon"] = "folder",
+			["color"] = "systemOrange",
+		},
+		{
+			["id"] = "mock-website-node-modules",
+			["name"] = "Node modules · website",
+			["subtitle"] = "Installed JavaScript dependencies; npm, pnpm or yarn install restores them",
+			["path"] = "~/Documents/website/node_modules",
+			["project"] = "~/Documents/website",
+			["projectName"] = "website",
+			["artifact"] = "Node modules",
+			["policy"] = "Rebuildable",
+			["action"] = "trash",
+			["proof"] = "marker and contents",
+			["marker"] = "~/Documents/website/package.json",
+			["consequence"] = "Running the project's install command (npm, pnpm or yarn install) downloads these libraries again. Moving to Trash does not free space until you empty it.",
+			["reviewThreshold"] = 500000000,
+			["icon"] = "shippingbox",
 			["color"] = "systemOrange",
 		},
 		{

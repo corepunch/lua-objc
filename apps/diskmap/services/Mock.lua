@@ -230,6 +230,7 @@ function Mock.new(options)
 	for _, entry in ipairs(discovery) do
 		entry.path = absolute(entry.path, home)
 		if entry.project then entry.project = absolute(entry.project, home) end
+		if entry.marker then entry.marker = absolute(entry.marker, home) end
 	end
 	local agents = copy(fixture.agentEntries or {})
 	for _, entry in ipairs(agents) do entry.path = absolute(entry.path, home) end

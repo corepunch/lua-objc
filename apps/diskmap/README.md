@@ -59,11 +59,28 @@ Learn — with one question per destination:
   and Archives oldest first. Bulk actions mark older device support and
   build data of missing projects.
 - **Projects** — build folders found beside their project files (Node, Rust,
-  Maven, Gradle, CMake, SwiftPM, Python, Dart, Next.js, Turborepo, Godot, Zig,
-  Elixir, Stack, Unity) in `~/Developer` and folders you add, grouped by
-  project with git state (via `git status`, only when the developer tools are
-  installed) and last change. Projects with uncommitted or unpushed work are
+  Maven, Gradle, CMake, SwiftPM, CocoaPods, Python `.venv`/`venv`, Dart,
+  Next.js, Turborepo, Godot, Zig, Elixir, Stack, Unity), grouped by project with
+  git state (via `git status`, only when the developer tools are installed) and
+  when it was last worked on: the newest of `.git/index`, `.git/HEAD` and the
+  project's own files, skipping generated folders, within a budget of 5,000
+  files. Projects inside a repository are named from it
+  (`my-app/apps/mobile/ios`). Projects with uncommitted or unpushed work are
   never marked in bulk.
+  Folders are searched where people keep projects (`~/Developer`, `code`,
+  `Projects`, `src`, `dev`, `repos`, `GitHub`, `Sites` and folders you add), and
+  in Documents, Desktop and iCloud Drive only when Full Disk Access is already
+  granted, so macOS never asks once per folder. The search prunes `.git`, the
+  Trash, apps and other packages, and stops six levels down. A second proof
+  inside the folder (npm's `.package-lock.json`, Cargo's `CACHEDIR.TAG`,
+  SwiftPM's `workspace-state.json`, CocoaPods' `Manifest.lock`, Next.js's
+  `BUILD_ID`) makes node_modules, Cargo `target`, `.build`, `Pods` and `.next`
+  Rebuildable; otherwise they stay Review.
+  The same folders also add up per ecosystem, one group under Developer each
+  ("Node modules: 1.2 GB in 34 projects"), on the Map, the Developer page and
+  Clean Up. Clean Up suggests an ecosystem once its folders together reach
+  500 MB, so many small folders are no longer hidden by a per-folder
+  threshold.
 - **Simulators** — every simulator device with its runtime, state, last use
   and data size, filtered by All, Unavailable or Unused for 90 days, with
   Erase, Delete and Delete Unavailable. Installed runtimes come from

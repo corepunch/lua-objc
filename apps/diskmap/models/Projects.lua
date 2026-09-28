@@ -31,6 +31,32 @@ function Projects.gitText(git)
 	return git.branch .. " · " .. table.concat(parts, ", ")
 end
 
+-- A project's name as people know it: a folder inside a repository is named
+-- from the repository down ("my-app/apps/mobile/ios"), so the Pods of every
+-- app in a monorepo are told apart; otherwise the folder's own name.
+function Projects.displayName(path, repository)
+	local name = path:match("([^/]+)$") or path
+	if not repository or repository == path or path:sub(1, #repository + 1) ~= repository .. "/" then return name end
+	return (repository:match("([^/]+)$") or repository) .. path:sub(#repository + 1)
+end
+
+-- When a project was last worked on: the newest of the modification times
+-- `stat` printed (one per line) for its git index, HEAD and source files.
+-- At most `budget` files count, so a huge project cannot stall the page.
+Projects.lastWorkedBudget = 5000
+function Projects.lastWorked(output, budget)
+	local newest, count = nil, 0
+	for value in (output or ""):gmatch("[^\n]+") do
+		local time = tonumber(value:match("^%s*(%d+)%s*$"))
+		if time then
+			count = count + 1
+			if not newest or time > newest then newest = time end
+			if count >= (budget or Projects.lastWorkedBudget) then break end
+		end
+	end
+	return newest
+end
+
 -- Groups discovered artifact resources (leaves with a `project` path) by
 -- project. `info[projectPath]` holds {modified = unix time, git = parsed or
 -- nil, false while loading}.
@@ -40,7 +66,7 @@ function Projects.groups(model, info, now, filter, query)
 	for _, row in ipairs(model.resources:leaves()) do
 		if row.project then
 			if not byProject[row.project] then
-				byProject[row.project] = {path = row.project, name = row.project:match("([^/]+)$") or row.project, artifacts = {}, bytes = 0}
+				byProject[row.project] = {path = row.project, name = row.projectName or row.project:match("([^/]+)$") or row.project, artifacts = {}, bytes = 0}
 				table.insert(order, row.project)
 			end
 			local group = byProject[row.project]

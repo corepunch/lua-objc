@@ -1,10 +1,53 @@
 local Model = require("apps.diskmap.Model")
 local Rules = require("apps.diskmap.knowledge.CleanupRules")
 local Cleanup = {}
+-- Build folders are judged per ecosystem, not per folder: sixty 200 MB
+-- node_modules folders are 12 GB that no single folder's threshold would
+-- ever show. A group is one suggestion once its measured, unkept folders
+-- reach this total; it is Rebuildable only when every one of them is.
+Cleanup.buildGroupThreshold = 500e6
+local function buildGroups(model)
+	local groups, order = {}, {}
+	for _, row in ipairs(model.resources:leaves()) do
+		local parent = row.artifact and row:getParent()
+		local m = model.measurements[row.id]
+		if parent and parent.id:match("^build%-") and not row:isKept() and m and (m.status == "complete" or m.status == "partial") and (m.bytes or 0) > 0 then
+			local group = groups[parent.id]
+			if not group then
+				group = {row = parent, bytes = 0, projects = {}, count = 0, partial = false, rebuildable = true}
+				groups[parent.id] = group
+				table.insert(order, parent.id)
+			end
+			group.bytes = group.bytes + m.bytes
+			group.partial = group.partial or m.status == "partial"
+			group.rebuildable = group.rebuildable and row.policy == "Rebuildable"
+			if not group.projects[row.project or row.path] then group.projects[row.project or row.path] = true; group.count = group.count + 1 end
+		end
+	end
+	local result = {}
+	for _, id in ipairs(order) do table.insert(result, groups[id]) end
+	return result
+end
+Cleanup.buildGroups = buildGroups
+
 function Cleanup.suggestions(model, rules)
 	local result = {}
+	for _, group in ipairs(buildGroups(model)) do
+		local row = group.row
+		if group.bytes >= Cleanup.buildGroupThreshold and not row:isKept() then
+			local value = {id = row.id, name = row.name, icon = row.icon, color = row.color, group = true, projects = group.count,
+				bytes = group.bytes, size = (group.partial and "≥ " or "") .. Model.size(group.bytes), partial = group.partial,
+				policy = group.rebuildable and "Rebuildable" or "Review"}
+			value.impact = group.rebuildable and not group.partial and "Safe/rebuildable" or "Needs review"
+			value.priority, value.threshold = 2, Cleanup.buildGroupThreshold
+			value.subtitle = (row.subtitle or "") .. " In " .. Model.plural(group.count, "project") .. "."
+			value.evidence = "Measured " .. value.size .. " in " .. Model.plural(group.count, "project")
+			table.insert(result, value)
+		end
+	end
 	for _, row in ipairs(model.resources:leaves()) do
 		local m, rule = model.measurements[row.id], (rules or Rules)[row.id]
+		if row.artifact then m = nil end
 		if not rule and (row.reviewThreshold or row.agent or row.id == "opencode-downloads" or row.id == "grok-support") then
 			rule = {threshold = row.reviewThreshold or 100e6, priority = 3, advice = row.consequence or row.subtitle}
 		end
