@@ -1074,6 +1074,16 @@ keeping live updates steady, and test hooks. In short:
 <SectorChart transition="drawOn" …>…</SectorChart>
 ```
 
+### Lua components
+
+New XML tags can be written in Lua with `ui/component.lua`: a module in the
+app's `components/` folder, or in the framework's `lua/components/`, returns
+`props`, `records`, `build(self, ns)` and optionally `update(self, ns)` for
+retained, animated updates. The framework bundles `ActivityRings`,
+`BarChart`, `CapacityBar` and `HeatmapGrid`, all composed from native views on
+both platforms. See [components.md](components.md) and
+`demo/component-gallery`.
+
 ### `PointerView{...}` and `volumeCapacity`
 
 `ns.PointerView { onClick = fn(view, x, y, clicks), onHover = fn(view, x, y) }`
@@ -1791,6 +1801,7 @@ Templates use the `.etlua` extension to reflect that they contain etlua
 | `<SectorChart>` + `<SectorMark>` children | native `Arc`s in a `ZStack` | native `Arc`s in a `ZStack` |
 | `<Gauge>` | `NSLevelIndicator` (continuous capacity) | `UIProgressView` |
 | `<Treemap>` + `<TreemapNode>` children | `LuaTreemapView` (squarified, drawn natively) | — |
+| `<ActivityRings>`, `<BarChart>`, `<CapacityBar>`, `<HeatmapGrid>` | Lua components (`lua/components/`) of native `Arc`s and stacks | same components |
 | `<Window>` | window config table | window config table |
 | `<Toolbar>` + `<ToolbarItem>` | toolbar items | toolbar items |
 

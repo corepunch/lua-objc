@@ -125,6 +125,7 @@ point. See [preview behavior](ARCHITECTURE.md#--preview-cli-mode).
 |---|---|
 | Maintain native framework `.m` code | `skills/maintain-lua-objc-framework/SKILL.md`, then `src/README.md` |
 | Add or compose a Lua widget | `lua/embedded/AppKit.lua` |
+| Add a Lua component (new XML tag) | `lua/ui/component.lua`, `lua/components/`, [`docs/components.md`](docs/components.md) |
 | Add a macOS native bridge primitive | `src/README.md`, then the matching `src/appkit/*.m` fragment |
 | Change flex layout | `src/appkit/layout.m` |
 | Change lists or outlines | `src/appkit/table_data_source.m`, `src/appkit/outline_data_source.m`, `src/appkit/controls.m`, `src/appkit/outline.m`, `docs/tableview_swiftui.md` |

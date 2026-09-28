@@ -8,6 +8,7 @@ local examples = {
 	"apps/studio/init.lua",
 	"demo/playground/init.lua",
 	"demo/hello/init.lua",
+	"demo/component-gallery/init.lua",
 	"demo/controls/init.lua",
 	"demo/list/init.lua",
 	"demo/list-benchmark/init.lua",

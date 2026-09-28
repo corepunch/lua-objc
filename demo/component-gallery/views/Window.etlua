@@ -1,0 +1,8 @@
+<Window title="Component Gallery" width="720" height="760" minWidth="480" minHeight="420">
+  <Toolbar>
+    <ToolbarItem id="advance" label="Next Day" icon="calendar.badge.plus" tooltip="Move the sample data on by one day" action="advance" />
+  </Toolbar>
+  <ScrollView maxWidth="infinity" maxHeight="infinity">
+    <VStack id="host" maxWidth="infinity" padding="20" />
+  </ScrollView>
+</Window>

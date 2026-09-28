@@ -1,0 +1,1 @@
+<Label text="<%= label %>  <%= value %>/<%= goal %>" systemImage="circle.fill" iconSize="10" color="<%= color %>" monospacedDigit="true" />
