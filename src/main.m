@@ -379,6 +379,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_meshGradientConfigure", bridge_AppKitControls_meshGradientConfigure},
 	{"_meshGradientSample", bridge_AppKitControls_meshGradientSample},
 	{"_shaderView", bridge_AppKitControls_shaderView},
+	{"_shaderFrameTime", bridge_AppKitControls_shaderFrameTime},
+	{"_shaderPixel", bridge_AppKitControls_shaderPixel},
 	{"_hitTestTarget", bridge_hit_test_target},
 	{"_hostingController", bridge_hosting_controller},
 	{"_navigationStack", bridge_navigation_stack},

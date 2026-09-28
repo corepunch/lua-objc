@@ -1,17 +1,21 @@
 <%
 -- One Metal program from the visualizer plugins: the shared library, every
--- scene, a dispatcher numbering them in load order, and the entry point.
+-- scene, a layer wrapper for each full-screen scene (escaped for XML on
+-- output), and the finishing pass that crossfades the two layers. The
+-- controller assigns the draws.
 -- The picture runs under the title bar and toolbar, behind the glass.
-local cases = {}
-for index, scene in ipairs(program.scenes) do
-	table.insert(cases, string.format("case %d: return %s(inputs, uv, f);", index - 1, scene.entry))
+local wrappers = {}
+for _, scene in ipairs(program.scenes) do
+	if scene.wrapper then
+		table.insert(wrappers, string.format("fragment float4 %s(ShaderVertex in [[stage_in]], constant ShaderInputs &inputs [[buffer(0)]]) { Frame f = frameOf(inputs); return float4(%s(inputs, in.uv, f), 1.0); }", scene.wrapper, scene.entry))
+	end
 end
 -%>
-<ShaderView id="visualizer" function="visualizer" ignoresSafeArea="all">
+<ShaderView id="visualizer" function="visualizer" layers="2" ignoresSafeArea="all">
 	<ShaderSource path="<%= program.library %>" />
 	<% for _, scene in ipairs(program.scenes) do -%>
 	<ShaderSource path="<%= scene.path %>" />
 	<% end -%>
-	<ShaderSource code="static float3 scene(int index, constant ShaderInputs &amp;inputs, float2 uv, const thread Frame &amp;f) { switch (index) { <%= table.concat(cases, " ") %> default: return float3(0.0); } }" />
+	<ShaderSource code="<%= table.concat(wrappers, ' ') %>" />
 	<ShaderSource path="<%= program.main %>" />
 </ShaderView>

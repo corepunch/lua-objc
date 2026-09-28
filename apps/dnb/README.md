@@ -52,14 +52,21 @@ blend into a new track, and the Amen break. Adding a genre is one folder and
 one line in [`host/Styles.lua`](host/Styles.lua).
 
 **Visualizer plugins** (`plugins/visualizers/<id>/`) are declarative: a
-title, symbol, the sections the director shows them in, and a `Scene.metal`
-defining `<id>Scene(inputs, uv, frame)`. The host analyses the audio once
+title, symbol, the sections the director shows them in, and a
+`Scene.metal`. A scene either lists `draws`, meshes whose vertex and
+fragment functions (named after its id) compute geometry per vertex from
+`vertex_id` and `instance_id` (Light Trails' ribbons, the Solar System's
+sun, planets, rings, comets and asteroid belt, Valley Flight's terrain,
+water and cloud banks), or defines only `<id>Scene(inputs, uv, frame)` and
+is drawn full-screen. The host analyses the audio once
 ([`models/Visuals.lua`](models/Visuals.lua)) and
 [`views/Visualizer.etlua`](views/Visualizer.etlua) links the shared Metal
-library ([`shaders/Kit.metal`](shaders/Kit.metal)), every scene, a
-dispatcher and the entry point
-([`shaders/Main.metal`](shaders/Main.metal)) into one `<ShaderView>` program,
-so any two scenes can crossfade.
+library ([`shaders/Kit.metal`](shaders/Kit.metal)), every scene and the
+finishing pass ([`shaders/Main.metal`](shaders/Main.metal)) into one
+`<ShaderView layers="2">` program. The current scene renders into layer 1
+and, during a crossfade, the next into layer 2; the finish mixes them and
+adds bloom from the layers' mip levels. Geometry belongs in vertices: a
+per-pixel loop over a curve's segments made Light Trails take 85 ms a frame.
 
 Scenes compose around the **stage**, the main view rect: the part of the
 picture between the toolbar and the top of the panels (or the mini player's
@@ -73,9 +80,9 @@ stage rather than the window, and the picture continues behind the panels.
 | `Model.lua` | Parts and controls (the single source for the pads and fill bars), the current style's ranges, labels and supported parts |
 | `Controller.lua` | Window, transport, Style and Scene menus, the mini player, and the 60 Hz display loop |
 | `host/Styles.lua`, `host/StyleKit.lua` | The style extension point and its host API |
-| `host/Visualizers.lua` | The visualizer extension point and the program it links |
+| `host/Visualizers.lua` | The visualizer extension point, the program it links and the draws that show a scene on a layer |
 | `plugins/styles/*` | Drum & Bass, Techno, House, Trance, Dubstep, Breakbeat, UK Garage |
-| `plugins/visualizers/*` | Synthwave Horizon, Ridge Flight, Liquid Chrome, Light Trails, Tunnel, Crystals |
+| `plugins/visualizers/*` | Synthwave Horizon, Valley Flight, Solar System, Liquid Chrome, Light Trails, Tunnel, Crystals |
 | `models/Synth.lua` | Sample-accurate synthesis: designed kicks, snares, claps and hats per style, shared cymbals and percussion, the Amen loop and its slice sampler, reese/acid/wobble bass with resonance, filter envelope, accents and retriggered LFO, sub, pads, FM electric piano, stabs, arp plucks, a gliding lead, risers, ping-pong delay with throws, reverb, sidechain pump, soft clip |
 | `models/Amen.lua` | The recreated Amen break's four-bar pattern and slice bookkeeping |
 | `models/Visuals.lua` | Spectrum smoothing, peak holds, kick and snare flashes, the scene director with crossfades, and the shader value layout |
