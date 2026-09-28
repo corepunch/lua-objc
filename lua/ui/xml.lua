@@ -367,7 +367,7 @@ local function layoutProps(attrs)
         "flexGrow", "flexShrink", "flexBasis",
         "containerRelativeWidth", "hidden", "allowsHitTesting", "background", "tint", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick", "onTap", "onDrag", "onEdgeSwipe",
         "opacity", "scaleEffect", "rotationEffect", "offsetX", "offsetY",
-        "help",
+        "help", "dropExternalOnly",
     }
     local props = {}
     for _, k in ipairs(lp) do
@@ -799,6 +799,7 @@ local TAG_SCHEMA = {
             wrapping = "str",
             monospacedDigit = "bool",
             smallCaps = "bool",
+            minimumScaleFactor = "num",
         },
         transform = function(props, a)
             if a.lines and (num(a.lines) or 0) > 1 then
@@ -1195,6 +1196,22 @@ local TAG_SCHEMA = {
     ShaderView = {
         constructor = "ShaderView",
         props = { source = "str", ["function"] = "str" },
+        collect = function(props, children)
+            local sources = {}
+            for _, child in ipairs(children) do
+                if type(child) ~= "table" or not child.__shaderSource then
+                    error("xml: <ShaderView> accepts only <ShaderSource> children")
+                end
+                table.insert(sources, { path = child.path, code = child.code })
+            end
+            if #sources > 0 then props.sources = sources end
+        end,
+    },
+    -- One chunk of a linked <ShaderView> program: a file or a code snippet.
+    ShaderSource = {
+        kind = "record",
+        flag = "__shaderSource",
+        props = { path = "str", code = "str" },
     },
     TimelineView = {
         constructor = "TimelineView", children = "content",
@@ -1449,6 +1466,10 @@ local TAG_SCHEMA = {
             tabbingIdentifier          = "str",
             toolbarLabels              = "bool",
             hideTitle                  = "bool",
+            transparentTitlebar        = "bool",
+            level                      = "str",
+            aspectRatio                = "num",
+            onClose                    = "str",
             visible                    = "bool",
             sidebarWidth               = "num",
             detailWidth                = "num",
@@ -1485,8 +1506,8 @@ local TAG_SCHEMA = {
         end,
         transform = function(cfg, attrs)
             -- Mouse back/forward buttons and horizontal swipes.
-            cfg.onBack, cfg.onForward = nil, nil
-            bindActions(cfg, attrs, { "onBack", "onForward" })
+            cfg.onBack, cfg.onForward, cfg.onClose = nil, nil, nil
+            bindActions(cfg, attrs, { "onBack", "onForward", "onClose" })
             if renderData and renderData.actions then
                 for _, item in ipairs(cfg.toolbar or {}) do
                     if type(item.action) == "string" then

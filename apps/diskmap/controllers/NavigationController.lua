@@ -2,15 +2,18 @@ local ns = require("AppKit")
 local xml = require("ui.xml")
 local Controller = {}; Controller.__index = Controller
 
--- Sidebar destinations in the order they matter: what uses storage, what to
--- do about it, the developer tools behind it, the disk and system-managed
--- storage, then how macOS lays it out and how to use Diskmap. Section rows
--- are native source-list group headers and cannot be selected. `key` is the
--- page's ⌘-digit shortcut in the Go menu.
+-- Sidebar destinations in the order they matter to someone who is not a
+-- developer: what uses storage, what to do about it, the disk and
+-- system-managed storage, then developer tools, then how macOS lays it out
+-- and how to use Diskmap. The Developer section appears only on a Mac with
+-- developer data (#52). Section rows are native source-list group headers
+-- and cannot be selected. `key` is the page's ⌘-digit shortcut in the Go
+-- menu.
 Controller.destinations = {
 	{section = true, title = "Storage"},
 	{id = "overview", name = "Overview", icon = "chart.pie.fill", key = "1"},
 	{id = "map", name = "Map", icon = "circle.circle.fill", key = "2"},
+	{id = "folder", name = "Folder Map", icon = "folder.fill"},
 	{id = "largest", name = "Largest Items", icon = "chart.bar.fill", key = "3"},
 	{id = "files", name = "Large Files", icon = "doc.fill", key = "4"},
 	{id = "kinds", name = "File Types", icon = "square.grid.2x2.fill", key = "5"},
@@ -18,14 +21,14 @@ Controller.destinations = {
 	{section = true, title = "Clean Up"},
 	{id = "cleanup", name = "Recommendations", icon = "sparkles", key = "6"},
 	{id = "applications", name = "Applications", icon = "square.grid.3x3.fill", key = "7"},
+	{section = true, title = "System"},
+	{id = "disks", name = "Disks & Volumes", icon = "internaldrive.fill"},
+	{id = "updates", name = "Updates & Snapshots", icon = "arrow.triangle.2.circlepath"},
 	{section = true, title = "Developer"},
 	{id = "developer", name = "Developer", icon = "hammer.fill", key = "8"},
 	{id = "xcode", name = "Xcode", icon = "hammer.circle.fill", key = "9"},
 	{id = "projects", name = "Projects", icon = "folder.fill.badge.gearshape"},
 	{id = "simulators", name = "Simulators", icon = "iphone"},
-	{section = true, title = "System"},
-	{id = "disks", name = "Disks & Volumes", icon = "internaldrive.fill"},
-	{id = "updates", name = "Updates & Snapshots", icon = "arrow.triangle.2.circlepath"},
 	{section = true, title = "Learn"},
 	{id = "guide", name = "Storage Guide", icon = "book.fill"},
 	{id = "help", name = "Diskmap Help", icon = "questionmark.circle.fill"},
@@ -34,21 +37,36 @@ Controller.destinations = {
 -- `show(id)` mounts the destination; the root controller owns page lifetime.
 -- Back and forward follow destinations the way a browser follows pages.
 function Controller.new(show)
-	return setmetatable({show = show, history = {}, position = 0, badges = {}, watched = {}}, Controller)
+	return setmetatable({show = show, history = {}, position = 0, badges = {}, watched = {}, hiddenSections = {}}, Controller)
 end
 
 -- Watched locations lead the sidebar, as Favorites lead Finder's: they are
 -- what the person chose to come back to. The section appears only once
 -- something is watched. Each row's badge is its current size.
 function Controller:list()
-	if #self.watched == 0 then return Controller.destinations end
-	local list = {{section = true, title = "Watched"}}
-	for _, row in ipairs(self.watched) do
-		table.insert(list, {id = row.id, name = row.name, icon = row.icon, color = row.color,
-			badge = not row.calculating and row.size or nil})
+	local list = {}
+	if #self.watched > 0 then
+		table.insert(list, {section = true, title = "Watched"})
+		for _, row in ipairs(self.watched) do
+			table.insert(list, {id = row.id, name = row.name, icon = row.icon, color = row.color,
+				badge = not row.calculating and row.size or nil})
+		end
 	end
-	for _, row in ipairs(Controller.destinations) do table.insert(list, row) end
+	local hidden = false
+	for _, row in ipairs(Controller.destinations) do
+		if row.section then hidden = self.hiddenSections[row.title] == true end
+		if not hidden then table.insert(list, row) end
+	end
 	return list
+end
+
+-- Shows or hides a section with its destinations, such as Developer on a
+-- Mac without developer tools. Returns whether the sidebar changed.
+function Controller:setSectionVisible(title, visible)
+	if (self.hiddenSections[title] == true) == not visible then return false end
+	self.hiddenSections[title] = not visible or nil
+	self:reload()
+	return true
 end
 
 function Controller:rows()

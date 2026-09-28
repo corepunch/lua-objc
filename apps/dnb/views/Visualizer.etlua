@@ -1,0 +1,17 @@
+<%
+-- One Metal program from the visualizer plugins: the shared library, every
+-- scene, a dispatcher numbering them in load order, and the entry point.
+-- The picture runs under the title bar and toolbar, behind the glass.
+local cases = {}
+for index, scene in ipairs(program.scenes) do
+	table.insert(cases, string.format("case %d: return %s(inputs, uv, f);", index - 1, scene.entry))
+end
+-%>
+<ShaderView id="visualizer" function="visualizer" ignoresSafeArea="all">
+	<ShaderSource path="<%= program.library %>" />
+	<% for _, scene in ipairs(program.scenes) do -%>
+	<ShaderSource path="<%= scene.path %>" />
+	<% end -%>
+	<ShaderSource code="static float3 scene(int index, constant ShaderInputs &amp;inputs, float2 uv, const thread Frame &amp;f) { switch (index) { <%= table.concat(cases, " ") %> default: return float3(0.0); } }" />
+	<ShaderSource path="<%= program.main %>" />
+</ShaderView>

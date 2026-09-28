@@ -46,6 +46,7 @@ local layout_properties = {
 	"containerRelativeWidth",
 	"fillHeight",
 	"fixedSize",
+	"ignoresSafeArea",
 	"hidden",
 	"allowsHitTesting",
 	"background",
@@ -85,7 +86,9 @@ local function applyLayout(view, props)
 				bridge._addHoverTooltip(view, tt.title or "", tt.detail or "")
 			elseif key == "onDrop" then
 				-- SwiftUI `.dropDestination`: files dropped on the stack.
-				bridge._setDropHandler(view, props[key])
+				-- `dropExternalOnly` takes only drags from other apps,
+				-- such as the Finder, never this app's own rows.
+				bridge._setDropHandler(view, props[key], props.dropExternalOnly == true)
 			elseif key == "help" then
 				-- SwiftUI `.help(_:)` is the view's native AppKit tooltip.
 				view.toolTip = props[key]
@@ -146,6 +149,9 @@ end
 --- @prop tabbingMode string optional. Window tabbing mode.
 --- @prop title value optional. Component-specific setting passed to the native control.
 --- @prop toolbar table optional. Toolbar item descriptors.
+--- @prop level string optional. `floating` keeps the window above others and on every Space (SwiftUI `.windowLevel(.floating)`), as a Picture in Picture or mini player window.
+--- @prop aspectRatio number optional. Content width over height kept while the user resizes.
+--- @prop onClose function optional. Called when the window closes.
 --- @prop onBack function optional. The mouse's back button or a swipe right navigates back.
 --- @prop onForward function optional. The mouse's forward button or a swipe left navigates forward.
 --- @prop toolbarContentDividerAfter value optional. Toolbar item identifier after which the content divider appears.
@@ -200,6 +206,8 @@ function AppKit.Window(props)
 			props.minWidth or width,
 			props.minHeight or height)
 	end
+	if props.level then win.windowLevel = props.level end
+	if props.aspectRatio then win.aspectRatio = props.aspectRatio end
 	if props.tabbingMode or props.tabbingIdentifier then
 		win.tabbing = props.tabbingMode or "automatic"
 		win.tabbingIdentifier = props.tabbingIdentifier
@@ -251,7 +259,9 @@ function AppKit.Window(props)
 	if props.onBack or props.onForward then
 		bridge._onNavigationGesture(win, props.onBack, props.onForward)
 	end
+	local onClose = props.onClose
 	bridge._onWindowClose(win, function()
+		if onClose then onClose() end
 		scope:close()
 	end)
 	return win
@@ -380,6 +390,13 @@ function AppKit.presentSheet(contentOrBuilder, options)
 	if not _G.__headless then sheet:presentSheet(options.parent) end
 	applyDefaultFocus(sheet)
 	return table.unpack(results, 1, results.n)
+end
+
+--- Shows a window again after `window:hide()`, making it key; like the
+--- constructor, headless runs never put a window on screen.
+function AppKit.showWindow(window)
+	if not _G.__headless then window:show() end
+	return window
 end
 
 function AppKit.present(panel, parent, props)
@@ -954,6 +971,7 @@ end
 --- @prop truncation string optional. One of "head", "middle", "tail".
 --- @prop wrapping string optional. "word" (default) or "character".
 --- @prop monospacedDigit boolean optional. Uses fixed-width digits so changing numbers do not shift (SwiftUI `.monospacedDigit()`); requires `size`.
+--- @prop minimumScaleFactor number optional. Smallest fraction of `size` the text shrinks to when offered less width (SwiftUI `.minimumScaleFactor`).
 --- @platform AppKit NSTextField (non-editable, bezel-less). UIKit UILabel.
 --- @example <Label>Hello</Label>
 --- @example <Label size="16" weight="bold">Hello</Label>
@@ -984,7 +1002,8 @@ function AppKit.Text(arg)
 			AppKit.Text({ text, size = arg.size, weight = arg.weight,
 				italic = arg.italic, color = arg.color, design = arg.design,
 				monospacedDigit = arg.monospacedDigit, fontName = arg.fontName, smallCaps = arg.smallCaps,
-				lineLimit = arg.lineLimit, truncation = arg.truncation, wrapping = arg.wrapping }),
+				lineLimit = arg.lineLimit, truncation = arg.truncation, wrapping = arg.wrapping,
+				minimumScaleFactor = arg.minimumScaleFactor }),
 		}
 		return applyLayout(AppKit.HStack(row), arg)
 	end
@@ -1008,6 +1027,11 @@ function AppKit.Text(arg)
 	end
 	if type(arg) == "table" and arg.color then
 		v.textColor = bridge._systemColor(arg.color)
+	end
+	-- SwiftUI `.minimumScaleFactor`: `size` is the largest size; a narrower
+	-- proposal shrinks the font down to `size * minimumScaleFactor`.
+	if type(arg) == "table" and arg.minimumScaleFactor then
+		v.minimumScaleFactor = arg.minimumScaleFactor
 	end
 	if type(arg) == "table" and arg.accessibilityLabel then
 		v.accessibilityLabel = arg.accessibilityLabel
@@ -1330,16 +1354,39 @@ end
 --- constant ShaderInputs &inputs [[buffer(0)]])`; `inputs` carries `size`
 --- (pixels), `time` (seconds), `count` and `values[256]`. Assign `values`
 --- from Lua to animate it. The view is transparent where the shader is.
---- @prop source string required. Path of a `.metal` file with the fragment function.
+--- A program can instead be linked from `sources`, `{path = …}` files and
+--- `{code = …}` snippets compiled in order as one translation unit, so a
+--- shared library, plugin-contributed functions and an entry point can live
+--- in separate files. Each chunk opens with a `#line` directive, so compiler
+--- errors name the file and line they came from.
+--- @prop source string optional. Path of a `.metal` file with the fragment function.
+--- @prop sources table optional. `<ShaderSource path="…">` / `<ShaderSource code="…">` chunks, in order.
 --- @prop function string required. Fragment function name.
 --- @prop values table optional. Initial floats for `inputs.values`.
 --- @platform AppKit.
-function AppKit.ShaderView(props)
-	props = props or {}
-	local file = assert(io.open(assert(props.source, "ShaderView requires source"), "r"),
-		"ShaderView: cannot read " .. tostring(props.source))
+local function readShader(path)
+	local file = assert(io.open(path, "r"), "ShaderView: cannot read " .. tostring(path))
 	local text = file:read("a")
 	file:close()
+	return text
+end
+
+function AppKit.ShaderView(props)
+	props = props or {}
+	local text
+	if props.sources then
+		assert(props.source == nil, "ShaderView takes source or sources, not both")
+		local chunks = {}
+		for index, chunk in ipairs(props.sources) do
+			assert((chunk.path == nil) ~= (chunk.code == nil), "ShaderSource requires exactly one of path or code")
+			local name = chunk.path or ("code " .. index)
+			table.insert(chunks, string.format('#line 1 "%s"\n%s\n', name, chunk.path and readShader(chunk.path) or chunk.code))
+		end
+		assert(#chunks > 0, "ShaderView sources is empty")
+		text = table.concat(chunks)
+	else
+		text = readShader(assert(props.source, "ShaderView requires source or sources"))
+	end
 	local view = bridge._shaderView(text, assert(props["function"], "ShaderView requires function"))
 	if props.values then view.values = props.values end
 	-- Like a gradient, a shader has no intrinsic size and fills its proposal.
@@ -1742,7 +1789,10 @@ end
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.ContentUnavailable(props)
 	props = props or {}
-	local content = { spacing = props.spacing or 8, alignment = "center" }
+	-- SwiftUI's ContentUnavailableView takes the space it is offered and
+	-- centers its message in it. The spacers make the stack flexible along
+	-- its main axis, so it fills the parent's height and centers vertically.
+	local content = { spacing = props.spacing or 8, alignment = "center", AppKit.Spacer() }
 	if props.systemImage then
 		table.insert(content, (AppKit.SystemImage {
 			props.systemImage,
@@ -1760,7 +1810,11 @@ function AppKit.ContentUnavailable(props)
 			lineLimit = props.lines or 0,
 		}))
 	end
-	return applyLayout(AppKit.VStack(content), props)
+	table.insert(content, (AppKit.Spacer()))
+	local view = AppKit.VStack(content)
+	-- Full width too, so a long description wraps across the pane.
+	if props.fillWidth == nil then view.fillWidth = true end
+	return applyLayout(view, props)
 end
 
 AppKit.ActionButton = AppKit.Button
@@ -2431,6 +2485,47 @@ end
 
 function AppKit.moveToTrash(path)
 	return bridge._moveToTrash(path)
+end
+
+-- Moves a file or folder into `folder` off the main thread, across disks
+-- too; `completion(ok, message, destination)` runs on the main thread. An
+-- existing item of the same name is never replaced.
+function AppKit.moveItem(path, folder, completion)
+	bridge._moveItem(path, folder, completion)
+end
+
+-- The system Quick Look panel (Finder's Space bar) for `paths`, starting at
+-- `index`; an empty list closes it.
+function AppKit.quickLook(paths, index)
+	bridge._quickLook(paths or {}, index or 1)
+end
+
+-- Bundle identifiers of the running apps.
+function AppKit.runningApplications()
+	return bridge._runningApplications()
+end
+
+-- The installed app for a bundle identifier, wherever it lives, or nil.
+function AppKit.applicationPath(bundleIdentifier)
+	return bridge._applicationPath(bundleIdentifier)
+end
+
+-- Starts a new instance of this app and quits once it runs;
+-- `onFailure(message)` runs if it could not start.
+function AppKit.relaunch(onFailure)
+	bridge._relaunch(onFailure)
+end
+
+-- `{inode, device, symlink}` for a path (lstat), or nil when it is gone.
+function AppKit.fileIdentity(path)
+	return bridge._fileIdentity(path)
+end
+
+-- `handler(paths)` receives folders and files opened with the app: dropped
+-- on its Dock icon or chosen with Open With in the Finder. Opens that
+-- arrive before a handler is set are delivered once it is.
+function AppKit.onOpenFiles(handler)
+	bridge._onOpenFiles(handler)
 end
 
 function AppKit.copyToClipboard(text)

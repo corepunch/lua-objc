@@ -1,6 +1,7 @@
 <ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
   <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
     <VStack id="hero" maxWidth="infinity" spacing="0" />
+    <VStack id="accessNotice" maxWidth="infinity" spacing="0" />
     <VStack id="changes" maxWidth="infinity" spacing="0" />
     <VStack id="categoriesSection" maxWidth="infinity" spacing="8" alignment="leading">
       <%- partial("SectionHeader.etlua", {title = "Categories", detail = "Measured by owner, largest first", detailId = "coverage"}) %>

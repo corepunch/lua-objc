@@ -1,12 +1,17 @@
 -- Visualizer state: smooths raw spectrum frames into falling bars with peak
--- holds, follows kicks, snares and beats from the synth timeline, picks a
--- scene per section and phrase with a crossfade, and packs it all into the
--- float layout documented at the top of shaders/Visualizer.metal.
+-- holds, follows kicks, snares and beats from the synth timeline, directs
+-- the scene plugins (one per section and phrase, or one the user pinned)
+-- with a crossfade, and packs it all into the float layout documented at the
+-- top of shaders/Kit.metal.
 local Visuals = {}
 Visuals.__index = Visuals
 
 Visuals.bands = 40
-Visuals.header = 16
+Visuals.header = 20
+
+-- The main view rect as fractions of the view from its top-left: where
+-- scenes centre their subject. The whole view until a layout says otherwise.
+Visuals.fullStage = {x = 0, y = 0, width = 1, height = 1}
 
 local MOTION = {
 	attack = 0.65,     -- share of a rise applied per frame
@@ -25,18 +30,27 @@ local MOTION = {
 	travelGain = 1.4,
 }
 
--- Scene numbers match the shader's switch.
-Visuals.scenes = {spectrum = 0, landscape = 1, metaballs = 2, trails = 3, tunnel = 4, crystals = 5}
-local S = Visuals.scenes
--- Each section draws from its own pool: the drop runs through everything,
--- breakdowns stay fluid and calm, builds accelerate.
-local POOLS = {
-	intro = {S.spectrum},
-	build = {S.tunnel, S.trails},
-	drop = {S.spectrum, S.tunnel, S.landscape, S.trails, S.crystals, S.metaballs},
-	breakdown = {S.metaballs, S.landscape, S.crystals},
-}
+-- Sections without scenes of their own borrow the drop's.
+local SECTIONS = {"intro", "build", "drop", "breakdown", "outro"}
+local BORROW = {outro = "drop", intro = "drop", build = "drop", breakdown = "drop"}
 local PHRASE = 8 -- bars per scene inside a section
+
+-- Scene numbers are 0-based plugin indices, the shader's switch.
+local function pools(scenes)
+	local result = {}
+	for _, section in ipairs(SECTIONS) do result[section] = {} end
+	for index, scene in ipairs(scenes) do
+		for _, section in ipairs(scene.sections) do
+			assert(result[section], "unknown section " .. tostring(section))
+			table.insert(result[section], index - 1)
+		end
+	end
+	for section, pool in pairs(result) do
+		if #pool == 0 then result[section] = result[BORROW[section]] end
+	end
+	assert(#result.drop > 0, "some scene must play in drops")
+	return result
+end
 
 -- Analyser level (0…1 over 78 dB) at full volume → bar height.
 local function display(raw, lift)
@@ -47,19 +61,39 @@ local function display(raw, lift)
 end
 local INTENSITY = {intro = 0.35, build = 0.7, drop = 1, breakdown = 0.5}
 
-function Visuals.new(bands)
+-- `scenes` are the visualizer plugins' manifests, in shader order.
+function Visuals.new(scenes, bands)
+	local pool = pools(scenes)
+	local idle = pool.intro[1]
 	local self = setmetatable({n = bands or Visuals.bands, levels = {}, peaks = {}, holds = {},
 		level = 0, kick = 0, snare = 0, presence = 0, hue = 0, intensity = 0.35, progress = 0, beat = 0,
-		barPhase = 0, travel = 0, low = 0, high = 0,
-		scene = S.spectrum, nextScene = S.spectrum, fade = 0, sceneKey = nil, values = {}}, Visuals)
+		barPhase = 0, travel = 0, low = 0, high = 0, pools = pool, idle = idle, count = #scenes,
+		scene = idle, nextScene = idle, fade = 0, sceneKey = nil, values = {}}, Visuals)
 	for i = 1, self.n do self.levels[i], self.peaks[i], self.holds[i] = 0, 0, 0 end
 	return self
+end
+
+--- Pins scene `index` (0-based), or returns to directing with nil. The
+--- change crossfades like any other.
+function Visuals:pin(index)
+	assert(index == nil or (index >= 0 and index < self.count), "no scene " .. tostring(index))
+	self.pinned, self.sceneKey = index, nil
+	self:cut(index or self.idle)
+end
+
+-- Starts a crossfade to `scene`; one arriving mid-crossfade lands the
+-- running one first.
+function Visuals:cut(scene)
+	if scene == self.nextScene then return end
+	if self.fade > 0 then self.scene = self.nextScene end
+	self.nextScene, self.fade = scene, 0
 end
 
 -- The scene a bar asks for: the section's pool, advanced once per phrase
 -- and per section, never repeating the scene already showing.
 function Visuals:sceneFor(bar)
-	local pool = POOLS[bar.section] or POOLS.drop
+	if self.pinned then return self.pinned, "pinned" end
+	local pool = self.pools[bar.section] or self.pools.drop
 	local start = (bar.number or 0) - bar.sectionBar
 	local index = start // 4 + bar.sectionBar // PHRASE
 	local scene = pool[index % #pool + 1]
@@ -72,14 +106,11 @@ function Visuals:follow(bar, playing, dt)
 		local scene, key = self:sceneFor(bar)
 		if key ~= self.sceneKey then
 			self.sceneKey = key
-			if scene ~= self.scene then
-				-- A change mid-crossfade lands the running one first.
-				if self.fade > 0 then self.scene = self.nextScene end
-				self.nextScene, self.fade = scene, 0
-			end
+			if scene ~= self.scene then self:cut(scene) end
 		end
-	elseif not playing and self.scene ~= S.spectrum and self.fade == 0 then
-		self.nextScene, self.sceneKey = S.spectrum, nil
+	elseif not playing then
+		local rest = self.pinned or self.idle
+		if self.scene ~= rest and self.fade == 0 then self.nextScene, self.sceneKey = rest, nil end
 	end
 	if self.nextScene ~= self.scene then
 		self.fade = self.fade + dt / MOTION.crossfade
@@ -146,7 +177,7 @@ function Visuals:update(frame, dt)
 		self.hue = (bar.tonic or 0) / 12
 	end
 	self:follow(bar, frame.playing, dt)
-	return self:pack()
+	return self:pack(frame.stage)
 end
 
 -- True once bars, peaks, pulses and scene changes have come to rest, so an
@@ -160,12 +191,16 @@ function Visuals:settled()
 	return true
 end
 
-function Visuals:pack()
+-- Each open view packs its own `stage`: the main window's sits above its
+-- panels, the mini player's above its transport bar.
+function Visuals:pack(stage)
+	stage = stage or Visuals.fullStage
 	local v = self.values
 	v[1], v[2], v[3], v[4] = self.level, self.kick, self.hue, self.intensity
 	v[5], v[6], v[7], v[8] = self.progress, self.beat, self.presence, self.n
 	v[9], v[10], v[11], v[12] = self.scene, self.nextScene, self.fade, self.snare
 	v[13], v[14], v[15], v[16] = self.low, self.high, self.travel, self.barPhase
+	v[17], v[18], v[19], v[20] = stage.x, stage.y, stage.width, stage.height
 	local h = Visuals.header
 	for i = 1, self.n do
 		v[h + i] = self.levels[i]

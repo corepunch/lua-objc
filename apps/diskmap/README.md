@@ -1,8 +1,11 @@
 # Diskmap
 
 A native macOS 26 storage manager organized by semantic categories, not folders.
-The sidebar has five sections — Storage, Clean Up, Developer, System and
-Learn — with one question per destination:
+The sidebar has five sections — Storage, Clean Up, System, Developer and
+Learn — with one question per destination. Diskmap is for everyone, so the
+Developer section follows System and appears only on a Mac with developer
+data: Xcode or `~/Library/Developer` present, or at least 500 MB measured in
+the Developer category.
 
 - **Overview — what uses my storage?** A donut of the whole startup disk by
   category, with free space as the empty track and unattributed usage in gray,
@@ -10,6 +13,21 @@ Learn — with one question per destination:
   categories ranked by size with share bars, the six largest individual items,
   and the rebuildable-versus-review cleanup headline with a prominent
   Review Cleanup button.
+- **Folder Map** — any folder or disk, measured in one scan and shown as
+  DaisyDisk and GrandPerspective show a disk: rings or rectangles beside a list
+  of the focused folder's contents, largest first. Drop a folder or disk from
+  the Finder anywhere on the window or on the Dock icon, choose File › Open
+  Folder… (⌘O), or launch with `--folder=<path>`. Color the map by Folders,
+  Kinds of file or Last Used, with a legend. Rows offer Quick Look (⌘Y, with
+  the arrow keys stepping through the folder), Show in Finder, **Move to…**
+  (offload to another folder or disk, off the main thread, never replacing an
+  item), Move to Trash and Mark for Cleanup; a move or Trash updates the map
+  without scanning again. Only items in the home folder or on other disks can
+  be moved, never system locations, standard folders, mount points, package
+  contents or catalog locations marked Keep, Essential or system managed. A
+  scanned folder that is a catalog location (such as Xcode's DerivedData) is
+  labelled with its owner and policy. The startup disk is measured through its
+  Data volume and reports the space no folder accounts for.
 - **Largest Items** — the hundred largest measured locations across every
   category, each with its semantic owner, cleanup status and share bar.
 - **Large Files** — the individual files over 50 MB found by the same scan,
@@ -44,11 +62,28 @@ Learn — with one question per destination:
   and Archives oldest first. Bulk actions mark older device support and
   build data of missing projects.
 - **Projects** — build folders found beside their project files (Node, Rust,
-  Maven, Gradle, CMake, SwiftPM, Python, Dart, Next.js, Turborepo, Godot, Zig,
-  Elixir, Stack, Unity) in `~/Developer` and folders you add, grouped by
-  project with git state (via `git status`, only when the developer tools are
-  installed) and last change. Projects with uncommitted or unpushed work are
+  Maven, Gradle, CMake, SwiftPM, CocoaPods, Python `.venv`/`venv`, Dart,
+  Next.js, Turborepo, Godot, Zig, Elixir, Stack, Unity), grouped by project with
+  git state (via `git status`, only when the developer tools are installed) and
+  when it was last worked on: the newest of `.git/index`, `.git/HEAD` and the
+  project's own files, skipping generated folders, within a budget of 5,000
+  files. Projects inside a repository are named from it
+  (`my-app/apps/mobile/ios`). Projects with uncommitted or unpushed work are
   never marked in bulk.
+  Folders are searched where people keep projects (`~/Developer`, `code`,
+  `Projects`, `src`, `dev`, `repos`, `GitHub`, `Sites` and folders you add), and
+  in Documents, Desktop and iCloud Drive only when Full Disk Access is already
+  granted, so macOS never asks once per folder. The search prunes `.git`, the
+  Trash, apps and other packages, and stops six levels down. A second proof
+  inside the folder (npm's `.package-lock.json`, Cargo's `CACHEDIR.TAG`,
+  SwiftPM's `workspace-state.json`, CocoaPods' `Manifest.lock`, Next.js's
+  `BUILD_ID`) makes node_modules, Cargo `target`, `.build`, `Pods` and `.next`
+  Rebuildable; otherwise they stay Review.
+  The same folders also add up per ecosystem, one group under Developer each
+  ("Node modules: 1.2 GB in 34 projects"), on the Map, the Developer page and
+  Clean Up. Clean Up suggests an ecosystem once its folders together reach
+  500 MB, so many small folders are no longer hidden by a per-folder
+  threshold.
 - **Simulators** — every simulator device with its runtime, state, last use
   and data size, filtered by All, Unavailable or Unused for 90 days, with
   Erase, Delete and Delete Unavailable. Installed runtimes come from
@@ -79,6 +114,17 @@ Learn — with one question per destination:
   each with numbered steps and a button to the page or command it describes.
   The keyboard-shortcut topic is generated from the menu bar.
 
+**First launch** without Full Disk Access opens one sheet before the first
+scan: measure everything, move nothing without asking. Open System Settings
+goes straight to Full Disk Access (with the "Not in the list? Click +" note).
+While the sheet is open Diskmap checks access every second, and once it is on
+the sheet closes and the first scan starts by itself. After Settings opens, a
+Restart Diskmap link starts a new instance and quits only once it runs, for
+when macOS applies access only after a restart. Continue Without Access is
+always there. The Overview then lists up to six folders the scan could not
+read ("and N more") with a button to the setting. Access is detected by
+reading the TCC database, which never makes macOS ask.
+
 The menu bar keeps every classic macOS entry (About, Settings…, Services,
 Hide, Quit; Close; Undo through Find; toolbar, sidebar and full screen;
 Minimize, Zoom and the window list) and adds **Go** (every page, ⌘1–⌘9, with a
@@ -99,7 +145,14 @@ the collector bar under every page, adds items to one basket;
 marking never touches the disk. The Marked toolbar sheet lists them with their
 consequences and moves them to the Trash one at a time, checking each again
 first. It refuses the disk root, system folders, mount points and your home's
-standard folders, and never follows symlinks. It then offers to empty the
+standard folders, and never follows symlinks. Sizes are measured again before
+the move, and each item is checked just before it moves: one whose app is
+running (Xcode for DerivedData, a browser for its cache, the parent app of a
+helper), whose project file has gone, that was replaced since it was marked
+(its inode changed), whose app is installed again (a leftover) or that lies in
+a protected system location is skipped with its reason. The sheet then reports
+what moved, the skips grouped by reason and free space before, now and after
+emptying the Trash. It then offers to empty the
 Trash and reports how much more free space macOS actually sees. Every action
 is appended to `~/Library/Logs/Diskmap/operations.log` and shown in History.
 

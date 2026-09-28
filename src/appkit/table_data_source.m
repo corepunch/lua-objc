@@ -24,6 +24,7 @@
 @property (nonatomic, strong) NSTextField *secondaryTextField;
 @property (nonatomic, strong) LuaPathView *curveView;
 @property (nonatomic, strong) LuaLevelIndicator *levelIndicator;
+@property (nonatomic) CGFloat levelTextWidth;
 @property (nonatomic) CGFloat imageWidth;
 @property (nonatomic, strong) NSProgressIndicator *loadingIndicator;
 @property (nonatomic, strong) NSButton *actionButton;
@@ -55,8 +56,9 @@
 		 * that omit the percentage do not float after an empty gutter. */
 		BOOL labelled = text.stringValue.length > 0;
 		CGFloat height = ceil(text.intrinsicContentSize.height);
-		text.frame = NSMakeRect(0, floor((self.bounds.size.height - height) / 2), labelled ? kTableCellLevelTextWidth : 0, height);
-		CGFloat x = labelled ? kTableCellLevelTextWidth + kTableCellLevelGap : kTableCellTextLeadingInset;
+		CGFloat textWidth = MAX(kTableCellLevelTextWidth, _levelTextWidth);
+		text.frame = NSMakeRect(0, floor((self.bounds.size.height - height) / 2), labelled ? textWidth : 0, height);
+		CGFloat x = labelled ? textWidth + kTableCellLevelGap : kTableCellTextLeadingInset;
 		CGFloat levelHeight = _levelIndicator.intrinsicContentSize.height;
 		_levelIndicator.frame = NSMakeRect(x, floor((self.bounds.size.height - levelHeight) / 2), MAX(0, self.bounds.size.width - x - kTableCellTextTrailingInset), levelHeight);
 		return;
@@ -316,6 +318,29 @@ static void table_update_curve(
 	[curve setNeedsDisplay:YES];
 }
 
+/* A level column's labels share the width of the widest one met so far,
+ * like a Grid column, so "7.2 GB" never truncates and every bar starts at
+ * the same x. The width only grows; visible cells follow when it does. */
+static void table_level_text_width(NSTableView *tableView, NSTableColumn *column, LuaTableCellView *cell) {
+	CGFloat width = [objc_getAssociatedObject(column, &kKeys[kColumnLevelTextWidthKey]) doubleValue];
+	CGFloat needed = ceil(cell.textField.fittingSize.width);
+	if (needed > width) {
+		width = needed;
+		objc_setAssociatedObject(column, &kKeys[kColumnLevelTextWidthKey], @(width), OBJC_ASSOCIATION_RETAIN);
+		NSInteger index = [tableView.tableColumns indexOfObject:column];
+		if (index != NSNotFound) {
+			[tableView enumerateAvailableRowViewsUsingBlock:^(NSTableRowView *rowView, NSInteger row) {
+				LuaTableCellView *visible = [rowView viewAtColumn:index];
+				if ([visible isKindOfClass:LuaTableCellView.class] && visible != cell) {
+					visible.levelTextWidth = width;
+					[visible setNeedsLayout:YES];
+				}
+			}];
+		}
+	}
+	cell.levelTextWidth = width;
+}
+
 static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NSDictionary *rowData, id owner, NSInteger rowIndex) {
 
 	NSString *colId = column.identifier;
@@ -444,6 +469,8 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	BOOL small = [cellSpec[@"controlSize"] isEqual:@"small"];
 	cell.textField.font = [NSFont systemFontOfSize:small ? NSFont.smallSystemFontSize : NSFont.systemFontSize
 		weight:semibold ? NSFontWeightSemibold : NSFontWeightRegular];
+	// Measured in the cell's final font.
+	if (cell.levelIndicator) table_level_text_width(tableView, column, cell);
 	NSString *primaryColorKey = cellSpec[@"color"];
 	NSString *primaryColor = primaryColorKey
 		? [rowData[primaryColorKey] description] : nil;

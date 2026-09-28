@@ -148,6 +148,17 @@ function System.emptyTrash()
 	return os.execute("/usr/bin/osascript -e 'tell application \"Finder\" to empty trash'")
 end
 function System.showError(title, message) ns.Alert {title = title, message = message} end
+function System.relaunch(onFailure) ns.relaunch(onFailure) end
+-- What a cleanup checks just before each move (models/Verify.lua).
+System.fileIdentity = ns.fileIdentity
+function System.cleanupProbes()
+	local running = {}
+	for _, id in ipairs(ns.runningApplications() or {}) do running[id] = true end
+	-- Existence is lstat, never an open: opening another app's container
+	-- would make macOS ask for access to other apps' data.
+	return {running = running, appPath = ns.applicationPath, identity = ns.fileIdentity,
+		exists = function(path) return ns.fileIdentity(path) ~= nil end}
+end
 System.reveal = ns.revealInFinder
 System.diskSpace = ns.diskSpace
 function System.trash(path)
@@ -227,40 +238,80 @@ function System.measure(paths, completion)
 		completion(sizes)
 	end)
 end
+-- Whether Diskmap has Full Disk Access. The TCC database is readable only
+-- with it, and trying to open it never asks the person, unlike opening a
+-- protected folder such as Documents.
+function System.hasFullDiskAccess()
+	local home = os.getenv("HOME") or ""
+	local file = io.open(home .. "/Library/Application Support/com.apple.TCC/TCC.db", "rb")
+	if file then file:close(); return true end
+	return false
+end
+local function exists(path)
+	local file = io.open(path, "r")
+	if file then file:close(); return true end
+	return false
+end
+-- The repository a project lives in: the nearest folder at or above it,
+-- up to the searched root, with a .git entry (a folder, or a file for
+-- worktrees and submodules).
+local function repositoryRoot(path, root)
+	local current = path
+	while current and #current >= #root do
+		if exists(current .. "/.git") then return current end
+		current = current:match("^(.*)/[^/]+$")
+	end
+	return nil
+end
 function System.discoverEntries(home, completion, projectRoots)
 	local catalog = require("apps.diskmap.Catalog")
-	local locations = catalog.discoveryRules(home, projectRoots)
+	local Projects = require("apps.diskmap.models.Projects")
+	local locations = catalog.discoveryRules(home, projectRoots, System.hasFullDiskAccess())
 	local discovered = {}
 	local function runLocation(index)
 		local location = locations[index]
 		if not location then completion(discovered); return end
 		local argv
 		if location.rules then
-			argv = {"/usr/bin/find", location.root, "-type", "d", "(", "-name", location.rules[1].dirName}
-			for ruleIndex = 2, #location.rules do
-				table.insert(argv, "-o"); table.insert(argv, "-name"); table.insert(argv, location.rules[ruleIndex].dirName)
-			end
-			table.insert(argv, ")"); table.insert(argv, "-prune"); table.insert(argv, "-print")
+			local roots = {}
+			for _, root in ipairs(location.roots) do if exists(root) then table.insert(roots, root) end end
+			if #roots == 0 then runLocation(index + 1); return end
+			location.existing = roots
+			argv = catalog.findArguments(roots, location.rules)
 		else
 			argv = {"/usr/bin/find", location.root, "-maxdepth", "1", "-type", "d", "-name", "*.app", "-print"}
 		end
 		System.command(argv, function(ok, output)
-			if ok then
+			-- find exits nonzero when one folder is unreadable; the paths it
+			-- did print are still valid, and its messages never start with "/".
+			if ok or location.rules then
 				for _, path in ipairs(lines(output)) do
 					local name = path:match("([^/]+)$") or path
-					if location.rules then
+					if location.rules and path:sub(1, 1) == "/" then
 						local parent = path:match("^(.*)/[^/]+$") or ""
 						for _, rule in ipairs(location.rules) do
-							local marker = name == rule.dirName and io.open(parent .. "/" .. rule.markerFile, "r")
-							if marker then
-								marker:close()
-								table.insert(discovered, {id = hexId(path), name = rule.name .. " · " .. (parent:match("([^/]+)$") or parent), subtitle = rule.subtitle, path = path,
-									policy = "Review", action = "finder", reviewThreshold = 500e6, icon = "shippingbox", color = "systemOrange",
-									project = parent, artifact = rule.name})
+							local marked
+							if name == rule.dirName then
+								for _, marker in ipairs(rule.markers) do if exists(parent .. "/" .. marker) then marked = parent .. "/" .. marker; break end end
+							end
+							if marked then
+								local proven = false
+								for _, inner in ipairs(rule.inner) do if exists(path .. "/" .. inner) then proven = true; break end end
+								local root = ""
+								for _, candidate in ipairs(location.existing) do
+									if parent:sub(1, #candidate) == candidate and #candidate > #root then root = candidate end
+								end
+								local project = Projects.displayName(parent, repositoryRoot(parent, root))
+								local rebuildable = proven and rule.rebuildable == true
+								table.insert(discovered, {id = hexId(path), name = rule.name .. " · " .. project, subtitle = rule.subtitle, path = path,
+									policy = rebuildable and "Rebuildable" or "Review", action = rebuildable and "trash" or "finder",
+									consequence = rebuildable and rule.consequence or nil, proof = proven and "marker and contents" or "marker",
+									marker = marked, reviewThreshold = 500e6, icon = "shippingbox", color = "systemOrange",
+									project = parent, projectName = project, artifact = rule.name})
 								break
 							end
 						end
-					elseif name:match("%.app$") then
+					elseif not location.rules and name:match("%.app$") then
 						local installer = name:match("^Install macOS .+%.app$")
 						table.insert(discovered, {id = hexId(path), name = name, subtitle = installer and "Full macOS installer app" or "Installed application",
 							parentId = location.parentId, path = path, fileIcon = path, policy = "Review", action = "finder", reviewThreshold = installer and 5e9 or 1e9,
@@ -376,6 +427,44 @@ function System.analyzeFolder(path, completion)
 		completion(breakdown, result.failure ~= "" and result.failure or nil, result.errors)
 	end)
 end
+-- Everything under `path` as one tree of its largest folders and files
+-- (see `treeDepth` in src/plugins/storage/README.md): what the Folder page
+-- maps. `progress(items)` reports items met so far while it runs;
+-- `completion(folder, failure, stats)` receives the root node and
+-- `{errors, visited}`. Returns the job for `cancelFolderScan`.
+-- The startup disk's files live on its Data volume, mounted at
+-- /System/Volumes/Data and joined to "/" by firmlinks; "/" itself is the
+-- sealed system volume. The scan stays on one volume, so "/" is measured
+-- through the Data volume and reported under the paths people know.
+local STARTUP_DATA = "/System/Volumes/Data"
+function System.scanFolder(path, options, completion, progress)
+	local root, scanOptions = path, {}
+	for key, value in pairs(options or {}) do scanOptions[key] = value end
+	if path == "/" then root, scanOptions.logicalRoots = STARTUP_DATA, {[STARTUP_DATA] = "/"} end
+	local ok, job = pcall(Scanner.start, {root}, {}, scanOptions)
+	if not ok then completion(nil, tostring(job), {errors = 0, visited = 0}); return nil end
+	ns.async(function()
+		while not job.cancelled do
+			local done, result = Scanner.poll(job)
+			if done then
+				if job.cancelled then return end
+				local failure = result.failure ~= "" and result.failure or nil
+				local folder = result.folders and result.folders[1]
+				if not folder and not failure then failure = "The folder could not be read." end
+				completion(folder, failure, {errors = result.errors or 0, visited = result.visited or 0})
+				return
+			end
+			if progress then progress(Scanner.progress(job) or 0) end
+			ns.sleep(0.25)
+		end
+	end)
+	return job
+end
+System.cancelFolderScan = Scanner.cancel
+-- Moves a file or folder into `folder`; `completion(ok, message, destination)`.
+function System.moveItem(path, folder, completion) ns.moveItem(path, folder, completion) end
+function System.quickLook(paths, index) ns.quickLook(paths, index) end
+function System.onOpenFiles(handler) ns.onOpenFiles(handler) end
 function System.openDiskUtility()
 	os.execute("/usr/bin/open -a " .. System.quote("Disk Utility"))
 end
@@ -478,13 +567,40 @@ local function withDeveloperTools(completion)
 	end)
 end
 -- Git state and last modification of a project folder, never touching files.
+-- "Last worked": the newest of the git index, HEAD and the project's own
+-- files, skipping generated folders, which a build touches without anyone
+-- working on the project. Falls back to the folder's own date.
+local function lastWorkedArguments(path)
+	local catalog = require("apps.diskmap.Catalog")
+	local argv = {"/usr/bin/find", path, "-maxdepth", "8", "(", "-name", ".git"}
+	local seen = {}
+	for _, rule in ipairs(catalog.buildRules()) do
+		if not seen[rule.dirName] then
+			seen[rule.dirName] = true
+			for _, value in ipairs({"-o", "-name", rule.dirName}) do table.insert(argv, value) end
+		end
+	end
+	for _, value in ipairs({")", "-prune", "-o", "-type", "f", "-exec", "/usr/bin/stat", "-f", "%m", "{}", "+"}) do table.insert(argv, value) end
+	return argv
+end
 function System.projectInfo(path, completion)
-	System.command({"/usr/bin/stat", "-f", "%m", path}, function(ok, output)
-		local modified = ok and tonumber((output or ""):match("%d+")) or nil
+	local Projects = require("apps.diskmap.models.Projects")
+	local function finish(modified)
 		withDeveloperTools(function(available)
 			if not available then completion({modified = modified, loaded = true}); return end
 			System.command({"/usr/bin/git", "-C", path, "status", "--porcelain=v1", "--branch"}, function(gitOk, gitOutput)
-				completion({modified = modified, git = gitOk and require("apps.diskmap.models.Projects").parseGit(gitOutput) or nil, loaded = true})
+				completion({modified = modified, git = gitOk and Projects.parseGit(gitOutput) or nil, loaded = true})
+			end)
+		end)
+	end
+	-- stat and find exit nonzero when a git file is absent; what they
+	-- printed still counts.
+	System.command(lastWorkedArguments(path), function(_, files)
+		System.command({"/usr/bin/stat", "-f", "%m", path .. "/.git/index", path .. "/.git/HEAD"}, function(_, gitTimes)
+			local worked = Projects.lastWorked((gitTimes or "") .. "\n" .. (files or ""))
+			if worked then finish(worked); return end
+			System.command({"/usr/bin/stat", "-f", "%m", path}, function(ok, output)
+				finish(ok and tonumber((output or ""):match("%d+")) or nil)
 			end)
 		end)
 	end)

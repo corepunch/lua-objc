@@ -1,6 +1,46 @@
 static void layout_recursive(NSView *view, CGFloat width);
 static void position_table_spinner(NSScrollView *sv);
 
+/* The rectangle of a window's content view that its title bar and toolbar
+ * leave uncovered. Only an ordinary full-size-content window has insets, so
+ * panels and sheets keep their whole content view. */
+static NSRect window_safe_rect(NSWindow *window) {
+	NSView *content = window.contentView;
+	if (![window isKindOfClass:[LuaWindow class]]) return content.bounds;
+	NSEdgeInsets insets = content.safeAreaInsets;
+	NSRect bounds = content.bounds;
+	return NSMakeRect(NSMinX(bounds) + insets.left, NSMinY(bounds) + insets.bottom,
+		MAX(0, NSWidth(bounds) - insets.left - insets.right),
+		MAX(0, NSHeight(bounds) - insets.top - insets.bottom));
+}
+
+/* SwiftUI `.ignoresSafeArea`: an edge of `frame` (in `parent`) that reaches
+ * the window's safe area moves out to the window's edge, so a background can
+ * run under a transparent title bar and toolbar while siblings stay clear. */
+static NSRect frame_ignoring_safe_area(NSView *parent, NSView *child, NSRect frame) {
+	NSString *edges = child.ignoresSafeArea;
+	NSWindow *window = parent.window;
+	if (!edges || !window) return frame;
+	BOOL all = [edges isEqualToString:@"all"] || [edges isEqualToString:@"edges"];
+	BOOL top = all || [edges isEqualToString:@"top"];
+	BOOL bottom = all || [edges isEqualToString:@"bottom"];
+	NSView *content = window.contentView;
+	NSRect bounds = content.bounds, safe = window_safe_rect(window);
+	NSRect r = [parent convertRect:frame toView:content];
+	const CGFloat slack = 0.5;
+	if (top && NSMaxY(r) >= NSMaxY(safe) - slack) r.size.height = NSMaxY(bounds) - NSMinY(r);
+	if (bottom && NSMinY(r) <= NSMinY(safe) + slack) {
+		r.size.height += NSMinY(r) - NSMinY(bounds);
+		r.origin.y = NSMinY(bounds);
+	}
+	if (all && NSMinX(r) <= NSMinX(safe) + slack) {
+		r.size.width += NSMinX(r) - NSMinX(bounds);
+		r.origin.x = NSMinX(bounds);
+	}
+	if (all && NSMaxX(r) >= NSMaxX(safe) - slack) r.size.width = NSMaxX(bounds) - NSMinX(r);
+	return [parent convertRect:r fromView:content];
+}
+
 static int bridge_object_add_impl(lua_State *L) {
 @autoreleasepool {
 	id parent = check_objc(L, 1);
@@ -10,7 +50,7 @@ static int bridge_object_add_impl(lua_State *L) {
 	if ([parent isKindOfClass:[NSWindow class]]) {
 		NSWindow *window = (NSWindow *)parent;
 		container = window.contentView;
-		child.frame = container.bounds;
+		child.frame = window_safe_rect(window);
 		child.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 
 		if (!objc_getAssociatedObject(window, &kKeys[kResizeObserverKey])) {
@@ -20,7 +60,7 @@ static int bridge_object_add_impl(lua_State *L) {
 				NSView *root = weakChild;
 				NSWindow *observedWindow = weakWindow;
 				if (!root || !observedWindow) return;
-				root.frame = observedWindow.contentView.bounds;
+				root.frame = window_safe_rect(observedWindow);
 				layout_recursive(root, root.bounds.size.width);
 			};
 			id windowObserver = [[NSNotificationCenter defaultCenter]
@@ -415,6 +455,13 @@ static NSSize layout_flow_children(NSView *view, CGFloat width, BOOL place) {
 
 static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 	if (!view) return NSZeroSize;
+	/* SwiftUI `.frame(maxWidth:)` proposes at most that width to its content,
+	 * so text inside measures, wraps or scales in the width it will get. */
+	CGFloat maxWidth = view_optional_dimension(view, &kKeys[kMaxWidthKey], INFINITY);
+	if (isfinite(maxWidth) && (constraint.widthMode == LuaMeasureUndefined || constraint.width > maxWidth)) {
+		constraint.width = maxWidth;
+		if (constraint.widthMode == LuaMeasureUndefined) constraint.widthMode = LuaMeasureAtMost;
+	}
 
 	CGFloat padX = view_padding_edge(view, YES);
 	CGFloat padRight = view_padding_edge(view, NO);
@@ -550,6 +597,11 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		natural.width *= MAX(0, scale);
 		natural.height *= MAX(0, scale);
 	} else if (layout_axis(view) == LayoutAxisNone) {
+		/* A label with a minimum scale factor answers a narrower proposal
+		 * with a smaller font before it is measured (SwiftUI Text). */
+		if ([view isKindOfClass:LuaLabel.class] && ((LuaLabel *)view).minimumScaleFactor < 1)
+			[(LuaLabel *)view fitFontToWidth:constraint.widthMode == LuaMeasureUndefined
+				? CGFLOAT_MAX : MAX(0, constraint.width - padX - padRight)];
 		natural = measure_leaf(view);
 		NSView *buttonContent = objc_getAssociatedObject(view, &kKeys[kButtonContentKey]);
 		if (buttonContent) natural = measure_view(buttonContent, constraint);
@@ -993,8 +1045,8 @@ static void layout_recursive_impl(NSView *view, CGFloat width) {
 				if ([position containsString:@"trailing"]) childX = padX + contentW - childW;
 				if ([position containsString:@"bottom"]) childY = padBottom;
 				if ([position containsString:@"top"]) childY = padBottom + contentH - childH;
-				sv.frame = NSMakeRect(childX, childY, childW, childH);
-				layout_recursive(sv, childW);
+				sv.frame = frame_ignoring_safe_area(view, sv, NSMakeRect(childX, childY, childW, childH));
+				layout_recursive(sv, sv.frame.size.width);
 			}
 		} break;
 		case LayoutAxisHSplit: {

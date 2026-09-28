@@ -230,6 +230,7 @@ function Mock.new(options)
 	for _, entry in ipairs(discovery) do
 		entry.path = absolute(entry.path, home)
 		if entry.project then entry.project = absolute(entry.project, home) end
+		if entry.marker then entry.marker = absolute(entry.marker, home) end
 	end
 	local agents = copy(fixture.agentEntries or {})
 	for _, entry in ipairs(agents) do entry.path = absolute(entry.path, home) end
@@ -789,6 +790,129 @@ function Mock:analyzeFolder(path, completion)
 	self.summarize(result, {path}, {}, {breakdown = true})
 	completion(result.breakdowns[1], nil, 0)
 end
+
+-- The native folder tree (`treeDepth`, `treeMinimumBytes`) over the
+-- virtual file list: nested nodes down to `treeDepth` levels, each keeping
+-- its largest children at least `treeMinimumBytes` large and summing the
+-- rest, as src/plugins/storage/StorageScan.m prunes them.
+local TREE_CHILD_LIMIT = 200
+local function treeNode(entry, minimum)
+	local node = {name = entry.name, kb = entry.bytes / 1024, used = entry.used,
+		directory = entry.directory or nil, deeper = entry.deeper or nil}
+	if entry.entries and not entry.deeper then
+		local list = {}
+		for _, child in pairs(entry.entries) do table.insert(list, child) end
+		table.sort(list, function(a, b) if a.bytes ~= b.bytes then return a.bytes > b.bytes end return a.name < b.name end)
+		local children, otherBytes, otherCount = {}, 0, 0
+		for _, child in ipairs(list) do
+			if #children < TREE_CHILD_LIMIT and child.bytes >= minimum then table.insert(children, treeNode(child, minimum))
+			else otherBytes, otherCount = otherBytes + child.bytes, otherCount + 1 end
+		end
+		node.children = children
+		if otherCount > 0 then node.otherKb, node.otherCount = otherBytes / 1024, otherCount end
+	end
+	return node
+end
+
+function Mock:scanFolder(path, options, completion, progress)
+	path = absolute(path, self.home)
+	local depth, minimum = options.treeDepth or 0, options.treeMinimumBytes or 0
+	local prefix = path == "/" and "/" or path .. "/"
+	local root = {name = path == "/" and "/" or path:match("([^/]+)$"), bytes = 0, used = 0, directory = true, entries = {}}
+	local found, exact = 0, nil
+	for _, item in ipairs(self.items) do
+		local bytes, used = item.countedBytes, item.used or 0
+		if item.path == path then exact = item end
+		if bytes > 0 and item.path:sub(1, #prefix) == prefix then
+			found = found + 1
+			root.bytes, root.used = root.bytes + bytes, math.max(root.used, used)
+			local parts = {}
+			for part in item.path:sub(#prefix + 1):gmatch("[^/]+") do table.insert(parts, part) end
+			local node = root
+			for index, part in ipairs(parts) do
+				local file = index == #parts
+				local child = node.entries[part]
+				if not child then
+					child = {name = part, bytes = 0, used = 0, directory = not file, entries = not file and {} or nil}
+					node.entries[part] = child
+				elseif not file and not child.entries then
+					-- A snapshot may record a package's own bytes before its contents.
+					child.directory, child.entries = true, {}
+				end
+				child.bytes, child.used = child.bytes + bytes, math.max(child.used, used)
+				if file then break end
+				if index >= depth then child.deeper = true; break end
+				node = child
+			end
+		end
+	end
+	if progress then progress(found) end
+	-- Saved snapshots list folders as entries too, so an entry is a file to
+	-- open in its folder only when nothing lies inside it.
+	if found == 0 and exact and exact.countedBytes > 0 then
+		completion({name = root.name, kb = exact.countedBytes / 1024, used = exact.used or 0}, nil, {errors = 0, visited = 1})
+		return {}
+	end
+	if found == 0 and not self.fileCounts[path] then
+		completion(nil, "“" .. path .. "” is not on the Mock HDD.", {errors = 0, visited = 0})
+		return {}
+	end
+	completion(treeNode(root, minimum), nil, {errors = self.fixture.errors or 0, visited = found})
+	return {}
+end
+
+function Mock:cancelFolderScan() end
+
+-- Moves the virtual items under `path` into `folder`, as Finder would.
+function Mock:moveItem(path, folder, completion)
+	path, folder = absolute(path, self.home), absolute(folder, self.home)
+	local name = path:match("([^/]+)$") or "Mock item"
+	local destination = (folder == "/" and "" or folder) .. "/" .. name
+	if (self.fileCounts[destination] or 0) > 0 then
+		completion(false, "An item named “" .. name .. "” already exists in “" .. (folder:match("([^/]+)$") or folder) .. "”.", destination)
+		return
+	end
+	if within(folder, path) then completion(false, "A folder cannot be moved into itself.", destination); return end
+	local moved = 0
+	for _, item in ipairs(self.items) do
+		if within(item.path, path) then
+			local relative = item.path == path and "" or item.path:sub(#path + 2)
+			item.path = relative == "" and destination or destination .. "/" .. relative
+			moved = moved + 1
+		end
+	end
+	if moved == 0 then completion(false, "That virtual path is empty.", destination); return end
+	self.reindex()
+	completion(true, nil, destination)
+end
+
+-- Identities stand in for inodes: stable per path until `replace(path)`
+-- puts a different item there. `runningApps` lists bundle identifiers.
+function Mock:fileIdentity(path)
+	path = absolute(path, self.home)
+	if (self.fileCounts[path] or 0) == 0 then return nil end
+	self.identities = self.identities or {}
+	if not self.identities[path] then self.nextInode = (self.nextInode or 100) + 1; self.identities[path] = self.nextInode end
+	return {inode = self.identities[path], device = 1, symlink = false}
+end
+function Mock:replace(path)
+	self.identities = self.identities or {}
+	self.nextInode = (self.nextInode or 100) + 1
+	self.identities[absolute(path, self.home)] = self.nextInode
+end
+function Mock:cleanupProbes()
+	local running = {}
+	for _, id in ipairs(self.runningApps or {}) do running[id] = true end
+	return {running = running, exists = self.exists, identity = self.fileIdentity,
+		appPath = function(id)
+			for path, app in pairs(self.fixture.applications or {}) do if app.bundleId == id then return absolute(path, self.home) end end
+			return nil
+		end}
+end
+
+-- Quick Look and opened files are recorded, never shown: tests read them.
+function Mock:quickLook(paths, index) self.quickLooked = {paths = copy(paths), index = index} end
+function Mock:onOpenFiles(handler) self.openHandler = handler end
 
 function Mock:volumes(completion)
 	local volumes = copy(self.fixture.volumes or {})

@@ -1,10 +1,12 @@
 #import <Cocoa/Cocoa.h>
 #import <QuartzCore/QuartzCore.h>
+#import <QuickLookUI/QuickLookUI.h>
 #import <objc/runtime.h>
 
 #include <dlfcn.h>
 #include <libgen.h>
 #include <limits.h>
+#include <sys/stat.h>
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
@@ -45,6 +47,7 @@ enum {
 	kFillWidthKey,
 	kFillHeightKey,
 	kFixedSizeKey,
+	kIgnoresSafeAreaKey,
 	kBackgroundColorKey,
 	kCornerRadiusKey,
 	kClipsToBoundsKey,
@@ -68,6 +71,7 @@ enum {
 	kSplitProportionsAppliedKey,
 	kColumnFlexKey,
 	kColumnCellKey,
+	kColumnLevelTextWidthKey,
 	kColumnSortableKey,
 	kTabViewDelegateKey,
 	kTableScrollViewKey,
@@ -496,6 +500,15 @@ static const luaL_Reg bridge_lib[] = {
 	{"_jsonEncode", bridge_json_encode},
 	{"_openPath", bridge_AppKit_open_path},
 	{"_moveToTrash", bridge_AppKit_move_to_trash},
+	{"_moveItem", bridge_move_item},
+	{"_quickLook", bridge_quick_look},
+	{"_quickLookItems", bridge_quick_look_items},
+	{"_onOpenFiles", bridge_on_open_files},
+	{"_openFiles", bridge_open_files},
+	{"_runningApplications", bridge_running_applications},
+	{"_applicationPath", bridge_application_path},
+	{"_fileIdentity", bridge_file_identity},
+	{"_relaunch", bridge_relaunch},
 	{"_clipboardCopy", bridge_AppKit_clipboard_copy},
 	{"_alert", bridge_AppKit_alert},
 	{"_diskSpace", bridge_AppKit_disk_space},

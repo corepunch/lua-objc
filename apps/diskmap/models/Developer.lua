@@ -16,6 +16,18 @@ Developer.sections = {
 	{id = "ai", title = "AI tools & models", detail = "Coding-agent caches are separated from sessions and worktrees; model weights download again.", groups = {"ai-tools", "local-models"}},
 }
 
+-- Whether this Mac has developer data worth a sidebar section: Xcode or
+-- ~/Library/Developer is present (`exists(path)`), or the Developer
+-- category measured at least `visibleBytes` (build folders, toolchains).
+Developer.visibleBytes = 500e6
+function Developer.present(model, exists)
+	if exists and (exists(model.home .. "/Library/Developer") or exists("/Applications/Xcode.app")) then return true end
+	-- A total still being measured only grows, so reaching the threshold
+	-- early already proves the data is there.
+	local measured = Categories.row(model, "developer")
+	return measured ~= nil and (measured.bytes or 0) >= Developer.visibleBytes
+end
+
 local POLICY = {Rebuildable = "Rebuildable", Essential = "Keep", ["System managed"] = "System managed"}
 
 local function row(model, resource)
@@ -47,7 +59,10 @@ function Developer.presentation(model, query)
 		end
 		for _, id in ipairs(section.roots or {}) do
 			local root = model.resources:find(id)
-			for _, child in ipairs(root and root:getChildren() or {}) do if child:isLeaf() then add(child) end end
+			-- Build folders roll up into one row per ecosystem ("Node modules").
+			for _, child in ipairs(root and root:getChildren() or {}) do
+				if child:isLeaf() or child.id:match("^build%-") then add(child) end
+			end
 		end
 		for _, id in ipairs(section.groups) do
 			local group = model.resources:find(id)

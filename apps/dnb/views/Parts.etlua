@@ -12,14 +12,14 @@ local symbols = {
 	chops = "scissors",
 }
 -%>
-<GlassEffect cornerRadius="20" maxHeight="infinity">
+<GlassEffect cornerRadius="24" maxHeight="infinity">
 	<VStack padding="18" spacing="14" alignment="leading">
 		<% for _, group in ipairs(groups) do local tint = tints[group.title] -%>
 		<VStack spacing="8" alignment="leading">
 			<Label text="<%= group.title:upper() %>" size="11" weight="heavy" color="secondary" />
 			<HStack spacing="8">
 				<% for _, part in ipairs(group.parts) do -%>
-				<Toggle id="part_<%= part.id %>" style="button" label="<%= part.label %>" systemImage="<%= symbols[part.id] %>" symbolSize="16" tint="<%= tint %>" value="<%= part.on and "true" or "false" %>" width="84" height="62" onChange="part_<%= part.id %>" />
+				<Toggle id="part_<%= part.id %>" style="button" label="<%= part.label %>" systemImage="<%= symbols[part.id] %>" symbolSize="16" tint="<%= tint %>" value="<%= part.on and "true" or "false" %>" disabled="<%= part.supported and "false" or "true" %>" width="84" height="62" onChange="part_<%= part.id %>" />
 				<% end -%>
 			</HStack>
 		</VStack>

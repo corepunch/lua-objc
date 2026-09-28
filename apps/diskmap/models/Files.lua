@@ -16,6 +16,12 @@ local PACKAGES = {"app", "photoslibrary", "photolibrary", "musiclibrary", "tvlib
 local packageSet = {}
 for _, extension in ipairs(PACKAGES) do packageSet[extension] = true end
 
+-- Whether a file or folder name is a package Finder shows as one document.
+function Files.isPackage(name)
+	local extension = (name or ""):match("[^/]%.([^./]+)$")
+	return extension ~= nil and packageSet[extension:lower()] == true
+end
+
 local kindByExtension = {}
 for _, kind in ipairs(Kinds) do
 	for _, extension in ipairs(kind.extensions) do kindByExtension[extension] = kind end

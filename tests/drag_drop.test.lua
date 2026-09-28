@@ -66,4 +66,50 @@ keys:handle("right")
 t.assertEqual(keys.focus, "a", "right wraps around siblings")
 keys:handle("a"); keys:handle("l")
 t.expect(keys.filter == "al" and keys:matches(keys:find("a")) and not keys:matches(keys:find("b")), "typing filters by label")
+
+-- A stack can take only drags from other apps, such as the Finder: rows
+-- dragged inside the app then pass it by.
+local _, externalRefs = xml.render('<VStack id="zone" onDrop="drop" dropExternalOnly="true" />',
+	{actions = {drop = function() return true end}}, ns)
+t.expect(externalRefs.zone.dropExternalOnly, "dropExternalOnly reaches the native stack")
+t.expect(not targetRefs.zone.dropExternalOnly, "stacks take drags from anywhere by default")
+t.expect(ns._dropFiles(externalRefs.zone, {"/tmp/x"}), "files from the Finder still reach the handler")
+
+-- Folders and files opened with the app (Dock icon, Open With) wait for a
+-- handler and then reach it.
+ns._openFiles({"/tmp/early"})
+local opened = {}
+ns.onOpenFiles(function(paths) table.insert(opened, paths) end)
+for _ = 1, 20 do if #opened > 0 then break end; ns._runLoopTick(0.01) end
+t.expect(#opened == 1 and opened[1][1] == "/tmp/early", "an open that came before the handler is delivered once it is set")
+ns._openFiles({"/tmp/a", "/tmp/b"})
+t.expect(#opened == 2 and opened[2][1] == "/tmp/a" and opened[2][2] == "/tmp/b", "opened paths reach the handler in order")
+ns.onOpenFiles(nil)
+
+-- Quick Look records its items headlessly instead of opening the panel.
+ns.quickLook({"/tmp/a", "/tmp/b"}, 2)
+local looked = ns._quickLookItems()
+t.expect(#looked == 2 and looked[1] == "/tmp/a" and looked[2] == "/tmp/b", "Quick Look keeps the items its arrow keys step through")
+ns.quickLook({})
+t.assertEqual(#ns._quickLookItems(), 0, "an empty list closes Quick Look")
+
+-- Moving an item runs off the main thread and never replaces another.
+local pipe = assert(io.popen("/usr/bin/mktemp -d /private/tmp/moveitem.XXXXXXXX"))
+local root = pipe:read("*l"); pipe:close()
+os.execute("/bin/mkdir -p " .. root .. "/from " .. root .. "/to")
+local function write(path) local file = assert(io.open(path, "w")); file:write("move me"); file:close() end
+write(root .. "/from/a.txt"); write(root .. "/from/b.txt"); write(root .. "/to/b.txt")
+local function move(path, folder)
+	local result
+	ns.moveItem(path, folder, function(ok, message, destination) result = {ok = ok, message = message, destination = destination} end)
+	for _ = 1, 200 do if result then break end; ns._runLoopTick(0.01) end
+	return result
+end
+local moved = move(root .. "/from/a.txt", root .. "/to")
+t.expect(moved and moved.ok and moved.destination == root .. "/to/a.txt", "a file moves into the chosen folder")
+t.expect(io.open(root .. "/to/a.txt") ~= nil and io.open(root .. "/from/a.txt") == nil, "the file is at its destination and gone from its source")
+local clash = move(root .. "/from/b.txt", root .. "/to")
+t.expect(clash and not clash.ok and clash.message:find("already exists", 1, true), "an item of the same name is never replaced")
+t.expect(io.open(root .. "/from/b.txt") ~= nil, "a refused move leaves the item where it was")
+os.execute("/bin/rm -rf " .. root)
 os.exit(t.summary() and 0 or 1)

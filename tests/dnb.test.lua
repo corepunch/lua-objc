@@ -2,7 +2,11 @@ _G.__headless = true
 local ns = require("AppKit")
 local t = require("TestKit")
 local Model = require("apps.dnb.Model")
-local Composer = require("apps.dnb.models.Composer")
+local Styles = require("apps.dnb.host.Styles")
+local StyleKit = require("apps.dnb.host.StyleKit")
+local Visualizers = require("apps.dnb.host.Visualizers")
+-- The drum & bass style plugin, as the app creates it.
+local function dnb(seed) return Styles:create("dnb", seed) end
 local Synth = require("apps.dnb.models.Synth")
 local Controller = require("apps.dnb.Controller")
 
@@ -41,8 +45,8 @@ local function hits(bar, voice)
 	return steps
 end
 local settings = Model.new(9)
-local composer = Composer.new(9)
-local same = Composer.new(9)
+local composer = dnb(9)
+local same = dnb(9)
 local function signature(c, n)
 	local bar = c:bar(n, settings)
 	local parts = {bar.section, bar.chord.root}
@@ -54,23 +58,23 @@ end
 t.assertEqual(signature(composer, 40), signature(same, 40), "the same seed composes the same bar")
 local differs = false
 for seed = 10, 14 do
-	if signature(Composer.new(seed), 40) ~= signature(composer, 40) then differs = true end
+	if signature(dnb(seed), 40) ~= signature(composer, 40) then differs = true end
 end
 t.expect(differs, "different seeds compose different bars")
-t.assertEqual(signature(Composer.new(9), 5000), signature(composer, 5000), "far bars are reproducible without history")
+t.assertEqual(signature(dnb(9), 5000), signature(composer, 5000), "far bars are reproducible without history")
 
 -- The set: consecutive tracks with their own style, key and length.
-local first, second = composer:track(0), composer:track(1)
+local first, second = composer.set:track(0), composer.set:track(1)
 t.assertEqual(first.start, 0, "the set opens on its first track")
 t.assertEqual(second.start, first.length, "each track starts where the last one ends")
 local styles, lengths = {}, {}
 for k = 0, 11 do
-	local track = composer:track(k)
-	styles[track.style.id] = true
+	local track = composer.set:track(k)
+	styles[track.flavour.id] = true
 	lengths[track.length] = true
 	if k > 0 then
-		local previous = composer:track(k - 1)
-		t.expect(track.style ~= previous.style, "consecutive tracks change style")
+		local previous = composer.set:track(k - 1)
+		t.expect(track.flavour ~= previous.flavour, "consecutive tracks change style")
 		local move = (track.tonic - previous.tonic) % 12
 		t.expect(move == 0 or move == 5 or move == 7 or move == 2, "keys move by mixable steps")
 	end
@@ -168,14 +172,14 @@ t.expect(composer:bar(16, settings).riser.from > composer:bar(16, settings).rise
 -- Styles: find a track of each in the set.
 local function trackOf(style)
 	for k = 0, 40 do
-		local track = composer:track(k)
-		if track.style.id == style then return track end
+		local track = composer.set:track(k)
+		if track.flavour.id == style then return track end
 	end
 end
 local jungle, liquid, neuro = trackOf("jungle"), trackOf("liquid"), trackOf("neuro")
 
 -- The Amen: a jungle track opens on the raw break and layers it in drops.
-local Amen = require("apps.dnb.models.Amen")
+local Amen = StyleKit.amen
 t.assertEqual(#Amen.pattern, Amen.bars, "the break is four bars")
 t.expect(#Amen.snareSlices >= 6, "the break's snares are known slices")
 local opening = composer:bar(jungle.start + 1, settings)
@@ -227,15 +231,15 @@ t.expect(composer:bar(neuro.start + 17, settings).bass[1].reese > composer:bar(l
 -- Harmony: modes, extended voice-led chords, no diminished roots.
 local modes = {}
 for seed = 1, 10 do
-	local c = Composer.new(seed)
+	local c = dnb(seed)
 	for k = 0, 3 do
-		local track = c:track(k)
+		local track = c.set:track(k)
 		modes[track.mode.name] = true
 		t.expect(track.key:find(track.mode.name, 1, true) ~= nil, "a track's key names its mode")
 		for cycleIndex = 0, track.cycles - 1 do
 			local cycle = c:cycle(track, cycleIndex)
 			for _, degree in ipairs(cycle.progression) do
-				t.expect(not Composer.numeral(track.mode, degree):find("°"), "progressions avoid diminished roots")
+				t.expect(not StyleKit.numeral(track.mode, degree):find("°"), "progressions avoid diminished roots")
 			end
 			for i = 2, #cycle.voicings do
 				local moved = 0
@@ -253,7 +257,7 @@ end
 -- Modulate: each cycle may move the key; off, the track stays home.
 local moved = false
 for k = 0, 5 do
-	local track = composer:track(k)
+	local track = composer.set:track(k)
 	local secondDrop = track.start + 16 + 32 + 16 + 8
 	if composer:bar(secondDrop, settings).key ~= track.key then moved = true end
 	for _, b in ipairs(composer:bar(secondDrop + 1, settings).bass) do
@@ -269,7 +273,7 @@ t.assertEqual(composer:bar(72, home).key, first.key, "modulate off keeps the hom
 -- Half-time: a switch-up inside the drop with the snare on beat three.
 local htBar
 for k = 0, 10 do
-	local track = composer:track(k)
+	local track = composer.set:track(k)
 	if not htBar and composer:cycle(track, 0).halftime then htBar = track.start + 16 + 16 end
 end
 t.expect(htBar ~= nil, "some drops switch to half-time")
@@ -340,7 +344,7 @@ for _, h in ipairs(composer:bar(19, noThrows).hits) do t.expect(not h.throw, "th
 -- Arp and lead, in tracks whose cycles use them.
 local arpTrack, leadTrack
 for k = 0, 20 do
-	local track = composer:track(k)
+	local track = composer.set:track(k)
 	local cycle = composer:cycle(track, 0)
 	if not arpTrack and cycle.arpOn and track.cycles > 1 then arpTrack = track end
 	if not leadTrack and cycle.leadOn then leadTrack = track end
@@ -372,7 +376,7 @@ end
 -- Synth: bounded, deterministic, silent when muted, sample-accurate bars.
 local function render(settingsModel, frames, seed)
 	local synth = Synth.new(settingsModel, SR)
-	synth:setComposer(Composer.new(seed or 9))
+	synth:setComposer(dnb(seed or 9))
 	local out = {}
 	synth:render(out, frames)
 	return out, synth
@@ -428,7 +432,7 @@ local function echoTail(throws)
 	m:setEnabled("throws", throws)
 	m:setValue("space", 0)
 	local synth = Synth.new(m, SR)
-	synth:setComposer(Composer.new(9))
+	synth:setComposer(dnb(9))
 	local out = {}
 	local barFrames = math.floor(16 * SR * 60 / 174 / 4 + 0.5)
 	synth:render({}, barFrames * 4 - barFrames // 8) -- up to the thrown snare's own tail
@@ -449,7 +453,7 @@ for _, group in ipairs(Model.partGroups) do
 end
 do
 	local synth = Synth.new(melodic, SR)
-	synth:setComposer(Composer.new(9))
+	synth:setComposer(dnb(9))
 	synth.composerBar = leadTrack.start + 16 -- the second half of a flat drop: arp and lead
 	local out = {}
 	synth:render(out, SR * 2)
@@ -468,7 +472,7 @@ local function soloRender(part, start, frames, configure)
 	end
 	if configure then configure(m) end
 	local synth = Synth.new(m, SR)
-	synth:setComposer(Composer.new(9))
+	synth:setComposer(dnb(9))
 	synth.composerBar = start
 	local out, voices = {}, 0
 	for _ = 1, frames // 512 do
@@ -496,7 +500,7 @@ end
 local chunked, whole = {}, render(full, 3000)
 do
 	local synth = Synth.new(full, SR)
-	synth:setComposer(Composer.new(9))
+	synth:setComposer(dnb(9))
 	local part = {}
 	for _, size in ipairs({1, 999, 1000, 1000}) do
 		synth:render(part, size)
@@ -520,18 +524,18 @@ tempoModel:setValue("tempo", 180)
 synth:render({}, SR * 3)
 local last = synth.timeline[#synth.timeline]
 t.assertEqual(last.frames, math.floor(16 * SR * 60 / 180 / 4 + 0.5), "a tempo change applies at the next bar")
-synth:setComposer(Composer.new(77))
+synth:setComposer(dnb(77))
 synth:render({}, SR * 2)
 local restarted
 for _, bar in ipairs(synth.timeline) do
-	if bar.key == Composer.new(77):track(0).key and bar.section == "intro" and bar.sectionBar == 0 then restarted = bar end
+	if bar.key == dnb(77).set:track(0).key and bar.section == "intro" and bar.sectionBar == 0 then restarted = bar end
 end
 t.expect(restarted ~= nil, "a new track starts its own intro at the next bar")
 t.expect(restarted and restarted.number > 0, "without restarting the timeline")
 
 -- Visuals: bar motion, peak holds, kick flashes and the shader layout.
 local Visuals = require("apps.dnb.models.Visuals")
-local visuals = Visuals.new(4)
+local visuals = Visuals.new(Visualizers:list(), 4)
 local bar = {frame = 0, frames = 4000, kicks = {0, 2500}, section = "drop", sectionBar = 3, sectionLength = 32, tonic = 6}
 local v = visuals:update({bands = {1, 0.5, 0, 0}, rms = 0.2, playing = true, bar = bar, played = 100, sampleRate = 1000}, 1 / 60)
 local H = Visuals.header
@@ -552,14 +556,14 @@ t.expect(visuals:settled(), "without audio everything comes to rest")
 t.assertEqual(visuals.presence, 0, "stopping fades the visualizer back to idle")
 
 -- Scenes: one per section and phrase, crossfaded, back to the horizon at rest.
-local scenes = Visuals.new(4)
+local scenes = Visuals.new(Visualizers:list(), 4)
 local function drop(number, sectionBar)
 	return {frame = 0, frames = 4000, kicks = {0}, snares = {1000}, section = "drop", sectionBar = sectionBar,
 		sectionLength = 32, number = number, tonic = 0}
 end
 local frameAt = function(b) return {playing = true, bar = b, played = 1100, sampleRate = 1000, bands = {0.5, 0.5, 0.5, 0.5}} end
 scenes:update(frameAt({frame = 0, frames = 4000, section = "intro", sectionBar = 0, sectionLength = 4, number = 0}), 1 / 60)
-t.assertEqual(scenes.scene, Visuals.scenes.spectrum, "the intro opens on the spectrum horizon")
+t.assertEqual(scenes.scene, Visualizers:index("horizon") - 1, "the intro opens on the spectrum horizon")
 local seen = {}
 local current = scenes.scene
 for phrase = 0, 11 do
@@ -579,8 +583,19 @@ t.expect(packed[11] > 0 and packed[11] < 1 and packed[9] ~= packed[10], "a new p
 t.expect(packed[12] > 0.3, "a snare just played flashes")
 t.expect(packed[15] > 0, "scenes travel while playing")
 for _ = 1, 300 do scenes:update({playing = false}, 1 / 60) end
-t.assertEqual(scenes.scene, Visuals.scenes.spectrum, "stopping returns to the horizon")
+t.assertEqual(scenes.scene, Visualizers:index("horizon") - 1, "stopping returns to the horizon")
 t.expect(scenes:settled(), "and then rests")
+
+-- The stage: the main view rect scenes centre on, packed after the header.
+local stageValues = scenes:pack()
+t.assertEqual(stageValues[17] .. " " .. stageValues[18] .. " " .. stageValues[19] .. " " .. stageValues[20], "0 0 1 1",
+	"without a measured stage scenes use the whole view")
+stageValues = scenes:pack({x = 0, y = 0.1, width = 1, height = 0.5})
+t.assertEqual(stageValues[18], 0.1, "the stage's top is a fraction of the view from the top")
+t.assertEqual(stageValues[20], 0.5, "and so is its height")
+t.assertEqual(#stageValues, Visuals.header + 2 * 4, "the stage lives inside the header")
+t.assertEqual(scenes:update({playing = false, stage = {x = 0, y = 0.2, width = 1, height = 0.4}}, 1 / 60)[18], 0.2,
+	"a frame can carry its stage")
 
 -- Controller: fake output, no audio device or timers.
 local function fakeOutput(capacity)
@@ -612,7 +627,7 @@ local app = Controller.new({seed = 9, output = output, async = function() loops 
 local window = app:createWindow()
 t.expect(window ~= nil, "the controller creates its window")
 t.assertEqual(app.refs.section.text, "Ready to play", "the header waits for playback")
-t.expect(app.refs.detail.text:find(Composer.new(9):track(0).key, 1, true) ~= nil, "the header names the key before playing")
+t.expect(app.refs.detail.text:find(dnb(9).set:track(0).key, 1, true) ~= nil, "the header names the key before playing")
 t.expect(app.refs.control_tempo ~= nil and app.refs.part_kick ~= nil, "controls render from the model tables")
 t.expect(app.refs.part_lead ~= nil and app.refs.part_throws ~= nil and app.refs.control_humanize ~= nil,
 	"every grid cell renders")
@@ -637,7 +652,7 @@ t.assertEqual(app.refs.section.text, "Intro", "the header follows the playhead")
 local values = app.refs.visualizer.values
 t.expect(values[7] > 0, "playing fades the visualizer in")
 t.expect(values[Visuals.header + 1] > values[Visuals.header + 2], "bars follow the analysed spectrum")
-t.assertEqual(values[3], Composer.new(9):track(0).tonic / 12, "the palette follows the track key")
+t.assertEqual(values[3], dnb(9).set:track(0).tonic / 12, "the palette follows the track key")
 t.assertEqual(app.refs.position.text, "Bar 1 of 8", "and shows the bar in its section")
 
 app.actions(app).control_cutoff(0.25)

@@ -3,7 +3,7 @@
     <%- partial("PageHeader.etlua", {icon = "book.fill", color = "systemTeal", title = "Storage Guide",
       summary = "Where macOS keeps things, why they grow and what is safe to do about them. Sizes are measured on this Mac."}) %>
     <% if empty then %>
-    <ContentUnavailable id="noTopics" title="No Topics Found" systemImage="magnifyingglass" description="No guide topic mentions “<%= query %>”." maxWidth="infinity" />
+    <ContentUnavailable id="noTopics" title="No Topics Found" systemImage="magnifyingglass" description="No guide topic mentions “<%= query %>”." />
     <% end %>
     <% for _, chapter in ipairs(chapters) do %>
     <VStack maxWidth="infinity" spacing="8" alignment="leading">

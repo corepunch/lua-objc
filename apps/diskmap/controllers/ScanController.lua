@@ -58,20 +58,44 @@ function Scan:start()
 		self.status = "Discovering project build data and installers…"; self:notify()
 		self.service.discoverEntries(self.home, function(entries)
 			if generation ~= self.generation then return end
-			local known = {}
-			for _, row in ipairs(self.model.resources:leaves()) do if row.path then known[row.path] = true end end
-			for _, entry in ipairs(entries or {}) do
-				if not known[entry.path] then
-					local _, err = self.model.resources:add(entry.parentId or (entry.path:match("^/Applications/") and "applications" or "developer"), entry)
-					if err then self.status = "Could not register discovered resource: " .. err.message; self:notify(); return end
-					known[entry.path] = true
-				end
-			end
+			local ok, err = Scan.register(self.model, entries)
+			if not ok then self.status = "Could not register discovered resource: " .. err.message; self:notify(); return end
 			measure()
 		end, self.model.projectRoots)
 	else
 		measure()
 	end
+end
+-- Registers discovered resources once each, however many searched roots
+-- reached them. A project build folder (`artifact`) joins its ecosystem's
+-- group under Developer ("Node modules"), created with its first folder, so
+-- every page can show one total per ecosystem; the Projects page groups the
+-- same leaves by project, so nothing is counted twice.
+function Scan.register(model, entries)
+	local Catalog = require("apps.diskmap.Catalog")
+	local known = {}
+	for _, row in ipairs(model.resources:leaves()) do if row.path then known[row.path] = true end end
+	for _, entry in ipairs(entries or {}) do
+		if not known[entry.path] then
+			local parentId = entry.parentId or (entry.path:match("^/Applications/") and "applications" or "developer")
+			local group = entry.artifact and parentId == "developer" and Catalog.buildGroup(entry.artifact)
+			if group then
+				local copy = {}
+				for key, value in pairs(entry) do if key ~= "parentId" then copy[key] = value end end
+				entry = copy
+			end
+			local _, err
+			if group and not model.resources:find(group.id) then
+				group.children = {entry}
+				_, err = model.resources:add("developer", group)
+			else
+				_, err = model.resources:add(group and group.id or parentId, entry)
+			end
+			if err then return false, err end
+			known[entry.path] = true
+		end
+	end
+	return true
 end
 function Scan:dispose() self:cancel(true) end
 return Scan

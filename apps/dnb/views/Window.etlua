@@ -1,4 +1,4 @@
-<Window title="Drum &amp; Bass" appearance="dark" width="1120" height="820" minWidth="1060" minHeight="780">
+<Window title="<%= title %>" subtitle="<%= subtitle %>" appearance="dark" width="1180" height="860" minWidth="1060" minHeight="780" transparentTitlebar="true" hideTitle="false">
 	<Toolbar>
 		<ToolbarItem id="playItem" label="Play" tooltip="Start generating music">
 			<Button id="play" systemImage="play.fill" accessibilityLabel="Play" action="play" />
@@ -6,17 +6,34 @@
 		<ToolbarItem id="stopItem" label="Stop" tooltip="Pause playback">
 			<Button id="stop" systemImage="stop.fill" accessibilityLabel="Stop" action="stop" />
 		</ToolbarItem>
+		<ToolbarItem id="styleItem" label="Style" tooltip="Music style; the change lands on the next bar">
+			<Picker id="style" value="<%= styleIndex %>" onChange="selectStyle">
+				<% for _, style in ipairs(styles) do -%>
+				<Option title="<%= style.title %>" />
+				<% end -%>
+			</Picker>
+		</ToolbarItem>
+		<ToolbarItem id="sceneItem" label="Scene" tooltip="Visualizer scene; Automatic follows the music">
+			<Picker id="scene" value="<%= sceneIndex %>" onChange="selectScene">
+				<Option title="Automatic" />
+				<% for _, scene in ipairs(scenes) do -%>
+				<Option title="<%= scene.title %>" />
+				<% end -%>
+			</Picker>
+		</ToolbarItem>
 		<ToolbarSpacer />
 		<ToolbarItem id="nextTrack" label="Next Track" icon="forward.end.fill" tooltip="Mix into the next track of the set" action="nextTrack" />
 		<ToolbarItem id="newSet" label="New Set" icon="shuffle" tooltip="Start a new endless set from a new seed" action="newSet" />
+		<ToolbarItem id="miniPlayer" label="Mini Player" icon="pip.enter" tooltip="Shrink to a floating mini player" action="openMiniPlayer" />
 	</Toolbar>
 	<ZStack maxWidth="infinity" maxHeight="infinity">
-		<%- partial("Backdrop.etlua", {}) %>
-		<VStack padding="20" spacing="16" alignment="leading" maxWidth="infinity" maxHeight="infinity">
-			<%- partial("Stage.etlua", nowPlaying) %>
-			<HStack spacing="16" alignment="top" maxWidth="infinity" fixedSize="vertical">
+		<%- partial("Visualizer.etlua", {program = program}) %>
+		<VStack id="content" padding="20" spacing="16" alignment="leading" maxWidth="infinity" maxHeight="infinity">
+			<%- partial("NowPlaying.etlua", nowPlaying) %>
+			<Spacer />
+			<HStack id="panels" spacing="16" alignment="bottom" maxWidth="infinity" fixedSize="vertical">
 				<%- partial("Parts.etlua", {groups = partGroups}) %>
-				<GlassEffect cornerRadius="20" maxWidth="infinity" maxHeight="infinity">
+				<GlassEffect cornerRadius="24" maxWidth="infinity" maxHeight="infinity">
 					<HStack padding="18" spacing="24" alignment="top" maxWidth="infinity">
 						<% for _, group in ipairs(controlGroups) do -%>
 						<%- partial("Controls.etlua", group) %>

@@ -3,6 +3,7 @@ local App = require("App")
 local xml = require("ui.xml")
 local Overview = require("apps.diskmap.models.Overview")
 local Categories = require("apps.diskmap.models.Categories")
+local Developer = require("apps.diskmap.models.Developer")
 local History = require("apps.diskmap.models.History")
 local Model = require("apps.diskmap.Model")
 local Provider = require("apps.diskmap.services.Provider")
@@ -21,6 +22,7 @@ local HistoryController = require("apps.diskmap.controllers.HistoryController")
 local NavigationController = require("apps.diskmap.controllers.NavigationController")
 local OverviewController = require("apps.diskmap.controllers.OverviewController")
 local MapController = require("apps.diskmap.controllers.MapController")
+local FolderController = require("apps.diskmap.controllers.FolderController")
 local LargestController = require("apps.diskmap.controllers.LargestController")
 local FilesController = require("apps.diskmap.controllers.FilesController")
 local KindsController = require("apps.diskmap.controllers.KindsController")
@@ -39,6 +41,7 @@ local CommandsController = require("apps.diskmap.controllers.CommandsController"
 local SnapshotController = require("apps.diskmap.controllers.SnapshotController")
 local WatchlistController = require("apps.diskmap.controllers.WatchlistController")
 local WatchedController = require("apps.diskmap.controllers.WatchedController")
+local OnboardingController = require("apps.diskmap.controllers.OnboardingController")
 local Controller = {}; Controller.__index = Controller
 local SCAN_ANIMATION = ns.Animation.snappy()
 local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
@@ -119,6 +122,9 @@ function Controller.new(service)
 			changes = function() if self.snapshots then self.snapshots:open(self.window) end end,
 		}),
 		map = MapController.new(self.model, self.actions, Provider.mapStyle(App.args())),
+		folder = FolderController.new(self.model, service, self.actions, {
+			volumeName = function() return self:state().volumeName end,
+		}),
 		largest = LargestController.new(self.model, self.actions, open),
 		files = files,
 		kinds = KindsController.new(self.model, function(kind) files:focus(kind); self:show("files", true) end),
@@ -160,6 +166,9 @@ function Controller.new(service)
 		navigation = self.navigation,
 		review = function() self:openReview() end,
 		history = function() self.history:open(self.window) end,
+		openFolder = function() self:chooseFolder() end,
+		quickLook = function() self:quickLook() end,
+		canQuickLook = function() return self.page ~= nil and self.page.canQuickLook ~= nil and self.page:canQuickLook() end,
 		openScan = function() self:openScan() end,
 		compareScan = function() self:compareScan() end,
 		exportScan = function() self:exportScan() end,
@@ -192,6 +201,7 @@ end
 -- Everything a page needs to present the current scan, in one value.
 function Controller:state()
 	return {disk = self.scan.disk, capacity = self.capacity, snapshotCount = self.snapshotCount, changes = self.snapshotChanges or self.changes,
+		fullDiskAccess = self.fullDiskAccess,
 		query = self.query, mock = self.mock, volumeName = self.mock and rawget(self.service, "label") or "Startup Disk",
 		status = (rawget(self.service, "badge") and (rawget(self.service, "badge") .. " · ") or "") .. (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status}
 end
@@ -211,7 +221,7 @@ function Controller:badges()
 		local row = Categories.row(self.model, category)
 		if row and row.bytes and row.bytes > 0 and not row.calculating then badges[id] = row.size end
 	end
-	for _, id in ipairs({"xcode", "projects"}) do
+	for _, id in ipairs({"xcode", "projects", "folder"}) do
 		local page = self.pages[id]
 		if page.badge then badges[id] = page:badge() end
 	end
@@ -225,7 +235,18 @@ function Controller:updateRows()
 	if self.page then self.page:update(self:state()); self.refs = self.page.refs end
 	self.navigation:setBadges(self:badges())
 	self.navigation:setWatched(self.watchlist:rows())
+	self.navigation:setSectionVisible("Developer", self:hasDeveloperData())
 	self.management:update()
+end
+-- Developer pages lead nobody who has no developer data (#52): the section
+-- appears once Xcode or ~/Library/Developer exists, or the Developer
+-- category measures enough to matter. Presence is checked once.
+function Controller:hasDeveloperData()
+	if self.developerFolders == nil then
+		local exists = optional(self.service, "exists")
+		self.developerFolders = Developer.present(self.model, exists)
+	end
+	return self.developerFolders or Developer.present(self.model, nil)
 end
 -- A mark changes the title, the collector and the marked state shown on the
 -- current page.
@@ -278,9 +299,34 @@ function Controller:dropToMark(paths)
 	end
 	return accepted > 0
 end
+-- A folder or disk opened with Diskmap (dropped on the window or the Dock
+-- icon, chosen with Open Folder…, or `--folder=`) is measured and shown on
+-- the Folder Map, whatever page was showing.
+function Controller:openFolder(path)
+	if type(path) ~= "string" or path == "" then return false end
+	self.pages.folder:open(path)
+	self:show("folder")
+	return true
+end
+
+function Controller:chooseFolder()
+	local pick = optional(self.service, "pickFolder")
+	local path = pick and pick("Open Folder")
+	if path then self:openFolder(path) end
+end
+
+-- Quick Look (⌘Y) previews the current page's selection.
+function Controller:quickLook()
+	if self.page and self.page.quickLook then return self.page:quickLook() end
+	return false
+end
+
 -- After each measurement: refresh capacity and snapshots for hidden space,
 -- and record category totals when history is on.
 function Controller:scanFinished()
+	local access = optional(self.service, "hasFullDiskAccess")
+	-- false (known missing) differs from nil (the provider cannot tell).
+	if access then self.fullDiskAccess = access() == true else self.fullDiskAccess = nil end
 	local capacity = optional(self.service, "volumeCapacity")
 	self.capacity = capacity and capacity(self.model.home) or nil
 	local snapshots = optional(self.service, "snapshotCount")
@@ -405,14 +451,25 @@ function Controller:createWindow()
 	self.shortcuts = self.commands:shortcuts(cfg.commands)
 	local content, contentRefs = render("Content", {actions = {
 		dropToMark = function(paths) return self:dropToMark(paths) end,
+		dropToOpen = function(paths) return paths[1] ~= nil and self:openFolder(paths[1]) end,
 		review = function() self:openReview() end,
 	}})
 	self.navigation:setWatched(self.watchlist:rows())
+	self.navigation.hiddenSections.Developer = not self:hasDeveloperData() or nil
 	cfg.content, cfg.sidebar = content, self.navigation:render()
 	self.content, self.collector = contentRefs.content, contentRefs
 	self:basketChanged()
 	self.window = ns.Window(cfg)
 	self:show(Provider.page(App.args()) or "overview")
+	-- Folders dropped on the Dock icon, including the one that launched
+	-- Diskmap, open like a folder dropped on the window.
+	local onOpen = optional(self.service, "onOpenFiles")
+	if onOpen then onOpen(function(paths)
+		if paths[1] then self:openFolder(paths[1]) end
+		if self.window then self.window:show() end
+	end) end
+	local folder = Provider.folder(App.args())
+	if folder then self:openFolder(folder) end
 	local exportPath = Provider.exportPath(App.args())
 	if exportPath then
 		self.scan.status = "Creating a local metadata-only Mock HDD snapshot…"; self:updateRows()
@@ -426,11 +483,19 @@ function Controller:createWindow()
 			self:updateRows()
 		end)
 	else
-		self.scan:start()
+		-- First launch without Full Disk Access explains it before the first
+		-- scan and starts the scan once access is granted or declined.
+		self.onboarding = OnboardingController.new(self.service, function(granted)
+			self.fullDiskAccess = granted == true
+			self.scan:start()
+		end)
+		if self.onboarding:needed() then self.onboarding:open(self.window) else self.scan:start() end
 	end
 	local scope = ns.Scope.current()
 	if scope then scope:add(self.scan); scope:add({dispose = function()
 		if self.page then self.page:dispose() end
+		self.pages.folder:cancel()
+		if onOpen then onOpen(nil) end
 		self.settings:close(); self.management:close(); self.sdks:close()
 		self.review:close(); self.history:close(); self.notifications:stop()
 	end}) end

@@ -24,6 +24,12 @@ static const NSUInteger ScanFileLimit = 2000;
 static const NSUInteger ScanExtensionLimit = 4096;
 static const NSUInteger ScanExtensionLength = 12;
 static const NSUInteger ScanBreakdownLimit = 5000;
+// A folder tree keeps, per directory, at most this many children at least
+// `treeMinimumBytes` large, largest first; the rest are summed into one
+// "smaller items" figure. Pruning happens as each directory finishes, so a
+// disk with millions of files still publishes a tree of a few thousand nodes.
+static const NSUInteger ScanTreeChildLimit = 200;
+static const NSUInteger ScanTreeDepthLimit = 64;
 // Subdirectories this shallow are measured concurrently. Directory metadata
 // calls block in the kernel, so several in flight keep the storage busy;
 // deeper levels run on the thread that reached them, which bounds threads.
@@ -109,6 +115,9 @@ typedef struct { uint64_t inode; dev_t device; } ScanIdentity;
 @property NSMutableDictionary<NSString *, NSMutableArray *> *extensions;
 @property NSMutableArray *breakdowns;
 @property NSMutableArray *currentBreakdown;
+@property NSUInteger treeDepth;
+@property uint64_t treeMinimumBytes;
+@property NSMutableArray *folderTrees;
 @property uint64_t oldBytes, oldCount;
 // Per root: logical size of counted files (sparse files and disk images are
 // smaller on disk), and files iCloud evicted, which use no local space.
@@ -129,6 +138,7 @@ typedef struct { uint64_t inode; dev_t device; } ScanIdentity;
 		_failure = @""; _exportFD = -1;
 		_largeFiles = [NSMutableArray array]; _oldFiles = [NSMutableArray array];
 		_extensions = [NSMutableDictionary dictionary]; _breakdowns = [NSMutableArray array];
+		_folderTrees = [NSMutableArray array];
 	}
 	return self;
 }
@@ -154,6 +164,7 @@ static NSUInteger identityHash(ScanIdentity key) {
 	os_unfair_lock_lock(&_lock); self.rootCloudBytes += bytes; self.rootCloudCount += files; os_unfair_lock_unlock(&_lock);
 }
 - (void)countVisited { os_unfair_lock_lock(&_lock); self.visited++; os_unfair_lock_unlock(&_lock); }
+- (NSUInteger)liveVisited { os_unfair_lock_lock(&_lock); NSUInteger count = _visited; os_unfair_lock_unlock(&_lock); return count; }
 - (BOOL)seenInodeLocked:(uint64_t)inode device:(dev_t)device {
 	if (!inode) { self.failure = @"Filesystem returned an invalid file identity."; return YES; }
 	if (!_seenCapacity || (_seenCount + 1) * 2 >= _seenCapacity) {
@@ -359,7 +370,15 @@ static NSUInteger identityHash(ScanIdentity key) {
 static void scanNeverMaterialize(void) {
 	setiopolicy_np(IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES, IOPOL_SCOPE_THREAD, IOPOL_MATERIALIZE_DATALESS_FILES_OFF);
 }
-- (uint64_t)directory:(int)fd path:(NSString *)path device:(dev_t)device depth:(NSUInteger)depth {
+static NSTimeInterval lastUse(struct timespec modified, struct timespec accessed) {
+	return MAX(modified.tv_sec + modified.tv_nsec / 1e9, accessed.tv_sec + accessed.tv_nsec / 1e9);
+}
+// `node`, when the scan collects a folder tree and this directory is within
+// its depth, receives this directory's largest children (`children`), the
+// rest as `otherKb`/`otherCount`, and `used`, the latest use of anything
+// inside. `latest` always receives that latest use for the caller's node.
+- (uint64_t)directory:(int)fd path:(NSString *)path device:(dev_t)device depth:(NSUInteger)depth
+	node:(NSMutableDictionary *)node latest:(NSTimeInterval *)latest {
 	if ([self stopped]) return 0;
 	if (depth > ScanDepthLimit) { [self issue:path code:ELOOP]; return 0; }
 	struct stat st;
@@ -368,6 +387,9 @@ static void scanNeverMaterialize(void) {
 	[self countVisited];
 	if ([self seenInode:st.st_ino device:device]) return 0;
 	uint64_t bytes = (uint64_t)st.st_blocks * 512;
+	NSTimeInterval newest = 0;
+	NSMutableArray<NSDictionary *> *entries = node ? [NSMutableArray array] : nil;
+	uint64_t smallBytes = 0, smallCount = 0;
 	void *buffer = malloc(ScanBufferSize);
 	NSMutableArray<NSString *> *childNames = [NSMutableArray array], *childPaths = [NSMutableArray array];
 	if (!buffer) { self.failure = @"Not enough memory for directory metadata."; return bytes; }
@@ -429,6 +451,13 @@ static void scanNeverMaterialize(void) {
 					[self summarize:child name:name bytes:fileBytes modified:modified accessed:accessed];
 				}
 				if (depth == 0) [self breakdown:component bytes:alreadyCounted ? 0 : fileBytes directory:NO];
+				if (!alreadyCounted) {
+					NSTimeInterval used = lastUse(modified, accessed);
+					newest = MAX(newest, used);
+					// Small files never become nodes; only their total is kept.
+					if (entries && fileBytes > 0 && fileBytes < self.treeMinimumBytes) { smallBytes += fileBytes; smallCount++; }
+					else if (entries && component) [entries addObject:@{@"name": component, @"kb": @(fileBytes / 1024.0), @"used": @(used), @"bytes": @(fileBytes)}];
+				}
 				[self exportFile:child allocated:fileBytes counted:alreadyCounted ? 0 : fileBytes];
 			}
 		} }
@@ -436,13 +465,22 @@ static void scanNeverMaterialize(void) {
 	free(buffer);
 	NSUInteger count = childPaths.count;
 	uint64_t *sizes = calloc(count ?: 1, sizeof(uint64_t));
+	NSTimeInterval *uses = calloc(count ?: 1, sizeof(NSTimeInterval));
+	// Each child's node is created here and filled only by the thread that
+	// walks that child, so concurrent walks never share a mutable object.
+	NSMutableArray<NSMutableDictionary *> *childNodes = nil;
+	if (node && depth + 1 < self.treeDepth) {
+		childNodes = [NSMutableArray arrayWithCapacity:count];
+		for (NSUInteger index = 0; index < count; index++) [childNodes addObject:[NSMutableDictionary dictionary]];
+	}
 	void (^walk)(size_t) = ^(size_t index) { @autoreleasepool {
 		if ([self stopped]) return;
 		scanNeverMaterialize();
 		NSString *child = childPaths[index];
 		int childFD = openat(fd, childNames[index].fileSystemRepresentation, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
 		if (childFD < 0) { [self issue:child code:errno]; return; }
-		sizes[index] = [self directory:childFD path:child device:device depth:depth + 1];
+		sizes[index] = [self directory:childFD path:child device:device depth:depth + 1
+			node:childNodes[index] latest:&uses[index]];
 		close(childFD);
 	} };
 	// Exports are written in path order, so they walk one directory at a time.
@@ -453,10 +491,41 @@ static void scanNeverMaterialize(void) {
 	}
 	for (NSUInteger index = 0; index < count; index++) {
 		bytes += sizes[index];
+		newest = MAX(newest, uses[index]);
 		if (depth == 0) [self breakdown:childNames[index] bytes:sizes[index] directory:YES];
+		if (entries) {
+			NSMutableDictionary *child = childNodes ? childNodes[index] : [NSMutableDictionary dictionary];
+			child[@"name"] = childNames[index]; child[@"kb"] = @(sizes[index] / 1024.0);
+			child[@"bytes"] = @(sizes[index]); child[@"used"] = @(uses[index]); child[@"directory"] = @YES;
+			// A directory below the tree's depth has no `children`: its
+			// contents are measured but not listed.
+			if (!childNodes) child[@"deeper"] = @YES;
+			[entries addObject:child];
+		}
 	}
-	free(sizes);
+	free(sizes); free(uses);
+	if (entries) [self prune:entries into:node smallBytes:smallBytes smallCount:smallCount];
+	if (latest) *latest = newest;
 	return bytes;
+}
+// Keeps the largest children at least `treeMinimumBytes` large and folds
+// the rest into the node's "smaller items".
+- (void)prune:(NSMutableArray<NSDictionary *> *)entries into:(NSMutableDictionary *)node
+	smallBytes:(uint64_t)smallBytes smallCount:(uint64_t)smallCount {
+	[entries sortUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) { return [b[@"bytes"] compare:a[@"bytes"]]; }];
+	NSMutableArray *kept = [NSMutableArray array];
+	uint64_t otherBytes = smallBytes, otherCount = smallCount;
+	for (NSDictionary *entry in entries) {
+		uint64_t size = [entry[@"bytes"] unsignedLongLongValue];
+		if (size == 0) continue;
+		if (kept.count < ScanTreeChildLimit && size >= self.treeMinimumBytes) {
+			NSMutableDictionary *copy = [entry mutableCopy];
+			[copy removeObjectForKey:@"bytes"];
+			[kept addObject:copy];
+		} else { otherBytes += size; otherCount++; }
+	}
+	node[@"children"] = kept;
+	if (otherCount) { node[@"otherKb"] = @(otherBytes / 1024.0); node[@"otherCount"] = @(otherCount); }
 }
 // Immediate children of a scanned root, so a category can be opened one level
 // deeper without a second scan.
@@ -465,7 +534,7 @@ static void scanNeverMaterialize(void) {
 	[self.currentBreakdown addObject:@{@"name": name, @"kb": @(bytes / 1024.0), @"directory": @(directory)}];
 }
 - (void)root:(NSString *)path {
-	NSString *state = nil; NSDictionary *tree = nil;
+	NSString *state = nil; NSDictionary *tree = nil, *rootFolder = nil;
 	NSArray *parts = path.pathComponents;
 	int parent = open("/", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
 	const char *name = parts.count == 1 ? "." : [parts.lastObject fileSystemRepresentation];
@@ -493,8 +562,16 @@ static void scanNeverMaterialize(void) {
 			NSString *logicalPath = self.logicalRoots[path] ?: path;
 			self.currentBreakdown = self.collectsBreakdown ? [NSMutableArray array] : nil;
 			self.rootLogical = self.rootCloudBytes = self.rootCloudCount = 0;
+			NSMutableDictionary *folder = self.treeDepth ? [NSMutableDictionary dictionary] : nil;
+			NSTimeInterval used = 0;
 			if (fd < 0) [self issue:path code:errno];
-			else { bytes = [self directory:fd path:logicalPath device:st.st_dev depth:0]; close(fd); }
+			else { bytes = [self directory:fd path:logicalPath device:st.st_dev depth:0 node:folder latest:&used]; close(fd); }
+			if (folder) {
+				folder[@"name"] = logicalPath.lastPathComponent; folder[@"kb"] = @(bytes / 1024.0);
+				folder[@"used"] = @(used); folder[@"directory"] = @YES;
+				if (!folder[@"children"]) folder[@"children"] = @[];
+				rootFolder = folder;
+			}
 			tree = @{@"kb": @(bytes / 1024.0), @"partial": @(self.errors > before), @"logicalKb": @(self.rootLogical / 1024.0),
 				@"cloudKb": @(self.rootCloudBytes / 1024.0), @"cloudFiles": @(self.rootCloudCount)};
 		} else if (S_ISREG(st.st_mode)) {
@@ -505,6 +582,8 @@ static void scanNeverMaterialize(void) {
 			if (!alreadyCounted) [self summarize:logicalPath name:name bytes:fileBytes modified:st.st_mtimespec accessed:st.st_atimespec];
 			[self exportFile:logicalPath allocated:fileBytes counted:alreadyCounted ? 0 : fileBytes];
 			BOOL evicted = (st.st_flags & SF_DATALESS) != 0 && !alreadyCounted;
+			if (self.treeDepth) rootFolder = @{@"name": logicalPath.lastPathComponent, @"kb": @(alreadyCounted ? 0 : fileBytes / 1024.0),
+				@"used": @(lastUse(st.st_mtimespec, st.st_atimespec)), @"directory": @NO};
 			tree = @{@"kb": @(alreadyCounted ? 0 : fileBytes / 1024.0), @"logicalKb": @(alreadyCounted || evicted ? 0 : st.st_size / 1024.0),
 				@"cloudKb": @(evicted ? st.st_size / 1024.0 : 0), @"cloudFiles": @(evicted ? 1 : 0)};
 		} else state = @"skipped";
@@ -514,6 +593,7 @@ static void scanNeverMaterialize(void) {
 	if ([self stopped]) return;
 	if (self.collectsBreakdown) [self.breakdowns addObject:self.currentBreakdown ?: @[]];
 	self.currentBreakdown = nil;
+	if (self.treeDepth) [self.folderTrees addObject:rootFolder ?: NSNull.null];
 	[self.trees addObject:tree ?: NSNull.null];
 	[self.states addObject:state ?: (self.errors > before ? @"unreadable" : @"measured")];
 }
@@ -526,7 +606,7 @@ static void scanNeverMaterialize(void) {
 		@"exportedFiles": @(self.exportedFiles), @"exportPath": self.exportPath ?: @"",
 		@"partial": @(self.errors > 0 || self.failure.length > 0 || self.cancelled)};
 	// Summaries describe the whole batch, so they are published once at the end.
-	if (done && (self.fileLimit || self.collectsExtensions || self.collectsBreakdown || self.oldBefore > 0)) {
+	if (done && (self.fileLimit || self.collectsExtensions || self.collectsBreakdown || self.treeDepth || self.oldBefore > 0)) {
 		NSMutableDictionary *complete = [snapshot mutableCopy];
 		if (self.fileLimit) { complete[@"largeFiles"] = self.largeFiles.copy; complete[@"oldFiles"] = self.oldFiles.copy; }
 		if (self.collectsExtensions) {
@@ -537,6 +617,7 @@ static void scanNeverMaterialize(void) {
 			complete[@"extensions"] = rows;
 		}
 		if (self.collectsBreakdown) complete[@"breakdowns"] = self.breakdowns.copy;
+		if (self.treeDepth) complete[@"folders"] = self.folderTrees.copy;
 		if (self.oldBefore > 0) { complete[@"oldBytes"] = @(self.oldBytes); complete[@"oldCount"] = @(self.oldCount); }
 		snapshot = complete;
 	}
@@ -689,6 +770,30 @@ static StorageScanJob *newJob(lua_State *L) {
 		job.collectsExtensions = lua_toboolean(L, -1); lua_pop(L, 1);
 		lua_getfield(L, 3, "breakdown");
 		job.collectsBreakdown = lua_toboolean(L, -1); lua_pop(L, 1);
+		lua_getfield(L, 3, "treeDepth");
+		lua_Integer treeDepth = luaL_optinteger(L, -1, 0); lua_pop(L, 1);
+		luaL_argcheck(L, treeDepth >= 0, 3, "treeDepth must be nonnegative");
+		job.treeDepth = MIN((NSUInteger)treeDepth, ScanTreeDepthLimit);
+		lua_getfield(L, 3, "treeMinimumBytes");
+		job.treeMinimumBytes = (uint64_t)MAX(0, luaL_optnumber(L, -1, 0)); lua_pop(L, 1);
+		// `logicalRoots` names a physical root by the path people know, as
+		// the startup disk's Data volume is known as "/".
+		lua_getfield(L, 3, "logicalRoots");
+		if (lua_istable(L, -1)) {
+			int mappings = lua_gettop(L);
+			NSMutableDictionary *logicalRoots = [NSMutableDictionary dictionary];
+			lua_pushnil(L);
+			while (lua_next(L, mappings)) {
+				luaL_argcheck(L, lua_type(L, -2) == LUA_TSTRING && lua_type(L, -1) == LUA_TSTRING, 3, "logicalRoots maps paths to paths");
+				NSString *physical = absolutePathArgument(L, -2, 3);
+				NSString *logical = absolutePathArgument(L, -1, 3);
+				luaL_argcheck(L, [roots containsObject:physical], 3, "logicalRoots keys must also be scan roots");
+				logicalRoots[physical] = logical;
+				lua_pop(L, 1);
+			}
+			job.logicalRoots = logicalRoots.copy;
+		}
+		lua_pop(L, 1);
 	}
 	return job;
 }
@@ -779,6 +884,9 @@ static int poll(lua_State *L) {
 	lua_pushboolean(L, done); pushValue(L, snapshot); return 2;
 }
 static int cancel(lua_State *L) { checkJob(L).cancelled = YES; return 0; }
+// Items met so far, read while the scan runs: the snapshot itself is only
+// published as each root finishes.
+static int progress(lua_State *L) { lua_pushinteger(L, (lua_Integer)[checkJob(L) liveVisited]); return 1; }
 static int collect(lua_State *L) {
 	CFTypeRef *ref = luaL_checkudata(L, 1, JobMetatable);
 	if (*ref) { ((__bridge StorageScanJob *)*ref).cancelled = YES; CFRelease(*ref); *ref = NULL; }
@@ -956,7 +1064,7 @@ int luaopen_StorageScan(lua_State *L) {
 	lua_pushcfunction(L, snapshotReaderCollect); lua_setfield(L, -2, "__gc"); lua_pop(L, 1);
 	luaL_newmetatable(L, DuplicateMetatable);
 	lua_pushcfunction(L, duplicatesCollect); lua_setfield(L, -2, "__gc"); lua_pop(L, 1);
-	const luaL_Reg functions[] = {{"commandStart", commandStart}, {"commandPoll", commandPoll}, {"start", start}, {"exportStart", exportStart}, {"snapshotRecords", snapshotRecords}, {"snapshotWrite", snapshotWrite}, {"poll", poll}, {"cancel", cancel}, {"scan", scan},
+	const luaL_Reg functions[] = {{"commandStart", commandStart}, {"commandPoll", commandPoll}, {"start", start}, {"exportStart", exportStart}, {"snapshotRecords", snapshotRecords}, {"snapshotWrite", snapshotWrite}, {"poll", poll}, {"progress", progress}, {"cancel", cancel}, {"scan", scan},
 		{"duplicatesStart", duplicatesStart}, {"duplicates", duplicates}, {"duplicatesPoll", duplicatesPoll},
 		{"duplicatesCancel", duplicatesCancel}, {NULL, NULL}};
 	luaL_newlib(L, functions); lua_pushliteral(L, "getattrlistbulk"); lua_setfield(L, -2, "backend");

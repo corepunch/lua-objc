@@ -1,6 +1,7 @@
 local Model = require("apps.diskmap.Model")
 local Inspector = require("apps.diskmap.models.Inspector")
 local Files = require("apps.diskmap.models.Files")
+local FolderTree = require("apps.diskmap.models.FolderTree")
 local InspectorController = require("apps.diskmap.controllers.InspectorController")
 local Controller = {}; Controller.__index = Controller
 
@@ -82,6 +83,84 @@ function Controller:copyPath(path)
 	return {title = "Copy Path", systemImage = "doc.on.doc", action = function() self.service.copy(path) end}
 end
 
+-- Quick Look, as the Finder's Space bar: `paths` are the neighbours the
+-- panel's arrow keys step through, starting at `path`. A provider without
+-- Quick Look offers none.
+function Controller:quickLookItem(path, paths)
+	if type(rawget(self.service, "quickLook")) ~= "function" then return nil end
+	return {title = "Quick Look", systemImage = "eye", action = function() self:quickLook(path, paths) end}
+end
+
+function Controller:quickLook(path, paths)
+	if type(rawget(self.service, "quickLook")) ~= "function" or not path then return false end
+	paths = paths and #paths > 0 and paths or {path}
+	local index = 1
+	for position, candidate in ipairs(paths) do if candidate == path then index = position; break end end
+	self.service.quickLook(paths, index)
+	return true
+end
+
+-- "Move to…": offloads a file or folder to another folder or disk, as
+-- Nektony's Disk Space Analyzer and the Finder do. `validate(path)` is the
+-- page's own policy for what may leave its place; `moved(destination)`
+-- updates the page once the move finished. Nothing is ever replaced.
+function Controller:moveItem(row, validate, moved)
+	if type(rawget(self.service, "moveItem")) ~= "function" then return nil end
+	local ok, reason = validate(row.path)
+	return {title = ok and "Move to…" or ("Move to… — " .. tostring(reason)), systemImage = "folder.badge.plus", disabled = not ok,
+		action = function() self:move(row, validate, moved) end}
+end
+
+function Controller:move(row, validate, moved)
+	local ok, reason = validate(row.path)
+	if not ok then self.service.showError("Cannot move " .. (row.name or "this item"), reason); return end
+	local folder = self.service.pickFolder("Move “" .. (row.name or row.path) .. "” to")
+	if not folder then return end
+	local allowed, why = FolderTree.validateDestination(row.path, folder)
+	if not allowed then self.service.showError("Cannot move " .. (row.name or "this item"), why); return end
+	self.service.moveItem(row.path, folder, function(done, message, destination)
+		if self.review then self.review:log("Move", done, row.bytes, row.path, done and destination or message) end
+		if not done then self.service.showError("Could not move " .. (row.name or "this item"), message or "Check permissions."); return end
+		if moved then moved(destination) end
+	end)
+end
+
+-- Move to Trash for an item outside the catalog, checked by `validate`
+-- first; `trashed()` updates the page.
+function Controller:trashItem(row, validate, trashed)
+	local ok, reason = validate(row.path)
+	if not ok then self.service.showError("Cannot move to Trash", reason); return end
+	if not self.service.confirmTrashPath("Move " .. (row.name or row.path) .. " to Trash?", row.path,
+		Model.size(row.bytes) .. ". Moving to Trash does not free space until you empty it.") then return end
+	local moved, message = self.service.trash(row.path)
+	if self.review then self.review:log("Move to Trash", moved, row.bytes, row.path, message) end
+	if not moved then self.service.showError("Could not move to Trash", message or "Check permissions."); return end
+	if trashed then trashed() end
+end
+
+-- A file or folder on the Folder page. `handlers.open(row)` looks inside a
+-- folder, `handlers.changed(path)` follows a move or Trash, and
+-- `handlers.siblings` are the paths Quick Look steps through.
+function Controller:item(row, handlers)
+	local items = {}
+	if row.directory then
+		table.insert(items, {title = "Open", systemImage = "arrow.right.circle", action = function() handlers.open(row) end})
+	end
+	table.insert(items, self:quickLookItem(row.path, handlers.siblings))
+	table.insert(items, self:reveal(row.path))
+	table.insert(items, separator())
+	local validate = function(path) return FolderTree.validateChange(self.model, path) end
+	table.insert(items, self:moveItem(row, validate, function() handlers.changed(row.path) end))
+	local ok, reason = validate(row.path)
+	table.insert(items, {title = ok and "Move to Trash…" or ("Move to Trash — " .. tostring(reason)), systemImage = "trash", disabled = not ok,
+		action = function() self:trashItem(row, validate, function() handlers.changed(row.path) end) end})
+	if ok then table.insert(items, self:mark({path = row.path, name = row.name, bytes = row.bytes, source = "Folder"})) end
+	table.insert(items, separator())
+	if row.directory then table.insert(items, self:watch({kind = "folder", path = row.path, name = row.name})) end
+	table.insert(items, self:copyPath(row.path))
+	return items
+end
+
 -- A catalog resource (leaf or group).
 function Controller:resource(id)
 	local row = self.model.resources:find(id)
@@ -104,7 +183,10 @@ function Controller:resource(id)
 			table.insert(items, self:mark({path = row.path, name = row.name, bytes = measured and measured.bytes, resourceId = id,
 				source = (row:getParent() or row).name, consequence = row.consequence}))
 		end
-		if row.path then table.insert(items, self:reveal(row.path)) end
+		if row.path then
+			table.insert(items, self:quickLookItem(row.path))
+			table.insert(items, self:reveal(row.path))
+		end
 		local parent = row:getParent()
 		if parent then
 			table.insert(items, {title = "Open " .. parent.name .. "…", systemImage = "list.bullet", action = function() self.handlers.open(parent.id) end})
@@ -120,13 +202,18 @@ end
 
 -- An individual file from Large Files. Trash is offered only for ordinary
 -- documents in the home folder; the menu says why otherwise.
-function Controller:file(row)
+function Controller:file(row, handlers)
 	local ok, reason = Files.validateTrash(self.model, row.path)
 	local items = {
 		{title = ok and "Move to Trash…" or ("Move to Trash — " .. (reason and reason.message or "unavailable")), systemImage = "trash", disabled = not ok,
 			action = function() self:trashFile(row) end},
 	}
 	if ok then table.insert(items, self:mark({path = row.path, name = row.name, bytes = row.bytes, source = "Large Files"})) end
+	table.insert(items, self:moveItem(row, function(path)
+		local allowed, why = Files.validateTrash(self.model, path)
+		return allowed, why and why.message
+	end, function() self.handlers.refresh() end))
+	table.insert(items, self:quickLookItem(row.path, handlers and handlers.siblings))
 	table.insert(items, self:reveal(row.path))
 	if row.ownerId then
 		local owner = self.model.resources:find(row.ownerId)
@@ -157,6 +244,7 @@ function Controller:folder(row, trash, mark)
 		table.insert(items, {title = "Move to Trash…", systemImage = "trash", action = function() trash(row) end})
 	end
 	if mark then table.insert(items, self:mark(mark)) end
+	table.insert(items, self:quickLookItem(row.path))
 	table.insert(items, self:reveal(row.path))
 	table.insert(items, separator())
 	-- Folders only: a single file's size is not worth a sidebar row.

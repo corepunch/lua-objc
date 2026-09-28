@@ -30,6 +30,7 @@ function Controller:mount(host, state)
 	self.refs = refs
 	self.hero = self.template:child("hero", "apps/diskmap/views/Hero.etlua")
 	self.changes = self.template:child("changes", "apps/diskmap/views/Changes.etlua")
+	self.access = self.template:child("accessNotice", "apps/diskmap/views/AccessNotice.etlua")
 	return refs
 end
 
@@ -53,11 +54,14 @@ function Controller:update(state)
 		hidden = Overview.hidden(state.disk, state.capacity, state.snapshotCount, self.model.scan.errors, Inventory.cloud(self.model)),
 		reclaim = Overview.reclaim(self.model), volumeName = state.volumeName, actions = actions})
 	self.changes:update({changes = state.changes, actions = {showAllChanges = function() self.handlers.changes() end}})
+	-- Folders the scan could not read, while Full Disk Access is missing.
+	local unreadable = state.fullDiskAccess == false and Overview.unreadable(self.model) or {paths = {}, more = 0}
+	self.access:update({unreadable = unreadable, actions = {grantAccess = function() self.handlers.access() end}})
 end
 
 function Controller:dispose()
 	if self.template then self.template:dispose() end
-	self.template, self.hero, self.changes, self.refs = nil, nil, nil, nil
+	self.template, self.hero, self.changes, self.access, self.refs = nil, nil, nil, nil, nil
 end
 
 return Controller
