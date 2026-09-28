@@ -191,6 +191,13 @@ function Visuals:settled()
 	return true
 end
 
+--- The scenes on the visualizer's layers, 0-based: the current scene, then
+--- the one crossfading in while a cut runs.
+function Visuals:layers()
+	if self.nextScene ~= self.scene then return {self.scene, self.nextScene} end
+	return {self.scene}
+end
+
 -- Each open view packs its own `stage`: the main window's sits above its
 -- panels, the mini player's above its transport bar.
 function Visuals:pack(stage)

@@ -1,9 +1,17 @@
 // Shared Metal library for visualizer plugins (the visualizer host API).
-// A scene plugin's Scene.metal defines
-//   static float3 <id>Scene(constant ShaderInputs &inputs, float2 uv, const thread Frame &f)
-// returning linear colour for uv (0,0 top-left); Main.metal crossfades two
-// scenes and finishes the picture. `inputs.values` is written by
-// apps/dnb/models/Visuals.lua; Frame unpacks its header:
+// A scene draws into its own HDR layer, and shaders/Main.metal crossfades
+// the current and next scene's layers, adds bloom and finishes the picture.
+// A scene plugin either
+//   - lists `draws` in its manifest: meshes whose vertex and fragment
+//     functions (named <id>…) live in its Metal file. Geometry is computed
+//     per vertex from vertex_id and instance_id, so curves, planets and
+//     terrain cost vertices rather than pixels × segments. Or
+//   - defines only
+//       static float3 <id>Scene(constant ShaderInputs &inputs, float2 uv, const thread Frame &f)
+//     returning linear colour for uv (0,0 top-left); the host wraps it in a
+//     full-screen draw.
+// Every stage unpacks the frame with frameOf(inputs). `inputs.values` is
+// written by apps/dnb/models/Visuals.lua:
 //   0 level (RMS)      1 kick pulse     2 track hue      3 section intensity
 //   4 section progress 5 beat phase     6 presence (0 idle … 1 playing)
 //   7 band count N     8 scene          9 next scene     10 crossfade 0…1
@@ -15,9 +23,10 @@
 // between the toolbar and the controls. Scenes compose around it, not the
 // view, so their subject is never hidden behind glass. stagePoint(uv, f)
 // gives a point in stage heights, centred on the stage with y up, so the
-// stage spans ±0.5 vertically and ±f.aspect / 2 horizontally. The picture
-// still fills the whole view; outside the stage it continues behind the
-// panels.
+// stage spans ±0.5 vertically and ±f.aspect / 2 horizontally; stageClip
+// maps such a point back to clip space, and a Camera projects the world
+// onto the stage the same way. The picture still fills the whole view;
+// outside the stage it continues behind the panels.
 
 constant float TAU = 6.2831853;
 constant int HEADER = 20;
@@ -31,8 +40,87 @@ struct Frame {
 	float2 unit;   // uv → stage heights along x and y
 };
 
+static Frame frameOf(constant ShaderInputs &inputs) {
+	Frame f;
+	f.t = inputs.time;
+	// The stage, or the whole view before Lua has measured one.
+	float4 stage = float4(inputs.values[16], inputs.values[17], inputs.values[18], inputs.values[19]);
+	if (stage.z <= 0.0 || stage.w <= 0.0) stage = float4(0.0, 0.0, 1.0, 1.0);
+	float viewAspect = inputs.size.x / max(inputs.size.y, 1.0);
+	f.aspect = viewAspect * stage.z / stage.w;
+	f.centre = stage.xy + stage.zw * 0.5;
+	f.unit = float2(viewAspect, 1.0) / stage.w;
+	f.level = inputs.values[0];
+	f.kick = inputs.values[1];
+	f.hue = inputs.values[2];
+	f.intensity = inputs.values[3];
+	f.beat = inputs.values[5];
+	f.presence = inputs.values[6];
+	f.n = max(int(inputs.values[7]), 2);
+	f.snare = inputs.values[11];
+	f.low = inputs.values[12];
+	f.high = inputs.values[13];
+	f.travel = inputs.values[14];
+	f.phase = inputs.values[15];
+	return f;
+}
+
 static float2 stagePoint(float2 uv, const thread Frame &f) {
 	return (uv - f.centre) * float2(f.unit.x, -f.unit.y);
+}
+
+// Clip-space position of a stage point, the inverse of stagePoint.
+static float4 stageClip(float2 p, const thread Frame &f, float depth = 0.5) {
+	float2 uv = f.centre + p / float2(f.unit.x, -f.unit.y);
+	return float4(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0, depth, 1.0);
+}
+
+// A pinhole camera whose picture spans the stage: `focal` is 1 / tan(fov/2)
+// for the stage's height. World units are the scene's own; y is up.
+constant float CAMERA_NEAR = 0.05;
+constant float CAMERA_FAR = 400.0;
+
+struct Camera {
+	float3 eye, forward, right, up;
+	float focal;
+};
+
+static Camera lookAt(float3 eye, float3 target, float focal, float roll = 0.0) {
+	Camera c;
+	c.eye = eye;
+	c.forward = normalize(target - eye);
+	float3 right = normalize(cross(float3(0.0, 1.0, 0.0), c.forward));
+	float3 up = cross(c.forward, right);
+	c.right = right * cos(roll) + up * sin(roll);
+	c.up = up * cos(roll) - right * sin(roll);
+	c.focal = focal;
+	return c;
+}
+
+// Where a world point lands on the stage, and how far ahead it is.
+static float3 cameraView(float3 world, const thread Camera &c) {
+	float3 d = world - c.eye;
+	return float3(dot(d, c.right), dot(d, c.up), dot(d, c.forward));
+}
+
+// Clip position of a view-space point (cameraView): the stage mapping of
+// stageClip taken through the perspective divide, with standard depth so
+// intersecting surfaces resolve correctly.
+static float4 viewClip(float3 v, const thread Frame &f, const thread Camera &c) {
+	float2 p = v.xy * c.focal * 0.5; // stage point × depth
+	float x = (f.centre.x * 2.0 - 1.0) * v.z + 2.0 * p.x / f.unit.x;
+	float y = (1.0 - f.centre.y * 2.0) * v.z + 2.0 * p.y / f.unit.y;
+	float z = CAMERA_FAR / (CAMERA_FAR - CAMERA_NEAR) * (v.z - CAMERA_NEAR);
+	return float4(x, y, z, v.z);
+}
+
+static float4 cameraClip(float3 world, const thread Frame &f, const thread Camera &c) {
+	return viewClip(cameraView(world, c), f, c);
+}
+
+// The world direction through a stage point, for skies and backdrops.
+static float3 cameraRay(float2 p, const thread Camera &c) {
+	return normalize(c.forward + (p.x * c.right + p.y * c.up) * (2.0 / c.focal));
 }
 
 static float3 neon(float t) {
@@ -56,6 +144,41 @@ static float noise(float2 p) {
 	float2 u = f * f * (3.0 - 2.0 * f);
 	return mix(mix(hash21(i), hash21(i + float2(1, 0)), u.x),
 		mix(hash21(i + float2(0, 1)), hash21(i + float2(1, 1)), u.x), u.y);
+}
+
+static float fbm(float2 p, int octaves) {
+	float v = 0.0, a = 0.5;
+	for (int o = 0; o < octaves; o++) {
+		v += a * noise(p);
+		p = float2(p.x * 1.6 - p.y * 1.2, p.x * 1.2 + p.y * 1.6) + 3.1; // rotate between octaves
+		a *= 0.5;
+	}
+	return v;
+}
+
+static float hash31(float3 p) {
+	p = fract(p * float3(0.1031, 0.1030, 0.0973));
+	p += dot(p, p.yzx + 33.33);
+	return fract((p.x + p.y) * p.z);
+}
+
+static float noise3(float3 p) {
+	float3 i = floor(p), f = fract(p);
+	float3 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(mix(hash31(i), hash31(i + float3(1, 0, 0)), u.x),
+			mix(hash31(i + float3(0, 1, 0)), hash31(i + float3(1, 1, 0)), u.x), u.y),
+		mix(mix(hash31(i + float3(0, 0, 1)), hash31(i + float3(1, 0, 1)), u.x),
+			mix(hash31(i + float3(0, 1, 1)), hash31(i + float3(1, 1, 1)), u.x), u.y), u.z);
+}
+
+static float fbm3(float3 p, int octaves) {
+	float v = 0.0, a = 0.5;
+	for (int o = 0; o < octaves; o++) {
+		v += a * noise3(p);
+		p = p * 2.03 + float3(1.7, 9.2, 4.1);
+		a *= 0.5;
+	}
+	return v;
 }
 
 static float ridgeNoise(float x, float seed) {

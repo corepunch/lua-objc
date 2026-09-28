@@ -1195,7 +1195,7 @@ local TAG_SCHEMA = {
     },
     ShaderView = {
         constructor = "ShaderView",
-        props = { source = "str", ["function"] = "str" },
+        props = { source = "str", ["function"] = "str", layers = "num" },
         collect = function(props, children)
             local sources = {}
             for _, child in ipairs(children) do

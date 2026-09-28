@@ -37,6 +37,7 @@ function Controller.new(options)
 		playing = false,
 		visuals = Visuals.new(Visualizers:list()),
 		stages = setmetatable({}, {__mode = "k"}), -- the stage each open view last received
+		showing = setmetatable({}, {__mode = "k"}), -- the scenes each open view last drew
 	}, Controller)
 	self.composer = Styles:create(style.id, model.seed)
 	self.synth:setComposer(self.composer)
@@ -222,8 +223,20 @@ function Controller:tick(dt)
 	self.visuals:update({bands = bands, rms = rms, playing = self.playing, bar = bar,
 		played = played, sampleRate = PLAYBACK.sampleRate, gain = self.model:value("volume")}, dt)
 	for i, refs in ipairs(views) do
-		refs.visualizer.values = self.visuals:pack(stages[i])
+		self:present(refs, stages[i])
 		self.stages[refs] = stages[i]
+	end
+end
+
+-- Sends a view the current picture: its values every frame, and the scene
+-- draws whenever the scenes on its layers change.
+function Controller:present(refs, stage)
+	refs.visualizer.values = self.visuals:pack(stage)
+	local layers = self.visuals:layers()
+	local key = table.concat(layers, ",")
+	if self.showing[refs] ~= key then
+		refs.visualizer.draws = Visualizers.draws(layers)
+		self.showing[refs] = key
 	end
 end
 
@@ -301,7 +314,7 @@ function Controller:openMiniPlayer()
 		title = self.style.title, program = Visualizers.program(), nowPlaying = self:nowPlaying(),
 		actions = self:actions(),
 	})
-	refs.visualizer.values = self.visuals:pack()
+	self:present(refs)
 	self.mini = {window = ns.Window(config), refs = refs}
 	self:setTransport(self.playing)
 	if self.window then self.window:hide() end
@@ -321,7 +334,7 @@ end
 function Controller:createWindow()
 	local config, refs = xml.renderFile(VIEWS .. "Window.etlua", self:viewData())
 	self.refs = refs
-	refs.visualizer.values = self.visuals:pack()
+	self:present(refs)
 	self.window = ns.Window(config)
 	self:setTransport(false)
 	-- The display loop lives as long as the window's Lua state; closing the

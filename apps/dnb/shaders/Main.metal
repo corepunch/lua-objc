@@ -1,38 +1,42 @@
-// The visualizer's entry point: unpacks the frame header, draws the current
-// scene and, during a crossfade, the next, then finishes the picture. The
-// `scene(index, …)` dispatcher before it is linked in by views/Visualizer.etlua
-// from the loaded scene plugins, in their load order.
+// The visualizer's finishing pass. The current scene has drawn into layer 1
+// and, during a crossfade, the next into layer 2 (see Kit.metal); this
+// crossfades them, adds bloom and finishes the picture.
 
-fragment float4 visualizer(ShaderVertex in [[stage_in]], constant ShaderInputs &inputs [[buffer(0)]]) {
-	Frame f;
-	f.t = inputs.time;
-	// The stage, or the whole view before Lua has measured one.
-	float4 stage = float4(inputs.values[16], inputs.values[17], inputs.values[18], inputs.values[19]);
-	if (stage.z <= 0.0 || stage.w <= 0.0) stage = float4(0.0, 0.0, 1.0, 1.0);
-	float viewAspect = inputs.size.x / max(inputs.size.y, 1.0);
-	f.aspect = viewAspect * stage.z / stage.w;
-	f.centre = stage.xy + stage.zw * 0.5;
-	f.unit = float2(viewAspect, 1.0) / stage.w;
-	f.level = inputs.values[0];
-	f.kick = inputs.values[1];
-	f.hue = inputs.values[2];
-	f.intensity = inputs.values[3];
-	f.beat = inputs.values[5];
-	f.presence = inputs.values[6];
-	f.n = max(int(inputs.values[7]), 2);
-	f.snare = inputs.values[11];
-	f.low = inputs.values[12];
-	f.high = inputs.values[13];
-	f.travel = inputs.values[14];
-	f.phase = inputs.values[15];
+constant float BLOOM_THRESHOLD = 0.75; // linear light below this does not bloom
+constant float BLOOM_GAIN = 0.55;
+constant int BLOOM_FIRST = 2;          // finest mip level read, a quarter of the view
+constant int BLOOM_LEVELS = 5;
+
+// A layer's colour plus its bloom. The layers are mipmapped every frame, so
+// each coarser level is a wider box blur; four taps half a texel apart turn
+// its squares into a soft tent, and the levels add up to a long glow.
+static float3 layerColour(texture2d<float> layer, float2 uv) {
+	constexpr sampler s(filter::linear, mip_filter::linear, address::clamp_to_edge);
+	float3 colour = layer.sample(s, uv, level(0.0)).rgb;
+	float3 bloom = float3(0.0);
+	float2 size = float2(layer.get_width(), layer.get_height());
+	for (int i = 0; i < BLOOM_LEVELS; i++) {
+		float lod = float(BLOOM_FIRST + i);
+		float2 texel = exp2(lod) / size * 0.5;
+		float3 blur = layer.sample(s, uv + float2(texel.x, texel.y), level(lod)).rgb
+			+ layer.sample(s, uv + float2(-texel.x, texel.y), level(lod)).rgb
+			+ layer.sample(s, uv + float2(texel.x, -texel.y), level(lod)).rgb
+			+ layer.sample(s, uv + float2(-texel.x, -texel.y), level(lod)).rgb;
+		bloom += max(blur * 0.25 - BLOOM_THRESHOLD, 0.0);
+	}
+	return colour + bloom * (BLOOM_GAIN / float(BLOOM_LEVELS));
+}
+
+fragment float4 visualizer(ShaderVertex in [[stage_in]], constant ShaderInputs &inputs [[buffer(0)]],
+		texture2d<float> current [[texture(0)]], texture2d<float> next [[texture(1)]]) {
+	Frame f = frameOf(inputs);
 	float2 uv = in.uv; // 0,0 top-left
-
 	float fade = inputs.values[10];
-	float3 colour = scene(int(inputs.values[8]), inputs, uv, f);
+	float3 colour = layerColour(current, uv);
 	if (fade > 0.0) {
 		// Crossfade through a brief bloom so the cut reads as a transition.
 		float w = smoothstep(0.0, 1.0, fade);
-		colour = mix(colour, scene(int(inputs.values[9]), inputs, uv, f), w) * (1.0 + 0.6 * sin(w * 3.14159));
+		colour = mix(colour, layerColour(next, uv), w) * (1.0 + 0.6 * sin(w * 3.14159));
 	}
 
 	// Finish: a soft vignette around the stage, fine scanlines and grain

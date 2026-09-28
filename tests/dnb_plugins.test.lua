@@ -140,22 +140,71 @@ t.expect(synth.sound == before, "a new sound waits for the bar line")
 synth:render({}, synth.nextBarFrame - synth.frame + 10)
 t.assertEqual(synth.sound.kick.decay, techno.sound.kick.decay, "and takes over on it")
 
--- Visualizers: plugins link into one Metal program.
+-- Visualizers: plugins link into one Metal program and draw into layers.
 local scenes = Visualizers:list()
-t.expect(#scenes >= 6, "six scene plugins ship")
+t.expect(#scenes >= 7, "seven scene plugins ship")
 local program = Visualizers.program()
 t.assertEqual(#program.scenes, #scenes, "every scene is linked")
-t.assertEqual(program.scenes[2].entry, scenes[2].id .. "Scene", "scene functions follow the plugin id")
+t.assertEqual(program.scenes[1].entry, scenes[1].id .. "Scene", "scene functions follow the plugin id")
+local meshScenes = 0
 for _, scene in ipairs(scenes) do
 	t.expect(#scene.sections > 0, scene.title .. " names its sections")
 	local file = io.open(scene.resource(scene.shader))
 	t.expect(file ~= nil, scene.title .. " ships its shader")
 	if file then file:close() end
+	if scene.draws then meshScenes = meshScenes + 1 end
 end
+t.expect(meshScenes >= 3, "trails, space and the landscape are meshes, not full-screen shaders")
+for _, id in ipairs({"trails", "space", "landscape"}) do
+	t.expect(Visualizers:get(id).draws ~= nil, id .. " draws meshes")
+end
+t.assertEqual(program.scenes[Visualizers:index("horizon")].wrapper, "horizonLayer",
+	"a full-screen scene gets a layer wrapper")
+t.assertEqual(program.scenes[Visualizers:index("space")].wrapper, nil, "a mesh scene needs none")
+local horizonIndex, spaceIndex = Visualizers:index("horizon") - 1, Visualizers:index("space") - 1
+local single = Visualizers.draws({horizonIndex})
+t.assertEqual(#single, 1, "a full-screen scene is one covering draw")
+t.assertEqual(single[1].vertex, "fullscreenVertex", "drawn with the framework's covering triangle")
+t.assertEqual(single[1].fragment, "horizonLayer", "through its wrapper")
+t.assertEqual(single[1].layer, 1, "the current scene draws into layer 1")
+local fading = Visualizers.draws({horizonIndex, spaceIndex})
+t.assertEqual(#fading, 1 + #Visualizers:get("space").draws, "a crossfade draws both scenes")
+t.assertEqual(fading[#fading].layer, 2, "the incoming scene draws into layer 2")
+t.expect(Visualizers:get("space").draws[1].layer == nil, "the plugin's own draws are copied, not changed")
+t.assertThrows(function() Visualizers.draws({#scenes}) end, "only loaded scenes draw")
 local xml = require("ui.xml")
 local view, refs = xml.renderFile("apps/dnb/views/Visualizer.etlua", {program = program}, ns)
 t.expect(view ~= nil and refs.visualizer ~= nil, "the linked visualizer compiles")
+t.assertEqual(refs.visualizer.layers, 2, "the visualizer keeps a layer for each crossfading scene")
 t.assertEqual(refs.visualizer.ignoresSafeArea, "all", "the visualizer runs under the title bar")
+for index = 0, #scenes - 1 do
+	local ok, err = pcall(function() refs.visualizer.draws = Visualizers.draws({index}) end)
+	t.expect(ok, scenes[index + 1].title .. " draws compile: " .. tostring(err))
+end
+
+-- Every scene draws a frame at the default window's Retina size within a
+-- budget, alone and crossfading into the next. Geometry belongs in vertices:
+-- Light Trails once walked every segment per pixel and took 85 ms here on an
+-- M1. A lone offscreen frame runs before the GPU clocks up, so the budget
+-- catches such blowups rather than timing 60 Hz.
+local FRAME = {width = 2360, height = 1720, budget = 50}
+local bridge = require("AppKitNative")
+local loud = Visuals.new(scenes, 40)
+loud.level, loud.presence, loud.intensity, loud.travel, loud.kick = 0.8, 1, 1, 42, 0.5
+for i = 1, loud.n do loud.levels[i], loud.peaks[i] = 0.6, 0.7 end
+bridge._shaderFrameTime(refs.visualizer, FRAME.width, FRAME.height) -- the first frame warms the GPU
+for index = 0, #scenes - 1 do
+	local next = (index + 1) % #scenes
+	for _, layers in ipairs({{index}, {index, next}}) do
+		loud.scene, loud.nextScene, loud.fade = layers[1], layers[#layers], #layers == 2 and 0.5 or 0
+		refs.visualizer.values = loud:pack()
+		refs.visualizer.draws = Visualizers.draws(layers)
+		local ms = bridge._shaderFrameTime(refs.visualizer, FRAME.width, FRAME.height)
+		local label = scenes[index + 1].title .. (#layers == 2 and " into " .. scenes[next + 1].title or "")
+		t.expect(ms < FRAME.budget, string.format("%s draws a %dx%d frame in %.1f ms", label,
+			FRAME.width, FRAME.height, ms))
+	end
+end
 
 -- Visuals: pools from the plugins' sections, and pinning.
 local visuals = Visuals.new(scenes, 4)

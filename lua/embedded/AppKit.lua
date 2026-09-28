@@ -1359,10 +1359,28 @@ end
 --- shared library, plugin-contributed functions and an entry point can live
 --- in separate files. Each chunk opens with a `#line` directive, so compiler
 --- errors name the file and line they came from.
+---
+--- Meshes: with `layers`, the view first renders `draws` into that many
+--- offscreen HDR layers (RGBA16Float, cleared to transparent black, with a
+--- depth buffer), and `function` finishes the picture from them: layer i is
+--- `texture2d<float> [[texture(i - 1)]]`, mipmapped every frame so coarse
+--- levels serve as wide blurs. Each draw is a table:
+--- `vertex`, `fragment` (function names), `count` (vertices), `instances`
+--- (1), `layer` (1), `primitive` (`triangle`, `triangleStrip`, `line`,
+--- `lineStrip`, `point`), `blend` (`opaque`, `alpha` premultiplied, `add`),
+--- `depth` (`none`, `test`, `write`), `cull` (`none`, `back`, `front`),
+--- `data` (floats at `const device float *data [[buffer(1)]]`) and `params`
+--- (up to 64 floats at `constant float *params [[buffer(2)]]`). Both stages
+--- get `inputs` at buffer(0). Vertices usually come from `vertex_id` and
+--- `instance_id`; `fullscreenVertex` covers the view with `ShaderVertex`.
+--- Assigning `draws` compiles their pipelines, and a bad list raises
+--- without replacing the running one.
 --- @prop source string optional. Path of a `.metal` file with the fragment function.
 --- @prop sources table optional. `<ShaderSource path="…">` / `<ShaderSource code="…">` chunks, in order.
---- @prop function string required. Fragment function name.
+--- @prop function string required. Fragment function name; with layers, the finishing pass.
 --- @prop values table optional. Initial floats for `inputs.values`.
+--- @prop layers number optional. Offscreen layers the draws render into, 0…4 (0).
+--- @prop draws table optional. Mesh passes, in order (see above).
 --- @platform AppKit.
 local function readShader(path)
 	local file = assert(io.open(path, "r"), "ShaderView: cannot read " .. tostring(path))
@@ -1389,6 +1407,8 @@ function AppKit.ShaderView(props)
 	end
 	local view = bridge._shaderView(text, assert(props["function"], "ShaderView requires function"))
 	if props.values then view.values = props.values end
+	if props.layers then view.layers = props.layers end
+	if props.draws then view.draws = props.draws end
 	-- Like a gradient, a shader has no intrinsic size and fills its proposal.
 	view.fillWidth, view.fillHeight = true, true
 	return applyLayout(view, props)
