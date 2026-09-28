@@ -474,6 +474,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_readPropertyList", bridge_AppKit_read_property_list},
 	{"_parsePropertyList", bridge_parse_property_list},
 	{"_timerAfter", bridge_AppKit_timer_after},
+	{"_uptime", bridge_uptime},
 	{"_httpGet", bridge_AppKit_http_get},
 	{"_jsonParse", bridge_AppKit_json_parse},
 	{"_font", bridge_AppKit_font},

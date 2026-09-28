@@ -17,7 +17,12 @@
 //   7 band count N     8 scene          9 next scene     10 crossfade 0…1
 //   11 snare pulse     12 low bands     13 high bands    14 travel   15 bar phase
 //   16 … 19 stage x, y, width, height (uv of the view)
-//   20 … 20+N-1 band levels             20+N … 20+2N-1 peak holds
+//   20 travel speed (travel per second)
+//   21 … 21+N-1 band levels             21+N … 21+2N-1 peak holds
+//
+// Lua sends values at its own irregular rate, not the display's, so
+// frameOf extrapolates travel by speed × inputs.age: camera flights move
+// the same distance every display frame.
 //
 // The stage is the main view rect: the part of the picture no panel covers,
 // between the toolbar and the controls. Scenes compose around it, not the
@@ -29,7 +34,8 @@
 // outside the stage it continues behind the panels.
 
 constant float TAU = 6.2831853;
-constant int HEADER = 20;
+constant int HEADER = 21;
+constant float MAX_AGE = 0.25; // seconds of extrapolation before a stalled Lua loop freezes the flight
 constant float BAR_SPAN = 0.47;  // half-width covered by the mirrored spectrum bars
 constant float BAR_HEIGHT = 0.4; // tallest bar, in stage heights above the horizon
 
@@ -60,7 +66,7 @@ static Frame frameOf(constant ShaderInputs &inputs) {
 	f.snare = inputs.values[11];
 	f.low = inputs.values[12];
 	f.high = inputs.values[13];
-	f.travel = inputs.values[14];
+	f.travel = inputs.values[14] + inputs.values[20] * min(inputs.age, MAX_AGE);
 	f.phase = inputs.values[15];
 	return f;
 }

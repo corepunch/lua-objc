@@ -207,6 +207,29 @@ end
 -- Harmonic mixing: the next track stays in key or moves a fifth, the moves
 -- a DJ's key wheel marks as compatible, with the occasional lift of a tone.
 local MIXES = {0, 7, 5, 7, 5, 2}
+-- Drum kits ---------------------------------------------------------------
+
+--- The snare characters a producer picks between; the Synth voices each
+--- over the style's own snare (see Synth.drumVariant). A flavour may list
+--- the ones that suit it as `snares`; otherwise a track may use any.
+StyleKit.snares = {"tight", "fat", "rimshot", "roomy", "crunchy", "layered", "vintage"}
+local SNARE_NAMES = {}
+for _, name in ipairs(StyleKit.snares) do SNARE_NAMES[name] = true end
+
+-- Dimensions of a track's kit, each −1…1 around the style's design.
+local DRUM_DIMENSIONS = {"snareTune", "kickTune", "kickLength", "kickDrive", "kickClick",
+	"hatTone", "hatLength", "hatNoise", "clapSpread", "clapLength", "clapTone"}
+
+--- A track's drum kit: its snare character and how far its kick, snare
+--- tuning, hats and clap sit from the style's design. Producers pick new
+--- sounds for every tune, so no two tracks in a set share a kit; the style's
+--- design keeps them in its genre.
+function StyleKit.drumDesign(rng, flavour)
+	local design = {snare = rng.pick(flavour.snares or StyleKit.snares)}
+	for _, dimension in ipairs(DRUM_DIMENSIONS) do design[dimension] = rng.float() * 2 - 1 end
+	return design
+end
+
 local DEFAULT_ARRANGEMENT = {
 	introBars = 8, buildBars = 8, dropBars = 32, breakdownBars = 16, rebuildBars = 8, outroBars = 16,
 	blendBars = 8, phraseBars = 8, minCycles = 2, maxCycles = 3,
@@ -225,6 +248,11 @@ function StyleKit.newSet(seed, spec)
 	local arrangement = {}
 	for k, v in pairs(DEFAULT_ARRANGEMENT) do arrangement[k] = v end
 	for k, v in pairs(spec.arrangement or {}) do arrangement[k] = v end
+	for _, flavour in ipairs(spec.flavours or {}) do
+		for _, name in ipairs(flavour.snares or {}) do
+			assert(SNARE_NAMES[name], "unknown snare character " .. tostring(name))
+		end
+	end
 	local modes = {}
 	for _, name in ipairs(spec.modes or {"minor"}) do table.insert(modes, (assert(StyleKit.modes[name], "unknown mode " .. tostring(name)))) end
 	return setmetatable({seed = seed, flavours = assert(spec.flavours, "a set needs flavours"), modes = modes,
@@ -257,6 +285,8 @@ function Set:track(k)
 				cycleCache = {}, shifts = {[0] = 0},
 			}
 			track.key = StyleKit.keyName(track.tonic, track.mode)
+			-- Its own stream, so the kit never shifts the composition.
+			track.drums = StyleKit.drumDesign(StyleKit.random(self.seed, 5, index), flavour)
 			self.tracks[index + 1] = track
 		end
 	end
@@ -343,8 +373,9 @@ end
 local Bar = {}
 Bar.__index = Bar
 
---- A bar of score for the Synth. Every list is in 16th steps (fractions
---- allowed for rolls); the Synth adds swing and tempo:
+--- A bar of score for the Synth. `drums` is its track's kit design. Every
+--- list is in 16th steps (fractions allowed for rolls); the Synth adds swing
+--- and tempo:
 ---   hits   {step, voice, gain, nudge, throw}   drum one-shots
 ---   breaks {step, slice, gain}                 Amen slices
 ---   bass   {step, length, note, glide, reese, subOnly, accent, wobble}
@@ -359,7 +390,7 @@ function StyleKit.newBar(n, info, feel)
 		index = n, section = info.section, sectionBar = info.sectionBar, sectionLength = info.sectionLength,
 		track = info.track.index, trackBar = n - info.track.start, trackLength = info.track.length,
 		style = info.track.flavour.name, key = StyleKit.keyName(info.tonic, info.track.mode), tonic = info.tonic,
-		hits = {}, bass = {}, stabs = {}, arp = {}, lead = {}, keys = {}, breaks = {},
+		drums = info.track.drums, hits = {}, bass = {}, stabs = {}, arp = {}, lead = {}, keys = {}, breaks = {},
 	}, Bar)
 	bar._feel = feel
 	return bar

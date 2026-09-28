@@ -6,7 +6,10 @@
  * grown into a small renderer. The app supplies Metal source; the runtime
  * prepends the shared inputs and a full-screen vertex stage, then draws every
  * display frame. Lua drives the picture by assigning `values`, a float array
- * every stage reads as `inputs.values`.
+ * every stage reads as `inputs.values`. Lua's timers are not the display's
+ * clock, so `inputs.age` gives the seconds since `values` last changed: a
+ * shader sent a position and its rate extrapolates it, and motion stays
+ * smooth at the display's refresh rate however irregularly Lua updates.
  *
  * On its own the view runs one fragment function over the whole view. With
  * `layers`, it first renders `draws` — meshes with their own vertex and
@@ -23,7 +26,7 @@
 static NSString *const kShaderViewPrelude =
 	@"#include <metal_stdlib>\n"
 	"using namespace metal;\n"
-	"struct ShaderInputs { float2 size; float time; uint count; float values[256]; };\n"
+	"struct ShaderInputs { float2 size; float time; float age; uint count; float values[256]; };\n"
 	"struct ShaderVertex { float4 position [[position]]; float2 uv; };\n"
 	"vertex ShaderVertex fullscreenVertex(uint id [[vertex_id]]) {\n"
 	"	float2 p = float2((id << 1) & 2, id & 2);\n"
@@ -45,6 +48,7 @@ static const MTLPixelFormat kShaderDepthFormat = MTLPixelFormatDepth32Float;
 typedef struct {
 	float size[2];
 	float time;
+	float age; /* seconds since Lua last assigned `values` */
 	uint32_t count;
 	float values[kShaderViewMaxValues];
 } LuaShaderInputs;
@@ -81,6 +85,7 @@ typedef struct {
 /* Mesh passes, in order: dictionaries validated into LuaShaderDraw. */
 @property(nonatomic, copy) NSArray<NSDictionary *> *draws;
 @property(nonatomic) CFTimeInterval startTime;
+@property(nonatomic) CFTimeInterval valuesTime;
 @end
 
 @implementation LuaShaderTicker
@@ -167,6 +172,7 @@ static NSData *shader_float_data(NSArray<NSNumber *> *numbers) {
 	NSUInteger count = MIN(values.count, (NSUInteger)kShaderViewMaxValues);
 	for (NSUInteger i = 0; i < count; i++) _inputs.values[i] = values[i].floatValue;
 	_inputs.count = (uint32_t)count;
+	_valuesTime = CACurrentMediaTime();
 }
 
 - (void)setLayers:(NSInteger)layers {
@@ -310,7 +316,9 @@ static NSData *shader_float_data(NSArray<NSNumber *> *numbers) {
 	LuaShaderInputs inputs = _inputs;
 	inputs.size[0] = (float)width;
 	inputs.size[1] = (float)height;
-	inputs.time = (float)(CACurrentMediaTime() - self.startTime);
+	CFTimeInterval now = CACurrentMediaTime();
+	inputs.time = (float)(now - self.startTime);
+	inputs.age = self.valuesTime > 0 ? (float)(now - self.valuesTime) : 0.0f;
 	if (self.layers > 0) {
 		[self prepareLayersWidth:width height:height];
 		for (NSUInteger layer = 0; layer < _layerTextures.count; layer++) {

@@ -586,6 +586,35 @@ for _ = 1, 300 do scenes:update({playing = false}, 1 / 60) end
 t.assertEqual(scenes.scene, Visualizers:index("horizon") - 1, "stopping returns to the horizon")
 t.expect(scenes:settled(), "and then rests")
 
+-- Travel: a steady cruise whatever the music does, eased in on play and
+-- out on stop, and sent with its speed so shaders extrapolate between updates.
+local quiet, loudRun = Visuals.new(Visualizers:list(), 4), Visuals.new(Visualizers:list(), 4)
+local cruiseBar = {frame = 0, frames = 4000, section = "drop", sectionBar = 0, sectionLength = 32, number = 0}
+for i = 1, 240 do
+	quiet:update({playing = true, bar = cruiseBar, played = 0, sampleRate = 1000, rms = 0.01, bands = {0.1, 0.1, 0.1, 0.1}}, 1 / 60)
+	loudRun:update({playing = true, bar = cruiseBar, played = 0, sampleRate = 1000, rms = i % 2 == 0 and 0.4 or 0.05,
+		bands = {1, 1, 1, 1}}, 1 / 60)
+end
+t.assertEqual(loudRun.travel, quiet.travel, "the music never changes travel speed")
+t.expect(math.abs(quiet.speed - 0.8) < 0.01, "four seconds in, scenes fly at cruise")
+local cruising = quiet:pack()
+t.assertEqual(cruising[21], quiet.speed, "the speed is packed for the shader to extrapolate")
+local before = quiet.travel
+quiet:update({playing = true, bar = cruiseBar, played = 0, sampleRate = 1000}, 1 / 30)
+t.expect(math.abs(quiet.travel - before - quiet.speed / 30) < 1e-3, "a late frame travels its real interval")
+local fresh = Visuals.new(Visualizers:list(), 4)
+fresh:update({playing = true, bar = cruiseBar, played = 0, sampleRate = 1000}, 1 / 60)
+t.expect(fresh.speed > 0 and fresh.speed < 0.05, "play eases into the flight")
+local speeds = {}
+for _ = 1, 60 do
+	quiet:update({playing = false}, 1 / 60)
+	table.insert(speeds, quiet.speed)
+end
+t.expect(speeds[1] < 0.8 and speeds[1] > 0.7 and speeds[60] < speeds[1] / 2, "stop glides to rest")
+t.expect(not quiet:settled(), "a gliding camera is not settled")
+for _ = 1, 300 do quiet:update({playing = false}, 1 / 60) end
+t.assertEqual(quiet.speed, 0, "and comes to a stop")
+
 -- The stage: the main view rect scenes centre on, packed after the header.
 local stageValues = scenes:pack()
 t.assertEqual(stageValues[17] .. " " .. stageValues[18] .. " " .. stageValues[19] .. " " .. stageValues[20], "0 0 1 1",
@@ -687,6 +716,19 @@ t.assertEqual(output.paused, 1, "stop pauses the output")
 t.expect(not app.playing and app.refs.play.enabled, "stop re-enables play")
 app:stop()
 t.assertEqual(output.paused, 1, "stopping twice is harmless")
+
+-- The display loop ticks by the time that really passed, not the timer's
+-- nominal interval, so late frames do not slow the flight down.
+local times, loop = {10, 10, 10.05, 10.06, 12}, nil
+local timed = Controller.new({seed = 3, output = fakeOutput(1024), clock = function() return table.remove(times, 1) end,
+	async = function(fn) loop = coroutine.wrap(fn) end, sleep = coroutine.yield})
+timed:createWindow()
+local ticks = {}
+function timed:tick(dt) table.insert(ticks, dt) end
+for _ = 1, 4 do loop() end
+t.assertEqual(ticks[1], 0, "the first frame starts the clock")
+t.expect(math.abs(ticks[2] - 0.05) < 1e-9 and math.abs(ticks[3] - 0.01) < 1e-9, "frames advance by measured time")
+t.assertEqual(ticks[4], 0.1, "a stalled run loop resumes rather than leaping ahead")
 
 local failing = fakeOutput(1024)
 function failing:start() return nil, "no output device" end

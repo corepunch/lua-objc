@@ -5,9 +5,9 @@
 -- lead of future garage.
 
 local FLAVOURS = {
-	{id = "twostep", name = "2-Step", reese = 0.5, keys = 1, lead = 0.6},
-	{id = "speed", name = "Speed Garage", reese = 1, keys = 0.4, lead = 0.3},
-	{id = "future", name = "Future Garage", reese = 0.3, keys = 0.7, lead = 1},
+	{id = "twostep", name = "2-Step", reese = 0.5, keys = 1, lead = 0.6, snares = {"rimshot", "tight", "layered", "vintage"}},
+	{id = "speed", name = "Speed Garage", reese = 1, keys = 0.4, lead = 0.3, snares = {"tight", "rimshot", "crunchy", "layered"}},
+	{id = "future", name = "Future Garage", reese = 0.3, keys = 0.7, lead = 1, snares = {"roomy", "vintage", "rimshot", "layered"}},
 }
 local ARRANGEMENT = {introBars = 8, buildBars = 8, dropBars = 32, breakdownBars = 16, rebuildBars = 8,
 	outroBars = 16, blendBars = 8, minCycles = 2, maxCycles = 3}

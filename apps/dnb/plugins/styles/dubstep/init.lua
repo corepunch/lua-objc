@@ -5,9 +5,9 @@
 -- Deep tracks keep the original sub-heavy, dub-echo sound.
 
 local FLAVOURS = {
-	{id = "deep", name = "Deep Dubstep", wobble = 0.6, stabs = 0.3, rates = {0.5, 1, 1, 2}, pads = 1},
-	{id = "brostep", name = "Brostep", wobble = 1, stabs = 1, rates = {1, 2, 3, 4, 6}, pads = 0.4},
-	{id = "riddim", name = "Riddim", wobble = 1, stabs = 0.5, rates = {2, 3, 3, 4}, pads = 0.2},
+	{id = "deep", name = "Deep Dubstep", wobble = 0.6, stabs = 0.3, rates = {0.5, 1, 1, 2}, pads = 1, snares = {"roomy", "vintage", "fat", "layered"}},
+	{id = "brostep", name = "Brostep", wobble = 1, stabs = 1, rates = {1, 2, 3, 4, 6}, pads = 0.4, snares = {"crunchy", "fat", "layered", "tight"}},
+	{id = "riddim", name = "Riddim", wobble = 1, stabs = 0.5, rates = {2, 3, 3, 4}, pads = 0.2, snares = {"tight", "crunchy", "rimshot", "layered"}},
 }
 local ARRANGEMENT = {introBars = 8, buildBars = 8, dropBars = 16, breakdownBars = 8, rebuildBars = 8,
 	outroBars = 8, blendBars = 4, minCycles = 2, maxCycles = 3}

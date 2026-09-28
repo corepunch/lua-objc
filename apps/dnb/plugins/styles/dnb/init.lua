@@ -7,10 +7,14 @@
 -- Flavours weight the parts a track leans on. Every part still answers to
 -- its pad; a flavour only decides how much of it the track uses.
 local FLAVOURS = {
-	{id = "liquid", name = "Liquid", amen = 0.45, keys = 1, reese = 0.55, lead = 0.9, arp = 0.9, stabs = 0.4, halftime = 0.25},
-	{id = "jungle", name = "Jungle", amen = 1, keys = 0.5, reese = 0.5, lead = 0.5, arp = 0.4, stabs = 0.7, halftime = 0.2},
-	{id = "neuro", name = "Neurofunk", amen = 0, keys = 0, reese = 1, lead = 0.4, arp = 0.5, stabs = 1, halftime = 0.7},
-	{id = "rollers", name = "Rollers", amen = 0.6, keys = 0.4, reese = 0.8, lead = 0.6, arp = 0.7, stabs = 0.6, halftime = 0.35},
+	{id = "liquid", name = "Liquid", amen = 0.45, keys = 1, reese = 0.55, lead = 0.9, arp = 0.9, stabs = 0.4, halftime = 0.25,
+		snares = {"roomy", "tight", "layered", "vintage"}},
+	{id = "jungle", name = "Jungle", amen = 1, keys = 0.5, reese = 0.5, lead = 0.5, arp = 0.4, stabs = 0.7, halftime = 0.2,
+		snares = {"vintage", "rimshot", "roomy", "fat"}},
+	{id = "neuro", name = "Neurofunk", amen = 0, keys = 0, reese = 1, lead = 0.4, arp = 0.5, stabs = 1, halftime = 0.7,
+		snares = {"crunchy", "tight", "layered", "fat"}},
+	{id = "rollers", name = "Rollers", amen = 0.6, keys = 0.4, reese = 0.8, lead = 0.6, arp = 0.7, stabs = 0.6, halftime = 0.35,
+		snares = {"tight", "fat", "layered", "rimshot", "crunchy"}},
 }
 
 local ARRANGEMENT = {

@@ -1613,6 +1613,12 @@ function UIKit.sleep(seconds)
 	coroutine.yield()
 end
 
+--- Seconds of monotonic system time, for measuring real intervals: a
+--- `sleep` resumes late whenever the main run loop is busy.
+function UIKit.uptime()
+	return bridge._uptime()
+end
+
 function UIKit.async(fn)
 	local co = coroutine.create(fn)
 	resumeCoroutine(co)

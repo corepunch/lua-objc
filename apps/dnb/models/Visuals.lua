@@ -7,7 +7,7 @@ local Visuals = {}
 Visuals.__index = Visuals
 
 Visuals.bands = 40
-Visuals.header = 20
+Visuals.header = 21
 
 -- The main view rect as fractions of the view from its top-left: where
 -- scenes centre their subject. The whole view until a layout says otherwise.
@@ -26,8 +26,8 @@ local MOTION = {
 	displayDb = 48,    -- bars span the top 48 dB, where a mix actually lives
 	curve = 1.4,       -- expands loud differences so kicks and drops stand out
 	crossfade = 1.6,   -- seconds from one scene to the next
-	idleTravel = 0.15, -- scene travel speed at rest, and its gain from the level
-	travelGain = 1.4,
+	cruise = 0.8,      -- scene travel per second while playing
+	cruiseEase = 0.6,  -- seconds (to 1/e) to ease from rest to cruise and back
 }
 
 -- Sections without scenes of their own borrow the drop's.
@@ -67,7 +67,7 @@ function Visuals.new(scenes, bands)
 	local idle = pool.intro[1]
 	local self = setmetatable({n = bands or Visuals.bands, levels = {}, peaks = {}, holds = {},
 		level = 0, kick = 0, snare = 0, presence = 0, hue = 0, intensity = 0.35, progress = 0, beat = 0,
-		barPhase = 0, travel = 0, low = 0, high = 0, pools = pool, idle = idle, count = #scenes,
+		barPhase = 0, travel = 0, speed = 0, low = 0, high = 0, pools = pool, idle = idle, count = #scenes,
 		scene = idle, nextScene = idle, fade = 0, sceneKey = nil, values = {}}, Visuals)
 	for i = 1, self.n do self.levels[i], self.peaks[i], self.holds[i] = 0, 0, 0 end
 	return self
@@ -151,9 +151,14 @@ function Visuals:update(frame, dt)
 	local toward = frame.playing and 1 or 0
 	local step = MOTION.presence * dt
 	self.presence = self.presence + math.max(-step, math.min(step, toward - self.presence))
-	-- Distance travelled, not time: scenes fly faster when the music is
-	-- loud without jumping when the level changes.
-	self.travel = (self.travel + dt * (MOTION.idleTravel + MOTION.travelGain * self.level * self.presence)) % 4096
+	-- Camera flights run at a steady cruise, eased in on play and out on
+	-- stop; the music drives light and colour, never the speed, which
+	-- would stutter with every change in level. Shaders extrapolate travel
+	-- with the speed between value updates (see shaders/Kit.metal).
+	local cruise = frame.playing and MOTION.cruise or 0
+	self.speed = cruise + (self.speed - cruise) * math.exp(-dt / MOTION.cruiseEase)
+	if self.speed < 1e-3 and not frame.playing then self.speed = 0 end
+	self.travel = (self.travel + dt * self.speed) % 4096
 
 	local bar = frame.bar
 	self.kick = self.kick * math.exp(-dt / MOTION.kickDecay)
@@ -184,6 +189,7 @@ end
 -- idle window can stop sending values.
 function Visuals:settled()
 	if self.kick > 1e-3 or self.snare > 1e-3 or (self.presence > 0 and self.presence < 1) then return false end
+	if self.speed > 0 then return false end
 	if self.scene ~= self.nextScene then return false end
 	for i = 1, self.n do
 		if self.levels[i] > 1e-3 or self.peaks[i] > 1e-3 then return false end
@@ -208,6 +214,7 @@ function Visuals:pack(stage)
 	v[9], v[10], v[11], v[12] = self.scene, self.nextScene, self.fade, self.snare
 	v[13], v[14], v[15], v[16] = self.low, self.high, self.travel, self.barPhase
 	v[17], v[18], v[19], v[20] = stage.x, stage.y, stage.width, stage.height
+	v[21] = self.speed
 	local h = Visuals.header
 	for i = 1, self.n do
 		v[h + i] = self.levels[i]

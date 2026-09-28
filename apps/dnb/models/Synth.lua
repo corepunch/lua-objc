@@ -51,13 +51,37 @@ local DEFAULT_SOUND = {
 		brightness = 0.1, sweep = 0.22, sweepTime = 0.15, square = 0.35, send = 0.5,
 	},
 	-- The programmed kit. A kick is a sine swept down from base + sweep to
-	-- base; a snare a tuned body and bright noise; a clap three quick bursts
-	-- of band-passed noise and a tail; hats are 808-style metal.
+	-- base. A snare is a tuned body (`drop` bends it down from above, for
+	-- a fat thwack) and wires: noise from dark (`bright` 0) to fizzy
+	-- (`bright` 1), with a looser `rattle` tail, a rimshot `snap`, a `clap`
+	-- layered on, a short `room` and `drive`. A clap is quick bursts of
+	-- noise band-passed around `tone` and a tail; hats are 808-style metal
+	-- with a share of `noise`.
 	kick = {base = 46, sweep = 115, sweepTime = 0.026, decay = 0.2, drive = 1.6, click = 0.35, length = 0.42},
-	snare = {tone = 188, overtone = 332, bodyDecay = 0.055, noiseDecay = 0.1, noise = 0.42},
-	clap = {bursts = 3, spacing = 0.011, decay = 0.16, level = 0.9},
-	hat = {scale = 1.6, decay = 0.016, openDecay = 0.12},
+	snare = {tone = 188, overtone = 332, bodyDecay = 0.055, noiseDecay = 0.1, noise = 0.42,
+		drop = 0, bright = 1, rattle = 0, snap = 0, clap = 0, room = 0, drive = 0},
+	clap = {bursts = 3, spacing = 0.011, decay = 0.16, level = 0.9, tone = 0.35},
+	hat = {scale = 1.6, decay = 0.016, openDecay = 0.12, noise = 0.12},
 }
+
+-- Snare characters (StyleKit.snares) over a style's own snare: factors
+-- multiply its fields, settings replace them.
+local SNARES = {
+	tight = {factors = {tone = 1.12, overtone = 1.1, bodyDecay = 0.7, noiseDecay = 0.6}, set = {snap = 0.5}},
+	fat = {factors = {tone = 0.82, overtone = 0.85, bodyDecay = 1.6, noiseDecay = 1.3, noise = 1.1},
+		set = {drop = 0.45, bright = 0.6}},
+	rimshot = {factors = {tone = 1.25, overtone = 1.3, noise = 0.7, noiseDecay = 0.8}, set = {snap = 1}},
+	roomy = {factors = {noiseDecay = 1.2}, set = {room = 0.55, bright = 0.8}},
+	crunchy = {factors = {noise = 1.2, bodyDecay = 1.1}, set = {drive = 0.7}},
+	layered = {factors = {noiseDecay = 1.1, noise = 0.85}, set = {clap = 0.6, snap = 0.2}},
+	vintage = {factors = {bodyDecay = 1.25, noiseDecay = 1.1}, set = {bright = 0.25, rattle = 0.8, room = 0.2}},
+}
+
+-- How far a track's kit design (StyleKit.drumDesign, each dimension −1…1)
+-- moves the style's drums: semitones, or octaves of a time or level.
+local VARIANT = {snareTune = 3, kickTune = 2, kickSweep = 0.35, kickLength = 0.45, kickDrive = 0.5,
+	kickClick = 1, hatTone = 0.2, hatLength = 0.6, hatNoise = 1.3, clapSpread = 0.4, clapLength = 0.5,
+	clapTone = 0.5}
 
 --- The full sound for a style's overrides.
 function Synth.sound(overrides)
@@ -73,6 +97,47 @@ function Synth.sound(overrides)
 	end
 	for group in pairs(overrides or {}) do assert(DEFAULT_SOUND[group], "unknown sound group " .. tostring(group)) end
 	return sound
+end
+
+--- The drums of `sound` voiced for one track's kit `design` (from
+--- StyleKit.drumDesign): its snare character over the style's snare, then
+--- retuned and reshaped within the VARIANT ranges. Other groups are shared.
+function Synth.drumVariant(sound, design)
+	if not design then return sound end
+	local result = {}
+	for group, fields in pairs(sound) do result[group] = fields end
+	local function copy(group)
+		local fields = {}
+		for key, value in pairs(sound[group]) do fields[key] = value end
+		result[group] = fields
+		return fields
+	end
+	local function semitones(x, range) return 2 ^ (x * range / 12) end
+	local function octaves(x, range) return 2 ^ (x * range) end
+	local snare = copy("snare")
+	local character = assert(SNARES[design.snare], "unknown snare character " .. tostring(design.snare))
+	for key, factor in pairs(character.factors) do snare[key] = snare[key] * factor end
+	for key, value in pairs(character.set) do snare[key] = value end
+	local tune = semitones(design.snareTune, VARIANT.snareTune)
+	snare.tone, snare.overtone = snare.tone * tune, snare.overtone * tune
+	local kick = copy("kick")
+	kick.base = kick.base * semitones(design.kickTune, VARIANT.kickTune)
+	kick.sweep = kick.sweep * octaves(design.kickDrive, VARIANT.kickSweep)
+	kick.decay = kick.decay * octaves(design.kickLength, VARIANT.kickLength)
+	kick.length = kick.length * octaves(math.max(0, design.kickLength), VARIANT.kickLength)
+	kick.drive = kick.drive * octaves(design.kickDrive, VARIANT.kickDrive)
+	kick.click = kick.click * octaves(design.kickClick, VARIANT.kickClick)
+	local hat = copy("hat")
+	hat.scale = hat.scale * octaves(design.hatTone, VARIANT.hatTone)
+	hat.decay = hat.decay * octaves(design.hatLength, VARIANT.hatLength)
+	hat.openDecay = hat.openDecay * octaves(design.hatLength, VARIANT.hatLength)
+	hat.noise = hat.noise * octaves(design.hatNoise, VARIANT.hatNoise)
+	local clap = copy("clap")
+	clap.spacing = clap.spacing * octaves(design.clapSpread, VARIANT.clapSpread)
+	clap.bursts = design.clapSpread > 0.3 and 4 or clap.bursts
+	clap.decay = clap.decay * octaves(design.clapLength, VARIANT.clapLength)
+	clap.tone = clap.tone * octaves(design.clapTone, VARIANT.clapTone)
+	return result
 end
 -- The break's sampler: a slice cut short fades over a few milliseconds, as a
 -- sampler's declick does, instead of clicking.
@@ -115,15 +180,36 @@ local function shotRenderer(sr, drums, noise)
 end
 
 local function metalSource(noise)
-	return function(t, s, scale)
+	return function(t, s, scale, hiss)
 		local v = 0
 		for _, f in ipairs(METAL) do v = v + ((t * f * scale) % 1 < 0.5 and 1 or -1) end
 		-- Two differences act as a steep high-pass on the metallic cluster.
 		local d1 = v - (s.a or 0); s.a = v
 		local d2 = d1 - (s.b or 0); s.b = d1
-		return d2 / 12 + noise() * 0.12
+		return d2 / 12 + noise() * (hiss or 0.12)
 	end
 end
+
+-- Clap bursts: noise band-passed around `tone` (the difference of two
+-- one-pole low-passes), in quick bursts and then a tail.
+local function clapSource(noise, clap)
+	local tailStart = (clap.bursts - 1) * clap.spacing
+	return function(t, s)
+		local n = noise()
+		s.ca = (s.ca or 0) + clap.tone * (n - (s.ca or 0))
+		s.cb = (s.cb or 0) + clap.tone * 0.17 * (s.ca - (s.cb or 0))
+		local burst = 0
+		for i = 0, clap.bursts - 1 do
+			local since = t - i * clap.spacing
+			if since >= 0 then burst = math.max(burst, exp(-since / 0.005)) end
+		end
+		local tail = t >= tailStart and exp(-(t - tailStart) / clap.decay) * 0.8 or 0
+		return (s.ca - s.cb) * math.max(burst, tail) * 2.4
+	end, tailStart + clap.decay * 4
+end
+
+-- A small room for a snare: two feedback combs at wall-bounce delays.
+local SNARE_ROOM = {delays = {0.0113, 0.0171}, feedback = 0.55, tail = 0.45}
 
 -- The voices a style designs: kick, snare (and its ghost), clap and hats.
 local function renderKit(sr, sound)
@@ -137,39 +223,57 @@ local function renderKit(sr, sound)
 		local click = t < 0.003 and noise() * kick.click * (1 - t / 0.003) or 0
 		return softClip(kick.drive * sin(s.phase) * exp(-t / kick.decay)) * 0.95 + click
 	end)
-	shot("snare", 0.32, function(t, s)
-		local body = sin(TAU * snare.tone * t) * exp(-t / snare.bodyDecay) * 0.55
-			+ sin(TAU * snare.overtone * t) * exp(-t / 0.035) * 0.25
+	local layer = clapSource(noise, clap)
+	local combs = {}
+	for i, delay in ipairs(SNARE_ROOM.delays) do combs[i] = {line = {}, size = floor(delay * sr), at = 0} end
+	local driveNorm = snare.drive > 0 and 1 / softClip(1 + 3 * snare.drive) or 1
+	shot("snare", 0.32 + snare.room * SNARE_ROOM.tail, function(t, s)
+		s.phase = (s.phase or 0) + TAU * snare.tone * (1 + snare.drop * exp(-t / 0.012)) / sr
+		local body = sin(s.phase) * exp(-t / snare.bodyDecay) * 0.55
+			+ sin(s.phase * snare.overtone / snare.tone) * exp(-t / 0.035) * 0.25
+		-- Wires: a first difference is bright fizz, a band around 3 kHz
+		-- the darker hiss of an older kit.
 		local n = noise()
 		local hp = n - (s.prev or 0)
 		s.prev = n
-		return body + hp * exp(-t / snare.noiseDecay) * snare.noise
-	end)
-	local tailStart = (clap.bursts - 1) * clap.spacing
-	shot("clap", tailStart + clap.decay * 4, function(t, s)
-		-- A band-pass around 1 kHz: the difference of two one-pole low-passes.
-		local n = noise()
-		s.a = (s.a or 0) + 0.35 * (n - (s.a or 0))
-		s.b = (s.b or 0) + 0.06 * (s.a - (s.b or 0))
-		local burst = 0
-		for i = 0, clap.bursts - 1 do
-			local since = t - i * clap.spacing
-			if since >= 0 then burst = math.max(burst, exp(-since / 0.005)) end
+		s.lp = (s.lp or 0) + 0.45 * (n - (s.lp or 0))
+		s.lp2 = (s.lp2 or 0) + 0.08 * (s.lp - (s.lp2 or 0))
+		local wires = hp * snare.bright + (s.lp - s.lp2) * 1.6 * (1 - snare.bright)
+		local envelope = exp(-t / snare.noiseDecay) + snare.rattle * 0.35 * exp(-t / (snare.noiseDecay * 3))
+		local v = body + wires * envelope * snare.noise
+		if snare.snap > 0 and t < 0.004 then
+			v = v + (hp * 0.6 + sin(TAU * 1750 * t)) * snare.snap * (1 - t / 0.004)
 		end
-		local tail = t >= tailStart and exp(-(t - tailStart) / clap.decay) * 0.8 or 0
-		return (s.a - s.b) * math.max(burst, tail) * clap.level * 2.4
+		if snare.clap > 0 then v = v + layer(t, s) * clap.level * snare.clap * 0.6 end
+		if snare.drive > 0 then v = softClip(v * (1 + 3 * snare.drive)) * driveNorm * 0.8 end
+		if snare.room > 0 then
+			local wet = 0
+			for _, c in ipairs(combs) do
+				local slot = c.at % c.size + 1
+				local out = c.line[slot] or 0
+				c.line[slot] = v + out * SNARE_ROOM.feedback
+				c.at = c.at + 1
+				wet = wet + out
+			end
+			v = v + wet * snare.room * 0.5
+		end
+		return v
 	end)
-	shot("hat", 0.07, function(t, s) return metal(t, s, hat.scale) * exp(-t / hat.decay) end)
+	local clapShot, clapLength = clapSource(noise, clap)
+	shot("clap", clapLength, function(t, s) return clapShot(t, s) * clap.level end)
+	shot("hat", 0.07, function(t, s) return metal(t, s, hat.scale, hat.noise) * exp(-t / hat.decay) end)
 	shot("openHat", math.max(0.4, hat.openDecay * 3.5), function(t, s)
-		return metal(t, s, hat.scale) * exp(-t / hat.openDecay) * 0.8
+		return metal(t, s, hat.scale, hat.noise) * exp(-t / hat.openDecay) * 0.8
 	end)
 	drums.ghost = drums.snare
 	return drums
 end
 
--- Kits by sample rate and drum design: switching back to a style reuses
--- its rendered kit.
-local kits = {}
+-- Kits by sample rate and drum design: switching back to a style or
+-- skipping back a track reuses its rendered kit. Every track brings a new
+-- design, so only the most recent few stay; a playing Synth holds its own.
+local KIT_CACHE = 8
+local kits, kitOrder = {}, {}
 local function kitKey(sr, sound)
 	local parts = {sr}
 	for _, group in ipairs({"kick", "snare", "clap", "hat"}) do
@@ -321,14 +425,29 @@ function Synth.new(settings, sampleRate, sound)
 	return self
 end
 
--- The drum table voices play from: the style's kit over the shared shots.
+-- The drum table voices play from: the style's kit, voiced for the
+-- current track's design, over the shared shots.
 function Synth:applySound(sound)
 	self.sound = sound
-	local key = kitKey(self.sr, sound)
-	kits[key] = kits[key] or renderKit(self.sr, sound)
-	self.drums = setmetatable({}, {__index = function(_, name)
-		return kits[key][name] or self.shared[name]
-	end})
+	self:applyKit()
+end
+
+function Synth:applyDrums(design)
+	self.design = design
+	self:applyKit()
+end
+
+function Synth:applyKit()
+	local key = kitKey(self.sr, Synth.drumVariant(self.sound, self.design))
+	local kit = kits[key]
+	if not kit then
+		kit = renderKit(self.sr, Synth.drumVariant(self.sound, self.design))
+		kits[key] = kit
+		table.insert(kitOrder, key)
+		if #kitOrder > KIT_CACHE then kits[table.remove(kitOrder, 1)] = nil end
+	end
+	local shared = self.shared
+	self.drums = setmetatable({}, {__index = function(_, name) return kit[name] or shared[name] end})
 end
 
 --- Plays `composer` from its first bar at the next bar line; the audio
@@ -384,6 +503,11 @@ function Synth:scheduleBar()
 	if self.pendingSound then
 		insertEvent(self.events, {frame = start, kind = "sound", sound = self.pendingSound})
 		self.pendingSound = nil
+	end
+	-- Each track plays its own kit, from its first bar.
+	if bar.drums ~= self.scheduledDrums then
+		insertEvent(self.events, {frame = start, kind = "drums", design = bar.drums})
+		self.scheduledDrums = bar.drums
 	end
 	bar.kicks, bar.snares = {}, {} -- absolute frames, for the visualizer's flashes
 	for _, h in ipairs(bar.hits) do
@@ -448,6 +572,8 @@ function Synth:startEvent(e)
 	local MIX, PAD, KEYS, PLUCK = sound.mix, sound.pad, sound.keys, sound.pluck
 	if e.kind == "sound" then
 		self:applySound(e.sound)
+	elseif e.kind == "drums" then
+		self:applyDrums(e.design)
 	elseif e.kind == "drum" then
 		local place = DRUM_PLACE[e.voice]
 		local data = self.drums[e.voice]

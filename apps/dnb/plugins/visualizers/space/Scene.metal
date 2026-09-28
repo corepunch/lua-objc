@@ -180,23 +180,51 @@ struct SpaceBody {
 	int index [[flat]];
 };
 
-// A quad facing the camera at the body's depth. `grow` widens it to hold
-// the sphere's perspective silhouette, which swells beyond the radius close up.
+// A quad through the body's centre, square to the ray from the eye: the
+// sphere's silhouette is a cone around that ray, so a circle of radius
+// d·tan(asin(r/d)) there holds it exactly, wherever it sits on screen. (A
+// quad in the view plane does not: off-axis, perspective stretches the
+// silhouette into an ellipse beyond it, and planets near the edges of a
+// wide window lost their sides.)
 static SpaceBody spaceBillboard(uint vid, float3 centre, float radius, const thread Frame &f,
-		const thread Camera &cam, bool grow = true) {
+		const thread Camera &cam) {
+	float2 corners[6] = {float2(-1, -1), float2(1, -1), float2(-1, 1),
+		float2(1, -1), float2(1, 1), float2(-1, 1)};
+	float2 c = corners[vid % 6];
+	float3 toward = centre - cam.eye;
+	float d = length(toward);
+	float3 axis = toward / max(d, 1e-4);
+	float3 right = normalize(cross(cam.up, axis));
+	float3 up = cross(axis, right);
+	float extent = radius * min(d / sqrt(max(d * d - radius * radius, 1e-4)), 4.0) * 1.02;
+	SpaceBody out;
+	out.world = centre + (c.x * right + c.y * up) * extent;
+	out.position = cameraClip(out.world, f, cam);
+	out.local = c;
+	out.centre = centre;
+	out.radius = radius;
+	out.index = 0;
+	return out;
+}
+
+// A glow around a body: a quad facing the camera that spans `extent` at the
+// body's distance, set `behind` beyond its centre (and scaled to keep that
+// span on screen) so the body occludes it cleanly instead of sharing its
+// depth.
+static SpaceBody spaceGlow(uint vid, float3 centre, float extent, float behind, const thread Frame &f,
+		const thread Camera &cam) {
 	float2 corners[6] = {float2(-1, -1), float2(1, -1), float2(-1, 1),
 		float2(1, -1), float2(1, 1), float2(-1, 1)};
 	float2 c = corners[vid % 6];
 	float3 v = cameraView(centre, cam);
-	float d = length(centre - cam.eye);
-	float extent = grow ? radius * min(d / sqrt(max(d * d - radius * radius, 1e-4)), 4.0) * 1.15 : radius;
-	float3 q = float3(v.xy + c * extent, v.z);
+	float scale = (v.z + behind) / max(v.z, CAMERA_NEAR);
+	float3 q = float3((v.xy + c * extent) * scale, v.z + behind);
 	SpaceBody out;
 	out.position = viewClip(q, f, cam);
 	out.local = c;
 	out.world = cam.eye + q.x * cam.right + q.y * cam.up + q.z * cam.forward;
 	out.centre = centre;
-	out.radius = radius;
+	out.radius = extent;
 	out.index = 0;
 	return out;
 }
@@ -238,7 +266,7 @@ fragment float4 spaceSunFragment(SpaceBody in [[stage_in]], constant ShaderInput
 vertex SpaceBody spaceCoronaVertex(uint vid [[vertex_id]], constant ShaderInputs &inputs [[buffer(0)]]) {
 	Frame f = frameOf(inputs);
 	Camera cam = spaceCamera(f);
-	return spaceBillboard(vid, float3(0.0), SPACE_SUN * 6.0, f, cam, false);
+	return spaceGlow(vid, float3(0.0), SPACE_SUN * 6.0, SPACE_SUN, f, cam);
 }
 
 fragment float4 spaceCoronaFragment(SpaceBody in [[stage_in]], constant ShaderInputs &inputs [[buffer(0)]]) {

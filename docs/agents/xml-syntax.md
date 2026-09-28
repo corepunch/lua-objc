@@ -226,11 +226,15 @@ fragment float4 glow(ShaderVertex in [[stage_in]],
                      constant ShaderInputs &inputs [[buffer(0)]]) {
 	// in.uv: 0…1 from the top-left. inputs.size: pixels. inputs.time: seconds.
 	// inputs.values[0 ..< inputs.count]: floats the controller assigned.
+	// inputs.age: seconds since they were assigned, to extrapolate motion.
 	return float4(in.uv, 0.5 + 0.5 * sin(inputs.time + inputs.values[0]), 1.0);
 }
 ```
 
 The controller animates it with `refs.fx.values = {…}` (at most 256 floats).
+Lua timers do not run on the display's clock, so for smooth motion send a
+position and its rate and let the shader add `rate * inputs.age`; measure
+the controller's real frame interval with `ns.uptime()`.
 Compiler errors are raised with line numbers in the app's source.
 
 A program can be linked from several sources instead: `ShaderSource`

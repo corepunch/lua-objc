@@ -19,7 +19,7 @@ src/packager/packager.m     Mac packager: Lua + assets over HTTP/WebSocket
 ios/LuaRuntime/            iPhone Simulator runtime (no app Lua inside)
 build/AppKit.dylib          AppKit runtime + luaopen_AppKit
 build/UIKit.dylib           UIKit compile-check (iOS SDK)
-lua/embedded/*.lua          Declarative layers (AppKit embedded; UIKit streamed on iOS)
+lua/embedded/*.lua          Declarative layers (AppKit loaded from Resources; UIKit streamed on iOS)
 ```
 
 ---
@@ -39,10 +39,9 @@ require("AppKit")  -- luaopen_AppKit in AppKit.dylib
 require("UIKit")   -- luaopen_UIKit in UIKit.dylib, inside an iOS host
 ```
 
-The build converts each `lua/embedded/*.lua` source into a byte-array header.
-`luaopen_AppKit` evaluates that embedded chunk and returns its complete public
-API table. There is no loose `AppKit.lua` or `IDEKit.lua` module that can
-silently bypass native loading on macOS.
+`luaopen_AppKit` loads `lua/embedded/AppKit.lua` from the app's resource tree
+and returns its complete public API table. Diskmap's Xcode target copies the
+framework Lua files into `Contents/Resources/lua` with a Copy Files build phase.
 
 On the iPhone Simulator host, `luaopen_UIKitNative` is in-process and
 `lua/embedded/UIKit.lua` is streamed from the Mac packager like application
@@ -642,8 +641,8 @@ current `canvas_state_create`, `bridge_eval`, or isolated IDE canvas subsystem.
 
 - **One AppKit runtime image**: all AppKit bridge and host state lives in
   `AppKit.dylib`; `lua-objc` itself is only a loader.
-- **Public module delivery**: AppKit Lua helpers are embedded in the native
-  module; the iOS development host streams UIKit helpers from the packager.
+- **Public module delivery**: AppKit Lua helpers ship in the app's resource
+  tree; the iOS development host streams UIKit helpers from the packager.
 - **Per-view layout state**: associated objects store layout metadata; base
   extensions expose accessors and native subclasses supply semantics as needed.
 - **Explicit state ownership**: closing owners wrap `lua_close` on macOS;

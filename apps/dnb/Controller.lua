@@ -12,7 +12,9 @@ local VIEWS = "apps/dnb/views/"
 -- The queue is the latency between moving a control and hearing it. The
 -- display loop refills it and animates the visualizer at about 60 Hz, which
 -- leaves many refills of headroom before the device would run dry.
-local PLAYBACK = {sampleRate = 44100, bufferSeconds = 0.3, frameInterval = 1 / 60}
+-- A frame's measured interval is capped so a stalled run loop (App Nap, a
+-- modal menu) resumes the picture instead of leaping ahead.
+local PLAYBACK = {sampleRate = 44100, bufferSeconds = 0.3, frameInterval = 1 / 60, maxFrame = 0.1}
 
 local SECTION_TITLES = {intro = "Intro", build = "Build-up", drop = "Drop", breakdown = "Breakdown",
 	outro = "Outro", halftime = "Half-time", blend = "Mixing in"}
@@ -20,7 +22,7 @@ local SECTION_TITLES = {intro = "Intro", build = "Build-up", drop = "Drop", brea
 local Controller = {}
 Controller.__index = Controller
 
--- `options` lets tests inject an output, seed, style and scheduler.
+-- `options` lets tests inject an output, seed, style, scheduler and clock.
 function Controller.new(options)
 	options = options or {}
 	local style = Styles:get(options.style or Styles:list()[1].id)
@@ -33,6 +35,7 @@ function Controller.new(options)
 			math.floor(PLAYBACK.sampleRate * PLAYBACK.bufferSeconds)),
 		async = options.async or ns.async,
 		sleep = options.sleep or ns.sleep,
+		clock = options.clock or ns.uptime,
 		buffer = {},
 		playing = false,
 		visuals = Visuals.new(Visualizers:list()),
@@ -338,10 +341,14 @@ function Controller:createWindow()
 	self.window = ns.Window(config)
 	self:setTransport(false)
 	-- The display loop lives as long as the window's Lua state; closing the
-	-- window cancels its timer.
+	-- window cancels its timer. Timers fire late while the run loop is busy
+	-- synthesizing, so each tick advances by the time that really passed.
 	self.async(function()
+		local last = self.clock()
 		while true do
-			self:tick(PLAYBACK.frameInterval)
+			local now = self.clock()
+			self:tick(math.min(now - last, PLAYBACK.maxFrame))
+			last = now
 			self.sleep(PLAYBACK.frameInterval)
 		end
 	end)

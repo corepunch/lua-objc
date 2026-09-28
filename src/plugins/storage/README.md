@@ -1,8 +1,9 @@
 # StorageScan native Lua plugin
 
-Built by `make` as `build/StorageScan.dylib`. This is a standalone service module,
-not a second AppKit runtime. Lua symbols resolve from the host's existing runtime.
-Diskmap loads it through `App.loadNativePlugin` and bundles it beside AppKit.dylib.
+The Diskmap Xcode project builds this as a standalone `StorageScan.dylib`
+target and embeds it beside `AppKit.dylib` in `Contents/Frameworks`. It is a
+service module, not a second AppKit runtime. Lua symbols resolve from the host's
+runtime. Diskmap loads it through `App.loadNativePlugin`.
 The plugin depends on public Foundation/Darwin APIs, not SpaceAttribution.
 
 ```lua

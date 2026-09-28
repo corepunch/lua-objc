@@ -33,15 +33,9 @@ build/appkit-runtime.o: $(APPKIT_RUNTIME_SRC) $(APPKIT_RUNTIME_FRAGMENTS)
 	mkdir -p build
 	$(CC) $(CFLAGS) -fPIC -c -o $@ $<
 
-build/appkit-module.o: src/embedded_lua_module.c $(GENERATED_DIR)/AppKit.lua.h
+build/appkit-module.o: src/embedded_lua_module.c
 	mkdir -p build
-	$(CC) $(CFLAGS) -fPIC -Ibuild \
-		-DLUA_MODULE_OPEN=luaopen_AppKit \
-		-DLUA_MODULE_BYTES=AppKit_lua \
-		-DLUA_MODULE_LENGTH=AppKit_lua_len \
-		-DLUA_MODULE_HEADER='"generated/AppKit.lua.h"' \
-		-DLUA_MODULE_CHUNK_NAME='"@AppKit.lua"' \
-		-c -o $@ $<
+	$(CC) $(CFLAGS) -fPIC -c -o $@ $<
 
 build/AppKit.dylib: build/appkit-runtime.o build/appkit-module.o
 	$(CC) -dynamiclib -Wl,-install_name,@rpath/AppKit.dylib \
@@ -283,8 +277,7 @@ list-devices:
 	xcrun devicectl list devices
 
 .PHONY: diskmap-app
-diskmap-app: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
-	python3 scripts/diskmap/bundle.py
+diskmap-app: diskmap-xcode-build
 
 DISKMAP_XCODE_PROJECT = apps/diskmap/Diskmap.xcodeproj
 DISKMAP_XCODE_DERIVED_DATA ?= build/xcode-derived
@@ -292,7 +285,7 @@ DISKMAP_XCODE_ROOT = $(abspath $(DISKMAP_XCODE_DERIVED_DATA))
 DISKMAP_XCODE_CONFIGURATION ?= Release
 .PHONY: diskmap-xcode-project diskmap-xcode-build
 diskmap-xcode-project:
-	python3 scripts/diskmap/generate_xcode_project.py
+	@test -f $(DISKMAP_XCODE_PROJECT)/project.pbxproj
 
 diskmap-xcode-build: diskmap-xcode-project
 	xcodebuild -project $(DISKMAP_XCODE_PROJECT) \
@@ -308,7 +301,7 @@ TARGET ?=
 .PHONY: xcode
 xcode:
 	@if [ "$(APP)" = diskmap ] && [ "$(TARGET)" = macos ]; then \
-		$(MAKE) diskmap-xcode-project; \
+		open $(DISKMAP_XCODE_PROJECT); \
 	else \
 		echo "usage: make xcode APP=diskmap TARGET=macos" >&2; exit 2; \
 	fi

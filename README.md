@@ -164,9 +164,10 @@ App: Model + Controller + views (etlua templates and partials)
 Shared native services: userdata conversion, Lua state lifetime, async, errors
 ```
 
-On macOS, `src/host.c` loads `build/AppKit.dylib`, which contains the runtime
-and embedded public Lua API. On iOS, `ios/LuaRuntime/` links the UIKit runtime
-and streams the public Lua API and app sources from the packager.
+On macOS, `src/host.c` loads `build/AppKit.dylib`; the runtime loads its public
+Lua API from `lua/embedded/AppKit.lua`. Diskmap's Xcode project copies that
+Lua source tree into the app's Resources. On iOS, `ios/LuaRuntime/` links the
+UIKit runtime and streams the public Lua API and app sources from the packager.
 `build/UIKit.dylib` is the SDK compile-check, not the Simulator app.
 
 ### Who owns an object: Lua or ARC?

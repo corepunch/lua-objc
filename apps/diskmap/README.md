@@ -284,8 +284,9 @@ measured categories and groups the rest; Not attributed is separate from
 measured Other files, and free space is the ring's empty track. When measured
 allocation exceeds reported usage the ring draws no partition and explains why.
 
-The app loads the native `StorageScan.dylib` plugin built by `make` and included
-in `make diskmap-app`. Its worker uses `getattrlistbulk` to fetch metadata
+The Xcode `StorageScan` target builds the native `StorageScan.dylib` plugin and
+embeds it beside the AppKit runtime in the app's Frameworks directory. Its
+worker uses `getattrlistbulk` to fetch metadata
 in batches and publishes results directly to Lua without temporary scan files.
 See [the Storage Settings investigation](../../docs/research/STORAGE_SIZING.md)
 for the Apple framework findings and local timing evidence.

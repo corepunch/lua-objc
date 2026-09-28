@@ -259,6 +259,14 @@ static int bridge_timer_after(lua_State *L) {
 	return 0;
 }
 
+/* _uptime() -> seconds of monotonic system time, the clock CADisplayLink and
+ * CACurrentMediaTime count in. Frame loops measure their real interval with
+ * it: a timer fires late whenever the run loop is busy. */
+static int bridge_uptime(lua_State *L) {
+	lua_pushnumber(L, NSProcessInfo.processInfo.systemUptime);
+	return 1;
+}
+
 #pragma mark - HTTP & JSON
 
 static int bridge_http_get(lua_State *L) {

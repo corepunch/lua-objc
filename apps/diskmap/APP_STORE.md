@@ -1,17 +1,16 @@
 # Mac App Store build and upload
 
-Diskmap is a macOS-only app. The deliberately small Xcode project is generated from `scripts/diskmap/xcode-project-template/` by `make xcode APP=diskmap TARGET=macos`. It compiles the C launcher and app icon catalog, then runs the existing lua-objc bundle script to put the runtime and Diskmap Lua resources into the app. The source runtime stays in the repository; it is not duplicated into the project.
+Diskmap is a macOS-only app. The checked-in `Diskmap.xcodeproj` has native targets for the app launcher, AppKit runtime, and StorageScan plugin. Xcode compiles their sources and copies the framework Lua tree and Diskmap Lua app files into `Contents/Resources` with Copy Files build phases.
 
 ## Build
 
 From the repository root:
 
 ```sh
-make xcode APP=diskmap TARGET=macos
 make diskmap-xcode-build
 ```
 
-The app bundle is `build/xcode-derived/Products/Release/Diskmap.app`. The project-generation target can be rerun to recreate `apps/diskmap/Diskmap.xcodeproj` from its checked-in template. For an App Store upload, archive for generic macOS with the developer's Apple Distribution team, then use Xcode Organizer's **Distribute App → App Store Connect → Upload**. Current bundled runtime dylibs are arm64, so this build supports Apple Silicon Macs only; add x86_64 runtime slices before promising Intel compatibility.
+The app bundle is `build/xcode-derived/Products/Release/Diskmap.app`. Open `apps/diskmap/Diskmap.xcodeproj` directly in Xcode to archive for generic macOS with the developer's Apple Distribution team, then use Xcode Organizer's **Distribute App → App Store Connect → Upload**. Current bundled runtime dylibs are arm64, so this build supports Apple Silicon Macs only; add x86_64 runtime slices before promising Intel compatibility.
 
 ## App Store Connect materials
 

@@ -2374,6 +2374,12 @@ function AppKit.sleep(seconds)
 	coroutine.yield()
 end
 
+--- Seconds of monotonic system time, for measuring real intervals: a
+--- `sleep` resumes late whenever the main run loop is busy.
+function AppKit.uptime()
+	return bridge._uptime()
+end
+
 function AppKit.async(fn)
 	local co = coroutine.create(fn)
 	resumeCoroutine(co)

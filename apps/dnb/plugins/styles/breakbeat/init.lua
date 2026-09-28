@@ -3,9 +3,9 @@
 -- tom fills, a slapping acid bassline with accents and slides, and stabs.
 
 local FLAVOURS = {
-	{id = "bigbeat", name = "Big Beat", amen = 1, acid = 0.3, stabs = 1},
-	{id = "nuskool", name = "Nu Skool", amen = 0.4, acid = 1, stabs = 0.6},
-	{id = "florida", name = "Florida Breaks", amen = 0.2, acid = 0.6, stabs = 0.4},
+	{id = "bigbeat", name = "Big Beat", amen = 1, acid = 0.3, stabs = 1, snares = {"fat", "crunchy", "roomy", "layered"}},
+	{id = "nuskool", name = "Nu Skool", amen = 0.4, acid = 1, stabs = 0.6, snares = {"tight", "crunchy", "layered", "rimshot"}},
+	{id = "florida", name = "Florida Breaks", amen = 0.2, acid = 0.6, stabs = 0.4, snares = {"tight", "layered", "rimshot", "roomy"}},
 }
 local ARRANGEMENT = {introBars = 8, buildBars = 8, dropBars = 32, breakdownBars = 16, rebuildBars = 8,
 	outroBars = 8, blendBars = 8, minCycles = 2, maxCycles = 3}

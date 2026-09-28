@@ -278,6 +278,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_show", bridge_show},
 	{"_font", bridge_font},
 	{"_timerAfter", bridge_timer_after},
+	{"_uptime", bridge_uptime},
 	{"_httpGet", bridge_http_get},
 	{"_jsonParse", bridge_json_parse},
 	{"_tabview", bridge_tabview},
