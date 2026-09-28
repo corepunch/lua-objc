@@ -195,13 +195,52 @@ LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
 - (NSRect)titleRectForBounds:(NSRect)bounds { return bounds; }
 @end
 
+/* SwiftUI `.minimumScaleFactor`: offered less width than its text needs, a
+ * label draws in a smaller size of its font, down to `minimumScaleFactor`
+ * times the declared size. The declared font is kept, so wider proposals
+ * bring the full size back. */
 @interface LuaLabel : LuaTextField
+@property(nonatomic) CGFloat minimumScaleFactor;
+- (void)fitFontToWidth:(CGFloat)width;
 @end
 
 @implementation LuaLabel {
 	NSLineBreakMode _paragraphBreakMode;
+	NSFont *_declaredFont;
+	BOOL _scalingFont;
 }
 + (Class)cellClass { return LuaLabelCell.class; }
+- (instancetype)initWithFrame:(NSRect)frame {
+	self = [super initWithFrame:frame];
+	if (self) _minimumScaleFactor = 1;
+	return self;
+}
+- (void)setMinimumScaleFactor:(CGFloat)value {
+	_minimumScaleFactor = MAX(0.01, MIN(1, value));
+	[self fitFontToWidth:CGFLOAT_MAX];
+}
+- (void)applyScaledFont:(NSFont *)font {
+	_scalingFont = YES;
+	self.font = font;
+	_scalingFont = NO;
+}
+- (void)fitFontToWidth:(CGFloat)width {
+	NSFont *declared = _declaredFont ?: self.font;
+	if (!declared) return;
+	if (self.font != declared) [self applyScaledFont:declared];
+	if (_minimumScaleFactor >= 1 || width >= CGFLOAT_MAX / 2) return;
+	CGFloat natural = self.fittingSize.width;
+	if (natural <= width || natural <= 0) return;
+	/* Glyph advances are not exactly linear in the point size, so step down
+	 * from the proportional guess until the text fits or reaches the floor. */
+	CGFloat floorSize = declared.pointSize * _minimumScaleFactor;
+	CGFloat size = MAX(floorSize, floor(declared.pointSize * width / natural * 2) / 2);
+	for (;;) {
+		[self applyScaledFont:[NSFont fontWithDescriptor:declared.fontDescriptor size:size] ?: declared];
+		if (size <= floorSize || self.fittingSize.width <= width) break;
+		size = MAX(floorSize, size - 0.5);
+	}
+}
 - (NSSize)intrinsicContentSize {
 	NSSize size = [super intrinsicContentSize];
 	// The attributed paragraph uses complete font metrics. Native single-line
@@ -224,7 +263,11 @@ LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
 	}];
 }
 - (void)setStringValue:(NSString *)value { [super setStringValue:value]; [self updateParagraphMetrics]; }
-- (void)setFont:(NSFont *)font { [super setFont:font]; [self updateParagraphMetrics]; }
+- (void)setFont:(NSFont *)font {
+	if (!_scalingFont) _declaredFont = font;
+	[super setFont:font];
+	[self updateParagraphMetrics];
+}
 - (void)setTextColor:(NSColor *)color { [super setTextColor:color]; [self updateParagraphMetrics]; }
 - (void)setAlignment:(NSTextAlignment)value { [super setAlignment:value]; [self updateParagraphMetrics]; }
 // Native single-line cell layout temporarily selects clipping. Keep the

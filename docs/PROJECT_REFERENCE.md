@@ -979,13 +979,15 @@ ring's inner edge so no separator is thinner; sunburst rings are 2pt apart.
 Non-positive values
 occupy no angle, a lone mark is a closed ring, and a chart without positive
 values draws its empty ring in `quaternaryLabel`. Any other child view is
-centered over the chart, typically a total in the hole:
+centered over the chart, typically a total in the hole. A donut offers that
+content the side of the square inscribed in its hole as `maxWidth`, so a
+label set at its largest size with `minimumScaleFactor` fits any hole:
 
 ```xml
 <SectorChart width="196" height="196" innerRadius="0.7" angularInset="1.5" accessibilityLabel="Storage by category">
   <SectorMark value="58" color="systemBlue" label="Applications" />
   <SectorMark value="16" color="systemPurple" label="Developer" />
-  <Label text="337 GB" size="26" weight="semibold" design="rounded" monospacedDigit="true" />
+  <Label text="337 GB" size="34" minimumScaleFactor="0.38" lines="1" weight="semibold" design="rounded" monospacedDigit="true" />
 </SectorChart>
 ```
 
@@ -1072,7 +1074,9 @@ in Lua. `ns.volumeCapacity(path)` returns `total`, `available` (free),
 | Attribute | SwiftUI | AppKit | UIKit |
 |---|---|---|---|
 | `help="…"` on any view | `.help(_:)` | `toolTip` | ignored |
+| `maxWidth="…"` on any view | `.frame(maxWidth:)` | proposes at most that width to its content when measuring | same |
 | `monospacedDigit="true"` on `<Label>` (with `size`) | `.monospacedDigit()` | `monospacedDigitSystemFont` | `monospacedDigitSystemFont` |
+| `minimumScaleFactor="0.5"` on `<Label>` (with `size`) | `.minimumScaleFactor(_:)` | the layout engine offers the label its width and it draws in a smaller size of its font, down to `size` × factor | `adjustsFontSizeToFitWidth` + `minimumScaleFactor` |
 | `subtitle="…"` on `<Window>` | `.navigationSubtitle(_:)` | `NSWindow.subtitle`; assign `window.subtitle` to update | ignored |
 | `style="borderedProminent"` on `<Button>` | `.buttonStyle(.borderedProminent)` | accent `bezelColor` | prominent button configuration |
 | `controlSize` (`mini`, `small`, `regular`, `large`) on `<Button>` | `.controlSize(_:)` | `NSControlSize` | ignored |

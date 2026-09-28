@@ -955,6 +955,7 @@ end
 --- @prop truncation string optional. One of "head", "middle", "tail".
 --- @prop wrapping string optional. "word" (default) or "character".
 --- @prop monospacedDigit boolean optional. Uses fixed-width digits so changing numbers do not shift (SwiftUI `.monospacedDigit()`); requires `size`.
+--- @prop minimumScaleFactor number optional. Smallest fraction of `size` the text shrinks to when offered less width (SwiftUI `.minimumScaleFactor`).
 --- @platform AppKit NSTextField (non-editable, bezel-less). UIKit UILabel.
 --- @example <Label>Hello</Label>
 --- @example <Label size="16" weight="bold">Hello</Label>
@@ -985,7 +986,8 @@ function AppKit.Text(arg)
 			AppKit.Text({ text, size = arg.size, weight = arg.weight,
 				italic = arg.italic, color = arg.color, design = arg.design,
 				monospacedDigit = arg.monospacedDigit, fontName = arg.fontName, smallCaps = arg.smallCaps,
-				lineLimit = arg.lineLimit, truncation = arg.truncation, wrapping = arg.wrapping }),
+				lineLimit = arg.lineLimit, truncation = arg.truncation, wrapping = arg.wrapping,
+				minimumScaleFactor = arg.minimumScaleFactor }),
 		}
 		return applyLayout(AppKit.HStack(row), arg)
 	end
@@ -1009,6 +1011,11 @@ function AppKit.Text(arg)
 	end
 	if type(arg) == "table" and arg.color then
 		v.textColor = bridge._systemColor(arg.color)
+	end
+	-- SwiftUI `.minimumScaleFactor`: `size` is the largest size; a narrower
+	-- proposal shrinks the font down to `size * minimumScaleFactor`.
+	if type(arg) == "table" and arg.minimumScaleFactor then
+		v.minimumScaleFactor = arg.minimumScaleFactor
 	end
 	if type(arg) == "table" and arg.accessibilityLabel then
 		v.accessibilityLabel = arg.accessibilityLabel

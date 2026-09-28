@@ -1,12 +1,10 @@
 <%
-  local FOLDER = { chart = 360, minimumHole = 0.3, ring = 0.7 / 3, centerText = { {28, 13}, {22, 11}, {17, 10} }, gap = 5, depth = 14, list = 300, treemapHeight = 420, legendSize = 84, legendShare = 34 }
+  local FOLDER = { chart = 360, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 34, caption = 13, totalScale = 13 / 34, captionScale = 0.77 }, gap = 5, depth = 14, list = 300, treemapHeight = 420, legendSize = 84, legendShare = 34 }
   -- Every ring keeps the thickness it has among three, so one ring of
   -- files is a slim ring like the Overview donut, not a thick disc.
   local rings = 1
   for _, node in ipairs(nodes) do rings = math.max(rings, node.ring or 1) end
   local hole = math.max(FOLDER.minimumHole, 1 - rings * FOLDER.ring)
-  -- The total grows with the hole it sits in (total, caption).
-  local center = FOLDER.centerText[math.min(rings, #FOLDER.centerText)]
   -- The Map page's ring fades: raised rings are told apart by their gaps and
   -- shading, and smaller items keep their folder's hue, faded further.
   local ringOpacity = { 1, 0.84, 0.68 }
@@ -69,8 +67,8 @@
         <SectorMark id="<%= node.id %>" ring="<%= node.ring %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" opacity="<%= (ringOpacity[node.ring] or 0.5) * (node.other and node.parent and otherFade or 1) %>" label="<%= node.label %>" />
         <% end %>
         <VStack spacing="0" alignment="center">
-          <Label text="<%= total %>" size="<%= center[1] %>" weight="semibold" design="rounded" monospacedDigit="true" />
-          <Label text="<%= #trail > 1 and "Click to go up" or "Measured" %>" size="<%= center[2] %>" color="secondary" />
+          <Label text="<%= total %>" size="<%= FOLDER.center.total %>" minimumScaleFactor="<%= FOLDER.center.totalScale %>" lines="1" weight="semibold" design="rounded" monospacedDigit="true" />
+          <Label text="<%= #trail > 1 and "Click to go up" or "Measured" %>" size="<%= FOLDER.center.caption %>" minimumScaleFactor="<%= FOLDER.center.captionScale %>" lines="1" color="secondary" />
         </VStack>
       </SectorChart>
       <% end %>
