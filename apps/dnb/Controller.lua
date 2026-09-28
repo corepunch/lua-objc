@@ -1,8 +1,10 @@
 local ns = require("AppKit")
 local xml = require("ui.xml")
+local Template = require("ui.template")
 local Model = require("apps.dnb.Model")
 local Synth = require("apps.dnb.models.Synth")
 local Visuals = require("apps.dnb.models.Visuals")
+local Timeline = require("apps.dnb.models.Timeline")
 local Styles = require("apps.dnb.host.Styles")
 local Visualizers = require("apps.dnb.host.Visualizers")
 local AudioOutput = require("apps.dnb.services.AudioOutput")
@@ -15,6 +17,9 @@ local VIEWS = "apps/dnb/views/"
 -- A frame's measured interval is capped so a stalled run loop (App Nap, a
 -- modal menu) resumes the picture instead of leaping ahead.
 local PLAYBACK = {sampleRate = 44100, bufferSeconds = 0.3, frameInterval = 1 / 60, maxFrame = 0.1}
+
+-- The arrangement strip's rows, ruler and lane-name column, in points.
+local TIMELINE = {rowHeight = 10, ruler = 10, labelWidth = 52, scale = 2}
 
 local SECTION_TITLES = {intro = "Intro", build = "Build-up", drop = "Drop", breakdown = "Breakdown",
 	outro = "Outro", halftime = "Half-time", blend = "Mixing in"}
@@ -218,8 +223,38 @@ function Controller:present(refs, stage)
 	end
 end
 
+-- The arrangement strip around set bar `n` of `composer`, the playhead
+-- `fraction` into it and moving at `barsPerSecond`. Rows and blocks change
+-- only when another track comes into view; the playhead moves every frame.
+function Controller:showTimeline(composer, n, fraction, barsPerSecond)
+	local timeline = self.timeline
+	if not timeline then return end
+	local plans = Timeline.plans(composer, n)
+	local key = tostring(composer) .. ":" .. plans[1].track .. ":" .. #plans
+	local headline = Timeline.headline(plans, n)
+	local refs = timeline.refs
+	if self.timelineKey ~= key then
+		self.timelineKey = key
+		self.timelineRows = Timeline.rows(plans)
+		refs = select(2, timeline:update({rows = self.timelineRows, headline = headline,
+			rowHeight = TIMELINE.rowHeight, ruler = TIMELINE.ruler, labelWidth = TIMELINE.labelWidth}))
+		local data = Timeline.instances(plans, self.timelineRows)
+		refs.timelineCanvas.draws = {{vertex = "timelineBlockVertex", fragment = "timelineBlockFragment",
+			count = 6, instances = #data // Timeline.stride, data = data, blend = "alpha"}}
+	elseif refs.timelineNext.text ~= headline then
+		refs.timelineNext.text = headline
+	end
+	local rows = #self.timelineRows
+	local values = Timeline.values(n + fraction, barsPerSecond, rows)
+	table.insert(values, TIMELINE.ruler / (TIMELINE.ruler + rows * TIMELINE.rowHeight))
+	table.insert(values, self.window and self.window.backingScaleFactor or TIMELINE.scale)
+	refs.timelineCanvas.values = values
+end
+
 function Controller:showPlayhead(bar, played)
-	local info = self:nowPlaying(bar, math.max(0, math.min(1, (played - bar.frame) / bar.frames)))
+	local fraction = math.max(0, math.min(1, (played - bar.frame) / bar.frames))
+	self:showTimeline(bar.composer, bar.index, fraction, self.model:value("tempo") / 240)
+	local info = self:nowPlaying(bar, fraction)
 	for _, refs in ipairs(self:views()) do
 		if refs.section.text ~= info.section then refs.section.text = info.section end
 		if refs.detail.text ~= info.detail then refs.detail.text = info.detail end
@@ -228,8 +263,9 @@ function Controller:showPlayhead(bar, played)
 	end
 end
 
--- The header while stopped: the first bar of the current set.
+-- The header and timeline while stopped: the next bar to play.
 function Controller:showIdle()
+	self:showTimeline(self.composer, self.synth.composerBar, 0, 0)
 	local info = self:nowPlaying(self.composer:bar(self.synth.composerBar, self.model))
 	for _, refs in ipairs(self:views()) do refs.detail.text = info.detail end
 end
@@ -262,6 +298,10 @@ function Controller:stop()
 	if not self.playing then return end
 	self.output:pause()
 	self:setTransport(false)
+	-- The strip stops where the music did instead of scrolling on.
+	local played = self.output:played()
+	local bar = self.synth:barAt(played)
+	if bar then self:showTimeline(bar.composer, bar.index, math.max(0, math.min(1, (played - bar.frame) / bar.frames)), 0) end
 end
 
 -- Skips to the next track of the set at the next bar line; its intro mixes
@@ -314,6 +354,8 @@ function Controller:createWindow()
 	self.refs = refs
 	self:present(refs)
 	self.window = ns.Window(config)
+	self.timeline = Template.new(refs.timeline, VIEWS .. "Timeline.etlua", ns)
+	self:showIdle()
 	self:setTransport(false)
 	-- The display loop lives as long as the window's Lua state; closing the
 	-- window cancels its timer. Timers fire late while the run loop is busy

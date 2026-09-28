@@ -111,6 +111,9 @@ function Composer:bar(n, settings)
 		track = track, tonic = tonic}, StyleKit.random(self.seed, 2, n))
 	local chord = self:chord(track, cycleIndex, n)
 	bar.progression, bar.chord = kit.progressionName(mode, material.progression), chord
+	-- The plan it came from, for the timeline: a bar can sound after a new
+	-- style or set has replaced this composer.
+	bar.composer = self
 	local humanize = settings:value("humanize")
 	local previous = track.index > 0 and set:track(track.index - 1) or nil
 	local ctx = {

@@ -1,0 +1,31 @@
+<%
+-- The arrangement strip, after the arrange window of Cubase or MTV Music
+-- Generator: lane names beside a Metal view that scrolls the blocks past a
+-- fixed playhead (shaders/Timeline.metal). Names are presentation, so they
+-- live here; the rows are the lanes of the tracks in view.
+local names = {
+	kick = "Kick", snare = "Snare", ghosts = "Ghosts", hats = "Hi-hats", ride = "Ride", percussion = "Perc",
+	amen = "Amen", sub = "Sub", reese = "Reese", pads = "Pads", keys = "Keys", stabs = "Stabs", arp = "Arp",
+	lead = "Lead", fills = "Fills", risers = "Risers", halftime = "Half-time", throws = "Throws", chops = "Chops",
+}
+-%>
+<GlassEffect cornerRadius="24" maxWidth="infinity">
+	<VStack padding="18" spacing="8" alignment="leading" maxWidth="infinity">
+		<HStack spacing="8" maxWidth="infinity">
+			<Label text="ARRANGEMENT" size="11" weight="heavy" color="secondary" />
+			<Spacer />
+			<Label id="timelineNext" text="<%= headline %>" size="12" color="secondary" monospacedDigit="true" />
+		</HStack>
+		<HStack spacing="10" alignment="top" maxWidth="infinity">
+			<VStack spacing="0" alignment="trailing" width="<%= labelWidth %>">
+				<Label text="" size="9" height="<%= ruler %>" />
+				<% for _, row in ipairs(rows) do -%>
+				<Label key="<%= row.part %>" text="<%= names[row.part] %>" size="9" weight="medium" color="secondary" lineLimit="1" height="<%= rowHeight %>" />
+				<% end -%>
+			</VStack>
+			<ShaderView id="timelineCanvas" function="timeline" layers="1" maxWidth="infinity" height="<%= ruler + #rows * rowHeight %>">
+				<ShaderSource path="apps/dnb/shaders/Timeline.metal" />
+			</ShaderView>
+		</HStack>
+	</VStack>
+</GlassEffect>
