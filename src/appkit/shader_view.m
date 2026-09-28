@@ -369,6 +369,9 @@ static NSData *shader_float_data(NSArray<NSNumber *> *numbers) {
 	MTLRenderPassDescriptor *pass = view.currentRenderPassDescriptor;
 	id<CAMetalDrawable> drawable = view.currentDrawable;
 	if (!pass || !drawable || !self.pipeline) return;
+	/* A view added by a template update can draw before its first layout;
+	 * a zero-sized drawable has no pixels, and layers cannot be allocated. */
+	if (view.drawableSize.width < 1 || view.drawableSize.height < 1) return;
 	id<MTLCommandBuffer> buffer = [self.queue commandBuffer];
 	[self encodeFrame:buffer pass:pass width:(NSUInteger)view.drawableSize.width
 		height:(NSUInteger)view.drawableSize.height];

@@ -113,8 +113,6 @@ LUA_NUMBER_ACCESSORS(paddingBottom, setPaddingBottom, kPaddingBottomKey, 0, valu
 LUA_NUMBER_ACCESSORS(spacing, setSpacing, kSpacingKey,
 	kStackSpacing, MAX(0, value))
 LUA_NUMBER_ACCESSORS(maxRows, setMaxRows, kFlowMaxRowsKey, 0, MAX(0, floor(value)))
-LUA_NUMBER_ACCESSORS(fixedWidth, setFixedWidth, kFixedWidthKey, 0, value)
-LUA_NUMBER_ACCESSORS(fixedHeight, setFixedHeight, kFixedHeightKey, 0, value)
 LUA_NUMBER_ACCESSORS(minWidth, setMinWidth, kMinWidthKey, 0, value)
 LUA_NUMBER_ACCESSORS(minHeight, setMinHeight, kMinHeightKey, 0, value)
 LUA_NUMBER_ACCESSORS(flexGrow, setFlexGrow, kFlexGrowKey, 0, MAX(0, value))
@@ -125,6 +123,23 @@ LUA_NUMBER_ACCESSORS(containerRelativeWidth, setContainerRelativeWidth,
 	kContainerRelativeWidthKey, 0, MAX(0, value))
 LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
 
+/* A fixed dimension is optional, like a maximum: nil clears it, so a
+ * reconciled template that drops `width` lets the view size itself again,
+ * while 0 remains a real zero-point frame. */
+- (NSNumber *)fixedWidth {
+	return objc_getAssociatedObject(self, &kKeys[kFixedWidthKey]);
+}
+- (void)setFixedWidth:(NSNumber *)value {
+	objc_setAssociatedObject(self, &kKeys[kFixedWidthKey], value,
+		OBJC_ASSOCIATION_RETAIN);
+}
+- (NSNumber *)fixedHeight {
+	return objc_getAssociatedObject(self, &kKeys[kFixedHeightKey]);
+}
+- (void)setFixedHeight:(NSNumber *)value {
+	objc_setAssociatedObject(self, &kKeys[kFixedHeightKey], value,
+		OBJC_ASSOCIATION_RETAIN);
+}
 - (NSNumber *)maxWidth {
 	return objc_getAssociatedObject(self, &kKeys[kMaxWidthKey]);
 }

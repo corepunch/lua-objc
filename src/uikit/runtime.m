@@ -19,8 +19,8 @@ static void layout_recursive(UIView *view, CGFloat width);
 @property(nonatomic) CGFloat paddingTop;
 @property(nonatomic) CGFloat paddingBottom;
 @property(nonatomic, copy) NSString *alignment;
-@property(nonatomic) CGFloat fixedWidth;
-@property(nonatomic) CGFloat fixedHeight;
+@property(nonatomic) NSNumber *fixedWidth;
+@property(nonatomic) NSNumber *fixedHeight;
 @property(nonatomic) CGFloat minWidth;
 @property(nonatomic) CGFloat minHeight;
 @property(nonatomic) NSNumber *maxWidth;
@@ -84,20 +84,11 @@ static void layout_recursive(UIView *view, CGFloat width);
 	objc_setAssociatedObject(self, &kAlignmentKey, value,
 		OBJC_ASSOCIATION_COPY);
 }
-- (CGFloat)fixedWidth {
-	return [objc_getAssociatedObject(self, &kFixedWidthKey) doubleValue];
-}
-- (void)setFixedWidth:(CGFloat)value {
-	objc_setAssociatedObject(self, &kFixedWidthKey, @(value),
-		OBJC_ASSOCIATION_RETAIN);
-}
-- (CGFloat)fixedHeight {
-	return [objc_getAssociatedObject(self, &kFixedHeightKey) doubleValue];
-}
-- (void)setFixedHeight:(CGFloat)value {
-	objc_setAssociatedObject(self, &kFixedHeightKey, @(value),
-		OBJC_ASSOCIATION_RETAIN);
-}
+/* Optional like the maximums: nil clears a fixed dimension, 0 is a real one. */
+- (NSNumber *)fixedWidth { return objc_getAssociatedObject(self, &kFixedWidthKey); }
+- (void)setFixedWidth:(NSNumber *)value { objc_setAssociatedObject(self, &kFixedWidthKey, value, OBJC_ASSOCIATION_RETAIN); }
+- (NSNumber *)fixedHeight { return objc_getAssociatedObject(self, &kFixedHeightKey); }
+- (void)setFixedHeight:(NSNumber *)value { objc_setAssociatedObject(self, &kFixedHeightKey, value, OBJC_ASSOCIATION_RETAIN); }
 - (CGFloat)minWidth { return [objc_getAssociatedObject(self, &kMinWidthKey) doubleValue]; }
 - (void)setMinWidth:(CGFloat)value { objc_setAssociatedObject(self, &kMinWidthKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
 - (CGFloat)minHeight { return [objc_getAssociatedObject(self, &kMinHeightKey) doubleValue]; }
