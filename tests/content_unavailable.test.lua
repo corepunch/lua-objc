@@ -36,4 +36,21 @@ t.expect(above > 100 and math.abs(above - below) < 0.5, "its content is centered
 local title = parts[3].frame
 t.expect(math.abs(title.origin.x + title.size.width / 2 - 300) < 1, "its title is centered horizontally")
 
+-- The description keeps to the middle half of the pane, centered by default.
+local descriptionRow = parts[4]
+local description = descriptionRow.subviews[2]
+t.expect(math.abs(description.frame.size.width - 300) < 1, "the description is half the pane wide")
+t.expect(math.abs(description.frame.origin.x - 150) < 1, "the description's half is centered")
+local bridge = require("AppKitNative")
+t.assertEqual(description.textAlignment, bridge._textAlignment("center"), "the description is centered by default")
+
+-- NSTextAlignment numbers differ between Intel and Apple silicon, so
+-- alignment names resolve to the compiled constants, never Lua literals.
+local label = ns.Text { "Aligned", alignment = "center" }
+t.assertEqual(label.textAlignment, bridge._textAlignment("center"), "centered text uses AppKit's center constant")
+t.expect(bridge._textAlignment("center") ~= bridge._textAlignment("trailing"), "center and trailing stay distinct")
+t.assertEqual(bridge._textAlignment("justified"), 3, "justified is the same on every architecture")
+local leading = render([[<ContentUnavailable title="Drop" description="Drag a folder here." descriptionAlignment="leading" />]], {}, ns)
+t.assertEqual(leading.subviews[3].subviews[2].textAlignment, bridge._textAlignment("leading"), "an unavailable view can lead-align its description")
+
 os.exit(t.summary() and 0 or 1)

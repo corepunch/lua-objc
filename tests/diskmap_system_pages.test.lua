@@ -98,7 +98,8 @@ local installer = model.resources:add("apps-system", {id = "installer", name = "
 t.expect(installer ~= nil, "an installer can be registered")
 model.measurements.installer = {bytes = 16e9, status = "complete"}
 local page = Updates.presentation(model, plist, false)
-t.assertEqual(page.stages[1].size, "≥ 12.0 GB", "downloaded updates show their measured size")
+t.assertEqual(page.stages[1].size, "12.0 GB", "downloaded updates show their measured size")
+t.assertEqual(page.stages[1].sizeIcon, "hand.raised.fill", "a partial stage size carries the lower-bound symbol")
 t.assertEqual(page.stages[2].size, "0 KB", "an empty Update volume is measured as empty")
 t.assertEqual(page.stages[3].size, "Calculating…", "stages show measurement progress")
 t.assertEqual(#page.installers, 1, "installers in Applications are found by name")

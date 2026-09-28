@@ -34,10 +34,11 @@ function Recommendations.checked(model, suggested, needle)
 				absent = absent + 1
 			elseif m.bytes and m.bytes > 0 then
 				local value = {id = row.id, name = row.name, icon = row.icon, color = row.color, appIcon = row.appIcon, path = row.path,
-					bytes = m.bytes, size = (m.status == "partial" and "≥ " or "") .. Model.size(m.bytes),
+					bytes = m.bytes,
 					subtitle = rule and rule.advice or row.consequence or row.subtitle,
 					detail = row:isKept() and "Kept" or row.policy == "Essential" and "Essential" or ("Under " .. Model.size(threshold)),
 					shareText = ""}
+				Model.sizeLabel(value, m.status, m.bytes)
 				Status.apply(value, (value.detail == "Kept" or value.detail == "Essential") and value.detail or "Within")
 				if matches(value, needle) then table.insert(rows, value) end
 			end
@@ -56,7 +57,7 @@ function Recommendations.presentation(model, query, apps)
 	local rebuildableBytes, reviewBytes = 0, 0
 	for _, row in ipairs(Cleanup.suggestions(model)) do
 		suggested[row.id] = true
-		-- A partial measurement already reads "≥" in the size column.
+		-- A partial measurement already carries its symbol in the size column.
 		row.detail = row.impact == "Safe/rebuildable" and "Rebuildable" or "Review"
 		row.shareText = ""
 		Status.apply(row)

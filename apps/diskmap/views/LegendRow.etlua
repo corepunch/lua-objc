@@ -1,7 +1,7 @@
 <% --[[ Rows are keyed by category so a re-ranked legend moves rows instead of
   rewriting their text. The size has a fixed width: "Calculating…" and
-  "≥ 998.9 MB" occupy the same space, so values never shift while a scan runs. ]]
-  local LEGEND = { size = 84, share = 34 } %>
+  "998.9 MB" beside a partial-size symbol occupy the same space, so values never shift while a scan runs. ]]
+  local LEGEND = { size = 84, share = 34, symbol = 11, symbolGap = 4 } %>
 <HStack key="legend-<%= item.id %>" maxWidth="infinity" spacing="6" alignment="center">
   <SystemImage name="circle.fill" size="9" color="<%= item.color %>" />
   <% if item.id == "other" then %>
@@ -10,6 +10,10 @@
   <Button title="<%= item.name %>" style="link" size="12" action="category_<%= item.id %>" help="Show <%= item.name %>" />
   <% end %>
   <Spacer />
-  <Label text="<%= item.size %>" size="12" monospacedDigit="true" width="<%= LEGEND.size %>" alignment="trailing" lines="1" />
+  <HStack width="<%= LEGEND.size %>" spacing="<%= LEGEND.symbolGap %>" alignment="center"<% if item.sizeHelp then %> help="<%= item.sizeHelp %>"<% end %>>
+    <Spacer />
+    <% if (item.sizeIcon or "") ~= "" then %><SystemImage name="<%= item.sizeIcon %>" size="<%= LEGEND.symbol %>" color="secondary" /><% end %>
+    <Label text="<%= item.size %>" size="12" monospacedDigit="true" alignment="trailing" lines="1" />
+  </HStack>
   <Label text="<%= item.share %>" size="11" color="secondary" monospacedDigit="true" width="<%= LEGEND.share %>" alignment="trailing" />
 </HStack>

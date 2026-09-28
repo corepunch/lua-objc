@@ -301,9 +301,34 @@ static int bridge_AppKitControls_box(lua_State *L) {
 	return 1;
 }
 
+/* SwiftUI's ProgressView() spins from the moment it appears. An
+ * indeterminate indicator that hides while stopped would otherwise never be
+ * seen, so it animates while it is in a window and stops when it leaves.
+ * `spinning` reports that state to headless tests. */
+@interface LuaProgressIndicator : NSProgressIndicator
+@property(nonatomic, readonly) BOOL spinning;
+@end
+
+@implementation LuaProgressIndicator
+- (void)viewDidMoveToWindow {
+	[super viewDidMoveToWindow];
+	[self updateSpinning];
+}
+- (void)setIndeterminate:(BOOL)indeterminate {
+	[super setIndeterminate:indeterminate];
+	[self updateSpinning];
+}
+- (void)updateSpinning {
+	BOOL spin = self.isIndeterminate && self.window != nil;
+	if (spin == _spinning) return;
+	_spinning = spin;
+	if (spin) [self startAnimation:nil]; else [self stopAnimation:nil];
+}
+@end
+
 static int bridge_AppKitControls_progressIndicator(lua_State *L) {
 
-	NSProgressIndicator *obj = [[NSProgressIndicator alloc] initWithFrame:NSZeroRect];
+	NSProgressIndicator *obj = [[LuaProgressIndicator alloc] initWithFrame:NSZeroRect];
 	push_objc(L, obj, "nsview");
 	return 1;
 }

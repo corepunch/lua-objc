@@ -2178,6 +2178,11 @@ initially expands a new group. `forceExpanded = true` reveals descendants even
 when a previously loaded group was collapsed (for example, search results).
 Empty child collections have no disclosure.
 
+A column's `labelStyle="iconOnly"` shows each row's symbol alone, with the
+text kept as tooltip and VoiceOver label. In a trailing column the symbol sits
+beside the text, or at the trailing edge when shown alone. `helpKey` names a row field used as the cell's tooltip, SwiftUI's
+`.help`.
+
 Calling `view:layout()` without an explicit width remeasures its enclosing
 layout owner up to the native split pane, so content growth moves siblings.
 `view:scrollIntoView()` reveals a view through its enclosing native scroll view.

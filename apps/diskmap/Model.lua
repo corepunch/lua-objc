@@ -8,11 +8,45 @@ function Model.size(bytes)
 	if bytes >= 1e6 then return string.format("%.1f MB", bytes / 1e6) end
 	return string.format("%.0f KB", bytes / 1000)
 end
+-- Measurement states that stand in for a size, in words short enough for a
+-- size column.
+Model.sizeStates = {
+	denied = "No access",
+	excluded = "Not scanned",
+	skipped = "Linked",
+	unsupported = "System",
+	failed = "Unavailable",
+}
+-- A lower bound's symbol: the Privacy & Security hand, as unreadable items
+-- are what keep the size from being complete.
+Model.partialIcon = "hand.raised.fill"
+
+-- Fills a row's size column from a measurement status. A partial size is a
+-- lower bound because some items could not be read, so it carries a raised
+-- hand beside its number and says so in its tooltip.
+function Model.sizeLabel(row, status, bytes)
+	local state = Model.sizeStates[status]
+	row.calculating = status == "calculating"
+	row.partial = status == "partial"
+	row.size = state or row.calculating and "Calculating…" or Model.size(bytes)
+	row.sizeIcon = row.partial and Model.partialIcon or ""
+	row.sizeHelp = row.partial and ("At least " .. row.size .. ". Diskmap could not read some items here.") or nil
+	return row
+end
+
+-- A size inside a sentence, where no symbol can stand in for "at least".
+function Model.atLeast(bytes, partial)
+	return (partial and "at least " or "") .. Model.size(bytes)
+end
+
 -- Counts with thousands separators, as Finder shows item counts.
 -- Whole percentages, "<1%" for a sliver, so share labels stay one width
 -- across every list.
+-- A measured zero is "0%", so empty rows keep the same label-and-bar layout
+-- as the rest; only an unmeasured size has no share.
 function Model.percent(bytes, total)
-	if not bytes or bytes <= 0 or not total or total <= 0 then return "" end
+	if not bytes or bytes < 0 or not total or total <= 0 then return "" end
+	if bytes == 0 then return "0%" end
 	local value = bytes * 100 / total
 	if value < 1 then return "<1%" end
 	return string.format("%d%%", math.floor(value + 0.5))

@@ -4,7 +4,8 @@
     <Label text="<%= title %>" size="13" maxWidth="infinity" lines="1" />
     <Label text="<%= detail %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
   </VStack>
-  <Label id="<%= id %>Value" text="<%= value %>" size="13" monospacedDigit="true" lines="1" />
+  <% if (valueIcon or "") ~= "" then %><SystemImage name="<%= valueIcon %>" size="13" color="secondary" help="<%= valueHelp or value %>" /><% end %>
+  <Label id="<%= id %>Value" text="<%= value %>"<% if valueHelp then %> help="<%= valueHelp %>"<% end %> size="13" monospacedDigit="true" lines="1" />
   <% if actionTitle then %>
   <Button title="<%= actionTitle %>" action="<%= action %>" />
   <% end %>

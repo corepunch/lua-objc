@@ -6,9 +6,10 @@
   its own; the page scrolls as one surface. `status = true` turns the detail
   column into one colour-coded symbol per row (models/Status.lua); the status
   word remains its tooltip and accessibility label. The size column fits
-  "≥ 999.9 MB" and a spinner with "Calculating…". Fixed columns total at most
-  380 points so the name keeps at least 180 points on a 560-point page. ]]
-  local COLUMNS = { name = 180, detail = 140, status = 48, share = 80, size = 120, more = 40, statusSymbol = 20 }
+  "999.9 MB" beside a symbol, and a spinner with "Calculating…". The share
+  bar keeps most of the Overview's width. Fixed columns total at most 415 points so
+  the name keeps 180 points in the narrowest window's 595-point list. ]]
+  local COLUMNS = { name = 180, detail = 130, status = 48, share = 135, size = 110, more = 40, statusSymbol = 20 }
 %>
 <List id="<%= id %>" rowMenu="<%= menu %>" dragKey="path"<% if activate then %> onActivate="<%= activate %>"<% end %> scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44" maxWidth="infinity">
   <Column id="name" title="Name" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon"<% if fileIcons then %> fileIconKey="fileIcon"<% end %> imageSize="28" minWidth="<%= COLUMNS.name %>" />
@@ -18,6 +19,6 @@
   <Column id="detail" title="Detail" width="<%= COLUMNS.detail %>" minWidth="<%= COLUMNS.detail %>" />
   <% end %>
   <Column id="shareText" title="Share" width="<%= COLUMNS.share %>" minWidth="<%= COLUMNS.share %>" levelKey="relative" levelColorKey="color" />
-  <Column id="size" title="On disk" width="<%= COLUMNS.size %>" minWidth="<%= COLUMNS.size %>" alignment="trailing" loadingKey="calculating" />
+  <Column id="size" title="On disk" width="<%= COLUMNS.size %>" minWidth="<%= COLUMNS.size %>" alignment="trailing" loadingKey="calculating" imageKey="sizeIcon" helpKey="sizeHelp" />
   <Column id="more" title="" width="<%= COLUMNS.more %>" minWidth="<%= COLUMNS.more %>" buttonSymbol="ellipsis.circle" buttonMenu="true" />
 </List>

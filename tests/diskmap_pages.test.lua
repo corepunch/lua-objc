@@ -64,7 +64,7 @@ app.page.template.actions.style(0)
 app:show("applications")
 local leftovers = page().leftovers
 t.expect(leftovers.rowCount >= 4, "leftovers list unclaimed folders")
-t.assertEqual(bridge._tableCell(leftovers, 1, 0).textField.stringValue, "High confidence", "the most certain leftovers come first")
+t.assertEqual(bridge._tableCell(leftovers, 1, 0).textField.stringValue, "High", "the most certain leftovers come first")
 t.expect(page().markHigh.enabled, "high-confidence leftovers can be marked together")
 app.page.template.actions.markHigh()
 local marked = app.review:count()

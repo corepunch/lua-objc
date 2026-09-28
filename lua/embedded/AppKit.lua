@@ -1051,12 +1051,11 @@ function AppKit.Text(arg)
 	v:sizeToFit()
 	local result = applyLayout(v, type(arg) == "table" and arg or nil)
 	if type(arg) == "table" and arg.alignment then
-		result.textAlignment = ({ leading = 0, center = 2, trailing = 1 })[arg.alignment] or 0
+		result.textAlignment = bridge._textAlignment(arg.alignment)
 	end
 	return result
 end
 
-local PARAGRAPH_ALIGNMENT = { leading = 4, center = 2, trailing = 1, justified = 3 }
 
 --- Long-form prose set as a book sets it: selectable text with explicit
 --- leading, optional hyphenation, and an optional dropped initial that the
@@ -1085,7 +1084,7 @@ function AppKit.Paragraph(props)
 	if props.color then view.textColor = bridge._systemColor(props.color) end
 	if props.lineSpacing then view.lineSpacing = props.lineSpacing end
 	if props.hyphenation ~= nil then view.hyphenation = props.hyphenation end
-	if props.alignment then view.textAlignment = PARAGRAPH_ALIGNMENT[props.alignment] or 4 end
+	if props.alignment then view.textAlignment = bridge._textAlignment(props.alignment) end
 	if props.selectable == false then view.selectable = false end
 	if props.dropCap then
 		if props.dropCapFontName or props.dropCapDesign or props.dropCapWeight then
@@ -1801,6 +1800,7 @@ end
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
 --- @prop description value optional. Secondary explanatory text for an unavailable state.
+--- @prop descriptionAlignment string optional. `center` (default), `leading` or `trailing` text alignment of the description.
 --- @prop imageSize number optional. Symbol or image size in points.
 --- @prop lines number optional. Maximum number of visible text lines.
 --- @prop spacing number optional. Component-specific setting passed to the native control.
@@ -1823,16 +1823,25 @@ function AppKit.ContentUnavailable(props)
 	end
 	if props.title then table.insert(content, (AppKit.Title(props.title))) end
 	if props.description then
-		table.insert(content, (AppKit.Text {
-			props.description,
-			alignment = "center",
-			color = "secondary",
-			lineLimit = props.lines or 0,
+		-- The description keeps to the middle half of the pane, a readable
+		-- measure like SwiftUI's; the spacers share the other half equally.
+		table.insert(content, (AppKit.HStack {
+			AppKit.Spacer(),
+			AppKit.Text {
+				props.description,
+				alignment = props.descriptionAlignment or "center",
+				flexGrow = 2, flexBasis = 0, flexShrink = 1,
+				color = "secondary",
+				lineLimit = props.lines or 0,
+			},
+			AppKit.Spacer(),
+			spacing = 0,
+			fillWidth = true,
 		}))
 	end
 	table.insert(content, (AppKit.Spacer()))
 	local view = AppKit.VStack(content)
-	-- Full width too, so a long description wraps across the pane.
+	-- Full width too, so the description's half is half of the pane.
 	if props.fillWidth == nil then view.fillWidth = true end
 	return applyLayout(view, props)
 end

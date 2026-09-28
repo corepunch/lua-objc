@@ -36,12 +36,13 @@ function Cleanup.suggestions(model, rules)
 		local row = group.row
 		if group.bytes >= Cleanup.buildGroupThreshold and not row:isKept() then
 			local value = {id = row.id, name = row.name, icon = row.icon, color = row.color, group = true, projects = group.count,
-				bytes = group.bytes, size = (group.partial and "≥ " or "") .. Model.size(group.bytes), partial = group.partial,
+				bytes = group.bytes,
 				policy = group.rebuildable and "Rebuildable" or "Review"}
+			Model.sizeLabel(value, group.partial and "partial" or "complete", group.bytes)
 			value.impact = group.rebuildable and not group.partial and "Safe/rebuildable" or "Needs review"
 			value.priority, value.threshold = 2, Cleanup.buildGroupThreshold
 			value.subtitle = (row.subtitle or "") .. " In " .. Model.plural(group.count, "project") .. "."
-			value.evidence = "Measured " .. value.size .. " in " .. Model.plural(group.count, "project")
+			value.evidence = "Measured " .. Model.atLeast(group.bytes, group.partial) .. " in " .. Model.plural(group.count, "project")
 			table.insert(result, value)
 		end
 	end
@@ -55,12 +56,12 @@ function Cleanup.suggestions(model, rules)
 			and not row:isKept() and row.policy ~= "Essential" then
 			local value = {id = row.id, name = row.name, path = row.path, policy = row.policy, action = row.action,
 				subtitle = row.subtitle, consequence = row.consequence, icon = row.icon, color = row.color, appIcon = row.appIcon}
-			value.bytes, value.size = m.bytes, (m.status == "partial" and "≥ " or "") .. Model.size(m.bytes)
-			value.partial = m.status == "partial"
+			value.bytes = m.bytes
+			Model.sizeLabel(value, m.status, m.bytes)
 			value.impact = row.policy == "Rebuildable" and not value.partial and "Safe/rebuildable" or "Needs review"
 			value.priority, value.threshold = rule.priority, rule.threshold
 			value.subtitle = rule.advice
-			value.evidence = "Measured " .. value.size .. " · Review threshold " .. Model.size(rule.threshold)
+			value.evidence = "Measured " .. Model.atLeast(m.bytes, value.partial) .. " · Review threshold " .. Model.size(rule.threshold)
 			table.insert(result, value)
 		end
 	end

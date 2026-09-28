@@ -260,6 +260,9 @@ static SCNMaterial *sector_scene_material(BOOL top) {
 			NSColor *color = [semantic_color(spec[@"color"] ?: @"accent") colorUsingColorSpace:NSColorSpace.sRGBColorSpace];
 			CGFloat opacity = color.alphaComponent * alpha;
 			NSColor *fill = [[color colorWithAlphaComponent:1] blendedColorWithFraction:1 - opacity ofColor:backdrop];
+			/* A lifted sector catches more light: it brightens as it rises
+			 * instead of every other sector dimming around it. */
+			fill = [fill blendedColorWithFraction:lift * kSectorSceneLiftBrighten ofColor:NSColor.whiteColor] ?: fill;
 			for (SCNMaterial *material in node.geometry.materials) material.diffuse.contents = fill;
 			/* SCNShape extrudes about its center; the base rests on the floor.
 			 * A highlighted sector slides out along its middle and rises, like
@@ -353,6 +356,12 @@ static int bridge_sector_scene_nodes(lua_State *L) {
 		lua_pushnumber(L, node.position.x); lua_setfield(L, -2, "x");
 		lua_pushnumber(L, node.position.y); lua_setfield(L, -2, "y");
 		lua_pushnumber(L, node.position.z); lua_setfield(L, -2, "z");
+		NSColor *fill = [node.geometry.firstMaterial.diffuse.contents isKindOfClass:NSColor.class]
+			? [node.geometry.firstMaterial.diffuse.contents colorUsingColorSpace:NSColorSpace.sRGBColorSpace] : nil;
+		/* Relative luminance, which lightening raises even for a colour whose
+		 * brightest channel is already full. */
+		lua_pushnumber(L, fill ? 0.2126 * fill.redComponent + 0.7152 * fill.greenComponent + 0.0722 * fill.blueComponent : 0);
+		lua_setfield(L, -2, "luminance");
 		lua_rawseti(L, -2, (lua_Integer)index + 1);
 	}
 	return 1;

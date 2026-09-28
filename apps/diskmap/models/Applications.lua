@@ -118,7 +118,7 @@ function Applications.leftovers(model, installed, query)
 				table.insert(rows, {id = root.path .. "/" .. child.name, path = root.path .. "/" .. child.name, name = child.name,
 					subtitle = source.label .. " · " .. info.label, bytes = bytes, size = Model.size(bytes),
 					tier = tier, rank = info.rank, confidence = info.confidence, reason = info.label, source = source.label,
-					icon = "questionmark.folder.fill", color = tier == "high" and "systemPink" or "systemGray", detail = info.confidence .. " confidence"})
+					icon = "questionmark.folder.fill", color = tier == "high" and "systemPink" or "systemGray", detail = info.confidence})
 			end
 		end
 	end

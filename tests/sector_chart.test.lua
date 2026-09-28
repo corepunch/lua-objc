@@ -105,7 +105,8 @@ local over = {}
 for _, sector in ipairs(overflow) do over[sector.id] = sector end
 t.expect(math.abs(over.a2.endAngle - over.a.endAngle) < 1e-9, "overflowing children end at their parent's edge")
 
--- Interactive charts dim other sectors on hover and report selection.
+-- Interactive charts raise the hovered sector, leave the others alone, and
+-- report selection.
 local chosen, hoveredId, centered
 local interactive = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.5,
 	{__sectorMark = true, id = "a", value = 3, color = "systemBlue"},
@@ -117,10 +118,17 @@ local pointer = interactive.subviews[#interactive.subviews]
 t.assertEqual(pointer.className, "LuaPointerView", "an interactive chart places a pointer view on top")
 bridge._pointerSend(pointer, "hover", 100, 40)
 t.assertEqual(hoveredId, "a", "hover names the sector under the pointer")
-t.assertEqual(interactive.subviews[1].strokeAlpha, 1, "the hovered sector stays opaque")
-t.expect(interactive.subviews[2].strokeAlpha < 1, "other sectors dim")
+t.assertEqual(interactive.subviews[1].strokeAlpha, 1, "the hovered sector is opaque")
+t.assertEqual(interactive.subviews[2].strokeAlpha, 1, "other sectors do not dim")
 bridge._pointerSend(pointer, "hover")
-t.assertEqual(interactive.subviews[2].strokeAlpha, 1, "leaving restores every sector")
+t.assertEqual(interactive.subviews[1].strokeAlpha, 1, "leaving restores every sector")
+local faded = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.5,
+	{__sectorMark = true, id = "a", value = 3, color = "systemBlue", opacity = 0.5},
+	{__sectorMark = true, id = "b", value = 1, color = "systemGreen", opacity = 0.5},
+	onHover = function() end}
+bridge._pointerSend(faded.subviews[#faded.subviews], "hover", 100, 40)
+t.assertEqual(faded.subviews[1].strokeAlpha, 0.75, "a flat chart moves the hovered sector halfway to opaque")
+t.assertEqual(faded.subviews[2].strokeAlpha, 0.5, "and keeps the others at their own opacity")
 bridge._pointerSend(pointer, "click", 100, 40, 1)
 t.expect(chosen and chosen[1] == "a" and chosen[2] == 1, "clicking selects a sector")
 bridge._pointerSend(pointer, "click", 100, 100, 1)
@@ -195,8 +203,14 @@ t.assertEqual(raisedHovered, nil, "the hole hovers nothing")
 -- a1 spans the first third of a, from half past one to half past four.
 bridge._pointerSend(raisedPointer, "hover", 185, 100)
 t.assertEqual(raisedHovered, "a1", "the outer ring hovers through the camera")
+bridge._pointerSend(raisedPointer, "hover")
+local resting = ns._sectorSceneNodes(scene)
+bridge._pointerSend(raisedPointer, "hover", 185, 100)
 nodes = ns._sectorSceneNodes(scene)
-t.expect(nodes[3].z > 5 and nodes[1].alpha < 1, "the hovered sector lifts and the others dim")
+t.expect(nodes[3].z > 5, "the hovered sector lifts")
+t.assertEqual(nodes[1].alpha, resting[1].alpha, "the other sectors keep their opacity")
+t.expect(nodes[3].luminance > resting[3].luminance, "the lifted sector brightens")
+t.assertEqual(nodes[1].luminance, resting[1].luminance, "the others keep their color")
 t.expect(Sectors.update(raised, {raisedMarks[1], raisedMarks[2]}), "a raised chart takes new marks")
 t.assertEqual(#ns._sectorSceneNodes(scene), 2, "removed marks remove their solids")
 t.assertEqual(raised.subviews[1], scene, "the scene view is kept")

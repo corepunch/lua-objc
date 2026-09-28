@@ -24,7 +24,7 @@ local MINIMUM_SWEEP = 0.1
 -- in front of it and the two would read as one.
 -- Content in a donut's hole is offered the side of the square inscribed in
 -- the hole, so a label with a minimum scale factor sizes itself to the hole.
-local STYLE = { ringGap = 2, dimmedAlpha = 0.35, raisedStart = TOP + 45, holeContent = 1 / math.sqrt(2) }
+local STYLE = { ringGap = 2, dimmedAlpha = 0.35, highlightGain = 0.5, raisedStart = TOP + 45, holeContent = 1 / math.sqrt(2) }
 
 -- Returns the stroke geometry for a chart `diameter` points wide whose hole is
 -- `innerRadius` (0...1) of the outer radius. A pie (0) strokes from the center.
@@ -233,8 +233,8 @@ end
 -- Builds the chart with the platform module `ns`. Array entries of `props` are
 -- `SectorMark` records or overlay views centered on the chart, like SwiftUI's
 -- `chartBackground` content in the hole. `onSelect(id, clickCount)`,
--- `onHover(id)` and `onCenter()` make it interactive; hovering dims the
--- other sectors. A positive `depth` draws raised sectors `depth`
+-- `onHover(id)` and `onCenter()` make it interactive; the hovered sector
+-- lifts and brightens while the others stay as they are. A positive `depth` draws raised sectors `depth`
 -- points deep in a SceneKit view instead of flat arcs; the geometry, hit
 -- testing and interaction are the same. `shadow = false` drops its contact
 -- shadow.
@@ -277,14 +277,17 @@ function Sectors.chart(ns, props)
 	if interactive and type(ns.PointerView) == "function" then
 		local ChartKeys = require("ui.chartkeys")
 		local highlighted
-		-- Hovering or keyboard focus dims the other sectors; a typed filter
-		-- dims sectors whose label does not match.
+		-- Hovering or keyboard focus raises one sector: a raised chart lifts it
+		-- and lightens it natively, a flat one moves it halfway to opaque.
+		-- Only a typed filter dims, marking sectors whose label does not match.
 		local function restyle(animated)
 			local alphas, highlightedIndex = {}, nil
 			for index, sector in ipairs(state.sectors) do
 				local alpha = sector.alpha
-				if highlighted and sector ~= highlighted then alpha = alpha * STYLE.dimmedAlpha end
-				if sector == highlighted then highlightedIndex = index end
+				if sector == highlighted then
+					highlightedIndex = index
+					if not state.scene then alpha = alpha + (1 - alpha) * STYLE.highlightGain end
+				end
 				local mark = state.keys and state.keys:find(sector.id)
 				if mark and not state.keys:matches(mark) then alpha = alpha * STYLE.dimmedAlpha end
 				alphas[index] = alpha

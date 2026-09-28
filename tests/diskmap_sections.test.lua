@@ -94,17 +94,19 @@ t.assertEqual(bridge._tableRowMenu(items, 1)[1].title, "Show Xcode DerivedData",
 t.assertEqual(menuRows, 1, "row menus are built when opened")
 local more = bridge._tableCell(items, 4, 0)
 t.expect(more.actionButton ~= nil and more.actionButton.accessibilityLabel == "More", "each row has a More button")
-items.size = ns.Size(560, 200); items:layout(560)
+-- 595 points is the list width in Diskmap's narrowest window (880 points).
+items.size = ns.Size(595, 200); items:layout(595)
 local widths = bridge._tableColumnWidths(items)
-local total = 0
-for _, column in ipairs(widths) do total = total + column.width end
-t.expect(total <= 560 + 1, "shared list columns fit a narrow page")
+local total, named = 0, 0
+for _, column in ipairs(widths) do total = total + column.width; if column.id == "name" then named = column.width end end
+t.expect(total <= 595 + 1, "shared list columns fit the narrowest window")
+t.expect(named >= 180, "the name keeps 180 points in the narrowest window")
 -- Status lists show one colour-coded symbol per row; the status word stays
 -- available as tooltip and accessibility label instead of truncated text.
 local Status = require("apps.diskmap.models.Status")
 local _, statusRefs = render("ResourceList", {id = "statuses", menu = "rowMenu", status = true, actions = {rowMenu = function() return {} end}})
 local statuses = statusRefs.statuses
-statuses:replaceRows({Status.apply({id = "derived", name = "Xcode DerivedData", detail = "Rebuildable", size = "≥ 999.9 MB", relative = 1, shareText = "", color = "systemBlue", icon = "hammer.fill"}),
+statuses:replaceRows({Status.apply({id = "derived", name = "Xcode DerivedData", detail = "Rebuildable", size = "999.9 MB", sizeIcon = "hand.raised.fill", sizeHelp = "At least 999.9 MB.", relative = 1, shareText = "", color = "systemBlue", icon = "hammer.fill"}),
 	Status.apply({id = "group", name = "Simulator runtimes", detail = "Group", size = "8.5 GB", relative = 0.5, shareText = "", color = "systemBlue", icon = "hammer.fill"})})
 local statusCell = bridge._tableCell(statuses, 1, 0)
 t.expect(statusCell.textField.hidden, "an icon-only status hides its word")
@@ -119,10 +121,45 @@ statuses.size = ns.Size(560, 200); statuses:layout(560)
 local statusWidths = {}
 for _, column in ipairs(bridge._tableColumnWidths(statuses)) do statusWidths[column.id] = column.width end
 t.expect(statusWidths.detail <= 48, "the status column is one symbol wide")
-t.expect(statusWidths.size >= 104, "the size column fits a lower-bound size such as ≥ 999.9 MB")
+t.expect(statusWidths.size >= 104, "the size column fits a lower-bound symbol beside 999.9 MB")
 for status, style in pairs(Status.styles) do
 	t.expect(style.icon:find("%.fill$") ~= nil and style.color ~= nil, status .. " has a filled, coloured symbol")
 end
+
+-- A size that is a state is a short word in the size column, never a
+-- symbol; measured rows in the same column keep their numbers.
+local _, sizeRefs = render("ResourceList", {id = "sizes", menu = "rowMenu", actions = {rowMenu = function() return {} end}})
+local sizes = sizeRefs.sizes
+sizes:replaceRows({
+	Model.sizeLabel({id = "mail", name = "Mail", relative = 0, shareText = "", color = "systemBlue", icon = "envelope"}, "denied"),
+	Model.sizeLabel({id = "docs", name = "Documents", relative = 1, shareText = "", color = "systemBlue", icon = "doc"}, "complete", 2e9),
+})
+sizes.size = ns.Size(560, 200); sizes:layout(560)
+local denied, measured = bridge._tableCell(sizes, 2, 0), bridge._tableCell(sizes, 2, 1)
+t.expect(not denied.textField.hidden and denied.imageView.image == nil, "a denied size is a word, not a symbol")
+t.assertEqual(denied.textField.stringValue, "No access", "the state is spelled out")
+t.assertEqual(measured.textField.stringValue, "2.0 GB", "the measured size is text")
+for status, text in pairs(Model.sizeStates) do
+	local row = Model.sizeLabel({}, status)
+	t.assertEqual(row.size, text, status .. " reads as its word")
+	t.expect(row.sizeIcon == "" and #text <= 11, status .. " is a short word without a symbol")
+end
+t.assertEqual(Model.sizeStates.unsupported, "System", "system-managed storage reads just System")
+local pending = Model.sizeLabel({}, "calculating")
+t.expect(pending.calculating and pending.sizeIcon == "" and pending.size == "Calculating…", "calculating keeps its spinner and word")
+local partial = Model.sizeLabel({}, "partial", 2e9)
+t.assertEqual(partial.size, "2.0 GB", "a partial size keeps a plain number")
+t.assertEqual(partial.sizeIcon, "hand.raised.fill", "a partial size shows the symbol beside its number")
+t.assertEqual(partial.sizeHelp, "At least 2.0 GB. Diskmap could not read some items here.", "the tooltip says it is a lower bound")
+t.assertEqual(Model.atLeast(2e9, true), "at least 2.0 GB", "sentences spell out a lower bound")
+sizes:replaceRows({Model.sizeLabel({id = "dev", name = "Developer", relative = 1, shareText = "", color = "systemBlue", icon = "hammer"}, "partial", 15.8e9)})
+local lower = bridge._tableCell(sizes, 2, 0)
+lower:layout()
+t.assertEqual(lower.textField.stringValue, "15.8 GB", "the lower bound keeps its number")
+t.assertEqual(lower.toolTip, partial.sizeHelp:gsub("2.0", "15.8"), "the whole cell explains the lower bound")
+local textLeft = lower.textField.frame.origin.x + lower.textField.frame.size.width - lower.textField.fittingSize.width
+t.expect(lower.imageView.frame.origin.x + lower.imageView.frame.size.width <= textLeft
+	and lower.imageView.frame.origin.x + lower.imageView.frame.size.width >= textLeft - 10, "the symbol sits just before the trailing number")
 t.assertEqual(Status.apply({detail = "Under 5.0 GB"}, "Within").statusColor, "systemGreen", "a location within limits is green")
 t.assertEqual(Status.apply({detail = "Review"}).statusColor, "systemOrange", "review is orange")
 t.assertEqual(Status.apply({detail = "Keep"}).statusColor, "systemRed", "required data is red")

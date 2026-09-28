@@ -74,7 +74,7 @@ local function sized(model, id)
 	local row = Categories.row(model, id)
 	if not row then return nil end
 	if row.calculating then return "Calculating…" end
-	return row.size
+	return row.size, row.sizeIcon, row.sizeHelp
 end
 
 -- Full macOS installers in Applications, plus disk images and installer
@@ -109,8 +109,9 @@ end
 function Updates.presentation(model, plist, snapshotDates, installerFiles)
 	local stages = {}
 	for index, stage in ipairs(Updates.stages) do
+		local size, sizeIcon, sizeHelp = sized(model, stage.id)
 		table.insert(stages, {index = index, id = stage.id, title = stage.title, icon = stage.icon,
-			detail = stage.detail, size = sized(model, stage.id) or "Not measured"})
+			detail = stage.detail, size = size or "Not measured", sizeIcon = sizeIcon, sizeHelp = sizeHelp})
 	end
 	local snapshots = snapshotDates and Updates.snapshots(snapshotDates) or {}
 	local snapshotTitle

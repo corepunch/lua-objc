@@ -24,7 +24,8 @@ function Guide.measurement(model, topic)
 	end
 	if calculating then return "Measuring…" end
 	if not measured then return nil end
-	return (partial and "≥ " or "") .. Model.size(bytes) .. " on this Mac"
+	local text = Model.atLeast(bytes, partial) .. " on this Mac"
+	return text:sub(1, 1):upper() .. text:sub(2)
 end
 
 -- Chapters and topics matching `query`, in guide order. A chapter whose title

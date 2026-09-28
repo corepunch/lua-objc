@@ -98,6 +98,10 @@ static const CGFloat kSectorSceneFlatness = 0.04;
 static const CGFloat kSectorSceneLiftDistance = 8.0;
 static const CGFloat kSectorSceneLiftHeight = 6.0;
 static const NSTimeInterval kSectorSceneLiftDuration = 0.18;
+static const CGFloat kSectorSceneLiftBrighten = 0.18;
+/* How often a relaunch looks for its new instance, and how long it waits. */
+static const NSTimeInterval kRelaunchPollInterval = 0.25;
+static const NSTimeInterval kRelaunchTimeout = 10.0;
 static const CGFloat kSectorSceneTilt = 0.5;
 static const CGFloat kSectorSceneFieldOfView = 24.0;
 static const CGFloat kSectorSceneFitMargin = 1.08;
@@ -432,6 +436,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_imageViewer", bridge_AppKit_image_viewer},
 	{"_systemImage", bridge_AppKit_system_image},
 	{"_systemColor", bridge_AppKit_system_color},
+	{"_textAlignment", bridge_text_alignment},
 	{"_addDoubleClick", bridge_AppKit_add_double_click},
 	{"_addDrag", bridge_add_drag},
 	{"_addHoverTooltip", bridge_AppKit_add_hover_tooltip},

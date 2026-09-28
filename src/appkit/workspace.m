@@ -473,11 +473,36 @@ static int bridge_relaunch(lua_State *L) {
 	};
 	NSBundle *bundle = NSBundle.mainBundle;
 	if ([bundle.bundlePath.pathExtension isEqualToString:@"app"]) {
+		/* Quit on evidence, not on the completion handler alone: inside the
+		 * App Sandbox Launch Services can start the new instance yet report
+		 * an error, or report late, which left two copies running. The new
+		 * instance appearing among this bundle's running applications is
+		 * what counts; failure is reported only if none appears in time. */
+		__block BOOL done = NO;
+		void (^settle)(BOOL, NSString *) = ^(BOOL ok, NSString *message) {
+			if (done) return;
+			done = YES;
+			finish(ok, message);
+		};
+		pid_t own = NSProcessInfo.processInfo.processIdentifier;
+		NSString *identifier = bundle.bundleIdentifier;
+		NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:kRelaunchTimeout];
+		[NSTimer scheduledTimerWithTimeInterval:kRelaunchPollInterval repeats:YES block:^(NSTimer *timer) {
+			if (done) { [timer invalidate]; return; }
+			for (NSRunningApplication *app in [NSRunningApplication runningApplicationsWithBundleIdentifier:identifier]) {
+				if (app.processIdentifier != own && !app.terminated) { [timer invalidate]; settle(YES, nil); return; }
+			}
+			if (deadline.timeIntervalSinceNow < 0) {
+				[timer invalidate];
+				settle(NO, @"The new instance did not start. Quit and open Diskmap again.");
+			}
+		}];
 		NSWorkspaceOpenConfiguration *configuration = [NSWorkspaceOpenConfiguration configuration];
 		configuration.createsNewApplicationInstance = YES;
 		[NSWorkspace.sharedWorkspace openApplicationAtURL:bundle.bundleURL configuration:configuration
 			completionHandler:^(NSRunningApplication *app, NSError *error) {
-				finish(app != nil, error.localizedDescription ?: @"The app could not start again.");
+				(void)error;
+				if (app) dispatch_async(dispatch_get_main_queue(), ^{ settle(YES, nil); });
 			}];
 		return 0;
 	}

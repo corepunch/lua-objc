@@ -54,7 +54,7 @@ function Overview.chart(model, disk)
 		if index <= CHART.categories then
 			table.insert(marks, {value = segment.bytes, color = segment.color, label = segment.name})
 			table.insert(legend, {id = segment.id, name = segment.name, color = segment.color, size = segment.size,
-				share = percent(segment.bytes, used)})
+				sizeIcon = segment.sizeIcon, sizeHelp = segment.sizeHelp, share = percent(segment.bytes, used)})
 		else
 			rest = rest or {bytes = 0, count = 0}
 			rest.bytes = rest.bytes + segment.bytes; rest.count = rest.count + 1
@@ -196,13 +196,14 @@ function Overview.largest(model, disk, limit, query)
 				while root:getParent() do root = root:getParent() end
 				table.insert(rows, {id = row.id, rootId = root.id, parentId = row:getParent() and row:getParent().id or row.id,
 					name = row.name, subtitle = owner,
-					bytes = m.bytes, size = (m.status == "partial" and "≥ " or "") .. Model.size(m.bytes),
+					bytes = m.bytes,
 					share = used and m.bytes / used or 0, shareText = percent(m.bytes, used),
 					icon = row.icon, color = row.color, appIcon = row.appIcon, path = row.path,
 					impact = row.policy == "Essential" and "Keep" or row.policy == "Rebuildable" and "Rebuildable"
 						or row.policy == "System managed" and "System managed" or "Review",
 					kept = row:isKept()})
 				rows[#rows].detail = rows[#rows].kept and "Kept" or rows[#rows].impact
+				Model.sizeLabel(rows[#rows], m.status, m.bytes)
 				Status.apply(rows[#rows])
 			end
 		end

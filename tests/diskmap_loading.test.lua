@@ -14,7 +14,7 @@ Inventory.begin(model, ids)
 t.assertEqual(Model.total(model), 0, "refresh immediately discards old measurements")
 for _, row in ipairs(Categories.rows(model)) do
 	t.expect(row.calculating or row.status == "excluded" or row.status == "unsupported", "category starts calculating unless excluded or system managed: " .. row.id)
-	t.assertEqual(row.size, row.status == "excluded" and "Not scanned" or row.status == "unsupported" and "System managed" or "Calculating…", "pending category never shows old bytes")
+	t.assertEqual(row.size, row.status == "excluded" and "Not scanned" or row.status == "unsupported" and "System" or "Calculating…", "pending category never shows old bytes")
 end
 local first = model.resources:roots()[1]
 local function belongs(id)
@@ -105,5 +105,5 @@ for _, tag in ipairs({"OutlineView", "List"}) do
 end
 -- A category holding only resources file scans cannot measure is system
 -- managed, never "Access restricted".
-t.assertEqual(Categories.row(model, "backups").size, "System managed", "backups of local snapshots only are system managed")
+t.assertEqual(Categories.row(model, "backups").size, "System", "backups of local snapshots only are system managed")
 os.exit(t.summary() and 0 or 1)

@@ -58,7 +58,7 @@ end
 function Controller:openSettings()
 	self.service.openSettings("privacy")
 	self.openedSettings = true
-	if self.refs then self.refs.waiting.hidden = false; self.refs.restartHint.hidden = false end
+	if self.refs then self.refs.waiting.hidden = false; self.refs.restart.hidden = false end
 end
 
 -- Starts a new instance and quits once it runs; the new one skips the

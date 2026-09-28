@@ -77,9 +77,14 @@
 	NSImageView *image = self.imageView;
 	CGFloat imageWidth = image.image ? (_imageWidth > 0 ? _imageWidth : kTableCellImageWidth) : 0;
 	/* SwiftUI's `.labelStyle(.iconOnly)`: the symbol is centred in the
-	 * column and the title survives as tooltip and accessibility label. */
+	 * column and the title survives as tooltip and accessibility label. A
+	 * trailing column keeps it on the trailing edge, where the other rows'
+	 * values end. */
 	if (_iconOnly) {
-		image.frame = NSMakeRect(floor((self.bounds.size.width - imageWidth) / 2),
+		CGFloat x = text.alignment == NSTextAlignmentRight
+			? self.bounds.size.width - kTableCellTextTrailingInset - imageWidth
+			: (self.bounds.size.width - imageWidth) / 2;
+		image.frame = NSMakeRect(floor(MAX(0, x)),
 			floor((self.bounds.size.height - imageWidth) / 2), imageWidth, imageWidth);
 		return;
 	}
@@ -120,8 +125,15 @@
 			secondaryHeight);
 	}
 	if (image) {
+		/* A trailing single-line label keeps its symbol beside the text, as
+		 * SwiftUI's Label does, rather than at the far leading edge. */
+		CGFloat imageX = textInset;
+		if (text.alignment == NSTextAlignmentRight && !hasSecondary && imageWidth > 0) {
+			CGFloat textWidth = MIN(ceil(text.fittingSize.width), NSWidth(text.frame));
+			imageX = MAX(textInset, NSMaxX(text.frame) - textWidth - kTableCellImageTextGap - imageWidth);
+		}
 		image.frame = NSMakeRect(
-			textInset,
+			imageX,
 			floor((self.bounds.size.height - imageWidth) / 2),
 			imageWidth,
 			imageWidth);
@@ -231,6 +243,11 @@ static void table_row_menu_fill(NSScrollView *scroll, NSMenu *menu, NSInteger ro
 }
 - (NSSize)intrinsicContentSize {
 	if ((_badgeColorName.length || _resolvedAppIcon) && _symbolSize > 0) return NSMakeSize(_symbolSize, _symbolSize);
+	/* NSImageView sizes a symbol by its alignment rectangle, which for SF
+	 * Symbols is only about the cap height; a square glyph then scales down
+	 * into a short frame. SwiftUI's Image(systemName:) takes the whole
+	 * glyph, so its image size is the view's size. */
+	if (_symbolImage && _symbolSize > 0) return _symbolImage.size;
 	return [super intrinsicContentSize];
 }
 - (void)setBadgeColorName:(NSString *)value {
@@ -460,7 +477,13 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	NSString *badgeKey = cellSpec[@"badge"];
 	id badgeValue = badgeKey ? rowData[badgeKey] : nil;
 	cell.badgeField.stringValue = badgeValue ? [badgeValue description] : @"";
-	cell.imageView.toolTip = cell.iconOnly && text.length ? text : nil;
+	/* `helpKey` is SwiftUI's `.help`: a per-row tooltip that explains a
+	 * value, such as why a size is only a lower bound. */
+	NSString *helpKey = cellSpec[@"help"];
+	id help = helpKey ? rowData[helpKey] : nil;
+	NSString *helpText = [help isKindOfClass:NSString.class] && [help length] ? help : nil;
+	cell.toolTip = helpText;
+	cell.imageView.toolTip = helpText ?: (cell.iconOnly && text.length ? text : nil);
 	NSString *secondaryKey = cellSpec[@"secondary"];
 	id secondaryValue = secondaryKey ? rowData[secondaryKey] : nil;
 	cell.secondaryTextField.stringValue = secondaryValue
@@ -520,7 +543,7 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 		[NSImageSymbolConfiguration configurationWithPointSize:(cell.imageWidth > 0 ? cell.imageWidth - 3 : kTableCellSymbolPointSize)
 													 weight:NSFontWeightRegular];
 		cell.imageView.image = [image imageWithSymbolConfiguration:configuration];
-		if (cell.iconOnly) cell.imageView.accessibilityLabel = text;
+		cell.imageView.accessibilityLabel = cell.iconOnly ? text : helpText;
 	} else {
 		cell.imageView.image = nil;
 	}

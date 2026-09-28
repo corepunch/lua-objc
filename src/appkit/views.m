@@ -770,6 +770,19 @@ static int bridge_view_midline_fill(lua_State *L) {
 	return 1;
 }
 
+/* NSTextAlignment's numbering differs by architecture: Intel macOS kept
+ * Right = 1 and Center = 2, Apple silicon uses iOS's Center = 1 and
+ * Right = 2. Lua names the alignment and the compiled constant decides. */
+static int bridge_text_alignment(lua_State *L) {
+	const char *name = luaL_optstring(L, 1, "leading");
+	NSTextAlignment alignment = NSTextAlignmentNatural;
+	if (strcmp(name, "center") == 0) alignment = NSTextAlignmentCenter;
+	else if (strcmp(name, "trailing") == 0) alignment = NSTextAlignmentRight;
+	else if (strcmp(name, "justified") == 0) alignment = NSTextAlignmentJustified;
+	lua_pushinteger(L, (lua_Integer)alignment);
+	return 1;
+}
+
 static int bridge_system_color(lua_State *L) {
 	const char *name = luaL_checkstring(L, 1);
 	NSColor *color = semantic_color([NSString stringWithUTF8String:name]);
