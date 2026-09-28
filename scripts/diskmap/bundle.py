@@ -18,7 +18,7 @@ resources = contents / "Resources"
 for source, target in [(root / "lua", resources / "lua"), (root / "apps/diskmap", resources / "apps/diskmap")]:
     if target.exists():
         shutil.rmtree(target)
-    shutil.copytree(source, target, ignore=shutil.ignore_patterns(".git", "*.md", "*.xcodeproj", "*.entitlements", "*.plist", ".DS_Store", "Assets.xcassets", "store-assets"))
+    shutil.copytree(source, target, ignore=shutil.ignore_patterns(".git", "Build", "*.md", "*.xcodeproj", "*.entitlements", "*.plist", ".DS_Store", "Assets.xcassets", "store-assets"))
 subprocess.run(["clang", "-O2", "-Wall", "-mmacosx-version-min=26.0", str(root / "scripts/diskmap/launcher.c"), "-o", str(contents / "MacOS/Diskmap")], check=True)
 frameworks = contents / "Frameworks"
 visited = set()
