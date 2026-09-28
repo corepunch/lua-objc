@@ -36,7 +36,7 @@ Provider.savedSnapshotPath = originalSnapshotPath
 local mock = Mock.new({home = home})
 local discoveries
 mock.discoverEntries(home, function(entries) discoveries = entries end)
-t.assertEqual(#discoveries, 5, "mock discovery comes from the bundled profile rather than host filesystem traversal")
+t.assertEqual(#discoveries, 6, "mock discovery comes from the bundled profile rather than host filesystem traversal")
 t.assertEqual(discoveries[1].path, "/Applications/Mock Video Studio.app", "mock app paths remain virtual")
 local initialFree = mock.availableBytes
 local initialDocumentation = mock.scan({"~/Library/Developer/Shared/Documentation"}, {})

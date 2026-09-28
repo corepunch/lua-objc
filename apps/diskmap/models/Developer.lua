@@ -22,8 +22,10 @@ Developer.sections = {
 Developer.visibleBytes = 500e6
 function Developer.present(model, exists)
 	if exists and (exists(model.home .. "/Library/Developer") or exists("/Applications/Xcode.app")) then return true end
+	-- A total still being measured only grows, so reaching the threshold
+	-- early already proves the data is there.
 	local measured = Categories.row(model, "developer")
-	return measured ~= nil and not measured.calculating and (measured.bytes or 0) >= Developer.visibleBytes
+	return measured ~= nil and (measured.bytes or 0) >= Developer.visibleBytes
 end
 
 local POLICY = {Rebuildable = "Rebuildable", Essential = "Keep", ["System managed"] = "System managed"}

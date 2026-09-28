@@ -89,8 +89,8 @@ t.assertEqual(bridge._tableRowMenu(page().list_support, 2)[1].title, "Unmark", "
 
 -- Projects: artifacts grouped with git state.
 app:show("projects")
-t.assertEqual(page().projects.rowCount, 1, "artifacts group into their project")
-t.expect(page().projectsSummary.text:find("1 project", 1, true) ~= nil, "the summary counts projects")
+t.assertEqual(page().projects.rowCount, 2, "artifacts group into their project")
+t.expect(page().projectsSummary.text:find("2 projects", 1, true) ~= nil, "the summary counts projects")
 t.assertEqual(bridge._tableRowMenu(page().projects, 1)[1].title, "Mark Build Data for Cleanup", "a project marks its build data")
 
 -- Updates: installers found in Downloads.

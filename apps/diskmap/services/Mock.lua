@@ -819,13 +819,10 @@ function Mock:scanFolder(path, options, completion, progress)
 	local depth, minimum = options.treeDepth or 0, options.treeMinimumBytes or 0
 	local prefix = path == "/" and "/" or path .. "/"
 	local root = {name = path == "/" and "/" or path:match("([^/]+)$"), bytes = 0, used = 0, directory = true, entries = {}}
-	local found = 0
+	local found, exact = 0, nil
 	for _, item in ipairs(self.items) do
 		local bytes, used = item.countedBytes, item.used or 0
-		if item.path == path then
-			completion({name = root.name, kb = bytes / 1024, used = used}, nil, {errors = 0, visited = 1})
-			return {}
-		end
+		if item.path == path then exact = item end
 		if bytes > 0 and item.path:sub(1, #prefix) == prefix then
 			found = found + 1
 			root.bytes, root.used = root.bytes + bytes, math.max(root.used, used)
@@ -838,6 +835,9 @@ function Mock:scanFolder(path, options, completion, progress)
 				if not child then
 					child = {name = part, bytes = 0, used = 0, directory = not file, entries = not file and {} or nil}
 					node.entries[part] = child
+				elseif not file and not child.entries then
+					-- A snapshot may record a package's own bytes before its contents.
+					child.directory, child.entries = true, {}
 				end
 				child.bytes, child.used = child.bytes + bytes, math.max(child.used, used)
 				if file then break end
@@ -847,6 +847,12 @@ function Mock:scanFolder(path, options, completion, progress)
 		end
 	end
 	if progress then progress(found) end
+	-- Saved snapshots list folders as entries too, so an entry is a file to
+	-- open in its folder only when nothing lies inside it.
+	if found == 0 and exact and exact.countedBytes > 0 then
+		completion({name = root.name, kb = exact.countedBytes / 1024, used = exact.used or 0}, nil, {errors = 0, visited = 1})
+		return {}
+	end
 	if found == 0 and not self.fileCounts[path] then
 		completion(nil, "“" .. path .. "” is not on the Mock HDD.", {errors = 0, visited = 0})
 		return {}

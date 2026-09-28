@@ -18,7 +18,7 @@ write(root .. "/big.bin", 3 * MB)
 write(root .. "/sub/half.bin", 2 * MB)
 write(root .. "/sub/inner/deep.bin", 2 * MB)
 for index = 1, 10 do write(root .. "/small" .. index .. ".txt", 1000) end
-os.execute("/bin/ln " .. root .. "/big.bin " .. root .. "/big link.bin")
+os.execute("/bin/ln '" .. root .. "/big.bin' '" .. root .. "/big link.bin'")
 local result = native.scan({root}, {}, {treeDepth = 2, treeMinimumBytes = MB})
 local folder = result.folders and result.folders[1]
 t.expect(folder ~= nil and folder.directory == true, "a tree scan publishes the root folder")
@@ -42,6 +42,24 @@ t.expect(type(native.progress(job)) == "number", "a running scan reports the ite
 native.cancel(job)
 os.execute("/bin/rm -rf " .. root)
 
+-- Saved snapshots list folders as entries with a few bytes of their own.
+-- Such a folder opens as a folder, not as a file in its parent, and a
+-- package entry met before its contents still takes them in.
+local snapshot = Mock.new()
+for _, item in ipairs({{"/Snap", 4096}, {"/Snap/Folder", 4096}, {"/Snap/Folder/a.bin", 5 * MB},
+		{"/Snap/Tool.app", 4096}, {"/Snap/Tool.app/Contents/Tool", 3 * MB}}) do
+	table.insert(snapshot.items, {path = item[1], allocatedBytes = item[2], countedBytes = item[2], used = 0})
+end
+local scanned
+snapshot.scanFolder("/Snap/Folder", {treeDepth = 2}, function(folder) scanned = folder end)
+t.expect(scanned and scanned.directory and scanned.children and scanned.children[1].name == "a.bin", "a snapshot's folder entry opens as a folder")
+snapshot.scanFolder("/Snap/Folder/a.bin", {treeDepth = 2}, function(folder) scanned = folder end)
+t.expect(scanned and not scanned.directory and scanned.children == nil, "a snapshot's file entry opens as a file")
+snapshot.scanFolder("/Snap", {treeDepth = 3}, function(folder) scanned = folder end)
+local tool
+for _, child in ipairs(scanned and scanned.children or {}) do if child.name == "Tool.app" then tool = child end end
+t.expect(tool and tool.directory and tool.kb >= 3 * 1024, "a package listed before its contents holds them")
+
 -- The Folder Map page with the synthetic disk.
 local service = Mock.new()
 local home = service.home
@@ -60,7 +78,7 @@ t.assertEqual(app.destination, "folder", "a dropped folder shows the Folder Map"
 t.assertEqual(page.path, downloads, "the dropped folder is measured")
 local refs = page.refs
 t.expect(refs.folderSunburst ~= nil and refs.folderList.rowCount >= 3, "the folder shows as rings beside its contents")
-t.assertEqual(bridge._tableCell(refs.folderList, 0, 0).textField.stringValue, "ubuntu-24.04-desktop-arm64.iso", "the largest item comes first")
+t.assertEqual(bridge._tableCell(refs.folderList, 0, 0).textField.stringValue, "Old macOS Installer.dmg", "the largest item comes first")
 t.expect(refs.folderSummary.text:find("~/Downloads", 1, true) ~= nil, "the summary names the folder from the home folder")
 t.expect(app:badges().folder ~= nil, "the sidebar badge is the open folder's size")
 
@@ -79,12 +97,12 @@ t.expect(page.refs.folderTreemap ~= nil and page.refs.folderSunburst == nil, "Re
 page.template.actions.style(0)
 
 -- Quick Look previews the selection with ⌘Y and steps through its folder.
-local iso = downloads .. "/ubuntu-24.04-desktop-arm64.iso"
+local largest = downloads .. "/Old macOS Installer.dmg"
 t.expect(not app.commandActions.canQuickLook(), "Quick Look needs a selection")
 page.template.actions.selectRow(nil, nil, page.tree:rows(page.focus, page.coloring)[1])
 t.expect(app.commandActions.canQuickLook(), "a selected row can be previewed")
 bridge._performMainMenuItem("File", "Quick Look")
-t.expect(service.quickLooked and service.quickLooked.paths[service.quickLooked.index] == iso, "File › Quick Look previews the selected file")
+t.expect(service.quickLooked and service.quickLooked.paths[service.quickLooked.index] == largest, "File › Quick Look previews the selected file")
 t.expect(#service.quickLooked.paths >= 3, "the arrow keys step through the rest of the folder")
 
 -- Row menus: Quick Look, Finder, Move to…, Trash, Mark and Copy.
@@ -108,10 +126,10 @@ end
 local before = page.tree.root.bytes
 service.pickFolder = function() return home .. "/Archive" end
 t.expect(perform(page.refs.folderList, 1, "Move to…"), "Move to… is performed from the row menu")
-t.expect(page.tree:find(iso) == nil and page.tree.root.bytes < before, "the moved file leaves the map without a new scan")
-t.expect((service.fileCounts[home .. "/Archive/ubuntu-24.04-desktop-arm64.iso"] or 0) > 0, "the file is in its new folder")
+t.expect(page.tree:find(largest) == nil and page.tree.root.bytes < before, "the moved file leaves the map without a new scan")
+t.expect((service.fileCounts[home .. "/Archive/Old macOS Installer.dmg"] or 0) > 0, "the file is in its new folder")
 t.expect(table.concat(service.operationLog(), "\n"):find("Move", 1, true) ~= nil, "the move is recorded in the history")
-t.expect(bridge._tableCell(page.refs.folderList, 0, 0).textField.stringValue ~= "ubuntu-24.04-desktop-arm64.iso", "the list follows the move")
+t.expect(bridge._tableCell(page.refs.folderList, 0, 0).textField.stringValue ~= "Old macOS Installer.dmg", "the list follows the move")
 
 -- Move to Trash asks first, then removes the row.
 local first = page.tree:rows(page.focus, page.coloring)[1]
@@ -127,7 +145,7 @@ t.expect(not FolderTree.validateChange(app.model, downloads), "a standard folder
 t.expect(not FolderTree.validateChange(app.model, "/Applications/Safari.app"), "items outside the home folder and other disks are not moved")
 t.expect(FolderTree.validateChange(app.model, "/Volumes/Backup/Old"), "items on another disk may be moved")
 t.expect(not FolderTree.validateChange(app.model, "/Volumes/Backup"), "a disk itself is never moved")
-t.expect(not FolderTree.validateDestination(iso, downloads), "a move needs a different folder")
+t.expect(not FolderTree.validateDestination(largest, downloads), "a move needs a different folder")
 t.expect(not FolderTree.validateDestination(downloads .. "/a", downloads .. "/a/b"), "a folder is never moved into itself")
 
 -- Looking inside folders, back up, and scanning a folder below the depth.
