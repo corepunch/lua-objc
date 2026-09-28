@@ -4,10 +4,14 @@
       <MenuItem title="Settings…" keyEquivalent="," action="settings" />
     </CommandGroup>
     <CommandGroup replacing="importExport">
-      <MenuItem title="Open Scan…" keyEquivalent="o" action="openScan" />
+      <MenuItem title="Open Folder…" keyEquivalent="o" action="openFolder" />
+      <MenuItem title="Open Scan…" keyEquivalent="o" modifiers="command,shift" action="openScan" />
       <MenuItem title="Compare with Scan…" action="compareScan" validate="canCompareScan" />
       <Separator />
       <MenuItem title="Export Scan…" keyEquivalent="e" modifiers="command,shift" action="exportScan" validate="canExportScan" />
+    </CommandGroup>
+    <CommandGroup after="importExport">
+      <MenuItem title="Quick Look" keyEquivalent="y" action="quickLook" validate="canQuickLook" />
     </CommandGroup>
     <CommandGroup replacing="textEditing">
       <MenuItem title="Find">

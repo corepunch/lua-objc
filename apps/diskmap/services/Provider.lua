@@ -48,6 +48,12 @@ function Provider.mapStyle(arguments)
 	return argumentValue(arguments, "--map-style")
 end
 
+-- `--folder=<path>` opens a folder or disk on the Folder Map page at launch,
+-- as dropping it on the Dock icon does.
+function Provider.folder(arguments)
+	return argumentValue(arguments, "--folder")
+end
+
 function Provider.exportPath(arguments)
 	return argumentValue(arguments, "--export-mock")
 end

@@ -376,6 +376,44 @@ function System.analyzeFolder(path, completion)
 		completion(breakdown, result.failure ~= "" and result.failure or nil, result.errors)
 	end)
 end
+-- Everything under `path` as one tree of its largest folders and files
+-- (see `treeDepth` in src/plugins/storage/README.md): what the Folder page
+-- maps. `progress(items)` reports items met so far while it runs;
+-- `completion(folder, failure, stats)` receives the root node and
+-- `{errors, visited}`. Returns the job for `cancelFolderScan`.
+-- The startup disk's files live on its Data volume, mounted at
+-- /System/Volumes/Data and joined to "/" by firmlinks; "/" itself is the
+-- sealed system volume. The scan stays on one volume, so "/" is measured
+-- through the Data volume and reported under the paths people know.
+local STARTUP_DATA = "/System/Volumes/Data"
+function System.scanFolder(path, options, completion, progress)
+	local root, scanOptions = path, {}
+	for key, value in pairs(options or {}) do scanOptions[key] = value end
+	if path == "/" then root, scanOptions.logicalRoots = STARTUP_DATA, {[STARTUP_DATA] = "/"} end
+	local ok, job = pcall(Scanner.start, {root}, {}, scanOptions)
+	if not ok then completion(nil, tostring(job), {errors = 0, visited = 0}); return nil end
+	ns.async(function()
+		while not job.cancelled do
+			local done, result = Scanner.poll(job)
+			if done then
+				if job.cancelled then return end
+				local failure = result.failure ~= "" and result.failure or nil
+				local folder = result.folders and result.folders[1]
+				if not folder and not failure then failure = "The folder could not be read." end
+				completion(folder, failure, {errors = result.errors or 0, visited = result.visited or 0})
+				return
+			end
+			if progress then progress(Scanner.progress(job) or 0) end
+			ns.sleep(0.25)
+		end
+	end)
+	return job
+end
+System.cancelFolderScan = Scanner.cancel
+-- Moves a file or folder into `folder`; `completion(ok, message, destination)`.
+function System.moveItem(path, folder, completion) ns.moveItem(path, folder, completion) end
+function System.quickLook(paths, index) ns.quickLook(paths, index) end
+function System.onOpenFiles(handler) ns.onOpenFiles(handler) end
 function System.openDiskUtility()
 	os.execute("/usr/bin/open -a " .. System.quote("Disk Utility"))
 end

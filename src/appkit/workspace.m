@@ -252,3 +252,164 @@ static int bridge_volume_capacity(lua_State *L) {
 	}
 	return 1;
 }
+
+#pragma mark - Opened files and Quick Look
+
+/* The application delegate exists for two AppKit conventions that need an
+ * object in the application's responder chain: folders and files dropped on
+ * the Dock icon or opened from the Finder arrive as `application:openURLs:`,
+ * and the shared Quick Look panel asks the responder chain for its
+ * controller. It is installed on first use and implements nothing else, so
+ * an app that never asks keeps AppKit's default behavior. */
+@interface LuaApplicationDelegate : NSObject <NSApplicationDelegate, QLPreviewPanelDataSource, QLPreviewPanelDelegate>
+@property (nonatomic, strong) LuaReg *openHandler;
+@property (nonatomic, strong) NSMutableArray<NSString *> *pendingPaths;
+@property (nonatomic, copy) NSArray<NSURL *> *previewItems;
+@property (nonatomic) NSInteger previewIndex;
+@end
+
+@implementation LuaApplicationDelegate
+- (instancetype)init {
+	if ((self = [super init])) _pendingPaths = [NSMutableArray array];
+	return self;
+}
+// Opens that arrive before the app registers its handler, as they do when a
+// folder dropped on the Dock icon launches the app, wait for it.
+- (BOOL)deliver:(NSArray<NSString *> *)paths {
+	lua_State *L = lua_reg_live_state(self.openHandler);
+	if (!L || !paths.count || !lua_reg_push(self.openHandler)) return NO;
+	lua_createtable(L, (int)paths.count, 0);
+	for (NSUInteger i = 0; i < paths.count; i++) { lua_pushstring(L, paths[i].UTF8String); lua_rawseti(L, -2, (lua_Integer)i + 1); }
+	lua_objc_pcall(L, 1, 0, "open files");
+	return YES;
+}
+- (void)application:(NSApplication *)application openURLs:(NSArray<NSURL *> *)urls {
+	(void)application;
+	NSMutableArray<NSString *> *paths = [NSMutableArray array];
+	for (NSURL *url in urls) if (url.isFileURL && url.path.length) [paths addObject:url.path];
+	if (![self deliver:paths]) [self.pendingPaths addObjectsFromArray:paths];
+}
+- (BOOL)acceptsPreviewPanelControl:(QLPreviewPanel *)panel { (void)panel; return self.previewItems.count > 0; }
+- (void)beginPreviewPanelControl:(QLPreviewPanel *)panel {
+	panel.dataSource = self; panel.delegate = self;
+	panel.currentPreviewItemIndex = self.previewIndex;
+}
+- (void)endPreviewPanelControl:(QLPreviewPanel *)panel { panel.dataSource = nil; panel.delegate = nil; }
+- (NSInteger)numberOfPreviewItemsInPreviewPanel:(QLPreviewPanel *)panel { (void)panel; return (NSInteger)self.previewItems.count; }
+- (id<QLPreviewItem>)previewPanel:(QLPreviewPanel *)panel previewItemAtIndex:(NSInteger)index {
+	(void)panel;
+	return index >= 0 && index < (NSInteger)self.previewItems.count ? self.previewItems[(NSUInteger)index] : nil;
+}
+@end
+
+static LuaApplicationDelegate *lua_objc_application_delegate(void) {
+	static LuaApplicationDelegate *delegate;
+	if (!delegate) {
+		delegate = [LuaApplicationDelegate new];
+		[NSApplication sharedApplication].delegate = delegate;
+	}
+	return delegate;
+}
+
+static NSArray<NSString *> *string_array(lua_State *L, int index) {
+	luaL_checktype(L, index, LUA_TTABLE);
+	NSMutableArray<NSString *> *strings = [NSMutableArray array];
+	for (lua_Integer i = 1; ; i++) {
+		lua_rawgeti(L, index, i);
+		if (lua_isnil(L, -1)) { lua_pop(L, 1); break; }
+		[strings addObject:[NSString stringWithUTF8String:luaL_checkstring(L, -1)]];
+		lua_pop(L, 1);
+	}
+	return strings;
+}
+
+// _onOpenFiles(handler(paths) | nil): folders and files opened with the app.
+static int bridge_on_open_files(lua_State *L) {
+	LuaApplicationDelegate *delegate = lua_objc_application_delegate();
+	[delegate.openHandler dispose];
+	delegate.openHandler = lua_reg_opt_unscoped(L, 1);
+	if (delegate.openHandler && delegate.pendingPaths.count) {
+		// After the caller finishes setting up, as a launch-time open would.
+		dispatch_async(dispatch_get_main_queue(), ^{
+			NSArray<NSString *> *pending = delegate.pendingPaths.copy;
+			if ([delegate deliver:pending]) [delegate.pendingPaths removeAllObjects];
+		});
+	}
+	return 0;
+}
+
+// Test hook: _openFiles(paths) as if the Finder opened them with the app.
+static int bridge_open_files(lua_State *L) {
+	NSMutableArray<NSURL *> *urls = [NSMutableArray array];
+	for (NSString *path in string_array(L, 1)) [urls addObject:[NSURL fileURLWithPath:path]];
+	[lua_objc_application_delegate() application:NSApp openURLs:urls];
+	return 0;
+}
+
+// _quickLook(paths, index): shows the items in the system Quick Look panel,
+// starting at `index` (1-based); an empty list closes the panel. The panel
+// is shown only while the event loop runs, so headless tests record the
+// items without opening a window.
+static int bridge_quick_look(lua_State *L) {
+	LuaApplicationDelegate *delegate = lua_objc_application_delegate();
+	NSMutableArray<NSURL *> *urls = [NSMutableArray array];
+	for (NSString *path in string_array(L, 1)) [urls addObject:[NSURL fileURLWithPath:path]];
+	lua_Integer index = luaL_optinteger(L, 2, 1);
+	delegate.previewItems = urls;
+	delegate.previewIndex = MAX(0, MIN((NSInteger)index - 1, (NSInteger)urls.count - 1));
+	if (!NSApp.isRunning) return 0;
+	QLPreviewPanel *panel = [QLPreviewPanel sharedPreviewPanel];
+	if (!urls.count) { if (QLPreviewPanel.sharedPreviewPanelExists && panel.isVisible) [panel orderOut:nil]; return 0; }
+	if (panel.isVisible && panel.currentController == delegate) {
+		[panel reloadData];
+		panel.currentPreviewItemIndex = delegate.previewIndex;
+	} else {
+		[panel updateController];
+		[panel makeKeyAndOrderFront:nil];
+	}
+	return 0;
+}
+
+// Test hook: _quickLookItems() -> the paths Quick Look would show.
+static int bridge_quick_look_items(lua_State *L) {
+	NSArray<NSURL *> *items = lua_objc_application_delegate().previewItems ?: @[];
+	lua_createtable(L, (int)items.count, 0);
+	for (NSUInteger i = 0; i < items.count; i++) { lua_pushstring(L, items[i].path.UTF8String); lua_rawseti(L, -2, (lua_Integer)i + 1); }
+	return 1;
+}
+
+#pragma mark - Moving items
+
+// _moveItem(source, folder, completion(ok, message, destination)): moves a
+// file or folder into `folder`, on another disk too (AppKit then copies and
+// removes the original). It runs off the main thread, so a large move never
+// stalls the window; an existing item of the same name is never replaced.
+static int bridge_move_item(lua_State *L) {
+	NSString *source = [NSString stringWithUTF8String:luaL_checkstring(L, 1)];
+	NSString *folder = [NSString stringWithUTF8String:luaL_checkstring(L, 2)];
+	LuaReg *completion = lua_reg_create(L, 3, NO);
+	NSString *destination = [folder stringByAppendingPathComponent:source.lastPathComponent];
+	dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+		NSError *error = nil;
+		BOOL ok = NO;
+		NSString *message = nil;
+		if ([NSFileManager.defaultManager fileExistsAtPath:destination]) {
+			message = [NSString stringWithFormat:@"An item named “%@” already exists in “%@”.", source.lastPathComponent, folder.lastPathComponent];
+		} else {
+			ok = [NSFileManager.defaultManager moveItemAtURL:[NSURL fileURLWithPath:source]
+				toURL:[NSURL fileURLWithPath:destination] error:&error];
+			if (!ok) message = error.localizedDescription ?: @"The item could not be moved.";
+		}
+		dispatch_async(dispatch_get_main_queue(), ^{
+			lua_State *state = lua_reg_live_state(completion);
+			if (state && lua_reg_push(completion)) {
+				lua_pushboolean(state, ok);
+				if (message) lua_pushstring(state, message.UTF8String); else lua_pushnil(state);
+				lua_pushstring(state, destination.UTF8String);
+				lua_objc_pcall(state, 3, 0, "move item");
+			}
+			[completion dispose];
+		});
+	});
+	return 0;
+}

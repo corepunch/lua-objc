@@ -48,6 +48,11 @@ install_library(root / "build/StorageScan.dylib")
     "CFBundlePackageType": "APPL", "CFBundleShortVersionString": "1.0.0",
     "CFBundleVersion": "1", "LSMinimumSystemVersion": "26.0",
     "NSHighResolutionCapable": True,
+    # Folders and disks dropped on the Dock icon open on the Folder Map.
+    "CFBundleDocumentTypes": [{
+        "CFBundleTypeName": "Folder", "CFBundleTypeRole": "Viewer", "LSHandlerRank": "Alternate",
+        "LSItemContentTypes": ["public.folder", "public.volume"],
+    }],
     "NSDesktopFolderUsageDescription": "Measure storage used by files in your Desktop folder.",
     "NSDocumentsFolderUsageDescription": "Measure storage used by files in your Documents folder.",
     "NSDownloadsFolderUsageDescription": "Measure storage used by downloaded files.",

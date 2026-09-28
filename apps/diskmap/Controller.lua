@@ -21,6 +21,7 @@ local HistoryController = require("apps.diskmap.controllers.HistoryController")
 local NavigationController = require("apps.diskmap.controllers.NavigationController")
 local OverviewController = require("apps.diskmap.controllers.OverviewController")
 local MapController = require("apps.diskmap.controllers.MapController")
+local FolderController = require("apps.diskmap.controllers.FolderController")
 local LargestController = require("apps.diskmap.controllers.LargestController")
 local FilesController = require("apps.diskmap.controllers.FilesController")
 local KindsController = require("apps.diskmap.controllers.KindsController")
@@ -119,6 +120,9 @@ function Controller.new(service)
 			changes = function() if self.snapshots then self.snapshots:open(self.window) end end,
 		}),
 		map = MapController.new(self.model, self.actions, Provider.mapStyle(App.args())),
+		folder = FolderController.new(self.model, service, self.actions, {
+			volumeName = function() return self:state().volumeName end,
+		}),
 		largest = LargestController.new(self.model, self.actions, open),
 		files = files,
 		kinds = KindsController.new(self.model, function(kind) files:focus(kind); self:show("files", true) end),
@@ -160,6 +164,9 @@ function Controller.new(service)
 		navigation = self.navigation,
 		review = function() self:openReview() end,
 		history = function() self.history:open(self.window) end,
+		openFolder = function() self:chooseFolder() end,
+		quickLook = function() self:quickLook() end,
+		canQuickLook = function() return self.page ~= nil and self.page.canQuickLook ~= nil and self.page:canQuickLook() end,
 		openScan = function() self:openScan() end,
 		compareScan = function() self:compareScan() end,
 		exportScan = function() self:exportScan() end,
@@ -211,7 +218,7 @@ function Controller:badges()
 		local row = Categories.row(self.model, category)
 		if row and row.bytes and row.bytes > 0 and not row.calculating then badges[id] = row.size end
 	end
-	for _, id in ipairs({"xcode", "projects"}) do
+	for _, id in ipairs({"xcode", "projects", "folder"}) do
 		local page = self.pages[id]
 		if page.badge then badges[id] = page:badge() end
 	end
@@ -278,6 +285,28 @@ function Controller:dropToMark(paths)
 	end
 	return accepted > 0
 end
+-- A folder or disk opened with Diskmap (dropped on the window or the Dock
+-- icon, chosen with Open Folder…, or `--folder=`) is measured and shown on
+-- the Folder Map, whatever page was showing.
+function Controller:openFolder(path)
+	if type(path) ~= "string" or path == "" then return false end
+	self.pages.folder:open(path)
+	self:show("folder")
+	return true
+end
+
+function Controller:chooseFolder()
+	local pick = optional(self.service, "pickFolder")
+	local path = pick and pick("Open Folder")
+	if path then self:openFolder(path) end
+end
+
+-- Quick Look (⌘Y) previews the current page's selection.
+function Controller:quickLook()
+	if self.page and self.page.quickLook then return self.page:quickLook() end
+	return false
+end
+
 -- After each measurement: refresh capacity and snapshots for hidden space,
 -- and record category totals when history is on.
 function Controller:scanFinished()
@@ -405,6 +434,7 @@ function Controller:createWindow()
 	self.shortcuts = self.commands:shortcuts(cfg.commands)
 	local content, contentRefs = render("Content", {actions = {
 		dropToMark = function(paths) return self:dropToMark(paths) end,
+		dropToOpen = function(paths) return paths[1] ~= nil and self:openFolder(paths[1]) end,
 		review = function() self:openReview() end,
 	}})
 	self.navigation:setWatched(self.watchlist:rows())
@@ -413,6 +443,15 @@ function Controller:createWindow()
 	self:basketChanged()
 	self.window = ns.Window(cfg)
 	self:show(Provider.page(App.args()) or "overview")
+	-- Folders dropped on the Dock icon, including the one that launched
+	-- Diskmap, open like a folder dropped on the window.
+	local onOpen = optional(self.service, "onOpenFiles")
+	if onOpen then onOpen(function(paths)
+		if paths[1] then self:openFolder(paths[1]) end
+		if self.window then self.window:show() end
+	end) end
+	local folder = Provider.folder(App.args())
+	if folder then self:openFolder(folder) end
 	local exportPath = Provider.exportPath(App.args())
 	if exportPath then
 		self.scan.status = "Creating a local metadata-only Mock HDD snapshot…"; self:updateRows()
@@ -431,6 +470,8 @@ function Controller:createWindow()
 	local scope = ns.Scope.current()
 	if scope then scope:add(self.scan); scope:add({dispose = function()
 		if self.page then self.page:dispose() end
+		self.pages.folder:cancel()
+		if onOpen then onOpen(nil) end
 		self.settings:close(); self.management:close(); self.sdks:close()
 		self.review:close(); self.history:close(); self.notifications:stop()
 	end}) end

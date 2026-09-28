@@ -9,7 +9,9 @@ local Controller = {}; Controller.__index = Controller
 -- they do. `handlers` come from the root controller:
 -- `show(id)`, `destination()`, `scanning()`, `refresh()`, `cancel()`,
 -- `settings()`, `find()`, `search(page, text)`, `emptyTrash()`, `review()`,
--- `history()` and `navigation`, the sidebar's back/forward history.
+-- `history()`, `openFolder()`, `quickLook()`/`canQuickLook()` for the
+-- current page's selection, and `navigation`, the sidebar's back/forward
+-- history.
 function Controller.new(model, service, handlers)
 	return setmetatable({model = model, service = service, handlers = handlers}, Controller)
 end
@@ -53,6 +55,9 @@ function Controller:actions()
 		canGoForward = function() return h.navigation:canGoForward() end,
 		review = h.review,
 		history = h.history,
+		openFolder = h.openFolder,
+		quickLook = h.quickLook,
+		canQuickLook = function() return h.canQuickLook() end,
 		openScan = h.openScan,
 		compareScan = h.compareScan,
 		canCompareScan = function() return not h.scanning() end,
