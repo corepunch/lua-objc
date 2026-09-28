@@ -356,10 +356,14 @@ local function bindActions(props, attrs, names)
     end
 end
 
+-- SwiftUI `.fixedSize(horizontal:vertical:)`: the axes that keep their
+-- content size instead of taking the proposal.
+local FIXED_SIZES = { horizontal = true, vertical = true, both = true }
+
 local function layoutProps(attrs)
     local lp = {
         "padding", "paddingHorizontal", "paddingVertical", "paddingLeading", "paddingTrailing", "paddingTop", "paddingBottom",
-        "spacing", "alignment", "maxRows",
+        "spacing", "alignment", "maxRows", "fixedSize",
         "flexGrow", "flexShrink", "flexBasis",
         "containerRelativeWidth", "hidden", "allowsHitTesting", "background", "tint", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick", "onTap", "onDrag", "onEdgeSwipe",
         "opacity", "scaleEffect", "rotationEffect", "offsetX", "offsetY",
@@ -368,6 +372,9 @@ local function layoutProps(attrs)
     local props = {}
     for _, k in ipairs(lp) do
         if attrs[k] then props[k] = coerce(attrs[k]) end
+    end
+    if attrs.fixedSize and not FIXED_SIZES[attrs.fixedSize] then
+        error("xml: fixedSize must be horizontal, vertical or both")
     end
 	-- Templates use SwiftUI dimension names; fixed/fill flags belong to the
 	-- native layout engine. Infinity is a proposal, never a native frame size.
@@ -914,6 +921,7 @@ local TAG_SCHEMA = {
 			style = "str",
 			tint = "str",
 			systemImage = "str",
+			symbolSize = "num",
         },
 		transform = function(props, attrs)
 			bindActions(props, attrs, { "onChange" })
@@ -2082,6 +2090,10 @@ local function layoutPatch(node, attrs, changed, ns)
             if not isStack or attrs[key] == nil then return nil end
             local value = coerce(attrs[key])
             table.insert(ops, function() view[key] = value end)
+        elseif key == "fixedSize" then
+            local value = attrs.fixedSize
+            if value ~= nil and not FIXED_SIZES[value] then return nil end
+            table.insert(ops, function() view.fixedSize = value end)
         elseif FLEX[key] then
             if node.view ~= node.target then return nil end
             local value = attrs[key] and num(attrs[key])

@@ -150,6 +150,13 @@ LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
 - (NSString *)alignment {
 	return objc_getAssociatedObject(self, &kKeys[kAlignmentKey]) ?: @"center";
 }
+- (NSString *)fixedSize {
+	return objc_getAssociatedObject(self, &kKeys[kFixedSizeKey]);
+}
+- (void)setFixedSize:(NSString *)value {
+	objc_setAssociatedObject(self, &kKeys[kFixedSizeKey], value.length ? value : nil,
+		OBJC_ASSOCIATION_COPY);
+}
 - (void)setAlignment:(NSString *)value {
 	objc_setAssociatedObject(self, &kKeys[kAlignmentKey], value,
 		OBJC_ASSOCIATION_COPY);

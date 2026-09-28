@@ -37,6 +37,7 @@ static char kFlexShrinkKey;
 static char kFlexBasisKey;
 static char kFillWidthKey;
 static char kFillHeightKey;
+static char kFixedSizeKey;
 static char kCornerRadiusKey;
 static char kIgnoresSafeAreaKey;
 static char kHostSafeAreaTopKey;

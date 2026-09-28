@@ -545,6 +545,25 @@ static int bridge_AppKitControls_button(lua_State *L) {
 	return 1;
 }
 
+/* NSButtonCell centres an image-above-title stack on the title's line box,
+ * which includes the descender, so the glyphs read high in a tall bezel —
+ * visibly so on a drum pad. Centring the ink (image top to baseline) is what
+ * SwiftUI's button toggle shows; the bezel is untouched. */
+@interface LuaToggleButtonCell : NSButtonCell
+@end
+@implementation LuaToggleButtonCell
+- (void)drawInteriorWithFrame:(NSRect)frame inView:(NSView *)view {
+	CGFloat shift = self.image && self.imagePosition == NSImageAbove ? -self.font.descender / 2 : 0;
+	if (!view.isFlipped) shift = -shift;
+	[super drawInteriorWithFrame:NSOffsetRect(frame, 0, shift) inView:view];
+}
+@end
+@interface LuaToggleButton : NSButton
+@end
+@implementation LuaToggleButton
++ (Class)cellClass { return LuaToggleButtonCell.class; }
+@end
+
 static int bridge_AppKitControls_toggle(lua_State *L) {
 	const char *label = luaL_checkstring(L, 1);
 	BOOL is_on = (BOOL)lua_toboolean(L, 2);
@@ -564,13 +583,22 @@ static int bridge_AppKitControls_toggle(lua_State *L) {
 	/* SwiftUI `.toggleStyle(.button)`: a push-on/push-off button whose bezel
 	 * fills with the tint while on, like a lit drum-machine pad. */
 	if (strcmp(style, "button") == 0) {
-		NSButton *pad = [NSButton buttonWithTitle:[NSString stringWithUTF8String:label] target:nil action:nil];
+		NSButton *pad = [[LuaToggleButton alloc] initWithFrame:NSZeroRect];
+		pad.title = [NSString stringWithUTF8String:label];
 		[pad setButtonType:NSButtonTypePushOnPushOff];
 		pad.bezelStyle = NSBezelStyleFlexiblePush;
 		const char *symbol = luaL_optstring(L, 5, "");
 		if (symbol[0]) {
-			pad.image = [NSImage imageWithSystemSymbolName:[NSString stringWithUTF8String:symbol]
+			NSImage *image = [NSImage imageWithSystemSymbolName:[NSString stringWithUTF8String:symbol]
 				accessibilityDescription:nil];
+			/* Without a size the symbol follows the button font, as in SwiftUI. */
+			if (!lua_isnoneornil(L, 6)) {
+				CGFloat symbolSize = (CGFloat)luaL_checknumber(L, 6);
+				if (symbolSize <= 0) return luaL_error(L, "toggle symbolSize must be positive");
+				image = [image imageWithSymbolConfiguration:
+					[NSImageSymbolConfiguration configurationWithPointSize:symbolSize weight:NSFontWeightRegular]];
+			}
+			pad.image = image;
 			pad.imagePosition = NSImageAbove;
 			pad.imageHugsTitle = YES;
 		}

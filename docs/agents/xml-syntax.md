@@ -39,6 +39,19 @@ to expand along that axis, corresponding to SwiftUI's `.frame(maxWidth:
 control's natural sizing behavior. Fixed dimensions must be finite,
 nonnegative numbers; zero is supported.
 
+`fixedSize="vertical"` (or `horizontal`, `both`) is SwiftUI's
+`.fixedSize(horizontal:vertical:)`: on that axis the view keeps its content
+size instead of growing into or shrinking with the proposal, while its own
+`maxHeight="infinity"` children still fill it. A row of panels therefore
+matches its tallest panel without taking the window's spare height:
+
+```etlua
+<HStack spacing="16" alignment="top" fixedSize="vertical">
+  <GlassEffect maxHeight="infinity">…</GlassEffect>
+  <GlassEffect maxHeight="infinity">…</GlassEffect>
+</HStack>
+```
+
 ```etlua
 <VStack padding="20" spacing="14" alignment="leading">
   <Image path="<%= game.cover %>" maxWidth="infinity" height="280"
@@ -130,7 +143,7 @@ are parsed up front, but native views are created only for visible cells.
 | `TextEditor` | Native editable text view | `text` or `value`, `size`, `weight`, `editable`, `selectable`, `wrapMode`, `drawsBackground`, plus layout attributes |
 | `TextField` | Native single-line field | `value` or `text`, `placeholder`, `editable`, `bezeled`, `bordered`, `size`, plus layout attributes |
 | `Button` | Native push button | `title` or `label`, `subtitle`, `systemImage`, `style`, `detail`, plus layout attributes |
-| `Toggle` / `Switch` | Native checkbox/toggle | `label`, `value` or `checked`, `style` (`switch`, `button`), `systemImage`, `tint`, plus layout attributes |
+| `Toggle` / `Switch` | Native checkbox/toggle | `label`, `value` or `checked`, `style` (`switch`, `button`), `systemImage`, `symbolSize`, `tint`, plus layout attributes |
 | `Slider` | AppKit `NSSlider` | `min`, `max`, `value`, `style` (`level`), `tickMarks`, `allowsTickMarkValuesOnly`, `tint`, plus layout attributes |
 | `Stepper` | AppKit `NSStepper` | `min`, `max`, `value`, `increment`, `wraps`, `autorepeat`, plus layout attributes |
 | `Picker` | AppKit `NSPopUpButton` | zero-based `value`, plus one or more `Option` children |
@@ -192,7 +205,8 @@ for a slider's filled track or a checked toggle.
 
 `Toggle style="button"` is SwiftUI's `.toggleStyle(.button)`: a push-on/push-off
 button whose whole bezel fills with the tint while on, like a drum-machine pad.
-`systemImage` puts an SF Symbol above its label. `Slider style="level"` is an
+`systemImage` puts an SF Symbol above its label, `symbolSize` sets its point
+size, and the symbol and label are centred on their ink. `Slider style="level"` is an
 editable continuous-capacity level indicator: a native bar that fills by
 percentage and is set by dragging or clicking.
 

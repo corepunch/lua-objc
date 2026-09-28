@@ -44,6 +44,7 @@ enum {
 	kFlexBasisKey,
 	kFillWidthKey,
 	kFillHeightKey,
+	kFixedSizeKey,
 	kBackgroundColorKey,
 	kCornerRadiusKey,
 	kClipsToBoundsKey,

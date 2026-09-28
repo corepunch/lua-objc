@@ -177,6 +177,16 @@ static CGFloat clamp_dimension(CGFloat value, CGFloat minimum, CGFloat maximum) 
 
 static CGFloat view_flex_grow(NSView *view, BOOL horizontal);
 
+/* SwiftUI `.fixedSize(horizontal:vertical:)`: on a fixed axis the view keeps
+ * its content size, neither growing into nor shrinking with the proposal.
+ * Its flexible children still fill that size, so a row of panels with
+ * maxHeight="infinity" matches its tallest panel. */
+static BOOL view_fixed_on_axis(NSView *view, BOOL horizontal) {
+	NSString *fixed = objc_getAssociatedObject(view, &kKeys[kFixedSizeKey]);
+	if (!fixed) return NO;
+	return [fixed isEqualToString:@"both"] || [fixed isEqualToString:horizontal ? @"horizontal" : @"vertical"];
+}
+
 static BOOL default_grows_on_axis(NSView *view, BOOL horizontal) {
 	NSView *label = objc_getAssociatedObject(view, &kKeys[kButtonContentKey]);
 	if (label) return view_flex_grow(label, horizontal) > 0;
@@ -212,7 +222,8 @@ static BOOL default_grows_on_axis(NSView *view, BOOL horizontal) {
 }
 
 static CGFloat view_flex_grow(NSView *view, BOOL horizontal) {
-	if (objc_getAssociatedObject(view, horizontal ? &kKeys[kFixedWidthKey] : &kKeys[kFixedHeightKey])) {
+	if (objc_getAssociatedObject(view, horizontal ? &kKeys[kFixedWidthKey] : &kKeys[kFixedHeightKey])
+		|| view_fixed_on_axis(view, horizontal)) {
 		return 0;
 	}
 	NSNumber *grow = objc_getAssociatedObject(view, &kKeys[kFlexGrowKey]);
@@ -227,7 +238,8 @@ static CGFloat view_flex_grow(NSView *view, BOOL horizontal) {
 }
 
 static CGFloat view_flex_shrink(NSView *view, BOOL horizontal) {
-	if (objc_getAssociatedObject(view, horizontal ? &kKeys[kFixedWidthKey] : &kKeys[kFixedHeightKey])) {
+	if (objc_getAssociatedObject(view, horizontal ? &kKeys[kFixedWidthKey] : &kKeys[kFixedHeightKey])
+		|| view_fixed_on_axis(view, horizontal)) {
 		return 0;
 	}
 	NSNumber *shrink = objc_getAssociatedObject(view, &kKeys[kFlexShrinkKey]);
@@ -238,6 +250,7 @@ static CGFloat view_flex_shrink(NSView *view, BOOL horizontal) {
 }
 
 static BOOL view_fills_cross_axis(NSView *view, BOOL horizontal) {
+	if (view_fixed_on_axis(view, horizontal)) return NO;
 	const void *key = horizontal ? &kKeys[kFillWidthKey] : &kKeys[kFillHeightKey];
 	NSNumber *fill = objc_getAssociatedObject(view, key);
 	return fill ? fill.boolValue : view_flex_grow(view, horizontal) > 0;

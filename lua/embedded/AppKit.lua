@@ -45,6 +45,7 @@ local layout_properties = {
 	"fillWidth",
 	"containerRelativeWidth",
 	"fillHeight",
+	"fixedSize",
 	"hidden",
 	"allowsHitTesting",
 	"background",
@@ -1774,6 +1775,7 @@ AppKit.ActionButton = AppKit.Button
 --- @prop tint string optional. Semantic color of the checked state, SwiftUI `.tint`.
 --- @prop style string optional. `switch`, or `button` for a push-on/push-off button that fills while on (SwiftUI `.toggleStyle(.button)`).
 --- @prop systemImage string optional. SF Symbol shown above a `button` style label.
+--- @prop symbolSize number optional. SF Symbol point size; defaults to the label font.
 --- @example <Toggle />
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Toggle(props)
@@ -1801,7 +1803,7 @@ function AppKit.Toggle(props)
 		end
 	end
 	if style == "switch" or style == "button" then
-		toggle = bridge._toggle(label, is_on, action, style, props.systemImage)
+		toggle = bridge._toggle(label, is_on, action, style, props.systemImage, props.symbolSize)
 	elseif action then
 		toggle = bridge._toggle(label, is_on, action)
 	else
