@@ -10,7 +10,7 @@
         </Picker>
         <Button id="markStale" title="Mark Untouched Clean Projects" systemImage="plus.circle" action="markStale" help="Mark build data of projects with a clean git tree, untouched for three months" disabled="true" />
       </HStack>
-      <ContentUnavailable id="projectsEmpty" title="No Build Folders Found" systemImage="folder.badge.gearshape" description="Projects appear here once Diskmap finds node_modules, target, .build and similar folders beside their project files." maxWidth="infinity" />
+      <ContentUnavailable id="projectsEmpty" title="No Build Folders Found" systemImage="folder.badge.gearshape" description="Projects appear here once Diskmap finds node_modules, target, .build and similar folders beside their project files." />
       <GroupBox id="projectsList" maxWidth="infinity">
         <%- partial("ResourceList.etlua", {id = "projects", menu = "menu", activate = "reveal", header = true, nameTitle = "Project", detailTitle = "Git", sizeTitle = "Build data"}) %>
       </GroupBox>
