@@ -10,7 +10,7 @@
       <Label text="<%= path %>" size="11" color="secondary" maxWidth="infinity" lines="1" truncation="middle" />
       <% end %>
       <% if unreadable.more > 0 then %>
-      <Label id="accessMore" text="and <%= unreadable.more %> more" size="11" color="secondary" />
+      <Label id="accessMore" text="and <%= unreadable.moreText %> more" size="11" color="secondary" />
       <% end %>
       <Label text="Their sizes are missing from the totals. Full Disk Access lets Diskmap measure them." size="11" color="secondary" maxWidth="infinity" lines="0" />
     </VStack>

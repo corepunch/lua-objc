@@ -78,7 +78,7 @@ Exclusions apply to descendants; an explicitly requested root is always attempte
 Hard links and duplicate roots share a device/inode ledger within one scan. A new
 scan always creates a new ledger and rereads metadata. No persistence is involved.
 
-Snapshots contain `trees` (allocated `kb`, optional `partial`), `rootStates`,
+Snapshots contain `trees` (allocated `kb`, `partial`), `rootStates`,
 `completed`, `total`, `visited`, `bulkCalls`, `seconds`, `errors`, `issues`, and
 `failure`. The root-state array supplies ordering even when a tree entry is nil.
 States are `measured`, `missing`, `skipped`, or `unreadable`. A failure or cancellation
@@ -90,7 +90,15 @@ the error count continues to grow. The engine has a ten-minute deadline and a
 missing from a bulk record is read through `fstatat`; no file contents are opened.
 Mounted descendants and symlinks are skipped. Unsupported directory enumeration
 is reported as an issue, not silently converted to zero. File sums do not provide
-exclusive APFS clone/snapshot allocation.
+exclusive APFS clone/snapshot allocation: a clone's blocks are reported under
+every file sharing them. A root that is a volume's mount point is therefore
+capped at the space the volume uses (`ATTR_VOL_SPACEUSED`, the figure Disk
+Utility shows): its tree carries `volumeKb` and `sharedKb`, the amount the file
+sum exceeded it by, and its breakdown children are scaled to add up to the
+capped total. Other roots report `volumeKb = 0`.
+
+Values keep their types in Lua: flags are booleans, counts are integers, sizes
+in kilobytes are floats, and strings keep embedded NUL bytes.
 
 See [the investigation](../../../docs/research/STORAGE_SIZING.md) for the private
 Apple-service probes and timing evidence, and `tests/storage_scan.test.lua` for

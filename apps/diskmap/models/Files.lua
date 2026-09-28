@@ -4,7 +4,14 @@ local Files = {}
 
 -- Large Files filters. "Unused" is a year without being opened or changed,
 -- the threshold CleanMyMac's Large & Old Files and most Reddit advice use.
-Files.filters = {"All", "Unused for a year", "Installers & archives", "Media"}
+-- "Yours" leads: the files a person can act on. Files inside apps, system
+-- volumes and tool folders stay under "All", for context.
+Files.filters = {"Yours", "All", "Unused for a year", "Installers & archives", "Media"}
+-- The segment of a filter, for pages that open Large Files on one.
+function Files.filterIndex(name)
+	for index, filter in ipairs(Files.filters) do if filter == name then return index end end
+	return 1
+end
 local FILTER_KINDS = {["Installers & archives"] = {installers = true, archives = true}, Media = {video = true, images = true, audio = true}}
 
 -- Folders that are documents to Finder. A file inside one belongs to its app
@@ -119,7 +126,7 @@ function Files.rows(model, filter, query, kind, now)
 				kind = fileKind.name, kindId = fileKind.id, fileIcon = file.path, icon = fileKind.icon, color = fileKind.color,
 				trashable = (Files.validateTrash(model, file.path))}
 			row.detail = Model.used(row.lastUse)
-			if matches(row, needle) then table.insert(rows, row) end
+			if matches(row, needle) and (filter ~= "Yours" or row.trashable) then table.insert(rows, row) end
 		end
 	end
 	table.sort(rows, function(a, b) if a.bytes ~= b.bytes then return a.bytes > b.bytes end return a.path < b.path end)

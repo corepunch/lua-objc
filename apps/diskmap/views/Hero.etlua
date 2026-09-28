@@ -3,9 +3,9 @@
   -- The center text is set at its largest; the chart offers it the hole and
   -- it shrinks to fit, no smaller than the scale factors allow.
   local hiddenRows = hidden or {}
-  local half = math.ceil(#chart.legend / 2)
-  local columns = { {}, {} }
-  for index, item in ipairs(chart.legend) do table.insert(columns[index <= half and 1 or 2], item) end
+  -- One legend column, no wider than a name, a size and a share read well
+  -- across: two columns ran into each other in the narrowest window.
+  HERO.legend = 440
 %>
 <GroupBox id="heroCard" maxWidth="infinity">
   <HStack maxWidth="infinity" padding="20" spacing="28" alignment="center">
@@ -27,20 +27,16 @@
         <% end %>
       </VStack>
       <% if #chart.legend > 0 then %>
-      <HStack id="legend" maxWidth="infinity" spacing="20" alignment="top">
-        <% for column = 1, 2 do %>
-        <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="6" alignment="leading">
-          <% for _, item in ipairs(columns[column]) do %>
-          <%- partial("LegendRow.etlua", {item = item}) %>
-          <% end %>
-        </VStack>
+      <VStack id="legend" maxWidth="<%= HERO.legend %>" spacing="4" alignment="leading">
+        <% for _, item in ipairs(chart.legend) do %>
+        <%- partial("LegendRow.etlua", {item = item}) %>
         <% end %>
-      </HStack>
+      </VStack>
       <% else %>
       <Label id="legendExplanation" text="<%= chart.explanation %>" size="12" color="secondary" maxWidth="infinity" lines="3" />
       <% end %>
       <% if #hiddenRows > 0 then %>
-      <VStack id="hiddenSpace" maxWidth="infinity" spacing="4" alignment="leading">
+      <VStack id="hiddenSpace" maxWidth="<%= HERO.legend %>" spacing="4" alignment="leading">
         <% for _, row in ipairs(hiddenRows) do %>
         <HStack maxWidth="infinity" spacing="6" alignment="center" help="<%= row.detail %>">
           <SystemImage name="<%= row.icon %>" size="11" color="tertiary" />

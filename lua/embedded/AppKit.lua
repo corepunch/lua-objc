@@ -2161,7 +2161,7 @@ end
 --- Renders raised chart sectors in SceneKit for `SectorChart depth`.
 ---
 --- Sectors are `{startAngle, endAngle, inner, outer, height, gap, color,
---- alpha, lift}` in the chart's point geometry: each sector's whole share and
+--- alpha, highlight}` in the chart's point geometry: each sector's whole share and
 --- band, and the parallel-sided gap cut between neighbours. `ui/sectors.lua`
 --- computes them.
 --- @prop sectors table optional. Sector descriptions.

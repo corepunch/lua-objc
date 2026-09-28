@@ -3,6 +3,7 @@ local Template = require("ui.template")
 local Categories = require("apps.diskmap.models.Categories")
 local MapTree = require("apps.diskmap.models.MapTree")
 local Model = require("apps.diskmap.Model")
+local Sectors = require("ui.sectors")
 local Controller = {}; Controller.__index = Controller
 
 local STYLES = {"rings", "rectangles"}
@@ -60,7 +61,10 @@ function Controller:presentation()
 	local nodes, total = MapTree.nodes(self.model, self.focus)
 	self.total = total
 	local trail = MapTree.path(self.model, self.focus)
-	local rows = Categories.rows(self.model, self.focus ~= "" and self.focus or nil)
+	-- Search narrows the list beside the chart, as on every other page; the
+	-- chart keeps the whole level so its proportions stay true.
+	local query = self.state and self.state.query or ""
+	local rows = Categories.rows(self.model, self.focus ~= "" and self.focus or nil, query)
 	table.sort(rows, function(a, b) return (a.bytes or -1) > (b.bytes or -1) end)
 	local largest = rows[1] and rows[1].bytes or 0
 	for _, row in ipairs(rows) do
@@ -75,10 +79,15 @@ function Controller:presentation()
 	end
 	self.defaultHover = #nodes == 0 and "" or "Hover over the map for details; click a group to look inside."
 	local focusRow = self.focus ~= "" and Categories.row(self.model, self.focus) or nil
+	-- The Overview counts what the disk reports as used; the Map counts
+	-- what Diskmap measured. Saying both keeps the two pages reconcilable.
+	local disk = self.state and self.state.disk
+	local used = disk and disk.totalKb and disk.totalKb > 0 and (disk.totalKb - disk.freeKb) * 1024 or nil
 	return {nodes = nodes, rows = rows, trail = trail, worth = worth, style = self.style, hover = self.defaultHover,
-		total = Model.size(total),
+		total = Model.size(total), query = query,
 		subtitle = (focusRow and (focusRow.name .. " · ") or "") .. Model.size(total) .. " measured"
-			.. (self.focus == "" and " across every category" or ""),
+			.. (self.focus == "" and (used and used >= total and (" of " .. Model.size(used) .. " used · shares are of what was measured")
+				or " across every category") or ""),
 		accessibilityLabel = "Storage map of " .. trail[#trail].name .. ", " .. #nodes .. " areas"}
 end
 
@@ -103,7 +112,12 @@ function Controller:update(state)
 		chartSelect = function(id, count) if count and count > 1 then self:activate(id) elseif isGroup(self.model, id) then self:setFocus(id) else self:describe(id) end end,
 		chartHover = function(id) self:describe(id) end,
 		up = function() self:up() end,
-		selectRow = function(_, _, row) if row then self:describe(row.id) end end,
+		-- A selected row points at its sector, as hovering the sector would.
+		selectRow = function(_, _, row)
+			if not row then return end
+			self:describe(row.id)
+			if self.refs.sunburst then Sectors.highlight(self.refs.sunburst, row.id) end
+		end,
 		drillRow = function(_, _, row) if row then self:activate(row.id) end end,
 		rowMenu = function(_, _, row) return self.actions:resource(row.id) end,
 		-- A mark drags as its folder or file, like a Finder item.

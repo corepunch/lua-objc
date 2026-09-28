@@ -69,11 +69,20 @@ function Recommendations.presentation(model, query, apps)
 			end
 		end
 	end
+	-- Each list reads largest first, like every other ranking in Diskmap; a
+	-- rule's priority only orders equal sizes.
+	local function bySize(a, b)
+		if a.bytes ~= b.bytes then return a.bytes > b.bytes end
+		if a.priority ~= b.priority then return a.priority < b.priority end
+		return a.id < b.id
+	end
+	table.sort(rebuildable, bySize)
+	table.sort(review, bySize)
 	local elsewhere = {}
 	local files = Files.summary(model)
 	if files and files.reviewableOldBytes > 0 then
-		table.insert(elsewhere, {id = "old-files", name = "Documents unused for a year", page = "files", filter = 2,
-			subtitle = files.reviewableOld .. " of your own files over " .. Model.size(require("apps.diskmap.models.Inventory").summary.minimumFileBytes)
+		table.insert(elsewhere, {id = "old-files", name = "Documents unused for a year", page = "files", filter = Files.filterIndex("Unused for a year"),
+			subtitle = Model.count(files.reviewableOld) .. " of your own files over " .. Model.size(require("apps.diskmap.models.Inventory").summary.minimumFileBytes)
 				.. " were not opened or changed in a year.",
 			icon = "clock.fill", color = "systemOrange", bytes = files.reviewableOldBytes, size = Model.size(files.reviewableOldBytes), detail = "Large Files", shareText = ""})
 	end
@@ -82,7 +91,7 @@ function Recommendations.presentation(model, query, apps)
 		if row.trashable then installers = installers + 1; installerBytes = installerBytes + row.bytes end
 	end
 	if installerBytes > 0 then
-		table.insert(elsewhere, {id = "installers", name = "Installers & archives", page = "files", filter = 3,
+		table.insert(elsewhere, {id = "installers", name = "Installers & archives", page = "files", filter = Files.filterIndex("Installers & archives"),
 			subtitle = installers .. " disk images, installers and archives in your folders. Once installed or expanded they are rarely needed.",
 			icon = "opticaldiscdrive.fill", color = "systemTeal", bytes = installerBytes, size = Model.size(installerBytes), detail = "Large Files", shareText = ""})
 	end

@@ -295,6 +295,11 @@ function System.discoverEntries(home, completion, projectRoots)
 								for _, marker in ipairs(rule.markers) do if exists(parent .. "/" .. marker) then marked = parent .. "/" .. marker; break end end
 							end
 							if marked then
+								local searched = ""
+								for _, candidate in ipairs(location.existing) do
+									if parent:sub(1, #candidate) == candidate and #candidate > #searched then searched = candidate end
+								end
+								if Projects.isToolFolder(parent, searched) then break end
 								local proven = false
 								for _, inner in ipairs(rule.inner) do if exists(path .. "/" .. inner) then proven = true; break end end
 								local root = ""
@@ -363,7 +368,11 @@ function System.applicationInfo(paths, completion)
 	local info = {}
 	for _, path in ipairs(paths) do
 		local plist = ns.readPropertyList(path .. "/Contents/Info.plist") or {}
-		info[path] = {bundleId = plist.CFBundleIdentifier, version = plist.CFBundleShortVersionString or plist.CFBundleVersion}
+		-- The name Finder and Launchpad show, which the bundle's file name
+		-- ("logioptionsplus.app") need not be.
+		local displayName = plist.CFBundleDisplayName or plist.CFBundleName
+		info[path] = {bundleId = plist.CFBundleIdentifier, version = plist.CFBundleShortVersionString or plist.CFBundleVersion,
+			displayName = type(displayName) == "string" and displayName ~= "" and displayName or nil}
 	end
 	if #paths == 0 then completion(info); return end
 	local argv = {"/usr/bin/mdls", "-raw", "-name", "kMDItemLastUsedDate"}

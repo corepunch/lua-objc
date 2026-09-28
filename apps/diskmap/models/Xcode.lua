@@ -61,12 +61,34 @@ function Xcode.supportRows(entries)
 	return rows
 end
 
+-- Folders Xcode keeps in DerivedData for every project at once. They are
+-- caches, not projects, so they are named for what they hold and never
+-- counted as a project whose workspace is unknown.
+Xcode.sharedCaches = {
+	["ModuleCache.noindex"] = "Module cache",
+	["SymbolCache.noindex"] = "Symbol cache",
+	["SDKStatCaches.noindex"] = "SDK file cache",
+	["CompilationCache.noindex"] = "Compilation cache",
+	["SDKExplicitPrecompiledModules"] = "Precompiled SDK modules",
+}
+function Xcode.sharedCache(name)
+	if Xcode.sharedCaches[name] then return Xcode.sharedCaches[name] end
+	if type(name) == "string" and name:match("%.noindex$") then return (name:gsub("%.noindex$", "")) end
+	return nil
+end
+
 -- DerivedData folders are "<Project>-<hash>". Their info.plist names the
 -- workspace; a workspace that no longer exists marks build data nothing can
--- reuse.
+-- reuse. Shared caches follow the projects.
 function Xcode.derivedRows(entries)
 	local rows = {}
 	for _, entry in ipairs(entries or {}) do
+		local shared = Xcode.sharedCache(entry.name)
+		if shared then
+			table.insert(rows, {id = entry.path, path = entry.path, name = shared, bytes = entry.bytes, size = sized(entry.bytes),
+				subtitle = "Shared by every project · Xcode rebuilds it", missing = false, shared = true, status = "Shared"})
+			goto continue
+		end
 		local workspace = type(entry.workspace) == "string" and entry.workspace or nil
 		local name = workspace and workspace:match("([^/]+)%.xc[a-z]+$")
 			or entry.name:match("^(.-)%-%l+$") or entry.name
@@ -74,9 +96,11 @@ function Xcode.derivedRows(entries)
 		table.insert(rows, {id = entry.path, path = entry.path, name = name, bytes = entry.bytes, size = sized(entry.bytes),
 			subtitle = workspace or "Workspace not recorded", missing = missing,
 			status = missing and "Missing" or workspace and "Present" or "Unknown"})
+		::continue::
 	end
 	table.sort(rows, function(a, b)
 		if a.missing ~= b.missing then return a.missing end
+		if (a.shared == true) ~= (b.shared == true) then return b.shared == true end
 		if (a.bytes or 0) ~= (b.bytes or 0) then return (a.bytes or 0) > (b.bytes or 0) end
 		return a.path < b.path
 	end)

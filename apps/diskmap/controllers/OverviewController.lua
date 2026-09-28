@@ -50,13 +50,18 @@ function Controller:update(state)
 	for _, item in ipairs(chart.legend) do
 		actions["category_" .. item.id] = function() self.handlers.open(item.id) end
 	end
+	local cloudBytes, cloudFiles = Inventory.cloud(self.model)
 	self.hero:update({summary = Overview.summary(self.model, state.disk, state.capacity), chart = chart,
-		hidden = Overview.hidden(state.disk, state.capacity, state.snapshotCount, self.model.scan.errors, Inventory.cloud(self.model)),
+		hidden = Overview.hidden(state.disk, state.capacity, state.snapshotCount, self.model.scan.errors, cloudBytes, cloudFiles,
+			not self.model.includeMedia),
 		reclaim = Overview.reclaim(self.model), volumeName = state.volumeName, actions = actions})
 	self.changes:update({changes = state.changes, actions = {showAllChanges = function() self.handlers.changes() end}})
+	-- An empty section takes no place in the page, so it adds no spacing.
+	refs.changes.hidden = state.changes == nil
 	-- Folders the scan could not read, while Full Disk Access is missing.
-	local unreadable = state.fullDiskAccess == false and Overview.unreadable(self.model) or {paths = {}, more = 0}
+	local unreadable = state.fullDiskAccess == false and Overview.unreadable(self.model) or {paths = {}, more = 0, moreText = "0"}
 	self.access:update({unreadable = unreadable, actions = {grantAccess = function() self.handlers.access() end}})
+	refs.accessNotice.hidden = #unreadable.paths == 0
 end
 
 function Controller:dispose()

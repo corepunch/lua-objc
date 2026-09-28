@@ -85,7 +85,7 @@ function Updates.installers(model, files)
 	for _, row in ipairs(model.resources:leaves()) do
 		if row.path and row.name:match("^Install macOS .+%.app$") then
 			local m = model.measurements[row.id]
-			table.insert(rows, {id = row.id, name = (row.name:gsub("%.app$", "")), path = row.path, kind = "macOS installer app",
+			table.insert(rows, {id = row.id, name = (row.name:gsub("%.app$", "")), path = row.path, kind = "macOS installer app", type = "macOS installer",
 				bytes = m and m.bytes, size = m and m.status == "calculating" and "Calculating…" or Model.size(m and m.bytes)})
 		end
 	end
@@ -93,7 +93,9 @@ function Updates.installers(model, files)
 		local name = file.path:match("([^/]+)$") or file.path
 		local extension = (name:match("%.(%w+)$") or ""):lower()
 		local kinds = {dmg = "Disk image", pkg = "Installer package", xip = "Xcode archive (xip)", iso = "Disc image"}
+		-- `type` fits the list's detail column; the row's subtitle is its path.
 		table.insert(rows, {id = file.path, name = name, path = file.path,
+			type = ((kinds[extension] or "Installer"):gsub(" %(.*$", "")),
 			kind = (kinds[extension] or "Installer") .. " in " .. (file.path:match("/([^/]+)/[^/]+$") or "a folder"),
 			bytes = file.bytes, size = Model.size(file.bytes)})
 	end

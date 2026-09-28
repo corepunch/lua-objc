@@ -67,6 +67,17 @@ function Simulators.age(timestamp, now)
 	return math.max(0, math.floor(((now or os.time()) - then_) / 86400))
 end
 
+-- The SF Symbol for a device or runtime name: lists have no column headers,
+-- so the symbol says what kind of device a row is.
+local SYMBOLS = {{"ipad", "ipad"}, {"watch", "applewatch"}, {"tv", "appletv"}, {"vision", "vision.pro"}, {"xr", "vision.pro"}}
+function Simulators.symbol(name)
+	local lowered = (name or ""):lower()
+	for _, entry in ipairs(SYMBOLS) do
+		if lowered:find(entry[1], 1, true) then return entry[2] end
+	end
+	return "iphone"
+end
+
 function Simulators.rows(inventory, query, filter, now)
 	local rows, runtimes, needle = {}, {}, (query or ""):lower()
 	for _, runtime in ipairs(inventory.runtimes or {}) do runtimes[runtime.identifier] = runtime.name end
@@ -79,12 +90,15 @@ function Simulators.rows(inventory, query, filter, now)
 			local matchesFilter = (filter ~= "Unavailable" or not available)
 				and (filter ~= Simulators.filters[3] or (age ~= nil and age >= Simulators.staleDays))
 			if matchesFilter and (name .. " " .. runtimeName .. " " .. (device.udid or "")):lower():find(needle, 1, true) then
+				-- A value names itself or stays empty: a dash in a list without
+				-- headers says nothing.
 				table.insert(rows, {id = device.udid, name = name, runtime = runtimeName,
-					state = available and (device.state or "—") or "Unavailable",
+					icon = Simulators.symbol(name .. " " .. runtimeName), color = available and "systemBlue" or "systemOrange",
+					state = available and (device.state or "") or "Unavailable",
 					available = available, running = device.state == "Booted" or device.state == "Booting" or device.state == "Shutting Down", path = device.dataPath,
 					bytes = device.dataPathSize, size = Model.size(device.dataPathSize), age = age,
 					runtimeIdentifier = runtime,
-					lastUse = age and Model.used(Model.ago(age)) or "—"})
+					lastUse = age and Model.used(Model.ago(age)) or "Never started"})
 			end
 		end
 	end
@@ -115,12 +129,12 @@ function Simulators.runtimeRows(list, inventory, query, now)
 			local bytes = tonumber(entry.sizeBytes)
 			local devices = counts[entry.runtimeIdentifier] or 0
 			if (name .. " " .. (build or "") .. " " .. id):lower():find(needle, 1, true) then
-				table.insert(rows, {id = id, name = name, subtitle = table.concat({build and ("Build " .. build) or nil,
+				table.insert(rows, {id = id, name = name, icon = Simulators.symbol(platform), color = "systemIndigo", subtitle = table.concat({build and ("Build " .. build) or nil,
 					type(entry.kind) == "string" and entry.kind or nil, type(entry.state) == "string" and entry.state or nil}, " · "),
 					platform = platform, version = version, runtimeIdentifier = entry.runtimeIdentifier,
 					bytes = bytes, size = Model.size(bytes), deletable = entry.deletable == true,
-					devices = devices, deviceText = devices == 0 and "No devices" or (devices .. (devices == 1 and " device" or " devices")),
-					lastUse = age and Model.used(Model.ago(age)) or "—",
+					devices = devices, deviceText = devices == 0 and "No devices" or Model.plural(devices, "device"),
+					lastUse = age and Model.used(Model.ago(age)) or "Last use unknown",
 					path = type(entry.path) == "string" and entry.path or nil})
 			end
 		end

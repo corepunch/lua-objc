@@ -29,8 +29,10 @@ function Controller:update(state)
 	self.refs.largest:replaceRows(rows)
 	local bytes = 0
 	for _, row in ipairs(rows) do bytes = bytes + row.bytes end
+	local used = state.disk and state.disk.totalKb and state.disk.totalKb > 0 and (state.disk.totalKb - state.disk.freeKb) * 1024 or nil
 	self.refs.largestSummary.text = #rows == 0 and "No measured items match yet."
-		or string.format("The %d largest measured locations use %s.", #rows, Model.size(bytes))
+		or string.format("The %d largest measured locations use %s%s.", #rows, Model.size(bytes),
+			used and used >= bytes and (" of " .. Model.size(used) .. " used") or "")
 end
 
 function Controller:dispose()

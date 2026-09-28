@@ -5,8 +5,9 @@ local Status = require("apps.diskmap.models.Status")
 local Overview = {}
 
 -- The donut draws at most this many named categories; smaller measured
--- categories share one "Other categories" sector so thin slivers stay legible.
-local CHART = {categories = 7}
+-- categories share one "Other categories" sector so thin slivers stay legible,
+-- and the legend beside it stays one short column.
+local CHART = {categories = 5}
 
 local percent = Model.percent
 
@@ -105,8 +106,14 @@ end
 -- The part of used capacity that no file scan can attribute, split into what
 -- macOS reports separately: purgeable storage, local snapshots and locations
 -- Diskmap could not read. Sizes appear only where macOS provides them.
-function Overview.hidden(disk, capacity, snapshotCount, readErrors, cloudBytes, cloudFiles)
+-- `mediaExcluded` names the Photos, Music and TV libraries while they are
+-- left out of the scan, so a disk that is full of photos says where they are.
+function Overview.hidden(disk, capacity, snapshotCount, readErrors, cloudBytes, cloudFiles, mediaExcluded)
 	local rows = {}
+	if mediaExcluded then
+		table.insert(rows, {id = "media", icon = "photo.on.rectangle", title = "Photos, Music & TV libraries",
+			value = "Not scanned", detail = "Left out until you turn on Include media libraries in Settings"})
+	end
 	if cloudFiles and cloudFiles > 0 then
 		table.insert(rows, {id = "icloud", icon = "icloud", title = "In iCloud only",
 			value = Model.size(cloudBytes or 0), detail = Model.count(cloudFiles) .. " evicted files use no space here; opening one downloads it"})
@@ -118,18 +125,20 @@ function Overview.hidden(disk, capacity, snapshotCount, readErrors, cloudBytes, 
 	end
 	if snapshotCount and snapshotCount > 0 then
 		table.insert(rows, {id = "snapshots", icon = "clock.arrow.circlepath", title = "Local snapshots",
-			value = tostring(snapshotCount), detail = "Hold deleted files' blocks; their size cannot be measured per file"})
+			value = Model.count(snapshotCount), detail = "Hold deleted files' blocks; their size cannot be measured per file"})
 	end
 	if readErrors and readErrors > 0 then
 		table.insert(rows, {id = "unreadable", icon = "lock", title = "Unreadable locations",
-			value = tostring(readErrors), detail = "Full Disk Access lets Diskmap measure them"})
+			value = Model.count(readErrors), detail = "Full Disk Access lets Diskmap measure them"})
 	end
 	return rows
 end
 
 -- The folders the last scan could not read, for the notice that offers Full
 -- Disk Access: at most `limit` paths, shown from the home folder, and how
--- many more there were.
+-- many more there were. The scan keeps the first thousand paths and goes on
+-- counting, so the count of the rest comes from its error total: the notice
+-- and the "Unreadable locations" row then name the same number.
 Overview.unreadableLimit = 6
 function Overview.unreadable(model, limit)
 	limit = limit or Overview.unreadableLimit
@@ -146,7 +155,8 @@ function Overview.unreadable(model, limit)
 			end
 		end
 	end
-	return {paths = paths, more = math.max(0, total - #paths), total = total}
+	total = math.max(total, math.floor(model.scan and model.scan.errors or 0))
+	return {paths = paths, more = math.max(0, total - #paths), moreText = Model.count(math.max(0, total - #paths)), total = total}
 end
 
 -- Headline for the Clean Up call to action. Rebuildable and review-first

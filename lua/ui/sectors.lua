@@ -195,7 +195,7 @@ end
 -- (span) and band, plus one `gap` in points. Solids are not strokes, so the
 -- view cuts parallel-sided gaps of that width between neighbours and between
 -- rings alike, instead of the flat chart's wedges, which widen outwards. The
--- highlighted sector lifts out of the ring.
+-- highlighted sector brightens in place.
 local function sceneSpecs(state, alphas, highlightedIndex)
 	local result = {}
 	local gap = math.max(STYLE.ringGap, state.angularInset or 0)
@@ -206,7 +206,7 @@ local function sceneSpecs(state, alphas, highlightedIndex)
 		table.insert(result, {startAngle = spec.spanStart, endAngle = spec.spanEnd, color = spec.stroke,
 			inner = inner, outer = math.max(inner, spec.outer - (spec.ring < state.rings and gap / 2 or 0)), gap = gap,
 			height = state.depth,
-			alpha = alphas and alphas[index] or spec.alpha, lift = index == highlightedIndex and 1 or 0})
+			alpha = alphas and alphas[index] or spec.alpha, highlight = index == highlightedIndex and 1 or 0})
 	end
 	return result
 end
@@ -234,7 +234,8 @@ end
 -- `SectorMark` records or overlay views centered on the chart, like SwiftUI's
 -- `chartBackground` content in the hole. `onSelect(id, clickCount)`,
 -- `onHover(id)` and `onCenter()` make it interactive; the hovered sector
--- lifts and brightens while the others stay as they are. A positive `depth` draws raised sectors `depth`
+-- brightens where it stands while the others stay as they are, and
+-- `Sectors.highlight` does the same from code. A positive `depth` draws raised sectors `depth`
 -- points deep in a SceneKit view instead of flat arcs; the geometry, hit
 -- testing and interaction are the same. `shadow = false` drops its contact
 -- shadow.
@@ -277,8 +278,8 @@ function Sectors.chart(ns, props)
 	if interactive and type(ns.PointerView) == "function" then
 		local ChartKeys = require("ui.chartkeys")
 		local highlighted
-		-- Hovering or keyboard focus raises one sector: a raised chart lifts it
-		-- and lightens it natively, a flat one moves it halfway to opaque.
+		-- Hovering or keyboard focus marks one sector: a raised chart lightens
+		-- it natively without moving it, a flat one moves it halfway to opaque.
 		-- Only a typed filter dims, marking sectors whose label does not match.
 		local function restyle(animated)
 			local alphas, highlightedIndex = {}, nil
@@ -316,6 +317,7 @@ function Sectors.chart(ns, props)
 			filtered = restyle,
 		})
 		state.unhighlight = function() highlighted = nil end
+		state.highlight = function(id) highlight(id and sectorFor(id) or nil) end
 		-- The sector under a pointer, and the pointer in flat chart points.
 		local function locate(x, y)
 			if not (x and y) then return nil, x, y end
@@ -347,6 +349,16 @@ function Sectors.chart(ns, props)
 	if props.accessibilityLabel then view.accessibilityLabel = props.accessibilityLabel end
 	charts[view] = state
 	return view
+end
+
+-- Highlights the sector for mark `id` of an interactive chart as hovering it
+-- would, or none for nil, so a list beside the chart can point at its sector.
+-- Returns false for a view this module did not build or that takes no input.
+function Sectors.highlight(view, id)
+	local state = charts[view]
+	if not (state and state.highlight) then return false end
+	state.highlight(id)
+	return true
 end
 
 -- Applies new `SectorMark` records to a chart built by `Sectors.chart`: arcs

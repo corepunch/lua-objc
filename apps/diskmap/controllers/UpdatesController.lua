@@ -59,7 +59,7 @@ function Controller:update()
 		local rows = {}
 		for _, installer in ipairs(data.installers) do
 			table.insert(rows, {id = installer.path, path = installer.path, name = installer.name, bytes = installer.bytes, size = installer.size,
-				subtitle = installer.path, detail = installer.kind,
+				subtitle = installer.path, detail = installer.type,
 				icon = installer.kind == "macOS installer app" and "app.dashed" or "opticaldiscdrive"})
 		end
 		refs.installers:replaceRows(self.actions:annotate(rows, nil, "systemGray"))

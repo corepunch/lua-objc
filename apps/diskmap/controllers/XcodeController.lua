@@ -12,7 +12,7 @@ local SECTIONS = {
 		bulkTitle = "Mark Older Versions", bulkHelp = "Mark every version except the newest per platform",
 		consequence = "Debug symbols for one OS version. Xcode copies them again the next time you debug a device running it."},
 	{id = "derived", title = "DerivedData", status = true, icon = "hammer", color = "systemOrange",
-		detail = "Build products and indexes per project. Folders whose project no longer exists come first.",
+		detail = "Build products and indexes per project. Folders whose project no longer exists come first; caches shared by every project come last.",
 		bulkTitle = "Mark Missing Projects", bulkHelp = "Mark build data of projects that no longer exist",
 		consequence = "Build products and the code index. The next build and indexing of this project take longer."},
 	{id = "archives", title = "Archives", detailColumn = true, icon = "archivebox", color = "systemPurple",
@@ -23,7 +23,9 @@ local SECTIONS = {
 -- Row statuses as Status symbols: the newest device support stays (red);
 -- build data of a missing project is safe to remove (green); older versions
 -- and build data of a present or unknown project need a look (orange).
-local STATUS = {["Newest · keep"] = "Keep", Older = "Review", Missing = "Rebuildable", Present = "Review", Unknown = "Review"}
+-- Caches shared by every project are rebuilt by Xcode (green).
+local STATUS = {["Newest · keep"] = "Keep", Older = "Review", Missing = "Rebuildable", Present = "Review", Unknown = "Review",
+	Shared = "Rebuildable"}
 Controller.statuses = STATUS
 
 -- The Xcode page: device support per OS version, DerivedData per project and

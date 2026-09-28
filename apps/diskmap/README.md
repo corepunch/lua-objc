@@ -31,8 +31,8 @@ the Developer category.
 - **Largest Items** — the hundred largest measured locations across every
   category, each with its semantic owner, cleanup status and share bar.
 - **Large Files** — the individual files over 50 MB found by the same scan,
-  with when each was last used, filtered by All, Unused for a year, Installers &
-  archives and Media. Your own documents (not files inside ~/Library, hidden
+  with when each was last used, filtered by Yours (the files you can act on,
+  shown first), All, Unused for a year, Installers & archives and Media. Your own documents (not files inside ~/Library, hidden
   tool folders or packages such as a Photos library) can be moved to the Trash
   after confirmation.
 - **File Types** — every measured byte grouped by kind (videos, disk images
@@ -54,7 +54,8 @@ the Developer category.
 - **Map** — the same semantic tree as a raised (3D) sunburst or a squarified
   treemap (segmented Rings / Rectangles), beside a list of the focused node's
   children. Click a group to look inside, click the center or the breadcrumb
-  to go back, hover for the path, size and share. Colors are muted category
+  to go back, hover for the path, size and share; the hovered sector brightens in place, and
+  selecting a row in the list highlights its sector. Colors are muted category
   colors that lighten with depth; hatching marks rebuildable data. "Worth a
   look" lists the largest rebuildable resources under the focus.
 - **Xcode** — Device Support per OS version (the newest per platform is
@@ -144,8 +145,13 @@ Applications, Xcode, Projects, Duplicates, Disks and Updates pages, or a drop on
 the collector bar under every page, adds items to one basket;
 marking never touches the disk. The Marked toolbar sheet lists them with their
 consequences and moves them to the Trash one at a time, checking each again
-first. It refuses the disk root, system folders, mount points and your home's
-standard folders, and never follows symlinks. Sizes are measured again before
+first. Marking and moving both refuse the disk root, system folders, mount
+points, your home's standard folders, `/tmp` and `/private/var`, the shared
+folder and other users' homes, the iCloud Drive and cloud storage roots, Photos,
+Music and TV libraries, and anything in Keychains, Preferences, Mail, Messages,
+Accounts, Cookies or `~/.ssh`. Paths are compared without regard to case and
+through the root's links (`/tmp` is `/private/tmp`), and symlinks are never
+followed. Sizes are measured again before
 the move, and each item is checked just before it moves: one whose app is
 running (Xcode for DerivedData, a browser for its cache, the parent app of a
 helper), whose project file has gone, that was replaced since it was marked
@@ -166,13 +172,12 @@ watched folder that disappears stays listed as Missing, and a bookmark follows
 it when it is moved or renamed.
 
 Categories open their resources in a sheet with Safe/rebuildable, Needs review
-and Essential to keep filters. Refresh, Stop, Clean Up, Settings and Search live
-in the toolbar; search applies to the current page. The window subtitle shows
-free space. `--page=<id>` (for example `--page=files`) opens a destination at
-launch for screenshots and walkthroughs.
 and Essential to keep filters. Back, Forward, Refresh, Stop, Clean Up,
 Marked, Settings and Search live in the toolbar; search applies to the current
-page. The window subtitle shows free and available space (available includes
+page (on the Map it narrows the list beside the chart, which keeps the whole
+level so its proportions stay true), and a search without matches says so.
+`--page=<id>` (for example `--page=files`) opens a destination at launch for
+screenshots and walkthroughs. The window subtitle shows free and available space (available includes
 purgeable storage) and how many items are marked. Sidebar rows show sizes as
 badges. The overview explains space no scan can attribute: purgeable storage,
 local snapshots and unreadable locations. With **Keep storage history** on in
@@ -246,8 +251,7 @@ actions change only the provider's in-memory copy; restarting restores the
 fixture. Finder, owner apps, System Settings and real device commands are not
 launched. The real provider remains the default when the mock switch is absent.
 
-Every launch starts a fresh inventory. The category list follows macOS Storage: Applications, Trash, Books, Developer, Documents, iCloud Drive, iOS Files, Mail, Messages, Music, Music Creation, Photos, Podcasts, TV, Other Users & Shared, macOS and System Data, plus AI agents and snapshot backups. Photos, Music, TV and known media support locations are excluded by default; opt in for the current session in Settings. Excluded sizes are unknown, never zero. Diskmap has no directory
-argument or live scan-result cache. The explicit mock fixture is a synthetic
+Every launch starts a fresh inventory. The category list follows macOS Storage: Applications, Trash, Books, Developer, Documents, iCloud Drive, iOS Files, Mail, Messages, Music, Music Creation, Photos, Podcasts, TV, Other Users & Shared, macOS and System Data, plus AI agents and snapshot backups. Photos, Music, TV and known media support locations are excluded by default, which the Overview says; Include media libraries in Settings measures them and is remembered between launches. Excluded sizes are unknown, never zero. The inventory always covers the whole startup disk (`--folder=<path>` only opens the Folder Map on a folder), and no live scan results are cached. The explicit mock fixture is a synthetic
 filesystem for repeatable testing; use `--export-mock` to create a local snapshot
 of this Mac.
 
@@ -265,9 +269,12 @@ resolved from installed application bundles, with a symbol fallback.
 
 Every startup and refresh recalculates the inventory. Each pending category
 shows a native spinner and “Calculating…” in place of its size, then displays
-its fresh result once all of its locations finish. No scan results or diagnostics
-are retained between launches. Only Keep choices, watched locations with their
-last size and the background-check setting persist, in Diskmap's Application
+its fresh result once all of its locations finish. No live scan results or
+diagnostics are retained between launches. What persists is what you chose:
+Keep choices, watched locations with their last size, the settings (background
+checks, media libraries, storage history and notifications), folders added to
+Projects, and, once you export a snapshot, that snapshot with its cached
+per-location totals (`snapshot-summary`), in Diskmap's Application
 Support folder (resolved by `NSFileManager`, so a sandboxed build uses its container).
 
 Headless tests inject scanner results through the service interface, without

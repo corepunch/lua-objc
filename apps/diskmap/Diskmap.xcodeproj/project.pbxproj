@@ -268,7 +268,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Lua sources and app data are copied as trees, so new files need no project edit.\nset -e\nroot=\"$SRCROOT/../..\"\nresources=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\ncopy() {\n\tmkdir -p \"$resources/$2\"\n\trsync -a --delete --prune-empty-dirs --exclude=Build/ --include='*/' --include='*.lua' --include='*.etlua' --include='*.bin' --exclude='*' \"$root/$1/\" \"$resources/$2/\"\n}\ncopy lua lua\ncopy apps/diskmap apps/diskmap\n";
+			shellScript = "# Lua sources and app data are copied as trees, so new files need no project edit.\nset -e\nroot=\"$SRCROOT/../..\"\nresources=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\ncopy() {\n\tmkdir -p \"$resources/$2\"\n\trsync -a --delete --delete-excluded --prune-empty-dirs --exclude=Build/ --include='*/' --include='*.lua' --include='*.etlua' --include='*.bin' --exclude='*' \"$root/$1/\" \"$resources/$2/\"\n}\ncopy lua lua\ncopy apps/diskmap apps/diskmap\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

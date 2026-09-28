@@ -107,7 +107,7 @@ function Controller:show()
 	local rows = self:groups()
 	for _, group in ipairs(rows) do
 		group.id, group.detail = group.path, group.gitText
-		group.subtitle = group.artifactText .. " · " .. group.ageText
+		group.subtitle = Projects.location(group.path, self.model.home) .. " · " .. group.artifactText .. " · " .. group.ageText
 		group.icon, group.color = "folder.fill", group.dirty and "systemOrange" or "systemGreen"
 		if self:isMarked(group) then
 			group.icon, group.color, group.subtitle = "checkmark.circle.fill", "systemBlue", "Marked for cleanup · " .. group.subtitle
@@ -123,7 +123,7 @@ function Controller:show()
 	self.refs.projectsEmpty.hidden = #all > 0
 	self.refs.projectsList.hidden = #all == 0
 	self.refs.projectsSummary.text = #all == 0 and "No project build folders found yet. Add the folders where you keep code."
-		or string.format("%s of build data in %d %s", Model.size(bytes), #all, #all == 1 and "project" or "projects")
+		or (Model.size(bytes) .. " of build data in " .. Model.plural(#all, "project"))
 end
 
 function Controller:marksChanged() self:show() end

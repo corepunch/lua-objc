@@ -13,7 +13,7 @@ end
 
 -- File Types opens this page narrowed to one kind.
 function Controller:focus(kind)
-	self.kind, self.filterIndex = kind, 1
+	self.kind, self.filterIndex = kind, Files.filterIndex("All")
 end
 
 function Controller:mount(host, state)
@@ -37,23 +37,32 @@ function Controller:update(state)
 	local filter = Files.filters[self.filterIndex]
 	local rows = Files.rows(self.model, filter, state and state.query, self.kind)
 	refs.files:replaceRows(rows)
+	-- An empty list says why it is empty: nothing matches the search, or
+	-- this filter has no files.
+	local query = state and state.query or ""
+	local measured = self.model.files ~= nil
+	refs.filesPanel.hidden = measured and #rows == 0
+	refs.filesEmpty.hidden = not (measured and #rows == 0 and query == "")
+	refs.filesNoResults.hidden = not (measured and #rows == 0 and query ~= "")
 	local summary = Files.summary(self.model)
 	local kind = self.kind and Files.kindById(self.kind)
 	refs.clearKind.hidden = kind == nil
-	refs.filterDetail.text = (kind and (kind.name .. " · ") or "") .. (#rows == 1 and "1 file" or (#rows .. " files"))
+	refs.filterDetail.text = (kind and (kind.name .. " · ") or "") .. Model.plural(Model.count(#rows), "file")
 		.. (filter == "Unused for a year" and " not opened or changed in a year" or "")
+		.. (filter == "Yours" and " you can move to the Trash" or "")
+		.. (query ~= "" and " matching the search" or "")
 	if not summary then
 		refs.summary.text = "Measuring files… Large files appear when the scan finishes."
 		return
 	end
-	refs.summary.text = string.format("%d files over %s use %s%s.", summary.count, Model.size(Inventory.summary.minimumFileBytes),
+	refs.summary.text = string.format("%s over %s use %s%s.", Model.plural(Model.count(summary.count), "file"), Model.size(Inventory.summary.minimumFileBytes),
 		Model.size(summary.bytes), summary.partial and " · some locations could not be read" or "")
 	refs.largeTileValue.text = Model.size(summary.bytes)
-	refs.largeTileDetail.text = summary.count .. " files, largest first"
+	refs.largeTileDetail.text = Model.plural(Model.count(summary.count), "file") .. ", largest first"
 	refs.oldTileValue.text = Model.size(summary.oldBytes)
-	refs.oldTileDetail.text = summary.oldCount .. " files not opened or changed in a year"
+	refs.oldTileDetail.text = Model.plural(Model.count(summary.oldCount), "file") .. " not opened or changed in a year"
 	refs.movableTileValue.text = Model.size(summary.reviewableOldBytes)
-	refs.movableTileDetail.text = summary.reviewableOld .. " unused documents you can move to the Trash"
+	refs.movableTileDetail.text = Model.plural(Model.count(summary.reviewableOld), "unused document") .. " you can move to the Trash"
 end
 
 function Controller:dispose()

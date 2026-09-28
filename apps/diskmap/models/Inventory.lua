@@ -43,6 +43,9 @@ end
 -- the files iCloud evicted explain the difference from what Finder shows.
 local function measurement(node, state)
 	local tree = type(node) == "table" and node or {}
+	-- A location that could not be read at all has no size: "≥ 0 KB" would
+	-- read as a measurement of nothing, where the truth is "No access".
+	if state == "unreadable" and (tree.kb or 0) == 0 then return {status = "denied"} end
 	return {bytes = type(node) == "table" and node.kb * 1024 or state == "missing" and 0 or nil,
 		logicalBytes = tree.logicalKb and math.floor(tree.logicalKb * 1024 + 0.5) or nil,
 		cloudBytes = tree.cloudKb and math.floor(tree.cloudKb * 1024 + 0.5) or nil, cloudFiles = tree.cloudFiles,

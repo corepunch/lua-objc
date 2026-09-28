@@ -550,7 +550,18 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	LuaSymbolImageView *symbolView = (LuaSymbolImageView *)cell.imageView;
 	symbolView.badgeColorName = cellSpec[@"badgeColor"] ? rowData[cellSpec[@"badgeColor"]] : nil;
 	symbolView.appBundleId = cellSpec[@"appIcon"] ? rowData[cellSpec[@"appIcon"]] : nil;
+	/* A file of no known type has Finder's blank document for an icon, which
+	 * says less than the row's own symbol; such a row keeps its symbol.
+	 * Unknown types have a dynamic identifier, or are plain data. */
+	BOOL knownType = NO;
 	if (filePath.length && [NSFileManager.defaultManager fileExistsAtPath:filePath]) {
+		id type = nil;
+		[[NSURL fileURLWithPath:filePath] getResourceValue:&type forKey:NSURLContentTypeKey error:NULL];
+		NSString *identifier = [type valueForKey:@"identifier"];
+		knownType = symbolName.length == 0 || (identifier.length > 0 && ![identifier hasPrefix:@"dyn."]
+			&& ![identifier isEqualToString:@"public.data"] && ![identifier isEqualToString:@"public.item"]);
+	}
+	if (knownType) {
 		NSImage *fileIcon = [NSWorkspace.sharedWorkspace iconForFile:filePath];
 		if (fileIcon) {
 			symbolView.image = fileIcon;

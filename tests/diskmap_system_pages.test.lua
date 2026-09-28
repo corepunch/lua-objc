@@ -37,7 +37,7 @@ t.assertEqual(runtimes[1].deviceText, "3 devices", "runtimes count the devices t
 t.assertEqual(runtimes[1].lastUse, "Used 5 days ago", "runtime last use reads like Large Files and Applications")
 t.assertEqual(runtimes[2].name, "watchOS 26.0", "watch runtimes are named for their platform")
 t.assertEqual(runtimes[2].size, "Not measured", "a runtime without a size is not zero")
-t.assertEqual(runtimes[2].lastUse, "—", "unknown last use is never invented")
+t.assertEqual(runtimes[2].lastUse, "Last use unknown", "unknown last use is never invented")
 t.assertEqual(#Simulators.runtimeRows(nil, inventory), 0, "no runtime list shows no runtimes")
 t.assertEqual(#Simulators.runtimeRows(list, inventory, "watch"), 1, "runtime search matches platform names")
 

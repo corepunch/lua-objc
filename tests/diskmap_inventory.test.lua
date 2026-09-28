@@ -17,7 +17,8 @@ result.trees[index["apps-system-other"]] = {kb = 100}; result.rootStates[index["
 result.trees[index["user-trash"]] = {kb = 0, partial = true}; result.rootStates[index["user-trash"]] = "unreadable"
 Inventory.apply(model, ids, result)
 for _, row in ipairs(Categories.rows(model)) do t.expect(row.status ~= "notMeasured", "completed batch attempts " .. row.id) end
-t.assertEqual(model.measurements["user-trash"].status, "partial", "zero with denied descendants remains partial")
+t.assertEqual(model.measurements["user-trash"].status, "denied", "a location where nothing could be read has no access, not a size of zero")
+t.assertEqual(model.measurements["user-trash"].bytes, nil, "and no bytes")
 t.assertEqual(model.scan.issues[1].path, "/denied", "current scan retains access evidence")
 Inventory.apply(model, {"apps-system-other", "user-trash"}, {failure = "Worker stopped", trees = {{kb = 80}}, rootStates = {"measured"}})
 t.assertEqual(model.measurements["apps-system-other"].bytes, 81920, "completed roots survive later worker failure")

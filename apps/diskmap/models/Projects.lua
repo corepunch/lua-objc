@@ -22,7 +22,8 @@ function Projects.parseGit(output)
 end
 
 function Projects.gitText(git)
-	if git == nil then return "Not a git repository" end
+	-- Short enough for the list's detail column.
+	if git == nil then return "Not in git" end
 	if git == false then return "Checking…" end
 	if git.clean then return git.branch .. " · clean" end
 	local parts = {}
@@ -38,6 +39,23 @@ function Projects.displayName(path, repository)
 	local name = path:match("([^/]+)$") or path
 	if not repository or repository == path or path:sub(1, #repository + 1) ~= repository .. "/" then return name end
 	return (repository:match("([^/]+)$") or repository) .. path:sub(#repository + 1)
+end
+
+-- Whether a folder below `root` lies in a hidden folder ("repo/.opencode",
+-- "~/.cursor/extensions/x"): that is a tool's own data with a manifest in
+-- it, not a project somebody works on, so its packages are not listed as a
+-- project's build data.
+function Projects.isToolFolder(path, root)
+	local relative = path
+	if root and root ~= "" and path:sub(1, #root + 1) == root .. "/" then relative = path:sub(#root + 1) end
+	return relative:find("/%.[^/]") ~= nil
+end
+
+-- A project's folder as its row shows it, from the home folder, so two
+-- projects with one name are told apart.
+function Projects.location(path, home)
+	if home and home ~= "" and path:sub(1, #home + 1) == home .. "/" then return "~" .. path:sub(#home + 1) end
+	return path
 end
 
 -- When a project was last worked on: the newest of the modification times

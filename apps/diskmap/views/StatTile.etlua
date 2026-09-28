@@ -1,4 +1,7 @@
-<GroupBox id="<%= id %>" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity">
+<% --[[ Tiles in a row share the height of the tallest, so a detail that wraps
+  does not leave its neighbours shorter: the row has fixedSize="vertical" and
+  each tile fills it, as in SwiftUI. ]] %>
+<GroupBox id="<%= id %>" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
   <VStack maxWidth="infinity" padding="14" spacing="6" alignment="leading">
     <HStack maxWidth="infinity" spacing="8" alignment="center">
       <SystemImage name="<%= icon %>" size="22" badgeColor="<%= color %>" />
