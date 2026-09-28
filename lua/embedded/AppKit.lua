@@ -1743,7 +1743,10 @@ end
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.ContentUnavailable(props)
 	props = props or {}
-	local content = { spacing = props.spacing or 8, alignment = "center" }
+	-- SwiftUI's ContentUnavailableView takes the space it is offered and
+	-- centers its message in it. The spacers make the stack flexible along
+	-- its main axis, so it fills the parent's height and centers vertically.
+	local content = { spacing = props.spacing or 8, alignment = "center", AppKit.Spacer() }
 	if props.systemImage then
 		table.insert(content, (AppKit.SystemImage {
 			props.systemImage,
@@ -1761,7 +1764,11 @@ function AppKit.ContentUnavailable(props)
 			lineLimit = props.lines or 0,
 		}))
 	end
-	return applyLayout(AppKit.VStack(content), props)
+	table.insert(content, (AppKit.Spacer()))
+	local view = AppKit.VStack(content)
+	-- Full width too, so a long description wraps across the pane.
+	if props.fillWidth == nil then view.fillWidth = true end
+	return applyLayout(view, props)
 end
 
 AppKit.ActionButton = AppKit.Button

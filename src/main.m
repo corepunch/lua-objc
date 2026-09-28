@@ -69,6 +69,7 @@ enum {
 	kSplitProportionsAppliedKey,
 	kColumnFlexKey,
 	kColumnCellKey,
+	kColumnLevelTextWidthKey,
 	kColumnSortableKey,
 	kTabViewDelegateKey,
 	kTableScrollViewKey,

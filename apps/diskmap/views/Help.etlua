@@ -8,7 +8,7 @@
       </VStack>
     </HStack>
     <% if empty then %>
-    <ContentUnavailable id="noTopics" title="No Help Topics Found" systemImage="magnifyingglass" description="No help topic mentions “<%= query %>”." maxWidth="infinity" />
+    <ContentUnavailable id="noTopics" title="No Help Topics Found" systemImage="magnifyingglass" description="No help topic mentions “<%= query %>”." />
     <% end %>
     <% for _, chapter in ipairs(chapters) do %>
     <VStack maxWidth="infinity" spacing="8" alignment="leading">
