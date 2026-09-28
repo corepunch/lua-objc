@@ -124,13 +124,8 @@ function Resources:add(parentId, definition)
 	local prepared = {}
 	local ok, err = checkDefinition(definition, context, {}, prepared)
 	if not ok then return nil, err end
-	local first
-	local function commit(node, ancestor)
-		local row = bind(self, node, ancestor)
-		first = first or row
-		for _, child in ipairs(node.children) do commit(child, row) end
-	end
-	commit(prepared[1], parent)
+	-- bind registers the node's descendants too.
+	local first = bind(self, prepared[1], parent)
 	state.added = state.added or {}
 	table.insert(state.added, {parentId = parentId, definition = definition})
 	return first

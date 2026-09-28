@@ -47,7 +47,10 @@ function Developer.presentation(model, query)
 		end
 		for _, id in ipairs(section.roots or {}) do
 			local root = model.resources:find(id)
-			for _, child in ipairs(root and root:getChildren() or {}) do if child:isLeaf() then add(child) end end
+			-- Build folders roll up into one row per ecosystem ("Node modules").
+			for _, child in ipairs(root and root:getChildren() or {}) do
+				if child:isLeaf() or child.id:match("^build%-") then add(child) end
+			end
 		end
 		for _, id in ipairs(section.groups) do
 			local group = model.resources:find(id)

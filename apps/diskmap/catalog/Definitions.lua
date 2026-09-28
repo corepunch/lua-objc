@@ -6,8 +6,12 @@ end
 local function group(id, name, subtitle, icon, color, children)
 	return {id = id, name = name, subtitle = subtitle, icon = icon, color = color, children = children}
 end
-local function generated(markerFile, dirName, options)
-	local rule = {markerFile = markerFile, dirName = dirName}
+-- A generated folder beside one of its project `markers` (any one proves
+-- the project). `inner` files inside the folder are a second proof that the
+-- tool wrote it; with both, a `rebuildable` rule's folders move from Review
+-- to Rebuildable.
+local function generated(markers, dirName, options)
+	local rule = {markers = type(markers) == "table" and markers or {markers}, dirName = dirName, inner = {}}
 	for key, value in pairs(options or {}) do rule[key] = value end
 	return rule
 end
