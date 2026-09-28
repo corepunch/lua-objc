@@ -81,6 +81,7 @@ local function arrange(kit, track, cycles)
 		end
 	end
 	kit.punctuate(lanes, track, function() return "fill.snares" end)
+	kit.produce(lanes, track)
 	return lanes:done()
 end
 
@@ -162,7 +163,8 @@ return {
 		lead = {glide = 0.001, vibratoDepth = 0.012, brightness = 0.07, square = 0.1},
 		mix = {duckDepth = 0.4, keys = 0.065, lead = 0.065, delaySteps = 3},
 	},
-	set = {flavours = FLAVOURS, modes = {"minor", "dorian"}, arrangement = ARRANGEMENT, modulations = {0, 5}},
+	set = {form = {openings = {"cold", "build", "melodic"}, builds = {"sweep", "rise", "roll"}},
+		flavours = FLAVOURS, modes = {"minor", "dorian"}, arrangement = ARRANGEMENT, modulations = {0, 5}},
 	material = buildCycle,
 	arrange = arrange,
 	patterns = PATTERNS,

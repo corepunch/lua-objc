@@ -4,14 +4,27 @@
 --
 --   {track = 3, start = 1040, length = 176,        -- set bar of its first bar; bars
 --    sections = {{id = "intro", start = 0, length = 16, cycle = 0}, ...},
---    lanes = {{part = "kick", blocks = {{start = 8, length = 16, pattern = "kick.intro"}, ...}}, ...}}
+--    lanes = {{part = "kick", blocks = {{start = 8, length = 16, pattern = "kick.intro",
+--      filter = {kind = "lowpass", from = 0.3, to = 1}}, ...}}, ...}}
 --
 -- Section and block starts count bars from the track's first bar. Blocks are
 -- pure data (numbers and strings), so the composer, the timeline, tests and a
 -- future editor all read the same plan; patterns hold the only code. Within
 -- a lane blocks never overlap, and silence is the absence of a block.
+--
+-- A block may carry automation, as a clip does in an arrange window: `level`
+-- {from, to} fades it and `filter` {kind, from, to} sweeps a low-pass or a
+-- high-pass over it, both 0…1 with 1 wide open. A block split from a longer
+-- one plays on from `offset` bars into the `whole`.
 local Arrangement = {}
 Arrangement.__index = Arrangement
+
+Arrangement.filters = {lowpass = true, highpass = true}
+
+local function isEnvelope(envelope)
+	return type(envelope) == "table" and type(envelope.from) == "number" and type(envelope.to) == "number"
+		and math.min(envelope.from, envelope.to) >= 0 and math.max(envelope.from, envelope.to) <= 1
+end
 
 local function isData(value)
 	local kind = type(value)
@@ -55,6 +68,9 @@ function Arrangement.new(fields, patterns, order)
 			local pattern = patterns[block.pattern]
 			assert(pattern, name .. " plays unknown pattern " .. tostring(block.pattern))
 			assert(pattern.part == part, name .. " plays " .. block.pattern .. ", a " .. pattern.part .. " pattern")
+			assert(block.level == nil or isEnvelope(block.level), name .. " fades between levels of 0…1")
+			assert(block.filter == nil or (isEnvelope(block.filter) and Arrangement.filters[block.filter.kind]),
+				name .. " sweeps a lowpass or highpass between 0…1")
 			stop = block.start + block.length
 		end
 	end
@@ -107,6 +123,18 @@ function Arrangement:plays(part, i)
 		if block.start < section.start + section.length and block.start + block.length > section.start then return true end
 	end
 	return false
+end
+
+
+--- A block's automation `at` (0…1) of the way through it: its level, and
+--- its filter's kind and opening, or no kind while the filter is wide open.
+function Arrangement.automation(block, at)
+	local level, filter = block.level, block.filter
+	local gain = level and level.from + (level.to - level.from) * at or 1
+	if not filter then return gain end
+	local opening = filter.from + (filter.to - filter.from) * at
+	if opening >= 1 then return gain end
+	return gain, filter.kind, opening
 end
 
 return Arrangement

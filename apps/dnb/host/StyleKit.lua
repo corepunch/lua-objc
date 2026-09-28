@@ -239,40 +239,80 @@ local DEFAULT_ARRANGEMENT = {
 local Set = {}
 Set.__index = Set
 
--- A track's sections, the ruler above its lanes: intro → build → (drop →
--- breakdown → build) … → drop → outro. `cycle` is the material a section
--- plays; a rebuild belongs to the next cycle, so a key change lands with its
--- riser rather than on the drop's first kick.
-local function sections(A, cycles)
+-- How a track's form is drawn. Dance music is written in phrases (eight
+-- bars here, as a tracker's 64-row pattern is four), so that two records
+-- line up in a mix; but sections differ in length, and no two tunes need
+-- the same road through them. Lengths are the style's own, scaled. A style
+-- overrides any of these in its set's `form`; an entry listed more often
+-- is drawn more often.
+local FORM = {
+	-- How a track reaches its first drop: through a build, straight out of
+	-- the intro, or by way of a melodic passage.
+	openings = {"build", "build", "build", "cold", "melodic"},
+	-- What joins one drop to the next: a breakdown and a build, a build
+	-- alone, a breakdown the drop slams out of, or nothing (a double drop).
+	links = {"breakdown build", "breakdown build", "breakdown build", "build", "breakdown", "double"},
+	-- How a build winds up: a snare roll, a kick roll, the drop's groove
+	-- opening through a filter, or the drums gone under the riser.
+	builds = {"roll", "roll", "stomp", "sweep", "rise"},
+	intro = {1, 1, 2}, build = {0.5, 1, 1, 2}, drop = {0.5, 1, 1, 1.5}, breakdown = {0.5, 1, 1, 2},
+	melodic = {0.5, 1}, rebuild = {0.5, 1, 1, 2},
+	buildUnit = 4, -- a build may be half a phrase
+}
+
+-- A track's sections, the ruler above its lanes, drawn from `rng`: an
+-- intro, a way into the first drop, `cycles` drops joined in different
+-- ways, and an outro. `cycle` is the material a section plays; a build
+-- belongs to the drop it leads to, so a key change lands with its riser
+-- rather than on the drop's first kick. A build carries its `kind`.
+local function sections(A, FORM, cycles, rng)
 	local list, start = {}, 0
-	local function add(id, length, cycle)
-		table.insert(list, {id = id, start = start, length = length, cycle = cycle})
+	local function add(id, length, cycle, kind)
+		table.insert(list, {id = id, start = start, length = length, cycle = cycle, kind = kind})
 		start = start + length
 	end
-	add("intro", A.introBars, 0)
-	add("build", A.buildBars, 0)
+	local function scaled(bars, scales, unit)
+		unit = unit or A.phraseBars
+		return math.max(unit, math.floor(bars * rng.pick(scales)) // unit * unit)
+	end
+	local function build(bars, scales, cycle)
+		add("build", scaled(bars, scales, FORM.buildUnit), cycle, rng.pick(FORM.builds))
+	end
+	local opening = rng.pick(FORM.openings)
+	add("intro", scaled(A.introBars, FORM.intro), 0)
+	if opening == "melodic" then add("breakdown", scaled(A.breakdownBars, FORM.melodic), 0) end
+	if opening ~= "cold" then build(A.buildBars, FORM.build, 0) end
 	for cycle = 0, cycles - 1 do
-		add("drop", A.dropBars, cycle)
+		add("drop", scaled(A.dropBars, FORM.drop), cycle)
 		if cycle == cycles - 1 then
 			add("outro", A.outroBars, cycle)
 		else
-			add("breakdown", A.breakdownBars, cycle)
-			add("build", A.rebuildBars, cycle + 1)
+			local link = rng.pick(FORM.links)
+			if link:find("breakdown") then add("breakdown", scaled(A.breakdownBars, FORM.breakdown), cycle) end
+			if link:find("build") then build(A.rebuildBars, FORM.rebuild, cycle + 1) end
 		end
 	end
-	return list
+	return list, start
 end
 
 --- An endless DJ set: a sequence of tracks, each with a flavour (weighted
 --- parts of the style), a mode, a key harmonically mixed from the previous
---- track, and an arrangement of intro → build → drops and breakdowns →
---- outro. `spec.flavours` are {id, name, ...}; `spec.modes` mode names;
---- `spec.arrangement` overrides DEFAULT_ARRANGEMENT fields; `spec.modulations`
---- the key changes a cycle may take.
+--- track, and a form of its own: an intro, drops reached and joined in
+--- different ways, and an outro. `spec.flavours` are {id, name, ...}; `spec.modes` mode names;
+--- `spec.arrangement` overrides DEFAULT_ARRANGEMENT fields and `spec.form`
+--- how forms are drawn (see FORM); `spec.modulations` are the key changes a
+--- cycle may take; `spec.salt` is an integer that tells this style's forms
+--- from another's under the same seed.
 function StyleKit.newSet(seed, spec)
 	local arrangement = {}
 	for k, v in pairs(DEFAULT_ARRANGEMENT) do arrangement[k] = v end
 	for k, v in pairs(spec.arrangement or {}) do arrangement[k] = v end
+	local form = {}
+	for k, v in pairs(FORM) do form[k] = v end
+	for k, v in pairs(spec.form or {}) do
+		assert(FORM[k], "unknown form field " .. tostring(k))
+		form[k] = v
+	end
 	for _, flavour in ipairs(spec.flavours or {}) do
 		for _, name in ipairs(flavour.snares or {}) do
 			assert(SNARE_NAMES[name], "unknown snare character " .. tostring(name))
@@ -281,7 +321,7 @@ function StyleKit.newSet(seed, spec)
 	local modes = {}
 	for _, name in ipairs(spec.modes or {"minor"}) do table.insert(modes, (assert(StyleKit.modes[name], "unknown mode " .. tostring(name)))) end
 	return setmetatable({seed = seed, flavours = assert(spec.flavours, "a set needs flavours"), modes = modes,
-		arrangement = arrangement, modulations = spec.modulations or {5, -2, 3, 2},
+		arrangement = arrangement, form = form, salt = spec.salt or 0, modulations = spec.modulations or {5, -2, 3, 2},
 		tracks = {}, hint = 0}, Set)
 end
 StyleKit.Set = Set
@@ -305,13 +345,15 @@ function Set:track(k)
 				index = index, flavour = flavour, mode = rng.pick(self.modes), cycles = cycles,
 				tonic = previous and (previous.tonic + rng.pick(MIXES)) % 12 or rng.int(12) - 1,
 				start = previous and previous.start + previous.length or 0,
-				length = A.introBars + A.buildBars + cycles * A.dropBars
-					+ (cycles - 1) * (A.breakdownBars + A.rebuildBars) + A.outroBars,
 				cycleCache = {}, shifts = {[0] = 0},
 			}
 			track.key = StyleKit.keyName(track.tonic, track.mode)
-			track.sections = sections(A, cycles)
+			-- Its own stream, so the form never shifts the composition.
+			track.sections, track.length = sections(A, self.form, cycles,
+				StyleKit.random(self.seed, 7, index, self.salt))
 			track.phraseBars, track.blendBars = A.phraseBars, A.blendBars
+			-- What its arrangement draws from (see StyleKit.produce).
+			track.seed = hash(self.seed, 6, index, self.salt)
 			-- Its own stream, so the kit never shifts the composition.
 			track.drums = StyleKit.drumDesign(StyleKit.random(self.seed, 5, index), flavour)
 			self.tracks[index + 1] = track
@@ -367,6 +409,10 @@ Bar.__index = Bar
 ---   arp    {step, note, length, gain, pan}
 ---   lead   {step, length, note, glide, gain, throw}
 ---   pad    notes held two bars      riser {from, to} for one bar
+--- The composer marks each note with its `part` and its block's automation
+--- where it starts: `level` and `lowpass` or `highpass` (0…1, absent when
+--- full and open). `automation[part]` is a block's ride through the whole
+--- bar, {level = {from, to}, kind, filter = {from, to}}, for held voices.
 --- `feel` humanizes: small reproducible timing and velocity drift per hit;
 --- the kick and the backbeat stay tight, as a drummer's would.
 function StyleKit.newBar(n, info, feel)
@@ -374,7 +420,7 @@ function StyleKit.newBar(n, info, feel)
 		index = n, section = info.section, sectionBar = info.sectionBar, sectionLength = info.sectionLength,
 		track = info.track.index, trackBar = n - info.track.start, trackLength = info.track.length,
 		style = info.track.flavour.name, key = StyleKit.keyName(info.tonic, info.track.mode), tonic = info.tonic,
-		drums = info.track.drums, hits = {}, bass = {}, stabs = {}, arp = {}, lead = {}, keys = {}, breaks = {},
+		drums = info.track.drums, automation = {}, hits = {}, bass = {}, stabs = {}, arp = {}, lead = {}, keys = {}, breaks = {},
 	}, Bar)
 	bar._feel = feel
 	return bar
@@ -407,8 +453,9 @@ function Bar:note(list, fields) table.insert(self[list], fields) end
 local Lanes = {}
 Lanes.__index = Lanes
 
---- A builder for a track's lanes: `add` places blocks in any order, and
---- `done()` returns them as {part, blocks} lanes (see host/Arrangement.lua).
+--- A builder for a track's lanes: `add` places blocks in any order, `cut`
+--- and `automate` edit what is placed, and `done()` returns the lanes as
+--- {part, blocks} (see host/Arrangement.lua).
 function StyleKit.lanes(track)
 	return setmetatable({track = track, list = {}, byPart = {}}, Lanes)
 end
@@ -423,9 +470,32 @@ local function laneOf(self, part)
 	return lane
 end
 
+-- An envelope's value `at` (0…1) of the way through it.
+local function along(envelope, at)
+	return envelope.from + (envelope.to - envelope.from) * at
+end
+
+-- The part of `block` over track bars [start, stop), as a block of its own.
+-- Like a clip split in an arrange window, a piece keeps playing its pattern
+-- from where the whole block would be (`offset` bars in, of `whole`), and
+-- its envelopes are the stretch of the block's that it covers.
+local function piece(block, start, stop)
+	local from, to = (start - block.start) / block.length, (stop - block.start) / block.length
+	local result = {start = start, length = stop - start, pattern = block.pattern,
+		offset = (block.offset or 0) + start - block.start, whole = block.whole or block.length}
+	if block.level then result.level = {from = along(block.level, from), to = along(block.level, to)} end
+	if block.filter then
+		result.filter = {kind = block.filter.kind, from = along(block.filter, from), to = along(block.filter, to)}
+	end
+	return result
+end
+
 --- A block of `pattern` on `part`'s lane over bars [start, start + length)
 --- of the track, clipped to the track. Blocks never overlap in a lane.
-function Lanes:add(part, start, length, pattern, variant)
+--- `automation` may give the block a `level` {from, to} (a fade, 0…1) and a
+--- `filter` {kind = "lowpass" | "highpass", from, to} (a sweep: 1 is open,
+--- 0 as closed as it goes).
+function Lanes:add(part, start, length, pattern, automation)
 	local stop = math.min(start + length, self.track.length)
 	start = math.max(0, start)
 	if stop <= start then return end
@@ -435,35 +505,100 @@ function Lanes:add(part, start, length, pattern, variant)
 	local before, after = blocks[i], blocks[i + 1]
 	assert((not before or before.start + before.length <= start) and not (after and after.start < stop),
 		string.format("%s block %s at bar %d overlaps its lane", part, pattern, start))
-	table.insert(blocks, i + 1, {start = start, length = stop - start, pattern = pattern, variant = variant})
+	local block = {start = start, length = stop - start, pattern = pattern}
+	if automation then block.level, block.filter = automation.level, automation.filter end
+	table.insert(blocks, i + 1, block)
 end
 
 --- Blocks of `pattern` over whatever of [start, start + length) the lane
 --- leaves empty, so a background part can run around earlier blocks.
-function Lanes:fill(part, start, length, pattern, variant)
+function Lanes:fill(part, start, length, pattern, automation)
 	local stop = math.min(start + length, self.track.length)
 	local cursor = math.max(0, start)
 	local blocks = {table.unpack(laneOf(self, part).blocks)}
 	for _, block in ipairs(blocks) do
 		if block.start >= stop then break end
-		if block.start > cursor then self:add(part, cursor, block.start - cursor, pattern, variant) end
+		if block.start > cursor then self:add(part, cursor, block.start - cursor, pattern, automation) end
 		cursor = math.max(cursor, block.start + block.length)
 	end
-	if cursor < stop then self:add(part, cursor, stop - cursor, pattern, variant) end
+	if cursor < stop then self:add(part, cursor, stop - cursor, pattern, automation) end
 end
 
 --- Bars [from, to) of a section; `to` defaults to the section's end.
-function Lanes:within(part, section, from, to, pattern, variant)
+function Lanes:within(part, section, from, to, pattern, automation)
 	to = math.min(to or section.length, section.length)
-	self:add(part, section.start + from, to - from, pattern, variant)
+	self:add(part, section.start + from, to - from, pattern, automation)
 end
 
 --- A one-bar block on the last bar of every `every` bars of a section.
-function Lanes:phraseEnds(part, section, every, pattern, variant)
-	for bar = every - 1, section.length - 1, every do self:add(part, section.start + bar, 1, pattern, variant) end
+function Lanes:phraseEnds(part, section, every, pattern)
+	for bar = every - 1, section.length - 1, every do self:add(part, section.start + bar, 1, pattern) end
 end
 
-function Lanes:done() return self.list end
+--- The block of `part` under track bar `pos`, or nil.
+function Lanes:at(part, pos)
+	local lane = self.byPart[part]
+	for _, block in ipairs(lane and lane.blocks or {}) do
+		if block.start <= pos and pos < block.start + block.length then return block end
+	end
+end
+
+--- Whether `part` has a block anywhere in bars [start, start + length).
+function Lanes:plays(part, start, length)
+	local lane = self.byPart[part]
+	for _, block in ipairs(lane and lane.blocks or {}) do
+		if block.start < start + length and block.start + block.length > start then return true end
+	end
+	return false
+end
+
+-- Splits the lane's blocks at the edges of [start, stop) and calls
+-- `edit(block)` for each one inside, in order; a block `edit` returns
+-- false for is removed.
+local function edit(self, part, start, stop, change)
+	local lane = self.byPart[part]
+	if not lane then return end
+	local blocks = {}
+	for _, block in ipairs(lane.blocks) do
+		local first, last = block.start, block.start + block.length
+		local from, to = math.max(first, start), math.min(last, stop)
+		if from >= to then
+			table.insert(blocks, block)
+		else
+			if first < from then table.insert(blocks, piece(block, first, from)) end
+			local inside = (first < from or to < last) and piece(block, from, to) or block
+			if change(inside) ~= false then table.insert(blocks, inside) end
+			if to < last then table.insert(blocks, piece(block, to, last)) end
+		end
+	end
+	lane.blocks = blocks
+end
+
+--- Silences bars [start, start + length) of a lane: the drop-out before a
+--- phrase lands, or a part that enters late or leaves early.
+function Lanes:cut(part, start, length)
+	edit(self, part, start, start + length, function() return false end)
+end
+
+--- Rides a fade or a filter sweep over bars [start, start + length) of a
+--- lane, across however many blocks lie there (see `add` for `automation`).
+function Lanes:automate(part, start, length, automation)
+	local stop = start + length
+	edit(self, part, start, stop, function(block)
+		local from, to = (block.start - start) / length, (block.start + block.length - start) / length
+		local level, filter = automation.level, automation.filter
+		if level then block.level = {from = along(level, from), to = along(level, to)} end
+		if filter then block.filter = {kind = filter.kind, from = along(filter, from), to = along(filter, to)} end
+	end)
+end
+
+function Lanes:done()
+	local lanes = {}
+	for _, lane in ipairs(self.list) do
+		if #lane.blocks > 0 then table.insert(lanes, lane) end
+	end
+	return lanes
+end
 
 --- The punctuation most styles share: on the fills lane, a crash opening
 --- every 16 bars of a drop or outro and each breakdown, and `fill(section,
@@ -498,6 +633,135 @@ function StyleKit.blendIn(lanes, track)
 	lanes:add("sub", 0, track.blendBars // 2, "sub.blend")
 end
 
+-- The producer's moves ------------------------------------------------------
+
+local PRODUCE = {
+	drums = {"kick", "snare", "ghosts", "hats", "ride", "percussion", "amen"},
+	tops = {"hats", "ride", "percussion", "amen"},
+	bass = {"sub", "reese"},
+	melodic = {"keys", "stabs", "arp", "lead"},
+	-- Parts that may join a section late or leave it early.
+	layers = {"ghosts", "ride", "percussion", "stabs"},
+	-- What a filter build borrows from the drop it leads to.
+	groove = {"kick", "hats", "sub", "reese"},
+	sweepFilter = 0.15,  -- where the whole mix opens a filter build from
+	slamFilter = 0.3,    -- and closes to, when a breakdown runs into a drop
+	slamBars = 4, stompRoll = 2,
+	introFilter = 0.3,   -- how far shut the drums open an intro
+	buildFilter = 0.4,   -- how thin a build's tops get before the drop
+	teaseFilter = {from = 0.12, to = 0.6},
+	teaseLevel = {from = 0.4, to = 0.9},
+	dipFilter = 0.3,     -- the reese closing into a drop's second half
+	outroFilter = 0.35,
+	fade = 0.3,          -- where a faded part starts from, or ends at
+	pullBack = 0.7, smallPullBack = 0.35, dip = 0.5, tease = 0.6, leave = 0.3,
+}
+
+local function each(lanes, parts, start, length, automation)
+	for _, part in ipairs(parts) do lanes:automate(part, start, length, automation) end
+end
+
+--- What turns a plan of whole sections into an arrangement, drawn from the
+--- track's seed. Parts join a section a phrase or two late and leave early;
+--- the bar before a phrase lands pulls the kick and bass, the drums or the
+--- bass out; filters open the drums through an intro, thin the tops through
+--- a build, tease the bass under it, close the reese into a drop's second
+--- half and the pads open through a breakdown; an outro sheds parts and
+--- closes down for the next track to mix over. A build winds up as its
+--- `kind` says (see FORM.builds), and the filter lane sweeps the whole mix,
+--- as an effect machine has its own patterns in a tracker's sequence. Call
+--- it last, on lanes arranged section by section.
+function StyleKit.produce(lanes, track)
+	local rng = StyleKit.random(track.seed, 1)
+	local phrase, P = track.phraseBars, PRODUCE
+	local drop = 0
+	for i, section in ipairs(track.sections) do
+		local id, start, length = section.id, section.start, section.length
+		local half = length // 2
+		local following = track.sections[i + 1]
+		if id == "intro" then
+			each(lanes, P.drums, start, length, {filter = {kind = "lowpass", from = P.introFilter, to = 1}})
+			each(lanes, P.melodic, start, length, {level = {from = P.fade, to = 1}})
+			for _, part in ipairs(P.layers) do
+				if lanes:plays(part, start, 1) then lanes:cut(part, start, rng.pick({0, length // 4, half})) end
+			end
+		elseif id == "build" then
+			local kind = section.kind
+			if kind == "stomp" then
+				-- The kick winds up; the snare joins for the last bars.
+				lanes:cut("kick", start, length)
+				lanes:add("kick", start, length, "roll.kick")
+				lanes:cut("snare", start, length - math.min(P.stompRoll, length))
+			elseif kind == "sweep" then
+				lanes:cut("snare", start, length)
+				for _, part in ipairs(P.groove) do
+					local block = lanes:at(part, start + length)
+					if block then
+						lanes:cut(part, start, length)
+						lanes:add(part, start, length, block.pattern)
+					end
+				end
+				lanes:add("filter", start, length, "filter.sweep",
+					{filter = {kind = "lowpass", from = P.sweepFilter, to = 1}})
+			elseif kind == "rise" then
+				for _, part in ipairs(P.drums) do lanes:cut(part, start, length) end
+			end
+			if kind ~= "sweep" then
+				each(lanes, P.tops, start, length, {filter = {kind = "highpass", from = 1, to = P.buildFilter}})
+			end
+			each(lanes, P.melodic, start, length, {level = {from = P.fade * 2, to = 1}})
+			if not lanes:plays("sub", start, length) and (kind == "rise" or rng.chance(P.tease)) then
+				lanes:add("sub", start + half, length - half, "sub.hold", {level = P.teaseLevel})
+				if not lanes:plays("reese", start + half, length - half) then
+					lanes:add("reese", start + half, length - half, "reese",
+						{filter = {kind = "lowpass", from = P.teaseFilter.from, to = P.teaseFilter.to}})
+				end
+			end
+		elseif id == "drop" then
+			drop = drop + 1
+			-- The first drop holds layers back; later ones arrive nearly whole.
+			local entries = drop == 1 and {0, 0, 1, 2} or {0, 0, 0, 1}
+			for _, part in ipairs(P.layers) do
+				if lanes:plays(part, start, 1) then lanes:cut(part, start, rng.pick(entries) * phrase) end
+				local phrases = length // phrase
+				if phrases > 2 and rng.chance(P.leave) then
+					lanes:cut(part, start + (rng.int(phrases - 2) + 1) * phrase, phrase)
+				end
+			end
+			for last = phrase - 1, length - 2, phrase do
+				local big = (last + 1) % (2 * phrase) == 0
+				if rng.chance(big and P.pullBack or P.smallPullBack) then
+					local parts = big and rng.pick({{"kick", "sub", "reese"}, P.drums, P.bass}) or P.tops
+					for _, part in ipairs(parts) do lanes:cut(part, start + last, 1) end
+				end
+			end
+			if length >= 4 * phrase and rng.chance(P.dip) then
+				lanes:automate("reese", start + half - phrase // 2, phrase // 2,
+					{filter = {kind = "lowpass", from = 1, to = P.dipFilter}})
+			end
+		elseif id == "breakdown" then
+			lanes:automate("pads", start, length, {filter = {kind = "lowpass", from = P.introFilter, to = 1}})
+			lanes:automate("keys", start, length, {filter = {kind = "lowpass", from = 0.5, to = 1}})
+			lanes:automate("arp", start, length, {level = {from = P.fade, to = 1}})
+			lanes:automate("ride", start, length, {level = {from = 1, to = P.fade}})
+			if following and following.id == "drop" then
+				-- No build: the mix closes down and the drop slams out of it.
+				local bars = math.min(P.slamBars, length)
+				lanes:add("filter", start + length - bars, bars, "filter.sweep",
+					{filter = {kind = "lowpass", from = 1, to = P.slamFilter}})
+			end
+		elseif id == "outro" then
+			for _, part in ipairs(P.layers) do
+				local from = (rng.int(math.max(1, length // phrase)) - 1) * phrase + rng.pick({0, phrase // 2})
+				if from > 0 then lanes:cut(part, start + from, length - from) end
+			end
+			each(lanes, P.melodic, start, length, {level = {from = 1, to = P.fade}})
+			each(lanes, P.tops, start + half, length - half, {filter = {kind = "highpass", from = 1, to = P.buildFilter}})
+			lanes:automate("reese", start, length, {filter = {kind = "lowpass", from = 1, to = P.outroFilter}})
+		end
+	end
+end
+
 -- Patterns every style shares. A pattern renders one bar of its part into
 -- the Bar; `ctx` is the bar's place (see host/Composer.lua). Structure
 -- patterns render before the instruments and leave flags on `ctx` for them.
@@ -505,7 +769,7 @@ end
 -- A roll tightening through a build: quarters, eighths, then 16ths.
 local function roll(voice)
 	return function(bar, ctx)
-		local bars = ctx.block.length
+		local bars = ctx.blockLength
 		local progress = ctx.barInBlock / bars
 		local every = progress < 0.5 and 4 or (progress < 0.75 and 2 or 1)
 		for step = 0, 15, every do
@@ -529,7 +793,7 @@ end
 StyleKit.patterns = {
 	{id = "fill.crash", part = "fills", render = function(bar) bar:hit(0, "crash", 0.8) end},
 	{id = "riser.build", part = "risers", render = function(bar, ctx)
-		bar.riser = {from = ctx.barInBlock / ctx.block.length, to = (ctx.barInBlock + 1) / ctx.block.length}
+		bar.riser = {from = ctx.barInBlock / ctx.blockLength, to = (ctx.barInBlock + 1) / ctx.blockLength}
 	end},
 	-- The downlifter washing out of an impact.
 	{id = "riser.down", part = "risers", render = function(bar) bar.riser = {from = 1, to = 0} end},
@@ -539,6 +803,10 @@ StyleKit.patterns = {
 	{id = "halftime", part = "halftime", render = function(bar, ctx) ctx.halftime, bar.halftime = true, true end},
 	-- Break edits: the amen pattern rearranges its slices under this block.
 	{id = "chops", part = "chops", render = function(_, ctx) ctx.chops = true end},
+	-- A sweep of the whole mix: the block's filter is the pattern, which the
+	-- Synth reads from the bar's automation.
+	{id = "filter.sweep", part = "filter", render = function() end},
+	{id = "roll.kick", part = "kick", render = roll("kick")},
 	{id = "roll.snare", part = "snare", render = roll("snare")},
 	{id = "roll.clap", part = "snare", render = roll("clap")},
 	{id = "pads.chords", part = "pads", bars = 2, render = pads},
@@ -556,9 +824,15 @@ StyleKit.patterns = {
 		table.insert(bar.bass, {step = 0, length = 16, note = ctx.chord.root, subOnly = true})
 	end},
 	-- The reese voices the sub lane's line through its detuned, filtered
-	-- layer; without it the line plays on the sub alone.
-	{id = "reese", part = "reese", render = function(bar)
-		for _, note in ipairs(bar.bass) do note.subOnly = nil end
+	-- layer; without it the line plays on the sub alone. Its block's fade and
+	-- sweep ride that layer only.
+	{id = "reese", part = "reese", render = function(bar, ctx)
+		for _, note in ipairs(bar.bass) do
+			note.subOnly = nil
+			local level, kind, filter = ctx.automation(note.step)
+			note.reese = (note.reese or 1) * level
+			if kind then note[kind] = filter end
+		end
 	end},
 }
 

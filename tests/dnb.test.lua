@@ -5,8 +5,19 @@ local Model = require("apps.dnb.Model")
 local Styles = require("apps.dnb.host.Styles")
 local StyleKit = require("apps.dnb.host.StyleKit")
 local Visualizers = require("apps.dnb.host.Visualizers")
--- The drum & bass style plugin, as the app creates it.
-local function dnb(seed) return Styles:create("dnb", seed) end
+local Composer = require("apps.dnb.host.Composer")
+-- The drum & bass style plugin with its form pinned to the classic one
+-- (intro, build, then drops joined by a breakdown and a build, all at the
+-- style's own lengths), so that bars can be named by number. Forms drawn
+-- from the seed are tested in tests/dnb_arrangement.test.lua.
+local CLASSIC = {openings = {"build"}, links = {"breakdown build"}, builds = {"roll"},
+	intro = {1}, build = {1}, drop = {1}, breakdown = {1}, melodic = {1}, rebuild = {1}}
+local function dnb(seed)
+	local style = Styles:get("dnb")
+	local set = {form = CLASSIC}
+	for k, v in pairs(style.set) do set[k] = v end
+	return Composer.new(setmetatable({set = set}, {__index = style}), seed)
+end
 local Synth = require("apps.dnb.models.Synth")
 local Controller = require("apps.dnb.Controller")
 
@@ -123,7 +134,7 @@ t.assertEqual(table.concat(hits(composer:bar(0, settings), "snare"), ","), "4,12
 t.assertEqual(#composer:bar(0, settings).bass, 0, "the first intro holds the bass back")
 t.assertEqual(#hits(composer:bar(9, settings), "kick"), 0, "the build drops the kick")
 t.assertEqual(#hits(composer:bar(50, settings), "kick"), 0, "the breakdown has no kick")
-t.assertEqual(#composer:bar(12, settings).bass, 0, "the build holds the bass back for the drop")
+t.assertEqual(#composer:bar(9, settings).bass, 0, "the build holds the bass back for the drop")
 t.expect(composer:bar(12, settings).riser ~= nil, "the build carries a riser")
 t.expect(#hits(composer:bar(first.length - 2, settings), "kick") > 0, "the outro keeps a groove to mix over")
 
@@ -735,7 +746,8 @@ local values = app.refs.visualizer.values
 t.expect(values[7] > 0, "playing fades the visualizer in")
 t.expect(values[Visuals.header + 1] > values[Visuals.header + 2], "bars follow the analysed spectrum")
 t.assertEqual(values[3], dnb(9).set:track(0).tonic / 12, "the palette follows the track key")
-t.assertEqual(app.refs.position.text, "Bar 1 of 8", "and shows the bar in its section")
+t.assertEqual(app.refs.position.text, "Bar 1 of " .. app.composer:arrangement(0).sections[1].length,
+	"and shows the bar in its section")
 
 app.actions(app).control_cutoff(0.25)
 t.assertEqual(app.model:value("cutoff"), 0.25, "a slider moves its model value")
@@ -808,26 +820,30 @@ local ending = Timeline.plans(tc, track0.length - 4)
 t.assertEqual(#ending, 2, "near its end the next track comes into view")
 t.assertEqual(ending[2].track, 1, "the next track follows")
 local rows = Timeline.rows(near)
-t.assertEqual(#rows, #near[1].lanes, "one row per lane in view")
-t.assertEqual(rows[1].part, "kick", "rows keep the lane order")
-t.assertEqual(rows[1].family, "drums", "and carry the family that tints them")
+t.assertEqual(rows[1].track, "kick", "rows keep the track order")
+t.assertEqual(table.concat(rows[2].parts, " "), "snare ghosts", "a track gathers its parts")
+for _, row in ipairs(rows) do
+	local present = false
+	for _, part in ipairs(row.parts) do present = present or near[1]:lane(part) ~= nil end
+	t.expect(present, row.track .. " has a lane in view")
+end
 local data = Timeline.instances(near, rows)
-local blockCount = #near[1].sections
-for _, lane in ipairs(near[1].lanes) do blockCount = blockCount + #lane.blocks end
-t.assertEqual(#data, blockCount * Timeline.stride, "every section and block is one instance")
-t.assertEqual(data[1] .. " " .. data[2] .. " " .. data[3], "-1 0 8", "the ruler opens on the intro")
+local blockCount = 0
+for _, row in ipairs(rows) do blockCount = blockCount + #Timeline.clips(near[1], row.parts) end
+t.assertEqual(#data, blockCount * Timeline.stride, "every clip is one instance")
+t.assertEqual(data[1] .. " " .. data[2], "0 0", "the first track's first clip opens the strip")
 local rowsOk, barsOk = true, true
 for i = 1, #data, Timeline.stride do
-	if data[i] < -1 or data[i] >= #rows then rowsOk = false end
+	if data[i] < 0 or data[i] >= #rows then rowsOk = false end
 	if data[i + 1] < 0 or data[i + 2] <= 0 then barsOk = false end
 end
 t.expect(rowsOk and barsOk, "instances sit on real rows at real bars")
 local later = Timeline.instances(ending, Timeline.rows(ending))
 local nextStarts = false
 for i = 1, #later, Timeline.stride do
-	if later[i] == -1 and later[i + 1] == track0.length then nextStarts = true end
+	if later[i + 1] == track0.length then nextStarts = true end
 end
-t.expect(nextStarts, "the next track's ruler starts where this one ends")
+t.expect(nextStarts, "the next track's clips start where this one ends")
 t.assertEqual(Timeline.headline(near, 20), "Breakdown in 28 bars", "the headline names the next section change")
 t.assertEqual(Timeline.headline(near, 47), "Breakdown in 1 bar", "in bars")
 t.assertEqual(Timeline.headline(ending, track0.length - 4), "Next track in 4 bars", "and the next track from the outro")
@@ -838,13 +854,19 @@ local timelineApp = Controller.new({seed = 9, output = fakeOutput(1024), async =
 timelineApp:createWindow()
 local canvas = timelineApp.timeline.refs.timelineCanvas
 t.expect(canvas ~= nil, "the window hosts the arrangement strip")
-t.assertEqual(#canvas.draws, 1, "blocks draw as one instanced draw")
+t.assertEqual(#canvas.draws, 1, "clips draw as one instanced draw")
 t.assertEqual(canvas.draws[1].instances, #Timeline.instances(Timeline.plans(timelineApp.composer, 0),
-	Timeline.rows(Timeline.plans(timelineApp.composer, 0))) // Timeline.stride, "one instance per block and section")
+	Timeline.rows(Timeline.plans(timelineApp.composer, 0))) // Timeline.stride, "one instance per clip")
+t.assertEqual(#canvas.draws[1].data, canvas.draws[1].instances * Timeline.stride, "whole instances only")
 t.assertEqual(canvas.values[1] .. " " .. canvas.values[2], "0 0", "stopped, the playhead rests on the first bar")
-t.assertEqual(timelineApp.timeline.refs.timelineNext.text, "Build-up in 8 bars", "the header names what comes next")
-local r, _, b = require("AppKitNative")._shaderPixel(canvas, 400, 100, 150, 2)
-t.expect(b > 0.8 and r < 0.2, "the intro's ruler draws in its tint ahead of the playhead")
+local opening = timelineApp.composer:arrangement(0).sections
+t.assertEqual(timelineApp.timeline.refs.timelineNext.text,
+	Timeline.headline(Timeline.plans(timelineApp.composer, 0), 0), "the header names what comes next")
+t.expect(timelineApp.timeline.refs.timelineNext.text:find(" in " .. opening[1].length .. " bars", 1, true) ~= nil,
+	"when the intro ends")
+local rowPixels = 100 / #timelineApp.timelineRows
+local r, _, b = require("AppKitNative")._shaderPixel(canvas, 400, 100, 150, math.floor(rowPixels * 0.8))
+t.expect(r > 0.2 and r > 2 * b, "the kick's clip draws in its tint on the first row, ahead of the playhead")
 timelineApp:actions().nextTrack()
 t.assertEqual(canvas.values[1], timelineApp.composer:trackStart(1), "Next Track moves the strip to the next track")
 timelineApp:play()
@@ -858,7 +880,7 @@ timelineApp:actions().selectStyle(Styles:index("techno") - 1)
 t.expect(timelineApp.timelineKey:find(tostring(timelineApp.composer), 1, true) == 1,
 	"a new style's lanes replace the old rows")
 t.assertEqual(timelineApp.timeline.refs.timelineCanvas.frame.size.height,
-	10 + #timelineApp.timelineRows * 10, "the strip grows or shrinks to its rows")
+	#timelineApp.timelineRows * 17.5, "the strip grows or shrinks to its rows")
 t.expect(timelineApp.timeline.refs.timelineCanvas.frame.size.width > 400, "and keeps its full width")
 local arrangement, controls = timelineApp.refs.timeline.frameInWindow, timelineApp.refs.controls.frameInWindow
 t.expect(arrangement.origin.x < controls.origin.x, "the arrangement sits left of the controls")

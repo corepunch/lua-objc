@@ -91,6 +91,7 @@ local function arrange(kit, track, cycles)
 		end
 	end
 	kit.punctuate(lanes, track, function() return "fill.toms" end)
+	kit.produce(lanes, track)
 	return lanes:done()
 end
 
@@ -186,7 +187,8 @@ return {
 		stab = {decay = 0.2, octave = 1},
 		mix = {duckDepth = 0.35, reese = 0.3, stab = 0.08, amen = 0.8},
 	},
-	set = {flavours = FLAVOURS, modes = {"minor", "dorian", "phrygian"}, arrangement = ARRANGEMENT},
+	set = {form = {builds = {"roll", "stomp", "stomp", "sweep", "rise"}},
+		flavours = FLAVOURS, modes = {"minor", "dorian", "phrygian"}, arrangement = ARRANGEMENT},
 	material = buildCycle,
 	arrange = arrange,
 	patterns = PATTERNS,

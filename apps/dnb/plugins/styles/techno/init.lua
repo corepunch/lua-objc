@@ -96,6 +96,7 @@ local function arrange(kit, track, cycles)
 		end
 	end
 	kit.punctuate(lanes, track, function() return "fill.flam" end)
+	kit.produce(lanes, track)
 	return lanes:done()
 end
 
@@ -208,7 +209,9 @@ return {
 		stab = {decay = 0.22, octave = 0},
 		mix = {duckDepth = 0.55, reese = 0.3, stab = 0.08, delayFeedback = 0.5},
 	},
-	set = {flavours = FLAVOURS, modes = {"minor", "phrygian"}, arrangement = ARRANGEMENT, modulations = {0, 5, -2}},
+	set = {form = {openings = {"cold", "cold", "build"}, builds = {"stomp", "sweep", "rise", "roll"},
+		links = {"build", "build", "double", "breakdown build", "breakdown"}},
+		flavours = FLAVOURS, modes = {"minor", "phrygian"}, arrangement = ARRANGEMENT, modulations = {0, 5, -2}},
 	barsPerChord = 4,
 	material = buildCycle,
 	arrange = arrange,

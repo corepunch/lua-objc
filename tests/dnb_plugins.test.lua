@@ -36,7 +36,7 @@ for _, style in ipairs(list) do
 	local a, b = Styles:create(style.id, 21), Styles:create(style.id, 21)
 	local sections, flavours, voices = {}, {}, {}
 	local bassOk, polyOk, stepsOk = true, true, true
-	for n = 0, 200 do
+	for n = 0, a:trackStart(3) - 1 do
 		local bar = a:bar(n, model)
 		local twin = b:bar(n, model)
 		t.assertEqual(#bar.hits .. ":" .. #bar.bass .. ":" .. bar.key, #twin.hits .. ":" .. #twin.bass .. ":" .. twin.key,
@@ -114,8 +114,10 @@ for _, style in ipairs(list) do
 	-- It sounds: a drop renders in range.
 	local synth = Synth.new(model, SR, style.sound)
 	synth:setComposer(Styles:create(style.id, 21))
-	synth.composerBar = a:arrangement(0).sections[3].start
-	t.assertEqual(a:arrangement(0).sections[3].id, "drop", name .. " drops after its intro and build")
+	local drop
+	for _, section in ipairs(a:arrangement(0).sections) do drop = drop or (section.id == "drop" and section) end
+	t.expect(drop ~= nil and drop.start >= a:arrangement(0).sections[1].length, name .. " drops after its intro")
+	synth.composerBar = drop.start
 	local out = {}
 	synth:render(out, SR // 2)
 	local peak, sum = 0, 0

@@ -392,6 +392,29 @@ local function renderAmen(sr, drums)
 end
 
 -- Stereo placement per drum voice: {pan (0 left, 1 right), effect send}.
+-- A block's filter sweep (host/Arrangement.lua) as a one-pole filter on
+-- the voice: the corner each kind reaches fully closed, and the octaves to
+-- wide open. The bass closes its own resonant filter instead, by `bass`
+-- octaves.
+local SWEEP = {lowpass = {corner = 120, octaves = 7.2}, highpass = {corner = 3900, octaves = -7.6}, bass = 5}
+-- The filter lane sweeps the whole mix through two poles. Its corner moves
+-- every `rate` frames, and it fades in over the first `blend` of its
+-- travel from wide open, so it comes and goes without a step.
+local MASTER = {rate = 32, blend = 0.1}
+
+-- The one-pole coefficient for a filter `kind` at `opening` (0…1).
+local function sweepCoef(kind, opening, sr)
+	local sweep = SWEEP[kind]
+	return 1 - exp(-TAU * sweep.corner * 2 ^ (opening * sweep.octaves) / sr)
+end
+
+-- The filter a note's automation asks of its voice: coefficient and
+-- whether it is a high-pass, or nothing while the note plays open.
+local function sweepOf(e, sr)
+	if e.lowpass then return sweepCoef("lowpass", e.lowpass, sr), false end
+	if e.highpass then return sweepCoef("highpass", e.highpass, sr), true end
+end
+
 local DRUM_PLACE = {
 	kick = {0.5, 0}, snare = {0.5, 0.35}, ghost = {0.46, 0.25}, hat = {0.62, 0.05},
 	openHat = {0.62, 0.15}, ride = {0.36, 0.2}, crash = {0.44, 0.3},
@@ -419,6 +442,11 @@ function Synth.new(settings, sampleRate, sound)
 			lp = 0, bp = 0, coef = 0.1, lfo = 0, tick = 0, id = 0, fenv = 0, accent = 1},
 		lead = {freq = 440, target = 440, gate = false, env = 0, p1 = 0, p2 = 0, sq = 0,
 			lp1 = 0, lp2 = 0, vib = 0, t = 0, sweep = 1, id = 0, gain = 1, throw = 0},
+		-- The pad lane's ride through the sounding bar: level and filter
+		-- coefficient from the bar's first frame to its last.
+		pad = {t = 0, length = 1, level = {from = 1, to = 1}},
+		sweeps = {},         -- the filter lane's bars to come: {frame, frames, kind, from, to}
+		master = {c = 1, mix = 0, high = false, l1 = 0, l2 = 0, r1 = 0, r2 = 0},
 		duck = 0,
 		duckHits = {},       -- block-relative frames where a kick restarts the pump
 		bus = {dryL = {}, dryR = {}, duckL = {}, duckR = {}, sendL = {}, sendR = {},
@@ -536,10 +564,16 @@ function Synth:scheduleBar()
 		insertEvent(self.events, {frame = start, kind = "drums", design = bar.drums})
 		self.scheduledDrums = bar.drums
 	end
+	-- An event for `note`, under its block's automation.
+	local events = self.events
+	local function play(note, event)
+		event.level, event.lowpass, event.highpass = note.level or 1, note.lowpass, note.highpass
+		insertEvent(events, event)
+	end
 	bar.kicks, bar.snares = {}, {} -- absolute frames, for the visualizer's flashes
 	for _, h in ipairs(bar.hits) do
 		local frame = at(h.step, h.nudge)
-		insertEvent(self.events, {frame = frame, kind = "drum", voice = h.voice, gain = h.gain, throw = h.throw})
+		play(h, {frame = frame, kind = "drum", voice = h.voice, gain = h.gain, throw = h.throw})
 		if h.voice == "kick" then table.insert(bar.kicks, frame) end
 		if h.voice == "snare" or h.voice == "clap" then table.insert(bar.snares, frame) end
 	end
@@ -547,29 +581,35 @@ function Synth:scheduleBar()
 	table.sort(bar.snares)
 	-- Break slices sit on the straight grid: the loop carries its own feel.
 	for _, b in ipairs(bar.breaks or {}) do
-		insertEvent(self.events, {frame = start + floor(b.step * step + 0.5), kind = "break", slice = b.slice,
+		play(b, {frame = start + floor(b.step * step + 0.5), kind = "break", slice = b.slice,
 			gain = b.gain, length = floor(step + 0.5)})
 	end
 	for _, k in ipairs(bar.keys or {}) do
-		insertEvent(self.events, {frame = at(k.step), kind = "keys", notes = k.notes, gain = k.gain,
+		play(k, {frame = at(k.step), kind = "keys", notes = k.notes, gain = k.gain,
 			length = floor(k.length * step)})
 	end
 	for _, a in ipairs(bar.arp or {}) do
-		insertEvent(self.events, {frame = at(a.step), kind = "arp", note = a.note, gain = a.gain, pan = a.pan,
+		play(a, {frame = at(a.step), kind = "arp", note = a.note, gain = a.gain, pan = a.pan,
 			length = floor(a.length * step)})
 	end
 	for _, l in ipairs(bar.lead or {}) do
-		insertEvent(self.events, {frame = at(l.step), kind = "lead", note = l.note, glide = l.glide, gain = l.gain,
+		play(l, {frame = at(l.step), kind = "lead", note = l.note, glide = l.glide, gain = l.gain,
 			throw = l.throw, length = floor(l.length * step - step * 0.1)})
 	end
 	for _, b in ipairs(bar.bass) do
-		insertEvent(self.events, {frame = at(b.step), kind = "bass", note = b.note, glide = b.glide,
+		play(b, {frame = at(b.step), kind = "bass", note = b.note, glide = b.glide,
 			subOnly = b.subOnly, reese = b.reese, accent = b.accent, wobble = b.wobble,
 			length = floor(b.length * step - step * 0.15)})
 	end
 	for _, s in ipairs(bar.stabs) do
-		insertEvent(self.events, {frame = at(s.step), kind = "stab", notes = s.notes, throw = s.throw})
+		play(s, {frame = at(s.step), kind = "stab", notes = s.notes, throw = s.throw})
 	end
+	local sweep = bar.automation.filter
+	if sweep and sweep.kind then
+		table.insert(self.sweeps, {frame = start, frames = bar.frames, kind = sweep.kind,
+			from = sweep.filter.from, to = sweep.filter.to})
+	end
+	insertEvent(events, {frame = start, kind = "padRide", automation = bar.automation.pads, length = bar.frames})
 	if bar.pad then
 		insertEvent(self.events, {frame = start, kind = "pad", notes = bar.pad, length = 2 * bar.frames})
 	end
@@ -604,8 +644,9 @@ function Synth:startEvent(e)
 	elseif e.kind == "drum" then
 		local place = DRUM_PLACE[e.voice]
 		local data = self.drums[e.voice]
-		local g = e.gain * MIX.drums
-		table.insert(self.voices, {kind = "sample", data = data, pos = 1,
+		local g = e.gain * e.level * MIX.drums
+		local fc, high = sweepOf(e, sr)
+		table.insert(self.voices, {kind = "sample", data = data, pos = 1, fc = fc, high = high, fs = 0,
 			gl = g * (1 - place[1]) * 2, gr = g * place[1] * 2, send = place[2], throw = e.throw and MIX.throw or 0})
 		-- The pump restarts on the kick's own frame within the block.
 		if e.voice == "kick" then table.insert(self.duckHits, e.frame - self.frame + 1) end
@@ -626,10 +667,20 @@ function Synth:startEvent(e)
 		end
 		b.gate, b.subOnly, b.reeseGain = true, e.subOnly, e.reese or 1
 		b.accent, b.wobble = e.accent and 1.3 or 1, e.wobble
+		b.level, b.lowpass = e.level, e.lowpass
+		b.fc = e.highpass and sweepCoef("highpass", e.highpass, sr) or nil
 		b.id = b.id + 1
 		insertEvent(self.events, {frame = e.frame + e.length, kind = "bassOff", id = b.id})
 	elseif e.kind == "bassOff" then
 		if self.bass.id == e.id then self.bass.gate = false end
+	elseif e.kind == "padRide" then
+		local ride, automation = self.pad, e.automation
+		ride.t, ride.length = 0, e.length
+		ride.level = automation and automation.level or {from = 1, to = 1}
+		ride.high = automation ~= nil and automation.kind == "highpass"
+		ride.filter = automation and automation.kind and {
+			from = sweepCoef(automation.kind, automation.filter.from, sr),
+			to = sweepCoef(automation.kind, automation.filter.to, sr)} or nil
 	elseif e.kind == "pad" then
 		for _, v in ipairs(self.voices) do
 			if v.kind == "pad" then v.releasing = true end
@@ -640,7 +691,7 @@ function Synth:startEvent(e)
 			table.insert(osc, {inc = f * (1 + PAD.detune) / sr, p = (i * 0.37) % 1, pan = 0.2})
 			table.insert(osc, {inc = f * (1 - PAD.detune) / sr, p = (i * 0.71) % 1, pan = 0.8})
 		end
-		table.insert(self.voices, {kind = "pad", osc = osc, env = 0, lpL = 0, lpR = 0,
+		table.insert(self.voices, {kind = "pad", osc = osc, env = 0, lpL = 0, lpR = 0, fsL = 0, fsR = 0,
 			remaining = e.length})
 	elseif e.kind == "stab" then
 		local osc = {}
@@ -649,11 +700,13 @@ function Synth:startEvent(e)
 			table.insert(osc, {inc = f / sr, p = i * 0.21 % 1})
 			table.insert(osc, {inc = f * 1.008 / sr, p = i * 0.43 % 1})
 		end
-		table.insert(self.voices, {kind = "stab", osc = osc, t = 0, lp = 0, throw = e.throw and MIX.throw or 0})
+		local fc, high = sweepOf(e, sr)
+		table.insert(self.voices, {kind = "stab", osc = osc, t = 0, lp = 0, level = e.level, fc = fc, high = high, fs = 0,
+			throw = e.throw and MIX.throw or 0})
 	elseif e.kind == "break" then
 		-- Pitched to tempo like a sped-up record: a slice lasts one 16th.
 		local rate = self.settings:value("tempo") / Amen.bpm
-		local gain = e.gain * MIX.amen
+		local gain = e.gain * e.level * MIX.amen
 		local v = self.breakVoice
 		if v and v.next == e.slice and v.left > -BREAK.slack then
 			-- The next slice in order: the loop just keeps playing. Slack
@@ -661,10 +714,11 @@ function Synth:startEvent(e)
 			v.left, v.gain, v.rate, v.fade = v.left + e.length, gain, rate, 1
 		else
 			if v then v.left = math.min(v.left, 0) end
-			v = {kind = "slice", pos = e.slice * self.amenStep, rate = rate, gain = gain, left = e.length, fade = 1}
+			v = {kind = "slice", pos = e.slice * self.amenStep, rate = rate, gain = gain, left = e.length, fade = 1, fs = 0}
 			table.insert(self.voices, v)
 			self.breakVoice = v
 		end
+		v.fc, v.high = sweepOf(e, sr)
 		v.next = (e.slice + 1) % Amen.slices
 	elseif e.kind == "keys" then
 		for _, other in ipairs(self.voices) do
@@ -675,17 +729,21 @@ function Synth:startEvent(e)
 			local f = midiHz(note)
 			table.insert(osc, {inc = f / sr, c = 0, m = 0})
 		end
+		local fc, high = sweepOf(e, sr)
 		table.insert(self.voices, {kind = "keys", osc = osc, t = 0, hold = e.length / sr, env = 0, rel = 1,
-			gain = e.gain * MIX.keys / #osc * 2, pan = 0})
+			gain = e.gain * e.level * MIX.keys / #osc * 2, pan = 0, fc = fc, high = high, fs = 0})
 	elseif e.kind == "arp" then
 		local f = midiHz(e.note)
-		table.insert(self.voices, {kind = "pluck", t = 0, lp = 0, amp = 0, env = 1, sweep = 1, gain = e.gain * MIX.arp, pan = e.pan,
+		local fc, high = sweepOf(e, sr)
+		table.insert(self.voices, {kind = "pluck", t = 0, lp = 0, amp = 0, env = 1, sweep = 1, fc = fc, high = high, fs = 0,
+			gain = e.gain * e.level * MIX.arp, pan = e.pan,
 			hold = e.length / sr, osc = {{inc = f * (1 + PLUCK.detune) / sr, p = 0}, {inc = f * (1 - PLUCK.detune) / sr, p = 0.5}}})
 	elseif e.kind == "lead" then
 		local l = self.lead
 		l.target = midiHz(e.note)
 		if not e.glide or not l.gate then l.freq, l.t, l.sweep = l.target, 0, 1 end
-		l.gate, l.gain, l.throw = true, e.gain, e.throw and MIX.throw or 0
+		l.gate, l.gain, l.throw = true, e.gain * e.level, e.throw and MIX.throw or 0
+		l.fc, l.high = sweepOf(e, sr)
 		l.id = l.id + 1
 		insertEvent(self.events, {frame = e.frame + e.length, kind = "leadOff", id = l.id})
 	elseif e.kind == "leadOff" then
@@ -713,9 +771,14 @@ function Synth:renderVoices(first, last)
 			local data, pos, gl, gr, send, throw = v.data, v.pos, v.gl, v.gr, v.send, v.throw
 			local n = #data
 			local fade = v.choke and 0.995 or 1
+			local fc, high, fs = v.fc, v.high, v.fs
 			for k = first, last do
 				if pos > n then break end
 				local s = data[pos]
+				if fc then
+					fs = fs + fc * (s - fs)
+					s = high and s - fs or fs
+				end
 				if v.choke then gl, gr = gl * fade, gr * fade end
 				dryL[k] = dryL[k] + s * gl
 				dryR[k] = dryR[k] + s * gr
@@ -729,7 +792,7 @@ function Synth:renderVoices(first, last)
 				end
 				pos = pos + 1
 			end
-			v.pos, v.gl, v.gr = pos, gl, gr
+			v.pos, v.gl, v.gr, v.fs = pos, gl, gr, fs
 			done = pos > n or (v.choke and gl < 1e-4)
 		elseif v.kind == "pad" then
 			local attack = 1 / (PAD.attack * sr)
@@ -738,7 +801,13 @@ function Synth:renderVoices(first, last)
 			local env, lpL, lpR = v.env, v.lpL, v.lpR
 			local bright = PAD.brightness
 			local g = MIX.pad
+			local ride = self.pad
+			local level, filter, high = ride.level, ride.filter, ride.high
+			local t, length = ride.t, ride.length
+			local fsL, fsR = v.fsL, v.fsR
 			for k = first, last do
+				local at = t < length and t / length or 1
+				t = t + 1
 				v.remaining = v.remaining - 1
 				if v.releasing or v.remaining <= 0 then env = env * release
 				elseif env < 1 then env = math.min(1, env + attack) end
@@ -754,16 +823,25 @@ function Synth:renderVoices(first, last)
 				end
 				lpL = lpL + bright * (l - lpL)
 				lpR = lpR + bright * (r - lpR)
-				local sl, sr_ = lpL * env * g, lpR * env * g
+				local gain = env * g * (level.from + (level.to - level.from) * at)
+				local sl, sr_ = lpL, lpR
+				if filter then
+					local fc = filter.from + (filter.to - filter.from) * at
+					fsL = fsL + fc * (sl - fsL)
+					fsR = fsR + fc * (sr_ - fsR)
+					if high then sl, sr_ = sl - fsL, sr_ - fsR else sl, sr_ = fsL, fsR end
+				end
+				sl, sr_ = sl * gain, sr_ * gain
 				duckL[k] = duckL[k] + sl
 				duckR[k] = duckR[k] + sr_
 				sendL[k] = sendL[k] + sl * 0.6
 				sendR[k] = sendR[k] + sr_ * 0.6
 			end
-			v.env, v.lpL, v.lpR = env, lpL, lpR
+			v.env, v.lpL, v.lpR, v.fsL, v.fsR = env, lpL, lpR, fsL, fsR
 			done = (v.releasing or v.remaining <= 0) and env < 1e-4
 		elseif v.kind == "stab" then
 			local osc, t, lp = v.osc, v.t, v.lp
+			local fc, high, fs, gain = v.fc, v.high, v.fs, MIX.stab * v.level
 			local dt = 1 / sr
 			for k = first, last do
 				local env = math.min(1, t / STAB.attack) * exp(-t / STAB.decay)
@@ -777,7 +855,12 @@ function Synth:renderVoices(first, last)
 					x = x + 2 * p - 1
 				end
 				lp = lp + cutoff * (x - lp)
-				local s = lp * env * MIX.stab
+				local s = lp
+				if fc then
+					fs = fs + fc * (s - fs)
+					s = high and s - fs or fs
+				end
+				s = s * env * gain
 				duckL[k] = duckL[k] + s * 0.8
 				duckR[k] = duckR[k] + s * 1.2
 				sendL[k] = sendL[k] + s * 1.1
@@ -788,7 +871,7 @@ function Synth:renderVoices(first, last)
 				end
 				t = t + dt
 			end
-			v.t, v.lp = t, lp
+			v.t, v.lp, v.fs = t, lp, fs
 			done = t > STAB.decay * 8
 		elseif v.kind == "slice" then
 			-- Linear-interpolated resampling of the Amen loop.
@@ -796,6 +879,7 @@ function Synth:renderVoices(first, last)
 			local pos, rate, g, left, fade = v.pos, v.rate, v.gain, v.left, v.fade
 			local fadeCoef = exp(-1 / (BREAK.fade * sr))
 			local send = MIX.amenSend
+			local fc, high, fs = v.fc, v.high, v.fs
 			for k = first, last do
 				if left <= 0 then
 					fade = fade * fadeCoef
@@ -804,7 +888,12 @@ function Synth:renderVoices(first, last)
 				local i = floor(pos)
 				local a = data[i + 1]
 				local b = data[i + 2 <= n and i + 2 or 1]
-				local x = (a + (b - a) * (pos - i)) * g * fade
+				local x = a + (b - a) * (pos - i)
+				-- The filter keeps running while open, so a sweep that starts
+				-- mid-loop does not click in.
+				fs = fs + (fc or 1) * (x - fs)
+				if fc then x = high and x - fs or fs end
+				x = x * g * fade
 				dryL[k] = dryL[k] + x
 				dryR[k] = dryR[k] + x
 				sendL[k] = sendL[k] + x * send
@@ -813,7 +902,7 @@ function Synth:renderVoices(first, last)
 				if pos >= n then pos = pos - n end
 				left = left - 1
 			end
-			v.pos, v.left, v.fade = pos, left, fade
+			v.pos, v.left, v.fade, v.fs = pos, left, fade, fs
 			done = fade < 1e-3
 			if done and self.breakVoice == v then self.breakVoice = nil end
 		elseif v.kind == "keys" then
@@ -827,6 +916,7 @@ function Synth:renderVoices(first, last)
 			local pan, g, hold = v.pan, v.gain, v.hold
 			local depth, ratio = KEYS.autopanDepth, KEYS.tineRatio
 			local send = MIX.keysSend
+			local fc, high, fs = v.fc, v.high, v.fs
 			for k = first, last do
 				if t < KEYS.attack then env = math.min(1, env + attackInc) else env = env * decay end
 				if t >= hold then rel = rel * release end
@@ -848,6 +938,10 @@ function Synth:renderVoices(first, last)
 				pan = pan + panInc
 				if pan >= 1 then pan = pan - 1 end
 				local swing = depth * SINE[floor(pan * SINE_SIZE)]
+				if fc then
+					fs = fs + fc * (x - fs)
+					x = high and x - fs or fs
+				end
 				local y = x * env * rel * g
 				duckL[k] = duckL[k] + y * (1 - swing)
 				duckR[k] = duckR[k] + y * (1 + swing)
@@ -855,7 +949,7 @@ function Synth:renderVoices(first, last)
 				sendR[k] = sendR[k] + y * send
 				t = t + dt
 			end
-			v.t, v.env, v.rel, v.index, v.tine, v.pan = t, env, rel, index, tine, pan
+			v.t, v.env, v.rel, v.index, v.tine, v.pan, v.fs = t, env, rel, index, tine, pan, fs
 			done = t > KEYS.tail or rel < 1e-3
 		elseif v.kind == "pluck" then
 			-- Arp pluck: two detuned saws through a low-pass that snaps shut,
@@ -870,6 +964,7 @@ function Synth:renderVoices(first, last)
 			local sweepFall = exp(-1 / (PLUCK.sweep * sr))
 			local hold, dt = v.hold, 1 / sr
 			local sendGain = PLUCK.send
+			local fc, high, fs = v.fc, v.high, v.fs
 			for k = first, last do
 				if amp < 1 then amp = math.min(1, amp + attackInc) end
 				env = env * (t < hold and held or free)
@@ -878,7 +973,12 @@ function Synth:renderVoices(first, last)
 				if p1 >= 1 then p1 = p1 - 1 end
 				if p2 >= 1 then p2 = p2 - 1 end
 				lp = lp + (0.03 + 0.45 * sweep) * (p1 + p2 - 1 - lp)
-				local x = lp * env * amp
+				local x = lp
+				if fc then
+					fs = fs + fc * (x - fs)
+					x = high and x - fs or fs
+				end
+				x = x * env * amp
 				local xl, xr = x * gl, x * gr
 				duckL[k] = duckL[k] + xl
 				duckR[k] = duckR[k] + xr
@@ -887,7 +987,7 @@ function Synth:renderVoices(first, last)
 				t = t + dt
 			end
 			o1.p, o2.p = p1, p2
-			v.t, v.lp, v.amp, v.env, v.sweep = t, lp, amp, env, sweep
+			v.t, v.lp, v.amp, v.env, v.sweep, v.fs = t, lp, amp, env, sweep, fs
 			done = t > PLUCK.tail
 		elseif v.kind == "riser" then
 			local noise, lp, hp = v.noise, v.lp, v.hp
@@ -911,6 +1011,7 @@ function Synth:renderVoices(first, last)
 		end
 		if done then table.remove(voices, i) else i = i + 1 end
 	end
+	self.pad.t = self.pad.t + last - first + 1
 	self:renderBass(first, last)
 	self:renderLead(first, last)
 end
@@ -932,6 +1033,7 @@ function Synth:renderLead(first, last)
 	local freq, target, env, p1, p2, sq, lp1, lp2, vib, t = l.freq, l.target, l.env, l.p1, l.p2, l.sq, l.lp1, l.lp2, l.vib, l.t
 	local sweep, sweepFall = l.sweep, exp(-1 / (LEAD.sweepTime * sr))
 	local g, throw = l.gain * MIX.lead, l.throw
+	local fc, high, fs = l.fc, l.high, l.fs or 0
 	for k = first, last do
 		freq = freq + (target - freq) * LEAD.glide
 		if l.gate then env = env + (1 - env) * attack else env = env * release end
@@ -951,7 +1053,12 @@ function Synth:renderLead(first, last)
 		local c = LEAD.brightness + LEAD.sweep * sweep
 		lp1 = lp1 + c * (x - lp1)
 		lp2 = lp2 + c * (lp1 - lp2)
-		local s = lp2 * env * g
+		local s = lp2
+		if fc then
+			fs = fs + fc * (s - fs)
+			s = high and s - fs or fs
+		end
+		s = s * env * g
 		duckL[k] = duckL[k] + s * 0.9
 		duckR[k] = duckR[k] + s * 1.1
 		sendL[k] = sendL[k] + s * LEAD.send
@@ -963,6 +1070,7 @@ function Synth:renderLead(first, last)
 		t = t + dt
 	end
 	l.freq, l.env, l.p1, l.p2, l.sq, l.lp1, l.lp2, l.vib, l.t, l.sweep = freq, env, p1, p2, sq, lp1, lp2, vib, t, sweep
+	l.fs = fs
 end
 
 function Synth:renderBass(first, last)
@@ -989,7 +1097,8 @@ function Synth:renderBass(first, last)
 	local duckL, duckR = self.bus.duckL, self.bus.duckR
 	local freq, target, env, p1, p2, sub = b.freq, b.target, b.env, b.p1, b.p2, b.sub
 	local lp, bp, coef, lfo, tick = b.lp, b.bp, b.coef, b.lfo, b.tick
-	local base = BASS.minCutoff * 2 ^ (cutoff * BASS.cutoffOctaves)
+	local base = BASS.minCutoff * 2 ^ (cutoff * BASS.cutoffOctaves - (1 - (b.lowpass or 1)) * SWEEP.bass)
+	local level, fc, fs = b.level or 1, b.fc, b.fs or 0
 	for k = first, last do
 		freq = freq + (target - freq) * BASS.glide
 		if b.gate then env = env + (1 - env) * attack else env = env * release end
@@ -1025,12 +1134,16 @@ function Synth:renderBass(first, last)
 		sub = sub + freq / sr
 		if sub >= 1 then sub = sub - 1 end
 		s = s + SINE[floor(sub * SINE_SIZE)] * MIX.sub
-		s = s * env
+		if fc then
+			fs = fs + fc * (s - fs)
+			s = s - fs
+		end
+		s = s * env * level
 		duckL[k] = duckL[k] + s
 		duckR[k] = duckR[k] + s
 	end
 	b.freq, b.env, b.p1, b.p2, b.sub, b.lp, b.bp, b.coef, b.lfo, b.tick = freq, env, p1, p2, sub, lp, bp, coef, lfo, tick
-	b.fenv = fenv
+	b.fenv, b.fs = fenv, fs
 end
 
 -- Runs one delay line over a block. Combs are parallel and all-passes are
@@ -1110,13 +1223,47 @@ function Synth:mixdown(out, count)
 	local depth = MIX.duckDepth
 	local duck = self.duck
 	local hits, nextHit = self.duckHits, 1
+	-- The filter lane's sweep under this block, by absolute frame so that
+	-- any block size renders the same.
+	local sweeps, master, frame = self.sweeps, self.master, self.frame
+	while sweeps[1] and sweeps[1].frame + sweeps[1].frames <= frame do table.remove(sweeps, 1) end
+	local c, blend, high = master.c, master.mix, master.high
+	local l1, l2, r1, r2 = master.l1, master.l2, master.r1, master.r2
+	local rate, sweep = MASTER.rate, sweeps[1]
 	for k = 1, count do
 		duck = duck * duckRelease
 		while hits[nextHit] and hits[nextHit] <= k do duck, nextHit = 1, nextHit + 1 end
 		local g = 1 - depth * duck
-		out[2 * k - 1] = softClip((dryL[k] + duckL[k] * g + echoesL[k] + wetL[k]) * volume)
-		out[2 * k] = softClip((dryR[k] + duckR[k] * g + echoesR[k] + wetR[k]) * volume)
+		local l = dryL[k] + duckL[k] * g + echoesL[k] + wetL[k]
+		local r = dryR[k] + duckR[k] * g + echoesR[k] + wetR[k]
+		local at = frame + k - 1
+		if sweep and at >= sweep.frame + sweep.frames then
+			table.remove(sweeps, 1)
+			sweep = sweeps[1]
+		end
+		if at % rate == 0 then
+			if sweep and at >= sweep.frame then
+				local opening = sweep.from + (sweep.to - sweep.from) * (at - sweep.frame) / sweep.frames
+				c, high = sweepCoef(sweep.kind, opening, sr), sweep.kind == "highpass"
+				blend = math.min(1, (1 - opening) / MASTER.blend)
+			else
+				c, blend = 1, 0
+			end
+		end
+		-- Open, the poles follow the mix, so a sweep starts from where it is.
+		l1 = l1 + c * (l - l1)
+		l2 = l2 + c * (l1 - l2)
+		r1 = r1 + c * (r - r1)
+		r2 = r2 + c * (r1 - r2)
+		if blend > 0 then
+			l = l + ((high and l - l2 or l2) - l) * blend
+			r = r + ((high and r - r2 or r2) - r) * blend
+		end
+		out[2 * k - 1] = softClip(l * volume)
+		out[2 * k] = softClip(r * volume)
 	end
+	master.c, master.mix, master.high = c, blend, high
+	master.l1, master.l2, master.r1, master.r2 = l1, l2, r1, r2
 	self.duck = duck
 	for i = #hits, 1, -1 do hits[i] = nil end
 end

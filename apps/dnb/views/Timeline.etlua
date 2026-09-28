@@ -1,12 +1,11 @@
 <%
 -- The arrangement strip, after the arrange window of Cubase or MTV Music
--- Generator: lane names beside a Metal view that scrolls the blocks past a
+-- Generator: track names beside a Metal view that scrolls the clips past a
 -- fixed playhead (shaders/Timeline.metal). Names are presentation, so they
--- live here; the rows are the lanes of the tracks in view.
+-- live here; the rows are the tracks of the arrangements in view.
 local names = {
-	kick = "Kick", snare = "Snare", ghosts = "Ghosts", hats = "Hi-hats", ride = "Ride", percussion = "Perc",
-	amen = "Amen", sub = "Sub", reese = "Reese", pads = "Pads", keys = "Keys", stabs = "Stabs", arp = "Arp",
-	lead = "Lead", fills = "Fills", risers = "Risers", halftime = "Half-time", throws = "Throws", chops = "Chops",
+	kick = "Kick", snare = "Snare", hats = "Hats", percussion = "Perc", ["break"] = "Break", bass = "Bass",
+	pads = "Pads", keys = "Keys", stabs = "Stabs", arp = "Arp", lead = "Lead", fills = "Fills", fx = "FX", filter = "Filter",
 }
 -%>
 <GlassEffect cornerRadius="24" maxWidth="infinity" maxHeight="infinity">
@@ -18,12 +17,11 @@ local names = {
 		</HStack>
 		<HStack spacing="10" alignment="top" maxWidth="infinity">
 			<VStack spacing="0" alignment="trailing" width="<%= labelWidth %>">
-				<Label text="" size="9" height="<%= ruler %>" />
 				<% for _, row in ipairs(rows) do -%>
-				<Label key="<%= row.part %>" text="<%= names[row.part] %>" size="9" weight="medium" color="secondary" lineLimit="1" height="<%= rowHeight %>" />
+				<Label key="<%= row.track %>" text="<%= names[row.track] %>" size="9" weight="medium" color="secondary" lineLimit="1" height="<%= rowHeight %>" />
 				<% end -%>
 			</VStack>
-			<ShaderView id="timelineCanvas" function="timeline" layers="1" maxWidth="infinity" height="<%= ruler + #rows * rowHeight %>">
+			<ShaderView id="timelineCanvas" function="timeline" layers="1" maxWidth="infinity" height="<%= #rows * rowHeight %>">
 				<ShaderSource path="apps/dnb/shaders/Timeline.metal" />
 			</ShaderView>
 		</HStack>

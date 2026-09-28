@@ -18,8 +18,8 @@ local VIEWS = "apps/dnb/views/"
 -- modal menu) resumes the picture instead of leaping ahead.
 local PLAYBACK = {sampleRate = 44100, bufferSeconds = 0.3, frameInterval = 1 / 60, maxFrame = 0.1}
 
--- The arrangement strip's rows, ruler and lane-name column, in points.
-local TIMELINE = {rowHeight = 10, ruler = 10, labelWidth = 52, scale = 2}
+-- The arrangement strip's rows and track-name column, in points.
+local TIMELINE = {rowHeight = 17.5, labelWidth = 52, scale = 2}
 
 local SECTION_TITLES = {intro = "Intro", build = "Build-up", drop = "Drop", breakdown = "Breakdown",
 	outro = "Outro", halftime = "Half-time", blend = "Mixing in"}
@@ -224,7 +224,7 @@ function Controller:present(refs, stage)
 end
 
 -- The arrangement strip around set bar `n` of `composer`, the playhead
--- `fraction` into it and moving at `barsPerSecond`. Rows and blocks change
+-- `fraction` into it and moving at `barsPerSecond`. Rows and clips change
 -- only when another track comes into view; the playhead moves every frame.
 function Controller:showTimeline(composer, n, fraction, barsPerSecond)
 	local timeline = self.timeline
@@ -237,7 +237,7 @@ function Controller:showTimeline(composer, n, fraction, barsPerSecond)
 		self.timelineKey = key
 		self.timelineRows = Timeline.rows(plans)
 		refs = select(2, timeline:update({rows = self.timelineRows, headline = headline,
-			rowHeight = TIMELINE.rowHeight, ruler = TIMELINE.ruler, labelWidth = TIMELINE.labelWidth}))
+			rowHeight = TIMELINE.rowHeight, labelWidth = TIMELINE.labelWidth}))
 		local data = Timeline.instances(plans, self.timelineRows)
 		refs.timelineCanvas.draws = {{vertex = "timelineBlockVertex", fragment = "timelineBlockFragment",
 			count = 6, instances = #data // Timeline.stride, data = data, blend = "alpha"}}
@@ -246,7 +246,6 @@ function Controller:showTimeline(composer, n, fraction, barsPerSecond)
 	end
 	local rows = #self.timelineRows
 	local values = Timeline.values(n + fraction, barsPerSecond, rows)
-	table.insert(values, TIMELINE.ruler / (TIMELINE.ruler + rows * TIMELINE.rowHeight))
 	table.insert(values, self.window and self.window.backingScaleFactor or TIMELINE.scale)
 	refs.timelineCanvas.values = values
 end

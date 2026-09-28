@@ -85,6 +85,7 @@ local function arrange(kit, track, cycles)
 		end
 	end
 	kit.punctuate(lanes, track, function() return "fill.claps" end)
+	kit.produce(lanes, track)
 	return lanes:done()
 end
 
@@ -186,7 +187,8 @@ return {
 		keys = {decay = 1.5, autopanDepth = 0.25},
 		mix = {duckDepth = 0.65, duckRelease = 0.16, keys = 0.07, reese = 0.28, sub = 0.5, delaySteps = 3},
 	},
-	set = {flavours = FLAVOURS, modes = {"dorian", "minor", "major"}, arrangement = ARRANGEMENT, modulations = {0, 2, 5}},
+	set = {form = {openings = {"build", "cold", "melodic"}, builds = {"sweep", "sweep", "roll", "rise"}},
+		flavours = FLAVOURS, modes = {"dorian", "minor", "major"}, arrangement = ARRANGEMENT, modulations = {0, 2, 5}},
 	barsPerChord = 1,
 	material = buildCycle,
 	arrange = arrange,
