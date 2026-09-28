@@ -1,6 +1,46 @@
 static void layout_recursive(NSView *view, CGFloat width);
 static void position_table_spinner(NSScrollView *sv);
 
+/* The rectangle of a window's content view that its title bar and toolbar
+ * leave uncovered. Only an ordinary full-size-content window has insets, so
+ * panels and sheets keep their whole content view. */
+static NSRect window_safe_rect(NSWindow *window) {
+	NSView *content = window.contentView;
+	if (![window isKindOfClass:[LuaWindow class]]) return content.bounds;
+	NSEdgeInsets insets = content.safeAreaInsets;
+	NSRect bounds = content.bounds;
+	return NSMakeRect(NSMinX(bounds) + insets.left, NSMinY(bounds) + insets.bottom,
+		MAX(0, NSWidth(bounds) - insets.left - insets.right),
+		MAX(0, NSHeight(bounds) - insets.top - insets.bottom));
+}
+
+/* SwiftUI `.ignoresSafeArea`: an edge of `frame` (in `parent`) that reaches
+ * the window's safe area moves out to the window's edge, so a background can
+ * run under a transparent title bar and toolbar while siblings stay clear. */
+static NSRect frame_ignoring_safe_area(NSView *parent, NSView *child, NSRect frame) {
+	NSString *edges = child.ignoresSafeArea;
+	NSWindow *window = parent.window;
+	if (!edges || !window) return frame;
+	BOOL all = [edges isEqualToString:@"all"] || [edges isEqualToString:@"edges"];
+	BOOL top = all || [edges isEqualToString:@"top"];
+	BOOL bottom = all || [edges isEqualToString:@"bottom"];
+	NSView *content = window.contentView;
+	NSRect bounds = content.bounds, safe = window_safe_rect(window);
+	NSRect r = [parent convertRect:frame toView:content];
+	const CGFloat slack = 0.5;
+	if (top && NSMaxY(r) >= NSMaxY(safe) - slack) r.size.height = NSMaxY(bounds) - NSMinY(r);
+	if (bottom && NSMinY(r) <= NSMinY(safe) + slack) {
+		r.size.height += NSMinY(r) - NSMinY(bounds);
+		r.origin.y = NSMinY(bounds);
+	}
+	if (all && NSMinX(r) <= NSMinX(safe) + slack) {
+		r.size.width += NSMinX(r) - NSMinX(bounds);
+		r.origin.x = NSMinX(bounds);
+	}
+	if (all && NSMaxX(r) >= NSMaxX(safe) - slack) r.size.width = NSMaxX(bounds) - NSMinX(r);
+	return [parent convertRect:r fromView:content];
+}
+
 static int bridge_object_add_impl(lua_State *L) {
 @autoreleasepool {
 	id parent = check_objc(L, 1);
@@ -10,7 +50,7 @@ static int bridge_object_add_impl(lua_State *L) {
 	if ([parent isKindOfClass:[NSWindow class]]) {
 		NSWindow *window = (NSWindow *)parent;
 		container = window.contentView;
-		child.frame = container.bounds;
+		child.frame = window_safe_rect(window);
 		child.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 
 		if (!objc_getAssociatedObject(window, &kKeys[kResizeObserverKey])) {
@@ -20,7 +60,7 @@ static int bridge_object_add_impl(lua_State *L) {
 				NSView *root = weakChild;
 				NSWindow *observedWindow = weakWindow;
 				if (!root || !observedWindow) return;
-				root.frame = observedWindow.contentView.bounds;
+				root.frame = window_safe_rect(observedWindow);
 				layout_recursive(root, root.bounds.size.width);
 			};
 			id windowObserver = [[NSNotificationCenter defaultCenter]
@@ -177,6 +217,16 @@ static CGFloat clamp_dimension(CGFloat value, CGFloat minimum, CGFloat maximum) 
 
 static CGFloat view_flex_grow(NSView *view, BOOL horizontal);
 
+/* SwiftUI `.fixedSize(horizontal:vertical:)`: on a fixed axis the view keeps
+ * its content size, neither growing into nor shrinking with the proposal.
+ * Its flexible children still fill that size, so a row of panels with
+ * maxHeight="infinity" matches its tallest panel. */
+static BOOL view_fixed_on_axis(NSView *view, BOOL horizontal) {
+	NSString *fixed = objc_getAssociatedObject(view, &kKeys[kFixedSizeKey]);
+	if (!fixed) return NO;
+	return [fixed isEqualToString:@"both"] || [fixed isEqualToString:horizontal ? @"horizontal" : @"vertical"];
+}
+
 static BOOL default_grows_on_axis(NSView *view, BOOL horizontal) {
 	NSView *label = objc_getAssociatedObject(view, &kKeys[kButtonContentKey]);
 	if (label) return view_flex_grow(label, horizontal) > 0;
@@ -212,7 +262,8 @@ static BOOL default_grows_on_axis(NSView *view, BOOL horizontal) {
 }
 
 static CGFloat view_flex_grow(NSView *view, BOOL horizontal) {
-	if (objc_getAssociatedObject(view, horizontal ? &kKeys[kFixedWidthKey] : &kKeys[kFixedHeightKey])) {
+	if (objc_getAssociatedObject(view, horizontal ? &kKeys[kFixedWidthKey] : &kKeys[kFixedHeightKey])
+		|| view_fixed_on_axis(view, horizontal)) {
 		return 0;
 	}
 	NSNumber *grow = objc_getAssociatedObject(view, &kKeys[kFlexGrowKey]);
@@ -227,7 +278,8 @@ static CGFloat view_flex_grow(NSView *view, BOOL horizontal) {
 }
 
 static CGFloat view_flex_shrink(NSView *view, BOOL horizontal) {
-	if (objc_getAssociatedObject(view, horizontal ? &kKeys[kFixedWidthKey] : &kKeys[kFixedHeightKey])) {
+	if (objc_getAssociatedObject(view, horizontal ? &kKeys[kFixedWidthKey] : &kKeys[kFixedHeightKey])
+		|| view_fixed_on_axis(view, horizontal)) {
 		return 0;
 	}
 	NSNumber *shrink = objc_getAssociatedObject(view, &kKeys[kFlexShrinkKey]);
@@ -238,6 +290,7 @@ static CGFloat view_flex_shrink(NSView *view, BOOL horizontal) {
 }
 
 static BOOL view_fills_cross_axis(NSView *view, BOOL horizontal) {
+	if (view_fixed_on_axis(view, horizontal)) return NO;
 	const void *key = horizontal ? &kKeys[kFillWidthKey] : &kKeys[kFillHeightKey];
 	NSNumber *fill = objc_getAssociatedObject(view, key);
 	return fill ? fill.boolValue : view_flex_grow(view, horizontal) > 0;
@@ -992,8 +1045,8 @@ static void layout_recursive_impl(NSView *view, CGFloat width) {
 				if ([position containsString:@"trailing"]) childX = padX + contentW - childW;
 				if ([position containsString:@"bottom"]) childY = padBottom;
 				if ([position containsString:@"top"]) childY = padBottom + contentH - childH;
-				sv.frame = NSMakeRect(childX, childY, childW, childH);
-				layout_recursive(sv, childW);
+				sv.frame = frame_ignoring_safe_area(view, sv, NSMakeRect(childX, childY, childW, childH));
+				layout_recursive(sv, sv.frame.size.width);
 			}
 		} break;
 		case LayoutAxisHSplit: {

@@ -36,6 +36,34 @@ t.expect(not ok and tostring(err):find("no fragment function named missing", 1, 
 t.assertThrows(function() ns.ShaderView({source = dir .. "/none.metal", ["function"] = "glow"}) end,
 	"a missing source file is an error")
 
+-- A program linked from sources: a library, a snippet, an entry point.
+local library = write("library.metal", "static float3 tint(float v) { return float3(v, 0.5, 1.0 - v); }\n")
+local entry = write("entry.metal", [==[
+fragment float4 linked(ShaderVertex in [[stage_in]], constant ShaderInputs &inputs [[buffer(0)]]) {
+	return float4(tint(scale(in.uv.x)), 1.0);
+}
+]==])
+local linked = ns.ShaderView({["function"] = "linked", sources = {
+	{path = library}, {code = "static float scale(float x) { return x * 0.5; }"}, {path = entry},
+}})
+t.expect(linked ~= nil, "a ShaderView links files and snippets into one program, in order")
+local broken = write("broken.metal", "static float oops() { return undefined_name; }\n")
+ok, err = pcall(ns.ShaderView, {["function"] = "linked", sources = {{path = library}, {path = broken}, {path = entry}}})
+t.expect(not ok and tostring(err):find(broken .. ":1", 1, true) ~= nil,
+	"errors in a linked program name the file and line they came from")
+t.assertThrows(function() ns.ShaderView({["function"] = "linked", sources = {{path = library, code = "x"}}}) end,
+	"a source is a path or code, not both")
+t.assertThrows(function() ns.ShaderView({source = good, ["function"] = "glow", sources = {{path = good}}}) end,
+	"source and sources are exclusive")
+local composed = xml.render(string.format([[<ShaderView function="linked">
+	<ShaderSource path="%s" />
+	<ShaderSource code="static float scale(float x) { return x &gt; 0.5 ? 1.0 : 0.0; }" />
+	<ShaderSource path="%s" />
+</ShaderView>]], library, entry), {}, ns)
+t.expect(composed ~= nil, "<ShaderSource> children link a program from XML, entities decoded")
+t.assertThrows(function() xml.render('<ShaderView function="x"><Label text="no" /></ShaderView>', {}, ns) end,
+	"a ShaderView takes only ShaderSource children")
+
 local template = write("Stage.etlua", string.format(
 	'<ZStack height="120" maxWidth="infinity"><ShaderView id="fx" source="%s" function="glow" /></ZStack>', good))
 local stage, refs = xml.renderFile(template, {}, ns)

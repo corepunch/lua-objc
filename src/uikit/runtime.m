@@ -137,6 +137,10 @@ static void layout_recursive(UIView *view, CGFloat width);
 		OBJC_ASSOCIATION_RETAIN);
 }
 - (BOOL)fillHeight { return [objc_getAssociatedObject(self, &kFillHeightKey) boolValue]; }
+- (NSString *)fixedSize { return objc_getAssociatedObject(self, &kFixedSizeKey); }
+- (void)setFixedSize:(NSString *)value {
+	objc_setAssociatedObject(self, &kFixedSizeKey, value.length ? value : nil, OBJC_ASSOCIATION_COPY);
+}
 - (void)setFillHeight:(BOOL)value { objc_setAssociatedObject(self, &kFillHeightKey, @(value), OBJC_ASSOCIATION_RETAIN); }
 - (CGFloat)cornerRadius { return [objc_getAssociatedObject(self, &kCornerRadiusKey) doubleValue]; }
 - (void)setCornerRadius:(CGFloat)value {

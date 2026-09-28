@@ -32,6 +32,20 @@ t.expect(parsed ~= nil and refs.p.bezelColor ~= nil, "<Toggle style=\"button\"> 
 ns._parityMeasure(parsed, {}, {width = 200, height = 80})
 t.assertSize(refs.p, 86, 62, "a pad takes its template size")
 
+-- symbolSize scales the pad's SF Symbol; without it the symbol follows the
+-- label font. The cell centres the symbol and label on their ink.
+local small = ns.Toggle({label = "Kick", style = "button", systemImage = "circle.fill"})
+local large = ns.Toggle({label = "Kick", style = "button", systemImage = "circle.fill", symbolSize = 16})
+t.assertEqual(small.image.size.width, 15, "a pad symbol defaults to the label font size")
+t.assertEqual(large.image.size.width, 19, "symbolSize enlarges it by about a quarter")
+t.expect(large.intrinsicContentSize.height > small.intrinsicContentSize.height, "a larger symbol grows the pad's natural height")
+t.assertEqual(large.cell.className, "LuaToggleButtonCell", "pads draw with the ink-centring cell")
+t.assertEqual(large.title, "Kick", "the label survives the custom cell")
+t.assertThrows(function() ns.Toggle({label = "x", style = "button", systemImage = "circle", symbolSize = 0}) end,
+	"a zero symbolSize is rejected")
+local sized = xml.render('<Toggle style="button" label="Arp" systemImage="pianokeys" symbolSize="16" />', {}, ns)
+t.assertEqual(sized.image.size.width > 15, true, "<Toggle symbolSize> reaches the native symbol")
+
 -- Slider style="level": an editable native fill bar.
 local values = {}
 local level = ns.Slider({style = "level", min = 160, max = 180, value = 174, tint = "systemOrange",

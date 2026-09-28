@@ -17,8 +17,16 @@ static NSNumber *axis_flex_grow(UIView *view, BOOL horizontal) {
 	return objc_getAssociatedObject(view, &kFlexGrowKey);
 }
 
+/* SwiftUI `.fixedSize(horizontal:vertical:)`; see the AppKit layout. */
+static BOOL fixed_on_axis(UIView *view, BOOL horizontal) {
+	NSString *fixed = objc_getAssociatedObject(view, &kFixedSizeKey);
+	if (!fixed) return NO;
+	return [fixed isEqualToString:@"both"] || [fixed isEqualToString:horizontal ? @"horizontal" : @"vertical"];
+}
+
 static BOOL grows_on_axis(UIView *view, BOOL horizontal) {
 	if (objc_getAssociatedObject(view, horizontal ? &kFixedWidthKey : &kFixedHeightKey)) return NO;
+	if (fixed_on_axis(view, horizontal)) return NO;
 	NSNumber *grow = axis_flex_grow(view, horizontal);
 	if (grow) return grow.doubleValue > 0;
 	if ([objc_getAssociatedObject(view, horizontal ? &kFillWidthKey : &kFillHeightKey) boolValue]) return YES;
@@ -284,6 +292,7 @@ static CGSize measure_size(UIView *view, CGSize proposal) {
 
 static BOOL fills_axis(UIView *view, BOOL horizontal) {
 	if (objc_getAssociatedObject(view, horizontal ? &kFixedWidthKey : &kFixedHeightKey)) return NO;
+	if (fixed_on_axis(view, horizontal)) return NO;
 	NSNumber *fill = objc_getAssociatedObject(view, horizontal ? &kFillWidthKey : &kFillHeightKey);
 	if (fill) return fill.boolValue;
 	return horizontal ? is_flexible(view) : grows_vertically(view);

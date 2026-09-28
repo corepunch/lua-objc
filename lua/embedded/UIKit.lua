@@ -46,6 +46,7 @@ local layout_properties = {
 	"fillWidth",
 	"containerRelativeWidth",
 	"fillHeight",
+	"fixedSize",
 	"hidden",
 	"allowsHitTesting",
 	"cornerRadius",
