@@ -2456,6 +2456,12 @@ function AppKit.applicationPath(bundleIdentifier)
 	return bridge._applicationPath(bundleIdentifier)
 end
 
+-- Starts a new instance of this app and quits once it runs;
+-- `onFailure(message)` runs if it could not start.
+function AppKit.relaunch(onFailure)
+	bridge._relaunch(onFailure)
+end
+
 -- `{inode, device, symlink}` for a path (lstat), or nil when it is gone.
 function AppKit.fileIdentity(path)
 	return bridge._fileIdentity(path)

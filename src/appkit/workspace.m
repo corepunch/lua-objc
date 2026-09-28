@@ -450,3 +450,44 @@ static int bridge_file_identity(lua_State *L) {
 	lua_pushboolean(L, S_ISLNK(info.st_mode)); lua_setfield(L, -2, "symlink");
 	return 1;
 }
+
+#pragma mark - Relaunching
+
+// _relaunch(onFailure(message)): starts a new instance of this app, then
+// quits once it is running, as macOS sometimes applies Full Disk Access
+// only to a process started after it was granted. An app bundle reopens
+// through Launch Services; a development binary restarts with its
+// arguments. `onFailure` runs when the new instance could not start.
+static int bridge_relaunch(lua_State *L) {
+	LuaReg *failure = lua_reg_opt_unscoped(L, 1);
+	void (^finish)(BOOL, NSString *) = ^(BOOL ok, NSString *message) {
+		dispatch_async(dispatch_get_main_queue(), ^{
+			if (ok) { [failure dispose]; [NSApp terminate:nil]; return; }
+			lua_State *state = lua_reg_live_state(failure);
+			if (state && lua_reg_push(failure)) {
+				lua_pushstring(state, message.UTF8String ?: "");
+				lua_objc_pcall(state, 1, 0, "relaunch");
+			}
+			[failure dispose];
+		});
+	};
+	NSBundle *bundle = NSBundle.mainBundle;
+	if ([bundle.bundlePath.pathExtension isEqualToString:@"app"]) {
+		NSWorkspaceOpenConfiguration *configuration = [NSWorkspaceOpenConfiguration configuration];
+		configuration.createsNewApplicationInstance = YES;
+		[NSWorkspace.sharedWorkspace openApplicationAtURL:bundle.bundleURL configuration:configuration
+			completionHandler:^(NSRunningApplication *app, NSError *error) {
+				finish(app != nil, error.localizedDescription ?: @"The app could not start again.");
+			}];
+		return 0;
+	}
+	NSArray<NSString *> *arguments = NSProcessInfo.processInfo.arguments;
+	NSTask *task = [NSTask new];
+	task.executableURL = [NSURL fileURLWithPath:bundle.executablePath ?: arguments.firstObject];
+	task.arguments = arguments.count > 1 ? [arguments subarrayWithRange:NSMakeRange(1, arguments.count - 1)] : @[];
+	task.currentDirectoryURL = [NSURL fileURLWithPath:NSFileManager.defaultManager.currentDirectoryPath];
+	NSError *error = nil;
+	BOOL launched = [task launchAndReturnError:&error];
+	finish(launched, error.localizedDescription ?: @"The app could not start again.");
+	return 0;
+}

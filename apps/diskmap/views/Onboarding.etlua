@@ -1,0 +1,37 @@
+<%
+  -- First launch without Full Disk Access (#52): one message, one way to
+  -- grant it, and a way to continue without it. Diskmap checks access every
+  -- second and continues by itself once it is granted.
+  local ONBOARDING = { width = 520, height = 400 }
+%>
+<Sheet width="<%= ONBOARDING.width %>" height="<%= ONBOARDING.height %>">
+  <VStack maxWidth="infinity" maxHeight="infinity" padding="28" spacing="16" alignment="leading">
+    <HStack maxWidth="infinity" spacing="14" alignment="center">
+      <SystemImage name="lock.open.fill" size="36" badgeColor="systemBlue" />
+      <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+        <Label text="Let Diskmap See Your Whole Disk" size="17" weight="semibold" maxWidth="infinity" lines="0" />
+        <Label text="Diskmap measures everything and moves nothing without asking." size="13" color="secondary" maxWidth="infinity" lines="0" />
+      </VStack>
+    </HStack>
+    <Label text="macOS protects Mail, Messages, Safari, Documents and other folders. With Full Disk Access, Diskmap can measure them too, so its totals match your disk. It reads only names, sizes and dates, never what is in your files." size="13" maxWidth="infinity" lines="0" />
+    <VStack maxWidth="infinity" spacing="6" alignment="leading">
+      <Label text="1. Click Open System Settings." size="13" maxWidth="infinity" lines="0" />
+      <Label text="2. Turn on Diskmap in the Full Disk Access list." size="13" maxWidth="infinity" lines="0" />
+      <Label text="Not in the list? Click + below the list, choose Diskmap and turn it on." size="12" color="secondary" maxWidth="infinity" lines="0" />
+    </VStack>
+    <HStack id="waiting" maxWidth="infinity" spacing="8" alignment="center" hidden="<%= openedSettings and "false" or "true" %>">
+      <ProgressView id="waitingSpinner" />
+      <Label text="Waiting for access… Diskmap continues by itself once it is on." size="12" color="secondary" flexGrow="1" flexShrink="1" lines="0" />
+    </HStack>
+    <HStack id="restartHint" maxWidth="infinity" spacing="6" alignment="center" hidden="<%= openedSettings and "false" or "true" %>">
+      <Label text="Already turned it on? macOS sometimes applies it only after a restart." size="12" color="secondary" flexGrow="1" flexShrink="1" lines="0" />
+      <Button id="restart" title="Restart Diskmap" style="link" size="12" action="restart" />
+    </HStack>
+    <Spacer />
+    <HStack maxWidth="infinity" spacing="8" alignment="center">
+      <Button id="skip" title="Continue Without Access" action="skip" keyboardShortcut="cancelAction" />
+      <Spacer />
+      <Button id="openSettings" title="Open System Settings" style="borderedProminent" action="openSettings" keyboardShortcut="defaultAction" />
+    </HStack>
+  </VStack>
+</Sheet>

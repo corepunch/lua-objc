@@ -2281,3 +2281,7 @@ Dock icon or opened with the app from the Finder (`application:openURLs:`,
 queued until a handler is set); `ns.quickLook(paths, index)` shows the system
 Quick Look panel; `ns.moveItem(path, folder, completion)` moves an item off
 the main thread, across disks too, never replacing an existing one.
+`ns.runningApplications()`, `ns.applicationPath(bundleId)` (Launch Services),
+`ns.fileIdentity(path)` (`lstat`: inode, device, symlink) and
+`ns.relaunch(onFailure)` (start a new instance, quit once it runs) support
+checks before destructive actions and permission changes.
