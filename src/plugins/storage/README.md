@@ -35,6 +35,18 @@ snapshot:
   row per lowercase extension (at most 4,096 rows; the rest join `""`).
 - `breakdown = true`: `breakdowns[i]` lists root i's immediate children as
   `{name, kb, directory}` (at most 5,000 per root), excluding excluded paths.
+- `treeDepth = N`, `treeMinimumBytes = B`: `folders[i]` is root i as a tree
+  `{name, kb, used, directory, children, otherKb, otherCount}` listing N levels.
+  Each folder keeps its 200 largest children of at least B bytes, largest
+  first, and sums the rest into `otherKb`/`otherCount`; pruning happens as
+  each folder finishes, so memory stays bounded. A folder below the depth has
+  `deeper = true` and no `children`. `used` is the latest use of anything
+  inside. Diskmap's Folder Map scans a deeper folder on its own when opened.
+- `logicalRoots = {[physical] = logical}` reports a root under the path people
+  know, as the startup disk's Data volume is known as `/`.
+
+`progress(job)` returns the number of items met so far while a scan runs; the
+snapshot itself is published only as each root finishes.
 
 Hard-linked files count once in every summary, as in `trees`. Dates come from
 the same `getattrlistbulk` records; no file is opened.

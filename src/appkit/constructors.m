@@ -9,6 +9,9 @@
 // `onDrop(paths)`, which returns whether it took them.
 @property(nonatomic, strong) LuaReg *dropReg;
 @property(nonatomic) BOOL dropTargeted;
+// Accept only drags from other applications: a drag that starts in this
+// app has a dragging source, one from the Finder has none.
+@property(nonatomic) BOOL dropExternalOnly;
 @end
 @implementation LuaStackView
 - (instancetype)initWithFrame:(NSRect)frame {
@@ -46,13 +49,15 @@ static NSArray<NSString *> *stack_drop_paths(id<NSDraggingInfo> info) {
 	self.layer.borderColor = NSColor.keyboardFocusIndicatorColor.CGColor;
 }
 - (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
-	BOOL accepts = self.dropReg && stack_drop_paths(sender).count > 0;
+	BOOL accepts = self.dropReg && (!self.dropExternalOnly || sender.draggingSource == nil)
+		&& stack_drop_paths(sender).count > 0;
 	self.dropTargeted = accepts;
 	return accepts ? NSDragOperationCopy : NSDragOperationNone;
 }
 - (void)draggingExited:(id<NSDraggingInfo>)sender { (void)sender; self.dropTargeted = NO; }
 - (BOOL)performDragOperation:(id<NSDraggingInfo>)sender {
 	self.dropTargeted = NO;
+	if (self.dropExternalOnly && sender.draggingSource != nil) return NO;
 	return stack_perform_drop(self, stack_drop_paths(sender));
 }
 static BOOL stack_perform_drop(LuaStackView *view, NSArray<NSString *> *paths) {
@@ -72,10 +77,11 @@ static BOOL stack_perform_drop(LuaStackView *view, NSArray<NSString *> *paths) {
 }
 @end
 
-// _setDropHandler(stack, onDrop | nil)
+// _setDropHandler(stack, onDrop | nil, externalOnly)
 static int bridge_set_drop_handler(lua_State *L) {
 	LuaStackView *view = lua_objc_check_object(L, 1, [LuaStackView class], "stack");
 	view.dropReg = lua_reg_opt(L, 2);
+	view.dropExternalOnly = lua_toboolean(L, 3);
 	if (view.dropReg) [view registerForDraggedTypes:@[NSPasteboardTypeFileURL]];
 	else [view unregisterDraggedTypes];
 	return 0;

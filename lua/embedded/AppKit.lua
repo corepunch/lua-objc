@@ -84,7 +84,9 @@ local function applyLayout(view, props)
 				bridge._addHoverTooltip(view, tt.title or "", tt.detail or "")
 			elseif key == "onDrop" then
 				-- SwiftUI `.dropDestination`: files dropped on the stack.
-				bridge._setDropHandler(view, props[key])
+				-- `dropExternalOnly` takes only drags from other apps,
+				-- such as the Finder, never this app's own rows.
+				bridge._setDropHandler(view, props[key], props.dropExternalOnly == true)
 			elseif key == "help" then
 				-- SwiftUI `.help(_:)` is the view's native AppKit tooltip.
 				view.toolTip = props[key]
@@ -2429,6 +2431,26 @@ end
 
 function AppKit.moveToTrash(path)
 	return bridge._moveToTrash(path)
+end
+
+-- Moves a file or folder into `folder` off the main thread, across disks
+-- too; `completion(ok, message, destination)` runs on the main thread. An
+-- existing item of the same name is never replaced.
+function AppKit.moveItem(path, folder, completion)
+	bridge._moveItem(path, folder, completion)
+end
+
+-- The system Quick Look panel (Finder's Space bar) for `paths`, starting at
+-- `index`; an empty list closes it.
+function AppKit.quickLook(paths, index)
+	bridge._quickLook(paths or {}, index or 1)
+end
+
+-- `handler(paths)` receives folders and files opened with the app: dropped
+-- on its Dock icon or chosen with Open With in the Finder. Opens that
+-- arrive before a handler is set are delivered once it is.
+function AppKit.onOpenFiles(handler)
+	bridge._onOpenFiles(handler)
 end
 
 function AppKit.copyToClipboard(text)

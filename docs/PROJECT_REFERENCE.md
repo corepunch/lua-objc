@@ -2273,5 +2273,11 @@ See [animation.md](animation.md) and the summary under
 Other additions: `ns.watch(paths, callback, {since})` (FSEvents, Scope
 owned), `ns.notifications` (UNUserNotificationCenter; unavailable without an
 app bundle), `ns.bookmark`/`ns.resolveBookmark` (security-scoped
-bookmarks), List `dragKey`, stack `onDrop`, chart `dragItem` and keyboard
-navigation, and `<Window onBack onForward>` for mouse buttons and swipes.
+bookmarks), List `dragKey`, stack `onDrop` (with `dropExternalOnly="true"`
+to take only drags from other apps, such as the Finder), chart `dragItem` and
+keyboard navigation, and `<Window onBack onForward>` for mouse buttons and
+swipes. `ns.onOpenFiles(handler)` receives folders and files dropped on the
+Dock icon or opened with the app from the Finder (`application:openURLs:`,
+queued until a handler is set); `ns.quickLook(paths, index)` shows the system
+Quick Look panel; `ns.moveItem(path, folder, completion)` moves an item off
+the main thread, across disks too, never replacing an existing one.

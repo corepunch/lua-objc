@@ -363,7 +363,7 @@ local function layoutProps(attrs)
         "flexGrow", "flexShrink", "flexBasis",
         "containerRelativeWidth", "hidden", "allowsHitTesting", "background", "tint", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick", "onTap", "onDrag", "onEdgeSwipe",
         "opacity", "scaleEffect", "rotationEffect", "offsetX", "offsetY",
-        "help",
+        "help", "dropExternalOnly",
     }
     local props = {}
     for _, k in ipairs(lp) do

@@ -21,6 +21,11 @@ function Scanner.cancel(job)
 	job.cancelled = true
 	if job.handle then native.cancel(job.handle); job.handle = nil end
 end
+-- Items met so far by a running scan, for progress while one large root
+-- is still being walked.
+function Scanner.progress(job)
+	return job.handle and native.progress(job.handle) or nil
+end
 function Scanner.poll(job)
 	if not job.handle then return true, {failure = "Measurement cancelled."} end
 	local done, result = native.poll(job.handle)

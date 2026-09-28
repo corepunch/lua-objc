@@ -1,11 +1,14 @@
 <%
   -- The page, and beneath it the collector: DaisyDisk’s staging area for
   -- cleanup. Items dropped on it (from any list, the map or the Finder) are
-  -- marked for cleanup; Review opens the Marked sheet.
+  -- marked for cleanup; Review opens the Marked sheet. A folder or disk
+  -- dropped from the Finder anywhere on the page opens on the Folder Map;
+  -- rows dragged within Diskmap are not taken, so a drag toward the
+  -- collector never navigates.
   local COLLECTOR = { height = 40, padding = 12 }
 %>
 <VStack flexGrow="1" maxWidth="infinity" maxHeight="infinity" spacing="0">
-  <VStack id="content" flexGrow="1" maxWidth="infinity" maxHeight="infinity" spacing="0" />
+  <VStack id="content" onDrop="dropToOpen" dropExternalOnly="true" flexGrow="1" maxWidth="infinity" maxHeight="infinity" spacing="0" />
   <Divider />
   <HStack id="collector" onDrop="dropToMark" height="<%= COLLECTOR.height %>" paddingHorizontal="<%= COLLECTOR.padding %>" spacing="8" alignment="center" maxWidth="infinity">
     <SystemImage name="tray.and.arrow.down" size="15" color="secondary" />

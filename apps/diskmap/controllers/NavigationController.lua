@@ -11,6 +11,7 @@ Controller.destinations = {
 	{section = true, title = "Storage"},
 	{id = "overview", name = "Overview", icon = "chart.pie.fill", key = "1"},
 	{id = "map", name = "Map", icon = "circle.circle.fill", key = "2"},
+	{id = "folder", name = "Folder Map", icon = "folder.fill"},
 	{id = "largest", name = "Largest Items", icon = "chart.bar.fill", key = "3"},
 	{id = "files", name = "Large Files", icon = "doc.fill", key = "4"},
 	{id = "kinds", name = "File Types", icon = "square.grid.2x2.fill", key = "5"},

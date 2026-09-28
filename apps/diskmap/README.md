@@ -10,6 +10,21 @@ Learn — with one question per destination:
   categories ranked by size with share bars, the six largest individual items,
   and the rebuildable-versus-review cleanup headline with a prominent
   Review Cleanup button.
+- **Folder Map** — any folder or disk, measured in one scan and shown as
+  DaisyDisk and GrandPerspective show a disk: rings or rectangles beside a list
+  of the focused folder's contents, largest first. Drop a folder or disk from
+  the Finder anywhere on the window or on the Dock icon, choose File › Open
+  Folder… (⌘O), or launch with `--folder=<path>`. Color the map by Folders,
+  Kinds of file or Last Used, with a legend. Rows offer Quick Look (⌘Y, with
+  the arrow keys stepping through the folder), Show in Finder, **Move to…**
+  (offload to another folder or disk, off the main thread, never replacing an
+  item), Move to Trash and Mark for Cleanup; a move or Trash updates the map
+  without scanning again. Only items in the home folder or on other disks can
+  be moved, never system locations, standard folders, mount points, package
+  contents or catalog locations marked Keep, Essential or system managed. A
+  scanned folder that is a catalog location (such as Xcode's DerivedData) is
+  labelled with its owner and policy. The startup disk is measured through its
+  Data volume and reports the space no folder accounts for.
 - **Largest Items** — the hundred largest measured locations across every
   category, each with its semantic owner, cleanup status and share bar.
 - **Large Files** — the individual files over 50 MB found by the same scan,
