@@ -100,7 +100,9 @@ t.assertEqual(#Categories.distribution(chartModel, {totalKb = 1, freeKb = 0}), 0
 local startCalls = 0
 local service = {monitor = function() end, start = function() startCalls = startCalls + 1; return {} end,
 	await = function(job, completion) job.complete = completion end,
-	cancel = function() end, diskSpace = function() return {totalKb = 10000, freeKb = 5000} end}
+	cancel = function() end, diskSpace = function() return {totalKb = 10000, freeKb = 5000} end,
+	-- A Mac with developer data, so the Developer section is listed.
+	exists = function(path) return path:find("/Library/Developer", 1, true) ~= nil end}
 local app = Controller.new(service)
 app.scan:start(); local old = app.scan.job
 app.scan:start(); local current = app.scan.job
@@ -207,7 +209,7 @@ t.assertEqual(ui.refs.results.rowCount, 0, "empty category search")
 t.expect(ui.refs.largestSection.hidden, "largest items hide when nothing matches")
 ui.query = ""; ui:updateRows()
 ui.model.measurements.derived = {status = "complete", bytes = 4900000}
-sidebar:selectRow(12)
+sidebar:selectRow(15)
 t.assertEqual(ui.destination, "developer", "selecting a sidebar row shows its page")
 t.expect(ui.refs.list_xcode ~= nil and ui.refs.list_xcode.scrollDisabled, "developer sections are lists inside the page scroll")
 local developerRows = {}
@@ -215,15 +217,16 @@ for index = 1, ui.refs.list_xcode.rowCount do developerRows[bridge._tableCell(ui
 t.expect(developerRows["Xcode DerivedData"], "developer lists present Xcode resources")
 local developerMenu = bridge._tableRowMenu(ui.refs.list_xcode, 1)
 t.expect(#developerMenu >= 3, "developer rows keep their actions in the row menu")
-sidebar:selectRow(15)
+sidebar:selectRow(18)
 t.assertEqual(ui.destination, "simulators", "simulators are a sidebar destination")
 t.expect(ui.refs.devices ~= nil and ui.refs.runtimes ~= nil and ui.refs.filter.className == "NSSegmentedControl",
 	"the simulators page lists devices and runtimes with a segmented filter")
-sidebar:selectRow(18)
+sidebar:selectRow(13)
 t.assertEqual(ui.destination, "updates", "updates and snapshots are a sidebar destination")
 t.expect(ui.refs.updateTitle ~= nil and ui.refs.snapshotTitle ~= nil, "the updates page shows Software Update and snapshots")
-t.assertEqual(bridge._tableCell(sidebar, 0, 16).textField.stringValue, "System", "system pages have their own section")
-sidebar:selectRow(17)
+t.assertEqual(bridge._tableCell(sidebar, 0, 11).textField.stringValue, "System", "system pages have their own section")
+t.assertEqual(bridge._tableCell(sidebar, 0, 14).textField.stringValue, "Developer", "developer pages follow the system pages")
+sidebar:selectRow(12)
 t.assertEqual(ui.destination, "disks", "disks and volumes are a sidebar destination")
 sidebar:selectRow(20)
 t.assertEqual(ui.destination, "guide", "the storage guide is a sidebar destination")
@@ -233,7 +236,7 @@ for index, id in pairs({[5] = "files", [6] = "kinds", [7] = "duplicates", [9] = 
 	t.assertEqual(ui.destination, id, "sidebar opens " .. id)
 	t.expect(ui.refs.page ~= nil and ui.refs.page.documentView ~= nil, id .. " scrolls as one page")
 end
-for _, index in ipairs({2, 13, 14}) do sidebar:selectRow(index) end
+for _, index in ipairs({2, 16, 17}) do sidebar:selectRow(index) end
 t.assertEqual(ui.destination, "projects", "map, Xcode and projects are sidebar destinations")
 t.expect(ui.navigation:canGoBack(), "visited pages form a back history")
 ui.navigation:back()

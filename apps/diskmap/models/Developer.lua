@@ -16,6 +16,16 @@ Developer.sections = {
 	{id = "ai", title = "AI tools & models", detail = "Coding-agent caches are separated from sessions and worktrees; model weights download again.", groups = {"ai-tools", "local-models"}},
 }
 
+-- Whether this Mac has developer data worth a sidebar section: Xcode or
+-- ~/Library/Developer is present (`exists(path)`), or the Developer
+-- category measured at least `visibleBytes` (build folders, toolchains).
+Developer.visibleBytes = 500e6
+function Developer.present(model, exists)
+	if exists and (exists(model.home .. "/Library/Developer") or exists("/Applications/Xcode.app")) then return true end
+	local measured = Categories.row(model, "developer")
+	return measured ~= nil and not measured.calculating and (measured.bytes or 0) >= Developer.visibleBytes
+end
+
 local POLICY = {Rebuildable = "Rebuildable", Essential = "Keep", ["System managed"] = "System managed"}
 
 local function row(model, resource)
