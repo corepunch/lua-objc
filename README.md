@@ -478,11 +478,8 @@ The checked-in [Xcode project](ios/AdventureArena/AdventureArena.xcodeproj/proje
 builds the same native UIKit host and bundles `apps/adventure-arena/`, its
 `zilscript` submodule, and the Lua framework. It targets iPhone, uses bundle ID
 `org.luaobjc.adventure-arena` on team `BM2R8F5YHC`, and has a shared archive
-scheme. Premake 5.0.0-beta8 generates the project; regenerate it with
-`make adventure-arena-xcode` after changing native source files. The small
-postprocessor corrects Premake's iOS build settings and asset catalog phase.
-Commit the generated project alongside its Premake definition so Xcode Cloud
-can discover a stable project.
+scheme. Edit the checked-in project directly; Xcode Cloud discovers it from the
+repository.
 
 To verify an unsigned device archive locally:
 

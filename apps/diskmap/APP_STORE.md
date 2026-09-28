@@ -1,6 +1,6 @@
 # Mac App Store build and upload
 
-Diskmap is a macOS-only app. The checked-in `Diskmap.xcodeproj` has native targets for the app launcher, AppKit runtime, and StorageScan plugin. Xcode compiles their sources and copies the framework Lua tree and Diskmap Lua app files into `Contents/Resources` with Copy Files build phases.
+Diskmap is a macOS-only app. The checked-in `Diskmap.xcodeproj` has native targets for the app launcher, AppKit runtime, and StorageScan plugin. Native sources come from synchronized folders (`src`, `vendor/lua-5.4.8/src`), with exception sets naming the unity roots each target compiles. A single "Copy Lua" Run Script phase rsyncs the `.lua`, `.etlua`, and `.bin` files of `lua/` and `apps/diskmap/` into `Contents/Resources`, so new files need no project edit.
 
 ## Build
 

@@ -1,258 +1,308 @@
 // !$*UTF8*$!
 {
 	archiveVersion = 1;
-	classes = {};
-	objectVersion = 56;
-	objects = {
-		026E7758564DD9DD55AA17F7 = { isa = PBXFileReference; path = Catalog.lua; sourceTree = SOURCE_ROOT; name = Catalog.lua; lastKnownFileType = text; };
-		87DD5A2AAF006816D6345E58 = { isa = PBXFileReference; path = Controller.lua; sourceTree = SOURCE_ROOT; name = Controller.lua; lastKnownFileType = text; };
-		0C9004D18ED75433E76B54D1 = { isa = PBXFileReference; path = Model.lua; sourceTree = SOURCE_ROOT; name = Model.lua; lastKnownFileType = text; };
-		8057DE7D6E75621795B4A004 = { isa = PBXFileReference; path = Sheet.lua; sourceTree = SOURCE_ROOT; name = Sheet.lua; lastKnownFileType = text; };
-		A756A20FFD26935D2389BA96 = { isa = PBXFileReference; path = init.lua; sourceTree = SOURCE_ROOT; name = init.lua; lastKnownFileType = text; };
-		20278A8E574B73DBDCF8E080 = { isa = PBXFileReference; path = "mock-hdd.bin"; sourceTree = SOURCE_ROOT; lastKnownFileType = file; };
-		F62CB65BCECD1174934D2006 = { isa = PBXFileReference; path = catalog; sourceTree = SOURCE_ROOT; lastKnownFileType = folder; };
-		BEF8B3597E9D8A910B75195A = { isa = PBXFileReference; path = controllers; sourceTree = SOURCE_ROOT; lastKnownFileType = folder; };
-		A6CF11CA2CDB822837C195D6 = { isa = PBXFileReference; path = knowledge; sourceTree = SOURCE_ROOT; lastKnownFileType = folder; };
-		4C8071BE49DA4D58986A517E = { isa = PBXFileReference; path = models; sourceTree = SOURCE_ROOT; lastKnownFileType = folder; };
-		E57D338F7D8673EFC86FBFE2 = { isa = PBXFileReference; path = services; sourceTree = SOURCE_ROOT; lastKnownFileType = folder; };
-		1224C462B72FC68FD4972E3B = { isa = PBXFileReference; path = views; sourceTree = SOURCE_ROOT; lastKnownFileType = folder; };
-		A99DE3EBEEBFF580A915C7D1 = { isa = PBXFileReference; path = Assets.xcassets; sourceTree = SOURCE_ROOT; lastKnownFileType = folder; };
-		4399337A1F1DDDF1525BC481 = { isa = PBXFileReference; path = Info.plist; sourceTree = SOURCE_ROOT; lastKnownFileType = text.plist.xml; };
-		6D8F608BF745122E2944732F = { isa = PBXFileReference; path = AppStore.entitlements; sourceTree = SOURCE_ROOT; lastKnownFileType = text.plist.entitlements; };
-		60A9939755EF06F4486C796E = { isa = PBXFileReference; path = ../../scripts/diskmap/launcher.c; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		5F760EC242C9635CBF7E58C0 = { isa = PBXFileReference; path = ../../src/main.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		1D9CB1758DC62133F4733FAD = { isa = PBXFileReference; path = ../../src/embedded_lua_module.c; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		D0CDE6A97A6D6195C54752E4 = { isa = PBXFileReference; path = ../../src/appkit/action_button.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		96A76C4E8E24749F5D7AAC9C = { isa = PBXFileReference; path = ../../src/appkit/bezier_path.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		59246A76BBBA50ED2EC6A6A3 = { isa = PBXFileReference; path = ../../src/appkit/bindings.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		E4CE89E66905418DE5EFBDE8 = { isa = PBXFileReference; path = ../../src/appkit/charts.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		0D8AD90569A2A097034B1A1E = { isa = PBXFileReference; path = ../../src/appkit/constructors.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		144246E31AD337BDC3169159 = { isa = PBXFileReference; path = ../../src/appkit/controls.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		35EE51295684A2597ECE9A3C = { isa = PBXFileReference; path = ../../src/appkit/editor.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		D0F01F56D3623104E526474A = { isa = PBXFileReference; path = ../../src/appkit/haptics.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		BC781F73574984BCA858B58D = { isa = PBXFileReference; path = ../../src/appkit/layout.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		B07C9A3C6543135B03ABC9A1 = { isa = PBXFileReference; path = ../../src/appkit/layout_debug.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		7155212FFC43FD9409FD34A3 = { isa = PBXFileReference; path = ../../src/appkit/lazy_collection.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		2AF9A725AAB871BAE21951D3 = { isa = PBXFileReference; path = ../../src/appkit/level_indicator.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		7246A5AF7FF25CF80EB0C09A = { isa = PBXFileReference; path = ../../src/appkit/mesh_gradient.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		02271A587BB30633CD639978 = { isa = PBXFileReference; path = ../../src/appkit/motion.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		45A98B79381141DC276E741E = { isa = PBXFileReference; path = ../../src/appkit/navigation.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		8AFEF6D5687CA13111B3DF48 = { isa = PBXFileReference; path = ../../src/appkit/outline.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		91D4E81F69548E43801A380A = { isa = PBXFileReference; path = ../../src/appkit/outline_data_source.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		C392A47B9319E667B08BC767 = { isa = PBXFileReference; path = ../../src/appkit/paragraph.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		854314ACB2E51FB27088F53C = { isa = PBXFileReference; path = ../../src/appkit/parity_batch.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		8575DEE5031AF04A221E2A1D = { isa = PBXFileReference; path = ../../src/appkit/platform.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		AF0DA3052E83D5460A0B8804 = { isa = PBXFileReference; path = ../../src/appkit/presentation.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		812C02963219855A4D2517DA = { isa = PBXFileReference; path = ../../src/appkit/reorder_container.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		B0A26457765A5614F11206E7 = { isa = PBXFileReference; path = ../../src/appkit/runtime.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		5EAF1410514E4036DB86DA7D = { isa = PBXFileReference; path = ../../src/appkit/scroll_view.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		C5CB565F304F6F20AFDB577B = { isa = PBXFileReference; path = ../../src/appkit/sector_scene.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		4F3F29F1104A41ADBDDB9BBD = { isa = PBXFileReference; path = ../../src/appkit/shader_view.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		D2EA06D38E2E526DC00BC894 = { isa = PBXFileReference; path = ../../src/appkit/structs.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		AA73524498BE21A0DC9A6997 = { isa = PBXFileReference; path = ../../src/appkit/syntax_highlight.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		44A14B4D75284AE0DD8CE228 = { isa = PBXFileReference; path = ../../src/appkit/table_data_source.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		6D572CCB27F36146A89ABA07 = { isa = PBXFileReference; path = ../../src/appkit/tabview.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		4CD31D930AA5FD3CE4024DFA = { isa = PBXFileReference; path = ../../src/appkit/text_field.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		4B560F829F0A5B2F635A3591 = { isa = PBXFileReference; path = ../../src/appkit/toolbar.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		CA9EB48A49C4E0482DD29584 = { isa = PBXFileReference; path = ../../src/appkit/views.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		DDE29CCA8B2DA730399EC8CF = { isa = PBXFileReference; path = ../../src/appkit/webview.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		F65A123211D9179470BFAD55 = { isa = PBXFileReference; path = ../../src/appkit/workspace.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		E1186CEA53C7EA7F0BCE9ECA = { isa = PBXFileReference; path = ../../src/shared/flow_layout.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		4ABFC1369A056902432C171D = { isa = PBXFileReference; path = ../../src/shared/layout_invalidation.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		0D81207850433D0FEDB06AE2 = { isa = PBXFileReference; path = ../../src/shared/lua_async.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		F95284FFA9B12123CB5821B4 = { isa = PBXFileReference; path = ../../src/shared/lua_bridge_support.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		340399BC63EE18466BDB12FA = { isa = PBXFileReference; path = ../../src/shared/lua_dealloc_watch.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		1DD9C2D36EAA6D21C5E6CB9E = { isa = PBXFileReference; path = ../../src/shared/lua_documents.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		DD77B4AFD57CCA825A344A88 = { isa = PBXFileReference; path = ../../src/shared/lua_error.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		75C94447779E3EFD7FBB20DE = { isa = PBXFileReference; path = ../../src/shared/lua_reg.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		3825619B1C9B755981C287B7 = { isa = PBXFileReference; path = ../../src/shared/mesh_gradient.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		ED2EA177B39CD78CF207781F = { isa = PBXFileReference; path = ../../src/shared/motion.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		3C876FD2FDAAE88196915790 = { isa = PBXFileReference; path = ../../src/shared/notifications.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		D03BEE68AAA0E0CFFA24E6BF = { isa = PBXFileReference; path = ../../src/shared/parity_batch.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		BA121CC86271D7944FA7924A = { isa = PBXFileReference; path = ../../src/shared/performance_signpost.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		6AA6D0D89588CB7010F23E5A = { isa = PBXFileReference; path = ../../src/plugins/storage/StorageScan.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		934B822AEE11FF7D3771A730 = { isa = PBXFileReference; path = ../../src/plugins/storage/Duplicates.m; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.objc; };
-		C74BE902F4AC48AE35602EF1 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lapi.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		85D1A04C7F9912B9E9328417 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lauxlib.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		4847B9BF3CD6FF97E02AB56E = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lbaselib.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		44FFE819B1BFA23A076B05E4 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lcode.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		8215BECA4709AE4AF6D8D51A = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lcorolib.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		309B563212C48E6DCE0A810E = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lctype.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		393AED3347FEE8AFB11089C9 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/ldblib.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		4C334CBC213EEF7F5A0774C8 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/ldebug.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		4E96F2B8BE614EB2EDD68F29 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/ldo.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		C023B8299DB92C710F647552 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/ldump.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		B491E40A53570C97D1AE3BD9 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lfunc.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		3DB5D0B417DEA8DABF293460 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lgc.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		041E5171E220F61BB3E50BF0 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/linit.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		B0B22BFCC3A704537B4674D1 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/liolib.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		3134AF6EB12746C8E4F16AD2 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/llex.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		FA6F7CC6842EF46BA39F6528 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lmathlib.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		50FA1C260018D8729C6082BB = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lmem.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		917F3014300C146A7192F60D = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/loadlib.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		84B86D603ECD9F80F6BF4C27 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lobject.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		DA34D8DA07FEA6EFC81A64FC = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lopcodes.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		EBB196CFE14C1391C4F82E89 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/loslib.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		8222B93EE68190E7180F1819 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lparser.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		40279AAFACE8F54568691A25 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lstate.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		07490994A94D6CA146657E8D = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lstring.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		B186AEF97AC3F420D42E816C = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lstrlib.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		7C684AC1314575DDA946A633 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/ltable.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		4ACAEF8B67E6A37844800B21 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/ltablib.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		0ACFE62DB558C4A814D4B2BC = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/ltm.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		6CA3894FA7A6369E1AD44C41 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lundump.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		025843032CA2347B186F1DEE = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lutf8lib.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		DF6E0E067A77E6E684D34BE7 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lvm.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		F513519C665544E6E1FCFE6A = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lzio.c"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.c; };
-		ED46610624EA3CB15115ABBA = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lapi.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		F77E6122554579FA9662DFE4 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lauxlib.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		0B8456D58CFF06F125C5B58E = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lcode.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		2838E4B944DC5033643491C7 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lctype.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		28F515A8374C38EFE6B5A982 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/ldebug.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		4F3CEB6D4621841E2A67BFD4 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/ldo.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		CDA2B2D09D40A24A34888312 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lfunc.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		5143068563D34C87C64E562F = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lgc.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		871035BFD14CAFE556BDC989 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/ljumptab.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		C25062B168F3C6910E0ACDD9 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/llex.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		E1B22D40916E3086961E425B = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/llimits.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		11D36B959A7B9DCA1D147AF4 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lmem.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		3B9FA45937CF89EDE2F756A5 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lobject.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		6F2BF334A29081003CAC4363 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lopcodes.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		D6BCF1863BD755C04120A9BF = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lopnames.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		DB51B626E98ED8C19035D90B = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lparser.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		E4936414D5DE387D1CDE4306 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lprefix.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		E83B4891C613F3D101F8C20C = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lstate.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		21233919B46587B15B20CADE = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lstring.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		DC33EDA7B621C782916807A6 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/ltable.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		4B2555F97CDE48F9E040A423 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/ltm.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		4A18AB5EB0713AE3F8069106 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lua.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		9E64ECAB69A1CE87EAF725AD = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/luaconf.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		A31E354DC838279644575935 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lualib.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		FBC8BBE7CFC90D1BCE17785E = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lundump.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		AAE49023324396294A73C6F7 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lvm.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		C5238C6A9CA1E3BCDD6ADD86 = { isa = PBXFileReference; path = "../../vendor/lua-5.4.8/src/lzio.h"; sourceTree = SOURCE_ROOT; lastKnownFileType = sourcecode.c.h; };
-		A35D773E8877779DC2E7F2BE = { isa = PBXFileReference; path = ../../lua; sourceTree = SOURCE_ROOT; lastKnownFileType = folder; };
-		CF8D0BD4B75E8C2C174692A5 = { isa = PBXGroup; children = ( 026E7758564DD9DD55AA17F7, 87DD5A2AAF006816D6345E58, 0C9004D18ED75433E76B54D1, 8057DE7D6E75621795B4A004, A756A20FFD26935D2389BA96, 20278A8E574B73DBDCF8E080, F62CB65BCECD1174934D2006, BEF8B3597E9D8A910B75195A, A6CF11CA2CDB822837C195D6, 4C8071BE49DA4D58986A517E, E57D338F7D8673EFC86FBFE2, 1224C462B72FC68FD4972E3B, A99DE3EBEEBFF580A915C7D1, 4399337A1F1DDDF1525BC481, 6D8F608BF745122E2944732F, ); name = "Diskmap Application"; sourceTree = "<group>"; };
-		BAC9DCE89D4DDBE1102CD787 = { isa = PBXGroup; children = ( D0CDE6A97A6D6195C54752E4, 96A76C4E8E24749F5D7AAC9C, 59246A76BBBA50ED2EC6A6A3, E4CE89E66905418DE5EFBDE8, 0D8AD90569A2A097034B1A1E, 144246E31AD337BDC3169159, 35EE51295684A2597ECE9A3C, D0F01F56D3623104E526474A, BC781F73574984BCA858B58D, B07C9A3C6543135B03ABC9A1, 7155212FFC43FD9409FD34A3, 2AF9A725AAB871BAE21951D3, 7246A5AF7FF25CF80EB0C09A, 02271A587BB30633CD639978, 45A98B79381141DC276E741E, 8AFEF6D5687CA13111B3DF48, 91D4E81F69548E43801A380A, C392A47B9319E667B08BC767, 854314ACB2E51FB27088F53C, 8575DEE5031AF04A221E2A1D, AF0DA3052E83D5460A0B8804, 812C02963219855A4D2517DA, B0A26457765A5614F11206E7, 5EAF1410514E4036DB86DA7D, C5CB565F304F6F20AFDB577B, 4F3F29F1104A41ADBDDB9BBD, D2EA06D38E2E526DC00BC894, AA73524498BE21A0DC9A6997, 44A14B4D75284AE0DD8CE228, 6D572CCB27F36146A89ABA07, 4CD31D930AA5FD3CE4024DFA, 4B560F829F0A5B2F635A3591, CA9EB48A49C4E0482DD29584, DDE29CCA8B2DA730399EC8CF, F65A123211D9179470BFAD55, ); name = "AppKit fragments"; sourceTree = "<group>"; };
-		E496386E08B8CCDA3D7D52AE = { isa = PBXGroup; children = ( E1186CEA53C7EA7F0BCE9ECA, 4ABFC1369A056902432C171D, 0D81207850433D0FEDB06AE2, F95284FFA9B12123CB5821B4, 340399BC63EE18466BDB12FA, 1DD9C2D36EAA6D21C5E6CB9E, DD77B4AFD57CCA825A344A88, 75C94447779E3EFD7FBB20DE, 3825619B1C9B755981C287B7, ED2EA177B39CD78CF207781F, 3C876FD2FDAAE88196915790, D03BEE68AAA0E0CFFA24E6BF, BA121CC86271D7944FA7924A, ); name = "Shared fragments"; sourceTree = "<group>"; };
-		371AEEC6511F02A92E564DCB = { isa = PBXGroup; children = ( 6AA6D0D89588CB7010F23E5A, 934B822AEE11FF7D3771A730, ); name = "StorageScan plugin"; sourceTree = "<group>"; };
-		D1DF4FD91C2DE2061616F4CB = { isa = PBXGroup; children = ( C74BE902F4AC48AE35602EF1, 85D1A04C7F9912B9E9328417, 4847B9BF3CD6FF97E02AB56E, 44FFE819B1BFA23A076B05E4, 8215BECA4709AE4AF6D8D51A, 309B563212C48E6DCE0A810E, 393AED3347FEE8AFB11089C9, 4C334CBC213EEF7F5A0774C8, 4E96F2B8BE614EB2EDD68F29, C023B8299DB92C710F647552, B491E40A53570C97D1AE3BD9, 3DB5D0B417DEA8DABF293460, 041E5171E220F61BB3E50BF0, B0B22BFCC3A704537B4674D1, 3134AF6EB12746C8E4F16AD2, FA6F7CC6842EF46BA39F6528, 50FA1C260018D8729C6082BB, 917F3014300C146A7192F60D, 84B86D603ECD9F80F6BF4C27, DA34D8DA07FEA6EFC81A64FC, EBB196CFE14C1391C4F82E89, 8222B93EE68190E7180F1819, 40279AAFACE8F54568691A25, 07490994A94D6CA146657E8D, B186AEF97AC3F420D42E816C, 7C684AC1314575DDA946A633, 4ACAEF8B67E6A37844800B21, 0ACFE62DB558C4A814D4B2BC, 6CA3894FA7A6369E1AD44C41, 025843032CA2347B186F1DEE, DF6E0E067A77E6E684D34BE7, F513519C665544E6E1FCFE6A, ED46610624EA3CB15115ABBA, F77E6122554579FA9662DFE4, 0B8456D58CFF06F125C5B58E, 2838E4B944DC5033643491C7, 28F515A8374C38EFE6B5A982, 4F3CEB6D4621841E2A67BFD4, CDA2B2D09D40A24A34888312, 5143068563D34C87C64E562F, 871035BFD14CAFE556BDC989, C25062B168F3C6910E0ACDD9, E1B22D40916E3086961E425B, 11D36B959A7B9DCA1D147AF4, 3B9FA45937CF89EDE2F756A5, 6F2BF334A29081003CAC4363, D6BCF1863BD755C04120A9BF, DB51B626E98ED8C19035D90B, E4936414D5DE387D1CDE4306, E83B4891C613F3D101F8C20C, 21233919B46587B15B20CADE, DC33EDA7B621C782916807A6, 4B2555F97CDE48F9E040A423, 4A18AB5EB0713AE3F8069106, 9E64ECAB69A1CE87EAF725AD, A31E354DC838279644575935, FBC8BBE7CFC90D1BCE17785E, AAE49023324396294A73C6F7, C5238C6A9CA1E3BCDD6ADD86, ); name = "Lua 5.4 source"; sourceTree = "<group>"; };
-		4C48673230998745B8334BE7 = { isa = PBXGroup; children = ( 60A9939755EF06F4486C796E, 5F760EC242C9635CBF7E58C0, 1D9CB1758DC62133F4733FAD, BAC9DCE89D4DDBE1102CD787, E496386E08B8CCDA3D7D52AE, 371AEEC6511F02A92E564DCB, D1DF4FD91C2DE2061616F4CB, ); name = "Native Runtime"; sourceTree = "<group>"; };
-		5AC04C99872F091EAC196A54 = { isa = PBXGroup; children = ( A35D773E8877779DC2E7F2BE, ); name = "Framework Lua"; sourceTree = "<group>"; };
-		00C45FD35CB0F9C5F764F070 = { isa = PBXGroup; name = Products; children = ( B6CDB6E5D160E013280D3C68, BD7AAFCCA4E78B4495567592, B80B3C9D14BB43CDDA6AB9B8, ); sourceTree = "<group>"; };
-		31FB7B9A30D9B4060E78323B = { isa = PBXFileReference; explicitFileType = wrapper.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
-		FB27E096FBC0AEB3D809D5F8 = { isa = PBXBuildFile; fileRef = 31FB7B9A30D9B4060E78323B; };
-		2E89C8A8252CFC4FE865F3C8 = { isa = PBXFileReference; explicitFileType = wrapper.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
-		AA20DA2402995768CE867B12 = { isa = PBXBuildFile; fileRef = 2E89C8A8252CFC4FE865F3C8; };
-		8B986E8D00E2EDA7EB417FEF = { isa = PBXFileReference; explicitFileType = wrapper.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
-		8442629F43DBBC11325B9039 = { isa = PBXBuildFile; fileRef = 8B986E8D00E2EDA7EB417FEF; };
-		AA1272664DC2806B80CF0B73 = { isa = PBXFileReference; explicitFileType = wrapper.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
-		C4324B9BAF7035D371BDA8AF = { isa = PBXBuildFile; fileRef = AA1272664DC2806B80CF0B73; };
-		5FB38C7538668AE69268C18F = { isa = PBXFileReference; explicitFileType = wrapper.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
-		F52B77715EA87B7E68FE284B = { isa = PBXBuildFile; fileRef = 5FB38C7538668AE69268C18F; };
-		8DDB653C8DA8E56E01CB4AA2 = { isa = PBXFileReference; explicitFileType = wrapper.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
-		D27CE13AEC66C246E57B72B5 = { isa = PBXBuildFile; fileRef = 8DDB653C8DA8E56E01CB4AA2; };
-		2EC1D8360342DBB9E33812B7 = { isa = PBXFileReference; explicitFileType = wrapper.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
-		E0A03E0FAF67B46A29F9F70C = { isa = PBXBuildFile; fileRef = 2EC1D8360342DBB9E33812B7; };
-		2A27D3D6AF012B43336568FA = { isa = PBXFileReference; explicitFileType = wrapper.framework; path = System/Library/Frameworks/SceneKit.framework; sourceTree = SDKROOT; };
-		6301DB032F52B3501E1DAA75 = { isa = PBXBuildFile; fileRef = 2A27D3D6AF012B43336568FA; };
-		C02023C9469F5DB23CB2D921 = { isa = PBXFileReference; explicitFileType = wrapper.framework; path = System/Library/Frameworks/Symbols.framework; sourceTree = SDKROOT; };
-		DD263A95F8CB0BB06463CDBC = { isa = PBXBuildFile; fileRef = C02023C9469F5DB23CB2D921; };
-		06C926E8DC460989AE452220 = { isa = PBXFileReference; explicitFileType = wrapper.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
-		5F7218A2D29D6979F630BD04 = { isa = PBXBuildFile; fileRef = 06C926E8DC460989AE452220; };
-		B92A51EF1189BBDD038A4DC0 = { isa = PBXFileReference; explicitFileType = wrapper.framework; path = System/Library/Frameworks/QuickLookUI.framework; sourceTree = SDKROOT; };
-		8B6AF4D88B90E775BD10B783 = { isa = PBXBuildFile; fileRef = B92A51EF1189BBDD038A4DC0; };
-		A997B91F863EC3767AE7CD8D = { isa = PBXFileReference; explicitFileType = wrapper.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
-		35E95F47390B92F13E618023 = { isa = PBXBuildFile; fileRef = A997B91F863EC3767AE7CD8D; };
-		B6CDB6E5D160E013280D3C68 = { isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Diskmap.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		BD7AAFCCA4E78B4495567592 = { isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = AppKit.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
-		B80B3C9D14BB43CDDA6AB9B8 = { isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = StorageScan.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
-		158335AB5E01C364D06F4D9F = { isa = PBXBuildFile; fileRef = 60A9939755EF06F4486C796E; };
-		59A3BF7D4B8246D1D5B2C3F7 = { isa = PBXBuildFile; fileRef = A99DE3EBEEBFF580A915C7D1; };
-		81305BB6734FA6EC8615155C = { isa = PBXBuildFile; fileRef = A35D773E8877779DC2E7F2BE; };
-		391EF0954A5018FDC9533E9B = { isa = PBXBuildFile; fileRef = 026E7758564DD9DD55AA17F7; };
-		978A2FF2D8EB10D5E0D9336A = { isa = PBXBuildFile; fileRef = 87DD5A2AAF006816D6345E58; };
-		9DF65518EC12885C45C9D10B = { isa = PBXBuildFile; fileRef = 0C9004D18ED75433E76B54D1; };
-		B95E63BACB3769EB1DF8C16A = { isa = PBXBuildFile; fileRef = 8057DE7D6E75621795B4A004; };
-		8A968F7AB7B96AAB621316F5 = { isa = PBXBuildFile; fileRef = A756A20FFD26935D2389BA96; };
-		F80DB7E36BA720C3E49E9FED = { isa = PBXBuildFile; fileRef = 20278A8E574B73DBDCF8E080; };
-		BE329B92875A2F94CF9A844A = { isa = PBXBuildFile; fileRef = F62CB65BCECD1174934D2006; };
-		7B87DCDBFAC7AF4EA159FAD6 = { isa = PBXBuildFile; fileRef = BEF8B3597E9D8A910B75195A; };
-		2D67EA16D91DABF27AB1F745 = { isa = PBXBuildFile; fileRef = A6CF11CA2CDB822837C195D6; };
-		65BBA71FB0BC1278A422E6B3 = { isa = PBXBuildFile; fileRef = 4C8071BE49DA4D58986A517E; };
-		FEC438BB4800869DDFDB48DA = { isa = PBXBuildFile; fileRef = E57D338F7D8673EFC86FBFE2; };
-		85547D045C6B2A4EDDB8143F = { isa = PBXBuildFile; fileRef = 1224C462B72FC68FD4972E3B; };
-		C8F582FEC2EA51FA046C515C = { isa = PBXBuildFile; fileRef = BD7AAFCCA4E78B4495567592; settings = { ATTRIBUTES = ( CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		B448B5DB12708C768DCEEF0C = { isa = PBXBuildFile; fileRef = B80B3C9D14BB43CDDA6AB9B8; settings = { ATTRIBUTES = ( CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		507A349611DBB42F9CF9069B = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = ( 158335AB5E01C364D06F4D9F, ); runOnlyForDeploymentPostprocessing = 0; };
-		2D3446C63F9EEB9172CAE05B = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		4C29BBC16528FEA9E858725B = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = ( 59A3BF7D4B8246D1D5B2C3F7, ); runOnlyForDeploymentPostprocessing = 0; };
-		9AF29D36104C1B7C27B598F8 = { isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; files = ( 81305BB6734FA6EC8615155C, ); runOnlyForDeploymentPostprocessing = 0; dstPath = ""; dstSubfolderSpec = 7; name = "Copy Framework Lua to Resources"; };
-		4565BDB2F1A11BCDDD2DD7BF = { isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; files = ( 391EF0954A5018FDC9533E9B, 978A2FF2D8EB10D5E0D9336A, 9DF65518EC12885C45C9D10B, B95E63BACB3769EB1DF8C16A, 8A968F7AB7B96AAB621316F5, F80DB7E36BA720C3E49E9FED, BE329B92875A2F94CF9A844A, 7B87DCDBFAC7AF4EA159FAD6, 2D67EA16D91DABF27AB1F745, 65BBA71FB0BC1278A422E6B3, FEC438BB4800869DDFDB48DA, 85547D045C6B2A4EDDB8143F, ); runOnlyForDeploymentPostprocessing = 0; dstPath = apps/diskmap; dstSubfolderSpec = 7; name = "Copy Diskmap Lua to Resources"; };
-		BC94CC2C09596D189CF6A7CB = { isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; files = ( C8F582FEC2EA51FA046C515C, B448B5DB12708C768DCEEF0C, ); runOnlyForDeploymentPostprocessing = 0; dstPath = ""; dstSubfolderSpec = 10; name = "Embed Runtime Libraries"; };
-		5E69ADCDC36DE39574A54A1B = { isa = PBXBuildFile; fileRef = 5F760EC242C9635CBF7E58C0; };
-		5D8923731A40800DCA928265 = { isa = PBXBuildFile; fileRef = 1D9CB1758DC62133F4733FAD; };
-		F7CB6DF8AC3C54D3D303C1FF = { isa = PBXBuildFile; fileRef = C74BE902F4AC48AE35602EF1; };
-		E1AAB62BCBFE687187E3D95D = { isa = PBXBuildFile; fileRef = 85D1A04C7F9912B9E9328417; };
-		FBEB55D097C29C3F509B0A80 = { isa = PBXBuildFile; fileRef = 4847B9BF3CD6FF97E02AB56E; };
-		1E3B7788BF53AFD7DF333DCE = { isa = PBXBuildFile; fileRef = 44FFE819B1BFA23A076B05E4; };
-		2015FCE54713570B91030323 = { isa = PBXBuildFile; fileRef = 8215BECA4709AE4AF6D8D51A; };
-		DF9BB89F43FF1F33E78C7CC6 = { isa = PBXBuildFile; fileRef = 309B563212C48E6DCE0A810E; };
-		653DCA59BF0DFF112251C9D9 = { isa = PBXBuildFile; fileRef = 393AED3347FEE8AFB11089C9; };
-		5F1BAD5D9431EF75A0CA45F9 = { isa = PBXBuildFile; fileRef = 4C334CBC213EEF7F5A0774C8; };
-		AFD49B936401468FED239979 = { isa = PBXBuildFile; fileRef = 4E96F2B8BE614EB2EDD68F29; };
-		41ACD6DD48B8DB1B70D5B47F = { isa = PBXBuildFile; fileRef = C023B8299DB92C710F647552; };
-		75F2D9BDBDDDBB6F2F732C5C = { isa = PBXBuildFile; fileRef = B491E40A53570C97D1AE3BD9; };
-		E2C09F2B4532E6ACC36D9CC1 = { isa = PBXBuildFile; fileRef = 3DB5D0B417DEA8DABF293460; };
-		53D6C9685C9A52FE6CA990C7 = { isa = PBXBuildFile; fileRef = 041E5171E220F61BB3E50BF0; };
-		D348F0B922831DDF4B42BF11 = { isa = PBXBuildFile; fileRef = B0B22BFCC3A704537B4674D1; };
-		2313E01108E71853B2ABDE4C = { isa = PBXBuildFile; fileRef = 3134AF6EB12746C8E4F16AD2; };
-		F4355F5EF0C3B6D902190314 = { isa = PBXBuildFile; fileRef = FA6F7CC6842EF46BA39F6528; };
-		C5025961D7382DDFF6E798C1 = { isa = PBXBuildFile; fileRef = 50FA1C260018D8729C6082BB; };
-		64F1B0D0F14C926B28A3B43D = { isa = PBXBuildFile; fileRef = 917F3014300C146A7192F60D; };
-		3C8BCCD92DBD5D24B206B223 = { isa = PBXBuildFile; fileRef = 84B86D603ECD9F80F6BF4C27; };
-		A96C13CE97F06261854EFDE3 = { isa = PBXBuildFile; fileRef = DA34D8DA07FEA6EFC81A64FC; };
-		3358E8295457BF8043776899 = { isa = PBXBuildFile; fileRef = EBB196CFE14C1391C4F82E89; };
-		06635A812F742B87B078C147 = { isa = PBXBuildFile; fileRef = 8222B93EE68190E7180F1819; };
-		612F3A9C3CC14592031055BD = { isa = PBXBuildFile; fileRef = 40279AAFACE8F54568691A25; };
-		CBDA3C340882FC2C5C8A9AC5 = { isa = PBXBuildFile; fileRef = 07490994A94D6CA146657E8D; };
-		1D696FEDF798C722DF16D944 = { isa = PBXBuildFile; fileRef = B186AEF97AC3F420D42E816C; };
-		ED63E3AD709DBF7C565B1939 = { isa = PBXBuildFile; fileRef = 7C684AC1314575DDA946A633; };
-		BB66D7645807AC4FF24FF588 = { isa = PBXBuildFile; fileRef = 4ACAEF8B67E6A37844800B21; };
-		C4C4A65464F1840673ADCD57 = { isa = PBXBuildFile; fileRef = 0ACFE62DB558C4A814D4B2BC; };
-		02F34C4AEB2DEF57C2B2E21D = { isa = PBXBuildFile; fileRef = 6CA3894FA7A6369E1AD44C41; };
-		C5B18C16567059CC422C76B5 = { isa = PBXBuildFile; fileRef = 025843032CA2347B186F1DEE; };
-		DEB1C7BAF50C9CF5C4C5AF45 = { isa = PBXBuildFile; fileRef = DF6E0E067A77E6E684D34BE7; };
-		5CA20018714AFAEF890F315F = { isa = PBXBuildFile; fileRef = F513519C665544E6E1FCFE6A; };
-		3066E663E09CAD5BC636C1F8 = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = ( 5E69ADCDC36DE39574A54A1B, 5D8923731A40800DCA928265, F7CB6DF8AC3C54D3D303C1FF, E1AAB62BCBFE687187E3D95D, FBEB55D097C29C3F509B0A80, 1E3B7788BF53AFD7DF333DCE, 2015FCE54713570B91030323, DF9BB89F43FF1F33E78C7CC6, 653DCA59BF0DFF112251C9D9, 5F1BAD5D9431EF75A0CA45F9, AFD49B936401468FED239979, 41ACD6DD48B8DB1B70D5B47F, 75F2D9BDBDDDBB6F2F732C5C, E2C09F2B4532E6ACC36D9CC1, 53D6C9685C9A52FE6CA990C7, D348F0B922831DDF4B42BF11, 2313E01108E71853B2ABDE4C, F4355F5EF0C3B6D902190314, C5025961D7382DDFF6E798C1, 64F1B0D0F14C926B28A3B43D, 3C8BCCD92DBD5D24B206B223, A96C13CE97F06261854EFDE3, 3358E8295457BF8043776899, 06635A812F742B87B078C147, 612F3A9C3CC14592031055BD, CBDA3C340882FC2C5C8A9AC5, 1D696FEDF798C722DF16D944, ED63E3AD709DBF7C565B1939, BB66D7645807AC4FF24FF588, C4C4A65464F1840673ADCD57, 02F34C4AEB2DEF57C2B2E21D, C5B18C16567059CC422C76B5, DEB1C7BAF50C9CF5C4C5AF45, 5CA20018714AFAEF890F315F, ); runOnlyForDeploymentPostprocessing = 0; };
-		7A43A961E6BCE82E5A5AE3AB = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = ( FB27E096FBC0AEB3D809D5F8, AA20DA2402995768CE867B12, 8442629F43DBBC11325B9039, C4324B9BAF7035D371BDA8AF, F52B77715EA87B7E68FE284B, D27CE13AEC66C246E57B72B5, E0A03E0FAF67B46A29F9F70C, 6301DB032F52B3501E1DAA75, DD263A95F8CB0BB06463CDBC, 5F7218A2D29D6979F630BD04, 8B6AF4D88B90E775BD10B783, ); runOnlyForDeploymentPostprocessing = 0; };
-		3A7166E68445A83F0E584228 = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		3CEC4607AF8A73AB4D6E4A7D = { isa = PBXBuildFile; fileRef = 6AA6D0D89588CB7010F23E5A; };
-		E9376D9C1D4C39B0BD165AF1 = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = ( 3CEC4607AF8A73AB4D6E4A7D, ); runOnlyForDeploymentPostprocessing = 0; };
-		945FF2B4FB3707855156B5A7 = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = ( 35E95F47390B92F13E618023, ); runOnlyForDeploymentPostprocessing = 0; };
-		69040DABB5FCFC4F4FCE4DDD = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		912664E9B66BDD3B07F0BADE = { isa = PBXContainerItemProxy; containerPortal = 2A6B7AA84329FC680B925D19; proxyType = 1; remoteGlobalIDString = B8D26EB88F9826377550B292; remoteInfo = AppKitRuntime; };
-		11F7291D4F37A88A3033CBAA = { isa = PBXTargetDependency; target = B8D26EB88F9826377550B292; targetProxy = 912664E9B66BDD3B07F0BADE; };
-		2540E744ABDE69F9ACB0483C = { isa = PBXContainerItemProxy; containerPortal = 2A6B7AA84329FC680B925D19; proxyType = 1; remoteGlobalIDString = 8792CCE620AD83B242497F90; remoteInfo = StorageScan; };
-		43D7D4C8D69D8EE64DB374E0 = { isa = PBXTargetDependency; target = 8792CCE620AD83B242497F90; targetProxy = 2540E744ABDE69F9ACB0483C; };
-		6C8E348106DB32A426C0A35D = { isa = PBXNativeTarget; buildConfigurationList = 83E1B2C4A96B7D22FE4FE3FA; buildPhases = ( 507A349611DBB42F9CF9069B, 2D3446C63F9EEB9172CAE05B, 4C29BBC16528FEA9E858725B, 9AF29D36104C1B7C27B598F8, 4565BDB2F1A11BCDDD2DD7BF, BC94CC2C09596D189CF6A7CB, ); buildRules = (); dependencies = ( 11F7291D4F37A88A3033CBAA, 43D7D4C8D69D8EE64DB374E0, ); name = Diskmap; productName = Diskmap; productReference = B6CDB6E5D160E013280D3C68; productType = "com.apple.product-type.application"; };
-		B8D26EB88F9826377550B292 = { isa = PBXNativeTarget; buildConfigurationList = 6DEF9859AFCBF8B8E5DA93AD; buildPhases = ( 3066E663E09CAD5BC636C1F8, 7A43A961E6BCE82E5A5AE3AB, 3A7166E68445A83F0E584228, ); buildRules = (); dependencies = (); name = AppKitRuntime; productName = AppKitRuntime; productReference = BD7AAFCCA4E78B4495567592; productType = "com.apple.product-type.library.dynamic"; };
-		8792CCE620AD83B242497F90 = { isa = PBXNativeTarget; buildConfigurationList = DC51DF51329C069C86D4ED23; buildPhases = ( E9376D9C1D4C39B0BD165AF1, 945FF2B4FB3707855156B5A7, 69040DABB5FCFC4F4FCE4DDD, ); buildRules = (); dependencies = (); name = StorageScan; productName = StorageScan; productReference = B80B3C9D14BB43CDDA6AB9B8; productType = "com.apple.product-type.library.dynamic"; };
-		ED2F3B048716C9DC7573911C = { isa = PBXGroup; children = ( 31FB7B9A30D9B4060E78323B, 2E89C8A8252CFC4FE865F3C8, 8B986E8D00E2EDA7EB417FEF, AA1272664DC2806B80CF0B73, 5FB38C7538668AE69268C18F, 8DDB653C8DA8E56E01CB4AA2, 2EC1D8360342DBB9E33812B7, 2A27D3D6AF012B43336568FA, C02023C9469F5DB23CB2D921, 06C926E8DC460989AE452220, B92A51EF1189BBDD038A4DC0, A997B91F863EC3767AE7CD8D, ); name = "Linked Frameworks"; sourceTree = "<group>"; };
-		ADCF10F76EBF2A74473E9DC4 = { isa = PBXGroup; children = ( CF8D0BD4B75E8C2C174692A5, 4C48673230998745B8334BE7, 5AC04C99872F091EAC196A54, ED2F3B048716C9DC7573911C, 00C45FD35CB0F9C5F764F070, ); sourceTree = "<group>"; };
-		877A6BA951A2EA0025A2ABE8 = { isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = "NO"; CLANG_ENABLE_MODULES = "YES"; MACOSX_DEPLOYMENT_TARGET = 26.0; SDKROOT = macosx; SYMROOT = "$(PROJECT_DIR)/../../build/xcode-project/Products"; OBJROOT = "$(PROJECT_DIR)/../../build/xcode-project/Intermediates"; }; name = Debug; };
-		959134B361DD7E21ADEA3164 = { isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = "NO"; CLANG_ENABLE_MODULES = "YES"; MACOSX_DEPLOYMENT_TARGET = 26.0; SDKROOT = macosx; SYMROOT = "$(PROJECT_DIR)/../../build/xcode-project/Products"; OBJROOT = "$(PROJECT_DIR)/../../build/xcode-project/Intermediates"; }; name = Release; };
-		2A6B7AA84329FC680B925D19 = { isa = PBXProject; attributes = { BuildIndependentTargetsInParallel = 1; LastUpgradeCheck = 2700; TargetAttributes = { 6C8E348106DB32A426C0A35D = { CreatedOnToolsVersion = 27.0; }; B8D26EB88F9826377550B292 = { CreatedOnToolsVersion = 27.0; }; 8792CCE620AD83B242497F90 = { CreatedOnToolsVersion = 27.0; }; }; }; buildConfigurationList = FCBE72429C0B1B8B87DC8CC9; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = ( en, Base, ); mainGroup = ADCF10F76EBF2A74473E9DC4; productRefGroup = 00C45FD35CB0F9C5F764F070; projectDirPath = ""; projectRoot = ""; targets = ( 6C8E348106DB32A426C0A35D, B8D26EB88F9826377550B292, 8792CCE620AD83B242497F90, ); };
-		FCBE72429C0B1B8B87DC8CC9 = { isa = XCConfigurationList; buildConfigurations = ( 877A6BA951A2EA0025A2ABE8, 959134B361DD7E21ADEA3164, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-		86BC6DE82E720883065C0357 = { isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = "NO"; CLANG_ENABLE_MODULES = "YES"; CLANG_ENABLE_OBJC_ARC = "YES"; MACOSX_DEPLOYMENT_TARGET = 26.0; SDKROOT = macosx; ARCHS = arm64; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGN_ENTITLEMENTS = AppStore.entitlements; CODE_SIGN_STYLE = Automatic; ENABLE_APP_SANDBOX = "YES"; GENERATE_INFOPLIST_FILE = "NO"; INFOPLIST_FILE = Info.plist; LD_RUNPATH_SEARCH_PATHS = ( "$(inherited)", "@executable_path/../Frameworks", ); PRODUCT_BUNDLE_IDENTIFIER = org.luaobjc.diskmap; PRODUCT_NAME = Diskmap; SUPPORTED_PLATFORMS = macosx; }; name = Debug; };
-		10C4BB31537DDC711FDB5F28 = { isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = "NO"; CLANG_ENABLE_MODULES = "YES"; CLANG_ENABLE_OBJC_ARC = "YES"; MACOSX_DEPLOYMENT_TARGET = 26.0; SDKROOT = macosx; ARCHS = arm64; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGN_ENTITLEMENTS = AppStore.entitlements; CODE_SIGN_STYLE = Automatic; ENABLE_APP_SANDBOX = "YES"; GENERATE_INFOPLIST_FILE = "NO"; INFOPLIST_FILE = Info.plist; LD_RUNPATH_SEARCH_PATHS = ( "$(inherited)", "@executable_path/../Frameworks", ); PRODUCT_BUNDLE_IDENTIFIER = org.luaobjc.diskmap; PRODUCT_NAME = Diskmap; SUPPORTED_PLATFORMS = macosx; }; name = Release; };
-		D8885C8ED24554FF067FE62A = { isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = "NO"; CLANG_ENABLE_MODULES = "YES"; CLANG_ENABLE_OBJC_ARC = "YES"; MACOSX_DEPLOYMENT_TARGET = 26.0; SDKROOT = macosx; ARCHS = arm64; DEFINES_MODULE = "NO"; GCC_PREPROCESSOR_DEFINITIONS = ( "$(inherited)", LUA_USE_MACOSX, ); HEADER_SEARCH_PATHS = ( "$(inherited)", "$(PROJECT_DIR)/../../vendor/lua-5.4.8/src", ); LD_DYLIB_INSTALL_NAME = "@rpath/AppKit.dylib"; MACH_O_TYPE = mh_dylib; PRODUCT_BUNDLE_IDENTIFIER = org.luaobjc.diskmap.AppKitRuntime; PRODUCT_NAME = AppKit; SKIP_INSTALL = "YES"; }; name = Debug; };
-		2E19D5E9846C5ED22EC5A2F7 = { isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = "NO"; CLANG_ENABLE_MODULES = "YES"; CLANG_ENABLE_OBJC_ARC = "YES"; MACOSX_DEPLOYMENT_TARGET = 26.0; SDKROOT = macosx; ARCHS = arm64; DEFINES_MODULE = "NO"; GCC_PREPROCESSOR_DEFINITIONS = ( "$(inherited)", LUA_USE_MACOSX, ); HEADER_SEARCH_PATHS = ( "$(inherited)", "$(PROJECT_DIR)/../../vendor/lua-5.4.8/src", ); LD_DYLIB_INSTALL_NAME = "@rpath/AppKit.dylib"; MACH_O_TYPE = mh_dylib; PRODUCT_BUNDLE_IDENTIFIER = org.luaobjc.diskmap.AppKitRuntime; PRODUCT_NAME = AppKit; SKIP_INSTALL = "YES"; }; name = Release; };
-		D01DE1991D5EF3F1168121AD = { isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = "NO"; CLANG_ENABLE_MODULES = "YES"; CLANG_ENABLE_OBJC_ARC = "YES"; MACOSX_DEPLOYMENT_TARGET = 26.0; SDKROOT = macosx; ARCHS = arm64; DEFINES_MODULE = "NO"; HEADER_SEARCH_PATHS = ( "$(inherited)", "$(PROJECT_DIR)/../../vendor/lua-5.4.8/src", ); LD_DYLIB_INSTALL_NAME = "@rpath/StorageScan.dylib"; MACH_O_TYPE = mh_dylib; OTHER_LDFLAGS = ( "$(inherited)", "-undefined", dynamic_lookup, "-lcompression", ); PRODUCT_BUNDLE_IDENTIFIER = org.luaobjc.diskmap.StorageScan; PRODUCT_NAME = StorageScan; SKIP_INSTALL = "YES"; }; name = Debug; };
-		24B8BEE032953BF35ECD9E7C = { isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = "NO"; CLANG_ENABLE_MODULES = "YES"; CLANG_ENABLE_OBJC_ARC = "YES"; MACOSX_DEPLOYMENT_TARGET = 26.0; SDKROOT = macosx; ARCHS = arm64; DEFINES_MODULE = "NO"; HEADER_SEARCH_PATHS = ( "$(inherited)", "$(PROJECT_DIR)/../../vendor/lua-5.4.8/src", ); LD_DYLIB_INSTALL_NAME = "@rpath/StorageScan.dylib"; MACH_O_TYPE = mh_dylib; OTHER_LDFLAGS = ( "$(inherited)", "-undefined", dynamic_lookup, "-lcompression", ); PRODUCT_BUNDLE_IDENTIFIER = org.luaobjc.diskmap.StorageScan; PRODUCT_NAME = StorageScan; SKIP_INSTALL = "YES"; }; name = Release; };
-		83E1B2C4A96B7D22FE4FE3FA = { isa = XCConfigurationList; buildConfigurations = ( 86BC6DE82E720883065C0357, 10C4BB31537DDC711FDB5F28, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-		6DEF9859AFCBF8B8E5DA93AD = { isa = XCConfigurationList; buildConfigurations = ( D8885C8ED24554FF067FE62A, 2E19D5E9846C5ED22EC5A2F7, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-		DC51DF51329C069C86D4ED23 = { isa = XCConfigurationList; buildConfigurations = ( D01DE1991D5EF3F1168121AD, 24B8BEE032953BF35ECD9E7C, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+	classes = {
 	};
-	rootObject = 2A6B7AA84329FC680B925D19;
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		D1500000000000000000B001 /* AppKit.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = D1500000000000000000F002 /* AppKit.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		D1500000000000000000B002 /* StorageScan.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = D1500000000000000000F003 /* StorageScan.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D1500000000000000000C001 /* AppKit */ = {isa = PBXContainerItemProxy; containerPortal = D1500000000000000000A000 /* Project object */; proxyType = 1; remoteGlobalIDString = D1500000000000000000A002; remoteInfo = AppKit; };
+		D1500000000000000000C002 /* StorageScan */ = {isa = PBXContainerItemProxy; containerPortal = D1500000000000000000A000 /* Project object */; proxyType = 1; remoteGlobalIDString = D1500000000000000000A003; remoteInfo = StorageScan; };
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		D15000000000000000004004 /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				D1500000000000000000B001 /* AppKit.dylib in Embed Libraries */,
+				D1500000000000000000B002 /* StorageScan.dylib in Embed Libraries */,
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		D1500000000000000000F001 /* Diskmap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Diskmap.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D1500000000000000000F002 /* AppKit.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = AppKit.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		D1500000000000000000F003 /* StorageScan.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = StorageScan.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		/* A folder outside a target lists the files it contributes; a folder
+		 * inside a target lists the files it withholds. main.m includes every
+		 * other runtime .m, so src contributes only the unity roots. */
+		D1500000000000000000E001 /* src → AppKit */ = {isa = PBXFileSystemSynchronizedBuildFileExceptionSet; membershipExceptions = (main.m, embedded_lua_module.c, ); target = D1500000000000000000A002 /* AppKit */; };
+		D1500000000000000000E002 /* src → StorageScan */ = {isa = PBXFileSystemSynchronizedBuildFileExceptionSet; membershipExceptions = (plugins/storage/StorageScan.m, ); target = D1500000000000000000A003 /* StorageScan */; };
+		D1500000000000000000E003 /* lua → AppKit */ = {isa = PBXFileSystemSynchronizedBuildFileExceptionSet; membershipExceptions = (lua.c, luac.c, lua.hpp, Makefile, ); target = D1500000000000000000A002 /* AppKit */; };
+		D1500000000000000000E004 /* diskmap → Diskmap */ = {isa = PBXFileSystemSynchronizedBuildFileExceptionSet; membershipExceptions = (Assets.xcassets, ); target = D1500000000000000000A001 /* Diskmap */; };
+		D1500000000000000000E005 /* launcher → Diskmap */ = {isa = PBXFileSystemSynchronizedBuildFileExceptionSet; membershipExceptions = (launcher.c, ); target = D1500000000000000000A001 /* Diskmap */; };
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		D15000000000000000001001 /* Diskmap */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (D1500000000000000000E004, ); name = Diskmap; path = .; sourceTree = "<group>"; };
+		D15000000000000000001002 /* Launcher */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (D1500000000000000000E005, ); name = Launcher; path = ../../scripts/diskmap; sourceTree = "<group>"; };
+		D15000000000000000001003 /* Framework Lua */ = {isa = PBXFileSystemSynchronizedRootGroup; name = "Framework Lua"; path = ../../lua; sourceTree = "<group>"; };
+		D15000000000000000001004 /* Native */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (D1500000000000000000E001, D1500000000000000000E002, ); name = Native; path = ../../src; sourceTree = "<group>"; };
+		D15000000000000000001005 /* Lua 5.4 */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (D1500000000000000000E003, ); name = "Lua 5.4"; path = "../../vendor/lua-5.4.8/src"; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXGroup section */
+		D15000000000000000001000 = {
+			isa = PBXGroup;
+			children = (
+				D15000000000000000001001 /* Diskmap */,
+				D15000000000000000001002 /* Launcher */,
+				D15000000000000000001003 /* Framework Lua */,
+				D15000000000000000001004 /* Native */,
+				D15000000000000000001005 /* Lua 5.4 */,
+				D15000000000000000001009 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D15000000000000000001009 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D1500000000000000000F001 /* Diskmap.app */,
+				D1500000000000000000F002 /* AppKit.dylib */,
+				D1500000000000000000F003 /* StorageScan.dylib */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D1500000000000000000A001 /* Diskmap */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D15000000000000000003001;
+			buildPhases = (
+				D15000000000000000004001 /* Sources */,
+				D15000000000000000004002 /* Resources */,
+				D15000000000000000004003 /* Copy Lua */,
+				D15000000000000000004004 /* Embed Libraries */,
+			);
+			dependencies = (
+				D1500000000000000000D001,
+				D1500000000000000000D002,
+			);
+			fileSystemSynchronizedGroups = (
+			);
+			name = Diskmap;
+			productName = Diskmap;
+			productReference = D1500000000000000000F001 /* Diskmap.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D1500000000000000000A002 /* AppKit */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D15000000000000000003002;
+			buildPhases = (
+				D15000000000000000004005 /* Sources */,
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D15000000000000000001005 /* Lua 5.4 */,
+			);
+			name = AppKit;
+			productName = AppKit;
+			productReference = D1500000000000000000F002 /* AppKit.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+		D1500000000000000000A003 /* StorageScan */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D15000000000000000003003;
+			buildPhases = (
+				D15000000000000000004006 /* Sources */,
+			);
+			dependencies = (
+			);
+			name = StorageScan;
+			productName = StorageScan;
+			productReference = D1500000000000000000F003 /* StorageScan.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D1500000000000000000A000 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 2700;
+			};
+			buildConfigurationList = D15000000000000000003000;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D15000000000000000001000;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D15000000000000000001009 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D1500000000000000000A001 /* Diskmap */,
+				D1500000000000000000A002 /* AppKit */,
+				D1500000000000000000A003 /* StorageScan */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D15000000000000000004002 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		D15000000000000000004003 /* Copy Lua */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Copy Lua";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Lua sources and app data are copied as trees, so new files need no project edit.\nset -e\nroot=\"$SRCROOT/../..\"\nresources=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\ncopy() {\n\tmkdir -p \"$resources/$2\"\n\trsync -a --delete --prune-empty-dirs --exclude=Build/ --include='*/' --include='*.lua' --include='*.etlua' --include='*.bin' --exclude='*' \"$root/$1/\" \"$resources/$2/\"\n}\ncopy lua lua\ncopy apps/diskmap apps/diskmap\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D15000000000000000004001 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		D15000000000000000004005 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		D15000000000000000004006 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D1500000000000000000D001 = {isa = PBXTargetDependency; target = D1500000000000000000A002 /* AppKit */; targetProxy = D1500000000000000000C001; };
+		D1500000000000000000D002 = {isa = PBXTargetDependency; target = D1500000000000000000A003 /* StorageScan */; targetProxy = D1500000000000000000C002; };
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		D15000000000000000002001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = arm64;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_PREPROCESSOR_DEFINITIONS = LUA_USE_MACOSX;
+				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/../../vendor/lua-5.4.8/src";
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				OBJROOT = "$(PROJECT_DIR)/../../build/xcode-project/Intermediates";
+				SDKROOT = macosx;
+				SYMROOT = "$(PROJECT_DIR)/../../build/xcode-project/Products";
+			};
+			name = Debug;
+		};
+		D15000000000000000002002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = arm64;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_PREPROCESSOR_DEFINITIONS = LUA_USE_MACOSX;
+				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/../../vendor/lua-5.4.8/src";
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				OBJROOT = "$(PROJECT_DIR)/../../build/xcode-project/Intermediates";
+				SDKROOT = macosx;
+				SYMROOT = "$(PROJECT_DIR)/../../build/xcode-project/Products";
+			};
+			name = Release;
+		};
+		D15000000000000000002011 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = AppStore.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_APP_SANDBOX = YES;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = org.luaobjc.diskmap;
+				PRODUCT_NAME = Diskmap;
+			};
+			name = Debug;
+		};
+		D15000000000000000002012 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = AppStore.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_APP_SANDBOX = YES;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = org.luaobjc.diskmap;
+				PRODUCT_NAME = Diskmap;
+			};
+			name = Release;
+		};
+		D15000000000000000002021 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				LD_DYLIB_INSTALL_NAME = "@rpath/AppKit.dylib";
+				PRODUCT_NAME = AppKit;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		D15000000000000000002022 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				LD_DYLIB_INSTALL_NAME = "@rpath/AppKit.dylib";
+				PRODUCT_NAME = AppKit;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		D15000000000000000002031 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				LD_DYLIB_INSTALL_NAME = "@rpath/StorageScan.dylib";
+				OTHER_LDFLAGS = "-undefined dynamic_lookup -lcompression";
+				PRODUCT_NAME = StorageScan;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		D15000000000000000002032 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				LD_DYLIB_INSTALL_NAME = "@rpath/StorageScan.dylib";
+				OTHER_LDFLAGS = "-undefined dynamic_lookup -lcompression";
+				PRODUCT_NAME = StorageScan;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D15000000000000000003000 = {isa = XCConfigurationList; buildConfigurations = (D15000000000000000002001, D15000000000000000002002, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		D15000000000000000003001 = {isa = XCConfigurationList; buildConfigurations = (D15000000000000000002011, D15000000000000000002012, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		D15000000000000000003002 = {isa = XCConfigurationList; buildConfigurations = (D15000000000000000002021, D15000000000000000002022, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		D15000000000000000003003 = {isa = XCConfigurationList; buildConfigurations = (D15000000000000000002031, D15000000000000000002032, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+	};
+	rootObject = D1500000000000000000A000 /* Project object */;
 }

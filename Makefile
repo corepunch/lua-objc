@@ -256,10 +256,6 @@ parity-report: parity-check
 
 # Standalone iPad development app (no Mac packager required).
 .PHONY: ipad ipad-simulator ipad-run ipad-deploy list-devices
-.PHONY: adventure-arena-xcode
-adventure-arena-xcode:
-	premake5 xcode4
-	python3 scripts/ipad/fix_premake_xcode.py
 .PHONY: iphone-deploy
 iphone-deploy:
 	$(MAKE) ipad-deploy DEVICE_TYPE=iPhone APP="$(or $(APP),adventure-arena)" \
@@ -283,11 +279,8 @@ DISKMAP_XCODE_PROJECT = apps/diskmap/Diskmap.xcodeproj
 DISKMAP_XCODE_DERIVED_DATA ?= build/xcode-derived
 DISKMAP_XCODE_ROOT = $(abspath $(DISKMAP_XCODE_DERIVED_DATA))
 DISKMAP_XCODE_CONFIGURATION ?= Release
-.PHONY: diskmap-xcode-project diskmap-xcode-build
-diskmap-xcode-project:
-	@test -f $(DISKMAP_XCODE_PROJECT)/project.pbxproj
-
-diskmap-xcode-build: diskmap-xcode-project
+.PHONY: diskmap-xcode-build
+diskmap-xcode-build:
 	xcodebuild -project $(DISKMAP_XCODE_PROJECT) \
 		-scheme Diskmap -configuration $(DISKMAP_XCODE_CONFIGURATION) \
 		-destination 'generic/platform=macOS' \

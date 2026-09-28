@@ -41,7 +41,9 @@ require("UIKit")   -- luaopen_UIKit in UIKit.dylib, inside an iOS host
 
 `luaopen_AppKit` loads `lua/embedded/AppKit.lua` from the app's resource tree
 and returns its complete public API table. Diskmap's Xcode target copies the
-framework Lua files into `Contents/Resources/lua` with a Copy Files build phase.
+framework and app Lua trees into `Contents/Resources` with one Run Script
+phase, and compiles native sources from synchronized folders, so adding a
+`.lua` or `.m` file needs no project edit.
 
 On the iPhone Simulator host, `luaopen_UIKitNative` is in-process and
 `lua/embedded/UIKit.lua` is streamed from the Mac packager like application
