@@ -1,0 +1,67 @@
+<VStack spacing="16" maxWidth="infinity" alignment="leading">
+  <GroupBox header="ActivityRings" maxWidth="infinity">
+    <HStack spacing="24" alignment="center" padding="8">
+      <ActivityRings id="rings" width="132" height="132" accessibilityLabel="<%= rings[1].summary %>, <%= rings[2].summary %>, <%= rings[3].summary %>">
+        <% for _, ring in ipairs(rings) do -%>
+        <ActivityRing value="<%= ring.value %>" goal="<%= ring.goal %>" color="<%= ring.color %>" label="<%= ring.label %>" />
+        <% end -%>
+      </ActivityRings>
+      <VStack spacing="6" alignment="leading">
+        <% for _, ring in ipairs(rings) do -%>
+        <%- partial("RingLegend.etlua", ring) %>
+        <% end -%>
+      </VStack>
+    </HStack>
+  </GroupBox>
+
+  <GroupBox header="BarChart" maxWidth="infinity">
+    <VStack spacing="8" alignment="leading" maxWidth="infinity" padding="8">
+      <Label text="<%= weekSteps %> steps this week" weight="semibold" monospacedDigit="true" />
+      <BarChart id="steps" height="72" tint="systemOrange" accessibilityLabel="<%= weekSteps %> steps this week">
+        <% for _, day in ipairs(steps) do -%>
+        <BarMark value="<%= day.value %>" label="<%= day.day %>" />
+        <% end -%>
+      </BarChart>
+    </VStack>
+  </GroupBox>
+
+  <GroupBox header="CapacityBar" maxWidth="infinity">
+    <VStack spacing="8" alignment="leading" maxWidth="infinity" padding="8">
+      <Label text="<%= used %> GB of <%= storage.total %> GB used" weight="semibold" monospacedDigit="true" />
+      <CapacityBar id="storage" total="<%= storage.total %>" accessibilityLabel="<%= used %> GB of <%= storage.total %> GB used, <%= available %> GB available">
+        <% for _, segment in ipairs(storage.segments) do -%>
+        <CapacitySegment value="<%= segment.value %>" color="<%= segment.color %>" label="<%= segment.label %>" />
+        <% end -%>
+      </CapacityBar>
+      <HStack spacing="14">
+        <% for _, segment in ipairs(storage.segments) do -%>
+        <HStack spacing="4" alignment="center">
+          <SystemImage name="circle.fill" size="8" color="<%= segment.color %>" label="<%= segment.label %>" />
+          <Label text="<%= segment.label %>" size="11" color="secondary" />
+        </HStack>
+        <% end -%>
+      </HStack>
+    </VStack>
+  </GroupBox>
+
+  <GroupBox header="HeatmapGrid" maxWidth="infinity">
+    <VStack spacing="8" alignment="leading" padding="8">
+      <Label text="Active on <%= activeDays %> of <%= #history %> days" weight="semibold" monospacedDigit="true" />
+      <HeatmapGrid id="history" tint="systemGreen" accessibilityLabel="Active on <%= activeDays %> of <%= #history %> days">
+        <% for _, entry in ipairs(history) do -%>
+        <HeatmapCell value="<%= entry.value %>" />
+        <% end -%>
+      </HeatmapGrid>
+    </VStack>
+  </GroupBox>
+
+  <GroupBox header="SleepChart (app component)" maxWidth="infinity">
+    <VStack padding="8" maxWidth="infinity">
+      <SleepChart id="sleep" duration="<%= sleep.duration %>" accessibilityLabel="Sleep stages over <%= sleep.duration // 60 %> hours">
+        <% for _, interval in ipairs(sleep.stages) do -%>
+        <SleepStage stage="<%= interval.stage %>" start="<%= interval.start %>" end="<%= interval.finish %>" />
+        <% end -%>
+      </SleepChart>
+    </VStack>
+  </GroupBox>
+</VStack>
