@@ -3,12 +3,14 @@ constant int RIDGES = 6;         // layers, far to near
 // A night flight over layered ridges. Far layers drift slowly behind
 // fog; the nearest ones rush past and their peaks rise with the spectrum.
 static float3 landscapeScene(constant ShaderInputs &inputs, float2 uv, const thread Frame &f) {
-	float2 p = float2((uv.x - 0.5) * f.aspect, 1.0 - uv.y); // y up from the bottom
+	// y up from the stage's bottom edge: the ridges stand on it and the
+	// nearest ones run on behind the panels.
+	float2 p = stagePoint(uv, f) + float2(0.0, 0.5);
 	// Dusk sky: indigo overhead, a neon glow along the far ridges.
 	float3 glow = neon(f.hue + 0.05);
 	float3 colour = mix(glow * 0.55, float3(0.03, 0.01, 0.08), smoothstep(0.35, 1.0, p.y));
 	// Stars: one point per cell, twinkling, only where the sky is dark.
-	float2 grid = uv * float2(f.aspect, 1.0) * 70.0;
+	float2 grid = p * 70.0;
 	float2 cell = floor(grid);
 	float2 spot = hash22(cell) * 0.8 + 0.1;
 	float star = smoothstep(0.09, 0.0, length(fract(grid) - spot)) * step(0.8, hash21(cell + 5.3));
@@ -37,6 +39,6 @@ static float3 landscapeScene(constant ShaderInputs &inputs, float2 uv, const thr
 		}
 	}
 	// Ground mist rising with the bass.
-	colour += fog * exp(-p.y * 10.0) * (0.25 + 0.5 * f.low);
+	colour += fog * exp(-max(p.y, 0.0) * 10.0) * (0.25 + 0.5 * f.low);
 	return colour;
 }

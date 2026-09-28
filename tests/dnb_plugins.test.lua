@@ -228,4 +228,42 @@ app:actions().openMiniPlayer()
 app.mini.window:close()
 t.assertEqual(app.mini, nil, "closing its window restores the main window too")
 
+-- The stage: the visualizer between the toolbar and the panels, measured
+-- from each window's layout (window coordinates grow upward).
+local function rect(y, height) return {origin = {x = 0, y = y}, size = {width = 1000, height = height}} end
+local function fakeRefs(view, content, panels)
+	return {visualizer = {frameInWindow = view}, content = {frameInWindow = content}, panels = {frameInWindow = panels}}
+end
+local stage = app:stage(fakeRefs(rect(0, 800), rect(0, 750), rect(20, 300)))
+t.assertEqual(stage.y, 50 / 800, "the stage starts under the toolbar")
+t.assertEqual(stage.height, (480 - 50) / 800, "and ends at the panels' top edge")
+t.assertEqual(stage.x .. " " .. stage.width, "0 1", "it spans the full width")
+t.assertEqual(app:stage(fakeRefs(rect(0, 0), rect(0, 0), rect(0, 0))), Visuals.fullStage,
+	"an unlaid-out view falls back to the whole picture")
+t.assertEqual(app:stage(fakeRefs(rect(0, 400), rect(0, 350), rect(20, 400))), Visuals.fullStage,
+	"panels covering the view fall back to the whole picture")
+t.expect(app.refs.content ~= nil and app.refs.panels ~= nil, "the window names its content and panels")
+app:actions().openMiniPlayer()
+t.expect(app.mini.refs.content ~= nil and app.mini.refs.panels ~= nil, "so does the mini player")
+app:closeMiniPlayer()
+
+-- A resting picture is resent only when its stage moves.
+local sent = 0
+local fakeView = setmetatable({}, {__newindex = function(_, key) if key == "values" then sent = sent + 1 end end})
+local laidOut = rect(0, 800)
+local resting = fakeRefs(laidOut, rect(0, 750), rect(20, 300))
+resting.visualizer = setmetatable({frameInWindow = laidOut}, {__index = {}, __newindex = fakeView})
+app.stop(app)
+local views = app.views
+app.views = function() return {resting} end
+for _ = 1, 400 do app:tick(1 / 60) end
+t.expect(app.visuals:settled(), "the stopped visualizer settles")
+sent = 0
+app:tick(1 / 60)
+t.assertEqual(sent, 0, "a settled picture is not resent")
+resting.panels.frameInWindow = rect(20, 200)
+app:tick(1 / 60)
+t.assertEqual(sent, 1, "a resize that moves the stage resends it")
+app.views = views
+
 os.exit(t.summary() and 0 or 1)

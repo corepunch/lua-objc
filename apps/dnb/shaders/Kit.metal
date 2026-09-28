@@ -8,17 +8,32 @@
 //   4 section progress 5 beat phase     6 presence (0 idle … 1 playing)
 //   7 band count N     8 scene          9 next scene     10 crossfade 0…1
 //   11 snare pulse     12 low bands     13 high bands    14 travel   15 bar phase
-//   16 … 16+N-1 band levels             16+N … 16+2N-1 peak holds
+//   16 … 19 stage x, y, width, height (uv of the view)
+//   20 … 20+N-1 band levels             20+N … 20+2N-1 peak holds
+//
+// The stage is the main view rect: the part of the picture no panel covers,
+// between the toolbar and the controls. Scenes compose around it, not the
+// view, so their subject is never hidden behind glass. stagePoint(uv, f)
+// gives a point in stage heights, centred on the stage with y up, so the
+// stage spans ±0.5 vertically and ±f.aspect / 2 horizontally. The picture
+// still fills the whole view; outside the stage it continues behind the
+// panels.
 
 constant float TAU = 6.2831853;
-constant int HEADER = 16;
+constant int HEADER = 20;
 constant float BAR_SPAN = 0.47;  // half-width covered by the mirrored spectrum bars
-constant float BAR_HEIGHT = 0.46;
+constant float BAR_HEIGHT = 0.4; // tallest bar, in stage heights above the horizon
 
 struct Frame {
 	float t, aspect, level, kick, hue, intensity, beat, presence, snare, low, high, travel, phase;
 	int n;
+	float2 centre; // the stage's centre in uv
+	float2 unit;   // uv → stage heights along x and y
 };
+
+static float2 stagePoint(float2 uv, const thread Frame &f) {
+	return (uv - f.centre) * float2(f.unit.x, -f.unit.y);
+}
 
 static float3 neon(float t) {
 	// Cosine palette sweeping magenta → violet → cyan → amber.

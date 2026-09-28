@@ -7,7 +7,11 @@ local Visuals = {}
 Visuals.__index = Visuals
 
 Visuals.bands = 40
-Visuals.header = 16
+Visuals.header = 20
+
+-- The main view rect as fractions of the view from its top-left: where
+-- scenes centre their subject. The whole view until a layout says otherwise.
+Visuals.fullStage = {x = 0, y = 0, width = 1, height = 1}
 
 local MOTION = {
 	attack = 0.65,     -- share of a rise applied per frame
@@ -173,7 +177,7 @@ function Visuals:update(frame, dt)
 		self.hue = (bar.tonic or 0) / 12
 	end
 	self:follow(bar, frame.playing, dt)
-	return self:pack()
+	return self:pack(frame.stage)
 end
 
 -- True once bars, peaks, pulses and scene changes have come to rest, so an
@@ -187,12 +191,16 @@ function Visuals:settled()
 	return true
 end
 
-function Visuals:pack()
+-- Each open view packs its own `stage`: the main window's sits above its
+-- panels, the mini player's above its transport bar.
+function Visuals:pack(stage)
+	stage = stage or Visuals.fullStage
 	local v = self.values
 	v[1], v[2], v[3], v[4] = self.level, self.kick, self.hue, self.intensity
 	v[5], v[6], v[7], v[8] = self.progress, self.beat, self.presence, self.n
 	v[9], v[10], v[11], v[12] = self.scene, self.nextScene, self.fade, self.snare
 	v[13], v[14], v[15], v[16] = self.low, self.high, self.travel, self.barPhase
+	v[17], v[18], v[19], v[20] = stage.x, stage.y, stage.width, stage.height
 	local h = Visuals.header
 	for i = 1, self.n do
 		v[h + i] = self.levels[i]

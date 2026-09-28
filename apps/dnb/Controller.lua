@@ -36,6 +36,7 @@ function Controller.new(options)
 		buffer = {},
 		playing = false,
 		visuals = Visuals.new(Visualizers:list()),
+		stages = setmetatable({}, {__mode = "k"}), -- the stage each open view last received
 	}, Controller)
 	self.composer = Styles:create(style.id, model.seed)
 	self.synth:setComposer(self.composer)
@@ -182,19 +183,48 @@ function Controller:pump()
 	return frames
 end
 
+-- The main view rect (see Visuals.fullStage): the visualizer between the
+-- safe area's top, under the toolbar, and the top of the panels over its
+-- bottom. It is measured from the layout because the panels keep their
+-- height as the window resizes, so the stage's share of the view changes.
+function Controller:stage(refs)
+	local view = refs.visualizer.frameInWindow
+	local width, height = view.size.width, view.size.height
+	if width <= 0 or height <= 0 then return Visuals.fullStage end
+	-- Window coordinates grow upward from the bottom-left.
+	local function below(frame) return view.origin.y + height - (frame.origin.y + frame.size.height) end
+	local top = math.max(0, below(refs.content.frameInWindow))
+	local bottom = math.min(height, below(refs.panels.frameInWindow))
+	if bottom <= top then return Visuals.fullStage end
+	return {x = 0, y = top / height, width = 1, height = (bottom - top) / height}
+end
+
+local function sameStage(a, b)
+	return a and b and a.x == b.x and a.y == b.y and a.width == b.width and a.height == b.height
+end
+
 -- One display frame: refill audio while playing, then follow the playhead
--- in the header and the visualizers.
+-- in the header and the visualizers. A resting picture is sent again only
+-- when a resize moves its stage.
 function Controller:tick(dt)
 	if self.playing then self:pump() end
 	local played = self.playing and self.output:played() or nil
 	local bar = played and self.synth:barAt(played)
 	if bar then self:showPlayhead(bar, played) end
-	if not self.playing and self.visuals:settled() then return end
+	local views, stages, moved = self:views(), {}, false
+	for i, refs in ipairs(views) do
+		stages[i] = self:stage(refs)
+		moved = moved or not sameStage(stages[i], self.stages[refs])
+	end
+	if not self.playing and self.visuals:settled() and not moved then return end
 	local bands, rms
 	if self.playing then bands, rms = self.output:spectrum(Visuals.bands) end
-	local values = self.visuals:update({bands = bands, rms = rms, playing = self.playing, bar = bar,
+	self.visuals:update({bands = bands, rms = rms, playing = self.playing, bar = bar,
 		played = played, sampleRate = PLAYBACK.sampleRate, gain = self.model:value("volume")}, dt)
-	for _, refs in ipairs(self:views()) do refs.visualizer.values = values end
+	for i, refs in ipairs(views) do
+		refs.visualizer.values = self.visuals:pack(stages[i])
+		self.stages[refs] = stages[i]
+	end
 end
 
 function Controller:showPlayhead(bar, played)

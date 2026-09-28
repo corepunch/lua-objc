@@ -586,6 +586,17 @@ for _ = 1, 300 do scenes:update({playing = false}, 1 / 60) end
 t.assertEqual(scenes.scene, Visualizers:index("horizon") - 1, "stopping returns to the horizon")
 t.expect(scenes:settled(), "and then rests")
 
+-- The stage: the main view rect scenes centre on, packed after the header.
+local stageValues = scenes:pack()
+t.assertEqual(stageValues[17] .. " " .. stageValues[18] .. " " .. stageValues[19] .. " " .. stageValues[20], "0 0 1 1",
+	"without a measured stage scenes use the whole view")
+stageValues = scenes:pack({x = 0, y = 0.1, width = 1, height = 0.5})
+t.assertEqual(stageValues[18], 0.1, "the stage's top is a fraction of the view from the top")
+t.assertEqual(stageValues[20], 0.5, "and so is its height")
+t.assertEqual(#stageValues, Visuals.header + 2 * 4, "the stage lives inside the header")
+t.assertEqual(scenes:update({playing = false, stage = {x = 0, y = 0.2, width = 1, height = 0.4}}, 1 / 60)[18], 0.2,
+	"a frame can carry its stage")
+
 -- Controller: fake output, no audio device or timers.
 local function fakeOutput(capacity)
 	local o = {capacity = capacity, queued = 0, written = 0, playedFrames = 0, started = 0, paused = 0}

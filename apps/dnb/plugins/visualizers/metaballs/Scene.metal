@@ -3,7 +3,7 @@ constant int BALLS = 7;
 // Metaballs — seven blobs orbiting on Lissajous paths, each sized by a
 // slice of the spectrum, fused into one iridescent surface.
 static float3 metaballsScene(constant ShaderInputs &inputs, float2 uv, const thread Frame &f) {
-	float2 p = float2((uv.x - 0.5) * f.aspect, 0.5 - uv.y);
+	float2 p = stagePoint(uv, f);
 	float field = 0.0;
 	float2 gradient = float2(0.0);
 	float3 tint = float3(0.0);

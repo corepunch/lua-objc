@@ -1,7 +1,7 @@
 // Crystals — a six-fold kaleidoscope of drifting Voronoi cells whose
 // facets light with their slice of the spectrum.
 static float3 crystalsScene(constant ShaderInputs &inputs, float2 uv, const thread Frame &f) {
-	float2 p = float2((uv.x - 0.5) * f.aspect, 0.5 - uv.y);
+	float2 p = stagePoint(uv, f);
 	float angle = atan2(p.y, p.x) + f.travel * 0.2;
 	float sector = TAU / 6.0;
 	angle = abs(fmod(angle + TAU * 8.0, sector) - sector * 0.5);

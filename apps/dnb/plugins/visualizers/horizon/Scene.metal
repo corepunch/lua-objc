@@ -1,12 +1,11 @@
-constant float HORIZON = 0.64;   // fraction of the height where bars stand
-
 // The synthwave horizon — mirrored neon spectrum, banded sun, kick rings
-// and a perspective grid rushing toward the viewer.
+// and a perspective grid rushing toward the viewer. The horizon runs
+// through the middle of the stage; the grid continues under the panels.
 static float3 horizonScene(constant ShaderInputs &inputs, float2 uv, const thread Frame &f) {
-	float2 p = float2((uv.x - 0.5) * f.aspect, HORIZON - uv.y);
+	float2 p = stagePoint(uv, f);
 	float3 colour = sky(uv, p, f);
-	float2 sunP = p - float2(0.0, 0.2);
-	float sunR = 0.2 + 0.015 * f.kick;
+	float2 sunP = p - float2(0.0, 0.18);
+	float sunR = 0.18 + 0.015 * f.kick;
 	float sun = smoothstep(sunR, sunR - 0.004, length(sunP));
 	float bands = step(0.5, fract(sunP.y * 28.0 - f.t * 0.6)) + step(0.04, sunP.y + 0.02);
 	colour += mix(neon(f.hue + 0.02), neon(f.hue + 0.3), clamp(sunP.y / sunR * 0.5 + 0.5, 0.0, 1.0))

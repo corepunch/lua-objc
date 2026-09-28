@@ -6,7 +6,13 @@
 fragment float4 visualizer(ShaderVertex in [[stage_in]], constant ShaderInputs &inputs [[buffer(0)]]) {
 	Frame f;
 	f.t = inputs.time;
-	f.aspect = inputs.size.x / max(inputs.size.y, 1.0);
+	// The stage, or the whole view before Lua has measured one.
+	float4 stage = float4(inputs.values[16], inputs.values[17], inputs.values[18], inputs.values[19]);
+	if (stage.z <= 0.0 || stage.w <= 0.0) stage = float4(0.0, 0.0, 1.0, 1.0);
+	float viewAspect = inputs.size.x / max(inputs.size.y, 1.0);
+	f.aspect = viewAspect * stage.z / stage.w;
+	f.centre = stage.xy + stage.zw * 0.5;
+	f.unit = float2(viewAspect, 1.0) / stage.w;
 	f.level = inputs.values[0];
 	f.kick = inputs.values[1];
 	f.hue = inputs.values[2];
@@ -29,9 +35,10 @@ fragment float4 visualizer(ShaderVertex in [[stage_in]], constant ShaderInputs &
 		colour = mix(colour, scene(int(inputs.values[9]), inputs, uv, f), w) * (1.0 + 0.6 * sin(w * 3.14159));
 	}
 
-	// Finish: soft vignette, fine scanlines and grain for a filmic surface.
-	float2 v = uv - 0.5;
-	colour *= 1.0 - dot(v, v) * 1.1;
+	// Finish: a soft vignette around the stage, fine scanlines and grain
+	// for a filmic surface.
+	float2 v = uv - f.centre;
+	colour *= max(1.0 - dot(v, v) * 1.1, 0.3);
 	colour *= 0.94 + 0.06 * sin(uv.y * inputs.size.y * 1.5);
 	colour += (hash21(uv * inputs.size + fract(f.t) * 91.0) - 0.5) * 0.035;
 	colour = colour / (1.0 + colour * 0.35); // gentle tone map keeps highlights from clipping

@@ -61,6 +61,13 @@ dispatcher and the entry point
 ([`shaders/Main.metal`](shaders/Main.metal)) into one `<ShaderView>` program,
 so any two scenes can crossfade.
 
+Scenes compose around the **stage**, the main view rect: the part of the
+picture between the toolbar and the top of the panels (or the mini player's
+transport bar). The controller measures it from each window's layout and
+packs it into the shader header; `stagePoint(uv, frame)` gives a point in
+stage heights centred on it, so the horizon runs through the middle of the
+stage rather than the window, and the picture continues behind the panels.
+
 | File | Role |
 |---|---|
 | `Model.lua` | Parts and controls (the single source for the pads and fill bars), the current style's ranges, labels and supported parts |

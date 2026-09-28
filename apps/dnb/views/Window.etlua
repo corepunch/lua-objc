@@ -28,10 +28,10 @@
 	</Toolbar>
 	<ZStack maxWidth="infinity" maxHeight="infinity">
 		<%- partial("Visualizer.etlua", {program = program}) %>
-		<VStack padding="20" spacing="16" alignment="leading" maxWidth="infinity" maxHeight="infinity">
+		<VStack id="content" padding="20" spacing="16" alignment="leading" maxWidth="infinity" maxHeight="infinity">
 			<%- partial("NowPlaying.etlua", nowPlaying) %>
 			<Spacer />
-			<HStack spacing="16" alignment="bottom" maxWidth="infinity" fixedSize="vertical">
+			<HStack id="panels" spacing="16" alignment="bottom" maxWidth="infinity" fixedSize="vertical">
 				<%- partial("Parts.etlua", {groups = partGroups}) %>
 				<GlassEffect cornerRadius="24" maxWidth="infinity" maxHeight="infinity">
 					<HStack padding="18" spacing="24" alignment="top" maxWidth="infinity">

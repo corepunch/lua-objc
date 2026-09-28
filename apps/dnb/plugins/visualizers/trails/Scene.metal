@@ -5,7 +5,7 @@ constant float TRAIL_SPAN = 1.6; // travel covered by one trail
 // Light trails — ribbons tracing rose curves, their length set by the
 // travelled distance so they stretch as the music gets louder.
 static float3 trailsScene(constant ShaderInputs &inputs, float2 uv, const thread Frame &f) {
-	float2 p = float2((uv.x - 0.5) * f.aspect, 0.5 - uv.y);
+	float2 p = stagePoint(uv, f);
 	float3 colour = float3(0.015, 0.006, 0.04);
 	for (int i = 0; i < TRAILS; i++) {
 		float fi = float(i);

@@ -1,7 +1,7 @@
 // Tunnel — rings rushing past on the beat, the spectrum wrapped around
 // the walls and the whole bore twisting with the bar.
 static float3 tunnelScene(constant ShaderInputs &inputs, float2 uv, const thread Frame &f) {
-	float2 p = float2((uv.x - 0.5) * f.aspect, 0.5 - uv.y);
+	float2 p = stagePoint(uv, f);
 	p += 0.04 * float2(sin(f.t * 0.7), cos(f.t * 0.5));
 	float r = max(length(p), 1e-3);
 	float a = atan2(p.y, p.x) / TAU + 0.5 + 0.08 * sin(f.phase * TAU) + f.t * 0.02;
