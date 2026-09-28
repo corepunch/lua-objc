@@ -1,4 +1,4 @@
-<Window title="<%= title %>" subtitle="<%= subtitle %>" appearance="dark" width="1180" height="860" minWidth="1060" minHeight="780" transparentTitlebar="true" hideTitle="false">
+<Window title="<%= title %>" subtitle="<%= subtitle %>" appearance="dark" width="1180" height="1000" minWidth="1060" minHeight="920" transparentTitlebar="true" hideTitle="false">
 	<Toolbar>
 		<ToolbarItem id="playItem" label="Play" tooltip="Start generating music">
 			<Button id="play" systemImage="play.fill" accessibilityLabel="Play" action="play" />
@@ -31,13 +31,16 @@
 		<VStack id="content" padding="20" spacing="16" alignment="leading" maxWidth="infinity" maxHeight="infinity">
 			<%- partial("NowPlaying.etlua", nowPlaying) %>
 			<Spacer />
-			<GlassEffect id="panels" cornerRadius="24" maxWidth="infinity" fixedSize="vertical">
-				<HStack padding="18" spacing="24" alignment="top" maxWidth="infinity">
-					<% for _, group in ipairs(controlGroups) do -%>
-					<%- partial("Controls.etlua", group) %>
-					<% end -%>
-				</HStack>
-			</GlassEffect>
+			<VStack id="panels" spacing="16" maxWidth="infinity" fixedSize="vertical">
+				<VStack id="timeline" maxWidth="infinity" />
+				<GlassEffect cornerRadius="24" maxWidth="infinity">
+					<HStack padding="18" spacing="24" alignment="top" maxWidth="infinity">
+						<% for _, group in ipairs(controlGroups) do -%>
+						<%- partial("Controls.etlua", group) %>
+						<% end -%>
+					</HStack>
+				</GlassEffect>
+			</VStack>
 		</VStack>
 	</ZStack>
 </Window>

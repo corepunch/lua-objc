@@ -798,6 +798,69 @@ missing:play()
 t.expect(not missing.playing, "a missing output does not raise from the Play button")
 t.expect(missing.refs.detail.text:find("not built", 1, true) ~= nil, "and names the problem")
 
+-- Timeline: the arrangement as rows of blocks around a fixed playhead.
+local Timeline = require("apps.dnb.models.Timeline")
+local tc = dnb(9)
+local track0 = tc.set:track(0)
+local near = Timeline.plans(tc, 20)
+t.assertEqual(#near, 1, "mid-track the timeline shows one track")
+local ending = Timeline.plans(tc, track0.length - 4)
+t.assertEqual(#ending, 2, "near its end the next track comes into view")
+t.assertEqual(ending[2].track, 1, "the next track follows")
+local rows = Timeline.rows(near)
+t.assertEqual(#rows, #near[1].lanes, "one row per lane in view")
+t.assertEqual(rows[1].part, "kick", "rows keep the lane order")
+t.assertEqual(rows[1].family, "drums", "and carry the family that tints them")
+local data = Timeline.instances(near, rows)
+local blockCount = #near[1].sections
+for _, lane in ipairs(near[1].lanes) do blockCount = blockCount + #lane.blocks end
+t.assertEqual(#data, blockCount * Timeline.stride, "every section and block is one instance")
+t.assertEqual(data[1] .. " " .. data[2] .. " " .. data[3], "-1 0 8", "the ruler opens on the intro")
+local rowsOk, barsOk = true, true
+for i = 1, #data, Timeline.stride do
+	if data[i] < -1 or data[i] >= #rows then rowsOk = false end
+	if data[i + 1] < 0 or data[i + 2] <= 0 then barsOk = false end
+end
+t.expect(rowsOk and barsOk, "instances sit on real rows at real bars")
+local later = Timeline.instances(ending, Timeline.rows(ending))
+local nextStarts = false
+for i = 1, #later, Timeline.stride do
+	if later[i] == -1 and later[i + 1] == track0.length then nextStarts = true end
+end
+t.expect(nextStarts, "the next track's ruler starts where this one ends")
+t.assertEqual(Timeline.headline(near, 20), "Breakdown in 28 bars", "the headline names the next section change")
+t.assertEqual(Timeline.headline(near, 47), "Breakdown in 1 bar", "in bars")
+t.assertEqual(Timeline.headline(ending, track0.length - 4), "Next track in 4 bars", "and the next track from the outro")
+local values = Timeline.values(20.5, 0.7, 12)
+t.assertEqual(values[1] .. " " .. values[2] .. " " .. values[3], "20.5 0.7 12", "values carry the playhead, its speed and rows")
+
+local timelineApp = Controller.new({seed = 9, output = fakeOutput(1024), async = function() end})
+timelineApp:createWindow()
+local canvas = timelineApp.timeline.refs.timelineCanvas
+t.expect(canvas ~= nil, "the window hosts the arrangement strip")
+t.assertEqual(#canvas.draws, 1, "blocks draw as one instanced draw")
+t.assertEqual(canvas.draws[1].instances, #Timeline.instances(Timeline.plans(timelineApp.composer, 0),
+	Timeline.rows(Timeline.plans(timelineApp.composer, 0))) // Timeline.stride, "one instance per block and section")
+t.assertEqual(canvas.values[1] .. " " .. canvas.values[2], "0 0", "stopped, the playhead rests on the first bar")
+t.assertEqual(timelineApp.timeline.refs.timelineNext.text, "Build-up in 8 bars", "the header names what comes next")
+local r, _, b = require("AppKitNative")._shaderPixel(canvas, 400, 100, 150, 2)
+t.expect(b > 0.8 and r < 0.2, "the intro's ruler draws in its tint ahead of the playhead")
+timelineApp:actions().nextTrack()
+t.assertEqual(canvas.values[1], timelineApp.composer:trackStart(1), "Next Track moves the strip to the next track")
+timelineApp:play()
+timelineApp.output:consume(512)
+timelineApp:tick(1 / 60)
+local playing = timelineApp.timeline.refs.timelineCanvas.values
+t.expect(math.abs(playing[2] - 174 / 240) < 1e-9, "playing, the strip scrolls at the tempo")
+timelineApp:stop()
+t.assertEqual(timelineApp.timeline.refs.timelineCanvas.values[2], 0, "stopping freezes it")
+timelineApp:actions().selectStyle(Styles:index("techno") - 1)
+t.expect(timelineApp.timelineKey:find(tostring(timelineApp.composer), 1, true) == 1,
+	"a new style's lanes replace the old rows")
+t.assertEqual(timelineApp.timeline.refs.timelineCanvas.frame.size.height,
+	10 + #timelineApp.timelineRows * 10, "the strip grows or shrinks to its rows")
+t.expect(timelineApp.timeline.refs.timelineCanvas.frame.size.width > 400, "and keeps its full width")
+
 -- Native plugin: queue bookkeeping without starting the audio device.
 local plugin = require("App").loadNativePlugin(assert(package.searchpath("AudioStream", package.cpath)), "AudioStream")
 local stream = plugin.open(44100, 8)
