@@ -7,15 +7,16 @@
 			<Button id="stop" systemImage="stop.fill" accessibilityLabel="Stop" action="stop" />
 		</ToolbarItem>
 		<ToolbarSpacer />
-		<ToolbarItem id="newTrack" label="New Track" icon="shuffle" tooltip="New key, progression, groove and bass line" action="newTrack" />
+		<ToolbarItem id="nextTrack" label="Next Track" icon="forward.end.fill" tooltip="Mix into the next track of the set" action="nextTrack" />
+		<ToolbarItem id="newSet" label="New Set" icon="shuffle" tooltip="Start a new endless set from a new seed" action="newSet" />
 	</Toolbar>
 	<ZStack maxWidth="infinity" maxHeight="infinity">
 		<%- partial("Backdrop.etlua", {}) %>
 		<VStack padding="20" spacing="16" alignment="leading" maxWidth="infinity" maxHeight="infinity">
 			<%- partial("Stage.etlua", nowPlaying) %>
-			<HStack spacing="16" alignment="top" maxWidth="infinity">
+			<HStack spacing="16" alignment="top" maxWidth="infinity" fixedSize="vertical">
 				<%- partial("Parts.etlua", {groups = partGroups}) %>
-				<GlassEffect cornerRadius="20" maxWidth="infinity">
+				<GlassEffect cornerRadius="20" maxWidth="infinity" maxHeight="infinity">
 					<HStack padding="18" spacing="24" alignment="top" maxWidth="infinity">
 						<% for _, group in ipairs(controlGroups) do -%>
 						<%- partial("Controls.etlua", group) %>

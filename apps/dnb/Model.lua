@@ -4,6 +4,8 @@
 local Model = {}
 Model.__index = Model
 
+-- Every group has the same number of entries, so the pads and fill bars
+-- render as complete grids.
 Model.partGroups = {
 	{title = "Drums", parts = {
 		{id = "kick", label = "Kick"},
@@ -12,16 +14,25 @@ Model.partGroups = {
 		{id = "hats", label = "Hi-hats"},
 		{id = "ride", label = "Ride"},
 		{id = "percussion", label = "Perc"},
+		{id = "amen", label = "Amen"},
 	}},
 	{title = "Music", parts = {
 		{id = "sub", label = "Sub"},
 		{id = "reese", label = "Reese"},
 		{id = "pads", label = "Pads"},
+		{id = "keys", label = "Keys"},
 		{id = "stabs", label = "Stabs"},
+		{id = "arp", label = "Arp"},
+		{id = "lead", label = "Lead"},
 	}},
 	{title = "Structure", parts = {
 		{id = "arrangement", label = "Arrange"},
 		{id = "fills", label = "Fills"},
+		{id = "risers", label = "Risers"},
+		{id = "halftime", label = "Half-time"},
+		{id = "modulate", label = "Modulate"},
+		{id = "throws", label = "Throws"},
+		{id = "chops", label = "Chops"},
 	}},
 }
 
@@ -32,7 +43,9 @@ Model.controlGroups = {
 		{id = "tempo", label = "Tempo", min = 160, max = 180, default = 174, step = 1,
 			format = function(v) return string.format("%d BPM", v) end},
 		{id = "energy", label = "Energy", min = 0, max = 1, default = 0.65, format = percent},
+		{id = "complexity", label = "Complexity", min = 0, max = 1, default = 0.5, format = percent},
 		{id = "swing", label = "Swing", min = 0, max = 0.5, default = 0.12, format = percent},
+		{id = "humanize", label = "Humanize", min = 0, max = 1, default = 0.35, format = percent},
 	}},
 	{title = "Sound", controls = {
 		{id = "cutoff", label = "Filter", min = 0, max = 1, default = 0.5, format = percent},
@@ -91,7 +104,7 @@ function Model:formatted(id)
 	return controlsById[id].format(self:value(id))
 end
 
--- A new seed gives a new track: key, progressions, grooves and bass lines.
+-- A new seed gives a new set: every track, key, groove and melody in it.
 function Model:reseed(seed)
 	self.seed = seed
 end

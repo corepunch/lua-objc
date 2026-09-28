@@ -13,7 +13,8 @@ local VIEWS = "apps/dnb/views/"
 -- leaves many refills of headroom before the device would run dry.
 local PLAYBACK = {sampleRate = 44100, bufferSeconds = 0.3, frameInterval = 1 / 60}
 
-local SECTION_TITLES = {intro = "Intro", build = "Build-up", drop = "Drop", breakdown = "Breakdown"}
+local SECTION_TITLES = {intro = "Intro", build = "Build-up", drop = "Drop", breakdown = "Breakdown",
+	outro = "Outro", halftime = "Half-time", blend = "Mixing in"}
 
 local Controller = {}
 Controller.__index = Controller
@@ -42,9 +43,10 @@ end
 function Controller:nowPlaying(bar, fraction)
 	local playing = bar ~= nil
 	bar = bar or self.composer:bar(0, self.model)
+	local title = bar.blend and "blend" or bar.halftime and "halftime" or bar.section
 	return {
-		section = playing and SECTION_TITLES[bar.section] or "Ready to play",
-		detail = bar.key .. " · " .. bar.progression,
+		section = playing and SECTION_TITLES[title] or "Ready to play",
+		detail = string.format("Track %d · %s · %s · %s", bar.track + 1, bar.style, bar.key, bar.progression),
 		position = string.format("Bar %d of %d", bar.sectionBar + 1, bar.sectionLength),
 		progress = (bar.sectionBar + (fraction or 0)) / bar.sectionLength,
 		tempo = self.model:formatted("tempo"):match("%d+"),
@@ -80,7 +82,8 @@ function Controller:actions()
 	local actions = {
 		play = function() self:play() end,
 		stop = function() self:stop() end,
-		newTrack = function() self:newTrack() end,
+		nextTrack = function() self:nextTrack() end,
+		newSet = function() self:newSet() end,
 	}
 	for _, group in ipairs(Model.partGroups) do
 		for _, part in ipairs(group.parts) do
@@ -165,8 +168,19 @@ function Controller:stop()
 	self:setTransport(false)
 end
 
--- A new seed takes over at the next bar line and starts its own intro.
-function Controller:newTrack()
+-- Skips to the next track of the set at the next bar line; its intro mixes
+-- in under the current tune as it would from a DJ.
+function Controller:nextTrack()
+	local synth = self.synth
+	local current = synth.composerBar
+	if #synth.timeline > 0 then current = synth.timeline[#synth.timeline].index end
+	local track = self.composer:trackAt(current)
+	synth.composerBar = self.composer:trackStart(track.index + 1)
+	if not self.playing and self.refs then self.refs.detail.text = self:nowPlaying(self.composer:bar(synth.composerBar, self.model)).detail end
+end
+
+-- A new seed takes over at the next bar line and starts a whole new set.
+function Controller:newSet()
 	self.model:reseed(self.model.seed + 1)
 	self.composer = Composer.new(self.model.seed)
 	self.synth:setComposer(self.composer)

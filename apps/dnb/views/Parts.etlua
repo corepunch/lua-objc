@@ -5,8 +5,11 @@ local tints = {Drums = "systemPink", Music = "systemPurple", Structure = "system
 local symbols = {
 	kick = "circle.fill", snare = "burst.fill", ghosts = "sparkles", hats = "circle.dotted",
 	ride = "circle.circle", percussion = "hands.clap.fill", sub = "speaker.wave.3.fill",
-	reese = "waveform", pads = "cloud.fill", stabs = "bolt.fill",
-	arrangement = "square.stack.3d.up.fill", fills = "wand.and.stars",
+	amen = "opticaldisc.fill", reese = "waveform", pads = "cloud.fill", keys = "pianokeys",
+	stabs = "bolt.fill", arp = "stairs", lead = "music.note",
+	arrangement = "square.stack.3d.up.fill", fills = "wand.and.stars", risers = "arrow.up.right",
+	halftime = "tortoise.fill", modulate = "arrow.up.arrow.down", throws = "dot.radiowaves.right",
+	chops = "scissors",
 }
 -%>
 <GlassEffect cornerRadius="20" maxHeight="infinity">
@@ -16,7 +19,7 @@ local symbols = {
 			<Label text="<%= group.title:upper() %>" size="11" weight="heavy" color="secondary" />
 			<HStack spacing="8">
 				<% for _, part in ipairs(group.parts) do -%>
-				<Toggle id="part_<%= part.id %>" style="button" label="<%= part.label %>" systemImage="<%= symbols[part.id] %>" tint="<%= tint %>" value="<%= part.on and "true" or "false" %>" width="86" height="62" onChange="part_<%= part.id %>" />
+				<Toggle id="part_<%= part.id %>" style="button" label="<%= part.label %>" systemImage="<%= symbols[part.id] %>" symbolSize="16" tint="<%= tint %>" value="<%= part.on and "true" or "false" %>" width="84" height="62" onChange="part_<%= part.id %>" />
 				<% end -%>
 			</HStack>
 		</VStack>
