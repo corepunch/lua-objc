@@ -2130,7 +2130,7 @@ local function layoutPatch(node, attrs, changed, ns)
     if dimensions then
         local props = layoutProps(attrs)
         table.insert(ops, function()
-            view.fixedWidth, view.fixedHeight = props.fixedWidth or 0, props.fixedHeight or 0
+            view.fixedWidth, view.fixedHeight = props.fixedWidth, props.fixedHeight
             view.minWidth, view.minHeight = props.minWidth or 0, props.minHeight or 0
             view.maxWidth, view.maxHeight = props.maxWidth, props.maxHeight
             view.fillWidth, view.fillHeight = props.fillWidth == true, props.fillHeight == true
