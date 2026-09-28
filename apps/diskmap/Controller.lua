@@ -40,6 +40,7 @@ local CommandsController = require("apps.diskmap.controllers.CommandsController"
 local SnapshotController = require("apps.diskmap.controllers.SnapshotController")
 local WatchlistController = require("apps.diskmap.controllers.WatchlistController")
 local WatchedController = require("apps.diskmap.controllers.WatchedController")
+local OnboardingController = require("apps.diskmap.controllers.OnboardingController")
 local Controller = {}; Controller.__index = Controller
 local SCAN_ANIMATION = ns.Animation.snappy()
 local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
@@ -199,6 +200,7 @@ end
 -- Everything a page needs to present the current scan, in one value.
 function Controller:state()
 	return {disk = self.scan.disk, capacity = self.capacity, snapshotCount = self.snapshotCount, changes = self.snapshotChanges or self.changes,
+		fullDiskAccess = self.fullDiskAccess,
 		query = self.query, mock = self.mock, volumeName = self.mock and rawget(self.service, "label") or "Startup Disk",
 		status = (rawget(self.service, "badge") and (rawget(self.service, "badge") .. " · ") or "") .. (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status}
 end
@@ -310,6 +312,8 @@ end
 -- After each measurement: refresh capacity and snapshots for hidden space,
 -- and record category totals when history is on.
 function Controller:scanFinished()
+	local access = optional(self.service, "hasFullDiskAccess")
+	self.fullDiskAccess = access and access() or nil
 	local capacity = optional(self.service, "volumeCapacity")
 	self.capacity = capacity and capacity(self.model.home) or nil
 	local snapshots = optional(self.service, "snapshotCount")
@@ -465,7 +469,13 @@ function Controller:createWindow()
 			self:updateRows()
 		end)
 	else
-		self.scan:start()
+		-- First launch without Full Disk Access explains it before the first
+		-- scan and starts the scan once access is granted or declined.
+		self.onboarding = OnboardingController.new(self.service, function(granted)
+			self.fullDiskAccess = granted or nil
+			self.scan:start()
+		end)
+		if self.onboarding:needed() then self.onboarding:open(self.window) else self.scan:start() end
 	end
 	local scope = ns.Scope.current()
 	if scope then scope:add(self.scan); scope:add({dispose = function()

@@ -111,6 +111,17 @@ Learn — with one question per destination:
   each with numbered steps and a button to the page or command it describes.
   The keyboard-shortcut topic is generated from the menu bar.
 
+**First launch** without Full Disk Access opens one sheet before the first
+scan: measure everything, move nothing without asking. Open System Settings
+goes straight to Full Disk Access (with the "Not in the list? Click +" note).
+While the sheet is open Diskmap checks access every second, and once it is on
+the sheet closes and the first scan starts by itself. After Settings opens, a
+Restart Diskmap link starts a new instance and quits only once it runs, for
+when macOS applies access only after a restart. Continue Without Access is
+always there. The Overview then lists up to six folders the scan could not
+read ("and N more") with a button to the setting. Access is detected by
+reading the TCC database, which never makes macOS ask.
+
 The menu bar keeps every classic macOS entry (About, Settings…, Services,
 Hide, Quit; Close; Undo through Find; toolbar, sidebar and full screen;
 Minimize, Zoom and the window list) and adds **Go** (every page, ⌘1–⌘9, with a

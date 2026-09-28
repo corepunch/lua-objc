@@ -505,6 +505,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_runningApplications", bridge_running_applications},
 	{"_applicationPath", bridge_application_path},
 	{"_fileIdentity", bridge_file_identity},
+	{"_relaunch", bridge_relaunch},
 	{"_clipboardCopy", bridge_AppKit_clipboard_copy},
 	{"_alert", bridge_AppKit_alert},
 	{"_diskSpace", bridge_AppKit_disk_space},

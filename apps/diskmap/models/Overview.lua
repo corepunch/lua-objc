@@ -127,6 +127,28 @@ function Overview.hidden(disk, capacity, snapshotCount, readErrors, cloudBytes, 
 	return rows
 end
 
+-- The folders the last scan could not read, for the notice that offers Full
+-- Disk Access: at most `limit` paths, shown from the home folder, and how
+-- many more there were.
+Overview.unreadableLimit = 6
+function Overview.unreadable(model, limit)
+	limit = limit or Overview.unreadableLimit
+	local paths, seen, total = {}, {}, 0
+	local home = model.home or ""
+	for _, issue in ipairs(model.scan and model.scan.issues or {}) do
+		local path = issue.path
+		if type(path) == "string" and not seen[path] then
+			seen[path] = true
+			total = total + 1
+			if #paths < limit then
+				if home ~= "" and path:sub(1, #home + 1) == home .. "/" then path = "~" .. path:sub(#home + 1) end
+				table.insert(paths, path)
+			end
+		end
+	end
+	return {paths = paths, more = math.max(0, total - #paths), total = total}
+end
+
 -- Headline for the Clean Up call to action. Rebuildable and review-first
 -- candidates stay separate; they are never summed into one "safe" number.
 function Overview.reclaim(model)

@@ -148,6 +148,7 @@ function System.emptyTrash()
 	return os.execute("/usr/bin/osascript -e 'tell application \"Finder\" to empty trash'")
 end
 function System.showError(title, message) ns.Alert {title = title, message = message} end
+function System.relaunch(onFailure) ns.relaunch(onFailure) end
 -- What a cleanup checks just before each move (models/Verify.lua).
 System.fileIdentity = ns.fileIdentity
 function System.cleanupProbes()
