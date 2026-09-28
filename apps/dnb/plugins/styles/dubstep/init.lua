@@ -42,95 +42,111 @@ local function buildCycle(kit, rng, track)
 	}
 end
 
-local Composer = {}
-Composer.__index = Composer
+-- The arrangement ------------------------------------------------------------
 
-function Composer:cycle(track, index)
-	local kit = self.kit
-	return self.set:cycle(track, index, function(rng) return buildCycle(kit, rng, track) end)
+local function arrange(kit, track, cycles)
+	local lanes = kit.lanes(track)
+	kit.blendIn(lanes, track)
+	for _, section in ipairs(track.sections) do
+		local id, cycle = section.id, cycles[section.cycle]
+		if id == "intro" then
+			lanes:within("kick", section, 0, nil, "kick")
+			lanes:within("snare", section, 0, nil, "snare")
+			lanes:within("hats", section, 0, nil, "hats")
+			lanes:fill("pads", section.start, section.length, "pads.long")
+			lanes:phraseEnds("throws", section, 4, "throw")
+		elseif id == "build" then
+			lanes:within("snare", section, 0, nil, "roll.snare")
+			lanes:within("hats", section, 0, nil, "hats")
+			lanes:within("sub", section, 4, nil, "sub.hold")
+			lanes:within("pads", section, 0, nil, "pads.long")
+		elseif id == "drop" then
+			lanes:within("kick", section, 0, nil, "kick.drop")
+			lanes:within("snare", section, 0, nil, "snare")
+			lanes:within("ghosts", section, 0, nil, "ghosts")
+			lanes:within("hats", section, 0, nil, "hats.drop")
+			lanes:within("percussion", section, 0, nil, "perc")
+			lanes:within("sub", section, 0, nil, "sub.wobble")
+			lanes:within("reese", section, 0, nil, "reese")
+			if cycle.stabsOn then lanes:within("stabs", section, 0, nil, "stabs") end
+			lanes:phraseEnds("throws", section, 4, "throw")
+		elseif id == "breakdown" then
+			lanes:within("sub", section, 0, nil, "sub.hold")
+			lanes:within("pads", section, 0, nil, "pads.long")
+			lanes:within("lead", section, 0, nil, "lead")
+		elseif id == "outro" then
+			lanes:within("kick", section, 0, nil, "kick")
+			lanes:within("snare", section, 0, nil, "snare")
+			lanes:within("hats", section, 0, nil, "hats")
+			lanes:within("sub", section, 0, nil, "sub.hold")
+			lanes:phraseEnds("throws", section, 4, "throw")
+		end
+	end
+	kit.punctuate(lanes, track, function() return "fill.roll" end)
+	return lanes:done()
 end
-function Composer:trackAt(n) return self.set:trackAt(n) end
-function Composer:trackStart(k) return self.set:trackStart(k) end
 
-function Composer:chordOf(track, n)
-	local cycle = self:cycle(track, track.cycles - 1)
-	return self.kit.chordAt(track.mode, cycle.progression, cycle.voicings, track.tonic, n, 4),
-		self.kit.keyName(track.tonic, track.mode)
+-- The patterns -----------------------------------------------------------------
+
+local function kick(drop)
+	return function(_, ctx)
+		for _, step in ipairs(ctx.cycle.kicks) do ctx.hit(step, "kick", step == 0 and 1 or 0.85) end
+		if drop and ctx.complexity > 0.6 then ctx.hit(11, "kick", 0.7) end
+	end
 end
 
-function Composer:bar(n, settings)
-	local kit, set = self.kit, self.set
-	local on = function(part) return settings:plays(part) end
-	local energy, complexity = settings:value("energy"), settings:value("complexity")
-	local humanize = settings:value("humanize")
-	local at = set:locate(n, settings)
-	local section, sectionBar, phraseBar = at.section, at.sectionBar, at.phraseBar
-	local track, tonic, flavour, mode = at.track, at.tonic, at.track.flavour, at.track.mode
-	local cycle = self:cycle(track, at.cycleIndex)
-	local chord = kit.chordAt(mode, cycle.progression, cycle.voicings, tonic, n, 4)
-	local bar = kit.newBar(n, at, kit.random(self.seed, 2, n))
-	bar.progression, bar.chord = kit.progressionName(mode, cycle.progression), chord
-	local function hit(step, voice, gain, extra) return bar:hit(step, voice, gain, humanize, extra) end
-	local groove = at.full or at.outro or section == "intro"
-	local breakdown = section == "breakdown"
-	local throwBar = on("throws") and phraseBar % 4 == 3
+-- Triplet-feel hats: every third 16th, the swagger over the half time.
+local function hats(drop)
+	return function(_, ctx)
+		for step = 0, 15, 3 do ctx.hit(step, "hat", step % 6 == 0 and 0.5 or 0.3) end
+		if drop and ctx.energy > 0.6 then ctx.hit(14, "openHat", 0.4) end
+	end
+end
 
-	if on("kick") and groove then
-		for _, step in ipairs(cycle.kicks) do hit(step, "kick", step == 0 and 1 or 0.85) end
-		if complexity > 0.6 and at.full then hit(11, "kick", 0.7) end
-	end
-	if on("snare") and groove then
-		hit(8, "snare", 1, {throw = throwBar or nil})
-		if at.fillBar then for step = 12, 15.5, 0.5 do hit(step, "snare", 0.35 + 0.1 * (step - 12)) end end
-	end
-	if on("ghosts") and at.full then
-		for _, step in ipairs({6, 14, 15}) do if complexity > 0.3 or step == 14 then hit(step, "ghost", 0.25) end end
-	end
-	if on("hats") and not breakdown then
-		-- Triplet-feel hats: every third 16th, the swagger over the half time.
-		for step = 0, 15, 3 do hit(step, "hat", step % 6 == 0 and 0.5 or 0.3) end
-		if energy > 0.6 and at.full then hit(14, "openHat", 0.4) end
-	end
-	if on("percussion") and at.full then hit(12, "rim", 0.3) end
-	kit.punctuate(bar, at, settings, "snare", humanize)
-
+local PATTERNS = {
+	{id = "kick", part = "kick", render = kick(false)},
+	{id = "kick.drop", part = "kick", render = kick(true)},
+	-- The snare on beat three.
+	{id = "snare", part = "snare", render = function(_, ctx) ctx.hit(8, "snare", 1, {throw = ctx.throw}) end},
+	{id = "fill.roll", part = "fills", render = function(_, ctx)
+		for step = 12, 15.5, 0.5 do ctx.hit(step, "snare", 0.35 + 0.1 * (step - 12)) end
+	end},
+	{id = "ghosts", part = "ghosts", render = function(_, ctx)
+		for _, step in ipairs({6, 14, 15}) do if ctx.complexity > 0.3 or step == 14 then ctx.hit(step, "ghost", 0.25) end end
+	end},
+	{id = "hats", part = "hats", render = hats(false)},
+	{id = "hats.drop", part = "hats", render = hats(true)},
+	{id = "perc", part = "percussion", render = function(_, ctx) ctx.hit(12, "rim", 0.3) end},
 	-- The wobble: long notes whose LFO restarts on each, at the note's rate.
-	if at.full and (on("sub") or on("reese")) then
-		for _, note in ipairs(cycle.phrases[phraseBar % 4 + 1]) do
-			if note.step == 0 or energy > 0.3 then
-				table.insert(bar.bass, {step = note.step, length = note.length, note = chord.root + note.interval,
-					reese = flavour.wobble, wobble = note.rate * (0.5 + energy)})
+	{id = "sub.wobble", part = "sub", bars = 4, render = function(bar, ctx)
+		for _, note in ipairs(ctx.cycle.phrases[ctx.phraseBar % 4 + 1]) do
+			if note.step == 0 or ctx.energy > 0.3 then
+				table.insert(bar.bass, {step = note.step, length = note.length, note = ctx.chord.root + note.interval,
+					reese = ctx.flavour.wobble, wobble = note.rate * (0.5 + ctx.energy), subOnly = true})
 			end
 		end
-	elseif (breakdown or at.outro or (section == "build" and sectionBar >= 4)) and on("sub") then
-		table.insert(bar.bass, {step = 0, length = 16, note = chord.root, subOnly = true})
-	end
-
-	if on("pads") and n % 4 == 0 and (breakdown or section == "intro" or section == "build") then bar.pad = chord.notes end
-	kit.blend(bar, at, settings, set, ARRANGEMENT.blendBars, function(t, m) return self:chordOf(t, m) end)
-	if on("stabs") and cycle.stabsOn and at.full then
-		table.insert(bar.stabs, {step = 6, notes = chord.notes, throw = throwBar or nil})
-		if complexity > 0.5 then table.insert(bar.stabs, {step = 14, notes = chord.notes}) end
-	end
-	if on("lead") and breakdown then
-		for _, note in ipairs(cycle.lead[phraseBar % 4 + 1]) do
+	end},
+	{id = "stabs", part = "stabs", render = function(bar, ctx)
+		table.insert(bar.stabs, {step = 6, notes = ctx.chord.notes, throw = ctx.throw})
+		if ctx.complexity > 0.5 then table.insert(bar.stabs, {step = 14, notes = ctx.chord.notes}) end
+	end},
+	-- A dub melody an octave down, through the breakdown.
+	{id = "lead", part = "lead", bars = 4, render = function(bar, ctx)
+		for _, note in ipairs(ctx.cycle.lead[ctx.phraseBar % 4 + 1]) do
 			table.insert(bar.lead, {step = note.step, length = note.length, glide = note.glide, gain = 0.6,
-				note = kit.leadPitch(mode, tonic, chord.degree, note.offset) - 12})
+				note = ctx.kit.leadPitch(ctx.mode, ctx.tonic, ctx.chord.degree, note.offset) - 12})
 		end
-	end
-	return bar
-end
+	end},
+}
 
 return {
-	api = 1,
+	api = 2,
 	title = "Dubstep",
 	symbol = "speaker.wave.3.fill",
 	summary = "Deep, Brostep and Riddim wobble at half time",
 	tempo = {min = 136, max = 150, default = 140},
 	defaults = {energy = 0.7, complexity = 0.5, swing = 0.05, humanize = 0.2,
 		cutoff = 0.42, wobble = 0.85, drive = 0.6, space = 0.35},
-	parts = {"kick", "snare", "ghosts", "hats", "percussion", "sub", "reese", "pads", "stabs", "lead",
-		"arrangement", "fills", "risers", "modulate", "throws"},
 	sound = {
 		kick = {base = 44, sweep = 140, sweepTime = 0.022, decay = 0.26, drive = 2.4, click = 0.4, length = 0.5},
 		snare = {tone = 200, bodyDecay = 0.07, noiseDecay = 0.16, noise = 0.55},
@@ -138,9 +154,9 @@ return {
 		stab = {decay = 0.18, octave = 0},
 		mix = {duckDepth = 0.35, reese = 0.4, sub = 0.6, delayFeedback = 0.5, delaySteps = 3},
 	},
-	create = function(kit, seed)
-		return setmetatable({kit = kit, seed = seed, set = kit.newSet(seed, {
-			flavours = FLAVOURS, modes = {"phrygian", "minor"}, arrangement = ARRANGEMENT, modulations = {0, -2},
-		})}, Composer)
-	end,
+	set = {flavours = FLAVOURS, modes = {"phrygian", "minor"}, arrangement = ARRANGEMENT, modulations = {0, -2}},
+	barsPerChord = 4,
+	material = buildCycle,
+	arrange = arrange,
+	patterns = PATTERNS,
 }

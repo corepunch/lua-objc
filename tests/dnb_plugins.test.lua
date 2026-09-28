@@ -27,7 +27,6 @@ for _, style in ipairs(list) do
 	seenTitles[name] = true
 	t.expect(style.tempo.min < style.tempo.default and style.tempo.default < style.tempo.max, name .. " tempo range holds its default")
 	for id in pairs(style.defaults or {}) do t.expect(controlIds[id], name .. " defaults name real controls") end
-	for _, id in ipairs(style.parts or {}) do t.expect(partIds[id], name .. " plays real parts: " .. id) end
 	local ok, err = pcall(Synth.sound, style.sound)
 	t.expect(ok, name .. " sound overrides real Synth fields " .. tostring(err))
 
@@ -79,21 +78,44 @@ for _, style in ipairs(list) do
 			+ (bar.pad and 1 or 0)
 	end
 	t.assertEqual(anything, 0, name .. " is silent playing no parts")
-	if style.parts then
-		local supported = {}
-		for _, id in ipairs(style.parts) do supported[id] = true end
-		local breaks = 0
-		for n = 0, 120 do breaks = breaks + #a:bar(n, model).breaks end
-		if not supported.amen then t.assertEqual(breaks, 0, name .. " plays no break without the Amen part") end
+
+	-- The plan: every track is arranged as lanes of blocks from the seed
+	-- alone, the bars play what the lanes hold, and the style's patterns
+	-- cover every lane it arranges.
+	local lanesUsed, bars = {}, {breaks = 0}
+	for k = 0, 5 do
+		local plan, twin = a:arrangement(k), Styles:create(style.id, 21):arrangement(k)
+		t.assertEqual(plan.length, a.set:track(k).length, name .. " arranges each track whole")
+		t.assertEqual(#plan.lanes, #twin.lanes, name .. " track " .. k .. " arranges the same lanes from the seed")
+		local kick
+		for i, lane in ipairs(plan.lanes) do
+			lanesUsed[lane.part] = true
+			t.assertEqual(#lane.blocks, #twin.lanes[i].blocks, name .. " " .. lane.part .. " lane is reproducible")
+			if lane.part == "kick" then kick = lane end
+		end
+		for i, section in ipairs(plan.sections) do
+			local sounding = 0
+			for _, lane in ipairs(plan.lanes) do
+				if Model.family[lane.part] ~= "structure" and plan:plays(lane.part, i) then sounding = sounding + 1 end
+			end
+			t.expect(sounding > 0, name .. " track " .. k .. " " .. section.id .. " has something to play")
+			if section.id == "drop" then
+				t.expect(plan:plays("kick", i) and plan:plays("sub", i) and plan:plays("reese", i),
+					name .. " drops have kick, sub and reese blocks")
+			elseif section.id == "breakdown" then
+				t.expect(not plan:plays("kick", i), name .. " breakdowns have no kick")
+			end
+		end
+		t.expect(kick ~= nil, name .. " plays a kick lane")
 	end
+	for n = 0, 200 do bars.breaks = bars.breaks + #a:bar(n, model).breaks end
+	if not lanesUsed.amen then t.assertEqual(bars.breaks, 0, name .. " plays no break without an Amen lane") end
 
 	-- It sounds: a drop renders in range.
-	local flat = Model.new(21, style)
-	local drop = {}
-	for _, id in ipairs(style.parts or Model.parts) do if id ~= "arrangement" then table.insert(drop, id) end end
-	flat:setParts(drop)
-	local synth = Synth.new(flat, SR, style.sound)
+	local synth = Synth.new(model, SR, style.sound)
 	synth:setComposer(Styles:create(style.id, 21))
+	synth.composerBar = a:arrangement(0).sections[3].start
+	t.assertEqual(a:arrangement(0).sections[3].id, "drop", name .. " drops after its intro and build")
 	local out = {}
 	synth:render(out, SR // 2)
 	local peak, sum = 0, 0
@@ -105,20 +127,49 @@ for _, style in ipairs(list) do
 	t.expect(peak <= 1 and math.sqrt(sum / #out) > 0.05, name .. " drop is audible and soft-clipped")
 end
 
--- Model: styles narrow ranges, set defaults and name the parts they play.
+-- Model: styles narrow ranges and set defaults; the arrangement, not the
+-- style's manifest, decides what plays.
 local techno = Styles:get("techno")
 local model = Model.new(3, Styles:get("dnb"))
-t.expect(model:plays("amen") and model:plays("halftime"), "a style naming no parts plays them all")
+model:setParts({"kick"})
 model:setStyle(techno)
 t.assertEqual(model:value("tempo"), 132, "a style sets its default tempo")
 t.assertEqual(model:setValue("tempo", 175), 140, "and clamps to its range")
 t.assertEqual(model:value("swing"), 0, "control defaults follow the style")
-t.expect(not model:plays("amen") and model:plays("kick"), "a style plays only its own parts")
-model:setStyle(Styles:get("dnb"))
-t.expect(model:plays("amen"), "switching style brings its parts back")
+t.expect(not model:plays("amen") and model:plays("kick"), "a style change keeps which lanes sound")
+local amenStyles = {}
 for _, style in ipairs(Styles:list()) do
-	for _, id in ipairs(style.parts or {}) do t.expect(partIds[id], style.title .. " names a real part: " .. id) end
+	for _, pattern in ipairs(style.patterns) do
+		t.expect(partIds[pattern.part], style.title .. " pattern " .. pattern.id .. " plays a real part")
+		if pattern.part == "amen" then amenStyles[style.id] = true end
+	end
 end
+t.expect(amenStyles.dnb and amenStyles.breakbeat and not amenStyles.techno, "only breakbeat styles carry the Amen")
+
+-- A broken plan is refused before it plays: overlapping blocks, unknown
+-- patterns, a pattern on the wrong lane, sections that leave a gap.
+local Arrangement = require("apps.dnb.host.Arrangement")
+local patterns = Styles:create("dnb", 1).patterns
+local function plan(lanes, sections)
+	return function()
+		Arrangement.new({track = 0, start = 0, length = 8, lanes = lanes,
+			sections = sections or {{id = "drop", start = 0, length = 8, cycle = 0}}}, patterns, Model.parts)
+	end
+end
+local ok = pcall(plan({{part = "kick", blocks = {{start = 0, length = 8, pattern = "kick.drop"}}}}))
+t.expect(ok, "a plain plan is accepted")
+t.assertThrows(plan({{part = "kick", blocks = {{start = 0, length = 4, pattern = "kick.drop"},
+	{start = 2, length = 4, pattern = "kick.drop"}}}}), "blocks never overlap in a lane")
+t.assertThrows(plan({{part = "kick", blocks = {{start = 0, length = 4, pattern = "kick.cowbell"}}}}),
+	"blocks play known patterns")
+t.assertThrows(plan({{part = "snare", blocks = {{start = 0, length = 4, pattern = "kick.drop"}}}}),
+	"a lane plays only its part's patterns")
+t.assertThrows(plan({{part = "kick", blocks = {{start = 6, length = 4, pattern = "kick.drop"}}}}),
+	"blocks stay inside the track")
+t.assertThrows(plan({{part = "kick", blocks = {{start = 0, length = 4, pattern = "kick.drop", render = print}}}}),
+	"blocks are plain data")
+t.assertThrows(plan({}, {{id = "drop", start = 0, length = 4, cycle = 0}}), "sections cover every bar")
+t.assertThrows(plan({{part = "cowbell", blocks = {}}}), "lanes are real parts")
 
 -- Synth: sound overrides, the clap and a sound change on the bar line.
 t.assertThrows(function() Synth.sound({bass = {wub = 1}}) end, "unknown sound fields are rejected")
@@ -336,7 +387,6 @@ t.assertEqual(app.window.title, "Drum & Bass", "the window is titled by its styl
 app:actions().selectStyle(Styles:index("techno") - 1)
 t.assertEqual(app.style.id, "techno", "the style menu switches styles")
 t.assertEqual(app.window.title, "Techno", "and retitles the window")
-t.expect(not app.model:plays("amen"), "the new style's parts play")
 t.assertEqual(app.refs.control_tempo.maxValue, techno.tempo.max, "the tempo slider takes the style's range")
 t.assertEqual(app.refs.value_tempo.text, "132 BPM", "and its tempo")
 t.assertEqual(app.refs.tempo.text, "132", "the header shows the new tempo")
