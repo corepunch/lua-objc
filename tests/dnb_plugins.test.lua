@@ -11,7 +11,7 @@ local Controller = require("apps.dnb.Controller")
 local SR = 11025 -- synthesis is rate-independent; a low rate keeps the suite fast
 
 local partIds, controlIds = {}, {}
-for _, group in ipairs(Model.partGroups) do for _, part in ipairs(group.parts) do partIds[part.id] = true end end
+for _, id in ipairs(Model.parts) do partIds[id] = true end
 for _, group in ipairs(Model.controlGroups) do for _, control in ipairs(group.controls) do controlIds[control.id] = true end end
 local VOICES = {kick = true, snare = true, ghost = true, clap = true, hat = true, openHat = true, ride = true,
 	crash = true, rim = true, conga = true, shaker = true, tomHigh = true, tomMid = true, tomLow = true}
@@ -28,7 +28,6 @@ for _, style in ipairs(list) do
 	t.expect(style.tempo.min < style.tempo.default and style.tempo.default < style.tempo.max, name .. " tempo range holds its default")
 	for id in pairs(style.defaults or {}) do t.expect(controlIds[id], name .. " defaults name real controls") end
 	for _, id in ipairs(style.parts or {}) do t.expect(partIds[id], name .. " plays real parts: " .. id) end
-	for id in pairs(style.labels or {}) do t.expect(partIds[id], name .. " relabels real parts") end
 	local ok, err = pcall(Synth.sound, style.sound)
 	t.expect(ok, name .. " sound overrides real Synth fields " .. tostring(err))
 
@@ -71,7 +70,7 @@ for _, style in ipairs(list) do
 
 	-- Parts it does not play produce nothing.
 	local muted = Model.new(21, style)
-	for id in pairs(partIds) do muted:setEnabled(id, false) end
+	muted:setParts({})
 	local silent = Styles:create(style.id, 21)
 	local anything = 0
 	for n = 0, 80 do
@@ -79,7 +78,7 @@ for _, style in ipairs(list) do
 		anything = anything + #bar.hits + #bar.bass + #bar.stabs + #bar.keys + #bar.arp + #bar.lead + #bar.breaks
 			+ (bar.pad and 1 or 0)
 	end
-	t.assertEqual(anything, 0, name .. " is silent with every part muted")
+	t.assertEqual(anything, 0, name .. " is silent playing no parts")
 	if style.parts then
 		local supported = {}
 		for _, id in ipairs(style.parts) do supported[id] = true end
@@ -90,7 +89,9 @@ for _, style in ipairs(list) do
 
 	-- It sounds: a drop renders in range.
 	local flat = Model.new(21, style)
-	flat:setEnabled("arrangement", false)
+	local drop = {}
+	for _, id in ipairs(style.parts or Model.parts) do if id ~= "arrangement" then table.insert(drop, id) end end
+	flat:setParts(drop)
 	local synth = Synth.new(flat, SR, style.sound)
 	synth:setComposer(Styles:create(style.id, 21))
 	local out = {}
@@ -104,21 +105,20 @@ for _, style in ipairs(list) do
 	t.expect(peak <= 1 and math.sqrt(sum / #out) > 0.05, name .. " drop is audible and soft-clipped")
 end
 
--- Model: styles narrow ranges, set defaults, relabel and disable pads.
+-- Model: styles narrow ranges, set defaults and name the parts they play.
 local techno = Styles:get("techno")
 local model = Model.new(3, Styles:get("dnb"))
-model:setEnabled("pads", false)
+t.expect(model:plays("amen") and model:plays("halftime"), "a style naming no parts plays them all")
 model:setStyle(techno)
 t.assertEqual(model:value("tempo"), 132, "a style sets its default tempo")
 t.assertEqual(model:setValue("tempo", 175), 140, "and clamps to its range")
 t.assertEqual(model:value("swing"), 0, "control defaults follow the style")
-t.expect(not model:enabled("pads"), "part switches survive a style change")
-t.assertEqual(model:label("reese"), "Acid", "styles relabel pads")
-t.assertEqual(model:label("kick"), "Kick", "unlabelled pads keep their name")
-t.expect(not model:supports("amen") and model:supports("kick"), "styles disable parts they do not play")
-local plain = Model.new(3)
-t.expect(plain:supports("amen"), "without a style every part plays")
-t.assertThrows(function() model:supports("cowbell") end, "unknown parts are rejected")
+t.expect(not model:plays("amen") and model:plays("kick"), "a style plays only its own parts")
+model:setStyle(Styles:get("dnb"))
+t.expect(model:plays("amen"), "switching style brings its parts back")
+for _, style in ipairs(Styles:list()) do
+	for _, id in ipairs(style.parts or {}) do t.expect(partIds[id], style.title .. " names a real part: " .. id) end
+end
 
 -- Synth: sound overrides, the clap and a sound change on the bar line.
 t.assertThrows(function() Synth.sound({bass = {wub = 1}}) end, "unknown sound fields are rejected")
@@ -336,8 +336,7 @@ t.assertEqual(app.window.title, "Drum & Bass", "the window is titled by its styl
 app:actions().selectStyle(Styles:index("techno") - 1)
 t.assertEqual(app.style.id, "techno", "the style menu switches styles")
 t.assertEqual(app.window.title, "Techno", "and retitles the window")
-t.assertEqual(app.refs.part_reese.title, "Acid", "pads take the style's labels")
-t.expect(not app.refs.part_amen.enabled and app.refs.part_kick.enabled, "pads the style does not play are disabled")
+t.expect(not app.model:plays("amen"), "the new style's parts play")
 t.assertEqual(app.refs.control_tempo.maxValue, techno.tempo.max, "the tempo slider takes the style's range")
 t.assertEqual(app.refs.value_tempo.text, "132 BPM", "and its tempo")
 t.assertEqual(app.refs.tempo.text, "132", "the header shows the new tempo")

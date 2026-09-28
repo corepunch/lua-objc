@@ -1,6 +1,6 @@
 -- The style extension point: every genre the generator plays is a plugin in
 -- plugins/styles/<id>/init.lua. Its manifest names and tunes the style
--- (tempo range, control defaults, the parts it plays, pad labels, sound);
+-- (tempo range, control defaults, the parts it plays, sound);
 -- `create(kit, seed)` returns a composer with `bar(n, settings)`,
 -- `trackAt(n)` and `trackStart(k)`. The kit is StyleKit, read-only.
 local Plugins = require("Plugins")
@@ -16,8 +16,7 @@ local Styles = Plugins.extensionPoint({
 		summary = "string",
 		tempo = "table",     -- {min, max, default} in BPM
 		defaults = "table?", -- control values the style starts from
-		parts = "table?",    -- part ids the style plays; others are disabled
-		labels = "table?",   -- pad labels by part id, e.g. {reese = "Acid"}
+		parts = "table?",    -- Model.parts ids the style plays; omitted, it plays them all
 		sound = "table?",    -- Synth.sound overrides
 		create = "function",
 	},

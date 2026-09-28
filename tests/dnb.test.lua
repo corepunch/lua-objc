@@ -12,6 +12,20 @@ local Controller = require("apps.dnb.Controller")
 
 local SR = 22050 -- half rate keeps synthesis tests fast; the code is rate-independent
 
+-- Every part but `...`, as a style that leaves them out names its parts.
+local function except(...)
+	local drop, ids = {}, {}
+	for _, id in ipairs({...}) do drop[id] = true end
+	for _, id in ipairs(Model.parts) do if not drop[id] then table.insert(ids, id) end end
+	return ids
+end
+-- A model whose style plays only `ids`.
+local function playing(ids)
+	local m = Model.new(9)
+	m:setParts(ids)
+	return m
+end
+
 -- Model: defaults, clamping and stepping.
 local model = Model.new(5)
 t.assertEqual(model:value("tempo"), 174, "tempo defaults to 174 BPM")
@@ -20,16 +34,17 @@ t.assertEqual(model:setValue("tempo", 171.6), 172, "tempo snaps to whole BPM")
 t.assertEqual(model:setValue("tempo", 400), 180, "tempo clamps to its maximum")
 t.assertEqual(model:setValue("energy", -1), 0, "energy clamps to its minimum")
 t.assertEqual(model:formatted("energy"), "0%", "percent controls format as percent")
-t.expect(model:enabled("kick") and model:enabled("pads"), "every part starts enabled")
-model:setEnabled("kick", false)
-t.expect(not model:enabled("kick"), "a part can be muted")
+t.expect(model:plays("kick") and model:plays("pads"), "without a style every part plays")
+model:setParts({"kick", "snare"})
+t.expect(model:plays("kick") and not model:plays("pads"), "a part set names exactly what plays")
 t.assertEqual(model:value("swing"), 0.12, "unrelated controls keep their values")
-t.assertThrows(function() model:setEnabled("cowbell", true) end, "unknown parts are rejected")
+t.assertThrows(function() model:plays("cowbell") end, "unknown parts are rejected")
+t.assertThrows(function() model:setParts({"cowbell"}) end, "a part set rejects unknown parts")
 t.assertThrows(function() model:setValue("pitch", 1) end, "unknown controls are rejected")
--- The pads and fill bars render as complete grids.
-for _, group in ipairs(Model.partGroups) do
-	t.assertEqual(#group.parts, #Model.partGroups[1].parts, group.title .. " fills its row of pads")
+for _, id in ipairs({"drums", "bass", "chords", "melody", "pump"}) do
+	t.assertEqual(model:formatted(id), "100%", id .. " starts at the style's own level")
 end
+-- The sliders render as a complete grid.
 for _, group in ipairs(Model.controlGroups) do
 	t.assertEqual(#group.controls, #Model.controlGroups[1].controls, group.title .. " fills its column of bars")
 end
@@ -143,28 +158,22 @@ for n = 16, 31 do
 end
 t.expect(highCount > lowCount, "energy adds hits and bass notes")
 
-local flat = Model.new(9)
-flat:setEnabled("arrangement", false)
+local flat = playing(except("arrangement"))
 for _, n in ipairs({0, 8, 50, 57, first.length + 3}) do
 	t.assertEqual(composer:bar(n, flat).section, "drop", "without arrangement every bar is a drop")
 end
 t.assertEqual(composer:bar(first.length + 3, flat).track, 1, "and the set still moves on")
-local muted = Model.new(9)
-for _, group in ipairs(Model.partGroups) do
-	for _, part in ipairs(group.parts) do muted:setEnabled(part.id, false) end
-end
+local muted = playing({})
 for _, n in ipairs({20, 60, second.start, second.start + 20}) do
 	local empty = composer:bar(n, muted)
 	t.assertEqual(#empty.hits + #empty.bass + #empty.stabs + #empty.breaks + #empty.keys + #empty.arp + #empty.lead, 0,
-		"muting every part leaves an empty bar")
+		"a style playing no parts composes empty bars")
 	t.assertEqual(empty.pad, nil, "muted pads are not voiced")
 end
-local noFills = Model.new(9)
-noFills:setEnabled("fills", false)
+local noFills = playing(except("fills"))
 t.assertEqual(#hits(composer:bar(16, noFills), "crash"), 0, "fills off removes crashes")
 t.expect(composer:bar(12, noFills).riser ~= nil, "risers are their own part")
-local noRisers = Model.new(9)
-noRisers:setEnabled("risers", false)
+local noRisers = playing(except("risers"))
 t.assertEqual(composer:bar(12, noRisers).riser, nil, "risers off removes the build's riser")
 t.assertEqual(composer:bar(16, noRisers).riser, nil, "and the drop's downlifter")
 t.expect(composer:bar(16, settings).riser.from > composer:bar(16, settings).riser.to, "a drop opens on a downlifter")
@@ -193,15 +202,13 @@ t.assertEqual(#jungleDrop.breaks, 16, "jungle drops layer the break")
 t.expect(#hits(jungleDrop, "kick") > 0, "under the programmed kick")
 t.assertEqual(#composer:bar(neuro.start + 17, settings).breaks, 0, "neurofunk leaves the break out")
 t.assertEqual(#composer:bar(liquid.start + 17, settings).breaks, 0, "liquid saves it for a later drop")
-local noAmen = Model.new(9)
-noAmen:setEnabled("amen", false)
-t.assertEqual(#composer:bar(jungle.start + 17, noAmen).breaks, 0, "the Amen pad mutes the break")
+local noAmen = playing(except("amen"))
+t.assertEqual(#composer:bar(jungle.start + 17, noAmen).breaks, 0, "a style without the Amen leaves the break out")
 t.expect(#hits(composer:bar(jungle.start + 1, noAmen), "kick") > 0, "and the intro falls back to the kit")
 
 -- Chops: complexity rearranges slices; off, the break plays straight.
-local chopped, straight = Model.new(9), Model.new(9)
+local chopped, straight = Model.new(9), playing(except("chops"))
 chopped:setValue("complexity", 1)
-straight:setEnabled("chops", false)
 local edits = 0
 for n = jungle.start + 16, jungle.start + 47 do
 	local plain = composer:bar(n, straight)
@@ -266,8 +273,7 @@ for k = 0, 5 do
 	t.assertEqual(composer:bar(track.start + 16, settings).key, track.key, "a track's first drop is in its home key")
 end
 t.expect(moved, "modulation moves the key in later cycles")
-local home = Model.new(9)
-home:setEnabled("modulate", false)
+local home = playing(except("modulate"))
 t.assertEqual(composer:bar(72, home).key, first.key, "modulate off keeps the home key")
 
 -- Half-time: a switch-up inside the drop with the snare on beat three.
@@ -281,8 +287,7 @@ local ht = composer:bar(htBar, settings)
 t.expect(ht.halftime, "the switch-up is marked for the header")
 t.assertEqual(table.concat(hits(ht, "snare"), ","), "8", "half-time puts the snare on beat three")
 t.expect(#ht.stabs == 0 and #ht.lead == 0 and #ht.breaks == 0, "and thins the arrangement")
-local noHalftime = Model.new(9)
-noHalftime:setEnabled("halftime", false)
+local noHalftime = playing(except("halftime"))
 t.assertEqual(table.concat(hits(composer:bar(htBar, noHalftime), "snare"), ","), "4,12", "half-time off keeps the two-step")
 
 -- Fills vary by phrase.
@@ -337,8 +342,7 @@ for n = 16, 23 do
 	end
 end
 t.expect(thrown, "a phrase ends on a thrown snare")
-local noThrows = Model.new(9)
-noThrows:setEnabled("throws", false)
+local noThrows = playing(except("throws"))
 for _, h in ipairs(composer:bar(19, noThrows).hits) do t.expect(not h.throw, "throws off sends no echoes") end
 
 -- Arp and lead, in tracks whose cycles use them.
@@ -390,8 +394,7 @@ local function stats(out)
 	end
 	return peak, math.sqrt(sum / #out)
 end
-local full = Model.new(9)
-full:setEnabled("arrangement", false)
+local full = playing(except("arrangement"))
 local out = render(full, SR * 2)
 local peak, rms = stats(out)
 t.assertEqual(#out, SR * 4, "render writes interleaved stereo frames")
@@ -403,33 +406,31 @@ for i = 1, #out, 97 do if out[i] ~= again[i] then identical = false break end en
 t.expect(identical, "rendering is deterministic")
 
 local silent = render(muted, SR)
-t.assertEqual(select(1, stats(silent)), 0, "muting every part renders silence")
+t.assertEqual(select(1, stats(silent)), 0, "no parts render silence")
 
-local drumsOnly = Model.new(9)
-drumsOnly:setEnabled("arrangement", false)
-for _, id in ipairs({"sub", "reese", "pads", "stabs", "arp", "lead"}) do drumsOnly:setEnabled(id, false) end
-local kickOnly = Model.new(9)
-kickOnly:setEnabled("arrangement", false)
-for _, group in ipairs(Model.partGroups) do
-	for _, part in ipairs(group.parts) do
-		if part.id ~= "kick" and part.id ~= "arrangement" then kickOnly:setEnabled(part.id, false) end
-	end
-end
+local drumsOnly = playing(except("arrangement", "sub", "reese", "pads", "stabs", "arp", "lead"))
+local kickOnly = playing({"kick"})
 kickOnly:setValue("space", 0)
 kickOnly:setValue("humanize", 0)
 local kickOut = render(kickOnly, 256)
 t.expect(math.abs(kickOut[2 * 64 - 1]) > 0.05, "the kick sounds on the first downbeat")
 
+-- The Mix faders scale the style's balance: the Drums fader silences a
+-- drums-only render and leaves a bass-only one alone.
+local function level(parts, fader, value)
+	local m = playing(parts)
+	m:setValue("space", 0)
+	m:setValue(fader, value)
+	return select(2, stats(render(m, SR // 2)))
+end
+t.assertEqual(level({"kick", "snare"}, "drums", 0), 0, "the Drums fader at zero silences the kit")
+t.expect(level({"kick", "snare"}, "drums", 1.5) > level({"kick", "snare"}, "drums", 1), "and above 100% boosts it")
+t.assertEqual(level({"sub"}, "drums", 0), level({"sub"}, "drums", 1), "the Drums fader leaves the bass alone")
+t.assertEqual(level({"sub"}, "bass", 0), 0, "the Bass fader silences the sub")
+
 -- A thrown snare echoes through the delay even with Space at zero.
 local function echoTail(throws)
-	local m = Model.new(9)
-	m:setEnabled("arrangement", false)
-	for _, group in ipairs(Model.partGroups) do
-		for _, part in ipairs(group.parts) do
-			if part.id ~= "snare" and part.id ~= "arrangement" then m:setEnabled(part.id, false) end
-		end
-	end
-	m:setEnabled("throws", throws)
+	local m = playing(throws and {"snare", "throws"} or {"snare"})
 	m:setValue("space", 0)
 	local synth = Synth.new(m, SR)
 	synth:setComposer(dnb(9))
@@ -444,13 +445,7 @@ end
 t.expect(echoTail(true) > echoTail(false) * 4, "a throw echoes into the next bar")
 
 -- Arp and lead reach the output on their own.
-local melodic = Model.new(9)
-melodic:setEnabled("arrangement", false)
-for _, group in ipairs(Model.partGroups) do
-	for _, part in ipairs(group.parts) do
-		if part.id ~= "lead" and part.id ~= "arp" and part.id ~= "arrangement" then melodic:setEnabled(part.id, false) end
-	end
-end
+local melodic = playing({"lead", "arp"})
 do
 	local synth = Synth.new(melodic, SR)
 	synth:setComposer(dnb(9))
@@ -464,12 +459,7 @@ end
 -- The Amen reaches the output on its own, pitched up to tempo. Played
 -- straight it is one continuous sampler voice; chops start new slices.
 local function soloRender(part, start, frames, configure)
-	local m = Model.new(9)
-	for _, group in ipairs(Model.partGroups) do
-		for _, p in ipairs(group.parts) do
-			if p.id ~= part and p.id ~= "arrangement" and p.id ~= "chops" then m:setEnabled(p.id, false) end
-		end
-	end
+	local m = playing({part, "arrangement", "chops"})
 	if configure then configure(m) end
 	local synth = Synth.new(m, SR)
 	synth:setComposer(dnb(9))
@@ -484,7 +474,7 @@ local function soloRender(part, start, frames, configure)
 	return out, voices, synth
 end
 do
-	local out, voices, synth = soloRender("amen", jungle.start, SR * 2, function(m) m:setEnabled("chops", false) end)
+	local out, voices, synth = soloRender("amen", jungle.start, SR * 2, function(m) m:setParts({"amen", "arrangement"}) end)
 	local peak, level = stats(out)
 	t.expect(level > 0.02 and peak <= 1, "the break is audible and bounded")
 	t.assertEqual(voices, 1, "a straight break plays as one continuous voice")
@@ -657,10 +647,12 @@ local window = app:createWindow()
 t.expect(window ~= nil, "the controller creates its window")
 t.assertEqual(app.refs.section.text, "Ready to play", "the header waits for playback")
 t.expect(app.refs.detail.text:find(dnb(9).set:track(0).key, 1, true) ~= nil, "the header names the key before playing")
-t.expect(app.refs.control_tempo ~= nil and app.refs.part_kick ~= nil, "controls render from the model tables")
-t.expect(app.refs.part_lead ~= nil and app.refs.part_throws ~= nil and app.refs.control_humanize ~= nil,
-	"every grid cell renders")
-t.assertEqual(app.refs.part_kick.image.size.width, 19, "pad symbols are a quarter larger than the label font")
+for _, group in ipairs(Model.controlGroups) do
+	for _, control in ipairs(group.controls) do
+		t.expect(app.refs["control_" .. control.id] ~= nil, control.id .. " renders from the model tables")
+	end
+end
+t.expect(app.refs.part_kick == nil, "the style, not the listener, decides which parts play")
 t.expect(not app.refs.stop.enabled, "stop is disabled while stopped")
 t.assertEqual(loops, 1, "the window starts one display loop")
 t.assertEqual(#app.refs.visualizer.values, Visuals.header + 2 * 40, "the shader receives header values, bands and peaks")
@@ -689,9 +681,9 @@ t.assertEqual(app.model:value("cutoff"), 0.25, "a slider moves its model value")
 t.assertEqual(app.refs.value_cutoff.text, "25%", "and its value label")
 app:setControl("tempo", 165.4)
 t.assertEqual(app.refs.value_tempo.text, "165 BPM", "tempo shows the snapped value")
-app:actions().part_snare(false)
-t.expect(not app.model:enabled("snare"), "a checkbox mutes its part")
-t.assertEqual(app.model:value("cutoff"), 0.25, "toggling a part leaves sliders alone")
+app:actions().control_drums(0.5)
+t.assertEqual(app.refs.value_drums.text, "50%", "a Mix fader shows its level")
+t.assertEqual(app.model:value("cutoff"), 0.25, "moving a fader leaves other sliders alone")
 
 local seed = app.model.seed
 t.expect(app.refs.detail.text:find("Track 1 · ", 1, true) == 1, "the header names the track and its style")
@@ -786,3 +778,13 @@ for _ = 1, 20 do if fired then break end bridge._runLoopTick(0.02, "eventTrackin
 t.expect(fired, "timers run in the event-tracking run loop mode")
 
 os.exit(t.summary() and 0 or 1)
+
+-- The ride is a wash that dies away, not a sustained ringing tone.
+local ride = Synth.new(Model.new(9), SR).drums.ride
+local function rms(from, to)
+	local sum = 0
+	for i = from, to do sum = sum + ride[i] * ride[i] end
+	return math.sqrt(sum / (to - from + 1))
+end
+local window = SR // 20
+t.expect(rms(#ride - window, #ride) < rms(1, window) * 0.05, "the ride's tail decays below 5% of its attack")

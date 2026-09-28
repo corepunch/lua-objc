@@ -1,42 +1,17 @@
--- Generator settings: the style, which parts play and how the sound is
--- shaped. The part and control tables are the single source of truth for
--- the pads and sliders the window renders, the styles' gating and the
--- Synth's mix. A style (a plugin manifest) narrows the tempo range, sets
--- the controls' starting values, relabels pads and disables the parts it
--- does not play.
+-- Generator settings: the style, the parts it plays and how the sound is
+-- shaped. The control table is the single source of truth for the sliders
+-- the window renders and the Synth's mix. A style (a plugin manifest)
+-- narrows the tempo range, sets the controls' starting values and names the
+-- parts it plays; the song, not the listener, decides what plays.
 local Model = {}
 Model.__index = Model
 
--- Every group has the same number of entries, so the pads and fill bars
--- render as complete grids.
-Model.partGroups = {
-	{title = "Drums", parts = {
-		{id = "kick", label = "Kick"},
-		{id = "snare", label = "Snare"},
-		{id = "ghosts", label = "Ghosts"},
-		{id = "hats", label = "Hi-hats"},
-		{id = "ride", label = "Ride"},
-		{id = "percussion", label = "Perc"},
-		{id = "amen", label = "Amen"},
-	}},
-	{title = "Music", parts = {
-		{id = "sub", label = "Sub"},
-		{id = "reese", label = "Reese"},
-		{id = "pads", label = "Pads"},
-		{id = "keys", label = "Keys"},
-		{id = "stabs", label = "Stabs"},
-		{id = "arp", label = "Arp"},
-		{id = "lead", label = "Lead"},
-	}},
-	{title = "Structure", parts = {
-		{id = "arrangement", label = "Arrange"},
-		{id = "fills", label = "Fills"},
-		{id = "risers", label = "Risers"},
-		{id = "halftime", label = "Half-time"},
-		{id = "modulate", label = "Modulate"},
-		{id = "throws", label = "Throws"},
-		{id = "chops", label = "Chops"},
-	}},
+-- Every part a composer or the Synth can gate on: instruments and the
+-- structural moves (arrangement, fills, risers…) a style may leave out.
+Model.parts = {
+	"kick", "snare", "ghosts", "hats", "ride", "percussion", "amen",
+	"sub", "reese", "pads", "keys", "stabs", "arp", "lead",
+	"arrangement", "fills", "risers", "halftime", "modulate", "throws", "chops",
 }
 
 -- `format` renders the value label beside each slider.
@@ -55,21 +30,28 @@ Model.controlGroups = {
 		{id = "wobble", label = "Wobble", min = 0, max = 1, default = 0.3, format = percent},
 		{id = "drive", label = "Drive", min = 0, max = 1, default = 0.35, format = percent},
 		{id = "space", label = "Space", min = 0, max = 1, default = 0.35, format = percent},
+		{id = "pump", label = "Pump", min = 0, max = 2, default = 1, format = percent},
+	}},
+	-- Channel faders over the style's own balance: 100% is the mix as the
+	-- style designed it.
+	{title = "Mix", controls = {
+		{id = "drums", label = "Drums", min = 0, max = 1.5, default = 1, format = percent},
+		{id = "bass", label = "Bass", min = 0, max = 1.5, default = 1, format = percent},
+		{id = "chords", label = "Chords", min = 0, max = 1.5, default = 1, format = percent},
+		{id = "melody", label = "Melody", min = 0, max = 1.5, default = 1, format = percent},
 		{id = "volume", label = "Volume", min = 0, max = 1, default = 0.8, format = percent},
 	}},
 }
 
-local partsById, controlsById = {}, {}
-for _, group in ipairs(Model.partGroups) do
-	for _, part in ipairs(group.parts) do partsById[part.id] = part end
-end
+local known, controlsById = {}, {}
+for _, id in ipairs(Model.parts) do known[id] = true end
 for _, group in ipairs(Model.controlGroups) do
 	for _, control in ipairs(group.controls) do controlsById[control.id] = control end
 end
 
 function Model.new(seed, style)
-	local self = setmetatable({parts = {}, values = {}, ranges = {}, seed = seed or 1}, Model)
-	for id in pairs(partsById) do self.parts[id] = true end
+	local self = setmetatable({values = {}, ranges = {}, seed = seed or 1}, Model)
+	self:setParts(Model.parts)
 	for id, control in pairs(controlsById) do
 		self.values[id] = control.default
 		self.ranges[id] = {min = control.min, max = control.max}
@@ -78,10 +60,11 @@ function Model.new(seed, style)
 	return self
 end
 
--- Takes a style's tempo range and control defaults; part switches keep what
--- the user set.
+-- Takes a style's parts, tempo range and control defaults; a style that
+-- names no parts plays them all.
 function Model:setStyle(style)
 	self.style = style
+	self:setParts(style.parts or Model.parts)
 	local tempo = style.tempo
 	assert(tempo.min < tempo.max and tempo.default >= tempo.min and tempo.default <= tempo.max, "bad tempo range")
 	self.ranges.tempo = {min = tempo.min, max = tempo.max}
@@ -97,28 +80,17 @@ function Model:range(id)
 	return range.min, range.max
 end
 
--- Whether the current style plays a part; without a style every part plays.
-function Model:supports(id)
-	assert(partsById[id], "unknown part: " .. tostring(id))
-	local parts = self.style and self.style.parts
-	if not parts then return true end
-	for _, part in ipairs(parts) do if part == id then return true end end
-	return false
+function Model:setParts(ids)
+	self.playing = {}
+	for _, id in ipairs(ids) do
+		assert(known[id], "unknown part: " .. tostring(id))
+		self.playing[id] = true
+	end
 end
 
-function Model:label(id)
-	local labels = self.style and self.style.labels
-	return labels and labels[id] or partsById[id].label
-end
-
-function Model:enabled(id)
-	assert(partsById[id], "unknown part: " .. tostring(id))
-	return self.parts[id]
-end
-
-function Model:setEnabled(id, on)
-	assert(partsById[id], "unknown part: " .. tostring(id))
-	self.parts[id] = on and true or false
+function Model:plays(id)
+	assert(known[id], "unknown part: " .. tostring(id))
+	return self.playing[id] == true
 end
 
 function Model:value(id)

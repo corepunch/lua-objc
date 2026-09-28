@@ -58,7 +58,7 @@ end
 function Composer:bar(n, settings)
 	local kit, set = self.kit, self.set
 	local amen = kit.amen
-	local on = function(part) return settings:enabled(part) end
+	local on = function(part) return settings:plays(part) end
 	local energy, complexity = settings:value("energy"), settings:value("complexity")
 	local humanize = settings:value("humanize")
 	local at = set:locate(n, settings)
@@ -148,7 +148,6 @@ return {
 		cutoff = 0.35, wobble = 0.1, drive = 0.55, space = 0.3},
 	parts = {"kick", "snare", "ghosts", "hats", "ride", "percussion", "amen", "sub", "reese", "pads", "stabs", "lead",
 		"arrangement", "fills", "risers", "modulate", "throws", "chops"},
-	labels = {reese = "Acid"},
 	sound = {
 		kick = {base = 52, sweep = 120, sweepTime = 0.02, decay = 0.18, drive = 2, click = 0.4, length = 0.35},
 		snare = {tone = 210, overtone = 350, bodyDecay = 0.06, noiseDecay = 0.13, noise = 0.5},

@@ -18,10 +18,11 @@ mix between, each new intro mixed under the outgoing tune.
 | UK Garage | 2-Step, Speed Garage, Future Garage | 128–138 |
 
 The visualizer fills the window, running under the Liquid Glass toolbar;
-the now-playing cards, the lit pads (after the Logic Pro Drum Machine
-Designer) and the fill bars float over it in glass. The Style menu switches
-genre on the next bar line; pads a style does not play are disabled and some
-are relabelled (Clap, Acid, Wobble). The Scene menu pins one visualizer scene
+the now-playing cards and the Groove, Sound and Mix sliders float over it in
+glass. Each style decides which parts its songs play; the listener shapes
+them with the sliders, and the Mix faders (Drums, Bass, Chords, Melody)
+scale the style's own balance. The Style menu switches genre on the next bar
+line. The Scene menu pins one visualizer scene
 or leaves the director to pick one per section and phrase. Next Track mixes
 into the next track of the set, New Set starts a new seed, and Mini Player
 (`pip.enter`) shrinks the app into a floating 16:9 window, after the Music
@@ -41,7 +42,7 @@ folder whose `init.lua` returns a manifest. It runs isolated: pure standard
 libraries only, with everything else coming from a read-only host API.
 
 **Style plugins** (`plugins/styles/<id>/`) declare a title, symbol, tempo
-range, control defaults, the parts they play, pad labels and a `sound` that
+range, control defaults, the parts they play and a `sound` that
 tunes the Synth. `create(kit, seed)` returns a composer whose `bar(n,
 settings)` is a pure function of seed, bar and settings. The kit
 ([`host/StyleKit.lua`](host/StyleKit.lua)) is the shared functionality:
@@ -79,7 +80,7 @@ stage rather than the window, and the picture continues behind the panels.
 
 | File | Role |
 |---|---|
-| `Model.lua` | Parts and controls (the single source for the pads and fill bars), the current style's ranges, labels and supported parts |
+| `Model.lua` | Parts and controls (the single source for the sliders), the current style's ranges and the parts it plays |
 | `Controller.lua` | Window, transport, Style and Scene menus, the mini player, and the 60 Hz display loop |
 | `host/Styles.lua`, `host/StyleKit.lua` | The style extension point and its host API |
 | `host/Visualizers.lua` | The visualizer extension point, the program it links and the draws that show a scene on a layer |
@@ -89,7 +90,7 @@ stage rather than the window, and the picture continues behind the panels.
 | `models/Amen.lua` | The recreated Amen break's four-bar pattern and slice bookkeeping |
 | `models/Visuals.lua` | Spectrum smoothing, peak holds, kick and snare flashes, the scene director with crossfades, and the shader value layout |
 | `services/AudioOutput.lua` | Speaker output through [AudioStream](../../src/plugins/audio/README.md) |
-| `views/` | Window, now-playing cards, pads, controls, the linked visualizer and the mini player |
+| `views/` | Window, now-playing cards, sliders, the linked visualizer and the mini player |
 
 While playing, the controller tops up a 0.3 s audio queue (the latency for
 control changes), maps the device's played frame to the sounding bar for the

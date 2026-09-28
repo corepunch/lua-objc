@@ -61,19 +61,6 @@ function Controller:nowPlaying(bar, fraction)
 	}
 end
 
-function Controller:partGroups()
-	local groups = {}
-	for _, group in ipairs(Model.partGroups) do
-		local parts = {}
-		for _, part in ipairs(group.parts) do
-			table.insert(parts, {id = part.id, label = self.model:label(part.id), on = self.model:enabled(part.id),
-				supported = self.model:supports(part.id)})
-		end
-		table.insert(groups, {title = group.title, parts = parts})
-	end
-	return groups
-end
-
 function Controller:controlGroups()
 	local groups = {}
 	for _, group in ipairs(Model.controlGroups) do
@@ -98,7 +85,6 @@ function Controller:viewData()
 		sceneIndex = self.visuals.pinned and self.visuals.pinned + 1 or 0,
 		program = Visualizers.program(),
 		nowPlaying = self:nowPlaying(),
-		partGroups = self:partGroups(),
 		controlGroups = self:controlGroups(),
 		actions = self:actions(),
 	}
@@ -116,11 +102,6 @@ function Controller:actions()
 		closeMiniPlayer = function() self:closeMiniPlayer() end,
 		miniPlayerClosed = function() self:miniPlayerClosed() end,
 	}
-	for _, group in ipairs(Model.partGroups) do
-		for _, part in ipairs(group.parts) do
-			actions["part_" .. part.id] = function(on) self.model:setEnabled(part.id, on) end
-		end
-	end
 	for _, group in ipairs(Model.controlGroups) do
 		for _, control in ipairs(group.controls) do
 			actions["control_" .. control.id] = function(value) self:setControl(control.id, value) end
@@ -144,8 +125,8 @@ function Controller:setControl(id, value)
 	if id == "tempo" and self.refs then self.refs.tempo.text = self.model:formatted(id):match("%d+") end
 end
 
--- A style plugin takes over at the next bar line with its own set, sound,
--- tempo range and control defaults; the pads show what it plays.
+-- A style plugin takes over at the next bar line with its own set, parts,
+-- sound, tempo range and control defaults.
 function Controller:selectStyle(index)
 	local style = assert(Styles:list()[index + 1], "no style " .. tostring(index))
 	if style == self.style then return end
@@ -156,12 +137,6 @@ function Controller:selectStyle(index)
 	local refs = self.refs
 	if not refs then return end
 	self.window.title, self.window.subtitle = style.title, style.summary
-	for _, group in ipairs(self:partGroups()) do
-		for _, part in ipairs(group.parts) do
-			local toggle = refs["part_" .. part.id]
-			toggle.title, toggle.enabled = part.label, part.supported
-		end
-	end
 	for _, group in ipairs(self:controlGroups()) do
 		for _, control in ipairs(group.controls) do
 			local slider = refs["control_" .. control.id]

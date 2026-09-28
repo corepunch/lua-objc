@@ -293,9 +293,15 @@ local function renderShared(sr)
 	local drums = {}
 	local shot = shotRenderer(sr, drums, noise)
 	local metal = metalSource(noise)
-	shot("ride", 1.1, function(t, s)
-		local v = metal(t, s, 2.9) * 0.5 + sin(TAU * 3100 * t) * 0.08
-		return v * exp(-t / 0.45) * (t < 0.002 and 1.6 or 1)
+	-- A washy ride: high-passed noise over a quiet metal cluster, with the
+	-- stick's tick at the front. No sustained sine, so it never rings.
+	shot("ride", 0.9, function(t, s)
+		local n = noise()
+		local hp = n - (s.prev or 0)
+		s.prev = n
+		local wash = (hp * 0.32 + metal(t, s, 3.4, 0.2) * 0.22) * exp(-t / 0.28)
+		local tick = t < 0.006 and hp * 0.5 * (1 - t / 0.006) or 0
+		return wash + tick
 	end)
 	shot("crash", 2.0, function(t, s)
 		local n = noise()
@@ -425,10 +431,31 @@ function Synth.new(settings, sampleRate, sound)
 	return self
 end
 
+-- The Mix faders scale the style's own balance: each fader's levels, and
+-- Pump the sidechain depth, which never closes the gate completely.
+local FADERS = {drums = {"drums", "amen"}, bass = {"sub", "reese"}, chords = {"pad", "stab", "keys"},
+	melody = {"arp", "lead"}}
+local MAX_DUCK = 0.95
+
+-- The style's mix under the current fader positions. A level reaches a
+-- sustained voice at once and a one-shot from its next hit.
+function Synth:mixLevels()
+	local settings, mix = self.settings, self.mix or {}
+	for key, value in pairs(self.sound.mix) do mix[key] = value end
+	for fader, keys in pairs(FADERS) do
+		local level = settings:value(fader)
+		for _, key in ipairs(keys) do mix[key] = mix[key] * level end
+	end
+	mix.duckDepth = math.min(MAX_DUCK, mix.duckDepth * settings:value("pump"))
+	self.mix = mix
+	return mix
+end
+
 -- The drum table voices play from: the style's kit, voiced for the
 -- current track's design, over the shared shots.
 function Synth:applySound(sound)
 	self.sound = sound
+	self:mixLevels()
 	self:applyKit()
 end
 
@@ -569,7 +596,7 @@ end
 function Synth:startEvent(e)
 	local sr = self.sr
 	local sound = self.sound
-	local MIX, PAD, KEYS, PLUCK = sound.mix, sound.pad, sound.keys, sound.pluck
+	local MIX, PAD, KEYS, PLUCK = self.mix, sound.pad, sound.keys, sound.pluck
 	if e.kind == "sound" then
 		self:applySound(e.sound)
 	elseif e.kind == "drums" then
@@ -673,7 +700,7 @@ end
 function Synth:renderVoices(first, last)
 	local sr = self.sr
 	local sound = self.sound
-	local MIX, PAD, STAB, KEYS, PLUCK = sound.mix, sound.pad, sound.stab, sound.keys, sound.pluck
+	local MIX, PAD, STAB, KEYS, PLUCK = self.mix, sound.pad, sound.stab, sound.keys, sound.pluck
 	local bus = self.bus
 	local dryL, dryR, duckL, duckR, sendL, sendR = bus.dryL, bus.dryR, bus.duckL, bus.duckR, bus.sendL, bus.sendR
 	local throwL, throwR = bus.throwL, bus.throwR
@@ -894,7 +921,7 @@ end
 function Synth:renderLead(first, last)
 	local l = self.lead
 	if not l.gate and l.env < 1e-5 then return end
-	local MIX, LEAD = self.sound.mix, self.sound.lead
+	local MIX, LEAD = self.mix, self.sound.lead
 	local sr = self.sr
 	local bus = self.bus
 	local duckL, duckR, sendL, sendR, throwL, throwR = bus.duckL, bus.duckR, bus.sendL, bus.sendR, bus.throwL, bus.throwR
@@ -941,11 +968,11 @@ end
 function Synth:renderBass(first, last)
 	local b = self.bass
 	if not b.gate and b.env < 1e-5 then return end
-	local MIX, BASS = self.sound.mix, self.sound.bass
+	local MIX, BASS = self.mix, self.sound.bass
 	local sr = self.sr
 	local settings = self.settings
-	local reeseOn = settings:enabled("reese") and not b.subOnly
-	local subOn = settings:enabled("sub")
+	local reeseOn = settings:plays("reese") and not b.subOnly
+	local subOn = settings:plays("sub")
 	local cutoff = settings:value("cutoff")
 	local wobble = settings:value("wobble")
 	local drive = 1 + settings:value("drive") * 7
@@ -1037,7 +1064,7 @@ end
 -- Master section: sidechain, send effects, soft clip and volume.
 function Synth:mixdown(out, count)
 	local sr = self.sr
-	local MIX = self.sound.mix
+	local MIX = self.mix
 	local bus = self.bus
 	local settings = self.settings
 	local space = settings:value("space")
@@ -1101,6 +1128,7 @@ function Synth:render(out, frames)
 		bus.dryL[k], bus.dryR[k], bus.duckL[k], bus.duckR[k], bus.sendL[k], bus.sendR[k] = 0, 0, 0, 0, 0, 0
 		bus.throwL[k], bus.throwR[k] = 0, 0
 	end
+	self:mixLevels()
 	local blockStart = self.frame
 	local blockEnd = blockStart + frames
 	local cursor = 1

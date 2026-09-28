@@ -355,7 +355,7 @@ end
 --- Everything a composer derives from a bar's place in the set: section,
 --- track, key (with modulation), the phrase position and fill bar.
 function Set:locate(n, settings)
-	local on = function(part) return settings:enabled(part) end
+	local on = function(part) return settings:plays(part) end
 	local A = self.arrangement
 	local section, sectionBar, sectionLength, cycleIndex, track = self:section(n, on("arrangement"))
 	local tonic = (track.tonic + (on("modulate") and self:shift(track, cycleIndex) or 0)) % 12
@@ -423,7 +423,7 @@ end
 --- downlifter out of each impact (Risers), and a roll of `roll` hits
 --- ("snare" or "clap") tightening through the build.
 function StyleKit.punctuate(bar, at, settings, roll, humanize)
-	local on = function(part) return settings:enabled(part) end
+	local on = function(part) return settings:plays(part) end
 	local section, sectionBar, sectionLength = at.section, at.sectionBar, at.sectionLength
 	if on("fills") and (((at.full or at.outro) and sectionBar % 16 == 0) or (section == "breakdown" and sectionBar == 0)) then
 		bar:hit(0, "crash", 0.8)
@@ -448,7 +448,7 @@ end
 --- track's last chords (from `chordOf(track, n)`) keep sounding on the pads
 --- and, for the first half, the sub.
 function StyleKit.blend(bar, at, settings, set, bars, chordOf)
-	local on = function(part) return settings:enabled(part) end
+	local on = function(part) return settings:plays(part) end
 	if at.section ~= "intro" or at.track.index == 0 or at.sectionBar >= bars or not at.arranged then return end
 	local previous = set:track(at.track.index - 1)
 	local chord, key = chordOf(previous, bar.index)
