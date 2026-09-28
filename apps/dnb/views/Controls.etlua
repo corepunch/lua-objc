@@ -1,5 +1,5 @@
 <%
-local tints = {Groove = "systemOrange", Sound = "systemCyan"}
+local tints = {Groove = "systemOrange", Sound = "systemCyan", Mix = "systemPink"}
 local tint = tints[title]
 -%>
 <VStack spacing="12" alignment="leading" maxWidth="infinity">

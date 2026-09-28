@@ -149,11 +149,11 @@ end
 function Composer:trackAt(n) return self.set:trackAt(n) end
 function Composer:trackStart(k) return self.set:trackStart(k) end
 
--- `settings` provides enabled(part) and value(control), as Model does.
+-- `settings` provides plays(part) and value(control), as Model does.
 function Composer:bar(n, settings)
 	local kit, set = self.kit, self.set
 	local amen = kit.amen
-	local on = function(part) return settings:enabled(part) end
+	local on = function(part) return settings:plays(part) end
 	local energy = settings:value("energy")
 	local complexity = settings:value("complexity")
 	local humanize = settings:value("humanize")
