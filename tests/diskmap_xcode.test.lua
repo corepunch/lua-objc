@@ -68,8 +68,25 @@ t.expect(pbxproj:find("ENABLE_USER_SCRIPT_SANDBOXING = NO;", 1, true) ~= nil, "s
 t.expect(pbxproj:find('DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym"; ENABLE_USER_SCRIPT_SANDBOXING = NO; GCC_PREPROCESSOR_DEFINITIONS = LUA_USE_MACOSX; HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/../../vendor/lua-5.4.8/src"; MACOSX_DEPLOYMENT_TARGET = 26.0; OBJROOT = "$(PROJECT_DIR)/../../build/xcode-project/Intermediates"; SDKROOT = macosx; SYMROOT = "$(PROJECT_DIR)/../../build/xcode-project/Products"; }; name = Release;', 1, true) ~= nil,
 	"Release builds emit dSYMs for every target")
 
+-- The launcher is plain C and only dlopens AppKit.dylib later. Inside the App
+-- Sandbox, LaunchServices receives its launchservicesd lookup extension only
+-- when it is loaded at process start, so the launcher must link CoreServices
+-- itself or +[NSApplication sharedApplication] aborts on every Finder launch.
+local sandboxed, linkedCoreServices = 0, 0
+for settings in pbxproj:gmatch("buildSettings = {(.-)};") do
+	if settings:find("PRODUCT_NAME = Diskmap;", 1, true) then
+		sandboxed = sandboxed + 1
+		if settings:find('OTHER_LDFLAGS = "-Wl,-needed_framework,CoreServices";', 1, true) then
+			linkedCoreServices = linkedCoreServices + 1
+		end
+	end
+end
+t.expect(sandboxed == 2, "app target has Debug and Release configurations")
+t.expect(linkedCoreServices == sandboxed, "sandboxed launcher links CoreServices at load time")
+
 local appTarget = assert(pbxproj:match("(%x+) = { isa = PBXNativeTarget; [^}]-name = Diskmap;"))
 local scheme = read(PROJECT .. "/xcshareddata/xcschemes/Diskmap.xcscheme")
-t.expect(scheme:find('BlueprintIdentifier="' .. appTarget .. '"', 1, true) ~= nil, "scheme builds the app target")
+-- Xcode reformats the scheme as `BlueprintIdentifier = "..."` when it saves.
+t.expect(scheme:find('BlueprintIdentifier%s*=%s*"' .. appTarget .. '"') ~= nil, "scheme builds the app target")
 
 os.exit(t.summary() and 0 or 1)

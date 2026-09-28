@@ -125,16 +125,6 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXGroup section */
-		D15000000000000000001001 /* Diskmap */ = {
-			isa = PBXGroup;
-			children = (
-				D1500000000000000000F004 /* Assets.xcassets */,
-				D1500000000000000000F005 /* Info.plist */,
-				D1500000000000000000F006 /* AppStore.entitlements */,
-			);
-			name = Diskmap;
-			sourceTree = "<group>";
-		};
 		D15000000000000000001000 = {
 			isa = PBXGroup;
 			children = (
@@ -145,6 +135,16 @@
 				D15000000000000000001005 /* Lua 5.4 */,
 				D15000000000000000001009 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		D15000000000000000001001 /* Diskmap */ = {
+			isa = PBXGroup;
+			children = (
+				D1500000000000000000F004 /* Assets.xcassets */,
+				D1500000000000000000F005 /* Info.plist */,
+				D1500000000000000000F006 /* AppStore.entitlements */,
+			);
+			name = Diskmap;
 			sourceTree = "<group>";
 		};
 		D15000000000000000001009 /* Products */ = {
@@ -355,6 +355,7 @@
 				ENABLE_APP_SANDBOX = YES;
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				OTHER_LDFLAGS = "-Wl,-needed_framework,CoreServices";
 				PRODUCT_BUNDLE_IDENTIFIER = org.luaobjc.diskmap;
 				PRODUCT_NAME = Diskmap;
 			};
@@ -370,6 +371,7 @@
 				ENABLE_APP_SANDBOX = YES;
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				OTHER_LDFLAGS = "-Wl,-needed_framework,CoreServices";
 				PRODUCT_BUNDLE_IDENTIFIER = org.luaobjc.diskmap;
 				PRODUCT_NAME = Diskmap;
 			};

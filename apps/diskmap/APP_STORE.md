@@ -2,6 +2,8 @@
 
 Diskmap is a macOS-only app. The checked-in `Diskmap.xcodeproj` has native targets for the app launcher, AppKit runtime, and StorageScan plugin. Native sources come from synchronized folders (`src`, `vendor/lua-5.4.8/src`), with exception sets naming the unity roots each target compiles. A single "Copy Lua" Run Script phase rsyncs the `.lua`, `.etlua`, and `.bin` files of `lua/` and `apps/diskmap/` into `Contents/Resources`, so new files need no project edit.
 
+The launcher target sets `OTHER_LDFLAGS = -Wl,-needed_framework,CoreServices`. Keep it when recreating the project: the launcher is plain C and only dlopens `AppKit.dylib`, and inside the App Sandbox LaunchServices gets its `launchservicesd` lookup extension only when it is loaded at process start. Without the flag every Finder or `open` launch of the sandboxed bundle aborts in `+[NSApplication sharedApplication]` (`_RegisterApplication` cannot get an ASN), while `make run-diskmap` and Xcode debugger launches still work, which hides the bug. `tests/diskmap_xcode.test.lua` checks for the flag.
+
 ## Build
 
 From the repository root:

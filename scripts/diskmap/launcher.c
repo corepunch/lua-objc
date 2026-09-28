@@ -6,7 +6,16 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-/* Resolve bundled code independently of the directory Finder launches from. */
+/*
+ * Resolve bundled code independently of the directory Finder launches from.
+ *
+ * The Diskmap target links this launcher against CoreServices on purpose
+ * (OTHER_LDFLAGS = -Wl,-needed_framework,CoreServices). Inside the App
+ * Sandbox, LaunchServices only receives its launchservicesd mach-lookup
+ * extension when it is loaded as part of process startup; if AppKit and
+ * LaunchServices first arrive through the dlopen below, _RegisterApplication
+ * is denied the lookup and abort()s inside +[NSApplication sharedApplication].
+ */
 int main(int argc, char **argv) {
 	char executable[PATH_MAX], resources[PATH_MAX], runtime[PATH_MAX];
 	uint32_t length = sizeof(executable);
