@@ -334,6 +334,38 @@ fillWidth, fillHeight
 
 ---
 
+## Plugins (`lua/Plugins.lua`)
+
+Apps grow by extension points, not by editing their core. The design follows
+the plugin standards that have held up in practice:
+
+| Idea | Prior art | Here |
+|---|---|---|
+| The host declares what can be extended and what plugins may call | Eclipse extension points; CLAP's `clap_host`; VS Code's `vscode` API | `Plugins.extensionPoint{name, api, manifest, host}` |
+| A plugin describes itself declaratively; the host reads that without running plugin code | CLAP's `clap_plugin_descriptor`; VS Code's `package.json` contributions | a manifest table returned by `init.lua`, type-checked against `manifest` |
+| Plugin code runs only when needed, through a factory | CLAP's plugin factory; VS Code's activation events and `activate(context)` | optional `create(host, ...)`, called by `point:create(id, ...)` |
+| A versioned contract | `clap_version_is_compatible` | the manifest's `api` must equal the extension point's |
+| Isolation | CLAP plugins see only the host struct | each `init.lua` runs in its own environment with pure standard libraries only — no `require`, `io`, `os`, `load`, `debug` or `package` — and receives the host API read-only |
+| Per-plugin context | VS Code's `ExtensionContext` | `host.id`, `host.directory`, `host.resource(file)` |
+
+A plugin is a folder, `<prefix>/<id>/init.lua`, plus any assets it ships
+(`host.resource("Scene.metal")`). Extension points load an explicit list,
+`point:load(prefix, {"a", "b"})`, rather than scanning directories: the same
+code then loads from disk on macOS and from the packager on iOS, and the list
+is the order pickers show. A broken plugin raises with its module name.
+Plugins never enter `package.loaded`, so the app cannot `require` them and
+they cannot reach each other.
+
+Native extensions are a different thing: `App.loadNativePlugin(path, name)`
+loads a Lua C module from a dylib (`src/plugins/*`). They share the process
+and are trusted code.
+
+The reference app is `apps/dnb`: music styles are plugins against a style
+host API (`apps/dnb/host/StyleKit.lua`) and visualizer scenes are plugins
+contributing Metal functions linked into one program. See its README.
+
+---
+
 ## IDE example (`demo/ide`)
 
 The IDE is an intentionally small Lua application, not a separate framework.

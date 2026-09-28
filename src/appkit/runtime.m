@@ -150,6 +150,23 @@ LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
 - (NSString *)alignment {
 	return objc_getAssociatedObject(self, &kKeys[kAlignmentKey]) ?: @"center";
 }
+- (NSString *)fixedSize {
+	return objc_getAssociatedObject(self, &kKeys[kFixedSizeKey]);
+}
+- (void)setFixedSize:(NSString *)value {
+	objc_setAssociatedObject(self, &kKeys[kFixedSizeKey], value.length ? value : nil,
+		OBJC_ASSOCIATION_COPY);
+}
+/* SwiftUI `.ignoresSafeArea(edges:)`: "top", "bottom" or "all". A view that
+ * touches its window's safe area on those edges extends to the window edge,
+ * under a full-size-content title bar and toolbar. */
+- (NSString *)ignoresSafeArea {
+	return objc_getAssociatedObject(self, &kKeys[kIgnoresSafeAreaKey]);
+}
+- (void)setIgnoresSafeArea:(NSString *)value {
+	objc_setAssociatedObject(self, &kKeys[kIgnoresSafeAreaKey], value.length ? value : nil,
+		OBJC_ASSOCIATION_COPY);
+}
 - (void)setAlignment:(NSString *)value {
 	objc_setAssociatedObject(self, &kKeys[kAlignmentKey], value,
 		OBJC_ASSOCIATION_COPY);
@@ -292,6 +309,34 @@ static NSWindow *lua_objc_app_window(void) {
 	} else {
 		[NSException raise:NSInvalidArgumentException
 			format:@"unknown tabbing mode: %@", value];
+	}
+}
+/* SwiftUI `.windowLevel(.floating)`. A floating window also joins every
+ * Space and floats over full-screen apps, as the system Picture in Picture
+ * window does. */
+- (NSString *)windowLevel {
+	return self.level >= NSFloatingWindowLevel ? @"floating" : @"normal";
+}
+- (void)setWindowLevel:(NSString *)value {
+	BOOL floating = [value isEqualToString:@"floating"];
+	if (!floating && ![value isEqualToString:@"normal"]) {
+		[NSException raise:NSInvalidArgumentException format:@"unknown window level: %@", value];
+	}
+	NSWindowCollectionBehavior joins = NSWindowCollectionBehaviorCanJoinAllSpaces
+		| NSWindowCollectionBehaviorFullScreenAuxiliary;
+	self.level = floating ? NSFloatingWindowLevel : NSNormalWindowLevel;
+	self.collectionBehavior = floating ? (self.collectionBehavior | joins) : (self.collectionBehavior & ~joins);
+}
+/* Width over height kept while the user resizes; 0 resizes freely. */
+- (CGFloat)aspectRatio {
+	NSSize ratio = self.contentAspectRatio;
+	return ratio.height > 0 ? ratio.width / ratio.height : 0;
+}
+- (void)setAspectRatio:(CGFloat)value {
+	if (value > 0) {
+		self.contentAspectRatio = NSMakeSize(value, 1);
+	} else {
+		self.contentResizeIncrements = NSMakeSize(1, 1);
 	}
 }
 - (NSString *)appearanceStyle {

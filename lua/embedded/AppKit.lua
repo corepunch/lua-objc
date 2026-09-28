@@ -45,6 +45,8 @@ local layout_properties = {
 	"fillWidth",
 	"containerRelativeWidth",
 	"fillHeight",
+	"fixedSize",
+	"ignoresSafeArea",
 	"hidden",
 	"allowsHitTesting",
 	"background",
@@ -145,6 +147,9 @@ end
 --- @prop tabbingMode string optional. Window tabbing mode.
 --- @prop title value optional. Component-specific setting passed to the native control.
 --- @prop toolbar table optional. Toolbar item descriptors.
+--- @prop level string optional. `floating` keeps the window above others and on every Space (SwiftUI `.windowLevel(.floating)`), as a Picture in Picture or mini player window.
+--- @prop aspectRatio number optional. Content width over height kept while the user resizes.
+--- @prop onClose function optional. Called when the window closes.
 --- @prop onBack function optional. The mouse's back button or a swipe right navigates back.
 --- @prop onForward function optional. The mouse's forward button or a swipe left navigates forward.
 --- @prop toolbarContentDividerAfter value optional. Toolbar item identifier after which the content divider appears.
@@ -199,6 +204,8 @@ function AppKit.Window(props)
 			props.minWidth or width,
 			props.minHeight or height)
 	end
+	if props.level then win.windowLevel = props.level end
+	if props.aspectRatio then win.aspectRatio = props.aspectRatio end
 	if props.tabbingMode or props.tabbingIdentifier then
 		win.tabbing = props.tabbingMode or "automatic"
 		win.tabbingIdentifier = props.tabbingIdentifier
@@ -250,7 +257,9 @@ function AppKit.Window(props)
 	if props.onBack or props.onForward then
 		bridge._onNavigationGesture(win, props.onBack, props.onForward)
 	end
+	local onClose = props.onClose
 	bridge._onWindowClose(win, function()
+		if onClose then onClose() end
 		scope:close()
 	end)
 	return win
@@ -379,6 +388,13 @@ function AppKit.presentSheet(contentOrBuilder, options)
 	if not _G.__headless then sheet:presentSheet(options.parent) end
 	applyDefaultFocus(sheet)
 	return table.unpack(results, 1, results.n)
+end
+
+--- Shows a window again after `window:hide()`, making it key; like the
+--- constructor, headless runs never put a window on screen.
+function AppKit.showWindow(window)
+	if not _G.__headless then window:show() end
+	return window
 end
 
 function AppKit.present(panel, parent, props)
@@ -1329,16 +1345,39 @@ end
 --- constant ShaderInputs &inputs [[buffer(0)]])`; `inputs` carries `size`
 --- (pixels), `time` (seconds), `count` and `values[256]`. Assign `values`
 --- from Lua to animate it. The view is transparent where the shader is.
---- @prop source string required. Path of a `.metal` file with the fragment function.
+--- A program can instead be linked from `sources`, `{path = …}` files and
+--- `{code = …}` snippets compiled in order as one translation unit, so a
+--- shared library, plugin-contributed functions and an entry point can live
+--- in separate files. Each chunk opens with a `#line` directive, so compiler
+--- errors name the file and line they came from.
+--- @prop source string optional. Path of a `.metal` file with the fragment function.
+--- @prop sources table optional. `<ShaderSource path="…">` / `<ShaderSource code="…">` chunks, in order.
 --- @prop function string required. Fragment function name.
 --- @prop values table optional. Initial floats for `inputs.values`.
 --- @platform AppKit.
-function AppKit.ShaderView(props)
-	props = props or {}
-	local file = assert(io.open(assert(props.source, "ShaderView requires source"), "r"),
-		"ShaderView: cannot read " .. tostring(props.source))
+local function readShader(path)
+	local file = assert(io.open(path, "r"), "ShaderView: cannot read " .. tostring(path))
 	local text = file:read("a")
 	file:close()
+	return text
+end
+
+function AppKit.ShaderView(props)
+	props = props or {}
+	local text
+	if props.sources then
+		assert(props.source == nil, "ShaderView takes source or sources, not both")
+		local chunks = {}
+		for index, chunk in ipairs(props.sources) do
+			assert((chunk.path == nil) ~= (chunk.code == nil), "ShaderSource requires exactly one of path or code")
+			local name = chunk.path or ("code " .. index)
+			table.insert(chunks, string.format('#line 1 "%s"\n%s\n', name, chunk.path and readShader(chunk.path) or chunk.code))
+		end
+		assert(#chunks > 0, "ShaderView sources is empty")
+		text = table.concat(chunks)
+	else
+		text = readShader(assert(props.source, "ShaderView requires source or sources"))
+	end
 	local view = bridge._shaderView(text, assert(props["function"], "ShaderView requires function"))
 	if props.values then view.values = props.values end
 	-- Like a gradient, a shader has no intrinsic size and fills its proposal.
@@ -1774,6 +1813,7 @@ AppKit.ActionButton = AppKit.Button
 --- @prop tint string optional. Semantic color of the checked state, SwiftUI `.tint`.
 --- @prop style string optional. `switch`, or `button` for a push-on/push-off button that fills while on (SwiftUI `.toggleStyle(.button)`).
 --- @prop systemImage string optional. SF Symbol shown above a `button` style label.
+--- @prop symbolSize number optional. SF Symbol point size; defaults to the label font.
 --- @example <Toggle />
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.Toggle(props)
@@ -1801,7 +1841,7 @@ function AppKit.Toggle(props)
 		end
 	end
 	if style == "switch" or style == "button" then
-		toggle = bridge._toggle(label, is_on, action, style, props.systemImage)
+		toggle = bridge._toggle(label, is_on, action, style, props.systemImage, props.symbolSize)
 	elseif action then
 		toggle = bridge._toggle(label, is_on, action)
 	else

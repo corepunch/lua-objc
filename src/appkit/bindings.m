@@ -485,6 +485,14 @@ static int bridge_NSWindow_show(lua_State *L) {
 	return bridge_NSWindow_show_impl(L);
 }
 
+/* Orders the window out without closing it, so its Lua state, timers and
+ * views stay alive until it is shown again. */
+static int bridge_NSWindow_hide(lua_State *L) {
+	NSWindow *self = lua_objc_check_object(L, 1, [NSWindow class], "Window");
+	[self orderOut:nil];
+	return 0;
+}
+
 static int bridge_NSWindow_close(lua_State *L) {
 	id _obj = lua_objc_check_object(L, 1, [NSWindow class], "Window");
 	NSWindow *self = (NSWindow *)_obj;
@@ -676,6 +684,7 @@ static MethodEntry WindowMethods[] = {
 	{"workspaceState",	bridge_NSWindow_workspaceState},
 	{"show",	bridge_NSWindow_show},
 	{"close",	bridge_NSWindow_close},
+	{"hide",	bridge_NSWindow_hide},
 	{"add",	bridge_NSWindow_add},
 	{"layout",	bridge_NSWindow_layout},
 	{"presentPanel",	bridge_NSWindow_presentPanel},

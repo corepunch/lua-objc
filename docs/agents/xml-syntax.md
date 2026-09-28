@@ -39,6 +39,19 @@ to expand along that axis, corresponding to SwiftUI's `.frame(maxWidth:
 control's natural sizing behavior. Fixed dimensions must be finite,
 nonnegative numbers; zero is supported.
 
+`fixedSize="vertical"` (or `horizontal`, `both`) is SwiftUI's
+`.fixedSize(horizontal:vertical:)`: on that axis the view keeps its content
+size instead of growing into or shrinking with the proposal, while its own
+`maxHeight="infinity"` children still fill it. A row of panels therefore
+matches its tallest panel without taking the window's spare height:
+
+```etlua
+<HStack spacing="16" alignment="top" fixedSize="vertical">
+  <GlassEffect maxHeight="infinity">…</GlassEffect>
+  <GlassEffect maxHeight="infinity">…</GlassEffect>
+</HStack>
+```
+
 ```etlua
 <VStack padding="20" spacing="14" alignment="leading">
   <Image path="<%= game.cover %>" maxWidth="infinity" height="280"
@@ -93,7 +106,7 @@ XML vocabulary. `Window` and `Column` retain their own dimension properties.
 
 | Tag | Purpose | Important attributes |
 |---|---|---|
-| `Window` | Window configuration and root content | `title`, `width`, `height`, `minWidth`, `minHeight`, `maxWidth`, `maxHeight`, `appearance`, `tabbingMode`, `tabbingIdentifier`, `toolbarLabels`, `visible`, `sidebarWidth`, `background`, `ignoresSafeArea` |
+| `Window` | Window configuration and root content | `title`, `subtitle`, `width`, `height`, `minWidth`, `minHeight`, `maxWidth`, `maxHeight`, `appearance`, `tabbingMode`, `tabbingIdentifier`, `toolbarLabels`, `visible`, `sidebarWidth`, `background`, `ignoresSafeArea`, `transparentTitlebar`, `hideTitle`, `level` (`floating`), `aspectRatio`, `onClose` |
 | `VStack` | Vertical native stack | `padding`, `paddingHorizontal`, `paddingVertical`, `spacing`, `alignment`, `flexGrow`, `flexShrink`, `width`, `height`, `minWidth`, `minHeight`, `maxWidth`, `maxHeight`, `hidden` |
 | `HStack` | Horizontal native stack | Same layout attributes as `VStack` |
 | `LazyVStack` | Virtualized native vertical collection | `rowHeight`, `spacing`, `reorderable`, `reorderContainer`, plus layout attributes |
@@ -130,7 +143,7 @@ are parsed up front, but native views are created only for visible cells.
 | `TextEditor` | Native editable text view | `text` or `value`, `size`, `weight`, `editable`, `selectable`, `wrapMode`, `drawsBackground`, plus layout attributes |
 | `TextField` | Native single-line field | `value` or `text`, `placeholder`, `editable`, `bezeled`, `bordered`, `size`, plus layout attributes |
 | `Button` | Native push button | `title` or `label`, `subtitle`, `systemImage`, `style`, `detail`, plus layout attributes |
-| `Toggle` / `Switch` | Native checkbox/toggle | `label`, `value` or `checked`, `style` (`switch`, `button`), `systemImage`, `tint`, plus layout attributes |
+| `Toggle` / `Switch` | Native checkbox/toggle | `label`, `value` or `checked`, `style` (`switch`, `button`), `systemImage`, `symbolSize`, `tint`, plus layout attributes |
 | `Slider` | AppKit `NSSlider` | `min`, `max`, `value`, `style` (`level`), `tickMarks`, `allowsTickMarkValuesOnly`, `tint`, plus layout attributes |
 | `Stepper` | AppKit `NSStepper` | `min`, `max`, `value`, `increment`, `wraps`, `autorepeat`, plus layout attributes |
 | `Picker` | AppKit `NSPopUpButton` | zero-based `value`, plus one or more `Option` children |
@@ -141,7 +154,8 @@ are parsed up front, but native views are created only for visible cells.
 | `LinearGradient` | Vertical wash used as a fill | `topAlpha`, `middleAlpha`, `middleLocation`, `bottomAlpha` |
 | `MeshGradient` | Grid of colored control points (SwiftUI `MeshGradient`) | `width`, `height`, `animated`; children are `MeshPoint` |
 | `MeshPoint` | One control point consumed by `MeshGradient` | `x`, `y` in 0…1; `red`, `green`, `blue`, `alpha` |
-| `ShaderView` | AppKit Metal fragment shader redrawn every display frame | `source` (`.metal` path), `function`, plus layout attributes; assign `values` from the controller |
+| `ShaderView` | AppKit Metal fragment shader redrawn every display frame | `source` (`.metal` path) or `ShaderSource` children, `function`, plus layout attributes; assign `values` from the controller |
+| `ShaderSource` | One chunk of a linked `ShaderView` program | `path` (`.metal` file) or `code` (a snippet) |
 | `SearchField` | Native search field | `value`/`text`, `placeholder`, `onChange` |
 
 XML callbacks are normally attached in the controller after rendering. Keep
@@ -192,7 +206,8 @@ for a slider's filled track or a checked toggle.
 
 `Toggle style="button"` is SwiftUI's `.toggleStyle(.button)`: a push-on/push-off
 button whose whole bezel fills with the tint while on, like a drum-machine pad.
-`systemImage` puts an SF Symbol above its label. `Slider style="level"` is an
+`systemImage` puts an SF Symbol above its label, `symbolSize` sets its point
+size, and the symbol and label are centred on their ink. `Slider style="level"` is an
 editable continuous-capacity level indicator: a native bar that fills by
 percentage and is set by dragging or clicking.
 
@@ -216,8 +231,36 @@ fragment float4 glow(ShaderVertex in [[stage_in]],
 ```
 
 The controller animates it with `refs.fx.values = {…}` (at most 256 floats).
-Compiler errors are raised with line numbers in the app's source. See
-`apps/dnb/shaders/Visualizer.metal`.
+Compiler errors are raised with line numbers in the app's source.
+
+A program can be linked from several sources instead: `ShaderSource`
+children compile in order as one translation unit, so a shared library,
+plugin-contributed functions and the entry point can live in separate files.
+Each chunk starts with a `#line` directive, so errors name the file and line
+they came from. The drum & bass visualizer links its scene plugins this way
+(`apps/dnb/views/Visualizer.etlua`):
+
+```xml
+<ShaderView id="visualizer" function="visualizer" ignoresSafeArea="all">
+	<ShaderSource path="apps/dnb/shaders/Kit.metal" />
+	<ShaderSource path="apps/dnb/plugins/visualizers/tunnel/Scene.metal" />
+	<ShaderSource code="static float3 scene(int i, …) { … }" />
+	<ShaderSource path="apps/dnb/shaders/Main.metal" />
+</ShaderView>
+```
+
+On a `transparentTitlebar` window with a toolbar, AppKit lays the root
+content out in the safe area below the title bar and toolbar, as SwiftUI
+does. A `ZStack` child with `ignoresSafeArea="all"` (or `top`, `bottom`)
+extends to the window's edges on the sides where it touches the safe area,
+so a visualizer can run under the Liquid Glass toolbar while its siblings
+stay clear of it.
+
+A mini player or Picture in Picture window is an ordinary window with
+`level="floating"` (it also joins every Space and floats over full-screen
+apps), `aspectRatio` for its picture, and `onClose` to bring the main window
+back. The main window steps aside with `window:hide()` and returns with
+`ns.showWindow(window)`.
 
 ```xml
 <Slider min="0" max="100" value="60" tickMarks="6" tint="systemOrange" />

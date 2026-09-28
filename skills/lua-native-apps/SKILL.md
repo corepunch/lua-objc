@@ -126,29 +126,31 @@ text. Follow the repository's native layout and visual QA requirements as well.
 ## IDE App Layout
 
 - Top-level files in `IDEKit/` are the core IDE components (workspace, editors, navigators, etc.).
-- Use `IDEKit/plugins/` for concrete editor surfaces — only files that call `App.registerPlugin()`.
+- Use `IDEKit/plugins/` for concrete editor surfaces — plugin folders whose
+  `init.lua` returns a manifest for a `Plugins.extensionPoint` (see
+  ARCHITECTURE.md, "Plugins").
 - Use `IDEKit/state/` for persistence and recent-item adapters.
-- Keep the IDE's plugin registry inside `lua/App.lua` — the base App class owns
-  plugin discovery, registration, and loading. `plugins/` contains only plugin
-  definitions (no boilerplate).
 - Follow Xcode's `-Kit` naming convention: `IDEKit` for the IDE framework,
   `DVTKit` for shared dev-tools widgets, `IDEFoundation` for non-UI model logic.
 
 ## IDE-Owned Plugins
 
-The framework provides the Lua/AppKit boundary; the IDE owns the plugin
-catalog and loading policy. Keep editor surfaces as Lua modules and let the IDE
-select them by file extension, command, or capability:
+The framework provides extension points (`lua/Plugins.lua`); the IDE owns
+the plugin list and the host API it hands plugins. Keep editor surfaces as
+plugin folders and select them by a manifest field such as the extensions
+they open:
 
 ```lua
-local App = require("App")
-local app = App.new { name = "ide" }
-local surface = app:resolvePluginByFile(path, "editor")
--- App.new() auto-loads plugins from the plugin directory on construction.
+local Plugins = require("Plugins")
+local editors = Plugins.extensionPoint({
+	name = "editor", api = 1, host = EditorKit,
+	manifest = {title = "string", extensions = "table", create = "function"},
+}):load("IDEKit.plugins", {"text", "image"})
+local surface = editors:create("text", path)
 ```
 
-Lua plugins can optionally load native controls through the standard Lua
-dynamic-module ABI. The IDE registry's `loadNative(path, moduleName)` calls the dylib's
+Lua code can optionally load native controls through the standard Lua
+dynamic-module ABI. `App.loadNativePlugin(path, moduleName)` calls the dylib's
 `luaopen_<moduleName>` entry point; the dylib should return a normal Lua module
 whose functions create bridge-compatible native views. The dylib is an
 extension provider, not the IDE plugin itself:
