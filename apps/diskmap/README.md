@@ -1,8 +1,11 @@
 # Diskmap
 
 A native macOS 26 storage manager organized by semantic categories, not folders.
-The sidebar has five sections — Storage, Clean Up, Developer, System and
-Learn — with one question per destination:
+The sidebar has five sections — Storage, Clean Up, System, Developer and
+Learn — with one question per destination. Diskmap is for everyone, so the
+Developer section follows System and appears only on a Mac with developer
+data: Xcode or `~/Library/Developer` present, or at least 500 MB measured in
+the Developer category.
 
 - **Overview — what uses my storage?** A donut of the whole startup disk by
   category, with free space as the empty track and unattributed usage in gray,

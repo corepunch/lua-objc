@@ -3,6 +3,7 @@ local App = require("App")
 local xml = require("ui.xml")
 local Overview = require("apps.diskmap.models.Overview")
 local Categories = require("apps.diskmap.models.Categories")
+local Developer = require("apps.diskmap.models.Developer")
 local History = require("apps.diskmap.models.History")
 local Model = require("apps.diskmap.Model")
 local Provider = require("apps.diskmap.services.Provider")
@@ -234,7 +235,18 @@ function Controller:updateRows()
 	if self.page then self.page:update(self:state()); self.refs = self.page.refs end
 	self.navigation:setBadges(self:badges())
 	self.navigation:setWatched(self.watchlist:rows())
+	self.navigation:setSectionVisible("Developer", self:hasDeveloperData())
 	self.management:update()
+end
+-- Developer pages lead nobody who has no developer data (#52): the section
+-- appears once Xcode or ~/Library/Developer exists, or the Developer
+-- category measures enough to matter. Presence is checked once.
+function Controller:hasDeveloperData()
+	if self.developerFolders == nil then
+		local exists = optional(self.service, "exists")
+		self.developerFolders = Developer.present(self.model, exists)
+	end
+	return self.developerFolders or Developer.present(self.model, nil)
 end
 -- A mark changes the title, the collector and the marked state shown on the
 -- current page.
@@ -442,6 +454,7 @@ function Controller:createWindow()
 		review = function() self:openReview() end,
 	}})
 	self.navigation:setWatched(self.watchlist:rows())
+	self.navigation.hiddenSections.Developer = not self:hasDeveloperData() or nil
 	cfg.content, cfg.sidebar = content, self.navigation:render()
 	self.content, self.collector = contentRefs.content, contentRefs
 	self:basketChanged()
