@@ -13,7 +13,7 @@ local tile = [[<Piece rect="#treemap/%s" motion="pop(8.75, {response = 1 / 2.3, 
   <Group x="960" y="612" scale="0.78" motion="punch(8), leave{at = 9.95, duration = 0.3, x = -2300}">
     <Window capture="map-dark" radius="24" shadow="1" to="8.62" />
     <Window capture="treemap-dark" radius="24" shadow="1" motion="fadeIn(8.5, 0.12)">
-      <Fill rect="#treemap" color="sample(1000, 820)" outset="1" />
+      <Fill rect="#treemap" color="sample(600, 610)" outset="1" />
       <Group stagger="0.125">
         <% for _, cells in ipairs(groups) do %>
         <Group>

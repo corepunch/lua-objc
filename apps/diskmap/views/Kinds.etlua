@@ -1,5 +1,7 @@
 <%
-  local CHART = { size = 180, hole = 0.64, gap = 3, depth = 8 }
+  local CHART = { size = 180, hole = 0.64, gap = 3, depth = 8, total = 22, caption = 11, totalScale = 11 / 22, captionScale = 0.77 }
+  -- The center text is set at its largest; the chart offers it the square
+  -- inscribed in the hole and it shrinks to fit on one line, like the Hero.
 %>
 <ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
   <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
@@ -14,8 +16,8 @@
           <SectorMark value="<%= kind.bytes %>" color="<%= kind.color %>" label="<%= kind.name %>" />
           <% end %>
           <VStack spacing="0" alignment="center">
-            <Label text="<%= total %>" size="22" weight="semibold" design="rounded" monospacedDigit="true" />
-            <Label text="in files" size="11" color="secondary" />
+            <Label id="kindsTotal" text="<%= total %>" size="<%= CHART.total %>" minimumScaleFactor="<%= CHART.totalScale %>" lines="1" weight="semibold" design="rounded" monospacedDigit="true" />
+            <Label text="in files" size="<%= CHART.caption %>" minimumScaleFactor="<%= CHART.captionScale %>" lines="1" color="secondary" />
           </VStack>
         </SectorChart>
         <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="8" alignment="leading">

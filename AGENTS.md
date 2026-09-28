@@ -445,8 +445,8 @@ so the plan navigates with the app's own methods, then calls
 `lua/ui/capture.lua` and `reels/diskmap/capture.lua`:
 
 ```sh
-./lua-objc --capture=/tmp/map --width=1440 --height=900 apps/diskmap/init.lua --showcase --page=map
-./lua-objc --capture-plan=reels/diskmap/capture.lua --width=1440 --height=900 \
+./lua-objc --capture=/tmp/map --width=1280 --height=800 apps/diskmap/init.lua --showcase --page=map
+./lua-objc --capture-plan=reels/diskmap/capture.lua --width=1280 --height=800 \
   apps/diskmap/init.lua --showcase
 ```
 

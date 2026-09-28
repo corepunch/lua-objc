@@ -1,7 +1,7 @@
--- A low flight along a river valley at sunset: terrain mesh, reflective
--- water, a sky with clouds and cloud banks drifting past.
-local ROWS, COLUMNS = 150, 150
-local CLOUDS = 40
+-- A drone flyover of river valleys at sunset, banking through soft turns:
+-- a static terrain mesh, reflective water, a sky with clouds and cloud banks.
+local TERRAIN = {cells = 300, size = 180} -- grid cells per side, world units per side
+local CLOUD_SIDE = 7                      -- cloud banks on a side × side world lattice
 
 return {
 	api = 1,
@@ -12,9 +12,9 @@ return {
 	draws = {
 		{vertex = "fullscreenVertex", fragment = "landscapeSkyFragment", count = 3},
 		{vertex = "landscapeTerrainVertex", fragment = "landscapeTerrainFragment", depth = "write",
-			count = ROWS * COLUMNS * 6, params = {ROWS, COLUMNS}},
+			count = TERRAIN.cells * TERRAIN.cells * 6, params = {TERRAIN.cells, TERRAIN.size}},
 		{vertex = "landscapeWaterVertex", fragment = "landscapeWaterFragment", depth = "write", count = 6},
 		{vertex = "landscapeCloudVertex", fragment = "landscapeCloudFragment", blend = "alpha", depth = "test",
-			count = 6, instances = CLOUDS, params = {CLOUDS}},
+			count = 6, instances = CLOUD_SIDE * CLOUD_SIDE, params = {CLOUD_SIDE}},
 	},
 }

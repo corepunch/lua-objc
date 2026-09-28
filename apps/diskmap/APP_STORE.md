@@ -1,0 +1,40 @@
+# Mac App Store build and upload
+
+Diskmap is a macOS-only app. The deliberately small Xcode project is generated from `scripts/diskmap/xcode-project-template/` by `make xcode APP=diskmap TARGET=macos`. It compiles the C launcher and app icon catalog, then runs the existing lua-objc bundle script to put the runtime and Diskmap Lua resources into the app. The source runtime stays in the repository; it is not duplicated into the project.
+
+## Build
+
+From the repository root:
+
+```sh
+make xcode APP=diskmap TARGET=macos
+make diskmap-xcode-build
+```
+
+The app bundle is `build/xcode-derived/Products/Release/Diskmap.app`. The project-generation target can be rerun to recreate `apps/diskmap/Diskmap.xcodeproj` from its checked-in template. For an App Store upload, archive for generic macOS with the developer's Apple Distribution team, then use Xcode Organizer's **Distribute App → App Store Connect → Upload**. Current bundled runtime dylibs are arm64, so this build supports Apple Silicon Macs only; add x86_64 runtime slices before promising Intel compatibility.
+
+## App Store Connect materials
+
+Listing copy is in `store-assets/en/metadata.md`. Five 2560 × 1600 showcase screenshots are in `store-assets/en/screenshots/`. The preview video `/Users/igor/Desktop/Diskmap-Showreel.mp4` is 1920 × 1080 H.264, 30 seconds, and below Apple's 500 MB limit.
+
+The App Store icon comes from `Assets.xcassets/AppIcon.appiconset/`. The App Store Connect preview is `/Users/igor/Desktop/Diskmap-Showreel.mp4` (30 seconds, 1920 × 1080, H.264). The privacy policy is published at https://github.com/corepunch/lua-objc/blob/main/apps/diskmap/PRIVACY.md and that URL is entered in App Store Connect.
+
+The App Privacy declaration is published as **Data Not Collected**. Diskmap keeps scan results, preferences, history, and its operations log on the Mac. Its duplicate finder uses Apple's CommonCrypto SHA-256 implementation locally and the app has no network collection path. `Info.plist` sets `ITSAppUsesNonExemptEncryption` to false because the app relies only on Apple-provided encryption APIs.
+
+## Important sandbox check
+
+The App Store target has the required App Sandbox and user-selected read/write capability. Full Disk Access cannot be granted by an entitlement or by the app; the user must enable it in System Settings. Before review, test the signed sandboxed build's scan, open-folder, and cleanup behavior both with and without Full Disk Access. The local unsandboxed build is not proof that the App Store version can measure all locations.
+
+## App Store Connect progress
+
+The macOS app record uses bundle ID `org.luaobjc.diskmap`, SKU `DISKMAP-MAC-001`, and version 1.0. Its title is **Diskmap - Storage Optimization** because “Diskmap” alone was unavailable. The record has the English listing copy, Utilities category, 4+ rating, content-rights answer, published **Data Not Collected** label, support URL, five showcase screenshots, and one 30-second app preview. Release is set to manual.
+
+Completed listing settings include the public privacy-policy URL, $4.99 USD base price with all 175 storefronts selected, copyright `Copyright © 2026 Igor Chernakov`, and the supplied App Review contact. A valid Apple Distribution identity is still required to sign and upload. The current local build succeeds, but is only locally signed. After upload, select the processed build and leave the version in **Prepare for Submission**; release is set to manual.
+
+## Upload flow
+
+1. Build the Release target using the command above.
+2. Archive `Diskmap` for generic macOS using the seller's Apple Distribution team.
+3. In Xcode Organizer, choose **Distribute App → App Store Connect → Upload** and wait for processing.
+4. In the version's App Store Connect page, select the processed build.
+5. Keep release on manual and stop at **Prepare for Submission**.

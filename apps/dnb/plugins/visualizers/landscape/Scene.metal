@@ -1,25 +1,44 @@
-// Valley Flight — a low flight up a river valley at sunset. World units:
-// y is up, the flight runs along +z and the river's surface is y = 0. The
-// terrain is a grid mesh laid out ahead of the camera, rows spaced wider
-// with distance and snapped to the world so peaks stay put as it flies; the
-// water is one plane, drawn after the terrain so the depth test leaves only
-// the flooded valley floor. Distance fades into the same haze as the sky.
+// Valley Flight — a drone flyover of river valleys at sunset. World units:
+// y is up and the rivers' surface is y = 0. The terrain is fixed: a square
+// grid of uniform cells centred ahead of the drone and snapped to whole
+// cells, so every vertex sits on the same world lattice point frame after
+// frame and the mountains never resample as it flies. The drone wanders on
+// a smooth path, yawing through soft turns and banking into them. The water
+// is one plane, drawn after the terrain so the depth test leaves only the
+// flooded valleys. Distance fades into the same haze as the sky.
 
 constant float LAND_SPEED = 2.4;         // world units per unit of travel
 constant float LAND_WATER_FOG = 0.022;   // haze density per world unit
-constant float LAND_CLOUD_HEIGHT = 9.0;  // the sky's cloud deck
-constant float LAND_BANK_SPACING = 3.2;  // cloud banks drift past this far apart
-constant float LAND_FAR = 85.0;          // the grid's last row
+constant float LAND_CLOUD_HEIGHT = 12.0; // the sky's cloud deck
+constant float LAND_FAR = 85.0;          // the haze is complete here
+constant float LAND_ALTITUDE = 4.6;      // the drone's cruise height, above every peak
+constant float LAND_BANK = 3.0;          // roll per unit of path curvature
+constant float LAND_MAX_BANK = 0.25;     // radians
+constant float LAND_GRID_AHEAD = 35.0;   // the grid's centre ahead of the drone
+constant float LAND_BANK_CELL = 18.0;    // one cloud bank per world cell at most
 
-static float landPath(float z) {
-	return 3.5 * sin(z * 0.045) + 1.4 * sin(z * 0.11 + 1.0);
+// The drone's ground track at distance u: a forward drift with lateral and
+// longitudinal swings, so its heading sways well off the drift.
+static float2 landPath(float u) {
+	return float2(26.0 * sin(u * 0.031) + 9.0 * sin(u * 0.077 + 1.0), u + 14.0 * sin(u * 0.043 + 2.0));
+}
+
+static float2 landVelocity(float u) {
+	return float2(26.0 * 0.031 * cos(u * 0.031) + 9.0 * 0.077 * cos(u * 0.077 + 1.0),
+		1.0 + 14.0 * 0.043 * cos(u * 0.043 + 2.0));
+}
+
+static float2 landAcceleration(float u) {
+	return float2(-26.0 * 0.031 * 0.031 * sin(u * 0.031) - 9.0 * 0.077 * 0.077 * sin(u * 0.077 + 1.0),
+		-14.0 * 0.043 * 0.043 * sin(u * 0.043 + 2.0));
 }
 
 static float3 landSun(const thread Frame &f) {
 	return normalize(float3(-0.28, 0.1 + 0.015 * sin(f.t * 0.02), 1.0));
 }
 
-// Ridged mountains, lowered into a valley around the flight path.
+// Ridged mountains, lowered into valleys along a contour of broad noise:
+// the contour meanders and branches like a river network.
 static float landHeight(float2 p) {
 	float h = 0.0, a = 0.5;
 	float2 q = p * 0.075;
@@ -29,18 +48,24 @@ static float landHeight(float2 p) {
 		q = float2(q.x * 1.7 - q.y * 1.1, q.x * 1.1 + q.y * 1.7) + 5.3;
 		a *= 0.48;
 	}
-	float valley = smoothstep(1.4, 7.5, abs(p.x - landPath(p.y)));
-	return -0.35 + h * 3.6 * (0.12 + 0.88 * valley) + 0.08 * noise(p * 1.3);
+	float river = abs(noise(p * 0.02 + 3.7) - 0.5);
+	float valley = smoothstep(0.03, 0.2, river);
+	return -0.35 + h * 3.6 * (0.12 + 0.88 * valley) + 0.08 * noise(p * 0.9);
 }
 
 static Camera landCamera(const thread Frame &f) {
-	float z = f.travel * LAND_SPEED;
-	float x = landPath(z);
-	float ahead = landPath(z + 4.0);
-	float3 eye = float3(x, 1.05 + 0.18 * sin(f.t * 0.23), z);
-	// Bank into the river's bends.
-	float roll = clamp((ahead - x) * 0.12, -0.2, 0.2);
-	return lookAt(eye, float3(ahead, 0.72, z + 4.0), 1.8, roll);
+	float u = f.travel * LAND_SPEED;
+	float2 ground = landPath(u);
+	float2 v = landVelocity(u);
+	float2 a = landAcceleration(u);
+	// Look along the track a little ahead, pitched down at the terrain.
+	float2 heading = normalize(landVelocity(u + 3.0));
+	float3 eye = float3(ground.x, LAND_ALTITUDE + 0.35 * sin(u * 0.05) + 0.06 * sin(f.t * 0.7), ground.y);
+	float3 target = eye + float3(heading.x * 6.0, -1.5, heading.y * 6.0);
+	// Bank into the turn: signed curvature, positive turning left.
+	float curvature = (v.x * a.y - v.y * a.x) / pow(length(v), 3.0);
+	float roll = clamp(curvature * LAND_BANK, -LAND_MAX_BANK, LAND_MAX_BANK);
+	return lookAt(eye, target, 1.8, roll);
 }
 
 // Sky light along a direction: blue overhead, gold at the horizon, the sun
@@ -73,7 +98,7 @@ static float3 landSky(float3 dir, float3 eye, const thread Frame &f, bool clouds
 static float3 landFog(float3 colour, float3 world, const thread Camera &cam, const thread Frame &f) {
 	float3 ray = world - cam.eye;
 	float d = length(ray);
-	float amount = 1.0 - exp(-d * LAND_WATER_FOG);
+	float amount = max(1.0 - exp(-d * LAND_WATER_FOG), smoothstep(LAND_FAR * 0.75, LAND_FAR, d));
 	return mix(colour, landSky(ray / d, cam.eye, f, false), amount);
 }
 
@@ -92,35 +117,27 @@ struct LandVertex {
 	float3 normal;
 };
 
-// Distance of grid row i (0…rows) ahead of the camera.
-static float landRow(float i, float rows) {
-	float x = i / rows;
-	return 0.25 + x * 10.0 + x * x * (LAND_FAR - 10.25);
-}
-
 vertex LandVertex landscapeTerrainVertex(uint vid [[vertex_id]], constant ShaderInputs &inputs [[buffer(0)]],
 		constant float *params [[buffer(2)]]) {
 	Frame f = frameOf(inputs);
 	Camera cam = landCamera(f);
-	int rows = int(params[0]), columns = int(params[1]);
+	int cells = int(params[0]);
+	float size = params[1];
 	int cell = int(vid / 6), corner = int(vid % 6);
 	int2 offsets[6] = {int2(0, 0), int2(1, 0), int2(0, 1), int2(1, 0), int2(1, 1), int2(0, 1)};
-	int2 at = int2(cell % columns, cell / columns) + offsets[corner];
-	// Each row lies on its own world lattice: z snapped to its spacing, x
-	// to a column width that covers the view at that distance.
-	float row = float(at.y);
-	float ahead = landRow(row, float(rows));
-	float spacing = landRow(row + 1.0, float(rows)) - ahead;
-	float z = floor((cam.eye.z + ahead) / spacing) * spacing;
-	float halfWidth = 3.0 + ahead * 1.45;
-	float column = 2.0 * halfWidth / float(columns);
-	float x = (floor(cam.eye.x / column) + float(at.x) - float(columns) * 0.5) * column;
-	float h = landHeight(float2(x, z));
-	float e = max(column * 0.5, 0.04);
-	float3 normal = normalize(float3(landHeight(float2(x - e, z)) - landHeight(float2(x + e, z)), 2.0 * e,
-		landHeight(float2(x, z - e)) - landHeight(float2(x, z + e))));
+	int2 at = int2(cell % cells, cell / cells) + offsets[corner];
+	// The grid follows the drone in whole cells, so its vertices stay on
+	// one world lattice and the terrain never moves.
+	float spacing = size / float(cells);
+	float2 forward = normalize(float2(cam.forward.x, cam.forward.z) + 1e-4);
+	float2 centre = floor((cam.eye.xz + forward * LAND_GRID_AHEAD) / spacing) - float(cells / 2);
+	float2 p = (centre + float2(at)) * spacing;
+	float h = landHeight(p);
+	float e = spacing * 0.5;
+	float3 normal = normalize(float3(landHeight(p - float2(e, 0.0)) - landHeight(p + float2(e, 0.0)), 2.0 * e,
+		landHeight(p - float2(0.0, e)) - landHeight(p + float2(0.0, e))));
 	LandVertex out;
-	out.world = float3(x, h, z);
+	out.world = float3(p.x, h, p.y);
 	out.normal = normal;
 	out.position = cameraClip(out.world, f, cam);
 	return out;
@@ -145,7 +162,7 @@ fragment float4 landscapeTerrainFragment(LandVertex in [[stage_in]], constant Sh
 	return float4(landFog(colour * light, in.world, cam, f), 1.0);
 }
 
-// ---- Water: one plane from under the camera to the far rows.
+// ---- Water: one plane around the drone, out past the haze.
 
 struct LandWater {
 	float4 position [[position]];
@@ -155,10 +172,10 @@ struct LandWater {
 vertex LandWater landscapeWaterVertex(uint vid [[vertex_id]], constant ShaderInputs &inputs [[buffer(0)]]) {
 	Frame f = frameOf(inputs);
 	Camera cam = landCamera(f);
-	float2 corners[6] = {float2(-1, 0), float2(1, 0), float2(-1, 1), float2(1, 0), float2(1, 1), float2(-1, 1)};
+	float2 corners[6] = {float2(-1, -1), float2(1, -1), float2(-1, 1), float2(1, -1), float2(1, 1), float2(-1, 1)};
 	float2 c = corners[vid];
 	LandWater out;
-	out.world = float3(cam.eye.x + c.x * LAND_FAR * 1.6, 0.0, cam.eye.z - 1.0 + c.y * LAND_FAR);
+	out.world = float3(cam.eye.x + c.x * LAND_FAR * 1.2, 0.0, cam.eye.z + c.y * LAND_FAR * 1.2);
 	out.position = cameraClip(out.world, f, cam);
 	return out;
 }
@@ -190,8 +207,9 @@ fragment float4 landscapeWaterFragment(LandWater in [[stage_in]], constant Shade
 	return float4(landFog(colour, in.world, cam, f), 1.0);
 }
 
-// ---- Cloud banks: soft sunlit puffs on a world grid ahead, drawn far to
-// near so their premultiplied layers stack in order.
+// ---- Cloud banks: soft sunlit puffs, at most one per world cell in a
+// square of cells around the drone. They hang still; the drone passes by
+// and under them.
 
 struct LandCloud {
 	float4 position [[position]];
@@ -204,21 +222,20 @@ vertex LandCloud landscapeCloudVertex(uint vid [[vertex_id]], uint iid [[instanc
 		constant ShaderInputs &inputs [[buffer(0)]], constant float *params [[buffer(2)]]) {
 	Frame f = frameOf(inputs);
 	Camera cam = landCamera(f);
-	int count = int(params[0]);
+	int side = int(params[0]);
 	float2 corners[6] = {float2(-1, -1), float2(1, -1), float2(-1, 1), float2(1, -1), float2(1, 1), float2(-1, 1)};
 	float2 c = corners[vid];
-	float id = floor(cam.eye.z / LAND_BANK_SPACING) + float(count - int(iid));
-	float z = id * LAND_BANK_SPACING;
-	float h1 = hash21(float2(id, 1.7)), h2 = hash21(float2(id, 8.3)), h3 = hash21(float2(id, 4.1));
-	float3 centre = float3(landPath(z) + (h1 - 0.5) * 22.0, 2.8 + h2 * 2.2, z);
-	float radius = 1.6 + 2.2 * h3;
+	float2 id = floor(cam.eye.xz / LAND_BANK_CELL) + float2(int(iid) % side, int(iid) / side) - float(side / 2);
+	float h1 = hash21(id + 1.7), h2 = hash21(id + 8.3), h3 = hash21(id + 4.1);
+	float3 centre = float3((id.x + 0.2 + 0.6 * h1) * LAND_BANK_CELL, 6.0 + h2 * 3.0, (id.y + 0.2 + 0.6 * h3) * LAND_BANK_CELL);
+	float radius = 2.0 + 2.6 * h3;
 	float3 v = cameraView(centre, cam);
 	LandCloud out;
 	out.position = viewClip(float3(v.xy + c * radius * float2(1.8, 0.8), v.z), f, cam);
 	out.local = c;
-	// Gone as they pass overhead, and faded into the haze far away.
-	out.fade = smoothstep(1.5, 6.0, v.z) * smoothstep(LAND_BANK_SPACING * float(count), LAND_BANK_SPACING * float(count) * 0.6, v.z)
-		* step(0.35, hash21(float2(id, 2.2)));
+	// Gone as they pass the drone, and faded into the haze far away.
+	float reach = LAND_BANK_CELL * float(side / 2);
+	out.fade = smoothstep(2.0, 7.0, v.z) * smoothstep(reach, reach * 0.6, length(v)) * step(0.45, hash21(id + 2.2));
 	out.seed = h1 * 17.0;
 	return out;
 }

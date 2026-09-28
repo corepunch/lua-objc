@@ -18,7 +18,7 @@ resources = contents / "Resources"
 for source, target in [(root / "lua", resources / "lua"), (root / "apps/diskmap", resources / "apps/diskmap")]:
     if target.exists():
         shutil.rmtree(target)
-    shutil.copytree(source, target, ignore=shutil.ignore_patterns(".git", "*.md"))
+    shutil.copytree(source, target, ignore=shutil.ignore_patterns(".git", "*.md", "*.xcodeproj", "*.entitlements", "*.plist", ".DS_Store", "Assets.xcassets", "store-assets"))
 subprocess.run(["clang", "-O2", "-Wall", "-mmacosx-version-min=26.0", str(root / "scripts/diskmap/launcher.c"), "-o", str(contents / "MacOS/Diskmap")], check=True)
 frameworks = contents / "Frameworks"
 visited = set()
@@ -45,7 +45,7 @@ install_library(root / "build/StorageScan.dylib")
 (contents / "Info.plist").write_bytes(plistlib.dumps({
     "CFBundleName": "Diskmap", "CFBundleDisplayName": "Diskmap",
     "CFBundleIdentifier": "org.luaobjc.diskmap", "CFBundleExecutable": "Diskmap",
-    "CFBundlePackageType": "APPL", "CFBundleShortVersionString": "1.0.0",
+    "CFBundlePackageType": "APPL", "CFBundleShortVersionString": "1.0",
     "CFBundleVersion": "1", "LSMinimumSystemVersion": "26.0",
     "NSHighResolutionCapable": True,
     # Folders and disks dropped on the Dock icon open on the Folder Map.

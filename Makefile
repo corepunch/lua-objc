@@ -5,7 +5,7 @@ LDFLAGS = $(shell pkg-config --libs lua 2>/dev/null || echo "-L/opt/homebrew/lib
 MODULE_LDFLAGS = -dynamiclib -undefined dynamic_lookup
 IOS_SIM_SDK = $(shell xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null)
 
-TARGET = lua-objc
+LUA_OBJC_BIN = lua-objc
 HOST_SRC = src/host.c
 APPKIT_RUNTIME_SRC = src/main.m
 APPKIT_RUNTIME_DIRS = src/appkit src/shared
@@ -20,9 +20,9 @@ EMBEDDED_LUA_DIR = lua/embedded
 GENERATED_DIR = build/generated
 PARITY_IMAGE_DIFF = build/parity/image_diff
 
-all: $(TARGET) $(FRAMEWORK_MODULES) $(IOS_FRAMEWORK_MODULE) $(NATIVE_PLUGINS)
+all: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(IOS_FRAMEWORK_MODULE) $(NATIVE_PLUGINS)
 
-$(TARGET): $(HOST_SRC)
+$(LUA_OBJC_BIN): $(HOST_SRC)
 	$(CC) $(HOST_CFLAGS) -o $@ $<
 
 $(GENERATED_DIR)/%.lua.h: $(EMBEDDED_LUA_DIR)/%.lua
@@ -72,45 +72,45 @@ build/ReelNative.dylib: modules/reel/native/ReelNative.m Makefile
 		-framework CoreMedia -framework CoreVideo -framework CoreText -framework ImageIO \
 		-framework UniformTypeIdentifiers -o $@ $<
 
-run: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
-	./$(TARGET) $(ARGS)
+run: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
+	./$(LUA_OBJC_BIN) $(ARGS)
 
-run-hello: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) demo/hello/init.lua
+run-hello: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES)
+	./$(LUA_OBJC_BIN) demo/hello/init.lua
 
-run-list: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) demo/list/init.lua
+run-list: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES)
+	./$(LUA_OBJC_BIN) demo/list/init.lua
 
-run-stocks: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) apps/stocks/init.lua
+run-stocks: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES)
+	./$(LUA_OBJC_BIN) apps/stocks/init.lua
 
-run-weather: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) apps/weather/init.lua
+run-weather: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES)
+	./$(LUA_OBJC_BIN) apps/weather/init.lua
 
-run-welcome: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) demo/welcome/init.lua
+run-welcome: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES)
+	./$(LUA_OBJC_BIN) demo/welcome/init.lua
 
-run-mail: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) demo/mail/init.lua
+run-mail: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES)
+	./$(LUA_OBJC_BIN) demo/mail/init.lua
 
-run-layout: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) demo/layout/init.lua
+run-layout: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES)
+	./$(LUA_OBJC_BIN) demo/layout/init.lua
 
-run-ide: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) demo/ide/init.lua
+run-ide: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES)
+	./$(LUA_OBJC_BIN) demo/ide/init.lua
 
 # Usage: make run-diskmap                      # scans this repo (~28ms)
 #        make run-diskmap DIR=~/Developer/icui  # scan a specific dir
-run-diskmap: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
-	./$(TARGET) apps/diskmap/init.lua $(or $(DIR),$(CURDIR))
+run-diskmap: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
+	./$(LUA_OBJC_BIN) apps/diskmap/init.lua $(or $(DIR),$(CURDIR))
 
 TEST_FILES = $(wildcard tests/*.test.lua)
 
-test: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS) $(PARITY_IMAGE_DIFF)
+test: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS) $(PARITY_IMAGE_DIFF)
 	@passed=0; failed=0; \
 	for t in $(TEST_FILES); do \
 		echo "--- $$t ---"; \
-		if ./$(TARGET) --test $$t 2>&1; then \
+		if ./$(LUA_OBJC_BIN) --test $$t 2>&1; then \
 			passed=$$((passed + 1)); \
 		else \
 			failed=$$((failed + 1)); \
@@ -212,13 +212,13 @@ ios-reset:
 	@echo "ios-reset: simulator shut down and erased"
 
 clean:
-	@rm -f $(TARGET) $(FRAMEWORK_MODULES) build/UIKit.dylib
+	@rm -f $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) build/UIKit.dylib
 	@rm -f build/appkit-runtime.o build/appkit-module.o
 	@rm -f $(GENERATED_DIR)/AppKit.lua.h $(GENERATED_DIR)/UIKit.lua.h
 	@rm -rf build/ios $(PACKAGER)
 
-screenshot: $(TARGET) $(FRAMEWORK_MODULES)
-	./$(TARGET) --screenshot=$(or $(OUT),/tmp/screenshot.png) $(ARGS)
+screenshot: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES)
+	./$(LUA_OBJC_BIN) --screenshot=$(or $(OUT),/tmp/screenshot.png) $(ARGS)
 
 DOC_SRC = lua/embedded/AppKit.lua lua/embedded/UIKit.lua
 DOC_OUT = docs/reference/generated
@@ -245,7 +245,7 @@ parity-visual:
 	PLATFORM="$(or $(PLATFORM),macos)" DEVICE="$(or $(DEVICE),booted)" SPEC="$(SPEC)" \
 		sh scripts/parity/run_visual.sh
 
-parity-case: parity-check $(TARGET) $(FRAMEWORK_MODULES)
+parity-case: parity-check $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES)
 	CASE=$(CASE) scripts/parity/capture_macos_case.sh
 
 parity-report: parity-check
@@ -283,20 +283,47 @@ list-devices:
 	xcrun devicectl list devices
 
 .PHONY: diskmap-app
-diskmap-app: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
+diskmap-app: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	python3 scripts/diskmap/bundle.py
+
+DISKMAP_XCODE_PROJECT = apps/diskmap/Diskmap.xcodeproj
+DISKMAP_XCODE_DERIVED_DATA ?= build/xcode-derived
+DISKMAP_XCODE_ROOT = $(abspath $(DISKMAP_XCODE_DERIVED_DATA))
+DISKMAP_XCODE_CONFIGURATION ?= Release
+.PHONY: diskmap-xcode-project diskmap-xcode-build
+diskmap-xcode-project:
+	python3 scripts/diskmap/generate_xcode_project.py
+
+diskmap-xcode-build: diskmap-xcode-project
+	xcodebuild -project $(DISKMAP_XCODE_PROJECT) \
+		-scheme Diskmap -configuration $(DISKMAP_XCODE_CONFIGURATION) \
+		-destination 'generic/platform=macOS' \
+		-derivedDataPath $(DISKMAP_XCODE_ROOT) \
+		SYMROOT="$(DISKMAP_XCODE_ROOT)/Products" \
+		OBJROOT="$(DISKMAP_XCODE_ROOT)/Intermediates" \
+		build
+
+APP ?=
+TARGET ?=
+.PHONY: xcode
+xcode:
+	@if [ "$(APP)" = diskmap ] && [ "$(TARGET)" = macos ]; then \
+		$(MAKE) diskmap-xcode-project; \
+	else \
+		echo "usage: make xcode APP=diskmap TARGET=macos" >&2; exit 2; \
+	fi
 
 # Diskmap showreel (reels/diskmap, rendered with modules/reel): `make
 # diskmap-reel` renders build/Diskmap-Showreel.mov, first capturing the pages
 # when reels/diskmap/captures is empty (generated, not committed). Capturing
 # runs reels/diskmap/capture.lua in one Diskmap launch, which opens its
 # window; `make diskmap-reel-captures` recaptures after a UI change.
-DISKMAP_CAPTURE = ./$(TARGET) --capture-plan=reels/diskmap/capture.lua --width=1440 --height=900 \
+DISKMAP_CAPTURE = ./$(LUA_OBJC_BIN) --capture-plan=reels/diskmap/capture.lua --width=1280 --height=800 \
 	apps/diskmap/init.lua --showcase
 .PHONY: diskmap-reel diskmap-reel-captures
-diskmap-reel: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
+diskmap-reel: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	@ls reels/diskmap/captures/*.png >/dev/null 2>&1 || $(DISKMAP_CAPTURE)
-	./$(TARGET) reels/diskmap/init.lua render build/Diskmap-Showreel.mov
+	./$(LUA_OBJC_BIN) reels/diskmap/init.lua render build/Diskmap-Showreel.mov
 
-diskmap-reel-captures: $(TARGET) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
+diskmap-reel-captures: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	$(DISKMAP_CAPTURE)

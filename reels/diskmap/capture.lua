@@ -2,7 +2,7 @@
 -- showcase disk (`--showcase`: the synthetic Mock HDD with presentable
 -- names) by `make diskmap-reel-captures`:
 --
---   ./lua-objc --capture-plan=reels/diskmap/capture.lua --width=1440 --height=900 \
+--   ./lua-objc --capture-plan=reels/diskmap/capture.lua --width=1280 --height=800 \
 --     apps/diskmap/init.lua --showcase
 --
 -- Every page the reel uses is captured in light and dark into captures/,
