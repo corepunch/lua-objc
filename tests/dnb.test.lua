@@ -860,6 +860,11 @@ t.expect(timelineApp.timelineKey:find(tostring(timelineApp.composer), 1, true) =
 t.assertEqual(timelineApp.timeline.refs.timelineCanvas.frame.size.height,
 	10 + #timelineApp.timelineRows * 10, "the strip grows or shrinks to its rows")
 t.expect(timelineApp.timeline.refs.timelineCanvas.frame.size.width > 400, "and keeps its full width")
+local arrangement, controls = timelineApp.refs.timeline.frameInWindow, timelineApp.refs.controls.frameInWindow
+t.expect(arrangement.origin.x < controls.origin.x, "the arrangement sits left of the controls")
+t.assertEqual(arrangement.origin.y, controls.origin.y, "on the same bottom row")
+t.assertEqual(arrangement.size.width, controls.size.width, "the two panels split the row evenly")
+t.assertEqual(arrangement.size.height, controls.size.height, "at the same height")
 
 -- Native plugin: queue bookkeeping without starting the audio device.
 local plugin = require("App").loadNativePlugin(assert(package.searchpath("AudioStream", package.cpath)), "AudioStream")

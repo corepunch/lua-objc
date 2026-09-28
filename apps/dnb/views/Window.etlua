@@ -31,16 +31,16 @@
 		<VStack id="content" padding="20" spacing="16" alignment="leading" maxWidth="infinity" maxHeight="infinity">
 			<%- partial("NowPlaying.etlua", nowPlaying) %>
 			<Spacer />
-			<VStack id="panels" spacing="16" maxWidth="infinity" fixedSize="vertical">
-				<VStack id="timeline" maxWidth="infinity" />
-				<GlassEffect cornerRadius="24" maxWidth="infinity">
-					<HStack padding="18" spacing="24" alignment="top" maxWidth="infinity">
+			<HStack id="panels" spacing="16" alignment="top" maxWidth="infinity" fixedSize="vertical">
+				<VStack id="timeline" maxWidth="infinity" maxHeight="infinity" />
+				<GlassEffect id="controls" cornerRadius="24" maxWidth="infinity" maxHeight="infinity">
+					<HStack padding="18" spacing="24" alignment="top" maxWidth="infinity" maxHeight="infinity">
 						<% for _, group in ipairs(controlGroups) do -%>
 						<%- partial("Controls.etlua", group) %>
 						<% end -%>
 					</HStack>
 				</GlassEffect>
-			</VStack>
+			</HStack>
 		</VStack>
 	</ZStack>
 </Window>

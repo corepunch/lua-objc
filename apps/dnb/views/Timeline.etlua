@@ -9,8 +9,8 @@ local names = {
 	lead = "Lead", fills = "Fills", risers = "Risers", halftime = "Half-time", throws = "Throws", chops = "Chops",
 }
 -%>
-<GlassEffect cornerRadius="24" maxWidth="infinity">
-	<VStack padding="18" spacing="8" alignment="leading" maxWidth="infinity">
+<GlassEffect cornerRadius="24" maxWidth="infinity" maxHeight="infinity">
+	<VStack padding="18" spacing="8" alignment="leading" maxWidth="infinity" maxHeight="infinity">
 		<HStack spacing="8" maxWidth="infinity">
 			<Label text="ARRANGEMENT" size="11" weight="heavy" color="secondary" />
 			<Spacer />
