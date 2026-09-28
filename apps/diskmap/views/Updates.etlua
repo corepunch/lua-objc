@@ -16,7 +16,7 @@
           </HStack>
           <% for _, stage in ipairs(stages) do %>
           <Divider />
-          <%- partial("InfoRow.etlua", {id = "stage_" .. stage.index, icon = stage.icon, title = stage.title, detail = stage.detail, value = stage.size, valueIcon = stage.sizeIcon, valueHelp = stage.sizeHelp}) %>
+          <%- partial("InfoRow.etlua", {id = "stage_" .. stage.index, icon = stage.icon, title = stage.title, detail = stage.detail, value = stage.size}) %>
           <% end %>
         </VStack>
       </GroupBox>

@@ -57,7 +57,7 @@ function Recommendations.presentation(model, query, apps)
 	local rebuildableBytes, reviewBytes = 0, 0
 	for _, row in ipairs(Cleanup.suggestions(model)) do
 		suggested[row.id] = true
-		-- A partial measurement already carries its symbol in the size column.
+		-- A partial measurement already reads "≥" in the size column.
 		row.detail = row.impact == "Safe/rebuildable" and "Rebuildable" or "Review"
 		row.shareText = ""
 		Status.apply(row)

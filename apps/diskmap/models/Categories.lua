@@ -67,7 +67,7 @@ function Categories.distribution(model, disk)
 		local id = row.id
 		local bytes = row.bytes or 0; assigned = assigned + bytes
 		table.insert(segments, {id = id, name = row.name, color = id == "macos" and "secondary" or row.color,
-			bytes = bytes, weight = bytes / total, size = row.size, sizeIcon = row.sizeIcon, sizeHelp = row.sizeHelp})
+			bytes = bytes, weight = bytes / total, size = row.size})
 	end
 	table.sort(segments, function(left, right)
 		if left.bytes ~= right.bytes then return left.bytes > right.bytes end

@@ -34,7 +34,7 @@ return {
 				"In Privacy & Security, turn on Full Disk Access for Diskmap.",
 				"Return to Diskmap and choose Storage › Refresh.",
 			},
-			note = "Access is optional. Without it, sizes marked with a raised hand are lower bounds and protected stores are listed as not measured."},
+			note = "Access is optional. Without it, sizes marked “≥” are partial and protected stores are listed as not measured."},
 	}},
 	{id = "explore", title = "See what uses space", icon = "magnifyingglass", topics = {
 		{id = "overview", title = "Read the Overview", icon = "chart.pie.fill",

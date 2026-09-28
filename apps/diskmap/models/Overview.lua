@@ -54,7 +54,7 @@ function Overview.chart(model, disk)
 		if index <= CHART.categories then
 			table.insert(marks, {value = segment.bytes, color = segment.color, label = segment.name})
 			table.insert(legend, {id = segment.id, name = segment.name, color = segment.color, size = segment.size,
-				sizeIcon = segment.sizeIcon, sizeHelp = segment.sizeHelp, share = percent(segment.bytes, used)})
+				share = percent(segment.bytes, used)})
 		else
 			rest = rest or {bytes = 0, count = 0}
 			rest.bytes = rest.bytes + segment.bytes; rest.count = rest.count + 1

@@ -42,7 +42,7 @@ function Cleanup.suggestions(model, rules)
 			value.impact = group.rebuildable and not group.partial and "Safe/rebuildable" or "Needs review"
 			value.priority, value.threshold = 2, Cleanup.buildGroupThreshold
 			value.subtitle = (row.subtitle or "") .. " In " .. Model.plural(group.count, "project") .. "."
-			value.evidence = "Measured " .. Model.atLeast(group.bytes, group.partial) .. " in " .. Model.plural(group.count, "project")
+			value.evidence = "Measured " .. value.size .. " in " .. Model.plural(group.count, "project")
 			table.insert(result, value)
 		end
 	end
@@ -61,7 +61,7 @@ function Cleanup.suggestions(model, rules)
 			value.impact = row.policy == "Rebuildable" and not value.partial and "Safe/rebuildable" or "Needs review"
 			value.priority, value.threshold = rule.priority, rule.threshold
 			value.subtitle = rule.advice
-			value.evidence = "Measured " .. Model.atLeast(m.bytes, value.partial) .. " · Review threshold " .. Model.size(rule.threshold)
+			value.evidence = "Measured " .. value.size .. " · Review threshold " .. Model.size(rule.threshold)
 			table.insert(result, value)
 		end
 	end

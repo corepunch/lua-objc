@@ -14,7 +14,7 @@
         <List id="rows<%= index %>" onSelect="select" onActivate="review" onColumnButton="review" onSort="sort" style="fullWidth" alternatingRows="true" rowHeight="38" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
           <Column id="name" title="Resource" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" fileIconKey="fileIcon" imageSize="24" minWidth="180" sortable="true" />
           <Column id="impact" title="Impact" width="140" minWidth="130" sortable="true" />
-          <Column id="size" title="On disk" width="125" minWidth="125" alignment="trailing" loadingKey="calculating" imageKey="sizeIcon" helpKey="sizeHelp" sortable="true" />
+          <Column id="size" title="On disk" width="125" minWidth="125" alignment="trailing" loadingKey="calculating" sortable="true" />
           <Column id="info" title="" width="36" minWidth="36" buttonSymbol="info.circle" />
         </List>
       </Tab>

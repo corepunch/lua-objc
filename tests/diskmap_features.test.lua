@@ -31,10 +31,7 @@ for _, status in ipairs({"failed", "denied", "skipped"}) do
 end
 model.measurements.simulators.status = "partial"
 t.assertEqual(Cleanup.suggestions(model)[1].impact, "Needs review", "partial measurements still offer review")
-local partialSuggestion = Cleanup.suggestions(model)[1]
-t.expect(partialSuggestion.sizeIcon == "hand.raised.fill" and partialSuggestion.sizeHelp:find("At least", 1, true) == 1, "partial review is explicitly a lower bound")
-t.expect(not partialSuggestion.size:find("≥", 1, true), "a lower bound is a symbol, not a sign")
-t.expect(partialSuggestion.evidence:find("at least", 1, true) ~= nil, "sentences spell the lower bound out")
+t.expect(Cleanup.suggestions(model)[1].size:find("≥", 1, true), "partial review is explicitly a lower bound")
 model.measurements.simulators.status = "complete"
 model.kept.xcode = true
 t.assertEqual(#Cleanup.suggestions(model), 0, "keeping parent suppresses all descendant recommendations")
@@ -47,7 +44,7 @@ t.assertEqual(Recommendations.presentation(model).review[1].id, "simulators", "c
 t.assertEqual(#Recommendations.presentation(model, "unfindable").review, 0, "clean up search is independent")
 local reviewRow = Recommendations.presentation(model).review[1]
 t.assertEqual(reviewRow.statusColor, "systemOrange", "a review suggestion carries an orange status symbol")
-t.assertEqual(reviewRow.shareText, "", "partial sizes are marked in the size column, never with words in the share bar")
+t.assertEqual(reviewRow.shareText, "", "partial sizes say ≥ in the size column, never words in the share bar")
 cleanup:toggleKeep("simulators")
 t.assertEqual(#Cleanup.suggestions(model), 0, "a kept resource leaves the suggestions")
 local keptRow; for _, row in ipairs(Recommendations.presentation(model).checked) do if row.id == "simulators" then keptRow = row end end

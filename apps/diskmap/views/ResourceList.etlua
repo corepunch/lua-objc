@@ -6,7 +6,7 @@
   its own; the page scrolls as one surface. `status = true` turns the detail
   column into one colour-coded symbol per row (models/Status.lua); the status
   word remains its tooltip and accessibility label. The size column fits
-  "999.9 MB" beside a symbol, and a spinner with "Calculating…". The share
+  "≥ 999.9 MB", and a spinner with "Calculating…". The share
   bar keeps most of the Overview's width. Fixed columns total at most 415 points so
   the name keeps 180 points in the narrowest window's 595-point list. ]]
   local COLUMNS = { name = 180, detail = 130, status = 48, share = 135, size = 110, more = 40, statusSymbol = 20 }
@@ -19,6 +19,6 @@
   <Column id="detail" title="Detail" width="<%= COLUMNS.detail %>" minWidth="<%= COLUMNS.detail %>" />
   <% end %>
   <Column id="shareText" title="Share" width="<%= COLUMNS.share %>" minWidth="<%= COLUMNS.share %>" levelKey="relative" levelColorKey="color" />
-  <Column id="size" title="On disk" width="<%= COLUMNS.size %>" minWidth="<%= COLUMNS.size %>" alignment="trailing" loadingKey="calculating" imageKey="sizeIcon" helpKey="sizeHelp" />
+  <Column id="size" title="On disk" width="<%= COLUMNS.size %>" minWidth="<%= COLUMNS.size %>" alignment="trailing" loadingKey="calculating" />
   <Column id="more" title="" width="<%= COLUMNS.more %>" minWidth="<%= COLUMNS.more %>" buttonSymbol="ellipsis.circle" buttonMenu="true" />
 </List>
