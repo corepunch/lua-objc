@@ -402,6 +402,13 @@ static NSSize layout_flow_children(NSView *view, CGFloat width, BOOL place) {
 
 static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 	if (!view) return NSZeroSize;
+	/* SwiftUI `.frame(maxWidth:)` proposes at most that width to its content,
+	 * so text inside measures, wraps or scales in the width it will get. */
+	CGFloat maxWidth = view_optional_dimension(view, &kKeys[kMaxWidthKey], INFINITY);
+	if (isfinite(maxWidth) && (constraint.widthMode == LuaMeasureUndefined || constraint.width > maxWidth)) {
+		constraint.width = maxWidth;
+		if (constraint.widthMode == LuaMeasureUndefined) constraint.widthMode = LuaMeasureAtMost;
+	}
 
 	CGFloat padX = view_padding_edge(view, YES);
 	CGFloat padRight = view_padding_edge(view, NO);
@@ -537,6 +544,11 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		natural.width *= MAX(0, scale);
 		natural.height *= MAX(0, scale);
 	} else if (layout_axis(view) == LayoutAxisNone) {
+		/* A label with a minimum scale factor answers a narrower proposal
+		 * with a smaller font before it is measured (SwiftUI Text). */
+		if ([view isKindOfClass:LuaLabel.class] && ((LuaLabel *)view).minimumScaleFactor < 1)
+			[(LuaLabel *)view fitFontToWidth:constraint.widthMode == LuaMeasureUndefined
+				? CGFLOAT_MAX : MAX(0, constraint.width - padX - padRight)];
 		natural = measure_leaf(view);
 		NSView *buttonContent = objc_getAssociatedObject(view, &kKeys[kButtonContentKey]);
 		if (buttonContent) natural = measure_view(buttonContent, constraint);

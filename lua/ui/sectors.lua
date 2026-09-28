@@ -22,7 +22,9 @@ local MINIMUM_SWEEP = 0.1
 -- that the perspective foreshortens into a sliver. Its rings all stand the
 -- same height: a taller inner ring's wall would run into the top of the ring
 -- in front of it and the two would read as one.
-local STYLE = { ringGap = 2, dimmedAlpha = 0.35, raisedStart = TOP + 45 }
+-- Content in a donut's hole is offered the side of the square inscribed in
+-- the hole, so a label with a minimum scale factor sizes itself to the hole.
+local STYLE = { ringGap = 2, dimmedAlpha = 0.35, raisedStart = TOP + 45, holeContent = 1 / math.sqrt(2) }
 
 -- Returns the stroke geometry for a chart `diameter` points wide whose hole is
 -- `innerRadius` (0...1) of the outer radius. A pie (0) strokes from the center.
@@ -266,7 +268,11 @@ function Sectors.chart(ns, props)
 			table.insert(stack, state.arcs[index])
 		end
 	end
-	for _, overlay in ipairs(overlays) do table.insert(stack, overlay) end
+	local hole = state.ring.inner * 2
+	for _, overlay in ipairs(overlays) do
+		if hole > 0 and overlay.maxWidth == nil then overlay.maxWidth = hole * STYLE.holeContent end
+		table.insert(stack, overlay)
+	end
 	local interactive = props.onSelect or props.onHover or props.onCenter or props.dragItem
 	if interactive and type(ns.PointerView) == "function" then
 		local ChartKeys = require("ui.chartkeys")

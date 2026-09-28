@@ -34,9 +34,10 @@ t.expect(heroRefs.hiddenSpace ~= nil, "the hero explains space no file scan can 
 t.assertEqual(#heroRefs.hiddenSpace.subviews, 3, "purgeable space, snapshots and unreadable locations are listed")
 t.assertEqual(heroRefs.heroCard.className, "NSBox", "the hero uses the native rounded group")
 t.assertEqual(heroRefs.usedTotal.text, "100.0 GB", "the chart hole shows used capacity")
-t.expect(heroRefs.usedTotal.font.pointSize > 20, "used capacity is the page's largest number")
 t.expect(heroRefs.cleanUp.bezelColor ~= nil, "the cleanup call to action is the prominent button")
 hero.size = ns.Size(760, 320); hero:layout(760)
+-- The total fits the chart's hole once laid out.
+t.expect(heroRefs.usedTotal.font.pointSize > heroRefs.freeSpace.font.pointSize + 4, "used capacity is the page's largest number")
 local buttons = {}
 local function collect(view)
 	if view.className == "NSButton" and not view.bordered then table.insert(buttons, view) end

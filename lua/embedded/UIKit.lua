@@ -817,6 +817,7 @@ end
 --- @prop systemImage string optional. Component-specific setting passed to the native control.
 --- @prop symbolSize number optional. SF Symbol point size for an image-only button.
 --- @prop truncation string optional. Text truncation position: `head`, `middle`, or `tail`.
+--- @prop minimumScaleFactor number optional. Smallest fraction of `size` the text shrinks to when space is short.
 --- @prop weight value optional. Component-specific setting passed to the native control.
 --- @prop wrapping boolean optional. Component-specific setting passed to the native control.
 --- @platform UIKit uses the UIKit implementation.
@@ -846,7 +847,8 @@ function UIKit.Label(arg)
 			UIKit.Label({ text, size = props.size, weight = props.weight,
 				italic = props.italic, design = props.design, color = props.color,
 				monospacedDigit = props.monospacedDigit, fontName = props.fontName, smallCaps = props.smallCaps,
-				lineLimit = props.lineLimit, truncation = props.truncation, wrapping = props.wrapping }),
+				lineLimit = props.lineLimit, truncation = props.truncation, wrapping = props.wrapping,
+				minimumScaleFactor = props.minimumScaleFactor }),
 		}
 		return applyLayout(UIKit.HStack(row), props)
 	end
@@ -873,6 +875,11 @@ function UIKit.Label(arg)
 			v.textAlignment = ({ leading = 0, center = 1, trailing = 2 })[props.alignment] or 0
 		end
 		if props.accessibilityLabel then v.accessibilityLabel = props.accessibilityLabel end
+		-- SwiftUI `.minimumScaleFactor` is UILabel's own shrink-to-fit.
+		if props.minimumScaleFactor then
+			v.adjustsFontSizeToFitWidth = true
+			v.minimumScaleFactor = props.minimumScaleFactor
+		end
 		v:sizeToFit()
 	end
 	return applyLayout(v, props)

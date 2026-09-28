@@ -792,6 +792,7 @@ local TAG_SCHEMA = {
             wrapping = "str",
             monospacedDigit = "bool",
             smallCaps = "bool",
+            minimumScaleFactor = "num",
         },
         transform = function(props, a)
             if a.lines and (num(a.lines) or 0) > 1 then
