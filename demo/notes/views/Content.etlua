@@ -1,0 +1,31 @@
+<VStack spacing="0" maxWidth="infinity" maxHeight="infinity" alignment="leading">
+	<VStack id="favorites" paddingHorizontal="16" paddingTop="14" paddingBottom="10" spacing="8" maxWidth="infinity" alignment="leading">
+		<HStack spacing="6" alignment="center">
+			<Label text="Favorites" size="13" weight="semibold" color="secondary" />
+		</HStack>
+		<GroupBox maxWidth="infinity">
+			<VStack spacing="6" maxWidth="infinity" alignment="leading">
+				<% for _, note in ipairs(favorites) do -%>
+				<HStack id="favorite/<%= note.id %>" spacing="8" maxWidth="infinity" alignment="center">
+					<SystemImage name="star.fill" size="11" color="systemYellow" />
+					<Label text="<%= note.title %>" size="13" weight="medium" truncation="tail" flexShrink="1" />
+					<Spacer />
+					<Label text="<%= note.date %>" size="11" color="secondary" fixedSize="horizontal" />
+				</HStack>
+				<% end -%>
+			</VStack>
+		</GroupBox>
+	</VStack>
+	<Divider />
+	<List id="notes" style="plain" header="false" alternatingRows="false" rowHeight="72" data="notes" onSelect="selectNote" maxWidth="infinity" maxHeight="infinity">
+		<Column id="title" title="Note">
+			<VStack spacing="3" alignment="leading" maxWidth="infinity">
+				<Label text="{title}" size="14" weight="semibold" truncation="tail" />
+				<HStack spacing="6" alignment="firstTextBaseline" maxWidth="infinity">
+					<Label text="{date}" size="12" fixedSize="horizontal" />
+					<Label text="{snippet}" size="12" color="secondary" truncation="tail" />
+				</HStack>
+			</VStack>
+		</Column>
+	</List>
+</VStack>

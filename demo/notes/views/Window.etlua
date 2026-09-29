@@ -1,0 +1,12 @@
+<Window title="Notes" width="1200" height="760" minWidth="860" minHeight="520" sidebarWidth="210" contentWidth="330">
+	<Toolbar>
+		<ToolbarItem id="toggleSidebar" />
+		<ToolbarItem id="newNote" label="New Note" icon="square.and.pencil" tooltip="Write a new note" />
+		<ToolbarSpacer />
+		<ToolbarItem id="share" label="Share" icon="square.and.arrow.up" tooltip="Share this note" />
+		<ToolbarItem id="search" label="Search">
+			<SearchField id="search" placeholder="Search" width="200" accessibilityLabel="Search notes" onChange="search" />
+		</ToolbarItem>
+	</Toolbar>
+	<VStack id="content" maxWidth="infinity" maxHeight="infinity" />
+</Window>

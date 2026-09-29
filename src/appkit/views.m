@@ -191,6 +191,10 @@ static int bridge_set_window_workspace(lua_State *L) {
 	NSView *detail = lua_isnoneornil(L, 7)
 		? nil : check_view(L, 7);
 	CGFloat detailWidth = luaL_optnumber(L, 8, 0);
+	/* SwiftUI's navigationSplitViewColumnWidth for the middle column: with
+	 * a detail pane and no fixed detail width, the content column keeps
+	 * this width and the detail takes the rest. */
+	CGFloat middleWidth = luaL_optnumber(L, 9, 0);
 
 	/* Keep the semantic split items full height so AppKit owns their glass,
 	 * but place app content below the current toolbar and tab-bar safe area.
@@ -274,8 +278,19 @@ static int bridge_set_window_workspace(lua_State *L) {
 	[splitController.view layoutSubtreeIfNeeded];
 
 	/* preferredThicknessFraction only takes effect on double-click or
-	 * fullscreen entry, not at construction.  Set the sidebar divider
-	 * position directly so sidebarWidth takes immediate effect. */
+	 * fullscreen entry, not at construction. Set the divider positions
+	 * directly so the widths take immediate effect: the fixed detail first,
+	 * then the sidebar, so moving the detail divider leaves the content
+	 * column to give up the space instead of widening the sidebar. */
+	if (detailItem && detailWidth > 0) {
+		CGFloat clampedDetailWidth =
+			fmax(kWorkspaceDetailMinWidth,
+				 fmin(kWorkspaceDetailMaxWidth, detailWidth));
+		[splitController.splitView
+			setPosition:contentWidth - clampedDetailWidth
+			ofDividerAtIndex:kWorkspaceDetailDividerIndex];
+		[splitController.view layoutSubtreeIfNeeded];
+	}
 	CGFloat clampedSidebarWidth =
 		fmax(kWorkspaceSidebarMinWidth,
 			 fmin(kWorkspaceSidebarMaxWidth, sidebarWidth));
@@ -283,13 +298,10 @@ static int bridge_set_window_workspace(lua_State *L) {
 		setPosition:clampedSidebarWidth
 		ofDividerAtIndex:0];
 	[splitController.view layoutSubtreeIfNeeded];
-	if (detailItem && detailWidth > 0) {
-		CGFloat clampedDetailWidth =
-			fmax(kWorkspaceDetailMinWidth,
-				 fmin(kWorkspaceDetailMaxWidth, detailWidth));
+	if (detailItem && detailWidth <= 0 && middleWidth > 0) {
 		[splitController.splitView
-			setPosition:contentWidth - clampedDetailWidth
-			ofDividerAtIndex:kWorkspaceContentDividerIndex];
+			setPosition:clampedSidebarWidth + splitController.splitView.dividerThickness + middleWidth
+			ofDividerAtIndex:kWorkspaceDetailDividerIndex];
 		[splitController.view layoutSubtreeIfNeeded];
 	}
 

@@ -1,0 +1,34 @@
+<% if note then -%>
+<ScrollView id="note" maxWidth="infinity" maxHeight="infinity">
+	<VStack paddingHorizontal="36" paddingTop="22" paddingBottom="36" spacing="14" maxWidth="infinity" alignment="leading">
+		<Label id="noteDate" text="<%= note.folder %>  ·  Today at <%= note.date %>" size="12" color="secondary" />
+		<Label id="noteTitle" text="<%= note.title %>" size="28" weight="bold" />
+		<HStack id="tags" spacing="6" alignment="center">
+			<% for _, tag in ipairs(note.tags) do -%>
+			<Label text="#<%= tag %>" size="12" weight="medium" color="<%= note.color %>" paddingHorizontal="9" paddingVertical="3" background="quaternaryLabel" cornerRadius="10" />
+			<% end -%>
+		</HStack>
+		<VStack id="body" spacing="10" maxWidth="infinity" alignment="leading">
+			<% for index, block in ipairs(note.body) do -%>
+			<% if block.kind == "heading" then -%>
+			<Label text="<%= block.text %>" size="17" weight="semibold" paddingTop="6" />
+			<% elseif block.kind == "check" then -%>
+			<HStack id="check/<%= index %>" spacing="10" alignment="center">
+				<SystemImage name="<%= block.done and 'checkmark.circle.fill' or 'circle' %>" size="17" color="<%= block.done and 'systemYellow' or 'tertiary' %>" label="<%= block.done and 'Done' or 'Not done' %>" />
+				<Label text="<%= block.text %>" size="15" color="<%= block.done and 'secondary' or 'label' %>" />
+			</HStack>
+			<% elseif block.kind == "quote" then -%>
+			<HStack spacing="12" alignment="top" maxWidth="infinity">
+				<VStack width="3" height="22" background="systemYellow" cornerRadius="1.5" />
+				<Label text="<%= block.text %>" size="15" weight="medium" color="secondary" lines="0" />
+			</HStack>
+			<% else -%>
+			<Label text="<%= block.text %>" size="15" lines="0" maxWidth="infinity" />
+			<% end -%>
+			<% end -%>
+		</VStack>
+	</VStack>
+</ScrollView>
+<% else -%>
+<ContentUnavailable title="No Note Selected" systemImage="note.text" />
+<% end -%>

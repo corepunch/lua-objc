@@ -473,6 +473,8 @@ Creates an `NSWindow`. Table keys:
 | `sidebar` | view | none | Semantic `NSSplitViewItem` sidebar; requires `content` |
 | `content` | view | none | Main view paired with `sidebar` in `NSSplitViewController` |
 | `detail` | view | none | Optional detail pane added as a third native split item |
+| `detailWidth` | number | none | Fixed width of the detail pane (an inspector) |
+| `contentWidth` | number | none | Width of the content column when the detail pane is flexible (SwiftUI `navigationSplitViewColumnWidth`) |
 | `contentAccessory` | view | none | macOS 26 top accessory spanning only the content split |
 | `sidebarWidth` | number | `240` | Preferred native sidebar width |
 | `tabbingMode` | `"automatic"` `"preferred"` `"disallowed"` | AppKit default | Native `NSWindow` tab behavior |
