@@ -17,6 +17,13 @@ static NSString *document_path(lua_State *L) {
 	return path;
 }
 
+/* The absolute path of a document or folder, for native services such as
+ * the Git module that open files themselves. */
+static int bridge_document_path(lua_State *L) {
+	lua_pushstring(L, document_path(L).fileSystemRepresentation);
+	return 1;
+}
+
 static int bridge_document_read(lua_State *L) {
 	NSError *error = nil;
 	NSString *body = [NSString stringWithContentsOfFile:document_path(L) encoding:NSUTF8StringEncoding error:&error];

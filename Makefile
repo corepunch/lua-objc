@@ -14,7 +14,7 @@ UIKIT_RUNTIME_SRC = src/uikit_module.m
 UIKIT_RUNTIME_DIRS = src/uikit src/shared
 UIKIT_RUNTIME_FRAGMENTS = $(shell find $(UIKIT_RUNTIME_DIRS) -type f -name '*.m')
 FRAMEWORK_MODULES = build/AppKit.dylib
-NATIVE_PLUGINS = build/StorageScan.dylib build/AudioStream.dylib build/ReelNative.dylib
+NATIVE_PLUGINS = build/StorageScan.dylib build/AudioStream.dylib build/ReelNative.dylib build/Git.dylib
 IOS_FRAMEWORK_MODULE = $(if $(strip $(IOS_SIM_SDK)),build/UIKit.dylib)
 EMBEDDED_LUA_DIR = lua/embedded
 GENERATED_DIR = build/generated
@@ -65,6 +65,20 @@ build/ReelNative.dylib: modules/reel/native/ReelNative.m Makefile
 	$(CC) $(CFLAGS) -mmacosx-version-min=26.0 $(MODULE_LDFLAGS) -framework AppKit -framework AVFoundation \
 		-framework CoreMedia -framework CoreVideo -framework CoreText -framework ImageIO \
 		-framework UniformTypeIdentifiers -o $@ $<
+
+# libgit2 (vendor/libgit2) as a static library per SDK and architecture; see
+# scripts/libgit2/build.sh. The Git Lua module links it on every platform.
+LIBGIT2_INCLUDE = vendor/libgit2/include
+LIBGIT2_LIBS = -lz -framework Security -framework CoreFoundation
+build/libgit2/%/libgit2.a: scripts/libgit2/build.sh
+	scripts/libgit2/build.sh $(firstword $(subst -, ,$*)) $(lastword $(subst -, ,$*)) build/libgit2/$*
+
+MAC_ARCH := $(shell uname -m)
+build/Git.dylib: src/plugins/git/Git.c build/libgit2/macosx-$(MAC_ARCH)/libgit2.a Makefile
+	mkdir -p build
+	$(CC) -Wall -O2 $(shell pkg-config --cflags lua 2>/dev/null || echo "-I/opt/homebrew/include/lua") \
+		-I$(LIBGIT2_INCLUDE) -mmacosx-version-min=26.0 $(MODULE_LDFLAGS) -o $@ $< \
+		build/libgit2/macosx-$(MAC_ARCH)/libgit2.a $(LIBGIT2_LIBS) -liconv
 
 run: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	./$(LUA_OBJC_BIN) $(ARGS)
@@ -139,7 +153,8 @@ IOS_CFLAGS_C := -Wall -O2 -isysroot $(IOS_SDK) -arch arm64 \
 	-mios-simulator-version-min=$(IOS_MIN) -DLUA_USE_IOS \
 	-I$(LUA_SRC_DIR)
 IOS_CFLAGS := -fobjc-arc $(IOS_CFLAGS_C) \
-	-Iios/LuaRuntime -Isrc -Ibuild
+	-Iios/LuaRuntime -Isrc -Ibuild -I$(LIBGIT2_INCLUDE)
+IOS_LIBGIT2_A := build/libgit2/iphonesimulator-arm64/libgit2.a
 
 build/ios/lua/%.o: $(LUA_SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
@@ -160,14 +175,15 @@ $(PACKAGER): src/packager/packager.m lua/packager/paths.lua
 
 $(HOST_BINARY): $(IOS_LUA_A) $(IOS_HOST_SRCS) ios/LuaRuntime/LuaRuntime.h $(UIKIT_RUNTIME_SRC) \
 		$(UIKIT_RUNTIME_FRAGMENTS) $(GENERATED_DIR)/UIKit.lua.h \
-		ios/LuaRuntime/Info.plist ios/LuaRuntime/AppIcon.png
+		ios/LuaRuntime/Info.plist ios/LuaRuntime/AppIcon.png src/plugins/git/Git.c $(IOS_LIBGIT2_A)
 	@test -n "$(IOS_SDK)" || { echo "iPhone Simulator SDK missing; set DEVELOPER_DIR"; exit 1; }
 	@echo "Building iOS host..."
 	@mkdir -p $(HOST_BUNDLE)
 	@$(IOS_CC) $(IOS_CFLAGS) \
 		-framework UIKit -framework CoreText -framework Foundation -framework CoreGraphics -framework QuartzCore -framework Symbols -framework UserNotifications -framework Security -framework WebKit -framework AVFoundation -framework Speech \
 		-o $(HOST_BUNDLE)/LuaRuntime \
-		$(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) $(IOS_LUA_A)
+		$(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) src/plugins/git/Git.c $(IOS_LUA_A) \
+		$(IOS_LIBGIT2_A) $(LIBGIT2_LIBS)
 	@cp ios/LuaRuntime/Info.plist $(HOST_BUNDLE)/Info.plist
 	@cp ios/LuaRuntime/AppIcon.png $(HOST_BUNDLE)/AppIcon.png
 	@printf 'APPL????' > $(HOST_BUNDLE)/PkgInfo

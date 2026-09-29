@@ -1,0 +1,135 @@
+_G.__headless = true
+local t = require("TestKit")
+local Git = require("Git")
+
+-- The Git module is libgit2 in process: no git executable is involved.
+local pipe = assert(io.popen("/usr/bin/mktemp -d /private/tmp/git-module.XXXXXXXX"))
+local root = pipe:read("*l"); pipe:close()
+local function write(path, content)
+	local file = assert(io.open(root .. "/repo/" .. path, "w")); file:write(content); file:close()
+end
+local function byPath(status)
+	local result = {}
+	for _, entry in ipairs(status) do result[entry.path] = entry end
+	return result
+end
+local author = { name = "Lua Studio", email = "studio@example.com" }
+
+t.expect(Git.version():match("^%d+%.%d+%.%d+$") ~= nil, "version reports libgit2's release")
+local missing, message = Git.open(root .. "/nowhere")
+t.expect(missing == nil and type(message) == "string", "opening a missing repository reports why")
+
+local repo = assert(Git.init(root .. "/repo"))
+t.expect(tostring(repo):find("Git.Repository", 1, true) ~= nil, "repositories describe themselves")
+t.assertEqual(repo:workdir(), root .. "/repo/", "init creates missing folders and a worktree")
+local head = repo:head()
+t.expect(head.unborn and head.id == nil, "a new repository has an unborn HEAD")
+t.assertEqual(head.branch, "main", "the initial branch is main")
+t.assertEqual(#repo:log(), 0, "an unborn branch has an empty log")
+t.assertEqual(#repo:status(), 0, "an empty worktree is clean")
+t.assertEqual(repo:diff({ staged = true }), "", "an unborn branch has no staged changes")
+
+write("init.lua", "return 1\n")
+write("notes.txt", "draft\n")
+local status = byPath(repo:status())
+t.assertEqual(status["init.lua"].worktree, "untracked", "new files are untracked")
+t.expect(status["init.lua"].index == nil, "untracked files are not staged")
+
+t.expect(repo:add({ "init.lua" }), "a pathspec stages matching files")
+status = byPath(repo:status())
+t.assertEqual(status["init.lua"].index, "added", "staged files are added to the index")
+t.assertEqual(status["notes.txt"].worktree, "untracked", "other files stay untracked")
+t.expect(repo:diff({ staged = true }):find("+return 1", 1, true) ~= nil, "staged diff shows added lines")
+t.expect(repo:unstage({ "init.lua" }), "unstage removes entries before the first commit")
+t.assertEqual(#repo:files(), 0, "unstaging before the first commit empties the index")
+
+t.expect(repo:add(), "add without pathspec stages everything")
+t.assertEqual(table.concat(repo:files(), ","), "init.lua,notes.txt", "files lists tracked paths")
+local first = assert(repo:commit("Initial project", author))
+t.assertEqual(#first, 40, "commit returns the full id")
+head = repo:head()
+t.expect(not head.unborn and not head.detached, "the branch is born after the first commit")
+t.assertEqual(head.id, first, "HEAD points to the new commit")
+t.assertEqual(#repo:status(), 0, "the worktree is clean after committing everything")
+
+write("init.lua", "return 2\n")
+os.remove(root .. "/repo/notes.txt")
+status = byPath(repo:status())
+t.assertEqual(status["init.lua"].worktree, "modified", "edits are reported")
+t.assertEqual(status["notes.txt"].worktree, "deleted", "removed files are reported")
+local patch = repo:diff()
+t.expect(patch:find("-return 1", 1, true) and patch:find("+return 2", 1, true), "diff shows unstaged edits")
+t.expect(repo:add(), "add stages deletions too")
+status = byPath(repo:status())
+t.assertEqual(status["notes.txt"].index, "deleted", "deletions are staged")
+t.expect(repo:unstage("init.lua"), "unstage restores an index entry from HEAD")
+status = byPath(repo:status())
+t.assertEqual(status["init.lua"].worktree, "modified", "unstaged edits stay in the worktree")
+t.expect(status["init.lua"].index == nil, "unstage leaves the edit in the worktree only")
+t.assertEqual(status["notes.txt"].index, "deleted", "unstage leaves other staged paths")
+repo:add()
+local second = assert(repo:commit("Update init\n\nRemove notes.", author))
+
+local log = repo:log()
+t.assertEqual(#log, 2, "log lists every commit")
+t.assertEqual(log[1].id, second, "log is newest first")
+t.assertEqual(log[1].summary, "Update init", "summary is the first line")
+t.expect(log[1].message:find("Remove notes.", 1, true) ~= nil, "message keeps the body")
+t.assertEqual(log[1].shortId, second:sub(1, 7), "shortId abbreviates the id")
+t.assertEqual(log[2].author, "Lua Studio", "author name is recorded")
+t.assertEqual(log[2].email, "studio@example.com", "author email is recorded")
+t.expect(math.type(log[2].time) == "integer" and log[2].time > 0, "commit time is epoch seconds")
+t.assertEqual(#repo:log({ limit = 1 }), 1, "limit bounds the log")
+t.assertEqual(repo:log({ from = first })[1].id, first, "log can start from a revision")
+t.expect(repo:log({ from = "nope" }) == nil, "an unknown start revision fails")
+
+t.assertEqual(repo:show(first, "init.lua"), "return 1\n", "show reads a file at a revision")
+t.assertEqual(repo:show("HEAD", "init.lua"), "return 2\n", "show reads HEAD")
+t.expect(repo:show("HEAD", "notes.txt") == nil, "show fails for a file absent at that revision")
+t.expect(repo:show(first, "") == nil, "show refuses trees")
+
+t.expect(repo:createBranch("experiment", first), "branches can start at an older commit")
+t.expect(repo:createBranch("experiment") == nil, "an existing branch is not replaced")
+local branches = {}
+for _, branch in ipairs(repo:branches()) do branches[branch.name] = branch end
+t.expect(branches.main.current and not branches.experiment.current, "branches mark the current one")
+t.assertEqual(branches.experiment.id, first, "branches report their commit")
+t.expect(repo:checkout("experiment"), "checkout switches branches")
+t.assertEqual(repo:head().branch, "experiment", "HEAD follows the checkout")
+local file = assert(io.open(root .. "/repo/notes.txt")); t.assertEqual(file:read("*a"), "draft\n", "checkout restores files"); file:close()
+write("init.lua", "local unsaved = true\n")
+t.expect(repo:checkout("main") == nil, "checkout refuses to overwrite uncommitted edits")
+t.assertEqual(repo:head().branch, "experiment", "a refused checkout keeps HEAD")
+t.expect(repo:checkout("absent") == nil, "checking out an unknown branch fails")
+
+local reopened = assert(Git.open(root .. "/repo/"))
+t.assertEqual(reopened:head().id, first, "open finds an existing repository")
+os.execute("/bin/mkdir " .. root .. "/repo/sub")
+t.expect(Git.open(root .. "/repo/sub") == nil, "open does not adopt an enclosing repository")
+t.expect(Git.open(root .. "/repo/.git") ~= nil, "open accepts the .git folder")
+reopened:close()
+local ok, closedError = pcall(reopened.head, reopened)
+t.expect(not ok and tostring(closedError):find("closed", 1, true), "a closed repository refuses use")
+reopened:close()
+t.expect(not pcall(repo.add, repo, { 1 }), "pathspecs must be strings")
+t.expect(not pcall(repo.add, repo, 5), "a pathspec is a string or an array")
+local _, authorError = pcall(repo.commit, repo, "no author", { name = "Only name" })
+t.expect(tostring(authorError):find("author needs name and email", 1, true), "authors need an email")
+t.expect(not pcall(repo.log, repo, 5), "options must be a table")
+local _, limitError = pcall(repo.log, repo, { limit = -1 })
+t.expect(tostring(limitError):find("limit", 1, true), "a negative limit is refused by name")
+t.expect(not pcall(Git.init, root .. "/other", { initialBranch = 1 }), "initialBranch must be a string")
+
+-- A staged move is one rename, reported with its old path.
+local paths = {}
+for index = 1, 300 do table.insert(paths, "missing-" .. index) end
+t.expect(repo:add(paths), "long pathspecs have no fixed limit")
+os.rename(root .. "/repo/notes.txt", root .. "/repo/renamed.txt")
+repo:add()
+status = byPath(repo:status())
+t.assertEqual(status["renamed.txt"].index, "renamed", "a staged move is a rename")
+t.assertEqual(status["renamed.txt"].oldPath, "notes.txt", "renames keep their old path")
+
+repo:close()
+os.execute("/bin/rm -rf " .. root)
+os.exit(t.summary() and 0 or 1)

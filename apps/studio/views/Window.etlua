@@ -13,7 +13,7 @@
 			<Label text="Chat" size="14" weight="semibold" />
 			<Label text="Code" size="14" color="secondary" />
 			<Divider orientation="vertical" />
-			<Button title="Git" systemImage="point.3.connected.trianglepath.dotted" style="bordered" />
+			<Button title="Commit" systemImage="point.3.connected.trianglepath.dotted" action="commitProject" style="bordered" />
 			<Button title="Share" systemImage="square.and.arrow.up" style="bordered" />
 			<Button title="Deploy" systemImage="paperplane" style="borderedProminent" />
 		</HStack>
