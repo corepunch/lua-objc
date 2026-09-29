@@ -12,7 +12,8 @@ local Controller = require("apps.diskmap.Controller")
 t.expect(Selection.isResource("applications"), "a category id is a resource")
 t.expect(not Selection.isResource("free"), "free space is volume geometry")
 t.expect(not Selection.isResource("unreconciled"), "the residual is not selectable")
-t.expect(Selection.isResource("other"), "\"other\" is a file kind; only a page without that row ignores it")
+t.expect(Selection.isResource("other"), "\"other\" is a category and a file kind of its own")
+t.expect(not Selection.isResource(Overview.folded), "the Overview's folded categories are not one resource")
 t.expect(not Selection.isResource("developer#other"), "a folded remainder is not a row")
 t.expect(not Selection.isResource(""), "empty is not a resource")
 t.expect(not Selection.isResource(nil), "nothing is not a resource")
@@ -78,8 +79,26 @@ t.assertEqual(results.documentView.selectedRow, 1, "hovering a sector selects it
 app.scan:notify()
 t.assertEqual(overview.refs.results.documentView.selectedRow, Selection.index(overview.categoryRows, category),
 	"new measurements keep the selected row")
-overview.hero.actions.chartHover("other")
+overview.hero.actions.chartHover(Overview.folded)
 t.assertEqual(overview.selectedId, nil, "the folded categories have no row")
+t.assertEqual(overview.refs.results.documentView.selectedRow, -1, "and select none")
+-- "other" is a category too: its sector and legend row are its own, never
+-- the folded categories'.
+local mapped, opened = {}, {}
+local handlers = overview.handlers
+overview.handlers = setmetatable({map = function(id) table.insert(mapped, id) end,
+	open = function(id) table.insert(opened, id) end}, {__index = handlers})
+overview:update(overview.state or app:state())
+overview.hero.actions.chartSelect("other")
+t.assertEqual(mapped[1], "other", "the Other category's sector opens the Map inside it")
+overview.hero.actions.chartSelect(Overview.folded)
+t.assertEqual(mapped[2], "", "the folded sector opens the whole map")
+overview.hero.actions.chartHover("other")
+t.assertEqual(overview.selectedId, "other", "and the Other category selects its own row")
+t.assertEqual(overview.hero.actions["category_" .. Overview.folded], nil, "the folded legend row opens nothing")
+overview.hero.actions.chartHover(nil)
+overview.handlers = handlers
+overview:update(app:state())
 overview.hero.actions.chartHover("free")
 t.assertEqual(overview.selectedId, nil, "free space is no resource")
 t.assertEqual(overview.refs.results.documentView.selectedRow, -1, "and selects no row")

@@ -6,7 +6,7 @@
   local LEGEND = { size = 84, share = 34, row = 18, name = 72 } %>
 <HStack key="legend-<%= item.id %>" maxWidth="infinity" height="<%= LEGEND.row %>" spacing="6" alignment="center">
   <SystemImage name="circle.fill" size="9" color="<%= item.color %>" />
-  <% if item.id == "other" then %>
+  <% if item.id == "#other" then %>
   <Label text="<%= item.name %>" size="12" color="secondary" lines="1" truncation="tail" minWidth="<%= LEGEND.name %>" flexShrink="1" />
   <% else %>
   <Button title="<%= item.name %>" style="link" size="12" action="category_<%= item.id %>" help="Show <%= item.name %>" />
