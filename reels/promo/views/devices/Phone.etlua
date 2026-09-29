@@ -1,0 +1,34 @@
+<% --[[ An iPhone 17 Pro, 1 unit = 10 cm: a titanium body with rounded edges,
+  black glass, a 402 × 874 pt screen whose <Surface> draws `screen` (reel
+  elements in points) every frame, and the camera plateau on the back.
+  `position`, `rotation` and `scale` are attribute expressions; `extra` adds
+  attributes to the outer node (from, to, opacity). The screen node is
+  `<id>-screen`. `landscape` builds the phone lying on its side, top to the
+  left, with an 874 × 402 pt screen. ]]
+  local P = { w = 0.715, h = 1.496, d = 0.0825, corner = 0.118, edge = 0.02,
+    glassW = 0.697, glassH = 1.478, glassCorner = 0.109,
+    screenW = 0.662, screenH = 1.44, screenCorner = 0.094, points = { 402, 874 },
+    plateau = { -0.165, 0.51 }, lenses = { { -0.235, 0.58 }, { -0.235, 0.44 }, { -0.105, 0.51 } } }
+  if landscape then
+    P.w, P.h, P.glassW, P.glassH, P.screenW, P.screenH = P.h, P.w, P.glassH, P.glassW, P.screenH, P.screenW
+    P.points = { 874, 402 }
+    -- Turned a quarter anticlockwise: (x, y) becomes (-y, x).
+    P.plateau = { -P.plateau[2], P.plateau[1] }
+    for i, lens in ipairs(P.lenses) do P.lenses[i] = { -lens[2], lens[1] } end
+  end
+%>
+<Node id="<%= id %>" position="<%= position %>" rotation="<%= rotation or '0 0 0' %>" scale="<%= scale or 1 %>" <%- extra or "" %>>
+	<Node geometry="slab" width="<%= P.w %>" height="<%= P.h %>" length="<%= P.d %>" cornerRadius="<%= P.corner %>" chamfer="<%= P.edge %>" color="<%= finish or '#6E6A66' %>" metalness="1" roughness="0.32" />
+	<Node geometry="plane" width="<%= P.glassW %>" height="<%= P.glassH %>" cornerRadius="<%= P.glassCorner %>" position="0 0 <%= P.d / 2 + 0.0004 %>" color="#030304" roughness="0.04" clearcoat="1" />
+	<Node id="<%= id %>-screen" geometry="plane" width="<%= P.screenW %>" height="<%= P.screenH %>" cornerRadius="<%= P.screenCorner %>" position="0 0 <%= P.d / 2 + 0.0008 %>" roughness="0.05" <%- screenExtra or "" %>>
+		<Surface width="<%= P.points[1] %>" height="<%= P.points[2] %>" density="<%= density or 2 %>" background="#000000">
+			<%- screen %>
+		</Surface>
+	</Node>
+	<Node geometry="plane" width="<%= P.glassW %>" height="<%= P.glassH %>" cornerRadius="<%= P.glassCorner %>" position="0 0 <%= -P.d / 2 - 0.0004 %>" rotation="0 180 0" color="<%= finish or '#6E6A66' %>" metalness="0.2" roughness="0.55" />
+	<Node geometry="slab" width="0.31" height="0.31" length="0.022" cornerRadius="0.075" chamfer="0.006" position="<%= P.plateau[1] %> <%= P.plateau[2] %> <%= -P.d / 2 - 0.011 %>" color="#2C2B2A" metalness="0.9" roughness="0.25" />
+	<% for _, lens in ipairs(P.lenses) do -%>
+	<Node geometry="cylinder" radius="0.052" height="0.026" position="<%= lens[1] %> <%= lens[2] %> <%= -P.d / 2 - 0.031 %>" rotation="90 0 0" color="#141416" metalness="0.8" roughness="0.15" />
+	<Node geometry="cylinder" radius="0.034" height="0.004" position="<%= lens[1] %> <%= lens[2] %> <%= -P.d / 2 - 0.045 %>" rotation="90 0 0" color="#07070A" roughness="0.02" clearcoat="1" />
+	<% end -%>
+</Node>

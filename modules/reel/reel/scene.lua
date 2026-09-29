@@ -306,6 +306,10 @@ function Scene.build(nodes, options)
 		background = parseHex(attrs.background or "#000000"), grid = grid, context = context,
 	}
 	context.scene = scene
+	-- Sub-frames may follow the picture: more where the motion is fast.
+	if attrs.subframes and not tonumber(attrs.subframes) then
+		scene.subframes = compileExpression({ tag = "Reel" }, "subframes", attrs.subframes, context.env)
+	end
 	scene.root = build(root, context, nil, 0)
 	table.sort(context.events, function(a, b)
 		if a.time ~= b.time then return a.time < b.time end

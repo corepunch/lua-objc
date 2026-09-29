@@ -37,8 +37,11 @@ must render any instant exactly and repeatably.
 | Synth voices: pad, pluck, bass, drums, risers, whooshes, pops, bells | `reel/instruments.lua` |
 | Tests | `tests/reel.test.lua`, `tests/reel_scene.test.lua` |
 
-`reels/diskmap/` is the reference reel: a 30 s, 1080p piece in 11 scene
-templates, one bespoke shot and a score.
+`reels/diskmap/` is the reference 2-D reel: a 30 s, 1080p piece in 11
+scene templates, one bespoke shot and a score. `reels/promo/` is the
+reference SceneKit reel: one camera through a world of devices whose
+screens show real app captures, an app's own game template rendered in
+place, and continuity hand-offs computed from the choreography.
 
 ## Rendering
 
@@ -65,7 +68,8 @@ for _, e in ipairs(reel.events) do print(e.time, e.kind) end -- pops, slams, who
 ## Short syntax
 
 The root is `<Reel width height fps duration bpm subframes shutter
-background>`. Scenes are partials; the template data is also `reel`, so
+background>`; `subframes` may be an expression of `t`, more sub-frames where
+the motion is fast. Scenes are partials; the template data is also `reel`, so
 `<%- partial("Treemap.etlua", reel) %>` hands a scene everything. Repeated
 nodes use etlua loops.
 

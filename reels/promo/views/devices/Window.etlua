@@ -1,0 +1,21 @@
+<% --[[ A floating Mac window: a thin slab the shape of a macOS 26 window
+  (1200 × 760 pt content, 26 pt corners) whose front face draws `screen`,
+  and optionally `back` on its reverse, so it can turn over into another
+  app. 1 unit = 400 pt. The faces are `<id>-front` and `<id>-back`. ]]
+  local W = { w = 3.0, h = 1.9, corner = 0.065, d = 0.012 }
+%>
+<Node id="<%= id %>" position="<%= position %>" rotation="<%= rotation or '0 0 0' %>" scale="<%= scale or 1 %>" <%- extra or "" %>>
+	<Node geometry="slab" width="<%= W.w %>" height="<%= W.h %>" length="<%= W.d %>" cornerRadius="<%= W.corner %>" chamfer="0.004" color="#1C1C1E" metalness="0.2" roughness="0.4" />
+	<Node id="<%= id %>-front" geometry="plane" width="<%= W.w %>" height="<%= W.h %>" cornerRadius="<%= W.corner %>" position="0 0 <%= W.d / 2 + 0.0006 %>" roughness="0.18">
+		<Surface width="1200" height="760" density="<%= density or 2 %>" background="#FFFFFF">
+			<%- screen %>
+		</Surface>
+	</Node>
+	<% if back then -%>
+	<Node id="<%= id %>-back" geometry="plane" width="<%= W.w %>" height="<%= W.h %>" cornerRadius="<%= W.corner %>" position="0 0 <%= -W.d / 2 - 0.0006 %>" rotation="0 180 0" roughness="0.18">
+		<Surface width="1200" height="760" density="<%= density or 2 %>" background="#FFFFFF">
+			<%- back %>
+		</Surface>
+	</Node>
+	<% end -%>
+</Node>

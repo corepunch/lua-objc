@@ -1,0 +1,9 @@
+<% --[[ Inside the game: the film cuts from the phone's screen into Coin
+  Quest's own world at the instant the screen fills the frame. It is the
+  same stage template and the same replay the phone showed, now full frame,
+  while the camera flies through the level. ]]
+  local S = C.SHOT
+  local stage = partial(root .. "apps/coin-quest/views/Stage.etlua", quest:view())
+  stage = stage:gsub("<SceneView ", '<SceneView states="questStates(t)" from="' .. S.cut .. '" to="' .. S.speed .. '" ', 1)
+%>
+<%- stage %>

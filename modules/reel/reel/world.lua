@@ -138,7 +138,7 @@ local function compile(record, name, env)
 		-- "x, y, z" is three values; "orbit(…)" one table.
 		return function(t)
 			local x, y, z = fn(t)
-			if y ~= nil then return { x, y, z } end
+			if type(x) == "number" and type(y) == "number" then return { x, y, z } end
 			return toVector(record, name, x)
 		end
 	end
