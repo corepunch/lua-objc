@@ -8,14 +8,16 @@ function Model.size(bytes)
 	if bytes >= 1e6 then return string.format("%.1f MB", bytes / 1e6) end
 	return string.format("%.0f KB", bytes / 1000)
 end
--- Measurement states that stand in for a size, in words short enough for a
--- size column.
+-- Measurement states that stand in for a size: a short word, and the
+-- symbol and colour the size meter draws before it, where the spinner sits
+-- while measuring. Warnings are orange, failures red; states that are
+-- expected are neutral.
 Model.sizeStates = {
-	denied = "No access",
-	excluded = "Not scanned",
-	skipped = "Linked",
-	unsupported = "System",
-	failed = "Unavailable",
+	denied = {text = "No access", icon = "lock.fill", color = "systemOrange"},
+	excluded = {text = "Not scanned", icon = "minus.circle.fill", color = "systemGray"},
+	skipped = {text = "Linked", icon = "link.circle.fill", color = "systemTeal"},
+	unsupported = {text = "System Managed", icon = "gearshape.fill", color = "systemBlue"},
+	failed = {text = "Unavailable", icon = "exclamationmark.triangle.fill", color = "systemRed"},
 }
 
 -- A size that may be a lower bound: a partial measurement could not read
@@ -24,12 +26,13 @@ function Model.atLeast(bytes, partial)
 	return (partial and "≥ " or "") .. Model.size(bytes)
 end
 
--- Fills a row's size column from a measurement status.
+-- Fills a row's size meter from a measurement status.
 function Model.sizeLabel(row, status, bytes)
 	local state = Model.sizeStates[status]
 	row.calculating = status == "calculating"
 	row.partial = status == "partial"
-	row.size = state or row.calculating and "Calculating…" or Model.atLeast(bytes, row.partial)
+	row.size = state and state.text or row.calculating and "Calculating…" or Model.atLeast(bytes, row.partial)
+	row.sizeIcon, row.sizeColor = state and state.icon, state and state.color
 	return row
 end
 

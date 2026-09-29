@@ -30,7 +30,8 @@ for row = 0, 2 do
 	t.expect(value ~= nil, "a meter has a value label")
 	t.expect(value.frame.size.width >= value.fittingSize.width, "the value " .. value.stringValue .. " fits without truncating")
 	t.expect(share.stringValue == "" or share.frame.size.width >= share.fittingSize.width, "the share " .. share.stringValue .. " fits without truncating")
-	if not bar.hidden then
+	t.expect(not bar.hidden, "every row draws its bar")
+	if bar.enabled then
 		table.insert(bars, bar.frame)
 		t.expect(value.frame.origin.y > bar.frame.origin.y + bar.frame.size.height - 1, "the labels sit above the bar")
 		t.expect(math.abs(share.frame.origin.y - value.frame.origin.y) < 1, "value and share share one line")
@@ -39,7 +40,8 @@ for row = 0, 2 do
 		t.expect(value.frame.origin.x <= bar.frame.origin.x + 1, "the value starts where the bar starts")
 	end
 end
-t.assertEqual(#bars, 2, "rows with a fraction have a bar; a row without one has none")
+t.assertEqual(#bars, 2, "rows with a fraction have an enabled bar")
+t.expect(not bridge._tableCell(refs.list, 1, 2).levelIndicator.enabled, "a row without a fraction has an empty, disabled bar")
 t.expect(bars[1].origin.x == bars[2].origin.x and bars[1].size.width == bars[2].size.width, "bars in one column share their span")
 t.expect(bars[1].size.width > 160 - 20, "the bar spans the column")
 

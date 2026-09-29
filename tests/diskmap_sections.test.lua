@@ -65,7 +65,9 @@ local nameCell = bridge._tableCell(refs.results, 0, 0)
 local sizeCell = bridge._tableCell(refs.results, 1, 0)
 t.assertEqual(nameCell.textField.font.pointSize, 13, "category title uses the regular system font")
 t.assertEqual(sizeCell.valueField.font.pointSize, 13, "size and loading text use the regular system font")
-t.expect(bridge._tableCell(refs.results, 1, 0).levelIndicator.hidden, "unmeasured categories have no share bar")
+local unmeasured = bridge._tableCell(refs.results, 1, 0).levelIndicator
+t.expect(not unmeasured.hidden and not unmeasured.enabled and unmeasured.doubleValue == 0,
+	"an unmeasured category keeps an empty, disabled bar under its state")
 
 local settings, settingsRefs = render("Settings", {monitoring = true, mediaEnabled = false, historyEnabled = false,
 	actions = {monitor = function() end, media = function() end, history = function() end, reminder = function() end, sentinel = function() end, storage = function() end, privacy = function() end, done = function() end}})
@@ -126,25 +128,40 @@ for status, style in pairs(Status.styles) do
 	t.expect(style.icon:find("%.fill$") ~= nil and style.color ~= nil, status .. " has a filled, coloured symbol")
 end
 
--- A size that is a state is a short word in the size column, never a
--- symbol; measured rows in the same column keep their numbers.
+-- A size that is a state is a short coloured word led by its symbol, in the
+-- spinner's place; measured rows in the same meter keep plain numbers.
 local _, sizeRefs = render("ResourceList", {id = "sizes", menu = "rowMenu", actions = {rowMenu = function() return {} end}})
 local sizes = sizeRefs.sizes
 sizes:replaceRows({
-	Model.sizeLabel({id = "mail", name = "Mail", relative = 0, shareText = "", color = "systemBlue", icon = "envelope"}, "denied"),
+	Model.sizeLabel({id = "mail", name = "Mail", shareText = "", color = "systemBlue", icon = "envelope"}, "denied"),
 	Model.sizeLabel({id = "docs", name = "Documents", relative = 1, shareText = "", color = "systemBlue", icon = "doc"}, "complete", 2e9),
 })
 sizes.size = ns.Size(560, 200); sizes:layout(560)
 local denied, measured = bridge._tableCell(sizes, 1, 0), bridge._tableCell(sizes, 1, 1)
-t.expect(not denied.valueField.hidden and denied.imageView.image == nil, "a denied size is a word, not a symbol")
+denied:layout()
 t.assertEqual(denied.valueField.stringValue, "No access", "the state is spelled out")
+t.expect(denied.imageView.image ~= nil, "a state leads with its symbol")
+t.expect(denied.imageView.frame.origin.x + denied.imageView.frame.size.width <= denied.valueField.frame.origin.x, "the symbol comes before the word")
+t.assertEqual(denied.imageView.frame.size.width, 16, "the symbol fills the spinner's square")
+t.assertEqual(tostring(denied.valueField.textColor), tostring(denied.imageView.contentTintColor), "the word takes its symbol's colour")
+t.expect(not denied.levelIndicator.hidden and not denied.levelIndicator.enabled, "a state keeps an empty, disabled bar")
+t.expect(measured.imageView.image == nil and measured.levelIndicator.enabled, "a measured size has no symbol and an enabled bar")
 t.assertEqual(measured.valueField.stringValue, "2.0 GB", "the measured size is text")
-for status, text in pairs(Model.sizeStates) do
+for status, state in pairs(Model.sizeStates) do
 	local row = Model.sizeLabel({}, status)
-	t.assertEqual(row.size, text, status .. " reads as its word")
-	t.expect(#text <= 11, status .. " is a short word")
+	t.assertEqual(row.size, state.text, status .. " reads as its word")
+	t.expect(row.sizeIcon == state.icon and row.sizeColor == state.color, status .. " carries its symbol and colour")
+	t.expect(#state.text <= 14, status .. " is a short word")
 end
-t.assertEqual(Model.sizeStates.unsupported, "System", "system-managed storage reads just System")
+t.assertEqual(Model.sizeStates.unsupported.text, "System Managed", "system-managed storage says so")
+t.assertEqual(Model.sizeStates.denied.color, "systemOrange", "no access is a warning")
+t.assertEqual(Model.sizeStates.failed.color, "systemRed", "a failed measurement is an error")
+t.expect(Model.sizeLabel({}, "complete", 1e9).sizeIcon == nil, "a measured size has no state symbol")
+local annotated = require("apps.diskmap.controllers.ActionsController").new({}, {}, {}, nil):annotate({
+	{id = "big", bytes = 4e9}, {id = "empty", bytes = 0}, Model.sizeLabel({id = "locked"}, "denied")})
+t.assertEqual(annotated[1].relative, 1, "the largest row fills its bar")
+t.assertEqual(annotated[2].relative, 0, "a measured zero is an empty bar")
+t.assertEqual(annotated[3].relative, nil, "an unmeasured row has no fraction, so its bar is disabled")
 local pending = Model.sizeLabel({}, "calculating")
 t.expect(pending.calculating and pending.size == "Calculating…", "calculating keeps its spinner and word")
 local partial = Model.sizeLabel({}, "partial", 2e9)

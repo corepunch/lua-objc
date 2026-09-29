@@ -50,7 +50,10 @@ function Controller:annotate(rows, icon, color)
 	local largest = 0
 	for _, row in ipairs(rows) do largest = math.max(largest, row.bytes or 0) end
 	for _, row in ipairs(rows) do
-		row.relative = largest > 0 and (row.bytes or 0) / largest or 0
+		-- An unmeasured row has no fraction: its meter draws an empty,
+		-- disabled bar under its state rather than a measured zero.
+		if row.bytes == nil then row.relative = nil
+		else row.relative = largest > 0 and row.bytes / largest or 0 end
 		row.shareText = row.shareText or ""
 		row.color = row.color or color
 		row.icon = row.icon or icon

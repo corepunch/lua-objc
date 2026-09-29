@@ -19,6 +19,6 @@
   <% elseif detailColumn then %>
   <Column id="detail" title="Detail" width="<%= COLUMNS.detail %>" minWidth="<%= COLUMNS.detail %>" />
   <% end %>
-  <Column id="shareText" title="On disk" width="<%= COLUMNS.share %>" minWidth="<%= COLUMNS.share %>" levelKey="relative" levelColorKey="color" valueKey="size" loadingKey="calculating" />
+  <Column id="shareText" title="On disk" width="<%= COLUMNS.share %>" minWidth="<%= COLUMNS.share %>" levelKey="relative" levelColorKey="color" valueKey="size" imageKey="sizeIcon" imageColorKey="sizeColor" imageSize="16" loadingKey="calculating" />
   <Column id="more" title="" width="<%= COLUMNS.more %>" minWidth="<%= COLUMNS.more %>" buttonSymbol="ellipsis.circle" buttonMenu="true" />
 </List>

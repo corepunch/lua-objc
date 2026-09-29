@@ -169,9 +169,12 @@ An etlua `Column` can bind `levelKey` to a row's fraction (0–1) and
 Spectrum's Meter or SwiftUI's `Gauge`. `valueKey` binds the value (for
 example, `52.3 GB`), which leads on a line above the bar; the column's `id`
 supplies the share (for example, `39%`), which trails in secondary color.
-AppKit renders a read-only `NSLevelIndicator` across the column; missing
-values hide the bar, and out-of-range values are clamped. `loadingKey` puts
-the native spinner before the value while it is measured. VoiceOver reads the
+AppKit renders a read-only `NSLevelIndicator` across the column. It is
+always drawn: a missing fraction leaves it empty and disabled, so a value
+never floats in an empty cell; out-of-range values are clamped. `loadingKey`
+puts the native spinner before the value while it is measured; otherwise
+`imageKey`/`imageColorKey` put a state symbol in the spinner's square and
+tint the value to match (Diskmap's "🔒 No access"). VoiceOver reads the
 share and the value together. `imageKey`
 and `imageColorKey` bind row symbols and their semantic tint. `List.rowHeight`
 sets the native row height. These cell bindings do not change table selection
