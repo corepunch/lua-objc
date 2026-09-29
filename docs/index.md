@@ -14,6 +14,7 @@ AppKit/UIKit controls, and no compile cycle for every UI change.
 - [Application architecture](agents/application-architecture.md): small-app MVC, feature composition, etlua rendering, and native lifetimes.
 - [XML syntax](agents/xml-syntax.md): the supported etlua/XML tags and attributes.
 - [Apple UI checklist](agents/apple-ui-checklist.md): design and accessibility rules for polished native apps.
+- [Delight vs coverage](delight.md): which interaction-gallery patterns Adventure Arena may use, and which stay out of the framework.
 - [Stocks app example](stocks_app_example.md): a complete Model/Controller/views example with a screenshot.
 - [Weather app example](weather_app_example.md): async HTTP, loading, selection, and normalized API data.
 - [Project reference](PROJECT_REFERENCE.md): detailed Lua API, bridge behavior, and layout contracts.
