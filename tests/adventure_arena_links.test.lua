@@ -143,8 +143,14 @@ t.assertEqual(hall[1].text, "grand staircase", "re-set links stay on their words
 
 -- A resumed story rebuilds its links from the replayed commands.
 state.room = "Gate"
+local played = Session.new { engineFactory = engine, newSeed = function() return 1 end }
+played:start({ id = "links", title = "Links" })
+played:submit("north")
+local save = played:snapshot()
+state.room = "Gate"
 local resumed = Session.new { engineFactory = engine }
-t.expect(resumed:start({ id = "links", title = "Links" }, { seed = 1, commands = { "north" } }), "a saved story resumes")
+t.expect(resumed:start({ id = "links", title = "Links" }, save), "a saved story resumes")
+t.expect(resumed.restoreNotice == nil, "the replay follows the save")
 local last = resumed.entries[#resumed.entries]
 t.assertEqual(last.links[1][1].target, "staircase", "replayed prose carries its links")
 

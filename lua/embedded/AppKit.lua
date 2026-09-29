@@ -1443,6 +1443,28 @@ function AppKit.TimelineView(props)
 	return applyLayout(content, props)
 end
 
+-- A column's `template` is a Lua factory (see "Column content templates" in
+-- docs/tableview_swiftui.md); the native column spec is plain data. Returns
+-- the specs without their templates, and a function that installs them.
+local function columnTemplates(columns)
+	local specs, templates = {}, {}
+	for _, column in ipairs(columns) do
+		local spec = {}
+		for key, value in pairs(column) do
+			if key ~= "template" then spec[key] = value end
+		end
+		if column.template ~= nil then
+			assert(type(column.template) == "function", "Column template must be a function")
+			assert(column.id, "a Column with a template requires an id")
+			templates[column.id] = column.template
+		end
+		table.insert(specs, spec)
+	end
+	return specs, function(view)
+		for id, template in pairs(templates) do bridge._tableColumnTemplate(view, id, template) end
+	end
+end
+
 --- Displays rows of data in a native table or list control.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
@@ -1466,28 +1488,6 @@ end
 --- @prop width number optional. Component-specific setting passed to the native control.
 --- @example <List />
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
--- A column's `template` is a Lua factory (see "Column content templates" in
--- docs/tableview_swiftui.md); the native column spec is plain data. Returns
--- the specs without their templates, and a function that installs them.
-local function columnTemplates(columns)
-	local specs, templates = {}, {}
-	for _, column in ipairs(columns) do
-		local spec = {}
-		for key, value in pairs(column) do
-			if key ~= "template" then spec[key] = value end
-		end
-		if column.template ~= nil then
-			assert(type(column.template) == "function", "Column template must be a function")
-			assert(column.id, "a Column with a template requires an id")
-			templates[column.id] = column.template
-		end
-		table.insert(specs, spec)
-	end
-	return specs, function(view)
-		for id, template in pairs(templates) do bridge._tableColumnTemplate(view, id, template) end
-	end
-end
-
 function AppKit.List(props)
 	local columns = props.columns
 	if not columns or type(columns) ~= "table" then

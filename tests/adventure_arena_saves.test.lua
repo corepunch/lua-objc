@@ -17,16 +17,16 @@ t.assertEqual(#saves:list(), 0, "a new library has no saved games")
 t.expect(not saves:record({ gameId = "zork", commands = {} }),
 	"opening a story without playing it is not saved")
 t.expect(not saves:record({ commands = { "look" } }), "a save needs a game")
-t.expect(saves:record({ gameId = "zork", seed = 7, commands = { "open mailbox" }, room = "West of House" }),
+t.expect(saves:record({ gameId = "zork", seed = 7, commands = { "open mailbox" }, checkpoints = { {} }, room = "West of House" }),
 	"a played story is saved")
 clock = 200
-saves:record({ gameId = "planetfall", seed = 9, commands = { "up" }, room = "Gangway" })
+saves:record({ gameId = "planetfall", seed = 9, commands = { "up" }, checkpoints = { {} }, room = "Gangway" })
 t.assertEqual(saves:latest().gameId, "planetfall", "the most recently played story comes first")
 clock = 300
-saves:record({ gameId = "zork", seed = 7, commands = { "open mailbox", "read leaflet" }, room = "West of House" })
+saves:record({ gameId = "zork", seed = 7, commands = { "open mailbox", "read leaflet" }, checkpoints = { {}, {} }, room = "West of House" })
 t.assertEqual(saves:latest().gameId, "zork", "playing again moves a story to the front")
 t.assertEqual(#saves:find("zork").commands, 2, "a save replaces the previous one for the same story")
-t.assertEqual(written.version, 1, "the store receives a versioned document")
+t.assertEqual(written.version, 2, "the store receives a versioned document")
 t.assertEqual(#written.games, 2, "every saved story is persisted")
 
 local reloaded = SavedGames.new { store = memory }
@@ -38,9 +38,17 @@ t.assertEqual(#SavedGames.new({ store = memory }):list(), 1, "removal is persist
 
 local corrupt = SavedGames.new { store = { load = function() return { version = 99, games = { 1, 2 } } end } }
 t.assertEqual(#corrupt:list(), 0, "an unknown save format is an empty library")
-local broken = SavedGames.new { store = { load = function() return { version = 1, games = { { gameId = 3 } } } end } }
+local broken = SavedGames.new { store = { load = function() return { version = 2, games = { { gameId = 3 } } } end } }
 t.assertEqual(#broken:list(), 0, "malformed records are skipped")
 t.assertEqual(#SavedGames.new():list(), 0, "the model works without a store")
+local unverifiable = SavedGames.new { store = { load = function()
+	return { version = 2, games = { { gameId = "zork", commands = { "look", "north" }, checkpoints = { {} } } } }
+end } }
+t.assertEqual(#unverifiable:list(), 0, "a save without a checkpoint for every command is skipped")
+local firstFormat = SavedGames.new { store = { load = function()
+	return { version = 1, games = { { gameId = "zork", commands = { "look" } } } }
+end } }
+t.assertEqual(#firstFormat:list(), 0, "saves from before checkpoints cannot be verified and are dropped")
 
 -- ── The store is JSON in the platform document folder ─────────────────
 local documents = {}
@@ -110,5 +118,29 @@ local last = resumed.entries[#resumed.entries]
 local original = first.entries[#first.entries]
 t.assertEqual(table.concat(last.paragraphs or {}, "\n"), table.concat(original.paragraphs or {}, "\n"),
 	"the last page reads the same after resuming")
+
+t.assertEqual(#snapshot.checkpoints, 4, "every command has a checkpoint")
+t.expect(resumed.restoreNotice == nil, "an unchanged story resumes without a notice")
+
+-- ── A story changed since the save keeps the reader's place up to where it
+-- still agrees, and says so ──────────────────────────────────────────────
+local changed = {}
+for key, value in pairs(snapshot) do changed[key] = value end
+changed.checkpoints = {}
+for index, checkpoint in ipairs(snapshot.checkpoints) do changed.checkpoints[index] = checkpoint end
+changed.checkpoints[3] = { room = "Somewhere the story no longer goes", score = 0, moves = 0 }
+local diverged = play(1)
+t.expect(diverged:start(planetfall, changed), "a save the story no longer follows still opens")
+t.assertEqual(#diverged.history, 2, "the replay stops before the first command that went another way")
+t.assertEqual(#diverged:snapshot().commands, 2, "the kept place is what is saved next")
+t.expect(diverged.restoreNotice and diverged.restoreNotice:find("\u{201C}wait\u{201D}", 1, true) ~= nil,
+	"the reader is told the story changed and where their place is kept")
+local lastEntry = diverged.entries[#diverged.entries]
+t.assertEqual(lastEntry.paragraphs[#lastEntry.paragraphs], diverged.restoreNotice, "the notice ends the page")
+changed.checkpoints[1] = { room = "Nowhere", score = 0, moves = 0 }
+local restarted = play(1)
+t.expect(restarted:start(planetfall, changed), "a save that disagrees at once still opens")
+t.assertEqual(#restarted.history, 0, "it starts again from the beginning")
+t.expect(restarted.restoreNotice:find("beginning", 1, true) ~= nil, "and says so")
 
 os.exit(t.summary() and 0 or 1)
