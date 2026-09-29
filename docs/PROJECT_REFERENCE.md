@@ -1006,7 +1006,14 @@ sector never moves, because a sector that rose or slid out read differently
 at the front and the back of the tilted chart: it takes its color at full
 strength and steps away from the backdrop, lighter in dark mode and deeper in
 light mode. `require("ui.sectors").highlight(chart, id)` highlights a sector
-from code, so a list beside the chart can point at it.
+from code, so a list beside the chart can point at it. Inside an animated
+transaction (`ns.withAnimation`, or `animation` + `animationValue` on the
+chart) new marks move the solids to their new shapes with the transaction's
+animation, paired by `id`. When the new marks are the inside of one of its
+sectors, or the level outside them, the chart **drills**: the sector opens to
+the whole circle and every ring moves one band inwards. `innerRadius` and
+`angularInset` update in place with the marks. See “Custom animators” in
+[animation.md](animation.md).
 
 `<Gauge value="0.4" tint="systemBlue" />` is SwiftUI `Gauge` with the linear
 capacity style: a read-only continuous-capacity `NSLevelIndicator` on AppKit
@@ -1018,8 +1025,10 @@ Marks can form a **sunburst**: `<SectorMark id="xcode" parent="developer" ring="
 draws inside its parent's angle, sized by its share of the parent's value, on
 a ring outside the parent's; `opacity` lightens deeper rings. Give the chart
 `onSelect="action"` (`action(id, clickCount)`), `onHover` (`action(id)`, nil
-on exit) and `onCenter` (the hole) to make it interactive; hovering dims the
-other sectors. Hit testing uses the same geometry that drew the arcs
+on exit), `onCenter` (a click in the hole) and `onBack` (Delete: up a level,
+as on `Treemap`) to make it interactive, by pointer and by keyboard: arrows
+and Tab move the focus, which reports through `onHover`, and Return
+activates the focused sector through `onSelect`. Hit testing uses the same geometry that drew the arcs
 (`Sectors.hit`), through a transparent `PointerView` on top.
 
 ### `Treemap{...}`

@@ -211,12 +211,13 @@ t.assertEqual(nodes[3].z, 5, "the hovered sector stays on the floor")
 t.assertEqual(nodes[3].x, 0, "and does not slide out of its ring")
 t.assertEqual(nodes[3].y, 0, "in either direction")
 t.assertEqual(nodes[1].alpha, resting[1].alpha, "the other sectors keep their opacity")
-t.expect(nodes[3].luminance > resting[3].luminance, "the hovered sector brightens")
+-- It steps away from the backdrop: lighter in dark mode, deeper in light.
+t.expect(nodes[3].luminance ~= resting[3].luminance, "the hovered sector stands out")
 t.assertEqual(nodes[1].luminance, resting[1].luminance, "the others keep their color")
 bridge._pointerSend(raisedPointer, "hover")
 t.expect(Sectors.highlight(raised, "a"), "code can highlight a sector")
 nodes = ns._sectorSceneNodes(scene)
-t.expect(nodes[1].luminance > resting[1].luminance, "the named sector brightens")
+t.expect(nodes[1].luminance ~= resting[1].luminance, "the named sector stands out")
 t.assertEqual(nodes[3].luminance, resting[3].luminance, "and the pointer's sector rests")
 t.assertEqual(nodes[1].z, 5, "without moving")
 Sectors.highlight(raised)
@@ -232,5 +233,101 @@ t.expect(not unshadowed.subviews[1].castsShadow, "shadow = false drops the conta
 -- UIKit composes the same chart from its own Arc and ZStack.
 local file = assert(io.open("lua/embedded/UIKit.lua")); local uikit = file:read("*a"); file:close()
 t.expect(uikit:find('require("ui.sectors").chart(UIKit, props)', 1, true) ~= nil, "UIKit shares the sector geometry")
+
+
+-- A raised chart is its own animator: inside an animated transaction new
+-- marks move its solids with the transaction's animation. Showing the inside
+-- of one of its sectors, or going back out, opens that sector to the whole
+-- circle; outside a transaction every change applies at once.
+local function mark(id, value, ring, parent)
+	return {__sectorMark = true, id = id, value = value, ring = ring, parent = parent, color = "systemBlue"}
+end
+local top = {mark("a", 3), mark("b", 1), mark("a1", 2, 2, "a"), mark("a2", 1, 2, "a"), mark("b1", 1, 2, "b"), mark("a1x", 1, 3, "a1")}
+local inside = {mark("a1", 2), mark("a2", 1), mark("a1x", 1, 2, "a1"), mark("a1y", 1, 2, "a1")}
+local function sunburstOf(marks, props)
+	local chart = {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.3, depth = 10}
+	for key, value in pairs(props or {}) do chart[key] = value end
+	for _, record in ipairs(marks) do table.insert(chart, record) end
+	return ns.SectorChart(chart)
+end
+local sunburst = sunburstOf(top, {onSelect = function() end})
+local burst = sunburst.subviews[1]
+Sectors.update(sunburst, inside)
+t.assertEqual(ns._sectorSceneTransitionState(burst), 0, "outside a transaction new marks show at once")
+t.assertEqual(#ns._sectorSceneNodes(burst), 4, "as the new level's solids")
+Sectors.update(sunburst, top)
+
+local finished = false
+ns.withAnimation(ns.Animation.easeInOut(0.3), function()
+	t.expect(Sectors.configure(sunburst, {innerRadius = 0.5}), "a chart takes a new hole for its next marks")
+	Sectors.update(sunburst, inside)
+end, function() finished = true end)
+-- a1, a2 and a1x move; a1y enters; a, b and b1 leave.
+t.assertEqual(ns._sectorSceneTransitionState(burst), 7, "drilling in a transaction tweens the solids of both levels")
+t.assertEqual(#ns._sectorSceneNodes(burst), 7, "one solid per pair while it runs")
+Sectors.highlight(sunburst, "a1")
+t.assertEqual(ns._sectorSceneTransitionState(burst), 7, "a highlight does not cut the transition short")
+t.expect(not finished, "the transaction's completion waits for the chart")
+bridge._motionSettle()
+t.assertEqual(ns._sectorSceneTransitionState(burst), 0, "settling the transaction ends the transition")
+t.expect(finished, "and runs its completion")
+local settled = ns._sectorSceneNodes(burst)
+t.assertEqual(#settled, 4, "leaving the new level's solids")
+Sectors.highlight(sunburst)
+t.expect(settled[1].luminance ~= ns._sectorSceneNodes(burst)[1].luminance, "with the restyle made while it ran")
+
+local hit
+local drilled = sunburstOf(inside, {onCenter = function() hit = true end})
+ns.withAnimation(function()
+	Sectors.configure(drilled, {innerRadius = 0.5})
+	Sectors.update(drilled, top)
+end)
+t.assertEqual(ns._sectorSceneTransitionState(drilled.subviews[1]), 7, "going back out runs the same pairs in reverse")
+bridge._motionSettle()
+t.assertEqual(#ns._sectorSceneNodes(drilled.subviews[1]), 6, "and ends on the outer level")
+bridge._pointerSend(drilled.subviews[#drilled.subviews], "click", 100, 60)
+t.expect(hit, "the center follows the new hole")
+
+-- Any other change moves each sector to its new shape; marks that come or go
+-- open from, or close to, nothing.
+ns.withAnimation(function() Sectors.update(drilled, {mark("a", 5), mark("b", 1), mark("c", 2)}) end)
+t.assertEqual(ns._sectorSceneTransitionState(drilled.subviews[1]), 7, "new values move the sectors: a, b and c, and the four that leave")
+bridge._motionSettle()
+t.assertEqual(#ns._sectorSceneNodes(drilled.subviews[1]), 3, "ending on the new marks")
+ns.withAnimation(nil, function() Sectors.update(drilled, top) end)
+t.assertEqual(ns._sectorSceneTransitionState(drilled.subviews[1]), 0, "a transaction without animation applies at once")
+bridge._motionOverrideReduceMotion(true)
+ns.withAnimation(function() Sectors.update(drilled, inside) end)
+t.assertEqual(ns._sectorSceneTransitionState(drilled.subviews[1]), 0, "so does Reduce Motion")
+bridge._motionOverrideReduceMotion(nil)
+bridge._motionSettle()
+
+-- A retained template takes a new hole with its marks, keeping the chart,
+-- and animates when its animation value changes.
+local holeTemplate = Template.new(ns.VStack {}, "tests/fixtures/sector_sunburst.etlua", ns)
+holeTemplate:update({hole = 0.3, level = "top", marks = top})
+local holeChart = holeTemplate.refs.chart
+holeTemplate:update({hole = 0.5, level = "a", marks = inside})
+t.expect(holeTemplate.refs.chart == holeChart, "a new inner radius keeps the chart view")
+t.assertEqual(ns._sectorSceneTransitionState(holeChart.subviews[1]), 7, "and the template's animation drills it in place")
+bridge._motionSettle()
+
+-- The keyboard reaches an interactive chart: focus reports through onHover,
+-- Return activates, and Delete goes back, which is not a click in the hole.
+local keyed = {}
+local keyChart = sunburstOf(top, {onSelect = function(id, count) keyed.selected = {id, count} end,
+	onHover = function(id) keyed.focused = id end, onCenter = function() keyed.centered = true end,
+	onBack = function() keyed.back = true end})
+local keyPointer = keyChart.subviews[#keyChart.subviews]
+t.expect(bridge._pointerSend(keyPointer, "key", "tab") and keyed.focused == "a", "tab focuses the largest sector")
+bridge._pointerSend(keyPointer, "key", "right")
+t.assertEqual(keyed.focused, "b", "arrows move between neighbours")
+bridge._pointerSend(keyPointer, "key", "return")
+t.expect(keyed.selected[1] == "b" and keyed.selected[2] == 2, "return activates the focused sector")
+bridge._pointerSend(keyPointer, "key", "delete")
+t.expect(keyed.back and not keyed.centered, "delete goes back without clicking the hole")
+local holeOnly = sunburstOf(top, {onCenter = function() keyed.holeOnly = true end})
+bridge._pointerSend(holeOnly.subviews[#holeOnly.subviews], "key", "delete")
+t.expect(not keyed.holeOnly, "a chart with nowhere to go back to ignores delete")
 
 os.exit(t.summary() and 0 or 1)

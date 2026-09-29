@@ -1,5 +1,5 @@
 <%
-  local MAP = { chart = 360, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 34, caption = 13, totalScale = 13 / 34, captionScale = 0.77 }, gap = 5, depth = 14, list = { minimum = 270, maximum = 330 }, meter = 130, treemapHeight = 420 }
+  local MAP = { chart = 360, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 34, caption = 13, totalScale = 13 / 34, captionScale = 0.77 }, gap = 5, depth = 14, list = { minimum = 300, maximum = 330 }, meter = 130, treemapHeight = 420 }
   -- Every ring keeps the thickness it has among three, so one ring of
   -- files is a slim ring like the Overview donut, not a thick disc.
   local rings = 1
@@ -53,7 +53,8 @@
         <% end %>
       </Treemap>
       <% else %>
-      <SectorChart id="sunburst" transition="opacity" width="<%= MAP.chart %>" height="<%= MAP.chart %>" innerRadius="<%= hole %>" angularInset="<%= MAP.gap %>" depth="<%= MAP.depth %>" shadow="false" onSelect="chartSelect" onHover="chartHover" onCenter="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
+      <% -- Looking inside a group, or back out, moves the rings to the new level. %>
+      <SectorChart id="sunburst" transition="opacity" animation="smooth" animationValue="<%= trail[#trail].id %>" width="<%= MAP.chart %>" height="<%= MAP.chart %>" innerRadius="<%= hole %>" angularInset="<%= MAP.gap %>" depth="<%= MAP.depth %>" shadow="false" onSelect="chartSelect" onHover="chartHover" onCenter="up" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
         <% for _, node in ipairs(nodes) do %>
         <SectorMark id="<%= node.id %>" ring="<%= node.ring %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" opacity="<%= (ringOpacity[node.ring] or 0.5) * (node.other and node.parent and otherFade or 1) %>" label="<%= node.label %>" />
         <% end %>

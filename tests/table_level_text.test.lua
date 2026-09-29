@@ -61,6 +61,6 @@ t.expect(done.loadingIndicator.hidden, "a measured row drops the spinner")
 t.assertEqual(done.valueField.stringValue, "2.0 GB", "the value shows the size")
 
 -- VoiceOver reads the share and the value together.
-t.expect(done.levelIndicator.accessibilityLabel:find("3%%, 2.0 GB") ~= nil, "the bar's label names share and size")
+t.assertEqual(done.levelIndicator.accessibilityLabel, "Size: 3%, 2.0 GB", "the bar's label is its column's title, share and size")
 
 os.exit(t.summary() and 0 or 1)

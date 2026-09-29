@@ -10,8 +10,9 @@ local LARGEST = {preview = 6}
 
 -- `handlers` routes user intent back to the root controller: open(id) opens a
 -- category, reclaim() the Clean Up page, access() privacy settings,
--- navigate(id) another sidebar destination, menu(id) a resource's actions and
--- changes() the full list of changes since the snapshot.
+-- navigate(id) another sidebar destination, map(id) the Map inside a category
+-- (or the whole map), menu(id) a resource's actions and changes() the full
+-- list of changes since the snapshot.
 function Controller.new(model, categories, handlers)
 	return setmetatable({model = model, categories = categories, handlers = handlers}, Controller)
 end
@@ -50,8 +51,26 @@ function Controller:update(state)
 	for _, item in ipairs(chart.legend) do
 		actions["category_" .. item.id] = function() self.handlers.open(item.id) end
 	end
+	-- The ring leads into the Map: a category's sector opens the Map inside
+	-- it, the folded categories and the center open the whole map. Free and
+	-- unattributed space have nothing inside to show. The sector under the
+	-- pointer is named in the center, in place of the used total.
+	local summary = Overview.summary(self.model, state.disk, state.capacity)
+	local marks = {}
+	for _, mark in ipairs(chart.marks) do marks[mark.id] = mark end
+	actions.chartSelect = function(id)
+		if id == "other" then self.handlers.map("")
+		elseif self.model.resources:find(id) then self.handlers.map(id) end
+	end
+	actions.chartCenter = function() self.handlers.map("") end
+	actions.chartHover = function(id)
+		local refs, mark = self.hero.refs, id and marks[id]
+		if not refs then return end
+		refs.usedTotal.text = mark and mark.size or summary.used
+		refs.usedCaption.text = mark and mark.label or summary.caption
+	end
 	local cloudBytes, cloudFiles = Inventory.cloud(self.model)
-	self.hero:update({summary = Overview.summary(self.model, state.disk, state.capacity), chart = chart,
+	self.hero:update({summary = summary, chart = chart,
 		hidden = Overview.hidden(state.disk, state.capacity, state.snapshotCount, self.model.scan.errors, cloudBytes, cloudFiles,
 			not self.model.includeMedia),
 		reclaim = Overview.reclaim(self.model), volumeName = state.volumeName, actions = actions})

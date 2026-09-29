@@ -9,13 +9,13 @@
 %>
 <GroupBox id="heroCard" maxWidth="infinity">
   <HStack maxWidth="infinity" padding="20" spacing="28" alignment="center">
-    <SectorChart id="chart" transition="opacity" width="<%= HERO.chart %>" height="<%= HERO.chart %>" innerRadius="<%= HERO.hole %>" angularInset="<%= HERO.gap %>" depth="<%= HERO.depth %>" shadow="false" accessibilityLabel="<%= chart.accessibilityLabel %>">
+    <SectorChart id="chart" transition="opacity" width="<%= HERO.chart %>" height="<%= HERO.chart %>" innerRadius="<%= HERO.hole %>" angularInset="<%= HERO.gap %>" depth="<%= HERO.depth %>" shadow="false" onSelect="chartSelect" onHover="chartHover" onCenter="chartCenter" accessibilityLabel="<%= chart.accessibilityLabel %>">
       <% for _, mark in ipairs(chart.marks) do %>
-      <SectorMark value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" />
+      <SectorMark id="<%= mark.id %>" value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" />
       <% end %>
       <VStack spacing="0" alignment="center">
         <Label id="usedTotal" text="<%= summary.used %>" size="<%= HERO.total %>" minimumScaleFactor="<%= HERO.totalScale %>" lines="1" weight="semibold" design="rounded" monospacedDigit="true" />
-        <Label text="<%= summary.caption %>" size="<%= HERO.caption %>" minimumScaleFactor="<%= HERO.captionScale %>" lines="1" color="secondary" />
+        <Label id="usedCaption" text="<%= summary.caption %>" size="<%= HERO.caption %>" minimumScaleFactor="<%= HERO.captionScale %>" lines="1" color="secondary" />
       </VStack>
     </SectorChart>
     <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="14" alignment="leading">

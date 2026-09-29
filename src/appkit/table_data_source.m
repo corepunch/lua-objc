@@ -552,7 +552,9 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	if (text.length) [levelParts addObject:text];
 	if (cell.valueField.stringValue.length) [levelParts addObject:cell.valueField.stringValue];
 	NSString *levelLabel = [levelParts componentsJoinedByString:@", "];
-	cell.levelIndicator.accessibilityLabel = [@"Share of measured storage: " stringByAppendingString:levelLabel];
+	/* The column names what the meter measures, as it names any other cell. */
+	cell.levelIndicator.accessibilityLabel = column.title.length
+		? [NSString stringWithFormat:@"%@: %@", column.title, levelLabel] : levelLabel;
 	[cell.levelIndicator setNeedsDisplay:YES];
 	NSString *imageColorKey = cellSpec[@"imageColor"];
 	cell.imageView.contentTintColor = imageColorKey ? semantic_color(rowData[imageColorKey]) : NSColor.secondaryLabelColor;
@@ -764,7 +766,18 @@ static void table_refresh_trailing_separator(NSTableView *table) {
 	}
 	NSRect lastCell = [_tableView frameOfCellAtColumn:
 		(NSInteger)_tableView.tableColumns.count - 1 row:0];
-	return MAX(0, NSMaxX(lastCell) - declaredWidth);
+	CGFloat overhead = MAX(0, NSMaxX(lastCell) - declaredWidth);
+	/*
+	 * Inset and source-list rows draw a selection capsule inset from both
+	 * edges, but AppKit reports only the leading inset through the cell
+	 * frame. Mirror it on the trailing edge, as SwiftUI's List does, so the
+	 * last column (and a trailing badge) ends inside the capsule.
+	 */
+	NSTableViewStyle style = _tableView.effectiveStyle;
+	if (style == NSTableViewStyleInset || style == NSTableViewStyleSourceList) {
+		overhead += NSMinX([_tableView frameOfCellAtColumn:0 row:0]);
+	}
+	return overhead;
 }
 
 - (void)updateTableFrame {

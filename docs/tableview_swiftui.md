@@ -175,7 +175,7 @@ never floats in an empty cell; out-of-range values are clamped. `loadingKey`
 puts the native spinner before the value while it is measured; otherwise
 `imageKey`/`imageColorKey` put a state symbol in the spinner's square and
 tint the value to match (Diskmap's "🔒 No access"). VoiceOver reads the
-share and the value together. `imageKey`
+column's title, the share and the value together. `imageKey`
 and `imageColorKey` bind row symbols and their semantic tint. `List.rowHeight`
 sets the native row height. These cell bindings do not change table selection
 or keyboard behavior.

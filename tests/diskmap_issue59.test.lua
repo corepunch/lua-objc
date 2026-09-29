@@ -181,5 +181,5 @@ t.expect(not app.refs.summary.text:find(" 1 runtimes", 1, true) and not app.refs
 -- Overview sections with nothing to show take no place.
 app:show("overview")
 t.expect(app.refs.accessNotice.hidden, "no access notice, no gap")
-window.size = ns.Size(880, 580); window:layout()
+window.size = ns.Size(950, 580); window:layout()
 os.exit(t.summary() and 0 or 1)

@@ -31,7 +31,7 @@ local function isGroup(model, id)
 	return resource ~= nil and not resource:isLeaf()
 end
 
--- Drilling in or out shows the new level at once; only measurement animates.
+-- The view animates the change of focus: the rings move to the new level.
 function Controller:setFocus(id)
 	if id ~= "" and not isGroup(self.model, id) then return end
 	self.focus = id or ""

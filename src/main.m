@@ -487,6 +487,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_sectorScene", bridge_sector_scene},
 	{"_sectorSceneConfigure", bridge_sector_scene_configure},
 	{"_sectorSceneNodes", bridge_sector_scene_nodes},
+	{"_sectorSceneTransition", bridge_sector_scene_transition},
+	{"_sectorSceneTransitionState", bridge_sector_scene_transition_state},
 	{"_sectorScenePoint", bridge_sector_scene_point},
 	{"_setCurrentScope", bridge_set_current_scope},
 	{"_invokeAction", bridge_invoke_action},

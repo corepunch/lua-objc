@@ -116,6 +116,7 @@ function Controller.new(service)
 	self.pages = {
 		overview = OverviewController.new(self.model, self.categories, {
 			open = open, navigate = function(id) self:show(id) end,
+			map = function(id) self.pages.map:setFocus(id); self:show("map") end,
 			reclaim = function() self:show("cleanup") end,
 			access = function() self.service.openSettings("privacy") end,
 			menu = function(id) return self.actions:resource(id) end,

@@ -36,7 +36,8 @@ function Overview.summary(model, disk, capacity)
 	return result
 end
 
--- Donut marks and legend rows. The ring is the whole volume: measured
+-- Donut marks and legend rows. Marks carry their segment's id and size so
+-- the chart can name the sector under the pointer. The ring is the whole volume: measured
 -- categories in their colors, then the unattributed residual, then free space
 -- as the empty track. Categories.distribution already refuses to draw a
 -- partition when measured allocation exceeds used capacity.
@@ -53,7 +54,7 @@ function Overview.chart(model, disk)
 	local marks, legend = {}, {}
 	for index, segment in ipairs(named) do
 		if index <= CHART.categories then
-			table.insert(marks, {value = segment.bytes, color = segment.color, label = segment.name})
+			table.insert(marks, {id = segment.id, value = segment.bytes, color = segment.color, label = segment.name})
 			table.insert(legend, {id = segment.id, name = segment.name, color = segment.color, size = segment.size,
 				share = percent(segment.bytes, used)})
 		else
@@ -62,18 +63,21 @@ function Overview.chart(model, disk)
 		end
 	end
 	if rest then
-		table.insert(marks, {value = rest.bytes, color = "systemGray", label = "Other categories"})
+		table.insert(marks, {id = "other", value = rest.bytes, color = "systemGray", label = "Other categories"})
 		table.insert(legend, {id = "other", name = rest.count .. " more categories", color = "systemGray",
 			size = Model.size(rest.bytes), share = percent(rest.bytes, used)})
 	end
 	if residual and residual.bytes > 0 then
-		table.insert(marks, {value = residual.bytes, color = "tertiary", label = "Not attributed"})
+		table.insert(marks, {id = "unreconciled", value = residual.bytes, color = "tertiary", label = "Not attributed"})
 	end
 	if free and free.bytes > 0 then
-		table.insert(marks, {value = free.bytes, color = "quaternaryLabel", label = "Free"})
+		table.insert(marks, {id = "free", value = free.bytes, color = "quaternaryLabel", label = "Free"})
 	end
 	local summary = {}
-	for _, mark in ipairs(marks) do table.insert(summary, mark.label .. " " .. Model.size(mark.value)) end
+	for _, mark in ipairs(marks) do
+		mark.size = Model.size(mark.value)
+		table.insert(summary, mark.label .. " " .. mark.size)
+	end
 	return {marks = marks, legend = legend, explanation = explanation,
 		residual = residual and residual.bytes > 0 and residual.size or nil,
 		accessibilityLabel = #summary > 0 and ("Storage by category: " .. table.concat(summary, ", ")) or explanation}

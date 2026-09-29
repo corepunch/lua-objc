@@ -119,6 +119,12 @@ local badged = xml.render('<List style="sourceList" header="false"><Column id="n
 badged:replaceRows({{name = "Developer", size = "39 GB"}, {name = "Guide"}})
 t.assertEqual(bridge._tableCell(badged, 0, 0).badgeField.stringValue, "39 GB", "a row shows its badge")
 t.assertEqual(bridge._tableCell(badged, 0, 1).badgeField.stringValue, "", "rows without a badge show none")
+-- The badge sits inside the selection capsule, which is inset on both edges.
+badged.size = ns.Size(210, 200)
+badged:layout(210)
+local badgedCell = bridge._tableCellFrames(badged, 0)[1]
+t.expect(badgedCell.x > 0, "source-list rows start after a leading inset")
+t.expect(math.abs(badgedCell.maxX - (210 - badgedCell.x)) < 1, "the badge column mirrors that inset on the trailing edge")
 
 -- Volume capacity as Finder reports it.
 local capacity = ns.volumeCapacity("/")
