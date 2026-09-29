@@ -174,6 +174,7 @@ static const CGFloat kParagraphDropCapInkOutset = 2.0;
 #define kTableCellLineSpacing            2
 #define kTableCellLevelGap               8
 #define kTableCellLevelStackSpacing      3
+#define kTableCellLevelAccessorySide    16
 #define kTableInfoButtonSide            22
 #define kTableInfoButtonPointSize       15
 #define kTableRowMenuOffset             2

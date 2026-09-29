@@ -35,10 +35,14 @@
 @implementation LuaTableCellView
 
 /* A level cell is one meter, like Spectrum's Meter or SwiftUI's Gauge: a
- * value (a size such as "52.3 GB", with its spinner while measuring) leads
- * and the column text (a share such as "36%") trails on one line above a
- * full-width capacity bar, as a title sits over its subtitle in the name
- * column. The share keeps its fitting width; the value truncates first. */
+ * value (a size such as "52.3 GB") leads and the column text (a share such
+ * as "36%") trails on one line above a full-width capacity bar, as a title
+ * sits over its subtitle in the name column. A value that is a state rather
+ * than a number ("Calculating…", "No access") carries a leading accessory:
+ * the spinner while measuring, otherwise the row's symbol, drawn in the
+ * spinner's square so every state reads the same way. The share keeps its
+ * fitting width; the value truncates first. The bar is always drawn, so a
+ * value never floats in an empty cell. */
 - (void)layoutLevel {
 	NSTextField *text = self.textField;
 	NSSize bounds = self.bounds.size;
@@ -53,14 +57,16 @@
 	BOOL labelled = text.stringValue.length > 0;
 	CGFloat shareWidth = labelled ? MIN(ceil(text.fittingSize.width), MAX(0, right - left)) : 0;
 	text.frame = NSMakeRect(right - shareWidth, textY, shareWidth, height);
+	self.imageView.frame = NSZeroRect;
 	if (!_valueField) return;
 	CGFloat x = left;
 	CGFloat maxX = right - shareWidth - (labelled ? kTableCellLevelGap : 0);
-	if (_loadingIndicator && !_loadingIndicator.hidden) {
-		[_loadingIndicator sizeToFit];
-		NSSize spinner = _loadingIndicator.frame.size;
-		_loadingIndicator.frame = NSMakeRect(x, floor(textY + (height - spinner.height) / 2), spinner.width, spinner.height);
-		x += spinner.width + kTableCellLoadingGap;
+	BOOL spinning = _loadingIndicator && !_loadingIndicator.hidden;
+	NSView *accessory = spinning ? _loadingIndicator : (self.imageView.image ? self.imageView : nil);
+	if (accessory) {
+		CGFloat side = kTableCellLevelAccessorySide;
+		accessory.frame = NSMakeRect(x, floor(textY + (height - side) / 2), side, side);
+		x += side + kTableCellLoadingGap;
 	}
 	_valueField.frame = NSMakeRect(x, textY, MAX(0, MIN(ceil(_valueField.fittingSize.width), maxX - x)), height);
 }
@@ -537,15 +543,21 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	id levelValue = levelKey ? rowData[levelKey] : nil;
 	double fraction = [levelValue respondsToSelector:@selector(doubleValue)] ? [levelValue doubleValue] : 0;
 	cell.levelIndicator.doubleValue = isfinite(fraction) ? MAX(0, MIN(1, fraction)) : 0;
-	cell.levelIndicator.hidden = levelValue == nil;
+	/* An unmeasured row keeps an empty, disabled bar under its state. */
+	cell.levelIndicator.hidden = NO;
+	cell.levelIndicator.enabled = levelValue != nil;
 	NSString *levelColorKey = cellSpec[@"levelColor"];
 	cell.levelIndicator.fillColor = semantic_color(levelColorKey ? rowData[levelColorKey] : nil);
-	NSString *levelLabel = cell.valueField.stringValue.length
-		? [NSString stringWithFormat:@"%@, %@", text, cell.valueField.stringValue] : text;
+	NSMutableArray *levelParts = [NSMutableArray array];
+	if (text.length) [levelParts addObject:text];
+	if (cell.valueField.stringValue.length) [levelParts addObject:cell.valueField.stringValue];
+	NSString *levelLabel = [levelParts componentsJoinedByString:@", "];
 	cell.levelIndicator.accessibilityLabel = [@"Share of measured storage: " stringByAppendingString:levelLabel];
 	[cell.levelIndicator setNeedsDisplay:YES];
 	NSString *imageColorKey = cellSpec[@"imageColor"];
 	cell.imageView.contentTintColor = imageColorKey ? semantic_color(rowData[imageColorKey]) : NSColor.secondaryLabelColor;
+	// A meter's state symbol and its word share one colour.
+	if (cell.valueField && imageColorKey && rowData[imageColorKey]) cell.valueField.textColor = cell.imageView.contentTintColor;
 	NSString *imageKey = cellSpec[@"image"];
 	NSString *symbolName = imageKey && [rowData[imageKey] isKindOfClass:NSString.class]
 		? rowData[imageKey] : objc_getAssociatedObject(column, &kKeys[kColumnSystemImageKey]);
