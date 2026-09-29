@@ -44,8 +44,9 @@ accepts the usual frame attributes (`width`, `height`, `maxWidth`, `padding`,
 
 A component is a module that returns a definition table. Put an app's own
 components in `components/` beside `views/`. The renderer looks there first,
-walking up from the template's folder, and then in `lua/components/`. The
-file name is the tag name:
+walking up from the template's folder, and then in `lua/components/`. Tags
+are global, so a module found for a tag that another module already defined
+is an error rather than a substitute. The file name is the tag name:
 
 ```
 apps/<app>/

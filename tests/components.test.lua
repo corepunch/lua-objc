@@ -162,6 +162,13 @@ t.assertThrows(function() Component.define("VStack", { build = function() end })
 t.assertThrows(function() Component.define("BarChart", { build = function() end }, "another.module") end,
 	"a second module cannot claim a component's tag")
 t.assertThrows(function() Component.define("Broken", {}) end, "a component needs build")
+-- BarChart is the bundled chart by now. A nearer module of the same name
+-- is refused loudly; the tag never silently means another component.
+local shadowed, shadowError = pcall(xml.renderFile, "tests/fixtures/shadowed.etlua", {}, ns)
+t.expect(not shadowed and tostring(shadowError):find("<BarChart> is already defined by components.BarChart", 1, true),
+	"a nearer module cannot take over a defined tag")
+t.expect(Component.instance(xml.render('<BarChart><BarMark value="1" /></BarChart>', {}, ns)).bars ~= nil,
+	"and the tag keeps its component")
 local ok, err = pcall(xml.render, "<NoSuchComponent />", {}, ns)
 t.expect(not ok and tostring(err):find("unknown tag <NoSuchComponent>", 1, true), "unknown tags still fail clearly")
 
