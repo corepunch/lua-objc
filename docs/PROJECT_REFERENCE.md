@@ -1060,73 +1060,13 @@ activates the focused sector through `onSelect`. Hit testing uses the same geome
 ### `SceneView{...}`: SceneKit scenes and games
 
 `<SceneView>` (AppKit, `src/appkit/scene_view.m`) is SwiftUI's `SceneView`:
-an `SCNView` that fills its proposal. Its children are scene records, not
-views, and form the scene graph:
-
-```xml
-<SceneView id="scene" background="#a9dcf5" onKey="key" onFrame="frame">
-  <Camera id="camera" position="5 12 10" lookAt="5 0 3" fieldOfView="38" />
-  <Light id="sun" type="directional" rotation="-58 38 0" castsShadow="true" />
-  <Light type="ambient" intensity="480" />
-  <Node id="ground" geometry="box" width="10" height="1" length="6" color="systemGreen" position="5 -0.5 3" />
-  <% for _, coin in ipairs(coins) do -%>
-  <Node id="<%= coin.id %>" model="assets/coin-gold.obj" position="<%= coin.x %> 0.15 <%= coin.z %>"
-        spin="150" bob="0.08" transition="pop" />
-  <% end -%>
-  <Node id="saw" position="2 0 1">
-    <Node model="assets/saw.obj" position="0 0.42 0" spin="0 0 -540" />
-  </Node>
-</SceneView>
-```
-
-- `Node` draws a model file (`model`, anything SceneKit imports: OBJ with
-  its MTL and textures, DAE, USDZ, SCN) or a primitive (`geometry` = `box`,
-  `sphere`, `cylinder`, `cone`, `plane`, `floor`, sized by `width`,
-  `height`, `length`, `radius`, `chamfer`, filled with `color`). Models load
-  once per file and are cloned per node. Child records hang from their node.
-- Every record takes `position` and `scale` (`"x y z"` or one number) and
-  `rotation` (`"x y z"` degrees); nodes also take `hidden`, `opacity`,
-  `castsShadow`, and cameras and lights take `lookAt="x y z"`.
-- `spin` (degrees per second about y, or `"x y z"`) and `bob` (+`bobPeriod`)
-  are idle behaviours run natively as `SCNAction`s: nothing in Lua ticks a
-  coin that turns in place.
-- `transition` (`pop`, `rise`, `fade`) plays when a node is inserted or
-  removed after the first render.
-- The first `Camera` is the point of view; `fieldOfViewAxis="horizontal"`
-  keeps a scene's width framed whatever the view's shape. `Light type` is `directional`
-  (default), `ambient`, `omni` or `spot`, with `intensity`, `color`,
-  `castsShadow`, `shadowRadius`, `shadowOpacity`.
-
-**Reconciliation.** When a retained template (`ui/template.lua`) renders
-again, the records reconcile by `id` through the schema's `updateRecords`
-hook, like the view reconciler: a node keeps its `SCNNode`, pose and running
-behaviours; only attributes whose value changed are applied; nodes missing
-from the template leave with their transition. An unidentified record is
-keyed by its position under its parent. Reparenting a node (moving it under
-another `id`) rebuilds it, which is how a game swaps a whole level: hang
-everything a level owns from `<Node id="level-<%= level %>">`. Unreadable
-models, unknown geometry and duplicate ids raise an error naming the node.
-
-**Poses.** Structure comes from the template; motion does not. Each frame a
-controller assigns `view.nodeStates = {{id, x, y, z, yaw, pitch, roll,
-scale, opacity, hidden}, …}` (angles in degrees; omitted fields keep their
-value; unknown ids are ignored). Because only changed template attributes
-reapply, a template that keeps saying `position="…"` for a spawn point never
-snaps a moving node back. Poses move the outer node; model, spin, bob and
-transitions act on an inner content node, so they never overwrite each other.
-
-**Game loop hooks.** `onFrame(view, dt)` runs from the view's display link
-while it is in a window. `onKey(view, key, pressed) -> handled` reports
-presses and releases without key repeat (`left`, `right`, `up`, `down`,
-`space`, `return`, `escape`, `tab`, `delete`, or the lowercased character);
-held keys are released when the view loses focus or the window resigns key.
-Command-key shortcuts go to the menu. The view takes the keyboard when it
-appears. Test hooks: `bridge._sceneNodes(view)` (every identified node's
-kind, parent, pose, parts and behaviours) and `bridge._sceneSend(view,
-"key", key, pressed)` / `bridge._sceneSend(view, "frame", dt)`.
-
-`apps/coin-quest` is the reference game built on it; its
-[README](../apps/coin-quest/README.md) walks through the architecture.
+an `SCNView` whose scene graph is `<Node>`, `<Camera>` and `<Light>` records
+in an etlua template. Records reconcile by `id` through the schema's
+`updateRecords` hook; game state moves nodes every frame through
+`view.nodeStates` poses; `onFrame(view, dt)` and `onKey(view, key, pressed)`
+drive a game loop. [SceneKit scenes and games](scenekit.md) documents the
+attributes, the reconciliation and pose contracts, the test hooks and the
+architecture for games; `apps/coin-quest` is the reference game.
 
 ### `Treemap{...}`
 

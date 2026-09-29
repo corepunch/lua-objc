@@ -276,6 +276,26 @@ back. The main window steps aside with `window:hide()` and returns with
 </Picker>
 ```
 
+## 3-D scenes
+
+| Tag | Purpose | Important attributes |
+|---|---|---|
+| `SceneView` | SceneKit viewport; fills its proposal (AppKit) | `background`, `onKey`, `onFrame`, `showsStatistics` |
+| `Node` | Scene node: a model file or primitive geometry, with child nodes | `id`, `model`, `geometry`, `color`, `position`, `rotation` (degrees), `scale`, `spin`, `bob`, `transition`, `hidden`, `opacity` |
+| `Camera` | Point of view (the first one) | `position`, `lookAt`, `fieldOfView`, `fieldOfViewAxis` |
+| `Light` | Directional, ambient, omni or spot light | `type`, `rotation`, `intensity`, `color`, `castsShadow` |
+
+```xml
+<SceneView id="scene" onFrame="frame" onKey="key">
+  <Camera position="0 6 8" lookAt="0 0 0" />
+  <Light type="directional" rotation="-60 30 0" castsShadow="true" />
+  <Node id="coin" model="apps/game/assets/coin.obj" spin="150" transition="pop" />
+</SceneView>
+```
+
+Records reconcile by `id`; motion goes through `refs.scene.nodeStates`
+poses every frame. See [SceneKit scenes and games](../scenekit.md).
+
 ## Lists and toolbars
 
 | Tag | Purpose | Important attributes |

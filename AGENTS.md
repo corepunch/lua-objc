@@ -18,6 +18,8 @@ Read only the material needed for the current task:
   template reconciliation and steady live updates
 - [docs/components.md](docs/components.md) — components: new XML tags
   written as etlua templates, the bundled set, resolution
+- [docs/scenekit.md](docs/scenekit.md) — `<SceneView>` 3-D scenes: scene
+  records, reconciliation by id, per-frame poses, game architecture
 - [docs/ios.md](docs/ios.md) — iPhone Simulator host, streamed Lua/assets,
   in-process reload (the host does not quit)
 - [docs/research/XCODE_UI_ARCHITECTURE.md](docs/research/XCODE_UI_ARCHITECTURE.md)

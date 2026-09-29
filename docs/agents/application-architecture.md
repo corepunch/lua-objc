@@ -174,6 +174,11 @@ for the native lifetime details.
 - [Adventure Arena](https://github.com/corepunch/lua-objc/tree/main/apps/adventure-arena)
   separates catalog and session models, library and session controllers, and
   the ZIL runtime service. It is a compact example of composed MVC.
+- [Coin Quest](https://github.com/corepunch/lua-objc/tree/main/apps/coin-quest)
+  is a SceneKit game: authored level data, a world of plain entities run by
+  one-rule systems that emit events, a session model with the state machine,
+  input/stage/HUD controllers, and one etlua prefab per entity kind. See
+  [SceneKit scenes and games](../scenekit.md).
 - [Diskmap](https://github.com/corepunch/lua-objc/tree/main/apps/diskmap)
   composes controllers for scanning, categories, cleanup, inspection, and
   settings. It shows the domain-heavy form of the pattern.
