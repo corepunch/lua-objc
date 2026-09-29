@@ -102,6 +102,10 @@ local moving = reel('<SceneView>' .. lens
 t.expect(frame(moving, 0.5):pixel(32, 24) > 0.95, "a record renders where its attributes put it")
 t.expect(frame(moving, 1.5):pixel(32, 24) < 0.05, "attributes are expressions of t")
 t.expect(frame(moving, 0.5):pixel(32, 24) > 0.95, "frames are pure functions of t (scrubbing back)")
+local listed = reel('<SceneView>' .. lens
+	.. '<Node geometry="box" color="#FF0000" lighting="constant" position="{0, step(t - 1) * 5, 0}" scale="1, 1, 1" /></SceneView>')
+t.expect(frame(listed, 0.5):pixel(32, 24) > 0.95 and frame(listed, 1.5):pixel(32, 24) < 0.05,
+	"a vector is a {x, y, z} table or three values")
 
 local a1, a2 = frame(moving, 0.5), frame(moving, 0.5)
 local same = true
@@ -134,6 +138,20 @@ local driven = reel('<SceneView states="poses(t)">' .. lens
 t.expect(select(2, frame(driven, 0.5):pixel(32, 24)) > 0.95, "states pose identified nodes")
 t.expect(select(2, frame(driven, 1.5):pixel(32, 24)) < 0.05, "states override the template, like nodeStates")
 
+-- States pose a template's camera too: aim and lens.
+local aimed = reel('<SceneView states="poses(t)"><Camera id="camera" position="0 0 4" lookAt="0 0 0" fieldOfView="40" />'
+	.. '<Node geometry="box" position="3 0 0" color="#00FF00" lighting="constant" /></SceneView>',
+	{ poses = function(time) return { { id = "camera", lookAt = time < 1 and { 0, 0, 0 } or { 3, 0, 0 },
+		fieldOfView = time < 2 and 40 or 150 } } end })
+t.expect(select(2, frame(aimed, 0.5):pixel(32, 24)) < 0.05, "the template's lookAt holds without a state")
+t.expect(select(2, frame(aimed, 1.5):pixel(32, 24)) > 0.95, "a state's lookAt aims the camera")
+local wide, narrow = 0, 0
+for x = 0, 63 do
+	if select(2, frame(aimed, 2.5):pixel(x, 24)) > 0.5 then wide = wide + 1 end
+	if select(2, frame(aimed, 1.5):pixel(x, 24)) > 0.5 then narrow = narrow + 1 end
+end
+t.expect(wide < narrow, "a state's fieldOfView changes the lens")
+
 local screen = reel('<SceneView>' .. lens
 	.. '<Node geometry="plane" width="2" height="1.5"><Surface width="20" height="15" background="#0000FF">'
 	.. '<Rect x="0" y="0" width="10" height="15" color="#FFFF00" /></Surface></Node></SceneView>')
@@ -142,6 +160,35 @@ local lr, lg, lb = shot:pixel(28, 24)
 local rr, rg, rb = shot:pixel(36, 24)
 t.expect(lr > 0.9 and lg > 0.9 and lb < 0.1, "a surface draws reel elements onto its node")
 t.expect(rb > 0.9 and rr < 0.1, "and keeps its background elsewhere, the right way up")
+
+-- A surface off screen is not drawn; a far one is drawn coarser.
+local draws = 0
+local counted = reel('<SceneView>' .. lens
+	.. '<Node id="near" geometry="plane" width="2" height="1.5" position="{step(t - 1) * 40, 0, 0}"><Surface width="400" height="300" density="2">'
+	.. '<Draw with="count" /></Surface></Node></SceneView>', { shots = { count = function() draws = draws + 1 end } })
+frame(counted, 0.5)
+t.assertEqual(draws, 1, "a surface on screen draws")
+frame(counted, 1.5)
+t.assertEqual(draws, 1, "a surface off screen does not draw")
+local sized = Reel.fromSource('<Reel width="1280" height="960" subframes="1"><SceneView>' .. lens
+	.. '<Node id="far" geometry="plane" width="2" height="1.5" position="{0, 0, -60 * step(t - 1)}"><Surface width="400" height="300" density="2">'
+	.. '<Rect width="400" height="300" color="#FF0000" /></Surface></Node></SceneView></Reel>')
+local function densities(r)
+	local found = {}
+	local function walk(node)
+		if node.view then for _, record in ipairs(node.view.records) do
+			for level in pairs(record.surface and record.surface.canvases or {}) do table.insert(found, level) end
+		end end
+		for _, child in ipairs(node.children) do walk(child) end
+	end
+	walk(r.scene.root)
+	table.sort(found)
+	return found
+end
+frame(sized, 0.5)
+frame(sized, 1.5)
+local levels = densities(sized)
+t.expect(#levels == 2 and levels[1] < levels[2] and levels[2] <= 2, "a far surface draws at a lower density, never above its own")
 
 local spinning = reel('<SceneView>' .. lens
 	.. '<Node geometry="box" width="2" height="0.3" length="0.3" color="#FFFFFF" lighting="constant" spin="0 0 90" /></SceneView>')
@@ -187,6 +234,12 @@ local pc = frame(pictured, 0)
 t.expect(pc:pixel(12, 12) > 0.9 and pc:pixel(15, 12) < 0.1, "an image at density 2 is half its pixel size in points")
 t.expect(pc:pixel(48, 12) > 0.9 and pc:pixel(40, 15) < 0.1, "width and height stretch an image")
 t.assertThrows(function() reel('<Image src="' .. imageDir .. '/none.png" />') end, "a missing image fails the load")
+
+-- A monospaced style sets code in the monospaced system font: "iii" is as
+-- wide as "MMM".
+t.expect(math.abs(N.text("iii", 20, "regular", 0, "mono"):metrics() - N.text("MMM", 20, "regular", 0, "mono"):metrics()) < 0.01,
+	"design mono is monospaced")
+t.expect(N.text("iii", 20, "regular", 0):metrics() < N.text("MMM", 20, "regular", 0):metrics(), "the system font is proportional")
 
 -- Identifiers containing "/" (an app's "task/2") cut as whole views.
 Reel.native()

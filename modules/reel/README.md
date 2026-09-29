@@ -120,7 +120,7 @@ use `step()` or `&gt;` for comparisons.
 | `Slam style text at="t1, t2…" styleN` | Words landing from large, each on its own hit. |
 | `Counter value format final unit style unitStyle` | Digits ticking in fixed slots with a still unit. |
 | `Backdrop color`, `Glow color radius colors locations`, `Vignette inner outer` | The stage. |
-| `Palette name colors`, `Style name size weight color gradient tracking kern digits` | Definitions for type. |
+| `Palette name colors`, `Style name size weight color gradient tracking kern digits design` | Definitions for type. |
 | `Cue sound at until` | A sound event with no picture. |
 | `Draw with` | A bespoke shot from `data.shots`. |
 

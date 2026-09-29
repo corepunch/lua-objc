@@ -480,6 +480,41 @@ static int reel_scene_project(lua_State *L) {
 	return 3;
 }
 
+/* extent(handle, camera, width, height) -> minX, minY, maxX, maxY: the
+ * node's bounding box (children included) projected into a render of that
+ * size, or nothing when the box is wholly behind the camera. A surface uses
+ * it to skip drawing what is off screen and to draw small what is far. */
+static int reel_scene_extent(lua_State *L) {
+	ReelSceneState *state = reel_check_scene(L, 1);
+	SCNNode *node = state.nodes[reel_scene_handle(L, state, 2)];
+	SCNNode *camera = state.nodes[reel_scene_handle(L, state, 3)];
+	if (!camera.camera) return luaL_error(L, "scene node %d is not a camera", (int)lua_tointeger(L, 3));
+	double width = luaL_checknumber(L, 4), height = luaL_checknumber(L, 5);
+	[SCNTransaction flush];
+	SCNVector3 lo, hi;
+	if (![node getBoundingBoxMin:&lo max:&hi]) return 0;
+	SCNMatrix4 projection = [camera.camera projectionTransformWithViewportSize:CGSizeMake(width, height)];
+	double minX = INFINITY, minY = INFINITY, maxX = -INFINITY, maxY = -INFINITY;
+	BOOL front = NO;
+	for (int i = 0; i < 8; i++) {
+		SCNVector3 corner = SCNVector3Make(i & 1 ? hi.x : lo.x, i & 2 ? hi.y : lo.y, i & 4 ? hi.z : lo.z);
+		SCNVector3 view = [camera convertPosition:corner fromNode:node];
+		// Points behind the camera are clamped onto the near plane side, so
+		// a box the camera is inside still covers the frame.
+		double z = MIN(view.z, -camera.camera.zNear);
+		if (view.z < 0) front = YES;
+		double cx = projection.m11 * view.x + projection.m21 * view.y + projection.m31 * z + projection.m41;
+		double cy = projection.m12 * view.x + projection.m22 * view.y + projection.m32 * z + projection.m42;
+		double cw = projection.m14 * view.x + projection.m24 * view.y + projection.m34 * z + projection.m44;
+		if (cw <= 0) cw = 1e-6;
+		double px = (cx / cw * 0.5 + 0.5) * width, py = (0.5 - cy / cw * 0.5) * height;
+		minX = MIN(minX, px); maxX = MAX(maxX, px); minY = MIN(minY, py); maxY = MAX(maxY, py);
+	}
+	if (!front) return 0;
+	lua_pushnumber(L, minX); lua_pushnumber(L, minY); lua_pushnumber(L, maxX); lua_pushnumber(L, maxY);
+	return 4;
+}
+
 /* world(handle, x, y, z) -> x, y, z: a point in the node's space in world
  * coordinates, after this frame's poses. */
 static int reel_scene_world(lua_State *L) {
@@ -511,4 +546,5 @@ static const luaL_Reg reel_scene_methods[] = {
 	{"camera", reel_scene_camera}, {"light", reel_scene_light}, {"environment", reel_scene_environment},
 	{"render", reel_scene_render}, {"project", reel_scene_project},
 	{"world", reel_scene_world},
+	{"extent", reel_scene_extent},
 	{NULL, NULL}};
