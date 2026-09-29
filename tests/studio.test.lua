@@ -47,6 +47,23 @@ t.expect(not model:setModel("no-provider"), "model ID validation")
 t.expect(model:setModel("provider/test-model"), "custom model allowed")
 local restored = Model.new({ load = function() return saved end, save = storage.save }, seed)
 t.assertEqual(restored.model, "provider/test-model", "model setting restored")
+local legacyFiles = {}
+for path, source in pairs(seed) do
+	local legacyPath = path:gsub("^demo/playground/", "apps/playground/")
+	legacyFiles[legacyPath] = source:gsub("demo%.playground", "apps.playground"):gsub("demo/playground", "apps/playground")
+end
+local migratedSave
+local migrated = Model.new({
+	load = function() return { files = legacyFiles, model = "provider/legacy" } end,
+	save = function(value) migratedSave = value; return true end,
+}, seed)
+t.assertEqual(migrated.files["demo/playground/Model.lua"], legacyFiles["apps/playground/Model.lua"],
+	"legacy apps/playground files load at the current project path")
+t.assertEqual(migrated.files["demo/playground/init.lua"], 'return require("demo.playground.Controller")\n',
+	"legacy apps.playground module references are migrated")
+t.assertEqual(migratedSave.files["demo/playground/Model.lua"], legacyFiles["apps/playground/Model.lua"],
+	"migrated project paths are persisted")
+t.assertEqual(migrated.model, "provider/legacy", "migration preserves the selected model")
 
 local pending, payload, cancelled, reloads = nil, nil, 0, 0
 local encoded

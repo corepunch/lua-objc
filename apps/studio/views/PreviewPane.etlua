@@ -18,7 +18,10 @@
 				<MenuItem title="<%= destination.title %>" systemImage="<%= destination.icon %>" />
 				<% end %>
 			</Menu>
-			<Label id="previewStatus" text="<%= status %>" systemImage="checkmark.circle.fill" iconSize="<%= STAGE.statusSize %>" size="<%= STAGE.statusSize %>" color="secondary" lines="1" truncation="tail" flexShrink="1" />
+			<HStack spacing="6" alignment="center" flexShrink="1">
+				<SystemImage name="checkmark.circle.fill" size="<%= STAGE.statusSize %>" color="secondary" />
+				<Label id="previewStatus" text="<%= status %>" size="<%= STAGE.statusSize %>" color="secondary" lines="1" truncation="tail" />
+			</HStack>
 			<Spacer />
 			<Button id="runButton" title="<%= runLabel %>" systemImage="play.fill" action="reloadPreview" style="glassProminent" />
 			<Button id="chatVisibility" systemImage="sidebar.trailing" accessibilityLabel="Focus Preview" action="toggleChat" style="glass" />

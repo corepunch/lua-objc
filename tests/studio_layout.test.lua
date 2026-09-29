@@ -31,7 +31,7 @@ t.expect(not stage:find('title="Share"', 1, true) and not stage:find('title="Dep
 	"project actions leave the narrow stage bar")
 t.expect(stage:find('<Preview id="preview" background="clear"', 1, true) ~= nil,
 	"the device sits directly on the stage background")
-local stageBar = assert(stage:match('(<HStack id="stageBar".-</HStack>)'))
+local stageBar = assert(stage:match('(<HStack id="stageBar".-<Button id="chatVisibility".-/>)'))
 local barPreview = stage:find('id="stageBar"', 1, true)
 local devicePreview = stage:find('<Preview', 1, true)
 local deviceBar = stage:find('id="deviceBar"', 1, true)
@@ -47,7 +47,12 @@ t.expect(stageBar:find('action="reloadPreview" style="glassProminent"', 1, true)
 	"Run is the prominent stage action")
 t.expect(stageBar:find('action="toggleChat"', 1, true) and stageBar:find('accessibilityLabel="Focus Preview"', 1, true),
 	"icon-only chat toggle keeps an accessible name")
-t.expect(stageBar:find('id="previewStatus"', 1, true) ~= nil, "preview status is beside the project")
+t.expect(stageBar:find('<SystemImage name="checkmark.circle.fill"', 1, true) ~= nil,
+	"the mutable preview status keeps its symbol as a separate view")
+local statusAt = assert(stageBar:find('<Label id="previewStatus"', 1, true))
+local statusEnd = assert(stageBar:find('/>', statusAt, true))
+t.expect(stageBar:sub(statusAt, statusEnd):find('systemImage=', 1, true) == nil,
+	"the status ref points to a text label instead of a composite layout view")
 
 local chat = assert(source:match('(<VStack id="chatPane".-)</HStack>%s*</Window>'))
 t.expect(chat:find('id="chatPane" spacing="0" flexGrow="1"', 1, true) ~= nil, "the chat takes the remaining width")

@@ -4,7 +4,7 @@ local PREFIX = "demo/playground/"
 local REQUIRED = { "init.lua", "Model.lua", "Controller.lua", "views/Window.etlua" }
 local LIMITS = { fileBytes = 128 * 1024, totalBytes = 1024 * 1024, history = 20 }
 local DEFAULT_MODEL = "openrouter/free"
-local SAVED_PREFIX = "examples/playground/"
+local SAVED_PREFIXES = { "examples/playground/", "apps/playground/" }
 
 local function copy(files)
 	local result = {}
@@ -17,13 +17,20 @@ local function migrateSavedFiles(files)
 	local migrated, changed = {}, false
 	for path, source in pairs(files) do
 		local canonical = path
-		if type(path) == "string" and path:sub(1, #SAVED_PREFIX) == SAVED_PREFIX then
-			canonical = PREFIX .. path:sub(#SAVED_PREFIX + 1)
-			changed = true
+		if type(path) == "string" then
+			for _, savedPrefix in ipairs(SAVED_PREFIXES) do
+				if path:sub(1, #savedPrefix) == savedPrefix then
+					canonical = PREFIX .. path:sub(#savedPrefix + 1)
+					changed = true
+					break
+				end
+			end
 		end
 		if type(source) == "string" then
 			local current = source:gsub("examples%.playground", "demo.playground")
 			current = current:gsub("examples/playground", "demo/playground")
+			current = current:gsub("apps%.playground", "demo.playground")
+			current = current:gsub("apps/playground", "demo/playground")
 			if current ~= source then
 				source = current
 				changed = true
