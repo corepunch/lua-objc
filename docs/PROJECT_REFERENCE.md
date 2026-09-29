@@ -1307,7 +1307,7 @@ We evaluated five approaches for bridging NSTableView to Lua:
 | 2 | `NSArrayController` + Cocoa Bindings | No (automatic) | Medium | Obscure KVO setup, hard to debug |
 | 3 | Lua callback for every `numberOfRows`/`viewForColumn` | No | High | Heavy cross-language traffic per cell |
 | 4 | Lua metatable proxy intercepting writes | No | Medium | Fragile, leaks ObjC/Lua duality |
-| 5 | **Native ObjC source + key-based cells** | **No** | **High** | **Clean, idiomatic, fast** |
+| 5 | **Native ObjC source + key-based cells and native-bound templates** | **No** | **High** | **Clean, idiomatic, fast** |
 
 We chose **#5** because:
 
@@ -1317,8 +1317,10 @@ We chose **#5** because:
   of flashing the whole table. ObjC gives us this for free; we just need to wrap it.
 - **Column `id` → row dictionary key** — minimal but extensible. Each column's
   `id` maps directly to a key in the row's `NSDictionary`. Cells default to
-  native `NSTextField`s; a column may instead provide a `cell(row)` callback
-  that returns any native view.
+  native `NSTextField`s. A column with content is a template: Lua builds its
+  views once per reusable cell, and `{field}` bindings are applied natively
+  per row, so custom cells keep approach #3's flexibility without its
+  per-cell Lua traffic.
 - **Methods via `nsview` metatable `__index`** — instead of returning a Lua
   wrapper table (which can't be added as a subview), we attach the data source
   to the scroll view via `objc_setAssociatedObject`. The `nsview` metatable's
@@ -1384,10 +1386,9 @@ it for sidebar sections in `sourceList` lists; UIKit styles it as a footnote
 header.
 
 Each column `id` must match a key in the row data tables. Cells render the
-string value of `row[id]`, unless the column has a `cell` callback. A callback
-receives the row table and returns a native view; this supports compact
-two-line rows, inline charts, and other compound native content. Numbers are
-converted to strings automatically.
+string value of `row[id]`; numbers are converted to strings automatically. A
+`<Column>` with child XML renders that template instead, bound to row fields
+with `{field}`; see "Extending: column content templates".
 Use `<SwipeRow>` for one native swipeable row inside a `VStack`. Both platforms
 use their table row action APIs, so the row keeps system gesture behavior and
 appearance. See [`docs/swipe_actions.md`](swipe_actions.md) for XML and model
@@ -1401,9 +1402,8 @@ font. `<Column loadingKey="calculating">` binds a boolean row field to a native
 spinning progress indicator beside the cell text. Supply the loading label in
 the column's usual row value; the spinner and label share the column alignment.
 Lua column specs use `cell = {controlSize = "small", loading = "calculating"}`.
-In a level column (`levelKey`), the spinner sits before the meter's
-`valueKey` text instead; see "Measured storage cells" in
-[tableview_swiftui.md](tableview_swiftui.md).
+A cell that needs more than text, such as a meter with its own spinner, is a
+column content template.
 
 **Column sizing:**
 
@@ -1507,11 +1507,25 @@ ns.Window {
 }
 ```
 
-### Extending: custom cell renderers
+### Extending: column content templates
 
-Custom renderers return native views, not a canvas or a second table
-implementation. Keep their height bounded with `rowHeight`, and let the
-returned stack or control own its internal layout.
+A new cell appearance is a template, not native code: give the `<Column>`
+child XML and bind its attributes to row fields.
+
+```xml
+<Column id="usage" title="Used" width="220">
+  <VStack spacing="3">
+    <Label text="{used}" truncation="tail" />
+    <Gauge value="{fraction}" tint="{color}" maxWidth="infinity" />
+  </VStack>
+</Column>
+```
+
+Templates are built from the ordinary views and laid out by the layout
+engine, inside reusable native cells. Keep their height within `rowHeight`.
+Binding syntax, the bindable attributes, the cell lifecycle and measured
+cost are in "Column content templates" in
+[tableview_swiftui.md](tableview_swiftui.md).
 
 ### Dynamic updates at runtime
 

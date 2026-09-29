@@ -25,6 +25,12 @@
 	return self;
 }
 
+/* A gauge shows what it is given: a value outside its range fills or
+ * empties it, and one that is not a number is no value. */
+- (void)setDoubleValue:(double)value {
+	[super setDoubleValue:isfinite(value) ? MAX(self.minValue, MIN(self.maxValue, value)) : self.minValue];
+}
+
 - (NSSize)intrinsicContentSize {
 	return NSMakeSize(NSViewNoIntrinsicMetric, ceil(self.cell.cellSize.height));
 }

@@ -728,22 +728,17 @@ static int bridge_system_image(lua_State *L) {
 	NSString *name = [NSString stringWithUTF8String:symbol];
 	NSString *accessibilityDescription =
 		[NSString stringWithUTF8String:description];
-	NSImage *image = [NSImage imageWithSystemSymbolName:name
-		accessibilityDescription:accessibilityDescription];
-	if (!image) return luaL_error(L, "unknown SF Symbol: %s", symbol);
-
-	NSImageSymbolConfiguration *configuration =
-		[NSImageSymbolConfiguration configurationWithPointSize:pointSize
-													   weight:weight];
-	image = [image imageWithSymbolConfiguration:configuration];
+	/* An empty name is no symbol: a cell template binds the name per row. */
 	LuaSymbolImageView *view = [[LuaSymbolImageView alloc]
 		initWithFrame:NSMakeRect(0, 0, pointSize, pointSize)];
 	view.symbolSize = pointSize;
-	view.image = image;
+	view.symbolWeight = weight;
+	view.accessibilityLabel = accessibilityDescription;
+	view.symbolName = name;
+	if (name.length && !view.image) return luaL_error(L, "unknown SF Symbol: %s", symbol);
 	view.imageScaling = NSImageScaleProportionallyDown;
 	view.contentTintColor = semantic_color(
 		[NSString stringWithUTF8String:colorName]);
-	view.accessibilityLabel = accessibilityDescription;
 	push_objc(L, view, "nsview");
 	return 1;
 }

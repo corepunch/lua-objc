@@ -71,6 +71,8 @@ enum {
 	kSplitProportionsAppliedKey,
 	kColumnFlexKey,
 	kColumnCellKey,
+	kColumnTemplateKey,
+	kTableTemplateCellsKey,
 	kColumnSortableKey,
 	kTabViewDelegateKey,
 	kTableScrollViewKey,
@@ -172,9 +174,6 @@ static const CGFloat kParagraphDropCapInkOutset = 2.0;
 #define kTreemapHeaderDetailSpacing      6
 #define kTableCellLoadingGap             4
 #define kTableCellLineSpacing            2
-#define kTableCellLevelGap               8
-#define kTableCellLevelStackSpacing      3
-#define kTableCellLevelAccessorySide    16
 #define kTableInfoButtonSide            22
 #define kTableInfoButtonPointSize       15
 #define kTableRowMenuOffset             2
@@ -324,6 +323,7 @@ static void bridge_set_optional_callback(
 #include "appkit/paragraph.m"
 #include "shared/flow_layout.m"
 #include "appkit/layout.m"
+#include "appkit/table_cell_template.m"
 #include "appkit/layout_debug.m"
 #include "appkit/scroll_view.m"
 #include "appkit/controls.m"
@@ -421,6 +421,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_tableColumnWidths", bridge_AppKit_table_column_widths},
 	{"_tableRowMenu", bridge_table_row_menu},
 	{"_tableCell", bridge_table_cell},
+	{"_tableColumnTemplate", bridge_table_column_template},
+	{"_tableTemplateCells", bridge_table_template_cells},
 	{"_pressColumnButton", bridge_press_column_button},
 	{"_viewMidlineFill", bridge_view_midline_fill},
 	{"_arcInkBounds", bridge_arc_ink_bounds},
