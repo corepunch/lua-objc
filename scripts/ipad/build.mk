@@ -30,8 +30,8 @@ HOST := $(wildcard ios/LuaRuntime/*.m)
 FRAGMENTS := $(shell find src/uikit src/shared -name '*.m')
 # libgit2 for the Git module, which the host preloads (src/plugins/git).
 LIBGIT2 := build/libgit2/$(SDK)-$(ARCH)/libgit2.a
-$(LIBGIT2): scripts/libgit2/build.sh
-	scripts/libgit2/build.sh $(SDK) $(ARCH) $(@D)
+$(LIBGIT2): scripts/libgit2/libgit2.mk scripts/libgit2/git2_features.h scripts/libgit2/pcre2_config.h
+	$(MAKE) -j$(shell getconf _NPROCESSORS_ONLN) -f scripts/libgit2/libgit2.mk SDK=$(SDK) ARCH=$(ARCH) OUT=$(@D)
 FRAMEWORKS := -lz -framework UIKit -framework Foundation -framework CoreGraphics \
 	-framework CoreText \
 	-framework QuartzCore -framework Symbols -framework UserNotifications -framework Security -framework WebKit \

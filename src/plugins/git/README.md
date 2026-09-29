@@ -7,11 +7,11 @@ which iOS does not allow. On the Mac it is the standalone plugin
 hosts (`make ios-host`, `scripts/ipad/build.mk`) link it statically and add it
 to `package.preload`, so the same `require("Git")` works there.
 
-`scripts/libgit2/build.sh <sdk> <arch> <out>` builds `libgit2.a` with CMake
-for `macosx`, `iphoneos` or `iphonesimulator`; the Makefiles call it. It uses
+`scripts/libgit2/libgit2.mk` builds `libgit2.a` directly with Apple Clang for
+`macosx`, `iphoneos` or `iphonesimulator`; the project Makefiles call it. It uses
 the system zlib, CommonCrypto and SecureTransport, so nothing else is vendored.
 SSH, NTLM and GSSAPI are off. Run `git submodule update --init vendor/libgit2`
-after cloning; building needs `cmake`.
+after cloning; building needs Xcode command-line tools and Make.
 
 ```lua
 local Git = require("Git")
