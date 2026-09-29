@@ -4,7 +4,10 @@
   local ROW = { cover = { width = 60, height = 90, radius = 8 }, side = 16 }
 %>
 <% if #entries == 0 then %>
-<ContentUnavailable id="emptyBookshelf" title="No Stories in Progress" systemImage="book.closed" description="Stories you begin are saved at the last page you read and wait for you here." />
+<VStack id="emptyBookshelf" spacing="16" alignment="center" maxWidth="infinity" maxHeight="infinity">
+  <ContentUnavailable title="No Stories in Progress" systemImage="book.closed" description="Stories you begin are saved at the last page you read and wait for you here." />
+  <Button id="browseDiscover" title="Browse Discover" action="browseDiscover" style="borderedProminent" />
+</VStack>
 <% else %>
 <ScrollView id="bookshelfScroll">
   <VStack paddingHorizontal="<%= ROW.side %>" paddingBottom="24" spacing="0" maxWidth="infinity">
