@@ -61,7 +61,9 @@ function Controller:update(state)
 	local chart = Overview.chart(self.model, state.disk)
 	local actions = {reclaim = function() self.handlers.reclaim() end}
 	for _, item in ipairs(chart.legend) do
-		actions["category_" .. item.id] = function() self.handlers.open(item.id) end
+		if item.id ~= Overview.folded then
+			actions["category_" .. item.id] = function() self.handlers.open(item.id) end
+		end
 	end
 	-- The ring leads into the Map: a category's sector opens the Map inside
 	-- it, the folded categories and the center open the whole map. Free and
@@ -71,7 +73,7 @@ function Controller:update(state)
 	local marks = {}
 	for _, mark in ipairs(chart.marks) do marks[mark.id] = mark end
 	actions.chartSelect = function(id)
-		if id == "other" then self.handlers.map("")
+		if id == Overview.folded then self.handlers.map("")
 		elseif self.model.resources:find(id) then self.handlers.map(id) end
 	end
 	actions.chartCenter = function() self.handlers.map("") end
@@ -80,10 +82,8 @@ function Controller:update(state)
 		if not refs then return end
 		refs.usedTotal.text = mark and mark.size or summary.used
 		refs.usedCaption.text = mark and mark.label or summary.caption
-		-- The sector under the pointer selects its category row; the folded
-		-- categories share a sector and have no row of their own.
-		local category = mark and not mark.folded and id or nil
-		self.selectedId = Selection.index(self.categoryRows, category) and category or nil
+		-- The sector under the pointer selects its category row.
+		self.selectedId = Selection.index(self.categoryRows, id) and id or nil
 		Selection.show(self.refs and self.refs.results, self.categoryRows, self.selectedId)
 	end
 	local cloudBytes, cloudFiles = Inventory.cloud(self.model)

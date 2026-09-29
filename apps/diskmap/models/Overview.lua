@@ -11,6 +11,10 @@ local CHART = {categories = 5}
 
 local percent = Model.percent
 
+-- The id of the sector and legend row that stand for every category too
+-- small to draw on its own.
+Overview.folded = "#other"
+
 -- Volume summary for the hero card. Capacity numbers come from the system
 -- volume query; measured totals come from the ledger and never replace them.
 function Overview.summary(model, disk, capacity)
@@ -63,9 +67,10 @@ function Overview.chart(model, disk)
 		end
 	end
 	if rest then
-		-- `folded` tells this sector from the category whose id is "other".
-		table.insert(marks, {id = "other", folded = true, value = rest.bytes, color = "systemGray", label = "Other categories"})
-		table.insert(legend, {id = "other", name = rest.count .. " more categories", color = "systemGray",
+		-- The folded categories are "#other", like a map level's folded
+		-- remainder: "other" is a category of its own.
+		table.insert(marks, {id = Overview.folded, value = rest.bytes, color = "systemGray", label = "Other categories"})
+		table.insert(legend, {id = Overview.folded, name = rest.count .. " more categories", color = "systemGray",
 			size = Model.size(rest.bytes), share = percent(rest.bytes, used)})
 	end
 	if residual and residual.bytes > 0 then

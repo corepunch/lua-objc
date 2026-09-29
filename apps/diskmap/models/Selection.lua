@@ -7,14 +7,13 @@ local Selection = {}
 -- highlighted sector. See MOTION.md.
 
 -- Sectors that are volume geometry, not a resource a list row can select.
--- The Overview's folded "other" sector is not listed: File Types has a kind
--- of that id, and a sector is only selectable where a row owns its id.
 local TRACKS = {free = true, unreconciled = true}
 
 function Selection.isResource(id)
 	if type(id) ~= "string" or id == "" then return false end
 	if TRACKS[id] then return false end
-	-- A level's folded remainder ("developer#other") has no row of its own.
+	-- A folded remainder ("developer#other", the Overview's "#other") has no
+	-- row of its own.
 	if id:find("#other", 1, true) then return false end
 	return true
 end

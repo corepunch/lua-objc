@@ -70,7 +70,7 @@ tipsController:presentation({totalKb = 100, freeKb = 9}).actions.tip_access()
 t.assertEqual(routed, "settings", "tip controller routes the model action")
 local legend = require("apps.diskmap.models.Overview").chart(model, {totalKb = 2e12 / 1024, freeKb = 1e12 / 1024}).legend
 for _, item in ipairs(legend) do
-	t.expect(item.id == "other" or model.resources:find(item.id) ~= nil, "chart legend opens a registered category: " .. item.id)
+	t.expect(item.id == "#other" or model.resources:find(item.id) ~= nil, "chart legend opens a registered category: " .. item.id)
 end
 local details = Inspector.details(model, "simulators")
 t.expect(details.text:find("Review threshold", 1, true) ~= nil, "inspector reuses cleanup evidence")
