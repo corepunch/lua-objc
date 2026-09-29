@@ -44,4 +44,11 @@ t.assertEqual(transactions, 0, "switching the map style does not animate")
 app.scan:notify()
 t.assertEqual(transactions, 1, "a scan update animates its new sizes")
 
+-- Pointing at a resource selects; it neither animates nor changes level.
+transactions = 0
+app.page.template.actions.chartHover("developer")
+t.assertEqual(app.pages.map.selectedId, "developer", "map hover and the list share one token")
+t.assertEqual(app.pages.map.focus, "", "hovering does not look inside a group")
+t.assertEqual(transactions, 0, "selection does not animate")
+
 ns.withAnimation = withAnimation

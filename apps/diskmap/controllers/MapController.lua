@@ -3,6 +3,7 @@ local Template = require("ui.template")
 local Categories = require("apps.diskmap.models.Categories")
 local MapTree = require("apps.diskmap.models.MapTree")
 local Model = require("apps.diskmap.Model")
+local Selection = require("apps.diskmap.models.Selection")
 local Sectors = require("ui.sectors")
 local Controller = {}; Controller.__index = Controller
 
@@ -46,7 +47,15 @@ end
 
 function Controller:describe(id)
 	if not self.refs then return end
+	self.selectedId = Selection.index(self.rows, id) and id or nil
 	self.refs.mapHover.text = id and MapTree.describe(self.model, id, self.total) or self.defaultHover
+end
+
+-- The pointer over a wedge or cell selects its row, so the chart and the
+-- list beside it name the same resource.
+function Controller:hover(id)
+	self:describe(id)
+	if self.refs then Selection.show(self.refs.mapList, self.rows, self.selectedId) end
 end
 
 function Controller:activate(id)
@@ -110,7 +119,7 @@ function Controller:update(state)
 	local actions = {
 		style = function(index) self:setStyle(STYLES[(index or 0) + 1]) end,
 		chartSelect = function(id, count) if count and count > 1 then self:activate(id) elseif isGroup(self.model, id) then self:setFocus(id) else self:describe(id) end end,
-		chartHover = function(id) self:describe(id) end,
+		chartHover = function(id) self:hover(id) end,
 		up = function() self:up() end,
 		-- A selected row points at its sector, as hovering the sector would.
 		selectRow = function(_, _, row)
@@ -139,7 +148,11 @@ function Controller:update(state)
 	data.actions = actions
 	local _, refs = self.template:update(data)
 	self.refs = refs
+	self.rows = data.rows
 	refs.mapList:replaceRows(data.rows)
+	-- Reloading rows drops the native selection; the token restores it.
+	if Selection.index(self.rows, self.selectedId) then Selection.show(refs.mapList, self.rows, self.selectedId)
+	else self.selectedId = nil end
 end
 
 function Controller:marksChanged() self:update(self.state) end

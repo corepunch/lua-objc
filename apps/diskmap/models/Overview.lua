@@ -63,7 +63,8 @@ function Overview.chart(model, disk)
 		end
 	end
 	if rest then
-		table.insert(marks, {id = "other", value = rest.bytes, color = "systemGray", label = "Other categories"})
+		-- `folded` tells this sector from the category whose id is "other".
+		table.insert(marks, {id = "other", folded = true, value = rest.bytes, color = "systemGray", label = "Other categories"})
 		table.insert(legend, {id = "other", name = rest.count .. " more categories", color = "systemGray",
 			size = Model.size(rest.bytes), share = percent(rest.bytes, used)})
 	end

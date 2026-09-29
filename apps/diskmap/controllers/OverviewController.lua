@@ -2,6 +2,8 @@ local ns = require("AppKit")
 local Template = require("ui.template")
 local Overview = require("apps.diskmap.models.Overview")
 local Inventory = require("apps.diskmap.models.Inventory")
+local Selection = require("apps.diskmap.models.Selection")
+local Sectors = require("ui.sectors")
 local Controller = {}; Controller.__index = Controller
 
 -- The overview lists every largest item that fits a glance; the Largest Items
@@ -22,7 +24,13 @@ function Controller:mount(host, state)
 	self.template = Template.new(host, "apps/diskmap/views/Overview.etlua", ns)
 	local _, refs = self.template:update({status = state.status, actions = {
 		access = function() handlers.access() end,
-		select = function(_, _, row) if row then self.selectedId = row.id end end,
+		-- A selected category points at its sector, as hovering it would.
+		select = function(_, _, row)
+			if not row then return end
+			self.selectedId = row.id
+			local chart = self.hero and self.hero.refs and self.hero.refs.chart
+			if chart then Sectors.highlight(chart, row.id) end
+		end,
 		open = function(_, _, row) if row then handlers.open(row.id) end end,
 		largestMenu = function(_, _, row) return handlers.menu(row.id) end,
 		openLargest = function(_, _, row) if row then handlers.open(row.parentId) end end,
@@ -38,7 +46,11 @@ end
 function Controller:update(state)
 	local refs = self.refs
 	if not refs then return end
-	refs.results:replaceRows(Overview.categories(self.model, state.disk, state.query))
+	self.categoryRows = Overview.categories(self.model, state.disk, state.query)
+	refs.results:replaceRows(self.categoryRows)
+	-- Reloading rows drops the native selection; the token restores it.
+	if Selection.index(self.categoryRows, self.selectedId) then Selection.show(refs.results, self.categoryRows, self.selectedId)
+	else self.selectedId = nil end
 	local largest = Overview.largest(self.model, state.disk, LARGEST.preview, state.query)
 	refs.largest:replaceRows(largest)
 	refs.largestSection.hidden = #largest == 0
@@ -68,6 +80,11 @@ function Controller:update(state)
 		if not refs then return end
 		refs.usedTotal.text = mark and mark.size or summary.used
 		refs.usedCaption.text = mark and mark.label or summary.caption
+		-- The sector under the pointer selects its category row; the folded
+		-- categories share a sector and have no row of their own.
+		local category = mark and not mark.folded and id or nil
+		self.selectedId = Selection.index(self.categoryRows, category) and category or nil
+		Selection.show(self.refs and self.refs.results, self.categoryRows, self.selectedId)
 	end
 	local cloudBytes, cloudFiles = Inventory.cloud(self.model)
 	self.hero:update({summary = summary, chart = chart,
