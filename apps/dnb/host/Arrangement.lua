@@ -1,10 +1,12 @@
--- One track of the set, fully arranged before its first bar plays, after the
--- arrange window of Cubase or MTV Music Generator: a ruler of sections and
--- one lane per part, each lane a row of blocks that point at patterns.
+-- One track of the set, fully arranged before its first bar plays, after a
+-- tracker's song or the arrange window of MTV Music Generator: a ruler of
+-- sections and one lane per channel, eight at most, each lane a row of
+-- blocks that point at patterns.
 --
 --   {track = 3, start = 1040, length = 176,        -- set bar of its first bar; bars
+--    tempo = 172, channels = {{role = "drums", name = "Two-Step"}, ...},
 --    sections = {{id = "intro", start = 0, length = 16, cycle = 0}, ...},
---    lanes = {{part = "kick", blocks = {{start = 8, length = 16, pattern = "kick.intro",
+--    lanes = {{part = "drums", blocks = {{start = 8, length = 16, pattern = "drums.light",
 --      filter = {kind = "lowpass", from = 0.3, to = 1}}, ...}}, ...}}
 --
 -- Section and block starts count bars from the track's first bar. Blocks are
@@ -18,6 +20,8 @@
 -- one plays on from `offset` bars into the `whole`.
 local Arrangement = {}
 Arrangement.__index = Arrangement
+
+Arrangement.channels = 8
 
 Arrangement.filters = {lowpass = true, highpass = true}
 
@@ -38,7 +42,8 @@ end
 
 --- Checks the plan and returns it as an Arrangement. `patterns` maps
 --- pattern ids to patterns; every block's pattern must exist and belong to
---- its lane's part. `order` lists the parts lanes are sorted by.
+--- its lane's part. `order` lists the roles of the track's channels, which
+--- lanes are sorted by.
 function Arrangement.new(fields, patterns, order)
 	local self = setmetatable(fields, Arrangement)
 	local where = "track " .. tostring(self.track)
@@ -51,10 +56,11 @@ function Arrangement.new(fields, patterns, order)
 	assert(cursor == self.length, where .. " sections must cover every bar")
 	local rank = {}
 	for i, part in ipairs(order) do rank[part] = i end
+	assert(#self.lanes <= Arrangement.channels, where .. " plays on at most " .. Arrangement.channels .. " channels")
 	local seen = {}
 	for _, lane in ipairs(self.lanes) do
 		local part = lane.part
-		assert(rank[part], where .. " has a lane for unknown part " .. tostring(part))
+		assert(rank[part], where .. " has a lane for a channel it lacks: " .. tostring(part))
 		assert(not seen[part], where .. " has two " .. part .. " lanes")
 		seen[part] = true
 		local stop = 0
@@ -108,6 +114,13 @@ function Arrangement:lane(part)
 	end
 end
 
+--- The row (1…8) of `part`'s channel, or nil if the track has none.
+function Arrangement:row(part)
+	for i, channel in ipairs(self.channels or {}) do
+		if channel.role == part then return i end
+	end
+end
+
 --- Every block under track bar `pos`, by part.
 function Arrangement:blocksAt(pos)
 	local blocks = {}
@@ -124,7 +137,6 @@ function Arrangement:plays(part, i)
 	end
 	return false
 end
-
 
 --- A block's automation `at` (0…1) of the way through it: its level, and
 --- its filter's kind and opening, or no kind while the filter is wide open.

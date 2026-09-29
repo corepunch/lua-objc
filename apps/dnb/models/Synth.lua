@@ -1,406 +1,70 @@
--- Sample-accurate Lua synthesizer for a style's bars (the score format is
--- documented in host/StyleKit.lua). `render(out, n)` writes n interleaved
--- stereo frames into `out`; it has no IO, so the same code feeds the
--- speakers and the headless tests. Drums are one-shots rendered once per
--- drum sound; bass, pads and stabs are running voices. Tempo and swing are
--- read at each bar boundary, sound controls every block. A style tunes the
--- instruments through its manifest's `sound`, which lands on a bar line.
-local Amen = require("apps.dnb.models.Amen")
+-- The player: a tracker's eight channels, sample-accurate, in Lua. It asks
+-- the composer for one bar of score at a time (the format is documented in
+-- host/StyleKit.lua) and plays it on the track's channels: drum channels
+-- play slices of a loop and one-shots from the kit (models/Drums.lua),
+-- pitched channels play voices of the track's patches
+-- (models/Instrument.lua). Every channel ends in a strip, as on a mixing
+-- desk: the fade or filter sweep its block rides, its fader, then the mix
+-- bus, the sidechain, the sends and the delay throw.
+--
+-- `render(out, n)` writes n interleaved stereo frames into `out`; it has no
+-- IO, so the same code feeds the speakers and the headless tests. Tempo and
+-- swing belong to the track and are read at each bar line; the Pitch fader
+-- moves the tempo as a turntable's does, and a loop's pitch with it.
+local Drums = require("apps.dnb.models.Drums")
+local Instrument = require("apps.dnb.models.Instrument")
+local Model = require("apps.dnb.Model")
 
 local Synth = {}
 Synth.__index = Synth
 
-local sin, exp, floor, pi = math.sin, math.exp, math.floor, math.pi
-local TAU = 2 * pi
+local exp, floor = math.exp, math.floor
+local TAU = 2 * math.pi
+local softClip = Drums.softClip
 
--- Every voice's constants in one place so the balance can be tuned by ear.
--- These are drum & bass values; a style's `sound` overrides any field of
--- any table (`sound = {bass = {resonance = 0.15}}`) and keeps the rest.
-local DEFAULT_SOUND = {
-	mix = {
-		drums = 0.9, sub = 0.55, reese = 0.34, pad = 0.05, stab = 0.07, riser = 0.18,
-		arp = 0.075, lead = 0.07, throw = 0.9, -- throw: dub echo send, independent of Space
-		amen = 0.85, amenSend = 0.12, keys = 0.055, keysSend = 0.35,
-		duckDepth = 0.45, duckRelease = 0.12, -- sidechain pump from each kick
-		delaySend = 0.55, reverbSend = 0.8, delayFeedback = 0.38,
-		delaySteps = 3, -- a dotted eighth
-		master = 0.9,
-	},
-	-- Two detuned oscillators through a state-variable low-pass. `lfoRate`
-	-- is wobble cycles per beat (a note's `wobble` overrides it, and
-	-- `retrigger` restarts the LFO on each note, as dubstep basses do);
-	-- `resonance` is the filter damping, lower rings more (acid); `envAmount`
-	-- octaves of per-note filter envelope, doubled on an accented note.
-	bass = {
-		detune = 0.0045, glide = 0.0025, attack = 0.004, release = 0.03,
-		minCutoff = 70, cutoffOctaves = 6.2, wobbleOctaves = 3, controlRate = 32,
-		lfoRate = 2, retrigger = false, resonance = 0.7, envAmount = 0, envDecay = 0.12, shape = "saw",
-	},
-	pad = {detune = 0.006, attack = 0.45, release = 0.9, brightness = 0.06},
-	stab = {decay = 0.16, attack = 0.002, octave = 1},
-	-- FM electric piano: a sine carrier over a sine modulator at the same
-	-- ratio for the bark, a fast high "tine", and the suitcase autopan.
-	keys = {
-		index = 1.6, indexFloor = 0.3, indexDecay = 0.25, tine = 0.15, tineRatio = 14, tineDecay = 0.03,
-		attack = 0.003, decay = 1.2, release = 0.15, tail = 2.5, autopanRate = 4.5, autopanDepth = 0.35,
-	},
-	pluck = {detune = 0.004, attack = 0.002, decay = 0.1, sweep = 0.035, tail = 0.6, send = 0.9}, -- tail: -60 dB; the delay carries the rest
-	lead = {
-		detune = 0.003, glide = 0.0016, attack = 0.008, release = 0.12,
-		vibratoRate = 5.4, vibratoDepth = 0.007, vibratoDelay = 0.18, -- vibrato blooms on held notes
-		brightness = 0.1, sweep = 0.22, sweepTime = 0.15, square = 0.35, send = 0.5,
-	},
-	-- The programmed kit. A kick is a sine swept down from base + sweep to
-	-- base. A snare is a tuned body (`drop` bends it down from above, for
-	-- a fat thwack) and wires: noise from dark (`bright` 0) to fizzy
-	-- (`bright` 1), with a looser `rattle` tail, a rimshot `snap`, a `clap`
-	-- layered on, a short `room` and `drive`. A clap is quick bursts of
-	-- noise band-passed around `tone` and a tail; hats are 808-style metal
-	-- with a share of `noise`.
-	kick = {base = 46, sweep = 115, sweepTime = 0.026, decay = 0.2, drive = 1.6, click = 0.35, length = 0.42},
-	snare = {tone = 188, overtone = 332, bodyDecay = 0.055, noiseDecay = 0.1, noise = 0.42,
-		drop = 0, bright = 1, rattle = 0, snap = 0, clap = 0, room = 0, drive = 0},
-	clap = {bursts = 3, spacing = 0.011, decay = 0.16, level = 0.9, tone = 0.35},
-	hat = {scale = 1.6, decay = 0.016, openDecay = 0.12, noise = 0.12},
+-- The balance every style starts from; a style's `mix` overrides any field
+-- and keeps the rest. A role's level scales its channel over the patch's own.
+local DEFAULT_MIX = {
+	drums = 0.9, tops = 0.85, bass = 1, pad = 1, keys = 1, stab = 1, arp = 1, lead = 1, counter = 1,
+	texture = 1, fx = 1,
+	throw = 0.9,                          -- dub echo send, independent of Space
+	drumSend = 0.1,                       -- a drum channel's share of the effects
+	duckDepth = 0.45, duckRelease = 0.12, -- sidechain pump from each kick
+	delaySend = 0.55, reverbSend = 0.8, delayFeedback = 0.38,
+	delaySteps = 3,                       -- a dotted eighth
+	master = 0.9,
 }
 
--- Snare characters (StyleKit.snares) over a style's own snare: factors
--- multiply its fields, settings replace them.
-local SNARES = {
-	tight = {factors = {tone = 1.12, overtone = 1.1, bodyDecay = 0.7, noiseDecay = 0.6}, set = {snap = 0.5}},
-	fat = {factors = {tone = 0.82, overtone = 0.85, bodyDecay = 1.6, noiseDecay = 1.3, noise = 1.1},
-		set = {drop = 0.45, bright = 0.6}},
-	rimshot = {factors = {tone = 1.25, overtone = 1.3, noise = 0.7, noiseDecay = 0.8}, set = {snap = 1}},
-	roomy = {factors = {noiseDecay = 1.2}, set = {room = 0.55, bright = 0.8}},
-	crunchy = {factors = {noise = 1.2, bodyDecay = 1.1}, set = {drive = 0.7}},
-	layered = {factors = {noiseDecay = 1.1, noise = 0.85}, set = {clap = 0.6, snap = 0.2}},
-	vintage = {factors = {bodyDecay = 1.25, noiseDecay = 1.1}, set = {bright = 0.25, rattle = 0.8, room = 0.2}},
-}
+-- A block's filter sweep (host/Arrangement.lua) as a one-pole filter on the
+-- channel: the corner each kind reaches fully closed, and the octaves to
+-- wide open. Its corner moves every `rate` frames.
+local SWEEP = {lowpass = {corner = 120, octaves = 7.2}, highpass = {corner = 3900, octaves = -7.6}, rate = 32}
+-- A slice cut short fades over a few milliseconds, as a sampler's declick
+-- does; `slack` absorbs the frame rounding between 16ths.
+local SLICE = {fade = 0.003, slack = 16}
+-- What the Sound sliders ask of the bass: octaves of cutoff either side of
+-- the patch's own, around the slider's middle.
+local SOUND = {cutoffOctaves = 2.5, middle = 0.5}
+-- The Mix faders scale the style's own balance, by the family of a role;
+-- Pump scales the sidechain depth, which never closes the gate completely.
+local MAX_DUCK = 0.95
+-- A channel's level meter falls by this much a second.
+local METER = {fall = 3}
+-- The loops a track will play are prepared ahead, so that no display frame
+-- waits on one: the bars looked ahead, and the seconds of a render given to
+-- the work.
+local AHEAD = {bars = {2, 4, 8}, budget = 0.002}
 
--- How far a track's kit design (StyleKit.drumDesign, each dimension −1…1)
--- moves the style's drums: semitones, or octaves of a time or level.
-local VARIANT = {snareTune = 3, kickTune = 2, kickSweep = 0.35, kickLength = 0.45, kickDrive = 0.5,
-	kickClick = 1, hatTone = 0.2, hatLength = 0.6, hatNoise = 1.3, clapSpread = 0.4, clapLength = 0.5,
-	clapTone = 0.5}
-
---- The full sound for a style's overrides.
-function Synth.sound(overrides)
-	local sound = {}
-	for group, fields in pairs(DEFAULT_SOUND) do
-		local merged = {}
-		for key, value in pairs(fields) do merged[key] = value end
-		for key, value in pairs(overrides and overrides[group] or {}) do
-			assert(fields[key] ~= nil, "unknown sound field " .. group .. "." .. tostring(key))
-			merged[key] = value
-		end
-		sound[group] = merged
+--- The full mix for a style's overrides.
+function Synth.mix(overrides)
+	local mix = {}
+	for key, value in pairs(DEFAULT_MIX) do mix[key] = value end
+	for key, value in pairs(overrides or {}) do
+		assert(DEFAULT_MIX[key] ~= nil, "unknown mix field " .. tostring(key))
+		mix[key] = value
 	end
-	for group in pairs(overrides or {}) do assert(DEFAULT_SOUND[group], "unknown sound group " .. tostring(group)) end
-	return sound
+	return mix
 end
-
---- The drums of `sound` voiced for one track's kit `design` (from
---- StyleKit.drumDesign): its snare character over the style's snare, then
---- retuned and reshaped within the VARIANT ranges. Other groups are shared.
-function Synth.drumVariant(sound, design)
-	if not design then return sound end
-	local result = {}
-	for group, fields in pairs(sound) do result[group] = fields end
-	local function copy(group)
-		local fields = {}
-		for key, value in pairs(sound[group]) do fields[key] = value end
-		result[group] = fields
-		return fields
-	end
-	local function semitones(x, range) return 2 ^ (x * range / 12) end
-	local function octaves(x, range) return 2 ^ (x * range) end
-	local snare = copy("snare")
-	local character = assert(SNARES[design.snare], "unknown snare character " .. tostring(design.snare))
-	for key, factor in pairs(character.factors) do snare[key] = snare[key] * factor end
-	for key, value in pairs(character.set) do snare[key] = value end
-	local tune = semitones(design.snareTune, VARIANT.snareTune)
-	snare.tone, snare.overtone = snare.tone * tune, snare.overtone * tune
-	local kick = copy("kick")
-	kick.base = kick.base * semitones(design.kickTune, VARIANT.kickTune)
-	kick.sweep = kick.sweep * octaves(design.kickDrive, VARIANT.kickSweep)
-	kick.decay = kick.decay * octaves(design.kickLength, VARIANT.kickLength)
-	kick.length = kick.length * octaves(math.max(0, design.kickLength), VARIANT.kickLength)
-	kick.drive = kick.drive * octaves(design.kickDrive, VARIANT.kickDrive)
-	kick.click = kick.click * octaves(design.kickClick, VARIANT.kickClick)
-	local hat = copy("hat")
-	hat.scale = hat.scale * octaves(design.hatTone, VARIANT.hatTone)
-	hat.decay = hat.decay * octaves(design.hatLength, VARIANT.hatLength)
-	hat.openDecay = hat.openDecay * octaves(design.hatLength, VARIANT.hatLength)
-	hat.noise = hat.noise * octaves(design.hatNoise, VARIANT.hatNoise)
-	local clap = copy("clap")
-	clap.spacing = clap.spacing * octaves(design.clapSpread, VARIANT.clapSpread)
-	clap.bursts = design.clapSpread > 0.3 and 4 or clap.bursts
-	clap.decay = clap.decay * octaves(design.clapLength, VARIANT.clapLength)
-	clap.tone = clap.tone * octaves(design.clapTone, VARIANT.clapTone)
-	return result
-end
--- The break's sampler: a slice cut short fades over a few milliseconds, as a
--- sampler's declick does, instead of clicking.
-local BREAK = {fade = 0.003, slack = 16, room = {0.019, 0.027}, roomFeedback = 0.32, roomMix = 0.3, tone = 0.55, drive = 1.3}
-local SINE_SIZE = 4096
-local SINE = {}
-for i = 0, SINE_SIZE do SINE[i] = sin(TAU * i / SINE_SIZE) end
-
-local function softClip(x)
-	if x > 3 then return 1 elseif x < -3 then return -1 end
-	local x2 = x * x
-	return x * (27 + x2) / (27 + 9 * x2)
-end
-
-local function midiHz(m) return 440 * 2 ^ ((m - 69) / 12) end
-
--- Deterministic white noise so rendered drums, and therefore tests, are
--- identical on every run.
-local function noiseSource(seed)
-	local state = seed
-	return function()
-		state = (state * 1103515245 + 12345) & 0x7FFFFFFF
-		return state / 0x3FFFFFFF - 1
-	end
-end
-
--- TR-808 style metal: six detuned square waves.
-local METAL = {205.3, 304.4, 369.6, 522.7, 540.0, 800.0}
-
-local function shotRenderer(sr, drums, noise)
-	return function(name, seconds, fn)
-		local data, n = {}, floor(seconds * sr)
-		local state = {}
-		for i = 1, n do data[i] = fn((i - 1) / sr, state) end
-		-- Declick the tail.
-		local fade = math.min(n, floor(0.004 * sr))
-		for i = 0, fade - 1 do data[n - i] = data[n - i] * i / fade end
-		drums[name] = data
-	end
-end
-
-local function metalSource(noise)
-	return function(t, s, scale, hiss)
-		local v = 0
-		for _, f in ipairs(METAL) do v = v + ((t * f * scale) % 1 < 0.5 and 1 or -1) end
-		-- Two differences act as a steep high-pass on the metallic cluster.
-		local d1 = v - (s.a or 0); s.a = v
-		local d2 = d1 - (s.b or 0); s.b = d1
-		return d2 / 12 + noise() * (hiss or 0.12)
-	end
-end
-
--- Clap bursts: noise band-passed around `tone` (the difference of two
--- one-pole low-passes), in quick bursts and then a tail.
-local function clapSource(noise, clap)
-	local tailStart = (clap.bursts - 1) * clap.spacing
-	return function(t, s)
-		local n = noise()
-		s.ca = (s.ca or 0) + clap.tone * (n - (s.ca or 0))
-		s.cb = (s.cb or 0) + clap.tone * 0.17 * (s.ca - (s.cb or 0))
-		local burst = 0
-		for i = 0, clap.bursts - 1 do
-			local since = t - i * clap.spacing
-			if since >= 0 then burst = math.max(burst, exp(-since / 0.005)) end
-		end
-		local tail = t >= tailStart and exp(-(t - tailStart) / clap.decay) * 0.8 or 0
-		return (s.ca - s.cb) * math.max(burst, tail) * 2.4
-	end, tailStart + clap.decay * 4
-end
-
--- A small room for a snare: two feedback combs at wall-bounce delays.
-local SNARE_ROOM = {delays = {0.0113, 0.0171}, feedback = 0.55, tail = 0.45}
-
--- The voices a style designs: kick, snare (and its ghost), clap and hats.
-local function renderKit(sr, sound)
-	local noise = noiseSource(11)
-	local drums = {}
-	local shot = shotRenderer(sr, drums, noise)
-	local metal = metalSource(noise)
-	local kick, snare, clap, hat = sound.kick, sound.snare, sound.clap, sound.hat
-	shot("kick", kick.length, function(t, s)
-		s.phase = (s.phase or 0) + TAU * (kick.base + kick.sweep * exp(-t / kick.sweepTime)) / sr
-		local click = t < 0.003 and noise() * kick.click * (1 - t / 0.003) or 0
-		return softClip(kick.drive * sin(s.phase) * exp(-t / kick.decay)) * 0.95 + click
-	end)
-	local layer = clapSource(noise, clap)
-	local combs = {}
-	for i, delay in ipairs(SNARE_ROOM.delays) do combs[i] = {line = {}, size = floor(delay * sr), at = 0} end
-	local driveNorm = snare.drive > 0 and 1 / softClip(1 + 3 * snare.drive) or 1
-	shot("snare", 0.32 + snare.room * SNARE_ROOM.tail, function(t, s)
-		s.phase = (s.phase or 0) + TAU * snare.tone * (1 + snare.drop * exp(-t / 0.012)) / sr
-		local body = sin(s.phase) * exp(-t / snare.bodyDecay) * 0.55
-			+ sin(s.phase * snare.overtone / snare.tone) * exp(-t / 0.035) * 0.25
-		-- Wires: a first difference is bright fizz, a band around 3 kHz
-		-- the darker hiss of an older kit.
-		local n = noise()
-		local hp = n - (s.prev or 0)
-		s.prev = n
-		s.lp = (s.lp or 0) + 0.45 * (n - (s.lp or 0))
-		s.lp2 = (s.lp2 or 0) + 0.08 * (s.lp - (s.lp2 or 0))
-		local wires = hp * snare.bright + (s.lp - s.lp2) * 1.6 * (1 - snare.bright)
-		local envelope = exp(-t / snare.noiseDecay) + snare.rattle * 0.35 * exp(-t / (snare.noiseDecay * 3))
-		local v = body + wires * envelope * snare.noise
-		if snare.snap > 0 and t < 0.004 then
-			v = v + (hp * 0.6 + sin(TAU * 1750 * t)) * snare.snap * (1 - t / 0.004)
-		end
-		if snare.clap > 0 then v = v + layer(t, s) * clap.level * snare.clap * 0.6 end
-		if snare.drive > 0 then v = softClip(v * (1 + 3 * snare.drive)) * driveNorm * 0.5 end
-		if snare.room > 0 then
-			local wet = 0
-			for _, c in ipairs(combs) do
-				local slot = c.at % c.size + 1
-				local out = c.line[slot] or 0
-				c.line[slot] = v + out * SNARE_ROOM.feedback
-				c.at = c.at + 1
-				wet = wet + out
-			end
-			v = v + wet * snare.room * 0.5
-		end
-		return v
-	end)
-	local clapShot, clapLength = clapSource(noise, clap)
-	shot("clap", clapLength, function(t, s) return clapShot(t, s) * clap.level end)
-	shot("hat", 0.07, function(t, s) return metal(t, s, hat.scale, hat.noise) * exp(-t / hat.decay) end)
-	shot("openHat", math.max(0.4, hat.openDecay * 3.5), function(t, s)
-		return metal(t, s, hat.scale, hat.noise) * exp(-t / hat.openDecay) * 0.8
-	end)
-	drums.ghost = drums.snare
-	return drums
-end
-
--- Kits by sample rate and drum design: switching back to a style or
--- skipping back a track reuses its rendered kit. Every track brings a new
--- design, so only the most recent few stay; a playing Synth holds its own.
-local KIT_CACHE = 8
-local kits, kitOrder = {}, {}
-local function kitKey(sr, sound)
-	local parts = {sr}
-	for _, group in ipairs({"kick", "snare", "clap", "hat"}) do
-		local fields = sound[group]
-		local keys = {}
-		for key in pairs(fields) do table.insert(keys, key) end
-		table.sort(keys)
-		for _, key in ipairs(keys) do table.insert(parts, group .. "." .. key .. "=" .. tostring(fields[key])) end
-	end
-	return table.concat(parts, ";")
-end
-
--- Voices every style shares: cymbals, hand percussion, toms and the
--- break's own kit.
-local function renderShared(sr)
-	local noise = noiseSource(7)
-	local drums = {}
-	local shot = shotRenderer(sr, drums, noise)
-	local metal = metalSource(noise)
-	-- A washy ride: high-passed noise over a quiet metal cluster, with the
-	-- stick's tick at the front. No sustained sine, so it never rings.
-	shot("ride", 0.9, function(t, s)
-		local n = noise()
-		local hp = n - (s.prev or 0)
-		s.prev = n
-		local wash = (hp * 0.32 + metal(t, s, 3.4, 0.2) * 0.22) * exp(-t / 0.28)
-		local tick = t < 0.006 and hp * 0.5 * (1 - t / 0.006) or 0
-		return wash + tick
-	end)
-	shot("crash", 2.0, function(t, s)
-		local n = noise()
-		local hp = n - (s.prev or 0)
-		s.prev = n
-		return (hp * 0.5 + metal(t, s, 2.3) * 0.35) * exp(-t / 0.6)
-	end)
-	shot("rim", 0.06, function(t)
-		return (sin(TAU * 1720 * t) * 0.6 + sin(TAU * 830 * t) * 0.4) * exp(-t / 0.009)
-	end)
-	shot("conga", 0.28, function(t, s)
-		s.phase = (s.phase or 0) + TAU * (310 + 60 * exp(-t / 0.01)) / sr
-		return sin(s.phase) * exp(-t / 0.075) * 0.8
-	end)
-	-- Toms for fills: a pitched sine that bends down as it decays.
-	for name, pitch in pairs({tomHigh = 196, tomMid = 147, tomLow = 104}) do
-		shot(name, 0.45, function(t, s)
-			s.phase = (s.phase or 0) + TAU * pitch * (1 + 0.5 * exp(-t / 0.03)) / sr
-			return softClip(1.3 * sin(s.phase)) * exp(-t / 0.16) * 0.8
-		end)
-	end
-	shot("shaker", 0.09, function(t, s)
-		local n = noise()
-		local hp = n - (s.prev or 0)
-		s.prev = n
-		return hp * math.min(1, t / 0.012) * exp(-t / 0.03) * 0.5
-	end)
-	-- The break's kit: a 1960s funk kit, tuned and roomy — a round kick with
-	-- a felt beater, a snare with a ringing head and loose wires, and a ride
-	-- with its bell.
-	shot("breakKick", 0.3, function(t, s)
-		s.phase = (s.phase or 0) + TAU * (58 + 70 * exp(-t / 0.018)) / sr
-		local thump = t < 0.006 and noise() * 0.25 * (1 - t / 0.006) or 0
-		return sin(s.phase) * exp(-t / 0.11) * 0.9 + thump
-	end)
-	shot("breakSnare", 0.36, function(t, s)
-		local head = sin(TAU * 196 * t) * exp(-t / 0.07) * 0.5 + sin(TAU * 287 * t) * exp(-t / 0.12) * 0.22
-		local n = noise()
-		s.lp = (s.lp or 0) + 0.45 * (n - (s.lp or 0))
-		local wires = (n - s.lp * 0.6) * exp(-t / 0.13) * 0.5
-		return head + wires
-	end)
-	shot("breakRide", 0.9, function(t, s)
-		local bell = sin(TAU * 2280 * t) * 0.1 + sin(TAU * 3420 * t) * 0.05
-		return (metal(t, s, 2.6) * 0.55 + bell) * exp(-t / 0.4)
-	end)
-	return drums
-end
-
--- The Amen loop at the record's tempo, one sample for the whole break, so a
--- slice holds everything that rang into it: a snare tail under the next
--- kick, the ride's wash. Tails wrap round the loop, as a looped record's do.
--- A short room, a little tape drive and a dull top give it its age.
-local function renderAmen(sr, drums)
-	local step = sr * 60 / Amen.bpm / 4
-	local n = floor(Amen.slices * step + 0.5)
-	local data = {}
-	for i = 1, n do data[i] = 0 end
-	local function place(shot, at, gain)
-		for i = 1, #shot do
-			local j = (at + i - 1) % n + 1
-			data[j] = data[j] + shot[i] * gain
-		end
-	end
-	local kit = {kick = drums.breakKick, snare = drums.breakSnare, crash = drums.crash}
-	for bar, hits in ipairs(Amen.pattern) do
-		local barStart = (bar - 1) * 16
-		for _, h in ipairs(hits) do place(kit[h[2]], floor((barStart + h[1]) * step), h[3]) end
-		for s = 0, 14, 2 do place(drums.breakRide, floor((barStart + s) * step), s % 4 == 0 and 0.5 or 0.36) end
-	end
-	local combs = {}
-	for _, seconds in ipairs(BREAK.room) do table.insert(combs, {buf = {}, n = floor(seconds * sr), i = 1}) end
-	for _, c in ipairs(combs) do for i = 1, c.n do c.buf[i] = 0 end end
-	local lp = 0
-	for i = 1, n do
-		local x = data[i]
-		local room = 0
-		for _, c in ipairs(combs) do
-			local y = c.buf[c.i]
-			c.buf[c.i] = x + y * BREAK.roomFeedback
-			c.i = c.i % c.n + 1
-			room = room + y
-		end
-		lp = lp + BREAK.tone * (x + room * BREAK.roomMix - lp)
-		data[i] = softClip(lp * BREAK.drive) / BREAK.drive
-	end
-	return data, step
-end
-
--- Stereo placement per drum voice: {pan (0 left, 1 right), effect send}.
--- A block's filter sweep (host/Arrangement.lua) as a one-pole filter on
--- the voice: the corner each kind reaches fully closed, and the octaves to
--- wide open. The bass closes its own resonant filter instead, by `bass`
--- octaves.
-local SWEEP = {lowpass = {corner = 120, octaves = 7.2}, highpass = {corner = 3900, octaves = -7.6}, bass = 5}
--- The filter lane sweeps the whole mix through two poles. Its corner moves
--- every `rate` frames, and it fades in over the first `blend` of its
--- travel from wide open, so it comes and goes without a step.
-local MASTER = {rate = 32, blend = 0.1}
 
 -- The one-pole coefficient for a filter `kind` at `opening` (0…1).
 local function sweepCoef(kind, opening, sr)
@@ -408,110 +72,78 @@ local function sweepCoef(kind, opening, sr)
 	return 1 - exp(-TAU * sweep.corner * 2 ^ (opening * sweep.octaves) / sr)
 end
 
--- The filter a note's automation asks of its voice: coefficient and
--- whether it is a high-pass, or nothing while the note plays open.
-local function sweepOf(e, sr)
-	if e.lowpass then return sweepCoef("lowpass", e.lowpass, sr), false end
-	if e.highpass then return sweepCoef("highpass", e.highpass, sr), true end
+local function strip(role)
+	return {role = role, family = Model.family[role], drum = Model.family[role] == "drums",
+		left = {}, right = {}, throwL = {}, throwR = {}, used = false,
+		l = 0, r = 0, c = 1, high = false, filtered = false, peak = 0}
 end
 
-local DRUM_PLACE = {
-	kick = {0.5, 0}, snare = {0.5, 0.35}, ghost = {0.46, 0.25}, hat = {0.62, 0.05},
-	openHat = {0.62, 0.15}, ride = {0.36, 0.2}, crash = {0.44, 0.3},
-	rim = {0.3, 0.3}, conga = {0.7, 0.25}, shaker = {0.76, 0.2}, clap = {0.52, 0.4},
-	tomHigh = {0.66, 0.25}, tomMid = {0.5, 0.25}, tomLow = {0.34, 0.25},
-}
-
-local shared = {}
-
-function Synth.new(settings, sampleRate, sound)
+--- `settings` answers value(control) as Model does; `style` is the style
+--- plugin's manifest, for its kit and mix.
+function Synth.new(settings, sampleRate, style)
 	local sr = sampleRate or 44100
-	shared[sr] = shared[sr] or renderShared(sr)
 	local self = setmetatable({
 		settings = settings, sr = sr,
-		shared = shared[sr],
-		breakVoice = nil,    -- the slice voice the next in-order slice continues
 		frame = 0,           -- next frame to render
 		nextBarFrame = 0,    -- where the next bar starts
 		barNumber = 0,       -- timeline bar count across track changes
 		composerBar = 0,     -- bar index within the current composer
 		timeline = {},       -- recent {frame, bar} for the playhead
 		events = {},         -- scheduled, sorted by frame
-		voices = {},         -- active one-shot and chord voices
-		bass = {freq = 55, target = 55, gate = false, env = 0, reeseGain = 1, p1 = 0, p2 = 0, p3 = 0, sub = 0,
-			lp = 0, bp = 0, coef = 0.1, lfo = 0, tick = 0, id = 0, fenv = 0, accent = 1},
-		lead = {freq = 440, target = 440, gate = false, env = 0, p1 = 0, p2 = 0, sq = 0,
-			lp1 = 0, lp2 = 0, vib = 0, t = 0, sweep = 1, id = 0, gain = 1, throw = 0},
-		-- The pad lane's ride through the sounding bar: level and filter
-		-- coefficient from the bar's first frame to its last.
-		pad = {t = 0, length = 1, level = {from = 1, to = 1}},
-		sweeps = {},         -- the filter lane's bars to come: {frame, frames, kind, from, to}
-		master = {c = 1, mix = 0, high = false, l1 = 0, l2 = 0, r1 = 0, r2 = 0},
+		voices = {},         -- sounding one-shots, slices and poly voices
+		mono = {},           -- the voice of each mono channel, by role
+		loops = {},          -- the slice voice each drum channel continues
+		strips = {}, order = {},
+		tempo = 120,         -- of the bar sounding, under the Pitch fader
 		duck = 0,
 		duckHits = {},       -- block-relative frames where a kick restarts the pump
+		scratch = {scratchL = {}, scratchR = {}},
 		bus = {dryL = {}, dryR = {}, duckL = {}, duckR = {}, sendL = {}, sendR = {},
 			revInL = {}, revInR = {}, wetL = {}, wetR = {}, echoL = {}, echoR = {}, throwL = {}, throwR = {}},
 	}, Synth)
-	shared[sr].amen = shared[sr].amen or table.pack(renderAmen(sr, self.shared))
-	self.amen, self.amenStep = shared[sr].amen[1], shared[sr].amen[2]
-	self:applySound(Synth.sound(sound))
+	for _, role in ipairs(Model.roles) do
+		self.strips[role.id] = strip(role.id)
+		table.insert(self.order, self.strips[role.id])
+	end
+	self:applyStyle(style)
 	self:initEffects()
 	return self
 end
 
--- The Mix faders scale the style's own balance: each fader's levels, and
--- Pump the sidechain depth, which never closes the gate completely.
-local FADERS = {drums = {"drums", "amen"}, bass = {"sub", "reese"}, chords = {"pad", "stab", "keys"},
-	melody = {"arp", "lead"}}
-local MAX_DUCK = 0.95
-
--- The style's mix under the current fader positions. A level reaches a
--- sustained voice at once and a one-shot from its next hit.
-function Synth:mixLevels()
-	local settings, mix = self.settings, self.mix or {}
-	for key, value in pairs(self.sound.mix) do mix[key] = value end
-	for fader, keys in pairs(FADERS) do
-		local level = settings:value(fader)
-		for _, key in ipairs(keys) do mix[key] = mix[key] * level end
-	end
-	mix.duckDepth = math.min(MAX_DUCK, mix.duckDepth * settings:value("pump"))
-	self.mix = mix
-	return mix
-end
-
--- The drum table voices play from: the style's kit, voiced for the
--- current track's design, over the shared shots.
-function Synth:applySound(sound)
-	self.sound = sound
+-- The style's kit and mix; the kit is voiced for the current track's design.
+function Synth:applyStyle(style)
+	self.kit = Drums.design(style and style.kit)
+	self.styleMix = Synth.mix(style and style.mix)
 	self:mixLevels()
-	self:applyKit()
+	self:applyDrums(self.design)
 end
 
 function Synth:applyDrums(design)
 	self.design = design
-	self:applyKit()
+	self.shots = Drums.shots(self.sr, self.kit, design)
 end
 
-function Synth:applyKit()
-	local key = kitKey(self.sr, Synth.drumVariant(self.sound, self.design))
-	local kit = kits[key]
-	if not kit then
-		kit = renderKit(self.sr, Synth.drumVariant(self.sound, self.design))
-		kits[key] = kit
-		table.insert(kitOrder, key)
-		if #kitOrder > KIT_CACHE then kits[table.remove(kitOrder, 1)] = nil end
+-- The style's mix under the current fader positions. A level reaches a
+-- channel at once.
+function Synth:mixLevels()
+	local settings, mix = self.settings, self.mixNow or {}
+	for key, value in pairs(self.styleMix) do mix[key] = value end
+	for _, role in ipairs(Model.roles) do
+		local fader = Model.faders[role.family]
+		if fader then mix[role.id] = mix[role.id] * settings:value(fader) end
 	end
-	local shared = self.shared
-	self.drums = setmetatable({}, {__index = function(_, name) return kit[name] or shared[name] end})
+	mix.duckDepth = math.min(MAX_DUCK, mix.duckDepth * settings:value("pump"))
+	self.mixNow = mix
+	return mix
 end
 
 --- Plays `composer` from its first bar at the next bar line; the audio
---- already rendered keeps playing, so the change is seamless. A `sound`
---- (from Synth.sound) takes over on that same bar line.
-function Synth:setComposer(composer, sound)
+--- already rendered keeps playing, so the change is seamless. A `style`
+--- brings its kit and mix on that same bar line.
+function Synth:setComposer(composer, style)
 	self.composer = composer
 	self.composerBar = 0
-	if sound then self.pendingSound = sound end
+	if style then self.pendingStyle = style end
 end
 
 function Synth:initEffects()
@@ -533,9 +165,14 @@ function Synth:initEffects()
 	end
 end
 
--- Frames per 16th note and the swing delay applied to off-16ths.
-function Synth:stepFrames()
-	return self.sr * 60 / self.settings:value("tempo") / 4
+-- The Pitch fader, as a turntable's: a share of the tempo either way.
+function Synth:pitch()
+	return 1 + self.settings:value("pitch") / 100
+end
+
+-- Frames per 16th note of a bar at `tempo` BPM, under the Pitch fader.
+function Synth:stepFrames(tempo)
+	return self.sr * 60 / ((tempo or self.tempo) * self:pitch()) / 4
 end
 
 local function insertEvent(events, event)
@@ -545,83 +182,65 @@ local function insertEvent(events, event)
 end
 
 function Synth:scheduleBar()
-	local bar = self.composer:bar(self.composerBar, self.settings)
+	local settings = self.settings
+	local bar = self.composer:bar(self.composerBar, settings)
 	local start = self.nextBarFrame
-	local step = self:stepFrames()
-	local swing = self.settings:value("swing") * step
+	local tempo = bar.tempo * self:pitch()
+	local step = self.sr * 60 / tempo / 4
+	local swing = bar.swing * settings:value("swing") * step
 	-- Swing delays the off-16ths; rolls between 16ths swing with their 16th.
 	-- A humanize nudge is a fraction of a step, never before the bar start.
 	local function at(s, nudge)
 		return math.max(start, start + floor((s + (nudge or 0)) * step + ((floor(s) % 2 == 1) and swing or 0) + 0.5))
 	end
-	bar.frame, bar.frames, bar.number = start, floor(16 * step + 0.5), self.barNumber
-	if self.pendingSound then
-		insertEvent(self.events, {frame = start, kind = "sound", sound = self.pendingSound})
-		self.pendingSound = nil
-	end
-	-- Each track plays its own kit, from its first bar.
-	if bar.drums ~= self.scheduledDrums then
-		insertEvent(self.events, {frame = start, kind = "drums", design = bar.drums})
-		self.scheduledDrums = bar.drums
-	end
-	-- An event for `note`, under its block's automation.
+	bar.frame, bar.frames, bar.number, bar.playedTempo = start, floor(16 * step + 0.5), self.barNumber, tempo
 	local events = self.events
-	local function play(note, event)
-		event.level, event.lowpass, event.highpass = note.level or 1, note.lowpass, note.highpass
-		insertEvent(events, event)
-	end
-	bar.kicks, bar.snares = {}, {} -- absolute frames, for the visualizer's flashes
+	insertEvent(events, {frame = start, kind = "bar", bar = bar, tempo = tempo, style = self.pendingStyle})
+	self.pendingStyle = nil
 	for _, h in ipairs(bar.hits) do
-		local frame = at(h.step, h.nudge)
-		play(h, {frame = frame, kind = "drum", voice = h.voice, gain = h.gain, throw = h.throw})
-		if h.voice == "kick" then table.insert(bar.kicks, frame) end
-		if h.voice == "snare" or h.voice == "clap" then table.insert(bar.snares, frame) end
+		insertEvent(events, {frame = at(h.step, h.nudge), kind = "hit", role = h.role, voice = h.voice,
+			gain = h.gain, throw = h.throw})
 	end
+	-- Slices sit on the straight grid: a loop carries its own feel.
+	for _, s in ipairs(bar.slices) do
+		insertEvent(events, {frame = start + floor(s.step * step + 0.5), kind = "slice", role = s.role, slice = s,
+			length = floor((s.length or 1) * step + 0.5), bar = bar, tempo = tempo})
+	end
+	for _, n in ipairs(bar.notes) do
+		insertEvent(events, {frame = at(n.step), kind = "note", role = n.role, note = n,
+			length = math.max(1, floor(n.length * step - step * (n.gap or 0.1)))})
+	end
+	-- Absolute frames of the kicks and snares, for the pump and the flashes.
+	bar.kicks, bar.snares = {}, {}
+	for _, s in ipairs(bar.kickSteps) do table.insert(bar.kicks, at(s)) end
+	for _, s in ipairs(bar.snareSteps) do table.insert(bar.snares, at(s)) end
 	table.sort(bar.kicks)
 	table.sort(bar.snares)
-	-- Break slices sit on the straight grid: the loop carries its own feel.
-	for _, b in ipairs(bar.breaks or {}) do
-		play(b, {frame = start + floor(b.step * step + 0.5), kind = "break", slice = b.slice,
-			gain = b.gain, length = floor(step + 0.5)})
-	end
-	for _, k in ipairs(bar.keys or {}) do
-		play(k, {frame = at(k.step), kind = "keys", notes = k.notes, gain = k.gain,
-			length = floor(k.length * step)})
-	end
-	for _, a in ipairs(bar.arp or {}) do
-		play(a, {frame = at(a.step), kind = "arp", note = a.note, gain = a.gain, pan = a.pan,
-			length = floor(a.length * step)})
-	end
-	for _, l in ipairs(bar.lead or {}) do
-		play(l, {frame = at(l.step), kind = "lead", note = l.note, glide = l.glide, gain = l.gain,
-			throw = l.throw, length = floor(l.length * step - step * 0.1)})
-	end
-	for _, b in ipairs(bar.bass) do
-		play(b, {frame = at(b.step), kind = "bass", note = b.note, glide = b.glide,
-			subOnly = b.subOnly, reese = b.reese, accent = b.accent, wobble = b.wobble,
-			length = floor(b.length * step - step * 0.15)})
-	end
-	for _, s in ipairs(bar.stabs) do
-		play(s, {frame = at(s.step), kind = "stab", notes = s.notes, throw = s.throw})
-	end
-	local sweep = bar.automation.filter
-	if sweep and sweep.kind then
-		table.insert(self.sweeps, {frame = start, frames = bar.frames, kind = sweep.kind,
-			from = sweep.filter.from, to = sweep.filter.to})
-	end
-	insertEvent(events, {frame = start, kind = "padRide", automation = bar.automation.pads, length = bar.frames})
-	if bar.pad then
-		insertEvent(self.events, {frame = start, kind = "pad", notes = bar.pad, length = 2 * bar.frames})
-	end
-	if bar.riser then
-		insertEvent(self.events, {frame = start, kind = "riser", from = bar.riser.from, to = bar.riser.to,
-			length = bar.frames})
-	end
+	for _, frame in ipairs(bar.kicks) do insertEvent(events, {frame = frame, kind = "kick"}) end
+	self:prepare()
 	table.insert(self.timeline, bar)
 	if #self.timeline > 64 then table.remove(self.timeline, 1) end
 	self.nextBarFrame = start + bar.frames
 	self.barNumber = self.barNumber + 1
 	self.composerBar = self.composerBar + 1
+end
+
+-- Asks for the loops of the bars to come, on the kits of their tracks.
+function Synth:prepare()
+	local settings = self.settings
+	for _, ahead in ipairs(AHEAD.bars) do
+		local bar = self.composer:bar(self.composerBar + ahead, settings)
+		local seen = {}
+		for _, slice in ipairs(bar.slices) do
+			local key = slice.beat.id .. (slice.variant or "full")
+			if not seen[key] then
+				seen[key] = true
+				Drums.prepare(self.sr, self.kit, bar.drums, slice.beat, {tempo = bar.trackTempo,
+					swing = bar.swing * settings:value("swing"), humanize = settings:value("humanize"),
+					variant = slice.variant, energy = slice.energy, complexity = slice.complexity})
+			end
+		end
+	end
 end
 
 -- The bar sounding at an absolute frame, for the now-playing display.
@@ -633,517 +252,275 @@ function Synth:barAt(frame)
 	return self.timeline[1]
 end
 
+-- The loop a slice plays: its beat on the track's kit, at the track's own
+-- tempo and feel.
+function Synth:loopOf(slice, bar)
+	local settings = self.settings
+	return Drums.loop(self.sr, self.shots, slice.beat, {tempo = bar.trackTempo,
+		swing = bar.swing * settings:value("swing"), humanize = settings:value("humanize"),
+		variant = slice.variant, energy = slice.energy, complexity = slice.complexity})
+end
+
 function Synth:startEvent(e)
 	local sr = self.sr
-	local sound = self.sound
-	local MIX, PAD, KEYS, PLUCK = self.mix, sound.pad, sound.keys, sound.pluck
-	if e.kind == "sound" then
-		self:applySound(e.sound)
-	elseif e.kind == "drums" then
-		self:applyDrums(e.design)
-	elseif e.kind == "drum" then
-		local place = DRUM_PLACE[e.voice]
-		local data = self.drums[e.voice]
-		local g = e.gain * e.level * MIX.drums
-		local fc, high = sweepOf(e, sr)
-		table.insert(self.voices, {kind = "sample", data = data, pos = 1, fc = fc, high = high, fs = 0,
-			gl = g * (1 - place[1]) * 2, gr = g * place[1] * 2, send = place[2], throw = e.throw and MIX.throw or 0})
+	if e.kind == "bar" then
+		local bar = e.bar
+		self.tempo = bar.tempo
+		if e.style then self:applyStyle(e.style) end
+		-- Each track plays its own kit, from its first bar.
+		if bar.drums ~= self.design then self:applyDrums(bar.drums) end
+		-- The ride each channel's block asks for through this bar.
+		for _, s in ipairs(self.order) do
+			local ride = bar.automation[s.role]
+			s.ride = ride and {frame = e.frame, frames = bar.frames, level = ride.level, kind = ride.kind,
+				filter = ride.filter} or nil
+		end
+	elseif e.kind == "kick" then
 		-- The pump restarts on the kick's own frame within the block.
-		if e.voice == "kick" then table.insert(self.duckHits, e.frame - self.frame + 1) end
+		table.insert(self.duckHits, e.frame - self.frame + 1)
+	elseif e.kind == "hit" then
+		local place = assert(Drums.place[e.voice], "unknown drum voice " .. tostring(e.voice))
+		local data = self.shots[e.voice]
+		table.insert(self.voices, {kind = "shot", strip = self.strips[e.role], data = data, pos = 1,
+			gl = e.gain * (1 - place[1]) * 2, gr = e.gain * place[1] * 2, throw = e.throw and 1 or 0})
 		if e.voice == "openHat" or e.voice == "hat" then
 			-- A new hat chokes a ringing open hat, like one physical cymbal.
 			for _, v in ipairs(self.voices) do
-				if v.data == self.drums.openHat and v.pos > 1 then v.choke = true end
+				if v.kind == "shot" and v.data == self.shots.openHat and v.pos > 1 then v.choke = true end
 			end
 		end
-	elseif e.kind == "bass" then
-		local b = self.bass
-		b.target = midiHz(e.note)
-		local attack = not e.glide or not b.gate
-		if attack then
-			b.freq = b.target
-			b.fenv = e.accent and 2 or 1
-			if sound.bass.retrigger then b.lfo = 0.75 end -- the LFO's trough: each note opens from closed
-		end
-		b.gate, b.subOnly, b.reeseGain = true, e.subOnly, e.reese or 1
-		b.accent, b.wobble = e.accent and 1.3 or 1, e.wobble
-		b.level, b.lowpass = e.level, e.lowpass
-		b.fc = e.highpass and sweepCoef("highpass", e.highpass, sr) or nil
-		b.id = b.id + 1
-		insertEvent(self.events, {frame = e.frame + e.length, kind = "bassOff", id = b.id})
-	elseif e.kind == "bassOff" then
-		if self.bass.id == e.id then self.bass.gate = false end
-	elseif e.kind == "padRide" then
-		local ride, automation = self.pad, e.automation
-		ride.t, ride.length = 0, e.length
-		ride.level = automation and automation.level or {from = 1, to = 1}
-		ride.high = automation ~= nil and automation.kind == "highpass"
-		ride.filter = automation and automation.kind and {
-			from = sweepCoef(automation.kind, automation.filter.from, sr),
-			to = sweepCoef(automation.kind, automation.filter.to, sr)} or nil
-	elseif e.kind == "pad" then
-		for _, v in ipairs(self.voices) do
-			if v.kind == "pad" then v.releasing = true end
-		end
-		local osc = {}
-		for i, note in ipairs(e.notes) do
-			local f = midiHz(note)
-			table.insert(osc, {inc = f * (1 + PAD.detune) / sr, p = (i * 0.37) % 1, pan = 0.2})
-			table.insert(osc, {inc = f * (1 - PAD.detune) / sr, p = (i * 0.71) % 1, pan = 0.8})
-		end
-		table.insert(self.voices, {kind = "pad", osc = osc, env = 0, lpL = 0, lpR = 0, fsL = 0, fsR = 0,
-			remaining = e.length})
-	elseif e.kind == "stab" then
-		local osc = {}
-		for i, note in ipairs(e.notes) do
-			local f = midiHz(note + 12 * sound.stab.octave)
-			table.insert(osc, {inc = f / sr, p = i * 0.21 % 1})
-			table.insert(osc, {inc = f * 1.008 / sr, p = i * 0.43 % 1})
-		end
-		local fc, high = sweepOf(e, sr)
-		table.insert(self.voices, {kind = "stab", osc = osc, t = 0, lp = 0, level = e.level, fc = fc, high = high, fs = 0,
-			throw = e.throw and MIX.throw or 0})
-	elseif e.kind == "break" then
+	elseif e.kind == "slice" then
+		local slice = e.slice
+		local loop = self:loopOf(slice, e.bar)
 		-- Pitched to tempo like a sped-up record: a slice lasts one 16th.
-		local rate = self.settings:value("tempo") / Amen.bpm
-		local gain = e.gain * e.level * MIX.amen
-		local v = self.breakVoice
-		if v and v.next == e.slice and v.left > -BREAK.slack then
-			-- The next slice in order: the loop just keeps playing. Slack
-			-- absorbs the frame rounding between 16ths.
-			v.left, v.gain, v.rate, v.fade = v.left + e.length, gain, rate, 1
+		local rate = e.tempo / loop.tempo * (slice.rate or 1)
+		local v = self.loops[e.role]
+		local continues = v and v.loop == loop and v.next == slice.slice and v.left > -SLICE.slack
+			and not slice.reverse and not v.reverse and (slice.rate or 1) == 1 and v.plain
+		if continues then
+			-- The next slice in order: the loop just keeps playing.
+			v.left, v.gain, v.rate, v.fade = v.left + e.length, slice.gain, rate, 1
 		else
 			if v then v.left = math.min(v.left, 0) end
-			v = {kind = "slice", pos = e.slice * self.amenStep, rate = rate, gain = gain, left = e.length, fade = 1, fs = 0}
+			local pos = slice.slice * loop.step
+			if slice.reverse then pos = pos + loop.step * (slice.length or 1) - 1 end
+			v = {kind = "slice", strip = self.strips[e.role], loop = loop, pos = pos % loop.frames,
+				rate = slice.reverse and -rate or rate, reverse = slice.reverse, gain = slice.gain, left = e.length,
+				fade = 1, plain = (slice.rate or 1) == 1}
 			table.insert(self.voices, v)
-			self.breakVoice = v
+			self.loops[e.role] = v
 		end
-		v.fc, v.high = sweepOf(e, sr)
-		v.next = (e.slice + 1) % Amen.slices
-	elseif e.kind == "keys" then
-		for _, other in ipairs(self.voices) do
-			if other.kind == "keys" then other.hold = 0 end
+		v.throw = slice.throw and 1 or 0
+		v.next = (slice.slice + floor(slice.length or 1)) % loop.slices
+	elseif e.kind == "note" then
+		local note = e.note
+		local patch = note.patch
+		self.strips[e.role].send = patch.send
+		local options = {sr = sr, hold = e.length, gain = note.gain, seed = e.frame, accent = note.accent,
+			rate = note.rate, glide = note.glide, from = note.from, to = note.to,
+			throw = note.throw and 1 or 0, phase = e.frame / sr * self.tempo / 60 * (patch.filter and patch.filter.rate or 0)}
+		if patch.mono then
+			local v = self.mono[e.role]
+			if v and v.patch == patch then
+				Instrument.retarget(v, note.notes[1], options)
+			else
+				-- A new track's patch takes the channel; the old voice rings out.
+				if v then
+					v.hold = math.min(v.hold, v.tick)
+					table.insert(self.voices, v)
+				end
+				v = Instrument.voice(patch, {note.notes[1]}, options)
+				v.kind, v.strip, v.bass = "voice", self.strips[e.role], e.role == "bass"
+				self.mono[e.role] = v
+			end
+		else
+			local v = Instrument.voice(patch, note.notes, options)
+			v.kind, v.strip, v.bass = "voice", self.strips[e.role], e.role == "bass"
+			table.insert(self.voices, v)
 		end
-		local osc = {}
-		for _, note in ipairs(e.notes) do
-			local f = midiHz(note)
-			table.insert(osc, {inc = f / sr, c = 0, m = 0})
-		end
-		local fc, high = sweepOf(e, sr)
-		table.insert(self.voices, {kind = "keys", osc = osc, t = 0, hold = e.length / sr, env = 0, rel = 1,
-			gain = e.gain * e.level * MIX.keys / #osc * 2, pan = 0, fc = fc, high = high, fs = 0})
-	elseif e.kind == "arp" then
-		local f = midiHz(e.note)
-		local fc, high = sweepOf(e, sr)
-		table.insert(self.voices, {kind = "pluck", t = 0, lp = 0, amp = 0, env = 1, sweep = 1, fc = fc, high = high, fs = 0,
-			gain = e.gain * e.level * MIX.arp, pan = e.pan,
-			hold = e.length / sr, osc = {{inc = f * (1 + PLUCK.detune) / sr, p = 0}, {inc = f * (1 - PLUCK.detune) / sr, p = 0.5}}})
-	elseif e.kind == "lead" then
-		local l = self.lead
-		l.target = midiHz(e.note)
-		if not e.glide or not l.gate then l.freq, l.t, l.sweep = l.target, 0, 1 end
-		l.gate, l.gain, l.throw = true, e.gain * e.level, e.throw and MIX.throw or 0
-		l.fc, l.high = sweepOf(e, sr)
-		l.id = l.id + 1
-		insertEvent(self.events, {frame = e.frame + e.length, kind = "leadOff", id = l.id})
-	elseif e.kind == "leadOff" then
-		if self.lead.id == e.id then self.lead.gate = false end
-	elseif e.kind == "riser" then
-		table.insert(self.voices, {kind = "riser", t = 0, length = e.length, from = e.from, to = e.to,
-			noise = noiseSource(e.frame % 65521 + 1), lp = 0, hp = 0})
 	end
 end
 
--- Renders frames [first, last] of the bus arrays (1-based within the block).
+-- What the Sound sliders ask of a voice: the bass follows them, the rest
+-- play as their patch says.
+function Synth:voiceContext(bass)
+	local ctx = self.scratch
+	ctx.tempo = self.tempo * self:pitch()
+	if bass then
+		local settings = self.settings
+		ctx.shift = (settings:value("cutoff") - SOUND.middle) * 2 * SOUND.cutoffOctaves
+		ctx.wobble, ctx.drive = settings:value("wobble"), settings:value("drive")
+	else
+		ctx.shift, ctx.wobble, ctx.drive = 0, 1, 1
+	end
+	return ctx
+end
+
+-- Renders frames [first, last] of the channels (1-based within the block).
 function Synth:renderVoices(first, last)
 	local sr = self.sr
-	local sound = self.sound
-	local MIX, PAD, STAB, KEYS, PLUCK = self.mix, sound.pad, sound.stab, sound.keys, sound.pluck
-	local bus = self.bus
-	local dryL, dryR, duckL, duckR, sendL, sendR = bus.dryL, bus.dryR, bus.duckL, bus.duckR, bus.sendL, bus.sendR
-	local throwL, throwR = bus.throwL, bus.throwR
 	local voices = self.voices
 	local i = 1
 	while i <= #voices do
 		local v = voices[i]
+		local s = v.strip
 		local done = false
-		if v.kind == "sample" then
-			local data, pos, gl, gr, send, throw = v.data, v.pos, v.gl, v.gr, v.send, v.throw
+		s.used = true
+		if v.kind == "shot" then
+			local data, pos, gl, gr, throw = v.data, v.pos, v.gl, v.gr, v.throw
 			local n = #data
 			local fade = v.choke and 0.995 or 1
-			local fc, high, fs = v.fc, v.high, v.fs
+			local left, right, throwL, throwR = s.left, s.right, s.throwL, s.throwR
 			for k = first, last do
 				if pos > n then break end
-				local s = data[pos]
-				if fc then
-					fs = fs + fc * (s - fs)
-					s = high and s - fs or fs
-				end
+				local x = data[pos]
 				if v.choke then gl, gr = gl * fade, gr * fade end
-				dryL[k] = dryL[k] + s * gl
-				dryR[k] = dryR[k] + s * gr
-				if send > 0 then
-					sendL[k] = sendL[k] + s * gl * send
-					sendR[k] = sendR[k] + s * gr * send
-				end
+				left[k] = left[k] + x * gl
+				right[k] = right[k] + x * gr
 				if throw > 0 then
-					throwL[k] = throwL[k] + s * gl * throw
-					throwR[k] = throwR[k] + s * gr * throw
+					throwL[k] = throwL[k] + x * gl
+					throwR[k] = throwR[k] + x * gr
 				end
 				pos = pos + 1
 			end
-			v.pos, v.gl, v.gr, v.fs = pos, gl, gr, fs
-			done = pos > n or (v.choke and gl < 1e-4)
-		elseif v.kind == "pad" then
-			local attack = 1 / (PAD.attack * sr)
-			local release = exp(-1 / (PAD.release * sr / 5))
-			local osc = v.osc
-			local env, lpL, lpR = v.env, v.lpL, v.lpR
-			local bright = PAD.brightness
-			local g = MIX.pad
-			local ride = self.pad
-			local level, filter, high = ride.level, ride.filter, ride.high
-			local t, length = ride.t, ride.length
-			local fsL, fsR = v.fsL, v.fsR
-			for k = first, last do
-				local at = t < length and t / length or 1
-				t = t + 1
-				v.remaining = v.remaining - 1
-				if v.releasing or v.remaining <= 0 then env = env * release
-				elseif env < 1 then env = math.min(1, env + attack) end
-				local l, r = 0, 0
-				for j = 1, #osc do
-					local o = osc[j]
-					local p = o.p + o.inc
-					if p >= 1 then p = p - 1 end
-					o.p = p
-					local saw = 2 * p - 1
-					l = l + saw * (1 - o.pan)
-					r = r + saw * o.pan
-				end
-				lpL = lpL + bright * (l - lpL)
-				lpR = lpR + bright * (r - lpR)
-				local gain = env * g * (level.from + (level.to - level.from) * at)
-				local sl, sr_ = lpL, lpR
-				if filter then
-					local fc = filter.from + (filter.to - filter.from) * at
-					fsL = fsL + fc * (sl - fsL)
-					fsR = fsR + fc * (sr_ - fsR)
-					if high then sl, sr_ = sl - fsL, sr_ - fsR else sl, sr_ = fsL, fsR end
-				end
-				sl, sr_ = sl * gain, sr_ * gain
-				duckL[k] = duckL[k] + sl
-				duckR[k] = duckR[k] + sr_
-				sendL[k] = sendL[k] + sl * 0.6
-				sendR[k] = sendR[k] + sr_ * 0.6
-			end
-			v.env, v.lpL, v.lpR, v.fsL, v.fsR = env, lpL, lpR, fsL, fsR
-			done = (v.releasing or v.remaining <= 0) and env < 1e-4
-		elseif v.kind == "stab" then
-			local osc, t, lp = v.osc, v.t, v.lp
-			local fc, high, fs, gain = v.fc, v.high, v.fs, MIX.stab * v.level
-			local dt = 1 / sr
-			for k = first, last do
-				local env = math.min(1, t / STAB.attack) * exp(-t / STAB.decay)
-				local cutoff = 0.04 + 0.5 * exp(-t / 0.05)
-				local x = 0
-				for j = 1, #osc do
-					local o = osc[j]
-					local p = o.p + o.inc
-					if p >= 1 then p = p - 1 end
-					o.p = p
-					x = x + 2 * p - 1
-				end
-				lp = lp + cutoff * (x - lp)
-				local s = lp
-				if fc then
-					fs = fs + fc * (s - fs)
-					s = high and s - fs or fs
-				end
-				s = s * env * gain
-				duckL[k] = duckL[k] + s * 0.8
-				duckR[k] = duckR[k] + s * 1.2
-				sendL[k] = sendL[k] + s * 1.1
-				sendR[k] = sendR[k] + s * 1.1
-				if v.throw > 0 then
-					throwL[k] = throwL[k] + s * v.throw
-					throwR[k] = throwR[k] + s * v.throw
-				end
-				t = t + dt
-			end
-			v.t, v.lp, v.fs = t, lp, fs
-			done = t > STAB.decay * 8
+			v.pos, v.gl, v.gr = pos, gl, gr
+			done = pos > n or (v.choke and gl + gr < 1e-4)
 		elseif v.kind == "slice" then
-			-- Linear-interpolated resampling of the Amen loop.
-			local data, n = self.amen, #self.amen
-			local pos, rate, g, left, fade = v.pos, v.rate, v.gain, v.left, v.fade
-			local fadeCoef = exp(-1 / (BREAK.fade * sr))
-			local send = MIX.amenSend
-			local fc, high, fs = v.fc, v.high, v.fs
+			-- Linear-interpolated resampling of the loop.
+			local loop = v.loop
+			local dataL, dataR, n = loop.left, loop.right, loop.frames
+			local pos, rate, g, remaining, fade = v.pos, v.rate, v.gain, v.left, v.fade
+			local fadeCoef = exp(-1 / (SLICE.fade * sr))
+			local left, right, throwL, throwR, throw = s.left, s.right, s.throwL, s.throwR, v.throw
 			for k = first, last do
-				if left <= 0 then
+				if remaining <= 0 then
 					fade = fade * fadeCoef
 					if fade < 1e-3 then break end
 				end
-				local i = floor(pos)
-				local a = data[i + 1]
-				local b = data[i + 2 <= n and i + 2 or 1]
-				local x = a + (b - a) * (pos - i)
-				-- The filter keeps running while open, so a sweep that starts
-				-- mid-loop does not click in.
-				fs = fs + (fc or 1) * (x - fs)
-				if fc then x = high and x - fs or fs end
-				x = x * g * fade
-				dryL[k] = dryL[k] + x
-				dryR[k] = dryR[k] + x
-				sendL[k] = sendL[k] + x * send
-				sendR[k] = sendR[k] + x * send
+				local at = floor(pos)
+				local frac = pos - at
+				local after = at + 2 <= n and at + 2 or 1
+				local a, b = dataL[at + 1], dataL[after]
+				local l = (a + (b - a) * frac) * g * fade
+				local r = l
+				if dataR ~= dataL then
+					a, b = dataR[at + 1], dataR[after]
+					r = (a + (b - a) * frac) * g * fade
+				end
+				left[k] = left[k] + l
+				right[k] = right[k] + r
+				if throw > 0 then
+					throwL[k] = throwL[k] + l
+					throwR[k] = throwR[k] + r
+				end
 				pos = pos + rate
-				if pos >= n then pos = pos - n end
-				left = left - 1
+				if pos >= n then pos = pos - n elseif pos < 0 then pos = pos + n end
+				remaining = remaining - 1
 			end
-			v.pos, v.left, v.fade, v.fs = pos, left, fade, fs
+			v.pos, v.left, v.fade = pos, remaining, fade
 			done = fade < 1e-3
-			if done and self.breakVoice == v then self.breakVoice = nil end
-		elseif v.kind == "keys" then
-			local osc, t, env, rel = v.osc, v.t, v.env, v.rel
-			local dt = 1 / sr
-			local attackInc = 1 / (KEYS.attack * sr)
-			local decay, release = exp(-1 / (KEYS.decay * sr)), exp(-1 / (KEYS.release * sr))
-			local indexFall, tineFall = exp(-1 / (KEYS.indexDecay * sr)), exp(-1 / (KEYS.tineDecay * sr))
-			local index, tine = v.index or KEYS.index, v.tine or KEYS.tine
-			local panInc = KEYS.autopanRate / sr
-			local pan, g, hold = v.pan, v.gain, v.hold
-			local depth, ratio = KEYS.autopanDepth, KEYS.tineRatio
-			local send = MIX.keysSend
-			local fc, high, fs = v.fc, v.high, v.fs
-			for k = first, last do
-				if t < KEYS.attack then env = math.min(1, env + attackInc) else env = env * decay end
-				if t >= hold then rel = rel * release end
-				index, tine = index * indexFall, tine * tineFall
-				local depthNow = (index + KEYS.indexFloor) / TAU
-				local x = 0
-				for j = 1, #osc do
-					local o = osc[j]
-					local m = o.m + o.inc
-					if m >= 1 then m = m - 1 end
-					local c = o.c + o.inc
-					if c >= 1 then c = c - 1 end
-					o.m, o.c = m, c
-					local mod = SINE[floor(m * SINE_SIZE)]
-					local phase = c + depthNow * mod
-					phase = phase - floor(phase)
-					x = x + SINE[floor(phase * SINE_SIZE)] + tine * SINE[floor((m * ratio) % 1 * SINE_SIZE)]
-				end
-				pan = pan + panInc
-				if pan >= 1 then pan = pan - 1 end
-				local swing = depth * SINE[floor(pan * SINE_SIZE)]
-				if fc then
-					fs = fs + fc * (x - fs)
-					x = high and x - fs or fs
-				end
-				local y = x * env * rel * g
-				duckL[k] = duckL[k] + y * (1 - swing)
-				duckR[k] = duckR[k] + y * (1 + swing)
-				sendL[k] = sendL[k] + y * send
-				sendR[k] = sendR[k] + y * send
-				t = t + dt
-			end
-			v.t, v.env, v.rel, v.index, v.tine, v.pan, v.fs = t, env, rel, index, tine, pan, fs
-			done = t > KEYS.tail or rel < 1e-3
-		elseif v.kind == "pluck" then
-			-- Arp pluck: two detuned saws through a low-pass that snaps shut,
-			-- held for its gate then let ring into the delay. Envelopes are
-			-- running products, so a pluck costs no exp() per sample.
-			local o1, o2 = v.osc[1], v.osc[2]
-			local p1, p2, inc1, inc2 = o1.p, o2.p, o1.inc, o2.inc
-			local t, lp, amp, env, sweep = v.t, v.lp, v.amp, v.env, v.sweep
-			local gl, gr = v.gain * (1 - v.pan) * 2, v.gain * v.pan * 2
-			local attackInc = 1 / (PLUCK.attack * sr)
-			local held, free = exp(-1 / (2 * PLUCK.decay * sr)), exp(-1 / (PLUCK.decay * sr))
-			local sweepFall = exp(-1 / (PLUCK.sweep * sr))
-			local hold, dt = v.hold, 1 / sr
-			local sendGain = PLUCK.send
-			local fc, high, fs = v.fc, v.high, v.fs
-			for k = first, last do
-				if amp < 1 then amp = math.min(1, amp + attackInc) end
-				env = env * (t < hold and held or free)
-				sweep = sweep * sweepFall
-				p1, p2 = p1 + inc1, p2 + inc2
-				if p1 >= 1 then p1 = p1 - 1 end
-				if p2 >= 1 then p2 = p2 - 1 end
-				lp = lp + (0.03 + 0.45 * sweep) * (p1 + p2 - 1 - lp)
-				local x = lp
-				if fc then
-					fs = fs + fc * (x - fs)
-					x = high and x - fs or fs
-				end
-				x = x * env * amp
-				local xl, xr = x * gl, x * gr
-				duckL[k] = duckL[k] + xl
-				duckR[k] = duckR[k] + xr
-				sendL[k] = sendL[k] + xl * sendGain
-				sendR[k] = sendR[k] + xr * sendGain
-				t = t + dt
-			end
-			o1.p, o2.p = p1, p2
-			v.t, v.lp, v.amp, v.env, v.sweep, v.fs = t, lp, amp, env, sweep, fs
-			done = t > PLUCK.tail
-		elseif v.kind == "riser" then
-			local noise, lp, hp = v.noise, v.lp, v.hp
-			for k = first, last do
-				local progress = v.from + (v.to - v.from) * (v.t / v.length)
-				local n = noise()
-				-- A rising low-pass over a fixed high-pass sweeps the wash upward.
-				local c = 0.01 + 0.5 * progress * progress
-				lp = lp + c * (n - lp)
-				hp = hp + 0.02 * (lp - hp)
-				local s = (lp - hp) * progress * MIX.riser
-				dryL[k] = dryL[k] + s
-				dryR[k] = dryR[k] + s
-				sendL[k] = sendL[k] + s
-				sendR[k] = sendR[k] + s
-				v.t = v.t + 1
-				if v.t >= v.length then break end
-			end
-			v.lp, v.hp = lp, hp
-			done = v.t >= v.length
+			if done and self.loops[s.role] == v then self.loops[s.role] = nil end
+		else
+			done = Instrument.render(v, first, last, s, self:voiceContext(v.bass))
 		end
 		if done then table.remove(voices, i) else i = i + 1 end
 	end
-	self.pad.t = self.pad.t + last - first + 1
-	self:renderBass(first, last)
-	self:renderLead(first, last)
-end
-
--- Monophonic lead: two detuned saws over a square an octave down, gliding
--- between tied notes, with delayed vibrato and a filter that opens on each
--- attack.
-function Synth:renderLead(first, last)
-	local l = self.lead
-	if not l.gate and l.env < 1e-5 then return end
-	local MIX, LEAD = self.mix, self.sound.lead
-	local sr = self.sr
-	local bus = self.bus
-	local duckL, duckR, sendL, sendR, throwL, throwR = bus.duckL, bus.duckR, bus.sendL, bus.sendR, bus.throwL, bus.throwR
-	local attack = 1 - exp(-1 / (LEAD.attack * sr))
-	local release = exp(-1 / (LEAD.release * sr))
-	local vibInc = LEAD.vibratoRate / sr
-	local dt = 1 / sr
-	local freq, target, env, p1, p2, sq, lp1, lp2, vib, t = l.freq, l.target, l.env, l.p1, l.p2, l.sq, l.lp1, l.lp2, l.vib, l.t
-	local sweep, sweepFall = l.sweep, exp(-1 / (LEAD.sweepTime * sr))
-	local g, throw = l.gain * MIX.lead, l.throw
-	local fc, high, fs = l.fc, l.high, l.fs or 0
-	for k = first, last do
-		freq = freq + (target - freq) * LEAD.glide
-		if l.gate then env = env + (1 - env) * attack else env = env * release end
-		vib = vib + vibInc
-		if vib >= 1 then vib = vib - 1 end
-		local bloom = (t - LEAD.vibratoDelay) * 3
-		local depth = bloom <= 0 and 0 or (bloom >= 1 and LEAD.vibratoDepth or LEAD.vibratoDepth * bloom)
-		local f = freq * (1 + depth * SINE[floor(vib * SINE_SIZE)]) / sr
-		p1 = p1 + f * (1 + LEAD.detune)
-		if p1 >= 1 then p1 = p1 - 1 end
-		p2 = p2 + f * (1 - LEAD.detune)
-		if p2 >= 1 then p2 = p2 - 1 end
-		sq = sq + f * 0.5
-		if sq >= 1 then sq = sq - 1 end
-		local x = p1 + p2 - 1 + (sq < 0.5 and LEAD.square or -LEAD.square)
-		sweep = sweep * sweepFall
-		local c = LEAD.brightness + LEAD.sweep * sweep
-		lp1 = lp1 + c * (x - lp1)
-		lp2 = lp2 + c * (lp1 - lp2)
-		local s = lp2
-		if fc then
-			fs = fs + fc * (s - fs)
-			s = high and s - fs or fs
+	for _, role in ipairs(Model.roles) do
+		local v = self.mono[role.id]
+		if v and Instrument.sounding(v) then
+			v.strip.used = true
+			Instrument.render(v, first, last, v.strip, self:voiceContext(v.bass))
 		end
-		s = s * env * g
-		duckL[k] = duckL[k] + s * 0.9
-		duckR[k] = duckR[k] + s * 1.1
-		sendL[k] = sendL[k] + s * LEAD.send
-		sendR[k] = sendR[k] + s * LEAD.send
-		if throw > 0 then
-			throwL[k] = throwL[k] + s * throw
-			throwR[k] = throwR[k] + s * throw
-		end
-		t = t + dt
 	end
-	l.freq, l.env, l.p1, l.p2, l.sq, l.lp1, l.lp2, l.vib, l.t, l.sweep = freq, env, p1, p2, sq, lp1, lp2, vib, t, sweep
-	l.fs = fs
 end
 
-function Synth:renderBass(first, last)
-	local b = self.bass
-	if not b.gate and b.env < 1e-5 then return end
-	local MIX, BASS = self.mix, self.sound.bass
-	local sr = self.sr
-	local settings = self.settings
-	-- The sub always sounds the line; the reese lane layers its detuned,
-	-- filtered voice over notes it has not left on the sub alone.
-	local reeseOn = not b.subOnly
-	local cutoff = settings:value("cutoff")
-	local wobble = settings:value("wobble")
-	local drive = 1 + settings:value("drive") * 7
-	local driveNorm = 1 / softClip(drive)
-	-- Wobble LFO synced to the tempo: an eighth-note rate unless the style
-	-- or the note asks for another.
-	local lfoInc = settings:value("tempo") / 60 * (b.wobble or BASS.lfoRate) / sr
-	local envAmount, envFall = BASS.envAmount, exp(-BASS.controlRate / (BASS.envDecay * sr))
-	local damping, square, accent = BASS.resonance, BASS.shape == "square", b.accent
-	local fenv = b.fenv
-	local attack = 1 - exp(-1 / (BASS.attack * sr))
-	local release = exp(-1 / (BASS.release * sr))
-	local duckL, duckR = self.bus.duckL, self.bus.duckR
-	local freq, target, env, p1, p2, sub = b.freq, b.target, b.env, b.p1, b.p2, b.sub
-	local lp, bp, coef, lfo, tick = b.lp, b.bp, b.coef, b.lfo, b.tick
-	local base = BASS.minCutoff * 2 ^ (cutoff * BASS.cutoffOctaves - (1 - (b.lowpass or 1)) * SWEEP.bass)
-	local level, fc, fs = b.level or 1, b.fc, b.fs or 0
-	for k = first, last do
-		freq = freq + (target - freq) * BASS.glide
-		if b.gate then env = env + (1 - env) * attack else env = env * release end
-		lfo = lfo + lfoInc
-		if lfo >= 1 then lfo = lfo - 1 end
-		-- A running tick, not the block index, keeps any block split identical.
-		tick = tick + 1
-		if tick >= BASS.controlRate then
-			tick = 0
-			local mod = wobble * BASS.wobbleOctaves * (SINE[floor(lfo * SINE_SIZE)] - 1) * 0.5 + envAmount * fenv
-			fenv = fenv * envFall
-			local fc = math.min(base * 2 ^ mod, sr * 0.2)
-			coef = 2 * sin(pi * fc / sr)
-		end
-		local s = 0
-		if reeseOn then
-			p1 = p1 + freq * (1 + BASS.detune) / sr
-			if p1 >= 1 then p1 = p1 - 1 end
-			p2 = p2 + freq * (1 - BASS.detune) / sr
-			if p2 >= 1 then p2 = p2 - 1 end
-			local x
-			if square then
-				x = (p1 < 0.5 and 0.5 or -0.5) + (p2 < 0.5 and 0.5 or -0.5)
+-- Frames [first, last] of every channel through its strip into the buses:
+-- the ride its block asks for (by absolute frame, so any block size renders
+-- the same), its level, then the dry or the ducked bus, the sends and the
+-- throw.
+function Synth:mixChannels(first, last)
+	local sr, mix, bus, frame = self.sr, self.mixNow, self.bus, self.frame
+	local dryL, dryR, duckL, duckR = bus.dryL, bus.dryR, bus.duckL, bus.duckR
+	local sendL, sendR, throwL, throwR = bus.sendL, bus.sendR, bus.throwL, bus.throwR
+	local rate = SWEEP.rate
+	local meterFall = exp(-(last - first + 1) / (sr / METER.fall))
+	for _, s in ipairs(self.order) do
+		s.peak = s.peak * meterFall
+		-- A closed filter rings on after its last voice: the strip runs until
+		-- it has.
+		if s.used or s.filtered or math.abs(s.l) + math.abs(s.r) > 1e-12 then
+			local left, right, tl, tr = s.left, s.right, s.throwL, s.throwR
+			local level = mix[s.role]
+			local send = s.drum and mix.drumSend or s.send or 0
+			local outL, outR = s.drum and dryL or duckL, s.drum and dryR or duckR
+			local throw = mix.throw
+			local ride = s.ride
+			local l1, r1, c, high, filtered = s.l, s.r, s.c, s.high, s.filtered
+			local peak = 0
+			if not ride and not filtered then
+				-- An open channel at a steady level: nothing to ride. The pole
+				-- follows the channel, so a sweep starts from where the sound is.
+				for k = first, last do
+					l1, r1 = left[k], right[k]
+					local l, r = l1 * level, r1 * level
+					outL[k] = outL[k] + l
+					outR[k] = outR[k] + r
+					sendL[k] = sendL[k] + l * send
+					sendR[k] = sendR[k] + r * send
+					throwL[k] = throwL[k] + tl[k] * level * throw
+					throwR[k] = throwR[k] + tr[k] * level * throw
+					local loud = l < 0 and -l or l
+					if loud > peak then peak = loud end
+					left[k], right[k], tl[k], tr[k] = 0, 0, 0, 0
+				end
+				c = 1
 			else
-				x = p1 + p2 - 1
+				for k = first, last do
+					local l, r = left[k], right[k]
+					local gain = level
+					local at = frame + k - 1
+					if ride then
+						local through = (at - ride.frame) / ride.frames
+						if through > 1 then through = 1 end
+						gain = gain * (ride.level.from + (ride.level.to - ride.level.from) * through)
+						if at % rate == 0 then
+							if ride.kind then
+								local opening = ride.filter.from + (ride.filter.to - ride.filter.from) * through
+								c, high, filtered = sweepCoef(ride.kind, opening, sr), ride.kind == "highpass", true
+							else
+								c, filtered = 1, false
+							end
+						end
+					elseif at % rate == 0 then
+						c, filtered = 1, false
+					end
+					l1 = l1 + c * (l - l1)
+					r1 = r1 + c * (r - r1)
+					if filtered then
+						if high then l, r = l - l1, r - r1 else l, r = l1, r1 end
+					end
+					l, r = l * gain, r * gain
+					outL[k] = outL[k] + l
+					outR[k] = outR[k] + r
+					sendL[k] = sendL[k] + l * send
+					sendR[k] = sendR[k] + r * send
+					throwL[k] = throwL[k] + tl[k] * gain * throw
+					throwR[k] = throwR[k] + tr[k] * gain * throw
+					local loud = l < 0 and -l or l
+					if loud > peak then peak = loud end
+					left[k], right[k], tl[k], tr[k] = 0, 0, 0, 0
+				end
 			end
-			-- Chamberlin state-variable low-pass.
-			lp = lp + coef * bp
-			local hp = x - lp - damping * bp
-			bp = bp + coef * hp
-			s = softClip(lp * drive) * driveNorm * MIX.reese * b.reeseGain * accent
+			s.l, s.r, s.c, s.high, s.filtered = l1, r1, c, high, filtered
+			if peak > s.peak then s.peak = peak end
+			s.used = false
 		end
-		sub = sub + freq / sr
-		if sub >= 1 then sub = sub - 1 end
-		s = s + SINE[floor(sub * SINE_SIZE)] * MIX.sub
-		if fc then
-			fs = fs + fc * (s - fs)
-			s = s - fs
-		end
-		s = s * env * level
-		duckL[k] = duckL[k] + s
-		duckR[k] = duckR[k] + s
 	end
-	b.freq, b.env, b.p1, b.p2, b.sub, b.lp, b.bp, b.coef, b.lfo, b.tick = freq, env, p1, p2, sub, lp, bp, coef, lfo, tick
-	b.fenv, b.fs = fenv, fs
+end
+
+--- The level of each role's channel just played (0…1), for meters.
+function Synth:level(role)
+	return self.strips[role].peak
 end
 
 -- Runs one delay line over a block. Combs are parallel and all-passes are
@@ -1178,7 +555,7 @@ end
 -- Master section: sidechain, send effects, soft clip and volume.
 function Synth:mixdown(out, count)
 	local sr = self.sr
-	local MIX = self.mix
+	local MIX = self.mixNow
 	local bus = self.bus
 	local settings = self.settings
 	local space = settings:value("space")
@@ -1223,47 +600,16 @@ function Synth:mixdown(out, count)
 	local depth = MIX.duckDepth
 	local duck = self.duck
 	local hits, nextHit = self.duckHits, 1
-	-- The filter lane's sweep under this block, by absolute frame so that
-	-- any block size renders the same.
-	local sweeps, master, frame = self.sweeps, self.master, self.frame
-	while sweeps[1] and sweeps[1].frame + sweeps[1].frames <= frame do table.remove(sweeps, 1) end
-	local c, blend, high = master.c, master.mix, master.high
-	local l1, l2, r1, r2 = master.l1, master.l2, master.r1, master.r2
-	local rate, sweep = MASTER.rate, sweeps[1]
+	table.sort(hits)
 	for k = 1, count do
 		duck = duck * duckRelease
 		while hits[nextHit] and hits[nextHit] <= k do duck, nextHit = 1, nextHit + 1 end
 		local g = 1 - depth * duck
 		local l = dryL[k] + duckL[k] * g + echoesL[k] + wetL[k]
 		local r = dryR[k] + duckR[k] * g + echoesR[k] + wetR[k]
-		local at = frame + k - 1
-		if sweep and at >= sweep.frame + sweep.frames then
-			table.remove(sweeps, 1)
-			sweep = sweeps[1]
-		end
-		if at % rate == 0 then
-			if sweep and at >= sweep.frame then
-				local opening = sweep.from + (sweep.to - sweep.from) * (at - sweep.frame) / sweep.frames
-				c, high = sweepCoef(sweep.kind, opening, sr), sweep.kind == "highpass"
-				blend = math.min(1, (1 - opening) / MASTER.blend)
-			else
-				c, blend = 1, 0
-			end
-		end
-		-- Open, the poles follow the mix, so a sweep starts from where it is.
-		l1 = l1 + c * (l - l1)
-		l2 = l2 + c * (l1 - l2)
-		r1 = r1 + c * (r - r1)
-		r2 = r2 + c * (r1 - r2)
-		if blend > 0 then
-			l = l + ((high and l - l2 or l2) - l) * blend
-			r = r + ((high and r - r2 or r2) - r) * blend
-		end
 		out[2 * k - 1] = softClip(l * volume)
 		out[2 * k] = softClip(r * volume)
 	end
-	master.c, master.mix, master.high = c, blend, high
-	master.l1, master.l2, master.r1, master.r2 = l1, l2, r1, r2
 	self.duck = duck
 	for i = #hits, 1, -1 do hits[i] = nil end
 end
@@ -1276,6 +622,10 @@ function Synth:render(out, frames)
 		bus.dryL[k], bus.dryR[k], bus.duckL[k], bus.duckR[k], bus.sendL[k], bus.sendR[k] = 0, 0, 0, 0, 0, 0
 		bus.throwL[k], bus.throwR[k] = 0, 0
 	end
+	for _, s in ipairs(self.order) do
+		local left, right, tl, tr = s.left, s.right, s.throwL, s.throwR
+		for k = #left + 1, frames do left[k], right[k], tl[k], tr[k] = 0, 0, 0, 0 end
+	end
 	self:mixLevels()
 	local blockStart = self.frame
 	local blockEnd = blockStart + frames
@@ -1286,6 +636,7 @@ function Synth:render(out, frames)
 		local stop = (event and event.frame < blockEnd) and (event.frame - blockStart + 1) or (frames + 1)
 		if stop > cursor then
 			self:renderVoices(cursor, stop - 1)
+			self:mixChannels(cursor, stop - 1)
 			cursor = stop
 		end
 		if not event or event.frame >= blockEnd then break end
@@ -1294,6 +645,7 @@ function Synth:render(out, frames)
 	end
 	self:mixdown(out, frames)
 	self.frame = blockEnd
+	Drums.work(AHEAD.budget)
 end
 
 return Synth

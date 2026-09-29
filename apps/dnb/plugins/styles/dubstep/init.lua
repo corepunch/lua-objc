@@ -1,165 +1,181 @@
--- Dubstep: Deep, Brostep and Riddim tracks at 140, felt at half time. The
--- kick opens the bar and the snare lands on beat three; the drop is the
--- wobble — a detuned, driven bass whose filter LFO restarts with every note
--- at a rate the note chooses (quarters, eighths, triplets, sixteenths).
--- Deep tracks keep the original sub-heavy, dub-echo sound.
+-- Dubstep: 136 to 150 BPM, felt at half time. The kick opens the bar and
+-- the snare lands on beat three; the drop is the bass. Its flavours: Deep,
+-- on a sub and a dub echo; Brostep, a wobble whose LFO restarts with every
+-- note at a rate the note chooses; Riddim, one wub repeated until it is a
+-- rhythm; Melodic, chords and a lead over the half-time; Dub, a skank and
+-- a melodica; and Chillstep, mostly pads.
+
+local PROGRESSIONS = {{1, 1, 1, 1}, {1, 1, 6, 7}, {1, 2, 1, 7}, {1, 6, 1, 5}}
+local MELODIC = {{1, 6, 3, 7}, {6, 7, 1, 1}, {1, 4, 6, 5}, {6, 4, 1, 5}, {1, 3, 6, 7}}
+
+local BEATS = {
+	-- Triplet-feel hats: every third 16th, the swagger over the half time.
+	{id = "dubstep.half", name = "Half", bars = 2, lanes = {
+		{"kick", "X...............|X.........x....."},
+		{"snare", "........X......."},
+		{"hat", "X..x..X..x..X..x", gain = 0.5},
+		{"openHat", "..............x.", gain = 0.4, when = "energy"},
+		{"ghost", "......g.......gg", when = "complexity"},
+		{"rim", "............x...", gain = 0.4, light = false},
+	}},
+	{id = "dubstep.skip", name = "Skip", bars = 2, lanes = {
+		{"kick", "X..x............|X.............x."},
+		{"snare", "........X......."},
+		{"clap", "........x.......", gain = 0.5, light = false},
+		{"hat", "x.x.x.x.x.x.x.x.", gain = 0.4},
+		{"openHat", "..........x.....", gain = 0.4, when = "energy"},
+		{"ghost", ".....g.......g..", when = "complexity"},
+	}},
+	{id = "dubstep.stomp", name = "Stomp", bars = 2, lanes = {
+		{"kick", "X.........x.....|X.....x...x....."},
+		{"snare", "........X......."},
+		{"clap", "........x.......", gain = 0.6},
+		{"hat", "xoxoxoxoxoxoxoxo", gain = 0.3, light = false},
+		{"kick", "...........o....", when = "complexity"},
+		{"crash", "X...............|................", gain = 0.4, when = "energy"},
+	}},
+	{id = "dubstep.riddim", name = "Riddim", lanes = {
+		{"kick", "X.....x.....x..."},
+		{"snare", "........X......."},
+		{"hat", "..x...x...x...x.", gain = 0.45},
+		{"rim", "....x.......x...", gain = 0.35, when = "complexity"},
+		{"shaker", "xoxoxoxoxoxoxoxo", gain = 0.25, when = "energy"},
+	}},
+	{id = "dubstep.deep", name = "Deep", bars = 2, lanes = {
+		{"kick", "X..........x....|X..............."},
+		{"snare", "........x.......", gain = 0.9},
+		{"rim", "...x......x..x..|...x......x.....", gain = 0.4},
+		{"hat", "..x...x...x...x.", gain = 0.4},
+		{"shaker", "x.xxx.xxx.xxx.xx", gain = 0.25, when = "energy"},
+		{"conga", ".....x.........x", gain = 0.35, when = "complexity"},
+	}},
+	{id = "dubstep.steppers", name = "Steppers", lanes = {
+		{"kick", "X...x...X...x...", gain = 0.9},
+		{"snare", "........X......."},
+		{"rim", "....x.......x...", gain = 0.45},
+		{"hat", "..x...x...x...x.", gain = 0.5},
+		{"shaker", "xoxoxoxoxoxoxoxo", gain = 0.25, when = "energy"},
+	}},
+}
+
+local LINES = {
+	{id = "dubstep.riddim", name = "Riddim", notes = "0:0:3w3 4:0:3w3 8:0:3w3 12:0:2w6 14:0:2w6 | 0:0:3w3 4:0:3w3 8:7:3w3 12:6:2w6 14:0:2w6"},
+	{id = "dubstep.yoi", name = "Yoi", notes = "0:0:4w2 4:0:2w4 6:0:2w4 8:0:4w2 12:4:4w3? | 0:0:4w2 4:0:2w4 6:0:2w4 8:6:4w2 12:0:4w6?"},
+	{id = "dubstep.sub", name = "Sub", notes = "0:0:6 8:0:2? 11:6:4~ | 0:0:6 8:0:2? 11:2:4~"},
+	{id = "dubstep.growl", name = "Growl", notes = "0:0:6w1 6:0:2w4 8:0:4w2 12:1b:4w3~ | 0:0:6w1 6:0:2w4 8:7:2w6 10:6:2w6 12:0:4w2"},
+	{id = "dubstep.dub", name = "Dub", notes = "0:0:3 3:0:2? 6:4:2 8:0:3 12:6:2 14:4:2+ | 0:0:3 3:0:2? 6:2:2 8:0:3 12:4:3"},
+	{id = "dubstep.melodic", name = "Melodic", notes = "0:0:8w1 8:0:4w2 12:4:4w2~ | 0:0:8w1 8:2:4w2 12:0:4w4"},
+}
+
+local FILLS = {"fill.roll", "fill.triplets", "fill.toms", "@tape", "@stutter", "@cut", "@reverse"}
 
 local FLAVOURS = {
-	{id = "deep", name = "Deep Dubstep", wobble = 0.6, stabs = 0.3, rates = {0.5, 1, 1, 2}, pads = 1, snares = {"roomy", "vintage", "fat", "layered"}},
-	{id = "brostep", name = "Brostep", wobble = 1, stabs = 1, rates = {1, 2, 3, 4, 6}, pads = 0.4, snares = {"crunchy", "fat", "layered", "tight"}},
-	{id = "riddim", name = "Riddim", wobble = 1, stabs = 0.5, rates = {2, 3, 3, 4}, pads = 0.2, snares = {"tight", "crunchy", "rimshot", "layered"}},
-}
-local ARRANGEMENT = {introBars = 8, buildBars = 8, dropBars = 16, breakdownBars = 8, rebuildBars = 8,
-	outroBars = 8, blendBars = 4, minCycles = 2, maxCycles = 3}
-local PROGRESSIONS = {{1, 1, 1, 1}, {1, 1, 6, 7}, {1, 2, 1, 7}, {1, 6, 1, 5}}
--- Wobble phrases: {step, length, interval} over one bar.
-local PHRASES = {
-	{{0, 6, 0}, {6, 2, 0}, {8, 4, 12}, {12, 4, 3}},
-	{{0, 4, 0}, {4, 4, 0}, {8, 8, 7}},
-	{{0, 3, 0}, {3, 3, 0}, {6, 2, 12}, {10, 6, 0}},
-	{{0, 8, 0}, {8, 2, 5}, {10, 2, 3}, {12, 4, 0}},
-	{{0, 2, 0}, {2, 2, 0}, {6, 2, 0}, {8, 4, 1}, {12, 4, 0}},
-}
-
-local function buildCycle(kit, rng, track)
-	local mode, flavour = track.mode, track.flavour
-	local progression = kit.stableProgression(mode, rng.pick(PROGRESSIONS))
-	local phrases = {}
-	for i = 1, 4 do
-		local phrase = {}
-		for _, note in ipairs(rng.pick(PHRASES)) do
-			table.insert(phrase, {step = note[1], length = note[2], interval = note[3], rate = rng.pick(flavour.rates)})
-		end
-		phrases[i] = phrase
-	end
-	return {
-		progression = progression,
-		voicings = kit.voicings(mode, progression, {0, 2, 4}),
-		phrases = phrases,
-		stabsOn = rng.chance(flavour.stabs),
-		kicks = rng.pick({{0}, {0, 10}, {0, 3}, {0, 14}}),
-		lead = kit.melody(rng),
-	}
-end
-
--- The arrangement ------------------------------------------------------------
-
-local function arrange(kit, track, cycles)
-	local lanes = kit.lanes(track)
-	kit.blendIn(lanes, track)
-	for _, section in ipairs(track.sections) do
-		local id, cycle = section.id, cycles[section.cycle]
-		if id == "intro" then
-			lanes:within("kick", section, 0, nil, "kick")
-			lanes:within("snare", section, 0, nil, "snare")
-			lanes:within("hats", section, 0, nil, "hats")
-			lanes:fill("pads", section.start, section.length, "pads.long")
-			lanes:phraseEnds("throws", section, 4, "throw")
-		elseif id == "build" then
-			lanes:within("snare", section, 0, nil, "roll.snare")
-			lanes:within("hats", section, 0, nil, "hats")
-			lanes:within("sub", section, 4, nil, "sub.hold")
-			lanes:within("pads", section, 0, nil, "pads.long")
-		elseif id == "drop" then
-			lanes:within("kick", section, 0, nil, "kick.drop")
-			lanes:within("snare", section, 0, nil, "snare")
-			lanes:within("ghosts", section, 0, nil, "ghosts")
-			lanes:within("hats", section, 0, nil, "hats.drop")
-			lanes:within("percussion", section, 0, nil, "perc")
-			lanes:within("sub", section, 0, nil, "sub.wobble")
-			lanes:within("reese", section, 0, nil, "reese")
-			if cycle.stabsOn then lanes:within("stabs", section, 0, nil, "stabs") end
-			lanes:phraseEnds("throws", section, 4, "throw")
-		elseif id == "breakdown" then
-			lanes:within("sub", section, 0, nil, "sub.hold")
-			lanes:within("pads", section, 0, nil, "pads.long")
-			lanes:within("lead", section, 0, nil, "lead")
-		elseif id == "outro" then
-			lanes:within("kick", section, 0, nil, "kick")
-			lanes:within("snare", section, 0, nil, "snare")
-			lanes:within("hats", section, 0, nil, "hats")
-			lanes:within("sub", section, 0, nil, "sub.hold")
-			lanes:phraseEnds("throws", section, 4, "throw")
-		end
-	end
-	kit.punctuate(lanes, track, function() return "fill.roll" end)
-	kit.produce(lanes, track)
-	return lanes:done()
-end
-
--- The patterns -----------------------------------------------------------------
-
-local function kick(drop)
-	return function(_, ctx)
-		for _, step in ipairs(ctx.cycle.kicks) do ctx.hit(step, "kick", step == 0 and 1 or 0.85) end
-		if drop and ctx.complexity > 0.6 then ctx.hit(11, "kick", 0.7) end
-	end
-end
-
--- Triplet-feel hats: every third 16th, the swagger over the half time.
-local function hats(drop)
-	return function(_, ctx)
-		for step = 0, 15, 3 do ctx.hit(step, "hat", step % 6 == 0 and 0.5 or 0.3) end
-		if drop and ctx.energy > 0.6 then ctx.hit(14, "openHat", 0.4) end
-	end
-end
-
-local PATTERNS = {
-	{id = "kick", part = "kick", render = kick(false)},
-	{id = "kick.drop", part = "kick", render = kick(true)},
-	-- The snare on beat three.
-	{id = "snare", part = "snare", render = function(_, ctx) ctx.hit(8, "snare", 1, {throw = ctx.throw}) end},
-	{id = "fill.roll", part = "fills", render = function(_, ctx)
-		for step = 12, 15.5, 0.5 do ctx.hit(step, "snare", 0.35 + 0.1 * (step - 12)) end
-	end},
-	{id = "ghosts", part = "ghosts", render = function(_, ctx)
-		for _, step in ipairs({6, 14, 15}) do if ctx.complexity > 0.3 or step == 14 then ctx.hit(step, "ghost", 0.25) end end
-	end},
-	{id = "hats", part = "hats", render = hats(false)},
-	{id = "hats.drop", part = "hats", render = hats(true)},
-	{id = "perc", part = "percussion", render = function(_, ctx) ctx.hit(12, "rim", 0.3) end},
-	-- The wobble: long notes whose LFO restarts on each, at the note's rate.
-	{id = "sub.wobble", part = "sub", bars = 4, render = function(bar, ctx)
-		for _, note in ipairs(ctx.cycle.phrases[ctx.phraseBar % 4 + 1]) do
-			if note.step == 0 or ctx.energy > 0.3 then
-				table.insert(bar.bass, {step = note.step, length = note.length, note = ctx.chord.root + note.interval,
-					reese = ctx.flavour.wobble, wobble = note.rate * (0.5 + ctx.energy), subOnly = true})
-			end
-		end
-	end},
-	{id = "stabs", part = "stabs", render = function(bar, ctx)
-		table.insert(bar.stabs, {step = 6, notes = ctx.chord.notes, throw = ctx.throw})
-		if ctx.complexity > 0.5 then table.insert(bar.stabs, {step = 14, notes = ctx.chord.notes}) end
-	end},
-	-- A dub melody an octave down, through the breakdown.
-	{id = "lead", part = "lead", bars = 4, render = function(bar, ctx)
-		for _, note in ipairs(ctx.cycle.lead[ctx.phraseBar % 4 + 1]) do
-			table.insert(bar.lead, {step = note.step, length = note.length, glide = note.glide, gain = 0.6,
-				note = ctx.kit.leadPitch(ctx.mode, ctx.tonic, ctx.chord.degree, note.offset) - 12})
-		end
-	end},
+	{id = "deep", name = "Deep Dubstep", tempo = {138, 142}, swing = {0.04, 0.1},
+		snares = {"roomy", "vintage", "fat", "layered"},
+		channels = {
+			{role = "drums", beats = {"dubstep.deep", "dubstep.half", "dubstep.steppers"}},
+			{role = "bass", patches = {"bass.sub", "bass.808", "bass.wobble"}, lines = {"dubstep.sub", "@wobble", "dubstep.dub"}, rates = {0.5, 1, 1, 2}},
+			{role = "pad", patches = {"pad.dark", "pad.air", "pad.choir"}},
+			{role = "stab", patches = {"stab.dub", "stab.organ"}, chance = 0.4, steps = {"......x.........", "......x.......x."}},
+			{role = "lead", patches = {"lead.sine", "lead.flute", "lead.vox"}, chance = 0.6, hooks = {"hook.space", "hook.voice", "hook.sigh", "@motif"}},
+			{role = "texture", patches = {"texture.tape", "texture.air", "texture.drone"}},
+			{role = "fx", patches = {"fx.wind", "fx.riser"}},
+		}},
+	{id = "brostep", name = "Brostep", tempo = {140, 150}, swing = {0, 0.06},
+		snares = {"crunchy", "fat", "layered", "tight"},
+		channels = {
+			{role = "drums", beats = {"dubstep.stomp", "dubstep.half", "dubstep.skip"}},
+			{role = "bass", patches = {"bass.wobble", "bass.yoi", "bass.growl"}, lines = {"@wobble", "dubstep.yoi", "dubstep.growl"}, rates = {1, 2, 3, 4, 6}},
+			{role = "pad", patches = {"pad.supersaw", "pad.dark"}, chance = 0.5},
+			{role = "stab", patches = {"stab.rave", "stab.fm", "stab.saw"}, steps = {"......x.........", "......x.......x.", "...x..x........."}},
+			{role = "arp", patches = {"pluck.chip", "pluck.acid"}, chance = 0.4, arp = {rates = {1, 2}}},
+			{role = "lead", patches = {"lead.hoover", "lead.supersaw", "lead.square"}, chance = 0.5,
+				hooks = {"hook.morse", "hook.insist", "hook.anthem", "@motif"}},
+			{role = "fx", patches = {"fx.siren", "fx.riser"}},
+		}},
+	{id = "riddim", name = "Riddim", tempo = {140, 150}, swing = {0, 0.04},
+		snares = {"tight", "crunchy", "rimshot", "layered"},
+		harmony = {progressions = {{1, 1, 1, 1}, {1, 1, 1, 7}, {1, 2, 1, 1}}, change = 0.15},
+		channels = {
+			{role = "drums", beats = {"dubstep.riddim", "dubstep.half"}},
+			{role = "bass", patches = {"bass.yoi", "bass.wobble", "bass.growl"}, lines = {"dubstep.riddim", "dubstep.yoi", "@wobble"}, rates = {2, 3, 3, 4}},
+			{role = "stab", patches = {"stab.fm", "stab.brass"}, chance = 0.5, steps = {"......x.........", "..x...x...x....."}},
+			{role = "texture", patches = {"texture.drone", "texture.tape"}, chance = 0.5},
+			{role = "fx", patches = {"fx.siren", "fx.riser"}},
+		}},
+	{id = "melodic", name = "Melodic Dubstep", tempo = {138, 145}, swing = {0, 0.06},
+		snares = {"fat", "layered", "roomy"},
+		harmony = {progressions = MELODIC, voicing = {0, 2, 4, 8}, barsPerChord = 2, change = 0.1},
+		form = {openings = {"melodic", "build"}, links = {"breakdown build"}, breakdown = {1, 2}},
+		channels = {
+			{role = "drums", beats = {"dubstep.half", "dubstep.stomp"}},
+			{role = "bass", patches = {"bass.wobble", "bass.reese", "bass.808"}, lines = {"dubstep.melodic", "dubstep.sub", "@wobble"}, rates = {1, 2, 2}},
+			{role = "pad", patches = {"pad.supersaw", "pad.strings", "pad.choir"}},
+			{role = "keys", patches = {"keys.piano", "keys.harp"}, chance = 0.6},
+			{role = "arp", patches = {"pluck.glass", "pluck.bell", "pluck.trance"}, chance = 0.7, arp = {rates = {2, 1}}},
+			{role = "lead", patches = {"lead.supersaw", "lead.vox", "lead.saw"}, hooks = {"hook.anthem", "hook.ascent", "hook.lament", "hook.leap", "@motif"}},
+			{role = "counter", patches = {"pluck.bell", "keys.vibes"}, chance = 0.5},
+			{role = "fx", patches = {"fx.riser", "fx.wind"}},
+		},
+		plan = {drop = {pad = "pad.chords", lead = {"lead.hook", from = 8}, counter = {"counter.answer", from = 8}}}},
+	-- Reggae's bones: a skank on the off-beat, a steppers kick, a melodica.
+	{id = "dub", name = "Dub", tempo = {136, 142}, swing = {0.08, 0.16},
+		snares = {"rimshot", "vintage", "roomy"},
+		harmony = {progressions = {{1, 1, 4, 4}, {1, 7, 1, 7}, {1, 4, 1, 5}}, voicing = {0, 2, 4}, barsPerChord = 2},
+		channels = {
+			{role = "drums", beats = {"dubstep.steppers", "dubstep.deep"}},
+			{role = "bass", patches = {"bass.sub", "bass.round", "bass.808"}, lines = {"dubstep.dub", "dubstep.sub", "line.walk"}},
+			{role = "stab", patches = {"stab.organ", "stab.dub", "stab.piano"}, steps = {"....x.......x...", "..x...x...x...x."}},
+			{role = "keys", patches = {"keys.organ", "keys.clav"}, chance = 0.5},
+			{role = "lead", patches = {"lead.vox", "lead.flute", "lead.square"}, chance = 0.7,
+				hooks = {"hook.skank", "hook.call", "hook.lament", "hook.offbeat", "@motif"}},
+			{role = "texture", patches = {"texture.tape"}, chance = 0.6},
+			{role = "fx", patches = {"fx.siren", "fx.wind"}},
+		},
+		plan = {intro = {stab = {"stab.hits", from = "half"}}, breakdown = {stab = "stab.hits"}}},
+	{id = "chill", name = "Chillstep", tempo = {136, 140}, swing = {0.04, 0.12},
+		snares = {"roomy", "vintage", "layered"},
+		harmony = {progressions = MELODIC, voicing = {2, 4, 6, 8}, barsPerChord = 2},
+		form = {openings = {"melodic", "melodic", "build"}, builds = {"rise", "sweep"}, intro = {2}},
+		channels = {
+			{role = "drums", beats = {"dubstep.deep", "dubstep.half"}, gain = 0.85},
+			{role = "bass", patches = {"bass.sub", "bass.round"}, lines = {"dubstep.sub", "line.root", "dubstep.melodic"}},
+			{role = "pad", patches = {"pad.air", "pad.glass", "pad.warm", "pad.choir"}},
+			{role = "keys", patches = {"keys.rhodes", "keys.vibes", "keys.harp"}, chance = 0.6},
+			{role = "arp", patches = {"pluck.glass", "pluck.string", "pluck.bell"}, chance = 0.7, arp = {rates = {2, 4}}},
+			{role = "lead", patches = {"lead.vox", "lead.sine", "lead.pluck"}, chance = 0.8, hooks = {"hook.voice", "hook.lullaby", "hook.sigh", "hook.space", "@motif"}},
+			{role = "texture", patches = {"texture.shimmer", "texture.air"}},
+			{role = "fx", patches = {"fx.wind"}},
+		},
+		plan = {drop = {pad = "pad.chords", lead = {"lead.hook", from = 8}}}},
 }
 
 return {
-	api = 2,
+	api = 3,
 	title = "Dubstep",
 	symbol = "speaker.wave.3.fill",
-	summary = "Deep, Brostep and Riddim wobble at half time",
-	tempo = {min = 136, max = 150, default = 140},
-	defaults = {energy = 0.7, complexity = 0.5, swing = 0.05, humanize = 0.2,
-		cutoff = 0.42, wobble = 0.85, drive = 0.6, space = 0.35},
-	sound = {
+	summary = "Deep, Brostep, Riddim and more at half time",
+	defaults = {energy = 0.7, complexity = 0.5, humanize = 0.2, space = 0.35},
+	kit = {
 		kick = {base = 44, sweep = 140, sweepTime = 0.022, decay = 0.26, drive = 2.4, click = 0.4, length = 0.5},
 		snare = {tone = 200, bodyDecay = 0.07, noiseDecay = 0.16, noise = 0.55},
-		bass = {detune = 0.009, resonance = 0.45, retrigger = true, wobbleOctaves = 4.2, glide = 0.004},
-		stab = {decay = 0.18, octave = 0},
-		mix = {duckDepth = 0.35, reese = 0.4, sub = 0.6, delayFeedback = 0.5, delaySteps = 3},
 	},
+	mix = {duckDepth = 0.35, bass = 1.1, delayFeedback = 0.5},
 	set = {form = {builds = {"rise", "rise", "roll", "stomp"},
-		links = {"breakdown build", "breakdown build", "build", "double"}},
-		flavours = FLAVOURS, modes = {"phrygian", "minor"}, arrangement = ARRANGEMENT, modulations = {0, -2}},
-	barsPerChord = 4,
-	material = buildCycle,
-	arrange = arrange,
-	patterns = PATTERNS,
+			links = {"breakdown build", "breakdown build", "build", "double"}},
+		modes = {"phrygian", "minor"}, modulations = {0, -2},
+		arrangement = {introBars = 8, buildBars = 8, dropBars = 16, breakdownBars = 8, rebuildBars = 8,
+			outroBars = 8, blendBars = 4, minCycles = 2, maxCycles = 3}},
+	harmony = {progressions = PROGRESSIONS, voicing = {0, 2, 4}, barsPerChord = 4},
+	-- A dub melody sits an octave down.
+	roles = {drums = {fills = FILLS}, lead = {octave = -1}},
+	plan = {
+		intro = {pad = "pad.chords"},
+		build = {bass = {"bass.hold", from = 4}},
+		drop = {pad = {"pad.chords", from = 8}, lead = false, counter = false, keys = {"keys.comp", from = 8}, arp = {"arp.run", from = 8}},
+		breakdown = {lead = "lead.hook"},
+		outro = {bass = "bass.hold"},
+	},
+	flavours = FLAVOURS,
+	library = {beats = BEATS, lines = LINES},
 }

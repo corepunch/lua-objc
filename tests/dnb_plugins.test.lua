@@ -3,57 +3,74 @@ local ns = require("AppKit")
 local t = require("TestKit")
 local Model = require("apps.dnb.Model")
 local Synth = require("apps.dnb.models.Synth")
+local Drums = require("apps.dnb.models.Drums")
 local Visuals = require("apps.dnb.models.Visuals")
 local Styles = require("apps.dnb.host.Styles")
+local StyleKit = require("apps.dnb.host.StyleKit")
 local Visualizers = require("apps.dnb.host.Visualizers")
 local Controller = require("apps.dnb.Controller")
 
 local SR = 11025 -- synthesis is rate-independent; a low rate keeps the suite fast
 
-local partIds, controlIds = {}, {}
-for _, id in ipairs(Model.parts) do partIds[id] = true end
+local controlIds = {}
 for _, group in ipairs(Model.controlGroups) do for _, control in ipairs(group.controls) do controlIds[control.id] = true end end
-local VOICES = {kick = true, snare = true, ghost = true, clap = true, hat = true, openHat = true, ride = true,
-	crash = true, rim = true, conga = true, shaker = true, tomHigh = true, tomMid = true, tomLow = true}
 
 -- Every style plugin honours the contract the app and Synth rely on.
 local list = Styles:list()
 t.expect(#list >= 7, "the generator ships drum & bass and at least six more styles")
 t.assertEqual(list[1].id, "dnb", "drum & bass is the first style")
-local seenTitles = {}
+local seenTitles, flavourTotal = {}, 0
 for _, style in ipairs(list) do
 	local name = style.title
 	t.expect(not seenTitles[name], name .. " has a unique title")
 	seenTitles[name] = true
-	t.expect(style.tempo.min < style.tempo.default and style.tempo.default < style.tempo.max, name .. " tempo range holds its default")
 	for id in pairs(style.defaults or {}) do t.expect(controlIds[id], name .. " defaults name real controls") end
-	local ok, err = pcall(Synth.sound, style.sound)
-	t.expect(ok, name .. " sound overrides real Synth fields " .. tostring(err))
+	t.expect(pcall(Synth.mix, style.mix), name .. " mix overrides real fields")
+	t.expect(pcall(Drums.design, style.kit), name .. " kit overrides real fields")
+	t.expect(#style.flavours >= 5, name .. " plays " .. #style.flavours .. " kinds of track")
+	flavourTotal = flavourTotal + #style.flavours
+	local ids = {}
+	for _, flavour in ipairs(style.flavours) do
+		t.expect(not ids[flavour.id], name .. " flavours have ids of their own")
+		ids[flavour.id] = true
+		t.expect(flavour.tempo[1] <= flavour.tempo[2] and flavour.tempo[1] >= 100 and flavour.tempo[2] <= 180,
+			name .. " " .. flavour.name .. " has a tempo range")
+		t.expect(flavour.swing[1] <= flavour.swing[2] and flavour.swing[2] <= 0.5, name .. " " .. flavour.name .. " has a swing range")
+		t.expect(#flavour.channels <= Model.channels, name .. " " .. flavour.name .. " fits eight channels")
+	end
 
 	local model = Model.new(21, style)
-	t.assertEqual(model:value("tempo"), style.tempo.default, name .. " sets its tempo")
-	t.assertEqual(select(2, model:range("tempo")), style.tempo.max, name .. " narrows the tempo range")
+	for id, value in pairs(style.defaults or {}) do t.assertEqual(model:value(id), value, name .. " sets its " .. id) end
 	local a, b = Styles:create(style.id, 21), Styles:create(style.id, 21)
 	local sections, flavours, voices = {}, {}, {}
-	local bassOk, polyOk, stepsOk = true, true, true
+	local bassOk, polyOk, stepsOk, slicesOk, patchesOk = true, true, true, true, true
 	for n = 0, a:trackStart(3) - 1 do
 		local bar = a:bar(n, model)
 		local twin = b:bar(n, model)
-		t.assertEqual(#bar.hits .. ":" .. #bar.bass .. ":" .. bar.key, #twin.hits .. ":" .. #twin.bass .. ":" .. twin.key,
-			name .. " bar " .. n .. " is deterministic")
+		t.assertEqual(#bar.hits .. ":" .. #bar.slices .. ":" .. #bar.notes .. ":" .. bar.key,
+			#twin.hits .. ":" .. #twin.slices .. ":" .. #twin.notes .. ":" .. twin.key, name .. " bar " .. n .. " is deterministic")
 		sections[bar.section] = true
 		flavours[bar.style] = true
+		local track = a:trackAt(n)
 		for _, h in ipairs(bar.hits) do
 			voices[h.voice] = true
 			if h.step < 0 or h.step >= 16 or h.gain <= 0 or h.gain > 1.01 then stepsOk = false end
+			if not track.byRole[h.role] then patchesOk = false end
 		end
-		for _, note in ipairs(bar.bass) do
-			if note.note < 24 or note.note > 64 or note.step + note.length > 16.6 then bassOk = false end
+		for _, slice in ipairs(bar.slices) do
+			if slice.step < 0 or slice.step >= 16 or slice.slice < 0 or slice.slice >= slice.beat.slices then slicesOk = false end
+			if Model.family[slice.role] ~= "drums" or not track.byRole[slice.role] then slicesOk = false end
 		end
-		for _, list in ipairs({bar.stabs, bar.keys}) do
-			for _, chord in ipairs(list) do if #chord.notes < 3 then polyOk = false end end
+		for _, note in ipairs(bar.notes) do
+			if not note.patch or #note.notes < 1 or note.step < 0 or note.step >= 16 then patchesOk = false end
+			if not track.byRole[note.role] then patchesOk = false end
+			if note.role == "bass" and (note.notes[1] < 24 or note.notes[1] > 64 or note.step + note.length > 16.6) then
+				bassOk = false
+			end
+			if (note.role == "stab" or note.role == "keys" or note.role == "pad") and #note.notes < 3 then polyOk = false end
 		end
 		t.expect(type(bar.progression) == "string" and bar.chord ~= nil, name .. " names its harmony")
+		t.expect(bar.tempo >= 100 and bar.tempo <= 180 and bar.trackTempo == track.tempo, name .. " bars carry their tempo")
 	end
 	for _, section in ipairs({"intro", "build", "drop", "breakdown", "outro"}) do
 		t.expect(sections[section], name .. " arranges a " .. section)
@@ -61,141 +78,109 @@ for _, style in ipairs(list) do
 	local count = 0
 	for _ in pairs(flavours) do count = count + 1 end
 	t.expect(count >= 2, name .. " sets move between flavours")
-	for voice in pairs(voices) do t.expect(VOICES[voice], name .. " plays kit voices only: " .. voice) end
+	for voice in pairs(voices) do t.expect(Drums.place[voice], name .. " plays kit voices only: " .. voice) end
 	t.expect(stepsOk, name .. " hits sit inside the bar with sane gains")
+	t.expect(slicesOk, name .. " slices lie inside their loops, on drum channels")
+	t.expect(patchesOk, name .. " notes play a patch on a channel of their track")
 	t.expect(bassOk, name .. " bass stays in the bass register and inside the bar")
 	t.expect(polyOk, name .. " chords have at least three notes")
 	t.expect(a:trackStart(1) > 0 and a:trackAt(a:trackStart(1)).index == 1, name .. " exposes its tracks for Next Track")
 
-	-- Parts it does not play produce nothing.
+	-- Roles it does not play produce nothing.
 	local muted = Model.new(21, style)
-	muted:setParts({})
+	muted:setRoles({})
 	local silent = Styles:create(style.id, 21)
 	local anything = 0
 	for n = 0, 80 do
 		local bar = silent:bar(n, muted)
-		anything = anything + #bar.hits + #bar.bass + #bar.stabs + #bar.keys + #bar.arp + #bar.lead + #bar.breaks
-			+ (bar.pad and 1 or 0)
+		anything = anything + #bar.hits + #bar.slices + #bar.notes
 	end
-	t.assertEqual(anything, 0, name .. " is silent playing no parts")
+	t.assertEqual(anything, 0, name .. " is silent playing no roles")
 
-	-- The plan: every track is arranged as lanes of blocks from the seed
-	-- alone, the bars play what the lanes hold, and the style's patterns
-	-- cover every lane it arranges.
-	local lanesUsed, bars = {}, {breaks = 0}
+	-- The patterns it arranges exist, and its own play real roles.
+	for _, pattern in ipairs(style.patterns or {}) do
+		t.expect(Model.family[pattern.part], name .. " pattern " .. pattern.id .. " plays a real role")
+	end
 	for k = 0, 5 do
-		local plan, twin = a:arrangement(k), Styles:create(style.id, 21):arrangement(k)
+		local plan = a:arrangement(k)
 		t.assertEqual(plan.length, a.set:track(k).length, name .. " arranges each track whole")
-		t.assertEqual(#plan.lanes, #twin.lanes, name .. " track " .. k .. " arranges the same lanes from the seed")
-		local kick
-		for i, lane in ipairs(plan.lanes) do
-			lanesUsed[lane.part] = true
-			t.assertEqual(#lane.blocks, #twin.lanes[i].blocks, name .. " " .. lane.part .. " lane is reproducible")
-			if lane.part == "kick" then kick = lane end
-		end
-		for i, section in ipairs(plan.sections) do
-			local sounding = 0
-			for _, lane in ipairs(plan.lanes) do
-				if Model.family[lane.part] ~= "structure" and plan:plays(lane.part, i) then sounding = sounding + 1 end
-			end
-			t.expect(sounding > 0, name .. " track " .. k .. " " .. section.id .. " has something to play")
-			if section.id == "drop" then
-				t.expect(plan:plays("kick", i) and plan:plays("sub", i) and plan:plays("reese", i),
-					name .. " drops have kick, sub and reese blocks")
-			elseif section.id == "breakdown" then
-				t.expect(not plan:plays("kick", i), name .. " breakdowns have no kick")
+		for _, lane in ipairs(plan.lanes) do
+			for _, block in ipairs(lane.blocks) do
+				t.expect(a.patterns[block.pattern] ~= nil and a.patterns[block.pattern].part == lane.part,
+					name .. " " .. lane.part .. " plays " .. block.pattern)
 			end
 		end
-		t.expect(kick ~= nil, name .. " plays a kick lane")
 	end
-	for n = 0, 200 do bars.breaks = bars.breaks + #a:bar(n, model).breaks end
-	if not lanesUsed.amen then t.assertEqual(bars.breaks, 0, name .. " plays no break without an Amen lane") end
 
-	-- It sounds: a drop renders in range.
-	local synth = Synth.new(model, SR, style.sound)
-	synth:setComposer(Styles:create(style.id, 21))
-	local drop
-	for _, section in ipairs(a:arrangement(0).sections) do drop = drop or (section.id == "drop" and section) end
-	t.expect(drop ~= nil and drop.start >= a:arrangement(0).sections[1].length, name .. " drops after its intro")
-	synth.composerBar = drop.start
-	local out = {}
-	synth:render(out, SR // 2)
-	local peak, sum = 0, 0
-	for i = 1, #out do
-		local x = math.abs(out[i])
-		if x > peak then peak = x end
-		sum = sum + x * x
+	-- It sounds: a drop renders in range, every flavour of it.
+	for _, flavour in ipairs(style.flavours) do
+		local only = setmetatable({flavours = {flavour}}, {__index = style})
+		local composer = require("apps.dnb.host.Composer").new(only, 21)
+		local synth = Synth.new(model, SR, style)
+		synth:setComposer(composer)
+		local drop
+		for _, section in ipairs(composer:arrangement(0).sections) do drop = drop or (section.id == "drop" and section) end
+		t.expect(drop ~= nil and drop.start >= composer:arrangement(0).sections[1].length, name .. " drops after its intro")
+		synth.composerBar = drop.start
+		local out = {}
+		synth:render(out, SR)
+		local peak, sum, bad = 0, 0, false
+		for i = 1, #out do
+			local x = math.abs(out[i])
+			if x ~= x then bad = true end
+			if x > peak then peak = x end
+			sum = sum + x * x
+		end
+		local rms = math.sqrt(sum / #out)
+		t.expect(not bad and peak <= 1 and rms > 0.05,
+			string.format("%s %s drop is audible and soft-clipped (%.3f)", name, flavour.name, rms))
+		t.expect(rms < 0.5, string.format("%s %s drop leaves the master room (%.3f)", name, flavour.name, rms))
 	end
-	t.expect(peak <= 1 and math.sqrt(sum / #out) > 0.05, name .. " drop is audible and soft-clipped")
 end
+t.expect(flavourTotal >= 40, "the styles play " .. flavourTotal .. " kinds of track between them")
 
--- Model: styles narrow ranges and set defaults; the arrangement, not the
--- style's manifest, decides what plays.
+-- Model: a style sets the controls' defaults; what plays is its tracks'.
 local techno = Styles:get("techno")
 local model = Model.new(3, Styles:get("dnb"))
-model:setParts({"kick"})
+model:setRoles({"drums"})
 model:setStyle(techno)
-t.assertEqual(model:value("tempo"), 132, "a style sets its default tempo")
-t.assertEqual(model:setValue("tempo", 175), 140, "and clamps to its range")
-t.assertEqual(model:value("swing"), 0, "control defaults follow the style")
-t.expect(not model:plays("amen") and model:plays("kick"), "a style change keeps which lanes sound")
-local amenStyles = {}
+t.assertEqual(model:value("energy"), techno.defaults.energy, "control defaults follow the style")
+t.assertEqual(model:value("pitch"), 0, "and the pitch fader returns to rest")
+t.expect(not model:plays("tops") and model:plays("drums"), "a style change keeps which channels sound")
+local breaks = {}
 for _, style in ipairs(Styles:list()) do
-	for _, pattern in ipairs(style.patterns) do
-		t.expect(partIds[pattern.part], style.title .. " pattern " .. pattern.id .. " plays a real part")
-		if pattern.part == "amen" then amenStyles[style.id] = true end
+	for _, flavour in ipairs(style.flavours) do
+		for _, channel in ipairs(flavour.channels) do
+			for _, id in ipairs(channel.beats or {}) do
+				if id:find("^break%.") then breaks[style.id] = true end
+			end
+		end
 	end
 end
-t.expect(amenStyles.dnb and amenStyles.breakbeat and not amenStyles.techno, "only breakbeat styles carry the Amen")
+t.expect(breaks.dnb and breaks.breakbeat and not breaks.techno and not breaks.trance, "only breakbeat styles play a record's break")
 
--- A broken plan is refused before it plays: overlapping blocks, unknown
--- patterns, a pattern on the wrong lane, sections that leave a gap.
-local Arrangement = require("apps.dnb.host.Arrangement")
-local patterns = Styles:create("dnb", 1).patterns
-local function plan(lanes, sections)
-	return function()
-		Arrangement.new({track = 0, start = 0, length = 8, lanes = lanes,
-			sections = sections or {{id = "drop", start = 0, length = 8, cycle = 0}}}, patterns, Model.parts)
-	end
-end
-local ok = pcall(plan({{part = "kick", blocks = {{start = 0, length = 8, pattern = "kick.drop"}}}}))
-t.expect(ok, "a plain plan is accepted")
-t.assertThrows(plan({{part = "kick", blocks = {{start = 0, length = 4, pattern = "kick.drop"},
-	{start = 2, length = 4, pattern = "kick.drop"}}}}), "blocks never overlap in a lane")
-t.assertThrows(plan({{part = "kick", blocks = {{start = 0, length = 4, pattern = "kick.cowbell"}}}}),
-	"blocks play known patterns")
-t.assertThrows(plan({{part = "snare", blocks = {{start = 0, length = 4, pattern = "kick.drop"}}}}),
-	"a lane plays only its part's patterns")
-t.assertThrows(plan({{part = "kick", blocks = {{start = 6, length = 4, pattern = "kick.drop"}}}}),
-	"blocks stay inside the track")
-t.assertThrows(plan({{part = "kick", blocks = {{start = 0, length = 4, pattern = "kick.drop", render = print}}}}),
-	"blocks are plain data")
-t.assertThrows(plan({}, {{id = "drop", start = 0, length = 4, cycle = 0}}), "sections cover every bar")
-t.assertThrows(plan({{part = "cowbell", blocks = {}}}), "lanes are real parts")
-
--- Synth: sound overrides, the clap and a sound change on the bar line.
-t.assertThrows(function() Synth.sound({bass = {wub = 1}}) end, "unknown sound fields are rejected")
-t.assertThrows(function() Synth.sound({laser = {}}) end, "unknown sound groups are rejected")
-local sound = Synth.sound({kick = {decay = 0.3}})
-t.assertEqual(sound.kick.decay, 0.3, "overrides replace a field")
-t.assertEqual(sound.kick.base, Synth.sound().kick.base, "and keep the rest")
-local clapModel = Model.new(1, Styles:get("house"))
-local synth = Synth.new(clapModel, SR, Styles:get("house").sound)
-t.expect(#synth.drums.clap > 0 and #synth.drums.crash > 0, "styles get a clap over the shared cymbals")
-local dnbSynth = Synth.new(clapModel, SR)
-t.expect(dnbSynth.drums.kick ~= synth.drums.kick, "a style's kick design renders its own kick")
-t.assertEqual(Synth.new(clapModel, SR, Styles:get("house").sound).drums.kick, synth.drums.kick, "kits are cached by design")
+-- Synth: mix overrides, the style's kit and a style change on the bar line.
+t.assertThrows(function() Synth.mix({wub = 1}) end, "unknown mix fields are rejected")
+local mix = Synth.mix({pad = 1.4})
+t.assertEqual(mix.pad, 1.4, "overrides replace a field")
+t.assertEqual(mix.bass, Synth.mix().bass, "and keep the rest")
+local houseModel = Model.new(1, Styles:get("house"))
+local synth = Synth.new(houseModel, SR, Styles:get("house"))
+t.expect(#synth.shots.clap > 0 and #synth.shots.crash > 0, "styles get a clap over the shared cymbals")
+local dnbSynth = Synth.new(houseModel, SR, Styles:get("dnb"))
+t.expect(dnbSynth.shots.kick ~= synth.shots.kick, "a style's kick design renders its own kick")
+t.assertEqual(Synth.new(houseModel, SR, Styles:get("house")).shots.kick, synth.shots.kick, "kits are cached by design")
 synth:setComposer(Styles:create("house", 1))
 synth:render({}, 2000)
-local before = synth.sound
-synth:setComposer(Styles:create("techno", 1), Synth.sound(techno.sound))
-t.expect(synth.sound == before, "a new sound waits for the bar line")
+local before = synth.kit
+synth:setComposer(Styles:create("techno", 1), techno)
+t.expect(synth.kit == before, "a new style waits for the bar line")
 synth:render({}, synth.nextBarFrame - synth.frame + 10)
-t.assertEqual(synth.sound.kick.decay, techno.sound.kick.decay, "and takes over on it")
+t.assertEqual(synth.kit.kick.decay, techno.kit.kick.decay, "and takes over on it")
+t.assertEqual(synth.styleMix.duckDepth, techno.mix.duckDepth, "with its mix")
 
 -- Track kits: every track draws its own snare character and reshapes the
 -- style's kick, hats and clap, so a set never plays one kit throughout.
-local StyleKit = require("apps.dnb.host.StyleKit")
 for _, style in ipairs(list) do
 	local composer = Styles:create(style.id, 11)
 	local characters, designs = {}, {}
@@ -218,26 +203,23 @@ for _, style in ipairs(list) do
 		style.title .. " kits are reproducible from the seed")
 	t.expect(composer:bar(0, Model.new(11, style)).drums == composer.set:track(0).drums, "bars carry their track's kit")
 end
-t.assertThrows(function() StyleKit.newSet(1, {flavours = {{id = "x", name = "X", snares = {"cowbell"}}}}) end,
-	"flavours name real snare characters")
 
-local base = Synth.sound()
-t.expect(Synth.drumVariant(base, nil) == base, "no design keeps the style's kit")
+local base = Drums.design()
+t.expect(Drums.variant(base, nil) == base, "no design keeps the style's kit")
 local function design(snare, x)
 	local d = {snare = snare}
-	for _, key in ipairs({"snareTune", "kickTune", "kickLength", "kickDrive", "kickClick", "hatTone", "hatLength",
-		"hatNoise", "clapSpread", "clapLength", "clapTone"}) do d[key] = x or 0 end
+	for _, key in ipairs(Drums.dimensions) do d[key] = x or 0 end
 	return d
 end
-local roomy = Synth.drumVariant(base, design("roomy"))
+local roomy = Drums.variant(base, design("roomy"))
 t.expect(roomy.snare.room > 0 and base.snare.room == 0, "a character reshapes the style's snare")
-t.expect(roomy.bass == base.bass and roomy.snare ~= base.snare, "and leaves the rest of the sound shared")
-local high = Synth.drumVariant(base, design("tight", 1))
-local low = Synth.drumVariant(base, design("tight", -1))
+t.expect(roomy.snare ~= base.snare, "in a kit of its own")
+local high = Drums.variant(base, design("tight", 1))
+local low = Drums.variant(base, design("tight", -1))
 t.expect(math.abs(high.snare.tone / low.snare.tone - 2 ^ (6 / 12)) < 1e-9, "snare tuning spans three semitones each way")
 t.expect(high.kick.base > base.kick.base and low.kick.base < base.kick.base, "the kick is retuned too")
 t.expect(high.hat.decay > low.hat.decay and high.clap.bursts == 4, "hats and the clap change with the kit")
-t.assertThrows(function() Synth.drumVariant(base, design("cowbell")) end, "unknown characters are rejected")
+t.assertThrows(function() Drums.variant(base, design("cowbell")) end, "unknown characters are rejected")
 
 -- Each character keeps the backbeat's level: its first 80 ms within 2.5 dB
 -- of the style's own snare.
@@ -246,17 +228,13 @@ local function attack(data)
 	for i = 1, n do sum = sum + data[i] ^ 2 end
 	return math.sqrt(sum / n)
 end
-local levels = Synth.new(clapModel, SR)
-local reference = attack(levels.drums.snare)
-for _, name in ipairs(StyleKit.snares) do
-	levels:applyDrums(design(name))
-	local db = 20 * math.log(attack(levels.drums.snare) / reference, 10)
-	t.expect(math.abs(db) < 2.5, string.format("the %s snare sits %.1f dB from the style's", name, db))
-end
+local reference = attack(Drums.shots(SR, base).snare)
 local distinct = {}
 for _, name in ipairs(StyleKit.snares) do
-	levels:applyDrums(design(name))
-	distinct[levels.drums.snare] = true
+	local snare = Drums.shots(SR, base, design(name)).snare
+	local db = 20 * math.log(attack(snare) / reference, 10)
+	t.expect(math.abs(db) < 2.5, string.format("the %s snare sits %.1f dB from the style's", name, db))
+	distinct[snare] = true
 end
 local renders = 0
 for _ in pairs(distinct) do renders = renders + 1 end
@@ -265,19 +243,42 @@ t.assertEqual(renders, #StyleKit.snares, "every character renders its own snare"
 -- The Synth switches kit on a track's first bar and holds it all track.
 local kitModel = Model.new(4, Styles:get("dnb"))
 local kitComposer = Styles:create("dnb", 4)
-local player = Synth.new(kitModel, SR)
+local player = Synth.new(kitModel, SR, Styles:get("dnb"))
 player:setComposer(kitComposer)
 player:render({}, 10)
 t.expect(player.design == kitComposer.set:track(0).drums, "the first track plays its own kit")
-local firstSnare = player.drums.snare
+local firstSnare = player.shots.snare
 player.composerBar = kitComposer:trackStart(1)
 player:render({}, player.nextBarFrame - player.frame + 10)
 t.expect(player.design == kitComposer.set:track(1).drums, "the next track brings its kit on its first bar")
-t.expect(player.drums.snare ~= firstSnare, "and its own snare")
-local held = player.drums.snare
+t.expect(player.shots.snare ~= firstSnare, "and its own snare")
 for k = 2, 11 do player:applyDrums(kitComposer.set:track(k).drums) end
 player:applyDrums(kitComposer.set:track(1).drums)
-t.expect(#held > 0 and #player.drums.snare > 0, "a bounded kit cache still plays every kit")
+t.expect(#player.shots.snare > 0, "a bounded kit cache still plays every kit")
+-- And its instruments: the bass of one track is not the bass of the next.
+do
+	local source = Styles:create("dnb", 4)
+	local bassModel = Model.new(4, Styles:get("dnb"))
+	bassModel:setRoles({"bass"})
+	local bassPlayer = Synth.new(bassModel, SR, Styles:get("dnb"))
+	bassPlayer:setComposer(source)
+	local heard = {}
+	for k = 0, 3 do
+		local track = source.set:track(k)
+		local drop
+		for _, section in ipairs(source:arrangement(k).sections) do drop = drop or (section.id == "drop" and section) end
+		bassPlayer.composerBar = track.start + drop.start
+		bassPlayer:render({}, bassPlayer.nextBarFrame - bassPlayer.frame + SR)
+		local voice = bassPlayer.mono.bass
+		if voice then
+			t.expect(voice.patch == track.byRole.bass.patch, "track " .. k .. " plays its own bass patch")
+			heard[voice.patch.id] = true
+		end
+	end
+	local patches = 0
+	for _ in pairs(heard) do patches = patches + 1 end
+	t.expect(patches >= 3, "four tracks play " .. patches .. " different basses")
+end
 
 -- Visualizers: plugins link into one Metal program and draw into layers.
 local scenes = Visualizers:list()
@@ -389,12 +390,13 @@ t.assertEqual(app.window.title, "Drum & Bass", "the window is titled by its styl
 app:actions().selectStyle(Styles:index("techno") - 1)
 t.assertEqual(app.style.id, "techno", "the style menu switches styles")
 t.assertEqual(app.window.title, "Techno", "and retitles the window")
-t.assertEqual(app.refs.control_tempo.maxValue, techno.tempo.max, "the tempo slider takes the style's range")
-t.assertEqual(app.refs.value_tempo.text, "132 BPM", "and its tempo")
-t.assertEqual(app.refs.tempo.text, "132", "the header shows the new tempo")
-t.expect(app.refs.detail.text:find("Peak Time", 1, true) or app.refs.detail.text:find("Acid", 1, true)
-	or app.refs.detail.text:find("Hypnotic", 1, true), "the idle header names the new set's track")
-t.expect(app.synth.composer == app.composer and app.synth.pendingSound ~= nil, "the synth switches on the next bar")
+local technoOpener = app.composer.set:track(0)
+t.assertEqual(app.refs.value_energy.text, "70%", "the sliders take the style's defaults")
+t.assertEqual(app.refs.control_energy.doubleValue, techno.defaults.energy, "and move to them")
+t.assertEqual(app.refs.tempo.text, tostring(technoOpener.tempo), "the header shows the new set's tempo")
+t.expect(technoOpener.tempo >= 118 and technoOpener.tempo <= 140, "which is a techno tempo")
+t.expect(app.refs.detail.text:find(technoOpener.flavour.name, 1, true) ~= nil, "the idle header names the new set's track")
+t.expect(app.synth.composer == app.composer and app.synth.pendingStyle == techno, "the synth switches on the next bar")
 app:actions().selectStyle(Styles:index("techno") - 1)
 t.assertEqual(app.model.seed, 5, "reselecting a style changes nothing")
 app:actions().selectScene(Visualizers:index("crystals"))

@@ -1,9 +1,11 @@
--- The timeline: the arrangement as the arrange window draws it. Clips
--- slide right to left past a fixed playhead, one row per track; a clip
--- shows the fade or filter sweep riding it, and the headline names the
--- section to come. This model turns arrangements into plain data:
--- the rows, the instances the Metal program draws, the values it animates,
--- and the headline naming the next section change. It never touches views.
+-- The timeline: the arrangement as a tracker's song or an arrange window
+-- draws it. Eight rows, one to a channel, named after what the playing
+-- track has on them; clips slide right to left past a fixed playhead, a
+-- clip shows the fade or filter sweep riding it, a meter beside the
+-- playhead shows each channel's level, and the headline names the section
+-- to come. This model turns arrangements into plain data: the rows, the
+-- instances the Metal program draws, the values it animates, and the
+-- headline. It never touches views.
 local Model = require("apps.dnb.Model")
 local Arrangement = require("apps.dnb.host.Arrangement")
 
@@ -12,20 +14,18 @@ local Timeline = {}
 -- The window: bars in view and how many of them lie behind the playhead,
 -- so the next section change shows well before it lands.
 Timeline.window = {bars = 16, behind = 4}
+Timeline.rowCount = Model.channels
+
+-- A meter spans this many decibels below full level.
+local METER = {range = 48}
 
 local SECTION_TITLES = {intro = "Intro", build = "Build-up", drop = "Drop", breakdown = "Breakdown", outro = "Outro"}
 
--- Floats per instance: row, first bar, length in bars, colour (the
--- track's place in Model.tracks, from 0), its envelope at its first and
--- last bar (0…1, 1 full and open) and whether it thins from below, as a
--- high-pass does.
+-- Floats per instance: row, first bar, length in bars, colour (its role's
+-- place in Model.roles, from 0), its envelope at its first and last bar
+-- (0…1, 1 full and open) and whether it thins from below, as a high-pass
+-- does.
 Timeline.stride = 7
-
-local trackOf, trackIndex = {}, {}
-for i, track in ipairs(Model.tracks) do
-	trackIndex[track.id] = i
-	for _, part in ipairs(track.parts) do trackOf[part] = track end
-end
 
 --- The plans in view around set bar `n`: the playing track's and, once its
 --- end is inside the window, the next one's.
@@ -38,18 +38,15 @@ function Timeline.plans(composer, n)
 	return plans
 end
 
---- The tracks with a lane in any of `plans`, in the timeline's order.
+--- The eight rows, named after the channels of the playing track (the
+--- first of `plans`): {index, role, name}. A track with fewer channels
+--- leaves its last rows empty, with no role and no name.
 function Timeline.rows(plans)
-	local present = {}
-	for _, plan in ipairs(plans) do
-		for _, lane in ipairs(plan.lanes) do
-			local track = trackOf[lane.part]
-			if track then present[track.id] = true end
-		end
-	end
 	local rows = {}
-	for _, track in ipairs(Model.tracks) do
-		if present[track.id] then table.insert(rows, {track = track.id, parts = track.parts}) end
+	local channels = plans[1].channels
+	for index = 1, Timeline.rowCount do
+		local channel = channels[index]
+		rows[index] = {index = index, role = channel and channel.role or nil, name = channel and channel.name or ""}
 	end
 	return rows
 end
@@ -61,61 +58,34 @@ local function envelope(block, at)
 	return level * (opening or 1)
 end
 
---- The clips of a track in `plan`: the blocks of its first part, and of
---- each further part where no earlier one already has a clip, as
+--- The clips of a channel in `plan`, one to a block of its lane, as
 --- {start, length, from, to, thins}, in track bars.
-function Timeline.clips(plan, parts)
-	local clips, covered = {}, {}
-	for _, part in ipairs(parts) do
-		local lane = plan:lane(part)
-		local placed = {}
-		for _, block in ipairs(lane and lane.blocks or {}) do
-			local cursor, stop = block.start, block.start + block.length
-			local function place(from, to)
-				if to <= from then return end
-				table.insert(placed, {start = from, length = to - from,
-					from = envelope(block, (from - block.start) / block.length),
-					to = envelope(block, (to - block.start) / block.length),
-					thins = block.filter ~= nil and block.filter.kind == "highpass"})
-			end
-			for _, clip in ipairs(covered) do
-				if clip.start >= stop then break end
-				place(cursor, math.min(clip.start, stop))
-				cursor = math.max(cursor, clip.start + clip.length)
-			end
-			place(cursor, stop)
-		end
-		for _, clip in ipairs(placed) do
-			table.insert(clips, clip)
-			table.insert(covered, clip)
-		end
-		table.sort(covered, function(a, b) return a.start < b.start end)
+function Timeline.clips(plan, role)
+	local clips = {}
+	local lane = plan:lane(role)
+	for _, block in ipairs(lane and lane.blocks or {}) do
+		table.insert(clips, {start = block.start, length = block.length,
+			from = envelope(block, 0), to = envelope(block, 1),
+			thins = block.filter ~= nil and block.filter.kind == "highpass"})
 	end
-	table.sort(clips, function(a, b) return a.start < b.start end)
 	return clips
 end
 
-local function add(data, row, start, length, colour, from, to, thins)
-	table.insert(data, row)
-	table.insert(data, start)
-	table.insert(data, length)
-	table.insert(data, colour)
-	table.insert(data, from)
-	table.insert(data, to)
-	table.insert(data, thins)
-end
-
-local function colourOf(part) return trackIndex[trackOf[part].id] - 1 end
-
---- The arrangement's instances: every clip on its row, at set bars,
---- `Timeline.stride` floats each.
-function Timeline.instances(plans, rows)
+--- The arrangement's instances: every clip on its channel's row, at set
+--- bars, `Timeline.stride` floats each. A track's clips sit on its own
+--- rows, so the next track's arrive on the rows it will rename.
+function Timeline.instances(plans)
 	local data = {}
 	for _, plan in ipairs(plans) do
-		for i, row in ipairs(rows) do
-			for _, clip in ipairs(Timeline.clips(plan, row.parts)) do
-				add(data, i - 1, plan.start + clip.start, clip.length, colourOf(row.parts[1]),
-					clip.from, clip.to, clip.thins and 1 or 0)
+		for row, channel in ipairs(plan.channels) do
+			for _, clip in ipairs(Timeline.clips(plan, channel.role)) do
+				table.insert(data, row - 1)
+				table.insert(data, plan.start + clip.start)
+				table.insert(data, clip.length)
+				table.insert(data, Model.roleIndex[channel.role] - 1)
+				table.insert(data, clip.from)
+				table.insert(data, clip.to)
+				table.insert(data, clip.thins and 1 or 0)
 			end
 		end
 	end
@@ -140,11 +110,27 @@ function Timeline.headline(plans, n)
 	return string.format("Next track in %d bar%s", bars, bars == 1 and "" or "s")
 end
 
+--- A channel's peak (0…1 of full level) as a meter's length (0…1), over
+--- the decibels a meter spans.
+function Timeline.meter(peak)
+	if not peak or peak <= 0 then return 0 end
+	return math.max(0, math.min(1, 1 + 20 * math.log(peak, 10) / METER.range))
+end
+
 --- The values the shader reads: the playhead (a set bar and its fraction),
 --- its speed in bars per second to extrapolate between updates, the row
---- count, and the window.
-function Timeline.values(playhead, barsPerSecond, rows)
-	return {playhead, barsPerSecond, rows, Timeline.window.bars, Timeline.window.behind}
+--- count, the window, the display scale, then for each row its meter
+--- (0…1) and its colour. `rows` are Timeline.rows'; `levels` maps a role
+--- to its channel's peak.
+function Timeline.values(playhead, barsPerSecond, rows, scale, levels)
+	local values = {playhead, barsPerSecond, #rows, Timeline.window.bars, Timeline.window.behind, scale or 1}
+	for _, row in ipairs(rows) do
+		table.insert(values, row.role and Timeline.meter(levels and levels[row.role]) or 0)
+	end
+	for _, row in ipairs(rows) do
+		table.insert(values, row.role and Model.roleIndex[row.role] - 1 or 0)
+	end
+	return values
 end
 
 return Timeline
