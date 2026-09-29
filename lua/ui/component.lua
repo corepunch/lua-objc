@@ -29,7 +29,7 @@
 -- Resolution: a tag outside the vocabulary is looked up in the `components/`
 -- folder nearest the rendering template (an app's `components/` beside its
 -- `views/`), then in the framework's bundled `lua/components/`. The module
--- file is named after the tag. Geometry belongs in plain functions on the
+-- file is named after the tag. Tags are global: one module per tag. Geometry belongs in plain functions on the
 -- module so tests can check it without building views.
 local Component = {}
 
@@ -167,25 +167,28 @@ local function ancestors(baseDir)
 	return dirs
 end
 
---- The XML handler for component `tag` near `baseDir`, or nil. App
---- components shadow bundled ones of the same name.
+--- The XML handler for component `tag` near `baseDir`, or nil. The nearest
+--- module wins. Tags are global, so a module found for a tag that another
+--- module already defined is an error, never a silent substitute: a tag
+--- must not mean one component in one template and another elsewhere.
 function Component.resolve(tag, baseDir)
 	if type(tag) ~= "string" or not tag:match("^%u[%w]*$") then return nil end
 	local xml = require("ui.xml")
 	local candidates = {}
-	-- A defined tag stays with its module; only a reload changes it.
-	if owners[tag] then table.insert(candidates, owners[tag]) end
 	for _, dir in ipairs(ancestors(baseDir)) do
 		if not dir:find("%.%.") and dir:match("^[%w_.-]+$") then
 			table.insert(candidates, dir .. ".components." .. tag)
 		end
 	end
 	table.insert(candidates, "components." .. tag)
+	-- A template outside the owner's folders (a partial elsewhere, or a
+	-- rendered string) still uses the tag.
+	if owners[tag] then table.insert(candidates, owners[tag]) end
 	for _, name in ipairs(candidates) do
 		local def = load(name)
 		if def ~= nil then
 			assert(type(def) == "table", "component module " .. name .. " must return a definition table")
-			if definitions[tag] ~= def then Component.define(tag, def, name) end
+			if definitions[tag] ~= def or owners[tag] ~= name then Component.define(tag, def, name) end
 			return xml.registry[tag]
 		end
 	end
