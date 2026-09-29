@@ -1,5 +1,6 @@
--- A drone flyover of river valleys at sunset, banking through soft turns:
--- a static terrain mesh, reflective water, a sky with clouds and cloud banks.
+-- A drone flyover of alpine peaks at twilight, banking through the valleys:
+-- a static terrain mesh of ridged massifs and pyramidal summits, dark tarns,
+-- a navy sky with stars, and a few high cloud banks.
 -- Terrain strips: the finest grid level whole, then each coarser level's
 -- ring around its hole (see Scene.metal); each strip is 32 cells.
 local TERRAIN = {side = 128, strip = 32, levels = 3}
