@@ -1,0 +1,5 @@
+<HStack spacing="<%= spacing %>" alignment="bottom" height="<%= height %>" maxWidth="infinity">
+  <% for index, bar in ipairs(bars) do -%>
+  <VStack key="bar<%= index %>" background="<%= bar.color %>" height="<%= bar.height %>" flexGrow="1" flexBasis="0" cornerRadius="<%= radius %>" />
+  <% end -%>
+</HStack>

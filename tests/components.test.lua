@@ -132,7 +132,8 @@ t.assertEqual(firstSegment.flexGrow, 8, "segments take their new weights")
 t.assertEqual(mountedBar.subviews[2].flexGrow, 12, "the remaining track shrinks")
 t.assertEqual(mountedBar.accessibilityLabel, "8 of 20", "the summary updates in place")
 template:update({ rings = { 10 }, total = 5, used = 5 })
-t.expect(template.refs.bar ~= mountedBar, "a change the component declines rebuilds it")
+t.expect(template.refs.bar == mountedBar, "a segment that fills the bar removes the track in place")
+t.assertEqual(#mountedBar.subviews, 1, "leaving the one segment")
 t.assertEqual(#template.refs.rings.subviews, 3, "a removed ring removes its arcs in place")
 
 -- Tags resolve from the nearest components/ folder, then lua/components/.
@@ -141,7 +142,9 @@ local Model = require("demo.component-gallery.Model")
 local model = Model.new()
 gallery:update(model:snapshot())
 local sleep = gallery.refs.sleep
-t.assertEqual(Component.instance(sleep).tag, "SleepChart", "an app's components/ folder defines tags")
+local active = model:activeDays()
+t.expect(active > 0 and active < #model.history, "the sample history has rest days as well as active ones")
+t.assertEqual(#sleep.subviews, 4, "an app's components/ folder defines tags: a row per sleep stage")
 local steps = gallery.refs.steps
 model:advance()
 gallery:update(model:snapshot())
@@ -157,18 +160,52 @@ t.assertEqual(rows[2].pieces[1].gap, 10, "a row starts with the gap before its f
 t.assertEqual(rows[2].pieces[3].interval, 10, "overlapping intervals are clipped")
 t.assertEqual(#rows[4].pieces, 1, "an inverted interval draws nothing")
 
+-- A component is its template's elements: nothing but the vocabulary
+-- reaches the renderer, and no component module builds a view.
+for path in io.popen("ls lua/components/*.lua demo/*/components/*.lua apps/*/components/*.lua 2>/dev/null"):lines() do
+	local source = assert(io.open(path)):read("a")
+	t.expect(not source:find("%f[%w_]ns%f[^%w_]") and not source:find("AppKit", 1, true) and not source:find("UIKit", 1, true),
+		path .. " computes data and leaves views to its template")
+	t.expect(io.open((path:gsub("%.lua$", ".etlua"))) ~= nil, path .. " has a template beside it")
+end
+
+-- Resolution: the nearest components/ folder, then the bundled set.
+local folders = Component.folders("apps/demo/views/")
+t.assertEqual(folders[1], "apps/demo/views/components/", "a template's own folder is searched first")
+t.assertEqual(folders[2], "apps/demo/components/", "then the app's components/ beside views/")
+t.assertEqual(folders[#folders], "lua/components/", "the bundled set is last")
+t.assertEqual(Component.folders("/tmp/app/views/")[2], "/tmp/app/components/", "absolute template paths resolve too")
+t.assertEqual(Component.find("SleepChart", "demo/component-gallery/views/").dir, "demo/component-gallery/components/",
+	"an app component is found from its views")
+t.assertEqual(Component.find("SleepChart", "demo/hello/views/"), nil, "and is not another app's tag")
+t.assertEqual(Component.find("BarChart", "demo/hello/views/").dir, "lua/components/", "bundled components are found from anywhere")
+t.assertEqual(Component.find("VStack", ""), nil, "a name without a template is no component")
+
+-- An app component shadows the bundled one of its name, for that app only.
+local shadow, shadowRefs = xml.renderFile("tests/fixtures/shadowing/views/Chart.etlua", {}, ns)
+t.assertEqual(shadowRefs.chart.stringValue, "2 marks", "the nearest component wins")
+t.assertEqual(#xml.render('<BarChart><BarMark value="1" /></BarChart>', {}, ns).subviews, 1,
+	"and the bundled one is untouched elsewhere")
+t.expect(shadow ~= nil, "the shadowing template renders")
+
+-- Attributes that are not props go to the template's root; content
+-- replaces <ContentPresenter />.
+local slotted, slotRefs = xml.renderFile("tests/fixtures/shadowing/views/Card.etlua", { actions = { tap = function() end } }, ns)
+t.assertEqual(slotRefs.card, slotted, "the tag's id names the component's root")
+t.assertEqual(slotted.accessibilityLabel, "A card", "the tag's accessibility label reaches the root")
+t.assertEqual(slotted.subviews[1].stringValue, "Hello", "declared props reach the template")
+t.assertEqual(slotted.spacing, 8, "with their defaults and types")
+t.expect(slotRefs.inner ~= nil and slotRefs.inner.superview == slotted.subviews[2], "content is presented where the template says")
+t.expect(slotRefs.nested ~= nil, "components inside content and inside components expand")
+
 -- Definitions are checked.
-t.assertThrows(function() Component.define("VStack", { build = function() end }) end, "built-in tags cannot be redefined")
-t.assertThrows(function() Component.define("BarChart", { build = function() end }, "another.module") end,
-	"a second module cannot claim a component's tag")
-t.assertThrows(function() Component.define("Broken", {}) end, "a component needs build")
--- BarChart is the bundled chart by now. A nearer module of the same name
--- is refused loudly; the tag never silently means another component.
-local shadowed, shadowError = pcall(xml.renderFile, "tests/fixtures/shadowed.etlua", {}, ns)
-t.expect(not shadowed and tostring(shadowError):find("<BarChart> is already defined by components.BarChart", 1, true),
-	"a nearer module cannot take over a defined tag")
-t.expect(Component.instance(xml.render('<BarChart><BarMark value="1" /></BarChart>', {}, ns)).bars ~= nil,
-	"and the tag keeps its component")
+local function fails(source, message, expectation)
+	local ok, err = pcall(xml.renderFile, "tests/fixtures/shadowing/views/" .. source, {}, ns)
+	t.expect(not ok and tostring(err):find(message, 1, true), expectation .. " (" .. tostring(err) .. ")")
+end
+fails("TwoRoots.etlua", "must render one root element", "a component renders one root")
+fails("NoContent.etlua", "takes no content", "content needs a ContentPresenter")
+fails("Forever.etlua", "uses itself", "a component cannot contain itself")
 local ok, err = pcall(xml.render, "<NoSuchComponent />", {}, ns)
 t.expect(not ok and tostring(err):find("unknown tag <NoSuchComponent>", 1, true), "unknown tags still fail clearly")
 

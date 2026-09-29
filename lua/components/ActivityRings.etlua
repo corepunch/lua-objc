@@ -1,0 +1,8 @@
+<ZStack alignment="center" width="<%= diameter %>" height="<%= diameter %>">
+  <% for index, ring in ipairs(rings) do -%>
+  <% for _, name in ipairs({ "track", "lap", "overlap" }) do local arc = ring[name] -%>
+  <Arc key="ring<%= index %>.<%= name %>" width="<%= ring.frame %>" height="<%= ring.frame %>" lineWidth="<%= ring.lineWidth %>" stroke="<%= ring.color %>" lineCap="round" startAngle="<%= arc.startAngle %>" endAngle="<%= arc.endAngle %>" strokeAlpha="<%= arc.alpha %>" />
+  <% end -%>
+  <% end -%>
+  <ContentPresenter />
+</ZStack>

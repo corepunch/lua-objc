@@ -16,8 +16,8 @@ Read only the material needed for the current task:
 - [docs/tableview_swiftui.md](docs/tableview_swiftui.md) — table behavior
 - [docs/animation.md](docs/animation.md) — animation, transitions, retained
   template reconciliation and steady live updates
-- [docs/components.md](docs/components.md) — Lua components: new XML tags
-  composed from native views, the bundled set, retained updates
+- [docs/components.md](docs/components.md) — components: new XML tags
+  written as etlua templates, the bundled set, resolution
 - [docs/ios.md](docs/ios.md) — iPhone Simulator host, streamed Lua/assets,
   in-process reload (the host does not quit)
 - [docs/research/XCODE_UI_ARCHITECTURE.md](docs/research/XCODE_UI_ARCHITECTURE.md)
@@ -46,10 +46,10 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   Application controllers must not call `ns` view constructors such as
   `ns.VStack`, `ns.Text`, `ns.List`, or `ns.Button`. The XML renderer is the
   sole application-layer caller that maps template tags to platform view
-  constructors, apart from Lua components: a new tag an app needs lives in
-  its `components/` folder (see [docs/components.md](docs/components.md)),
-  composes native views in `build(self, ns)`, and is used from templates like
-  any other tag. Reusable pure-layout structure stays an etlua partial. The app entry point/controller may create `ns.Window` only.
+  constructors. A new tag an app needs is an etlua template in its
+  `components/` folder (see [docs/components.md](docs/components.md)); the
+  Lua module beside it computes template data and never touches `ns`. The
+  app entry point/controller may create `ns.Window` only.
   Only the app entry point (`init.lua` or the `App` object) creates an
   `ns.Window`. A component that creates a window is wrong.
 - **Product apps live in `apps/<appname>/`, demos in `demo/<name>/`, and test
@@ -74,7 +74,7 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
     Model.lua      ← data, queries, mutations
     Controller.lua ← wires model → views, owns actions
     views/         ← etlua templates only, including reusable partials
-    components/    ← optional Lua components: new tags used by the views
+    components/    ← optional etlua components: new tags used by the views
   ```
   init.lua never self-starts. It returns the class; the framework calls
   `class.new():createWindow()`.
@@ -151,8 +151,9 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
 - Keep each app's `init.lua` thin — entry point only. Put UI bricks in
   `views/`, state in `Model.lua`, and wiring in `Controller.lua`.
 - Native `.m` sources expose existing Cocoa classes to Lua. New classes are
-  implemented in Lua whenever possible; a new visual element is a Lua
-  component (`lua/components/` when the framework bundles it). Only reach for `.m` when the
+  implemented in Lua whenever possible; a new visual element composed from
+  existing tags is an etlua component (`lua/components/` when the framework
+  bundles it). Only reach for `.m` when the
   feature cannot be built in pure Lua (e.g. Canvas requires offscreen
   rendering via `CGImage`).
 - Preserve one runtime image per platform. AppKit and UIKit fragments are

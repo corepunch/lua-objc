@@ -1,0 +1,9 @@
+<HStack spacing="<%= spacing %>" alignment="top">
+  <% for index, cells in ipairs(columns) do -%>
+  <VStack key="column<%= index %>" spacing="<%= spacing %>" alignment="leading">
+    <% for _, cell in ipairs(cells) do -%>
+    <VStack key="cell<%= cell.index %>" width="<%= size %>" height="<%= size %>" background="<%= cell.color %>" opacity="<%= cell.opacity %>" cornerRadius="<%= radius %>"<% if cell.label then %> accessibilityLabel="<%= cell.label %>"<% end %> />
+    <% end -%>
+  </VStack>
+  <% end -%>
+</HStack>

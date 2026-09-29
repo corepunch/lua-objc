@@ -1,198 +1,218 @@
--- Lua components: new XML tags written in Lua and composed from the native
--- views every platform already has (stacks, Arc, Label, SystemImage...), the
--- way `SectorChart` composes native arcs. A component is a module returning
--- a definition:
+-- Components: new XML tags written as etlua templates, the way `partial()`
+-- reuses view structure, but used like any other tag:
+--
+--   <CapacityBar total="500" maxWidth="infinity">
+--     <CapacitySegment value="180" color="systemBlue" />
+--   </CapacityBar>
+--
+-- A component is `<Tag>.etlua` in a `components/` folder. Before a template
+-- is compiled, each component tag is replaced by the elements its template
+-- renders, so a component is ordinary template content: the XML renderer
+-- stays the only caller of view constructors, and retained templates
+-- reconcile and animate a component's views like any others.
+--
+-- An optional `<Tag>.lua` beside the template declares what the tag takes:
 --
 --   return {
---   	props = { lineWidth = "num", tint = { type = "str", default = "accent" } },
---   	records = { ActivityRing = { value = "num", goal = "num", color = "str" } },
---   	actions = { "onSelect" },
---   	build = function(self, ns) ... return view end,
---   	update = function(self, ns) ... end,          -- optional
---   	accepts = function(self, props, records) ... end, -- optional
+--   	props = { total = "num", spacing = { type = "num", default = 1 } },
+--   	records = { CapacitySegment = { value = "num", color = "str" } },
+--   	data = function(props, records, attrs) return { segments = ... } end,
 --   }
 --
--- `self.props` holds the declared attributes (typed as in the XML schema,
--- with defaults), `self.records` the record children in order,
--- `self.content` the view children, `self.actions` the bound callbacks and
--- `self.layout` the frame attributes (width, maxWidth, padding, background)
--- for the root view; `Component.frame(self, defaults)` merges them. Every
--- component also takes `accessibilityLabel`, applied to its root.
+-- `props` are the attributes handed to the template, typed "num", "bool" or
+-- "str"; `records` the child tags read as data rather than views; `data`
+-- returns further template variables computed from them (geometry belongs
+-- here, in plain functions tests can call). `attrs` holds every attribute as
+-- written, for geometry that depends on the frame. The module never touches
+-- views.
 --
--- `update` makes the component retained: a template reconcile hands it new
--- `self.props` and `self.records` and it moves its existing views, inside the
--- current animation transaction, instead of being rebuilt. `accepts` may
--- decline a change it cannot apply in place (a different number of cells);
--- the reconciler then rebuilds the node. Without `update` every change
--- rebuilds.
+-- Every attribute that is not a declared prop (`id`, `width`, `maxWidth`,
+-- `padding`, `transition`, `accessibilityLabel`...) goes to the template's
+-- single root element, over the root's own. View children replace the
+-- template's `<ContentPresenter />`.
 --
--- Resolution: a tag outside the vocabulary is looked up in the `components/`
--- folder nearest the rendering template (an app's `components/` beside its
--- `views/`), then in the framework's bundled `lua/components/`. The module
--- file is named after the tag. Tags are global: one module per tag. Geometry belongs in plain functions on the
--- module so tests can check it without building views.
+-- Resolution: the `components/` folder nearest the template using the tag
+-- (an app's `components/` beside its `views/`), then the framework's
+-- `lua/components/`. Built-in tags are never components.
 local Component = {}
 
-local instances = setmetatable({}, { __mode = "k" })
--- tag -> module name that defined it, so two components cannot share a tag,
--- and the definition registered for it, so a reloaded module re-registers.
-local owners, definitions = {}, {}
+local BUNDLED = "lua/components/"
+local SLOT = "ContentPresenter"
+-- A component that uses itself would expand forever.
+local LIMIT = { depth = 32 }
 
-local function copy(source)
+local function coerce(value, kind)
+	if value == nil then return nil end
+	if kind == "num" then return tonumber(value) end
+	if kind == "bool" then return value == true or value == "true" or value == "1" end
+	return value
+end
+
+-- `attrs` read through `schema` ({ name = "num" | { type =, default = } }).
+local function typed(schema, attrs)
 	local result = {}
-	for key, value in pairs(source or {}) do result[key] = value end
+	for name, spec in pairs(schema or {}) do
+		local kind, default = spec, nil
+		if type(spec) == "table" then kind, default = spec.type, spec.default end
+		local value = coerce(attrs[name], kind)
+		if value == nil then value = default end
+		result[name] = value
+	end
 	return result
 end
 
--- Root frame attributes: the component's defaults, overridden by the frame
--- the template gave it. Integer entries of `defaults` are children.
-function Component.frame(self, defaults)
-	local result = copy(defaults)
-	for key, value in pairs(self.layout) do result[key] = value end
-	return result
-end
-
--- The instance state of a view a component built, for tests and callbacks.
-function Component.instance(view)
-	return instances[view]
-end
-
-local function split(def, props)
-	local self = { props = {}, layout = {}, records = {}, content = {}, actions = {} }
-	local actions = {}
-	for _, name in ipairs(def.actions or {}) do actions[name] = true end
-	for key, value in pairs(props) do
-		if type(key) == "number" then
-			if type(value) == "table" and value.__record then
-				-- placed below, in document order
-			else
-				table.insert(self.content, value)
-			end
-		elseif actions[key] then
-			self.actions[key] = value
-		elseif def.props[key] ~= nil then
-			self.props[key] = value
-		else
-			self.layout[key] = value
-		end
-	end
-	for _, value in ipairs(props) do
-		if type(value) == "table" and value.__record then table.insert(self.records, value) end
-	end
-	return self
-end
-
-local function recordsOf(list)
-	local records = {}
-	for _, value in ipairs(list) do
-		if type(value) == "table" and value.__record then table.insert(records, value) end
-	end
-	return records
-end
-
---- Registers component `def` as XML tag `tag`, and its record tags.
---- `source` names the module, so reloading it replaces the definition while
---- a second module claiming the same tag is an error.
-function Component.define(tag, def, source)
-	assert(type(def) == "table" and type(def.build) == "function",
-		"component <" .. tostring(tag) .. "> needs a build(self, ns) function")
-	source = source or tag
-	for name in pairs(def.records or {}) do
-		if owners[name] and owners[name] ~= source then
-			error("component: <" .. name .. "> is already defined by " .. owners[name])
-		end
-	end
-	if owners[tag] and owners[tag] ~= source then
-		error("component: <" .. tag .. "> is already defined by " .. owners[tag])
-	end
-	local xml = require("ui.xml")
-	def.props = copy(def.props)
-	if def.props.accessibilityLabel == nil then def.props.accessibilityLabel = "str" end
-	for name, props in pairs(def.records or {}) do
-		xml.define(name, {
-			kind = "record", props = props,
-			transform = function(record) record.__record = name end,
-		})
-		owners[name] = source
-	end
-	xml.define(tag, {
-		component = true, children = "array", props = def.props, actions = def.actions,
-		build = function(ns, props)
-			local self = split(def, props)
-			self.ns, self.tag = ns, tag
-			local view = def.build(self, ns)
-			assert(type(view) == "userdata", "component <" .. tag .. "> build must return one native view")
-			if self.props.accessibilityLabel then view.accessibilityLabel = self.props.accessibilityLabel end
-			self.view = view
-			instances[view] = self
-			return view
-		end,
-		patch = def.update and function(view, props, records)
-			local self = instances[view]
-			if not self then return nil end
-			local nextRecords = records and recordsOf(records) or self.records
-			if def.accepts and not def.accepts(self, props, nextRecords) then return nil end
-			return function()
-				self.props, self.records = props, nextRecords
-				def.update(self, self.ns)
-				view.accessibilityLabel = props.accessibilityLabel or ""
-			end
-		end or nil,
-	})
-	owners[tag], definitions[tag] = source, def
-	return def
-end
-
--- Loads module `name` if it exists; errors inside an existing module propagate.
-local function load(name)
-	local ok, result = pcall(require, name)
-	if ok then return result end
-	if tostring(result):find("module '" .. name .. "' not found", 1, true) then return nil end
-	error(result, 0)
-end
-
--- Directories from `baseDir` up to the working directory, nearest first.
-local function ancestors(baseDir)
-	local dirs = {}
+-- Folders that may hold components for a template in `baseDir`, nearest
+-- first: each ancestor's components/, then the bundled set.
+function Component.folders(baseDir)
+	local folders, seen = {}, {}
+	local dir = tostring(baseDir or ""):gsub("\\", "/")
+	local root = dir:match("^/") and "/" or ""
 	local parts = {}
-	-- Modules resolve against the working directory; an absolute template
-	-- path has no module name.
-	if tostring(baseDir or ""):match("^/") then return dirs end
-	for part in tostring(baseDir or ""):gsub("\\", "/"):gmatch("[^/]+") do
+	for part in dir:gmatch("[^/]+") do
 		if part ~= "." then table.insert(parts, part) end
 	end
-	for count = #parts, 1, -1 do
-		table.insert(dirs, table.concat(parts, ".", 1, count))
+	local function add(folder)
+		if not seen[folder] then seen[folder] = true; table.insert(folders, folder) end
 	end
-	return dirs
+	for count = #parts, 0, -1 do
+		local prefix = table.concat(parts, "/", 1, count)
+		add(root .. (prefix ~= "" and prefix .. "/" or "") .. "components/")
+	end
+	add(BUNDLED)
+	return folders
 end
 
---- The XML handler for component `tag` near `baseDir`, or nil. The nearest
---- module wins. Tags are global, so a module found for a tag that another
---- module already defined is an error, never a silent substitute: a tag
---- must not mean one component in one template and another elsewhere.
-function Component.resolve(tag, baseDir)
-	if type(tag) ~= "string" or not tag:match("^%u[%w]*$") then return nil end
+-- Where a tag was found from a folder, so later uses read two files instead
+-- of probing every ancestor; and each module's value for its source, so a
+-- module runs again only when it was edited.
+local located, modules = {}, {}
+
+local function moduleAt(path, chunk)
+	local cached = modules[path]
+	if cached and cached.chunk == chunk then return cached.value end
+	local value = assert(load(chunk, "@" .. path))()
+	assert(type(value) == "table", "component " .. path .. " must return a table")
+	modules[path] = { chunk = chunk, value = value }
+	return value
+end
+
+local function read(tag, folder)
 	local xml = require("ui.xml")
-	local candidates = {}
-	for _, dir in ipairs(ancestors(baseDir)) do
-		if not dir:find("%.%.") and dir:match("^[%w_.-]+$") then
-			table.insert(candidates, dir .. ".components." .. tag)
+	local source = xml.source(folder .. tag .. ".etlua")
+	if not source then return nil end
+	local chunk = xml.source(folder .. tag .. ".lua")
+	return { tag = tag, dir = folder, source = source, path = folder .. tag .. ".etlua",
+		module = chunk and moduleAt(folder .. tag .. ".lua", chunk) or {} }
+end
+
+-- The component for `tag` near `baseDir`: { tag, dir, source, module }, or
+-- nil. Sources are read on every use, so an edited component takes effect
+-- on the next render.
+function Component.find(tag, baseDir)
+	if type(tag) ~= "string" or not tag:match("^%u[%w]*$") then return nil end
+	local key = tostring(baseDir or "") .. "\0" .. tag
+	local component = located[key] and read(tag, located[key])
+	if component then return component end
+	for _, folder in ipairs(Component.folders(baseDir)) do
+		component = read(tag, folder)
+		if component then
+			located[key] = folder
+			return component
 		end
 	end
-	table.insert(candidates, "components." .. tag)
-	-- A template outside the owner's folders (a partial elsewhere, or a
-	-- rendered string) still uses the tag.
-	if owners[tag] then table.insert(candidates, owners[tag]) end
-	for _, name in ipairs(candidates) do
-		local def = load(name)
-		if def ~= nil then
-			assert(type(def) == "table", "component module " .. name .. " must return a definition table")
-			if definitions[tag] ~= def or owners[tag] ~= name then Component.define(tag, def, name) end
-			return xml.registry[tag]
-		end
-	end
+	located[key] = nil
 	return nil
+end
+
+local function elements(nodes)
+	local result = {}
+	for _, node in ipairs(nodes) do if node.kind == "element" then table.insert(result, node) end end
+	return result
+end
+
+-- Replaces the slot in `nodes` with `content`; returns whether it was found.
+local function present(nodes, content)
+	for index, node in ipairs(nodes) do
+		if node.kind == "element" then
+			if node.tag == SLOT then
+				table.remove(nodes, index)
+				for offset, child in ipairs(content) do table.insert(nodes, index + offset - 1, child) end
+				return true
+			end
+			if present(node.children, content) then return true end
+		end
+	end
+	return false
+end
+
+local expand
+
+-- The element a component tag `node` stands for.
+local function instantiate(node, component, isBuiltin, depth)
+	if depth > LIMIT.depth then error("component <" .. node.tag .. "> uses itself") end
+	local xml = require("ui.xml")
+	local module = component.module
+	local records, content = {}, {}
+	for _, child in ipairs(elements(node.children)) do
+		local schema = module.records and module.records[child.tag]
+		if schema then
+			local record = typed(schema, child.attrs)
+			record.tag = child.tag
+			table.insert(records, record)
+		else
+			table.insert(content, child)
+		end
+	end
+	local props = typed(module.props, node.attrs)
+	local data = { records = records }
+	for name, value in pairs(props) do data[name] = value end
+	if module.data then
+		for name, value in pairs(module.data(props, records, node.attrs) or {}) do data[name] = value end
+	end
+	data.__baseDir = component.dir
+	local rendered = xml.parse(xml.describe(component.source, data, component.path).source)
+	local roots = elements(rendered)
+	if #roots ~= 1 then
+		error("component <" .. node.tag .. "> must render one root element, not " .. #roots)
+	end
+	local root = roots[1]
+	if root.tag == SLOT then error("component <" .. node.tag .. "> needs a root element around its content") end
+	if not present(root.children, content) and #content > 0 then
+		error("component <" .. node.tag .. "> takes no content: <" .. content[1].tag .. ">")
+	end
+	for name, value in pairs(node.attrs) do
+		if not (module.props and module.props[name] ~= nil) then root.attrs[name] = value end
+	end
+	-- The component's own tags resolve from its folder.
+	return expand({ root }, component.dir, isBuiltin, depth + 1)[1]
+end
+
+expand = function(nodes, baseDir, isBuiltin, depth)
+	for index, node in ipairs(nodes) do
+		if node.kind == "element" then
+			local component = not isBuiltin(node.tag) and Component.find(node.tag, baseDir)
+			if component then
+				-- Content belongs to the template that wrote it; records
+				-- are data and hold no tags to resolve.
+				local records = component.module.records or {}
+				for position, child in ipairs(node.children) do
+					if child.kind == "element" and not records[child.tag] then
+						node.children[position] = expand({ child }, baseDir, isBuiltin, depth)[1]
+					end
+				end
+				nodes[index] = instantiate(node, component, isBuiltin, depth)
+			else
+				expand(node.children, baseDir, isBuiltin, depth)
+			end
+		end
+	end
+	return nodes
+end
+
+--- Replaces every component tag in parsed `nodes` with the elements its
+--- template renders. `isBuiltin(tag)` names the tags of the vocabulary.
+function Component.expand(nodes, baseDir, isBuiltin)
+	return expand(nodes, baseDir, isBuiltin, 1)
 end
 
 return Component

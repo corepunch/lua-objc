@@ -23,8 +23,6 @@
 local etlua = require("etlua")
 local renderData = nil
 local padLeaf
--- Tags defined by Lua components (ui/component.lua), resolved on each use.
-local componentTags = {}
 
 local function renderTemplate(src, data, sourceName)
     local parser = etlua.Parser()
@@ -484,14 +482,7 @@ local function compile(nodes, ns, registry, refs)
 					error("xml: " .. key .. " was removed; use width/height or maxWidth/maxHeight=\"infinity\"")
 				end
 			end
-            -- A tag outside the vocabulary may name a Lua component (see
-            -- ui/component.lua): the app's own components/ folder first,
-            -- then the framework's bundled lua/components/. Component tags
-            -- resolve on every use so a reloaded module takes effect.
             local handler = registry[node.tag]
-            if not handler or componentTags[node.tag] then
-                handler = require("ui.component").resolve(node.tag, renderData and renderData.__baseDir) or handler
-            end
             if not handler then
                 error("xml: unknown tag <" .. node.tag .. ">")
             end
@@ -535,6 +526,14 @@ local function compile(nodes, ns, registry, refs)
 				view = handler(ns, node.attrs, children)
 			end
 			applyMotion(view, paddedLeaves[view] or view, node.attrs, ns)
+			-- SwiftUI's `.accessibilityLabel` applies to any view: tags whose
+			-- constructor does not take the label still carry it.
+			if node.attrs.accessibilityLabel and type(view) == "userdata" then
+				local target = paddedLeaves[view] or view
+				if target.accessibilityLabel ~= node.attrs.accessibilityLabel then
+					target.accessibilityLabel = node.attrs.accessibilityLabel
+				end
+			end
 			if view then
 				if node.attrs.reorderable == "true" and node.tag ~= "List" and not lazy then
 					local name = node.attrs.reorderContainer
@@ -592,10 +591,6 @@ end
 --                  or propName = { prop = "targetName", type = "...", aliases = {...}, default = ... }
 --   collect:     optional child aggregation hook: fn(targetTable, children)
 --   transform:   optional hook for platform quirks: fn(props, attrs, children, ns) -> optional view
---   actions:     attribute names bound to controller actions (onSelect="select")
---   build:       Lua constructor fn(ns, props) -> view, used instead of ns[constructor]
---   patch:       retained update fn(view, props, records) -> apply fn, or nil to
---                rebuild; `records` is nil when the record children are unchanged
 
 local TAG_SCHEMA = {
     -- Layout containers
@@ -1744,7 +1739,6 @@ local function makeSchemaHandler(tag, def)
 
         local ctorName = def.constructor or tag
         local ctor = ns and ns[ctorName]
-        if def.build then ctor = function(props) return def.build(ns, props) end end
         if not ctor and not def.transform then
             error("xml: platform does not support constructor ns." .. ctorName .. " for tag <" .. tag .. ">")
         end
@@ -1787,8 +1781,6 @@ local function makeSchemaHandler(tag, def)
         if def.collect then
             def.collect(props, children)
         end
-
-        if def.actions then bindActions(props, attrs, def.actions) end
 
         if def.transform then
             local res = def.transform(props, attrs, children, ns)
@@ -1926,6 +1918,14 @@ end
 local registry = makeRegistry()
 local M = {}
 
+-- Component tags (ui/component.lua) become the elements their templates
+-- render before anything is compiled or reconciled, so the rest of the
+-- renderer only ever sees the vocabulary.
+local function expandComponents(nodes, description)
+    return require("ui.component").expand(nodes, description.data and description.data.__baseDir,
+        function(tag) return registry[tag] ~= nil end)
+end
+
 -- Evaluate etlua without creating native views or mutating caller bindings.
 function M.describe(src, data, sourceName)
     local context = {}
@@ -1983,7 +1983,7 @@ function M.renderDescription(description, ns)
     local previous = renderData
     renderData = description.data
     local ok, views = pcall(function()
-        return compile(parseXML(description.source), ns, registry, refs)
+        return compile(expandComponents(parseXML(description.source), description), ns, registry, refs)
     end)
     renderData = previous
     if not ok then error(views) end
@@ -2115,6 +2115,16 @@ local TAG_INNER = {
             if hasProperty(view, name) then return function() view[name] = num(v) or 0 end end
         end
     end },
+    -- An arc moves to new angles in place, so a change of value animates
+    -- like SwiftUI interpolating a trimmed shape.
+    Arc = {
+        startAngle = setter("startAngle", number(0)),
+        endAngle = setter("endAngle", number(0)),
+        lineWidth = setter("lineWidth", number(0)),
+        strokeAlpha = setter("strokeAlpha", number(1)),
+        stroke = setter("stroke"),
+        lineCap = setter("lineCap"),
+    },
     -- The chart lays its marks out again with these (see `recordLayout`).
     SectorChart = {
         innerRadius = function(view, v) return function() require("ui.sectors").configure(view, { innerRadius = num(v) or 0 }) end end,
@@ -2173,20 +2183,11 @@ local function attributePatch(old, new, ns)
     for key, value in pairs(new.attrs) do if old.attrs[key] ~= value then changed[key] = true end end
     local ops, layout = {}, {}
     local tagInner = TAG_INNER[new.tag] or {}
-    local entry = TAG_SCHEMA[new.tag]
-    local component = entry and entry.patch and entry.props
     for key in pairs(changed) do
         local value = new.attrs[key]
         local plan
         if MOTION_ATTRS[key] then
             plan = function() end
-        elseif component and component[key] ~= nil then
-            -- A component takes its declared attributes together with its
-            -- records in one patch (see reconcileComponent).
-            plan = function() end
-        elseif component and DIMENSIONS[key] then
-            -- A component's geometry is derived from its frame.
-            return nil
         elseif OUTER[key] then
             plan = OUTER[key](old.view, value, ns, new.attrs)
         elseif tagInner[key] then
@@ -2276,30 +2277,6 @@ local function reconcileRecordsInPlace(old, new, ns, plan)
     return true
 end
 
--- A component (ui/component.lua) patches changed attributes and records in
--- one step decided while planning, so a patch it cannot apply rebuilds the
--- node instead of failing on screen. Its view children reconcile as usual.
-local function reconcileComponent(old, new, ns, plan, changed)
-    local entry = TAG_SCHEMA[old.tag]
-    if not (entry and entry.patch) then return nil end
-    if textOf(old) ~= textOf(new) then return false end
-    local oldRecords, oldViews, newRecords, newViews = {}, {}, {}, {}
-    for _, child in ipairs(elements(old.children)) do table.insert(isRecord(child) and oldRecords or oldViews, child) end
-    for _, child in ipairs(elements(new.children)) do table.insert(isRecord(child) and newRecords or newViews, child) end
-    if #oldViews ~= #newViews then return false end
-    for index, child in ipairs(newViews) do
-        if not reconcileNode(oldViews[index], child, ns, plan) then return false end
-    end
-    local records = not sameRecords(oldRecords, newRecords, ns) and compile(newRecords, ns, registry, {}) or nil
-    local propsChanged = false
-    for key in pairs(changed) do if entry.props[key] ~= nil then propsChanged = true end end
-    if not (records or propsChanged) then return true end
-    local apply = entry.patch(old.target, extractProps(entry.props, new.attrs), records)
-    if not apply then return false end
-    table.insert(plan.ops, apply)
-    return true
-end
-
 local function reconcileChildren(old, new, ns, plan)
     local oldChildren, newChildren = elements(old.children), elements(new.children)
     if textOf(old) ~= textOf(new) then return false end
@@ -2375,9 +2352,7 @@ reconcileNode = function(old, new, ns, plan, record)
     local ops, changed = attributePatch(old, new, ns)
     if not ops then return nil end
     local childPlan = { ops = {}, removals = {}, built = {}, animation = plan.animation }
-    local kept = reconcileComponent(old, new, ns, childPlan, changed)
-    if kept == nil then kept = reconcileChildren(old, new, ns, childPlan) end
-    if not kept then
+    if not reconcileChildren(old, new, ns, childPlan) then
         for _, node in ipairs(childPlan.built) do disposeNode(node) end
         return nil
     end
@@ -2409,7 +2384,7 @@ end
 -- A template that renders nothing or several siblings is hosted in a
 -- stack, as xml.renderDescription hosts it.
 local function rootNode(description)
-    local nodes = parseXML(description.source)
+    local nodes = expandComponents(parseXML(description.source), description)
     local roots = elements(nodes)
     if #roots == 1 then return roots[1] end
     return { kind = "element", tag = "VStack", attrs = {}, children = nodes }
@@ -2546,21 +2521,19 @@ function M.decode(src, schema)
     return decodeWithSchema(target, schema)
 end
 
---- Adds `tag` to the vocabulary with a schema entry (see "Declarative Tag
---- Schema"). Built-in tags cannot be redefined; ui/component.lua defines
---- Lua components through this.
-function M.define(tag, def)
-    assert(type(tag) == "string" and tag:match("^%u[%w]*$"), "xml.define: tags are CamelCase names")
-    assert(type(def) == "table", "xml.define: <" .. tag .. "> needs a schema entry")
-    local existing = TAG_SCHEMA[tag]
-    if TAG_ALIASES[tag] or (existing and not existing.defined) then
-        error("xml.define: <" .. tag .. "> is a built-in tag")
+--- The contents of the file at `path`, or nil when there is none. Unlike a
+--- template read, a missing file is an answer, not an error.
+function M.source(path)
+    local reader = nativeReadFile()
+    if reader then
+        local ok, body, err = pcall(reader, path)
+        return ok and not err and body or nil
     end
-    def.defined = true
-    TAG_SCHEMA[tag] = def
-    componentTags[tag] = def.component == true or nil
-    registry[tag] = makeSchemaHandler(tag, def)
-    return registry[tag]
+    local file = io.open(path, "r")
+    if not file then return nil end
+    local body = file:read("*a")
+    file:close()
+    return body
 end
 
 -- Parses XML into plain element tables ({kind, tag, attrs, children}) for

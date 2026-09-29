@@ -1,0 +1,4 @@
+<Card id="card" title="Hello" accessibilityLabel="A card">
+  <Label id="inner" text="Inside" />
+  <Card id="nested" title="Nested" />
+</Card>
