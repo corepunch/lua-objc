@@ -1,0 +1,17 @@
+<% --[[ A 27-inch display on a stand, 1 unit = 10 cm: an aluminium panel
+  with black glass and a 1600 × 900 pt screen drawn by `screen`. The screen
+  node is `<id>-screen`. ]]
+  local P = { w = 6.23, h = 3.62, d = 0.14, corner = 0.1, edge = 0.03,
+    glassW = 6.19, glassH = 3.58, screenW = 5.97, screenH = 3.358 }
+%>
+<Node id="<%= id %>" position="<%= position %>" rotation="<%= rotation or '0 0 0' %>" scale="<%= scale or 1 %>" <%- extra or "" %>>
+	<Node geometry="slab" width="<%= P.w %>" height="<%= P.h %>" length="<%= P.d %>" cornerRadius="<%= P.corner %>" chamfer="<%= P.edge %>" color="#C9CACD" metalness="1" roughness="0.3" />
+	<Node geometry="plane" width="<%= P.glassW %>" height="<%= P.glassH %>" cornerRadius="0.08" position="0 0 <%= P.d / 2 + 0.0005 %>" color="#030304" roughness="0.04" clearcoat="1" />
+	<Node id="<%= id %>-screen" geometry="plane" width="<%= P.screenW %>" height="<%= P.screenH %>" position="0 0.03 <%= P.d / 2 + 0.001 %>" roughness="0.05">
+		<Surface width="1600" height="900" density="<%= density or 2 %>" background="#000000">
+			<%- screen %>
+		</Surface>
+	</Node>
+	<Node geometry="box" width="1.5" height="2.9" length="0.1" chamfer="0.04" position="0 -2.35 -0.62" rotation="-16 0 0" color="#C9CACD" metalness="1" roughness="0.32" />
+	<Node geometry="box" width="1.6" height="0.08" length="1.9" chamfer="0.035" position="0 -3.78 -0.55" color="#C9CACD" metalness="1" roughness="0.32" />
+</Node>

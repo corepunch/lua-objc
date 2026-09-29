@@ -329,3 +329,16 @@ diskmap-reel: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 
 diskmap-reel-captures: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	$(DISKMAP_CAPTURE)
+
+# The lua-objc promo (reels/promo): `make promo-reel` renders
+# build/lua-objc-Promo.mov, first capturing the apps when
+# reels/promo/captures is empty (generated, not committed). Capturing opens
+# app windows and drives the iPhone and iPad Simulators headlessly (Xcode
+# needed); `make promo-reel-captures` recaptures after an app changes.
+.PHONY: promo-reel promo-reel-captures
+promo-reel: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
+	@ls reels/promo/captures/*.png >/dev/null 2>&1 || ./$(LUA_OBJC_BIN) reels/promo/capture.lua
+	./$(LUA_OBJC_BIN) reels/promo/init.lua render build/lua-objc-Promo.mov
+
+promo-reel-captures: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
+	./$(LUA_OBJC_BIN) reels/promo/capture.lua

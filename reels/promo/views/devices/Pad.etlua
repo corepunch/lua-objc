@@ -1,0 +1,17 @@
+<% --[[ An iPad Pro 13-inch in landscape, 1 unit = 10 cm, with a 1376 × 1032
+  pt screen drawn by `screen`. The screen node is `<id>-screen`. ]]
+  local P = { w = 2.816, h = 2.155, d = 0.051, corner = 0.18, edge = 0.018,
+    glassW = 2.8, glassH = 2.139, glassCorner = 0.172,
+    screenW = 2.672, screenH = 2.004, screenCorner = 0.13 }
+%>
+<Node id="<%= id %>" position="<%= position %>" rotation="<%= rotation or '0 0 0' %>" scale="<%= scale or 1 %>" <%- extra or "" %>>
+	<Node geometry="slab" width="<%= P.w %>" height="<%= P.h %>" length="<%= P.d %>" cornerRadius="<%= P.corner %>" chamfer="<%= P.edge %>" color="#7D7F84" metalness="1" roughness="0.34" />
+	<Node geometry="plane" width="<%= P.glassW %>" height="<%= P.glassH %>" cornerRadius="<%= P.glassCorner %>" position="0 0 <%= P.d / 2 + 0.0004 %>" color="#030304" roughness="0.04" clearcoat="1" />
+	<Node id="<%= id %>-screen" geometry="plane" width="<%= P.screenW %>" height="<%= P.screenH %>" cornerRadius="<%= P.screenCorner %>" position="0 0 <%= P.d / 2 + 0.0008 %>" roughness="0.05">
+		<Surface width="1376" height="1032" density="<%= density or 2 %>" background="#000000">
+			<%- screen %>
+		</Surface>
+	</Node>
+	<Node geometry="plane" width="<%= P.glassW %>" height="<%= P.glassH %>" cornerRadius="<%= P.glassCorner %>" position="0 0 <%= -P.d / 2 - 0.0004 %>" rotation="0 180 0" color="#7D7F84" metalness="0.3" roughness="0.5" />
+	<Node geometry="slab" width="0.34" height="0.34" length="0.012" cornerRadius="0.1" chamfer="0.004" position="1.12 0.8 <%= -P.d / 2 - 0.006 %>" color="#2C2C2E" metalness="0.8" roughness="0.3" />
+</Node>

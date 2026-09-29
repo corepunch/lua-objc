@@ -1,0 +1,56 @@
+<% --[[
+  The world: one SceneKit scene the camera travels through for the whole
+  film except the time inside the game. Every device is a prefab
+  (devices/*.etlua) placed by Choreography.lua; its screen is a <Surface>
+  whose content changes with the story. Images are the apps' own captures
+  (reels/promo/captures, made by capture.lua).
+]]
+  local S = C.SHOT
+  local cap = capturesDir
+  local function image(name, density, extra)
+    return string.format('<Image src="%s%s.png" density="%s" %s />', cap, name, density, extra or "")
+  end
+  local function studio(name, extra) return image(name, 2, extra) end
+  local function iphone(name, extra) return image(name, 3, extra) end
+%>
+<SceneView id="world" environment="environment" environmentIntensity="1.6" alpha="1 - step(t - <%= S.cut %>) * step(<%= S.speed %> - t)">
+	<Camera id="eye" position="C.eye(t)" lookAt="C.target(t)" fieldOfView="C.lens(t)" roll="C.roll(t)" zNear="0.05" zFar="220" />
+	<Light type="directional" rotation="-38 -28 0" intensity="650" />
+	<Light type="spot" position="{C.eye(t)[1] - 6, 5, C.eye(t)[3] - 9}" lookAt="C.target(t)" intensity="2600" spotOuter="70" color="#DCE6FF" />
+	<Light type="spot" position="{C.eye(t)[1] + 7, 2.5, C.eye(t)[3] - 8}" lookAt="C.target(t)" intensity="2100" spotOuter="70" color="#FFE7D2" />
+	<Light type="ambient" intensity="60" />
+
+	<!-- Montage: one window turning over on the beat into the next app,
+	     then flying into the display's window slot. -->
+	<%- partial("devices/Window.etlua", {id = "montage", position = "C.at('window', t)", rotation = "C.turn('window', t)",
+		scale = "C.size('window', t)", extra = 'to="' .. S.landed .. '"',
+		screen = '<Window capture="notes-v1" x="600" y="380" to="1.1" /><Window capture="weather" x="600" y="380" from="1.1" />',
+		back = '<Window capture="ledger-v1" x="600" y="380" to="1.9" /><Window capture="todo-v3" x="600" y="380" from="1.9" />'}) %>
+
+	<!-- The Mac: a display with the desktop and, once the window lands, Todo. -->
+	<%- partial("devices/Display.etlua", {id = "display", position = "C.at('display', t)", rotation = "C.turn('display', t)",
+		-- It comes on as the window flies to it.
+		extra = 'opacity="outCubic(progress(t, 2.75, 3.3))" to="' .. S.studio + 1.2 .. '"',
+		screen = partial("screens/Desktop.etlua", {window = "todo-v3", from = S.landed})}) %>
+
+	<!-- The iPad: Ledger, then Lua Studio through two edits; the phone
+	     preview lifts off it. -->
+	<%- partial("devices/Pad.etlua", {id = "pad", position = "C.at('pad', t)", rotation = "C.turn('pad', t)",
+		extra = 'from="3.4" to="15.2"', screen = partial("screens/Studio.etlua", {C = C, cap = cap})}) %>
+
+	<!-- The iPhone: crosses the montage, stands in the composition, then is
+	     the preview that leaves Lua Studio and changes when asked. -->
+	<%- partial("devices/Phone.etlua", {id = "phone", position = "C.at('phone', t)", rotation = "C.turn('phone', t)",
+		scale = "C.size('phone', t)", extra = 'from="1.75" to="17.6"', density = 3,
+		screen = iphone("todo-iphone-v3", 'to="' .. S.lift .. '"')
+			.. iphone("todo-iphone-v2", 'from="' .. S.lift .. '" to="' .. S.voiceChange + 0.2 .. '"')
+			.. iphone("todo-iphone-v3", 'from="' .. S.voiceChange .. '" alpha="progress(t, ' .. S.voiceChange .. ', ' .. S.voiceChange + 0.18 .. ')"')
+			.. '<Sweep at="' .. S.voiceChange + 0.05 .. '" duration="0.5" opacity="0.3" />'}) %>
+
+	<!-- The wall: floating apps, each doing one small thing as the camera
+	     passes, and the game phone at its end. -->
+	<%- partial("Wall.etlua", {C = C, cap = cap, captures = captures, root = root, quest = quest}) %>
+
+	<!-- The speed run and the hero composition, far down the world. -->
+	<%- partial("Corridor.etlua", {C = C, cap = cap, captures = captures}) %>
+</SceneView>

@@ -85,9 +85,11 @@ end
 
 -- Renders the motion-blurred frame at t: `subframes` renders spread across
 -- a `shutter` fraction of the frame interval (0.5 is a 180° shutter).
+-- `subframes` may be an expression of t, so fast passages take more.
 function Reel:frame(canvas, t, accumulator)
 	local scene = self.scene
 	local n = scene.subframes
+	if type(n) == "function" then n = math.max(1, math.floor(n(t) + 0.5)) end
 	if n <= 1 then return self:draw(canvas, t) end
 	accumulator = accumulator or self:accumulator()
 	local open = scene.shutter / scene.fps

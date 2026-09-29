@@ -1,0 +1,31 @@
+<% --[[ The wall: Notes, Ledger and Weather floating at different depths,
+  each doing one small native thing as the camera trucks past (a Favorites
+  box grows in, the chart turns weekly, the forecast deals out), and the
+  game phone at the end, lying on its side, running Coin Quest: the game's
+  own Stage.etlua, posed by the game's own replay (CoinQuest.lua). ]]
+  local S = C.SHOT
+  local bx, by, bw, bh = captures:get("ledger-v1"):rect("#bars")
+  local stage = partial(root .. "apps/coin-quest/views/Stage.etlua", quest:view())
+  -- The reel's replay poses the game's nodes and its camera.
+  stage = stage:gsub("<SceneView ", '<SceneView states="questStates(t)" ', 1)
+  local on = 'from="' .. S.wall .. '" to="' .. S.cut + 0.1 .. '"'
+%>
+<%- partial("devices/Window.etlua", {id = "wallNotes", position = "-3.5 0.8 -7.3", rotation = "-2 17 0", extra = on,
+	screen = '<Window capture="notes-v0" x="600" y="380" to="18.25" />'
+		.. '<Window capture="notes-v1" x="600" y="380" from="18.1" alpha="progress(t, 18.1, 18.25)" />'
+		.. '<Frame capture="notes-v1" x="600" y="380" from="18.1"><Piece rect="#favorites" motion="pop(18.1, {from = 0.6})" shadow="0.4" radius="10" /></Frame>'}) %>
+<%- partial("devices/Window.etlua", {id = "wallLedger", position = "0.35 -0.35 -8.7", rotation = "2 4 0", extra = on,
+	screen = '<Window capture="ledger-v0" x="600" y="380" to="18.9" />'
+		.. '<Window capture="ledger-v1" x="600" y="380" from="18.85" />'
+		.. string.format('<Frame capture="ledger-v1" x="600" y="380" from="18.85"><Fill rect="#bars" color="#F5F5F7" /><Piece rect="#bars" anchorY="%f" y="%f" sy="spring(t - 18.85, 0.5, 0.62)" /></Frame>', bh, by + bh)}) %>
+<%- partial("devices/Window.etlua", {id = "wallWeather", position = "3.75 0.7 -7.5", rotation = "-1 -14 0", extra = on,
+	screen = (function()
+		local s = '<Window capture="weather" x="600" y="380" to="19.45" /><Frame capture="weather" x="600" y="380" from="19.45"><Window capture="weather" x="600" y="380" />'
+		s = s .. '<Fill rect="#forecast" color="#FFFFFF" outset="4" />'
+		for i = 1, 7 do s = s .. string.format('<Piece rect="#forecast/%d" motion="pop(%f, {from = 0.4})" />', i, 19.45 + (i - 1) * 0.07) end
+		return s .. '</Frame>'
+	end)()}) %>
+
+<!-- The game phone. -->
+<%- partial("devices/Phone.etlua", {id = "game", position = "C.at('game', t)", rotation = "C.turn('game', t)", landscape = true,
+	extra = on, screen = stage}) %>

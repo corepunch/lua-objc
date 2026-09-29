@@ -128,6 +128,8 @@ local function studio(k, name)
 	sh("make -s ipad-simulator APP=studio OVERLAY=" .. quote(overlay) .. " >/dev/null")
 	local bundle = repo .. "/build/ipad/iphonesimulator-arm64/LuaStudio.app"
 	sh("xcrun simctl install " .. udid .. " " .. quote(bundle))
+	-- Launched from the home screen, so the status bar has no back link.
+	os.execute("xcrun simctl terminate " .. udid .. " org.luaobjc.ledger 2>/dev/null")
 	sh("SIMCTL_CHILD_LUA_STUDIO_SHOWCASE=showcase/todo.lua xcrun simctl launch --terminate-running-process "
 		.. udid .. " org.luaobjc.studio >/dev/null")
 	sh("sleep " .. SETTLE.studio)
