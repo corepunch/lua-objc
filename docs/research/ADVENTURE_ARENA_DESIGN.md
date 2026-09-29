@@ -17,7 +17,7 @@ and Liquid Glass where the system puts it, and adds reading progress.
 | App Store (Today cards) | Full-bleed editorial cards in a snapping carousel, one per screen on iPhone. |
 | Music (mini player), iOS 26 | The story in progress rides above the tab bar in a glass accessory and moves inline when the bar minimizes. |
 | [80 Days (inkle)](https://www.gamedeveloper.com/business/-i-80-days-i-building-the-perfect-text-adventure-for-mobile) | The text is the game. The player's choices are woven into the prose, not shown as speech bubbles. |
-| Print typography: drop caps, small capitals, fleurons | Chapter openers, stage directions in small capitals, and a title page with an epigraph. |
+| Print typography: room pictures, small capitals, fleurons | Chapter openers, stage directions in small capitals, and a title page with an epigraph. |
 
 The X post the brief linked (Opus 5.5 and UI design) returned HTTP 402
 behind X's paywall, so it could not be read.
@@ -31,10 +31,10 @@ messaging app does. It now reads as a book:
   face and colour, a fleuron (❦), and the tagline as an italic epigraph. The
   Infocom banner follows as a colophon.
 - **Scenes.** A new room opens with the room name as a heading; rooms are
-  not numbered as chapters. The first paragraph begins with a **three-line
-  drop cap** that the text wraps around, unless the reader turns **Drop
-  Caps** off in Themes & Settings. It uses real TextKit exclusion paths, not
-  a side column.
+  not numbered as chapters. When the story gives the room an `ICON`, the
+  first paragraph wraps around the room's **three-line square picture**, as
+  Zork Zero set one beside each description. It uses real TextKit exclusion
+  paths, not a side column. There are no drop caps.
 - **Links.** Stories mark the words a reader can act on (`[[brass
   plaque->plaque]]`, `[[north]]`; see zilscript's `WRITING_ADVENTURES.md`).
   The page rules them with a dashed underline in the story's ink, and a tap
@@ -124,7 +124,7 @@ Each has headless tests (see `tests/paragraph.test.lua`,
 `dynamic_color.test.lua`):
 
 - `Paragraph` (long-form prose): leading, justification, hyphenation, and
-  ink-measured drop caps via TextKit exclusion paths, on both platforms.
+  a floated figure via TextKit exclusion paths, on both platforms.
 - `smallCaps` on `Label` and `ns.Font` (OpenType `smcp`).
 - `TabAccessory` (`tabViewBottomAccessory`) and `Tab role="search"` (`UISearchTab`).
   UIKit tabs now use the `UITab` API.

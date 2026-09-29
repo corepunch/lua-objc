@@ -33,7 +33,7 @@ t.assertEqual(catalog:find("books.limehouse-killings").genre, "Victorian Mystery
 for _, game in ipairs(catalog:list()) do
 	t.expect(type(game.collection) == "string", "every game belongs to a library shelf: " .. game.id)
 	t.expect(game.tint:match("^#%x%x%x%x%x%x$") ~= nil, "every game has a hex accent: " .. game.id)
-	t.expect(type(game.initialFont) == "string", "every game names its initial typeface: " .. game.id)
+	t.expect(type(game.titleFont) == "string", "every game names its title typeface: " .. game.id)
 	t.expect(game.tintDark and game.tintDark:match("^#%x%x%x%x%x%x$") ~= nil, "every game has a dark-page ink: " .. game.id)
 	t.assertEqual(game.ink, game.tint .. "|" .. game.tintDark, "the page ink pairs both variants: " .. game.id)
 	-- White type on the tint (Play buttons, genre tiles) must reach WCAG AA.

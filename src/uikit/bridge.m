@@ -68,16 +68,10 @@ static const CGFloat kArcFullCircleDegrees = 359.0;
 static const CGFloat kSeparatorThickness = 1.0;
 /* Points per millisecond past which a released drag advances a whole card. */
 static const CGFloat kScrollTargetFlickVelocity = 0.2;
-/* Space between a dropped initial and the text wrapping beside it, and the
- * number of lines it drops through when the template does not say. */
-static const CGFloat kParagraphDropCapGap = 6.0;
-static const NSInteger kParagraphDropCapLines = 3;
-/* Size at which an initial's ink is measured before it is scaled to fit, the
- * share of that size below the baseline that counts as a descender, and the
- * margin its view keeps around the ink so antialiased edges are not clipped. */
-static const CGFloat kParagraphDropCapReferenceSize = 100.0;
-static const CGFloat kParagraphDropCapDescentFraction = 0.05;
-static const CGFloat kParagraphDropCapInkOutset = 2.0;
+/* Space between a paragraph's figure and the text wrapping beside it, and
+ * the number of lines the figure spans when the template does not say. */
+static const CGFloat kParagraphFigureGap = 10.0;
+static const NSInteger kParagraphFigureLines = 3;
 /* The preview screen is an iPhone 16 display in points, so apps are laid
  * out at the size and corner curve they will have on the phone. */
 static const CGFloat kParagraphLinkUnderlineOffset = 2.0;

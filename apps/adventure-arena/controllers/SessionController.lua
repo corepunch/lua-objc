@@ -195,7 +195,6 @@ function Controller:renderTranscript()
 		font = settings.font, fontSize = settings.fontSize, lineSpacing = settings.lineSpacing,
 		alignment = settings.alignment, primary = settings.primaryTextColor,
 		secondary = settings.secondaryTextColor, rule = settings.ruleColor,
-		dropCap = settings.dropCap,
 	}
 	data.reveal = self:revealState(data.earlierEntries)
 	data.linkMenus, data.actions = self:linkMenus(data.entries)

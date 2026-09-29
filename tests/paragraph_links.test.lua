@@ -18,7 +18,7 @@ local function actions()
 end
 local SOURCE = [[
 <VStack spacing="0" alignment="leading">
-	<Paragraph id="linked" text="]] .. PROSE .. [[" size="17" design="serif" dropCap="<%= dropCap %>" revealedCharacters="<%= revealed %>">
+	<Paragraph id="linked" text="]] .. PROSE .. [[" size="17" design="serif" figure="<%= figure %>" revealedCharacters="<%= revealed %>">
 		<% for _, link in ipairs(links) do %>
 		<Hyperlink location="<%= link.location %>" length="<%= link.length %>" label="<%= link.label %>">
 			<% for _, item in ipairs(link.items) do %>
@@ -43,7 +43,7 @@ file:write(SOURCE)
 file:close()
 local host = ns.VStack {}
 local template = Template.new(host, path, ns)
-local _, refs = template:update({ links = LINKS, dropCap = "false", revealed = -1, actions = actions() })
+local _, refs = template:update({ links = LINKS, figure = "", revealed = -1, actions = actions() })
 host.size = ns.Size(320, 2000); host:layout(320)
 
 local links = bridge._paragraphLinks(refs.linked)
@@ -77,29 +77,30 @@ t.expect(links[1].revealed and not links[2].revealed, "a link is live from its f
 view.revealedCharacters = -1
 
 -- New links reach the same native view in place.
-local _, updated = template:update({ links = { LINKS[2] }, dropCap = "false", revealed = -1, actions = actions() })
+local _, updated = template:update({ links = { LINKS[2] }, figure = "", revealed = -1, actions = actions() })
 t.expect(updated.linked == view, "changing links keeps the paragraph's native view")
 links = bridge._paragraphLinks(view)
 t.assertEqual(#links, 1, "removed links are gone")
 t.assertEqual(links[1].text, "north", "the remaining link keeps its range")
 bridge._paragraphPerformLink(view, 1, 1)
 t.assertEqual(chosen[#chosen], "north", "the remaining link still runs its action")
-_, updated = template:update({ links = {}, dropCap = "false", revealed = -1, actions = actions() })
+_, updated = template:update({ links = {}, figure = "", revealed = -1, actions = actions() })
 t.assertEqual(#bridge._paragraphLinks(updated.linked), 0, "a paragraph can lose every link")
 
--- A dropped initial leaves the text storage; links follow the words.
-_, updated = template:update({ links = LINKS, dropCap = "true", revealed = -1, actions = actions() })
+-- A figure moves the lines, never the words: links keep their ranges.
+_, updated = template:update({ links = LINKS, figure = "apps/adventure-arena/assets/zork1.jpg", revealed = -1, actions = actions() })
 host:layout(320)
+t.expect(updated.linked.figureView ~= nil, "the paragraph floats its figure")
 links = bridge._paragraphLinks(updated.linked)
-t.assertEqual(links[1].text, "brass plaque", "a link skips the dropped initial")
-local initial = { { location = 0, length = 10, label = "corroded", items = { { title = "Examine", action = "examine" } } } }
-_, updated = template:update({ links = initial, dropCap = "true", revealed = -1, actions = actions() })
-t.assertEqual(bridge._paragraphLinks(updated.linked)[1].text, " corroded", "a link that starts at the initial covers the rest of its words")
+t.assertEqual(links[1].text, "brass plaque", "a link beside the figure covers its words")
+local first = { { location = 0, length = 10, label = "corroded", items = { { title = "Examine", action = "examine" } } } }
+_, updated = template:update({ links = first, figure = "apps/adventure-arena/assets/zork1.jpg", revealed = -1, actions = actions() })
+t.assertEqual(bridge._paragraphLinks(updated.linked)[1].text, "A corroded", "a link at the first character starts there")
 
 -- Edge cases: ranges beyond the text, empty ranges, other children.
 local edge = { { location = 62, length = 500, label = "tail", items = {} }, { location = 900, length = 4, label = "gone", items = {} },
 	{ location = 3, length = 0, label = "empty", items = {} } }
-_, updated = template:update({ links = edge, dropCap = "false", revealed = -1, actions = actions() })
+_, updated = template:update({ links = edge, figure = "", revealed = -1, actions = actions() })
 links = bridge._paragraphLinks(updated.linked)
 t.assertEqual(links[1].text, "north.", "a link running past the end stops at the end")
 t.assertEqual(links[2].text, "", "a link beyond the text covers nothing")

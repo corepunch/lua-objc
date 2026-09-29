@@ -6,14 +6,14 @@ local xml = require("ui.xml")
 local PROSE = "You are standing in an open field west of a white house, with a boarded front door. "
 	.. "There is a small mailbox here, and a path leads north into a quiet, ancient forest."
 
+local ICON = "apps/adventure-arena/assets/zork1.jpg"
 local root, refs = xml.render([[
 <VStack spacing="0" alignment="leading">
 	<Paragraph id="plain" text="]] .. PROSE .. [[" size="17" design="serif" />
 	<Paragraph id="leaded" text="]] .. PROSE .. [[" size="17" design="serif" lineSpacing="8" />
-	<Paragraph id="dropped" text="]] .. PROSE .. [[" size="17" design="serif" dropCap="true" dropCapColor="systemTeal" />
-	<Paragraph id="short" text="Dark." size="17" dropCap="true" dropCapLines="3" />
-	<Paragraph id="quoted" text="&quot;Hello,&quot; says the troll." size="17" dropCap="true" />
-	<Paragraph id="empty" text="" size="17" dropCap="true" />
+	<Paragraph id="figured" text="]] .. PROSE .. [[" size="17" design="serif" figure="]] .. ICON .. [[" />
+	<Paragraph id="short" text="Dark." size="17" figure="]] .. ICON .. [[" figureLines="3" />
+	<Paragraph id="empty" text="" size="17" figure="]] .. ICON .. [[" />
 	<Paragraph id="justified" text="]] .. PROSE .. [[" size="17" alignment="justified" hyphenation="true" />
 </VStack>]], {}, ns)
 
@@ -21,20 +21,26 @@ root.size = ns.Size(320, 2000); root:layout(320)
 t.assertEqual(refs.plain.size.width, 320, "prose fills the column it is given")
 t.expect(refs.plain.size.height > 40, "long prose wraps to several lines at 320pt")
 t.expect(refs.leaded.size.height > refs.plain.size.height, "lineSpacing adds leading between lines")
-t.expect(refs.dropped.size.height >= refs.plain.size.height,
-	"a dropped initial takes line width, so the paragraph is at least as tall")
-t.assertEqual(refs.dropped.text, PROSE, "the paragraph keeps its complete text, initial included")
-t.expect(refs.dropped.initialView.hidden == false, "a paragraph that begins with a letter drops it")
-t.assertEqual(refs.dropped.initialView.letter, "Y", "the dropped initial is the first letter")
-t.expect(refs.dropped.initialView.font.pointSize > 17 * 2,
-	"the initial is set large enough to span its lines")
-t.expect(refs.dropped.textContainer.exclusionPaths[1] ~= nil, "the following lines wrap around the initial")
+t.expect(refs.figured.size.height > refs.plain.size.height,
+	"a figure takes line width, so the paragraph wraps into more lines")
+t.assertEqual(refs.figured.text, PROSE, "the paragraph keeps its complete text")
+t.expect(refs.plain.figureView == nil, "a paragraph without a figure floats nothing")
 
-local lineHeight = refs.plain.font.ascender - refs.plain.font.descender
-t.expect(refs.short.size.height >= lineHeight * 3 - 1,
-	"a one-line paragraph still reserves the three lines its initial drops through")
-t.expect(refs.quoted.initialView.hidden == true, "punctuation is not dropped as an initial")
-t.expect(refs.empty.initialView.hidden == true, "an empty paragraph has no initial")
+-- The figure is a square exactly three lines tall at the leading edge, and the
+-- lines beside it keep a gap from it.
+local pitch = math.ceil(refs.figured.font.ascender - refs.figured.font.descender + refs.figured.font.leading)
+local figure = refs.figured.figureView
+t.expect(figure ~= nil and figure.hidden == false, "the figure shows beside the text")
+t.assertEqual(figure.frame.origin.x, 0, "the figure sits at the leading edge")
+t.assertEqual(figure.frame.origin.y, 0, "the figure's top meets the first line's top")
+t.assertEqual(figure.frame.size.width, figure.frame.size.height, "the figure is square")
+t.expect(math.abs(figure.frame.size.height - 3 * pitch) < 0.5, "the figure spans three lines")
+local exclusion = refs.figured.textContainer.exclusionPaths[1].bounds
+t.expect(exclusion.size.width > figure.frame.size.width, "wrapped lines keep a gap from the figure")
+t.expect(math.abs(exclusion.size.height - 3 * pitch) < 1, "exactly three lines wrap beside the figure")
+
+t.expect(refs.short.size.height >= 3 * pitch - 0.5,
+	"a one-line paragraph still reserves the three lines of its figure")
 t.assertEqual(refs.empty.size.height, 0, "an empty paragraph takes no height")
 t.assertEqual(refs.justified.textAlignment, 3, "justified alignment maps to the native alignment")
 t.expect(refs.justified.hyphenation == true, "hyphenation is enabled when requested")
@@ -47,54 +53,32 @@ root.size = ns.Size(200, 2000); root:layout(200)
 t.expect(refs.plain.size.height > wide, "a narrower column wraps into more lines")
 root.size = ns.Size(320, 2000); root:layout(320)
 t.assertEqual(refs.plain.size.height, wide, "restoring the width restores the height")
+t.assertEqual(refs.figured.figureView.frame.origin.x, 0, "layout leaves the figure where the paragraph put it")
 
 -- Text and typography changes re-measure without re-rendering.
 refs.short.text = PROSE
 root:layout(320)
-t.expect(refs.short.size.height > lineHeight * 3, "new text re-measures the paragraph")
-t.assertEqual(refs.short.initialView.letter, "Y", "new text drops its own initial")
-refs.short.dropCap = false
+t.expect(refs.short.size.height > 3 * pitch, "new text re-measures the paragraph")
+refs.short.figureLines = 2
 root:layout(320)
-t.expect(refs.short.initialView.hidden == true, "turning dropCap off restores the first letter")
+t.expect(math.abs(refs.short.figureView.frame.size.height - 2 * pitch) < 0.5, "figureLines resizes the figure")
+refs.short.figureView = nil
+root:layout(320)
+t.expect(#refs.short.textContainer.exclusionPaths == 0, "removing the figure returns every line to the margin")
 
--- A script capital that swashes below its baseline (Snell Roundhand's Y) is
--- scaled by its ink so the whole letter fits the three lines, and its view
--- frames the ink so no stroke is clipped.
-local script = xml.render([[<Paragraph text="]] .. PROSE .. [[" size="18" design="serif" lineSpacing="6" dropCap="true" dropCapFontName="SnellRoundhand-Bold" />]], {}, ns)
-local host = ns.VStack { script }
-host.size = ns.Size(360, 1000); host:layout(360)
-local pitch = (script.font.ascender - script.font.descender + script.font.leading) + 6
-local ink = script.initialInk
-t.expect(ink.origin.y >= 0 and ink.origin.x >= 0, "the initial's ink starts inside the paragraph")
-t.expect(ink.origin.y + ink.size.height <= 3 * pitch, "a descending script capital fits within three lines")
-t.expect(ink.size.height >= 2 * pitch, "the initial still spans most of its three lines")
-local view = script.initialView
-t.expect(view.frame.origin.x <= ink.origin.x and view.frame.origin.x + view.frame.size.width >= ink.origin.x + ink.size.width
-	and view.frame.origin.y <= ink.origin.y and view.frame.origin.y + view.frame.size.height >= ink.origin.y + ink.size.height,
-	"the initial's view frames all of its ink, so nothing is clipped")
-local exclusion = script.textContainer.exclusionPaths[1].bounds
-t.expect(exclusion.size.height <= 3 * pitch, "exactly three lines wrap beside the initial")
-
--- A capital whose foot overshoots its baseline (Chalkduster's A) spans the
--- same three lines as any other initial: its ink is fitted inside them
--- rather than pushing a fourth line aside. Every face and leading agrees.
-local OVERSHOOT = "Abandoned shopfronts line the square, a bakery and a cobbler, each window displaying a toy frozen in its work."
-for _, face in ipairs({ "Chalkduster", "SnellRoundhand-Black", "Futura-CondensedExtraBold", "Didot-Bold" }) do
-	for _, size in ipairs({ 14, 18, 26 }) do
-		for _, lead in ipairs({ 3, 6, 13 }) do
-			for _, letter in ipairs({ "A", "Y", "Q" }) do
-				local initial = xml.render('<Paragraph text="' .. letter .. OVERSHOOT:sub(2) .. '" size="' .. size
-					.. '" design="serif" lineSpacing="' .. lead .. '" dropCap="true" dropCapFontName="' .. face .. '" />', {}, ns)
-				local column = ns.VStack { initial }
-				column.size = ns.Size(360, 1000); column:layout(360)
-				local linePitch = math.ceil(initial.font.ascender - initial.font.descender + initial.font.leading) + lead
-				local wrapped = initial.textContainer.exclusionPaths[1].bounds.size.height
-				local inkBottom = initial.initialInk.origin.y + initial.initialInk.size.height
-				local label = string.format("%s %s at %dpt, leading %d", face, letter, size, lead)
-				t.expect(math.abs(wrapped - (3 * linePitch - lead / 2)) < 0.5, label .. " wraps exactly three lines")
-				t.expect(inkBottom <= 3 * linePitch - lead + 0.5, label .. " keeps its ink inside those lines")
-			end
-		end
+-- Every size and leading keeps the figure within its lines.
+for _, size in ipairs({ 14, 18, 26 }) do
+	for _, lead in ipairs({ 3, 6, 13 }) do
+		local paragraph = xml.render('<Paragraph text="' .. PROSE .. '" size="' .. size
+			.. '" design="serif" lineSpacing="' .. lead .. '" figure="' .. ICON .. '" />', {}, ns)
+		local column = ns.VStack { paragraph }
+		column.size = ns.Size(360, 1000); column:layout(360)
+		local linePitch = math.ceil(paragraph.font.ascender - paragraph.font.descender + paragraph.font.leading) + lead
+		local side = paragraph.figureView.frame.size.height
+		local label = string.format("figure at %dpt, leading %d", size, lead)
+		t.expect(math.abs(side - (3 * linePitch - lead)) < 0.5, label .. " spans three lines")
+		t.expect(math.abs(paragraph.textContainer.exclusionPaths[1].bounds.size.height - (side + lead / 2)) < 0.5,
+			label .. " wraps exactly those lines")
 	end
 end
 

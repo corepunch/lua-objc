@@ -13,7 +13,7 @@ local root, refs = xml.render([[
 <VStack spacing="0" alignment="leading">
 	<Paragraph id="whole" text="]] .. PROSE .. [[" size="17" design="serif" />
 	<Paragraph id="typing" text="]] .. PROSE .. [[" size="17" design="serif" revealedCharacters="0" />
-	<Paragraph id="dropped" text="]] .. PROSE .. [[" size="17" design="serif" dropCap="true" revealedCharacters="0" />
+	<Paragraph id="figured" text="]] .. PROSE .. [[" size="17" design="serif" figure="apps/adventure-arena/assets/zork1.jpg" revealedCharacters="0" />
 	<Paragraph id="accents" text="Café — déjà vu 🦉 here." size="17" revealedCharacters="6" />
 </VStack>]], {}, ns)
 root.size = ns.Size(320, 2000); root:layout(320)
@@ -24,7 +24,7 @@ t.assertEqual(refs.whole.revealedCharacters, -1, "a paragraph shows its whole te
 t.assertEqual(refs.typing.revealedCharacters, 0, "the XML attribute sets the reveal")
 t.assertEqual(refs.typing.size.height, 0, "a paragraph that has revealed nothing takes no height")
 t.assertEqual(refs.typing.text, PROSE, "the whole text is kept while it is revealed")
-t.expect(refs.dropped.initialView.hidden == true, "the initial waits for the first character")
+t.expect(refs.figured.figureView.hidden == true, "the figure waits for the first character")
 
 refs.typing.revealedCharacters = 5
 root:layout(320)
@@ -48,10 +48,10 @@ t.assertEqual(refs.typing.revealedCharacters, 10000, "a reveal past the end is k
 refs.typing.revealedCharacters = -7
 t.assertEqual(refs.typing.revealedCharacters, -1, "negative reveals mean everything")
 
-refs.dropped.revealedCharacters = 1
+refs.figured.revealedCharacters = 1
 root:layout(320)
-t.expect(refs.dropped.initialView.hidden == false, "the first character reveals the dropped initial")
-t.expect(refs.dropped.size.height >= lineHeight * 3 - 1, "a revealed initial reserves the lines it drops through")
+t.expect(refs.figured.figureView.hidden == false, "the first character reveals the figure")
+t.expect(refs.figured.size.height >= lineHeight * 3 - 1, "a revealed figure reserves the lines it spans")
 
 -- Characters count as Lua's utf8.len does, never splitting a surrogate pair.
 refs.accents.revealedCharacters = 17

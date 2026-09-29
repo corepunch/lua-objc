@@ -141,18 +141,11 @@ toggleNamed("Justify Text").onChange(true)
 t.expect(settings.justified, "the justify toggle updates reading preferences")
 t.assertEqual(page().paragraph_1_1.textAlignment, 3, "the open book is justified")
 
--- Drop caps are the reader's choice.
-t.expect(page().paragraph_1_1.dropCap == true, "a scene opens with a dropped initial by default")
-toggleNamed("Drop Caps").onChange(false)
-t.expect(settings.dropCap == false, "the drop cap toggle updates reading preferences")
-t.expect(saved.dropCap == false, "the choice is persisted")
-t.expect(page().paragraph_1_1.dropCap ~= true, "the open book sets its first letter in the running text")
-t.expect(page().paragraph_1_1.initialView.hidden == true, "no initial is drawn")
+-- A scene's place beside its first lines belongs to the room's picture;
+-- there is no drop cap to choose.
+t.expect(controller.readingSettingsOptions.refs.dropCapToggle == nil, "the sheet offers no drop cap toggle")
+t.expect(page().paragraph_1_1.figureView == nil, "a room without an icon floats nothing")
 t.assertEqual(page().paragraph_1_1.text, "The rusted gate stands open.", "the paragraph keeps its first letter")
-t.assertEqual(controller.readingSettingsOptions.refs.dropCapToggle.state, 0, "the toggle shows the choice")
-toggleNamed("Drop Caps").onChange(true)
-t.expect(page().paragraph_1_1.dropCap == true, "turning drop caps back on drops the initial again")
-toggleNamed("Drop Caps").onChange(false)
 
 local done = buttonActions[sheetRefs.done]
 t.expect(type(done) == "function", "Done has a native action")
@@ -164,10 +157,7 @@ t.assertEqual(#options.mounted, 0, "closing the sheet unmounts its options")
 -- The Settings tab mounts the same options with a sample page.
 local host = ns.VStack {}
 local tab = options:mount(host, true)
-t.expect(tab.refs.previewBody ~= nil and tab.refs.previewBody.dropCap ~= true,
-	"the Settings tab's sample page follows the drop cap preference")
-options:apply(settings:setDropCap(true))
-t.expect(tab.refs.previewBody.dropCap == true, "the sample page drops its initial when drop caps are on")
+t.expect(tab.refs.previewBody ~= nil, "the Settings tab shows a sample page")
 t.expect(tab.refs.chapter == nil, "the sample page has no chapter line")
 t.assertEqual(tab.refs.previewBody.textAlignment, 3, "the sample page follows the preferences")
 

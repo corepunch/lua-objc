@@ -771,36 +771,34 @@ chapter labels. Faces without small capitals keep their lowercase.
 
 `Label` is for UI text. `Paragraph` sets prose as a book does: selectable (for
 Look Up and copy), with explicit leading, optional justification and
-hyphenation, and an optional **drop cap** that the following lines wrap
-around.
+hyphenation, and an optional **figure**: a square picture at the leading
+edge that the first lines wrap around, as Zork Zero set each room's picture
+beside its description.
 
 ```xml
 <Paragraph text="You are standing in an open field…" size="18" design="serif"
   lineSpacing="6" alignment="justified" hyphenation="true"
-  dropCap="true" dropCapLines="3" dropCapFontName="SnellRoundhand-Bold" dropCapColor="#4338CA|#A5B4FC" />
+  figure="books/blackwood-horror/icons/gate.png" figureLines="3" />
 ```
 
 | Attribute | Meaning |
 |---|---|
-| `text` | the paragraph, first letter included (`view.text` reads and writes it) |
+| `text` | the paragraph (`view.text` reads and writes it) |
 | `size`, `weight`, `design`, `fontName`, `italic`, `smallCaps`, `color` | body typography |
 | `lineSpacing` | extra points between lines (SwiftUI `lineSpacing`) |
 | `alignment` | `leading`, `center`, `trailing` or `justified` |
 | `hyphenation` | hyphenates at line ends (use with `justified`) |
-| `dropCap`, `dropCapLines` (default 3) | drop the first letter through N lines |
-| `dropCapFontName`, `dropCapDesign`, `dropCapWeight`, `dropCapColor` | the initial's face and colour |
+| `figure`, `figureLines` (default 3) | an image path set as a square N lines tall beside the first lines |
 | `revealedCharacters` | typewriter reveal: characters shown so far, counted as `utf8.len` counts them; `-1` (default) shows everything |
 | `linkColor` | colour of the thicker dotted rule under links; defaults to the tint |
 | `<Hyperlink location length label>` children | the words a reader can act on; see **Links** below |
 
-The initial is sized by its **ink**, not font metrics: a plain capital spans
-from the first line's cap height to the last line's baseline, as in print; a
-script capital that swashes below its baseline (Snell Roundhand's *Y*) fits its
-whole glyph between the first line's cap height and the last line's
-descender. Its view frames the ink, so no stroke is clipped, and exactly
-`dropCapLines` lines wrap beside it. Only a letter is dropped; a paragraph that
-opens with a quotation mark or digit is set normally. Empty text takes no
-space. Implementation: a non-scrolling `UITextView` / non-editable
+The figure runs from the first line's top to the `figureLines`th line's
+bottom and is as wide as it is tall, filled by its image; exactly those lines
+wrap beside it, keeping a gap, and a shorter paragraph still reserves them.
+The figure is an image view the paragraph places itself (`view.figureView`);
+it never joins the layout tree. It appears with the first revealed character.
+Empty text takes no space. Implementation: a non-scrolling `UITextView` / non-editable
 `NSTextView` on TextKit 1 with `NSTextContainer.exclusionPaths`
 (`src/uikit/paragraph.m`, `src/appkit/paragraph.m`).
 

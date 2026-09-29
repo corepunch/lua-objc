@@ -50,6 +50,7 @@ local sessionModel = Session.new({ engineFactory = function()
 		return {
 			resume = function(_, command) return 'Response <&> "' .. command .. '"' end,
 			exits = function() return { "north" } end,
+			roomIcon = function() return "apps/adventure-arena/assets/zork1.jpg" end,
 		}, "Opening <&>"
 	end }
 end })
@@ -101,7 +102,8 @@ t.assertEqual(page().gameDescription.text, catalog:list()[1].shortDescription,
 	"the title page carries the tagline as its epigraph")
 t.assertEqual(page().sceneTitle_1.text, catalog:list()[1].title, "the opening scene is named")
 t.assertEqual(page().paragraph_1_1.text, "Opening <&>", "transcript escapes XML characters")
-t.expect(page().paragraph_1_1.dropCap, "the opening starts with a drop cap")
+t.expect(page().paragraph_1_1.figureView ~= nil, "the opening room's icon sits beside its first lines")
+t.expect(page().paragraph_1_1.figureLines == 3, "the room icon is three lines tall")
 t.expect(rendered.refs.backdrop == nil, "the page is paper, not blurred cover art")
 t.assertEqual(rendered.refs.progress.text, "Score 0 · Time 0", "Planetfall's folio shows its clock")
 t.expect(chips().suggestion_1 ~= nil, "the suggestion strip offers commands before typing")
