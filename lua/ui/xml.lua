@@ -663,7 +663,12 @@ compile = function(nodes, ns, registry, refs)
 			if tracking then
 				nodeScope = ns.Scope.new()
 				local parent = ns.Scope.current()
-				if parent then parent:add(nodeScope) end
+				if parent then
+					parent:add(nodeScope)
+					-- Callbacks this node fires register what they start in
+					-- the template's scope (see lua_reg_push).
+					nodeScope.enclosing = parent.enclosing or parent
+				end
 			end
 			local view
 			if nodeScope then
@@ -892,6 +897,7 @@ local TAG_SCHEMA = {
             horizontal    = "bool",
             vertical      = "bool",
             scrollOnKeyboard = "bool",
+            scrollDismissesKeyboard = "str",
             scrollTargetBehavior = "str",
         },
     },

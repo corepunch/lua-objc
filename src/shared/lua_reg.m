@@ -232,9 +232,19 @@ static BOOL lua_reg_push(LuaReg *reg) {
 	 * callback bind to the firing scope, not to whichever scope is
 	 * currently global (two-window cross-binding). The global stays on
 	 * the firing scope after return; all post-startup registrations are
-	 * created inside callbacks, so this is the correct affinity. */
+	 * created inside callbacks, so this is the correct affinity.
+	 * A retained template renders each view node in its own scope, which
+	 * the reconciler disposes when it rebuilds that node. Such a scope names
+	 * its `enclosing` scope: work a node's callback starts (a timer, an
+	 * async task) belongs to the screen, not to the control that started
+	 * it, as a SwiftUI Task begun in a Button action outlives the button. */
 	if (reg.scopeRef != LUA_NOREF) {
 		lua_rawgeti(L, LUA_REGISTRYINDEX, reg.scopeRef);
+		if (lua_istable(L, -1)) {
+			lua_getfield(L, -1, "enclosing");
+			if (lua_istable(L, -1)) lua_replace(L, -2);
+			else lua_pop(L, 1);
+		}
 		if (lua_istable(L, -1)) {
 			lua_getfield(L, -1, "closed");
 			BOOL closed = lua_toboolean(L, -1);
