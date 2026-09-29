@@ -18,8 +18,8 @@ local VIEWS = "apps/dnb/views/"
 -- modal menu) resumes the picture instead of leaping ahead.
 local PLAYBACK = {sampleRate = 44100, bufferSeconds = 0.3, frameInterval = 1 / 60, maxFrame = 0.1}
 
--- The arrangement strip's rows and track-name column, in points.
-local TIMELINE = {rowHeight = 17.5, labelWidth = 52, scale = 2}
+-- The arrangement strip's rows and channel-name column, in points.
+local TIMELINE = {rowHeight = 28, labelWidth = 84, scale = 2}
 
 local SECTION_TITLES = {intro = "Intro", build = "Build-up", drop = "Drop", breakdown = "Breakdown",
 	outro = "Outro", halftime = "Half-time", blend = "Mixing in"}
@@ -35,7 +35,7 @@ function Controller.new(options)
 	local self = setmetatable({
 		model = model,
 		style = style,
-		synth = Synth.new(model, PLAYBACK.sampleRate, style.sound),
+		synth = Synth.new(model, PLAYBACK.sampleRate, style),
 		output = options.output or AudioOutput.new(PLAYBACK.sampleRate,
 			math.floor(PLAYBACK.sampleRate * PLAYBACK.bufferSeconds)),
 		async = options.async or ns.async,
@@ -52,6 +52,11 @@ function Controller.new(options)
 	return self
 end
 
+-- The tempo a bar plays at, under the Pitch fader.
+function Controller:tempo(bar)
+	return bar.tempo * (1 + self.model:value("pitch") / 100)
+end
+
 -- Now-playing text for a bar, or for the first bar before playback starts.
 function Controller:nowPlaying(bar, fraction)
 	local playing = bar ~= nil
@@ -62,7 +67,7 @@ function Controller:nowPlaying(bar, fraction)
 		detail = string.format("Track %d · %s · %s · %s", bar.track + 1, bar.style, bar.key, bar.progression),
 		position = string.format("Bar %d of %d", bar.sectionBar + 1, bar.sectionLength),
 		progress = (bar.sectionBar + (fraction or 0)) / bar.sectionLength,
-		tempo = self.model:formatted("tempo"):match("%d+"),
+		tempo = string.format("%d", math.floor(self:tempo(bar) + 0.5)),
 	}
 end
 
@@ -127,18 +132,18 @@ function Controller:setControl(id, value)
 	self.model:setValue(id, value)
 	local label = self.refs and self.refs["value_" .. id]
 	if label then label.text = self.model:formatted(id) end
-	if id == "tempo" and self.refs then self.refs.tempo.text = self.model:formatted(id):match("%d+") end
+	if id == "pitch" and not self.playing then self:showIdle() end
 end
 
--- A style plugin takes over at the next bar line with its own set, parts,
--- sound, tempo range and control defaults.
+-- A style plugin takes over at the next bar line with its own set, kit,
+-- mix and control defaults.
 function Controller:selectStyle(index)
 	local style = assert(Styles:list()[index + 1], "no style " .. tostring(index))
 	if style == self.style then return end
 	self.style = style
 	self.model:setStyle(style)
 	self.composer = Styles:create(style.id, self.model.seed)
-	self.synth:setComposer(self.composer, Synth.sound(style.sound))
+	self.synth:setComposer(self.composer, style)
 	local refs = self.refs
 	if not refs then return end
 	self.window.title, self.window.subtitle = style.title, style.summary
@@ -149,7 +154,6 @@ function Controller:selectStyle(index)
 			refs["value_" .. control.id].text = control.text
 		end
 	end
-	refs.tempo.text = self.model:formatted("tempo"):match("%d+")
 	if not self.playing then self:showIdle() end
 end
 
@@ -224,8 +228,9 @@ function Controller:present(refs, stage)
 end
 
 -- The arrangement strip around set bar `n` of `composer`, the playhead
--- `fraction` into it and moving at `barsPerSecond`. Rows and clips change
--- only when another track comes into view; the playhead moves every frame.
+-- `fraction` into it and moving at `barsPerSecond`. Clips and channel names
+-- change only when another track comes into view or starts to play; the
+-- playhead and the meters move every frame.
 function Controller:showTimeline(composer, n, fraction, barsPerSecond)
 	local timeline = self.timeline
 	if not timeline then return end
@@ -238,25 +243,30 @@ function Controller:showTimeline(composer, n, fraction, barsPerSecond)
 		self.timelineRows = Timeline.rows(plans)
 		refs = select(2, timeline:update({rows = self.timelineRows, headline = headline,
 			rowHeight = TIMELINE.rowHeight, labelWidth = TIMELINE.labelWidth}))
-		local data = Timeline.instances(plans, self.timelineRows)
+		local data = Timeline.instances(plans)
 		refs.timelineCanvas.draws = {{vertex = "timelineBlockVertex", fragment = "timelineBlockFragment",
 			count = 6, instances = #data // Timeline.stride, data = data, blend = "alpha"}}
 	elseif refs.timelineNext.text ~= headline then
 		refs.timelineNext.text = headline
 	end
-	local rows = #self.timelineRows
-	local values = Timeline.values(n + fraction, barsPerSecond, rows)
-	table.insert(values, self.window and self.window.backingScaleFactor or TIMELINE.scale)
-	refs.timelineCanvas.values = values
+	local levels = {}
+	if self.playing then
+		for _, row in ipairs(self.timelineRows) do
+			if row.role then levels[row.role] = self.synth:level(row.role) end
+		end
+	end
+	refs.timelineCanvas.values = Timeline.values(n + fraction, barsPerSecond, self.timelineRows,
+		self.window and self.window.backingScaleFactor or TIMELINE.scale, levels)
 end
 
 function Controller:showPlayhead(bar, played)
 	local fraction = math.max(0, math.min(1, (played - bar.frame) / bar.frames))
-	self:showTimeline(bar.composer, bar.index, fraction, self.model:value("tempo") / 240)
+	self:showTimeline(bar.composer, bar.index, fraction, self:tempo(bar) / 240)
 	local info = self:nowPlaying(bar, fraction)
 	for _, refs in ipairs(self:views()) do
 		if refs.section.text ~= info.section then refs.section.text = info.section end
 		if refs.detail.text ~= info.detail then refs.detail.text = info.detail end
+		if refs.tempo and refs.tempo.text ~= info.tempo then refs.tempo.text = info.tempo end
 		if refs.position and refs.position.text ~= info.position then refs.position.text = info.position end
 		if refs.progress then refs.progress.doubleValue = info.progress end
 	end
@@ -265,8 +275,12 @@ end
 -- The header and timeline while stopped: the next bar to play.
 function Controller:showIdle()
 	self:showTimeline(self.composer, self.synth.composerBar, 0, 0)
-	local info = self:nowPlaying(self.composer:bar(self.synth.composerBar, self.model))
-	for _, refs in ipairs(self:views()) do refs.detail.text = info.detail end
+	local bar = self.composer:bar(self.synth.composerBar, self.model)
+	local info = self:nowPlaying(bar)
+	for _, refs in ipairs(self:views()) do
+		refs.detail.text = info.detail
+		if refs.tempo then refs.tempo.text = info.tempo end
+	end
 end
 
 function Controller:setTransport(playing)

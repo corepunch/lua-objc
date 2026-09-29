@@ -1,33 +1,36 @@
 // The arrangement timeline (models/Timeline.lua): one draw of instanced
-// rounded rects into layer 1 (a clip on its track), then the finishing pass adds the bar grid and the fixed playhead. Everything slides right to left: every position is a
-// set bar, the playhead advances by its speed times `inputs.age` between
-// updates, so the strip scrolls evenly on every display frame.
+// rounded rects into layer 1 (a clip on its channel's row), then the
+// finishing pass adds the bar grid, the channels' level meters and the fixed
+// playhead. Everything slides right to left: every position is a set bar,
+// the playhead advances by its speed times `inputs.age` between updates, so
+// the strip scrolls evenly on every display frame.
 //
-// values: [0] playhead (set bar), [1] bars per second, [2] track rows,
+// values: [0] playhead (set bar), [1] bars per second, [2] channel rows,
 //         [3] bars in view, [4] bars behind the playhead, [5] display
-//         scale (pixels per point)
-// data:   per instance row, first bar, bars, colour (its track), its
+//         scale (pixels per point), [6…13] each row's meter (0…1),
+//         [14…21] each row's colour
+// data:   per instance row, first bar, bars, colour (its role), its
 //         envelope at its first and last bar and whether it
 //         thins from below
 
-// Track tints: the system palette in its dark appearance. Tracks keep to their family's hue: drums red to pink, bass orange, chords
-// purple to indigo, melody cyan to mint, fills and effects yellow and teal.
-constant float3 TIMELINE_COLOURS[14] = {
-	float3(1.000, 0.271, 0.227), // kick: red
-	float3(1.000, 0.216, 0.373), // snare: pink
-	float3(1.000, 0.420, 0.620), // hats
-	float3(1.000, 0.520, 0.400), // percussion
-	float3(0.900, 0.300, 0.650), // break
+// Channel tints by role: the system palette in its dark appearance. Roles
+// keep to their family's hue: drums red to pink, bass orange, chords purple
+// to indigo, melody cyan to green, texture and effects grey and yellow.
+constant float3 TIMELINE_COLOURS[11] = {
+	float3(1.000, 0.271, 0.227), // drums: red
+	float3(1.000, 0.216, 0.373), // tops: pink
 	float3(1.000, 0.624, 0.039), // bass: orange
-	float3(0.749, 0.353, 0.949), // pads: purple
+	float3(0.749, 0.353, 0.949), // pad: purple
 	float3(0.369, 0.361, 0.902), // keys: indigo
-	float3(0.580, 0.470, 1.000), // stabs
+	float3(0.580, 0.470, 1.000), // stab
 	float3(0.353, 0.784, 0.980), // arp: cyan
 	float3(0.388, 0.902, 0.886), // lead: mint
-	float3(1.000, 0.839, 0.039), // fills: yellow
-	float3(0.251, 0.784, 0.878), // fx: teal
-	float3(0.557, 0.557, 0.576), // filter: grey
+	float3(0.188, 0.820, 0.345), // counter: green
+	float3(0.557, 0.557, 0.576), // texture: grey
+	float3(1.000, 0.839, 0.039), // fx: yellow
 };
+constant uint TIMELINE_ROWS = 8;
+constant uint TIMELINE_METERS = 6;      // where the rows' meters start in the values
 constant float TIMELINE_GAP = 1.0;      // points between neighbouring clips
 constant float TIMELINE_RADIUS = 3.0;   // clip corner radius in points
 constant float TIMELINE_RESTING = 0.6;  // opacity away from the playhead
@@ -39,6 +42,8 @@ constant float TIMELINE_SHADE = 0.3;    // and darkens towards its bottom
 constant float TIMELINE_DRIFT = 0.12;   // how far its hue turns from first bar to last
 constant float TIMELINE_RIM = 0.3;      // the lighter edge around a clip
 constant float TIMELINE_GRID = 0.06;    // a bar line's opacity; phrase lines double it
+constant float TIMELINE_METER = 0.85;   // a meter's opacity at its playhead end
+constant float TIMELINE_METER_HEIGHT = 0.36; // of its row
 
 struct TimelineBlock {
 	float4 position [[position]];
@@ -127,6 +132,18 @@ fragment float4 timeline(ShaderVertex in [[stage_in]], constant ShaderInputs &in
 	float phrase = abs(fract(bar / 8.0 + 0.5) - 0.5) * 8.0 / barsPerPixel < 1.0 ? 2.0 : 1.0;
 	float grid = saturate(1.0 - fromLine) * TIMELINE_GRID * phrase;
 	colour += float4(grid) * (1.0 - colour.a);
+	// Each channel's level, as a tracker shows it: a bar in the channel's
+	// tint growing back from the playhead over what has already played.
+	float rows = max(inputs.values[2], 1.0);
+	uint row = min(uint(in.uv.y * rows), TIMELINE_ROWS - 1);
+	float level = inputs.values[TIMELINE_METERS + row];
+	float along = (behind / window - in.uv.x) / (behind / window);
+	float across = abs(fract(in.uv.y * rows) - 0.5);
+	if (level > 0.0 && along >= 0.0 && along <= level && across < TIMELINE_METER_HEIGHT * 0.5) {
+		float3 tint = TIMELINE_COLOURS[min(int(inputs.values[TIMELINE_METERS + TIMELINE_ROWS + row]), 10)];
+		float glow = TIMELINE_METER * (1.0 - 0.6 * along / max(level, 0.001));
+		colour = mix(colour, float4(mix(tint, float3(1.0), 0.35), 1.0), glow);
+	}
 	// The fixed playhead.
 	float head = saturate(1.5 * inputs.values[5] - abs(in.uv.x - behind / window) * inputs.size.x);
 	return mix(colour, float4(1.0), head * 0.9);

@@ -1,12 +1,9 @@
 <%
--- The arrangement strip, after the arrange window of Cubase or MTV Music
--- Generator: track names beside a Metal view that scrolls the clips past a
--- fixed playhead (shaders/Timeline.metal). Names are presentation, so they
--- live here; the rows are the tracks of the arrangements in view.
-local names = {
-	kick = "Kick", snare = "Snare", hats = "Hats", percussion = "Perc", ["break"] = "Break", bass = "Bass",
-	pads = "Pads", keys = "Keys", stabs = "Stabs", arp = "Arp", lead = "Lead", fills = "Fills", fx = "FX", filter = "Filter",
-}
+-- The arrangement strip, after the song view of a tracker and the arrange
+-- window of MTV Music Generator: eight channels, each named after the
+-- instrument the playing track has on it, beside a Metal view that scrolls
+-- the clips past a fixed playhead (shaders/Timeline.metal). No apostrophes
+-- here: etlua reads one inside a code block as the start of a string.
 -%>
 <GlassEffect cornerRadius="24" maxWidth="infinity" maxHeight="infinity">
 	<VStack padding="18" spacing="8" alignment="leading" maxWidth="infinity" maxHeight="infinity">
@@ -18,7 +15,11 @@ local names = {
 		<HStack spacing="10" alignment="top" maxWidth="infinity">
 			<VStack spacing="0" alignment="trailing" width="<%= labelWidth %>">
 				<% for _, row in ipairs(rows) do -%>
-				<Label key="<%= row.track %>" text="<%= names[row.track] %>" size="9" weight="medium" color="secondary" lineLimit="1" height="<%= rowHeight %>" />
+				<VStack key="<%= row.index %>" spacing="0" alignment="trailing" height="<%= rowHeight %>">
+					<Spacer />
+					<Label id="channel<%= row.index %>" text="<%= row.name %>" size="10" weight="medium" color="secondary" lineLimit="1" accessibilityLabel="Channel <%= row.index %>" />
+					<Spacer />
+				</VStack>
 				<% end -%>
 			</VStack>
 			<ShaderView id="timelineCanvas" function="timeline" layers="1" maxWidth="infinity" height="<%= #rows * rowHeight %>">

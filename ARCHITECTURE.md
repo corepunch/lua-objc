@@ -361,8 +361,9 @@ Native extensions are a different thing: `App.loadNativePlugin(path, name)`
 loads a Lua C module from a dylib (`src/plugins/*`). They share the process
 and are trusted code.
 
-The reference app is `apps/dnb`: music styles are plugins against a style
-host API (`apps/dnb/host/StyleKit.lua`) and visualizer scenes are plugins
+The reference app is `apps/dnb`: music styles are plugins of data (flavours,
+grooves, bass lines) against a style host API
+(`apps/dnb/host/StyleKit.lua`) and visualizer scenes are plugins
 contributing Metal functions linked into one program. See its README.
 
 ---

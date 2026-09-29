@@ -1,43 +1,120 @@
 # Drum & Bass — an endless electronic music generator
 
 Endless DJ sets in seven electronic styles, every sound synthesized in Lua:
-no samples, no audio files. Even the Amen break is recreated, kit and room,
-then played the way jungle producers played it: a sped-up loop cut into 16th
-slices and rearranged. Press Play and one seed plays a set that never
-repeats. Tracks follow each other in the style's flavours, in keys a DJ could
-mix between, each new intro mixed under the outgoing tune.
+no audio files. It works the way a tracker module does. A track plays on
+**eight channels**; it carries its own **instruments** (patches) and its own
+**drum loops**, rendered once and played by slice; and it is made of
+**authored material** (grooves, breaks, fills, bass lines, hooks) that the
+generator picks, varies and arranges. Press Play and one seed plays a set
+that never repeats, each new intro mixed under the outgoing tune.
 
 | Style | Flavours | Tempo |
 |---|---|---|
-| Drum & Bass | Liquid, Jungle, Neurofunk, Rollers | 160–180 |
-| Techno | Peak Time, Acid (303 line), Hypnotic (dub stabs) | 124–140 |
-| House | Deep, Classic, Disco (octave bass) | 118–128 |
-| Trance | Uplifting, Progressive, Psytrance (galloping bass) | 132–145 |
-| Dubstep | Deep, Brostep, Riddim (per-note wobble rates) | 136–150 |
-| Breakbeat | Big Beat, Nu Skool, Florida Breaks | 120–140 |
-| UK Garage | 2-Step, Speed Garage, Future Garage | 128–138 |
-
-The visualizer fills the window, running under the Liquid Glass toolbar;
-the now-playing cards, the arrangement strip and the Groove, Sound and Mix
-sliders float over it in glass. Each track is arranged before it plays, like
-the arrange window of Cubase or MTV Music Generator: sections, and one lane
-of blocks per part. The strip draws them as an arrange window
-does, one track per instrument (Snare holds the ghosts, Hats the ride, Bass
-the sub and the reese) with softly shaded clips that show the fade or filter
-sweep riding them. It scrolls right to left past a fixed playhead, lights
-the clips that sound and shows the next section change coming. The style decides which parts its songs play; the listener shapes
-them with the sliders, and the Mix faders (Drums, Bass, Chords, Melody)
-scale the style's own balance. The Style menu switches genre on the next bar
-line. The Scene menu pins one visualizer scene
-or leaves the director to pick one per section and phrase. Next Track mixes
-into the next track of the set, New Set starts a new seed, and Mini Player
-(`pip.enter`) shrinks the app into a floating 16:9 window, after the Music
-app's MiniPlayer and Picture in Picture, that keeps playing the visualization
-with a glass transport bar. Closing it brings the main window back.
+| Drum & Bass | Liquid, Anthem, Jungle, Amen Tearout, Neurofunk, Rollers, Minimal, Halftime, Jump-Up, Atmospheric | 160–176 |
+| Techno | Peak Time, Acid, Hypnotic, Industrial, Minimal, Melodic, Dub Techno | 118–140 |
+| House | Deep, Classic, Disco, Piano, Organ, Tribal, Acid, French | 118–128 |
+| Trance | Uplifting, Progressive, Psytrance, Acid, Tech, Goa, Dream | 132–145 |
+| Dubstep | Deep, Brostep, Riddim, Melodic, Dub, Chillstep | 136–150 |
+| Breakbeat | Big Beat, Nu Skool, Florida, Funky, Progressive, Electro, Rave | 120–140 |
+| UK Garage | 2-Step, Speed Garage, Future Garage, Bassline, Dark Garage | 128–140 |
 
 ```sh
 make run ARGS=apps/dnb
 ```
+
+## What makes one track differ from the next
+
+A flavour is a kind of record, not a shade of one tune: it says which
+channels a track has and what each may play. A Minimal drum & bass track
+has five channels and no chords; an Anthem has a lead, a voice that answers
+it and a wall of pads. From its flavour and the set's seed every track
+draws:
+
+- **its channels**, eight at most, by role: `drums`, `tops` (a second loop:
+  a break or percussion), `bass`, `pad`, `keys`, `stab`, `arp`, `lead`,
+  `counter`, `texture`, `fx`. A channel a flavour gives a `chance` may sit a
+  track out;
+- **a patch for each pitched channel**, never the one the track before had
+  there. There are some seventy (`library/Patches.lua`): reese, acid, FM,
+  808, wobble and upright basses, saw, glass, choir and organ pads, electric
+  pianos, plucked strings, leads that glide or sing;
+- **its grooves**, authored as steps and rendered into loops on the track's
+  own **drum kit** (a snare character, a retuned kick, hats and clap);
+- **a tempo and a swing** within the flavour's range. A new track reaches
+  its tempo through the blend, as a DJ rides the pitch fader;
+- **one rhythm cell and one motif**. The hook repeats, answers and resolves
+  the motif; the chords are struck on the cell; the arpeggio follows the
+  motif's contour. Later drops vary the hook (an octave up, mirrored, with
+  the leaps filled in) but keep its rhythm: it is the same tune;
+- **a bass line**: an authored one, sometimes with its answers moved, or one
+  written for the track (a rolling line, a 303, a wobble);
+- **a key, a mode, a progression and a form**, as before.
+
+`tests/dnb.test.lua` measures this: across sixteen tracks of any style no
+two running share their instruments, and the basses, grooves, tempos, hooks
+and bass lines all differ.
+
+## The window
+
+The visualizer fills the window, running under the Liquid Glass toolbar; the
+now-playing cards, the arrangement strip and the sliders float over it in
+glass. The **arrangement strip** has eight rows, one to a channel, each
+named after what the playing track has on it ("Amen", "Reese", "Rhodes").
+Clips scroll right to left past a fixed playhead and show the fade or filter
+sweep riding them; beside the playhead each channel has a level meter; the
+headline names the section to come.
+
+**Groove**: Pitch moves the tempo a few percent either way, as a
+turntable does, and the pitch of the drum loops with it. Energy and
+Complexity let in the layers a groove marks for them, the notes a line marks
+"?" and "+", and the break edits. Swing scales the track's own. **Sound**:
+Filter, Wobble and Drive move the bass around its patch. **Mix**: faders
+over the style's balance. The Style menu switches genre on the next bar
+line; Next Track mixes into the next track; New Set starts a new seed; Mini
+Player (`pip.enter`) shrinks the app into a floating 16:9 window.
+
+## Drums: loops, slices and edits
+
+A beat is written as lanes of steps (`host/Library.lua` documents the
+notation):
+
+```lua
+{id = "dnb.twostep", name = "Two-Step", bars = 2, lanes = {
+	{"kick", "X.........x.....|X.........x....."},
+	{"snare", "....X.......X..."},
+	{"hat", ".x.x.x.x.x.x.x.x", gain = 0.22, when = "energy"},
+	{"ghost", ".......g.g.....g", when = "complexity"},
+}}
+```
+
+`models/Drums.lua` renders it once into a loop on the track's kit, at the
+track's tempo, with its swing and a drummer's drift baked in. A slice of the
+loop holds everything that rang into that 16th. The drum channel plays the
+loop by slice: in order, or jumping to any point of it, which is the
+tracker's sample-offset effect. Fills and chops are edits of that kind:
+a stuttered snare slice, the last beat backwards, a retrigger in 32nds, the
+tape slowing to half speed, a beat swapped in from elsewhere. A record's
+break (`kit = "break"`, the Amen and five more in `library/Beats.lua`) is
+rendered at the record's tempo on a 1960s kit through a room, and sped up
+to the track's. Loops are prepared a little at a time, bars before they are
+needed, so that no display frame waits on one.
+
+## Instruments
+
+Every pitched channel plays one engine, `models/Instrument.lua`; a patch is
+plain data:
+
+```lua
+{id = "bass.acid", name = "Acid 303", role = "bass", mono = true, glide = 0.045,
+	osc = {{wave = "saw"}},
+	filter = {cutoff = 420, resonance = 0.16, env = 3.2, decay = 0.1},
+	amp = {attack = 0.003, decay = 0.3, sustain = 0.7, release = 0.03}, drive = 0.45, level = 0.746},
+```
+
+Waves are saw, square, pulse, triangle, sine (with two-operator FM), noise
+and a plucked string. `level` is calibrated, so patches of one role are
+equally loud: after changing a patch run
+`./lua-objc apps/dnb/library/calibrate.lua` and copy its level.
 
 ## Plugins
 
@@ -47,28 +124,35 @@ Styles and visualizer scenes are plugins, built on the framework's
 folder whose `init.lua` returns a manifest. It runs isolated: pure standard
 libraries only, with everything else coming from a read-only host API.
 
-**Style plugins** (`plugins/styles/<id>/`) declare a title, symbol, tempo
-range, control defaults and a `sound` that tunes the Synth, and compose in
-three parts. `material(kit, rng, track, first)` draws one cycle's grooves,
-harmony and melody. `arrange(kit, track, cycles)` lays a track out as lanes
-of blocks (the "when"). `patterns` render one bar of a part (the "what").
-The host's [`Composer`](host/Composer.lua) builds each track's
-[`Arrangement`](host/Arrangement.lua) once, from the seed alone, and renders
-bar n from the blocks under it. Energy and Complexity shape the patterns bar
-by bar. Blocks are plain data, never overlap in a lane, and point at
-patterns by id; structure moves (fills, risers, half-time, throws, chops)
-are lanes too, so tests read the plan instead of rendering audio. A block
-may carry automation, as a clip does: `level` fades it and `filter` sweeps
-a low-pass or a high-pass over it. The composer marks every note with its
-block's automation where the note starts, and the Synth plays each voice
-through it. A style arranges section by section and ends with
-`kit.produce(lanes, track)`, the producer's moves drawn from the track's
-seed: parts join a phrase or two late and leave early, the bar before a
-phrase lands pulls the kick and bass or the drums out, the drums open
-through the intro, the tops thin through a build while the reese is teased
-under it, and the outro sheds parts for the next track to mix over. The
-`filter` lane sweeps the whole mix, the way an effect machine has patterns
-of its own in Jeskola Buzz's sequence.
+**Style plugins** (`plugins/styles/<id>/`) are data. A manifest declares its
+`flavours` (each its tempo and swing range, its channels and what each may
+play), its `harmony`, its own `library` of beats and lines, its drum `kit`
+and `mix`, and its `plan`: what each role plays in each section.
+
+```lua
+plan = {
+	drop = {pad = {"pad.chords", from = 16}, lead = {{"lead.hook", from = 16, last = 0}, {"lead.hook", cycle = 1}}},
+	breakdown = {bass = false},
+}
+```
+
+An entry is a pattern id with where it plays: `from` and `to` in bars (or
+"half", "phrase", "blend"), `cycle` and `last` for the drops it plays in,
+`every` for a bar every so many, `keep` to hold a part to its entry. The
+plan lies over the one every style shares (`StyleKit.plan`), and a flavour's
+over its style's. The host's [`Composer`](host/Composer.lua) writes each
+track's material and builds its [`Arrangement`](host/Arrangement.lua) once,
+from the seed alone, and renders bar n from the blocks under it. Blocks are
+plain data, never overlap in a lane, and point at patterns by id, so tests
+read the plan instead of rendering audio. A block may carry automation, as
+a clip does: `level` fades it and `filter` sweeps a low-pass or a high-pass
+over it; the channel's strip in the Synth rides it through the bar.
+
+After the plan come the producer's moves (`StyleKit.produce`), drawn from
+the track's seed: parts join a phrase or two late and leave early, a phrase
+ends on a fill or with the drums or the bass pulled out of its last bar, the
+drums open through the intro, the bass is teased under a build, and the
+outro sheds parts for the next track to mix over.
 
 No two tracks take the same road. Each draws its form from the seed: how it
 reaches the first drop (a build, straight out of the intro, or by way of a
@@ -77,17 +161,11 @@ a build alone, a breakdown the drop slams out of, or nothing: a double
 drop), and how long each section runs, in whole eight-bar phrases so that
 tracks still line up in the mix. A build winds up in one of four ways: a
 snare roll, a kick roll, the drop's groove opening through a filter, or the
-drums gone under the riser. A style weights these in its set's `form`
-(Trance always breaks down and builds; Techno prefers cold opens and kick
-rolls), and the same seed gives each style different forms. The kit
-([`host/StyleKit.lua`](host/StyleKit.lua)) is the shared functionality:
-seeded randomness, modes, voice-led chords, a drum kit for every track
-(a snare character from the flavour's `snares` — tight, fat, rimshot,
-roomy, crunchy, layered with a clap, vintage — and a retuned kick, hats and
-clap), a call-and-response melody writer, the DJ set that sequences tracks and sections, the bar score with
-humanized hits, the lane builder (`add`, `cut`, `automate`), the shared punctuation (crashes, risers,
-build rolls, throws), the blend into a new track, and the Amen break. Adding a genre is one folder and
-one line in [`host/Styles.lua`](host/Styles.lua).
+drums gone under the riser. A style weights these in its set's `form`, a
+flavour in its own, and the same seed gives each style different forms.
+Adding a genre is one folder and one line in
+[`host/Styles.lua`](host/Styles.lua); adding a flavour, a groove or a patch
+is a table.
 
 **Visualizer plugins** (`plugins/visualizers/<id>/`) are declarative: a
 title, symbol, the sections the director shows them in, and a
@@ -115,16 +193,21 @@ stage rather than the window, and the picture continues behind the panels.
 
 | File | Role |
 |---|---|
-| `Model.lua` | Lanes by family, the timeline's tracks and the parts each gathers, controls (the single source for the sliders), the current style's ranges and which lanes sound |
+| `Model.lua` | The roles a channel can have, their families, and the controls (the single source for the sliders) |
 | `Controller.lua` | Window, transport, Style and Scene menus, the mini player, and the 60 Hz display loop |
-| `host/Styles.lua`, `host/StyleKit.lua` | The style extension point and its host API, with the lane builder and the shared patterns |
-| `host/Arrangement.lua`, `host/Composer.lua` | A track's plan of sections and lanes, checked and searchable; the composer every style shares, which arranges tracks and renders bars from their blocks |
+| `library/` | The authored material every style shares: `Patches.lua`, `Beats.lua` (breaks and fills), `Lines.lua`, `Hooks.lua`; `calibrate.lua` levels the patches |
+| `host/Library.lua` | The notation beats, lines and hooks are written in; a style's library over the shared one |
+| `host/Motif.lua` | What the generator writes itself: rhythm cells, motifs and their development into hooks, bass lines, comping, arpeggios |
+| `host/Styles.lua`, `host/StyleKit.lua` | The style extension point and its host API: theory, the set and its tracks, the lane builder, the plan, the producer's moves, the shared patterns and the bar score |
+| `host/Arrangement.lua`, `host/Composer.lua` | A track's plan of sections and lanes, checked and searchable; the composer every style shares, which writes a track's material, arranges it and renders bars |
 | `host/Visualizers.lua` | The visualizer extension point, the program it links and the draws that show a scene on a layer |
 | `plugins/styles/*` | Drum & Bass, Techno, House, Trance, Dubstep, Breakbeat, UK Garage |
 | `plugins/visualizers/*` | Synthwave Horizon, Valley Flight, Solar System, Liquid Chrome, Light Trails, Tunnel, Crystals |
-| `models/Timeline.lua`, `views/Timeline.etlua`, `shaders/Timeline.metal` | The arrangement strip: tracks, instanced clips and the headline; track names; clips scrolling past the playhead |
-| `models/Synth.lua` | Sample-accurate synthesis: kicks, snares, claps and hats designed per style and voiced anew for every track, shared cymbals and percussion, the Amen loop and its slice sampler, reese/acid/wobble bass with resonance, filter envelope, accents and retriggered LFO, sub, pads, FM electric piano, stabs, arp plucks, a gliding lead, risers, per-voice fades and filter sweeps from the arrangement, ping-pong delay with throws, reverb, sidechain pump, soft clip |
-| `models/Amen.lua` | The recreated Amen break's four-bar pattern and slice bookkeeping |
+| `models/Drums.lua` | The kit, designed per style and voiced anew for every track, and the loops rendered from beats |
+| `models/Instrument.lua` | The patch-driven voice every pitched channel plays |
+| `models/Synth.lua` | The player: bars to events, slices and voices on eight channel strips, sidechain pump, ping-pong delay with throws, reverb, soft clip |
+| `models/Calibration.lua` | How loud a patch plays its role's phrase, and the level each role is held to |
+| `models/Timeline.lua`, `views/Timeline.etlua`, `shaders/Timeline.metal` | The arrangement strip: eight rows, instanced clips, channel meters and the headline |
 | `models/Visuals.lua` | Spectrum smoothing, peak holds, kick and snare flashes, the scene director with crossfades, and the shader value layout |
 | `services/AudioOutput.lua` | Speaker output through [AudioStream](../../src/plugins/audio/README.md) |
 | `views/` | Window, now-playing cards, sliders, the linked visualizer and the mini player |
@@ -137,15 +220,18 @@ drives light, colour and pulses, never motion. The controller's timer fires
 irregularly while synthesis runs, so each tick advances by the time measured
 with `ns.uptime()`, and shaders extrapolate travel by its speed times
 `inputs.age` (the seconds since values arrived) to move evenly on every
-display frame. Full
-synthesis costs about a fifth of one core at its busiest.
+display frame. Synthesis
+costs between an eighth and a fifth of one core at 44.1 kHz.
 
-Tests: `tests/dnb.test.lua` (the drum & bass set, composition, synthesis,
-visuals, the controller with a fake output, the native plugin),
-`tests/dnb_arrangement.test.lua` (clip automation, cuts and rides, the
-producer's moves in every style, forms and build kinds, filtered voices,
-the whole-mix sweep, timeline clips),
-`tests/dnb_plugins.test.lua` (the contract every style plugin keeps, style
-switching, scene pinning, the mini player), `tests/plugins.test.lua` (the
+Tests: `tests/dnb.test.lua` (the set and its channels, variety across a
+set, material, composition, synthesis, visuals, the controller with a fake
+output, the timeline, the native plugin), `tests/dnb_library.test.lua` (the
+notation, every patch and its loudness, the instrument, kits and loops,
+motifs and their development), `tests/dnb_arrangement.test.lua` (the lane
+builder, the plan, the producer's moves in every style, forms and build
+kinds, channel rides, timeline clips),
+`tests/dnb_plugins.test.lua` (the contract every style plugin keeps, every
+flavour rendered, track kits, style switching, scene pinning, the mini
+player), `tests/plugins.test.lua` (the
 framework), `tests/shader_view.test.lua`, `tests/window_chrome.test.lua`,
 `tests/control_styles.test.lua` and `tests/fixed_size.test.lua`.

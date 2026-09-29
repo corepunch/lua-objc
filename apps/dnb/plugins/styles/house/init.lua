@@ -1,196 +1,219 @@
--- House: Deep, Classic and Disco tracks at 124. A round kick on every beat
--- with a deep sidechain pump, claps on two and four, open hats on the
--- off-beats and a shaker running 16ths; seventh and ninth chords comped on
--- the electric piano, an off-beat organ bass and, in Disco tracks, octave
--- bass and filtered stabs.
+-- House: four to the floor from 118 to 128 BPM. A round kick with a deep
+-- sidechain pump, claps on two and four, open hats on the off-beats;
+-- seventh and ninth chords comped over an off-beat bass. Its flavours: Deep
+-- on an electric piano, Classic, Disco on octave bass and strings, Piano
+-- house, Organ house, Tribal on a percussion loop, Acid, and French house
+-- opening its loops through a filter.
+
+-- Dorian, minor and major loops of four chords, a bar each.
+local PROGRESSIONS = {{1, 4, 1, 4}, {2, 5, 1, 1}, {1, 6, 4, 5}, {1, 7, 4, 4}, {6, 4, 1, 5}, {2, 4, 5, 5},
+	{1, 3, 4, 4}, {4, 5, 6, 6}, {1, 1, 4, 5}}
+-- Where house chords are struck: the comping rhythms of its pianists.
+local COMPS = {"x..x..x...x.....", "..x...x...x...x.", "x......x..x.....", "...x..x....x..x.", "x.....x.x.....x.",
+	"x..x....x..x....", "..x..x....x..x..", "x..x..x...x.x...", "x.x..x....x.....", "..x.x...x.x....."}
+
+local BEATS = {
+	{id = "house.four", name = "Four", lanes = {
+		{"kick", "X...X...X...X..."},
+		{"clap", "....X.......X...", gain = 0.85, light = false},
+		{"openHat", "..x...x...x...x.", gain = 0.45},
+		{"shaker", "xoxoxoxoxoxoxoxo", gain = 0.4, when = "energy"},
+		{"ride", "x.o.x.o.x.o.x.o.", gain = 0.35, light = false},
+		{"conga", ".......x..x....x", gain = 0.45, when = "complexity"},
+	}},
+	{id = "house.jack", name = "Jack", bars = 2, lanes = {
+		{"kick", "X...X...X...X...|X...X...X...X..x"},
+		{"clap", "....X.......X...", gain = 0.85, light = false},
+		{"hat", "x.xxx.xxx.xxx.xx", gain = 0.3},
+		{"openHat", "..x...x...x...x.", gain = 0.45, light = false},
+		{"ghost", ".......g.....g..", when = "complexity"},
+		{"cowbell", "......x.....x...", gain = 0.35, when = "energy"},
+	}},
+	{id = "house.deep", name = "Deep", bars = 2, lanes = {
+		{"kick", "X...X...X...X...", gain = 0.95},
+		{"snap", "....x.......x...", gain = 0.7, light = false},
+		{"rim", "............x...|.......x....x...", gain = 0.4},
+		{"hat", "..x...x...x...x.", gain = 0.5},
+		{"shaker", "x.xxx.xxx.xxx.xx", gain = 0.28, when = "energy"},
+		{"conga", "...x......x.....", gain = 0.4, when = "complexity"},
+	}},
+	{id = "house.disco", name = "Disco", bars = 2, lanes = {
+		{"kick", "X...X...X...X..."},
+		{"clap", "....X.......X...", gain = 0.85, light = false},
+		{"openHat", "..x...x...x...x.", gain = 0.55},
+		{"hat", "xo.oxo.oxo.oxo.o", gain = 0.3, light = false},
+		{"tambourine", "x.x.x.x.x.x.x.x.", gain = 0.4, when = "energy"},
+		{"cowbell", "x..x..x...x.x...|x..x..x...x..x..", gain = 0.3, when = "complexity"},
+	}},
+	{id = "house.tribal", name = "Tribal", bars = 2, lanes = {
+		{"kick", "X...X...X...X..."},
+		{"clap", "....x.......x...", gain = 0.7, light = false},
+		{"conga", "..x..x.x..x..x.x|..x..x.x.x..x.x.", gain = 0.55},
+		{"tomLow", "......x.......x.", gain = 0.45, light = false},
+		{"shaker", "xoxoxoxoxoxoxoxo", gain = 0.35, when = "energy"},
+		{"clave", "x..x..x...x.x...", gain = 0.3, when = "complexity"},
+	}},
+	{id = "house.chicago", name = "Chicago", bars = 2, lanes = {
+		{"kick", "X...X...X...X...|X...X...X.x.X..."},
+		{"clap", "....X.......X...", gain = 0.9, light = false},
+		{"hat", "x.xxx.xxx.xxx.xx", gain = 0.32},
+		{"openHat", "..x...x...x...x.", gain = 0.4, when = "energy"},
+		{"tomMid", ".............x.x", gain = 0.4, when = "complexity"},
+	}},
+	-- Percussion loops for the tops channel.
+	{id = "house.bongos", name = "Bongos", bars = 2, lanes = {
+		{"conga", "x.xo.xo.x.xo.xo.|x.xo.xo.xoxo.xo."},
+		{"shaker", "..x...x...x...x.", gain = 0.5},
+	}},
+	{id = "house.shakers", name = "Shakers", bars = 2, lanes = {
+		{"shaker", "XoxoXoxoXoxoXoxo"},
+		{"tambourine", "....x.......x...", gain = 0.6},
+		{"cowbell", "..........x.....|......x.....x...", gain = 0.4},
+	}},
+}
+
+local LINES = {
+	-- The off-beat organ bass.
+	{id = "house.offbeat", name = "Offbeat", notes = "2:0:1.5 6:0:1.5 10:0:1.5 14:0:1.5"},
+	{id = "house.synco", name = "Syncopated", notes = "0:0:1.5 3:0:1.5? 6:7:1.5 10:0:1.5 14:4:1.5?"},
+	{id = "house.octaves", name = "Disco Octaves", notes = "2:0:1 3:7:1 6:0:1 7:7:1 10:0:1 11:7:1 14:0:1 15:7:1"},
+	{id = "house.walk", name = "Walk", notes = "0:0:2 3:0:1 6:2:2 8:4:2 11:4:1? 14:6:2 | 0:0:2 3:0:1 6:2:2 8:3:2 11:2:1? 14:1:2"},
+	{id = "house.garage", name = "Garage", notes = "0:0:3 4:0:1? 7:7:2 10:6:2 13:4:2"},
+	{id = "house.bump", name = "Bump", notes = "0:0:2 3:0:2 6:0:2? 8:6:2 11:4:2 14:2:2+ | 0:0:2 3:0:2 6:0:2? 8:7:2 11:6:2 14:4:2+"},
+	{id = "house.low", name = "Low", notes = "0:0:6 7:0:1? 10:6:2 12:4:3"},
+}
+
+local FILLS = {"fill.claps", "fill.snares", "fill.congas", "fill.kicks", "@cut", "@retrig", "@reverse"}
 
 local FLAVOURS = {
-	{id = "deep", name = "Deep House", keys = 1, stabs = 0.3, octave = 0, lead = 0.3, arp = 0.3},
-	{id = "classic", name = "Classic House", keys = 0.7, stabs = 1, octave = 0.3, lead = 0.6, arp = 0.5},
-	{id = "disco", name = "Disco House", keys = 0.5, stabs = 0.8, octave = 1, lead = 0.4, arp = 0.8},
-}
-local ARRANGEMENT = {introBars = 16, buildBars = 8, dropBars = 32, breakdownBars = 16, rebuildBars = 8,
-	outroBars = 16, blendBars = 8, minCycles = 2, maxCycles = 3}
--- Dorian and major loops of two or four chords, a bar each.
-local PROGRESSIONS = {{1, 4, 1, 4}, {2, 5, 1, 1}, {1, 6, 4, 5}, {1, 7, 4, 4}, {6, 4, 1, 5}, {2, 4, 5, 5}}
--- Comping rhythms over a bar: steps where the chord is struck.
-local COMPS = {{0, 3, 6, 10}, {2, 6, 10, 14}, {0, 7, 10}, {3, 6, 11, 14}, {0, 6, 8, 14}}
-local BASS_LINES = {
-	{{2, 0}, {6, 0}, {10, 0}, {14, 0}},             -- the off-beat organ bass
-	{{0, 0}, {3, 0}, {6, 12}, {10, 0}, {14, 7}},    -- syncopated
-	{{2, 0}, {3, 12}, {6, 0}, {7, 12}, {10, 0}, {11, 12}, {14, 0}, {15, 12}}, -- disco octaves
-}
-
-local function buildCycle(kit, rng, track)
-	local mode, flavour = track.mode, track.flavour
-	local progression = kit.stableProgression(mode, rng.pick(PROGRESSIONS))
-	return {
-		progression = progression,
-		voicings = kit.voicings(mode, progression, {0, 2, 4, 6}),
-		comp = rng.pick(COMPS),
-		bassLine = flavour.octave >= 1 and BASS_LINES[3] or rng.pick({BASS_LINES[1], BASS_LINES[2]}),
-		keysOn = rng.chance(flavour.keys), stabsOn = rng.chance(flavour.stabs),
-		leadOn = rng.chance(flavour.lead), arpOn = rng.chance(flavour.arp),
-		lead = kit.melody(rng),
-		shaker = rng.chance(0.7),
-	}
-end
-
--- The arrangement ------------------------------------------------------------
-
-local function arrange(kit, track, cycles)
-	local lanes = kit.lanes(track)
-	kit.blendIn(lanes, track)
-	for _, section in ipairs(track.sections) do
-		local id, cycle = section.id, cycles[section.cycle]
-		if id == "intro" then
-			lanes:within("kick", section, 0, nil, "kick")
-			lanes:within("snare", section, 8, nil, "clap")
-			lanes:within("hats", section, 0, nil, "hats")
-			lanes:fill("pads", section.start, section.length, "pads.chords")
-		elseif id == "build" then
-			lanes:within("snare", section, 0, nil, "roll.clap")
-			lanes:within("hats", section, 0, nil, "hats")
-			lanes:within("pads", section, 0, nil, "pads.chords")
-			if cycle.arpOn then lanes:within("arp", section, 0, nil, "arp") end
-		elseif id == "drop" then
-			lanes:within("kick", section, 0, nil, "kick")
-			lanes:within("snare", section, 0, nil, "clap")
-			-- A shaker running 16ths, or closed hats when the cycle has none.
-			lanes:within("hats", section, 0, nil, cycle.shaker and "hats" or "hats.drop")
-			lanes:within("ride", section, 16, nil, "ride")
-			lanes:within("percussion", section, 0, nil, cycle.shaker and "perc.drop" or "perc.congas")
-			lanes:within("sub", section, 0, nil, "sub.organ")
-			lanes:within("reese", section, 0, nil, "reese")
-			lanes:within("pads", section, 16, nil, "pads.chords")
-			if cycle.keysOn then lanes:within("keys", section, 0, nil, "keys") end
-			if cycle.stabsOn then lanes:within("stabs", section, 0, nil, "stabs") end
-			if cycle.leadOn then lanes:within("lead", section, 16, nil, "lead") end
-			lanes:phraseEnds("throws", section, 4, "throw")
-		elseif id == "breakdown" then
-			lanes:within("sub", section, 0, nil, "sub.hold")
-			lanes:within("pads", section, 0, nil, "pads.chords")
-			if cycle.keysOn then lanes:within("keys", section, 0, nil, "keys") end
-			if cycle.arpOn then lanes:within("arp", section, 0, nil, "arp") end
-			if cycle.leadOn then lanes:within("lead", section, 8, nil, "lead.soft") end
-			lanes:phraseEnds("throws", section, 4, "throw")
-		elseif id == "outro" then
-			lanes:within("kick", section, 0, nil, "kick")
-			lanes:within("snare", section, 0, nil, "clap")
-			lanes:within("hats", section, 0, nil, "hats")
-			if cycle.shaker then lanes:within("percussion", section, 0, nil, "perc.shaker") end
-			lanes:within("sub", section, 0, 8, "sub.organ")
-			lanes:within("reese", section, 0, 8, "reese")
-			if cycle.keysOn then lanes:within("keys", section, 0, nil, "keys") end
-		end
-	end
-	kit.punctuate(lanes, track, function() return "fill.claps" end)
-	kit.produce(lanes, track)
-	return lanes:done()
-end
-
--- The patterns -----------------------------------------------------------------
-
-local function shaker(ctx)
-	for step = 0, 15 do ctx.hit(step, "shaker", step % 2 == 0 and 0.35 or 0.22) end
-end
-local function congas(ctx)
-	if ctx.complexity <= 0.3 then return end
-	ctx.hit(7, "conga", 0.35)
-	if ctx.complexity > 0.6 then ctx.hit(10, "conga", 0.3); ctx.hit(15, "rim", 0.3) end
-end
-
-local function lead(gain)
-	return function(bar, ctx)
-		for _, note in ipairs(ctx.cycle.lead[ctx.phraseBar % 4 + 1]) do
-			table.insert(bar.lead, {step = note.step, length = note.length, glide = note.glide,
-				gain = gain, note = ctx.kit.leadPitch(ctx.mode, ctx.tonic, ctx.chord.degree, note.offset)})
-		end
-	end
-end
-
-local PATTERNS = {
-	{id = "kick", part = "kick", render = function(bar, ctx) bar:sequence("x...x...x...x...", "kick", 1, ctx.humanize) end},
-	{id = "clap", part = "snare", render = function(_, ctx)
-		ctx.hit(4, "clap", 0.85)
-		ctx.hit(12, "clap", 0.85, {throw = ctx.throw})
-	end},
-	{id = "fill.claps", part = "fills", render = function(_, ctx)
-		for step = 13, 15 do ctx.hit(step, "clap", 0.4 + 0.15 * (step - 13)) end
-	end},
-	{id = "hats", part = "hats", render = function(_, ctx)
-		for step = 2, 14, 4 do ctx.hit(step, "openHat", 0.45) end
-	end},
-	{id = "hats.drop", part = "hats", render = function(_, ctx)
-		for step = 2, 14, 4 do ctx.hit(step, "openHat", 0.45) end
-		if ctx.energy > 0.5 then
-			for step = 0, 15, 2 do if step % 4 ~= 2 then ctx.hit(step, "hat", 0.3) end end
-		end
-	end},
-	{id = "ride", part = "ride", render = function(_, ctx)
-		for step = 0, 15, 2 do ctx.hit(step, "ride", step % 4 == 2 and 0.35 or 0.22) end
-	end},
-	{id = "perc.shaker", part = "percussion", render = function(_, ctx) shaker(ctx) end},
-	{id = "perc.congas", part = "percussion", render = function(_, ctx) congas(ctx) end},
-	{id = "perc.drop", part = "percussion", render = function(_, ctx) shaker(ctx); congas(ctx) end},
-	-- The off-beat organ bass, syncopated or in disco octaves.
-	{id = "sub.organ", part = "sub", render = function(bar, ctx)
-		for i, note in ipairs(ctx.cycle.bassLine) do
-			if i == 1 or note[1] % 4 == 2 or ctx.energy > 0.4 then
-				table.insert(bar.bass, {step = note[1], length = 1.5, note = ctx.chord.root + 12 + note[2], reese = 0.8,
-					subOnly = true})
-			end
-		end
-	end},
-	-- Seventh chords comped on the electric piano.
-	{id = "keys", part = "keys", render = function(bar, ctx)
-		for index, step in ipairs(ctx.cycle.comp) do
-			if index == 1 or ctx.complexity > 0.25 then
-				table.insert(bar.keys, {step = step, length = 2, notes = ctx.chord.notes, gain = index == 1 and 1 or 0.75})
-			end
-		end
-	end},
-	{id = "stabs", part = "stabs", render = function(bar, ctx)
-		if ctx.energy <= 0.35 then return end
-		for _, step in ipairs({3, 6, 11}) do
-			if step ~= 11 or ctx.complexity > 0.5 then
-				table.insert(bar.stabs, {step = step, notes = ctx.chord.notes, throw = ctx.throw and step == 11 or nil})
-			end
-		end
-	end},
-	{id = "arp", part = "arp", render = function(bar, ctx)
-		local notes = ctx.chord.notes
-		for step = 0, 15, 2 do
-			table.insert(bar.arp, {step = step, note = notes[(step // 2) % #notes + 1] + 12, length = 1.5,
-				gain = step % 4 == 0 and 0.9 or 0.6, pan = step % 4 == 0 and 0.4 or 0.6})
-		end
-	end},
-	{id = "lead", part = "lead", bars = 4, render = lead(0.85)},
-	{id = "lead.soft", part = "lead", bars = 4, render = lead(0.6)},
+	{id = "deep", name = "Deep House", tempo = {118, 123}, swing = {0.06, 0.14},
+		channels = {
+			{role = "drums", beats = {"house.deep", "house.four"}},
+			{role = "tops", beats = {"house.shakers", "house.bongos"}, gain = 0.5, chance = 0.5},
+			{role = "bass", patches = {"bass.round", "bass.sub", "bass.fm", "bass.organ"}, lines = {"house.low", "house.offbeat", "house.bump", "@cell"}},
+			{role = "pad", patches = {"pad.warm", "pad.glass", "pad.air"}, chance = 0.8},
+			{role = "keys", patches = {"keys.rhodes", "keys.wurli", "keys.vibes"}},
+			{role = "arp", patches = {"pluck.bell", "pluck.marimba", "pluck.glass"}, chance = 0.3, arp = {rates = {2}}},
+			{role = "lead", patches = {"lead.sine", "lead.flute", "lead.vox"}, chance = 0.4,
+				hooks = {"hook.voice", "hook.space", "hook.sigh", "hook.question", "@motif"}},
+			{role = "fx", patches = {"fx.wind", "fx.riser"}},
+		}},
+	{id = "classic", name = "Classic House", tempo = {122, 126}, swing = {0.04, 0.12},
+		channels = {
+			{role = "drums", beats = {"house.four", "house.jack", "house.chicago"}},
+			{role = "bass", patches = {"bass.organ", "bass.fm", "bass.moog"}, lines = {"house.offbeat", "house.synco", "house.bump"}},
+			{role = "pad", patches = {"pad.saw", "pad.strings", "pad.organ"}, chance = 0.7},
+			{role = "keys", patches = {"keys.piano", "keys.organ", "keys.rhodes"}, chance = 0.7},
+			{role = "stab", patches = {"stab.organ", "stab.saw", "stab.brass"}, steps = {"...x..x....x....", "..x...x...x.....", "...x..x...x..x.."}},
+			{role = "arp", patches = {"pluck.saw", "pluck.chip", "pluck.bell"}, chance = 0.5, arp = {rates = {2}}},
+			{role = "lead", patches = {"lead.saw", "lead.square", "lead.fm"}, chance = 0.6,
+				hooks = {"hook.jack", "hook.riff", "hook.call", "hook.bounce", "@motif"}},
+			{role = "fx", patches = {"fx.riser", "fx.siren"}},
+		}},
+	{id = "disco", name = "Disco House", tempo = {122, 127}, swing = {0.02, 0.08},
+		channels = {
+			{role = "drums", beats = {"house.disco", "house.four"}},
+			{role = "tops", beats = {"house.shakers", "house.bongos"}, gain = 0.5, chance = 0.4},
+			{role = "bass", patches = {"bass.moog", "bass.fm", "bass.pluck"}, lines = {"house.octaves", "house.walk", "house.synco"}},
+			{role = "pad", patches = {"pad.strings", "pad.supersaw"}},
+			{role = "keys", patches = {"keys.clav", "keys.piano", "keys.rhodes"}, chance = 0.6},
+			{role = "stab", patches = {"stab.brass", "stab.pizzicato", "stab.saw"}, chance = 0.8},
+			{role = "arp", patches = {"pluck.saw", "pluck.string"}, chance = 0.6, arp = {rates = {2, 1}}},
+			{role = "fx", patches = {"fx.riser"}},
+		},
+		plan = {drop = {pad = "pad.chords"}}},
+	-- The piano is the hook: bright chords, struck hard.
+	{id = "piano", name = "Piano House", tempo = {122, 128}, swing = {0.02, 0.1},
+		harmony = {progressions = {{1, 6, 4, 5}, {6, 4, 1, 5}, {1, 4, 6, 5}, {4, 5, 6, 6}, {1, 3, 4, 4}}},
+		channels = {
+			{role = "drums", beats = {"house.four", "house.jack"}},
+			{role = "bass", patches = {"bass.organ", "bass.fm", "bass.round"}, lines = {"house.offbeat", "house.garage", "house.synco"}},
+			{role = "pad", patches = {"pad.strings", "pad.warm"}, chance = 0.6},
+			{role = "keys", patches = {"keys.piano"}, comp = {length = 2}},
+			{role = "stab", patches = {"stab.piano", "stab.organ"}, chance = 0.4},
+			{role = "lead", patches = {"lead.vox", "lead.sine", "lead.saw"}, chance = 0.5,
+				hooks = {"hook.call", "hook.question", "hook.anthem", "hook.leap"}},
+			{role = "fx", patches = {"fx.riser", "fx.wind"}},
+		},
+		plan = {intro = {keys = {"keys.comp", from = "half"}}, build = {keys = "keys.comp"},
+			drop = {keys = "keys.comp"}}},
+	{id = "organ", name = "Organ House", tempo = {124, 128}, swing = {0.08, 0.16},
+		channels = {
+			{role = "drums", beats = {"house.jack", "house.chicago", "house.four"}},
+			{role = "bass", patches = {"bass.organ", "bass.donk", "bass.fm"}, lines = {"house.garage", "house.bump", "house.synco"}},
+			{role = "keys", patches = {"keys.organ"}},
+			{role = "stab", patches = {"stab.organ"}, steps = {"..x...x...x...x.", "...x..x....x..x."}},
+			{role = "lead", patches = {"lead.square", "lead.fm"}, chance = 0.4, hooks = {"hook.jack", "hook.skank", "hook.bounce"}},
+			{role = "fx", patches = {"fx.riser"}},
+		}},
+	{id = "tribal", name = "Tribal House", tempo = {124, 128}, swing = {0.04, 0.1},
+		harmony = {progressions = {{1, 1, 1, 1}, {1, 1, 4, 4}, {1, 7, 1, 7}}, change = 0.2},
+		channels = {
+			{role = "drums", beats = {"house.tribal", "house.four"}},
+			{role = "tops", beats = {"house.bongos", "break.bongo", "house.shakers"}, gain = 0.7},
+			{role = "bass", patches = {"bass.sub", "bass.round", "bass.donk"}, lines = {"house.low", "@cell", "line.tresillo"}},
+			{role = "stab", patches = {"stab.dub", "stab.pizzicato", "stab.organ"}, chance = 0.6},
+			{role = "counter", patches = {"pluck.marimba", "pluck.string", "lead.flute"}, chance = 0.7,
+				hooks = {"hook.tresillo", "hook.call", "hook.space", "@motif"}},
+			{role = "texture", patches = {"texture.air", "texture.drone"}, chance = 0.6},
+			{role = "fx", patches = {"fx.wind", "fx.riser"}},
+		},
+		plan = {intro = {tops = {"tops.loop", from = "half"}}, breakdown = {tops = "tops.loop", counter = "counter.answer"},
+			drop = {counter = {"counter.answer", from = "phrase"}}}},
+	{id = "acid", name = "Acid House", tempo = {120, 126}, swing = {0.02, 0.1},
+		harmony = {progressions = {{1, 1, 1, 1}, {1, 1, 4, 4}, {1, 7, 1, 7}}, change = 0.2, barsPerChord = 2},
+		channels = {
+			{role = "drums", beats = {"house.chicago", "house.jack"}},
+			{role = "bass", patches = {"bass.acid", "bass.acidSquare"}, lines = {"@acid"}, octave = 0},
+			{role = "pad", patches = {"pad.choir", "pad.dark"}, chance = 0.5},
+			{role = "stab", patches = {"stab.organ", "stab.piano"}, chance = 0.5},
+			{role = "texture", patches = {"texture.tape"}, chance = 0.4},
+			{role = "fx", patches = {"fx.siren", "fx.riser"}},
+		},
+		plan = {build = {bass = {"bass.line", from = "half", filter = {kind = "lowpass", from = 0.2, to = 0.7}}},
+			breakdown = {bass = {"bass.line", filter = {kind = "lowpass", from = 0.25, to = 0.8}}}}},
+	-- A disco loop heard through a filter that opens and closes.
+	{id = "french", name = "French House", tempo = {122, 126}, swing = {0.02, 0.08},
+		harmony = {progressions = {{1, 4, 1, 4}, {2, 5, 1, 1}, {1, 6, 4, 5}, {4, 5, 6, 6}}, change = 0.1},
+		form = {openings = {"cold", "build"}, builds = {"sweep", "sweep", "rise"}, links = {"breakdown", "build", "breakdown build"}},
+		channels = {
+			{role = "drums", beats = {"house.disco", "house.four"}},
+			{role = "bass", patches = {"bass.moog", "bass.pluck"}, lines = {"house.octaves", "house.walk", "house.bump"}},
+			{role = "pad", patches = {"pad.strings", "pad.supersaw"}},
+			{role = "stab", patches = {"stab.brass", "stab.saw"}, steps = {"x..x..x...x.....", "..x..x....x..x.."}},
+			{role = "keys", patches = {"keys.clav", "keys.rhodes"}, chance = 0.5},
+			{role = "fx", patches = {"fx.riser"}},
+		},
+		plan = {intro = {pad = {"pad.chords", filter = {kind = "lowpass", from = 0.15, to = 0.6}},
+				stab = {"stab.hits", filter = {kind = "lowpass", from = 0.15, to = 0.6}}},
+			drop = {pad = "pad.chords"},
+			breakdown = {stab = {"stab.hits", filter = {kind = "lowpass", from = 0.8, to = 0.2}}}}},
 }
 
 return {
-	api = 2,
+	api = 3,
 	title = "House",
 	symbol = "house.fill",
-	summary = "Deep, Classic and Disco house, four to the floor",
-	tempo = {min = 118, max = 128, default = 124},
-	defaults = {energy = 0.6, complexity = 0.5, swing = 0.08, humanize = 0.3,
-		cutoff = 0.45, wobble = 0, drive = 0.2, space = 0.45},
-	sound = {
+	summary = "Deep, Classic, Disco, Piano and more, four to the floor",
+	defaults = {energy = 0.6, complexity = 0.5, humanize = 0.3, space = 0.45},
+	kit = {
 		kick = {base = 52, sweep = 110, sweepTime = 0.02, decay = 0.22, drive = 1.8, click = 0.3, length = 0.4},
 		clap = {decay = 0.18, level = 1},
 		hat = {scale = 1.7, decay = 0.02, openDecay = 0.1},
-		bass = {detune = 0.002, resonance = 0.9, envAmount = 1.2, envDecay = 0.08, shape = "square"},
-		pad = {brightness = 0.05, attack = 0.3},
-		stab = {decay = 0.14, octave = 1},
-		keys = {decay = 1.5, autopanDepth = 0.25},
-		mix = {duckDepth = 0.65, duckRelease = 0.16, keys = 0.07, reese = 0.28, sub = 0.5, delaySteps = 3},
 	},
+	mix = {duckDepth = 0.65, duckRelease = 0.16, bass = 0.75, keys = 1.25},
 	set = {form = {openings = {"build", "cold", "melodic"}, builds = {"sweep", "sweep", "roll", "rise"}},
-		flavours = FLAVOURS, modes = {"dorian", "minor", "major"}, arrangement = ARRANGEMENT, modulations = {0, 2, 5}},
-	barsPerChord = 1,
-	material = buildCycle,
-	arrange = arrange,
-	patterns = PATTERNS,
+		modes = {"dorian", "minor", "major"}, modulations = {0, 2, 5},
+		arrangement = {introBars = 16, buildBars = 8, dropBars = 32, breakdownBars = 16, rebuildBars = 8,
+			outroBars = 16, blendBars = 8, minCycles = 2, maxCycles = 3}},
+	harmony = {progressions = PROGRESSIONS, voicing = {0, 2, 4, 6}, barsPerChord = 1, cells = COMPS},
+	roles = {drums = {fills = FILLS, roll = "clap"}, bass = {octave = 1}},
+	plan = {
+		intro = {pad = {"pad.chords", from = "blend"}},
+		drop = {pad = {"pad.chords", from = 16}, keys = "keys.comp", arp = {"arp.run", from = 8}},
+		breakdown = {lead = {"lead.soft", from = 8}},
+		outro = {bass = {"bass.line", to = 8}},
+	},
+	flavours = FLAVOURS,
+	library = {beats = BEATS, lines = LINES},
 }
