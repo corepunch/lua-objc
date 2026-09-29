@@ -22,7 +22,13 @@ function Preview:render(files)
 		if type(content) == "table" then content = self.ns.VStack(content) end
 		return self.ns.HostingController(content)
 	end
+	-- The framework's bundled components are part of the vocabulary a
+	-- project's templates may use.
 	local function read(path)
+		if files[path] == nil and tostring(path):match("^lua/components/[%w_]+%.%a+$") then
+			local ok, source = pcall(self.readFramework, path)
+			if ok and source then return source end
+		end
 		local source = assert(files[path], "Project file not found: " .. tostring(path))
 		return source
 	end
@@ -47,8 +53,8 @@ function Preview:render(files)
 		if name == "UIKitNative" or name == "AppKitNative" then return reader end
 		if loaded[name] ~= nil then return loaded[name] end
 		local source, path
-		if name == "ui.xml" then
-			path = "lua/ui/xml.lua"; source = self.readFramework(path)
+		if name == "ui.xml" or name == "ui.component" then
+			path = "lua/" .. name:gsub("%.", "/") .. ".lua"; source = self.readFramework(path)
 		elseif name == "etlua" then
 			path = "lua/vendor/etlua/etlua.lua"; source = self.readFramework(path)
 		else

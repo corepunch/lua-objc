@@ -32,7 +32,7 @@ nav:
       - XML syntax: agents/xml-syntax.md
       - Apple UI checklist: agents/apple-ui-checklist.md
       - Delight vs coverage: delight.md
-      - Lua components: components.md
+      - Components: components.md
       - Table behavior: tableview_swiftui.md
       - iOS host and hot reload: ios.md
       - Swift/SwiftUI pain points: SWIFTUI_PAIN_POINTS.md

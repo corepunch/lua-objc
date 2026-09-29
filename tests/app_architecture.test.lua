@@ -178,10 +178,12 @@ for _, app in ipairs(apps) do
 	for _, path in ipairs(luaFiles(app, "services")) do
 		check(not constructorCalls(read(path)).Window, path .. " constructs ns.Window")
 	end
-	-- Components (ui/component.lua) are the one app-layer place that
-	-- composes native views, and they never own a window.
+	-- A component (ui/component.lua) is an etlua template; the module beside
+	-- it computes template data and constructs no view.
 	for _, path in ipairs(luaFiles(app, "components")) do
-		check(not constructorCalls(read(path)).Window, path .. " constructs ns.Window")
+		for name in pairs(constructorCalls(read(path))) do
+			check(false, path .. " constructs ns." .. name)
+		end
 	end
 end
 

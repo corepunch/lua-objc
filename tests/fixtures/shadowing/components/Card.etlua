@@ -1,0 +1,7 @@
+<VStack spacing="<%= compact and 2 or 8 %>" alignment="leading">
+  <Label text="<%= title %>" />
+  <VStack>
+    <ContentPresenter />
+  </VStack>
+  <Badge />
+</VStack>

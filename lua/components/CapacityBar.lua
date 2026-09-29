@@ -9,7 +9,6 @@
 --     <CapacitySegment value="180" color="systemBlue" label="Apps" />
 --     <CapacitySegment value="140" color="systemPurple" label="Documents" />
 --   </CapacityBar>
-local Component = require("ui.component")
 
 -- The bar is a capsule `height` points tall with hairline gaps between
 -- segments; the remainder uses the same quaternary fill as an empty chart.
@@ -44,35 +43,10 @@ function CapacityBar.segments(records, total)
 	return result
 end
 
-local function segmentView(ns, segment)
-	return ns.VStack { background = segment.color, flexGrow = segment.weight, flexBasis = 0, fillHeight = true }
-end
-
-function CapacityBar.build(self, ns)
-	local height = self.layout.fixedHeight or STYLE.height
-	local bar = Component.frame(self, { spacing = self.props.spacing or STYLE.spacing, fixedHeight = height,
-		fillWidth = true, cornerRadius = height / 2, clipsToBounds = true })
-	self.segments = {}
-	for index, segment in ipairs(CapacityBar.segments(self.records, self.props.total)) do
-		self.segments[index] = segmentView(ns, segment)
-		table.insert(bar, self.segments[index])
-	end
-	return ns.HStack(bar)
-end
-
--- A change keeps the segments and moves their weights, so the bar animates
--- inside a transaction; a different number of visible segments rebuilds.
-function CapacityBar.accepts(self, props, records)
-	return #CapacityBar.segments(records, props.total) == #self.segments
-end
-
-function CapacityBar.update(self, ns)
-	self.view.spacing = self.props.spacing or STYLE.spacing
-	for index, segment in ipairs(CapacityBar.segments(self.records, self.props.total)) do
-		local view = self.segments[index]
-		view.flexGrow = segment.weight
-		view.backgroundColor = ns.Color(segment.color)
-	end
+function CapacityBar.data(props, records, attrs)
+	local height = tonumber(attrs.height) or STYLE.height
+	return { segments = CapacityBar.segments(records, props.total), height = height, radius = height / 2,
+		spacing = props.spacing or STYLE.spacing }
 end
 
 return CapacityBar

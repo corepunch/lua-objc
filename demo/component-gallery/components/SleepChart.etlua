@@ -1,0 +1,12 @@
+<VStack spacing="<%= style.rowSpacing %>" alignment="leading" maxWidth="infinity">
+  <% for _, row in ipairs(rows) do -%>
+  <HStack key="<%= row.stage.id %>" spacing="0" alignment="center" maxWidth="infinity">
+    <Label text="<%= row.stage.label %>" size="<%= style.labelSize %>" color="secondary" width="<%= style.labelWidth %>" />
+    <HStack spacing="0" height="<%= style.rowHeight %>" flexGrow="1" flexBasis="0">
+      <% for index, piece in ipairs(row.pieces) do -%>
+      <VStack key="piece<%= index %>" flexGrow="<%= piece.gap or piece.interval %>" flexBasis="0" maxHeight="infinity"<% if piece.interval then %> background="<%= row.stage.color %>" cornerRadius="<%= style.cornerRadius %>"<% end %> />
+      <% end -%>
+    </HStack>
+  </HStack>
+  <% end -%>
+</VStack>

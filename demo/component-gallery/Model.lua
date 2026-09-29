@@ -9,11 +9,12 @@ local DAYS = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" }
 local HISTORY = 26 * 7
 
 -- A small linear congruential generator: deterministic across platforms.
+-- Its low bits repeat every few draws, so a draw reads the high ones.
 local function generator(seed)
 	local state = seed
 	return function(low, high)
 		state = (state * 1103515245 + 12345) % 2147483648
-		return low + state % (high - low + 1)
+		return low + (state // 65536) % (high - low + 1)
 	end
 end
 

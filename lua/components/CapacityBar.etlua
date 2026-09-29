@@ -1,0 +1,5 @@
+<HStack spacing="<%= spacing %>" height="<%= height %>" maxWidth="infinity" cornerRadius="<%= radius %>" clipsToBounds="true">
+  <% for index, segment in ipairs(segments) do -%>
+  <VStack key="segment<%= index %>" background="<%= segment.color %>" flexGrow="<%= segment.weight %>" flexBasis="0" maxHeight="infinity" />
+  <% end -%>
+</HStack>

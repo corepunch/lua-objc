@@ -6,8 +6,7 @@
 -- width.
 --
 -- The gallery's templates use it as `<SleepChart>`: the XML renderer finds
--- it in this app's components/ folder, beside views/.
-local Component = require("ui.component")
+-- SleepChart.etlua in this app's components/ folder, beside views/.
 
 local STYLE = { rowHeight = 18, rowSpacing = 4, labelWidth = 52, labelSize = 11, cornerRadius = 3 }
 
@@ -51,21 +50,8 @@ function SleepChart.rows(records, duration)
 	return rows, night
 end
 
-function SleepChart.build(self, ns)
-	local rows = SleepChart.rows(self.records, self.props.duration)
-	local chart = Component.frame(self, { spacing = STYLE.rowSpacing, alignment = "leading", fillWidth = true })
-	for _, row in ipairs(rows) do
-		local track = { spacing = 0, fixedHeight = STYLE.rowHeight, flexGrow = 1, flexBasis = 0 }
-		for _, piece in ipairs(row.pieces) do
-			table.insert(track, ns.VStack { flexGrow = piece.gap or piece.interval, flexBasis = 0, fillHeight = true,
-				background = piece.interval and row.stage.color or nil,
-				cornerRadius = piece.interval and STYLE.cornerRadius or nil })
-		end
-		table.insert(chart, ns.HStack { spacing = 0, alignment = "center", fillWidth = true,
-			ns.Text { row.stage.label, size = STYLE.labelSize, color = "secondary", fixedWidth = STYLE.labelWidth },
-			ns.HStack(track) })
-	end
-	return ns.VStack(chart)
+function SleepChart.data(props, records)
+	return { rows = SleepChart.rows(records, props.duration), style = STYLE }
 end
 
 return SleepChart

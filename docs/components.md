@@ -1,11 +1,10 @@
-# Lua components
+# Components
 
-A component is a new XML tag written in Lua. It composes the native views
-every platform already has (stacks, `Arc`, `Label`, `SystemImage`), so the same
-tag renders on AppKit and UIKit with no Objective-C. `SectorChart` (the 3D pie
-in Disk Map) was the first of these. `ui/component.lua` turns that pattern
-into a public API. The framework bundles a set of components, and any app
-can add its own.
+A component is a new XML tag written as an etlua template. It composes the
+tags the vocabulary already has (stacks, `Arc`, `Label`, `SystemImage`), so
+the same tag renders on AppKit and UIKit with no Objective-C and no view
+code in Lua. The framework bundles a set of components, and any app can add
+its own.
 
 Run the gallery to see them all:
 
@@ -21,9 +20,9 @@ Run the gallery to see them all:
 | `<BarChart>` | `<BarMark value color label>` | Equal-width columns after Swift Charts' `BarMark`, scaled to the largest value or `maxValue`, tinted with `tint`. |
 | `<CapacityBar>` | `<CapacitySegment value color label>` | A segmented capsule like the storage bar in System Settings. Segments take their share of `total`; the rest is a quaternary track. |
 | `<HeatmapGrid>` | `<HeatmapCell value label>` | A contribution-style calendar: columns of `rows` cells whose opacity steps through `levels` bands of `tint`. |
-| `<SectorChart>` | `<SectorMark>` | Pie, donut, sunburst and raised 3D sectors (see the project reference). |
 
-The first four live in `lua/components/`, one file per tag. Every component
+The first four live in `lua/components/`: a template per tag, with a data
+module beside it. Every component
 accepts the usual frame attributes (`width`, `height`, `maxWidth`, `padding`,
 `background`...) and an `accessibilityLabel` for VoiceOver.
 
@@ -42,98 +41,103 @@ accepts the usual frame attributes (`width`, `height`, `maxWidth`, `padding`,
 
 ## Writing a component
 
-A component is a module that returns a definition table. Put an app's own
+A component is `<Tag>.etlua` in a `components/` folder. Put an app's own
 components in `components/` beside `views/`. The renderer looks there first,
-walking up from the template's folder, and then in `lua/components/`. Tags
-are global, so a module found for a tag that another module already defined
-is an error rather than a substitute. The file name is the tag name:
+walking up from the folder of the template that uses the tag, and then in
+`lua/components/`. The nearest one wins, so an app may have its own version
+of a bundled component. Built-in tags are never components.
 
 ```
 apps/<app>/
-  views/Window.etlua        ← uses <SleepChart>
-  components/SleepChart.lua ← defines it
+  views/Window.etlua          ← uses <SleepChart>
+  components/SleepChart.etlua ← what the tag renders
+  components/SleepChart.lua   ← optional: props, records, data
 ```
 
-```lua
-local Component = require("ui.component")
+Before a template is compiled, each component tag is replaced by the
+elements its template renders. A component is therefore ordinary template
+content: the XML renderer remains the only caller of view constructors.
 
--- Named constants, not literals in the view code.
+```xml
+<!-- components/CapacityBar.etlua -->
+<HStack spacing="<%= spacing %>" height="<%= height %>" maxWidth="infinity" cornerRadius="<%= radius %>" clipsToBounds="true">
+  <% for index, segment in ipairs(segments) do -%>
+  <VStack key="segment<%= index %>" background="<%= segment.color %>" flexGrow="<%= segment.weight %>" flexBasis="0" maxHeight="infinity" />
+  <% end -%>
+</HStack>
+```
+
+### The data module
+
+An optional `<Tag>.lua` beside the template declares what the tag takes and
+computes what the template draws. It never touches `ns` or a view
+(`tests/app_architecture.test.lua` checks this).
+
+```lua
 local STYLE = { height = 12, spacing = 1 }
 
 local CapacityBar = {
-	-- XML attributes, typed like the built-in schema ("num", "bool", "str",
-	-- or { type = "num", default = 4 }).
+	-- Attributes handed to the template: "num", "bool", "str",
+	-- or { type = "num", default = 4 }.
 	props = { total = "num", spacing = "num" },
-	-- Record child tags and their attributes.
+	-- Child tags read as data rather than views.
 	records = { CapacitySegment = { value = "num", color = "str", label = "str" } },
-	-- Attributes bound to controller actions: onSelect="select".
-	actions = {},
 }
 
 -- Geometry is a plain function, so tests check it without views.
 function CapacityBar.segments(records, total) ... end
 
-function CapacityBar.build(self, ns)
-	local bar = Component.frame(self, { spacing = STYLE.spacing, fixedHeight = STYLE.height })
-	for _, segment in ipairs(CapacityBar.segments(self.records, self.props.total)) do
-		table.insert(bar, ns.VStack { background = segment.color, flexGrow = segment.weight, flexBasis = 0 })
-	end
-	return ns.HStack(bar)
+-- Further template variables. `attrs` holds every attribute as written,
+-- for geometry that depends on the frame.
+function CapacityBar.data(props, records, attrs)
+	local height = tonumber(attrs.height) or STYLE.height
+	return { segments = CapacityBar.segments(records, props.total), height = height,
+		radius = height / 2, spacing = props.spacing or STYLE.spacing }
 end
 
 return CapacityBar
 ```
 
-`build(self, ns)` returns one native view. `self` carries:
+The template sees each declared prop by name, `records` (the record
+children in document order, each with its `tag`), and whatever `data`
+returns. Without a module the tag takes no props and no records.
 
-- `props`: the declared attributes, coerced and with defaults applied;
-- `records`: the record children, in document order;
-- `content`: view children, such as a label layered over a chart;
-- `actions`: the bound callbacks;
-- `layout`: the frame attributes the template gave the tag.
-  `Component.frame(self, defaults)` merges them over the component's own
-  defaults for the root view.
+### Attributes and content
 
-Prefer flex weights (`flexGrow` with `flexBasis = 0`) over computed pixel
+- Every attribute that is not a declared prop goes to the template's root
+  element, over the root's own: `id`, `width`, `maxWidth`, `padding`,
+  `background`, `transition`, `accessibilityLabel`. A template renders
+  exactly one root element.
+- View children replace the template's `<ContentPresenter />`, as in WPF. A
+  component without one takes no content.
+- An action is an attribute like any other: declare `onSelect = "str"` and
+  pass it on, `<Button action="<%= onSelect %>" />`.
+- Do not give elements inside a component an `id`: refs are per template,
+  and two uses of the component would claim the same one. The `id` on the
+  tag names the component's root.
+
+Prefer flex weights (`flexGrow` with `flexBasis="0"`) over computed pixel
 widths. The native layout engine then splits whatever space the component is
 offered, and it resizes with the window.
 
 ### Retained updates
 
-Without `update`, a template reconcile rebuilds the component whenever its
-attributes or records change. With `update`, the component moves its existing
-views. Inside `ns.withAnimation` those changes animate, like SwiftUI
-interpolating a trimmed shape:
+A component's elements are reconciled like the rest of the template
+(see [animation.md](animation.md)): changed attributes are applied to the
+existing views, and inside `ns.withAnimation` they animate. Give repeated
+elements a `key` so added or removed records insert and remove their own
+views:
 
-```lua
--- Optional: decline a change that cannot be applied in place; the node is
--- then rebuilt instead.
-function CapacityBar.accepts(self, props, records)
-	return #CapacityBar.segments(records, props.total) == #self.segments
-end
-
-function CapacityBar.update(self, ns)
-	-- self.props and self.records now hold the new values.
-	for index, segment in ipairs(CapacityBar.segments(self.records, self.props.total)) do
-		self.segments[index].flexGrow = segment.weight
-	end
-end
+```xml
+<Arc key="ring<%= index %>.lap" startAngle="<%= arc.startAngle %>" endAngle="<%= arc.endAngle %>" ... />
 ```
-
-`accepts` runs while the reconciler plans, before anything on screen changes.
-`update` runs when the plan applies. Use `ns._motionInsert(self.view, view,
-index)` and `ns._motionRemove(view)` to add or remove children so they play
-their transitions. A change to `width` or `height` always rebuilds, because
-component geometry is derived from the frame.
 
 ## Rules
 
 - A component composes native views; it never imitates a system control. Use
   `Gauge`, `ProgressView`, `Toggle` and the rest where one exists.
-- Components are the one app-layer place that calls `ns` view constructors.
-  Controllers still render templates only. A component never creates a
-  window (`tests/app_architecture.test.lua` checks this).
+- A component is a template. If a tag cannot be drawn with the vocabulary,
+  extend the vocabulary in the framework; do not build views in Lua.
 - Keep geometry in plain functions on the module and test them headlessly,
   as `tests/components.test.lua` does for the bundled set.
-- Tags are global. An app component may not reuse a built-in tag, and two
-  modules may not define the same tag.
+- Reusable structure with no attributes of its own can stay a `partial()`.

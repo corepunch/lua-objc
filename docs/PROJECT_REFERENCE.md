@@ -1074,15 +1074,16 @@ keeping live updates steady, and test hooks. In short:
 <SectorChart transition="drawOn" …>…</SectorChart>
 ```
 
-### Lua components
+### Components
 
-New XML tags can be written in Lua with `ui/component.lua`: a module in the
-app's `components/` folder, or in the framework's `lua/components/`, returns
-`props`, `records`, `build(self, ns)` and optionally `update(self, ns)` for
-retained, animated updates. The framework bundles `ActivityRings`,
-`BarChart`, `CapacityBar` and `HeatmapGrid`, all composed from native views on
-both platforms. See [components.md](components.md) and
-`demo/component-gallery`.
+A new XML tag is an etlua template: `<Tag>.etlua` in the app's `components/`
+folder, or in the framework's `lua/components/`. Before a template compiles,
+each component tag is replaced by the elements its template renders, so
+retained templates reconcile and animate a component's views like any
+others. An optional `<Tag>.lua` beside it declares `props`, `records` and a
+`data(props, records, attrs)` function; it never touches `ns`. The framework
+bundles `ActivityRings`, `BarChart`, `CapacityBar` and `HeatmapGrid`. See
+[components.md](components.md) and `demo/component-gallery`.
 
 ### `PointerView{...}` and `volumeCapacity`
 
@@ -1801,7 +1802,7 @@ Templates use the `.etlua` extension to reflect that they contain etlua
 | `<SectorChart>` + `<SectorMark>` children | native `Arc`s in a `ZStack` | native `Arc`s in a `ZStack` |
 | `<Gauge>` | `NSLevelIndicator` (continuous capacity) | `UIProgressView` |
 | `<Treemap>` + `<TreemapNode>` children | `LuaTreemapView` (squarified, drawn natively) | — |
-| `<ActivityRings>`, `<BarChart>`, `<CapacityBar>`, `<HeatmapGrid>` | Lua components (`lua/components/`) of native `Arc`s and stacks | same components |
+| `<ActivityRings>`, `<BarChart>`, `<CapacityBar>`, `<HeatmapGrid>` | etlua components (`lua/components/`) of native `Arc`s and stacks | same templates |
 | `<Window>` | window config table | window config table |
 | `<Toolbar>` + `<ToolbarItem>` | toolbar items | toolbar items |
 

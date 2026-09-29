@@ -9,7 +9,6 @@
 --       <HeatmapCell value="<%= day.count %>" label="<%= day.date %>" />
 --     <% end %>
 --   </HeatmapGrid>
-local Component = require("ui.component")
 
 -- Cell metrics follow the compact grids in Apple's Health and Fitness
 -- summaries. Level 1 starts faint and each level adds equal opacity.
@@ -49,51 +48,23 @@ function HeatmapGrid.columns(count, rows)
 	return math.ceil(count / rows), rows
 end
 
-local function paint(ns, view, level, props)
-	local color, opacity = HeatmapGrid.style(level, props.levels, props.tint)
-	view.backgroundColor = ns.Color(color)
-	view.opacity = opacity
-end
-
-function HeatmapGrid.build(self, ns)
-	local size = self.props.cellSize or STYLE.cellSize
-	local spacing = self.props.spacing or STYLE.spacing
-	local levels = HeatmapGrid.levels(self.records, self.props.levels)
-	local columns, rows = HeatmapGrid.columns(#self.records, self.props.rows)
-	local grid = Component.frame(self, { spacing = spacing, alignment = "top" })
-	self.cells = {}
-	for column = 1, columns do
-		local stack = { spacing = spacing, alignment = "leading" }
+-- Columns of cells, each with the color and opacity of its level.
+function HeatmapGrid.data(props, records)
+	local levels = HeatmapGrid.levels(records, props.levels)
+	local count, rows = HeatmapGrid.columns(#records, props.rows)
+	local columns = {}
+	for column = 1, count do
+		local cells = {}
 		for row = 1, rows do
 			local index = (column - 1) * rows + row
-			if index > #self.records then break end
-			local color, opacity = HeatmapGrid.style(levels[index], self.props.levels, self.props.tint)
-			local cell = ns.VStack { fixedWidth = size, fixedHeight = size,
-				background = color, opacity = opacity, cornerRadius = STYLE.cornerRadius }
-			local label = self.records[index].label
-			if label then cell.accessibilityLabel = label end
-			self.cells[index] = cell
-			table.insert(stack, cell)
+			if index > #records then break end
+			local color, opacity = HeatmapGrid.style(levels[index], props.levels, props.tint)
+			table.insert(cells, { index = index, color = color, opacity = opacity, label = records[index].label })
 		end
-		table.insert(grid, ns.VStack(stack))
+		table.insert(columns, cells)
 	end
-	return ns.HStack(grid)
-end
-
--- The same number of cells repaints in place; a different count or shape
--- rebuilds the grid.
-function HeatmapGrid.accepts(self, props, records)
-	return #records == #self.cells and (props.rows or STYLE.rows) == (self.props.rows or STYLE.rows)
-		and (props.cellSize or STYLE.cellSize) == (self.props.cellSize or STYLE.cellSize)
-		and (props.spacing or STYLE.spacing) == (self.props.spacing or STYLE.spacing)
-end
-
-function HeatmapGrid.update(self, ns)
-	local levels = HeatmapGrid.levels(self.records, self.props.levels)
-	for index, cell in ipairs(self.cells) do
-		paint(ns, cell, levels[index], self.props)
-		cell.accessibilityLabel = self.records[index].label or ""
-	end
+	return { columns = columns, size = props.cellSize or STYLE.cellSize, spacing = props.spacing or STYLE.spacing,
+		radius = STYLE.cornerRadius }
 end
 
 return HeatmapGrid
