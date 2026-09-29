@@ -19,6 +19,7 @@ local TABS = { "library", "bookshelf", "create", "settings", "search" }
 
 local Controller = {}
 Controller.__index = Controller
+Controller.TABS = TABS
 
 function Controller.new(options)
 	options = options or {}
@@ -60,6 +61,7 @@ function Controller.new(options)
 		push = push,
 		back = back,
 		focus = function(origin) self:focus(origin) end,
+		selectTab = function(name) return self:selectTab(name) end,
 		openSession = function(id, fresh) return self.sessionController:show(id, fresh) end,
 		onSavesChanged = function() self:refreshProgress() end,
 	}
@@ -112,6 +114,19 @@ end
 function Controller:focus(origin)
 	local navigation = self.navigations and self.navigations[origin]
 	if navigation then self.navigation = navigation end
+end
+
+-- Discover / Library / Create / Settings / Search, matching Tabs.etlua.
+function Controller:selectTab(name)
+	local index
+	for i, key in ipairs(TABS) do
+		if key == name then index = i - 1 break end
+	end
+	if not index then return false end
+	self.selectedTab = index
+	self:focus(name)
+	if self.tabs and self.tabs.selectTab then self.tabs:selectTab(index) end
+	return true
 end
 
 -- The accessory resumes the latest story in whichever tab is showing.
