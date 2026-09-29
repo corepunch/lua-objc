@@ -121,6 +121,27 @@ static const NSUInteger kSectorSceneShadowSamples = 32;
 static const CGFloat kSectorSceneShadowMapSize = 2048.0;
 static const CGFloat kSectorSceneShadowCoverage = 1.4;
 static const CGFloat kSectorSceneShadowDistance = 1000.0;
+/* SceneView (appkit/scene_view.m): the frame rate it renders and calls
+ * `onFrame` at; a camera's default lens and clipping planes and a light's
+ * default intensity (SceneKit lumens); shadow softness, sampling and map
+ * resolution for lights that cast shadows; node transitions (how long they
+ * take, how far a popped node grows as it vanishes, how far a rising node
+ * travels and how much a pop overshoots); and the default `bob` period.
+ * Distances are scene units, the field of view degrees. */
+static const NSInteger kSceneFramesPerSecond = 60;
+static const CGFloat kSceneFieldOfView = 45.0;
+static const CGFloat kSceneNearPlane = 0.1;
+static const CGFloat kSceneFarPlane = 500.0;
+static const CGFloat kSceneLightIntensity = 1000.0;
+static const CGFloat kSceneShadowRadius = 4.0;
+static const NSUInteger kSceneShadowSamples = 16;
+static const CGFloat kSceneShadowMapSize = 2048.0;
+static const CGFloat kSceneShadowOpacity = 0.35;
+static const NSTimeInterval kSceneTransitionDuration = 0.3;
+static const CGFloat kSceneTransitionPopScale = 1.6;
+static const CGFloat kSceneTransitionRise = 1.0;
+static const CGFloat kSceneTransitionOvershoot = 1.70158;
+static const NSTimeInterval kSceneBobPeriod = 1.6;
 static const NSTimeInterval kScrollToAnimationDuration = 0.2;
 /* Space between a dropped initial and the text wrapping beside it, and the
  * number of lines it drops through when the template does not say. */
@@ -343,6 +364,7 @@ static void bridge_set_optional_callback(
 #include "appkit/mesh_gradient.m"
 #include "appkit/shader_view.m"
 #include "appkit/sector_scene.m"
+#include "appkit/scene_view.m"
 #include "appkit/reorder_container.m"
 #include "appkit/lazy_collection.m"
 #include "shared/parity_batch.m"
@@ -496,6 +518,11 @@ static const luaL_Reg bridge_lib[] = {
 	{"_sectorSceneTransition", bridge_sector_scene_transition},
 	{"_sectorSceneTransitionState", bridge_sector_scene_transition_state},
 	{"_sectorScenePoint", bridge_sector_scene_point},
+	{"_sceneView", bridge_scene_view},
+	{"_sceneGraph", bridge_scene_graph},
+	{"_sceneBackground", bridge_scene_background},
+	{"_sceneNodes", bridge_scene_nodes},
+	{"_sceneSend", bridge_scene_send},
 	{"_setCurrentScope", bridge_set_current_scope},
 	{"_invokeAction", bridge_invoke_action},
 	{"_onWindowClose", bridge_on_window_close},

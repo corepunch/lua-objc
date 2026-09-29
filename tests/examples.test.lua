@@ -29,6 +29,7 @@ local examples = {
 	"apps/dnb/init.lua",
 	"demo/snippets/init.lua",
 	"apps/adventure-arena/init.lua",
+	"apps/coin-quest/init.lua",
 	"demo/phone-tabs/init.lua",
 	"demo/swiftui_parity/init.lua",
 	"test/parity_batch/init.lua",

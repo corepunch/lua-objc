@@ -915,6 +915,44 @@ local TAG_SCHEMA = {
         kind = "record", flag = "__sectorMark",
         props = { id = "str", value = "num", color = "str", label = "str", ring = "num", parent = "str", opacity = "num" },
     },
+    -- SwiftUI SceneView over SceneKit. Its records are the scene graph and
+    -- reconcile in place by id (see src/appkit/scene_view.m).
+    SceneView = {
+        constructor = "SceneView",
+        children = "array",
+        props = { background = "str", showsStatistics = "bool" },
+        updateRecords = function(view, records) return require("AppKit").sceneGraph(view, records) end,
+        transform = function(props, attrs)
+            bindActions(props, attrs, { "onKey", "onFrame" })
+        end,
+    },
+    -- A scene node: a model file or a primitive geometry, posed by
+    -- position/rotation (degrees)/scale, with idle `spin` (degrees per
+    -- second about y, or "x y z") and `bob` behaviours and an insertion/removal `transition` (pop, rise, fade).
+    -- Child records hang from it and move with it.
+    Node = {
+        kind = "record", children = "items",
+        props = { id = "str", model = "str", geometry = "str", position = "str", rotation = "str", scale = "str",
+            width = "num", height = "num", length = "num", radius = "num", chamfer = "num", color = "str",
+            hidden = "bool", opacity = "num", castsShadow = "bool", spin = "str", bob = "num", bobPeriod = "num",
+            transition = "str", lookAt = "str" },
+        transform = function(rec) rec.sceneKind = "node" end,
+    },
+    -- The first camera is the view's point of view. `fieldOfViewAxis`
+    -- "horizontal" keeps the width framed whatever the view's shape.
+    Camera = {
+        kind = "record", children = "items",
+        props = { id = "str", position = "str", rotation = "str", lookAt = "str", fieldOfView = "num", fieldOfViewAxis = "str",
+            zNear = "num", zFar = "num", orthographicScale = "num" },
+        transform = function(rec) rec.sceneKind = "camera" end,
+    },
+    -- `type` is directional (default), ambient, omni or spot.
+    Light = {
+        kind = "record", children = "items",
+        props = { id = "str", type = "str", position = "str", rotation = "str", lookAt = "str", intensity = "num",
+            color = "str", castsShadow = "bool", shadowRadius = "num", shadowOpacity = "num" },
+        transform = function(rec) rec.sceneKind = "light" end,
+    },
     -- Squarified treemap; nested nodes name their `parent`.
     Treemap = {
         constructor = "Treemap",

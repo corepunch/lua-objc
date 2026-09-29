@@ -1,0 +1,7 @@
+<SceneView id="scene">
+	<Camera id="cam" position="0 <%= cameraY %> 8" lookAt="0 0 0" />
+	<Node id="player" geometry="box" width="0.5" height="0.5" length="0.5" position="0 0 0" />
+	<% for _, coin in ipairs(coins) do -%>
+	<Node id="<%= coin.id %>" geometry="cylinder" radius="0.2" height="0.05" position="<%= coin.x %> 0 0" transition="pop" />
+	<% end -%>
+</SceneView>
