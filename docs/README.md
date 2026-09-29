@@ -1,3 +1,8 @@
+---
+layout: default
+title: Documentation map
+---
+
 # Documentation map
 
 Open the narrowest document that answers the task:
@@ -9,6 +14,8 @@ Open the narrowest document that answers the task:
 - `agents/xml-syntax.md` — XML/etlua tags and attributes from `lua/ui/xml.lua`.
 - `agents/apple-ui-checklist.md` — native Apple UI, layout, accessibility, and
   visual QA checklist.
+- `delight.md` — which 60fps / Mobbin patterns Adventure Arena may apply, and
+  which stay out of `TAG_SCHEMA`.
 - `PROJECT_REFERENCE.md` — detailed AppKit API, UI requirements, conventions,
   build/test notes, and bridge rationale.
 - `../ARCHITECTURE.md` — native/Lua ownership, state lifetime, and the

@@ -31,6 +31,7 @@ nav:
       - Application architecture: agents/application-architecture.md
       - XML syntax: agents/xml-syntax.md
       - Apple UI checklist: agents/apple-ui-checklist.md
+      - Delight vs coverage: delight.md
       - Table behavior: tableview_swiftui.md
       - iOS host and hot reload: ios.md
       - Swift/SwiftUI pain points: SWIFTUI_PAIN_POINTS.md
