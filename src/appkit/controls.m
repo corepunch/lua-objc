@@ -622,9 +622,13 @@ static int bridge_table_select_row(lua_State *L) {
 	}
 	NSInteger row = (NSInteger)luaL_checkinteger(L, 2);
 	if (row < 0 || row >= table.numberOfRows) return 0;
+	/* `reveal` false selects in place: a selection that follows the pointer
+	 * (a chart sector pointing at its row) must not scroll the page away
+	 * from under it. */
+	BOOL reveal = lua_isnoneornil(L, 3) || lua_toboolean(L, 3);
 	[table selectRowIndexes:[NSIndexSet indexSetWithIndex:(NSUInteger)row]
 		byExtendingSelection:NO];
-	[table scrollRowToVisible:row];
+	if (reveal) [table scrollRowToVisible:row];
 	return 0;
 }
 

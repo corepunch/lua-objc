@@ -11,9 +11,9 @@
     <% else %>
     <GroupBox id="kindsCard" maxWidth="infinity">
       <HStack maxWidth="infinity" padding="20" spacing="28" alignment="center">
-        <SectorChart id="kindsChart" width="<%= CHART.size %>" height="<%= CHART.size %>" innerRadius="<%= CHART.hole %>" angularInset="<%= CHART.gap %>" depth="<%= CHART.depth %>" shadow="false" accessibilityLabel="<%= accessibilityLabel %>">
+        <SectorChart id="kindsChart" width="<%= CHART.size %>" height="<%= CHART.size %>" innerRadius="<%= CHART.hole %>" angularInset="<%= CHART.gap %>" depth="<%= CHART.depth %>" shadow="false" onSelect="chartSelect" onHover="chartHover" accessibilityLabel="<%= accessibilityLabel %>">
           <% for _, kind in ipairs(kinds) do %>
-          <SectorMark value="<%= kind.bytes %>" color="<%= kind.color %>" label="<%= kind.name %>" />
+          <SectorMark id="<%= kind.id %>" value="<%= kind.bytes %>" color="<%= kind.color %>" label="<%= kind.name %>" />
           <% end %>
           <VStack spacing="0" alignment="center">
             <Label id="kindsTotal" text="<%= total %>" size="<%= CHART.total %>" minimumScaleFactor="<%= CHART.totalScale %>" lines="1" weight="semibold" design="rounded" monospacedDigit="true" />
@@ -31,11 +31,11 @@
     <VStack maxWidth="infinity" spacing="8" alignment="leading">
       <%- partial("SectionHeader.etlua", {title = "Kinds", detail = "Grouped by file extension, the way Finder's Kind column groups them. Open a kind to see its largest files."}) %>
       <GroupBox maxWidth="infinity">
-        <%- partial("ResourceList.etlua", {id = "kinds", menu = "kindMenu", activate = "openKind", detailColumn = true}) %>
+        <%- partial("ResourceList.etlua", {id = "kinds", menu = "kindMenu", selectAction = "selectKind", activate = "openKind", detailColumn = true}) %>
       </GroupBox>
     </VStack>
     <VStack maxWidth="infinity" spacing="8" alignment="leading">
-      <%- partial("SectionHeader.etlua", {title = "Top extensions", detail = "The twelve extensions that use the most space"}) %>
+      <%- partial("SectionHeader.etlua", {title = "Top extensions", detail = extensionsDetail}) %>
       <GroupBox maxWidth="infinity">
         <%- partial("ResourceList.etlua", {id = "extensions", menu = "kindMenu", activate = "openKind", detailColumn = true}) %>
       </GroupBox>

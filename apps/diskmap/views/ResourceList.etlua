@@ -1,7 +1,8 @@
 <% --[[ One list presentation for every page that ranks storage: icon, name
   and where it lives, an optional detail column, a meter (the size and share
   on a line above the share bar, one native cell), and a "More" button that
-  opens the row's actions. Like SwiftUI's List it has no column headers: section titles say what the rows are, and detail values
+  opens the row's actions. `selectAction` names the action a selected row
+  calls. Like SwiftUI's List it has no column headers: section titles say what the rows are, and detail values
   name themselves ("Used 3 days ago", "4 copies"). The list never scrolls on
   its own; the page scrolls as one surface. `status = true` turns the detail
   column into one colour-coded symbol per row (models/Status.lua); the status
@@ -12,7 +13,7 @@
   points in the narrowest window's 595-point list. ]]
   local COLUMNS = { name = 170, detail = 150, status = 48, share = 235, more = 40, statusSymbol = 20 }
 %>
-<List id="<%= id %>" rowMenu="<%= menu %>" dragKey="path"<% if activate then %> onActivate="<%= activate %>"<% end %> scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44" maxWidth="infinity">
+<List id="<%= id %>" rowMenu="<%= menu %>" dragKey="path"<% if selectAction then %> onSelect="<%= selectAction %>"<% end %><% if activate then %> onActivate="<%= activate %>"<% end %> scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44" maxWidth="infinity">
   <Column id="name" title="Name" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon"<% if fileIcons then %> fileIconKey="fileIcon"<% end %> imageSize="28" minWidth="<%= COLUMNS.name %>" />
   <% if status then %>
   <Column id="detail" title="Status" width="<%= COLUMNS.status %>" minWidth="<%= COLUMNS.status %>" imageKey="statusIcon" imageColorKey="statusColor" imageSize="<%= COLUMNS.statusSymbol %>" labelStyle="iconOnly" />
