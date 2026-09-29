@@ -604,7 +604,7 @@ Inventory from the Swift sources. Framework scope is the primitive column. App-c
 | HowToPlay hero | `LinearGradient` header | **app**: `VStack` of `Label`/`SystemImage` on a semantic background. No custom-drawn gradient in the framework | **app** | templates |
 | Reading settings | `Form` | inset grouped `UITableView` | `<List style="insetGrouped">` (no separate `<Form>` tag in v1) | templates |
 | Create Game fields | vertical `TextField` | `UITextView` | `axis="vertical"` | `<TextField>` |
-| Dismiss keyboard on scroll | `.scrollDismissesKeyboard` | `UIScrollView.keyboardDismissMode = .interactive` | `keyboardDismissMode` on `ScrollView` (default `interactive`) | attr |
+| Dismiss keyboard on scroll | `.scrollDismissesKeyboard` | `UIScrollView.keyboardDismissMode = .interactive` | `scrollDismissesKeyboard="interactively"` on `ScrollView` | attr |
 | Create primary | `Button` `.borderedProminent` + `safeAreaInset` | `borderedProminentButtonConfiguration` | `style="borderedProminent"` | `<Button style="borderedProminent">` |
 | Glass composer | `glassEffect` / `GlassEffectContainer` | iOS 26 system material via `UIVisualEffectView` | optional `ns.MaterialView { material = "regular" }` wrapping **system** `UIVisualEffectView`. No custom shadow/corner APIs | app may wrap composer |
 | Catalog HTTP | CloudKit | — | **out of scope**; apps use `ns.fetch` / `ns.fetch_json` | — |
@@ -625,7 +625,7 @@ Must-have APIs not yet in `TAG_SCHEMA` (framework, not app):
 | `ns.preferredColorScheme` | reading theme |
 | view `cornerRadius` on Image | cover cards |
 | `ScrollView contentInset` | transcript / horizontal covers |
-| `keyboardDismissMode` | Create Game |
+| `scrollDismissesKeyboard` | Create Game |
 
 App-composed, listed so ports do not invent native classes: companion cards, chips, stars, bubbles (`UILabel`), compass as 8 buttons (no drag-to-select ring `Path` in v1), HowToPlay gradient hero.
 
@@ -658,7 +658,7 @@ macOS `src/main.m` already does `new()` + `createWindow()`. iOS `LRTApplicationC
 ns.Window(cfg)                  -- scene installer; not a sized window
 ns.HostingController(view)
 ns.VStack / HStack / ZStack / Spacer / Divider / Separator
-ns.ScrollView { content, horizontal, vertical, refresh, contentInset, keyboardDismissMode }
+ns.ScrollView { content, horizontal, vertical, refresh, contentInset, scrollDismissesKeyboard }
   :scrollTo(id or "bottom")
 ns.TabView { style = "tabs"|"page", selected, [Tab...] }
 ns.Tab { id, title, systemImage, [child] }
@@ -740,7 +740,7 @@ Extend existing tags (no aliases of old names):
 - `Button`: `role` (`"destructive"`), `style` already exists, `disabled` bool.
 - `Picker`: `style` (`"segmented"|"menu"|"wheel"|"automatic"`).
 - `ToolbarItem`: `placement` (`"trailing"|"leading"|"principal"|"confirmation"`). On iOS, collect `ToolbarItem` children of **`NavigationStack`** (new collect hook) into `UINavigationItem` bar buttons. Window-level `cfg.toolbar` stays AppKit-only; `UIKit.Window` ignores it. GameSession trailing items live inside the stack, not on the scene window.
-- `ScrollView`: already has `horizontal` / `vertical`; add `contentInset`, `keyboardDismissMode`.
+- `ScrollView`: already has `horizontal` / `vertical`; add `contentInset`, `scrollDismissesKeyboard`.
 - `Image`: `cornerRadius` number (CALayer clip). Not a panel chrome API.
 - Layout props: `ignoresSafeArea` (string: `top` / `all` / `bottom`).
 
@@ -1105,7 +1105,7 @@ PR 2 in the previous draft (packager as a follow-up) is absorbed here: without t
 - **Title:** Add UIScrollView and ZStack overlays
 - **Files:** `src/uikit/scroll.m`, `src/uikit/overlay.m`, `lua/embedded/UIKit.lua`, `lua/embedded/AppKit.lua` (`ZStack`), `lua/ui/xml.lua`, xml-syntax, tests
 - **Depends on:** PR 3
-- **Description:** Vertical/horizontal `UIScrollView` with `contentInset`, `keyboardDismissMode`, and `:scrollTo`. `ZStack` measures children then places them (no forced shared bounds). AppKit `ScrollView` already exists; only add ZStack there.
+- **Description:** Vertical/horizontal `UIScrollView` with `contentInset`, `scrollDismissesKeyboard`, and `:scrollTo`. `ZStack` measures children then places them (no forced shared bounds). AppKit `ScrollView` already exists; only add ZStack there.
 
 ### PR 6 — Lists: insetGrouped, sections, swipe, refresh
 

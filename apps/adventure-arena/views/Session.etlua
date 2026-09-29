@@ -15,7 +15,7 @@
 </Toolbar>
 <ZStack id="session" maxWidth="infinity" maxHeight="infinity" alignment="top" tint="<%= ink %>">
   <SafeAreaInset id="sessionContent" edge="bottom" minimumBottomInset="24" keyboardBottomInset="12" horizontalInset="12" matchBottomHorizontalInset="true" maxWidth="infinity" maxHeight="infinity">
-    <ScrollView id="transcriptScroll" flexGrow="1" scrollOnKeyboard="true">
+    <ScrollView id="transcriptScroll" flexGrow="1" scrollOnKeyboard="true" scrollDismissesKeyboard="interactively">
       <VStack id="transcript" maxWidth="infinity" />
     </ScrollView>
 

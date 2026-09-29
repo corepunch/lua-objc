@@ -690,6 +690,13 @@ trackpad scrolling stays continuous, as in SwiftUI on macOS. Horizontal shelves
 deliver touches immediately (`delaysContentTouches = NO`) and hide iOS 26 scroll
 edge effects, which belong to the page's own scroll view.
 
+`scrollDismissesKeyboard` is SwiftUI's modifier of the same name:
+`interactively` lets a downward drag pull the keyboard away with the finger, as
+Messages does, and suits any scroll view above a composer; `immediately`
+dismisses it as a drag begins; `automatic` (the default) and `never` leave it
+up. Views pinned to the keyboard layout guide follow the interactive drag. The
+Mac has no on-screen keyboard, so AppKit ignores it, as SwiftUI does.
+
 The first vertical scroll view in a page is registered as its content scroll
 view (`setContentScrollView:forEdge:`), so iOS 26 draws the scroll edge effect
 under the navigation and tab bars and collapses large titles while scrolling.

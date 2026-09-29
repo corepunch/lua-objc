@@ -617,6 +617,9 @@ function UIKit.ZStack(props)
 	return view
 end
 
+-- UIScrollViewKeyboardDismissMode for each SwiftUI ScrollDismissesKeyboardMode.
+local KEYBOARD_DISMISS_MODES = { automatic = 0, never = 0, immediately = 1, interactively = 2 }
+
 --- Adds native scrolling around one content view.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
@@ -624,6 +627,7 @@ end
 --- @prop contentHeight number optional. Scroll content height; zero lets the content size itself.
 --- @prop contentWidth number optional. Scroll content width; zero lets the content size itself.
 --- @prop horizontal boolean optional. Component-specific setting passed to the native control.
+--- @prop scrollDismissesKeyboard string optional. `automatic`, `immediately`, `interactively` or `never`, as SwiftUI's modifier.
 --- @prop vertical boolean optional. Component-specific setting passed to the native control.
 --- @example <ScrollView />
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
@@ -634,6 +638,12 @@ function UIKit.ScrollView(props)
 	local view = bridge._scrollView(content, props.contentWidth or 0,
 		props.contentHeight or 0, props.horizontal == true, props.vertical ~= false)
 	if props.scrollOnKeyboard then view.scrollOnKeyboard = true end
+	-- SwiftUI scrollDismissesKeyboard. `interactively` lets the keyboard
+	-- follow a downward drag as Messages does; `immediately` dismisses it when
+	-- a drag begins. `automatic` keeps UIKit's default, which leaves it up.
+	local dismissMode = KEYBOARD_DISMISS_MODES[props.scrollDismissesKeyboard or "automatic"]
+	assert(dismissMode, "ScrollView scrollDismissesKeyboard must be automatic, immediately, interactively or never")
+	view.keyboardDismissMode = dismissMode
 	-- SwiftUI scrollTargetBehavior: `viewAligned` settles on a child of the
 	-- content stack; `paging` pages by the visible width.
 	if props.scrollTargetBehavior then view.scrollTargetBehavior = props.scrollTargetBehavior end

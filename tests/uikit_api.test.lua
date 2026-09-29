@@ -29,6 +29,16 @@ t.expect(src:find("local lines = props.lineLimit or props.lines", 1, true) ~= ni
 	"UIKit labels honor explicit line limits")
 t.expect(src:find("props.vertical ~= false", 1, true) ~= nil,
 	"UIKit ScrollView defaults to vertical scrolling like SwiftUI")
+t.expect(src:find("{ automatic = 0, never = 0, immediately = 1, interactively = 2 }", 1, true) ~= nil
+		and src:find("view.keyboardDismissMode = dismissMode", 1, true) ~= nil,
+	"scrollDismissesKeyboard maps SwiftUI's modes onto UIScrollView.keyboardDismissMode")
+do
+	local f = assert(io.open("apps/adventure-arena/views/Session.etlua", "r"))
+	local session = f:read("*a")
+	f:close()
+	t.expect(session:find('<ScrollView id="transcriptScroll"[^>]-scrollDismissesKeyboard="interactively"') ~= nil,
+		"dragging the reader's page down takes the keyboard with it, as in Messages")
+end
 t.expect(src:find('"paddingHorizontal"', 1, true) ~= nil
 		and src:find('"fillHeight"', 1, true) ~= nil,
 	"UIKit exposes the shared layout property contract")
