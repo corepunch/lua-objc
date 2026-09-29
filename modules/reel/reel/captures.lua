@@ -167,7 +167,8 @@ function Capture:row(viewId, n)
 	return row
 end
 
--- rect(spec) -> x, y, w, h in window points. `spec` is "#view",
+-- rect(spec) -> x, y, w, h in window points. `spec` is "#view" (any
+-- identifier, even one containing "/"),
 -- "#view/row/N" (the Nth table row under the view), "#view/cell" (a treemap
 -- cell), "window" or "x, y, w, h".
 function Capture:rect(spec)
@@ -175,6 +176,11 @@ function Capture:rect(spec)
 		local w, h = self:size()
 		return 0, 0, w, h
 	end
+	-- An identifier may itself contain "/" (an app's "task/2"); a view with
+	-- the whole name wins over the row and cell forms.
+	local whole = spec:match("^#(.+)$")
+	local exact = whole and self:layout().views[whole]
+	if exact then return exact.x, exact.y, exact.w, exact.h end
 	local rowView, rowIndex = spec:match("^#([^/]+)/row/(%d+)$")
 	if rowView then
 		local row = self:row(rowView, tonumber(rowIndex))
