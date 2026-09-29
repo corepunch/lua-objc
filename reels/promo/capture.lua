@@ -11,8 +11,9 @@
 --           so the reel can cut pieces by view identifier
 --   iphone  the UIKit host on the iPhone Simulator, streamed from the root
 --           by the packager, captured with simctl
---   studio  Lua Studio on the iPad Simulator, bundled with that version of
---           Todo and the conversation that produced it (LUA_STUDIO_SHOWCASE)
+--   studio  Ledger bundled for the iPad Simulator, and Lua Studio there,
+--           bundled with each version of Todo and the conversation that
+--           produced it (LUA_STUDIO_SHOWCASE)
 --
 -- Captures land in reels/promo/captures/, which is generated, not
 -- committed. Simulator steps need Xcode and a booted-able simulator; the
@@ -134,6 +135,20 @@ local function studio(k, name)
 	print("studio  " .. name)
 end
 
+-- An app bundled on its own for the iPad (no packager): its UIKit version.
+local function ipad(dir, name)
+	local udid = device("ipad")
+	local slug = dir:match("[^/]+$")
+	sh("make -s ipad-simulator APP=" .. slug .. " APP_DIR=" .. dir .. " >/dev/null")
+	sh("xcrun simctl install " .. udid .. " " .. quote(repo .. "/build/ipad/iphonesimulator-arm64/" .. slug .. ".app"))
+	-- Launched from the home screen, so the status bar has no back link.
+	os.execute("xcrun simctl terminate " .. udid .. " org.luaobjc.studio 2>/dev/null")
+	sh("xcrun simctl launch --terminate-running-process " .. udid .. " org.luaobjc." .. slug .. " >/dev/null")
+	sh("sleep " .. SETTLE.studio)
+	sh("xcrun simctl io " .. udid .. " screenshot " .. quote(OUT .. "/" .. name .. ".png") .. " >/dev/null 2>&1")
+	print("ipad    " .. name)
+end
+
 local function main(...)
 	local steps = {}
 	for _, step in ipairs({ ... }) do steps[step] = true end
@@ -155,6 +170,7 @@ local function main(...)
 		for k = 0, #Edits.todo.edits do iphone(roots.todo[k], Edits.todo.dir, "todo-iphone-v" .. k) end
 	end
 	if steps.studio then
+		ipad(Edits.ledger.dir, "ledger-ipad")
 		for k = 0, #Edits.todo.edits do studio(k, "studio-v" .. k) end
 	end
 	return 0

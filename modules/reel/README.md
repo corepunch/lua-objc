@@ -188,7 +188,9 @@ point landed in that view this frame, so crisp reel type can follow a 3-D
 object. `reel/space.lua` supplies the camera helpers every attribute sees:
 `vec`, `add3`, `sub3`, `scale3`, `lerp3`, `length3`, `normalize3`,
 `orbit(target, distance, yaw, pitch)`, `dolly(from, target, distance)`,
-`fill(height, fieldOfView)`, `path(t, {{t0, {x, y, z}}, …})` (smooth
+`fill(height, fieldOfView)`, `rotate(v, rotation)` and
+`transform(point, position, rotation, scale)` (SceneKit's euler order, to
+find a point on a device's screen in the world), `path(t, {{t0, {x, y, z}}, …})` (smooth
 through every key, easing out of the first and into the last; `hold = true`
 stops dead) and `track(t, keys)` for single values.
 

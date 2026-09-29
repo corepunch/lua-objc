@@ -48,6 +48,28 @@ function Space.fill(height, fieldOfView)
 	return height / 2 / math.tan(rad(fieldOfView) / 2)
 end
 
+-- rotate(v, {pitch, yaw, roll}) -> v turned by a node's rotation attribute
+-- (degrees) the way SceneKit turns it: about x by the pitch, then about y
+-- by the yaw, then about z by the roll, all in the parent's axes.
+function Space.rotate(v, euler)
+	local x, y, z = v[1], v[2], v[3]
+	local p, w, r = rad(euler[1] or 0), rad(euler[2] or 0), rad(euler[3] or 0)
+	y, z = y * cos(p) - z * sin(p), y * sin(p) + z * cos(p)
+	x, z = x * cos(w) + z * sin(w), -x * sin(w) + z * cos(w)
+	x, y = x * cos(r) - y * sin(r), x * sin(r) + y * cos(r)
+	return { x, y, z }
+end
+
+-- transform(point, position, rotation, scale) -> where a point in a node's
+-- own space lands in its parent's: scaled, turned, then moved. A point on a
+-- device's screen, for a camera that must frame it or another object that
+-- must start from it.
+function Space.transform(point, position, rotation, scale)
+	local s = scale or 1
+	local turned = Space.rotate({ point[1] * s, point[2] * s, point[3] * s }, rotation or { 0, 0, 0 })
+	return Space.add3(turned, position)
+end
+
 -- Cubic Hermite interpolation between keyed values with Catmull-Rom
 -- tangents scaled to uneven key spacing, so the motion is smooth through
 -- every key (continuous velocity) and eases in and out of the first and the
