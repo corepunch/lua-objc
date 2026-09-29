@@ -46,7 +46,14 @@ static void layout_recursive(UIView *view, CGFloat width);
 
 @implementation UIView (LuaLayoutProperties)
 - (BOOL)allowsHitTesting { return self.userInteractionEnabled; }
-- (void)setAllowsHitTesting:(BOOL)value { self.userInteractionEnabled = value; }
+// UILabel and UIImageView disable interaction by default, so an explicit
+// opt-out is recorded separately: stacks treat the former as hit-testable
+// content and the latter as decoration.
+- (void)setAllowsHitTesting:(BOOL)value {
+	self.userInteractionEnabled = value;
+	objc_setAssociatedObject(self, &kHitTestingDisabledKey, value ? nil : @YES,
+		OBJC_ASSOCIATION_RETAIN);
+}
 - (CGFloat)padding {
 	NSNumber *value = objc_getAssociatedObject(self, &kPaddingKey);
 	return value ? value.doubleValue : 12.0;

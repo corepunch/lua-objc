@@ -297,11 +297,26 @@ static int bridge_UIKitControls_colorPicker(lua_State *L) {
 @end
 
 @implementation LuaLayoutView
+// SwiftUI's stack content shape is the union of its children: visible content
+// such as Text or Image claims the touch even without its own interaction,
+// while a nested stack contributes only its content, never its padding.
+static BOOL layout_content_contains(UIView *view, CGPoint point) {
+	for (UIView *child in view.subviews.reverseObjectEnumerator) {
+		if (child.hidden || child.alpha < 0.01 || objc_getAssociatedObject(child, &kHitTestingDisabledKey)) continue;
+		CGPoint local = [child convertPoint:point fromView:view];
+		if (![child pointInside:local withEvent:nil]) continue;
+		if (![child isKindOfClass:LuaLayoutView.class] || layout_content_contains(child, local)) return YES;
+	}
+	return NO;
+}
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
 	UIView *target = [super hitTest:point withEvent:event];
 	// A stack has no surface of its own. Empty padding in an overlay must
-	// let touches reach siblings behind it, while explicit gestures still work.
-	return target == self && self.gestureRecognizers.count == 0 ? nil : target;
+	// let touches reach siblings behind it, while explicit gestures, a
+	// background fill, and the stack's content still claim the touch.
+	if (target != self || self.gestureRecognizers.count) return target;
+	if (CGColorGetAlpha(self.backgroundColor.CGColor) > 0) return self;
+	return layout_content_contains(self, point) ? self : nil;
 }
 @end
 

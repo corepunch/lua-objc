@@ -382,7 +382,10 @@ Use `fillWidth` or `fillHeight` for explicit expansion on that axis. HStack cent
 children vertically by default, including nested text stacks at their intrinsic height.
 Hidden children do not contribute sibling spacing. Stack overlays can use
 `allowsHitTesting = false` to let input reach controls underneath; native hit
-testing still owns the remaining hierarchy.
+testing still owns the remaining hierarchy. On UIKit, as in SwiftUI, a stack's
+hit shape is its content: visible children such as Text and Image claim touches,
+while empty padding passes them to siblings behind the stack unless the stack
+has a background or gesture.
 
 Text measures the current native content under the parent's width proposal,
 including wrapping. Previous frames are never an intrinsic minimum. HStack
