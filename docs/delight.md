@@ -27,7 +27,7 @@ rest is almost always custom drawing this project banned.
 | Coordinated sheet present/dismiss | Reading settings from the session | `ns.presentSheet` / `ns.dismiss` with system detents. Do not add a custom present animator. |
 | Empty state with a next tap | Empty Discover catalog, empty Library | `ContentUnavailable` with one `Button` child, its `actions:` slot. Discover → Create; Library → Discover. |
 | Hero carousel with peek | Discover featured row | Horizontal `ScrollView` + `scrollTargetBehavior="viewAligned"`. Page-style `TabView` on iOS when that PR lands. |
-| Composer on material, keyboard-aware | Session command bar | `<GlassEffect>` around the field. `keyboardLayoutGuide` / `keyboardDismissMode` on iOS. `regular` system material is enough; do not take private liquid glass by name until a Lua example needs it. |
+| Composer on material, keyboard-aware | Session command bar | `<GlassEffect>` around the field. `keyboardLayoutGuide` and `scrollDismissesKeyboard="interactively"` on iOS. `regular` system material is enough; do not take private liquid glass by name until a Lua example needs it. |
 | Pull to refresh | Discover / Library lists later | `List` / `ScrollView` `refresh`. System `UIRefreshControl` only. |
 | Swipe then confirm | Library row overflow | Trailing `Menu` on macOS; `List` swipe + `ns.confirm` or a detent sheet on iOS. |
 | Hero bleed under chrome | Game detail cover, HowToPlay | `ignoresSafeArea="top"`. |

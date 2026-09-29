@@ -824,6 +824,8 @@ function AppKit.ScrollView(props)
 		view.hasVerticalScroller = false
 	end
 	if props.scrollOnKeyboard then view.scrollOnKeyboard = true end
+	-- scrollDismissesKeyboard has no Mac counterpart: a hardware keyboard is
+	-- never on screen, so SwiftUI ignores it on macOS as well.
 	-- Trackpad and wheel scrolling on the Mac is continuous; SwiftUI's
 	-- scrollTargetBehavior only snaps touch scrolling, so AppKit records it.
 	if props.scrollTargetBehavior then view.scrollTargetBehavior = props.scrollTargetBehavior end
