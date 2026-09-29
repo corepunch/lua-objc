@@ -25,7 +25,8 @@
 
 	<!-- The iPad: Lua Studio, where the agent edits the app. -->
 	<%- partial("devices/Pad.etlua", {id = "pad", position = "C.at('pad', t)", rotation = "C.turn('pad', t)",
-		extra = 'from="' .. S.pair .. '" to="' .. S.alone + 1.2 .. '"', screen = '<Draw with="studio" session="pair" />'}) %>
+		extra = 'opacity="1 - progress(t, ' .. S.alone .. ', ' .. S.alone + 0.8 .. ')" from="' .. S.pair .. '" to="' .. S.alone + 0.85 .. '"',
+		screen = '<Draw with="studio" session="pair" />'}) %>
 
 	<!-- The same phone on its side, now running Coin Quest: the game's own
 	     Stage.etlua, posed by the game's own replay. -->

@@ -80,7 +80,7 @@ local function screens(dir)
 	local studios = {
 		pair = {
 			dir = dir,
-			sends = { { at = S.send1, typeFrom = 4.0, typeTo = 4.7 }, { at = S.send2, typeFrom = 7.25, typeTo = 7.8 } },
+			sends = { { at = S.send1, typeFrom = 4.0, typeTo = 4.7, fly = 0.3 }, { at = S.send2, typeFrom = 7.25, typeTo = 7.8 } },
 			previews = { { at = S.change1, version = 1 }, { at = S.change2, version = 2 } },
 		},
 		hero = {

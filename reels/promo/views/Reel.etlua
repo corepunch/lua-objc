@@ -1,4 +1,4 @@
-<Reel width="1920" height="1080" fps="30" duration="30" bpm="120" subframes="<%= subframes or '5 + 3 * step(t - 17.6) * step(19.55 - t)' %>" shutter="0.5" background="#07070A">
+<Reel width="1920" height="1080" fps="30" duration="30" bpm="120" subframes="<%= subframes or '5 + 4 * step(t - 4.95) * step(6.0 - t) + 3 * step(t - 17.6) * step(19.55 - t)' %>" shutter="0.5" background="#07070A">
   <Palette name="brand" colors="#7B8CFF #B86BFF #FF7AB8" />
   <Palette name="code" colors="#5EE08A #3CC6FF" />
   <Style name="giant" size="136" weight="bold" color="#F5F5F7" tracking="-0.03" />

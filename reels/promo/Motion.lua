@@ -181,8 +181,8 @@ local function morph(pen, t, A, B, t0)
 	end
 end
 
--- Assembly: the state's pieces fly in from around the screen and land,
--- groups landing on the given beats.
+-- Assembly: the state's pieces rise and pop into place, groups landing on
+-- the given beats.
 local function assemble(pen, t, S, beats)
 	pen:rect(0, 0, PHONE.w, PHONE.h, 0xFFFFFF)
 	local keys = ordered(S.parts)
@@ -199,15 +199,15 @@ local function assemble(pen, t, S, beats)
 			or (key:match("^task") and r.y < (S.parts.completed and S.parts.completed.y or 1e9)) and 3 or 4))
 		local start = beats[group] - 0.12 + (i % 5) * 0.025
 		local k = spring(t - start, FEEL.land.response, FEEL.land.damping)
-		local angle = rnd() * 2 * pi
-		local distance = 420 + rnd() * 380
-		local dx, dy = cos(angle) * distance * (1 - k), sin(angle) * distance * (1 - k)
-		local turn = (rnd() - 0.5) * 0.9 * (1 - k)
+		-- Each piece rises into place from just below it, growing from small
+		-- with a slight turn, so nothing crosses the screen's edge.
+		local dx, dy = (rnd() - 0.5) * 40 * (1 - k), (50 + rnd() * 40) * (1 - k)
+		local turn = (rnd() - 0.5) * 0.35 * (1 - k)
 		if t >= start then
 			pen:save()
 			pen:translate(r.x + r.w / 2 + dx, r.y + r.h / 2 + dy)
 			pen:rotate(turn)
-			pen:scale(0.55 + 0.45 * k)
+			pen:scale(0.5 + 0.5 * k)
 			pen:fade(clamp01((t - start) / 0.1))
 			pen.canvas:image(crop(S.image, r), -r.w / 2, -r.h / 2, r.w, r.h)
 			pen:restore()
@@ -367,7 +367,8 @@ end
 
 -- ── Lua Studio on the iPad ──────────────────────────────────────────────
 
-local STUDIO = { w = 1376, h = 1032, chat = { x = 452, y = 95, w = 924, h = 848 },
+-- The conversation ends above the suggestion chips (which start at y 932).
+local STUDIO = { w = 1376, h = 1032, chat = { x = 452, y = 95, w = 924, h = 830 },
 	-- The stage's phone preview, which updates with the phone beside it.
 	preview = { x = 24, y = 118, w = 392, h = 892 },
 	-- The draft in the composer, on the field's glass.
@@ -411,13 +412,20 @@ function Motion.studio(pen, t, spec, native)
 	local reveal = nextSend and progress(t, nextSend.typeFrom, nextSend.typeTo) or 0
 	local left = F.x + F.text * reveal
 	if left < F.right then pen:rect(left, F.y, F.right - left, F.h, F.color) end
+	-- Until its flight starts, the sent prompt still sits in the composer.
+	local last = spec.sends[sent]
+	if last and t < last.at + (last.fly or 0) then
+		local previous = sent > 1 and image(sent - 1) or image(0)
+		canvas:image(crop(previous, { x = F.x, y = F.y, w = F.right - F.x, h = F.h }), F.x, F.y, F.right - F.x, F.h)
+	end
 	-- The conversation: turns from the latest capture; those the latest
 	-- send added animate in.
 	pen:rect(STUDIO.chat.x, STUDIO.chat.y, STUDIO.chat.w, STUDIO.chat.h, 0xFFFFFF)
 	if sent == 0 then return end
 	local C = chat(sent)
 	local before = sent > 1 and #chat(sent - 1).turns or 0
-	local at = spec.sends[sent].at
+	-- The exchange starts when the bubble takes off (spec.fly after the send).
+	local at = spec.sends[sent].at + (spec.sends[sent].fly or 0)
 	local fresh = 0
 	for i, turn in ipairs(C.turns) do
 		local r = turn.rect
@@ -428,16 +436,17 @@ function Motion.studio(pen, t, spec, native)
 			fresh = fresh + 1
 			if turn.kind == "user" then
 				-- The prompt flies up from the composer into its bubble.
-				local k = spring(t - at, 0.55, 0.78)
+				local start = at
+				local k = spring(t - start, 0.7, 0.82)
 				local fromX, fromY = F.x, F.y - 10
 				local x, y = fromX + (r.x - fromX) * k, fromY + (r.y - fromY) * k
-				piece(pen, base, r, x, y, 0.85 + 0.15 * k, clamp01((t - at) / 0.08), sin(pi * clamp01(k)))
+				if t >= start then piece(pen, base, r, x, y, 0.85 + 0.15 * k, clamp01((t - start) / 0.08), sin(pi * clamp01(k))) end
 			elseif turn.kind == "card" then
 				local start = at + 0.45
 				local k = spring(t - start, FEEL.pop.response, 0.7)
 				piece(pen, base, r, r.x, r.y + 30 * (1 - k), 0.94 + 0.06 * k, clamp01((t - start) / 0.12))
 				-- The diff lines wipe in, one after another, on the card's grey.
-				for j, lineRect in ipairs(C.lines) do
+				for j, lineRect in ipairs(t >= start and C.lines or {}) do
 					if lineRect.card == r or (lineRect.y > r.y and lineRect.y < r.y + r.h) then
 						local lineStart = start + 0.18 + (j - 1) * 0.035
 						local u = ease.outCubic(progress(t, lineStart, lineStart + 0.22))
