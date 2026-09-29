@@ -196,19 +196,153 @@ end
 -- view cuts parallel-sided gaps of that width between neighbours and between
 -- rings alike, instead of the flat chart's wedges, which widen outwards. The
 -- highlighted sector brightens in place.
+local function solid(state, spec, alpha, highlight)
+	local gap = math.max(STYLE.ringGap, state.angularInset or 0)
+	-- Only a band with a neighbour inside it gives up half a gap there;
+	-- the hole keeps its radius.
+	local inner = spec.ring > 1 and spec.inner + gap / 2 or spec.inner
+	return {startAngle = spec.spanStart, endAngle = spec.spanEnd, color = spec.stroke,
+		inner = inner, outer = math.max(inner, spec.outer - (spec.ring < state.rings and gap / 2 or 0)), gap = gap,
+		height = state.depth, alpha = alpha or spec.alpha, highlight = highlight or 0}
+end
+
 local function sceneSpecs(state, alphas, highlightedIndex)
 	local result = {}
-	local gap = math.max(STYLE.ringGap, state.angularInset or 0)
 	for index, spec in ipairs(state.specs) do
-		-- Only a band with a neighbour inside it gives up half a gap there;
-		-- the hole keeps its radius.
-		local inner = spec.ring > 1 and spec.inner + gap / 2 or spec.inner
-		table.insert(result, {startAngle = spec.spanStart, endAngle = spec.spanEnd, color = spec.stroke,
-			inner = inner, outer = math.max(inner, spec.outer - (spec.ring < state.rings and gap / 2 or 0)), gap = gap,
-			height = state.depth,
-			alpha = alphas and alphas[index] or spec.alpha, highlight = index == highlightedIndex and 1 or 0})
+		table.insert(result, solid(state, spec, alphas and alphas[index], index == highlightedIndex and 1 or 0))
 	end
 	return result
+end
+
+-- The first-ring sector of `outer` that `inner` shows the inside of: every
+-- first-ring mark of `inner` that `outer` also draws is one of its children
+-- there. Nil when the two are not a level apart, as when values change.
+local function drilledSector(outer, inner)
+	local parents, first = {}, {}
+	for _, mark in ipairs(outer.marks) do
+		local ring = math.floor(tonumber(mark.ring) or 1)
+		if mark.id and ring == 2 then parents[mark.id] = mark.parent end
+		if mark.id and ring == 1 then first[mark.id] = true end
+	end
+	local parentId
+	for _, sector in ipairs(inner.sectors) do
+		if sector.ring == 1 and sector.id then
+			if first[sector.id] then return nil end
+			local parent = parents[sector.id]
+			if parent then
+				if parentId and parent ~= parentId then return nil end
+				parentId = parent
+			end
+		end
+	end
+	if not parentId then return nil end
+	for _, sector in ipairs(outer.sectors) do
+		if sector.ring == 1 and sector.id == parentId then return sector end
+	end
+end
+
+-- A sector pressed flat against the circle of `radius` and faded into the
+-- page, for solids that leave or enter a transition.
+local function flat(state, sector, from, to, radius)
+	return {startAngle = from, endAngle = to, color = sector.color or "accent", inner = radius, outer = radius,
+		gap = math.max(STYLE.ringGap, state.angularInset or 0), height = state.depth, alpha = 0, highlight = 0}
+end
+
+local function bandOuter(state, ring)
+	if ring < 1 then return state.ring.inner end
+	if ring > state.rings then return state.ring.outer end
+	return Sectors.band(state.diameter, state.innerRadius, ring, state.rings).outer
+end
+
+-- Paired solids for the drill from level `outer` into its sector `parent`,
+-- shown as level `inner`: the parent's angle opens to the whole circle and
+-- every ring moves one band inwards, as DaisyDisk does. Sectors both levels
+-- draw move from one place to the other. The parent and its siblings close
+-- against the hole; deeper sectors only `inner` draws grow in from the band
+-- outside their own. Returns the `outer` and the `inner` ends of each pair.
+local function drillPairs(outer, inner, parent)
+	local span = parent.spanEnd - parent.spanStart
+	local function opened(angle)
+		return inner.start + (math.max(parent.spanStart, math.min(parent.spanEnd, angle)) - parent.spanStart) / span * 360
+	end
+	local function closed(angle)
+		return parent.spanStart + (angle - inner.start) / 360 * span
+	end
+	local function spec(sector)
+		return {spanStart = sector.spanStart, spanEnd = sector.spanEnd, inner = sector.inner, outer = sector.outer,
+			ring = sector.ring, stroke = sector.color or "accent", alpha = sector.alpha}
+	end
+	local known = {}
+	for _, sector in ipairs(outer.sectors) do if sector.id then known[sector.id] = sector end end
+	local wide, narrow, matched = {}, {}, {}
+	for _, sector in ipairs(inner.sectors) do
+		local other = sector.id and known[sector.id]
+		if other and other.ring == sector.ring + 1 then
+			matched[other] = true
+			table.insert(wide, solid(outer, spec(other)))
+		else
+			table.insert(wide, flat(outer, sector, closed(sector.spanStart), closed(sector.spanEnd), bandOuter(outer, sector.ring + 1)))
+		end
+		table.insert(narrow, solid(inner, spec(sector)))
+	end
+	for _, sector in ipairs(outer.sectors) do
+		if not matched[sector] then
+			table.insert(wide, solid(outer, spec(sector)))
+			table.insert(narrow, flat(inner, sector, opened(sector.spanStart), opened(sector.spanEnd), bandOuter(inner, sector.ring - 1)))
+		end
+	end
+	return wide, narrow
+end
+
+-- The level a raised chart shows, kept while it takes the next one.
+local function level(state)
+	return {marks = state.marks, sectors = state.sectors, rings = state.rings, ring = state.ring, start = state.start,
+		diameter = state.diameter, innerRadius = state.innerRadius, angularInset = state.angularInset, depth = state.depth}
+end
+
+-- Paired solids for any other change of marks: a sector both levels draw
+-- (the same id, or the same place among marks without ids) moves from one
+-- shape to the other; the rest close flat where they stand.
+local function movePairs(previous, current)
+	local function spec(sector)
+		return {spanStart = sector.spanStart, spanEnd = sector.spanEnd, inner = sector.inner, outer = sector.outer,
+			ring = sector.ring, stroke = sector.color or "accent", alpha = sector.alpha}
+	end
+	local function key(sector, index) return sector.id and ("id:" .. sector.id) or index end
+	local known, matched = {}, {}
+	for index, sector in ipairs(previous.sectors) do known[key(sector, index)] = sector end
+	local from, to = {}, {}
+	for index, sector in ipairs(current.sectors) do
+		local other = known[key(sector, index)]
+		if other then
+			matched[other] = true
+			table.insert(from, solid(previous, spec(other)))
+		else
+			table.insert(from, flat(current, sector, sector.spanStart, sector.spanEnd, sector.outer))
+		end
+		table.insert(to, solid(current, spec(sector)))
+	end
+	for _, sector in ipairs(previous.sectors) do
+		if not matched[sector] then
+			table.insert(from, solid(previous, spec(sector)))
+			table.insert(to, flat(previous, sector, sector.spanStart, sector.spanEnd, sector.outer))
+		end
+	end
+	return from, to
+end
+
+-- The paired solids that take a raised chart from one level to the next:
+-- a drill in either direction when the levels are one apart, otherwise
+-- each sector's own move.
+local function transitionPairs(previous, current)
+	local parent = drilledSector(previous, current)
+	if parent then return drillPairs(previous, current, parent) end
+	parent = drilledSector(current, previous)
+	if parent then
+		local to, from = drillPairs(current, previous, parent)
+		return from, to
+	end
+	return movePairs(previous, current)
 end
 
 local function ringCount(sectors)
@@ -233,7 +367,8 @@ end
 -- Builds the chart with the platform module `ns`. Array entries of `props` are
 -- `SectorMark` records or overlay views centered on the chart, like SwiftUI's
 -- `chartBackground` content in the hole. `onSelect(id, clickCount)`,
--- `onHover(id)` and `onCenter()` make it interactive; the hovered sector
+-- `onHover(id)`, `onCenter()` (a click in the hole) and `onBack()` (Delete,
+-- up a level) make it interactive; the hovered sector
 -- brightens where it stands while the others stay as they are, and
 -- `Sectors.highlight` does the same from code. A positive `depth` draws raised sectors `depth`
 -- points deep in a SceneKit view instead of flat arcs; the geometry, hit
@@ -253,7 +388,7 @@ function Sectors.chart(ns, props)
 	local stack = {alignment = "center", fixedWidth = diameter, fixedHeight = diameter}
 	for key, value in pairs(props) do
 		if type(key) == "string" and stack[key] == nil and key ~= "innerRadius" and key ~= "angularInset" and key ~= "depth" and key ~= "shadow"
-			and key ~= "accessibilityLabel" and key ~= "onSelect" and key ~= "onHover" and key ~= "onCenter" and key ~= "dragItem" then
+			and key ~= "accessibilityLabel" and key ~= "onSelect" and key ~= "onHover" and key ~= "onCenter" and key ~= "onBack" and key ~= "dragItem" then
 			stack[key] = value
 		end
 	end
@@ -270,11 +405,15 @@ function Sectors.chart(ns, props)
 		end
 	end
 	local hole = state.ring.inner * 2
+	state.fitted = {}
 	for _, overlay in ipairs(overlays) do
-		if hole > 0 and overlay.maxWidth == nil then overlay.maxWidth = hole * STYLE.holeContent end
+		if hole > 0 and overlay.maxWidth == nil then
+			overlay.maxWidth = hole * STYLE.holeContent
+			table.insert(state.fitted, overlay)
+		end
 		table.insert(stack, overlay)
 	end
-	local interactive = props.onSelect or props.onHover or props.onCenter or props.dragItem
+	local interactive = props.onSelect or props.onHover or props.onCenter or props.onBack or props.dragItem
 	if interactive and type(ns.PointerView) == "function" then
 		local ChartKeys = require("ui.chartkeys")
 		local highlighted
@@ -313,7 +452,7 @@ function Sectors.chart(ns, props)
 				if props.onHover then props.onHover(id) end
 			end,
 			activate = function(id) if props.onSelect then props.onSelect(id, 2) end end,
-			back = function() if props.onCenter then props.onCenter() end end,
+			back = function() if props.onBack then props.onBack() end end,
 			filtered = restyle,
 		})
 		state.unhighlight = function() highlighted = nil end
@@ -361,17 +500,40 @@ function Sectors.highlight(view, id)
 	return true
 end
 
+-- Sets the `innerRadius` or `angularInset` the chart lays its next marks out
+-- with; `Sectors.update` applies them. Returns false for a view this module
+-- did not build.
+function Sectors.configure(view, props)
+	local state = charts[view]
+	if not state then return false end
+	if props.innerRadius ~= nil then state.pendingInnerRadius = props.innerRadius end
+	if props.angularInset ~= nil then state.pendingAngularInset = props.angularInset end
+	return true
+end
+
 -- Applies new `SectorMark` records to a chart built by `Sectors.chart`: arcs
 -- keep their views and take the new angles, and arcs are added or removed at
 -- the end of the ring, below the overlay. Inside an animation transaction
--- the changes animate. A raised chart reuses its SceneKit nodes the same
--- way. Returns false for a view this module did not build.
+-- the changes animate: a raised chart's solids move to their new shapes with
+-- the transaction's animation, and between a level and the inside of one of
+-- its sectors (a sunburst drilling in or out) the sector opens to the whole
+-- circle while every ring moves one band. Omitting
+-- `records` lays the same marks out again. Returns false for a view this
+-- module did not build.
 function Sectors.update(view, records)
 	local state = charts[view]
 	if not state then return false end
 	local ns = state.ns
-	local marks = splitChildren(records)
+	local previous = level(state)
+	local marks = records and splitChildren(records) or state.marks
 	state.marks = marks
+	if state.pendingInnerRadius ~= nil or state.pendingAngularInset ~= nil then
+		state.innerRadius = state.pendingInnerRadius or state.innerRadius
+		state.angularInset = state.pendingAngularInset or state.angularInset
+		state.pendingInnerRadius, state.pendingAngularInset = nil, nil
+		state.ring = Sectors.ring(state.diameter, state.innerRadius)
+		for _, overlay in ipairs(state.fitted) do overlay.maxWidth = state.ring.inner * 2 * STYLE.holeContent end
+	end
 	state.sectors = Sectors.layout(marks, state.diameter, state.innerRadius, state.angularInset, state.start)
 	local specs = arcSpecs(state.sectors, state.ring)
 	state.specs = specs
@@ -381,7 +543,12 @@ function Sectors.update(view, records)
 		state.unhighlight()
 	end
 	if state.scene then
-		if state.restyle then state.restyle(false) else ns._sectorSceneConfigure(state.scene, sceneSpecs(state), false) end
+		-- Inside an animated transaction the solids move to the new level;
+		-- otherwise the scene shows it at once. A restyle while they move
+		-- sets what they end on.
+		local from, to = transitionPairs(previous, level(state))
+		ns._sectorSceneTransition(state.scene, from, to, sceneSpecs(state))
+		if state.restyle then state.restyle(false) end
 		return true
 	end
 	for index, spec in ipairs(specs) do

@@ -11,6 +11,7 @@ local confirmations = {}
 service.confirmAction = function(title) table.insert(confirmations, title); return true end
 local shownErrors = {}
 service.showError = function(title) table.insert(shownErrors, title) end
+local ns = require("AppKit")
 local app = Controller.new(service)
 local window = app:createWindow()
 local function page() return app.page.refs end
@@ -136,5 +137,64 @@ t.expect(app.navigation:forward(), "forward is available after going back")
 t.assertEqual(app.destination, "updates", "forward returns again")
 t.expect(bridge._navigationGesture(window, "back") and app.destination == "projects", "the mouse's back button goes back")
 t.expect(bridge._navigationGesture(window, "forward") and app.destination == "updates", "the mouse's forward button goes forward")
+
+-- The Overview's ring is interactive: a sector names itself in the center
+-- while hovered and opens the Map inside its category; the center opens the
+-- whole map.
+app.pages.map:setFocus("")
+app:show("overview")
+local hero = app.pages.overview.hero
+local heroActions = hero.actions
+local usedTotal, usedCaption = hero.refs.usedTotal.text, hero.refs.usedCaption.text
+t.assertEqual(hero.refs.chart.subviews[#hero.refs.chart.subviews].className, "LuaPointerView", "the overview ring takes the pointer")
+heroActions.chartHover("developer")
+t.assertEqual(hero.refs.usedCaption.text, "Developer", "a hovered sector names itself in the center")
+t.expect(hero.refs.usedTotal.text ~= usedTotal, "with its size")
+heroActions.chartHover(nil)
+t.assertEqual(hero.refs.usedTotal.text, usedTotal, "leaving it restores the used total")
+t.assertEqual(hero.refs.usedCaption.text, usedCaption, "and its caption")
+heroActions.chartSelect("free")
+t.assertEqual(app.destination, "overview", "free space has nothing inside to open")
+heroActions.chartSelect("developer")
+t.assertEqual(app.destination, "map", "clicking a category's sector opens the Map")
+t.assertEqual(app.pages.map.focus, "developer", "inside that category")
+app:show("overview")
+app.pages.overview.hero.actions.chartCenter()
+t.assertEqual(app.destination, "map", "the center opens the Map")
+t.assertEqual(app.pages.map.focus, "", "at the whole disk")
+
+-- The keyboard does the same: focus names a sector, Return opens it, and
+-- Delete, which has no level to go up to here, stays on the page.
+app:show("overview")
+hero = app.pages.overview.hero
+local heroPointer = hero.refs.chart.subviews[#hero.refs.chart.subviews]
+t.expect(heroPointer.acceptsFirstResponder, "the overview ring takes keyboard focus")
+bridge._pointerSend(heroPointer, "key", "tab")
+t.expect(hero.refs.usedCaption.text ~= usedCaption, "a focused sector names itself in the center")
+bridge._pointerSend(heroPointer, "key", "delete")
+t.assertEqual(app.destination, "overview", "delete stays on the overview")
+-- Tab starts at the largest sector, space no category accounts for.
+t.assertEqual(hero.refs.usedCaption.text, "Not attributed", "tab focuses the largest sector")
+bridge._pointerSend(heroPointer, "key", "return")
+t.assertEqual(app.destination, "overview", "which has nothing inside to open")
+for _ = 1, 8 do
+	if hero.refs.usedCaption.text == "Developer" then break end
+	bridge._pointerSend(heroPointer, "key", "right")
+end
+t.assertEqual(hero.refs.usedCaption.text, "Developer", "arrows reach the categories")
+bridge._pointerSend(heroPointer, "key", "return")
+t.assertEqual(app.destination, "map", "return opens the Map inside the focused category")
+t.assertEqual(app.pages.map.focus, "developer", "focused on it")
+app.pages.map:setFocus("")
+
+-- Drilling moves the rings to the new level instead of snapping.
+local rings = app.page.refs.sunburst
+app.page.template.actions.chartSelect("developer", 1)
+t.expect(app.page.refs.sunburst == rings, "drilling keeps the chart view")
+t.expect(ns._sectorSceneTransitionState(rings.subviews[1]) > 0, "and the rings move into the group")
+app.page.template.actions.up()
+t.expect(ns._sectorSceneTransitionState(rings.subviews[1]) > 0, "and back out of it")
+require("AppKitNative")._motionSettle()
+
 
 os.exit(t.summary() and 0 or 1)

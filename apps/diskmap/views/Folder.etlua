@@ -62,7 +62,8 @@
         <% end %>
       </Treemap>
       <% else %>
-      <SectorChart id="folderSunburst" transition="opacity" width="<%= FOLDER.chart %>" height="<%= FOLDER.chart %>" innerRadius="<%= hole %>" angularInset="<%= FOLDER.gap %>" depth="<%= FOLDER.depth %>" shadow="false" onSelect="chartSelect" onHover="chartHover" onCenter="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
+      <% -- Looking inside a group, or back out, moves the rings to the new level. %>
+      <SectorChart id="folderSunburst" transition="opacity" animation="smooth" animationValue="<%= trail[#trail].id %>" width="<%= FOLDER.chart %>" height="<%= FOLDER.chart %>" innerRadius="<%= hole %>" angularInset="<%= FOLDER.gap %>" depth="<%= FOLDER.depth %>" shadow="false" onSelect="chartSelect" onHover="chartHover" onCenter="up" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
         <% for _, node in ipairs(nodes) do %>
         <SectorMark id="<%= node.id %>" ring="<%= node.ring %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" opacity="<%= (ringOpacity[node.ring] or 0.5) * (node.other and node.parent and otherFade or 1) %>" label="<%= node.label %>" />
         <% end %>

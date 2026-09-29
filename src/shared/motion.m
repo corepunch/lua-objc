@@ -148,6 +148,68 @@ static CABasicAnimation *motion_animation(MotionSpec spec, NSString *keyPath, id
 	return animation;
 }
 
+/* ----- Custom animators ----- */
+
+/* A view whose content Core Animation cannot tween (SceneKit geometry, for
+ * one) animates itself inside a transaction as an animator: it takes the
+ * transaction's animation from motion_animate, steps itself with
+ * motion_progress, and reports the end with motion_animator_finished. The
+ * transaction's completion waits for it, and _motionSettle ends it. A
+ * platform without such a view leaves these unused. */
+@protocol LuaMotionAnimator <NSObject>
+/* Jump to the final state now, then report motion_animator_finished. */
+- (void)motionSettle;
+@end
+
+/* Seconds the animation runs once it has begun, at its speed. */
+__unused static CFTimeInterval motion_duration(MotionSpec spec) {
+	CFTimeInterval duration = spec.duration;
+	if (spec.spring) {
+		CASpringAnimation *spring = [CASpringAnimation animation];
+		spring.mass = spec.mass;
+		spring.stiffness = spec.stiffness;
+		spring.damping = spec.damping;
+		spring.initialVelocity = spec.velocity;
+		duration = spring.settlingDuration;
+	}
+	return duration / spec.speed;
+}
+
+/* Bisection steps that solve a timing curve to well under a pixel. */
+static const int kMotionBezierSteps = 40;
+
+/* A cubic timing curve's y at x, as CAMediaTimingFunction evaluates it. */
+static CGFloat motion_bezier(CGFloat x1, CGFloat y1, CGFloat x2, CGFloat y2, CGFloat x) {
+	if (x <= 0) return 0;
+	if (x >= 1) return 1;
+	CGFloat low = 0, high = 1, t = x;
+	for (int step = 0; step < kMotionBezierSteps; step++) {
+		CGFloat current = 3 * x1 * (1 - t) * (1 - t) * t + 3 * x2 * (1 - t) * t * t + t * t * t;
+		if (fabs(current - x) < 1e-7) break;
+		if (current < x) low = t; else high = t;
+		t = (low + high) / 2;
+	}
+	return 3 * y1 * (1 - t) * (1 - t) * t + 3 * y2 * (1 - t) * t * t + t * t * t;
+}
+
+/* Progress (0 at the start value, 1 at the end value; a spring may pass 1)
+ * `elapsed` seconds after the animation was added, as the same spec animates
+ * a layer: held through the delay, then the curve or the spring's step
+ * response. Repeats are for layer animations only. */
+__unused static CGFloat motion_progress(MotionSpec spec, CFTimeInterval elapsed) {
+	CFTimeInterval t = (elapsed - spec.delay) * spec.speed;
+	if (t <= 0) return 0;
+	if (!spec.spring) return spec.duration > 0 ? motion_bezier(spec.x1, spec.y1, spec.x2, spec.y2, t / spec.duration) : 1;
+	CGFloat omega = sqrt(spec.stiffness / spec.mass);
+	CGFloat zeta = spec.damping / (2 * sqrt(spec.stiffness * spec.mass));
+	CGFloat velocity = -spec.velocity;
+	if (zeta < 1) {
+		CGFloat damped = omega * sqrt(1 - zeta * zeta);
+		return 1 - exp(-zeta * omega * t) * (cos(damped * t) + (zeta * omega - velocity) / damped * sin(damped * t));
+	}
+	return 1 - exp(-omega * t) * (1 + (omega - velocity) * t);
+}
+
 /* ----- View effects: opacity, scale, rotation and offset ----- */
 
 /* SwiftUI's scaleEffect and rotationEffect pivot on the view's centre, and
@@ -287,6 +349,7 @@ static void motion_apply_effects(MotionView *view) {
 @property(nonatomic, strong) NSHashTable<MotionView *> *appearing;
 @property(nonatomic, strong) NSMutableArray<MotionView *> *removals;
 @property(nonatomic, strong) NSMutableDictionary<NSString *, NSMutableArray *> *matchedSources;
+@property(nonatomic, strong) NSMutableArray<id<LuaMotionAnimator>> *animators;
 @end
 @implementation LuaMotionTransaction
 - (instancetype)init {
@@ -298,22 +361,30 @@ static void motion_apply_effects(MotionView *view) {
 		_appearing = [NSHashTable weakObjectsHashTable];
 		_removals = [NSMutableArray array];
 		_matchedSources = [NSMutableDictionary dictionary];
+		_animators = [NSMutableArray array];
 	}
 	return self;
 }
 @end
 
 /* Animations still running, so tests (and teardown) can settle them. Each
- * batch finishes with its CATransaction completion. */
+ * batch finishes once its CATransaction has completed and its animators
+ * have ended. */
 @interface LuaMotionBatch : NSObject
 @property(nonatomic, strong) NSHashTable<CALayer *> *layers;
+@property(nonatomic, strong) NSMutableArray<id<LuaMotionAnimator>> *animators;
 @property(nonatomic, strong) NSMutableArray<dispatch_block_t> *completions;
+@property(nonatomic) BOOL layersFinished;
 @property(nonatomic) BOOL finished;
 @end
 @implementation LuaMotionBatch
 - (instancetype)init {
 	self = [super init];
-	if (self) { _layers = [NSHashTable weakObjectsHashTable]; _completions = [NSMutableArray array]; }
+	if (self) {
+		_layers = [NSHashTable weakObjectsHashTable];
+		_animators = [NSMutableArray array];
+		_completions = [NSMutableArray array];
+	}
 	return self;
 }
 - (void)finish {
@@ -327,6 +398,35 @@ static void motion_apply_effects(MotionView *view) {
 static NSMutableArray<LuaMotionTransaction *> *motionStack;
 static NSMutableArray<LuaMotionBatch *> *motionBatches;
 static NSString *const kMotionKeyPrefix = @"lua.motion.";
+
+static void motion_batch_advance(LuaMotionBatch *batch) {
+	if (!batch.layersFinished || batch.animators.count > 0) return;
+	[motionBatches removeObject:batch];
+	[batch finish];
+}
+
+static LuaMotionTransaction *motion_current(void);
+
+/* Joins `animator` to the open transaction and hands it that transaction's
+ * animation. Returns NO, starting nothing, outside a transaction, in one
+ * that disables animation, and under Reduce Motion: the animator then shows
+ * its final state at once. */
+__unused static BOOL motion_animate(id<LuaMotionAnimator> animator, MotionSpec *spec) {
+	LuaMotionTransaction *txn = motion_current();
+	if (!txn || txn.disabled || motion_reduced()) return NO;
+	[txn.animators addObject:animator];
+	*spec = txn.spec;
+	return YES;
+}
+
+__unused static void motion_animator_finished(id<LuaMotionAnimator> animator) {
+	for (LuaMotionTransaction *txn in motionStack) [txn.animators removeObjectIdenticalTo:animator];
+	for (LuaMotionBatch *batch in [motionBatches copy]) {
+		if ([batch.animators indexOfObjectIdenticalTo:animator] == NSNotFound) continue;
+		[batch.animators removeObjectIdenticalTo:animator];
+		motion_batch_advance(batch);
+	}
+}
 
 static LuaMotionTransaction *motion_current(void) {
 	return motionStack.lastObject;
@@ -722,16 +822,16 @@ static void motion_run_batch(LuaMotionBatch *batch, dispatch_block_t add) {
 	[CATransaction setCompletionBlock:^{
 		LuaMotionBatch *strong = weakBatch;
 		if (!strong) return;
-		[motionBatches removeObject:strong];
-		[strong finish];
+		strong.layersFinished = YES;
+		motion_batch_advance(strong);
 	}];
 	add();
 	[CATransaction commit];
 
 	if (batch.layers.count == 0) {
 		dispatch_async(dispatch_get_main_queue(), ^{
-			[motionBatches removeObject:batch];
-			[batch finish];
+			batch.layersFinished = YES;
+			motion_batch_advance(batch);
 		});
 	}
 }
@@ -745,6 +845,7 @@ static void motion_commit(LuaMotionTransaction *txn, dispatch_block_t completion
 	[CATransaction commit];
 	LuaMotionBatch *batch = [LuaMotionBatch new];
 	if (completion) [batch.completions addObject:completion];
+	[batch.animators addObjectsFromArray:txn.animators];
 	motion_run_batch(batch, ^{
 		if (txn.disabled) return;
 		// Matched sources: views with a matched id that are gone or hidden.
@@ -1045,6 +1146,9 @@ static int bridge_motion_settle(lua_State *L) {
 	[motionBatches removeAllObjects];
 	for (LuaMotionBatch *batch in batches) {
 		for (CALayer *layer in batch.layers) motion_remove_animations(layer);
+		NSArray<id<LuaMotionAnimator>> *animators = [batch.animators copy];
+		[batch.animators removeAllObjects];
+		for (id<LuaMotionAnimator> animator in animators) [animator motionSettle];
 		[batch finish];
 	}
 	// Completions of unanimated transactions arrive on the next turn.

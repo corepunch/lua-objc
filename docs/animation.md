@@ -119,6 +119,30 @@ Lua-only animators:
 - `ns.symbolEffect(view, effect, options)` plays an SF Symbol effect.
 - `ns.reduceMotion()` reports the accessibility setting.
 
+## Custom animators
+
+Core Animation cannot tween everything: a raised `SectorChart` is SceneKit
+geometry, rebuilt from outlines. Such a view is its own **animator**
+(`LuaMotionAnimator` in `src/shared/motion.m`). Inside an animated
+transaction it joins the transaction with `motion_animate`, which hands it
+the transaction's animation; it steps itself from a display link with
+`motion_progress` (the same curve or spring a layer would follow) and reports
+the end with `motion_animator_finished`. The transaction's completion waits
+for it, `_motionSettle` ends it on its final state, and outside a
+transaction, in one that disables animation, or under Reduce Motion it shows
+the final state at once. Nothing about its timing is its own.
+
+The raised chart pairs the sectors of the old and new marks by `id` and moves
+each to its new shape; marks that come or go open from, or close to, nothing.
+When the new marks are the inside of one of its sectors (their ids were its
+second-ring children), or the level outside them, the sector opens to the
+whole circle and every ring moves one band inwards. A template asks for it
+like any other animation:
+
+```xml
+<SectorChart animation="smooth" animationValue="<%= focus %>" depth="14" …>
+```
+
 ## Retained templates and reconciliation
 
 Screens are etlua templates mounted once through `ui.template`; later
@@ -149,7 +173,9 @@ How nodes match and what happens to them:
    parent. A tag whose schema entry has `updateRecords(view, records)` takes
    changed records in place: `SectorChart` moves its existing arcs to the new
    angles, adds or removes arcs below its overlay, and keeps its hover and
-   keyboard handling (`Sectors.update` in `lua/ui/sectors.lua`). Its other
+   keyboard handling (`Sectors.update` in `lua/ui/sectors.lua`). Attributes
+   named in the entry's `recordLayout` (`innerRadius`, `angularInset`) are
+   applied with the records instead of rebuilding the chart. Its other
    children reconcile normally. Any other record change rebuilds the parent.
 5. **Rebuild.** Any other change rebuilds that one node: a new native view
    replaces the old one, inside the current transaction.

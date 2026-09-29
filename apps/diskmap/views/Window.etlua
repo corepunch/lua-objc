@@ -1,4 +1,4 @@
-<Window title="<%= windowTitle or "Diskmap" %>" subtitle="<%= subtitle or "" %>" hideTitle="false" width="1100" height="760" minWidth="880" minHeight="580" sidebarWidth="210" onBack="back" onForward="forward">
+<Window title="<%= windowTitle or "Diskmap" %>" subtitle="<%= subtitle or "" %>" hideTitle="false" width="1100" height="760" minWidth="950" minHeight="580" sidebarWidth="226" onBack="back" onForward="forward">
   <Commands appName="Diskmap">
     <CommandGroup replacing="appSettings">
       <MenuItem title="Settings…" keyEquivalent="," action="settings" />

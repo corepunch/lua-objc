@@ -19,13 +19,27 @@
 
 static NSColor *semantic_color(NSString *name);
 
-@interface LuaSectorSceneView : SCNView
+static CGFloat sector_scene_number(NSDictionary *spec, NSString *key, CGFloat fallback) {
+	NSNumber *value = spec[key];
+	return [value isKindOfClass:NSNumber.class] ? value.doubleValue : fallback;
+}
+
+@interface LuaSectorSceneView : SCNView <LuaMotionAnimator>
 @property(nonatomic, copy) NSArray<NSDictionary *> *sectors;
 @property(nonatomic, strong) SCNNode *chartNode;
 @property(nonatomic, strong) SCNNode *keyNode;
 /* Whether the key light casts the soft contact shadow; on by default.
  * (NSView already owns `shadow`, an NSShadow.) */
 @property(nonatomic) BOOL castsShadow;
+/* A running transition: sector pairs to tween between, the sectors to show
+ * once it ends, the transaction's animation and the display link that steps
+ * it while the view is on screen. */
+@property(nonatomic, copy) NSArray<NSDictionary *> *transitionFrom;
+@property(nonatomic, copy) NSArray<NSDictionary *> *transitionTo;
+@property(nonatomic, copy) NSArray<NSDictionary *> *transitionFinal;
+@property(nonatomic) MotionSpec transitionSpec;
+@property(nonatomic) CFTimeInterval transitionStart;
+@property(nonatomic, strong) CADisplayLink *transitionLink;
 @end
 
 static SCNNode *sector_scene_light(SCNLightType type, CGFloat intensity) {
@@ -153,7 +167,7 @@ static NSImage *sector_scene_glow(void) {
 
 - (void)viewDidChangeEffectiveAppearance {
 	[super viewDidChangeEffectiveAppearance];
-	[self applySectors:self.sectors animated:NO];
+	[self renderSectors:self.sectors animated:NO];
 }
 
 /* The outline of a sector in scene coordinates (y up, centered). `start` and
@@ -201,11 +215,6 @@ static CGFloat sector_scene_luminance(NSColor *color) {
 	return 0.2126 * color.redComponent + 0.7152 * color.greenComponent + 0.0722 * color.blueComponent;
 }
 
-static CGFloat sector_scene_number(NSDictionary *spec, NSString *key, CGFloat fallback) {
-	NSNumber *value = spec[key];
-	return [value isKindOfClass:NSNumber.class] ? value.doubleValue : fallback;
-}
-
 /* The top face carries the slice's gradient. The walls and underside are a
  * plain color: SCNShape wraps a face's texture onto its walls as well, and a
  * gradient there reads as a light shining on the chart's lower edge. */
@@ -221,7 +230,95 @@ static SCNMaterial *sector_scene_material(BOOL top) {
 	return material;
 }
 
+/* New sectors from Lua. While a transition runs they become what it ends
+ * on, so a hover restyle under the pointer that started a drill does not cut
+ * the motion short. */
 - (void)applySectors:(NSArray<NSDictionary *> *)sectors animated:(BOOL)animated {
+	if (self.transitionTo) { self.transitionFinal = sectors; return; }
+	[self renderSectors:sectors animated:animated];
+}
+
+/* The running transition's sectors at `progress`. Angles and radii move
+ * linearly (a spring may overshoot); the color blends from the old sector's
+ * to the new. */
+- (NSArray<NSDictionary *> *)transitionSectorsAtProgress:(CGFloat)progress {
+	NSMutableArray<NSDictionary *> *sectors = [NSMutableArray array];
+	for (NSUInteger index = 0; index < self.transitionTo.count; index++) {
+		NSDictionary *from = self.transitionFrom[index], *to = self.transitionTo[index];
+		NSMutableDictionary *spec = [to mutableCopy];
+		for (NSString *key in @[@"startAngle", @"endAngle", @"inner", @"outer", @"alpha"]) {
+			CGFloat a = sector_scene_number(from, key, 0), b = sector_scene_number(to, key, 0);
+			spec[key] = @(a + (b - a) * progress);
+		}
+		spec[@"inner"] = @(MAX(0, [spec[@"inner"] doubleValue]));
+		spec[@"highlight"] = @0;
+		if (from[@"color"]) spec[@"fromColor"] = from[@"color"];
+		spec[@"blend"] = @(MIN(1, MAX(0, progress)));
+		[sectors addObject:spec];
+	}
+	return sectors;
+}
+
+- (void)stepTransition:(CADisplayLink *)link {
+	(void)link;
+	CFTimeInterval elapsed = CACurrentMediaTime() - self.transitionStart;
+	if (elapsed >= self.transitionSpec.delay + motion_duration(self.transitionSpec)) { [self motionSettle]; return; }
+	[self renderSectors:[self transitionSectorsAtProgress:motion_progress(self.transitionSpec, elapsed)] animated:NO];
+}
+
+/* The display link runs only while the view is in a window; a transition
+ * begun off screen waits there and ends when the transaction is settled. */
+- (void)updateTransitionLink {
+	BOOL runs = self.transitionTo != nil && self.window != nil;
+	if (runs && !self.transitionLink) {
+		self.transitionLink = [self displayLinkWithTarget:self selector:@selector(stepTransition:)];
+		[self.transitionLink addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];
+	} else if (!runs && self.transitionLink) {
+		[self.transitionLink invalidate];
+		self.transitionLink = nil;
+	}
+}
+
+/* Tweens from `from` to `to` (arrays of equal length, paired by index) with
+ * the open transaction's animation, then shows `final`. Outside an animated
+ * transaction, and under Reduce Motion, `final` shows at once. SCNShape
+ * outlines cannot be animated implicitly, so the view is its own animator
+ * and rebuilds the moving outlines each frame. */
+- (void)transitionFrom:(NSArray<NSDictionary *> *)from to:(NSArray<NSDictionary *> *)to
+	final:(NSArray<NSDictionary *> *)final {
+	if (self.transitionTo) [self motionSettle];
+	MotionSpec spec;
+	if (from.count != to.count || from.count == 0 || !motion_animate(self, &spec)) {
+		[self renderSectors:final animated:NO];
+		return;
+	}
+	self.transitionFrom = from;
+	self.transitionTo = to;
+	self.transitionFinal = final;
+	self.transitionSpec = spec;
+	self.transitionStart = CACurrentMediaTime();
+	[self renderSectors:[self transitionSectorsAtProgress:0] animated:NO];
+	[self updateTransitionLink];
+}
+
+- (void)motionSettle {
+	if (!self.transitionTo) return;
+	NSArray<NSDictionary *> *final = self.transitionFinal;
+	self.transitionFrom = nil; self.transitionTo = nil; self.transitionFinal = nil;
+	[self updateTransitionLink];
+	/* Transition solids are paired, not the final sectors in order. */
+	for (SCNNode *node in [self.chartNode.childNodes copy]) [node removeFromParentNode];
+	self.sectors = @[];
+	[self renderSectors:final animated:NO];
+	motion_animator_finished(self);
+}
+
+- (void)viewDidMoveToWindow {
+	[super viewDidMoveToWindow];
+	[self updateTransitionLink];
+}
+
+- (void)renderSectors:(NSArray<NSDictionary *> *)sectors animated:(BOOL)animated {
 	NSArray<SCNNode *> *existing = self.chartNode.childNodes;
 	NSArray<NSDictionary *> *previous = self.sectors;
 	self.sectors = sectors;
@@ -253,7 +350,7 @@ static SCNMaterial *sector_scene_material(BOOL top) {
 				&& sector_scene_number(old, @"height", NAN) == height
 				&& sector_scene_number(old, @"gap", NAN) == gap;
 			if (!sameShape) {
-				NSBezierPath *outline = sector_scene_outline(start, end, inner, outer, gap);
+				NSBezierPath *outline = outer > inner ? sector_scene_outline(start, end, inner, outer, gap) : nil;
 				SCNShape *shape = [SCNShape shapeWithPath:outline ?: [NSBezierPath bezierPath] extrusionDepth:height];
 				node.hidden = outline == nil;
 				/* SCNShape's elements are its top face, underside, then walls. */
@@ -263,6 +360,10 @@ static SCNMaterial *sector_scene_material(BOOL top) {
 				node.geometry = shape;
 			}
 			NSColor *color = [semantic_color(spec[@"color"] ?: @"accent") colorUsingColorSpace:NSColorSpace.sRGBColorSpace];
+			if (spec[@"fromColor"]) {
+				NSColor *origin = [semantic_color(spec[@"fromColor"]) colorUsingColorSpace:NSColorSpace.sRGBColorSpace];
+				color = [origin blendedColorWithFraction:sector_scene_number(spec, @"blend", 1) ofColor:color] ?: color;
+			}
 			CGFloat opacity = color.alphaComponent * alpha;
 			/* A highlighted sector stands out from the page where it stands,
 			 * top and walls alike: it takes its color at full strength, undoing
@@ -300,14 +401,12 @@ static int bridge_sector_scene(lua_State *L) {
 /* sectorSceneConfigure(view, sectors, animated): `sectors` is an array of
  * {startAngle, endAngle, inner, outer, height, gap, color, alpha, highlight}. Nodes are
  * reused by index; geometry is rebuilt only when a sector's outline moves. */
-static int bridge_sector_scene_configure(lua_State *L) {
-	LuaSectorSceneView *view = lua_objc_check_object(L, 1, [LuaSectorSceneView class], "SectorScene");
-	luaL_checktype(L, 2, LUA_TTABLE);
-	BOOL animated = lua_toboolean(L, 3);
+static NSArray<NSDictionary *> *sector_scene_specs(lua_State *L, int arg) {
+	luaL_checktype(L, arg, LUA_TTABLE);
 	NSMutableArray<NSDictionary *> *sectors = [NSMutableArray array];
-	lua_Integer count = luaL_len(L, 2);
+	lua_Integer count = luaL_len(L, arg);
 	for (lua_Integer index = 1; index <= count; index++) {
-		lua_rawgeti(L, 2, index);
+		lua_rawgeti(L, arg, index);
 		if (lua_istable(L, -1)) {
 			NSMutableDictionary *spec = [NSMutableDictionary dictionary];
 			for (NSString *key in @[@"startAngle", @"endAngle", @"inner", @"outer", @"height", @"gap", @"alpha", @"highlight"]) {
@@ -322,8 +421,34 @@ static int bridge_sector_scene_configure(lua_State *L) {
 		}
 		lua_pop(L, 1);
 	}
+	return sectors;
+}
+
+static int bridge_sector_scene_configure(lua_State *L) {
+	BOOL animated = lua_toboolean(L, 3);
+	NSArray<NSDictionary *> *sectors = sector_scene_specs(L, 2);
+	LuaSectorSceneView *view = lua_objc_check_object(L, 1, [LuaSectorSceneView class], "SectorScene");
 	[view applySectors:sectors animated:animated];
 	return 0;
+}
+
+/* sectorSceneTransition(view, from, to, final): inside an animated
+ * transaction, tweens the paired sectors `from[i]` to `to[i]` with its
+ * animation, then shows `final`; otherwise shows `final` at once. */
+static int bridge_sector_scene_transition(lua_State *L) {
+	NSArray<NSDictionary *> *from = sector_scene_specs(L, 2), *to = sector_scene_specs(L, 3);
+	NSArray<NSDictionary *> *final = sector_scene_specs(L, 4);
+	LuaSectorSceneView *view = lua_objc_check_object(L, 1, [LuaSectorSceneView class], "SectorScene");
+	[view transitionFrom:from to:to final:final];
+	return 0;
+}
+
+/* Test hook: the number of sector pairs in the running transition, 0 when
+ * none runs. `_motionSettle` ends it. */
+static int bridge_sector_scene_transition_state(lua_State *L) {
+	LuaSectorSceneView *view = lua_objc_check_object(L, 1, [LuaSectorSceneView class], "SectorScene");
+	lua_pushinteger(L, (lua_Integer)view.transitionTo.count);
+	return 1;
 }
 
 /* sectorScenePoint(view, x, y, z): the chart point (top-left, y down, like

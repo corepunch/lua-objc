@@ -27,9 +27,11 @@ t.assertEqual(chart.legend[1].id, "applications", "largest category leads the le
 t.assertEqual(chart.legend[2].id, "developer", "next largest category follows")
 t.assertEqual(chart.legend[3].id, "ai-agents", "AI agents have their own storage segment")
 t.assertEqual(chart.marks[#chart.marks].label, "Free", "free space closes the ring")
+local chartActions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end}
 local hero, heroRefs = render("Hero", {summary = Overview.summary(model, disk), chart = chart,
-	reclaim = Overview.reclaim(model), volumeName = "Startup Disk", actions = {},
+	reclaim = Overview.reclaim(model), volumeName = "Startup Disk", actions = chartActions,
 	hidden = Overview.hidden(disk, {important = 110e9}, 2, 3)})
+t.assertEqual(chart.marks[1].id, chart.legend[1].id, "a mark carries its category, so its sector can open it")
 t.expect(heroRefs.hiddenSpace ~= nil, "the hero explains space no file scan can attribute")
 t.assertEqual(#heroRefs.hiddenSpace.subviews, 3, "purgeable space, snapshots and unreadable locations are listed")
 t.assertEqual(heroRefs.heroCard.className, "NSBox", "the hero uses the native rounded group")
@@ -51,10 +53,10 @@ for _, button in ipairs(buttons) do
 end
 t.expect(heroRefs.chart.frame.size.width == heroRefs.chart.frame.size.height, "the donut keeps a square frame")
 local _, emptyRefs = render("Hero", {summary = Overview.summary(model, {totalKb = 1, freeKb = 0}),
-	chart = Overview.chart(model, {totalKb = 1, freeKb = 0}), reclaim = Overview.reclaim(model), volumeName = "Startup Disk", actions = {}, hidden = {}})
+	chart = Overview.chart(model, {totalKb = 1, freeKb = 0}), reclaim = Overview.reclaim(model), volumeName = "Startup Disk", actions = chartActions, hidden = {}})
 t.expect(emptyRefs.legendExplanation ~= nil, "an overcounted inventory explains why no partition is drawn")
 t.expect(emptyRefs.lowSpace ~= nil and heroRefs.lowSpace == nil, "only a nearly full disk shows the low-space warning")
-t.assertEqual(#emptyRefs.chart.subviews, 2, "an empty chart keeps its track ring and centered total")
+t.assertEqual(#emptyRefs.chart.subviews, 3, "an empty chart keeps its track ring and centered total under the pointer view")
 local _, refs = render("Overview", {status = "Calculating…", actions = {select = function() end, open = function() end,
 	largestMenu = function() return {} end, openLargest = function() end, showLargest = function() end, access = function() end}})
 t.assertEqual(refs.categoriesPanel.className, "NSBox", "category rows share a native rounded section")

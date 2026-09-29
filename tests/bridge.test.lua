@@ -846,10 +846,13 @@ local c1 = colWidth(cw, "c")
 t.assertEqual(a1, 120, "fixed column 'a' at 120 px (got " .. a1 .. ")")
 t.assertEqual(c1, 80, "fixed column 'c' at 80 px (got " .. c1 .. ")")
 -- Widths alone omit AppKit's row insets and inter-column spacing.
--- Verify the actual trailing cell, which previously extended past the viewport.
-local initialLastCell = bridge._tableCellFrames(flexTable, 0)[3]
-t.expect(math.abs(initialLastCell.maxX - 600) < 1,
-	"fixed and stretch columns including native gutters fill the viewport")
+-- Verify the actual cells: inset rows mirror the leading inset on the trailing
+-- edge, so the last cell ends inside the selection capsule.
+local initialCells = bridge._tableCellFrames(flexTable, 0)
+local initialLastCell = initialCells[3]
+t.expect(initialCells[1].x > 0, "inset rows start after a leading inset")
+t.expect(math.abs(initialLastCell.maxX - (600 - initialCells[1].x)) < 1,
+	"fixed and stretch columns fill the viewport between mirrored row insets")
 
 -- Resize wider: fixed columns must NOT change.
 flexTable.size = ns.Size(800, 200)
@@ -875,9 +878,10 @@ t.assertEqual(a3, 120, "fixed 'a' unchanged at 120 after narrow (got " .. a3 .. 
 t.assertEqual(c3, 80, "fixed 'c' unchanged at 80 after narrow (got " .. c3 .. ")")
 t.expect(b3 < b2, "stretch column 'b' shrank (was " .. b2 .. ", now " .. b3 .. ")")
 
-local narrowLastCell = bridge._tableCellFrames(flexTable, 0)[3]
-t.expect(math.abs(narrowLastCell.maxX - 400) < 1,
-	"narrow table preserves the entire trailing cell inside the viewport")
+local narrowCells = bridge._tableCellFrames(flexTable, 0)
+local narrowLastCell = narrowCells[3]
+t.expect(math.abs(narrowLastCell.maxX - (400 - narrowCells[1].x)) < 1,
+	"narrow table preserves the entire trailing cell inside the row insets")
 
 -- Mailbox: source list with name (stretch) + count (fixed 45 px).
 -- At table width 170, count column must be present and visible.

@@ -737,8 +737,10 @@ local TAG_SCHEMA = {
         -- New marks move the existing arcs, like SwiftUI Charts, instead of
         -- rebuilding the chart (see ui/sectors.lua).
         updateRecords = function(view, records) return require("ui.sectors").update(view, records) end,
+        -- Attributes the marks are laid out with; a change lays them out again.
+        recordLayout = { "innerRadius", "angularInset" },
         transform = function(props, attrs)
-            bindActions(props, attrs, { "onSelect", "onHover", "onCenter", "dragItem" })
+            bindActions(props, attrs, { "onSelect", "onHover", "onCenter", "onBack", "dragItem" })
         end,
     },
     -- `ring` 2+ with a `parent` id draws a sunburst level inside the parent.
@@ -2095,6 +2097,11 @@ local TAG_INNER = {
             if hasProperty(view, name) then return function() view[name] = num(v) or 0 end end
         end
     end },
+    -- The chart lays its marks out again with these (see `recordLayout`).
+    SectorChart = {
+        innerRadius = function(view, v) return function() require("ui.sectors").configure(view, { innerRadius = num(v) or 0 }) end end,
+        angularInset = function(view, v) return function() require("ui.sectors").configure(view, { angularInset = num(v) or 0 }) end end,
+    },
 }
 
 -- Layout attributes a view reads from itself. Padding needs a stack (a
@@ -2228,7 +2235,11 @@ local function reconcileRecordsInPlace(old, new, ns, plan)
     for index, child in ipairs(newViews) do
         if not reconcileNode(oldViews[index], child, ns, plan) then return false end
     end
-    if not sameRecords(oldRecords, newRecords, ns) then
+    local relayout = false
+    for _, key in ipairs(entry.recordLayout or {}) do
+        if old.attrs[key] ~= new.attrs[key] then relayout = true end
+    end
+    if relayout or not sameRecords(oldRecords, newRecords, ns) then
         local records = compile(newRecords, ns, registry, {})
         local view = old.target
         table.insert(plan.ops, function()
