@@ -37,7 +37,8 @@ and the project actions Commit, Share, and Deploy. The chat shows the request
 as a user bubble, the agent's reply, and a card of changed files with line
 counts, followed by suggestions and a glass composer, in a centred reading
 column. Run, reload, Commit, and the chat toggle work. Project switching,
-Share, Deploy, the Chat/Code switch, and the composer are still placeholders.
+Share, Deploy, and the composer are still placeholders. Code shows the project
+files with a hideable tree and native Lua/etlua syntax highlighting.
 The controls inside the phone preview are interactive.
 
 ## Project and runtime
@@ -48,9 +49,11 @@ missing icons use the `app.dashed` SF Symbol. Example project metadata is bundle
 under `apps/studio/Documents/` and copied into the app's bundled workspace by
 the iPad build.
 
-The preview loads `demo/playground/` from the locally saved workspace, falling
-back to the bundled starter project when no saved workspace exists. Each preview
-load creates fresh project state. Native capabilities still require a host build.
+The bundled Habit Tracker is copied into `Documents/HabitTracker/` on first
+launch. Source, the Code pane, and Git all use this folder. The preview maps
+these files to its isolated `demo/playground/` module namespace. Habit data
+persists locally in `data/`; Studio preferences live in `settings.json`.
+Native capabilities still require a host build.
 
 The preview uses a child view controller with compact/phone traits, fitted into
 a 393 × 852 point iPhone 16 viewport inside a rounded phone bezel. The bezel and screen
@@ -60,13 +63,15 @@ host device. Test final apps on an iPhone too.
 
 ## Git
 
-The playground project is a Git repository in `Documents/workspace/`, managed
-through the libgit2 `Git` module ([src/plugins/git](../../src/plugins/git/README.md));
-iPadOS cannot run a `git` executable. `services/Versions.lua` writes the project's
-files into the worktree, removes files the project dropped, and commits them as
-"Lua Studio". The first launch commits the starter project; Commit records the
-current project and shows the short id, or "No changes to commit", in the
-status line.
+Studio automatically initializes `Documents/HabitTracker/.git` through the
+libgit2 `Git` module ([src/plugins/git](../../src/plugins/git/README.md)) and
+commits the starting project as "Lua Studio". Later launches reopen the same
+repository. Source files, `project.lua`, `.gitignore`, and project assets are
+versioned directly in the project folder. `/data/` and `/settings.json` are
+ignored so habit activity and Studio preferences do not enter source history.
+Commit records saved changes, including removed source files, and shows the
+short id or "No changes to commit" in the status line. No Git executable or
+network connection is required.
 
 This first version provides one local project and a text/file tool agent.
 It has no remote Git operations, binary asset importer, app signing/export interface,

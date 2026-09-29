@@ -188,6 +188,7 @@ t.expect(Code.rules.languages.lua.matches[#Code.rules.languages.lua.matches].col
 local Workspace = require("apps.studio.services.Workspace")
 local documents = {}
 local documentNS = {
+	_documentPath = function(path) return "/Documents/" .. path end,
 	_documentRead = function(path) return documents[path] end,
 	_documentWrite = function(path, content) documents[path] = content; return true end,
 	_jsonEncode = ns._jsonEncode,

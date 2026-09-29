@@ -13,7 +13,6 @@ local Controller = {}
 Controller.__index = Controller
 
 local VIEWS = "apps/studio/views/"
-local REPOSITORY = "workspace"
 
 -- A showcase opens another bundled project with a prepared conversation,
 -- so a promo capture shows Lua Studio mid-session. LUA_STUDIO_SHOWCASE
@@ -74,7 +73,7 @@ function Controller:commitProject(message)
 		self.refs.previewStatus.text = "Git unavailable: " .. tostring(self.versionsError)
 		return nil, self.versionsError
 	end
-	local id, err = self.versions:record(self.model.files, message)
+	local id, err = self.versions:record(message)
 	if id == nil then
 		self.refs.previewStatus.text = "Commit failed: " .. tostring(err)
 		return nil, err
@@ -100,9 +99,7 @@ function Controller:createWindow()
 		table.insert(projects, 1, {name = current.title, title = current.title, icon = current.icon, selected = true})
 		for index = 2, #projects do projects[index].selected = nil end
 	end
-	self.versions, self.versionsError = Versions.open(require("Git"), ns._documentPath(REPOSITORY), function(path, content)
-		return ns._documentWrite(REPOSITORY .. "/" .. path, content)
-	end)
+	self.versions, self.versionsError = Versions.open(require("Git"), workspace.root)
 
 	local refs
 	local config
@@ -154,7 +151,16 @@ function Controller:createWindow()
 	end
 	self.refs = refs
 	-- The first launch commits the starter project, so history has a base.
-	if self.versions and #self.versions:log(1) == 0 then self:commitProject("Start project") end
+	if self.versions then
+		local history, historyError = self.versions:log(1)
+		if not history then
+			refs.previewStatus.text = "Git unavailable: " .. tostring(historyError)
+		elseif #history == 0 then
+			self:commitProject("Start project")
+		end
+	else
+		refs.previewStatus.text = "Git unavailable: " .. tostring(self.versionsError)
+	end
 	return ns.Window(config)
 end
 

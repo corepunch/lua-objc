@@ -6,14 +6,32 @@ local Versions = require("apps.studio.services.Versions")
 -- Studio records its project with the libgit2 module, never a git process.
 local pipe = assert(io.popen("/usr/bin/mktemp -d /private/tmp/studio-git.XXXXXXXX"))
 local root = pipe:read("*l"); pipe:close()
-local workspace = root .. "/workspace"
+local ns = require("ns")
+local Workspace = require("apps.studio.services.Workspace")
+local function read(path)
+	local file = io.open(path)
+	if not file then return nil end
+	local content = file:read("a"); file:close()
+	return content
+end
 local function write(path, content)
-	local folder = (workspace .. "/" .. path):match("^(.*)/")
+	local folder = (root .. "/" .. path):match("^(.*)/")
 	os.execute("/bin/mkdir -p " .. folder)
-	local file = io.open(workspace .. "/" .. path, "w")
+	local file = io.open(root .. "/" .. path, "w")
 	if not file then return nil, "cannot write " .. path end
 	file:write(content); file:close()
 	return true
+end
+local documentNS = {
+	_documentRead = function(path) return read(root .. "/" .. path) end,
+	_documentWrite = write,
+	_documentPath = function(path) return root .. "/" .. path end,
+	_jsonEncode = ns._jsonEncode,
+	json_parse = ns.json_parse,
+}
+local workspace = Workspace.new(documentNS, read)
+local function save(files)
+	return workspace.storage.save({ files = files, model = "openrouter/free" })
 end
 -- The index order follows the file system's case sensitivity.
 local function tracked(repo)
@@ -26,25 +44,26 @@ local files = {
 	["demo/playground/views/Window.etlua"] = "<Window />\n",
 }
 
-t.assertEqual(Versions.relativePath("demo/playground/views/Window.etlua"), "views/Window.etlua",
-	"project paths are repository-relative")
-t.expect(Versions.relativePath("apps/studio/Model.lua") == nil, "other paths are not project files")
-
-local versions = assert(Versions.open(Git, workspace, write))
+t.assertEqual(workspace.root, root .. "/HabitTracker", "Git uses the actual project folder")
+assert(save(files))
+assert(workspace.localStorage.set("habits", '{"completed":true}'))
+assert(write("HabitTracker/notes.txt", "Keep my project notes"))
+local versions = assert(Versions.open(Git, workspace.root))
 t.assertEqual(#versions:log(), 0, "a new workspace has no history")
-local first = assert(versions:record(files, "Start project"))
+local first = assert(versions:record("Start project"))
 t.assertEqual(#first, 40, "recording returns the commit id")
-local repo = assert(Git.open(workspace))
-t.assertEqual(tracked(repo), "init.lua,views/Window.etlua", "the repository holds the project files")
+local repo = assert(Git.open(workspace.root))
+t.assertEqual(tracked(repo), ".gitignore,init.lua,notes.txt,project.lua,views/Window.etlua", "source, metadata and other assets are tracked; data and settings are ignored")
 t.assertEqual(repo:show("HEAD", "views/Window.etlua"), "<Window />\n", "files are committed with their content")
-t.assertEqual(versions:record(files, "Again"), false, "an unchanged project records nothing")
+t.assertEqual(versions:record("Again"), false, "an unchanged project records nothing")
 t.assertEqual(#versions:log(), 1, "no empty commits")
 
 files["demo/playground/views/Window.etlua"] = nil
 files["demo/playground/Model.lua"] = "return {}\n"
-local second = assert(versions:record(files, "Replace window"))
-t.assertEqual(tracked(repo), "Model.lua,init.lua", "files the project dropped are deleted")
-t.expect(io.open(workspace .. "/views/Window.etlua") == nil, "deleted files leave the worktree")
+assert(save(files))
+local second = assert(versions:record("Replace window"))
+t.assertEqual(tracked(repo), ".gitignore,Model.lua,init.lua,notes.txt,project.lua", "source deletion preserves metadata and unrelated files")
+t.expect(io.open(workspace.root .. "/views/Window.etlua") == nil, "deleted files leave the worktree")
 local history = versions:log()
 t.assertEqual(#history, 2, "each change is one commit")
 t.assertEqual(history[1].id, second, "history is newest first")
@@ -52,15 +71,30 @@ t.assertEqual(history[1].author, "Lua Studio", "Studio authors its commits")
 t.assertEqual(#versions:log(1), 1, "history can be limited")
 versions:close()
 
-local reopened = assert(Versions.open(Git, workspace, write))
+local reopened = assert(Versions.open(Git, workspace.root))
 t.assertEqual(reopened:log()[1].id, second, "reopening keeps the history")
-local ok, err = reopened:record({ ["../escape.lua"] = "" }, "Bad")
-t.expect(ok == nil and err:find("Not a project path", 1, true), "paths outside the project are refused")
-ok, err = Versions.open(Git, workspace, function() return nil, "disk full" end):record(files, "Fails")
-t.expect(ok == nil and err == "disk full", "write failures are reported")
+t.assertEqual(reopened:record("Reopen"), false, "reopening adds no duplicate commit")
+assert(workspace.localStorage.set("habits", '{"completed":false}'))
+assert(write("HabitTracker/settings.json", '{"model":"another/model"}'))
+t.assertEqual(reopened:record("Runtime data"), false, "habit and settings changes create no source commit")
+t.assertEqual(read(workspace.root .. "/notes.txt"), "Keep my project notes", "unrelated files are preserved")
+local savedIgnore = assert(read(workspace.root .. "/.gitignore")) .. "/scratch/\n"
+assert(write("HabitTracker/.gitignore", savedIgnore))
+local reopenedWorkspace = Workspace.new(documentNS, read)
+t.assertEqual(read(workspace.root .. "/.gitignore"), savedIgnore, "reopening preserves custom ignore rules")
+t.expect(reopenedWorkspace.seed["demo/playground/views/Window.etlua"] == nil,
+	"removed source stays removed after reopening")
+local rejected, rejection = save({ ["demo/playground/.git/config"] = "bad" })
+t.expect(not rejected and rejection:find("Invalid", 1, true), "project writes cannot overwrite Git metadata")
+local metadata = assert(load(repo:show("HEAD", "project.lua"), "manifest", "t", {}))()
+t.assertEqual(table.concat(metadata.files, ","), "Model.lua,init.lua", "committed manifest matches current source")
+-- A failed stage is reported without attempting to commit.
+local failing = setmetatable({ repo = { add = function() return nil, "locked" end } }, Versions)
+local ok, err = failing:record("Fails")
+t.expect(ok == nil and err == "locked", "staging failures are reported")
 local blocked = root .. "/file"
 assert(io.open(blocked, "w")):close()
-ok, err = Versions.open(Git, blocked .. "/repo", write)
+ok, err = Versions.open(Git, blocked .. "/repo")
 t.expect(ok == nil and type(err) == "string", "a repository that cannot be created is reported")
 repo:close()
 reopened:close()
@@ -71,14 +105,14 @@ local recorded = {}
 local controller = setmetatable({
 	model = { files = files },
 	refs = { previewStatus = {} },
-	versions = { record = function(_, value, message)
+	versions = { record = function(_, message)
 		table.insert(recorded, message)
 		if message == "fail" then return nil, "locked" end
 		if message == "same" then return false end
-		return value == files and "0123456789abcdef0123456789abcdef01234567"
+		return "0123456789abcdef0123456789abcdef01234567"
 	end },
 }, Controller)
-t.expect(controller:commitProject("Update project"), "commit records the model's files")
+t.expect(controller:commitProject("Update project"), "commit records the saved project")
 t.assertEqual(recorded[1], "Update project", "the commit message is passed through")
 t.assertEqual(controller.refs.previewStatus.text, "Committed 0123456", "a commit shows its short id")
 t.assertEqual(controller:commitProject("same"), false, "an unchanged project is not an error")

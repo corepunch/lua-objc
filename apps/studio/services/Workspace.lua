@@ -3,11 +3,14 @@ local Workspace = {}
 local PROJECT = "HabitTracker"
 local BUNDLED = "apps/studio/Documents/HabitTracker/"
 local PREFIX = "demo/playground/"
+local IGNORE = "/data/\n/settings.json\n.DS_Store\n"
 
 local function validRelative(path)
 	if type(path) ~= "string" or path == "" or path:sub(1, 1) == "/"
 		or path:find("\\", 1, true) or path:find("//", 1, true) then return false end
-	for part in path:gmatch("[^/]+") do if part == "." or part == ".." then return false end end
+	for part in path:gmatch("[^/]+") do
+		if part == "." or part == ".." or part:lower() == ".git" then return false end
+	end
 	return true
 end
 
@@ -60,12 +63,22 @@ function Workspace.new(ns, readBundled)
 
 	local function save(value)
 		local names = {}
+		local present = {}
 		for path, content in pairs(value.files) do
 			local relative = path:sub(1, #PREFIX) == PREFIX and path:sub(#PREFIX + 1) or nil
 			if not validRelative(relative) then return nil, "Invalid Habit Tracker file path: " .. tostring(path) end
 			local ok, err = ns._documentWrite(PROJECT .. "/" .. relative, content)
 			if not ok then return nil, err or ("Could not save " .. relative) end
 			table.insert(names, relative)
+			present[relative] = true
+		end
+		-- Only remove files owned by the previous manifest. Other project assets
+		-- and Git metadata share this directory and must survive source edits.
+		for path in pairs(listed) do
+			if not present[path] and ns._documentRead(PROJECT .. "/" .. path) then
+				local ok, err = os.remove(ns._documentPath(PROJECT .. "/" .. path))
+				if not ok then return nil, err or ("Could not remove " .. path) end
+			end
 		end
 		table.sort(names)
 		local nextMetadata = {
@@ -97,6 +110,10 @@ function Workspace.new(ns, readBundled)
 		local ok, err = save({ files = seed, model = settings and settings.model or "openrouter/free" })
 		assert(ok, err)
 	end
+	if not ns._documentRead(PROJECT .. "/.gitignore") then
+		local ok, err = ns._documentWrite(PROJECT .. "/.gitignore", IGNORE)
+		assert(ok, err)
+	end
 	local localStorage = {
 		get = function(key)
 			if type(key) ~= "string" or not key:match("^[%w_%-]+$") then return nil end
@@ -111,6 +128,7 @@ function Workspace.new(ns, readBundled)
 		decode = ns.json_parse,
 	}
 	return {
+		root = ns._documentPath(PROJECT),
 		seed = seed,
 		localStorage = localStorage,
 		storage = {
