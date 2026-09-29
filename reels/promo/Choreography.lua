@@ -64,11 +64,13 @@ KEYS.phone = {
 KEYS.pad = {
 	position = {
 		{ SHOT.pair, { -5.2, 1.4, -9.0 } }, { SHOT.together, PAIR.pad.position }, { SHOT.noBuild, PAIR.pad.position, hold = true },
-		{ SHOT.alone + 0.6, { -2.6, -0.8, -7.5 } },
+		-- It recedes into depth behind the phone and fades, never leaving
+		-- the frame.
+		{ SHOT.alone + 0.9, { -0.9, 0.35, -6.0 } },
 	},
 	rotation = {
 		{ SHOT.pair, { 10, 50, -5 } }, { SHOT.together, PAIR.pad.rotation }, { SHOT.noBuild, PAIR.pad.rotation, hold = true },
-		{ SHOT.alone + 0.6, { -10, 40, 4 } },
+		{ SHOT.alone + 0.9, { -4, 20, 0 } },
 	},
 }
 
@@ -167,6 +169,9 @@ end
 -- bubble into the conversation.
 local LOW_EYE, LOW = onPad(760, 975, 0.95)
 local CHAT_EYE, CHAT = onPad(905, 400, 2.3)
+-- The whole conversation column, composer included: on a send the camera
+-- pulls back to it so the bubble's flight stays in frame end to end.
+local COLUMN_EYE, COLUMN = onPad(905, 530, 3.05)
 local TAP_EYE, TAP = onPhone(0.2, 1.45)
 -- The two-shot: the conversation beside the phone, held while a prompt is
 -- sent and the phone changes, so cause and effect share one frame.
@@ -182,7 +187,7 @@ local CAMERA = {
 		{ SHOT.together, { 0.55, 0.42, 3.9 } },
 		-- Low on the composer as the prompt is typed, up with the bubble,
 		-- held on the answer and its diff.
-		{ 4.2, LOW_EYE }, { SHOT.send1, LOW_EYE, hold = true }, { 5.6, CHAT_EYE }, { 6.2, CHAT_EYE, hold = true },
+		{ 4.2, LOW_EYE }, { SHOT.send1, LOW_EYE, hold = true }, { 5.35, COLUMN_EYE }, { 6.2, COLUMN_EYE, hold = true },
 		-- The two-shot: the change lands on the phone, the second prompt is
 		-- sent and lands too, without a cut.
 		{ 6.8, TWO_EYE }, { 9.95, TWO_EYE, hold = true },
@@ -193,7 +198,7 @@ local CAMERA = {
 	target = {
 		{ 0, { -0.95, 0.02, 0 } }, { SHOT.pair, { -0.75, 0.0, 0 } },
 		{ SHOT.together, { 0.45, 0.05, -1.7 } },
-		{ 4.2, LOW }, { SHOT.send1, LOW, hold = true }, { 5.6, CHAT }, { 6.2, CHAT, hold = true },
+		{ 4.2, LOW }, { SHOT.send1, LOW, hold = true }, { 5.35, COLUMN }, { 6.2, COLUMN, hold = true },
 		{ 6.8, TWO }, { 9.95, TWO, hold = true },
 		{ 10.35, TAP }, { 11.5, TAP, hold = true },
 		{ 12.5, { 0.6, 0.05, -1.6 } }, { SHOT.alone + 0.6, { 0.05, 0.05, -1.0 } },

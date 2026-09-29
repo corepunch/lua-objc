@@ -109,7 +109,8 @@ end
 -- ── Lua Studio's chat on the iPad ────────────────────────────────────────
 
 -- The conversation column (right of the stage), above the composer.
-local CHAT = { left = 470, right = 1370, top = 100, bottom = 930, background = { 1, 1, 1 } }
+-- (It ends above the suggestion chips, which start at y 932.)
+local CHAT = { left = 470, right = 1370, top = 100, bottom = 924, background = { 1, 1, 1 } }
 
 local function isAccent(r, g, b) return b > 0.8 and r < 0.3 and g > 0.35 and g < 0.65 end
 
