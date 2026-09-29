@@ -17,8 +17,9 @@ local REPOSITORY = "workspace"
 
 -- A showcase opens another bundled project with a prepared conversation,
 -- so a promo capture shows Lua Studio mid-session. LUA_STUDIO_SHOWCASE
--- names a Lua file returning {project, files, conversation}: `project` is
--- the project folder ("demo/todo"), `files` its paths relative to it.
+-- names a Lua file returning {project, current, files, conversation}:
+-- `project` is the project folder ("demo/todo"), `current` how the project
+-- menu names it, `files` its paths relative to the folder.
 local function showcase(read)
 	local path = os.getenv("LUA_STUDIO_SHOWCASE")
 	if not path or path == "" then return nil end
@@ -86,6 +87,12 @@ function Controller:createWindow()
 	end
 	local projects = Projects.list(readProjectFile, ns.json_parse, ns._jsonEncode, ns._documentWrite)
 	self.preview = Preview.new(ns, ns._readFile)
+	self.showcase = showcase(ns._readFile)
+	if self.showcase then
+		local current = self.showcase.current
+		table.insert(projects, 1, {name = current.title, title = current.title, icon = current.icon, selected = true})
+		for index = 2, #projects do projects[index].selected = nil end
+	end
 	self.versions, self.versionsError = Versions.open(require("Git"), ns._documentPath(REPOSITORY), function(path, content)
 		return ns._documentWrite(REPOSITORY .. "/" .. path, content)
 	end)
@@ -93,9 +100,10 @@ function Controller:createWindow()
 	local refs
 	local config
 	local preview = self.previewPane:presentation(projects)
+	if self.showcase and self.showcase.conversation.status then preview.status = self.showcase.conversation.status end
 	config, refs = xml.renderFile(VIEWS .. "Window.etlua", {
 		preview = preview,
-		chat = self.chat:presentation(),
+		chat = self.chat:presentation(self.showcase and self.showcase.conversation),
 		actions = {
 			toggleChat = function()
 				local focus = not refs.chatPane.hidden

@@ -182,3 +182,14 @@ view) and `light` (its type). Transitions are SceneKit actions that only
 advance while the scene renders, so headless tests see a node's starting
 state (an inserted `pop` node at scale 0) and never a finished animation.
 Capture visual states with `--capture-plan`; see `AGENTS.md`.
+
+## Offline: the same scenes in a reel
+
+Reel's `<SceneView>` (`modules/reel/reel/world.lua`, see
+[its README](../modules/reel/README.md#scenekit)) renders this vocabulary
+offline, every attribute a function of time: `spin`, `bob` and
+`transition` are computed from `t`, and `states=` plays the role of
+`nodeStates`. Models load through the same loader
+(`src/shared/scene_models.m`). The promo reel renders Coin Quest's own
+`Stage.etlua`, posed by a replay of its own `Model`
+(`reels/promo/CoinQuest.lua`).

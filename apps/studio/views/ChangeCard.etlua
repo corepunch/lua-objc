@@ -1,6 +1,7 @@
 <%
   -- One card per agent edit: the rows name each file with its folder beneath,
-  -- and the line delta is right-aligned so the column scans at a glance.
+  -- and the line delta is right-aligned so the column scans at a glance. A
+  -- change may carry its diff lines, shown beneath its row.
   local CARD = { inset = 12, radius = 14, spacing = 10, rowSpacing = 10, icon = 15, title = 14, name = 14, folder = 11 }
 %>
 <VStack padding="<%= CARD.inset %>" spacing="<%= CARD.spacing %>" maxWidth="infinity" alignment="leading" background="secondaryBackground" cornerRadius="<%= CARD.radius %>">
@@ -23,5 +24,8 @@
 		<Spacer />
 		<Label text="<%= change.delta %>" size="<%= CARD.folder + 1 %>" color="systemGreen" monospacedDigit="true" />
 	</HStack>
+	<% for _, line in ipairs(change.lines or {}) do %>
+	<Label text="<%= line.text %>" size="<%= CARD.folder %>" design="monospaced" color="<%= line.color %>" lines="1" truncation="tail" maxWidth="infinity" />
+	<% end %>
 	<% end %>
 </VStack>
