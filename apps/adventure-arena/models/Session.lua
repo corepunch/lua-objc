@@ -39,7 +39,7 @@ function Session:reset()
 	self.moves, self.score, self.maxScore, self.scoreChange = 0, 0, 0, 0
 	self.availableDirections, self.exitList = {}, {}
 	self.items, self.knownItems, self.knownByNoun = {}, {}, {}
-	self.roomTitle, self.scene, self.openEntry = nil, nil, nil
+	self.roomTitle, self.roomIcon, self.scene, self.openEntry = nil, nil, nil, nil
 end
 
 function Session:refreshEngineState()
@@ -73,6 +73,10 @@ function Session:refreshEngineState()
 		if ok and type(name) == "string" and name:match("%S") then
 			self.roomTitle = name
 		end
+	end
+	if type(self.engine.roomIcon) == "function" then
+		local ok, icon = pcall(self.engine.roomIcon, self.engine)
+		self.roomIcon = ok and type(icon) == "string" and icon or nil
 	end
 	if type(self.engine.items) == "function" then
 		local ok, raw = pcall(self.engine.items, self.engine)
@@ -173,8 +177,9 @@ function Session.parseLinks(text)
 	return table.concat(plain), links
 end
 
+-- A scene carries its room's picture, which its first paragraph wraps.
 function Session:beginScene(title)
-	local scene = { kind = "scene", title = title, paragraphs = {}, links = {} }
+	local scene = { kind = "scene", title = title, icon = self.roomIcon, paragraphs = {}, links = {} }
 	table.insert(self.entries, scene)
 	self.scene, self.openEntry = scene, scene
 	return scene
@@ -388,7 +393,7 @@ function Session:presentation()
 		cover = game.cover,
 		tint = game.tint or "accent",
 		ink = game.ink or game.tint or "accent",
-		initialFont = game.initialFont,
+		titleFont = game.titleFont,
 		roomTitle = self.roomTitle or (scene and scene.title) or game.title or "",
 		entries = entries,
 		earlierEntries = earlier,

@@ -903,14 +903,12 @@ local PARAGRAPH_ALIGNMENT = { leading = 4, center = 1, trailing = 2, justified =
 --- @prop lineSpacing number optional. Extra points between lines (SwiftUI `lineSpacing`).
 --- @prop alignment string optional. `leading`, `center`, `trailing` or `justified`.
 --- @prop hyphenation boolean optional. Hyphenates long words at line ends.
---- @prop dropCap boolean optional. Drops the first letter through `dropCapLines` lines.
---- @prop dropCapLines number optional. Lines the initial spans; defaults to 3.
---- @prop dropCapFontName string optional. Face for the initial; defaults to bold body.
+--- @prop figure string optional. Image beside the first lines, which wrap around it (as Zork Zero set a room's picture beside its description).
+--- @prop figureLines number optional. Lines the square figure spans; defaults to 3.
 --- @prop revealedCharacters number optional. Typewriter reveal: characters shown so far (as `utf8.len` counts them); -1, the default, shows all. Lines are those of the whole text; only revealed lines take height.
 --- @prop links table optional. Runs the reader can act on, from `<Hyperlink>` children: `{ location, length, label, items }`, where `location` (from 0) and `length` count characters as `utf8.len` does and `items` are `<MenuItem>` records. A link is marked with a thicker dotted underline and opens its menu when tapped.
 --- @prop linkColor string optional. Colour of the rule under links; defaults to the tint.
---- @prop dropCapColor string optional. Colour of the initial; defaults to the tint.
---- @example <Paragraph text="Once upon a time…" design="serif" lineSpacing="5" dropCap="true" />
+--- @example <Paragraph text="Once upon a time…" design="serif" lineSpacing="5" figure="assets/hall.png" />
 --- @platform UIKit non-scrolling UITextView (TextKit 1 exclusion paths). AppKit non-editable NSTextView.
 function UIKit.Paragraph(props)
 	props = props or {}
@@ -922,14 +920,11 @@ function UIKit.Paragraph(props)
 	if props.hyphenation ~= nil then view.hyphenation = props.hyphenation end
 	if props.alignment then view.textAlignment = PARAGRAPH_ALIGNMENT[props.alignment] or 4 end
 	if props.selectable == false then view.selectable = false end
-	if props.dropCap then
-		if props.dropCapFontName or props.dropCapDesign or props.dropCapWeight then
-			view.dropCapFont = bridge._font(props.size or 17, props.dropCapWeight or "bold", false,
-				props.dropCapDesign or props.design, false, props.dropCapFontName)
-		end
-		if props.dropCapColor then view.dropCapColor = bridge._systemColor(props.dropCapColor) end
-		if props.dropCapLines then view.dropCapLines = props.dropCapLines end
-		view.dropCap = true
+	-- The figure is an image view the paragraph floats; it never joins the
+	-- layout tree, so the paragraph alone sizes and places it.
+	if props.figure and props.figure ~= "" then
+		if props.figureLines then view.figureLines = props.figureLines end
+		view.figureView = UIKit.Image { props.figure, contentMode = "fill" }
 	end
 	if props.linkColor then view.linkColor = bridge._systemColor(props.linkColor) end
 	if props.links then bridge._paragraphSetLinks(view, props.links) end

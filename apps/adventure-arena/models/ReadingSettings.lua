@@ -48,8 +48,6 @@ function ReadingSettings.new(initial)
 		theme = indexOf(THEMES, initial.theme) and initial.theme or THEMES[1].id,
 		spacing = indexOf(SPACING, initial.spacing) and initial.spacing or "normal",
 		justified = initial.justified == true,
-		-- A scene opens with a dropped initial unless the reader turns it off.
-		dropCap = initial.dropCap ~= false,
 	}, ReadingSettings)
 	self:setFontSize(initial.fontSize or SIZE.default)
 	return self
@@ -87,16 +85,11 @@ function ReadingSettings:setJustified(value)
 	return true
 end
 
-function ReadingSettings:setDropCap(value)
-	self.dropCap = value == true
-	return true
-end
-
 -- Plain values for persistence; `ReadingSettings.new(snapshot)` restores them.
 function ReadingSettings:snapshot()
 	return {
 		font = self.font, fontSize = self.fontSize, theme = self.theme,
-		spacing = self.spacing, justified = self.justified, dropCap = self.dropCap,
+		spacing = self.spacing, justified = self.justified,
 	}
 end
 
@@ -122,7 +115,6 @@ function ReadingSettings:presentation()
 		spacingIndex = spacingIndex - 1,
 		justified = self.justified,
 		alignment = self.justified and "justified" or "leading",
-		dropCap = self.dropCap,
 		theme = theme.id,
 		themeIndex = themeIndex - 1,
 		themes = themes,

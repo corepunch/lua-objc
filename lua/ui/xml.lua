@@ -1028,8 +1028,7 @@ local TAG_SCHEMA = {
             size = "num", weight = "str", design = "str", fontName = "str", italic = "bool",
             smallCaps = "bool", color = "str", lineSpacing = "num", alignment = "str",
             hyphenation = "bool", selectable = "bool", accessibilityLabel = "str",
-            dropCap = "bool", dropCapLines = "num", dropCapFontName = "str",
-            dropCapDesign = "str", dropCapWeight = "str", dropCapColor = "str",
+            figure = "str", figureLines = "num",
             revealedCharacters = "num", linkColor = "str",
         },
         -- <Hyperlink> children mark the words a reader can act on.

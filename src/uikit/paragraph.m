@@ -1,38 +1,13 @@
 #pragma mark - Paragraph (long-form text)
 
 /* Long-form prose, set as a book sets it: selectable text with explicit
- * leading, optional hyphenation, and a dropped initial that the following
- * lines wrap around. UILabel cannot flow text around a shape, so this is a
- * non-scrolling UITextView on TextKit 1, whose NSTextContainer.exclusionPaths
- * carve the initial's box out of the first lines — the same mechanism Pages
- * and Books use for floating objects. The initial is drawn by its own view,
- * framed around the glyph's ink, so swashes are never clipped and it can use
- * its own face and colour without changing the story's text. */
-@interface LuaDropCapView : UIView
-@property(nonatomic, copy) NSString *letter;
-@property(nonatomic, strong) UIFont *font;
-@property(nonatomic, strong) UIColor *color;
-/* Where the glyph's origin and baseline fall inside this view. */
-@property(nonatomic) CGPoint baselineOrigin;
-@end
-
-@implementation LuaDropCapView
-- (instancetype)initWithFrame:(CGRect)frame {
-	self = [super initWithFrame:frame];
-	self.opaque = NO;
-	self.backgroundColor = UIColor.clearColor;
-	self.contentMode = UIViewContentModeRedraw;
-	self.userInteractionEnabled = NO;
-	self.isAccessibilityElement = NO;
-	return self;
-}
-- (void)drawRect:(CGRect)rect {
-	if (!self.letter || !self.font) return;
-	[self.letter drawAtPoint:CGPointMake(self.baselineOrigin.x, self.baselineOrigin.y - self.font.ascender)
-		withAttributes:@{NSFontAttributeName: self.font, NSForegroundColorAttributeName: self.color ?: UIColor.tintColor}];
-}
-@end
-
+ * leading, optional hyphenation, and a figure the first lines wrap around, as
+ * Zork Zero set each room's picture beside its description. UILabel cannot
+ * flow text around a shape, so this is a non-scrolling UITextView on TextKit
+ * 1, whose NSTextContainer.exclusionPaths carve the figure's square out of the
+ * first lines — the same mechanism Pages and Books use for floating objects.
+ * The figure is an ordinary view (an image view from Lua) that the paragraph
+ * places. */
 @interface LuaParagraphLayoutManager : NSLayoutManager
 @end
 
@@ -53,10 +28,9 @@
 @property(nonatomic) NSTextAlignment bodyAlignment;
 @property(nonatomic) CGFloat lineSpacing;
 @property(nonatomic) BOOL hyphenation;
-@property(nonatomic) BOOL dropCap;
-@property(nonatomic) NSInteger dropCapLines;
-@property(nonatomic, strong) UIFont *dropCapFont;
-@property(nonatomic, strong) UIColor *dropCapColor;
+/* A view floated at the leading edge, a square `figureLines` lines tall. */
+@property(nonatomic, strong) UIView *figureView;
+@property(nonatomic) NSInteger figureLines;
 @property(nonatomic, copy) NSArray<LuaParagraphLink *> *links;
 /* The thicker dotted rule under a link; the words keep the body's colour. */
 @property(nonatomic, strong) UIColor *linkColor;
@@ -65,9 +39,8 @@
 @property(nonatomic) NSInteger revealedCharacters;
 /* The revealed height last reported to layout. */
 @property(nonatomic) CGFloat revealedBottom;
-@property(nonatomic, strong) LuaDropCapView *initialView;
-/* The initial's ink in paragraph coordinates; lines wrap around it. */
-@property(nonatomic) CGRect initialInk;
+/* Set once the view is initialized; see -rebuild. */
+@property(nonatomic) BOOL ready;
 @end
 
 @implementation LuaParagraphView
@@ -91,22 +64,19 @@
 	_bodyFont = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
 	_bodyColor = UIColor.labelColor;
 	_bodyAlignment = NSTextAlignmentNatural;
-	_dropCapLines = kParagraphDropCapLines;
-	_dropCapColor = UIColor.tintColor;
+	_figureLines = kParagraphFigureLines;
 	_links = @[];
 	_revealedCharacters = -1;
 	/* Links are tagged text items, not URLs: the text view reports taps
 	 * on them to its delegate and styles nothing itself. */
 	self.delegate = self;
 	self.linkTextAttributes = @{};
-	_initialView = [[LuaDropCapView alloc] initWithFrame:CGRectZero];
-	_initialView.hidden = YES;
-	[self addSubview:_initialView];
+	_ready = YES;
 	[self rebuild];
 	return self;
 }
 
-/* Lua reads and writes `text`; the dropped letter is presentation only. */
+/* Lua reads and writes `text`. */
 - (NSString *)text { return _paragraphText; }
 - (void)setText:(NSString *)text { self.paragraphText = text ?: @""; }
 - (void)setParagraphText:(NSString *)text { _paragraphText = [text copy] ?: @""; [self rebuild]; }
@@ -115,10 +85,18 @@
 - (void)setBodyAlignment:(NSTextAlignment)alignment { _bodyAlignment = alignment; [self rebuild]; }
 - (void)setLineSpacing:(CGFloat)value { _lineSpacing = MAX(0, value); [self rebuild]; }
 - (void)setHyphenation:(BOOL)value { _hyphenation = value; [self rebuild]; }
-- (void)setDropCap:(BOOL)value { _dropCap = value; [self rebuild]; }
-- (void)setDropCapLines:(NSInteger)value { _dropCapLines = MAX(2, value); [self rebuild]; }
-- (void)setDropCapFont:(UIFont *)font { _dropCapFont = font; [self rebuild]; }
-- (void)setDropCapColor:(UIColor *)color { _dropCapColor = color ?: UIColor.tintColor; [self rebuild]; }
+- (void)setFigureView:(UIView *)view {
+	if (view == _figureView) return;
+	[_figureView removeFromSuperview];
+	_figureView = view;
+	if (view) {
+		view.userInteractionEnabled = NO;
+		view.clipsToBounds = YES;
+		[self addSubview:view];
+	}
+	[self rebuild];
+}
+- (void)setFigureLines:(NSInteger)value { _figureLines = MAX(1, value); [self rebuild]; }
 - (void)setLinks:(NSArray<LuaParagraphLink *> *)links { _links = [links copy] ?: @[]; [self rebuild]; }
 - (void)setLinkColor:(UIColor *)color { _linkColor = color; [self applyReveal]; }
 - (void)tintColorDidChange { [super tintColorDidChange]; [self applyReveal]; }
@@ -156,20 +134,14 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 	return offset;
 }
 
-/* Revealed characters of the body, which excludes a dropped initial. */
 - (NSUInteger)revealedBodyLength {
-	NSUInteger revealed = paragraph_revealed_length(_paragraphText, _revealedCharacters);
-	NSUInteger initial = [self initialLetter].length;
-	return revealed > initial ? revealed - initial : 0;
+	return paragraph_revealed_length(_paragraphText, _revealedCharacters);
 }
 
-/* A link's range in the text storage, which leaves out a dropped initial. */
+/* A link's range in the text storage. */
 - (NSRange)bodyRangeOfLink:(LuaParagraphLink *)link {
 	NSUInteger start = paragraph_revealed_length(_paragraphText, MAX(0, link.location));
 	NSUInteger end = paragraph_revealed_length(_paragraphText, MAX(0, link.location) + MAX(0, link.length));
-	NSUInteger initial = [self initialLetter].length;
-	start = MAX(start, initial) - initial;
-	end = MAX(end, initial) - initial;
 	end = MIN(end, self.textStorage.length);
 	return start < end ? NSMakeRange(start, end - start) : NSMakeRange(NSNotFound, 0);
 }
@@ -239,12 +211,12 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 			value:_linkColor ?: self.tintColor range:visible];
 	}
 	[storage endEditing];
-	_initialView.hidden = !([self initialLetter] && _revealedCharacters != 0);
+	_figureView.hidden = _revealedCharacters == 0;
 }
 
 /* The bottom of the last revealed line; the whole text's height once the
  * reveal reaches the last line, so a finished reveal measures as unrevealed
- * text does. A revealed initial still reserves its lines. */
+ * text does. A revealed figure still reserves its lines. */
 - (CGFloat)revealedBottomInManager:(NSLayoutManager *)manager container:(NSTextContainer *)container {
 	if (_revealedCharacters == 0 || _paragraphText.length == 0) return 0;
 	[manager ensureLayoutForTextContainer:container];
@@ -259,113 +231,45 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 			if (NSMaxRange(line) < manager.numberOfGlyphs) bottom = CGRectGetMaxY(used);
 		}
 	}
-	if ([self initialLetter]) bottom = MAX(bottom, MAX(MAX(2, _dropCapLines) * (_bodyFont.lineHeight + _lineSpacing) - _lineSpacing,
-		CGRectGetMaxY(_initialInk)));
+	if (_figureView) bottom = MAX(bottom, [self figureSide]);
 	return bottom;
 }
 
-/* A letter is dropped only when the paragraph starts with one; quotes and
- * digits stay in the running text, as in print. */
-- (NSString *)initialLetter {
-	if (!_dropCap || _paragraphText.length < 2) return nil;
-	NSRange first = [_paragraphText rangeOfComposedCharacterSequenceAtIndex:0];
-	NSString *letter = [_paragraphText substringWithRange:first];
-	unichar c = [letter characterAtIndex:0];
-	if (![NSCharacterSet.letterCharacterSet characterIsMember:c]) return nil;
-	return letter;
-}
-
-- (NSAttributedString *)bodyStringWithoutInitial:(BOOL)withoutInitial {
+- (NSAttributedString *)bodyString {
 	NSMutableParagraphStyle *style = [[NSMutableParagraphStyle alloc] init];
 	style.lineSpacing = _lineSpacing;
 	style.alignment = _bodyAlignment;
 	style.hyphenationFactor = _hyphenation ? 1.0 : 0.0;
-	NSString *body = _paragraphText;
-	NSString *initial = withoutInitial ? [self initialLetter] : nil;
-	if (initial) body = [body substringFromIndex:initial.length];
-	return [[NSAttributedString alloc] initWithString:body attributes:@{
+	return [[NSAttributedString alloc] initWithString:_paragraphText attributes:@{
 		NSFontAttributeName: _bodyFont,
 		NSForegroundColorAttributeName: _bodyColor,
 		NSParagraphStyleAttributeName: style,
 	}];
 }
 
-/* The initial’s ink, relative to its baseline with y growing upward. */
-static CGRect paragraph_ink_bounds(UIFont *font, NSString *letter) {
-	unichar characters[2] = {0};
-	CGGlyph glyphs[2] = {0};
-	NSUInteger count = MIN(letter.length, (NSUInteger)2);
-	[letter getCharacters:characters range:NSMakeRange(0, count)];
-	CTFontRef ctFont = (__bridge CTFontRef)font;
-	if (!CTFontGetGlyphsForCharacters(ctFont, characters, glyphs, (CFIndex)count))
-		return CGRectMake(0, 0, [letter sizeWithAttributes:@{NSFontAttributeName: font}].width, font.capHeight);
-	return CTFontGetBoundingRectsForGlyphs(ctFont, kCTFontOrientationDefault, glyphs, NULL, 1);
+/* The figure spans exactly `figureLines` lines, from the first line's top to
+ * the last line's bottom, and is as wide as it is tall. */
+- (CGFloat)figureSide {
+	return _figureLines * (_bodyFont.lineHeight + _lineSpacing) - _lineSpacing;
 }
 
-/* The dropped initial occupies exactly `dropCapLines` lines, measured by its
- * ink rather than font metrics: script capitals such as Snell Roundhand’s Y
- * swash far below their baseline. A plain capital runs from the first line’s
- * cap height to the last line’s baseline, as in print; one that descends fits
- * its whole ink between that cap height and the last line’s descender. */
-- (void)layoutInitial:(NSString *)letter {
-	CGFloat lines = MAX(2, _dropCapLines);
-	CGFloat pitch = _bodyFont.lineHeight + _lineSpacing;
-	CGFloat capTop = _bodyFont.ascender - _bodyFont.capHeight;
-	CGFloat lastBaseline = _bodyFont.ascender + (lines - 1) * pitch;
-	CGFloat lastBottom = lastBaseline - _bodyFont.descender;
-	UIFont *base = _dropCapFont ?: [UIFont fontWithDescriptor:
-		[_bodyFont.fontDescriptor fontDescriptorWithSymbolicTraits:UIFontDescriptorTraitBold] ?: _bodyFont.fontDescriptor
-		size:_bodyFont.pointSize];
-	CGFloat reference = kParagraphDropCapReferenceSize;
-	CGRect ink = paragraph_ink_bounds([base fontWithSize:reference], letter);
-	BOOL descends = CGRectGetMinY(ink) < -kParagraphDropCapDescentFraction * reference;
-	CGFloat scale = CGRectGetMaxY(ink) > 0 ? (lastBaseline - capTop) / CGRectGetMaxY(ink) : 1;
-	/* A capital whose foot overshoots the baseline further than the last
-	 * line's descent (Chalkduster's A) is fitted whole, like a descender,
-	 * so its ink never reaches into a following line. */
-	if ((descends || -CGRectGetMinY(ink) * scale > lastBottom - lastBaseline) && CGRectGetHeight(ink) > 0)
-		scale = (lastBottom - capTop) / CGRectGetHeight(ink);
-	UIFont *font = [base fontWithSize:MAX(1, reference * scale)];
-	CGRect scaled = CGRectMake(CGRectGetMinX(ink) * scale, CGRectGetMinY(ink) * scale,
-		CGRectGetWidth(ink) * scale, CGRectGetHeight(ink) * scale);
-	CGFloat baseline = capTop + CGRectGetMaxY(scaled);
-	/* A swash reaching left of the glyph origin stays inside the margin. */
-	CGFloat originX = MAX(0, -CGRectGetMinX(scaled));
-	CGRect inkRect = CGRectMake(originX + CGRectGetMinX(scaled), baseline - CGRectGetMaxY(scaled),
-		CGRectGetWidth(scaled), CGRectGetHeight(scaled));
-	CGFloat outset = kParagraphDropCapInkOutset;
-	CGRect frame = CGRectIntegral(CGRectInset(inkRect, -outset, -outset));
-	_initialView.letter = letter;
-	_initialView.font = font;
-	_initialView.color = _dropCapColor;
-	_initialView.frame = frame;
-	_initialView.baselineOrigin = CGPointMake(originX - frame.origin.x, baseline - frame.origin.y);
-	[_initialView setNeedsDisplay];
-	_initialView.hidden = NO;
-	_initialInk = inkRect;
-}
-
-/* Exactly `dropCapLines` whole lines stay beside the initial, whose ink is
- * fitted inside them, so the next line returns to the margin. */
-- (NSArray<UIBezierPath *> *)exclusionForInitial {
-	CGFloat pitch = _bodyFont.lineHeight + _lineSpacing;
-	CGFloat lines = MAX(2, _dropCapLines);
-	return @[[UIBezierPath bezierPathWithRect:CGRectMake(0, 0,
-		CGRectGetMaxX(_initialInk) + kParagraphDropCapGap, lines * pitch - _lineSpacing / 2)]];
+/* Lines beside the figure keep a gap from it; the next line returns to the
+ * margin. */
+- (NSArray<UIBezierPath *> *)exclusionForFigure {
+	CGFloat side = [self figureSide];
+	return @[[UIBezierPath bezierPathWithRect:CGRectMake(0, 0, side + kParagraphFigureGap, side + _lineSpacing / 2)]];
 }
 
 - (void)rebuild {
 	/* UITextView's initializer applies its own font and colour before this
 	 * class has finished initializing. */
-	if (!_initialView || !_bodyFont) return;
-	NSString *letter = [self initialLetter];
-	[self.textStorage setAttributedString:[self bodyStringWithoutInitial:YES]];
-	if (letter) {
-		[self layoutInitial:letter];
-		self.textContainer.exclusionPaths = [self exclusionForInitial];
+	if (!_ready || !_bodyFont) return;
+	[self.textStorage setAttributedString:[self bodyString]];
+	if (_figureView) {
+		CGFloat side = [self figureSide];
+		_figureView.frame = CGRectMake(0, 0, side, side);
+		self.textContainer.exclusionPaths = [self exclusionForFigure];
 	} else {
-		_initialView.hidden = YES;
-		_initialInk = CGRectZero;
 		self.textContainer.exclusionPaths = @[];
 	}
 	[self applyLinks];
@@ -380,20 +284,19 @@ static CGRect paragraph_ink_bounds(UIFont *font, NSString *letter) {
 - (CGSize)sizeThatFits:(CGSize)proposal {
 	/* Empty text takes no space, as SwiftUI Text(""). */
 	if (_paragraphText.length == 0) return CGSizeZero;
-	NSString *letter = [self initialLetter];
 	CGFloat width = proposal.width;
 	BOOL unbounded = width <= 0 || width >= CGFLOAT_MAX / 2;
-	NSTextStorage *storage = [[NSTextStorage alloc] initWithAttributedString:[self bodyStringWithoutInitial:YES]];
+	NSTextStorage *storage = [[NSTextStorage alloc] initWithAttributedString:[self bodyString]];
 	NSLayoutManager *manager = [[NSLayoutManager alloc] init];
 	NSTextContainer *container = [[NSTextContainer alloc] initWithSize:CGSizeMake(unbounded ? CGFLOAT_MAX : width, CGFLOAT_MAX)];
 	container.lineFragmentPadding = 0;
-	if (letter) container.exclusionPaths = [self exclusionForInitial];
+	if (_figureView) container.exclusionPaths = [self exclusionForFigure];
 	[storage addLayoutManager:manager];
 	[manager addTextContainer:container];
 	[manager ensureLayoutForTextContainer:container];
 	CGRect used = [manager usedRectForTextContainer:container];
 	CGFloat scale = self.traitCollection.displayScale ?: 1;
-	/* A short paragraph still reserves the lines and ink of its initial. */
+	/* A short paragraph still reserves the lines of its figure. */
 	CGFloat height = [self revealedBottomInManager:manager container:container];
 	CGFloat resultWidth = unbounded ? CGRectGetMaxX(used) : width;
 	return CGSizeMake(ceil(resultWidth * scale) / scale, ceil(height * scale) / scale);

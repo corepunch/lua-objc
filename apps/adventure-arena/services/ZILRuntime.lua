@@ -52,6 +52,21 @@ function ZILRuntime.random(seed)
 	end
 end
 
+-- A string property of the player's room, or nil when it has none. Strings
+-- compiled into the story live in its memory; others are Lua strings.
+local function roomString(env, propertyId)
+	local here, id = env.HERE, env[propertyId]
+	if not here or not id or type(env.GETP) ~= "function" then return nil end
+	local ok, value = pcall(env.GETP, here, id)
+	if ok and type(value) == "number" and value ~= 0 and env.mem then
+		local readOK, text = pcall(function() return env.mem:string(value) end)
+		if readOK and text then return tostring(text) end
+	elseif ok and type(value) == "string" then
+		return value
+	end
+	return nil
+end
+
 function ZILRuntime.new(game, readFile, seed)
 	local sourceBase = game.id:gsub("%.", "/")
 	local base = game.base or sourceBase
@@ -108,17 +123,17 @@ function ZILRuntime.new(game, readFile, seed)
 						end,
 						roomName = function()
 							return withContext(readFile, paths, function()
-								local here, descId = env.HERE, env.PQDESC
-								if here and descId and type(env.GETP) == "function" then
-									local ok, desc = pcall(env.GETP, here, descId)
-									if ok and type(desc) == "number" and env.mem then
-										local readOK, name = pcall(function() return env.mem:string(desc) end)
-										if readOK then return tostring(name or "") end
-									elseif ok and type(desc) == "string" then
-										return desc
-									end
-								end
-								return ""
+								return roomString(env, "PQDESC") or ""
+							end)
+						end,
+						-- A room's picture, as Zork Zero showed one beside each
+						-- description: `(ICON "icons/hall.png")`, relative to the
+						-- story's folder.
+						roomIcon = function()
+							return withContext(readFile, paths, function()
+								local icon = roomString(env, "PQICON")
+								if not icon or not icon:match("%S") then return nil end
+								return "apps/adventure-arena/zilscript/" .. sourceBase .. "/" .. icon
 							end)
 						end,
 						-- Visible objects with the verbs the story accepts for

@@ -135,14 +135,11 @@ t.assertEqual(table.concat(hall[1].titles, ","), "Examine staircase,Climb stairc
 t.assertEqual(table.concat(hall[2].titles, ","), "Go south", "and the way back")
 
 -- Reading settings re-set the page and keep its links.
-controller.readingSettings:setDropCap(false)
+controller.readingSettings:setJustified(true)
 controller:applyReadingSettings()
 hall = bridge._paragraphLinks(page()["paragraph_" .. #entries .. "_1"])
 t.assertEqual(#hall, 2, "links survive a change of reading settings")
-controller.readingSettings:setDropCap(true)
-controller:applyReadingSettings()
-hall = bridge._paragraphLinks(page()["paragraph_" .. #entries .. "_1"])
-t.assertEqual(hall[1].text, "grand staircase", "a dropped initial leaves links on their words")
+t.assertEqual(hall[1].text, "grand staircase", "re-set links stay on their words")
 
 -- A resumed story rebuilds its links from the replayed commands.
 state.room = "Gate"

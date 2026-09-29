@@ -16,7 +16,10 @@ local function engine()
 	return {
 		start = function()
 			return {
-				resume = function(_, command) return "Response " .. command end,
+				resume = function(_, command)
+					if command == "north" then return "Cellar\nA damp cellar." end
+					return "Response " .. command
+				end,
 				exits = function() return { "north", "east" } end,
 			}, opening
 		end,
@@ -78,6 +81,15 @@ t.expect(model:hasExit("north") and not model:hasExit("south"), "the session sti
 t.expect(controller.transcript.refs.chapter_1 == nil, "a scene carries no chapter line above its title")
 t.assertEqual(controller.transcript.refs.sceneTitle_1.text, "Zork", "a scene opens with its title")
 
+-- A new room follows the command that led there closely: the gap above its
+-- title is half what it once was, 1.3 lines of type.
+controller:submitCommand("north")
+finishTimers()
+local cellar = model:entryCount()
+t.assertEqual(controller.transcript.refs["sceneTitle_" .. cellar].text, "Cellar", "the move opens a scene")
+t.assertEqual(controller.transcript.refs["entry_" .. cellar].paddingTop,
+	math.floor(ReadingSettings.new():presentation().fontSize * 1.3), "a scene sits 1.3 lines below its command")
+
 -- The command field takes the width the compass left: it ends at the bar's
 -- trailing edge, and the bar holds only the menu and the field.
 local bar = rendered.refs.quickActions.superview
@@ -126,9 +138,7 @@ scroll:layout(320)
 t.assertEqual(scroll.contentView.bounds.origin.y, 0, "loading a session shows the latest line")
 local page = loaded.transcript.refs
 t.assertEqual(page.paragraph_1_1.text:sub(1, 20), "A long opening parag", "a loaded session keeps its opening, first letter included")
-t.expect(page.paragraph_1_1.dropCap == true, "the scene's first paragraph drops its initial")
-t.expect(page.paragraph_1_1.initialView.hidden == false, "the initial is drawn beside the wrapped lines")
-t.expect(page.paragraph_1_2.dropCap ~= true, "later paragraphs run as plain prose")
+t.expect(page.paragraph_1_1.figureView == nil, "a room without an icon sets its prose to the margin")
 t.expect(page.paragraph_1_2.text:find("> inventory", 1, true) ~= nil, "a loaded session keeps its commands")
 t.expect(page.titlePage ~= nil and page.gameTitle.text == "Zork", "the story opens on a title page")
 
