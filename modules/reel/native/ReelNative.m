@@ -289,14 +289,16 @@ static NSFontWeight reel_weight(const char *name) {
 	return NSFontWeightRegular;
 }
 
-// text(string, size, weight, kern, monospacedDigits)
+// text(string, size, weight, kern, figures): `figures` true uses monospaced
+// digits, "mono" the monospaced system font (code on screen).
 static int reel_text(lua_State *L) {
 	NSString *string = [NSString stringWithUTF8String:luaL_checkstring(L, 1)];
 	double size = luaL_checknumber(L, 2);
 	NSFontWeight weight = reel_weight(luaL_optstring(L, 3, "regular"));
 	double kern = luaL_optnumber(L, 4, 0);
-	NSFont *font = lua_toboolean(L, 5)
-		? [NSFont monospacedDigitSystemFontOfSize:size weight:weight]
+	BOOL mono = lua_type(L, 5) == LUA_TSTRING && strcmp(lua_tostring(L, 5), "mono") == 0;
+	NSFont *font = mono ? [NSFont monospacedSystemFontOfSize:size weight:weight]
+		: lua_toboolean(L, 5) ? [NSFont monospacedDigitSystemFontOfSize:size weight:weight]
 		: [NSFont systemFontOfSize:size weight:weight];
 	NSMutableDictionary *attributes = [@{NSFontAttributeName: font} mutableCopy];
 	if (kern != 0) attributes[NSKernAttributeName] = @(kern);

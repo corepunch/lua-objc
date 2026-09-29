@@ -220,7 +220,8 @@ end
 
 -- ── Type ─────────────────────────────────────────────────────────────────
 
--- A text style: {size, weight, kern, color | gradient = {colours}, digits}.
+-- A text style: {size, weight, kern, color | gradient = {colours}, digits,
+-- design = "mono"}.
 function Pen.style(size, weight, fill, tracking)
 	local style = { size = size, weight = weight or "bold", kern = size * (tracking or -0.022) }
 	if type(fill) == "table" and type(fill[1]) ~= "number" then style.gradient = fill else style.color = fill and rgb(fill) or rgb(0xF5F5F7) end
@@ -229,10 +230,11 @@ end
 
 -- run(text, style) -> {native, width} (cached).
 function Pen:run(text, style)
-	local key = text .. "|" .. style.size .. "|" .. style.weight .. "|" .. (style.kern or 0) .. (style.digits and "|d" or "")
+	local figures = style.design == "mono" and "mono" or style.digits
+	local key = text .. "|" .. style.size .. "|" .. style.weight .. "|" .. (style.kern or 0) .. "|" .. tostring(figures)
 	local run = self.textCache[key]
 	if not run then
-		local native = self.native.text(text, style.size, style.weight, style.kern or 0, style.digits)
+		local native = self.native.text(text, style.size, style.weight, style.kern or 0, figures)
 		run = { native = native, width = (native:metrics()) }
 		self.textCache[key] = run
 	end

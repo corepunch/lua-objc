@@ -105,7 +105,8 @@ Elements.Palette = {
 
 -- <Style name="head" size="78" weight="semibold" color="#F5F5F7" tracking="-0.022"/>
 -- `gradient` names a palette instead of a colour; `tracking` is in ems;
--- `digits="true"` uses monospaced figures.
+-- `digits="true"` uses monospaced figures, `design="mono"` the monospaced
+-- system font.
 Elements.Style = {
 	define = function(node, context)
 		local size = tonumber(node.attrs.size) or node:fail("needs a size")
@@ -115,7 +116,7 @@ Elements.Style = {
 			size = size, weight = node.attrs.weight or "regular",
 			kern = tonumber(node.attrs.kern) or size * (tonumber(node.attrs.tracking) or 0),
 			color = Scene.parseHex(node.attrs.color or "#FFFFFF"), gradient = gradient,
-			digits = node.attrs.digits == "true",
+			digits = node.attrs.digits == "true", design = node.attrs.design,
 		}
 	end,
 }

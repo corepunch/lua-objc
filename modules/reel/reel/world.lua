@@ -8,14 +8,17 @@
 -- is a function of time here:
 --
 --   - every attribute may be a Lua expression of `t`, like any reel
---     attribute: position="path(t, cameraKeys)", rotation="0, 30 * t, 0";
+--     attribute: position="path(t, cameraKeys)", rotation="0, 30 * t, 0"
+--     (a vector is three values or a {x, y, z} table);
 --   - `spin` and `bob` turn and float the content from `t`;
 --   - `transition` plays at the record's `from` (insertion) and `to`
 --     (removal) with the live view's curves;
 --   - `states="…"` is the live view's `nodeStates`: an expression returning
 --     poses {id, x, y, z, yaw, pitch, roll, scale, opacity, hidden} that
 --     override the template for this frame, which is how a game's own
---     simulation drives its nodes in a reel.
+--     simulation drives its nodes in a reel. A camera's state may also
+--     carry `lookAt` {x, y, z} and `fieldOfView` (and `fieldOfViewAxis`),
+--     so a reel films an app's own scene through its own camera.
 --
 -- Reel-only records and attributes extend it for product shots: `slab`
 -- geometry (a rounded device body), physically based materials (metalness,
@@ -132,7 +135,12 @@ local function compile(record, name, env)
 		local constant = parseVector(source)
 		if constant then return constant end
 		local fn = Scene.compileExpression(record, name, source, env)
-		return function(t) return toVector(record, name, fn(t)) end
+		-- "x, y, z" is three values; "orbit(…)" one table.
+		return function(t)
+			local x, y, z = fn(t)
+			if y ~= nil then return { x, y, z } end
+			return toVector(record, name, x)
+		end
 	end
 	if COLORS[name] then
 		local constant = Scene.parseHex(source)
@@ -328,8 +336,17 @@ local function pose(view, record, t, states, visibleParent)
 		if state.hidden ~= nil then hidden = state.hidden end
 	end
 	native:pose(handle, x, y, z, rad(pitch), rad(yaw), rad(roll), sx, sy, sz, opacity, hidden)
-	local target = get(record, "lookAt", t)
-	if target then native:aim(handle, target[1], target[2], target[3], rad(get(record, "roll", t, 0))) end
+	local target = (state and state.lookAt) or get(record, "lookAt", t)
+	if target then
+		local turn = state and state.lookAt and state.roll or get(record, "roll", t, 0)
+		native:aim(handle, target[1], target[2], target[3], rad(turn))
+	end
+	if record.tag == "Camera" and state and state.fieldOfView then
+		record.lensKey = nil
+		local params = snapshot(record, LENS, t)
+		params.fieldOfView, params.axis = state.fieldOfView, state.fieldOfViewAxis or params.fieldOfViewAxis
+		view.native:camera(handle, params)
+	end
 	record.visible = visibleParent and not hidden and opacity > 0.002
 	if record.tag == "Node" then
 		local spin, bob = get(record, "spin", t), get(record, "bob", t, 0)
@@ -350,7 +367,7 @@ local function pose(view, record, t, states, visibleParent)
 			if type(image) == "table" then image = image.image end
 			native:texture(handle, image, record.values.imageSlot or "emission")
 		end
-	elseif record.tag == "Camera" and record.liveLens then
+	elseif record.tag == "Camera" and record.liveLens and not (state and state.fieldOfView) then
 		applyLens(view, record, t)
 	elseif record.tag == "Light" and record.liveLight then
 		applyLight(view, record, t)
@@ -358,16 +375,34 @@ local function pose(view, record, t, states, visibleParent)
 	for _, child in ipairs(record.children) do pose(view, child, t, states, record.visible) end
 end
 
--- Draws a node's <Surface> into its own canvas and shows it on the node.
-local function paintSurface(view, record, rc, t)
+-- Surface densities are quantised so a canvas is reused while a device
+-- moves; a surface never draws finer than its own `density`.
+local DENSITIES = { 0.25, 0.375, 0.5, 0.75, 1, 1.5, 2, 3, 4 }
+-- A texture on a plane seen at an angle is sampled a little finer than its
+-- projected size.
+local OVERSAMPLE = 1.2
+
+-- Draws a node's <Surface> into its own canvas and shows it on the node,
+-- at the density its on-screen size needs. A surface wholly off screen
+-- keeps its last picture and is not drawn at all.
+local function paintSurface(view, record, rc, t, camera, pw, ph)
 	local surface = record.surface
 	local w, h = surface.width, surface.height
+	local x0, y0, x1, y1 = view.native:extent(record.handle, camera.handle, pw, ph)
+	if not x0 or x1 < 0 or y1 < 0 or x0 > pw or y0 > ph then return end
+	local needed = math.max(x1 - x0, y1 - y0) / math.max(w, h) * OVERSAMPLE
 	local density = surface.density
-	if not surface.canvas then
-		surface.canvas = rc.context.native.canvas(max(1, floor(w * density + 0.5)), max(1, floor(h * density + 0.5)))
-		surface.pen = require("reel.pen").new(surface.canvas, rc.context.native, rc.context)
+	for _, level in ipairs(DENSITIES) do
+		if level >= needed then density = math.min(level, surface.density); break end
 	end
-	local canvas, pen = surface.canvas, surface.pen
+	surface.canvases = surface.canvases or {}
+	local slot = surface.canvases[density]
+	if not slot then
+		local canvas = rc.context.native.canvas(max(1, floor(w * density + 0.5)), max(1, floor(h * density + 0.5)))
+		slot = { canvas = canvas, pen = require("reel.pen").new(canvas, rc.context.native, rc.context) }
+		surface.canvases[density] = slot
+	end
+	local canvas, pen = slot.canvas, slot.pen
 	local bg = surface.fill
 	canvas:clear(bg[1], bg[2], bg[3], bg[4])
 	canvas:save()
@@ -420,9 +455,6 @@ World.SceneView = {
 			for _, state in ipairs(node.states(t) or {}) do states[state.id] = state end
 		end
 		for _, record in ipairs(view.roots) do pose(view, record, t, states, true) end
-		for _, record in ipairs(view.records) do
-			if record.surface and record.visible then paintSurface(view, record, rc, t) end
-		end
 		local camera = view.cameras[1]
 		if node.cameraName then
 			local name = node.cameraName(t)
@@ -431,6 +463,9 @@ World.SceneView = {
 		end
 		local zoom = rc.pen.zoom
 		local pw, ph = min(MAX_PIXELS, max(1, floor(w * zoom + 0.5))), min(MAX_PIXELS, max(1, floor(h * zoom + 0.5)))
+		for _, record in ipairs(view.records) do
+			if record.surface and record.visible then paintSurface(view, record, rc, t, camera, pw, ph) end
+		end
 		node.frame = { camera = camera, w = w, h = h }
 		local fill = node.fill and Scene.value(node.fill, t)
 		if fill then rc.pen:rect(0, 0, w, h, fill) end
