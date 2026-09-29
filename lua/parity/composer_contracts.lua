@@ -6,9 +6,9 @@ local M = {}
 function M.run(ns)
 	local xml = require("ui.xml")
 	local _, refs = xml.renderFile("apps/adventure-arena/views/Session.etlua", {
-		gameTitle = "Zork I", chapterLabel = "Chapter I", roomTitle = "West of House",
+		gameTitle = "Zork I", roomTitle = "West of House",
 		progress = "Score 0 · 0 moves", tint = "#4338CA", ink = "#4338CA|#A5B4FC",
-		speechAvailable = true, availableDirections = {}, compassSegments = {},
+		speechAvailable = true,
 		actions = { disappear = function() end, readingSettings = function() end },
 	}, ns)
 	-- Session.etlua is a <Page>; measure its content view.

@@ -320,6 +320,7 @@ static void bridge_set_optional_callback(
 #include "appkit/presentation.m"
 #include "appkit/text_field.m"
 #include "appkit/views.m"
+#include "shared/paragraph_links.m"
 #include "appkit/paragraph.m"
 #include "shared/flow_layout.m"
 #include "appkit/layout.m"
@@ -389,6 +390,9 @@ static const luaL_Reg bridge_lib[] = {
 	{"_navigationOnBack", bridge_navigation_on_back},
 	{"_label", bridge_AppKitControls_label},
 	{"_paragraph", bridge_AppKitControls_paragraph},
+	{"_paragraphSetLinks", bridge_paragraph_set_links},
+	{"_paragraphLinks", bridge_paragraph_links},
+	{"_paragraphPerformLink", bridge_paragraph_perform_link},
 	{"_hasLayoutAxis", bridge_has_layout_axis},
 	{"_textField", bridge_AppKitControls_textField},
 	{"_secureTextField", bridge_AppKitControls_secureTextField},

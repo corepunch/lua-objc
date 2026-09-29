@@ -30,8 +30,14 @@ ns.Picker = function(props)
 	return picker(props)
 end
 ns.Toggle = function(props)
-	table.insert(toggleControls, { onChange = props.onChange })
+	table.insert(toggleControls, { onChange = props.onChange, label = props.label or props.title or props[1] })
 	return toggle(props)
+end
+-- The panel re-renders as preferences change; the newest toggle is live.
+local function toggleNamed(label)
+	for index = #toggleControls, 1, -1 do
+		if toggleControls[index].label == label then return toggleControls[index] end
+	end
 end
 
 local game = {
@@ -92,11 +98,11 @@ controller = SessionController.new {
 
 t.expect(controller:show(game.id), "session screen opens for the selected game")
 t.assertEqual(sessionRefs.sessionTitle.text, game.title, "the running head names the story")
-t.assertEqual(sessionRefs.sessionPlace.text, "Chapter I · Sanitarium Gate", "the running head names the chapter and room")
+t.assertEqual(sessionRefs.sessionPlace.text, "Sanitarium Gate", "the running head names the room")
 local function page() return controller.transcript.refs end
 t.assertEqual(page().gameTitle.text, game.title, "the page opens on the title")
 t.assertEqual(page().gameDescription.text, game.shortDescription, "the tagline is the title page's epigraph")
-t.assertEqual(page().sceneTitle_1.text, "Sanitarium Gate", "the first chapter identifies the active room")
+t.assertEqual(page().sceneTitle_1.text, "Sanitarium Gate", "the first scene identifies the active room")
 t.assertEqual(sessionRefs.progress.text, "Score 2 of 10 · 3 moves", "the folio shows score and moves")
 t.assertEqual(page().paragraph_1_1.font.pointSize, 18, "the story is set at the default 18pt")
 
@@ -131,9 +137,22 @@ t.assertEqual(settings.theme, "night", "the Night swatch selects the night page"
 t.expect(math.abs(sessionRefs.session.backgroundColor.redComponent) < 0.01, "the page turns black")
 t.assertEqual(page().paragraph_1_1.text, "The rusted gate stands open.", "re-setting the page preserves the story")
 t.assertEqual(sessionRefs.progress.text, "Score 2 of 10 · 3 moves", "re-setting the page preserves progress")
-toggleControls[#toggleControls].onChange(true)
+toggleNamed("Justify Text").onChange(true)
 t.expect(settings.justified, "the justify toggle updates reading preferences")
 t.assertEqual(page().paragraph_1_1.textAlignment, 3, "the open book is justified")
+
+-- Drop caps are the reader's choice.
+t.expect(page().paragraph_1_1.dropCap == true, "a scene opens with a dropped initial by default")
+toggleNamed("Drop Caps").onChange(false)
+t.expect(settings.dropCap == false, "the drop cap toggle updates reading preferences")
+t.expect(saved.dropCap == false, "the choice is persisted")
+t.expect(page().paragraph_1_1.dropCap ~= true, "the open book sets its first letter in the running text")
+t.expect(page().paragraph_1_1.initialView.hidden == true, "no initial is drawn")
+t.assertEqual(page().paragraph_1_1.text, "The rusted gate stands open.", "the paragraph keeps its first letter")
+t.assertEqual(controller.readingSettingsOptions.refs.dropCapToggle.state, 0, "the toggle shows the choice")
+toggleNamed("Drop Caps").onChange(true)
+t.expect(page().paragraph_1_1.dropCap == true, "turning drop caps back on drops the initial again")
+toggleNamed("Drop Caps").onChange(false)
 
 local done = buttonActions[sheetRefs.done]
 t.expect(type(done) == "function", "Done has a native action")
@@ -145,7 +164,11 @@ t.assertEqual(#options.mounted, 0, "closing the sheet unmounts its options")
 -- The Settings tab mounts the same options with a sample page.
 local host = ns.VStack {}
 local tab = options:mount(host, true)
-t.expect(tab.refs.previewBody ~= nil and tab.refs.previewBody.dropCap, "the Settings tab shows a sample page with a drop cap")
+t.expect(tab.refs.previewBody ~= nil and tab.refs.previewBody.dropCap ~= true,
+	"the Settings tab's sample page follows the drop cap preference")
+options:apply(settings:setDropCap(true))
+t.expect(tab.refs.previewBody.dropCap == true, "the sample page drops its initial when drop caps are on")
+t.expect(tab.refs.chapter == nil, "the sample page has no chapter line")
 t.assertEqual(tab.refs.previewBody.textAlignment, 3, "the sample page follows the preferences")
 
 ns.Button, ns.Slider, ns.Picker, ns.Page, ns.Toggle = button, slider, picker, page, toggle

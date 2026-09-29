@@ -17,13 +17,13 @@ t.assertEqual(#saves:list(), 0, "a new library has no saved games")
 t.expect(not saves:record({ gameId = "zork", commands = {} }),
 	"opening a story without playing it is not saved")
 t.expect(not saves:record({ commands = { "look" } }), "a save needs a game")
-t.expect(saves:record({ gameId = "zork", seed = 7, commands = { "open mailbox" }, chapter = 1, room = "West of House" }),
+t.expect(saves:record({ gameId = "zork", seed = 7, commands = { "open mailbox" }, room = "West of House" }),
 	"a played story is saved")
 clock = 200
-saves:record({ gameId = "planetfall", seed = 9, commands = { "up" }, chapter = 2, room = "Gangway" })
+saves:record({ gameId = "planetfall", seed = 9, commands = { "up" }, room = "Gangway" })
 t.assertEqual(saves:latest().gameId, "planetfall", "the most recently played story comes first")
 clock = 300
-saves:record({ gameId = "zork", seed = 7, commands = { "open mailbox", "read leaflet" }, chapter = 1, room = "West of House" })
+saves:record({ gameId = "zork", seed = 7, commands = { "open mailbox", "read leaflet" }, room = "West of House" })
 t.assertEqual(saves:latest().gameId, "zork", "playing again moves a story to the front")
 t.assertEqual(#saves:find("zork").commands, 2, "a save replaces the previous one for the same story")
 t.assertEqual(written.version, 1, "the store receives a versioned document")
@@ -104,7 +104,6 @@ local resumed = play(999)
 t.expect(resumed:start(planetfall, snapshot), "a saved game resumes")
 t.assertEqual(resumed.moves, first.moves, "the ship's clock resumes at the same time")
 t.assertEqual(resumed.roomTitle, first.roomTitle, "the story resumes in the same room")
-t.assertEqual(resumed.chapters, first.chapters, "the same chapters are rebuilt")
 t.assertEqual(#resumed.entries, #first.entries, "the whole transcript is rebuilt")
 t.assertEqual(resumed.scoreChange, 0, "replaying does not announce old points")
 local last = resumed.entries[#resumed.entries]

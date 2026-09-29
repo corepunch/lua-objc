@@ -778,6 +778,8 @@ around.
 | `dropCap`, `dropCapLines` (default 3) | drop the first letter through N lines |
 | `dropCapFontName`, `dropCapDesign`, `dropCapWeight`, `dropCapColor` | the initial's face and colour |
 | `revealedCharacters` | typewriter reveal: characters shown so far, counted as `utf8.len` counts them; `-1` (default) shows everything |
+| `linkColor` | colour of the dashed rule under links; defaults to the tint |
+| `<Hyperlink location length label>` children | the words a reader can act on; see **Links** below |
 
 The initial is sized by its **ink**, not font metrics: a plain capital spans
 from the first line's cap height to the last line's baseline, as in print; a
@@ -789,6 +791,30 @@ opens with a quotation mark or digit is set normally. Empty text takes no
 space. Implementation: a non-scrolling `UITextView` / non-editable
 `NSTextView` on TextKit 1 with `NSTextContainer.exclusionPaths`
 (`src/uikit/paragraph.m`, `src/appkit/paragraph.m`).
+
+**Links.** `<Hyperlink>` children mark runs of the text the reader can act
+on, as WPF sets `Hyperlink` inside a `TextBlock`. `location` (from 0) and
+`length` count characters as `utf8.len` does; `<MenuItem>` children are what
+the link offers:
+
+```xml
+<Paragraph text="A corroded brass plaque hangs askew on the gate.">
+  <Hyperlink location="11" length="12" label="plaque">
+    <MenuItem title="Examine plaque" action="examinePlaque" />
+    <MenuItem title="Read plaque" action="readPlaque" />
+  </Hyperlink>
+</Paragraph>
+```
+
+The words keep the body's colour and take a dashed underline in `linkColor`;
+a tap opens the menu at the words. On UIKit a link is a tagged text item
+(`UITextItemTagAttributeName`) whose menu the text view presents itself; on
+AppKit it is an `NSLinkAttributeName` run whose click pops up an `NSMenu`.
+Links follow the typewriter reveal: a link is ruled, and can be tapped, only
+once typing has reached it. A retained template gives new links to the same
+native view. Headless tests read links with `bridge._paragraphLinks(view)`
+and choose an item with `bridge._paragraphPerformLink(view, link, item)`.
+The shared link model and bridge are in `src/shared/paragraph_links.m`.
 
 **Typewriter reveal.** `revealedCharacters` is what SwiftUI typewriter
 effects build with `TextRenderer`: the whole paragraph is laid out once, so

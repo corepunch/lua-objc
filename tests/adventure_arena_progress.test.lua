@@ -66,9 +66,9 @@ controller.navigation:pop()
 controller.sessionController:onDisappear()
 t.expect(not controller.tabs.accessoryHidden, "closing the book shows the accessory")
 t.assertEqual(controller.nowReading.refs.nowReadingTitle.text, zork.title, "the accessory names the story")
-t.assertEqual(controller.nowReading.refs.nowReadingPlace.text, "Chapter I · West of House", "the accessory names the chapter and room")
+t.assertEqual(controller.nowReading.refs.nowReadingPlace.text, "West of House", "the accessory names the room")
 t.assertEqual(controller.continueShelf.refs.continue_1.accessibilityLabel,
-	"Continue " .. zork.title .. ", Chapter I · West of House", "Continue Reading offers the story")
+	"Continue " .. zork.title .. ", West of House", "Continue Reading offers the story")
 t.expect(controller.bookshelf.refs.shelfRow_1 ~= nil, "the Library tab lists the story")
 local shelf = controller.library:bookshelf()
 t.assertEqual(shelf.entries[1].status, "Score 5 of 350 · 0 moves", "the Library row carries the status line")
@@ -84,7 +84,7 @@ xml.renderFile = function(path, data, platform)
 end
 controller.library:showGame(zork.id, "library")
 xml.renderFile = renderFile
-t.assertEqual(detail.saved.place, "Chapter I · West of House", "the detail page knows where the reader stopped")
+t.assertEqual(detail.saved.place, "West of House", "the detail page knows where the reader stopped")
 controller.navigation:pop()
 
 -- The accessory resumes the story at its last page.

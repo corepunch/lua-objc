@@ -30,15 +30,24 @@ messaging app does. It now reads as a book:
 - **Title page.** The author in small capitals, the title in the story's own
   face and colour, a fleuron (❦), and the tagline as an italic epigraph. The
   Infocom banner follows as a colophon.
-- **Chapters.** A new room opens "CHAPTER IV" in small capitals and the room
-  name as a heading. The first paragraph begins with a **three-line drop cap**
-  that the text wraps around. It uses real TextKit exclusion paths, not a
-  side column.
+- **Scenes.** A new room opens with the room name as a heading; rooms are
+  not numbered as chapters. The first paragraph begins with a **three-line
+  drop cap** that the text wraps around, unless the reader turns **Drop
+  Caps** off in Themes & Settings. It uses real TextKit exclusion paths, not
+  a side column.
+- **Links.** Stories mark the words a reader can act on (`[[brass
+  plaque->plaque]]`, `[[north]]`; see zilscript's `WRITING_ADVENTURES.md`).
+  The page rules them with a dashed underline in the story's ink, and a tap
+  opens a menu of what can be done: "examine" and the verbs the story accepts
+  for the object, or "Go north" for a direction. Links are live in the scene
+  the reader stands in; the words of rooms left behind are plain prose.
 - **Your commands** are stage directions: small capitals in the story's ink,
   inline in the column, with no bubble and no right alignment. VoiceOver reads
   them as "You: …".
-- **Running head.** The navigation title is the book's title over "Chapter IV ·
-  Kitchen".
+- **Running head.** The navigation title is the book's title over the room.
+- **Command bar.** Quick actions and the command field, which fills the bar.
+  The draggable compass (`views/Compass.etlua`, `services/CompassGesture.lua`)
+  is kept as a component but is no longer on the reader's page.
 - **Folio.** The status line sits under the page in small type: "Score 10 of
   350 · 4 moves". Planetfall shows "Time 4602", because its MOVES global is the
   ship's chronometer.
@@ -55,12 +64,10 @@ messaging app does. It now reads as a book:
 ### Glass where the system puts it
 
 Everything that is not the story floats in one `GlassEffectContainer` at the
-foot of the page: the quick-actions menu, the command field, and the
-**compass**, which is now an SF Symbol (`location.north.fill`) inside the
-glass bar. Suggestion chips above them are glass buttons that merge as they
+foot of the page: the quick-actions menu and the command field. Suggestion chips above them are glass buttons that merge as they
 slide. When the score changes, a glass capsule ("✦ +10 points") drops from the
 top of the page with a success haptic and fades after 2.2 s. The whole page is
-tinted with the story's ink, so the cursor, send button and compass ring take
+tinted with the story's ink, so the cursor, send button and link rules take
 its colour.
 
 ## Colour: jewel tones, no brown
@@ -88,7 +95,7 @@ for ink on dark pages. The pair is used as one dynamic colour (`"#4338CA|#A5B4FC
   with a clear-glass **Read** capsule. **Continue Reading** follows once a story
   is in progress, then the shelves, Top Rated, and genre tiles, which now carry
   SF Symbols.
-- The **Library** tab lists every story in progress: cover, chapter and room,
+- The **Library** tab lists every story in progress: cover, room,
   a progress bar tinted to the story, the status line, and a menu with **Start
   Over** and **Remove from Library**.
 - **Search** is iOS 26's separate search tab (`role="search"`).
@@ -97,7 +104,7 @@ for ink on dark pages. The pair is used as one dynamic colour (`"#4338CA|#A5B4FC
 - **Detail** runs the cover under the navigation bar and shows an App Store
   fact strip (rating, difficulty, genre, year), the blurb as prose, review
   cards in a carousel, and a floating `glassProminent` button tinted to the
-  story: **Start Reading**, or **Continue · Chapter IV · Kitchen** with a
+  story: **Start Reading**, or **Continue · Kitchen** with a
   glass **Start Over** beside it.
 
 ### Autosave
@@ -106,7 +113,7 @@ Every command is saved. A save is the story's random seed plus its command
 history (`models/SavedGames.lua`, `services/JsonDocument.lua`). Resuming
 replays the commands against an engine seeded the same way
 (`ZILRuntime.random`, a private Park–Miller generator), which rebuilds the
-exact chapters and prose. It does not announce old points again. Opening a
+exact transcript. It does not announce old points again. Opening a
 book without playing it is not saved. Headless tests never touch the real
 store.
 
@@ -137,9 +144,9 @@ Each has headless tests (see `tests/paragraph.test.lua`,
 
 ## Next ideas, in priority order
 
-1. **Tappable nouns.** Link objects named in the prose. A tap offers that
-   object's verbs as chips, as Heaven's Vault and 80 Days do.
-2. **Chapter index and atlas.** Tapping the running head lists visited rooms
+1. **Links in every story.** Tappable words are authored in the prose;
+   Sanitarium's opening rooms have them. The other stories need a pass.
+2. **Room index and atlas.** Tapping the running head lists visited rooms
    and jumps to them. Later, draw the map from the exits.
 3. **Typographic covers** for stories without art: tint plus title in the
    story's face.

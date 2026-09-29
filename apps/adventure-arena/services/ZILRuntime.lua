@@ -66,6 +66,8 @@ function ZILRuntime.new(game, readFile, seed)
 		local runtime = require("zilscript.runtime")
 		local env = runtime.create_game_env()
 		env.rawget, env.rawset, env.rawequal = rawget, rawset, rawequal
+		-- The reader renders the story's link markup; see Session.parseLinks.
+		env.PROSE_LINKS = true
 		env.math = setmetatable({ random = ZILRuntime.random(seed or os.time()),
 			randomseed = function() end }, { __index = math })
 		local bootstrapPath = "apps/adventure-arena/zilscript/zilscript/bootstrap.lua"

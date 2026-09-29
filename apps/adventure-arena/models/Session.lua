@@ -20,21 +20,8 @@ local DIRECTIONS = {
 -- reader keeps the most recent entries; the story itself is unaffected.
 local TRANSCRIPT = { limit = 120 }
 
-local ROMAN = {
-	{ 1000, "M" }, { 900, "CM" }, { 500, "D" }, { 400, "CD" }, { 100, "C" }, { 90, "XC" },
-	{ 50, "L" }, { 40, "XL" }, { 10, "X" }, { 9, "IX" }, { 5, "V" }, { 4, "IV" }, { 1, "I" },
-}
-
-function Session.roman(number)
-	local parts = {}
-	for _, pair in ipairs(ROMAN) do
-		while number >= pair[1] do
-			table.insert(parts, pair[2])
-			number = number - pair[1]
-		end
-	end
-	return table.concat(parts)
-end
+-- A tapped word offers a handful of actions, never a wall of them.
+local LINK = { actions = 6 }
 
 function Session.new(options)
 	options = options or {}
@@ -49,7 +36,7 @@ end
 
 function Session:reset()
 	self.entries, self.history = {}, {}
-	self.moves, self.score, self.maxScore, self.chapters, self.scoreChange = 0, 0, 0, 0, 0
+	self.moves, self.score, self.maxScore, self.scoreChange = 0, 0, 0, 0
 	self.availableDirections, self.exitList = {}, {}
 	self.items, self.knownItems, self.knownByNoun = {}, {}, {}
 	self.roomTitle, self.scene, self.openEntry = nil, nil, nil
@@ -110,9 +97,10 @@ end
 
 -- ── Transcript structure ────────────────────────────────────────────────
 -- The engine prints plain text. Books give the reader structure, so the
--- transcript is parsed into a title-page banner, scenes (a new room opens a
--- chapter whose first letter is set as a drop cap), the player's own commands, and
--- narration.
+-- transcript is parsed into a title-page banner, scenes (a new room opens
+-- one under the room's name), the player's own commands, and narration.
+-- Stories mark the words a reader can act on as "[[label]]" or
+-- "[[label->target]]"; paragraphs keep the label and carry the links apart.
 
 local function trim(text)
 	return (tostring(text or ""):gsub("^%s+", ""):gsub("%s+$", ""))
@@ -154,12 +142,39 @@ local function splitFirstLine(paragraph)
 	return trim(first), rest ~= "" and rest or nil
 end
 
+-- Splits link markup from prose. Returns the text as the reader sees it and
+-- its links, each { location, length, label, target }: `location` counts
+-- characters from 0 as `utf8.len` does, and `target` is the parser's word
+-- for the thing (the label itself when the story names no other).
+function Session.parseLinks(text)
+	text = tostring(text or "")
+	local plain, links, position = {}, {}, 1
+	local length = 0
+	local function keep(piece)
+		table.insert(plain, piece)
+		length = length + (utf8.len(piece) or #piece)
+	end
+	while true do
+		local first, last, body = text:find("%[%[(.-)%]%]", position)
+		if not first then break end
+		keep(text:sub(position, first - 1))
+		local label, target = body:match("^(.-)%->(.*)$")
+		label, target = trim(label or body), trim(target or body)
+		if label ~= "" and target ~= "" then
+			table.insert(links, {
+				location = length, length = utf8.len(label) or #label,
+				label = label, target = target:lower(),
+			})
+		end
+		keep(label)
+		position = last + 1
+	end
+	keep(text:sub(position))
+	return table.concat(plain), links
+end
+
 function Session:beginScene(title)
-	self.chapters = self.chapters + 1
-	local scene = {
-		kind = "scene", chapter = self.chapters, chapterLabel = "Chapter " .. Session.roman(self.chapters),
-		title = title, paragraphs = {},
-	}
+	local scene = { kind = "scene", title = title, paragraphs = {}, links = {} }
 	table.insert(self.entries, scene)
 	self.scene, self.openEntry = scene, scene
 	return scene
@@ -167,10 +182,56 @@ end
 
 function Session:appendParagraph(paragraph)
 	if not self.openEntry then
-		self.openEntry = { kind = "narration", paragraphs = {} }
+		self.openEntry = { kind = "narration", paragraphs = {}, links = {} }
 		table.insert(self.entries, self.openEntry)
 	end
-	table.insert(self.openEntry.paragraphs, paragraph)
+	local text, links = Session.parseLinks(paragraph)
+	table.insert(self.openEntry.paragraphs, text)
+	self.openEntry.links[#self.openEntry.paragraphs] = links
+end
+
+local function capitalized(text)
+	return (text:gsub("^%l", string.upper))
+end
+
+-- What a reader can do with a linked word, as { title, command } in the
+-- order they are likeliest to want. A direction walks; an object offers
+-- "examine" and the verbs the story accepts for it, where those need no
+-- second object. The command uses the story's own word for the thing.
+function Session:linkActions(target)
+	target = trim(target):lower()
+	if target == "" then return {} end
+	local direction = DIRECTIONS[target]
+	if direction then
+		return { { title = "Go " .. direction, command = direction } }
+	end
+	local words = {}
+	for word in target:gmatch("[%w']+") do words[word] = true end
+	local noun = Suggestions.noun(target)
+	local function find(items)
+		for _, item in ipairs(items) do
+			if item.noun == noun then return item end
+		end
+		for _, item in ipairs(items) do
+			for word in item.name:lower():gmatch("[%w']+") do
+				if words[word] then return item end
+			end
+		end
+	end
+	local item = find(self.items) or find(self.knownItems)
+	local verbs, seen = { "examine" }, { examine = true, look = true }
+	for _, verb in ipairs(item and Suggestions.oneTapVerbs(item) or {}) do
+		if not seen[verb] then
+			seen[verb] = true
+			table.insert(verbs, verb)
+		end
+	end
+	local actions = {}
+	for index = 1, math.min(#verbs, LINK.actions) do
+		local command = verbs[index] .. " " .. target
+		table.insert(actions, { title = capitalized(command), command = command })
+	end
+	return actions
 end
 
 function Session:appendOutput(text, openingTitle)
@@ -185,7 +246,7 @@ function Session:appendOutput(text, openingTitle)
 	end
 	-- A move without a printed heading still enters a new room: the scene
 	-- opens at the first paragraph that is not the title page.
-	-- The opening always starts Chapter I, even when the engine names no room.
+	-- The opening always starts a scene, even when the engine names no room.
 	local pendingRoom = not headingFound and (room or openingTitle)
 		and (not self.scene or self.scene.title ~= (room or openingTitle)) and (room or openingTitle) or nil
 
@@ -217,7 +278,7 @@ end
 
 -- `saved` is a snapshot from `Session:snapshot()`. The story is restored by
 -- replaying its commands against an engine seeded as before, which rebuilds
--- the chapters exactly as the reader first saw them.
+-- the transcript exactly as the reader first saw it.
 function Session:start(game, saved)
 	if not game then return false, "Adventure not found." end
 	if not self.engineFactory then return false, "No session engine configured." end
@@ -262,7 +323,7 @@ function Session:snapshot()
 	for _, command in ipairs(self.history) do table.insert(commands, command) end
 	return {
 		gameId = game.id, seed = self.seed, commands = commands,
-		chapter = self.chapters, room = self.roomTitle or (self.scene and self.scene.title) or game.title,
+		room = self.roomTitle or (self.scene and self.scene.title) or game.title,
 		score = self.score, maxScore = self.maxScore, moves = self.moves,
 	}
 end
@@ -329,7 +390,6 @@ function Session:presentation()
 		ink = game.ink or game.tint or "accent",
 		initialFont = game.initialFont,
 		roomTitle = self.roomTitle or (scene and scene.title) or game.title or "",
-		chapterLabel = scene and scene.chapterLabel or "",
 		entries = entries,
 		earlierEntries = earlier,
 		score = self.score,

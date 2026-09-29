@@ -17,13 +17,12 @@ function Controller.new(options)
 	}, Controller)
 end
 
--- Where a saved story stands, in the words a reader uses: the chapter and
--- the room, then the status line and how far the score has come.
+-- Where a saved story stands, in the words a reader uses: the room, then
+-- the status line and how far the score has come.
 function Controller:progressEntry(record)
 	local game = self.model:find(record.gameId)
 	if not game then return nil end
-	local chapter = (record.chapter or 0) > 0 and ("Chapter " .. Session.roman(record.chapter)) or nil
-	local place = chapter and record.room and (chapter .. " · " .. record.room) or record.room or game.title
+	local place = record.room or game.title
 	local maxScore = tonumber(record.maxScore) or 0
 	return {
 		game = game,

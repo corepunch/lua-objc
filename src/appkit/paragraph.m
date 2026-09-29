@@ -26,7 +26,7 @@
 }
 @end
 
-@interface LuaParagraphView : NSTextView
+@interface LuaParagraphView : NSTextView <NSTextViewDelegate, LuaParagraphLinking>
 @property(nonatomic, copy) NSString *text;
 @property(nonatomic, strong) NSFont *bodyFont;
 @property(nonatomic, strong) NSColor *bodyColor;
@@ -37,6 +37,9 @@
 @property(nonatomic) NSInteger dropCapLines;
 @property(nonatomic, strong) NSFont *dropCapFont;
 @property(nonatomic, strong) NSColor *dropCapColor;
+@property(nonatomic, copy) NSArray<LuaParagraphLink *> *links;
+/* The dashed rule under a link; the words keep the body's colour. */
+@property(nonatomic, strong) NSColor *linkColor;
 /* Characters shown so far, counted as Lua's utf8.len counts them; -1 shows
  * the whole paragraph. See `paragraph_revealed_length`. */
 @property(nonatomic) NSInteger revealedCharacters;
@@ -74,7 +77,12 @@
 	_textAlignment = NSTextAlignmentNatural;
 	_dropCapLines = kParagraphDropCapLines;
 	_dropCapColor = NSColor.controlAccentColor;
+	_links = @[];
 	_revealedCharacters = -1;
+	/* The text view reports clicks on links to its delegate; the paragraph
+	 * rules them itself, so a link changes only the pointer. */
+	self.delegate = self;
+	self.linkTextAttributes = @{NSCursorAttributeName: NSCursor.pointingHandCursor};
 	_initialView = [[LuaDropCapView alloc] initWithFrame:NSZeroRect];
 	_initialView.hidden = YES;
 	[_initialView setAccessibilityElement:NO];
@@ -93,6 +101,8 @@
 - (void)setDropCapLines:(NSInteger)value { _dropCapLines = MAX(2, value); [self rebuild]; }
 - (void)setDropCapFont:(NSFont *)font { _dropCapFont = font; [self rebuild]; }
 - (void)setDropCapColor:(NSColor *)color { _dropCapColor = color ?: NSColor.controlAccentColor; [self rebuild]; }
+- (void)setLinks:(NSArray<LuaParagraphLink *> *)links { _links = [links copy] ?: @[]; [self rebuild]; }
+- (void)setLinkColor:(NSColor *)color { _linkColor = color; [self applyReveal]; }
 
 /* A typewriter reveal. The whole paragraph is always laid out, so words never
  * jump between lines as they appear — the approach of SwiftUI typewriter
@@ -148,6 +158,67 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 	return revealed > initial ? revealed - initial : 0;
 }
 
+- (NSRange)bodyRangeOfLink:(LuaParagraphLink *)link {
+	NSUInteger start = paragraph_revealed_length(_text, MAX(0, link.location));
+	NSUInteger end = paragraph_revealed_length(_text, MAX(0, link.location) + MAX(0, link.length));
+	NSUInteger initial = [self initialLetter].length;
+	start = MAX(start, initial) - initial;
+	end = MAX(end, initial) - initial;
+	end = MIN(end, self.textStorage.length);
+	return start < end ? NSMakeRange(start, end - start) : NSMakeRange(NSNotFound, 0);
+}
+
+- (void)applyLinks {
+	NSTextStorage *storage = self.textStorage;
+	[storage beginEditing];
+	[_links enumerateObjectsUsingBlock:^(LuaParagraphLink *link, NSUInteger index, __unused BOOL *stop) {
+		NSRange range = [self bodyRangeOfLink:link];
+		if (range.location == NSNotFound) return;
+		[storage addAttribute:NSLinkAttributeName value:@(index).stringValue range:range];
+		[storage addAttribute:NSUnderlineStyleAttributeName
+			value:@(NSUnderlineStyleSingle | NSUnderlineStylePatternDash) range:range];
+	}];
+	[storage endEditing];
+}
+
+- (LuaParagraphLink *)linkAtCharacterIndex:(NSUInteger)index {
+	if (index >= MIN([self revealedBodyLength], self.textStorage.length)) return nil;
+	for (LuaParagraphLink *link in _links)
+		if (NSLocationInRange(index, [self bodyRangeOfLink:link])) return link;
+	return nil;
+}
+
+- (void)chooseLinkItem:(NSMenuItem *)item {
+	[(LuaParagraphLink *)item.representedObject performItem:(NSUInteger)item.tag];
+}
+
+- (NSMenu *)menuForLink:(LuaParagraphLink *)link {
+	NSMenu *menu = [[NSMenu alloc] initWithTitle:link.label ?: @""];
+	menu.autoenablesItems = NO;
+	[link.titles enumerateObjectsUsingBlock:^(NSString *title, NSUInteger index, __unused BOOL *stop) {
+		NSMenuItem *item = [menu addItemWithTitle:title action:@selector(chooseLinkItem:) keyEquivalent:@""];
+		NSString *symbol = index < link.symbols.count ? link.symbols[index] : @"";
+		if (symbol.length) item.image = [NSImage imageWithSystemSymbolName:symbol accessibilityDescription:nil];
+		item.target = self;
+		item.tag = (NSInteger)index;
+		item.representedObject = link;
+		item.enabled = [link.callbacks[index] isKindOfClass:LuaReg.class];
+	}];
+	return menu;
+}
+
+/* A click on a link opens its menu below the words, as a pull-down does. */
+- (BOOL)textView:(__unused NSTextView *)textView clickedOnLink:(__unused id)value atIndex:(NSUInteger)index {
+	LuaParagraphLink *link = [self linkAtCharacterIndex:index];
+	if (!link || link.titles.count == 0) return YES;
+	NSRange glyphs = [self.layoutManager glyphRangeForCharacterRange:[self bodyRangeOfLink:link]
+		actualCharacterRange:NULL];
+	NSRect words = [self.layoutManager boundingRectForGlyphRange:glyphs inTextContainer:self.textContainer];
+	[[self menuForLink:link] popUpMenuPositioningItem:nil
+		atLocation:NSMakePoint(NSMinX(words), NSMaxY(words)) inView:self];
+	return YES;
+}
+
 - (void)applyReveal {
 	NSTextStorage *storage = self.textStorage;
 	NSUInteger shown = MIN([self revealedBodyLength], storage.length);
@@ -155,6 +226,15 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 	[storage addAttribute:NSForegroundColorAttributeName value:_bodyColor range:NSMakeRange(0, shown)];
 	[storage addAttribute:NSForegroundColorAttributeName value:NSColor.clearColor
 		range:NSMakeRange(shown, storage.length - shown)];
+	/* A link is ruled only under the words typed so far. */
+	for (LuaParagraphLink *link in _links) {
+		NSRange range = [self bodyRangeOfLink:link];
+		if (range.location == NSNotFound) continue;
+		NSRange visible = NSIntersectionRange(range, NSMakeRange(0, shown));
+		[storage addAttribute:NSUnderlineColorAttributeName value:NSColor.clearColor range:range];
+		if (visible.length) [storage addAttribute:NSUnderlineColorAttributeName
+			value:_linkColor ?: NSColor.controlAccentColor range:visible];
+	}
 	[storage endEditing];
 	_initialView.hidden = !([self initialLetter] && _revealedCharacters != 0);
 	self.needsDisplay = YES;
@@ -278,6 +358,7 @@ static NSRect paragraph_ink_bounds(NSFont *font, NSString *letter) {
 		_initialInk = NSZeroRect;
 		self.textContainer.exclusionPaths = @[];
 	}
+	[self applyLinks];
 	[self applyReveal];
 	[self setAccessibilityValue:_text];
 	[self invalidateIntrinsicContentSize];

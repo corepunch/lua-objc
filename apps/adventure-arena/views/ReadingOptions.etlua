@@ -1,6 +1,6 @@
 <%
   -- Apple Books’ "Themes & Settings": type size, page themes shown as pages,
-  -- the face, the leading and justification. Used by the in-book sheet and the
+  -- the face, the leading, justification and drop caps. Used by the in-book sheet and the
   -- Settings tab; `preview` adds a sample page for when no book is behind it.
   local SWATCH = { width = 74, height = 92, radius = 16, sample = 26 }
 %>
@@ -50,13 +50,13 @@
       <Option title="Relaxed" />
     </Picker>
     <Toggle id="justifyToggle" label="Justify Text" value="<%= justified and 'true' or 'false' %>" onChange="justifyChanged" maxWidth="infinity" />
+    <Toggle id="dropCapToggle" label="Drop Caps" value="<%= dropCap and 'true' or 'false' %>" onChange="dropCapChanged" maxWidth="infinity" />
   </VStack>
 
   <% if preview then %>
   <VStack id="preview" padding="20" spacing="0" alignment="leading" background="<%= pageColor %>" cornerRadius="22" clipsToBounds="true" maxWidth="infinity">
-    <Label text="Chapter I" size="<%= fontSize - 3 %>" weight="semibold" color="systemIndigo|systemIndigo" smallCaps="true" />
-    <Label text="West of House" size="<%= fontSize + 6 %>" weight="semibold" design="serif" color="<%= primaryTextColor %>" paddingTop="2" paddingBottom="<%= math.floor(fontSize * 0.7) %>" />
-    <Paragraph id="previewBody" text="You are standing in an open field west of a white house, with a boarded front door. There is a small mailbox here." size="<%= fontSize %>" design="<%= font %>" color="<%= primaryTextColor %>" lineSpacing="<%= lineSpacing %>" alignment="<%= alignment %>" hyphenation="<%= justified and 'true' or 'false' %>" dropCap="true" dropCapFontName="SnellRoundhand-Bold" dropCapColor="systemIndigo" selectable="false" />
+    <Label text="West of House" size="<%= fontSize + 6 %>" weight="semibold" design="serif" color="<%= primaryTextColor %>" paddingBottom="<%= math.floor(fontSize * 0.7) %>" />
+    <Paragraph id="previewBody" text="You are standing in an open field west of a white house, with a boarded front door. There is a small mailbox here." size="<%= fontSize %>" design="<%= font %>" color="<%= primaryTextColor %>" lineSpacing="<%= lineSpacing %>" alignment="<%= alignment %>" hyphenation="<%= justified and 'true' or 'false' %>" dropCap="<%= dropCap and 'true' or 'false' %>" dropCapFontName="SnellRoundhand-Bold" dropCapColor="systemIndigo" selectable="false" />
   </VStack>
   <% end %>
 </VStack>

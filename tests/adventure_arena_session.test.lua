@@ -8,7 +8,7 @@ local function kinds(session)
 	return table.concat(list, ",")
 end
 
--- Plain engine: no room names, so the opening still opens Chapter I.
+-- Plain engine: no room names, so the opening still opens a scene.
 local session = Session.new({ engineFactory = function()
 	return { start = function()
 		return { resume = function(_, command)
@@ -22,10 +22,12 @@ local game = { id = "test", title = "Test Story" }
 t.expect(session:start(game), "session starts with an opening message")
 t.assertEqual(session:presentation().progress, "Score 0 · 0 moves", "new session starts with empty progress")
 local opening = session:presentation().entries[1]
-t.assertEqual(opening.kind, "scene", "the opening starts a chapter")
-t.assertEqual(opening.chapterLabel, "Chapter I", "chapters are numbered in roman numerals")
-t.assertEqual(opening.title, "Test Story", "without a room name the chapter takes the game title")
-t.assertEqual(opening.paragraphs[1], "Welcome.", "the chapter keeps its whole first paragraph; the view drops the initial")
+t.assertEqual(opening.kind, "scene", "the opening starts a scene")
+t.assertEqual(opening.chapterLabel, nil, "scenes are named for their rooms, never numbered as chapters")
+t.assertEqual(session:presentation().chapterLabel, nil, "the running head carries no chapter")
+t.assertEqual(session:snapshot().chapter, nil, "a save records no chapter")
+t.assertEqual(opening.title, "Test Story", "without a room name the scene takes the game title")
+t.assertEqual(opening.paragraphs[1], "Welcome.", "the scene keeps its whole first paragraph; the view drops the initial")
 t.expect(session:submit("  look  "), "trimmed command succeeds")
 t.assertEqual(session:presentation().progress, "Score 0 · 1 move", "submitted commands increment the move count")
 t.assertEqual(kinds(session), "scene,command,narration", "a command and its response append two entries")
@@ -67,25 +69,24 @@ t.assertEqual(kinds(story), "banner,narration,scene", "banner, prologue, then th
 local entries = story:presentation().entries
 t.assertEqual(entries[1].title, "PLANETFALL", "the banner keeps the story title")
 t.assertEqual(#entries[1].lines, 3, "the banner keeps its credit lines")
-t.assertEqual(entries[2].paragraphs[1], "Another routine day.", "prologue precedes the first chapter")
-t.assertEqual(entries[3].title, "Deck Nine", "a heading line names the chapter")
+t.assertEqual(entries[2].paragraphs[1], "Another routine day.", "prologue precedes the first scene")
+t.assertEqual(entries[3].title, "Deck Nine", "a heading line names the scene")
 t.assertEqual(entries[3].paragraphs[1], "A featureless corridor.\nA brush lies here.", "the heading line is not repeated")
 t.assertEqual(story:presentation().roomTitle, "Deck Nine", "presentation names the active room")
 story:submit("north")
 t.assertEqual(kinds(story), "banner,narration,scene,command,narration", "a failed move is narration")
 story:submit("look")
 entries = story:presentation().entries
-t.assertEqual(entries[#entries].kind, "narration", "looking again does not open a new chapter")
+t.assertEqual(entries[#entries].kind, "narration", "looking again does not open a new scene")
 t.assertEqual(entries[#entries].paragraphs[1], "Still here.", "the repeated heading line is dropped")
 story:submit("up")
 entries = story:presentation().entries
-t.assertEqual(entries[#entries].chapterLabel, "Chapter II", "a printed heading opens the next chapter")
-t.assertEqual(entries[#entries].title, "Gangway", "the new chapter is named for the new room")
+t.assertEqual(entries[#entries].kind, "scene", "a printed heading opens the next scene")
+t.assertEqual(entries[#entries].title, "Gangway", "the new scene is named for the new room")
 story:submit("starboard")
 entries = story:presentation().entries
-t.assertEqual(entries[#entries].title, "Reactor", "a room change without a heading still opens a chapter")
-t.assertEqual(entries[#entries].paragraphs[1], "The reactor hums.", "that chapter opens with its description")
-t.assertEqual(Session.roman(1994), "MCMXCIV", "roman numerals cover long games")
+t.assertEqual(entries[#entries].title, "Reactor", "a room change without a heading still opens a scene")
+t.assertEqual(entries[#entries].paragraphs[1], "The reactor hums.", "that scene opens with its description")
 
 -- Openings that start with punctuation keep it and skip the initial.
 local quoted = Session.new({ engineFactory = function()

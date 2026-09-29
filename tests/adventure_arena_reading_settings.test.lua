@@ -46,6 +46,11 @@ t.assertEqual(settings:presentation().lineSpacing, math.floor(14 * 0.5 + 0.5), "
 settings:setJustified(true)
 t.assertEqual(settings:presentation().alignment, "justified", "justification is a reading preference")
 
+t.expect(ReadingSettings.new():presentation().dropCap, "scenes open with a drop cap by default")
+t.expect(settings:setDropCap(false), "drop caps can be turned off")
+t.expect(settings:presentation().dropCap == false, "the page sets its first letter in the running text")
+t.assertEqual(settings:presentation().alignment, "justified", "turning drop caps off leaves other preferences alone")
+
 -- Preferences persist as plain values and restore exactly.
 local restored = ReadingSettings.new(settings:snapshot())
 t.assertEqual(restored.font, "monospaced", "the face survives a relaunch")
@@ -53,6 +58,8 @@ t.assertEqual(restored.fontSize, 14, "the size survives a relaunch")
 t.assertEqual(restored.theme, "night", "the theme survives a relaunch")
 t.assertEqual(restored.spacing, "relaxed", "the leading survives a relaunch")
 t.expect(restored.justified, "justification survives a relaunch")
+t.expect(restored.dropCap == false, "the drop cap choice survives a relaunch")
+t.expect(ReadingSettings.new({ dropCap = "no" }).dropCap, "a malformed saved choice keeps drop caps")
 local defaults = ReadingSettings.new({ font = "comic", theme = "cover", spacing = "huge", fontSize = 99 })
 t.assertEqual(defaults.font, "serif", "an unknown saved face falls back to the default")
 t.assertEqual(defaults.theme, "paper", "a retired theme falls back to paper")
