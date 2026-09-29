@@ -63,10 +63,15 @@ host device. Test final apps on an iPhone too.
 
 ## Git
 
-Studio automatically initializes `Documents/HabitTracker/.git` through the
-libgit2 `Git` module ([src/plugins/git](../../src/plugins/git/README.md)) and
-commits the starting project as "Lua Studio". Later launches reopen the same
-repository. Source files, `project.lua`, `.gitignore`, and project assets are
+Every project owns `Documents/<project>/.git` from creation. The shared
+`Workspace.create` service writes the starting source, initializes the repository
+through the libgit2 `Git` module ([src/plugins/git](../../src/plugins/git/README.md)),
+and makes the initial commit as "Lua Studio" before registering the project.
+Blank, template, and generated project creation must use this service.
+`Workspace.open` also establishes history when materializing bundled projects;
+later opens preserve both history and uncommitted edits. Studio materializes all
+projects in its catalog at startup, including their repositories.
+Source files, `project.lua`, `.gitignore`, and project assets are
 versioned directly in the project folder. `/data/` and `/settings.json` are
 ignored so habit activity and Studio preferences do not enter source history.
 Commit records saved changes, including removed source files, and shows the

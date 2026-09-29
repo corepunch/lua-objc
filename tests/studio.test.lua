@@ -194,7 +194,10 @@ local documentNS = {
 	_jsonEncode = ns._jsonEncode,
 	json_parse = ns.json_parse,
 }
-local workspace = Workspace.new(documentNS, read)
+local fakeGit = { open = function() return {
+	log = function() return { { id = "existing" } } end,
+} end }
+local workspace = Workspace.open(documentNS, read, fakeGit, "HabitTracker")
 t.assertEqual(#Code.presentation(workspace.seed).files, 7, "the bundled Habit Tracker has seven source files")
 t.expect(documents["HabitTracker/project.lua"] ~= nil and documents["HabitTracker/views/Today.etlua"] ~= nil,
 	"the bundled app is materialized in Documents on first launch")
@@ -203,7 +206,7 @@ for path, content in pairs(workspace.seed) do editedFiles[path] = content end
 editedFiles["demo/playground/Model.lua"] = "return { saved = true }\n"
 t.expect(workspace.storage.save({ files = editedFiles, model = "provider/test" }),
 	"project files and settings save to Documents")
-local reopened = Workspace.new(documentNS, read)
+local reopened = Workspace.open(documentNS, read, fakeGit, "HabitTracker")
 t.assertEqual(reopened.seed["demo/playground/Model.lua"], "return { saved = true }\n",
 	"saved project source is reopened from Documents")
 t.expect(reopened.localStorage.set("test-state", "{\"saved\":true}"), "app local storage writes into its Documents folder")

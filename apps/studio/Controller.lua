@@ -3,7 +3,6 @@ local xml = require("ui.xml")
 local Model = require("apps.studio.Model")
 local Workspace = require("apps.studio.services.Workspace")
 local Preview = require("apps.studio.services.Preview")
-local Versions = require("apps.studio.services.Versions")
 local PreviewController = require("apps.studio.controllers.PreviewController")
 local ChatController = require("apps.studio.controllers.ChatController")
 local Projects = require("apps.studio.models.Projects")
@@ -84,14 +83,27 @@ end
 
 function Controller:createWindow()
 	assert(ns.Preview, "Lua Studio requires the iPad runtime. Use make ipad-run.")
-	local workspace = Workspace.new(ns, ns._readFile)
-	self.model = Model.new(workspace.storage, workspace.seed)
 	local function readProjectFile(path)
 		local value = ns._documentRead(path)
 		if value then return value end
 		return ns._readFile("apps/studio/Documents/" .. path)
 	end
 	local projects = Projects.list(readProjectFile, ns.json_parse, ns._jsonEncode, ns._documentWrite)
+	local workspace
+	local git = require("Git")
+	for index, project in ipairs(projects) do
+		local opened = Workspace.open(ns, ns._readFile, git, project.id)
+		if index == 1 then workspace = opened else opened.versions:close() end
+	end
+	assert(workspace, "No project is available")
+	if not ns._documentRead("projects.json") then
+		local names = {}
+		for _, project in ipairs(projects) do table.insert(names, project.id) end
+		local ok, err = ns._documentWrite("projects.json", ns._jsonEncode(names))
+		assert(ok, err)
+	end
+	self.model = Model.new(workspace.storage, workspace.seed)
+	self.versions = workspace.versions
 	self.preview = Preview.new(ns, ns._readFile, workspace.localStorage)
 	self.showcase = showcase(ns._readFile)
 	if self.showcase then
@@ -99,7 +111,6 @@ function Controller:createWindow()
 		table.insert(projects, 1, {name = current.title, title = current.title, icon = current.icon, selected = true})
 		for index = 2, #projects do projects[index].selected = nil end
 	end
-	self.versions, self.versionsError = Versions.open(require("Git"), workspace.root)
 
 	local refs
 	local config
@@ -150,17 +161,6 @@ function Controller:createWindow()
 		error("Could not render starter preview: " .. tostring(err))
 	end
 	self.refs = refs
-	-- The first launch commits the starter project, so history has a base.
-	if self.versions then
-		local history, historyError = self.versions:log(1)
-		if not history then
-			refs.previewStatus.text = "Git unavailable: " .. tostring(historyError)
-		elseif #history == 0 then
-			self:commitProject("Start project")
-		end
-	else
-		refs.previewStatus.text = "Git unavailable: " .. tostring(self.versionsError)
-	end
 	return ns.Window(config)
 end
 

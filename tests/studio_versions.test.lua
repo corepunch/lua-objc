@@ -29,7 +29,7 @@ local documentNS = {
 	_jsonEncode = ns._jsonEncode,
 	json_parse = ns.json_parse,
 }
-local workspace = Workspace.new(documentNS, read)
+local workspace = Workspace.open(documentNS, read, Git, "HabitTracker")
 local function save(files)
 	return workspace.storage.save({ files = files, model = "openrouter/free" })
 end
@@ -49,14 +49,14 @@ assert(save(files))
 assert(workspace.localStorage.set("habits", '{"completed":true}'))
 assert(write("HabitTracker/notes.txt", "Keep my project notes"))
 local versions = assert(Versions.open(Git, workspace.root))
-t.assertEqual(#versions:log(), 0, "a new workspace has no history")
+t.assertEqual(#versions:log(), 1, "opening materializes the project with an initial commit")
 local first = assert(versions:record("Start project"))
 t.assertEqual(#first, 40, "recording returns the commit id")
 local repo = assert(Git.open(workspace.root))
 t.assertEqual(tracked(repo), ".gitignore,init.lua,notes.txt,project.lua,views/Window.etlua", "source, metadata and other assets are tracked; data and settings are ignored")
 t.assertEqual(repo:show("HEAD", "views/Window.etlua"), "<Window />\n", "files are committed with their content")
 t.assertEqual(versions:record("Again"), false, "an unchanged project records nothing")
-t.assertEqual(#versions:log(), 1, "no empty commits")
+t.assertEqual(#versions:log(), 2, "no empty commits")
 
 files["demo/playground/views/Window.etlua"] = nil
 files["demo/playground/Model.lua"] = "return {}\n"
@@ -65,7 +65,7 @@ local second = assert(versions:record("Replace window"))
 t.assertEqual(tracked(repo), ".gitignore,Model.lua,init.lua,notes.txt,project.lua", "source deletion preserves metadata and unrelated files")
 t.expect(io.open(workspace.root .. "/views/Window.etlua") == nil, "deleted files leave the worktree")
 local history = versions:log()
-t.assertEqual(#history, 2, "each change is one commit")
+t.assertEqual(#history, 3, "each change is one commit after inception")
 t.assertEqual(history[1].id, second, "history is newest first")
 t.assertEqual(history[1].author, "Lua Studio", "Studio authors its commits")
 t.assertEqual(#versions:log(1), 1, "history can be limited")
@@ -80,7 +80,7 @@ t.assertEqual(reopened:record("Runtime data"), false, "habit and settings change
 t.assertEqual(read(workspace.root .. "/notes.txt"), "Keep my project notes", "unrelated files are preserved")
 local savedIgnore = assert(read(workspace.root .. "/.gitignore")) .. "/scratch/\n"
 assert(write("HabitTracker/.gitignore", savedIgnore))
-local reopenedWorkspace = Workspace.new(documentNS, read)
+local reopenedWorkspace = Workspace.open(documentNS, read, Git, "HabitTracker")
 t.assertEqual(read(workspace.root .. "/.gitignore"), savedIgnore, "reopening preserves custom ignore rules")
 t.expect(reopenedWorkspace.seed["demo/playground/views/Window.etlua"] == nil,
 	"removed source stays removed after reopening")
@@ -98,6 +98,37 @@ ok, err = Versions.open(Git, blocked .. "/repo")
 t.expect(ok == nil and type(err) == "string", "a repository that cannot be created is reported")
 repo:close()
 reopened:close()
+
+-- Every creation path has the same repository contract, independent of the
+-- starter name and before the project is published in the catalog.
+local metadata = { name = "Notes", bundleId = "org.example.notes", appIcon = "note" }
+local alpha = Workspace.create(documentNS, Git, "Notes", metadata, { ["init.lua"] = "return {}" })
+local beta = Workspace.create(documentNS, Git, "Timer", {
+	name = "Timer", bundleId = "org.example.timer", appIcon = "timer",
+}, { ["init.lua"] = "return { timer = true }" })
+t.assertEqual(alpha.versions.repo:workdir(), root .. "/Notes/", "created project owns its repository")
+t.assertEqual(beta.versions.repo:workdir(), root .. "/Timer/", "another project owns a separate repository")
+t.assertEqual(#alpha.versions:log(), 1, "new project has a commit before create returns")
+t.assertEqual(#beta.versions:log(), 1, "each new project gets an initial commit")
+t.assertEqual(alpha.versions.repo:show("HEAD", "init.lua"), "return {}", "initial commit includes initial source")
+local names = ns.json_parse(documentNS._documentRead("projects.json"))
+t.assertEqual(table.concat(names, ","), "Notes,Timer", "successful projects enter the catalog")
+local created = pcall(Workspace.create, documentNS, Git, "Notes", metadata, {})
+t.expect(not created, "creating over an existing project is rejected")
+t.expect(not pcall(Workspace.create, documentNS, Git, "../escape", metadata, {}), "creation rejects unsafe folder names")
+local unavailable = { open = function() return nil, "missing" end, init = function() return nil, "disk full" end }
+local ok, errorMessage = pcall(Workspace.create, documentNS, unavailable, "Failed", metadata, {})
+t.expect(not ok and errorMessage:find("disk full", 1, true), "Git failure prevents successful project creation")
+t.assertEqual(documentNS._documentRead("projects.json"), ns._jsonEncode(names), "failed creation is not published")
+assert(alpha.storage.save({ files = { ["demo/playground/init.lua"] = "return { edited = true }" } }))
+t.assertEqual(alpha.storage.load().files["demo/playground/init.lua"], "return { edited = true }",
+	"created workspace reads saved edits instead of its original template")
+local again = Workspace.open(documentNS, read, Git, "Notes")
+t.assertEqual(#again.versions:log(), 1, "opening does not commit pending source edits")
+t.assertEqual(again.seed["demo/playground/init.lua"], "return { edited = true }", "opening preserves pending source edits")
+t.assertEqual(beta.versions.repo:show("HEAD", "init.lua"), "return { timer = true }", "another project's history is unchanged")
+alpha.versions:close(); beta.versions:close(); again.versions:close()
+workspace.versions:close(); reopenedWorkspace.versions:close()
 
 -- The Commit action reports the result in the status line.
 local Controller = require("apps.studio.Controller")
