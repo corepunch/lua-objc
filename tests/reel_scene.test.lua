@@ -40,6 +40,18 @@ t.assertThrows(function() Space.path(0, {}) end, "a path needs keys")
 
 -- ── Native scene ─────────────────────────────────────────────────────────
 
+-- rotate() and transform() agree with SceneKit: a child's origin under a
+-- turned, scaled, moved parent lands where world() finds it.
+do
+	local s = N.scene()
+	local node = s:node(0)
+	local euler = { 25, -40, 70 }
+	s:pose(node, 1, 2, -1, math.rad(euler[1]), math.rad(euler[2]), math.rad(euler[3]), 2, 2, 2)
+	local wx, wy, wz = s:world(node, 0.5, -0.3, 0.8)
+	t.expect(nearVector({ wx, wy, wz }, Space.transform({ 0.5, -0.3, 0.8 }, { 1, 2, -1 }, euler, 2), 1e-4),
+		"rotate() and transform() match SceneKit's euler order")
+end
+
 local scene = N.scene()
 local camera = scene:node(0)
 scene:camera(camera, { fieldOfView = 40 })

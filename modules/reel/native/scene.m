@@ -480,6 +480,20 @@ static int reel_scene_project(lua_State *L) {
 	return 3;
 }
 
+/* world(handle, x, y, z) -> x, y, z: a point in the node's space in world
+ * coordinates, after this frame's poses. */
+static int reel_scene_world(lua_State *L) {
+	ReelSceneState *state = reel_check_scene(L, 1);
+	SCNNode *node = state.nodes[reel_scene_handle(L, state, 2)];
+	[SCNTransaction flush];
+	SCNVector3 world = [node convertPosition:SCNVector3Make(luaL_checknumber(L, 3), luaL_checknumber(L, 4),
+		luaL_checknumber(L, 5)) toNode:nil];
+	lua_pushnumber(L, world.x);
+	lua_pushnumber(L, world.y);
+	lua_pushnumber(L, world.z);
+	return 3;
+}
+
 static int reel_scene_gc(lua_State *L) {
 	ReelSceneBox *box = luaL_checkudata(L, 1, SceneMetatable);
 	if (box->state) {
@@ -496,4 +510,5 @@ static const luaL_Reg reel_scene_methods[] = {
 	{"aim", reel_scene_aim}, {"inner", reel_scene_inner}, {"shadows", reel_scene_shadows},
 	{"camera", reel_scene_camera}, {"light", reel_scene_light}, {"environment", reel_scene_environment},
 	{"render", reel_scene_render}, {"project", reel_scene_project},
+	{"world", reel_scene_world},
 	{NULL, NULL}};
