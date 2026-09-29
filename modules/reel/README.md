@@ -137,6 +137,10 @@ only when given one; `sound = false` silences a duplicate.
 
 ## SceneKit
 
+The practical guide to building a 3-D reel (captures, cutting screens into
+components, SceneKit and camera traps, performance, review) is
+[docs/reels.md](../../docs/reels.md).
+
 `<SceneView>` puts a SceneKit scene in a reel, rendered offscreen through
 Metal at its on-screen pixel size, 4x multisampled and motion blurred like
 everything else. Its records are the live
