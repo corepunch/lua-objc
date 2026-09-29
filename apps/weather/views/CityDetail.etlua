@@ -53,20 +53,19 @@
     <% if #city.forecast > 0 then -%>
     <Divider />
         <Label text="7-day forecast" size="14" weight="semibold" />
-        <ScrollView contentWidth="772" contentHeight="188" height="200" maxWidth="infinity" horizontal="true">
-    <HStack spacing="12" alignment="top" width="772">
-        <% for _, day in ipairs(city.forecast) do -%>
-        <VStack spacing="4" alignment="center" width="100">
-            <Label text="<%= day.date %>" size="11" color="secondary" />
-            <Image src="<%= day.icon %>" width="28" height="28" label="<%= day.desc %>" />
-            <Label text="<%= day.tempMax or "--" %>°" size="16" weight="medium" />
-            <Label text="<%= day.tempMin or "--" %>°" size="13" color="secondary" />
-            <Label text="<%= day.desc %>" size="11" lines="2" />
-                <Label text="<%= day.precipProbability or "--" %>% rain" size="10" color="secondary" />
-        </VStack>
+    <HStack id="forecast" spacing="8" alignment="top" maxWidth="infinity">
+        <% for index, day in ipairs(city.forecast) do -%>
+        <GroupBox id="forecast/<%= index %>" flexGrow="1" flexBasis="0">
+            <VStack spacing="5" alignment="center" maxWidth="infinity">
+                <Label text="<%= index == 1 and "Today" or day.day %>" size="12" weight="semibold" color="<%= index == 1 and "accent" or "secondary" %>" />
+                <Image src="<%= day.icon %>" width="30" height="30" label="<%= day.desc %>" />
+                <Label text="<%= day.tempMax or "--" %>°" size="17" weight="medium" />
+                <Label text="<%= day.tempMin or "--" %>°" size="13" color="secondary" />
+                <Label text="<%= day.precipProbability or "--" %>%" size="10" color="secondary" />
+            </VStack>
+        </GroupBox>
         <% end -%>
     </HStack>
-    </ScrollView>
     <% end -%>
 </VStack>
 <% else -%>
