@@ -23,9 +23,9 @@ ns.Menu = function(props)
 	return view
 end
 ns._addDrag = function(view, callback) drags[view] = callback end
-xml.renderFile = function(...)
-	local view, refs = renderFile(...)
-	rendered = { view = view, refs = refs }
+xml.renderFile = function(path, data, ...)
+	local view, refs = renderFile(path, data, ...)
+	rendered = { view = view, refs = refs, data = data }
 	return view, refs
 end
 local function click(ref)
@@ -95,19 +95,11 @@ t.assertEqual(controller.navigation.depth, 3, "detail play opens session")
 t.assertEqual(rendered.refs.sessionTitle.text, catalog:list()[1].title, "session header retains the game title")
 t.expect(rendered.refs.back == nil and rendered.refs.sessionHeader == nil,
 	"the system navigation owns the back button; the screen draws no header")
-local compassParent = rendered.refs.compassControl.superview
-local reachesOverlay, entersInset = false, false
-while compassParent do
-	if compassParent == rendered.refs.sessionOverlay then reachesOverlay = true end
-	if compassParent == rendered.refs.sessionContent then entersInset = true end
-	compassParent = compassParent.superview
-end
-t.expect(entersInset and not reachesOverlay,
-	"the compass rides in the glass command bar instead of covering the page")
+t.expect(rendered.refs.compassControl == nil, "the reader's command bar carries no compass")
 t.assertEqual(page().gameTitle.text, catalog:list()[1].title, "the title page names the game")
 t.assertEqual(page().gameDescription.text, catalog:list()[1].shortDescription,
 	"the title page carries the tagline as its epigraph")
-t.assertEqual(page().sceneTitle_1.text, catalog:list()[1].title, "the opening chapter is named")
+t.assertEqual(page().sceneTitle_1.text, catalog:list()[1].title, "the opening scene is named")
 t.assertEqual(page().paragraph_1_1.text, "Opening <&>", "transcript escapes XML characters")
 t.expect(page().paragraph_1_1.dropCap, "the opening starts with a drop cap")
 t.expect(rendered.refs.backdrop == nil, "the page is paper, not blurred cover art")
@@ -135,6 +127,13 @@ t.assertEqual(rendered.refs.input.text, "", "send clears input")
 t.assertEqual(rendered.refs.progress.text, "Score 0 · Time 1", "session refreshes progress after a command")
 t.assertEqual(controller.savedGames:latest().gameId, catalog:list()[1].id, "a played story is saved")
 t.expect(controller.tabs.accessoryHidden, "the tab accessory stays hidden while the book is open")
+-- The compass is off the reader's page, and still works where a page
+-- includes it: the session binds its drag and marks its exits.
+local _, compassRefs = renderFile("apps/adventure-arena/views/Compass.etlua", {
+	availableDirections = rendered.data.availableDirections,
+	compassSegments = rendered.data.compassSegments, size = 52, actions = rendered.data.actions,
+}, ns)
+for id, view in pairs(compassRefs) do rendered.refs[id] = view end
 local compassDrag = drags[rendered.refs.compassControl]
 t.expect(type(compassDrag) == "function", "compass binds the native drag gesture")
 t.assertEqual(rendered.refs.compassExit_north.strokeAlpha, 1, "compass marks the north exit")
@@ -217,17 +216,17 @@ empty:home()
 t.expect(rendered.refs.emptyCatalog ~= nil, "empty model renders the etlua empty state")
 t.assertEqual(empty.navigation.depth, 1, "empty catalog retains navigation root")
 local _, systemRefs = renderFile("apps/adventure-arena/views/Session.etlua", {
-	gameTitle = "Zork", gameDescription = "A story", chapterLabel = "Chapter I", ink = "accent", tint = "accent",
+	gameTitle = "Zork", gameDescription = "A story", ink = "accent", tint = "accent",
 	roomTitle = "Gate", progress = "Score 0 · 0 moves",
-	speechAvailable = false, availableDirections = {}, compassSegments = {},
+	speechAvailable = false,
 	actions = { disappear = function() end, readingSettings = function() end },
 }, ns)
 t.expect(systemRefs.back == nil, "the navigation bar owns the back button")
 local _, titleRefs = renderFile("apps/adventure-arena/views/SessionTitle.etlua", {
-	gameTitle = "Zork", chapterLabel = "Chapter II", roomTitle = "Kitchen",
+	gameTitle = "Zork", roomTitle = "Kitchen",
 }, ns)
 t.assertEqual(titleRefs.sessionTitle.text, "Zork", "the running head keeps the game name")
-t.assertEqual(titleRefs.sessionPlace.text, "Chapter II · Kitchen", "the running head names the chapter and room")
+t.assertEqual(titleRefs.sessionPlace.text, "Kitchen", "the running head names the room alone")
 ns.Button, ns.Menu, ns._addDrag, xml.renderFile = button, menu, addDrag, renderFile
 
 os.exit(t.summary() and 0 or 1)

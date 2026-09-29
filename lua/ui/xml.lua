@@ -986,8 +986,40 @@ local TAG_SCHEMA = {
             hyphenation = "bool", selectable = "bool", accessibilityLabel = "str",
             dropCap = "bool", dropCapLines = "num", dropCapFontName = "str",
             dropCapDesign = "str", dropCapWeight = "str", dropCapColor = "str",
-            revealedCharacters = "num",
+            revealedCharacters = "num", linkColor = "str",
         },
+        -- <Hyperlink> children mark the words a reader can act on.
+        collect = function(props, children)
+            if #children == 0 then return end
+            props.links = {}
+            for _, child in ipairs(children) do
+                if type(child) ~= "table" or not child.__hyperlink then
+                    error("xml: <Paragraph> accepts only <Hyperlink> children")
+                end
+                table.insert(props.links, child)
+            end
+        end,
+        updateRecords = function(view, records)
+            for _, name in ipairs({ "UIKitNative", "AppKitNative" }) do
+                local ok, native = pcall(require, name)
+                if ok and type(native) == "table" and type(native._paragraphSetLinks) == "function" then
+                    native._paragraphSetLinks(view, records)
+                    return true
+                end
+            end
+            return false
+        end,
+    },
+    -- A run of a <Paragraph> that opens a menu when tapped (WPF Hyperlink
+    -- inside a TextBlock). `location` counts characters from 0 as
+    -- `utf8.len` does; <MenuItem> children are what the reader can do.
+    Hyperlink = {
+        kind = "record",
+        flag = "__hyperlink",
+        props = { location = "num", length = "num", label = "str" },
+        collect = function(rec, children)
+            rec.items = children
+        end,
     },
     Title = {
         constructor = "Title",

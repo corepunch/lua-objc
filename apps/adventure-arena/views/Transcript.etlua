@@ -3,11 +3,14 @@
   --  · A title page: the author in small capitals, the title in the story’s
   --    own face and colour, a fleuron, and the tagline as an epigraph.
   --  · The Infocom banner becomes the colophon, small and centred.
-  --  · Each new room opens a chapter: "Chapter II" in small capitals, the
-  --    room as its title, and a drop cap the first lines wrap around.
+  --  · Each new room opens a scene: the room as its title and, when the
+  --    reader keeps drop caps, an initial the first lines wrap around.
   --  · What the reader does is set in small capitals in the story’s colour,
   --    like a stage direction; the story answers in ordinary prose. Nothing
   --    is a bubble: the page is one continuous column of type.
+  --  · Words the reader can act on carry a dashed rule in the story’s colour
+  --    and open a menu of what can be done with them. `linkMenus` holds the
+  --    live links of each paragraph, keyed like `reveal`.
   -- `reading` carries the reader’s face, size, leading, alignment and inks.
   -- `reveal` holds the characters shown of paragraphs still typing, keyed
   -- "entry_paragraph"; they, and entries in `reveal.waiting`, wait hidden
@@ -15,12 +18,13 @@
   local size, lead = reading.fontSize, reading.lineSpacing
   local PAGE = {
     side = 24, top = 28, bottom = 24,
-    paragraph = math.floor(size * 0.75), chapter = math.floor(size * 2.6),
+    paragraph = math.floor(size * 0.75), scene = math.floor(size * 2.6),
     command = math.floor(size * 1.3), afterCommand = math.floor(size * 0.45),
     dropCapLines = 3,
   }
   local hyphenate = reading.alignment == "justified" and "true" or "false"
   reveal = reveal or { waiting = {} }
+  linkMenus = linkMenus or {}
   local function revealed(index, paragraphIndex)
     local shown = reveal[index .. "_" .. paragraphIndex]
     return string.format('revealedCharacters="%d" hidden="%s"', shown or -1, shown == 0 and "true" or "false")
@@ -31,7 +35,7 @@
 %>
 <VStack paddingHorizontal="<%= PAGE.side %>" paddingTop="<%= PAGE.top %>" paddingBottom="<%= PAGE.bottom %>" spacing="0" alignment="leading" maxWidth="infinity">
   <% if earlierEntries == 0 then %>
-  <VStack id="titlePage" spacing="10" alignment="center" maxWidth="infinity" paddingTop="12" paddingBottom="<%= PAGE.chapter - PAGE.paragraph %>">
+  <VStack id="titlePage" spacing="10" alignment="center" maxWidth="infinity" paddingTop="12" paddingBottom="<%= PAGE.scene - PAGE.paragraph %>">
     <% if gameAuthor ~= "" then %>
     <Label id="gameAuthor" text="<%= gameAuthor %>" size="<%= size - 3 %>" design="serif" smallCaps="true" color="<%= reading.secondary %>" alignment="center" />
     <% end %>
@@ -53,14 +57,15 @@
     <% end %>
   </VStack>
   <% elseif entry.kind == "scene" then %>
-  <VStack id="entry_<%= index %>" spacing="0" alignment="leading" maxWidth="infinity" paddingTop="<%= (index == 1 and earlierEntries == 0) and 0 or PAGE.chapter %>" <%- waiting(index) %>>
-    <Label id="chapter_<%= index %>" text="<%= entry.chapterLabel %>" size="<%= size - 3 %>" design="serif" weight="semibold" smallCaps="true" color="<%= ink %>" />
-    <VStack paddingTop="2" paddingBottom="<%= PAGE.paragraph + 2 %>" alignment="leading" maxWidth="infinity">
+  <VStack id="entry_<%= index %>" spacing="0" alignment="leading" maxWidth="infinity" paddingTop="<%= (index == 1 and earlierEntries == 0) and 0 or PAGE.scene %>" <%- waiting(index) %>>
+    <VStack paddingBottom="<%= PAGE.paragraph + 2 %>" alignment="leading" maxWidth="infinity">
       <Label id="sceneTitle_<%= index %>" text="<%= entry.title %>" size="<%= size + 9 %>" design="serif" weight="semibold" color="<%= reading.primary %>" lines="0" />
     </VStack>
     <VStack spacing="<%= PAGE.paragraph %>" alignment="leading" maxWidth="infinity">
       <% for paragraphIndex, paragraph in ipairs(entry.paragraphs) do %>
-      <Paragraph id="paragraph_<%= index %>_<%= paragraphIndex %>" text="<%= paragraph %>" size="<%= size %>" design="<%= reading.font %>" color="<%= reading.primary %>" lineSpacing="<%= lead %>" alignment="<%= reading.alignment %>" hyphenation="<%= hyphenate %>" dropCap="<%= paragraphIndex == 1 and 'true' or 'false' %>" dropCapLines="<%= PAGE.dropCapLines %>" dropCapFontName="<%= initialFont or '' %>" dropCapColor="<%= ink %>" <%- revealed(index, paragraphIndex) %> />
+      <Paragraph id="paragraph_<%= index %>_<%= paragraphIndex %>" text="<%= paragraph %>" size="<%= size %>" design="<%= reading.font %>" color="<%= reading.primary %>" lineSpacing="<%= lead %>" alignment="<%= reading.alignment %>" hyphenation="<%= hyphenate %>" dropCap="<%= (reading.dropCap and paragraphIndex == 1) and 'true' or 'false' %>" dropCapLines="<%= PAGE.dropCapLines %>" dropCapFontName="<%= initialFont or '' %>" dropCapColor="<%= ink %>" linkColor="<%= ink %>" <%- revealed(index, paragraphIndex) %>>
+        <%- partial("ProseLinks.etlua", { links = linkMenus[index .. "_" .. paragraphIndex] }) %>
+      </Paragraph>
       <% end %>
     </VStack>
   </VStack>
@@ -71,7 +76,9 @@
   <% else %>
   <VStack id="entry_<%= index %>" spacing="<%= PAGE.paragraph %>" alignment="leading" maxWidth="infinity" paddingTop="<%= (entries[index - 1] and entries[index - 1].kind == 'command') and PAGE.afterCommand or PAGE.paragraph %>" <%- waiting(index) %>>
     <% for paragraphIndex, paragraph in ipairs(entry.paragraphs) do %>
-    <Paragraph id="paragraph_<%= index %>_<%= paragraphIndex %>" text="<%= paragraph %>" size="<%= size %>" design="<%= reading.font %>" color="<%= reading.primary %>" lineSpacing="<%= lead %>" alignment="<%= reading.alignment %>" hyphenation="<%= hyphenate %>" <%- revealed(index, paragraphIndex) %> />
+    <Paragraph id="paragraph_<%= index %>_<%= paragraphIndex %>" text="<%= paragraph %>" size="<%= size %>" design="<%= reading.font %>" color="<%= reading.primary %>" lineSpacing="<%= lead %>" alignment="<%= reading.alignment %>" hyphenation="<%= hyphenate %>" linkColor="<%= ink %>" <%- revealed(index, paragraphIndex) %>>
+      <%- partial("ProseLinks.etlua", { links = linkMenus[index .. "_" .. paragraphIndex] }) %>
+    </Paragraph>
     <% end %>
   </VStack>
   <% end %>

@@ -92,6 +92,22 @@ local function primaryVerb(item)
 	return best or "examine"
 end
 
+-- The verbs the story accepts for an item that make whole commands on
+-- their own, best known first; verbs outside the common set keep the
+-- story's order after them.
+function Suggestions.oneTapVerbs(item)
+	local verbs = {}
+	for index, verb in ipairs(item.verbs or {}) do
+		if not NEEDS_SECOND[verb] then
+			table.insert(verbs, { verb = verb, rank = VERB_RANK[verb] or (#VERBS + index) })
+		end
+	end
+	table.sort(verbs, function(a, b) return a.rank < b.rank end)
+	local names = {}
+	for _, entry in ipairs(verbs) do table.insert(names, entry.verb) end
+	return names
+end
+
 local function tokenize(input)
 	local words = {}
 	for word in input:lower():gmatch("%S+") do table.insert(words, word) end

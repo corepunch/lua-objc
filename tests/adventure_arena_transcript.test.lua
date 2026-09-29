@@ -72,8 +72,23 @@ scroll:layout(320)
 t.assertEqual(scroll.contentView.bounds.origin.y, 0, "a new message returns to the latest line")
 t.assertEqual(controller.transcript.refs.command_2.text, "look", "the submitted command is in the transcript")
 t.assertEqual(controller.transcript.refs.paragraph_3_1.text, "Response look", "the response follows the command")
-t.assertEqual(rendered.refs.compassExit_north.strokeAlpha, 1, "loaded exits stay marked after a command")
-t.assertEqual(rendered.refs.compassExit_south.strokeAlpha, 0, "closed exits stay unmarked after a command")
+t.expect(rendered.refs.compassControl == nil and rendered.refs.compassExit_north == nil,
+	"the reader's page shows no compass")
+t.expect(model:hasExit("north") and not model:hasExit("south"), "the session still knows its exits")
+t.expect(controller.transcript.refs.chapter_1 == nil, "a scene carries no chapter line above its title")
+t.assertEqual(controller.transcript.refs.sceneTitle_1.text, "Zork", "a scene opens with its title")
+
+-- The command field takes the width the compass left: it ends at the bar's
+-- trailing edge, and the bar holds only the menu and the field.
+local bar = rendered.refs.quickActions.superview
+rendered.refs.session.size = ns.Size(390, 700)
+rendered.refs.session:layout(390)
+local field = rendered.refs.input
+local glass = field.superview
+while glass.superview ~= bar do glass = glass.superview end
+t.assertEqual(#bar.subviews, 2, "the command bar holds the menu and the field")
+t.assertEqual(glass.frame.origin.x + glass.frame.size.width, bar.bounds.size.width,
+	"the command field fills the bar to its trailing edge")
 
 local savedOpening = opening .. "\n\n> inventory\n\nYou are empty handed."
 local saved = Session.new { engineFactory = function()
@@ -111,7 +126,7 @@ scroll:layout(320)
 t.assertEqual(scroll.contentView.bounds.origin.y, 0, "loading a session shows the latest line")
 local page = loaded.transcript.refs
 t.assertEqual(page.paragraph_1_1.text:sub(1, 20), "A long opening parag", "a loaded session keeps its opening, first letter included")
-t.expect(page.paragraph_1_1.dropCap == true, "the chapter's first paragraph drops its initial")
+t.expect(page.paragraph_1_1.dropCap == true, "the scene's first paragraph drops its initial")
 t.expect(page.paragraph_1_1.initialView.hidden == false, "the initial is drawn beside the wrapped lines")
 t.expect(page.paragraph_1_2.dropCap ~= true, "later paragraphs run as plain prose")
 t.expect(page.paragraph_1_2.text:find("> inventory", 1, true) ~= nil, "a loaded session keeps its commands")

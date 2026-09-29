@@ -1,15 +1,15 @@
 <%
   -- The reader. A page of the book fills the screen; the navigation bar is a
-  -- running head (the story, then the chapter and room). Everything that is
-  -- not the story floats in one Liquid Glass group at the foot of the page:
-  -- quick actions, the command field and the compass, with suggestion chips
-  -- above them and the status line set small like a book’s folio.
+  -- running head (the story, then the room). Everything that is not the
+  -- story floats in one Liquid Glass group at the foot of the page: quick
+  -- actions and the command field, with suggestion chips above them and the
+  -- status line set small like a book’s folio.
   local BAR = { height = 52, radius = 26, merge = 14 }
 %>
 <Page title="<%= gameTitle %>" hidesTabBar="true" titleDisplayMode="inline" backButtonDisplayMode="minimal" onDisappear="disappear">
 <Toolbar>
   <ToolbarItem id="sessionTitle" placement="principal" label="<%= gameTitle %>">
-    <%- partial("SessionTitle.etlua", { gameTitle = gameTitle, chapterLabel = chapterLabel, roomTitle = roomTitle }) %>
+    <%- partial("SessionTitle.etlua", { gameTitle = gameTitle, roomTitle = roomTitle }) %>
   </ToolbarItem>
   <ToolbarItem id="readingSettings" placement="primaryAction" icon="textformat.size" label="Themes and settings" action="readingSettings" />
 </Toolbar>
@@ -41,7 +41,6 @@
               <Button id="send" title="" systemImage="arrow.up.circle.fill" symbolSize="30" weight="semibold" foregroundStyle="accent" tint="<%= tint %>" accessibilityLabel="Send command" action="submit" style="plain" width="40" height="44" hidden="<%= speechAvailable and 'true' or 'false' %>" disabled="true" />
             </HStack>
           </GlassEffect>
-          <%- partial("Compass.etlua", { availableDirections = availableDirections, compassSegments = compassSegments, size = BAR.height }) %>
         </HStack>
       </GlassEffectContainer>
     </VStack>

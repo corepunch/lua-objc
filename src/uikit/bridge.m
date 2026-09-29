@@ -176,6 +176,7 @@ static void motion_invalidate_layout(UIView *view) {
 #include "tables.m"
 #include "platform.m"
 #include "constructors.m"
+#include "../shared/paragraph_links.m"
 #include "paragraph.m"
 #include "mesh_gradient.m"
 #include "speech_recognition.m"
@@ -229,6 +230,9 @@ static const luaL_Reg bridge_lib[] = {
 	{"_textEditor", bridge_UIKitControls_textEditor},
 	{"_label", bridge_UIKitControls_label},
 	{"_paragraph", bridge_UIKitControls_paragraph},
+	{"_paragraphSetLinks", bridge_paragraph_set_links},
+	{"_paragraphLinks", bridge_paragraph_links},
+	{"_paragraphPerformLink", bridge_paragraph_perform_link},
 	{"_hasLayoutAxis", bridge_has_layout_axis},
 	LUA_OBJC_MOTION_FUNCTIONS
 	LUA_OBJC_NOTIFICATION_FUNCTIONS

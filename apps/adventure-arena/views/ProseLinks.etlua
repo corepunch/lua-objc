@@ -1,0 +1,10 @@
+<%
+  -- The words of a paragraph the reader can act on, and what each offers.
+%>
+<% for _, link in ipairs(links or {}) do %>
+<Hyperlink location="<%= link.location %>" length="<%= link.length %>" label="<%= link.label %>">
+  <% for _, item in ipairs(link.items) do %>
+  <MenuItem title="<%= item.title %>" action="<%= item.action %>" />
+  <% end %>
+</Hyperlink>
+<% end %>

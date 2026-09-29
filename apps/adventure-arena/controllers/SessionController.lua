@@ -90,6 +90,8 @@ function Controller:show(id, fresh)
 		dictate = function() self:toggleDictation() end,
 		close = function() self:close() end,
 		readingSettings = function() self:showReadingSettings() end,
+		-- The reader's page no longer shows the compass; Compass.etlua
+		-- still binds to this when a page includes it.
 		compassDrag = function(gesture)
 			if type(gesture) ~= "table" or not self.refs then return end
 			local direction = CompassGesture.direction(gesture.translation)
@@ -193,17 +195,51 @@ function Controller:renderTranscript()
 		font = settings.font, fontSize = settings.fontSize, lineSpacing = settings.lineSpacing,
 		alignment = settings.alignment, primary = settings.primaryTextColor,
 		secondary = settings.secondaryTextColor, rule = settings.ruleColor,
+		dropCap = settings.dropCap,
 	}
 	data.reveal = self:revealState(data.earlierEntries)
-	data.actions = {}
+	data.linkMenus, data.actions = self:linkMenus(data.entries)
 	self.transcriptEarlier = data.earlierEntries
 	return self.transcript:update(data)
+end
+
+-- Links are live in the scene the reader stands in: the words of earlier
+-- rooms name things that are no longer at hand, so they are set as plain
+-- prose. Returns the menus keyed "entry_paragraph", as the Transcript
+-- template's paragraph ids are, and the action each menu item runs.
+function Controller:linkMenus(entries)
+	local menus, actions = {}, {}
+	local first = #entries + 1
+	for index = #entries, 1, -1 do
+		first = index
+		if entries[index].kind == "scene" then break end
+	end
+	for index = first, #entries do
+		for paragraph, links in pairs(entries[index].links or {}) do
+			local menu = {}
+			for linkIndex, link in ipairs(links) do
+				local items = {}
+				for itemIndex, action in ipairs(self.model:linkActions(link.target)) do
+					local name = table.concat({ "link", index, paragraph, linkIndex, itemIndex }, "_")
+					actions[name] = function() self:submitCommand(action.command) end
+					table.insert(items, { title = action.title, action = name })
+				end
+				if #items > 0 then
+					table.insert(menu, {
+						location = link.location, length = link.length, label = link.label, items = items,
+					})
+				end
+			end
+			if #menu > 0 then menus[index .. "_" .. paragraph] = menu end
+		end
+	end
+	return menus, actions
 end
 
 -- ── Typing ──────────────────────────────────────────────────────────────
 -- New prose is rendered whole and revealed by `revealedCharacters`, so its
 -- lines never reflow as it types; paragraphs still waiting are hidden, and
--- so is a whole entry (a chapter heading with it) until typing reaches it. The
+-- so is a whole entry (a scene's title with it) until typing reaches it. The
 -- template describes the reveal at each render (a command or a reading
 -- settings change); between renders each tick writes the one paragraph
 -- being typed.
@@ -355,8 +391,7 @@ function Controller:submitCommand(command)
 	self:beginTyping(firstNew)
 	local presentation = self.model:presentation()
 	self.refs.progress.text = presentation.progress
-	self.refs.sessionPlace.text = presentation.chapterLabel ~= ""
-		and (presentation.chapterLabel .. " · " .. presentation.roomTitle) or presentation.roomTitle
+	self.refs.sessionPlace.text = presentation.roomTitle
 	self.refs.input.text = ""
 	self.refs.dictationStatus.text = ""
 	self.refs.dictationStatus.hidden = true

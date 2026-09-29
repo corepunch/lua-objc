@@ -52,6 +52,7 @@ function Controller:actions()
 		decreaseSize = function() self:apply(model:adjustFontSize(-1)) end,
 		increaseSize = function() self:apply(model:adjustFontSize(1)) end,
 		justifyChanged = function(on) self:apply(model:setJustified(on)) end,
+		dropCapChanged = function(on) self:apply(model:setDropCap(on)) end,
 	}
 	for index = 0, #model.themes() - 1 do
 		actions["theme_" .. index] = function() self:apply(model:setThemeIndex(index)) end
