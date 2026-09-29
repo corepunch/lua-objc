@@ -1,0 +1,10 @@
+<GroupBox id="card/<%= id %>" flexGrow="1" flexBasis="0">
+	<VStack padding="4" spacing="6" maxWidth="infinity" alignment="leading">
+		<HStack spacing="6" alignment="center">
+			<SystemImage name="<%= icon %>" size="13" color="secondary" />
+			<Label text="<%= label %>" size="13" color="secondary" />
+		</HStack>
+		<Label text="<%= value %>" size="26" weight="semibold" design="rounded" monospacedDigit="true" lines="1" minimumScaleFactor="0.6" />
+		<Label text="<%= change %>" size="12" weight="medium" color="<%= color %>" />
+	</VStack>
+</GroupBox>
