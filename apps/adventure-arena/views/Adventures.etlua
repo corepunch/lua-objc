@@ -6,7 +6,10 @@
   local PAGE = { side = 16, band = 30, heading = 10 }
 %>
 <% if #games == 0 then %>
-<ContentUnavailable id="emptyCatalog" title="No Adventures" systemImage="books.vertical" description="No adventures are available." />
+<VStack id="emptyCatalog" spacing="16" alignment="center" maxWidth="infinity" maxHeight="infinity">
+  <ContentUnavailable title="No Adventures" systemImage="books.vertical" description="The shelf is empty. Write a ZIL story, or come back when the catalog has landed." />
+  <Button id="openCreate" title="Write an Adventure" action="openCreate" style="borderedProminent" />
+</VStack>
 <% else %>
 <ScrollView id="libraryScroll">
   <VStack spacing="0" paddingBottom="32">
