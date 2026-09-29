@@ -1,0 +1,76 @@
+<ScrollView id="overview" maxWidth="infinity" maxHeight="infinity">
+	<VStack paddingHorizontal="26" paddingTop="16" paddingBottom="26" spacing="16" maxWidth="infinity" alignment="leading">
+		<VStack id="header" spacing="2" alignment="leading">
+			<Label text="<%= title %>" size="30" weight="bold" />
+			<Label text="<%= month %>" size="14" color="secondary" />
+		</VStack>
+		<HStack id="cards" spacing="12" maxWidth="infinity" alignment="top">
+			<% for _, card in ipairs(cards) do -%>
+			<%- partial("Card.etlua", card) %>
+			<% end -%>
+		</HStack>
+		<HStack spacing="12" maxWidth="infinity" alignment="top">
+			<GroupBox id="chart" flexGrow="2" flexBasis="0">
+				<VStack padding="4" spacing="12" maxWidth="infinity" alignment="leading">
+					<HStack spacing="8" maxWidth="infinity" alignment="center">
+						<Label text="<%= chart.title %>" size="15" weight="semibold" />
+						<Spacer />
+						<Picker id="period" style="segmented" value="<%= period %>" onChange="period">
+							<Option title="Weekly" />
+							<Option title="Monthly" />
+						</Picker>
+					</HStack>
+					<HStack id="bars" spacing="6" height="150" maxWidth="infinity" alignment="bottom">
+						<% for index, bar in ipairs(chart.bars) do -%>
+						<VStack key="bar<%= index %>" height="<%= math.floor(bar.share * 150 + 0.5) %>" flexGrow="1" flexBasis="0" cornerRadius="4" background="systemBlue" opacity="<%= bar.current and 1 or 0.45 %>" />
+						<% end -%>
+					</HStack>
+					<HStack spacing="6" maxWidth="infinity">
+						<% for _, bar in ipairs(chart.bars) do -%>
+						<Label text="<%= bar.label %>" size="10" color="secondary" alignment="center" flexGrow="1" flexBasis="0" />
+						<% end -%>
+					</HStack>
+				</VStack>
+			</GroupBox>
+			<GroupBox id="breakdown" flexGrow="1" flexBasis="0">
+				<VStack padding="4" spacing="12" maxWidth="infinity" alignment="leading">
+					<Label text="By category" size="15" weight="semibold" />
+					<HStack spacing="14" maxWidth="infinity" alignment="center">
+						<SectorChart width="120" height="120" innerRadius="0.64" angularInset="1.5" accessibilityLabel="Spending by category">
+							<% for _, row in ipairs(breakdown) do -%>
+							<SectorMark value="<%= row.share %>" color="<%= row.color %>" label="<%= row.name %>" />
+							<% end -%>
+							<Label text="$3.9k" size="20" weight="semibold" design="rounded" lines="1" minimumScaleFactor="0.5" />
+						</SectorChart>
+						<VStack spacing="5" alignment="leading" flexGrow="1">
+							<% for _, row in ipairs(breakdown) do -%>
+							<HStack spacing="6" alignment="center" maxWidth="infinity">
+								<SystemImage name="circle.fill" size="8" color="<%= row.color %>" />
+								<Label text="<%= row.name %>" size="12" />
+								<Spacer />
+								<Label text="<%= row.share %>%" size="12" color="secondary" monospacedDigit="true" />
+							</HStack>
+							<% end -%>
+						</VStack>
+					</HStack>
+				</VStack>
+			</GroupBox>
+		</HStack>
+		<GroupBox id="transactions" maxWidth="infinity">
+			<VStack padding="4" spacing="0" maxWidth="infinity" alignment="leading">
+				<Label text="Recent transactions" size="15" weight="semibold" paddingBottom="6" />
+				<% for index, row in ipairs(transactions) do -%>
+				<% if index > 1 then %><Divider /><% end %>
+				<HStack id="transaction/<%= row.id %>" paddingVertical="8" spacing="12" maxWidth="infinity" alignment="center">
+					<SystemImage name="<%= row.icon %>" size="15" color="<%= row.color %>" width="24" label="<%= row.category %>" />
+					<VStack spacing="1" alignment="leading" flexGrow="1">
+						<Label text="<%= row.merchant %>" size="14" weight="medium" />
+						<Label text="<%= row.category %>  ·  <%= row.date %>" size="12" color="secondary" />
+					</VStack>
+					<Label text="<%= row.amount %>" size="14" weight="semibold" monospacedDigit="true" color="<%= row.income and 'systemGreen' or 'label' %>" />
+				</HStack>
+				<% end -%>
+			</VStack>
+		</GroupBox>
+	</VStack>
+</ScrollView>

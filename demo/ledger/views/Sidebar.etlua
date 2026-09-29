@@ -1,0 +1,3 @@
+<List id="sections" style="sourceList" header="false" alternatingRows="false" data="sections" onSelect="selectSection" maxWidth="infinity" maxHeight="infinity">
+	<Column id="name" title="" imageKey="icon" imageColorKey="color" />
+</List>

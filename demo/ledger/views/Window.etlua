@@ -1,0 +1,9 @@
+<Window title="Ledger" width="1180" height="780" minWidth="900" minHeight="600" sidebarWidth="200">
+	<Toolbar>
+		<ToolbarItem id="toggleSidebar" />
+		<ToolbarSpacer />
+		<ToolbarItem id="add" label="Add Transaction" icon="plus" tooltip="Add a transaction" />
+		<ToolbarItem id="export" label="Export" icon="square.and.arrow.up" tooltip="Export this month" />
+	</Toolbar>
+	<VStack id="content" maxWidth="infinity" maxHeight="infinity" />
+</Window>
