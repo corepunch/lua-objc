@@ -20,11 +20,13 @@ local Instruments = require("reel.instruments")
 local Motion = require("reel.motion")
 local Pen = require("reel.pen")
 local Scene = require("reel.scene")
+local Space = require("reel.space")
 
 -- The toolkit, for bespoke shots and scores: curves and easing, motion
 -- presets, the pen and its shapes, the mix and its instruments.
 local Reel = {
 	curves = Curves,
+	space = Space,
 	motion = Motion,
 	elements = Elements,
 	Pen = Pen,
@@ -54,6 +56,7 @@ local function templateData(data)
 	local context = {}
 	for name, fn in pairs(Curves) do context[name] = fn end
 	for name, fn in pairs(Motion) do context[name] = fn end
+	for name, fn in pairs(Space) do context[name] = fn end
 	for key, value in pairs(data or {}) do context[key] = value end
 	context.reel = context
 	return context

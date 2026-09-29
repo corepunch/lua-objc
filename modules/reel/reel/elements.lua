@@ -474,4 +474,10 @@ Elements.Counter = {
 	end,
 }
 
+-- ── SceneKit ─────────────────────────────────────────────────────────────
+
+local World = require("reel.world")
+Elements.SceneView = World.SceneView
+Elements.Surface = World.Surface
+
 return Elements

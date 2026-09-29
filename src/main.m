@@ -365,6 +365,7 @@ static void bridge_set_optional_callback(
 #include "appkit/mesh_gradient.m"
 #include "appkit/shader_view.m"
 #include "appkit/sector_scene.m"
+#include "shared/scene_models.m"
 #include "appkit/scene_view.m"
 #include "appkit/reorder_container.m"
 #include "appkit/lazy_collection.m"

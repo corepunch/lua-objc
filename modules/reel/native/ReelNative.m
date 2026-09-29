@@ -1,15 +1,18 @@
 // Offscreen drawing, image and movie services for the Reel package.
 //
 // A standalone Lua module (like StorageScan): it never touches the AppKit
-// bridge, keeps no Lua callbacks, and holds only plain CoreGraphics state.
-// Reels render time-based frames offline, so nothing here uses Core
-// Animation or the display clock; the Lua side decides what each frame
-// contains and this module turns it into pixels, stills and H.264.
+// bridge, keeps no Lua callbacks, and holds only plain CoreGraphics state
+// and offscreen SceneKit scenes (scene.m). Reels render time-based frames
+// offline, so nothing here uses Core Animation, SceneKit actions or the
+// display clock; the Lua side decides what each frame contains and this
+// module turns it into pixels, stills and H.264.
 #import <AppKit/AppKit.h>
 #import <AVFoundation/AVFoundation.h>
 #import <CoreText/CoreText.h>
 #import <ImageIO/ImageIO.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#import <Metal/Metal.h>
+#import <SceneKit/SceneKit.h>
 #import <lua.h>
 #import <lauxlib.h>
 
@@ -993,6 +996,10 @@ static int reel_write_wav(lua_State *L) {
 	return 0;
 }
 
+// The model loader the live SceneView uses, so a model renders the same.
+#include "../../../src/shared/scene_models.m"
+#include "scene.m"
+
 #pragma mark - Module
 
 static void reel_class(lua_State *L, const char *name, const luaL_Reg *methods, lua_CFunction gc) {
@@ -1035,9 +1042,11 @@ int luaopen_ReelNative(lua_State *L) {
 	reel_class(L, AccumulatorMetatable, accumulatorMethods, reel_accumulator_gc);
 	reel_class(L, MovieMetatable, movieMethods, reel_movie_gc);
 	reel_class(L, FramesMetatable, framesMethods, reel_frames_gc);
+	reel_class(L, SceneMetatable, reel_scene_methods, reel_scene_gc);
 	static const luaL_Reg functions[] = {
 		{"image", reel_image}, {"path", reel_path}, {"text", reel_text}, {"canvas", reel_canvas},
-		{"accumulator", reel_accumulator}, {"movie", reel_movie}, {"writeWav", reel_write_wav}, {"frames", reel_frames}, {NULL, NULL}};
+		{"accumulator", reel_accumulator}, {"movie", reel_movie}, {"writeWav", reel_write_wav}, {"frames", reel_frames},
+		{"scene", reel_scene}, {NULL, NULL}};
 	luaL_newlib(L, functions);
 	return 1;
 }

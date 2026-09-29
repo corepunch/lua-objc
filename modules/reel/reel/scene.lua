@@ -15,6 +15,7 @@
 local Curves = require("reel.curves")
 local Motion = require("reel.motion")
 local Pen = require("reel.pen")
+local Space = require("reel.space")
 
 local Scene = {}
 
@@ -42,6 +43,7 @@ local function baseEnvironment(data, grid)
 	for name, fn in pairs(Curves.easing) do env[name] = fn end
 	for name, fn in pairs(Motion) do env[name] = fn end
 	for name, fn in pairs(Pen.Shape) do env[name] = fn end
+	for name, fn in pairs(Space) do env[name] = fn end
 	return setmetatable(env, { __index = data })
 end
 Scene.baseEnvironment = baseEnvironment
@@ -115,8 +117,8 @@ local function build(element, context, parent, offset)
 	local tag = element.tag
 	local def = context.elements[tag]
 	if not def then error("reel: unknown element <" .. tag .. ">", 0) end
-	local node = setmetatable({ tag = tag, attrs = element.attrs, def = def, parent = parent, children = {},
-		context = context, offset = offset }, Node)
+	local node = setmetatable({ tag = tag, attrs = element.attrs, element = element, def = def, parent = parent,
+		children = {}, context = context, offset = offset }, Node)
 	-- Capture-aware helpers resolve against the nearest capture, so a colour
 	-- sampled in a <Window> reads that window's pixels.
 	local env = setmetatable({
@@ -168,6 +170,9 @@ local function build(element, context, parent, offset)
 	for _, m in ipairs(node.motions) do
 		for _, e in ipairs(m.events) do node:addEvent(e.time, e.kind) end
 	end
+	-- An element that builds its own children (a <SceneView>'s records)
+	-- says children = false.
+	if def.children == false then return node end
 	local index = 0
 	for _, child in ipairs(element.children or {}) do
 		if child.kind == "element" then
@@ -182,6 +187,10 @@ local function build(element, context, parent, offset)
 	end
 	return node
 end
+
+-- buildNode(element, context, parent, offset): for elements that build
+-- some of their children themselves (a <SceneView> building a <Surface>).
+Scene.buildNode = build
 
 function Node:capture()
 	local node = self
