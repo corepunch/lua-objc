@@ -100,26 +100,17 @@ broken[path] = 'while true do end'
 view, err = preview:render(broken)
 t.expect(not view and err:find("execution budget", 1, true), "runaway initial render interrupted")
 t.expect(preview:render(model.files) ~= nil, "hook restored after budget error")
--- Inspect the current three-column editor template without constructing native UI.
-local sidebarPresentation = require("apps.studio.models.Sidebar").presentation()
-sidebarPresentation.metrics = {
-	iconSize = 20, iconSlotWidth = 32, rowPadding = 8,
-	expandedPadding = 12, collapsedPadding = 8,
-	expandedWidth = 208, compactWidth = 184, collapsedWidth = 64,
-}
-sidebarPresentation.collapsed = false
+-- Inspect the two-pane workspace template without constructing native UI.
 local description = require("ui.xml").describeFile("apps/studio/views/Window.etlua", {
-	sidebar = sidebarPresentation,
-	preview = { device = "iPhone 16", zoom = "100%", runLabel = "Run" },
-	chat = { tabs = { "Preview", "Logs" }, status = "Ready", prompt = "Prompt",
-		response = "Response", files = { "App.lua" }, suggestions = {} },
+	preview = require("apps.studio.models.Preview").presentation({
+		{ title = "HabitPal", icon = "checklist", selected = true },
+	}),
+	chat = require("apps.studio.models.Chat").presentation(),
 })
 t.expect(description.source:find("HabitPal", 1, true) ~= nil, "project navigation renders")
-t.expect(description.source:find("hammer.fill", 1, true) ~= nil, "Lua Studio identity keeps its hammer icon")
-t.expect(description.source:find("minWidth=\"300\"", 1, true) ~= nil, "preview keeps a usable minimum width")
-t.expect(description.source:find("minWidth=\"330\"", 1, true) ~= nil, "chat keeps a usable minimum width")
+t.expect(description.source:find("width=\"440\"", 1, true) ~= nil, "preview is sized to the device")
+t.expect(description.source:find("minWidth=\"380\"", 1, true) ~= nil, "chat keeps a usable minimum width")
 t.expect(description.source:find("toggleChat", 1, true) ~= nil, "chat visibility customization remains available")
-t.expect(description.source:find("toggleSidebarWidth", 1, true) ~= nil, "sidebar width customization remains available")
 local Projects = require("apps.studio.models.Projects")
 local writes = {}
 local listed = Projects.list(function(path)

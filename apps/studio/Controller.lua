@@ -4,7 +4,6 @@ local Model = require("apps.studio.Model")
 local Device = require("apps.studio.services.Device")
 local Preview = require("apps.studio.services.Preview")
 local Versions = require("apps.studio.services.Versions")
-local SidebarController = require("apps.studio.controllers.SidebarController")
 local PreviewController = require("apps.studio.controllers.PreviewController")
 local ChatController = require("apps.studio.controllers.ChatController")
 local Projects = require("apps.studio.models.Projects")
@@ -18,7 +17,6 @@ local REPOSITORY = "workspace"
 
 function Controller.new()
 	return setmetatable({
-		sidebar = SidebarController.new(ns.SidebarMetrics),
 		previewPane = PreviewController.new(),
 		chat = ChatController.new(),
 	}, Controller)
@@ -71,19 +69,18 @@ function Controller:createWindow()
 
 	local refs
 	local config
+	local preview = self.previewPane:presentation(projects)
 	config, refs = xml.renderFile(VIEWS .. "Window.etlua", {
-		sidebar = self.sidebar:presentation(projects),
-		preview = self.previewPane:presentation(),
+		preview = preview,
 		chat = self.chat:presentation(),
 		actions = {
 			toggleChat = function()
-				refs.chatPane.hidden = not refs.chatPane.hidden
-				refs.chatVisibility.accessibilityLabel = refs.chatPane.hidden and "Show Chat" or "Focus Preview"
-			end,
-			toggleSidebarWidth = function()
-				local compact = refs.sidebar.fixedWidth ~= self.sidebar.metrics.compactWidth
-				refs.sidebar.fixedWidth = compact and self.sidebar.metrics.compactWidth or self.sidebar.metrics.expandedWidth
-				refs.sidebarWidth.accessibilityLabel = compact and "Widen sidebar" or "Compact sidebar"
+				local focus = not refs.chatPane.hidden
+				refs.chatPane.hidden = focus
+				-- The stage is sized to the device beside the chat; alone,
+				-- it takes the whole window.
+				refs.previewPane.fixedWidth = not focus and preview.stageWidth or nil
+				refs.chatVisibility.accessibilityLabel = focus and "Show Chat" or "Focus Preview"
 			end,
 			reloadPreview = function() self:reloadPreview() end,
 			commitProject = function() self:commitProject("Update project") end,

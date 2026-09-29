@@ -1,3 +1,42 @@
-<VStack id="previewPane" padding="0" spacing="0" flexGrow="1" flexBasis="0" minWidth="300" maxWidth="infinity" maxHeight="infinity" alignment="leading" background="secondaryBackground">
-	<Preview id="preview" flexGrow="1" maxWidth="infinity" maxHeight="infinity" />
+<%
+  -- The stage: Liquid Glass controls float in bars above and below the
+  -- device, like iPadOS 26 toolbars over content. The bars sit in the
+  -- stack rather than over the device so the phone never hides beneath them.
+  -- The stage is only as wide as the device needs; the chat takes the rest,
+  -- and focusing the preview clears the fixed width so the stage grows.
+  local STAGE = { inset = 16, spacing = 12, barSpacing = 10, statusSize = 13, zoomSize = 13 }
+%>
+<VStack id="previewPane" padding="<%= STAGE.inset %>" spacing="<%= STAGE.spacing %>" width="<%= stageWidth %>" flexGrow="1" flexBasis="0" maxHeight="infinity" background="secondaryBackground">
+	<GlassEffectContainer spacing="<%= STAGE.barSpacing %>" maxWidth="infinity">
+		<HStack id="stageBar" spacing="<%= STAGE.barSpacing %>" maxWidth="infinity" alignment="center">
+			<Menu id="projectMenu" title="<%= project.title %>" systemImage="<%= project.icon %>" style="glass" accessibilityLabel="Project: <%= project.title %>">
+				<% for _, item in ipairs(projects) do %>
+				<MenuItem title="<%= item.title %>" systemImage="<%= item.icon %>" checked="<%= tostring(item.selected == true) %>" />
+				<% end %>
+				<Separator />
+				<% for _, destination in ipairs(destinations) do %>
+				<MenuItem title="<%= destination.title %>" systemImage="<%= destination.icon %>" />
+				<% end %>
+			</Menu>
+			<Label id="previewStatus" text="<%= status %>" systemImage="checkmark.circle.fill" iconSize="<%= STAGE.statusSize %>" size="<%= STAGE.statusSize %>" color="secondary" lines="1" truncation="tail" flexShrink="1" />
+			<Spacer />
+			<Button id="runButton" title="<%= runLabel %>" systemImage="play.fill" action="reloadPreview" style="glassProminent" />
+			<Button id="chatVisibility" systemImage="sidebar.trailing" accessibilityLabel="Focus Preview" action="toggleChat" style="glass" />
+		</HStack>
+	</GlassEffectContainer>
+	<Preview id="preview" background="clear" flexGrow="1" maxWidth="infinity" maxHeight="infinity" />
+	<HStack spacing="0" maxWidth="infinity">
+		<Spacer />
+		<GlassEffectContainer spacing="<%= STAGE.barSpacing %>">
+			<HStack id="deviceBar" spacing="<%= STAGE.barSpacing %>" alignment="center">
+				<Menu title="<%= device %>" systemImage="iphone" style="glass" accessibilityLabel="Preview device">
+					<MenuItem title="<%= device %>" systemImage="iphone" checked="true" />
+				</Menu>
+				<Button systemImage="arrow.clockwise" accessibilityLabel="Reload Preview" action="reloadPreview" style="glass" />
+				<Button systemImage="circle.lefthalf.filled" accessibilityLabel="Toggle Appearance" style="glass" />
+				<Button title="<%= zoom %>" systemImage="plus.magnifyingglass" size="<%= STAGE.zoomSize %>" accessibilityLabel="Zoom <%= zoom %>" style="glass" />
+			</HStack>
+		</GlassEffectContainer>
+		<Spacer />
+	</HStack>
 </VStack>

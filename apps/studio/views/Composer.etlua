@@ -1,0 +1,20 @@
+<%
+  -- Suggestions sit directly above the field they fill; the field and its
+  -- actions share one glass capsule so the composer reads as a single control.
+  local COMPOSER = { spacing = 10, chipSpacing = 8, radius = 24, fieldInset = 6, fieldSize = 15 }
+%>
+<VStack padding="<%= inset %>" spacing="<%= COMPOSER.spacing %>" maxWidth="<%= column %>" alignment="leading">
+	<FlowStack spacing="<%= COMPOSER.chipSpacing %>" maxWidth="infinity">
+		<% for _, suggestion in ipairs(suggestions) do %>
+		<Button title="<%= suggestion.title %>" systemImage="<%= suggestion.icon %>" controlSize="small" style="bordered" />
+		<% end %>
+	</FlowStack>
+	<GlassEffect cornerRadius="<%= COMPOSER.radius %>" maxWidth="infinity">
+		<HStack padding="<%= COMPOSER.fieldInset %>" spacing="<%= COMPOSER.fieldInset %>" maxWidth="infinity" alignment="center">
+			<Button systemImage="plus" accessibilityLabel="Attach" style="plain" />
+			<TextField id="composer" text="" placeholder="Describe a change…" size="<%= COMPOSER.fieldSize %>" style="plain" flexGrow="1" maxWidth="infinity" />
+			<Button systemImage="mic" accessibilityLabel="Dictate" style="plain" />
+			<Button systemImage="arrow.up" accessibilityLabel="Send" style="glassProminent" />
+		</HStack>
+	</GlassEffect>
+</VStack>

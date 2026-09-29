@@ -1,0 +1,27 @@
+<%
+  -- One card per agent edit: the rows name each file with its folder beneath,
+  -- and the line delta is right-aligned so the column scans at a glance.
+  local CARD = { inset = 12, radius = 14, spacing = 10, rowSpacing = 10, icon = 15, title = 14, name = 14, folder = 11 }
+%>
+<VStack padding="<%= CARD.inset %>" spacing="<%= CARD.spacing %>" maxWidth="infinity" alignment="leading" background="secondaryBackground" cornerRadius="<%= CARD.radius %>">
+	<HStack spacing="8" maxWidth="infinity" alignment="center">
+		<Label text="<%= summary.title %>" systemImage="doc.badge.plus" iconSize="<%= CARD.icon %>" size="<%= CARD.title %>" weight="semibold" lines="1" fixedSize="horizontal" />
+		<Label text="<%= summary.delta %>" size="<%= CARD.title %>" color="systemGreen" monospacedDigit="true" />
+		<Spacer />
+		<Button title="Undo" systemImage="arrow.uturn.backward" controlSize="small" style="bordered" />
+	</HStack>
+	<Divider />
+	<% for _, change in ipairs(changes) do %>
+	<HStack spacing="<%= CARD.rowSpacing %>" maxWidth="infinity" alignment="center" accessibilityLabel="<%= change.path %>, <%= change.delta %> lines">
+		<SystemImage name="<%= change.icon %>" size="<%= CARD.icon %>" color="accent" width="20" label="" />
+		<VStack spacing="0" flexShrink="1" alignment="leading">
+			<Label text="<%= change.name %>" size="<%= CARD.name %>" design="monospaced" lines="1" truncation="middle" />
+			<% if change.folder ~= "" then %>
+			<Label text="<%= change.folder %>" size="<%= CARD.folder %>" color="secondary" lines="1" />
+			<% end %>
+		</VStack>
+		<Spacer />
+		<Label text="<%= change.delta %>" size="<%= CARD.folder + 1 %>" color="systemGreen" monospacedDigit="true" />
+	</HStack>
+	<% end %>
+</VStack>

@@ -26,11 +26,19 @@ failed signing/install steps stop the command.
 
 ## Use
 
-Lua Studio currently presents a visual workspace prototype: project navigation,
-a live starter-app preview, and a chat panel. Focus Preview, Compact sidebar,
-Run and Commit work from the shared top toolbar. Project creation, Share,
-Deploy, and chat controls remain placeholders. The preview controls inside the phone
-remain interactive.
+Lua Studio is a two-pane workspace: the running app on a stage at the left,
+sized to an iPhone 16, and the coding agent filling the rest. Liquid Glass bars
+above and below the device hold the preview actions. The top bar has the
+project menu, which lists the projects and the workspace destinations (New
+Project, Templates, Examples, Plugins, Settings), plus the preview status, Run,
+and the chat toggle for focusing the preview. The bottom bar has the device,
+reload, appearance, and zoom controls. The chat header has the Chat/Code switch
+and the project actions Commit, Share, and Deploy. The chat shows the request
+as a user bubble, the agent's reply, and a card of changed files with line
+counts, followed by suggestions and a glass composer, in a centred reading
+column. Run, reload, Commit, and the chat toggle work. Project switching,
+Share, Deploy, the Chat/Code switch, and the composer are still placeholders.
+The controls inside the phone preview are interactive.
 
 ## Project and runtime
 
@@ -45,10 +53,8 @@ back to the bundled starter project when no saved workspace exists. Each preview
 load creates fresh project state. Native capabilities still require a host build.
 
 The preview uses a child view controller with compact/phone traits, fitted into
-a 393 × 740 point viewport inside a rounded phone bezel. The bezel and screen
-scale together; the controls inside remain interactive. Reload increments the
-visible load count even when the project revision has not changed.
-It is native UIKit running on iPad, not an iPhone
+a 393 × 852 point iPhone 16 viewport inside a rounded phone bezel. The bezel and screen
+scale together; the controls inside remain interactive. It is native UIKit running on iPad, not an iPhone
 Simulator: keyboards, system presentations, and hardware behavior follow the
 host device. Test final apps on an iPhone too.
 
@@ -71,6 +77,9 @@ code. It shares the host's native runtime.
 
 ## App structure
 
-The window composes focused sidebar, preview, and chat templates. Each pane has
-its own controller and presentation model; `Controller.lua` coordinates those
-panes and loads the starter preview.
+The window composes the preview stage and chat templates; `ChangeCard` and
+`Composer` are partials of the chat. Each pane has its own controller and
+presentation model: `models/Preview.lua` picks the current project for the
+stage, and `models/Chat.lua` derives file names, folders, symbols, and line
+totals for the change card. `Controller.lua` coordinates the panes and loads
+the starter preview.

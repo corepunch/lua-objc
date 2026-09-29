@@ -77,20 +77,14 @@ static const NSInteger kParagraphDropCapLines = 3;
 static const CGFloat kParagraphDropCapReferenceSize = 100.0;
 static const CGFloat kParagraphDropCapDescentFraction = 0.05;
 static const CGFloat kParagraphDropCapInkOutset = 2.0;
+/* The preview screen is an iPhone 16 display in points, so apps are laid
+ * out at the size and corner curve they will have on the phone. */
 static const CGFloat kPreviewWidth = 393.0;
-static const CGFloat kPreviewHeight = 740.0;
+static const CGFloat kPreviewHeight = 852.0;
 static const CGFloat kPreviewBezel = 10.0;
-static const CGFloat kPreviewScreenRadius = 42.0;
+static const CGFloat kPreviewScreenRadius = 55.0;
 static const CGFloat kPreviewMargin = 8.0;
 static const CGFloat kPreviewTrimWidth = 2.0;
-static const CGFloat kSidebarIconSize = 20.0;
-static const CGFloat kSidebarIconSlotWidth = 32.0;
-static const CGFloat kSidebarRowPadding = 8.0;
-static const CGFloat kSidebarExpandedPadding = 12.0;
-static const CGFloat kSidebarCollapsedPadding = 8.0;
-static const CGFloat kSidebarExpandedWidth = 208.0;
-static const CGFloat kSidebarCompactWidth = 184.0;
-static const CGFloat kSidebarCollapsedWidth = 64.0;
 static const CGFloat kBenchmarkScrollPointsPerSecond = 1500.0;
 static const CGFloat kEdgeSwipeBackDistance = 80.0;
 static const CGFloat kEdgeSwipeHorizontalRatio = 1.5;
@@ -339,21 +333,5 @@ int luaopen_UIKitNative(lua_State *L) {
 #include "structs.m"
 #undef GEN_STRUCT_REGISTER
 	luaL_newlib(L, bridge_lib);
-	lua_pushnumber(L, kSidebarIconSize);
-	lua_setfield(L, -2, "sidebarIconSize");
-	lua_pushnumber(L, kSidebarIconSlotWidth);
-	lua_setfield(L, -2, "sidebarIconSlotWidth");
-	lua_pushnumber(L, kSidebarRowPadding);
-	lua_setfield(L, -2, "sidebarRowPadding");
-	lua_pushnumber(L, kSidebarExpandedPadding);
-	lua_setfield(L, -2, "sidebarExpandedPadding");
-	lua_pushnumber(L, kSidebarCollapsedPadding);
-	lua_setfield(L, -2, "sidebarCollapsedPadding");
-	lua_pushnumber(L, kSidebarExpandedWidth);
-	lua_setfield(L, -2, "sidebarExpandedWidth");
-	lua_pushnumber(L, kSidebarCompactWidth);
-	lua_setfield(L, -2, "sidebarCompactWidth");
-	lua_pushnumber(L, kSidebarCollapsedWidth);
-	lua_setfield(L, -2, "sidebarCollapsedWidth");
 	return 1;
 }

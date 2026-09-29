@@ -443,7 +443,8 @@ function AppKit.Menu(props)
 	assert(props.style == nil or props.style == "plain" or props.style == "glass",
 		"menu style must be 'plain' or 'glass'")
 	local button = bridge._menu(props.items or props.children or {},
-		props.title or "Menu", props.systemImage or "", props.symbolSize)
+		-- SwiftUI labels a symbol-only menu with its image alone.
+		props.title or (props.systemImage and "" or "Menu"), props.systemImage or "", props.symbolSize)
 	if props.accessibilityLabel then button.accessibilityLabel = props.accessibilityLabel end
 	if props.style == "glass" then
 		button = bridge._glassEffect(button, "regular", 0)

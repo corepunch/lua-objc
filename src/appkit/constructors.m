@@ -452,11 +452,27 @@ static int bridge_AppKitControls_menu(lua_State *L) {
 	NSInteger count = (NSInteger)luaL_len(L, 1);
 	for (NSInteger index = 1; index <= count; index++) {
 		lua_rawgeti(L, 1, index);
+		lua_getfield(L, -1, "separator");
+		BOOL separator = lua_toboolean(L, -1);
+		lua_pop(L, 1);
+		if (separator) {
+			// Callbacks stay indexed by menu item, so a separator holds a slot.
+			[button.menu addItem:[NSMenuItem separatorItem]];
+			[callbacks addObject:NSNull.null];
+			lua_pop(L, 1);
+			continue;
+		}
 		lua_getfield(L, -1, "title");
 		const char *itemTitle = luaL_optstring(L, -1, "");
 		lua_pop(L, 1);
-		[button addItemWithTitle:[NSString stringWithUTF8String:itemTitle]];
-		NSMenuItem *item = [button itemAtIndex:index];
+		// addItemWithTitle: replaces an existing item of the same title; a
+		// menu may repeat titles across sections, so append the item directly.
+		NSMenuItem *item = [[NSMenuItem alloc]
+			initWithTitle:[NSString stringWithUTF8String:itemTitle] action:NULL keyEquivalent:@""];
+		[button.menu addItem:item];
+		lua_getfield(L, -1, "checked");
+		if (lua_toboolean(L, -1)) item.state = NSControlStateValueOn;
+		lua_pop(L, 1);
 		lua_getfield(L, -1, "systemImage");
 		const char *itemSymbol = luaL_optstring(L, -1, "");
 		if (itemSymbol[0]) item.image = [NSImage imageWithSystemSymbolName:

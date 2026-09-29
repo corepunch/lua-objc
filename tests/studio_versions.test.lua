@@ -65,7 +65,7 @@ t.expect(ok == nil and type(err) == "string", "a repository that cannot be creat
 repo:close()
 reopened:close()
 
--- The toolbar's Commit action reports the result in the status line.
+-- The Commit action reports the result in the status line.
 local Controller = require("apps.studio.Controller")
 local recorded = {}
 local controller = setmetatable({
@@ -90,14 +90,10 @@ t.expect(controller:commitProject("x") == nil, "commit without a repository fail
 t.assertEqual(controller.refs.previewStatus.text, "Git unavailable: no repository", "the open error is shown")
 
 local source = require("ui.xml").describeFile("apps/studio/views/Window.etlua", {
-	sidebar = require("apps.studio.controllers.SidebarController").new({
-		iconSize = 20, iconSlotWidth = 32, rowPadding = 8, expandedPadding = 12, collapsedPadding = 8,
-		expandedWidth = 208, compactWidth = 184, collapsedWidth = 64,
-	}):presentation(),
-	preview = { device = "iPhone 16", zoom = "100%", runLabel = "Run" },
-	chat = { status = "Ready", prompt = "Prompt", response = "Response", files = {}, suggestions = {} },
+	preview = require("apps.studio.models.Preview").presentation({}),
+	chat = require("apps.studio.models.Chat").presentation(),
 }).source
-t.expect(source:find('title="Commit"[^>]*action="commitProject"') ~= nil, "the toolbar's Commit button commits")
+t.expect(source:find('title="Commit"[^>]*action="commitProject"') ~= nil, "the chat header's Commit button commits")
 
 os.execute("/bin/rm -rf " .. root)
 os.exit(t.summary() and 0 or 1)

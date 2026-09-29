@@ -298,6 +298,16 @@ static BOOL fills_axis(UIView *view, BOOL horizontal) {
 	return horizontal ? is_flexible(view) : grows_vertically(view);
 }
 
+/* A filling child takes the offered cross-axis space up to its own maximum,
+ * like SwiftUI's frame(maxWidth:), and never less than its minimum. The
+ * parent's alignment then places the capped child, as AppKit layout does. */
+static CGFloat clamp_fill(UIView *view, CGFloat offered, BOOL horizontal) {
+	NSNumber *maximum = objc_getAssociatedObject(view, horizontal ? &kMaxWidthKey : &kMaxHeightKey);
+	NSNumber *minimum = objc_getAssociatedObject(view, horizontal ? &kMinWidthKey : &kMinHeightKey);
+	CGFloat value = maximum ? MIN(offered, maximum.doubleValue) : offered;
+	return MAX(value, minimum.doubleValue);
+}
+
 static NSString *view_alignment(UIView *view) {
 	return objc_getAssociatedObject(view, &kAlignmentKey) ?: @"center";
 }
@@ -343,8 +353,8 @@ static void layout_recursive_impl(UIView *view, CGFloat width) {
 			for (UIView *sv in children) {
 				if (uikit_is_hidden(sv)) continue;
 				CGSize natural = measure_size(sv, CGSizeMake(contentW, contentH));
-				CGFloat childW = fills_axis(sv, YES) ? contentW : natural.width;
-				CGFloat childH = fills_axis(sv, NO) ? contentH : natural.height;
+				CGFloat childW = fills_axis(sv, YES) ? clamp_fill(sv, contentW, YES) : natural.width;
+				CGFloat childH = fills_axis(sv, NO) ? clamp_fill(sv, contentH, NO) : natural.height;
 				CGFloat childX = padX + (contentW - childW) / 2;
 				CGFloat childY = padTop + (contentH - childH) / 2;
 				NSString *position = alignment.lowercaseString;
@@ -387,7 +397,7 @@ static void layout_recursive_impl(UIView *view, CGFloat width) {
 					: (fh > 0 ? fh : sv.frame.size.height);
 
 				CGFloat fw = view_fixed_width(sv);
-				CGFloat childW = fills_axis(sv, YES) ? contentW
+				CGFloat childW = fills_axis(sv, YES) ? clamp_fill(sv, contentW, YES)
 					: (fw > 0 ? fw : MIN(sv.frame.size.width, contentW));
 				CGFloat childX = padX;
 				if ([alignment isEqualToString:@"center"]) {
@@ -411,7 +421,7 @@ static void layout_recursive_impl(UIView *view, CGFloat width) {
 			for (UIView *sv in children) {
 				CGSize measured = sizes[[view.subviews indexOfObjectIdenticalTo:sv]];
 				CGFloat childW = measured.width;
-				CGFloat childH = fills_axis(sv, NO) ? contentH : measured.height;
+				CGFloat childH = fills_axis(sv, NO) ? clamp_fill(sv, contentH, NO) : measured.height;
 				CGFloat childY = padTop;
 				if ([alignment isEqualToString:@"center"]) {
 					childY = padTop + (contentH - childH) / 2;

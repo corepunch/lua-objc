@@ -1,42 +1,62 @@
-<VStack id="chatPane" padding="12" spacing="10" flexGrow="1" flexBasis="0" minWidth="330" maxWidth="infinity" maxHeight="infinity" alignment="leading" background="background">
-	<HStack padding="0" spacing="6" maxWidth="infinity">
-		<Label text="CONVERSATION" size="10" weight="semibold" color="secondary" />
+<%
+  -- A conversation, not a log: the request reads as a bubble from the user, the
+  -- agent answers beside its symbol, and file edits collect in one card the
+  -- user can review or undo. The composer floats on glass at the foot.
+  -- The pane takes the width the stage leaves; the conversation keeps a
+  -- readable measure centred in it, and project actions sit in the header.
+  local CHAT = {
+    column = 720, inset = 16, spacing = 18, headerSpacing = 10,
+    agentSymbol = 22, nameSize = 16, modelSize = 12,
+    bodySize = 15, bubbleInset = 12, bubbleRadius = 18, bubbleIndent = 56,
+    turnSpacing = 10, captionSize = 12,
+  }
+%>
+<VStack id="chatPane" spacing="0" flexGrow="1" flexBasis="0" minWidth="380" maxWidth="infinity" maxHeight="infinity" alignment="leading" background="background">
+	<HStack paddingHorizontal="<%= CHAT.inset %>" paddingVertical="<%= CHAT.inset - 4 %>" spacing="<%= CHAT.headerSpacing %>" maxWidth="infinity" alignment="center">
+		<SystemImage name="sparkles" size="<%= CHAT.agentSymbol %>" color="accent" label="<%= agent.name %>" />
+		<VStack spacing="1" alignment="leading" flexShrink="1">
+			<Label text="<%= agent.name %>" size="<%= CHAT.nameSize %>" weight="semibold" lines="1" />
+			<Label text="<%= agent.model %>" size="<%= CHAT.modelSize %>" color="secondary" lines="1" truncation="middle" />
+		</VStack>
 		<Spacer />
-		<Label id="previewStatus" text="<%= status %>" size="11" color="secondary" />
+		<Picker id="chatMode" style="segmented" value="0">
+			<% for _, mode in ipairs(modes) do %>
+			<Option title="<%= mode %>" />
+			<% end %>
+		</Picker>
+		<Button title="Commit" systemImage="point.3.connected.trianglepath.dotted" action="commitProject" style="glass" />
+		<Button title="Share" systemImage="square.and.arrow.up" style="glass" />
+		<Button title="Deploy" systemImage="paperplane" style="glassProminent" />
+		<Menu systemImage="ellipsis" style="glass" accessibilityLabel="Conversation Options">
+			<MenuItem title="New Conversation" systemImage="square.and.pencil" />
+			<MenuItem title="Choose Model…" systemImage="cpu" />
+			<Separator />
+			<MenuItem title="Undo Last Change" systemImage="arrow.uturn.backward" />
+		</Menu>
 	</HStack>
-	<ScrollView flexGrow="1" maxWidth="infinity" maxHeight="infinity">
-		<VStack padding="0" spacing="14" maxWidth="infinity" alignment="leading">
-			<GroupBox padding="14" background="secondaryBackground" cornerRadius="14" maxWidth="infinity">
-				<Label text="<%= prompt %>" size="14" maxWidth="infinity" lines="5" />
-			</GroupBox>
-			<HStack padding="0" spacing="10" maxWidth="infinity" alignment="top">
-				<SystemImage name="sparkles" size="20" color="accent" label="Agent" />
-				<Label text="<%= response %>" size="14" maxWidth="infinity" lines="5" />
-			</HStack>
-			<GroupBox padding="12" background="secondaryBackground" cornerRadius="14" maxWidth="infinity">
-				<VStack padding="0" spacing="5" maxWidth="infinity" alignment="leading">
-					<Label text="<%= #files %> files created" size="13" weight="semibold" />
-					<% for _, file in ipairs(files) do %>
-					<HStack padding="2" spacing="8" maxWidth="infinity">
-						<SystemImage name="<%= file:find('/') and 'folder.fill' or 'doc.text' %>" size="14" color="accent" />
-						<Label text="<%= file %>" size="13" maxWidth="infinity" />
-					</HStack>
-					<% end %>
+	<Divider />
+	<ScrollView id="transcriptScroll" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
+		<VStack spacing="0" maxWidth="infinity" alignment="center">
+		<VStack padding="<%= CHAT.inset %>" spacing="<%= CHAT.spacing %>" maxWidth="<%= CHAT.column %>" alignment="leading">
+			<HStack spacing="0" maxWidth="infinity">
+				<Spacer minWidth="<%= CHAT.bubbleIndent %>" />
+				<VStack padding="<%= CHAT.bubbleInset %>" flexShrink="1" background="accent" cornerRadius="<%= CHAT.bubbleRadius %>">
+					<Label text="<%= prompt %>" size="<%= CHAT.bodySize %>" color="white" lines="0" />
 				</VStack>
-			</GroupBox>
-			<Label text="The app is ready. Run it in the preview to try it out. It uses local storage to save your habits and progress." size="13" maxWidth="infinity" lines="3" />
+			</HStack>
+			<HStack spacing="<%= CHAT.turnSpacing %>" maxWidth="infinity" alignment="top">
+				<SystemImage name="sparkles" size="<%= CHAT.bodySize %>" color="accent" label="<%= agent.name %>" />
+				<VStack spacing="<%= CHAT.turnSpacing %>" flexGrow="1" flexShrink="1" alignment="leading">
+					<Label text="<%= response %>" size="<%= CHAT.bodySize %>" lines="0" maxWidth="infinity" />
+					<%- partial("ChangeCard.etlua", { changes = changes, summary = changeSummary }) %>
+					<Label text="<%= conclusion %>" size="<%= CHAT.bodySize %>" lines="0" maxWidth="infinity" />
+					<Label text="Preview updated" systemImage="checkmark.circle.fill" iconSize="<%= CHAT.captionSize %>" size="<%= CHAT.captionSize %>" color="secondary" />
+				</VStack>
+			</HStack>
+		</VStack>
 		</VStack>
 	</ScrollView>
-	<Divider />
-	<Label text="SUGGESTIONS" size="10" weight="semibold" color="secondary" />
-	<HStack padding="0" spacing="6" maxWidth="infinity">
-		<% for _, suggestion in ipairs(suggestions) do %>
-			<Button title="<%= suggestion %>" size="12" style="bordered" />
-		<% end %>
-	</HStack>
-	<HStack padding="6" spacing="8" maxWidth="infinity" alignment="center" background="secondaryBackground" cornerRadius="14">
-		<TextField id="composer" text="" placeholder="Ask anything…" size="14" flexGrow="1" maxWidth="infinity" />
-		<Button title="" systemImage="mic" accessibilityLabel="Dictate" style="bordered" />
-		<Button title="" systemImage="arrow.up" accessibilityLabel="Send" style="borderedProminent" />
-	</HStack>
+	<VStack spacing="0" maxWidth="infinity" alignment="center">
+		<%- partial("Composer.etlua", { suggestions = suggestions, inset = CHAT.inset, column = CHAT.column }) %>
+	</VStack>
 </VStack>
