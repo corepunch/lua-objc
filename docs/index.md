@@ -19,6 +19,7 @@ AppKit/UIKit controls, and no compile cycle for every UI change.
 - [Weather app example](weather_app_example.md): async HTTP, loading, selection, and normalized API data.
 - [Project reference](PROJECT_REFERENCE.md): detailed Lua API, bridge behavior, and layout contracts.
 - [Component reference](reference/generated/index.md): one page per widget, generated from `---` docblocks in Lua sources (start with [Button](reference/generated/Button.md), [Text](reference/generated/Text.md), [VStack](reference/generated/VStack.md)).
+- [SceneKit scenes and games](scenekit.md): `<SceneView>` scene graphs in etlua, per-frame poses, and how to structure a game (Coin Quest).
 - [Table behavior](tableview_swiftui.md): list sizing, styles, columns, and loading state.
 - [iOS host and hot reload](ios.md): iPhone Simulator host, UIKit coverage, streamed Lua/assets, and in-process reload (the app does not quit).
 - [Swift/SwiftUI pain points](SWIFTUI_PAIN_POINTS.md): what developers complain about in Xcode/SwiftUI, and which of those gaps lua-objc should close.
