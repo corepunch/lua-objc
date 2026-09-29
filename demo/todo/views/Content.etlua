@@ -1,0 +1,36 @@
+<ScrollView id="today" maxWidth="infinity" maxHeight="infinity">
+	<VStack paddingHorizontal="28" paddingTop="18" paddingBottom="28" spacing="16" maxWidth="infinity" alignment="leading">
+		<VStack id="header" spacing="2" alignment="leading">
+			<Label text="<%= title %>" size="34" weight="bold" color="systemBlue" />
+			<Label text="<%= date %>" size="15" color="secondary" />
+		</VStack>
+		<Picker id="filter" style="segmented" value="<%= filter %>" onChange="filter">
+			<% for _, name in ipairs(filters) do -%>
+			<Option title="<%= name %>" />
+			<% end -%>
+		</Picker>
+		<GroupBox id="progress" maxWidth="infinity">
+			<VStack padding="4" spacing="8" maxWidth="infinity" alignment="leading">
+				<HStack spacing="6" maxWidth="infinity" alignment="firstTextBaseline">
+					<Label text="<%= progress.done %> of <%= progress.total %> done" size="15" weight="semibold" />
+					<Spacer />
+					<Label text="<%= math.floor(progress.share * 100 + 0.5) %>%" size="15" weight="semibold" color="systemBlue" />
+				</HStack>
+				<ProgressView value="<%= progress.share %>" tint="systemBlue" maxWidth="infinity" />
+			</VStack>
+		</GroupBox>
+		<VStack id="tasks" spacing="0" maxWidth="infinity" alignment="leading">
+			<% for _, task in ipairs(open) do -%>
+			<%- partial("TaskRow.etlua", task) %>
+			<% end -%>
+		</VStack>
+		<% if #completed > 0 then -%>
+		<VStack id="completed" spacing="0" maxWidth="infinity" alignment="leading">
+			<Label text="Completed" size="13" weight="semibold" color="secondary" paddingBottom="4" />
+			<% for _, task in ipairs(completed) do -%>
+			<%- partial("TaskRow.etlua", task) %>
+			<% end -%>
+		</VStack>
+		<% end -%>
+	</VStack>
+</ScrollView>
