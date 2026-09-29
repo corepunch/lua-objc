@@ -327,6 +327,21 @@ function C.camera(t)
 		-4 * math.sin(math.pi * clamp((t - SHOT.speed) / (SHOT.hero - SHOT.speed)))
 end
 
+-- Focus: shallow on the phone close-up and the hero composition, where a
+-- product shot wants the background soft; everywhere else the lens is
+-- sharp throughout (0 turns depth of field off). Returns distance, f-stop.
+local FOCUS = { { SHOT.free, 16.9, 1.4 }, { SHOT.hero + 0.2, 30, 2.4 } }
+function C.focus(t)
+	for _, span in ipairs(FOCUS) do
+		if t >= span[1] and t < span[2] then
+			local eye, target = C.camera(t)
+			return Space.length3(Space.sub3(target, eye)), span[3]
+		end
+	end
+	return 0, 5.6
+end
+function C.fStop(t) return (select(2, C.focus(t))) end
+
 function C.eye(t) return (C.camera(t)) end
 function C.target(t) return (select(2, C.camera(t))) end
 function C.lens(t) return (select(3, C.camera(t))) end

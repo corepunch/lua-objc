@@ -14,7 +14,8 @@
   local function iphone(name, extra) return image(name, 3, extra) end
 %>
 <SceneView id="world" environment="environment" environmentIntensity="1.6" alpha="1 - step(t - <%= S.cut %>) * step(<%= S.speed %> - t)">
-	<Camera id="eye" position="C.eye(t)" lookAt="C.target(t)" fieldOfView="C.lens(t)" roll="C.roll(t)" zNear="0.05" zFar="220" />
+	<Camera id="eye" position="C.eye(t)" lookAt="C.target(t)" fieldOfView="C.lens(t)" roll="C.roll(t)" zNear="0.05" zFar="220"
+		focusDistance="(C.focus(t))" fStop="C.fStop(t)" />
 	<Light type="directional" rotation="-38 -28 0" intensity="650" />
 	<Light type="spot" position="{C.eye(t)[1] - 6, 5, C.eye(t)[3] - 9}" lookAt="C.target(t)" intensity="2600" spotOuter="70" color="#DCE6FF" />
 	<Light type="spot" position="{C.eye(t)[1] + 7, 2.5, C.eye(t)[3] - 8}" lookAt="C.target(t)" intensity="2100" spotOuter="70" color="#FFE7D2" />

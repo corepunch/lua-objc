@@ -1,7 +1,8 @@
 <% --[[ A floating Mac window: a thin slab the shape of a macOS 26 window
   (1200 × 760 pt content, 26 pt corners) whose front face draws `screen`,
   and optionally `back` on its reverse, so it can turn over into another
-  app. 1 unit = 400 pt. The faces are `<id>-front` and `<id>-back`. ]]
+  app. 1 unit = 400 pt. The faces are `<id>-front` and `<id>-back`;
+  `children` adds records that move with the window, in its space. ]]
   local W = { w = 3.0, h = 1.9, corner = 0.065, d = 0.012 }
 %>
 <Node id="<%= id %>" position="<%= position %>" rotation="<%= rotation or '0 0 0' %>" scale="<%= scale or 1 %>" <%- extra or "" %>>
@@ -18,4 +19,5 @@
 		</Surface>
 	</Node>
 	<% end -%>
+	<%- children or "" %>
 </Node>

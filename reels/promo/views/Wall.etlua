@@ -9,12 +9,27 @@
   -- The reel's replay poses the game's nodes and its camera.
   stage = stage:gsub("<SceneView ", '<SceneView states="questStates(t)" ', 1)
   local on = 'from="' .. S.wall .. '" to="' .. S.cut + 0.1 .. '"'
+  -- The stat cards of Ledger, cut from its capture by view identifier, lift off
+  -- the window as cards of their own and settle back as the chart turns
+  -- weekly. 1 unit = 400 pt on a window; the cards sit in front of its glass.
+  local PT = 1 / 400
+  local cards = {}
+  for i, id in ipairs({ "balance", "income", "spending", "savings" }) do
+    local x, y, w, h = captures:get("ledger-v1"):rect("#card/" .. id)
+    local at = 18.3 + (i - 1) * 0.06
+    local lift = string.format("spring(t - %f, 0.55, 0.6) * (1 - spring(t - %f, 0.5, 0.75))", at, at + 0.9)
+    table.insert(cards, string.format(
+      '<Node geometry="plane" width="%f" height="%f" cornerRadius="%f" roughness="0.18" image="captures:get(\'ledger-v1\'):piece(\'#card/%s\')" '
+      .. 'position="%f, %f, 0.02 + 0.55 * (%s)" rotation="-12 * (%s), %f * (%s), 0" from="%f" to="%f" />',
+      w * PT, h * PT, 12 * PT, id, (x + w / 2 - 600) * PT, (380 - y - h / 2) * PT, lift, lift, (i - 2.5) * -10, lift, at, at + 1.6))
+  end
 %>
 <%- partial("devices/Window.etlua", {id = "wallNotes", position = "-3.5 0.8 -7.3", rotation = "-2 17 0", extra = on,
 	screen = '<Window capture="notes-v0" x="600" y="380" to="18.25" />'
 		.. '<Window capture="notes-v1" x="600" y="380" from="18.1" alpha="progress(t, 18.1, 18.25)" />'
 		.. '<Frame capture="notes-v1" x="600" y="380" from="18.1"><Piece rect="#favorites" motion="pop(18.1, {from = 0.6})" shadow="0.4" radius="10" /></Frame>'}) %>
 <%- partial("devices/Window.etlua", {id = "wallLedger", position = "0.35 -0.35 -8.7", rotation = "2 4 0", extra = on,
+	children = table.concat(cards, "\n"),
 	screen = '<Window capture="ledger-v0" x="600" y="380" to="18.9" />'
 		.. '<Window capture="ledger-v1" x="600" y="380" from="18.85" />'
 		.. string.format('<Frame capture="ledger-v1" x="600" y="380" from="18.85"><Fill rect="#bars" color="#F5F5F7" /><Piece rect="#bars" anchorY="%f" y="%f" sy="spring(t - 18.85, 0.5, 0.62)" /></Frame>', bh, by + bh)}) %>

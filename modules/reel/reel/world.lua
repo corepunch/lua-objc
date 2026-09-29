@@ -412,7 +412,7 @@ local function paintSurface(view, record, rc, t, camera, pw, ph)
 	local inner = { pen = pen, scene = { width = w, height = h, context = rc.context }, context = rc.context, bounds = { 0, 0, w, h } }
 	surface:draw(inner, t)
 	canvas:restore()
-	view.native:texture(record.handle, canvas:snapshot(), surface.slot)
+	view.native:surface(record.handle, canvas, surface.slot)
 end
 
 -- ── Elements ─────────────────────────────────────────────────────────────
