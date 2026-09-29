@@ -93,6 +93,7 @@ static const CGFloat kLazyCollectionWidth = 400.0;
 static const CGFloat kLazyCollectionHeight = 200.0;
 static const CGFloat kLazyRowHeight = 44.0;
 static const CGFloat kLazyItemSpacing = 8.0;
+static const CGFloat kCodeFontSize = 13.0;
 static const CGFloat kLazyMinimumItemWidth = 1.0;
 static const CGFloat kLazyLayoutGuardPixels = 1.0;
 static const NSInteger kLazyStackColumns = 1;
@@ -219,6 +220,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_textField", bridge_UIKitControls_textField},
 	{"_searchField", bridge_UIKitControls_searchField},
 	{"_textEditor", bridge_UIKitControls_textEditor},
+	{"_codeView", bridge_UIKitControls_codeView},
 	{"_label", bridge_UIKitControls_label},
 	{"_paragraph", bridge_UIKitControls_paragraph},
 	{"_paragraphSetLinks", bridge_paragraph_set_links},

@@ -63,8 +63,10 @@ t.expect(chat:find('<Picker id="chatMode" style="segmented"', 1, true) ~= nil,
 	"Chat and Code are a native segmented control")
 t.expect(chat:find('<ScrollView id="transcriptScroll" flexGrow="1"', 1, true) ~= nil,
 	"the transcript scrolls independently of the composer")
+t.expect(chat:find('id="codePane" hidden="true"', 1, true) and chat:find('syntaxRules="syntaxRules"', 1, true),
+	"Code mode starts hidden and binds Lua supplied syntax rules")
 t.expect(chat:find('background="accent" cornerRadius="18"', 1, true) ~= nil, "the request reads as the user's bubble")
-t.expect(chat:find('6 files changed', 1, true) and chat:find('+243', 1, true),
+t.expect(chat:find('7 files changed', 1, true) and chat:find('+291', 1, true),
 	"the change card totals the agent's edits")
 t.expect(chat:find('text="Today.etlua"', 1, true) and chat:find('text="views"', 1, true),
 	"change rows show the file name with its folder")

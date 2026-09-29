@@ -1083,6 +1083,20 @@ local TAG_SCHEMA = {
             drawsBackground = "bool",
         },
     },
+    CodeView = {
+        constructor = "CodeView",
+        props = {
+            text = { aliases = { "value" }, default = "", type = "str" },
+            language = { default = "lua", type = "str" },
+            syntaxRules = "str",
+            size = "num",
+            wrapMode = "bool",
+            drawsBackground = "bool",
+        },
+        transform = function(props, attrs)
+            if renderData and attrs.syntaxRules then props.syntaxRules = renderData[attrs.syntaxRules] end
+        end,
+    },
     SearchField = {
         constructor = "SearchField",
         props = {

@@ -6,8 +6,8 @@ function Controller.new()
 	return setmetatable({model = Model}, Controller)
 end
 
-function Controller:presentation(conversation)
-	return self.model.presentation(conversation)
+function Controller:presentation(conversation, code)
+	return self.model.presentation(conversation, code)
 end
 
 return Controller

@@ -1,0 +1,60 @@
+<%
+	local TODAY = { inset = 22, sectionSpacing = 20, cardInset = 18, titleSize = 30, bodySize = 14, captionSize = 12, symbol = 19 }
+%>
+<ScrollView maxWidth="infinity" maxHeight="infinity">
+	<VStack padding="<%= TODAY.inset %>" spacing="<%= TODAY.sectionSpacing %>" maxWidth="infinity" alignment="leading">
+		<HStack maxWidth="infinity" alignment="center">
+			<VStack spacing="4" alignment="leading" flexShrink="1">
+				<Label text="TUESDAY, SEPTEMBER 29" size="<%= TODAY.captionSize %>" weight="semibold" color="secondary" lines="1" />
+				<Label text="Today" size="<%= TODAY.titleSize %>" weight="bold" lines="1" />
+			</VStack>
+			<Spacer />
+			<Button title="12 day streak" systemImage="flame.fill" tint="systemOrange" style="bordered" controlSize="small" />
+		</HStack>
+
+		<VStack padding="<%= TODAY.cardInset %>" spacing="14" maxWidth="infinity" alignment="leading" background="secondaryBackground" cornerRadius="24">
+			<HStack spacing="14" maxWidth="infinity" alignment="center">
+				<VStack width="52" height="52" alignment="center" background="systemTeal" cornerRadius="17">
+					<SystemImage name="sparkles" size="26" color="white" />
+				</VStack>
+				<VStack spacing="4" alignment="leading" flexGrow="1" flexShrink="1">
+					<Label id="todayCount" text="<%= progress.done %> of <%= progress.total %> complete" size="<%= TODAY.bodySize %>" weight="semibold" />
+					<Label id="todayGreeting" text="<%= greeting %>" size="<%= TODAY.captionSize %>" color="secondary" lines="2" />
+				</VStack>
+				<SystemImage name="sun.max.fill" size="22" color="systemOrange" />
+			</HStack>
+			<ProgressView id="todayProgress" value="<%= progress.fraction %>" tint="systemTeal" />
+		</VStack>
+
+		<VStack spacing="10" maxWidth="infinity" alignment="leading">
+			<HStack maxWidth="infinity" alignment="center">
+				<Label text="Your habits" size="20" weight="bold" />
+				<Spacer />
+				<Button title="Edit" style="plain" tint="accent" controlSize="small" />
+			</HStack>
+			<VStack spacing="0" maxWidth="infinity" background="secondaryBackground" cornerRadius="22">
+				<% for index, habit in ipairs(habits) do %>
+				<HStack padding="14" spacing="12" maxWidth="infinity" alignment="center">
+					<VStack width="42" height="42" alignment="center" background="<%= habit.tint %>" cornerRadius="14">
+						<SystemImage name="<%= habit.symbol %>" size="<%= TODAY.symbol %>" color="white" />
+					</VStack>
+					<VStack spacing="4" alignment="leading" flexGrow="1" flexShrink="1">
+						<Label text="<%= habit.title %>" size="<%= TODAY.bodySize %>" weight="semibold" lines="1" />
+						<Label text="<%= habit.detail %>" size="<%= TODAY.captionSize %>" color="secondary" lines="1" truncation="tail" />
+					</VStack>
+					<Toggle id="habit_<%= habit.id %>" value="<%= habit.done == true %>" accessibilityLabel="Mark <%= habit.title %> complete" onChange="<%= habit.action %>" />
+				</HStack>
+				<% if index < #habits then %><Divider /><% end %>
+				<% end %>
+			</VStack>
+		</VStack>
+
+		<HStack padding="16" spacing="14" maxWidth="infinity" alignment="center" background="secondaryBackground" cornerRadius="20">
+			<SystemImage name="quote.bubble.fill" size="22" color="systemTeal" />
+			<VStack spacing="4" alignment="leading" flexGrow="1" flexShrink="1">
+				<Label text="Small steps, every day." size="<%= TODAY.bodySize %>" weight="semibold" />
+				<Label text="Your future self is already cheering." size="<%= TODAY.captionSize %>" color="secondary" lines="2" />
+			</VStack>
+		</HStack>
+	</VStack>
+</ScrollView>

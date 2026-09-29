@@ -6,6 +6,7 @@
 @property (nonatomic, strong) NSMutableArray *columns;
 @property (nonatomic, weak) UITableView *tableView;
 @property (nonatomic, strong) LuaReg *moveReg;
+@property (nonatomic, strong) LuaReg *selectionReg;
 @property (nonatomic, strong) LuaReg *leadingSwipeReg;
 @property (nonatomic, strong) LuaReg *trailingSwipeReg;
 @property (nonatomic, copy) NSString *leadingSwipeTitle;
@@ -106,6 +107,22 @@
 	lua_pushinteger(callL, (lua_Integer)from + 1);
 	lua_pushinteger(callL, (lua_Integer)to + 1);
 	lua_objc_pcall(callL, 3, 0, "table row move");
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+	if (indexPath.row < 0 || indexPath.row >= (NSInteger)_rows.count) return;
+	LuaReg *reg = self.selectionReg;
+	lua_State *callL = lua_reg_live_state(reg);
+	if (!callL || !lua_reg_push(reg)) return;
+	push_objc(callL, tableView, "uiview");
+	lua_pushinteger(callL, (lua_Integer)indexPath.row + 1);
+	lua_newtable(callL);
+	NSDictionary *rowData = self.rows[(NSUInteger)indexPath.row];
+	for (NSString *key in rowData) {
+		push_objc_value(callL, rowData[key]);
+		lua_setfield(callL, -2, key.UTF8String);
+	}
+	lua_objc_pcall(callL, 3, 0, "table row selection");
 }
 
 - (NSArray<UIDragItem *> *)tableView:(UITableView *)tableView

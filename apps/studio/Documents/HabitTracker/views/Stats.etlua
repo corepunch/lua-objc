@@ -1,0 +1,46 @@
+<%
+	local STATS = { inset = 22, spacing = 18, titleSize = 30, metricSize = 32, captionSize = 12, chartHeight = 132 }
+%>
+<ScrollView maxWidth="infinity" maxHeight="infinity">
+	<VStack padding="<%= STATS.inset %>" spacing="<%= STATS.spacing %>" maxWidth="infinity" alignment="leading">
+		<VStack spacing="4" alignment="leading">
+			<Label text="YOUR MOMENTUM" size="<%= STATS.captionSize %>" weight="semibold" color="secondary" />
+			<Label text="Stats" size="<%= STATS.titleSize %>" weight="bold" />
+		</VStack>
+		<HStack spacing="12" maxWidth="infinity" alignment="top">
+			<VStack padding="16" spacing="8" flexGrow="1" alignment="leading" background="secondaryBackground" cornerRadius="20">
+				<SystemImage name="flame.fill" size="20" color="systemOrange" />
+				<Label text="12 days" size="<%= STATS.metricSize %>" weight="bold" monospacedDigit="true" />
+				<Label text="Current streak" size="<%= STATS.captionSize %>" color="secondary" />
+			</VStack>
+			<VStack padding="16" spacing="8" flexGrow="1" alignment="leading" background="secondaryBackground" cornerRadius="20">
+				<SystemImage name="checkmark.seal.fill" size="20" color="systemTeal" />
+				<Label text="<%= progress.done %>/<%= progress.total %>" size="<%= STATS.metricSize %>" weight="bold" monospacedDigit="true" />
+				<Label text="Done today" size="<%= STATS.captionSize %>" color="secondary" />
+			</VStack>
+		</HStack>
+		<VStack padding="18" spacing="16" maxWidth="infinity" alignment="leading" background="secondaryBackground" cornerRadius="22">
+			<HStack maxWidth="infinity" alignment="center">
+				<VStack spacing="3" alignment="leading">
+					<Label text="This week" size="17" weight="semibold" />
+					<Label text="A steady rhythm beats a perfect day." size="<%= STATS.captionSize %>" color="secondary" />
+				</VStack>
+				<Spacer />
+				<Label text="4.2 avg" size="<%= STATS.captionSize %>" color="systemTeal" weight="semibold" />
+			</HStack>
+			<HStack height="<%= STATS.chartHeight %>" spacing="10" maxWidth="infinity" alignment="bottom">
+				<% for index, day in ipairs(week) do %>
+				<VStack spacing="8" flexGrow="1" alignment="center" maxHeight="infinity">
+					<Spacer />
+					<VStack height="<%= math.max(10, day.value * 92) %>" maxWidth="infinity" background="<%= index == 4 and "systemTeal" or "systemTeal" %>" cornerRadius="8" />
+					<Label text="<%= day.day %>" size="<%= STATS.captionSize %>" color="secondary" />
+				</VStack>
+				<% end %>
+			</HStack>
+		</VStack>
+		<VStack padding="18" spacing="10" maxWidth="infinity" alignment="leading" background="tertiarySystemBackground" cornerRadius="20">
+			<Label text="You’re building something real." size="16" weight="semibold" />
+			<Label text="Twelve days in a row. Keep the promise small and keep showing up." size="14" color="secondary" lines="3" />
+		</VStack>
+	</VStack>
+</ScrollView>

@@ -168,9 +168,44 @@ t.assertEqual(chat.messages[2].summary.title, "1 file changed", "the card summar
 t.assertEqual(chat.draft, "Make it blue", "the composer shows the draft")
 t.expect(chat.listening, "dictation can be shown listening")
 local starter = Chat.presentation()
-t.expect(starter.messages[1].role == "user" and #starter.messages[2].changes == 6, "the starter conversation is unchanged")
+t.expect(starter.messages[1].role == "user" and #starter.messages[2].changes == 7, "the starter conversation describes the complete app")
 local pane = require("ui.xml").describeFile("apps/studio/views/ChatPane.etlua", chat)
 t.expect(pane.source:find("&lt;Old /&gt;", 1, true) ~= nil, "the chat pane renders diff lines")
 t.expect(pane.source:find('text="Make it blue"', 1, true) ~= nil, "the chat pane renders the draft")
+
+local Code = require("apps.studio.models.Code")
+local code = Code.presentation({
+	["demo/playground/Controller.lua"] = "local value = 'return true' -- if false",
+	["demo/playground/views/Today.etlua"] = '<Label text="Today" /><% if ready then return end %>',
+}, "views/Today.etlua")
+t.assertEqual(code.language, "etlua", "template files select the etlua lexer")
+t.assertEqual(code.files[2].folder, "views", "project tree entries retain their folder")
+t.expect(Code.rules.languages.etlua.regions[1].rules == Code.rules.languages.lua,
+	"embedded etlua Lua blocks reuse the Lua token rules")
+t.expect(Code.rules.languages.lua.matches[#Code.rules.languages.lua.matches].color == "comment",
+	"comments take precedence over keyword matches")
+
+local Workspace = require("apps.studio.services.Workspace")
+local documents = {}
+local documentNS = {
+	_documentRead = function(path) return documents[path] end,
+	_documentWrite = function(path, content) documents[path] = content; return true end,
+	_jsonEncode = ns._jsonEncode,
+	json_parse = ns.json_parse,
+}
+local workspace = Workspace.new(documentNS, read)
+t.assertEqual(#Code.presentation(workspace.seed).files, 7, "the bundled Habit Tracker has seven source files")
+t.expect(documents["HabitTracker/project.lua"] ~= nil and documents["HabitTracker/views/Today.etlua"] ~= nil,
+	"the bundled app is materialized in Documents on first launch")
+local editedFiles = {}
+for path, content in pairs(workspace.seed) do editedFiles[path] = content end
+editedFiles["demo/playground/Model.lua"] = "return { saved = true }\n"
+t.expect(workspace.storage.save({ files = editedFiles, model = "provider/test" }),
+	"project files and settings save to Documents")
+local reopened = Workspace.new(documentNS, read)
+t.assertEqual(reopened.seed["demo/playground/Model.lua"], "return { saved = true }\n",
+	"saved project source is reopened from Documents")
+t.expect(reopened.localStorage.set("test-state", "{\"saved\":true}"), "app local storage writes into its Documents folder")
+t.assertEqual(reopened.localStorage.get("test-state"), "{\"saved\":true}", "app local storage reads persisted data")
 
 os.exit(t.summary() and 0 or 1)

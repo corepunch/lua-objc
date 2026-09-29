@@ -2,6 +2,7 @@
 
 static int bridge_tableview_on_row_move(lua_State *L);
 static int bridge_tableview_on_row_swipe(lua_State *L);
+static int bridge_tableview_on_select(lua_State *L);
 static int bridge_clear_container(lua_State *L);
 static int bridge_uikit_scroll_to(lua_State *L);
 static int bridge_LuaArcView_arcBounds(lua_State *L);
@@ -84,6 +85,10 @@ static int nsview_index(lua_State *L) {
 		}
 		if (strcmp(key, "onRowMove") == 0) {
 			lua_pushcfunction(L, bridge_tableview_on_row_move);
+			return 1;
+		}
+		if (strcmp(key, "onSelect") == 0) {
+			lua_pushcfunction(L, bridge_tableview_on_select);
 			return 1;
 		}
 		if (strcmp(key, "onRowSwipe") == 0) {

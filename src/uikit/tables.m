@@ -61,6 +61,14 @@ static int bridge_tableview_on_row_move(lua_State *L) {
 	return 0;
 }
 
+static int bridge_tableview_on_select(lua_State *L) {
+	UITableView *table = check_objc(L, 1);
+	LuaTableViewSource *source = objc_getAssociatedObject(table, &kTableSourceKey);
+	if (!source) return luaL_error(L, "onSelect requires a table view");
+	source.selectionReg = lua_reg_opt(L, 2);
+	return 0;
+}
+
 static int bridge_tableview_on_row_swipe(lua_State *L) {
 	UITableView *table = check_objc(L, 1);
 	LuaTableViewSource *source = objc_getAssociatedObject(table, &kTableSourceKey);

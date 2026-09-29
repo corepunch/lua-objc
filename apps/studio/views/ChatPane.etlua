@@ -19,7 +19,7 @@
 			<Label text="<%= agent.model %>" size="<%= CHAT.modelSize %>" color="secondary" lines="1" truncation="middle" />
 		</VStack>
 		<Spacer />
-		<Picker id="chatMode" style="segmented" value="0">
+		<Picker id="chatMode" style="segmented" value="0" onChange="setMode">
 			<% for _, mode in ipairs(modes) do %>
 			<Option title="<%= mode %>" />
 			<% end %>
@@ -67,7 +67,8 @@
 		</VStack>
 		</VStack>
 	</ScrollView>
-	<VStack spacing="0" maxWidth="infinity" alignment="center">
+	<%- partial("CodePane.etlua", { code = code, syntaxRules = syntaxRules }) %>
+	<VStack id="composerPane" spacing="0" maxWidth="infinity" alignment="center">
 		<%- partial("Composer.etlua", { suggestions = suggestions, draft = draft, listening = listening, inset = CHAT.inset, column = CHAT.column }) %>
 	</VStack>
 </VStack>

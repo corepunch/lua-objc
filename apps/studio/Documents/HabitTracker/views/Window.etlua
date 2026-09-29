@@ -1,0 +1,13 @@
+<Window title="Habit Garden" width="393" height="852">
+	<TabView id="tabs" selected="0" maxWidth="infinity" maxHeight="infinity">
+		<Tab title="Today" systemImage="sun.max.fill">
+			<%- partial("Today.etlua", { habits = habits, progress = progress, greeting = greeting, streak = streak, actions = actions }) %>
+		</Tab>
+		<Tab title="Stats" systemImage="chart.bar.fill">
+			<%- partial("Stats.etlua", { progress = progress, streak = streak, week = week }) %>
+		</Tab>
+		<Tab title="Settings" systemImage="gearshape.fill">
+			<%- partial("Settings.etlua", { reminders = reminders, weeklyGoal = weeklyGoal, actions = actions }) %>
+		</Tab>
+	</TabView>
+</Window>

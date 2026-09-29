@@ -784,6 +784,20 @@ function UIKit.TextEditor(props)
 	return applyLayout(v, props)
 end
 
+--- Displays read-only source with native, rule-driven syntax coloring.
+--- @prop language string required. Language key in `syntaxRules.languages`.
+--- @prop syntaxRules table required. Colors, regular-expression matches and embedded-language regions.
+--- @prop size number optional. Monospaced font size.
+--- @prop text string required. Source text.
+--- @example <CodeView language="lua" text="source" syntaxRules="rules" />
+--- @platform UIKit UITextView with attributed TextKit storage.
+function UIKit.CodeView(props)
+	props = props or {}
+	local v = bridge._codeView(props.text or "", props.language or "lua", props.syntaxRules or {})
+	if props.size and props.size > 0 then v.font = bridge._font(props.size, "regular", false, "monospaced") end
+	return applyLayout(v, props)
+end
+
 --- Provides native search input and search-specific behavior.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
@@ -1103,6 +1117,7 @@ function UIKit.List(props)
 		header = props.header ~= false,
 		bordered = props.bordered == true,
 	})
+	if props.onSelect then tv:onSelect(props.onSelect) end
 	if props.scrollDisabled then tv.scrollEnabled = false end
 	if props.data and type(props.data) == "table" then
 		for _, row in ipairs(props.data) do

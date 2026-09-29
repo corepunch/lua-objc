@@ -1,0 +1,38 @@
+<%
+	local SETTINGS = { inset = 22, spacing = 18, titleSize = 30, rowInset = 16, captionSize = 12 }
+%>
+<ScrollView maxWidth="infinity" maxHeight="infinity">
+	<VStack padding="<%= SETTINGS.inset %>" spacing="<%= SETTINGS.spacing %>" maxWidth="infinity" alignment="leading">
+		<VStack spacing="4" alignment="leading">
+			<Label text="MAKE IT YOURS" size="<%= SETTINGS.captionSize %>" weight="semibold" color="secondary" />
+			<Label text="Settings" size="<%= SETTINGS.titleSize %>" weight="bold" />
+		</VStack>
+		<VStack spacing="0" maxWidth="infinity" background="secondaryBackground" cornerRadius="20">
+			<HStack padding="<%= SETTINGS.rowInset %>" spacing="12" maxWidth="infinity" alignment="center">
+				<SystemImage name="bell.badge.fill" size="19" color="systemOrange" />
+				<VStack spacing="3" alignment="leading" flexGrow="1" flexShrink="1">
+					<Label text="Gentle reminders" size="15" weight="semibold" />
+					<Label text="A nudge at your chosen time" size="<%= SETTINGS.captionSize %>" color="secondary" />
+				</VStack>
+				<Toggle id="reminders" value="<%= reminders and "true" or "false" %>" onChange="reminders" />
+			</HStack>
+			<Divider />
+			<HStack padding="<%= SETTINGS.rowInset %>" spacing="12" maxWidth="infinity" alignment="center">
+				<SystemImage name="target" size="19" color="systemTeal" />
+				<VStack spacing="3" alignment="leading" flexGrow="1" flexShrink="1">
+					<Label text="Weekly goal" size="15" weight="semibold" />
+					<Label text="Complete habits on <%= weeklyGoal %> days" size="<%= SETTINGS.captionSize %>" color="secondary" />
+				</VStack>
+				<Label text="<%= weeklyGoal %> days" size="14" color="secondary" />
+			</HStack>
+		</VStack>
+		<VStack padding="<%= SETTINGS.rowInset %>" spacing="10" maxWidth="infinity" alignment="leading" background="secondaryBackground" cornerRadius="20">
+			<HStack spacing="10" alignment="center">
+				<SystemImage name="lock.shield.fill" size="18" color="systemGreen" />
+				<Label text="Your habits stay yours" size="15" weight="semibold" />
+			</HStack>
+			<Label text="Your routine is stored on this device. Nothing is shared." size="14" color="secondary" lines="0" />
+		</VStack>
+		<Label text="HABIT GARDEN · VERSION 1.0" size="<%= SETTINGS.captionSize %>" color="tertiary" alignment="center" maxWidth="infinity" />
+	</VStack>
+</ScrollView>

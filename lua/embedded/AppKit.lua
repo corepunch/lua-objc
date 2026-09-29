@@ -1251,6 +1251,20 @@ function AppKit.TextEditor(props)
 	return applyLayout(view, props)
 end
 
+--- Displays source in a read-only native text view.
+--- @prop language string optional. Syntax language name.
+--- @prop size number optional. Monospaced font size.
+--- @prop text string required. Source text.
+--- @platform AppKit NSTextView with SyntaxTextStorage.
+function AppKit.CodeView(props)
+	props = props or {}
+	return AppKit.TextEditor({ text = props.text or "", language = props.language or "lua",
+		editable = false, selectable = true, drawsBackground = props.drawsBackground,
+		wrapMode = props.wrapMode, size = props.size, flexGrow = props.flexGrow,
+		flexShrink = props.flexShrink, flexBasis = props.flexBasis, maxWidth = props.maxWidth,
+		maxHeight = props.maxHeight })
+end
+
 --- Displays prominent window or section title text.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.

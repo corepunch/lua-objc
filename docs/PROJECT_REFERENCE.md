@@ -1338,6 +1338,41 @@ shows folder contents in the sidebar, and a native `TextEditor` displays the
 selected file in the content pane. See `demo/ide/` and the agent-facing
 [quickstart](index.md) for the supported workflow.
 
+### CodeView
+
+`CodeView` displays read-only source in a native text view. On UIKit it applies
+Lua-provided syntax rules to `UITextView.textStorage`; rules use ICU regular
+expressions and semantic UIKit color names. Matches are resolved from the
+earliest source position, with the longest token winning when two matches begin
+at the same character. `regions` let a language embed another language, as
+etlua embeds Lua between `<%` and `%>`.
+
+```lua
+local rules = {
+  colors = { keyword = "systemPurple", string = "systemRed" },
+  languages = {
+    lua = { matches = {
+      { pattern = "\\b(local|function|return)\\b", color = "keyword" },
+      { pattern = '"[^"\\n]*"', color = "string" },
+    } },
+  },
+}
+```
+
+Pass the rules from template data with `syntaxRules`:
+
+```xml
+<CodeView text="<%= source %>" language="lua" syntaxRules="rules"
+  wrapMode="true" maxWidth="infinity" maxHeight="infinity" />
+```
+
+The `rules` value must be in the root render data. A match has `pattern` and
+`color`; a region has `start`, `stop`, nested `rules`, and an optional
+`delimiter` color key. UIKit’s implementation uses the public TextKit storage
+on `UITextView`, which Apple documents as the text backing store and styling
+surface. AppKit `CodeView` uses its existing `SyntaxTextStorage` language
+highlighting.
+
 ## Lua API — List (NSTableView)
 
 The `List` widget is the most architecturally significant part of lua-objc. It
@@ -1846,6 +1881,7 @@ Templates use the `.etlua` extension to reflect that they contain etlua
 | `<Label text="…">` / `<Text>` | `ns.Text` (NSTextField) | `ns.Text` (UILabel) |
 | `<Title text="…">` | `ns.Title` | `ns.Title` |
 | `<TextField>` | `ns.TextField` | `ns.TextField` |
+| `<CodeView>` | `NSTextView` with `SyntaxTextStorage` | `UITextView` with rule-driven TextKit colors |
 | `<Button title="…">` | `ns.Button` | `ns.Button` |
 | `<GlassEffect>` | `NSGlassEffectView` | `UIVisualEffectView` + `UIGlassEffect` |
 | `<GlassEffectContainer>` | `NSGlassEffectContainerView` | `UIVisualEffectView` + `UIGlassContainerEffect` |

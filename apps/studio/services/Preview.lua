@@ -4,8 +4,8 @@ Preview.__index = Preview
 
 local FRAMEWORK_HOOKS = { _motionInsert = true, _motionRemove = true, _hasLayoutAxis = true }
 
-function Preview.new(ns, readFramework)
-	return setmetatable({ ns = ns, readFramework = readFramework }, Preview)
+function Preview.new(ns, readFramework, localStorage)
+	return setmetatable({ ns = ns, readFramework = readFramework, localStorage = localStorage }, Preview)
 end
 
 -- `entry` is the project's init module ("demo.playground.init" by default).
@@ -23,6 +23,7 @@ function Preview:render(files, entry)
 	for key, value in pairs(self.ns) do
 		if key:sub(1, 1) ~= "_" or FRAMEWORK_HOOKS[key] then ns[key] = value end
 	end
+	if self.localStorage then ns.LocalStorage = self.localStorage end
 	ns.Window = function(config)
 		local content = config.content or config[1]
 		if type(content) == "table" then content = self.ns.VStack(content) end

@@ -1,4 +1,5 @@
 local Model = {}
+local Code = require("apps.studio.models.Code")
 
 -- Templates get a code symbol and Lua modules a document symbol. Each row
 -- shows the file name, with its folder beneath it rather than the full path.
@@ -8,6 +9,7 @@ local CHANGES = {
 	{ path = "init.lua", added = 3 },
 	{ path = "Model.lua", added = 86 },
 	{ path = "Controller.lua", added = 54 },
+	{ path = "views/Window.etlua", added = 48 },
 	{ path = "views/Today.etlua", added = 41 },
 	{ path = "views/Stats.etlua", added = 37 },
 	{ path = "views/Settings.etlua", added = 22 },
@@ -20,7 +22,7 @@ Model.DEFAULT = {
 		{ role = "user", text = "Create a simple habit tracker app like this. Use a clean modern design with a nice illustration. It should store data locally and have 3 tabs: Today, Stats, Settings." },
 		{ role = "agent", text = "I’ll create a habit tracker with a clean design, local storage, and the three tabs you asked for. I’ll set up the project structure, then implement each screen.",
 			changes = CHANGES,
-			conclusion = "The app is ready and running in the preview. Habits and progress are saved locally." },
+			conclusion = "Habit Garden is running in the preview. Your check-ins stay on this device." },
 	},
 }
 
@@ -62,7 +64,7 @@ end
 -- `conversation` ({messages, draft, listening}) replaces the starter
 -- conversation, as a showcase does. An agent message may carry `changes`
 -- (a change card) and a `conclusion`.
-function Model.presentation(conversation)
+function Model.presentation(conversation, code)
 	local source = conversation or Model.DEFAULT
 	local messages = {}
 	for index, message in ipairs(source.messages or {}) do
@@ -79,6 +81,8 @@ function Model.presentation(conversation)
 		draft = source.draft or "",
 		listening = source.listening == true,
 		suggestions = SUGGESTIONS,
+		code = code or Code.presentation({}),
+		syntaxRules = Code.rules,
 	}
 end
 

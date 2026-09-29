@@ -14,7 +14,7 @@ function Projects.list(read, decode, encode, write)
 		if ok and type(values) == "table" then names = values end
 	end
 	if #names == 0 then
-		names = { "StarterApp", "HabitTracker" }
+		names = { "HabitTracker", "StarterApp" }
 		write("projects.json", encode(names))
 	end
 	local result = {}
@@ -39,6 +39,15 @@ function Projects.list(read, decode, encode, write)
 			table.insert(result, metadata)
 		end
 	end
+	-- Studio opens the populated Habit Tracker workspace on a fresh launch,
+	-- even when an earlier build persisted StarterApp first in the menu.
+	for index, project in ipairs(result) do
+		if project.id == "HabitTracker" then
+			if index > 1 then table.insert(result, 1, table.remove(result, index)) end
+			break
+		end
+	end
+	for index, project in ipairs(result) do project.selected = index == 1 end
 	return result
 end
 
