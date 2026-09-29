@@ -106,7 +106,10 @@ static void append_layout_view(NSMutableString *out, NSView *view,
 		contentClipped = layout_text_has_insufficient_space(
 			(NSTextField *)view);
 	}
-	BOOL insufficientTextSpace = text
+	/* A hidden view shows nothing, so nothing of it is clipped: a cell
+	 * template keeps the views of its other states hidden and unplaced. */
+	if (view.hiddenOrHasHiddenAncestor) contentClipped = NO;
+	BOOL insufficientTextSpace = text && !view.hiddenOrHasHiddenAncestor
 		? layout_text_has_insufficient_space((NSTextField *)view) : NO;
 	BOOL ellipsis = text
 		? layout_text_uses_ellipsis((NSTextField *)view) : NO;

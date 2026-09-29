@@ -64,10 +64,11 @@ t.assertEqual(refs.opportunities, nil, "the overview does not repeat reclaim con
 t.expect(not refs.results.drawsBackground, "the category list lets its native group background show through")
 refs.results:replaceRows({{id = "apps", name = "Applications", size = "Calculating…", calculating = true}})
 local nameCell = bridge._tableCell(refs.results, 0, 0)
-local sizeCell = bridge._tableCell(refs.results, 1, 0)
+local meterOf = dofile("tests/fixtures/meter.lua")
+local sizeCell = meterOf(bridge._tableCell(refs.results, 1, 0))
 t.assertEqual(nameCell.textField.font.pointSize, 13, "category title uses the regular system font")
-t.assertEqual(sizeCell.valueField.font.pointSize, 13, "size and loading text use the regular system font")
-local unmeasured = bridge._tableCell(refs.results, 1, 0).levelIndicator
+t.assertEqual(sizeCell.value.font.pointSize, 13, "size and loading text use the regular system font")
+local unmeasured = sizeCell.bar
 t.expect(not unmeasured.hidden and not unmeasured.enabled and unmeasured.doubleValue == 0,
 	"an unmeasured category keeps an empty, disabled bar under its state")
 
@@ -84,7 +85,7 @@ refs.results.fixedHeight = 44
 refs.page.size = ns.Size(400, 500); refs.page:layout(400)
 t.expect(refs.results.frame.size.height < 80, "category rows keep their height instead of filling the window")
 t.expect(refs.results.frame.size.width <= 400, "category list stays within the page width")
-t.expect(not bridge._tableCell(refs.results, 1, 0).loadingIndicator.hidden, "section background preserves per-row loading")
+t.expect(not dofile("tests/fixtures/meter.lua")(bridge._tableCell(refs.results, 1, 0)).spinner.hidden, "section background preserves per-row loading")
 -- Every ranking page shares one list: a non-scrolling table whose actions live
 -- in a row menu, so the page itself scrolls and no buttons sit under lists.
 local menuRows = 0
@@ -118,14 +119,13 @@ t.expect(statusCell.imageView.image ~= nil, "a status is drawn as a symbol")
 t.assertEqual(statusCell.imageView.toolTip, "Rebuildable", "the status word is the symbol's tooltip")
 t.assertEqual(statusCell.imageView.accessibilityLabel, "Rebuildable", "VoiceOver reads the status word")
 t.expect(bridge._tableCell(statuses, 1, 1).imageView.image == nil, "a rolled-up group has no status symbol")
-local bar = bridge._tableCell(statuses, 2, 0)
-bar:layout()
-t.expect(bar.levelIndicator.frame.origin.x <= 8, "the meter bar starts at the column edge")
+local bar = meterOf(bridge._tableCell(statuses, 2, 0))
+t.expect(bar.bar.frameInWindow.origin.x - bar.cell.frameInWindow.origin.x <= 8, "the meter bar starts at the column edge")
 statuses.size = ns.Size(560, 200); statuses:layout(560)
 local statusWidths = {}
 for _, column in ipairs(bridge._tableColumnWidths(statuses)) do statusWidths[column.id] = column.width end
 t.expect(statusWidths.detail <= 48, "the status column is one symbol wide")
-t.expect(statusWidths.shareText >= 180, "the meter fits a lower-bound size such as ≥ 999.9 MB beside its share")
+t.expect(statusWidths.size >= 180, "the meter fits a lower-bound size such as ≥ 999.9 MB beside its share")
 for status, style in pairs(Status.styles) do
 	t.expect(style.icon:find("%.fill$") ~= nil and style.color ~= nil, status .. " has a filled, coloured symbol")
 end
@@ -139,16 +139,15 @@ sizes:replaceRows({
 	Model.sizeLabel({id = "docs", name = "Documents", relative = 1, shareText = "", color = "systemBlue", icon = "doc"}, "complete", 2e9),
 })
 sizes.size = ns.Size(560, 200); sizes:layout(560)
-local denied, measured = bridge._tableCell(sizes, 1, 0), bridge._tableCell(sizes, 1, 1)
-denied:layout()
-t.assertEqual(denied.valueField.stringValue, "No access", "the state is spelled out")
-t.expect(denied.imageView.image ~= nil, "a state leads with its symbol")
-t.expect(denied.imageView.frame.origin.x + denied.imageView.frame.size.width <= denied.valueField.frame.origin.x, "the symbol comes before the word")
-t.assertEqual(denied.imageView.frame.size.width, 16, "the symbol fills the spinner's square")
-t.assertEqual(tostring(denied.valueField.textColor), tostring(denied.imageView.contentTintColor), "the word takes its symbol's colour")
-t.expect(not denied.levelIndicator.hidden and not denied.levelIndicator.enabled, "a state keeps an empty, disabled bar")
-t.expect(measured.imageView.image == nil and measured.levelIndicator.enabled, "a measured size has no symbol and an enabled bar")
-t.assertEqual(measured.valueField.stringValue, "2.0 GB", "the measured size is text")
+local denied, measured = meterOf(bridge._tableCell(sizes, 1, 0)), meterOf(bridge._tableCell(sizes, 1, 1))
+t.assertEqual(denied.value.text, "No access", "the state is spelled out")
+t.expect(not denied.symbol.hidden and denied.symbol.image ~= nil, "a state leads with its symbol")
+t.expect(denied.symbol.frameInWindow.origin.x + denied.symbol.frameInWindow.size.width <= denied.value.frameInWindow.origin.x, "the symbol comes before the word")
+t.assertEqual(denied.symbol.frame.size.width, 16, "the symbol fills the spinner's square")
+t.assertEqual(tostring(denied.value.textColor), tostring(denied.symbol.contentTintColor), "the word takes its symbol's colour")
+t.expect(not denied.bar.hidden and not denied.bar.enabled, "a state keeps an empty, disabled bar")
+t.expect(measured.symbol.hidden and measured.bar.enabled, "a measured size has no symbol and an enabled bar")
+t.assertEqual(measured.value.text, "2.0 GB", "the measured size is text")
 for status, state in pairs(Model.sizeStates) do
 	local row = Model.sizeLabel({}, status)
 	t.assertEqual(row.size, state.text, status .. " reads as its word")
@@ -170,9 +169,9 @@ local partial = Model.sizeLabel({}, "partial", 2e9)
 t.assertEqual(partial.size, "≥ 2.0 GB", "a partial size reads as a lower bound")
 t.expect(partial.partial, "a partial size is flagged")
 sizes:replaceRows({Model.sizeLabel({id = "dev", name = "Developer", relative = 1, shareText = "", color = "systemBlue", icon = "hammer"}, "partial", 15.8e9)})
-local lower = bridge._tableCell(sizes, 1, 0)
-t.assertEqual(lower.valueField.stringValue, "≥ 15.8 GB", "the lower bound reads ≥ before its number")
-t.expect(lower.imageView.image == nil, "a lower bound is a sign, not a symbol")
+local lower = meterOf(bridge._tableCell(sizes, 1, 0))
+t.assertEqual(lower.value.text, "≥ 15.8 GB", "the lower bound reads ≥ before its number")
+t.expect(lower.symbol.hidden, "a lower bound is a sign, not a symbol")
 t.assertEqual(Status.apply({detail = "Under 5.0 GB"}, "Within").statusColor, "systemGreen", "a location within limits is green")
 t.assertEqual(Status.apply({detail = "Review"}).statusColor, "systemOrange", "review is orange")
 t.assertEqual(Status.apply({detail = "Keep"}).statusColor, "systemRed", "required data is red")

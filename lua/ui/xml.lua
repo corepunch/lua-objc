@@ -473,7 +473,149 @@ local function applyMotion(view, target, attrs, ns)
     end
 end
 
-local function compile(nodes, ns, registry, refs)
+-- ── Column content templates ──────────────────────────────────────────────
+--
+-- A <Column>'s child XML is its cell template (SwiftUI `TableColumn { row in
+-- ... }`, WPF's DataTemplate). etlua runs once, when the screen renders; an
+-- attribute written `{field}` is resolved per row instead. The template is
+-- compiled once for each reusable native cell, and the platform applies the
+-- bindings natively whenever a cell is given a row, so scrolling runs no Lua.
+--
+--   {field}             the row's value, typed (a Gauge value stays a number)
+--   "Used {a} of {b}"   text interpolation; a missing field reads as empty
+--   {!field}            true when the field is missing, false or empty
+--   {{                  a literal brace
+--
+-- There are no expressions: a derived value is a row field the model
+-- prepares. A row without the field returns the attribute to the value the
+-- view was built with, so a reused cell never shows its previous row.
+
+-- attribute -> { native property, kind, inverted }
+local ANY_BINDINGS = {
+    hidden = { "hidden", "bool", outer = true },
+    opacity = { "opacity", "number", outer = true },
+    help = { "toolTip", "string" },
+    accessibilityLabel = { "accessibilityLabel", "string" },
+    disabled = { "enabled", "bool", inverted = true },
+}
+local TEXT_BINDING = { "text", "string" }
+local SYMBOL_BINDING = { "symbolName", "string" }
+local TAG_BINDINGS = {
+    Label = { text = TEXT_BINDING, value = TEXT_BINDING, color = { "textColor", "color" } },
+    SystemImage = { name = SYMBOL_BINDING, symbol = SYMBOL_BINDING, color = { "contentTintColor", "color" },
+        badgeColor = { "badgeColorName", "string" }, appIcon = { "appBundleId", "string" } },
+    Gauge = { value = { "doubleValue", "number" }, tint = { "fillColor", "color" } },
+    ProgressView = { value = { "doubleValue", "number" } },
+}
+
+-- The bindings of the cell being compiled; nil outside a cell template.
+local cellBindings
+
+local function parseBinding(value)
+    local parts, literal, position = {}, "", 1
+    local function fail(reason)
+        error("xml: row binding \"" .. value .. "\" " .. reason)
+    end
+    while position <= #value do
+        local open = value:find("{", position, true)
+        if not open then
+            literal = literal .. value:sub(position)
+            break
+        end
+        literal = literal .. value:sub(position, open - 1)
+        if value:sub(open + 1, open + 1) == "{" then
+            literal = literal .. "{"
+            position = open + 2
+        else
+            local close = value:find("}", open, true)
+            if not close then fail("has an unclosed brace") end
+            local negate, field = value:sub(open + 1, close - 1):match("^(!?)([%a_][%w_]*)$")
+            if not field then fail("must name one row field; prepare derived values in the model") end
+            if literal ~= "" then table.insert(parts, literal); literal = "" end
+            table.insert(parts, { field = field, negate = negate == "!" })
+            position = close + 1
+        end
+    end
+    if literal ~= "" then table.insert(parts, literal) end
+    return parts
+end
+
+-- Splits a template node's attributes into the static ones its constructor
+-- takes and the bindings applied per row.
+local function splitBindings(node)
+    local attrs, bound = {}, {}
+    for key, value in pairs(node.attrs) do
+        if type(value) == "string" and value:find("{", 1, true) then
+            local parts = parseBinding(value)
+            local whole = #parts == 1 and type(parts[1]) == "table"
+            local fields = 0
+            for _, part in ipairs(parts) do if type(part) == "table" then fields = fields + 1 end end
+            if fields == 0 then
+                attrs[key] = parts[1] or ""
+            else
+                local spec = (TAG_BINDINGS[node.tag] or {})[key] or ANY_BINDINGS[key]
+                if not spec then
+                    error("xml: <" .. node.tag .. "> cannot bind " .. key .. " to a row field")
+                end
+                local kind, negate = spec[2], false
+                if kind ~= "string" and not whole then
+                    error("xml: <" .. node.tag .. "> " .. key .. "=\"" .. value .. "\" must be one {field}")
+                end
+                for index, part in ipairs(parts) do
+                    if type(part) == "table" then
+                        if part.negate and kind ~= "bool" then
+                            error("xml: <" .. node.tag .. "> " .. key .. "=\"" .. value .. "\": {!field} applies to true/false attributes")
+                        end
+                        negate = part.negate
+                        parts[index] = { field = part.field }
+                    end
+                end
+                if spec.inverted then negate = not negate end
+                table.insert(bound, { key = spec[1], kind = kind, parts = parts, negate = negate, outer = spec.outer })
+            end
+        else
+            attrs[key] = value
+        end
+    end
+    return attrs, bound
+end
+
+local compile
+
+-- The factory the platform calls when it has no cell to reuse. Returns the
+-- template's root view and its bindings.
+local function columnTemplate(node, ns, registry)
+    local roots = {}
+    for _, child in ipairs(node.children) do
+        if child.kind == "element" then table.insert(roots, child) end
+    end
+    if #roots == 0 then return nil end
+    if #roots > 1 then
+        error("xml: <Column> content must be one view; wrap the cell in a stack")
+    end
+    -- Mistakes in a binding fail the render, not the first scroll.
+    local function validate(element)
+        if element.kind ~= "element" then return end
+        splitBindings(element)
+        for _, child in ipairs(element.children) do validate(child) end
+    end
+    validate(roots[1])
+    local templateData = renderData
+    return function()
+        local previousData, previousTracking, previousBindings = renderData, tracking, cellBindings
+        renderData, tracking, cellBindings = templateData, false, {}
+        local ok, views = pcall(compile, roots, ns, registry, {})
+        local bindings = cellBindings
+        renderData, tracking, cellBindings = previousData, previousTracking, previousBindings
+        if not ok then error(views, 0) end
+        if type(views[1]) ~= "userdata" then
+            error("xml: <Column> content must render one native view")
+        end
+        return views[1], bindings
+    end
+end
+
+compile = function(nodes, ns, registry, refs)
     local views = {}
     for _, node in ipairs(nodes) do
         if node.kind == "element" then
@@ -487,8 +629,14 @@ local function compile(nodes, ns, registry, refs)
                 error("xml: unknown tag <" .. node.tag .. ">")
             end
 			local lazy = node.tag == "LazyVStack" or node.tag == "LazyVGrid"
+			local templated = node.tag == "Column"
+			local attrs, bound = node.attrs, nil
+			if cellBindings then attrs, bound = splitBindings(node) end
 			local children
-			if lazy then
+			if templated then
+				-- Absent for a text column; Column.collect takes the factory.
+				children = { template = columnTemplate(node, ns, registry) }
+			elseif lazy then
 				local itemNodes = {}
 				for _, child in ipairs(node.children) do
 					if child.kind == "element" then itemNodes[#itemNodes + 1] = child end
@@ -519,19 +667,29 @@ local function compile(nodes, ns, registry, refs)
 			end
 			local view
 			if nodeScope then
-				if not lazy then children = ns.Scope.withScope(nodeScope, compile, node.children, ns, registry, refs) end
-				view = ns.Scope.withScope(nodeScope, handler, ns, node.attrs, children)
+				if not children then children = ns.Scope.withScope(nodeScope, compile, node.children, ns, registry, refs) end
+				view = ns.Scope.withScope(nodeScope, handler, ns, attrs, children)
 			else
-				if not lazy then children = compile(node.children, ns, registry, refs) end
-				view = handler(ns, node.attrs, children)
+				if not children then children = compile(node.children, ns, registry, refs) end
+				view = handler(ns, attrs, children)
 			end
-			applyMotion(view, paddedLeaves[view] or view, node.attrs, ns)
+			applyMotion(view, paddedLeaves[view] or view, attrs, ns)
 			-- SwiftUI's `.accessibilityLabel` applies to any view: tags whose
 			-- constructor does not take the label still carry it.
-			if node.attrs.accessibilityLabel and type(view) == "userdata" then
+			if attrs.accessibilityLabel and type(view) == "userdata" then
 				local target = paddedLeaves[view] or view
-				if target.accessibilityLabel ~= node.attrs.accessibilityLabel then
-					target.accessibilityLabel = node.attrs.accessibilityLabel
+				if target.accessibilityLabel ~= attrs.accessibilityLabel then
+					target.accessibilityLabel = attrs.accessibilityLabel
+				end
+			end
+			if bound and #bound > 0 then
+				if type(view) ~= "userdata" then
+					error("xml: <" .. node.tag .. "> cannot bind row fields; it renders no view")
+				end
+				for _, binding in ipairs(bound) do
+					binding.view = binding.outer and view or paddedLeaves[view] or view
+					binding.outer = nil
+					table.insert(cellBindings, binding)
 				end
 			end
 			if view then
@@ -711,6 +869,7 @@ local TAG_SCHEMA = {
             value = "num",
             indeterminate = "bool",
             tint = "str",
+            controlSize = "str",
         },
     },
     -- SwiftUI Gauge (linear capacity style).
@@ -1250,9 +1409,6 @@ local TAG_SCHEMA = {
             badgeColorKey = "str",
             appIconKey = "str",
             imageSize = "num",
-            levelKey = "str",
-            levelColorKey = "str",
-            valueKey = "str",
             loadingKey = "str",
             controlSize = "str",
             buttonSymbol = "str",
@@ -1261,8 +1417,11 @@ local TAG_SCHEMA = {
             labelStyle = "str",
             helpKey = "str",
         },
-        collect = function(props)
-            for key, field in pairs({badgeKey = "badge", loadingKey = "loading", controlSize = "controlSize", buttonSymbol = "button", buttonMenu = "buttonMenu", badgeColorKey = "badgeColor", appIconKey = "appIcon", subtitleKey = "secondary", fileIconKey = "fileIcon", imageKey = "image", imageColorKey = "imageColor", imageSize = "imageSize", levelKey = "level", levelColorKey = "levelColor", valueKey = "value", labelStyle = "labelStyle", helpKey = "help"}) do
+        collect = function(props, children)
+            -- Child XML is the column's cell template; see "Column content
+            -- templates" above.
+            props.template = children.template
+            for key, field in pairs({badgeKey = "badge", loadingKey = "loading", controlSize = "controlSize", buttonSymbol = "button", buttonMenu = "buttonMenu", badgeColorKey = "badgeColor", appIconKey = "appIcon", subtitleKey = "secondary", fileIconKey = "fileIcon", imageKey = "image", imageColorKey = "imageColor", imageSize = "imageSize", labelStyle = "labelStyle", helpKey = "help"}) do
                 if props[key] then
                     props.cell = props.cell or {}
                     props.cell[field] = props[key]
