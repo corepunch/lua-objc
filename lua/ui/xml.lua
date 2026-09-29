@@ -1031,8 +1031,10 @@ local TAG_SCHEMA = {
         props = { title = "str", keywords = "str" },
         transform = function(rec, attrs) bindActions(rec, attrs, { "action" }) end,
     },
+    -- Child controls are SwiftUI's `actions:` slot, beneath the message.
     ContentUnavailable = {
         constructor = "ContentUnavailable",
+        children = "array",
         props = {
             title = "str",
             systemImage = "str",

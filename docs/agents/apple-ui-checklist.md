@@ -52,7 +52,7 @@ iPhone/iPad later.
 
 - Show table loading with `showLoading()` and stop it with `hideLoading()`.
 - Provide empty and error states near the content they describe.
-- Give an empty state one next tap (`ContentUnavailable` plus a `Button`), not
+- Give an empty state one next tap (a `Button` child of `ContentUnavailable`), not
   only a caption. See [Delight vs coverage](../delight.md).
 - Preserve keyboard navigation, native selection, focus, and resizing.
 - Add a headless regression test for state and data behavior.
