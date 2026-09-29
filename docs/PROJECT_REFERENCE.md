@@ -1381,6 +1381,9 @@ font. `<Column loadingKey="calculating">` binds a boolean row field to a native
 spinning progress indicator beside the cell text. Supply the loading label in
 the column's usual row value; the spinner and label share the column alignment.
 Lua column specs use `cell = {controlSize = "small", loading = "calculating"}`.
+In a level column (`levelKey`), the spinner sits before the meter's
+`valueKey` text instead; see "Measured storage cells" in
+[tableview_swiftui.md](tableview_swiftui.md).
 
 **Column sizing:**
 

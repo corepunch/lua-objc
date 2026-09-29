@@ -71,7 +71,6 @@ enum {
 	kSplitProportionsAppliedKey,
 	kColumnFlexKey,
 	kColumnCellKey,
-	kColumnLevelTextWidthKey,
 	kColumnSortableKey,
 	kTabViewDelegateKey,
 	kTableScrollViewKey,
@@ -173,8 +172,8 @@ static const CGFloat kParagraphDropCapInkOutset = 2.0;
 #define kTreemapHeaderDetailSpacing      6
 #define kTableCellLoadingGap             4
 #define kTableCellLineSpacing            2
-#define kTableCellLevelTextWidth        38
 #define kTableCellLevelGap               8
+#define kTableCellLevelStackSpacing      3
 #define kTableInfoButtonSide            22
 #define kTableInfoButtonPointSize       15
 #define kTableRowMenuOffset             2

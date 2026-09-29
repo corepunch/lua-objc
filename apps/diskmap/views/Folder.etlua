@@ -1,5 +1,5 @@
 <%
-  local FOLDER = { chart = 360, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 34, caption = 13, totalScale = 13 / 34, captionScale = 0.77 }, gap = 5, depth = 14, list = 300, treemapHeight = 420, legendSize = 84, legendShare = 34 }
+  local FOLDER = { chart = 360, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 34, caption = 13, totalScale = 13 / 34, captionScale = 0.77 }, gap = 5, depth = 14, list = 300, meter = 130, treemapHeight = 420, legendSize = 84, legendShare = 34 }
   -- Every ring keeps the thickness it has among three, so one ring of
   -- files is a slim ring like the Overview donut, not a thick disc.
   local rings = 1
@@ -49,7 +49,7 @@
     <GroupBox width="<%= FOLDER.list %>" maxHeight="infinity">
       <List id="folderList" onSelect="selectRow" onActivate="drillRow" rowMenu="rowMenu" dragKey="path" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="40" drawsBackground="false" maxWidth="infinity" maxHeight="infinity">
         <Column id="name" title="Item" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" imageSize="22" minWidth="140" />
-        <Column id="size" title="Size" width="92" minWidth="80" levelKey="relative" levelColorKey="color" />
+        <Column id="shareText" title="Size" width="<%= FOLDER.meter %>" minWidth="<%= FOLDER.meter %>" levelKey="relative" levelColorKey="color" valueKey="size" />
       </List>
     </GroupBox>
     <VStack flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity" spacing="12" alignment="center">

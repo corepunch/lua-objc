@@ -24,7 +24,7 @@
 @property (nonatomic, strong) NSTextField *secondaryTextField;
 @property (nonatomic, strong) LuaPathView *curveView;
 @property (nonatomic, strong) LuaLevelIndicator *levelIndicator;
-@property (nonatomic) CGFloat levelTextWidth;
+@property (nonatomic, strong) NSTextField *valueField;
 @property (nonatomic) CGFloat imageWidth;
 @property (nonatomic, strong) NSProgressIndicator *loadingIndicator;
 @property (nonatomic, strong) NSButton *actionButton;
@@ -33,6 +33,37 @@
 @end
 
 @implementation LuaTableCellView
+
+/* A level cell is one meter, like Spectrum's Meter or SwiftUI's Gauge: a
+ * value (a size such as "52.3 GB", with its spinner while measuring) leads
+ * and the column text (a share such as "36%") trails on one line above a
+ * full-width capacity bar, as a title sits over its subtitle in the name
+ * column. The share keeps its fitting width; the value truncates first. */
+- (void)layoutLevel {
+	NSTextField *text = self.textField;
+	NSSize bounds = self.bounds.size;
+	CGFloat height = ceil(text.intrinsicContentSize.height);
+	CGFloat levelHeight = _levelIndicator.intrinsicContentSize.height;
+	CGFloat left = kTableCellTextLeadingInset;
+	CGFloat right = bounds.width - kTableCellTextTrailingInset;
+	CGFloat total = height + kTableCellLevelStackSpacing + levelHeight;
+	CGFloat barY = floor((bounds.height - total) / 2);
+	CGFloat textY = barY + levelHeight + kTableCellLevelStackSpacing;
+	_levelIndicator.frame = NSMakeRect(left, barY, MAX(0, right - left), levelHeight);
+	BOOL labelled = text.stringValue.length > 0;
+	CGFloat shareWidth = labelled ? MIN(ceil(text.fittingSize.width), MAX(0, right - left)) : 0;
+	text.frame = NSMakeRect(right - shareWidth, textY, shareWidth, height);
+	if (!_valueField) return;
+	CGFloat x = left;
+	CGFloat maxX = right - shareWidth - (labelled ? kTableCellLevelGap : 0);
+	if (_loadingIndicator && !_loadingIndicator.hidden) {
+		[_loadingIndicator sizeToFit];
+		NSSize spinner = _loadingIndicator.frame.size;
+		_loadingIndicator.frame = NSMakeRect(x, floor(textY + (height - spinner.height) / 2), spinner.width, spinner.height);
+		x += spinner.width + kTableCellLoadingGap;
+	}
+	_valueField.frame = NSMakeRect(x, textY, MAX(0, MIN(ceil(_valueField.fittingSize.width), maxX - x)), height);
+}
 
 - (void)layout {
 	[super layout];
@@ -52,15 +83,7 @@
 		return;
 	}
 	if (_levelIndicator) {
-		/* A bar without a label starts at the column edge, so bars in lists
-		 * that omit the percentage do not float after an empty gutter. */
-		BOOL labelled = text.stringValue.length > 0;
-		CGFloat height = ceil(text.intrinsicContentSize.height);
-		CGFloat textWidth = MAX(kTableCellLevelTextWidth, _levelTextWidth);
-		text.frame = NSMakeRect(0, floor((self.bounds.size.height - height) / 2), labelled ? textWidth : 0, height);
-		CGFloat x = labelled ? textWidth + kTableCellLevelGap : kTableCellTextLeadingInset;
-		CGFloat levelHeight = _levelIndicator.intrinsicContentSize.height;
-		_levelIndicator.frame = NSMakeRect(x, floor((self.bounds.size.height - levelHeight) / 2), MAX(0, self.bounds.size.width - x - kTableCellTextTrailingInset), levelHeight);
+		[self layoutLevel];
 		return;
 	}
 	// A trailing badge (SwiftUI `.badge`) keeps its fitting width; the title
@@ -335,29 +358,6 @@ static void table_update_curve(
 	[curve setNeedsDisplay:YES];
 }
 
-/* A level column's labels share the width of the widest one met so far,
- * like a Grid column, so "7.2 GB" never truncates and every bar starts at
- * the same x. The width only grows; visible cells follow when it does. */
-static void table_level_text_width(NSTableView *tableView, NSTableColumn *column, LuaTableCellView *cell) {
-	CGFloat width = [objc_getAssociatedObject(column, &kKeys[kColumnLevelTextWidthKey]) doubleValue];
-	CGFloat needed = ceil(cell.textField.fittingSize.width);
-	if (needed > width) {
-		width = needed;
-		objc_setAssociatedObject(column, &kKeys[kColumnLevelTextWidthKey], @(width), OBJC_ASSOCIATION_RETAIN);
-		NSInteger index = [tableView.tableColumns indexOfObject:column];
-		if (index != NSNotFound) {
-			[tableView enumerateAvailableRowViewsUsingBlock:^(NSTableRowView *rowView, NSInteger row) {
-				LuaTableCellView *visible = [rowView viewAtColumn:index];
-				if ([visible isKindOfClass:LuaTableCellView.class] && visible != cell) {
-					visible.levelTextWidth = width;
-					[visible setNeedsLayout:YES];
-				}
-			}];
-		}
-	}
-	cell.levelTextWidth = width;
-}
-
 static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NSDictionary *rowData, id owner, NSInteger rowIndex) {
 
 	NSString *colId = column.identifier;
@@ -412,6 +412,12 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 			LuaLevelIndicator *level = [[LuaLevelIndicator alloc] initWithFrame:NSZeroRect];
 			[cell addSubview:level];
 			cell.levelIndicator = level;
+			if (cellSpec[@"value"]) {
+				NSTextField *value = [NSTextField labelWithString:@""];
+				value.lineBreakMode = NSLineBreakByTruncatingTail;
+				[cell addSubview:value];
+				cell.valueField = value;
+			}
 		}
 		if (cellSpec[@"curve"]) {
 			LuaPathView *curve = [[LuaPathView alloc]
@@ -492,19 +498,26 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	BOOL small = [cellSpec[@"controlSize"] isEqual:@"small"];
 	cell.textField.font = [NSFont systemFontOfSize:small ? NSFont.smallSystemFontSize : NSFont.systemFontSize
 		weight:semibold ? NSFontWeightSemibold : NSFontWeightRegular];
-	// Measured in the cell's final font.
-	if (cell.levelIndicator) table_level_text_width(tableView, column, cell);
 	NSString *primaryColorKey = cellSpec[@"color"];
 	NSString *primaryColor = primaryColorKey
 		? [rowData[primaryColorKey] description] : nil;
 	cell.textField.textColor = primaryColor
 		? semantic_color(primaryColor) : NSColor.labelColor;
+	NSString *valueKey = cellSpec[@"value"];
+	id valueText = valueKey ? rowData[valueKey] : nil;
+	cell.valueField.stringValue = valueText ? [valueText description] : @"";
+	cell.valueField.font = cell.textField.font;
+	cell.valueField.textColor = NSColor.labelColor;
+	/* In a meter the share reads second to the value it is a share of. */
+	if (cell.levelIndicator) cell.textField.textColor = NSColor.secondaryLabelColor;
+	// The spinner belongs to the value when the cell has one.
+	NSTextField *measured = cell.valueField ?: cell.textField;
 	NSString *loadingKey = cellSpec[@"loading"];
 	BOOL loading = loadingKey && [rowData[loadingKey] respondsToSelector:@selector(boolValue)] && [rowData[loadingKey] boolValue];
 	cell.loadingIndicator.hidden = !loading;
 	if (loading) {
 		[cell.loadingIndicator startAnimation:nil];
-		cell.textField.textColor = NSColor.secondaryLabelColor;
+		measured.textColor = NSColor.secondaryLabelColor;
 	} else [cell.loadingIndicator stopAnimation:nil];
 	NSString *secondaryColorKey = cellSpec[@"secondaryColor"];
 	NSString *secondaryColor = secondaryColorKey
@@ -527,7 +540,9 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	cell.levelIndicator.hidden = levelValue == nil;
 	NSString *levelColorKey = cellSpec[@"levelColor"];
 	cell.levelIndicator.fillColor = semantic_color(levelColorKey ? rowData[levelColorKey] : nil);
-	cell.levelIndicator.accessibilityLabel = [@"Share of measured storage: " stringByAppendingString:text];
+	NSString *levelLabel = cell.valueField.stringValue.length
+		? [NSString stringWithFormat:@"%@, %@", text, cell.valueField.stringValue] : text;
+	cell.levelIndicator.accessibilityLabel = [@"Share of measured storage: " stringByAppendingString:levelLabel];
 	[cell.levelIndicator setNeedsDisplay:YES];
 	NSString *imageColorKey = cellSpec[@"imageColor"];
 	cell.imageView.contentTintColor = imageColorKey ? semantic_color(rowData[imageColorKey]) : NSColor.secondaryLabelColor;

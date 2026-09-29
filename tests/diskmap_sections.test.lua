@@ -62,9 +62,9 @@ t.assertEqual(refs.opportunities, nil, "the overview does not repeat reclaim con
 t.expect(not refs.results.drawsBackground, "the category list lets its native group background show through")
 refs.results:replaceRows({{id = "apps", name = "Applications", size = "Calculating…", calculating = true}})
 local nameCell = bridge._tableCell(refs.results, 0, 0)
-local sizeCell = bridge._tableCell(refs.results, 2, 0)
+local sizeCell = bridge._tableCell(refs.results, 1, 0)
 t.assertEqual(nameCell.textField.font.pointSize, 13, "category title uses the regular system font")
-t.assertEqual(sizeCell.textField.font.pointSize, 13, "size and loading text use the regular system font")
+t.assertEqual(sizeCell.valueField.font.pointSize, 13, "size and loading text use the regular system font")
 t.expect(bridge._tableCell(refs.results, 1, 0).levelIndicator.hidden, "unmeasured categories have no share bar")
 
 local settings, settingsRefs = render("Settings", {monitoring = true, mediaEnabled = false, historyEnabled = false,
@@ -80,7 +80,7 @@ refs.results.fixedHeight = 44
 refs.page.size = ns.Size(400, 500); refs.page:layout(400)
 t.expect(refs.results.frame.size.height < 80, "category rows keep their height instead of filling the window")
 t.expect(refs.results.frame.size.width <= 400, "category list stays within the page width")
-t.expect(not bridge._tableCell(refs.results, 2, 0).loadingIndicator.hidden, "section background preserves per-row loading")
+t.expect(not bridge._tableCell(refs.results, 1, 0).loadingIndicator.hidden, "section background preserves per-row loading")
 -- Every ranking page shares one list: a non-scrolling table whose actions live
 -- in a row menu, so the page itself scrolls and no buttons sit under lists.
 local menuRows = 0
@@ -92,7 +92,7 @@ t.expect(items.scrollDisabled, "shared lists never scroll inside a page")
 items:replaceRows({{id = "derived", name = "Xcode DerivedData", subtitle = "Developer › Xcode", detail = "Rebuildable", size = "4.9 GB", relative = 1, shareText = "", color = "systemBlue", icon = "hammer.fill"}})
 t.assertEqual(bridge._tableRowMenu(items, 1)[1].title, "Show Xcode DerivedData", "the row menu describes its row")
 t.assertEqual(menuRows, 1, "row menus are built when opened")
-local more = bridge._tableCell(items, 4, 0)
+local more = bridge._tableCell(items, 3, 0)
 t.expect(more.actionButton ~= nil and more.actionButton.accessibilityLabel == "More", "each row has a More button")
 -- 595 points is the list width in Diskmap's narrowest window (880 points).
 items.size = ns.Size(595, 200); items:layout(595)
@@ -116,12 +116,12 @@ t.assertEqual(statusCell.imageView.accessibilityLabel, "Rebuildable", "VoiceOver
 t.expect(bridge._tableCell(statuses, 1, 1).imageView.image == nil, "a rolled-up group has no status symbol")
 local bar = bridge._tableCell(statuses, 2, 0)
 bar:layout()
-t.expect(bar.levelIndicator.frame.origin.x <= 8, "a share bar without a label starts at the column edge")
+t.expect(bar.levelIndicator.frame.origin.x <= 8, "the meter bar starts at the column edge")
 statuses.size = ns.Size(560, 200); statuses:layout(560)
 local statusWidths = {}
 for _, column in ipairs(bridge._tableColumnWidths(statuses)) do statusWidths[column.id] = column.width end
 t.expect(statusWidths.detail <= 48, "the status column is one symbol wide")
-t.expect(statusWidths.size >= 104, "the size column fits a lower-bound size such as ≥ 999.9 MB")
+t.expect(statusWidths.shareText >= 180, "the meter fits a lower-bound size such as ≥ 999.9 MB beside its share")
 for status, style in pairs(Status.styles) do
 	t.expect(style.icon:find("%.fill$") ~= nil and style.color ~= nil, status .. " has a filled, coloured symbol")
 end
@@ -135,10 +135,10 @@ sizes:replaceRows({
 	Model.sizeLabel({id = "docs", name = "Documents", relative = 1, shareText = "", color = "systemBlue", icon = "doc"}, "complete", 2e9),
 })
 sizes.size = ns.Size(560, 200); sizes:layout(560)
-local denied, measured = bridge._tableCell(sizes, 2, 0), bridge._tableCell(sizes, 2, 1)
-t.expect(not denied.textField.hidden and denied.imageView.image == nil, "a denied size is a word, not a symbol")
-t.assertEqual(denied.textField.stringValue, "No access", "the state is spelled out")
-t.assertEqual(measured.textField.stringValue, "2.0 GB", "the measured size is text")
+local denied, measured = bridge._tableCell(sizes, 1, 0), bridge._tableCell(sizes, 1, 1)
+t.expect(not denied.valueField.hidden and denied.imageView.image == nil, "a denied size is a word, not a symbol")
+t.assertEqual(denied.valueField.stringValue, "No access", "the state is spelled out")
+t.assertEqual(measured.valueField.stringValue, "2.0 GB", "the measured size is text")
 for status, text in pairs(Model.sizeStates) do
 	local row = Model.sizeLabel({}, status)
 	t.assertEqual(row.size, text, status .. " reads as its word")
@@ -151,8 +151,8 @@ local partial = Model.sizeLabel({}, "partial", 2e9)
 t.assertEqual(partial.size, "≥ 2.0 GB", "a partial size reads as a lower bound")
 t.expect(partial.partial, "a partial size is flagged")
 sizes:replaceRows({Model.sizeLabel({id = "dev", name = "Developer", relative = 1, shareText = "", color = "systemBlue", icon = "hammer"}, "partial", 15.8e9)})
-local lower = bridge._tableCell(sizes, 2, 0)
-t.assertEqual(lower.textField.stringValue, "≥ 15.8 GB", "the lower bound reads ≥ before its number")
+local lower = bridge._tableCell(sizes, 1, 0)
+t.assertEqual(lower.valueField.stringValue, "≥ 15.8 GB", "the lower bound reads ≥ before its number")
 t.expect(lower.imageView.image == nil, "a lower bound is a sign, not a symbol")
 t.assertEqual(Status.apply({detail = "Under 5.0 GB"}, "Within").statusColor, "systemGreen", "a location within limits is green")
 t.assertEqual(Status.apply({detail = "Review"}).statusColor, "systemOrange", "review is orange")

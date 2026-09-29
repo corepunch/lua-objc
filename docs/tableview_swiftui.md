@@ -165,9 +165,14 @@ for a width the scroll view no longer occupies.
 ### Measured storage cells (AppKit)
 
 An etlua `Column` can bind `levelKey` to a row's fraction (0–1) and
-`levelColorKey` to its semantic color. The column's `id` supplies the adjacent
-text (for example, `39%`). AppKit renders a read-only `NSLevelIndicator`;
-missing values hide the bar, and out-of-range values are clamped. `imageKey`
+`levelColorKey` to its semantic color, making the cell one meter, like
+Spectrum's Meter or SwiftUI's `Gauge`. `valueKey` binds the value (for
+example, `52.3 GB`), which leads on a line above the bar; the column's `id`
+supplies the share (for example, `39%`), which trails in secondary color.
+AppKit renders a read-only `NSLevelIndicator` across the column; missing
+values hide the bar, and out-of-range values are clamped. `loadingKey` puts
+the native spinner before the value while it is measured. VoiceOver reads the
+share and the value together. `imageKey`
 and `imageColorKey` bind row symbols and their semantic tint. `List.rowHeight`
 sets the native row height. These cell bindings do not change table selection
 or keyboard behavior.

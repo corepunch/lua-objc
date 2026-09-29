@@ -281,7 +281,7 @@ back. The main window steps aside with `window:hide()` and returns with
 | Tag | Purpose | Important attributes |
 |---|---|---|
 | `List` | Native table/list | `style`, `header`, `alternatingRows`, `bordered`, `gridLines`, plus layout attributes |
-| `Column` | Child column descriptor consumed by `List` | `id`, `title`, `width`, `minWidth`, `alignment`, `sortable`, `systemImage`; row keys `subtitleKey`, `imageKey`, `imageColorKey`, `badgeColorKey`, `appIconKey`, `fileIconKey`, `imageSize`, `levelKey`, `levelColorKey`, `loadingKey`, `badgeKey`; `buttonSymbol`, `buttonMenu`, `controlSize`; `labelStyle="iconOnly"` shows only the row's symbol and keeps the text as tooltip and VoiceOver label |
+| `Column` | Child column descriptor consumed by `List` | `id`, `title`, `width`, `minWidth`, `alignment`, `sortable`, `systemImage`; row keys `subtitleKey`, `imageKey`, `imageColorKey`, `badgeColorKey`, `appIconKey`, `fileIconKey`, `imageSize`, `levelKey`, `levelColorKey`, `valueKey` (meter value above the bar), `loadingKey`, `badgeKey`; `buttonSymbol`, `buttonMenu`, `controlSize`; `labelStyle="iconOnly"` shows only the row's symbol and keeps the text as tooltip and VoiceOver label |
 | `Toolbar` | Toolbar item collection consumed by `Window` | No attributes |
 | `ToolbarItem` | Native toolbar descriptor; accepts at most one view child as its custom control | `id`, `label`, `icon`, `tooltip`, `action`, `bordered` |
 | `NavigationStack` | UIKit navigation stack | `title`, `largeTitle`, `hidesNavigationBar`, `hidesTabBar` |
