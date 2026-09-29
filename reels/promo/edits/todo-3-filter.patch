@@ -1,0 +1,14 @@
+--- a/demo/todo/views/Content.etlua
++++ b/demo/todo/views/Content.etlua
+@@ -4,6 +4,11 @@
+ 			<Label text="<%= title %>" size="34" weight="bold" color="systemBlue" />
+ 			<Label text="<%= date %>" size="15" color="secondary" />
+ 		</VStack>
++		<Picker id="filter" style="segmented" value="<%= filter %>" onChange="filter">
++			<% for _, name in ipairs(filters) do -%>
++			<Option title="<%= name %>" />
++			<% end -%>
++		</Picker>
+ 		<GroupBox id="progress" maxWidth="infinity">
+ 			<VStack padding="4" spacing="8" maxWidth="infinity" alignment="leading">
+ 				<HStack spacing="6" maxWidth="infinity" alignment="firstTextBaseline">

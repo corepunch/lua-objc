@@ -43,6 +43,8 @@ def main():
     parser.add_argument('--display-name', required=True)
     parser.add_argument('--device-family', type=int, choices=(1, 2), required=True)
     parser.add_argument('--file-sharing', action='store_true')
+    parser.add_argument('--overlay', action='append', default=[],
+                        help='copy this folder\'s files into the workspace at their paths relative to it')
     args = parser.parse_args()
     try:
         args.app, args.entry = resolve_app_and_entry(args.app, args.entry)
@@ -71,6 +73,14 @@ def main():
     copy_tree(args.app, workspace)
     if args.app == 'apps/studio':
         copy_tree('demo/playground', workspace)
+    for overlay in args.overlay:
+        root = Path(overlay)
+        for path in root.rglob('*'):
+            relative = path.relative_to(root)
+            if path.is_file() and not any(part.startswith('.') for part in relative.parts):
+                target = workspace / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(path, target)
     (bundle / 'PkgInfo').write_bytes(b'APPL????')
 
 

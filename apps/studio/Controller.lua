@@ -15,6 +15,24 @@ local VIEWS = "apps/studio/views/"
 local SEED = {"init.lua", "Model.lua", "Controller.lua", "views/Window.etlua"}
 local REPOSITORY = "workspace"
 
+-- A showcase opens another bundled project with a prepared conversation,
+-- so a promo capture shows Lua Studio mid-session. LUA_STUDIO_SHOWCASE
+-- names a Lua file returning {project, files, conversation}: `project` is
+-- the project folder ("demo/todo"), `files` its paths relative to it.
+local function showcase(read)
+	local path = os.getenv("LUA_STUDIO_SHOWCASE")
+	if not path or path == "" then return nil end
+	local data = assert(load(assert(read(path)), "@" .. path, "t", {}))()
+	local files = {}
+	for _, name in ipairs(data.files) do
+		local file = data.project .. "/" .. name
+		files[file] = assert(read(file))
+	end
+	data.sources = files
+	data.entry = data.project:gsub("/", ".") .. ".init"
+	return data
+end
+
 function Controller.new()
 	return setmetatable({
 		previewPane = PreviewController.new(),
@@ -22,8 +40,13 @@ function Controller.new()
 	}, Controller)
 end
 
+function Controller:renderPreview()
+	if self.showcase then return self.preview:render(self.showcase.sources, self.showcase.entry) end
+	return self.preview:render(self.model.files)
+end
+
 function Controller:reloadPreview()
-	local controller, err = self.preview:render(self.model.files)
+	local controller, err = self:renderPreview()
 	if controller then
 		self.refs.preview.content = controller
 		self.refs.previewStatus.text = "Ready"
@@ -86,7 +109,7 @@ function Controller:createWindow()
 			commitProject = function() self:commitProject("Update project") end,
 		},
 	}, ns)
-	local controller, err = self.preview:render(self.model.files)
+	local controller, err = self:renderPreview()
 	if controller then
 		refs.preview.content = controller
 	else

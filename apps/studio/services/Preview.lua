@@ -2,11 +2,14 @@
 local Preview = {}
 Preview.__index = Preview
 
+local FRAMEWORK_HOOKS = { _motionInsert = true, _motionRemove = true, _hasLayoutAxis = true }
+
 function Preview.new(ns, readFramework)
 	return setmetatable({ ns = ns, readFramework = readFramework }, Preview)
 end
 
-function Preview:render(files)
+-- `entry` is the project's init module ("demo.playground.init" by default).
+function Preview:render(files, entry)
 	local env, loaded = {}, {}
 	for _, key in ipairs({ "assert", "error", "ipairs", "next", "pairs", "pcall", "select", "tonumber", "tostring", "type", "xpcall", "setmetatable", "getmetatable", "rawget", "rawset", "rawequal", "print", "unpack" }) do env[key] = _G[key] end
 	for _, key in ipairs({ "math", "string", "table", "utf8", "coroutine" }) do
@@ -14,8 +17,11 @@ function Preview:render(files)
 	end
 	env._G = env
 	local ns = {}
+	-- Project code sees the public vocabulary; the framework modules it
+	-- loads (ui.xml reconciling a retained template) also need the few
+	-- private hooks they call.
 	for key, value in pairs(self.ns) do
-		if key:sub(1, 1) ~= "_" then ns[key] = value end
+		if key:sub(1, 1) ~= "_" or FRAMEWORK_HOOKS[key] then ns[key] = value end
 	end
 	ns.Window = function(config)
 		local content = config.content or config[1]
@@ -53,7 +59,7 @@ function Preview:render(files)
 		if name == "UIKitNative" or name == "AppKitNative" then return reader end
 		if loaded[name] ~= nil then return loaded[name] end
 		local source, path
-		if name == "ui.xml" or name == "ui.component" then
+		if name == "ui.xml" or name == "ui.component" or name == "ui.template" then
 			path = "lua/" .. name:gsub("%.", "/") .. ".lua"; source = self.readFramework(path)
 		elseif name == "etlua" then
 			path = "lua/vendor/etlua/etlua.lua"; source = self.readFramework(path)
@@ -75,7 +81,7 @@ function Preview:render(files)
 		if ticks > 500 then error("Preview exceeded its execution budget") end
 	end, "", 10000)
 	local ok, result = xpcall(function()
-		local controller = requireModule("demo.playground.init").new()
+		local controller = requireModule(entry or "demo.playground.init").new()
 		return controller:createWindow()
 	end, debug.traceback)
 	debug.sethook(oldHook, mask, count)
