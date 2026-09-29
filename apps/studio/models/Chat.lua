@@ -1,3 +1,6 @@
+-- The conversation the chat pane shows: messages from the person and the
+-- agent (an agent message may list the files it edited, with their diff
+-- lines), the draft in the composer and the suggestions above it.
 local Model = {}
 
 -- Templates get a code symbol and Lua modules a document symbol. Each row

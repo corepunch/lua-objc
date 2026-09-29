@@ -62,7 +62,8 @@ app: $(ROOT)/LuaStudio
 	python3 scripts/ipad/bundle.py --binary $< --bundle $(BUNDLE) --sdk $(SDK) \
 		--identifier $(BUNDLE_ID) --minimum $(IOS_MIN) --app "$(APP_DIR)" \
 		--entry "$(APP_ENTRY)" --display-name "$(APP_DISPLAY_NAME)" \
-		--device-family $(DEVICE_FAMILY) $(if $(filter 1,$(FILE_SHARING)),--file-sharing)
+		--device-family $(DEVICE_FAMILY) $(if $(filter 1,$(FILE_SHARING)),--file-sharing) \
+		$(foreach overlay,$(OVERLAY),--overlay $(overlay))
 ifeq ($(SDK),iphonesimulator)
 	codesign --force --sign - $(BUNDLE)
 endif

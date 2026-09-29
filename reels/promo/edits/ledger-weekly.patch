@@ -1,0 +1,11 @@
+--- a/demo/ledger/Model.lua
++++ b/demo/ledger/Model.lua
+@@ -34,7 +34,7 @@
+ }
+ 
+ function Model.new()
+-	local self = setmetatable({period = "monthly"}, Model)
++	local self = setmetatable({period = "weekly"}, Model)
+ 	self.categories = {}
+ 	for _, category in ipairs(Model.CATEGORIES) do self.categories[category.id] = category end
+ 	return self
