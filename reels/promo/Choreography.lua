@@ -37,7 +37,7 @@ local DEVICE = {
 C.DEVICE = DEVICE
 
 -- Lua Studio's phone preview in the iPad capture, in screen points.
-local PREVIEW = { x = 251, y = 100, w = 498, h = 921 }
+local PREVIEW = { x = 26, y = 120, w = 388, h = 888 }
 C.PREVIEW = PREVIEW
 
 -- ── Composition slots ────────────────────────────────────────────────────
@@ -212,9 +212,9 @@ CAMERA.montage = {
 -- Lua Studio: framed in screen points on the iPad, so a push to the diff or
 -- the preview lands on the capture's own layout. {time, u, v, distance}.
 CAMERA.studio = {
-	{ 7.0, 688, 516, 4.3 }, { 7.9, 688, 516, 4.3, hold = true }, { 8.8, 1060, 360, 2.35 },
-	{ 9.25, 1060, 360, 2.35, hold = true }, { 9.95, 688, 540, 3.7 }, { SHOT.send2 + 0.1, 688, 540, 3.7, hold = true },
-	{ 11.0, 500, 330, 2.4 }, { 12.5, 688, 516, 4.4 }, { SHOT.lift, 500, 560, 1.35 },
+	{ 7.0, 688, 516, 4.3 }, { 7.9, 688, 516, 4.3, hold = true }, { 8.8, 930, 380, 2.35 },
+	{ 9.25, 930, 380, 2.35, hold = true }, { 9.95, 688, 560, 3.7 }, { SHOT.send2 + 0.1, 688, 560, 3.7, hold = true },
+	{ 11.0, 222, 300, 2.4 }, { 12.5, 688, 516, 4.4 }, { SHOT.lift, 220, 564, 1.35 },
 }
 
 local function studioCamera(t)
