@@ -3,7 +3,7 @@ local xml = require("ui.xml")
 local Model = require("apps.studio.Model")
 local Device = require("apps.studio.services.Device")
 local Preview = require("apps.studio.services.Preview")
-local Git = require("apps.studio.services.Git")
+local Versions = require("apps.studio.services.Versions")
 local SidebarController = require("apps.studio.controllers.SidebarController")
 local PreviewController = require("apps.studio.controllers.PreviewController")
 local ChatController = require("apps.studio.controllers.ChatController")
@@ -37,11 +37,11 @@ end
 
 -- Commits the current project; the result replaces the status line.
 function Controller:commitProject(message)
-	if not self.git then
-		self.refs.previewStatus.text = "Git unavailable: " .. tostring(self.gitError)
-		return nil, self.gitError
+	if not self.versions then
+		self.refs.previewStatus.text = "Git unavailable: " .. tostring(self.versionsError)
+		return nil, self.versionsError
 	end
-	local id, err = self.git:record(self.model.files, message)
+	local id, err = self.versions:record(self.model.files, message)
 	if id == nil then
 		self.refs.previewStatus.text = "Commit failed: " .. tostring(err)
 		return nil, err
@@ -65,7 +65,7 @@ function Controller:createWindow()
 	end
 	local projects = Projects.list(readProjectFile, ns.json_parse, ns._jsonEncode, ns._documentWrite)
 	self.preview = Preview.new(ns, ns._readFile)
-	self.git, self.gitError = Git.open(require("Git"), ns._documentPath(REPOSITORY), function(path, content)
+	self.versions, self.versionsError = Versions.open(require("Git"), ns._documentPath(REPOSITORY), function(path, content)
 		return ns._documentWrite(REPOSITORY .. "/" .. path, content)
 	end)
 
@@ -97,7 +97,7 @@ function Controller:createWindow()
 	end
 	self.refs = refs
 	-- The first launch commits the starter project, so history has a base.
-	if self.git and #self.git:history(1) == 0 then self:commitProject("Start project") end
+	if self.versions and #self.versions:log(1) == 0 then self:commitProject("Start project") end
 	return ns.Window(config)
 end
 

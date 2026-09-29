@@ -56,7 +56,7 @@ host device. Test final apps on an iPhone too.
 
 The playground project is a Git repository in `Documents/workspace/`, managed
 through the libgit2 `Git` module ([src/plugins/git](../../src/plugins/git/README.md));
-iPadOS cannot run a `git` executable. `services/Git.lua` writes the project's
+iPadOS cannot run a `git` executable. `services/Versions.lua` writes the project's
 files into the worktree, removes files the project dropped, and commits them as
 "Lua Studio". The first launch commits the starter project; Commit records the
 current project and shows the short id, or "No changes to commit", in the

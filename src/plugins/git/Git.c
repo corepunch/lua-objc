@@ -13,7 +13,7 @@
 #include <string.h>
 
 #define REPOSITORY "Git.Repository"
-#define STATUS_FIELDS 5
+#define STATUS_FIELDS 6
 
 typedef struct {
 	git_repository *repo;
@@ -45,30 +45,48 @@ static void push_oid(lua_State *L, const git_oid *oid) {
 	lua_pushstring(L, hex);
 }
 
-/* A Lua string or array of strings as a pathspec; nil matches every path. */
-static void check_pathspec(lua_State *L, int index, git_strarray *out, const char **storage, size_t capacity) {
-	out->strings = (char **)storage;
-	out->count = 0;
-	if (lua_isnoneornil(L, index)) return;
+/* A string or array of strings as a pathspec; nil matches every path. The
+ * pointer array is a userdata left on the stack, so it lives as long as the
+ * call; the strings stay referenced by the argument itself. */
+static git_strarray check_pathspec(lua_State *L, int index) {
+	git_strarray pathspec = {NULL, 0};
+	if (lua_isnoneornil(L, index)) return pathspec;
 	if (lua_type(L, index) == LUA_TSTRING) {
-		storage[0] = lua_tostring(L, index);
-		out->count = 1;
-		return;
+		pathspec.strings = lua_newuserdatauv(L, sizeof(char *), 0);
+		pathspec.strings[0] = (char *)lua_tostring(L, index);
+		pathspec.count = 1;
+		return pathspec;
 	}
-	luaL_checktype(L, index, LUA_TTABLE);
-	lua_Integer count = luaL_len(L, index);
-	luaL_argcheck(L, count <= (lua_Integer)capacity, index, "too many paths");
-	for (lua_Integer i = 1; i <= count; i++) {
-		lua_rawgeti(L, index, i);
-		if (lua_type(L, -1) != LUA_TSTRING) luaL_error(L, "path %d must be a string", (int)i);
-		/* The string stays referenced by the table argument after the pop. */
-		storage[i - 1] = lua_tostring(L, -1);
+	luaL_argexpected(L, lua_istable(L, index), index, "string or array of paths");
+	size_t count = (size_t)luaL_len(L, index);
+	pathspec.strings = lua_newuserdatauv(L, (count ? count : 1) * sizeof(char *), 0);
+	for (size_t i = 0; i < count; i++) {
+		if (lua_rawgeti(L, index, (lua_Integer)i + 1) != LUA_TSTRING)
+			luaL_error(L, "path %d must be a string", (int)i + 1);
+		pathspec.strings[i] = (char *)lua_tostring(L, -1);
 		lua_pop(L, 1);
 	}
-	out->count = (size_t)count;
+	pathspec.count = count;
+	return pathspec;
 }
 
-#define PATHSPEC_CAPACITY 256
+/* An optional options table: absent or nil, else it must be a table. */
+static int check_options(lua_State *L, int index) {
+	if (lua_isnoneornil(L, index)) return 0;
+	luaL_checktype(L, index, LUA_TTABLE);
+	return 1;
+}
+
+/* A string field of a table argument, or fallback when absent. The string
+ * stays referenced by the table. */
+static const char *opt_string_field(lua_State *L, int index, const char *field, const char *fallback) {
+	int type = lua_getfield(L, index, field);
+	const char *value = fallback;
+	if (type == LUA_TSTRING) value = lua_tostring(L, -1);
+	else if (type != LUA_TNIL) luaL_error(L, "%s must be a string", field);
+	lua_pop(L, 1);
+	return value;
+}
 
 /* libgit2 caches a repository's index in memory; re-read it so a change made
  * through another handle or process is neither missed nor overwritten. */
@@ -94,10 +112,7 @@ static int git_lua_init(lua_State *L) {
 	git_repository_init_options options = GIT_REPOSITORY_INIT_OPTIONS_INIT;
 	options.flags = GIT_REPOSITORY_INIT_MKPATH;
 	options.initial_head = "main";
-	if (lua_istable(L, 2)) {
-		lua_getfield(L, 2, "initialBranch");
-		if (!lua_isnil(L, -1)) options.initial_head = luaL_checkstring(L, -1);
-	}
+	if (check_options(L, 2)) options.initial_head = opt_string_field(L, 2, "initialBranch", "main");
 	git_repository *repo = NULL;
 	if (git_repository_init_ext(&repo, path, &options) < 0) return push_failure(L);
 	return push_repo(L, repo);
@@ -186,8 +201,9 @@ static const struct {
 	{GIT_STATUS_WT_UNREADABLE, "worktree", "unreadable"},
 };
 
-/* Array of {path, index?, worktree?, conflicted?}, sorted by path; ignored
- * files are left out, untracked folders are listed file by file. */
+/* Array of {path, index?, worktree?, oldPath?, conflicted?}, sorted by path;
+ * oldPath is set on renames. Ignored files are left out, and untracked
+ * folders are listed file by file. */
 static int repo_status(lua_State *L) {
 	git_repository *repo = check_repo(L);
 	git_status_options options = GIT_STATUS_OPTIONS_INIT;
@@ -204,6 +220,10 @@ static int repo_status(lua_State *L) {
 		lua_createtable(L, 0, STATUS_FIELDS);
 		lua_pushstring(L, delta->new_file.path ? delta->new_file.path : delta->old_file.path);
 		lua_setfield(L, -2, "path");
+		if (delta->status == GIT_DELTA_RENAMED) {
+			lua_pushstring(L, delta->old_file.path);
+			lua_setfield(L, -2, "oldPath");
+		}
 		for (size_t n = 0; n < sizeof(STATUS_NAMES) / sizeof(STATUS_NAMES[0]); n++) {
 			if (!(entry->status & STATUS_NAMES[n].flag)) continue;
 			lua_pushstring(L, STATUS_NAMES[n].value);
@@ -238,9 +258,7 @@ static int repo_files(lua_State *L) {
  * pathspecs, like `git add --all`. */
 static int repo_add(lua_State *L) {
 	git_repository *repo = check_repo(L);
-	const char *storage[PATHSPEC_CAPACITY];
-	git_strarray pathspec;
-	check_pathspec(L, 2, &pathspec, storage, PATHSPEC_CAPACITY);
+	git_strarray pathspec = check_pathspec(L, 2);
 	git_index *index = NULL;
 	if (open_index(&index, repo) < 0) return push_failure(L);
 	int result = git_index_add_all(index, &pathspec, GIT_INDEX_ADD_DEFAULT, NULL, NULL);
@@ -252,13 +270,11 @@ static int repo_add(lua_State *L) {
 	return 1;
 }
 
-/* repo:reset([paths]) unstages, restoring index entries from HEAD, like
- * `git reset -- paths`. Before the first commit it empties those entries. */
-static int repo_reset(lua_State *L) {
+/* repo:unstage([paths]) restores index entries from HEAD, like
+ * `git restore --staged`. Before the first commit it removes them. */
+static int repo_unstage(lua_State *L) {
 	git_repository *repo = check_repo(L);
-	const char *storage[PATHSPEC_CAPACITY];
-	git_strarray pathspec;
-	check_pathspec(L, 2, &pathspec, storage, PATHSPEC_CAPACITY);
+	git_strarray pathspec = check_pathspec(L, 2);
 	git_object *head = NULL;
 	int result = git_revparse_single(&head, repo, "HEAD");
 	if (result == GIT_ENOTFOUND) {
@@ -277,15 +293,11 @@ static int repo_reset(lua_State *L) {
 }
 
 static int check_signature(lua_State *L, int index, git_repository *repo, git_signature **out) {
-	if (lua_isnoneornil(L, index)) return git_signature_default(out, repo);
-	luaL_checktype(L, index, LUA_TTABLE);
-	lua_getfield(L, index, "name");
-	lua_getfield(L, index, "email");
-	const char *name = luaL_checkstring(L, -2);
-	const char *email = luaL_checkstring(L, -1);
-	int result = git_signature_now(out, name, email);
-	lua_pop(L, 2);
-	return result;
+	if (!check_options(L, index)) return git_signature_default(out, repo);
+	const char *name = opt_string_field(L, index, "name", NULL);
+	const char *email = opt_string_field(L, index, "email", NULL);
+	luaL_argcheck(L, name && email, index, "author needs name and email");
+	return git_signature_now(out, name, email);
 }
 
 /* repo:commit(message [, {name, email}]) commits the index on HEAD and
@@ -350,12 +362,14 @@ static int repo_log(lua_State *L) {
 	git_repository *repo = check_repo(L);
 	lua_Integer limit = -1;
 	const char *from = "HEAD";
-	if (lua_istable(L, 2)) {
-		lua_getfield(L, 2, "limit");
-		limit = luaL_optinteger(L, -1, -1);
-		lua_getfield(L, 2, "from");
-		from = luaL_optstring(L, -1, "HEAD");
-		lua_pop(L, 2);
+	if (check_options(L, 2)) {
+		if (lua_getfield(L, 2, "limit") != LUA_TNIL) {
+			int exact = 0;
+			limit = lua_tointegerx(L, -1, &exact);
+			if (!exact || limit < 0) luaL_error(L, "limit must be a non-negative integer");
+		}
+		lua_pop(L, 1);
+		from = opt_string_field(L, 2, "from", "HEAD");
 	}
 	git_object *start = NULL;
 	int result = git_revparse_single(&start, repo, from);
@@ -465,7 +479,7 @@ static int repo_checkout(lua_State *L) {
 static int repo_diff(lua_State *L) {
 	git_repository *repo = check_repo(L);
 	int staged = 0;
-	if (lua_istable(L, 2)) {
+	if (check_options(L, 2)) {
 		lua_getfield(L, 2, "staged");
 		staged = lua_toboolean(L, -1);
 		lua_pop(L, 1);
@@ -523,7 +537,7 @@ static const luaL_Reg repo_methods[] = {
 	{"status", repo_status},
 	{"files", repo_files},
 	{"add", repo_add},
-	{"reset", repo_reset},
+	{"unstage", repo_unstage},
 	{"commit", repo_commit},
 	{"log", repo_log},
 	{"branches", repo_branches},

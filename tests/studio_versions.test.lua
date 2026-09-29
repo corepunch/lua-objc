@@ -1,7 +1,7 @@
 _G.__headless = true
 local t = require("TestKit")
-local native = require("Git")
-local Git = require("apps.studio.services.Git")
+local Git = require("Git")
+local Versions = require("apps.studio.services.Versions")
 
 -- Studio records its project with the libgit2 module, never a git process.
 local pipe = assert(io.popen("/usr/bin/mktemp -d /private/tmp/studio-git.XXXXXXXX"))
@@ -26,41 +26,41 @@ local files = {
 	["demo/playground/views/Window.etlua"] = "<Window />\n",
 }
 
-t.assertEqual(Git.relativePath("demo/playground/views/Window.etlua"), "views/Window.etlua",
+t.assertEqual(Versions.relativePath("demo/playground/views/Window.etlua"), "views/Window.etlua",
 	"project paths are repository-relative")
-t.expect(Git.relativePath("apps/studio/Model.lua") == nil, "other paths are not project files")
+t.expect(Versions.relativePath("apps/studio/Model.lua") == nil, "other paths are not project files")
 
-local git = assert(Git.open(native, workspace, write))
-t.assertEqual(#git:history(), 0, "a new workspace has no history")
-local first = assert(git:record(files, "Start project"))
+local versions = assert(Versions.open(Git, workspace, write))
+t.assertEqual(#versions:log(), 0, "a new workspace has no history")
+local first = assert(versions:record(files, "Start project"))
 t.assertEqual(#first, 40, "recording returns the commit id")
-local repo = assert(native.open(workspace))
+local repo = assert(Git.open(workspace))
 t.assertEqual(tracked(repo), "init.lua,views/Window.etlua", "the repository holds the project files")
 t.assertEqual(repo:show("HEAD", "views/Window.etlua"), "<Window />\n", "files are committed with their content")
-t.assertEqual(git:record(files, "Again"), false, "an unchanged project records nothing")
-t.assertEqual(#git:history(), 1, "no empty commits")
+t.assertEqual(versions:record(files, "Again"), false, "an unchanged project records nothing")
+t.assertEqual(#versions:log(), 1, "no empty commits")
 
 files["demo/playground/views/Window.etlua"] = nil
 files["demo/playground/Model.lua"] = "return {}\n"
-local second = assert(git:record(files, "Replace window"))
+local second = assert(versions:record(files, "Replace window"))
 t.assertEqual(tracked(repo), "Model.lua,init.lua", "files the project dropped are deleted")
 t.expect(io.open(workspace .. "/views/Window.etlua") == nil, "deleted files leave the worktree")
-local history = git:history()
+local history = versions:log()
 t.assertEqual(#history, 2, "each change is one commit")
 t.assertEqual(history[1].id, second, "history is newest first")
 t.assertEqual(history[1].author, "Lua Studio", "Studio authors its commits")
-t.assertEqual(#git:history(1), 1, "history can be limited")
-git:close()
+t.assertEqual(#versions:log(1), 1, "history can be limited")
+versions:close()
 
-local reopened = assert(Git.open(native, workspace, write))
-t.assertEqual(reopened:history()[1].id, second, "reopening keeps the history")
+local reopened = assert(Versions.open(Git, workspace, write))
+t.assertEqual(reopened:log()[1].id, second, "reopening keeps the history")
 local ok, err = reopened:record({ ["../escape.lua"] = "" }, "Bad")
 t.expect(ok == nil and err:find("Not a project path", 1, true), "paths outside the project are refused")
-ok, err = Git.open(native, workspace, function() return nil, "disk full" end):record(files, "Fails")
+ok, err = Versions.open(Git, workspace, function() return nil, "disk full" end):record(files, "Fails")
 t.expect(ok == nil and err == "disk full", "write failures are reported")
 local blocked = root .. "/file"
 assert(io.open(blocked, "w")):close()
-ok, err = Git.open(native, blocked .. "/repo", write)
+ok, err = Versions.open(Git, blocked .. "/repo", write)
 t.expect(ok == nil and type(err) == "string", "a repository that cannot be created is reported")
 repo:close()
 reopened:close()
@@ -71,7 +71,7 @@ local recorded = {}
 local controller = setmetatable({
 	model = { files = files },
 	refs = { previewStatus = {} },
-	git = { record = function(_, value, message)
+	versions = { record = function(_, value, message)
 		table.insert(recorded, message)
 		if message == "fail" then return nil, "locked" end
 		if message == "same" then return false end
@@ -85,7 +85,7 @@ t.assertEqual(controller:commitProject("same"), false, "an unchanged project is 
 t.assertEqual(controller.refs.previewStatus.text, "No changes to commit", "an unchanged project says so")
 t.expect(controller:commitProject("fail") == nil, "a failed commit is reported")
 t.assertEqual(controller.refs.previewStatus.text, "Commit failed: locked", "the failure is shown")
-controller.git, controller.gitError = nil, "no repository"
+controller.versions, controller.versionsError = nil, "no repository"
 t.expect(controller:commitProject("x") == nil, "commit without a repository fails")
 t.assertEqual(controller.refs.previewStatus.text, "Git unavailable: no repository", "the open error is shown")
 

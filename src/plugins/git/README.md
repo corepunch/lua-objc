@@ -29,9 +29,9 @@ repo:close()                               -- also on __gc / __close
 | `Git.open(path)` | repository at a worktree or `.git` folder; parents are not searched |
 | `repo:workdir()` | worktree path with a trailing `/` |
 | `repo:head()` | `{branch, id, unborn, detached}` |
-| `repo:status()` | `{path, index?, worktree?, conflicted?}` per changed path |
+| `repo:status()` | `{path, index?, worktree?, oldPath?, conflicted?}` per changed path; `oldPath` on renames |
 | `repo:files()` | tracked paths (`git ls-files`) |
-| `repo:add([paths])` / `repo:reset([paths])` | stage all changes / unstage |
+| `repo:add([paths])` / `repo:unstage([paths])` | stage new, changed and deleted files (`git add --all`) / restore from HEAD (`git restore --staged`) |
 | `repo:commit(message [, author])` | commit id; without an author, `user.name`/`user.email` |
 | `repo:log([{limit, from}])` | `{id, shortId, summary, message, author, email, time}` newest first |
 | `repo:branches()` | `{name, id, current}` |
@@ -40,6 +40,8 @@ repo:close()                               -- also on __gc / __close
 | `repo:show(revision, path)` | file bytes at a revision |
 
 Repository failures return `nil, message`; wrong argument types raise errors.
+Paths are a string or an array of strings; omitted, they match everything.
+Options are an optional table.
 Every call is synchronous and local — there is no clone, fetch or push yet.
 Each call re-reads the index from disk, so separate handles to one repository
 see each other's changes.
