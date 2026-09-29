@@ -28,8 +28,8 @@ failed signing/install steps stop the command.
 
 Lua Studio currently presents a visual workspace prototype: project navigation,
 a live starter-app preview, and a chat panel. Focus Preview, Compact sidebar,
-and Run work from the shared top toolbar. Project creation, Git, Share, Deploy,
-and chat controls remain placeholders. The preview controls inside the phone
+Run and Commit work from the shared top toolbar. Project creation, Share,
+Deploy, and chat controls remain placeholders. The preview controls inside the phone
 remain interactive.
 
 ## Project and runtime
@@ -52,8 +52,18 @@ It is native UIKit running on iPad, not an iPhone
 Simulator: keyboards, system presentations, and hardware behavior follow the
 host device. Test final apps on an iPhone too.
 
+## Git
+
+The playground project is a Git repository in `Documents/workspace/`, managed
+through the libgit2 `Git` module ([src/plugins/git](../../src/plugins/git/README.md));
+iPadOS cannot run a `git` executable. `services/Git.lua` writes the project's
+files into the worktree, removes files the project dropped, and commits them as
+"Lua Studio". The first launch commits the starter project; Commit records the
+current project and shows the short id, or "No changes to commit", in the
+status line.
+
 This first version provides one local project and a text/file tool agent.
-It has no Git integration, binary asset importer, app signing/export interface,
+It has no remote Git operations, binary asset importer, app signing/export interface,
 or continuous voice conversation. Dictation is supplied by iPadOS. Preview Lua
 uses separate globals and a module cache, with an initial-render instruction
 budget; this is a development environment, not a security boundary for hostile

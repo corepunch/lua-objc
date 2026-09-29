@@ -510,6 +510,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_addContextMenu", bridge_AppKit_add_context_menu},
 	{"_addClick", bridge_AppKit_add_click},
 	{"_revealInFinder", bridge_AppKit_reveal_in_finder},
+	{"_documentPath", bridge_document_path},
 	{"_documentRead", bridge_document_read},
 	{"_documentWrite", bridge_document_write},
 	{"_jsonEncode", bridge_json_encode},

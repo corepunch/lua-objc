@@ -5,6 +5,7 @@
 #include <lualib.h>
 
 int luaopen_UIKitNative(lua_State *L);
+int luaopen_Git(lua_State *L);
 
 static UIWindow *gHostWindow;
 
@@ -199,6 +200,12 @@ static int bridge_read_file(lua_State *L) {
 	luaL_requiref(_L, "UIKitNative", luaopen_UIKitNative, 0);
 	lua_pushcfunction(_L, bridge_read_file);
 	lua_setfield(_L, -2, "_readFile");
+	lua_pop(_L, 1);
+	// iOS cannot load plugin dylibs from package.cpath, so the host links the
+	// Git module (src/plugins/git) and offers it to require().
+	luaL_getsubtable(_L, LUA_REGISTRYINDEX, LUA_PRELOAD_TABLE);
+	lua_pushcfunction(_L, luaopen_Git);
+	lua_setfield(_L, -2, "Git");
 	lua_pop(_L, 1);
 
 	lua_getglobal(_L, "package");

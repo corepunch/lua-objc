@@ -28,7 +28,11 @@ MIN_FLAG := $(if $(filter iphoneos,$(SDK)),-miphoneos-version-min,-mios-simulato
 FLAGS := -isysroot $(SDK_PATH) -arch $(ARCH) $(MIN_FLAG) -O2 -Wall -DLUA_USE_IOS -I$(LUA)
 HOST := $(wildcard ios/LuaRuntime/*.m)
 FRAGMENTS := $(shell find src/uikit src/shared -name '*.m')
-FRAMEWORKS := -framework UIKit -framework Foundation -framework CoreGraphics \
+# libgit2 for the Git module, which the host preloads (src/plugins/git).
+LIBGIT2 := build/libgit2/$(SDK)-$(ARCH)/libgit2.a
+$(LIBGIT2): scripts/libgit2/build.sh
+	scripts/libgit2/build.sh $(SDK) $(ARCH) $(@D)
+FRAMEWORKS := -lz -framework UIKit -framework Foundation -framework CoreGraphics \
 	-framework CoreText \
 	-framework QuartzCore -framework Symbols -framework UserNotifications -framework Security -framework WebKit \
 	-framework AVFoundation -framework Speech
@@ -52,8 +56,8 @@ $(ROOT)/lua/%.o: $(LUA)/%.c scripts/ipad/build.mk
 build/generated/UIKit.lua.h: lua/embedded/UIKit.lua
 	@mkdir -p $(@D)
 	xxd -i -n UIKit_lua $< $@
-$(ROOT)/LuaStudio: $(OBJECTS) $(HOST) ios/LuaRuntime/LuaRuntime.h src/uikit_module.m $(FRAGMENTS) build/generated/UIKit.lua.h scripts/ipad/build.mk $(SIM_ENTITLEMENTS) $(SIM_DER)
-	xcrun --sdk $(SDK) clang $(FLAGS) -fobjc-arc -Iios/LuaRuntime -Isrc -Ibuild $(HOST) src/uikit_module.m $(OBJECTS) $(FRAMEWORKS) $(SIM_LINK_FLAGS) -o $@
+$(ROOT)/LuaStudio: $(OBJECTS) $(HOST) ios/LuaRuntime/LuaRuntime.h src/uikit_module.m $(FRAGMENTS) build/generated/UIKit.lua.h src/plugins/git/Git.c $(LIBGIT2) scripts/ipad/build.mk $(SIM_ENTITLEMENTS) $(SIM_DER)
+	xcrun --sdk $(SDK) clang $(FLAGS) -fobjc-arc -Iios/LuaRuntime -Isrc -Ibuild -Ivendor/libgit2/include $(HOST) src/uikit_module.m src/plugins/git/Git.c $(OBJECTS) $(LIBGIT2) $(FRAMEWORKS) $(SIM_LINK_FLAGS) -o $@
 app: $(ROOT)/LuaStudio
 	python3 scripts/ipad/bundle.py --binary $< --bundle $(BUNDLE) --sdk $(SDK) \
 		--identifier $(BUNDLE_ID) --minimum $(IOS_MIN) --app "$(APP_DIR)" \

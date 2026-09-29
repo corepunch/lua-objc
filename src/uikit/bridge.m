@@ -199,6 +199,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"Point", bridge_CGPoint},
 	{"Rect", bridge_CGRect},
 	{"_preview", bridge_preview},
+	{"_documentPath", bridge_document_path},
 	{"_documentRead", bridge_document_read},
 	{"_documentWrite", bridge_document_write},
 	{"_credential", bridge_credential},

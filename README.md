@@ -62,10 +62,11 @@ aligns before a human ever sees the screen.
 
 ## Quick start
 
-Requirements: macOS 26 or later and Lua 5.4. iOS builds also require Xcode
-with the iPhone Simulator SDK.
+Requirements: macOS 26 or later, Lua 5.4 and CMake (for the vendored libgit2).
+iOS builds also require Xcode with the iPhone Simulator SDK.
 
 ```sh
+git submodule update --init
 make
 make test
 make run ARGS="demo/hello"
@@ -443,6 +444,7 @@ src/                    native runtimes and bridges
 lua/embedded/           public declarative framework layers
 lua/ui/                 cross-platform XML template renderer
 lua/vendor/             vendored Lua libraries (etlua submodule)
+vendor/                 Lua 5.4 source for iOS; libgit2 submodule for the Git module
 lua/App.lua             app lifecycle and recent-item persistence
 apps/               product applications
 demo/               runnable framework examples and feature demos

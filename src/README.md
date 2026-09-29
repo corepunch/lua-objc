@@ -123,3 +123,5 @@ Standalone native service plugins live in `src/plugins/`. Unlike included runtim
 fragments, each plugin is an independent Lua module with no duplicate UI runtime.
 [StorageScan](plugins/storage/README.md) supplies cancellable bulk filesystem
 metadata scans to Diskmap through the existing native plugin loader.
+[Git](plugins/git/README.md) is libgit2 as a Lua module; the iOS hosts link it
+statically and preload it, since iOS cannot load plugin dylibs or run `git`.

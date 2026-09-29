@@ -3,6 +3,7 @@ local xml = require("ui.xml")
 local Model = require("apps.studio.Model")
 local Device = require("apps.studio.services.Device")
 local Preview = require("apps.studio.services.Preview")
+local Git = require("apps.studio.services.Git")
 local SidebarController = require("apps.studio.controllers.SidebarController")
 local PreviewController = require("apps.studio.controllers.PreviewController")
 local ChatController = require("apps.studio.controllers.ChatController")
@@ -13,6 +14,7 @@ Controller.__index = Controller
 
 local VIEWS = "apps/studio/views/"
 local SEED = {"init.lua", "Model.lua", "Controller.lua", "views/Window.etlua"}
+local REPOSITORY = "workspace"
 
 function Controller.new()
 	return setmetatable({
@@ -33,6 +35,21 @@ function Controller:reloadPreview()
 	return nil, err
 end
 
+-- Commits the current project; the result replaces the status line.
+function Controller:commitProject(message)
+	if not self.git then
+		self.refs.previewStatus.text = "Git unavailable: " .. tostring(self.gitError)
+		return nil, self.gitError
+	end
+	local id, err = self.git:record(self.model.files, message)
+	if id == nil then
+		self.refs.previewStatus.text = "Commit failed: " .. tostring(err)
+		return nil, err
+	end
+	self.refs.previewStatus.text = id and "Committed " .. id:sub(1, 7) or "No changes to commit"
+	return id
+end
+
 function Controller:createWindow()
 	assert(ns.Preview, "Lua Studio requires the iPad runtime. Use make ipad-run.")
 	local device, seed = Device.new(ns), {}
@@ -48,6 +65,9 @@ function Controller:createWindow()
 	end
 	local projects = Projects.list(readProjectFile, ns.json_parse, ns._jsonEncode, ns._documentWrite)
 	self.preview = Preview.new(ns, ns._readFile)
+	self.git, self.gitError = Git.open(require("Git"), ns._documentPath(REPOSITORY), function(path, content)
+		return ns._documentWrite(REPOSITORY .. "/" .. path, content)
+	end)
 
 	local refs
 	local config
@@ -66,6 +86,7 @@ function Controller:createWindow()
 				refs.sidebarWidth.accessibilityLabel = compact and "Widen sidebar" or "Compact sidebar"
 			end,
 			reloadPreview = function() self:reloadPreview() end,
+			commitProject = function() self:commitProject("Update project") end,
 		},
 	}, ns)
 	local controller, err = self.preview:render(self.model.files)
@@ -75,6 +96,8 @@ function Controller:createWindow()
 		error("Could not render starter preview: " .. tostring(err))
 	end
 	self.refs = refs
+	-- The first launch commits the starter project, so history has a base.
+	if self.git and #self.git:history(1) == 0 then self:commitProject("Start project") end
 	return ns.Window(config)
 end
 
