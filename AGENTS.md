@@ -16,6 +16,8 @@ Read only the material needed for the current task:
 - [docs/tableview_swiftui.md](docs/tableview_swiftui.md) — table behavior
 - [docs/animation.md](docs/animation.md) — animation, transitions, retained
   template reconciliation and steady live updates
+- [docs/reels.md](docs/reels.md) — making 3-D promo reels with Reel and
+  SceneKit: captures, component motion, camera, traps, performance
 - [docs/components.md](docs/components.md) — components: new XML tags
   written as etlua templates, the bundled set, resolution
 - [docs/scenekit.md](docs/scenekit.md) — `<SceneView>` 3-D scenes: scene
