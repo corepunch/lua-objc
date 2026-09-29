@@ -781,7 +781,7 @@ around.
 | `dropCap`, `dropCapLines` (default 3) | drop the first letter through N lines |
 | `dropCapFontName`, `dropCapDesign`, `dropCapWeight`, `dropCapColor` | the initial's face and colour |
 | `revealedCharacters` | typewriter reveal: characters shown so far, counted as `utf8.len` counts them; `-1` (default) shows everything |
-| `linkColor` | colour of the dashed rule under links; defaults to the tint |
+| `linkColor` | colour of the thicker dotted rule under links; defaults to the tint |
 | `<Hyperlink location length label>` children | the words a reader can act on; see **Links** below |
 
 The initial is sized by its **ink**, not font metrics: a plain capital spans
@@ -809,7 +809,7 @@ the link offers:
 </Paragraph>
 ```
 
-The words keep the body's colour and take a dashed underline in `linkColor`;
+The words keep the body's colour and take a thicker dotted underline in `linkColor`;
 a tap opens the menu at the words. On UIKit a link is a tagged text item
 (`UITextItemTagAttributeName`) whose menu the text view presents itself; on
 AppKit it is an `NSLinkAttributeName` run whose click pops up an `NSMenu`.

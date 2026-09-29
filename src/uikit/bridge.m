@@ -80,6 +80,7 @@ static const CGFloat kParagraphDropCapDescentFraction = 0.05;
 static const CGFloat kParagraphDropCapInkOutset = 2.0;
 /* The preview screen is an iPhone 16 display in points, so apps are laid
  * out at the size and corner curve they will have on the phone. */
+static const CGFloat kParagraphLinkUnderlineOffset = 2.0;
 static const CGFloat kPreviewWidth = 393.0;
 static const CGFloat kPreviewHeight = 852.0;
 static const CGFloat kPreviewBezel = 10.0;

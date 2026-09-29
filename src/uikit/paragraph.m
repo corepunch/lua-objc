@@ -33,6 +33,19 @@
 }
 @end
 
+@interface LuaParagraphLayoutManager : NSLayoutManager
+@end
+
+@implementation LuaParagraphLayoutManager
+- (void)drawUnderlineForGlyphRange:(NSRange)glyphRange underlineType:(NSUnderlineStyle)underlineVal
+		baselineOffset:(CGFloat)baselineOffset lineFragmentRect:(CGRect)lineRect
+		lineFragmentGlyphRange:(NSRange)lineGlyphRange containerOrigin:(CGPoint)containerOrigin {
+	[super drawUnderlineForGlyphRange:glyphRange underlineType:underlineVal
+		baselineOffset:baselineOffset + kParagraphLinkUnderlineOffset lineFragmentRect:lineRect
+		lineFragmentGlyphRange:lineGlyphRange containerOrigin:containerOrigin];
+}
+@end
+
 @interface LuaParagraphView : UITextView <UITextViewDelegate, LuaParagraphLinking>
 @property(nonatomic, copy) NSString *paragraphText;
 @property(nonatomic, strong) UIFont *bodyFont;
@@ -45,7 +58,7 @@
 @property(nonatomic, strong) UIFont *dropCapFont;
 @property(nonatomic, strong) UIColor *dropCapColor;
 @property(nonatomic, copy) NSArray<LuaParagraphLink *> *links;
-/* The dashed rule under a link; the words keep the body's colour. */
+/* The thicker dotted rule under a link; the words keep the body's colour. */
 @property(nonatomic, strong) UIColor *linkColor;
 /* Characters shown so far, counted as Lua's utf8.len counts them; -1 shows
  * the whole paragraph. See `paragraph_revealed_length`. */
@@ -61,7 +74,7 @@
 
 - (instancetype)init {
 	NSTextStorage *storage = [[NSTextStorage alloc] init];
-	NSLayoutManager *manager = [[NSLayoutManager alloc] init];
+	NSLayoutManager *manager = [[LuaParagraphLayoutManager alloc] init];
 	NSTextContainer *container = [[NSTextContainer alloc] initWithSize:CGSizeMake(0, CGFLOAT_MAX)];
 	container.widthTracksTextView = YES;
 	container.lineFragmentPadding = 0;
@@ -169,7 +182,7 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 		if (range.location == NSNotFound) return;
 		[storage addAttribute:UITextItemTagAttributeName value:@(index).stringValue range:range];
 		[storage addAttribute:NSUnderlineStyleAttributeName
-			value:@(NSUnderlineStyleSingle | NSUnderlineStylePatternDash) range:range];
+			value:@(NSUnderlineStyleThick | NSUnderlineStylePatternDot) range:range];
 	}];
 	[storage endEditing];
 }
@@ -406,4 +419,3 @@ static int bridge_UIKitControls_paragraph(lua_State *L) {
 	push_objc(L, view, "uiview");
 	return 1;
 }
-

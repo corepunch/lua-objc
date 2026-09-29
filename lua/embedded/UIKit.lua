@@ -896,7 +896,7 @@ local PARAGRAPH_ALIGNMENT = { leading = 4, center = 1, trailing = 2, justified =
 --- @prop dropCapLines number optional. Lines the initial spans; defaults to 3.
 --- @prop dropCapFontName string optional. Face for the initial; defaults to bold body.
 --- @prop revealedCharacters number optional. Typewriter reveal: characters shown so far (as `utf8.len` counts them); -1, the default, shows all. Lines are those of the whole text; only revealed lines take height.
---- @prop links table optional. Runs the reader can act on, from `<Hyperlink>` children: `{ location, length, label, items }`, where `location` (from 0) and `length` count characters as `utf8.len` does and `items` are `<MenuItem>` records. A link is ruled with a dashed underline and opens its menu when tapped.
+--- @prop links table optional. Runs the reader can act on, from `<Hyperlink>` children: `{ location, length, label, items }`, where `location` (from 0) and `length` count characters as `utf8.len` does and `items` are `<MenuItem>` records. A link is marked with a thicker dotted underline and opens its menu when tapped.
 --- @prop linkColor string optional. Colour of the rule under links; defaults to the tint.
 --- @prop dropCapColor string optional. Colour of the initial; defaults to the tint.
 --- @example <Paragraph text="Once upon a time…" design="serif" lineSpacing="5" dropCap="true" />

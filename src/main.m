@@ -153,6 +153,7 @@ static const NSInteger kParagraphDropCapLines = 3;
 static const CGFloat kParagraphDropCapReferenceSize = 100.0;
 static const CGFloat kParagraphDropCapDescentFraction = 0.05;
 static const CGFloat kParagraphDropCapInkOutset = 2.0;
+static const CGFloat kParagraphLinkUnderlineOffset = 2.0;
 
 /* Every value that controls visual appearance or layout has a named constant
  * so that tuning across the codebase is a single-section edit. Add new constants

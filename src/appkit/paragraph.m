@@ -26,6 +26,19 @@
 }
 @end
 
+@interface LuaParagraphLayoutManager : NSLayoutManager
+@end
+
+@implementation LuaParagraphLayoutManager
+- (void)drawUnderlineForGlyphRange:(NSRange)glyphRange underlineType:(NSUnderlineStyle)underlineVal
+		baselineOffset:(CGFloat)baselineOffset lineFragmentRect:(NSRect)lineRect
+		lineFragmentGlyphRange:(NSRange)lineGlyphRange containerOrigin:(NSPoint)containerOrigin {
+	[super drawUnderlineForGlyphRange:glyphRange underlineType:underlineVal
+		baselineOffset:baselineOffset + kParagraphLinkUnderlineOffset lineFragmentRect:lineRect
+		lineFragmentGlyphRange:lineGlyphRange containerOrigin:containerOrigin];
+}
+@end
+
 @interface LuaParagraphView : NSTextView <NSTextViewDelegate, LuaParagraphLinking>
 @property(nonatomic, copy) NSString *text;
 @property(nonatomic, strong) NSFont *bodyFont;
@@ -38,7 +51,7 @@
 @property(nonatomic, strong) NSFont *dropCapFont;
 @property(nonatomic, strong) NSColor *dropCapColor;
 @property(nonatomic, copy) NSArray<LuaParagraphLink *> *links;
-/* The dashed rule under a link; the words keep the body's colour. */
+/* The thicker dotted rule under a link; the words keep the body's colour. */
 @property(nonatomic, strong) NSColor *linkColor;
 /* Characters shown so far, counted as Lua's utf8.len counts them; -1 shows
  * the whole paragraph. See `paragraph_revealed_length`. */
@@ -55,7 +68,7 @@
 
 - (instancetype)init {
 	NSTextStorage *storage = [[NSTextStorage alloc] init];
-	NSLayoutManager *manager = [[NSLayoutManager alloc] init];
+	NSLayoutManager *manager = [[LuaParagraphLayoutManager alloc] init];
 	NSTextContainer *container = [[NSTextContainer alloc] initWithSize:NSMakeSize(0, CGFLOAT_MAX)];
 	container.widthTracksTextView = YES;
 	container.lineFragmentPadding = 0;
@@ -176,7 +189,7 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 		if (range.location == NSNotFound) return;
 		[storage addAttribute:NSLinkAttributeName value:@(index).stringValue range:range];
 		[storage addAttribute:NSUnderlineStyleAttributeName
-			value:@(NSUnderlineStyleSingle | NSUnderlineStylePatternDash) range:range];
+			value:@(NSUnderlineStyleThick | NSUnderlineStylePatternDot) range:range];
 	}];
 	[storage endEditing];
 }
