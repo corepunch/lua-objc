@@ -20,8 +20,8 @@
     local lift = string.format("spring(t - %f, 0.55, 0.6) * (1 - spring(t - %f, 0.5, 0.75))", at, at + 0.9)
     table.insert(cards, string.format(
       '<Node geometry="plane" width="%f" height="%f" cornerRadius="%f" roughness="0.18" image="captures:get(\'ledger-v1\'):piece(\'#card/%s\')" '
-      .. 'position="%f, %f, 0.02 + 0.55 * (%s)" rotation="-12 * (%s), %f * (%s), 0" from="%f" to="%f" />',
-      w * PT, h * PT, 12 * PT, id, (x + w / 2 - 600) * PT, (380 - y - h / 2) * PT, lift, lift, (i - 2.5) * -10, lift, at, at + 1.6))
+      .. 'position="%f * (1 + 0.35 * (%s)), %f + 0.45 * (%s), 0.02 + 1.2 * (%s)" rotation="-18 * (%s), %f * (%s), 0" scale="1 + 0.3 * (%s)" from="%f" to="%f" />',
+      w * PT, h * PT, 12 * PT, id, (x + w / 2 - 600) * PT, lift, (380 - y - h / 2) * PT, lift, lift, lift, (i - 2.5) * -16, lift, lift, at, at + 1.6))
   end
 %>
 <%- partial("devices/Window.etlua", {id = "wallNotes", position = "-3.5 0.8 -7.3", rotation = "-2 17 0", extra = on,
