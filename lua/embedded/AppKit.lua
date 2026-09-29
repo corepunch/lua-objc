@@ -137,6 +137,7 @@ end
 --- @prop contentAccessory table optional. Accessory view attached to the window content area.
 --- @prop detail table optional. Rendered detail pane view.
 --- @prop detailWidth number optional. Requested width of the detail pane, in points.
+--- @prop contentWidth number optional. Width of the content column between the sidebar and a flexible detail pane, in points.
 --- @prop height number optional. Component-specific setting passed to the native control.
 --- @prop hideTitle boolean optional. Component-specific setting passed to the native control.
 --- @prop minHeight number optional. Component-specific setting passed to the native control.
@@ -228,7 +229,8 @@ function AppKit.Window(props)
 			props.sidebarWidth,
 			props.toolbarContentDividerAfter,
 			props.detail,
-			props.detailWidth)
+			props.detailWidth,
+			props.contentWidth)
 	else
 		local content = bridge._vstack()
 		win:add(content)

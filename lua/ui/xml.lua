@@ -1717,6 +1717,7 @@ local TAG_SCHEMA = {
             visible                    = "bool",
             sidebarWidth               = "num",
             detailWidth                = "num",
+            contentWidth               = "num",
             toolbarContentDividerAfter = "str",
             onBack                     = "str",
             onForward                  = "str",

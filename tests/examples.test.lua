@@ -35,6 +35,7 @@ local examples = {
 	"test/parity_batch/init.lua",
 	"demo/zoom-cover/init.lua",
 	"demo/todo/init.lua",
+	"demo/notes/init.lua",
 }
 
 for _, path in ipairs(examples) do
