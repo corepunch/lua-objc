@@ -1,12 +1,13 @@
 -- The promo's score at 120 BPM, generated from the same timeline as the
--- picture: D major, bright and forward. A pulse under the montage, a drop
--- as the window lands in the display (3.5 s), a lighter groove while the
--- agent works in Lua Studio, a breath under "Zero compile cycle" (11 s),
--- the drop back in with "Talk" (14 s), the biggest hit as the film passes
--- through the phone into the game (21.8 s), sixteenths for the speed run
--- and a bell chord on the logo. Pops and slams come from the reel's own
--- events; coins ring when the game's replay takes them; typing ticks follow
--- the characters Lua Studio reveals.
+-- picture: D major, bright and forward. A pulse under the app assembling
+-- (a pop as each group of pieces lands), the drop as the iPad joins the
+-- iPhone (3.6 s), a groove while the agent works in Lua Studio, a breath
+-- under "No build" (11.75 s), the groove back for the phone alone (13 s),
+-- a riser into the game and the biggest hit as the film passes through the
+-- phone's screen (19.5 s), and a bell chord on the logo (26 s). Every
+-- change on a screen pops, every tap ticks, typing ticks per character,
+-- sends chime; slams come from the reel's own events; coins ring when the
+-- game's replay takes them.
 local Audio = require("reel.audio")
 local I = require("reel.instruments")
 
@@ -29,8 +30,8 @@ end
 
 -- The sections, in the picture's order.
 local SECTIONS = {
-	{ 0, "intro" }, { 3.5, "drop" }, { 6.0, "studio" }, { 11.0, "break" }, { 14.0, "talk" },
-	{ 17.0, "drop" }, { 20.3, "rise" }, { 21.8, "game" }, { 25.0, "speed" }, { 27.8, "end" },
+	{ 0, "intro" }, { 3.6, "studio" }, { 11.75, "break" }, { 13.0, "talk" },
+	{ 17.6, "rise" }, { 19.5, "game" }, { 23.6, "lift" }, { 26.0, "end" },
 }
 local function section(t)
 	local name = "intro"
@@ -38,10 +39,11 @@ local function section(t)
 	return name
 end
 
-local GROOVE = { drop = true, studio = true, talk = true, game = true, speed = true }
+local GROOVE = { studio = true, talk = true, game = true }
 
 -- Score.render(reel, music, duration, sampleRate) -> left, right.
--- music = {kicks, crashes, booms, risers, typing, sends, coins, hits, logo}.
+-- music = {kicks, crashes, booms, risers, whooshes, typing, sends, pops,
+-- taps, coins, logo}.
 function Score.render(reel, music, duration, sampleRate)
 	local m = Audio.new(duration, sampleRate)
 	local events = { pop = {}, slam = {}, whoosh = {} }
@@ -50,8 +52,8 @@ function Score.render(reel, music, duration, sampleRate)
 	end
 
 	-- Pad: one voicing per bar; the last two ring out under the logo.
-	local padLevel = { intro = 0.8, drop = 0.45, studio = 0.55, ["break"] = 1.0, talk = 0.5, rise = 0.7, game = 0.45,
-		speed = 0.4, ["end"] = 1.05 }
+	local padLevel = { intro = 0.8, studio = 0.5, ["break"] = 1.0, talk = 0.5, rise = 0.7, game = 0.45,
+		lift = 0.75, ["end"] = 1.05 }
 	for b, c in ipairs(BARS) do
 		I.pad(m, (b - 1) * BAR, BAR, c.pad, {
 			last = b >= #BARS - 1,
@@ -63,10 +65,10 @@ function Score.render(reel, music, duration, sampleRate)
 	-- Plucked arpeggio: eighths in the quiet sections, sixteenths in the
 	-- grooves and the run.
 	local pattern = { 0, 2, 4, 1, 3, 4, 2, 1 }
-	local levels = { intro = 0.05, drop = 0.05, studio = 0.045, ["break"] = 0.06, talk = 0.05, rise = 0.055,
-		game = 0.06, speed = 0.055 }
+	local levels = { intro = 0.05, studio = 0.045, ["break"] = 0.06, talk = 0.05, rise = 0.055,
+		game = 0.06, lift = 0.05 }
 	local step, at = 0, 0
-	while at < 27.8 do
+	while at < 26.0 do
 		local sec = section(at)
 		local c = chord(at)
 		local note = c.pad[pattern[step % #pattern + 1] % #c.pad + 1] + 12
@@ -76,7 +78,7 @@ function Score.render(reel, music, duration, sampleRate)
 			pan = step % 2 == 0 and 0.32 or 0.68, send = 0.5,
 		})
 		step = step + 1
-		local slow = sec == "intro" or sec == "break" or sec == "studio"
+		local slow = sec == "intro" or sec == "break" or sec == "lift"
 		at = at + (slow and BEAT / 2 or BEAT / 4)
 	end
 
@@ -84,7 +86,7 @@ function Score.render(reel, music, duration, sampleRate)
 	for b = 2, 14 do
 		local c, t0 = BARS[b], (b - 1) * BAR
 		local sec = section(t0 + 0.01)
-		if sec == "break" or sec == "rise" then
+		if sec == "break" or sec == "rise" or sec == "lift" then
 			for half = 0, 1 do I.bassSustain(m, t0 + half * BAR / 2, hz(c.root), BAR / 2) end
 		elseif GROOVE[sec] then
 			for e = 0, 7 do I.bass(m, t0 + e * BEAT / 2, hz(c.root + (e % 4 == 3 and 12 or 0)), BEAT / 2 - 0.01) end
@@ -101,13 +103,13 @@ function Score.render(reel, music, duration, sampleRate)
 			for s = 0, 15 do
 				local t = t0 + s * BEAT / 4
 				local open = s % 4 == 2
-				if open or section(t) == "speed" or section(t) == "game" or s % 2 == 0 then
+				if open or section(t) == "game" or s % 2 == 0 then
 					I.hat(m, t, open, open and 0.05 or (s % 2 == 1 and 0.035 or 0.022), open and 0.62 or 0.4)
 				end
 			end
 		end
 	end
-	for _, c in ipairs(music.crashes) do I.crash(m, c, c == 3.5 or c == 21.8 or c == music.logo) end
+	for _, c in ipairs(music.crashes) do I.crash(m, c, c == 3.6 or c == 19.5 or c == music.logo) end
 	for _, r in ipairs(music.risers) do I.riser(m, r[1], r[2]) end
 	for _, b in ipairs(music.booms) do I.boom(m, b[1], b[2]) end
 
@@ -138,8 +140,17 @@ function Score.render(reel, music, duration, sampleRate)
 			I.tone(m, t + (k - 1) * 0.06, hz(note + (j - 1) * 2), { length = 0.5, decay = 0.18, level = 0.06, pan = 0.45, send = 0.5 })
 		end
 	end
-	-- The speed run: a hit on every edit.
-	for _, t in ipairs(music.hits) do I.slam(m, t) end
+	-- Every change on a screen: a pop pitched up the chord, and a softer one
+	-- as its new components land.
+	for j, t in ipairs(music.pops) do
+		local c = chord(t)
+		I.blip(m, t, hz(c.pad[(j - 1) % #c.pad + 1] + 24), 0.35 + 0.3 * ((j - 1) % 2))
+		I.blip(m, t + 0.18, hz(c.pad[j % #c.pad + 1] + 24), 0.6)
+	end
+	-- Taps on glass.
+	for _, t in ipairs(music.taps) do
+		I.tone(m, t, hz(100), { length = 0.04, decay = 0.015, level = 0.05, pan = 0.6, send = 0.15 })
+	end
 	-- The logo: a bell chord, arpeggiated.
 	local bellPans = { 0.5, 0.3, 0.7, 0.4, 0.6 }
 	for j, note in ipairs({ 74, 78, 81, 86, 90 }) do I.bell(m, music.logo + (j - 1) * 0.11, hz(note), bellPans[j]) end
@@ -149,7 +160,7 @@ function Score.render(reel, music, duration, sampleRate)
 		gain = function(t)
 			local g = math.min(1, t / 0.02)
 			-- Breaths before the two drops.
-			if (t >= 3.44 and t < 3.5) or (t >= 21.74 and t < 21.8) then g = g * 0.08 end
+			if (t >= 3.54 and t < 3.6) or (t >= 19.44 and t < 19.5) then g = g * 0.08 end
 			if t > duration - 0.8 then g = g * Audio.fadeOut(t, duration - 0.8, duration) end
 			return g
 		end,

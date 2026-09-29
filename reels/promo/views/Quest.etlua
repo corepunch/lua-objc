@@ -4,6 +4,6 @@
   while the camera flies through the level. ]]
   local S = C.SHOT
   local stage = partial(root .. "apps/coin-quest/views/Stage.etlua", quest:view())
-  stage = stage:gsub("<SceneView ", '<SceneView states="questStates(t)" from="' .. S.cut .. '" to="' .. S.speed .. '" ', 1)
+  stage = stage:gsub("<SceneView ", '<SceneView states="questStates(t)" from="' .. S.cut .. '" to="' .. S.hero .. '" ', 1)
 %>
 <%- stage %>

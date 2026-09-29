@@ -1,4 +1,4 @@
-<Reel width="1920" height="1080" fps="30" duration="30" bpm="120" subframes="<%= subframes or '5 + 5 * step(t - 12.95) * step(14.3 - t) + 4 * step(t - 20.8) * step(21.85 - t) + 5 * step(t - 24.95) * step(27.9 - t)' %>" shutter="0.5" background="#07070A">
+<Reel width="1920" height="1080" fps="30" duration="30" bpm="120" subframes="<%= subframes or '5 + 3 * step(t - 17.6) * step(19.55 - t)' %>" shutter="0.5" background="#07070A">
   <Palette name="brand" colors="#7B8CFF #B86BFF #FF7AB8" />
   <Palette name="code" colors="#5EE08A #3CC6FF" />
   <Style name="giant" size="136" weight="bold" color="#F5F5F7" tracking="-0.03" />
@@ -7,6 +7,7 @@
   <Style name="hugeBrand" size="118" weight="bold" gradient="brand" tracking="-0.03" />
   <Style name="big" size="100" weight="bold" color="#F5F5F7" tracking="-0.03" />
   <Style name="bigBrand" size="100" weight="bold" gradient="brand" tracking="-0.03" />
+  <Style name="word" size="92" weight="bold" color="#F5F5F7" tracking="-0.03" />
   <Style name="wall" size="200" weight="heavy" color="#FFFFFF" tracking="-0.03" />
   <Style name="label" size="30" weight="semibold" color="#F5F5F7" tracking="-0.01" />
   <Style name="kicker" size="22" weight="semibold" color="#A1A1A6" tracking="0.18" />
@@ -26,7 +27,8 @@
   <%- partial("Quest.etlua", reel) %>
   <Vignette inner="620" outer="1350" resolution="0.25" />
   <%- partial("Type.etlua", reel) %>
-  <!-- The cut into the game: a flash of the glass. -->
+  <!-- The cut into the game, and back out: a flash of the glass. -->
   <Rect width="1920" height="1080" color="#FFFFFF" alpha="0.35 * exp(-max(0, t - <%= C.SHOT.cut %>) / 0.08) * step(t - <%= C.SHOT.cut - 1e-4 %>)" />
+  <Rect width="1920" height="1080" color="#FFFFFF" alpha="0.5 * exp(-max(0, t - <%= C.SHOT.hero %>) / 0.1) * step(t - <%= C.SHOT.hero - 1e-4 %>)" />
   <Rect width="1920" height="1080" color="#000000" alpha="progress(t, 29.7, 30)" />
 </Reel>

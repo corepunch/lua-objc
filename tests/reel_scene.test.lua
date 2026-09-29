@@ -36,6 +36,9 @@ t.expect(Space.length3(start) < 1e-5, "a path eases out of its first key")
 local held = { { 0, { 0, 0, 0 } }, { 1, { 1, 0, 0 }, hold = true }, { 2, { 2, 0, 0 } } }
 t.expect(Space.length3(Space.sub3(Space.path(1 + e, held), Space.path(1, held))) < 1e-5, "a held key stops dead")
 t.expect(near(Space.track(0.5, { { 0, 10 }, { 1, 20 } }), 15, 1e-9), "track() eases between two values")
+local holding = { { 0, { 0, 0, 0 } }, { 1, { 5, 0, 0 } }, { 3, { 5, 0, 0 } }, { 4, { 9, 0, 0 } } }
+t.expect(nearVector(Space.path(2, holding), { 5, 0, 0 }, 1e-9), "a path between two equal keys holds still")
+t.expect(near(Space.track(2, { { 0, 0 }, { 1, 5 }, { 3, 5 }, { 4, 9 } }), 5, 1e-9), "and so does a track")
 t.assertThrows(function() Space.path(0, {}) end, "a path needs keys")
 
 -- ── Native scene ─────────────────────────────────────────────────────────

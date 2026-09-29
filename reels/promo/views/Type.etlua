@@ -1,74 +1,52 @@
-<% --[[ Everything written on the film, drawn crisp over the 3-D render.
-  Labels that belong to a device follow it through project(). ]]
+<% --[[ Everything written on the film, drawn crisp over the 3-D render, on
+  the beat. Words sit in clear space; labels follow their device through
+  project(). ]]
   local S = C.SHOT
 %>
-<!-- 0–3: native apps first. -->
-<Text style="big" text="Native apps." x="110" y="580" align="leading" at="0.35" exit="2.05" />
-<Group to="3.35" motion="fadeOut(3.15, 0.2)">
-	<Slam style="big" style3="bigBrand" text="Lua + XML." x="110" y="580" align="leading" at="2.25, 2.45, 2.65" />
+<!-- Open: the app assembles on the phone. -->
+<Group to="<%= S.pair + 0.4 %>" motion="leave{at = <%= S.pair %>, duration = 0.35, x = -140, fade = true, curve = 'inCubic'}">
+	<Text style="big" text="Build native apps" x="110" y="505" align="leading" at="0.5" />
+	<Slam style="bigBrand" text="on iPad and iPhone." x="110" y="625" align="leading" at="1.5, 1.75, 2.0, 2.25" />
 </Group>
 
-<!-- 3.5–6: one app, three platforms; the views are XML. -->
-<Let name="macSpot" value="project('world', C.label('display'))" />
-<Let name="padSpot" value="project('world', C.label('pad'))" />
-<Let name="phoneSpot" value="project('world', C.label('phone'))" />
-<Group from="4.1" to="6.15" motion="fadeOut(5.9, 0.25)">
-	<Text style="label" text="Mac · AppKit" x="macSpot[1]" y="macSpot[2] - 40" align="leading" at="4.15" />
-	<Text style="code" text="&lt;List style=&quot;sourceList&quot;&gt;" x="macSpot[1]" y="macSpot[2]" align="leading" at="5.0" />
-	<Text style="label" text="iPad · UIKit" x="padSpot[1]" y="padSpot[2] + 20" align="leading" at="4.5" />
-	<Text style="code" text="&lt;SectorChart innerRadius=&quot;0.64&quot;&gt;" x="padSpot[1]" y="padSpot[2] + 60" align="leading" at="5.15" />
-	<Text style="label" text="iPhone · UIKit" x="phoneSpot[1]" y="phoneSpot[2] - 40" align="leading" at="4.85" />
-	<Text style="code" text="&lt;Picker style=&quot;segmented&quot;&gt;" x="phoneSpot[1]" y="phoneSpot[2]" align="leading" at="5.3" />
+<!-- The pair: which device is which. -->
+<Let name="padSpot" value="project('world', C.label('pad', t))" />
+<Let name="phoneSpot" value="project('world', C.label('phone', t))" />
+<Group from="3.7" to="4.7" motion="fadeOut(4.45, 0.25)">
+	<Text style="label" text="Chat with your agent · iPad" x="padSpot[1]" y="padSpot[2]" align="leading" at="3.75" />
+	<Text style="label" text="Live preview · iPhone" x="phoneSpot[1]" y="phoneSpot[2]" align="leading" at="4.0" />
 </Group>
 
-<!-- 6–13: the agent edits the app in Lua Studio, on the iPad. -->
-<Text style="kicker" text="LUA STUDIO ON iPAD" x="960" y="52" at="6.5" exit="7.75" />
-<Rect width="1920" height="1080" color="#000000" alpha="0.62 * progress(t, 10.95, 11.2) * (1 - progress(t, 12.55, 12.85))" />
-<Group from="11.0" to="12.9" motion="leave{at = 12.55, duration = 0.3, scale = 1.25, fade = true, curve = 'inCubic'}" x="960" y="590">
-	<Slam style="giant" style3="giantBrand" text="Zero compile cycle." x="0" y="0" at="11.05, 11.3, 11.55" />
-	<Text style="sub" text="Edit Lua and XML. The app reloads. No build." x="0" y="92" at="11.9" />
+<!-- The loop, one caption per beat that matters. -->
+<% for _, word in ipairs({ { S.send1, S.change1 - 0.2, "Ask." }, { S.change1, S.send2 - 0.2, "See it change." },
+	{ S.send2, S.change2 - 0.2, "Ask again." }, { S.change2, S.tap - 0.2, "Live, on the phone." }, { S.tap, S.noBuild - 0.3, "Tap it." } }) do %>
+<Draw with="caption" text="<%= word[3] %>" at="<%= word[1] %>" exit="<%= word[2] %>" />
+<% end %>
+
+<!-- No build. -->
+<Rect width="1920" height="1080" color="#000000" alpha="0.6 * progress(t, <%= S.noBuild - 0.1 %>, <%= S.noBuild + 0.15 %>) * (1 - progress(t, 12.75, 13.05))" />
+<Group from="<%= S.noBuild %>" to="13.05" motion="leave{at = 12.75, duration = 0.3, scale = 1.2, fade = true, curve = 'inCubic'}" x="960" y="560">
+	<Slam style="giant" style2="giant" text="No build." x="0" y="-40" at="<%= S.noBuild %>, <%= S.noBuild + 0.25 %>" />
+	<Slam style="giantBrand" style2="giantBrand" text="No restart." x="0" y="110" at="12.25, 12.5" />
 </Group>
 
-<!-- 13–17: talk to the phone. -->
-<Let name="phoneFoot" value="project('world', C.at('phone', t))" />
-<Group from="14.05" to="15.6" motion="pop(14.05, {from = 0.7}), fadeOut(15.4, 0.2)" x="phoneFoot[1]" y="phoneFoot[2] + 330">
-	<Draw with="voice" />
-</Group>
-<Text style="huge" text="Talk." x="140" y="560" align="leading" at="14.0" exit="15.2" />
-<Text style="huge" text="Change." x="140" y="560" align="leading" at="15.35" exit="16.1" />
-<Text style="hugeBrand" text="See it." x="140" y="560" align="leading" at="16.2" exit="16.95" />
+<!-- The phone alone: talk to it, watch it, use it. -->
+<Text style="huge" text="Say it." x="130" y="560" align="leading" at="14.0" exit="<%= S.change3 - 0.15 %>" />
+<Text style="hugeBrand" text="See it." x="130" y="560" align="leading" at="<%= S.change3 %>" exit="<%= S.tapOpen - 0.15 %>" />
+<Text style="huge" text="Use it." x="130" y="560" align="leading" at="<%= S.tapOpen %>" exit="<%= S.turn + 0.2 %>" />
 
-<!-- 17–21: apps. -->
-<Text style="huge" text="Apps." x="120" y="210" align="leading" at="17.65" exit="19.35" />
-<Text style="hugeBrand" text="Fast." x="120" y="210" align="leading" at="19.5" exit="20.5" />
-
-<!-- 21.8–25: inside the game. -->
-<Group from="22.4" to="24.6" motion="fadeOut(24.3, 0.3)">
+<!-- Inside the game. -->
+<Group from="20.4" to="23.0" motion="fadeOut(22.7, 0.3)">
 	<Glow x="960" y="880" radius="760" colors="{rgb(0x000000, 0.42), rgb(0x000000, 0)}" />
-	<Text style="huge" text="Native 3D." x="960" y="900" at="22.45" />
-	<Text style="sub" text="Coin Quest: SceneKit, written in Lua" x="960" y="970" at="22.8" />
+	<Text style="huge" text="And native 3D." x="960" y="900" at="20.45" />
+	<Text style="sub" text="Coin Quest: SceneKit, in Lua" x="960" y="970" at="20.9" />
 </Group>
 
-<!-- 25–27.8: say it, change it, see it; each beat one edit. -->
-<% local chips = {
-  {25.0, "“Group completed tasks.”", "+ <VStack id=\"completed\">"},
-  {25.5, "“Add progress at the top.”", "+ <ProgressView value=\"…\">"},
-  {26.0, "“Add a filter.”", "+ <Picker id=\"filter\" style=\"segmented\">"},
-  {26.5, "“Make the chart weekly.”", "+ period = \"weekly\""},
-  {27.0, "“Add a favorites section.”", "+ <VStack id=\"favorites\">"},
-} %>
-<% for i, chip in ipairs(chips) do -%>
-<Group from="<%= chip[1] %>" to="<%= chip[1] + 0.5 %>" x="960" y="950">
-	<Text style="chip" text="<%= chip[2] %>" x="0" y="0" at="<%= chip[1] %>" stagger="0.02" />
-	<Text style="codeGreen" text="<%= chip[3] %>" x="0" y="48" at="<%= chip[1] + 0.08 %>" stagger="0.01" />
-</Group>
-<% end -%>
-
-<!-- 27.8–30: the end card. -->
-<Group from="28.0">
-	<Text style="logo" text="lua-objc" x="130" y="470" align="leading" at="28.05" />
-	<Text style="tagline" text="Native apps." x="134" y="560" align="leading" at="28.35" />
-	<Text style="taglineBrand" text="Zero compile cycle." x="134" y="626" align="leading" at="28.5" />
-	<Text style="small" text="Build with your agent. Right on the device." x="136" y="712" align="leading" at="28.85" />
-	<Text style="url" text="github.com/corepunch/lua-objc" x="136" y="790" align="leading" at="29.1" />
+<!-- The end card. -->
+<Group from="<%= S.logo %>">
+	<Text style="logo" text="lua-objc" x="130" y="455" align="leading" at="<%= S.logo %>" />
+	<Text style="tagline" text="Build native apps" x="134" y="548" align="leading" at="<%= S.logo + 0.5 %>" />
+	<Text style="taglineBrand" text="on iPad and iPhone." x="134" y="614" align="leading" at="<%= S.logo + 0.62 %>" />
+	<Text style="small" text="Chat with your agent. Watch it change live." x="136" y="700" align="leading" at="<%= S.logo + 1.0 %>" />
+	<Text style="url" text="github.com/corepunch/lua-objc" x="136" y="780" align="leading" at="<%= S.logo + 1.5 %>" />
 </Group>
