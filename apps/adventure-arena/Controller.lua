@@ -19,7 +19,6 @@ local TABS = { "library", "bookshelf", "create", "settings", "search" }
 
 local Controller = {}
 Controller.__index = Controller
-Controller.TABS = TABS
 
 function Controller.new(options)
 	options = options or {}
@@ -125,7 +124,7 @@ function Controller:selectTab(name)
 	if not index then return false end
 	self.selectedTab = index
 	self:focus(name)
-	if self.tabs and self.tabs.selectTab then self.tabs:selectTab(index) end
+	if self.tabs then self.tabs:selectTab(index) end
 	return true
 end
 

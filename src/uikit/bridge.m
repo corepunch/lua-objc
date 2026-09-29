@@ -111,6 +111,7 @@ static const CGFloat kMotionDefaultDuration = 0.35;
 static const CGFloat kMotionContentMaxDuration = 0.35;
 static int bridge_UIKitNavigation_stack(lua_State *L);
 static int bridge_UIKitNavigation_push(lua_State *L);
+static int bridge_UIKitTabView_selectTab(lua_State *L);
 static int bridge_UIKitNavigation_pop(lua_State *L);
 
 #define LUA_OBJC_EXTERNAL_STATE_OWNER 1

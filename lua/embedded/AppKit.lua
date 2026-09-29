@@ -1796,9 +1796,12 @@ function AppKit.Link(props)
 		props.url), props)
 end
 
+local UNAVAILABLE = { spacing = 8, imageSize = 28, actionsTop = 8 }
+
 --- Presents a native empty, unavailable, or no-results state.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
+--- @prop children views optional. Action controls shown beneath the message, SwiftUI's `actions:`.
 --- @prop description value optional. Secondary explanatory text for an unavailable state.
 --- @prop descriptionAlignment string optional. `center` (default), `leading` or `trailing` text alignment of the description.
 --- @prop imageSize number optional. Symbol or image size in points.
@@ -1812,11 +1815,11 @@ function AppKit.ContentUnavailable(props)
 	-- SwiftUI's ContentUnavailableView takes the space it is offered and
 	-- centers its message in it. The spacers make the stack flexible along
 	-- its main axis, so it fills the parent's height and centers vertically.
-	local content = { spacing = props.spacing or 8, alignment = "center", AppKit.Spacer() }
+	local content = { spacing = props.spacing or UNAVAILABLE.spacing, alignment = "center", AppKit.Spacer() }
 	if props.systemImage then
 		table.insert(content, (AppKit.SystemImage {
 			props.systemImage,
-			size = props.imageSize or 28,
+			size = props.imageSize or UNAVAILABLE.imageSize,
 			color = "secondary",
 			accessibilityLabel = props.title or "",
 		}))
@@ -1838,6 +1841,13 @@ function AppKit.ContentUnavailable(props)
 			spacing = 0,
 			fillWidth = true,
 		}))
+	end
+	-- SwiftUI's `actions:` slot: child controls sit beneath the message and
+	-- are centered with it, not pinned to the pane's bottom edge.
+	if props[1] then
+		local actions = { spacing = UNAVAILABLE.spacing, alignment = "center", paddingTop = UNAVAILABLE.actionsTop }
+		for _, action in ipairs(props) do table.insert(actions, action) end
+		table.insert(content, (AppKit.VStack(actions)))
 	end
 	table.insert(content, (AppKit.Spacer()))
 	local view = AppKit.VStack(content)

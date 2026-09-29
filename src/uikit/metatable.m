@@ -63,6 +63,11 @@ static int nsview_index(lua_State *L) {
 		if (strcmp(key, "pop") == 0) { lua_pushcfunction(L, bridge_UIKitNavigation_pop); return 1; }
 	}
 
+	if ([obj isKindOfClass:[UITabBarController class]] && strcmp(key, "selectTab") == 0) {
+		lua_pushcfunction(L, bridge_UIKitTabView_selectTab);
+		return 1;
+	}
+
 	id src = objc_getAssociatedObject(obj, &kTableSourceKey);
 	if (src) {
 		if (strcmp(key, "addRow") == 0) {

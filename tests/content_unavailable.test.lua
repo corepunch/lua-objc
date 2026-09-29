@@ -64,4 +64,31 @@ t.assertEqual(bridge._textAlignment("justified"), 3, "justified is the same on e
 local leading = render([[<ContentUnavailable title="Drop" description="Drag a folder here." descriptionAlignment="leading" />]], {}, ns)
 t.assertEqual(leading.subviews[3].subviews[2].textAlignment, bridge._textAlignment("leading"), "an unavailable view can lead-align its description")
 
+-- SwiftUI's `actions:` slot: child controls sit directly beneath the
+-- message and are centered with it, never pinned to the pane's bottom.
+local tapped = 0
+local actionRoot, actionRefs = render([[<VStack spacing="0">
+	<ContentUnavailable id="empty" title="Nothing Here" systemImage="folder" description="This folder is empty.">
+		<Button id="next" title="Add a Folder" action="add" />
+	</ContentUnavailable>
+</VStack>]], { actions = { add = function() tapped = tapped + 1 end } }, ns)
+actionRoot.size = ns.Size(600, 400)
+actionRoot:layout(600)
+t.assertSize(actionRefs.empty, 600, 400, "an unavailable message with actions still fills the pane")
+local pieces = actionRefs.empty.subviews
+t.assertEqual(#pieces, 6, "actions add one group between the description and the trailing spacer")
+local top, bottom = pieces[1].frame.size.height, pieces[#pieces].frame.size.height
+t.expect(top > 50 and math.abs(top - bottom) < 0.5, "message and actions are centered together")
+local descriptionFrame, group = pieces[4].frame, pieces[5].frame
+-- AppKit frames here are bottom-up, so "beneath" is a smaller y.
+local gap = descriptionFrame.origin.y - (group.origin.y + group.size.height)
+t.expect(gap >= 0, "actions follow the description")
+t.expect(gap < 40, "actions stay beside the message, not at the pane's bottom edge")
+local next = actionRefs.next
+local nextX = group.origin.x + next.frame.origin.x + next.frame.size.width / 2
+t.expect(math.abs(nextX - 300) < 1, "an action is centered horizontally")
+t.expect(next.frame.size.width < 300, "an action keeps its intrinsic width")
+t.expect(uikit:find("for _, action in ipairs(props) do table.insert(actions, action) end", 1, true) ~= nil,
+	"UIKit ContentUnavailable places action children too")
+
 os.exit(t.summary() and 0 or 1)
