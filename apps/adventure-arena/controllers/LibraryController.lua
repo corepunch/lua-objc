@@ -10,6 +10,7 @@ function Controller.new(options)
 		push = assert(options.push, "navigation push callback is required"),
 		back = assert(options.back, "navigation back callback is required"),
 		focus = options.focus or function() end,
+		selectTab = options.selectTab or function() return false end,
 		openSession = assert(options.openSession, "session callback is required"),
 		onSavesChanged = options.onSavesChanged or function() end,
 		query = "",
@@ -48,6 +49,7 @@ function Controller:presentation()
 	local shelves, topRated, genres = self.model:shelves(), self.model:topRated(), self.model:genres()
 	local actions = {
 		search = function(text) self:search(text) end,
+		openCreate = function() self.selectTab("create") end,
 	}
 	for index, game in ipairs(featured) do
 		actions["featured_" .. index] = function() self:showGame(game.id, "library") end
@@ -86,7 +88,9 @@ end
 -- The Library tab: every story in progress with Start Over and Remove.
 function Controller:bookshelf()
 	local entries = self:inProgress()
-	local actions = {}
+	local actions = {
+		browseDiscover = function() self.selectTab("library") end,
+	}
 	for index, entry in ipairs(entries) do
 		local id = entry.game.id
 		actions["continue_" .. index] = function()
