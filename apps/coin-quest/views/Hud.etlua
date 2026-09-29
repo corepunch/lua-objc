@@ -1,0 +1,47 @@
+<!-- Heads-up display over the stage: the level, coins and lives across the
+    top, the end-of-level message in the middle, the controls at the foot. -->
+<VStack padding="20" spacing="0" maxWidth="infinity" maxHeight="infinity">
+	<HStack spacing="12" alignment="top" maxWidth="infinity">
+		<GlassEffect style="clear" cornerRadius="18">
+			<VStack paddingHorizontal="16" paddingVertical="12" spacing="2" alignment="leading">
+				<Label id="stage" text="<%= stage %>" size="11" weight="bold" color="secondary" />
+				<Label id="level" text="<%= level %>" size="22" weight="heavy" />
+			</VStack>
+		</GlassEffect>
+		<Spacer />
+		<GlassEffect style="clear" cornerRadius="18">
+			<HStack paddingHorizontal="16" paddingVertical="12" spacing="18" alignment="center">
+				<HStack spacing="6" alignment="center">
+					<SystemImage name="circle.circle.fill" size="18" color="systemYellow" label="Coins" />
+					<Label id="coins" text="<%= coins %>" size="17" weight="bold" monospacedDigit="true" />
+				</HStack>
+				<HStack spacing="3" alignment="center" accessibilityLabel="<%= lives %>">
+					<% for _, heart in ipairs(hearts) do -%>
+					<SystemImage name="<%= heart.filled and "heart.fill" or "heart" %>" size="17" color="<%= heart.filled and "systemRed" or "tertiaryLabel" %>" />
+					<% end -%>
+				</HStack>
+			</HStack>
+		</GlassEffect>
+	</HStack>
+	<Spacer />
+	<% if message then -%>
+	<HStack maxWidth="infinity">
+		<Spacer />
+		<GlassEffect cornerRadius="24" transition="scale">
+			<VStack paddingHorizontal="32" paddingVertical="22" spacing="6" alignment="center">
+				<Label id="messageTitle" text="<%= message.title %>" size="30" weight="heavy" />
+				<Label id="messageDetail" text="<%= message.detail %>" size="14" color="secondary" />
+			</VStack>
+		</GlassEffect>
+		<Spacer />
+	</HStack>
+	<Spacer />
+	<% end -%>
+	<HStack maxWidth="infinity">
+		<Spacer />
+		<GlassEffect style="clear" cornerRadius="14">
+			<Label paddingHorizontal="14" paddingVertical="8" text="Arrow keys or WASD to hop · Take every coin, then reach the flag" size="12" color="secondary" />
+		</GlassEffect>
+		<Spacer />
+	</HStack>
+</VStack>

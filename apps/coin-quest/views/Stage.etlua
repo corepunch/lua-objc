@@ -1,0 +1,30 @@
+<!-- The 3-D stage. Camera and lights stay across levels; everything a level
+    owns hangs from one node named after it, so loading another level
+    replaces the whole subtree. Each entity kind is a prefab partial. -->
+<SceneView id="scene" background="#a9dcf5" onKey="key" onFrame="frame">
+	<Camera id="camera" position="<%= camera.position %>" lookAt="<%= camera.lookAt %>" fieldOfView="<%= camera.fieldOfView %>" fieldOfViewAxis="<%= camera.fieldOfViewAxis %>" />
+	<Light id="sun" type="directional" rotation="-58 38 0" intensity="1150" castsShadow="true" />
+	<Light id="skylight" type="ambient" intensity="480" color="#d6ecff" />
+	<Node id="sea" geometry="floor" color="#4fa3d1" position="0 -1.35 0" castsShadow="false" />
+	<Node id="level-<%= level %>">
+		<% for _, tile in ipairs(tiles) do -%>
+		<%- partial("prefabs/Tile.etlua", {x = tile.x, z = tile.z, assets = assets}) %>
+		<% end -%>
+		<% for _, item in ipairs(scenery) do -%>
+		<%- partial("prefabs/Scenery.etlua", {kind = item.kind, x = item.x, z = item.z, assets = assets}) %>
+		<% end -%>
+		<% for _, coin in ipairs(coins) do -%>
+		<%- partial("prefabs/Coin.etlua", {id = coin.id, x = coin.x, z = coin.z, assets = assets}) %>
+		<% end -%>
+		<% for _, spike in ipairs(spikes) do -%>
+		<%- partial("prefabs/Spikes.etlua", {id = spike.id, x = spike.x, z = spike.z, assets = assets}) %>
+		<% end -%>
+		<% for _, saw in ipairs(saws) do -%>
+		<%- partial("prefabs/Saw.etlua", {id = saw.id, x = saw.x, z = saw.z, axis = saw.axis, assets = assets}) %>
+		<% end -%>
+		<% if flag then -%>
+		<%- partial("prefabs/Flag.etlua", {x = flag.x, z = flag.z, assets = assets}) %>
+		<% end -%>
+		<%- partial("prefabs/Player.etlua", {x = start.x, z = start.z, assets = assets}) %>
+	</Node>
+</SceneView>

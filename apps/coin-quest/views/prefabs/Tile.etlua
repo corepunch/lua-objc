@@ -1,0 +1,2 @@
+<!-- One ground cell: a grass block whose top face is the ground plane. -->
+<Node model="<%= assets %>block-grass.obj" position="<%= x %> -1 <%= z %>" />

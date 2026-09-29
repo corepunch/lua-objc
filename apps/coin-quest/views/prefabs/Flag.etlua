@@ -1,0 +1,2 @@
+<!-- The goal. It only exists once every coin is taken, and rises into place. -->
+<Node id="flag" model="<%= assets %>flag.obj" position="<%= x %> 0 <%= z %>" scale="1.4" bob="0.06" transition="rise" />

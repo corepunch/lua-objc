@@ -1,0 +1,5 @@
+<!-- A saw blade standing on its edge, turned to run along its axis. The
+    blade spins about its own axle; the world slides the whole node. -->
+<Node id="<%= id %>" position="<%= x %> 0 <%= z %>" rotation="0 <%= axis == "z" and 90 or 0 %> 0">
+	<Node model="<%= assets %>saw.obj" position="0 0.42 0" spin="0 0 -540" />
+</Node>

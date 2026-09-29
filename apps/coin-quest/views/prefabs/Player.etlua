@@ -1,0 +1,3 @@
+<!-- The hero. The template places it on the start cell; from then on the
+    world's poses move and turn it. -->
+<Node id="player" model="<%= assets %>character-oobi.obj" position="<%= x %> 0 <%= z %>" />
