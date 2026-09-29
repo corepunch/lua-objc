@@ -35,7 +35,8 @@ function Session.new(options)
 end
 
 function Session:reset()
-	self.entries, self.history = {}, {}
+	self.entries, self.history, self.checkpoints = {}, {}, {}
+	self.restoreNotice = nil
 	self.moves, self.score, self.maxScore, self.scoreChange = 0, 0, 0, 0
 	self.availableDirections, self.exitList = {}, {}
 	self.items, self.knownItems, self.knownByNoun = {}, {}, {}
@@ -281,23 +282,58 @@ function Session:appendOutput(text, openingTitle)
 	end
 end
 
+-- Where a command left the story: enough to tell that a replay went the
+-- same way it was first played.
+function Session:checkpoint()
+	return { room = self.roomTitle or "", score = self.score, moves = self.moves }
+end
+
+local function sameCheckpoint(a, b)
+	return type(a) == "table" and type(b) == "table"
+		and a.room == b.room and a.score == b.score and a.moves == b.moves
+end
+
 -- `saved` is a snapshot from `Session:snapshot()`. The story is restored by
 -- replaying its commands against an engine seeded as before, which rebuilds
--- the transcript exactly as the reader first saw it.
+-- the transcript exactly as the reader first saw it. Each command's
+-- checkpoint must match: when the story has changed since it was saved (a
+-- key now hidden until the papers are searched), the replay goes another
+-- way. The reader's place is then kept up to the last command that still
+-- matches, and `restoreNotice` says so, rather than silently playing on in
+-- a different world.
 function Session:start(game, saved)
 	if not game then return false, "Adventure not found." end
 	if not self.engineFactory then return false, "No session engine configured." end
 	local seed = saved and tonumber(saved.seed) or self.newSeed()
-	local ok, engine, opening = pcall(function()
-		return self.engineFactory(game, seed):start()
-	end)
-	if not ok then return false, tostring(engine) end
-	self:reset()
-	self.engine, self.currentGame, self.seed = engine, game, seed
-	self:refreshEngineState()
-	self:appendOutput(opening, game.title)
-	for _, command in ipairs(saved and saved.commands or {}) do
-		self:submit(command)
+	local commands = saved and saved.commands or {}
+	local checkpoints = saved and saved.checkpoints or {}
+	local function replay(limit)
+		local ok, engine, opening = pcall(function()
+			return self.engineFactory(game, seed):start()
+		end)
+		if not ok then return false, tostring(engine) end
+		self:reset()
+		self.engine, self.currentGame, self.seed = engine, game, seed
+		self:refreshEngineState()
+		self:appendOutput(opening, game.title)
+		for index = 1, limit do
+			self:submit(commands[index])
+			if not sameCheckpoint(self.checkpoints[index], checkpoints[index]) then
+				return true, index
+			end
+		end
+		return true
+	end
+	local ok, diverged = replay(#commands)
+	if not ok then return false, diverged end
+	if diverged then
+		replay(diverged - 1)
+		self.restoreNotice = diverged == 1
+			and "This story has changed since you last read it, so it starts again from the beginning."
+			or string.format("This story has changed since you last read it. Your place is kept up to \u{201C}%s\u{201D}.",
+				commands[diverged - 1])
+		self.openEntry = nil
+		self:appendParagraph(self.restoreNotice)
 	end
 	self.scoreChange = 0
 	return true
@@ -316,6 +352,7 @@ function Session:submit(command)
 		self.moves = movesBefore + 1
 	end
 	self.scoreChange = self.score - scoreBefore
+	table.insert(self.checkpoints, self:checkpoint())
 	self:appendOutput(response)
 	return ok, response
 end
@@ -324,10 +361,13 @@ end
 function Session:snapshot()
 	local game = self.currentGame
 	if not game or not self.engine then return nil end
-	local commands = {}
-	for _, command in ipairs(self.history) do table.insert(commands, command) end
+	local commands, checkpoints = {}, {}
+	for index, command in ipairs(self.history) do
+		table.insert(commands, command)
+		table.insert(checkpoints, self.checkpoints[index])
+	end
 	return {
-		gameId = game.id, seed = self.seed, commands = commands,
+		gameId = game.id, seed = self.seed, commands = commands, checkpoints = checkpoints,
 		room = self.roomTitle or (self.scene and self.scene.title) or game.title,
 		score = self.score, maxScore = self.maxScore, moves = self.moves,
 	}

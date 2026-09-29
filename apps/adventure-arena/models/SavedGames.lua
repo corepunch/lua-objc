@@ -2,15 +2,17 @@ local SavedGames = {}
 SavedGames.__index = SavedGames
 
 -- Autosaves, one per adventure: the command history and random seed that
--- replay the story, plus what the library shows about it (room and score)
--- without starting an engine. The store is injected, so the model
+-- replay the story, a checkpoint after each command that proves the replay
+-- went the same way (see Session:start), plus what the library shows about
+-- it (room and score) without starting an engine. The store is injected, so the model
 -- never touches files; `store.load()` returns the saved table and
 -- `store.save(table)` persists it.
-local VERSION = 1
+local VERSION = 2
 
 local function validRecord(record)
 	return type(record) == "table" and type(record.gameId) == "string"
-		and type(record.commands) == "table"
+		and type(record.commands) == "table" and type(record.checkpoints) == "table"
+		and #record.checkpoints == #record.commands
 end
 
 function SavedGames.new(options)
