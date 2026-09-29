@@ -207,6 +207,36 @@ Elements.Piece = {
 	paint = function(node, rc, t, clip) paintSprite(node, rc, t, node.sprite(), clip) end,
 }
 
+-- <Image src="captures/todo-iphone.png" density="3" width height radius/>:
+-- an image file, such as a simulator screenshot that has no layout to cut,
+-- at its top-left corner. `density` is its pixels per point; `width` and
+-- `height` default to its size in points.
+Elements.Image = {
+	ownsClip = true,
+	setup = function(node, context)
+		local src = node.attrs.src or node:fail("needs a src")
+		context.images = context.images or {}
+		local scale = tonumber(node.attrs.density) or 1
+		local key = src .. "@" .. scale
+		local ok, image = pcall(function() return context.images[key] or context.native.image(src, scale) end)
+		if not ok then node:fail("cannot read " .. src) end
+		context.images[key] = image
+		local w, h = image:size()
+		node.sprite = { image = image, x = 0, y = 0, w = w, h = h }
+		numbers(node, { radius = 0, shadow = 0 })
+		node.width, node.height = node:number("width", w), node:number("height", h)
+	end,
+	bounds = function(node) return { 0, 0, node.sprite.w, node.sprite.h } end,
+	paint = function(node, rc, t, clip)
+		local sprite, w, h = node.sprite, value(node.width, t), value(node.height, t)
+		local pen = rc.pen
+		pen:save()
+		pen:scale(w / sprite.w, h / sprite.h)
+		pen:sprite(sprite, { radius = value(node.radius, t) * sprite.w / w, shadow = value(node.shadow, t), clip = clip })
+		pen:restore()
+	end,
+}
+
 -- <Fill rect="#treemap" color="sample(1000, 820)" outset="1"/>: covers part
 -- of a window, in window points; `outset` is in screen pixels.
 Elements.Fill = {

@@ -162,4 +162,32 @@ t.assertThrows(function() reel('<SceneView camera="\'nope\'">' .. lens .. '</Sce
 -- The live view's app hooks have no meaning offline and are accepted.
 t.expect(reel('<SceneView onKey="key" onFrame="frame">' .. lens .. '</SceneView>'), "app-only hooks are ignored")
 
+-- <Image>: a plain image file (a simulator screenshot) at its size in points.
+local imageDir = os.tmpname()
+os.remove(imageDir)
+os.execute("mkdir -p " .. imageDir)
+local pixels = N.canvas(8, 8)
+pixels:clear(1, 0, 0, 1)
+pixels:snapshot():write(imageDir .. "/red.png")
+local pictured = reel('<Image src="' .. imageDir .. '/red.png" density="2" x="10" y="10" />'
+	.. '<Image src="' .. imageDir .. '/red.png" x="30" y="10" width="20" height="4" />')
+local pc = frame(pictured, 0)
+t.expect(pc:pixel(12, 12) > 0.9 and pc:pixel(15, 12) < 0.1, "an image at density 2 is half its pixel size in points")
+t.expect(pc:pixel(48, 12) > 0.9 and pc:pixel(40, 15) < 0.1, "width and height stretch an image")
+t.assertThrows(function() reel('<Image src="' .. imageDir .. '/none.png" />') end, "a missing image fails the load")
+
+-- Identifiers containing "/" (an app's "task/2") cut as whole views.
+Reel.native()
+local captures = Reel.captures(imageDir)
+local page = N.canvas(40, 20)
+page:clear(0.5, 0.5, 0.5, 1)
+page:snapshot():write(imageDir .. "/app.png")
+local layout = assert(io.open(imageDir .. "/app.layout.xml", "w"))
+layout:write('<?xml version="1.0"?><Layout scale="2"><View class="NSView" window="0 0 20 10">'
+	.. '<View class="NSView" identifier="task/2" window="2 3 4 5" /></View></Layout>')
+layout:close()
+local x, y, w, h = captures:get("app"):rect("#task/2")
+t.expect(x == 2 and y == 3 and w == 4 and h == 5, "a view whose identifier contains a slash cuts by its whole name")
+os.execute("rm -rf " .. imageDir)
+
 os.exit(t.summary() and 0 or 1)

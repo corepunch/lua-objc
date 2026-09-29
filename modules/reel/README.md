@@ -107,7 +107,8 @@ use `step()` or `&gt;` for comparisons.
 | `Let name value` | A per-frame variable for later attributes. |
 | `Frame capture` | A capture's window-point space, centred on (x, y), not drawn. |
 | `Window capture radius shadow downsample` | The whole capture as a window. |
-| `Piece rect part outset key radius shadow` | Part of a capture: `rect="#view"`, `"#view/row/N"`, `"#view/cell"` or `"x, y, w, h"`; `part` narrows it; `key="x, y"` keys out the colour there. |
+| `Piece rect part outset key radius shadow` | Part of a capture: `rect="#view"` (any identifier, even `#task/2`), `"#view/row/N"`, `"#view/cell"` or `"x, y, w, h"`; `part` narrows it; `key="x, y"` keys out the colour there. |
+| `Image src density width height radius shadow` | An image file with no layout (a simulator screenshot) at its top-left corner; `density` is pixels per point. |
 | `Fill rect color outset` | Covers part of the window (`color="sample(x, y)"`). |
 | `Rect width height radius color shadowBlur shadowY shadowColor` | A rectangle from its position. |
 | `Circle radius color stroke shadowBlur` | A disc or ring centred on its position. |
