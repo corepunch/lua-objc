@@ -13,6 +13,7 @@ local Stage = require("Stage")
 local C = require("Choreography")
 local CoinQuest = require("CoinQuest")
 local shots = require("shots")
+local Todo = require("Todo")
 local Score = require("Score")
 
 local here = "reels/promo/"
@@ -32,20 +33,63 @@ local function music(data)
 	for _, event in ipairs(data.quest.events) do
 		if event.name == "coin" then table.insert(coins, event.time + C.QUEST.start) end
 	end
+	local S = C.SHOT
 	return {
-		kicks = join(every(0.5, 1.0, 3.44), every(0.5, 3.5, 11.0), every(0.5, 14.0, 20.3), every(0.5, 20.5, 21.75),
-			every(0.5, 21.8, 27.8), { 28.05 }),
-		crashes = { 3.5, 14.0, 17.0, 21.8, 25.0, 28.05 },
-		booms = { { 3.5, 0.9 }, { 11.05, 0.6 }, { 14.0, 0.5 }, { 21.8, 1.0 }, { 28.05, 0.9 } },
-		risers = { { 2.3, 3.45 }, { 12.7, 13.95 }, { 20.5, 21.75 }, { 26.9, 27.95 } },
-		whooshes = { { 0.75, 1.05 }, { 1.5, 1.8 }, { 1.85, 2.6 }, { 2.25, 2.55 }, { 2.95, 3.5 }, { 3.5, 4.4 },
-			{ 13.0, 13.9 }, { 17.0, 17.5 }, { 21.2, 21.8 } },
-		typing = { { from = 7.0, to = 7.55, count = 22 }, { from = 9.5, to = 10.05, count = 24 } },
-		sends = { C.SHOT.send1, C.SHOT.send2 },
+		kicks = join(every(0.5, 0.5, 3.55), every(0.5, 3.6, 11.75), every(0.5, 13.0, 17.6), every(0.5, 18.5, 19.45),
+			every(0.5, S.cut, 23.6), { S.logo }),
+		crashes = { 3.6, 13.0, S.cut, S.logo },
+		booms = { { 3.6, 0.9 }, { 11.75, 0.6 }, { S.cut, 1.0 }, { S.logo, 0.9 } },
+		risers = { { 2.4, 3.55 }, { 12.5, 12.97 }, { 18.2, 19.47 }, { 24.6, 25.97 } },
+		whooshes = { { 2.6, 3.6 }, { 5.0, 5.55 }, { 6.2, 6.8 }, { 9.95, 10.35 }, { 12.5, 13.4 },
+			{ 17.6, 18.45 }, { 18.9, 19.5 }, { 23.6, 25.0 } },
+		typing = { { from = 4.0, to = 4.7, count = 22 }, { from = 7.25, to = 7.8, count = 24 } },
+		sends = { S.send1, S.send2, S.send3 },
+		pops = { 0.5, 1.0, 1.5, S.change1, S.change2, S.checked, S.change3, S.opened },
+		taps = { S.tap, S.tapOpen },
 		coins = coins,
-		hits = { 25.0, 25.5, 26.0, 26.5, 27.0 },
-		logo = 28.05,
+		logo = S.logo,
 	}
+end
+
+local function screens(dir)
+	local S = C.SHOT
+	local rows = Todo.states()
+	local phones = {
+		pair = {
+			dir = dir, rows = rows,
+			timeline = {
+				{ at = 0, state = "v0", assemble = { 0.5, 1.0, 1.0, 1.5 } },
+				{ at = S.change1, state = "v1" }, { at = S.change2, state = "v2" },
+				{ at = S.checked, state = "checked" }, { at = S.change3, state = "filtered" },
+				{ at = S.opened, state = "open" },
+			},
+			taps = {
+				-- The checkbox of the first open task.
+				{ at = S.tap, aim = { "v2", "task/2", 0.075, 0.5 } },
+				-- "Open", the filter's middle segment.
+				{ at = S.tapOpen, aim = { "filtered", "filter", 0.5, 0.5 } },
+			},
+			drawer = {
+				open = S.drawer, listen = 13.9, send = S.send3, reply = S.send3 + 0.3, close = S.change3 - 0.2,
+				words = { { 14.1, "Add" }, { 14.35, "a" }, { 14.6, "filter." } }, prompt = "Add a filter.",
+				replyText = "Added a filter above the list.", file = "Content.etlua", delta = "+5",
+			},
+		},
+		hero = { dir = dir, rows = rows, timeline = { { at = 0, state = "open" } } },
+	}
+	local studios = {
+		pair = {
+			dir = dir,
+			sends = { { at = S.send1, typeFrom = 4.0, typeTo = 4.7 }, { at = S.send2, typeFrom = 7.25, typeTo = 7.8 } },
+			previews = { { at = S.change1, version = 1 }, { at = S.change2, version = 2 } },
+		},
+		hero = {
+			dir = dir,
+			sends = { { at = -3, typeFrom = -4, typeTo = -4 }, { at = -2, typeFrom = -4, typeTo = -4 }, { at = -1, typeFrom = -4, typeTo = -4 } },
+			previews = { { at = -1, version = 3 } },
+		},
+	}
+	return phones, studios
 end
 
 local function load(template)
@@ -63,13 +107,14 @@ local function load(template)
 		table.insert(script, { at, direction })
 		at = at + 0.21
 	end
-	data.quest = CoinQuest.new({ level = 2, script = script, duration = C.SHOT.speed - C.QUEST.start + 0.5 })
+	data.quest = CoinQuest.new({ level = 2, script = script, duration = C.SHOT.hero - C.QUEST.start + 0.5 })
 	data.questStates = function(t)
 		local states = data.quest:poses(t - C.QUEST.start)
 		table.insert(states, C.questCamera(t))
 		return states
 	end
 	data.shots = shots
+	data.phones, data.studios = screens(data.capturesDir)
 	data.subframes = os.getenv("REEL_SUBFRAMES")
 	return Reel.load(here .. "views/" .. (template or "Reel.etlua"), data), data
 end

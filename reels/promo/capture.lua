@@ -55,9 +55,9 @@ end
 
 -- A root for version k of an app: this checkout by symbolic link, except
 -- the app, which is a copy with edits k+1…n reverse-applied, newest first.
-local function root(name, k)
+local function root(name, k, folder)
 	local app = Edits[name]
-	local dir = string.format("%s/%s-v%d", ROOTS, name, k)
+	local dir = string.format("%s/%s", ROOTS, folder or (name .. "-v" .. k))
 	sh("rm -rf " .. quote(dir) .. " && mkdir -p " .. quote(dir .. "/demo"))
 	for entry in read("ls -A " .. quote(repo)):gmatch("[^\n]+") do
 		if entry ~= "demo" and entry ~= ".git" then
@@ -72,6 +72,24 @@ local function root(name, k)
 	sh("cp -R " .. quote(repo .. "/" .. app.dir) .. " " .. quote(dir .. "/" .. app.dir))
 	for i = #app.edits, k + 1, -1 do
 		sh("patch -s -R -p1 -d " .. quote(dir) .. " < " .. quote(repo .. "/" .. here .. "edits/" .. app.edits[i].patch .. ".patch"))
+	end
+	return dir
+end
+
+-- A root for an app state: version `from` with its changes applied, each
+-- one text replacement in one file.
+local function stateRoot(name, state)
+	local app = Edits[name]
+	local dir = root(name, state.from, name .. "-" .. state.name)
+	for _, key in ipairs(state.changes) do
+		local change = app.changes[key] or error("capture: no change named " .. key, 0)
+		local target = string.format("%s/%s/%s", dir, app.dir, change.file)
+		local file = assert(io.open(target, "r"))
+		local source = file:read("a")
+		file:close()
+		local at = source:find(change.find, 1, true)
+		if not at then error("capture: change " .. key .. " finds no " .. change.find, 0) end
+		write(target, source:sub(1, at - 1) .. change.replace .. source:sub(at + #change.find))
 	end
 	return dir
 end
@@ -170,6 +188,9 @@ local function main(...)
 	if steps.iphone then
 		sh("make -s ios-host ios-packager >/dev/null")
 		for k = 0, #Edits.todo.edits do iphone(roots.todo[k], Edits.todo.dir, "todo-iphone-v" .. k) end
+		for _, state in ipairs(Edits.todo.states) do
+			iphone(stateRoot("todo", state), Edits.todo.dir, "todo-iphone-" .. state.name)
+		end
 	end
 	if steps.studio then
 		ipad(Edits.ledger.dir, "ledger-ipad")

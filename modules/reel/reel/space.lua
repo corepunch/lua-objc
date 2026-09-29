@@ -73,7 +73,8 @@ end
 -- Cubic Hermite interpolation between keyed values with Catmull-Rom
 -- tangents scaled to uneven key spacing, so the motion is smooth through
 -- every key (continuous velocity) and eases in and out of the first and the
--- last. A key {time, value, hold = true} stops dead on its value.
+-- last. A key {time, value, hold = true} stops dead on its value, and so
+-- does a key equal to its neighbour (the ends of a hold).
 local function hermite(t, keys, get, set)
 	local n = #keys
 	if n == 0 then error("path needs keys", 3) end
@@ -85,10 +86,17 @@ local function hermite(t, keys, get, set)
 	local t0, t1 = k0[1], k1[1]
 	local span = t1 - t0
 	local u = (t - t0) / span
+	-- A key with the same value as a neighbour stops dead there too: a
+	-- camera held between two equal keys must not drift.
+	local function equal(a, b)
+		for c = 1, 3 do if get(a[2], c) ~= get(b[2], c) then return false end end
+		return true
+	end
 	local function tangent(index)
 		local key = keys[index]
 		if key.hold or index == 1 or index == n then return nil end
 		local before, after = keys[index - 1], keys[index + 1]
+		if equal(key, before) or equal(key, after) then return nil end
 		return before, after, (after[1] - before[1])
 	end
 	local h00 = 2 * u ^ 3 - 3 * u ^ 2 + 1

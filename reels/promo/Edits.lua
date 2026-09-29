@@ -13,6 +13,22 @@ return {
 		title = "Tasks", icon = "checklist",
 		files = { "init.lua", "Model.lua", "Controller.lua", "views/Window.etlua", "views/Sidebar.etlua",
 			"views/Content.etlua", "views/TaskRow.etlua" },
+		-- States reached by using the app on the phone: version `from` with
+		-- its sample data changed. The film keeps them consistent: the task
+		-- checked on the iPad's preview stays checked through the filter.
+		states = {
+			{ name = "checked", from = 2, changes = { "done" } },
+			{ name = "filtered", from = 3, changes = { "done" } },
+			{ name = "open", from = 3, changes = { "done", "open" } },
+		},
+		-- The changes, each one text replacement in one file.
+		changes = {
+			-- The first open task, checked off.
+			done = { file = "Model.lua", find = 'project = "launch", due = "11:30", flagged = true}',
+				replace = 'project = "launch", due = "11:30", flagged = true, done = true}' },
+			-- "Open" chosen in the filter.
+			open = { file = "Model.lua", find = "projects = {}, filter = 1}", replace = "projects = {}, filter = 2}" },
+		},
 		edits = {
 			{ patch = "todo-1-group-completed", prompt = "Group completed tasks.",
 				reply = "Open tasks come first now; finished ones collect in their own Completed section." },
