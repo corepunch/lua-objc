@@ -49,35 +49,30 @@ end
 local CHAT = { lines = 9 }
 
 -- showcase(app, k, editsDir) -> Lua source for LUA_STUDIO_SHOWCASE: the
--- project, its files, the exchanges for edits 1…k and the next edit's
--- prompt as the draft.
+-- project, its files, the exchanges for edits 1…k (each agent turn with a
+-- change card carrying the diff lines) and the next edit's prompt as the
+-- draft.
 function Conversation.showcase(app, k, editsDir)
-	local messages = {}
-	for i = 1, k do
-		local edit = app.edits[i]
-		local path = editsDir .. edit.patch .. ".patch"
-		local name, added, removed = Conversation.summary(path)
-		table.insert(messages, { role = "user", text = edit.prompt })
-		table.insert(messages, { role = "agent", text = edit.reply, files = {
-			{ name = name:match("[^/]+/[^/]+$"), stat = string.format("+%d −%d", added, removed),
-				lines = excerpt(Conversation.lines(path), CHAT.lines) } } })
-	end
-	local draft = app.edits[k + 1] and app.edits[k + 1].prompt or ""
 	local out = { "return {", string.format("\tproject = %q,", app.dir),
 		string.format("\tcurrent = {title = %q, icon = %q},", app.title or app.dir, app.icon or "app.fill"), "\tfiles = {" }
 	for _, name in ipairs(app.files) do table.insert(out, string.format("\t\t%q,", name)) end
 	table.insert(out, "\t},")
 	table.insert(out, "\tconversation = {")
 	table.insert(out, string.format("\t\tstatus = %q,", k > 0 and "Reloaded · no build" or "Ready"))
-	table.insert(out, string.format("\t\tdraft = %q,", draft))
+	table.insert(out, string.format("\t\tdraft = %q,", app.edits[k + 1] and app.edits[k + 1].prompt or ""))
 	table.insert(out, "\t\tmessages = {")
-	for _, message in ipairs(messages) do
-		table.insert(out, string.format("\t\t\t{role = %q, text = %q, files = {", message.role, message.text))
-		for _, file in ipairs(message.files or {}) do
-			table.insert(out, string.format("\t\t\t\t{name = %q, stat = %q, lines = {", file.name, file.stat))
-			for _, line in ipairs(file.lines) do table.insert(out, string.format("\t\t\t\t\t%q,", line)) end
-			table.insert(out, "\t\t\t\t}},")
+	for i = 1, k do
+		local edit = app.edits[i]
+		local path = editsDir .. edit.patch .. ".patch"
+		local name, added, removed = Conversation.summary(path)
+		table.insert(out, string.format("\t\t\t{role = \"user\", text = %q},", edit.prompt))
+		table.insert(out, string.format("\t\t\t{role = \"agent\", text = %q, changes = {", edit.reply))
+		table.insert(out, string.format("\t\t\t\t{path = %q, added = %d, removed = %d, lines = {",
+			name:sub(#app.dir + 2), added, removed))
+		for _, line in ipairs(excerpt(Conversation.lines(path), CHAT.lines)) do
+			table.insert(out, string.format("\t\t\t\t\t%q,", line))
 		end
+		table.insert(out, "\t\t\t\t}},")
 		table.insert(out, "\t\t\t}},")
 	end
 	table.insert(out, "\t\t},")

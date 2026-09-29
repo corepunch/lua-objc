@@ -123,4 +123,37 @@ local ok = Projects.save(function(path, value) writes[path] = value; return true
 	name = "Demo App", bundleId = "org.example.demo", appIcon = "checklist",
 })
 t.expect(ok and writes["Demo/project.lua"]:find('appIcon = "checklist"', 1, true), "project settings persist as readable Lua")
+-- The preview runs any project by its init module: demo/todo, which uses
+-- retained templates, renders from its files alone.
+local todoFiles = {}
+for _, name in ipairs({ "init.lua", "Model.lua", "Controller.lua", "views/Window.etlua", "views/Sidebar.etlua",
+	"views/Content.etlua", "views/TaskRow.etlua" }) do
+	todoFiles["demo/todo/" .. name] = assert(io.open("demo/todo/" .. name)):read("a")
+end
+local todoPreview = Preview.new(previewNS, function(p) return assert(io.open(p)):read("a") end)
+local todoView, todoErr = todoPreview:render(todoFiles, "demo.todo.init")
+t.expect(todoView ~= nil, "another project renders by its entry module: " .. tostring(todoErr))
+
+-- The chat is a transcript; an agent's change card carries the diff lines.
+local Chat = require("apps.studio.models.Chat")
+local chat = Chat.presentation({ messages = {
+	{ role = "user", text = "Add a filter." },
+	{ role = "agent", text = "Done.", conclusion = "Try it.", changes = { { path = "views/Content.etlua", added = 5, removed = 1,
+		lines = { "+ <Picker id=\"filter\">", "- <Old />", "  <Same />" } } } },
+}, draft = "Make it blue", listening = true })
+t.assertEqual(#chat.messages, 2, "a showcase conversation replaces the starter one")
+local change = chat.messages[2].changes[1]
+t.assertEqual(change.lines[1].color, "systemGreen", "added lines are green")
+t.assertEqual(change.lines[2].color, "systemRed", "removed lines are red")
+t.assertEqual(change.lines[3].color, "secondary", "context lines are secondary")
+t.assertEqual(change.delta, "+5 −1", "a change counts added and removed lines")
+t.assertEqual(chat.messages[2].summary.title, "1 file changed", "the card summarises its files")
+t.assertEqual(chat.draft, "Make it blue", "the composer shows the draft")
+t.expect(chat.listening, "dictation can be shown listening")
+local starter = Chat.presentation()
+t.expect(starter.messages[1].role == "user" and #starter.messages[2].changes == 6, "the starter conversation is unchanged")
+local pane = require("ui.xml").describeFile("apps/studio/views/ChatPane.etlua", chat)
+t.expect(pane.source:find("&lt;Old /&gt;", 1, true) ~= nil, "the chat pane renders diff lines")
+t.expect(pane.source:find('text="Make it blue"', 1, true) ~= nil, "the chat pane renders the draft")
+
 os.exit(t.summary() and 0 or 1)

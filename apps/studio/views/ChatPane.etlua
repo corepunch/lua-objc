@@ -38,25 +38,36 @@
 	<ScrollView id="transcriptScroll" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
 		<VStack spacing="0" maxWidth="infinity" alignment="center">
 		<VStack padding="<%= CHAT.inset %>" spacing="<%= CHAT.spacing %>" maxWidth="<%= CHAT.column %>" alignment="leading">
-			<HStack spacing="0" maxWidth="infinity">
+			<% for _, message in ipairs(messages) do %>
+			<% if message.role == "user" then %>
+			<HStack id="message/<%= message.id %>" spacing="0" maxWidth="infinity">
 				<Spacer minWidth="<%= CHAT.bubbleIndent %>" />
 				<VStack padding="<%= CHAT.bubbleInset %>" flexShrink="1" background="accent" cornerRadius="<%= CHAT.bubbleRadius %>">
-					<Label text="<%= prompt %>" size="<%= CHAT.bodySize %>" color="white" lines="0" />
+					<Label text="<%= message.text %>" size="<%= CHAT.bodySize %>" color="white" lines="0" />
 				</VStack>
 			</HStack>
-			<HStack spacing="<%= CHAT.turnSpacing %>" maxWidth="infinity" alignment="top">
+			<% else %>
+			<HStack id="message/<%= message.id %>" spacing="<%= CHAT.turnSpacing %>" maxWidth="infinity" alignment="top">
 				<SystemImage name="sparkles" size="<%= CHAT.bodySize %>" color="accent" label="<%= agent.name %>" />
 				<VStack spacing="<%= CHAT.turnSpacing %>" flexGrow="1" flexShrink="1" alignment="leading">
-					<Label text="<%= response %>" size="<%= CHAT.bodySize %>" lines="0" maxWidth="infinity" />
-					<%- partial("ChangeCard.etlua", { changes = changes, summary = changeSummary }) %>
-					<Label text="<%= conclusion %>" size="<%= CHAT.bodySize %>" lines="0" maxWidth="infinity" />
+					<Label text="<%= message.text %>" size="<%= CHAT.bodySize %>" lines="0" maxWidth="infinity" />
+					<% if message.changes then %>
+					<%- partial("ChangeCard.etlua", { changes = message.changes, summary = message.summary }) %>
+					<% end %>
+					<% if message.conclusion then %>
+					<Label text="<%= message.conclusion %>" size="<%= CHAT.bodySize %>" lines="0" maxWidth="infinity" />
+					<% end %>
+					<% if message.changes then %>
 					<Label text="Preview updated" systemImage="checkmark.circle.fill" iconSize="<%= CHAT.captionSize %>" size="<%= CHAT.captionSize %>" color="secondary" />
+					<% end %>
 				</VStack>
 			</HStack>
+			<% end %>
+			<% end %>
 		</VStack>
 		</VStack>
 	</ScrollView>
 	<VStack spacing="0" maxWidth="infinity" alignment="center">
-		<%- partial("Composer.etlua", { suggestions = suggestions, inset = CHAT.inset, column = CHAT.column }) %>
+		<%- partial("Composer.etlua", { suggestions = suggestions, draft = draft, listening = listening, inset = CHAT.inset, column = CHAT.column }) %>
 	</VStack>
 </VStack>

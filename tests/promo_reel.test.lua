@@ -45,6 +45,12 @@ for k = 0, #Edits.todo.edits do
 	t.assertEqual(#data.conversation.messages, k * 2, "one exchange per edit so far (v" .. k .. ")")
 	t.assertEqual(data.conversation.draft, Edits.todo.edits[k + 1] and Edits.todo.edits[k + 1].prompt or "",
 		"the next prompt waits in the composer (v" .. k .. ")")
+	local chat = require("apps.studio.models.Chat").presentation(data.conversation)
+	t.assertEqual(#chat.messages, k * 2, "Lua Studio presents the showcase conversation (v" .. k .. ")")
+	if k > 0 then
+		local change = chat.messages[2].changes[1]
+		t.expect(change.path == "views/Content.etlua" and #change.lines > 0, "each edit shows its file and diff lines (v" .. k .. ")")
+	end
 	for _, file in ipairs(data.files) do
 		t.expect(io.open("demo/todo/" .. file) ~= nil, "showcase file demo/todo/" .. file .. " exists")
 	end

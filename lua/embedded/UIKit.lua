@@ -1183,11 +1183,11 @@ function UIKit.Button(props)
 	if action then
 		button = bridge._button(title, action, style or "default",
 			props.systemImage or "", props.role or "", font, props.content,
-			props.symbolSize or 0, props.foregroundStyle, props.weight, props.controlSize)
+			props.symbolSize or 0, foreground, props.weight, props.controlSize)
 	else
 		button = bridge._button(title, nil, style or "default",
 			props.systemImage or "", props.role or "", font, props.content,
-			props.symbolSize or 0, props.foregroundStyle, props.weight, props.controlSize)
+			props.symbolSize or 0, foreground, props.weight, props.controlSize)
 	end
 	if type(props) == "table" and props.truncation then
 		local modes = { head = 3, tail = 4, middle = 5 }

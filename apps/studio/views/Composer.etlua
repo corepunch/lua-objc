@@ -12,8 +12,8 @@
 	<GlassEffect cornerRadius="<%= COMPOSER.radius %>" maxWidth="infinity">
 		<HStack padding="<%= COMPOSER.fieldInset %>" spacing="<%= COMPOSER.fieldInset %>" maxWidth="infinity" alignment="center">
 			<Button systemImage="plus" accessibilityLabel="Attach" style="plain" />
-			<TextField id="composer" text="" placeholder="Describe a change…" size="<%= COMPOSER.fieldSize %>" style="plain" flexGrow="1" maxWidth="infinity" />
-			<Button systemImage="mic" accessibilityLabel="Dictate" style="plain" />
+			<TextField id="composer" text="<%= draft or "" %>" placeholder="Describe a change…" size="<%= COMPOSER.fieldSize %>" style="plain" flexGrow="1" maxWidth="infinity" />
+			<Button systemImage="<%= listening and "waveform" or "mic" %>" accessibilityLabel="Dictate" style="plain" />
 			<Button systemImage="arrow.up" accessibilityLabel="Send" style="glassProminent" />
 		</HStack>
 	</GlassEffect>
