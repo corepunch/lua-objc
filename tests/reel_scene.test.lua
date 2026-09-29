@@ -1,0 +1,165 @@
+-- Reel's SceneKit layer (modules/reel/reel/world.lua, native/scene.m) and
+-- its 3-D helpers (reel/space.lua): the offscreen renderer, <SceneView>
+-- records posed from `t`, surfaces, states, transitions and projection.
+-- Everything renders into small offscreen canvases.
+_G.__headless = true
+package.path = "modules/reel/?.lua;" .. package.path
+
+local t = require("TestKit")
+local Reel = require("Reel")
+local Space = require("reel.space")
+local N = Reel.native()
+
+local function near(a, b, tolerance) return math.abs(a - b) <= (tolerance or 0.02) end
+local function nearVector(a, b, tolerance)
+	return near(a[1], b[1], tolerance) and near(a[2], b[2], tolerance) and near(a[3], b[3], tolerance)
+end
+
+-- ── Space ────────────────────────────────────────────────────────────────
+
+t.expect(nearVector(Space.orbit({ 0, 0, 0 }, 2, 0, 0), { 0, 0, 2 }, 1e-9), "orbit yaw 0 stands in front, on +z")
+t.expect(nearVector(Space.orbit({ 1, 0, 0 }, 2, 90, 0), { 3, 0, 0 }, 1e-9), "positive yaw orbits to the right")
+t.expect(nearVector(Space.orbit({ 0, 0, 0 }, 2, 0, 90), { 0, 2, 0 }, 1e-9), "pitch 90 looks straight down")
+t.expect(nearVector(Space.dolly({ 0, 0, 10 }, { 0, 0, 0 }, 3), { 0, 0, 3 }, 1e-9), "dolly moves along the camera axis")
+t.expect(near(Space.fill(2, 90), 1, 1e-9), "fill() is the distance that frames a height")
+local keys = { { 0, { 0, 0, 0 } }, { 1, { 1, 2, 3 } }, { 3, { 5, 0, 0 } } }
+t.expect(nearVector(Space.path(-1, keys), { 0, 0, 0 }), "a path holds its first key before it")
+t.expect(nearVector(Space.path(1, keys), { 1, 2, 3 }, 1e-9), "a path passes through every key")
+t.expect(nearVector(Space.path(9, keys), { 5, 0, 0 }), "a path holds its last key after it")
+-- Continuous velocity through the middle key: the slopes either side agree.
+local e = 1e-4
+local before = Space.sub3(Space.path(1, keys), Space.path(1 - e, keys))
+local after = Space.sub3(Space.path(1 + e, keys), Space.path(1, keys))
+t.expect(nearVector(before, after, 1e-5), "a path is smooth through its keys")
+local start = Space.sub3(Space.path(e, keys), Space.path(0, keys))
+t.expect(Space.length3(start) < 1e-5, "a path eases out of its first key")
+local held = { { 0, { 0, 0, 0 } }, { 1, { 1, 0, 0 }, hold = true }, { 2, { 2, 0, 0 } } }
+t.expect(Space.length3(Space.sub3(Space.path(1 + e, held), Space.path(1, held))) < 1e-5, "a held key stops dead")
+t.expect(near(Space.track(0.5, { { 0, 10 }, { 1, 20 } }), 15, 1e-9), "track() eases between two values")
+t.assertThrows(function() Space.path(0, {}) end, "a path needs keys")
+
+-- ── Native scene ─────────────────────────────────────────────────────────
+
+local scene = N.scene()
+local camera = scene:node(0)
+scene:camera(camera, { fieldOfView = 40 })
+scene:pose(camera, 0, 0, 4, 0, 0, 0, 1, 1, 1)
+local box = scene:node(0)
+t.expect(scene:geometry(box, "box", { width = 1, height = 1, length = 1 }), "a box geometry builds")
+scene:material(box, { color = { 1, 0, 0, 1 }, lighting = "constant" })
+scene:pose(box, 0, 0, 0, 0, 0, 0, 1, 1, 1)
+local image = scene:render(camera, 64, 48)
+local pw, ph = image:pixelSize()
+t.expect(pw == 64 and ph == 48, "a render has the requested pixel size")
+local r, g, b, a = image:pixel(32, 24)
+t.expect(r > 0.95 and g < 0.05 and a > 0.99, "the box fills the centre of the frame")
+t.expect(select(4, image:pixel(1, 1)) < 0.01, "nothing drawn is transparent")
+scene:pose(box, 5, 0, 0, 0, 0, 0, 1, 1, 1)
+t.expect(select(4, scene:render(camera, 64, 48):pixel(32, 24)) < 0.01, "a pose applies to the next render")
+scene:pose(box, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, true)
+t.expect(select(4, scene:render(camera, 64, 48):pixel(32, 24)) < 0.01, "a hidden node draws nothing")
+local nil1, message = scene:geometry(box, "blob", {})
+t.expect(nil1 == nil and message:find("blob"), "an unknown geometry names itself")
+local nil2, missing = scene:model(scene:node(0), "no/such/model.obj")
+t.expect(nil2 == nil and missing:find("cannot read"), "a missing model is reported")
+t.expect(scene:model(scene:node(0), "apps/coin-quest/assets/models/coin-gold.obj"), "Coin Quest's models load")
+local px, py, depth = scene:project(camera, 64, 48, 0, 0, 0)
+t.expect(near(px, 32, 1e-3) and near(py, 24, 1e-3) and near(depth, 4, 1e-6), "project() maps the look point to the centre")
+px, py = scene:project(camera, 64, 48, 0, 1, 0)
+t.expect(py < 24, "up in the world is up in the frame")
+t.expect(scene:geometry(scene:node(0), "slab", { width = 1, height = 2, length = 0.1, cornerRadius = 0.2, chamfer = 0.02 }),
+	"a slab (rounded device body) builds")
+t.assertThrows(function() scene:render(box, 8, 8) end, "only a camera renders")
+t.assertThrows(function() scene:pose(999, 0, 0, 0, 0, 0, 0, 1, 1, 1) end, "an unknown handle is an error")
+
+-- ── <SceneView> ──────────────────────────────────────────────────────────
+
+local function reel(body, data)
+	return Reel.fromSource('<Reel width="64" height="48" fps="30" duration="4" background="#000000" subframes="1">'
+		.. body .. '</Reel>', data)
+end
+local function frame(r, time)
+	local canvas = r:canvas()
+	r:draw(canvas, time)
+	return canvas
+end
+
+local lens = '<Camera position="0 0 4" lookAt="0 0 0" fieldOfView="40" />'
+local moving = reel('<SceneView>' .. lens
+	.. '<Node geometry="box" color="#FF0000" lighting="constant" position="step(t - 1) * 5, 0, 0" /></SceneView>')
+t.expect(frame(moving, 0.5):pixel(32, 24) > 0.95, "a record renders where its attributes put it")
+t.expect(frame(moving, 1.5):pixel(32, 24) < 0.05, "attributes are expressions of t")
+t.expect(frame(moving, 0.5):pixel(32, 24) > 0.95, "frames are pure functions of t (scrubbing back)")
+
+local a1, a2 = frame(moving, 0.5), frame(moving, 0.5)
+local same = true
+for x = 0, 63, 7 do for y = 0, 47, 5 do
+	local r1, g1, b1 = a1:pixel(x, y)
+	local r2, g2, b2 = a2:pixel(x, y)
+	if r1 ~= r2 or g1 ~= g2 or b1 ~= b2 then same = false end
+end end
+t.expect(same, "rendering the same instant twice is identical")
+
+local timed = reel('<SceneView>' .. lens
+	.. '<Node geometry="box" color="#FF0000" lighting="constant" from="1" to="2" transition="pop" /></SceneView>')
+t.expect(frame(timed, 0.5):pixel(32, 24) < 0.05, "a record is off stage before `from`")
+t.expect(frame(timed, 1.5):pixel(32, 24) > 0.95, "and on stage after its insertion transition")
+t.expect(frame(timed, 2.5):pixel(32, 24) < 0.05, "and gone after `to` and its removal transition")
+local popping = frame(timed, 1.05)
+local lit = 0
+for x = 0, 63 do if popping:pixel(x, 24) > 0.5 then lit = lit + 1 end end
+local full = 0
+local settled = frame(timed, 1.5)
+for x = 0, 63 do if settled:pixel(x, 24) > 0.5 then full = full + 1 end end
+t.expect(lit > 0 and lit < full, "a pop grows the node in")
+
+local backed = reel('<SceneView background="#0000FF">' .. lens .. '</SceneView>')
+t.expect(select(3, frame(backed, 0):pixel(1, 1)) > 0.95, "a background fills the view behind the scene")
+
+local driven = reel('<SceneView states="poses(t)">' .. lens
+	.. '<Node id="hero" geometry="box" color="#00FF00" lighting="constant" /></SceneView>',
+	{ poses = function(time) return { { id = "hero", x = time < 1 and 0 or 5 }, { id = "gone", x = 1 } } end })
+t.expect(select(2, frame(driven, 0.5):pixel(32, 24)) > 0.95, "states pose identified nodes")
+t.expect(select(2, frame(driven, 1.5):pixel(32, 24)) < 0.05, "states override the template, like nodeStates")
+
+local screen = reel('<SceneView>' .. lens
+	.. '<Node geometry="plane" width="2" height="1.5"><Surface width="20" height="15" background="#0000FF">'
+	.. '<Rect x="0" y="0" width="10" height="15" color="#FFFF00" /></Surface></Node></SceneView>')
+local shot = frame(screen, 0)
+local lr, lg, lb = shot:pixel(28, 24)
+local rr, rg, rb = shot:pixel(36, 24)
+t.expect(lr > 0.9 and lg > 0.9 and lb < 0.1, "a surface draws reel elements onto its node")
+t.expect(rb > 0.9 and rr < 0.1, "and keeps its background elsewhere, the right way up")
+
+local spinning = reel('<SceneView>' .. lens
+	.. '<Node geometry="box" width="2" height="0.3" length="0.3" color="#FFFFFF" lighting="constant" spin="0 0 90" /></SceneView>')
+t.expect(frame(spinning, 0):pixel(18, 24) > 0.9, "spin starts from the template pose")
+t.expect(frame(spinning, 1):pixel(18, 24) < 0.1 and frame(spinning, 1):pixel(32, 12) > 0.9,
+	"spin turns the content by its rate times t")
+
+-- A game's own prefab renders unchanged: Coin Quest's coin, with its spin
+-- and bob, as the live SceneView draws it.
+local here = os.getenv("PWD") .. "/"
+local coin = Reel.load(here .. "tests/fixtures/reel_scene/Coin.etlua", { root = here })
+t.expect(frame(coin, 0.3):pixel(32, 24) > 0.3, "Coin Quest's coin prefab renders in a reel")
+
+local projected = reel('<SceneView id="stage">' .. lens .. '</SceneView>'
+	.. '<Let name="spot" value="project(\'stage\', {0, 0, 0})" />'
+	.. '<Rect x="spot[1] - 2" y="spot[2] - 2" width="4" height="4" color="#FFFFFF" />')
+t.expect(frame(projected, 0):pixel(32, 24) > 0.9, "project() pins 2-D elements to 3-D points")
+
+t.assertThrows(function() reel('<SceneView><Node geometry="box" /></SceneView>') end, "a SceneView needs a camera")
+t.assertThrows(function() reel('<SceneView>' .. lens .. '<Node geometry="box" colour="#FFFFFF" /></SceneView>') end,
+	"an unknown record attribute is an error")
+t.assertThrows(function() reel('<SceneView>' .. lens .. '<Rect /></SceneView>') end, "only records live in a SceneView")
+t.assertThrows(function() reel('<Surface width="10" height="10" />') end, "a Surface belongs inside a scene node")
+t.assertThrows(function() reel('<SceneView>' .. lens .. '<Node model="no/such.obj" /></SceneView>') end,
+	"a missing model fails the load")
+t.assertThrows(function() reel('<SceneView>' .. lens .. '<Node id="a" /><Node id="a" /></SceneView>') end,
+	"ids are unique")
+t.assertThrows(function() reel('<SceneView camera="\'nope\'">' .. lens .. '</SceneView>'):draw(N.canvas(64, 48), 0) end,
+	"an unknown camera is an error")
+-- The live view's app hooks have no meaning offline and are accepted.
+t.expect(reel('<SceneView onKey="key" onFrame="frame">' .. lens .. '</SceneView>'), "app-only hooks are ignored")
+
+os.exit(t.summary() and 0 or 1)

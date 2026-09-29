@@ -60,10 +60,11 @@ build/AudioStream.dylib: src/plugins/audio/AudioStream.m Makefile
 
 # The Reel motion package's native half (modules/reel): offscreen drawing,
 # images and H.264. Standalone like StorageScan; the runtime never loads it.
-build/ReelNative.dylib: modules/reel/native/ReelNative.m Makefile
+build/ReelNative.dylib: modules/reel/native/ReelNative.m modules/reel/native/scene.m src/shared/scene_models.m Makefile
 	mkdir -p build
 	$(CC) $(CFLAGS) -mmacosx-version-min=26.0 $(MODULE_LDFLAGS) -framework AppKit -framework AVFoundation \
 		-framework CoreMedia -framework CoreVideo -framework CoreText -framework ImageIO \
+		-framework SceneKit -framework Metal \
 		-framework UniformTypeIdentifiers -o $@ $<
 
 # libgit2 (vendor/libgit2) as a static library per SDK and architecture.

@@ -23,16 +23,19 @@ must render any instant exactly and repeatably.
 | Piece | Where |
 |---|---|
 | Canvas, images, glyph text, SF Symbols, motion blur, H.264 writer and reader, WAV | `native/ReelNative.m` → `build/ReelNative.dylib` |
+| Offscreen SceneKit: nodes posed per frame, Metal render to an image, projection | `native/scene.m` (included by `ReelNative.m`) |
 | Facade: load, stills, movies, captures, toolkit exports | `Reel.lua` |
 | Easing, springs (SwiftUI `response`/`damping`), pulses, keys, flips, beat grid | `reel/curves.lua` |
 | The pen: transforms, shapes, sprites, type, symbols, chips, rings, bursts, glints | `reel/pen.lua` |
 | Scene graph and attribute expressions | `reel/scene.lua` |
+| `<SceneView>`: SceneKit records, surfaces, states, transitions from `t` | `reel/world.lua` |
+| Vectors, orbits, dollies, smooth camera paths | `reel/space.lua` |
 | Element vocabulary | `reel/elements.lua` |
 | Motion presets and the sounds they imply | `reel/motion.lua` |
 | Window captures cut by identifier, table row or treemap cell | `reel/captures.lua` |
 | Offline mix: buses, sidechain, reverb, master | `reel/audio.lua` |
 | Synth voices: pad, pluck, bass, drums, risers, whooshes, pops, bells | `reel/instruments.lua` |
-| Tests | `tests/reel.test.lua` |
+| Tests | `tests/reel.test.lua`, `tests/reel_scene.test.lua` |
 
 `reels/diskmap/` is the reference reel: a 30 s, 1080p piece in 11 scene
 templates, one bespoke shot and a score.
@@ -126,6 +129,67 @@ fade, sound}`, `leave{at, duration, x, y, scale, curve, fade, stay, sound}`,
 `fadeIn(at, d)`, `fadeOut(at, d)`, `punch(at)`, `spinOut(at, d, turns)`,
 `beat(hits)`. `pop` and `slam` imply their sound; `enter` and `leave` sound
 only when given one; `sound = false` silences a duplicate.
+
+## SceneKit
+
+`<SceneView>` puts a SceneKit scene in a reel, rendered offscreen through
+Metal at its on-screen pixel size, 4x multisampled and motion blurred like
+everything else. Its records are the live
+[SceneView](../../docs/PROJECT_REFERENCE.md)'s: `<Node>` (a `model` file or
+a `geometry`), `<Camera>` and `<Light>`, with `position`, `rotation`
+(degrees), `scale`, `spin`, `bob`, `transition`, `lookAt` and the rest. An
+app's own scene templates therefore render in a reel unchanged: Coin
+Quest's prefabs are partials of the promo reel. What the live view runs on
+the display clock is a function of `t` here, so any instant renders exactly:
+
+- every attribute may be an expression of `t`, and vectors are `"x y z"`
+  or an expression returning `{x, y, z}`;
+- `spin` and `bob` turn and float the content from `t`;
+- `from` and `to` put a record on and off stage, playing its `transition`
+  (`pop`, `rise`, `fade`) with the live view's curves;
+- `states="poses(t)"` is the live view's `nodeStates`: poses
+  `{id, x, y, z, yaw, pitch, roll, scale, opacity, hidden}` that override the
+  template for the frame, which is how a game's own simulation drives a reel.
+
+```xml
+<SceneView environment="studio" background="#0B0B0F" states="quest(t)">
+  <Camera position="path(t, cameraKeys)" lookAt="path(t, targetKeys)" fieldOfView="track(t, lensKeys)"
+          focusDistance="3.2" fStop="2.8" />
+  <Light type="directional" rotation="-50 30 0" intensity="1400" castsShadow="true" />
+  <Node id="phone" geometry="slab" width="0.72" height="1.5" length="0.08" cornerRadius="0.11" chamfer="0.025"
+        color="#2A2A2E" metalness="0.9" roughness="0.25" rotation="0, 30 * sin(t), 0">
+    <Node geometry="plane" width="0.68" height="1.46" cornerRadius="0.09" position="0 0 0.041" roughness="0.08">
+      <Surface width="393" height="852">
+        <Window capture="todo-phone" />
+        <Text style="head" text="Hello" x="196" y="400" at="1.2" />
+      </Surface>
+    </Node>
+  </Node>
+</SceneView>
+```
+
+Beyond the live vocabulary, for product shots:
+
+| Attribute or record | Purpose |
+|---|---|
+| `geometry="slab"` `width height length cornerRadius chamfer` | A rounded rectangle extruded `length` deep with rounded edges: a device body. |
+| `metalness roughness clearcoat clearcoatRoughness emission lighting` | Physically based material (`lighting` is `physical`, `blinn`, `lambert` or `constant`). |
+| `transparency blend order doubleSided writesDepth readsDepth` | Glass, glows and sorting. |
+| `image` (`imageSlot`) | A capture, piece or image on the node's geometry, self-lit (`emission`) by default. |
+| `<Surface width height density slot background>` | The node's screen, drawn every frame by ordinary reel elements in points, so app content animates on the glass. A surface may hold a `<SceneView>`: a game on a phone. |
+| Camera `focusDistance fStop bloom exposure vignetting hdr roll` | Lens: depth of field, bloom and a roll about the view axis. |
+| Light `temperature shadowScale shadowMapSize spotInner spotOuter` | Physical light and shadow control. |
+| SceneView `environment environmentIntensity` | Image-based lighting and reflections from an equirectangular image (an expression). |
+| SceneView `camera` | The camera record to look through (an id, or an expression that cuts). |
+
+`project('viewId', {x, y, z})` in a later attribute returns where a world
+point landed in that view this frame, so crisp reel type can follow a 3-D
+object. `reel/space.lua` supplies the camera helpers every attribute sees:
+`vec`, `add3`, `sub3`, `scale3`, `lerp3`, `length3`, `normalize3`,
+`orbit(target, distance, yaw, pitch)`, `dolly(from, target, distance)`,
+`fill(height, fieldOfView)`, `path(t, {{t0, {x, y, z}}, …})` (smooth
+through every key, easing out of the first and into the last; `hold = true`
+stops dead) and `track(t, keys)` for single values.
 
 ## Bespoke shots
 

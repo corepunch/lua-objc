@@ -19,7 +19,8 @@
  * transitions, so behaviours and poses never overwrite each other.
  *
  * Models load once per file through SceneKit's importers (OBJ, DAE, USDZ,
- * SCN) and are cloned per node, sharing geometry and materials. Keyboard
+ * SCN) and are cloned per node, sharing geometry and materials
+ * (shared/scene_models.m, which Reel's offline renderer uses too). Keyboard
  * events and a display-linked frame callback reach Lua through `onKey` and
  * `onFrame`, the two hooks a game loop needs. */
 
@@ -45,55 +46,6 @@
 @property(nonatomic, strong) NSMutableSet<NSString *> *heldKeys;
 - (void)setNodeStates:(NSArray *)states;
 @end
-
-static NSMutableDictionary<NSString *, SCNNode *> *scene_model_cache(void) {
-	static NSMutableDictionary *cache;
-	if (!cache) cache = [NSMutableDictionary dictionary];
-	return cache;
-}
-
-/* OBJ materials name their textures relative to the model file; SceneKit
- * keeps those names as strings, which it would resolve against the working
- * directory. Resolve them against the model instead. */
-static void scene_resolve_textures(SCNNode *root, NSURL *base) {
-	[root enumerateHierarchyUsingBlock:^(SCNNode *node, BOOL *stop) {
-		(void)stop;
-		for (SCNMaterial *material in node.geometry.materials) {
-			for (SCNMaterialProperty *property in @[material.diffuse, material.emission, material.normal,
-					material.roughness, material.metalness, material.ambientOcclusion]) {
-				id contents = property.contents;
-				if ([contents isKindOfClass:NSString.class] && ![contents isAbsolutePath]) {
-					property.contents = [NSURL fileURLWithPath:contents relativeToURL:base].absoluteURL;
-				}
-				/* Low-poly kits paint faces from a palette texture: sample it
-				 * crisply so neighbouring swatches never bleed together. */
-				property.magnificationFilter = SCNFilterModeNearest;
-			}
-		}
-	}];
-}
-
-static SCNNode *scene_model(NSString *path, NSString **error) {
-	SCNNode *prototype = scene_model_cache()[path];
-	if (!prototype) {
-		if (![NSFileManager.defaultManager isReadableFileAtPath:path]) {
-			if (error) *error = [NSString stringWithFormat:@"cannot read model %@", path];
-			return nil;
-		}
-		NSURL *url = [NSURL fileURLWithPath:path];
-		NSError *loadError = nil;
-		SCNScene *scene = [SCNScene sceneWithURL:url options:nil error:&loadError];
-		if (!scene) {
-			if (error) *error = loadError.localizedDescription ?: @"unreadable model";
-			return nil;
-		}
-		prototype = [SCNNode node];
-		for (SCNNode *child in scene.rootNode.childNodes) [prototype addChildNode:child];
-		scene_resolve_textures(prototype, url.URLByDeletingLastPathComponent);
-		scene_model_cache()[path] = prototype;
-	}
-	return [prototype clone];
-}
 
 static CGFloat scene_number(NSDictionary *spec, NSString *key, CGFloat fallback) {
 	id value = spec[key];
