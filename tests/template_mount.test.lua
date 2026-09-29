@@ -45,4 +45,27 @@ parent:dispose(); t.expect(mount:isDisposed(), "parent scope disposes nested tem
 t.assertEqual(#host.subviews, 0, "disposed mount removes native subtree")
 t.expect(not pcall(mount.update, mount, data), "disposed mount rejects future updates")
 os.remove(path)
+
+-- A chip that replaces itself when tapped (a suggestion strip re-rendered by
+-- its own action) must not take the work it started with it: a timer begun
+-- in the action belongs to the template, not to the rebuilt button node.
+local chipPath = os.tmpname() .. ".etlua"
+file = assert(io.open(chipPath, "w"))
+file:write('<HStack><% for index, title in ipairs(chips) do %><Button id="chip_<%= index %>" title="<%= title %>" action="tap" /><% end %></HStack>'); file:close()
+local chipHost = xml.render('<VStack maxWidth="infinity"/>', {}, ns)
+local chipOwner = ns.Scope.new()
+local chips = ns.Scope.withScope(chipOwner, Template.new, chipHost, chipPath, ns)
+local timerFired, chipData = 0, { chips = { "north" } }
+chipData.actions = { tap = function()
+	require("AppKitNative")._timerAfter(0.01, function() timerFired = timerFired + 1 end)
+	chips:update({ chips = {}, actions = chipData.actions })
+end }
+local _, chipRefs = chips:update(chipData)
+local tappedScope = xml.scopeOf(chips.mounted, "chip_1")
+ns._invokeAction(chipRefs.chip_1)
+t.expect(tappedScope.closed, "the tapped chip was removed by its own action")
+require("AppKitNative")._runLoopTick(0.1)
+t.assertEqual(timerFired, 1, "a timer started by a replaced control still fires")
+chipOwner:dispose()
+os.remove(chipPath)
 os.exit(t.summary() and 0 or 1)
