@@ -154,9 +154,14 @@ t.expect(hosting:find("CGRectGetMinY(tabFrame) >= CGRectGetMaxY(self.luaRoot.fra
 local gestures = assert(io.open("src/uikit/views.m", "r")):read("*a")
 local constructors = assert(io.open("src/uikit/constructors.m", "r")):read("*a")
 t.expect(constructors:find("@interface LuaLayoutView : UIView", 1, true) ~= nil
-	and constructors:find("target == self && self.gestureRecognizers.count == 0 ? nil : target", 1, true) ~= nil
+	and constructors:find("if (target != self || self.gestureRecognizers.count) return target;", 1, true) ~= nil
+	and constructors:find("return layout_content_contains(self, point) ? self : nil;", 1, true) ~= nil
+	and constructors:find("objc_getAssociatedObject(child, &kHitTestingDisabledKey)", 1, true) ~= nil
 	and select(2, constructors:gsub("%[%[LuaLayoutView alloc%] initWithFrame:CGRectZero%]", "")) == 4,
-	"empty stack padding passes taps through overlays while stack gestures remain active")
+	"empty stack padding passes taps through overlays while stack content and gestures claim them")
+t.expect(assert(io.open("src/uikit/runtime.m", "r")):read("*a")
+	:find("objc_setAssociatedObject(self, &kHitTestingDisabledKey, value ? nil : @YES", 1, true) ~= nil,
+	"explicit hit-testing opt-out is distinct from non-interactive content")
 t.expect(gestures:find('strcmp(name, "systemIndigo") == 0', 1, true) ~= nil,
 	"UIKit resolves the AI category's semantic color")
 t.expect(gestures:find("UIScreenEdgePanGestureRecognizer", 1, true) ~= nil

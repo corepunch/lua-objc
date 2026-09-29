@@ -16,6 +16,7 @@ static char kTableSourceKey;
 static char kCallbackKey;
 static char kResizeObserverKey;
 static char kPaddingKey;
+static char kHitTestingDisabledKey;
 static char kPaddingHorizontalKey;
 static char kPaddingLeadingKey;
 static char kPaddingTrailingKey;

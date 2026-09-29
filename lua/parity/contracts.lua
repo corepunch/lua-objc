@@ -124,15 +124,19 @@ function M.run(ns)
 	navigation:pop()
 	equal(navigation.depth, 1, "popping root keeps one controller")
 	local button = ns.Button { title = "Open", fixedWidth = 100, fixedHeight = 100 }
-	local overlay = ns.VStack { fillWidth = true, fillHeight = true, allowsHitTesting = false,
-		ns.Text "Artwork caption" }
+	-- SwiftUI stacks hit-test through their content, not their padding: the
+	-- probe lands on the caption, which claims the touch once the overlay
+	-- allows hit testing.
+	local caption = ns.Text { "Artwork caption", fixedWidth = 80, fixedHeight = 20 }
+	local overlay = ns.VStack { fillWidth = true, fillHeight = true, allowsHitTesting = false, caption }
 	local layered = ns.ZStack { fixedWidth = 100, fixedHeight = 100, button, overlay }
-	measure(layered, 100, 100)
-	equal(ns._hitTestTarget(layered, button, 50, 50), true, "decorative stack passes hit testing to native button")
+	local captionFrame = measure(layered, 100, 100, caption)
+	local x, y = captionFrame.x + captionFrame.width / 2, captionFrame.y + captionFrame.height / 2
+	equal(ns._hitTestTarget(layered, button, x, y), true, "decorative stack passes hit testing to native button")
 	overlay.allowsHitTesting = true
-	equal(ns._hitTestTarget(layered, button, 50, 50), false, "interactive stack receives hit testing")
+	equal(ns._hitTestTarget(layered, button, x, y), false, "interactive stack content receives hit testing")
 	overlay.allowsHitTesting = false
-	equal(ns._hitTestTarget(layered, button, 50, 50), true, "hit testing modifier round-trips")
+	equal(ns._hitTestTarget(layered, button, x, y), true, "hit testing modifier round-trips")
 	local artwork = ns.Image { path = "apps/adventure-arena/assets/planetfall.jpg", contentMode = "fill" }
 	equal(artwork.contentModeName, "fill", "native image reports its actual content mode")
 	artwork.contentModeName = "fit"
