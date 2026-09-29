@@ -34,6 +34,7 @@ local examples = {
 	"demo/swiftui_parity/init.lua",
 	"test/parity_batch/init.lua",
 	"demo/zoom-cover/init.lua",
+	"demo/todo/init.lua",
 }
 
 for _, path in ipairs(examples) do

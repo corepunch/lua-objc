@@ -472,7 +472,8 @@ function UIKit.GroupBox(props)
 	props = props or {}
 	local content = stackChildren(props, props.header)
 	content.padding = props.padding or 12
-	content.background = props.background or "background"
+	-- SwiftUI's GroupBox fills with the secondary system background.
+	content.background = props.background or "secondaryBackground"
 	content.cornerRadius = props.cornerRadius or 10
 	content.clipsToBounds = true
 	return UIKit.VStack(content)
@@ -1176,6 +1177,9 @@ function UIKit.Button(props)
 	local font = type(props) == "table" and props.size
 		and bridge._font(props.size, props.weight, false, props.design) or nil
 	local style = type(props) == "table" and props.style or nil
+	-- A plain button draws its label in the tint, as it does on AppKit.
+	local foreground = type(props) == "table" and props.foregroundStyle or nil
+	if style == "plain" and not foreground and type(props) == "table" then foreground = props.tint end
 	if action then
 		button = bridge._button(title, action, style or "default",
 			props.systemImage or "", props.role or "", font, props.content,
