@@ -76,6 +76,64 @@ Model.cities = {
 	{ name = "Singapore",        query = "Singapore" },
 }
 
+-- "2026-09-29" -> "Tue": forecast columns read by weekday.
+function Model.weekday(date)
+	local y, m, d = tostring(date or ""):match("^(%d+)-(%d+)-(%d+)$")
+	if not y then return tostring(date or "") end
+	return os.date("%a", os.time({year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12}))
+end
+
+local function withWeekdays(forecast)
+	for _, day in ipairs(forecast or {}) do day.day = Model.weekday(day.date) end
+	return forecast
+end
+
+-- Offline sample weather for `--showcase` (the promo reel captures it), so
+-- captures are the same on every run and need no network.
+local SHOWCASE = {
+	London = {temp = 18, cond = "Partly cloudy", feels = 17, humid = 64, wind = 14, dir = "WSW", uv = 3, cloud = 40,
+		area = "Westminster", region = "Greater London",
+		days = {{21, 13, "Partly cloudy", 10}, {19, 12, "Rain", 70}, {17, 11, "Showers", 55}, {20, 12, "Clear", 5},
+			{22, 14, "Clear", 0}, {21, 14, "Partly cloudy", 15}, {18, 12, "Rain", 60}}},
+	Tokyo = {temp = 26, cond = "Clear", feels = 27, humid = 58, wind = 9, dir = "SE", uv = 6, cloud = 10,
+		area = "Chiyoda", region = "Tokyo",
+		days = {{28, 21, "Clear", 0}, {27, 21, "Partly cloudy", 10}, {25, 20, "Rain", 80}, {24, 19, "Showers", 45},
+			{27, 20, "Clear", 5}, {28, 21, "Clear", 0}, {26, 20, "Partly cloudy", 20}}},
+	["San Francisco"] = {temp = 17, cond = "Foggy", feels = 16, humid = 82, wind = 19, dir = "W", uv = 4, cloud = 75,
+		area = "Mission District", region = "California",
+		days = {{19, 13, "Foggy", 5}, {21, 13, "Partly cloudy", 0}, {23, 14, "Clear", 0}, {22, 14, "Clear", 0},
+			{20, 13, "Foggy", 5}, {19, 12, "Partly cloudy", 10}, {18, 12, "Foggy", 10}}},
+	Sydney = {temp = 21, cond = "Clear", feels = 21, humid = 55, wind = 17, dir = "NE", uv = 7, cloud = 5,
+		area = "Surry Hills", region = "New South Wales",
+		days = {{23, 15, "Clear", 0}, {24, 16, "Clear", 0}, {22, 15, "Partly cloudy", 10}, {19, 14, "Showers", 60},
+			{20, 13, "Partly cloudy", 20}, {22, 14, "Clear", 0}, {24, 16, "Clear", 0}}},
+	Berlin = {temp = 15, cond = "Cloudy", feels = 14, humid = 71, wind = 12, dir = "NW", uv = 2, cloud = 90,
+		area = "Mitte", region = "Berlin",
+		days = {{16, 9, "Cloudy", 20}, {14, 8, "Rain", 75}, {13, 7, "Showers", 50}, {15, 8, "Partly cloudy", 15},
+			{17, 9, "Clear", 0}, {16, 10, "Partly cloudy", 10}, {14, 9, "Rain", 65}}},
+	Reykjavik = {temp = 7, cond = "Snow", feels = 3, humid = 88, wind = 28, dir = "N", uv = 1, cloud = 95,
+		area = "Miðborg", region = "Capital Region",
+		days = {{8, 3, "Snow", 70}, {7, 2, "Snow", 60}, {9, 4, "Cloudy", 30}, {10, 5, "Rain", 55},
+			{8, 3, "Cloudy", 20}, {6, 1, "Snow", 65}, {7, 2, "Cloudy", 25}}},
+}
+
+-- The showcase reading for `city`, in the shape fetchCity returns; the
+-- cities without one reuse London's, renamed.
+function Model.showcaseCity(city)
+	local s = SHOWCASE[city.name] or SHOWCASE.London
+	local forecast = {}
+	for index, day in ipairs(s.days) do
+		table.insert(forecast, {date = string.format("2026-09-%02d", 28 + index), tempMax = day[1], tempMin = day[2],
+			desc = day[3], icon = iconForCondition(day[3]), precipProbability = day[4]})
+	end
+	return {
+		city = city.name, temp = s.temp, cond = s.cond, icon = iconForCondition(s.cond), humid = s.humid,
+		wind = s.wind, feelsLike = s.feels, visibility = 10, pressure = 1016, uvIndex = s.uv, cloudCover = s.cloud,
+		precip = "0.0", windDir = s.dir, observationTime = "09:41 AM", areaName = s.area, region = s.region,
+		forecast = withWeekdays(forecast),
+	}
+end
+
 function Model.fetchCity(city)
 	local url = "https://wttr.in/" .. city.query .. "?format=j1"
 
@@ -136,7 +194,7 @@ function Model.fetchCity(city)
 		longitude = cc.longitude or nearestValue("longitude", "--"),
 		forecast = forecast,
 	}
-	result.forecast = openMeteoForecast(result.latitude, result.longitude) or forecast
+	result.forecast = withWeekdays(openMeteoForecast(result.latitude, result.longitude) or forecast)
 	return result
 end
 

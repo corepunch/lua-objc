@@ -1,5 +1,6 @@
 local ns    = require("AppKit")
 local xml   = require("ui.xml")
+local App   = require("App")
 local Model = require("apps.weather.Model")
 
 local VIEWS = "apps/weather/views/"
@@ -31,8 +32,15 @@ end
 local Controller = {}
 Controller.__index = Controller
 
+-- `--showcase` shows the offline sample weather instead of fetching it.
+local function showcase()
+	for _, value in ipairs(App.args()) do if value == "--showcase" then return true end end
+	return false
+end
+
 function Controller.new()
 	return setmetatable({
+		fetch = showcase() and Model.showcaseCity or Model.fetchCity,
 		weatherList = nil,
 		detailPane = nil,
 		weatherData = {},
@@ -53,7 +61,7 @@ function Controller:refresh()
 			local rows = {}
 
 			for _, city in ipairs(Model.cities) do
-				local data = Model.fetchCity(city)
+				local data = self.fetch(city)
 				self.weatherData[city.name] = data
 				table.insert(rows, {
 					_id = city.name,
