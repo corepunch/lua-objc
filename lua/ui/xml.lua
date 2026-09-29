@@ -1240,6 +1240,7 @@ local TAG_SCHEMA = {
             imageSize = "num",
             levelKey = "str",
             levelColorKey = "str",
+            valueKey = "str",
             loadingKey = "str",
             controlSize = "str",
             buttonSymbol = "str",
@@ -1249,7 +1250,7 @@ local TAG_SCHEMA = {
             helpKey = "str",
         },
         collect = function(props)
-            for key, field in pairs({badgeKey = "badge", loadingKey = "loading", controlSize = "controlSize", buttonSymbol = "button", buttonMenu = "buttonMenu", badgeColorKey = "badgeColor", appIconKey = "appIcon", subtitleKey = "secondary", fileIconKey = "fileIcon", imageKey = "image", imageColorKey = "imageColor", imageSize = "imageSize", levelKey = "level", levelColorKey = "levelColor", labelStyle = "labelStyle", helpKey = "help"}) do
+            for key, field in pairs({badgeKey = "badge", loadingKey = "loading", controlSize = "controlSize", buttonSymbol = "button", buttonMenu = "buttonMenu", badgeColorKey = "badgeColor", appIconKey = "appIcon", subtitleKey = "secondary", fileIconKey = "fileIcon", imageKey = "image", imageColorKey = "imageColor", imageSize = "imageSize", levelKey = "level", levelColorKey = "levelColor", valueKey = "value", labelStyle = "labelStyle", helpKey = "help"}) do
                 if props[key] then
                     props.cell = props.cell or {}
                     props.cell[field] = props[key]

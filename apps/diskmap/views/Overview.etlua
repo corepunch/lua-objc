@@ -8,8 +8,7 @@
       <GroupBox id="categoriesPanel" maxWidth="infinity">
         <List id="results" onSelect="select" onActivate="open" onColumnButton="open" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44" maxWidth="infinity">
           <Column id="name" title="Category" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" fileIconKey="fileIcon" imageSize="28" minWidth="200" />
-          <Column id="shareText" title="Share" width="150" minWidth="120" levelKey="relative" levelColorKey="color" />
-          <Column id="size" title="On disk" width="120" minWidth="120" alignment="trailing" loadingKey="calculating" />
+          <Column id="shareText" title="On disk" width="270" minWidth="240" levelKey="relative" levelColorKey="color" valueKey="size" loadingKey="calculating" />
           <Column id="info" title="" width="40" minWidth="40" buttonSymbol="chevron.right.circle" />
         </List>
       </GroupBox>

@@ -143,7 +143,8 @@ All screens and partials are etlua.
 
 Every page scrolls as one surface. Lists inside a page are `scrollDisabled`
 and share one row design (`views/ResourceList.etlua`): icon, name and
-location, a status column, a share bar, the size and a "More" (⋯) button.
+location, a status column, a meter (size and share on a line above the share
+bar, one native cell, as on every level list) and a "More" (⋯) button.
 Row actions live in that button's menu and the row's contextual menu, built
 by `ActionsController` from the same rules the sheets use, so the same data
 reads the same way on Largest Items, Large Files, Developer, Clean Up,
