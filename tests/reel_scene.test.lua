@@ -235,6 +235,15 @@ t.expect(pc:pixel(12, 12) > 0.9 and pc:pixel(15, 12) < 0.1, "an image at density
 t.expect(pc:pixel(48, 12) > 0.9 and pc:pixel(40, 15) < 0.1, "width and height stretch an image")
 t.assertThrows(function() reel('<Image src="' .. imageDir .. '/none.png" />') end, "a missing image fails the load")
 
+-- Sub-frames can follow the picture.
+local calls = 0
+local adaptive = Reel.fromSource('<Reel width="8" height="8" fps="30" subframes="2 + 4 * step(t - 1)"><Draw with="count" /></Reel>',
+	{ shots = { count = function() calls = calls + 1 end } })
+adaptive:frame(adaptive:canvas(), 0.5)
+t.assertEqual(calls, 2, "subframes as an expression of t (slow passage)")
+adaptive:frame(adaptive:canvas(), 1.5)
+t.assertEqual(calls, 8, "subframes as an expression of t (fast passage)")
+
 -- A monospaced style sets code in the monospaced system font: "iii" is as
 -- wide as "MMM".
 t.expect(math.abs(N.text("iii", 20, "regular", 0, "mono"):metrics() - N.text("MMM", 20, "regular", 0, "mono"):metrics()) < 0.01,
