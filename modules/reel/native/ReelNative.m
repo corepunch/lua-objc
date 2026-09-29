@@ -82,14 +82,22 @@ static CGContextRef reel_image_bitmap(CGImageRef image) {
 }
 
 // image(path, scale): loads any ImageIO format; `scale` is pixels per point.
+// The file is decoded once, here, into the canvases' own pixel format
+// (sRGB, premultiplied 32BGRA). ImageIO's images decode lazily and convert
+// colour on every draw: a capture drawn onto a device's screen each
+// sub-frame would otherwise be inflated and colour-matched each time.
 static int reel_image(lua_State *L) {
 	const char *path = luaL_checkstring(L, 1);
 	double scale = luaL_optnumber(L, 2, 1);
 	NSURL *url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:path]];
 	CGImageSourceRef source = CGImageSourceCreateWithURL((__bridge CFURLRef)url, NULL);
-	CGImageRef image = source ? CGImageSourceCreateImageAtIndex(source, 0, NULL) : NULL;
+	CGImageRef file = source ? CGImageSourceCreateImageAtIndex(source, 0, NULL) : NULL;
 	if (source) CFRelease(source);
-	if (!image) return luaL_error(L, "cannot read image %s", path);
+	if (!file) return luaL_error(L, "cannot read image %s", path);
+	CGContextRef decoded = reel_image_bitmap(file);
+	CGImageRelease(file);
+	CGImageRef image = CGBitmapContextCreateImage(decoded);
+	CGContextRelease(decoded);
 	reel_push_image(L, image, scale);
 	return 1;
 }

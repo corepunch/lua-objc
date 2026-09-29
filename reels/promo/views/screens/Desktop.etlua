@@ -1,8 +1,11 @@
 <% --[[ A Mac desktop, 1600 × 900 pt: a dark wallpaper with soft colour and,
   from `from`, the app window `window` (a capture) in the centre with its
   macOS corners and shadow. ]] %>
-<Backdrop color="#101018" />
-<Glow x="380" y="760" radius="900" colors="{rgb(0x3B3BD6, 0.55), rgb(0x3B3BD6, 0)}" />
-<Glow x="1300" y="160" radius="820" colors="{rgb(0xB14BE0, 0.45), rgb(0xB14BE0, 0)}" />
-<Glow x="1150" y="880" radius="620" colors="{rgb(0x18A4C9, 0.35), rgb(0x18A4C9, 0)}" />
+<!-- The wallpaper is soft: drawn at a quarter of the screen's resolution. -->
+<Group resolution="0.25">
+	<Backdrop color="#101018" />
+	<Glow x="380" y="760" radius="900" colors="{rgb(0x3B3BD6, 0.55), rgb(0x3B3BD6, 0)}" />
+	<Glow x="1300" y="160" radius="820" colors="{rgb(0xB14BE0, 0.45), rgb(0xB14BE0, 0)}" />
+	<Glow x="1150" y="880" radius="620" colors="{rgb(0x18A4C9, 0.35), rgb(0x18A4C9, 0)}" />
+</Group>
 <Window capture="<%= window %>" x="800" y="450" radius="16" shadow="0.8" from="<%= from or 0 %>" />

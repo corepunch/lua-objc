@@ -28,6 +28,7 @@ static const NSUInteger SceneSampleCount = 4;
 @property(nonatomic, strong) NSMutableArray<SCNNode *> *nodes;     // outer node per handle
 @property(nonatomic, strong) NSMutableArray<SCNNode *> *contents;  // content node per handle
 @property(nonatomic, strong) id<MTLTexture> colorTexture, resolveTexture, depthTexture;
+@property(nonatomic, strong) NSMutableDictionary<NSNumber *, id<MTLTexture>> *surfaces; // per handle
 @end
 @implementation ReelSceneState
 @end
@@ -109,6 +110,7 @@ static int reel_scene(lua_State *L) {
 	state.renderer.playing = NO;
 	state.nodes = [NSMutableArray arrayWithObject:state.scene.rootNode];
 	state.contents = [NSMutableArray arrayWithObject:state.scene.rootNode];
+	state.surfaces = [NSMutableDictionary dictionary];
 	ReelSceneBox *box = lua_newuserdatauv(L, sizeof(ReelSceneBox), 0);
 	box->state = (__bridge_retained void *)state;
 	luaL_setmetatable(L, SceneMetatable);
@@ -272,6 +274,48 @@ static int reel_scene_texture(lua_State *L) {
 	property.maxAnisotropy = SceneTextureAnisotropy;
 	// A display emits its picture and reflects the room like black glass.
 	if (strcmp(slot, "emission") == 0) material.diffuse.contents = NSColor.blackColor;
+	return 0;
+}
+
+/* surface(handle, canvas, slot): shows a canvas on the content geometry,
+ * like texture() with the canvas's snapshot, but the pixels go straight into
+ * a Metal texture the node keeps (mipmapped on the GPU), with no CGImage for
+ * SceneKit to copy and convert. A device's screen is redrawn every
+ * sub-frame, so this is the path that must be cheap. */
+static int reel_scene_surface(lua_State *L) {
+	ReelSceneState *state = reel_check_scene(L, 1);
+	NSUInteger handle = reel_scene_handle(L, state, 2);
+	ReelCanvas *canvas = reel_check_canvas(L, 3);
+	const char *slot = luaL_optstring(L, 4, "emission");
+	SCNGeometry *geometry = state.contents[handle].geometry;
+	if (!geometry) return luaL_error(L, "scene node %d has no geometry to texture", (int)handle);
+	id<MTLTexture> texture = state.surfaces[@(handle)];
+	if (!texture || texture.width != canvas->width || texture.height != canvas->height) {
+		MTLTextureDescriptor *descriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm_sRGB
+			width:canvas->width height:canvas->height mipmapped:YES];
+		descriptor.usage = MTLTextureUsageShaderRead;
+		descriptor.storageMode = MTLStorageModeShared;
+		texture = [reel_metal_device() newTextureWithDescriptor:descriptor];
+		state.surfaces[@(handle)] = texture;
+	}
+	[texture replaceRegion:MTLRegionMake2D(0, 0, canvas->width, canvas->height) mipmapLevel:0
+		withBytes:CGBitmapContextGetData(canvas->context) bytesPerRow:CGBitmapContextGetBytesPerRow(canvas->context)];
+	// Mipmaps on the same queue as the renders, so the next render sees them.
+	id<MTLCommandBuffer> commands = [reel_metal_queue() commandBuffer];
+	id<MTLBlitCommandEncoder> blit = [commands blitCommandEncoder];
+	[blit generateMipmapsForTexture:texture];
+	[blit endEncoding];
+	[commands commit];
+	SCNMaterial *material = geometry.firstMaterial;
+	SCNMaterialProperty *property = strcmp(slot, "diffuse") == 0 ? material.diffuse : material.emission;
+	if (property.contents != texture) {
+		property.contents = texture;
+		property.mipFilter = SCNFilterModeLinear;
+		property.minificationFilter = SCNFilterModeLinear;
+		property.magnificationFilter = SCNFilterModeLinear;
+		property.maxAnisotropy = SceneTextureAnisotropy;
+		if (strcmp(slot, "emission") == 0) material.diffuse.contents = NSColor.blackColor;
+	}
 	return 0;
 }
 
@@ -541,7 +585,7 @@ static int reel_scene_gc(lua_State *L) {
 
 static const luaL_Reg reel_scene_methods[] = {
 	{"node", reel_scene_node}, {"model", reel_scene_model}, {"geometry", reel_scene_geometry},
-	{"material", reel_scene_material}, {"texture", reel_scene_texture}, {"pose", reel_scene_pose},
+	{"material", reel_scene_material}, {"texture", reel_scene_texture}, {"surface", reel_scene_surface}, {"pose", reel_scene_pose},
 	{"aim", reel_scene_aim}, {"inner", reel_scene_inner}, {"shadows", reel_scene_shadows},
 	{"camera", reel_scene_camera}, {"light", reel_scene_light}, {"environment", reel_scene_environment},
 	{"render", reel_scene_render}, {"project", reel_scene_project},

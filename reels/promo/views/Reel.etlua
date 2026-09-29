@@ -24,7 +24,7 @@
   <Glow x="960 + 120 * sin(t * 0.21)" y="470" radius="1250" colors="{rgb(0x262A40, 1), rgb(0x131420, 0.7), rgb(0, 0)}" locations="0, 0.55, 1" resolution="0.25" />
   <%- partial("World.etlua", reel) %>
   <%- partial("Quest.etlua", reel) %>
-  <Vignette inner="620" outer="1350" />
+  <Vignette inner="620" outer="1350" resolution="0.25" />
   <%- partial("Type.etlua", reel) %>
   <!-- The cut into the game: a flash of the glass. -->
   <Rect width="1920" height="1080" color="#FFFFFF" alpha="0.35 * exp(-max(0, t - <%= C.SHOT.cut %>) / 0.08) * step(t - <%= C.SHOT.cut - 1e-4 %>)" />

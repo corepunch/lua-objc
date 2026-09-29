@@ -159,7 +159,12 @@ local shot = frame(screen, 0)
 local lr, lg, lb = shot:pixel(28, 24)
 local rr, rg, rb = shot:pixel(36, 24)
 t.expect(lr > 0.9 and lg > 0.9 and lb < 0.1, "a surface draws reel elements onto its node")
-t.expect(rb > 0.9 and rr < 0.1, "and keeps its background elsewhere, the right way up")
+t.expect(rb > 0.9 and rr < 0.1, "and keeps its background elsewhere, the right way round")
+local upright = reel('<SceneView>' .. lens
+	.. '<Node geometry="plane" width="2" height="1.5"><Surface width="20" height="15" background="#0000FF">'
+	.. '<Rect x="0" y="0" width="20" height="7" color="#FFFF00" /></Surface></Node></SceneView>')
+local up = frame(upright, 0)
+t.expect(up:pixel(32, 20) > 0.9 and up:pixel(32, 28) < 0.1, "a surface is the right way up")
 
 -- A surface off screen is not drawn; a far one is drawn coarser.
 local draws = 0
