@@ -4,16 +4,6 @@ local UIKit = bridge
 UIKit.platform = "UIKit"
 local Scope = require("ui.scope")(bridge)
 UIKit.Scope = Scope
-UIKit.SidebarMetrics = {
-	iconSize = bridge.sidebarIconSize,
-	iconSlotWidth = bridge.sidebarIconSlotWidth,
-	rowPadding = bridge.sidebarRowPadding,
-	expandedPadding = bridge.sidebarExpandedPadding,
-	collapsedPadding = bridge.sidebarCollapsedPadding,
-	expandedWidth = bridge.sidebarExpandedWidth,
-	compactWidth = bridge.sidebarCompactWidth,
-	collapsedWidth = bridge.sidebarCollapsedWidth,
-}
 
 local function resumeCoroutine(co, ...)
 	local ok, err = coroutine.resume(co, ...)
@@ -1189,11 +1179,11 @@ function UIKit.Button(props)
 	if action then
 		button = bridge._button(title, action, style or "default",
 			props.systemImage or "", props.role or "", font, props.content,
-			props.symbolSize or 0, props.foregroundStyle, props.weight)
+			props.symbolSize or 0, props.foregroundStyle, props.weight, props.controlSize)
 	else
 		button = bridge._button(title, nil, style or "default",
 			props.systemImage or "", props.role or "", font, props.content,
-			props.symbolSize or 0, props.foregroundStyle, props.weight)
+			props.symbolSize or 0, props.foregroundStyle, props.weight, props.controlSize)
 	end
 	if type(props) == "table" and props.truncation then
 		local modes = { head = 3, tail = 4, middle = 5 }
@@ -1324,7 +1314,8 @@ end
 function UIKit.Menu(props)
 	props = props or {}
 	local button = bridge._menu(props.items or props.children or {},
-		props.title or "Menu", props.systemImage or "", props.style or "plain",
+		-- SwiftUI labels a symbol-only menu with its image alone.
+		props.title or (props.systemImage and "" or "Menu"), props.systemImage or "", props.style or "plain",
 		props.symbolSize)
 	if props.accessibilityLabel then button.accessibilityLabel = props.accessibilityLabel end
 	return applyLayout(button, props)

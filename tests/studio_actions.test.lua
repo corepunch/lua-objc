@@ -1,37 +1,37 @@
 _G.__headless = true
 
 local t = require("TestKit")
-local Sidebar = require("apps.studio.controllers.SidebarController")
-local metrics = {
-	iconSize = 20, iconSlotWidth = 32, rowPadding = 8,
-	expandedPadding = 12, collapsedPadding = 8,
-	expandedWidth = 208, compactWidth = 184, collapsedWidth = 64,
-}
-local sidebar = Sidebar.new(metrics):presentation()
-t.assertEqual(sidebar.metrics, metrics, "sidebar receives platform metrics")
-t.assertEqual(sidebar.collapsed, false, "sidebar starts expanded")
-t.expect(#sidebar.projects > 0, "sidebar presents recent projects")
-t.expect(#sidebar.links > 0, "sidebar presents navigation links")
+local Preview = require("apps.studio.controllers.PreviewController")
+local Chat = require("apps.studio.models.Chat")
 
-local xml = require("ui.xml")
-local source = xml.describeFile("apps/studio/views/Window.etlua", {
-	sidebar = sidebar,
-	preview = { device = "iPhone 16", zoom = "100%", runLabel = "Run" },
-	chat = { status = "Ready", prompt = "Prompt", response = "Response", files = {}, suggestions = {} },
-}).source
-t.expect(source:find('name="hammer.fill"', 1, true) ~= nil,
-	"Lua Studio identity remains visible in the toolbar")
-local toolbar = assert(source:match('(<HStack id="toolbar".-</HStack>)'))
-t.expect(toolbar:find('action="toggleChat"', 1, true) ~= nil,
-	"preview focus action is in the top toolbar")
-t.expect(toolbar:find('action="toggleSidebarWidth"', 1, true) ~= nil,
-	"sidebar width action is in the same top toolbar")
-t.expect(toolbar:find('action="reloadPreview"', 1, true) ~= nil,
-	"Run reloads the preview from the top toolbar")
-t.expect(toolbar:find('accessibilityLabel="Focus Preview"', 1, true) ~= nil,
-	"icon-only preview action retains an accessible name")
-t.expect(source:find('width="208"', 1, true) ~= nil,
-	"expanded sidebar applies its configured width")
+local presentation = Preview.new():presentation({
+	{ title = "Starter App", icon = "app.dashed" },
+	{ title = "Habit Tracker", icon = "checklist", selected = true },
+})
+t.assertEqual(presentation.project.title, "Habit Tracker", "the selected project heads the stage")
+t.assertEqual(#presentation.projects, 2, "every project is offered")
+t.assertEqual(Preview.new():presentation({ { title = "Only", icon = "app" } }).project.title, "Only",
+	"the first project is current when none is selected")
+t.assertEqual(Preview.new():presentation().project.title, "No Project", "missing projects are safe")
+
+local changes, summary = Chat.changes({
+	{ path = "init.lua", added = 2 },
+	{ path = "views/deep/Row.etlua", added = 5 },
+	{ path = "assets/notes.txt", added = 1 },
+})
+t.assertEqual(summary.title, "3 files changed", "summary counts files")
+t.assertEqual(summary.delta, "+8", "summary totals added lines")
+t.assertEqual(changes[1].folder, "", "root files have no folder")
+t.assertEqual(changes[1].icon, "doc.text", "Lua modules use a document symbol")
+t.assertEqual(changes[2].name, "Row.etlua", "nested files show their name")
+t.assertEqual(changes[2].folder, "views/deep", "nested files keep their whole folder")
+t.assertEqual(changes[2].icon, "chevron.left.forwardslash.chevron.right", "templates use a code symbol")
+t.assertEqual(changes[3].icon, "doc", "other files fall back to a plain document")
+local _, single = Chat.changes({ { path = "Model.lua", added = 1 } })
+t.assertEqual(single.title, "1 file changed", "a single change is singular")
+local none, emptySummary = Chat.changes({})
+t.assertEqual(#none, 0, "no changes")
+t.assertEqual(emptySummary.delta, "+0", "no changes add no lines")
 
 local Root = require("apps.studio.Controller")
 local child = {}

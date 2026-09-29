@@ -701,6 +701,14 @@ static int bridge_UIKitControls_button(lua_State *L) {
 	CGFloat symbolSize = (CGFloat)luaL_optnumber(L, 8, 0);
 	const char *foregroundStyle = luaL_optstring(L, 9, "");
 	const char *weightName = luaL_optstring(L, 10, "regular");
+	const char *controlSize = luaL_optstring(L, 11, "");
+	/* SwiftUI .controlSize maps onto the configuration's system sizes. */
+	UIButtonConfigurationSize buttonSize = UIButtonConfigurationSizeMedium;
+	if (strcmp(controlSize, "mini") == 0) buttonSize = UIButtonConfigurationSizeMini;
+	else if (strcmp(controlSize, "small") == 0) buttonSize = UIButtonConfigurationSizeSmall;
+	else if (strcmp(controlSize, "large") == 0) buttonSize = UIButtonConfigurationSizeLarge;
+	else if (controlSize[0] && strcmp(controlSize, "regular") != 0)
+		return luaL_error(L, "button controlSize must be mini, small, regular, or large");
 	LuaReg *callback = has_callback ? lua_reg_create(L, 2, YES) : nil;
 
 	UIButton *obj = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -745,6 +753,7 @@ static int bridge_UIKitControls_button(lua_State *L) {
 		if (foregroundStyle[0]) configuration.baseForegroundColor =
 			strcmp(foregroundStyle, "accent") == 0
 				? obj.tintColor : lua_objc_uikit_system_color(foregroundStyle);
+		if (controlSize[0]) configuration.buttonSize = buttonSize;
 		if (strcmp(role, "destructive") == 0) {
 			if (strcmp(style, "borderedProminent") == 0) {
 				configuration.baseBackgroundColor = UIColor.systemRedColor;
@@ -814,11 +823,29 @@ static int bridge_UIKitControls_menu(lua_State *L) {
 	if (strcmp(style, "plain") != 0 && strcmp(style, "glass") != 0)
 		return luaL_error(L, "menu style must be 'plain' or 'glass'");
 	if (symbolSize <= 0) return luaL_error(L, "menu symbolSize must be positive");
+	/* <Separator /> divides the menu into sections. UIKit has no separator
+	 * element; SwiftUI's Divider in a Menu becomes inline UIMenu groups. */
+	NSMutableArray<UIMenuElement *> *sections = [NSMutableArray array];
 	NSMutableArray<UIMenuElement *> *elements = [NSMutableArray array];
 	NSMutableArray<LuaReg *> *regs = [NSMutableArray array];
 	NSInteger count = (NSInteger)luaL_len(L, 1);
 	for (NSInteger i = 1; i <= count; i++) {
 		lua_rawgeti(L, 1, i);
+		lua_getfield(L, -1, "separator");
+		BOOL separator = lua_toboolean(L, -1);
+		lua_pop(L, 1);
+		if (separator) {
+			if (elements.count > 0) {
+				[sections addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil
+					options:UIMenuOptionsDisplayInline children:[elements copy]]];
+				[elements removeAllObjects];
+			}
+			lua_pop(L, 1);
+			continue;
+		}
+		lua_getfield(L, -1, "checked");
+		BOOL checked = lua_toboolean(L, -1);
+		lua_pop(L, 1);
 		lua_getfield(L, -1, "title");
 		const char *title = luaL_optstring(L, -1, "");
 		lua_pop(L, 1);
@@ -848,6 +875,7 @@ static int bridge_UIKitControls_menu(lua_State *L) {
 		if (!itemReg) action.attributes = UIMenuElementAttributesDisabled;
 		if (strcmp(role, "destructive") == 0)
 			action.attributes |= UIMenuElementAttributesDestructive;
+		if (checked) action.state = UIMenuElementStateOn;
 		[elements addObject:action];
 		lua_pop(L, 1);
 	}
@@ -866,7 +894,10 @@ static int bridge_UIKitControls_menu(lua_State *L) {
 				weight:UIImageSymbolWeightRegular scale:UIImageSymbolScaleMedium];
 	}
 	button.configuration = configuration;
-	button.menu = [UIMenu menuWithTitle:@"" children:elements];
+	if (sections.count > 0 && elements.count > 0)
+		[sections addObject:[UIMenu menuWithTitle:@"" image:nil identifier:nil
+			options:UIMenuOptionsDisplayInline children:elements]];
+	button.menu = [UIMenu menuWithTitle:@"" children:sections.count > 0 ? sections : elements];
 	button.showsMenuAsPrimaryAction = YES;
 	LuaMenuStore *store = [[LuaMenuStore alloc] init];
 	store.callbacks = regs;

@@ -175,6 +175,15 @@ function M.run(ns)
 	local vertical = ns.VStack { spacing = 0, growingRow, ns.Spacer() }
 	equal(measure(vertical, 240, 200, growingRow).width, 40, "vertical flexGrow preserves row width")
 	equal(measure(vertical, 240, 200, growingRow).height > 20, true, "vertical flexGrow expands on the main axis")
+	-- SwiftUI frame(maxWidth:): a filling column stops at its maximum and the
+	-- centred parent places it; a narrower parent still gets the full width.
+	local column = ns.VStack { spacing = 0, maxWidth = 120,
+		ns.Text { "Measure", fillWidth = true, fixedHeight = 10 } }
+	local centred = ns.VStack { spacing = 0, alignment = "center", fillWidth = true, fillHeight = true, column }
+	p = measure(centred, 300, 100, column)
+	equal(p.width, 120, "capped fill stops at maxWidth")
+	equal(p.x, 90, "centred parent places the capped column")
+	equal(measure(centred, 80, 100, column).width, 80, "a narrower parent reproposes below the cap")
 	return count
 end
 
