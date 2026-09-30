@@ -28,6 +28,9 @@ local xcode = {action = "xcode", consequence = "Review in Xcode. Keep resources 
 local system = {policy = "System managed", action = "settings", consequence = "Managed by macOS. No manual deletion is offered. Changing a feature setting does not guarantee immediate removal of downloaded assets."}
 -- Exact asset-class directories observed on macOS. Shared ASR belongs to speech,
 -- not exclusively to Siri or Dictation. Unknown/new classes remain in the residual.
+-- A feature macOS manages from Settings says in its subtitle what to do, on
+-- the group and on each class, since either can be the row a person reads:
+-- a size alone left testers asking whether to turn Siri off.
 local function assets(id, name, subtitle, icon, color, classes)
 	local guidance = {
 		["siri-assets"] = {"siri", "Turning off Siri stops assistant requests and voice activation. Shared speech models can remain for other features; disabling Siri does not guarantee asset removal."},
@@ -38,7 +41,7 @@ local function assets(id, name, subtitle, icon, color, classes)
 	local children = {}
 	for index, class in ipairs(classes) do
 		table.insert(children, (item(id .. "-" .. index, class:gsub("_", " "),
-			"System-managed asset class · " .. name,
+			guidance[id] and subtitle or "System-managed asset class · " .. name,
 			"/System/Library/AssetsV2/com_apple_MobileAsset_" .. class, system)))
 		if guidance[id] then
 			children[#children].settingsSection = guidance[id][1]

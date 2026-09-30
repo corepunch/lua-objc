@@ -3,8 +3,8 @@ local item, group, system, assets = D.item, D.group, D.system, D.assets
 return function()
 	return group("system-data", "System Data", "macOS feature assets, application support, caches and diagnostics", "gearshape.2.fill", "systemRed", {
 	group("speech-assets", "Speech & voices", "Dictation, speech recognition and downloaded voices", "waveform", "systemTeal", {
-		assets("dictation", "Dictation & speech recognition", "Shared recognition models used by Dictation and voice features", "mic.fill", "systemBlue", {"EmbeddedSpeechMac", "SpeechEndpointMacOSAssets", "UAF_Speech_AutomaticSpeechRecognition"}),
-		assets("voices", "Downloaded voices & Personal Voice", "Spoken content, accessibility and speech synthesis", "speaker.wave.2.fill", "systemTeal", {"MacinTalkVoiceAssets", "VoiceServicesVocalizerVoice", "VoiceServices_CombinedVocalizerVoices", "VoiceServices_CustomVoice", "VoiceServices_GryphonVoice", "VoiceServices_VoiceResources", "TTSAXResourceModelAssets"}),
+		assets("dictation", "Dictation & speech recognition", "Not using Dictation? Turn it off in Keyboard settings; other voice features may still keep these models", "mic.fill", "systemBlue", {"EmbeddedSpeechMac", "SpeechEndpointMacOSAssets", "UAF_Speech_AutomaticSpeechRecognition"}),
+		assets("voices", "Downloaded voices & Personal Voice", "Remove voices you do not use in Accessibility > Read & Speak", "speaker.wave.2.fill", "systemTeal", {"MacinTalkVoiceAssets", "VoiceServicesVocalizerVoice", "VoiceServices_CombinedVocalizerVoices", "VoiceServices_CustomVoice", "VoiceServices_GryphonVoice", "VoiceServices_VoiceResources", "TTSAXResourceModelAssets"}),
 		item("speech", "Built-in speech resources", "Speech engines and bundled voices; separate from downloaded assets", "/System/Library/Speech", system),
 	}),
 	group("feature-assets", "Other macOS features", "Downloaded resources attributed to known macOS features", "square.stack.3d.up.fill", "systemTeal", {
