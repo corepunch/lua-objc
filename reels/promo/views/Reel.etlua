@@ -7,6 +7,7 @@
   <Style name="hugeBrand" size="118" weight="bold" gradient="brand" tracking="-0.03" />
   <Style name="big" size="100" weight="bold" color="#F5F5F7" tracking="-0.03" />
   <Style name="bigBrand" size="100" weight="bold" gradient="brand" tracking="-0.03" />
+  <Style name="title" size="76" weight="bold" color="#F5F5F7" tracking="-0.03" />
   <Style name="word" size="92" weight="bold" color="#F5F5F7" tracking="-0.03" />
   <Style name="wall" size="200" weight="heavy" color="#FFFFFF" tracking="-0.03" />
   <Style name="label" size="30" weight="semibold" color="#F5F5F7" tracking="-0.01" />
@@ -16,8 +17,8 @@
   <Style name="sub" size="34" weight="regular" color="#C7C7CC" tracking="-0.01" />
   <Style name="chip" size="44" weight="semibold" color="#F5F5F7" tracking="-0.02" />
   <Style name="logo" size="150" weight="bold" color="#F5F5F7" tracking="-0.035" />
-  <Style name="tagline" size="54" weight="semibold" color="#F5F5F7" tracking="-0.02" />
-  <Style name="taglineBrand" size="54" weight="semibold" gradient="brand" tracking="-0.02" />
+  <Style name="tagline" size="48" weight="semibold" color="#F5F5F7" tracking="-0.02" />
+  <Style name="taglineBrand" size="48" weight="semibold" gradient="brand" tracking="-0.02" />
   <Style name="small" size="30" weight="regular" color="#A1A1A6" tracking="-0.01" />
   <Style name="url" size="30" weight="medium" color="#7B8CFF" tracking="-0.01" />
 

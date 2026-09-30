@@ -35,7 +35,7 @@ return {
 			{ patch = "todo-2-progress", prompt = "Add progress at the top.",
 				reply = "Added a progress card above the list: tasks done today and a bar." },
 			{ patch = "todo-3-filter", prompt = "Add a filter.",
-				reply = "Added a segmented filter: All, Open and Flagged." },
+				reply = "Filtering lives in the Model, the Controller handles the choice, and the view shows All, Open and Flagged." },
 		},
 	},
 	notes = {

@@ -22,16 +22,19 @@ for name, app in pairs(Edits) do
 		local ok = os.execute("patch -s -R -p1 --dry-run -d " .. quote(root) .. " < " .. quote(patch) .. " >/dev/null 2>&1")
 		t.expect(ok, name .. ": " .. app.edits[i].patch .. " reverse-applies to version " .. i)
 		os.execute("patch -s -R -p1 -d " .. quote(root) .. " < " .. quote(patch) .. " >/dev/null 2>&1")
-		local file, added, removed = Conversation.summary(patch)
-		t.expect(file and file:find(app.dir, 1, true) == 1, app.edits[i].patch .. " edits " .. app.dir)
-		t.expect(added + removed > 0, app.edits[i].patch .. " changes lines")
+		local files = Conversation.files(patch)
+		t.expect(#files > 0, app.edits[i].patch .. " changes files")
+		for _, file in ipairs(files) do
+			t.expect(file.path:find(app.dir, 1, true) == 1, app.edits[i].patch .. " edits " .. app.dir)
+			t.expect(file.added + file.removed > 0, app.edits[i].patch .. " changes lines in " .. file.path)
+		end
 		t.expect(app.edits[i].prompt:match("%.$") and #app.edits[i].reply > 0, app.edits[i].patch .. " has a prompt and a reply")
 	end
 	local same = os.execute("/usr/bin/diff -rq " .. quote(app.dir) .. " " .. quote(root .. "/" .. app.dir) .. " >/dev/null")
 	t.expect(not same, name .. ": version 0 differs from the shipped app")
 end
 
-local lines = Conversation.lines("reels/promo/edits/todo-2-progress.patch")
+local lines = Conversation.files("reels/promo/edits/todo-2-progress.patch")[1].lines
 t.assertEqual(lines[1].sign, " ", "diff lines keep context")
 local added = 0
 for _, line in ipairs(lines) do if line.sign == "+" then added = added + 1 end end
@@ -50,6 +53,13 @@ for k = 0, #Edits.todo.edits do
 	if k > 0 then
 		local change = chat.messages[2].changes[1]
 		t.expect(change.path == "views/Content.etlua" and #change.lines > 0, "each edit shows its file and diff lines (v" .. k .. ")")
+	end
+	if k == 3 then
+		-- The filter is one request that lands in each layer of MVC.
+		local paths = {}
+		for _, change in ipairs(chat.messages[6].changes) do table.insert(paths, change.path) end
+		t.assertEqual(table.concat(paths, " "), "Model.lua Controller.lua views/Content.etlua",
+			"the filter edit changes the Model, the Controller and the view")
 	end
 	for _, file in ipairs(data.files) do
 		t.expect(io.open("demo/todo/" .. file) ~= nil, "showcase file demo/todo/" .. file .. " exists")
@@ -87,6 +97,18 @@ for _, name in ipairs({ "send1", "change1", "send2", "change2", "tap", "alone", 
 	t.expect(near((S[name] * 2) % 1, 0, 1e-9), name .. " is on a beat")
 end
 
+-- One request, three layers: the code panels land on beats, after the
+-- request and before the phone shows the change, and are gone before the
+-- phone turns into the game.
+for i, at in ipairs(S.layers) do
+	t.expect(near((at * 2) % 1, 0, 1e-9), "layer " .. i .. " lands on a beat")
+	t.expect(at > S.send3 and at < S.change3, "layer " .. i .. " lands between the request and the change")
+	t.assertEqual(C.opacity("layer" .. i, at - 0.01), 0, "layer " .. i .. " is hidden before it lands")
+	t.assertEqual(C.opacity("layer" .. i, S.change3), 1, "layer " .. i .. " is shown when the phone changes")
+	t.expect(C.opacity("layer" .. i, S.turn + 0.1) < 0.01, "layer " .. i .. " has gone when the phone turns")
+end
+t.expect(near(C.at("layer1", S.change3)[1], C.at("layer3", S.change3)[1], 1e-9), "the panels stand in one column")
+
 -- The phone turned on its side is the game phone: the same place and the
 -- same attitude (a portrait phone rolled a quarter turn is the landscape
 -- build), so the swap cannot be seen.
@@ -111,6 +133,16 @@ t.expect(near(lens, C.CUT.fieldOfView, 1e-3), "with the lens the game continues 
 t.expect(near(2 * C.cutDistance() * math.tan(math.rad(lens / 2)), C.DEVICE.phoneScreen.w, 1e-6),
 	"the screen's height is the frame's height")
 t.expect(near(C.questCamera(S.cut).fieldOfView, C.CUT.fieldOfView, 1e-9), "the game camera starts with the same lens")
+
+-- The Mac is a Studio Display seen from the front: a 27-inch 16:9 screen
+-- centred in an even black border, its surface the screen's shape.
+local display = assert(io.open("reels/promo/views/devices/Display.etlua")):read("a")
+local function number(name) return tonumber(display:match(name .. " = ([%d.]+)")) end
+t.expect(near(number("screenW") / number("screenH"), 1600 / 900, 2e-3), "the display's screen is 16:9, as its surface")
+t.expect(near(math.sqrt(number("screenW") ^ 2 + number("screenH") ^ 2) / 2.54, 2.7, 0.02), "and 27 inches across")
+t.expect(near(number("glassW") - number("screenW"), number("glassH") - number("screenH"), 0.01), "in an even border")
+t.expect(display:find('id="<%= id %>-screen" geometry="plane" width="<%= P.screenW %>" height="<%= P.screenH %>" position="0 0 ', 1, true),
+	"centred on the glass")
 
 -- The Mac appears only in the closing composition.
 local world = assert(io.open("reels/promo/views/World.etlua")):read("a")

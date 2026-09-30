@@ -2,8 +2,9 @@
   The world: one SceneKit scene the camera travels through, except the time
   inside the game. Every device is a prefab (devices/*.etlua) placed by
   Choreography.lua; its screen is a <Surface> whose components move
-  (Motion.lua, through shots.lua). The Mac appears only in the closing
-  composition.
+  (Motion.lua, through shots.lua). The code panels show the one edit that
+  lands in the Model, the Controller and the View. The Mac, a Studio
+  Display, appears only in the closing composition.
 ]]
   local S = C.SHOT
   local cap = capturesDir
@@ -17,7 +18,8 @@
 	<Light type="ambient" intensity="60" />
 
 	<!-- The iPhone: the app assembles on it, it shows each edit live beside
-	     the iPad and is tapped, is talked to, and turns on its side. -->
+	     the iPad and is tapped, shows the filter the code panels describe,
+	     and turns on its side. -->
 	<%- partial("devices/Phone.etlua", {id = "phone", position = "C.at('phone', t)", rotation = "C.turn('phone', t)",
 		extra = 'to="' .. S.swap .. '"', density = 3,
 		screen = '<Draw with="phone" timeline="pair" />'
@@ -25,8 +27,17 @@
 
 	<!-- The iPad: Lua Studio, where the agent edits the app. -->
 	<%- partial("devices/Pad.etlua", {id = "pad", position = "C.at('pad', t)", rotation = "C.turn('pad', t)",
-		extra = 'opacity="1 - progress(t, ' .. S.alone .. ', ' .. S.alone + 0.8 .. ')" from="' .. S.pair .. '" to="' .. S.alone + 0.85 .. '"',
+		extra = 'opacity="1 - progress(t, ' .. S.alone .. ', ' .. S.alone + 0.4 .. ')" from="' .. S.pair .. '" to="' .. S.alone + 0.45 .. '"',
 		screen = '<Draw with="studio" session="pair" />'}) %>
+
+	<!-- One request, three layers: the filter edit's Model, Controller and
+	     View, each on a code panel beside the phone. -->
+	<% for i, at in ipairs(S.layers) do %>
+	<%- partial("devices/Panel.etlua", {id = "layer" .. i, position = "C.at('layer" .. i .. "', t)", rotation = "C.turn('layer" .. i .. "', t)",
+		opacity = "C.opacity('layer" .. i .. "', t)", width = C.LAYERS.width, points = {shots.LAYER.w, shots.LAYER.h},
+		background = "#15151B", extra = 'from="' .. at - 0.05 .. '" to="' .. S.turn + 0.2 .. '"',
+		screen = '<Draw with="layer" layer="' .. i .. '" at="' .. at .. '" />'}) %>
+	<% end %>
 
 	<!-- The same phone on its side, now running Coin Quest: the game's own
 	     Stage.etlua, posed by the game's own replay. -->

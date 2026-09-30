@@ -198,7 +198,14 @@ function Controller:createWindow()
 		error("Could not render starter preview: " .. tostring(err))
 	end
 	self.refs = refs
+	self:showLatestTurn()
 	return ns.Window(config)
+end
+
+-- A conversation opens at its latest turn, as SwiftUI's
+-- defaultScrollAnchor(.bottom) does; the anchor holds until layout.
+function Controller:showLatestTurn()
+	self.refs.transcriptScroll:scrollTo("bottom", false)
 end
 
 return Controller
