@@ -1,9 +1,9 @@
-<VStack maxWidth="infinity" spacing="6" alignment="leading">
+<VStack spacing="6" alignment="leading">
   <Label text="Tips" size="11" weight="semibold" color="secondary" />
-  <GroupBox maxWidth="infinity">
-    <VStack maxWidth="infinity" spacing="0" alignment="leading">
+  <GroupBox>
+    <VStack spacing="0" alignment="leading">
       <% for index, tip in ipairs(tips) do %>
-      <HStack maxWidth="infinity" padding="10" spacing="10" alignment="center">
+      <HStack padding="10" spacing="10" alignment="center">
         <% --[[ Symbols differ in width; a fixed column starts every title at one edge. ]] %>
         <SystemImage name="<%= tip.icon %>" size="18" color="accent" width="26" />
         <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="1" alignment="leading">

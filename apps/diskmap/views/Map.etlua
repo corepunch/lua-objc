@@ -11,9 +11,9 @@
   -- Smaller items folded under a parent take its hue, faded further.
   local otherFade = 0.55
 %>
-<VStack id="page" transition="opacity" flexGrow="1" maxWidth="infinity" maxHeight="infinity" spacing="16" padding="24" alignment="leading">
+<VStack id="page" transition="opacity" flexGrow="1" maxHeight="infinity" spacing="16" padding="24" alignment="leading">
   <%- partial("PageHeader.etlua", {header = header, summary = subtitle, summaryId = "mapSummary"}) %>
-  <HStack id="mapBar" maxWidth="infinity" spacing="6" alignment="center">
+  <HStack id="mapBar" spacing="6" alignment="center">
     <% for index, step in ipairs(trail) do %>
     <% if index > 1 then %><SystemImage name="chevron.right" size="10" color="tertiary" /><% end %>
     <% if index < #trail then %>
@@ -28,15 +28,15 @@
       <Option title="Rectangles" />
     </Picker>
   </HStack>
-  <HStack id="mapBody" flexGrow="1" maxWidth="infinity" maxHeight="infinity" spacing="16" alignment="top">
+  <HStack id="mapBody" flexGrow="1" maxHeight="infinity" spacing="16" alignment="top">
     <% --[[ The list gives way before the chart does: in the narrowest window it
       keeps its name and share columns, and the chart its size. ]] %>
     <GroupBox minWidth="<%= MAP.list.minimum %>" maxWidth="<%= MAP.list.maximum %>" flexGrow="1" flexShrink="1" maxHeight="infinity">
-      <VStack maxWidth="infinity" maxHeight="infinity" spacing="0">
+      <VStack maxHeight="infinity" spacing="0">
         <% if #rows == 0 and query ~= "" then %>
         <ContentUnavailable id="mapNoResults" title="No Results" systemImage="magnifyingglass" description="Nothing at this level of the map matches “<%= query %>”." />
         <% end %>
-        <List id="mapList" hidden="<%= #rows == 0 and query ~= "" and "true" or "false" %>" onSelect="selectRow" onActivate="drillRow" rowMenu="rowMenu" dragKey="path" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="40" drawsBackground="false" maxWidth="infinity" maxHeight="infinity">
+        <List id="mapList" hidden="<%= #rows == 0 and query ~= "" and "true" or "false" %>" onSelect="selectRow" onActivate="drillRow" rowMenu="rowMenu" dragKey="path" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="40" drawsBackground="false" maxHeight="infinity">
           <Column id="name" title="Item" imageKey="icon" badgeColorKey="color" imageSize="22" minWidth="140" />
           <Column id="size" title="Size" width="<%= MAP.meter %>" minWidth="<%= MAP.meter %>">
             <%- partial("cells/Meter.etlua") %>
@@ -45,11 +45,11 @@
       </VStack>
     </GroupBox>
     <ScrollView id="mapChartScroll" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" minWidth="<%= MAP.chart %>" maxHeight="infinity">
-    <VStack maxWidth="infinity" spacing="12" alignment="center">
+    <VStack spacing="12" alignment="center">
       <% if #nodes == 0 then %>
       <ContentUnavailable id="mapEmpty" title="Nothing Measured Here Yet" systemImage="chart.pie" description="Sizes appear as Diskmap measures this part of your storage." />
       <% elseif style == "rectangles" then %>
-      <Treemap id="treemap" transition="opacity" maxWidth="infinity" height="<%= MAP.treemapHeight %>" onSelect="chartSelect" onHover="chartHover" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
+      <Treemap id="treemap" transition="opacity" height="<%= MAP.treemapHeight %>" onSelect="chartSelect" onHover="chartHover" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
         <% for _, node in ipairs(nodes) do %>
         <TreemapNode id="<%= node.id %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" label="<%= node.label %>" detail="<%= node.detail %>" hatched="<%= node.hatched and "true" or "false" %>" />
         <% end %>
@@ -68,11 +68,11 @@
       <% end %>
       <Label id="mapHover" text="<%= hover %>" size="12" color="secondary" monospacedDigit="true" maxWidth="infinity" alignment="center" lines="1" truncation="middle" />
       <% if #worth > 0 then %>
-      <GroupBox maxWidth="infinity">
-        <VStack maxWidth="infinity" padding="10" spacing="6" alignment="leading">
+      <GroupBox>
+        <VStack padding="10" spacing="6" alignment="leading">
           <Label text="Worth a look" systemImage="sparkle.magnifyingglass" size="12" weight="semibold" color="secondary" />
           <% for index, item in ipairs(worth) do %>
-          <HStack maxWidth="infinity" spacing="8" alignment="center">
+          <HStack spacing="8" alignment="center">
             <Label text="<%= item.name %>" size="12" flexGrow="1" flexShrink="1" lines="1" />
             <Label text="<%= item.size %>" size="12" color="secondary" monospacedDigit="true" />
             <Button id="worthMark_<%= index %>" title="<%= item.marked and "Marked" or "Mark" %>" systemImage="<%= item.marked and "checkmark.circle.fill" or "plus.circle" %>" style="plain" action="worth_<%= index %>" help="Mark <%= item.name %> for cleanup" disabled="<%= item.markable and "false" or "true" %>" />

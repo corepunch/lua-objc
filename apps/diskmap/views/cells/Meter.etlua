@@ -17,7 +17,7 @@
   local value, share, tint, title = value or "size", share or "shareText", tint or "color", title or "Size"
 %>
 <VStack spacing="<%= METER.lineSpacing %>" alignment="leading">
-  <HStack spacing="<%= METER.shareGap %>" alignment="center" maxWidth="infinity">
+  <HStack spacing="<%= METER.shareGap %>" alignment="center">
     <HStack spacing="<%= METER.accessoryGap %>" alignment="center" flexShrink="1">
       <ProgressView controlSize="small" width="<%= METER.accessory %>" height="<%= METER.accessory %>" hidden="{!calculating}" />
       <SystemImage name="{sizeIcon}" color="{sizeColor}" size="<%= METER.symbol %>" width="<%= METER.accessory %>" height="<%= METER.accessory %>" hidden="{!sizeIcon}" />
@@ -27,5 +27,5 @@
     <Spacer />
     <Label text="{<%= share %>}" color="secondary" fixedSize="horizontal" hidden="{!<%= share %>}" />
   </HStack>
-  <Gauge value="{relative}" tint="{<%= tint %>}" disabled="{!relative}" accessibilityLabel="<%= title %>: {<%= value %>} {<%= share %>}" maxWidth="infinity" />
+  <Gauge value="{relative}" tint="{<%= tint %>}" disabled="{!relative}" accessibilityLabel="<%= title %>: {<%= value %>} {<%= share %>}" />
 </VStack>

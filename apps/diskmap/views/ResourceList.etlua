@@ -13,7 +13,7 @@
   points in the narrowest window's 595-point list. ]]
   local COLUMNS = { name = 170, detail = 150, status = 48, share = 235, more = 40, statusSymbol = 20 }
 %>
-<List id="<%= id %>" rowMenu="<%= menu %>" dragKey="path"<% if selectAction then %> onSelect="<%= selectAction %>"<% end %><% if activate then %> onActivate="<%= activate %>"<% end %> scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44" maxWidth="infinity">
+<List id="<%= id %>" rowMenu="<%= menu %>" dragKey="path"<% if selectAction then %> onSelect="<%= selectAction %>"<% end %><% if activate then %> onActivate="<%= activate %>"<% end %> scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
   <Column id="name" title="Name" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon"<% if fileIcons then %> fileIconKey="fileIcon"<% end %> imageSize="28" minWidth="<%= COLUMNS.name %>" />
   <% if status then %>
   <Column id="detail" title="Status" width="<%= COLUMNS.status %>" minWidth="<%= COLUMNS.status %>" imageKey="statusIcon" imageColorKey="statusColor" imageSize="<%= COLUMNS.statusSymbol %>" labelStyle="iconOnly" />

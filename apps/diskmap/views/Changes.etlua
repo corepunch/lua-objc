@@ -1,15 +1,15 @@
 <% if changes then %>
-<VStack id="changesSection" transition="opacity" maxWidth="infinity" spacing="8" alignment="leading">
-  <HStack maxWidth="infinity" spacing="12" alignment="center">
+<VStack id="changesSection" transition="opacity" spacing="8" alignment="leading">
+  <HStack spacing="12" alignment="center">
     <%- partial("SectionHeader.etlua", {title = "Changes", detail = changes.detail}) %>
     <% if changes.all then %>
     <Button id="showAllChanges" title="Show All" action="showAllChanges" help="List every location that changed since the snapshot" />
     <% end %>
   </HStack>
-  <HStack maxWidth="infinity" spacing="12" alignment="top">
+  <HStack spacing="12" alignment="top">
     <% for _, row in ipairs(changes.rows) do %>
-    <GroupBox flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity">
-      <HStack maxWidth="infinity" padding="10" spacing="8" alignment="center">
+    <GroupBox flexGrow="1" flexBasis="0" flexShrink="1">
+      <HStack padding="10" spacing="8" alignment="center">
         <SystemImage name="<%= row.icon or "folder" %>" size="20" badgeColor="<%= row.color or "systemGray" %>" />
         <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="1" alignment="leading">
           <Label text="<%= row.name %>" size="12" lines="1" maxWidth="infinity" />

@@ -10,12 +10,12 @@
   local ringOpacity = { 1, 0.84, 0.68 }
   local otherFade = 0.55
 %>
-<VStack id="page" transition="opacity" flexGrow="1" maxWidth="infinity" maxHeight="infinity" spacing="16" padding="24" alignment="leading">
+<VStack id="page" transition="opacity" flexGrow="1" maxHeight="infinity" spacing="16" padding="24" alignment="leading">
   <%- partial("PageHeader.etlua", {header = header, summary = summary, summaryId = "folderSummary", buttons = buttons}) %>
   <% if state == "empty" then %>
   <ContentUnavailable id="folderEmpty" descriptionAlignment="leading" title="Drop a Folder Here" systemImage="folder.badge.plus" description="Drag a folder or a disk from the Finder onto this window or onto Diskmap in the Dock, or choose File › Open Folder…, to see everything in it by size." />
   <% elseif state == "scanning" then %>
-  <VStack id="folderScanning" flexGrow="1" maxWidth="infinity" maxHeight="infinity" spacing="10" alignment="center">
+  <VStack id="folderScanning" flexGrow="1" maxHeight="infinity" spacing="10" alignment="center">
     <Spacer />
     <ProgressView id="folderSpinner" />
     <Label id="folderProgress" text="<%= progress %>" size="13" color="secondary" monospacedDigit="true" lines="1" truncation="middle" />
@@ -24,7 +24,7 @@
   <% elseif state == "failed" then %>
   <ContentUnavailable id="folderFailed" title="Could Not Measure This Folder" systemImage="exclamationmark.triangle" description="<%= failure %>" />
   <% else %>
-  <HStack id="folderBar" maxWidth="infinity" spacing="6" alignment="center">
+  <HStack id="folderBar" spacing="6" alignment="center">
     <% for index, step in ipairs(trail) do %>
     <% if index > 1 then %><SystemImage name="chevron.right" size="10" color="tertiary" /><% end %>
     <% if index < #trail then %>
@@ -45,9 +45,9 @@
       <Option title="Rectangles" />
     </Picker>
   </HStack>
-  <HStack id="folderBody" flexGrow="1" maxWidth="infinity" maxHeight="infinity" spacing="16" alignment="top">
+  <HStack id="folderBody" flexGrow="1" maxHeight="infinity" spacing="16" alignment="top">
     <GroupBox width="<%= FOLDER.list %>" maxHeight="infinity">
-      <List id="folderList" onSelect="selectRow" onActivate="drillRow" rowMenu="rowMenu" dragKey="path" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="40" drawsBackground="false" maxWidth="infinity" maxHeight="infinity">
+      <List id="folderList" onSelect="selectRow" onActivate="drillRow" rowMenu="rowMenu" dragKey="path" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="40" drawsBackground="false" maxHeight="infinity">
         <Column id="name" title="Item" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" imageSize="22" minWidth="140" />
         <Column id="size" title="Size" width="<%= FOLDER.meter %>" minWidth="<%= FOLDER.meter %>">
           <%- partial("cells/Meter.etlua") %>
@@ -58,7 +58,7 @@
       <% if #nodes == 0 then %>
       <ContentUnavailable id="folderNothing" title="Nothing Here Takes Space" systemImage="folder" description="This folder is empty, or everything in it is smaller than the map can show." />
       <% elseif style == "rectangles" then %>
-      <Treemap id="folderTreemap" transition="opacity" maxWidth="infinity" height="<%= FOLDER.treemapHeight %>" onSelect="chartSelect" onHover="chartHover" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
+      <Treemap id="folderTreemap" transition="opacity" height="<%= FOLDER.treemapHeight %>" onSelect="chartSelect" onHover="chartHover" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
         <% for _, node in ipairs(nodes) do %>
         <TreemapNode id="<%= node.id %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" label="<%= node.label %>" detail="<%= node.detail %>" hatched="false" />
         <% end %>
@@ -77,10 +77,10 @@
       <% end %>
       <Label id="folderHover" text="<%= hover %>" size="12" color="secondary" monospacedDigit="true" maxWidth="infinity" alignment="center" lines="1" truncation="middle" />
       <% if #legend > 0 then %>
-      <GroupBox id="folderLegend" maxWidth="infinity">
-        <VStack maxWidth="infinity" padding="10" spacing="6" alignment="leading">
+      <GroupBox id="folderLegend">
+        <VStack padding="10" spacing="6" alignment="leading">
           <% for _, item in ipairs(legend) do %>
-          <HStack key="legend-<%= item.id %>" maxWidth="infinity" spacing="6" alignment="center">
+          <HStack key="legend-<%= item.id %>" spacing="6" alignment="center">
             <SystemImage name="circle.fill" size="9" color="<%= item.color %>" />
             <Label text="<%= item.name %>" size="12" lines="1" />
             <Spacer />

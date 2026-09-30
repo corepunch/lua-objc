@@ -724,7 +724,6 @@ function AppKit.DisclosureGroup(props)
 		spacing = props.spacing or 8,
 		alignment = props.alignment or "leading",
 		paddingLeading = props.indicatorWidth and props.indicatorWidth + gap or nil,
-		maxWidth = props.indicatorWidth and props.maxWidth or nil,
 	})
 	for _, child in ipairs(props) do content:add(child) end
 	AppKit.transition(content, "opacity")
@@ -767,6 +766,8 @@ function AppKit.DisclosureGroup(props)
 	container:add(AppKit.HStack(header))
 	container:add(content)
 	content.hidden = not expanded
+	-- The header row spans the width it is offered, as in SwiftUI.
+	container.fillWidth = true
 	return applyLayout(container, props)
 end
 
@@ -1229,6 +1230,8 @@ function AppKit.SearchField(props)
 	end
 	bridge._textFieldCallbacks(field, props.onChange, props.onCommand, props.onFocus)
 	if props.defaultFocus then defaultFocusViews[field] = true end
+	-- Like a TextField, a search field takes the width it is offered.
+	field.fillWidth = true
 	return applyLayout(field, props)
 end
 
@@ -2182,6 +2185,9 @@ function AppKit.ProgressView(props)
 		assert(controlSize ~= nil, "invalid ProgressView controlSize")
 		v.controlSize = controlSize
 	end
+	-- A linear (determinate) ProgressView takes the width it is offered; the
+	-- spinner keeps its own size.
+	if props.value ~= nil then v.fillWidth = true end
 	return applyLayout(v, props)
 end
 
@@ -2205,6 +2211,8 @@ function AppKit.Gauge(props)
 	v.doubleValue = math.max(v.minValue, math.min(v.maxValue, value))
 	if props.tint then v.fillColor = bridge._systemColor(props.tint) end
 	if props.accessibilityLabel then v.accessibilityLabel = props.accessibilityLabel end
+	-- A linear Gauge takes the width it is offered, like SwiftUI's.
+	v.fillWidth = true
 	return applyLayout(v, props)
 end
 
@@ -2373,7 +2381,7 @@ end
 --- @prop onBack function optional. Delete goes up a level (keyboard).
 --- @prop dragItem function optional. `dragItem(id) -> path`: dragging a cell drags its file.
 --- @prop accessibilityLabel string optional. Summary read by VoiceOver.
---- @example <Treemap maxWidth="infinity" height="320"><TreemapNode id="a" value="3" color="systemBlue" label="Apps" /></Treemap>
+--- @example <Treemap height="320"><TreemapNode id="a" value="3" color="systemBlue" label="Apps" /></Treemap>
 --- @platform AppKit uses the AppKit implementation.
 function AppKit.Treemap(props)
 	return require("ui.treemap").view(bridge, applyLayout, props)

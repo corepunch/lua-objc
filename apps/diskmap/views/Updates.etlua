@@ -1,12 +1,12 @@
-<ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
-  <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
+<ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
+  <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {header = header,
       summary = "Storage macOS uses to download and install updates, and the restore points Time Machine keeps on this disk."}) %>
-    <VStack maxWidth="infinity" spacing="8" alignment="leading">
+    <VStack spacing="8" alignment="leading">
       <%- partial("SectionTitle.etlua", {icon = "gearshape.arrow.triangle.2.circlepath", title = "Software Update"}) %>
-      <GroupBox maxWidth="infinity">
-        <VStack maxWidth="infinity" spacing="0" alignment="leading">
-          <HStack maxWidth="infinity" padding="12" spacing="10" alignment="center">
+      <GroupBox>
+        <VStack spacing="0" alignment="leading">
+          <HStack padding="12" spacing="10" alignment="center">
             <SystemImage name="<%= not softwareUpdate.known and "questionmark.circle" or #softwareUpdate.updates > 0 and "arrow.down.app.fill" or "checkmark.circle" %>" size="18" color="<%= not softwareUpdate.known and "secondary" or #softwareUpdate.updates > 0 and "accent" or "systemGreen" %>" width="26" />
             <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="1" alignment="leading">
               <Label id="updateTitle" text="<%= softwareUpdate.title %>" size="13" weight="semibold" maxWidth="infinity" lines="1" />
@@ -21,10 +21,10 @@
         </VStack>
       </GroupBox>
     </VStack>
-    <VStack maxWidth="infinity" spacing="8" alignment="leading">
+    <VStack spacing="8" alignment="leading">
       <%- partial("SectionTitle.etlua", {icon = "externaldrive.badge.plus", title = "Installers & Disk Images"}) %>
-      <GroupBox maxWidth="infinity">
-        <VStack maxWidth="infinity" spacing="0" alignment="leading">
+      <GroupBox>
+        <VStack spacing="0" alignment="leading">
           <% if #installers == 0 then %>
           <Label id="noInstallers" text="<%= installersLoading and "Looking in Downloads, Desktop and Documents…" or "No macOS installers, disk images or installer packages found." %>" size="12" color="secondary" padding="12" maxWidth="infinity" />
           <% end %>
@@ -34,15 +34,15 @@
         </VStack>
       </GroupBox>
     </VStack>
-    <VStack maxWidth="infinity" spacing="8" alignment="leading">
-      <HStack maxWidth="infinity" spacing="8" alignment="center">
+    <VStack spacing="8" alignment="leading">
+      <HStack spacing="8" alignment="center">
         <%- partial("SectionTitle.etlua", {id = "snapshotTitle", icon = "clock.arrow.circlepath", title = snapshotTitle}) %>
         <Button id="openTimeMachine" title="Time Machine Settings…" action="openTimeMachine" />
       </HStack>
-      <GroupBox maxWidth="infinity">
-        <VStack maxWidth="infinity" spacing="0" alignment="leading">
+      <GroupBox>
+        <VStack spacing="0" alignment="leading">
           <% for index, snapshot in ipairs(snapshots) do %>
-          <HStack maxWidth="infinity" paddingHorizontal="12" paddingVertical="8" spacing="10" alignment="center">
+          <HStack paddingHorizontal="12" paddingVertical="8" spacing="10" alignment="center">
             <SystemImage name="clock" size="15" color="secondary" width="26" />
             <Label text="<%= snapshot.name %>" size="13" monospacedDigit="true" flexGrow="1" flexShrink="1" lines="1" />
             <Label text="<%= snapshot.id %>" size="11" design="monospaced" color="tertiary" lines="1" truncation="middle" flexShrink="1" />

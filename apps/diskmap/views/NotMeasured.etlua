@@ -10,9 +10,9 @@
   CARD.textEdge = CARD.column + CARD.gap
 %>
 <% if #items > 0 then %>
-<GroupBox id="notMeasuredCard" maxWidth="infinity">
-  <VStack maxWidth="infinity" padding="<%= CARD.padding %>" spacing="12" alignment="leading">
-    <HStack maxWidth="infinity" spacing="<%= CARD.gap %>" alignment="center">
+<GroupBox id="notMeasuredCard">
+  <VStack padding="<%= CARD.padding %>" spacing="12" alignment="leading">
+    <HStack spacing="<%= CARD.gap %>" alignment="center">
       <SystemImage name="questionmark.folder.fill" size="<%= CARD.symbol %>" color="secondary" width="<%= CARD.column %>" />
       <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
         <Label text="What Diskmap could not measure" size="13" weight="semibold" maxWidth="infinity" lines="1" />
@@ -21,13 +21,13 @@
       <Button id="exploreFolders" title="macOS Folders…" action="exploreFolders" help="What every macOS folder holds, and why some cannot be measured" />
     </HStack>
     <% for _, item in ipairs(items) do %>
-    <VStack id="unmeasured_<%= item.id %>" maxWidth="infinity" spacing="2" alignment="leading">
-      <HStack maxWidth="infinity" spacing="<%= CARD.gap %>" alignment="center">
+    <VStack id="unmeasured_<%= item.id %>" spacing="2" alignment="leading">
+      <HStack spacing="<%= CARD.gap %>" alignment="center">
         <SystemImage name="<%= item.icon %>" size="<%= CARD.itemSymbol %>" color="<%= item.color %>" width="<%= CARD.column %>" />
         <Label text="<%= item.title %>" size="12" weight="semibold" flexGrow="1" flexBasis="0" flexShrink="1" lines="1" />
         <Label text="<%= item.value %>" size="12" color="secondary" monospacedDigit="true" lines="1" />
       </HStack>
-      <VStack maxWidth="infinity" paddingLeading="<%= CARD.textEdge %>" spacing="2" alignment="leading">
+      <VStack paddingLeading="<%= CARD.textEdge %>" spacing="2" alignment="leading">
         <Label text="<%= item.detail %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
         <% for _, path in ipairs(item.paths or {}) do %>
         <Label text="<%= path %>" size="11" design="monospaced" color="secondary" maxWidth="infinity" lines="1" truncation="middle" />

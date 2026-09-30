@@ -2,7 +2,7 @@
   symbol is centered in a fixed column: titles of sections stacked on a page
   start at one edge. ]]
   local TITLE = { column = 26, gap = 6 } %>
-<HStack maxWidth="infinity" flexShrink="1" spacing="<%= TITLE.gap %>" alignment="center">
+<HStack flexShrink="1" spacing="<%= TITLE.gap %>" alignment="center">
   <SystemImage name="<%= icon %>" size="15" weight="semibold" color="label" width="<%= TITLE.column %>" />
   <Label <% if id then %>id="<%= id %>" <% end %>text="<%= title %>" size="15" weight="semibold" flexGrow="1" flexBasis="0" flexShrink="1" lines="1" />
 </HStack>

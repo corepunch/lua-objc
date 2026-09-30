@@ -211,6 +211,8 @@ function Treemap.view(bridge, applyLayout, props)
 	})
 	if props.selected then view.selectedId = props.selected end
 	if props.accessibilityLabel then view.accessibilityLabel = props.accessibilityLabel end
+	-- Like a SwiftUI Chart, it takes the width it is offered.
+	view.fillWidth = true
 	return applyLayout(view, props)
 end
 

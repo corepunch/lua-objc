@@ -8,8 +8,8 @@
 %>
 <Sheet width="<%= ONBOARDING.width %>" height="<%= ONBOARDING.height %>">
   <% if stage == "disk" then %>
-  <VStack maxWidth="infinity" maxHeight="infinity" padding="28" spacing="16" alignment="leading">
-    <HStack maxWidth="infinity" spacing="14" alignment="center">
+  <VStack maxHeight="infinity" padding="28" spacing="16" alignment="leading">
+    <HStack spacing="14" alignment="center">
       <SystemImage name="internaldrive.fill" size="36" badgeColor="systemBlue" />
       <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
         <Label text="Allow Diskmap to Measure Your Disk" size="17" weight="semibold" maxWidth="infinity" lines="0" />
@@ -17,12 +17,12 @@
       </VStack>
     </HStack>
     <Label text="Apps from the App Store can see only the folders you choose. Choose your startup disk once, and Diskmap can measure all of it. It reads only names, sizes and dates, never what is in your files." size="13" maxWidth="infinity" lines="0" />
-    <VStack maxWidth="infinity" spacing="<%= ONBOARDING.stepSpacing %>" alignment="leading">
-      <HStack maxWidth="infinity" spacing="<%= ONBOARDING.stepGap %>" alignment="center">
+    <VStack spacing="<%= ONBOARDING.stepSpacing %>" alignment="leading">
+      <HStack spacing="<%= ONBOARDING.stepGap %>" alignment="center">
         <SystemImage name="1.circle.fill" size="<%= ONBOARDING.stepSymbol %>" color="systemBlue" accessibilityLabel="Step 1" />
         <Label text="Click Choose Disk." size="13" flexGrow="1" flexBasis="0" flexShrink="1" lines="0" />
       </HStack>
-      <HStack maxWidth="infinity" spacing="<%= ONBOARDING.stepGap %>" alignment="center">
+      <HStack spacing="<%= ONBOARDING.stepGap %>" alignment="center">
         <SystemImage name="2.circle.fill" size="<%= ONBOARDING.stepSymbol %>" color="systemBlue" accessibilityLabel="Step 2" />
         <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
           <Label text="The panel opens at your startup disk. Click Allow." size="13" maxWidth="infinity" lines="0" />
@@ -31,15 +31,15 @@
       </HStack>
     </VStack>
     <Spacer />
-    <HStack maxWidth="infinity" spacing="8" alignment="center">
+    <HStack spacing="8" alignment="center">
       <Button id="skip" title="Continue Without Access" action="skip" keyboardShortcut="cancelAction" />
       <Spacer />
       <Button id="chooseDisk" title="Choose Disk…" style="borderedProminent" action="chooseDisk" keyboardShortcut="defaultAction" />
     </HStack>
   </VStack>
   <% else %>
-  <VStack maxWidth="infinity" maxHeight="infinity" padding="28" spacing="16" alignment="leading">
-    <HStack maxWidth="infinity" spacing="14" alignment="center">
+  <VStack maxHeight="infinity" padding="28" spacing="16" alignment="leading">
+    <HStack spacing="14" alignment="center">
       <SystemImage name="lock.open.fill" size="36" badgeColor="systemBlue" />
       <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
         <Label text="Let Diskmap See Your Whole Disk" size="17" weight="semibold" maxWidth="infinity" lines="0" />
@@ -47,12 +47,12 @@
       </VStack>
     </HStack>
     <Label text="macOS protects Mail, Messages, Safari, Documents and other folders. With Full Disk Access, Diskmap can measure them too, so its totals match your disk. It reads only names, sizes and dates, never what is in your files." size="13" maxWidth="infinity" lines="0" />
-    <VStack maxWidth="infinity" spacing="<%= ONBOARDING.stepSpacing %>" alignment="leading">
-      <HStack maxWidth="infinity" spacing="<%= ONBOARDING.stepGap %>" alignment="center">
+    <VStack spacing="<%= ONBOARDING.stepSpacing %>" alignment="leading">
+      <HStack spacing="<%= ONBOARDING.stepGap %>" alignment="center">
         <SystemImage name="1.circle.fill" size="<%= ONBOARDING.stepSymbol %>" color="systemBlue" accessibilityLabel="Step 1" />
         <Label text="Click Open System Settings." size="13" flexGrow="1" flexBasis="0" flexShrink="1" lines="0" />
       </HStack>
-      <HStack maxWidth="infinity" spacing="<%= ONBOARDING.stepGap %>" alignment="center">
+      <HStack spacing="<%= ONBOARDING.stepGap %>" alignment="center">
         <SystemImage name="2.circle.fill" size="<%= ONBOARDING.stepSymbol %>" color="systemBlue" accessibilityLabel="Step 2" />
         <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
           <Label text="Turn on Diskmap in the Full Disk Access list." size="13" maxWidth="infinity" lines="0" />
@@ -61,7 +61,7 @@
       </HStack>
     </VStack>
     <% -- After Settings opens: what Diskmap is doing, and what to do if nothing happens. %>
-    <HStack id="waiting" maxWidth="infinity" spacing="<%= ONBOARDING.stepGap %>" alignment="center" hidden="<%= openedSettings and "false" or "true" %>">
+    <HStack id="waiting" spacing="<%= ONBOARDING.stepGap %>" alignment="center" hidden="<%= openedSettings and "false" or "true" %>">
       <ProgressView id="waitingSpinner" width="<%= ONBOARDING.stepSymbol %>" height="<%= ONBOARDING.stepSymbol %>" />
       <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
         <Label text="Waiting for access…" size="13" maxWidth="infinity" lines="0" />
@@ -69,7 +69,7 @@
       </VStack>
     </HStack>
     <Spacer />
-    <HStack maxWidth="infinity" spacing="8" alignment="center">
+    <HStack spacing="8" alignment="center">
       <Button id="skip" title="Continue Without Access" action="skip" keyboardShortcut="cancelAction" />
       <Spacer />
       <Button id="restart" title="Restart Diskmap" action="restart" hidden="<%= openedSettings and "false" or "true" %>" />

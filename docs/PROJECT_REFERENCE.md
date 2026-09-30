@@ -1097,11 +1097,11 @@ parent too short for the band shows no label. The layout emits each cell's
 overlap. Colors are muted semantic colors that lighten with depth,
 `hatched` marks reclaimable space with diagonal lines, and the selected or
 hovered cell gets an accent outline. `onSelect(id, clickCount)` and
-`onHover(id)` report the deepest cell under the pointer. Give it a width and
-height (or `maxWidth="infinity"`); it relays out whenever its size changes.
+`onHover(id)` report the deepest cell under the pointer. It fills the offered width; give it a
+height (or a width and height); it relays out whenever its size changes.
 
 ```xml
-<Treemap maxWidth="infinity" height="360" onSelect="drill" onHover="describe">
+<Treemap height="360" onSelect="drill" onHover="describe">
   <TreemapNode id="dev" value="39" color="systemPurple" label="Developer" detail="39 GB" />
   <TreemapNode id="derived" parent="dev" value="8" color="systemPurple" label="DerivedData" hatched="true" />
 </Treemap>
@@ -1609,7 +1609,7 @@ child XML and bind its attributes to row fields.
 <Column id="usage" title="Used" width="220">
   <VStack spacing="3">
     <Label text="{used}" truncation="tail" />
-    <Gauge value="{fraction}" tint="{color}" maxWidth="infinity" />
+    <Gauge value="{fraction}" tint="{color}" />
   </VStack>
 </Column>
 ```
@@ -1917,6 +1917,20 @@ Templates use the `.etlua` extension to reflect that they contain etlua
 
 All layout attributes (`flexGrow`, `padding`, `width`, `height`, `maxWidth="infinity"`, etc.) are accepted on
 every tag and forwarded to `applyLayout`.
+
+**Implicit flexibility follows SwiftUI.** A view hugs its content unless
+SwiftUI makes it flexible without a frame modifier. Do not write
+`maxWidth="infinity"` for these; they take the width they are offered:
+`<Spacer>`, `<Divider>`, `<GroupBox>`, `<ScrollView>` (across, even with a
+`flexBasis`), `<List>`, `<Table>`, `<TextField>`, `<SearchField>`, `<Slider>`,
+`<Gauge>`, `<Treemap>`, a determinate `<ProgressView>` (a spinner keeps its size) and
+`<DisclosureGroup>`. A `<VStack>`/`<HStack>`/`<ZStack>` is flexible on an axis
+when any child is, so the attribute is never repeated down a chain of
+containers. `<Label>` and other text hug, and wrap when offered less width. Write
+`maxWidth="infinity"` on the leaf that must fill (SwiftUI's
+`.frame(maxWidth: .infinity, alignment: .leading)`), for example a label that
+pushes trailing controls to the row's edge. `tests/flexible_defaults.test.lua`
+holds the contract.
 
 **`<List>` attributes:**
 

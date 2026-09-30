@@ -251,8 +251,16 @@ static BOOL default_grows_on_axis(NSView *view, BOOL horizontal) {
 		}
 		return NO;
 	}
+	// SwiftUI GroupBox takes the width it is offered and the height of its
+	// content; a separator (also an NSBox) sets its own fill.
+	if ([view isKindOfClass:NSBox.class] && ((NSBox *)view).boxType != NSBoxSeparator)
+		return horizontal;
 	if (!is_flexible(view)) return NO;
-	if (objc_getAssociatedObject(view, &kKeys[kFlexBasisKey])) {
+	// A basis names the main axis of a flex item. Scroll views and tab views
+	// are flexible on both axes in SwiftUI, so a basis leaves their cross
+	// axis to fill.
+	if (objc_getAssociatedObject(view, &kKeys[kFlexBasisKey])
+		&& ![view isKindOfClass:NSScrollView.class] && ![view isKindOfClass:NSTabView.class]) {
 		LayoutAxis parentAxis = layout_axis(view.superview);
 		if (parentAxis == LayoutAxisHStack) return horizontal;
 		if (parentAxis == LayoutAxisVStack) return !horizontal;
