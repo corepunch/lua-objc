@@ -259,13 +259,12 @@ running while the app is open for file loading and hot reload.
   Start the packager in a separate terminal, using the same app entry point:
 
   ```sh
-  trap '' PIPE
   build/lua-objc-packager --root "$PWD" --port 8081 \
     --entry apps/adventure-arena
   ```
 
-  Ignoring `SIGPIPE` keeps a disconnected hot-reload WebSocket from terminating
-  the local packager. Then install and launch the host explicitly:
+  The packager ignores `SIGPIPE` and drops hot-reload clients whose socket
+  has closed. Then install and launch the host explicitly:
 
   ```sh
   xcrun simctl install "$SIMULATOR_UDID" build/ios/LuaRuntime.app
@@ -278,8 +277,7 @@ running while the app is open for file loading and hot reload.
 
 - If the screen says it is waiting for the packager, confirm the packager
   process is still alive and serving port 8081, then relaunch the host after
-  the packager is ready. A packager that exited with status 141 received
-  `SIGPIPE`; restart it with `trap '' PIPE` as above.
+  the packager is ready.
 - If an iOS build fails to link symbols for `WKWebView` or
   `WKFindConfiguration`, make sure the relevant `FRAMEWORKS` list links `WebKit`.
 

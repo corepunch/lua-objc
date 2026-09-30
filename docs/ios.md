@@ -18,7 +18,7 @@ lua-objc already has a complete AppKit product and a UIKit *stub*: `make` builds
 
 This work adds a real iPhone Simulator host that statically compiles Lua 5.4.8 plus the UIKit translation unit (`src/uikit_module.m` includes `src/uikit/*.m` and `src/shared/*.m` — those fragments are **not** extra Compile Sources). The `.app` is a **runtime**, not an app bundle: it contains no Lua, templates, or images. A Mac packager streams every `.lua` / `.etlua` file and every asset (`png`, `svg`, `json`, game data, …) over HTTP, and pushes change events over WebSocket. The operator loop never rebuilds or reinstalls.
 
-**The host process does not quit on reload.** A save does not `simctl launch`, does not terminate `LuaRuntime`, and does not tear down the `UIWindowScene`. The packager sends `update` over WebSocket; the running host replaces `rootViewController` (or, for `Model.lua` / `init.lua`, recycles the in-process `lua_State`) and keeps the Simulator on screen. A Lua error is a redbox overlay, not a crash. This is the React Native Fast Refresh analogue: native runtime stays up, app Lua and assets stream in.
+**The host process does not quit on reload.** A save does not `simctl launch`, does not terminate `LuaRuntime`, and does not tear down the `UIWindowScene`. The packager sends `update` over WebSocket; the running host recycles the in-process `lua_State`, boots the entry again, which replaces `rootViewController`, and keeps the Simulator on screen. A Lua error is a redbox overlay, not a crash. This is the React Native Fast Refresh analogue: native runtime stays up, app Lua and assets stream in.
 
 Success is **coverage**, not a port: AdventureArena’s SwiftUI screens at `/Users/igor/Developer/adventure-arena` define the primitive set that must exist in Lua + XML + real UIKit. AdventureArena itself is not ported in this workstream.
 
@@ -111,7 +111,7 @@ AdventureArena is a shipping SwiftUI iPhone app (deployment target **iOS 26.5**,
 
 5. **The host injects the platform module as `require("ns")`.** macOS `lua_objc_main` also registers AppKit as `ns` (the **same table**, not a forwarding stub). `xml.render` defaults to `require("ns")`. Existing `require("AppKit")` / `require("UIKit")` keep working because those names stay in `package.loaded` pointing at the same table. Call-site migration to `require("ns")` is a follow-up, not a host-boot blocker. No `or require("AppKit")` fallback shim.
 
-6. **Hot reload v1 rebuilds the root view controller and preserves `Model`.** Not a virtual-DOM diff. `lua/ui/viewdesc.lua` remains the later reconciliation path (ARCHITECTURE.md already marks it “for future diffing”). Fast refresh **must not** call `LuaStateOwner -cancel` on the live owner: `-cancel` sets `_cancelled = YES` for the life of the owner, so `_httpGet` / `_timerAfter` / `ns.sleep` would never run again. Cancel the current `NSURLSession`/`NSTimer` set (or swap extraspace to a fresh non-closing owner) and bump a `refreshGeneration` integer. Controller/XML changes rebuild chrome; Model is the preserved state.
+6. **Hot reload recycles the `lua_State`.** Not a virtual-DOM diff, and no state survives a save beyond what the app persists itself. An earlier design re-ran the entry inside the live state and kept `Model` modules loaded; it leaked every previous app. Native views, targets and timers hold registry references to Lua closures that capture the old controller, a cycle across the two collectors that neither breaks, so each reload pinned a full view tree (about 50 MB and 100 Mach ports on Adventure Arena; a long session reached 4 GB and 10,000 ports). `lua_close` cancels the state's timers and tasks and finalizes every userdata, so the previous app goes at once. `lua/ui/viewdesc.lua` remains the later reconciliation path for preserving view identity.
 
 7. **The Mac packager is the only source of Lua and assets.** The host is a native VM + UIKit bridge. It does not copy the repo into the `.app`. HTTP serves modules, templates, and binary assets; WebSocket pushes `update` events; the Simulator is a client. No FSEvents inside the sim for `~/Developer/lua-objc`. Changing `.lua`, `.etlua`, images, or game data **never** rebuilds the host. Native `.m` changes are a framework-engineer event outside this loop and are not watched.
 
@@ -379,15 +379,13 @@ sequenceDiagram
   participant P as lua-objc-packager
   participant WS as WebSocket /hot
   participant H as LRTApplicationController
-  participant M as Model table
   participant VC as rootViewController
 
   FS->>P: demo/hello/views/Window.etlua changed
   P->>WS: {"type":"update","path":"demo/hello/views/Window.etlua","kind":"view"}
   WS->>H: same JSON
-  H->>H: unrequire app modules except Model
-  H->>M: keep registry LUA_OBJC_MODEL
-  H->>H: Controller.new(); controller.model = M
+  H->>H: drop cached path; lua_close; new lua_State
+  H->>H: require entry; Controller.new()
   H->>VC: createWindow() → _installScene replaces root VC
 ```
 
@@ -395,24 +393,17 @@ sequenceDiagram
 
 | Changed path | Refresh |
 |---|---|
-| `*.lua` except `Model.lua` / `init.lua` (including `lua/embedded/UIKit.lua`, `lua/ui/**`) | Fast refresh: rebuild root VC, keep Model. Streamed; no `.app` rebuild |
-| `views/*.etlua`, `lua/vendor/etlua/**` | Fast refresh, keep Model |
-| Assets (`png`, `jpg`, `jpeg`, `gif`, `webp`, `svg`, `json`, `zil`, `txt`, …) | Bust `LRTResourceLoader` cache for that path; if an `ns.Image` / cover is on screen, fast refresh. Streamed; no `.app` rebuild |
-| `Model.lua` | Full Lua restart (new `lua_State`, re-`require` entry). Data shape may have changed |
-| `init.lua` | Full Lua restart |
+| `*.lua`, `*.etlua` (including `lua/embedded/UIKit.lua`, `lua/ui/**`) | Drop that path from the `LRTResourceLoader` cache, recycle the `lua_State`, boot the entry. Streamed; no `.app` rebuild |
+| Assets (`png`, `jpg`, `jpeg`, `gif`, `webp`, `svg`, `json`, `zil`, `txt`, …) | Same. Streamed; no `.app` rebuild |
+| Hidden folders (`.git`, `.claude` worktrees under the root) | Not watched |
 | `src/**/*.m`, `ios/**`, `vendor/lua-5.4.8/**` | **Out of this loop.** The packager does not watch native sources and does not send a “rebuild the host” event. Framework engineers rebuild the host themselves when they change the bridge |
 
-Fast refresh implementation (`LRTApplicationController.m`):
+Reload implementation (`LRTApplicationController.m` `handleReloadEvent:`):
 
-1. Keep `Model` in the registry (`LUA_OBJC_MODEL`) if the controller exposed `self.model`. Convention: `Controller.new` stores `self.model = Model.new()` (or the Model module table). The host reads `instance.model` after `new()` and writes the preserved table back after re-`new()`. Today no example stores `self.model`; hello’s Model is a module of strings. Fast refresh of hello preserves nothing until that convention lands in the packager PR.
-2. Unrequire by **tracked module → path** from the custom searcher (loaded keys are module names, not filesystem paths). Clear `package.loaded[name]` for the changed Lua module. `UIKit` / `lua/embedded/UIKit.lua` **is** unrequired on change (it is streamed). **Never** clear `UIKitNative`, `package`, or `*.Model`. Restore `package.loaded[<app>.Model]` to the preserved table before re-`require` of Controller. After unrequiring `UIKit`, re-`require` it and set `package.loaded.ns` again.
-3. Cancel only the *current* `NSURLSession` tasks and `NSTimer`s, then leave `owner.cancelled == NO`. Alternatively install a new non-closing `LuaStateOwner` in extraspace for the same `L` and cancel the old one. Bump `LRTApplicationController.refreshGeneration` and drop completions whose generation is stale. **Do not** call `-cancel` on the live owner and keep the state — `src/shared/lua_async.m` `-cancel` sets `_cancelled = YES` with no reset, so `trackTask` / `trackTimer` would drop all later `ns.fetch` / `ns.sleep`.
-4. `luaL_unref` the previous controller/window registry refs (the block `src/main.m` copies at 584–587) before installing new ones.
-5. Re-`require` the entry module, `new()`, restore `model`, `createWindow()`.
-6. `_installScene` replaces `window.rootViewController`. UIKit tears down the old VC tree.
-7. On Lua error: show `LRTErrorViewController` (full-screen, system red / white monospaced label, the error string + traceback). Keep the previous VC tree if `createWindow` failed before `_installScene`; if it failed after, overlay on top. Analogous to RN redbox. Also `report_lua_error` to stderr (`src/shared/lua_error.m`).
-
-Full restart: `lua_close` the state (host-owned; the non-closing owner detaches in `__gc` of `lua_objc.async_owner`), create a new state, boot from scratch. Overlay if boot fails.
+1. Drop the changed path from the `LRTResourceLoader` cache, both a cached body and a remembered 404. Every other file is served from the cache, so a reload fetches only what changed; the remembered 404s keep `require` from probing every `package.path` candidate again (over a hundred requests per boot).
+2. `lua_objc_prepare_close` cancels the state's timers and tasks, then `lua_close` finalizes every userdata. The previous app, its view tree and its registry references go at once.
+3. Create a new state, `require` the entry, `new()`, `createWindow()`. `_installScene` replaces `window.rootViewController`.
+4. On Lua error: show `LRTErrorViewController` with the error and traceback. Try Again boots from scratch.
 
 **Not in v1:** preserving `UITextField` first responder, scroll offset, or `UINavigationController` stack. Document this; a later viewdesc PR can preserve identity.
 
@@ -765,7 +756,7 @@ No database. Persistence:
 - **App defaults:** `NSUserDefaults` via `ns.Defaults`.
 - **App files:** Documents directory (saves, not source).
 
-Hot reload preserves the Lua `Model` table in the registry across fast refresh. It is not serialized unless the app writes Defaults/files itself.
+Hot reload keeps no Lua state: every save boots a fresh `lua_State`. State survives only when the app writes Defaults or files itself.
 
 ---
 
@@ -958,10 +949,9 @@ Changing the native bridge (`.m`, Lua 5.4.8 C sources) is a framework change, no
 
 `lua/ui/viewdesc.lua` already describes tag/props/children diffs. True reconciliation would preserve first responder, scroll position, and navigation stack.
 
-**v1 choice: rebuild `rootViewController`, preserve Model.** Reasons:
+**v1 choice: recycle the `lua_State` and rebuild `rootViewController`.** Keeping the state alive to preserve `Model` leaked every previous view tree (Key Decision 6). Reasons for rebuilding rather than diffing:
 
 - lua-objc construction is still eager (`ARCHITECTURE.md`: leaf controls fit the eager bridge; structural changes need retained descriptions — that is a later step, not a blocker for a host).
-- RN Fast Refresh also remounts when the change is structural; preserving *business* state (Model) is the valuable part.
 - A wrong-but-complex diff on `UINavigationController` children would ship bugs (duplicate VCs, leaked delegates) in the first iOS PRs.
 - Rebuild is independently testable: dump the new hierarchy after save.
 
@@ -1079,12 +1069,12 @@ Each PR is independently reviewable and mergeable. Native `.m` / `.lua` use tabs
 
 PR 2 in the previous draft (packager as a follow-up) is absorbed here: without the packager the host has nothing to run.
 
-### PR 2 — Fast refresh rules, Model preserve, redbox polish
+### PR 2 — Reload rules, redbox polish
 
 - **Title:** Preserve Model across streamed Lua/asset updates
 - **Files:** `LRTApplicationController.m` (fast refresh / full restart; **no** live-owner `-cancel`), `LRTResourceLoader.m` (asset cache bust), `demo/hello/Controller.lua` (`self.model`), `tests/packager.test.lua` (`kind` including `asset`)
 - **Depends on:** PR 1
-- **Description:** Fast refresh rebuilds root VC, does not unrequire `*.Model`, restores `controller.model`, unrefs old registry refs, cancels only the current timer/HTTP set. `kind=asset` drops the file cache and refreshes. `Model.lua` / `init.lua` trigger full `lua_close` + reboot (still no host rebuild). Lua errors present `LRTErrorViewController`. `NSAllowsLocalNetworking`.
+- **Description:** Every update drops the changed path from the file cache and recycles the `lua_State` (`lua_close` + reboot, no host rebuild); see Key Decision 6 for why the state is never kept. Lua errors present `LRTErrorViewController`. `NSAllowsLocalNetworking`.
 
 ### PR 3 — Layout, safe area, keyboard, scene bounds
 
@@ -1151,10 +1141,8 @@ Round 2 (product): stream **Lua and assets only**. The host is a runtime with no
 Addressed design review (round 1):
 
 - PR1 is a closed boot **via the packager**: layout accessors hello actually uses; `uiviewcontroller` metatable; Compile Sources = host + `uikit_module.m` + `liblua.a` only. No rsync of Lua into the `.app`.
-- Fast refresh does not call live `LuaStateOwner -cancel`. Generation token + cancel current tasks, or swap extraspace owner.
 - `simctl launch` uses `SIMCTL_CHILD_*`, not `--env`. `ios-run` polls `/health` and traps EXIT.
 - Layout dump writes in the app container; Makefile copies out. Screenshots are device-frame.
-- Model is not unrequired on Controller/XML saves. Searcher tracks module → path. Hello grows `self.model` in PR2.
 - NavigationStack is iOS-only; List is always a view; ZStack measures then places; NavigationLink values are string ids.
 - Coverage gaps: `scrollTo`, `disabled`, `preferredColorScheme`, image `cornerRadius`, content inset, Form-as-List, companion cards as app, HowToPlay hero as app.
 - Packager: BSD sockets, server hello, `NSData` byte length, `NSAllowsLocalNetworking`, `lua/packager/paths.lua` for `make test`.

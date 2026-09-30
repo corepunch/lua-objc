@@ -7,7 +7,12 @@
 	BOOL _stopped;
 }
 
+/* One session for the connection's life. Tasks are cancelled before a
+ * replacement opens and the session is invalidated on disconnect: a
+ * session never invalidated keeps its connection pool, delegate queue and
+ * their Mach ports for the life of the process. */
 - (void)connectToURL:(NSURL *)url {
+	[_session invalidateAndCancel];
 	_url = url;
 	_stopped = NO;
 	NSURLSessionConfiguration *config =
@@ -21,6 +26,8 @@
 	_stopped = YES;
 	[_task cancel];
 	_task = nil;
+	[_session invalidateAndCancel];
+	_session = nil;
 }
 
 - (void)open {
@@ -30,6 +37,7 @@
 		NSLog(@"[lua-objc] skip websocket; scheme=%@", _url.scheme);
 		return;
 	}
+	[_task cancel];
 	_task = [_session webSocketTaskWithURL:_url];
 	[_task resume];
 	[self receive];
@@ -37,10 +45,12 @@
 
 - (void)receive {
 	__weak typeof(self) weakSelf = self;
-	[_task receiveMessageWithCompletionHandler:^(
+	NSURLSessionWebSocketTask *task = _task;
+	[task receiveMessageWithCompletionHandler:^(
 		NSURLSessionWebSocketMessage *message, NSError *error) {
 		__strong typeof(weakSelf) self = weakSelf;
-		if (!self || self->_stopped) return;
+		// A cancelled task still completes; only the current task may reconnect.
+		if (!self || self->_stopped || self->_task != task) return;
 		if (error) {
 			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 400 * NSEC_PER_MSEC),
 				dispatch_get_main_queue(), ^{ [self open]; });

@@ -70,10 +70,12 @@ change events over WebSocket. The host calls `luaopen_UIKitNative` and
 `luaopen_UIKit` remains a dylib compile-check, not the Simulator load path).
 
 A save **does not quit the host**. The process, scene, and window stay up.
-Controller/view/asset updates replace `rootViewController` and keep `Model`.
-`Model.lua` / `init.lua` recycle the in-process `lua_State` without
-terminating `UIApplication`. Lua errors show an overlay. Native `.m` changes
-are outside this loop.
+Every update recycles the in-process `lua_State` and boots the entry again
+without terminating `UIApplication`; only the changed file is fetched again.
+Re-running the entry inside a live state leaked the whole previous view tree,
+because native objects hold registry references to closures that capture
+the old controller. Lua errors show an overlay. Native `.m` changes are
+outside this loop.
 
 The contract and operator commands live in [`docs/ios.md`](docs/ios.md).
 

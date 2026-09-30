@@ -19,8 +19,6 @@ UIWindow *LRTApplicationWindow(void) {
 	int _controllerRef;
 	int _windowRef;
 	LRTReloadConnection *_reloadConnection;
-	NSMutableDictionary<NSString *, NSString *> *_modulePaths;
-	id _preservedModel;
 	BOOL _booted;
 	BOOL _retrying;
 	BOOL _waiting;
@@ -37,7 +35,6 @@ UIWindow *LRTApplicationWindow(void) {
 	self = [super init];
 	_controllerRef = LUA_NOREF;
 	_windowRef = LUA_NOREF;
-	_modulePaths = [NSMutableDictionary dictionary];
 	return self;
 }
 
@@ -165,13 +162,7 @@ static int searcher_packager(lua_State *L) {
 		return lua_error(L);
 	}
 	lua_pushstring(L, name);
-	LRTApplicationController *host = LRTApplicationController.shared;
-	[host recordModule:@(name)];
 	return 2;
-}
-
-- (void)recordModule:(NSString *)name {
-	_modulePaths[name] = name;
 }
 
 static int bridge_read_file(lua_State *L) {
@@ -263,9 +254,6 @@ static int bridge_read_file(lua_State *L) {
 		if (error) *error = [self luaError:@"new"];
 		return NO;
 	}
-	if (_preservedModel && lua_istable(_L, -1)) {
-		/* restore later via Lua table assignment if present */
-	}
 	lua_getfield(_L, -1, "createWindow");
 	if (!lua_isfunction(_L, -1)) {
 		if (error) *error = [NSError errorWithDomain:@"LRTApplicationController" code:1
@@ -325,77 +313,22 @@ static int bridge_read_file(lua_State *L) {
 			[NSString stringWithFormat:@"%@: %@", context, msg]}];
 }
 
-- (void)unrequireExceptModel {
-	lua_getglobal(_L, "package");
-	lua_getfield(_L, -1, "loaded");
-	lua_pushnil(_L);
-	NSMutableArray *keys = [NSMutableArray array];
-	while (lua_next(_L, -2)) {
-		if (lua_isstring(_L, -2)) {
-			NSString *name = @(lua_tostring(_L, -2));
-			BOOL keep = [name isEqualToString:@"UIKitNative"]
-				|| [name isEqualToString:@"UIKit"]
-				|| [name isEqualToString:@"AppKit"]
-				|| [name isEqualToString:@"ns"]
-				|| [name isEqualToString:@"package"]
-				|| [name hasSuffix:@".Model"]
-				|| [name isEqualToString:@"Model"];
-			if (!keep) [keys addObject:name];
-		}
-		lua_pop(_L, 1);
-	}
-	for (NSString *name in keys) {
-		lua_pushnil(_L);
-		lua_setfield(_L, -2, name.UTF8String);
-	}
-	lua_pop(_L, 2);
-}
-
+/* Every update recycles the lua_State. Re-running the entry inside the live
+ * state cannot release the previous app: native views, targets and timers
+ * hold registry references to Lua closures that capture the old controller,
+ * a cycle across the two collectors that neither can break. Each in-place
+ * reload therefore pinned a full view tree with its layer backing stores
+ * (about 50 MB and 100 Mach ports on Adventure Arena). lua_close cancels
+ * the state's timers and tasks and finalizes every userdata, so the whole
+ * previous app goes at once. The resource cache keeps unchanged files, so
+ * a reboot costs no more network than re-requiring modules did. */
 - (void)handleReloadEvent:(NSDictionary *)event {
-	NSString *type = event[@"type"];
-	if ([type isEqualToString:@"hello"]) return;
-	if (![type isEqualToString:@"update"]) return;
-	NSString *kind = event[@"kind"] ?: @"";
+	if (![event[@"type"] isEqualToString:@"update"]) return;
 	NSString *path = event[@"path"] ?: @"";
-	NSLog(@"[lua-objc] update %@ %@", kind, path);
-	if ([kind isEqualToString:@"asset"]) {
-		[LRTResourceLoader.shared dropCacheForPath:path];
-	}
-	NSError *err = nil;
-	if ([kind isEqualToString:@"model"] || [kind isEqualToString:@"init"]) {
-		if (![self boot:&err]) {
-			[self showError:err];
-		}
-		return;
-	}
+	NSLog(@"[lua-objc] update %@ %@", event[@"kind"] ?: @"", path);
 	[LRTResourceLoader.shared dropCacheForPath:path];
-	[self unrequireExceptModel];
-	if ([path containsString:@"lua/embedded/UIKit.lua"]) {
-		lua_getglobal(_L, "package");
-		lua_getfield(_L, -1, "loaded");
-		lua_pushnil(_L);
-		lua_setfield(_L, -2, "UIKit");
-		lua_pop(_L, 2);
-		if (luaL_dostring(_L, "local u = require('UIKit'); package.loaded.ns = u; package.loaded.AppKit = u; package.loaded.UIKit = u") != LUA_OK) {
-			[self showError:[self luaError:@"reload UIKit"]];
-			return;
-		}
-	}
-	NSString *entry = [LRTResourceLoader.shared entryPath:&err];
-	NSData *src = entry ? [LRTResourceLoader.shared dataForPath:entry error:&err] : nil;
-	if (!src) {
-		[self showError:err];
-		return;
-	}
-	NSString *chunk = [NSString stringWithFormat:@"@%@", entry];
-	if (luaL_loadbuffer(_L, src.bytes, src.length, chunk.UTF8String) != LUA_OK
-		|| lua_pcall(_L, 0, 1, 0) != LUA_OK) {
-		[self showError:[self luaError:@"reload"]];
-		return;
-	}
-	if (![self instantiate:&err]) {
-		[self showError:err];
-	}
+	NSError *err = nil;
+	if (![self boot:&err]) [self showError:err];
 }
 
 @end
