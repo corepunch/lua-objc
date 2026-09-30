@@ -127,7 +127,7 @@ local function collector()
 end
 
 -- context = { items = {...}, knownItems = {...}, exits = {...} }
--- Returns up to six { title, text, submit } chips. A chip with submit=true
+-- Returns up to six { title, text, submit } chips, none for empty input. A chip with submit=true
 -- is a whole command; otherwise its text replaces the composer contents.
 function Suggestions.forInput(input, context)
 	input = tostring(input or "")
@@ -146,18 +146,9 @@ function Suggestions.forInput(input, context)
 	local head = table.concat(words, " ")
 	local prefix = head == "" and "" or head .. " "
 
-	if #words == 0 and current == "" then
-		-- An empty composer offers the moves that make sense right here.
-		for index = 1, math.min(2, #exits) do add(exits[index], exits[index], true) end
-		for _, item in ipairs(items) do
-			local command = primaryVerb(item) .. " " .. item.noun
-			add(command, command, true)
-			if #list >= LIMIT - 2 then break end
-		end
-		add("look", "look", true)
-		add("inventory", "inventory", true)
-		return list
-	end
+	-- An empty composer offers nothing: chips before typing pull the eye off
+	-- the page, and once the reader types their attention is on the field.
+	if #words == 0 and current == "" then return list end
 
 	if #words == 0 then
 		-- First word: the likeliest verbs, then exits and objects ("t" offers

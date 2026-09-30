@@ -135,14 +135,111 @@ static UIView *page_toolbar_view(UIView *view, CGFloat maxWidth) {
 	return view;
 }
 
+/* The bar above the keyboard for a page's `keyboard` toolbar items, set as
+ * the editing input's inputAccessoryView. Items keep their own look (glass
+ * buttons float over the keyboard as the system's own keyboard toolbar does)
+ * and share one row: fixed-width items take their fitting width and items
+ * that want more (maxWidth="infinity") split what remains. While every item
+ * is hidden the input has no accessory at all. Showing or hiding the bar goes
+ * through -reloadInputViews on the editing input, the documented way to
+ * change input views; resizing a live accessory to zero instead leaves the
+ * keyboard layout guide short by the old bar's height. */
+@interface LuaKeyboardToolbar : UIView
+@property(nonatomic, copy) NSArray<UIView *> *items;
+/* The input that last asked for the bar; reloaded when visibility flips. */
+@property(nonatomic, weak) UIResponder *input;
+@property(nonatomic, readonly) BOOL hasVisibleItems;
+@end
+@implementation LuaKeyboardToolbar {
+	BOOL _shown;
+}
+static void *kKeyboardToolbarHiddenContext = &kKeyboardToolbarHiddenContext;
+- (instancetype)initWithItems:(NSArray<UIView *> *)items {
+	self = [super initWithFrame:CGRectZero];
+	if (!self) return nil;
+	self.autoresizingMask = UIViewAutoresizingFlexibleHeight;
+	_items = [items copy];
+	for (UIView *item in _items) {
+		[self addSubview:item];
+		[item addObserver:self forKeyPath:@"hidden" options:0 context:kKeyboardToolbarHiddenContext];
+	}
+	_shown = self.hasVisibleItems;
+	return self;
+}
+- (void)dealloc {
+	for (UIView *item in _items) [item removeObserver:self forKeyPath:@"hidden" context:kKeyboardToolbarHiddenContext];
+}
+- (BOOL)hasVisibleItems {
+	for (UIView *item in _items) if (!item.hidden) return YES;
+	return NO;
+}
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object
+		change:(NSDictionary *)change context:(void *)context {
+	if (context != kKeyboardToolbarHiddenContext) {
+		[super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
+		return;
+	}
+	BOOL shown = self.hasVisibleItems;
+	if (shown != _shown) {
+		_shown = shown;
+		if (_input.isFirstResponder) [_input reloadInputViews];
+	}
+	[self invalidateIntrinsicContentSize];
+	[self setNeedsLayout];
+}
+- (CGFloat)itemWidth {
+	CGFloat width = self.bounds.size.width ?: self.window.bounds.size.width ?: UIScreen.mainScreen.bounds.size.width;
+	return MAX(0, width - 2 * kKeyboardToolbarHorizontalInset);
+}
+- (CGSize)intrinsicContentSize {
+	CGFloat height = 0;
+	for (UIView *item in _items)
+		height = MAX(height, measure_size(item, CGSizeMake([self itemWidth], CGFLOAT_MAX)).height);
+	return CGSizeMake(UIViewNoIntrinsicMetric, height + 2 * kKeyboardToolbarVerticalInset);
+}
+- (void)layoutSubviews {
+	[super layoutSubviews];
+	CGFloat available = [self itemWidth];
+	NSMutableArray<UIView *> *visible = [NSMutableArray array];
+	for (UIView *item in _items) if (!item.hidden) [visible addObject:item];
+	if (visible.count == 0) return;
+	available -= (visible.count - 1) * kKeyboardToolbarSpacing;
+	CGFloat fixed = 0;
+	NSUInteger flexible = 0;
+	CGSize sizes[visible.count];
+	for (NSUInteger index = 0; index < visible.count; index++) {
+		sizes[index] = measure_size(visible[index], CGSizeMake(available, CGFLOAT_MAX));
+		if (sizes[index].width >= available) flexible++;
+		else fixed += sizes[index].width;
+	}
+	CGFloat share = flexible ? MAX(0, available - fixed) / flexible : 0;
+	CGFloat x = kKeyboardToolbarHorizontalInset;
+	for (NSUInteger index = 0; index < visible.count; index++) {
+		CGFloat width = sizes[index].width >= available ? share : sizes[index].width;
+		CGFloat y = floor((self.bounds.size.height - sizes[index].height) / 2);
+		visible[index].frame = CGRectMake(x, y, width, sizes[index].height);
+		layout_recursive(visible[index], width);
+		x += width + kKeyboardToolbarSpacing;
+	}
+}
+@end
+
+/* The bar for an input that is about to edit, or nil while it shows nothing. */
+static UIView *keyboard_toolbar_for_input(LuaKeyboardToolbar *toolbar, UIResponder *input) {
+	toolbar.input = input;
+	return toolbar.hasVisibleItems ? toolbar : nil;
+}
+
 /* SwiftUI .toolbar placements for a navigation destination. `principal`
- * becomes the title view; leading placements sit beside the back button. */
+ * becomes the title view; leading placements sit beside the back button;
+ * `keyboard` items ride above the keyboard (LuaKeyboardToolbar). */
 static int bridge_UIKitNavigation_page_toolbar(lua_State *L) {
 	UIViewController *controller = check_view_controller(L, 1);
 	luaL_checktype(L, 2, LUA_TTABLE);
 	UINavigationItem *navigationItem = controller.navigationItem;
 	NSMutableArray<UIBarButtonItem *> *leading = [NSMutableArray array];
 	NSMutableArray<UIBarButtonItem *> *trailing = [NSMutableArray array];
+	NSMutableArray<UIView *> *keyboard = [NSMutableArray array];
 	lua_Integer count = luaL_len(L, 2);
 	for (lua_Integer i = 1; i <= count; i++) {
 		lua_rawgeti(L, 2, i);
@@ -157,7 +254,10 @@ static int bridge_UIKitNavigation_page_toolbar(lua_State *L) {
 		NSString *label = lua_isstring(L, -1) ? @(lua_tostring(L, -1)) : @"";
 		lua_getfield(L, item, "action");
 		LuaReg *action = lua_isfunction(L, -1) ? lua_reg_create(L, -1, YES) : nil;
-		if ([placement isEqualToString:@"principal"]) {
+		if ([placement isEqualToString:@"keyboard"]) {
+			if (!view) return luaL_error(L, "a keyboard ToolbarItem requires one view child");
+			[keyboard addObject:view];
+		} else if ([placement isEqualToString:@"principal"]) {
 			if (view) navigationItem.titleView = page_toolbar_view(view, kNavigationTitleMaxWidth);
 		} else {
 			UIBarButtonItem *barItem;
@@ -185,6 +285,8 @@ static int bridge_UIKitNavigation_page_toolbar(lua_State *L) {
 	navigationItem.leftItemsSupplementBackButton = YES;
 	navigationItem.leftBarButtonItems = leading;
 	navigationItem.rightBarButtonItems = trailing;
+	objc_setAssociatedObject(controller, &kKeyboardToolbarKey,
+		keyboard.count ? [[LuaKeyboardToolbar alloc] initWithItems:keyboard] : nil, OBJC_ASSOCIATION_RETAIN);
 
 	if (lua_istable(L, 3)) {
 		lua_getfield(L, 3, "titleDisplayMode");

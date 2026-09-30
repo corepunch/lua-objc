@@ -2,8 +2,10 @@
   -- The reader. A page of the book fills the screen; the navigation bar is a
   -- running head (the story, then the room). Everything that is not the
   -- story floats in one Liquid Glass group at the foot of the page: quick
-  -- actions and the command field, with suggestion chips above them and the
-  -- status line set small like a book’s folio.
+  -- actions and the command field, with the status line set small like a
+  -- book’s folio. Completions of what the reader is typing ride above the
+  -- keyboard (a keyboard toolbar item), so nothing competes with the page
+  -- until the reader starts typing.
   local BAR = { height = 52, radius = 26, merge = 14 }
 %>
 <Page title="<%= gameTitle %>" hidesTabBar="true" titleDisplayMode="inline" backButtonDisplayMode="minimal" onDisappear="disappear">
@@ -12,6 +14,11 @@
     <%- partial("SessionTitle.etlua", { gameTitle = gameTitle, roomTitle = roomTitle }) %>
   </ToolbarItem>
   <ToolbarItem id="readingSettings" placement="primaryAction" icon="textformat.size" label="Themes and settings" action="readingSettings" />
+  <ToolbarItem id="suggestionBar" placement="keyboard" label="Suggestions">
+    <ScrollView id="suggestionScroll" horizontal="true" vertical="false" maxWidth="infinity" clipsToBounds="false" hidden="true">
+      <HStack id="suggestions" />
+    </ScrollView>
+  </ToolbarItem>
 </Toolbar>
 <ZStack id="session" maxWidth="infinity" maxHeight="infinity" alignment="top" tint="<%= ink %>">
   <SafeAreaInset id="sessionContent" edge="bottom" minimumBottomInset="24" keyboardBottomInset="12" horizontalInset="12" matchBottomHorizontalInset="true" maxWidth="infinity" maxHeight="infinity">
@@ -22,9 +29,6 @@
     <VStack spacing="8" maxWidth="infinity">
       <Label id="progress" text="<%= progress %>" size="12" color="secondary" monospacedDigit="true" alignment="center" maxWidth="infinity" lines="1" />
       <Label id="dictationStatus" text="" size="13" color="secondary" paddingHorizontal="20" lines="2" hidden="true" />
-      <ScrollView id="suggestionScroll" horizontal="true" vertical="false" maxWidth="infinity" clipsToBounds="false">
-        <HStack id="suggestions" />
-      </ScrollView>
       <GlassEffectContainer spacing="<%= BAR.merge %>">
         <HStack spacing="8" alignment="center" maxWidth="infinity">
           <Menu id="quickActions" title="" systemImage="plus" symbolSize="22" style="glass" accessibilityLabel="More commands" width="<%= BAR.height %>" height="<%= BAR.height %>">

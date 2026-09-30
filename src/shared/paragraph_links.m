@@ -96,8 +96,9 @@ static int bridge_paragraph_set_links(lua_State *L) {
 	return 0;
 }
 
-/* _paragraphLinks(view) → { { location, length, label, text, titles }, … },
- * where `text` is the linked words as the text storage holds them. */
+/* _paragraphLinks(view) → { { location, length, label, text, revealed,
+ * inked, titles }, … }, where `text` is the linked words as the text storage
+ * holds them and `inked` says revealed words are set in their rule's colour. */
 static int bridge_paragraph_links(lua_State *L) {
 	id<LuaParagraphLinking> view = paragraph_check(L, 1);
 	lua_newtable(L);
@@ -110,9 +111,14 @@ static int bridge_paragraph_links(lua_State *L) {
 		lua_pushstring(L, range.location == NSNotFound ? ""
 			: [view.textStorage.string substringWithRange:range].UTF8String);
 		lua_setfield(L, -2, "text");
-		lua_pushboolean(L, range.location != NSNotFound
-			&& [view linkAtCharacterIndex:range.location] == link);
+		BOOL revealed = range.location != NSNotFound && [view linkAtCharacterIndex:range.location] == link;
+		lua_pushboolean(L, revealed);
 		lua_setfield(L, -2, "revealed");
+		NSDictionary *attributes = revealed
+			? [view.textStorage attributesAtIndex:range.location effectiveRange:NULL] : nil;
+		id rule = attributes[NSUnderlineColorAttributeName];
+		lua_pushboolean(L, rule && [attributes[NSForegroundColorAttributeName] isEqual:rule]);
+		lua_setfield(L, -2, "inked");
 		lua_newtable(L);
 		[link.titles enumerateObjectsUsingBlock:^(NSString *title, NSUInteger item, __unused BOOL *inner) {
 			lua_pushstring(L, title.UTF8String);

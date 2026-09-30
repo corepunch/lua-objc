@@ -556,11 +556,26 @@ static void set_verbatim_input(id<UITextInputTraits> input, BOOL verbatim) {
 	input.spellCheckingType = verbatim ? UITextSpellCheckingTypeNo : UITextSpellCheckingTypeDefault;
 }
 
+/* SwiftUI `ToolbarItemPlacement.keyboard`: a text input inside a page with
+ * keyboard toolbar items shows them above the keyboard while it edits. The
+ * page's view controller owns the bar (see `_pageToolbar`); the input finds
+ * it up the responder chain when UIKit asks for its accessory. */
+@class LuaKeyboardToolbar;
+static UIView *keyboard_toolbar_for_input(LuaKeyboardToolbar *toolbar, UIResponder *input);
+static UIView *page_keyboard_toolbar(UIResponder *input) {
+	for (UIResponder *responder = input; responder; responder = responder.nextResponder) {
+		LuaKeyboardToolbar *toolbar = objc_getAssociatedObject(responder, &kKeyboardToolbarKey);
+		if (toolbar) return keyboard_toolbar_for_input(toolbar, input);
+	}
+	return nil;
+}
+
 @interface LuaTextField : UITextField
 @property(nonatomic) BOOL verbatim;
 @end
 @implementation LuaTextField
 - (void)setVerbatim:(BOOL)value { _verbatim = value; set_verbatim_input(self, value); }
+- (UIView *)inputAccessoryView { return super.inputAccessoryView ?: page_keyboard_toolbar(self); }
 @end
 
 @interface LuaTextView : UITextView
@@ -568,6 +583,7 @@ static void set_verbatim_input(id<UITextInputTraits> input, BOOL verbatim) {
 @end
 @implementation LuaTextView
 - (void)setVerbatim:(BOOL)value { _verbatim = value; set_verbatim_input(self, value); }
+- (UIView *)inputAccessoryView { return super.inputAccessoryView ?: page_keyboard_toolbar(self); }
 @end
 
 static int bridge_UIKitControls_textField(lua_State *L) {

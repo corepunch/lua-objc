@@ -790,7 +790,7 @@ beside its description.
 | `hyphenation` | hyphenates at line ends (use with `justified`) |
 | `figure`, `figureLines` (default 3) | an image path set as a square N lines tall beside the first lines |
 | `revealedCharacters` | typewriter reveal: characters shown so far, counted as `utf8.len` counts them; `-1` (default) shows everything |
-| `linkColor` | colour of the thicker dotted rule under links; defaults to the tint |
+| `linkColor` | colour of linked words and the thicker dotted rule under them; defaults to the tint |
 | `<Hyperlink location length label>` children | the words a reader can act on; see **Links** below |
 
 The figure runs from the first line's top to the `figureLines`th line's
@@ -816,7 +816,7 @@ the link offers:
 </Paragraph>
 ```
 
-The words keep the body's colour and take a thicker dotted underline in `linkColor`;
+The words are set in `linkColor` and take a thicker dotted underline in it;
 a tap opens the menu at the words. On UIKit a link is a tagged text item
 (`UITextItemTagAttributeName`) whose menu the text view presents itself; on
 AppKit it is an `NSLinkAttributeName` run whose click pops up an `NSMenu`.
@@ -2392,6 +2392,15 @@ navigation item; AppKit inserts them, with a navigational back item, into the
 window toolbar while the page is visible and restores the window's own items
 afterwards. `onDisappear` runs once when the page leaves the stack, whether a
 controller pops it or the user presses the system back button.
+
+`placement="keyboard"` (SwiftUI `ToolbarItemPlacement.keyboard`) puts the
+item's one view child in a bar above the keyboard while a text input on the
+page is editing: UIKit sets it as the input's `inputAccessoryView`. Items
+share one row; an item with `maxWidth="infinity"` takes the width the others
+leave. A hidden item leaves the row, and a row with nothing visible collapses,
+so hiding the view (as Adventure Arena hides its completions while the
+command field is empty) hides the bar. AppKit, whose keyboards have no such
+bar, leaves keyboard items out, as SwiftUI does on a Mac without a Touch Bar.
 
 List and TabView events bind controller actions from XML like any other
 control: `<List onSelect="select" onActivate="open" onSort="sort">` and

@@ -194,7 +194,7 @@ end
 --- Push the returned controller onto a NavigationStack.
 --- @tag Page
 --- @prop title string optional. Navigation title.
---- @prop toolbar table optional. ToolbarItem records; `placement` is principal, primaryAction, topBarLeading, topBarTrailing, cancellationAction or confirmationAction.
+--- @prop toolbar table optional. ToolbarItem records; `placement` is principal, primaryAction, topBarLeading, topBarTrailing, cancellationAction, confirmationAction or keyboard (one view child, shown above the keyboard while a text input edits; AppKit leaves it out).
 --- @prop hidesTabBar boolean optional. Hides the tab bar while the page is visible.
 --- @prop titleDisplayMode string optional. automatic, inline or large.
 --- @prop backButtonDisplayMode string optional. default, generic or minimal.
