@@ -869,6 +869,9 @@ local TAG_SCHEMA = {
             numberOfPages = "num",
             currentPage = "num",
         },
+        transform = function(props, attrs)
+            bindActions(props, attrs, { "onChange" })
+        end,
     },
     ProgressView = {
         constructor = "ProgressView",
@@ -1421,6 +1424,7 @@ local TAG_SCHEMA = {
                 return ns.SystemImage(props)
             end
             props.fileIcon = bool(a.fileIcon)
+            props.darkPath = a.darkPath
             props[1] = a.src or a.path or ""
             return ns.Image(props)
         end,

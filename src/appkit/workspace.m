@@ -462,7 +462,17 @@ static int bridge_relaunch(lua_State *L) {
 	LuaReg *failure = lua_reg_opt_unscoped(L, 1);
 	void (^finish)(BOOL, NSString *) = ^(BOOL ok, NSString *message) {
 		dispatch_async(dispatch_get_main_queue(), ^{
-			if (ok) { [failure dispose]; [NSApp terminate:nil]; return; }
+			if (ok) {
+				[failure dispose];
+				/* AppKit refuses to quit while a window shows a sheet, which
+				 * left both instances running when Restart was clicked in a
+				 * sheet. The new instance has everything; end them first. */
+				for (NSWindow *window in NSApp.windows) {
+					while (window.attachedSheet) [window endSheet:window.attachedSheet];
+				}
+				[NSApp terminate:nil];
+				return;
+			}
 			lua_State *state = lua_reg_live_state(failure);
 			if (state && lua_reg_push(failure)) {
 				lua_pushstring(state, message.UTF8String ?: "");

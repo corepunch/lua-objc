@@ -845,7 +845,9 @@ window headers.
 
 Creates an `NSImageView`. The image is scaled proportionally, max width 400px.
 Paths can be absolute (`/Library/Desktop Pictures/Beach.jpg`) or relative to
-the working directory.
+the working directory. `darkPath` names the image drawn under a dark
+appearance, like an asset catalog's dark variant; the view follows appearance
+changes: `<Image path="tour/map-light.png" darkPath="tour/map-dark.png" />`.
 
 ### `Button{...}`
 
@@ -2431,5 +2433,14 @@ Quick Look panel; `ns.moveItem(path, folder, completion)` moves an item off
 the main thread, across disks too, never replacing an existing one.
 `ns.runningApplications()`, `ns.applicationPath(bundleId)` (Launch Services),
 `ns.fileIdentity(path)` (`lstat`: inode, device, symlink) and
-`ns.relaunch(onFailure)` (start a new instance, quit once it runs) support
+`ns.relaunch(onFailure)` (start a new instance, quit once it runs; it ends
+attached sheets first, as AppKit will not quit while one shows) support
 checks before destructive actions and permission changes.
+`ns.homeDirectory()` is the person's home folder from the user database:
+inside the App Sandbox `HOME` names the app's container.
+`ns.pickFolder(title, {directory, message, prompt})` is the folder open
+panel; a sandboxed app reaches only what the person chooses there, so a
+whole-disk tool opens it at `/` and keeps the choice with `ns.bookmark`.
+`<PageControl numberOfPages currentPage onChange>` shows page dots: UIKit's
+`UIPageControl`, and on AppKit, which has no such class, SF Symbol dot
+buttons with the same attributes (`currentPage` zero-based, settable later).

@@ -695,6 +695,22 @@ static int bridge_image(lua_State *L) {
 	if (!img) {
 		return luaL_error(L, "failed to load image: %s", path);
 	}
+	/* `darkPath`: the image drawn under a dark appearance, as an asset
+	 * catalog's dark variant is. The drawing handler picks one each time the
+	 * view draws, so the image follows appearance changes; caching is off
+	 * because a cached representation would keep the old appearance. */
+	if (lua_isstring(L, 4)) {
+		NSImage *dark = [[NSImage alloc] initWithContentsOfFile:@(lua_tostring(L, 4))];
+		if (!dark) return luaL_error(L, "failed to load image: %s", lua_tostring(L, 4));
+		NSImage *light = img;
+		img = [NSImage imageWithSize:light.size flipped:NO drawingHandler:^BOOL(NSRect rect) {
+			NSAppearanceName name = [NSAppearance.currentDrawingAppearance
+				bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]];
+			[([name isEqualToString:NSAppearanceNameDarkAqua] ? dark : light) drawInRect:rect];
+			return YES;
+		}];
+		img.cacheMode = NSImageCacheNever;
+	}
 
 	NSSize size = img.size;
 	if (maxWidth > 0 && size.width > maxWidth) {

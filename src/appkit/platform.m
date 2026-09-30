@@ -161,6 +161,11 @@ static int bridge_latest_event_id(lua_State *L) {
 	return 1;
 }
 
+/* `_pickFolder(title, options)`: the standard open panel for one folder.
+ * Options: `directory` it opens at, `message` shown above the browser and
+ * `prompt` for the default button. A sandboxed app reaches only what the
+ * person chooses here, so a request for a whole disk opens at the disk and
+ * says why, as DaisyDisk's does. */
 static int bridge_pick_folder(lua_State *L) {
 	const char *titleC = luaL_optstring(L, 1, "Open Folder");
 	NSOpenPanel *panel = [NSOpenPanel openPanel];
@@ -169,6 +174,15 @@ static int bridge_pick_folder(lua_State *L) {
 	panel.allowsMultipleSelection = NO;
 	panel.canCreateDirectories = YES;
 	panel.title = [NSString stringWithUTF8String:titleC];
+	if (lua_istable(L, 2)) {
+		lua_getfield(L, 2, "directory");
+		if (lua_isstring(L, -1)) panel.directoryURL = [NSURL fileURLWithPath:@(lua_tostring(L, -1)) isDirectory:YES];
+		lua_getfield(L, 2, "message");
+		if (lua_isstring(L, -1)) panel.message = @(lua_tostring(L, -1));
+		lua_getfield(L, 2, "prompt");
+		if (lua_isstring(L, -1)) panel.prompt = @(lua_tostring(L, -1));
+		lua_pop(L, 3);
+	}
 
 	NSInteger response = [panel runModal];
 	if (response != NSModalResponseOK || panel.URL == nil) {
@@ -264,6 +278,19 @@ static int bridge_resolve_bookmark(lua_State *L) {
 	lua_pushstring(L, url.path.UTF8String);
 	lua_pushboolean(L, stale);
 	return 2;
+}
+
+#pragma mark - Home folder
+
+/* `_homeDirectory()`: the person's home folder from the user database.
+ * Inside the App Sandbox HOME and NSHomeDirectory() name the app's
+ * container, which is the wrong place to measure or to look for macOS's
+ * own per-user files. */
+static int bridge_home_directory(lua_State *L) {
+	struct passwd *entry = getpwuid(getuid());
+	if (!entry || !entry->pw_dir) { lua_pushnil(L); return 1; }
+	lua_pushstring(L, entry->pw_dir);
+	return 1;
 }
 
 #pragma mark - Application Support
