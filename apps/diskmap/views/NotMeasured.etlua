@@ -34,7 +34,7 @@
         <% end %>
         <% if item.more then %><Label text="<%= item.more %>" size="11" color="secondary" /><% end %>
         <% if item.grant then %>
-        <Button id="grantAccess" title="Open Full Disk Access Settings…" action="grantAccess" />
+        <Button id="grantAccess" title="<%= item.grantTitle %>" action="grantAccess" />
         <% end %>
       </VStack>
     </VStack>

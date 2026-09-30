@@ -62,6 +62,7 @@ local script = assert(pbxproj:match('name = "Copy Lua";.-shellScript = "(.-)";')
 t.expect(script:find("copy lua lua", 1, true) ~= nil, "copies framework Lua")
 t.expect(script:find("copy apps/diskmap apps/diskmap", 1, true) ~= nil, "copies Diskmap Lua")
 t.expect(script:find("--exclude=Build/", 1, true) ~= nil, "skips Xcode Build folders")
+t.expect(script:find("--include='*.jpg'", 1, true) ~= nil, "copies the tour's screenshots")
 t.expect(pbxproj:find("ENABLE_USER_SCRIPT_SANDBOXING = NO;", 1, true) ~= nil, "script may read the source tree")
 
 -- App Store Connect symbolicates crashes with the archive's dSYMs.

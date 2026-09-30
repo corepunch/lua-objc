@@ -12,6 +12,7 @@ local History = require("apps.diskmap.models.History")
 local Model = require("apps.diskmap.Model")
 local Provider = require("apps.diskmap.services.Provider")
 local ScanController = require("apps.diskmap.controllers.ScanController")
+local TourController = require("apps.diskmap.controllers.TourController")
 local CleanupController = require("apps.diskmap.controllers.CleanupController")
 local InspectorController = require("apps.diskmap.controllers.InspectorController")
 local ManagementController = require("apps.diskmap.controllers.ManagementController")
@@ -119,7 +120,7 @@ function Controller.new(service)
 			open = open, navigate = function(id) self:show(id) end,
 			map = function(id) self.pages.map:setFocus(id); self:show("map") end,
 			reclaim = function() self:show("cleanup") end,
-			access = function() self.service.openSettings("privacy") end,
+			access = function() self:grantAccess() end,
 			menu = function(id) return self.actions:resource(id) end,
 			changes = function() if self.snapshots then self.snapshots:open(self.window) end end,
 		}),
@@ -165,6 +166,7 @@ function Controller.new(service)
 		openScan = function() self:openScan() end,
 		compareScan = function() self:compareScan() end,
 		exportScan = function() self:exportScan() end,
+		tour = function() self.tour:open(self.window) end,
 	})
 	self.commandActions = self.commands:actions()
 	self.pages.help = HelpController.new(function(target)
@@ -206,7 +208,7 @@ end
 -- Everything a page needs to present the current scan, in one value.
 function Controller:state()
 	return {disk = self.scan.disk, capacity = self.capacity, snapshotCount = self.snapshotCount, changes = self.snapshotChanges or self.changes,
-		fullDiskAccess = self.fullDiskAccess,
+		fullDiskAccess = self.fullDiskAccess, diskAccess = self.diskAccess,
 		query = self.query, mock = self.mock, volumeName = self.mock and rawget(self.service, "label") or "Startup Disk",
 		status = (rawget(self.service, "badge") and (rawget(self.service, "badge") .. " · ") or "") .. (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status}
 end
@@ -332,6 +334,17 @@ function Controller:chooseFolder()
 	if path then self:openFolder(path) end
 end
 
+-- The Overview's access button: the startup disk first when the sandbox
+-- hides it (then measure again), otherwise Full Disk Access in Settings.
+function Controller:grantAccess()
+	if self.diskAccess == false then
+		if self.service.requestDiskAccess() then self.diskAccess = true; self.scan:start(); return true end
+		return false
+	end
+	self.service.openSettings("privacy")
+	return true
+end
+
 -- Quick Look (⌘Y) previews the current page's selection.
 function Controller:quickLook()
 	if self.page and self.page.quickLook then return self.page:quickLook() end
@@ -344,6 +357,8 @@ function Controller:scanFinished()
 	local access = optional(self.service, "hasFullDiskAccess")
 	-- false (known missing) differs from nil (the provider cannot tell).
 	if access then self.fullDiskAccess = access() == true else self.fullDiskAccess = nil end
+	local disk = optional(self.service, "hasDiskAccess")
+	if disk then self.diskAccess = disk() == true else self.diskAccess = nil end
 	local capacity = optional(self.service, "volumeCapacity")
 	self.capacity = capacity and capacity(self.model.home) or nil
 	local snapshots = optional(self.service, "snapshotCount")
@@ -487,6 +502,7 @@ function Controller:createWindow()
 	end) end
 	local folder = Provider.folder(App.args())
 	if folder then self:openFolder(folder) end
+	self.tour = TourController.new(self.service)
 	local exportPath = Provider.exportPath(App.args())
 	if exportPath then
 		self.scan.status = "Creating a local metadata-only Mock HDD snapshot…"; self:updateRows()
@@ -502,11 +518,17 @@ function Controller:createWindow()
 	else
 		-- First launch without Full Disk Access explains it before the first
 		-- scan and starts the scan once access is granted or declined.
+		-- The welcome tour follows while the scan runs.
 		self.onboarding = OnboardingController.new(self.service, function(granted)
 			self.fullDiskAccess = granted == true
 			self.scan:start()
+			if self.tour:needed() then self.tour:open(self.window) end
 		end)
-		if self.onboarding:needed() then self.onboarding:open(self.window) else self.scan:start() end
+		if self.onboarding:needed() then self.onboarding:open(self.window)
+		else
+			self.scan:start()
+			if self.tour:needed() then self.tour:open(self.window) end
+		end
 	end
 	local scope = ns.Scope.current()
 	if scope then scope:add(self.scan); scope:add({dispose = function()
