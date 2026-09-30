@@ -61,6 +61,80 @@ other.model.scan.issues = {}
 other:show("overview", true)
 t.expect(other.pages.overview.notMeasured.refs.unmeasured_privacy == nil, "no access request when everything was readable")
 
+-- The App Store build runs in the App Sandbox, which hides the startup disk
+-- until the person chooses it, whatever Full Disk Access says. The sheet
+-- asks for the disk first, on every launch until it is chosen.
+local sandboxed = Mock.new()
+local diskChosen, fullAccess, pickerAnswers = false, false, {}
+sandboxed.hasDiskAccess = function() return diskChosen end
+sandboxed.hasFullDiskAccess = function() return fullAccess end
+sandboxed.requestDiskAccess = function() diskChosen = table.remove(pickerAnswers, 1) == true; return diskChosen end
+sandboxed.openSettings = function() end
+sandboxed.saveFlag("onboarded", true)
+local boxed = Controller.new(sandboxed)
+boxed:createWindow()
+local steps = boxed.onboarding
+t.expect(steps.sheet ~= nil, "a missing disk shows the sheet even after onboarding was seen")
+t.assertEqual(steps:stage(), "disk", "the disk comes before Full Disk Access")
+t.expect(steps.refs.chooseDisk ~= nil and steps.refs.openSettings == nil, "the disk stage offers Choose Disk, not Settings")
+fullAccess = true
+t.expect(not steps:poll(), "Full Disk Access alone does not continue while the disk is hidden")
+fullAccess = false
+table.insert(pickerAnswers, false)
+t.expect(not steps:chooseDisk() and steps.sheet ~= nil and steps:stage() == "disk", "cancelling the panel keeps the disk stage")
+sandboxed.saveFlag("onboarded", false)
+table.insert(pickerAnswers, true)
+t.expect(steps:chooseDisk(), "choosing the disk is accepted")
+t.assertEqual(steps:stage(), "fullDisk", "then the sheet asks for Full Disk Access")
+t.expect(steps.sheet ~= nil and steps.refs.openSettings ~= nil and steps.refs.chooseDisk == nil, "the same flow shows the Full Disk Access stage")
+t.expect(boxed.model.scan.completedAt == nil, "the scan still waits")
+fullAccess = true
+t.expect(steps:poll() and steps.sheet == nil, "granting Full Disk Access then continues")
+t.expect(boxed.model.scan.completedAt ~= nil, "and the scan starts")
+
+-- Choosing the disk when Full Disk Access is already on closes the sheet.
+local ready = Mock.new()
+local readyDisk = false
+ready.hasDiskAccess = function() return readyDisk end
+ready.hasFullDiskAccess = function() return true end
+ready.requestDiskAccess = function() readyDisk = true; return true end
+local quick = Controller.new(ready)
+quick:createWindow()
+t.expect(quick.onboarding:chooseDisk() and quick.onboarding.sheet == nil and quick.model.scan.completedAt ~= nil, "with Full Disk Access on, the disk is the only step")
+
+-- Skipped: the Overview names the folders and offers the disk, not Settings,
+-- as Full Disk Access cannot help while the sandbox refuses first.
+local hidden = Mock.new()
+local hiddenDisk, requested, settingsOpened = false, 0, 0
+hidden.hasDiskAccess = function() return hiddenDisk end
+hidden.hasFullDiskAccess = function() return false end
+hidden.requestDiskAccess = function() requested = requested + 1; hiddenDisk = true; return true end
+hidden.openSettings = function() settingsOpened = settingsOpened + 1 end
+local skipped = Controller.new(hidden)
+skipped:createWindow()
+skipped.onboarding:finish(false)
+t.assertEqual(skipped:state().diskAccess, false, "the hidden disk is known after the scan")
+local hiddenHome = hidden.home
+skipped.model.scan.issues = {{path = hiddenHome .. "/Library/Mail", reason = "Operation not permitted"}}
+local diskCard = Overview.unmeasured(skipped.model, skipped:state().disk, {fullDiskAccess = false, diskAccess = false})
+local diskItem
+for _, item in ipairs(diskCard.items) do if item.id == "privacy" then diskItem = item end end
+t.assertEqual(diskItem.title, "Needs access to your disk", "the card names the disk as what is missing")
+t.assertEqual(diskItem.grantTitle, "Allow Access to Disk…", "and offers the disk")
+skipped:show("overview", true)
+t.assertEqual(skipped.pages.overview.notMeasured.refs.grantAccess.title, "Allow Access to Disk…", "the button says so")
+local rescans, start = 0, skipped.scan.start
+skipped.scan.start = function(scan) rescans = rescans + 1; return start(scan) end
+t.expect(skipped:grantAccess(), "the button asks for the disk")
+t.expect(requested == 1 and settingsOpened == 0, "it opens the panel, not Settings")
+t.expect(skipped.diskAccess == true and rescans == 1, "and measures again with the disk")
+t.expect(skipped:grantAccess() and settingsOpened == 1, "with the disk, the button opens Full Disk Access")
+skipped.model.scan.issues = {{path = hiddenHome .. "/Library/Mail", reason = "Operation not permitted"}}
+local fdaCard = Overview.unmeasured(skipped.model, skipped:state().disk, {fullDiskAccess = false, diskAccess = true})
+diskItem = nil
+for _, item in ipairs(fdaCard.items) do if item.id == "privacy" then diskItem = item end end
+t.assertEqual(diskItem.title, "Needs Full Disk Access", "with the disk, Full Disk Access is what is missing")
+
 -- The synthetic disk cannot tell, so it never shows onboarding.
 t.expect(not Controller.new(Mock.new()).onboarding, "the onboarding controller exists only once a window opens")
 local plain = Controller.new(Mock.new())

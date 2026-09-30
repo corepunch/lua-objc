@@ -1,10 +1,43 @@
 <%
-  -- First launch without Full Disk Access (#52): one message, one way to
-  -- grant it, and a way to continue without it. Diskmap checks access every
-  -- second and continues by itself once it is granted.
+  -- First launch without access (#52): one message, one way to grant it,
+  -- and a way to continue without it. `stage` "disk" asks the sandboxed App
+  -- Store build for the startup disk, which the sandbox requires before
+  -- Full Disk Access can matter; "fullDisk" asks for Full Disk Access, and
+  -- Diskmap checks it every second and continues by itself once granted.
   local ONBOARDING = { width = 580, height = 390, stepSymbol = 18, stepGap = 10, stepSpacing = 10 }
 %>
 <Sheet width="<%= ONBOARDING.width %>" height="<%= ONBOARDING.height %>">
+  <% if stage == "disk" then %>
+  <VStack maxWidth="infinity" maxHeight="infinity" padding="28" spacing="16" alignment="leading">
+    <HStack maxWidth="infinity" spacing="14" alignment="center">
+      <SystemImage name="internaldrive.fill" size="36" badgeColor="systemBlue" />
+      <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+        <Label text="Allow Diskmap to Measure Your Disk" size="17" weight="semibold" maxWidth="infinity" lines="0" />
+        <Label text="Diskmap measures everything and moves nothing without asking." size="13" color="secondary" maxWidth="infinity" lines="0" />
+      </VStack>
+    </HStack>
+    <Label text="Apps from the App Store can see only the folders you choose. Choose your startup disk once, and Diskmap can measure all of it. It reads only names, sizes and dates, never what is in your files." size="13" maxWidth="infinity" lines="0" />
+    <VStack maxWidth="infinity" spacing="<%= ONBOARDING.stepSpacing %>" alignment="leading">
+      <HStack maxWidth="infinity" spacing="<%= ONBOARDING.stepGap %>" alignment="center">
+        <SystemImage name="1.circle.fill" size="<%= ONBOARDING.stepSymbol %>" color="systemBlue" accessibilityLabel="Step 1" />
+        <Label text="Click Choose Disk." size="13" flexGrow="1" flexBasis="0" flexShrink="1" lines="0" />
+      </HStack>
+      <HStack maxWidth="infinity" spacing="<%= ONBOARDING.stepGap %>" alignment="center">
+        <SystemImage name="2.circle.fill" size="<%= ONBOARDING.stepSymbol %>" color="systemBlue" accessibilityLabel="Step 2" />
+        <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+          <Label text="The panel opens at your startup disk. Click Allow." size="13" maxWidth="infinity" lines="0" />
+          <Label text="Showing another folder? Select Macintosh HD under Locations first." size="12" color="secondary" maxWidth="infinity" lines="0" />
+        </VStack>
+      </HStack>
+    </VStack>
+    <Spacer />
+    <HStack maxWidth="infinity" spacing="8" alignment="center">
+      <Button id="skip" title="Continue Without Access" action="skip" keyboardShortcut="cancelAction" />
+      <Spacer />
+      <Button id="chooseDisk" title="Choose Disk…" style="borderedProminent" action="chooseDisk" keyboardShortcut="defaultAction" />
+    </HStack>
+  </VStack>
+  <% else %>
   <VStack maxWidth="infinity" maxHeight="infinity" padding="28" spacing="16" alignment="leading">
     <HStack maxWidth="infinity" spacing="14" alignment="center">
       <SystemImage name="lock.open.fill" size="36" badgeColor="systemBlue" />
@@ -43,4 +76,5 @@
       <Button id="openSettings" title="Open System Settings" style="borderedProminent" action="openSettings" keyboardShortcut="defaultAction" />
     </HStack>
   </VStack>
+  <% end %>
 </Sheet>

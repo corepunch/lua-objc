@@ -344,6 +344,13 @@ xcode:
 # window; `make diskmap-reel-captures` recaptures after a UI change.
 DISKMAP_CAPTURE = ./$(LUA_OBJC_BIN) --capture-plan=reels/diskmap/capture.lua --width=1280 --height=800 \
 	apps/diskmap/init.lua --showcase
+# Diskmap's tour screenshots (apps/diskmap/tour, committed JPEGs): captured
+# from the showcase disk in light and dark and cropped to each page by the plan.
+.PHONY: diskmap-tour-captures
+diskmap-tour-captures: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
+	./$(LUA_OBJC_BIN) --capture-plan=apps/diskmap/tour/capture.lua --width=1100 --height=688 \
+		apps/diskmap/init.lua --showcase
+
 .PHONY: diskmap-reel diskmap-reel-captures
 diskmap-reel: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	@ls reels/diskmap/captures/*.png >/dev/null 2>&1 || $(DISKMAP_CAPTURE)

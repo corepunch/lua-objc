@@ -1,5 +1,8 @@
 local ns = require("AppKit")
 local System = {}
+-- The person's home folder. Inside the App Sandbox HOME names Diskmap's
+-- container, so catalog paths and access checks would all miss.
+System.home = ns.homeDirectory() or os.getenv("HOME") or "/Users"
 function System.quote(value)
 	assert(type(value) == "string" and not value:find("\0", 1, true), "Invalid path")
 	return "'" .. value:gsub("'", "'\\''") .. "'"
@@ -193,7 +196,7 @@ local function lines(output)
 	return result
 end
 local function expand(path)
-	local home = os.getenv("HOME") or "/Users"
+	local home = System.home
 	if path == "~" then return home end
 	if type(path) == "string" and path:sub(1, 2) == "~/" then return home .. path:sub(2) end
 	return path
@@ -245,8 +248,7 @@ end
 -- with it, and trying to open it never asks the person, unlike opening a
 -- protected folder such as Documents.
 function System.hasFullDiskAccess()
-	local home = os.getenv("HOME") or ""
-	local file = io.open(home .. "/Library/Application Support/com.apple.TCC/TCC.db", "rb")
+	local file = io.open(System.home .. "/Library/Application Support/com.apple.TCC/TCC.db", "rb")
 	if file then file:close(); return true end
 	return false
 end
@@ -528,7 +530,36 @@ function System.exists(path)
 	return false
 end
 function System.volumeCapacity(path) return ns.volumeCapacity(path or "/") end
-function System.pickFolder(title) return ns._pickFolder(title) end
+function System.pickFolder(title) return ns.pickFolder(title) end
+-- Inside the App Sandbox macOS shows Diskmap only its container and what the
+-- person chooses in an open panel, whatever Full Disk Access says: the
+-- sandbox is checked first. So the App Store build asks once for the startup
+-- disk, as DaisyDisk does, and keeps it as a security-scoped bookmark.
+-- Full Disk Access then opens the folders macOS protects inside it.
+function System.sandboxed() return os.getenv("APP_SANDBOX_CONTAINER_ID") ~= nil end
+local diskAccess
+function System.hasDiskAccess()
+	if not System.sandboxed() then return true end
+	if diskAccess == nil then
+		local bookmark = readFile(support("disk-access"))
+		diskAccess = bookmark ~= nil and bookmark ~= "" and ns.resolveBookmark(bookmark) == "/"
+	end
+	return diskAccess
+end
+function System.requestDiskAccess()
+	local path = ns.pickFolder("Allow Diskmap to Measure Your Disk", {directory = "/",
+		message = "Click Allow to let Diskmap measure your startup disk. It reads only names, sizes and dates.",
+		prompt = "Allow"})
+	if not path then return false end
+	if path ~= "/" then
+		System.showError("Choose your startup disk", "Diskmap measures the whole disk, so it needs the disk itself, not " .. path .. ". Select Macintosh HD in the sidebar and click Allow.")
+		return false
+	end
+	local bookmark = ns.bookmark(path)
+	if bookmark then writeFile(support("disk-access"), bookmark) end
+	diskAccess = true
+	return true
+end
 function System.pickFile(title) return ns._pickFile(title) end
 function System.pickSaveFile(title, name) return ns._saveFile(title, name) end
 -- Folder lists the person chose ("projects", "duplicates"): one

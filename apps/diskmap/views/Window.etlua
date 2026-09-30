@@ -44,6 +44,7 @@
     <CommandGroup replacing="help">
       <MenuItem title="Diskmap Help" keyEquivalent="?" action="help" />
       <MenuItem title="Keyboard Shortcuts" action="shortcuts" />
+      <MenuItem title="Diskmap Tour" action="tour" />
       <Separator />
       <MenuItem title="Storage Guide" action="guide" />
       <MenuItem title="macOS Folders" action="filesystem" />

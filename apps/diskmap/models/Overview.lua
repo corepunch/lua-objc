@@ -180,7 +180,8 @@ end
 Overview.protectedNames = 4
 -- What the Overview's "not measured" card explains: how much used space no
 -- category holds, and each reason, with the one action that helps where
--- there is one. `options`: fullDiskAccess, snapshotCount, mediaExcluded.
+-- there is one. `options`: fullDiskAccess, diskAccess (false while the App
+-- Sandbox hides the startup disk), snapshotCount, mediaExcluded.
 function Overview.unmeasured(model, disk, options)
 	options = options or {}
 	local items = {}
@@ -197,10 +198,15 @@ function Overview.unmeasured(model, disk, options)
 	end
 	local privacy = options.fullDiskAccess == false and Overview.unreadable(model) or {paths = {}, total = 0, more = 0}
 	if privacy.total > 0 then
-		table.insert(items, {id = "privacy", icon = "lock.fill", color = "systemOrange", title = "Needs Full Disk Access",
+		-- Without the disk, Full Disk Access cannot help: the sandbox refuses first.
+		local disk = options.diskAccess == false
+		table.insert(items, {id = "privacy", icon = "lock.fill", color = "systemOrange",
+			title = disk and "Needs access to your disk" or "Needs Full Disk Access",
 			value = Model.count(privacy.total) .. (privacy.total == 1 and " location" or " locations"),
-			detail = "Diskmap can measure these once Full Disk Access is on.",
-			paths = privacy.paths, more = privacy.more > 0 and ("and " .. Model.count(privacy.more) .. " more") or nil, grant = true})
+			detail = disk and "Apps from the App Store see only what you allow. Allow your startup disk, and Diskmap can measure these."
+				or "Diskmap can measure these once Full Disk Access is on.",
+			paths = privacy.paths, more = privacy.more > 0 and ("and " .. Model.count(privacy.more) .. " more") or nil, grant = true,
+			grantTitle = disk and "Allow Access to Disk…" or "Open Full Disk Access Settings…"})
 	end
 	if (options.snapshotCount or 0) > 0 then
 		table.insert(items, {id = "snapshots", icon = "clock.arrow.circlepath", color = "systemBlue", title = "Local snapshots",

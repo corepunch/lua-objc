@@ -98,7 +98,7 @@ function Controller:update(state)
 	-- Everything no category holds, and why, once the scan has finished:
 	-- mid-scan every category is still on its way.
 	local unmeasured = summary.calculating and {items = {}} or Overview.unmeasured(self.model, state.disk,
-		{fullDiskAccess = state.fullDiskAccess, snapshotCount = state.snapshotCount, mediaExcluded = not self.model.includeMedia})
+		{fullDiskAccess = state.fullDiskAccess, diskAccess = state.diskAccess, snapshotCount = state.snapshotCount, mediaExcluded = not self.model.includeMedia})
 	unmeasured.actions = {grantAccess = function() self.handlers.access() end, exploreFolders = function() self.handlers.navigate("filesystem") end}
 	self.notMeasured:update(unmeasured)
 	refs.notMeasured.hidden = #unmeasured.items == 0
