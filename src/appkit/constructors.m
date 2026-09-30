@@ -967,3 +967,81 @@ static int bridge_NSScrollView_onRowActivate(lua_State *L) {
 	bridge_set_optional_callback(L, sv, &kKeys[kTableActivationKey], 2);
 	return 0;
 }
+
+#pragma mark - Page control
+
+/* `_pageControl(numberOfPages, currentPage, onChange(page))`: the page dots
+ * of UIPageControl, which has no AppKit class. Each dot is a borderless SF
+ * Symbol button, so it takes clicks and VoiceOver reads it as a page; the
+ * current one uses the label color and the others the tertiary one, as
+ * UIPageControl's defaults do. `currentPage` is zero-based like UIKit's and
+ * is set through KVC; a click sets it and calls `onChange` with it. */
+@interface LuaPageControl : NSView
+@property(nonatomic) NSInteger numberOfPages;
+@property(nonatomic) NSInteger currentPage;
+@property(nonatomic, strong) LuaReg *onChange;
+@end
+
+@implementation LuaPageControl
+- (void)dealloc { [_onChange dispose]; }
+- (BOOL)isFlipped { return YES; }
+- (NSSize)intrinsicContentSize {
+	NSInteger count = MAX(0, self.numberOfPages);
+	return NSMakeSize(count * kPageControlDotSize + MAX(0, count - 1) * kPageControlDotSpacing, kPageControlDotSize);
+}
+- (void)setNumberOfPages:(NSInteger)numberOfPages {
+	_numberOfPages = MAX(0, numberOfPages);
+	for (NSView *dot in self.subviews.copy) [dot removeFromSuperview];
+	NSImageSymbolConfiguration *size = [NSImageSymbolConfiguration configurationWithPointSize:kPageControlDotPointSize weight:NSFontWeightRegular];
+	NSImage *image = [[NSImage imageWithSystemSymbolName:@"circle.fill" accessibilityDescription:nil] imageWithSymbolConfiguration:size];
+	for (NSInteger page = 0; page < _numberOfPages; page++) {
+		NSButton *dot = [NSButton buttonWithImage:image target:self action:@selector(selectPage:)];
+		dot.bordered = NO;
+		dot.tag = page;
+		dot.accessibilityLabel = [NSString stringWithFormat:@"Page %ld of %ld", (long)page + 1, (long)_numberOfPages];
+		[self addSubview:dot];
+	}
+	[self updateDots];
+	[self invalidateIntrinsicContentSize];
+	self.needsLayout = YES;
+}
+- (void)setCurrentPage:(NSInteger)currentPage {
+	_currentPage = MIN(MAX(0, currentPage), MAX(0, self.numberOfPages - 1));
+	[self updateDots];
+}
+- (void)updateDots {
+	for (NSButton *dot in self.subviews) {
+		BOOL current = dot.tag == self.currentPage;
+		dot.contentTintColor = current ? NSColor.labelColor : NSColor.tertiaryLabelColor;
+		dot.accessibilityValue = current ? @"Current page" : nil;
+	}
+}
+- (void)layout {
+	[super layout];
+	NSSize size = self.intrinsicContentSize;
+	CGFloat x = floor((self.bounds.size.width - size.width) / 2);
+	CGFloat y = floor((self.bounds.size.height - kPageControlDotSize) / 2);
+	for (NSButton *dot in self.subviews) {
+		dot.frame = NSMakeRect(x + dot.tag * (kPageControlDotSize + kPageControlDotSpacing), y, kPageControlDotSize, kPageControlDotSize);
+	}
+}
+- (void)selectPage:(NSButton *)sender {
+	self.currentPage = sender.tag;
+	lua_State *callL = lua_reg_live_state(_onChange);
+	if (!callL || !lua_reg_push(_onChange)) return;
+	lua_pushinteger(callL, sender.tag);
+	lua_objc_pcall(callL, 1, 0, "page control");
+}
+@end
+
+static int bridge_page_control(lua_State *L) {
+	LuaPageControl *control = [[LuaPageControl alloc] initWithFrame:NSZeroRect];
+	control.numberOfPages = (NSInteger)luaL_optinteger(L, 1, 0);
+	control.currentPage = (NSInteger)luaL_optinteger(L, 2, 0);
+	control.onChange = lua_reg_opt(L, 3);
+	control.accessibilityRole = NSAccessibilityGroupRole;
+	control.accessibilityLabel = @"Pages";
+	[control setFrameSize:control.intrinsicContentSize];
+	push_objc(L, control, "nsview");
+	return 1;
+}

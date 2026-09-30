@@ -1311,7 +1311,8 @@ function AppKit.Image(arg)
 	else
 		path = tostring(arg)
 	end
-	local view = bridge._image(resolveImage(path), nil, props and props.fileIcon or false)
+	local dark = props and props.darkPath and resolveImage(props.darkPath) or nil
+	local view = bridge._image(resolveImage(path), nil, props and props.fileIcon or false, dark)
 	if props and props.contentMode then view.contentModeName = props.contentMode end
 	if props and props.resizable then
 		view.fillWidth, view.fillHeight = true, true
@@ -2773,6 +2774,32 @@ end
 --- false and a message. Access to the item lasts until the app quits.
 function AppKit.resolveBookmark(text)
 	return bridge._resolveBookmark(text)
+end
+
+--- Page dots, as UIPageControl draws them; AppKit has no such class.
+--- `currentPage` is zero-based and can be set later; `onChange(page)` runs
+--- when a dot is clicked.
+--- @prop numberOfPages number optional. How many dots.
+--- @prop currentPage number optional. Zero-based index of the current page.
+--- @prop onChange function optional. Called with the clicked page.
+--- @example <PageControl numberOfPages="5" currentPage="0" />
+--- @platform AppKit composes SF Symbol dots. UIKit uses UIPageControl.
+function AppKit.PageControl(props)
+	props = props or {}
+	return applyLayout(bridge._pageControl(props.numberOfPages or 0, props.currentPage or 0, props.onChange), props)
+end
+
+--- The person's home folder, from the user database. Inside the App
+--- Sandbox HOME names the app's container instead.
+function AppKit.homeDirectory()
+	return bridge._homeDirectory()
+end
+
+--- The standard open panel for one folder; returns its path or nil.
+--- `options`: `directory` it opens at, `message` above the browser, and
+--- `prompt` for the default button.
+function AppKit.pickFolder(title, options)
+	return bridge._pickFolder(title, options)
 end
 
 --- The newest file system event ID; store it and pass it as `since` later.

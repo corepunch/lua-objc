@@ -6,6 +6,7 @@
 #include <dlfcn.h>
 #include <libgen.h>
 #include <limits.h>
+#include <pwd.h>
 #include <sys/stat.h>
 #include <lua.h>
 #include <lualib.h>
@@ -281,6 +282,12 @@ static const CGFloat kParagraphLinkUnderlineOffset = 3.0;
 #define kSymbolToggleSize               28
 #define kSymbolTogglePointSize          13
 
+/* ----- Page Control ----- */
+/* A dot's click target, its symbol size and the gap between dots. */
+#define kPageControlDotSize             16
+#define kPageControlDotPointSize         7
+#define kPageControlDotSpacing           2
+
 /* ----- Loading Spinner ----- */
 #define kLoadingSpinnerSize             32
 
@@ -495,6 +502,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_navigationGesture", bridge_navigation_gesture},
 	{"_resolveBookmark", bridge_resolve_bookmark},
 	{"_applicationSupportDirectory", bridge_application_support_directory},
+	{"_homeDirectory", bridge_home_directory},
+	{"_pageControl", bridge_page_control},
 	{"_unwatch", bridge_unwatch},
 	{"_latestEventId", bridge_latest_event_id},
 	{"_pickFolder", bridge_AppKit_pick_folder},
