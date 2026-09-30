@@ -1752,7 +1752,8 @@ picked up by `make test`.
 
 **Smoke-testing examples.** Set `_G.__headless = true` before loading any
 example to suppress `bridge._show(win)`. This lets you verify every example
-parses and constructs its view hierarchy without popping windows. The
+parses and constructs its view hierarchy without popping windows. A script
+that leaves `__headless` set exits when it returns, even without `--test`. The
 `tests/examples.test.lua` smoke test uses this pattern — add new examples
 to its list when you create them.
 
