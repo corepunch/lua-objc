@@ -1,0 +1,5 @@
+<%
+  -- Host for the first-launch tour. The page is a retained template so each
+  -- step updates in place instead of stacking a new sheet.
+%>
+<VStack id="page" maxWidth="infinity" maxHeight="infinity" />
