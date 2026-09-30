@@ -59,7 +59,13 @@ t.expect(not tour.refs.page_1.hidden and tour.refs.page_2.hidden, "page one show
 t.expect(tour.refs.back.hidden and not tour.refs.skip.hidden, "no Back on the first page; Skip on every page")
 t.assertEqual(tour.refs.dots.numberOfPages, #Tour.pages, "one dot per page")
 t.assertEqual(tour.refs.dots.currentPage, 0, "the first dot is current")
+ns._motionOverrideReduceMotion(false)
 tour:next()
+for _, name in ipairs({"page_2", "image_2"}) do
+	local animations = ns._motionAnimations(tour.refs[name])
+	t.expect(animations.position == nil and animations.bounds == nil, name .. " enters at its final geometry on its first visit")
+end
+t.expect(ns._motionAnimations(tour.refs.page_2).transform ~= nil, "the first visit still slides sideways")
 t.assertEqual(tour.page, 2, "Continue moves on")
 t.assertEqual(tour.refs.dots.currentPage, 1, "the dots follow")
 t.expect(not tour.refs.page_2.hidden and not tour.refs.back.hidden, "the next page slides in, with Back")

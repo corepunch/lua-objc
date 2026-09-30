@@ -334,6 +334,7 @@ static void motion_apply_effects(MotionView *view) {
 @property(nonatomic) CGFloat cornerRadius;
 @property(nonatomic, strong) id backgroundColor;
 @property(nonatomic) BOOL hidden;
+@property(nonatomic) BOOL geometryVisible;
 @property(nonatomic) CGRect windowRect;
 @property(nonatomic, strong) id content;
 @end
@@ -489,6 +490,13 @@ static LuaMotionState *motion_capture(MotionView *view) {
 	state.cornerRadius = layer.cornerRadius;
 	state.backgroundColor = (__bridge id)layer.backgroundColor;
 	state.hidden = view.hidden || objc_getAssociatedObject(view, &kMotionLeavingKey) != nil;
+	state.geometryVisible = YES;
+	for (MotionView *ancestor = view; ancestor; ancestor = ancestor.superview) {
+		if (ancestor.hidden || objc_getAssociatedObject(ancestor, &kMotionLeavingKey)) {
+			state.geometryVisible = NO;
+			break;
+		}
+	}
 	if (objc_getAssociatedObject(view, &kMotionContentTransitionKey)) state.content = motion_content(view);
 	if (objc_getAssociatedObject(view, &kMotionMatchedKey) && view.window) {
 #if TARGET_OS_IPHONE
@@ -680,7 +688,9 @@ static void motion_diff_view(LuaMotionTransaction *txn, LuaMotionBatch *batch, M
 	BOOL reduced = motion_reduced();
 	CGPoint position; CGRect bounds;
 	motion_geometry(view, &position, &bounds);
-	if (!reduced && state.superview == view.superview) {
+	// Hidden subtrees may never have been laid out. Their first visible
+	// geometry is immediate; the entrance transition owns their motion.
+	if (!reduced && state.geometryVisible && state.superview == view.superview) {
 		if (!motion_point_equal(state.position, position)) {
 			motion_add(batch, layer, motion_animation(spec, @"position",
 				motion_from(layer, @"position", motion_point_value(state.position)),
