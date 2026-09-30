@@ -12,6 +12,11 @@ t.assertEqual(paths.kind("src/uikit/views.m"), "other", ".m is other")
 t.expect(paths.watched("demo/hello/Controller.lua"), "watch app lua")
 t.expect(not paths.watched("src/uikit/views.m"), "do not watch native sources")
 t.expect(not paths.watched("vendor/lua-5.4.8/src/lapi.c"), "do not watch vendored lua")
+t.expect(not paths.watched(".git/index.lock.json"), "do not watch .git")
+t.expect(not paths.watched(".claude/worktrees/x/apps/stocks/Controller.lua"),
+	"do not watch other worktrees under the root")
+t.expect(not paths.watched("apps/demo/.cache/state.json"), "do not watch nested hidden folders")
+t.expect(paths.watched("apps/adventure-arena/views/Reader.etlua"), "watch app views")
 
 local rel, err = paths.moduleRel("UIKitNative")
 t.expect(rel == nil, "UIKitNative is not served")

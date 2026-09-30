@@ -13,6 +13,11 @@ static NSString *request_path(NSString *pathQuery) {
 @implementation LRTResourceLoader {
 	NSURLSession *_session;
 	NSMutableDictionary<NSString *, NSData *> *_cache;
+	/* Paths the packager answered 404. require() probes every package.path
+	 * candidate, over a hundred misses per boot; remembering them keeps a
+	 * reload to the one changed file. A file created later arrives as an
+	 * update for its path, which drops the miss. */
+	NSMutableSet<NSString *> *_missing;
 }
 
 + (instancetype)shared {
@@ -30,6 +35,7 @@ static NSString *request_path(NSString *pathQuery) {
 		NSURLSessionConfiguration.ephemeralSessionConfiguration
 		delegate:nil delegateQueue:queue];
 	_cache = [NSMutableDictionary dictionary];
+	_missing = [NSMutableSet set];
 	return self;
 }
 
@@ -96,6 +102,12 @@ static NSString *request_path(NSString *pathQuery) {
 	@synchronized (_cache) {
 		NSData *cached = _cache[rel];
 		if (cached) return cached;
+		if ([_missing containsObject:rel]) {
+			if (error) *error = [NSError errorWithDomain:@"LRTResourceLoader" code:404
+				userInfo:@{NSLocalizedDescriptionKey: [@"HTTP 404 " stringByAppendingString:rel],
+					LRTResourceLoaderPathKey: rel}];
+			return nil;
+		}
 	}
 	NSString *escaped = [rel stringByAddingPercentEncodingWithAllowedCharacters:
 		[NSCharacterSet URLQueryAllowedCharacterSet]];
@@ -103,6 +115,9 @@ static NSString *request_path(NSString *pathQuery) {
 	NSData *data = [self GET:[NSString stringWithFormat:@"/file?path=%@", escaped]
 		error:&err];
 	if (!data) {
+		if ([err.domain isEqualToString:@"LRTResourceLoader"] && err.code == 404) {
+			@synchronized (_cache) { [_missing addObject:rel]; }
+		}
 		if (error) *error = err;
 		return nil;
 	}
@@ -161,6 +176,9 @@ static NSString *request_path(NSString *pathQuery) {
 }
 
 - (void)dropCacheForPath:(NSString *)rel {
-	@synchronized (_cache) { [_cache removeObjectForKey:rel]; }
+	@synchronized (_cache) {
+		[_cache removeObjectForKey:rel];
+		[_missing removeObject:rel];
+	}
 }
 @end

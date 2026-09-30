@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <CoreServices/CoreServices.h>
 #import <CommonCrypto/CommonDigest.h>
+#include <signal.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -99,7 +100,10 @@ static NSString *query_param(NSString *query, NSString *key) {
 	return nil;
 }
 
-static void ws_send(int fd, NSString *text) {
+/* Returns NO once the peer is gone. A host that was relaunched or killed
+ * leaves its socket in gClients; writing to it fails with EPIPE, which is
+ * how a dead client is found (a zero-length write never reports it). */
+static BOOL ws_send(int fd, NSString *text) {
 	NSData *payload = [text dataUsingEncoding:NSUTF8StringEncoding];
 	NSUInteger len = payload.length;
 	uint8_t header[10];
@@ -113,21 +117,19 @@ static void ws_send(int fd, NSString *text) {
 		header[3] = (uint8_t)(len & 0xFF);
 		hlen = 4;
 	} else {
-		return;
+		return YES;
 	}
-	write(fd, header, hlen);
-	write(fd, payload.bytes, payload.length);
+	return write(fd, header, hlen) == (ssize_t)hlen
+		&& write(fd, payload.bytes, len) == (ssize_t)len;
 }
 
 static void broadcast(NSString *json) {
 	dispatch_sync(gClientQueue, ^{
 		NSMutableArray *dead = [NSMutableArray array];
 		for (NSNumber *n in gClients) {
-			if (write(n.intValue, "", 0) != 0 && errno == EBADF) {
-				[dead addObject:n];
-				continue;
-			}
-			ws_send(n.intValue, json);
+			if (ws_send(n.intValue, json)) continue;
+			close(n.intValue);
+			[dead addObject:n];
 		}
 		[gClients removeObjectsInArray:dead];
 	});
@@ -348,6 +350,9 @@ int main(int argc, char **argv) {
 		}
 		lua_setglobal(gL, "packager");
 
+		/* A write to a disconnected host must fail with EPIPE, not
+		 * terminate the packager. */
+		signal(SIGPIPE, SIG_IGN);
 		gClients = [NSMutableArray array];
 		gClientQueue = dispatch_queue_create("lua-objc.packager.ws",
 			DISPATCH_QUEUE_SERIAL);

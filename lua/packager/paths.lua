@@ -112,7 +112,11 @@ end
 function M.watched(path)
 	local kind = M.kind(path)
 	if kind == "other" then return false end
-	if path:match("^build/") or path:match("^%.git/") then return false end
+	if path:match("^build/") then return false end
+	-- Hidden folders are never served project files: .git, and .claude, whose
+	-- worktrees hold whole checkouts other sessions edit and build. Each save
+	-- there otherwise rebooted every connected host.
+	if path:match("^%.") or path:match("/%.") then return false end
 	if path:match("^vendor/") or path:match("^src/") or path:match("^ios/") then
 		return false
 	end
