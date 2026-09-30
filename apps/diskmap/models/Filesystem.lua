@@ -1,0 +1,105 @@
+local Model = require("apps.diskmap.Model")
+local Categories = require("apps.diskmap.models.Categories")
+local Map = require("apps.diskmap.knowledge.Filesystem")
+local Filesystem = {}
+
+-- The macOS Folders page: every location in knowledge/Filesystem with what
+-- it holds and what it takes on this Mac. A location's size comes from the
+-- first source that has one: its APFS volume, the catalog resource that
+-- measures it, or the page's own measurement of its path (`sizes`, keyed by
+-- path, {bytes, state}). Locations no app can read say so instead of a size.
+
+local STATES = {
+	protected = {text = "Not readable", icon = "lock.shield.fill", color = "systemGray"},
+	privacy = {text = "No access", icon = "lock.fill", color = "systemOrange"},
+	missing = {text = "Not on this Mac", icon = "minus.circle", color = "tertiary"},
+	unmeasured = {text = "Not measured", icon = "minus.circle", color = "tertiary"},
+	measuring = {text = "Calculating…"},
+}
+
+local function expand(path, home)
+	return (path:gsub("^~", home or "~"))
+end
+
+-- Paths the page measures itself: readable locations that neither a volume
+-- nor a catalog resource sizes.
+function Filesystem.pending(model)
+	local paths = {}
+	for _, area in ipairs(Map.areas) do
+		for _, location in ipairs(area.locations) do
+			local guarded = location.guard == "sip" or location.guard == "owner"
+			local leftover = location.leftover and model.resources:find(location.leftover.id)
+			if not guarded and not location.volume and not location.resource and not leftover then
+				table.insert(paths, expand(location.path, model.home))
+			end
+		end
+	end
+	return paths
+end
+
+local function sized(row, bytes, partial)
+	row.bytes, row.size, row.partial = bytes, Model.atLeast(bytes, partial), partial
+end
+
+-- One location as a page row.
+function Filesystem.row(model, location, sizes, fullDiskAccess)
+	local path = expand(location.path, model.home)
+	local guard = location.guard and Map.guards[location.guard]
+	local row = {id = location.path, name = location.name, path = path, what = location.what,
+		guardTitle = guard and guard.title or nil, resource = location.resource or (location.leftover and location.leftover.id)}
+	local state
+	if location.guard == "sip" or location.guard == "owner" then
+		state = "protected"
+	elseif location.volume and model.volumeUsage and model.volumeUsage[location.volume] then
+		sized(row, model.volumeUsage[location.volume], false)
+	elseif location.volume and not row.resource then
+		-- Only APFS can size a whole volume; walking / would count the disk twice.
+		state = model.volumeUsage and "unmeasured" or "measuring"
+	elseif row.resource and model.resources:find(row.resource) then
+		local measured = Categories.row(model, row.resource)
+		if measured and measured.calculating then state = "measuring"
+		elseif measured and measured.bytes then sized(row, measured.bytes, measured.status == "partial")
+		elseif measured and measured.status == "denied" then state = "privacy"
+		elseif measured and measured.status == "protected" then state = "protected"
+		else state = "measuring" end
+	else
+		local entry = sizes and sizes[path]
+		if not entry then state = "measuring"
+		elseif entry.state == "missing" then state = "missing"
+		elseif entry.state == "unreadable" and (entry.bytes or 0) == 0 then
+			state = fullDiskAccess == true and "protected" or "privacy"
+		else sized(row, entry.bytes or 0, entry.state == "unreadable") end
+	end
+	if state then
+		local look = STATES[state]
+		row.size, row.stateIcon, row.stateColor, row.calculating = look.text, look.icon, look.color, state == "measuring"
+		row.state = state
+	end
+	-- The one-line status a reader sees before the explanation.
+	row.status = row.guardTitle or (location.volume and ("APFS volume · " .. location.volume))
+		or (location.leftover and "Leftovers collect here") or (location.expected and "On every Mac") or nil
+	return row
+end
+
+-- Areas matching `query` with their rows, in map order.
+function Filesystem.presentation(model, sizes, fullDiskAccess, query)
+	local needle = (query or ""):lower()
+	local areas, count = {}, 0
+	for _, area in ipairs(Map.areas) do
+		local rows = {}
+		local areaMatches = needle == "" or area.title:lower():find(needle, 1, true) ~= nil
+		for _, location in ipairs(area.locations) do
+			local text = (location.name .. " " .. location.path .. " " .. location.what):lower()
+			if areaMatches or text:find(needle, 1, true) then
+				table.insert(rows, Filesystem.row(model, location, sizes, fullDiskAccess))
+			end
+		end
+		if #rows > 0 then
+			count = count + #rows
+			table.insert(areas, {id = area.id, title = area.title, icon = area.icon, summary = area.summary, rows = rows})
+		end
+	end
+	return {areas = areas, count = count, empty = count == 0}
+end
+
+return Filesystem

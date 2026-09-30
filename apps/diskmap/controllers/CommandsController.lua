@@ -49,6 +49,7 @@ function Controller:actions()
 		help = function() h.show("help") end,
 		shortcuts = function() h.search("help", "Keyboard shortcuts") end,
 		guide = function() h.show("guide") end,
+		filesystem = function() h.show("filesystem") end,
 		back = function() h.navigation:back() end,
 		canGoBack = function() return h.navigation:canGoBack() end,
 		forward = function() h.navigation:forward() end,

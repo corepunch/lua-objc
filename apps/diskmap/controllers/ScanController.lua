@@ -1,4 +1,5 @@
 local Inventory = require("apps.diskmap.models.Inventory")
+local Volumes = require("apps.diskmap.models.Volumes")
 local Scan = {}; Scan.__index = Scan
 -- `finished(result)` runs after each completed measurement, before pages
 -- refresh, so callers can record history or remeasure related state.
@@ -22,8 +23,10 @@ function Scan:start()
 		local added, err = require("apps.diskmap.models.AgentFiles").add(self.model, self.service.agentEntries(self.model))
 		if not added then self.status = "Could not register discovered resource: " .. (err and err.message or "unknown error"); self:notify(); return end
 	end
-	local function measure()
-		if generation ~= self.generation then return end
+	-- Locations macOS keeps from every app are named, not walked.
+	local protected = rawget(self.service, "protectedLocations")
+	self.model.protected = protected and protected() or {}
+	local function walk()
 		local paths, ids, exclusions = Inventory.plan(self.model)
 		if #paths == 0 then return end
 		Inventory.begin(self.model, ids)
@@ -51,6 +54,28 @@ function Scan:start()
 			self.status = string.format("Scanning %d of %d locations (%d%%)", completed, progress.total, percent)
 			self:notify()
 		end)
+	end
+	-- APFS volume sizes are asked for at once, alongside discovery: they take
+	-- a moment, discovery can take minutes, and the volumes should not wait
+	-- on it. The walk starts once both are in. `volumeUsage` is {} when the
+	-- provider cannot say, so pages know the answer is in.
+	local usageReady, discovered = false, false
+	local function measure()
+		discovered = true
+		if generation ~= self.generation or not usageReady then return end
+		walk()
+	end
+	local apfs = rawget(self.service, "apfsVolumes")
+	if apfs then
+		apfs(function(list, container)
+			if generation ~= self.generation then return end
+			self.model.volumeUsage = Volumes.usage(list, container) or {}
+			usageReady = true
+			self:notify()
+			if discovered then walk() end
+		end)
+	else
+		self.model.volumeUsage, usageReady = {}, true
 	end
 	if rawget(self.service, "discoverEntries") then
 		local _, initialIds = Inventory.plan(self.model)

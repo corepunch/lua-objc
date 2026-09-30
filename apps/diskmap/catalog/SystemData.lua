@@ -10,6 +10,7 @@ return function()
 	group("feature-assets", "Other macOS features", "Downloaded resources attributed to known macOS features", "square.stack.3d.up.fill", "systemTeal", {
 		assets("translation", "Translation", "Downloaded translation and speech translation models", "character.bubble.fill", "systemBlue", {"UAF_Translation_Assets", "SpeechTranslationAssets", "SpeechTranslationAssets2", "SpeechTranslationAssets3", "SpeechTranslationAssets4", "SpeechTranslationAssets5", "SpeechTranslationAssets6", "SpeechTranslationAssets7"}),
 		assets("photos-models", "Photos & image intelligence", "Clean Up, spatial photos, image captions and media analysis", "photo.fill", "systemOrange", {"UAF_Photos_MagicCleanup", "UAF_Photos_SpatialPhotosRelive", "ImageCaptionModel", "VCPMobileAssets"}),
+		item("aerials", "Aerial wallpapers", "Downloaded aerial screen savers and wallpapers; remove them in Wallpaper settings", "/Library/Application Support/com.apple.idleassetsd/Customer", {policy = system.policy, action = "settings", settingsSection = "wallpaper", reviewThreshold = 2e9, consequence = "Remove downloaded aerials in System Settings › Wallpaper. They download again when chosen."}),
 		assets("wallpapers", "Wallpapers", "Downloaded desktop and Safari backgrounds", "photo.on.rectangle", "systemTeal", {"DesktopPicture", "SafariBackgroundImage"}),
 		assets("dictionaries", "Dictionaries & language resources", "Downloaded dictionaries and linguistic data", "book.fill", "systemOrange", {"DictionaryServices_dictionary3macOS", "DictionaryServices_dictionaryOSX", "LinguisticData", "UAF_LinguisticData", "MecabraDictionaryRapidUpdates"}),
 		assets("fonts", "Downloaded fonts", "Optional font collections", "textformat", "systemPurple", {"Font6", "Font7", "Font8"}),
@@ -39,6 +40,9 @@ return function()
 		item("user-logs", "Application logs", "Diagnostic history for your applications", "~/Library/Logs"),
 		item("shared-logs", "System diagnostics", "Shared logs and crash reports", "/Library/Logs", system),
 		item("private-logs", "System logs", "Operating system logs", "/private/var/log", system),
+		item("unified-log", "Unified log", "The system log Console reads; macOS keeps it to a size budget", "/private/var/db/diagnostics", system),
+		item("unified-log-strings", "Unified log strings", "Format strings the unified log refers to", "/private/var/db/uuidtext", system),
+		item("power-log", "Power log", "Battery and energy history behind Battery settings", "/private/var/db/powerlog", system),
 	}),
 	item("temporary", "Temporary files", "System-managed temporary content; no blanket deletion", "/private/var/folders", {policy = system.policy, action = system.action, consequence = system.consequence, icon = "doc.fill", color = "systemYellow"}),
 	item("steam-games", "Steam games", "Installed games and their downloaded content", "~/Library/Application Support/Steam/steamapps", {reviewThreshold = 10e9, consequence = "Uninstall games you no longer play from Steam's library. Games download again from Steam; saves in Steam Cloud are kept."}),

@@ -118,6 +118,7 @@ function System.openSettings(section)
 		softwareupdate = "com.apple.Software-Update-Settings.extension",
 		timemachine = "com.apple.Time-Machine-Settings.extension",
 		spotlight = "com.apple.Spotlight-Settings.extension",
+		wallpaper = "com.apple.Wallpaper-Settings.extension",
 	}
 	local target = "x-apple.systempreferences:" .. (targets[section] or "com.apple.settings.Storage")
 	os.execute("/usr/bin/open " .. System.quote(target))
@@ -228,6 +229,8 @@ end
 function System.readPropertyList(path)
 	return ns.readPropertyList(expand(path))
 end
+-- Sizes of `paths`, and each one's scan state ("measured", "unreadable",
+-- "missing"), in the same order.
 function System.measure(paths, completion)
 	local job = Scanner.start(paths, {})
 	System.await(job, function(result)
@@ -235,7 +238,7 @@ function System.measure(paths, completion)
 		for index, tree in ipairs(result.trees or {}) do
 			sizes[index] = tree and math.floor((tree.kb or 0) * 1024 + 0.5) or 0
 		end
-		completion(sizes)
+		completion(sizes, result.rootStates)
 	end)
 end
 -- Whether Diskmap has Full Disk Access. The TCC database is readable only
@@ -246,6 +249,18 @@ function System.hasFullDiskAccess()
 	local file = io.open(home .. "/Library/Application Support/com.apple.TCC/TCC.db", "rb")
 	if file then file:close(); return true end
 	return false
+end
+-- The locations no app can read (knowledge/Filesystem) present on this Mac. A protected folder
+-- refuses to open with "Operation not permitted" or "Permission denied"; an
+-- absent one reports that there is no such file.
+function System.protectedLocations()
+	local found = {}
+	for _, location in ipairs(require("apps.diskmap.knowledge.Filesystem").protected()) do
+		local file, message = io.open(location.path, "r")
+		if file then file:close() end
+		if file or (message and not message:find("No such file", 1, true)) then table.insert(found, location) end
+	end
+	return found
 end
 local function exists(path)
 	local file = io.open(path, "r")
@@ -403,6 +418,17 @@ function System.installedBundleIds(completion)
 				if value ~= "" and value ~= "(null)" then table.insert(ids, value) end
 			end
 			completion(ids)
+		end)
+	end)
+end
+-- `diskutil apfs list -plist` and the startup volume's container: each
+-- APFS volume's own used space, mounted or not. Measuring Preboot, Recovery
+-- and swap by volume is exact where adding up their files is not.
+function System.apfsVolumes(completion)
+	System.command({"/usr/sbin/diskutil", "info", "-plist", "/"}, function(ok, infoText)
+		local info = ok and ns.parsePropertyList(infoText) or nil
+		System.command({"/usr/sbin/diskutil", "apfs", "list", "-plist"}, function(listed, listText)
+			completion(listed and ns.parsePropertyList(listText) or nil, info and info.APFSContainerReference)
 		end)
 	end)
 end

@@ -11,7 +11,7 @@ return {
 			what = "Macintosh HD, Macintosh HD – Data, Preboot, Recovery, VM and Update all live in one APFS container. They draw from the same pool of free space, which is why Disk Utility shows the same free amount for each of them.",
 			why = "Space moves between volumes on demand, so a volume's size is simply what it currently uses. Nothing is reserved or wasted by the partition layout.",
 			action = "No action needed. Run the command above in Terminal to see every volume and what it uses."},
-		{id = "system-volume", title = "Macintosh HD (the system volume)", icon = "lock.shield",
+		{id = "system-volume", title = "Macintosh HD (the system volume)", icon = "apple.logo",
 			paths = {"/", "/System"}, resources = {"system", "unix"}, open = "macos",
 			summary = "A sealed, read-only snapshot of macOS itself.",
 			what = "Since macOS Big Sur the operating system lives on a Signed System Volume: a cryptographically sealed, read-only snapshot. Your Mac boots from that snapshot and verifies it, so nothing can modify macOS files.",

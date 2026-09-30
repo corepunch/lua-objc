@@ -39,7 +39,7 @@ function Controller:mount(host, state)
 	self.refs = refs
 	self.hero = self.template:child("hero", "apps/diskmap/views/Hero.etlua")
 	self.changes = self.template:child("changes", "apps/diskmap/views/Changes.etlua")
-	self.access = self.template:child("accessNotice", "apps/diskmap/views/AccessNotice.etlua")
+	self.notMeasured = self.template:child("notMeasured", "apps/diskmap/views/NotMeasured.etlua")
 	return refs
 end
 
@@ -89,20 +89,23 @@ function Controller:update(state)
 	local cloudBytes, cloudFiles = Inventory.cloud(self.model)
 	self.hero:update({summary = summary, chart = chart,
 		hidden = Overview.hidden(state.disk, state.capacity, state.snapshotCount, self.model.scan.errors, cloudBytes, cloudFiles,
-			not self.model.includeMedia),
+			not self.model.includeMedia, Overview.protected(self.model, state.fullDiskAccess)),
 		reclaim = Overview.reclaim(self.model), volumeName = state.volumeName, actions = actions})
 	self.changes:update({changes = state.changes, actions = {showAllChanges = function() self.handlers.changes() end}})
 	-- An empty section takes no place in the page, so it adds no spacing.
 	refs.changes.hidden = state.changes == nil
-	-- Folders the scan could not read, while Full Disk Access is missing.
-	local unreadable = state.fullDiskAccess == false and Overview.unreadable(self.model) or {paths = {}, more = 0, moreText = "0"}
-	self.access:update({unreadable = unreadable, actions = {grantAccess = function() self.handlers.access() end}})
-	refs.accessNotice.hidden = #unreadable.paths == 0
+	-- Everything no category holds, and why, once the scan has finished:
+	-- mid-scan every category is still on its way.
+	local unmeasured = summary.calculating and {items = {}} or Overview.unmeasured(self.model, state.disk,
+		{fullDiskAccess = state.fullDiskAccess, snapshotCount = state.snapshotCount, mediaExcluded = not self.model.includeMedia})
+	unmeasured.actions = {grantAccess = function() self.handlers.access() end, exploreFolders = function() self.handlers.navigate("filesystem") end}
+	self.notMeasured:update(unmeasured)
+	refs.notMeasured.hidden = #unmeasured.items == 0
 end
 
 function Controller:dispose()
 	if self.template then self.template:dispose() end
-	self.template, self.hero, self.changes, self.access, self.refs = nil, nil, nil, nil, nil
+	self.template, self.hero, self.changes, self.notMeasured, self.refs = nil, nil, nil, nil, nil
 end
 
 return Controller

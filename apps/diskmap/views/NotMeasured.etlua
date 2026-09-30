@@ -1,0 +1,43 @@
+<% --[[ What Diskmap could not measure, on the Overview: how much used space
+  is in no category and each reason, with the one action that helps where
+  there is one. Protected locations are named, never offered to Full Disk
+  Access, which cannot open them. The macOS Folders page explains every
+  location in full. ]]
+  local CARD = { padding = 14, symbol = 20, itemSymbol = 15, itemColumn = 22 }
+%>
+<% if #items > 0 then %>
+<GroupBox id="notMeasuredCard" maxWidth="infinity">
+  <VStack maxWidth="infinity" padding="<%= CARD.padding %>" spacing="12" alignment="leading">
+    <HStack maxWidth="infinity" spacing="12" alignment="top">
+      <SystemImage name="questionmark.folder.fill" size="<%= CARD.symbol %>" color="secondary" />
+      <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+        <Label text="What Diskmap could not measure" size="13" weight="semibold" maxWidth="infinity" lines="1" />
+        <Label id="notMeasuredSummary" text="<%= summary %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
+      </VStack>
+      <Button id="exploreFolders" title="macOS Folders…" action="exploreFolders" help="What every macOS folder holds, and why some cannot be measured" />
+    </HStack>
+    <% for _, item in ipairs(items) do %>
+    <HStack id="unmeasured_<%= item.id %>" maxWidth="infinity" spacing="10" alignment="top">
+      <SystemImage name="<%= item.icon %>" size="<%= CARD.itemSymbol %>" color="<%= item.color %>" width="<%= CARD.itemColumn %>" />
+      <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+        <HStack maxWidth="infinity" spacing="8" alignment="firstTextBaseline">
+          <Label text="<%= item.title %>" size="12" weight="semibold" lines="1" />
+          <Spacer />
+          <Label text="<%= item.value %>" size="12" color="secondary" monospacedDigit="true" lines="1" />
+        </HStack>
+        <Label text="<%= item.detail %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
+        <% for _, path in ipairs(item.paths or {}) do %>
+        <Label text="<%= path %>" size="11" design="monospaced" color="secondary" maxWidth="infinity" lines="1" truncation="middle" />
+        <% end %>
+        <% if item.more then %><Label text="<%= item.more %>" size="11" color="secondary" /><% end %>
+        <% if item.grant then %>
+        <Button id="grantAccess" title="Open Full Disk Access Settings…" action="grantAccess" />
+        <% end %>
+      </VStack>
+    </HStack>
+    <% end %>
+  </VStack>
+</GroupBox>
+<% else %>
+<VStack id="notMeasuredEmpty" hidden="true" />
+<% end %>

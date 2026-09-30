@@ -44,6 +44,13 @@ local function assets(id, name, subtitle, icon, color, classes)
 	end
 	return group(id, name, subtitle, icon, color, children)
 end
+-- `options` with `extra` fields added, leaving the shared table unchanged.
+local function with(options, extra)
+	local merged = {}
+	for key, value in pairs(options) do merged[key] = value end
+	for key, value in pairs(extra) do merged[key] = value end
+	return merged
+end
 local function tool(id, name, root)
 	-- Curated per-tool layouts verified against installed products. Children
 	-- that do not exist measure as missing; version drift inside a tool root
@@ -93,4 +100,4 @@ local function tool(id, name, root)
 	end
 	return group(id, name, "Paths and data types; sessions and worktrees require review", "terminal", "systemPurple", children)
 end
-return {item = item, group = group, generated = generated, cache = cache, ownerCache = ownerCache, xcode = xcode, system = system, assets = assets, tool = tool}
+return {item = item, group = group, generated = generated, cache = cache, ownerCache = ownerCache, xcode = xcode, system = system, assets = assets, tool = tool, with = with}
