@@ -798,6 +798,90 @@ function UIKit.CodeView(props)
 	return applyLayout(v, props)
 end
 
+-- The host streams files from the packager instead of holding them, but
+-- SceneKit imports models from disk: stage each model, the materials its
+-- OBJ names and their textures where it can read them, and point the record
+-- at the staged copy. Records already pointing at a local path pass through.
+local stagedModels = {}
+
+local function stageFile(path)
+	local body, err = bridge._readFile(path)
+	if not body then error(err or ("cannot read " .. path), 0) end
+	return bridge._stageAsset(path, body), body
+end
+
+local function stageModel(path)
+	if stagedModels[path] then return stagedModels[path] end
+	local local_, body = stageFile(path)
+	local dir = path:match("^(.*)/[^/]*$") or "."
+	for name in body:gmatch("mtllib%s+([^\r\n]+)") do
+		local _, mtl = stageFile(dir .. "/" .. name)
+		for texture in mtl:gmatch("map_%w+%s+([^\r\n]+)") do stageFile(dir .. "/" .. texture) end
+	end
+	stagedModels[path] = local_
+	return local_
+end
+
+local function stageRecords(records)
+	for _, record in ipairs(records) do
+		if type(record.model) == "string" and record.model:sub(1, 1) ~= "/" and bridge._readFile then
+			record.model = stageModel(record.model)
+		end
+		if record.items then stageRecords(record.items) end
+	end
+end
+
+--- Displays a SceneKit scene described by `Node`, `Camera` and `Light` records.
+---
+--- Like SwiftUI's `SceneView`, the view fills its proposal. The records form
+--- the scene graph and reconcile by `id` when the template renders again:
+--- nodes keep their pose and running behaviours, changed attributes apply in
+--- place, and `transition` plays when a node is inserted or removed. Game
+--- state moves nodes every frame with `view.nodeStates = {{id, x, y, z, yaw,
+--- pitch, roll, scale, opacity, hidden}, ...}` (angles in degrees) without
+--- describing the scene again.
+--- @prop background string optional. Color behind the scene (semantic name or `#rrggbb`).
+--- @prop onKey function optional. `onKey(view, key, pressed) -> handled`: presses and releases, never repeats; the view takes the keyboard when it appears.
+--- @prop onFrame function optional. `onFrame(view, dt)` once per displayed frame while the view is in a window, `dt` in seconds.
+--- @prop onSwipe function optional. `onSwipe(view, direction)` with `left`, `right`, `up` or `down`, sent as soon as a drag (a finger, or the mouse) has travelled far enough.
+--- @prop onTap function optional. `onTap(view)` when a press is released without travelling. A drag is one swipe or one tap, never both.
+--- @prop showsStatistics boolean optional. Shows SceneKit's frame-rate and draw-call overlay.
+--- @example <SceneView background="#8fd3f4"><Camera position="0 6 8" lookAt="0 0 0" /><Light type="directional" rotation="-60 30 0" castsShadow="true" /><Node model="assets/coin.obj" spin="90" /></SceneView>
+--- @platform UIKit.
+function UIKit.SceneView(props)
+	props = props or {}
+	local records = {}
+	for _, child in ipairs(props) do
+		if type(child) ~= "table" or not child.sceneKind then
+			error("SceneView accepts only Node, Camera and Light records")
+		end
+		table.insert(records, child)
+	end
+	stageRecords(records)
+	local view = bridge._sceneView(props.onKey, props.onFrame, props.onSwipe, props.onTap)
+	if props.background then bridge._sceneBackground(view, props.background) end
+	if props.showsStatistics then view.showsStatistics = true end
+	UIKit.sceneGraph(view, records)
+	-- A 3-D viewport has no intrinsic size and fills its proposal.
+	view.fillWidth, view.fillHeight = true, true
+	local layout = {}
+	for key, value in pairs(props) do
+		if type(key) ~= "number" and key ~= "onKey" and key ~= "onFrame" and key ~= "onSwipe" and key ~= "onTap" and key ~= "background" then layout[key] = value end
+	end
+	return applyLayout(view, layout)
+end
+
+--- Reconciles a SceneView's graph with new `Node`, `Camera` and `Light` records.
+---
+--- The XML reconciler calls this when a template renders new records; a
+--- model that cannot load or an unknown geometry raises an error naming the node.
+function UIKit.sceneGraph(view, records)
+	stageRecords(records)
+	local problems = bridge._sceneGraph(view, records)
+	if #problems > 0 then error("SceneView: " .. table.concat(problems, "; "), 2) end
+	return true
+end
+
 --- Provides native search input and search-specific behavior.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.

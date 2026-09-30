@@ -1076,12 +1076,13 @@ activates the focused sector through `onSelect`. Hit testing uses the same geome
 
 ### `SceneView{...}`: SceneKit scenes and games
 
-`<SceneView>` (AppKit, `src/appkit/scene_view.m`) is SwiftUI's `SceneView`:
+`<SceneView>` (AppKit and UIKit, `src/shared/scene_view.m`) is SwiftUI's `SceneView`:
 an `SCNView` whose scene graph is `<Node>`, `<Camera>` and `<Light>` records
 in an etlua template. Records reconcile by `id` through the schema's
 `updateRecords` hook; game state moves nodes every frame through
-`view.nodeStates` poses; `onFrame(view, dt)` and `onKey(view, key, pressed)`
-drive a game loop. [SceneKit scenes and games](scenekit.md) documents the
+`view.nodeStates` poses; `onFrame(view, dt)`, `onKey(view, key, pressed)`,
+`onSwipe(view, direction)` and `onTap(view)` drive a game loop on the Mac and
+the iPhone. [SceneKit scenes and games](scenekit.md) documents the
 attributes, the reconciliation and pose contracts, the test hooks and the
 architecture for games; `apps/coin-quest` is the reference game.
 

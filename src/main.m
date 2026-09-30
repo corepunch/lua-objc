@@ -122,7 +122,7 @@ static const NSUInteger kSectorSceneShadowSamples = 32;
 static const CGFloat kSectorSceneShadowMapSize = 2048.0;
 static const CGFloat kSectorSceneShadowCoverage = 1.4;
 static const CGFloat kSectorSceneShadowDistance = 1000.0;
-/* SceneView (appkit/scene_view.m): the frame rate it renders and calls
+/* SceneView (shared/scene_view.m): the frame rate it renders and calls
  * `onFrame` at; a camera's default lens and clipping planes and a light's
  * default intensity (SceneKit lumens); shadow softness, sampling and map
  * resolution for lights that cast shadows; node transitions (how long they
@@ -143,6 +143,8 @@ static const CGFloat kSceneTransitionPopScale = 1.6;
 static const CGFloat kSceneTransitionRise = 1.0;
 static const CGFloat kSceneTransitionOvershoot = 1.70158;
 static const NSTimeInterval kSceneBobPeriod = 1.6;
+/* How far a drag travels, in points, before it is a swipe and not a tap. */
+static const CGFloat kSceneSwipeDistance = 24.0;
 static const NSTimeInterval kScrollToAnimationDuration = 0.2;
 /* Space between a paragraph's figure and the text wrapping beside it, and
  * the number of lines the figure spans when the template does not say. */
@@ -369,7 +371,7 @@ static void bridge_set_optional_callback(
 #include "appkit/shader_view.m"
 #include "appkit/sector_scene.m"
 #include "shared/scene_models.m"
-#include "appkit/scene_view.m"
+#include "shared/scene_view.m"
 #include "appkit/reorder_container.m"
 #include "appkit/lazy_collection.m"
 #include "shared/parity_batch.m"

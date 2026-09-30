@@ -6,6 +6,8 @@
 -- fixed order every step, so a rule is one small file that can be tested
 -- alone with a hand-built world. Systems talk to the session through events
 -- (`coin`, `flagRaised`, `hurt`, `cleared`) instead of calling it.
+local Animation = require("apps.coin-quest.models.Animation")
+
 local World = {}
 World.__index = World
 
@@ -58,7 +60,7 @@ end
 function World:respawn()
 	local start, player = self.level.spawns.player, self.player
 	player.x, player.z, player.fromX, player.fromZ = start.x, start.z, start.x, start.z
-	player.hop, player.yaw, player.landed = nil, 0, false
+	player.hop, player.yaw, player.landed, player.landedAt = nil, 0, false, nil
 end
 
 function World:emit(name, entity)
@@ -71,6 +73,12 @@ function World:step(dt, input)
 	self.time = self.time + dt
 	for _, system in ipairs(World.SYSTEMS) do system.update(self, dt, input) end
 	return self.events
+end
+
+-- Time passes on a finished level, so the hero can celebrate: nothing else
+-- moves.
+function World:idle(dt)
+	self.time = self.time + dt
 end
 
 function World:coinAt(x, z)
@@ -99,13 +107,16 @@ end
 function World:poses()
 	local x, y, z = self:playerPosition()
 	local player = self.player
-	local poses = {{id = "player", x = x, y = y, z = z, yaw = player.yaw,
+	local look = Animation.player(self)
+	local poses = {{id = "player", x = x, y = y, z = z, yaw = look.yaw,
+		scaleX = look.scaleX, scaleY = look.scaleY, scaleZ = look.scaleZ,
 		-- Blinks while recovering from a hit.
 		opacity = (player.recovering or 0) > 0 and (math.floor(self.time * 10) % 2 == 0 and 0.35 or 1) or 1}}
 	for _, saw in ipairs(self.saws) do table.insert(poses, {id = saw.id, x = saw.x, z = saw.z}) end
 	for _, spike in ipairs(self.spikes) do
 		table.insert(poses, {id = spike.id, y = (spike.lift - 1) * self.rules.spikeDepth})
 	end
+	table.insert(poses, {id = self.flag.id, yaw = Animation.flag(self).yaw})
 	return poses
 end
 

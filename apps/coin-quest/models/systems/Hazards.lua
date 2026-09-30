@@ -21,6 +21,7 @@ function Hazards.update(world, dt)
 	end
 	if hit then
 		player.recovering = rules.recovery
+		player.hurtAt = world.time
 		world:emit("hurt", player)
 	end
 end

@@ -1,19 +1,19 @@
 <!-- Heads-up display over the stage: the level, coins and lives across the
     top, the end-of-level message in the middle, the controls at the foot. -->
 <VStack padding="20" spacing="0" maxWidth="infinity" maxHeight="infinity">
-	<HStack spacing="12" alignment="top" maxWidth="infinity">
+	<HStack spacing="8" alignment="top" maxWidth="infinity">
 		<GlassEffect style="clear" cornerRadius="18">
-			<VStack paddingHorizontal="16" paddingVertical="12" spacing="2" alignment="leading">
-				<Label id="stage" text="<%= stage %>" size="11" weight="bold" color="secondary" />
-				<Label id="level" text="<%= level %>" size="22" weight="heavy" />
+			<VStack paddingHorizontal="12" paddingVertical="10" spacing="2" alignment="leading">
+				<Label id="stage" lines="1" text="<%= stage %>" size="11" weight="bold" color="secondary" />
+				<Label id="level" lines="1" text="<%= level %>" size="18" weight="heavy" />
 			</VStack>
 		</GlassEffect>
 		<Spacer />
 		<GlassEffect style="clear" cornerRadius="18">
-			<HStack paddingHorizontal="16" paddingVertical="12" spacing="18" alignment="center">
+			<HStack paddingHorizontal="12" paddingVertical="10" spacing="12" alignment="center">
 				<HStack spacing="6" alignment="center">
 					<SystemImage name="circle.circle.fill" size="18" color="systemYellow" label="Coins" />
-					<Label id="coins" text="<%= coins %>" size="17" weight="bold" monospacedDigit="true" />
+					<Label id="coins" lines="1" text="<%= coins %>" size="17" weight="bold" monospacedDigit="true" />
 				</HStack>
 				<HStack spacing="3" alignment="center" accessibilityLabel="<%= lives %>">
 					<% for _, heart in ipairs(hearts) do -%>
@@ -40,7 +40,7 @@
 	<HStack maxWidth="infinity">
 		<Spacer />
 		<GlassEffect style="clear" cornerRadius="14">
-			<Label paddingHorizontal="14" paddingVertical="8" text="Arrow keys or WASD to hop · Take every coin, then reach the flag" size="12" color="secondary" />
+			<Label paddingHorizontal="14" paddingVertical="8" text="<%= hint %>" size="12" color="secondary" lines="1" />
 		</GlassEffect>
 		<Spacer />
 	</HStack>

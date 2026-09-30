@@ -11,6 +11,18 @@ make run ARGS="apps/coin-quest"
 Arrow keys or WASD hop one cell. Return or Space continue after a level
 ends, R (or the toolbar button) restarts.
 
+On a touch screen, **swipe** to run: the hero keeps hopping that way until
+you tap to stop it, swipe another way to turn it, or it reaches an island's
+edge. A tap after a level or game ends continues, like Return. Try it in
+the iPhone Simulator:
+
+```sh
+make ios-run PROJECT=apps/coin-quest
+```
+
+The Mac accepts the same gestures with the mouse (drag to swipe, click to
+tap), so the touch controls can be tried without a device.
+
 The point of the example is the architecture. A game is usually where
 code turns to spaghetti: input handlers that move meshes, meshes that
 decide the score, one `update()` that knows everything. Here, each concern
@@ -25,8 +37,9 @@ catalog/Levels.lua          authored level maps: data, nothing else
 models/Level.lua            parses a map: tiles, scenery, spawns, walkable()
 models/World.lua            one running level: entities, clock, events, poses()
 models/systems/*.lua        one rule each: Movement, Patrol, Traps, Pickups, Hazards
+models/Animation.lua        the hero's squash, stretch, shake and spin; the flag's sway
 Model.lua                   the session: levels, lives, score, state machine
-controllers/InputController keys -> directions and commands
+controllers/InputController keys and swipes -> directions and commands
 controllers/StageController scene data -> Stage.etlua; poses -> SceneView
 controllers/HudController   status -> Hud.etlua
 Controller.lua              window, game loop, coordination
@@ -63,6 +76,12 @@ Systems never reach up into the session. They emit events (`coin`,
 game meaning: score, lives, respawning, the next level, game over. Adding a
 rule means adding a system file and a test, not threading a flag through
 an update loop.
+
+The Kenney models are static OBJ files, so the hero's life is procedural:
+`Animation` turns the world's clock and a few timestamps the systems leave
+on the player (`landedAt`, `hurtAt`, `clearedAt`) into squash and stretch,
+a shake when hurt, a victory spin and the flag's sway. They are pure
+functions of time, posed each frame through `scaleX/Y/Z` and `yaw`.
 
 Nothing in `models/` or `Model.lua` knows about SceneKit, AppKit or etlua,
 so all of it runs headless with a hand-built three-cell map.

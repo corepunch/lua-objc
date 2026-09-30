@@ -10,7 +10,7 @@ is the reference game.
 
 | Piece | Where |
 |---|---|
-| Native view, reconciliation, poses, frame and key hooks | `src/appkit/scene_view.m` (`LuaSceneView`) |
+| Native view, reconciliation, poses, frame and key hooks | `src/shared/scene_view.m` (`LuaSceneView`) |
 | Tuning constants (lens, lights, shadows, transitions) | `kScene*` in `src/main.m` |
 | Lua constructor and `sceneGraph` | `AppKit.SceneView`, `AppKit.sceneGraph` in `lua/embedded/AppKit.lua` |
 | XML tags | `SceneView`, `Node`, `Camera`, `Light` in `lua/ui/xml.lua` |
@@ -106,7 +106,8 @@ refs.scene.nodeStates = {
 ```
 
 A pose takes `x`, `y`, `z`, `yaw`, `pitch`, `roll` (degrees), a uniform
-`scale`, `opacity` and `hidden`. Omitted fields keep their value, and an
+`scale` (or `scaleX`, `scaleY`, `scaleZ` for one axis, which squash and
+stretch a node), `opacity` and `hidden`. Omitted fields keep their value, and an
 unknown id is ignored, so poses can describe entities the template has
 already removed. Poses move each node's outer `SCNNode`; its content, `spin`,
 `bob` and transitions live on an inner node, so poses and behaviours never
@@ -122,7 +123,22 @@ overwrite each other.
   `escape`, `tab`, `delete` or the lowercased character. A key the callback
   declines goes up the responder chain; Command shortcuts go to the menu.
   Held keys are released when the view loses focus or its window stops
-  being key, so a key let go elsewhere never stays down.
+  being key, so a key let go elsewhere never stays down. On iPad a hardware
+  keyboard reports the same names.
+- `onSwipe(view, direction)` sends `left`, `right`, `up` or `down` as soon
+  as a drag (a finger on iOS, the mouse on the Mac) has travelled 24 points,
+  along the axis it moved most; `onTap(view)` reports a press released
+  without travelling. One drag is one swipe or one tap, never both, so a
+  game can use a swipe to steer and a tap to stop or continue.
+
+SceneView is one native class for AppKit and UIKit
+(`src/shared/scene_view.m`): templates, poses and hooks are identical, and
+only events and colours differ. The iPhone host renders it through the
+streaming runtime like any other view.
+
+Test hooks: `bridge._sceneSend(view, "swipe", direction)`, `"tap"`, and
+`"drag", x0, y0, x1, y1` (screen points, y down) which runs the gesture
+classifier.
 
 ## Architecture for a game
 

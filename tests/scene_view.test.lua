@@ -73,6 +73,36 @@ t.assertEqual(keys[1][2], true, "onKey receives whether it was pressed")
 bridge._sceneSend(stage, "frame", 1 / 60)
 t.expect(#frames == 1 and near(frames[1], 1 / 60), "onFrame receives the frame interval")
 
+-- Non-uniform poses squash and stretch a node.
+stage.nodeStates = {{id = "coin", scaleX = 1.2, scaleY = 0.8, scaleZ = 1.2}}
+local squashed = bridge._sceneNodes(stage).coin
+t.expect(near(squashed.scale, 1.2) and near(squashed.scaleY, 0.8), "scaleX/Y/Z pose one axis each")
+stage.nodeStates = {{id = "coin", scaleY = 1}}
+squashed = bridge._sceneNodes(stage).coin
+t.expect(near(squashed.scale, 1.2) and near(squashed.scaleY, 1), "a single axis leaves the others")
+stage.nodeStates = {{id = "coin", scale = 1}}
+squashed = bridge._sceneNodes(stage).coin
+t.expect(near(squashed.scale, 1) and near(squashed.scaleY, 1), "a uniform scale sets every axis")
+
+-- Gestures: a drag is one swipe or one tap, never both.
+local swipes, taps = {}, 0
+local touchView = xml.render([[<SceneView onSwipe="swipe" onTap="tap"><Camera position="0 5 5" lookAt="0 0 0" /></SceneView>]], {
+	actions = {swipe = function(_, direction) table.insert(swipes, direction) end, tap = function() taps = taps + 1 end},
+})
+bridge._sceneSend(touchView, "drag", 100, 100, 100, 104)
+t.expect(taps == 1 and #swipes == 0, "a press that barely moves is a tap")
+for _, case in ipairs({{"left", -60, 3}, {"right", 60, -3}, {"up", 4, -60}, {"down", -4, 60}}) do
+	bridge._sceneSend(touchView, "drag", 100, 100, 100 + case[2], 100 + case[3])
+	t.assertEqual(swipes[#swipes], case[1], "a drag along its longest axis swipes " .. case[1])
+end
+t.expect(taps == 1 and #swipes == 4, "a swipe is not also a tap")
+bridge._sceneSend(touchView, "swipe", "up")
+t.assertEqual(swipes[5], "up", "swipes can be sent directly")
+local quiet = xml.render([[<SceneView><Camera position="0 5 5" lookAt="0 0 0" /></SceneView>]], {})
+bridge._sceneSend(quiet, "drag", 0, 0, 90, 0)
+bridge._sceneSend(quiet, "tap")
+t.expect(true, "a scene without gesture hooks ignores gestures")
+
 -- Retained reconciliation: nodes match by id and keep their state.
 local host = ns.VStack({})
 local template = Template.new(host, "tests/fixtures/scene_view/Scene.etlua", ns)
