@@ -119,6 +119,8 @@ t.expect(not view and err:find("execution budget", 1, true), "runaway initial re
 t.expect(preview:render(model.files) ~= nil, "hook restored after budget error")
 -- Inspect the two-pane workspace template without constructing native UI.
 local description = require("ui.xml").describeFile("apps/studio/views/Window.etlua", {
+	canvas = require("apps.studio.models.Theme").canvas,
+	rail = require("apps.studio.models.Rail").presentation(),
 	preview = require("apps.studio.models.Preview").presentation({
 		{ title = "HabitPal", icon = "checklist", selected = true },
 	}),

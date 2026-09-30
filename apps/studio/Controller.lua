@@ -5,6 +5,8 @@ local Workspace = require("apps.studio.services.Workspace")
 local Preview = require("apps.studio.services.Preview")
 local PreviewController = require("apps.studio.controllers.PreviewController")
 local ChatController = require("apps.studio.controllers.ChatController")
+local RailController = require("apps.studio.controllers.RailController")
+local Theme = require("apps.studio.models.Theme")
 local Projects = require("apps.studio.models.Projects")
 local Code = require("apps.studio.models.Code")
 
@@ -36,6 +38,7 @@ function Controller.new()
 	return setmetatable({
 		previewPane = PreviewController.new(),
 		chat = ChatController.new(),
+		rail = RailController.new(),
 	}, Controller)
 end
 
@@ -118,7 +121,18 @@ function Controller:createWindow()
 	if self.showcase and self.showcase.conversation.status then preview.status = self.showcase.conversation.status end
 	local code = Code.presentation(self.model.files, self.selectedFile or "Controller.lua")
 	self.selectedFile = code.selected
+	-- The rail switches the agent card between its modes and carries the
+	-- highlight to the one showing.
+	local function setMode(index)
+		if not self.rail:select(refs, index) then return end
+		local showingCode = index ~= 0
+		refs.transcriptScroll.hidden = showingCode
+		refs.codePane.hidden = not showingCode
+		refs.composerPane.hidden = showingCode
+	end
 	config, refs = xml.renderFile(VIEWS .. "Window.etlua", {
+		canvas = Theme.canvas,
+		rail = self.rail:presentation(),
 		preview = preview,
 		chat = self.chat:presentation(self.showcase and self.showcase.conversation, code),
 		-- XML data bindings resolve against the root template context, even
@@ -137,12 +151,8 @@ function Controller:createWindow()
 			end,
 			reloadPreview = function() self:reloadPreview() end,
 			commitProject = function() self:commitProject("Update project") end,
-			setMode = function(index)
-				local showingCode = index ~= 0
-				refs.transcriptScroll.hidden = showingCode
-				refs.codePane.hidden = not showingCode
-				refs.composerPane.hidden = showingCode
-			end,
+			showChat = function() setMode(0) end,
+			showCode = function() setMode(1) end,
 			toggleTree = function()
 				self.treeHidden = not self.treeHidden
 				refs.treePane.hidden = self.treeHidden

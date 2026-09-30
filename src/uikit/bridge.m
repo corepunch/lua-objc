@@ -234,6 +234,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_progressView", bridge_UIKitControls_progressView},
 	{"_pageControl", bridge_UIKitControls_pageControl},
 	{"_linearGradient", bridge_UIKitControls_linearGradient},
+	{"_linearGradientColors", bridge_UIKitControls_linearGradientColors},
 	{"_meshGradient", bridge_UIKitControls_meshGradient},
 	{"_meshGradientConfigure", bridge_UIKitControls_meshGradientConfigure},
 	{"_meshGradientSample", bridge_UIKitControls_meshGradientSample},

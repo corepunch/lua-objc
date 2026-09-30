@@ -155,6 +155,8 @@ t.expect(controller:commitProject("x") == nil, "commit without a repository fail
 t.assertEqual(controller.refs.previewStatus.text, "Git unavailable: no repository", "the open error is shown")
 
 local source = require("ui.xml").describeFile("apps/studio/views/Window.etlua", {
+	canvas = require("apps.studio.models.Theme").canvas,
+	rail = require("apps.studio.models.Rail").presentation(),
 	preview = require("apps.studio.models.Preview").presentation({}),
 	chat = require("apps.studio.models.Chat").presentation(),
 }).source

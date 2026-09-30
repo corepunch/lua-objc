@@ -1,17 +1,14 @@
+local Theme = require("apps.studio.models.Theme")
 local Model = {}
 
 -- Just wide enough for an iPhone-proportioned device at iPad height and for
 -- the stage bar; the chat receives every other point.
 local STAGE_WIDTH = 440
 
--- Workspace destinations share the project menu with the project list, so no
--- navigation sidebar takes width from the preview and chat.
+-- The project menu lists the projects, then what makes another one. The
+-- other workspace destinations are on the activity rail.
 local DESTINATIONS = {
 	{ title = "New Project", icon = "plus" },
-	{ title = "Templates", icon = "square.grid.2x2" },
-	{ title = "Examples", icon = "shippingbox" },
-	{ title = "Plugins", icon = "puzzlepiece" },
-	{ title = "Settings", icon = "gearshape" },
 }
 
 function Model.presentation(projects)
@@ -29,6 +26,7 @@ function Model.presentation(projects)
 		runLabel = "Run",
 		status = "Ready",
 		stageWidth = STAGE_WIDTH,
+		tint = Theme.tint,
 	}
 end
 

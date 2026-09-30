@@ -69,4 +69,33 @@ t.expect(l.strip.size.height < 240, "horizontal strip does not greedily consume 
 t.expect(l.after.frame.origin.y + l.after.size.height <= l.strip.frame.origin.y, "following content remains below the natural scroll height")
 list.size = ns.Size(600, 400); list:layout(600)
 t.expect(l.cards.size.width >= 600, "short scroll content fills its viewport after widening")
+-- A colored gradient is SwiftUI's LinearGradient(colors:startPoint:endPoint:).
+local tinted, g = xml.render([[
+<VStack spacing="0" alignment="leading">
+	<HStack id="row" spacing="0" maxWidth="infinity">
+		<Spacer minWidth="56" />
+		<ZStack id="bubble" flexGrow="0" flexShrink="1" fixedSize="vertical">
+			<LinearGradient id="fill" colors="systemIndigo, systemPink" startPoint="topLeading" endPoint="bottomTrailing" cornerRadius="18" />
+			<VStack id="text" padding="12"><Label text="Short" /></VStack>
+		</ZStack>
+	</HStack>
+	<ZStack id="tile" width="40" height="40">
+		<LinearGradient id="tileFill" colors="systemIndigo systemPurple systemPink" />
+	</ZStack>
+</VStack>]], {}, ns)
+tinted.size = ns.Size(600, 400); tinted:layout(600)
+t.assertSize(g.tile, 40, 40, "a gradient tile keeps its declared size")
+t.assertSize(g.tileFill, 40, 40, "a colored gradient fills its proposal")
+t.assertEqual(g.bubble.size.width, g.text.size.width, "a bubble that declines to grow hugs its text")
+t.assertEqual(g.bubble.size.height, g.text.size.height, "a vertically fixed bubble takes its text height")
+t.assertSize(g.fill, g.text.size.width, g.text.size.height, "the gradient fills the bubble its text measures")
+t.assertEqual(g.bubble.frame.origin.x + g.bubble.size.width, 600, "the spacer pushes the bubble to the trailing edge")
+t.expect(not pcall(ns.LinearGradient, { colors = { "systemIndigo" } }), "one color is not a gradient")
+t.expect(not pcall(ns.LinearGradient, { colors = { "systemIndigo", "systemPink" }, startPoint = "sideways" }),
+	"an unknown unit point is rejected")
+t.expect(not pcall(ns.LinearGradient, { colors = { "systemIndigo", "systemPink" }, endPoint = "sideways" }),
+	"an unknown end point is rejected")
+local fade = ns.LinearGradient({ bottomAlpha = 0.9 })
+t.expect(fade.className:find("Gradient") ~= nil, "without colors the gradient stays a black fade")
+
 os.exit(t.summary() and 0 or 1)

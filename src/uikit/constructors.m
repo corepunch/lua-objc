@@ -675,14 +675,50 @@ static int bridge_UIKitControls_pageControl(lua_State *L) {
 
 @interface LuaGradientView : UIView
 @property(nonatomic, strong) CAGradientLayer *gradient;
+/* Semantic stops, kept so the layer's CGColors follow the appearance. */
+@property(nonatomic, copy) NSArray<UIColor *> *colors;
+- (void)resolveColors;
 @end
 
 @implementation LuaGradientView
 - (void)layoutSubviews {
 	[super layoutSubviews];
 	self.gradient.frame = self.bounds;
+	/* A layer takes its corner from the view, but a sublayer is not clipped
+	 * by it; the gradient carries the same corner. */
+	self.gradient.cornerRadius = self.layer.cornerRadius;
+	self.gradient.cornerCurve = self.layer.cornerCurve;
+}
+- (void)resolveColors {
+	if (!self.colors) return;
+	NSMutableArray *resolved = [NSMutableArray arrayWithCapacity:self.colors.count];
+	for (UIColor *color in self.colors) {
+		[resolved addObject:(id)[color resolvedColorWithTraitCollection:self.traitCollection].CGColor];
+	}
+	self.gradient.colors = resolved;
 }
 @end
+
+/* SwiftUI LinearGradient(colors:startPoint:endPoint:): evenly spaced semantic
+ * stops between two unit points, top-left origin. */
+static int bridge_UIKitControls_linearGradientColors(lua_State *L) {
+	LuaGradientView *view = (LuaGradientView *)check_view(L, 1);
+	luaL_checktype(L, 2, LUA_TTABLE);
+	NSMutableArray<UIColor *> *colors = [NSMutableArray array];
+	lua_Integer count = luaL_len(L, 2);
+	if (count < 2) return luaL_error(L, "LinearGradient colors needs at least two colors");
+	for (lua_Integer index = 1; index <= count; index++) {
+		lua_geti(L, 2, index);
+		[colors addObject:lua_objc_uikit_system_color(luaL_checkstring(L, -1))];
+		lua_pop(L, 1);
+	}
+	view.colors = colors;
+	view.gradient.locations = nil;
+	view.gradient.startPoint = CGPointMake(luaL_checknumber(L, 3), luaL_checknumber(L, 4));
+	view.gradient.endPoint = CGPointMake(luaL_checknumber(L, 5), luaL_checknumber(L, 6));
+	[view resolveColors];
+	return 0;
+}
 
 static int bridge_UIKitControls_linearGradient(lua_State *L) {
 	CGFloat topAlpha = (CGFloat)luaL_optnumber(L, 1, 0);
@@ -701,6 +737,11 @@ static int bridge_UIKitControls_linearGradient(lua_State *L) {
 	view.gradient = gradient;
 	[view.layer addSublayer:gradient];
 	view.userInteractionEnabled = NO;
+	[view registerForTraitChanges:@[UITraitUserInterfaceStyle.class]
+		withHandler:^(LuaGradientView *changed, UITraitCollection *previous) {
+			(void)previous;
+			[changed resolveColors];
+		}];
 	push_objc(L, view, "uiview");
 	return 1;
 }

@@ -1332,17 +1332,40 @@ function AppKit.Spacer(props)
 	return applyLayout(bridge._spacer(), props)
 end
 
---- Fills content with a vertical black fade.
---- @prop bottomAlpha number optional. Opacity at the bottom edge.
---- @prop middleAlpha number optional. Opacity at the middle stop.
---- @prop middleLocation number optional. Position of the middle stop, from 0 to 1.
---- @prop topAlpha number optional. Opacity at the top edge.
---- @platform AppKit uses the AppKit implementation.
+-- SwiftUI UnitPoint: x runs leading to trailing, y top to bottom.
+local UNIT_POINTS = {
+	topLeading = { 0, 0 }, top = { 0.5, 0 }, topTrailing = { 1, 0 },
+	leading = { 0, 0.5 }, center = { 0.5, 0.5 }, trailing = { 1, 0.5 },
+	bottomLeading = { 0, 1 }, bottom = { 0.5, 1 }, bottomTrailing = { 1, 1 },
+}
+
+--- Fills content with a linear gradient, as SwiftUI's LinearGradient.
+---
+--- With `colors` the gradient runs through those semantic colors, evenly
+--- spaced from `startPoint` to `endPoint`, and follows light and dark
+--- appearance. Without `colors` it is a vertical black fade for laying text
+--- over artwork, shaped by the alpha props.
+--- @prop colors table optional. Two or more color names, in order.
+--- @prop startPoint string optional. Unit point the first color sits at: `top`, `bottom`, `leading`, `trailing`, `center` or a corner such as `topLeading`. Default `top`.
+--- @prop endPoint string optional. Unit point the last color sits at. Default `bottom`.
+--- @prop bottomAlpha number optional. Fade opacity at the bottom edge.
+--- @prop middleAlpha number optional. Fade opacity at the middle stop.
+--- @prop middleLocation number optional. Position of the fade's middle stop, from 0 to 1.
+--- @prop topAlpha number optional. Fade opacity at the top edge.
+--- @example <LinearGradient colors="systemIndigo,systemPink" startPoint="topLeading" endPoint="bottomTrailing" />
+--- @platform AppKit and UIKit.
 function AppKit.LinearGradient(props)
 	props = props or {}
 	local view = bridge._linearGradient(props.topAlpha or 0,
 		props.middleAlpha or 0.5, props.middleLocation or 0.6,
 		props.bottomAlpha or 0.82)
+	if props.colors then
+		local start = UNIT_POINTS[props.startPoint or "top"]
+		local stop = UNIT_POINTS[props.endPoint or "bottom"]
+		assert(start, "LinearGradient startPoint is not a unit point: " .. tostring(props.startPoint))
+		assert(stop, "LinearGradient endPoint is not a unit point: " .. tostring(props.endPoint))
+		bridge._linearGradientColors(view, props.colors, start[1], start[2], stop[1], stop[2])
+	end
 	-- Gradients have no intrinsic size and accept both proposed dimensions.
 	view.fillWidth, view.fillHeight = true, true
 	return applyLayout(view, props)
