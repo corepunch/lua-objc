@@ -6,7 +6,8 @@ local Categories = require("apps.diskmap.models.Categories")
 local Cleanup = require("apps.diskmap.models.Cleanup")
 local Recommendations = require("apps.diskmap.models.Recommendations")
 local Projects = require("apps.diskmap.models.Projects")
-local Developer = require("apps.diskmap.models.Developer")
+local Workflow = require("apps.diskmap.models.Workflow")
+local developerWorkflow = require("apps.diskmap.knowledge.Workflows").find("developer")
 
 -- Build folders found in projects add up per ecosystem: "Node modules:
 -- 1.2 GB in 3 projects", drillable to each project's folder.
@@ -76,7 +77,7 @@ t.assertEqual(projects.shop.bytes, 450e6, "a project totals its own folders")
 
 -- The Developer page shows one row per ecosystem.
 local rows = {}
-for _, section in ipairs(Developer.presentation(model, "").sections) do
+for _, section in ipairs(Workflow.presentation(model, developerWorkflow, "").sections) do
 	for _, value in ipairs(section.rows) do rows[value.id] = value end
 end
 t.expect(rows["build-node-modules"] and rows["build-node-modules"].group, "the Developer page rolls folders into their ecosystem")

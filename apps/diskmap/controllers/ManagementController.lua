@@ -2,6 +2,7 @@ local ns = require("AppKit")
 local Sheet = require("apps.diskmap.Sheet")
 local xml = require("ui.xml")
 local Categories = require("apps.diskmap.models.Categories")
+local Destinations = require("apps.diskmap.models.Destinations")
 local Inspector = require("apps.diskmap.models.Inspector")
 local InspectorController = require("apps.diskmap.controllers.InspectorController")
 local Controller = {}; Controller.__index = Controller
@@ -30,8 +31,11 @@ local function sortRows(rows, column, ascending)
 	return rows
 end
 
-function Controller.new(model, service, refresh, keep, simulators, sdks)
-	return setmetatable({model = model, service = service, refresh = refresh, keep = keep, simulators = simulators, sdks = sdks,
+-- A category's list of locations, as a sheet. `open(id)` opens a resource
+-- wherever Destinations sends it; a row that lives on a page or sheet of its
+-- own leaves this one.
+function Controller.new(model, service, refresh, keep, open)
+	return setmetatable({model = model, service = service, refresh = refresh, keep = keep, openResource = open,
 		sortColumn = "size", sortAscending = false}, Controller)
 end
 
@@ -57,8 +61,7 @@ end
 function Controller:review(id, manage)
 	local row = self.model.resources:find(id)
 	if not row then return end
-	if row.action == "simulators" then self:close(); if self.simulators then self.simulators() end; return end
-	if row.action == "sdks" then self:close(); if self.sdks then self.sdks(row) end; return end
+	if Destinations.elsewhere(self.model, id) then self.openResource(id); return end
 	if not manage then return end
 	local inspector = InspectorController.new(self.model, self.service, self.refresh)
 	inspector:select(row.id); inspector:manage()
@@ -99,8 +102,14 @@ function Controller:update()
 	self.selectedId = nil
 	if selectionVisible then self:select(selected) end
 end
-function Controller:open(parent, id, filter)
+-- `options.select` is the location to select and scroll to; `options.filter`
+-- the impact tab to show. The list always opens largest first.
+function Controller:open(parent, id, options)
+	options = options or {}
+	local filter = options.filter
 	self:close(); self.rootId = id; self.query = ""
+	self.sortColumn, self.sortAscending = "size", false
+	self.selectedId = options.select
 	self.filters = {"All", "Safe/rebuildable", "Needs review", "Essential to keep"}
 	self.sheet, self.refs = Sheet.present(function()
 		local sheet, refs = xml.renderFile("apps/diskmap/views/Management.etlua", {

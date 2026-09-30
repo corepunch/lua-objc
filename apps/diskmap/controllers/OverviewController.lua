@@ -1,6 +1,7 @@
 local ns = require("AppKit")
 local Template = require("ui.template")
 local Overview = require("apps.diskmap.models.Overview")
+local Categories = require("apps.diskmap.models.Categories")
 local Inventory = require("apps.diskmap.models.Inventory")
 local Selection = require("apps.diskmap.models.Selection")
 local Sectors = require("ui.sectors")
@@ -11,12 +12,12 @@ local Controller = {}; Controller.__index = Controller
 local LARGEST = {preview = 6}
 
 -- `handlers` routes user intent back to the root controller: open(id) opens a
--- category, reclaim() the Clean Up page, access() privacy settings,
+-- category or resource, reclaim() the Clean Up page, access() privacy settings,
 -- navigate(id) another sidebar destination, map(id) the Map inside a category
 -- (or the whole map), menu(id) a resource's actions and changes() the full
 -- list of changes since the snapshot.
-function Controller.new(model, categories, handlers)
-	return setmetatable({model = model, categories = categories, handlers = handlers}, Controller)
+function Controller.new(model, handlers)
+	return setmetatable({model = model, handlers = handlers}, Controller)
 end
 
 function Controller:mount(host, state)
@@ -33,7 +34,7 @@ function Controller:mount(host, state)
 		end,
 		open = function(_, _, row) if row then handlers.open(row.id) end end,
 		largestMenu = function(_, _, row) return handlers.menu(row.id) end,
-		openLargest = function(_, _, row) if row then handlers.open(row.parentId) end end,
+		openLargest = function(_, _, row) if row then handlers.open(row.id) end end,
 		showLargest = function() handlers.navigate("largest") end,
 	}})
 	self.refs = refs
@@ -54,7 +55,7 @@ function Controller:update(state)
 	local largest = Overview.largest(self.model, state.disk, LARGEST.preview, state.query)
 	refs.largest:replaceRows(largest)
 	refs.largestSection.hidden = #largest == 0
-	refs.coverage.text = self.categories:coverage(state.disk)
+	refs.coverage.text = Categories.coverage(self.model, state.disk)
 	refs.status.text = state.status
 	refs.access.hidden = state.mock == true
 	refs.access.title = (self.model.scan.errors or 0) > 0 and "Review scan access…" or "Scan access…"

@@ -2,7 +2,7 @@ local D = require("apps.diskmap.catalog.Definitions")
 local item, group, cache, ownerCache, xcode, system, assets = D.item, D.group, D.cache, D.ownerCache, D.xcode, D.system, D.assets
 return function()
 	return group("developer", "Developer", "Xcode, package managers, editors and environments", "hammer.fill", "systemPurple", {
-	item("projects", "Developer projects", "Source repositories and local build outputs", "~/Developer"),
+	item("projects", "Developer projects", "Source repositories and local build outputs", "~/Developer", {page = "projects"}),
 	item("usr-local", "Local development tools", "Locally installed command-line tools and packages", "/usr/local"),
 	group("xcode", "Xcode", "Simulators, SDKs, device support and build history", "hammer.fill", "systemBlue", {
 		group("runtimes", "Simulator runtimes", "Keep installed operating systems required for simulator development", "iphone", "systemBlue", {
@@ -10,16 +10,16 @@ return function()
 			item("runtime-bundles", "Runtime bundles", "Registered simulator operating systems", "/Library/Developer/CoreSimulator/Profiles/Runtimes", {policy = "Essential"}),
 			item("runtime-assets", "iOS runtime downloads", "System-managed iOSSimulatorRuntime assets; retained by default", "/System/Library/AssetsV2/com_apple_MobileAsset_iOSSimulatorRuntime", {policy = "Essential", action = "finder"}),
 		}),
-		item("simulators", "Simulator devices", "Installed test apps, settings and device data — manage without Xcode", "~/Library/Developer/CoreSimulator/Devices", {action = "simulators", consequence = "Erase removes installed test apps, accounts and device data. Delete also removes the device. Installed runtimes are preserved. Shut down a running device first."}),
-		item("derived", "Xcode DerivedData", "Rebuildable build products, indexes and logs", "~/Library/Developer/Xcode/DerivedData", cache),
-		item("devices", "Device support", "Symbols used when debugging connected devices", "~/Library/Developer/Xcode/iOS DeviceSupport", xcode),
-		item("watch-devices", "watchOS device support", "Symbols copied from paired Apple Watches", "~/Library/Developer/Xcode/watchOS DeviceSupport", xcode),
+		item("simulators", "Simulator devices", "Installed test apps, settings and device data — manage without Xcode", "~/Library/Developer/CoreSimulator/Devices", {action = "simulators", page = "simulators", consequence = "Erase removes installed test apps, accounts and device data. Delete also removes the device. Installed runtimes are preserved. Shut down a running device first."}),
+		item("derived", "Xcode DerivedData", "Rebuildable build products, indexes and logs", "~/Library/Developer/Xcode/DerivedData", D.with(cache, {page = "xcode"})),
+		item("devices", "Device support", "Symbols used when debugging connected devices", "~/Library/Developer/Xcode/iOS DeviceSupport", D.with(xcode, {page = "xcode"})),
+		item("watch-devices", "watchOS device support", "Symbols copied from paired Apple Watches", "~/Library/Developer/Xcode/watchOS DeviceSupport", D.with(xcode, {page = "xcode"})),
 		item("device-logs", "Device logs", "Crash and diagnostic logs copied from connected devices", "~/Library/Developer/Xcode/iOS Device Logs", xcode),
 		item("sim-caches", "Simulator caches", "Shared dyld and runtime caches CoreSimulator rebuilds on demand", "~/Library/Developer/CoreSimulator/Caches", cache),
 		item("xcode-previews", "SwiftUI preview devices", "Simulators Xcode creates for previews; recreated by the next preview", "~/Library/Developer/Xcode/UserData/Previews", {policy = "Rebuildable", action = "ownerCleanup", commandId = "xcode-previews", consequence = "Diskmap asks simctl to delete Xcode's preview devices. Xcode recreates them the next time a preview runs, so that preview starts more slowly. Quit Xcode first."}),
-		item("archives", "Archives", "Release builds and debug symbols — review before removing", "~/Library/Developer/Xcode/Archives", xcode),
-		item("xcode-app", "Xcode & bundled SDKs", "SDKs belong to this installation; do not remove them individually", "/Applications/Xcode.app", {action = "sdks", consequence = "These SDKs belong to this Xcode installation. Removing one individually can break builds. Reinstalling Xcode restores them."}),
-		item("clt", "Command Line Tools", "Compilers, SDKs and development utilities", "/Library/Developer/CommandLineTools", {action = "sdks", consequence = "These SDKs belong to the Command Line Tools. Removing one individually can break command-line builds. Reinstalling the tools restores them."}),
+		item("archives", "Archives", "Release builds and debug symbols — review before removing", "~/Library/Developer/Xcode/Archives", D.with(xcode, {page = "xcode"})),
+		item("xcode-app", "Xcode & bundled SDKs", "SDKs belong to this installation; do not remove them individually", "/Applications/Xcode.app", {action = "sdks", sheet = "sdks", consequence = "These SDKs belong to this Xcode installation. Removing one individually can break builds. Reinstalling Xcode restores them."}),
+		item("clt", "Command Line Tools", "Compilers, SDKs and development utilities", "/Library/Developer/CommandLineTools", {action = "sdks", sheet = "sdks", consequence = "These SDKs belong to the Command Line Tools. Removing one individually can break command-line builds. Reinstalling the tools restores them."}),
 		assets("developer-assets", "Downloaded developer assets", "Documentation, simulator runtimes and optional toolchains", "hammer.fill", "systemBlue", {"MetalToolchain", "SourceEditorAssets"}),
 		item("documentation", "Offline developer documentation", "Downloaded reference documentation; online documentation remains available", "~/Library/Developer/Shared/Documentation", {action = "trash", policy = "Rebuildable", consequence = "Quit developer tools first. Removes offline documentation; download it again when needed. Moving to Trash does not free space until Finder empties it."}),
 		item("documentation-assets", "Offline Apple documentation", "AppleDeveloperDocumentation downloaded by macOS", "/System/Library/AssetsV2/com_apple_MobileAsset_AppleDeveloperDocumentation", {action = "settings", settingsSection = "storage", consequence = "Review Developer storage in System Settings to remove optional offline documentation where offered. Online documentation remains available. Protected asset files are managed by macOS."}),

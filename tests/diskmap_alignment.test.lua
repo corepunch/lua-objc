@@ -58,6 +58,26 @@ local legend, hidden = #hero.legend.subviews, #hero.hiddenSpace.subviews
 -- The warning, each legend and hidden-space row, and the cleanup row.
 assertOneColumn(symbolRows(column), 1 + legend + hidden + 1, "the Overview card")
 
+-- The "could not measure" card: its own symbol and each reason's symbol share
+-- one column, and the title, each reason's name and what is written under it
+-- start at one edge.
+local notMeasured = app.pages.overview.notMeasured.refs
+t.expect(notMeasured.notMeasuredCard ~= nil, "the Overview explains what was not measured")
+local reasons = symbolRows(notMeasured.notMeasuredCard)
+assertOneColumn(reasons, 2, "the not-measured card")
+local explained = 0
+for id, reason in pairs(notMeasured) do
+	if id:find("^unmeasured_") then
+		local title, body = reason.subviews[1], reason.subviews[2]
+		t.assertEqual(windowX(body.subviews[1]), windowX(title.subviews[2]), id .. ": the explanation starts at the name's edge")
+		local symbol, name = title.subviews[1], title.subviews[2]
+		t.expect(math.abs((symbol.frame.origin.y + symbol.frame.size.height / 2) - (name.frame.origin.y + name.frame.size.height / 2)) <= 0.5,
+			id .. ": the symbol and the name share a center line")
+		explained = explained + 1
+	end
+end
+t.expect(explained > 0, "the card names its reasons")
+
 -- Pages whose rows lead with symbols of different widths.
 for _, id in ipairs({"updates", "guide", "help", "cleanup"}) do
 	app:show(id)
@@ -106,3 +126,5 @@ t.assertEqual(plain.subviews[1].subviews[1].frame.origin.x, 0, "without indicato
 t.assertEqual(plain.subviews[2].subviews[1].frame.origin.x, 0, "and its content is not indented")
 
 window:close()
+
+os.exit(t.summary() and 0 or 1)

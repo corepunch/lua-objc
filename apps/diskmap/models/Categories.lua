@@ -1,4 +1,5 @@
 local Model = require("apps.diskmap.Model")
+local Destinations = require("apps.diskmap.models.Destinations")
 local Categories = {}
 local function projection(source)
 	return {id = source.id, name = source.name, subtitle = source.subtitle, path = source.path, policy = source.policy,
@@ -62,6 +63,18 @@ function Categories.row(model, id)
 		if row.id == id then return row end
 	end
 end
+-- How much of the disk the categories account for, under the category list.
+function Categories.coverage(model, disk)
+	local measured = Model.total(model)
+	local partial = (model.scan.errors or 0) > 0
+	local text = (partial and "At least " or "") .. Model.size(measured) .. " measured"
+	if partial then text = text .. string.format(" · %d filesystem read issues", model.scan.errors) end
+	if disk then
+		local difference = (disk.totalKb - disk.freeKb) * 1024 - measured
+		text = text .. " · " .. (difference < 0 and "−" or "") .. Model.size(math.abs(difference)) .. " not attributed"
+	end
+	return text
+end
 -- Capacity is partitioned into measured categories, a visible residual and free space.
 -- Shared-block overcounts cannot be truthfully drawn as a partition of capacity.
 function Categories.distribution(model, disk)
@@ -96,7 +109,7 @@ function Categories.managementRows(model, rootId, query, filter)
 			local m = model.measurements[row.id] or {}
 			local impact = row.policy == "Essential" and "Essential to keep" or row.policy == "Rebuildable" and "Safe/rebuildable" or "Needs review"
 			if (not filter or filter == "All" or filter == impact) and (row.name .. " " .. (owner or "") .. " " .. (row.path or "")):lower():find(needle, 1, true) then
-				table.insert(result, {id = row.id, name = row.name, subtitle = owner, path = row.path or "System managed", icon = row.icon, color = row.color, appIcon = row.appIcon, fileIcon = row.fileIcon, info = row.action == "simulators" or row.action == "sdks", impact = impact,
+				table.insert(result, {id = row.id, name = row.name, subtitle = owner, path = row.path or "System managed", icon = row.icon, color = row.color, appIcon = row.appIcon, fileIcon = row.fileIcon, info = Destinations.elsewhere(model, row.id), impact = impact,
 					bytes = m.bytes})
 				Model.sizeLabel(result[#result], m.status, m.bytes)
 			end

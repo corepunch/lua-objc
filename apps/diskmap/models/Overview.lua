@@ -280,8 +280,8 @@ local function ancestry(row)
 end
 
 -- The largest individually measured resources across every category: the
--- quickest answer to "what is eating my storage?". Each row keeps its semantic
--- owner so it opens in the category that manages it.
+-- quickest answer to "what is eating my storage?". A row opens by its own id,
+-- wherever Destinations sends that resource.
 function Overview.largest(model, disk, limit, query)
 	local rows, needle = {}, (query or ""):lower()
 	local used = disk and disk.totalKb and disk.totalKb > 0 and (disk.totalKb - disk.freeKb) * 1024 or nil
@@ -292,7 +292,7 @@ function Overview.largest(model, disk, limit, query)
 			if needle == "" or (row.name .. " " .. owner .. " " .. (row.path or "")):lower():find(needle, 1, true) then
 				local root = row
 				while root:getParent() do root = root:getParent() end
-				table.insert(rows, {id = row.id, rootId = root.id, parentId = row:getParent() and row:getParent().id or row.id,
+				table.insert(rows, {id = row.id, rootId = root.id,
 					name = row.name, subtitle = owner,
 					bytes = m.bytes,
 					share = used and m.bytes / used or 0, shareText = percent(m.bytes, used),

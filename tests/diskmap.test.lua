@@ -172,7 +172,7 @@ t.assertEqual(ui.refs.access.title, "Scan access…", "access settings are offer
 ui.model.scan.errors = 7; ui:updateRows()
 t.assertEqual(ui.refs.access.title, "Review scan access…", "access guidance becomes specific when scan issues exist")
 ui.model.scan.errors = 0; ui:updateRows()
-ui:openManagement("developer")
+ui:open("developer")
 t.assertEqual(ui.management.rootId, "developer", "opening a category shows its sheet")
 t.assertEqual(ui.management.refs.categoryName.text, "Developer", "selected category appears in its sheet")
 local naturalSheetWidth = ui.management.sheet.size.width
@@ -181,7 +181,7 @@ ui.management:close()
 -- A window narrower than the sheet plus its margin clamps the sheet.
 local wideWindow = ui.window.size
 ui.window.size = ns.Size(naturalSheetWidth, wideWindow.height)
-ui:openManagement("developer")
+ui:open("developer")
 t.assertEqual(ui.management.sheet.size.width, ui.window.size.width - 80, "category sheet is 80 points narrower than a narrow window")
 ui.management:close()
 ui.window.size = wideWindow
@@ -200,7 +200,7 @@ t.expect(not sizeCell.spinner.hidden, "pending category has its own native spinn
 t.assertEqual(sizeCell.value.text, "Calculating…", "loading replaces numeric value")
 window:layout(); sizeCell = meterOf(sizeCell.cell)
 t.expect(sizeCell.value.frame.size.width >= sizeCell.value.fittingSize.width, "the spinner and \"Calculating…\" fit the meter")
-t.assertEqual(ui.refs.results.rowCount, 20, "per-category loading preserves category rows")
+t.assertEqual(ui.refs.results.rowCount, 22, "per-category loading preserves category rows")
 window:layout()
 t.expect(ui.refs.page.documentView.frame.size.height > ui.refs.page.contentView.bounds.size.height, "the overview scrolls past the category list")
 Inventory.cancel(ui.model); ui:updateRows()

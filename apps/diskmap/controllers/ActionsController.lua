@@ -1,4 +1,5 @@
 local Model = require("apps.diskmap.Model")
+local Destinations = require("apps.diskmap.models.Destinations")
 local Inspector = require("apps.diskmap.models.Inspector")
 local Files = require("apps.diskmap.models.Files")
 local FolderTree = require("apps.diskmap.models.FolderTree")
@@ -9,7 +10,8 @@ local Controller = {}; Controller.__index = Controller
 -- button and its contextual menu instead of buttons under the list, so a
 -- page can scroll as one surface and every list offers the same verbs in the
 -- same order: the primary action, Finder, the owning category, Keep, Copy.
--- `handlers.open(id)` opens a category, `handlers.show(page)` a sidebar page,
+-- `handlers.open(id)` opens a resource or category where Destinations sends
+-- it, `handlers.show(page)` a sidebar page,
 -- `handlers.keep(id)` toggles Keep, `handlers.watch(entry)` returns the
 -- Watch/Stop Watching item for a resource or folder entry, and
 -- `handlers.refresh()` remeasures.
@@ -176,7 +178,7 @@ function Controller:resource(id)
 		if row.action ~= "finder" and detail then
 			table.insert(items, {title = detail.manageTitle, disabled = not detail.canManage,
 				action = function()
-					if row.action == "simulators" or row.action == "sdks" then self.handlers.open(id); return end
+					if Destinations.elsewhere(self.model, id) then self.handlers.open(id); return end
 					local inspector = InspectorController.new(self.model, self.service, self.handlers.refresh)
 					inspector:select(id); inspector:manage()
 				end})

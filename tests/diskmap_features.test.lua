@@ -7,7 +7,7 @@ local Inspector = require("apps.diskmap.models.Inspector")
 local Scan = require("apps.diskmap.controllers.ScanController")
 local CleanupController = require("apps.diskmap.controllers.CleanupController")
 local InspectorController = require("apps.diskmap.controllers.InspectorController")
-local TipsController = require("apps.diskmap.controllers.TipsController")
+local Recommendations = require("apps.diskmap.models.Recommendations")
 local SettingsController = require("apps.diskmap.controllers.SettingsController")
 local Rules = require("apps.diskmap.knowledge.CleanupRules")
 local model = Model.new("/Users/test")
@@ -64,10 +64,9 @@ t.expect(tips[1].title == "Some files could not be measured" and tips[1].text:fi
 	"access guidance describes filesystem issues and keeps Full Disk Access optional")
 t.assertEqual(tips[2].id, "capacity", "low available space produces a separate tip")
 t.assertEqual(tips[2].action, nil, "low-space guidance stays on the opportunities page")
-local routed
-local tipsController = TipsController.new(model, function(action) routed = action end)
-tipsController:presentation({totalKb = 100, freeKb = 9}).actions.tip_access()
-t.assertEqual(routed, "settings", "tip controller routes the model action")
+local cleanupPage = Recommendations.page(function() return nil end).present(model, {disk = {totalKb = 100, freeKb = 9}})
+t.assertEqual(cleanupPage.links.tip_access.settings, "privacy", "the access tip leads to privacy settings")
+t.assertEqual(cleanupPage.children.tips.tips[1].id, "access", "the Clean Up page presents the tips")
 local legend = require("apps.diskmap.models.Overview").chart(model, {totalKb = 2e12 / 1024, freeKb = 1e12 / 1024}).legend
 for _, item in ipairs(legend) do
 	t.expect(item.id == "#other" or model.resources:find(item.id) ~= nil, "chart legend opens a registered category: " .. item.id)

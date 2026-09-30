@@ -68,7 +68,8 @@ function Controller:actions()
 	for _, page in ipairs(Navigation.destinations) do
 		if page.id then
 			actions["page_" .. page.id] = function() h.show(page.id) end
-			actions["isPage_" .. page.id] = function() return true, h.destination() == page.id end
+			-- A page of work this Mac does not do is not in the sidebar.
+			actions["isPage_" .. page.id] = function() return h.navigation:index(page.id) ~= nil, h.destination() == page.id end
 		end
 	end
 	for _, topic in ipairs(Help.searchTopics()) do

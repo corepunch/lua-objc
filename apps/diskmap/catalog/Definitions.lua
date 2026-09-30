@@ -3,8 +3,12 @@ local function item(id, name, subtitle, path, options)
 	for key, value in pairs(options or {}) do row[key] = value end
 	return row
 end
-local function group(id, name, subtitle, icon, color, children)
-	return {id = id, name = name, subtitle = subtitle, icon = icon, color = color, children = children}
+-- `options.page` names the sidebar page that presents a resource and
+-- everything under it (models/Destinations.lua); opening it goes there.
+local function group(id, name, subtitle, icon, color, children, options)
+	local row = {id = id, name = name, subtitle = subtitle, icon = icon, color = color, children = children}
+	for key, value in pairs(options or {}) do row[key] = value end
+	return row
 end
 -- A generated folder beside one of its project `markers` (any one proves
 -- the project). `inner` files inside the folder are a second proof that the

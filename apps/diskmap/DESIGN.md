@@ -412,7 +412,9 @@ services, feature controllers, template refs, navigation and the window.
 | `models/` | Inventory transitions, categories, cleanup eligibility, tips, inspector data and preferences. No native widgets. |
 | `catalog/` | Category definitions, explanations, paths, ownership and policies. |
 | `knowledge/CleanupRules.lua` | Resource-specific review thresholds and advice with consequences. |
-| `controllers/` | Independently testable scan, category, cleanup, tips, inspector and settings coordinators. |
+| `controllers/` | Independently testable scan, cleanup, inspector and settings coordinators. Pages that list catalog resources share `ResourcePageController`; each is a table built by its model. |
+| `knowledge/Workflows.lua` | One entry per kind of work (Developer, Music Production, …): its page and the catalog groups it lists. |
+| `models/Destinations.lua` | The one place that decides where opening a resource goes. |
 | `services/` | Injected native IO, persistence, permissions and owner-management integration. |
 | `services/Scanner.lua` + `StorageScan.dylib` | Metadata-only enumeration, exclusions, cross-root hard-link ownership and diagnostics. |
 | `Controller.lua` | Composition root, navigation and template/action binding. |

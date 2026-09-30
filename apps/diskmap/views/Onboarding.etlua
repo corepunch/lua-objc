@@ -15,11 +15,11 @@
     </HStack>
     <Label text="macOS protects Mail, Messages, Safari, Documents and other folders. With Full Disk Access, Diskmap can measure them too, so its totals match your disk. It reads only names, sizes and dates, never what is in your files." size="13" maxWidth="infinity" lines="0" />
     <VStack maxWidth="infinity" spacing="<%= ONBOARDING.stepSpacing %>" alignment="leading">
-      <HStack maxWidth="infinity" spacing="<%= ONBOARDING.stepGap %>" alignment="top">
+      <HStack maxWidth="infinity" spacing="<%= ONBOARDING.stepGap %>" alignment="center">
         <SystemImage name="1.circle.fill" size="<%= ONBOARDING.stepSymbol %>" color="systemBlue" accessibilityLabel="Step 1" />
         <Label text="Click Open System Settings." size="13" flexGrow="1" flexBasis="0" flexShrink="1" lines="0" />
       </HStack>
-      <HStack maxWidth="infinity" spacing="<%= ONBOARDING.stepGap %>" alignment="top">
+      <HStack maxWidth="infinity" spacing="<%= ONBOARDING.stepGap %>" alignment="center">
         <SystemImage name="2.circle.fill" size="<%= ONBOARDING.stepSymbol %>" color="systemBlue" accessibilityLabel="Step 2" />
         <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
           <Label text="Turn on Diskmap in the Full Disk Access list." size="13" maxWidth="infinity" lines="0" />
@@ -28,7 +28,7 @@
       </HStack>
     </VStack>
     <% -- After Settings opens: what Diskmap is doing, and what to do if nothing happens. %>
-    <HStack id="waiting" maxWidth="infinity" spacing="<%= ONBOARDING.stepGap %>" alignment="top" hidden="<%= openedSettings and "false" or "true" %>">
+    <HStack id="waiting" maxWidth="infinity" spacing="<%= ONBOARDING.stepGap %>" alignment="center" hidden="<%= openedSettings and "false" or "true" %>">
       <ProgressView id="waitingSpinner" width="<%= ONBOARDING.stepSymbol %>" height="<%= ONBOARDING.stepSymbol %>" />
       <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
         <Label text="Waiting for access…" size="13" maxWidth="infinity" lines="0" />

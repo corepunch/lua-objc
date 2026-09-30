@@ -14,7 +14,8 @@ local Applications = require("apps.diskmap.models.Applications")
 local Simulators = require("apps.diskmap.models.Simulators")
 local Updates = require("apps.diskmap.models.Updates")
 local Recommendations = require("apps.diskmap.models.Recommendations")
-local Developer = require("apps.diskmap.models.Developer")
+local Workflow = require("apps.diskmap.models.Workflow")
+local developerWorkflow = require("apps.diskmap.knowledge.Workflows").find("developer")
 local Controller = require("apps.diskmap.Controller")
 local home = "/Users/test"
 
@@ -132,7 +133,7 @@ t.assertEqual(app.refs.mapList.rowCount, everything, "clearing the search restor
 t.expect(app.refs.mapSummary.text:find(" measured of ", 1, true) ~= nil, "the Map names its base beside the disk's used space")
 
 -- The sidebar badge and the Developer page name one total.
-t.assertEqual(app:badges().developer, Developer.presentation(app.model).total, "the Developer badge is the page's total")
+t.assertEqual(app:badges().developer, Workflow.presentation(app.model, developerWorkflow).total, "the Developer badge is the page's total")
 
 -- Clean Up lists read largest first.
 local cleanup = Recommendations.presentation(app.model)
