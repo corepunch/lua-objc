@@ -15,6 +15,8 @@ local CoinQuest = require("CoinQuest")
 local shots = require("shots")
 local Todo = require("Todo")
 local Score = require("Score")
+local Edits = require("Edits")
+local Conversation = require("Conversation")
 
 local here = "reels/promo/"
 local DURATION, SAMPLE_RATE = 30, 48000
@@ -44,7 +46,7 @@ local function music(data)
 			{ 17.6, 18.45 }, { 18.9, 19.5 }, { 23.6, 25.0 } },
 		typing = { { from = 4.0, to = 4.7, count = 22 }, { from = 7.25, to = 7.8, count = 24 } },
 		sends = { S.send1, S.send2, S.send3 },
-		pops = { 0.5, 1.0, 1.5, S.change1, S.change2, S.checked, S.change3, S.opened },
+		pops = { 0.5, 1.0, 1.5, S.change1, S.change2, S.checked, S.layers[1], S.layers[2], S.layers[3], S.change3, S.opened },
 		taps = { S.tap, S.tapOpen },
 		coins = coins,
 		logo = S.logo,
@@ -69,11 +71,6 @@ local function screens(dir)
 				-- "Open", the filter's middle segment.
 				{ at = S.tapOpen, aim = { "filtered", "filter", 0.5, 0.5 } },
 			},
-			drawer = {
-				open = S.drawer, listen = 13.9, send = S.send3, reply = S.send3 + 0.3, close = S.change3 - 0.2,
-				words = { { 14.1, "Add" }, { 14.35, "a" }, { 14.6, "filter." } }, prompt = "Add a filter.",
-				replyText = "Added a filter above the list.", file = "Content.etlua", delta = "+5",
-			},
 		},
 		hero = { dir = dir, rows = rows, timeline = { { at = 0, state = "open" } } },
 	}
@@ -90,6 +87,29 @@ local function screens(dir)
 		},
 	}
 	return phones, studios
+end
+
+-- The layers of MVC the filter edit lands in, from its own patch: each
+-- changed file with its role and its first lines of code.
+local LAYERS = {
+	["Model.lua"] = { role = "Model", note = "data, queries, rules", color = 0x7B8CFF },
+	["Controller.lua"] = { role = "Controller", note = "actions", color = 0xB86BFF },
+	["views/Content.etlua"] = { role = "View", note = "etlua template", color = 0xFF7AB8 },
+}
+local function layers()
+	local app = Edits.todo
+	local list = {}
+	for _, file in ipairs(Conversation.files(here .. "edits/" .. app.edits[3].patch .. ".patch")) do
+		local name = file.path:sub(#app.dir + 2)
+		local layer = LAYERS[name] or error("promo: no layer for " .. name)
+		local lines = {}
+		local added = {}
+		for _, line in ipairs(file.lines) do if line.sign == "+" then table.insert(added, line) end end
+		for _, line in ipairs(Conversation.excerpt(added, 3)) do table.insert(lines, (line:gsub("^%+ ", ""))) end
+		table.insert(list, { role = layer.role, note = layer.note, color = layer.color, file = name:match("[^/]+$"),
+			delta = "+" .. file.added .. (file.removed > 0 and (" −" .. file.removed) or ""), lines = lines })
+	end
+	return list
 end
 
 local function load(template)
@@ -114,6 +134,7 @@ local function load(template)
 		return states
 	end
 	data.shots = shots
+	data.layers = layers()
 	data.phones, data.studios = screens(data.capturesDir)
 	data.subframes = os.getenv("REEL_SUBFRAMES")
 	return Reel.load(here .. "views/" .. (template or "Reel.etlua"), data), data

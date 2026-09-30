@@ -1,17 +1,39 @@
-<% --[[ A 27-inch display on a stand, 1 unit = 10 cm: an aluminium panel
-  with black glass and a 1600 × 900 pt screen drawn by `screen`. The screen
+<% --[[ Apple Studio Display on its tilt stand, 1 unit = 10 cm, after
+  Apple's published dimensions: a 62.3 × 36.2 cm panel standing 47.8 cm tall
+  on a stand 16.8 cm deep. From the front it is black glass to within a
+  hair of the edge, around a 27-inch 16:9 screen (59.8 × 33.6 cm) with an
+  even border of about 1.2 cm and the camera centred in the top border; the
+  aluminium shows only as a thin rim. The stand is one bent sheet: it leaves
+  the back of the panel, leans back down to the desk and folds forward into
+  the foot. The screen is a 1600 × 900 pt surface drawn by `screen`; its
   node is `<id>-screen`. ]]
-  local P = { w = 6.23, h = 3.62, d = 0.14, corner = 0.1, edge = 0.03,
-    glassW = 6.19, glassH = 3.58, screenW = 5.97, screenH = 3.358 }
+  local P = { w = 6.23, h = 3.62, d = 0.24, corner = 0.1, edge = 0.03,
+    glassW = 6.19, glassH = 3.58, glassCorner = 0.08,
+    screenW = 5.98, screenH = 3.364, camera = 0.018,
+    aluminium = "#D3D4D7" }
+  -- The stand, in the panel's space: a hinge behind the panel's lower
+  -- middle, the desk 11.6 cm below the panel, the fold at the back.
+  local S = { width = 1.72, sheet = 0.06, hinge = { -0.35, -0.2 }, fold = { -2.95, -1.45 }, front = 0.05 }
+  local rise, run = S.hinge[1] - S.fold[1], S.hinge[2] - S.fold[2]
+  local leg = math.sqrt(rise * rise + run * run)
+  local lean = math.deg(math.atan(run, rise))
 %>
 <Node id="<%= id %>" position="<%= position %>" rotation="<%= rotation or '0 0 0' %>" scale="<%= scale or 1 %>" <%- extra or "" %>>
-	<Node geometry="slab" width="<%= P.w %>" height="<%= P.h %>" length="<%= P.d %>" cornerRadius="<%= P.corner %>" chamfer="<%= P.edge %>" color="#C9CACD" metalness="1" roughness="0.3" />
-	<Node geometry="plane" width="<%= P.glassW %>" height="<%= P.glassH %>" cornerRadius="0.08" position="0 0 <%= P.d / 2 + 0.0005 %>" color="#030304" roughness="0.04" clearcoat="1" />
-	<Node id="<%= id %>-screen" geometry="plane" width="<%= P.screenW %>" height="<%= P.screenH %>" position="0 0.03 <%= P.d / 2 + 0.001 %>" roughness="0.05">
+	<Node geometry="slab" width="<%= P.w %>" height="<%= P.h %>" length="<%= P.d %>" cornerRadius="<%= P.corner %>" chamfer="<%= P.edge %>" color="<%= P.aluminium %>" metalness="1" roughness="0.38" />
+	<Node geometry="plane" width="<%= P.glassW %>" height="<%= P.glassH %>" cornerRadius="<%= P.glassCorner %>" position="0 0 <%= P.d / 2 + 0.0005 %>" color="#030304" roughness="0.04" clearcoat="1" />
+	<Node geometry="cylinder" radius="<%= P.camera %>" height="0.002" position="0 <%= (P.glassH + P.screenH) / 4 %> <%= P.d / 2 + 0.0008 %>" rotation="90 0 0" color="#16171B" roughness="0.1" clearcoat="1" />
+	<Node id="<%= id %>-screen" geometry="plane" width="<%= P.screenW %>" height="<%= P.screenH %>" position="0 0 <%= P.d / 2 + 0.001 %>" roughness="0.05">
 		<Surface width="1600" height="900" density="<%= density or 2 %>" background="#000000">
 			<%- screen %>
 		</Surface>
 	</Node>
-	<Node geometry="box" width="1.5" height="2.9" length="0.1" chamfer="0.04" position="0 -2.35 -0.62" rotation="-16 0 0" color="#C9CACD" metalness="1" roughness="0.32" />
-	<Node geometry="box" width="1.6" height="0.08" length="1.9" chamfer="0.035" position="0 -3.78 -0.55" color="#C9CACD" metalness="1" roughness="0.32" />
+	<!-- The stand: the leg leaning back from the hinge to the fold, and the
+	     foot folding forward under the panel. -->
+	<Node geometry="box" width="<%= S.width %>" height="<%= leg %>" length="<%= S.sheet %>" chamfer="0.02"
+		position="0 <%= (S.hinge[1] + S.fold[1]) / 2 %> <%= (S.hinge[2] + S.fold[2]) / 2 %>" rotation="<%= lean %> 0 0"
+		color="<%= P.aluminium %>" metalness="1" roughness="0.4" />
+	<Node geometry="cylinder" radius="<%= S.sheet / 2 %>" height="<%= S.width %>" position="0 <%= S.fold[1] %> <%= S.fold[2] %>" rotation="0 0 90"
+		color="<%= P.aluminium %>" metalness="1" roughness="0.4" />
+	<Node geometry="box" width="<%= S.width %>" height="<%= S.sheet %>" length="<%= S.front - S.fold[2] %>" chamfer="0.02"
+		position="0 <%= S.fold[1] %> <%= (S.front + S.fold[2]) / 2 %>" color="<%= P.aluminium %>" metalness="1" roughness="0.4" />
 </Node>

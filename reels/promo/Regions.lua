@@ -108,45 +108,63 @@ end
 
 -- ── Lua Studio's chat on the iPad ────────────────────────────────────────
 
--- The conversation column (right of the stage), above the composer.
--- (It ends above the suggestion chips, which start at y 932.)
-local CHAT = { left = 470, right = 1370, top = 100, bottom = 924, background = { 1, 1, 1 } }
+-- The conversation's viewport in the agent card, in the points of a
+-- 1376 × 1032 screen: under the card's header and clear of its buttons'
+-- shadows, above the suggestion chips and theirs. The chat opens at its
+-- latest turn, so the viewport shows the newest exchange at its foot.
+local CHAT = { left = 515, right = 1356, top = 124, bottom = 900 }
+Regions.CHAT = CHAT
 
-local function isAccent(r, g, b) return b > 0.8 and r < 0.3 and g > 0.35 and g < 0.65 end
+-- The user's bubble is the brand gradient, violet to pink.
+local function isBubble(r, g, b) return r > 0.5 and b > 0.7 and g < 0.45 end
 
 -- chat(image) -> {turns = {{kind = "user"|"text"|"card", rect}…},
--- lines = {rect…} (diff lines inside cards)}: the conversation's pieces,
--- top to bottom.
+-- lines = {rect…} (file rows and diff lines inside cards), latest = index
+-- of the newest exchange's first turn (its user bubble)}: the
+-- conversation's visible pieces, top to bottom.
 function Regions.chat(image)
 	local out = { turns = {}, lines = {} }
 	local bands = Regions.bands(image, CHAT.left, CHAT.right, CHAT.top, CHAT.bottom, isWhite, 6)
 	for _, band in ipairs(bands) do
-		-- Classify by what the band holds: a run of blue is a bubble (the
-		-- agent's sparkle is blue too, but small), grey a card, else text.
-		local accent, card = 0, false
+		-- Classify by what the band holds: a run of the gradient is a bubble
+		-- (the agent's avatar is the gradient too, but small), grey a card,
+		-- else text.
+		local bubble, card = 0, false
 		local minX, maxX = math.huge, -math.huge
 		local middle = band.y + math.floor(band.h / 2)
 		for x = CHAT.left, CHAT.right, 4 do
 			local r, g, b = image:pixel(x, middle)
-			if isAccent(r, g, b) then accent = accent + 1 end
+			if isBubble(r, g, b) then bubble = bubble + 1 end
 			if isCard(r, g, b) then card = true end
 			for _, y in ipairs({ band.y + 1, middle, band.y + band.h - 2 }) do
 				if not isWhite(image:pixel(x, y)) then minX = math.min(minX, x); maxX = math.max(maxX, x) end
 			end
 		end
-		local kind = accent > 12 and "user" or ((card and band.h > 60) and "card" or "text")
+		local kind = bubble > 12 and "user" or ((card and band.h > 60) and "card" or "text")
 		local rect = { x = minX - 6, y = band.y - 3, w = maxX - minX + 12, h = band.h + 6 }
 		table.insert(out.turns, { kind = kind, rect = rect })
+		if kind == "user" then out.latest = #out.turns end
 		if kind == "card" then
-			-- Diff lines: text runs inside the card, on the card's grey.
-			local cardLeft = CHAT.left + 140
-			for _, line in ipairs(Regions.bands(image, cardLeft, CHAT.right - 120, band.y + 60, band.y + band.h - 4,
+			-- File rows and diff lines: text runs inside the card, below its
+			-- summary row, on the card's grey.
+			local inset = 12
+			for _, line in ipairs(Regions.bands(image, rect.x + inset, rect.x + rect.w - inset, band.y + 56, band.y + band.h - 4,
 				function(r, g, b) return isCard(r, g, b) or isWhite(r, g, b) end, 3)) do
-				table.insert(out.lines, { x = cardLeft - 20, y = line.y - 3, w = CHAT.right - cardLeft - 80, h = line.h + 6, card = rect })
+				table.insert(out.lines, { x = rect.x + inset, y = line.y - 3, w = rect.w - 2 * inset, h = line.h + 6, card = rect })
 			end
 		end
 	end
 	return out
+end
+
+-- How far the conversation scrolled between two captures, in points: the
+-- turn just above the newest exchange in `after` is the last turn of
+-- `before`, moved up to make room. 0 when nothing came before.
+function Regions.scroll(before, after)
+	local anchor = after.latest and after.turns[after.latest - 1]
+	local last = before.turns[#before.turns]
+	if not anchor or not last then return 0 end
+	return anchor.rect.y + anchor.rect.h - (last.rect.y + last.rect.h)
 end
 
 return Regions

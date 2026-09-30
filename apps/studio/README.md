@@ -43,7 +43,7 @@ preview status, Run, and the chat toggle for focusing the preview. The bottom
 bar has the device, reload, appearance, and zoom controls. The card header has
 the agent's avatar and the project actions Commit, Share, and Deploy. The chat
 shows the request as a gradient bubble, the agent's reply beside its avatar,
-and a card of changed files with line counts, followed by suggestions and a
+and a card of changed files with line counts (it opens at the latest turn), followed by suggestions and a
 glass composer, in a centred reading column. Run, reload, Commit, the rail's
 mode switch, and the chat toggle work. Project switching, the rail
 destinations, Share, Deploy, and the composer are still placeholders. Code

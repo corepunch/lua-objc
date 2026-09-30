@@ -1,0 +1,14 @@
+<% --[[ A code panel floating in the world: a thin dark slab, 1 unit =
+  10 cm, `width` wide, whose front draws `screen` on a `points` = {w, h}
+  surface in the panel's own colour. The face is `<id>-face`. ]]
+  local w = width
+  local h = width * points[2] / points[1]
+%>
+<Node id="<%= id %>" position="<%= position %>" rotation="<%= rotation or '0 0 0' %>" opacity="<%= opacity or 1 %>" <%- extra or "" %>>
+	<Node geometry="slab" width="<%= w %>" height="<%= h %>" length="0.014" cornerRadius="0.04" chamfer="0.005" color="#2A2A31" metalness="0.3" roughness="0.35" />
+	<Node id="<%= id %>-face" geometry="plane" width="<%= w - 0.006 %>" height="<%= h - 0.006 %>" cornerRadius="0.037" position="0 0 0.0078" roughness="0.1">
+		<Surface width="<%= points[1] %>" height="<%= points[2] %>" density="<%= density or 2 %>" background="<%= background %>">
+			<%- screen %>
+		</Surface>
+	</Node>
+</Node>

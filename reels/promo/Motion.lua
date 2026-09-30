@@ -7,10 +7,11 @@
 --                       matched-geometry morph (every task row keeps its
 --                       identity, slides to its new place lifted on a soft
 --                       shadow; new components pop in on a spring; removed
---                       ones fall away), with taps and the chat drawer
+--                       ones fall away), with taps
 --   Motion.studio(...)  Lua Studio on the iPad: the prompt typed, the bubble
---                       flying up from the composer, the answer rising, the
---                       change card popping, the diff lines wiping in
+--                       flying up from the composer as the conversation
+--                       scrolls, the answer rising, the change card popping,
+--                       its files and diff lines wiping in
 --
 -- Everything is a function of t, drawn with the reel's pen in the screen's
 -- points (402 × 874 for the phone, 1376 × 1032 for the iPad).
@@ -236,105 +237,9 @@ local function touch(pen, t, tap)
 	end
 end
 
--- The chat drawer on the phone: Lua Studio's composer on the iPhone. It
--- rises, listens while the words arrive, sends, shows the answer and
--- sinks. Drawn in the reel: this is the film's device, not a capture.
-local DRAWER = { h = 250, radius = 34, inset = 16 }
-local TYPE = {
-	body = Reel.Pen.style(17, "regular", 0x1D1D1F, -0.01),
-	bubble = Reel.Pen.style(17, "medium", 0xFFFFFF, -0.01),
-	small = Reel.Pen.style(13, "semibold", 0x8E8E93, 0),
-	name = Reel.Pen.style(15, "semibold", 0x1D1D1F, -0.01),
-	delta = Reel.Pen.style(13, "semibold", 0x34C759, 0),
-	mono = { size = 13, weight = "medium", kern = 0, color = rgb(0x1D1D1F), design = "mono" },
-}
-
-local function drawer(pen, t, D)
-	local open = spring(t - D.open, 0.5, 0.78)
-	local close = t >= D.close and ease.inCubic(clamp01((t - D.close) / 0.32)) or 0
-	local rise = open * (1 - close)
-	if rise <= 0.002 then return end
-	local h = DRAWER.h
-	local top = PHONE.h - h * rise
-	local w = PHONE.w
-	pen:save()
-	-- The app dims a little behind the sheet.
-	pen:rect(0, 0, w, PHONE.h, rgb(0x000000, 0.12 * rise))
-	pen:shadow({ dy = -6, blur = 30, color = { 0, 0, 0, 0.18 } })
-	pen:fill(Shape.roundedRect(6, top, w - 12, h + 40, DRAWER.radius), rgb(0xF9F9FB, 0.98))
-	pen:shadow()
-	pen:fill(Shape.roundedRect(w / 2 - 18, top + 8, 36, 5, 2.5), rgb(0x3C3C43, 0.28))
-	local x = DRAWER.inset + 6
-	pen:symbol("sparkles", x + 10, top + 34, 18, 0x0A84FF)
-	pen:text("Assistant", TYPE.name, x + 26, top + 40, "leading")
-	pen:text("on this iPhone", TYPE.small, w - x, top + 40, "trailing")
-	-- The spoken request, once sent, as a bubble.
-	if t >= D.send then
-		local k = spring(t - D.send, 0.42, 0.66)
-		local bw = pen:width(D.prompt, TYPE.bubble) + 28
-		pen:save()
-		pen:translate(w - x - bw / 2, top + 84 + 50 * (1 - k))
-		pen:scale(0.8 + 0.2 * k)
-		pen:fill(Shape.roundedRect(-bw / 2, -18, bw, 36, 18), 0x0A84FF)
-		pen:text(D.prompt, TYPE.bubble, 0, 6, "center")
-		pen:restore()
-	end
-	-- The answer: what changed.
-	if t >= D.reply then
-		local k = spring(t - D.reply, 0.45, 0.72)
-		pen:save()
-		pen:fade(clamp01((t - D.reply) / 0.15))
-		pen:translate(0, 14 * (1 - k))
-		pen:symbol("sparkles", x + 10, top + 134, 14, 0x0A84FF)
-		pen:text(D.replyText, TYPE.body, x + 26, top + 140, "leading")
-		pen:fill(Shape.roundedRect(x + 26, top + 152, w - 2 * x - 26, 30, 10), rgb(0x767680, 0.12))
-		pen:symbol("chevron.left.forwardslash.chevron.right", x + 42, top + 167, 13, 0x0A84FF)
-		pen:text(D.file, TYPE.mono, x + 56, top + 172, "leading")
-		pen:text(D.delta, TYPE.delta, w - x - 10, top + 172, "trailing")
-		pen:restore()
-	end
-	-- The composer: listening while the words arrive, then empty.
-	local cy = top + h - 40
-	pen:fill(Shape.roundedRect(x - 4, cy - 22, w - 2 * x + 8, 44, 22), 0xFFFFFF)
-	pen:stroke(Shape.roundedRect(x - 4, cy - 22, w - 2 * x + 8, 44, 22), rgb(0x3C3C43, 0.12), 1)
-	local listening = t >= D.listen and t < D.send
-	local mx = w - x - 22
-	pen:fill(Shape.circle(mx, cy, 17), listening and 0xFF3B30 or 0x0A84FF)
-	pen:symbol(listening and "waveform" or "arrow.up", mx, cy, 17, 0xFFFFFF)
-	if listening then
-		local cursor = x + 12
-		for i, word in ipairs(D.words) do
-			if t >= word[1] then
-				local k = spring(t - word[1], 0.3, 0.7)
-				pen:save()
-				pen:fade(min(1, (t - word[1]) / 0.08))
-				pen:translate(0, 8 * (1 - k))
-				cursor = cursor + pen:text(word[2], TYPE.body, cursor, cy + 6, "leading") + 5
-				pen:restore()
-			end
-		end
-		-- The waveform after the words, following the voice.
-		for i = 0, 11 do
-			local energy = 0
-			for _, word in ipairs(D.words) do
-				local dt = t - word[1]
-				if dt > -0.05 and dt < 0.4 then energy = max(energy, math.exp(-abs(dt - 0.1) / 0.12)) end
-			end
-			local bh = 4 + 22 * (0.2 + 0.8 * energy) * (0.4 + 0.6 * abs(sin(t * 19 + i * 1.3)))
-			pen:fill(Shape.roundedRect(cursor + 6 + i * 6, cy - bh / 2, 3, bh, 1.5), rgb(0x0A84FF, 0.85))
-		end
-	elseif t < D.send then
-		pen:save()
-		pen:fade(0.4)
-		pen:text("Describe a change…", TYPE.body, x + 12, cy + 6, "leading")
-		pen:restore()
-	end
-	pen:restore()
-end
-
 -- phone(pen, t, spec) draws the phone's screen at t. spec = {dir, rows
 -- (Todo.states()), timeline = {{at, state, assemble = beats}, …}, taps =
--- {{at, x, y}…}, drawer = {…}}. Each timeline entry after the first morphs
+-- {{at, x, y}…}}. Each timeline entry after the first morphs
 -- from the previous state at its `at`.
 function Motion.phone(pen, t, spec, native)
 	spec.states = spec.states or {}
@@ -354,7 +259,6 @@ function Motion.phone(pen, t, spec, native)
 	else
 		still(pen, S)
 	end
-	if spec.drawer then drawer(pen, t, spec.drawer) end
 	for _, tap in ipairs(spec.taps or {}) do touch(pen, t, tap) end
 end
 
@@ -367,16 +271,18 @@ end
 
 -- ── Lua Studio on the iPad ──────────────────────────────────────────────
 
--- The conversation ends above the suggestion chips (which start at y 932).
-local STUDIO = { w = 1376, h = 1032, chat = { x = 452, y = 95, w = 924, h = 830 },
+local STUDIO = { w = 1376, h = 1032, chat = Regions.CHAT,
 	-- The stage's phone preview, which updates with the phone beside it.
-	preview = { x = 24, y = 118, w = 392, h = 892 },
+	preview = { x = 100, y = 124, w = 376, h = 818, radius = 46 },
 	-- The draft in the composer, on the field's glass.
-	field = { x = 599, y = 984, right = 770, h = 22, color = 0xFDFDFD, text = 166 } }
+	field = { x = 625, y = 971, right = 800, h = 22, color = 0xFDFDFD, text = 166 } }
 
 -- studio(pen, t, spec, native). spec = {dir, sends = {{at, typeFrom,
--- typeTo}…}, previews = {{at, version}…}}: sends[i] types edit i's prompt
--- and sends it; previews switch the stage's preview to a version.
+-- typeTo, fly}…}, previews = {{at, version}…}}: sends[i] types edit i's
+-- prompt and sends it; previews switch the stage's preview to a version.
+-- On a send the conversation scrolls up as the bubble flies in, as Lua
+-- Studio's own transcript does: the earlier turns are the previous
+-- capture moved by the distance the captures differ by.
 function Motion.studio(pen, t, spec, native)
 	local canvas = pen.canvas
 	spec.images = spec.images or {}
@@ -404,7 +310,7 @@ function Motion.studio(pen, t, spec, native)
 	end
 	for _, p in ipairs(spec.previews) do
 		local flash = t >= p.at and math.exp(-(t - p.at) / 0.12) or 0
-		if flash > 0.01 then pen:fill(Shape.roundedRect(P.x + 6, P.y + 6, P.w - 12, P.h - 12, 44), rgb(0xFFFFFF, 0.55 * flash)) end
+		if flash > 0.01 then pen:fill(Shape.roundedRect(P.x + 6, P.y + 6, P.w - 12, P.h - 12, P.radius), rgb(0xFFFFFF, 0.55 * flash)) end
 	end
 	-- The composer: the next prompt is typed in over its time, hidden before.
 	local F = STUDIO.field
@@ -418,50 +324,59 @@ function Motion.studio(pen, t, spec, native)
 		local previous = sent > 1 and image(sent - 1) or image(0)
 		canvas:image(crop(previous, { x = F.x, y = F.y, w = F.right - F.x, h = F.h }), F.x, F.y, F.right - F.x, F.h)
 	end
-	-- The conversation: turns from the latest capture; those the latest
-	-- send added animate in.
-	pen:rect(STUDIO.chat.x, STUDIO.chat.y, STUDIO.chat.w, STUDIO.chat.h, 0xFFFFFF)
 	if sent == 0 then return end
+	-- The conversation: the exchange starts when the bubble takes off
+	-- (fly after the send); the earlier turns scroll up with it.
+	local V = STUDIO.chat
+	local view = { x = V.left, y = V.top, w = V.right - V.left, h = V.bottom - V.top }
 	local C = chat(sent)
-	local before = sent > 1 and #chat(sent - 1).turns or 0
-	-- The exchange starts when the bubble takes off (spec.fly after the send).
 	local at = spec.sends[sent].at + (spec.sends[sent].fly or 0)
+	local flight = spring(t - at, 0.7, 0.82)
+	pen:rect(view.x, view.y, view.w, view.h, 0xFFFFFF)
+	pen:save()
+	pen:clip(Shape.rect(view.x, view.y, view.w, view.h))
+	if sent > 1 then
+		local shift = Regions.scroll(chat(sent - 1), C) * (t >= at and flight or 0)
+		canvas:image(crop(image(sent - 1), view), view.x, view.y + shift, view.w, view.h)
+	end
+	local latest = C.latest or 1
 	local fresh = 0
-	for i, turn in ipairs(C.turns) do
+	local bubble
+	for i = latest, #C.turns do
+		local turn = C.turns[i]
 		local r = turn.rect
-		if r.y + r.h > STUDIO.chat.y + STUDIO.chat.h then break end
-		if i <= before then
-			canvas:image(crop(base, r), r.x, r.y, r.w, r.h)
-		else
-			fresh = fresh + 1
-			if turn.kind == "user" then
-				-- The prompt flies up from the composer into its bubble.
-				local start = at
-				local k = spring(t - start, 0.7, 0.82)
-				local fromX, fromY = F.x, F.y - 10
-				local x, y = fromX + (r.x - fromX) * k, fromY + (r.y - fromY) * k
-				if t >= start then piece(pen, base, r, x, y, 0.85 + 0.15 * k, clamp01((t - start) / 0.08), sin(pi * clamp01(k))) end
-			elseif turn.kind == "card" then
-				local start = at + 0.45
-				local k = spring(t - start, FEEL.pop.response, 0.7)
-				piece(pen, base, r, r.x, r.y + 30 * (1 - k), 0.94 + 0.06 * k, clamp01((t - start) / 0.12))
-				-- The diff lines wipe in, one after another, on the card's grey.
-				for j, lineRect in ipairs(t >= start and C.lines or {}) do
-					if lineRect.card == r or (lineRect.y > r.y and lineRect.y < r.y + r.h) then
-						local lineStart = start + 0.18 + (j - 1) * 0.035
-						local u = ease.outCubic(progress(t, lineStart, lineStart + 0.22))
-						local y = lineRect.y + 30 * (1 - k)
-						if u < 1 then
-							pen:rect(lineRect.x + lineRect.w * u, y, lineRect.w * (1 - u) + 2, lineRect.h, rgb(0xF2F2F7))
-						end
+		fresh = fresh + 1
+		if turn.kind == "user" then
+			bubble = r
+		elseif turn.kind == "card" then
+			local start = at + 0.45
+			local k = spring(t - start, FEEL.pop.response, 0.7)
+			piece(pen, base, r, r.x, r.y + 30 * (1 - k), 0.94 + 0.06 * k, clamp01((t - start) / 0.12))
+			-- The file rows and diff lines wipe in, one after another, on
+			-- the card's grey.
+			for j, lineRect in ipairs(t >= start and C.lines or {}) do
+				if lineRect.card == r then
+					local lineStart = start + 0.18 + (j - 1) * 0.035
+					local u = ease.outCubic(progress(t, lineStart, lineStart + 0.22))
+					local y = lineRect.y + 30 * (1 - k)
+					if u < 1 then
+						pen:rect(lineRect.x + lineRect.w * u, y, lineRect.w * (1 - u) + 2, lineRect.h, rgb(0xF2F2F7))
 					end
 				end
-			else
-				local start = at + 0.2 + (fresh - 2) * 0.35
-				local k = spring(t - start, 0.45, 0.8)
-				piece(pen, base, r, r.x, r.y + 16 * (1 - k), 1, clamp01((t - start) / 0.18))
 			end
+		else
+			local start = at + 0.2 + (fresh - 2) * 0.35
+			local k = spring(t - start, 0.45, 0.8)
+			piece(pen, base, r, r.x, r.y + 16 * (1 - k), 1, clamp01((t - start) / 0.18))
 		end
+	end
+	pen:restore()
+	-- The prompt flies up from the composer into its bubble, over the
+	-- viewport's edge.
+	if bubble and t >= at then
+		local fromX, fromY = F.x, F.y - 10
+		local x, y = fromX + (bubble.x - fromX) * flight, fromY + (bubble.y - fromY) * flight
+		piece(pen, base, bubble, x, y, 0.85 + 0.15 * flight, clamp01((t - at) / 0.08), sin(pi * clamp01(flight)))
 	end
 end
 

@@ -143,9 +143,14 @@ controls, bubbles and lines, and move those.
 - **Captions** over busy screens: a dark rounded pill at the foot of the
   frame that springs up on the beat. Free-floating white words collide with
   screens.
-- **Faked UI** (a feature that isn't shipping yet, such as a chat drawer on
-  the phone) is drawn with the pen in the product's style, and the reel's
-  README says it is faked.
+- **Faked UI** (a feature that isn't shipping yet) is drawn with the pen in
+  the product's style, and the reel's README says it is faked.
+- **A chat that scrolls:** capture it opened at its latest turn, as the app
+  shows it. On a send, the previous capture's conversation slides up by the
+  distance between the two captures' shared turn (`Regions.scroll`) while the
+  new bubble flies in; only the new exchange is cut into pieces.
+- **Code on screen** comes from the edit's own patch (`Conversation.files`),
+  never retyped, so the film cannot show code the app does not have.
 
 ## 5. SceneKit in a reel
 
@@ -162,6 +167,11 @@ controls, bubbles and lines, and move those.
   diffuse**. A white default diffuse, lit, adds to the emission and washes
   the screen out to white. Physically based lighting with low roughness adds
   a faint glass reflection on top.
+- **Model devices from their published dimensions** and check them from
+  the front first: a display is judged by its border and its stand. The
+  promo's Studio Display is centred glass with an even border around a 16:9
+  screen, and a stand that leans back from the panel and folds forward into
+  the foot; `tests/promo_reel.test.lua` keeps the proportions.
 - **Device bodies:** `geometry="slab"` (a rounded rectangle extruded with a
   quarter-circle chamfer) reads as a real body. Put black clearcoat glass in
   front, the screen plane a hair in front of that, and a camera plateau with

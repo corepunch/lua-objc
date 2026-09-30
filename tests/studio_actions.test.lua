@@ -48,4 +48,9 @@ t.expect(not root:reloadPreview(), "failed reload is reported")
 t.assertEqual(root.refs.preview.content, child, "failed reload preserves the prior preview")
 t.expect(root.refs.previewStatus.text:find("bad project", 1, true) ~= nil,
 	"failed reload displays its error")
+local anchored
+root.refs.transcriptScroll = { scrollTo = function(_, target, animated) anchored = { target, animated } end }
+root:showLatestTurn()
+t.assertEqual(anchored[1], "bottom", "the conversation opens at its latest turn")
+t.assertEqual(anchored[2], false, "without animating")
 os.exit(t.summary() and 0 or 1)

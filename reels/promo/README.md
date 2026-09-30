@@ -1,11 +1,14 @@
 # lua-objc promo
 
 A 30-second, 1080p film about lua-objc, made with lua-objc. Its subject is
-the main selling point: building apps right on the iPad and the iPhone. The
-agent edits an app from Lua Studio on the iPad while the iPhone beside it
-shows each change live and is tapped; then the iPhone alone is talked to
-and used; then it turns into a game and the camera goes through its screen;
-the Mac appears only in the closing composition.
+what the framework is for: native apps built with a coding agent, whose
+strict MVC split leaves the agent no room for spaghetti, right on the iPad.
+The agent edits an app from Lua Studio on the iPad while the iPhone beside
+it shows each change live and is tapped; then one request lands in the
+app's Model, Controller and View, shown as three code panels beside the
+iPhone, which shows the result and is used; then it turns into a game and
+the camera goes through its screen; the Mac, a Studio Display, appears only
+in the closing composition.
 
 Screenshots are never shown whole and still. They are cut into their
 components (rows, cards, the filter, chat bubbles, diff lines) and the
@@ -14,7 +17,7 @@ every task row keeps its identity and slides to its new place, new
 components pop in on springs, removed ones fall away, all on the beat.
 
 ```sh
-make promo-reel             # → build/lua-objc-Promo.mov (captures first if missing)
+make promo-reel             # → build/videos/lua-objc-Promo.mov (captures first if missing)
 make promo-reel-captures    # recapture after an app changes (Mac windows + Simulators)
 ./lua-objc reels/promo/init.lua stills /tmp 3.2,9.1,21.55
 ./lua-objc reels/promo/init.lua render /tmp/part.mov 13 17
@@ -29,11 +32,15 @@ then cut into components:
 | Seen as | Source | Captured |
 |---|---|---|
 | Todo on the iPhone, in seven states | `demo/todo` on the UIKit host | iPhone Simulator, streamed by the packager |
-| Lua Studio on the iPad | `apps/studio` with `LUA_STUDIO_SHOWCASE` | iPad Simulator, bundled with that version of Todo |
+| Lua Studio on the iPad | `apps/studio` with `LUA_STUDIO_SHOWCASE`, opened at the latest turn | iPad Simulator, bundled with that version of Todo |
+| The Model, Controller and View panels | the filter edit's own patch, `edits/todo-3-filter.patch` | read when the reel loads |
 | Coin Quest | `apps/coin-quest`: its `Stage.etlua`, prefabs, models and `Model` | rendered live by the reel's `<SceneView>` |
 | Ledger on the Mac (closing shot only) | `demo/ledger` | `lua-objc --capture` |
 
 The agent's edits are real diffs (`edits/*.patch`, listed in `Edits.lua`).
+The filter edit is one request that changes three files, each in its
+layer: the filter state and query in `Model.lua`, the action in
+`Controller.lua`, the segmented picker in `views/Content.etlua`.
 The repository holds each app as it ships; version k is that state with the
 later edits reverse-applied. The states reached by using the app (a task
 checked, the Open filter) are the same app with its sample data changed
@@ -47,9 +54,8 @@ The components are found in the screenshots' pixels when the reel loads
 task each row is comes from the app's own model (`Todo.lua`), so a morph
 knows which row goes where.
 
-Faked for the film, because it is the product's direction rather than a
-shipping screen: the chat drawer on the iPhone (drawn in `Motion.lua`), and
-the iPhone beside the iPad standing for Lua Studio's preview.
+Faked for the film: the iPhone beside the iPad stands for Lua Studio's
+preview (the capture's stage shows the same state).
 
 Coin Quest is not a recording: `CoinQuest.lua` steps the game's own session
 `Model` and `World` with a scripted pad at 240 Hz, and the reel renders the
@@ -65,14 +71,14 @@ then, after the camera flies into the screen, full frame.
 | `views/Quest.etlua` | Inside the game after the cut |
 | `views/Type.etlua` | Everything written on the film, on the beat; captions and labels |
 | `views/screens/Desktop.etlua` | The Mac's desktop in the closing shot |
-| `Motion.lua` | Component motion: the phone's morphs, assembly, taps and chat drawer; Lua Studio's chat |
+| `Motion.lua` | Component motion: the phone's morphs, assembly and taps; Lua Studio's chat, scrolling as it grows |
 | `Regions.lua` | Components found in simulator screenshots |
 | `Todo.lua` | The Todo states and their row order, from the app's model |
-| `views/devices/` | SceneKit prefabs: iPhone (portrait or landscape), iPad, display, floating window |
+| `views/devices/` | SceneKit prefabs: iPhone (portrait or landscape), iPad, Studio Display, floating window, code panel |
 | `Choreography.lua` | The camera and every device as functions of t; the exact meeting points |
 | `CoinQuest.lua` | The deterministic Coin Quest replay |
 | `Stage.lua` | The studio lighting environment, drawn with the pen |
-| `shots.lua` | The screens and captions as reel `<Draw>` shots |
+| `shots.lua` | The screens, the code panels, the request bubble and captions as reel `<Draw>` shots |
 | `Score.lua` | The music and the picture-synced sounds |
 | `Edits.lua`, `edits/`, `Conversation.lua` | The agent edits and the Lua Studio conversation built from them |
 | `capture.lua` | The capture pipeline (`make promo-reel-captures`) |
@@ -84,7 +90,7 @@ then, after the camera flies into the screen, full frame.
 |---|---|---|
 | 0–3.6 | Open | The Todo app assembles on the iPhone from its pieces, landing on the beats. |
 | 3.6–11.75 | iPad and iPhone | A prompt is typed in Lua Studio and sent; the bubble flies up, the answer and its diff arrive. In one held two-shot the phone reflows, a second prompt is sent and lands too. A finger taps a task on the phone and it checks off. "No build. No restart." |
-| 13–17.6 | The iPhone alone | Its chat drawer rises, "Add a filter." is spoken, the filter pops in; a tap on Open collapses the finished tasks. |
+| 13–17.6 | Made for coding agents | "Add a filter." is asked; the edit deals out as three code panels, Model, Controller and View, each with its own lines; the filter pops in on the phone; a tap on Open collapses the finished tasks. "Strict MVC. No spaghetti." |
 | 17.6–23.6 | Native 3D | The phone turns on its side into Coin Quest; the camera pushes into the screen and cuts into the game's world. |
 | 23.6–30 | Close | The Mac, the iPad and the iPhone take their places; the end card. |
 

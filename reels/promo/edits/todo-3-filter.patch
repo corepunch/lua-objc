@@ -1,3 +1,92 @@
+--- a/demo/todo/Model.lua
++++ b/demo/todo/Model.lua
+@@ -22,9 +22,12 @@
+ 	{id = 9, title = "Call Mum", project = "personal", due = "19:00", flagged = true},
+ }
+ 
++-- The filters above the list, in order.
++Model.FILTERS = {"All", "Open", "Flagged"}
++
+ -- `tasks` replaces the sample tasks (tests use small lists).
+ function Model.new(tasks)
+-	local self = setmetatable({tasks = {}, projects = {}}, Model)
++	local self = setmetatable({tasks = {}, projects = {}, filter = 1}, Model)
+ 	for _, project in ipairs(Model.PROJECTS) do self.projects[project.id] = project end
+ 	for _, task in ipairs(tasks or Model.TASKS) do
+ 		local copy = {}
+@@ -34,6 +37,17 @@
+ 	return self
+ end
+ 
++-- `index` is the 1-based position in FILTERS.
++function Model:setFilter(index)
++	if Model.FILTERS[index] then self.filter = index end
++end
++
++local SHOWN = {
++	All = function() return true end,
++	Open = function(task) return not task.done end,
++	Flagged = function(task) return task.flagged == true end,
++}
++
+ function Model:find(id)
+ 	for _, task in ipairs(self.tasks) do if task.id == id then return task end end
+ end
+@@ -84,14 +98,18 @@
+ 	return lists
+ end
+ 
+--- Everything the content template reads: the tasks in order, split into
+--- open and completed, and the progress over the whole day.
++-- Everything the content template reads: the tasks the filter shows, in
++-- order and split into open and completed, the filters (the picker's value
++-- is 0-based) and the progress over the whole day.
+ function Model:presentation()
+ 	local all, open, completed = {}, {}, {}
++	local shown = SHOWN[Model.FILTERS[self.filter]]
+ 	for _, task in ipairs(self.tasks) do
+-		local row = self:row(task)
+-		table.insert(all, row)
+-		table.insert(task.done and completed or open, row)
++		if shown(task) then
++			local row = self:row(task)
++			table.insert(all, row)
++			table.insert(task.done and completed or open, row)
++		end
+ 	end
+ 	return {
+ 		title = "Today",
+@@ -99,6 +117,8 @@
+ 		tasks = all,
+ 		open = open,
+ 		completed = completed,
++		filters = Model.FILTERS,
++		filter = self.filter - 1,
+ 		progress = self:progress(),
+ 		lists = self:lists(),
+ 	}
+--- a/demo/todo/Controller.lua
++++ b/demo/todo/Controller.lua
+@@ -17,6 +17,7 @@
+ -- Every checkbox dispatches `toggle_<id>`.
+ function Controller:actions()
+ 	return setmetatable({
++		filter = function(index) self:setFilter(index + 1) end,
+ 		-- Every list shows today's tasks in this demo.
+ 		selectList = function() end,
+ 	}, {__index = function(_, name)
+@@ -37,6 +38,11 @@
+ 	self:render()
+ end
+ 
++function Controller:setFilter(index)
++	self.model:setFilter(index)
++	self:render()
++end
++
+ function Controller:createWindow()
+ 	local config, refs = xml.renderFile(VIEWS .. "Window.etlua", {actions = self:actions()}, ns)
+ 	self.content = Template.new(refs.content, VIEWS .. "Content.etlua", ns)
 --- a/demo/todo/views/Content.etlua
 +++ b/demo/todo/views/Content.etlua
 @@ -4,6 +4,11 @@
