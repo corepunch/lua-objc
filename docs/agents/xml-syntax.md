@@ -151,7 +151,7 @@ are parsed up front, but native views are created only for visible cells.
 | `Image` | Native image view or SF Symbol | `src`/`path`, or `system`/`symbol`; `label`, `size`, `weight`, `color`, `resizable`, `contentMode` |
 | `SystemImage` | Native SF Symbol image | `name` or `symbol`, `label`, `size`, `weight`, `color` |
 | `Chart` | Pre-built chart supplied in render data | `data` key, default `chart` |
-| `LinearGradient` | Vertical wash used as a fill | `topAlpha`, `middleAlpha`, `middleLocation`, `bottomAlpha` |
+| `LinearGradient` | Gradient fill: semantic `colors` between two unit points, or a vertical black fade without `colors` | `colors`, `startPoint`, `endPoint`; `topAlpha`, `middleAlpha`, `middleLocation`, `bottomAlpha` |
 | `MeshGradient` | Grid of colored control points (SwiftUI `MeshGradient`) | `width`, `height`, `animated`; children are `MeshPoint` |
 | `MeshPoint` | One control point consumed by `MeshGradient` | `x`, `y` in 0…1; `red`, `green`, `blue`, `alpha` |
 | `ShaderView` | AppKit Metal fragment shader redrawn every display frame | `source` (`.metal` path) or `ShaderSource` children, `function`, plus layout attributes; assign `values` from the controller |

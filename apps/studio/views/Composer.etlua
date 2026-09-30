@@ -6,7 +6,7 @@
 <VStack padding="<%= inset %>" spacing="<%= COMPOSER.spacing %>" maxWidth="<%= column %>" alignment="leading">
 	<FlowStack spacing="<%= COMPOSER.chipSpacing %>" maxWidth="infinity">
 		<% for _, suggestion in ipairs(suggestions) do %>
-		<Button title="<%= suggestion.title %>" systemImage="<%= suggestion.icon %>" controlSize="small" style="bordered" />
+		<Button title="<%= suggestion.title %>" systemImage="<%= suggestion.icon %>" controlSize="small" style="glass" />
 		<% end %>
 	</FlowStack>
 	<GlassEffect cornerRadius="<%= COMPOSER.radius %>" maxWidth="infinity">

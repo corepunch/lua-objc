@@ -1,5 +1,6 @@
 local Model = {}
 local Code = require("apps.studio.models.Code")
+local Theme = require("apps.studio.models.Theme")
 
 -- Templates get a code symbol and Lua modules a document symbol. Each row
 -- shows the file name, with its folder beneath it rather than the full path.
@@ -75,8 +76,9 @@ function Model.presentation(conversation, code)
 		table.insert(messages, entry)
 	end
 	return {
-		agent = { name = "Assistant", model = "openrouter/free" },
-		modes = { "Chat", "Code" },
+		agent = { name = "Assistant", model = "openrouter/free", icon = "sparkles" },
+		brand = Theme.brand,
+		tint = Theme.tint,
 		messages = messages,
 		draft = source.draft or "",
 		listening = source.listening == true,

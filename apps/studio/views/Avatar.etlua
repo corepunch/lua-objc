@@ -1,0 +1,8 @@
+<%
+  -- The agent's mark: its symbol in white on a disc of the brand gradient.
+  -- `size` is the disc's diameter.
+%>
+<ZStack width="<%= size %>" height="<%= size %>">
+	<LinearGradient colors="<%= colors %>" startPoint="topLeading" endPoint="bottomTrailing" cornerRadius="<%= size // 2 %>" />
+	<SystemImage name="<%= icon %>" size="<%= size // 2 %>" weight="semibold" color="white" label="<%= label %>" />
+</ZStack>

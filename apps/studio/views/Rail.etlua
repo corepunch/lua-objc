@@ -1,0 +1,29 @@
+<%
+  -- The activity rail: icon-only, as in an editor. The brand mark sits at the
+  -- top, the modes of the agent card beneath it, workspace destinations after
+  -- a rule, and settings at the foot. The rail has no background of its own;
+  -- it rests on the workspace gradient.
+  local RAIL = { width = 68, inset = 12, spacing = 6, item = 44, itemRadius = 14, symbol = 19, mark = 40, markRadius = 12, markSymbol = 19, rule = 24 }
+%>
+<VStack id="rail" tint="<%= tint %>" width="<%= RAIL.width %>" paddingVertical="<%= RAIL.inset %>" spacing="<%= RAIL.spacing %>" maxHeight="infinity" alignment="center">
+	<ZStack width="<%= RAIL.mark %>" height="<%= RAIL.mark %>" accessibilityLabel="<%= brand.title %>">
+		<LinearGradient colors="<%= brand.colors %>" startPoint="topLeading" endPoint="bottomTrailing" cornerRadius="<%= RAIL.markRadius %>" />
+		<SystemImage name="<%= brand.icon %>" size="<%= RAIL.markSymbol %>" weight="semibold" color="white" label="" />
+	</ZStack>
+	<Spacer height="<%= RAIL.spacing %>" />
+	<% for _, mode in ipairs(modes) do %>
+	<ZStack id="rail/<%= mode.id %>/on" width="<%= RAIL.item %>" height="<%= RAIL.item %>" hidden="<%= tostring(not mode.selected) %>">
+		<LinearGradient colors="<%= brand.colors %>" startPoint="topLeading" endPoint="bottomTrailing" cornerRadius="<%= RAIL.itemRadius %>" />
+		<SystemImage name="<%= mode.icon %>" size="<%= RAIL.symbol %>" weight="semibold" color="white" label="<%= mode.title %>, selected" />
+	</ZStack>
+	<Button id="rail/<%= mode.id %>/off" systemImage="<%= mode.icon %>" symbolSize="<%= RAIL.symbol %>" foregroundStyle="secondary" accessibilityLabel="<%= mode.title %>" action="<%= mode.action %>" style="plain" width="<%= RAIL.item %>" height="<%= RAIL.item %>" hidden="<%= tostring(mode.selected) %>" />
+	<% end %>
+	<Divider width="<%= RAIL.rule %>" />
+	<% for _, item in ipairs(destinations) do %>
+	<Button id="rail/<%= item.id %>" systemImage="<%= item.icon %>" symbolSize="<%= RAIL.symbol %>" foregroundStyle="secondary" accessibilityLabel="<%= item.title %>" style="plain" width="<%= RAIL.item %>" height="<%= RAIL.item %>" />
+	<% end %>
+	<Spacer />
+	<% for _, item in ipairs(footer) do %>
+	<Button id="rail/<%= item.id %>" systemImage="<%= item.icon %>" symbolSize="<%= RAIL.symbol %>" foregroundStyle="secondary" accessibilityLabel="<%= item.title %>" style="plain" width="<%= RAIL.item %>" height="<%= RAIL.item %>" />
+	<% end %>
+</VStack>

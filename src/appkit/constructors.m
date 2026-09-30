@@ -275,6 +275,9 @@ static int bridge_AppKitControls_spacer(lua_State *L) {
 
 @interface LuaGradientView : NSView
 @property(nonatomic, strong) CAGradientLayer *gradient;
+/* Semantic stops, kept so the layer's CGColors follow the appearance. */
+@property(nonatomic, copy) NSArray<NSColor *> *colors;
+- (void)resolveColors;
 @end
 
 @implementation LuaGradientView
@@ -292,7 +295,41 @@ static int bridge_AppKitControls_spacer(lua_State *L) {
 	self.gradient.frame = self.bounds;
 }
 - (NSView *)hitTest:(NSPoint)point { return nil; }
+- (void)resolveColors {
+	if (!self.colors) return;
+	NSMutableArray *resolved = [NSMutableArray arrayWithCapacity:self.colors.count];
+	[self.effectiveAppearance performAsCurrentDrawingAppearance:^{
+		for (NSColor *color in self.colors) [resolved addObject:(id)color.CGColor];
+	}];
+	self.gradient.colors = resolved;
+}
+- (void)viewDidChangeEffectiveAppearance {
+	[super viewDidChangeEffectiveAppearance];
+	[self resolveColors];
+}
 @end
+
+/* SwiftUI LinearGradient(colors:startPoint:endPoint:): evenly spaced semantic
+ * stops between two unit points. Unit points have a top-left origin; the
+ * layer of an unflipped NSView has its origin at the bottom, so y inverts. */
+static int bridge_AppKitControls_linearGradientColors(lua_State *L) {
+	LuaGradientView *view = (LuaGradientView *)check_view(L, 1);
+	luaL_checktype(L, 2, LUA_TTABLE);
+	NSMutableArray<NSColor *> *colors = [NSMutableArray array];
+	lua_Integer count = luaL_len(L, 2);
+	if (count < 2) return luaL_error(L, "LinearGradient colors needs at least two colors");
+	for (lua_Integer index = 1; index <= count; index++) {
+		lua_geti(L, 2, index);
+		[colors addObject:semantic_color([NSString stringWithUTF8String:luaL_checkstring(L, -1)])];
+		lua_pop(L, 1);
+	}
+	view.colors = colors;
+	view.gradient.locations = nil;
+	view.gradient.startPoint = CGPointMake(luaL_checknumber(L, 3), 1 - luaL_checknumber(L, 4));
+	view.gradient.endPoint = CGPointMake(luaL_checknumber(L, 5), 1 - luaL_checknumber(L, 6));
+	[view resolveColors];
+	return 0;
+}
 
 static int bridge_AppKitControls_linearGradient(lua_State *L) {
 	CGFloat topAlpha = (CGFloat)luaL_optnumber(L, 1, 0);

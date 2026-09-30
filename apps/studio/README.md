@@ -26,19 +26,29 @@ failed signing/install steps stop the command.
 
 ## Use
 
-Lua Studio is a two-pane workspace: the running app on a stage at the left,
-sized to an iPhone 16, and the coding agent filling the rest. Liquid Glass bars
-above and below the device hold the preview actions. The top bar has the
-project menu, which lists the projects and the workspace destinations (New
-Project, Templates, Examples, Plugins, Settings), plus the preview status, Run,
-and the chat toggle for focusing the preview. The bottom bar has the device,
-reload, appearance, and zoom controls. The chat header has the Chat/Code switch
-and the project actions Commit, Share, and Deploy. The chat shows the request
-as a user bubble, the agent's reply, and a card of changed files with line
-counts, followed by suggestions and a glass composer, in a centred reading
-column. Run, reload, Commit, and the chat toggle work. Project switching,
-Share, Deploy, and the composer are still placeholders. Code shows the project
-files with a hideable tree and native Lua/etlua syntax highlighting.
+Lua Studio is three columns on one canvas: an icon-only activity rail, the
+running app on a stage sized to an iPhone 16, and the coding agent in a floating
+card that fills the rest. The canvas is a wash of the brand gradient over the
+system background, so it holds in light and dark; the rail and the stage have no
+fill of their own.
+
+The rail carries the Lua Studio mark, the two modes of the agent card (Chat and
+Code, with a gradient highlight on the one showing), the workspace destinations
+(Templates, Examples, Plugins), and Settings at its foot. Every item is an icon
+with an accessibility label.
+
+Liquid Glass bars above and below the device hold the preview actions. The top
+bar has the project menu, which lists the projects and New Project, plus the
+preview status, Run, and the chat toggle for focusing the preview. The bottom
+bar has the device, reload, appearance, and zoom controls. The card header has
+the agent's avatar and the project actions Commit, Share, and Deploy. The chat
+shows the request as a gradient bubble, the agent's reply beside its avatar,
+and a card of changed files with line counts, followed by suggestions and a
+glass composer, in a centred reading column. Run, reload, Commit, the rail's
+mode switch, and the chat toggle work. Project switching, the rail
+destinations, Share, Deploy, and the composer are still placeholders. Code
+shows the project files with a hideable tree and native Lua/etlua syntax
+highlighting.
 The controls inside the phone preview are interactive.
 
 ## Project and runtime
@@ -87,9 +97,33 @@ code. It shares the host's native runtime.
 
 ## App structure
 
-The window composes the preview stage and chat templates; `ChangeCard` and
-`Composer` are partials of the chat. Each pane has its own controller and
-presentation model: `models/Preview.lua` picks the current project for the
-stage, and `models/Chat.lua` derives file names, folders, symbols, and line
-totals for the change card. `Controller.lua` coordinates the panes and loads
-the starter preview.
+The window composes the rail, the preview stage, and the chat templates on the
+canvas; `ChangeCard`, `Composer`, and `Avatar` are partials of the chat. Each
+column has its own controller and presentation model: `models/Rail.lua` lists
+the modes and destinations, `models/Preview.lua` picks the current project for
+the stage, and `models/Chat.lua` derives file names, folders, symbols, and line
+totals for the change card. `models/Theme.lua` holds the brand gradient, the
+canvas colors, and the tint of Studio's own controls; the previewed app keeps
+its own accent. `Controller.lua` coordinates the columns and loads the starter
+preview.
+
+## Design references
+
+The workspace layout follows patterns common to editors and AI app builders
+rather than any one product:
+
+- **Icon-only activity rail** — the activity bar of VS Code and the app rail
+  of Microsoft Teams: a narrow column of symbols, the brand mark at the top,
+  settings at the foot, and a filled highlight on the selected item.
+- **Floating cards on a gradient canvas** and **gradient accents** — dashboard
+  and editor shots by Basebern Team, Diana Larussa, and Nasir Uddin in these
+  Dribbble searches:
+  - [AI app builder IDE](https://dribbble.com/search/ai-app-builder-ide)
+  - [AI code editor sidebar](https://dribbble.com/search/ai-code-editor-sidebar)
+- **Chat beside a live device preview** — the arrangement shared by AI app
+  builders such as Lovable, Bolt, and Replit; see Lovable's overview of the
+  category, [Best AI App Builders in 2026](https://lovable.dev/guides/best-ai-app-builders).
+
+Gradients use `<LinearGradient colors="…" startPoint="…" endPoint="…">`
+(SwiftUI's `LinearGradient(colors:startPoint:endPoint:)`); see
+[docs/agents/xml-syntax.md](../../docs/agents/xml-syntax.md).

@@ -362,6 +362,16 @@ static void layout_recursive_impl(UIView *view, CGFloat width) {
 				if ([position containsString:@"trailing"]) childX = padX + contentW - childW;
 				if ([position containsString:@"top"]) childY = padTop;
 				if ([position containsString:@"bottom"]) childY = padTop + contentH - childH;
+				/* SwiftUI `.ignoresSafeArea(edges: .top)` on a layer of the
+				 * root ZStack: a background that fills the stack also runs
+				 * under the status bar, while its siblings stay below it. */
+				CGFloat hostTop = [objc_getAssociatedObject(view, &kHostSafeAreaTopKey) doubleValue];
+				NSString *ignored = sv.ignoresSafeArea;
+				if (hostTop > 0 && fills_axis(sv, NO) && ([ignored isEqualToString:@"top"]
+					|| [ignored isEqualToString:@"all"] || [ignored isEqualToString:@"edges"])) {
+					childY -= hostTop;
+					childH += hostTop;
+				}
 				sv.frame = CGRectMake(childX, childY, childW, childH);
 				layout_recursive(sv, childW);
 			}

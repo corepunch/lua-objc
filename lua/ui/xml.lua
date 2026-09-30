@@ -1428,7 +1428,15 @@ local TAG_SCHEMA = {
             middleAlpha = "num",
             middleLocation = "num",
             bottomAlpha = "num",
+            startPoint = "str",
+            endPoint = "str",
         },
+        -- colors="systemIndigo,systemPink": a comma-separated list, in order.
+        transform = function(props, a)
+            if not a.colors then return end
+            props.colors = {}
+            for name in a.colors:gmatch("[^,%s]+") do table.insert(props.colors, name) end
+        end,
     },
     MeshPoint = {
         kind = "record", flag = "__meshPoint",

@@ -396,6 +396,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_separator", bridge_AppKitControls_separator},
 	{"_spacer", bridge_AppKitControls_spacer},
 	{"_linearGradient", bridge_AppKitControls_linearGradient},
+	{"_linearGradientColors", bridge_AppKitControls_linearGradientColors},
 	{"_meshGradient", bridge_AppKitControls_meshGradient},
 	{"_meshGradientConfigure", bridge_AppKitControls_meshGradientConfigure},
 	{"_meshGradientSample", bridge_AppKitControls_meshGradientSample},

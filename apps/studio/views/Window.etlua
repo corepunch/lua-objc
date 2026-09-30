@@ -1,12 +1,21 @@
 <%
-  -- Two panes: the running app on its stage, the agent beside it. The stage
-  -- owns every workspace action, so no separate toolbar strip crowds the
-  -- preview; the chat keeps a steady reading width while the stage flexes.
+  -- One canvas, three columns. A soft wash of the brand colors fills the
+  -- window over the system background, so it keeps its depth in light and
+  -- dark. On it sit the activity rail, the running app on its stage, and the
+  -- agent in a floating card. Two crossing gradients give the wash a second
+  -- direction, so it reads as light rather than as a stripe; both run under
+  -- the status bar. Studio controls take the brand tint; the previewed app
+  -- keeps its own accent, so the tint is set per column, never on the canvas.
+  local CANVAS = { wash = 0.22, glow = 0.14 }
 %>
 <Window title="Lua Studio" width="1366" height="900" minWidth="980" minHeight="640">
-	<HStack id="workspace" spacing="0" maxWidth="infinity" maxHeight="infinity" alignment="top" background="background">
-		<%- partial("PreviewPane.etlua", preview) %>
-		<Divider orientation="vertical" />
-		<%- partial("ChatPane.etlua", chat) %>
-	</HStack>
+	<ZStack id="canvas" maxWidth="infinity" maxHeight="infinity" background="secondaryBackground">
+		<LinearGradient colors="<%= canvas.wash %>" startPoint="topLeading" endPoint="bottomTrailing" opacity="<%= CANVAS.wash %>" ignoresSafeArea="top" />
+		<LinearGradient colors="<%= canvas.glow %>" startPoint="bottomLeading" endPoint="topTrailing" opacity="<%= CANVAS.glow %>" ignoresSafeArea="top" />
+		<HStack id="workspace" spacing="0" maxWidth="infinity" maxHeight="infinity" alignment="top">
+			<%- partial("Rail.etlua", rail) %>
+			<%- partial("PreviewPane.etlua", preview) %>
+			<%- partial("ChatPane.etlua", chat) %>
+		</HStack>
+	</ZStack>
 </Window>

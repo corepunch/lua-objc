@@ -348,7 +348,7 @@ Alias for Image with systemImage.
 
 ### LinearGradient
 Gradient fill.
-- `colors`: space-separated color names (required)
+- `colors`: comma- or space-separated color names, two or more; follows light and dark. Omit for a vertical black fade shaped by `topAlpha`, `middleAlpha`, `middleLocation`, `bottomAlpha`.
 - `startPoint`: "topLeading" | "top" | "topTrailing" | ... (optional)
 - `endPoint`: similar (optional)
 
