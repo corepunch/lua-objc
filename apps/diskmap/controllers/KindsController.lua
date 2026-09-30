@@ -1,10 +1,9 @@
-local ns = require("AppKit")
-local Template = require("ui.template")
+local Page = require("apps.diskmap.controllers.PageController")
 local Model = require("apps.diskmap.Model")
 local Files = require("apps.diskmap.models.Files")
 local Selection = require("apps.diskmap.models.Selection")
 local Sectors = require("ui.sectors")
-local Controller = {}; Controller.__index = Controller
+local Controller = Page.extend("kinds", "Kinds")
 
 -- File Types: extension totals grouped into kinds, with a donut, advice for
 -- the largest kind and the top extensions. `showFiles(kindId)` opens Large
@@ -14,7 +13,7 @@ function Controller.new(model, showFiles)
 end
 
 function Controller:mount(host, state)
-	self.template = Template.new(host, "apps/diskmap/views/Kinds.etlua", ns)
+	self:attach(host)
 	self:update(state)
 	return self.refs
 end
@@ -73,14 +72,14 @@ function Controller:update(state)
 	}
 	for _, kind in ipairs(kinds) do actions["kind_" .. kind.id] = function() self.showFiles(kind.id) end end
 	local selected = self.selectedId and headline or nil
-	local _, refs = self.template:update({kinds = marks, total = Model.size(all),
+	local refs = self:render({kinds = marks, total = Model.size(all),
 		summary = #kinds == 0 and "Measuring files…" or (Model.size(all) .. " in files across " .. #kinds .. " kinds"),
 		accessibilityLabel = "File types: " .. table.concat(labels, ", "),
 		headline = headline and {id = headline.id, title = headline.name .. " · " .. headline.size, advice = headline.advice} or {},
 		extensionsDetail = selected and ("The " .. selected.name .. " extensions that use the most space")
 			or "The twelve extensions that use the most space",
 		actions = actions})
-	self.refs, self.kinds = refs, kinds
+	self.kinds = kinds
 	for _, kind in ipairs(kinds) do kind.detail = Model.count(kind.count) end
 	refs.kinds:replaceRows(kinds)
 	for _, row in ipairs(extensions) do row.detail = Model.count(row.count) end
@@ -97,11 +96,6 @@ function Controller:select(id)
 	if self.selectedId == id then return end
 	self.selectedId = id
 	self:update()
-end
-
-function Controller:dispose()
-	if self.template then self.template:dispose() end
-	self.template, self.refs = nil, nil
 end
 
 return Controller

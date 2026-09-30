@@ -1,17 +1,18 @@
+<% --[[ Chapters of topics to read (controllers/TopicsController.lua): the
+  Storage Guide and Diskmap Help. `topic` names the template of one topic. ]] %>
 <ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
   <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
-    <%- partial("PageHeader.etlua", {icon = "book.fill", color = "systemTeal", title = "Storage Guide",
-      summary = "Where macOS keeps things, why they grow and what is safe to do about them. Sizes are measured on this Mac."}) %>
+    <%- partial("PageHeader.etlua", {header = header, summary = summary}) %>
     <% if empty then %>
-    <ContentUnavailable id="noTopics" title="No Topics Found" systemImage="magnifyingglass" description="No guide topic mentions “<%= query %>”." />
+    <ContentUnavailable id="noTopics" title="No Topics Found" systemImage="magnifyingglass" description="No <%= noun %> mentions “<%= query %>”." />
     <% end %>
     <% for _, chapter in ipairs(chapters) do %>
     <VStack maxWidth="infinity" spacing="8" alignment="leading">
       <%- partial("SectionTitle.etlua", {icon = chapter.icon, title = chapter.title}) %>
       <GroupBox maxWidth="infinity">
         <VStack maxWidth="infinity" spacing="0" alignment="leading">
-          <% for index, topic in ipairs(chapter.topics) do %>
-          <%- partial("GuideTopic.etlua", {topic = topic, expanded = expandAll}) %>
+          <% for index, item in ipairs(chapter.topics) do %>
+          <%- partial(topic .. ".etlua", {topic = item, expanded = expandAll}) %>
           <% if index < #chapter.topics then %><Divider /><% end %>
           <% end %>
         </VStack>

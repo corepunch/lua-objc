@@ -51,13 +51,6 @@ function Projects.isToolFolder(path, root)
 	return relative:find("/%.[^/]") ~= nil
 end
 
--- A project's folder as its row shows it, from the home folder, so two
--- projects with one name are told apart.
-function Projects.location(path, home)
-	if home and home ~= "" and path:sub(1, #home + 1) == home .. "/" then return "~" .. path:sub(#home + 1) end
-	return path
-end
-
 -- When a project was last worked on: the newest of the modification times
 -- `stat` printed (one per line) for its git index, HEAD and source files.
 -- At most `budget` files count, so a huge project cannot stall the page.

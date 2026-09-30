@@ -1,0 +1,69 @@
+<% --[[ The list page: every page that ranks storage in lists is this
+  template and a `layout` table (controllers/PageController.lua), so headers,
+  tiles, section titles, filters and lists sit in the same places on all of
+  them. The template carries structure only; rows, sizes and summaries are
+  set in place, so scan progress does not rebuild the page under the reader.
+
+    summary, summaryId   the header's second line and its ref ("summary")
+    buttons              header buttons: {id, title, systemImage, action, help, disabled}
+    tiles                stat tiles: {id, icon, color, title, value, detail, actionTitle, action}
+    empty                {id, title, systemImage, description}, in place of the sections
+    sections             each {
+      id                   ref of the whole section, to hide it
+      title, detail        its heading; titleId and detailId name their refs
+      sizeId               ref of a total beside the heading
+      links                buttons before the filter
+      filters              {id, options}: a segmented picker calling `filter`
+      buttons              buttons after the filter
+      empties              {id, title, systemImage, description, hidden}
+      panelId              ref of the box around the list
+      list                 ResourceList.etlua's arguments: {id, menu, activate, …}
+    }
+    slots                refs for retained child templates, below the sections
+    footnote             {text, icon} ]] %>
+<ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+  <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
+    <%- partial("PageHeader.etlua", {header = header, summary = layout.summary, summaryId = layout.summaryId, buttons = layout.buttons}) %>
+    <% if layout.tiles and #layout.tiles > 0 then %>
+    <HStack id="stats" maxWidth="infinity" fixedSize="vertical" spacing="12" alignment="top">
+      <% for _, tile in ipairs(layout.tiles) do %>
+      <%- partial("StatTile.etlua", tile) %>
+      <% end %>
+    </HStack>
+    <% end %>
+    <% if layout.empty then %>
+    <ContentUnavailable id="<%= layout.empty.id %>" title="<%= layout.empty.title %>" systemImage="<%= layout.empty.systemImage %>" description="<%= layout.empty.description %>" />
+    <% end %>
+    <% for _, section in ipairs(layout.sections or {}) do %>
+    <VStack <% if section.id then %>id="<%= section.id %>" <% end %>maxWidth="infinity" spacing="8" alignment="leading">
+      <% if section.title then %>
+      <HStack maxWidth="infinity" spacing="12" alignment="<%= section.sizeId and "bottom" or "center" %>">
+        <%- partial("SectionHeader.etlua", {title = section.title, titleId = section.titleId, detail = section.detail or "", detailId = section.detailId}) %>
+        <%- partial("Buttons.etlua", {buttons = section.links}) %>
+        <% if section.filters then %>
+        <Picker id="<%= section.filters.id %>" style="segmented" onChange="filter">
+          <% for _, title in ipairs(section.filters.options) do %><Option title="<%= title %>" /><% end %>
+        </Picker>
+        <% end %>
+        <%- partial("Buttons.etlua", {buttons = section.buttons}) %>
+        <% if section.sizeId then %>
+        <Label id="<%= section.sizeId %>" text="" size="13" weight="semibold" monospacedDigit="true" />
+        <% end %>
+      </HStack>
+      <% end %>
+      <% for _, empty in ipairs(section.empties or {}) do %>
+      <ContentUnavailable id="<%= empty.id %>"<% if empty.hidden then %> hidden="true"<% end %> title="<%= empty.title %>" systemImage="<%= empty.systemImage %>" description="<%= empty.description %>" />
+      <% end %>
+      <GroupBox <% if section.panelId then %>id="<%= section.panelId %>" <% end %>maxWidth="infinity">
+        <%- partial("ResourceList.etlua", section.list) %>
+      </GroupBox>
+    </VStack>
+    <% end %>
+    <% for _, slot in ipairs(layout.slots or {}) do %>
+    <VStack id="<%= slot %>" maxWidth="infinity" spacing="0" />
+    <% end %>
+    <% if layout.footnote then %>
+    <%- partial("Footnote.etlua", layout.footnote) %>
+    <% end %>
+  </VStack>
+</ScrollView>

@@ -1,35 +1,57 @@
-local ns = require("AppKit")
-local Template = require("ui.template")
+local Page = require("apps.diskmap.controllers.PageController")
 local Model = require("apps.diskmap.Model")
 local Volumes = require("apps.diskmap.models.Volumes")
 local VolumeContents = require("apps.diskmap.models.VolumeContents")
-local Controller = {}; Controller.__index = Controller
+local Controller = Page.extend("disks")
+
+-- `health` facts become the tiles once the disk has been read.
+local function layout(health)
+	local tiles = {}
+	for _, fact in ipairs(health) do
+		table.insert(tiles, {id = "fact_" .. fact.id, icon = fact.icon, color = fact.color, title = fact.title, value = fact.value, detail = fact.detail})
+	end
+	return {
+		summary = "Reading disk information…",
+		buttons = {{id = "diskUtility", title = "Open Disk Utility", action = "diskUtility", help = "Run First Aid or erase a disk in Disk Utility"}},
+		tiles = tiles,
+		sections = {
+			{id = "volumesSection", title = "Startup disk volumes", detailId = "containerDetail",
+				detail = "Every volume shares one APFS container and draws from the same free space.",
+				list = {id = "volumes", menu = "volumeMenu", detailColumn = true}},
+			{id = "externalSection", title = "Other disks",
+				detail = "Mounted external drives and disk images. Choose Analyze Contents in a disk’s menu to measure it.",
+				list = {id = "external", menu = "externalMenu", activate = "analyze"}},
+			{id = "contentsSection", title = "Contents", titleId = "contentsTitle", detailId = "contentsDetail",
+				list = {id = "contents", menu = "contentsMenu", activate = "reveal", detailColumn = true}},
+		},
+		footnote = {icon = "stethoscope", text = "If apps freeze or files go missing, back up and run First Aid in Disk Utility. SSDs never need defragmenting, and FileVault makes erased data unrecoverable, so secure-erase tools are unnecessary."},
+	}
+end
 
 -- Disks & Volumes: drive health, the APFS volumes of the startup container
 -- and other mounted disks. Everything is read-only; repairs happen in Disk
 -- Utility. Disk facts are reread each time the page opens.
 function Controller.new(service, actions)
-	return setmetatable({service = service, actions = actions, generation = 0}, Controller)
+	return setmetatable({service = service, actions = actions}, Controller)
 end
 
 function Controller:mount(host, state)
-	self.generation = self.generation + 1
-	self.template = Template.new(host, "apps/diskmap/views/Disks.etlua", ns)
-	self:render()
+	self:attach(host)
+	self:show()
 	local generation = self.generation
 	if rawget(self.service, "volumes") then
 		self.service.volumes(function(volumes)
 			if generation ~= self.generation or not self.template then return end
 			self.volumes = volumes
-			self:render()
+			self:show()
 		end)
 	end
 	return self.refs
 end
 
-function Controller:render()
+function Controller:show()
 	local volumes = self.volumes or {}
-	local _, refs = self.template:update({health = Volumes.health(volumes.info), actions = {
+	local refs = self:render({layout = layout(Volumes.health(volumes.info)), actions = {
 		diskUtility = function() self.service.openDiskUtility() end,
 		volumeMenu = function(_, _, row) return {{title = "Copy Device Identifier", systemImage = "doc.on.doc", action = function() self.service.copy(row.detail) end}} end,
 		externalMenu = function(_, _, row)
@@ -37,11 +59,10 @@ function Controller:render()
 			for _, item in ipairs(self.actions:folder(row)) do table.insert(items, item) end
 			return items
 		end,
-		revealExternal = function(_, _, row) if row then self:analyze(row) end end,
+		analyze = function(_, _, row) if row then self:analyze(row) end end,
 		contentsMenu = function(_, _, row) return self:contentsMenu(row) end,
-		revealContents = function(_, _, row) if row then self.service.reveal(row.path) end end,
+		reveal = function(_, _, row) if row then self.service.reveal(row.path) end end,
 	}})
-	self.refs = refs
 	local info = volumes.info or {}
 	local apfs = Volumes.apfs(volumes.apfs, info.APFSContainerReference)
 	refs.volumes:replaceRows(apfs and apfs.rows or {})
@@ -107,11 +128,5 @@ function Controller:showContents()
 end
 
 function Controller:update() end
-
-function Controller:dispose()
-	self.generation = self.generation + 1
-	if self.template then self.template:dispose() end
-	self.template, self.refs = nil, nil
-end
 
 return Controller

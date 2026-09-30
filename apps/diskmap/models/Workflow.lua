@@ -119,28 +119,29 @@ function Workflow.badge(model, workflow)
 	if data.bytes > 0 and not data.calculating then return data.total end
 end
 
--- The page a ResourcePageController presents for `workflow`.
+-- The page a PageController presents for `workflow`.
 function Workflow.page(workflow)
 	local links, buttons = {}, {}
 	for index, link in ipairs(workflow.links or {}) do
 		links["link_" .. index] = {open = link.open}
 		table.insert(buttons, {id = "link_" .. index, title = link.title, action = "link_" .. index})
 	end
-	return {view = "Workflow", present = function(model, state)
+	-- The sections change with what was measured, so the layout follows the data.
+	return {id = workflow.id, layout = function(presented) return presented.layout end, present = function(model, state)
 		local data = Workflow.presentation(model, workflow, state.query)
 		local structure, lists, texts = {}, {}, {}
 		for _, section in ipairs(data.sections) do
-			table.insert(structure, {id = section.id, title = section.title, detail = section.detail})
+			table.insert(structure, {id = "section_" .. section.id, title = section.title, detail = section.detail, sizeId = "size_" .. section.id,
+				list = {id = "list_" .. section.id, menu = "rowMenu", activate = "open", status = true}})
 			lists["list_" .. section.id] = section.rows
 			texts["size_" .. section.id] = section.size
 		end
 		texts.summary = data.calculating and ("Measuring " .. workflow.noun .. "…")
 			or (data.total .. " " .. workflow.summary
 				.. (data.rebuildable > 0 and (" · " .. data.rebuildableSize .. " rebuildable now") or ""))
-		return {template = {workflow = {id = workflow.id, name = workflow.name, icon = workflow.icon, color = workflow.color,
-				empty = workflow.empty, footnote = workflow.footnote,
-				emptyTitle = data.calculating and ("Measuring " .. workflow.noun .. "…") or ("No " .. workflow.noun .. " found")},
-				sections = structure, buttons = buttons},
+		return {layout = {buttons = buttons, sections = structure, footnote = {text = workflow.footnote},
+				empty = #structure == 0 and {id = "workflowEmpty", systemImage = workflow.icon, description = workflow.empty,
+					title = data.calculating and ("Measuring " .. workflow.noun .. "…") or ("No " .. workflow.noun .. " found")} or nil},
 			lists = lists, texts = texts, links = links}
 	end}
 end

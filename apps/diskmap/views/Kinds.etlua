@@ -5,7 +5,7 @@
 %>
 <ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
   <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
-    <%- partial("PageHeader.etlua", {icon = "square.grid.2x2.fill", color = "systemPink", title = "File Types", summary = summary}) %>
+    <%- partial("PageHeader.etlua", {header = header, summary = summary}) %>
     <% if #kinds == 0 then %>
     <ContentUnavailable title="Measuring files…" systemImage="square.grid.2x2" description="File types appear when the scan finishes." />
     <% else %>

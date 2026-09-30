@@ -1,10 +1,9 @@
+<% --[[ `header` is the page's sidebar row: its icon, color and title. ]] %>
 <HStack id="pageHeader" maxWidth="infinity" spacing="14" alignment="center">
-  <SystemImage name="<%= icon %>" size="36" badgeColor="<%= color %>" />
+  <SystemImage name="<%= header.icon %>" size="36" badgeColor="<%= header.color %>" />
   <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
-    <Label text="<%= title %>" size="22" weight="semibold" lines="1" />
+    <Label id="pageTitle" text="<%= header.title or header.name %>" size="22" weight="semibold" lines="1" />
     <Label id="<%= summaryId or "summary" %>" text="<%= summary or "" %>" size="13" color="secondary" monospacedDigit="true" maxWidth="infinity" lines="0" />
   </VStack>
-  <% for _, button in ipairs(buttons or {}) do %>
-  <Button <% if button.id then %>id="<%= button.id %>" <% end %>title="<%= button.title %>"<% if button.systemImage then %> systemImage="<%= button.systemImage %>"<% end %><% if button.style then %> style="<%= button.style %>"<% end %> action="<%= button.action %>"<% if button.help then %> help="<%= button.help %>"<% end %><% if button.disabled then %> disabled="true"<% end %> />
-  <% end %>
+  <%- partial("Buttons.etlua", {buttons = buttons}) %>
 </HStack>

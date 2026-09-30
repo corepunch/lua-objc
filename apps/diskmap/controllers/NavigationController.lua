@@ -10,29 +10,31 @@ local Controller = {}; Controller.__index = Controller
 -- only on a Mac that does that work (knowledge/Workflows.lua, #52), and a
 -- section with no rows to show is left out. Section rows are native
 -- source-list group headers and cannot be selected. `key` is the page's
--- ⌘-digit shortcut in the Go menu.
+-- ⌘-digit shortcut in the Go menu. A row is also its page's header: `icon`
+-- in a `color` badge beside `title` (the row's `name` unless it differs), so
+-- the sidebar, the Go menu and the page never disagree.
 local function destinations()
 	local list = {
 		{section = true, title = "Storage"},
-		{id = "overview", name = "Overview", icon = "chart.pie.fill", key = "1"},
-		{id = "map", name = "Map", icon = "circle.circle.fill", key = "2"},
-		{id = "folder", name = "Folder Map", icon = "folder.fill"},
-		{id = "largest", name = "Largest Items", icon = "chart.bar.fill", key = "3"},
-		{id = "files", name = "Large Files", icon = "doc.fill", key = "4"},
-		{id = "kinds", name = "File Types", icon = "square.grid.2x2.fill", key = "5"},
-		{id = "duplicates", name = "Duplicates", icon = "doc.on.doc.fill"},
+		{id = "overview", name = "Overview", icon = "chart.pie.fill", color = "systemBlue", key = "1"},
+		{id = "map", name = "Map", icon = "circle.circle.fill", color = "systemIndigo", key = "2"},
+		{id = "folder", name = "Folder Map", icon = "folder.fill", color = "systemBlue"},
+		{id = "largest", name = "Largest Items", icon = "chart.bar.fill", color = "systemOrange", key = "3"},
+		{id = "files", name = "Large Files", icon = "doc.fill", color = "systemTeal", key = "4"},
+		{id = "kinds", name = "File Types", icon = "square.grid.2x2.fill", color = "systemPink", key = "5"},
+		{id = "duplicates", name = "Duplicates", icon = "doc.on.doc.fill", color = "systemTeal"},
 		{section = true, title = "Clean Up"},
-		{id = "cleanup", name = "Recommendations", icon = "sparkles", key = "6"},
-		{id = "applications", name = "Applications", icon = "square.grid.3x3.fill", key = "7"},
+		{id = "cleanup", name = "Recommendations", title = "Clean Up", icon = "sparkles", color = "systemIndigo", key = "6"},
+		{id = "applications", name = "Applications", icon = "square.grid.3x3.fill", color = "systemBlue", key = "7"},
 		{section = true, title = "System"},
-		{id = "disks", name = "Disks & Volumes", icon = "internaldrive.fill"},
-		{id = "updates", name = "Updates & Snapshots", icon = "arrow.triangle.2.circlepath"},
+		{id = "disks", name = "Disks & Volumes", icon = "internaldrive.fill", color = "systemGray"},
+		{id = "updates", name = "Updates & Snapshots", icon = "arrow.triangle.2.circlepath", color = "systemGray"},
 	}
 	-- Pages that belong to one kind of work follow its own page.
 	local companions = {developer = {
-		{id = "xcode", name = "Xcode", icon = "hammer.circle.fill", key = "9", workflow = "developer"},
-		{id = "projects", name = "Projects", icon = "folder.fill.badge.gearshape", workflow = "developer"},
-		{id = "simulators", name = "Simulators", icon = "iphone", workflow = "developer"},
+		{id = "xcode", name = "Xcode", icon = "hammer.circle.fill", color = "systemBlue", key = "9", workflow = "developer"},
+		{id = "projects", name = "Projects", icon = "folder.fill.badge.gearshape", color = "systemOrange", workflow = "developer"},
+		{id = "simulators", name = "Simulators", icon = "iphone", color = "systemBlue", workflow = "developer"},
 	}}
 	local section
 	for _, workflow in ipairs(Workflows.list) do
@@ -40,18 +42,26 @@ local function destinations()
 			section = workflow.section
 			table.insert(list, {section = true, title = section})
 		end
-		table.insert(list, {id = workflow.id, name = workflow.sidebar or workflow.name, icon = workflow.icon, key = workflow.key, workflow = workflow.id})
+		table.insert(list, {id = workflow.id, name = workflow.sidebar or workflow.name, title = workflow.name, icon = workflow.icon,
+			color = workflow.color, key = workflow.key, workflow = workflow.id})
 		for _, row in ipairs(companions[workflow.id] or {}) do table.insert(list, row) end
 	end
 	for _, row in ipairs({
 		{section = true, title = "Learn"},
-		{id = "guide", name = "Storage Guide", icon = "book.fill"},
-		{id = "filesystem", name = "macOS Folders", icon = "apple.logo"},
-		{id = "help", name = "Diskmap Help", icon = "questionmark.circle.fill"},
+		{id = "guide", name = "Storage Guide", icon = "book.fill", color = "systemTeal"},
+		{id = "filesystem", name = "macOS Folders", icon = "apple.logo", color = "systemGray"},
+		{id = "help", name = "Diskmap Help", icon = "questionmark.circle.fill", color = "systemBlue"},
 	}) do table.insert(list, row) end
 	return list
 end
 Controller.destinations = destinations()
+
+-- The destination `id`: what its page's header shows.
+function Controller.page(id)
+	for _, row in ipairs(Controller.destinations) do
+		if row.id == id then return row end
+	end
+end
 
 -- `show(id)` mounts the destination; the root controller owns page lifetime.
 -- Back and forward follow destinations the way a browser follows pages.

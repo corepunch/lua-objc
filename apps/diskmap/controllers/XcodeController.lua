@@ -1,9 +1,8 @@
-local ns = require("AppKit")
-local Template = require("ui.template")
+local Page = require("apps.diskmap.controllers.PageController")
 local Model = require("apps.diskmap.Model")
 local Xcode = require("apps.diskmap.models.Xcode")
 local Status = require("apps.diskmap.models.Status")
-local Controller = {}; Controller.__index = Controller
+local Controller = Page.extend("xcode")
 
 -- Three reviewable lists, in the order they are usually worth cleaning.
 local SECTIONS = {
@@ -28,11 +27,25 @@ local STATUS = {["Newest · keep"] = "Keep", Older = "Review", Missing = "Rebuil
 	Shared = "Rebuildable"}
 Controller.statuses = STATUS
 
+local LAYOUT = {
+	summary = "Reading Xcode's device support, build data and archives…", summaryId = "xcodeSummary",
+	buttons = {{id = "openOrganizer", title = "Open Xcode", action = "openXcode", help = "Manage archives in Xcode's Organizer"}},
+	sections = {},
+	footnote = {text = "Open a row's menu to mark it for cleanup. Marked items move to the Trash only after you review them in Marked Items."},
+}
+for _, section in ipairs(SECTIONS) do
+	table.insert(LAYOUT.sections, {id = section.id .. "Section", title = section.title, detail = section.detail,
+		buttons = section.bulkTitle and {{id = "bulk_" .. section.id, title = section.bulkTitle, systemImage = "plus.circle",
+			action = "bulk_" .. section.id, help = section.bulkHelp, disabled = true}},
+		list = {id = "list_" .. section.id, menu = "menu_" .. section.id, activate = "reveal",
+			status = section.status, detailColumn = section.detailColumn}})
+end
+
 -- The Xcode page: device support per OS version, DerivedData per project and
 -- archives, read from Xcode's folders when the page opens. Rows are marked
 -- for cleanup from their menu; nothing is removed here.
 function Controller.new(model, service, actions)
-	return setmetatable({model = model, service = service, actions = actions, generation = 0, rows = {}}, Controller)
+	return setmetatable({model = model, service = service, actions = actions, rows = {}}, Controller)
 end
 
 function Controller:item(section, row)
@@ -47,16 +60,14 @@ local function bulkable(section, row)
 end
 
 function Controller:mount(host, state)
-	self.generation = self.generation + 1
 	self.query = state.query or ""
-	self.template = Template.new(host, "apps/diskmap/views/Xcode.etlua", ns)
-	local actions = {openXcode = function() self.service.openOwner("xcode") end}
+	local actions = {openXcode = function() self.service.openOwner("xcode") end,
+		reveal = function(_, _, row) if row then self.service.reveal(row.path) end end}
 	for _, section in ipairs(SECTIONS) do
 		local id = section.id
 		actions["menu_" .. id] = function(_, _, row)
 			return self.actions:folder(row, nil, self:item(section, row))
 		end
-		actions["reveal_" .. id] = function(_, _, row) if row then self.service.reveal(row.path) end end
 		actions["bulk_" .. id] = function()
 			local items = {}
 			for _, row in ipairs(self.rows[id] or {}) do
@@ -65,8 +76,7 @@ function Controller:mount(host, state)
 			self.actions:markAll(items)
 		end
 	end
-	local _, refs = self.template:update({sections = SECTIONS, actions = actions})
-	self.refs = refs
+	local refs = self:attach(host, {layout = LAYOUT, actions = actions})
 	self:load()
 	return refs
 end
@@ -178,12 +188,6 @@ function Controller:badge()
 	if self.loading or self.measuring or not self.rows.support then return nil end
 	local total = Xcode.total(self.rows.support) + Xcode.total(self.rows.derived) + Xcode.total(self.rows.archives)
 	return total > 0 and Model.size(total) or nil
-end
-
-function Controller:dispose()
-	self.generation = self.generation + 1
-	if self.template then self.template:dispose() end
-	self.template, self.refs = nil, nil
 end
 
 return Controller

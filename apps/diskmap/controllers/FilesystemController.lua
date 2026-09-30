@@ -1,7 +1,6 @@
-local ns = require("AppKit")
-local Template = require("ui.template")
+local Page = require("apps.diskmap.controllers.PageController")
 local Filesystem = require("apps.diskmap.models.Filesystem")
-local Controller = {}; Controller.__index = Controller
+local Controller = Page.extend("filesystem", "Filesystem")
 
 -- `open(id)` shows a catalog resource in Diskmap.
 function Controller.new(model, service, open)
@@ -9,7 +8,7 @@ function Controller.new(model, service, open)
 end
 
 function Controller:mount(host, state)
-	self.template = Template.new(host, "apps/diskmap/views/Filesystem.etlua", ns)
+	self:attach(host)
 	self:update(state)
 	return self.refs
 end
@@ -27,7 +26,7 @@ function Controller:measure()
 			found[path] = {bytes = sizes[index] or 0, state = states and states[index] or "measured"}
 		end
 		self.model.folderSizes = found
-		if self.template then self:render() end
+		if self.template then self:show() end
 	end)
 end
 
@@ -37,10 +36,10 @@ function Controller:update(state)
 	if not self.template then return end
 	self.state = state
 	self:measure()
-	self:render()
+	self:show()
 end
 
-function Controller:render()
+function Controller:show()
 	local state = self.state
 	local data = Filesystem.presentation(self.model, self.model.folderSizes, state and state.fullDiskAccess, state and state.query)
 	data.query = state and state.query or ""
@@ -52,13 +51,7 @@ function Controller:render()
 			if row.resource then data.actions["open_" .. key] = function() self.open(row.resource) end end
 		end
 	end
-	local _, refs = self.template:update(data)
-	self.refs = refs
-end
-
-function Controller:dispose()
-	if self.template then self.template:dispose() end
-	self.template, self.refs, self.state = nil, nil, nil
+	self:render(data)
 end
 
 return Controller

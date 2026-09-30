@@ -1,11 +1,10 @@
-local ns = require("AppKit")
-local Template = require("ui.template")
+local Page = require("apps.diskmap.controllers.PageController")
 local Categories = require("apps.diskmap.models.Categories")
 local MapTree = require("apps.diskmap.models.MapTree")
 local Model = require("apps.diskmap.Model")
 local Selection = require("apps.diskmap.models.Selection")
 local Sectors = require("ui.sectors")
-local Controller = {}; Controller.__index = Controller
+local Controller = Page.extend("map", "Map")
 
 local STYLES = {"rings", "rectangles"}
 
@@ -22,7 +21,7 @@ function Controller.new(model, actions, style)
 end
 
 function Controller:mount(host, state)
-	self.template = Template.new(host, "apps/diskmap/views/Map.etlua", ns)
+	self:attach(host)
 	self:update(state)
 	return self.refs
 end
@@ -146,8 +145,7 @@ function Controller:update(state)
 		end
 	end
 	data.actions = actions
-	local _, refs = self.template:update(data)
-	self.refs = refs
+	local refs = self:render(data)
 	self.rows = data.rows
 	refs.mapList:replaceRows(data.rows)
 	-- Reloading rows drops the native selection; the token restores it.
@@ -156,10 +154,5 @@ function Controller:update(state)
 end
 
 function Controller:marksChanged() self:update(self.state) end
-
-function Controller:dispose()
-	if self.template then self.template:dispose() end
-	self.template, self.refs = nil, nil
-end
 
 return Controller
