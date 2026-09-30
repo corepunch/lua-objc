@@ -54,6 +54,13 @@ end
 t.expect(heroRefs.chart.frame.size.width == heroRefs.chart.frame.size.height, "the donut keeps a square frame")
 local _, emptyRefs = render("Hero", {summary = Overview.summary(model, {totalKb = 1, freeKb = 0}),
 	chart = Overview.chart(model, {totalKb = 1, freeKb = 0}), reclaim = Overview.reclaim(model), volumeName = "Startup Disk", actions = chartActions, hidden = {}})
+t.expect(heroRefs.calculating == nil, "a finished scan shows no progress in the hero")
+model.measurements.downloads = {status = "calculating"}
+local _, busyRefs = render("Hero", {summary = Overview.summary(model, disk), chart = chart,
+	reclaim = Overview.reclaim(model), volumeName = "Startup Disk", actions = chartActions, hidden = {}})
+t.assertEqual(busyRefs.calculating.subviews[1].className, "LuaProgressIndicator", "a scan in progress spins beside the hero title")
+t.expect(busyRefs.cleanUp == nil and heroRefs.cleanUp ~= nil, "cleanup is offered only once every size is known")
+model.measurements.downloads = {bytes = 5e9, status = "complete"}
 t.expect(emptyRefs.legendExplanation ~= nil, "an overcounted inventory explains why no partition is drawn")
 t.expect(emptyRefs.lowSpace ~= nil and heroRefs.lowSpace == nil, "only a nearly full disk shows the low-space warning")
 t.assertEqual(#emptyRefs.chart.subviews, 3, "an empty chart keeps its track ring and centered total under the pointer view")

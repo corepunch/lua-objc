@@ -141,7 +141,7 @@ t.expect(toolbarIds.settings and toolbarIds.reclaim and toolbarIds.refresh and t
 t.expect(toolbarIds.back and toolbarIds.forward and toolbarIds.review, "history and the cleanup review live in the toolbar")
 t.assertEqual(ui.destination, "overview", "the overview is the first destination")
 local sidebar = ui.navigation.refs.sidebar
-t.assertEqual(sidebar.rowCount, 22, "sidebar lists sections and destinations")
+t.assertEqual(sidebar.rowCount, 23, "sidebar lists sections and destinations")
 t.assertEqual(sidebar.documentView.selectedRow, 1, "the overview row starts selected")
 t.assertEqual(bridge._tableCell(sidebar, 0, 0).textField.stringValue, "Storage", "sidebar sections are native group headers")
 t.expect(ui.refs.results ~= nil and ui.refs.largest ~= nil, "overview shows categories and largest items")

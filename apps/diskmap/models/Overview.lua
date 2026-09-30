@@ -17,8 +17,13 @@ Overview.folded = "#other"
 
 -- Volume summary for the hero card. Capacity numbers come from the system
 -- volume query; measured totals come from the ledger and never replace them.
+-- `calculating` is true while any location is still being measured, so the
+-- hero shows progress without the person scrolling to find a spinner row.
 function Overview.summary(model, disk, capacity)
-	local result = {measured = Model.size(Model.total(model))}
+	local result = {measured = Model.size(Model.total(model)), calculating = false}
+	for _, m in pairs(model.measurements or {}) do
+		if m.status == "calculating" then result.calculating = true; break end
+	end
 	if not disk or not disk.totalKb or disk.totalKb <= 0 then
 		result.available = false
 		result.used, result.total, result.free = "—", "Capacity unavailable", "—"
@@ -118,7 +123,10 @@ end
 -- Diskmap could not read. Sizes appear only where macOS provides them.
 -- `mediaExcluded` names the Photos, Music and TV libraries while they are
 -- left out of the scan, so a disk that is full of photos says where they are.
-function Overview.hidden(disk, capacity, snapshotCount, readErrors, cloudBytes, cloudFiles, mediaExcluded)
+-- `readErrors` counts every refused location; `protected` (from
+-- Overview.protected) the ones macOS keeps from every app, which no
+-- permission can open.
+function Overview.hidden(disk, capacity, snapshotCount, readErrors, cloudBytes, cloudFiles, mediaExcluded, protected)
 	local rows = {}
 	if mediaExcluded then
 		table.insert(rows, {id = "media", icon = "photo.on.rectangle", title = "Photos, Music & TV libraries",
@@ -137,18 +145,88 @@ function Overview.hidden(disk, capacity, snapshotCount, readErrors, cloudBytes, 
 		table.insert(rows, {id = "snapshots", icon = "clock.arrow.circlepath", title = "Local snapshots",
 			value = Model.count(snapshotCount), detail = "Hold deleted files' blocks; their size cannot be measured per file"})
 	end
-	if readErrors and readErrors > 0 then
+	local refused = protected and protected.refused or 0
+	local private = (readErrors or 0) - refused
+	if private > 0 then
 		table.insert(rows, {id = "unreadable", icon = "lock", title = "Unreadable locations",
-			value = Model.count(readErrors), detail = "Full Disk Access lets Diskmap measure them"})
+			value = Model.count(private), detail = "Full Disk Access lets Diskmap measure them"})
+	end
+	if protected and protected.count > 0 then
+		table.insert(rows, {id = "protected", icon = "lock.shield", title = "Protected by macOS",
+			value = Model.count(protected.count), detail = protected.detail})
 	end
 	return rows
+end
+
+-- Locations macOS keeps from every app: the known ones present here
+-- (knowledge/Filesystem), which no walk enters, and those the scanner found
+-- refusing every process (`refused`, part of the scan's error total). With
+-- Full Disk Access on, every remaining refusal is one no permission lifts.
+-- Their space stays in the used total, so it reads as not attributed.
+function Overview.protected(model, fullDiskAccess)
+	local names, seen = {}, {}
+	for _, location in ipairs(model.protected or {}) do
+		local name = location.feature or location.name
+		if not seen[name] then seen[name] = true; table.insert(names, name) end
+	end
+	local scan = model.scan or {}
+	local refused = fullDiskAccess == true and (scan.errors or 0) or (scan.protected or 0)
+	local count = #(model.protected or {}) + refused
+	local detail = "No app can read these, with any permission; their space counts as not attributed"
+	if #names > 0 then detail = table.concat(names, ", ") .. (refused > 0 and " and other system folders" or "") .. ". " .. detail end
+	return {count = count, refused = refused, names = names, detail = detail}
+end
+
+Overview.protectedNames = 4
+-- What the Overview's "not measured" card explains: how much used space no
+-- category holds, and each reason, with the one action that helps where
+-- there is one. `options`: fullDiskAccess, snapshotCount, mediaExcluded.
+function Overview.unmeasured(model, disk, options)
+	options = options or {}
+	local items = {}
+	local protected = Overview.protected(model, options.fullDiskAccess)
+	if protected.count > 0 then
+		-- A few names say what kind of folders these are; macOS Folders lists them all.
+		local shown = {}
+		for index = 1, math.min(#protected.names, Overview.protectedNames) do table.insert(shown, protected.names[index]) end
+		local rest = #protected.names - #shown
+		local named = #shown > 0 and ("Including " .. table.concat(shown, ", ") .. ((rest > 0 or protected.refused > 0) and ", and other system folders" or "") .. ". ") or ""
+		table.insert(items, {id = "protected", icon = "lock.shield.fill", color = "systemGray", title = "Protected by macOS",
+			value = Model.count(protected.count) .. (protected.count == 1 and " location" or " locations"),
+			detail = named .. "No app can read these, whatever permission it has, so their size cannot be measured."})
+	end
+	local privacy = options.fullDiskAccess == false and Overview.unreadable(model) or {paths = {}, total = 0, more = 0}
+	if privacy.total > 0 then
+		table.insert(items, {id = "privacy", icon = "lock.fill", color = "systemOrange", title = "Needs Full Disk Access",
+			value = Model.count(privacy.total) .. (privacy.total == 1 and " location" or " locations"),
+			detail = "Diskmap can measure these once Full Disk Access is on.",
+			paths = privacy.paths, more = privacy.more > 0 and ("and " .. Model.count(privacy.more) .. " more") or nil, grant = true})
+	end
+	if (options.snapshotCount or 0) > 0 then
+		table.insert(items, {id = "snapshots", icon = "clock.arrow.circlepath", color = "systemBlue", title = "Local snapshots",
+			value = Model.count(options.snapshotCount),
+			detail = "They keep the blocks of files you deleted until macOS removes them. No file scan can say how much each holds."})
+	end
+	if options.mediaExcluded then
+		table.insert(items, {id = "media", icon = "photo.on.rectangle", color = "systemPink", title = "Photos, Music & TV libraries",
+			value = "Not scanned", detail = "Left out of the scan. Turn on Include media libraries in Settings to measure them."})
+	end
+	local residual
+	for _, segment in ipairs((Categories.distribution(model, disk))) do
+		if segment.id == "unreconciled" and segment.bytes > 0 then residual = segment end
+	end
+	local summary = residual and (residual.size .. " of used space is in no category. It is made up of what follows, and of file system bookkeeping.")
+		or "Everything Diskmap could not measure, and why."
+	return {items = items, summary = summary, notAttributed = residual and residual.size or nil}
 end
 
 -- The folders the last scan could not read, for the notice that offers Full
 -- Disk Access: at most `limit` paths, shown from the home folder, and how
 -- many more there were. The scan keeps the first thousand paths and goes on
 -- counting, so the count of the rest comes from its error total: the notice
--- and the "Unreadable locations" row then name the same number.
+-- and the "Unreadable locations" row then name the same number. Folders
+-- System Integrity Protection guards are left out: Full Disk Access cannot
+-- open them, so the notice would promise what it cannot deliver.
 Overview.unreadableLimit = 6
 function Overview.unreadable(model, limit)
 	limit = limit or Overview.unreadableLimit
@@ -156,7 +234,7 @@ function Overview.unreadable(model, limit)
 	local home = model.home or ""
 	for _, issue in ipairs(model.scan and model.scan.issues or {}) do
 		local path = issue.path
-		if type(path) == "string" and not seen[path] then
+		if type(path) == "string" and not issue.protected and not seen[path] then
 			seen[path] = true
 			total = total + 1
 			if #paths < limit then
@@ -165,7 +243,7 @@ function Overview.unreadable(model, limit)
 			end
 		end
 	end
-	total = math.max(total, math.floor(model.scan and model.scan.errors or 0))
+	total = math.max(total, math.floor(model.scan and (model.scan.errors or 0) - (model.scan.protected or 0) or 0))
 	return {paths = paths, more = math.max(0, total - #paths), moreText = Model.count(math.max(0, total - #paths)), total = total}
 end
 

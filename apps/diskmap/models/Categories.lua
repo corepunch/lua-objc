@@ -13,7 +13,7 @@ function Categories.rows(model, rootId, query)
 		local m = model.measurements[source.id] or {}
 		row.bytes, row.status = m.bytes, m.status or "notMeasured"
 		if not source:isLeaf() then
-			row.children = {}; local total, measured, complete, attempted, calculating, failed, excluded, unsupported = 0, false, true, false, false, false, true, true
+			row.children = {}; local total, measured, complete, attempted, calculating, failed, excluded, unsupported, protected = 0, false, true, false, false, false, true, true, true
 			local denied = false
 			for _, child in ipairs(source:getChildren()) do
 				local value, visible = build(child, matches)
@@ -21,6 +21,7 @@ function Categories.rows(model, rootId, query)
 				if value.bytes then total = total + value.bytes; measured = true end
 				if value.status ~= "excluded" then excluded = false end
 				if value.status ~= "unsupported" then unsupported = false end
+				if value.status ~= "protected" then protected = false end
 				if value.status == "failed" then failed = true end
 				if value.status == "calculating" then calculating = true end
 				if value.status ~= "complete" then complete = false end
@@ -33,7 +34,9 @@ function Categories.rows(model, rootId, query)
 			if denied and total == 0 and not calculating then row.bytes, measured, complete = nil, false, false end
 			-- A group of only system-managed resources (Backups holds just local
 			-- snapshots) is system managed, not restricted: nothing was denied.
-			row.status = excluded and "excluded" or unsupported and "unsupported" or calculating and "calculating" or complete and "complete" or measured and "partial" or failed and "failed" or attempted and "denied" or "notMeasured"
+			-- A group macOS keeps entirely from every app is protected; with
+			-- readable siblings its total is a lower bound, like any partial one.
+			row.status = excluded and "excluded" or unsupported and "unsupported" or protected and "protected" or calculating and "calculating" or complete and "complete" or measured and "partial" or failed and "failed" or attempted and "denied" or "notMeasured"
 			row.expanded = (source.id == "xcode" or source.id == "intelligence")
 			row.forceExpanded = needle ~= ""
 		end

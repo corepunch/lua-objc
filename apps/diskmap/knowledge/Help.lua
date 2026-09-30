@@ -195,6 +195,14 @@ return {
 				"Open System Data on the Overview to see caches, logs, developer data and more by owner.",
 				"Read Common culprits in the Storage Guide for runaway logs, the Spotlight index and document versions.",
 			}},
+		{id = "unmeasured", title = "What Diskmap cannot measure", icon = "lock.shield",
+			show = "filesystem", keywords = "protected sip system integrity not attributed unreadable apple intelligence full disk access leftovers interrupted update",
+			summary = "Some macOS folders refuse every app. Diskmap names them and counts their space as not attributed.",
+			steps = {
+				"The Overview's What Diskmap could not measure card lists each reason, with how much space is in no category.",
+				"Protected by macOS locations, such as the Apple Intelligence models, cannot be read with any permission; Full Disk Access does not help.",
+				"Choose Help › macOS Folders to see every macOS folder, what it holds and its size, including where interrupted updates leave data.",
+			}},
 	}},
 	{id = "privacy", title = "Privacy and shortcuts", icon = "hand.raised", topics = {
 		{id = "reads", title = "What Diskmap reads", icon = "hand.raised.fill",

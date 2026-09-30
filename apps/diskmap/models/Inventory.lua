@@ -1,10 +1,24 @@
 local Inventory = {}
 -- Always use one complete batch: hard links must keep a single owner across refreshes.
+-- Locations no app can read (`model.protected`, from knowledge/Filesystem)
+-- are skipped by every walk; a resource that is one reads "Protected". A
+-- resource that is an APFS volume (`volume` names its role) takes the
+-- volume's own used space from `model.volumeUsage` instead of a walk.
 function Inventory.plan(model)
 	local paths, ids, exclusions = {}, {}, {"/Volumes", "/dev", "/System/Volumes"}
+	local protected = {}
+	for _, location in ipairs(model.protected or {}) do
+		protected[location.path] = true
+		table.insert(exclusions, location.path)
+	end
 	for _, row in ipairs(model.resources:leaves()) do
 		if row.path then
-			if not row.mediaAccess or model.includeMedia then
+			local volume = row.volume and model.volumeUsage and model.volumeUsage[row.volume]
+			if protected[row.path] then
+				model.measurements[row.id] = {status = "protected"}
+			elseif volume then
+				model.measurements[row.id] = {bytes = volume, status = "complete", volume = true}
+			elseif not row.mediaAccess or model.includeMedia then
 				table.insert(paths, row.path); table.insert(ids, row.id)
 			else
 				model.measurements[row.id] = {status = "excluded"}
@@ -30,7 +44,7 @@ end
 -- A refresh discards old values before any new result can become visible.
 function Inventory.begin(model, ids)
 	model.scan = {}
-	model.files, model.breakdowns = nil, {}
+	model.files, model.breakdowns, model.folderSizes = nil, {}, nil
 	for _, id in ipairs(ids) do model.measurements[id] = {status = "calculating"} end
 end
 function Inventory.cancel(model)
@@ -62,7 +76,7 @@ function Inventory.cloud(model)
 	return bytes, files
 end
 function Inventory.progress(model, ids, result)
-	model.scan = {errors = result.errors or 0, visited = result.visited or 0,
+	model.scan = {errors = result.errors or 0, protected = result.protected or 0, visited = result.visited or 0,
 		completed = result.completed or 0, total = result.total or #ids, seconds = result.seconds or 0}
 	for i = 1, math.min(result.completed or 0, #ids) do
 		local state = result.rootStates and result.rootStates[i]
@@ -73,7 +87,7 @@ function Inventory.progress(model, ids, result)
 	end
 end
 function Inventory.apply(model, ids, result)
-	model.scan = {completedAt = os.time(), errors = result.errors or 0, visited = result.visited or 0, seconds = result.seconds or 0, issues = result.issues or {}, failure = result.failure}
+	model.scan = {completedAt = os.time(), errors = result.errors or 0, protected = result.protected or 0, visited = result.visited or 0, seconds = result.seconds or 0, issues = result.issues or {}, failure = result.failure}
 	-- Summaries arrive only with a finished batch; a cancelled scan has none.
 	if result.largeFiles or result.extensions then
 		model.files = {large = result.largeFiles or {}, old = result.oldFiles or {}, extensions = result.extensions or {},

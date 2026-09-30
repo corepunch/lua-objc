@@ -14,6 +14,7 @@ end
 -- expected are neutral.
 Model.sizeStates = {
 	denied = {text = "No access", icon = "lock.fill", color = "systemOrange"},
+	protected = {text = "Protected", icon = "lock.shield.fill", color = "systemGray"},
 	excluded = {text = "Not scanned", icon = "minus.circle.fill", color = "systemGray"},
 	skipped = {text = "Linked", icon = "link.circle.fill", color = "systemTeal"},
 	unsupported = {text = "System Managed", icon = "gearshape.fill", color = "systemBlue"},

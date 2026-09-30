@@ -91,7 +91,7 @@ typedef struct { uint64_t inode; dev_t device; } ScanIdentity;
 @property NSMutableArray *trees;
 @property NSMutableArray *states;
 @property NSMutableArray *issues;
-@property NSUInteger errors, visited, bulkCalls;
+@property NSUInteger errors, protectedErrors, visited, bulkCalls;
 @property NSTimeInterval started;
 @property NSString *failure;
 @property NSDictionary *snapshot;
@@ -188,10 +188,19 @@ static NSUInteger identityHash(ScanIdentity key) {
 	_seen[slot] = key; _seenCount++;
 	return NO;
 }
+// Two refusals no permission can lift are reported apart from privacy
+// refusals, which Full Disk Access can: a System Integrity Protection folder
+// (the `restricted` flag, as in /System/Library/AssetsV2) refuses every
+// process with EPERM, root included, and a folder a system account owns
+// refuses others with EACCES. The folder itself still answers lstat. Known
+// ones are listed in apps/diskmap/knowledge/Filesystem.lua and never walked.
 - (void)issue:(NSString *)path code:(int)code {
+	struct stat st;
+	BOOL restricted = code == EACCES || (code == EPERM && !lstat(path.fileSystemRepresentation, &st) && (st.st_flags & SF_RESTRICTED));
 	os_unfair_lock_lock(&_lock);
 	self.errors++;
-	if (self.issues.count < ScanIssueLimit) [self.issues addObject:@{@"path": path, @"reason": @(strerror(code))}];
+	if (restricted) self.protectedErrors++;
+	if (self.issues.count < ScanIssueLimit) [self.issues addObject:@{@"path": path, @"reason": @(strerror(code)), @"protected": @(restricted)}];
 	os_unfair_lock_unlock(&_lock);
 }
 // Keeps `files` sorted largest first and at most `fileLimit` long.
@@ -630,7 +639,7 @@ static uint64_t volumeUsedBytes(NSString *path) {
 - (void)publish:(BOOL)done {
 	NSDictionary *snapshot = @{@"trees": self.trees.copy, @"rootStates": self.states.copy,
 		@"completed": @(self.states.count), @"total": @(self.roots.count), @"issues": self.issues.copy,
-		@"errors": @(self.errors), @"visited": @(self.visited), @"bulkCalls": @(self.bulkCalls),
+		@"errors": @(self.errors), @"protected": @(self.protectedErrors), @"visited": @(self.visited), @"bulkCalls": @(self.bulkCalls),
 		@"seconds": @(NSProcessInfo.processInfo.systemUptime - self.started),
 		@"failure": self.cancelled ? @"Measurement cancelled." : self.failure,
 		@"exportedFiles": @(self.exportedFiles), @"exportPath": self.exportPath ?: @"",

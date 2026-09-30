@@ -180,6 +180,9 @@ t.expect(not app.refs.summary.text:find(" 1 runtimes", 1, true) and not app.refs
 
 -- Overview sections with nothing to show take no place.
 app:show("overview")
-t.expect(app.refs.accessNotice.hidden, "no access notice, no gap")
+-- The synthetic disk leaves its media libraries out, so the card names them
+-- and asks for no access it does not need.
+t.expect(not app.refs.notMeasured.hidden and app.pages.overview.notMeasured.refs.unmeasured_media ~= nil, "what was not measured is named")
+t.expect(app.pages.overview.notMeasured.refs.grantAccess == nil, "no access is requested when nothing was refused")
 window.size = ns.Size(950, 580); window:layout()
 os.exit(t.summary() and 0 or 1)

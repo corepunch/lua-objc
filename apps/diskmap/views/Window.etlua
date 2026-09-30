@@ -46,6 +46,7 @@
       <MenuItem title="Keyboard Shortcuts" action="shortcuts" />
       <Separator />
       <MenuItem title="Storage Guide" action="guide" />
+      <MenuItem title="macOS Folders" action="filesystem" />
     </CommandGroup>
     <% for _, topic in ipairs(helpTopics) do %>
     <HelpTopic title="<%= topic.title %>" keywords="<%= topic.keywords %>" action="<%= topic.action %>" />

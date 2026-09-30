@@ -31,6 +31,7 @@ Controller.destinations = {
 	{id = "simulators", name = "Simulators", icon = "iphone"},
 	{section = true, title = "Learn"},
 	{id = "guide", name = "Storage Guide", icon = "book.fill"},
+	{id = "filesystem", name = "macOS Folders", icon = "apple.logo"},
 	{id = "help", name = "Diskmap Help", icon = "questionmark.circle.fill"},
 }
 

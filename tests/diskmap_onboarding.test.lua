@@ -47,16 +47,19 @@ for index = 1, 8 do table.insert(issues, {path = home .. "/Library/Protected " .
 table.insert(issues, {path = home .. "/Library/Protected 1", reason = "Operation not permitted"})
 other.model.scan.issues = issues
 other:show("overview", true)
-local notice = other.pages.overview.access.refs
-t.expect(notice.accessCard ~= nil, "the Overview shows which folders were unreadable")
-t.assertEqual(notice.accessMore.text, "and 2 more", "at most six folders are listed")
+local notice = other.pages.overview.notMeasured.refs
+t.expect(notice.unmeasured_privacy ~= nil and notice.grantAccess ~= nil, "the Overview shows which folders need Full Disk Access")
+local card = Overview.unmeasured(other.model, other:state().disk, {fullDiskAccess = false})
+local privacy
+for _, item in ipairs(card.items) do if item.id == "privacy" then privacy = item end end
+t.assertEqual(privacy.more, "and 2 more", "at most six folders are listed")
 local unreadable = Overview.unreadable(other.model)
 t.assertEqual(#unreadable.paths, 6, "six folders are listed")
 t.assertEqual(unreadable.paths[1], "~/Library/Protected 1", "folders are shown from the home folder")
 t.assertEqual(unreadable.total, 8, "a folder reported twice counts once")
 other.model.scan.issues = {}
 other:show("overview", true)
-t.expect(other.pages.overview.access.refs.accessCard == nil, "no notice when everything was readable")
+t.expect(other.pages.overview.notMeasured.refs.unmeasured_privacy == nil, "no access request when everything was readable")
 
 -- The synthetic disk cannot tell, so it never shows onboarding.
 t.expect(not Controller.new(Mock.new()).onboarding, "the onboarding controller exists only once a window opens")

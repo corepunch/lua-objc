@@ -3,7 +3,7 @@ local Volumes = {}
 
 -- What each APFS volume role holds, in the words the Storage Guide uses.
 Volumes.roles = {
-	System = {name = "macOS", icon = "lock.shield.fill", color = "systemGray", detail = "The sealed, read-only operating system"},
+	System = {name = "macOS", icon = "apple.logo", color = "systemGray", detail = "The sealed, read-only operating system"},
 	Data = {name = "Your data", icon = "person.crop.circle.fill", color = "systemBlue", detail = "Apps, files, settings and caches"},
 	Preboot = {name = "Preboot", icon = "power", color = "systemOrange", detail = "Boot files, cryptexes and staged updates"},
 	Recovery = {name = "Recovery", icon = "lifepreserver.fill", color = "systemGreen", detail = "The recoveryOS used to repair or reinstall macOS"},
@@ -77,6 +77,25 @@ function Volumes.apfs(list, containerReference)
 	end
 	return {rows = rows, capacity = capacity, free = container.CapacityFree or 0, used = used,
 		reference = container.ContainerReference}
+end
+
+-- Used bytes per APFS role in the startup container, from `diskutil apfs
+-- list -plist`: {Preboot = bytes, VM = bytes, …}. A role that appears twice
+-- adds up. Nil when the list cannot be read.
+function Volumes.usage(list, containerReference)
+	local containers = type(list) == "table" and list.Containers or nil
+	if type(containers) ~= "table" then return nil end
+	local container
+	for _, candidate in ipairs(containers) do
+		if candidate.ContainerReference == containerReference then container = candidate end
+	end
+	if not container then return nil end
+	local usage = {}
+	for _, volume in ipairs(container.Volumes or {}) do
+		local role = type(volume.Roles) == "table" and volume.Roles[1] or nil
+		if role then usage[role] = (usage[role] or 0) + (volume.CapacityInUse or 0) end
+	end
+	return usage
 end
 
 -- Other mounted volumes with their capacity bars.

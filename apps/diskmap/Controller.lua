@@ -36,6 +36,7 @@ local DuplicatesController = require("apps.diskmap.controllers.DuplicatesControl
 local GuideController = require("apps.diskmap.controllers.GuideController")
 local UpdatesController = require("apps.diskmap.controllers.UpdatesController")
 local HelpController = require("apps.diskmap.controllers.HelpController")
+local FilesystemController = require("apps.diskmap.controllers.FilesystemController")
 local NotificationsController = require("apps.diskmap.controllers.NotificationsController")
 local CommandsController = require("apps.diskmap.controllers.CommandsController")
 local SnapshotController = require("apps.diskmap.controllers.SnapshotController")
@@ -150,6 +151,7 @@ function Controller.new(service)
 		disks = DisksController.new(service, self.actions),
 		updates = UpdatesController.new(self.model, service, self.actions),
 		guide = GuideController.new(self.model, open),
+		filesystem = FilesystemController.new(self.model, service, open),
 		watched = WatchedController.new(self.model, service, self.watchlist, self.actions, {
 			open = open, closed = function() self:show("overview") end,
 		}),
