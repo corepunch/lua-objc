@@ -2,17 +2,13 @@ local SavedGames = {}
 SavedGames.__index = SavedGames
 
 -- Autosaves, one per adventure: the command history and random seed that
--- replay the story, a checkpoint after each command that proves the replay
--- went the same way (see Session:start), plus what the library shows about
--- it (room and score) without starting an engine. The store is injected, so the model
+-- replay the story, plus what the library shows about it (room and score)
+-- without starting an engine. The store is injected, so the model
 -- never touches files; `store.load()` returns the saved table and
 -- `store.save(table)` persists it.
-local VERSION = 2
-
 local function validRecord(record)
 	return type(record) == "table" and type(record.gameId) == "string"
-		and type(record.commands) == "table" and type(record.checkpoints) == "table"
-		and #record.checkpoints == #record.commands
+		and type(record.commands) == "table"
 end
 
 function SavedGames.new(options)
@@ -23,7 +19,7 @@ function SavedGames.new(options)
 		records = {},
 	}, SavedGames)
 	local loaded = self.store and self.store.load and self.store.load()
-	if type(loaded) == "table" and loaded.version == VERSION and type(loaded.games) == "table" then
+	if type(loaded) == "table" and type(loaded.games) == "table" then
 		for _, record in ipairs(loaded.games) do
 			if validRecord(record) then self.records[record.gameId] = record end
 		end
@@ -35,7 +31,7 @@ function SavedGames:persist()
 	if not (self.store and self.store.save) then return end
 	local games = {}
 	for _, record in ipairs(self:list()) do table.insert(games, record) end
-	self.store.save({ version = VERSION, games = games })
+	self.store.save({ games = games })
 end
 
 function SavedGames:find(gameId)
