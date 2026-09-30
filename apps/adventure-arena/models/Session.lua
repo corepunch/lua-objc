@@ -20,9 +20,6 @@ local DIRECTIONS = {
 -- reader keeps the most recent entries; the story itself is unaffected.
 local TRANSCRIPT = { limit = 120 }
 
--- A tapped word offers a handful of actions, never a wall of them.
-local LINK = { actions = 6 }
-
 function Session.new(options)
 	options = options or {}
 	local self = setmetatable({
@@ -232,9 +229,9 @@ function Session:linkActions(target)
 		end
 	end
 	local actions = {}
-	for index = 1, math.min(#verbs, LINK.actions) do
+	for index = 1, #verbs do
 		local command = verbs[index] .. " " .. target
-		table.insert(actions, { title = capitalized(command), command = command })
+		table.insert(actions, { title = capitalized(verbs[index]), command = command })
 	end
 	return actions
 end

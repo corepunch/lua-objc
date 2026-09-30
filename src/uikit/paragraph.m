@@ -21,7 +21,9 @@
 }
 @end
 
-@interface LuaParagraphView : UITextView <UITextViewDelegate, LuaParagraphLinking>
+@interface LuaParagraphView : UITextView <UIGestureRecognizerDelegate, UIEditMenuInteractionDelegate, LuaParagraphLinking>
+- (void)presentActionMenuAtLocation:(NSUInteger)location;
+@property(nonatomic, strong) UIEditMenuInteraction *actionMenu;
 @property(nonatomic, copy) NSString *paragraphText;
 @property(nonatomic, strong) UIFont *bodyFont;
 @property(nonatomic, strong) UIColor *bodyColor;
@@ -67,9 +69,15 @@
 	_figureLines = kParagraphFigureLines;
 	_links = @[];
 	_revealedCharacters = -1;
-	/* Links are tagged text items, not URLs: the text view reports taps
-	 * on them to its delegate and styles nothing itself. */
-	self.delegate = self;
+	/* Linked runs stay ordinary text for native long-press selection.
+	 * Only a short tap is intercepted; text-item tags would route long
+	 * presses into UIKit's link interaction instead of selection. */
+	UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tappedWord:)];
+	tap.cancelsTouchesInView = NO;
+	tap.delegate = self;
+	[self addGestureRecognizer:tap];
+	_actionMenu = [[UIEditMenuInteraction alloc] initWithDelegate:self];
+	[self addInteraction:_actionMenu];
 	self.linkTextAttributes = @{};
 	_ready = YES;
 	[self rebuild];
@@ -149,10 +157,9 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 - (void)applyLinks {
 	NSTextStorage *storage = self.textStorage;
 	[storage beginEditing];
-	[_links enumerateObjectsUsingBlock:^(LuaParagraphLink *link, NSUInteger index, __unused BOOL *stop) {
+	[_links enumerateObjectsUsingBlock:^(LuaParagraphLink *link, __unused NSUInteger index, __unused BOOL *stop) {
 		NSRange range = [self bodyRangeOfLink:link];
 		if (range.location == NSNotFound) return;
-		[storage addAttribute:UITextItemTagAttributeName value:@(index).stringValue range:range];
 		[storage addAttribute:NSUnderlineStyleAttributeName
 			value:@(NSUnderlineStyleThick | NSUnderlineStylePatternDot) range:range];
 	}];
@@ -177,21 +184,68 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 		if (![link.callbacks[index] isKindOfClass:LuaReg.class]) action.attributes = UIMenuElementAttributesDisabled;
 		[elements addObject:action];
 	}];
+	/* Edit menus display submenus as another horizontal page. Keep the
+	 * first three verbs together; UIKit owns the page arrow and bar metrics. */
+	if (elements.count > kParagraphMenuPageActions) {
+		NSArray *remaining = [elements subarrayWithRange:NSMakeRange(kParagraphMenuPageActions,
+			elements.count - kParagraphMenuPageActions)];
+		[elements removeObjectsInRange:NSMakeRange(kParagraphMenuPageActions, remaining.count)];
+		[elements addObject:[UIMenu menuWithTitle:@"" image:[UIImage systemImageNamed:@"chevron.forward"]
+			identifier:nil options:0 children:remaining]];
+	}
 	return [UIMenu menuWithTitle:@"" children:elements];
 }
 
-/* A link has no primary action, so a tap presents its menu. */
-- (UIAction *)textView:(__unused UITextView *)textView primaryActionForTextItem:(__unused UITextItem *)textItem
-		defaultAction:(__unused UIAction *)defaultAction {
-	return nil;
+/* Hit-test laid-out glyphs so empty space beside a link is still ordinary
+ * text. Revealed ranges use the same contract as native menu actions. */
+- (NSUInteger)linkedCharacterAtPoint:(CGPoint)point {
+	point.x -= self.textContainerInset.left;
+	point.y -= self.textContainerInset.top;
+	CGFloat fraction;
+	NSUInteger glyph = [self.layoutManager glyphIndexForPoint:point inTextContainer:self.textContainer
+		fractionOfDistanceThroughGlyph:&fraction];
+	if (glyph >= self.layoutManager.numberOfGlyphs) return NSNotFound;
+	CGRect rect = [self.layoutManager boundingRectForGlyphRange:NSMakeRange(glyph, 1) inTextContainer:self.textContainer];
+	if (!CGRectContainsPoint(rect, point)) return NSNotFound;
+	NSUInteger character = [self.layoutManager characterIndexForGlyphAtIndex:glyph];
+	LuaParagraphLink *link = [self linkAtCharacterIndex:character];
+	return link.titles.count ? character : NSNotFound;
 }
 
-- (UITextItemMenuConfiguration *)textView:(__unused UITextView *)textView
-		menuConfigurationForTextItem:(UITextItem *)textItem defaultMenu:(__unused UIMenu *)defaultMenu {
-	if (textItem.contentType != UITextItemContentTypeTag) return nil;
-	LuaParagraphLink *link = [self linkAtCharacterIndex:textItem.range.location];
-	if (!link || link.titles.count == 0) return nil;
-	return [UITextItemMenuConfiguration configurationWithMenu:[self menuForLink:link]];
+- (BOOL)gestureRecognizer:(__unused UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
+	return [self linkedCharacterAtPoint:[touch locationInView:self]] != NSNotFound;
+}
+
+- (void)tappedWord:(UITapGestureRecognizer *)tap {
+	if (tap.state != UIGestureRecognizerStateRecognized) return;
+	NSUInteger location = [self linkedCharacterAtPoint:[tap locationInView:self]];
+	if (location != NSNotFound) [self presentActionMenuAtLocation:location];
+}
+
+- (void)presentActionMenuAtLocation:(NSUInteger)location {
+	if (![self linkAtCharacterIndex:location].titles.count) return;
+	if (!UIAccessibilityIsReduceMotionEnabled())
+		uikit_impact_feedback(UIImpactFeedbackStyleLight, kParagraphTapHapticIntensity);
+	UIEditMenuConfiguration *configuration = [UIEditMenuConfiguration
+		configurationWithIdentifier:@(location) sourcePoint:CGPointZero];
+	[self.actionMenu presentEditMenuWithConfiguration:configuration];
+}
+
+- (UIMenu *)editMenuInteraction:(__unused UIEditMenuInteraction *)interaction
+		menuForConfiguration:(UIEditMenuConfiguration *)configuration
+		suggestedActions:(__unused NSArray<UIMenuElement *> *)suggestedActions {
+	LuaParagraphLink *link = [self linkAtCharacterIndex:[(NSNumber *)configuration.identifier unsignedIntegerValue]];
+	return link ? [self menuForLink:link] : nil;
+}
+
+- (CGRect)editMenuInteraction:(__unused UIEditMenuInteraction *)interaction
+		targetRectForConfiguration:(UIEditMenuConfiguration *)configuration {
+	LuaParagraphLink *link = [self linkAtCharacterIndex:[(NSNumber *)configuration.identifier unsignedIntegerValue]];
+	if (!link) return CGRectNull;
+	NSRange range = [self bodyRangeOfLink:link];
+	UITextPosition *start = [self positionFromPosition:self.beginningOfDocument offset:range.location];
+	UITextPosition *end = [self positionFromPosition:start offset:range.length];
+	return [self firstRectForRange:[self textRangeFromPosition:start toPosition:end]];
 }
 
 - (void)applyReveal {
@@ -323,4 +377,23 @@ static int bridge_UIKitControls_paragraph(lua_State *L) {
 	view.text = @(luaL_optstring(L, 1, ""));
 	push_objc(L, view, "uiview");
 	return 1;
+}
+
+/* Simulator regression harness: use the same presentation path as a tap. */
+static int bridge_test_paragraph_edit_menu(lua_State *L) {
+	LuaParagraphView *view = (LuaParagraphView *)paragraph_check(L, 1);
+	lua_Integer index = luaL_checkinteger(L, 2);
+	if (index < 1 || index > (lua_Integer)view.links.count) return luaL_error(L, "no such paragraph link");
+	NSRange range = [view bodyRangeOfLink:view.links[(NSUInteger)index - 1]];
+	/* Fail the Simulator fixture if link tags or delegate overrides steal
+	 * ordinary text selection again. */
+	if (view.delegate != nil || !view.selectable || view.editable)
+		return luaL_error(L, "paragraph must retain native read-only selection");
+	if (range.location != NSNotFound && [view.textStorage attribute:UITextItemTagAttributeName
+		atIndex:range.location effectiveRange:NULL])
+		return luaL_error(L, "interactive words must remain untagged for native long press");
+
+	if (range.location != NSNotFound && [view linkAtCharacterIndex:range.location])
+		[view presentActionMenuAtLocation:range.location];
+	return 0;
 }

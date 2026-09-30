@@ -9,6 +9,21 @@ static int bridge_UIKit_reduceMotionEnabled(lua_State *L) {
 	lua_pushboolean(L, UIAccessibilityIsReduceMotionEnabled());
 	return 1;
 }
+static void uikit_impact_feedback(UIImpactFeedbackStyle value, CGFloat intensity) {
+	// Keep the same generator warm throughout a pulse train. Recreating it
+	// for each impact discards preparation between closely spaced requests.
+	static NSMutableDictionary<NSNumber *, UIImpactFeedbackGenerator *> *generators;
+	if (!generators) generators = [NSMutableDictionary dictionary];
+	UIImpactFeedbackGenerator *generator = generators[@(value)];
+	if (!generator) {
+		generator = [[UIImpactFeedbackGenerator alloc] initWithStyle:value];
+		generators[@(value)] = generator;
+	}
+	intensity = MIN(1.0, MAX(0.0, intensity));
+	[generator impactOccurredWithIntensity:intensity];
+	[generator prepare];
+}
+
 static int bridge_UIKit_hapticImpact(lua_State *L) {
 	const char *style = luaL_optstring(L, 1, "medium");
 	UIImpactFeedbackStyle value = UIImpactFeedbackStyleMedium;
@@ -16,10 +31,10 @@ static int bridge_UIKit_hapticImpact(lua_State *L) {
 	else if (strcmp(style, "soft") == 0) value = UIImpactFeedbackStyleSoft;
 	else if (strcmp(style, "rigid") == 0) value = UIImpactFeedbackStyleRigid;
 	else if (strcmp(style, "heavy") == 0) value = UIImpactFeedbackStyleHeavy;
-	UIImpactFeedbackGenerator *generator = [[UIImpactFeedbackGenerator alloc] initWithStyle:value];
-	[generator prepare]; [generator impactOccurred];
+	uikit_impact_feedback(value, luaL_optnumber(L, 2, 1.0));
 	return 0;
 }
+
 static int bridge_UIKit_hapticSelection(lua_State *L) {
 	UISelectionFeedbackGenerator *generator = [[UISelectionFeedbackGenerator alloc] init];
 	[generator prepare]; [generator selectionChanged];

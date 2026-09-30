@@ -1,0 +1,16 @@
+<Window title="Paragraph actions" width="520" height="420">
+	<VStack padding="24" spacing="24" alignment="leading">
+		<Label text="Tap a linked word" />
+		<% for index, row in ipairs(rows) do %>
+		<Paragraph id="word_<%= index %>" text="<%= row.word %>" size="24">
+			<Hyperlink location="0" length="<%= utf8.len(row.word) %>" label="<%= row.word %>">
+				<% for item, verb in ipairs(row.verbs) do %>
+				<MenuItem title="<%= verb %>" action="choose_<%= index %>_<%= item %>" />
+				<% end %>
+			</Hyperlink>
+		</Paragraph>
+		<% end %>
+		<Paragraph text="Ordinary selectable text keeps Copy, Look Up and Translate." size="20" />
+		<Label id="status" text="No action chosen" />
+	</VStack>
+</Window>
