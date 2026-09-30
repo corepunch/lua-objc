@@ -14,6 +14,8 @@
     <nav aria-label="Primary navigation">
       <a href="#why">Why</a>
       <a href="#studio">Studio</a>
+      <a href="#film">Film</a>
+      <a href="diskmap/">Diskmap</a>
       <a href="#example">Example</a>
       <a href="#start">Start</a>
       <a href="docs/">Docs</a>
@@ -29,6 +31,7 @@
         <p class="hero-lede">Build polished macOS and iOS interfaces with declarative Lua, real AppKit/UIKit controls, and no compile cycle between edits.</p>
         <div class="hero-actions">
           <a class="button button-dark" href="#start">Build your first app <span aria-hidden="true">↓</span></a>
+          <a class="text-link" href="#film">Watch the film</a>
           <a class="text-link" href="https://github.com/corepunch/lua-objc">Explore the source <span aria-hidden="true">↗</span></a>
         </div>
         <p class="hero-note"><span>⌘</span> Edit. Run. See it immediately.</p>
@@ -55,6 +58,18 @@
           </div>
         </div>
         <p class="art-caption"><span class="caption-line"></span> A real native window, rendered from Lua</p>
+      </div>
+    </section>
+
+    <section id="film" class="film-section band-dark">
+      <div class="section-wrap">
+        <div class="film-heading">
+          <div><p class="eyebrow eyebrow-light">The lua-objc film</p><h2>Build. Run.<br><span>Keep moving.</span></h2></div>
+          <p>A short film about building native Apple apps in Lua, from the first edit to a running interface.</p>
+        </div>
+        <div class="film-player">
+          <iframe src="https://www.youtube-nocookie.com/embed/hnuIkeoAE-0" title="lua-objc promotional film" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+        </div>
       </div>
     </section>
 
@@ -125,6 +140,11 @@
   <i>return</i> ns.Window(cfg)
 <i>end</i></code></pre><div class="code-run">$ ./lua-objc demo/hello <span>●</span></div></div>
       </div></div>
+    </section>
+
+    <section class="diskmap-project section-wrap" aria-labelledby="diskmap-title">
+      <div><p class="eyebrow">Built with lua-objc</p><h2 id="diskmap-title">Meet Diskmap.</h2><p>A native Mac app that turns storage into a visual map, with the context to review cleanup before anything moves.</p><a class="text-link" href="diskmap/">Explore Diskmap <span aria-hidden="true">↗</span></a></div>
+      <a href="diskmap/" aria-label="Explore Diskmap, a native Mac storage manager"><img src="diskmap/assets/promo-map.jpg" width="1440" height="1080" loading="lazy" alt="An isolated Diskmap storage map and category rows in a promotional composition."></a>
     </section>
 
     <section class="closing section-wrap"><p class="eyebrow">Open source, Apple-shaped</p><h2>A faster path from<br>thought to interface.</h2><div class="closing-actions"><a class="button button-dark" href="https://github.com/corepunch/lua-objc">View lua-objc on GitHub <span aria-hidden="true">↗</span></a><a class="text-link" href="docs/">Read the component reference and guides <span aria-hidden="true">↗</span></a></div><p class="contributors">Contributors are very welcome. Bring a widget, an example, a test, a design idea, or simply a sharp question.</p></section>

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f5fa">
+  <meta name="description" content="See what fills your Mac. Diskmap maps your storage, finds large files and developer data, and helps you review cleanup before anything moves.">
+  <meta property="og:title" content="Diskmap — See what fills your Mac">
+  <meta property="og:description" content="A clearer picture of your storage. A considered approach to cleanup. Native on macOS 26.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://corepunch.github.io/lua-objc/diskmap/">
+  <meta property="og:image" content="https://corepunch.github.io/lua-objc/diskmap/assets/promo-map.jpg">
+  <meta property="og:image:alt" content="Diskmap's visual storage map in a promotional layout">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://corepunch.github.io/lua-objc/diskmap/">
+  <link rel="icon" href="assets/icon.png" type="image/png">
+  <link rel="stylesheet" href="styles.css">
+  <title>Diskmap — See what fills your Mac</title>
+  <script src="film.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header wrap">
+    <a class="brand" href="./" aria-label="Diskmap home"><img src="assets/icon.png" width="34" height="34" alt="">Diskmap</a>
+    <nav aria-label="Main navigation">
+      <a href="#features">Features</a><a href="#film">Film</a><a href="#screenshots">Screenshots</a><a class="parent-link" href="../">Built with lua-objc <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero wrap" aria-labelledby="hero-title">
+      <p class="eyebrow">Native storage management for macOS 26</p>
+      <h1 id="hero-title">See what fills<br><span>your Mac.</span></h1>
+      <p class="lede">A visual map of your storage. A closer look at what you can clear. Get the context you need before you make space.</p>
+      <div class="actions"><a class="button" href="#film"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5 13 8 4 13.5Z" fill="currentColor"/></svg>Watch the film</a><a class="text-link" href="https://github.com/corepunch/lua-objc/tree/main/apps/diskmap">Explore the project <span aria-hidden="true">↗</span></a></div>
+      <figure class="hero-stage"><a href="assets/overview.png" aria-label="Open the Diskmap overview screenshot at full size"><img src="assets/overview.png" width="2560" height="1600" fetchpriority="high" alt="The complete Diskmap Overview window, with a storage donut, category sizes, and an explanation of unmeasured space."></a></figure>
+      <p class="image-note">Real Diskmap interface. Screenshots use synthetic example data.</p>
+    </section>
+
+    <section id="features" class="features wrap" aria-label="What Diskmap does">
+      <article><span class="feature-number">01 / UNDERSTAND</span><h2>Find the bigger picture.</h2><p>See storage by category, explore a folder, or drill into a ring map. The largest items are easy to find.</p></article>
+      <article><span class="feature-number">02 / DECIDE</span><h2>Know what you’re clearing.</h2><p>Separate rebuildable caches and build data from files that need your attention. Review the consequences first.</p></article>
+      <article><span class="feature-number">03 / STAY IN CONTROL</span><h2>Your files. Your choice.</h2><p>Mark items, review the list, then confirm. Diskmap checks each item again before moving it to the Trash.</p></article>
+    </section>
+
+    <section id="film" class="film-section">
+      <div class="wrap">
+        <div class="section-heading"><div><p class="eyebrow">Diskmap in motion</p><h2>Meet your storage.<br>In 30 seconds.</h2></div><p>From a complete overview to the details worth a closer look. Watch the Diskmap film.</p></div>
+        <div class="film-player" data-film-player>
+          <a class="film-cover" href="https://www.youtube.com/watch?v=6BVgClx1r_A" data-film-trigger aria-label="Play the Diskmap film">
+            <img src="assets/promo-map.jpg" width="1440" height="1080" loading="lazy" alt="">
+            <span class="film-shade"></span><span class="film-play"><span class="play-circle"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 11 7-11 7Z" fill="currentColor"/></svg></span><span>Watch Diskmap<span class="film-duration">The 30-second film</span></span></span>
+          </a>
+        </div>
+        <p class="film-footer"><span>Native on macOS. Built with lua-objc.</span><a href="https://www.youtube.com/watch?v=6BVgClx1r_A">Watch on YouTube <span aria-hidden="true">↗</span></a></p>
+      </div>
+    </section>
+
+    <section id="screenshots" class="screenshots wrap">
+      <div class="section-heading"><div><p class="eyebrow">A closer look</p><h2>Clarity at every level.</h2></div><p>Explore the real app, from everyday storage questions to the tools that fill a developer’s Mac.</p></div>
+      <article class="showcase map-detail">
+        <div class="showcase-copy"><p class="eyebrow">Explore the map</p><h3>The bigger picture.<br>Down to the details.</h3><p>Drill into a category to see what it holds. The map and ranked list give every measured item its place.</p></div>
+        <div class="map-pieces"><a href="assets/map-cutout.png" aria-label="Open the isolated storage map"><img class="map-cutout" src="assets/map-cutout.png" width="768" height="768" loading="lazy" alt="The raised storage ring map, isolated from the app window."></a><div class="map-rows"><img src="assets/map-row-1.png" width="606" height="84" loading="lazy" alt="Developer storage category and measured size."><img src="assets/map-row-2.png" width="606" height="84" loading="lazy" alt="iOS Files storage category and measured size."><img src="assets/map-row-3.png" width="606" height="84" loading="lazy" alt="Music Creation storage category and measured size."></div></div>
+      </article>
+      <article class="showcase cleanup">
+        <div class="showcase-copy"><p class="eyebrow">Considered cleanup</p><h3>A little context.<br>A better decision.</h3><p>See rebuildable items and review candidates, with an explanation of what each one contains.</p></div>
+        <div class="cleanup-pieces"><img src="assets/rebuildable-cutout.png" width="643" height="218" loading="lazy" alt="Rebuildable: 19.8 GB in 7 locations regenerated by their owners."><img src="assets/review-cutout.png" width="644" height="218" loading="lazy" alt="To review: 87.5 GB in 14 locations that may hold your work."><img src="assets/checked-cutout.png" width="643" height="218" loading="lazy" alt="Checked: 137 known space hogs checked."></div>
+      </article>
+      <article class="showcase developer">
+        <div class="showcase-copy"><p class="eyebrow">Made for busy Macs</p><h3>Build more.<br>Understand the leftovers.</h3><p>Inspect Xcode data, simulators, package caches, projects, containers, and AI tools in one place.</p></div>
+        <div class="developer-pieces"><a href="assets/developer-row-1.png"><img src="assets/developer-row-1.png" width="1958" height="92" loading="lazy" alt="Device support: 11.5 GB, with a review indicator."></a><a href="assets/developer-row-2.png"><img src="assets/developer-row-2.png" width="1958" height="92" loading="lazy" alt="Simulator devices: 11.2 GB, with a review indicator."></a><a href="assets/developer-row-3.png"><img src="assets/developer-row-3.png" width="1958" height="92" loading="lazy" alt="Xcode DerivedData: 8.0 GB of rebuildable build products, indexes, and logs."></a></div>
+      </article>
+      <div class="promo-downloads"><p>Promotional screenshots</p><a href="assets/promo-map.jpg" download>Storage map</a><a href="assets/promo-cleanup.jpg" download>Cleanup</a><a href="assets/promo-developer.jpg" download>Developer tools</a></div>
+      <p class="image-note">All screenshots show synthetic example data. Storage totals and cleanup opportunities vary by Mac.</p>
+    </section>
+
+    <section class="privacy-section wrap">
+      <div><p class="eyebrow">Designed to stay local</p><h2>Your storage stays<br>on your Mac.</h2></div>
+      <div><p>Diskmap processes file names, sizes, and scan results on your Mac. The app has no advertising, analytics, or account sign-in.</p><p>Full Disk Access is optional. Without it, Diskmap measures the locations macOS allows and identifies what it could not read.</p><a class="text-link" href="https://github.com/corepunch/lua-objc/blob/main/apps/diskmap/PRIVACY.md">Read the app privacy policy <span aria-hidden="true">↗</span></a></div>
+    </section>
+
+    <section class="closing wrap"><img src="assets/icon.png" width="64" height="64" loading="lazy" alt=""><h2>Make room for<br>what comes next.</h2><p>Explore Diskmap, read the documentation, and build it from source.</p><a class="button" href="https://github.com/corepunch/lua-objc/tree/main/apps/diskmap#readme">View the project on GitHub <span aria-hidden="true">↗</span></a><p class="requirements">Requires macOS 26 or later.</p></section>
+  </main>
+  <footer class="site-footer wrap"><span>Diskmap</span><a href="../">A lua-objc project</a><a href="https://github.com/corepunch/lua-objc/issues">Support</a><a href="https://github.com/corepunch/lua-objc/blob/main/apps/diskmap/PRIVACY.md">App privacy</a></footer>
+</body>
+</html>
