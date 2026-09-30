@@ -1,5 +1,5 @@
 <% --[[ `header` is the page's sidebar row: its icon, color and title. ]] %>
-<HStack id="pageHeader" maxWidth="infinity" spacing="14" alignment="center">
+<HStack id="pageHeader" spacing="14" alignment="center">
   <SystemImage name="<%= header.icon %>" size="36" badgeColor="<%= header.color %>" />
   <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
     <Label id="pageTitle" text="<%= header.title or header.name %>" size="22" weight="semibold" lines="1" />

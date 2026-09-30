@@ -1,4 +1,4 @@
-<VStack maxWidth="infinity" flexShrink="1" spacing="2" alignment="leading">
+<VStack flexShrink="1" spacing="2" alignment="leading">
   <Label <% if titleId then %>id="<%= titleId %>" <% end %>text="<%= title %>" size="15" weight="semibold" />
   <Label <% if detailId then %>id="<%= detailId %>" <% end %>text="<%= detail %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
 </VStack>

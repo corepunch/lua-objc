@@ -476,6 +476,8 @@ function UIKit.GroupBox(props)
 	content.background = props.background or "secondaryBackground"
 	content.cornerRadius = props.cornerRadius or 10
 	content.clipsToBounds = true
+	-- SwiftUI's GroupBox takes the width it is offered.
+	content.fillWidth = true
 	return UIKit.VStack(content)
 end
 
@@ -814,6 +816,7 @@ function UIKit.SearchField(props)
 		v.accessibilityLabel = props.accessibilityLabel
 	end
 	bridge._textFieldCallbacks(v, props.onChange, props.onCommand)
+	v.fillWidth = true
 	return applyLayout(v, props)
 end
 
@@ -1608,6 +1611,8 @@ function UIKit.ProgressView(props)
 		local color = bridge._systemColor(props.tint)
 		if props.value ~= nil then view.progressTintColor = color else view.color = color end
 	end
+	-- A linear ProgressView takes the width it is offered; the spinner does not.
+	if props.value ~= nil then view.fillWidth = true end
 	return applyLayout(view, props)
 end
 
@@ -1621,6 +1626,7 @@ function UIKit.Gauge(props)
 	local view = bridge._progressView(fraction)
 	if props.tint then view.progressTintColor = bridge._systemColor(props.tint) end
 	if props.accessibilityLabel then view.accessibilityLabel = props.accessibilityLabel end
+	view.fillWidth = true
 	return applyLayout(view, props)
 end
 

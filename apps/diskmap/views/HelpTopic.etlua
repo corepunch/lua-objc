@@ -1,5 +1,5 @@
-<VStack id="help_<%= topic.id %>" maxWidth="infinity" padding="12" spacing="6" alignment="leading">
-  <HStack maxWidth="infinity" spacing="10" alignment="center">
+<VStack id="help_<%= topic.id %>" padding="12" spacing="6" alignment="leading">
+  <HStack spacing="10" alignment="center">
     <% --[[ Symbols differ in width; a fixed column starts every title at one
       edge. The disclosure triangle below is centered in the same column. ]] %>
     <SystemImage name="<%= topic.icon %>" size="18" color="accent" width="26" />
@@ -12,7 +12,7 @@
     <% end %>
   </HStack>
   <% if topic.steps ~= "" or topic.note then %>
-  <DisclosureGroup id="steps_<%= topic.id %>" label="<%= topic.id == "shortcuts" and "Shortcuts" or "How to" %>" expanded="<%= expanded and "true" or "false" %>" spacing="8" indicatorWidth="26" indicatorSpacing="10" maxWidth="infinity">
+  <DisclosureGroup id="steps_<%= topic.id %>" label="<%= topic.id == "shortcuts" and "Shortcuts" or "How to" %>" expanded="<%= expanded and "true" or "false" %>" spacing="8" indicatorWidth="26" indicatorSpacing="10">
     <% if topic.steps ~= "" then %>
     <Label text="<%= topic.steps %>" size="12" maxWidth="infinity" lines="0" />
     <% end %>

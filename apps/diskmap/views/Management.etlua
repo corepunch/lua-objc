@@ -1,17 +1,17 @@
 <Sheet width="620" height="640">
-  <VStack maxWidth="infinity" maxHeight="infinity" padding="16" spacing="8">
-    <HStack maxWidth="infinity" spacing="10" alignment="center">
+  <VStack maxHeight="infinity" padding="16" spacing="8">
+    <HStack spacing="10" alignment="center">
       <Label id="categoryName" text="<%= title %>" size="15" weight="semibold" flexGrow="1" flexShrink="1" />
       <% if category then %>
       <Button id="categoryRefresh" title="Refresh" action="categoryRefresh" />
       <Button id="categoryKeep" title="<%= category.keepTitle %>" action="categoryKeep" />
       <% end %>
     </HStack>
-    <SearchField id="search" placeholder="Search" accessibilityLabel="Search names, owners or paths" onChange="search" defaultFocus="true" maxWidth="infinity" />
-    <TabView id="tabs" onChange="tabChanged" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
+    <SearchField id="search" placeholder="Search" accessibilityLabel="Search names, owners or paths" onChange="search" defaultFocus="true" />
+    <TabView id="tabs" onChange="tabChanged" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
       <% for index, title in ipairs(filters) do %>
       <Tab title="<%= title %>">
-        <List id="rows<%= index %>" onSelect="select" onActivate="review" onColumnButton="review" onSort="sort" style="fullWidth" alternatingRows="true" rowHeight="38" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
+        <List id="rows<%= index %>" onSelect="select" onActivate="review" onColumnButton="review" onSort="sort" style="fullWidth" alternatingRows="true" rowHeight="38" flexGrow="1" maxHeight="infinity">
           <Column id="name" title="Resource" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" fileIconKey="fileIcon" imageSize="24" minWidth="180" sortable="true" />
           <Column id="impact" title="Impact" width="140" minWidth="130" sortable="true" />
           <Column id="size" title="On disk" width="125" minWidth="125" alignment="trailing" loadingKey="calculating" sortable="true" />
@@ -21,7 +21,7 @@
       <% end %>
     </TabView>
     <Label id="status" text="" size="11" color="secondary" maxWidth="infinity" lines="1" />
-    <HStack maxWidth="infinity" spacing="10">
+    <HStack spacing="10">
       <Button id="reveal" title="Show in Finder" action="reveal" disabled="true" />
       <Button id="manage" systemImage="info.circle" symbolSize="16" foregroundStyle="secondary" accessibilityLabel="Review" style="plain" action="manage" disabled="true" />
       <Button id="keep" title="Keep" action="keep" disabled="true" />

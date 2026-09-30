@@ -1,28 +1,28 @@
-<ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
-  <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
+<ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
+  <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {header = header, summary = "Reading simulator devices and runtimes…", summaryId = "summary",
       buttons = {{id = "components", title = "Xcode Components…", action = "components", help = "Manage runtimes in Xcode › Settings › Components"}}}) %>
-    <HStack id="stats" maxWidth="infinity" fixedSize="vertical" spacing="12" alignment="top">
+    <HStack id="stats" fixedSize="vertical" spacing="12" alignment="top">
       <%- partial("StatTile.etlua", {id = "devicesTile", icon = "iphone", color = "systemBlue", title = "Devices", value = "—", detail = "Apps and data inside simulators"}) %>
       <%- partial("StatTile.etlua", {id = "runtimesTile", icon = "iphone.gen3", color = "systemIndigo", title = "Runtimes", value = "—", detail = "Simulator operating systems"}) %>
       <%- partial("StatTile.etlua", {id = "unavailableTile", icon = "exclamationmark.triangle", color = "systemOrange", title = "Unavailable", value = "—", detail = "Devices whose runtime is gone", actionTitle = "Delete Unavailable…", action = "unavailable"}) %>
     </HStack>
-    <VStack id="devicesSection" maxWidth="infinity" spacing="8" alignment="leading">
-      <HStack maxWidth="infinity" spacing="12" alignment="center">
+    <VStack id="devicesSection" spacing="8" alignment="leading">
+      <HStack spacing="12" alignment="center">
         <%- partial("SectionHeader.etlua", {title = "Devices", detail = "Erase keeps a device and removes its apps and data; Delete removes the device.", detailId = "devicesDetail"}) %>
         <Picker id="filter" style="segmented" onChange="filter">
           <% for _, title in ipairs(filters) do %><Option title="<%= title %>" /><% end %>
         </Picker>
       </HStack>
-      <GroupBox maxWidth="infinity">
-        <List id="devices" onSelect="select" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44" maxWidth="infinity">
+      <GroupBox>
+        <List id="devices" onSelect="select" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
           <Column id="name" title="Device" subtitleKey="runtime" imageKey="icon" badgeColorKey="color" imageSize="28" minWidth="180" />
           <Column id="state" title="State" width="110" minWidth="90" />
           <Column id="lastUse" title="Last used" width="150" minWidth="120" />
           <Column id="size" title="Apps &amp; data" width="110" minWidth="100" alignment="trailing" />
         </List>
       </GroupBox>
-      <HStack maxWidth="infinity" spacing="8" alignment="center">
+      <HStack spacing="8" alignment="center">
         <Button id="reveal" title="Show in Finder" action="reveal" disabled="true" />
         <Button id="erase" title="Erase…" action="erase" disabled="true" />
         <Button id="delete" title="Delete…" action="delete" disabled="true" />
@@ -30,17 +30,17 @@
         <Label id="status" text="" size="11" color="secondary" lines="1" truncation="tail" flexShrink="1" />
       </HStack>
     </VStack>
-    <VStack id="runtimesSection" maxWidth="infinity" spacing="8" alignment="leading">
+    <VStack id="runtimesSection" spacing="8" alignment="leading">
       <%- partial("SectionHeader.etlua", {title = "Runtimes", detail = "Each runtime is a full operating system image. Devices on a deleted runtime become unavailable.", detailId = "runtimesDetail"}) %>
-      <GroupBox maxWidth="infinity">
-        <List id="runtimes" onSelect="selectRuntime" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44" maxWidth="infinity">
+      <GroupBox>
+        <List id="runtimes" onSelect="selectRuntime" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
           <Column id="name" title="Runtime" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" imageSize="28" minWidth="180" />
           <Column id="deviceText" title="Devices" width="110" minWidth="90" />
           <Column id="lastUse" title="Last used" width="150" minWidth="120" />
           <Column id="size" title="On disk" width="110" minWidth="100" alignment="trailing" />
         </List>
       </GroupBox>
-      <HStack maxWidth="infinity" spacing="8" alignment="center">
+      <HStack spacing="8" alignment="center">
         <Button id="deleteRuntime" title="Delete Runtime…" action="deleteRuntime" disabled="true" />
         <Spacer />
         <Label id="runtimeStatus" text="" size="11" color="secondary" lines="1" truncation="tail" flexShrink="1" />

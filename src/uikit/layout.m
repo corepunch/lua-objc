@@ -47,7 +47,9 @@ static BOOL grows_on_axis(UIView *view, BOOL horizontal) {
 		return NO;
 	}
 	if (![objc_getAssociatedObject(view, &kFlexibleKey) boolValue]) return NO;
-	if (objc_getAssociatedObject(view, &kFlexBasisKey)) {
+	// A basis names the main axis of a flex item; a scroll view stays flexible
+	// on both axes, as in SwiftUI.
+	if (objc_getAssociatedObject(view, &kFlexBasisKey) && ![view isKindOfClass:UIScrollView.class]) {
 		NSString *parentAxis = objc_getAssociatedObject(view.superview, &kAxisKey);
 		if ([parentAxis isEqualToString:@"hstack"]) return horizontal;
 		if ([parentAxis isEqualToString:@"vstack"]) return !horizontal;

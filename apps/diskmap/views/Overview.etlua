@@ -1,12 +1,12 @@
-<ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
-  <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
-    <VStack id="hero" maxWidth="infinity" spacing="0" />
-    <VStack id="notMeasured" maxWidth="infinity" spacing="0" />
-    <VStack id="changes" maxWidth="infinity" spacing="0" />
-    <VStack id="categoriesSection" maxWidth="infinity" spacing="8" alignment="leading">
+<ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
+  <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
+    <VStack id="hero" spacing="0" />
+    <VStack id="notMeasured" spacing="0" />
+    <VStack id="changes" spacing="0" />
+    <VStack id="categoriesSection" spacing="8" alignment="leading">
       <%- partial("SectionHeader.etlua", {title = "Categories", detail = "Measured by owner, largest first", detailId = "coverage"}) %>
-      <GroupBox id="categoriesPanel" maxWidth="infinity">
-        <List id="results" onSelect="select" onActivate="open" onColumnButton="open" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44" maxWidth="infinity">
+      <GroupBox id="categoriesPanel">
+        <List id="results" onSelect="select" onActivate="open" onColumnButton="open" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
           <Column id="name" title="Category" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" fileIconKey="fileIcon" imageSize="28" minWidth="200" />
           <Column id="size" title="On disk" width="270" minWidth="240">
             <%- partial("cells/Meter.etlua", {title = "On disk"}) %>
@@ -15,16 +15,16 @@
         </List>
       </GroupBox>
     </VStack>
-    <VStack id="largestSection" maxWidth="infinity" spacing="8" alignment="leading">
-      <HStack maxWidth="infinity" spacing="8" alignment="bottom">
+    <VStack id="largestSection" spacing="8" alignment="leading">
+      <HStack spacing="8" alignment="bottom">
         <%- partial("SectionHeader.etlua", {title = "Largest items", detail = "Individual resources across every category"}) %>
         <Button id="showLargest" title="Show All" style="link" action="showLargest" />
       </HStack>
-      <GroupBox id="largestPanel" maxWidth="infinity">
+      <GroupBox id="largestPanel">
         <%- partial("ResourceList.etlua", {id = "largest", menu = "largestMenu", activate = "openLargest", status = true}) %>
       </GroupBox>
     </VStack>
-    <HStack id="statusBar" maxWidth="infinity" spacing="12" alignment="center">
+    <HStack id="statusBar" spacing="12" alignment="center">
       <SystemImage name="info.circle" size="13" color="secondary" />
       <Label id="status" text="<%= status %>" size="11" color="secondary" flexGrow="1" flexBasis="0" flexShrink="1" lines="2" />
       <Button id="access" title="Scan access…" style="link" action="access" />
