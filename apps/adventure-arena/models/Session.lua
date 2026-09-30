@@ -189,7 +189,7 @@ function Session:appendParagraph(paragraph)
 	end
 	-- A story's CR ends a prose paragraph, including the object descriptions
 	-- printed after a room. Keep each in its own reveal queue item so the
-	-- paragraph gap and the silent typing pause apply to single newlines too.
+	-- paragraph gap applies to single newlines too.
 	for line in tostring(paragraph):gmatch("[^\r\n]+") do
 		line = trim(line)
 		if line ~= "" then

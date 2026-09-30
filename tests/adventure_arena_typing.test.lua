@@ -118,19 +118,16 @@ for index = 2, #haptics do
 	t.assertEqual(haptics[index].style, "soft", "every pulse uses the same soft impact")
 end
 local paragraphFinishedAt = now
-local countAtPause = #haptics
-nextTimer()
-t.assertEqual(#haptics, countAtPause, "pending pulses are silent during the paragraph pause")
-t.assertEqual(timers[1].seconds, 0.15, "a short beat separates paragraphs")
-local pause = nextTimer()
-t.expect(math.abs(pause.due - paragraphFinishedAt - 0.15) < 0.000001, "printing waits through the paragraph break")
-t.expect(page().paragraph_1_2.hidden == false, "printing resumes after the break")
+local nextParagraph = tick()
+t.expect(math.abs(nextParagraph.due - paragraphFinishedAt - 1 / 30) < 0.000001,
+	"the next paragraph prints on the ordinary tick without a pause")
+t.expect(page().paragraph_1_2.hidden == false, "the next paragraph appears on the next tick")
 t.assertEqual(page().paragraph_1_2.revealedCharacters, 3, "the next paragraph starts with one tick")
-t.assertEqual(#haptics, countAtPause + 1, "haptics resume with printing")
-t.assertEqual(haptics[#haptics].time, pause.due, "the first resumed pulse accompanies the next paragraph")
-t.expect(haptics[#haptics].time - haptics[countAtPause].time >= 0.15,
-	"a single newline leaves at least 0.15 seconds of haptic silence")
 finish()
+for index = 2, #haptics do
+	t.expect(math.abs(haptics[index].time - haptics[index - 1].time - HAPTIC_INTERVAL) < 0.000001,
+		"haptic pulses keep their cadence across paragraph boundaries")
+end
 t.expect(not controller:isTyping(), "the opening finishes")
 t.expect(page().paragraph_1_2.hidden == false and page().paragraph_1_2.revealedCharacters == -1,
 	"every paragraph ends fully shown")

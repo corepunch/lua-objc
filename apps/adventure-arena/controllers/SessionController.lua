@@ -9,7 +9,7 @@ local TOAST = { seconds = 2.2 }
 -- Printing and haptic pulses have independent clocks, so every pulse has
 -- the same spacing regardless of word length or the character reveal rate.
 local TYPING = {
-	tick = 1 / 30, charactersPerTick = 3, paragraphPause = 0.15,
+	tick = 1 / 30, charactersPerTick = 3,
 	hapticInterval = (4 / 30) / 1.75, hapticStyle = "soft", hapticIntensity = 0.5, openingDelay = 0.45,
 }
 
@@ -273,8 +273,8 @@ function Controller:revealState(earlier)
 	return reveal
 end
 
--- A paragraph owns one pulse chain. Ending it invalidates pending pulses,
--- including when the next paragraph starts before an old callback arrives.
+-- One pulse chain spans the entire reveal, including paragraph boundaries.
+-- Generation checks keep callbacks from a superseded reveal silent.
 function Controller:pulseTyping(generation, hapticGeneration)
 	local typing = self.typing
 	if not typing or typing.generation ~= generation or not typing.printing
@@ -304,17 +304,16 @@ function Controller:typeNext(generation)
 		if self.haptics then self:pulseTyping(generation, typing.hapticGeneration) end
 	end
 	self:scrollTranscript(false)
-	local delay = TYPING.tick
 	if finished then
-		typing.printing = false
 		typing.position, typing.revealed = typing.position + 1, 0
 		if typing.position > #typing.queue then
 			self.typing = nil
 			return
 		end
-		delay = TYPING.paragraphPause
+		-- Add an optional paragraph pause here later: stop printing and delay
+		-- the next tick; its first characters will restart the haptic chain.
 	end
-	self.after(delay, function() self:typeNext(generation) end)
+	self.after(TYPING.tick, function() self:typeNext(generation) end)
 end
 
 function Controller:onSpeechEvent(state, text, message)

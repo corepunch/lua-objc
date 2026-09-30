@@ -180,7 +180,7 @@ if game then
 	local opening = story.entries[#story.entries]
 	t.assertEqual(#opening.paragraphs, 2, "Sanitarium's gate and plaque print as separate paragraphs")
 	local queue = story:paragraphsSince(#story.entries)
-	t.assertEqual(#queue, 2, "the real opening has two steps with a silent pause between them")
+	t.assertEqual(#queue, 2, "the real opening has two paragraph reveal steps")
 	local targets = {}
 	for _, paragraphLinks in pairs(opening.links) do
 		for _, link in ipairs(paragraphLinks) do targets[link.target] = true end
