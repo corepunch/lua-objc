@@ -28,8 +28,9 @@ local function request(method, ...)
 	return true
 end
 
-function M.impact(intensity)
-	return request("_hapticImpact", intensity or "medium")
+-- Strength scales the native UIKit impact from zero to one.
+function M.impact(style, intensity)
+	return request("_hapticImpact", style or "medium", intensity or 1)
 end
 
 function M.selection()

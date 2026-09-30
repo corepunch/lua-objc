@@ -805,7 +805,11 @@ Empty text takes no space. Implementation: a non-scrolling `UITextView` / non-ed
 **Links.** `<Hyperlink>` children mark runs of the text the reader can act
 on, as WPF sets `Hyperlink` inside a `TextBlock`. `location` (from 0) and
 `length` count characters as `utf8.len` does; `<MenuItem>` children are what
-the link offers:
+the link offers. On UIKit, a tap opens the native horizontal edit-menu bar;
+the first three actions appear directly and extra actions sit behind a native
+chevron submenu. A short tap emits one light haptic (respecting Reduce Motion);
+long presses use native text selection and its standard editing menu. UIKit
+owns the bar height, material and page navigation:
 
 ```xml
 <Paragraph text="A corroded brass plaque hangs askew on the gate.">

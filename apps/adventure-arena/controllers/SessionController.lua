@@ -6,26 +6,15 @@ Controller.__index = Controller
 -- How long the "+5 points" glass capsule stays over the page.
 local TOAST = { seconds = 2.2 }
 
--- The story types itself, as a terminal printed it: about 120 characters a
--- second, a beat between paragraphs, and a soft tick at word starts no more
--- than 7–8 times a second so the haptic reads as texture, not buzzing. A new
--- story starts once the page has finished sliding in.
+-- Printing and haptic pulses have independent clocks, so every pulse has
+-- the same spacing regardless of word length or the character reveal rate.
 local TYPING = {
-	tick = 1 / 30, charactersPerTick = 4, paragraphPause = 0.15,
-	hapticTicks = 4, openingDelay = 0.45,
+	tick = 1 / 30, charactersPerTick = 3, paragraphPause = 0.15,
+	hapticInterval = (4 / 30) / 1.75, hapticStyle = "soft", hapticIntensity = 0.5, openingDelay = 0.45,
 }
 
 local function characterCount(text)
 	return utf8.len(text) or #text
-end
-
--- Whether characters `from + 1 … to` begin a word.
-local function beginsWord(text, from, to)
-	local first = utf8.offset(text, math.max(from, 1)) or 1
-	local last = (utf8.offset(text, to + 1) or (#text + 1)) - 1
-	local segment = text:sub(first, last)
-	if from == 0 then segment = " " .. segment end
-	return segment:find("%s%S") ~= nil
 end
 
 function Controller.new(options)
@@ -252,7 +241,7 @@ function Controller:beginTyping(firstEntry, delay)
 	if #queue == 0 or self.reduceMotion() then return end
 	self.typingGeneration = (self.typingGeneration or 0) + 1
 	local generation = self.typingGeneration
-	self.typing = { queue = queue, position = 1, revealed = 0, ticks = 0, nextHaptic = 0, generation = generation }
+	self.typing = { queue = queue, position = 1, revealed = 0, hapticGeneration = 0, generation = generation }
 	self.after(delay or TYPING.tick, function() self:typeNext(generation) end)
 end
 
@@ -284,6 +273,17 @@ function Controller:revealState(earlier)
 	return reveal
 end
 
+-- A paragraph owns one pulse chain. Ending it invalidates pending pulses,
+-- including when the next paragraph starts before an old callback arrives.
+function Controller:pulseTyping(generation, hapticGeneration)
+	local typing = self.typing
+	if not typing or typing.generation ~= generation or not typing.printing
+		or typing.hapticGeneration ~= hapticGeneration
+		or not self.transcript or self.transcript:isDisposed() then return end
+	self.haptics.impact(TYPING.hapticStyle, TYPING.hapticIntensity)
+	self.after(TYPING.hapticInterval, function() self:pulseTyping(generation, hapticGeneration) end)
+end
+
 function Controller:typeNext(generation)
 	local typing = self.typing
 	if not typing or typing.generation ~= generation or not self.transcript or self.transcript:isDisposed() then return end
@@ -293,19 +293,20 @@ function Controller:typeNext(generation)
 	local from = typing.revealed
 	if from == 0 and refs["entry_" .. index] then refs["entry_" .. index].hidden = false end
 	typing.revealed = math.min(item.length, from + TYPING.charactersPerTick)
-	typing.ticks = typing.ticks + 1
 	local finished = typing.revealed >= item.length
 	if view then
 		view.hidden = false
 		view.revealedCharacters = finished and -1 or typing.revealed
 	end
-	if self.haptics and typing.ticks >= typing.nextHaptic and beginsWord(item.text, from, typing.revealed) then
-		self.haptics.impact("soft")
-		typing.nextHaptic = typing.ticks + TYPING.hapticTicks
+	if not typing.printing then
+		typing.printing = true
+		typing.hapticGeneration = typing.hapticGeneration + 1
+		if self.haptics then self:pulseTyping(generation, typing.hapticGeneration) end
 	end
 	self:scrollTranscript(false)
 	local delay = TYPING.tick
 	if finished then
+		typing.printing = false
 		typing.position, typing.revealed = typing.position + 1, 0
 		if typing.position > #typing.queue then
 			self.typing = nil

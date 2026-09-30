@@ -9,7 +9,7 @@ local SessionController = require("apps.adventure-arena.controllers.SessionContr
 local Template = require("ui.template")
 
 -- The story types itself: new prose appears a few characters per tick with
--- a soft haptic at word starts, the page follows it, and a resumed story
+-- steady soft haptic pulses, the page follows it, and a resumed story
 -- opens already set.
 local OPENING = "West of House\nYou are standing in an open field west of a white house.\n\nThere is a small mailbox here."
 local ANSWER = "Opening the small mailbox reveals a leaflet.\n\nIt is written in a careful hand."
@@ -27,6 +27,8 @@ local function engine()
 end
 
 local timers, haptics, scrolls = {}, {}, 0
+local now = 0
+local HAPTIC_INTERVAL = (4 / 30) / 1.75
 local reduceMotion = false
 local rendered = {}
 local saved = nil
@@ -50,10 +52,10 @@ local function build()
 		presentSheet = function() end,
 		dismissSheet = function() end,
 		haptics = {
-			impact = function(style) table.insert(haptics, style) end,
+			impact = function(style, intensity) table.insert(haptics, { style = style, intensity = intensity, time = now }) end,
 			notification = function() end,
 		},
-		after = function(seconds, callback) table.insert(timers, { seconds = seconds, callback = callback }) end,
+		after = function(seconds, callback) table.insert(timers, { seconds = seconds, due = now + seconds, callback = callback }) end,
 		reduceMotion = function() return reduceMotion end,
 	}
 	local scrollTranscript = controller.scrollTranscript
@@ -64,9 +66,15 @@ local function build()
 	return controller
 end
 
-local function tick()
+local function nextTimer()
+	table.sort(timers, function(a, b) return a.due < b.due end)
 	local timer = table.remove(timers, 1)
-	if timer then timer.callback() end
+	if timer then now = timer.due; timer.callback() end
+	return timer
+end
+local function tick()
+	local timer = nextTimer()
+	while timer and timer.seconds == HAPTIC_INTERVAL do timer = nextTimer() end
 	return timer
 end
 local function finish()
@@ -89,19 +97,30 @@ tick()
 local first = page().paragraph_1_1
 t.expect(first.hidden == false, "the first tick shows the paragraph being typed")
 t.expect(page().entry_1.hidden == false and page().sceneTitle_1.text == "West of House", "the chapter opens with its text")
-t.assertEqual(first.revealedCharacters, 4, "each tick reveals a few characters")
-t.assertEqual(haptics[1], "soft", "typing starts with a soft haptic")
+t.assertEqual(first.revealedCharacters, 3, "each tick reveals a few characters")
+t.assertEqual(haptics[1].style, "soft", "typing uses a soft impact")
 t.expect(scrolls > 0, "the page follows the typing")
-t.expect(timers[1].seconds < 0.1, "the next characters follow quickly")
+t.assertEqual(timers[#timers].seconds, 1 / 30, "three characters at 30 Hz print 25% slower")
+t.assertEqual(haptics[1].intensity, 0.5, "typing impacts use the quieter intensity")
+t.assertEqual(timers[1].seconds, HAPTIC_INTERVAL, "pulses use their own fixed timer")
 tick()
-t.assertEqual(first.revealedCharacters, 8, "typing continues")
+t.assertEqual(first.revealedCharacters, 6, "typing continues")
 t.expect(page().paragraph_1_2.hidden == true, "the next paragraph waits its turn")
 
 local ticks = 2
 while page().paragraph_1_1.revealedCharacters ~= -1 do tick(); ticks = ticks + 1 end
 t.expect(rawequal(page().paragraph_1_1, first), "typing never rebuilds the paragraph")
-t.expect(#haptics > 1 and #haptics <= math.ceil(ticks / 4), "haptics tick at word starts, never faster than every fourth tick")
-t.expect(timers[1].seconds > 0.1, "a beat separates paragraphs")
+t.expect(#haptics > 1, "printing emits repeated pulses")
+for index = 2, #haptics do
+	t.expect(math.abs(haptics[index].time - haptics[index - 1].time - HAPTIC_INTERVAL) < 0.000001,
+		"pulses stay evenly spaced across words and spaces")
+	t.assertEqual(haptics[index].intensity, 0.5, "every pulse has the same strength")
+	t.assertEqual(haptics[index].style, "soft", "every pulse uses the same soft impact")
+end
+local countAtPause = #haptics
+nextTimer()
+t.assertEqual(#haptics, countAtPause, "pending pulses are silent during the paragraph pause")
+t.assertEqual(timers[1].seconds, 0.15, "a beat separates paragraphs")
 finish()
 t.expect(not controller:isTyping(), "the opening finishes")
 t.expect(page().paragraph_1_2.hidden == false and page().paragraph_1_2.revealedCharacters == -1,
@@ -117,11 +136,11 @@ t.expect(page().entry_1.hidden == false, "earlier chapters stay shown")
 t.expect(page().paragraph_1_1.hidden == false and page().paragraph_1_1.revealedCharacters == -1,
 	"earlier paragraphs stay fully shown")
 tick(); tick()
-t.assertEqual(answer.revealedCharacters, 8, "the answer types")
+t.assertEqual(answer.revealedCharacters, 6, "the answer types")
 
 -- Changing reading settings mid-answer re-sets the page without losing place.
 controller:applyReadingSettings()
-t.assertEqual(page().paragraph_3_1.revealedCharacters, 8, "a re-render keeps the typed characters")
+t.assertEqual(page().paragraph_3_1.revealedCharacters, 6, "a re-render keeps the typed characters")
 t.expect(page().paragraph_3_2.hidden == true, "a re-render keeps waiting paragraphs hidden")
 t.expect(page().entry_3.hidden == false, "a re-render keeps the entry being typed shown")
 
@@ -140,8 +159,10 @@ t.expect(stale >= 1, "the superseded answer's timer was pending")
 -- Closing the book stops typing; a late tick does nothing.
 controller:submitCommand("open mailbox")
 controller:onDisappear()
+local countAtClose = #haptics
 t.expect(not controller:isTyping(), "closing the book stops typing")
 finish()
+t.assertEqual(#haptics, countAtClose, "closing cancels pending haptic pulses")
 
 -- A resumed story opens at its last line without typing.
 saved = { seed = 1, commands = { "open mailbox" } }
@@ -161,6 +182,21 @@ t.expect(not still:isTyping(), "Reduce Motion does not type the opening")
 still:submitCommand("open mailbox")
 t.expect(not still:isTyping(), "Reduce Motion does not type answers")
 t.expect(still.transcript.refs.paragraph_3_1.hidden == false, "Reduce Motion shows answers whole")
+
+-- A long unbroken word has the same pulse rhythm as ordinary prose.
+OPENING = string.rep("x", 90)
+saved, reduceMotion, timers, haptics = nil, false, {}, {}
+local unbroken = build()
+unbroken:show("zork")
+finish()
+t.expect(#haptics > 10, "haptics keep playing without any word boundaries")
+for index = 2, #haptics do
+	t.expect(math.abs(haptics[index].time - haptics[index - 1].time - HAPTIC_INTERVAL) < 0.000001,
+		"unbroken text has the same even pulse intervals")
+end
+local countAtFinish = #haptics
+finish()
+t.assertEqual(#haptics, countAtFinish, "printing completion leaves no active pulses")
 
 -- Model: the paragraphs a reader has not seen yet.
 local model = Session.new { engineFactory = function() return engine() end }

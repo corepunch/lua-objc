@@ -74,6 +74,8 @@ static const CGFloat kScrollTargetFlickVelocity = 0.2;
  * the number of lines the figure spans when the template does not say. */
 static const CGFloat kParagraphFigureGap = 10.0;
 static const NSInteger kParagraphFigureLines = 3;
+static const NSUInteger kParagraphMenuPageActions = 3;
+static const CGFloat kParagraphTapHapticIntensity = 0.75;
 /* How far below the baseline a link's dotted rule sits past the font's own
  * underline position, so descenders do not run into the dots. */
 static const CGFloat kParagraphLinkUnderlineOffset = 3.0;
@@ -236,6 +238,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_paragraph", bridge_UIKitControls_paragraph},
 	{"_paragraphSetLinks", bridge_paragraph_set_links},
 	{"_paragraphLinks", bridge_paragraph_links},
+	{"_testParagraphEditMenu", bridge_test_paragraph_edit_menu},
 	{"_paragraphPerformLink", bridge_paragraph_perform_link},
 	{"_hasLayoutAxis", bridge_has_layout_axis},
 	LUA_OBJC_MOTION_FUNCTIONS

@@ -77,7 +77,11 @@ t.assertEqual(scene.paragraphs[1], "The rusted iron gates stand open. A path lea
 t.assertEqual(#scene.links[1], 3, "the paragraph carries its links")
 t.assertEqual(commands(model:linkActions("plaque")), "examine plaque,take plaque,read plaque",
 	"an object offers examine, then the story's verbs by how often players use them")
-t.assertEqual(model:linkActions("plaque")[2].title, "Take plaque", "menu titles are capitalized commands")
+t.assertEqual(model:linkActions("plaque")[2].title, "Take", "menu titles show only the capitalized verb")
+local gateActions = model:linkActions("gate")
+t.assertEqual(gateActions[1].title, "Examine", "the first button omits the object")
+t.assertEqual(gateActions[2].title, "Open", "the second button omits the object")
+t.assertEqual(gateActions[3].title, "Close", "the third button omits the object")
 t.assertEqual(commands(model:linkActions("gate")), "examine gate,open gate,close gate",
 	"verbs that need a second object are left out, and examine is offered once")
 t.assertEqual(commands(model:linkActions("door")), "examine door,open door",
@@ -87,6 +91,16 @@ t.assertEqual(model:linkActions("north")[1].title, "Go north", "a direction's ac
 t.assertEqual(commands(model:linkActions("d")), "down", "direction abbreviations walk too")
 t.assertEqual(commands(model:linkActions("ghost")), "examine ghost", "an unknown thing can still be examined")
 t.assertEqual(#model:linkActions(""), 0, "an empty target offers nothing")
+
+-- Overflow retains every supported action, with short titles and full commands.
+local many = Session.new { engineFactory = engine }
+many.items = { { name = "door", noun = "door", verbs = { "open", "close", "read", "take", "push", "pull", "touch" } } }
+local overflow = many:linkActions("door")
+t.assertEqual(#overflow, 8, "actions beyond three and the old six-item cap stay available")
+for _, action in ipairs(overflow) do
+	t.expect(not action.title:find("door", 1, true), "overflow labels omit the noun too")
+	t.expect(action.command:find(" door$") ~= nil, "overflow commands retain their target")
+end
 
 -- ── The reader's page ───────────────────────────────────────────────────
 state.room = "Gate"
@@ -116,7 +130,7 @@ local live = bridge._paragraphLinks(page().paragraph_1_1)
 t.assertEqual(#live, 3, "the page marks the scene's links")
 t.assertEqual(live[1].text, "iron gates", "a link underlines the words of the prose")
 t.assertEqual(live[3].text, "brass plaque", "links in later lines keep their place")
-t.assertEqual(table.concat(live[3].titles, ","), "Examine plaque,Take plaque,Read plaque", "a link's menu lists its actions")
+t.assertEqual(table.concat(live[3].titles, ","), "Examine,Take,Read", "a link's menu lists its actions")
 t.assertEqual(page().paragraph_1_1.text, scene.paragraphs[1], "the page shows the prose without markup")
 
 bridge._paragraphPerformLink(page().paragraph_1_1, 3, 3)
@@ -131,7 +145,7 @@ t.assertEqual(#bridge._paragraphLinks(page().paragraph_1_1), 0, "the words of a 
 local entries = model:presentation().entries
 local hall = bridge._paragraphLinks(page()["paragraph_" .. #entries .. "_1"])
 t.assertEqual(#hall, 2, "the new scene's links are live")
-t.assertEqual(table.concat(hall[1].titles, ","), "Examine staircase,Climb staircase", "they offer the new room's verbs")
+t.assertEqual(table.concat(hall[1].titles, ","), "Examine,Climb", "they offer the new room's verbs")
 t.assertEqual(table.concat(hall[2].titles, ","), "Go south", "and the way back")
 
 -- Reading settings re-set the page and keep its links.
