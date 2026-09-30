@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844">
+  <rect width="390" height="844" rx="40" fill="#F7F4EE"/>
+  <rect x="16" y="18" width="358" height="808" rx="32" fill="#FFFcf7"/>
+  <text x="48" y="72" fill="#8A857C" font-family="Georgia, serif" font-size="13">1 of 5</text>
+  <text x="310" y="72" fill="#1D4ED8" font-family="system-ui, sans-serif" font-size="16" font-weight="600">Skip</text>
+  <circle cx="195" cy="250" r="52" fill="#EEF2FF"/>
+  <text x="195" y="262" text-anchor="middle" font-size="40">books</text>
+  <text x="48" y="360" fill="#1C1917" font-family="Georgia, serif" font-size="28" font-weight="700">Welcome to Adventure Arena</text>
+  <text x="48" y="410" fill="#57534E" font-family="system-ui, sans-serif" font-size="16">Classic stories that answer back.</text>
+  <rect x="48" y="730" width="294" height="52" rx="16" fill="#1D4ED8"/>
+  <text x="195" y="762" text-anchor="middle" fill="white" font-family="system-ui, sans-serif" font-size="17" font-weight="600">Get started</text>
+</svg>
