@@ -5,13 +5,18 @@ local Session = require("apps.adventure-arena.models.Session")
 local JsonDocument = require("apps.adventure-arena.services.JsonDocument")
 local ZILRuntime = require("apps.adventure-arena.services.ZILRuntime")
 local LibraryController = require("apps.adventure-arena.controllers.LibraryController")
+local OnboardingController = require("apps.adventure-arena.controllers.OnboardingController")
 local ReadingSettingsController = require("apps.adventure-arena.controllers.ReadingSettingsController")
 local SessionController = require("apps.adventure-arena.controllers.SessionController")
 local Template = require("ui.template")
 local xml = require("ui.xml")
 
 local VIEWS = "apps/adventure-arena/views/"
-local DOCUMENTS = { saves = "adventure-arena/saves.json", reading = "adventure-arena/reading.json" }
+local DOCUMENTS = {
+	saves = "adventure-arena/saves.json",
+	reading = "adventure-arena/reading.json",
+	onboarding = "adventure-arena/onboarding.json",
+}
 
 -- Tabs in template order; each owns a navigation stack so a page opens in
 -- the tab the tap came from.
@@ -92,6 +97,18 @@ function Controller.new(options)
 		dismissSheet = function(sheet)
 			if sheet then return ns.dismiss(sheet) end
 		end,
+	}
+	self.onboarding = options.onboarding or OnboardingController.new {
+		adventures = adventures,
+		store = options.onboardingStore or document(DOCUMENTS.onboarding),
+		ns = ns,
+		presentSheet = function(sheet, detents)
+			return ns.presentSheet(sheet, { parent = self.window, detents = detents })
+		end,
+		dismissSheet = function(sheet)
+			if sheet then return ns.dismiss(sheet) end
+		end,
+		openSession = function(id, fresh) return self.sessionController:show(id, fresh) end,
 	}
 	self.mountTemplate = mountTemplate
 	return self
@@ -200,6 +217,10 @@ function Controller:createWindow()
 	self.window = self.ns.Window(config)
 	self.library:attachSearch(Template.new(refs.searchResults, VIEWS .. "SearchResults.etlua", self.ns))
 	self:attach(refs)
+	-- Headless runs drive the tour themselves; a live launch shows it once.
+	if not rawget(_G, "__headless") and self.onboarding:needed() then
+		self.onboarding:open(self.window)
+	end
 	return self.window
 end
 
