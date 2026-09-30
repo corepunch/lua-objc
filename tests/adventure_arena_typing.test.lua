@@ -117,14 +117,25 @@ for index = 2, #haptics do
 	t.assertEqual(haptics[index].intensity, 0.5, "every pulse has the same strength")
 	t.assertEqual(haptics[index].style, "soft", "every pulse uses the same soft impact")
 end
+local paragraphFinishedAt = now
 local countAtPause = #haptics
 nextTimer()
 t.assertEqual(#haptics, countAtPause, "pending pulses are silent during the paragraph pause")
-t.assertEqual(timers[1].seconds, 0.15, "a beat separates paragraphs")
+t.assertEqual(timers[1].seconds, 0.3, "a noticeable beat separates paragraphs")
+local pause = nextTimer()
+t.expect(math.abs(pause.due - paragraphFinishedAt - 0.3) < 0.000001, "printing waits through the paragraph break")
+t.expect(page().paragraph_1_2.hidden == false, "printing resumes after the break")
+t.assertEqual(page().paragraph_1_2.revealedCharacters, 3, "the next paragraph starts with one tick")
+t.assertEqual(#haptics, countAtPause + 1, "haptics resume with printing")
+t.assertEqual(haptics[#haptics].time, pause.due, "the first resumed pulse accompanies the next paragraph")
 finish()
 t.expect(not controller:isTyping(), "the opening finishes")
 t.expect(page().paragraph_1_2.hidden == false and page().paragraph_1_2.revealedCharacters == -1,
 	"every paragraph ends fully shown")
+
+local firstFrame, secondFrame = page().paragraph_1_1.frame, page().paragraph_1_2.frame
+local gap = math.abs(secondFrame.origin.y - firstFrame.origin.y) - (secondFrame.origin.y < firstFrame.origin.y and secondFrame.size.height or firstFrame.size.height)
+t.expect(math.abs(gap - 20) < 0.01, "paragraphs have a 50% larger gap at the default type size")
 
 -- A command types its answer; the command itself is set at once.
 controller:submitCommand("open mailbox")

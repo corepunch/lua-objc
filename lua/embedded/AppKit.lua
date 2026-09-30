@@ -451,7 +451,10 @@ function AppKit.Menu(props)
 		props.imagePath or "")
 	if props.accessibilityLabel then button.accessibilityLabel = props.accessibilityLabel end
 	if props.style == "glass" then
-		button = bridge._glassEffect(button, "regular", 0)
+		-- macOS 26 draws native button bezels in glass. The circular bezel
+		-- owns the symbol-only menu's shape, focus ring and pressed state.
+		button.bezelStyle = (props.title or "") == "" and (props.systemImage or props.imagePath) and 7 or 1
+		button.bordered = true
 	end
 	return applyLayout(button, props)
 end

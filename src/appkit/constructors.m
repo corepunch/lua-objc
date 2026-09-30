@@ -490,6 +490,12 @@ static int bridge_AppKitControls_menu(lua_State *L) {
 				weight:NSFontWeightRegular]];
 	}
 	[button itemAtIndex:0].image = buttonImage;
+	if (buttonImage && !title[0]) {
+		// SwiftUI's image-only Menu has no extra disclosure glyph. Let
+		// NSPopUpButton retain its native menu tracking and keyboard access.
+		((NSPopUpButtonCell *)button.cell).arrowPosition = NSPopUpNoArrow;
+		button.imagePosition = NSImageOnly;
+	}
 	NSMutableArray *callbacks = [NSMutableArray array];
 	NSInteger count = (NSInteger)luaL_len(L, 1);
 	for (NSInteger index = 1; index <= count; index++) {
