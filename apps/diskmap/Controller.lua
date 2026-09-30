@@ -3,14 +3,16 @@ local App = require("App")
 local xml = require("ui.xml")
 local Overview = require("apps.diskmap.models.Overview")
 local Categories = require("apps.diskmap.models.Categories")
-local Developer = require("apps.diskmap.models.Developer")
+local Destinations = require("apps.diskmap.models.Destinations")
+local Largest = require("apps.diskmap.models.Largest")
+local Recommendations = require("apps.diskmap.models.Recommendations")
+local Workflow = require("apps.diskmap.models.Workflow")
+local Workflows = require("apps.diskmap.knowledge.Workflows")
 local History = require("apps.diskmap.models.History")
 local Model = require("apps.diskmap.Model")
 local Provider = require("apps.diskmap.services.Provider")
 local ScanController = require("apps.diskmap.controllers.ScanController")
-local CategoriesController = require("apps.diskmap.controllers.CategoriesController")
 local CleanupController = require("apps.diskmap.controllers.CleanupController")
-local TipsController = require("apps.diskmap.controllers.TipsController")
 local InspectorController = require("apps.diskmap.controllers.InspectorController")
 local ManagementController = require("apps.diskmap.controllers.ManagementController")
 local SimulatorsController = require("apps.diskmap.controllers.SimulatorsController")
@@ -23,12 +25,10 @@ local NavigationController = require("apps.diskmap.controllers.NavigationControl
 local OverviewController = require("apps.diskmap.controllers.OverviewController")
 local MapController = require("apps.diskmap.controllers.MapController")
 local FolderController = require("apps.diskmap.controllers.FolderController")
-local LargestController = require("apps.diskmap.controllers.LargestController")
 local FilesController = require("apps.diskmap.controllers.FilesController")
+local ResourcePageController = require("apps.diskmap.controllers.ResourcePageController")
 local KindsController = require("apps.diskmap.controllers.KindsController")
-local CleanupPageController = require("apps.diskmap.controllers.CleanupPageController")
 local ApplicationsController = require("apps.diskmap.controllers.ApplicationsController")
-local DeveloperController = require("apps.diskmap.controllers.DeveloperController")
 local XcodeController = require("apps.diskmap.controllers.XcodeController")
 local ProjectsController = require("apps.diskmap.controllers.ProjectsController")
 local DisksController = require("apps.diskmap.controllers.DisksController")
@@ -74,15 +74,9 @@ function Controller.new(service)
 		show = function() if self.window then self.window:show() end end,
 	})
 	self.settings = SettingsController.new(service, self.model, function() self.scan:start() end, self.notifications)
-	self.categories = CategoriesController.new(self.model)
 	self.cleanup = CleanupController.new(self.model, service, function(error)
 		if error then self.scan.status = error end
 		self:updateRows()
-	end)
-	self.tips = TipsController.new(self.model, function(action)
-		if action == "settings" then self.service.openSettings("privacy")
-		elseif action == "system" then self:show("guide")
-		elseif action == "storage" then self:show("overview") end
 	end)
 	self.inspector = InspectorController.new(self.model, service, function() self.scan:start() end)
 	self.history = HistoryController.new(service)
@@ -94,12 +88,12 @@ function Controller.new(service)
 	self.simulators = SimulatorsController.new(self.model, service, function() self.scan:start() end)
 	self.simulators.log = function(...) self.review:log(...) end
 	self.sdks = SdksController.new(self.model, service)
+	-- Every list, menu and link opens a resource through this one function.
+	local open = function(id) self:open(id) end
 	self.management = ManagementController.new(self.model, service, function() self.scan:start() end,
-		function(id) self.cleanup:toggleKeep(id) end, function() self:show("simulators") end,
-		function(row) self.sdks:open(self.window, row) end)
+		function(id) self.cleanup:toggleKeep(id) end, open)
 	self.navigation = NavigationController.new(function(id, fromHistory) self:show(id, false, fromHistory) end)
 	self.watchlist = WatchlistController.new(self.model, service, function() self:updateRows() end)
-	local open = function(id) self:openManagement(id) end
 	self.actions = ActionsController.new(self.model, service, {
 		open = open,
 		show = function(id) self:show(id) end,
@@ -114,8 +108,14 @@ function Controller.new(service)
 	local applications = ApplicationsController.new(self.model, service, self.actions, function(remeasure)
 		if remeasure then self.scan:start() else self:updateRows() end
 	end)
+	-- Pages that list catalog resources share one controller; each is a table.
+	local resourcePage = function(page)
+		return ResourcePageController.new(self.model, self.actions, {open = open,
+			show = function(id, filter) self:showFiltered(id, filter) end,
+			settings = function(section) self.service.openSettings(section) end}, page)
+	end
 	self.pages = {
-		overview = OverviewController.new(self.model, self.categories, {
+		overview = OverviewController.new(self.model, {
 			open = open, navigate = function(id) self:show(id) end,
 			map = function(id) self.pages.map:setFocus(id); self:show("map") end,
 			reclaim = function() self:show("cleanup") end,
@@ -127,24 +127,12 @@ function Controller.new(service)
 		folder = FolderController.new(self.model, service, self.actions, {
 			volumeName = function() return self:state().volumeName end,
 		}),
-		largest = LargestController.new(self.model, self.actions, open),
+		largest = resourcePage(Largest.page),
 		files = files,
 		kinds = KindsController.new(self.model, function(kind) files:focus(kind); self:show("files", true) end),
 		duplicates = DuplicatesController.new(self.model, service, self.actions),
-		cleanup = CleanupPageController.new(self.model, self.actions, self.tips, {
-			open = open,
-			show = function(id, filter)
-				if id == "files" then files:focus(nil); files.filterIndex = filter or 1
-				elseif id == "applications" then applications:focus(filter) end
-				self:show(id, true)
-			end,
-			apps = function() return applications:summary() end,
-		}),
+		cleanup = resourcePage(Recommendations.page(function() return applications:summary() end)),
 		applications = applications,
-		developer = DeveloperController.new(self.model, self.actions, {open = open,
-			simulators = function() self:show("simulators") end,
-			sdks = function(row) if row then self.sdks:open(self.window, row) end end,
-		}),
 		xcode = XcodeController.new(self.model, service, self.actions),
 		projects = ProjectsController.new(self.model, service, self.actions, function() self.scan:start() end),
 		simulators = self.simulators,
@@ -156,6 +144,8 @@ function Controller.new(service)
 			open = open, closed = function() self:show("overview") end,
 		}),
 	}
+	self.files, self.applications = files, applications
+	for _, workflow in ipairs(Workflows.list) do self.pages[workflow.id] = resourcePage(Workflow.page(workflow)) end
 	self.commands = CommandsController.new(self.model, service, {
 		show = function(id) self:show(id) end,
 		destination = function() return self.destination end,
@@ -192,14 +182,26 @@ end
 function Controller:focusSearch()
 	if self.window and self.searchField then self.window:focus(self.searchField) end
 end
--- Destinations that open a sidebar page rather than a category sheet: the
--- simulator device resource is managed on its page, "updates" names the
--- Updates & Snapshots page, and apps with their leftovers are presented by
--- the Applications page. Developer and Xcode stay sheets so they list
--- everything in them, including simulators and SDKs.
-local PAGE_ROUTES = {simulators = true, updates = true, applications = true}
-function Controller:openManagement(id, filter)
-	if PAGE_ROUTES[id] then self.management:close(); self:show(id) else self.management:open(self.window, id, filter) end
+-- Opens a resource where Destinations sends it: a sidebar page, a sheet of
+-- its own, or its category's list with its row selected. An id that names
+-- no resource is a page ("updates").
+function Controller:open(id, filter)
+	local destination = Destinations.resolve(self.model, id) or self.pages[id] and {page = id}
+	if not destination then return end
+	if destination.page then
+		self.management:close(); self:show(destination.page)
+	elseif destination.sheet == "sdks" then
+		self.management:close(); self.sdks:open(self.window, self.model.resources:find(id))
+	else
+		self.management:open(self.window, destination.category, {filter = filter, select = destination.select})
+	end
+end
+-- Shows a page narrowed to one of its filters, as Clean Up's pointers to
+-- Large Files and Applications do.
+function Controller:showFiltered(id, filter)
+	if id == "files" then self.files:focus(nil); self.files.filterIndex = filter or 1
+	elseif id == "applications" then self.applications:focus(filter) end
+	self:show(id, true)
 end
 -- Everything a page needs to present the current scan, in one value.
 function Controller:state()
@@ -222,10 +224,12 @@ function Controller:badges()
 	if summary.available then badges.overview = summary.used end
 	local simulators = Categories.row(self.model, "simulators")
 	if simulators and simulators.bytes and simulators.bytes > 0 and not simulators.calculating then badges.simulators = simulators.size end
-	-- The badge is the page's own total, AI tools included, so the sidebar
-	-- and the page header name one number.
-	local developer = Developer.presentation(self.model)
-	if developer.bytes > 0 and not developer.calculating then badges.developer = developer.total end
+	-- A workflow's badge is its page's own total, so the sidebar and the page
+	-- header name one number.
+	local present = self:presentWorkflows()
+	for _, workflow in ipairs(Workflows.list) do
+		if present[workflow.id] then badges[workflow.id] = Workflow.badge(self.model, workflow) end
+	end
 	for _, id in ipairs({"xcode", "projects", "folder"}) do
 		local page = self.pages[id]
 		if page.badge then badges[id] = page:badge() end
@@ -240,18 +244,26 @@ function Controller:updateRows()
 	if self.page then self.page:update(self:state()); self.refs = self.page.refs end
 	self.navigation:setBadges(self:badges())
 	self.navigation:setWatched(self.watchlist:rows())
-	self.navigation:setSectionVisible("Developer", self:hasDeveloperData())
+	self.navigation:setWorkflows(self:presentWorkflows())
 	self.management:update()
 end
--- Developer pages lead nobody who has no developer data (#52): the section
--- appears once Xcode or ~/Library/Developer exists, or the Developer
--- category measures enough to matter. Presence is checked once.
-function Controller:hasDeveloperData()
-	if self.developerFolders == nil then
+-- A kind of work leads nobody who does not do it (#52): its pages appear
+-- once one of its markers exists (Xcode for Developer, Logic Pro for Music
+-- Production) or its locations measure enough to matter. Markers are checked
+-- once, and a page that appeared stays for the session: a rescan clears
+-- sizes, and the sidebar must not lose rows while it runs.
+function Controller:presentWorkflows()
+	if not self.workflowsPresent then
 		local exists = optional(self.service, "exists")
-		self.developerFolders = Developer.present(self.model, exists)
+		self.workflowsPresent = {}
+		for _, workflow in ipairs(Workflows.list) do
+			self.workflowsPresent[workflow.id] = exists ~= nil and Workflow.marked(self.model, workflow, exists) or nil
+		end
 	end
-	return self.developerFolders or Developer.present(self.model, nil)
+	for _, workflow in ipairs(Workflows.list) do
+		if not self.workflowsPresent[workflow.id] and Workflow.measured(self.model, workflow) then self.workflowsPresent[workflow.id] = true end
+	end
+	return self.workflowsPresent
 end
 -- A mark changes the title, the collector and the marked state shown on the
 -- current page.
@@ -460,7 +472,7 @@ function Controller:createWindow()
 		review = function() self:openReview() end,
 	}})
 	self.navigation:setWatched(self.watchlist:rows())
-	self.navigation.hiddenSections.Developer = not self:hasDeveloperData() or nil
+	self.navigation:setWorkflows(self:presentWorkflows())
 	cfg.content, cfg.sidebar = content, self.navigation:render()
 	self.content, self.collector = contentRefs.content, contentRefs
 	self:basketChanged()

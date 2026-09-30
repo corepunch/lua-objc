@@ -1,9 +1,13 @@
+<% --[[ One kind of work's storage (knowledge/Workflows.lua): Developer,
+  Music Production, Video Production and the rest share this page. The
+  template carries only the section structure; rows, sizes and the summary
+  are set in place, so scan progress does not rebuild the page under the
+  reader. ]] %>
 <ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
   <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
-    <%- partial("PageHeader.etlua", {icon = "hammer.fill", color = "systemPurple", title = "Developer", summaryId = "developerTotal", summary = "",
-      buttons = {{id = "showSimulators", title = "Simulators…", action = "simulators"}}}) %>
+    <%- partial("PageHeader.etlua", {icon = workflow.icon, color = workflow.color, title = workflow.name, summary = "", buttons = buttons}) %>
     <% if #sections == 0 then %>
-    <ContentUnavailable title="<%= calculating and "Measuring developer storage…" or "No developer storage found" %>" systemImage="hammer" description="Xcode, package managers, containers and AI tools appear here once measured." />
+    <ContentUnavailable id="workflowEmpty" title="<%= workflow.emptyTitle %>" systemImage="<%= workflow.icon %>" description="<%= workflow.empty %>" />
     <% end %>
     <% for _, section in ipairs(sections) do %>
     <VStack id="section_<%= section.id %>" maxWidth="infinity" spacing="8" alignment="leading">
@@ -12,10 +16,10 @@
         <Label id="size_<%= section.id %>" text="" size="13" weight="semibold" monospacedDigit="true" />
       </HStack>
       <GroupBox maxWidth="infinity">
-        <%- partial("ResourceList.etlua", {id = "list_" .. section.id, menu = "rowMenu", activate = "open", header = false, status = true}) %>
+        <%- partial("ResourceList.etlua", {id = "list_" .. section.id, menu = "rowMenu", activate = "open", status = true}) %>
       </GroupBox>
     </VStack>
     <% end %>
-    <%- partial("Footnote.etlua", {text = "Diskmap never removes simulator runtimes, SDKs or archives on its own. Rebuildable data is moved to the Trash only after you review it."}) %>
+    <%- partial("Footnote.etlua", {text = workflow.footnote}) %>
   </VStack>
 </ScrollView>

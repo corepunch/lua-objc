@@ -360,7 +360,10 @@ cancellation, preference persistence failures, action routing and fresh startup 
 | `models/Inventory.lua` | Scan plans, measurement transitions and current diagnostics |
 | `models/Categories.lua` | Category queries, rolled-up rows and capacity distribution |
 | `models/Overview.lua` | Volume summary, donut marks and legend, cleanup headline, ranked categories and largest items |
-| `models/Developer.lua` | Developer sections: catalog groups, ranked rows and rebuildable total |
+| `knowledge/Workflows.lua` | One table entry per kind of work (Developer, Music Production, Video Production, Photography, Design, 3D & Game Engines, Games): its sidebar page, sections and the catalog groups they list |
+| `models/Workflow.lua` | A workflow's page: ranked rows per section, total, rebuildable total, presence on this Mac and sidebar badge |
+| `models/Destinations.lua` | Where opening a resource goes: the page or sheet its catalog entry names, or its category's list with its row selected |
+| `models/Largest.lua` | The Largest Items page |
 | `models/Files.lua`, `knowledge/FileKinds.lua` | Large and unused files, kinds by extension, file ages and per-file Trash eligibility |
 | `models/Applications.lua` | Installed apps, their data folders, last use, possible leftovers and Spotlight date parsing |
 | `models/Recommendations.lua` | Clean Up sections: suggestions, file and app pointers, and the checked knowledge list |
@@ -379,6 +382,7 @@ cancellation, preference persistence failures, action routing and fresh startup 
 | `models/Tips.lua` | Contextual access, capacity, Keep and system-storage guidance |
 | `models/Inspector.lua`, `models/Preferences.lua` | Resource details and action eligibility |
 | `controllers/` | Small coordinators with injected IO and navigation callbacks |
+| `controllers/ResourcePageController.lua` | The one controller for every page that lists catalog resources (Largest Items, Clean Up and each workflow); what a page shows is a table its model builds |
 | `services/Provider.lua`, `services/Mock.lua`, `services/System.lua`, `services/Scanner.lua`, `src/plugins/storage/StorageScan.m` | Provider selection, synthetic filesystem, actual system integration and native bulk metadata enumeration |
 | `views/` | All presentation, etlua loops and reusable partials |
 
@@ -410,6 +414,27 @@ it and its descendants.
 descriptions retain native views and scroll state; changed descriptions replace
 the scoped subtree. It is boundary-level reconciliation, not keyed child diffing.
 The application does not clear and rebuild native container children itself.
+
+## Opening a resource, and pages for kinds of work
+
+Every list, menu and link opens a resource by its own id through
+`Controller:open(id)`, and `models/Destinations.lua` decides where that goes.
+The catalog declares the exceptions on the resource itself: `page` names the
+sidebar page that presents it and everything under it (Developer projects and
+build folders on Projects, Simulator devices on Simulators, DerivedData,
+device support and archives on Xcode, apps on Applications) and `sheet` a
+sheet of its own (an Xcode installation's SDKs). Anything else opens its
+category's list, largest first: a group as itself, a location in its group
+with its row selected. No page routes on its own.
+
+A kind of work is one entry in `knowledge/Workflows.lua`: its name and
+symbol, the sections of its page, and the catalog groups, roots or single
+locations each section lists. `models/Workflow.lua` turns an entry into a
+page and `ResourcePageController` presents it, so adding a page for another
+profession is a table entry plus the catalog locations it cites
+(`catalog/MusicCreation.lua`, `catalog/Creative.lua`, `catalog/Games.lua`).
+A page appears in the sidebar only on a Mac that has its data: one of its
+`markers` exists, or its locations measure at least `visibleBytes`.
 
 ## Verification
 

@@ -2,7 +2,8 @@ _G.__headless = true
 local t = require("TestKit")
 local Model = require("apps.diskmap.Model")
 local Overview = require("apps.diskmap.models.Overview")
-local Developer = require("apps.diskmap.models.Developer")
+local Workflow = require("apps.diskmap.models.Workflow")
+local developerWorkflow = require("apps.diskmap.knowledge.Workflows").find("developer")
 local Guide = require("apps.diskmap.models.Guide")
 
 local model = Model.new("/Users/test")
@@ -55,7 +56,7 @@ t.assertEqual(largest[1].id, "apps-system-other", "largest item first")
 t.assertEqual(largest[1].relative, 1, "bars compare items with the largest")
 t.assertEqual(largest[2].id, "downloads", "ranking is by measured bytes")
 t.assertEqual(largest[1].subtitle, "Applications › Installed applications", "each item names its owner")
-t.assertEqual(largest[1].parentId, "apps-system", "items open in their owning group")
+t.assertEqual(require("apps.diskmap.models.Destinations").resolve(model, largest[1].id).page, "applications", "items open where their resource lives")
 t.assertEqual(#Overview.largest(model, disk, nil, "derived"), 1, "search filters by name, owner and path")
 t.assertEqual(#Overview.largest(model, disk, nil, "no such thing"), 0, "search can empty the ranking")
 t.assertEqual(Overview.largest(model, disk, nil, "derived")[1].impact, "Rebuildable", "impact follows cleanup policy")
@@ -73,7 +74,7 @@ t.assertEqual(rows[1].children, nil, "overview rows are flat")
 
 -- Developer sections list catalog resources, largest first, with bars compared
 -- across the whole page.
-local developer = Developer.presentation(model)
+local developer = Workflow.presentation(model, developerWorkflow)
 t.expect(#developer.sections > 0, "developer storage is grouped into sections")
 local sectionsById, rowsById = {}, {}
 for _, section in ipairs(developer.sections) do
@@ -89,13 +90,13 @@ t.assertEqual(rowsById.simulators.relative, 1, "the largest developer row has a 
 t.assertEqual(rowsById.derived.size, "4.9 GB", "rows show measured sizes")
 t.assertEqual(rowsById.derived.detail, "Rebuildable", "rows state their cleanup policy")
 t.assertEqual(developer.total, "25.9 GB", "developer total includes AI coding tools")
-for _, section in ipairs(Developer.sections) do
+for _, section in ipairs(developerWorkflow.sections) do
 	for _, id in ipairs(section.groups) do t.expect(model.resources:find(id) ~= nil, "developer section cites a registered group: " .. id) end
 end
-t.assertEqual(#Developer.presentation(model, "deriveddata").sections, 1, "search narrows developer sections")
+t.assertEqual(#Workflow.presentation(model, developerWorkflow, "deriveddata").sections, 1, "search narrows developer sections")
 model.measurements["runtime-images"] = {status = "complete", bytes = 1e9}
 local rolled
-for _, row in ipairs(Developer.presentation(model).sections[1].rows) do if row.id == "runtimes" then rolled = row end end
+for _, row in ipairs(Workflow.presentation(model, developerWorkflow).sections[1].rows) do if row.id == "runtimes" then rolled = row end end
 t.expect(rolled and rolled.group and rolled.detail == "Group", "nested groups roll up into one row")
 model.measurements["runtime-images"] = nil
 

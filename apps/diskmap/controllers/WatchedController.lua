@@ -78,7 +78,7 @@ function Controller:render()
 			openContents = function(_, _, item)
 				if not item then return end
 				local resource = item.resourceId and self.model.resources:find(item.resourceId)
-				if resource then self.handlers.open(resource:isLeaf() and (resource:getParent() or resource).id or resource.id)
+				if resource then self.handlers.open(resource.id)
 				else self.service.reveal(item.path) end
 			end,
 		}})

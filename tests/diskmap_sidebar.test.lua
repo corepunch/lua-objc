@@ -2,43 +2,106 @@ _G.__headless = true
 local t = require("TestKit")
 local bridge = require("AppKitNative")
 local Model = require("apps.diskmap.Model")
-local Developer = require("apps.diskmap.models.Developer")
+local Workflow = require("apps.diskmap.models.Workflow")
+local Workflows = require("apps.diskmap.knowledge.Workflows")
 local Navigation = require("apps.diskmap.controllers.NavigationController")
 
--- Diskmap is for everyone (#52): developer pages follow the system pages,
--- and appear only on a Mac with developer data.
+-- Diskmap is for everyone (#52): the pages of a kind of work follow the
+-- system pages, and appear only on a Mac that does that work.
 local order = {}
 for _, row in ipairs(Navigation.destinations) do if row.section then table.insert(order, row.title) end end
-t.assertEqual(table.concat(order, ","), "Storage,Clean Up,System,Developer,Learn", "Developer comes after System")
+t.assertEqual(table.concat(order, ","), "Storage,Clean Up,System,Developer,Creative & Games,Learn", "work follows System")
 
+local developer, music = Workflows.find("developer"), Workflows.find("music")
 local model = Model.new("/Users/test")
-t.expect(not Developer.present(model, function() return false end), "a Mac without developer folders has no Developer section")
-t.expect(Developer.present(model, function(path) return path == "/Users/test/Library/Developer" end), "~/Library/Developer shows it")
-t.expect(Developer.present(model, function(path) return path == "/Applications/Xcode.app" end), "Xcode shows it")
+t.expect(not Workflow.present(model, developer, function() return false end), "a Mac without developer folders has no Developer section")
+t.expect(Workflow.present(model, developer, function(path) return path == "/Users/test/Library/Developer" end), "~/Library/Developer shows it")
+t.expect(Workflow.present(model, developer, function(path) return path == "/Applications/Xcode.app" end), "Xcode shows it")
+t.expect(not Workflow.present(model, music, function(path) return path == "/Applications/Xcode.app" end), "Xcode does not make a musician")
+t.expect(Workflow.present(model, music, function(path) return path == "/Applications/Logic Pro.app" end), "Logic Pro shows Music Production")
 model.measurements.derived = {status = "complete", bytes = 900e6}
-t.expect(Developer.present(model, nil), "measured developer data shows it")
+t.expect(Workflow.present(model, developer, nil), "measured developer data shows it")
+t.expect(not Workflow.present(model, music, nil), "and no other kind of work")
+model.measurements["fonts-shared"] = {status = "complete", bytes = 900e6}
+t.expect(not Workflow.present(model, Workflows.find("design"), nil), "the fonts every Mac has do not make a designer")
+
+-- Every workflow cites catalog groups and locations that exist, and has
+-- what its page and sidebar row need.
+local ids = {}
+for _, workflow in ipairs(Workflows.list) do
+	t.expect(not ids[workflow.id], "workflow ids are unique: " .. workflow.id); ids[workflow.id] = true
+	for _, key in ipairs({"name", "icon", "color", "section", "noun", "summary", "empty", "footnote"}) do
+		t.expect(type(workflow[key]) == "string" and workflow[key] ~= "", workflow.id .. " has " .. key)
+	end
+	t.expect(#workflow.sections > 0, workflow.id .. " has sections")
+	for _, section in ipairs(workflow.sections) do
+		for _, id in ipairs(section.groups or {}) do
+			local group = model.resources:find(id)
+			t.expect(group ~= nil and not group:isLeaf(), workflow.id .. " cites a catalog group: " .. id)
+		end
+		for _, id in ipairs(section.roots or {}) do t.expect(model.resources:find(id) ~= nil, workflow.id .. " cites a catalog root: " .. id) end
+		for _, id in ipairs(section.items or {}) do
+			local item = model.resources:find(id)
+			t.expect(item ~= nil and item:isLeaf(), workflow.id .. " cites a catalog location: " .. id)
+		end
+	end
+	for _, link in ipairs(workflow.links or {}) do t.expect(model.resources:find(link.open) ~= nil, workflow.id .. " links to a resource: " .. link.open) end
+end
+
+-- A page lists its measured locations, largest first, and totals them.
+model.measurements["logic-sound-library"] = {status = "complete", bytes = 60e9}
+model.measurements.ableton = {status = "complete", bytes = 20e9}
+model.measurements["audio-plugins-shared"] = {status = "complete", bytes = 4e9}
+local page = Workflow.presentation(model, music)
+t.assertEqual(#page.sections, 3, "sections with measured locations are shown")
+t.assertEqual(page.sections[1].rows[1].id, "logic-sound-library", "rows name catalog locations")
+t.assertEqual(page.total, "84.0 GB", "the page totals what it shows")
+t.assertEqual(page.sections[1].rows[1].relative, 1, "the largest row has a full bar")
+t.assertEqual(Workflow.badge(model, music), "84.0 GB", "the sidebar badge is the page's total")
+t.assertEqual(#Workflow.presentation(model, music, "ableton").sections, 1, "search narrows the page")
+-- A location can matter to two kinds of work.
+model.measurements["adobe-caches"] = {status = "complete", bytes = 3e9}
+local function lists(workflow, id)
+	for _, section in ipairs(Workflow.presentation(model, Workflows.find(workflow)).sections) do
+		for _, row in ipairs(section.rows) do if row.id == id then return true end end
+	end
+	return false
+end
+t.expect(lists("video", "adobe-caches") and lists("design", "adobe-caches"), "Adobe caches are on the video and the design page")
 
 local shown
 local navigation = Navigation.new(function(id) shown = id end)
 local plain = #navigation:list()
-t.expect(navigation:setSectionVisible("Developer", false), "the section can be hidden")
-t.assertEqual(#navigation:list(), plain - 5, "hiding removes the header and its four pages")
-for _, row in ipairs(navigation:list()) do t.expect(row.id ~= "xcode" and row.title ~= "Developer", "no developer row remains") end
-t.expect(not navigation:setSectionVisible("Developer", false), "hiding twice changes nothing")
-t.expect(navigation:setSectionVisible("Developer", true), "it comes back")
-t.assertEqual(#navigation:list(), plain, "all rows return")
+for _, row in ipairs(navigation:list()) do t.expect(not row.workflow and row.title ~= "Developer", "no kind of work is listed before it is known") end
+t.expect(navigation:setWorkflows({developer = true}), "the Developer section can be shown")
+t.assertEqual(#navigation:list(), plain + 5, "showing adds the header and its four pages")
+t.expect(not navigation:setWorkflows({developer = true}), "showing twice changes nothing")
+t.expect(navigation:setWorkflows({developer = true, music = true, games = true}), "other work is shown beside it")
+t.assertEqual(#navigation:list(), plain + 5 + 3, "one header for both pages")
+t.expect(navigation:setWorkflows({}), "and hidden again")
+t.assertEqual(#navigation:list(), plain, "nothing else changed")
 
--- The app hides it on a Mac without developer data.
+-- The app hides them on a Mac without that data.
 local Controller = require("apps.diskmap.Controller")
 local service = {monitor = function() end, start = function() return {} end, await = function() end, cancel = function() end,
 	diskSpace = function() return {totalKb = 10000, freeKb = 5000} end, exists = function() return false end}
 local app = Controller.new(service)
 app:createWindow()
 local sidebar = app.navigation.refs.sidebar
-t.assertEqual(sidebar.rowCount, plain - 5, "an ordinary Mac's sidebar has no Developer section")
+t.assertEqual(sidebar.rowCount, plain, "an ordinary Mac's sidebar has no Developer or creative pages")
 app.model.measurements.derived = {status = "complete", bytes = 900e6}
 app:updateRows()
-t.assertEqual(sidebar.rowCount, plain, "the section appears once developer data is measured")
+t.assertEqual(sidebar.rowCount, plain + 5, "the section appears once developer data is measured")
 t.assertEqual(bridge._tableCell(sidebar, 0, app.navigation:index("developer") - 1).textField.stringValue, "Developer", "under its own header")
+app.model.measurements["steam-games"] = {status = "complete", bytes = 40e9}
+app:updateRows()
+t.assertEqual(sidebar.rowCount, plain + 7, "Games appears once games are measured")
+-- A rescan clears sizes; the pages stay.
+app.model.measurements.derived = {status = "calculating"}
+app.model.measurements["steam-games"] = {status = "calculating"}
+app:updateRows()
+t.assertEqual(sidebar.rowCount, plain + 7, "pages stay while a rescan measures again")
+app:show("games")
+t.expect(app.refs.list_installed ~= nil or app.refs.workflowEmpty ~= nil, "the Games page mounts")
 
 os.exit(t.summary() and 0 or 1)

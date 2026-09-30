@@ -9,5 +9,5 @@ return function()
 	group("apps-user", "Personal applications", "Applications installed for your account", "app.fill", "systemBlue", {
 		item("apps-user-other", "Other files in Applications", "Remaining files outside individually measured app bundles", "~/Applications"),
 	}),
-})
+}, {page = "applications"})
 end

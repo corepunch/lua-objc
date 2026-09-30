@@ -45,7 +45,6 @@ return function()
 		item("power-log", "Power log", "Battery and energy history behind Battery settings", "/private/var/db/powerlog", system),
 	}),
 	item("temporary", "Temporary files", "System-managed temporary content; no blanket deletion", "/private/var/folders", {policy = system.policy, action = system.action, consequence = system.consequence, icon = "doc.fill", color = "systemYellow"}),
-	item("steam-games", "Steam games", "Installed games and their downloaded content", "~/Library/Application Support/Steam/steamapps", {reviewThreshold = 10e9, consequence = "Uninstall games you no longer play from Steam's library. Games download again from Steam; saves in Steam Cloud are kept."}),
 	item("support", "Application support", "Other app databases, documents and settings", "~/Library/Application Support"),
 	item("app-containers", "Sandboxed application data", "Documents and settings belonging to sandboxed apps", "~/Library/Containers"),
 	item("group-containers", "Shared application data", "Data shared by related apps", "~/Library/Group Containers"),

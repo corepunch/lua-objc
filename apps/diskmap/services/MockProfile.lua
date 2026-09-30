@@ -24,6 +24,18 @@ return {
 		{path = "~/Downloads/ubuntu-24.04-desktop-arm64.iso", bytes = 2600000000, usedDaysAgo = 700},
 		{path = "~/Downloads/Zoom Installer.pkg", bytes = 180000000, usedDaysAgo = 450},
 		{path = "/opt/homebrew/var/log/mock-service.log", bytes = 1100000000, usedDaysAgo = 2},
+		-- A Mac that also makes music and video, and plays: the pages of
+		-- knowledge/Workflows.lua have something to show.
+		{path = "/Library/Application Support/Logic/Alchemy Samples/Keys/Grand Piano.caf", bytes = 9600000000, usedDaysAgo = 45},
+		{path = "/Library/Application Support/GarageBand/Instrument Library/Sampler/Drums.pak", bytes = 2300000000, usedDaysAgo = 300},
+		{path = "/Library/Audio/Apple Loops/Apple/01 Hip Hop/Beat Loops.caf", bytes = 1400000000, usedDaysAgo = 300},
+		{path = "~/Music/Ableton/Factory Packs/Orchestral Strings/Samples/Strings.alp", bytes = 5200000000, usedDaysAgo = 20},
+		{path = "~/Music/Logic/Album Demo.logicx/Media/Audio Files/Take 12.wav", bytes = 1800000000, usedDaysAgo = 8},
+		{path = "/Library/Audio/Plug-Ins/Components/Analog Lab.component/Contents/Resources/factory.bank", bytes = 850000000, usedDaysAgo = 60},
+		{path = "~/Movies/CacheClip/Launch Film/render-0001.dvcc", bytes = 7400000000, usedDaysAgo = 15},
+		{path = "~/Movies/Final Cut Backups/Launch Film/Launch Film 2026-09-01.fcpbundle", bytes = 640000000, usedDaysAgo = 29},
+		{path = "~/Library/Application Support/Adobe/Common/Media Cache Files/clip-0001.pek", bytes = 3100000000, usedDaysAgo = 120},
+		{path = "~/Library/Application Support/Steam/steamapps/common/Stardew Valley/data.pak", bytes = 12500000000, usedDaysAgo = 70},
 		-- Xcode device support and archives, a DerivedData folder whose project
 		-- is gone, a project file, and data left by uninstalled apps.
 		{path = "~/Library/Developer/Xcode/iOS DeviceSupport/iPhone17,1 26.0 (23A341)/Symbols", bytes = 3800000000, usedDaysAgo = 60},

@@ -12,7 +12,9 @@ local providers = {
 	Apple.mail,
 	Apple.messages,
 	Apple.music,
-	Apple.musicCreation,
+	(require("apps.diskmap.catalog.MusicCreation")),
+	(require("apps.diskmap.catalog.Creative")),
+	(require("apps.diskmap.catalog.Games")),
 	(require("apps.diskmap.catalog.Photos")),
 	Apple.podcasts,
 	Apple.tv,
@@ -112,7 +114,7 @@ function Catalog.buildGroup(artifact)
 	for _, rule in ipairs(Catalog.buildRules()) do
 		if rule.name == artifact then
 			return {id = "build-" .. rule.name:lower():gsub("[^%w]+", "-"):gsub("%-$", ""), name = rule.name,
-				subtitle = rule.plain or rule.subtitle, icon = "shippingbox.fill", color = "systemOrange", children = {}}
+				subtitle = rule.plain or rule.subtitle, icon = "shippingbox.fill", color = "systemOrange", page = "projects", children = {}}
 		end
 	end
 end

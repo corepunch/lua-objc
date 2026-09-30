@@ -35,15 +35,8 @@ function M.messages()
 	})
 end
 function M.music()
-	return group("music-library", "Music", "The Music library. GarageBand and Logic are under Music Creation.", "music.note", "systemRed", {
+	return group("music-library", "Music", "The Music library. GarageBand, Logic and other music software are under Music Creation.", "music.note", "systemRed", {
 		item("music", "Music library", "Apple Music library and other audio in Music", "~/Music", {mediaAccess = true}),
-	})
-end
-function M.musicCreation()
-	return group("music-creation", "Music Creation", "GarageBand, Logic and shared Apple Loops", "pianokeys", "systemPink", {
-		item("garageband", "GarageBand", "GarageBand projects and recordings", "~/Music/GarageBand"),
-		item("logic", "Logic Pro", "Logic projects", "~/Music/Logic"),
-		item("audio-music-apps", "Apple Loops & shared content", "Content shared by GarageBand and Logic", "~/Music/Audio Music Apps"),
 	})
 end
 function M.podcasts()
