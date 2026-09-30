@@ -4,6 +4,25 @@ HOST_CFLAGS = -Wall -O2
 LDFLAGS = $(shell pkg-config --libs lua 2>/dev/null || echo "-L/opt/homebrew/lib -llua -lm") -framework Cocoa -framework WebKit -framework QuartzCore -framework Metal -framework MetalKit -framework SceneKit -framework Symbols -framework UserNotifications -framework QuickLookUI
 MODULE_LDFLAGS = -dynamiclib -undefined dynamic_lookup
 IOS_SIM_SDK = $(shell xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null)
+# UIKit.dylib gets Lua API definitions from its host; keep only those imports
+# dynamically looked up while linking all platform frameworks directly.
+IOS_LUA_LOOKUP_SYMBOLS = \
+	_luaL_argerror _luaL_checkinteger _luaL_checklstring _luaL_checknumber \
+	_luaL_checktype _luaL_checkudata _luaL_checkversion_ _luaL_error \
+	_luaL_len _luaL_loadbufferx _luaL_newmetatable _luaL_optinteger \
+	_luaL_optlstring _luaL_optnumber _luaL_ref _luaL_requiref _luaL_setfuncs \
+	_luaL_setmetatable _luaL_testudata _luaL_typeerror _luaL_unref \
+	_lua_absindex _lua_close _lua_copy _lua_createtable _lua_error _lua_gc \
+	_lua_getfield _lua_geti _lua_gettop _lua_isinteger _lua_isnumber \
+	_lua_isstring _lua_newuserdatauv _lua_next _lua_pcallk _lua_pushboolean \
+	_lua_pushcclosure _lua_pushfstring _lua_pushinteger _lua_pushlightuserdata \
+	_lua_pushlstring _lua_pushnil _lua_pushnumber _lua_pushstring _lua_pushvalue \
+	_lua_rawget _lua_rawgeti _lua_rawlen _lua_rawset _lua_rawseti _lua_rotate \
+	_lua_setfield _lua_setmetatable _lua_settable _lua_settop _lua_toboolean \
+	_lua_tointegerx _lua_tolstring _lua_tonumberx _lua_topointer _lua_touserdata \
+	_lua_type _lua_typename
+comma := ,
+IOS_LUA_LOOKUP_FLAGS = $(foreach symbol,$(IOS_LUA_LOOKUP_SYMBOLS),-Wl$(comma)-U$(comma)$(symbol))
 
 LUA_OBJC_BIN = lua-objc
 HOST_SRC = src/host.c
@@ -45,8 +64,11 @@ build/UIKit.dylib: $(UIKIT_RUNTIME_SRC) $(UIKIT_RUNTIME_FRAGMENTS) $(GENERATED_D
 	@test -n "$(IOS_SIM_SDK)" || \
 		{ echo "UIKit.dylib requires the iPhone Simulator SDK from Xcode"; exit 1; }
 	mkdir -p build
-	xcrun --sdk iphonesimulator $(CC) $(CFLAGS) $(MODULE_LDFLAGS) \
-		-Ibuild -framework UIKit -framework CoreText -framework WebKit -framework Foundation -framework QuartzCore -framework Symbols -framework UserNotifications -framework Security -o $@ $(UIKIT_RUNTIME_SRC)
+	xcrun --sdk iphonesimulator $(CC) $(CFLAGS) -dynamiclib $(IOS_LUA_LOOKUP_FLAGS) \
+		-Ibuild -framework UIKit -framework CoreGraphics -framework CoreText -framework WebKit \
+		-framework Foundation -framework QuartzCore -framework Symbols -framework UserNotifications \
+		-framework Security -framework AVFAudio -framework AVFoundation -framework Speech \
+		-o $@ $(UIKIT_RUNTIME_SRC)
 
 uikit: build/UIKit.dylib
 

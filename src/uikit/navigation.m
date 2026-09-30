@@ -188,7 +188,8 @@ static void *kKeyboardToolbarHiddenContext = &kKeyboardToolbarHiddenContext;
 	[self setNeedsLayout];
 }
 - (CGFloat)itemWidth {
-	CGFloat width = self.bounds.size.width ?: self.window.bounds.size.width ?: UIScreen.mainScreen.bounds.size.width;
+	UIScreen *screen = self.window.windowScene.screen;
+	CGFloat width = self.bounds.size.width ?: self.window.bounds.size.width ?: screen.bounds.size.width;
 	return MAX(0, width - 2 * kKeyboardToolbarHorizontalInset);
 }
 - (CGSize)intrinsicContentSize {

@@ -201,7 +201,7 @@ static int bridge_arc_ink_bounds(lua_State *L) {
 	NSInteger height = (NSInteger)ceil(view.bounds.size.height + margin * 2);
 	CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
 	CGContextRef context = CGBitmapContextCreate(NULL, width, height, 8, width * 4, space,
-		kCGImageAlphaPremultipliedLast);
+		(CGBitmapInfo)kCGImageAlphaPremultipliedLast);
 	CGColorSpaceRelease(space);
 	// Render the real backing layer, shifted by the margin, so clipping or a
 	// wrong orientation shows up in the ink. Bitmap row 0 is the top.

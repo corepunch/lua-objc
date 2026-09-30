@@ -122,7 +122,6 @@
 	self.starting = NO;
 	self.listening = YES;
 	self.finishing = NO;
-	self.tapInstalled = YES;
 
 	__weak LuaSpeechRecognition *weakSelf = self;
 	self.task = [recognizer recognitionTaskWithRequest:request resultHandler:^(SFSpeechRecognitionResult *result, NSError *error) {
@@ -142,10 +141,27 @@
 		});
 	}];
 
-	[input installTapOnBus:0 bufferSize:1024 format:format
-		block:^(AVAudioPCMBuffer *buffer, AVAudioTime *when) {
-			[request appendAudioPCMBuffer:buffer];
-		}];
+	AVAudioNodeTapBlock tapBlock = ^(AVAudioPCMBuffer *buffer, AVAudioTime *when) {
+		[request appendAudioPCMBuffer:buffer];
+	};
+	BOOL tapInstalled = NO;
+	if (@available(iOS 27.0, *)) {
+		tapInstalled = [input installTapOnBus:0 bufferSize:1024 format:format
+			error:&audioError block:tapBlock];
+	} else {
+		// The error-reporting overload requires iOS 27; keep the supported
+		// iOS 26.5 deployment floor on the original install API.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+		[input installTapOnBus:0 bufferSize:1024 format:format block:tapBlock];
+#pragma clang diagnostic pop
+		tapInstalled = YES;
+	}
+	if (!tapInstalled) {
+		[self failWithMessage:audioError.localizedDescription ?: @"The microphone tap could not be installed."];
+		return;
+	}
+	self.tapInstalled = YES;
 	[engine prepare];
 	if (![engine startAndReturnError:&audioError]) {
 		[self failWithMessage:audioError.localizedDescription ?: @"The microphone could not be started."];
