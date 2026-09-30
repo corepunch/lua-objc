@@ -7,6 +7,7 @@ local xml = require("ui.xml")
 -- narrower than the total at its declared size, so every center label is one
 -- line and shrinks to fit.
 local _, refs = xml.renderFile("apps/diskmap/views/Kinds.etlua", {
+	header = {icon = "square.grid.2x2.fill", color = "systemPink", title = "File Types"},
 	kinds = {{id = "other", bytes = 1, color = "systemBlue", name = "Other files"}},
 	extensionsDetail = "The twelve extensions that use the most space",
 	total = "110.4 GB", summary = "110.4 GB in files across 1 kinds",

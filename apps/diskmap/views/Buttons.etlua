@@ -1,0 +1,3 @@
+<% for _, button in ipairs(buttons or {}) do %>
+<Button <% if button.id then %>id="<%= button.id %>" <% end %>title="<%= button.title %>"<% if button.systemImage then %> systemImage="<%= button.systemImage %>"<% end %><% if button.style then %> style="<%= button.style %>"<% end %> action="<%= button.action %>"<% if button.help then %> help="<%= button.help %>"<% end %><% if button.disabled then %> disabled="true"<% end %><% if button.hidden then %> hidden="true"<% end %> />
+<% end %>

@@ -73,7 +73,7 @@ t.expect(not derived[3].missing, "a shared cache is never a missing project")
 t.assertEqual(require("apps.diskmap.controllers.XcodeController").statuses.Shared, "Rebuildable", "shared caches are rebuildable")
 
 -- Projects are told apart by where they are; a tool's folder is not one.
-t.assertEqual(Projects.location(home .. "/Developer/Temp/vue-frontend", home), "~/Developer/Temp/vue-frontend", "a project shows its folder")
+t.assertEqual(require("apps.diskmap.Model").tilde(home .. "/Developer/Temp/vue-frontend", home), "~/Developer/Temp/vue-frontend", "a project shows its folder")
 t.expect(Projects.isToolFolder(home .. "/Developer/orca/.opencode", home .. "/Developer"), "a hidden tool folder in a repository is not a project")
 t.expect(Projects.isToolFolder(home .. "/Developer/.cache/tool/pkg", home .. "/Developer"), "nor is anything below a hidden folder")
 t.expect(not Projects.isToolFolder(home .. "/Developer/orca/web", home .. "/Developer"), "an ordinary folder is a project")

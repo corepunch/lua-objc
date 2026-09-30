@@ -1,42 +1,47 @@
-local ns = require("AppKit")
-local Template = require("ui.template")
+local Page = require("apps.diskmap.controllers.PageController")
 local Model = require("apps.diskmap.Model")
 local Projects = require("apps.diskmap.models.Projects")
-local Controller = {}; Controller.__index = Controller
+local Controller = Page.extend("projects")
+
+local LAYOUT = {
+	summary = "Build data your projects can recreate.", summaryId = "projectsSummary",
+	buttons = {{id = "addFolder", title = "Add Folder…", systemImage = "plus", action = "addFolder", help = "Search another folder for projects"}},
+	sections = {{title = "Build folders", detailId = "projectRoots",
+		filters = {id = "filter", options = Projects.filters},
+		buttons = {{id = "markStale", title = "Mark Untouched Clean Projects", systemImage = "plus.circle", action = "markStale",
+			help = "Mark build data of projects with a clean git tree, untouched for three months", disabled = true}},
+		empties = {{id = "projectsEmpty", title = "No Build Folders Found", systemImage = "folder.badge.gearshape",
+			description = "Projects appear here once Diskmap finds node_modules, target, .build and similar folders beside their project files."}},
+		panelId = "projectsList",
+		list = {id = "projects", menu = "menu", activate = "reveal", detailColumn = true}}},
+	footnote = {text = "Only folders a project's tools create (node_modules, target, .build, …) are listed. Projects with uncommitted or unpushed work are never marked in bulk."},
+}
 
 -- The Projects page: generated build folders found beside their project
 -- markers, grouped by project with git state and age. Marking a project marks
 -- its generated folders, never its sources. `rescan()` rediscovers after the
 -- search folders change.
 function Controller.new(model, service, actions, rescan)
-	return setmetatable({model = model, service = service, actions = actions, review = actions.review, rescan = rescan, generation = 0,
+	return setmetatable({model = model, service = service, actions = actions, review = actions.review, rescan = rescan,
 		info = {}, filterIndex = 1}, Controller)
 end
 
-local function display(path, home)
-	if home and path:sub(1, #home + 1) == home .. "/" then return "~" .. path:sub(#home + 1) end
-	return path
-end
-
 function Controller:rootsText()
-	local roots = {display(self.model.home .. "/Developer", self.model.home)}
-	for _, root in ipairs(self.model.projectRoots or {}) do table.insert(roots, display(root, self.model.home)) end
+	local roots = {"~/Developer"}
+	for _, root in ipairs(self.model.projectRoots or {}) do table.insert(roots, Model.tilde(root, self.model.home)) end
 	return "Searching " .. table.concat(roots, ", ") .. " for projects and the build folders they create."
 end
 
 function Controller:mount(host, state)
-	self.generation = self.generation + 1
 	self.query, self.filterIndex = state.query or "", 1
-	self.template = Template.new(host, "apps/diskmap/views/Projects.etlua", ns)
-	local _, refs = self.template:update({filters = Projects.filters, roots = self:rootsText(),
-		summary = "Build data your projects can recreate.", actions = {
+	local refs = self:attach(host, {layout = LAYOUT, actions = {
 		filter = function(index) self.filterIndex = (index or 0) + 1; self:show() end,
 		menu = function(_, _, row) return self:menu(row) end,
 		reveal = function(_, _, row) if row then self.service.reveal(row.path) end end,
 		markStale = function() self:markStale() end,
 		addFolder = function() self:addFolder() end,
 	}})
-	self.refs = refs
+	refs.projectRoots.text = self:rootsText()
 	self:show()
 	self:loadInfo()
 	return refs
@@ -107,7 +112,7 @@ function Controller:show()
 	local rows = self:groups()
 	for _, group in ipairs(rows) do
 		group.id, group.detail = group.path, group.gitText
-		group.subtitle = Projects.location(group.path, self.model.home) .. " · " .. group.artifactText .. " · " .. group.ageText
+		group.subtitle = Model.tilde(group.path, self.model.home) .. " · " .. group.artifactText .. " · " .. group.ageText
 		group.icon, group.color = "folder.fill", group.dirty and "systemOrange" or "systemGreen"
 		if self:isMarked(group) then
 			group.icon, group.color, group.subtitle = "checkmark.circle.fill", "systemBlue", "Marked for cleanup · " .. group.subtitle
@@ -164,10 +169,8 @@ function Controller:badge()
 end
 
 function Controller:dispose()
-	self.generation = self.generation + 1
 	self.loadingInfo = false
-	if self.template then self.template:dispose() end
-	self.template, self.refs = nil, nil
+	Page.dispose(self)
 end
 
 return Controller

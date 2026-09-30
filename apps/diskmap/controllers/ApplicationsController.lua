@@ -1,8 +1,28 @@
-local ns = require("AppKit")
-local Template = require("ui.template")
+local Page = require("apps.diskmap.controllers.PageController")
 local Model = require("apps.diskmap.Model")
 local Applications = require("apps.diskmap.models.Applications")
-local Controller = {}; Controller.__index = Controller
+local Controller = Page.extend("applications")
+
+local LAYOUT = {
+	summary = "Reading installed applications…",
+	tiles = {
+		{id = "appsTile", icon = "app.fill", color = "systemBlue", title = "Apps", value = "—", detail = "Application bundles"},
+		{id = "dataTile", icon = "folder.fill", color = "systemTeal", title = "App data", value = "—", detail = "Containers, support files and caches"},
+		{id = "unusedTile", icon = "hourglass", color = "systemOrange", title = "Unused", value = "—", detail = "Not opened in 6 months"},
+		{id = "leftoversTile", icon = "questionmark.folder.fill", color = "systemGray", title = "Leftovers", value = "—", detail = "Data of apps no longer installed"},
+	},
+	sections = {
+		{title = "Installed", detail = "Each app with the data it keeps in your Library.",
+			filters = {id = "filter", options = Applications.filters},
+			list = {id = "apps", menu = "appMenu", activate = "reveal", detailColumn = true}},
+		{id = "leftoversSection", title = "Possible leftovers",
+			detail = "Data folders no app on this Mac claims. High means no app from that vendor is installed; review Medium and Low before removing anything.",
+			buttons = {{id = "markHigh", title = "Mark High Confidence", systemImage = "plus.circle", action = "markHigh",
+				help = "Mark every folder of an app whose vendor has no installed app", disabled = true}},
+			list = {id = "leftovers", menu = "leftoverMenu", activate = "reveal", detailColumn = true}},
+	},
+	footnote = {text = "Last used comes from Spotlight, as Finder's Last Opened; an app Spotlight has not seen opened reads Never opened. Apps outside /Applications and ~/Applications are not listed; their data never counts as a leftover."},
+}
 
 -- The Applications page and the app facts other pages need. Bundle info and
 -- the installed-identifier list load in the background once per set of
@@ -61,8 +81,7 @@ function Controller:leftoverItem(row)
 end
 
 function Controller:mount(host, state)
-	self.template = Template.new(host, "apps/diskmap/views/Applications.etlua", ns)
-	local _, refs = self.template:update({filters = Applications.filters, actions = {
+	local refs = self:attach(host, {layout = LAYOUT, actions = {
 		filter = function(index) self.filterIndex = (index or 0) + 1; self:update(self.state) end,
 		appMenu = function(_, _, row) return self.actions:application(row) end,
 		leftoverMenu = function(_, _, row) return self.actions:folder(row, function(value) self:trashLeftover(value) end, self:leftoverItem(row)) end,
@@ -73,10 +92,8 @@ function Controller:mount(host, state)
 			end
 			self.actions:markAll(items)
 		end,
-		revealApp = function(_, _, row) if row then self.service.reveal(row.path) end end,
-		revealLeftover = function(_, _, row) if row then self.service.reveal(row.path) end end,
+		reveal = function(_, _, row) if row then self.service.reveal(row.path) end end,
 	}})
-	self.refs = refs
 	self:load()
 	self:update(state)
 	return refs
@@ -112,10 +129,5 @@ function Controller:update(state)
 end
 
 function Controller:marksChanged() self:update(self.state) end
-
-function Controller:dispose()
-	if self.template then self.template:dispose() end
-	self.template, self.refs = nil, nil
-end
 
 return Controller

@@ -50,6 +50,12 @@ function Model.percent(bytes, total)
 	return string.format("%d%%", math.floor(value + 0.5))
 end
 
+-- A path as it is shown: from the home folder, "~/Developer/app".
+function Model.tilde(path, home)
+	if path and home and home ~= "" and path:sub(1, #home + 1) == home .. "/" then return "~" .. path:sub(#home + 1) end
+	return path
+end
+
 -- "1 app", "3 apps": `count` may already be a formatted number.
 function Model.plural(count, word)
 	return count .. " " .. word .. (tostring(count) == "1" and "" or "s")

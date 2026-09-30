@@ -3,6 +3,7 @@ local Template = require("ui.template")
 local FolderTree = require("apps.diskmap.models.FolderTree")
 local Model = require("apps.diskmap.Model")
 local Sectors = require("ui.sectors")
+local Navigation = require("apps.diskmap.controllers.NavigationController")
 local Controller = {}; Controller.__index = Controller
 
 local STYLES = {"rings", "rectangles"}
@@ -214,7 +215,10 @@ end
 
 function Controller:presentation()
 	local state = self:phase()
-	local data = {state = state, style = self.style, title = self.tree and self.tree.root.name or (self.path and self:displayName(self.path)) or "Folder",
+	-- The page is headed by the open folder's name, in the sidebar row's badge.
+	local row = Navigation.page("folder")
+	local data = {state = state, style = self.style, header = {icon = row.icon, color = row.color,
+			title = self.tree and self.tree.root.name or (self.path and self:displayName(self.path)) or "Folder"},
 		summary = self:summary(), progress = self:progressText(), failure = self.failure or "",
 		colorIndex = 0, colorings = FolderTree.colorings, nodes = {}, rows = {}, trail = {}, legend = {}, hover = "",
 		loadingDeeper = self.loading ~= nil and self.loading.deeper == true,

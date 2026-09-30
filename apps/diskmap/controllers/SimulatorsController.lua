@@ -1,21 +1,18 @@
-local ns = require("AppKit")
-local Template = require("ui.template")
+local Page = require("apps.diskmap.controllers.PageController")
 local Model = require("apps.diskmap.Model")
 local Simulators = require("apps.diskmap.models.Simulators")
-local Controller = {}; Controller.__index = Controller
+local Controller = Page.extend("simulators", "Simulators")
 
 -- The Simulators page: devices from CoreSimulator's folders and runtimes from
 -- `simctl runtime list`. `changed` asks the root to remeasure after an action.
 function Controller.new(model, service, changed)
-	return setmetatable({model = model, service = service, changed = changed, generation = 0,
+	return setmetatable({model = model, service = service, changed = changed,
 		inventory = {}, runtimes = {}, runtimeList = nil, query = "", filterIndex = 1}, Controller)
 end
 
 function Controller:mount(host, state)
-	self.generation = self.generation + 1
 	self.query, self.filterIndex, self.selected, self.selectedRuntime = state.query or "", 1, nil, nil
-	self.template = Template.new(host, "apps/diskmap/views/Simulators.etlua", ns)
-	local _, refs = self.template:update({filters = Simulators.filters, actions = {
+	local refs = self:attach(host, {filters = Simulators.filters, actions = {
 		filter = function(index) self.filterIndex = (index or 0) + 1; self:show() end,
 		select = function(_, _, row) self.selected = row; self:buttons() end,
 		selectRuntime = function(_, _, row) self.selectedRuntime = row; self:buttons() end,
@@ -26,7 +23,6 @@ function Controller:mount(host, state)
 		deleteRuntime = function() self:deleteRuntime() end,
 		components = function() self.service.openOwner("xcode") end,
 	}})
-	self.refs = refs
 	self:load()
 	return refs
 end
@@ -195,10 +191,8 @@ function Controller:deleteRuntime()
 end
 
 function Controller:dispose()
-	self.generation = self.generation + 1
-	self.busy = false
-	if self.template then self.template:dispose() end
-	self.template, self.refs, self.selected, self.selectedRuntime = nil, nil, nil, nil
+	self.busy, self.selected, self.selectedRuntime = false, nil, nil
+	Page.dispose(self)
 end
 
 return Controller

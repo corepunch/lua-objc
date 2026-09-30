@@ -1,11 +1,10 @@
-local ns = require("AppKit")
-local Template = require("ui.template")
+local Page = require("apps.diskmap.controllers.PageController")
 local Overview = require("apps.diskmap.models.Overview")
 local Categories = require("apps.diskmap.models.Categories")
 local Inventory = require("apps.diskmap.models.Inventory")
 local Selection = require("apps.diskmap.models.Selection")
 local Sectors = require("ui.sectors")
-local Controller = {}; Controller.__index = Controller
+local Controller = Page.extend("overview", "Overview")
 
 -- The overview lists every largest item that fits a glance; the Largest Items
 -- page shows the full ranking.
@@ -22,8 +21,7 @@ end
 
 function Controller:mount(host, state)
 	local handlers = self.handlers
-	self.template = Template.new(host, "apps/diskmap/views/Overview.etlua", ns)
-	local _, refs = self.template:update({status = state.status, actions = {
+	local refs = self:attach(host, {status = state.status, actions = {
 		access = function() handlers.access() end,
 		-- A selected category points at its sector, as hovering it would.
 		select = function(_, _, row)
@@ -37,7 +35,6 @@ function Controller:mount(host, state)
 		openLargest = function(_, _, row) if row then handlers.open(row.id) end end,
 		showLargest = function() handlers.navigate("largest") end,
 	}})
-	self.refs = refs
 	self.hero = self.template:child("hero", "apps/diskmap/views/Hero.etlua")
 	self.changes = self.template:child("changes", "apps/diskmap/views/Changes.etlua")
 	self.notMeasured = self.template:child("notMeasured", "apps/diskmap/views/NotMeasured.etlua")
@@ -105,8 +102,8 @@ function Controller:update(state)
 end
 
 function Controller:dispose()
-	if self.template then self.template:dispose() end
-	self.template, self.hero, self.changes, self.notMeasured, self.refs = nil, nil, nil, nil, nil
+	self.hero, self.changes, self.notMeasured = nil, nil, nil
+	Page.dispose(self)
 end
 
 return Controller

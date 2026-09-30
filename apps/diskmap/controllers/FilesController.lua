@@ -1,9 +1,28 @@
-local ns = require("AppKit")
-local Template = require("ui.template")
+local Page = require("apps.diskmap.controllers.PageController")
 local Model = require("apps.diskmap.Model")
 local Files = require("apps.diskmap.models.Files")
 local Inventory = require("apps.diskmap.models.Inventory")
-local Controller = {}; Controller.__index = Controller
+local Controller = Page.extend("files")
+
+local THRESHOLD = Model.size(Inventory.summary.minimumFileBytes)
+local LAYOUT = {
+	summary = "Measuring files…",
+	tiles = {
+		{id = "largeTile", icon = "doc.fill", color = "systemTeal", title = "Over " .. THRESHOLD, value = "—", detail = "Individual files, largest first"},
+		{id = "oldTile", icon = "clock.fill", color = "systemOrange", title = "Unused for a year", value = "—", detail = "Not opened or changed since"},
+		{id = "movableTile", icon = "trash.fill", color = "systemRed", title = "Yours to review", value = "—", detail = "Unused documents you can move to the Trash"},
+	},
+	sections = {{title = "Files", detailId = "filterDetail",
+		links = {{id = "clearKind", title = "Show All Kinds", style = "link", action = "clearKind", hidden = true}},
+		filters = {id = "filter", options = Files.filters},
+		empties = {
+			{id = "filesNoResults", hidden = true, title = "No Results", systemImage = "magnifyingglass", description = "No large file matches the search. The totals above count every large file."},
+			{id = "filesEmpty", hidden = true, title = "No Files Here", systemImage = "doc", description = "No large file fits this filter. Choose All to see every file Diskmap ranked."},
+		},
+		panelId = "filesPanel",
+		list = {id = "files", menu = "rowMenu", activate = "reveal", detailColumn = true, fileIcons = true}}},
+	footnote = {text = "Diskmap reads only names, sizes and dates. Files inside apps, libraries and hidden tool folders are listed for context and managed by their owners; only your own documents can be moved to the Trash here."},
+}
 
 -- Large Files: the individual files the last scan ranked, with filters for
 -- files unused for a year, installers and media. `actions` builds row menus.
@@ -17,14 +36,12 @@ function Controller:focus(kind)
 end
 
 function Controller:mount(host, state)
-	self.template = Template.new(host, "apps/diskmap/views/Files.etlua", ns)
-	local _, refs = self.template:update({filters = Files.filters, threshold = Model.size(Inventory.summary.minimumFileBytes), actions = {
+	local refs = self:attach(host, {layout = LAYOUT, actions = {
 		filter = function(index) self.filterIndex = (index or 0) + 1; self:update(self.state) end,
 		clearKind = function() self.kind = nil; self:update(self.state) end,
 		rowMenu = function(_, _, row) return self.actions:file(row) end,
 		reveal = function(_, _, row) if row then self.service.reveal(row.path) end end,
 	}})
-	self.refs = refs
 	self:update(state)
 	return refs
 end
@@ -55,7 +72,7 @@ function Controller:update(state)
 		refs.summary.text = "Measuring files… Large files appear when the scan finishes."
 		return
 	end
-	refs.summary.text = string.format("%s over %s use %s%s.", Model.plural(Model.count(summary.count), "file"), Model.size(Inventory.summary.minimumFileBytes),
+	refs.summary.text = string.format("%s over %s use %s%s.", Model.plural(Model.count(summary.count), "file"), THRESHOLD,
 		Model.size(summary.bytes), summary.partial and " · some locations could not be read" or "")
 	refs.largeTileValue.text = Model.size(summary.bytes)
 	refs.largeTileDetail.text = Model.plural(Model.count(summary.count), "file") .. ", largest first"
@@ -63,11 +80,6 @@ function Controller:update(state)
 	refs.oldTileDetail.text = Model.plural(Model.count(summary.oldCount), "file") .. " not opened or changed in a year"
 	refs.movableTileValue.text = Model.size(summary.reviewableOldBytes)
 	refs.movableTileDetail.text = Model.plural(Model.count(summary.reviewableOld), "unused document") .. " you can move to the Trash"
-end
-
-function Controller:dispose()
-	if self.template then self.template:dispose() end
-	self.template, self.refs = nil, nil
 end
 
 return Controller

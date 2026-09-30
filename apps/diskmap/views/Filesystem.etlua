@@ -7,7 +7,7 @@
 %>
 <ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
   <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
-    <%- partial("PageHeader.etlua", {icon = "apple.logo", color = "systemGray", title = "macOS Folders",
+    <%- partial("PageHeader.etlua", {header = header,
       summary = "Where macOS keeps things on this Mac, what each folder is for and how much it takes. Locations no app can read are named with the reason."}) %>
     <% if empty then %>
     <ContentUnavailable id="noLocations" title="No Folders Found" systemImage="magnifyingglass" description="No folder mentions “<%= query %>”." />

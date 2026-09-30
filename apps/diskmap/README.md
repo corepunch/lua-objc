@@ -382,7 +382,10 @@ cancellation, preference persistence failures, action routing and fresh startup 
 | `models/Tips.lua` | Contextual access, capacity, Keep and system-storage guidance |
 | `models/Inspector.lua`, `models/Preferences.lua` | Resource details and action eligibility |
 | `controllers/` | Small coordinators with injected IO and navigation callbacks |
-| `controllers/ResourcePageController.lua` | The one controller for every page that lists catalog resources (Largest Items, Clean Up and each workflow); what a page shows is a table its model builds |
+| `controllers/NavigationController.lua` | The sidebar, and the one table of pages: each row names its page in the sidebar, the Go menu and the page's own header (icon, color, title) |
+| `controllers/PageController.lua` | The lifecycle every page shares, and the one controller for every page that is only data (Largest Items, Clean Up and each workflow): what a page shows is a table its model builds |
+| `controllers/TopicsController.lua` | The Storage Guide and Diskmap Help: chapters of topics, each page a table |
+| `views/Page.etlua` | The list page. Every page that ranks storage in lists is this template and a `layout` table: header buttons, stat tiles, sections (title, filter, buttons, empty states, list) and a footnote |
 | `services/Provider.lua`, `services/Mock.lua`, `services/System.lua`, `services/Scanner.lua`, `src/plugins/storage/StorageScan.m` | Provider selection, synthetic filesystem, actual system integration and native bulk metadata enumeration |
 | `views/` | All presentation, etlua loops and reusable partials |
 
@@ -430,11 +433,21 @@ with its row selected. No page routes on its own.
 A kind of work is one entry in `knowledge/Workflows.lua`: its name and
 symbol, the sections of its page, and the catalog groups, roots or single
 locations each section lists. `models/Workflow.lua` turns an entry into a
-page and `ResourcePageController` presents it, so adding a page for another
+page and `PageController` presents it, so adding a page for another
 profession is a table entry plus the catalog locations it cites
 (`catalog/MusicCreation.lua`, `catalog/Creative.lua`, `catalog/Games.lua`).
 A page appears in the sidebar only on a Mac that has its data: one of its
 `markers` exists, or its locations measure at least `visibleBytes`.
+
+A page that ranks storage in lists has no template of its own. It is a
+`layout` table rendered by `views/Page.etlua`: Largest Items, Large Files,
+Duplicates, Clean Up, Applications, Disks & Volumes, Xcode, Projects, a
+watched location and every kind of work. A page that is only data is a table
+for `PageController` (`id`, `layout`, `present(model, state)`); a page that
+reads folders, runs a search or keeps a filter is a class from
+`Page.extend(id)` that supplies `mount` and `update` and inherits the rest.
+Only pages with a presentation of their own keep a template: the Overview,
+the two maps, File Types, Simulators, Updates & Snapshots and macOS Folders.
 
 ## Verification
 

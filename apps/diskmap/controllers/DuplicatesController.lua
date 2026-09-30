@@ -1,8 +1,19 @@
-local ns = require("AppKit")
-local Template = require("ui.template")
+local Page = require("apps.diskmap.controllers.PageController")
 local Model = require("apps.diskmap.Model")
 local Duplicates = require("apps.diskmap.models.Duplicates")
-local Controller = {}; Controller.__index = Controller
+local Controller = Page.extend("duplicates")
+
+local LAYOUT = {
+	summary = "Identical files in folders you choose.", summaryId = "duplicatesSummary",
+	buttons = {{id = "addFolder", title = "Add Folder…", systemImage = "plus", action = "addFolder"},
+		{id = "search", title = "Find Duplicates", action = "search", disabled = true}},
+	sections = {{title = "Identical files", detailId = "duplicateRoots",
+		empties = {{id = "duplicatesEmpty", title = "No Duplicates Listed", systemImage = "doc.on.doc",
+			description = "Add a folder such as Downloads or Documents, then choose Find Duplicates. Files are compared byte for byte; nothing is read outside the folders you add."}},
+		panelId = "duplicatesList",
+		list = {id = "duplicates", menu = "menu", activate = "reveal", detailColumn = true}}},
+	footnote = {text = "Copies that are APFS clones share their storage with the original: removing one frees only what it does not share, which is what Can free shows."},
+}
 
 -- The Duplicates page. Reading contents is a privacy boundary, so nothing
 -- is read until the person adds a folder and starts a search, and only
@@ -13,28 +24,21 @@ function Controller.new(model, service, actions)
 		roots = load and load("duplicates") or {}}, Controller)
 end
 
-local function display(path, home)
-	if home and path:sub(1, #home + 1) == home .. "/" then return "~" .. path:sub(#home + 1) end
-	return path
-end
-
 function Controller:rootsText()
 	if #self.roots == 0 then return "Add the folders to compare. Diskmap reads file contents only in them." end
 	local names = {}
-	for _, root in ipairs(self.roots) do table.insert(names, display(root, self.model.home)) end
+	for _, root in ipairs(self.roots) do table.insert(names, Model.tilde(root, self.model.home)) end
 	return "Comparing files in " .. table.concat(names, ", ") .. "."
 end
 
 function Controller:mount(host, state)
 	self.query = state.query or ""
-	self.template = Template.new(host, "apps/diskmap/views/Duplicates.etlua", ns)
-	local _, refs = self.template:update({roots = self:rootsText(), actions = {
+	local refs = self:attach(host, {layout = LAYOUT, actions = {
 		addFolder = function() self:addFolder() end,
 		search = function() if self.job then self:stop() else self:search() end end,
 		menu = function(_, _, row) return self:menu(row) end,
 		reveal = function(_, _, row) if row then self.service.reveal(row.path) end end,
 	}})
-	self.refs = refs
 	self:show()
 	return refs
 end
@@ -73,7 +77,7 @@ function Controller:menu(row)
 		action = function() self.actions:markAll(items) end}}
 	table.insert(menu, {title = "Show Kept Copy", systemImage = "folder", action = function() self.service.reveal(keep.path) end})
 	for _, item in ipairs(items) do
-		table.insert(menu, {title = "Show " .. display(item.path, self.model.home), systemImage = "doc",
+		table.insert(menu, {title = "Show " .. Model.tilde(item.path, self.model.home), systemImage = "doc",
 			action = function() self.service.reveal(item.path) end})
 	end
 	return menu
@@ -105,10 +109,5 @@ function Controller:update(state)
 end
 
 function Controller:marksChanged() self:show() end
-
-function Controller:dispose()
-	if self.template then self.template:dispose() end
-	self.template, self.refs = nil, nil
-end
 
 return Controller

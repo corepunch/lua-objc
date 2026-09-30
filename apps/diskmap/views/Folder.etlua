@@ -11,7 +11,7 @@
   local otherFade = 0.55
 %>
 <VStack id="page" transition="opacity" flexGrow="1" maxWidth="infinity" maxHeight="infinity" spacing="16" padding="24" alignment="leading">
-  <%- partial("PageHeader.etlua", {icon = "folder.fill", color = "systemBlue", title = title, summary = summary, summaryId = "folderSummary", buttons = buttons}) %>
+  <%- partial("PageHeader.etlua", {header = header, summary = summary, summaryId = "folderSummary", buttons = buttons}) %>
   <% if state == "empty" then %>
   <ContentUnavailable id="folderEmpty" descriptionAlignment="leading" title="Drop a Folder Here" systemImage="folder.badge.plus" description="Drag a folder or a disk from the Finder onto this window or onto Diskmap in the Dock, or choose File › Open Folder…, to see everything in it by size." />
   <% elseif state == "scanning" then %>

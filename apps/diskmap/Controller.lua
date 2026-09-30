@@ -27,16 +27,17 @@ local OverviewController = require("apps.diskmap.controllers.OverviewController"
 local MapController = require("apps.diskmap.controllers.MapController")
 local FolderController = require("apps.diskmap.controllers.FolderController")
 local FilesController = require("apps.diskmap.controllers.FilesController")
-local ResourcePageController = require("apps.diskmap.controllers.ResourcePageController")
+local PageController = require("apps.diskmap.controllers.PageController")
 local KindsController = require("apps.diskmap.controllers.KindsController")
 local ApplicationsController = require("apps.diskmap.controllers.ApplicationsController")
 local XcodeController = require("apps.diskmap.controllers.XcodeController")
 local ProjectsController = require("apps.diskmap.controllers.ProjectsController")
 local DisksController = require("apps.diskmap.controllers.DisksController")
 local DuplicatesController = require("apps.diskmap.controllers.DuplicatesController")
-local GuideController = require("apps.diskmap.controllers.GuideController")
+local TopicsController = require("apps.diskmap.controllers.TopicsController")
+local Guide = require("apps.diskmap.models.Guide")
+local Help = require("apps.diskmap.models.Help")
 local UpdatesController = require("apps.diskmap.controllers.UpdatesController")
-local HelpController = require("apps.diskmap.controllers.HelpController")
 local FilesystemController = require("apps.diskmap.controllers.FilesystemController")
 local NotificationsController = require("apps.diskmap.controllers.NotificationsController")
 local CommandsController = require("apps.diskmap.controllers.CommandsController")
@@ -111,7 +112,7 @@ function Controller.new(service)
 	end)
 	-- Pages that list catalog resources share one controller; each is a table.
 	local resourcePage = function(page)
-		return ResourcePageController.new(self.model, self.actions, {open = open,
+		return PageController.new(self.model, self.actions, {open = open,
 			show = function(id, filter) self:showFiltered(id, filter) end,
 			settings = function(section) self.service.openSettings(section) end}, page)
 	end
@@ -139,7 +140,10 @@ function Controller.new(service)
 		simulators = self.simulators,
 		disks = DisksController.new(service, self.actions),
 		updates = UpdatesController.new(self.model, service, self.actions),
-		guide = GuideController.new(self.model, open),
+		guide = TopicsController.new({id = "guide", topic = "GuideTopic", noun = "guide topic",
+			summary = "Where macOS keeps things, why they grow and what is safe to do about them. Sizes are measured on this Mac.",
+			present = function(query) return Guide.presentation(self.model, query) end,
+			follow = function(topic) return topic.open and function() open(topic.open) end end}),
 		filesystem = FilesystemController.new(self.model, service, open),
 		watched = WatchedController.new(self.model, service, self.watchlist, self.actions, {
 			open = open, closed = function() self:show("overview") end,
@@ -169,9 +173,18 @@ function Controller.new(service)
 		tour = function() self.tour:open(self.window) end,
 	})
 	self.commandActions = self.commands:actions()
-	self.pages.help = HelpController.new(function(target)
-		if self.pages[target] then self:show(target) else self.commandActions[target]() end
-	end, function() return self.shortcuts or {} end, CommandsController.links())
+	-- A help topic's button opens a page or runs a menu command. Its title
+	-- and the shortcut list come from the command layer, not the help text.
+	local links = CommandsController.links()
+	self.pages.help = TopicsController.new({id = "help", topic = "HelpTopic", noun = "help topic",
+		summary = "How to find what uses your storage and free up space safely. To search help from anywhere, use the Help menu.",
+		present = function(query) return Help.presentation(query, self.shortcuts or {}, links) end,
+		follow = function(topic)
+			local target = topic.target
+			return topic.link and function()
+				if self.pages[target] then self:show(target) else self.commandActions[target]() end
+			end
+		end})
 	return self
 end
 -- Shows a page filtered to `text`, as if typed into the toolbar search:

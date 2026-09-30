@@ -187,9 +187,35 @@ for _, status in ipairs({"Newest · keep", "Older", "Missing", "Present", "Unkno
 end
 t.assertEqual(Status.styles[XcodeController.statuses.Missing].color, "systemGreen", "build data of a missing project is safe to remove")
 
-for _, name in ipairs({"Largest", "Files", "Cleanup", "Applications", "Disks"}) do
-	local data = {summary = "", filters = {"All"}, threshold = "50 MB", health = {}, actions = setmetatable({}, {__index = function() return function() return {} end end})}
-	local page, pageRefs = render(name, data)
-	t.expect(page ~= nil and pageRefs.page ~= nil, name .. " renders as one scrolling page")
+-- A list page is Page.etlua and a layout table: whatever the table leaves
+-- out is left out of the page, and what it names gets a ref.
+local anyAction = setmetatable({}, {__index = function() return function() return {} end end})
+local header = {icon = "doc.fill", color = "systemTeal", title = "Example"}
+local bare, bareRefs = render("Page", {header = header, layout = {}, actions = anyAction})
+t.expect(bare ~= nil and bareRefs.page ~= nil and bareRefs.pageContent ~= nil, "an empty layout renders as one scrolling page")
+t.assertEqual(bareRefs.pageTitle.text, "Example", "the header shows the page's title")
+t.expect(bareRefs.stats == nil, "a layout without tiles has no tile row")
+local _, fullRefs = render("Page", {header = header, actions = anyAction, layout = {
+	summary = "Summary", summaryId = "exampleSummary",
+	buttons = {{id = "add", title = "Add…", action = "add"}},
+	tiles = {{id = "oneTile", icon = "doc.fill", color = "systemTeal", title = "One", value = "—", detail = "Detail"}},
+	sections = {
+		{id = "firstSection", title = "First", detail = "Detail", detailId = "firstDetail", titleId = "firstTitle", sizeId = "firstSize",
+			links = {{id = "clear", title = "Clear", style = "link", action = "clear", hidden = true}},
+			filters = {id = "filter", options = {"All", "Some"}},
+			buttons = {{id = "bulk", title = "Mark", action = "bulk", disabled = true}},
+			empties = {{id = "firstEmpty", hidden = true, title = "Nothing", systemImage = "doc", description = "Nothing here."}},
+			panelId = "firstPanel", list = {id = "first", menu = "rowMenu", activate = "open", status = true}},
+		{list = {id = "second", menu = "rowMenu", detailColumn = true}},
+	},
+	slots = {"extra"},
+	footnote = {text = "Footnote"},
+}})
+t.assertEqual(fullRefs.exampleSummary.text, "Summary", "the summary takes the ref the layout names")
+for _, id in ipairs({"add", "stats", "oneTileValue", "firstSection", "firstTitle", "firstDetail", "firstSize", "clear", "bulk",
+	"firstEmpty", "firstPanel", "first", "second", "extra"}) do
+	t.expect(fullRefs[id] ~= nil, "the layout's " .. id .. " is on the page")
 end
+t.assertEqual(fullRefs.filter.className, "NSSegmentedControl", "filters are a segmented control")
+t.expect(fullRefs.clear.hidden and fullRefs.firstEmpty.hidden and not fullRefs.bulk.enabled, "hidden and disabled come from the layout")
 os.exit(t.summary() and 0 or 1)

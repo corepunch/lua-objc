@@ -1,9 +1,8 @@
-local ns = require("AppKit")
-local Template = require("ui.template")
+local Page = require("apps.diskmap.controllers.PageController")
 local Model = require("apps.diskmap.Model")
 local Categories = require("apps.diskmap.models.Categories")
 local VolumeContents = require("apps.diskmap.models.VolumeContents")
-local Controller = {}; Controller.__index = Controller
+local Controller = Page.extend("watched")
 
 -- One watched location, opened from its sidebar row: its size, the change
 -- since the previous session and what it holds one level down. A category
@@ -12,7 +11,7 @@ local Controller = {}; Controller.__index = Controller
 -- and `handlers.closed()` leaves the page after Stop Watching.
 function Controller.new(model, service, watchlist, actions, handlers)
 	return setmetatable({model = model, service = service, watchlist = watchlist, actions = actions,
-		handlers = handlers, generation = 0}, Controller)
+		handlers = handlers}, Controller)
 end
 
 function Controller:focus(key)
@@ -27,16 +26,10 @@ function Controller:row()
 end
 
 function Controller:mount(host)
-	self.generation = self.generation + 1
-	self.template = Template.new(host, "apps/diskmap/views/Watched.etlua", ns)
-	self:render()
+	self:attach(host)
+	self:show()
 	self:analyze()
 	return self.refs
-end
-
-local function tilde(path, home)
-	if path and home ~= "" and path:sub(1, #home + 1) == home .. "/" then return "~" .. path:sub(#home + 1) end
-	return path
 end
 
 -- The resource whose category sheet the page's Open button shows: a group
@@ -52,21 +45,25 @@ function Controller:group(row)
 	return resource and not resource:isLeaf() and resource or nil
 end
 
-function Controller:render()
+function Controller:show()
 	local row = self:row()
 	if not row or not self.template then return end
 	local summary = {row.size, row.changeText}
-	if row.path then table.insert(summary, tilde(row.path, self.model.home)) end
+	if row.path then table.insert(summary, Model.tilde(row.path, self.model.home)) end
 	local buttons = {}
 	if row.path and not row.missing then table.insert(buttons, {id = "reveal", title = "Show in Finder", action = "reveal"}) end
 	local category = self:category(row)
 	if category then table.insert(buttons, {id = "openCategory", title = "Open " .. category.name .. "…", action = "openCategory"}) end
 	table.insert(buttons, {id = "unwatch", title = "Stop Watching", systemImage = "eye.slash", action = "unwatch"})
-	local _, refs = self.template:update({watched = row, summary = table.concat(summary, " · "), buttons = buttons,
-		contents = not row.missing and (self:group(row) or row.path) and self:contentsDetail() or nil,
-		-- A category's locations differ by policy; a folder's children are
-		-- already labeled Folder or File under their names.
-		detailColumn = self:group(row) ~= nil,
+	-- A category's locations differ by policy; a folder's children are
+	-- already labeled Folder or File under their names.
+	local contents = not row.missing and (self:group(row) or row.path) and {id = "contentsSection", title = "Contents",
+		detail = self:contentsDetail(), detailId = "contentsDetail",
+		list = {id = "contents", menu = "contentsMenu", activate = "openContents", detailColumn = self:group(row) ~= nil}} or nil
+	-- The page is headed by the watched location, not by a sidebar page.
+	local refs = self:render({header = {icon = row.icon, color = row.color, title = row.name},
+		layout = {summary = table.concat(summary, " · "), summaryId = "watchedSummary", buttons = buttons, sections = {contents},
+			footnote = {icon = "eye", text = "Diskmap stores each watched location's size after every scan and shows how it changed the next time you open it. Only the location and its size are kept, never file names inside it."}},
 		actions = {
 			reveal = function() self.service.reveal(row.path) end,
 			openCategory = function() self.handlers.open(category.id) end,
@@ -82,7 +79,6 @@ function Controller:render()
 				else self.service.reveal(item.path) end
 			end,
 		}})
-	self.refs = refs
 	if refs.contents then refs.contents:replaceRows(self:contents()) end
 end
 
@@ -115,16 +111,16 @@ function Controller:analyze()
 	local row = self:row()
 	if not row or row.missing or not row.path or self:group(row) or self.analyzed then return end
 	local breakdown = row.resourceId and self.model.breakdowns[row.resourceId]
-	if breakdown then self.analyzed = {entries = breakdown}; self:render(); return end
+	if breakdown then self.analyzed = {entries = breakdown}; self:show(); return end
 	local analyze = rawget(self.service, "analyzeFolder")
 	if not analyze then return end
 	self.analyzed = {loading = true}
-	self:render()
+	self:show()
 	local generation, key = self.generation, self.key
 	analyze(row.path, function(entries, failure)
 		if generation ~= self.generation or key ~= self.key then return end
 		self.analyzed = {entries = entries or {}, failure = failure}
-		self:render()
+		self:show()
 	end)
 end
 
@@ -135,13 +131,7 @@ function Controller:contentsMenu(item)
 end
 
 function Controller:update()
-	self:render()
-end
-
-function Controller:dispose()
-	self.generation = self.generation + 1
-	if self.template then self.template:dispose() end
-	self.template, self.refs = nil, nil
+	self:show()
 end
 
 return Controller

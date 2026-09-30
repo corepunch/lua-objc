@@ -1,6 +1,6 @@
 <ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="infinity" maxHeight="infinity">
   <VStack id="pageContent" maxWidth="infinity" spacing="24" padding="24" alignment="leading">
-    <%- partial("PageHeader.etlua", {icon = "arrow.triangle.2.circlepath", color = "systemGray", title = "Updates & Snapshots",
+    <%- partial("PageHeader.etlua", {header = header,
       summary = "Storage macOS uses to download and install updates, and the restore points Time Machine keeps on this disk."}) %>
     <VStack maxWidth="infinity" spacing="8" alignment="leading">
       <%- partial("SectionTitle.etlua", {icon = "gearshape.arrow.triangle.2.circlepath", title = "Software Update"}) %>

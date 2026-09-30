@@ -6,8 +6,11 @@ local Largest = {}
 -- category lists still show everything.
 Largest.limit = 100
 
--- The Largest Items page a ResourcePageController presents.
-Largest.page = {view = "Largest", present = function(model, state)
+-- The Largest Items page a PageController presents.
+Largest.page = {id = "largest", layout = {summaryId = "largestSummary",
+	sections = {{list = {id = "largest", menu = "rowMenu", activate = "open", status = true}}},
+	footnote = {text = "Known locations measured individually, across every category. Open an item's menu to show it in Finder, review it, or keep it out of suggestions."},
+}, present = function(model, state)
 	local rows = Overview.largest(model, state.disk, Largest.limit, state.query)
 	local bytes = 0
 	for _, row in ipairs(rows) do bytes = bytes + row.bytes end
