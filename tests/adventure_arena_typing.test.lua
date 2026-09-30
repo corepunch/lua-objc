@@ -144,8 +144,7 @@ t.expect(not controller:isTyping(), "closing the book stops typing")
 finish()
 
 -- A resumed story opens at its last line without typing.
-saved = { seed = 1, commands = { "open mailbox" },
-	checkpoints = { { room = "West of House", score = 0, moves = 1 } } }
+saved = { seed = 1, commands = { "open mailbox" } }
 timers, haptics = {}, {}
 local resumed = build()
 t.expect(resumed:show("zork"), "a saved story resumes")

@@ -63,10 +63,6 @@ function Controller:show(id, fresh)
 	local saved = not fresh and self.savedGames and self.savedGames:find(id) or nil
 	self:finishTyping()
 	local ok, err = self.model:start(game, saved)
-	-- A save the changed story could not follow is rewritten at the kept place.
-	if ok and self.model.restoreNotice and self.savedGames then
-		if not self.savedGames:record(self.model:snapshot()) then self.savedGames:remove(game.id) end
-	end
 	if not ok then
 		self.push("SessionError", {
 			title = game.title, message = err, actions = { back = self.back },

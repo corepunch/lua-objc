@@ -40,6 +40,11 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   to it completely. Delete old paths, old names, and old files — do not leave
   shims, aliases, or forwarding stubs behind. A clean break is always preferred
   over a compatibility layer. Callers update in the same commit.
+  The project is work in progress: this covers persisted data too. Saved
+  games, settings, documents and caches carry no format versions, migrations,
+  upgrade paths, or handling for data written by an older build or an older
+  story. When a format or a story changes, old data may simply stop loading
+  or replay differently; do not write code to detect, repair or preserve it.
 - **Views are etlua only, without exception.** Screens and reusable
   components are `.etlua` templates composed with `partial()`. Controllers
   must never construct view trees, create layout containers, or assemble UI in
