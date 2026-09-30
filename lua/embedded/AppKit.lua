@@ -437,6 +437,7 @@ end
 --- @prop items table required. MenuItem descriptions and actions.
 --- @prop title string optional. Menu button label.
 --- @prop systemImage string optional. SF Symbol shown on the menu button.
+--- @prop imagePath string optional. Image file shown on the menu button.
 --- @prop style string optional. `plain` or `glass` button appearance.
 --- @prop symbolSize number optional. SF Symbol point size.
 --- @platform AppKit NSPopUpButton and NSMenu.
@@ -446,7 +447,8 @@ function AppKit.Menu(props)
 		"menu style must be 'plain' or 'glass'")
 	local button = bridge._menu(props.items or props.children or {},
 		-- SwiftUI labels a symbol-only menu with its image alone.
-		props.title or (props.systemImage and "" or "Menu"), props.systemImage or "", props.symbolSize)
+		props.title or (props.systemImage and "" or "Menu"), props.systemImage or "", props.symbolSize,
+		props.imagePath or "")
 	if props.accessibilityLabel then button.accessibilityLabel = props.accessibilityLabel end
 	if props.style == "glass" then
 		button = bridge._glassEffect(button, "regular", 0)

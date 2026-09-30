@@ -25,7 +25,15 @@ end
 local documentNS = {
 	_documentRead = function(path) return read(root .. "/" .. path) end,
 	_documentWrite = write,
+	_documentExists = function(path)
+		local file = io.open(root .. "/" .. path, "rb")
+		if not file then return false end
+		file:close()
+		return true
+	end,
+	_documentWriteData = write,
 	_documentPath = function(path) return root .. "/" .. path end,
+	_readFile = function(path) return read(path) end,
 	_jsonEncode = ns._jsonEncode,
 	json_parse = ns.json_parse,
 }
@@ -45,6 +53,8 @@ local files = {
 }
 
 t.assertEqual(workspace.root, root .. "/HabitTracker", "Git uses the actual project folder")
+t.assertEqual(read(workspace.root .. "/AppIcon.png"), read("apps/studio/ProjectIcons/rocket-sketch.png"),
+	"first launch installs the default rocket sketch icon")
 assert(save(files))
 assert(workspace.localStorage.set("habits", '{"completed":true}'))
 assert(write("HabitTracker/notes.txt", "Keep my project notes"))
@@ -53,7 +63,7 @@ t.assertEqual(#versions:log(), 1, "opening materializes the project with an init
 local first = assert(versions:record("Start project"))
 t.assertEqual(#first, 40, "recording returns the commit id")
 local repo = assert(Git.open(workspace.root))
-t.assertEqual(tracked(repo), ".gitignore,init.lua,notes.txt,project.lua,views/Window.etlua", "source, metadata and other assets are tracked; data and settings are ignored")
+t.assertEqual(tracked(repo), ".gitignore,AppIcon.png,ProjectIcons/desk.png,ProjectIcons/rocket-sketch.png,ProjectIcons/rocket.png,init.lua,notes.txt,project.lua,views/Window.etlua", "source, metadata and all project icons are tracked; data and settings are ignored")
 t.assertEqual(repo:show("HEAD", "views/Window.etlua"), "<Window />\n", "files are committed with their content")
 t.assertEqual(versions:record("Again"), false, "an unchanged project records nothing")
 t.assertEqual(#versions:log(), 2, "no empty commits")
@@ -62,7 +72,7 @@ files["demo/playground/views/Window.etlua"] = nil
 files["demo/playground/Model.lua"] = "return {}\n"
 assert(save(files))
 local second = assert(versions:record("Replace window"))
-t.assertEqual(tracked(repo), ".gitignore,Model.lua,init.lua,notes.txt,project.lua", "source deletion preserves metadata and unrelated files")
+t.assertEqual(tracked(repo), ".gitignore,AppIcon.png,Model.lua,ProjectIcons/desk.png,ProjectIcons/rocket-sketch.png,ProjectIcons/rocket.png,init.lua,notes.txt,project.lua", "source deletion preserves metadata, project icons and unrelated files")
 t.expect(io.open(workspace.root .. "/views/Window.etlua") == nil, "deleted files leave the worktree")
 local history = versions:log()
 t.assertEqual(#history, 3, "each change is one commit after inception")
@@ -111,6 +121,13 @@ t.assertEqual(beta.versions.repo:workdir(), root .. "/Timer/", "another project 
 t.assertEqual(#alpha.versions:log(), 1, "new project has a commit before create returns")
 t.assertEqual(#beta.versions:log(), 1, "each new project gets an initial commit")
 t.assertEqual(alpha.versions.repo:show("HEAD", "init.lua"), "return {}", "initial commit includes initial source")
+t.assertEqual(read(root .. "/Notes/AppIcon.png"), read("apps/studio/ProjectIcons/rocket-sketch.png"),
+	"new projects receive the default rocket sketch icon")
+t.expect(alpha.selectIcon("desk"), "projects can select another bundled icon")
+t.assertEqual(read(root .. "/Notes/AppIcon.png"), read("apps/studio/ProjectIcons/desk.png"),
+	"choosing an icon replaces the project's AppIcon.png")
+local selectedMetadata = assert(load(assert(read(root .. "/Notes/project.lua")), "project", "t", {}))()
+t.assertEqual(selectedMetadata.projectIcon, "desk", "the selected project icon choice persists in metadata")
 local names = ns.json_parse(documentNS._documentRead("projects.json"))
 t.assertEqual(table.concat(names, ","), "Notes,Timer", "successful projects enter the catalog")
 local created = pcall(Workspace.create, documentNS, Git, "Notes", metadata, {})

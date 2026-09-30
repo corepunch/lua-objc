@@ -892,6 +892,7 @@ static int bridge_UIKitControls_menu(lua_State *L) {
 	const char *systemImage = luaL_optstring(L, 3, "");
 	const char *style = luaL_optstring(L, 4, "plain");
 	CGFloat symbolSize = (CGFloat)luaL_optnumber(L, 5, kMenuSymbolPointSize);
+	const char *imagePath = luaL_optstring(L, 6, "");
 	if (strcmp(style, "plain") != 0 && strcmp(style, "glass") != 0)
 		return luaL_error(L, "menu style must be 'plain' or 'glass'");
 	if (symbolSize <= 0) return luaL_error(L, "menu symbolSize must be positive");
@@ -924,6 +925,9 @@ static int bridge_UIKitControls_menu(lua_State *L) {
 		lua_getfield(L, -1, "systemImage");
 		const char *symbol = luaL_optstring(L, -1, "");
 		lua_pop(L, 1);
+		lua_getfield(L, -1, "imagePath");
+		const char *imagePath = luaL_optstring(L, -1, "");
+		lua_pop(L, 1);
 		lua_getfield(L, -1, "role");
 		const char *role = luaL_optstring(L, -1, "");
 		lua_pop(L, 1);
@@ -935,8 +939,13 @@ static int bridge_UIKitControls_menu(lua_State *L) {
 		} else {
 			lua_pop(L, 1);
 		}
+		UIImage *itemImage = imagePath[0]
+			? [UIImage imageWithContentsOfFile:[NSString stringWithUTF8String:imagePath]] : nil;
+		if (itemImage) itemImage = [itemImage imageByPreparingThumbnailOfSize:
+			CGSizeMake(kMenuArtworkPointSize, kMenuArtworkPointSize)];
+		if (!itemImage && symbol[0]) itemImage = [UIImage systemImageNamed:[NSString stringWithUTF8String:symbol]];
 		UIAction *action = [UIAction actionWithTitle:[NSString stringWithUTF8String:title]
-			image:(symbol[0] ? [UIImage systemImageNamed:[NSString stringWithUTF8String:symbol]] : nil)
+			image:itemImage
 			identifier:nil
 			handler:^(__unused UIAction *selected) {
 				if (!itemReg) return;
@@ -958,10 +967,15 @@ static int bridge_UIKitControls_menu(lua_State *L) {
 		: [UIButtonConfiguration plainButtonConfiguration];
 	configuration.title = [NSString stringWithUTF8String:buttonTitle];
 	configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-	if (systemImage[0]) {
-		configuration.image = [UIImage systemImageNamed:
-			[NSString stringWithUTF8String:systemImage]];
-		configuration.preferredSymbolConfigurationForImage =
+	UIImage *buttonImage = imagePath[0]
+		? [UIImage imageWithContentsOfFile:[NSString stringWithUTF8String:imagePath]] : nil;
+	if (buttonImage) buttonImage = [buttonImage imageByPreparingThumbnailOfSize:
+		CGSizeMake(kMenuArtworkPointSize, kMenuArtworkPointSize)];
+	if (!buttonImage && systemImage[0]) buttonImage = [UIImage systemImageNamed:
+		[NSString stringWithUTF8String:systemImage]];
+	if (buttonImage) {
+		configuration.image = buttonImage;
+		if (!imagePath[0]) configuration.preferredSymbolConfigurationForImage =
 			[UIImageSymbolConfiguration configurationWithPointSize:symbolSize
 				weight:UIImageSymbolWeightRegular scale:UIImageSymbolScaleMedium];
 	}

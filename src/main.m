@@ -539,6 +539,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_documentPath", bridge_document_path},
 	{"_documentRead", bridge_document_read},
 	{"_documentWrite", bridge_document_write},
+	{"_documentWriteData", bridge_document_write_data},
+	{"_documentExists", bridge_document_exists},
 	{"_jsonEncode", bridge_json_encode},
 	{"_openPath", bridge_AppKit_open_path},
 	{"_moveToTrash", bridge_AppKit_move_to_trash},

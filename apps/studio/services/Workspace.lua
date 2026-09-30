@@ -1,8 +1,17 @@
 local Workspace = {}
 
 local Versions = require("apps.studio.services.Versions")
+local Projects = require("apps.studio.models.Projects")
 local PREFIX = "demo/playground/"
 local IGNORE = "/data/\n/settings.json\n.DS_Store\n"
+local ICONS = "apps/studio/ProjectIcons/"
+
+local function writeBundledIcon(ns, readBundled, destination, choice)
+	local data = readBundled(ICONS .. choice.file)
+	assert(data, "Project icon is missing from the app bundle: " .. choice.file)
+	local ok, err = ns._documentWriteData(destination, data)
+	assert(ok, err or ("Could not install project icon: " .. choice.file))
+end
 
 local function validRelative(path)
 	if type(path) ~= "string" or path == "" or path:sub(1, 1) == "/"
@@ -22,6 +31,7 @@ local function manifestSource(metadata)
 		.. "\tname = " .. string.format("%q", metadata.name) .. ",\n"
 		.. "\tbundleId = " .. string.format("%q", metadata.bundleId) .. ",\n"
 		.. "\tappIcon = " .. string.format("%q", metadata.appIcon) .. ",\n"
+		.. "\tprojectIcon = " .. string.format("%q", metadata.projectIcon) .. ",\n"
 		.. "\tfiles = {\n" .. table.concat(files, "\n") .. "\n\t},\n}\n"
 end
 
@@ -39,6 +49,15 @@ local function initialize(ns, readBundled, git, project, definition)
 	local metadata = assert(load(source, "@" .. project .. "/project.lua", "t", {}))()
 	assert(type(metadata) == "table", "Invalid project metadata: " .. project)
 	metadata.files = metadata.files or {}
+	if not Projects.iconChoice(metadata.projectIcon) then metadata.projectIcon = Projects.defaultProjectIcon end
+	local selectedIcon = assert(Projects.iconChoice(metadata.projectIcon))
+	for _, choice in ipairs(Projects.iconChoices) do
+		local path = project .. "/ProjectIcons/" .. choice.file
+		if not ns._documentExists(path) then writeBundledIcon(ns, readBundled, path, choice) end
+	end
+	if not ns._documentExists(project .. "/AppIcon.png") then
+		writeBundledIcon(ns, readBundled, project .. "/AppIcon.png", selectedIcon)
+	end
 	local listed = {}
 	for _, path in ipairs(metadata.files) do
 		assert(validRelative(path) and (path:match("%.lua$") or path:match("%.etlua$")),
@@ -80,6 +99,7 @@ local function initialize(ns, readBundled, git, project, definition)
 			name = metadata.name,
 			bundleId = metadata.bundleId,
 			appIcon = metadata.appIcon,
+			projectIcon = metadata.projectIcon,
 			files = names,
 		}
 		local ok, err = ns._documentWrite(project .. "/project.lua", manifestSource(nextMetadata))
@@ -148,6 +168,18 @@ local function initialize(ns, readBundled, git, project, definition)
 				return ok, err
 			end,
 		},
+		selectIcon = function(iconID)
+			local choice = Projects.iconChoice(iconID)
+			if not choice then return nil, "Unknown project icon" end
+			local data = readBundled(ICONS .. choice.file)
+			if not data then return nil, "Project icon is missing from the app bundle: " .. choice.file end
+			local ok, err = ns._documentWriteData(project .. "/AppIcon.png", data)
+			if not ok then return nil, err or "Could not save project icon" end
+			metadata.projectIcon, metadata.appIcon = choice.id, choice.symbol
+			local saved, saveError = ns._documentWrite(project .. "/project.lua", manifestSource(metadata))
+			if not saved then return nil, saveError or "Could not save project icon selection" end
+			return true
+		end,
 	}
 end
 
@@ -162,10 +194,16 @@ function Workspace.create(ns, git, project, metadata, files)
 	assert(not ns._documentRead(project .. "/project.lua"), "Project already exists: " .. project)
 	local definition = { metadata = {}, files = files }
 	for key, value in pairs(metadata) do definition.metadata[key] = value end
+	if not Projects.iconChoice(definition.metadata.projectIcon) then
+		definition.metadata.projectIcon = Projects.defaultProjectIcon
+	end
+	definition.metadata.appIcon = definition.metadata.appIcon or Projects.defaultIcon
 	definition.metadata.files = {}
 	for path in pairs(files) do table.insert(definition.metadata.files, path) end
 	table.sort(definition.metadata.files)
-	local workspace = initialize(ns, function() return nil end, git, project, definition)
+	local workspace = initialize(ns, function(path)
+		return ns._readFile and ns._readFile(path) or nil
+	end, git, project, definition)
 	local source = ns._documentRead("projects.json")
 	local names = source and ns.json_parse(source) or {}
 	local found = false

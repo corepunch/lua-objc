@@ -472,19 +472,24 @@ static int bridge_AppKitControls_menu(lua_State *L) {
 	const char *title = luaL_optstring(L, 2, "Menu");
 	const char *systemImage = luaL_optstring(L, 3, "");
 	CGFloat symbolSize = (CGFloat)luaL_optnumber(L, 4, kDefaultSymbolPointSize);
+	const char *imagePath = luaL_optstring(L, 5, "");
 	if (symbolSize <= 0) return luaL_error(L, "menu symbolSize must be positive");
 	NSPopUpButton *button = [[NSPopUpButton alloc]
 		initWithFrame:NSZeroRect pullsDown:YES];
 	button.bordered = NO;
 	[button removeAllItems];
 	[button addItemWithTitle:[NSString stringWithUTF8String:title]];
-	if (systemImage[0]) {
-		NSImage *image = [NSImage imageWithSystemSymbolName:
+	NSImage *buttonImage = imagePath[0]
+		? [[NSImage alloc] initWithContentsOfFile:[NSString stringWithUTF8String:imagePath]] : nil;
+	if (buttonImage) buttonImage.size = NSMakeSize(symbolSize, symbolSize);
+	if (!buttonImage && systemImage[0]) {
+		buttonImage = [NSImage imageWithSystemSymbolName:
 			[NSString stringWithUTF8String:systemImage] accessibilityDescription:nil];
-		[button itemAtIndex:0].image = [image imageWithSymbolConfiguration:
+		buttonImage = [buttonImage imageWithSymbolConfiguration:
 			[NSImageSymbolConfiguration configurationWithPointSize:symbolSize
 				weight:NSFontWeightRegular]];
 	}
+	[button itemAtIndex:0].image = buttonImage;
 	NSMutableArray *callbacks = [NSMutableArray array];
 	NSInteger count = (NSInteger)luaL_len(L, 1);
 	for (NSInteger index = 1; index <= count; index++) {
@@ -514,6 +519,16 @@ static int bridge_AppKitControls_menu(lua_State *L) {
 		const char *itemSymbol = luaL_optstring(L, -1, "");
 		if (itemSymbol[0]) item.image = [NSImage imageWithSystemSymbolName:
 			[NSString stringWithUTF8String:itemSymbol] accessibilityDescription:nil];
+		lua_pop(L, 1);
+		lua_getfield(L, -1, "imagePath");
+		const char *imagePath = luaL_optstring(L, -1, "");
+		if (imagePath[0]) {
+			NSImage *image = [[NSImage alloc] initWithContentsOfFile:[NSString stringWithUTF8String:imagePath]];
+			if (image) {
+				image.size = NSMakeSize(symbolSize, symbolSize);
+				item.image = image;
+			}
+		}
 		lua_pop(L, 1);
 		lua_getfield(L, -1, "action");
 		LuaReg *callback = lua_reg_opt(L, -1);

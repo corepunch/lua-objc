@@ -12,6 +12,9 @@ t.expect(native:find("UIMenu", 1, true) ~= nil
 	"UIKit Menu uses native UIMenu presentation")
 t.expect(native:find("UIMenuElementAttributesDestructive", 1, true) ~= nil,
 	"UIKit Menu maps destructive role natively")
+t.expect(src:find("props.imagePath or \"\"", 1, true) ~= nil
+		and native:find("imageWithContentsOfFile", 1, true) ~= nil,
+	"UIKit Menu and MenuItem can display project artwork")
 t.expect(bridge:find('{"_menu", bridge_UIKitControls_menu}', 1, true) ~= nil,
 	"UIKit Menu bridge is registered")
 t.expect(xml:find("Menu =", 1, true) ~= nil

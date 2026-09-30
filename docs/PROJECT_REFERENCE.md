@@ -911,6 +911,7 @@ its platform bezel for standalone use.
 
 `<Menu>` presents native `UIMenu` actions on UIKit and an `NSPopUpButton` menu
 on AppKit. Use `systemImage` and `style="glass"` for an icon-only glass trigger;
+`imagePath` can use an image file for the trigger, and for a `<MenuItem>`;
 each `<MenuItem action="name" />` resolves `name` through the template's
 `actions` table.
 
