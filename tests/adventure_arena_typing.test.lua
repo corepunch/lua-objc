@@ -11,8 +11,8 @@ local Template = require("ui.template")
 -- The story types itself: new prose appears a few characters per tick with
 -- steady soft haptic pulses, the page follows it, and a resumed story
 -- opens already set.
-local OPENING = "West of House\nYou are standing in an open field west of a white house.\n\nThere is a small mailbox here."
-local ANSWER = "Opening the small mailbox reveals a leaflet.\n\nIt is written in a careful hand."
+local OPENING = "West of House\nYou are standing in an open field west of a white house.\nThere is a small mailbox here."
+local ANSWER = "Opening the small mailbox reveals a leaflet.\nIt is written in a careful hand."
 
 local function engine()
 	return {
@@ -121,13 +121,15 @@ local paragraphFinishedAt = now
 local countAtPause = #haptics
 nextTimer()
 t.assertEqual(#haptics, countAtPause, "pending pulses are silent during the paragraph pause")
-t.assertEqual(timers[1].seconds, 0.3, "a noticeable beat separates paragraphs")
+t.assertEqual(timers[1].seconds, 0.15, "a short beat separates paragraphs")
 local pause = nextTimer()
-t.expect(math.abs(pause.due - paragraphFinishedAt - 0.3) < 0.000001, "printing waits through the paragraph break")
+t.expect(math.abs(pause.due - paragraphFinishedAt - 0.15) < 0.000001, "printing waits through the paragraph break")
 t.expect(page().paragraph_1_2.hidden == false, "printing resumes after the break")
 t.assertEqual(page().paragraph_1_2.revealedCharacters, 3, "the next paragraph starts with one tick")
 t.assertEqual(#haptics, countAtPause + 1, "haptics resume with printing")
 t.assertEqual(haptics[#haptics].time, pause.due, "the first resumed pulse accompanies the next paragraph")
+t.expect(haptics[#haptics].time - haptics[countAtPause].time >= 0.15,
+	"a single newline leaves at least 0.15 seconds of haptic silence")
 finish()
 t.expect(not controller:isTyping(), "the opening finishes")
 t.expect(page().paragraph_1_2.hidden == false and page().paragraph_1_2.revealedCharacters == -1,

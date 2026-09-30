@@ -3,6 +3,7 @@ _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
 local xml = require("ui.xml")
+local bridge = require("AppKitNative")
 local Adventures = require("apps.adventure-arena.models.Adventures")
 local Onboarding = require("apps.adventure-arena.models.Onboarding")
 local OnboardingController = require("apps.adventure-arena.controllers.OnboardingController")
@@ -68,20 +69,15 @@ local store = {
 	load = function() return saved end,
 	save = function(value) saved = value end,
 }
-local button = ns.Button
-local buttonActions = {}
-ns.Button = function(props)
-	local view = button(props)
-	buttonActions[props.id or view] = props.action
-	return view
-end
+local tour
 local function tap(id)
-	local action = buttonActions[id]
-	t.expect(type(action) == "function", id .. " has a bound action")
-	if action then action() end
+	local view = tour.refs[id]
+	t.expect(view ~= nil, id .. " has a native button")
+	-- Disabled controls do not send actions, just as a real click does not.
+	if view and view.enabled then bridge._invokeAction(view) end
 end
 
-local tour = OnboardingController.new {
+tour = OnboardingController.new {
 	adventures = catalog,
 	store = store,
 	ns = ns,

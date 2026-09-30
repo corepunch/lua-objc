@@ -187,9 +187,17 @@ function Session:appendParagraph(paragraph)
 		self.openEntry = { kind = "narration", paragraphs = {}, links = {} }
 		table.insert(self.entries, self.openEntry)
 	end
-	local text, links = Session.parseLinks(paragraph)
-	table.insert(self.openEntry.paragraphs, text)
-	self.openEntry.links[#self.openEntry.paragraphs] = links
+	-- A story's CR ends a prose paragraph, including the object descriptions
+	-- printed after a room. Keep each in its own reveal queue item so the
+	-- paragraph gap and the silent typing pause apply to single newlines too.
+	for line in tostring(paragraph):gmatch("[^\r\n]+") do
+		line = trim(line)
+		if line ~= "" then
+			local text, links = Session.parseLinks(line)
+			table.insert(self.openEntry.paragraphs, text)
+			self.openEntry.links[#self.openEntry.paragraphs] = links
+		end
+	end
 end
 
 local function capitalized(text)

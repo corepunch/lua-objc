@@ -9,7 +9,7 @@ local TOAST = { seconds = 2.2 }
 -- Printing and haptic pulses have independent clocks, so every pulse has
 -- the same spacing regardless of word length or the character reveal rate.
 local TYPING = {
-	tick = 1 / 30, charactersPerTick = 3, paragraphPause = 0.3,
+	tick = 1 / 30, charactersPerTick = 3, paragraphPause = 0.15,
 	hapticInterval = (4 / 30) / 1.75, hapticStyle = "soft", hapticIntensity = 0.5, openingDelay = 0.45,
 }
 

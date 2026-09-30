@@ -72,9 +72,12 @@ end
 local model = Session.new { engineFactory = engine }
 t.expect(model:start({ id = "links", title = "Links" }), "a story with links starts")
 local scene = model:presentation().entries[1]
-t.assertEqual(scene.paragraphs[1], "The rusted iron gates stand open. A path leads north.\nA brass plaque hangs askew.",
+t.assertEqual(scene.paragraphs[1], "The rusted iron gates stand open. A path leads north.",
 	"the transcript holds the prose without markup")
-t.assertEqual(#scene.links[1], 3, "the paragraph carries its links")
+t.assertEqual(#scene.links[1], 2, "the first paragraph carries its links")
+t.assertEqual(scene.paragraphs[2], "A brass plaque hangs askew.", "a single newline starts a separate object paragraph")
+t.assertEqual(#scene.links[2], 1, "the object paragraph carries its own link")
+t.assertEqual(scene.links[2][1].location, 2, "link offsets restart at each paragraph")
 t.assertEqual(commands(model:linkActions("plaque")), "examine plaque,take plaque,read plaque",
 	"an object offers examine, then the story's verbs by how often players use them")
 t.assertEqual(model:linkActions("plaque")[2].title, "Take", "menu titles show only the capitalized verb")
@@ -127,16 +130,17 @@ local controller = SessionController.new {
 t.expect(controller:show("links"), "the session opens")
 local function page() return controller.transcript.refs end
 local live = bridge._paragraphLinks(page().paragraph_1_1)
-t.assertEqual(#live, 3, "the page marks the scene's links")
+t.assertEqual(#live, 2, "the page marks the scene's links")
 t.assertEqual(live[1].text, "iron gates", "a link underlines the words of the prose")
-t.assertEqual(live[3].text, "brass plaque", "links in later lines keep their place")
-t.assertEqual(table.concat(live[3].titles, ","), "Examine,Take,Read", "a link's menu lists its actions")
+local plaque = bridge._paragraphLinks(page().paragraph_1_2)[1]
+t.assertEqual(plaque.text, "brass plaque", "links in later lines keep their place")
+t.assertEqual(table.concat(plaque.titles, ","), "Examine,Take,Read", "a link's menu lists its actions")
 t.assertEqual(page().paragraph_1_1.text, scene.paragraphs[1], "the page shows the prose without markup")
 
-bridge._paragraphPerformLink(page().paragraph_1_1, 3, 3)
+bridge._paragraphPerformLink(page().paragraph_1_2, 1, 3)
 t.assertEqual(model.history[#model.history], "read plaque", "choosing an action sends its command")
 t.assertEqual(page().command_2.text, "read plaque", "the command appears on the page")
-t.assertEqual(#bridge._paragraphLinks(page().paragraph_1_1), 3, "links stay live while the reader stays in the room")
+t.assertEqual(#bridge._paragraphLinks(page().paragraph_1_1), 2, "links stay live while the reader stays in the room")
 
 bridge._paragraphPerformLink(page().paragraph_1_1, 2, 1)
 t.assertEqual(model.history[#model.history], "north", "a direction link walks")
@@ -174,6 +178,9 @@ if game then
 	local story = Session.new { engineFactory = function(entry, seed) return ZILRuntime.new(entry, nil, seed) end }
 	t.expect(story:start(game), "the horror story starts")
 	local opening = story.entries[#story.entries]
+	t.assertEqual(#opening.paragraphs, 2, "Sanitarium's gate and plaque print as separate paragraphs")
+	local queue = story:paragraphsSince(#story.entries)
+	t.assertEqual(#queue, 2, "the real opening has two steps with a silent pause between them")
 	local targets = {}
 	for _, paragraphLinks in pairs(opening.links) do
 		for _, link in ipairs(paragraphLinks) do targets[link.target] = true end
@@ -184,6 +191,7 @@ if game then
 		"the plaque offers the verbs the story accepts")
 	story:submit("north")
 	t.assertEqual(story.roomTitle, "Sanitarium Entrance Hall", "walking north enters the hall")
+	t.assertEqual(#story.entries[#story.entries].paragraphs, 2, "the hall and its door print as separate paragraphs")
 	story:submit("go back")
 	t.assertEqual(story.roomTitle, "Sanitarium Gate", "GO BACK retraces the last step")
 	story:submit("walk back")
