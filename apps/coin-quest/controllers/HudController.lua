@@ -7,12 +7,21 @@ local VIEWS = "apps/coin-quest/views/"
 local HudController = {}
 HudController.__index = HudController
 
-function HudController.new(host, ns)
-	return setmetatable({template = Template.new(host, VIEWS .. "Hud.etlua", ns)}, HudController)
+-- How to play, for the controls the device has.
+local HINTS = {
+	keys = "Arrow keys or WASD to hop · Take every coin, then reach the flag",
+	touch = "Swipe to run · Tap to stop · Take every coin",
+}
+
+-- `options.touch` shows the touch controls' hint instead of the keys'.
+function HudController.new(host, ns, options)
+	local self = setmetatable({template = Template.new(host, VIEWS .. "Hud.etlua", ns)}, HudController)
+	self.hint = (options and options.touch) and HINTS.touch or HINTS.keys
+	return self
 end
 
 -- Plain template data for a session status (Model:status()).
-function HudController.viewData(status)
+function HudController.viewData(status, hint)
 	local hearts = {}
 	for index = 1, status.maxLives do
 		table.insert(hearts, {filled = index <= status.lives})
@@ -24,12 +33,13 @@ function HudController.viewData(status)
 		score = tostring(status.score),
 		hearts = hearts,
 		lives = string.format("%d of %d lives", status.lives, status.maxLives),
+		hint = hint or HINTS.keys,
 		message = status.message and {title = status.message.title, detail = status.message.detail} or nil,
 	}
 end
 
 function HudController:render(status)
-	local _, refs = self.template:update(HudController.viewData(status))
+	local _, refs = self.template:update(HudController.viewData(status, self.hint))
 	self.refs = refs
 	return refs
 end

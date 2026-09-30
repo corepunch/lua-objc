@@ -64,7 +64,10 @@ local REACTIONS = {
 -- Advances the running level by `dt` seconds. `input` answers
 -- `nextDirection()` with `{x, z}` or nil. Nothing moves once the level ends.
 function Model:step(dt, input)
-	if self.state ~= "playing" then return end
+	if self.state ~= "playing" then
+		self.world:idle(dt)
+		return
+	end
 	for _, event in ipairs(self.world:step(dt, input)) do
 		REACTIONS[event.name](self, event.entity)
 		self:changed()
@@ -76,9 +79,9 @@ function Model:level() return self.levels[self.levelIndex] end
 
 -- What the HUD shows.
 local MESSAGES = {
-	cleared = {title = "Level Complete", detail = "Press Return for the next level"},
-	over = {title = "Game Over", detail = "Press Return to play again"},
-	won = {title = "You Win!", detail = "Every coin collected. Press Return to play again"},
+	cleared = {title = "Level Complete", detail = "Press Return or tap for the next level"},
+	over = {title = "Game Over", detail = "Press Return or tap to play again"},
+	won = {title = "You Win!", detail = "Every coin collected. Press Return or tap to play again"},
 }
 
 function Model:status()

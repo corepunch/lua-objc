@@ -22,7 +22,31 @@
  * SCN) and are cloned per node, sharing geometry and materials
  * (shared/scene_models.m, which Reel's offline renderer uses too). Keyboard
  * events and a display-linked frame callback reach Lua through `onKey` and
- * `onFrame`, the two hooks a game loop needs. */
+ * `onFrame`, the two hooks a game loop needs.
+ *
+ * Touch (and the mouse, so a game can be tried on the Mac) reaches Lua as
+ * two gestures: `onSwipe(view, direction)` with left, right, up or down,
+ * sent as soon as a drag passes kSceneSwipeDistance, and `onTap(view)` for
+ * a press released without travelling. One drag is one swipe or one tap,
+ * never both. The view is shared by AppKit and UIKit: only the events and
+ * colours differ. */
+
+#if TARGET_OS_IPHONE
+typedef UIColor SceneColor;
+#define SCENE_HANDLE "uiview"
+#else
+typedef NSColor SceneColor;
+#define SCENE_HANDLE "nsview"
+#endif
+
+/* "#rrggbb" or a semantic colour name. */
+static SceneColor *scene_color(NSString *name) {
+#if TARGET_OS_IPHONE
+	return lua_objc_uikit_system_color(name.UTF8String);
+#else
+	return semantic_color(name);
+#endif
+}
 
 @interface LuaSceneEntry : NSObject
 @property(nonatomic, copy) NSString *key;
@@ -37,6 +61,12 @@
 @interface LuaSceneView : SCNView
 @property(nonatomic, strong) LuaReg *keyReg;
 @property(nonatomic, strong) LuaReg *frameReg;
+@property(nonatomic, strong) LuaReg *swipeReg;
+@property(nonatomic, strong) LuaReg *tapReg;
+/* The drag in progress, in screen points with y growing downwards. */
+@property(nonatomic) CGPoint dragOrigin;
+@property(nonatomic) BOOL dragging;
+@property(nonatomic) BOOL swiped;
 @property(nonatomic, strong) NSMutableDictionary<NSString *, LuaSceneEntry *> *entries;
 /* Whether the graph has been built once: the first build shows the scene as
  * it is, like a view appearing, and plays no insertion transitions. */
@@ -107,7 +137,7 @@ static SCNGeometry *scene_geometry(NSDictionary *spec) {
 		floor.reflectivity = 0;
 		geometry = floor;
 	}
-	if (geometry && spec[@"color"]) geometry.firstMaterial.diffuse.contents = semantic_color(spec[@"color"]);
+	if (geometry && spec[@"color"]) geometry.firstMaterial.diffuse.contents = scene_color(spec[@"color"]);
 	return geometry;
 }
 
@@ -127,7 +157,7 @@ static float scene_ease_out_back(float t) {
 
 @implementation LuaSceneView
 
-- (instancetype)initWithFrame:(NSRect)frameRect {
+- (instancetype)initWithFrame:(CGRect)frameRect {
 	self = [super initWithFrame:frameRect options:nil];
 	if (self) {
 		_entries = [NSMutableDictionary dictionary];
@@ -274,14 +304,14 @@ static float scene_ease_out_back(float t) {
 		SCNLight *light = node.light;
 		light.type = scene_light_type(spec[@"type"]);
 		light.intensity = scene_number(spec, @"intensity", kSceneLightIntensity);
-		light.color = spec[@"color"] ? semantic_color(spec[@"color"]) : NSColor.whiteColor;
+		light.color = spec[@"color"] ? scene_color(spec[@"color"]) : [SceneColor whiteColor];
 		light.castsShadow = scene_bool(spec, @"castsShadow", NO);
 		if (light.castsShadow) {
 			light.shadowMode = SCNShadowModeForward;
 			light.shadowRadius = scene_number(spec, @"shadowRadius", kSceneShadowRadius);
 			light.shadowSampleCount = kSceneShadowSamples;
 			light.shadowMapSize = CGSizeMake(kSceneShadowMapSize, kSceneShadowMapSize);
-			light.shadowColor = [NSColor colorWithWhite:0 alpha:scene_number(spec, @"shadowOpacity", kSceneShadowOpacity)];
+			light.shadowColor = [SceneColor colorWithWhite:0 alpha:scene_number(spec, @"shadowOpacity", kSceneShadowOpacity)];
 		}
 	}
 	if (spec[@"lookAt"] && (CHANGED(@"lookAt") || CHANGED(@"position"))) {
@@ -358,8 +388,8 @@ static float scene_ease_out_back(float t) {
 	return errors;
 }
 
-/* Poses from game state: `{id, x, y, z, yaw, pitch, roll, scale, opacity,
- * hidden}`, angles in degrees. Missing fields keep their current value; an
+/* Poses from game state: `{id, x, y, z, yaw, pitch, roll, scale, scaleX,
+ * scaleY, scaleZ, opacity, hidden}`, angles in degrees. Missing fields keep their current value; an
  * unknown id is ignored, so state can describe entities the template has
  * already removed. */
 - (void)setNodeStates:(NSArray *)states {
@@ -382,9 +412,14 @@ static float scene_ease_out_back(float t) {
 				state[@"yaw"] ? scene_radians(scene_number(state, @"yaw", 0)) : e.y,
 				state[@"roll"] ? scene_radians(scene_number(state, @"roll", 0)) : e.z);
 		}
-		if (state[@"scale"]) {
-			CGFloat s = scene_number(state, @"scale", 1);
-			node.scale = SCNVector3Make(s, s, s);
+		if (state[@"scale"] || state[@"scaleX"] || state[@"scaleY"] || state[@"scaleZ"]) {
+			/* `scale` sets all three axes; `scaleX/Y/Z` then adjust one, so
+			 * a pose can squash and stretch a node. */
+			SCNVector3 current = node.scale;
+			CGFloat s = scene_number(state, @"scale", NAN);
+			CGFloat x = isnan(s) ? current.x : s, y = isnan(s) ? current.y : s, z = isnan(s) ? current.z : s;
+			node.scale = SCNVector3Make(scene_number(state, @"scaleX", x), scene_number(state, @"scaleY", y),
+				scene_number(state, @"scaleZ", z));
 		}
 		if (state[@"opacity"]) node.opacity = scene_number(state, @"opacity", 1);
 		if (state[@"hidden"]) node.hidden = scene_bool(state, @"hidden", NO);
@@ -396,27 +431,44 @@ static float scene_ease_out_back(float t) {
 
 #pragma mark Frame loop
 
+#if TARGET_OS_IPHONE
+- (void)didMoveToWindow {
+	[super didMoveToWindow];
+	[self attachWindow];
+}
+#else
 - (void)viewDidMoveToWindow {
 	[super viewDidMoveToWindow];
+	[self attachWindow];
+}
+#endif
+
+- (void)attachWindow {
 	[self.frameLink invalidate];
 	self.frameLink = nil;
 	if (!self.window) return;
 	if (self.frameReg) {
 		self.lastFrame = 0;
+#if TARGET_OS_IPHONE
+		self.frameLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(frameTick:)];
+#else
 		self.frameLink = [self displayLinkWithTarget:self selector:@selector(frameTick:)];
+#endif
 		[self.frameLink addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];
 	}
+#if !TARGET_OS_IPHONE
 	/* A game view takes the keyboard as soon as it appears, like a
 	 * focused SwiftUI view with `.focusable()` and `.onKeyPress`. */
 	if (self.keyReg && (!self.window.firstResponder || self.window.firstResponder == self.window)) {
 		[self.window makeFirstResponder:self];
 	}
+#endif
 }
 
 - (void)sendFrame:(CFTimeInterval)dt {
 	lua_State *L = lua_reg_live_state(self.frameReg);
 	if (!L || !lua_reg_push(self.frameReg)) return;
-	push_objc(L, self, "nsview");
+	push_objc(L, self, SCENE_HANDLE);
 	lua_pushnumber(L, dt);
 	lua_objc_pcall(L, 2, 0, "scene frame");
 }
@@ -428,20 +480,143 @@ static float scene_ease_out_back(float t) {
 	[self sendFrame:dt];
 }
 
-#pragma mark Keyboard
-
-- (BOOL)acceptsFirstResponder { return self.keyReg != nil; }
-
 - (BOOL)sendKey:(NSString *)key pressed:(BOOL)pressed {
 	lua_State *L = lua_reg_live_state(self.keyReg);
 	if (!key.length || !L || !lua_reg_push(self.keyReg)) return NO;
-	push_objc(L, self, "nsview");
+	push_objc(L, self, SCENE_HANDLE);
 	lua_pushstring(L, key.UTF8String);
 	lua_pushboolean(L, pressed);
 	BOOL handled = NO;
 	if (lua_objc_pcall(L, 3, 1, "scene key") == LUA_OK) { handled = lua_toboolean(L, -1); lua_pop(L, 1); }
 	return handled;
 }
+
+#pragma mark Gestures
+
+- (void)sendSwipe:(NSString *)direction {
+	lua_State *L = lua_reg_live_state(self.swipeReg);
+	if (!L || !lua_reg_push(self.swipeReg)) return;
+	push_objc(L, self, SCENE_HANDLE);
+	lua_pushstring(L, direction.UTF8String);
+	lua_objc_pcall(L, 2, 0, "scene swipe");
+}
+
+- (void)sendTap {
+	lua_State *L = lua_reg_live_state(self.tapReg);
+	if (!L || !lua_reg_push(self.tapReg)) return;
+	push_objc(L, self, SCENE_HANDLE);
+	lua_objc_pcall(L, 1, 0, "scene tap");
+}
+
+- (void)dragBeganAt:(CGPoint)point {
+	self.dragOrigin = point;
+	self.dragging = YES;
+	self.swiped = NO;
+}
+
+/* The swipe goes out the moment the finger has travelled far enough, along
+ * the axis it moved most, so a game answers while the finger is still down. */
+- (void)dragMovedTo:(CGPoint)point {
+	if (!self.dragging || self.swiped) return;
+	CGFloat dx = point.x - self.dragOrigin.x, dy = point.y - self.dragOrigin.y;
+	if (MAX(fabs(dx), fabs(dy)) < kSceneSwipeDistance) return;
+	self.swiped = YES;
+	[self sendSwipe:fabs(dx) > fabs(dy) ? (dx < 0 ? @"left" : @"right") : (dy < 0 ? @"up" : @"down")];
+}
+
+- (void)dragEnded {
+	BOOL tapped = self.dragging && !self.swiped;
+	self.dragging = NO;
+	if (tapped) [self sendTap];
+}
+
+- (void)dragCancelled {
+	self.dragging = NO;
+}
+
+#if TARGET_OS_IPHONE
+
+#pragma mark Touch
+
+- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+	(void)event;
+	if (self.swipeReg || self.tapReg) [self dragBeganAt:[touches.anyObject locationInView:self]];
+}
+
+- (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+	(void)event;
+	[self dragMovedTo:[touches.anyObject locationInView:self]];
+}
+
+- (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+	(void)touches; (void)event;
+	[self dragEnded];
+}
+
+- (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+	(void)touches; (void)event;
+	[self dragCancelled];
+}
+
+#pragma mark Hardware keyboard
+
+- (BOOL)canBecomeFirstResponder { return self.keyReg != nil; }
+
+static NSString *scene_key_name(UIKey *key) {
+	switch (key.keyCode) {
+		case UIKeyboardHIDUsageKeyboardLeftArrow: return @"left";
+		case UIKeyboardHIDUsageKeyboardRightArrow: return @"right";
+		case UIKeyboardHIDUsageKeyboardDownArrow: return @"down";
+		case UIKeyboardHIDUsageKeyboardUpArrow: return @"up";
+		case UIKeyboardHIDUsageKeyboardSpacebar: return @"space";
+		case UIKeyboardHIDUsageKeyboardReturnOrEnter: return @"return";
+		case UIKeyboardHIDUsageKeyboardEscape: return @"escape";
+		case UIKeyboardHIDUsageKeyboardTab: return @"tab";
+		default: return key.charactersIgnoringModifiers.lowercaseString;
+	}
+}
+
+- (void)pressesBegan:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event {
+	NSMutableSet<UIPress *> *unhandled = [NSMutableSet set];
+	for (UIPress *press in presses) {
+		NSString *key = press.key ? scene_key_name(press.key) : nil;
+		if (key && [self sendKey:key pressed:YES]) [self.heldKeys addObject:key];
+		else [unhandled addObject:press];
+	}
+	if (unhandled.count) [super pressesBegan:unhandled withEvent:event];
+}
+
+- (void)releasePresses:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event ended:(BOOL)ended {
+	NSMutableSet<UIPress *> *unhandled = [NSMutableSet set];
+	for (UIPress *press in presses) {
+		NSString *key = press.key ? scene_key_name(press.key) : nil;
+		if (key && [self.heldKeys containsObject:key]) {
+			[self.heldKeys removeObject:key];
+			[self sendKey:key pressed:NO];
+		} else [unhandled addObject:press];
+	}
+	if (!unhandled.count) return;
+	if (ended) [super pressesEnded:unhandled withEvent:event];
+	else [super pressesCancelled:unhandled withEvent:event];
+}
+
+- (void)pressesEnded:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event {
+	[self releasePresses:presses withEvent:event ended:YES];
+}
+
+- (void)pressesCancelled:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event {
+	[self releasePresses:presses withEvent:event ended:NO];
+}
+
+- (void)dealloc {
+	[_frameLink invalidate];
+}
+
+#else
+
+#pragma mark Keyboard
+
+- (BOOL)acceptsFirstResponder { return self.keyReg != nil; }
 
 static NSString *scene_key_name(NSEvent *event) {
 	switch (event.keyCode) {
@@ -505,9 +680,25 @@ static NSString *scene_key_name(NSEvent *event) {
 	[self releaseHeldKeys];
 }
 
+/* The mouse stands in for a finger. */
+- (CGPoint)screenPoint:(NSEvent *)event {
+	NSPoint point = [self convertPoint:event.locationInWindow fromView:nil];
+	return CGPointMake(point.x, self.isFlipped ? point.y : self.bounds.size.height - point.y);
+}
+
 - (void)mouseDown:(NSEvent *)event {
 	if (self.keyReg) [self.window makeFirstResponder:self];
-	[super mouseDown:event];
+	if (self.swipeReg || self.tapReg) [self dragBeganAt:[self screenPoint:event]];
+	else [super mouseDown:event];
+}
+
+- (void)mouseDragged:(NSEvent *)event {
+	[self dragMovedTo:[self screenPoint:event]];
+}
+
+- (void)mouseUp:(NSEvent *)event {
+	(void)event;
+	[self dragEnded];
 }
 
 - (void)dealloc {
@@ -515,14 +706,18 @@ static NSString *scene_key_name(NSEvent *event) {
 	[_frameLink invalidate];
 }
 
+#endif
+
 @end
 
-// _sceneView(onKey, onFrame)
+// _sceneView(onKey, onFrame, onSwipe, onTap)
 static int bridge_scene_view(lua_State *L) {
-	LuaSceneView *view = [[LuaSceneView alloc] initWithFrame:NSZeroRect];
+	LuaSceneView *view = [[LuaSceneView alloc] initWithFrame:CGRectZero];
 	view.keyReg = lua_reg_opt(L, 1);
 	view.frameReg = lua_reg_opt(L, 2);
-	push_objc(L, view, "nsview");
+	view.swipeReg = lua_reg_opt(L, 3);
+	view.tapReg = lua_reg_opt(L, 4);
+	push_objc(L, view, SCENE_HANDLE);
 	return 1;
 }
 
@@ -545,7 +740,7 @@ static int bridge_scene_graph(lua_State *L) {
 /* _sceneBackground(view, color): the color behind the scene. */
 static int bridge_scene_background(lua_State *L) {
 	LuaSceneView *view = lua_objc_check_object(L, 1, [LuaSceneView class], "SceneView");
-	view.scene.background.contents = lua_isstring(L, 2) ? semantic_color(@(lua_tostring(L, 2))) : nil;
+	view.scene.background.contents = lua_isstring(L, 2) ? scene_color(@(lua_tostring(L, 2))) : nil;
 	return 0;
 }
 
@@ -569,6 +764,8 @@ static int bridge_scene_nodes(lua_State *L) {
 		lua_pushnumber(L, node.position.z); lua_setfield(L, -2, "z");
 		lua_pushnumber(L, node.eulerAngles.y * 180.0 / M_PI); lua_setfield(L, -2, "yaw");
 		lua_pushnumber(L, node.scale.x); lua_setfield(L, -2, "scale");
+			lua_pushnumber(L, node.scale.y); lua_setfield(L, -2, "scaleY");
+			lua_pushnumber(L, node.eulerAngles.x * 180.0 / M_PI); lua_setfield(L, -2, "pitch");
 		lua_pushnumber(L, node.opacity); lua_setfield(L, -2, "opacity");
 		lua_pushboolean(L, node.hidden); lua_setfield(L, -2, "hidden");
 		lua_pushinteger(L, (lua_Integer)entry.content.childNodes.count + (entry.content.geometry ? 1 : 0));
@@ -582,13 +779,24 @@ static int bridge_scene_nodes(lua_State *L) {
 	return 1;
 }
 
-/* Test hook: `_sceneSend(view, "key", key, pressed) -> handled` or
- * `_sceneSend(view, "frame", dt)`, without a window or events. */
+/* Test hook, without a window or events: `_sceneSend(view, "key", key,
+ * pressed) -> handled`, `_sceneSend(view, "frame", dt)`, `_sceneSend(view,
+ * "swipe", direction)`, `_sceneSend(view, "tap")`, or a whole drag through
+ * the gesture classifier: `_sceneSend(view, "drag", x0, y0, x1, y1)` in
+ * screen points. */
 static int bridge_scene_send(lua_State *L) {
 	LuaSceneView *view = lua_objc_check_object(L, 1, [LuaSceneView class], "SceneView");
 	const char *kind = luaL_checkstring(L, 2);
 	if (strcmp(kind, "frame") == 0) {
 		[view sendFrame:luaL_checknumber(L, 3)];
+		return 0;
+	}
+	if (strcmp(kind, "swipe") == 0) { [view sendSwipe:@(luaL_checkstring(L, 3))]; return 0; }
+	if (strcmp(kind, "tap") == 0) { [view sendTap]; return 0; }
+	if (strcmp(kind, "drag") == 0) {
+		[view dragBeganAt:CGPointMake(luaL_checknumber(L, 3), luaL_checknumber(L, 4))];
+		[view dragMovedTo:CGPointMake(luaL_checknumber(L, 5), luaL_checknumber(L, 6))];
+		[view dragEnded];
 		return 0;
 	}
 	lua_pushboolean(L, [view sendKey:@(luaL_checkstring(L, 3)) pressed:lua_toboolean(L, 4)]);

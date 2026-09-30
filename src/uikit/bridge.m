@@ -2,6 +2,7 @@
 #import <objc/runtime.h>
 #import <Security/Security.h>
 #import <QuartzCore/QuartzCore.h>
+#import <SceneKit/SceneKit.h>
 #import <CoreText/CoreText.h>
 
 #include <lua.h>
@@ -58,6 +59,23 @@ static char kButtonContentKey;
 static char kVisualEffectContentKey;
 static char kContainerRelativeWidthKey;
 static char kScrollTargetDelegateKey;
+/* SceneView (shared/scene_view.m): see the AppKit constants in main.m. */
+static const NSInteger kSceneFramesPerSecond = 60;
+static const CGFloat kSceneFieldOfView = 45.0;
+static const CGFloat kSceneNearPlane = 0.1;
+static const CGFloat kSceneFarPlane = 500.0;
+static const CGFloat kSceneLightIntensity = 1000.0;
+static const CGFloat kSceneShadowRadius = 4.0;
+static const NSUInteger kSceneShadowSamples = 16;
+static const CGFloat kSceneShadowMapSize = 2048.0;
+static const CGFloat kSceneShadowOpacity = 0.35;
+static const NSTimeInterval kSceneTransitionDuration = 0.3;
+static const CGFloat kSceneTransitionPopScale = 1.6;
+static const CGFloat kSceneTransitionRise = 1.0;
+static const CGFloat kSceneTransitionOvershoot = 1.70158;
+static const NSTimeInterval kSceneBobPeriod = 1.6;
+/* A finger drags this many points before it is a swipe and not a tap. */
+static const CGFloat kSceneSwipeDistance = 24.0;
 static const CGFloat kImageMaxWidth = 400.0;
 static const CGFloat kMenuSymbolPointSize = 17.0;
 static const CGFloat kMenuArtworkPointSize = 20.0;
@@ -191,6 +209,9 @@ static void motion_invalidate_layout(UIView *view) {
 #include "performance_probe.m"
 #include "reorder_container.m"
 #include "lazy_collection.m"
+#include "../shared/scene_models.m"
+#include "../shared/scene_view.m"
+#include "scene_assets.m"
 #include "presentation.m"
 #include "../shared/parity_batch.m"
 #include "parity_batch.m"
@@ -234,6 +255,12 @@ static const luaL_Reg bridge_lib[] = {
 	{"_searchField", bridge_UIKitControls_searchField},
 	{"_textEditor", bridge_UIKitControls_textEditor},
 	{"_codeView", bridge_UIKitControls_codeView},
+	{"_stageAsset", bridge_stage_asset},
+	{"_sceneView", bridge_scene_view},
+	{"_sceneGraph", bridge_scene_graph},
+	{"_sceneBackground", bridge_scene_background},
+	{"_sceneNodes", bridge_scene_nodes},
+	{"_sceneSend", bridge_scene_send},
 	{"_label", bridge_UIKitControls_label},
 	{"_paragraph", bridge_UIKitControls_paragraph},
 	{"_paragraphSetLinks", bridge_paragraph_set_links},

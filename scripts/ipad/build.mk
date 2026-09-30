@@ -34,7 +34,7 @@ $(LIBGIT2): scripts/libgit2/libgit2.mk scripts/libgit2/git2_features.h scripts/l
 	$(MAKE) -j$(shell getconf _NPROCESSORS_ONLN) -f scripts/libgit2/libgit2.mk SDK=$(SDK) ARCH=$(ARCH) OUT=$(@D)
 FRAMEWORKS := -lz -framework UIKit -framework Foundation -framework CoreGraphics \
 	-framework CoreText \
-	-framework QuartzCore -framework Symbols -framework UserNotifications -framework Security -framework WebKit \
+	-framework QuartzCore -framework Symbols -framework UserNotifications -framework Security -framework WebKit -framework SceneKit \
 	-framework AVFoundation -framework Speech
 ifeq ($(SDK),iphonesimulator)
 SIM_ENTITLEMENTS := $(ROOT)/$(BUNDLE_ID).entitlements.plist

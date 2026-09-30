@@ -1,7 +1,7 @@
 #pragma mark - SceneKit model files
 
 /* Model files for SceneKit scenes, shared by the live SceneView
- * (appkit/scene_view.m) and Reel's offline renderer
+ * (shared/scene_view.m) and Reel's offline renderer
  * (modules/reel/native/scene.m), so a model imports, resolves its textures
  * and samples its palette identically in the app and in a promo render.
  *

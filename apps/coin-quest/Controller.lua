@@ -5,7 +5,7 @@
 -- current input, the stage and HUD templates render only if the session's
 -- revision moved, and the stage receives the frame's poses. Nothing here
 -- knows a game rule, a node or a label.
-local ns = require("AppKit")
+local ns = require("ns")
 local xml = require("ui.xml")
 local Model = require("apps.coin-quest.Model")
 local Levels = require("apps.coin-quest.catalog.Levels")
@@ -41,8 +41,10 @@ function Controller:createWindow()
 	self.stage = StageController.new(refs.stage, ns, {
 		key = function(_, key, pressed) return self.input:key(key, pressed) end,
 		frame = function(_, dt) self:tick(dt) end,
+		swipe = function(_, direction) self.input:swipe(direction) end,
+		tap = function() self:tap() end,
 	})
-	self.hud = HudController.new(refs.hud, ns)
+	self.hud = HudController.new(refs.hud, ns, {touch = ns.platform == "UIKit"})
 	self:render()
 	self.stage:pose(self.model:poses())
 	return self.window
@@ -57,8 +59,17 @@ end
 
 function Controller:tick(dt)
 	self.model:step(math.min(dt, LOOP.maxFrame), self.input)
+	-- A run ends with the level, so the next tap continues instead of stopping.
+	if self.model.state ~= "playing" then self.input:stop() end
 	self:render()
 	self.stage:pose(self.model:poses())
+end
+
+-- A tap stops a running player; with nothing to stop it continues, like
+-- Return, so a finished level or game needs no keyboard.
+function Controller:tap()
+	if self.input:stop() then return end
+	if self.model.state ~= "playing" then self:advance() end
 end
 
 function Controller:advance()

@@ -8,6 +8,7 @@ local t = require("TestKit")
 local bridge = require("AppKitNative")
 local Level = require("apps.coin-quest.models.Level")
 local World = require("apps.coin-quest.models.World")
+local Animation = require("apps.coin-quest.models.Animation")
 local Model = require("apps.coin-quest.Model")
 local Levels = require("apps.coin-quest.catalog.Levels")
 local InputController = require("apps.coin-quest.controllers.InputController")
@@ -227,6 +228,83 @@ t.expect(not input:key("q", true), "other keys are left to the system")
 input:key("s", true); input:reset()
 t.expect(input:nextDirection().z == 1, "reset forgets taps but keeps held keys")
 
+-- Touch: a swipe runs, a tap stops.
+input = InputController.new()
+input:swipe("right")
+t.expect(input:nextDirection().x == 1, "a swipe hops at once")
+t.expect(input:nextDirection().x == 1 and input:nextDirection().x == 1, "a swipe keeps running")
+input:swipe("up")
+t.expect(input:nextDirection().z == -1 and input:nextDirection().z == -1, "a swipe the other way turns the run")
+t.expect(input:stop(), "stopping a run says there was one")
+t.expect(input:nextDirection() == nil, "a stopped player stands still")
+t.expect(not input:stop(), "stopping a standing player says so")
+input:swipe("sideways")
+t.expect(input:nextDirection() == nil, "unknown swipes are ignored")
+input:swipe("left")
+input:blocked(RIGHT)
+local heading = input:nextDirection()
+t.expect(heading.x == -1 and input:nextDirection().x == -1, "a block in another direction does not end the run")
+input:blocked(heading)
+t.expect(input:nextDirection() == nil, "running into a block ends the run")
+input:swipe("down"); input:reset()
+t.expect(input:nextDirection() == nil, "reset forgets a run")
+
+-- The world tells the input when a hop is blocked.
+local run = World.new(Level.parse({id = "run", title = "Run", map = {"@..$F"}}))
+local runner = InputController.new()
+runner:swipe("left")
+run:step(1 / 60, runner)
+t.expect(run.player.yaw == -90 and runner.heading == nil, "a run into the edge stops and faces it")
+runner:swipe("right")
+for _ = 1, 30 do run:step(1 / 60, runner) end
+t.expect(run.player.x >= 2, "a swiped player runs across the island on its own")
+t.expect(runner.heading ~= nil or run.player.x == 3, "it keeps its heading until something stops it")
+
+-- ── Animation ──────────────────────────────────────────────────────────
+local function volume(look) return look.scaleX * look.scaleY * look.scaleZ end
+local anim = World.new(Level.parse({id = "a", title = "A", map = {"@$F"}}))
+anim.time = 0.4
+local idle = Animation.player(anim)
+t.expect(math.abs(idle.scaleY - 1) <= Animation.RULES.breath + 1e-9, "a standing hero only breathes")
+anim.player.hop = 0.5
+local mid = Animation.player(anim)
+t.expect(near(mid.scaleY, 1 + Animation.RULES.stretch), "the hero stretches at the top of a hop")
+t.expect(near(volume(mid), 1), "squash and stretch keep the hero's volume")
+anim.player.hop, anim.player.landedAt = nil, anim.time
+local landing = Animation.player(anim)
+t.expect(near(landing.scaleY, 1 - Animation.RULES.squash), "a landing starts squashed")
+anim.time = anim.time + Animation.RULES.squashTime / 2
+t.expect(Animation.player(anim).scaleY > landing.scaleY and Animation.player(anim).scaleY < 1, "the squash recovers")
+anim.time = anim.time + Animation.RULES.squashTime
+t.expect(math.abs(Animation.player(anim).scaleY - 1) <= Animation.RULES.breath + 1e-9, "then the hero breathes again")
+anim.player.hurtAt = anim.time - 0.01
+t.expect(Animation.player(anim).yaw ~= anim.player.yaw, "a hit shakes the hero")
+anim.player.hurtAt = anim.time - Animation.RULES.wobbleTime - 1
+t.expect(near(Animation.player(anim).yaw, anim.player.yaw), "the shake fades")
+anim.player.clearedAt = anim.time - 0.5
+t.expect(near(Animation.player(anim).yaw, anim.player.yaw + Animation.RULES.spinRate * 0.5), "the hero spins at the flag")
+t.expect(Animation.flag(anim).yaw ~= Animation.flag({time = 0}).yaw, "the flag sways with the clock")
+local poses = anim:poses()
+t.expect(poses[1].scaleX and poses[1].scaleY and poses[#poses].id == "flag", "poses carry the hero's squash and the flag's sway")
+
+-- Systems leave the timestamps the animation reads.
+local stamps = World.new(Level.parse({id = "s", title = "S", map = {"@$F"}}))
+stamps:step(1 / 60, script(RIGHT)); settle(stamps, script())
+t.expect(stamps.player.landedAt ~= nil, "landing stamps the player")
+stamps.saws[1] = {id = "saw", x = stamps.player.x, z = stamps.player.z, axis = "x", direction = 1}
+stamps:step(1 / 60)
+t.expect(stamps.player.hurtAt ~= nil, "a hit stamps the player")
+stamps:respawn()
+t.expect(stamps.player.landedAt == nil, "respawning clears the landing")
+local finished = Model.new({{id = "f", title = "F", map = {"@$F"}}})
+finished:step(1 / 60, script(RIGHT)); for _ = 1, 30 do finished:step(1 / 60) end
+finished:step(1 / 60, script(RIGHT)); for _ = 1, 30 do finished:step(1 / 60) end
+t.assertEqual(finished.state, "won", "the last level ends the game")
+local before = finished.world.time
+finished:step(0.25)
+t.expect(near(finished.world.time - before, 0.25), "time passes after the level ends so the hero can celebrate")
+t.expect(finished.world.player.clearedAt ~= nil, "clearing stamps the player")
+
 -- ── View data ──────────────────────────────────────────────────────────
 local scene = Model.new(Levels):scene()
 local data = StageController.viewData(scene)
@@ -272,6 +350,29 @@ t.expect(nodes["level-next"] and not nodes["level-mini"], "Return swaps in the n
 t.expect(rawequal(view, app.stage.view), "levels reuse the same SceneView")
 t.expect(near(nodes.player.x, 1), "the player stands on the new start")
 t.expect(app.hud.refs.messageTitle == nil, "the message leaves once play resumes")
+-- Touch controls drive the same game.
+local touch = Controller.new({levels = {{id = "swipe", title = "Swipe", map = {"@.....$F"}}}})
+touch:createWindow()
+local touchView = touch.stage.view
+bridge._sceneSend(touchView, "swipe", "right")
+for _ = 1, 20 do bridge._sceneSend(touchView, "frame", 1 / 60) end
+local reached = touch.model.world.player.x
+t.expect(reached >= 1 and touch.input.heading ~= nil, "a swipe runs the hero on its own")
+bridge._sceneSend(touchView, "tap")
+t.expect(touch.input.heading == nil, "a tap stops the run")
+for _ = 1, 30 do bridge._sceneSend(touchView, "frame", 1 / 60) end
+t.expect(touch.model.world.player.x <= reached + 1, "the hero stops within a hop of the tap")
+t.assertEqual(touch.model.state, "playing", "a stopped hero has not reached the flag")
+bridge._sceneSend(touchView, "swipe", "right")
+for _ = 1, 120 do bridge._sceneSend(touchView, "frame", 1 / 60) end
+t.assertEqual(touch.model.state, "won", "running on takes the coin and reaches the flag")
+bridge._sceneSend(touchView, "tap")
+t.assertEqual(touch.model.state, "playing", "a tap after the game ends plays again")
+local hint = HudController.viewData({level = "L", stage = "s", coins = 0, totalCoins = 1, score = 0, lives = 1, maxLives = 1, state = "playing"})
+t.expect(hint.hint:find("Arrow keys"), "the HUD hints at keys by default")
+t.expect(HudController.viewData({level = "L", stage = "s", coins = 0, totalCoins = 1, score = 0, lives = 1, maxLives = 1, state = "playing"},
+	"Swipe to run").hint == "Swipe to run", "the HUD takes the touch hint")
+
 local frameBefore = app.model.world.time
 app:tick(5)
 t.expect(near(app.model.world.time - frameBefore, 0.1), "a stalled frame is capped")

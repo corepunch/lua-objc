@@ -1,7 +1,7 @@
 <!-- The 3-D stage. Camera and lights stay across levels; everything a level
     owns hangs from one node named after it, so loading another level
     replaces the whole subtree. Each entity kind is a prefab partial. -->
-<SceneView id="scene" background="#a9dcf5" onKey="key" onFrame="frame">
+<SceneView id="scene" background="#a9dcf5" onKey="key" onFrame="frame" onSwipe="swipe" onTap="tap">
 	<Camera id="camera" position="<%= camera.position %>" lookAt="<%= camera.lookAt %>" fieldOfView="<%= camera.fieldOfView %>" fieldOfViewAxis="<%= camera.fieldOfViewAxis %>" />
 	<Light id="sun" type="directional" rotation="-58 38 0" intensity="1150" castsShadow="true" />
 	<Light id="skylight" type="ambient" intensity="480" color="#d6ecff" />

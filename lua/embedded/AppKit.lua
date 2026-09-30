@@ -2297,9 +2297,11 @@ end
 --- @prop background string optional. Color behind the scene (semantic name or `#rrggbb`).
 --- @prop onKey function optional. `onKey(view, key, pressed) -> handled`: presses and releases, never repeats; the view takes the keyboard when it appears.
 --- @prop onFrame function optional. `onFrame(view, dt)` once per displayed frame while the view is in a window, `dt` in seconds.
+--- @prop onSwipe function optional. `onSwipe(view, direction)` with `left`, `right`, `up` or `down`, sent as soon as a drag (a finger, or the mouse) has travelled far enough.
+--- @prop onTap function optional. `onTap(view)` when a press is released without travelling. A drag is one swipe or one tap, never both.
 --- @prop showsStatistics boolean optional. Shows SceneKit's frame-rate and draw-call overlay.
 --- @example <SceneView background="#8fd3f4"><Camera position="0 6 8" lookAt="0 0 0" /><Light type="directional" rotation="-60 30 0" castsShadow="true" /><Node model="assets/coin.obj" spin="90" /></SceneView>
---- @platform AppKit.
+--- @platform AppKit and UIKit.
 function AppKit.SceneView(props)
 	props = props or {}
 	local records = {}
@@ -2309,7 +2311,7 @@ function AppKit.SceneView(props)
 		end
 		table.insert(records, child)
 	end
-	local view = bridge._sceneView(props.onKey, props.onFrame)
+	local view = bridge._sceneView(props.onKey, props.onFrame, props.onSwipe, props.onTap)
 	if props.background then bridge._sceneBackground(view, props.background) end
 	if props.showsStatistics then view.showsStatistics = true end
 	AppKit.sceneGraph(view, records)
@@ -2317,7 +2319,7 @@ function AppKit.SceneView(props)
 	view.fillWidth, view.fillHeight = true, true
 	local layout = {}
 	for key, value in pairs(props) do
-		if type(key) ~= "number" and key ~= "onKey" and key ~= "onFrame" and key ~= "background" then layout[key] = value end
+		if type(key) ~= "number" and key ~= "onKey" and key ~= "onFrame" and key ~= "onSwipe" and key ~= "onTap" and key ~= "background" then layout[key] = value end
 	end
 	return applyLayout(view, layout)
 end

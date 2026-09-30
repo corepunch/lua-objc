@@ -79,7 +79,7 @@ function CoinQuest:poses(t)
 	local index = math.floor(position)
 	local p = position - index
 	local a, b = self.frames[index + 1], self.frames[index + 2] or self.frames[index + 1]
-	local poses = {}
+	local poses, sway = {}, nil
 	for i, pose in ipairs(a) do
 		local other = b[i] or pose
 		local blended = { id = pose.id }
@@ -88,7 +88,9 @@ function CoinQuest:poses(t)
 		end
 		-- Yaw snaps when the player turns; interpolating across ±180 would spin.
 		if pose.yaw then blended.yaw = pose.yaw end
-		table.insert(poses, blended)
+		-- The flag is posed below, from when it rises; the world's pose only
+		-- adds its sway.
+		if pose.id == "flag" then sway = blended.yaw else table.insert(poses, blended) end
 	end
 	local d = TRANSITION.duration
 	for id, at in pairs(self.taken) do
@@ -102,7 +104,7 @@ function CoinQuest:poses(t)
 	if self.flagRaised and t >= self.flagRaised then
 		local u = math.min(1, (t - self.flagRaised) / d)
 		local e = 1 - (1 - u) * (1 - u)
-		flag = { id = "flag", hidden = false, y = -TRANSITION.rise * (1 - e), opacity = e }
+		flag = { id = "flag", hidden = false, y = -TRANSITION.rise * (1 - e), opacity = e, yaw = sway }
 	end
 	table.insert(poses, flag)
 	return poses

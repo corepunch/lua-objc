@@ -927,14 +927,14 @@ local TAG_SCHEMA = {
         props = { id = "str", value = "num", color = "str", label = "str", ring = "num", parent = "str", opacity = "num" },
     },
     -- SwiftUI SceneView over SceneKit. Its records are the scene graph and
-    -- reconcile in place by id (see src/appkit/scene_view.m).
+    -- reconcile in place by id (see src/shared/scene_view.m).
     SceneView = {
         constructor = "SceneView",
         children = "array",
         props = { background = "str", showsStatistics = "bool" },
         updateRecords = function(view, records) return require("AppKit").sceneGraph(view, records) end,
         transform = function(props, attrs)
-            bindActions(props, attrs, { "onKey", "onFrame" })
+            bindActions(props, attrs, { "onKey", "onFrame", "onSwipe", "onTap" })
         end,
     },
     -- A scene node: a model file or a primitive geometry, posed by

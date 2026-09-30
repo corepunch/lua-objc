@@ -15,6 +15,7 @@ function Pickups.update(world)
 		end
 	end
 	if world.flag.raised and player.x == world.flag.x and player.z == world.flag.z then
+		player.clearedAt = world.time
 		world:emit("cleared", world.flag)
 	end
 end
