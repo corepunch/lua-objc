@@ -54,10 +54,14 @@ The controls inside the phone preview are interactive.
 ## Project and runtime
 
 Project folders live in `Documents/<project>/`. Each folder has a `project.lua`
-metadata file returning a plain table with `name`, `bundleId`, and `appIcon`;
-missing icons use the `app.dashed` SF Symbol. Example project metadata is bundled
-under `apps/studio/Documents/` and copied into the app's bundled workspace by
-the iPad build.
+metadata file returning a plain table with `name`, `bundleId`, `appIcon`, and
+`projectIcon`; missing symbol icons use `rocket.fill`, and artwork defaults to
+`rocket-sketch`. Three project artworks are available in the project menu: a
+rocket sketch, the studio desk, and the lua-objc rocket. `AppIcon.png` and all
+three choices are copied into each project when it is created or first
+materialized, before the initial Git snapshot. Example project metadata is
+bundled under `apps/studio/Documents/` and copied into the app's bundled
+workspace by the iPad build.
 
 The bundled Habit Tracker is copied into `Documents/HabitTracker/` on first
 launch. Source, the Code pane, and Git all use this folder. The preview maps

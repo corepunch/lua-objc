@@ -8,17 +8,20 @@ local RailController = require("apps.studio.controllers.RailController")
 local Theme = require("apps.studio.models.Theme")
 
 local projects = {
-	{ id = "StarterApp", title = "Starter App", icon = "app.dashed", selected = true },
+	{ id = "StarterApp", title = "Starter App", icon = "rocket.fill", selected = true },
 	{ id = "HabitTracker", title = "Habit Tracker", icon = "checklist" },
 }
 local source = xml.describeFile("apps/studio/views/Window.etlua", {
 	canvas = Theme.canvas,
 	rail = Rail.presentation(),
-	preview = Preview.presentation(projects),
+	preview = Preview.presentation(projects, {
+		{ title = "Rocket Sketch", symbol = "pencil.tip.crop.circle", imagePath = "/Documents/StarterApp/ProjectIcons/rocket-sketch.png", selected = false, action = "selectProjectIcon_rocket-sketch" },
+	}),
 	chat = Chat.presentation(),
 }).source
 
 t.expect(not source:find("nil", 1, true), "partials render instead of inserting nil")
+t.expect(source:find("Use Rocket Sketch Icon", 1, true) ~= nil, "the project menu renders icon choices")
 local canvas = assert(source:match('(<ZStack id="canvas".-)<HStack id="workspace"'))
 t.expect(canvas:find('id="canvas" maxWidth="infinity" maxHeight="infinity" background="secondaryBackground"', 1, true) ~= nil,
 	"the canvas washes over the system background, so it follows light and dark")

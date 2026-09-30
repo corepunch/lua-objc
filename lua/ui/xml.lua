@@ -1201,6 +1201,7 @@ local TAG_SCHEMA = {
         props = {
 			title = "str",
 			systemImage = "str",
+			imagePath = "str",
 			style = "str",
 			symbolSize = "num",
 			accessibilityLabel = "str",
@@ -1220,6 +1221,7 @@ local TAG_SCHEMA = {
         props = {
             title = { aliases = { "label" }, default = "", type = "str" },
             systemImage = "str",
+			imagePath = "str",
             role = "str",
             keyEquivalent = "str",
             modifiers = "str",

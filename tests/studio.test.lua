@@ -131,17 +131,22 @@ t.expect(description.source:find("width=\"440\"", 1, true) ~= nil, "preview is s
 t.expect(description.source:find("minWidth=\"380\"", 1, true) ~= nil, "chat keeps a usable minimum width")
 t.expect(description.source:find("toggleChat", 1, true) ~= nil, "chat visibility customization remains available")
 local Projects = require("apps.studio.models.Projects")
+t.assertEqual(#Projects.iconChoices, 3, "Studio offers three project icons")
+t.assertEqual(Projects.defaultProjectIcon, "rocket-sketch", "the rocket sketch is the default project artwork")
 local writes = {}
 local listed = Projects.list(function(path)
 	if path == "projects.json" then return '["Demo"]' end
 	if path == "Demo/project.lua" then return 'return { name = "Demo", bundleId = "org.example.demo" }' end
 end, ns.json_parse, ns._jsonEncode, function(path, value) writes[path] = value; return true end)
-t.assertEqual(listed[1].appIcon, "app.dashed", "projects get a consistent default app icon")
+t.assertEqual(listed[1].appIcon, "rocket.fill", "projects get a consistent default app icon")
+t.assertEqual(listed[1].projectIcon, "rocket-sketch", "projects use the rocket sketch artwork by default")
 t.assertEqual(listed[1].bundleId, "org.example.demo", "Lua metadata loads bundle identifier")
 local ok = Projects.save(function(path, value) writes[path] = value; return true end, "Demo", {
 	name = "Demo App", bundleId = "org.example.demo", appIcon = "checklist",
 })
 t.expect(ok and writes["Demo/project.lua"]:find('appIcon = "checklist"', 1, true), "project settings persist as readable Lua")
+t.expect(writes["Demo/project.lua"]:find('projectIcon = "rocket-sketch"', 1, true),
+	"project settings persist the default artwork choice")
 -- The preview runs any project by its init module: demo/todo, which uses
 -- retained templates, renders from its files alone.
 local todoFiles = {}
@@ -193,6 +198,9 @@ local documentNS = {
 	_documentPath = function(path) return "/Documents/" .. path end,
 	_documentRead = function(path) return documents[path] end,
 	_documentWrite = function(path, content) documents[path] = content; return true end,
+	_documentExists = function(path) return documents[path] ~= nil end,
+	_documentWriteData = function(path, content) documents[path] = content; return true end,
+	_readFile = function(path) return read(path) end,
 	_jsonEncode = ns._jsonEncode,
 	json_parse = ns.json_parse,
 }
@@ -203,6 +211,16 @@ local workspace = Workspace.open(documentNS, read, fakeGit, "HabitTracker")
 t.assertEqual(#Code.presentation(workspace.seed).files, 7, "the bundled Habit Tracker has seven source files")
 t.expect(documents["HabitTracker/project.lua"] ~= nil and documents["HabitTracker/views/Today.etlua"] ~= nil,
 	"the bundled app is materialized in Documents on first launch")
+t.assertEqual(documents["HabitTracker/AppIcon.png"], read("apps/studio/ProjectIcons/rocket-sketch.png"),
+	"first launch copies the default project icon into Documents")
+for _, choice in ipairs(Projects.iconChoices) do
+	t.assertEqual(documents["HabitTracker/ProjectIcons/" .. choice.file],
+		read("apps/studio/ProjectIcons/" .. choice.file), "first launch installs the " .. choice.id .. " choice")
+end
+t.expect(workspace.selectIcon("desk"), "a project can select another bundled icon")
+t.assertEqual(documents["HabitTracker/AppIcon.png"], read("apps/studio/ProjectIcons/desk.png"),
+	"icon selection replaces the project's app artwork")
+documents["HabitTracker/AppIcon.png"] = "custom project artwork"
 local editedFiles = {}
 for path, content in pairs(workspace.seed) do editedFiles[path] = content end
 editedFiles["demo/playground/Model.lua"] = "return { saved = true }\n"
@@ -211,6 +229,8 @@ t.expect(workspace.storage.save({ files = editedFiles, model = "provider/test" }
 local reopened = Workspace.open(documentNS, read, fakeGit, "HabitTracker")
 t.assertEqual(reopened.seed["demo/playground/Model.lua"], "return { saved = true }\n",
 	"saved project source is reopened from Documents")
+t.assertEqual(documents["HabitTracker/AppIcon.png"], "custom project artwork",
+	"opening a project preserves its own app icon")
 t.expect(reopened.localStorage.set("test-state", "{\"saved\":true}"), "app local storage writes into its Documents folder")
 t.assertEqual(reopened.localStorage.get("test-state"), "{\"saved\":true}", "app local storage reads persisted data")
 

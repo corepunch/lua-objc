@@ -11,15 +11,16 @@ local DESTINATIONS = {
 	{ title = "New Project", icon = "plus" },
 }
 
-function Model.presentation(projects)
+function Model.presentation(projects, iconChoices)
 	projects = projects or {}
 	local current = projects[1]
 	for _, project in ipairs(projects) do
 		if project.selected then current = project; break end
 	end
 	return {
-		project = current or { title = "No Project", icon = "app.dashed" },
+		project = current or { title = "No Project", icon = "rocket.fill" },
 		projects = projects,
+		iconChoices = iconChoices or {},
 		destinations = DESTINATIONS,
 		device = "iPhone 16",
 		zoom = "100%",

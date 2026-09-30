@@ -99,6 +99,7 @@ function Controller:createWindow()
 		if index == 1 then workspace = opened else opened.versions:close() end
 	end
 	assert(workspace, "No project is available")
+	local activeProject = projects[1]
 	if not ns._documentRead("projects.json") then
 		local names = {}
 		for _, project in ipairs(projects) do table.insert(names, project.id) end
@@ -114,10 +115,37 @@ function Controller:createWindow()
 		table.insert(projects, 1, {name = current.title, title = current.title, icon = current.icon, selected = true})
 		for index = 2, #projects do projects[index].selected = nil end
 	end
+	for _, project in ipairs(projects) do
+		if project.id then project.imagePath = ns._documentPath(project.id .. "/AppIcon.png") end
+	end
 
 	local refs
 	local config
-	local preview = self.previewPane:presentation(projects)
+	local iconChoices = {}
+	local actions = {}
+	for _, choice in ipairs(Projects.iconChoices) do
+		local selectedChoice = choice
+		local action = "selectProjectIcon_" .. selectedChoice.id
+		table.insert(iconChoices, {
+			title = selectedChoice.title,
+			symbol = selectedChoice.symbol,
+			imagePath = ns._documentPath(activeProject.id .. "/ProjectIcons/" .. selectedChoice.file),
+			selected = activeProject.projectIcon == selectedChoice.id,
+			action = action,
+		})
+		actions[action] = function()
+			local ok, err = workspace.selectIcon(selectedChoice.id)
+			if not ok then
+				refs.previewStatus.text = "Icon update failed: " .. tostring(err)
+				return
+			end
+			activeProject.projectIcon = selectedChoice.id
+			activeProject.appIcon = selectedChoice.symbol
+			activeProject.icon = selectedChoice.symbol
+			refs.previewStatus.text = "Project icon: " .. selectedChoice.title
+		end
+	end
+	local preview = self.previewPane:presentation(projects, iconChoices)
 	if self.showcase and self.showcase.conversation.status then preview.status = self.showcase.conversation.status end
 	local code = Code.presentation(self.model.files, self.selectedFile or "Controller.lua")
 	self.selectedFile = code.selected
@@ -130,6 +158,27 @@ function Controller:createWindow()
 		refs.codePane.hidden = not showingCode
 		refs.composerPane.hidden = showingCode
 	end
+	actions.toggleChat = function()
+		local focus = not refs.chatPane.hidden
+		refs.chatPane.hidden = focus
+		-- The stage is sized to the device beside the chat; alone,
+		-- it takes the whole window.
+		refs.previewPane.fixedWidth = not focus and preview.stageWidth or nil
+		refs.chatVisibility.accessibilityLabel = focus and "Show Chat" or "Focus Preview"
+	end
+	actions.reloadPreview = function() self:reloadPreview() end
+	actions.commitProject = function() self:commitProject("Update project") end
+	actions.showChat = function() setMode(0) end
+	actions.showCode = function() setMode(1) end
+	actions.toggleTree = function()
+		self.treeHidden = not self.treeHidden
+		refs.treePane.hidden = self.treeHidden
+		refs.treeDivider.hidden = self.treeHidden
+		refs.treeToggle.accessibilityLabel = self.treeHidden and "Show project tree" or "Hide project tree"
+	end
+	actions.selectFile = function(_, _, row)
+		if row and row.id then self:selectFile(row.id) end
+	end
 	config, refs = xml.renderFile(VIEWS .. "Window.etlua", {
 		canvas = Theme.canvas,
 		rail = self.rail:presentation(),
@@ -140,29 +189,7 @@ function Controller:createWindow()
 		code = code,
 		codeFiles = code.files,
 		syntaxRules = Code.rules,
-		actions = {
-			toggleChat = function()
-				local focus = not refs.chatPane.hidden
-				refs.chatPane.hidden = focus
-				-- The stage is sized to the device beside the chat; alone,
-				-- it takes the whole window.
-				refs.previewPane.fixedWidth = not focus and preview.stageWidth or nil
-				refs.chatVisibility.accessibilityLabel = focus and "Show Chat" or "Focus Preview"
-			end,
-			reloadPreview = function() self:reloadPreview() end,
-			commitProject = function() self:commitProject("Update project") end,
-			showChat = function() setMode(0) end,
-			showCode = function() setMode(1) end,
-			toggleTree = function()
-				self.treeHidden = not self.treeHidden
-				refs.treePane.hidden = self.treeHidden
-				refs.treeDivider.hidden = self.treeHidden
-				refs.treeToggle.accessibilityLabel = self.treeHidden and "Show project tree" or "Hide project tree"
-			end,
-			selectFile = function(_, _, row)
-				if row and row.id then self:selectFile(row.id) end
-			end,
-		},
+		actions = actions,
 	}, ns)
 	local controller, err = self:renderPreview()
 	if controller then

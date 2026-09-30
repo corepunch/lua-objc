@@ -60,6 +60,7 @@ static char kContainerRelativeWidthKey;
 static char kScrollTargetDelegateKey;
 static const CGFloat kImageMaxWidth = 400.0;
 static const CGFloat kMenuSymbolPointSize = 17.0;
+static const CGFloat kMenuArtworkPointSize = 20.0;
 static const CGFloat kNavigationSymbolPointSize = 22.0;
 /* Widest proposal for a navigation bar title or custom bar-item view. */
 static const CGFloat kNavigationTitleMaxWidth = 240.0;
@@ -201,6 +202,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_documentPath", bridge_document_path},
 	{"_documentRead", bridge_document_read},
 	{"_documentWrite", bridge_document_write},
+	{"_documentWriteData", bridge_document_write_data},
+	{"_documentExists", bridge_document_exists},
 	{"_credential", bridge_credential},
 	{"_jsonEncode", bridge_json_encode},
 	{"_httpRequest", bridge_http_request},

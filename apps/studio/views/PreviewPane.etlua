@@ -10,9 +10,13 @@
 <VStack id="previewPane" padding="<%= STAGE.inset %>" spacing="<%= STAGE.spacing %>" width="<%= stageWidth %>" flexGrow="1" flexBasis="0" maxHeight="infinity">
 	<GlassEffectContainer spacing="<%= STAGE.barSpacing %>" maxWidth="infinity" tint="<%= tint %>">
 		<HStack id="stageBar" spacing="<%= STAGE.barSpacing %>" maxWidth="infinity" alignment="center">
-			<Menu id="projectMenu" title="<%= project.title %>" systemImage="<%= project.icon %>" style="glass" accessibilityLabel="Project: <%= project.title %>">
+			<Menu id="projectMenu" title="<%= project.title %>" systemImage="<%= project.icon %>" imagePath="<%= project.imagePath or "" %>" style="glass" accessibilityLabel="Project: <%= project.title %>">
 				<% for _, item in ipairs(projects) do %>
-				<MenuItem title="<%= item.title %>" systemImage="<%= item.icon %>" checked="<%= tostring(item.selected == true) %>" />
+				<MenuItem title="<%= item.title %>" systemImage="<%= item.icon %>" imagePath="<%= item.imagePath or "" %>" checked="<%= tostring(item.selected == true) %>" />
+				<% end %>
+				<Separator />
+				<% for _, choice in ipairs(iconChoices) do %>
+				<MenuItem title="Use <%= choice.title %> Icon" systemImage="<%= choice.symbol %>" imagePath="<%= choice.imagePath %>" checked="<%= tostring(choice.selected) %>" action="<%= choice.action %>" />
 				<% end %>
 				<Separator />
 				<% for _, destination in ipairs(destinations) do %>

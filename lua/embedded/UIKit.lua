@@ -1351,6 +1351,7 @@ end
 --- @prop items table optional. Component-specific setting passed to the native control.
 --- @prop title value optional. Component-specific setting passed to the native control.
 --- @prop systemImage string optional. SF Symbol shown on the menu button.
+--- @prop imagePath string optional. Image file shown on the menu button.
 --- @prop style string optional. `plain` or native `glass` button appearance.
 --- @prop symbolSize number optional. SF Symbol point size.
 --- @prop accessibilityLabel string optional. VoiceOver label for an icon-only menu.
@@ -1361,7 +1362,7 @@ function UIKit.Menu(props)
 	local button = bridge._menu(props.items or props.children or {},
 		-- SwiftUI labels a symbol-only menu with its image alone.
 		props.title or (props.systemImage and "" or "Menu"), props.systemImage or "", props.style or "plain",
-		props.symbolSize)
+		props.symbolSize, props.imagePath or "")
 	if props.accessibilityLabel then button.accessibilityLabel = props.accessibilityLabel end
 	return applyLayout(button, props)
 end

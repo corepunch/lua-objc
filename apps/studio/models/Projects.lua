@@ -1,6 +1,19 @@
 local Projects = {}
 
-Projects.defaultIcon = "app.dashed"
+Projects.defaultIcon = "rocket.fill"
+Projects.defaultProjectIcon = "rocket-sketch"
+Projects.iconChoices = {
+	{ id = "rocket-sketch", title = "Rocket Sketch", symbol = "pencil.tip.crop.circle", file = "rocket-sketch.png" },
+	{ id = "desk", title = "Studio Desk", symbol = "pencil.and.ruler", file = "desk.png" },
+	{ id = "rocket", title = "Lua-objc Rocket", symbol = "rocket.fill", file = "rocket.png" },
+}
+
+function Projects.iconChoice(id)
+	for _, choice in ipairs(Projects.iconChoices) do
+		if choice.id == id then return choice end
+	end
+	return nil
+end
 
 local function safeName(value)
 	return type(value) == "string" and value:match("^[%w_%-]+$") ~= nil
@@ -21,7 +34,8 @@ function Projects.list(read, decode, encode, write)
 	for _, name in ipairs(names) do
 		if safeName(name) then
 			local metaSource = read(name .. "/project.lua")
-			local metadata = { name = name, bundleId = "org.example." .. name:lower(), appIcon = Projects.defaultIcon }
+			local metadata = { name = name, bundleId = "org.example." .. name:lower(),
+				appIcon = Projects.defaultIcon, projectIcon = Projects.defaultProjectIcon }
 			if metaSource then
 				local chunk = load(metaSource, "@project.lua", "t", {})
 				if chunk then
@@ -33,6 +47,7 @@ function Projects.list(read, decode, encode, write)
 			end
 			metadata.id = name
 			metadata.appIcon = metadata.appIcon ~= "" and metadata.appIcon or Projects.defaultIcon
+			if not Projects.iconChoice(metadata.projectIcon) then metadata.projectIcon = Projects.defaultProjectIcon end
 			metadata.title = metadata.name
 			metadata.icon = metadata.appIcon
 			metadata.selected = #result == 0
@@ -61,7 +76,8 @@ function Projects.save(write, name, metadata)
 		return nil, "Enter a valid bundle identifier"
 	end
 	if metadata.appIcon == "" then metadata.appIcon = Projects.defaultIcon end
-	local content = "return {\n\tname = " .. string.format("%q", metadata.name) .. ",\n\tbundleId = " .. string.format("%q", metadata.bundleId) .. ",\n\tappIcon = " .. string.format("%q", metadata.appIcon) .. ",\n}\n"
+	if not Projects.iconChoice(metadata.projectIcon) then metadata.projectIcon = Projects.defaultProjectIcon end
+	local content = "return {\n\tname = " .. string.format("%q", metadata.name) .. ",\n\tbundleId = " .. string.format("%q", metadata.bundleId) .. ",\n\tappIcon = " .. string.format("%q", metadata.appIcon) .. ",\n\tprojectIcon = " .. string.format("%q", metadata.projectIcon) .. ",\n}\n"
 	return write(name .. "/project.lua", content)
 end
 

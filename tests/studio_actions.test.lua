@@ -5,7 +5,7 @@ local Preview = require("apps.studio.controllers.PreviewController")
 local Chat = require("apps.studio.models.Chat")
 
 local presentation = Preview.new():presentation({
-	{ title = "Starter App", icon = "app.dashed" },
+	{ title = "Starter App", icon = "rocket.fill" },
 	{ title = "Habit Tracker", icon = "checklist", selected = true },
 })
 t.assertEqual(presentation.project.title, "Habit Tracker", "the selected project heads the stage")
