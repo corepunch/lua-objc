@@ -2,10 +2,12 @@
   rewriting their text. The size has a fixed width: "Calculating…" and
   "≥ 998.9 MB" occupy the same space, so values never shift while a scan runs. Every row has one height, whether
   its name is a link or plain text, so the two legend columns stay in step;
-  the name is the part that gives way in a narrow window. ]]
+  the name is the part that gives way in a narrow window. `symbol` is the
+  card's symbol column (`column`, `gap`): the dot is centered in it so names
+  start at the same edge as every other symbol row of the card. ]]
   local LEGEND = { size = 84, share = 34, row = 18, name = 72 } %>
-<HStack key="legend-<%= item.id %>" maxWidth="infinity" height="<%= LEGEND.row %>" spacing="6" alignment="center">
-  <SystemImage name="circle.fill" size="9" color="<%= item.color %>" />
+<HStack key="legend-<%= item.id %>" maxWidth="infinity" height="<%= LEGEND.row %>" spacing="<%= symbol.gap %>" alignment="center">
+  <SystemImage name="circle.fill" size="9" color="<%= item.color %>" width="<%= symbol.column %>" />
   <% if item.id == "#other" then %>
   <Label text="<%= item.name %>" size="12" color="secondary" lines="1" truncation="tail" minWidth="<%= LEGEND.name %>" flexShrink="1" />
   <% else %>

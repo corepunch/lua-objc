@@ -119,6 +119,26 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   `shadowInset` APIs in Lua or the native bridge. Do not add custom shadow
   layers or transparent shadow insets unless the user explicitly requests a
   non-native effect.
+- **Alignment is exact, never approximate.** In any block of stacked rows
+  (a legend, a card's rows, a list of topics, section titles down a page):
+  - every leading symbol, dot, spinner and disclosure triangle is centered
+    on one vertical line. SF Symbols differ in width, so give the symbol a
+    fixed column (`width` on `<SystemImage>`, `indicatorWidth` on
+    `<DisclosureGroup>`) taken from one named constant; never rely on
+    symbols happening to be the same size;
+  - every label starts at one leading edge: the same column and the same
+    gap in every row, including rows of a different kind in the same card
+    (a warning, a legend row, a summary row);
+  - within a row, a symbol, its label, its value and its trailing buttons
+    share one center line. Do not top-align siblings of different heights;
+    put those that belong on one line in an `alignment="center"` stack;
+  - trailing values end at one edge: reserve a fixed column for optional
+    trailing buttons so a row without the button does not shift its value.
+
+  Do not use a label's own `systemImage` for rows stacked with other symbol
+  rows; its symbol cannot join the column. Verify with `--dump-layout`
+  (compare `window` x of symbols and labels) and keep a headless test, as
+  `tests/diskmap_alignment.test.lua` does.
 - Primary content consumes flexible space. Stacks add sibling spacing, not
   implicit outer margins.
 - SwiftUI parity includes implicit sizing: omit dimensions and expansion

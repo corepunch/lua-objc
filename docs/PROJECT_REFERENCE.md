@@ -1164,7 +1164,10 @@ tints that must stay legible on dark pages.
 
 `<DisclosureGroup label="…" expanded="false">` draws AppKit's disclosure
 triangle beside a clickable label; both toggle the content. `labelWeight` and
-`labelSize` style the label.
+`labelSize` style the label. In a list of rows that lead with a symbol,
+`indicatorWidth` (with `indicatorSpacing`) names the rows' symbol column: the
+triangle is centered in it, and the label and the disclosed content start at
+the rows' text edge.
 
 ### `Toggle{...}`
 

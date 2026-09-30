@@ -6,6 +6,10 @@
   -- One legend column, no wider than a name, a size and a share read well
   -- across: two columns ran into each other in the narrowest window.
   HERO.legend = 440
+  -- One symbol column for the whole card: the warning, the legend dots, the
+  -- hidden-space symbols and the cleanup symbol are each centered in it, so
+  -- their centers share a line and every label starts at one edge.
+  HERO.symbol = { column = 20, gap = 6 }
 %>
 <GroupBox id="heroCard" maxWidth="infinity">
   <HStack maxWidth="infinity" padding="20" spacing="28" alignment="center">
@@ -23,13 +27,16 @@
         <Label text="<%= volumeName %>" size="22" weight="semibold" />
         <Label id="freeSpace" text="<%= summary.subtitle or summary.caption %>" size="13" color="secondary" monospacedDigit="true" />
         <% if summary.lowSpace then %>
-        <Label id="lowSpace" text="Less than 10% of this disk is free" systemImage="exclamationmark.triangle.fill" size="12" color="systemOrange" />
+        <HStack spacing="<%= HERO.symbol.gap %>" alignment="center">
+          <SystemImage name="exclamationmark.triangle.fill" size="12" color="systemOrange" width="<%= HERO.symbol.column %>" />
+          <Label id="lowSpace" text="Less than 10% of this disk is free" size="12" color="systemOrange" lines="1" />
+        </HStack>
         <% end %>
       </VStack>
       <% if #chart.legend > 0 then %>
       <VStack id="legend" maxWidth="<%= HERO.legend %>" spacing="4" alignment="leading">
         <% for _, item in ipairs(chart.legend) do %>
-        <%- partial("LegendRow.etlua", {item = item}) %>
+        <%- partial("LegendRow.etlua", {item = item, symbol = HERO.symbol}) %>
         <% end %>
       </VStack>
       <% else %>
@@ -38,8 +45,8 @@
       <% if #hiddenRows > 0 then %>
       <VStack id="hiddenSpace" maxWidth="<%= HERO.legend %>" spacing="4" alignment="leading">
         <% for _, row in ipairs(hiddenRows) do %>
-        <HStack maxWidth="infinity" spacing="6" alignment="center" help="<%= row.detail %>">
-          <SystemImage name="<%= row.icon %>" size="11" color="tertiary" />
+        <HStack maxWidth="infinity" spacing="<%= HERO.symbol.gap %>" alignment="center" help="<%= row.detail %>">
+          <SystemImage name="<%= row.icon %>" size="11" color="tertiary" width="<%= HERO.symbol.column %>" />
           <Label text="<%= row.title %>" size="11" color="secondary" lines="1" />
           <Spacer />
           <Label text="<%= row.value %>" size="11" color="secondary" monospacedDigit="true" />
@@ -48,8 +55,8 @@
       </VStack>
       <% end %>
       <Divider />
-      <HStack maxWidth="infinity" spacing="12" alignment="center">
-        <SystemImage name="sparkles" size="18" color="accent" />
+      <HStack maxWidth="infinity" spacing="<%= HERO.symbol.gap %>" alignment="center">
+        <SystemImage name="sparkles" size="18" color="accent" width="<%= HERO.symbol.column %>" />
         <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="1" alignment="leading">
           <Label id="reclaimTitle" text="<%= reclaim.title %>" size="13" weight="semibold" monospacedDigit="true" maxWidth="infinity" lines="1" />
           <Label id="reclaimDetail" text="<%= reclaim.detail %>" size="11" color="secondary" maxWidth="infinity" lines="2" />

@@ -840,6 +840,8 @@ local TAG_SCHEMA = {
             expanded = "bool",
             labelWeight = "str",
             labelSize = "num",
+            indicatorWidth = "num",
+            indicatorSpacing = "num",
         },
     },
     Grid = {
