@@ -817,6 +817,17 @@ int lua_objc_main(int argc, char *argv[]) {
 		return 1;
 	}
 	if (testMode) return 0;
+	/*
+	 * A script that declared itself headless has no window to serve. Without
+	 * this, a test or scratch script launched without --test would idle in the
+	 * run loop forever, holding everything it built.
+	 */
+	if (!layout_out) {
+		lua_getglobal(L, "__headless");
+		BOOL headless = lua_toboolean(L, -1);
+		lua_pop(L, 1);
+		if (headless) return 0;
+	}
 
 	/*
 	 * If the script returned a table with a `new` method, treat it as an
