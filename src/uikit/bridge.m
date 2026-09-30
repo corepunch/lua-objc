@@ -49,6 +49,7 @@ static char kKeyboardBottomInsetKey;
 static char kMatchBottomHorizontalInsetKey;
 static char kHorizontalInsetKey;
 static char kNavigationBarHiddenKey;
+static char kKeyboardToolbarKey;
 static char kImageLayoutSizeKey;
 static char kScrollContentKey;
 static char kScrollAnchorKey;
@@ -72,9 +73,16 @@ static const CGFloat kScrollTargetFlickVelocity = 0.2;
  * the number of lines the figure spans when the template does not say. */
 static const CGFloat kParagraphFigureGap = 10.0;
 static const NSInteger kParagraphFigureLines = 3;
+/* How far below the baseline a link's dotted rule sits past the font's own
+ * underline position, so descenders do not run into the dots. */
+static const CGFloat kParagraphLinkUnderlineOffset = 3.0;
+/* A keyboard toolbar's margins around its items, and the space between
+ * them; the horizontal margin matches the floating keyboard's inset. */
+static const CGFloat kKeyboardToolbarHorizontalInset = 12.0;
+static const CGFloat kKeyboardToolbarVerticalInset = 8.0;
+static const CGFloat kKeyboardToolbarSpacing = 8.0;
 /* The preview screen is an iPhone 16 display in points, so apps are laid
  * out at the size and corner curve they will have on the phone. */
-static const CGFloat kParagraphLinkUnderlineOffset = 2.0;
 static const CGFloat kPreviewWidth = 393.0;
 static const CGFloat kPreviewHeight = 852.0;
 static const CGFloat kPreviewBezel = 10.0;

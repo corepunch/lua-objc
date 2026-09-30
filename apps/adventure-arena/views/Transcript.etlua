@@ -9,7 +9,7 @@
   --  · What the reader does is set in small capitals in the story’s colour,
   --    like a stage direction; the story answers in ordinary prose. Nothing
   --    is a bubble: the page is one continuous column of type.
-  --  · Words the reader can act on carry a thicker dotted rule in the story’s colour
+  --  · Words the reader can act on are set in the story’s colour over a thicker dotted rule
   --    and open a menu of what can be done with them. `linkMenus` holds the
   --    live links of each paragraph, keyed like `reveal`.
   -- `reading` carries the reader’s face, size, leading, alignment and inks.

@@ -147,7 +147,9 @@ static const NSTimeInterval kScrollToAnimationDuration = 0.2;
  * the number of lines the figure spans when the template does not say. */
 static const CGFloat kParagraphFigureGap = 10.0;
 static const NSInteger kParagraphFigureLines = 3;
-static const CGFloat kParagraphLinkUnderlineOffset = 2.0;
+/* How far below the baseline a link's dotted rule sits past the font's own
+ * underline position, so descenders do not run into the dots. */
+static const CGFloat kParagraphLinkUnderlineOffset = 3.0;
 
 /* Every value that controls visual appearance or layout has a named constant
  * so that tuning across the codebase is a single-section edit. Add new constants

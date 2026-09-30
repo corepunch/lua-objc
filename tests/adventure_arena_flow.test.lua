@@ -106,7 +106,7 @@ t.expect(page().paragraph_1_1.figureView ~= nil, "the opening room's icon sits b
 t.expect(page().paragraph_1_1.figureLines == 3, "the room icon is three lines tall")
 t.expect(rendered.refs.backdrop == nil, "the page is paper, not blurred cover art")
 t.assertEqual(rendered.refs.progress.text, "Score 0 · Time 0", "Planetfall's folio shows its clock")
-t.expect(chips().suggestion_1 ~= nil, "the suggestion strip offers commands before typing")
+t.expect(chips().suggestion_1 == nil and rendered.refs.suggestionScroll.hidden, "no suggestion strip before typing")
 t.assertEqual(rendered.refs.input.accessibilityLabel, "Command", "composer retains accessibility label")
 t.assertEqual(rendered.refs.input.bezeled, false, "glass composer owns the visible border")
 t.assertEqual(rendered.refs.input.bordered, false, "plain input has no inner border")
@@ -162,13 +162,10 @@ t.assertEqual(page()["paragraph_" .. lookIndex .. "_1"].text, 'Response <&> "loo
 local transcript = lastEntry()
 click("send")
 t.assertEqual(lastEntry(), transcript, "empty submission leaves transcript unchanged")
-local chip = controller.sessionController.currentSuggestions[1]
-t.expect(chip and chip.submit, "an empty composer offers a one-tap command")
-if chip then
-	local callbackBefore = lastEntry()
-	controller.sessionController:applySuggestion(chip)
-	t.assertEqual(lastEntry(), callbackBefore + 2, "a one-tap suggestion plays the command")
-end
+t.assertEqual(#controller.sessionController.currentSuggestions, 0, "an empty composer offers no chips")
+local callbackBefore = lastEntry()
+controller.sessionController:applySuggestion({ title = "look", text = "look", submit = true })
+t.assertEqual(lastEntry(), callbackBefore + 2, "a one-tap suggestion plays the command")
 transcript = lastEntry()
 t.expect(not ns._textFieldTestCommand(rendered.refs.input, "cancel"), "unhandled keys retain native behavior")
 chooseMenu("Close Book")

@@ -31,7 +31,7 @@
 @property(nonatomic, strong) NSView *figureView;
 @property(nonatomic) NSInteger figureLines;
 @property(nonatomic, copy) NSArray<LuaParagraphLink *> *links;
-/* The thicker dotted rule under a link; the words keep the body's colour. */
+/* The colour of a link's words and the thicker dotted rule under them. */
 @property(nonatomic, strong) NSColor *linkColor;
 /* Characters shown so far, counted as Lua's utf8.len counts them; -1 shows
  * the whole paragraph. See `paragraph_revealed_length`. */
@@ -213,8 +213,10 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 		if (range.location == NSNotFound) continue;
 		NSRange visible = NSIntersectionRange(range, NSMakeRange(0, shown));
 		[storage addAttribute:NSUnderlineColorAttributeName value:NSColor.clearColor range:range];
-		if (visible.length) [storage addAttribute:NSUnderlineColorAttributeName
-			value:_linkColor ?: NSColor.controlAccentColor range:visible];
+		if (!visible.length) continue;
+		NSColor *ink = _linkColor ?: NSColor.controlAccentColor;
+		[storage addAttribute:NSForegroundColorAttributeName value:ink range:visible];
+		[storage addAttribute:NSUnderlineColorAttributeName value:ink range:visible];
 	}
 	[storage endEditing];
 	_figureView.hidden = _revealedCharacters == 0;

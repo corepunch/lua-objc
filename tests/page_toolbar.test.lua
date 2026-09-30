@@ -73,12 +73,39 @@ t.assertThrows(function()
 	xml.render('<Page><Toolbar><ToolbarItem id="x" action="missing" /></Toolbar><Label text="x" /></Page>', { actions = {} }, ns)
 end, "a misspelt toolbar action fails at render time")
 
+-- A keyboard item rides above an iOS keyboard; AppKit leaves it out of the
+-- window toolbar, as SwiftUI does on a Mac without a Touch Bar.
+local KEYBOARD_PAGE = [[
+<Page title="Composer">
+  <Toolbar>
+    <ToolbarItem id="settings" placement="primaryAction" icon="gear" label="Settings" action="settings" />
+    <ToolbarItem id="completions" placement="keyboard" label="Completions">
+      <HStack id="chips"><Button id="chip" title="inventory" /></HStack>
+    </ToolbarItem>
+  </Toolbar>
+  <TextField id="field" />
+</Page>]]
+local keyboardPage, keyboardRefs = xml.render(KEYBOARD_PAGE, { actions = actions }, ns)
+nav:push(keyboardPage)
+ids = identifiers(window)
+t.expect(ids:find("settings", 1, true) ~= nil, "other items of a page with a keyboard item still join the toolbar")
+t.expect(ids:find("completions", 1, true) == nil, "a keyboard item never joins the window toolbar")
+t.expect(keyboardRefs.chip ~= nil, "a keyboard item's view is still rendered and addressable")
+nav:pop()
+
 -- The UIKit bridge maps the same placements; no app-specific chrome remains.
 local function source(path)
 	local file = assert(io.open(path)); local text = file:read("*a"); file:close(); return text
 end
 local uikit = source("src/uikit/navigation.m")
 t.expect(uikit:find("bridge_UIKitNavigation_page_toolbar", 1, true) ~= nil, "UIKit installs page toolbars")
+local constructors = source("src/uikit/constructors.m")
+t.expect(uikit:find('isEqualToString:@"keyboard"', 1, true) and uikit:find("kKeyboardToolbarKey", 1, true),
+	"UIKit gives a page's keyboard items to its view controller")
+local _, accessories = constructors:gsub("inputAccessoryView %{ return super%.inputAccessoryView %?: page_keyboard_toolbar%(self%)", "")
+t.assertEqual(accessories, 2, "text fields and text editors show their page's keyboard toolbar")
+t.expect(uikit:find("addObserver:self forKeyPath:@\"hidden\"", 1, true) ~= nil,
+	"the keyboard toolbar collapses when its items hide")
 for _, path in ipairs({ "src/uikit/navigation.m", "src/appkit/navigation.m", "src/appkit/toolbar.m", "lua/embedded/UIKit.lua" }) do
 	local text = source(path)
 	t.expect(not text:find("textformat.size", 1, true) and not text:find("Reading settings", 1, true),

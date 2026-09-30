@@ -23,11 +23,8 @@ t.assertEqual(Suggestions.noun("Patrol-issue scrub brush"), "brush", "the noun i
 t.assertEqual(#Suggestions.items(nil), 0, "missing engine data yields no items")
 
 local context = { items = items, exits = { "north", "east", "up" } }
-local empty = Suggestions.forInput("", context)
-t.assertEqual(titles(empty), "north,east,open mailbox,take leaflet,look,inventory",
-	"an empty composer offers exits, object actions and the basics")
-for _, chip in ipairs(empty) do t.expect(chip.submit, "empty-composer chips are whole commands: " .. chip.title) end
-t.expect(not titles(empty):find("put", 1, true), "verbs that need a second object are never one-tap commands")
+t.assertEqual(#Suggestions.forInput("", context), 0, "an empty composer offers no chips")
+t.assertEqual(#Suggestions.forInput("   ", context), 0, "blank input offers no chips")
 
 local l = Suggestions.forInput("l", context)
 t.assertEqual(l[1].title, "look", "L suggests look first")
@@ -55,7 +52,7 @@ t.assertEqual(titles(Suggestions.forInput("turn o", context)), "on,off", "two-wo
 
 local none = Suggestions.forInput("xyzzy", context)
 t.assertEqual(#none, 0, "unknown words produce no chips")
-t.assertEqual(#Suggestions.forInput("", {}), 2, "no context still offers look and inventory")
+t.assertEqual(titles(Suggestions.forInput("inv", {})), "inventory", "no context still completes the basics")
 local many = { items = {} }
 for index = 1, 20 do table.insert(many.items, { noun = "thing" .. index, verbs = {} }) end
 t.assertEqual(#Suggestions.forInput("examine ", many), 6, "chips are capped at six")

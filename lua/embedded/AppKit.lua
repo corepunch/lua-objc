@@ -2563,7 +2563,7 @@ end
 --- Push the returned controller onto a NavigationStack.
 --- @tag Page
 --- @prop title string optional. Navigation title.
---- @prop toolbar table optional. ToolbarItem records; `placement` is principal, primaryAction, topBarLeading, topBarTrailing, cancellationAction or confirmationAction.
+--- @prop toolbar table optional. ToolbarItem records; `placement` is principal, primaryAction, topBarLeading, topBarTrailing, cancellationAction, confirmationAction or keyboard (one view child, shown above the keyboard while a text input edits; AppKit leaves it out).
 --- @prop hidesTabBar boolean optional. Hides the tab bar while the page is visible (UIKit).
 --- @prop titleDisplayMode string optional. automatic, inline or large (UIKit).
 --- @prop backButtonDisplayMode string optional. default, generic or minimal (UIKit).
@@ -2571,7 +2571,13 @@ end
 --- @platform AppKit puts toolbar items and a navigational back item in the window toolbar. UIKit uses the navigation bar.
 function AppKit.Page(props)
 	assert(type(props) == "table" and type(props.content) == "userdata", "Page requires one content view")
-	local controller = bridge._hostingController(props.content, props.onDisappear, props.toolbar or {})
+	-- Keyboard items ride above an iOS keyboard; a Mac keyboard has no such
+	-- bar, and SwiftUI shows them only in the Touch Bar.
+	local toolbar = {}
+	for _, item in ipairs(props.toolbar or {}) do
+		if item.placement ~= "keyboard" then table.insert(toolbar, item) end
+	end
+	local controller = bridge._hostingController(props.content, props.onDisappear, toolbar)
 	controller.title = props.title or ""
 	return controller
 end

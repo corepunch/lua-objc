@@ -54,6 +54,7 @@ t.assertEqual(links[1].label, "plaque", "a link keeps its label")
 t.assertEqual(#links[1].titles, 3, "a link lists its menu items")
 t.assertEqual(links[1].titles[2], "Read plaque", "menu items keep their order")
 t.expect(links[1].revealed, "a link in fully shown text can be tapped")
+t.expect(links[1].inked and links[2].inked, "linked words take their rule's colour")
 t.assertEqual(refs.linked.text, PROSE, "links leave the paragraph's text alone")
 t.assertEqual(refs.linked.size.height, refs.plain.size.height, "links do not change how the text is set")
 t.assertEqual(#bridge._paragraphLinks(refs.plain), 0, "a paragraph without children has no links")
@@ -71,6 +72,7 @@ local view = refs.linked
 view.revealedCharacters = 5
 links = bridge._paragraphLinks(view)
 t.expect(not links[1].revealed and not links[2].revealed, "links wait hidden until typing reaches them")
+t.expect(not links[1].inked, "an untyped link waits uninked")
 view.revealedCharacters = 12
 links = bridge._paragraphLinks(view)
 t.expect(links[1].revealed and not links[2].revealed, "a link is live from its first typed character")
