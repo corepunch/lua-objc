@@ -12,7 +12,7 @@
     <% end %>
     <% for _, chapter in ipairs(chapters) do %>
     <VStack maxWidth="infinity" spacing="8" alignment="leading">
-      <Label text="<%= chapter.title %>" systemImage="<%= chapter.icon %>" size="15" weight="semibold" />
+      <%- partial("SectionTitle.etlua", {icon = chapter.icon, title = chapter.title}) %>
       <GroupBox maxWidth="infinity">
         <VStack maxWidth="infinity" spacing="0" alignment="leading">
           <% for index, topic in ipairs(chapter.topics) do %>

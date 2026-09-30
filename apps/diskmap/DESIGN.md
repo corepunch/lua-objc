@@ -151,6 +151,15 @@ reads the same way on Largest Items, Large Files, Developer, Clean Up,
 Applications and Disks, and no action buttons sit beneath a list. Stat tiles
 summarize a page above its lists.
 
+Alignment follows the rule in `AGENTS.md`: within a card, every symbol, dot
+and disclosure triangle is centered on one vertical line and every label
+starts at one edge. The Overview card has one symbol column for its warning,
+legend dots, hidden-space symbols and cleanup symbol (`HERO.symbol`); info
+rows, tips, guide and help topics share a 26-point column with a 10-point
+gap; section titles with a symbol use `views/SectionTitle.etlua`. Optional
+trailing buttons sit in a fixed column so values keep one trailing edge.
+`tests/diskmap_alignment.test.lua` measures these columns.
+
 The overview leads with a donut (SwiftUI `SectorMark`, drawn with native arcs)
 of the whole volume: categories in their colors, the unattributed residual in
 gray and free space as the empty track, with the used total in the hole. The

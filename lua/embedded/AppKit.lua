@@ -702,15 +702,24 @@ end
 --- @prop alignment value optional. Component-specific setting passed to the native control.
 --- @prop expanded boolean optional. Component-specific setting passed to the native control.
 --- @prop header table optional. Section or group heading.
+--- @prop indicatorWidth number optional. Width of a symbol column the disclosure triangle is centered in; the content then starts at the label's edge.
+--- @prop indicatorSpacing number optional. Gap between the symbol column and the label, with `indicatorWidth`.
 --- @prop label value optional. Component-specific setting passed to the native control.
 --- @prop spacing number optional. Component-specific setting passed to the native control.
 --- @example <DisclosureGroup />
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.DisclosureGroup(props)
 	props = props or {}
+	local DISCLOSURE = { spacing = 4 }
+	-- In a list of rows that lead with a symbol, the triangle is one more
+	-- symbol: `indicatorWidth` centers it in the rows' symbol column, and the
+	-- label and the content start at the rows' text edge.
+	local gap = props.indicatorSpacing or DISCLOSURE.spacing
 	local content = AppKit.VStack({
 		spacing = props.spacing or 8,
 		alignment = props.alignment or "leading",
+		paddingLeading = props.indicatorWidth and props.indicatorWidth + gap or nil,
+		maxWidth = props.indicatorWidth and props.maxWidth or nil,
 	})
 	for _, child in ipairs(props) do content:add(child) end
 	AppKit.transition(content, "opacity")
@@ -745,7 +754,12 @@ function AppKit.DisclosureGroup(props)
 		size = props.labelSize or (props.labelWeight and 13 or nil),
 		action = function() toggle(false) end,
 	}
-	container:add(AppKit.HStack { spacing = 4, alignment = "center", triangle, label })
+	local header = { spacing = DISCLOSURE.spacing, alignment = "center", triangle, label }
+	if props.indicatorWidth then
+		local inset = math.max(0, (props.indicatorWidth - triangle.size.width) / 2)
+		header.paddingLeading, header.spacing = inset, inset + gap
+	end
+	container:add(AppKit.HStack(header))
 	container:add(content)
 	content.hidden = not expanded
 	return applyLayout(container, props)
