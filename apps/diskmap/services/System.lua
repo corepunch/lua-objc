@@ -729,7 +729,7 @@ end
 -- Leftover Git worktrees: every repository under the project folders and the
 -- tools' own worktree roots, with each worktree's evidence. Completes with
 -- (entries, facts-by-path).
-function System.worktreeScan(roots, completion)
+function System.worktreeScan(roots, completion, progress)
 	local Service = require("apps.diskmap.services.Worktrees")
 	local home = System.home
 	local searched = {}
@@ -740,15 +740,8 @@ function System.worktreeScan(roots, completion)
 	if #existing == 0 then completion({}, {}); return end
 	Service.repositories(System.command, existing, function(repos)
 		Service.list(System.command, repos, function(entries)
-			local facts = {}
-			local function step(index)
-				if index > #entries then completion(entries, facts); return end
-				Service.facts(System.command, System.measure, entries[index], function(value)
-					facts[entries[index].path] = value
-					step(index + 1)
-				end)
-			end
-			step(1)
+			if progress then progress(0, #entries) end
+			Service.allFacts(System.command, System.measure, entries, function(facts) completion(entries, facts) end, progress)
 		end)
 	end)
 end

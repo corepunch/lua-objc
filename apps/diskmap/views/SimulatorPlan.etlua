@@ -1,16 +1,19 @@
-<% --[[ The minimal device set: keep one standard iPhone and one standard iPad
-  on a chosen runtime, review everything else together, delete the eligible set
-  in one confirmation. Data comes from models/SimulatorPlan.lua; the controller
-  only fills the list and sets button states. ]] %>
-<% local PLAN = { label = 54, picker = 190 } %>
+<% --[[ The minimal device set, the decision this page leads with: keep one
+  standard iPhone and one standard iPad on a chosen runtime and delete the
+  rest in one confirmation. The keep choices, the amount the removal set
+  could recover and the review button sit in one card, so the decision and
+  its action are read together; the device-by-device plan follows. Data
+  comes from models/SimulatorPlan.lua; the controller only fills the list
+  and sets button states. ]] %>
+<% local PLAN = { label = 54, padding = 14, spacing = 10, amount = 17, caption = 11, amountSpacing = 1, actionSpacing = 14 } %>
 <VStack id="planSection" spacing="8" alignment="leading">
-  <%- partial("SectionHeader.etlua", {title = "Minimal device set", detailId = "planDetail",
-    detail = "Keep one standard iPhone and one standard iPad on a runtime. The other devices are redundant for this setup, not unused: deleting one removes its installed apps, accounts and data, and lowers your test coverage."}) %>
+  <%- partial("SectionHeader.etlua", {title = "Keep one iPhone and one iPad", detailId = "planDetail",
+    detail = "The other devices are redundant for this setup, not unused: deleting one removes its installed apps, accounts and data, and lowers your test coverage. Shared runtimes stay."}) %>
   <% if #runtimes == 0 then %>
-  <ContentUnavailable id="planEmpty" title="No iOS Simulator Devices" systemImage="iphone.slash" description="This plan needs devices on an installed iOS runtime." />
+  <ContentUnavailable id="planEmpty" title="No iOS Simulator Devices" systemImage="iphone.slash" description="This plan needs devices on an installed iOS runtime. Clean Up lists the other places worth reviewing." />
   <% else %>
-  <GroupBox>
-    <VStack padding="14" spacing="10" alignment="leading">
+  <GroupBox id="planCard">
+    <VStack padding="<%= PLAN.padding %>" spacing="<%= PLAN.spacing %>" alignment="leading">
       <HStack spacing="10" alignment="center">
         <Label text="Runtime" size="12" color="secondary" width="<%= PLAN.label %>" />
         <Picker id="planRuntime" value="<%= runtimeIndex %>" onChange="planRuntime">
@@ -28,12 +31,24 @@
           <% for _, option in ipairs(family.options) do %><Option title="<%= option %>" /><% end %>
         </Picker>
         <% end %>
-        <Label id="plan<%= family.id %>Note" text="<%= family.note %>" size="11" color="secondary" lines="1" flexGrow="1" flexBasis="0" flexShrink="1" />
+        <Label id="plan<%= family.id %>Note" text="<%= family.note %>" size="11" color="secondary" lines="0" flexGrow="1" flexBasis="0" flexShrink="1" />
       </HStack>
       <% end %>
-      <Label id="planSummary" text="<%= summary %>" size="12" maxWidth="infinity" lines="0" />
+      <Divider />
+      <HStack spacing="<%= PLAN.actionSpacing %>" alignment="center">
+        <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+          <Label id="planHeadline" text="<%= headline %>" size="13" weight="semibold" maxWidth="infinity" lines="0" />
+          <Label id="planSummary" text="<%= summary %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
+        </VStack>
+        <VStack spacing="<%= PLAN.amountSpacing %>" alignment="trailing" fixedSize="horizontal">
+          <Label id="planAmount" text="<%= amount %>" size="<%= PLAN.amount %>" weight="semibold" design="rounded" monospacedDigit="true" lines="1" />
+          <Label id="planCaption" text="<%= amountCaption %>" size="<%= PLAN.caption %>" color="secondary" lines="1" />
+        </VStack>
+        <Button id="planReview" title="<%= reviewTitle %>" action="planReview" style="borderedProminent" disabled="true" />
+      </HStack>
     </VStack>
   </GroupBox>
+  <Label id="planStatus" text="<%= status %>" size="11" color="secondary" maxWidth="infinity" lines="0" hidden="<%= status == "" and "true" or "false" %>" />
   <GroupBox>
     <List id="planDevices" onSelect="planSelect" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
       <Column id="name" title="Device" subtitleKey="reason" imageKey="icon" badgeColorKey="color" imageSize="28" minWidth="180" />
@@ -43,11 +58,9 @@
     </List>
   </GroupBox>
   <HStack spacing="8" alignment="center">
-    <Button id="planPreserve" title="<%= preserveTitle %>" action="planPreserve" disabled="true" help="Keep a specialised QA device out of the plan" />
     <Button id="planKeepThis" title="Keep This One" action="planKeepThis" disabled="true" help="Make the selected device the one kept for its family" />
+    <Button id="planPreserve" title="<%= preserveTitle %>" action="planPreserve" disabled="true" help="Keep a specialised QA device out of the plan" />
     <Spacer />
-    <Button id="planReview" title="<%= reviewTitle %>" action="planReview" style="borderedProminent" disabled="true" />
   </HStack>
-  <Label id="planStatus" text="<%= status %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
   <% end %>
 </VStack>

@@ -12,6 +12,7 @@ local _, refs = xml.renderFile("apps/diskmap/views/Kinds.etlua", {
 	extensionsDetail = "The twelve extensions that use the most space",
 	total = "110.4 GB", summary = "110.4 GB in files across 1 kinds",
 	headline = {id = "other", title = "Other files", advice = ""}, accessibilityLabel = "File types",
+	decision = {id = "decision", icon = "opticaldiscdrive.fill", color = "systemTeal", title = "Review", detail = "", amount = "0 KB", amountCaption = "could recover"},
 	actions = {openKind = function() end, kindMenu = function() return {} end, kind_other = function() end,
 		selectKind = function() end, chartSelect = function() end, chartHover = function() end},
 }, ns)
@@ -19,7 +20,7 @@ local chart = refs.kindsChart
 chart:layout(chart.frame.size.width)
 local label = refs.kindsTotal
 t.assertEqual(label.maximumNumberOfLines, 1, "the File Types total is a single line")
-t.expect(label.font.pointSize < 22, "a wide total shrinks rather than wrapping")
+t.expect(label.font.pointSize < 15, "a wide total shrinks rather than wrapping")
 t.expect(label.frame.size.height < label.font.pointSize * 2, "the total occupies one line of height")
 
 -- Every label drawn inside a SectorChart in an app view declares lines="1"

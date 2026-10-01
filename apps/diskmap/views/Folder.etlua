@@ -1,5 +1,5 @@
 <%
-  local FOLDER = { minChart = 220, chartUnits = 300, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, gap = 5, depth = 14, list = 420, minList = 260, minPane = 320, meter = 130, legendSize = 84, legendShare = 34 }
+  local FOLDER = { minChart = 160, chartUnits = 300, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, gap = 5, depth = 14, list = 420, minList = 260, minPane = 320, meter = 130, legendSize = 84, legendShare = 34 }
   -- Every ring keeps the thickness it has among three, so one ring of
   -- files is a slim ring like the Overview donut, not a thick disc.
   local rings = 1
@@ -84,7 +84,8 @@
       </SectorChart>
       </VStack>
       <% end %>
-      <Label id="folderHover" text="<%= hover %>" size="12" color="secondary" monospacedDigit="true" maxWidth="infinity" alignment="center" lines="1" truncation="middle" />
+      <% -- Guidance and long paths wrap in a narrow pane rather than lose their middle. %>
+      <Label id="folderHover" text="<%= hover %>" size="12" color="secondary" monospacedDigit="true" maxWidth="infinity" alignment="center" lines="0" />
       <% if #legend > 0 then %>
       <GroupBox id="folderLegend">
         <VStack padding="10" spacing="6" alignment="leading">

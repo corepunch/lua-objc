@@ -4,7 +4,8 @@
   title sits over its subtitle in the name column. A size that is a state
   rather than a number ("Calculating…", "No access") carries a leading
   accessory in one square: the spinner while measuring, otherwise the row's
-  symbol, which tints the word beside it. The share keeps its width; the size
+  symbol, which tints the word beside it. The bar is a capsule half the
+  height of AppKit's capacity cell, so the size reads first. The share keeps its width; the size
   truncates first. The bar is always drawn, empty and disabled for a row
   without a fraction, so a size never floats in an empty cell.
 
@@ -13,7 +14,7 @@
   the size, its share and the bar's colour. `title` is the column's title:
   the column names what the meter measures, as it names any other cell, so
   VoiceOver reads the bar as the title, the size and the share. ]]
-  local METER = { lineSpacing = 3, accessory = 16, symbol = 13, accessoryGap = 4, shareGap = 8 }
+  local METER = { lineSpacing = 4, accessory = 16, symbol = 13, accessoryGap = 4, shareGap = 8, bar = 9 }
   local value, share, tint, title = value or "size", share or "shareText", tint or "color", title or "Size"
 %>
 <VStack spacing="<%= METER.lineSpacing %>" alignment="leading">
@@ -27,5 +28,5 @@
     <Spacer />
     <Label text="{<%= share %>}" color="secondary" fixedSize="horizontal" hidden="{!<%= share %>}" />
   </HStack>
-  <Gauge value="{relative}" tint="{<%= tint %>}" disabled="{!relative}" accessibilityLabel="<%= title %>: {<%= value %>} {<%= share %>}" />
+  <Gauge value="{relative}" tint="{<%= tint %>}" thickness="<%= METER.bar %>" disabled="{!relative}" accessibilityLabel="<%= title %>: {<%= value %>} {<%= share %>}" />
 </VStack>

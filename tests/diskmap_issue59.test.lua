@@ -174,12 +174,12 @@ app:show("simulators")
 local simulators = app.pages.simulators
 simulators.busy, simulators.loading = true, true
 simulators:show()
-t.assertEqual(app.refs.devicesTileValue.text, "—", "a loading tile has no value")
-t.assertEqual(app.refs.devicesTileDetail.text, "Reading…", "and says it is reading")
-t.assertEqual(app.refs.unavailableTileDetail.text, "Reading…", "nothing is claimed about devices not read yet")
+t.assertEqual(app.refs.summary.text, "Reading simulator devices and runtimes…", "a loading page claims no totals")
+t.assertEqual(app.refs.devicesDetail.text, "Reading…", "nothing is claimed about devices not read yet")
+t.assertEqual(simulators.planRefs.planAmount.text, "—", "the plan's amount has no value while it loads")
 simulators.busy, simulators.loading = false, false
 simulators:show()
-t.expect(app.refs.devicesTileValue.text ~= "—", "a loaded tile has its value")
+t.expect(simulators.planRefs.planAmount.text ~= "—", "a loaded plan has its amount")
 t.expect(not app.refs.summary.text:find(" 1 runtimes", 1, true) and not app.refs.summary.text:find(" 1 devices", 1, true), "counts are pluralized")
 
 -- Overview sections with nothing to show take no place.

@@ -28,6 +28,7 @@ local OverviewController = require("apps.diskmap.controllers.OverviewController"
 local MapController = require("apps.diskmap.controllers.MapController")
 local FolderController = require("apps.diskmap.controllers.FolderController")
 local FilesController = require("apps.diskmap.controllers.FilesController")
+local Files = require("apps.diskmap.models.Files")
 local PageController = require("apps.diskmap.controllers.PageController")
 local KindsController = require("apps.diskmap.controllers.KindsController")
 local ApplicationsController = require("apps.diskmap.controllers.ApplicationsController")
@@ -94,6 +95,7 @@ function Controller.new(service)
 	self.worktrees = WorktreesController.new(self.model, service, function() self.scan:start() end)
 	self.worktrees.log = function(...) self.review:log(...) end
 	self.worktrees.published = function() self:updateRows() end
+	self.worktrees.showPage = function(id) self:show(id) end
 	self.sdks = SdksController.new(self.model, service)
 	-- Every list, menu and link opens a resource through this one function.
 	local open = function(id) self:open(id) end
@@ -115,6 +117,11 @@ function Controller.new(service)
 	local applications = ApplicationsController.new(self.model, service, self.actions, function(remeasure)
 		if remeasure then self.scan:start() else self:updateRows() end
 	end)
+	applications.showPage = function(id) self:show(id) end
+	-- What other pages measured, for every page that states Clean Up's totals,
+	-- so they all name the same number.
+	local function cleanupSources() return {apps = applications:summary()} end
+	self.cleanupSources = cleanupSources
 	-- Pages that list catalog resources share one controller; each is a table.
 	local resourcePage = function(page)
 		return PageController.new(self.model, self.actions, {open = open,
@@ -126,6 +133,7 @@ function Controller.new(service)
 			open = open, navigate = function(id) self:show(id) end,
 			map = function(id) self.pages.map:setFocus(id); self:show("map") end,
 			reclaim = function() self:show("cleanup") end,
+			sources = function() return self.cleanupSources and self.cleanupSources() end,
 			access = function() self:grantAccess() end,
 			menu = function(id) return self.actions:resource(id) end,
 			changes = function() if self.snapshots then self.snapshots:open(self.window) end end,
@@ -136,16 +144,17 @@ function Controller.new(service)
 		}),
 		largest = resourcePage(Largest.page),
 		files = files,
-		kinds = KindsController.new(self.model, function(kind) files:focus(kind); self:show("files", true) end),
+		kinds = KindsController.new(self.model, function(kind) files:focus(kind); self:show("files", true) end,
+			function(id, filter) self:showFiltered(id, filter and Files.filterIndex(filter)) end),
 		duplicates = DuplicatesController.new(self.model, service, self.actions),
-		cleanup = resourcePage(Recommendations.page(function() return {apps = applications:summary()} end)),
+		cleanup = resourcePage(Recommendations.page(cleanupSources)),
 		applications = applications,
 		xcode = XcodeController.new(self.model, service, self.actions),
 		projects = ProjectsController.new(self.model, service, self.actions, function() self.scan:start() end),
 		simulators = self.simulators,
 		worktrees = self.worktrees,
 		disks = DisksController.new(service, self.actions),
-		updates = UpdatesController.new(self.model, service, self.actions),
+		updates = UpdatesController.new(self.model, service, self.actions, function(id) self:show(id) end, cleanupSources),
 		guide = TopicsController.new({id = "guide", topic = "GuideTopic", noun = "guide topic",
 			summary = "Where macOS keeps things, why they grow and what is safe to do about them. Sizes are measured on this Mac.",
 			present = function(query) return Guide.presentation(self.model, query) end,
@@ -232,7 +241,7 @@ function Controller:state()
 		status = (rawget(self.service, "badge") and (rawget(self.service, "badge") .. " · ") or "") .. (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status}
 end
 function Controller:subtitle()
-	local text = Overview.summary(self.model, self.scan.disk, self.capacity).subtitle or ""
+	local text = Overview.summary(self.model, self.scan.disk, self.capacity).short or ""
 	local marked = self.review:count()
 	if marked > 0 then text = text .. " · " .. marked .. " marked for cleanup" end
 	return text
@@ -243,6 +252,12 @@ function Controller:badges()
 	local badges = {}
 	local summary = Overview.summary(self.model, self.scan.disk, self.capacity)
 	if summary.available then badges.overview = summary.used end
+	-- Clean Up's badge is what it could recover, the number its page leads
+	-- with; every other badge is a total stored.
+	if self.cleanupSources and self.scan.job == nil then
+		local eligible = Recommendations.presentation(self.model, "", self.cleanupSources()).eligibleBytes
+		if eligible > 0 then badges.cleanup = Model.size(eligible) end
+	end
 	local simulators = Categories.row(self.model, "simulators")
 	if simulators and simulators.bytes and simulators.bytes > 0 and not simulators.calculating then badges.simulators = simulators.size end
 	-- A workflow's badge is its page's own total, so the sidebar and the page

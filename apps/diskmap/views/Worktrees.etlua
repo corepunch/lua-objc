@@ -1,38 +1,62 @@
-<% --[[ Leftover Git worktrees: what Git can remove now, what needs a person,
-  and which registrations only need pruning. Evidence and rules live in
-  models/Worktrees.lua; this template carries structure only. ]] %>
+<% --[[ Leftover Git worktrees, decision first: what Git can remove now and
+  what it could recover, then the linked worktrees that need a person, then
+  registrations that only need pruning. The repositories they were made from
+  are never offered and stay collapsed as context. Evidence and rules live in
+  models/Worktrees.lua; this template carries structure only. ]]
+  local function list(id)
+%>
+        <List id="<%= id %>" onSelect="select" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
+          <Column id="name" title="Worktree" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" imageSize="28" minWidth="170" />
+          <Column id="roleLabel" title="Plan" width="140" minWidth="140" />
+          <Column id="lastUse" title="Last change" width="170" minWidth="170" />
+          <Column id="size" title="On disk" width="90" minWidth="80" alignment="trailing" />
+        </List>
+<% end %>
 <ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
   <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {header = header, summary = "Looking for Git worktrees…", summaryId = "summary",
       buttons = {{id = "retry", title = "Retry", action = "retry", help = "Look for worktrees again"}}}) %>
-    <HStack id="stats" fixedSize="vertical" spacing="12" alignment="top">
-      <%- partial("StatTile.etlua", {id = "removeTile", icon = "trash.fill", color = "systemGreen", title = "Can be removed", value = "—", detail = "Clean, published and idle"}) %>
-      <%- partial("StatTile.etlua", {id = "reviewTile", icon = "eye.fill", color = "systemOrange", title = "Needs review", value = "—", detail = "Changes or commits exist only here"}) %>
-      <%- partial("StatTile.etlua", {id = "pruneTile", icon = "scissors", color = "systemGray", title = "Missing", value = "—", detail = "Registered, directory gone"}) %>
-    </HStack>
-    <VStack id="worktreesSection" spacing="8" alignment="leading">
-      <%- partial("SectionHeader.etlua", {title = "Worktrees", detailId = "worktreesDetail",
-        detail = "A clean status alone does not prove the work is finished. Candidates are clean, published and idle; ignored files go with a removed worktree."}) %>
-      <ContentUnavailable id="worktreesEmpty" hidden="true" title="No Linked Worktrees" systemImage="arrow.triangle.branch" description="No repository in your project folders has a linked worktree." />
-      <GroupBox id="worktreesPanel">
-        <List id="worktrees" onSelect="select" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
-          <Column id="name" title="Worktree" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" imageSize="28" minWidth="200" />
-          <Column id="roleLabel" title="Plan" width="110" minWidth="90" />
-          <Column id="lastUse" title="Last used" width="150" minWidth="120" />
-          <Column id="size" title="On disk" width="110" minWidth="100" alignment="trailing" />
-        </List>
+    <VStack id="decisionHost" spacing="0" alignment="leading" />
+    <ContentUnavailable id="worktreesEmpty" hidden="true" title="No Linked Worktrees" systemImage="arrow.triangle.branch" description="No repository in your project folders has a linked worktree, so there is nothing to clean up here." />
+    <VStack id="removeSection" spacing="8" alignment="leading">
+      <%- partial("SectionHeader.etlua", {title = "Ready to remove", detailId = "removeDetail",
+        detail = "Clean, every commit published, and unchanged for a few days. Removing one deletes its checkout and ignored files; the repository and its history stay."}) %>
+      <GroupBox>
+<% list("removeList") %>
       </GroupBox>
+    </VStack>
+    <VStack id="reviewSection" spacing="8" alignment="leading">
+      <%- partial("SectionHeader.etlua", {title = "Needs your review", detailId = "reviewDetail",
+        detail = "Local changes, commits that exist only here, submodules, a recent change, a lock or Keep. Select one to read the evidence."}) %>
+      <GroupBox>
+<% list("reviewList") %>
+      </GroupBox>
+    </VStack>
+    <VStack id="selectionSection" spacing="8" alignment="leading">
       <Label id="selectedDetail" text="Select a worktree to see why it is or is not offered." size="12" maxWidth="infinity" lines="0" />
       <HStack spacing="8" alignment="center">
         <Button id="reveal" title="Show in Finder" action="reveal" disabled="true" />
         <Button id="keep" title="Keep" action="keep" disabled="true" help="Protect this worktree from every cleanup suggestion" />
         <Button id="openOwner" title="Open Owner…" action="openOwner" disabled="true" help="Archive managed worktrees in the application that made them" />
         <Spacer />
-        <Button id="prune" title="Prune Missing…" action="prune" disabled="true" help="Forget registrations whose directory is gone; existing worktrees are not touched" />
-        <Button id="review" title="Review and Remove…" action="review" style="borderedProminent" disabled="true" />
       </HStack>
       <Label id="status" text="" size="11" color="secondary" maxWidth="infinity" lines="0" />
     </VStack>
-    <%- partial("Footnote.etlua", {text = "Diskmap reads each repository with git worktree list, status and rev-list, and removes only with git worktree remove, never with force. Worktrees with initialized submodules, local changes or commits that exist nowhere else are left for you. Session activity is not visible to Diskmap: a worktree touched in the last few days is treated as in use."}) %>
+    <VStack id="missingSection" spacing="8" alignment="leading">
+      <HStack spacing="12" alignment="center">
+        <%- partial("SectionHeader.etlua", {title = "Missing", detail = "Git still lists these, but the directory is gone. Pruning forgets the record; no checkout is deleted."}) %>
+        <Button id="prune" title="Prune Missing…" action="prune" disabled="true" help="Forget registrations whose directory is gone; existing worktrees are not touched" />
+      </HStack>
+      <GroupBox>
+<% list("missingList") %>
+      </GroupBox>
+    </VStack>
+    <DisclosureGroup id="repositories" label="Repositories these worktrees come from" expanded="false" spacing="8" indicatorWidth="26" indicatorSpacing="10">
+      <Label text="The checkouts these worktrees were made from. A repository's own checkout is never offered and is not measured here." size="11" color="secondary" maxWidth="infinity" lines="0" />
+      <GroupBox>
+<% list("repositoryList") %>
+      </GroupBox>
+    </DisclosureGroup>
+    <%- partial("Footnote.etlua", {text = "Diskmap reads each repository with git worktree list, status and rev-list, and removes only with git worktree remove, never with force. Session activity is not visible to Diskmap: In use means a process was confirmed; a worktree changed in the last few days is Recently touched and waits for your review. Claude and Codex worktrees are best removed by archiving their session in the app."}) %>
   </VStack>
 </ScrollView>

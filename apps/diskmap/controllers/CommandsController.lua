@@ -89,12 +89,12 @@ end
 function Controller:data()
 	local sections, current = {}, nil
 	for _, page in ipairs(Navigation.destinations) do
-		if page.section then
+		-- The pages that lead the sidebar without a header form a group too.
+		if page.section or not current then
 			current = {title = page.title, pages = {}}
 			table.insert(sections, current)
-		else
-			table.insert(current.pages, page)
 		end
+		if not page.section then table.insert(current.pages, page) end
 	end
 	local topics = {}
 	for _, topic in ipairs(Help.searchTopics()) do

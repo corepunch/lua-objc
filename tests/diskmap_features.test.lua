@@ -44,7 +44,7 @@ t.assertEqual(Recommendations.presentation(model).decisions[1].id, "simulators",
 t.assertEqual(#Recommendations.presentation(model, "unfindable").decisions, 0, "clean up search is independent")
 local reviewRow = Recommendations.presentation(model).decisions[1]
 t.assertEqual(reviewRow.statusColor, "systemOrange", "a review suggestion carries an orange status symbol")
-t.assertEqual(reviewRow.shareText, "", "partial sizes say ≥ in the size column, never words in the share bar")
+t.assertEqual(reviewRow.shareText, "to review", "a suggestion without proven recovery names its amount as bytes to review")
 cleanup:toggleKeep("simulators")
 t.assertEqual(#Cleanup.suggestions(model), 0, "a kept resource leaves the suggestions")
 local keptRow; for _, row in ipairs(Recommendations.presentation(model).checked) do if row.id == "simulators" then keptRow = row end end

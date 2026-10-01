@@ -178,7 +178,9 @@ end
 function Controller:catalogName(path)
 	local owner = self.model.resources:owner(path)
 	if not owner or owner.path ~= path then return nil end
-	local parent = owner:getParent()
+	-- A build folder's group only repeats its kind ("CMake builds › CMake build
+	-- output"), so an artifact is named by itself.
+	local parent = not owner.artifact and owner:getParent() or nil
 	local name = (parent and parent.name ~= owner.name) and (parent.name .. " › " .. owner.name) or owner.name
 	return owner.policy and (name .. " · " .. owner.policy) or name
 end

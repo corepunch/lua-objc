@@ -234,7 +234,9 @@ t.assertEqual(page.plan.keep.iPhone, udid(1), "the base iPhone is proposed")
 t.assertEqual(page.plan.keep.iPad, udid(2), "the base iPad is proposed")
 t.expect(refs.planReview.enabled, "a ready plan can be reviewed")
 t.expect(refs.planReview.title:find("3 Devices", 1, true), "the button counts the removal set")
-t.expect(refs.planSummary.text:find("12.0 GB", 1, true) or refs.planSummary.text:find("12 GB", 1, true), "the summary totals the removal set: " .. refs.planSummary.text)
+t.assertEqual(refs.planAmount.text, "12.0 GB", "the amount beside the review button totals the removal set")
+t.assertEqual(refs.planCaption.text, "could recover", "and says it is what the plan could recover")
+t.expect(refs.planHeadline.text:find("delete 3 redundant devices", 1, true) ~= nil, "the headline states the decision: " .. refs.planHeadline.text)
 
 -- Keep protection for one device removes it from the set; the choice persists.
 page.planSelected = {id = udid(5), family = "iPad", runtimeIdentifier = rtId, available = true}

@@ -3,23 +3,18 @@ local Model = require("apps.diskmap.Model")
 local Applications = require("apps.diskmap.models.Applications")
 local Controller = Page.extend("applications")
 
+-- Decisions first: data left behind by apps that are gone, then the
+-- installed apps as the inventory that explains them.
 local LAYOUT = {
 	summary = "Reading installed applications…",
-	tiles = {
-		{id = "appsTile", icon = "app.fill", color = "systemBlue", title = "Apps", value = "—", detail = "Application bundles"},
-		{id = "dataTile", icon = "folder.fill", color = "systemTeal", title = "App data", value = "—", detail = "Containers, support files and caches"},
-		{id = "unusedTile", icon = "hourglass", color = "systemOrange", title = "Unused", value = "—", detail = "Not opened in 6 months"},
-		{id = "leftoversTile", icon = "questionmark.folder.fill", color = "systemGray", title = "Leftovers", value = "—", detail = "Data of apps no longer installed"},
-	},
+	leads = {"lead"},
 	sections = {
-		{title = "Installed", detail = "Each app with the data it keeps in your Library.",
+		{id = "leftoversSection", title = "Possible leftovers",
+			detail = "Data folders no app on this Mac claims. High means no app from that vendor is installed; review Medium and Low before removing anything. Reinstalling the app starts it fresh.",
+			list = {id = "leftovers", menu = "leftoverMenu", activate = "reveal", detailColumn = true}},
+		{title = "Installed", detailId = "installedDetail", detail = "Each app with the data it keeps in your Library.",
 			filters = {id = "filter", options = Applications.filters},
 			list = {id = "apps", menu = "appMenu", activate = "reveal", detailColumn = true}},
-		{id = "leftoversSection", title = "Possible leftovers",
-			detail = "Data folders no app on this Mac claims. High means no app from that vendor is installed; review Medium and Low before removing anything.",
-			buttons = {{id = "markHigh", title = "Mark High Confidence", systemImage = "plus.circle", action = "markHigh",
-				help = "Mark every folder of an app whose vendor has no installed app", disabled = true}},
-			list = {id = "leftovers", menu = "leftoverMenu", activate = "reveal", detailColumn = true}},
 	},
 	footnote = {text = "Last used comes from Spotlight, as Finder's Last Opened; an app without a recorded date reads Last use unknown and is never counted as unused. Apps outside /Applications and ~/Applications are not listed; their data never counts as a leftover."},
 }
@@ -81,10 +76,12 @@ function Controller:leftoverItem(row)
 end
 
 function Controller:mount(host, state)
-	local refs = self:attach(host, {layout = LAYOUT, actions = {
+	self.pageActions = {
 		filter = function(index) self.filterIndex = (index or 0) + 1; self:update(self.state) end,
 		appMenu = function(_, _, row) return self.actions:application(row) end,
 		leftoverMenu = function(_, _, row) return self.actions:folder(row, function(value) self:trashLeftover(value) end, self:leftoverItem(row)) end,
+		unusedFilter = function() self.filterIndex = 2; self:update(self.state) end,
+		cleanup = function() if self.showPage then self.showPage("cleanup") end end,
 		markHigh = function()
 			local items = {}
 			for _, row in ipairs(Applications.leftovers(self.model, self.installed) or {}) do
@@ -93,7 +90,8 @@ function Controller:mount(host, state)
 			self.actions:markAll(items)
 		end,
 		reveal = function(_, _, row) if row then self.service.reveal(row.path) end end,
-	}})
+	}
+	local refs = self:attach(host, {layout = LAYOUT, actions = self.pageActions})
 	self:load()
 	self:update(state)
 	return refs
@@ -114,18 +112,44 @@ function Controller:update(state)
 	for _, row in ipairs(leftovers or {}) do
 		if row.tier == "high" and not self.actions:isMarked(row.path) then unmarkedHigh = true end
 	end
-	refs.markHigh.enabled = unmarkedHigh
 	local all = Applications.rows(self.model, self.info, "All")
 	local summary = Applications.summary(all, Applications.leftovers(self.model, self.installed))
 	refs.summary.text = summary.count == 0 and "No applications measured yet."
-		or string.format("%s %s %s, and their data another %s.", Model.plural(summary.count, "app"), summary.count == 1 and "uses" or "use", Model.size(summary.apps), Model.size(summary.data))
-	refs.appsTileValue.text = Model.size(summary.apps)
-	refs.appsTileDetail.text = Model.plural(summary.count, "application bundle")
-	refs.dataTileValue.text = self.model.files and not self.model.files.measuring and Model.size(summary.data) or "—"
-	refs.unusedTileValue.text = self.info and tostring(summary.unused) or "—"
-	refs.unusedTileDetail.text = self.info and (Model.size(summary.unusedBytes) .. " not opened in 6 months, or never") or "Reading last-used dates…"
-	refs.leftoversTileValue.text = summary.leftovers and Model.size(summary.leftoverBytes) or "—"
-	refs.leftoversTileDetail.text = summary.leftovers and (Model.plural(summary.leftovers, "folder") .. " of apps not installed") or "Checking installed apps…"
+		or string.format("%s %s %s, and their data another %s stored.", Model.plural(summary.count, "app"), summary.count == 1 and "uses" or "use", Model.size(summary.apps), Model.size(summary.data))
+	refs.installedDetail.text = "Each app with the data it keeps in your Library."
+		.. (self.info and summary.unused > 0 and (" " .. Model.plural(summary.unused, "app") .. " with a known last use over six months ago, " .. Model.size(summary.unusedBytes) .. " with " .. (summary.unused == 1 and "its" or "their") .. " data.") or "")
+	self.leadRefs = self:decision("lead", self:decisionData(summary, unmarkedHigh))
+end
+
+-- The leading decision: leftover data first, because removing it changes
+-- nothing an installed app needs; then apps with a known long absence;
+-- otherwise where else to look.
+function Controller:decisionData(summary, unmarkedHigh)
+	local data = {id = "decision", icon = "questionmark.folder.fill", color = "systemGray", actions = self.pageActions}
+	if not summary.leftovers then
+		data.title, data.detail, data.amount, data.amountCaption = "Checking for data left behind by removed apps…", "Diskmap compares data folders with the apps Spotlight knows.", "—", "to review"
+	elseif summary.leftovers > 0 then
+		data.title = "Review " .. Model.plural(summary.leftovers, "leftover folder") .. " of apps no longer installed"
+		data.detail = summary.leftoversHigh > 0
+			and (Model.plural(summary.leftoversHigh, "folder") .. " " .. (summary.leftoversHigh == 1 and "is" or "are") .. " high confidence: no app from that vendor is installed. Mark them for cleanup, then review the rest below.")
+			or "None is high confidence: an app from the same vendor is installed. Review each one below before removing it."
+		if summary.leftoversHighBytes > 0 then data.amount, data.amountCaption = Model.size(summary.leftoversHighBytes), "could recover"
+		else data.amount, data.amountCaption = Model.size(summary.leftoverBytes), "to review" end
+		data.actionTitle, data.action, data.disabled = "Mark High Confidence", "markHigh", not unmarkedHigh
+	elseif self.info and summary.unused > 0 then
+		data.icon, data.color = "hourglass", "systemOrange"
+		data.title = Model.plural(summary.unused, "app") .. " not opened in six months"
+		data.detail = "No leftover data was found. These apps have a known last use over six months ago; uninstall them in the Finder or with their own uninstaller if you no longer need them."
+		data.amount, data.amountCaption = Model.size(summary.unusedBytes), "to review"
+		data.actionTitle, data.action = "Show Unused Apps", "unusedFilter"
+	else
+		data.icon, data.color = "checkmark.circle.fill", "systemGreen"
+		data.title = "No leftover app data"
+		data.detail = "Every data folder belongs to an installed app" .. (self.info and ", and no app has gone unused for six months" or "") .. ". Clean Up lists the other places worth reviewing."
+		data.amount, data.amountCaption = Model.size(0), "could recover"
+		data.actionTitle, data.action = "Open Clean Up", "cleanup"
+	end
+	return data
 end
 
 function Controller:marksChanged() self:update(self.state) end

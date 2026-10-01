@@ -3,10 +3,11 @@ local xml = require("ui.xml")
 local Workflows = require("apps.diskmap.knowledge.Workflows")
 local Controller = {}; Controller.__index = Controller
 
--- Sidebar destinations in the order they matter to someone who is not a
--- developer: what uses storage, what to do about it, the disk and
--- system-managed storage, then the kinds of work this Mac does, then how
--- macOS lays it out and how to use Diskmap. A row with `workflow` appears
+-- Sidebar destinations in the order a person needs them: where storage
+-- stands and what to do first (Overview, Clean Up) lead without a header,
+-- then the pages that each end in a cleanup decision, then the tools for
+-- browsing storage, the disk and system-managed storage, the kinds of work
+-- this Mac does, and how macOS lays it out. A row with `workflow` appears
 -- only on a Mac that does that work (knowledge/Workflows.lua, #52), and a
 -- section with no rows to show is left out. Section rows are native
 -- source-list group headers and cannot be selected. `key` is the page's
@@ -15,17 +16,20 @@ local Controller = {}; Controller.__index = Controller
 -- the sidebar, the Go menu and the page never disagree.
 local function destinations()
 	local list = {
-		{section = true, title = "Storage"},
 		{id = "overview", name = "Overview", icon = "chart.pie.fill", color = "systemBlue", key = "1"},
-		{id = "map", name = "Storage Map", icon = "circle.circle.fill", color = "systemIndigo", key = "2"},
-		{id = "folder", name = "Folder Map", icon = "folder.fill", color = "systemBlue"},
-		{id = "largest", name = "Largest Locations", icon = "chart.bar.fill", color = "systemOrange", key = "3"},
+		{id = "cleanup", name = "Clean Up", icon = "sparkles", color = "systemIndigo", key = "2"},
+		{section = true, title = "Free Up Space"},
+		{id = "applications", name = "Applications", icon = "square.grid.3x3.fill", color = "systemBlue", key = "3"},
 		{id = "files", name = "Large Files", icon = "doc.fill", color = "systemTeal", key = "4"},
-		{id = "kinds", name = "File Types", icon = "square.grid.2x2.fill", color = "systemPink", key = "5"},
 		{id = "duplicates", name = "Duplicates", icon = "doc.on.doc.fill", color = "systemTeal"},
-		{section = true, title = "Reclaim"},
-		{id = "cleanup", name = "Clean Up", icon = "sparkles", color = "systemIndigo", key = "6"},
-		{id = "applications", name = "Applications", icon = "square.grid.3x3.fill", color = "systemBlue", key = "7"},
+		{id = "simulators", name = "Simulators", icon = "iphone", color = "systemBlue", workflow = "developer"},
+		{id = "worktrees", name = "Worktrees", icon = "arrow.triangle.branch", color = "systemPurple", workflow = "developer"},
+		{id = "projects", name = "Projects", icon = "folder.fill.badge.gearshape", color = "systemOrange", workflow = "developer"},
+		{section = true, title = "Explore"},
+		{id = "map", name = "Storage Map", icon = "circle.circle.fill", color = "systemIndigo", key = "5"},
+		{id = "folder", name = "Folder Map", icon = "folder.fill", color = "systemBlue"},
+		{id = "largest", name = "Largest Locations", icon = "chart.bar.fill", color = "systemOrange", key = "6"},
+		{id = "kinds", name = "File Types", icon = "square.grid.2x2.fill", color = "systemPink", key = "7"},
 		{section = true, title = "System"},
 		{id = "disks", name = "Disks & Volumes", icon = "internaldrive.fill", color = "systemGray"},
 		{id = "updates", name = "Updates & Snapshots", icon = "arrow.triangle.2.circlepath", color = "systemGray"},
@@ -33,9 +37,6 @@ local function destinations()
 	-- Pages that belong to one kind of work follow its own page.
 	local companions = {developer = {
 		{id = "xcode", name = "Xcode", icon = "hammer.circle.fill", color = "systemBlue", key = "9", workflow = "developer"},
-		{id = "projects", name = "Projects", icon = "folder.fill.badge.gearshape", color = "systemOrange", workflow = "developer"},
-		{id = "simulators", name = "Simulators", icon = "iphone", color = "systemBlue", workflow = "developer"},
-		{id = "worktrees", name = "Worktrees", icon = "arrow.triangle.branch", color = "systemPurple", workflow = "developer"},
 	}}
 	local section
 	for _, workflow in ipairs(Workflows.list) do

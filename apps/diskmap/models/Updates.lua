@@ -116,7 +116,7 @@ function Updates.spaceNote(update, freeBytes)
 	if not update.known then return "Open Software Update to see whether an update is waiting and how large it is." .. free end
 	if #update.updates == 0 then return "No update is waiting, so no space target applies." .. free end
 	return "Software Update shows the download size. Installing needs more room on top of it to stage and prepare the update, and macOS does not publish that figure, so the space to recover is unknown, not zero."
-		.. free .. " Staged update files and the Update and Preboot volumes belong to macOS: do not remove them by hand, and they shrink when the update finishes. To make room, review Clean Up."
+		.. free .. " Staged update files and the Update and Preboot volumes belong to macOS: do not remove them by hand, and they shrink when the update finishes."
 end
 
 -- Everything the Updates & Snapshots page shows. `snapshotDates` is nil while

@@ -32,7 +32,8 @@ for row = 0, 3 do
 	local valueFrame, barFrame = frame(m.cell, value), frame(m.cell, bar)
 	t.expect(valueFrame.size.width >= value.fittingSize.width, "the value " .. value.text .. " fits without truncating")
 	t.expect(not bar.hidden, "every row draws its bar")
-	t.expect(barFrame.size.height >= 18, "the bar keeps the height its capsule draws in")
+	t.assertEqual(barFrame.size.height, 9, "the bar is a capsule half the height of AppKit's capacity cell")
+	t.assertEqual(bar.thickness, 9, "and draws at that thickness, so nothing is cropped")
 	t.expect(valueFrame.origin.y > barFrame.origin.y + barFrame.size.height - 1, "the labels sit above the bar")
 	if bar.enabled then
 		table.insert(bars, barFrame)

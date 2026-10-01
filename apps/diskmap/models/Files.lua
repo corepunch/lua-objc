@@ -166,8 +166,12 @@ function Files.kinds(model)
 	-- The installers kind counts every disk image by extension, system and
 	-- runtime images included. What this app would move to the Trash is the
 	-- user-owned subset, stated beside the inventory total, never as it.
-	local removableCount, removableBytes = 0, 0
-	for _, file in ipairs(Files.rows(model, "Installers & archives")) do removableCount = removableCount + 1; removableBytes = removableBytes + file.bytes end
+	local removable = {}
+	for _, file in ipairs(Files.rows(model, "Installers & archives")) do
+		local entry = removable[file.kindId] or {count = 0, bytes = 0}
+		entry.count, entry.bytes = entry.count + 1, entry.bytes + file.bytes
+		removable[file.kindId] = entry
+	end
 	for _, total in pairs(byKind) do
 		table.sort(total.extensions, function(a, b) return a.bytes > b.bytes end)
 		local top = {}
@@ -175,14 +179,15 @@ function Files.kinds(model)
 			local extension = total.extensions[index].extension
 			if extension ~= "" then table.insert(top, "." .. extension) end
 		end
+		local own = FILTER_KINDS["Installers & archives"][total.kind.id] and (removable[total.kind.id] or {count = 0, bytes = 0}) or nil
 		table.insert(rows, {id = total.kind.id, name = total.kind.name, icon = total.kind.icon, color = total.kind.color,
 			advice = total.kind.advice, bytes = total.bytes, size = Model.size(total.bytes), count = total.count, oldBytes = total.oldBytes,
 			subtitle = table.concat(top, ", ") .. (#top > 0 and total.oldBytes > 0 and " · " or "")
 				.. (total.oldBytes > 0 and (Model.size(total.oldBytes) .. " unused for a year") or "")
-				.. (total.kind.id == "installers" and ((#top > 0 or total.oldBytes > 0) and " · " or "")
-					.. "inventory total · " .. (removableCount > 0 and (Model.size(removableBytes) .. " in " .. plural(removableCount, "file") .. " removable from your folders")
-						or "none removable from your folders") or ""),
-			removableBytes = total.kind.id == "installers" and removableBytes or nil,
+				.. (own and ((#top > 0 or total.oldBytes > 0) and " · " or "")
+					.. "total stored · " .. (own.count > 0 and (Model.size(own.bytes) .. " in " .. plural(own.count, "file") .. " yours to review")
+						or "none of it yours to review") or ""),
+			removableBytes = own and own.bytes or nil, removableCount = own and own.count or nil,
 			share = all > 0 and total.bytes / all or 0})
 	end
 	table.sort(rows, function(a, b) if a.bytes ~= b.bytes then return a.bytes > b.bytes end return a.id < b.id end)
