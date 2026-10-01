@@ -1096,7 +1096,7 @@ end
 --- @prop hyphenation boolean optional. Hyphenates long words at line ends.
 --- @prop figure string optional. Image beside the first lines, which wrap around it (as Zork Zero set a room's picture beside its description).
 --- @prop figureLines number optional. Lines the square figure spans; defaults to 3.
---- @prop revealedCharacters number optional. Typewriter reveal: characters shown so far (as `utf8.len` counts them); -1, the default, shows all. Lines are those of the whole text; only revealed lines take height.
+--- @prop revealedCharacters number optional. Typewriter reveal: characters shown so far (as `utf8.len` counts them); -1, the default, shows all. Lines are those of the whole text, which takes its whole height however little is revealed.
 --- @prop links table optional. Runs the reader can act on, from `<Hyperlink>` children: `{ location, length, label, items }`, where `location` (from 0) and `length` count characters as `utf8.len` does and `items` are `<MenuItem>` records. A link is marked with a thicker dotted underline and opens its menu when tapped.
 --- @prop linkColor string optional. Colour of the rule under links; defaults to the tint.
 --- @example <Paragraph text="Once upon a time…" design="serif" lineSpacing="5" figure="assets/hall.png" />

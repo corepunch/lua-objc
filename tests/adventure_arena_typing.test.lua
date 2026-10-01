@@ -9,8 +9,8 @@ local SessionController = require("apps.adventure-arena.controllers.SessionContr
 local Template = require("ui.template")
 
 -- The story types itself: new prose appears a few characters per tick with
--- steady soft haptic pulses, the page follows it, and a resumed story
--- opens already set.
+-- steady soft haptic pulses. The page makes room for the whole answer when
+-- it arrives and scrolls there once; a resumed story opens already set.
 local OPENING = "West of House\nYou are standing in an open field west of a white house.\nThere is a small mailbox here."
 local ANSWER = "Opening the small mailbox reveals a leaflet.\nIt is written in a careful hand."
 
@@ -26,7 +26,7 @@ local function engine()
 	}
 end
 
-local timers, haptics, scrolls = {}, {}, 0
+local timers, haptics, scrolls = {}, {}, {}
 local now = 0
 local HAPTIC_INTERVAL = (4 / 30) / 1.75
 local reduceMotion = false
@@ -58,10 +58,21 @@ local function build()
 		after = function(seconds, callback) table.insert(timers, { seconds = seconds, due = now + seconds, callback = callback }) end,
 		reduceMotion = function() return reduceMotion end,
 	}
-	local scrollTranscript = controller.scrollTranscript
-	controller.scrollTranscript = function(self, animated)
-		scrolls = scrolls + 1
-		return scrollTranscript(self, animated)
+	-- Record what the page is asked to scroll to; the native scroll still runs.
+	local show = controller.show
+	controller.show = function(self, ...)
+		local shown = show(self, ...)
+		local scroll = self.refs and self.refs.transcriptScroll
+		if scroll then
+			self.refs.transcriptScroll = setmetatable({}, { __index = function(_, key)
+				if key ~= "scrollTo" then return scroll[key] end
+				return function(_, target, animated, anchor)
+					table.insert(scrolls, { target = target, animated = animated, anchor = anchor })
+					return scroll:scrollTo(target, animated, anchor)
+				end
+			end })
+		end
+		return shown
 	end
 	return controller
 end
@@ -87,25 +98,29 @@ t.expect(controller:show("zork"), "a new story opens")
 local page = function() return controller.transcript.refs end
 t.expect(controller:isTyping(), "a new story types its opening")
 t.expect(timers[1].seconds > 0.3, "typing waits for the page to finish sliding in")
-t.expect(page().paragraph_1_1.hidden == true, "the opening waits hidden")
 t.assertEqual(page().paragraph_1_1.revealedCharacters, 0, "nothing is revealed before the first tick")
-t.expect(page().paragraph_1_2.hidden == true, "later paragraphs wait too")
+t.assertEqual(page().paragraph_1_2.revealedCharacters, 0, "later paragraphs wait too")
+t.expect(page().paragraph_1_1.hidden ~= true and page().paragraph_1_2.hidden ~= true,
+	"waiting paragraphs keep their place on the page")
 t.expect(page().gameTitle ~= nil and page().gameTitle.hidden ~= true, "the title page is set at once")
-t.expect(page().entry_1.hidden == true, "a chapter heading waits for its text")
+t.assertEqual(page().sceneTitle_1.opacity, 0, "a chapter heading waits for its text")
+local openingHeight = page().entry_1.size.height
+t.expect(page().paragraph_1_2.size.height > 0 and openingHeight > page().paragraph_1_2.size.height,
+	"the page is as tall as the whole opening before any of it types")
 
 tick()
 local first = page().paragraph_1_1
 t.expect(first.hidden == false, "the first tick shows the paragraph being typed")
-t.expect(page().entry_1.hidden == false and page().sceneTitle_1.text == "West of House", "the chapter opens with its text")
+t.expect(page().sceneTitle_1.opacity == 1 and page().sceneTitle_1.text == "West of House", "the chapter opens with its text")
 t.assertEqual(first.revealedCharacters, 3, "each tick reveals a few characters")
 t.assertEqual(haptics[1].style, "soft", "typing uses a soft impact")
-t.expect(scrolls > 0, "the page follows the typing")
+t.assertEqual(#scrolls, 0, "typing scrolls nothing: the opening is read from its title page")
 t.assertEqual(timers[#timers].seconds, 1 / 30, "three characters at 30 Hz print 25% slower")
 t.assertEqual(haptics[1].intensity, 0.5, "typing impacts use the quieter intensity")
 t.assertEqual(timers[1].seconds, HAPTIC_INTERVAL, "pulses use their own fixed timer")
 tick()
 t.assertEqual(first.revealedCharacters, 6, "typing continues")
-t.expect(page().paragraph_1_2.hidden == true, "the next paragraph waits its turn")
+t.assertEqual(page().paragraph_1_2.revealedCharacters, 0, "the next paragraph waits its turn")
 
 local ticks = 2
 while page().paragraph_1_1.revealedCharacters ~= -1 do tick(); ticks = ticks + 1 end
@@ -121,7 +136,6 @@ local paragraphFinishedAt = now
 local nextParagraph = tick()
 t.expect(math.abs(nextParagraph.due - paragraphFinishedAt - 1 / 30) < 0.000001,
 	"the next paragraph prints on the ordinary tick without a pause")
-t.expect(page().paragraph_1_2.hidden == false, "the next paragraph appears on the next tick")
 t.assertEqual(page().paragraph_1_2.revealedCharacters, 3, "the next paragraph starts with one tick")
 finish()
 for index = 2, #haptics do
@@ -129,8 +143,9 @@ for index = 2, #haptics do
 		"haptic pulses keep their cadence across paragraph boundaries")
 end
 t.expect(not controller:isTyping(), "the opening finishes")
-t.expect(page().paragraph_1_2.hidden == false and page().paragraph_1_2.revealedCharacters == -1,
-	"every paragraph ends fully shown")
+t.expect(page().paragraph_1_2.revealedCharacters == -1, "every paragraph ends fully shown")
+t.assertEqual(page().entry_1.size.height, openingHeight, "typing never resized the page")
+t.assertEqual(#scrolls, 0, "and never scrolled it")
 
 local firstFrame, secondFrame = page().paragraph_1_1.frame, page().paragraph_1_2.frame
 local gap = math.abs(secondFrame.origin.y - firstFrame.origin.y) - (secondFrame.origin.y < firstFrame.origin.y and secondFrame.size.height or firstFrame.size.height)
@@ -140,27 +155,36 @@ t.expect(math.abs(gap - 20) < 0.01, "paragraphs have a 50% larger gap at the def
 controller:submitCommand("open mailbox")
 local answer = page().paragraph_3_1
 t.assertEqual(page().command_2.text, "open mailbox", "the command appears at once")
-t.expect(answer.hidden == true and page().paragraph_3_2.hidden == true, "the answer waits to type")
-t.expect(page().entry_3.hidden == true and page().entry_2.hidden ~= true, "the command shows while its answer waits")
+t.expect(answer.revealedCharacters == 0 and page().paragraph_3_2.revealedCharacters == 0, "the answer waits to type")
+t.expect(page().entry_3.hidden ~= true and page().entry_2.hidden ~= true, "the command shows while its answer waits")
+t.expect(answer.size.height > 0 and page().paragraph_3_2.size.height > 0,
+	"the page makes room for the whole answer at once")
+t.assertEqual(#scrolls, 1, "a command scrolls the page once")
+t.assertEqual(scrolls[1].target, "entry_2", "to the command, with its answer below")
+t.expect(scrolls[1].animated == true and scrolls[1].anchor == "top",
+	"smoothly, and no further than the command's own line")
+local answerTop = answer.frame.origin.y
 t.expect(page().entry_1.hidden == false, "earlier chapters stay shown")
 t.expect(page().paragraph_1_1.hidden == false and page().paragraph_1_1.revealedCharacters == -1,
 	"earlier paragraphs stay fully shown")
 tick(); tick()
 t.assertEqual(answer.revealedCharacters, 6, "the answer types")
+t.assertEqual(answer.frame.origin.y, answerTop, "typing moves nothing")
+t.assertEqual(#scrolls, 1, "and scrolls nothing")
 
 -- Changing reading settings mid-answer re-sets the page without losing place.
 controller:applyReadingSettings()
 t.assertEqual(page().paragraph_3_1.revealedCharacters, 6, "a re-render keeps the typed characters")
-t.expect(page().paragraph_3_2.hidden == true, "a re-render keeps waiting paragraphs hidden")
-t.expect(page().entry_3.hidden == false, "a re-render keeps the entry being typed shown")
+t.assertEqual(page().paragraph_3_2.revealedCharacters, 0, "a re-render keeps waiting paragraphs waiting")
 
 -- A new command sets the rest of the answer at once, then types its own.
 controller:submitCommand("wait")
-t.expect(page().paragraph_3_1.hidden == false and page().paragraph_3_1.revealedCharacters == -1,
+t.expect(page().paragraph_3_1.revealedCharacters == -1,
 	"a new command finishes the previous answer")
-t.expect(page().paragraph_3_2.hidden == false and page().paragraph_3_2.revealedCharacters == -1,
+t.expect(page().paragraph_3_2.revealedCharacters == -1,
 	"the previous answer's waiting paragraphs appear whole")
-t.expect(page().paragraph_5_1.hidden == true, "the new answer waits to type")
+t.assertEqual(page().paragraph_5_1.revealedCharacters, 0, "the new answer waits to type")
+t.assertEqual(scrolls[#scrolls].target, "entry_4", "each command scrolls to its own line")
 local stale = #timers
 finish()
 t.expect(page().paragraph_5_1.revealedCharacters == -1, "the new answer finishes")
@@ -181,8 +205,7 @@ local resumed = build()
 t.expect(resumed:show("zork"), "a saved story resumes")
 t.expect(not resumed:isTyping(), "a resumed story does not retype")
 t.assertEqual(#timers, 0, "nothing is scheduled for a resumed story")
-t.expect(resumed.transcript.refs.paragraph_3_1.hidden == false
-	and resumed.transcript.refs.paragraph_3_1.revealedCharacters == -1, "a resumed story is set whole")
+t.expect(resumed.transcript.refs.paragraph_3_1.revealedCharacters == -1, "a resumed story is set whole")
 
 -- Reduce Motion shows answers at once.
 saved, reduceMotion, timers = nil, true, {}
@@ -191,7 +214,9 @@ still:show("zork")
 t.expect(not still:isTyping(), "Reduce Motion does not type the opening")
 still:submitCommand("open mailbox")
 t.expect(not still:isTyping(), "Reduce Motion does not type answers")
-t.expect(still.transcript.refs.paragraph_3_1.hidden == false, "Reduce Motion shows answers whole")
+t.assertEqual(still.transcript.refs.paragraph_3_1.revealedCharacters, -1, "Reduce Motion shows answers whole")
+t.expect(scrolls[#scrolls].target == "entry_2" and scrolls[#scrolls].animated == false,
+	"Reduce Motion goes to the answer without the scroll animation")
 
 -- A long unbroken word has the same pulse rhythm as ordinary prose.
 OPENING = string.rep("x", 90)

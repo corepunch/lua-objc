@@ -57,22 +57,41 @@ t.expect(controller:isTyping(), "a new story types its opening")
 finishTimers()
 t.expect(not controller:isTyping(), "the opening finishes typing")
 local scroll = rendered.refs.transcriptScroll
-scroll.frameSize = ns.Size(320, 120)
-scroll:layout(320)
-t.assertEqual(scroll.contentView.bounds.origin.y, 0, "opening a session shows the latest line")
+-- The page owns the transcript's frame, as the window does in the app.
+local function resizePage(height)
+	rendered.refs.session.size = ns.Size(320, height)
+	rendered.refs.session:layout(320)
+end
+local function fromTop()
+	return scroll.documentView.frame.size.height - scroll.contentSize.height - scroll.contentView.bounds.origin.y
+end
+resizePage(220)
+t.expect(scroll.contentSize.height > 0 and scroll.documentView.frame.size.height > scroll.contentSize.height,
+	"the opening is taller than the page")
+t.assertEqual(fromTop(), 0, "a new story opens at its title page")
 t.expect(scroll.scrollOnKeyboard == true, "the transcript follows the keyboard")
 
+ns._textFieldTestFocus(rendered.refs.input)
+t.assertEqual(scroll.contentView.bounds.origin.y, 0, "showing the keyboard goes to the latest line")
 scroll:scrollTo("top", false)
 t.expect(scroll.contentView.bounds.origin.y > 0, "the reader can leave the latest line")
-ns._textFieldTestFocus(rendered.refs.input)
-t.assertEqual(scroll.contentView.bounds.origin.y, 0, "showing the keyboard returns to the latest line")
 
-scroll:scrollTo("top", false)
 rendered.refs.input.text = "look"
 controller:submitCommand("look")
-scroll.frameSize = ns.Size(320, 120)
-scroll:layout(320)
-t.assertEqual(scroll.contentView.bounds.origin.y, 0, "a new message returns to the latest line")
+local offset = scroll.contentView.bounds.origin.y
+t.expect(offset > 0, "an answer taller than the screen rests on its command's line, not the foot of the page")
+local command = controller.transcript.refs.entry_2
+t.assertEqual(command.frame.origin.y + command.frame.size.height, offset + scroll.contentSize.height,
+	"the command's line is at the top of the screen")
+resizePage(220)
+t.assertEqual(scroll.contentView.bounds.origin.y, offset, "laying the page out keeps that place")
+
+resizePage(900)
+scroll:scrollTo("top", false)
+controller:submitCommand("wait")
+t.assertEqual(scroll.contentView.bounds.origin.y, 0, "an answer that fits the screen is shown to the foot of the page")
+t.expect(controller.transcript.refs.entry_5.frame.origin.y >= 80,
+	"the last line keeps clear of the command field")
 t.assertEqual(controller.transcript.refs.command_2.text, "look", "the submitted command is in the transcript")
 t.assertEqual(controller.transcript.refs.paragraph_3_1.text, "Response look", "the response follows the command")
 t.expect(rendered.refs.compassControl == nil and rendered.refs.compassExit_north == nil,

@@ -482,6 +482,13 @@ static int bridge_uikit_scroll_to(lua_State *L) {
 	UIScrollView *scroll = lua_objc_check_object(L, 1, [UIScrollView class], "ScrollView");
 	NSString *target = [NSString stringWithUTF8String:luaL_checkstring(L, 2)];
 	BOOL animated = lua_toboolean(L, 3);
+	/* The viewport edge an identified view is brought to, as SwiftUI's
+	 * scrollTo(_:anchor:): "bottom" (the default) or "top". */
+	BOOL top = strcmp(luaL_optstring(L, 4, "bottom"), "top") == 0;
+	/* Measure the target in the layout the caller's writes imply, so a scroll
+	 * issued right after new content arrives travels to where it is. */
+	uikit_layout_if_needed(scroll);
+	[scroll layoutIfNeeded];
 	CGFloat limit = MAX(0, scroll.contentSize.height - scroll.bounds.size.height);
 	CGFloat y = scroll.contentOffset.y;
 	if ([target isEqualToString:@"bottom"]) y = limit;
@@ -490,13 +497,17 @@ static int bridge_uikit_scroll_to(lua_State *L) {
 		UIView *content = ((LuaUIKitScrollView *)scroll).luaContent;
 		UIView *match = uikit_view_with_identifier(content, target);
 		if (!match) return 0;
-		CGRect rect = [match convertRect:match.bounds toView:content];
-		y = MIN(MAX(0, CGRectGetMaxY(rect) - scroll.bounds.size.height), limit);
+		CGRect rect = [match convertRect:match.bounds toView:scroll];
+		y = top ? CGRectGetMinY(rect) : CGRectGetMaxY(rect) - scroll.bounds.size.height;
+		y = MIN(MAX(0, y), limit);
 	} else {
 		return 0;
 	}
-	if ([target isEqualToString:@"bottom"] || [target isEqualToString:@"top"])
-		objc_setAssociatedObject(scroll, &kScrollAnchorKey, target, OBJC_ASSOCIATION_RETAIN);
+	/* An edge target without animation is kept for the next layout, which may
+	 * be the first to size the viewport. An animated one must not be: the
+	 * layout passes of the animation would jump to its end. */
+	BOOL edge = [target isEqualToString:@"bottom"] || [target isEqualToString:@"top"];
+	objc_setAssociatedObject(scroll, &kScrollAnchorKey, edge && !animated ? target : nil, OBJC_ASSOCIATION_RETAIN);
 	[scroll setContentOffset:CGPointMake(0, y) animated:animated];
 	return 0;
 }
