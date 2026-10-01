@@ -51,6 +51,7 @@ static char kMatchBottomHorizontalInsetKey;
 static char kHorizontalInsetKey;
 static char kNavigationBarHiddenKey;
 static char kKeyboardToolbarKey;
+static char kKeyboardToolbarSuppressedKey;
 static char kImageLayoutSizeKey;
 static char kScrollContentKey;
 static char kScrollAnchorKey;

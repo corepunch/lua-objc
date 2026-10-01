@@ -113,6 +113,18 @@ static int bridge_window(lua_State *L) {
 }
 
 
+/* `darkPath`: the image shown under a dark appearance, as an asset
+ * catalog's dark variant is. Both are registered with one image asset, and
+ * the image view picks the one for its traits whenever they change. */
+static UIImage *lua_objc_uikit_appearance_image(UIImage *light, UIImage *dark) {
+	UIImageAsset *asset = [[UIImageAsset alloc] init];
+	[asset registerImage:light withTraitCollection:
+		[UITraitCollection traitCollectionWithUserInterfaceStyle:UIUserInterfaceStyleLight]];
+	[asset registerImage:dark withTraitCollection:
+		[UITraitCollection traitCollectionWithUserInterfaceStyle:UIUserInterfaceStyleDark]];
+	return [asset imageWithTraitCollection:UITraitCollection.currentTraitCollection];
+}
+
 static int bridge_image(lua_State *L) {
 	const char *path = luaL_checkstring(L, 1);
 	NSString *nsPath = [NSString stringWithUTF8String:path];
@@ -120,6 +132,12 @@ static int bridge_image(lua_State *L) {
 	UIImage *img = [UIImage imageWithContentsOfFile:nsPath];
 	if (!img) img = [UIImage imageNamed:nsPath];
 	if (!img) return luaL_error(L, "failed to load image: %s", path);
+	if (lua_isstring(L, 2)) {
+		NSString *darkPath = @(lua_tostring(L, 2));
+		UIImage *dark = [UIImage imageWithContentsOfFile:darkPath] ?: [UIImage imageNamed:darkPath];
+		if (!dark) return luaL_error(L, "failed to load image: %s", darkPath.UTF8String);
+		img = lua_objc_uikit_appearance_image(img, dark);
+	}
 
 	CGSize size = img.size;
 	if (size.width > kImageMaxWidth) {
@@ -199,6 +217,13 @@ static int bridge_image_data(lua_State *L) {
 	NSData *data = [NSData dataWithBytes:bytes length:len];
 	UIImage *img = [UIImage imageWithData:data];
 	if (!img) return luaL_error(L, "failed to decode image data");
+	if (lua_isstring(L, 2)) {
+		size_t darkLen = 0;
+		const char *darkBytes = lua_tolstring(L, 2, &darkLen);
+		UIImage *dark = [UIImage imageWithData:[NSData dataWithBytes:darkBytes length:darkLen]];
+		if (!dark) return luaL_error(L, "failed to decode dark image data");
+		img = lua_objc_uikit_appearance_image(img, dark);
+	}
 	CGSize size = img.size;
 	if (size.width > kImageMaxWidth) {
 		CGFloat ratio = kImageMaxWidth / size.width;

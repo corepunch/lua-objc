@@ -1052,6 +1052,7 @@ end
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
 --- @prop contentMode string optional. Image scaling mode such as fit or fill.
+--- @prop darkPath string optional. The image shown under a dark appearance; the view follows appearance changes.
 --- @example <Image />
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function UIKit.Image(arg)
@@ -1065,17 +1066,23 @@ function UIKit.Image(arg)
 	else
 		path = tostring(arg)
 	end
+	local darkPath = props and props.darkPath
 	if bridge._readFile then
 		local body, err = bridge._readFile(path)
 		if err then error(err) end
-		local view = bridge._imageData(body)
+		local dark
+		if darkPath then
+			dark, err = bridge._readFile(darkPath)
+			if err then error(err) end
+		end
+		local view = bridge._imageData(body, dark)
 		if props and props.contentMode then view.contentModeName = props.contentMode end
 		if props and props.resizable then
 			view.fillWidth, view.fillHeight = true, true
 		end
 		return applyLayout(view, props)
 	end
-	local view = bridge._image(path)
+	local view = bridge._image(path, darkPath)
 	if props and props.contentMode then view.contentModeName = props.contentMode end
 	if props and props.resizable then
 		view.fillWidth, view.fillHeight = true, true

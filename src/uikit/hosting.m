@@ -8,9 +8,11 @@ __attribute__((weak)) UIWindow *LRTApplicationWindow(void) {
 @property (nonatomic, strong) UIView *luaRoot;
 @property (nonatomic, strong) LuaReg *disappearCallback;
 @property (nonatomic) BOOL keyboardWasVisible;
+@property (nonatomic) CGFloat keyboardRootHeight;
 @end
 
 static void uikit_scroll_mark_keyboard(UIView *view);
+static void uikit_reload_keyboard_toolbar(UIViewController *controller);
 
 @implementation LuaHostingController
 - (BOOL)ignoresTopSafeArea {
@@ -99,13 +101,18 @@ static void uikit_scroll_mark_keyboard(UIView *view);
 - (void)viewDidLayoutSubviews {
 	[super viewDidLayoutSubviews];
 	/* The keyboard guide has already shortened the root. Mark opted-in
-	 * transcripts before layout so the latest line stays in view. */
-	BOOL keyboardVisible = CGRectGetHeight(self.luaRoot.bounds) > 0
+	 * transcripts before layout so the latest line stays in view. A keyboard
+	 * toolbar that appears while typing shortens the root once more, and the
+	 * latest line stays in view then too. */
+	CGFloat rootHeight = CGRectGetHeight(self.luaRoot.bounds);
+	BOOL keyboardVisible = rootHeight > 0
 		&& CGRectGetMaxY(self.luaRoot.frame)
 			< CGRectGetMaxY(self.view.bounds) - kHostLayoutEdgeTolerance;
-	if (keyboardVisible && !self.keyboardWasVisible)
+	if (keyboardVisible && (!self.keyboardWasVisible
+			|| rootHeight < self.keyboardRootHeight - kHostLayoutEdgeTolerance))
 		uikit_scroll_mark_keyboard(self.luaRoot);
 	self.keyboardWasVisible = keyboardVisible;
+	self.keyboardRootHeight = rootHeight;
 	[self updateHostSafeAreaPadding];
 	layout_recursive(self.luaRoot, self.luaRoot.bounds.size.width);
 	[self registerContentScrollView];
@@ -131,6 +138,21 @@ static UIScrollView *uikit_primary_scroll_view(UIView *view) {
 	UIScrollView *scroll = uikit_primary_scroll_view(self.luaRoot);
 	if ([self contentScrollViewForEdge:NSDirectionalRectEdgeTop] == scroll) return;
 	[self setContentScrollView:scroll forEdge:NSDirectionalRectEdgeTop | NSDirectionalRectEdgeBottom];
+}
+
+/* Retire the accessory before ending editing: otherwise UIKit keeps its
+ * height in the keyboard layout guide after the page has left. Restore it
+ * on appearance so navigating back (including a cancelled pop) can edit. */
+- (void)viewWillAppear:(BOOL)animated {
+	[super viewWillAppear:animated];
+	objc_setAssociatedObject(self, &kKeyboardToolbarSuppressedKey, nil, OBJC_ASSOCIATION_RETAIN);
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+	[super viewWillDisappear:animated];
+	objc_setAssociatedObject(self, &kKeyboardToolbarSuppressedKey, @YES, OBJC_ASSOCIATION_RETAIN);
+	uikit_reload_keyboard_toolbar(self);
+	[self.view endEditing:YES];
 }
 
 - (void)viewDidDisappear:(BOOL)animated {

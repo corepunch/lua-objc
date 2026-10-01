@@ -191,7 +191,9 @@ function Controller:attach(refs)
 	if refs.nowReading then self.nowReading = self.mountTemplate(refs.nowReading, "NowReading") end
 	if refs.settings then
 		local settings = self.mountTemplate(refs.settings, "Settings")
-		local _, settingsRefs = settings:update({})
+		local _, settingsRefs = settings:update({ actions = {
+			howToPlay = function() self.onboarding:openGuide(self.window) end,
+		} })
 		self.settings = settings
 		self.readingOptions:mount(settingsRefs.readingOptions, true)
 	end

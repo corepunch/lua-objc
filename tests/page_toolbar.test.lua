@@ -106,6 +106,15 @@ local _, accessories = constructors:gsub("inputAccessoryView %{ return super%.in
 t.assertEqual(accessories, 2, "text fields and text editors show their page's keyboard toolbar")
 t.expect(uikit:find("addObserver:self forKeyPath:@\"hidden\"", 1, true) ~= nil,
 	"the keyboard toolbar collapses when its items hide")
+local sizing = uikit:match("%- %(void%)sizeToItems {(.-)\n}")
+t.expect(sizing and sizing:find("frame.size.height = height + 2 * kKeyboardToolbarVerticalInset", 1, true),
+	"the keyboard accessory receives its measured frame before attachment")
+t.expect(not uikit:find("self.autoresizingMask = UIViewAutoresizingFlexibleHeight", 1, true),
+	"keyboard toolbar height stays fixed while UIKit owns it")
+local hosting = source("src/uikit/hosting.m")
+t.expect(hosting:find("uikit_reload_keyboard_toolbar(self);", 1, true)
+	and hosting:find("[self.view endEditing:YES];", 1, true),
+	"leaving a page removes its keyboard accessory before ending editing")
 for _, path in ipairs({ "src/uikit/navigation.m", "src/appkit/navigation.m", "src/appkit/toolbar.m", "lua/embedded/UIKit.lua" }) do
 	local text = source(path)
 	t.expect(not text:find("textformat.size", 1, true) and not text:find("Reading settings", 1, true),

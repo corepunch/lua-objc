@@ -591,7 +591,10 @@ static UIView *keyboard_toolbar_for_input(LuaKeyboardToolbar *toolbar, UIRespond
 static UIView *page_keyboard_toolbar(UIResponder *input) {
 	for (UIResponder *responder = input; responder; responder = responder.nextResponder) {
 		LuaKeyboardToolbar *toolbar = objc_getAssociatedObject(responder, &kKeyboardToolbarKey);
-		if (toolbar) return keyboard_toolbar_for_input(toolbar, input);
+		if (toolbar) {
+			if ([objc_getAssociatedObject(responder, &kKeyboardToolbarSuppressedKey) boolValue]) return nil;
+			return keyboard_toolbar_for_input(toolbar, input);
+		}
 	}
 	return nil;
 }

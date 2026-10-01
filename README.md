@@ -512,3 +512,17 @@ install it. The `ci_pre_xcodebuild.sh` script reads tags in the form
 `release/1.2.3` and sets the app version to `1.2.3`; Xcode Cloud assigns
 increasing build numbers. Push the tag only after the release commit and
 submodules are available from the connected repository.
+
+### Adventure Arena tour screenshots
+
+The first-launch guide uses real iPhone reader captures in light and dark.
+To refresh its eight bundled images after changing the reader:
+
+```sh
+make adventure-arena-tour-captures
+```
+
+This uses the iPhone 17 Pro simulator and an in-memory library, preserving
+saved stories and restoring the simulator's appearance afterward. The plan
+is `apps/adventure-arena/tour/capture.lua`; its crop box matches the onboarding
+template. Settings → How to Play reopens the four guide pages without setup.
