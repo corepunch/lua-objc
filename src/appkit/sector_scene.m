@@ -3,8 +3,9 @@
 /* A SectorChart drawn as raised SceneKit solids instead of flat Arc strokes.
  * Lua (ui/sectors.lua) owns the geometry, heights, hit testing and
  * interaction; this view only renders the sectors it is handed. Each sector is
- * an SCNShape extruded from its outline with square edges and its own soft
- * gradient, standing on a shadow-only floor so the chart rests on the page.
+ * an SCNShape extruded from its outline with a rounded top edge and its own
+ * soft gradient, standing on a shadow-only floor so the chart rests on the
+ * page.
  *
  * Scene units are points; the chart lies in the xy plane with its floor at
  * z = 0 and sectors extruding towards +z. The camera tilts down onto it, like
@@ -132,6 +133,9 @@ static NSImage *sector_scene_glow(void) {
 		SCNNode *fillNode = sector_scene_light(SCNLightTypeDirectional, kSectorSceneFillIntensity);
 		fillNode.eulerAngles = SCNVector3Make(kSectorSceneFillPitch, 0, 0);
 		[scene.rootNode addChildNode:fillNode];
+		/* A little ambient light keeps the walls turned away from both lights
+		 * a darker shade of their slice instead of near black. */
+		[scene.rootNode addChildNode:sector_scene_light(SCNLightTypeAmbient, kSectorSceneAmbientIntensity)];
 
 		/* The floor draws nothing but the shadows that fall on it. */
 		SCNPlane *floor = [SCNPlane planeWithWidth:kSectorSceneFarPlane height:kSectorSceneFarPlane];
@@ -230,17 +234,56 @@ static CGFloat sector_scene_luminance(NSColor *color) {
 
 /* The top face carries the slice's gradient. The walls and underside are a
  * plain color: SCNShape wraps a face's texture onto its walls as well, and a
- * gradient there reads as a light shining on the chart's lower edge. */
-static SCNMaterial *sector_scene_material(BOOL top) {
+ * gradient there reads as a light shining on the chart's lower edge. The
+ * rounded top edge is a little glossier, so it catches the key light as a
+ * thin highlight that outlines every slice, the way a rendered solid with a
+ * fillet does, even where the gap beside it is narrow. */
+typedef NS_ENUM(NSInteger, SectorSceneSurface) {
+	SectorSceneSurfaceTop,
+	SectorSceneSurfaceWall,
+	SectorSceneSurfaceEdge,
+};
+
+static SCNMaterial *sector_scene_material(SectorSceneSurface surface) {
 	SCNMaterial *material = [SCNMaterial material];
 	material.lightingModelName = SCNLightingModelPhysicallyBased;
-	material.roughness.contents = @(kSectorSceneRoughness);
+	material.roughness.contents = @(surface == SectorSceneSurfaceEdge ? kSectorSceneEdgeRoughness : kSectorSceneRoughness);
 	material.metalness.contents = @0;
-	if (top) {
+	if (surface != SectorSceneSurfaceWall) {
 		material.multiply.contents = sector_scene_shade();
 		material.emission.contents = sector_scene_glow();
 	}
 	return material;
+}
+
+/* A quarter-circle chamfer profile, so the edge rolls over instead of being
+ * cut at 45 degrees. SCNShape reads the profile in a unit square from (0, 1)
+ * to (1, 0); the arc bulges towards (1, 1), so the edge is convex. */
+static NSBezierPath *sector_scene_edge_profile(void) {
+	static NSBezierPath *profile;
+	if (!profile) {
+		profile = [NSBezierPath bezierPath];
+		[profile moveToPoint:NSMakePoint(0, 1)];
+		[profile appendBezierPathWithArcWithCenter:NSZeroPoint radius:1 startAngle:90 endAngle:0 clockwise:YES];
+		profile.flatness = kSectorSceneFlatness;
+	}
+	return profile;
+}
+
+/* The top edge's radius for a slice: the constant, held under a share of the
+ * height and of the slice's narrowest width (the thinner of its ring and its
+ * chord at the inner edge less the gap), so slivers and pie points stay
+ * clean instead of folding over themselves. */
+static CGFloat sector_scene_edge_radius(CGFloat start, CGFloat end, CGFloat inner, CGFloat outer, CGFloat gap, CGFloat height) {
+	CGFloat sweep = end - start;
+	CGFloat width = outer - inner;
+	if (sweep > 0 && sweep < kArcFullCircleDegrees) {
+		CGFloat chord = 2 * MAX(inner, 0) * sin(MIN(sweep, 180) * M_PI / 360.0) - gap;
+		/* A pie's sectors meet in a point; their width is measured halfway out. */
+		if (inner <= 0) chord = 2 * (outer / 2) * sin(MIN(sweep, 180) * M_PI / 360.0) - gap;
+		width = MIN(width, chord);
+	}
+	return MAX(0, MIN(kSectorSceneEdgeRadius, MIN(height * kSectorSceneEdgeHeightShare, width * kSectorSceneEdgeWidthShare)));
 }
 
 /* New sectors from Lua. While a transition runs they become what it ends
@@ -365,11 +408,17 @@ static SCNMaterial *sector_scene_material(BOOL top) {
 			if (!sameShape) {
 				NSBezierPath *outline = outer > inner ? sector_scene_outline(start, end, inner, outer, gap) : nil;
 				SCNShape *shape = [SCNShape shapeWithPath:outline ?: [NSBezierPath bezierPath] extrusionDepth:height];
+				/* Only the top edge is rounded: the base stands on the floor. */
+				shape.chamferMode = SCNChamferModeFront;
+				shape.chamferProfile = sector_scene_edge_profile();
+				shape.chamferRadius = sector_scene_edge_radius(start, end, inner, outer, gap, height);
 				node.hidden = outline == nil;
-				/* SCNShape's elements are its top face, underside, then walls. */
+				/* SCNShape's elements are its top face, underside, walls, then the
+				 * rounded top edge. */
 				NSArray<SCNMaterial *> *materials = node.geometry.materials;
-				shape.materials = materials.count == 3 ? materials
-					: @[sector_scene_material(YES), sector_scene_material(NO), sector_scene_material(NO)];
+				shape.materials = materials.count == 4 ? materials
+					: @[sector_scene_material(SectorSceneSurfaceTop), sector_scene_material(SectorSceneSurfaceWall),
+						sector_scene_material(SectorSceneSurfaceWall), sector_scene_material(SectorSceneSurfaceEdge)];
 				node.geometry = shape;
 			}
 			NSColor *color = [semantic_color(spec[@"color"] ?: @"accent") colorUsingColorSpace:NSColorSpace.sRGBColorSpace];

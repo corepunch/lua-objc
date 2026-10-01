@@ -186,7 +186,8 @@ t.assertEqual(#nodes, 3, "one solid per sector")
 t.assertEqual(nodes[1].height, 10, "the inner ring is the chart's depth")
 t.assertEqual(nodes[3].height, 10, "every ring stands the same height, so rings never run into each other")
 t.assertEqual(nodes[1].z, 5, "solids stand on the floor")
-t.assertEqual(nodes[1].chamfer, 0, "sectors have square edges")
+t.assertEqual(nodes[1].chamfer, 3, "a wide sector rounds its top edge")
+t.expect(nodes[3].chamfer > 0 and nodes[3].chamfer <= 10 * 0.3, "the rounding never exceeds a share of the height")
 t.assertEqual(nodes[3].alpha, 0.5, "mark opacity carries into the scene")
 
 -- A scalable chart fills the room it is given and keeps its sectors in fixed
@@ -211,6 +212,14 @@ local px, py = ns._sectorScenePoint(scalableScene, largerWidth / 2, largerHeight
 t.expect(px and math.abs(px - 180) < 1 and math.abs(py - 180) < 1, "the view center is the chart center on the floor, in sector units: " .. tostring(px) .. ", " .. tostring(py))
 local _, flatFails = pcall(ns.SectorChart, {scalable = true, raisedMarks[1]})
 t.expect(not _, "a scalable chart must be raised")
+
+-- A sliver's top edge rounds less, held under a share of its width, so it
+-- does not fold over itself.
+local sliver = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.4, depth = 10,
+	{__sectorMark = true, id = "big", value = 400, color = "systemBlue"},
+	{__sectorMark = true, id = "thin", value = 1.5, color = "systemGreen"}}
+local sliverNodes = ns._sectorSceneNodes(sliver.subviews[1])
+t.expect(sliverNodes[2].chamfer < sliverNodes[1].chamfer, "a sliver rounds less than a wide sector: " .. sliverNodes[2].chamfer)
 
 local raisedLayout = Sectors.layout({{value = 1}, {value = 1}}, 200, 0.4, 0, -45)
 t.assertEqual(raisedLayout[1].startAngle, -45, "layout can start at another angle")
