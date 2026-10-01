@@ -256,13 +256,15 @@ end
 -- Headline for the Clean Up call to action. Rebuildable and review-first
 -- candidates stay separate; they are never summed into one "safe" number.
 function Overview.reclaim(model)
-	local rebuildable, review, count = 0, 0, 0
+	local rebuildable, review, count, top = 0, 0, 0, nil
 	for _, row in ipairs(Cleanup.suggestions(model)) do
 		count = count + 1
+		-- Suggestions arrive ranked (eligible bytes × confidence ÷ effort): the first is where to start.
+		top = top or row
 		if row.impact == "Safe/rebuildable" then rebuildable = rebuildable + (row.bytes or 0)
 		else review = review + (row.bytes or 0) end
 	end
-	local result = {count = count, rebuildable = rebuildable, review = review}
+	local result = {count = count, rebuildable = rebuildable, review = review, top = top and top.name or nil}
 	if count == 0 then
 		result.title = "No cleanup suggestions yet"
 		result.detail = "Suggestions appear once measured caches or build data exceed their review thresholds."
@@ -270,6 +272,7 @@ function Overview.reclaim(model)
 		result.title = Model.size(rebuildable) .. " rebuildable"
 		result.detail = count .. (count == 1 and " suggestion" or " suggestions")
 			.. (review > 0 and (" · " .. Model.size(review) .. " more to review") or "")
+			.. (top and (" · start with " .. top.name) or "")
 	else
 		-- Nothing is rebuildable yet; lead with what can be reviewed rather
 		-- than a zero.
