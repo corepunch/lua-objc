@@ -31,10 +31,18 @@ messaging app does. It now reads as a book:
   face and colour, a fleuron (❦), and the tagline as an italic epigraph. The
   Infocom banner follows as a colophon.
 - **Scenes.** A new room opens with the room name as a heading; rooms are
-  not numbered as chapters. When the story gives the room an `ICON`, the
+  not numbered as chapters. When a room has a matching JPG, the
   first paragraph wraps around the room's **three-line square picture**, as
   Zork Zero set one beside each description. It uses real TextKit exclusion
   paths, not a side column. There are no drop caps.
+  Artwork is discovered automatically at
+  `apps/adventure-arena/assets/<game id with dots replaced by slashes>/images/<ROOM>.jpg`.
+  For example, `books.blackwood-horror` uses
+  `assets/books/blackwood-horror/images/SANITARIUM-GATE.jpg`.
+  Names are uppercase ZIL ROOM identifiers with hyphens (compiler underscores
+  become hyphens), not the room's display title. No `ICON` field is needed;
+  missing images leave ordinary full-width prose. The bundled horror artwork
+  includes 22 room engravings and its source sheet and crop manifest.
 - **Links.** Stories mark the words a reader can act on (`[[brass
   plaque->plaque]]`, `[[north]]`; see zilscript's `WRITING_ADVENTURES.md`).
   The page rules them with a dashed underline in the story's ink, and a tap

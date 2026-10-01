@@ -102,6 +102,14 @@ function ZILRuntime.new(game, readFile, seed)
 
 		local root = "apps/adventure-arena/zilscript/" .. sourceBase
 		local start = root .. "/" .. game.startFile
+		local objectNames = {}
+		local declareObject = env.DECL_OBJECT
+		env.DECL_OBJECT = function(name)
+			local id = declareObject(name)
+			-- zilscript emits Lua identifiers with hyphens normalized to underscores.
+			if name then objectNames[id] = name:gsub("_", "-") end
+			return id
+		end
 		assert(runtime.load_zil_files({ start }, env, { silent = true }),
 			"failed to load " .. game.title)
 
@@ -126,14 +134,17 @@ function ZILRuntime.new(game, readFile, seed)
 								return roomString(env, "PQDESC") or ""
 							end)
 						end,
-						-- A room's picture, as Zork Zero showed one beside each
-						-- description: `(ICON "icons/hall.png")`, relative to the
-						-- story's folder.
+						-- Declaration names preserve the original ROOM identifier;
+						-- display titles may change or be duplicated.
 						roomIcon = function()
 							return withContext(readFile, paths, function()
-								local icon = roomString(env, "PQICON")
-								if not icon or not icon:match("%S") then return nil end
-								return "apps/adventure-arena/zilscript/" .. sourceBase .. "/" .. icon
+								local name = objectNames[env.HERE]
+								if not name or not name:match("^[%w_-]+$") then return nil end
+								local path = "apps/adventure-arena/assets/" .. sourceBase .. "/images/" .. name .. ".jpg"
+								local file = io.open(path, "rb")
+								if not file then return nil end
+								file:close()
+								return path
 							end)
 						end,
 						-- Visible objects with the verbs the story accepts for
