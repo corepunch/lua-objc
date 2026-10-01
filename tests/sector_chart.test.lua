@@ -188,6 +188,30 @@ t.assertEqual(nodes[3].height, 10, "every ring stands the same height, so rings 
 t.assertEqual(nodes[1].z, 5, "solids stand on the floor")
 t.assertEqual(nodes[1].chamfer, 0, "sectors have square edges")
 t.assertEqual(nodes[3].alpha, 0.5, "mark opacity carries into the scene")
+
+-- A scalable chart fills the room it is given and keeps its sectors in fixed
+-- units: the camera frames the narrower side, so the wheel grows with its view
+-- and pointer positions still land in the same geometry.
+local scalableHovered
+local scalable = ns.SectorChart {scalable = true, diameter = 360, innerRadius = 0.4, depth = 10,
+	raisedMarks[1], raisedMarks[2], raisedMarks[3],
+	onHover = function(id) scalableHovered = id end}
+local host = ns.VStack {alignment = "center", flexGrow = 1, scalable}
+host.size = ns.Size(800, 500)
+host:layout(800)
+local scalableScene = scalable.subviews[1]
+local sceneWidth, sceneHeight = scalableScene.frame.size.width, scalableScene.frame.size.height
+t.expect(sceneWidth > 360 and sceneHeight > 360, "a scalable chart is not held to its geometry units: " .. sceneWidth .. " x " .. sceneHeight)
+t.assertEqual(scalableScene.fitRadius, 180, "the camera frames the chart's own radius, not the view's")
+host.size = ns.Size(1200, 900)
+host:layout(1200)
+local largerWidth, largerHeight = scalableScene.frame.size.width, scalableScene.frame.size.height
+t.expect(largerWidth > sceneWidth and largerHeight > sceneHeight, "a larger view gives a larger wheel")
+local px, py = ns._sectorScenePoint(scalableScene, largerWidth / 2, largerHeight / 2, 0)
+t.expect(px and math.abs(px - 180) < 1 and math.abs(py - 180) < 1, "the view center is the chart center on the floor, in sector units: " .. tostring(px) .. ", " .. tostring(py))
+local _, flatFails = pcall(ns.SectorChart, {scalable = true, raisedMarks[1]})
+t.expect(not _, "a scalable chart must be raised")
+
 local raisedLayout = Sectors.layout({{value = 1}, {value = 1}}, 200, 0.4, 0, -45)
 t.assertEqual(raisedLayout[1].startAngle, -45, "layout can start at another angle")
 -- The tilted camera maps a pointer back onto the flat chart: the view's

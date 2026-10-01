@@ -17,14 +17,14 @@ local function destinations()
 	local list = {
 		{section = true, title = "Storage"},
 		{id = "overview", name = "Overview", icon = "chart.pie.fill", color = "systemBlue", key = "1"},
-		{id = "map", name = "Map", icon = "circle.circle.fill", color = "systemIndigo", key = "2"},
+		{id = "map", name = "Storage Map", icon = "circle.circle.fill", color = "systemIndigo", key = "2"},
 		{id = "folder", name = "Folder Map", icon = "folder.fill", color = "systemBlue"},
-		{id = "largest", name = "Largest Items", icon = "chart.bar.fill", color = "systemOrange", key = "3"},
+		{id = "largest", name = "Largest Locations", icon = "chart.bar.fill", color = "systemOrange", key = "3"},
 		{id = "files", name = "Large Files", icon = "doc.fill", color = "systemTeal", key = "4"},
 		{id = "kinds", name = "File Types", icon = "square.grid.2x2.fill", color = "systemPink", key = "5"},
 		{id = "duplicates", name = "Duplicates", icon = "doc.on.doc.fill", color = "systemTeal"},
-		{section = true, title = "Clean Up"},
-		{id = "cleanup", name = "Recommendations", title = "Clean Up", icon = "sparkles", color = "systemIndigo", key = "6"},
+		{section = true, title = "Reclaim"},
+		{id = "cleanup", name = "Clean Up", icon = "sparkles", color = "systemIndigo", key = "6"},
 		{id = "applications", name = "Applications", icon = "square.grid.3x3.fill", color = "systemBlue", key = "7"},
 		{section = true, title = "System"},
 		{id = "disks", name = "Disks & Volumes", icon = "internaldrive.fill", color = "systemGray"},
@@ -35,6 +35,7 @@ local function destinations()
 		{id = "xcode", name = "Xcode", icon = "hammer.circle.fill", color = "systemBlue", key = "9", workflow = "developer"},
 		{id = "projects", name = "Projects", icon = "folder.fill.badge.gearshape", color = "systemOrange", workflow = "developer"},
 		{id = "simulators", name = "Simulators", icon = "iphone", color = "systemBlue", workflow = "developer"},
+		{id = "worktrees", name = "Worktrees", icon = "arrow.triangle.branch", color = "systemPurple", workflow = "developer"},
 	}}
 	local section
 	for _, workflow in ipairs(Workflows.list) do

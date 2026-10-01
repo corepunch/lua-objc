@@ -106,9 +106,22 @@ function Updates.installers(model, files)
 	return rows
 end
 
+-- How much room an update needs, said honestly. Software Update shows a
+-- download size; installing needs further space to stage and prepare it that
+-- macOS does not publish, so there is no recovery target to quote. The note
+-- says so, never invents one, and keeps readers away from protected system
+-- volumes: the way to make room is the user-owned storage Clean Up ranks.
+function Updates.spaceNote(update, freeBytes)
+	local free = freeBytes and (" Free space now: " .. Model.size(freeBytes) .. ".") or ""
+	if not update.known then return "Open Software Update to see whether an update is waiting and how large it is." .. free end
+	if #update.updates == 0 then return "No update is waiting, so no space target applies." .. free end
+	return "Software Update shows the download size. Installing needs more room on top of it to stage and prepare the update, and macOS does not publish that figure, so the space to recover is unknown, not zero."
+		.. free .. " Staged update files and the Update and Preboot volumes belong to macOS: do not remove them by hand, and they shrink when the update finishes. To make room, review Clean Up."
+end
+
 -- Everything the Updates & Snapshots page shows. `snapshotDates` is nil while
 -- tmutil has not answered, and false when it failed.
-function Updates.presentation(model, plist, snapshotDates, installerFiles)
+function Updates.presentation(model, plist, snapshotDates, installerFiles, freeBytes)
 	local stages = {}
 	for index, stage in ipairs(Updates.stages) do
 		table.insert(stages, {index = index, id = stage.id, title = stage.title, icon = stage.icon,
@@ -120,7 +133,8 @@ function Updates.presentation(model, plist, snapshotDates, installerFiles)
 	elseif snapshotDates == false then snapshotTitle = "Local snapshots could not be listed"
 	elseif #snapshots == 0 then snapshotTitle = "No local snapshots"
 	else snapshotTitle = #snapshots .. (#snapshots == 1 and " local snapshot" or " local snapshots") end
-	return {softwareUpdate = Updates.softwareUpdate(plist), stages = stages,
+	local update = Updates.softwareUpdate(plist)
+	return {softwareUpdate = update, spaceNote = Updates.spaceNote(update, freeBytes), stages = stages,
 		installers = Updates.installers(model, installerFiles), snapshots = snapshots, snapshotTitle = snapshotTitle}
 end
 

@@ -10,7 +10,7 @@ local Navigation = require("apps.diskmap.controllers.NavigationController")
 -- system pages, and appear only on a Mac that does that work.
 local order = {}
 for _, row in ipairs(Navigation.destinations) do if row.section then table.insert(order, row.title) end end
-t.assertEqual(table.concat(order, ","), "Storage,Clean Up,System,Developer,Creative & Games,Learn", "work follows System")
+t.assertEqual(table.concat(order, ","), "Storage,Reclaim,System,Developer,Creative & Games,Learn", "work follows System")
 
 local developer, music = Workflows.find("developer"), Workflows.find("music")
 local model = Model.new("/Users/test")
@@ -45,7 +45,9 @@ for _, workflow in ipairs(Workflows.list) do
 			t.expect(item ~= nil and item:isLeaf(), workflow.id .. " cites a catalog location: " .. id)
 		end
 	end
-	for _, link in ipairs(workflow.links or {}) do t.expect(model.resources:find(link.open) ~= nil, workflow.id .. " links to a resource: " .. link.open) end
+	for _, link in ipairs(workflow.links or {}) do
+		t.expect(link.page ~= nil or model.resources:find(link.open) ~= nil, workflow.id .. " links to a resource or a page: " .. tostring(link.open or link.page))
+	end
 end
 
 -- A page lists its measured locations, largest first, and totals them.
@@ -74,10 +76,10 @@ local navigation = Navigation.new(function(id) shown = id end)
 local plain = #navigation:list()
 for _, row in ipairs(navigation:list()) do t.expect(not row.workflow and row.title ~= "Developer", "no kind of work is listed before it is known") end
 t.expect(navigation:setWorkflows({developer = true}), "the Developer section can be shown")
-t.assertEqual(#navigation:list(), plain + 5, "showing adds the header and its four pages")
+t.assertEqual(#navigation:list(), plain + 6, "showing adds the header and its five pages")
 t.expect(not navigation:setWorkflows({developer = true}), "showing twice changes nothing")
 t.expect(navigation:setWorkflows({developer = true, music = true, games = true}), "other work is shown beside it")
-t.assertEqual(#navigation:list(), plain + 5 + 3, "one header for both pages")
+t.assertEqual(#navigation:list(), plain + 6 + 3, "one header for both pages")
 t.expect(navigation:setWorkflows({}), "and hidden again")
 t.assertEqual(#navigation:list(), plain, "nothing else changed")
 
@@ -91,16 +93,16 @@ local sidebar = app.navigation.refs.sidebar
 t.assertEqual(sidebar.rowCount, plain, "an ordinary Mac's sidebar has no Developer or creative pages")
 app.model.measurements.derived = {status = "complete", bytes = 900e6}
 app:updateRows()
-t.assertEqual(sidebar.rowCount, plain + 5, "the section appears once developer data is measured")
+t.assertEqual(sidebar.rowCount, plain + 6, "the section appears once developer data is measured")
 t.assertEqual(bridge._tableCell(sidebar, 0, app.navigation:index("developer") - 1).textField.stringValue, "Developer", "under its own header")
 app.model.measurements["steam-games"] = {status = "complete", bytes = 40e9}
 app:updateRows()
-t.assertEqual(sidebar.rowCount, plain + 7, "Games appears once games are measured")
+t.assertEqual(sidebar.rowCount, plain + 8, "Games appears once games are measured")
 -- A rescan clears sizes; the pages stay.
 app.model.measurements.derived = {status = "calculating"}
 app.model.measurements["steam-games"] = {status = "calculating"}
 app:updateRows()
-t.assertEqual(sidebar.rowCount, plain + 7, "pages stay while a rescan measures again")
+t.assertEqual(sidebar.rowCount, plain + 8, "pages stay while a rescan measures again")
 app:show("games")
 t.expect(app.refs.list_installed ~= nil or app.refs.workflowEmpty ~= nil, "the Games page mounts")
 

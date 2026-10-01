@@ -2,6 +2,7 @@ local Page = require("apps.diskmap.controllers.PageController")
 local Model = require("apps.diskmap.Model")
 local Files = require("apps.diskmap.models.Files")
 local Selection = require("apps.diskmap.models.Selection")
+local Scope = require("apps.diskmap.models.Scope")
 local Sectors = require("ui.sectors")
 local Controller = Page.extend("kinds", "Kinds")
 
@@ -72,7 +73,7 @@ function Controller:update(state)
 	}
 	for _, kind in ipairs(kinds) do actions["kind_" .. kind.id] = function() self.showFiles(kind.id) end end
 	local selected = self.selectedId and headline or nil
-	local refs = self:render({kinds = marks, total = Model.size(all),
+	local refs = self:render({kinds = marks, total = Model.size(all), scope = Scope.text(self.model, "kinds"),
 		summary = #kinds == 0 and "Measuring files…" or (Model.size(all) .. " in files across " .. #kinds .. " kinds"),
 		accessibilityLabel = "File types: " .. table.concat(labels, ", "),
 		headline = headline and {id = headline.id, title = headline.name .. " · " .. headline.size, advice = headline.advice} or {},

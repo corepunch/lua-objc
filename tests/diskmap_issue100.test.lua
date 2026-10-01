@@ -101,4 +101,94 @@ local installerKind
 for _, kind in ipairs(kinds) do if kind.id == "installers" then installerKind = kind end end
 t.expect(installerKind and installerKind.subtitle:find("inventory total", 1, true), "the File Types row calls its total an inventory")
 t.expect(installerKind.removableBytes and installerKind.removableBytes <= installerKind.bytes, "and shows the removable part apart from it")
+
+-- Generated project output is one decision per artifact and project, counted once.
+local Projects = require("apps.diskmap.models.Projects")
+local Scan = require("apps.diskmap.controllers.ScanController")
+local pm = Model.new("/Users/test")
+Scan.register(pm, {
+	{id = "cm1", name = "CMake build output · engine", path = "/Users/test/Developer/engine/build", policy = "Rebuildable", action = "trash",
+		artifact = "CMake build output", project = "/Users/test/Developer/engine", projectName = "engine", reviewThreshold = 500e6},
+	{id = "cm2", name = "CMake build output · tools", path = "/Users/test/Developer/tools/build", policy = "Rebuildable", action = "trash",
+		artifact = "CMake build output", project = "/Users/test/Developer/tools", projectName = "tools", reviewThreshold = 500e6},
+})
+pm.measurements.cm1 = {status = "complete", bytes = 400e6}
+pm.measurements.cm2 = {status = "complete", bytes = 300e6}
+local groups = Projects.groups(pm, {})
+local projectTotal = 0
+for _, group in ipairs(groups) do projectTotal = projectTotal + group.bytes end
+local ecosystem
+for _, value in ipairs(Cleanup.suggestions(pm)) do if value.group then ecosystem = value end end
+t.assertEqual(projectTotal, 700e6, "the Projects page counts each artifact once")
+t.assertEqual(ecosystem and ecosystem.bytes, 700e6, "the ecosystem group counts the same artifacts once, not again")
+t.assertEqual(ecosystem and ecosystem.eligibleBytes, 700e6, "and its eligible bytes equal its measured, proven rebuildable bytes")
+pm.files = {large = {{path = "/Users/test/Developer/engine/build/obj/index.bin", bytes = 100e6, used = os.time()}}, old = {}, extensions = {}}
+local ok, reason = Files.validateTrash(pm, "/Users/test/Developer/engine/build/obj/index.bin")
+t.assertEqual(ok, false, "a single file inside generated output is not a trash candidate")
+t.assertEqual(reason.code, "artifact", "the reason names the artifact: " .. tostring(reason and reason.message))
+-- A running app is never inactive, whatever its date says.
+local appModel = Model.new("/Users/test")
+appModel.resources:add("applications", {id = "run-app", name = "Busy.app", subtitle = "Installed application", path = "/Applications/Busy.app"})
+appModel.measurements["run-app"] = {status = "complete", bytes = 5e8}
+local oldDate = os.time() - 400 * 86400
+local busy = Applications.rows(appModel, {["/Applications/Busy.app"] = {bundleId = "com.example.busy", lastUsed = oldDate, running = true}}, "All")[1]
+t.expect(busy.running and not busy.unused, "an app that is open now is not unused")
+t.assertEqual(busy.detail, "Running now", "and says so")
+t.assertEqual(#Applications.rows(appModel, {["/Applications/Busy.app"] = {bundleId = "com.example.busy", lastUsed = oldDate, running = true}}, "Unused for 6 months"), 0,
+	"the Unused filter leaves it out")
+local idle = Applications.rows(appModel, {["/Applications/Busy.app"] = {bundleId = "com.example.busy", lastUsed = oldDate}}, "Unused for 6 months")[1]
+t.expect(idle and idle.unused, "the same app closed with a known old date is unused")
+
+-- Totals say what they cover and what the scan could not see.
+local Scope = require("apps.diskmap.models.Scope")
+local scoped = Model.new("/Users/test")
+t.expect(Scope.coverage(scoped):find("Photos, Music and TV libraries excluded", 1, true), "excluded media is stated")
+scoped.includeMedia = true
+t.assertEqual(Scope.coverage(scoped), "Coverage: complete.", "a complete scan says so")
+scoped.scan = {running = true, protected = 2}
+t.expect(Scope.coverage(scoped):find("still growing", 1, true) and Scope.coverage(scoped):find("2 protected locations", 1, true), "an unfinished, partly unreadable scan says both")
+for _, page in ipairs({"largest", "cleanup", "files", "kinds"}) do
+	t.expect(Scope.text(scoped, page):find("Coverage:", 1, true) and #Scope.pages[page] > 20, page .. " states its population and coverage")
+end
+t.expect(Scope.pages.files:find("Largest Locations", 1, true) and Scope.pages.kinds:find("over 50 MB", 1, true), "overlaps between pages are named")
+local scopeApp = AppController.new(Mock.new())
+scopeApp:createWindow()
+scopeApp.scan:start()
+for _, id in ipairs({"largest", "cleanup", "files", "kinds"}) do
+	scopeApp:show(id)
+	t.expect(scopeApp.refs.scopeNote and scopeApp.refs.scopeNote.text:find("Coverage:", 1, true), id .. " shows its scope note beside its totals")
+end
+
+-- Every sidebar destination has an audited conclusion and next step, or a stated reason for none.
+local Audit = require("apps.diskmap.knowledge.Audit")
+local Navigation = require("apps.diskmap.controllers.NavigationController")
+local seen = {}
+for _, row in ipairs(Navigation.destinations) do
+	if row.id then
+		seen[row.id] = true
+		local entry = Audit[row.id]
+		t.expect(entry ~= nil, row.id .. " is in the cleanup audit")
+		if entry then t.expect((entry.conclusion and entry.next) or entry.none, row.id .. " states a conclusion and next step, or why it has none") end
+	end
+end
+for id in pairs(Audit) do t.expect(seen[id], "the audit names a real destination: " .. id) end
+
+-- Updates: download size is not installation space, and no recovery target is invented.
+local Updates = require("apps.diskmap.models.Updates")
+local waiting = Updates.softwareUpdate({RecommendedUpdates = {{["Display Name"] = "macOS Tahoe 26.1"}}, LastSuccessfulDate = "2026-09-24 08:12:00 +0000"})
+local note = Updates.spaceNote(waiting, 4e9)
+t.expect(note:find("download size", 1, true) and note:find("needs more room", 1, true), "the note separates download size from installation space")
+t.expect(note:find("unknown, not zero", 1, true) and not note:find("%d+%.?%d* GB to recover"), "the recovery target is stated unknown, never made up")
+t.expect(note:find("do not remove them by hand", 1, true) and note:find("Update and Preboot", 1, true), "staging is explained without suggesting removing protected volumes")
+t.expect(note:find("Free space now: 4.0 GB", 1, true), "the free space it does know is shown")
+t.expect(Updates.spaceNote(Updates.softwareUpdate({}), nil):find("no space target applies", 1, true), "with no update there is nothing to make room for")
+t.expect(Updates.spaceNote(Updates.softwareUpdate(nil), nil):find("Open Software Update", 1, true), "an unreadable record says to check Software Update")
+
+-- Results report measured free space the same way everywhere.
+local Outcome = require("apps.diskmap.models.Outcome")
+t.assertEqual(Outcome.freeText(10e9, 12.1e9), "Free space 10.0 GB → 12.1 GB (+2.1 GB)", "a freed amount is shown")
+t.expect(Outcome.freeText(10e9, 10e9, true):find("after a short delay", 1, true), "no change right after a removal explains the delay")
+t.assertEqual(Outcome.freeText(nil, 1), "Free space could not be measured.", "an unmeasured figure says so")
+t.assertEqual(Outcome.free({diskSpace = function() return {freeKb = 1000} end}, "/"), 1000 * 1024, "free space is read from the service")
+t.assertEqual(Outcome.free({}, "/"), nil, "a service that cannot say gives nil")
 os.exit(t.summary() and 0 or 1)

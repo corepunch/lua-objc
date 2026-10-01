@@ -61,13 +61,21 @@ touch(tmp .. "/old/package.json"); os.execute("/bin/mkdir -p " .. tmp .. "/old/n
 touch(tmp .. "/mono/.git/HEAD"); touch(tmp .. "/mono/apps/ios/Podfile"); touch(tmp .. "/mono/apps/ios/Pods/Manifest.lock")
 touch(tmp .. "/py/requirements.txt"); touch(tmp .. "/py/venv/pyvenv.cfg")
 os.execute("/bin/mkdir -p " .. tmp .. "/stray/node_modules")
+-- CMake: marker beside, CMakeCache.txt inside as the proof; a bare "build" is nothing.
+touch(tmp .. "/cmakeapp/CMakeLists.txt"); touch(tmp .. "/cmakeapp/build/CMakeCache.txt")
+touch(tmp .. "/unconfigured/CMakeLists.txt"); os.execute("/bin/mkdir -p " .. tmp .. "/unconfigured/build")
+os.execute("/bin/mkdir -p " .. tmp .. "/plainbuild/build")
+-- A project-local DerivedData folder needs an Xcode project beside it.
+os.execute("/bin/mkdir -p " .. tmp .. "/iosapp/App.xcodeproj"); touch(tmp .. "/iosapp/DerivedData/Build/Products/x")
+touch(tmp .. "/noproject/DerivedData/Build/Products/x")
 local originalCommand, originalAccess, finds = System.command, System.hasFullDiskAccess, {}
 System.hasFullDiskAccess = function() return false end
 System.command = function(argv, done)
 	table.insert(finds, argv)
 	if argv[2] == tmp then
 		done(false, table.concat({tmp .. "/site/node_modules", tmp .. "/old/node_modules", tmp .. "/mono/apps/ios/Pods",
-			tmp .. "/py/venv", tmp .. "/stray/node_modules", "find: " .. tmp .. "/locked: Permission denied"}, "\n"))
+			tmp .. "/py/venv", tmp .. "/stray/node_modules", tmp .. "/cmakeapp/build", tmp .. "/unconfigured/build",
+			tmp .. "/plainbuild/build", tmp .. "/iosapp/DerivedData", tmp .. "/noproject/DerivedData", "find: " .. tmp .. "/locked: Permission denied"}, "\n"))
 		return
 	end
 	local output = argv[2] == "/Applications" and "/Applications/Editor.app\n/Applications/Install macOS Tahoe.app\n" or
@@ -87,6 +95,15 @@ t.expect(old and old.policy == "Review" and old.action == "finder", "a folder pr
 t.expect(pods and pods.artifact == "CocoaPods dependencies" and pods.projectName == "mono/apps/ios", "Pods are found and named from their repository")
 t.expect(venv and venv.artifact == "Python virtual environments" and venv.policy == "Review", "a venv beside requirements.txt is found and stays Review")
 t.expect(byPath[tmp .. "/stray/node_modules"] == nil, "a folder without its project file is never claimed")
+local cmake, unconfigured, derivedLocal = byPath[tmp .. "/cmakeapp/build"], byPath[tmp .. "/unconfigured/build"], byPath[tmp .. "/iosapp/DerivedData"]
+t.expect(cmake and cmake.artifact == "CMake build output" and cmake.policy == "Rebuildable" and cmake.marker == tmp .. "/cmakeapp/CMakeLists.txt",
+	"a build folder with CMakeCache.txt beside CMakeLists.txt is Rebuildable CMake output")
+t.expect(unconfigured and unconfigured.policy == "Review", "a build folder never configured is found by its marker but stays Review")
+t.assertEqual(byPath[tmp .. "/plainbuild/build"], nil, "a folder named build without a project marker is never claimed")
+t.expect(derivedLocal and derivedLocal.artifact == "Xcode project build data" and derivedLocal.policy == "Rebuildable"
+	and derivedLocal.marker == tmp .. "/iosapp/App.xcodeproj", "project-local DerivedData beside an Xcode project is recognised")
+t.assertEqual(byPath[tmp .. "/noproject/DerivedData"], nil, "DerivedData without an Xcode project is not claimed")
+t.assertEqual(cmake.project, tmp .. "/cmakeapp", "an artifact belongs to the project that owns it")
 t.assertEqual(site.marker, tmp .. "/site/package.json", "each folder remembers the file that proved it")
 os.execute("/bin/rm -rf " .. tmp)
 local appEntries = {}; for _, entry in ipairs(discovered) do appEntries[entry.path] = entry end

@@ -40,7 +40,9 @@ end
 -- other categories leaves the page untouched.
 function Controller:update()
 	if not self.template then return end
-	local data = Updates.presentation(self.model, self.plist, self.snapshotDates, self.installerFiles)
+	local disk = self.service.diskSpace and self.service.diskSpace(self.model.home)
+	local free = disk and disk.freeKb and disk.freeKb * 1024 or nil
+	local data = Updates.presentation(self.model, self.plist, self.snapshotDates, self.installerFiles, free)
 	data.installersLoading = self.installerFiles == nil
 	data.actions = {
 		openSoftwareUpdate = function() self.service.openSettings("softwareupdate") end,

@@ -69,4 +69,15 @@ t.assertEqual(searched, 0, "adding a folder reads nothing")
 page.template.actions.search()
 t.assertEqual(searched, 1, "Find Duplicates searches the added folders")
 t.expect(service.loadFolders("duplicates")[1] == service.home .. "/Library", "added folders are remembered")
+
+-- Empty states are told apart: nothing chosen, not searched yet, searching,
+-- searched with no duplicates, filtered away, failed.
+t.assertEqual(Duplicates.state({}, false, nil, 0), "choose", "no folder chosen invites a choice")
+t.assertEqual(Duplicates.state({"/a"}, false, nil, 0), "ready", "a chosen folder that was never searched is ready, not empty")
+t.assertEqual(Duplicates.state({"/a"}, true, nil, 0), "searching", "a running search is loading")
+t.assertEqual(Duplicates.state({"/a"}, false, {groups = {}}, 0), "none", "a finished search with no groups found none")
+t.assertEqual(Duplicates.state({"/a"}, false, {groups = {{}}}, 0, "zzz"), "nomatch", "a filter that hides every group is no match, not no duplicates")
+t.assertEqual(Duplicates.state({"/a"}, false, {groups = {{}}}, 2), "list", "groups are listed")
+t.assertEqual(Duplicates.state({"/a"}, false, {failure = "denied"}, 0), "failed", "a failed search is a failure, not an empty result")
+t.assertEqual(Duplicates.state({"/a"}, false, {}, 0), "failed", "a result without groups is a failure")
 os.exit(t.summary() and 0 or 1)

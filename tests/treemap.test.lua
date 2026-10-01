@@ -35,6 +35,33 @@ local cells = Treemap.layout(nodes, 400, 300)
 local byId = {}
 for _, cell in ipairs(cells) do byId[cell.id] = cell end
 t.assertEqual(byId.zero, nil, "zero values are not drawn")
+-- No two rectangles touch: siblings keep a margin on every side, and a child sits inside its parent's.
+local margin = Treemap.metrics.margin
+local big = {}
+for index = 1, 12 do table.insert(big, {id = "n" .. index, value = 13 - index, label = "N" .. index}) end
+for index = 1, 6 do table.insert(big, {id = "k" .. index, parent = "n1", value = 7 - index, label = "K" .. index}) end
+local bigCells = Treemap.layout(big, 800, 500)
+local parentOf = {}
+for _, node in ipairs(big) do parentOf[node.id] = node.parent end
+for i, a in ipairs(bigCells) do
+	for j = i + 1, #bigCells do
+		local b = bigCells[j]
+		if parentOf[a.id] == parentOf[b.id] and a.w > 4 * margin and b.w > 4 * margin and a.h > 4 * margin and b.h > 4 * margin then
+			local apartX = math.max(b.x - (a.x + a.w), a.x - (b.x + b.w))
+			local apartY = math.max(b.y - (a.y + a.h), a.y - (b.y + b.h))
+			t.expect(math.max(apartX, apartY) >= 2 * margin - 1e-6, a.id .. " and " .. b.id .. " do not touch")
+		end
+	end
+end
+local n1 = bigCells[1]
+for _, cell in ipairs(bigCells) do
+	if parentOf[cell.id] == "n1" then
+		t.expect(cell.x >= n1.x + margin - 1e-6 and cell.x + cell.w <= n1.x + n1.w - margin + 1e-6, cell.id .. " keeps a margin inside its parent")
+	end
+end
+for _, cell in ipairs(bigCells) do
+	if cell.header then t.expect(cell.labelFrame.x + cell.labelFrame.w <= cell.x + cell.w, cell.id .. "'s header text stays inside its own rectangle") end
+end
 t.expect(byId.a and byId.a1, "parents and children are both drawn")
 t.expect(byId.a1.x >= byId.a.x and byId.a1.y >= byId.a.y + Treemap.metrics.labelStrip - 1e-9, "children sit below their parent's label strip")
 t.assertEqual(byId.a1.depth, 1, "children are one level deeper")

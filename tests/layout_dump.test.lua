@@ -64,7 +64,8 @@ width, height, windowX, windowY = tonumber(width), tonumber(height), tonumber(wi
 t.expect(width ~= nil and windowX > 0 and windowY > 0 and windowY + height < 900,
 	"a view inside unflipped stacks reports a top-left window origin")
 local cellX, cellY = treemap:match('<TreemapCell id="[^"]+" depth="0" window="([%d.]+) ([%d.]+) ')
-t.expect(cellX ~= nil and tonumber(cellX) == windowX and tonumber(cellY) == windowY,
-	"the first top-level treemap cell starts at the treemap's window origin")
+local margin = require("ui.treemap").metrics.margin
+t.expect(cellX ~= nil and tonumber(cellX) == windowX + margin and tonumber(cellY) == windowY + margin,
+	"the first top-level treemap cell starts one margin inside the treemap's window origin")
 
 os.exit(t.summary() and 0 or 1)

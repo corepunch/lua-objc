@@ -374,10 +374,16 @@ end
 -- points deep in a SceneKit view instead of flat arcs; the geometry, hit
 -- testing and interaction are the same. `shadow = false` drops its contact
 -- shadow.
+-- `scalable = true` (raised charts only) lays the sectors out in a fixed
+-- geometry of `diameter` units (default 360) and lets the view take whatever
+-- room it is given: the camera frames the chart on the view's narrower side,
+-- so it stays centered, keeps its aspect and grows with the view. Pointer
+-- positions are mapped back into those units.
 function Sectors.chart(ns, props)
 	props = props or {}
-	local diameter = math.min(props.fixedWidth or props.fixedHeight or 160,
-		props.fixedHeight or props.fixedWidth or 160)
+	local scalable = props.scalable == true
+	local diameter = scalable and (tonumber(props.diameter) or 360)
+		or math.min(props.fixedWidth or props.fixedHeight or 160, props.fixedHeight or props.fixedWidth or 160)
 	local marks, overlays = splitChildren(props)
 	local depth = math.max(0, tonumber(props.depth) or 0)
 	local state = {ns = ns, diameter = diameter, innerRadius = props.innerRadius, angularInset = props.angularInset,
@@ -385,9 +391,11 @@ function Sectors.chart(ns, props)
 	state.ring = Sectors.ring(diameter, props.innerRadius)
 	state.start = depth > 0 and STYLE.raisedStart or TOP
 	state.sectors = Sectors.layout(marks, diameter, props.innerRadius, props.angularInset, state.start)
+	assert(not scalable or depth > 0, "a scalable SectorChart needs depth")
 	local stack = {alignment = "center", fixedWidth = diameter, fixedHeight = diameter}
+	if scalable then stack = {alignment = "center", fillWidth = true, fillHeight = true} end
 	for key, value in pairs(props) do
-		if type(key) == "string" and stack[key] == nil and key ~= "innerRadius" and key ~= "angularInset" and key ~= "depth" and key ~= "shadow"
+		if type(key) == "string" and stack[key] == nil and key ~= "scalable" and key ~= "diameter" and key ~= "innerRadius" and key ~= "angularInset" and key ~= "depth" and key ~= "shadow"
 			and key ~= "accessibilityLabel" and key ~= "onSelect" and key ~= "onHover" and key ~= "onCenter" and key ~= "onBack" and key ~= "dragItem" then
 			stack[key] = value
 		end
@@ -396,7 +404,11 @@ function Sectors.chart(ns, props)
 	state.rings = ringCount(state.sectors)
 	if depth > 0 then
 		assert(type(ns.SectorScene) == "function", "SectorChart depth needs a SectorScene view on this platform")
-		state.scene = ns.SectorScene {width = diameter, height = diameter, shadow = props.shadow, sectors = sceneSpecs(state)}
+		if scalable then
+			state.scene = ns.SectorScene {fillWidth = true, fillHeight = true, fitRadius = diameter / 2, shadow = props.shadow, sectors = sceneSpecs(state)}
+		else
+			state.scene = ns.SectorScene {width = diameter, height = diameter, shadow = props.shadow, sectors = sceneSpecs(state)}
+		end
 		table.insert(stack, state.scene)
 	else
 		for index, spec in ipairs(state.specs) do
@@ -463,7 +475,8 @@ function Sectors.chart(ns, props)
 			if state.scene then return sceneHit(state, x, y) end
 			return Sectors.hit(state.sectors, diameter, x, y), x, y
 		end
-		table.insert(stack, (ns.PointerView {width = diameter, height = diameter,
+		table.insert(stack, (ns.PointerView {width = not scalable and diameter or nil, height = not scalable and diameter or nil,
+			fillWidth = scalable or nil, fillHeight = scalable or nil,
 			onClick = function(_, x, y, count)
 				local sector
 				sector, x, y = locate(x, y)
