@@ -66,7 +66,8 @@ function Controller:update(state)
 	-- The ring leads into the Map: a category's sector opens the Map inside
 	-- it, the folded categories and the center open the whole map. Free and
 	-- unattributed space have nothing inside to show. The sector under the
-	-- pointer is named in the center, in place of the used total.
+	-- pointer is named on the line under the ring; the center keeps the used
+	-- total and nothing outside the chart follows the pointer.
 	local summary = Overview.summary(self.model, state.disk, state.capacity)
 	local marks = {}
 	for _, mark in ipairs(chart.marks) do marks[mark.id] = mark end
@@ -77,12 +78,7 @@ function Controller:update(state)
 	actions.chartCenter = function() self.handlers.map("") end
 	actions.chartHover = function(id)
 		local refs, mark = self.hero.refs, id and marks[id]
-		if not refs then return end
-		refs.usedTotal.text = mark and mark.size or summary.used
-		refs.usedCaption.text = mark and mark.label or summary.caption
-		-- The sector under the pointer selects its category row.
-		self.selectedId = Selection.index(self.categoryRows, id) and id or nil
-		Selection.show(self.refs and self.refs.results, self.categoryRows, self.selectedId)
+		if refs then refs.chartDetail.text = mark and mark.detail or "" end
 	end
 	local cloudBytes, cloudFiles = Inventory.cloud(self.model)
 	self.hero:update({summary = summary, chart = chart,

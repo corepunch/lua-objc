@@ -87,9 +87,14 @@ function Overview.chart(model, disk)
 	if free and free.bytes > 0 then
 		table.insert(marks, {id = "free", value = free.bytes, color = "quaternaryLabel", label = "Free"})
 	end
+	-- `detail` is the line under the ring for the sector under the pointer,
+	-- as the Map names its hovered node. Used space is shared out of what is
+	-- used, like the legend; free space out of the whole disk.
 	local summary = {}
 	for _, mark in ipairs(marks) do
 		mark.size = Model.size(mark.value)
+		mark.detail = mark.label .. " · " .. mark.size .. " · "
+			.. (mark.id == "free" and (percent(mark.value, total) .. " of disk") or percent(mark.value, used))
 		table.insert(summary, mark.label .. " " .. mark.size)
 	end
 	return {marks = marks, legend = legend, explanation = explanation,

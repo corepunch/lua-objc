@@ -8,10 +8,10 @@ local Controller = Page.extend("map", "Map")
 
 local STYLES = {"rings", "rectangles"}
 
--- The Map page: the semantic tree as raised rings or rectangles beside a
--- list of the focused node's children. Clicking a group focuses it, the center or the
--- breadcrumb goes back up, and hovering describes a node without
--- re-rendering the chart. Activating a leaf opens its category sheet; list
+-- The Map page: the semantic tree as raised rings beside a list of the
+-- focused node's children, or as rectangles alone. Clicking a group focuses
+-- it, the center or the breadcrumb goes back up, and hovering describes a
+-- node without re-rendering the chart. Activating a leaf opens its category sheet; list
 -- rows carry the same menu as every other resource list.
 -- `style` ("rings" or "rectangles") picks the initial chart; unknown values
 -- fall back to rings.
@@ -147,7 +147,8 @@ function Controller:update(state)
 	data.actions = actions
 	local refs = self:render(data)
 	self.rows = data.rows
-	refs.mapList:replaceRows(data.rows)
+	-- Rectangles have no list beside them.
+	if refs.mapList then refs.mapList:replaceRows(data.rows) end
 	-- Reloading rows drops the native selection; the token restores it.
 	if Selection.index(self.rows, self.selectedId) then Selection.show(refs.mapList, self.rows, self.selectedId)
 	else self.selectedId = nil end
