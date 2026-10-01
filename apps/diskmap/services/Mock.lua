@@ -696,7 +696,70 @@ function Mock:pickFolder()
 	return nil
 end
 
+-- Leftover worktrees from the fixture, kept in memory so removal changes
+-- what the next read reports. Paths resolve against the virtual home.
+local function worktreeStore(self)
+	if not self.worktreeStore then
+		local store = {}
+		for _, record in ipairs(copy(self.fixture.worktrees or {})) do
+			local entry, facts = record.entry, record.facts or {}
+			if facts.activityDaysAgo then facts.lastActivity = os.time() - facts.activityDaysAgo * 86400 - 3600; facts.activityDaysAgo = nil end
+			for _, key in ipairs({"path", "repository", "commonDir"}) do if entry[key] then entry[key] = absolute(entry[key], self.home) end end
+			table.insert(store, {entry = entry, facts = facts})
+		end
+		self.worktreeStore = store
+	end
+	return self.worktreeStore
+end
+
+function Mock:worktreeScan(roots, completion)
+	local entries, facts = {}, {}
+	for _, record in ipairs(worktreeStore(self)) do
+		table.insert(entries, copy(record.entry))
+		facts[record.entry.path] = copy(record.facts)
+	end
+	completion(entries, facts)
+end
+
+function Mock:worktreeState(row, completion)
+	for _, record in ipairs(worktreeStore(self)) do
+		if record.entry.path == row.path then completion(copy(record.entry), copy(record.facts)); return end
+	end
+	completion(nil, nil)
+end
+
+-- `git worktree remove <path>` and `git worktree prune`, as Git would answer.
+local function mockGit(self, arguments, completion)
+	local store = worktreeStore(self)
+	if arguments[4] ~= "worktree" then completion(false, "Mock HDD does not run this git command."); return end
+	if arguments[5] == "remove" then
+		local path = arguments[6]
+		for index, record in ipairs(store) do
+			if record.entry.path == path then
+				if record.entry.primary then completion(false, "fatal: '" .. path .. "' is a main working tree"); return end
+				if record.entry.locked then completion(false, "fatal: cannot remove a locked working tree"); return end
+				if (record.facts.changes or 0) > 0 or (record.facts.untracked or 0) > 0 then
+					completion(false, "fatal: '" .. path .. "' contains modified or untracked files, use --force to delete it"); return
+				end
+				self.availableBytes = math.min(self.fixture.capacityBytes, self.availableBytes + (record.facts.bytes or 0) + (record.facts.gitBytes or 0))
+				table.remove(store, index)
+				completion(true, "")
+				return
+			end
+		end
+		completion(false, "fatal: '" .. tostring(path) .. "' is not a working tree")
+		return
+	end
+	if arguments[5] == "prune" then
+		for index = #store, 1, -1 do if store[index].entry.prunable then table.remove(store, index) end end
+		completion(true, "")
+		return
+	end
+	completion(false, "Mock HDD does not run this git command.")
+end
+
 function Mock:command(arguments, completion)
+	if arguments[1] == "/usr/bin/git" then mockGit(self, arguments, completion); return end
 	if arguments[1] ~= "/usr/bin/xcrun" or arguments[2] ~= "simctl" then
 		completion(false, "Mock HDD never runs external commands.")
 		return

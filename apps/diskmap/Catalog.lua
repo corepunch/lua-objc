@@ -72,8 +72,18 @@ function Catalog.buildRules()
 			consequence = "cargo build recreates this folder; the next build takes longer. Moving to Trash does not free space until you empty it."}),
 		generated("pom.xml", "target", {name = "Maven build output", subtitle = "Generated Maven artifacts; mvn package recreates them",
 			plain = "Files a Java build produced. The next build makes them again."}),
-		generated("CMakeCache.txt", "build", {name = "CMake build output", subtitle = "Generated build files; the next configure and build recreate them",
-			plain = "Files a C or C++ build produced. The next build makes them again."}),
+		-- The marker is the project's CMakeLists.txt beside the folder; the proof is the
+		-- CMakeCache.txt CMake writes inside it. A folder named "build" alone proves nothing.
+		generated("CMakeLists.txt", "build", {name = "CMake build output", subtitle = "Generated build files; the next configure and build recreate them",
+			plain = "Files a C or C++ build produced. The next build makes them again.",
+			inner = {"CMakeCache.txt"}, rebuildable = true,
+			consequence = "cmake configures and builds this folder again; the next build takes longer. Moving to Trash does not free space until you empty it."}),
+		-- A DerivedData folder kept inside a project (xcodebuild -derivedDataPath): the
+		-- Xcode project beside it is the marker, Xcode's own Build or ModuleCache folders the proof.
+		generated({"*.xcodeproj", "*.xcworkspace"}, "DerivedData", {name = "Xcode project build data", subtitle = "Build products kept inside the project; Xcode rebuilds them",
+			plain = "Files Xcode built into this project's own folder. Building again makes them again.",
+			inner = {"Build/Products", "ModuleCache.noindex", "Logs/Build"}, rebuildable = true,
+			consequence = "Xcode rebuilds this folder; the next build takes longer. Quit Xcode first. Moving to Trash does not free space until you empty it."}),
 		generated({"build.gradle", "build.gradle.kts"}, "build", {name = "Gradle build output", subtitle = "Generated Gradle artifacts; the next build recreates them",
 			plain = "Files an Android or Java build produced. The next build makes them again."}),
 		generated("Package.swift", ".build", {name = "Swift build output", subtitle = "SwiftPM build products and checkouts; swift build recreates them",

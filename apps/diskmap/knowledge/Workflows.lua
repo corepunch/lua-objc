@@ -32,7 +32,7 @@ Workflows.list = {
 		empty = "Xcode, package managers, containers and AI tools appear here once measured.",
 		footnote = "Diskmap never removes simulator runtimes, SDKs or archives on its own. Rebuildable data is moved to the Trash only after you review it.",
 		markers = {"~/Library/Developer", "/Applications/Xcode.app"},
-		links = {{title = "Simulators…", open = "simulators"}},
+		links = {{title = "Simulators…", open = "simulators"}, {title = "Worktrees…", page = "worktrees"}},
 		sections = {
 			{id = "xcode", title = "Xcode & simulators", detail = "Build data, device support and simulators. Runtimes and SDKs are managed by Xcode.", groups = {"xcode"}},
 			{id = "packages", title = "Packages & toolchains", detail = "Download caches refill on demand; installed toolchains are removed with their version manager.", groups = {"packages", "toolchains", "test-browsers", "mobile-dev"}},

@@ -2,11 +2,12 @@ local Page = require("apps.diskmap.controllers.PageController")
 local Model = require("apps.diskmap.Model")
 local Files = require("apps.diskmap.models.Files")
 local Inventory = require("apps.diskmap.models.Inventory")
+local Scope = require("apps.diskmap.models.Scope")
 local Controller = Page.extend("files")
 
 local THRESHOLD = Model.size(Inventory.summary.minimumFileBytes)
 local LAYOUT = {
-	summary = "Measuring files…",
+	summary = "Measuring files…", scopeNote = Scope.pages.files,
 	tiles = {
 		{id = "largeTile", icon = "doc.fill", color = "systemTeal", title = "Over " .. THRESHOLD, value = "—", detail = "Individual files, largest first"},
 		{id = "oldTile", icon = "clock.fill", color = "systemOrange", title = "Unused for a year", value = "—", detail = "Not opened or changed since"},
@@ -51,6 +52,7 @@ function Controller:update(state)
 	local refs = self.refs
 	if not refs then return end
 	refs.filter.selectedSegment = self.filterIndex - 1
+	refs.scopeNote.text = Scope.text(self.model, "files")
 	local filter = Files.filters[self.filterIndex]
 	local rows = Files.rows(self.model, filter, state and state.query, self.kind)
 	refs.files:replaceRows(rows)

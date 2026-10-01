@@ -92,8 +92,19 @@ build/ReelNative.dylib: modules/reel/native/ReelNative.m modules/reel/native/sce
 # libgit2 (vendor/libgit2) as a static library per SDK and architecture.
 LIBGIT2_INCLUDE = vendor/libgit2/include
 LIBGIT2_LIBS = -lz -framework Security -framework CoreFoundation
+# The compiled library is immutable for a pinned source revision, platform,
+# architecture and set of compiler inputs, so it is built once into a cache
+# shared by every worktree and cloned (APFS copy-on-write, no extra storage)
+# into each build/ folder. Mutable outputs stay in the worktree's own build/.
+DEP_CACHE ?= $(HOME)/Library/Caches/lua-objc
+LIBGIT2_KEY = $(shell { git -C vendor/libgit2 rev-parse HEAD; cat scripts/libgit2/libgit2.mk scripts/libgit2/git2_features.h scripts/libgit2/pcre2_config.h; xcrun clang --version; } 2>/dev/null | shasum | cut -c1-16)
 build/libgit2/%/libgit2.a: scripts/libgit2/libgit2.mk scripts/libgit2/git2_features.h scripts/libgit2/pcre2_config.h
-	$(MAKE) -j$(shell getconf _NPROCESSORS_ONLN) -f scripts/libgit2/libgit2.mk SDK=$(firstword $(subst -, ,$*)) ARCH=$(lastword $(subst -, ,$*)) OUT=build/libgit2/$*
+	@cached="$(DEP_CACHE)/libgit2/$(LIBGIT2_KEY)/$*/libgit2.a"; \
+	if [ -f "$$cached" ]; then mkdir -p $(dir $@) && cp -c "$$cached" $@ && touch $@ && echo "libgit2 $*: reused from cache"; \
+	else \
+		$(MAKE) -j$(shell getconf _NPROCESSORS_ONLN) -f scripts/libgit2/libgit2.mk SDK=$(firstword $(subst -, ,$*)) ARCH=$(lastword $(subst -, ,$*)) OUT=build/libgit2/$* \
+		&& mkdir -p "$$(dirname $$cached)" && cp -c $@ "$$cached"; \
+	fi
 
 MAC_ARCH := $(shell uname -m)
 build/Git.dylib: src/plugins/git/Git.c build/libgit2/macosx-$(MAC_ARCH)/libgit2.a Makefile

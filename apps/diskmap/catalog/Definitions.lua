@@ -103,6 +103,8 @@ local function tool(id, name, root)
 	for _, spec in ipairs(specs) do
 		local row = item(id .. "-" .. spec[1], spec[2], spec[4], root .. spec[3], spec[5])
 		row.agent = id
+		-- Worktrees are reviewed one by one on their own page, never as a folder total.
+		if spec[1] == "worktrees" then row.page = "worktrees" end
 		table.insert(children, row)
 	end
 	return group(id, name, "Paths and data types; sessions and worktrees require review", "terminal", "systemPurple", children)

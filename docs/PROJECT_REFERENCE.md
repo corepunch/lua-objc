@@ -1023,6 +1023,14 @@ in-app browsing workflow; open a normal external link in the system browser.
 
 ### `SectorChart{...}` and `Gauge{...}`
 
+A raised chart (`depth` > 0) can be `scalable="true"`: its sectors are laid out
+in `diameter` units (default 360) and the view takes the room it is given. The
+camera frames the chart's radius on the view's narrower side, so the wheel is
+centered, keeps its aspect and grows with its container (`flexGrow`,
+`maxWidth`/`maxHeight="infinity"`). Pointer positions are mapped back to the
+same units. The Folder Map puts a scalable chart beside its list in an
+`<HSplit>`, so dragging the divider resizes the wheel.
+
 `<SectorChart>` is SwiftUI Charts' `SectorMark`: a pie or donut composed from
 native `Arc` strokes in a `ZStack`, on AppKit and UIKit alike (`lua/ui/sectors.lua`).
 Each `<SectorMark value="…" color="…" label="…" />` becomes one arc; the first
@@ -1101,7 +1109,7 @@ architecture for games; `apps/coin-quest` is the reference game.
 
 `<Treemap>` draws a squarified treemap from `<TreemapNode id parent value
 color label detail hatched />` records (`lua/ui/treemap.lua` lays it out; the
-native `LuaTreemapView` only paints). Children nest inside their parent below
+native `LuaTreemapView` only paints). Every cell keeps a margin (`Treemap.metrics.margin`, 2 pt) so no two rectangles touch and a child sits inside its parent's margin; a treemap with `flexGrow` and `maxHeight="infinity"` fills its container. Children nest inside their parent below
 a one-line header band holding the parent's label and right-aligned detail; a
 parent too short for the band shows no label. The layout emits each cell's
 `labelFrame`/`detailFrame` and omits labels that would not fit, so labels never

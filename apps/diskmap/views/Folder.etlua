@@ -1,5 +1,5 @@
 <%
-  local FOLDER = { chart = 360, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 34, caption = 13, totalScale = 13 / 34, captionScale = 0.77 }, gap = 5, depth = 14, list = 420, meter = 130, treemapHeight = 420, legendSize = 84, legendShare = 34 }
+  local FOLDER = { minChart = 220, chartUnits = 300, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, gap = 5, depth = 14, list = 420, minList = 260, minPane = 320, meter = 130, legendSize = 84, legendShare = 34 }
   -- Every ring keeps the thickness it has among three, so one ring of
   -- files is a slim ring like the Overview donut, not a thick disc.
   local rings = 1
@@ -45,10 +45,12 @@
       <Option title="Rectangles" />
     </Picker>
   </HStack>
-  <HStack id="folderBody" flexGrow="1" maxHeight="infinity" spacing="16" alignment="top">
-    <% -- Rectangles already name every item, so the list serves the rings only. %>
-    <% if style ~= "rectangles" then %>
-    <GroupBox width="<%= FOLDER.list %>" maxHeight="infinity">
+  <% --[[ Rings: the list and the chart share a native split view, so the divider
+    moves and the wheel follows. Rectangles already name every item, so the
+    treemap takes the whole body and there is no list. ]] %>
+  <% if style ~= "rectangles" then %>
+  <HSplit id="folderBody" flexGrow="1" maxHeight="infinity" maxWidth="infinity">
+    <GroupBox width="<%= FOLDER.list %>" minWidth="<%= FOLDER.minList %>" maxHeight="infinity">
       <List id="folderList" onSelect="selectRow" onActivate="drillRow" rowMenu="rowMenu" dragKey="path" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="40" drawsBackground="false" maxHeight="infinity">
         <Column id="name" title="Item" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" imageSize="22" minWidth="140" />
         <Column id="size" title="Size" width="<%= FOLDER.meter %>" minWidth="<%= FOLDER.meter %>">
@@ -56,19 +58,22 @@
         </Column>
       </List>
     </GroupBox>
-    <% end %>
-    <VStack flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity" spacing="12" alignment="center">
+  <% else %>
+  <HStack id="folderBody" flexGrow="1" maxHeight="infinity" maxWidth="infinity" spacing="16" alignment="top">
+  <% end %>
+    <VStack flexGrow="1" flexBasis="0" flexShrink="1" minWidth="<%= FOLDER.minPane %>" maxWidth="infinity" maxHeight="infinity" spacing="12" alignment="center">
       <% if #nodes == 0 then %>
       <ContentUnavailable id="folderNothing" title="Nothing Here Takes Space" systemImage="folder" description="This folder is empty, or everything in it is smaller than the map can show." />
       <% elseif style == "rectangles" then %>
-      <Treemap id="folderTreemap" transition="opacity" height="<%= FOLDER.treemapHeight %>" onSelect="chartSelect" onHover="chartHover" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
+      <Treemap id="folderTreemap" transition="opacity" flexGrow="1" flexBasis="0" maxWidth="infinity" maxHeight="infinity" onSelect="chartSelect" onHover="chartHover" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
         <% for _, node in ipairs(nodes) do %>
         <TreemapNode id="<%= node.id %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" label="<%= node.label %>" detail="<%= node.detail %>" hatched="false" />
         <% end %>
       </Treemap>
       <% else %>
       <% -- Looking inside a group, or back out, moves the rings to the new level. %>
-      <SectorChart id="folderSunburst" transition="opacity" animation="smooth" animationValue="<%= trail[#trail].id %>" width="<%= FOLDER.chart %>" height="<%= FOLDER.chart %>" innerRadius="<%= hole %>" angularInset="<%= FOLDER.gap %>" depth="<%= FOLDER.depth %>" shadow="false" onSelect="chartSelect" onHover="chartHover" onCenter="up" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
+      <VStack id="folderChartHost" flexGrow="1" flexBasis="0" flexShrink="1" minHeight="<%= FOLDER.minChart %>" maxWidth="infinity" maxHeight="infinity" alignment="center">
+      <SectorChart id="folderSunburst" transition="opacity" animation="smooth" animationValue="<%= trail[#trail].id %>" scalable="true" diameter="<%= FOLDER.chartUnits %>" flexGrow="1" flexBasis="0" maxWidth="infinity" maxHeight="infinity" innerRadius="<%= hole %>" angularInset="<%= FOLDER.gap %>" depth="<%= FOLDER.depth %>" shadow="false" onSelect="chartSelect" onHover="chartHover" onCenter="up" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
         <% for _, node in ipairs(nodes) do %>
         <SectorMark id="<%= node.id %>" ring="<%= node.ring %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" opacity="<%= (ringOpacity[node.ring] or 0.5) * (node.other and node.parent and otherFade or 1) %>" label="<%= node.label %>" />
         <% end %>
@@ -77,6 +82,7 @@
           <Label text="<%= #trail > 1 and "Click to go up" or "Measured" %>" size="<%= FOLDER.center.caption %>" minimumScaleFactor="<%= FOLDER.center.captionScale %>" lines="1" color="secondary" />
         </VStack>
       </SectorChart>
+      </VStack>
       <% end %>
       <Label id="folderHover" text="<%= hover %>" size="12" color="secondary" monospacedDigit="true" maxWidth="infinity" alignment="center" lines="1" truncation="middle" />
       <% if #legend > 0 then %>
@@ -101,6 +107,6 @@
       <%- partial("Footnote.etlua", {text = hidden}) %>
       <% end %>
     </VStack>
-  </HStack>
+  <% if style ~= "rectangles" then %></HSplit><% else %></HStack><% end %>
   <% end %>
 </VStack>

@@ -71,16 +71,17 @@ function Applications.rows(model, info, filter, query, now)
 		local name = raw and details.displayName or fileName
 		local folders, dataBytes = Applications.data(model, details.bundleId, fileName)
 		local appBytes = m.bytes or 0
-		local unused = details.lastUsed and (now - details.lastUsed) > Applications.unusedDays * 86400
+		-- A running app is in use now, whatever its recorded date.
+		local unused = details.lastUsed and not details.running and (now - details.lastUsed) > Applications.unusedDays * 86400
 		local row = {id = bundle.id, resourceId = bundle.id, name = name, path = bundle.path, bundleId = details.bundleId,
 			appIcon = details.bundleId, fileIcon = bundle.path, icon = "app.fill", color = "systemBlue",
 			appBytes = appBytes, dataBytes = dataBytes, bytes = appBytes + dataBytes, folders = folders,
-			lastUsed = details.lastUsed, unused = unused == true, calculating = m.status == "calculating",
+			lastUsed = details.lastUsed, running = details.running == true, unused = unused == true, calculating = m.status == "calculating",
 			-- A missing date is not evidence of inactivity: Spotlight may simply not
 			-- track the app. It stays unknown and is excluded from every
 			-- inactivity filter, total and suggestion.
 			usageUnknown = details.lastUsed == nil,
-			detail = details.lastUsed and Model.used(Files.age(details.lastUsed, now)) or (info and "Last use unknown" or "—")}
+			detail = details.running and "Running now" or details.lastUsed and Model.used(Files.age(details.lastUsed, now)) or (info and "Last use unknown" or "—")}
 		row.size = row.calculating and "Calculating…" or Model.size(row.bytes)
 		row.subtitle = (details.version and ("Version " .. details.version .. " · ") or "") .. "App " .. Model.size(appBytes)
 			.. (dataBytes > 0 and (" · Data " .. Model.size(dataBytes)) or "")

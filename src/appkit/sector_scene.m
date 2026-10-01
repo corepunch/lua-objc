@@ -31,6 +31,11 @@ static CGFloat sector_scene_number(NSDictionary *spec, NSString *key, CGFloat fa
 /* Whether the key light casts the soft contact shadow; on by default.
  * (NSView already owns `shadow`, an NSShadow.) */
 @property(nonatomic) BOOL castsShadow;
+/* The chart's outer radius in scene units. Zero fits the camera to the view's
+ * narrower side as before; a positive radius makes the camera frame that
+ * radius on the narrower side whatever the view's size, so the chart scales
+ * with its view, centered, keeping its aspect. */
+@property(nonatomic) CGFloat fitRadius;
 /* A running transition: sector pairs to tween between, the sectors to show
  * once it ends, the transaction's animation and the display link that steps
  * it while the view is on screen. */
@@ -148,8 +153,16 @@ static NSImage *sector_scene_glow(void) {
 
 /* The camera sits on a tilted line through the chart's center, far enough
  * back that the outer radius and the tallest ring fit the narrower side. */
+- (void)setFitRadius:(CGFloat)fitRadius {
+	_fitRadius = fitRadius;
+	[self updateCamera];
+}
+
 - (void)updateCamera {
-	CGFloat radius = MAX(MIN(self.bounds.size.width, self.bounds.size.height) / 2.0, 1);
+	CGFloat radius = self.fitRadius > 0 ? self.fitRadius : MAX(MIN(self.bounds.size.width, self.bounds.size.height) / 2.0, 1);
+	/* The field of view is vertical by default; frame the narrower side. */
+	self.pointOfView.camera.projectionDirection = self.bounds.size.width < self.bounds.size.height
+		? SCNCameraProjectionDirectionHorizontal : SCNCameraProjectionDirectionVertical;
 	CGFloat distance = radius * kSectorSceneFitMargin / tan(kSectorSceneFieldOfView * M_PI / 360.0);
 	self.pointOfView.position = SCNVector3Make(0, -distance * sin(kSectorSceneTilt), distance * cos(kSectorSceneTilt));
 	self.pointOfView.eulerAngles = SCNVector3Make(kSectorSceneTilt, 0, 0);
@@ -463,7 +476,7 @@ static int bridge_sector_scene_point(lua_State *L) {
 	CGFloat dz = far.z - near.z;
 	if (fabs(dz) < 1e-9) { lua_pushnil(L); return 1; }
 	CGFloat t = (plane - near.z) / dz;
-	CGFloat half = MIN(view.bounds.size.width, view.bounds.size.height) / 2.0;
+	CGFloat half = view.fitRadius > 0 ? view.fitRadius : MIN(view.bounds.size.width, view.bounds.size.height) / 2.0;
 	lua_pushnumber(L, near.x + (far.x - near.x) * t + half);
 	lua_pushnumber(L, half - (near.y + (far.y - near.y) * t));
 	return 2;

@@ -141,7 +141,7 @@ t.expect(toolbarIds.settings and toolbarIds.reclaim and toolbarIds.refresh and t
 t.expect(toolbarIds.back and toolbarIds.forward and toolbarIds.review, "history and the cleanup review live in the toolbar")
 t.assertEqual(ui.destination, "overview", "the overview is the first destination")
 local sidebar = ui.navigation.refs.sidebar
-t.assertEqual(sidebar.rowCount, 23, "sidebar lists sections and destinations")
+t.assertEqual(sidebar.rowCount, 24, "sidebar lists sections and destinations")
 t.assertEqual(sidebar.documentView.selectedRow, 1, "the overview row starts selected")
 t.assertEqual(bridge._tableCell(sidebar, 0, 0).textField.stringValue, "Storage", "sidebar sections are native group headers")
 t.expect(ui.refs.results ~= nil and ui.refs.largest ~= nil, "overview shows categories and largest items")
@@ -229,7 +229,10 @@ t.assertEqual(bridge._tableCell(sidebar, 0, 11).textField.stringValue, "System",
 t.assertEqual(bridge._tableCell(sidebar, 0, 14).textField.stringValue, "Developer", "developer pages follow the system pages")
 sidebar:selectRow(12)
 t.assertEqual(ui.destination, "disks", "disks and volumes are a sidebar destination")
-sidebar:selectRow(20)
+sidebar:selectRow(19)
+t.assertEqual(ui.destination, "worktrees", "worktrees are a sidebar destination")
+t.expect(ui.refs.worktrees ~= nil and ui.refs.review ~= nil, "the worktrees page lists worktrees with a review action")
+sidebar:selectRow(21)
 t.assertEqual(ui.destination, "guide", "the storage guide is a sidebar destination")
 t.expect(ui.refs.topic_preboot ~= nil and ui.refs.details_preboot ~= nil, "guide topics disclose their details")
 for index, id in pairs({[5] = "files", [6] = "kinds", [7] = "duplicates", [9] = "cleanup", [10] = "applications"}) do

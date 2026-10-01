@@ -21,7 +21,8 @@ for _, row in ipairs(Navigation.destinations) do
 	end
 end
 t.expect(Navigation.page("nowhere") == nil, "an unknown id names no page")
-t.assertEqual(Navigation.page("cleanup").title, "Clean Up", "a page may be titled differently from its sidebar row")
+t.assertEqual(Navigation.page("cleanup").name, "Clean Up", "the sidebar row, the page and the toolbar share one name")
+t.assertEqual(Navigation.page("cleanup").title, nil, "with no second title to drift")
 
 -- The Overview leads with its chart and the Folder Map with the open folder.
 local OWN_HEADER = {overview = true, folder = true}

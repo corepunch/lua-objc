@@ -71,6 +71,20 @@ function Duplicates.rows(groups, query, home)
 	return rows
 end
 
+-- Which empty state the page is in, so "nothing chosen yet" is never read as
+-- "nothing found": choose (no folder), ready (folders chosen, not searched),
+-- searching, failed, none (searched, no duplicates), nomatch (the filter
+-- hides every group) or list.
+function Duplicates.state(roots, searching, result, shown, query)
+	if searching then return "searching" end
+	if result and (result.failure or result.groups == nil) then return "failed" end
+	if #(roots or {}) == 0 then return "choose" end
+	if not result then return "ready" end
+	if shown > 0 then return "list" end
+	if #result.groups == 0 then return "none" end
+	return (query or "") ~= "" and "nomatch" or "none"
+end
+
 function Duplicates.summary(groups)
 	local copies, bytes = 0, 0
 	for _, group in ipairs(groups or {}) do

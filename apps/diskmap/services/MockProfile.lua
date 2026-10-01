@@ -234,6 +234,28 @@ return {
 			["deletable"] = true, ["sizeBytes"] = 4260000000,
 		},
 	},
+	-- Linked Git worktrees, as `git worktree list` and a few status queries
+	-- report them. Mock actions change only the in-memory copy.
+	["worktrees"] = {
+		{entry = {path = "~/Developer/MockProject", repository = "~/Developer/MockProject", commonDir = "~/Developer/MockProject/.git", branch = "main", primary = true},
+			facts = {exists = true, changes = 0, untracked = 0, unpublished = 0, merged = true, submodules = 0, bytes = 640000000, gitBytes = 0, activityDaysAgo = 1}},
+		{entry = {path = "~/Developer/MockProject/.claude/worktrees/coin-quest", repository = "~/Developer/MockProject", commonDir = "~/Developer/MockProject/.git", branch = "coin-quest"},
+			facts = {exists = true, changes = 0, untracked = 0, unpublished = 0, merged = true, defaultBranch = "origin/main", submodules = 0, bytes = 175000000, gitBytes = 9000000,
+				generatedBytes = 90000000, ignoredBytes = 92000000, activityDaysAgo = 40}},
+		{entry = {path = "~/Developer/MockProject/.claude/worktrees/navigation", repository = "~/Developer/MockProject", commonDir = "~/Developer/MockProject/.git", branch = "navigation"},
+			facts = {exists = true, changes = 0, untracked = 0, unpublished = 0, merged = false, defaultBranch = "origin/main", submodules = 0, bytes = 174000000, gitBytes = 8000000,
+				generatedBytes = 60000000, ignoredBytes = 61000000, activityDaysAgo = 35}},
+		{entry = {path = "~/.codex/worktrees/3f2a/MockProject", repository = "~/Developer/MockProject", commonDir = "~/Developer/MockProject/.git", branch = "arena-fix"},
+			facts = {exists = true, changes = 3, untracked = 1, unpublished = 2, merged = false, defaultBranch = "origin/main", submodules = 0, bytes = 158000000, gitBytes = 7000000,
+				activityDaysAgo = 0}},
+		{entry = {path = "~/.codex/worktrees/9bd1/MockProject", repository = "~/Developer/MockProject", commonDir = "~/Developer/MockProject/.git", detached = true},
+			facts = {exists = true, changes = 0, untracked = 0, unpublished = 4, merged = false, defaultBranch = "origin/main", submodules = 0, bytes = 150000000, gitBytes = 6000000,
+				activityDaysAgo = 70}},
+		{entry = {path = "~/Experiments/mockproject-spike", repository = "~/Developer/MockProject", commonDir = "~/Developer/MockProject/.git", branch = "spike", locked = true, lockReason = "keep for the demo"},
+			facts = {exists = true, changes = 0, untracked = 0, unpublished = 0, merged = true, defaultBranch = "origin/main", submodules = 0, bytes = 90000000, gitBytes = 4000000, activityDaysAgo = 90}},
+		{entry = {path = "~/Developer/old-checkouts/mockproject-gone", repository = "~/Developer/MockProject", commonDir = "~/Developer/MockProject/.git", branch = "gone", prunable = true},
+			facts = {exists = false}},
+	},
 	["softwareUpdate"] = {
 		["AutomaticDownload"] = true,
 		["LastSuccessfulDate"] = "2026-09-24 08:12:00 +0000",

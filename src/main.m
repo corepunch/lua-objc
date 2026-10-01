@@ -180,7 +180,7 @@ static const CGFloat kParagraphLinkUnderlineOffset = 3.0;
 #define kPointerDragThreshold         3.0
 #define kPointerDragIconSize          32.0
 /* ----- Treemap ----- */
-#define kTreemapGap                      1
+#define kTreemapGap                      0
 #define kTreemapCornerRadius             3
 #define kTreemapBaseAlpha             0.55
 #define kTreemapDepthFade             0.12

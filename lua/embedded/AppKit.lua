@@ -2281,6 +2281,7 @@ end
 --- computes them.
 --- @prop sectors table optional. Sector descriptions.
 --- @prop shadow boolean optional. Casts a soft contact shadow (default true).
+--- @prop fitRadius number optional. The chart's outer radius in sector units; the camera frames it on the view's narrower side, so the chart scales with the view.
 --- @platform AppKit.
 function AppKit.SectorScene(props)
 	props = props or {}
@@ -2289,6 +2290,7 @@ function AppKit.SectorScene(props)
 	local width = props.fixedWidth or 160
 	local view = bridge._sectorScene(width, props.fixedHeight or width)
 	if props.shadow ~= nil then view.castsShadow = props.shadow end
+	if props.fitRadius then view.fitRadius = props.fitRadius end
 	bridge._sectorSceneConfigure(view, props.sectors or {}, false)
 	return applyLayout(view, props)
 end

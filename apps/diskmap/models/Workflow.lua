@@ -123,7 +123,7 @@ end
 function Workflow.page(workflow)
 	local links, buttons = {}, {}
 	for index, link in ipairs(workflow.links or {}) do
-		links["link_" .. index] = {open = link.open}
+		links["link_" .. index] = link.page and {page = link.page} or {open = link.open}
 		table.insert(buttons, {id = "link_" .. index, title = link.title, action = "link_" .. index})
 	end
 	-- The sections change with what was measured, so the layout follows the data.

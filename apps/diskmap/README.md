@@ -28,7 +28,7 @@ the Developer category.
   scanned folder that is a catalog location (such as Xcode's DerivedData) is
   labelled with its owner and policy. The startup disk is measured through its
   Data volume and reports the space no folder accounts for.
-- **Largest Items** — the hundred largest measured locations across every
+- **Largest Locations** — the hundred largest measured locations across every
   category, each with its semantic owner, cleanup status and share bar.
 - **Large Files** — the individual files over 50 MB found by the same scan,
   with when each was last used, filtered by Yours (the files you can act on,
@@ -39,22 +39,42 @@ the Developer category.
   and installers, archives, AI models, virtual machine disks, …) in a donut,
   with advice for the largest actionable kind and the top twelve extensions.
   Opening a kind shows its largest files.
-- **Clean Up (Recommendations)** — rebuildable and review suggestions from the
-  cleanup rules, pointers to unused documents, installers, unused apps and app
-  leftovers, the full checklist of known space hogs that were measured within
-  their limits (or kept, or absent), and contextual tips. Select a suggestion
+- **Clean Up** — candidates from every screen ranked by one rule (eligible
+  bytes × confidence ÷ effort, `models/Cleanup.lua`): rebuildable data first,
+  then *your decisions* (unused documents, user-owned installers, unused apps
+  with a known last use, high-confidence leftovers, the minimal simulator set,
+  leftover worktrees), then system-managed context and the checklist of known
+  space hogs within their limits, both collapsed. The headline keeps estimated
+  recoverable bytes apart from bytes to review; a group agrees with its
+  children (device support holding only the newest version is not a
+  suggestion). Every page's totals state their scope and coverage
+  (`models/Scope.lua`); `knowledge/Audit.lua` records each destination's first
+  conclusion and next step, or why it has none. Select a suggestion
   to read its full guidance in the panel below the list and use its visible
   Open button. The panel stays visible while scrolling; selection survives
   live measurement updates.
 - **Applications** — each app in /Applications and ~/Applications with the data
   it keeps in Containers, Group Containers, Application Support and Caches,
-  its version and when it was last opened (Spotlight's Last Opened), filtered
+  its version and when it was last opened (Spotlight's Last Opened; an app with
+  no recorded date reads "Last use unknown", is never called unused, and a
+  running app is in use), filtered
   by All, Unused for 6 months and Most data. Possible leftovers are data
   folders named like a bundle identifier that no app Spotlight knows claims.
+- **Simulators — minimal device set.** Keep one standard iPhone and one
+  standard iPad on a chosen iOS runtime (models identified by device type, not
+  name); every other device is *redundant for this setup*, listed with size, last
+  use and running state, with Keep choices, a keep-pair override, one batch
+  confirmation and per-device revalidation (`models/SimulatorPlan.lua`).
+- **Worktrees** — linked Git worktrees found with `git worktree list --porcelain -z`
+  (custom paths, `.claude/worktrees`, Codex worktrees), classified by evidence:
+  candidate, in use, changes, unpublished commits, submodules, locked, missing.
+  Removal is `git worktree remove` without force, one confirmation, each worktree
+  rechecked first; missing registrations are pruned in their own review
+  (`models/Worktrees.lua`, `services/Worktrees.lua`).
 - **Developer — what can I do about Xcode and friends?** Sections for Xcode &
   simulators, packages & toolchains, projects & editors, containers & virtual
   machines, and AI tools & models, each a ranked list of catalog locations.
-- **Map** — the same semantic tree as a raised (3D) sunburst or a squarified
+- **Storage Map** — the same semantic tree as a raised (3D) sunburst or a squarified
   treemap (segmented Rings / Rectangles), beside a list of the focused node's
   children. Click a group to look inside, click the center or the breadcrumb
   to go back, hover for the path, size and share; the hovered sector brightens in place, and

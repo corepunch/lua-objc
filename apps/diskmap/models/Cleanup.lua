@@ -31,6 +31,11 @@ function Cleanup.eligibility(model, row, measurement)
 		local older = Xcode.total(Xcode.supportRows(entries), function(item) return not item.keep end)
 		return older, "Medium", older == 0 and "Only the newest version is present, and it is kept." or nil
 	end
+	-- A tool's worktree folder is reviewed worktree by worktree, so its total is
+	-- not also a suggestion once that review exists.
+	if row.page == "worktrees" and model.worktreePlan then
+		return 0, "Medium", "Reviewed worktree by worktree on the Worktrees page."
+	end
 	if row.id == "simulators" and model.simulatorPlan then
 		local plan = model.simulatorPlan
 		return plan.removalBytes, "Medium", plan.removalBytes == 0 and "The minimal device set has nothing eligible to remove." or nil

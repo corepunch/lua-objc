@@ -90,6 +90,11 @@ function Files.validateTrash(model, path)
 	local owner = model.resources:owner(path)
 	if owner then
 		if owner:isKept() then return false, {code = "kept", message = owner.name .. " is marked Keep."} end
+		-- Inside generated project output the unit of decision is the artifact (and
+		-- its project), not one index or binary in it.
+		if owner.artifact then
+			return false, {code = "artifact", message = "This file is part of " .. owner.name .. ". Review the project's build output, not single files."}
+		end
 		if owner.policy == "Essential" or owner.policy == "System managed" then
 			return false, {code = "protected", message = owner.name .. " is managed by its owner."}
 		end

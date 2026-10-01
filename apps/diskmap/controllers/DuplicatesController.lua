@@ -8,8 +8,20 @@ local LAYOUT = {
 	buttons = {{id = "addFolder", title = "Add Folder…", systemImage = "plus", action = "addFolder"},
 		{id = "search", title = "Find Duplicates", action = "search", disabled = true}},
 	sections = {{title = "Identical files", detailId = "duplicateRoots",
-		empties = {{id = "duplicatesEmpty", title = "No Duplicates Listed", systemImage = "doc.on.doc",
-			description = "Add a folder such as Downloads or Documents, then choose Find Duplicates. Files are compared byte for byte; nothing is read outside the folders you add."}},
+		empties = {
+			{id = "dupChoose", title = "Choose Folders to Scan", systemImage = "folder.badge.plus",
+				description = "Add a folder such as Downloads or Documents. Files are compared byte for byte; nothing is read outside the folders you add."},
+			{id = "dupReady", hidden = true, title = "Ready to Search", systemImage = "doc.on.doc",
+				description = "Choose Find Duplicates to compare the files in the folders above. Nothing has been read yet."},
+			{id = "dupSearching", hidden = true, title = "Comparing Files", systemImage = "magnifyingglass",
+				description = "Identical files appear here when the comparison finishes. Stop it at any time."},
+			{id = "dupNone", hidden = true, title = "No Duplicates Found", systemImage = "checkmark.circle",
+				description = "The search finished: no two files in the chosen folders are identical. Files under 1 MB are not compared."},
+			{id = "dupNoMatch", hidden = true, title = "No Match", systemImage = "magnifyingglass",
+				description = "No group of duplicates matches the search. Clear the search to see them all."},
+			{id = "dupFailed", hidden = true, title = "The Search Did Not Finish", systemImage = "exclamationmark.triangle",
+				description = "Diskmap could not read these folders. Check that it may access them, then choose Find Duplicates again."},
+		},
 		panelId = "duplicatesList",
 		list = {id = "duplicates", menu = "menu", activate = "reveal", detailColumn = true}}},
 	footnote = {text = "Copies that are APFS clones share their storage with the original: removing one frees only what it does not share, which is what Can free shows."},
@@ -91,13 +103,18 @@ function Controller:show()
 	refs.search.enabled = #self.roots > 0
 	refs.duplicateRoots.text = self:rootsText()
 	local groups = self.result and self.result.groups or {}
+	if self.result and self.result.failure then groups = {} end
 	local rows = self.actions:annotate(Duplicates.rows(groups, self.query, self.model.home))
 	refs.duplicates:replaceRows(rows)
 	local summary = Duplicates.summary(groups)
-	refs.duplicatesList.hidden = #rows == 0
-	refs.duplicatesEmpty.hidden = #rows > 0
+	local state = Duplicates.state(self.roots, self.job ~= nil, self.result, #rows, self.query)
+	refs.duplicatesList.hidden = state ~= "list"
+	for id, name in pairs({dupChoose = "choose", dupReady = "ready", dupSearching = "searching", dupNone = "none", dupNoMatch = "nomatch", dupFailed = "failed"}) do
+		refs[id].hidden = state ~= name
+	end
 	refs.duplicatesSummary.text = self.job and string.format("Comparing… %s files examined", Model.count(self.progress and self.progress.examined or 0))
-		or not self.result and "Identical files in folders you choose."
+		or self.result and (self.result.failure or self.result.groups == nil) and "The search did not finish."
+		or not self.result and (#self.roots == 0 and "Identical files in folders you choose." or "Ready to compare the chosen folders.")
 		or summary.groups == 0 and "No identical files found."
 		or string.format("%d %s could free %s", summary.copies, summary.copies == 1 and "copy" or "copies", Model.size(summary.bytes))
 end

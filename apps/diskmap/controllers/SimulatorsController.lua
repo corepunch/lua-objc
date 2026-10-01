@@ -2,6 +2,7 @@ local Page = require("apps.diskmap.controllers.PageController")
 local Model = require("apps.diskmap.Model")
 local Simulators = require("apps.diskmap.models.Simulators")
 local SimulatorPlan = require("apps.diskmap.models.SimulatorPlan")
+local Outcome = require("apps.diskmap.models.Outcome")
 local Controller = Page.extend("simulators", "Simulators")
 
 -- The Simulators page: devices from CoreSimulator's folders and runtimes from
@@ -223,6 +224,7 @@ function Controller:reviewPlan()
 	if not plan.ready then return false end
 	if not self.service.confirmAction("Delete redundant simulators", SimulatorPlan.confirmation(plan)) then return false end
 	self.busy = true; self.planResult = "Deleting…"
+	local freeBefore = Outcome.free(self.service, self.model.home)
 	self:show()
 	local generation = self.generation
 	local deleted, deletedBytes, skipped, failed = 0, 0, {}, {}
@@ -234,7 +236,8 @@ function Controller:reviewPlan()
 		if #parts == 0 then parts[1] = "Nothing was deleted" end
 		self.changed()
 		if generation == self.generation then
-			self.busy, self.planResult = false, table.concat(parts, ". ") .. ". Kept devices and the shared runtime were not touched; free space updates with the next scan."
+			self.busy, self.planResult = false, table.concat(parts, ". ") .. ". Kept devices and the shared runtime were not touched; simulators are deleted at once, not moved to the Trash. "
+				.. Outcome.freeText(freeBefore, Outcome.free(self.service, self.model.home), deleted > 0) .. "."
 			self:load()
 		end
 	end

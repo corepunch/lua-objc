@@ -17,6 +17,7 @@ local CleanupController = require("apps.diskmap.controllers.CleanupController")
 local InspectorController = require("apps.diskmap.controllers.InspectorController")
 local ManagementController = require("apps.diskmap.controllers.ManagementController")
 local SimulatorsController = require("apps.diskmap.controllers.SimulatorsController")
+local WorktreesController = require("apps.diskmap.controllers.WorktreesController")
 local SdksController = require("apps.diskmap.controllers.SdksController")
 local SettingsController = require("apps.diskmap.controllers.SettingsController")
 local ActionsController = require("apps.diskmap.controllers.ActionsController")
@@ -90,6 +91,9 @@ function Controller.new(service)
 	self.simulators = SimulatorsController.new(self.model, service, function() self.scan:start() end)
 	self.simulators.log = function(...) self.review:log(...) end
 	self.simulators.published = function() self:updateRows() end
+	self.worktrees = WorktreesController.new(self.model, service, function() self.scan:start() end)
+	self.worktrees.log = function(...) self.review:log(...) end
+	self.worktrees.published = function() self:updateRows() end
 	self.sdks = SdksController.new(self.model, service)
 	-- Every list, menu and link opens a resource through this one function.
 	local open = function(id) self:open(id) end
@@ -139,6 +143,7 @@ function Controller.new(service)
 		xcode = XcodeController.new(self.model, service, self.actions),
 		projects = ProjectsController.new(self.model, service, self.actions, function() self.scan:start() end),
 		simulators = self.simulators,
+		worktrees = self.worktrees,
 		disks = DisksController.new(service, self.actions),
 		updates = UpdatesController.new(self.model, service, self.actions),
 		guide = TopicsController.new({id = "guide", topic = "GuideTopic", noun = "guide topic",
@@ -379,7 +384,8 @@ function Controller:scanFinished()
 	if snapshots then snapshots(function(count) self.snapshotCount = count; self:updateRows() end) end
 	-- Clean Up ranks simulators by what the minimal device set would remove,
 	-- so the inventory is read whether or not the Simulators page is open.
-	self.simulators:load()
+	if optional(self.service, "simulatorRuntimes") or optional(self.service, "simulatorDevices") then self.simulators:load() end
+	if optional(self.service, "worktreeScan") then self.worktrees:load() end
 	if self.settings.history then
 		local load, save = optional(self.service, "loadHistory"), optional(self.service, "saveHistory")
 		if load and save then
@@ -479,7 +485,7 @@ end
 function Controller:createWindow()
 	self.scan.disk = self.service.diskSpace(self.scan.home)
 	if self.service.loadKeep then
-		for id, kept in pairs(self.service.loadKeep()) do if (self.model.resources:find(id) or id:match("^simulator:")) and kept == true then self.model.kept[id] = true end end
+		for id, kept in pairs(self.service.loadKeep()) do if (self.model.resources:find(id) or id:match("^simulator:") or id:match("^worktree:")) and kept == true then self.model.kept[id] = true end end
 	end
 	local capacity = optional(self.service, "volumeCapacity")
 	self.capacity = capacity and capacity(self.model.home) or nil

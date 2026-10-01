@@ -18,6 +18,8 @@
           <Divider />
           <%- partial("InfoRow.etlua", {id = "stage_" .. stage.index, icon = stage.icon, title = stage.title, detail = stage.detail, value = stage.size}) %>
           <% end %>
+          <Divider />
+          <Label id="updateSpaceNote" text="<%= spaceNote %>" size="11" color="secondary" padding="12" maxWidth="infinity" lines="0" />
         </VStack>
       </GroupBox>
     </VStack>

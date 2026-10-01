@@ -127,7 +127,8 @@ function System.openSettings(section)
 	os.execute("/usr/bin/open " .. System.quote(target))
 end
 function System.openOwner(owner)
-	os.execute("/usr/bin/open -a " .. System.quote(owner == "xcode" and "Xcode" or "Docker"))
+	local applications = {xcode = "Xcode", docker = "Docker", codex = "Codex", claude = "Claude"}
+	os.execute("/usr/bin/open -a " .. System.quote(applications[owner] or "Docker"))
 end
 function System.confirmTrash(row)
 	return ns.Alert {title = "Move " .. row.name .. " to Trash?", message = row.path .. "\n\n" .. row.consequence, buttons = {"Cancel", "Move to Trash"}} == 2
@@ -269,6 +270,18 @@ local function exists(path)
 	if file then file:close(); return true end
 	return false
 end
+-- The path of a project marker beside `parent`, or nil. A marker with `*`
+-- ("*.xcodeproj") matches a name in the folder.
+local function markerPath(parent, marker)
+	if marker:find("*", 1, true) then
+		local pattern = "^" .. (marker:gsub("%p", "%%%0"):gsub("%%%*", ".*")) .. "$"
+		for _, entry in ipairs(ns.readDirectory(parent, 0) or {}) do
+			if entry.name:match(pattern) then return parent .. "/" .. entry.name end
+		end
+		return nil
+	end
+	if exists(parent .. "/" .. marker) then return parent .. "/" .. marker end
+end
 -- The repository a project lives in: the nearest folder at or above it,
 -- up to the searched root, with a .git entry (a folder, or a file for
 -- worktrees and submodules).
@@ -309,7 +322,10 @@ function System.discoverEntries(home, completion, projectRoots)
 						for _, rule in ipairs(location.rules) do
 							local marked
 							if name == rule.dirName then
-								for _, marker in ipairs(rule.markers) do if exists(parent .. "/" .. marker) then marked = parent .. "/" .. marker; break end end
+								for _, marker in ipairs(rule.markers) do
+									marked = markerPath(parent, marker)
+									if marked then break end
+								end
 							end
 							if marked then
 								local searched = ""
@@ -405,12 +421,15 @@ end
 -- every app; apps never opened have no date.
 function System.applicationInfo(paths, completion)
 	local info = {}
+	-- An app that is open now is in use, whatever its last-used date says.
+	local running = {}
+	for _, id in ipairs(ns.runningApplications and ns.runningApplications() or {}) do running[id] = true end
 	for _, path in ipairs(paths) do
 		local plist = ns.readPropertyList(path .. "/Contents/Info.plist") or {}
 		-- The name Finder and Launchpad show, which the bundle's file name
 		-- ("logioptionsplus.app") need not be.
 		local displayName = plist.CFBundleDisplayName or plist.CFBundleName
-		info[path] = {bundleId = plist.CFBundleIdentifier, version = plist.CFBundleShortVersionString or plist.CFBundleVersion,
+		info[path] = {bundleId = plist.CFBundleIdentifier, running = running[plist.CFBundleIdentifier] == true, version = plist.CFBundleShortVersionString or plist.CFBundleVersion,
 			displayName = type(displayName) == "string" and displayName ~= "" and displayName or nil}
 	end
 	if #paths == 0 then completion(info); return end
@@ -705,6 +724,45 @@ function System.findInstallers(home, completion)
 			for index, path in ipairs(paths) do table.insert(files, {path = path, bytes = sizes[index]}) end
 			completion(files)
 		end)
+	end)
+end
+-- Leftover Git worktrees: every repository under the project folders and the
+-- tools' own worktree roots, with each worktree's evidence. Completes with
+-- (entries, facts-by-path).
+function System.worktreeScan(roots, completion)
+	local Service = require("apps.diskmap.services.Worktrees")
+	local home = System.home
+	local searched = {}
+	for _, root in ipairs(roots or {}) do table.insert(searched, root) end
+	for _, root in ipairs({home .. "/.codex/worktrees", home .. "/.claude"}) do table.insert(searched, root) end
+	local existing = {}
+	for _, root in ipairs(searched) do if exists(root) then table.insert(existing, root) end end
+	if #existing == 0 then completion({}, {}); return end
+	Service.repositories(System.command, existing, function(repos)
+		Service.list(System.command, repos, function(entries)
+			local facts = {}
+			local function step(index)
+				if index > #entries then completion(entries, facts); return end
+				Service.facts(System.command, System.measure, entries[index], function(value)
+					facts[entries[index].path] = value
+					step(index + 1)
+				end)
+			end
+			step(1)
+		end)
+	end)
+end
+-- One worktree's current record and evidence, read just before its removal.
+function System.worktreeState(row, completion)
+	local Service = require("apps.diskmap.services.Worktrees")
+	Service.list(System.command, {{path = row.repository, commonDir = row.commonDir}}, function(entries)
+		for _, entry in ipairs(entries) do
+			if entry.path == row.path then
+				Service.facts(System.command, System.measure, entry, function(facts) completion(entry, facts) end)
+				return
+			end
+		end
+		completion(nil, nil)
 	end)
 end
 System.decode = ns.json_parse

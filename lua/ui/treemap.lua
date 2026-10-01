@@ -17,8 +17,11 @@ local Treemap = {}
 -- for both; smaller parents show their children edge to edge and no label.
 -- `labelLine` matches the native 11 pt label line; the band is one line plus
 -- a small margin so the parent's text never reaches its first child.
-Treemap.metrics = { labelStrip = 20, inset = 2, minNested = 36, maxDepth = 3, minCell = 2,
-	labelInset = 5, labelLine = 14, labelMinWidth = 56 }
+-- `margin` surrounds every cell, so two neighbours are 2 × margin apart and
+-- a nested cell sits `margin` inside its parent: no rectangle touches another.
+-- A cell too small to keep a margin and still show anything keeps none.
+Treemap.metrics = { labelStrip = 20, inset = 0, minNested = 36, maxDepth = 3, minCell = 2,
+	labelInset = 5, labelLine = 14, labelMinWidth = 56, margin = 2 }
 
 local function worst(row, sum, side)
 	local largest, smallest = 0, math.huge
@@ -127,6 +130,10 @@ function Treemap.layout(nodes, width, height, metrics)
 		for index, node in ipairs(list) do values[index] = node.value end
 		for index, rect in ipairs(Treemap.squarify(values, x, y, w, h)) do
 			local node = list[index]
+			local margin = metrics.margin or 0
+			if rect.w - 2 * margin >= metrics.minCell and rect.h - 2 * margin >= metrics.minCell then
+				rect = { x = rect.x + margin, y = rect.y + margin, w = rect.w - 2 * margin, h = rect.h - 2 * margin }
+			end
 			if rect.w >= metrics.minCell and rect.h >= metrics.minCell then
 				local cell = { id = node.id, x = rect.x, y = rect.y, w = rect.w, h = rect.h, depth = depth,
 					color = node.color, label = node.label, detail = node.detail, hatched = node.hatched == true }

@@ -5,6 +5,7 @@ local Rules = require("apps.diskmap.knowledge.CleanupRules")
 local Status = require("apps.diskmap.models.Status")
 local Tips = require("apps.diskmap.models.Tips")
 local Destinations = require("apps.diskmap.models.Destinations")
+local Scope = require("apps.diskmap.models.Scope")
 local Recommendations = {}
 
 local function matches(row, needle)
@@ -124,6 +125,16 @@ function Recommendations.presentation(model, query, sources)
 			icon = "opticaldiscdrive.fill", color = "systemTeal", bytes = installerBytes, detail = "Large Files"},
 			{eligibleBytes = installerBytes, confidence = "Medium", effort = "Low", kind = "decision"}))
 	end
+	local worktrees = model.worktreePlan
+	if worktrees and (worktrees.removalCount > 0 or worktrees.reviewCount > 0) then
+		local parts = {}
+		if worktrees.removalCount > 0 then table.insert(parts, Model.plural(worktrees.removalCount, "clean, published worktree") .. " can be removed") end
+		if worktrees.reviewCount > 0 then table.insert(parts, Model.plural(worktrees.reviewCount, "worktree") .. " with changes or unpublished work to review") end
+		table.insert(elsewhere, candidate({id = "worktrees", name = "Leftover Git worktrees", page = "worktrees",
+			subtitle = table.concat(parts, "; ") .. ". Source, generated output and Git storage are counted once.",
+			icon = "arrow.triangle.branch", color = "systemPurple", bytes = worktrees.removalBytes + worktrees.reviewBytes, detail = "Worktrees"},
+			{eligibleBytes = worktrees.removalBytes > 0 and worktrees.removalBytes or nil, confidence = "Medium", effort = "Medium", kind = "decision"}))
+	end
 	if apps and apps.leftovers and apps.leftovers > 0 then
 		table.insert(elsewhere, candidate({id = "leftovers", name = "Possible app leftovers", page = "applications",
 			subtitle = apps.leftovers .. " data folders belong to no installed app; " .. apps.leftoversHigh .. " are high confidence.",
@@ -198,6 +209,7 @@ local SECTIONS = {
 }
 local LAYOUT = {
 	details = true,
+	scopeNote = Scope.pages.cleanup,
 	sections = {},
 	slots = {"tips"},
 }
@@ -214,7 +226,7 @@ function Recommendations.details(model, row)
 	end
 	local destination = row.page and {page = row.page} or Destinations.resolve(model, row.id)
 	local target = row.pageName or destination and destination.page
-	local names = {simulators = "Simulators", projects = "Projects", xcode = "Xcode", files = "Large Files", applications = "Applications"}
+	local names = {simulators = "Simulators", projects = "Projects", xcode = "Xcode", files = "Large Files", applications = "Applications", worktrees = "Worktrees"}
 	return {title = row.name, detail = row.subtitle or "", status = row.detail,
 		size = row.size, evidence = row.kind and ((row.evidence and (row.evidence .. "\n") or "") .. Recommendations.recovery(row)) or row.evidence, consequence = row.consequence ~= row.subtitle and row.consequence or nil,
 		actionTitle = "Open " .. (names[target] or target or "Details") .. "…"}
@@ -231,7 +243,7 @@ function Recommendations.page(sources)
 		local tips, links = Tips.forInventory(model, state.disk), {}
 		for _, tip in ipairs(tips) do links["tip_" .. tip.id] = TIP_LINKS[tip.action] end
 		return {lists = lists, hidden = hidden, links = links, children = {tips = {tips = tips}}, texts = {
-			summary = data.summary,
+			summary = data.summary, scopeNote = Scope.text(model, "cleanup"),
 		}}
 	end}
 end
