@@ -22,6 +22,7 @@ function Controller:mount(host, state)
 		unavailable = function() self:perform("delete", true) end,
 		deleteRuntime = function() self:deleteRuntime() end,
 		components = function() self.service.openOwner("xcode") end,
+		retry = function() self:load() end,
 	}})
 	self:load()
 	return refs
@@ -42,8 +43,11 @@ function Controller:buttons()
 	end
 	refs.unavailableTileAction.enabled = allowed and unavailable > 0
 	refs.deleteRuntime.enabled = allowed and Simulators.runtimeCommand(self.selectedRuntime, self.model) ~= nil
+	local _, deviceReason = Simulators.validate("delete", self.selected, self.model)
+	if self.selected then refs.status.text = deviceReason and deviceReason.message or (self.selected.name .. " · " .. self.selected.state) end
+	refs.retry.enabled = allowed
 	local _, reason = Simulators.validateRuntime(self.selectedRuntime, self.model)
-	refs.runtimeStatus.text = self.selectedRuntime and reason and reason.message or ""
+	refs.runtimeStatus.text = self.selectedRuntime and reason and reason.message or self.runtimeError or ""
 end
 
 -- Presents the loaded inventory without reloading it: filters and search
@@ -71,14 +75,17 @@ function Controller:show()
 		refs.runtimesTileValue.text = self.runtimeList and Model.size(summary.runtimeBytes) or "Not measured"
 		refs.runtimesTileDetail.text = self.runtimeList and (Model.plural(summary.runtimes, "runtime") .. " installed")
 			or "Xcode's command-line tools could not list runtimes"
-		refs.unavailableTileValue.text = tostring(summary.unavailable)
-		refs.unavailableTileDetail.text = summary.unavailable == 0 and "Every device has its runtime"
+		refs.unavailableTileValue.text = summary.unknownAvailability > 0 and summary.unavailable == 0 and "Unknown" or tostring(summary.unavailable)
+		refs.unavailableTileDetail.text = summary.unknownAvailability > 0 and (Model.plural(summary.unknownAvailability, "device") .. " could not be checked")
+			or summary.unavailable == 0 and "No devices reported unavailable"
 			or (Model.size(summary.unavailableBytes) .. " of apps and data on devices whose runtime is gone")
+		local runtimeSummary = self.runtimeList and (Model.size(summary.runtimeBytes) .. " in " .. Model.plural(summary.runtimes, "runtime"))
+			or "Runtime storage could not be measured"
 		refs.summary.text = self.error or ((self.busy and "Refreshing · " or "")
-			.. string.format("%s in %s and %s in %s", Model.size(summary.deviceBytes), Model.plural(summary.devices, "device"),
-				self.runtimeList and Model.size(summary.runtimeBytes) or "unmeasured storage", Model.plural(summary.runtimes, "runtime")))
+			.. Model.size(summary.deviceBytes) .. " in " .. Model.plural(summary.devices, "device") .. " · " .. runtimeSummary)
 	end
-	refs.status.text = self.loading and "" or #rows == 0 and "No matching devices." or Model.plural(#rows, "device")
+	refs.status.text = self.deviceError or (self.loading and "" or #rows == 0 and "No matching devices." or Model.plural(#rows, "device"))
+	refs.runtimeStatus.text = self.runtimeError or ""
 	if self.busy then refs.devices:showLoading() else refs.devices:hideLoading() end
 	self.selected, self.selectedRuntime = nil, nil
 	self:buttons()
@@ -104,7 +111,7 @@ function Controller:load()
 	-- Coming back to the page shows what was read last time while it is
 	-- read again; only the first visit has nothing to show.
 	self.busy, self.loading = true, not self.loaded
-	self.error = nil
+	self.error, self.deviceError, self.runtimeError = nil, nil, nil
 	if not self.loaded then self.inventory = {} end
 	self:show()
 	local generation = self.generation
@@ -114,25 +121,35 @@ function Controller:load()
 		if pending == 0 then self:finish(generation, inventory, runtimeList) end
 	end
 	if type(self.service.simulatorRuntimes) == "function" then
-		self.service.simulatorRuntimes(function(value) runtimeList = value; done() end)
+		self.service.simulatorRuntimes(function(value, error)
+			if generation ~= self.generation then return end
+			runtimeList, self.runtimeError = value, error; done()
+		end)
 	else done() end
-	local ok, discovered = pcall(Simulators.discover, self.service, self.model.home)
-	if not ok then done(); return end
-	inventory = discovered
-	local paths, slots = {}, {}
-	for _, devices in pairs(discovered.devices or {}) do
-		for _, device in ipairs(devices) do
-			if device.dataPathSize == nil and device.measurePath then
-				table.insert(paths, device.measurePath)
-				table.insert(slots, device)
+	local function discover(listed, error)
+		if generation ~= self.generation then return end
+		self.deviceError = error
+		local ok, discovered = pcall(Simulators.discover, self.service, self.model.home, listed)
+		if not ok then done(); return end
+		inventory = discovered
+		local paths, slots = {}, {}
+		for _, devices in pairs(discovered.devices or {}) do
+			for _, device in ipairs(devices) do
+				if device.dataPathSize == nil and device.measurePath then
+					table.insert(paths, device.measurePath)
+					table.insert(slots, device)
+				end
 			end
 		end
+		if #paths == 0 or type(self.service.measure) ~= "function" then done(); return end
+		self.service.measure(paths, function(sizes)
+			if generation ~= self.generation then return end
+			for index, device in ipairs(slots) do device.dataPathSize = sizes[index] end
+			done()
+		end)
 	end
-	if #paths == 0 or type(self.service.measure) ~= "function" then done(); return end
-	self.service.measure(paths, function(sizes)
-		for index, device in ipairs(slots) do device.dataPathSize = sizes[index] or 0 end
-		done()
-	end)
+	if type(self.service.simulatorDevices) == "function" then self.service.simulatorDevices(discover)
+	else discover() end
 end
 
 -- Runs validated commands one at a time, revalidating each target first.

@@ -54,13 +54,15 @@ function Controller:update(state)
 	local filter = Files.filters[self.filterIndex]
 	local rows = Files.rows(self.model, filter, state and state.query, self.kind)
 	refs.files:replaceRows(rows)
+	local measuring = self.model.scan.running == true
+	if measuring and #rows == 0 then refs.files:showLoading() else refs.files:hideLoading() end
 	-- An empty list says why it is empty: nothing matches the search, or
 	-- this filter has no files.
 	local query = state and state.query or ""
 	local measured = self.model.files ~= nil
-	refs.filesPanel.hidden = measured and #rows == 0
-	refs.filesEmpty.hidden = not (measured and #rows == 0 and query == "")
-	refs.filesNoResults.hidden = not (measured and #rows == 0 and query ~= "")
+	refs.filesPanel.hidden = measured and #rows == 0 and not measuring
+	refs.filesEmpty.hidden = not (measured and #rows == 0 and query == "" and not measuring)
+	refs.filesNoResults.hidden = not (measured and #rows == 0 and query ~= "" and not measuring)
 	local summary = Files.summary(self.model)
 	local kind = self.kind and Files.kindById(self.kind)
 	refs.clearKind.hidden = kind == nil
@@ -69,11 +71,16 @@ function Controller:update(state)
 		.. (filter == "Yours" and " you can move to the Trash" or "")
 		.. (query ~= "" and " matching the search" or "")
 	if not summary then
-		refs.summary.text = "Measuring files… Large files appear when the scan finishes."
+		for _, tile in ipairs(LAYOUT.tiles) do
+			refs[tile.id .. "Value"].text = "—"
+			refs[tile.id .. "Detail"].text = tile.detail
+		end
+		refs.summary.text = not measuring and "No file results are available. Refresh to try again."
+			or "Measuring files… Results appear as they are found."
 		return
 	end
-	refs.summary.text = string.format("%s over %s use %s%s.", Model.plural(Model.count(summary.count), "file"), THRESHOLD,
-		Model.size(summary.bytes), summary.partial and " · some locations could not be read" or "")
+	refs.summary.text = (self.model.files.measuring and "Scan in progress · Found so far: " or "") .. string.format("%s over %s use %s%s.", Model.plural(Model.count(summary.count), "file"), THRESHOLD,
+		Model.size(summary.bytes), summary.partial and " · results are incomplete" or "")
 	refs.largeTileValue.text = Model.size(summary.bytes)
 	refs.largeTileDetail.text = Model.plural(Model.count(summary.count), "file") .. ", largest first"
 	refs.oldTileValue.text = Model.size(summary.oldBytes)

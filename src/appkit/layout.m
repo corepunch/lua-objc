@@ -640,6 +640,10 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 			CGFloat height = laidOut > 0 ? NSMaxY([table rectOfRow:laidOut - 1]) : 0;
 			if (rows > laidOut)
 				height += (rows - laidOut) * (table.rowHeight + table.intercellSpacing.height);
+			// A content-sized empty list still needs a body for its native
+			// loading overlay; otherwise the spinner lies outside a zero-height clip.
+			NSProgressIndicator *spinner = objc_getAssociatedObject(scroll, &kKeys[kTableSpinnerKey]);
+			if (spinner) height = MAX(height, spinner.frame.size.height + kLoadingTablePadding * 2);
 			if (table.headerView) height += table.headerView.frame.size.height;
 			natural.height = [NSScrollView frameSizeForContentSize:NSMakeSize(natural.width, height)
 				horizontalScrollerClass:Nil verticalScrollerClass:Nil

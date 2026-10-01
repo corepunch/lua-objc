@@ -21,6 +21,7 @@
     }
     slots                refs for retained child templates, below the sections
     footnote             {text, icon} ]] %>
+<% if layout.details then %><VStack spacing="0" flexGrow="1" flexBasis="0" flexShrink="1"><% end %>
 <ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
   <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {header = header, summary = layout.summary, summaryId = layout.summaryId, buttons = layout.buttons}) %>
@@ -67,3 +68,7 @@
     <% end %>
   </VStack>
 </ScrollView>
+<% if layout.details then %>
+  <VStack id="selectionDetails" spacing="0" padding="14" />
+</VStack>
+<% end %>

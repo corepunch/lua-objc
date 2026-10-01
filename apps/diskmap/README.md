@@ -42,7 +42,10 @@ the Developer category.
 - **Clean Up (Recommendations)** — rebuildable and review suggestions from the
   cleanup rules, pointers to unused documents, installers, unused apps and app
   leftovers, the full checklist of known space hogs that were measured within
-  their limits (or kept, or absent), and contextual tips.
+  their limits (or kept, or absent), and contextual tips. Select a suggestion
+  to read its full guidance in the panel below the list and use its visible
+  Open button. The panel stays visible while scrolling; selection survives
+  live measurement updates.
 - **Applications** — each app in /Applications and ~/Applications with the data
   it keeps in Containers, Group Containers, Application Support and Caches,
   its version and when it was last opened (Spotlight's Last Opened), filtered
@@ -137,8 +140,8 @@ finds help and guide topics as well as menu items.
 Every ranking uses one list design: icon, name and location, a status column,
 a share bar, the size and a "More" (⋯) button. A row's actions — its primary
 action, Show in Finder, the owning category, Keep and Copy Path — live in that
-menu and in the row's contextual menu, so lists never scroll inside a page and
-no buttons sit beneath them.
+menu and in the row's contextual menu. Clean Up also exposes the selected
+suggestion's full explanation and primary Open action beneath the scrolling page.
 
 **Mark, review, act, confirm.** Mark for Cleanup on the Map, Largest Items,
 Applications, Xcode, Projects, Duplicates, Disks and Updates pages, or a drop on
@@ -254,6 +257,19 @@ launched. The real provider remains the default when the mock switch is absent.
 Every launch starts a fresh inventory. The category list follows macOS Storage: Applications, Trash, Books, Developer, Documents, iCloud Drive, iOS Files, Mail, Messages, Music, Music Creation, Photos, Podcasts, TV, Other Users & Shared, macOS and System Data, plus AI agents and snapshot backups. Photos, Music, TV and known media support locations are excluded by default, which the Overview says; Include media libraries in Settings measures them and is remembered between launches. Excluded sizes are unknown, never zero. The inventory always covers the whole startup disk (`--folder=<path>` only opens the Folder Map on a folder), and no live scan results are cached. The explicit mock fixture is a synthetic
 filesystem for repeatable testing; use `--export-mock` to create a local snapshot
 of this Mac.
+
+Scans publish live file and extension findings before a location finishes.
+The status names the current location, checked items and elapsed time instead
+of presenting completed locations as a percentage of remaining work. Live
+rankings say they are incomplete; incomplete coverage is not called unexplained
+disk use. When less than 10% of the disk is free, launch bypasses the automatic
+tour and offers Review Cleanup while measuring. The Help menu still opens the
+tour, and the saved startup preference is preserved.
+
+Simulator devices use `simctl list devices -j` for their current state and
+availability. Missing usage dates say Last use unknown. Failed device or
+runtime reads show an error and a Retry action, rather than claiming zero
+runtimes or available devices. Erase and Delete require a known shutdown state.
 
 `Catalog.lua` composes independent providers in `catalog/` into the macOS knowledge tree, including Xcode runtimes, devices, bundled SDKs, archives, package managers, a separate AI agents category for coding tools, Apple Intelligence and Siri, mobile toolchains, system assets, app support, backups, media and boot data. Startup also discovers project-local generated folders when their parent project marker exists and application bundles directly inside `/Applications` and `~/Applications`; each discovered path is measured as its own review-only resource and excluded from its broader residual measurement.
 New layouts remain review-only until their ownership and cleanup policy are

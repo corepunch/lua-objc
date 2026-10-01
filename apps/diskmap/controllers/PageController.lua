@@ -1,6 +1,7 @@
 local ns = require("AppKit")
 local Template = require("ui.template")
 local Navigation = require("apps.diskmap.controllers.NavigationController")
+local Selection = require("apps.diskmap.models.Selection")
 local Page = {}; Page.__index = Page
 
 local VIEWS = "apps/diskmap/views/"
@@ -62,7 +63,8 @@ end
 function Page:dispose()
 	self.generation = (self.generation or 0) + 1
 	if self.template then self.template:dispose() end
-	self.template, self.refs, self.children = nil, nil, nil
+	self.listRows = nil
+	self.template, self.refs, self.children, self.detailsTemplate, self.selectedRow, self.selectedId = nil, nil, nil, nil, nil, nil
 end
 
 function Page:mount(host, state)
@@ -85,6 +87,16 @@ function Page:activate(row)
 	if row.page then self.handlers.show(row.page, row.filter) else self.handlers.open(row.id) end
 end
 
+-- A selected row gets a full, wrapping explanation and an explicit route
+-- to its detail page. Selection survives live measurements by resource id.
+function Page:showDetails()
+	if not self.page.details or not self.template then return end
+	self.detailsTemplate = self.detailsTemplate or self.template:child("selectionDetails", VIEWS .. "SelectionDetails.etlua")
+	local details = self.page.details(self.model, self.selectedRow)
+	details.actions = {openSelection = function() self:activate(self.selectedRow) end}
+	self.detailsTemplate:update(details)
+end
+
 function Page:follow(link)
 	if link.open then self.handlers.open(link.open)
 	elseif link.page then self.handlers.show(link.page, link.filter)
@@ -100,12 +112,32 @@ function Page:update(state)
 	local actions = {
 		rowMenu = function(_, _, row) return self:menu(row) end,
 		open = function(_, _, row) self:activate(row) end,
+		select = function(_, _, row)
+			if self.updating then return end
+			self.selectedRow, self.selectedId = row, row and row.id
+			self.updating = true
+			for id, rows in pairs(self.listRows or {}) do Selection.show(self.refs[id], rows, self.selectedId) end
+			self.updating = false
+			self:showDetails()
+		end,
 	}
 	for name, link in pairs(presented.links or {}) do actions[name] = function() self:follow(link) end end
 	local layout = page.layout
 	if type(layout) == "function" then layout = layout(presented) end
 	local refs = self:render({layout = layout, actions = actions})
-	for id, rows in pairs(presented.lists or {}) do refs[id]:replaceRows(rows) end
+	self.listRows = presented.lists
+	self.updating, self.selectedRow = true, nil
+	for id, rows in pairs(presented.lists or {}) do
+		refs[id]:replaceRows(rows)
+		if page.details then
+			local index = Selection.index(rows, self.selectedId)
+			if index then self.selectedRow = rows[index + 1] end
+			Selection.show(refs[id], rows, self.selectedId)
+		end
+	end
+	self.updating = false
+	if not self.selectedRow then self.selectedId = nil end
+	self:showDetails()
 	for id, text in pairs(presented.texts or {}) do refs[id].text = text end
 	for id, hidden in pairs(presented.hidden or {}) do refs[id].hidden = hidden end
 	for id, view in pairs(page.children or {}) do

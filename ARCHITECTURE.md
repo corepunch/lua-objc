@@ -218,10 +218,13 @@ completions, watchers, and delegates invoke through `LuaReg` and never through
 a process-global `gL`.
 
 Each registration also remembers the `Scope` that was current at creation (a
-registry ref released in `-dispose`/`-dealloc`). Pushing the closure re-enters
+registry ref released in `-dispose`/`-dealloc`). Calling the closure re-enters
 that scope first, so callbacks created inside an event handler bind to the
 firing callback's scope rather than whichever window scope happens to be
-global. A closed scope never accepts new registrations. `Scope:add` prunes
+global. The invocation restores its caller's scope on success and failure,
+including nested native callbacks. Lua and native code read the same current
+scope from the registry; a control callback cannot capture its caller's next
+timer. A closed scope never accepts new registrations. `Scope:add` prunes
 disposed entries, `Scope:close` is idempotent and marks the scope closed, and
 `Scope.withScope` runs a function under an explicit scope. Navigation pushes
 (`pushScreen`/`popScreen`) and UIKit sheets own per-screen scopes built with a

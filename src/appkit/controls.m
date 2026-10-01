@@ -440,6 +440,7 @@ static int bridge_table_show_loading(lua_State *L) {
 	[sv addSubview:spinner];
 	position_table_spinner(sv);
 	[spinner startAnimation:nil];
+	table_rows_changed(sv);
 	return 0;
 }
 
@@ -455,6 +456,7 @@ static int bridge_table_hide_loading(lua_State *L) {
 		[spinner removeFromSuperview];
 		objc_setAssociatedObject(sv, &kKeys[kTableSpinnerKey], nil,
 			OBJC_ASSOCIATION_RETAIN);
+		table_rows_changed(sv);
 	}
 	return 0;
 }

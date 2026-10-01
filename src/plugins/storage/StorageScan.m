@@ -92,7 +92,8 @@ typedef struct { uint64_t inode; dev_t device; } ScanIdentity;
 @property NSMutableArray *states;
 @property NSMutableArray *issues;
 @property NSUInteger errors, protectedErrors, visited, bulkCalls;
-@property NSTimeInterval started;
+@property(atomic) NSTimeInterval started;
+@property(atomic, copy) NSString *currentRoot;
 @property NSString *failure;
 @property NSDictionary *snapshot;
 @property BOOL done;
@@ -166,6 +167,33 @@ static NSUInteger identityHash(ScanIdentity key) {
 }
 - (void)countVisited { os_unfair_lock_lock(&_lock); self.visited++; os_unfair_lock_unlock(&_lock); }
 - (NSUInteger)liveVisited { os_unfair_lock_lock(&_lock); NSUInteger count = _visited; os_unfair_lock_unlock(&_lock); return count; }
+- (NSDictionary *)liveSnapshot:(NSDictionary *)published {
+	NSMutableDictionary *snapshot = [published mutableCopy] ?: [NSMutableDictionary dictionary];
+	snapshot[@"completed"] = published[@"completed"] ?: @0;
+	snapshot[@"total"] = @(self.roots.count);
+	snapshot[@"currentPath"] = self.currentRoot ?: @"";
+	NSTimeInterval started = self.started;
+	snapshot[@"seconds"] = @(started > 0 ? MAX(0, NSProcessInfo.processInfo.systemUptime - started) : 0);
+	os_unfair_lock_lock(&_lock);
+	snapshot[@"visited"] = @(_visited);
+	snapshot[@"errors"] = @(_errors);
+	snapshot[@"protected"] = @(_protectedErrors);
+	if (self.fileLimit) {
+		snapshot[@"largeFiles"] = self.largeFiles.copy;
+		snapshot[@"oldFiles"] = self.oldFiles.copy;
+	}
+	if (self.collectsExtensions) {
+		NSMutableArray *extensions = [NSMutableArray arrayWithCapacity:self.extensions.count];
+		[self.extensions enumerateKeysAndObjectsUsingBlock:^(NSString *extension, NSMutableArray *totals, BOOL *stop) {
+			[extensions addObject:@{@"extension": extension, @"bytes": totals[0], @"count": totals[1], @"oldBytes": totals[2]}];
+		}];
+		snapshot[@"extensions"] = extensions;
+	}
+	if (self.oldBefore > 0) { snapshot[@"oldBytes"] = @(_oldBytes); snapshot[@"oldCount"] = @(_oldCount); }
+	os_unfair_lock_unlock(&_lock);
+	snapshot[@"partial"] = @YES;
+	return snapshot;
+}
 - (BOOL)seenInodeLocked:(uint64_t)inode device:(dev_t)device {
 	if (!inode) { self.failure = @"Filesystem returned an invalid file identity."; return YES; }
 	if (!_seenCapacity || (_seenCount + 1) * 2 >= _seenCapacity) {
@@ -644,7 +672,8 @@ static uint64_t volumeUsedBytes(NSString *path) {
 		@"failure": self.cancelled ? @"Measurement cancelled." : self.failure,
 		@"exportedFiles": @(self.exportedFiles), @"exportPath": self.exportPath ?: @"",
 		@"partial": (self.errors > 0 || self.failure.length > 0 || self.cancelled) ? @YES : @NO};
-	// Summaries describe the whole batch, so they are published once at the end.
+	// Final summaries belong to the completed batch. Pending polls copy live
+	// rankings under the worker lock without publishing unfinished root trees.
 	if (done && (self.fileLimit || self.collectsExtensions || self.collectsBreakdown || self.treeDepth || self.oldBefore > 0)) {
 		NSMutableDictionary *complete = [snapshot mutableCopy];
 		if (self.fileLimit) { complete[@"largeFiles"] = self.largeFiles.copy; complete[@"oldFiles"] = self.oldFiles.copy; }
@@ -669,10 +698,12 @@ static uint64_t volumeUsedBytes(NSString *path) {
 		@try {
 			for (NSString *path in self.roots) {
 				if ([self stopped]) break;
+				self.currentRoot = path;
 				@autoreleasepool { [self root:path]; [self publish:NO]; }
 			}
 		} @catch (NSException *exception) { self.failure = exception.reason ?: @"Native scan failed."; }
 		[self finishExport];
+		self.currentRoot = nil;
 		[self publish:YES];
 		free(_seen); _seen = NULL; _seenCount = 0; _seenCapacity = 0;
 	}
@@ -929,11 +960,11 @@ static int scan(lua_State *L) { StorageScanJob *job = newJob(L); [job run]; push
 static int poll(lua_State *L) {
 	StorageScanJob *job = checkJob(L); NSDictionary *snapshot; BOOL done;
 	@synchronized(job) { snapshot = job.snapshot; done = job.done; }
+	if (!done) snapshot = [job liveSnapshot:snapshot];
 	lua_pushboolean(L, done); pushValue(L, snapshot); return 2;
 }
 static int cancel(lua_State *L) { checkJob(L).cancelled = YES; return 0; }
-// Items met so far, read while the scan runs: the snapshot itself is only
-// published as each root finishes.
+// Lightweight item counter for callers that do not need a full snapshot.
 static int progress(lua_State *L) { lua_pushinteger(L, (lua_Integer)[checkJob(L) liveVisited]); return 1; }
 static int collect(lua_State *L) {
 	CFTypeRef *ref = luaL_checkudata(L, 1, JobMetatable);

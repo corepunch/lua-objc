@@ -16,7 +16,7 @@ scan.cancel(job)
 ```
 
 `start(roots, exclusions)` returns native userdata. `poll(job)` returns a boolean
-and either nil (no completed root yet) or a plain Lua snapshot. `cancel(job)` is
+and a plain Lua snapshot, including before the first root completes. `cancel(job)` is
 idempotent. Job GC also requests cancellation. Only immutable Foundation snapshots
 cross the worker boundary; no worker calls Lua, so callbacks cannot reach a closed
 Lua state. The code image is pinned until process exit to cover workers completing
@@ -24,8 +24,9 @@ filesystem calls after state teardown. The worker releases its per-scan identity
 ledger when it finishes.
 
 `start(roots, exclusions, options)` and `scan(roots, exclusions, options)` accept
-optional summaries computed during the same walk, published only with the final
-snapshot:
+optional summaries computed during the same walk. File and extension summaries
+are available during polling; root breakdowns and folder trees publish as their
+roots finish:
 
 - `files = N`, `minimumFileBytes = B`: `largeFiles`, the N largest counted
   regular files of at least B bytes (capped at 2,000), each `{path, bytes,
@@ -46,8 +47,12 @@ snapshot:
 - `logicalRoots = {[physical] = logical}` reports a root under the path people
   know, as the startup disk's Data volume is known as `/`.
 
-`progress(job)` returns the number of items met so far while a scan runs; the
-snapshot itself is published only as each root finishes.
+`progress(job)` returns the number of items met so far while a scan runs.
+Pending snapshots include `visited`, `errors`, `protected`, elapsed `seconds`,
+`currentPath`, and completed/total root counts. Their `partial = true` indicates
+an unfinished scan. Each poll copies bounded file and extension summaries under
+the worker's lock; Lua never sees mutable worker collections. Root counts are
+location counts, not estimates of remaining time.
 
 Hard-linked files count once in every summary, as in `trees`. Dates come from
 the same `getattrlistbulk` records; no file is opened.

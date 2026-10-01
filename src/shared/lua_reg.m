@@ -7,11 +7,11 @@
  * lua_State pointer.
  *
  * Each registration also remembers the Scope that was current at creation
- * (a registry ref to the scope table). lua_reg_push re-enters that scope
- * before pushing the closure, so callbacks created inside an event handler
+ * (a registry ref to the scope table). The invocation wrapper re-enters it
+ * while calling the closure, so callbacks created inside an event handler
  * bind to the firing callback's scope rather than whichever window scope
- * happens to be global. This fixes the two-window cross-binding without
- * threading an explicit scope through every bridge call.
+ * happens to be global. It restores the caller's scope on success and error,
+ * so nested view callbacks cannot take ownership of their caller's work.
  */
 
 static const char *kLuaRegMeta = "lua_objc.reg";
@@ -225,40 +225,41 @@ static lua_State *lua_reg_live_state(LuaReg *reg) {
 	return owner.L;
 }
 
+// Scope affinity lasts for the callback invocation. Leaving a nested control
+// callback current would bind its caller's next timer to a disposable view.
+static int lua_reg_invoke_scoped(lua_State *L) {
+	int arguments = lua_gettop(L);
+	lua_getfield(L, LUA_REGISTRYINDEX, kCurrentScopeKey);
+	lua_insert(L, 1);
+	lua_pushvalue(L, lua_upvalueindex(2));
+	if (lua_istable(L, -1)) {
+		// Work started by a retained control belongs to its enclosing screen.
+		lua_getfield(L, -1, "enclosing");
+		if (lua_istable(L, -1)) lua_replace(L, -2);
+		else lua_pop(L, 1);
+		lua_getfield(L, -1, "closed");
+		BOOL closed = lua_toboolean(L, -1);
+		lua_pop(L, 1);
+		if (!closed) lua_setfield(L, LUA_REGISTRYINDEX, kCurrentScopeKey);
+		else lua_pop(L, 1);
+	} else lua_pop(L, 1);
+	lua_pushvalue(L, lua_upvalueindex(1));
+	lua_insert(L, 2);
+	int status = lua_pcall(L, arguments, LUA_MULTRET, 0);
+	lua_pushvalue(L, 1);
+	lua_setfield(L, LUA_REGISTRYINDEX, kCurrentScopeKey);
+	lua_remove(L, 1);
+	if (status != LUA_OK) return lua_error(L);
+	return lua_gettop(L);
+}
+
 static BOOL lua_reg_push(LuaReg *reg) {
 	lua_State *L = lua_reg_live_state(reg);
 	if (!L) return NO;
-	/* Re-enter the owning scope so registrations created inside this
-	 * callback bind to the firing scope, not to whichever scope is
-	 * currently global (two-window cross-binding). The global stays on
-	 * the firing scope after return; all post-startup registrations are
-	 * created inside callbacks, so this is the correct affinity.
-	 * A retained template renders each view node in its own scope, which
-	 * the reconciler disposes when it rebuilds that node. Such a scope names
-	 * its `enclosing` scope: work a node's callback starts (a timer, an
-	 * async task) belongs to the screen, not to the control that started
-	 * it, as a SwiftUI Task begun in a Button action outlives the button. */
-	if (reg.scopeRef != LUA_NOREF) {
-		lua_rawgeti(L, LUA_REGISTRYINDEX, reg.scopeRef);
-		if (lua_istable(L, -1)) {
-			lua_getfield(L, -1, "enclosing");
-			if (lua_istable(L, -1)) lua_replace(L, -2);
-			else lua_pop(L, 1);
-		}
-		if (lua_istable(L, -1)) {
-			lua_getfield(L, -1, "closed");
-			BOOL closed = lua_toboolean(L, -1);
-			lua_pop(L, 1);
-			if (!closed) {
-				lua_setfield(L, LUA_REGISTRYINDEX, kCurrentScopeKey);
-			} else {
-				lua_pop(L, 1);
-			}
-		} else {
-			lua_pop(L, 1);
-		}
-	}
 	lua_rawgeti(L, LUA_REGISTRYINDEX, reg.ref);
+	if (reg.scopeRef != LUA_NOREF) lua_rawgeti(L, LUA_REGISTRYINDEX, reg.scopeRef);
+	else lua_pushnil(L);
+	lua_pushcclosure(L, lua_reg_invoke_scoped, 2);
 	return YES;
 }
 
@@ -271,4 +272,9 @@ static int bridge_set_current_scope(lua_State *L) {
 	}
 	lua_setfield(L, LUA_REGISTRYINDEX, kCurrentScopeKey);
 	return 0;
+}
+
+static int bridge_get_current_scope(lua_State *L) {
+	lua_getfield(L, LUA_REGISTRYINDEX, kCurrentScopeKey);
+	return 1;
 }

@@ -79,7 +79,7 @@ function Overview.chart(model, disk)
 			size = Model.size(rest.bytes), share = percent(rest.bytes, used)})
 	end
 	if residual and residual.bytes > 0 then
-		table.insert(marks, {id = "unreconciled", value = residual.bytes, color = "tertiary", label = "Not attributed"})
+		table.insert(marks, {id = "unreconciled", value = residual.bytes, color = "tertiary", label = residual.name})
 	end
 	if free and free.bytes > 0 then
 		table.insert(marks, {id = "free", value = free.bytes, color = "quaternaryLabel", label = "Free"})

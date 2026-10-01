@@ -13,14 +13,17 @@ local function runtimeName(identifier)
 	if product then return product .. " " .. major .. "." .. minor end
 	return body:gsub("%-", " ")
 end
-function Simulators.discover(service, home)
+function Simulators.discover(service, home, listed)
 	home = home or service.home or "/Users"
 	local root = expand("~/Library/Developer/CoreSimulator/Devices", home)
 	local children = service.children and service.children(root) or {}
-	local devices, names = {}, {}
+	local devices, names, records = {}, {}, {}
+	for runtime, rows in pairs(listed and listed.devices or {}) do
+		for _, row in ipairs(rows) do records[row.udid] = {device = row, runtime = runtime} end
+	end
 	for _, entry in ipairs(children) do
 		if type(entry.name) == "string" and entry.name:lower():match(UUID) then
-			local info = {name = entry.name, runtime = "unknown", available = true}
+			local info = {name = entry.name, runtime = "unknown"}
 			local plist = service.readPropertyList and service.readPropertyList(entry.path .. "/device.plist") or nil
 			local named = type(plist) == "table" and type(plist.name) == "string" and plist.name ~= ""
 			if named then
@@ -28,20 +31,21 @@ function Simulators.discover(service, home)
 				if type(plist.runtime) == "string" and plist.runtime ~= "" then info.runtime = plist.runtime end
 				if type(plist.lastBootedAt) == "string" then info.lastUsedAt = plist.lastBootedAt end
 			end
-			local record, runtime = nil, nil
-			if service.simulatorRecord then record, runtime = service.simulatorRecord(entry.name) end
+			local known = records[entry.name]
+			local record, runtime = known and known.device, known and known.runtime
+			if not record and service.simulatorRecord then record, runtime = service.simulatorRecord(entry.name) end
 			if record then
 				if not named then info.name = record.name or info.name end
 				if info.runtime == "unknown" and type(runtime) == "string" then info.runtime = runtime end
 				info.lastUsedAt = info.lastUsedAt or record.lastUsedAt
-				info.available = record.isAvailable ~= false
+				if type(record.isAvailable) == "boolean" then info.available = record.isAvailable end
 				if type(record.state) == "string" then info.state = record.state end
 			end
 			local key = info.runtime
 			names[key] = names[key] or runtimeName(key)
 			devices[key] = devices[key] or {}
 			table.insert(devices[key], {
-				name = info.name, udid = entry.name, state = info.state, isAvailable = info.available ~= false,
+				name = info.name, udid = entry.name, state = info.state, isAvailable = info.available,
 				lastUsedAt = info.lastUsedAt, dataPath = entry.path .. "/data", dataPathSize = entry.bytes,
 				measurePath = entry.path,
 			})
@@ -85,20 +89,23 @@ function Simulators.rows(inventory, query, filter, now)
 		for _, device in ipairs(devices) do
 			local name = device.name or "Unnamed device"
 			local runtimeName = runtimes[runtime] or runtime:gsub("com.apple.CoreSimulator.SimRuntime.", ""):gsub("%-", " ")
-			local available = device.isAvailable == true
+			local available = device.isAvailable
+			local running
+			if device.state == "Shutdown" then running = false
+			elseif device.state == "Booted" or device.state == "Booting" or device.state == "Shutting Down" then running = true end
 			local age = Simulators.age(device.lastUsedAt, now)
-			local matchesFilter = (filter ~= "Unavailable" or not available)
+			local matchesFilter = (filter ~= "Unavailable" or available == false)
 				and (filter ~= Simulators.filters[3] or (age ~= nil and age >= Simulators.staleDays))
 			if matchesFilter and (name .. " " .. runtimeName .. " " .. (device.udid or "")):lower():find(needle, 1, true) then
 				-- A value names itself or stays empty: a dash in a list without
 				-- headers says nothing.
 				table.insert(rows, {id = device.udid, name = name, runtime = runtimeName,
-					icon = Simulators.symbol(name .. " " .. runtimeName), color = available and "systemBlue" or "systemOrange",
-					state = available and (device.state or "") or "Unavailable",
-					available = available, running = device.state == "Booted" or device.state == "Booting" or device.state == "Shutting Down", path = device.dataPath,
+					icon = Simulators.symbol(name .. " " .. runtimeName), color = available == false and "systemOrange" or "systemBlue",
+					state = available == false and "Unavailable" or (device.state or "State unknown"),
+					available = available, running = running, path = device.dataPath,
 					bytes = device.dataPathSize, size = Model.size(device.dataPathSize), age = age,
 					runtimeIdentifier = runtime,
-					lastUse = age and Model.used(Model.ago(age)) or "Never started"})
+					lastUse = age and Model.used(Model.ago(age)) or "Last use unknown"})
 			end
 		end
 	end
@@ -149,11 +156,12 @@ end
 -- Totals for the page header. Unmeasured devices and runtimes add no bytes.
 function Simulators.summary(inventory, runtimes, now)
 	local result = {devices = 0, deviceBytes = 0, unavailable = 0, unavailableBytes = 0, stale = 0, staleBytes = 0,
-		runtimes = #(runtimes or {}), runtimeBytes = 0}
+		runtimes = #(runtimes or {}), runtimeBytes = 0, unknownAvailability = 0}
 	for _, row in ipairs(Simulators.rows(inventory or {}, nil, nil, now)) do
 		result.devices = result.devices + 1
 		result.deviceBytes = result.deviceBytes + (row.bytes or 0)
-		if not row.available then
+		if row.available == nil then result.unknownAvailability = result.unknownAvailability + 1 end
+		if row.available == false then
 			result.unavailable = result.unavailable + 1
 			result.unavailableBytes = result.unavailableBytes + (row.bytes or 0)
 		end
@@ -194,8 +202,9 @@ function Simulators.validate(action, row, model)
 	if action ~= "erase" and action ~= "delete" then return false, {code = "unsupported_action", message = "Simulator action is not supported."} end
 	if not row then return false, {code = "missing_device", message = "No simulator device is selected."} end
 	if type(row.id) ~= "string" or not row.id:match(UUID) then return false, {code = "invalid_uuid", message = "Simulator identifier is not a UUID."} end
+	if row.running == nil then return false, {code = "state_unknown", message = "Device state could not be checked. Retry or manage this device in Xcode."} end
 	if row.running then return false, {code = "device_running", message = "Shut down the simulator before changing it."} end
-	if action == "erase" and not row.available then return false, {code = "device_unavailable", message = "Unavailable simulators cannot be erased."} end
+	if action == "erase" and row.available ~= true then return false, {code = "device_unavailable", message = "Unavailable simulators cannot be erased."} end
 	if model then
 		local catalog = model.resources:find("simulators")
 		if catalog and catalog:isKept() then return false, {code = "kept_resource", message = "Keep protects simulator storage."} end

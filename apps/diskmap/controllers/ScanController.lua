@@ -1,5 +1,6 @@
 local Inventory = require("apps.diskmap.models.Inventory")
 local Volumes = require("apps.diskmap.models.Volumes")
+local Model = require("apps.diskmap.Model")
 local Scan = {}; Scan.__index = Scan
 -- `finished(result)` runs after each completed measurement, before pages
 -- refresh, so callers can record history or remeasure related state.
@@ -50,8 +51,13 @@ function Scan:start()
 			if generation ~= self.generation or type(progress) ~= "table" or type(progress.total) ~= "number" or progress.total <= 0 then return end
 			Inventory.progress(self.model, ids, progress)
 			local completed = math.min(progress.completed or 0, progress.total)
-			local percent = math.floor(completed * 100 / progress.total)
-			self.status = string.format("Scanning %d of %d locations (%d%%)", completed, progress.total, percent)
+			-- Location counts are not an estimate of time remaining: the final
+			-- location can hold more files than every earlier one combined.
+			self.status = string.format("%d of %d locations measured · %s items checked · %d sec elapsed",
+				completed, progress.total, Model.count(progress.visited or 0), math.floor(progress.seconds or 0))
+			if type(progress.currentPath) == "string" and progress.currentPath ~= "" then
+				self.status = self.status .. " · Measuring " .. Model.tilde(progress.currentPath, self.home)
+			end
 			self:notify()
 		end)
 	end

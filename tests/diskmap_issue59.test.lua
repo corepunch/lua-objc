@@ -92,8 +92,8 @@ t.assertEqual(Simulators.symbol("Apple Watch Series 11"), "applewatch", "a watch
 t.assertEqual(Simulators.symbol("iPhone 17"), "iphone", "anything else is a phone")
 local devices = Simulators.rows({runtimes = {}, devices = {["com.apple.CoreSimulator.SimRuntime.iOS-26-5"] = {
 	{name = "iPhone 17", udid = "A", isAvailable = true, dataPathSize = 1e9}}}})
-t.assertEqual(devices[1].state, "", "an unknown state is left empty, not dashed")
-t.assertEqual(devices[1].lastUse, "Never started", "a device never booted says so")
+t.assertEqual(devices[1].state, "State unknown", "missing device state is explicit")
+t.assertEqual(devices[1].lastUse, "Last use unknown", "a missing last-use date stays unknown")
 t.assertEqual(devices[1].icon, "iphone", "device rows have an icon")
 
 -- The mock app: pages as they are mounted.
