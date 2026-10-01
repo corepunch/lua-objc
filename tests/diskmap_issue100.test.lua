@@ -191,4 +191,23 @@ t.expect(Outcome.freeText(10e9, 10e9, true):find("after a short delay", 1, true)
 t.assertEqual(Outcome.freeText(nil, 1), "Free space could not be measured.", "an unmeasured figure says so")
 t.assertEqual(Outcome.free({diskSpace = function() return {freeKb = 1000} end}, "/"), 1000 * 1024, "free space is read from the service")
 t.assertEqual(Outcome.free({}, "/"), nil, "a service that cannot say gives nil")
+
+-- One batch flow: refresh, validate, execute; skips and failures never stop the rest.
+local Batch = require("apps.diskmap.models.Batch")
+local log = {}
+local outcome
+Batch.run({{name = "a", bytes = 100}, {name = "b", bytes = 200}, {name = "c", bytes = 300}, {name = "d", bytes = 400}}, {
+	label = function(item) return item.name end,
+	bytes = function(item) return item.bytes end,
+	refresh = function(item, done) table.insert(log, "refresh " .. item.name); done({stale = item.name == "b"}) end,
+	validate = function(item, fresh) if fresh.stale then return false, {message = "changed"} end return true end,
+	execute = function(item, done) table.insert(log, "run " .. item.name); if item.name == "c" then done(false, "boom\nmore") else done(true) end end,
+}, function(result) outcome = result end)
+t.assertEqual(table.concat(log, ","), "refresh a,run a,refresh b,refresh c,run c,refresh d,run d", "each item is refreshed first and a refused one is never run")
+t.assertEqual(outcome.removed, 2, "two items were done")
+t.assertEqual(outcome.bytes, 500, "their bytes add up")
+t.assertEqual(outcome.skipped[1], "b (changed)", "the refused item is reported with its reason")
+t.assertEqual(outcome.failed[1], "c (boom)", "a failure is reported on one line")
+t.assertEqual(Batch.report(outcome, "Removed", "worktree"), "Removed 2 worktrees (0 KB). Skipped b (changed). Failed c (boom)", "the report reads as one sentence list")
+t.assertEqual(Batch.report({removed = 0, bytes = 0, skipped = {}, failed = {}}, "Deleted", "device"), "Nothing was deleted", "an empty run says so")
 os.exit(t.summary() and 0 or 1)

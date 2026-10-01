@@ -3,6 +3,7 @@ local Model = require("apps.diskmap.Model")
 local Catalog = require("apps.diskmap.Catalog")
 local Worktrees = require("apps.diskmap.models.Worktrees")
 local Outcome = require("apps.diskmap.models.Outcome")
+local Batch = require("apps.diskmap.models.Batch")
 local Controller = Page.extend("worktrees", "Worktrees")
 
 -- The Worktrees page: linked Git worktrees found under the project folders
@@ -180,38 +181,29 @@ function Controller:review()
 	local freeBefore = Outcome.free(self.service, self.model.home)
 	self:show()
 	local generation = self.generation
-	local removed, removedBytes, skipped, failed = 0, 0, {}, {}
-	local function finish()
-		local parts = {}
-		if removed > 0 then table.insert(parts, "Removed " .. Model.plural(removed, "worktree") .. " (" .. Model.size(removedBytes) .. ")") end
-		if #skipped > 0 then table.insert(parts, "Skipped " .. table.concat(skipped, "; ")) end
-		if #failed > 0 then table.insert(parts, "Failed " .. table.concat(failed, "; ")) end
-		if #parts == 0 then parts[1] = "Nothing was removed" end
-		self.busy = false
-		self.result = table.concat(parts, ". ") .. ". The repositories and every other worktree were left as they were; removed worktrees are deleted at once, not moved to the Trash. "
-			.. Outcome.freeText(freeBefore, Outcome.free(self.service, self.model.home), removed > 0) .. "."
-		if self.changed then self.changed() end
-		if generation == self.generation or not self.refs then self.loaded = true; self:load() end
-	end
-	local function step(index)
-		local row = plan.removal[index]
-		if not row then finish(); return end
-		self.service.worktreeState(row, function(entry, facts)
-			local options = {now = os.time(), kept = self:isKept(row.path)}
-			local ok, reason = Worktrees.revalidate(row, entry, facts, options)
-			if not ok then
-				table.insert(skipped, row.name .. " (" .. reason.message .. ")")
-				step(index + 1); return
-			end
+	Batch.run(plan.removal, {
+		label = function(row) return row.name end,
+		bytes = function(row) return row.bytes end,
+		refresh = function(row, done)
+			self.service.worktreeState(row, function(entry, facts) done({entry = entry, facts = facts}) end)
+		end,
+		validate = function(row, fresh)
+			return Worktrees.revalidate(row, fresh.entry, fresh.facts, {now = os.time(), kept = self:isKept(row.path)})
+		end,
+		execute = function(row, done)
 			self.service.command(Worktrees.removeCommand(row), function(success, output)
 				if self.log then self.log("git worktree remove " .. row.path, success, row.bytes, row.name, not success and output or nil) end
-				if success then removed = removed + 1; removedBytes = removedBytes + (row.bytes or 0)
-				else table.insert(failed, row.name .. " (" .. tostring(output):gsub("\n.*", ""):sub(1, 100) .. ")") end
-				step(index + 1)
+				done(success, output)
 			end)
-		end)
-	end
-	step(1)
+		end,
+	}, function(result)
+		self.busy = false
+		self.result = Batch.report(result, "Removed", "worktree")
+			.. ". The repositories and every other worktree were left as they were; removed worktrees are deleted at once, not moved to the Trash. "
+			.. Outcome.freeText(freeBefore, Outcome.free(self.service, self.model.home), result.removed > 0) .. "."
+		if self.changed then self.changed() end
+		if generation == self.generation or not self.refs then self.loaded = true; self:load() end
+	end)
 	return true
 end
 
