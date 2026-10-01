@@ -1054,12 +1054,15 @@ label set at its largest size with `minimumScaleFactor` fits any hole:
 ```
 
 A positive `depth="14"` draws the chart **raised** instead (AppKit,
-`src/appkit/sector_scene.m`): one SceneKit view renders each sector as a
-square-edged extruded solid, seen through a camera tilted down like Excel's
-3-D pie. Every ring stands the same height, so a wall never runs into the
+`src/appkit/sector_scene.m`): one SceneKit view renders each sector as an
+extruded solid with a rounded top edge, seen through a camera tilted down
+like Excel's 3-D pie. The edge is a quarter-circle fillet of up to 3pt, held
+under a share of the height and of the sector's narrowest width so slivers
+stay clean; it catches the key light and outlines every slice. Every ring stands the same height, so a wall never runs into the
 ring in front of it, and the first sector starts at half past one. `angularInset` becomes a parallel-sided gap of the same width between
-neighbours and between rings. Each slice carries its own diagonal gradient; a
-key light and a soft contact shadow on a shadow-only floor do the rest;
+neighbours and between rings. Each slice carries its own soft diagonal
+gradient; a key light, a fill, a little ambient light that keeps the walls
+in their hue, and a soft contact shadow on a shadow-only floor do the rest;
 `shadow="false"` drops the shadow. Mark
 opacity blends towards the window background rather than making solids
 translucent. The pointer is unprojected onto each ring's top face, so hover,

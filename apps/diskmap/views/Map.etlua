@@ -1,5 +1,5 @@
 <%
-  local MAP = { chart = 360, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 34, caption = 13, totalScale = 13 / 34, captionScale = 0.77 }, gap = 5, depth = 14, list = { minimum = 300, maximum = 330 }, meter = 130, treemapHeight = 420 }
+  local MAP = { chart = 360, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 34, caption = 13, totalScale = 13 / 34, captionScale = 0.77 }, gap = 3, depth = 14, list = { minimum = 300, maximum = 330 }, meter = 130, treemapHeight = 420 }
   -- Every ring keeps the thickness it has among three, so one ring of
   -- files is a slim ring like the Overview donut, not a thick disc.
   local rings = 1
