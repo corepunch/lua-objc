@@ -40,9 +40,9 @@ local saved, refreshed = 0, 0
 local keepMessage
 local cleanup = CleanupController.new(model, {saveKeep = function() saved = saved + 1; return true end}, function(message) keepMessage = message end)
 local Recommendations = require("apps.diskmap.models.Recommendations")
-t.assertEqual(Recommendations.presentation(model).review[1].id, "simulators", "clean up keeps resource identity")
-t.assertEqual(#Recommendations.presentation(model, "unfindable").review, 0, "clean up search is independent")
-local reviewRow = Recommendations.presentation(model).review[1]
+t.assertEqual(Recommendations.presentation(model).decisions[1].id, "simulators", "clean up keeps resource identity")
+t.assertEqual(#Recommendations.presentation(model, "unfindable").decisions, 0, "clean up search is independent")
+local reviewRow = Recommendations.presentation(model).decisions[1]
 t.assertEqual(reviewRow.statusColor, "systemOrange", "a review suggestion carries an orange status symbol")
 t.assertEqual(reviewRow.shareText, "", "partial sizes say ≥ in the size column, never words in the share bar")
 cleanup:toggleKeep("simulators")

@@ -759,6 +759,11 @@ function Mock:command(arguments, completion)
 	completion(true, "Mock simulator " .. action .. " completed.")
 end
 
+function Mock:simulatorState(udid, completion)
+	local record = self:simulatorRecord(udid)
+	completion(record and copy(record) or nil)
+end
+
 function Mock:simulatorRuntimes(completion)
 	completion(copy(self.fixture.simulatorRuntimes or {}))
 end

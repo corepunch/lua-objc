@@ -378,6 +378,18 @@ function System.simulatorDevices(completion)
 		else completion(nil, "Device state could not be checked. Retry or open Xcode to manage devices.") end
 	end)
 end
+-- One device's current record, read just before a batch deletion touches it.
+-- Completes with nil when the device is gone or CoreSimulator cannot say.
+function System.simulatorState(udid, completion)
+	System.simulatorDevices(function(listed)
+		for _, devices in pairs(listed and listed.devices or {}) do
+			for _, record in ipairs(devices) do
+				if record.udid == udid then completion(record); return end
+			end
+		end
+		completion(nil)
+	end)
+end
 -- Installed simulator runtime images with their sizes.
 -- Completes with nil when Xcode's tools are missing or the output is unreadable.
 function System.simulatorRuntimes(completion)
