@@ -29,8 +29,10 @@
     </Picker>
   </HStack>
   <HStack id="mapBody" flexGrow="1" maxHeight="infinity" spacing="16" alignment="top">
-    <% --[[ The list gives way before the chart does: in the narrowest window it
+    <% --[[ Rectangles already name every item, so the list serves the rings
+      only. It gives way before the chart does: in the narrowest window it
       keeps its name and share columns, and the chart its size. ]] %>
+    <% if style ~= "rectangles" then %>
     <GroupBox minWidth="<%= MAP.list.minimum %>" maxWidth="<%= MAP.list.maximum %>" flexGrow="1" flexShrink="1" maxHeight="infinity">
       <VStack maxHeight="infinity" spacing="0">
         <% if #rows == 0 and query ~= "" then %>
@@ -44,6 +46,7 @@
         </List>
       </VStack>
     </GroupBox>
+    <% end %>
     <ScrollView id="mapChartScroll" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" minWidth="<%= MAP.chart %>" maxHeight="infinity">
     <VStack spacing="12" alignment="center">
       <% if #nodes == 0 then %>

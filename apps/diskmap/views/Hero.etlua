@@ -1,5 +1,8 @@
 <%
   local HERO = { chart = 196, hole = 0.7, gap = 3, depth = 8, total = 34, caption = 13, totalScale = 13 / 34, captionScale = 0.77 }
+  -- The line under the ring naming the hovered sector: as wide as the column the
+  -- ring leaves beside the legend, so a category, its size and share fit.
+  HERO.detail = { size = 12, width = 240, height = 16, gap = 8 }
   -- The center text is set at its largest; the chart offers it the hole and
   -- it shrinks to fit, no smaller than the scale factors allow.
   local hiddenRows = hidden or {}
@@ -13,15 +16,21 @@
 %>
 <GroupBox id="heroCard">
   <HStack padding="20" spacing="28" alignment="center">
-    <SectorChart id="chart" transition="opacity" width="<%= HERO.chart %>" height="<%= HERO.chart %>" innerRadius="<%= HERO.hole %>" angularInset="<%= HERO.gap %>" depth="<%= HERO.depth %>" shadow="false" onSelect="chartSelect" onHover="chartHover" onCenter="chartCenter" accessibilityLabel="<%= chart.accessibilityLabel %>">
-      <% for _, mark in ipairs(chart.marks) do %>
-      <SectorMark id="<%= mark.id %>" value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" />
-      <% end %>
-      <VStack spacing="0" alignment="center">
-        <Label id="usedTotal" text="<%= summary.used %>" size="<%= HERO.total %>" minimumScaleFactor="<%= HERO.totalScale %>" lines="1" weight="semibold" design="rounded" monospacedDigit="true" />
-        <Label id="usedCaption" text="<%= summary.caption %>" size="<%= HERO.caption %>" minimumScaleFactor="<%= HERO.captionScale %>" lines="1" color="secondary" />
-      </VStack>
-    </SectorChart>
+    <% --[[ The ring and the line under it are one chart: the hovered sector
+      is named there, and the line keeps its height while empty so the ring
+      never moves. ]] %>
+    <VStack id="chartColumn" spacing="<%= HERO.detail.gap %>" alignment="center">
+      <SectorChart id="chart" transition="opacity" width="<%= HERO.chart %>" height="<%= HERO.chart %>" innerRadius="<%= HERO.hole %>" angularInset="<%= HERO.gap %>" depth="<%= HERO.depth %>" shadow="false" onSelect="chartSelect" onHover="chartHover" onCenter="chartCenter" accessibilityLabel="<%= chart.accessibilityLabel %>">
+        <% for _, mark in ipairs(chart.marks) do %>
+        <SectorMark id="<%= mark.id %>" value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" />
+        <% end %>
+        <VStack spacing="0" alignment="center">
+          <Label id="usedTotal" text="<%= summary.used %>" size="<%= HERO.total %>" minimumScaleFactor="<%= HERO.totalScale %>" lines="1" weight="semibold" design="rounded" monospacedDigit="true" />
+          <Label id="usedCaption" text="<%= summary.caption %>" size="<%= HERO.caption %>" minimumScaleFactor="<%= HERO.captionScale %>" lines="1" color="secondary" />
+        </VStack>
+      </SectorChart>
+      <Label id="chartDetail" text="" size="<%= HERO.detail.size %>" color="secondary" monospacedDigit="true" width="<%= HERO.detail.width %>" height="<%= HERO.detail.height %>" alignment="center" lines="1" truncation="middle" />
+    </VStack>
     <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="14" alignment="leading">
       <VStack spacing="2" alignment="leading">
         <HStack spacing="10" alignment="center">

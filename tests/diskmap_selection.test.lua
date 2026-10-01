@@ -73,15 +73,18 @@ app:show("overview")
 local overview = app.pages.overview
 local results = overview.refs.results
 local category = overview.categoryRows[2].id
+-- Hovering the ring stays inside the chart: the line under it names the
+-- sector and no category row follows the pointer.
 overview.hero.actions.chartHover(category)
-t.assertEqual(overview.selectedId, category, "the Overview's sector and rows share one token")
-t.assertEqual(results.documentView.selectedRow, 1, "hovering a sector selects its category row")
-app.scan:notify()
-t.assertEqual(overview.refs.results.documentView.selectedRow, Selection.index(overview.categoryRows, category),
-	"new measurements keep the selected row")
+t.assertEqual(overview.selectedId, nil, "hovering a sector selects no category row")
+t.assertEqual(results.documentView.selectedRow, -1, "natively")
+t.expect(overview.hero.refs.chartDetail.text:find(overview.categoryRows[2].name, 1, true) == 1, "the line under the ring names the sector")
 overview.hero.actions.chartHover(Overview.folded)
-t.assertEqual(overview.selectedId, nil, "the folded categories have no row")
-t.assertEqual(overview.refs.results.documentView.selectedRow, -1, "and select none")
+t.assertEqual(overview.hero.refs.chartDetail.text:match("^[^·]+"), "Other categories ", "the folded categories name themselves")
+overview.hero.actions.chartHover("free")
+t.expect(overview.hero.refs.chartDetail.text:find("of disk", 1, true) ~= nil, "free space is a share of the disk")
+overview.hero.actions.chartHover(nil)
+t.assertEqual(overview.hero.refs.chartDetail.text, "", "leaving the chart clears the line")
 -- "other" is a category too: its sector and legend row are its own, never
 -- the folded categories'.
 local mapped, opened = {}, {}
@@ -93,18 +96,9 @@ overview.hero.actions.chartSelect("other")
 t.assertEqual(mapped[1], "other", "the Other category's sector opens the Map inside it")
 overview.hero.actions.chartSelect(Overview.folded)
 t.assertEqual(mapped[2], "", "the folded sector opens the whole map")
-overview.hero.actions.chartHover("other")
-t.assertEqual(overview.selectedId, "other", "and the Other category selects its own row")
 t.assertEqual(overview.hero.actions["category_" .. Overview.folded], nil, "the folded legend row opens nothing")
-overview.hero.actions.chartHover(nil)
 overview.handlers = handlers
 overview:update(app:state())
-overview.hero.actions.chartHover("free")
-t.assertEqual(overview.selectedId, nil, "free space is no resource")
-t.assertEqual(overview.refs.results.documentView.selectedRow, -1, "and selects no row")
-overview.hero.actions.chartHover(category)
-overview.hero.actions.chartHover(nil)
-t.assertEqual(overview.refs.results.documentView.selectedRow, -1, "leaving the chart clears the selection")
 
 app:show("map")
 local map = app.pages.map

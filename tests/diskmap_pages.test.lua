@@ -56,11 +56,15 @@ t.assertEqual(app.pages.map.focus, "developer", "clicking a group focuses it")
 t.assertEqual(page().mapFocus.text, "Developer", "the breadcrumb ends at the focus")
 app.page.template.actions.style(1)
 t.expect(page().treemap ~= nil and page().sunburst == nil, "rectangles replace the rings")
+t.assertEqual(page().mapList, nil, "rectangles name every item, so the list serves the rings only")
+local treemapWidth = page().mapChartScroll.frame.size.width
 app.page.template.actions.chartHover("xcode")
 t.expect(page().mapHover.text:find("Developer › Xcode", 1, true) == 1, "hover describes a node in place")
 app.page.template.actions.up()
 t.assertEqual(app.pages.map.focus, "", "the center or breadcrumb goes back up")
 app.page.template.actions.style(0)
+t.expect(page().mapList ~= nil and page().mapList.rowCount > 0, "the rings bring the list back")
+t.expect(page().mapChartScroll.frame.size.width < treemapWidth, "the rectangles take the list's width")
 
 -- Applications: leftovers carry a confidence tier; High can be marked at once.
 app:show("applications")
@@ -160,11 +164,12 @@ local heroActions = hero.actions
 local usedTotal, usedCaption = hero.refs.usedTotal.text, hero.refs.usedCaption.text
 t.assertEqual(hero.refs.chart.subviews[#hero.refs.chart.subviews].className, "LuaPointerView", "the overview ring takes the pointer")
 heroActions.chartHover("developer")
-t.assertEqual(hero.refs.usedCaption.text, "Developer", "a hovered sector names itself in the center")
-t.expect(hero.refs.usedTotal.text ~= usedTotal, "with its size")
-heroActions.chartHover(nil)
-t.assertEqual(hero.refs.usedTotal.text, usedTotal, "leaving it restores the used total")
+t.expect(hero.refs.chartDetail.text:find("Developer · ", 1, true) == 1, "a hovered sector names itself under the ring")
+t.expect(hero.refs.chartDetail.text:find("%d+%%$") ~= nil, "with its size and share")
+t.assertEqual(hero.refs.usedTotal.text, usedTotal, "the center keeps the used total")
 t.assertEqual(hero.refs.usedCaption.text, usedCaption, "and its caption")
+heroActions.chartHover(nil)
+t.assertEqual(hero.refs.chartDetail.text, "", "leaving it clears the line")
 heroActions.chartSelect("free")
 t.assertEqual(app.destination, "overview", "free space has nothing inside to open")
 heroActions.chartSelect("developer")
@@ -182,18 +187,19 @@ hero = app.pages.overview.hero
 local heroPointer = hero.refs.chart.subviews[#hero.refs.chart.subviews]
 t.expect(heroPointer.acceptsFirstResponder, "the overview ring takes keyboard focus")
 bridge._pointerSend(heroPointer, "key", "tab")
-t.expect(hero.refs.usedCaption.text ~= usedCaption, "a focused sector names itself in the center")
+t.expect(hero.refs.chartDetail.text ~= "", "a focused sector names itself under the ring")
+t.assertEqual(hero.refs.usedCaption.text, usedCaption, "the center keeps its caption")
 bridge._pointerSend(heroPointer, "key", "delete")
 t.assertEqual(app.destination, "overview", "delete stays on the overview")
 -- Tab starts at the largest sector, space no category accounts for.
-t.assertEqual(hero.refs.usedCaption.text, "Not attributed", "tab focuses the largest sector")
+t.expect(hero.refs.chartDetail.text:find("Not attributed · ", 1, true) == 1, "tab focuses the largest sector")
 bridge._pointerSend(heroPointer, "key", "return")
 t.assertEqual(app.destination, "overview", "which has nothing inside to open")
 for _ = 1, 8 do
-	if hero.refs.usedCaption.text == "Developer" then break end
+	if hero.refs.chartDetail.text:find("Developer · ", 1, true) == 1 then break end
 	bridge._pointerSend(heroPointer, "key", "right")
 end
-t.assertEqual(hero.refs.usedCaption.text, "Developer", "arrows reach the categories")
+t.expect(hero.refs.chartDetail.text:find("Developer · ", 1, true) == 1, "arrows reach the categories")
 bridge._pointerSend(heroPointer, "key", "return")
 t.assertEqual(app.destination, "map", "return opens the Map inside the focused category")
 t.assertEqual(app.pages.map.focus, "developer", "focused on it")
