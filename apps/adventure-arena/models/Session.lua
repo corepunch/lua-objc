@@ -230,7 +230,13 @@ function Session:linkActions(target)
 	end
 	local item = find(self.items) or find(self.knownItems)
 	local verbs, seen = { "examine" }, { examine = true, look = true }
-	for _, verb in ipairs(item and Suggestions.oneTapVerbs(item) or {}) do
+	local offered = item and Suggestions.oneTapVerbs(item) or {}
+	-- Examining readable text prints it (Zork's V-EXAMINE shows the TEXT
+	-- property), so "examine" next to "read" would do the same thing twice.
+	for _, verb in ipairs(offered) do
+		if verb == "read" then verbs = {} end
+	end
+	for _, verb in ipairs(offered) do
 		if not seen[verb] then
 			seen[verb] = true
 			table.insert(verbs, verb)
