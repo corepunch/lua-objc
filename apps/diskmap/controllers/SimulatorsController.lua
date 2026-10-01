@@ -3,6 +3,7 @@ local Model = require("apps.diskmap.Model")
 local Simulators = require("apps.diskmap.models.Simulators")
 local SimulatorPlan = require("apps.diskmap.models.SimulatorPlan")
 local Outcome = require("apps.diskmap.models.Outcome")
+local Batch = require("apps.diskmap.models.Batch")
 local Controller = Page.extend("simulators", "Simulators")
 
 -- The Simulators page: devices from CoreSimulator's folders and runtimes from
@@ -227,46 +228,35 @@ function Controller:reviewPlan()
 	local freeBefore = Outcome.free(self.service, self.model.home)
 	self:show()
 	local generation = self.generation
-	local deleted, deletedBytes, skipped, failed = 0, 0, {}, {}
-	local function finish()
-		local parts = {}
-		if deleted > 0 then table.insert(parts, "Deleted " .. Model.plural(deleted, "device") .. " (" .. Model.size(deletedBytes) .. ")") end
-		if #skipped > 0 then table.insert(parts, "Skipped " .. table.concat(skipped, "; ")) end
-		if #failed > 0 then table.insert(parts, "Failed " .. table.concat(failed, "; ")) end
-		if #parts == 0 then parts[1] = "Nothing was deleted" end
-		self.changed()
-		if generation == self.generation then
-			self.busy, self.planResult = false, table.concat(parts, ". ") .. ". Kept devices and the shared runtime were not touched; simulators are deleted at once, not moved to the Trash. "
-				.. Outcome.freeText(freeBefore, Outcome.free(self.service, self.model.home), deleted > 0) .. "."
-			self:load()
-		end
-	end
-	local function step(index)
-		local entry = plan.removal[index]
-		if not entry then finish(); return end
-		local function proceed(fresh)
-			local ok, reason = SimulatorPlan.revalidate(plan, entry.id, fresh, self.model)
-			if not ok then
-				table.insert(skipped, entry.name .. " (" .. reason.message .. ")")
-				step(index + 1); return
-			end
+	Batch.run(plan.removal, {
+		label = function(entry) return entry.name end,
+		bytes = function(entry) return entry.bytes end,
+		refresh = function(entry, done)
+			if type(self.service.simulatorState) ~= "function" then done(entry); return end
+			self.service.simulatorState(entry.id, function(record)
+				if not record then done(nil); return end
+				local state, running = record.state, nil
+				if state == "Shutdown" then running = false
+				elseif state == "Booted" or state == "Booting" or state == "Shutting Down" then running = true end
+				done({id = entry.id, name = entry.name, runtime = entry.runtime, available = record.isAvailable, running = running})
+			end)
+		end,
+		validate = function(entry, fresh) return SimulatorPlan.revalidate(plan, entry.id, fresh, self.model) end,
+		execute = function(entry, done)
 			self.service.command({"/usr/bin/xcrun", "simctl", "delete", entry.id}, function(success, output)
 				if self.log then self.log("simctl delete " .. entry.id, success, entry.bytes, entry.name, not success and output or nil) end
-				if success then deleted = deleted + 1; deletedBytes = deletedBytes + (entry.bytes or 0)
-				else table.insert(failed, entry.name .. " (" .. tostring(output):sub(1, 80) .. ")") end
-				step(index + 1)
+				done(success, output)
 			end)
+		end,
+	}, function(result)
+		self.changed()
+		if generation == self.generation then
+			self.busy, self.planResult = false, Batch.report(result, "Deleted", "device")
+				.. ". Kept devices and the shared runtime were not touched; simulators are deleted at once, not moved to the Trash. "
+				.. Outcome.freeText(freeBefore, Outcome.free(self.service, self.model.home), result.removed > 0) .. "."
+			self:load()
 		end
-		if type(self.service.simulatorState) ~= "function" then proceed(entry); return end
-		self.service.simulatorState(entry.id, function(record)
-			if not record then proceed(nil); return end
-			local state, running = record.state, nil
-			if state == "Shutdown" then running = false
-			elseif state == "Booted" or state == "Booting" or state == "Shutting Down" then running = true end
-			proceed({id = entry.id, name = entry.name, runtime = entry.runtime, available = record.isAvailable, running = running})
-		end)
-	end
-	step(1)
+	end)
 	return true
 end
 
