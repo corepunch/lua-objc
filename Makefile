@@ -372,3 +372,7 @@ promo-reel: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 
 promo-reel-captures: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	./$(LUA_OBJC_BIN) reels/promo/capture.lua
+
+.PHONY: adventure-arena-tour-captures
+adventure-arena-tour-captures: ios-host ios-packager
+	sh apps/adventure-arena/tour/capture.sh

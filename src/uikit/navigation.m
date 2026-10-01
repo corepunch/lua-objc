@@ -149,6 +149,7 @@ static UIView *page_toolbar_view(UIView *view, CGFloat maxWidth) {
 /* The input that last asked for the bar; reloaded when visibility flips. */
 @property(nonatomic, weak) UIResponder *input;
 @property(nonatomic, readonly) BOOL hasVisibleItems;
+- (void)sizeToItems;
 @end
 @implementation LuaKeyboardToolbar {
 	BOOL _shown;
@@ -157,7 +158,6 @@ static void *kKeyboardToolbarHiddenContext = &kKeyboardToolbarHiddenContext;
 - (instancetype)initWithItems:(NSArray<UIView *> *)items {
 	self = [super initWithFrame:CGRectZero];
 	if (!self) return nil;
-	self.autoresizingMask = UIViewAutoresizingFlexibleHeight;
 	_items = [items copy];
 	for (UIView *item in _items) {
 		[self addSubview:item];
@@ -182,21 +182,31 @@ static void *kKeyboardToolbarHiddenContext = &kKeyboardToolbarHiddenContext;
 	BOOL shown = self.hasVisibleItems;
 	if (shown != _shown) {
 		_shown = shown;
+		if (shown) [self sizeToItems];
 		if (_input.isFirstResponder) [_input reloadInputViews];
 	}
-	[self invalidateIntrinsicContentSize];
 	[self setNeedsLayout];
+}
+/* The bar has one fixed height for as long as it is attached, taken from its
+ * items when it is shown. The keyboard layout guide takes the bar's height
+ * at that moment and does not follow it afterwards: a bar that sized itself
+ * later (a flexible height with an intrinsic size) covered the content above
+ * the keyboard when it grew, and left the guide short when it shrank. */
+- (void)sizeToItems {
+	CGRect frame = self.frame;
+	if (frame.size.width <= 0 && [_input isKindOfClass:UIView.class])
+		frame.size.width = ((UIView *)_input).window.bounds.size.width;
+	self.frame = frame;
+	CGFloat height = 0;
+	for (UIView *item in _items)
+		if (!item.hidden) height = MAX(height, measure_size(item, CGSizeMake([self itemWidth], CGFLOAT_MAX)).height);
+	frame.size.height = height + 2 * kKeyboardToolbarVerticalInset;
+	self.frame = frame;
 }
 - (CGFloat)itemWidth {
 	UIScreen *screen = self.window.windowScene.screen;
 	CGFloat width = self.bounds.size.width ?: self.window.bounds.size.width ?: screen.bounds.size.width;
 	return MAX(0, width - 2 * kKeyboardToolbarHorizontalInset);
-}
-- (CGSize)intrinsicContentSize {
-	CGFloat height = 0;
-	for (UIView *item in _items)
-		height = MAX(height, measure_size(item, CGSizeMake([self itemWidth], CGFLOAT_MAX)).height);
-	return CGSizeMake(UIViewNoIntrinsicMetric, height + 2 * kKeyboardToolbarVerticalInset);
 }
 - (void)layoutSubviews {
 	[super layoutSubviews];
@@ -227,8 +237,16 @@ static void *kKeyboardToolbarHiddenContext = &kKeyboardToolbarHiddenContext;
 
 /* The bar for an input that is about to edit, or nil while it shows nothing. */
 static UIView *keyboard_toolbar_for_input(LuaKeyboardToolbar *toolbar, UIResponder *input) {
+	BOOL newInput = toolbar.input != input;
 	toolbar.input = input;
-	return toolbar.hasVisibleItems ? toolbar : nil;
+	if (!toolbar.hasVisibleItems) return nil;
+	if (newInput || toolbar.frame.size.height <= 0) [toolbar sizeToItems];
+	return toolbar;
+}
+
+static void uikit_reload_keyboard_toolbar(UIViewController *controller) {
+	LuaKeyboardToolbar *toolbar = objc_getAssociatedObject(controller, &kKeyboardToolbarKey);
+	if (toolbar.input.isFirstResponder) [toolbar.input reloadInputViews];
 }
 
 /* SwiftUI .toolbar placements for a navigation destination. `principal`

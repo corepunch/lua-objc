@@ -1,5 +1,8 @@
 <%
   -- Host for the first-launch tour. The page is a retained template so each
-  -- step updates in place instead of stacking a new sheet.
+  -- step updates in place instead of stacking a new sheet. A Mac sheet takes
+  -- the size given here; a phone presents it at the large detent.
 %>
-<VStack id="page" maxWidth="infinity" maxHeight="infinity" />
+<Sheet width="420" height="700">
+  <VStack id="page" maxWidth="infinity" maxHeight="infinity" />
+</Sheet>

@@ -2,5 +2,10 @@
   <VStack paddingHorizontal="20" paddingTop="4" paddingBottom="32" spacing="20" alignment="leading" maxWidth="infinity">
     <Label text="How every story is set. You can also change these while reading with the text button at the top of the page." size="15" color="secondary" lines="0" />
     <VStack id="readingOptions" maxWidth="infinity" />
+    <VStack spacing="10" alignment="leading" maxWidth="infinity">
+      <Label text="Help" size="13" weight="semibold" color="secondary" smallCaps="true" />
+      <Label text="What an interactive story is, how to read its page and how to say what you do." size="15" color="secondary" lines="0" />
+      <Button id="howToPlay" title="How to Play" systemImage="questionmark.circle" action="howToPlay" style="glass" size="16" weight="semibold" />
+    </VStack>
   </VStack>
 </ScrollView>

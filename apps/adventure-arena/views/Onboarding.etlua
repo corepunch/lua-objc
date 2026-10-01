@@ -1,41 +1,14 @@
 <%
-  -- First-launch tour. One idea per screen, Skip always present, the primary
-  -- button pinned at the foot. Layout follows the Kree8 onboarding boards:
-  -- hero, short title, supporting line, then a single action.
-  local PAGE = { side = 24, hero = 72, symbol = 28, tile = 22, gap = 12 }
-  local copy = {
-    welcome = {
-      symbol = "books.vertical.fill",
-      title = "Welcome to Adventure Arena",
-      detail = "Classic stories that answer back. Built for kids, parents, and anyone who likes getting lost in a book.",
-      action = "Get started",
-    },
-    play = {
-      symbol = "text.bubble.fill",
-      title = "You play by saying what happens next",
-      detail = "Type a command, tap a suggestion, or swipe the compass. The story writes the rest.",
-      action = "Continue",
-    },
-    audience = {
-      symbol = "person.2.fill",
-      title = "Who is playing?",
-      detail = "We'll put the right shelf first. You can change this later.",
-      action = "Continue",
-    },
-    worlds = {
-      symbol = "globe.desk.fill",
-      title = "Worlds you like",
-      detail = "Pick as many as you want. We'll open with a story from those shelves.",
-      action = "Continue",
-    },
-    ready = {
-      symbol = "sparkles",
-      title = recommendation and recommendation.title or "Your library is ready",
-      detail = recommendation and ("Start with " .. recommendation.shortDescription) or "Browse the shelves and open any cover.",
-      action = recommendation and "Start reading" or "Browse the library",
-    },
-  }
-  local screen = copy[step]
+  -- First-launch tour (models/Onboarding.lua). Back, the step and Skip stay
+  -- at the head and the one primary button at the foot; the page between
+  -- them scrolls, so a small phone or large type loses nothing.
+  --
+  -- A guide page leads with a screenshot of the real reader. Each image is
+  -- cropped by tour/capture.lua to exactly the image box of GUIDE, at three
+  -- times its size in pixels; keep its BOX in step. A setup page leads with
+  -- its symbol instead.
+  local GUIDE = { imageWidth = 300, imageHeight = 252, radius = 18 }
+  local PAGE = { side = 24, hero = 64, symbol = 28, tile = 22, gap = 12, section = 20 }
 %>
 <VStack spacing="0" maxWidth="infinity" maxHeight="infinity" padding="<%= PAGE.side %>">
   <HStack maxWidth="infinity" alignment="center">
@@ -45,80 +18,72 @@
     <Label text="" />
     <% end %>
     <Spacer />
-    <Label text="<%= stepNumber %> of <%= stepCount %>" size="13" weight="medium" color="secondary" />
+    <Label id="step" text="<%= stepNumber %> of <%= stepCount %>" size="13" weight="medium" color="secondary" monospacedDigit="true" />
     <Spacer />
-    <Button id="skip" title="Skip" action="skip" style="plain" />
+    <Button id="skip" title="<%= dismissTitle %>" action="skip" style="plain" />
   </HStack>
-  <Spacer />
-  <VStack spacing="16" alignment="center" maxWidth="infinity">
-    <SystemImage name="<%= screen.symbol %>" size="<%= PAGE.hero %>" color="accent" accessibilityLabel="<%= screen.title %>" />
-    <Label text="<%= screen.title %>" size="28" weight="bold" design="serif" alignment="center" lines="3" />
-    <Label text="<%= screen.detail %>" size="17" color="secondary" alignment="center" lines="4" />
-  </VStack>
-  <% if step == "play" then %>
-  <VStack paddingTop="28" spacing="<%= PAGE.gap %>" alignment="leading" maxWidth="infinity">
-    <HStack spacing="<%= PAGE.gap %>" alignment="center" maxWidth="infinity">
-      <SystemImage name="book.fill" size="<%= PAGE.symbol %>" width="<%= PAGE.symbol %>" color="accent" accessibilityLabel="Read" />
-      <VStack spacing="2" alignment="leading" maxWidth="infinity">
-        <Label text="Read a story that answers back" size="17" weight="semibold" />
-        <Label text="Every command becomes the next paragraph." size="15" color="secondary" lines="2" />
-      </VStack>
-    </HStack>
-    <HStack spacing="<%= PAGE.gap %>" alignment="center" maxWidth="infinity">
-      <SystemImage name="text.bubble.fill" size="<%= PAGE.symbol %>" width="<%= PAGE.symbol %>" color="accent" accessibilityLabel="Type or tap" />
-      <VStack spacing="2" alignment="leading" maxWidth="infinity">
-        <Label text="Type, or tap a suggestion" size="17" weight="semibold" />
-        <Label text="LOOK, TAKE LAMP, or a chip above the keyboard." size="15" color="secondary" lines="2" />
-      </VStack>
-    </HStack>
-    <HStack spacing="<%= PAGE.gap %>" alignment="center" maxWidth="infinity">
-      <SystemImage name="location.north.fill" size="<%= PAGE.symbol %>" width="<%= PAGE.symbol %>" color="accent" accessibilityLabel="Compass" />
-      <VStack spacing="2" alignment="leading" maxWidth="infinity">
-        <Label text="Swipe the compass to move" size="17" weight="semibold" />
-        <Label text="North, south, and the rest of the map." size="15" color="secondary" lines="2" />
-      </VStack>
-    </HStack>
-  </VStack>
-  <% elseif step == "audience" then %>
-  <VStack paddingTop="28" spacing="<%= PAGE.gap %>" maxWidth="infinity">
-    <% for _, option in ipairs(audience) do %>
-    <Button id="audience_<%= option.id %>" action="audience_<%= option.id %>" style="plain" accessibilityLabel="<%= option.title %>. <%= option.detail %>">
-      <HStack spacing="<%= PAGE.gap %>" padding="16" alignment="center" maxWidth="infinity" background="<%= option.selected and 'accent' or 'secondaryBackground' %>" cornerRadius="18">
-        <SystemImage name="<%= option.symbol %>" size="<%= PAGE.symbol %>" width="<%= PAGE.symbol %>" color="<%= option.selected and 'white' or 'accent' %>" accessibilityLabel="<%= option.title %>" />
-        <VStack spacing="2" alignment="leading" maxWidth="infinity">
-          <Label text="<%= option.title %>" size="17" weight="semibold" color="<%= option.selected and 'white' or 'primary' %>" />
-          <Label text="<%= option.detail %>" size="15" color="<%= option.selected and 'white' or 'secondary' %>" lines="2" />
-        </VStack>
-      </HStack>
-    </Button>
-    <% end %>
-  </VStack>
-  <% elseif step == "worlds" then %>
-  <VStack paddingTop="28" spacing="<%= PAGE.gap %>" alignment="leading" maxWidth="infinity">
-    <FlowStack spacing="10" maxWidth="infinity">
-      <% for index, world in ipairs(worlds) do %>
-      <Button id="world_<%= index %>" action="world_<%= index %>" style="plain" accessibilityLabel="<%= world.title %>">
-        <HStack spacing="8" paddingHorizontal="14" paddingVertical="10" alignment="center" background="<%= world.selected and (world.tint or 'accent') or 'secondaryBackground' %>" cornerRadius="18">
-          <SystemImage name="<%= world.symbol or 'book.fill' %>" size="<%= PAGE.tile %>" color="<%= world.selected and 'white' or 'accent' %>" accessibilityLabel="<%= world.title %>" />
-          <Label text="<%= world.title %>" size="15" weight="semibold" color="<%= world.selected and 'white' or 'primary' %>" />
-        </HStack>
-      </Button>
+  <ScrollView id="content" flexGrow="1" maxWidth="infinity">
+    <VStack spacing="<%= PAGE.section %>" alignment="center" maxWidth="infinity" paddingTop="<%= PAGE.section %>" paddingBottom="<%= PAGE.gap %>">
+      <% if page.image then %>
+      <Image id="shot_<%= page.id %>" path="<%= page.image %>" darkPath="<%= page.darkImage %>" resizable="true" contentMode="fill" width="<%= GUIDE.imageWidth %>" height="<%= GUIDE.imageHeight %>" cornerRadius="<%= GUIDE.radius %>" clipsToBounds="true" accessibilityLabel="The reader. <%= page.title %>" />
+      <% else %>
+      <SystemImage id="hero_<%= page.id %>" name="<%= page.symbol %>" size="<%= PAGE.hero %>" color="accent" accessibilityLabel="<%= page.title %>" />
       <% end %>
-    </FlowStack>
-  </VStack>
-  <% elseif step == "ready" and recommendation then %>
-  <VStack paddingTop="28" spacing="8" alignment="center" maxWidth="infinity">
-    <Label text="<%= recommendation.genre %>" size="13" weight="semibold" color="secondary" />
-    <Label text="<%= recommendation.author %>, <%= recommendation.year %>" size="15" color="secondary" />
-  </VStack>
-  <% end %>
-  <Spacer />
-  <VStack spacing="8" maxWidth="infinity">
-    <% if step == "ready" and recommendation then %>
-    <Button id="startStory" title="<%= screen.action %>" action="startStory" style="borderedProminent" controlSize="large" disabled="<%= canAdvance and 'false' or 'true' %>" />
-    <Button id="browse" title="Browse the library" action="browse" style="plain" />
-    <% else %>
-    <Button id="next" title="<%= screen.action %>" action="next" style="borderedProminent" controlSize="large" disabled="<%= canAdvance and 'false' or 'true' %>" />
+      <VStack spacing="<%= PAGE.gap %>" alignment="center" maxWidth="infinity">
+        <Label id="title" text="<%= page.title %>" size="26" weight="bold" design="serif" alignment="center" lines="0" />
+        <% if page.detail then %>
+        <Label id="detail" text="<%= page.detail %>" size="17" color="secondary" alignment="center" lines="0" />
+        <% end %>
+      </VStack>
+      <% if page.rows then %>
+      <VStack id="legend" spacing="<%= PAGE.gap %>" alignment="leading" maxWidth="infinity">
+        <% for index, row in ipairs(page.rows) do %>
+        <HStack id="row_<%= index %>" spacing="<%= PAGE.gap %>" alignment="center" maxWidth="infinity">
+          <SystemImage id="rowSymbol_<%= index %>" name="<%= row.symbol %>" size="<%= PAGE.tile %>" width="<%= PAGE.symbol %>" color="accent" accessibilityLabel="" />
+          <VStack spacing="2" alignment="leading" maxWidth="infinity">
+            <Label id="rowTitle_<%= index %>" text="<%= row.title %>" size="17" weight="semibold" lines="0" />
+            <Label text="<%= row.detail %>" size="15" color="secondary" lines="0" />
+          </VStack>
+        </HStack>
+        <% end %>
+      </VStack>
+      <% elseif step == "audience" then %>
+      <VStack spacing="<%= PAGE.gap %>" maxWidth="infinity">
+        <% for _, option in ipairs(audience) do %>
+        <Button id="audience_<%= option.id %>" action="audience_<%= option.id %>" style="plain" accessibilityLabel="<%= option.title %>. <%= option.detail %>">
+          <HStack spacing="<%= PAGE.gap %>" padding="16" alignment="center" maxWidth="infinity" background="<%= option.selected and 'accent' or 'secondaryBackground' %>" cornerRadius="18">
+            <SystemImage name="<%= option.symbol %>" size="<%= PAGE.symbol %>" width="<%= PAGE.symbol %>" color="<%= option.selected and 'white' or 'accent' %>" accessibilityLabel="<%= option.title %>" />
+            <VStack spacing="2" alignment="leading" maxWidth="infinity">
+              <Label text="<%= option.title %>" size="17" weight="semibold" color="<%= option.selected and 'white' or 'primary' %>" />
+              <Label text="<%= option.detail %>" size="15" color="<%= option.selected and 'white' or 'secondary' %>" lines="2" />
+            </VStack>
+          </HStack>
+        </Button>
+        <% end %>
+      </VStack>
+      <% elseif step == "worlds" then %>
+      <FlowStack spacing="10" maxWidth="infinity">
+        <% for index, world in ipairs(worlds) do %>
+        <Button id="world_<%= index %>" action="world_<%= index %>" style="plain" accessibilityLabel="<%= world.title %>">
+          <HStack spacing="8" paddingHorizontal="14" paddingVertical="10" alignment="center" background="<%= world.selected and (world.tint or 'accent') or 'secondaryBackground' %>" cornerRadius="18">
+            <SystemImage id="worldSymbol_<%= index %>" name="<%= world.symbol or 'book.fill' %>" size="<%= PAGE.tile %>" width="<%= PAGE.symbol %>" color="<%= world.selected and 'white' or 'accent' %>" accessibilityLabel="<%= world.title %>" />
+            <Label id="worldTitle_<%= index %>" text="<%= world.title %>" size="15" weight="semibold" color="<%= world.selected and 'white' or 'primary' %>" />
+          </HStack>
+        </Button>
+        <% end %>
+      </FlowStack>
+      <% elseif step == "ready" and recommendation then %>
+      <VStack spacing="8" alignment="center" maxWidth="infinity">
+        <Label text="<%= recommendation.genre %>" size="13" weight="semibold" color="secondary" />
+        <Label text="<%= recommendation.author %>, <%= recommendation.year %>" size="15" color="secondary" />
+      </VStack>
+      <% end %>
+    </VStack>
+  </ScrollView>
+  <VStack spacing="8" maxWidth="infinity" paddingTop="<%= PAGE.gap %>">
+    <Button id="<%= page.primary %>" title="<%= page.action %>" action="<%= page.primary %>" style="borderedProminent" controlSize="large" disabled="<%= canAdvance and 'false' or 'true' %>" />
+    <% if page.primary == "startStory" then %>
+    <Button id="browse" title="Browse the Library" action="browse" style="plain" />
     <% end %>
   </VStack>
 </VStack>
