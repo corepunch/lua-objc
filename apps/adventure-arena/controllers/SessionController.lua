@@ -113,7 +113,8 @@ function Controller:show(id, fresh)
 	self:applyReadingSettings()
 	self:updateComposer(self.refs.input.text)
 	self:updateCompass(nil)
-	self:scrollTranscript(false)
+	-- A new story is read from its title page; a resumed one from its last line.
+	self.refs.transcriptScroll:scrollTo(saved and "bottom" or "top", false)
 	self.onProgress()
 	return true
 end
@@ -126,6 +127,18 @@ function Controller:scrollTranscript(animated)
 	local scroll = self.refs and self.refs.transcriptScroll
 	if not scroll then return end
 	scroll:scrollTo("bottom", animated == true)
+end
+
+-- The page already holds the whole answer (see “Typing”), so one smooth
+-- scroll brings it into view: to the foot of the page when the answer fits
+-- the screen, and otherwise no further than the command that asked for it,
+-- so a long answer is read from its first line.
+function Controller:scrollToEntry(entry)
+	local scroll = self.refs and self.refs.transcriptScroll
+	if not scroll then return end
+	local id = "entry_" .. (entry - (self.transcriptEarlier or 0))
+	if not (self.transcript and self.transcript.refs[id]) then return self:scrollTranscript(true) end
+	scroll:scrollTo(id, not self.reduceMotion(), "top")
 end
 
 function Controller:updateCompass(activeDirection)
@@ -226,9 +239,11 @@ end
 
 -- ── Typing ──────────────────────────────────────────────────────────────
 -- New prose is rendered whole and revealed by `revealedCharacters`, so its
--- lines never reflow as it types; paragraphs still waiting are hidden, and
--- so is a whole entry (a scene's title with it) until typing reaches it. The
--- template describes the reveal at each render (a command or a reading
+-- lines never reflow as it types. Paragraphs still waiting are drawn clear
+-- and a waiting scene's title is transparent, but all of it takes its space
+-- at once: the page grows by the whole answer when the command is sent and
+-- scrolls there once (`scrollToEntry`), rather than chasing each new line.
+-- The template describes the reveal at each render (a command or a reading
 -- settings change); between renders each tick writes the one paragraph
 -- being typed.
 
@@ -257,7 +272,8 @@ end
 
 -- Revealed characters for each paragraph still typing, keyed as the
 -- Transcript template's paragraph ids are ("3_1"), and each entry typing has
--- not reached yet (`waiting["3"]`); absent paragraphs show whole.
+-- not reached yet (`waiting["3"]`, whose scene title stays transparent);
+-- absent paragraphs show whole.
 function Controller:revealState(earlier)
 	local reveal = { waiting = {} }
 	local typing = self.typing
@@ -291,19 +307,15 @@ function Controller:typeNext(generation)
 	local refs, index = self.transcript.refs, item.entry - (self.transcriptEarlier or 0)
 	local view = refs["paragraph_" .. index .. "_" .. item.paragraph]
 	local from = typing.revealed
-	if from == 0 and refs["entry_" .. index] then refs["entry_" .. index].hidden = false end
+	if from == 0 and refs["sceneTitle_" .. index] then refs["sceneTitle_" .. index].opacity = 1 end
 	typing.revealed = math.min(item.length, from + TYPING.charactersPerTick)
 	local finished = typing.revealed >= item.length
-	if view then
-		view.hidden = false
-		view.revealedCharacters = finished and -1 or typing.revealed
-	end
+	if view then view.revealedCharacters = finished and -1 or typing.revealed end
 	if not typing.printing then
 		typing.printing = true
 		typing.hapticGeneration = typing.hapticGeneration + 1
 		if self.haptics then self:pulseTyping(generation, typing.hapticGeneration) end
 	end
-	self:scrollTranscript(false)
 	if finished then
 		typing.position, typing.revealed = typing.position + 1, 0
 		if typing.position > #typing.queue then
@@ -396,7 +408,7 @@ function Controller:submitCommand(command)
 	self.refs.dictationStatus.hidden = true
 	self:renderTranscript()
 	self:updateCompass(nil)
-	self:scrollTranscript(true)
+	self:scrollToEntry(firstNew)
 	self:updateComposer("")
 	self:announceScore(presentation.scoreChange)
 	if self.savedGames then self.savedGames:record(self.model:snapshot()) end

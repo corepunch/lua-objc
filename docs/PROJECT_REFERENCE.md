@@ -697,6 +697,16 @@ dismisses it as a drag begins; `automatic` (the default) and `never` leave it
 up. Views pinned to the keyboard layout guide follow the interactive drag. The
 Mac has no on-screen keyboard, so AppKit ignores it, as SwiftUI does.
 
+`scroll:scrollTo(target, animated, anchor)` is SwiftUI's
+`ScrollViewReader.scrollTo(_:anchor:)`. `target` is `"top"`, `"bottom"`, or
+the `id` of a view in the content; `anchor` is the viewport edge that view is
+brought to, `"bottom"` (the default) or `"top"`. The offset is clamped to the
+content, so a top-anchored view near the end rests as far up as the content
+allows. The target is measured after pending layout, so a scroll issued right
+after new content is written travels to where that content is. An edge target
+without animation is also re-applied by the next layout, for a scroll view
+that has no size yet.
+
 The first vertical scroll view in a page is registered as its content scroll
 view (`setContentScrollView:forEdge:`), so iOS 26 draws the scroll edge effect
 under the navigation and tab bars and collapses large titles while scrolling.
@@ -833,12 +843,13 @@ The shared link model and bridge are in `src/shared/paragraph_links.m`.
 **Typewriter reveal.** `revealedCharacters` is what SwiftUI typewriter
 effects build with `TextRenderer`: the whole paragraph is laid out once, so
 words never jump between lines as they appear, and unrevealed characters are
-drawn clear. The paragraph measures only the lines revealed so far (a
-revealed initial still reserves its lines; `0` takes no height), so a scroll
-view kept at its bottom follows the text line by line. Writing it recolours
-the text and invalidates layout only when a new line starts; retained
-templates patch it in place. Adventure Arena's reader drives it from
-`SessionController:typeNext`, hiding paragraphs that have not started.
+drawn clear. The paragraph measures as its whole text however little is
+revealed (`0` included), so a page makes room for new prose once and a
+reveal never re-lays anything out: writing it only recolours the text, and
+retained templates patch it in place. Adventure Arena's reader drives it
+from `SessionController:typeNext`; when a command is sent the page grows by
+the whole answer and scrolls once to the command's line with
+`scrollTo(id, true, "top")`.
 
 ### `Title "string"`
 

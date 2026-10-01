@@ -36,8 +36,6 @@
 /* Characters shown so far, counted as Lua's utf8.len counts them; -1 shows
  * the whole paragraph. See `paragraph_revealed_length`. */
 @property(nonatomic) NSInteger revealedCharacters;
-/* The revealed height last reported to layout. */
-@property(nonatomic) CGFloat revealedBottom;
 /* Set once the view is initialized; see -rebuild. */
 @property(nonatomic) BOOL ready;
 - (NSSize)sizeForProposedWidth:(CGFloat)width;
@@ -102,23 +100,15 @@
 
 /* A typewriter reveal. The whole paragraph is always laid out, so words never
  * jump between lines as they appear — the approach of SwiftUI typewriter
- * effects built on TextRenderer. Unrevealed characters are drawn clear, and
- * the paragraph measures only the lines revealed so far, so a scroll view
- * anchored to its bottom follows the text line by line. Recolouring does not
- * re-lay out the text; layout is invalidated only when a new line starts. */
+ * effects built on TextRenderer. Unrevealed characters are drawn clear and
+ * still take their space: the paragraph measures as its whole text from the
+ * first character, so a page makes room for an answer once and a reveal
+ * never re-lays anything out. */
 - (void)setRevealedCharacters:(NSInteger)value {
 	value = MAX(-1, value);
 	if (value == _revealedCharacters) return;
 	_revealedCharacters = value;
 	[self applyReveal];
-	/* A paragraph being built is measured when it is first laid out. */
-	if (!self.superview) return;
-	CGFloat bottom = [self revealedBottomInManager:self.layoutManager container:self.textContainer];
-	if (bottom != _revealedBottom) {
-		_revealedBottom = bottom;
-		[self invalidateIntrinsicContentSize];
-		invalidate_layout(self);
-	}
 }
 /* Lua writes `font` and `textColor` as it does for labels. */
 - (NSFont *)font { return _bodyFont; }
@@ -223,27 +213,6 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 	self.needsDisplay = YES;
 }
 
-/* The bottom of the last revealed line; the whole text's height once the
- * reveal reaches the last line, so a finished reveal measures as unrevealed
- * text does. A revealed figure still reserves its lines. */
-- (CGFloat)revealedBottomInManager:(NSLayoutManager *)manager container:(NSTextContainer *)container {
-	if (_revealedCharacters == 0 || _text.length == 0) return 0;
-	[manager ensureLayoutForTextContainer:container];
-	CGFloat bottom = NSMaxY([manager usedRectForTextContainer:container]);
-	NSUInteger body = [self revealedBodyLength];
-	if (_revealedCharacters > 0 && body < manager.textStorage.length) {
-		if (body == 0) bottom = 0;
-		else {
-			NSRange line;
-			NSRect used = [manager lineFragmentUsedRectForGlyphAtIndex:
-				[manager glyphIndexForCharacterAtIndex:body - 1] effectiveRange:&line];
-			if (NSMaxRange(line) < manager.numberOfGlyphs) bottom = NSMaxY(used);
-		}
-	}
-	if (_figureView) bottom = MAX(bottom, [self figureSide]);
-	return bottom;
-}
-
 - (CGFloat)bodyLineHeight {
 	return ceil(_bodyFont.ascender - _bodyFont.descender + _bodyFont.leading);
 }
@@ -310,7 +279,8 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 	[manager ensureLayoutForTextContainer:container];
 	NSRect used = [manager usedRectForTextContainer:container];
 	/* A short paragraph still reserves the lines of its figure. */
-	CGFloat height = [self revealedBottomInManager:manager container:container];
+	CGFloat height = NSMaxY(used);
+	if (_figureView) height = MAX(height, [self figureSide]);
 	CGFloat scale = self.window.backingScaleFactor ?: NSScreen.mainScreen.backingScaleFactor ?: 1;
 	return NSMakeSize(ceil((unbounded ? NSMaxX(used) : width) * scale) / scale, ceil(height * scale) / scale);
 }

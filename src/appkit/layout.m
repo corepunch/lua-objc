@@ -1244,7 +1244,11 @@ static CGFloat clamp_scroll_offset(CGFloat value, CGFloat limit) {
 	return value;
 }
 
-static void scroll_view_apply_target(NSScrollView *scroll, NSString *target, BOOL animated) {
+/* `anchor` names the viewport edge an identified view is brought to, as
+ * SwiftUI's scrollTo(_:anchor:) does: "bottom" (the default) or "top". The
+ * offset is clamped, so a view near the end of the document rests as far up
+ * as the document allows. */
+static void scroll_view_apply_target(NSScrollView *scroll, NSString *target, BOOL animated, BOOL top) {
 	NSView *document = scroll.documentView;
 	if (!document || target.length == 0) return;
 	[scroll tile];
@@ -1257,7 +1261,9 @@ static void scroll_view_apply_target(NSScrollView *scroll, NSString *target, BOO
 		NSView *match = view_with_identifier(document, target);
 		if (!match) return;
 		NSRect rect = [document convertRect:match.bounds fromView:match];
-		CGFloat y = document.isFlipped ? NSMaxY(rect) - viewport : NSMinY(rect);
+		CGFloat y = top
+			? (document.isFlipped ? NSMinY(rect) : NSMaxY(rect) - viewport)
+			: (document.isFlipped ? NSMaxY(rect) - viewport : NSMinY(rect));
 		origin.y = clamp_scroll_offset(y, limit);
 	}
 	origin.x = 0;
@@ -1276,11 +1282,17 @@ static int bridge_NSScrollView_scrollTo(lua_State *L) {
 	NSScrollView *scroll = lua_objc_check_object(L, 1, [NSScrollView class], "ScrollView");
 	NSString *target = [NSString stringWithUTF8String:luaL_checkstring(L, 2)];
 	BOOL animated = lua_toboolean(L, 3);
-	if ([target isEqualToString:@"bottom"] || [target isEqualToString:@"top"]) {
-		objc_setAssociatedObject(scroll, &kKeys[kScrollAnchorKey], target,
-			OBJC_ASSOCIATION_RETAIN);
-	}
-	scroll_view_apply_target(scroll, target, animated);
+	BOOL top = strcmp(luaL_optstring(L, 4, "bottom"), "top") == 0;
+	/* The target is measured in the layout the caller's writes imply, so a
+	 * scroll issued right after new content arrives travels to where that
+	 * content is. An edge target without animation is also kept for the
+	 * next layout, which may be the first to give the viewport a size; an
+	 * animated one must not be, or that layout would jump to its end. */
+	flush_pending_layout();
+	BOOL edge = [target isEqualToString:@"bottom"] || [target isEqualToString:@"top"];
+	objc_setAssociatedObject(scroll, &kKeys[kScrollAnchorKey], edge && !animated ? target : nil,
+		OBJC_ASSOCIATION_RETAIN);
+	scroll_view_apply_target(scroll, target, animated, top);
 	return 0;
 }
 
