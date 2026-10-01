@@ -88,7 +88,7 @@ function Controller:update(state)
 	self.hero:update({summary = summary, chart = chart,
 		hidden = Overview.hidden(state.disk, state.capacity, state.snapshotCount, self.model.scan.errors, cloudBytes, cloudFiles,
 			not self.model.includeMedia, Overview.protected(self.model, state.fullDiskAccess)),
-		reclaim = Overview.reclaim(self.model), volumeName = state.volumeName, actions = actions})
+		reclaim = Overview.reclaim(self.model), volumeName = state.volumeName, scanStatus = state.status, actions = actions})
 	self.changes:update({changes = state.changes, actions = {showAllChanges = function() self.handlers.changes() end}})
 	-- An empty section takes no place in the page, so it adds no spacing.
 	refs.changes.hidden = state.changes == nil

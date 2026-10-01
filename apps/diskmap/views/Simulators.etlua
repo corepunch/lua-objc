@@ -1,7 +1,7 @@
 <ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
   <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {header = header, summary = "Reading simulator devices and runtimes…", summaryId = "summary",
-      buttons = {{id = "components", title = "Xcode Components…", action = "components", help = "Manage runtimes in Xcode › Settings › Components"}}}) %>
+      buttons = {{id = "retry", title = "Retry", action = "retry", help = "Read simulator state and runtime information again"}, {id = "components", title = "Xcode Components…", action = "components", help = "Manage runtimes in Xcode › Settings › Components"}}}) %>
     <HStack id="stats" fixedSize="vertical" spacing="12" alignment="top">
       <%- partial("StatTile.etlua", {id = "devicesTile", icon = "iphone", color = "systemBlue", title = "Devices", value = "—", detail = "Apps and data inside simulators"}) %>
       <%- partial("StatTile.etlua", {id = "runtimesTile", icon = "iphone.gen3", color = "systemIndigo", title = "Runtimes", value = "—", detail = "Simulator operating systems"}) %>
@@ -27,8 +27,8 @@
         <Button id="erase" title="Erase…" action="erase" disabled="true" />
         <Button id="delete" title="Delete…" action="delete" disabled="true" />
         <Spacer />
-        <Label id="status" text="" size="11" color="secondary" lines="1" truncation="tail" flexShrink="1" />
       </HStack>
+      <Label id="status" text="" size="11" color="secondary" maxWidth="infinity" lines="0" />
     </VStack>
     <VStack id="runtimesSection" spacing="8" alignment="leading">
       <%- partial("SectionHeader.etlua", {title = "Runtimes", detail = "Each runtime is a full operating system image. Devices on a deleted runtime become unavailable.", detailId = "runtimesDetail"}) %>
@@ -43,8 +43,8 @@
       <HStack spacing="8" alignment="center">
         <Button id="deleteRuntime" title="Delete Runtime…" action="deleteRuntime" disabled="true" />
         <Spacer />
-        <Label id="runtimeStatus" text="" size="11" color="secondary" lines="1" truncation="tail" flexShrink="1" />
       </HStack>
+      <Label id="runtimeStatus" text="" size="11" color="secondary" maxWidth="infinity" lines="0" />
     </VStack>
   </VStack>
 </ScrollView>

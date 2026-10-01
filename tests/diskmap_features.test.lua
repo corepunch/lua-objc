@@ -106,7 +106,7 @@ local scanner = Scan.new(Model.new("/Users/test"), {
 }, "/Users/test")
 scanner:start()
 pending[1].progress({completed = 3, total = 153})
-t.expect(scanner.status:find("Scanning 3 of 153 locations (1%)", 1, true) == 1, "worker progress reports location and percent in plain language")
+t.expect(scanner.status:find("3 of 153 locations measured", 1, true) == 1, "worker progress reports measured locations without suggesting a time estimate")
 scanner:start(); local status = scanner.status
 pending[1].progress({completed = 100, total = 153}); pending[1].done({failure = "Old failure"})
 t.assertEqual(scanner.status, status, "cancelled generation cannot overwrite status")

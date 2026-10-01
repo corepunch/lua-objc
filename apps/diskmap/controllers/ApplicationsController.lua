@@ -58,7 +58,7 @@ end
 
 -- Summary for the Clean Up page; nil until the scan has measured data folders.
 function Controller:summary()
-	if not self.model.files then return nil end
+	if not self.model.files or self.model.files.measuring then return nil end
 	local rows = Applications.rows(self.model, self.info, "All")
 	return Applications.summary(rows, Applications.leftovers(self.model, self.installed))
 end
@@ -121,7 +121,7 @@ function Controller:update(state)
 		or string.format("%s %s %s, and their data another %s.", Model.plural(summary.count, "app"), summary.count == 1 and "uses" or "use", Model.size(summary.apps), Model.size(summary.data))
 	refs.appsTileValue.text = Model.size(summary.apps)
 	refs.appsTileDetail.text = Model.plural(summary.count, "application bundle")
-	refs.dataTileValue.text = self.model.files and Model.size(summary.data) or "—"
+	refs.dataTileValue.text = self.model.files and not self.model.files.measuring and Model.size(summary.data) or "—"
 	refs.unusedTileValue.text = self.info and tostring(summary.unused) or "—"
 	refs.unusedTileDetail.text = self.info and (Model.size(summary.unusedBytes) .. " not opened in 6 months, or never") or "Reading last-used dates…"
 	refs.leftoversTileValue.text = summary.leftovers and Model.size(summary.leftoverBytes) or "—"

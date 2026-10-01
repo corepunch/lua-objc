@@ -292,6 +292,7 @@ static const CGFloat kParagraphLinkUnderlineOffset = 3.0;
 
 /* ----- Loading Spinner ----- */
 #define kLoadingSpinnerSize             32
+#define kLoadingTablePadding            16
 
 /* ----- Layout Engine ----- */
 #define kLayoutDefaultWidth            400
@@ -534,6 +535,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_sceneNodes", bridge_scene_nodes},
 	{"_sceneSend", bridge_scene_send},
 	{"_setCurrentScope", bridge_set_current_scope},
+	{"_getCurrentScope", bridge_get_current_scope},
 	{"_invokeAction", bridge_invoke_action},
 	{"_onWindowClose", bridge_on_window_close},
 	{"_invalidateHandle", bridge_invalidate_handle},

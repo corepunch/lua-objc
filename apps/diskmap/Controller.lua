@@ -254,7 +254,7 @@ end
 function Controller:updateRows()
 	if self.window then self.window.subtitle = self:subtitle() end
 	-- App facts load once the scan has measured the data folders they need.
-	if self.model.files then self.pages.applications:load() end
+	if self.model.files and not self.model.files.measuring then self.pages.applications:load() end
 	-- A page may re-render its template, so its refs are read after updating.
 	if self.page then self.page:update(self:state()); self.refs = self.page.refs end
 	self.navigation:setBadges(self:badges())
@@ -535,12 +535,12 @@ function Controller:createWindow()
 		self.onboarding = OnboardingController.new(self.service, function(granted)
 			self.fullDiskAccess = granted == true
 			self.scan:start()
-			if self.tour:needed() then self.tour:open(self.window) end
+			if self.tour:needed(self.scan.disk) then self.tour:open(self.window) end
 		end)
 		if self.onboarding:needed() then self.onboarding:open(self.window)
 		else
 			self.scan:start()
-			if self.tour:needed() then self.tour:open(self.window) end
+			if self.tour:needed(self.scan.disk) then self.tour:open(self.window) end
 		end
 	end
 	local scope = ns.Scope.current()

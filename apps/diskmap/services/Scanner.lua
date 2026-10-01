@@ -30,8 +30,11 @@ function Scanner.poll(job)
 	if not job.handle then return true, {failure = "Measurement cancelled."} end
 	local done, result = native.poll(job.handle)
 	if done then job.handle = nil end
-	if result and not done and result.completed == job.completed then return false end
-	if result then job.completed = result.completed end
+	-- One live update per second even when the worker is still inside a large
+	-- location. Completed roots still publish immediately.
+	local seconds = result and math.floor(result.seconds or 0)
+	if result and not done and result.completed == job.completed and seconds == job.seconds then return false end
+	if result then job.completed, job.seconds = result.completed, seconds end
 	return done, result
 end
 function Scanner.startDuplicates(roots, options) return {handle = native.duplicatesStart(roots, options)} end

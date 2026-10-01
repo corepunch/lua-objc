@@ -1,0 +1,13 @@
+<GroupBox id="selectedSuggestion">
+  <VStack padding="14" spacing="8" alignment="leading">
+    <HStack spacing="12" alignment="center">
+      <Label id="selectionTitle" text="<%= title %>" size="13" weight="semibold" flexGrow="1" flexBasis="0" flexShrink="1" lines="0" />
+      <% if size then %><Label text="<%= size %>" monospacedDigit="true" size="13" /><% end %>
+      <% if actionTitle then %><Button id="openSelection" title="<%= actionTitle %>" action="openSelection" style="borderedProminent" /><% end %>
+    </HStack>
+    <% if status then %><Label id="selectionStatus" text="<%= status %>" size="12" weight="semibold" /><% end %>
+    <Label id="selectionAdvice" text="<%= detail %>" size="13" maxWidth="infinity" lines="0" />
+    <% if consequence then %><Label id="selectionConsequence" text="<%= consequence %>" size="12" maxWidth="infinity" lines="0" /><% end %>
+    <% if evidence then %><Label text="<%= evidence %>" size="11" color="secondary" maxWidth="infinity" lines="0" /><% end %>
+  </VStack>
+</GroupBox>

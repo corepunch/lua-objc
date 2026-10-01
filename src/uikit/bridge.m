@@ -341,6 +341,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_dismiss", bridge_UIKitPresentation_dismiss},
 	{"_confirm", bridge_UIKitPresentation_confirm},
 	{"_setCurrentScope", bridge_set_current_scope},
+	{"_getCurrentScope", bridge_get_current_scope},
 	{"_invokeAction", bridge_invoke_action},
 	{"_onWindowClose", bridge_on_window_close},
 	{"_invalidateHandle", bridge_invalidate_handle},

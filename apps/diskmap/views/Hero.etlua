@@ -35,6 +35,9 @@
           </HStack>
           <% end %>
         </HStack>
+        <% if summary.calculating then %>
+        <Label id="scanProgress" text="<%= scanStatus or "Measuring storage…" %>" size="12" color="secondary" maxWidth="infinity" lines="0" />
+        <% end %>
         <Label id="freeSpace" text="<%= summary.subtitle or summary.caption %>" size="13" color="secondary" monospacedDigit="true" />
         <% if summary.lowSpace then %>
         <HStack spacing="<%= HERO.symbol.gap %>" alignment="center">
@@ -64,15 +67,15 @@
         <% end %>
       </VStack>
       <% end %>
-      <% if not summary.calculating then %>
-      <% --[[ Suggestions are offered once every size is known: a partial
-        total would change under the person while they review it. ]] %>
+      <% if not summary.calculating or summary.lowSpace then %>
+      <% --[[ Low-space launches offer measured suggestions immediately;
+        the explanation makes their incomplete coverage explicit. ]] %>
       <Divider />
       <HStack spacing="<%= HERO.symbol.gap %>" alignment="center">
         <SystemImage name="sparkles" size="18" color="accent" width="<%= HERO.symbol.column %>" />
         <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="1" alignment="leading">
           <Label id="reclaimTitle" text="<%= reclaim.title %>" size="13" weight="semibold" monospacedDigit="true" maxWidth="infinity" lines="1" />
-          <Label id="reclaimDetail" text="<%= reclaim.detail %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
+          <Label id="reclaimDetail" text="<%= summary.calculating and "Review measured items now; more suggestions may appear as the scan continues." or reclaim.detail %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
         </VStack>
         <Button id="cleanUp" title="Review Cleanup" style="borderedProminent" controlSize="large" action="reclaim" help="Open Clean Up: suggestions grouped by impact" />
       </HStack>

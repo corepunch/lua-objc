@@ -22,6 +22,24 @@ local files = root .. "/files"
 mkdir(files)
 -- More entries than fit in one native buffer; empty files still have identities.
 for i = 1, 1200 do write(files .. "/" .. i, "") end
+-- Poll always delivers bounded live summaries, even before the first root
+-- finishes. Consumers may inspect or mutate their Lua copy without touching
+-- worker-owned Foundation collections.
+local liveJob = native.start({files, root .. "/missing"}, {}, {files = 2, minimumFileBytes = 1, extensions = true})
+local liveDone, liveResult = native.poll(liveJob)
+t.expect(type(liveResult) == "table", "first poll reports live scan state instead of nil")
+if not liveDone then
+	t.expect(type(liveResult.currentPath) == "string", "a pending scan identifies its current root")
+	t.expect(type(liveResult.seconds) == "number" and liveResult.seconds >= 0, "live elapsed time is nonnegative")
+	t.expect(type(liveResult.largeFiles) == "table" and type(liveResult.extensions) == "table", "partial summaries are available before completion")
+	t.assertEqual(liveResult.partial, true, "a live summary is a lower bound")
+	liveResult.largeFiles[1] = {path = "invented"}
+end
+local liveDeadline = os.clock() + 0.5
+repeat liveDone, liveResult = native.poll(liveJob) until liveDone or os.clock() >= liveDeadline
+t.expect(liveDone, "live scan completes without waiting for UI polling")
+t.assertEqual(#liveResult.largeFiles, 0, "Lua mutation cannot enter the worker's final summary")
+t.assertEqual(liveResult.visited, 1201, "live scanning preserves metadata counts")
 local many = native.scan({files})
 t.assertEqual(many.visited, 1201, "bulk enumeration consumes every buffer exactly once")
 t.expect(many.bulkCalls > 2, "large directory crosses native buffer boundaries")

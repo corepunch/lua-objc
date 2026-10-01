@@ -10,8 +10,6 @@ return function(bridge)
 	local Scope = {}
 	Scope.__index = Scope
 
-	local current = nil
-
 	function Scope.new()
 		return setmetatable({ regs = {} }, Scope)
 	end
@@ -66,11 +64,9 @@ return function(bridge)
 	function Scope.withScope(scope, fn, ...)
 		assert(scope ~= nil, "withScope requires a scope")
 		assert(type(fn) == "function", "withScope requires a function")
-		local prev = current
-		current = scope
+		local prev = Scope.current()
 		bridge._setCurrentScope(scope)
 		local results = table.pack(pcall(fn, ...))
-		current = prev
 		bridge._setCurrentScope(prev)
 		if not results[1] then
 			error(results[2], 2)
@@ -79,33 +75,34 @@ return function(bridge)
 	end
 
 	function Scope.current()
-		return current
+		-- Native event callbacks re-enter their owner. One registry value keeps
+		-- Lua template scopes and native registrations in agreement.
+		return bridge._getCurrentScope()
 	end
 
 	function Scope.push()
 		local s = Scope.new()
-		s._prev = current
-		current = s
+		s._prev = Scope.current()
 		bridge._setCurrentScope(s)
 		return s
 	end
 
 	function Scope.pop()
-		local s = current
+		local s = Scope.current()
 		if not s then return nil end
-		current = s._prev
+		local previous = s._prev
 		s._prev = nil
-		bridge._setCurrentScope(current)
+		bridge._setCurrentScope(previous)
 		return s
 	end
 
 	function Scope.drop(scope)
 		if not scope then return end
-		if current == scope then
+		if Scope.current() == scope then
 			Scope.pop()
 			return
 		end
-		local s = current
+		local s = Scope.current()
 		while s do
 			if s._prev == scope then
 				s._prev = scope._prev

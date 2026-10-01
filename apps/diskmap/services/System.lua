@@ -369,13 +369,23 @@ end
 function System.softwareUpdateStatus()
 	return ns.readPropertyList("/Library/Preferences/com.apple.SoftwareUpdate.plist")
 end
--- Installed simulator runtime images with their sizes (Xcode 14 and later).
+-- CoreSimulator's live state is authoritative for availability and whether
+-- a device is running. A device folder alone cannot establish either.
+function System.simulatorDevices(completion)
+	System.command({"/usr/bin/xcrun", "simctl", "list", "devices", "-j"}, function(ok, output)
+		local parsed, value = pcall(ns.json_parse, type(output) == "string" and output or "")
+		if ok and parsed and type(value) == "table" and type(value.devices) == "table" then completion(value)
+		else completion(nil, "Device state could not be checked. Retry or open Xcode to manage devices.") end
+	end)
+end
+-- Installed simulator runtime images with their sizes.
 -- Completes with nil when Xcode's tools are missing or the output is unreadable.
 function System.simulatorRuntimes(completion)
 	System.command({"/usr/bin/xcrun", "simctl", "runtime", "list", "-j"}, function(ok, output)
-		if not ok or type(output) ~= "string" then completion(nil); return end
+		if not ok or type(output) ~= "string" then completion(nil, "Runtimes could not be read. Retry or manage them in Xcode Components."); return end
 		local parsed, value = pcall(ns.json_parse, output)
-		completion(parsed and type(value) == "table" and value or nil)
+		completion(parsed and type(value) == "table" and value or nil,
+			not (parsed and type(value) == "table") and "Runtime information could not be read. Retry or open Xcode Components." or nil)
 	end)
 end
 -- Bundle identifier and version from each app's Info.plist, plus Spotlight's

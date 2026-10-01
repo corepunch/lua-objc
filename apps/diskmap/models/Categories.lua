@@ -69,7 +69,9 @@ function Categories.coverage(model, disk)
 	local partial = (model.scan.errors or 0) > 0
 	local text = (partial and "At least " or "") .. Model.size(measured) .. " measured"
 	if partial then text = text .. string.format(" · %d filesystem read issues", model.scan.errors) end
-	if disk then
+	if model.scan.running then
+		text = text .. " so far · scan in progress"
+	elseif disk then
 		local difference = (disk.totalKb - disk.freeKb) * 1024 - measured
 		text = text .. " · " .. (difference < 0 and "−" or "") .. Model.size(math.abs(difference)) .. " not attributed"
 	end
@@ -95,8 +97,9 @@ function Categories.distribution(model, disk)
 		return left.id < right.id
 	end)
 	local other = total - free - assigned
-	table.insert(segments, {id = "unreconciled", name = "Not attributed", color = "tertiary", bytes = other, weight = other / total, size = Model.size(other)})
+	table.insert(segments, {id = "unreconciled", name = model.scan.running and "Not measured yet" or "Not attributed", color = "tertiary", bytes = other, weight = other / total, size = Model.size(other)})
 	table.insert(segments, {id = "free", name = "Free", color = "quaternaryLabel", bytes = free, weight = free / total, size = Model.size(free)})
+	if model.scan.running then return segments, "Measurements are still arriving. The gray part includes storage Diskmap has not measured yet; it is not a cleanup estimate." end
 	return segments, "Not attributed can include inaccessible files, snapshots and filesystem accounting differences. Category measurements may be partial."
 end
 -- Flat management rows retain their owner and exact path; totals stay in the ledger.

@@ -29,8 +29,11 @@ end
 -- so that a new install, with no flags, shows the tour.
 function Controller:showOnStart() return call(self.service, "loadFlag", "hideTour") ~= true end
 function Controller:setShowOnStart(show) call(self.service, "saveFlag", "hideTour", not show) end
-function Controller:needed()
+function Controller:needed(disk)
 	if type(rawget(self.service, "hasFullDiskAccess")) ~= "function" then return false end
+	-- A storage alert needs a direct route to findings. The tour remains
+	-- available from Help, and the person’s show-on-start choice is preserved.
+	if disk and disk.totalKb and disk.totalKb > 0 and disk.freeKb and disk.freeKb / disk.totalKb < 0.1 then return false end
 	return self:showOnStart()
 end
 

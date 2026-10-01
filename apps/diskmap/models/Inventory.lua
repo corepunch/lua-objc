@@ -43,11 +43,13 @@ function Inventory.options(now)
 end
 -- A refresh discards old values before any new result can become visible.
 function Inventory.begin(model, ids)
-	model.scan = {}
+	model.scan = {running = true}
 	model.files, model.breakdowns, model.folderSizes = nil, {}, nil
 	for _, id in ipairs(ids) do model.measurements[id] = {status = "calculating"} end
 end
 function Inventory.cancel(model)
+	model.scan.running = false
+	if model.files then model.files.measuring, model.files.partial = false, true end
 	for id, m in pairs(model.measurements) do
 		m.currentScan = nil
 		if m.status == "calculating" then model.measurements[id] = {status = "notMeasured"} end
@@ -75,9 +77,17 @@ function Inventory.cloud(model)
 	end
 	return bytes, files
 end
+local function fileSummary(model, result, measuring)
+	if result.largeFiles or result.extensions then
+		model.files = {large = result.largeFiles or {}, old = result.oldFiles or {}, extensions = result.extensions or {},
+			oldBytes = result.oldBytes or 0, oldCount = result.oldCount or 0,
+			partial = measuring or result.partial == true, measuring = measuring}
+	end
+end
 function Inventory.progress(model, ids, result)
-	model.scan = {errors = result.errors or 0, protected = result.protected or 0, visited = result.visited or 0,
-		completed = result.completed or 0, total = result.total or #ids, seconds = result.seconds or 0}
+	fileSummary(model, result, true)
+	model.scan = {running = true, errors = result.errors or 0, protected = result.protected or 0, visited = result.visited or 0,
+		completed = result.completed or 0, total = result.total or #ids, seconds = result.seconds or 0, currentPath = result.currentPath}
 	for i = 1, math.min(result.completed or 0, #ids) do
 		local state = result.rootStates and result.rootStates[i]
 		if state then
@@ -88,11 +98,7 @@ function Inventory.progress(model, ids, result)
 end
 function Inventory.apply(model, ids, result)
 	model.scan = {completedAt = os.time(), errors = result.errors or 0, protected = result.protected or 0, visited = result.visited or 0, seconds = result.seconds or 0, issues = result.issues or {}, failure = result.failure}
-	-- Summaries arrive only with a finished batch; a cancelled scan has none.
-	if result.largeFiles or result.extensions then
-		model.files = {large = result.largeFiles or {}, old = result.oldFiles or {}, extensions = result.extensions or {},
-			oldBytes = result.oldBytes or 0, oldCount = result.oldCount or 0, partial = result.partial == true}
-	end
+	fileSummary(model, result, false)
 	model.breakdowns = {}
 	for i, id in ipairs(ids) do
 		local children = result.breakdowns and result.breakdowns[i]
