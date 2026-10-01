@@ -21,7 +21,7 @@ local LAYOUT = {
 				help = "Mark every folder of an app whose vendor has no installed app", disabled = true}},
 			list = {id = "leftovers", menu = "leftoverMenu", activate = "reveal", detailColumn = true}},
 	},
-	footnote = {text = "Last used comes from Spotlight, as Finder's Last Opened; an app Spotlight has not seen opened reads Never opened. Apps outside /Applications and ~/Applications are not listed; their data never counts as a leftover."},
+	footnote = {text = "Last used comes from Spotlight, as Finder's Last Opened; an app without a recorded date reads Last use unknown and is never counted as unused. Apps outside /Applications and ~/Applications are not listed; their data never counts as a leftover."},
 }
 
 -- The Applications page and the app facts other pages need. Bundle info and

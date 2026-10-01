@@ -39,4 +39,15 @@ for index = 1, page.refs.contents.rowCount do
 end
 t.expect(titles["Empty Trash…"] and titles["Spotlight Settings…"], "the disk's Trash and index offer their owners' actions")
 t.expect(titles["Mark for Cleanup"], "ordinary folders can be marked for cleanup")
+
+-- The system volume is called sealed only when the measured state says so.
+local Volumes = require("apps.diskmap.models.Volumes")
+local function systemRow(sealed)
+	local list = {Containers = {{ContainerReference = "disk3", CapacityCeiling = 100, Volumes = {
+		{Name = "Macintosh HD", DeviceIdentifier = "disk3s1", Roles = {"System"}, CapacityInUse = 10, Sealed = sealed}}}}}
+	return Volumes.apfs(list, "disk3").rows[1]
+end
+t.expect(systemRow("Yes").subtitle:find("sealed, read-only", 1, true), "a sealed volume is described as sealed")
+t.expect(systemRow("No").subtitle:find("not sealed", 1, true), "an unsealed volume is not called sealed")
+t.expect(not systemRow(nil).subtitle:find("sealed", 1, true), "an unknown seal state claims nothing")
 os.exit(t.summary() and 0 or 1)

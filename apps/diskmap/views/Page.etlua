@@ -10,6 +10,7 @@
     empty                {id, title, systemImage, description}, in place of the sections
     sections             each {
       id                   ref of the whole section, to hide it
+      collapsed            label of a disclosure that hides the list until opened
       title, detail        its heading; titleId and detailId name their refs
       sizeId               ref of a total beside the heading
       links                buttons before the filter
@@ -55,9 +56,17 @@
       <% for _, empty in ipairs(section.empties or {}) do %>
       <ContentUnavailable id="<%= empty.id %>"<% if empty.hidden then %> hidden="true"<% end %> title="<%= empty.title %>" systemImage="<%= empty.systemImage %>" description="<%= empty.description %>" />
       <% end %>
+      <% if section.collapsed then %>
+      <DisclosureGroup id="<%= section.id %>_disclosure" label="<%= section.collapsed %>" expanded="false" spacing="8" indicatorWidth="26" indicatorSpacing="10">
+        <GroupBox <% if section.panelId then %>id="<%= section.panelId %>" <% end %>>
+          <%- partial("ResourceList.etlua", section.list) %>
+        </GroupBox>
+      </DisclosureGroup>
+      <% else %>
       <GroupBox <% if section.panelId then %>id="<%= section.panelId %>" <% end %>>
         <%- partial("ResourceList.etlua", section.list) %>
       </GroupBox>
+      <% end %>
     </VStack>
     <% end %>
     <% for _, slot in ipairs(layout.slots or {}) do %>
