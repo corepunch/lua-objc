@@ -126,9 +126,9 @@ t.expect(app.tour:needed({totalKb = 256e9 / 1024, freeKb = 100e9 / 1024}), "norm
 app:show("cleanup")
 local page = app.page
 local data = Recommendations.presentation(app.model, "")
-local expected = data.review[1]
+local expected = data.decisions[1]
 page.refs.list_rebuildable:selectRow(0)
-page.refs.list_review:selectRow(0)
+page.refs.list_decisions:selectRow(0)
 t.assertEqual(page.selectedRow.id, expected.id, "single selection chooses its suggestion")
 t.assertEqual(page.refs.list_rebuildable.documentView.selectedRow, -1, "selecting a different section clears the previous highlight")
 t.assertEqual(page.detailsTemplate.refs.selectionAdvice.text, expected.subtitle, "full advice is shown without truncation")

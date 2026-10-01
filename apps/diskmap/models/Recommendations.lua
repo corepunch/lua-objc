@@ -50,76 +50,141 @@ function Recommendations.checked(model, suggested, needle)
 	return relative(rows), absent, total
 end
 
--- The Clean Up page: rebuildable and review suggestions from the cleanup
--- rules, pointers to file- and app-level findings, and the checked list.
--- `apps` is the Applications summary when it has been computed.
-function Recommendations.presentation(model, query, apps)
+-- Every candidate carries the same accounting, whichever screen it comes
+-- from: `bytes` is what there is to review, `eligibleBytes` what could be
+-- recovered (nil when unknown), plus confidence and effort for ranking.
+local function candidate(row, fields)
+	for key, value in pairs(fields) do row[key] = value end
+	row.shareText = row.shareText or ""
+	row.size = row.size or Model.size(row.bytes)
+	row.score = Cleanup.score(row)
+	return row
+end
+
+-- The recovery line the inspector shows, and the prefix that tells a row's
+-- bytes-to-review from bytes it could recover.
+function Recommendations.recovery(row)
+	if row.eligibleBytes then
+		return "Estimated recoverable " .. Model.size(row.eligibleBytes) .. " · " .. (row.confidence or "Low") .. " confidence · "
+			.. (row.effort or "High") .. " effort"
+	end
+	return Model.size(row.bytes) .. " to review · recoverable space is unknown until you choose what to remove"
+end
+
+-- The Clean Up page: candidates from every screen, ranked together by one
+-- rule (eligible bytes × confidence ÷ effort) and split by what they ask of
+-- the reader: rebuildable data its owner regenerates, decisions about the
+-- reader's own files, apps and devices, and system-managed context that
+-- offers no cleanup here. `sources` carries what other pages measured:
+-- `apps` is the Applications summary once it is known.
+function Recommendations.presentation(model, query, sources)
 	local needle = (query or ""):lower()
-	local rebuildable, review, suggested = {}, {}, {}
-	local rebuildableBytes, reviewBytes = 0, 0
+	sources = sources or {}
+	local apps = sources.apps
+	local rebuildable, decisions, suggested = {}, {}, {}
+	local rebuildableBytes, eligibleBytes, reviewBytes = 0, 0, 0
+	local plan = model.simulatorPlan
 	for _, row in ipairs(Cleanup.suggestions(model)) do
 		suggested[row.id] = true
 		-- A partial measurement already reads "≥" in the size column.
-		row.detail = row.impact == "Safe/rebuildable" and "Rebuildable" or "Review"
+		row.detail = row.kind == "rebuildable" and "Rebuildable" or "Review"
 		row.shareText = ""
-		Status.apply(row)
+		if row.id == "simulators" and plan and plan.removalCount > 0 then
+			row.subtitle = "Keep one iPhone and one iPad: " .. Model.plural(plan.removalCount, "redundant device") .. " can go, " .. Model.size(plan.removalBytes)
+				.. " of apps and data. Shared runtimes stay."
+			row.page, row.pageName, row.detail = "simulators", "Simulators", "Opens Simulators"
+		end
+		Status.apply(row, row.kind == "rebuildable" and "Rebuildable" or "Review")
 		if matches(row, needle) then
-			if row.impact == "Safe/rebuildable" then
+			if row.kind == "rebuildable" then
 				table.insert(rebuildable, row); rebuildableBytes = rebuildableBytes + row.bytes
 			else
-				table.insert(review, row); reviewBytes = reviewBytes + row.bytes
+				table.insert(decisions, row)
 			end
 		end
 	end
-	-- Each list reads largest first, like every other ranking in Diskmap; a
-	-- rule's priority only orders equal sizes.
-	local function bySize(a, b)
-		if a.bytes ~= b.bytes then return a.bytes > b.bytes end
-		if a.priority ~= b.priority then return a.priority < b.priority end
-		return a.id < b.id
-	end
-	table.sort(rebuildable, bySize)
-	table.sort(review, bySize)
-	local elsewhere = {}
 	local files = Files.summary(model)
+	local elsewhere = {}
 	if files and files.reviewableOldBytes > 0 then
-		table.insert(elsewhere, {id = "old-files", name = "Documents unused for a year", page = "files", filter = Files.filterIndex("Unused for a year"),
+		table.insert(elsewhere, candidate({id = "old-files", name = "Documents unused for a year", page = "files", filter = Files.filterIndex("Unused for a year"),
 			subtitle = Model.count(files.reviewableOld) .. " of your own files over " .. Model.size(require("apps.diskmap.models.Inventory").summary.minimumFileBytes)
-				.. " were not opened or changed in a year.",
-			icon = "clock.fill", color = "systemOrange", bytes = files.reviewableOldBytes, size = Model.size(files.reviewableOldBytes), detail = "Large Files", shareText = ""})
+				.. " were not opened or changed in a year. Review them; they may be your only copy.",
+			icon = "clock.fill", color = "systemOrange", bytes = files.reviewableOldBytes, detail = "Large Files"},
+			{confidence = "Low", effort = "High", kind = "decision"}))
 	end
+	-- Installers are the user-owned ones only: file-kind totals also count
+	-- system and runtime images that this list never offers to remove.
 	local installers, installerBytes = 0, 0
 	for _, row in ipairs(Files.rows(model, "Installers & archives")) do
-		if row.trashable then installers = installers + 1; installerBytes = installerBytes + row.bytes end
+		installers = installers + 1; installerBytes = installerBytes + row.bytes
 	end
 	if installerBytes > 0 then
-		table.insert(elsewhere, {id = "installers", name = "Installers & archives", page = "files", filter = Files.filterIndex("Installers & archives"),
+		table.insert(elsewhere, candidate({id = "installers", name = "Installers & archives", page = "files", filter = Files.filterIndex("Installers & archives"),
 			subtitle = installers .. " disk images, installers and archives in your folders. Once installed or expanded they are rarely needed.",
-			icon = "opticaldiscdrive.fill", color = "systemTeal", bytes = installerBytes, size = Model.size(installerBytes), detail = "Large Files", shareText = ""})
+			icon = "opticaldiscdrive.fill", color = "systemTeal", bytes = installerBytes, detail = "Large Files"},
+			{eligibleBytes = installerBytes, confidence = "Medium", effort = "Low", kind = "decision"}))
 	end
 	if apps and apps.leftovers and apps.leftovers > 0 then
-		table.insert(elsewhere, {id = "leftovers", name = "Possible app leftovers", page = "applications",
-			subtitle = apps.leftovers .. " data folders belong to no installed app.",
-			icon = "questionmark.folder.fill", color = "systemGray", bytes = apps.leftoverBytes, size = Model.size(apps.leftoverBytes), detail = "Applications", shareText = ""})
+		table.insert(elsewhere, candidate({id = "leftovers", name = "Possible app leftovers", page = "applications",
+			subtitle = apps.leftovers .. " data folders belong to no installed app; " .. apps.leftoversHigh .. " are high confidence.",
+			icon = "questionmark.folder.fill", color = "systemGray", bytes = apps.leftoverBytes, detail = "Applications"},
+			{eligibleBytes = apps.leftoversHighBytes > 0 and apps.leftoversHighBytes or nil, confidence = apps.leftoversHighBytes > 0 and "Medium" or "Low",
+				effort = "Medium", kind = "decision"}))
 	end
 	if apps and apps.unused and apps.unused > 0 then
-		table.insert(elsewhere, {id = "unused-apps", name = "Apps unused for 6 months", page = "applications", filter = 2,
-			subtitle = apps.unused .. " apps and their data. Uninstall the ones you no longer need.",
-			icon = "hourglass", color = "systemBlue", bytes = apps.unusedBytes, size = Model.size(apps.unusedBytes), detail = "Applications", shareText = ""})
+		table.insert(elsewhere, candidate({id = "unused-apps", name = "Apps unused for 6 months", page = "applications", filter = 2,
+			subtitle = Model.plural(apps.unused, "app") .. " with a known last-use date over six months ago, and their data. Apps with an unknown last use are not counted.",
+			icon = "hourglass", color = "systemBlue", bytes = apps.unusedBytes, detail = "Applications"},
+			{confidence = "Low", effort = "Medium", kind = "decision"}))
 	end
-	local visibleElsewhere = {}
 	for _, row in ipairs(elsewhere) do
 		row.pageName = row.detail
 		row.detail = "Opens " .. row.detail
 		Status.apply(row, "Page")
-		if matches(row, needle) then table.insert(visibleElsewhere, row) end
+		if matches(row, needle) then table.insert(decisions, row) end
 	end
+	table.sort(decisions, function(a, b)
+		if a.score ~= b.score then return a.score > b.score end
+		if a.bytes ~= b.bytes then return a.bytes > b.bytes end
+		return a.id < b.id
+	end)
+	table.sort(rebuildable, function(a, b)
+		if a.score ~= b.score then return a.score > b.score end
+		if a.bytes ~= b.bytes then return a.bytes > b.bytes end
+		return a.id < b.id
+	end)
+	for _, row in ipairs(decisions) do
+		reviewBytes = reviewBytes + row.bytes
+		eligibleBytes = eligibleBytes + (row.eligibleBytes or 0)
+	end
+	for _, row in ipairs(rebuildable) do eligibleBytes = eligibleBytes + (row.eligibleBytes or row.bytes) end
 	local checked, absent, known = Recommendations.checked(model, suggested, needle)
-	return {rebuildable = relative(rebuildable), review = relative(review), elsewhere = relative(visibleElsewhere), checked = checked,
-		rebuildableBytes = rebuildableBytes, reviewBytes = reviewBytes, absent = absent, known = known,
-		summary = #rebuildable + #review == 0 and "No location has crossed its review threshold."
-			or (Model.size(rebuildableBytes) .. " rebuildable · " .. Model.size(reviewBytes) .. " to review, not recoverable space")}
+	local context = Recommendations.context(model, needle)
+	local empty = #rebuildable + #decisions == 0
+	return {rebuildable = relative(rebuildable), decisions = relative(decisions), context = relative(context), checked = checked,
+		rebuildableBytes = rebuildableBytes, reviewBytes = reviewBytes, eligibleBytes = eligibleBytes, absent = absent, known = known,
+		summary = empty and "No location has crossed its review threshold."
+			or (Model.size(eligibleBytes) .. " estimated recoverable · " .. Model.size(reviewBytes) .. " in locations to review")}
 end
+
+-- System-managed locations: what they hold and where macOS manages them.
+-- Context only; Diskmap offers no removal here.
+function Recommendations.context(model, needle)
+	local rows = {}
+	for _, row in ipairs(model.resources:leaves()) do
+		local m = model.measurements[row.id] or {}
+		if row.policy == "System managed" and (m.status == "complete" or m.status == "partial") and (m.bytes or 0) >= Recommendations.contextMinimum then
+			local value = {id = row.id, name = row.name, icon = row.icon, color = row.color, appIcon = row.appIcon, path = row.path,
+				bytes = m.bytes, subtitle = row.consequence or row.subtitle, detail = "System managed", shareText = ""}
+			Model.sizeLabel(value, m.status, m.bytes)
+			Status.apply(value, "System managed")
+			if matches(value, needle) then table.insert(rows, value) end
+		end
+	end
+	table.sort(rows, function(a, b) if a.bytes ~= b.bytes then return a.bytes > b.bytes end return a.id < b.id end)
+	return rows
+end
+Recommendations.contextMinimum = 1e9
 
 -- Where a tip's action leads.
 local TIP_LINKS = {settings = {settings = "privacy"}, system = {page = "guide"}, storage = {page = "overview"}}
@@ -127,8 +192,8 @@ local TIP_LINKS = {settings = {settings = "privacy"}, system = {page = "guide"},
 -- Every section is always present; empty ones are hidden.
 local SECTIONS = {
 	{id = "rebuildable", title = "Rebuildable", detail = "Caches and build data their owners regenerate. Review, then clear."},
-	{id = "elsewhere", title = "Files and apps to review", detail = "Installers, old documents and unused apps, from Large Files and Applications."},
-	{id = "review", title = "Needs review", detail = "Bytes to review, not recoverable space. Size alone never makes data disposable."},
+	{id = "decisions", title = "Your decisions", detail = "Files, apps and devices only you can judge, ranked by what they could recover. Size alone never makes data disposable."},
+	{id = "context", title = "System-managed", detail = "macOS manages these; no cleanup is offered here.", collapsed = "Show system-managed storage"},
 	{id = "checked", title = "Checked and within limits", detail = "Known space hogs below their review threshold, or kept. " .. "Locations absent from this Mac are not listed.", collapsed = "Show checked locations"},
 }
 local LAYOUT = {
@@ -151,13 +216,13 @@ function Recommendations.details(model, row)
 	local target = row.pageName or destination and destination.page
 	local names = {simulators = "Simulators", projects = "Projects", xcode = "Xcode", files = "Large Files", applications = "Applications"}
 	return {title = row.name, detail = row.subtitle or "", status = row.detail,
-		size = row.size, evidence = row.evidence, consequence = row.consequence ~= row.subtitle and row.consequence or nil,
+		size = row.size, evidence = row.kind and ((row.evidence and (row.evidence .. "\n") or "") .. Recommendations.recovery(row)) or row.evidence, consequence = row.consequence ~= row.subtitle and row.consequence or nil,
 		actionTitle = "Open " .. (names[target] or target or "Details") .. "…"}
 end
 
-function Recommendations.page(apps)
+function Recommendations.page(sources)
 	return {id = "cleanup", layout = LAYOUT, details = Recommendations.details, children = {tips = "Tips"}, present = function(model, state)
-		local data = Recommendations.presentation(model, state.query, apps())
+		local data = Recommendations.presentation(model, state.query, sources())
 		local lists, hidden = {}, {}
 		for _, section in ipairs(SECTIONS) do
 			lists["list_" .. section.id] = data[section.id]

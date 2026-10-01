@@ -1,6 +1,7 @@
 local Page = require("apps.diskmap.controllers.PageController")
 local Model = require("apps.diskmap.Model")
 local Simulators = require("apps.diskmap.models.Simulators")
+local SimulatorPlan = require("apps.diskmap.models.SimulatorPlan")
 local Controller = Page.extend("simulators", "Simulators")
 
 -- The Simulators page: devices from CoreSimulator's folders and runtimes from
@@ -12,6 +13,7 @@ end
 
 function Controller:mount(host, state)
 	self.query, self.filterIndex, self.selected, self.selectedRuntime = state.query or "", 1, nil, nil
+	self.planRuntime, self.planKeep, self.planSelected, self.planChildren, self.planResult = nil, {}, nil, nil, nil
 	local refs = self:attach(host, {filters = Simulators.filters, actions = {
 		filter = function(index) self.filterIndex = (index or 0) + 1; self:show() end,
 		select = function(_, _, row) self.selected = row; self:buttons() end,
@@ -46,6 +48,7 @@ function Controller:buttons()
 	local _, deviceReason = Simulators.validate("delete", self.selected, self.model)
 	if self.selected then refs.status.text = deviceReason and deviceReason.message or (self.selected.name .. " · " .. self.selected.state) end
 	refs.retry.enabled = allowed
+	self:planButtons()
 	local _, reason = Simulators.validateRuntime(self.selectedRuntime, self.model)
 	refs.runtimeStatus.text = self.selectedRuntime and reason and reason.message or self.runtimeError or ""
 end
@@ -89,6 +92,179 @@ function Controller:show()
 	if self.busy then refs.devices:showLoading() else refs.devices:hideLoading() end
 	self.selected, self.selectedRuntime = nil, nil
 	self:buttons()
+	self:showPlan()
+end
+
+-- The minimal device set: built from the inventory by models/SimulatorPlan.lua
+-- and presented by its own template, so the page above reconciles untouched.
+local FAMILY_TITLES = {iPhone = {id = "Phone", title = "iPhone"}, iPad = {id = "Pad", title = "iPad"}}
+function Controller:buildPlan()
+	return SimulatorPlan.build(self.inventory, {runtime = self.planRuntime, keep = self.planKeep,
+		protected = function(udid)
+			local catalog = self.model.resources:find("simulators")
+			return (catalog and catalog:isKept()) or Simulators.isKept(self.model, udid)
+		end})
+end
+
+local ROLES = {keep = "Keep", remove = "Remove", blocked = "Blocked", preserve = "Protected", undecided = "Choose", outside = "Not in plan"}
+local COLORS = {keep = "systemGreen", remove = "systemOrange", blocked = "systemRed", preserve = "systemBlue", undecided = "systemGray", outside = "systemGray"}
+
+function Controller:planSummary(plan)
+	if self.loading then return "Reading simulator devices…" end
+	local keeps = {}
+	for _, family in ipairs(SimulatorPlan.families) do
+		for _, entry in ipairs(plan.devices) do if entry.id == plan.keep[family] then table.insert(keeps, entry.name) end end
+	end
+	local parts = {#keeps > 0 and ("Keeps " .. table.concat(keeps, " and ")) or "Nothing is kept yet"}
+	if #plan.removal > 0 then
+		table.insert(parts, "removes " .. Model.plural(#plan.removal, "device") .. ", " .. Model.size(plan.removalBytes) .. " of apps and data")
+	else
+		table.insert(parts, "no device is eligible for removal")
+	end
+	if plan.blockedBytes > 0 then table.insert(parts, Model.size(plan.blockedBytes) .. " blocked until shut down or checked") end
+	if plan.preservedBytes > 0 then table.insert(parts, Model.size(plan.preservedBytes) .. " protected by Keep") end
+	local text = table.concat(parts, " · ") .. "."
+	if plan.runtimePreserved then text = text .. " The shared runtime stays for the kept devices and is not part of this total." end
+	return text
+end
+
+function Controller:showPlan()
+	if not self.template or not self.refs or not self.refs.planHost then return end
+	local plan = self:buildPlan()
+	self.plan = plan
+	self:publishPlan()
+	self.planChildren = self.planChildren or self.template:child("planHost", "apps/diskmap/views/SimulatorPlan.etlua")
+	local runtimeIndex, families, options = 0, {}, {}
+	for index, runtime in ipairs(plan.runtimes) do if runtime.identifier == plan.runtime then runtimeIndex = index - 1 end end
+	for _, family in ipairs(SimulatorPlan.families) do
+		local list, labels, index = {}, {}, 0
+		if plan.needsChoice[family] and #plan.candidates[family] > 0 then
+			table.insert(labels, "Choose…"); table.insert(list, false)
+		end
+		for position, row in ipairs(plan.candidates[family]) do
+			table.insert(labels, row.name .. " · " .. row.size); table.insert(list, row.id)
+			if row.id == plan.keep[family] then index = #labels - 1 end
+		end
+		options[family] = list
+		table.insert(families, {id = FAMILY_TITLES[family].id, title = FAMILY_TITLES[family].title, options = labels, index = index,
+			note = plan.needsChoice[family] and ("No standard " .. family .. " is available; choose which one to keep.") or ""})
+	end
+	self.planOptions = options
+	local rows = {}
+	for _, entry in ipairs(plan.devices) do
+		local row = {}
+		for key, value in pairs(entry) do row[key] = value end
+		row.roleLabel, row.color = ROLES[entry.role], COLORS[entry.role]
+		row.lastUse = (entry.state == "Booted" or entry.running) and "Running" or entry.lastUse
+		table.insert(rows, row)
+	end
+	local selected = self.planSelected and self.planSelected.id
+	local removable = #plan.removal
+	local data = {runtimes = plan.runtimes, runtimeIndex = runtimeIndex, families = families, summary = self:planSummary(plan),
+		reviewTitle = removable > 0 and ("Review and Delete " .. Model.plural(removable, "Device") .. "…") or "Review and Delete…",
+		preserveTitle = selected and Simulators.isKept(self.model, selected) and "Remove Keep" or "Keep Device",
+		status = self.planResult or "", actions = {
+			planRuntime = function(index) self.planRuntime = plan.runtimes[(index or 0) + 1].identifier; self.planKeep = {}; self:showPlan() end,
+			planPhone = function(index) self:chooseKeep("iPhone", index) end,
+			planPad = function(index) self:chooseKeep("iPad", index) end,
+			planSelect = function(_, _, row) self.planSelected = row; self:planButtons() end,
+			planPreserve = function() self:togglePreserve() end,
+			planKeepThis = function() self:keepSelected() end,
+			planReview = function() self:reviewPlan() end,
+		}}
+	local _, refs = self.planChildren:update(data)
+	self.planRefs = refs
+	if refs and refs.planDevices then refs.planDevices:replaceRows(rows) end
+	self.planSelected = nil
+	self:planButtons()
+end
+
+function Controller:planButtons()
+	local refs, plan = self.planRefs, self.plan
+	if not refs or not refs.planReview then return end
+	refs.planReview.enabled = not self.busy and not self.loading and plan ~= nil and plan.ready
+	local row = self.planSelected
+	refs.planPreserve.enabled = not self.busy and row ~= nil and row.family ~= nil
+	refs.planKeepThis.enabled = not self.busy and row ~= nil and row.family ~= nil and row.runtimeIdentifier == plan.runtime
+		and row.available ~= false and plan.keep[row.family] ~= row.id
+end
+
+function Controller:chooseKeep(family, index)
+	local id = self.planOptions and self.planOptions[family] and self.planOptions[family][(index or 0) + 1]
+	self.planKeep[family] = id or nil
+	self.planResult = nil
+	self:showPlan()
+end
+
+function Controller:keepSelected()
+	local row = self.planSelected
+	if not row or not row.family then return end
+	self.planKeep[row.family] = row.id
+	self.planResult = nil
+	self:showPlan()
+end
+
+-- Keep for one device persists with the other Keep choices.
+function Controller:togglePreserve()
+	local row = self.planSelected
+	if not row or not row.family then return end
+	Simulators.toggleKept(self.model, row.id)
+	if self.service.saveKeep then self.service.saveKeep(self.model.kept) end
+	self.planResult = nil
+	self:showPlan()
+end
+
+-- The shared review flow: one confirmation for the whole removal set, then
+-- each device is re-read from CoreSimulator and revalidated before its own
+-- deletion. A refused or failed device is reported and the rest continue.
+function Controller:reviewPlan()
+	if self.busy then return false end
+	local plan = self:buildPlan()
+	if not plan.ready then return false end
+	if not self.service.confirmAction("Delete redundant simulators", SimulatorPlan.confirmation(plan)) then return false end
+	self.busy = true; self.planResult = "Deleting…"
+	self:show()
+	local generation = self.generation
+	local deleted, deletedBytes, skipped, failed = 0, 0, {}, {}
+	local function finish()
+		local parts = {}
+		if deleted > 0 then table.insert(parts, "Deleted " .. Model.plural(deleted, "device") .. " (" .. Model.size(deletedBytes) .. ")") end
+		if #skipped > 0 then table.insert(parts, "Skipped " .. table.concat(skipped, "; ")) end
+		if #failed > 0 then table.insert(parts, "Failed " .. table.concat(failed, "; ")) end
+		if #parts == 0 then parts[1] = "Nothing was deleted" end
+		self.changed()
+		if generation == self.generation then
+			self.busy, self.planResult = false, table.concat(parts, ". ") .. ". Kept devices and the shared runtime were not touched; free space updates with the next scan."
+			self:load()
+		end
+	end
+	local function step(index)
+		local entry = plan.removal[index]
+		if not entry then finish(); return end
+		local function proceed(fresh)
+			local ok, reason = SimulatorPlan.revalidate(plan, entry.id, fresh, self.model)
+			if not ok then
+				table.insert(skipped, entry.name .. " (" .. reason.message .. ")")
+				step(index + 1); return
+			end
+			self.service.command({"/usr/bin/xcrun", "simctl", "delete", entry.id}, function(success, output)
+				if self.log then self.log("simctl delete " .. entry.id, success, entry.bytes, entry.name, not success and output or nil) end
+				if success then deleted = deleted + 1; deletedBytes = deletedBytes + (entry.bytes or 0)
+				else table.insert(failed, entry.name .. " (" .. tostring(output):sub(1, 80) .. ")") end
+				step(index + 1)
+			end)
+		end
+		if type(self.service.simulatorState) ~= "function" then proceed(entry); return end
+		self.service.simulatorState(entry.id, function(record)
+			if not record then proceed(nil); return end
+			local state, running = record.state, nil
+			if state == "Shutdown" then running = false
+			elseif state == "Booted" or state == "Booting" or state == "Shutting Down" then running = true end
+			proceed({id = entry.id, name = entry.name, runtime = entry.runtime, available = record.isAvailable, running = running})
+		end)
+	end
+	step(1)
+	return true
 end
 
 function Controller:update(state)
@@ -103,7 +279,18 @@ function Controller:finish(generation, inventory, runtimeList)
 	if type(inventory) == "table" and type(inventory.devices) == "table" then self.inventory = inventory; self.loaded = true
 	else self.error = "Simulator folders could not be read." end
 	self.runtimeList = runtimeList
+	self:publishPlan()
 	self:show()
+	if self.published then self.published() end
+end
+
+-- The plan's totals, for Clean Up: the same removal set the page offers, so
+-- the two screens cannot disagree about eligibility or recoverable bytes.
+function Controller:publishPlan()
+	if not self.loaded then self.model.simulatorPlan = nil; return end
+	local plan = self:buildPlan()
+	self.model.simulatorPlan = {removalBytes = plan.removalBytes, removalCount = #plan.removal, blockedBytes = plan.blockedBytes,
+		complete = plan.complete, runtime = plan.runtime}
 end
 
 function Controller:load()

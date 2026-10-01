@@ -1,6 +1,55 @@
 local Model = require("apps.diskmap.Model")
 local Rules = require("apps.diskmap.knowledge.CleanupRules")
+local Xcode = require("apps.diskmap.models.Xcode")
 local Cleanup = {}
+
+-- A suggestion carries three separate numbers. `bytes` is the measured size
+-- of the location (what there is to review); `eligibleBytes` is what the
+-- suggestion could actually recover once every child is checked (nil when
+-- that cannot be known); the score ranks by eligible bytes, how sure we are
+-- and how much work the owner's flow takes.
+Cleanup.confidence = {High = 1, Medium = 0.6, Low = 0.3}
+Cleanup.effort = {Low = 1, Medium = 1.5, High = 2.5}
+-- Bytes to review with no eligibility proof count for this much of their size.
+Cleanup.reviewFraction = 0.2
+local SUPPORT_PLATFORMS = {devices = "iOS", ["watch-devices"] = "watchOS"}
+
+-- {eligibleBytes | nil, confidence, reason | nil} for a measured resource.
+-- A group agrees with its children: device support that holds only the newest
+-- kept version offers nothing, and simulators offer only what the minimal
+-- device set (published by the Simulators page) would remove.
+function Cleanup.eligibility(model, row, measurement)
+	local platform = SUPPORT_PLATFORMS[row.id]
+	local children = platform and model.breakdowns[row.id]
+	if children then
+		local entries = {}
+		for _, child in ipairs(children) do
+			if child.directory then
+				table.insert(entries, {platform = platform, name = child.name, path = child.name, bytes = math.floor((child.kb or 0) * 1024 + 0.5)})
+			end
+		end
+		local older = Xcode.total(Xcode.supportRows(entries), function(item) return not item.keep end)
+		return older, "Medium", older == 0 and "Only the newest version is present, and it is kept." or nil
+	end
+	if row.id == "simulators" and model.simulatorPlan then
+		local plan = model.simulatorPlan
+		return plan.removalBytes, "Medium", plan.removalBytes == 0 and "The minimal device set has nothing eligible to remove." or nil
+	end
+	if row.policy == "Rebuildable" then return measurement.bytes, "High" end
+	return nil, "Low"
+end
+
+local function effortOf(row, rule)
+	if rule and rule.effort then return rule.effort end
+	if row.action == "trash" or row.action == "ownerCleanup" then return "Low" end
+	if row.page then return "Medium" end
+	return "High"
+end
+
+function Cleanup.score(value)
+	local base = value.eligibleBytes or (value.bytes * Cleanup.reviewFraction)
+	return base * Cleanup.confidence[value.confidence] / Cleanup.effort[value.effort]
+end
 -- Build folders are judged per ecosystem, not per folder: sixty 200 MB
 -- node_modules folders are 12 GB that no single folder's threshold would
 -- ever show. A group is one suggestion once its measured, unkept folders
@@ -30,8 +79,11 @@ local function buildGroups(model)
 end
 Cleanup.buildGroups = buildGroups
 
+-- Why a measured location is not a suggestion, by id; rebuilt on every call.
+Cleanup.ineligible = {}
 function Cleanup.suggestions(model, rules)
 	local result = {}
+	Cleanup.ineligible = {}
 	for _, group in ipairs(buildGroups(model)) do
 		local row = group.row
 		if group.bytes >= Cleanup.buildGroupThreshold and not row:isKept() then
@@ -41,6 +93,9 @@ function Cleanup.suggestions(model, rules)
 			Model.sizeLabel(value, group.partial and "partial" or "complete", group.bytes)
 			value.impact = group.rebuildable and not group.partial and "Safe/rebuildable" or "Needs review"
 			value.priority, value.threshold = 2, Cleanup.buildGroupThreshold
+			value.eligibleBytes, value.confidence, value.effort = group.rebuildable and not group.partial and group.bytes or nil,
+				group.rebuildable and "High" or "Low", "Low"
+			value.kind = group.rebuildable and not group.partial and "rebuildable" or "decision"
 			value.subtitle = (row.subtitle or "") .. " In " .. Model.plural(group.count, "project") .. "."
 			value.evidence = "Measured " .. value.size .. " in " .. Model.plural(group.count, "project")
 			table.insert(result, value)
@@ -62,11 +117,24 @@ function Cleanup.suggestions(model, rules)
 			value.priority, value.threshold = rule.priority, rule.threshold
 			value.subtitle = rule.advice
 			value.evidence = "Measured " .. value.size .. " · Review threshold " .. Model.size(rule.threshold)
-			table.insert(result, value)
+			local eligible, confidence, reason = Cleanup.eligibility(model, row, m)
+			value.eligibleBytes, value.confidence, value.effort = eligible, confidence, effortOf(row, rule)
+			value.kind = value.impact == "Safe/rebuildable" and "rebuildable" or "decision"
+			if eligible and eligible ~= m.bytes then
+				value.evidence = value.evidence .. " · " .. Model.size(eligible) .. " eligible after keeping what is current"
+			end
+			if reason then
+				-- Nothing to do here: the page says why instead of sending the reader
+				-- to a destination with no candidate.
+				Cleanup.ineligible[row.id] = reason
+			else
+				table.insert(result, value)
+			end
 		end
 	end
+	for _, value in ipairs(result) do value.score = Cleanup.score(value) end
 	table.sort(result, function(a, b)
-		if a.priority ~= b.priority then return a.priority < b.priority end
+		if a.score ~= b.score then return a.score > b.score end
 		if a.bytes ~= b.bytes then return a.bytes > b.bytes end
 		return a.id < b.id
 	end)

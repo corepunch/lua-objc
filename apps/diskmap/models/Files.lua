@@ -126,7 +126,11 @@ function Files.rows(model, filter, query, kind, now)
 				kind = fileKind.name, kindId = fileKind.id, fileIcon = file.path, icon = fileKind.icon, color = fileKind.color,
 				trashable = (Files.validateTrash(model, file.path))}
 			row.detail = Model.used(row.lastUse)
-			if matches(row, needle) and (filter ~= "Yours" or row.trashable) then table.insert(rows, row) end
+			-- "Yours" and "Installers & archives" list only what this app would move
+			-- to the Trash. System and runtime images share the extension but
+			-- not the owner: they stay under All and in the File Types totals.
+			local removableOnly = filter == "Yours" or filter == "Installers & archives"
+			if matches(row, needle) and (not removableOnly or row.trashable) then table.insert(rows, row) end
 		end
 	end
 	table.sort(rows, function(a, b) if a.bytes ~= b.bytes then return a.bytes > b.bytes end return a.path < b.path end)
@@ -154,6 +158,11 @@ function Files.kinds(model)
 	end
 	local rows, all = {}, 0
 	for _, total in pairs(byKind) do all = all + total.bytes end
+	-- The installers kind counts every disk image by extension, system and
+	-- runtime images included. What this app would move to the Trash is the
+	-- user-owned subset, stated beside the inventory total, never as it.
+	local removableCount, removableBytes = 0, 0
+	for _, file in ipairs(Files.rows(model, "Installers & archives")) do removableCount = removableCount + 1; removableBytes = removableBytes + file.bytes end
 	for _, total in pairs(byKind) do
 		table.sort(total.extensions, function(a, b) return a.bytes > b.bytes end)
 		local top = {}
@@ -164,7 +173,11 @@ function Files.kinds(model)
 		table.insert(rows, {id = total.kind.id, name = total.kind.name, icon = total.kind.icon, color = total.kind.color,
 			advice = total.kind.advice, bytes = total.bytes, size = Model.size(total.bytes), count = total.count, oldBytes = total.oldBytes,
 			subtitle = table.concat(top, ", ") .. (#top > 0 and total.oldBytes > 0 and " · " or "")
-				.. (total.oldBytes > 0 and (Model.size(total.oldBytes) .. " unused for a year") or ""),
+				.. (total.oldBytes > 0 and (Model.size(total.oldBytes) .. " unused for a year") or "")
+				.. (total.kind.id == "installers" and ((#top > 0 or total.oldBytes > 0) and " · " or "")
+					.. "inventory total · " .. (removableCount > 0 and (Model.size(removableBytes) .. " in " .. plural(removableCount, "file") .. " removable from your folders")
+						or "none removable from your folders") or ""),
+			removableBytes = total.kind.id == "installers" and removableBytes or nil,
 			share = all > 0 and total.bytes / all or 0})
 	end
 	table.sort(rows, function(a, b) if a.bytes ~= b.bytes then return a.bytes > b.bytes end return a.id < b.id end)

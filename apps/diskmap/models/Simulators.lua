@@ -30,6 +30,7 @@ function Simulators.discover(service, home, listed)
 				info.name = plist.name
 				if type(plist.runtime) == "string" and plist.runtime ~= "" then info.runtime = plist.runtime end
 				if type(plist.lastBootedAt) == "string" then info.lastUsedAt = plist.lastBootedAt end
+				if type(plist.deviceType) == "string" then info.deviceType = plist.deviceType end
 			end
 			local known = records[entry.name]
 			local record, runtime = known and known.device, known and known.runtime
@@ -40,13 +41,15 @@ function Simulators.discover(service, home, listed)
 				info.lastUsedAt = info.lastUsedAt or record.lastUsedAt
 				if type(record.isAvailable) == "boolean" then info.available = record.isAvailable end
 				if type(record.state) == "string" then info.state = record.state end
+				-- The device type, not the editable name, says what model a device is.
+				if type(record.deviceTypeIdentifier) == "string" then info.deviceType = record.deviceTypeIdentifier end
 			end
 			local key = info.runtime
 			names[key] = names[key] or runtimeName(key)
 			devices[key] = devices[key] or {}
 			table.insert(devices[key], {
 				name = info.name, udid = entry.name, state = info.state, isAvailable = info.available,
-				lastUsedAt = info.lastUsedAt, dataPath = entry.path .. "/data", dataPathSize = entry.bytes,
+				lastUsedAt = info.lastUsedAt, deviceType = info.deviceType, dataPath = entry.path .. "/data", dataPathSize = entry.bytes,
 				measurePath = entry.path,
 			})
 		end
@@ -104,7 +107,7 @@ function Simulators.rows(inventory, query, filter, now)
 					state = available == false and "Unavailable" or (device.state or "State unknown"),
 					available = available, running = running, path = device.dataPath,
 					bytes = device.dataPathSize, size = Model.size(device.dataPathSize), age = age,
-					runtimeIdentifier = runtime,
+					runtimeIdentifier = runtime, deviceType = device.deviceType,
 					lastUse = age and Model.used(Model.ago(age)) or "Last use unknown"})
 			end
 		end
@@ -208,8 +211,19 @@ function Simulators.validate(action, row, model)
 	if model then
 		local catalog = model.resources:find("simulators")
 		if catalog and catalog:isKept() then return false, {code = "kept_resource", message = "Keep protects simulator storage."} end
+		if Simulators.isKept(model, row.id) then return false, {code = "kept_device", message = "This device is marked Keep."} end
 	end
 	return true
+end
+-- Keep for one device, beside Keep for the whole Simulators category. The
+-- device's identifier is the key, so the choice survives renames.
+function Simulators.isKept(model, udid)
+	return model.kept["simulator:" .. tostring(udid)] == true
+end
+function Simulators.toggleKept(model, udid)
+	local key = "simulator:" .. tostring(udid)
+	model.kept[key] = not model.kept[key] or nil
+	return model.kept[key] == true
 end
 function Simulators.command(action, row, model)
 	local ok, err = Simulators.validate(action, row, model)

@@ -135,12 +135,12 @@ t.expect(app.refs.mapSummary.text:find(" measured of ", 1, true) ~= nil, "the Ma
 -- The sidebar badge and the Developer page name one total.
 t.assertEqual(app:badges().developer, Workflow.presentation(app.model, developerWorkflow).total, "the Developer badge is the page's total")
 
--- Clean Up lists read largest first.
+-- Clean Up lists read by recovery score: eligible bytes x confidence / effort.
 local cleanup = Recommendations.presentation(app.model)
-for _, list in ipairs({cleanup.rebuildable, cleanup.review}) do
-	for index = 2, #list do t.expect(list[index - 1].bytes >= list[index].bytes, "cleanup suggestions are largest first") end
+for _, list in ipairs({cleanup.rebuildable, cleanup.decisions}) do
+	for index = 2, #list do t.expect(list[index - 1].score >= list[index].score, "cleanup suggestions are ranked by recovery score") end
 end
-t.expect(#cleanup.review > 1, "the mock has suggestions to order")
+t.expect(#cleanup.decisions > 1, "the mock has suggestions to order")
 
 -- Apps are called what Finder calls them.
 local bundle = Applications.bundles(app.model)[1]

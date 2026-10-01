@@ -186,10 +186,15 @@ function Applications.summary(rows, leftovers)
 		-- last-use date older than six months. Unknown dates are not counted.
 		if row.unused then unused = unused + 1; unusedBytes = unusedBytes + row.bytes end
 	end
-	local leftoverBytes = 0
-	for _, row in ipairs(leftovers or {}) do leftoverBytes = leftoverBytes + row.bytes end
+	-- Only High-confidence leftovers (no app from that vendor is installed) are
+	-- counted as removable; the rest are bytes to review.
+	local leftoverBytes, highBytes, high = 0, 0, 0
+	for _, row in ipairs(leftovers or {}) do
+		leftoverBytes = leftoverBytes + row.bytes
+		if row.tier == "high" then highBytes = highBytes + row.bytes; high = high + 1 end
+	end
 	return {count = #rows, apps = apps, data = data, unused = unused, unusedBytes = unusedBytes,
-		leftovers = leftovers and #leftovers or nil, leftoverBytes = leftoverBytes}
+		leftovers = leftovers and #leftovers or nil, leftoverBytes = leftoverBytes, leftoversHigh = high, leftoversHighBytes = highBytes}
 end
 
 return Applications

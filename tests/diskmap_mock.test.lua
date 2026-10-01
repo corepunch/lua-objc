@@ -76,7 +76,7 @@ local simulators = fresh.decode(simulatorJSON)
 t.assertEqual(simulators.devices["com.apple.CoreSimulator.SimRuntime.iOS-26-0"][1].dataPathSize, 8800000000, "simulator sizes come from virtual entries")
 local discovered = Simulators.discover(fresh, home)
 local discoveredRows = Simulators.rows(discovered)
-t.assertEqual(#discoveredRows, 2, "mock review lists simulator folders without calling simctl")
+t.assertEqual(#discoveredRows, 6, "mock review lists simulator folders without calling simctl")
 t.assertEqual(discoveredRows[1].name, "iPhone 17 Pro", "bundled simulator metadata supplies the device name")
 t.assertEqual(discoveredRows[1].bytes, 8800000000, "review size is the device folder total")
 local erased
@@ -90,11 +90,11 @@ fresh.command({"/usr/bin/xcrun", "simctl", "delete", "aaaaaaaa-bbbb-4ccc-8ddd-ee
 t.expect(deleted, "simulator delete is simulated in memory")
 fresh.command({"/usr/bin/xcrun", "simctl", "list", "--json"}, function(_, output) simulatorJSON = output end)
 simulators = fresh.decode(simulatorJSON)
-t.assertEqual(#simulators.devices["com.apple.CoreSimulator.SimRuntime.iOS-26-0"], 1, "mock simulator deletion removes only the selected virtual device")
+t.assertEqual(#simulators.devices["com.apple.CoreSimulator.SimRuntime.iOS-26-0"], 4, "mock simulator deletion removes only the selected virtual device")
 local restarted = Mock.new({home = home})
 restarted.command({"/usr/bin/xcrun", "simctl", "list", "--json"}, function(_, output) simulatorJSON = output end)
 simulators = restarted.decode(simulatorJSON)
-t.assertEqual(#simulators.devices["com.apple.CoreSimulator.SimRuntime.iOS-26-0"], 2, "restarting restores deleted mock devices")
+t.assertEqual(#simulators.devices["com.apple.CoreSimulator.SimRuntime.iOS-26-0"], 5, "restarting restores deleted mock devices")
 
 local blocked
 local originalExecute = os.execute
@@ -119,7 +119,7 @@ t.assertEqual(package.loaded["apps.diskmap.services.System"], nil, "constructing
 app.scan:start()
 t.assertEqual(app.model.measurements.downloads.bytes, 12080000000, "Diskmap inventory scans the synthetic Downloads tree")
 t.assertEqual(app.model.measurements["mock-video-studio"].bytes, 3400000000, "discovered applications are measured from the mock fixture")
-t.assertEqual(app.model.measurements.simulators.bytes, 11200000000, "simulator allocation is measured without simctl")
+t.assertEqual(app.model.measurements.simulators.bytes, 22100000000, "simulator allocation is measured without simctl")
 local runtimeList
 app.service.simulatorRuntimes(function(value) runtimeList = value end)
 local Simulators = require("apps.diskmap.models.Simulators")

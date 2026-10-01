@@ -89,6 +89,7 @@ function Controller.new(service)
 	})
 	self.simulators = SimulatorsController.new(self.model, service, function() self.scan:start() end)
 	self.simulators.log = function(...) self.review:log(...) end
+	self.simulators.published = function() self:updateRows() end
 	self.sdks = SdksController.new(self.model, service)
 	-- Every list, menu and link opens a resource through this one function.
 	local open = function(id) self:open(id) end
@@ -133,7 +134,7 @@ function Controller.new(service)
 		files = files,
 		kinds = KindsController.new(self.model, function(kind) files:focus(kind); self:show("files", true) end),
 		duplicates = DuplicatesController.new(self.model, service, self.actions),
-		cleanup = resourcePage(Recommendations.page(function() return applications:summary() end)),
+		cleanup = resourcePage(Recommendations.page(function() return {apps = applications:summary()} end)),
 		applications = applications,
 		xcode = XcodeController.new(self.model, service, self.actions),
 		projects = ProjectsController.new(self.model, service, self.actions, function() self.scan:start() end),
@@ -376,6 +377,9 @@ function Controller:scanFinished()
 	self.capacity = capacity and capacity(self.model.home) or nil
 	local snapshots = optional(self.service, "snapshotCount")
 	if snapshots then snapshots(function(count) self.snapshotCount = count; self:updateRows() end) end
+	-- Clean Up ranks simulators by what the minimal device set would remove,
+	-- so the inventory is read whether or not the Simulators page is open.
+	self.simulators:load()
 	if self.settings.history then
 		local load, save = optional(self.service, "loadHistory"), optional(self.service, "saveHistory")
 		if load and save then
@@ -475,7 +479,7 @@ end
 function Controller:createWindow()
 	self.scan.disk = self.service.diskSpace(self.scan.home)
 	if self.service.loadKeep then
-		for id, kept in pairs(self.service.loadKeep()) do if self.model.resources:find(id) and kept == true then self.model.kept[id] = true end end
+		for id, kept in pairs(self.service.loadKeep()) do if (self.model.resources:find(id) or id:match("^simulator:")) and kept == true then self.model.kept[id] = true end end
 	end
 	local capacity = optional(self.service, "volumeCapacity")
 	self.capacity = capacity and capacity(self.model.home) or nil

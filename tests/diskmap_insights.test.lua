@@ -154,15 +154,15 @@ t.assertEqual(used + apfs.free, apfs.capacity, "mock volumes and free space part
 t.assertEqual(#Volumes.external(volumes.external), 1, "other mounted disks are listed")
 
 -- Clean Up uses every knowledge entry.
-local cleanup = Recommendations.presentation(model, nil, app.pages.applications:summary())
-t.expect(#cleanup.rebuildable > 0 and #cleanup.review > 0, "clean up separates rebuildable and review suggestions")
+local cleanup = Recommendations.presentation(model, nil, {apps = app.pages.applications:summary()})
+t.expect(#cleanup.rebuildable > 0 and #cleanup.decisions > 0, "clean up separates rebuildable data from decisions")
 local rebuildable = {}
 for _, row in ipairs(cleanup.rebuildable) do rebuildable[row.id] = true end
 t.expect(rebuildable["iphone-updates"] and rebuildable["sim-caches"] and rebuildable.playwright, "new knowledge entries become suggestions")
 local elsewhere = {}
-for _, row in ipairs(cleanup.elsewhere) do elsewhere[row.id] = row end
+for _, row in ipairs(cleanup.decisions) do elsewhere[row.id] = row end
 t.expect(elsewhere["old-files"] and elsewhere.installers, "clean up points to files worth reviewing")
-t.expect(cleanup.known > #cleanup.rebuildable + #cleanup.review, "every rule and threshold is on the checklist")
+t.expect(cleanup.known > #cleanup.rebuildable + #cleanup.decisions, "every rule and threshold is on the checklist")
 t.expect(cleanup.absent > 0, "knowledge entries absent from this Mac are counted")
 
 -- Row menus: resources, files and folders share one vocabulary.

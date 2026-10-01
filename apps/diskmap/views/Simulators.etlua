@@ -7,6 +7,7 @@
       <%- partial("StatTile.etlua", {id = "runtimesTile", icon = "iphone.gen3", color = "systemIndigo", title = "Runtimes", value = "—", detail = "Simulator operating systems"}) %>
       <%- partial("StatTile.etlua", {id = "unavailableTile", icon = "exclamationmark.triangle", color = "systemOrange", title = "Unavailable", value = "—", detail = "Devices whose runtime is gone", actionTitle = "Delete Unavailable…", action = "unavailable"}) %>
     </HStack>
+    <VStack id="planHost" spacing="0" alignment="leading" />
     <VStack id="devicesSection" spacing="8" alignment="leading">
       <HStack spacing="12" alignment="center">
         <%- partial("SectionHeader.etlua", {title = "Devices", detail = "Erase keeps a device and removes its apps and data; Delete removes the device.", detailId = "devicesDetail"}) %>
