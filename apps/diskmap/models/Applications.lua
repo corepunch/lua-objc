@@ -75,12 +75,16 @@ function Applications.rows(model, info, filter, query, now)
 		local row = {id = bundle.id, resourceId = bundle.id, name = name, path = bundle.path, bundleId = details.bundleId,
 			appIcon = details.bundleId, fileIcon = bundle.path, icon = "app.fill", color = "systemBlue",
 			appBytes = appBytes, dataBytes = dataBytes, bytes = appBytes + dataBytes, folders = folders,
-			lastUsed = details.lastUsed, unused = unused == true, neverOpened = info ~= nil and details.lastUsed == nil, calculating = m.status == "calculating",
-			detail = details.lastUsed and Model.used(Files.age(details.lastUsed, now)) or (info and "Never opened" or "—")}
+			lastUsed = details.lastUsed, unused = unused == true, calculating = m.status == "calculating",
+			-- A missing date is not evidence of inactivity: Spotlight may simply not
+			-- track the app. It stays unknown and is excluded from every
+			-- inactivity filter, total and suggestion.
+			usageUnknown = details.lastUsed == nil,
+			detail = details.lastUsed and Model.used(Files.age(details.lastUsed, now)) or (info and "Last use unknown" or "—")}
 		row.size = row.calculating and "Calculating…" or Model.size(row.bytes)
 		row.subtitle = (details.version and ("Version " .. details.version .. " · ") or "") .. "App " .. Model.size(appBytes)
 			.. (dataBytes > 0 and (" · Data " .. Model.size(dataBytes)) or "")
-		local visible = filter ~= "Unused for 6 months" or row.unused or row.neverOpened
+		local visible = filter ~= "Unused for 6 months" or row.unused
 		if visible and (needle == "" or (name .. " " .. (details.bundleId or "")):lower():find(needle, 1, true)) then
 			table.insert(rows, row)
 		end
@@ -178,9 +182,9 @@ function Applications.summary(rows, leftovers)
 	local apps, data, unused, unusedBytes = 0, 0, 0, 0
 	for _, row in ipairs(rows) do
 		apps = apps + row.appBytes; data = data + row.dataBytes
-		-- The tile counts what the Unused filter lists: apps not opened in
-		-- six months and apps Spotlight has never seen opened.
-		if row.unused or row.neverOpened then unused = unused + 1; unusedBytes = unusedBytes + row.bytes end
+		-- The tile counts what the Unused filter lists: apps with a known
+		-- last-use date older than six months. Unknown dates are not counted.
+		if row.unused then unused = unused + 1; unusedBytes = unusedBytes + row.bytes end
 	end
 	local leftoverBytes = 0
 	for _, row in ipairs(leftovers or {}) do leftoverBytes = leftoverBytes + row.bytes end

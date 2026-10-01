@@ -3,7 +3,7 @@ local Volumes = {}
 
 -- What each APFS volume role holds, in the words the Storage Guide uses.
 Volumes.roles = {
-	System = {name = "macOS", icon = "apple.logo", color = "systemGray", detail = "The sealed, read-only operating system"},
+	System = {name = "macOS", icon = "apple.logo", color = "systemGray", detail = "The operating system"},
 	Data = {name = "Your data", icon = "person.crop.circle.fill", color = "systemBlue", detail = "Apps, files, settings and caches"},
 	Preboot = {name = "Preboot", icon = "power", color = "systemOrange", detail = "Boot files, cryptexes and staged updates"},
 	Recovery = {name = "Recovery", icon = "lifepreserver.fill", color = "systemGreen", detail = "The recoveryOS used to repair or reinstall macOS"},
@@ -64,8 +64,14 @@ function Volumes.apfs(list, containerReference)
 		local known = Volumes.roles[role or ""] or {name = role or "Volume", icon = "externaldrive.fill", color = "systemGray", detail = "Additional volume"}
 		local bytes = volume.CapacityInUse or 0
 		used = used + bytes
+		-- Only the measured seal state may call the system volume sealed;
+		-- a missing value stays unknown rather than reading as "not sealed".
+		local detail = known.detail
+		if role == "System" and volume.Sealed ~= nil then
+			detail = yes(volume.Sealed) and "The sealed, read-only operating system" or "The operating system, not sealed"
+		end
 		table.insert(rows, {id = volume.DeviceIdentifier or volume.Name, name = volume.Name or known.name,
-			subtitle = known.name .. " · " .. known.detail, icon = known.icon, color = known.color, bytes = bytes, size = Model.size(bytes),
+			subtitle = known.name .. " · " .. detail, icon = known.icon, color = known.color, bytes = bytes, size = Model.size(bytes),
 			detail = volume.DeviceIdentifier or ""})
 	end
 	table.sort(rows, function(a, b) return a.bytes > b.bytes end)

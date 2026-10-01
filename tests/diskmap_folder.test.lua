@@ -97,7 +97,9 @@ t.expect(ages["1–3 years ago"] ~= nil, "an installer untouched for two years i
 page.template.actions.coloring(0)
 page.template.actions.style(1)
 t.expect(page.refs.folderTreemap ~= nil and page.refs.folderSunburst == nil, "Rectangles shows the folder as a treemap")
+t.expect(page.refs.folderList == nil, "Rectangles needs no list of folders")
 page.template.actions.style(0)
+t.expect(page.refs.folderList ~= nil, "Rings bring the list back")
 
 -- Quick Look previews the selection with ⌘Y and steps through its folder.
 local largest = downloads .. "/Old macOS Installer.dmg"

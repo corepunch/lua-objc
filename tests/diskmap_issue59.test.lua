@@ -155,8 +155,11 @@ for _, entry in ipairs(Applications.rows(rawModel, {["/Applications/logioptionsp
 	if entry.path == "/Applications/logioptionsplus.app" then raw = entry end
 end
 t.assertEqual(raw and raw.name, "Logi Options+", "a file name that is only an identifier gives way to the display name")
-t.expect(raw.neverOpened, "an app Spotlight never saw opened is never opened")
-t.assertEqual(Applications.summary({raw}).unused, 1, "and counts as unused, as the Unused filter lists it")
+t.expect(raw.usageUnknown and not raw.unused, "an app without a recorded date has unknown usage, not inactivity")
+t.assertEqual(raw.detail, "Last use unknown", "and says so")
+t.assertEqual(Applications.summary({raw}).unused, 0, "unknown usage never counts as unused")
+t.assertEqual(#Applications.rows(rawModel, {["/Applications/logioptionsplus.app"] = {displayName = "Logi Options+"}}, "Unused for 6 months"), 0,
+	"the Unused filter excludes unknown usage")
 
 -- Include media libraries is remembered.
 t.assertEqual(app.model.includeMedia, false, "media libraries start excluded")
