@@ -26,6 +26,7 @@ function Controller:mount(host, state)
 		keep = function() self:toggleKeep() end,
 		openOwner = function() if self.selected and self.selected.manager then self.service.openOwner(self.selected.manager:lower()) end end,
 		review = function() self:review() end,
+		cleanup = function() if self.showPage then self.showPage("cleanup") end end,
 		prune = function() self:prune() end,
 		retry = function() self.result = nil; self:load() end,
 	}})
@@ -84,31 +85,84 @@ function Controller:detail(row)
 	return table.concat(parts, " ")
 end
 
+-- The leading decision: what Git can remove now and what it could recover,
+-- or, when nothing is removable, why, with a route to other cleanup.
+function Controller:decisionData(plan)
+	local data = {id = "decision", icon = "arrow.triangle.branch", color = "systemPurple", amountCaption = "could recover",
+		actionTitle = "Review…", action = "review", disabled = true, actions = self.decisionActions}
+	if self.loading then
+		data.title = "Looking for leftover worktrees…"
+		data.detail = self.progress or "Finding repositories in your project folders."
+		data.amount = "—"
+		return data
+	end
+	local linked = #plan.removal + #plan.review + #plan.prune
+	if #plan.removal > 0 then
+		data.title = "Remove " .. Model.plural(#plan.removal, "leftover worktree")
+		data.detail = "Clean, published and unchanged for " .. Model.plural(Worktrees.recentDays, "day") .. "; each is checked again just before removal."
+			.. (#plan.review > 0 and (" " .. Model.plural(#plan.review, "more worktree") .. " " .. (#plan.review == 1 and "needs" or "need") .. " your review below.") or "")
+		data.amount = Model.size(plan.removalBytes)
+		data.actionTitle = "Review " .. Model.plural(#plan.removal, "Worktree") .. "…"
+		data.disabled = self.busy
+	elseif #plan.review > 0 then
+		data.title = Model.plural(#plan.review, "worktree") .. " " .. (#plan.review == 1 and "needs" or "need") .. " your review"
+		data.detail = "None is clean, published and idle, so Diskmap removes nothing here. Select one below to read the evidence, or continue in Clean Up."
+		data.amount, data.amountCaption = Model.size(plan.reviewBytes), "to review"
+		data.actionTitle, data.action, data.disabled = "Open Clean Up", "cleanup", false
+	else
+		data.title = linked > 0 and "No worktree to remove" or "No leftover worktrees"
+		data.detail = (#plan.prune > 0 and (Model.plural(#plan.prune, "missing registration") .. " can be pruned below; that deletes no checkout. ") or "")
+			.. "Clean Up lists the other places worth reviewing."
+		data.amount, data.amountCaption = Model.size(0), "could recover"
+		data.actionTitle, data.action, data.disabled = "Open Clean Up", "cleanup", false
+	end
+	return data
+end
+
 function Controller:show()
 	local refs = self.refs
 	if not refs then return end
 	self:publish()
 	local plan = Worktrees.plan(self.rows)
-	local rows = self:visibleRows()
-	refs.worktrees:replaceRows(rows)
-	local none = self.loaded == true and #self.rows == 0
-	refs.worktreesPanel.hidden = none
+	local visible = {}
+	for _, row in ipairs(self:visibleRows()) do visible[row.id] = true end
+	local function only(rows)
+		local result = {}
+		for _, row in ipairs(rows) do if visible[row.id] then table.insert(result, row) end end
+		return result
+	end
+	-- Locked and kept worktrees are decisions already made: they join the
+	-- review list, after the ones that still need a person.
+	local review = only(plan.review)
+	local repositories = {}
+	for _, row in ipairs(plan.protected) do
+		if row.state == "primary" then table.insert(repositories, row) elseif visible[row.id] then table.insert(review, row) end
+	end
+	repositories = only(repositories)
+	local remove, missing = only(plan.removal), only(plan.prune)
+	self.lists = {removeList = remove, reviewList = review, missingList = missing, repositoryList = repositories}
+	refs.removeList:replaceRows(remove)
+	refs.reviewList:replaceRows(review)
+	refs.missingList:replaceRows(missing)
+	refs.repositoryList:replaceRows(repositories)
+	local linked = #plan.removal + #plan.review + #plan.prune + #plan.protected - #repositories
+	local none = self.loaded == true and linked == 0
 	refs.worktreesEmpty.hidden = not none
+	refs.removeSection.hidden = #remove == 0
+	refs.reviewSection.hidden = #review == 0
+	refs.missingSection.hidden = #missing == 0
+	refs.repositories.hidden = #repositories == 0
+	refs.selectionSection.hidden = #remove + #review + #missing == 0
 	if self.loading then
-		for _, tile in ipairs({"removeTile", "reviewTile", "pruneTile"}) do refs[tile .. "Value"].text = "—"; refs[tile .. "Detail"].text = "Reading…" end
 		refs.summary.text = "Looking for Git worktrees…"
 	else
-		refs.removeTileValue.text = Model.size(plan.removalBytes)
-		refs.removeTileDetail.text = Model.plural(#plan.removal, "worktree") .. " · source " .. Model.size(plan.sourceBytes)
-			.. ", generated " .. Model.size(plan.generatedBytes) .. ", Git " .. Model.size(plan.gitBytes)
-		refs.reviewTileValue.text = Model.size(plan.reviewBytes)
-		refs.reviewTileDetail.text = Model.plural(#plan.review, "worktree") .. " with changes, unpublished commits, submodules or recent use"
-		refs.pruneTileValue.text = tostring(#plan.prune)
-		refs.pruneTileDetail.text = #plan.prune == 0 and "No missing registrations" or "Registered, but the directory is gone"
-		refs.summary.text = self.error or ((self.busy and "Working · " or "") .. Model.plural(#self.rows, "worktree") .. " in "
-			.. Model.plural(self.repositories or 0, "repository") .. " · " .. Model.size(plan.removalBytes) .. " can be removed")
+		local stored = 0
+		for _, row in ipairs(self.rows) do if row.state ~= "primary" then stored = stored + row.bytes end end
+		refs.summary.text = self.error or ((self.busy and "Working · " or "") .. Model.plural(linked, "linked worktree") .. " in "
+			.. Model.plural(self.repositories or 0, "repository") .. " · " .. Model.size(stored) .. " stored")
 	end
-	refs.worktreesDetail.text = Model.plural(#rows, "worktree") .. (self.query ~= "" and " matching the search" or "")
+	refs.removeDetail.text = "Clean, every commit published, and unchanged for " .. Model.plural(Worktrees.recentDays, "day")
+		.. ". Source " .. Model.size(plan.sourceBytes) .. ", generated output " .. Model.size(plan.generatedBytes) .. ", Git record " .. Model.size(plan.gitBytes) .. "."
 	refs.status.text = self.result or ""
 	self.selected = nil
 	refs.selectedDetail.text = self:detail(nil)
@@ -121,8 +175,11 @@ function Controller:buttons()
 	local plan = Worktrees.plan(self.rows)
 	local row = self.selected
 	local idle = not self.busy and not self.loading
-	refs.review.enabled = idle and plan.ready
-	refs.review.title = plan.ready and ("Review and Remove " .. Model.plural(#plan.removal, "Worktree") .. "…") or "Review and Remove…"
+	self.decisionActions = self.decisionActions or {
+		review = function() self:review() end,
+		cleanup = function() if self.showPage then self.showPage("cleanup") end end,
+	}
+	self.decisionRefs = self:decision("decisionHost", self:decisionData(plan))
 	refs.prune.enabled = idle and #plan.prune > 0
 	refs.reveal.enabled = idle and row ~= nil and row.state ~= "missing"
 	refs.keep.enabled = idle and row ~= nil and row.state ~= "primary"
@@ -143,20 +200,25 @@ function Controller:toggleKeep()
 	self:show()
 end
 
+-- A load belongs to the inventory, not to one visit of the page: the root
+-- starts it when a scan finishes, often before the page mounts, and it may
+-- finish after the page was left or mounted again. Only a newer load
+-- supersedes it; the page shows the result whenever it is open.
 function Controller:load()
-	if self.busy or self.loading then return end
-	self.loading, self.error = not self.loaded, nil
+	if self.busy or self.loading then self:show(); return end
+	self.loading, self.error, self.progress = not self.loaded, nil, nil
 	self.busy = true
+	self.loadToken = (self.loadToken or 0) + 1
+	local token = self.loadToken
 	self:show()
-	local generation = self.generation
 	if type(self.service.worktreeScan) ~= "function" then
 		self.busy, self.loading, self.loaded = false, false, true
 		self.rows = {}; self:show(); return
 	end
 	local roots = Catalog.projectRoots(self.model.home, self.model.projectRoots, false)
 	self.service.worktreeScan(roots, function(entries, facts)
-		if generation ~= self.generation and self.refs then return end
-		self.busy, self.loading, self.loaded = false, false, true
+		if token ~= self.loadToken then return end
+		self.busy, self.loading, self.loaded, self.progress = false, false, true, nil
 		self.entries, self.facts = entries or {}, facts or {}
 		local repositories = {}
 		for _, entry in ipairs(self.entries) do if entry.commonDir then repositories[entry.commonDir] = true end end
@@ -164,8 +226,14 @@ function Controller:load()
 		for _ in pairs(repositories) do count = count + 1 end
 		self.repositories = count
 		self.rows = self:buildRows()
+		self:publish()
 		self:show()
 		if self.published then self.published() end
+	end, function(done, total)
+		-- Discovery reads several facts per worktree; say how far it is.
+		if token ~= self.loadToken then return end
+		self.progress = total == 0 and "No linked worktrees found yet." or ("Reading the evidence for " .. Model.plural(total, "worktree") .. ": " .. done .. " done.")
+		if self.loading then self:buttons() end
 	end)
 end
 
@@ -180,7 +248,6 @@ function Controller:review()
 	self.busy, self.result = true, "Removing…"
 	local freeBefore = Outcome.free(self.service, self.model.home)
 	self:show()
-	local generation = self.generation
 	Batch.run(plan.removal, {
 		label = function(row) return row.name end,
 		bytes = function(row) return row.bytes end,
@@ -202,7 +269,7 @@ function Controller:review()
 			.. ". The repositories and every other worktree were left as they were; removed worktrees are deleted at once, not moved to the Trash. "
 			.. Outcome.freeText(freeBefore, Outcome.free(self.service, self.model.home), result.removed > 0) .. "."
 		if self.changed then self.changed() end
-		if generation == self.generation or not self.refs then self.loaded = true; self:load() end
+		self:load()
 	end)
 	return true
 end
@@ -237,8 +304,9 @@ function Controller:prune()
 	return true
 end
 
+-- Leaving the page never cancels a load or a removal in progress.
 function Controller:dispose()
-	self.busy, self.selected = false, nil
+	self.selected = nil
 	Page.dispose(self)
 end
 

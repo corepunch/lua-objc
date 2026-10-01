@@ -14,9 +14,24 @@ end
 
 local function relative(rows)
 	local largest = 0
-	for _, row in ipairs(rows) do largest = math.max(largest, row.bytes or 0) end
-	for _, row in ipairs(rows) do row.relative = largest > 0 and (row.bytes or 0) / largest or 0 end
+	for _, row in ipairs(rows) do largest = math.max(largest, row.shownBytes or row.bytes or 0) end
+	for _, row in ipairs(rows) do row.relative = largest > 0 and (row.shownBytes or row.bytes or 0) / largest or 0 end
 	return rows
+end
+
+-- A suggestion's prominent amount is what it could recover when a check
+-- proved that, and otherwise what there is to review; the meter's caption
+-- says which, so a whole-location size never reads as a recovery estimate.
+function Recommendations.amount(row)
+	if row.eligibleBytes and row.eligibleBytes > 0 then
+		row.shownBytes = row.eligibleBytes
+		if row.eligibleBytes ~= row.bytes or not row.size then row.size = Model.size(row.eligibleBytes) end
+		row.shareText = "could recover"
+	else
+		row.shownBytes = row.bytes
+		row.shareText = "to review"
+	end
+	return row
 end
 
 -- Every location the knowledge base has an opinion about: cleanup rules and
@@ -91,8 +106,9 @@ function Recommendations.presentation(model, query, sources)
 		row.detail = row.kind == "rebuildable" and "Rebuildable" or "Review"
 		row.shareText = ""
 		if row.id == "simulators" and plan and plan.removalCount > 0 then
-			row.subtitle = "Keep one iPhone and one iPad: " .. Model.plural(plan.removalCount, "redundant device") .. " can go, " .. Model.size(plan.removalBytes)
-				.. " of apps and data. Shared runtimes stay."
+			row.subtitle = "Keep one iPhone and one iPad: " .. Model.plural(plan.removalCount, "redundant device") .. " can go. Shared runtimes stay. "
+				.. Model.size(row.bytes) .. " is stored in all simulators."
+			row.decisionTitle = "Keep one iPhone and one iPad; review " .. Model.plural(plan.removalCount, "extra simulator")
 			row.page, row.pageName, row.detail = "simulators", "Simulators", "Opens Simulators"
 		end
 		Status.apply(row, row.kind == "rebuildable" and "Rebuildable" or "Review")
@@ -169,10 +185,18 @@ function Recommendations.presentation(model, query, sources)
 		eligibleBytes = eligibleBytes + (row.eligibleBytes or 0)
 	end
 	for _, row in ipairs(rebuildable) do eligibleBytes = eligibleBytes + (row.eligibleBytes or row.bytes) end
+	for _, row in ipairs(rebuildable) do Recommendations.amount(row) end
+	for _, row in ipairs(decisions) do Recommendations.amount(row) end
+	-- The first decision on the page: the highest-ranked suggestion of either kind.
+	local lead
+	for _, row in pairs({rebuildable = rebuildable[1], decisions = decisions[1]}) do
+		if not lead or row.score > lead.score or (row.score == lead.score and row.kind == "rebuildable") then lead = row end
+	end
 	local checked, absent, known = Recommendations.checked(model, suggested, needle)
 	local context = Recommendations.context(model, needle)
 	local empty = #rebuildable + #decisions == 0
-	return {rebuildable = relative(rebuildable), decisions = relative(decisions), context = relative(context), checked = checked,
+	return {rebuildable = relative(rebuildable), decisions = relative(decisions), context = relative(context), checked = checked, lead = lead,
+		count = #rebuildable + #decisions,
 		rebuildableBytes = rebuildableBytes, reviewBytes = reviewBytes, eligibleBytes = eligibleBytes, absent = absent, known = known,
 		summary = empty and "No location has crossed its review threshold."
 			or (Model.size(eligibleBytes) .. " estimated recoverable · " .. Model.size(reviewBytes) .. " in locations to review")}
@@ -209,6 +233,7 @@ local SECTIONS = {
 }
 local LAYOUT = {
 	details = true,
+	leads = {"lead"},
 	scopeNote = Scope.pages.cleanup,
 	sections = {},
 	slots = {"tips"},
@@ -216,6 +241,25 @@ local LAYOUT = {
 for _, section in ipairs(SECTIONS) do
 	table.insert(LAYOUT.sections, {id = "section_" .. section.id, title = section.title, detail = section.detail, collapsed = section.collapsed,
 		list = {id = "list_" .. section.id, menu = "rowMenu", activate = "open", selectAction = "select", status = true}})
+end
+
+-- The leading decision: the top-ranked suggestion as one sentence, its
+-- amount and the button that starts it. With nothing to suggest it says so
+-- and routes to the pages where a person can still look.
+function Recommendations.lead(data)
+	local row = data.lead
+	if not row then
+		return {id = "decision", icon = "checkmark.circle.fill", color = "systemGreen", title = "Nothing crossed a review threshold",
+			detail = "Large Files and Applications list what only you can judge.", amount = Model.size(0), amountCaption = "could recover",
+			actionTitle = "Open Large Files", action = "leadFiles"}
+	end
+	local verb = row.kind == "rebuildable" and "Clear " or "Review "
+	local others = data.count - 1
+	return {id = "decision", icon = row.icon or "sparkles", color = row.color or "systemIndigo",
+		title = row.decisionTitle or (verb .. row.name),
+		detail = (row.subtitle or "") .. (others > 0 and (" " .. Model.plural(others, "more suggestion") .. " follow, ranked by what they could recover.") or ""),
+		amount = row.size, amountCaption = row.shareText,
+		actionTitle = row.page and ("Open " .. (row.pageName or "Page") .. "…") or "Review…", action = "leadOpen"}
 end
 
 -- The Clean Up page a PageController presents. `apps()` returns the
@@ -233,7 +277,7 @@ function Recommendations.details(model, row)
 end
 
 function Recommendations.page(sources)
-	return {id = "cleanup", layout = LAYOUT, details = Recommendations.details, children = {tips = "Tips"}, present = function(model, state)
+	return {id = "cleanup", layout = LAYOUT, details = Recommendations.details, children = {lead = "Decision", tips = "Tips"}, present = function(model, state)
 		local data = Recommendations.presentation(model, state.query, sources())
 		local lists, hidden = {}, {}
 		for _, section in ipairs(SECTIONS) do
@@ -242,7 +286,10 @@ function Recommendations.page(sources)
 		end
 		local tips, links = Tips.forInventory(model, state.disk), {}
 		for _, tip in ipairs(tips) do links["tip_" .. tip.id] = TIP_LINKS[tip.action] end
-		return {lists = lists, hidden = hidden, links = links, children = {tips = {tips = tips}}, texts = {
+		local lead = data.lead
+		links.leadOpen = lead and (lead.page and {page = lead.page, filter = lead.filter} or {open = lead.id}) or nil
+		links.leadFiles = {page = "files"}
+		return {lists = lists, hidden = hidden, links = links, children = {tips = {tips = tips}, lead = Recommendations.lead(data)}, texts = {
 			summary = data.summary, scopeNote = Scope.text(model, "cleanup"),
 		}}
 	end}

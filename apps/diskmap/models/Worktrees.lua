@@ -7,8 +7,9 @@ local Worktrees = {}
 -- decides what may be offered; the controller runs the commands. Unknown
 -- evidence is never treated as proof of abandonment.
 
--- A checkout touched within this many days may still be in use.
-Worktrees.activeDays = 3
+-- A checkout touched within this many days is left for review: a recent
+-- timestamp is evidence of recent work, not proof that a session owns it.
+Worktrees.recentDays = 3
 -- Application-managed locations: the owner's own archive flow comes first.
 Worktrees.managers = {
 	{name = "Codex", pattern = "/%.codex/worktrees/"},
@@ -79,7 +80,8 @@ local function plural(count, word) return Model.plural(count, word) end
 --   locked      Git's lock: someone asked for it to stay
 --   kept        the user marked it Keep
 --   missing     registered, but the directory is gone (a prune, not a deletion)
---   active      touched recently or running: possibly in use
+--   active      a process or session is confirmed to use it ("In use")
+--   recent      touched in the last few days; no owner is confirmed
 --   dirty       uncommitted or untracked files
 --   unpublished commits that exist nowhere else
 --   unknown     a needed fact could not be read
@@ -106,9 +108,13 @@ function Worktrees.classify(entry, facts, options)
 	local warnings = {}
 	if facts.active then
 		state = "active"; add("A session or process is using it.")
-	elseif facts.lastActivity and options.now and (options.now - facts.lastActivity) < Worktrees.activeDays * 86400 then
-		state = "active"; add("Touched in the last " .. plural(Worktrees.activeDays, "day") .. ".")
+	elseif facts.lastActivity and options.now and (options.now - facts.lastActivity) < Worktrees.recentDays * 86400 then
+		-- Diskmap cannot see sessions: say what the timestamp shows and no more.
+		state = "recent"
+		add("Its files or Git record changed " .. Model.ago(math.floor((options.now - facts.lastActivity) / 86400)):lower()
+			.. ". Diskmap cannot tell whether a session still uses it, so it waits for your review.")
 	end
+	local manager = Worktrees.manager(entry.path)
 	if facts.changes == nil or facts.untracked == nil or facts.unpublished == nil then
 		if state == "candidate" then state = "unknown" end
 		add("Its Git state could not be read.")
@@ -130,6 +136,9 @@ function Worktrees.classify(entry, facts, options)
 	if facts.ignoredBytes and facts.ignoredBytes > 0 then
 		table.insert(warnings, Model.size(facts.ignoredBytes) .. " of ignored files (build output, local settings) go with it.")
 	end
+	if state ~= "candidate" and manager then
+		add("To remove it with its session, archive the session in " .. manager .. "; " .. manager .. " deletes the worktree it made.")
+	end
 	if state == "candidate" then
 		if facts.merged == true then add("Its commits are merged into " .. (facts.defaultBranch or "the default branch") .. ".")
 		elseif facts.merged == false then add("Not merged, but every commit is on a remote.")
@@ -139,10 +148,10 @@ function Worktrees.classify(entry, facts, options)
 	return {state = state, eligible = state == "candidate", reasons = reasons, warnings = warnings}
 end
 
-local ROLE = {primary = "Primary", locked = "Locked", kept = "Kept", missing = "Missing", active = "In use", dirty = "Has changes",
-	unpublished = "Unpublished", unknown = "Unknown", submodules = "Submodules", candidate = "Candidate"}
+local ROLE = {primary = "Repository", locked = "Locked", kept = "Kept", missing = "Missing", active = "In use", recent = "Recently touched", dirty = "Has changes",
+	unpublished = "Unpublished", unknown = "Unknown", submodules = "Submodules", candidate = "Ready"}
 Worktrees.roleNames = ROLE
-local COLORS = {primary = "systemGray", locked = "systemBlue", kept = "systemBlue", missing = "systemGray", active = "systemRed", dirty = "systemOrange",
+local COLORS = {primary = "systemGray", locked = "systemBlue", kept = "systemBlue", missing = "systemGray", active = "systemRed", recent = "systemYellow", dirty = "systemOrange",
 	unpublished = "systemOrange", unknown = "systemGray", submodules = "systemOrange", candidate = "systemGreen"}
 
 -- Rows for the worktree list and the plan. `facts[path]` holds the measured
@@ -176,7 +185,9 @@ function Worktrees.rows(entries, facts, options)
 		local repo = entry.repository and (entry.repository:match("([^/]+)$") or entry.repository) or "repository"
 		row.subtitle = repo .. " · " .. (entry.detached and ("detached " .. (row.head or "")) or (entry.branch or "no branch"))
 			.. (manager and (" · " .. manager) or "")
-		row.lastUse = fact.lastActivity and options.now and Model.used(Model.ago(math.floor((options.now - fact.lastActivity) / 86400))) or "Last use unknown"
+		-- A filesystem timestamp shows a change, not a use.
+		row.lastUse = fact.lastActivity and options.now and ("Changed " .. Model.ago(math.floor((options.now - fact.lastActivity) / 86400)):lower())
+			or (entry.primary and "" or "Last change unknown")
 		table.insert(rows, row)
 	end
 	table.sort(rows, function(a, b)

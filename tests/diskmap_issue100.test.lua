@@ -99,7 +99,7 @@ t.expect(removable > 0 and removable <= all, "removable installers are a subset 
 local kinds = Files.kinds(app.model)
 local installerKind
 for _, kind in ipairs(kinds) do if kind.id == "installers" then installerKind = kind end end
-t.expect(installerKind and installerKind.subtitle:find("inventory total", 1, true), "the File Types row calls its total an inventory")
+t.expect(installerKind and installerKind.subtitle:find("total stored", 1, true), "the File Types row calls its total what is stored")
 t.expect(installerKind.removableBytes and installerKind.removableBytes <= installerKind.bytes, "and shows the removable part apart from it")
 
 -- Generated project output is one decision per artifact and project, counted once.

@@ -2,12 +2,11 @@
   <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {header = header, summary = "Reading simulator devices and runtimes…", summaryId = "summary",
       buttons = {{id = "retry", title = "Retry", action = "retry", help = "Read simulator state and runtime information again"}, {id = "components", title = "Xcode Components…", action = "components", help = "Manage runtimes in Xcode › Settings › Components"}}}) %>
-    <HStack id="stats" fixedSize="vertical" spacing="12" alignment="top">
-      <%- partial("StatTile.etlua", {id = "devicesTile", icon = "iphone", color = "systemBlue", title = "Devices", value = "—", detail = "Apps and data inside simulators"}) %>
-      <%- partial("StatTile.etlua", {id = "runtimesTile", icon = "iphone.gen3", color = "systemIndigo", title = "Runtimes", value = "—", detail = "Simulator operating systems"}) %>
-      <%- partial("StatTile.etlua", {id = "unavailableTile", icon = "exclamationmark.triangle", color = "systemOrange", title = "Unavailable", value = "—", detail = "Devices whose runtime is gone", actionTitle = "Delete Unavailable…", action = "unavailable"}) %>
-    </HStack>
     <VStack id="planHost" spacing="0" alignment="leading" />
+    <% --[[ The inventory explains the plan; it is not a second plan. It stays
+      collapsed until opened, for erasing one device, the unavailable ones or
+      a runtime. ]] %>
+    <DisclosureGroup id="inventory" label="All devices and runtimes" expanded="false" spacing="16" indicatorWidth="26" indicatorSpacing="10">
     <VStack id="devicesSection" spacing="8" alignment="leading">
       <HStack spacing="12" alignment="center">
         <%- partial("SectionHeader.etlua", {title = "Devices", detail = "Erase keeps a device and removes its apps and data; Delete removes the device.", detailId = "devicesDetail"}) %>
@@ -28,6 +27,7 @@
         <Button id="erase" title="Erase…" action="erase" disabled="true" />
         <Button id="delete" title="Delete…" action="delete" disabled="true" />
         <Spacer />
+        <Button id="deleteUnavailable" title="Delete Unavailable…" action="unavailable" disabled="true" help="Delete every device whose runtime is gone" />
       </HStack>
       <Label id="status" text="" size="11" color="secondary" maxWidth="infinity" lines="0" />
     </VStack>
@@ -47,5 +47,6 @@
       </HStack>
       <Label id="runtimeStatus" text="" size="11" color="secondary" maxWidth="infinity" lines="0" />
     </VStack>
+    </DisclosureGroup>
   </VStack>
 </ScrollView>

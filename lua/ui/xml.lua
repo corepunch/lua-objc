@@ -885,7 +885,7 @@ local TAG_SCHEMA = {
     -- SwiftUI Gauge (linear capacity style).
     Gauge = {
         constructor = "Gauge",
-        props = { value = "num", minValue = "num", maxValue = "num", tint = "str", accessibilityLabel = "str" },
+        props = { value = "num", minValue = "num", maxValue = "num", tint = "str", thickness = "num", accessibilityLabel = "str" },
     },
     Divider = {
         constructor = "Divider",

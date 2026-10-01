@@ -45,7 +45,8 @@ t.assertEqual(#Overview.chart(model, {totalKb = 1, freeKb = 0}).marks, 0, "an ov
 
 -- Cleanup headline keeps rebuildable and review-first bytes apart.
 local reclaim = Overview.reclaim(model)
-t.assertEqual(reclaim.title, "14.9 GB rebuildable", "rebuildable candidates lead the headline")
+local cleanup = require("apps.diskmap.models.Recommendations").presentation(model, "", {})
+t.assertEqual(reclaim.title, Model.size(cleanup.eligibleBytes) .. " could recover", "the headline states Clean Up's own recoverable estimate")
 t.expect(reclaim.detail:find("more to review", 1, true) ~= nil, "review candidates are counted separately")
 t.expect(reclaim.top ~= nil and reclaim.detail:find("start with " .. reclaim.top, 1, true), "the headline names where to start, the top-ranked suggestion")
 t.assertEqual(Overview.reclaim(Model.new("/Users/test")).title, "No cleanup suggestions yet", "an empty inventory promises nothing")

@@ -1081,7 +1081,11 @@ the whole circle and every ring moves one band inwards. `innerRadius` and
 capacity style: a read-only continuous-capacity `NSLevelIndicator` on AppKit
 (the control Finder and Disk Utility use for storage) and a tinted
 `UIProgressView` on UIKit. `minValue`/`maxValue` default to 0 and 1; values are
-clamped.
+clamped. `thickness="9"` draws the bar as SwiftUI's linear capacity Gauge
+does, a capsule track with a capsule fill that many points tall; AppKit's
+cell is 18 points at every control size, so the capsule is drawn by
+`LuaLevelIndicatorCell` while the view stays an `NSLevelIndicator`. UIKit's
+progress view is already a thin capsule and ignores it.
 
 Marks can form a **sunburst**: `<SectorMark id="xcode" parent="developer" ring="2" value="…" />`
 draws inside its parent's angle, sized by its share of the parent's value, on

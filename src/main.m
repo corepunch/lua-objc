@@ -173,6 +173,8 @@ static const CGFloat kParagraphLinkUnderlineOffset = 3.0;
 #define kTableSectionHeaderFontSize     11
 /* Gauge thresholds above maxValue keep the capacity fill in its tint color. */
 #define kGaugeNoThreshold                2
+/* A disabled gauge's fill, as a fraction of its tint's opacity. */
+#define kGaugeDisabledFillAlpha       0.35
 #define kTableCellBadgeGap               6
 /* ----- Motion ----- */
 #define kMotionDefaultDuration        0.35

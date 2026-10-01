@@ -1,17 +1,19 @@
 <%
-  local CHART = { size = 180, hole = 0.64, gap = 3, depth = 8, total = 22, caption = 11, totalScale = 11 / 22, captionScale = 0.77 }
+  -- The chart is context for the decision above it, so it stays compact.
+  local CHART = { size = 112, padding = 14, spacing = 20, hole = 0.62, gap = 3, depth = 6, total = 15, caption = 10, totalScale = 9 / 15, captionScale = 0.8 }
   -- The center text is set at its largest; the chart offers it the square
   -- inscribed in the hole and it shrinks to fit on one line, like the Hero.
 %>
 <ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
   <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {header = header, summary = summary}) %>
+    <%- partial("Decision.etlua", decision) %>
     <%- partial("Footnote.etlua", {id = "scopeNote", icon = "scope", text = scope}) %>
     <% if #kinds == 0 then %>
     <ContentUnavailable title="Measuring files…" systemImage="square.grid.2x2" description="File types appear when the scan finishes." />
     <% else %>
     <GroupBox id="kindsCard">
-      <HStack padding="20" spacing="28" alignment="center">
+      <HStack padding="<%= CHART.padding %>" spacing="<%= CHART.spacing %>" alignment="center">
         <SectorChart id="kindsChart" width="<%= CHART.size %>" height="<%= CHART.size %>" innerRadius="<%= CHART.hole %>" angularInset="<%= CHART.gap %>" depth="<%= CHART.depth %>" shadow="false" onSelect="chartSelect" onHover="chartHover" accessibilityLabel="<%= accessibilityLabel %>">
           <% for _, kind in ipairs(kinds) do %>
           <SectorMark id="<%= kind.id %>" value="<%= kind.bytes %>" color="<%= kind.color %>" label="<%= kind.name %>" />
@@ -22,7 +24,7 @@
           </VStack>
         </SectorChart>
         <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="8" alignment="leading">
-          <Label text="<%= headline.title %>" size="15" weight="semibold" maxWidth="infinity" lines="0" />
+          <Label text="<%= headline.title %>" size="13" weight="semibold" maxWidth="infinity" lines="0" />
           <Label text="<%= headline.advice %>" size="12" color="secondary" maxWidth="infinity" lines="0" />
           <Button id="showHeadline" title="Show Largest Files" style="link" action="kind_<%= headline.id %>" />
         </VStack>

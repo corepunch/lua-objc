@@ -102,17 +102,18 @@ service.simulatorDevices = function(done) done(nil, "Device state could not be c
 service.simulatorRuntimes = function(done) done(nil, "Runtimes could not be read. Retry.") end
 local simulator = SimulatorController.new(model, service, function() end)
 simulator:mount(ns.VStack {}, {query = ""})
-t.assertEqual(simulator.refs.unavailableTileValue.text, "Unknown", "failed availability check is not a fabricated zero")
-t.expect(not simulator.refs.unavailableTileDetail.text:find("Every device", 1, true), "runtime failure does not promise availability")
+t.expect(simulator.refs.devicesDetail.text:find("could not be checked for availability", 1, true) ~= nil, "failed availability check is not a fabricated zero")
+t.expect(not simulator.refs.devicesDetail.text:find("unavailable,", 1, true), "runtime failure does not promise availability")
 t.expect(not simulator.refs.summary.text:find("0 runtimes", 1, true), "failed runtime listing is not an empty inventory")
 t.expect(simulator.refs.retry.enabled, "failed reads can be retried")
 simulator.refs.devices:selectRow(0)
 t.expect(not simulator.refs.erase.enabled and not simulator.refs.delete.enabled, "unverified devices cannot be erased or deleted")
 t.expect(simulator.refs.status.text:find("could not be checked", 1, true), "disabled action explains how to proceed")
-local generation = simulator.generation
+local token = simulator.loadToken
 simulator:dispose()
-simulator:finish(generation, live, {})
+simulator:finish(token, live, {})
 t.assertEqual(simulator.refs, nil, "late replies cannot remount a disposed page")
+t.assertEqual(simulator.inventory, live, "but they still record the inventory for the next visit")
 
 -- Low-space launch reaches the inventory without a ten-page modal detour.
 local mock = Mock.new()
@@ -127,7 +128,10 @@ app:show("cleanup")
 local page = app.page
 local data = Recommendations.presentation(app.model, "")
 local expected = data.decisions[1]
+-- #102: with nothing selected the inspector takes no space.
+t.expect(page.refs.selectionDetails.hidden, "an empty inspector is hidden until a suggestion is selected")
 page.refs.list_rebuildable:selectRow(0)
+t.expect(not page.refs.selectionDetails.hidden, "selecting a suggestion shows the inspector")
 page.refs.list_decisions:selectRow(0)
 t.assertEqual(page.selectedRow.id, expected.id, "single selection chooses its suggestion")
 t.assertEqual(page.refs.list_rebuildable.documentView.selectedRow, -1, "selecting a different section clears the previous highlight")
@@ -138,7 +142,7 @@ t.assertEqual(page.selectedRow.id, expected.id, "live measurements preserve the 
 t.assertEqual(page.detailsTemplate.refs.selectionAdvice.text, expected.subtitle, "refresh keeps the matching explanation")
 page:update({query = "no-such-suggestion", disk = disk})
 t.assertEqual(page.selectedRow, nil, "filtering away a suggestion removes the stale detail")
-t.expect(page.detailsTemplate.refs.openSelection == nil, "empty selection cannot open a stale item")
+t.expect(page.refs.selectionDetails.hidden, "an empty selection hides the inspector, so no stale item can be opened")
 local opened
 page.handlers.show = function(id, filter) opened = {id, filter} end
 page.selectedRow = {id = "unused-apps", page = "applications", filter = "Unused for 6 months"}

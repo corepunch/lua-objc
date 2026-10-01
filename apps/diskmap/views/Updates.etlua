@@ -2,6 +2,7 @@
   <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {header = header,
       summary = "Storage macOS uses to download and install updates, and the restore points Time Machine keeps on this disk."}) %>
+    <%- partial("Decision.etlua", decision) %>
     <VStack spacing="8" alignment="leading">
       <%- partial("SectionTitle.etlua", {icon = "gearshape.arrow.triangle.2.circlepath", title = "Software Update"}) %>
       <GroupBox>

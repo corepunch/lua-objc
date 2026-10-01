@@ -1,11 +1,14 @@
 local Page = require("apps.diskmap.controllers.PageController")
 local Updates = require("apps.diskmap.models.Updates")
+local Recommendations = require("apps.diskmap.models.Recommendations")
+local Model = require("apps.diskmap.Model")
 local Controller = Page.extend("updates", "Updates")
 
 -- The Updates & Snapshots page. Software Update's record is read when the
 -- page opens; local snapshots arrive asynchronously from tmutil.
-function Controller.new(model, service, actions)
-	return setmetatable({model = model, service = service, actions = actions}, Controller)
+-- `showPage(id)` opens a page; `sources()` is what Clean Up's totals use.
+function Controller.new(model, service, actions, showPage, sources)
+	return setmetatable({model = model, service = service, actions = actions, showPage = showPage, sources = sources}, Controller)
 end
 
 function Controller:mount(host, state)
@@ -36,6 +39,18 @@ function Controller:mount(host, state)
 	return self.refs
 end
 
+-- Nothing on this page is removed by hand, so its decision is a route: the
+-- space an update needs comes from Clean Up, with the amount it estimates.
+function Controller:decisionData(data)
+	local cleanup = Recommendations.presentation(self.model, "", self.sources and self.sources() or {})
+	local waiting = data.softwareUpdate and data.softwareUpdate.known and #data.softwareUpdate.updates > 0
+	return {id = "decision", icon = "sparkles", color = "systemIndigo",
+		title = waiting and ("Make room for " .. data.softwareUpdate.updates[1].name .. " in Clean Up") or "Free space for the next update in Clean Up",
+		detail = "Installing needs room beyond the download, and macOS does not publish how much. Staged update files below belong to macOS and shrink on their own; Clean Up ranks what you can remove instead.",
+		amount = Model.size(cleanup.eligibleBytes), amountCaption = "could recover",
+		actionTitle = "Open Clean Up", action = "openCleanup"}
+end
+
 -- Re-renders only when the presented values change, so scan progress on
 -- other categories leaves the page untouched.
 function Controller:update()
@@ -44,7 +59,9 @@ function Controller:update()
 	local free = disk and disk.freeKb and disk.freeKb * 1024 or nil
 	local data = Updates.presentation(self.model, self.plist, self.snapshotDates, self.installerFiles, free)
 	data.installersLoading = self.installerFiles == nil
+	data.decision = self:decisionData(data)
 	data.actions = {
+		openCleanup = function() if self.showPage then self.showPage("cleanup") end end,
 		openSoftwareUpdate = function() self.service.openSettings("softwareupdate") end,
 		openTimeMachine = function() self.service.openSettings("timemachine") end,
 	}

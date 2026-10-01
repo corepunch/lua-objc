@@ -85,7 +85,9 @@ t.assertEqual(refreshed, 1, "failed action refreshes potentially changed totals"
 t.expect(controller.error:find("device busy", 1, true), "command failures remain visible")
 service.simulatorRuntimes = function(completion) table.insert(calls, {done = completion}) end
 controller:load(); local pending = calls[#calls]; controller:dispose(); pending.done({})
-t.assertEqual(controller.runtimeList, nil, "late results cannot populate a closed page")
+-- #100: a load belongs to the inventory, not to one visit of the page.
+t.assertEqual(type(controller.runtimeList), "table", "a load that finishes after its page closed still records the inventory")
+t.expect(not controller.busy and controller.loaded, "and leaves the controller ready for the next visit")
 -- Native controls and resize contracts, without showing windows.
 model.measurements.archives = {bytes = 20e9, status = "complete"}
 model.measurements.derived = {bytes = 12e9, status = "complete"}
@@ -173,14 +175,13 @@ service.simulatorRuntimes = function(completion) completion(runtimeList) end
 local host = ns.VStack {}
 local simulatorUI = SimulatorController.new(model, service, function() end)
 simulatorUI:mount(host, {query = ""})
-simulatorUI:finish(simulatorUI.generation, data, runtimeList)
+simulatorUI:finish(simulatorUI.loadToken, data, runtimeList)
 t.assertEqual(simulatorUI.refs.filter.className, "NSSegmentedControl", "device filters are a segmented control")
 t.assertEqual(simulatorUI.refs.devices.rowCount, 2, "every device is listed")
 t.assertEqual(simulatorUI.refs.runtimes.rowCount, 1, "installed runtimes are listed")
-t.assertEqual(simulatorUI.refs.devicesTileValue.text, "11.0 GB", "the devices tile totals measured device data")
-t.assertEqual(simulatorUI.refs.runtimesTileValue.text, "8.4 GB", "the runtimes tile totals runtime images")
-t.assertEqual(simulatorUI.refs.unavailableTileValue.text, "1", "the unavailable tile counts devices without a runtime")
-t.expect(simulatorUI.refs.unavailableTileAction.enabled, "unavailable devices can be deleted together")
+t.assertEqual(simulatorUI.refs.summary.text, "11.0 GB stored in 2 devices · 8.4 GB in 1 runtime", "the header states totals stored, not recoverable")
+t.expect(simulatorUI.refs.devicesDetail.text:find("1 device unavailable", 1, true) ~= nil, "the inventory counts devices without a runtime")
+t.expect(simulatorUI.refs.deleteUnavailable.enabled, "unavailable devices can be deleted together")
 simulatorUI.refs.devices:selectRow(0)
 t.expect(simulatorUI.refs.erase.enabled and simulatorUI.refs.delete.enabled, "native selection enables actions for a shutdown device")
 t.assertEqual(simulatorUI.refs.reveal.title, "Show in Finder", "a device can be revealed in Finder")
@@ -194,8 +195,13 @@ simulatorUI:buttons()
 t.expect(not simulatorUI.refs.deleteRuntime.enabled, "Keep protects runtimes")
 t.expect(simulatorUI.refs.runtimeStatus.text:find("Keep", 1, true) ~= nil, "a disabled runtime action explains why")
 model.kept.runtimes = nil
+-- The inventory is secondary: collapsed until its disclosure is opened.
+local inventory = simulatorUI.refs.inventory
+t.expect(inventory.subviews[2].hidden, "the device inventory starts collapsed below the plan")
+ns._invokeAction(inventory.subviews[1].subviews[2])
+t.expect(not inventory.subviews[2].hidden, "opening the disclosure shows the inventory")
 host.size = ns.Size(880, 580); host:layout(880)
-for _, name in ipairs({"reveal", "erase", "delete", "deleteRuntime", "unavailableTileAction", "components"}) do
+for _, name in ipairs({"reveal", "erase", "delete", "deleteRuntime", "deleteUnavailable", "components"}) do
 	local button = simulatorUI.refs[name]
 	t.expect(button.frame.size.width + 1 >= button.fittingSize.width, button.title .. " is shown in full")
 end

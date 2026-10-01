@@ -89,7 +89,7 @@ local app = Controller.new(service)
 app:createWindow()
 local sidebar = app.navigation.refs.sidebar
 local plainRows = sidebar.rowCount
-t.assertEqual(bridge._tableCell(sidebar, 0, 0).textField.stringValue, "Storage", "nothing watched: the sidebar starts with Storage")
+t.assertEqual(bridge._tableCell(sidebar, 0, 0).textField.stringValue, "Overview", "nothing watched: the sidebar starts with Overview")
 
 local function perform(items, title)
 	for _, item in ipairs(items) do

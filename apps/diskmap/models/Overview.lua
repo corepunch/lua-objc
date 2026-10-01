@@ -1,6 +1,5 @@
 local Model = require("apps.diskmap.Model")
 local Categories = require("apps.diskmap.models.Categories")
-local Cleanup = require("apps.diskmap.models.Cleanup")
 local Status = require("apps.diskmap.models.Status")
 local Overview = {}
 
@@ -36,10 +35,14 @@ function Overview.summary(model, disk, capacity)
 	result.usedPercent = percent(total - free, total)
 	result.caption = "of " .. result.total .. " used"
 	result.subtitle = result.free .. " free of " .. result.total
+	result.short = result.subtitle
 	-- Finder's "available" adds purgeable storage macOS will release on demand.
+	-- The window subtitle has room for one number, so it takes Finder's; the
+	-- Overview card states free and available apart.
 	if capacity and capacity.important and capacity.important > free then
 		result.availableText = Model.size(capacity.important)
 		result.subtitle = result.free .. " free · " .. result.availableText .. " available of " .. result.total
+		result.short = result.availableText .. " available of " .. result.total
 	end
 	result.lowSpace = free / total < 0.1
 	return result
@@ -253,31 +256,27 @@ function Overview.unreadable(model, limit)
 	return {paths = paths, more = math.max(0, total - #paths), moreText = Model.count(math.max(0, total - #paths)), total = total}
 end
 
--- Headline for the Clean Up call to action. Rebuildable and review-first
--- candidates stay separate; they are never summed into one "safe" number.
-function Overview.reclaim(model)
-	local rebuildable, review, count, top = 0, 0, 0, nil
-	for _, row in ipairs(Cleanup.suggestions(model)) do
-		count = count + 1
-		-- Suggestions arrive ranked (eligible bytes × confidence ÷ effort): the first is where to start.
-		top = top or row
-		if row.impact == "Safe/rebuildable" then rebuildable = rebuildable + (row.bytes or 0)
-		else review = review + (row.bytes or 0) end
-	end
-	local result = {count = count, rebuildable = rebuildable, review = review, top = top and top.name or nil}
-	if count == 0 then
+-- Headline for the Clean Up call to action: the same estimate Clean Up and
+-- its sidebar badge state, computed by the same presentation, so the three
+-- never name different numbers. What could be recovered leads; bytes that
+-- only a person can judge follow as bytes to review, never added to it.
+-- `sources` is what other pages measured (the Applications summary).
+function Overview.reclaim(model, sources)
+	local data = require("apps.diskmap.models.Recommendations").presentation(model, "", sources or {})
+	local result = {count = data.count, eligible = data.eligibleBytes, review = data.reviewBytes, top = data.lead and data.lead.name or nil}
+	if data.count == 0 then
 		result.title = "No cleanup suggestions yet"
 		result.detail = "Suggestions appear once measured caches or build data exceed their review thresholds."
-	elseif rebuildable > 0 then
-		result.title = Model.size(rebuildable) .. " rebuildable"
-		result.detail = count .. (count == 1 and " suggestion" or " suggestions")
-			.. (review > 0 and (" · " .. Model.size(review) .. " more to review") or "")
-			.. (top and (" · start with " .. top.name) or "")
+	elseif data.eligibleBytes > 0 then
+		result.title = Model.size(data.eligibleBytes) .. " could recover"
+		result.detail = data.count .. (data.count == 1 and " suggestion" or " suggestions")
+			.. (data.reviewBytes > 0 and (" · " .. Model.size(data.reviewBytes) .. " more to review") or "")
+			.. (result.top and (" · start with " .. result.top) or "")
 	else
-		-- Nothing is rebuildable yet; lead with what can be reviewed rather
-		-- than a zero.
-		result.title = Model.size(review) .. " to review"
-		result.detail = count .. (count == 1 and " suggestion" or " suggestions") .. " · nothing rebuildable without review"
+		-- Nothing is proven recoverable yet; lead with what can be reviewed
+		-- rather than a zero.
+		result.title = Model.size(data.reviewBytes) .. " to review"
+		result.detail = data.count .. (data.count == 1 and " suggestion" or " suggestions") .. " · nothing recoverable without review"
 	end
 	return result
 end

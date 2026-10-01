@@ -1,11 +1,20 @@
 # Diskmap
 
 A native macOS 26 storage manager organized by semantic categories, not folders.
-The sidebar has five sections — Storage, Clean Up, System, Developer and
-Learn — with one question per destination. Diskmap is for everyone, so the
-Developer section follows System and appears only on a Mac with developer
-data: Xcode or `~/Library/Developer` present, or at least 500 MB measured in
-the Developer category.
+Overview and Clean Up lead the sidebar without a header (Clean Up's badge is
+what it could recover); then Free Up Space (Applications, Large Files,
+Duplicates and, on a developer's Mac, Simulators, Worktrees and Projects),
+Explore (the maps, Largest Locations, File Types), System, the kinds of work
+and Learn, with one question per destination. Diskmap is for everyone, so the
+developer pages appear only on a Mac with developer data: Xcode or
+`~/Library/Developer` present, or at least 500 MB measured in the Developer
+category.
+
+Every cleanup destination leads with one decision (`views/Decision.etlua`):
+what to review and why, its amount labelled *could recover* or *to review*,
+and the button that starts it, before any chart or inventory; a page with
+nothing to remove says why and routes to Clean Up. Meters are capsules half
+the height of AppKit's capacity cell.
 
 - **Overview — what uses my storage?** A donut of the whole startup disk by
   category, with free space as the empty track and unattributed usage in gray,
@@ -49,25 +58,35 @@ the Developer category.
   children (device support holding only the newest version is not a
   suggestion). Every page's totals state their scope and coverage
   (`models/Scope.lua`); `knowledge/Audit.lua` records each destination's first
-  conclusion and next step, or why it has none. Select a suggestion
-  to read its full guidance in the panel below the list and use its visible
-  Open button. The panel stays visible while scrolling; selection survives
-  live measurement updates.
+  conclusion and next step, or why it has none. The page opens with the
+  top-ranked suggestion as a decision; each row's meter shows what it could
+  recover, or what there is to review. Select a suggestion to read its full
+  guidance in the panel below the list and use its visible Open button; the
+  panel is hidden while nothing is selected, and selection survives live
+  measurement updates.
 - **Applications** — each app in /Applications and ~/Applications with the data
   it keeps in Containers, Group Containers, Application Support and Caches,
   its version and when it was last opened (Spotlight's Last Opened; an app with
   no recorded date reads "Last use unknown", is never called unused, and a
   running app is in use), filtered
-  by All, Unused for 6 months and Most data. Possible leftovers are data
-  folders named like a bundle identifier that no app Spotlight knows claims.
+  by All, Unused for 6 months and Most data. Possible leftovers, data
+  folders named like a bundle identifier that no app Spotlight knows claims,
+  come first, under a decision to mark the high-confidence ones.
 - **Simulators — minimal device set.** Keep one standard iPhone and one
   standard iPad on a chosen iOS runtime (models identified by device type, not
   name); every other device is *redundant for this setup*, listed with size, last
   use and running state, with Keep choices, a keep-pair override, one batch
-  confirmation and per-device revalidation (`models/SimulatorPlan.lua`).
+  confirmation and per-device revalidation (`models/SimulatorPlan.lua`). The
+  keep pickers, the amount the removal could recover and Review sit in one
+  card; the full device and runtime inventory is collapsed below it.
 - **Worktrees** — linked Git worktrees found with `git worktree list --porcelain -z`
   (custom paths, `.claude/worktrees`, Codex worktrees), classified by evidence:
-  candidate, in use, changes, unpublished commits, submodules, locked, missing.
+  ready, in use (a confirmed process only), recently touched (a timestamp, not
+  ownership), changes, unpublished commits, submodules, locked, missing. The
+  page lists removable linked worktrees first, then those needing review, then
+  missing ones; the repositories they came from are collapsed context and are
+  neither measured nor queried. Facts are read four worktrees at a time, with
+  progress, and timestamps before `git status` refreshes the index.
   Removal is `git worktree remove` without force, one confirmation, each worktree
   rechecked first; missing registrations are pruned in their own review
   (`models/Worktrees.lua`, `services/Worktrees.lua`).

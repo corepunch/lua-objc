@@ -82,6 +82,32 @@ function Service.facts(run, measure, entry, completion)
 	local steps = {}
 	local function add(fn) table.insert(steps, fn) end
 	add(function(done) run({"/bin/test", "-d", path}, function(ok) facts.exists = ok; done() end) end)
+	-- A repository's own checkout is never offered, so it is neither measured
+	-- nor queried: it is context for the worktrees made from it.
+	if entry.primary then
+		local function step(index)
+			if index > #steps then completion(facts); return end
+			steps[index](function() step(index + 1) end)
+		end
+		step(1)
+		return
+	end
+	-- Activity is read before any other Git command: `git status` refreshes
+	-- the index, and its own write must not read as recent work.
+	add(function(done)
+		if facts.exists == false then done(); return end
+		git({"rev-parse", "--absolute-git-dir"}, function(ok, output)
+			facts.adminDir = ok and trim(output) or nil
+			if not facts.adminDir then done(); return end
+			run({"/usr/bin/stat", "-f", "%m", facts.adminDir .. "/HEAD", facts.adminDir .. "/index", path}, function(_, times)
+				for value in (times or ""):gmatch("%d+") do
+					value = tonumber(value)
+					if not facts.lastActivity or value > facts.lastActivity then facts.lastActivity = value end
+				end
+				done()
+			end)
+		end)
+	end)
 	add(function(done)
 		if facts.exists == false then done(); return end
 		git({"status", "--porcelain=v1", "-z", "--untracked-files=normal"}, function(ok, output)
@@ -138,20 +164,6 @@ function Service.facts(run, measure, entry, completion)
 	end)
 	add(function(done)
 		if facts.exists == false then done(); return end
-		git({"rev-parse", "--absolute-git-dir"}, function(ok, output)
-			facts.adminDir = ok and trim(output) or nil
-			if not facts.adminDir then done(); return end
-			run({"/usr/bin/stat", "-f", "%m", facts.adminDir .. "/HEAD", facts.adminDir .. "/index", path}, function(_, times)
-				for value in (times or ""):gmatch("%d+") do
-					value = tonumber(value)
-					if not facts.lastActivity or value > facts.lastActivity then facts.lastActivity = value end
-				end
-				done()
-			end)
-		end)
-	end)
-	add(function(done)
-		if facts.exists == false then done(); return end
 		git({"ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z"}, function(ok, output)
 			local ignored = {}
 			if ok then for record in (output or ""):gmatch("([^%z]+)%z") do table.insert(ignored, path .. "/" .. record:gsub("/$", "")) end end
@@ -180,6 +192,27 @@ function Service.facts(run, measure, entry, completion)
 		steps[index](function() step(index + 1) end)
 	end
 	step(1)
+end
+
+-- Evidence for every entry, `Service.parallel` worktrees at a time: each
+-- worktree's queries run in order, worktrees overlap. `progress(done, total)`
+-- reports each finished worktree. Completes with facts by path.
+Service.parallel = 4
+function Service.allFacts(run, measure, entries, completion, progress)
+	local facts, total, finished, next = {}, #entries, 0, 1
+	if total == 0 then completion(facts); return end
+	local function start()
+		if next > total then return end
+		local entry = entries[next]
+		next = next + 1
+		Service.facts(run, measure, entry, function(value)
+			facts[entry.path] = value
+			finished = finished + 1
+			if progress then progress(finished, total) end
+			if finished == total then completion(facts) else start() end
+		end)
+	end
+	for _ = 1, math.min(Service.parallel, total) do start() end
 end
 
 return Service

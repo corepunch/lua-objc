@@ -15,7 +15,7 @@ end
 
 function Controller:mount(host, state)
 	self.query, self.filterIndex, self.selected, self.selectedRuntime = state.query or "", 1, nil, nil
-	self.planRuntime, self.planKeep, self.planSelected, self.planChildren, self.planResult = nil, {}, nil, nil, nil
+	self.planRuntime, self.planKeep, self.planSelected, self.planChildren = nil, {}, nil, nil
 	local refs = self:attach(host, {filters = Simulators.filters, actions = {
 		filter = function(index) self.filterIndex = (index or 0) + 1; self:show() end,
 		select = function(_, _, row) self.selected = row; self:buttons() end,
@@ -45,7 +45,7 @@ function Controller:buttons()
 	for _, row in ipairs(Simulators.rows(self.inventory, nil, "Unavailable")) do
 		if Simulators.command("delete", row, self.model) then unavailable = unavailable + 1 end
 	end
-	refs.unavailableTileAction.enabled = allowed and unavailable > 0
+	refs.deleteUnavailable.enabled = allowed and unavailable > 0
 	refs.deleteRuntime.enabled = allowed and Simulators.runtimeCommand(self.selectedRuntime, self.model) ~= nil
 	local _, deviceReason = Simulators.validate("delete", self.selected, self.model)
 	if self.selected then refs.status.text = deviceReason and deviceReason.message or (self.selected.name .. " · " .. self.selected.state) end
@@ -68,26 +68,20 @@ function Controller:show()
 	local summary = Simulators.summary(self.inventory, Simulators.runtimeRows(self.runtimeList, self.inventory))
 	if self.loading then
 		-- Nothing is known yet: a zero here would read as a measurement.
-		for _, tile in ipairs({"devicesTile", "runtimesTile", "unavailableTile"}) do
-			refs[tile .. "Value"].text = "—"
-			refs[tile .. "Detail"].text = "Reading…"
-		end
 		refs.summary.text = "Reading simulator devices and runtimes…"
+		refs.devicesDetail.text = "Reading…"
 	else
-		refs.devicesTileValue.text = Model.size(summary.deviceBytes)
-		refs.devicesTileDetail.text = Model.plural(summary.devices, "device")
-			.. (summary.stale > 0 and (" · " .. summary.stale .. " unused for " .. Simulators.staleDays .. " days") or "")
-		refs.runtimesTileValue.text = self.runtimeList and Model.size(summary.runtimeBytes) or "Not measured"
-		refs.runtimesTileDetail.text = self.runtimeList and (Model.plural(summary.runtimes, "runtime") .. " installed")
-			or "Xcode's command-line tools could not list runtimes"
-		refs.unavailableTileValue.text = summary.unknownAvailability > 0 and summary.unavailable == 0 and "Unknown" or tostring(summary.unavailable)
-		refs.unavailableTileDetail.text = summary.unknownAvailability > 0 and (Model.plural(summary.unknownAvailability, "device") .. " could not be checked")
-			or summary.unavailable == 0 and "No devices reported unavailable"
-			or (Model.size(summary.unavailableBytes) .. " of apps and data on devices whose runtime is gone")
+		-- Totals stored, never recoverable: what the plan could recover is
+		-- stated beside its review button.
 		local runtimeSummary = self.runtimeList and (Model.size(summary.runtimeBytes) .. " in " .. Model.plural(summary.runtimes, "runtime"))
-			or "Runtime storage could not be measured"
+			or "runtime storage could not be measured"
 		refs.summary.text = self.error or ((self.busy and "Refreshing · " or "")
-			.. Model.size(summary.deviceBytes) .. " in " .. Model.plural(summary.devices, "device") .. " · " .. runtimeSummary)
+			.. Model.size(summary.deviceBytes) .. " stored in " .. Model.plural(summary.devices, "device") .. " · " .. runtimeSummary)
+		local parts = {"Erase keeps a device and removes its apps and data; Delete removes the device."}
+		if summary.stale > 0 then table.insert(parts, Model.plural(summary.stale, "device") .. " unused for " .. Simulators.staleDays .. " days.") end
+		if summary.unknownAvailability > 0 then table.insert(parts, Model.plural(summary.unknownAvailability, "device") .. " could not be checked for availability.")
+		elseif summary.unavailable > 0 then table.insert(parts, Model.plural(summary.unavailable, "device") .. " unavailable, " .. Model.size(summary.unavailableBytes) .. " of apps and data.") end
+		refs.devicesDetail.text = table.concat(parts, " ")
 	end
 	refs.status.text = self.deviceError or (self.loading and "" or #rows == 0 and "No matching devices." or Model.plural(#rows, "device"))
 	refs.runtimeStatus.text = self.runtimeError or ""
@@ -111,23 +105,23 @@ end
 local ROLES = {keep = "Keep", remove = "Remove", blocked = "Blocked", preserve = "Protected", undecided = "Choose", outside = "Not in plan"}
 local COLORS = {keep = "systemGreen", remove = "systemOrange", blocked = "systemRed", preserve = "systemBlue", undecided = "systemGray", outside = "systemGray"}
 
-function Controller:planSummary(plan)
-	if self.loading then return "Reading simulator devices…" end
+-- The plan as one decision: a headline naming what is kept and what goes,
+-- and the details that qualify it. Recoverable bytes are shown beside the
+-- review button, not in this text.
+function Controller:planText(plan)
+	if self.loading then return "Reading simulator devices…", "" end
 	local keeps = {}
 	for _, family in ipairs(SimulatorPlan.families) do
 		for _, entry in ipairs(plan.devices) do if entry.id == plan.keep[family] then table.insert(keeps, entry.name) end end
 	end
-	local parts = {#keeps > 0 and ("Keeps " .. table.concat(keeps, " and ")) or "Nothing is kept yet"}
-	if #plan.removal > 0 then
-		table.insert(parts, "removes " .. Model.plural(#plan.removal, "device") .. ", " .. Model.size(plan.removalBytes) .. " of apps and data")
-	else
-		table.insert(parts, "no device is eligible for removal")
-	end
-	if plan.blockedBytes > 0 then table.insert(parts, Model.size(plan.blockedBytes) .. " blocked until shut down or checked") end
-	if plan.preservedBytes > 0 then table.insert(parts, Model.size(plan.preservedBytes) .. " protected by Keep") end
-	local text = table.concat(parts, " · ") .. "."
-	if plan.runtimePreserved then text = text .. " The shared runtime stays for the kept devices and is not part of this total." end
-	return text
+	local headline = (#keeps > 0 and ("Keep " .. table.concat(keeps, " and ")) or "Choose the devices to keep")
+		.. (#plan.removal > 0 and ("; delete " .. Model.plural(#plan.removal, "redundant device") .. ".") or "; no other device is eligible to delete.")
+	local parts = {}
+	if plan.blockedBytes > 0 then table.insert(parts, Model.size(plan.blockedBytes) .. " more is blocked until running devices shut down or can be checked.") end
+	if plan.preservedBytes > 0 then table.insert(parts, Model.size(plan.preservedBytes) .. " is protected by Keep.") end
+	if plan.runtimePreserved then table.insert(parts, "The shared runtime stays for the kept devices and is not counted.") end
+	if #parts == 0 then table.insert(parts, "Each device is checked again just before it is deleted.") end
+	return headline, table.concat(parts, " ")
 end
 
 function Controller:showPlan()
@@ -162,8 +156,10 @@ function Controller:showPlan()
 	end
 	local selected = self.planSelected and self.planSelected.id
 	local removable = #plan.removal
-	local data = {runtimes = plan.runtimes, runtimeIndex = runtimeIndex, families = families, summary = self:planSummary(plan),
-		reviewTitle = removable > 0 and ("Review and Delete " .. Model.plural(removable, "Device") .. "…") or "Review and Delete…",
+	local headline, summary = self:planText(plan)
+	local data = {runtimes = plan.runtimes, runtimeIndex = runtimeIndex, families = families, headline = headline, summary = summary,
+		amount = self.loading and "—" or Model.size(plan.removalBytes), amountCaption = "could recover",
+		reviewTitle = removable > 0 and ("Review " .. Model.plural(removable, "Device") .. "…") or "Review…",
 		preserveTitle = selected and Simulators.isKept(self.model, selected) and "Remove Keep" or "Keep Device",
 		status = self.planResult or "", actions = {
 			planRuntime = function(index) self.planRuntime = plan.runtimes[(index or 0) + 1].identifier; self.planKeep = {}; self:showPlan() end,
@@ -227,7 +223,6 @@ function Controller:reviewPlan()
 	self.busy = true; self.planResult = "Deleting…"
 	local freeBefore = Outcome.free(self.service, self.model.home)
 	self:show()
-	local generation = self.generation
 	Batch.run(plan.removal, {
 		label = function(entry) return entry.name end,
 		bytes = function(entry) return entry.bytes end,
@@ -249,13 +244,13 @@ function Controller:reviewPlan()
 			end)
 		end,
 	}, function(result)
+		-- The result is kept whether or not the page is still open: the next
+		-- visit shows it, and the inventory is read again either way.
+		self.busy, self.planResult = false, Batch.report(result, "Deleted", "device")
+			.. ". Kept devices and the shared runtime were not touched; simulators are deleted at once, not moved to the Trash. "
+			.. Outcome.freeText(freeBefore, Outcome.free(self.service, self.model.home), result.removed > 0) .. "."
 		self.changed()
-		if generation == self.generation then
-			self.busy, self.planResult = false, Batch.report(result, "Deleted", "device")
-				.. ". Kept devices and the shared runtime were not touched; simulators are deleted at once, not moved to the Trash. "
-				.. Outcome.freeText(freeBefore, Outcome.free(self.service, self.model.home), result.removed > 0) .. "."
-			self:load()
-		end
+		self:load()
 	end)
 	return true
 end
@@ -266,8 +261,12 @@ function Controller:update(state)
 	self:show()
 end
 
-function Controller:finish(generation, inventory, runtimeList)
-	if generation ~= self.generation then return end
+-- A load belongs to the inventory, not to one visit of the page: it may start
+-- before the page mounts (the root starts it when a scan finishes) and finish
+-- after the page was left or mounted again. Only a newer load supersedes it;
+-- the page shows the result if it is open, and the next mount otherwise.
+function Controller:finish(token, inventory, runtimeList)
+	if token ~= self.loadToken then return end
 	self.busy, self.loading = false, false
 	if type(inventory) == "table" and type(inventory.devices) == "table" then self.inventory = inventory; self.loaded = true
 	else self.error = "Simulator folders could not be read." end
@@ -287,27 +286,28 @@ function Controller:publishPlan()
 end
 
 function Controller:load()
-	if self.busy then return end
+	if self.busy then self:show(); return end
 	-- Coming back to the page shows what was read last time while it is
 	-- read again; only the first visit has nothing to show.
 	self.busy, self.loading = true, not self.loaded
 	self.error, self.deviceError, self.runtimeError = nil, nil, nil
 	if not self.loaded then self.inventory = {} end
 	self:show()
-	local generation = self.generation
+	self.loadToken = (self.loadToken or 0) + 1
+	local token = self.loadToken
 	local runtimeList, inventory, pending = nil, nil, 2
 	local function done()
 		pending = pending - 1
-		if pending == 0 then self:finish(generation, inventory, runtimeList) end
+		if pending == 0 then self:finish(token, inventory, runtimeList) end
 	end
 	if type(self.service.simulatorRuntimes) == "function" then
 		self.service.simulatorRuntimes(function(value, error)
-			if generation ~= self.generation then return end
+			if token ~= self.loadToken then return end
 			runtimeList, self.runtimeError = value, error; done()
 		end)
 	else done() end
 	local function discover(listed, error)
-		if generation ~= self.generation then return end
+		if token ~= self.loadToken then return end
 		self.deviceError = error
 		local ok, discovered = pcall(Simulators.discover, self.service, self.model.home, listed)
 		if not ok then done(); return end
@@ -323,7 +323,7 @@ function Controller:load()
 		end
 		if #paths == 0 or type(self.service.measure) ~= "function" then done(); return end
 		self.service.measure(paths, function(sizes)
-			if generation ~= self.generation then return end
+			if token ~= self.loadToken then return end
 			for index, device in ipairs(slots) do device.dataPathSize = sizes[index] end
 			done()
 		end)
@@ -335,24 +335,23 @@ end
 -- Runs validated commands one at a time, revalidating each target first.
 function Controller:run(commands, targets, validate)
 	self.busy = true; self:show()
-	local generation = self.generation
 	local function step(index)
 		if index > #commands then
+			self.busy = false
 			self.changed()
-			if generation == self.generation then self.busy = false; self:load() end
+			self:load()
 			return
 		end
 		if not validate(targets[index]) then
-			if generation == self.generation then self.busy = false; self:show() end
+			self.busy = false; self:show()
 			return
 		end
 		self.service.command(commands[index], function(ok, output)
 			if self.log then self.log(table.concat(commands[index], " ", 3), ok, targets[index].bytes, targets[index].name or targets[index].id, not ok and output or nil) end
 			if not ok then
+				self.busy = false; self.error = "Action failed: " .. tostring(output):sub(1, 220)
 				self.changed()
-				if generation == self.generation then
-					self.busy = false; self.error = "Action failed: " .. tostring(output):sub(1, 220); self:show()
-				end
+				self:show()
 				return
 			end
 			step(index + 1)
@@ -387,8 +386,11 @@ function Controller:deleteRuntime()
 	return self:run({command}, {row}, function(target) return Simulators.validateRuntime(target, self.model) end)
 end
 
+-- Leaving the page never cancels a load or a deletion in progress: their
+-- completions finish the inventory, and the page shows it when it returns.
 function Controller:dispose()
-	self.busy, self.selected, self.selectedRuntime = false, nil, nil
+	self.selected, self.selectedRuntime = nil, nil
+	self.planChildren, self.planRefs = nil, nil
 	Page.dispose(self)
 end
 

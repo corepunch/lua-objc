@@ -23,7 +23,8 @@ local function perform(list, row, title)
 	return false
 end
 
-t.expect(window.subtitle:find("available of", 1, true) ~= nil, "the subtitle includes purgeable storage as available")
+t.expect(window.subtitle:find("available of", 1, true) ~= nil and not window.subtitle:find("free", 1, true),
+	"the window subtitle is Finder's one number, purgeable storage included, short enough for the toolbar")
 t.expect(app.pages.overview.hero.refs.hiddenSpace ~= nil, "the overview lists hidden space")
 
 -- Map: raised rings by default, drill in and out, switch to rectangles.
@@ -66,11 +67,22 @@ app:show("applications")
 local leftovers = page().leftovers
 t.expect(leftovers.rowCount >= 4, "leftovers list unclaimed folders")
 t.assertEqual(bridge._tableCell(leftovers, 1, 0).textField.stringValue, "High", "the most certain leftovers come first")
-t.expect(page().markHigh.enabled, "high-confidence leftovers can be marked together")
+-- #102: the page leads with the leftover decision and its bulk action,
+-- above the installed-app inventory.
+local lead = app.page.leadRefs
+t.expect(lead.decisionTitle.stringValue:find("leftover folder", 1, true) ~= nil, "the page leads with the leftover review")
+t.assertEqual(lead.decisionCaption.stringValue, "could recover", "high-confidence leftovers state what they could recover")
+t.expect(lead.decisionAction.enabled, "high-confidence leftovers can be marked together")
+local order = {}
+for index, view in ipairs(page().pageContent.subviews) do order[view] = index end
+local installed = page().apps
+while installed and not order[installed] do installed = installed.superview end
+t.expect(order[page().lead] < order[page().leftoversSection] and order[page().leftoversSection] < order[installed],
+	"the decision comes before the leftovers, and the leftovers before the installed apps")
 app.page.template.actions.markHigh()
 local marked = app.review:count()
 t.expect(marked >= 2, "every high-confidence leftover is marked")
-t.expect(not page().markHigh.enabled, "the bulk action disables once everything is marked")
+t.expect(not app.page.leadRefs.decisionAction.enabled, "the bulk action disables once everything is marked")
 t.expect(perform(leftovers, 1, "Unmark"), "a marked row offers Unmark in its menu")
 t.assertEqual(app.review:count(), marked - 1, "unmarking removes the row from the basket")
 t.expect(perform(leftovers, 1, "Mark for Cleanup"), "a row is marked from its menu")

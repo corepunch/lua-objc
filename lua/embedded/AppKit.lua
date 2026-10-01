@@ -2199,8 +2199,10 @@ end
 --- @prop minValue number optional. Lower bound, default 0.
 --- @prop maxValue number optional. Upper bound, default 1.
 --- @prop tint string optional. Semantic fill color.
+--- @prop thickness number optional. Draws a capsule bar this many points tall,
+--- as SwiftUI's linear capacity Gauge does; omitted, AppKit's own cell.
 --- @prop accessibilityLabel string optional. What the gauge measures.
---- @example <Gauge value="0.42" tint="systemBlue" />
+--- @example <Gauge value="0.42" tint="systemBlue" thickness="6" />
 --- @platform AppKit NSLevelIndicator. UIKit UIProgressView.
 function AppKit.Gauge(props)
 	props = props or {}
@@ -2210,6 +2212,7 @@ function AppKit.Gauge(props)
 	local value = tonumber(props.value) or v.minValue
 	v.doubleValue = math.max(v.minValue, math.min(v.maxValue, value))
 	if props.tint then v.fillColor = bridge._systemColor(props.tint) end
+	if props.thickness then v.thickness = props.thickness end
 	if props.accessibilityLabel then v.accessibilityLabel = props.accessibilityLabel end
 	-- A linear Gauge takes the width it is offered, like SwiftUI's.
 	v.fillWidth = true

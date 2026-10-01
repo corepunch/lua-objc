@@ -20,7 +20,24 @@ page.published = function() published = published + 1 end
 page:mount(ns.VStack {}, {query = ""})
 local refs = page.refs
 t.expect(page.loaded and not page.busy, "the scan completes")
-t.assertEqual(refs.worktrees.rowCount, 7, "every worktree is listed, once each")
+local function listed()
+	local count = 0
+	for _, id in ipairs({"removeList", "reviewList", "missingList", "repositoryList"}) do count = count + refs[id].rowCount end
+	return count
+end
+t.assertEqual(listed(), 7, "every worktree is listed, once each")
+-- #100/#102: removable linked worktrees lead, then those needing review; the
+-- repository they came from is collapsed context, never first.
+t.assertEqual(refs.removeList.rowCount, 2, "the removable worktrees have their own list")
+t.assertEqual(refs.reviewList.rowCount, 3, "the ones needing a person follow")
+t.assertEqual(refs.missingList.rowCount, 1, "missing registrations are apart")
+t.assertEqual(refs.repositoryList.rowCount, 1, "the repository is context")
+t.expect(refs.repositories.subviews[2].hidden, "and starts collapsed")
+local order = {}
+for index, view in ipairs(refs.pageContent.subviews) do order[view] = index end
+t.expect(order[refs.decisionHost] < order[refs.removeSection] and order[refs.removeSection] < order[refs.reviewSection]
+	and order[refs.reviewSection] < order[refs.repositories], "decision, removable, review, then repositories")
+for _, row in ipairs(page.lists.removeList) do t.assertEqual(row.roleLabel, "Ready", "a removable worktree reads Ready") end
 local byName = {}
 for _, row in ipairs(page.rows) do byName[row.name] = row end
 t.assertEqual(byName.MockProject.state, "primary", "the primary checkout is protected")
@@ -32,20 +49,27 @@ for _, row in ipairs(page.rows) do
 	if row.name == "3f2a/MockProject" then codexDirty = row elseif row.name == "9bd1/MockProject" then codexDetached = row end
 end
 t.assertEqual(byName["3f2a/MockProject"] ~= nil and byName["9bd1/MockProject"] ~= nil, true, "worktrees named after their repository are told apart by their own folder")
-t.assertEqual(codexDirty.state, "active", "a Codex worktree touched in the last hours is in use, whatever else is true of it")
+t.assertEqual(codexDirty.state, "recent", "a Codex worktree touched in the last hours waits for review, whatever else is true of it")
+t.assertEqual(codexDirty.roleLabel, "Recently touched", "and says only that it was recently touched")
+t.expect(codexDirty.lastUse:find("^Changed "), "its date is a change, not a use: " .. codexDirty.lastUse)
 t.assertEqual(codexDetached.state, "unpublished", "a detached worktree with commits nowhere else is held back")
 t.assertEqual(byName["mockproject-spike"].state, "locked", "a locked worktree is protected")
 t.assertEqual(byName["mockproject-gone"].state, "missing", "a missing registration is listed")
 t.expect(published > 0 and model.worktreePlan and model.worktreePlan.removalCount == 2, "the plan is published for Clean Up")
 t.assertEqual(model.worktreePlan.pruneCount, 1, "with its missing registration counted apart")
-t.expect(refs.review.enabled and refs.review.title:find("2 Worktrees", 1, true), "the review button counts the removal set")
+local decision = page.decisionRefs
+t.expect(decision.decisionAction.enabled and decision.decisionAction.title:find("2 Worktrees", 1, true), "the review button counts the removal set")
+t.assertEqual(decision.decisionAmount.stringValue, Model.size(model.worktreePlan.removalBytes), "beside the amount the removal could recover")
+t.assertEqual(decision.decisionCaption.stringValue, "could recover", "which says what it is")
 t.expect(refs.prune.enabled, "missing registrations can be pruned")
-t.expect(refs.removeTileDetail.text:find("source", 1, true) and refs.removeTileDetail.text:find("Git", 1, true), "storage is shown split: " .. refs.removeTileDetail.text)
+t.expect(refs.removeDetail.text:find("Source", 1, true) and refs.removeDetail.text:find("Git", 1, true), "storage is shown split: " .. refs.removeDetail.text)
 
 -- Selecting a row explains it; Keep protects it everywhere.
 local function select(name)
-	for index, row in ipairs(page.visibleRows and page:visibleRows() or {}) do
-		if row.name == name then refs.worktrees:selectRow(index - 1); return row end
+	for id, rows in pairs(page.lists) do
+		for index, row in ipairs(rows) do
+			if row.name == name then page.refs[id]:selectRow(index - 1); return row end
+		end
 	end
 end
 select("coin-quest")
@@ -127,12 +151,45 @@ t.expect(failedPage.result:find("Failed", 1, true) and failedPage.result:find("R
 
 -- Empty and search states.
 page:update({query = "no-such-worktree"})
-t.assertEqual(page.refs.worktrees.rowCount, 0, "a search with no match shows no rows")
+refs = page.refs
+t.assertEqual(listed(), 0, "a search with no match shows no rows")
 page:update({query = ""})
 local empty = Mock.new()
 empty.worktreeScan = function(_, done) done({}, {}) end
 local emptyPage = Controller.new(Model.new(empty.home), empty, function() end)
 emptyPage:mount(ns.VStack {}, {query = ""})
-t.expect(not emptyPage.refs.worktreesEmpty.hidden and emptyPage.refs.worktreesPanel.hidden, "no worktrees shows its own empty state")
+t.expect(not emptyPage.refs.worktreesEmpty.hidden and emptyPage.refs.removeSection.hidden and emptyPage.refs.reviewSection.hidden, "no worktrees shows its own empty state")
 t.assertEqual(emptyPage.model.worktreePlan.removalCount, 0, "and an empty plan")
+t.assertEqual(emptyPage.decisionRefs.decisionAction.title, "Open Clean Up", "a page with nothing to remove routes to other cleanup")
+local routed
+emptyPage.showPage = function(id) routed = id end
+ns._invokeAction(emptyPage.decisionRefs.decisionAction)
+t.assertEqual(routed, "cleanup", "and the route opens Clean Up")
+
+-- #100 P1: the root starts the inventory when a scan finishes, often before
+-- the page is mounted. Delayed replies must finish the load whichever visit
+-- of the page is current, and navigation away and back while it is pending
+-- must not strand the page in loading.
+local delayed = Mock.new()
+local pending = {}
+local realScan = delayed.worktreeScan
+delayed.worktreeScan = function(self, roots, done, progress)
+	table.insert(pending, function() realScan(self, roots, done, progress) end)
+end
+local lifecycle = Controller.new(Model.new(delayed.home), delayed, function() end)
+lifecycle:load()
+t.expect(lifecycle.busy and lifecycle.loading, "a background load is pending before the page mounts")
+lifecycle:mount(ns.VStack {}, {query = ""})
+t.assertEqual(#pending, 1, "mounting during a load does not start a second one")
+t.assertEqual(lifecycle.decisionRefs.decisionTitle.stringValue, "Looking for leftover worktrees…", "the page shows the pending load")
+lifecycle:dispose()
+lifecycle:mount(ns.VStack {}, {query = ""})
+pending[1]()
+t.expect(not lifecycle.busy and lifecycle.loaded, "the pending load finishes after navigating away and back")
+t.assertEqual(lifecycle.refs.removeList.rowCount, 2, "and the mounted page shows its result")
+t.expect(lifecycle.decisionRefs.decisionAction.enabled, "with its review action ready")
+local unmounted = Controller.new(Model.new(delayed.home), delayed, function() end)
+unmounted:load(); unmounted:mount(ns.VStack {}, {query = ""}); unmounted:dispose()
+pending[#pending]()
+t.expect(unmounted.loaded and not unmounted.busy and unmounted.model.worktreePlan ~= nil, "a load that finishes while the page is closed still publishes the plan")
 os.exit(t.summary() and 0 or 1)

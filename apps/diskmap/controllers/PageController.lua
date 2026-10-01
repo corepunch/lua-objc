@@ -65,6 +65,7 @@ function Page:dispose()
 	if self.template then self.template:dispose() end
 	self.listRows = nil
 	self.template, self.refs, self.children, self.detailsTemplate, self.selectedRow, self.selectedId = nil, nil, nil, nil, nil, nil
+	self.decisions = nil
 end
 
 function Page:mount(host, state)
@@ -89,12 +90,26 @@ end
 
 -- A selected row gets a full, wrapping explanation and an explicit route
 -- to its detail page. Selection survives live measurements by resource id.
+-- With nothing selected the panel is hidden: an empty inspector would only
+-- push the suggestions out of a small window.
 function Page:showDetails()
 	if not self.page.details or not self.template then return end
+	if self.refs and self.refs.selectionDetails then self.refs.selectionDetails.hidden = self.selectedRow == nil end
+	if not self.selectedRow then return end
 	self.detailsTemplate = self.detailsTemplate or self.template:child("selectionDetails", VIEWS .. "SelectionDetails.etlua")
 	local details = self.page.details(self.model, self.selectedRow)
 	details.actions = {openSelection = function() self:activate(self.selectedRow) end}
 	self.detailsTemplate:update(details)
+end
+
+-- The page's leading decision (Decision.etlua) in the `host` ref, rendered
+-- from `data` and reconciled like any child template. Returns its refs.
+function Page:decision(host, data)
+	if not self.template or not self.refs or not self.refs[host] then return nil end
+	self.decisions = self.decisions or {}
+	self.decisions[host] = self.decisions[host] or self.template:child(host, VIEWS .. "Decision.etlua")
+	local _, refs = self.decisions[host]:update(data)
+	return refs
 end
 
 function Page:follow(link)

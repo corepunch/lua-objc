@@ -163,6 +163,7 @@ local hidden = Overview.hidden(disk, {important = 130e9}, 3, 2)
 t.assertEqual(hidden[1].value, "30.0 GB", "purgeable space is important minus free")
 t.assertEqual(hidden[2].value, "3", "snapshots are counted")
 t.assertEqual(#Overview.hidden(disk, {important = 90e9}, 0, 0), 0, "nothing hidden shows nothing")
+t.assertEqual(Overview.summary(map, disk, {important = 130e9}).short, "130.0 GB available of 1.00 TB", "the window subtitle names one number")
 t.assertEqual(Overview.summary(map, disk, {important = 130e9}).subtitle, "100.0 GB free · 130.0 GB available of 1.00 TB",
 	"available includes purgeable space")
 

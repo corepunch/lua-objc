@@ -1,0 +1,42 @@
+<% --[[ One cleanup decision, the first thing a page offers: what to review and
+  why, what it could recover, and the action that starts it, on one line the
+  way System Settings › General › Storage pairs each recommendation with its
+  button. The amount names itself: `amountCaption` is "could recover" for
+  bytes a check proved removable and "to review" or "total stored" for
+  everything else, so an inventory size never reads as a recovery estimate.
+
+    id                    prefix of the refs: <id>, <id>Title, <id>Detail,
+                          <id>Amount, <id>Caption, <id>Action, <id>Secondary
+    icon, color           the symbol in its badge
+    title, detail         the recommendation and its reason; both wrap
+    amount, amountCaption the prominent number and what it is
+    actionTitle, action   the primary button; `disabled` starts it disabled
+    secondaryTitle, secondaryAction  an optional quieter route elsewhere
+    hidden                the whole card starts hidden ]]
+  local DECISION = { padding = 14, spacing = 14, symbol = 32, textSpacing = 3, title = 14, detail = 12, amount = 17, caption = 11, amountSpacing = 1, buttonSpacing = 8 }
+%>
+<GroupBox id="<%= id %>"<% if hidden then %> hidden="true"<% end %>>
+  <HStack padding="<%= DECISION.padding %>" spacing="<%= DECISION.spacing %>" alignment="center">
+    <SystemImage name="<%= icon %>" size="<%= DECISION.symbol %>" badgeColor="<%= color %>" />
+    <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="<%= DECISION.textSpacing %>" alignment="leading">
+      <Label id="<%= id %>Title" text="<%= title %>" size="<%= DECISION.title %>" weight="semibold" maxWidth="infinity" lines="0" />
+      <Label id="<%= id %>Detail" text="<%= detail or "" %>" size="<%= DECISION.detail %>" color="secondary" maxWidth="infinity" lines="0" />
+    </VStack>
+    <% if amount then %>
+    <VStack spacing="<%= DECISION.amountSpacing %>" alignment="trailing" fixedSize="horizontal">
+      <Label id="<%= id %>Amount" text="<%= amount %>" size="<%= DECISION.amount %>" weight="semibold" design="rounded" monospacedDigit="true" lines="1" />
+      <Label id="<%= id %>Caption" text="<%= amountCaption or "" %>" size="<%= DECISION.caption %>" color="secondary" lines="1" />
+    </VStack>
+    <% end %>
+    <% if actionTitle or secondaryTitle then %>
+    <VStack spacing="<%= DECISION.buttonSpacing %>" alignment="trailing" fixedSize="horizontal">
+      <% if actionTitle then %>
+      <Button id="<%= id %>Action" title="<%= actionTitle %>" action="<%= action %>" style="borderedProminent"<% if disabled then %> disabled="true"<% end %> />
+      <% end %>
+      <% if secondaryTitle then %>
+      <Button id="<%= id %>Secondary" title="<%= secondaryTitle %>" action="<%= secondaryAction %>" style="link" />
+      <% end %>
+    </VStack>
+    <% end %>
+  </HStack>
+</GroupBox>
