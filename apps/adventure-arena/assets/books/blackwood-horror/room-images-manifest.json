@@ -1,0 +1,228 @@
+{
+  "sheet": "room-images-sheet.png",
+  "generator": "built-in imagegen",
+  "prompt": "5 by 5 sheet of 22 atmospheric Victorian horror room scenes, black ink wood engravings on warm ivory, perspective interiors, fine cross-hatching, deep shadows, thin ivory frames; row-major room order, final three cells blank.",
+  "size": 512,
+  "rooms": [
+    {
+      "room": "SANITARIUM-GATE",
+      "file": "images/SANITARIUM-GATE.jpg",
+      "crop": [
+        2,
+        2,
+        249,
+        249
+      ]
+    },
+    {
+      "room": "SANITARIUM-ENTRANCE",
+      "file": "images/SANITARIUM-ENTRANCE.jpg",
+      "crop": [
+        253,
+        2,
+        500,
+        249
+      ]
+    },
+    {
+      "room": "RECEPTION-ROOM",
+      "file": "images/RECEPTION-ROOM.jpg",
+      "crop": [
+        504,
+        2,
+        750,
+        249
+      ]
+    },
+    {
+      "room": "OPERATING-THEATER",
+      "file": "images/OPERATING-THEATER.jpg",
+      "crop": [
+        754,
+        2,
+        1001,
+        249
+      ]
+    },
+    {
+      "room": "PATIENT-WARD",
+      "file": "images/PATIENT-WARD.jpg",
+      "crop": [
+        1005,
+        2,
+        1252,
+        249
+      ]
+    },
+    {
+      "room": "MORGUE",
+      "file": "images/MORGUE.jpg",
+      "crop": [
+        2,
+        253,
+        249,
+        500
+      ]
+    },
+    {
+      "room": "BASEMENT-STAIRS",
+      "file": "images/BASEMENT-STAIRS.jpg",
+      "crop": [
+        253,
+        253,
+        500,
+        500
+      ]
+    },
+    {
+      "room": "BASEMENT-CORRIDOR",
+      "file": "images/BASEMENT-CORRIDOR.jpg",
+      "crop": [
+        504,
+        253,
+        750,
+        500
+      ]
+    },
+    {
+      "room": "BOILER-ROOM",
+      "file": "images/BOILER-ROOM.jpg",
+      "crop": [
+        754,
+        253,
+        1001,
+        500
+      ]
+    },
+    {
+      "room": "STORAGE-ROOM",
+      "file": "images/STORAGE-ROOM.jpg",
+      "crop": [
+        1005,
+        253,
+        1252,
+        500
+      ]
+    },
+    {
+      "room": "FLOODING-CHAMBER",
+      "file": "images/FLOODING-CHAMBER.jpg",
+      "crop": [
+        2,
+        504,
+        249,
+        750
+      ]
+    },
+    {
+      "room": "HYDROTHERAPY-ROOM",
+      "file": "images/HYDROTHERAPY-ROOM.jpg",
+      "crop": [
+        253,
+        504,
+        500,
+        750
+      ]
+    },
+    {
+      "room": "ISOLATION-WARD",
+      "file": "images/ISOLATION-WARD.jpg",
+      "crop": [
+        504,
+        504,
+        750,
+        750
+      ]
+    },
+    {
+      "room": "ELECTROSHOCK-THEATER",
+      "file": "images/ELECTROSHOCK-THEATER.jpg",
+      "crop": [
+        754,
+        504,
+        1001,
+        750
+      ]
+    },
+    {
+      "room": "PADDED-CELL",
+      "file": "images/PADDED-CELL.jpg",
+      "crop": [
+        1005,
+        504,
+        1252,
+        750
+      ]
+    },
+    {
+      "room": "OBSERVATION-DECK",
+      "file": "images/OBSERVATION-DECK.jpg",
+      "crop": [
+        2,
+        754,
+        249,
+        1001
+      ]
+    },
+    {
+      "room": "ADMINISTRATIVE-WING",
+      "file": "images/ADMINISTRATIVE-WING.jpg",
+      "crop": [
+        253,
+        754,
+        500,
+        1001
+      ]
+    },
+    {
+      "room": "DIRECTORS-OFFICE",
+      "file": "images/DIRECTORS-OFFICE.jpg",
+      "crop": [
+        504,
+        754,
+        750,
+        1001
+      ]
+    },
+    {
+      "room": "STAFF-QUARTERS",
+      "file": "images/STAFF-QUARTERS.jpg",
+      "crop": [
+        754,
+        754,
+        1001,
+        1001
+      ]
+    },
+    {
+      "room": "CAFETERIA",
+      "file": "images/CAFETERIA.jpg",
+      "crop": [
+        1005,
+        754,
+        1252,
+        1001
+      ]
+    },
+    {
+      "room": "OVERGROWN-GARDEN",
+      "file": "images/OVERGROWN-GARDEN.jpg",
+      "crop": [
+        2,
+        1005,
+        249,
+        1252
+      ]
+    },
+    {
+      "room": "CHAPEL",
+      "file": "images/CHAPEL.jpg",
+      "crop": [
+        253,
+        1005,
+        500,
+        1252
+      ]
+    }
+  ]
+}

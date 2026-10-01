@@ -50,7 +50,7 @@ local sessionModel = Session.new({ engineFactory = function()
 		return {
 			resume = function(_, command) return 'Response <&> "' .. command .. '"' end,
 			exits = function() return { "north" } end,
-			roomIcon = function() return "apps/adventure-arena/assets/zork1.jpg" end,
+			roomIcon = function() return "apps/adventure-arena/assets/books/blackwood-horror/images/SANITARIUM-GATE.jpg" end,
 		}, "Opening <&>"
 	end }
 end })

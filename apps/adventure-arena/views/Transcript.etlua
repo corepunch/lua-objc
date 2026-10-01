@@ -4,7 +4,7 @@
   --    own face and colour, a fleuron, and the tagline as an epigraph.
   --  · The Infocom banner becomes the colophon, small and centred.
   --  · Each new room opens a scene: the room as its title and, when the
-  --    story gives the room an ICON, its picture beside the first lines, as
+  --    room has a matching JPG, its picture beside the first lines, as
   --    Zork Zero set one beside each room description.
   --  · What the reader does is set in small capitals in the story’s colour,
   --    like a stage direction; the story answers in ordinary prose. Nothing
