@@ -218,4 +218,15 @@ for _, id in ipairs({"add", "stats", "oneTileValue", "firstSection", "firstTitle
 end
 t.assertEqual(fullRefs.filter.className, "NSSegmentedControl", "filters are a segmented control")
 t.expect(fullRefs.clear.hidden and fullRefs.firstEmpty.hidden and not fullRefs.bulk.enabled, "hidden and disabled come from the layout")
+-- A filter and the section's buttons take their own row under the heading,
+-- so a narrow window never squeezes the heading's detail into a sliver.
+fullRefs.page.size = ns.Size(620, 600); fullRefs.page:layout(620)
+local filterRow, titleRow = fullRefs.filter.superview, fullRefs.firstTitle.superview.superview
+t.expect(filterRow ~= titleRow, "the filter is not on the heading's row")
+t.assertEqual(fullRefs.bulk.superview, filterRow, "section buttons share the filter's row")
+t.expect(fullRefs.firstDetail.frame.size.width > 400, "the heading's detail keeps the section's width beside no controls")
+t.assertEqual(fullRefs.firstDetail.frame.size.height, fullRefs.firstDetail.intrinsicContentSize.height, "the detail stays on one line")
+local _, plainRefs = render("Page", {header = header, actions = anyAction, layout = {sections = {
+	{title = "Plain", titleId = "plainTitle", buttons = {{id = "open", title = "Open", action = "open"}}, list = {id = "plain", menu = "rowMenu"}}}}})
+t.assertEqual(plainRefs.open.superview, plainRefs.plainTitle.superview.superview, "without a filter, buttons stay beside the heading")
 os.exit(t.summary() and 0 or 1)

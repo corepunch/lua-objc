@@ -280,11 +280,22 @@ LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
 	if (self.font) size.height = MAX(size.height, ceil(self.font.ascender - self.font.descender + self.font.leading));
 	return size;
 }
+/* SwiftUI `.lineLimit(2).truncationMode(.tail)` wraps by word and
+ * truncates only the last line. A truncating mode lays text out on one
+ * line, so a label allowed several lines wraps and lets the cell truncate
+ * its last visible line instead. */
+- (BOOL)truncatesWrapped {
+	return self.maximumNumberOfLines > 1 && _paragraphBreakMode >= NSLineBreakByTruncatingHead;
+}
+- (NSLineBreakMode)wrappedBreakMode {
+	self.cell.truncatesLastVisibleLine = [self truncatesWrapped];
+	return [self truncatesWrapped] ? NSLineBreakByWordWrapping : _paragraphBreakMode;
+}
 - (void)updateParagraphMetrics {
 	if (!self.font) return;
 	NSMutableParagraphStyle *paragraph = [[NSMutableParagraphStyle alloc] init];
 	paragraph.alignment = self.alignment;
-	paragraph.lineBreakMode = self.lineBreakMode;
+	paragraph.lineBreakMode = [self wrappedBreakMode];
 	CGFloat lineHeight = ceil(self.font.ascender - self.font.descender + self.font.leading);
 	paragraph.minimumLineHeight = lineHeight;
 	paragraph.maximumLineHeight = lineHeight;
@@ -301,13 +312,22 @@ LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
 	[self updateParagraphMetrics];
 }
 - (void)setTextColor:(NSColor *)color { [super setTextColor:color]; [self updateParagraphMetrics]; }
+- (void)setMaximumNumberOfLines:(NSInteger)value {
+	[super setMaximumNumberOfLines:value];
+	[super setLineBreakMode:[self wrappedBreakMode]];
+	[self updateParagraphMetrics];
+}
 - (void)setAlignment:(NSTextAlignment)value { [super setAlignment:value]; [self updateParagraphMetrics]; }
 // Native single-line cell layout temporarily selects clipping. Keep the
-// declared paragraph mode through later text mutations and wider/narrower passes.
-- (NSLineBreakMode)lineBreakMode { return _paragraphBreakMode; }
+// declared paragraph mode through later text mutations and wider/narrower
+// passes. AppKit's label renderer reads this getter, so a wrapped label
+// whose last line truncates reports word wrapping.
+- (NSLineBreakMode)lineBreakMode {
+	return [self truncatesWrapped] ? NSLineBreakByWordWrapping : _paragraphBreakMode;
+}
 - (void)setLineBreakMode:(NSLineBreakMode)value {
 	_paragraphBreakMode = value;
-	[super setLineBreakMode:value];
+	[super setLineBreakMode:[self wrappedBreakMode]];
 	[self updateParagraphMetrics];
 }
 @end

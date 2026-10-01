@@ -48,19 +48,30 @@
     <% for _, section in ipairs(layout.sections or {}) do %>
     <VStack <% if section.id then %>id="<%= section.id %>" <% end %> spacing="8" alignment="leading">
       <% if section.title then %>
+      <% --[[ A filter gets its own row under the heading, with the section's
+        links and buttons: beside a segmented picker the heading's detail
+        wrapped into a sliver in a narrow window. ]] %>
+      <% local filtered = section.filters ~= nil %>
       <HStack spacing="12" alignment="<%= section.sizeId and "bottom" or "center" %>">
         <%- partial("SectionHeader.etlua", {title = section.title, titleId = section.titleId, detail = section.detail or "", detailId = section.detailId}) %>
+        <% if not filtered then %>
         <%- partial("Buttons.etlua", {buttons = section.links}) %>
-        <% if section.filters then %>
-        <Picker id="<%= section.filters.id %>" style="segmented" onChange="filter">
-          <% for _, title in ipairs(section.filters.options) do %><Option title="<%= title %>" /><% end %>
-        </Picker>
-        <% end %>
         <%- partial("Buttons.etlua", {buttons = section.buttons}) %>
+        <% end %>
         <% if section.sizeId then %>
         <Label id="<%= section.sizeId %>" text="" size="13" weight="semibold" monospacedDigit="true" />
         <% end %>
       </HStack>
+      <% if filtered then %>
+      <HStack spacing="12" alignment="center">
+        <%- partial("Buttons.etlua", {buttons = section.links}) %>
+        <Picker id="<%= section.filters.id %>" style="segmented" onChange="filter">
+          <% for _, title in ipairs(section.filters.options) do %><Option title="<%= title %>" /><% end %>
+        </Picker>
+        <Spacer />
+        <%- partial("Buttons.etlua", {buttons = section.buttons}) %>
+      </HStack>
+      <% end %>
       <% end %>
       <% for _, empty in ipairs(section.empties or {}) do %>
       <ContentUnavailable id="<%= empty.id %>"<% if empty.hidden then %> hidden="true"<% end %> title="<%= empty.title %>" systemImage="<%= empty.systemImage %>" description="<%= empty.description %>" />

@@ -18,7 +18,10 @@
   <% if status then %>
   <Column id="detail" title="Status" width="<%= COLUMNS.status %>" minWidth="<%= COLUMNS.status %>" imageKey="statusIcon" imageColorKey="statusColor" imageSize="<%= COLUMNS.statusSymbol %>" labelStyle="iconOnly" />
   <% elseif detailColumn then %>
-  <Column id="detail" title="Detail" width="<%= COLUMNS.detail %>" minWidth="<%= COLUMNS.detail %>" />
+  <% -- A detail ("main · 4 uncommitted changes") wraps onto a second line before it truncates. %>
+  <Column id="detail" title="Detail" width="<%= COLUMNS.detail %>" minWidth="<%= COLUMNS.detail %>">
+    <Label text="{detail}" lines="2" truncation="tail" />
+  </Column>
   <% end %>
   <Column id="size" title="On disk" width="<%= COLUMNS.share %>" minWidth="<%= COLUMNS.share %>">
     <%- partial("cells/Meter.etlua", {title = "On disk"}) %>

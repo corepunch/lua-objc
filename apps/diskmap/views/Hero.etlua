@@ -1,5 +1,5 @@
 <%
-  local HERO = { chart = 196, hole = 0.7, gap = 3, depth = 8, total = 34, caption = 13, totalScale = 13 / 34, captionScale = 0.77 }
+  local HERO = { chart = 240, hole = 0.7, gap = 3, depth = 8, total = 34, caption = 13, totalScale = 13 / 34, captionScale = 0.77 }
   -- The line under the ring naming the hovered sector: as wide as the column the
   -- ring leaves beside the legend, so a category, its size and share fit.
   HERO.detail = { size = 12, width = 240, height = 16, gap = 8 }

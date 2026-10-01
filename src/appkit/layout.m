@@ -710,7 +710,10 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 				}
 
 				if (field.maximumNumberOfLines > 0) {
-					CGFloat lineHeight = ceil((field.font.ascender - field.font.descender + field.font.leading) * scale) / scale;
+					/* Whole points, as LuaLabel's paragraph sets each line: a
+					 * pixel-rounded 15.5 left two 16-point lines 31 points and
+					 * the second never drew. */
+					CGFloat lineHeight = ceil(field.font.ascender - field.font.descender + field.font.leading);
 					natural.height = MIN(natural.height, lineHeight * field.maximumNumberOfLines);
 				}
 			}

@@ -233,4 +233,33 @@ t.assertEqual(reusedCalls, reusedSteps, "binding rows while scrolling runs no Lu
 local last = bridge._tableCell(bigRefs.list, 1, 9999)
 t.assertEqual(last.textField.text, "Item 10000", "the last row binds its own fields")
 
+-- SwiftUI `.lineLimit(2).truncationMode(.tail)`: a detail too long for its
+-- column wraps onto a second line and truncates only the last.
+local wrapWindow = ns.Window { visible = false, width = 400, height = 120 }
+local wrapRoot, wrapRefs = xml.render([[<VStack>
+	<List id="list" style="fullWidth" header="false" rowHeight="44" maxWidth="infinity" height="100">
+		<Column id="name" minWidth="100" />
+		<Column id="detail" width="150"><Label text="{detail}" lines="2" truncation="tail" /></Column>
+	</List>
+</VStack>]], {}, ns)
+wrapRefs.list:replaceRows({{name = "a", detail = "main · 1 uncommitted change, 1 unpushed"}, {name = "b", detail = "Not in git"}})
+wrapWindow:add(wrapRoot)
+wrapWindow:layout()
+bridge._appkitLayout(wrapWindow)
+local function detailLabel(index)
+	local cell = bridge._tableCell(wrapRefs.list, 1, index)
+	cell:layout()
+	return cell.subviews[1]
+end
+local wrapped, short = detailLabel(0), detailLabel(1)
+local lineHeight = math.ceil(wrapped.font.ascender - wrapped.font.descender + wrapped.font.leading)
+t.assertEqual(wrapped.frame.size.height, 2 * lineHeight, "a long detail takes two whole lines, so the second draws")
+t.expect(wrapped.cell.wraps and not wrapped.cell.usesSingleLineMode, "the long detail wraps")
+t.assertEqual(wrapped.lineBreakMode, 0, "the label renderer breaks a wrapped label by word")
+t.expect(wrapped.cell.truncatesLastVisibleLine, "only the last line truncates")
+t.assertEqual(short.frame.size.height, lineHeight, "a short detail stays one line")
+local single = xml.render('<Label text="A long single line of text" truncation="tail" />', {}, ns)
+t.assertEqual(single.lineBreakMode, 4, "a one-line label keeps its declared truncation")
+t.expect(not single.cell.truncatesLastVisibleLine, "a label without a line limit truncates as declared")
+
 os.exit(t.summary() and 0 or 1)
