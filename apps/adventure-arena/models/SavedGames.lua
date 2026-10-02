@@ -1,41 +1,38 @@
-local SavedGames = {}
-SavedGames.__index = SavedGames
+local Model = require("data.model")
 
 -- Autosaves, one per adventure: the command history and random seed that
 -- replay the story, plus what the library shows about it (room and score)
--- without starting an engine. The store is injected, so the model
--- never touches files; `store.load()` returns the saved table and
--- `store.save(table)` persists it.
+-- without starting an engine. The store's `saves` table, keyed by gameId;
+-- every change is written at once through the store's `documents.saves`
+-- (a JSON document in the app's folder), so the model never touches files.
+local SavedGames = Model:extend("saves", {primaryKey = "gameId"})
+
+-- The time a save is stamped with; tests replace it.
+SavedGames.clock = os.time
+
 local function validRecord(record)
 	return type(record) == "table" and type(record.gameId) == "string"
 		and type(record.commands) == "table"
 end
 
-function SavedGames.new(options)
-	options = options or {}
-	local self = setmetatable({
-		store = options.store,
-		clock = options.clock or os.time,
-		records = {},
-	}, SavedGames)
-	local loaded = self.store and self.store.load and self.store.load()
+-- The saves in a document's table, skipping anything that is not one.
+function SavedGames.restore(loaded)
+	local records = {}
 	if type(loaded) == "table" and type(loaded.games) == "table" then
 		for _, record in ipairs(loaded.games) do
-			if validRecord(record) then self.records[record.gameId] = record end
+			if validRecord(record) then table.insert(records, record) end
 		end
 	end
-	return self
+	return records
 end
 
 function SavedGames:persist()
-	if not (self.store and self.store.save) then return end
+	local documents = Model.db.documents
+	local document = documents and documents.saves
+	if not (document and document.save) then return end
 	local games = {}
 	for _, record in ipairs(self:list()) do table.insert(games, record) end
-	self.store.save({ games = games })
-end
-
-function SavedGames:find(gameId)
-	return self.records[gameId]
+	document.save({ games = games })
 end
 
 -- A story with no commands yet is not worth resuming: opening a book is not
@@ -45,28 +42,28 @@ function SavedGames:record(snapshot)
 	if #snapshot.commands == 0 then return false end
 	local record = {}
 	for key, value in pairs(snapshot) do record[key] = value end
-	record.updated = self.clock()
-	self.records[snapshot.gameId] = record
+	record.updated = SavedGames.clock()
+	local existing = self:find(snapshot.gameId)
+	if existing then existing:delete() end
+	self:create(record)
 	self:persist()
 	return true
 end
 
 function SavedGames:remove(gameId)
-	if not self.records[gameId] then return false end
-	self.records[gameId] = nil
+	local record = self:find(gameId)
+	if not record then return false end
+	record:delete()
 	self:persist()
 	return true
 end
 
 -- Most recently played first; ties keep a stable order by id.
 function SavedGames:list()
-	local list = {}
-	for _, record in pairs(self.records) do table.insert(list, record) end
-	table.sort(list, function(a, b)
+	return self:select(nil, { order = function(a, b)
 		if (a.updated or 0) ~= (b.updated or 0) then return (a.updated or 0) > (b.updated or 0) end
 		return a.gameId < b.gameId
-	end)
-	return list
+	end })
 end
 
 function SavedGames:latest()

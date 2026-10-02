@@ -3,7 +3,9 @@ _G.__headless = true
 local t = require("TestKit")
 local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
 
-local settings = ReadingSettings.new()
+local Store = require("apps.adventure-arena.Store")
+Store.new()
+local settings = ReadingSettings:current()
 local state = settings:presentation()
 t.assertEqual(state.font, "serif", "the reader is a book: New York serif by default")
 t.assertEqual(state.fontTitle, "New York", "the default face is named for the reader")
@@ -46,17 +48,17 @@ t.assertEqual(settings:presentation().lineSpacing, math.floor(14 * 0.5 + 0.5), "
 settings:setJustified(true)
 t.assertEqual(settings:presentation().alignment, "justified", "justification is a reading preference")
 
-t.expect(ReadingSettings.new():presentation().dropCap == nil, "drop caps are not a reading preference")
+t.expect(ReadingSettings.restore():presentation().dropCap == nil, "drop caps are not a reading preference")
 
 -- Preferences persist as plain values and restore exactly.
-local restored = ReadingSettings.new(settings:snapshot())
+local restored = ReadingSettings.restore(settings:snapshot())
 t.assertEqual(restored.font, "monospaced", "the face survives a relaunch")
 t.assertEqual(restored.fontSize, 14, "the size survives a relaunch")
 t.assertEqual(restored.theme, "night", "the theme survives a relaunch")
 t.assertEqual(restored.spacing, "relaxed", "the leading survives a relaunch")
 t.expect(restored.justified, "justification survives a relaunch")
-t.expect(ReadingSettings.new({ dropCap = true }).dropCap == nil, "a drop cap choice saved earlier is dropped")
-local defaults = ReadingSettings.new({ font = "comic", theme = "cover", spacing = "huge", fontSize = 99 })
+t.expect(ReadingSettings.restore({ dropCap = true }).dropCap == nil, "a drop cap choice saved earlier is dropped")
+local defaults = ReadingSettings.restore({ font = "comic", theme = "cover", spacing = "huge", fontSize = 99 })
 t.assertEqual(defaults.font, "serif", "an unknown saved face falls back to the default")
 t.assertEqual(defaults.theme, "paper", "a retired theme falls back to paper")
 t.assertEqual(defaults.spacing, "normal", "unknown leading falls back to normal")

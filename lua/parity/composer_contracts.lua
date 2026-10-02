@@ -5,7 +5,7 @@ local M = {}
 
 function M.run(ns)
 	local xml = require("ui.xml")
-	local _, refs = xml.renderFile("apps/adventure-arena/views/Session.etlua", {
+	local _, refs = xml.renderFile("apps/adventure-arena/views/pages/Session.etlua", {
 		gameTitle = "Zork I", roomTitle = "West of House",
 		progress = "Score 0 · 0 moves", tint = "#4338CA", ink = "#4338CA|#A5B4FC",
 		speechAvailable = true,

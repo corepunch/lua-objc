@@ -2,7 +2,9 @@ _G.__headless = true
 
 local t = require("TestKit")
 local Adventures = require("apps.adventure-arena.models.Adventures")
-local catalog = Adventures.new()
+local Store = require("apps.adventure-arena.Store")
+Store.new()
+local catalog = Adventures
 local ZILRuntime = require("apps.adventure-arena.services.ZILRuntime")
 local originalOpen, originalPath, originalZilPath = io.open, package.path, package.zilpath
 local reads = 0

@@ -1,4 +1,4 @@
-local Suggestions = require("apps.adventure-arena.models.Suggestions")
+local Suggestions = require("apps.adventure-arena.helpers.Suggestions")
 
 local Session = {}
 Session.__index = Session

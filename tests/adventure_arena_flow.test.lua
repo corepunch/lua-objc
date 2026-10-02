@@ -5,7 +5,9 @@ local ns = require("AppKit")
 local xml = require("ui.xml")
 local Adventures = require("apps.adventure-arena.models.Adventures")
 local Session = require("apps.adventure-arena.models.Session")
-local catalog = Adventures.new()
+local Store = require("apps.adventure-arena.Store")
+local SavedGames = require("apps.adventure-arena.models.SavedGames")
+local catalog = Adventures
 local Controller = require("apps.adventure-arena.Controller")
 local renderFile, button, menu = xml.renderFile, ns.Button, ns.Menu
 local addDrag = ns._addDrag
@@ -58,12 +60,12 @@ end })
 local function memoryStore() local value return { load = function() return value end, save = function(v) value = v end } end
 local haptics = {}
 local controller = Controller.new {
-	adventures = catalog, sessionModel = sessionModel, ns = ns,
-	saveStore = memoryStore(), readingStore = memoryStore(),
+	sessionModel = sessionModel, ns = ns,
+	documents = { saves = memoryStore(), reading = memoryStore() },
 	haptics = { notification = function(kind) table.insert(haptics, kind) end },
 	after = function() end,
 }
-local config, refs = xml.renderFile("apps/adventure-arena/views/Window.etlua", controller:libraryData(), ns)
+local config, refs = xml.renderFile("apps/adventure-arena/views/layouts/Window.etlua", controller:libraryData(), ns)
 controller.navigation = refs.navigation
 controller.navigations = { library = refs.navigation, search = refs.searchNavigation }
 controller.tabs = refs.tabs
@@ -88,19 +90,19 @@ end
 tabs:selectTab(0)
 click("featured_1")
 t.assertEqual(controller.navigation.depth, 2, "featured cover opens detail")
-t.assertEqual(rendered.refs.title.text, catalog:list()[1].title, "detail renders selected game")
+t.assertEqual(rendered.refs.title.text, catalog:all()[1].title, "detail renders selected game")
 t.assertEqual(rendered.refs.cover.clipsToBounds, true, "detail cover clips aspect-fill overflow before title")
-t.assertEqual(rendered.refs.description.text, catalog:list()[1].description, "detail preserves full description")
+t.assertEqual(rendered.refs.description.text, catalog:all()[1].description, "detail preserves full description")
 click("play")
 t.assertEqual(controller.navigation.depth, 3, "detail play opens session")
-t.assertEqual(rendered.refs.sessionTitle.text, catalog:list()[1].title, "session header retains the game title")
+t.assertEqual(rendered.refs.sessionTitle.text, catalog:all()[1].title, "session header retains the game title")
 t.expect(rendered.refs.back == nil and rendered.refs.sessionHeader == nil,
 	"the system navigation owns the back button; the screen draws no header")
 t.expect(rendered.refs.compassControl == nil, "the reader's command bar carries no compass")
-t.assertEqual(page().gameTitle.text, catalog:list()[1].title, "the title page names the game")
-t.assertEqual(page().gameDescription.text, catalog:list()[1].shortDescription,
+t.assertEqual(page().gameTitle.text, catalog:all()[1].title, "the title page names the game")
+t.assertEqual(page().gameDescription.text, catalog:all()[1].shortDescription,
 	"the title page carries the tagline as its epigraph")
-t.assertEqual(page().sceneTitle_1.text, catalog:list()[1].title, "the opening scene is named")
+t.assertEqual(page().sceneTitle_1.text, catalog:all()[1].title, "the opening scene is named")
 t.assertEqual(page().paragraph_1_1.text, "Opening <&>", "transcript escapes XML characters")
 t.expect(page().paragraph_1_1.figureView ~= nil, "the opening room's icon sits beside its first lines")
 t.expect(page().paragraph_1_1.figureLines == 3, "the room icon is three lines tall")
@@ -127,11 +129,11 @@ t.assertEqual(page().command_2.text, "inventory", "the command appears on the pa
 t.assertEqual(page().paragraph_3_1.text, 'Response <&> "inventory"', "send updates transcript")
 t.assertEqual(rendered.refs.input.text, "", "send clears input")
 t.assertEqual(rendered.refs.progress.text, "Score 0 · Time 1", "session refreshes progress after a command")
-t.assertEqual(controller.savedGames:latest().gameId, catalog:list()[1].id, "a played story is saved")
+t.assertEqual(SavedGames:latest().gameId, catalog:all()[1].id, "a played story is saved")
 t.expect(controller.tabs.accessoryHidden, "the tab accessory stays hidden while the book is open")
 -- The compass is off the reader's page, and still works where a page
 -- includes it: the session binds its drag and marks its exits.
-local _, compassRefs = renderFile("apps/adventure-arena/views/Compass.etlua", {
+local _, compassRefs = renderFile("apps/adventure-arena/views/sections/Compass.etlua", {
 	availableDirections = rendered.data.availableDirections,
 	compassSegments = rendered.data.compassSegments, size = 52, actions = rendered.data.actions,
 }, ns)
@@ -174,19 +176,17 @@ t.assertEqual(lastEntry(), transcript, "navigation preserves session state")
 t.assertEqual(controller.sessionController.transcript, nil, "closing releases the transcript template")
 controller.navigation:pop()
 controller.sessionModel.engineFactory = function() error('Missing <story> & "engine"', 0) end
-controller.sessionController:show(catalog:list()[1].id)
+controller.sessionController:show(catalog:all()[1].id)
 t.assertEqual(controller.navigation.depth, 2, "failed start opens template error state")
 click("back")
 t.assertEqual(controller.navigation.depth, 1, "error back restores catalog")
 t.assertEqual(controller.window, nil, "template components never create windows")
 
 local game = {}
-for key, value in pairs(catalog:list()[1]) do game[key] = value end
+for key, value in pairs(catalog:all()[1]) do game[key] = value end
 game.title = 'An <Adventure> & "Quotes"'
 game.description = string.rep("A long description & more. ", 40)
-local oneAdventure = Adventures.new { games = { game } }
-controller.adventures = oneAdventure
-controller.library.model = oneAdventure
+require("data.model").db.adventures = { Adventures.prepare(game) }
 controller.sessionModel.engineFactory = function()
 	return { start = function()
 		return { resume = function(_, command) return 'Response <&> "' .. command .. '"' end }, "Opening <&>"
@@ -209,19 +209,19 @@ controller:home()
 click("cover_1_1")
 t.assertEqual(rendered.refs.title.text, game.title, "catalog actions resolve stable game ids")
 
-local empty = Controller.new { adventures = Adventures.new { games = {} }, sessionModel = Session.new(), ns = ns,
-	saveStore = memoryStore(), readingStore = memoryStore() }
+local empty = Controller.new { games = {}, sessionModel = Session.new(), ns = ns,
+	documents = { saves = memoryStore(), reading = memoryStore() } }
 empty:home()
 t.expect(rendered.refs.emptyCatalog ~= nil, "empty model renders the etlua empty state")
 t.assertEqual(empty.navigation.depth, 1, "empty catalog retains navigation root")
-local _, systemRefs = renderFile("apps/adventure-arena/views/Session.etlua", {
+local _, systemRefs = renderFile("apps/adventure-arena/views/pages/Session.etlua", {
 	gameTitle = "Zork", gameDescription = "A story", ink = "accent", tint = "accent",
 	roomTitle = "Gate", progress = "Score 0 · 0 moves",
 	speechAvailable = false,
 	actions = { disappear = function() end, readingSettings = function() end },
 }, ns)
 t.expect(systemRefs.back == nil, "the navigation bar owns the back button")
-local _, titleRefs = renderFile("apps/adventure-arena/views/SessionTitle.etlua", {
+local _, titleRefs = renderFile("apps/adventure-arena/views/sections/SessionTitle.etlua", {
 	gameTitle = "Zork", roomTitle = "Kitchen",
 }, ns)
 t.assertEqual(titleRefs.sessionTitle.text, "Zork", "the running head keeps the game name")

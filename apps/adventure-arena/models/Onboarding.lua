@@ -158,7 +158,7 @@ end
 function Onboarding:recommend(adventures)
 	if not adventures then return nil end
 	local best, bestScore
-	for _, game in ipairs(adventures:list()) do
+	for _, game in ipairs(adventures:all()) do
 		if not (self.audience == "kids" and KIDS_HIDDEN[game.genre]) then
 			local score = game.rating or 0
 			if self:hasInterest(game.genre) then score = score + 3 end

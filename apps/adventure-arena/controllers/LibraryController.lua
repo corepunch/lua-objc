@@ -1,3 +1,5 @@
+local Adventures = require("apps.adventure-arena.models.Adventures")
+local SavedGames = require("apps.adventure-arena.models.SavedGames")
 local Session = require("apps.adventure-arena.models.Session")
 
 local Controller = {}
@@ -5,8 +7,6 @@ Controller.__index = Controller
 
 function Controller.new(options)
 	return setmetatable({
-		model = assert(options.model, "library model is required"),
-		savedGames = options.savedGames,
 		push = assert(options.push, "navigation push callback is required"),
 		back = assert(options.back, "navigation back callback is required"),
 		focus = options.focus or function() end,
@@ -20,7 +20,7 @@ end
 -- Where a saved story stands, in the words a reader uses: the room, then
 -- the status line and how far the score has come.
 function Controller:progressEntry(record)
-	local game = self.model:find(record.gameId)
+	local game = Adventures:find(record.gameId)
 	if not game then return nil end
 	local place = record.room or game.title
 	local maxScore = tonumber(record.maxScore) or 0
@@ -34,7 +34,7 @@ end
 
 function Controller:inProgress()
 	local entries = {}
-	for _, record in ipairs(self.savedGames and self.savedGames:list() or {}) do
+	for _, record in ipairs(SavedGames:list()) do
 		local entry = self:progressEntry(record)
 		if entry then table.insert(entries, entry) end
 	end
@@ -44,8 +44,8 @@ end
 -- `origin` names the navigation stack a tap came from ("library", "search",
 -- "bookshelf"), so pages open in the tab the reader is using.
 function Controller:presentation()
-	local games, featured = self.model:list(), self.model:featured()
-	local shelves, topRated, genres = self.model:shelves(), self.model:topRated(), self.model:genres()
+	local games, featured = Adventures:all(), Adventures:featured()
+	local shelves, topRated, genres = Adventures:shelves(), Adventures:topRated(), Adventures:genres()
 	local actions = {
 		search = function(text) self:search(text) end,
 		openCreate = function() self.selectTab("create") end,
@@ -106,17 +106,17 @@ function Controller:bookshelf()
 end
 
 function Controller:removeSaved(id)
-	if not (self.savedGames and self.savedGames:remove(id)) then return false end
+	if not SavedGames:remove(id) then return false end
 	self.onSavesChanged()
 	return true
 end
 
 function Controller:showGame(id, origin)
-	local game = self.model:find(id)
+	local game = Adventures:find(id)
 	if not game then return false end
 	self.focus(origin)
-	local related = self.model:related(id)
-	local record = self.savedGames and self.savedGames:find(id)
+	local related = Adventures:related(id)
+	local record = SavedGames:find(id)
 	local saved = record and self:progressEntry(record) or nil
 	local actions = {
 		play = function() self.openSession(id) end,
@@ -126,19 +126,19 @@ function Controller:showGame(id, origin)
 	for index, other in ipairs(related) do
 		actions["related_" .. index] = function() self:showGame(other.id, origin) end
 	end
-	self.push("Detail", { game = game, related = related, saved = saved, actions = actions })
+	self.push("pages/Detail", { game = game, related = related, saved = saved, actions = actions })
 	return true
 end
 
 function Controller:showCollection(title, origin)
-	local games = self.model:collection(title)
+	local games = Adventures:collection(title)
 	if #games == 0 then return false end
 	self.focus(origin)
 	local actions = {}
 	for _, game in ipairs(games) do
 		actions[game.id] = function() self:showGame(game.id, origin) end
 	end
-	self.push("Collection", { title = title, games = games, actions = actions })
+	self.push("pages/Collection", { title = title, games = games, actions = actions })
 	return true
 end
 
@@ -152,7 +152,7 @@ end
 function Controller:search(query)
 	self.query = tostring(query or ""):match("^%s*(.-)%s*$")
 	if not self.searchResults then return nil end
-	local results, genres = self.model:search(self.query), self.model:genres()
+	local results, genres = Adventures:search(self.query), Adventures:genres()
 	local actions = {}
 	for index, game in ipairs(results) do
 		actions["result_" .. index] = function() self:showGame(game.id, "search") end

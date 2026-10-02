@@ -19,7 +19,9 @@ for index = 1, 30 do
 		tint = "#123456", difficulty = "Standard",
 	})
 end
-local library = Adventures.new { games = games }
+local Store = require("apps.adventure-arena.Store")
+Store.new { games = games }
+local library = Adventures
 
 local shelves = library:shelves()
 t.assertEqual(shelves[1].title, "Infocom Classics", "shelves follow the catalog's editorial order")
@@ -68,7 +70,8 @@ for _, game in ipairs(related) do t.expect(game.id ~= "game.1", "related games e
 t.assertEqual(#library:related("missing"), 0, "unknown ids have no related games")
 
 -- Real catalog: three shelves of three, Zork trilogy together.
-local real = Adventures.new()
+Store.new()
+local real = Adventures
 local realShelves = {}
 for _, shelf in ipairs(real:shelves()) do realShelves[shelf.title] = shelf.count end
 t.assertEqual(realShelves["The Zork Trilogy"], 3, "the Zork trilogy shares a shelf")

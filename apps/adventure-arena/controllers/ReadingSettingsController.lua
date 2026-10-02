@@ -2,14 +2,15 @@
 -- The in-book sheet and the Settings tab each mount the same template; every
 -- mounted copy re-renders when any of them changes a preference, and the
 -- change is persisted and announced so an open book re-sets its type.
+local Model = require("data.model")
+local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
+
 local Controller = {}
 Controller.__index = Controller
 
 function Controller.new(options)
 	return setmetatable({
-		model = assert(options.model, "reading settings model is required"),
 		mountTemplate = assert(options.mountTemplate, "template mount is required"),
-		store = options.store,
 		onChange = options.onChange or function() end,
 		mounted = {},
 	}, Controller)
@@ -18,7 +19,7 @@ end
 -- Mounts the options into `host`; `preview` adds a sample page for places
 -- where no book is open behind the controls.
 function Controller:mount(host, preview)
-	local template = self.mountTemplate(host, "ReadingOptions")
+	local template = self.mountTemplate(host, "sections/ReadingOptions")
 	local entry = { template = template, preview = preview == true }
 	table.insert(self.mounted, entry)
 	self:renderEntry(entry)
@@ -36,8 +37,11 @@ function Controller:unmount(template)
 	return false
 end
 
+-- The reader's settings, the store's one row (models/ReadingSettings.lua).
+function Controller:settings() return ReadingSettings:current() end
+
 function Controller:actions()
-	local model = self.model
+	local model = self:settings()
 	local actions = {
 		fontChanged = function(index) self:apply(model:setFontIndex(index)) end,
 		spacingChanged = function(index) self:apply(model:setSpacingIndex(index)) end,
@@ -53,7 +57,7 @@ function Controller:actions()
 		increaseSize = function() self:apply(model:adjustFontSize(1)) end,
 		justifyChanged = function(on) self:apply(model:setJustified(on)) end,
 	}
-	for index = 0, #model.themes() - 1 do
+	for index = 0, #ReadingSettings.themes() - 1 do
 		actions["theme_" .. index] = function() self:apply(model:setThemeIndex(index)) end
 	end
 	return actions
@@ -61,7 +65,7 @@ end
 
 function Controller:renderEntry(entry)
 	if entry.template:isDisposed() then return end
-	local data = self.model:presentation()
+	local data = self:settings():presentation()
 	data.preview = entry.preview
 	data.actions = self:actions()
 	entry.template:update(data)
@@ -74,8 +78,9 @@ function Controller:apply(changed, keepPanel)
 		if entry.template:isDisposed() then table.remove(self.mounted, index)
 		elseif not keepPanel then self:renderEntry(entry) end
 	end
-	if self.store and self.store.save then self.store.save(self.model:snapshot()) end
-	self.onChange(self.model:presentation())
+	local document = Model.db.documents and Model.db.documents.reading
+	if document and document.save then document.save(self:settings():snapshot()) end
+	self.onChange(self:settings():presentation())
 	return true
 end
 

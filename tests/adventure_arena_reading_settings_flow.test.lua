@@ -5,6 +5,8 @@ local ns = require("AppKit")
 local xml = require("ui.xml")
 local Session = require("apps.adventure-arena.models.Session")
 local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
+local Store = require("apps.adventure-arena.Store")
+local SavedGames = require("apps.adventure-arena.models.SavedGames")
 local SessionController = require("apps.adventure-arena.controllers.SessionController")
 local ReadingSettingsController = require("apps.adventure-arena.controllers.ReadingSettingsController")
 local Template = require("ui.template")
@@ -60,28 +62,25 @@ end })
 local function mountTemplate(host, template)
 	return Template.new(host, "apps/adventure-arena/views/" .. template .. ".etlua", ns)
 end
-local settings = ReadingSettings.new()
 local saved
+Store.new { games = { game }, documents = { reading = { save = function(value) saved = value end } } }
+local settings = ReadingSettings:current()
 local controller
 local options = ReadingSettingsController.new {
-	model = settings,
 	mountTemplate = mountTemplate,
-	store = { save = function(value) saved = value end },
 	onChange = function() controller:applyReadingSettings() end,
 }
 
 local sessionRefs, sheetRefs, presentedSheet, presentedDetents, dismissedSheet
 controller = SessionController.new {
 	model = model,
-	findGame = function(id) return id == game.id and game or nil end,
 	push = function(template, data)
 		local view, refs = xml.renderFile("apps/adventure-arena/views/" .. template .. ".etlua", data, ns)
-		if template == "Session" then sessionRefs = refs end
+		if template == "pages/Session" then sessionRefs = refs end
 		return view, refs
 	end,
 	back = function() end,
 	ns = ns,
-	readingSettings = settings,
 	readingOptions = options,
 	renderTemplate = function(template, data)
 		local view, refs = xml.renderFile("apps/adventure-arena/views/" .. template .. ".etlua", data, ns)

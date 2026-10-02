@@ -23,7 +23,7 @@
     </NavigationStack>
   </Tab>
   <Tab title="Search" systemImage="magnifyingglass" role="search">
-    <%- partial("Search.etlua", {}) %>
+    <%- partial("../pages/Search.etlua", {}) %>
   </Tab>
   <TabAccessory hidden="true">
     <VStack id="nowReading" maxWidth="infinity" maxHeight="infinity" />

@@ -26,14 +26,14 @@ end })
 local function memoryStore() local value return { load = function() return value end, save = function(v) value = v end } end
 local saves = memoryStore()
 local haptics, timers = {}, {}
-local catalog = Adventures.new()
+local catalog = Adventures
 local controller = Controller.new {
-	adventures = catalog, sessionModel = sessionModel, ns = ns,
-	saveStore = saves, readingStore = memoryStore(),
+	sessionModel = sessionModel, ns = ns,
+	documents = { saves = saves, reading = memoryStore() },
 	haptics = { notification = function(kind) table.insert(haptics, kind) end },
 	after = function(seconds, callback) table.insert(timers, { seconds = seconds, callback = callback }) end,
 }
-local config, refs = xml.renderFile("apps/adventure-arena/views/Window.etlua", controller:libraryData(), ns)
+local config, refs = xml.renderFile("apps/adventure-arena/views/layouts/Window.etlua", controller:libraryData(), ns)
 controller.navigation = refs.navigation
 controller.navigations = { library = refs.navigation, bookshelf = refs.bookshelfNavigation,
 	create = refs.createNavigation, settings = refs.settingsNavigation, search = refs.searchNavigation }

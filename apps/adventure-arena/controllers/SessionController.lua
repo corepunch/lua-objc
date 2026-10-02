@@ -1,3 +1,6 @@
+local Adventures = require("apps.adventure-arena.models.Adventures")
+local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
+local SavedGames = require("apps.adventure-arena.models.SavedGames")
 local CompassGesture = require("apps.adventure-arena.services.CompassGesture")
 
 local Controller = {}
@@ -20,13 +23,10 @@ end
 function Controller.new(options)
 	return setmetatable({
 		model = assert(options.model, "session model is required"),
-		findGame = assert(options.findGame, "adventure lookup callback is required"),
 		push = assert(options.push, "navigation push callback is required"),
 		back = assert(options.back, "navigation back callback is required"),
 		ns = assert(options.ns, "native platform module is required"),
-		readingSettings = assert(options.readingSettings, "reading settings model is required"),
 		readingOptions = options.readingOptions,
-		savedGames = options.savedGames,
 		renderTemplate = assert(options.renderTemplate, "template renderer is required"),
 		mountTemplate = assert(options.mountTemplate, "template mount is required"),
 		presentSheet = assert(options.presentSheet, "sheet presenter is required"),
@@ -49,13 +49,13 @@ end
 -- Opens a story at its last page when it has an autosave, or from its title
 -- page when `fresh` is set or nothing is saved.
 function Controller:show(id, fresh)
-	local game = self.findGame(id)
+	local game = Adventures:find(id)
 	if not game then return false end
-	local saved = not fresh and self.savedGames and self.savedGames:find(id) or nil
+	local saved = not fresh and SavedGames:find(id) or nil
 	self:finishTyping()
 	local ok, err = self.model:start(game, saved)
 	if not ok then
-		self.push("SessionError", {
+		self.push("pages/SessionError", {
 			title = game.title, message = err, actions = { back = self.back },
 		})
 		return false
@@ -107,9 +107,9 @@ function Controller:show(id, fresh)
 	presentation.compassSegments = CompassGesture.segments()
 	actions.disappear = function() self:onDisappear() end
 	presentation.actions = actions
-	self.page, self.refs = self.push("Session", presentation)
-	self.transcript = self.mountTemplate(self.refs.transcript, "Transcript")
-	self.suggestions = self.mountTemplate(self.refs.suggestions, "Suggestions")
+	self.page, self.refs = self.push("pages/Session", presentation)
+	self.transcript = self.mountTemplate(self.refs.transcript, "sections/Transcript")
+	self.suggestions = self.mountTemplate(self.refs.suggestions, "sections/Suggestions")
 	-- A new story types its opening; a resumed one opens at its last line.
 	if not saved then self:beginTyping(1, TYPING.openingDelay) end
 	self:applyReadingSettings()
@@ -194,7 +194,7 @@ end
 function Controller:renderTranscript()
 	if not self.transcript or self.transcript:isDisposed() then return end
 	local data = self.model:presentation()
-	local settings = self.readingSettings:presentation()
+	local settings = ReadingSettings:current():presentation()
 	data.reading = {
 		font = settings.font, fontSize = settings.fontSize, lineSpacing = settings.lineSpacing,
 		alignment = settings.alignment, primary = settings.primaryTextColor,
@@ -413,7 +413,7 @@ function Controller:submitCommand(command)
 	self:scrollToEntry(firstNew)
 	self:updateComposer("")
 	self:announceScore(presentation.scoreChange)
-	if self.savedGames then self.savedGames:record(self.model:snapshot()) end
+	SavedGames:record(self.model:snapshot())
 	self.onProgress()
 	return ok, err
 end
@@ -436,7 +436,7 @@ function Controller:announceScore(change)
 end
 
 function Controller:showReadingSettings()
-	local sheet, refs = self.renderTemplate("ReadingSettings", {
+	local sheet, refs = self.renderTemplate("sheets/ReadingSettings", {
 		actions = { done = function() self:closeReadingSettings() end },
 	})
 	self.readingSettingsRefs = refs
@@ -451,7 +451,7 @@ end
 -- description, so a change re-renders the page rather than restyling labels.
 function Controller:applyReadingSettings()
 	if not self.refs then return end
-	local settings = self.readingSettings:presentation()
+	local settings = ReadingSettings:current():presentation()
 	self.refs.session.backgroundColor = self.ns.Color(settings.pageColor)
 	self.refs.progress.textColor = self.ns.Color(settings.secondaryTextColor)
 	self.refs.dictationStatus.textColor = self.ns.Color(settings.secondaryTextColor)

@@ -52,10 +52,10 @@ composition.
 
 | File | What to look at |
 |---|---|
-| `apps/adventure-arena/views/Adventures.etlua` | Featured carousel; empty catalog + Write an Adventure |
-| `apps/adventure-arena/views/Bookshelf.etlua` | Empty library + Browse Discover; row menus |
-| `apps/adventure-arena/views/Session.etlua` | Glass composer |
-| `apps/adventure-arena/views/Tabs.etlua` | Real tabs + now-reading accessory |
+| `apps/adventure-arena/views/pages/Adventures.etlua` | Featured carousel; empty catalog + Write an Adventure |
+| `apps/adventure-arena/views/pages/Bookshelf.etlua` | Empty library + Browse Discover; row menus |
+| `apps/adventure-arena/views/pages/Session.etlua` | Glass composer |
+| `apps/adventure-arena/views/layouts/Tabs.etlua` | Real tabs + now-reading accessory |
 | `apps/adventure-arena/Controller.lua` | `selectTab`, `presentSheet` wiring |
 | `tests/adventure_arena_delight.test.lua` | Empty-state CTAs select the real tab |
 

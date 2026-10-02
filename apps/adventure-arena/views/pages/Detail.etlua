@@ -22,10 +22,10 @@
 
       <ScrollView id="facts" horizontal="true" vertical="false">
         <HStack spacing="0" paddingHorizontal="8" paddingVertical="14" alignment="center">
-          <%- partial("Fact.etlua", { caption = "Rating", value = string.format("%.1f", game.rating), detail = game.reviewCount .. " ratings", divider = true }) %>
-          <%- partial("Fact.etlua", { caption = "Difficulty", value = game.difficulty or "—", detail = "Infocom level", divider = true }) %>
-          <%- partial("Fact.etlua", { caption = "Genre", value = game.genre:gsub(" Adventure$", ""), detail = "Adventure", divider = true }) %>
-          <%- partial("Fact.etlua", { caption = "Released", value = tostring(game.year), detail = game.author, divider = false }) %>
+          <%- partial("../components/Fact.etlua", { caption = "Rating", value = string.format("%.1f", game.rating), detail = game.reviewCount .. " ratings", divider = true }) %>
+          <%- partial("../components/Fact.etlua", { caption = "Difficulty", value = game.difficulty or "—", detail = "Infocom level", divider = true }) %>
+          <%- partial("../components/Fact.etlua", { caption = "Genre", value = game.genre:gsub(" Adventure$", ""), detail = "Adventure", divider = true }) %>
+          <%- partial("../components/Fact.etlua", { caption = "Released", value = tostring(game.year), detail = game.author, divider = false }) %>
         </HStack>
       </ScrollView>
       <Divider />
@@ -46,7 +46,7 @@
             <% for index, review in ipairs(game.reviews) do %>
             <VStack id="review_<%= index %>" width="<%= REVIEW.width %>" padding="<%= REVIEW.padding %>" spacing="6" alignment="leading" background="secondaryBackground" cornerRadius="<%= REVIEW.radius %>" clipsToBounds="true">
               <Label text="<%= review.title %>" size="16" weight="semibold" lines="1" truncation="tail" />
-              <HStack spacing="2"><%- partial("Stars.etlua", { rating = review.rating or 5, size = 11 }) %></HStack>
+              <HStack spacing="2"><%- partial("../components/Stars.etlua", { rating = review.rating or 5, size = 11 }) %></HStack>
               <Label text="<%= review.body %>" size="15" color="secondary" lines="5" truncation="tail" />
               <Label text="<%= review.author %>" size="12" color="tertiary" />
             </VStack>
@@ -62,7 +62,7 @@
         <ScrollView horizontal="true" vertical="false">
           <HStack spacing="14" paddingHorizontal="20" alignment="top">
             <% for index, other in ipairs(related) do %>
-            <%- partial("CoverCard.etlua", { game = other, action = "related_" .. index, id = "related_" .. index }) %>
+            <%- partial("../components/CoverCard.etlua", { game = other, action = "related_" .. index, id = "related_" .. index }) %>
             <% end %>
           </HStack>
         </ScrollView>

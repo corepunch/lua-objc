@@ -4,7 +4,8 @@ local t = require("TestKit")
 local ns = require("AppKit")
 local xml = require("ui.xml")
 local Session = require("apps.adventure-arena.models.Session")
-local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
+local Store = require("apps.adventure-arena.Store")
+local SavedGames = require("apps.adventure-arena.models.SavedGames")
 local SessionController = require("apps.adventure-arena.controllers.SessionController")
 local Template = require("ui.template")
 
@@ -33,18 +34,17 @@ local reduceMotion = false
 local rendered = {}
 local saved = nil
 local function build()
+	Store.new { games = { { id = "zork", title = "Zork", description = "A story." } } }
+	if saved then saved.gameId = "zork"; SavedGames:create(saved) end
 	local controller = SessionController.new {
 		model = Session.new { engineFactory = function() return engine() end },
-		findGame = function() return { id = "zork", title = "Zork", description = "A story." } end,
 		push = function(_, data)
-			local view, refs = xml.renderFile("apps/adventure-arena/views/Session.etlua", data, ns)
+			local view, refs = xml.renderFile("apps/adventure-arena/views/pages/Session.etlua", data, ns)
 			rendered = { view = view, refs = refs }
 			return view, refs
 		end,
 		back = function() end,
 		ns = ns,
-		readingSettings = ReadingSettings.new(),
-		savedGames = { find = function() return saved end, record = function() end },
 		renderTemplate = function() end,
 		mountTemplate = function(host, template)
 			return Template.new(host, "apps/adventure-arena/views/" .. template .. ".etlua", ns)

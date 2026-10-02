@@ -1,3 +1,4 @@
+local Adventures = require("apps.adventure-arena.models.Adventures")
 local Onboarding = require("apps.adventure-arena.models.Onboarding")
 local Template = require("ui.template")
 local xml = require("ui.xml")
@@ -5,8 +6,8 @@ local xml = require("ui.xml")
 local Controller = {}
 Controller.__index = Controller
 
-local VIEW = "apps/adventure-arena/views/Onboarding.etlua"
-local HOST = "apps/adventure-arena/views/OnboardingSheet.etlua"
+local VIEW = "apps/adventure-arena/views/sheets/Onboarding.etlua"
+local HOST = "apps/adventure-arena/views/sheets/OnboardingSheet.etlua"
 
 function Controller.new(options)
 	options = options or {}
@@ -14,7 +15,7 @@ function Controller.new(options)
 		model = options.model or Onboarding.new(options.store and options.store.load and options.store.load(),
 			{ touch = options.ns ~= nil and options.ns.platform == "UIKit" }),
 		store = options.store,
-		adventures = assert(options.adventures, "catalog is required"),
+		adventures = Adventures,
 		presentSheet = assert(options.presentSheet, "sheet presenter is required"),
 		dismissSheet = assert(options.dismissSheet, "sheet dismisser is required"),
 		openSession = options.openSession or function() return false end,
