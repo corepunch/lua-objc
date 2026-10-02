@@ -13,20 +13,29 @@
   `sizeIcon`, `sizeColor`. `value`, `share` and `tint` name other fields for
   the size, its share and the bar's colour. `title` is the column's title:
   the column names what the meter measures, as it names any other cell, so
-  VoiceOver reads the bar as the title, the size and the share. ]]
-  local METER = { lineSpacing = 4, accessory = 16, symbol = 13, accessoryGap = 4, shareGap = 8, bar = 9 }
+  VoiceOver reads the bar as the title, then the size and the share labels
+  beside it. Bindings are `$field`; a condition is a field with `visible`,
+  `hidden`, `enabled` or `disabled`. ]]
   local value, share, tint, title = value or "size", share or "shareText", tint or "color", title or "Size"
 %>
-<VStack spacing="<%= METER.lineSpacing %>" alignment="leading">
-  <HStack spacing="<%= METER.shareGap %>" alignment="center">
-    <HStack spacing="<%= METER.accessoryGap %>" alignment="center" flexShrink="1">
-      <ProgressView controlSize="small" width="<%= METER.accessory %>" height="<%= METER.accessory %>" hidden="{!calculating}" />
-      <SystemImage name="{sizeIcon}" color="{sizeColor}" size="<%= METER.symbol %>" width="<%= METER.accessory %>" height="<%= METER.accessory %>" hidden="{!sizeIcon}" />
-      <Label text="{<%= value %>}" color="secondary" truncation="tail" hidden="{!calculating}" />
-      <Label text="{<%= value %>}" color="{sizeColor}" truncation="tail" hidden="{calculating}" />
+<VStack spacing="@lineSpacing" alignment="leading">
+  <Resources>
+    <Number id="lineSpacing" value="4" />
+    <Number id="accessory" value="16" />
+    <Number id="symbol" value="13" />
+    <Number id="accessoryGap" value="4" />
+    <Number id="shareGap" value="8" />
+    <Number id="bar" value="9" />
+  </Resources>
+  <HStack spacing="@shareGap" alignment="center">
+    <HStack spacing="@accessoryGap" alignment="center" flexShrink="1">
+      <ProgressView controlSize="small" width="@accessory" height="@accessory" visible="$calculating" />
+      <SystemImage name="$sizeIcon" color="$sizeColor" size="@symbol" width="@accessory" height="@accessory" visible="$sizeIcon" />
+      <Label text="$<%= value %>" color="secondary" truncation="tail" visible="$calculating" />
+      <Label text="$<%= value %>" color="$sizeColor" truncation="tail" hidden="$calculating" />
     </HStack>
     <Spacer />
-    <Label text="{<%= share %>}" color="secondary" fixedSize="horizontal" hidden="{!<%= share %>}" />
+    <Label text="$<%= share %>" color="secondary" fixedSize="horizontal" visible="$<%= share %>" />
   </HStack>
-  <Gauge value="{relative}" tint="{<%= tint %>}" thickness="<%= METER.bar %>" disabled="{!relative}" accessibilityLabel="<%= title %>: {<%= value %>} {<%= share %>}" />
+  <Gauge value="$relative" tint="$<%= tint %>" thickness="@bar" enabled="$relative" accessibilityLabel="<%= title %>" />
 </VStack>

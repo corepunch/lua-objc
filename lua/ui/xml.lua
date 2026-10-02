@@ -24,16 +24,41 @@ local etlua = require("etlua")
 local renderData = nil
 local padLeaf
 
+-- A template is Lua, so it runs in an environment of its own, not in _G: the
+-- template data, `partial` and the other helpers the caller put in the data,
+-- and the pure standard functions below. No io, os, require, load, debug or
+-- network, which is what lets an app's views be treated as data (they cannot
+-- open a file or a socket). etlua's own `run` falls back to _G for any name
+-- the data lacks, so the template function is run here instead.
+local loadChunk = load
+local SANDBOX = {
+    assert = assert, error = error, ipairs = ipairs, next = next, pairs = pairs,
+    pcall = pcall, select = select, tonumber = tonumber, tostring = tostring,
+    type = type, unpack = table.unpack,
+    math = math, string = string, table = table, utf8 = utf8,
+}
+
+local HTML_ENTITIES = { ["&"] = "&amp;", ["<"] = "&lt;", [">"] = "&gt;", ['"'] = "&quot;", ["'"] = "&#039;" }
+local function escapeHTML(text) return (tostring(text):gsub("[\"><'&]", HTML_ENTITIES)) end
+
 local function renderTemplate(src, data, sourceName)
     local parser = etlua.Parser()
     local code, err = parser:compile_to_lua(src)
     if not code then return nil, err end
-    local fn
-    fn, err = parser:load(code, sourceName and ("@" .. sourceName) or nil)
-    if not fn then return nil, err end
-    local buffer
-    buffer, err = parser:run(fn, data)
-    if not buffer then return nil, err end
+    local env = setmetatable({}, { __index = function(_, name)
+        local value = data[name]
+        if value == nil then value = SANDBOX[name] end
+        return value
+    end })
+    local chunkName = sourceName and ("@" .. sourceName) or "etlua"
+    local fn = loadChunk(code, chunkName, "t", env)
+    if not fn then
+        -- etlua maps a compile error back to the template's source line.
+        local _, mapped = parser:load(code, chunkName)
+        return nil, mapped
+    end
+    local ok, buffer = pcall(fn, tostring, escapeHTML, {}, 0)
+    if not ok then return nil, buffer end
     return table.concat(buffer)
 end
 
@@ -477,25 +502,29 @@ end
 --
 -- A <Column>'s child XML is its cell template (SwiftUI `TableColumn { row in
 -- ... }`, WPF's DataTemplate). etlua runs once, when the screen renders; an
--- attribute written `{field}` is resolved per row instead. The template is
+-- attribute written `$field` is resolved per row instead. The template is
 -- compiled once for each reusable native cell, and the platform applies the
 -- bindings natively whenever a cell is given a row, so scrolling runs no Lua.
 --
---   {field}             the row's value, typed (a Gauge value stays a number)
---   "Used {a} of {b}"   text interpolation; a missing field reads as empty
---   {!field}            true when the field is missing, false or empty
---   {{                  a literal brace
+--   $field        the row's value, typed (a Gauge value stays a number)
+--   $size.color   a path into a nested field
+--   $$            a literal dollar sign
 --
--- There are no expressions: a derived value is a row field the model
--- prepares. A row without the field returns the attribute to the value the
--- view was built with, so a reused cell never shows its previous row.
+-- An attribute is a literal or exactly one `$path`: no interpolation, no
+-- negation, no expressions. A composed string is a row field the model
+-- prepares, and a condition is a field plus an attribute pair (`visible` and
+-- `hidden`, `enabled` and `disabled`). A row without the field returns the
+-- attribute to the value the view was built with, so a reused cell never
+-- shows its previous row.
 
 -- attribute -> { native property, kind, inverted }
 local ANY_BINDINGS = {
     hidden = { "hidden", "bool", outer = true },
+    visible = { "hidden", "bool", outer = true, inverted = true },
     opacity = { "opacity", "number", outer = true },
     help = { "toolTip", "string" },
     accessibilityLabel = { "accessibilityLabel", "string" },
+    enabled = { "enabled", "bool" },
     disabled = { "enabled", "bool", inverted = true },
 }
 local TEXT_BINDING = { "text", "string" }
@@ -511,33 +540,25 @@ local TAG_BINDINGS = {
 -- The bindings of the cell being compiled; nil outside a cell template.
 local cellBindings
 
+-- Reads an attribute value: returns the literal text (with `$$` unescaped)
+-- or, for a binding, nil and the field path.
 local function parseBinding(value)
-    local parts, literal, position = {}, "", 1
-    local function fail(reason)
-        error("xml: row binding \"" .. value .. "\" " .. reason)
-    end
-    while position <= #value do
-        local open = value:find("{", position, true)
-        if not open then
-            literal = literal .. value:sub(position)
-            break
+    if not value:find("$", 1, true) then return value end
+    local path = value:match("^%$([%a_][%w_]*[%w_.]*)$")
+    if path then
+        if path:find("..", 1, true) or path:sub(-1) == "." then
+            error("xml: binding \"" .. value .. "\" has an empty path segment")
         end
-        literal = literal .. value:sub(position, open - 1)
-        if value:sub(open + 1, open + 1) == "{" then
-            literal = literal .. "{"
-            position = open + 2
-        else
-            local close = value:find("}", open, true)
-            if not close then fail("has an unclosed brace") end
-            local negate, field = value:sub(open + 1, close - 1):match("^(!?)([%a_][%w_]*)$")
-            if not field then fail("must name one row field; prepare derived values in the model") end
-            if literal ~= "" then table.insert(parts, literal); literal = "" end
-            table.insert(parts, { field = field, negate = negate == "!" })
-            position = close + 1
-        end
+        local fields = {}
+        for field in path:gmatch("[^.]+") do table.insert(fields, field) end
+        return nil, fields
     end
-    if literal ~= "" then table.insert(parts, literal) end
-    return parts
+    -- Anything else may only use `$` as the escape `$$`.
+    if (value:gsub("%$%$", "")):find("$", 1, true) then
+        error("xml: attribute \"" .. value .. "\" must be a literal or exactly one $path; "
+            .. "prepare composed values in the model and write $$ for a dollar sign")
+    end
+    return (value:gsub("%$%$", "$"))
 end
 
 -- Splits a template node's attributes into the static ones its constructor
@@ -545,33 +566,17 @@ end
 local function splitBindings(node)
     local attrs, bound = {}, {}
     for key, value in pairs(node.attrs) do
-        if type(value) == "string" and value:find("{", 1, true) then
-            local parts = parseBinding(value)
-            local whole = #parts == 1 and type(parts[1]) == "table"
-            local fields = 0
-            for _, part in ipairs(parts) do if type(part) == "table" then fields = fields + 1 end end
-            if fields == 0 then
-                attrs[key] = parts[1] or ""
-            else
+        if type(value) == "string" then
+            local literal, path = parseBinding(value)
+            if path then
                 local spec = (TAG_BINDINGS[node.tag] or {})[key] or ANY_BINDINGS[key]
                 if not spec then
                     error("xml: <" .. node.tag .. "> cannot bind " .. key .. " to a row field")
                 end
-                local kind, negate = spec[2], false
-                if kind ~= "string" and not whole then
-                    error("xml: <" .. node.tag .. "> " .. key .. "=\"" .. value .. "\" must be one {field}")
-                end
-                for index, part in ipairs(parts) do
-                    if type(part) == "table" then
-                        if part.negate and kind ~= "bool" then
-                            error("xml: <" .. node.tag .. "> " .. key .. "=\"" .. value .. "\": {!field} applies to true/false attributes")
-                        end
-                        negate = part.negate
-                        parts[index] = { field = part.field }
-                    end
-                end
-                if spec.inverted then negate = not negate end
-                table.insert(bound, { key = spec[1], kind = kind, parts = parts, negate = negate, outer = spec.outer })
+                table.insert(bound, { key = spec[1], kind = spec[2], path = path,
+                    negate = spec.inverted == true, outer = spec.outer })
+            else
+                attrs[key] = literal
             end
         else
             attrs[key] = value
@@ -2186,8 +2191,14 @@ local M = {}
 -- render before anything is compiled or reconciled, so the rest of the
 -- renderer only ever sees the vocabulary.
 local function expandComponents(nodes, description)
-    return require("ui.component").expand(nodes, description.data and description.data.__baseDir,
+    -- `@name` resolves first, so a component's props see the values.
+    local resources = require("ui.resources")
+    local app = description.data and description.data.resources
+    nodes = resources.resolve(nodes, app)
+    nodes = require("ui.component").expand(nodes, description.data and description.data.__baseDir,
         function(tag) return registry[tag] ~= nil end)
+    -- A component's own template may use them too.
+    return resources.resolve(nodes, app)
 end
 
 -- Evaluate etlua without creating native views or mutating caller bindings.
@@ -2806,6 +2817,11 @@ function M.parse(src)
     src = src:gsub("^%s*<%?xml[^?]*%?>%s*", "")
              :gsub("^%s*<!DOCTYPE[^>]*>%s*", "")
     return parseXML(src, { trimText = true, decodeText = true })
+end
+
+-- Reads an app's `resources.xml`; pass the result as `data.resources`.
+function M.loadResources(path)
+    return require("ui.resources").fromNodes(M.parse(readFile(path)))
 end
 
 function M.decodeFile(path, schema)

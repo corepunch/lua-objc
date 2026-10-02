@@ -12,12 +12,17 @@ local TEMPLATE = [[<VStack>
 		<Column id="usage" title="Usage" width="200">
 			<VStack spacing="2" alignment="leading">
 				<HStack spacing="4" maxWidth="infinity">
-					<SystemImage id="icon" name="{icon}" color="{tint}" size="13" hidden="{!icon}" />
-					<Label id="title" text="{title}" color="{tint}" truncation="tail" help="{note}" />
+					<SystemImage id="icon" name="$icon" color="$tint" size="13" visible="$icon" />
+					<Label id="title" text="$title" color="$tint" truncation="tail" help="$note" />
 					<Spacer />
-					<Label id="detail" text="{used} of {total} {{GB}" color="secondary" fixedSize="horizontal" hidden="{quiet}" />
+					<Label id="detail" text="$detail" color="secondary" fixedSize="horizontal" hidden="$quiet" />
 				</HStack>
-				<Gauge id="gauge" value="{fraction}" tint="{tint}" disabled="{!fraction}" accessibilityLabel="Usage of {title}" maxWidth="infinity" />
+				<HStack spacing="4">
+					<Label id="price" text="$$3.9k" />
+					<Label id="nested" text="$stats.label" color="$stats.tint" />
+				</HStack>
+				<Gauge id="gauge" value="$fraction" tint="$tint" enabled="$fraction" accessibilityLabel="$accessibility" maxWidth="infinity" />
+				<Label id="off" text="off" disabled="$quiet" />
 			</VStack>
 		</Column>
 	</List>
@@ -28,9 +33,9 @@ local root, refs = xml.render(TEMPLATE, {}, ns)
 local list = refs.list
 t.assertEqual(refs.title, nil, "a template's views belong to cells, not to the screen's refs")
 list:replaceRows({
-	{name = "Full", title = "Photos", used = 3, total = 4, fraction = 0.75, tint = "systemRed", icon = "photo", note = "Library"},
+	{name = "Full", title = "Photos", detail = "3 of 4 {GB}", accessibility = "Usage of Photos", fraction = 0.75, tint = "systemRed", icon = "photo", note = "Library", stats = {label = "Deep", tint = "systemBlue"}},
 	{name = "Bare", title = "Mail"},
-	{name = "Quiet", title = "Music", used = 1, total = 2, fraction = 0, quiet = true},
+	{name = "Quiet", title = "Music", detail = "1 of 2", fraction = 0, quiet = true},
 	{name = "Odd", title = 42, fraction = 7, icon = "", quiet = false},
 })
 window:add(root)
@@ -55,7 +60,7 @@ t.assertEqual(bridge._tableCell(list, 1, 0).className, "LuaTemplateCellView", "a
 t.assertEqual(bridge._tableCell(list, 0, 0).className, "LuaTableCellView", "a column without content keeps its text cell")
 t.assertEqual(bridge._tableCell(list, 0, 0).textField.stringValue, "Full", "text columns still show row[id]")
 
--- {field}: typed values.
+-- $field: typed values.
 local full = row(0)
 t.assertEqual(full.title.text, "Photos", "text binds a row field")
 t.assertEqual(full.gauge.doubleValue, 0.75, "a number stays a number")
@@ -65,17 +70,22 @@ t.assertEqual(full.icon.symbolName, "photo", "a symbol binds by name")
 t.expect(full.icon.image ~= nil, "the bound symbol is drawn")
 t.assertEqual(full.title.toolTip, "Library", "help binds the tooltip")
 
--- Interpolation and the literal brace.
-t.assertEqual(full.detail.text, "3 of 4 {GB}", "text interpolates fields; {{ is a literal brace")
-t.assertEqual(full.gauge.accessibilityLabel, "Usage of Photos", "accessibility labels interpolate")
-t.assertEqual(row(1).detail.text, " of  {GB}", "a missing field interpolates as empty")
+-- Composed strings are fields the model prepares; braces are ordinary text.
+t.assertEqual(full.detail.text, "3 of 4 {GB}", "a prepared string binds whole")
+t.assertEqual(full.gauge.accessibilityLabel, "Usage of Photos", "accessibility labels bind a prepared field")
+t.assertEqual(full.price.text, "$3.9k", "$$ is a literal dollar sign")
+t.assertEqual(full.nested.text, "Deep", "a path reaches into a nested field")
+t.assertEqual(tostring(full.nested.textColor), color("systemBlue"), "a path binds a colour")
+t.assertEqual(row(1).nested.text, "", "a missing parent is a missing field")
 
--- {!field} and truthiness.
-t.expect(not full.icon.hidden, "{!field} is false for a present field")
-t.expect(full.gauge.enabled, "disabled=\"{!field}\" enables the control when the field is present")
-t.expect(not full.detail.hidden, "hidden=\"{field}\" shows the view when the field is missing")
+-- Attribute pairs and truthiness.
+t.expect(not full.icon.hidden, "visible=\"$field\" shows the view when the field is present")
+t.expect(full.gauge.enabled, "enabled=\"$field\" enables the control when the field is present")
+t.expect(full.off.enabled, "disabled=\"$field\" enables the control when the field is missing")
+t.expect(not full.detail.hidden, "hidden=\"$field\" shows the view when the field is missing")
 local quiet = row(2)
-t.expect(quiet.detail.hidden, "hidden=\"{field}\" hides the view when the field is true")
+t.expect(quiet.detail.hidden, "hidden=\"$field\" hides the view when the field is true")
+t.expect(not quiet.off.enabled, "disabled=\"$field\" disables the control when the field is true")
 t.expect(quiet.gauge.enabled and quiet.gauge.doubleValue == 0, "zero is a value: present, and shown as zero")
 local odd = row(3)
 t.expect(odd.icon.hidden, "an empty string counts as missing")
@@ -149,7 +159,7 @@ t.expect(list.documentView.acceptsFirstResponder, "the table keeps keyboard focu
 -- Outlines share the cells.
 local outline = xml.render([[<OutlineView header="false" rowHeight="40" style="fullWidth">
 	<Column id="name" />
-	<Column id="usage" width="160"><Gauge id="gauge" value="{fraction}" maxWidth="infinity" /></Column>
+	<Column id="usage" width="160"><Gauge id="gauge" value="$fraction" maxWidth="infinity" /></Column>
 </OutlineView>]], {}, ns)
 outline:replaceRows({{id = "a", name = "Parent", fraction = 0.5, expanded = true, children = {{id = "b", name = "Child", fraction = 0.25}}}})
 outline.size = ns.Size(400, 200); outline:layout(400)
@@ -164,7 +174,7 @@ local direct = ns.List {
 		{ id = "level", title = "Level", width = 120, template = function()
 			built = built + 1
 			local gauge = ns.Gauge { value = 0 }
-			return gauge, { { view = gauge, key = "doubleValue", kind = "number", parts = { { field = "level" } } } }
+			return gauge, { { view = gauge, key = "doubleValue", kind = "number", path = { "level" } } }
 		end },
 	},
 	data = { { name = "One", level = 0.4 } },
@@ -177,12 +187,12 @@ local function rejects(columnBody, pattern, message)
 	local ok, err = pcall(xml.render, '<List><Column id="a">' .. columnBody .. '</Column></List>', {}, ns)
 	t.expect(not ok and tostring(err):find(pattern) ~= nil, message .. " (" .. tostring(err) .. ")")
 end
-rejects('<Label text="{a}" size="{b}" />', "cannot bind size", "an attribute without a binding is rejected")
-rejects('<Gauge value="{a} of {b}" />', "must be one {field}", "a number cannot interpolate")
-rejects('<Label text="{!a}" />', "true/false", "negation applies to true/false attributes")
-rejects('<Label text="{a + b}" />', "must name one row field", "expressions are rejected")
-rejects('<Label text="{a" />', "unclosed brace", "an unclosed brace is rejected")
-rejects('<Label text="{a}" /><Label text="{b}" />', "must be one view", "a template has one root")
+rejects('<Label text="$a" size="$b" />', "cannot bind size", "an attribute without a binding is rejected")
+rejects('<Label text="Used $a of $b" />', "exactly one %$path", "interpolation is rejected")
+rejects('<Label text="$a + $b" />', "exactly one %$path", "expressions are rejected")
+rejects('<Label text="$!a" />', "exactly one %$path", "negation is rejected; use visible/hidden")
+rejects('<Label text="$a..b" />', "empty path segment", "an empty path segment is rejected")
+rejects('<Label text="$a" /><Label text="$b" />', "must be one view", "a template has one root")
 local plain = xml.render('<Label text="{a}" />', {}, ns)
 t.assertEqual(plain.text, "{a}", "outside a column, braces are ordinary text")
 
@@ -194,8 +204,8 @@ local bigRoot, bigRefs = xml.render([[<VStack>
 		<Column id="name" minWidth="100" />
 		<Column id="usage" width="200">
 			<VStack spacing="2">
-				<Label text="{title}" truncation="tail" />
-				<Gauge value="{fraction}" maxWidth="infinity" />
+				<Label text="$title" truncation="tail" />
+				<Gauge value="$fraction" maxWidth="infinity" />
 			</VStack>
 		</Column>
 	</List>
@@ -239,7 +249,7 @@ local wrapWindow = ns.Window { visible = false, width = 400, height = 120 }
 local wrapRoot, wrapRefs = xml.render([[<VStack>
 	<List id="list" style="fullWidth" header="false" rowHeight="44" maxWidth="infinity" height="100">
 		<Column id="name" minWidth="100" />
-		<Column id="detail" width="150"><Label text="{detail}" lines="2" truncation="tail" /></Column>
+		<Column id="detail" width="150"><Label text="$detail" lines="2" truncation="tail" /></Column>
 	</List>
 </VStack>]], {}, ns)
 wrapRefs.list:replaceRows({{name = "a", detail = "main · 1 uncommitted change, 1 unpushed"}, {name = "b", detail = "Not in git"}})

@@ -1391,7 +1391,7 @@ We chose **#5** because:
 - **Column `id` → row dictionary key** — minimal but extensible. Each column's
   `id` maps directly to a key in the row's `NSDictionary`. Cells default to
   native `NSTextField`s. A column with content is a template: Lua builds its
-  views once per reusable cell, and `{field}` bindings are applied natively
+  views once per reusable cell, and `$field` bindings are applied natively
   per row, so custom cells keep approach #3's flexibility without its
   per-cell Lua traffic.
 - **Methods via `nsview` metatable `__index`** — instead of returning a Lua
@@ -1461,7 +1461,7 @@ header.
 Each column `id` must match a key in the row data tables. Cells render the
 string value of `row[id]`; numbers are converted to strings automatically. A
 `<Column>` with child XML renders that template instead, bound to row fields
-with `{field}`; see "Extending: column content templates".
+with `$field`; see "Extending: column content templates".
 Use `<SwipeRow>` for one native swipeable row inside a `VStack`. Both platforms
 use their table row action APIs, so the row keeps system gesture behavior and
 appearance. See [`docs/swipe_actions.md`](swipe_actions.md) for XML and model
