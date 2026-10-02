@@ -106,12 +106,46 @@ function Binder:update()
 	if not ok then error(err, 0) end
 end
 
--- Runs the command `name` of the model at `prefix`.
-function Binder:invoke(prefix, name)
-	local model = self:modelAt(prefix)
-	model[name](model)
-	self.changed(model)
-	if not self.propagates then self:update() end
+-- The model behind a list row an event handed back (`row.__row` indexes the
+-- raw rows of the last projection of the list at `rowsPath`).
+function Binder:rowModel(rowsPath, row)
+	local raw = {}
+	for index = 1, #rowsPath - 1 do raw[index] = rowsPath[index] end
+	raw[#rowsPath] = rowsPath[#rowsPath] .. "#raw"
+	local rows = self.record and Schema.lookup(self.record, raw)
+	return rows and rows[row.__row] or nil
+end
+
+-- Runs the command `name` of the model at `prefix`; given a list event's
+-- arguments it receives the row's model. A command declared `query="true"` (a menu to
+-- build, a value to read) returns its results and changes nothing; any other
+-- is a change and the views are set again.
+function Binder:invoke(prefix, name, rowsPath, ...)
+	local model, schema = self:modelAt(prefix)
+	local args = table.pack(...)
+	-- A list event reports (index, column, row): the command takes the row's
+	-- model alone. Other events pass their arguments through.
+	for index = 1, args.n do
+		local value = args[index]
+		if rowsPath and type(value) == "table" and type(value.__row) == "number" then
+			args = table.pack(self:rowModel(rowsPath, value) or value)
+			break
+		end
+	end
+	local results = table.pack(model[name](model, table.unpack(args, 1, args.n)))
+	if schema.byId[name].attrs.query ~= "true" then
+		self.changed(model)
+		if not self.propagates then self:update() end
+	end
+	return table.unpack(results, 1, results.n)
+end
+
+-- A window's own bindings (title, subtitle), once its owner has created it.
+function Binder:addWindow(config, window)
+	for _, entry in ipairs(config.bindings or {}) do
+		entry.view = window
+		self:add(entry)
+	end
 end
 
 -- Writes a control's new value to the field's setter. Returns whether the

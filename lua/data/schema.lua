@@ -262,8 +262,14 @@ function Schema:project(model, options)
 			local rows = read(model, field.source) or {}
 			local related = self:related(field)
 			local projected = {}
-			for _, row in ipairs(rows) do table.insert(projected, related:project(row, options)) end
+			for index, row in ipairs(rows) do
+				local projectedRow = related:project(row, options)
+				-- A list event hands the row back; `#raw` maps it to its model.
+				projectedRow.__row = index
+				table.insert(projected, projectedRow)
+			end
 			record[id] = projected
+			record[id .. "#raw"] = rows
 		elseif field.type == "Record" then
 			local nested = read(model, field.source)
 			record[id] = nested and self:related(field):project(nested, options) or nil

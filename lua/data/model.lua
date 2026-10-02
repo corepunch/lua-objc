@@ -24,6 +24,7 @@
 -- subscribers of every stale model, which rebind the views bound to them.
 -- That is WPF's PropertyChanged with an empty property name: rebind
 -- everything on this context, not one property.
+local Events = require("data.events")
 local Model = {}
 
 function Model.define(spec)
@@ -107,6 +108,9 @@ function Graph:build(ids)
 			end
 			self.instances[id] = instance
 			table.insert(self.order, id)
+			-- `model:changed()` says this model changed, from anywhere: a
+			-- service callback, a timer, a command. The rebind is an event.
+			rawset(instance, "changed", function() self:post(id) end)
 		end
 	end
 	local built = {}
@@ -142,6 +146,19 @@ function Graph:subscribe(id, callback)
 			if candidate == callback then table.remove(self.subscribers[id], index); return end
 		end
 	end
+end
+
+-- Posts the change of `id` as an event; bursts coalesce into one `changed`.
+function Graph:post(id)
+	self.dirty = self.dirty or {}
+	table.insert(self.dirty, id)
+	Events.post(function()
+		local ids, seen = self.dirty, {}
+		self.dirty = nil
+		for _, dirtyId in ipairs(ids or {}) do
+			if not seen[dirtyId] then seen[dirtyId] = true; self:changed(dirtyId) end
+		end
+	end, self)
 end
 
 -- Marks `id` and everything built that depends on it, transitively, stale.

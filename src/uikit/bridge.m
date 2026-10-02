@@ -165,6 +165,7 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #include "../shared/view_tree.m"
 #include "../shared/notifications.m"
 #include "../shared/formatters.m"
+#include "../shared/events.m"
 #include "../shared/flow_layout.m"
 #include "layout.m"
 
@@ -249,6 +250,7 @@ static const luaL_Reg bridge_lib[] = {
 	LUA_OBJC_VIEW_TREE_FUNCTIONS
 	LUA_OBJC_NOTIFICATION_FUNCTIONS
 	LUA_OBJC_FORMATTER_FUNCTIONS
+	LUA_OBJC_EVENT_FUNCTIONS
 	{"_separator", bridge_UIKitControls_separator},
 	{"_progressIndicator", bridge_UIKitControls_progressIndicator},
 	{"_progressView", bridge_UIKitControls_progressView},
