@@ -12,7 +12,7 @@ return {
 	title = "Solar System",
 	symbol = "sun.max.fill",
 	shader = "Scene.metal",
-	sections = {"intro", "breakdown", "drop"},
+	arc = {0, 0.65},
 	draws = {
 		{vertex = "fullscreenVertex", fragment = "spaceBackdrop", count = 3},
 		{vertex = "spaceOrbitVertex", fragment = "spaceOrbitFragment", primitive = "lineStrip", blend = "add",

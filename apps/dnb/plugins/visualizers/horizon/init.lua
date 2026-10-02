@@ -5,5 +5,5 @@ return {
 	title = "Synthwave Horizon",
 	symbol = "sun.horizon.fill",
 	shader = "Scene.metal",
-	sections = {"intro", "drop"},
+	arc = {0, 0.55},
 }

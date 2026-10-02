@@ -7,8 +7,8 @@
 -- presentation: the host analyses the audio once (models/Visuals.lua) and
 -- links every scene into one Metal program with its shared library
 -- (shaders/Kit.metal) and finishing pass (shaders/Main.metal). Each scene
--- renders into its own layer, so any two can crossfade. `sections` are where
--- the automatic director shows a scene; the Scene menu can pin any one.
+-- renders into its own layer, so any two can crossfade. `arc` is the range of
+-- the track's energy (0…1) in which the automatic director shows a scene; the Scene menu can pin any one.
 local Plugins = require("Plugins")
 
 local Visualizers = Plugins.extensionPoint({
@@ -18,7 +18,7 @@ local Visualizers = Plugins.extensionPoint({
 		title = "string",
 		symbol = "string",
 		shader = "string",
-		sections = "table",
+		arc = "table",
 		draws = "table?",
 	},
 })

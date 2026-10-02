@@ -21,8 +21,6 @@ local PLAYBACK = {sampleRate = 44100, bufferSeconds = 0.3, frameInterval = 1 / 6
 -- The arrangement strip's rows and channel-name column, in points.
 local TIMELINE = {rowHeight = 28, labelWidth = 84, scale = 2}
 
-local SECTION_TITLES = {intro = "Intro", build = "Build-up", drop = "Drop", breakdown = "Breakdown",
-	outro = "Outro", halftime = "Half-time", blend = "Mixing in"}
 
 local Controller = {}
 Controller.__index = Controller
@@ -61,12 +59,12 @@ end
 function Controller:nowPlaying(bar, fraction)
 	local playing = bar ~= nil
 	bar = bar or self.composer:bar(0, self.model)
-	local title = bar.blend and "blend" or bar.halftime and "halftime" or bar.section
+	local moment = bar.blend and "Mixing in" or (bar.halftime and bar.label == "Peak") and "Half-time" or bar.label
 	return {
-		section = playing and SECTION_TITLES[title] or "Ready to play",
+		moment = playing and moment or "Ready to play",
 		detail = string.format("Track %d · %s · %s · %s", bar.track + 1, bar.style, bar.key, bar.progression),
-		position = string.format("Bar %d of %d", bar.sectionBar + 1, bar.sectionLength),
-		progress = (bar.sectionBar + (fraction or 0)) / bar.sectionLength,
+		position = string.format("Bar %d of %d", bar.trackBar + 1, bar.trackLength),
+		progress = (bar.trackBar + (fraction or 0)) / bar.trackLength,
 		tempo = string.format("%d", math.floor(self:tempo(bar) + 0.5)),
 	}
 end
@@ -157,7 +155,7 @@ function Controller:selectStyle(index)
 	if not self.playing then self:showIdle() end
 end
 
--- 0 is Automatic: the director picks scenes by section and phrase.
+-- 0 is Automatic: the director picks scenes by energy and phrase.
 function Controller:selectScene(index)
 	self.visuals:pin(index > 0 and index - 1 or nil)
 end
@@ -264,7 +262,7 @@ function Controller:showPlayhead(bar, played)
 	self:showTimeline(bar.composer, bar.index, fraction, self:tempo(bar) / 240)
 	local info = self:nowPlaying(bar, fraction)
 	for _, refs in ipairs(self:views()) do
-		if refs.section.text ~= info.section then refs.section.text = info.section end
+		if refs.moment.text ~= info.moment then refs.moment.text = info.moment end
 		if refs.detail.text ~= info.detail then refs.detail.text = info.detail end
 		if refs.tempo and refs.tempo.text ~= info.tempo then refs.tempo.text = info.tempo end
 		if refs.position and refs.position.text ~= info.position then refs.position.text = info.position end
@@ -299,7 +297,7 @@ function Controller:play()
 	if ok then ok, err = self.output:start() end
 	if not ok then
 		for _, refs in ipairs(self:views()) do
-			refs.section.text = "Audio unavailable"
+			refs.moment.text = "Audio unavailable"
 			refs.detail.text = tostring(err)
 		end
 		return

@@ -12,8 +12,8 @@
 //     full-screen draw.
 // Every stage unpacks the frame with frameOf(inputs). `inputs.values` is
 // written by apps/dnb/models/Visuals.lua:
-//   0 level (RMS)      1 kick pulse     2 track hue      3 section intensity
-//   4 section progress 5 beat phase     6 presence (0 idle … 1 playing)
+//   0 level (RMS)      1 kick pulse     2 track hue      3 energy intensity
+//   4 track progress 5 beat phase     6 presence (0 idle … 1 playing)
 //   7 band count N     8 scene          9 next scene     10 crossfade 0…1
 //   11 snare pulse     12 low bands     13 high bands    14 travel   15 bar phase
 //   16 … 19 stage x, y, width, height (uv of the view)

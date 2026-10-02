@@ -2,7 +2,7 @@
 	<GlassEffect style="clear" cornerRadius="20">
 		<VStack paddingHorizontal="18" paddingVertical="14" spacing="4" alignment="leading" width="340">
 			<Label text="NOW PLAYING" size="11" weight="bold" color="secondary" />
-			<Label id="section" text="<%= section %>" size="34" weight="heavy" />
+			<Label id="moment" text="<%= moment %>" size="34" weight="heavy" />
 			<Label id="detail" text="<%= detail %>" size="13" color="secondary" lineLimit="1" />
 			<ProgressView id="progress" value="<%= progress %>" maxWidth="infinity" />
 		</VStack>

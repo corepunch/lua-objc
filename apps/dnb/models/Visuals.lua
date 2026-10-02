@@ -1,6 +1,7 @@
 -- Visualizer state: smooths raw spectrum frames into falling bars with peak
 -- holds, follows kicks, snares and beats from the synth timeline, directs
--- the scene plugins (one per section and phrase, or one the user pinned)
+-- the scene plugins (one per phrase, chosen by the energy of the moment, or
+-- one the user pinned)
 -- with a crossfade, and packs it all into the float layout documented at the
 -- top of shaders/Kit.metal.
 local Visuals = {}
@@ -30,26 +31,21 @@ local MOTION = {
 	cruiseEase = 0.6,  -- seconds (to 1/e) to ease from rest to cruise and back
 }
 
--- Sections without scenes of their own borrow the drop's.
-local SECTIONS = {"intro", "build", "drop", "breakdown", "outro"}
-local BORROW = {outro = "drop", intro = "drop", build = "drop", breakdown = "drop"}
-local PHRASE = 8 -- bars per scene inside a section
+local PHRASE = 8 -- bars per scene
 
--- Scene numbers are 0-based plugin indices, the shader's switch.
-local function pools(scenes)
-	local result = {}
-	for _, section in ipairs(SECTIONS) do result[section] = {} end
+-- The scenes that play at an energy of the track's curve (0…1): those
+-- whose `arc` range holds it, else all of them. Scene numbers are 0-based
+-- plugin indices, the shader's switch.
+local function poolAt(scenes, arc)
+	local pool = {}
 	for index, scene in ipairs(scenes) do
-		for _, section in ipairs(scene.sections) do
-			assert(result[section], "unknown section " .. tostring(section))
-			table.insert(result[section], index - 1)
-		end
+		assert(scene.arc[1] <= scene.arc[2], "a scene's arc runs from low to high energy")
+		if arc >= scene.arc[1] and arc <= scene.arc[2] then table.insert(pool, index - 1) end
 	end
-	for section, pool in pairs(result) do
-		if #pool == 0 then result[section] = result[BORROW[section]] end
+	if #pool == 0 then
+		for index = 1, #scenes do table.insert(pool, index - 1) end
 	end
-	assert(#result.drop > 0, "some scene must play in drops")
-	return result
+	return pool
 end
 
 -- Analyser level (0…1 over 78 dB) at full volume → bar height.
@@ -59,15 +55,15 @@ local function display(raw, lift)
 	if x <= 0 then return 0 end
 	return x ^ MOTION.curve
 end
-local INTENSITY = {intro = 0.35, build = 0.7, drop = 1, breakdown = 0.5}
+-- How hard the visuals work: from calm to the full strength of a peak.
+local INTENSITY = {low = 0.35, range = 0.65}
 
 -- `scenes` are the visualizer plugins' manifests, in shader order.
 function Visuals.new(scenes, bands)
-	local pool = pools(scenes)
-	local idle = pool.intro[1]
+	local idle = poolAt(scenes, 0.25)[1]
 	local self = setmetatable({n = bands or Visuals.bands, levels = {}, peaks = {}, holds = {},
 		level = 0, kick = 0, snare = 0, presence = 0, hue = 0, intensity = 0.35, progress = 0, beat = 0,
-		barPhase = 0, travel = 0, speed = 0, low = 0, high = 0, pools = pool, idle = idle, count = #scenes,
+		barPhase = 0, travel = 0, speed = 0, low = 0, high = 0, scenes = scenes, idle = idle, count = #scenes,
 		scene = idle, nextScene = idle, fade = 0, sceneKey = nil, values = {}}, Visuals)
 	for i = 1, self.n do self.levels[i], self.peaks[i], self.holds[i] = 0, 0, 0 end
 	return self
@@ -89,16 +85,16 @@ function Visuals:cut(scene)
 	self.nextScene, self.fade = scene, 0
 end
 
--- The scene a bar asks for: the section's pool, advanced once per phrase
--- and per section, never repeating the scene already showing.
+-- The scene a bar asks for: the pool for its energy, advanced once per
+-- phrase, never repeating the scene already showing.
 function Visuals:sceneFor(bar)
 	if self.pinned then return self.pinned, "pinned" end
-	local pool = self.pools[bar.section] or self.pools.drop
-	local start = (bar.number or 0) - bar.sectionBar
-	local index = start // 4 + bar.sectionBar // PHRASE
+	local pool = poolAt(self.scenes, bar.arc or 1)
+	local start = (bar.number or 0) - bar.phraseBar
+	local index = start // PHRASE
 	local scene = pool[index % #pool + 1]
 	if scene == self.scene and #pool > 1 then scene = pool[(index + 1) % #pool + 1] end
-	return scene, start * 64 + bar.sectionBar // PHRASE
+	return scene, start
 end
 
 function Visuals:follow(bar, playing, dt)
@@ -177,8 +173,8 @@ function Visuals:update(frame, dt)
 		local beatFrames = bar.frames / 4
 		self.beat = ((frame.played - bar.frame) / beatFrames) % 1
 		self.barPhase = math.max(0, math.min(1, (frame.played - bar.frame) / bar.frames))
-		self.progress = (bar.sectionBar + self.barPhase) / bar.sectionLength
-		self.intensity = INTENSITY[bar.section] or 1
+		self.progress = (bar.trackBar + self.barPhase) / bar.trackLength
+		self.intensity = INTENSITY.low + INTENSITY.range * (bar.arc or 1)
 		self.hue = (bar.tonic or 0) / 12
 	end
 	self:follow(bar, frame.playing, dt)

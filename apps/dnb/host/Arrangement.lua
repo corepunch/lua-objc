@@ -1,15 +1,16 @@
 -- One track of the set, fully arranged before its first bar plays, after a
 -- tracker's song or the arrange window of MTV Music Generator: a ruler of
--- sections and one lane per channel, eight at most, each lane a row of
--- blocks that point at patterns.
+-- phrases carrying the energy curve, and one lane per channel, eight at
+-- most, each lane a row of blocks that point at patterns.
 --
 --   {track = 3, start = 1040, length = 176,        -- set bar of its first bar; bars
 --    tempo = 172, channels = {{role = "drums", name = "Two-Step"}, ...},
---    sections = {{id = "intro", start = 0, length = 16, cycle = 0}, ...},
---    lanes = {{part = "drums", blocks = {{start = 8, length = 16, pattern = "drums.light",
+--    phrases = {{start = 0, length = 8, energy = 0.25, label = "Mix in"}, ...},
+--    events = {{bar = 96, kind = "valley"}, ...},
+--    lanes = {{part = "drums", blocks = {{start = 8, length = 16, pattern = "trance.drums.004",
 --      filter = {kind = "lowpass", from = 0.3, to = 1}}, ...}}, ...}}
 --
--- Section and block starts count bars from the track's first bar. Blocks are
+-- Phrase and block starts count bars from the track's first bar. Blocks are
 -- pure data (numbers and strings), so the composer, the timeline, tests and a
 -- future editor all read the same plan; patterns hold the only code. Within
 -- a lane blocks never overlap, and silence is the absence of a block.
@@ -17,7 +18,9 @@
 -- A block may carry automation, as a clip does in an arrange window: `level`
 -- {from, to} fades it and `filter` {kind, from, to} sweeps a low-pass or a
 -- high-pass over it, both 0…1 with 1 wide open. A block split from a longer
--- one plays on from `offset` bars into the `whole`.
+-- one plays on from `offset` bars into the `whole`. A drum block may play
+-- its `variant` ("light"), and a fill or roll names the groove it
+-- interrupts (`under`, and `phase`, the bar of that groove it stands in).
 local Arrangement = {}
 Arrangement.__index = Arrangement
 
@@ -49,11 +52,12 @@ function Arrangement.new(fields, patterns, order)
 	local where = "track " .. tostring(self.track)
 	assert(math.type(self.length) == "integer" and self.length > 0, where .. " needs a whole number of bars")
 	local cursor = 0
-	for _, section in ipairs(self.sections) do
-		assert(section.start == cursor and section.length > 0, where .. " sections must tile the track")
-		cursor = section.start + section.length
+	for _, phrase in ipairs(self.phrases) do
+		assert(phrase.start == cursor and phrase.length > 0, where .. " phrases must tile the track")
+		assert(phrase.energy >= 0 and phrase.energy <= 1, where .. " phrases have an energy of 0…1")
+		cursor = phrase.start + phrase.length
 	end
-	assert(cursor == self.length, where .. " sections must cover every bar")
+	assert(cursor == self.length, where .. " phrases must cover every bar")
 	local rank = {}
 	for i, part in ipairs(order) do rank[part] = i end
 	assert(#self.lanes <= Arrangement.channels, where .. " plays on at most " .. Arrangement.channels .. " channels")
@@ -84,15 +88,15 @@ function Arrangement.new(fields, patterns, order)
 	return self
 end
 
---- The section holding track bar `pos`, and its index.
-function Arrangement:sectionAt(pos)
-	local sections = self.sections
-	local lo, hi = 1, #sections
+--- The phrase holding track bar `pos`, and its index.
+function Arrangement:phraseAt(pos)
+	local phrases = self.phrases
+	local lo, hi = 1, #phrases
 	while lo < hi do
 		local mid = (lo + hi + 1) // 2
-		if sections[mid].start <= pos then lo = mid else hi = mid - 1 end
+		if phrases[mid].start <= pos then lo = mid else hi = mid - 1 end
 	end
-	return sections[lo], lo
+	return phrases[lo], lo
 end
 
 --- The block of `lane` under track bar `pos`, or nil for silence.
@@ -128,14 +132,10 @@ function Arrangement:blocksAt(pos)
 	return blocks
 end
 
---- Whether `part` plays anything in the section at index `i`.
-function Arrangement:plays(part, i)
-	local lane, section = self:lane(part), self.sections[i]
-	if not lane then return false end
-	for _, block in ipairs(lane.blocks) do
-		if block.start < section.start + section.length and block.start + block.length > section.start then return true end
-	end
-	return false
+--- The energy of track bar `pos`: its phrase's, which is what the curve is
+--- drawn from.
+function Arrangement:energyAt(pos)
+	return (self:phraseAt(pos)).energy
 end
 
 --- A block's automation `at` (0…1) of the way through it: its level, and
