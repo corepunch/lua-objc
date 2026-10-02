@@ -150,6 +150,14 @@ local xml = require("ui.xml")
 local shown = 0
 local _, sectionRefs = xml.renderFile("apps/diskmap/views/Changes.etlua", {changes = overview, actions = {showAllChanges = function() shown = shown + 1 end}}, ns)
 t.expect(sectionRefs.showAllChanges ~= nil, "a long comparison offers Show All")
+-- The changed locations share one box, split by vertical separators.
+local changesRow = sectionRefs.changesBox.contentView.subviews[1]
+local dividers, items = 0, 0
+for _, child in ipairs(changesRow.subviews) do
+	if child.className == "NSBox" then dividers = dividers + 1 else items = items + 1 end
+end
+t.assertEqual(items, #overview.rows, "one item per changed location in a single box")
+t.assertEqual(dividers, #overview.rows - 1, "with a vertical separator between neighbours")
 local _, historyRefs = xml.renderFile("apps/diskmap/views/Changes.etlua", {changes = {rows = overview.rows, detail = "Since Sep 20 · 3 scans recorded"}, actions = {}}, ns)
 t.expect(historyRefs.changesSection ~= nil and historyRefs.showAllChanges == nil, "history changes show without Show All")
 local full = Snapshot.changes(model, many)

@@ -6,19 +6,22 @@
     <Button id="showAllChanges" title="Show All" action="showAllChanges" help="List every location that changed since the snapshot" />
     <% end %>
   </HStack>
-  <HStack spacing="12" alignment="top">
-    <% for _, row in ipairs(changes.rows) do %>
-    <GroupBox flexGrow="1" flexBasis="0" flexShrink="1">
-      <HStack padding="10" spacing="8" alignment="center">
+  <% --[[ One box split by vertical separators, like the storage summary in
+    System Settings, rather than a card per location. ]] %>
+  <GroupBox id="changesBox" maxWidth="infinity">
+    <HStack padding="10" spacing="12" alignment="center">
+      <% for index, row in ipairs(changes.rows) do %>
+      <% if index > 1 then %><Divider orientation="vertical" /><% end %>
+      <HStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="8" alignment="center">
         <SystemImage name="<%= row.icon or "folder" %>" size="20" badgeColor="<%= row.color or "systemGray" %>" />
         <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="1" alignment="leading">
           <Label text="<%= row.name %>" size="12" lines="1" maxWidth="infinity" />
           <Label text="<%= row.text %>" size="13" weight="semibold" monospacedDigit="true" color="<%= row.grew and "systemOrange" or "systemGreen" %>" />
         </VStack>
       </HStack>
-    </GroupBox>
-    <% end %>
-  </HStack>
+      <% end %>
+    </HStack>
+  </GroupBox>
 </VStack>
 <% else %>
 <VStack id="changesEmpty" hidden="true" />
