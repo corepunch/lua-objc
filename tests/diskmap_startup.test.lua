@@ -1,9 +1,10 @@
 _G.__headless = true
 local t = require("TestKit")
 local Controller = require("apps.diskmap.Controller")
-local Model = require("apps.diskmap.Model")
-local Inventory = require("apps.diskmap.models.Inventory")
-local Categories = require("apps.diskmap.models.Categories")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
+local Inventory = require("apps.diskmap.helpers.Inventory")
+local Categories = require("apps.diskmap.helpers.Categories")
 local bridge = require("AppKitNative")
 local savedArgs = arg
 local launches, monitors, capacityReads = 0, 0, 0
@@ -34,13 +35,13 @@ for i, arguments in ipairs({{}, {"-cache=/missing/inventory.json"},
 	local window = app:createWindow()
 	t.assertEqual(launches, i, "each new app instance starts its own scan")
 	t.assertEqual(monitors, i, "every launch installs background monitoring")
-	t.assertEqual(Model.total(app.model), 0, "new launch has no previous measurement values")
+	t.assertEqual(Store.total(app.model), 0, "new launch has no previous measurement values")
 	t.expect(app.model.kept.derived, "Keep preferences survive independently of measurements")
 	t.expect(not app.settings.enabled and app.scan.job ~= nil, "paused background checks do not suppress startup scan")
-	for _, row in ipairs(Categories.rows(app.model)) do
+	for _, row in ipairs(Categories.rows()) do
 		t.expect(row.calculating or row.status == "excluded" or row.status == "unsupported", "startup recalculates allowed category: " .. row.id)
 	end
-	local _, ids = Inventory.plan(app.model)
+	local _, ids = Inventory.plan()
 	local result = {trees = {}, rootStates = {}}
 	for index, id in ipairs(ids) do
 		result.rootStates[index] = id == "derived" and "measured" or "missing"

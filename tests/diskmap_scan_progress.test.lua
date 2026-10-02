@@ -4,11 +4,12 @@
 _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
-local Core = require("apps.diskmap.Model")
-local Scan = require("apps.diskmap.models.Scan")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
+local Scan = require("apps.diskmap.services.Scan")
 local ScanProgress = require("apps.diskmap.controllers.ScanProgressController")
 
-local model = Core.new("/Users/test")
+local model = Store.new("/Users/test")
 model.measurements = {a = {bytes = 256}, b = {bytes = 256}}
 local cancelled = 0
 local scan = Scan.new(model, {cancel = function() end}, "/Users/test", function() cancelled = cancelled + 1 end)

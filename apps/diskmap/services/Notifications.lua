@@ -1,6 +1,7 @@
-local History = require("apps.diskmap.models.History")
-local Reminder = require("apps.diskmap.models.Reminder")
-local Sentinel = require("apps.diskmap.models.Sentinel")
+local Provider = require("apps.diskmap.services.Provider")
+local History = require("apps.diskmap.helpers.History")
+local Reminder = require("apps.diskmap.helpers.Reminder")
+local Sentinel = require("apps.diskmap.helpers.Sentinel")
 local Notifications = {}; Notifications.__index = Notifications
 
 -- The two opt-in notifications: the monthly reminder (#15) and the Sentinel
@@ -13,7 +14,7 @@ function Notifications.new(model, service, handlers)
 end
 
 local function call(service, name, ...)
-	local fn = rawget(service, name)
+	local fn = Provider.offers(service, name)
 	if type(fn) == "function" then return fn(...) end
 end
 
@@ -58,7 +59,7 @@ end
 -- Reschedules the monthly reminder from the newest history.
 function Notifications:historyRecorded(entries)
 	if not (self:available() and self:enabled("reminder")) then return end
-	local notification = Reminder.notification(self.model, entries)
+	local notification = Reminder.notification(entries)
 	if notification then
 		call(self.service, "notify", notification, function() self.handlers.show() end)
 	end
@@ -67,7 +68,7 @@ end
 function Notifications:trashed(events)
 	for _, app in ipairs(Sentinel.trashedApps(events, self.trash)) do
 		local plist = call(self.service, "readPropertyList", app .. "/Contents/Info.plist")
-		local offer = Sentinel.offer(self.model, app, type(plist) == "table" and plist.CFBundleIdentifier or nil)
+		local offer = Sentinel.offer(app, type(plist) == "table" and plist.CFBundleIdentifier or nil)
 		if offer then
 			call(self.service, "notify", offer.notification, function(_, action)
 				self.handlers.show()

@@ -31,7 +31,7 @@
     slots                refs for retained child templates, below the sections
     contextAfterSections puts scope and statistics after the actual rows
     contextDisclosure    optional collapsed title for that accounting context
-    scopeNote            initial text of the note stating what the totals cover (models/Scope.lua)
+    scopeNote            initial text of the note stating what the totals cover (helpers/Scope.lua)
     footnote             {text, icon} ]] %>
 <% if layout.details then %><VStack spacing="0" flexGrow="1" flexBasis="0" flexShrink="1"><% end %>
 <ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">

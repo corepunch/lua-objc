@@ -4,7 +4,7 @@ local ns = require("AppKit")
 local xml = require("ui.xml")
 local Mock = require("apps.diskmap.services.Mock")
 local Controller = require("apps.diskmap.Controller")
-local Tour = require("apps.diskmap.models.Tour")
+local Tour = require("apps.diskmap.helpers.Tour")
 
 -- A JPEG's pixel size, from its start-of-frame segment.
 local function jpegSize(path)

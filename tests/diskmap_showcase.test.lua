@@ -39,20 +39,21 @@ local derived = app.model.measurements["derived"]
 t.expect(derived ~= nil and (derived.bytes or 0) > 0, "catalog measurements match the virtual home folder")
 
 -- `--map-style` picks the Map's initial chart.
-local MapPage = require("apps.diskmap.models.MapPage")
+local Routes = require("data.routes")
+local function routePage(id, app) return Routes.page(require("apps.diskmap.routes")[id], {id = id}, app, "apps.diskmap") end
 t.assertEqual(Provider.mapStyle({[1] = "--map-style=rectangles"}), "rectangles", "the map style switch is read")
-t.assertEqual(MapPage.new({}, {mapStyle = "rectangles"}).style, "rectangles", "the map can open as rectangles")
-t.assertEqual(MapPage.new({}, {mapStyle = "hexagons"}).style, "rings", "unknown styles fall back to rings")
-t.assertEqual(MapPage.new({}, {}).style, "rings", "rings stay the default")
+t.assertEqual(routePage("map", {mapStyle = "rectangles"}).style, "rectangles", "the map can open as rectangles")
+t.assertEqual(routePage("map", {mapStyle = "hexagons"}).style, "rings", "unknown styles fall back to rings")
+t.assertEqual(routePage("map", {}).style, "rings", "rings stay the default")
 
 -- A capture plan switches the chart at runtime, as the segmented control does.
 app:show("map")
 app:setMapStyle("rectangles")
-t.assertEqual(app.graph:get("map").style, "rectangles", "setMapStyle switches the Map's chart")
+t.assertEqual(app:request("map").style, "rectangles", "setMapStyle switches the Map's chart")
 t.expect(app.page.refs.treemap ~= nil, "the Map page redraws as a treemap")
 app:setMapStyle("rings")
 t.expect(app.page.refs.treemap == nil and app.page.refs.sunburst ~= nil, "and back to rings")
 t.assertThrows(function() app:setMapStyle("hexagons") end, "an unknown map style is an error")
-t.assertEqual(app.graph:get("map").style, "rings", "a rejected style leaves the chart alone")
+t.assertEqual(app:request("map").style, "rings", "a rejected style leaves the chart alone")
 
 os.exit(t.summary() and 0 or 1)

@@ -1,8 +1,10 @@
 _G.__headless = true
+local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
-local Basket = require("apps.diskmap.models.Basket")
-local Verify = require("apps.diskmap.models.Verify")
-local Model = require("apps.diskmap.Model")
+local Marks = require("apps.diskmap.models.Marks")
+local Verify = require("apps.diskmap.helpers.Verify")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
 
 -- The collector and the Review sheet refuse anything whose loss a person
 -- could not undo from the Trash alone (#59): credentials, mail and message
@@ -55,11 +57,11 @@ local refused = {
 	{"/volumes/backup", "a mount point in lower case"},
 }
 for _, case in ipairs(refused) do
-	t.expect(not Basket.validate(case[1], home), "the collector refuses " .. case[2])
+	t.expect(not Marks.validate(case[1], home), "the collector refuses " .. case[2])
 	local ok, why = Verify.check({path = case[1]}, nil, home, {})
 	t.expect(not ok and (why.code == "location" or why.code == "protected"), "the Review sheet refuses " .. case[2])
 end
-local reason = select(2, Basket.validate(home .. "/Library/Keychains", home))
+local reason = select(2, Marks.validate(home .. "/Library/Keychains", home))
 t.expect(reason:find("Passwords", 1, true) ~= nil, "a refusal says why")
 
 local allowed = {
@@ -81,25 +83,25 @@ local allowed = {
 	"/Volumes/Media/Footage/clip.mov",
 }
 for _, path in ipairs(allowed) do
-	local ok, why = Basket.validate(path, home)
+	local ok, why = Marks.validate(path, home)
 	t.expect(ok, "the collector takes " .. path .. (why and (": " .. why) or ""))
 	t.expect(Verify.check({path = path}, nil, home, {}), "the Review sheet moves " .. path)
 end
 
 -- Guards never outlaw what the catalog itself offers to move to the Trash.
-local model = Model.new(home)
+local model = Store.new(home)
 local offered = 0
-for _, row in ipairs(model.resources:leaves()) do
+for _, row in ipairs(Locations:leaves()) do
 	if row.action == "trash" and row.path then
 		offered = offered + 1
-		local ok, why = Basket.validate(row.path, home)
+		local ok, why = Marks.validate(row.path, home)
 		t.expect(ok, "catalog item " .. row.id .. " can be marked" .. (why and (": " .. why) or ""))
 	end
 end
 t.expect(offered > 5, "the catalog offers locations to check")
 
-t.assertEqual(Basket.normalize("/tmp/x/"), "/private/tmp/x", "normalizing follows the root's links")
-t.assertEqual(Basket.normalize("/"), "/", "the root stays the root")
-t.assertEqual(Basket.normalize("/tmpfiles"), "/tmpfiles", "a name that starts like a link is left alone")
+t.assertEqual(Marks.normalize("/tmp/x/"), "/private/tmp/x", "normalizing follows the root's links")
+t.assertEqual(Marks.normalize("/"), "/", "the root stays the root")
+t.assertEqual(Marks.normalize("/tmpfiles"), "/tmpfiles", "a name that starts like a link is left alone")
 
 os.exit(t.summary() and 0 or 1)

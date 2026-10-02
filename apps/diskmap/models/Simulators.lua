@@ -1,4 +1,6 @@
-local Model = require("apps.diskmap.Model")
+local Model = require("data.model")
+local Locations = require("apps.diskmap.models.Locations")
+local Format = require("apps.diskmap.helpers.Format")
 local Simulators = {}
 local UUID = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
 local function expand(path, home)
@@ -106,9 +108,9 @@ function Simulators.rows(inventory, query, filter, now)
 					icon = Simulators.symbol(name .. " " .. runtimeName), color = available == false and "systemOrange" or "systemBlue",
 					state = available == false and "Unavailable" or (device.state or "State unknown"),
 					available = available, running = running, path = device.dataPath,
-					bytes = device.dataPathSize, size = Model.size(device.dataPathSize), age = age,
+					bytes = device.dataPathSize, size = Format.size(device.dataPathSize), age = age,
 					runtimeIdentifier = runtime, deviceType = device.deviceType,
-					lastUse = age and Model.used(Model.ago(age)) or "Last use unknown"})
+					lastUse = age and Format.used(Format.ago(age)) or "Last use unknown"})
 			end
 		end
 	end
@@ -142,9 +144,9 @@ function Simulators.runtimeRows(list, inventory, query, now)
 				table.insert(rows, {id = id, name = name, icon = Simulators.symbol(platform), color = "systemIndigo", subtitle = table.concat({build and ("Build " .. build) or nil,
 					type(entry.kind) == "string" and entry.kind or nil, type(entry.state) == "string" and entry.state or nil}, " · "),
 					platform = platform, version = version, runtimeIdentifier = entry.runtimeIdentifier,
-					bytes = bytes, size = Model.size(bytes), deletable = entry.deletable == true,
-					devices = devices, deviceText = devices == 0 and "No devices" or Model.plural(devices, "device"),
-					lastUse = age and Model.used(Model.ago(age)) or "Last use unknown",
+					bytes = bytes, size = Format.size(bytes), deletable = entry.deletable == true,
+					devices = devices, deviceText = devices == 0 and "No devices" or Format.plural(devices, "device"),
+					lastUse = age and Format.used(Format.ago(age)) or "Last use unknown",
 					path = type(entry.path) == "string" and entry.path or nil})
 			end
 		end
@@ -185,7 +187,7 @@ function Simulators.validateRuntime(row, model)
 	if type(row.id) ~= "string" or not row.id:match(UUID) then return false, {code = "invalid_uuid", message = "Runtime identifier is not a UUID."} end
 	if row.deletable ~= true then return false, {code = "not_deletable", message = "simctl reports this runtime as not deletable; manage it in Xcode."} end
 	if model then
-		local catalog = model.resources:find("runtimes")
+		local catalog = Locations:find("runtimes")
 		if catalog and catalog:isKept() then return false, {code = "kept_resource", message = "Keep protects simulator runtimes."} end
 	end
 	return true
@@ -209,18 +211,20 @@ function Simulators.validate(action, row, model)
 	if row.running then return false, {code = "device_running", message = "Shut down the simulator before changing it."} end
 	if action == "erase" and row.available ~= true then return false, {code = "device_unavailable", message = "Unavailable simulators cannot be erased."} end
 	if model then
-		local catalog = model.resources:find("simulators")
+		local catalog = Locations:find("simulators")
 		if catalog and catalog:isKept() then return false, {code = "kept_resource", message = "Keep protects simulator storage."} end
-		if Simulators.isKept(model, row.id) then return false, {code = "kept_device", message = "This device is marked Keep."} end
+		if Simulators:isKept(row.id) then return false, {code = "kept_device", message = "This device is marked Keep."} end
 	end
 	return true
 end
 -- Keep for one device, beside Keep for the whole Simulators category. The
 -- device's identifier is the key, so the choice survives renames.
-function Simulators.isKept(model, udid)
+function Simulators:isKept(udid)
+	local model = Model.db
 	return model.kept["simulator:" .. tostring(udid)] == true
 end
-function Simulators.toggleKept(model, udid)
+function Simulators:toggleKept(udid)
+	local model = Model.db
 	local key = "simulator:" .. tostring(udid)
 	model.kept[key] = not model.kept[key] or nil
 	return model.kept[key] == true

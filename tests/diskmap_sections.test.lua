@@ -3,15 +3,16 @@ local t = require("TestKit")
 local ns = require("AppKit")
 local xml = require("ui.xml")
 local bridge = require("AppKitNative")
-local Model = require("apps.diskmap.Model")
-local Categories = require("apps.diskmap.models.Categories")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
+local Categories = require("apps.diskmap.helpers.Categories")
 local FOLDERS = {Hero = "sections", Overview = "pages", Settings = "sheets", ResourceList = "components", Page = "pages"}
 local function render(name, data)
 	return xml.renderFile("apps/diskmap/views/" .. FOLDERS[name] .. "/" .. name .. ".etlua", data, ns)
 end
-local model = Model.new("/Users/test")
+local model = Store.new("/Users/test")
 model.scan.errors = 3
-local coverage = Categories.coverage(model, {totalKb = 1000000, freeKb = 500000})
+local coverage = Categories.coverage({totalKb = 1000000, freeKb = 500000})
 t.expect(coverage:find("At least ", 1, true) == 1, "partial inventories mark the measured total as a lower bound")
 t.expect(coverage:find("3 filesystem read issues", 1, true) ~= nil, "coverage reports read issues without calling them inaccessible locations")
 t.expect(coverage:find("not attributed", 1, true) ~= nil, "capacity difference uses a plain-language label")
@@ -20,16 +21,16 @@ for id, bytes in pairs({["apps-system-other"] = 30e9, derived = 20e9, ["codex-ca
 	downloads = 5e9, ["user-caches"] = 4e9}) do
 	model.measurements[id] = {bytes = bytes, status = "complete"}
 end
-local Overview = require("apps.diskmap.models.Overview")
+local Overview = require("apps.diskmap.helpers.Overview")
 local disk = {totalKb = 200e9 / 1024, freeKb = 100e9 / 1024}
-local chart = Overview.chart(model, disk)
+local chart = Overview.chart(disk)
 t.assertEqual(chart.legend[1].id, "applications", "largest category leads the legend")
 t.assertEqual(chart.legend[2].id, "developer", "next largest category follows")
 t.assertEqual(chart.legend[3].id, "ai-agents", "AI agents have their own storage segment")
 t.assertEqual(chart.marks[#chart.marks].label, "Free", "free space closes the ring")
 local chartActions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end}
-local hero, heroRefs = render("Hero", {summary = Overview.summary(model, disk), chart = chart,
-	reclaim = Overview.reclaim(model), volumeName = "Startup Disk", actions = chartActions,
+local hero, heroRefs = render("Hero", {summary = Overview.summary(disk), chart = chart,
+	reclaim = Overview.reclaim(), volumeName = "Startup Disk", actions = chartActions,
 	hiddenSpace = Overview.hidden(disk, {important = 110e9}, 2, 3)})
 t.assertEqual(chart.marks[1].id, chart.legend[1].id, "a mark carries its category, so its sector can open it")
 t.expect(heroRefs.hiddenSpace ~= nil, "the hero explains space no file scan can attribute")
@@ -56,11 +57,11 @@ end
 hero.size = ns.Size(900, 400)
 hero:layout(900)
 t.expect(heroRefs.chart.frame.size.height > 150, "the donut takes the height of the card: " .. heroRefs.chart.frame.size.height)
-local _, emptyRefs = render("Hero", {summary = Overview.summary(model, {totalKb = 1, freeKb = 0}),
-	chart = Overview.chart(model, {totalKb = 1, freeKb = 0}), reclaim = Overview.reclaim(model), volumeName = "Startup Disk", actions = chartActions})
+local _, emptyRefs = render("Hero", {summary = Overview.summary({totalKb = 1, freeKb = 0}),
+	chart = Overview.chart({totalKb = 1, freeKb = 0}), reclaim = Overview.reclaim(), volumeName = "Startup Disk", actions = chartActions})
 model.measurements.downloads = {status = "calculating"}
 -- While the scan runs the page draws its empty state: an empty ring, no legend, no cleanup offer.
-local _, busyRefs = render("Hero", {summary = Overview.summary(model, disk), chart = {marks = {}, legend = {}, explanation = "Measuring"},
+local _, busyRefs = render("Hero", {summary = Overview.summary(disk), chart = {marks = {}, legend = {}, explanation = "Measuring"},
 	volumeName = "Startup Disk", actions = chartActions})
 t.expect(busyRefs.cleanUp == nil and heroRefs.cleanUp ~= nil, "cleanup is offered only once every size is known")
 t.expect(busyRefs.legend == nil and busyRefs.legendExplanation ~= nil, "a running scan draws no legend")
@@ -69,7 +70,7 @@ t.expect(emptyRefs.legendExplanation ~= nil, "an overcounted inventory explains 
 t.expect(emptyRefs.lowSpace ~= nil and heroRefs.lowSpace == nil, "only a nearly full disk shows the low-space warning")
 t.assertEqual(#emptyRefs.chart.subviews, 3, "an empty chart keeps its track ring and centered total under the pointer view")
 local _, refs = render("Overview", {status = "Measured", measured = true, coverage = "", largestHidden = false, accessTitle = "Scan access…", accessHidden = false,
-	unmeasured = {items = {}}, hero = {summary = Overview.summary(model, disk), chart = chart, volumeName = "Startup Disk"}, actions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end, reclaim = function() end, select = function() end, open = function() end,
+	unmeasured = {items = {}}, hero = {summary = Overview.summary(disk), chart = chart, volumeName = "Startup Disk"}, actions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end, reclaim = function() end, select = function() end, open = function() end,
 	largestMenu = function() return {} end, openLargest = function() end, showLargest = function() end, access = function() end}})
 t.assertEqual(refs.categoriesPanel.className, "NSBox", "category rows share a native rounded section")
 t.assertEqual(refs.opportunities, nil, "the overview does not repeat reclaim content")
@@ -118,7 +119,7 @@ t.expect(total <= 595 + 1, "shared list columns fit the narrowest window")
 t.expect(named >= 170, "the name keeps 170 points in the narrowest window")
 -- Status lists show one colour-coded symbol per row; the status word stays
 -- available as tooltip and accessibility label instead of truncated text.
-local Status = require("apps.diskmap.models.Status")
+local Status = require("apps.diskmap.helpers.Status")
 local _, statusRefs = render("ResourceList", {id = "statuses", menu = "rowMenu", status = true, actions = {rowMenu = function() return {} end}})
 local statuses = statusRefs.statuses
 statuses:replaceRows({Status.apply({id = "derived", name = "Xcode DerivedData", detail = "Rebuildable", size = "≥ 999.9 MB", relative = 1, shareText = "", color = "systemBlue", icon = "hammer.fill"}),
@@ -145,8 +146,8 @@ end
 local _, sizeRefs = render("ResourceList", {id = "sizes", menu = "rowMenu", actions = {rowMenu = function() return {} end}})
 local sizes = sizeRefs.sizes
 sizes:replaceRows({
-	Model.sizeLabel({id = "mail", name = "Mail", shareText = "", color = "systemBlue", icon = "envelope"}, "denied"),
-	Model.sizeLabel({id = "docs", name = "Documents", relative = 1, shareText = "", color = "systemBlue", icon = "doc"}, "complete", 2e9),
+	Format.sizeLabel({id = "mail", name = "Mail", shareText = "", color = "systemBlue", icon = "envelope"}, "denied"),
+	Format.sizeLabel({id = "docs", name = "Documents", relative = 1, shareText = "", color = "systemBlue", icon = "doc"}, "complete", 2e9),
 })
 sizes.size = ns.Size(560, 200); sizes:layout(560)
 local denied, measured = meterOf(bridge._tableCell(sizes, 1, 0)), meterOf(bridge._tableCell(sizes, 1, 1))
@@ -158,34 +159,34 @@ t.assertEqual(tostring(denied.value.textColor), tostring(denied.symbol.contentTi
 t.expect(not denied.bar.hidden and not denied.bar.enabled, "a state keeps an empty, disabled bar")
 t.expect(measured.symbol.image == nil and measured.bar.enabled, "a measured size has no symbol and an enabled bar")
 t.assertEqual(measured.value.stringValue, "2.0 GB", "the measured size is text")
-for status, state in pairs(Model.sizeStates) do
-	local row = Model.sizeLabel({}, status)
+for status, state in pairs(Format.sizeStates) do
+	local row = Format.sizeLabel({}, status)
 	t.assertEqual(row.size, state.text, status .. " reads as its word")
 	t.expect(row.sizeIcon == state.icon and row.sizeColor == state.color, status .. " carries its symbol and colour")
 	t.expect(#state.text <= 14, status .. " is a short word")
 end
-t.assertEqual(Model.sizeStates.unsupported.text, "System Managed", "system-managed storage says so")
-t.assertEqual(Model.sizeStates.denied.color, "systemOrange", "no access is a warning")
-t.assertEqual(Model.sizeStates.failed.color, "systemRed", "a failed measurement is an error")
-t.expect(Model.sizeLabel({}, "complete", 1e9).sizeIcon == nil, "a measured size has no state symbol")
-local annotated = require("apps.diskmap.models.RowMenus").new({}, {}, {}, nil):annotate({
-	{id = "big", bytes = 4e9}, {id = "empty", bytes = 0}, Model.sizeLabel({id = "locked"}, "denied")})
+t.assertEqual(Format.sizeStates.unsupported.text, "System Managed", "system-managed storage says so")
+t.assertEqual(Format.sizeStates.denied.color, "systemOrange", "no access is a warning")
+t.assertEqual(Format.sizeStates.failed.color, "systemRed", "a failed measurement is an error")
+t.expect(Format.sizeLabel({}, "complete", 1e9).sizeIcon == nil, "a measured size has no state symbol")
+local annotated = require("apps.diskmap.flows.Rows")({app = {}}):annotate({
+	{id = "big", bytes = 4e9}, {id = "empty", bytes = 0}, Format.sizeLabel({id = "locked"}, "denied")})
 t.assertEqual(annotated[1].relative, 1, "the largest row fills its bar")
 t.assertEqual(annotated[2].relative, 0, "a measured zero is an empty bar")
 t.assertEqual(annotated[3].relative, nil, "an unmeasured row has no fraction, so its bar is disabled")
-local pending = Model.sizeLabel({}, "calculating")
+local pending = Format.sizeLabel({}, "calculating")
 t.expect(pending.calculating and pending.size == "Calculating…", "calculating keeps its spinner and word")
-local partial = Model.sizeLabel({}, "partial", 2e9)
+local partial = Format.sizeLabel({}, "partial", 2e9)
 t.assertEqual(partial.size, "≥ 2.0 GB", "a partial size reads as a lower bound")
 t.expect(partial.partial, "a partial size is flagged")
-sizes:replaceRows({Model.sizeLabel({id = "dev", name = "Developer", relative = 1, shareText = "", color = "systemBlue", icon = "hammer"}, "partial", 15.8e9)})
+sizes:replaceRows({Format.sizeLabel({id = "dev", name = "Developer", relative = 1, shareText = "", color = "systemBlue", icon = "hammer"}, "partial", 15.8e9)})
 local lower = meterOf(bridge._tableCell(sizes, 1, 0))
 t.assertEqual(lower.value.stringValue, "≥ 15.8 GB", "the lower bound reads ≥ before its number")
 t.expect(lower.symbol.image == nil, "a lower bound is a sign, not a symbol")
 t.assertEqual(Status.apply({detail = "Under 5.0 GB"}, "Within").statusColor, "systemGreen", "a location within limits is green")
 t.assertEqual(Status.apply({detail = "Review"}).statusColor, "systemOrange", "review is orange")
 t.assertEqual(Status.apply({detail = "Keep"}).statusColor, "systemRed", "required data is red")
-local XcodeController = require("apps.diskmap.models.XcodePage")
+local XcodeController = require("apps.diskmap.routes").xcode
 for _, status in ipairs({"Newest · keep", "Older", "Missing", "Present", "Unknown"}) do
 	t.expect(Status.styles[XcodeController.statuses[status]] ~= nil, "Xcode status " .. status .. " has a symbol")
 end

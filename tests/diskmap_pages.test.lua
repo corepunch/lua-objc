@@ -54,8 +54,8 @@ t.expect(inside(page().sunburst, page().mapChartPane) and not scrolled(page().su
 t.expect(page().worthMark_1 ~= nil and not inside(page().worthMark_1, page().mapChartPane),
 	"beside the rings, Worth a look sits under the list")
 -- Slivers fold into "Other" so every mark is wide enough to see and point at.
-local MapTree = require("apps.diskmap.models.MapTree")
-local mapNodes, mapTotal = MapTree.nodes(app.model, "")
+local MapTree = require("apps.diskmap.helpers.MapTree")
+local mapNodes, mapTotal = MapTree.nodes("")
 for _, node in ipairs(mapNodes) do
 	t.expect(node.value / mapTotal >= MapTree.minimumShare or (node.other and node.ring == 1),
 		"map node " .. node.id .. " is not a sliver")
@@ -72,7 +72,7 @@ for _, node in ipairs(mapNodes) do
 	end
 end
 app.page.actions.chartSelect("developer", 1)
-t.assertEqual(app.graph:get("map").focus, "developer", "clicking a group focuses it")
+t.assertEqual(app:request("map").focus, "developer", "clicking a group focuses it")
 t.assertEqual(page().mapFocus.text, "Developer", "the breadcrumb ends at the focus")
 app.page.actions.pickStyle(1)
 t.expect(page().treemap ~= nil and page().sunburst == nil, "rectangles replace the rings")
@@ -82,7 +82,7 @@ t.expect(inside(page().worthMark_1, page().mapChartPane), "without a list, Worth
 app.page.actions.chartHover("xcode")
 t.expect(page().mapHover.text:find("Developer › Xcode", 1, true) == 1, "hover describes a node in place")
 app.page.actions.up()
-t.assertEqual(app.graph:get("map").focus, "", "the center or breadcrumb goes back up")
+t.assertEqual(app:request("map").focus, "", "the center or breadcrumb goes back up")
 app.page.actions.pickStyle(0)
 t.expect(page().mapList ~= nil and page().mapList.rowCount > 0, "the rings bring the list back")
 t.expect(page().mapChartPane.frame.size.width < treemapWidth, "the rectangles take the list's width")
@@ -179,7 +179,7 @@ t.expect(bridge._navigationGesture(window, "forward") and app.destination == "up
 -- The Overview's ring is interactive: a sector names itself in the center
 -- while hovered and opens the Map inside its category; the center opens the
 -- whole map.
-app.graph:get("map"):setFocus("")
+app:request("map"):setFocus("")
 app:show("overview")
 local hero = app.pages.overview
 local heroActions = hero.actions
@@ -196,11 +196,11 @@ heroActions.chartSelect("free")
 t.assertEqual(app.destination, "overview", "free space has nothing inside to open")
 heroActions.chartSelect("developer")
 t.assertEqual(app.destination, "map", "clicking a category's sector opens the Map")
-t.assertEqual(app.graph:get("map").focus, "developer", "inside that category")
+t.assertEqual(app:request("map").focus, "developer", "inside that category")
 app:show("overview")
 app.pages.overview.actions.chartCenter()
 t.assertEqual(app.destination, "map", "the center opens the Map")
-t.assertEqual(app.graph:get("map").focus, "", "at the whole disk")
+t.assertEqual(app:request("map").focus, "", "at the whole disk")
 
 -- The keyboard does the same: focus names a sector, Return opens it, and
 -- Delete, which has no level to go up to here, stays on the page.
@@ -224,8 +224,8 @@ end
 t.expect(hero.refs.chartDetail.text:find("Developer · ", 1, true) == 1, "arrows reach the categories")
 bridge._pointerSend(heroPointer, "key", "return")
 t.assertEqual(app.destination, "map", "return opens the Map inside the focused category")
-t.assertEqual(app.graph:get("map").focus, "developer", "focused on it")
-app.graph:get("map"):setFocus("")
+t.assertEqual(app:request("map").focus, "developer", "focused on it")
+app:request("map"):setFocus("")
 
 -- Drilling takes the new level in place.
 local rings = app.page.refs.sunburst

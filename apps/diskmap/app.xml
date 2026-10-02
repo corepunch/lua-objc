@@ -1,68 +1,42 @@
 <App name="Diskmap" startup="overview" controller="Controller">
-	<Model id="simulators" class="models.SimulatorsPage" />
-	<Model id="worktrees" class="models.WorktreesPage" />
-	<Model id="largest" class="models.LargestPage" />
-	<Model id="files" class="models.FilesPage" />
-	<Model id="kinds" class="models.KindsPage" />
-	<Model id="applications" class="models.ApplicationsPage" />
-	<Model id="projects" class="models.ProjectsPage" />
-	<Model id="xcode" class="models.XcodePage" />
-	<Model id="overview" class="models.OverviewPage" />
-	<Model id="map" class="models.MapPage" />
-	<Model id="folder" class="models.FolderPage" />
-	<Model id="cleanup" class="models.CleanupPage" />
-	<Model id="duplicates" class="models.DuplicatesPage" />
-	<Model id="disks" class="models.DisksPage" />
-	<Model id="updates" class="models.UpdatesPage" />
-	<Model id="filesystem" class="models.FilesystemPage" />
-	<Model id="guide" class="models.TopicsPage" />
-	<Model id="help" class="models.TopicsPage" />
-	<Model id="watched" class="models.WatchedPage" />
-	<Model id="developer" class="models.WorkflowPage" />
-	<Model id="music" class="models.WorkflowPage" />
-	<Model id="video" class="models.WorkflowPage" />
-	<Model id="photography" class="models.WorkflowPage" />
-	<Model id="design" class="models.WorkflowPage" />
-	<Model id="studio3d" class="models.WorkflowPage" />
-	<Model id="games" class="models.WorkflowPage" />
-	<Page id="overview" title="Overview" icon="chart.pie.fill" color="systemBlue" key="1" model="overview" view="pages/Overview" />
-	<Page id="cleanup" title="Clean Up" icon="sparkles" color="systemIndigo" key="2" model="cleanup" view="pages/Page" />
+	<Page id="overview" title="Overview" icon="chart.pie.fill" color="systemBlue" key="1" />
+	<Page id="cleanup" title="Clean Up" icon="sparkles" color="systemIndigo" key="2" />
 	<Section title="Free Up Space">
-		<Page id="applications" title="Applications" icon="square.grid.3x3.fill" color="systemBlue" key="3" model="applications" view="pages/Page" />
-		<Page id="files" title="Large Files" icon="doc.fill" color="systemTeal" key="4" model="files" view="pages/Page" />
-		<Page id="duplicates" title="Duplicates" icon="doc.on.doc.fill" color="systemTeal" model="duplicates" view="pages/Page" />
-		<Page id="simulators" title="Simulators" icon="iphone" color="systemBlue" model="simulators" view="pages/Simulators" workflow="developer" />
-		<Page id="worktrees" title="Worktrees" icon="arrow.triangle.branch" color="systemPurple" model="worktrees" view="pages/Worktrees" workflow="developer" />
-		<Page id="projects" title="Projects" icon="folder.fill.badge.gearshape" color="systemOrange" model="projects" view="pages/Page" workflow="developer" />
+		<Page id="applications" title="Applications" icon="square.grid.3x3.fill" color="systemBlue" key="3" />
+		<Page id="files" title="Large Files" icon="doc.fill" color="systemTeal" key="4" />
+		<Page id="duplicates" title="Duplicates" icon="doc.on.doc.fill" color="systemTeal" />
+		<Page id="simulators" title="Simulators" icon="iphone" color="systemBlue" workflow="developer" />
+		<Page id="worktrees" title="Worktrees" icon="arrow.triangle.branch" color="systemPurple" workflow="developer" />
+		<Page id="projects" title="Projects" icon="folder.fill.badge.gearshape" color="systemOrange" workflow="developer" />
 	</Section>
 	<Section title="Explore">
-		<Page id="map" title="Storage Map" icon="circle.circle.fill" color="systemIndigo" key="5" model="map" view="pages/Map" />
-		<Page id="folder" title="Folder Map" icon="folder.fill" color="systemBlue" model="folder" view="pages/Folder" />
-		<Page id="largest" title="Largest Locations" icon="chart.bar.fill" color="systemOrange" key="6" model="largest" view="pages/Page" />
-		<Page id="kinds" title="File Types" icon="square.grid.2x2.fill" color="systemPink" key="7" model="kinds" view="pages/Kinds" />
+		<Page id="map" title="Storage Map" icon="circle.circle.fill" color="systemIndigo" key="5" />
+		<Page id="folder" title="Folder Map" icon="folder.fill" color="systemBlue" />
+		<Page id="largest" title="Largest Locations" icon="chart.bar.fill" color="systemOrange" key="6" />
+		<Page id="kinds" title="File Types" icon="square.grid.2x2.fill" color="systemPink" key="7" />
 	</Section>
 	<Section title="System">
-		<Page id="disks" title="Disks &amp; Volumes" icon="internaldrive.fill" color="systemGray" model="disks" view="pages/Page" />
-		<Page id="updates" title="Updates &amp; Snapshots" icon="arrow.triangle.2.circlepath" color="systemGray" model="updates" view="pages/Updates" />
+		<Page id="disks" title="Disks &amp; Volumes" icon="internaldrive.fill" color="systemGray" />
+		<Page id="updates" title="Updates &amp; Snapshots" icon="arrow.triangle.2.circlepath" color="systemGray" />
 	</Section>
 	<Section title="Developer">
-		<Page id="developer" title="Developer tools" sidebar="Dev tools" icon="hammer.fill" color="systemPurple" key="8" model="developer" view="pages/Page" workflow="developer" />
-		<Page id="xcode" title="Xcode" icon="hammer.circle.fill" color="systemBlue" key="9" model="xcode" view="pages/Page" workflow="developer" />
+		<Page id="developer" route="workflow" title="Developer tools" sidebar="Dev tools" icon="hammer.fill" color="systemPurple" key="8" workflow="developer" />
+		<Page id="xcode" title="Xcode" icon="hammer.circle.fill" color="systemBlue" key="9" workflow="developer" />
 	</Section>
 	<Section title="Creative &amp; Games">
-		<Page id="music" title="Music Production" sidebar="Music" icon="pianokeys" color="systemPink" model="music" view="pages/Page" workflow="music" />
-		<Page id="video" title="Video Production" sidebar="Video" icon="film.fill" color="systemPurple" model="video" view="pages/Page" workflow="video" />
-		<Page id="photography" title="Photography" icon="camera.fill" color="systemOrange" model="photography" view="pages/Page" workflow="photography" />
-		<Page id="design" title="Design" icon="paintbrush.pointed.fill" color="systemTeal" model="design" view="pages/Page" workflow="design" />
-		<Page id="studio3d" title="3D &amp; Game Engines" sidebar="3D &amp; Engines" icon="cube.fill" color="systemIndigo" model="studio3d" view="pages/Page" workflow="studio3d" />
-		<Page id="games" title="Games" icon="gamecontroller.fill" color="systemGreen" model="games" view="pages/Page" workflow="games" />
+		<Page id="music" route="workflow" title="Music Production" sidebar="Music" icon="pianokeys" color="systemPink" workflow="music" />
+		<Page id="video" route="workflow" title="Video Production" sidebar="Video" icon="film.fill" color="systemPurple" workflow="video" />
+		<Page id="photography" route="workflow" title="Photography" icon="camera.fill" color="systemOrange" workflow="photography" />
+		<Page id="design" route="workflow" title="Design" icon="paintbrush.pointed.fill" color="systemTeal" workflow="design" />
+		<Page id="studio3d" route="workflow" title="3D &amp; Game Engines" sidebar="3D &amp; Engines" icon="cube.fill" color="systemIndigo" workflow="studio3d" />
+		<Page id="games" route="workflow" title="Games" icon="gamecontroller.fill" color="systemGreen" workflow="games" />
 	</Section>
 	<Section title="Learn">
-		<Page id="guide" title="Storage Guide" icon="book.fill" color="systemTeal" model="guide" view="pages/Topics" source="Guide" />
-		<Page id="filesystem" title="macOS Folders" icon="apple.logo" color="systemGray" model="filesystem" view="pages/Filesystem" />
-		<Page id="help" title="Diskmap Help" icon="questionmark.circle.fill" color="systemBlue" model="help" view="pages/Topics" source="Help" />
+		<Page id="guide" route="topics" title="Storage Guide" icon="book.fill" color="systemTeal" source="Guide" />
+		<Page id="filesystem" title="macOS Folders" icon="apple.logo" color="systemGray" />
+		<Page id="help" route="topics" title="Diskmap Help" icon="questionmark.circle.fill" color="systemBlue" source="Help" />
 	</Section>
 
 	<!-- Opened from the Watched section of the sidebar and from Settings; not a sidebar row of its own. -->
-	<Page id="watched" title="Watched" icon="eye.fill" color="systemBlue" model="watched" view="pages/Page" listed="false" />
+	<Page id="watched" title="Watched" icon="eye.fill" color="systemBlue" listed="false" />
 </App>

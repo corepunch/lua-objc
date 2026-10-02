@@ -5,7 +5,7 @@
   calls. Like SwiftUI's List it has no column headers: section titles say what the rows are, and detail values
   name themselves ("Used 3 days ago", "4 copies"). The list never scrolls on
   its own; the page scrolls as one surface. `status = true` turns the detail
-  column into one colour-coded symbol per row (models/Status.lua); the status
+  column into one colour-coded symbol per row (helpers/Status.lua); the status
   word remains its tooltip and accessibility label. The meter fits
   "≥ 999.9 MB" or a spinner with "Calculating…" beside a share as wide
   as "could recover", and no wider: every point it gives up goes to the name

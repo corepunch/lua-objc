@@ -1,6 +1,7 @@
+local Locations = require("apps.diskmap.models.Locations")
 local commands = require("ui.commands")
-local Help = require("apps.diskmap.models.Help")
-local Guide = require("apps.diskmap.models.Guide")
+local Help = require("apps.diskmap.helpers.Help")
+local Guide = require("apps.diskmap.helpers.Guide")
 local Navigation = require("apps.diskmap.controllers.NavigationController")
 local Controller = {}; Controller.__index = Controller
 
@@ -27,7 +28,7 @@ Controller.commandLinks = {
 local TRASH = "user-trash"
 
 function Controller:canEmptyTrash()
-	local row = self.model.resources:find(TRASH)
+	local row = Locations:find(TRASH)
 	return row ~= nil and (row:validateEmpty()) == true
 end
 

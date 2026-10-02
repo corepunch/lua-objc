@@ -1,8 +1,9 @@
 _G.__headless = true
+local Marks = require("apps.diskmap.models.Marks")
 local t = require('TestKit')
 local ns = require('AppKit')
 local bridge = require('AppKitNative')
-local Model = require('apps.diskmap.Model')
+local Format = require("apps.diskmap.helpers.Format")
 local Mock = require('apps.diskmap.services.Mock')
 local Root = require('apps.diskmap.Controller')
 local Owners = require('apps.diskmap.services.Owners')
@@ -12,8 +13,8 @@ local Worktrees = require('apps.diskmap.models.Worktrees')
 for _, pair in ipairs({{'repository','repositories'},{'directory','directories'},{'entry','entries'},
 	{'key','keys'},{'cache','caches'},{'process','processes'},{'match','matches'},{'status','statuses'},
 	{'more repository','more repositories'}}) do
-	for _, count in ipairs({0,2,'1,234'}) do t.assertEqual(Model.plural(count, pair[1]), count .. ' ' .. pair[2], 'plural count and noun') end
-	for _, count in ipairs({1,'1',1.0}) do t.assertEqual(Model.plural(count, pair[1]), count .. ' ' .. pair[1], 'one stays singular') end
+	for _, count in ipairs({0,2,'1,234'}) do t.assertEqual(Format.plural(count, pair[1]), count .. ' ' .. pair[2], 'plural count and noun') end
+	for _, count in ipairs({1,'1',1.0}) do t.assertEqual(Format.plural(count, pair[1]), count .. ' ' .. pair[1], 'one stays singular') end
 end
 
 local launches = {}
@@ -39,18 +40,18 @@ local window = app:createWindow()
 app.scan:start()
 window.size = ns.Size(950,580); window:layout()
 app:show('kinds'); app.page.actions.showInstallers()
-local files, changes = app.page.model, 0
-local originalChanged = app.review.services.basketChanged
-app.review.services.basketChanged = function() changes=changes+1; originalChanged() end
+local files, changes = app.page.request, 0
+local originalChanged = app.review.app.basketChanged
+app.review.app.basketChanged = function() changes=changes+1; originalChanged() end
 local total = #files.visible
 local button = app.page.refs.decisionAction
-t.assertEqual(button.title,'Mark ' .. Model.plural(total,'File'),'initial bulk action uses eligible visible count')
+t.assertEqual(button.title,'Mark ' .. Format.plural(total,'File'),'initial bulk action uses eligible visible count')
 files:markFiles()
 t.assertEqual(changes,1,'bulk staging publishes once for every file together')
 button = app.page.refs.decisionAction
 t.assertEqual(button.title,'Review Marked Items…','staged files offer review immediately')
 t.expect(button.enabled,'review remains available')
-local item = app.review.basket:rows()[1]
+local item = Marks:rows()[1]
 app.review:toggle(item)
 t.assertEqual(app.page.refs.decisionAction.title,'Mark 1 File','individual unmark refreshes count')
 app.query='Old macOS Installer'; app:updateRows()
@@ -60,13 +61,13 @@ if app.review:isMarked(row.path) then app.review:toggle(row) end
 files:markFiles()
 t.assertEqual(app.page.refs.decisionAction.title,'Review Marked Items…','filtered staging stays current')
 local reviewed = 0
-app.actions.handlers.review = function() reviewed=reviewed+1 end
+app.context.openReview = function() reviewed=reviewed+1 end
 ns._invokeAction(app.page.refs.decisionAction)
 t.assertEqual(reviewed,1,'review action routes to existing review sheet')
-app:show('applications'); app.review.basket:clear(); app:basketChanged()
+app:show('applications'); Marks:clear(); app:basketChanged()
 app:show('files')
 t.expect(app.page.refs.decisionAction.title:find('Mark ',1,true),'cross-page clearing is reflected on return')
-files.filterIndex = require('apps.diskmap.models.Files').filterIndex('Installers & archives')
+files.filterIndex = require('apps.diskmap.models.Files').filters:index('Installers & archives')
 app.query=''; app:updateRows(); bridge._flushLayout()
 local refs = app.page.refs
 t.expect(refs.scopeNote.superview ~= refs.pageContent,'accounting is disclosed separately')
@@ -81,15 +82,15 @@ t.expect(yFromTop(refs.scanDetails) > yFromTop(refs.filesPanel),'scan statistics
 app:show('applications')
 app.page.actions.markHigh()
 t.assertEqual(app.page.refs.decisionAction.title,'Review Marked Items…','marked likely leftovers route to review')
-app.review.basket:clear(); app:basketChanged()
-local leftovers = app.page.model.visibleLeftovers
+Marks:clear(); app:basketChanged()
+local leftovers = app.page.request.visibleLeftovers
 local high
 for _, value in ipairs(leftovers) do if value.tier=='high' then high=value;break end end
 app.review:toggle({path=high.path,name=high.name,bytes=high.bytes,source='Leftovers',leftover=true,consequence='Leftover'})
 t.assertEqual(app.page.refs.decisionAction.title,'Mark 1 Likely Leftover','leftover action counts only remaining folders')
 
 app:show('worktrees')
-local worktrees = app.graph:get('worktrees')
+local worktrees = app:request("worktrees")
 local page = app.page
 page.refs.reviewList:selectRow(0)
 local selected = worktrees.selected

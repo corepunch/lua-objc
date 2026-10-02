@@ -2,15 +2,16 @@ _G.__headless = true
 -- Large Files, File Types, Applications, Clean Up and Disks against the
 -- synthetic Mock HDD, plus the pure rules behind them.
 local t = require("TestKit")
+local Model = require("data.model")
 local ns = require("AppKit")
 local bridge = require("AppKitNative")
-local Model = require("apps.diskmap.Model")
+local Format = require("apps.diskmap.helpers.Format")
 local Mock = require("apps.diskmap.services.Mock")
 local Files = require("apps.diskmap.models.Files")
 local Applications = require("apps.diskmap.models.Applications")
-local Volumes = require("apps.diskmap.models.Volumes")
-local Recommendations = require("apps.diskmap.models.Recommendations")
-local Inventory = require("apps.diskmap.models.Inventory")
+local Volumes = require("apps.diskmap.helpers.Volumes")
+local Recommendations = require("apps.diskmap.helpers.Recommendations")
+local Inventory = require("apps.diskmap.helpers.Inventory")
 local Controller = require("apps.diskmap.Controller")
 local home = os.getenv("HOME")
 
@@ -41,18 +42,17 @@ t.assertEqual(Files.kind("/x/Movie.MOV").id, "video", "kinds ignore extension ca
 t.assertEqual(Files.kind("/x/archive.tar.gz").id, "archives", "the last extension decides the kind")
 t.assertEqual(Files.kind("/x/.hidden").id, "other", "dot files have no kind")
 t.assertEqual(Files.age(now - 3 * 86400, now), "3 days ago", "recent ages are in days")
-local Model = require("apps.diskmap.Model")
-t.assertEqual(Model.used(Files.age(now - 3 * 86400, now)), "Used 3 days ago", "headerless rows name the event an age measures")
-t.assertEqual(Model.used(Files.age(now, now)), "Used today", "today reads as a phrase")
-t.assertEqual(Model.used(Files.age(nil, now)), "Last use unknown", "a missing date never reads as a bare Unknown")
-t.assertEqual(Model.used("—"), "—", "a placeholder stays a placeholder")
-t.assertEqual(Model.percent(0, 100), "0%", "a measured zero shows 0% like any other share")
-t.assertEqual(Model.percent(nil, 100), "", "an unmeasured size has no share")
-t.assertEqual(Model.percent(0.5, 100), "<1%", "a sliver stays <1%")
+t.assertEqual(Format.used(Files.age(now - 3 * 86400, now)), "Used 3 days ago", "headerless rows name the event an age measures")
+t.assertEqual(Format.used(Files.age(now, now)), "Used today", "today reads as a phrase")
+t.assertEqual(Format.used(Files.age(nil, now)), "Last use unknown", "a missing date never reads as a bare Unknown")
+t.assertEqual(Format.used("—"), "—", "a placeholder stays a placeholder")
+t.assertEqual(Format.percent(0, 100), "0%", "a measured zero shows 0% like any other share")
+t.assertEqual(Format.percent(nil, 100), "", "an unmeasured size has no share")
+t.assertEqual(Format.percent(0.5, 100), "<1%", "a sliver stays <1%")
 t.assertEqual(Files.age(now - 400 * 86400, now), "1 year ago", "old ages are in years")
 t.assertEqual(Files.age(nil, now), "Unknown", "missing dates are unknown, not zero")
-t.assertEqual(Model.count(1234567), "1,234,567", "counts use thousands separators")
-t.assertEqual(Model.count(12), "12", "short counts are unchanged")
+t.assertEqual(Format.count(1234567), "1,234,567", "counts use thousands separators")
+t.assertEqual(Format.count(12), "12", "short counts are unchanged")
 
 -- A full mock launch fills every summary.
 local app = Controller.new(Mock.new())
@@ -62,8 +62,8 @@ t.expect(model.files ~= nil and #model.files.large > 0, "a finished scan keeps t
 t.expect(model.breakdowns["app-containers"] ~= nil, "a finished scan keeps per-location breakdowns")
 
 -- Trash eligibility for individual files.
-local function reason(path) local _, err = Files.validateTrash(model, path); return err and err.code end
-t.expect(Files.validateTrash(model, home .. "/Downloads/Old macOS Installer.dmg"), "ordinary downloads can be moved to the Trash")
+local function reason(path) local _, err = Files:validateTrash(path); return err and err.code end
+t.expect(Files:validateTrash(home .. "/Downloads/Old macOS Installer.dmg"), "ordinary downloads can be moved to the Trash")
 t.assertEqual(reason(home .. "/Library/Application Support/MobileSync/Backup/mock-phone/Manifest.db"), "library", "Library files belong to apps")
 t.assertEqual(reason(home .. "/.ollama/models/blobs/sha256-6a0746a1ec1a"), "hidden", "hidden tool folders are not trashed file by file")
 t.assertEqual(reason(home .. "/Pictures/Mock Photos.photoslibrary/originals/image.heic"), "package", "files inside packages belong to their app")
@@ -75,21 +75,21 @@ t.assertEqual(reason(home .. "/Downloads/Old macOS Installer.dmg"), "kept", "a k
 model.kept.downloads = nil
 
 -- Large Files filters.
-local all = Files.rows(model, "All")
+local all = Files:rows("All")
 t.expect(#all > 5, "large files are listed")
 for index = 2, #all do t.expect(all[index - 1].bytes >= all[index].bytes, "large files are largest first") end
 t.assertEqual(all[1].relative, 1, "the largest file has a full bar")
-for _, row in ipairs(Files.rows(model, "Unused for a year")) do t.expect(row.old, "the unused filter lists only old files") end
-for _, row in ipairs(Files.rows(model, "Installers & archives")) do
+for _, row in ipairs(Files:rows("Unused for a year")) do t.expect(row.old, "the unused filter lists only old files") end
+for _, row in ipairs(Files:rows("Installers & archives")) do
 	t.expect(row.kindId == "installers" or row.kindId == "archives", "the installer filter lists installers and archives")
 end
-for _, row in ipairs(Files.rows(model, "All", nil, "video")) do t.assertEqual(row.kindId, "video", "a kind narrows the list") end
-t.assertEqual(#Files.rows(model, "All", "ubuntu"), 1, "search matches file names")
-local fileSummary = Files.summary(model)
+for _, row in ipairs(Files:rows("All", nil, "video")) do t.assertEqual(row.kindId, "video", "a kind narrows the list") end
+t.assertEqual(#Files:rows("All", "ubuntu"), 1, "search matches file names")
+local fileSummary = Files:summary()
 t.expect(fileSummary.reviewableOldBytes > 0 and fileSummary.reviewableOldBytes <= fileSummary.oldBytes, "reviewable old files are a subset of old files")
 
 -- File Types.
-local kinds, top = Files.kinds(model)
+local kinds, top = Files:kinds()
 t.expect(#kinds > 3 and #top > 3, "file types group extensions into kinds")
 local share = 0
 for _, kind in ipairs(kinds) do share = share + kind.share end
@@ -99,38 +99,44 @@ for _, row in ipairs(top) do
 	t.expect(type(row.count) == "number" and row.count > 0, row.name .. " carries its file count for the Files column")
 	t.expect(not row.subtitle:find("%d"), row.name .. " does not repeat the count in its subtitle")
 end
-t.assertEqual(Model.plural(1, "app"), "1 app", "one app is singular")
-t.assertEqual(Model.plural("1,024", "file"), "1,024 files", "formatted counts pluralize")
-t.assertEqual(Model.ago(0), "Today", "same-day use reads Today")
-t.assertEqual(Model.percent(206, 1000), "21%", "share labels are whole percentages")
-t.assertEqual(Model.percent(1, 1000), "<1%", "a sliver reads <1%")
+t.assertEqual(Format.plural(1, "app"), "1 app", "one app is singular")
+t.assertEqual(Format.plural("1,024", "file"), "1,024 files", "formatted counts pluralize")
+t.assertEqual(Format.ago(0), "Today", "same-day use reads Today")
+t.assertEqual(Format.percent(206, 1000), "21%", "share labels are whole percentages")
+t.assertEqual(Format.percent(1, 1000), "<1%", "a sliver reads <1%")
 for _, row in ipairs(top) do t.expect(not row.shareText:find(".", 1, true), row.name .. " share fits the bar label") end
-t.assertEqual(Model.ago(45), "1 month ago", "use a month ago reads in months")
+t.assertEqual(Format.ago(45), "1 month ago", "use a month ago reads in months")
 
 -- Applications, their data and leftovers.
 local info
 app.service.applicationInfo({"/Applications/Mock Video Studio.app", "/Applications/Mock Notes.app", home .. "/Applications/Mock Game.app"}, function(value) info = value end)
-local apps = Applications.rows(model, info, "All")
+Model.db.applicationInfo = info
+local apps = Applications:rows("All")
 local byName = {}
 for _, row in ipairs(apps) do byName[row.name] = row end
 t.expect(byName["Mock Video Studio"] and byName["Mock Video Studio"].dataBytes == 2.2e9, "app data is found by bundle identifier")
 t.assertEqual(byName["Mock Video Studio"].bytes, 3.4e9 + 2.2e9, "an app's total includes its data")
 t.expect(byName["Mock Game"].unused and not byName["Mock Notes"].unused, "apps unused for six months are flagged")
 t.expect(byName["Xcode & bundled SDKs"] == nil, "missing bundles are not listed as installed")
-local unused = Applications.rows(model, info, "Unused for 6 months")
+Model.db.applicationInfo = info
+local unused = Applications:rows("Unused for 6 months")
 t.assertEqual(#unused, 1, "the unused filter lists only unused apps")
-t.assertEqual(Applications.leftovers(model, nil), nil, "without installed identifiers nothing is called a leftover")
+Model.db.installedBundleIds = nil
+t.assertEqual(Applications:leftovers(), nil, "without installed identifiers nothing is called a leftover")
 local installed
 app.service.installedBundleIds(function(ids) installed = ids end)
-local leftovers = Applications.leftovers(model, installed)
+Model.db.installedBundleIds = installed
+local leftovers = Applications:leftovers()
 local leftoverNames = {}
 for _, row in ipairs(leftovers) do leftoverNames[row.name] = row end
 t.expect(leftoverNames["com.mock.RemovedEditor"] and leftoverNames["com.mock.OldGame"], "unclaimed identifier folders are leftovers")
 t.expect(leftoverNames["com.mock.VideoStudio"] == nil, "installed apps' data is never a leftover")
 table.insert(installed, "com.mock.RemovedEditor.helper")
-t.expect(not Applications.validateLeftover(model, installed, home .. "/Library/Containers/com.mock.RemovedEditor"), "a helper identifier claims its host's data")
+Model.db.installedBundleIds = installed
+t.expect(not Applications:validateLeftover(home .. "/Library/Containers/com.mock.RemovedEditor"), "a helper identifier claims its host's data")
 table.remove(installed)
-t.expect(Applications.validateLeftover(model, installed, home .. "/Library/Containers/com.mock.RemovedEditor"), "an unclaimed folder can be reviewed")
+Model.db.installedBundleIds = installed
+t.expect(Applications:validateLeftover(home .. "/Library/Containers/com.mock.RemovedEditor"), "an unclaimed folder can be reviewed")
 local parsed = Applications.parseLastUsed("2026-09-20 16:20:00 +0000\0(null)\0" .. "2026-01-01 00:00:00 -0500", {"/A.app", "/B.app", "/C.app"})
 t.assertEqual(parsed["/A.app"], 1789921200, "Spotlight dates parse as UTC")
 t.assertEqual(parsed["/B.app"], nil, "never-opened apps have no date")
@@ -154,7 +160,7 @@ t.assertEqual(used + apfs.free, apfs.capacity, "mock volumes and free space part
 t.assertEqual(#Volumes.external(volumes.external), 1, "other mounted disks are listed")
 
 -- Clean Up uses every knowledge entry.
-local cleanup = Recommendations.presentation(model, nil, {apps = app:pageModel("applications"):summary()})
+local cleanup = Recommendations.presentation(nil, {apps = app:request("applications"):summary()})
 t.expect(#cleanup.rebuildable > 0 and #cleanup.decisions > 0, "clean up separates rebuildable data from decisions")
 local rebuildable = {}
 for _, row in ipairs(cleanup.rebuildable) do rebuildable[row.id] = true end
@@ -174,11 +180,11 @@ end
 local derivedMenu = titles(app.actions:resource("derived"))
 t.expect(derivedMenu["Review Move to Trash…"] and derivedMenu["Show in Finder"] and derivedMenu.Keep and derivedMenu["Copy Path"], "resource menus offer review, Finder, Keep and Copy")
 local dmg
-for _, row in ipairs(Files.rows(model, "All")) do if row.name == "Old macOS Installer.dmg" then dmg = row end end
+for _, row in ipairs(Files:rows("All")) do if row.name == "Old macOS Installer.dmg" then dmg = row end end
 local fileMenu = app.actions:file(dmg)
 t.assertEqual(fileMenu[1].title, "Move to Trash…", "own documents can be moved to the Trash from their menu")
 local backup
-for _, row in ipairs(Files.rows(model, "All")) do if row.name == "Manifest.db" then backup = row end end
+for _, row in ipairs(Files:rows("All")) do if row.name == "Manifest.db" then backup = row end end
 local backupMenu = app.actions:file(backup)
 t.expect(backupMenu[1].disabled and backupMenu[1].title:find("belong to apps", 1, true), "a refused trash explains itself in the menu")
 
@@ -202,7 +208,7 @@ t.expect(app.refs.files.rowCount > 0, "Large Files lists files")
 app:show("kinds")
 t.expect(app.refs.kinds.rowCount > 0 and app.refs.extensions.rowCount > 0, "File Types lists kinds and extensions")
 t.expect(app.refs.kindsChart.subviews[1].className == "LuaArcView", "the File Types chart is flat context")
-app.pages.kinds.model:showFiles("installers")
+app:request("kinds"):showFiles("installers")
 t.assertEqual(app.destination, "files", "opening a kind shows Large Files")
 t.expect(not app.refs.clearKind.hidden, "a narrowed list offers to show every kind")
 for index = 1, app.refs.files.rowCount do

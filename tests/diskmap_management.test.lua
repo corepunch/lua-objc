@@ -1,50 +1,53 @@
 _G.__headless = true
+local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
 local ns = require("AppKit")
 local bridge = require("AppKitNative")
-local Model = require("apps.diskmap.Model")
-local Categories = require("apps.diskmap.models.Categories")
-local Cleanup = require("apps.diskmap.models.Cleanup")
-local Inventory = require("apps.diskmap.models.Inventory")
-local AgentFiles = require("apps.diskmap.models.AgentFiles")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
+local Categories = require("apps.diskmap.helpers.Categories")
+local Cleanup = require("apps.diskmap.helpers.Cleanup")
+local Inventory = require("apps.diskmap.helpers.Inventory")
+local AgentFiles = require("apps.diskmap.helpers.AgentFiles")
 local Simulators = require("apps.diskmap.models.Simulators")
-local Management = require("apps.diskmap.models.ManagementSheet")
+local SheetRoute = require("apps.diskmap.pages.SheetRoute")
+local Sheets = require("apps.diskmap.pages.Sheets")
 local Host = require("tests.diskmap_page")
-local model = Model.new("/Users/test")
+local model = Store.new("/Users/test")
 local paths, ids = {}, {}
-for _, row in ipairs(model.resources:leaves()) do
+for _, row in ipairs(Locations:leaves()) do
 	t.expect(not ids[row.id], "unique ID: " .. row.id); ids[row.id] = true
 	if row.path then t.expect(not paths[row.path], "unique measured path: " .. row.id); paths[row.path] = row.id end
 end
 local runtimePath = "/System/Library/AssetsV2/com_apple_MobileAsset_iOSSimulatorRuntime"
 t.assertEqual(paths[runtimePath], "runtime-assets", "runtime asset has one ledger owner")
-t.assertEqual(model.resources:find("runtime-assets"):getParent().id, "runtimes", "downloaded runtime contributes to runtime category")
+t.assertEqual(Locations:find("runtime-assets"):parent().id, "runtimes", "downloaded runtime contributes to runtime category")
 model.measurements["runtime-images"] = {bytes = 4096, status = "complete"}
 model.measurements["runtime-assets"] = {bytes = 8.5e9, status = "complete"}
 model.measurements["runtime-bundles"] = {bytes = 0, status = "complete"}
-local xcode = Categories.rows(model, "xcode")
+local xcode = Categories.rows("xcode")
 t.assertEqual(xcode[1].bytes, 8.5e9 + 4096, "runtime total includes MobileAsset storage")
-t.assertEqual(#Cleanup.suggestions(model), 0, "installed runtimes never become cleanup suggestions")
+t.assertEqual(#Cleanup.suggestions(), 0, "installed runtimes never become cleanup suggestions")
 for _, id in ipairs({"simulators", "documentation-assets", "siri-assets-6", "dictation-1", "voices-1", "codex-plugins", "opencode-other"}) do model.measurements[id] = {bytes = 11e9, status = "complete"} end
-local candidates = {}; for _, row in ipairs(Cleanup.suggestions(model)) do candidates[row.id] = row end
+local candidates = {}; for _, row in ipairs(Cleanup.suggestions()) do candidates[row.id] = row end
 t.expect(candidates.simulators and candidates["documentation-assets"] and candidates["siri-assets-6"], "devices, offline documentation and Siri are actionable review candidates")
 t.assertEqual(candidates["siri-assets-6"].impact, "Needs review", "protected assets only suggest review")
 t.expect(candidates["codex-plugins"] and candidates["opencode-other"], "opaque agent storage surfaces for review")
 model.kept["system-data"] = true
-t.expect(not model.resources:find("siri-assets-6"):validateTrash(), "system asset has no trash path")
+t.expect(not Locations:find("siri-assets-6"):validateTrash(), "system asset has no trash path")
 local fixture = {{agent = "codex", name = "state_99.sqlite", path = "/Users/test/.codex/state_99.sqlite"}, {agent = "opencode", name = "opencode.db-wal", path = "/Users/test/.local/share/opencode/opencode.db-wal"}}
-AgentFiles.add(model, fixture); local leafCount = #model.resources:leaves(); AgentFiles.add(model, fixture)
-t.assertEqual(#model.resources:leaves(), leafCount, "metadata discovery is idempotent")
-local row = model.resources:find("codex-file-state_99.sqlite")
+AgentFiles.add(fixture); local leafCount = #Locations:leaves(); AgentFiles.add(fixture)
+t.assertEqual(#Locations:leaves(), leafCount, "metadata discovery is idempotent")
+local row = Locations:find("codex-file-state_99.sqlite")
 t.expect(row and row.name:find("Database", 1, true), "new database versions have named paths")
 t.assertEqual(row.action, "finder", "persistent SQLite files cannot be cleared as cache")
-local _, _, exclusions = Inventory.plan(model); local found = false
+local _, _, exclusions = Inventory.plan(); local found = false
 for _, path in ipairs(exclusions) do if path == row.path then found = true end end
 t.expect(found, "discovered file is excluded from agent residual")
-t.assertEqual(#Categories.managementRows(model, "codex", "state_99.sqlite"), 1, "management searches exact paths")
-t.assertEqual(#Categories.managementRows(model, "codex", "["), 0, "management search is literal")
-t.assertEqual(#Categories.managementRows(model, "runtimes", nil, "Safe/rebuildable"), 0, "runtime cannot appear under safe reclaim")
-t.expect(model.resources:find("grok-other") ~= nil, "Grok known local root is scanned")
+t.assertEqual(#Categories.managementRows("codex", "state_99.sqlite"), 1, "management searches exact paths")
+t.assertEqual(#Categories.managementRows("codex", "["), 0, "management search is literal")
+t.assertEqual(#Categories.managementRows("runtimes", nil, "Safe/rebuildable"), 0, "runtime cannot appear under safe reclaim")
+t.expect(Locations:find("grok-other") ~= nil, "Grok known local root is scanned")
 local uid = "12345678-ABCD-1234-ABCD-123456789ABC"
 local other = "12345678-ABCD-1234-ABCD-123456789ABD"
 local data = {runtimes = {{identifier = "ios", name = "iOS 26"}}, devices = {ios = {
@@ -69,7 +72,7 @@ local calls, confirmed, refreshed = {}, false, 0
 local service = {command = function(argv, completion) table.insert(calls, {argv = argv, done = completion}) end,
 	decode = function() return data end, confirmAction = function() return confirmed end,
 	reveal = function() end, openSettings = function() end, openOwner = function() end}
-local _, controller = Host.new("simulators", "SimulatorsPage", "pages/Simulators", {model = model, service = service, rescan = function() refreshed = refreshed + 1 end})
+local _, controller = Host.new("simulators", {model = model, service = service, rescan = function() refreshed = refreshed + 1 end})
 controller.inventory = data; controller.selected = Simulators.rows(data)[1]
 t.expect(not controller:erase(), "cancel confirmation never launches a command")
 t.assertEqual(#calls, 0, "cancel has no side effects")
@@ -93,7 +96,7 @@ model.measurements.archives = {bytes = 20e9, status = "complete"}
 model.measurements.derived = {bytes = 12e9, status = "complete"}
 local categoryRefreshes = 0
 local function management(open)
-	return Management.new({}, {model = model, service = service, scanning = function() return false end,
+	return SheetRoute.page(Sheets.management, "management", {model = model, service = service, scanning = function() return false end,
 		rescan = function() categoryRefreshes = categoryRefreshes + 1 end,
 		keep = function(id) model.kept[id] = not model.kept[id] end, open = open or function() end})
 end
@@ -161,7 +164,7 @@ t.expect(bridge._pressColumnButton(manager.refs.rows1, 3, simulatorRow), "simula
 t.assertEqual(openedSimulators, 1, "simulator info opens the installed device list")
 manager:close()
 local finderPath = "/System/Library/CoreServices/Finder.app"
-local app, appError = model.resources:add("apps-system", {id = "finder-icon-test", name = "Finder.app", subtitle = "Installed application",
+local app, appError = Locations:add("apps-system", {id = "finder-icon-test", name = "Finder.app", subtitle = "Installed application",
 	path = finderPath, fileIcon = finderPath, icon = "app.fill", color = "systemBlue", policy = "Review", action = "finder"})
 t.expect(app ~= nil, appError and appError.message or "application registered for icon verification")
 manager:open(parent, "applications")
@@ -177,7 +180,7 @@ local runtimeList = {[runtimeId] = {identifier = runtimeId, runtimeIdentifier = 
 	platformIdentifier = "com.apple.platform.iphonesimulator", deletable = true, sizeBytes = 8.4e9}}
 service.simulatorRuntimes = function(completion) completion(runtimeList) end
 local host = ns.VStack {}
-local simulatorUI, simulatorModel = Host.new("simulators", "SimulatorsPage", "pages/Simulators", {model = model, service = service})
+local simulatorUI, simulatorModel = Host.new("simulators", {model = model, service = service})
 simulatorUI:mount(host, {query = ""})
 simulatorModel.inventory, simulatorModel.runtimeList = data, runtimeList
 simulatorUI:update({query = ""})

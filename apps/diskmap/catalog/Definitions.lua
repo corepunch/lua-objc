@@ -4,7 +4,7 @@ local function item(id, name, subtitle, path, options)
 	return row
 end
 -- `options.page` names the sidebar page that presents a resource and
--- everything under it (models/Destinations.lua); opening it goes there.
+-- everything under it (Location:destination in models/Locations.lua); opening it goes there.
 local function group(id, name, subtitle, icon, color, children, options)
 	local row = {id = id, name = name, subtitle = subtitle, icon = icon, color = color, children = children}
 	for key, value in pairs(options or {}) do row[key] = value end

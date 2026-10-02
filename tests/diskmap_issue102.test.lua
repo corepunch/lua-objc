@@ -2,11 +2,12 @@ _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
 local bridge = require("AppKitNative")
-local Model = require("apps.diskmap.Model")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
 local Mock = require("apps.diskmap.services.Mock")
 local Controller = require("apps.diskmap.Controller")
 local Files = require("apps.diskmap.models.Files")
-local Recommendations = require("apps.diskmap.models.Recommendations")
+local Recommendations = require("apps.diskmap.helpers.Recommendations")
 local Navigation = require("apps.diskmap.controllers.NavigationController")
 local Host = require("tests.diskmap_page")
 local WorktreeService = require("apps.diskmap.services.Worktrees")
@@ -51,7 +52,7 @@ visible("updates", "Updates")
 app:show("cleanup")
 local cleanup = app.page
 t.expect(cleanup.refs.selectionDetails.hidden, "Clean Up has no empty inspector")
-local data = Recommendations.presentation(app.model, "", app.cleanupSources())
+local data = Recommendations.presentation("", app.cleanupSources())
 local top = data.lead
 for _, row in ipairs(data.rebuildable) do t.expect(row.score <= top.score, "the lead outranks every rebuildable row: " .. row.id) end
 for _, row in ipairs(data.decisions) do t.expect(row.score <= top.score, "and every decision: " .. row.id) end
@@ -70,26 +71,26 @@ for _, list in ipairs({data.rebuildable, data.decisions}) do
 end
 -- The simulator suggestion leads with what the plan removes, not the group.
 local plan = {removalBytes = 13e9, removalCount = 3, blockedBytes = 0, complete = true}
-local probe = Model.new("/Users/test")
+local probe = Store.new("/Users/test")
 probe.measurements.simulators = {status = "complete", bytes = 22e9}
 probe.simulatorPlan = plan
 local simulatorRow
-for _, row in ipairs(Recommendations.presentation(probe, "", {}).decisions) do if row.id == "simulators" then simulatorRow = row end end
+for _, row in ipairs(Recommendations.presentation("", {}).decisions) do if row.id == "simulators" then simulatorRow = row end end
 t.assertEqual(simulatorRow and simulatorRow.size, "13.0 GB", "the simulator suggestion shows what the minimal set could recover")
 t.assertEqual(simulatorRow.shareText, "could recover", "and names it")
 t.expect(simulatorRow.subtitle:find("22.0 GB is stored", 1, true), "the whole inventory is stated as stored, apart: " .. simulatorRow.subtitle)
-t.expect(Recommendations.lead(Recommendations.presentation(probe, "", {})).title:find("Keep one iPhone and one iPad", 1, true),
+t.expect(require("apps.diskmap.routes").cleanup.lead(Recommendations.presentation("", {})).title:find("Keep one iPhone and one iPad", 1, true),
 	"the lead names the concrete decision")
-local empty = Recommendations.lead({count = 0})
+local empty = require("apps.diskmap.routes").cleanup.lead({count = 0})
 t.assertEqual(empty.action, "leadFiles", "with nothing to suggest the lead routes to where a person can still look")
 
 -- The sidebar badge for Clean Up is its recoverable estimate, the number its page leads with.
 local badges = app:badges()
-t.assertEqual(badges.cleanup, Model.size(data.eligibleBytes), "Clean Up's badge is what it could recover")
+t.assertEqual(badges.cleanup, Format.size(data.eligibleBytes), "Clean Up's badge is what it could recover")
 
 -- The Overview's call to action names the same estimate.
-local Overview = require("apps.diskmap.models.Overview")
-t.assertEqual(Overview.reclaim(app.model, app.cleanupSources()).title, Model.size(data.eligibleBytes) .. " could recover",
+local Overview = require("apps.diskmap.helpers.Overview")
+t.assertEqual(Overview.reclaim(app.cleanupSources()).title, Format.size(data.eligibleBytes) .. " could recover",
 	"the Overview headline, Clean Up and its badge name one number")
 
 -- Meters: a capsule half the height of AppKit's 18-point capacity cell.
@@ -104,30 +105,30 @@ end
 -- File Types: the installers kind states its total stored and the user-owned
 -- part apart; archives are never counted as installers.
 app:show("kinds")
-local kinds = Files.kinds(app.model)
+local kinds = Files:kinds()
 local installers, archives
 for _, kind in ipairs(kinds) do
 	if kind.id == "installers" then installers = kind elseif kind.id == "archives" then archives = kind end
 end
 local ownInstallers, ownArchives = 0, 0
-for _, row in ipairs(Files.rows(app.model, "Installers & archives")) do
+for _, row in ipairs(Files:rows("Installers & archives")) do
 	if row.kindId == "installers" then ownInstallers = ownInstallers + row.bytes else ownArchives = ownArchives + row.bytes end
 end
 t.assertEqual(installers.removableBytes, ownInstallers, "the installers kind counts only its own user-owned files")
 t.assertEqual(archives and archives.removableBytes, archives and ownArchives, "and archives theirs")
-local kindsPage = app.page.model
+local kindsPage = app.page.request
 local decision = kindsPage:decision(kinds)
-t.assertEqual(decision.amount, Model.size(ownInstallers + ownArchives), "the decision's amount is the user-owned review set")
+t.assertEqual(decision.amount, Format.size(ownInstallers + ownArchives), "the decision's amount is the user-owned review set")
 t.assertEqual(decision.amountCaption, "could recover", "which it names")
 t.expect(decision.detail:find("installed or extracted", 1, true), "the lead explains the review before removal")
 app.page.actions.showInstallers()
 t.assertEqual(app.destination, "files", "its action opens Large Files")
-t.assertEqual(app.page.model.filterIndex, Files.filterIndex("Installers & archives"), "on the reviewable files")
+t.assertEqual(app.page.request.filterIndex, Files.filters:index("Installers & archives"), "on the reviewable files")
 
 -- Updates routes to Clean Up with the same estimate Clean Up states.
 app:show("updates")
 t.expect(app.page.refs.decisionAction ~= nil, "Updates offers a direct route to Clean Up")
-t.assertEqual(app.page.refs.decisionAmount.stringValue, Model.size(data.eligibleBytes), "with Clean Up's own estimate")
+t.assertEqual(app.page.refs.decisionAmount.stringValue, Format.size(data.eligibleBytes), "with Clean Up's own estimate")
 ns._invokeAction(app.page.refs.decisionAction)
 t.assertEqual(app.destination, "cleanup", "and opens it")
 
@@ -160,8 +161,8 @@ local delayed = Mock.new()
 local replies = {}
 local runtimes = delayed.simulatorRuntimes
 delayed.simulatorRuntimes = function(done) table.insert(replies, function() runtimes(done) end) end
-local storage = Model.new(delayed.home)
-local simulators, inventory = Host.new("simulators", "SimulatorsPage", "pages/Simulators", {model = storage, service = delayed})
+local storage = Store.new(delayed.home)
+local simulators, inventory = Host.new("simulators", {model = storage, service = delayed})
 inventory:load()
 t.expect(inventory.busy and not inventory.loaded, "a background read is pending before the page mounts")
 simulators:mount(ns.VStack {}, {query = ""})
@@ -177,8 +178,8 @@ t.expect(storage.simulatorPlan ~= nil, "and the plan is published for Clean Up")
 t.expect(simulators.refs.retry.enabled, "Retry is available again")
 -- A read that completes while the page is closed still records the inventory.
 replies = {}
-local closedStorage = Model.new(delayed.home)
-local closed, closedInventory = Host.new("simulators", "SimulatorsPage", "pages/Simulators", {model = closedStorage, service = delayed})
+local closedStorage = Store.new(delayed.home)
+local closed, closedInventory = Host.new("simulators", {model = closedStorage, service = delayed})
 closedInventory:load(); closed:mount(ns.VStack {}, {query = ""}); closed:dispose()
 for _, reply in ipairs(replies) do reply() end
 t.expect(closedInventory.loaded and not closedInventory.busy and closedStorage.simulatorPlan ~= nil, "a read that finishes while the page is closed publishes its plan")
@@ -187,7 +188,7 @@ t.expect(closed.refs.summary.text:find("stored in", 1, true), "and the next visi
 
 -- Simulators: keep choices, recoverable bytes and the review action sit
 -- together, before the plan's list; the full inventory is collapsed.
-local plain = Host.new("simulators", "SimulatorsPage", "pages/Simulators", {model = Model.new(service.home), service = service})
+local plain = Host.new("simulators", {model = Store.new(service.home), service = service})
 plain:mount(ns.VStack {}, {query = ""})
 local planRefs = plain.refs
 local actionRow = planRefs.planReview.superview
@@ -235,12 +236,15 @@ t.expect(all and all["/wt6"] ~= nil, "every worktree's facts arrive")
 t.assertEqual(progress[#progress], "6/6", "progress reports each finished worktree")
 
 -- Folder Map: a build folder is named by itself, not "CMake builds › CMake build output".
-local FolderPage = require("apps.diskmap.models.FolderPage")
-local folderModel = Model.new("/Users/test")
+local FolderRoute = require("apps.diskmap.routes").folder
+local folderModel = Store.new("/Users/test")
 local artifact = {path = "/Users/test/p/build", name = "CMake build output", policy = "Rebuildable", artifact = true,
-	getParent = function() return {name = "CMake builds"} end}
-folderModel.resources.owner = function() return artifact end
-local name = FolderPage.catalogName({storage = folderModel}, "/Users/test/p/build")
+	parent = function() return {name = "CMake builds"} end}
+local Locations = require("apps.diskmap.models.Locations")
+local owner = Locations.owner
+Locations.owner = function() return artifact end
+local name = FolderRoute.catalogName({}, "/Users/test/p/build")
+Locations.owner = owner
 t.assertEqual(name, "CMake build output · Rebuildable", "a build folder's name does not repeat its kind")
 
 os.exit(t.summary() and 0 or 1)

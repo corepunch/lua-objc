@@ -1,4 +1,4 @@
-local Model = require("apps.diskmap.Model")
+local Format = require("apps.diskmap.helpers.Format")
 local Worktrees = {}
 
 -- Leftover Git worktrees: linked checkouts that an AI tool or a person made
@@ -72,7 +72,7 @@ function Worktrees.merge(listings)
 	return result
 end
 
-local function plural(count, word) return Model.plural(count, word) end
+local function plural(count, word) return Format.plural(count, word) end
 
 -- States, most protective first. A worktree is `candidate` only when every
 -- piece of evidence is known and clean.
@@ -111,7 +111,7 @@ function Worktrees.classify(entry, facts, options)
 	elseif facts.lastActivity and options.now and (options.now - facts.lastActivity) < Worktrees.recentDays * 86400 then
 		-- Diskmap cannot see sessions: say what the timestamp shows and no more.
 		state = "recent"
-		add("Its files or Git record changed " .. Model.ago(math.floor((options.now - facts.lastActivity) / 86400)):lower()
+		add("Its files or Git record changed " .. Format.ago(math.floor((options.now - facts.lastActivity) / 86400)):lower()
 			.. ". Diskmap cannot tell whether a session still uses it, so it waits for your review.")
 	end
 	local manager = Worktrees.manager(entry.path)
@@ -134,7 +134,7 @@ function Worktrees.classify(entry, facts, options)
 		state = "submodules"; add(plural(facts.submodules, "initialized submodule") .. "; Git will not remove it without force.")
 	end
 	if facts.ignoredBytes and facts.ignoredBytes > 0 then
-		table.insert(warnings, Model.size(facts.ignoredBytes) .. " of ignored files (build output, local settings) go with it.")
+		table.insert(warnings, Format.size(facts.ignoredBytes) .. " of ignored files (build output, local settings) go with it.")
 	end
 	if state ~= "candidate" and manager then
 		add("To remove it with its session, archive the session in " .. manager .. "; " .. manager .. " deletes the worktree it made.")
@@ -181,12 +181,12 @@ function Worktrees.rows(entries, facts, options)
 			sourceBytes = worktreeBytes and (worktreeBytes - generated) or nil,
 			ignoredBytes = fact.ignoredBytes, submodules = fact.submodules or 0, lastActivity = fact.lastActivity,
 			bytes = (worktreeBytes or 0) + (gitBytes or 0)}
-		row.size = (worktreeBytes or gitBytes) and Model.size(row.bytes) or "Not measured"
+		row.size = (worktreeBytes or gitBytes) and Format.size(row.bytes) or "Not measured"
 		local repo = entry.repository and (entry.repository:match("([^/]+)$") or entry.repository) or "repository"
 		row.subtitle = repo .. " · " .. (entry.detached and ("detached " .. (row.head or "")) or (entry.branch or "no branch"))
 			.. (manager and (" · " .. manager) or "")
 		-- A filesystem timestamp shows a change, not a use.
-		row.lastUse = fact.lastActivity and options.now and Model.ago(math.floor((options.now - fact.lastActivity) / 86400))
+		row.lastUse = fact.lastActivity and options.now and Format.ago(math.floor((options.now - fact.lastActivity) / 86400))
 			or (entry.primary and "" or "Last change unknown")
 		table.insert(rows, row)
 	end
@@ -257,8 +257,8 @@ function Worktrees.confirmation(plan)
 	for name in pairs(managed) do table.insert(names, name) end
 	table.sort(names)
 	return "Remove " .. plural(#plan.removal, "worktree") .. "?\n\n" .. table.concat(lines, "\n")
-		.. "\n\nRemoves the checkouts and Git's record of them, " .. Model.size(plan.removalBytes) .. " in all, including "
-		.. Model.size(plan.ignoredBytes) .. " of ignored files. The repository and its history stay. Each worktree is checked again just before it is removed."
+		.. "\n\nRemoves the checkouts and Git's record of them, " .. Format.size(plan.removalBytes) .. " in all, including "
+		.. Format.size(plan.ignoredBytes) .. " of ignored files. The repository and its history stay. Each worktree is checked again just before it is removed."
 		.. (#names > 0 and ("\n\n" .. table.concat(names, " and ") .. " keep their own session lists; archive these there if you want them tidy.") or "")
 end
 

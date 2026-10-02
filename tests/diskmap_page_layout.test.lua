@@ -56,7 +56,7 @@ end
 -- A page disposed while it waits for a measurement ignores the answer.
 local xcode = app.pages.xcode
 app:show("xcode")
-local model = xcode.model
+local model = xcode.request
 local generation = model.generation
 app:show("overview")
 t.expect(model.generation ~= generation and xcode.template == nil and xcode.refs == nil, "leaving a page ends its visit")

@@ -1,104 +1,108 @@
 _G.__headless = true
+local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
-local Model = require("apps.diskmap.Model")
-local Cleanup = require("apps.diskmap.models.Cleanup")
-local Tips = require("apps.diskmap.models.Tips")
-local Inspector = require("apps.diskmap.models.Inspector")
-local Scan = require("apps.diskmap.models.Scan")
-local Keep = require("apps.diskmap.models.Keep")
-local Manage = require("apps.diskmap.models.Manage")
-local Recommendations = require("apps.diskmap.models.Recommendations")
-local Settings = require("apps.diskmap.models.Settings")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
+local Cleanup = require("apps.diskmap.helpers.Cleanup")
+local Tips = require("apps.diskmap.helpers.Tips")
+local Inspector = require("apps.diskmap.helpers.Inspector")
+local Scan = require("apps.diskmap.services.Scan")
+local Keep = require("apps.diskmap.flows.Keep")
+local Manage = require("apps.diskmap.flows.Manage")
+local Recommendations = require("apps.diskmap.helpers.Recommendations")
+local SheetRoute = require("apps.diskmap.pages.SheetRoute")
+local Sheets = require("apps.diskmap.pages.Sheets")
 local Rules = require("apps.diskmap.knowledge.CleanupRules")
-local model = Model.new("/Users/test")
+local model = Store.new("/Users/test")
 for id, rule in pairs(Rules) do
-	t.expect(model.resources:find(id) ~= nil, "rule has a known resource: " .. id)
+	t.expect(Locations:find(id) ~= nil, "rule has a known resource: " .. id)
 	model.measurements[id] = {bytes = rule.threshold - 1, status = "complete"}
 end
-t.assertEqual(#Cleanup.suggestions(model), 0, "below-threshold resources produce no suggestions")
+t.assertEqual(#Cleanup.suggestions(), 0, "below-threshold resources produce no suggestions")
 model.measurements.simulators.bytes = Rules.simulators.threshold
-local suggestions = Cleanup.suggestions(model)
+local suggestions = Cleanup.suggestions()
 t.assertEqual(#suggestions, 1, "threshold boundary includes one recognized resource")
 t.assertEqual(suggestions[1].id, "simulators", "simulator knowledge is selected")
 t.expect(suggestions[1].subtitle:find("test apps", 1, true) ~= nil, "suggestion explains consequences")
 t.expect(suggestions[1].evidence:find("Review threshold", 1, true) ~= nil, "suggestion explains why it appeared")
 model.measurements.projects = {bytes = 900e9, status = "complete"}
 model.measurements["xcode-app"] = {bytes = 200e9, status = "complete"}
-t.assertEqual(#Cleanup.suggestions(model), 1, "large projects and installations do not become cleanup opportunities")
+t.assertEqual(#Cleanup.suggestions(), 1, "large projects and installations do not become cleanup opportunities")
 for _, status in ipairs({"failed", "denied", "skipped"}) do
 	model.measurements.simulators.status = status
-	t.assertEqual(#Cleanup.suggestions(model), 0, "uncertain measurement cannot recommend cleanup: " .. status)
+	t.assertEqual(#Cleanup.suggestions(), 0, "uncertain measurement cannot recommend cleanup: " .. status)
 end
 model.measurements.simulators.status = "partial"
-t.assertEqual(Cleanup.suggestions(model)[1].impact, "Needs review", "partial measurements still offer review")
-t.expect(Cleanup.suggestions(model)[1].size:find("≥", 1, true), "partial review is explicitly a lower bound")
+t.assertEqual(Cleanup.suggestions()[1].impact, "Needs review", "partial measurements still offer review")
+t.expect(Cleanup.suggestions()[1].size:find("≥", 1, true), "partial review is explicitly a lower bound")
 model.measurements.simulators.status = "complete"
 model.kept.xcode = true
-t.assertEqual(#Cleanup.suggestions(model), 0, "keeping parent suppresses all descendant recommendations")
+t.assertEqual(#Cleanup.suggestions(), 0, "keeping parent suppresses all descendant recommendations")
 model.kept.xcode = nil
 local saved, refreshed = 0, 0
 local keepMessage
-local cleanup = Keep.new(model, {saveKeep = function() saved = saved + 1; return true end}, function(message) keepMessage = message end)
-local Recommendations = require("apps.diskmap.models.Recommendations")
-t.assertEqual(Recommendations.presentation(model).decisions[1].id, "simulators", "clean up keeps resource identity")
-t.assertEqual(#Recommendations.presentation(model, "unfindable").decisions, 0, "clean up search is independent")
-local reviewRow = Recommendations.presentation(model).decisions[1]
+local cleanup = Keep({app = {service = {saveKeep = function() saved = saved + 1; return true end}}})
+local Recommendations = require("apps.diskmap.helpers.Recommendations")
+t.assertEqual(Recommendations.presentation().decisions[1].id, "simulators", "clean up keeps resource identity")
+t.assertEqual(#Recommendations.presentation("unfindable").decisions, 0, "clean up search is independent")
+local reviewRow = Recommendations.presentation().decisions[1]
 t.assertEqual(reviewRow.statusColor, "systemOrange", "a review suggestion carries an orange status symbol")
 t.assertEqual(reviewRow.shareText, "to review", "a suggestion without proven recovery names its amount as bytes to review")
-cleanup:toggle("simulators")
-t.assertEqual(#Cleanup.suggestions(model), 0, "a kept resource leaves the suggestions")
-local keptRow; for _, row in ipairs(Recommendations.presentation(model).checked) do if row.id == "simulators" then keptRow = row end end
+keepMessage = select(2, cleanup:toggle("simulators"))
+t.assertEqual(#Cleanup.suggestions(), 0, "a kept resource leaves the suggestions")
+local keptRow; for _, row in ipairs(Recommendations.presentation().checked) do if row.id == "simulators" then keptRow = row end end
 t.assertEqual(keptRow and keptRow.detail, "Kept", "a kept resource is listed as checked and kept")
 t.assertEqual(keptRow and keptRow.statusIcon, "pin.circle.fill", "a kept resource shows the kept symbol")
 t.assertEqual(saved, 1, "keep change persists the preference")
 t.assertEqual(model.measurements.projects.bytes, 900e9, "keep preserves unrelated measured state")
-cleanup:toggle("simulators")
+keepMessage = select(2, cleanup:toggle("simulators"))
 t.assertEqual(saved, 2, "unkeep change also saves")
 t.assertEqual(keepMessage, nil, "successful persistence does not report an error")
-t.assertEqual(#Cleanup.suggestions(model), 1, "unkeep restores eligible resource")
-t.assertEqual(#Tips.forInventory(model, {totalKb = 100, freeKb = 40}), 1, "ordinary capacity gets the system tip")
+t.assertEqual(#Cleanup.suggestions(), 1, "unkeep restores eligible resource")
+t.assertEqual(#Tips.forInventory({totalKb = 100, freeKb = 40}), 1, "ordinary capacity gets the system tip")
 model.scan.errors = 4
-local tips = Tips.forInventory(model, {totalKb = 100, freeKb = 9})
+local tips = Tips.forInventory({totalKb = 100, freeKb = 9})
 t.assertEqual(tips[1].id, "access", "access evidence produces a targeted tip")
 t.expect(tips[1].title == "Some files could not be measured" and tips[1].text:find("Full Disk Access may improve coverage", 1, true) ~= nil,
 	"access guidance describes filesystem issues and keeps Full Disk Access optional")
 t.assertEqual(tips[2].id, "capacity", "low available space produces a separate tip")
 t.assertEqual(tips[2].action, nil, "low-space guidance stays on the opportunities page")
-local cleanupPage = Recommendations.page({cleanupSources = function() return nil end}).present(model, {disk = {totalKb = 100, freeKb = 9}})
+require("data.model").bind(model)
+local cleanupRoute = require("data.routes").page(require("apps.diskmap.routes").cleanup, {id = "cleanup"}, {cleanupSources = function() return nil end}, "apps.diskmap")
+local cleanupPage = cleanupRoute:present({disk = {totalKb = 100, freeKb = 9}})
 t.assertEqual(cleanupPage.links.tip_access.settings, "privacy", "the access tip leads to privacy settings")
 t.assertEqual(cleanupPage.children.tips.tips[1].id, "access", "the Clean Up page presents the tips")
-local legend = require("apps.diskmap.models.Overview").chart(model, {totalKb = 2e12 / 1024, freeKb = 1e12 / 1024}).legend
+local legend = require("apps.diskmap.helpers.Overview").chart({totalKb = 2e12 / 1024, freeKb = 1e12 / 1024}).legend
 for _, item in ipairs(legend) do
-	t.expect(item.id == "#other" or model.resources:find(item.id) ~= nil, "chart legend opens a registered category: " .. item.id)
+	t.expect(item.id == "#other" or Locations:find(item.id) ~= nil, "chart legend opens a registered category: " .. item.id)
 end
-local details = Inspector.details(model, "simulators")
+local details = Inspector.details("simulators")
 t.expect(details.text:find("Review threshold", 1, true) ~= nil, "inspector reuses cleanup evidence")
 t.expect(details.canManage, "fresh measurement allows live actions")
 local deletes = 0
-local inspector = Manage.new(model, {confirmTrash = function() return true end,
-	trash = function() deletes = deletes + 1; return true end}, function() refreshed = refreshed + 1 end)
+local inspector = Manage({app = {service = {confirmTrash = function() return true end,
+	trash = function() deletes = deletes + 1; return true end}, rescan = function() refreshed = refreshed + 1 end}})
 model.measurements.derived.bytes = 2e9
-inspector:select("derived")
-inspector:manage()
+inspector:manage("derived")
 t.assertEqual(deletes, 1, "allowed action uses injected filesystem service")
 t.assertEqual(refreshed, 1, "successful mutation requests fresh full inventory")
 local ownerCalls = {}
 model.measurements.npm = {bytes = 20e6, status = "complete"}
-local ownerInspector = Manage.new(model, {
+local ownerInspector = Manage({app = {service = {
 	confirmOwnerCleanup = function(row, size) ownerCalls.confirmed = row.id == "npm" and size == "20.0 MB"; return true end,
 	runOwnerCleanup = function(commandId, home, done) ownerCalls.commandId, ownerCalls.home = commandId, home; done(true) end,
-}, function() refreshed = refreshed + 1 end)
-ownerInspector:select("npm"); ownerInspector:manage()
+}, rescan = function() refreshed = refreshed + 1 end}})
+ownerInspector:manage("npm")
 t.expect(ownerCalls.confirmed, "owner command requires review of measured cache size")
 t.assertEqual(ownerCalls.commandId, "npm-cache", "npm resource routes to its fixed owner command")
 t.assertEqual(ownerCalls.home, model.home, "owner command uses the active account location")
 t.assertEqual(refreshed, 2, "owner cleanup triggers a fresh measurement")
 model.kept.xcode = true
-t.expect(not inspector:manage(), "kept ancestor prevents mutation")
-local settings = Settings.new({}, {service = {loadSettings = function() return true end, saveSettings = function() return false end}, model = {}})
+t.expect(not inspector:manage("derived"), "kept ancestor prevents mutation")
+local settings = SheetRoute.page(Sheets.settings, "settings", {service = {loadSettings = function() return true end, saveSettings = function() return false end}, model = {}})
 t.expect(not settings:toggle() and settings.enabled, "failed setting save preserves previous state")
 local pending, cancelled = {}, 0
-local scanner = Scan.new(Model.new("/Users/test"), {
+local scanner = Scan.new(Store.new("/Users/test"), {
 	start = function(paths) local job = {}; table.insert(pending, job); return job end,
 	await = function(job, done, progress) job.done = done; job.progress = progress end,
 	cancel = function() cancelled = cancelled + 1 end,

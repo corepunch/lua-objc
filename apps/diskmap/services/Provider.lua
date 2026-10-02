@@ -1,4 +1,35 @@
+local Model = require("data.model")
 local Provider = {}
+
+-- The service as one window sees it. A window reads its own store
+-- (lua/data/model.lua binds one at a time), and Diskmap can show two windows
+-- (an opened scan beside this Mac): every function the service calls back
+-- later, a scan's progress or a measurement's sizes, runs with that window's
+-- store bound again. Assignments reach the service itself.
+function Provider.bind(service, store)
+	return setmetatable({}, {__index = function(_, key)
+		local value = service[key]
+		if type(value) ~= "function" then return value end
+		return function(...)
+			local arguments = table.pack(...)
+			for index = 1, arguments.n do
+				if type(arguments[index]) == "function" then arguments[index] = Model.bound(store, arguments[index]) end
+			end
+			return value(table.unpack(arguments, 1, arguments.n))
+		end
+	end, __newindex = service, service = service})
+end
+
+-- What the service itself offers under `name`, without asking a strict test
+-- double for a feature it lacks (rawget): nil when it has none. A function
+-- comes back bound like any other call of the window's service.
+function Provider.offers(service, name)
+	local meta = getmetatable(service)
+	local target = meta and meta.service or service
+	local value = rawget(target, name)
+	if type(value) == "function" and target ~= service then return service[name] end
+	return value
+end
 
 local function argumentValue(arguments, flag)
 	for index, argument in ipairs(arguments or {}) do

@@ -6,7 +6,7 @@ local App = require("data.app")
 local Mock = require("apps.diskmap.services.Mock")
 local Controller = require("apps.diskmap.Controller")
 local Navigation = require("apps.diskmap.controllers.NavigationController")
-local Workflows = require("apps.diskmap.knowledge.Workflows")
+local Workflows = require("apps.diskmap.models.Workflows")
 
 local manifest = Manifest.load("apps/diskmap/app.xml")
 t.assertEqual(App.launcher("apps/diskmap/app.xml"), Controller, "the manifest's root controller is the launch class")
@@ -45,7 +45,7 @@ for _, entry in ipairs(manifest.order) do
 end
 
 -- Workflow pages are gated on their own work, and each names its workflow.
-for _, workflow in ipairs(Workflows.list) do
+for _, workflow in ipairs(Workflows:all()) do
 	t.assertEqual(manifest.pages[workflow.id].attrs.workflow, workflow.id, workflow.id .. " page is gated on its workflow")
 end
 os.exit(t.summary() and 0 or 1)

@@ -1,7 +1,7 @@
 _G.__headless = true
 local t = require("TestKit")
 local bridge = require("AppKitNative")
-local VolumeContents = require("apps.diskmap.models.VolumeContents")
+local VolumeContents = require("apps.diskmap.helpers.VolumeContents")
 
 -- Hidden system folders at a volume's root are named and explained.
 local rows, total = VolumeContents.rows("/Volumes/Stick", {
@@ -41,7 +41,7 @@ t.expect(titles["Empty Trash…"] and titles["Spotlight Settings…"], "the disk
 t.expect(titles["Mark for Cleanup"], "ordinary folders can be marked for cleanup")
 
 -- The system volume is called sealed only when the measured state says so.
-local Volumes = require("apps.diskmap.models.Volumes")
+local Volumes = require("apps.diskmap.helpers.Volumes")
 local function systemRow(sealed)
 	local list = {Containers = {{ContainerReference = "disk3", CapacityCeiling = 100, Volumes = {
 		{Name = "Macintosh HD", DeviceIdentifier = "disk3s1", Roles = {"System"}, CapacityInUse = 10, Sealed = sealed}}}}}

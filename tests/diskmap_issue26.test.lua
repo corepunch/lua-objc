@@ -1,14 +1,16 @@
 _G.__headless = true
+local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
-local Model = require("apps.diskmap.Model")
-local Inventory = require("apps.diskmap.models.Inventory")
-local Inspector = require("apps.diskmap.models.Inspector")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
+local Inventory = require("apps.diskmap.helpers.Inventory")
+local Inspector = require("apps.diskmap.helpers.Inspector")
 local Rules = require("apps.diskmap.knowledge.CleanupRules")
 
 local home = "/Users/test"
-local model = Model.new(home)
+local model = Store.new(home)
 local function resource(id)
-	local row = model.resources:find(id)
+	local row = Locations:find(id)
 	t.expect(row ~= nil, "catalog contains " .. id)
 	return row
 end
@@ -31,21 +33,21 @@ t.expect(resource("mail").path ~= mailLogs.path, "Mail logs stay separate from s
 
 -- No dependable signal or owner flow supports separate recording, Docker-log,
 -- or IPSW resources; the existing broader locations remain the inventory.
-t.assertEqual(model.resources:find("screen-recordings"), nil, "personal recordings are not inferred from names or extensions")
-t.assertEqual(model.resources:find("docker-logs"), nil, "Docker logs are not assigned an unmeasurable host path")
-t.assertEqual(model.resources:find("ios-restore-images"), nil, "restore images are not assigned a guessed hidden path")
-t.assertEqual(model.resources:find("ipsw"), nil, "IPSW files have no invented catalog location")
+t.assertEqual(Locations:find("screen-recordings"), nil, "personal recordings are not inferred from names or extensions")
+t.assertEqual(Locations:find("docker-logs"), nil, "Docker logs are not assigned an unmeasurable host path")
+t.assertEqual(Locations:find("ios-restore-images"), nil, "restore images are not assigned a guessed hidden path")
+t.assertEqual(Locations:find("ipsw"), nil, "IPSW files have no invented catalog location")
 
 local movies = resource("movies")
 t.assertEqual(movies.path, home .. "/Movies", "known media library keeps its actual owner path")
 t.expect(movies.mediaAccess, "personal media remains behind the explicit media opt-in")
-local paths, ids = Inventory.plan(model)
+local paths, ids = Inventory.plan()
 local included = {}
 for index, id in ipairs(ids) do included[id] = paths[index] end
 t.assertEqual(included.movies, nil, "Movies is excluded by default")
 t.assertEqual(model.measurements.movies.status, "excluded", "excluded media is not reported as zero")
 model.includeMedia = true
-paths, ids = Inventory.plan(model)
+paths, ids = Inventory.plan()
 included = {}
 for index, id in ipairs(ids) do included[id] = paths[index] end
 t.assertEqual(included.movies, home .. "/Movies", "explicit media opt-in measures the configured Movies library")
@@ -65,7 +67,7 @@ for _, id in ipairs({"movies", "downloads", "device-backups", "docker", "mail-lo
 	t.expect(not valid and failure.code == "invalid_action", id .. " remains outside Diskmap's deletion authority")
 end
 
-local dockerDetails = Inspector.details(model, "docker")
+local dockerDetails = Inspector.details("docker")
 t.expect(dockerDetails.canManage and dockerDetails.manageTitle == "Open Docker", "Docker inspector offers owner review without a cleanup action")
 
 os.exit(t.summary() and 0 or 1)

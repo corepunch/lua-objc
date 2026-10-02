@@ -1,10 +1,12 @@
 _G.__headless = true
+local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
-local Model = require("apps.diskmap.Model")
-local Scan = require("apps.diskmap.models.Scan")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
+local Scan = require("apps.diskmap.services.Scan")
 local Catalog = require("apps.diskmap.Catalog")
-local Categories = require("apps.diskmap.models.Categories")
-local Inventory = require("apps.diskmap.models.Inventory")
+local Categories = require("apps.diskmap.helpers.Categories")
+local Inventory = require("apps.diskmap.helpers.Inventory")
 local System = require("apps.diskmap.services.System")
 
 local rules = Catalog.discoveryRules("/Users/test")
@@ -114,7 +116,7 @@ t.assertEqual(appEntries["/Users/test/Applications/Personal Editor.app"].parentI
 t.assertEqual(appEntries["/Applications/Editor.app"].reviewThreshold, 1e9, "regular app review uses its threshold")
 t.assertEqual(appEntries["/Applications/Install macOS Tahoe.app"].reviewThreshold, 5e9, "installer receives installer-specific review threshold")
 
-local model = Model.new("/Users/test")
+local model = Store.new("/Users/test")
 local measuredPaths
 local scanner = Scan.new(model, {
 	discoverEntries = function(_, done)
@@ -135,24 +137,24 @@ local scanner = Scan.new(model, {
 	diskSpace = function() return {totalKb = 0, freeKb = 0} end,
 }, "/Users/test")
 scanner:start()
-t.assertEqual(model.resources:find("discovered-node-modules"):getParent().id, "developer", "generated folder belongs to Developer")
-t.assertEqual(model.resources:find("discovered-installer"):getParent().id, "apps-system", "installer belongs to shared Applications")
-t.assertEqual(model.resources:find("discovered-editor"):getParent().id, "apps-system", "regular apps belong to shared Applications")
-t.assertEqual(model.resources:find("discovered-personal-app"):getParent().id, "apps-user", "personal apps belong to the personal Applications category")
-t.assertEqual(model.resources:find("discovered-editor").reviewThreshold, 1e9, "large installed apps become review suggestions without cleanup eligibility")
-t.assertEqual(model.resources:find("discovered-editor").action, "finder", "installed apps remain review-only")
+t.assertEqual(Locations:find("discovered-node-modules"):parent().id, "developer", "generated folder belongs to Developer")
+t.assertEqual(Locations:find("discovered-installer"):parent().id, "apps-system", "installer belongs to shared Applications")
+t.assertEqual(Locations:find("discovered-editor"):parent().id, "apps-system", "regular apps belong to shared Applications")
+t.assertEqual(Locations:find("discovered-personal-app"):parent().id, "apps-user", "personal apps belong to the personal Applications category")
+t.assertEqual(Locations:find("discovered-editor").reviewThreshold, 1e9, "large installed apps become review suggestions without cleanup eligibility")
+t.assertEqual(Locations:find("discovered-editor").action, "finder", "installed apps remain review-only")
 local categoryApp
-for _, row in ipairs(Categories.rows(model, "apps-system")) do if row.id == "discovered-editor" then categoryApp = row end end
+for _, row in ipairs(Categories.rows("apps-system")) do if row.id == "discovered-editor" then categoryApp = row end end
 t.assertEqual(categoryApp.fileIcon, "/Applications/Visual Studio Code.app", "application rows retain their native icon path")
 local managedApp
-for _, row in ipairs(Categories.managementRows(model, "applications")) do if row.id == "discovered-editor" then managedApp = row end end
+for _, row in ipairs(Categories.managementRows("applications")) do if row.id == "discovered-editor" then managedApp = row end end
 t.assertEqual(managedApp.fileIcon, "/Applications/Visual Studio Code.app", "management rows retain their native icon path")
 local paths = {}; for _, path in ipairs(measuredPaths) do paths[path] = true end
 t.expect(paths["/Users/test/Developer/demo/node_modules"], "generated folders receive independent measurements")
 t.expect(paths["/Applications/Install macOS Tahoe.app"], "installer apps receive independent measurements")
 t.expect(paths["/Applications/Visual Studio Code.app"], "installed app bundles receive independent measurements")
 t.expect(paths["/Users/test/Applications/Editor.app"], "personal app bundles receive independent measurements")
-local _, _, exclusions = Inventory.plan(model)
+local _, _, exclusions = Inventory.plan()
 local excluded = {}; for _, path in ipairs(exclusions) do excluded[path] = true end
 t.expect(excluded["/Users/test/Developer/demo/node_modules"], "generated folders are removed from the Developer residual scan")
 t.expect(excluded["/Applications/Install macOS Tahoe.app"], "installers are removed from the Applications residual scan")

@@ -1,9 +1,10 @@
 _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
-local DiskModel = require("apps.diskmap.Model")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
 local Host = require("tests.diskmap_page")
-local Plan = require("apps.diskmap.models.SimulatorPlan")
+local Plan = require("apps.diskmap.helpers.SimulatorPlan")
 local Simulators = require("apps.diskmap.models.Simulators")
 
 local TYPE = "com.apple.CoreSimulator.SimDeviceType."
@@ -224,8 +225,8 @@ local service = {
 	measure = function(paths, done) local sizes = {} for i in ipairs(paths) do sizes[i] = 0 end done(sizes) end,
 }
 local changed = 0
-local storage = DiskModel.new("/Users/test")
-local page, model = Host.new("simulators", "SimulatorsPage", "pages/Simulators", {model = storage, service = service, rescan = function() changed = changed + 1 end})
+local storage = Store.new("/Users/test")
+local page, model = Host.new("simulators", {model = storage, service = service, rescan = function() changed = changed + 1 end})
 page:mount(ns.VStack {}, {query = ""})
 local refs = page.refs
 t.expect(refs and refs.planDevices, "the minimal device set renders on the Simulators page")

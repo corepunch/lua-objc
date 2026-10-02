@@ -1,10 +1,11 @@
 _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
-local Model = require("apps.diskmap.Model")
-local Overview = require("apps.diskmap.models.Overview")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
+local Overview = require("apps.diskmap.helpers.Overview")
 local Files = require("apps.diskmap.models.Files")
-local Selection = require("apps.diskmap.models.Selection")
+local Selection = require("apps.diskmap.helpers.Selection")
 local Mock = require("apps.diskmap.services.Mock")
 local Controller = require("apps.diskmap.Controller")
 
@@ -32,10 +33,10 @@ t.assertEqual(#Selection.extensions(rows, "missing"), 3, "an unknown token leave
 t.assertEqual(#Selection.extensions(rows, nil), 3, "no token leaves the ranking")
 t.assertEqual(#rows, 3, "filtering leaves the ranking itself alone")
 
-local model = Model.new("/Users/test")
+local model = Store.new("/Users/test")
 model.measurements["apps-system-other"] = {bytes = 58e9, status = "complete"}
 local disk = {totalKb = 494e9 / 1024, freeKb = 157e9 / 1024}
-local chart = Overview.chart(model, disk)
+local chart = Overview.chart(disk)
 t.assertEqual(chart.marks[1].id, "applications", "overview sectors carry the category id")
 t.assertEqual(chart.marks[#chart.marks].id, "free", "the empty track is tagged free")
 
@@ -48,7 +49,7 @@ model.files = {
 		{extension = "zip", bytes = 1e9, count = 2, oldBytes = 0},
 	},
 }
-local kinds, extensions = Files.kinds(model)
+local kinds, extensions = Files:kinds()
 t.expect(#kinds >= 2, "kinds group extensions")
 local videos = Selection.extensions(extensions, "video")
 t.expect(#videos >= 1 and #videos < #extensions, "a kind narrows the top extensions")
@@ -71,7 +72,7 @@ app:createWindow()
 
 app:show("overview")
 local overview = app.pages.overview
-local model = overview.model
+local model = overview.request
 local results = overview.refs.results
 local category = model.categoryRows[2].id
 -- Hovering the ring stays inside the chart: the line under it names the
@@ -89,7 +90,7 @@ t.assertEqual(overview.refs.chartDetail.text, "", "leaving the chart clears the 
 -- "other" is a category too: its sector and legend row are its own, never
 -- the folded categories'.
 local mapped = {}
-local map = app.graph:get("map")
+local map = app:request("map")
 map.setFocus = function(self, id) table.insert(mapped, id) end
 overview.actions.chartSelect("other")
 t.assertEqual(mapped[1], "other", "the Other category's sector opens the Map inside it")
@@ -113,7 +114,7 @@ t.assertEqual(mapPage.refs.mapList.documentView.selectedRow, -1, "and selects no
 
 app:show("kinds")
 local page = app.pages.kinds
-local model = page.model
+local model = page.request
 local opened
 local showFiles = model.showFiles
 model.showFiles = function(_, id) opened = id end

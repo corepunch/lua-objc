@@ -2,15 +2,16 @@ _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
 local xml = require("ui.xml")
-local Model = require("apps.diskmap.Model")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
 local Mock = require("apps.diskmap.services.Mock")
-local Inventory = require("apps.diskmap.models.Inventory")
-local Scan = require("apps.diskmap.models.Scan")
+local Inventory = require("apps.diskmap.helpers.Inventory")
+local Scan = require("apps.diskmap.services.Scan")
 local Simulators = require("apps.diskmap.models.Simulators")
 local Host = require("tests.diskmap_page")
 local Controller = require("apps.diskmap.Controller")
-local Recommendations = require("apps.diskmap.models.Recommendations")
-local Categories = require("apps.diskmap.models.Categories")
+local Recommendations = require("apps.diskmap.helpers.Recommendations")
+local Categories = require("apps.diskmap.helpers.Categories")
 local System = require("apps.diskmap.services.System")
 
 -- Command failures and malformed JSON remain distinct from an empty result.
@@ -33,8 +34,8 @@ System.command = command
 -- A single large location may keep the completed count unchanged for minutes.
 -- Its file findings and live counters must still reach pages; none is a final
 -- reclaim estimate, and cancelling must retain the useful partial findings.
-local model = Model.new("/Users/test")
-local paths, ids = Inventory.plan(model)
+local model = Store.new("/Users/test")
+local paths, ids = Inventory.plan()
 local pending
 local scan = Scan.new(model, {
 	start = function() return {} end,
@@ -56,18 +57,20 @@ local first = scan.status
 progress(50, 8)
 t.expect(first ~= scan.status and scan.status:find("50 items checked", 1, true), "same completed count still advances live counters")
 t.expect(not scan.status:find("%%"), "root count does not masquerade as time progress")
-t.expect(not Categories.coverage(model, scan.disk):find("not attributed", 1, true), "in-progress coverage is not reported as unexplained usage")
-local chart = require("apps.diskmap.models.Overview").chart(model, scan.service.diskSpace())
+t.expect(not Categories.coverage(scan.disk):find("not attributed", 1, true), "in-progress coverage is not reported as unexplained usage")
+local chart = require("apps.diskmap.helpers.Overview").chart(scan.service.diskSpace())
 t.assertEqual(chart.marks[1].label, "Not measured yet", "unfinished chart names the pending allocation")
 t.expect(chart.explanation:find("still arriving", 1, true), "unfinished chart explains its gray sector")
-local graph = require("data.model").graph({classes = {files = require("apps.diskmap.models.FilesPage"),
-	applications = require("apps.diskmap.models.ApplicationsPage")}, services = {model = model, service = {}, actions = {
+local routes, Routes = require("apps.diskmap.routes"), require("data.routes")
+local services = {model = model, service = {}, actions = {
 	file = function() return {} end, annotate = function(_, rows) return rows end,
 	isMarked = function() return false end, isIncluded = function() return false end,
-}}})
-t.assertEqual(graph:build({"applications"}).applications:summary(), nil, "live file findings do not imply app-data breakdowns are ready")
-local files = require("data.pagecontroller").new({page = {id = "files", title = "Large Files", icon = "doc.fill", color = "systemTeal",
-	model = "files", view = "pages/Page"}, graph = graph, ns = ns, viewsDir = "apps/diskmap/views/"})
+}}
+require("data.model").bind(model)
+t.assertEqual(Routes.page(routes.applications, {id = "applications"}, services, "apps.diskmap"):summary(), nil, "live file findings do not imply app-data breakdowns are ready")
+local filesEntry = {id = "files", title = "Large Files", icon = "doc.fill", color = "systemTeal"}
+local files = require("data.pagecontroller").new({page = filesEntry, request = Routes.page(routes.files, filesEntry, services, "apps.diskmap"),
+	ns = ns, viewsDir = "apps/diskmap/views/", store = model})
 files:mount(ns.VStack {}, {query = ""})
 -- A running scan draws no partial rows and no half-filled totals: the page
 -- says it is not measured yet and is drawn again when the scan finishes.
@@ -111,7 +114,7 @@ service.simulatorRuntimes = function(done) done(nil, "Runtimes could not be read
 local held = {}
 service.simulatorDevices = function(done) held.devices = done end
 service.simulatorRuntimes = function(done) held.runtimes = done end
-local simulator, simulatorModel = Host.new("simulators", "SimulatorsPage", "pages/Simulators", {model = model, service = service})
+local simulator, simulatorModel = Host.new("simulators", {model = model, service = service})
 simulator:mount(ns.VStack {}, {query = ""})
 t.expect(simulator.refs.computingSpinner and simulator.refs.devices == nil and simulator.refs.planReview == nil, "while the first read runs the page shows one progress state, not empty lists")
 held.devices(nil, "Device state could not be checked. Retry.")
@@ -141,26 +144,26 @@ t.expect(not app.tour:needed(disk), "low-space launch bypasses automatic tour")
 t.expect(app.tour:needed({totalKb = 256e9 / 1024, freeKb = 100e9 / 1024}), "normal-space launch preserves the tour preference")
 app:show("cleanup")
 local page = app.page
-local data = Recommendations.presentation(app.model, "")
+local data = Recommendations.presentation("")
 local expected = data.decisions[1]
 -- #102: with nothing selected the inspector takes no space.
 t.expect(page.refs.selectionDetails.hidden, "an empty inspector is hidden until a suggestion is selected")
 page.refs.list_rebuildable:selectRow(0)
 t.expect(not page.refs.selectionDetails.hidden, "selecting a suggestion shows the inspector")
 page.refs.list_decisions:selectRow(0)
-t.assertEqual(page.model.selectedRow.id, expected.id, "single selection chooses its suggestion")
+t.assertEqual(page.request.selectedRow.id, expected.id, "single selection chooses its suggestion")
 t.assertEqual(page.refs.list_rebuildable.documentView.selectedRow, -1, "selecting a different section clears the previous highlight")
 t.assertEqual(page.refs.selectionAdvice.text, expected.subtitle, "full advice is shown without truncation")
 t.expect(page.refs.openSelection.title:find("Open", 1, true) == 1, "selected suggestion has a visible detail action")
 page:update(app:state())
-t.assertEqual(page.model.selectedRow.id, expected.id, "live measurements preserve the selection by id")
+t.assertEqual(page.request.selectedRow.id, expected.id, "live measurements preserve the selection by id")
 t.assertEqual(page.refs.selectionAdvice.text, expected.subtitle, "refresh keeps the matching explanation")
 page:update({query = "no-such-suggestion", disk = disk})
-t.assertEqual(page.model.selectedRow, nil, "filtering away a suggestion removes the stale detail")
+t.assertEqual(page.request.selectedRow, nil, "filtering away a suggestion removes the stale detail")
 t.expect(page.refs.selectionDetails.hidden, "an empty selection hides the inspector, so no stale item can be opened")
 local opened
-page.model.services.showFiltered = function(id, filter) opened = {id, filter} end
-page.model.selectedRow = {id = "unused-apps", page = "applications", filter = "Unused for 6 months"}
+page.request.app.showFiltered = function(id, filter) opened = {id, filter} end
+page.request.selectedRow = {id = "unused-apps", page = "applications", filter = "Unused for 6 months"}
 page.actions.openSelection()
 t.assertEqual(opened[1], "applications", "visible action navigates to the suggested page")
 t.assertEqual(opened[2], "Unused for 6 months", "visible action preserves its review filter")

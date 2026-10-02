@@ -1,5 +1,5 @@
 <%
-  -- The welcome tour (models/Tour.lua): every page is rendered once, stacked
+  -- The welcome tour (helpers/Tour.lua): every page is rendered once, stacked
   -- in a ZStack that clips, and one shows at a time. Continue and Back slide
   -- the pages (models/TourSheet.lua), and the page dots below them follow. Each
   -- screenshot is cropped by tour/capture.lua to exactly this image box, at

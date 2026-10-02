@@ -1,9 +1,10 @@
 _G.__headless = true
+local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
 local bridge = require("AppKitNative")
-local Model = require("apps.diskmap.Model")
-local Workflow = require("apps.diskmap.models.Workflow")
-local Workflows = require("apps.diskmap.knowledge.Workflows")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
+local Workflows = require("apps.diskmap.models.Workflows")
 local Navigation = require("apps.diskmap.controllers.NavigationController")
 
 -- Diskmap is for everyone (#52): the pages of a kind of work follow the
@@ -23,23 +24,23 @@ for _, id in ipairs({"applications", "files", "duplicates", "simulators", "workt
 end
 for _, id in ipairs({"map", "folder", "largest", "kinds"}) do t.assertEqual(sectionOf[id], "Explore", id .. " is a browsing tool") end
 
-local developer, music = Workflows.find("developer"), Workflows.find("music")
-local model = Model.new("/Users/test")
-t.expect(not Workflow.present(model, developer, function() return false end), "a Mac without developer folders has no Developer section")
-t.expect(Workflow.present(model, developer, function(path) return path == "/Users/test/Library/Developer" end), "~/Library/Developer shows it")
-t.expect(Workflow.present(model, developer, function(path) return path == "/Applications/Xcode.app" end), "Xcode shows it")
-t.expect(not Workflow.present(model, music, function(path) return path == "/Applications/Xcode.app" end), "Xcode does not make a musician")
-t.expect(Workflow.present(model, music, function(path) return path == "/Applications/Logic Pro.app" end), "Logic Pro shows Music Production")
+local developer, music = Workflows:find("developer"), Workflows:find("music")
+local model = Store.new("/Users/test")
+t.expect(not developer:present(function() return false end), "a Mac without developer folders has no Developer section")
+t.expect(developer:present(function(path) return path == "/Users/test/Library/Developer" end), "~/Library/Developer shows it")
+t.expect(developer:present(function(path) return path == "/Applications/Xcode.app" end), "Xcode shows it")
+t.expect(not music:present(function(path) return path == "/Applications/Xcode.app" end), "Xcode does not make a musician")
+t.expect(music:present(function(path) return path == "/Applications/Logic Pro.app" end), "Logic Pro shows Music Production")
 model.measurements.derived = {status = "complete", bytes = 900e6}
-t.expect(Workflow.present(model, developer, nil), "measured developer data shows it")
-t.expect(not Workflow.present(model, music, nil), "and no other kind of work")
+t.expect(developer:present(nil), "measured developer data shows it")
+t.expect(not music:present(nil), "and no other kind of work")
 model.measurements["fonts-shared"] = {status = "complete", bytes = 900e6}
-t.expect(not Workflow.present(model, Workflows.find("design"), nil), "the fonts every Mac has do not make a designer")
+t.expect(not Workflows:find("design"):present(nil), "the fonts every Mac has do not make a designer")
 
 -- Every workflow cites catalog groups and locations that exist, and has
 -- what its page and sidebar row need.
 local ids = {}
-for _, workflow in ipairs(Workflows.list) do
+for _, workflow in ipairs(Workflows:all()) do
 	t.expect(not ids[workflow.id], "workflow ids are unique: " .. workflow.id); ids[workflow.id] = true
 	for _, key in ipairs({"noun", "summary", "empty", "footnote"}) do
 		t.expect(type(workflow[key]) == "string" and workflow[key] ~= "", workflow.id .. " has " .. key)
@@ -53,17 +54,17 @@ for _, workflow in ipairs(Workflows.list) do
 	t.expect(#workflow.sections > 0, workflow.id .. " has sections")
 	for _, section in ipairs(workflow.sections) do
 		for _, id in ipairs(section.groups or {}) do
-			local group = model.resources:find(id)
+			local group = Locations:find(id)
 			t.expect(group ~= nil and not group:isLeaf(), workflow.id .. " cites a catalog group: " .. id)
 		end
-		for _, id in ipairs(section.roots or {}) do t.expect(model.resources:find(id) ~= nil, workflow.id .. " cites a catalog root: " .. id) end
+		for _, id in ipairs(section.roots or {}) do t.expect(Locations:find(id) ~= nil, workflow.id .. " cites a catalog root: " .. id) end
 		for _, id in ipairs(section.items or {}) do
-			local item = model.resources:find(id)
+			local item = Locations:find(id)
 			t.expect(item ~= nil and item:isLeaf(), workflow.id .. " cites a catalog location: " .. id)
 		end
 	end
 	for _, link in ipairs(workflow.links or {}) do
-		t.expect(link.page ~= nil or model.resources:find(link.open) ~= nil, workflow.id .. " links to a resource or a page: " .. tostring(link.open or link.page))
+		t.expect(link.page ~= nil or Locations:find(link.open) ~= nil, workflow.id .. " links to a resource or a page: " .. tostring(link.open or link.page))
 	end
 end
 
@@ -71,17 +72,17 @@ end
 model.measurements["logic-sound-library"] = {status = "complete", bytes = 60e9}
 model.measurements.ableton = {status = "complete", bytes = 20e9}
 model.measurements["audio-plugins-shared"] = {status = "complete", bytes = 4e9}
-local page = Workflow.presentation(model, music)
+local page = music:presentation()
 t.assertEqual(#page.sections, 3, "sections with measured locations are shown")
 t.assertEqual(page.sections[1].rows[1].id, "logic-sound-library", "rows name catalog locations")
 t.assertEqual(page.total, "84.0 GB", "the page totals what it shows")
 t.assertEqual(page.sections[1].rows[1].relative, 1, "the largest row has a full bar")
-t.assertEqual(Workflow.badge(model, music), "84.0 GB", "the sidebar badge is the page's total")
-t.assertEqual(#Workflow.presentation(model, music, "ableton").sections, 1, "search narrows the page")
+t.assertEqual(music:badge(), "84.0 GB", "the sidebar badge is the page's total")
+t.assertEqual(#music:presentation("ableton").sections, 1, "search narrows the page")
 -- A location can matter to two kinds of work.
 model.measurements["adobe-caches"] = {status = "complete", bytes = 3e9}
 local function lists(workflow, id)
-	for _, section in ipairs(Workflow.presentation(model, Workflows.find(workflow)).sections) do
+	for _, section in ipairs(Workflows:find(workflow):presentation().sections) do
 		for _, row in ipairs(section.rows) do if row.id == id then return true end end
 	end
 	return false

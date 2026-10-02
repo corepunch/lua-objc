@@ -1,0 +1,370 @@
+local Locations = require("apps.diskmap.models.Locations")
+local Model = require("data.model")
+local Categories = require("apps.diskmap.helpers.Categories")
+local Files = require("apps.diskmap.models.Files")
+local Figures = require("apps.diskmap.helpers.Overview")
+local Format = require("apps.diskmap.helpers.Format")
+local Inventory = require("apps.diskmap.helpers.Inventory")
+local ListRoute = require("apps.diskmap.pages.ListRoute")
+local MapTree = require("apps.diskmap.helpers.MapTree")
+local Scope = require("apps.diskmap.helpers.Scope")
+local Selection = require("apps.diskmap.helpers.Selection")
+local Sectors = require("ui.sectors")
+
+-- The pages that explore where space goes: the Storage Map, Largest
+-- Locations and File Types (the Folder Map is pages/Folder.lua).
+local routes = {}
+
+-- The Map page: the semantic tree as rings beside a list of the focused
+-- node's children, or as rectangles alone. Clicking a group focuses it, the
+-- center or the breadcrumb goes back up. The pointer over a wedge or cell and
+-- the list row name one resource (helpers/Selection.lua), which the native
+-- chart and list paint; that pointing is the live part and never draws the
+-- page again. `self.app.mapStyle` picks the first chart.
+local map = {view = "pages/Map"}
+routes.map = map
+
+local STYLES = {"rings", "rectangles"}
+local DEFAULT_HOVER = "Hover over the map for details; click a group to look inside."
+
+function map:init()
+	local style = self.app.mapStyle
+	if style ~= "rectangles" then style = "rings" end
+	self.actions, self.focus, self.style = self:flow("Rows"), "", style
+end
+
+-- Pointing, row menus and drags only read; looking inside draws again.
+map.queries = {chartHover = true, selectRow = true, rowMenu = true, dragPath = true}
+
+local function isGroup(storage, id)
+	local resource = id and Locations:find(id)
+	return resource ~= nil and not resource:isLeaf()
+end
+
+-- The view animates the change of focus: the rings move to the new level.
+function map:setFocus(id)
+	if id ~= "" and not isGroup(Model.db, id) then return end
+	self.focus = id or ""
+end
+
+function map:up()
+	local resource = self.focus ~= "" and Locations:find(self.focus)
+	local parent = resource and resource:parent()
+	self:setFocus(parent and parent.id or "")
+end
+
+function map:setStyle(style)
+	for _, known in ipairs(STYLES) do
+		if known == style then self.style = style; return end
+	end
+	error("unknown map style " .. tostring(style), 2)
+end
+
+function map:pickStyle(index) self:setStyle(STYLES[(index or 0) + 1]) end
+
+-- The line under the chart names the pointed resource; its row follows.
+function map:point(id)
+	self.selectedId = Selection.index(self.rows, id) and id or nil
+	if self.refs then
+		self.refs.mapHover.text = id and MapTree.describe(id, self.total) or self.hover
+		Selection.show(self.refs.mapList, self.rows, self.selectedId)
+	end
+end
+
+function map:chartHover(id) self:point(id) end
+
+function map:chartSelect(id, count)
+	if count and count > 1 then self:drill(id)
+	elseif isGroup(Model.db, id) then self:setFocus(id)
+	else self:point(id) end
+end
+
+-- A group looks inside; a leaf opens its category sheet.
+function map:drill(id)
+	if not id or id:find("#other", 1, true) then return end
+	if isGroup(Model.db, id) then self:setFocus(id); return end
+	local resource = Locations:find(id)
+	local parent = resource and resource:parent()
+	self.app.open(parent and parent.id or id)
+end
+
+-- A selected row points at its sector, as hovering the sector would.
+function map:selectRow(_, _, row)
+	if not row then return end
+	self:point(row.id)
+	if self.refs.sunburst then Sectors.highlight(self.refs.sunburst, row.id) end
+end
+
+function map:drillRow(_, _, row) if row then self:drill(row.id) end end
+
+function map:rowMenu(_, _, row) return self.actions:resource(row.id) end
+
+-- A mark drags as its folder or file, like a Finder item.
+function map:dragPath(id)
+	local resource = Locations:find(id)
+	return resource and resource.path
+end
+
+function map:toggleWorth(item)
+	if item.included then self.app.openReview(item.enclosingPath); return end
+	local resource = Locations:find(item.id)
+	self.app.review:toggle({path = item.path, name = item.name, bytes = item.bytes, resourceId = item.id,
+		source = "Map", consequence = resource and resource.consequence})
+end
+
+function map:data(state)
+	local storage = Model.db
+	-- While the scan runs nothing is measured yet as far as this page shows;
+	-- it is drawn again when the scan finishes.
+	local scanning = storage.scan.running == true
+	local nodes, total = {}, 0
+	if not scanning then nodes, total = MapTree.nodes(self.focus) end
+	local trail = MapTree.path(self.focus)
+	local query = state.query or ""
+	-- Search narrows the list beside the chart, as on every other page; the
+	-- chart keeps the whole level so its proportions stay true.
+	local rows = scanning and {} or Categories.rows(self.focus ~= "" and self.focus or nil, query)
+	table.sort(rows, function(a, b) return (a.bytes or -1) > (b.bytes or -1) end)
+	local largest = rows[1] and rows[1].bytes or 0
+	for _, row in ipairs(rows) do
+		row.children = nil
+		row.relative = row.bytes and largest > 0 and row.bytes / largest or nil
+		row.shareText = row.bytes and total > 0 and string.format("%d%%", math.floor(row.bytes * 100 / total + 0.5)) or ""
+	end
+	local worth = scanning and {} or MapTree.worthALook(self.focus, 3)
+	for _, item in ipairs(worth) do
+		item.markable = self.actions:markableResource(Locations:find(item.id))
+		item.marked = self.actions:isMarked(item.path)
+		local parent, exact = self.actions:covering(item.path)
+		item.included = parent ~= nil and not exact
+		item.enclosingPath = item.included and parent.path or nil
+	end
+	self.trail, self.worth, self.rows, self.total = trail, worth, rows, total
+	-- The breadcrumb and "worth a look" buttons are named by position
+	-- (`focus_2`, `worth_1`).
+	local handlers = {}
+	for index, step in ipairs(trail) do handlers["focus_" .. index] = function() self:setFocus(step.id) end end
+	for index, item in ipairs(worth) do handlers["worth_" .. index] = function() self:toggleWorth(item) end end
+	self.hover = #nodes == 0 and "" or DEFAULT_HOVER
+	if not Selection.index(rows, self.selectedId) then self.selectedId = nil end
+	local focusRow = self.focus ~= "" and Categories.row(self.focus) or nil
+	-- The Overview counts what the disk reports as used; the Map counts
+	-- what Diskmap measured. Saying both keeps the two pages reconcilable.
+	local disk = state.disk
+	local used = disk and disk.totalKb and disk.totalKb > 0 and (disk.totalKb - disk.freeKb) * 1024 or nil
+	return {nodes = nodes, rows = rows, trail = trail, worth = worth, style = self.style, hover = self.hover,
+		total = Format.size(total), query = query,
+		-- Rectangles have no list beside them.
+		lists = self.style ~= "rectangles" and {mapList = rows} or nil,
+		subtitle = (focusRow and (focusRow.name .. " · ") or "") .. Format.size(total) .. " measured"
+			.. (self.focus == "" and (used and used >= total and (" of " .. Format.size(used) .. " used · shares are of what was measured")
+				or " across every category") or ""),
+		accessibilityLabel = "Storage map of " .. trail[#trail].name .. ", " .. #nodes .. " areas",
+		handlers = handlers}
+end
+
+-- Reloading rows drops the native selection; the token restores it.
+function map:rendered(refs)
+	self.refs = refs
+	Selection.show(refs.mapList, self.rows, self.selectedId)
+end
+
+function map:deactivate() self.refs = nil end
+
+
+
+-- Largest Locations: the known locations measured individually, across
+-- every category. The ranking stops where individual items stop mattering at
+-- a glance; the category lists still show everything.
+local LARGEST = {limit = 100}
+
+routes.largest = ListRoute.extend({layout = {summaryId = "largestSummary", scopeNote = Scope.pages.largest,
+	sections = {{list = {id = "largest", menu = "rowMenu", activate = "open", status = true}}},
+	footnote = {text = "Known locations measured individually, across every category. Open an item's menu to show it in Finder, review it, or keep it out of suggestions."},
+}, limit = LARGEST.limit})
+
+function routes.largest:present(state)
+	local model = Model.db
+	local rows = Figures.largest(state.disk, LARGEST.limit, state.query)
+	local bytes = 0
+	for _, row in ipairs(rows) do bytes = bytes + row.bytes end
+	local disk = state.disk
+	local used = disk and disk.totalKb and disk.totalKb > 0 and (disk.totalKb - disk.freeKb) * 1024 or nil
+	return {lists = {largest = rows}, texts = {scopeNote = Scope.text("largest"), largestSummary = #rows == 0 and "No measured items match yet."
+		or string.format("The %d largest measured locations use %s%s.", #rows, Format.size(bytes),
+			used and used >= bytes and (" of " .. Format.size(used) .. " used") or "")}}
+end
+
+-- File Types: extension totals grouped into kinds, with a donut, advice for
+-- the largest kind and the top extensions. The selected kind is the page's
+-- selection token: its sector, its row, the headline and the top extensions
+-- all name it.
+local WAITING = {title = "File Types Not Measured Yet", systemImage = "square.grid.2x2", description = "File types are listed when the scan finishes."}
+local kinds = {view = "pages/Kinds"}
+routes.kinds = kinds
+-- Hovering, menus and the lead card's buttons only read or navigate.
+kinds.queries = {selectKind = true, chartHover = true, kindMenu = true, openKind = true, showHeadline = true, showInstallers = true, showOld = true,
+	cleanup = true, refresh = true, clearSearch = true}
+
+-- Large Files, narrowed to one kind.
+function kinds:showFiles(kind) self.app.showFiltered("files", Files.filters:index("All"), kind) end
+function kinds:showInstallers() self.app.showFiltered("files", Files.filters:index("Installers & archives")) end
+function kinds:showOld() self.app.showFiltered("files", Files.filters:index("Unused for a year")) end
+function kinds:cleanup() self.app.show("cleanup") end
+function kinds:refresh() self.app.rescan() end
+function kinds:clearSearch() self.app.search("kinds", "") end
+function kinds:showHeadline() if self.headlineId then self:showFiles(self.headlineId) end end
+function kinds:openKind(_, _, row) if row then self:showFiles(row.kindId or row.id) end end
+
+function kinds:kindMenu(_, _, row)
+	local kindId = row.kindId or row.id
+	local kind = Files.kindById(kindId)
+	return {{title = "Show Largest " .. (kind and kind.name or "Files"), systemImage = "doc.fill", action = function() self:showFiles(kindId) end}}
+end
+
+-- A row the pointer selected through its sector is only pointed at; one
+-- the person selected is the kept kind, and the page is drawn again for it.
+function kinds:selectKind(_, _, row)
+	if not row or self.pointing or row.id == self.selectedId then return end
+	self.selectedId = row.id
+	self.app.refresh()
+end
+
+-- A click keeps the kind; a click on the kind already kept opens its largest files.
+function kinds:chartSelect(id)
+	if id == self.selectedId then self:showFiles(id) else self.selectedId = Selection.index(self.kinds, id) and id or nil end
+end
+
+-- The pointer over a sector points at its row; leaving the chart returns to
+-- the kind that was kept.
+function kinds:chartHover(id)
+	local refs = self.refs
+	if not refs then return end
+	self.pointing = true
+	Selection.show(refs.kinds, self.kinds, id or self.selectedId)
+	self.pointing = false
+	if not id and refs.kindsChart then Sectors.highlight(refs.kindsChart, self.selectedId) end
+end
+
+-- The leading decision: the files of yours this page can point at, never a
+-- kind's whole inventory. Disk images share an extension with system and
+-- app images, so only the user-owned subset is offered.
+function kinds:decision(kinds)
+	local data = {id = "decision", icon = "opticaldiscdrive.fill", color = "systemTeal"}
+	if #kinds == 0 then
+		local state, reason = Files:state()
+		data.amount, data.amountCaption = "—", "not measured"
+		if state == "empty" then
+			data.title, data.detail, data.amountCaption = "No files found in the measured locations", "Clean Up can still guide you through rebuildable data and owner-managed storage.", "scan finished"
+			data.actionTitle, data.action = "Open Clean Up", "cleanup"
+		else
+			data.title, data.detail = "File type results unavailable", reason or "No extension totals were recorded. Refresh the scan to try again."
+			data.actionTitle, data.action = "Refresh Scan", "refresh"
+		end
+		return data
+	end
+	local installers = Files:rows("Installers & archives")
+	local removable = 0
+	for _, row in ipairs(installers) do removable = removable + row.bytes end
+	local files = Files:summary()
+	if removable > 0 then
+		data.title = "Review " .. (#installers == 1 and "1 installer or archive" or (#installers .. " installers and archives")) .. " in your folders"
+		data.detail = "Check that you have installed or extracted them before moving them to the Trash."
+		data.amount, data.amountCaption = Format.size(removable), "could recover"
+		data.actionTitle, data.action = "Show Installers", "showInstallers"
+	elseif files and files.reviewableOld > 0 then
+		data.icon, data.color = "clock.fill", "systemOrange"
+		data.title = "Review " .. Format.plural(files.reviewableOld, "file") .. " of yours unused for a year"
+		data.detail = "No installer or archive in your folders is large enough to list. These files were not opened or changed in a year; they may be your only copy."
+		data.amount, data.amountCaption = Format.size(files.reviewableOldBytes), "to review"
+		data.actionTitle, data.action = "Show Unused Files", "showOld"
+	else
+		data.icon, data.color = "checkmark.circle.fill", "systemGreen"
+		data.title = "No large file of yours to review"
+		data.detail = "No user-owned file over " .. Format.size(Inventory.summary.minimumFileBytes) .. " was ranked. Clean Up lists other places their owners can clear."
+		data.amount, data.amountCaption = Format.size(0), "could recover"
+		data.actionTitle, data.action = "Open Clean Up", "cleanup"
+	end
+	return data
+end
+
+-- The kinds and extensions the search leaves.
+local function search(kinds, extensions, query)
+	local matches, matchedKinds = {}, {}
+	for _, extension in ipairs(extensions) do
+		if (extension.name .. " " .. extension.subtitle):lower():find(query, 1, true) then
+			table.insert(matches, extension); matchedKinds[extension.kindId] = true
+		end
+	end
+	local found = {}
+	for _, kind in ipairs(kinds) do
+		if kind.name:lower():find(query, 1, true) or matchedKinds[kind.id] then table.insert(found, kind) end
+	end
+	return found, matches
+end
+
+function kinds:data(state)
+	local model = Model.db
+	local fileState = Files:state()
+	self.kinds, self.headlineId = {}, nil
+	-- Nothing is listed until the scan has measured the files.
+	if fileState == "loading" then return {waiting = WAITING, summary = ""} end
+	local kinds, extensions = Files:kinds()
+	if fileState == "error" or fileState == "unavailable" then kinds, extensions = {}, {} end
+	local query = (state.query or ""):lower()
+	if query ~= "" then kinds, extensions = search(kinds, extensions, query) end
+	self.kinds = kinds
+	if not Selection.index(kinds, self.selectedId) then self.selectedId = nil end
+	local all, marks, labels = 0, {}, {}
+	for _, kind in ipairs(kinds) do
+		all = all + kind.bytes
+		kind.detail = Format.count(kind.count)
+		table.insert(marks, {id = kind.id, name = kind.name, color = kind.color, bytes = kind.bytes})
+		table.insert(labels, kind.name .. " " .. kind.size)
+	end
+	for _, row in ipairs(extensions) do row.detail = Format.count(row.count) end
+	-- The headline names the selected kind, or else the largest kind a
+	-- person can act on; "Other files" and databases belong to apps.
+	local headline, selected
+	for _, kind in ipairs(kinds) do
+		if kind.id == self.selectedId then headline, selected = kind, kind; break end
+	end
+	for _, kind in ipairs(kinds) do
+		if not headline and kind.id ~= "other" and kind.id ~= "databases" then headline = kind end
+	end
+	headline = headline or kinds[1]
+	self.headlineId = headline and headline.id
+	local inventoryNote = "All measured files, including app and system storage; only files in your own folders are offered for review above."
+	if headline and headline.removableBytes then
+		inventoryNote = headline.size .. " total stored; " .. Format.size(headline.removableBytes) .. " in your own folders. The rest belongs to apps or the system."
+	end
+	local decision = self:decision(kinds)
+	local summary = Format.size(all) .. " in files across " .. #kinds .. " kinds"
+	if #kinds == 0 then
+		if fileState == "empty" then summary = "Scan complete · No files found"
+		elseif fileState == "loaded" and query ~= "" then
+			summary = "No matching file types"
+			decision.title, decision.detail = "Nothing matches this search", "Clear the search to see the measured file types."
+			decision.amountCaption, decision.actionTitle, decision.action = "no matches", "Clear Search", "clearSearch"
+		else summary = "File type results unavailable" end
+	elseif model.files and model.files.partial then summary = summary .. " · scan coverage is incomplete" end
+	local lists = {extensions = #extensions > 0 and Selection.extensions(extensions, self.selectedId) or nil}
+	if #kinds > 0 then lists.kinds = kinds end
+	return {kinds = marks, total = Format.size(all), scope = Scope.text("kinds"), summary = summary, hasExtensions = #extensions > 0,
+		accessibilityLabel = "File types: " .. table.concat(labels, ", "), decision = decision, inventoryNote = inventoryNote,
+		headline = headline and {title = headline.name .. " · " .. headline.size .. " stored"} or {},
+		extensionsDetail = selected and ("The " .. selected.name .. " extensions that use the most space") or "The twelve extensions that use the most space",
+		lists = lists}
+end
+
+-- After a draw the native selection and the chart follow the token.
+function kinds:rendered(refs)
+	self.refs = refs
+	Selection.show(refs.kinds, self.kinds, self.selectedId)
+	if refs.kindsChart then Sectors.highlight(refs.kindsChart, self.selectedId) end
+end
+
+function kinds:deactivate() self.refs = nil end
+
+
+return routes

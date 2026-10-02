@@ -1,27 +1,29 @@
 _G.__headless = true
+local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
 local ns = require("AppKit")
 local bridge = require("AppKitNative")
 local xml = require("ui.xml")
-local Model = require("apps.diskmap.Model")
-local Inventory = require("apps.diskmap.models.Inventory")
-local Categories = require("apps.diskmap.models.Categories")
-local Scan = require("apps.diskmap.models.Scan")
-local model = Model.new("/Users/test")
-local _, ids = Inventory.plan(model)
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
+local Inventory = require("apps.diskmap.helpers.Inventory")
+local Categories = require("apps.diskmap.helpers.Categories")
+local Scan = require("apps.diskmap.services.Scan")
+local model = Store.new("/Users/test")
+local _, ids = Inventory.plan()
 model.measurements[ids[1]] = {bytes = 9e9, status = "complete"}
-Inventory.begin(model, ids)
-t.assertEqual(Model.total(model), 0, "refresh immediately discards old measurements")
-for _, row in ipairs(Categories.rows(model)) do
+Inventory.begin(ids)
+t.assertEqual(Store.total(model), 0, "refresh immediately discards old measurements")
+for _, row in ipairs(Categories.rows()) do
 	t.expect(row.calculating or row.status == "excluded" or row.status == "unsupported", "category starts calculating unless excluded or system managed: " .. row.id)
 	t.assertEqual(row.size, row.status == "excluded" and "Not scanned" or row.status == "unsupported" and "System Managed" or "Calculating…", "pending category never shows old bytes")
 end
-local first = model.resources:roots()[1]
+local first = Locations:roots()[1]
 local function belongs(id)
-	local row = model.resources:find(id)
+	local row = Locations:find(id)
 	while row do
 		if row.id == first.id then return true end
-		row = row:getParent()
+		row = row:parent()
 	end
 end
 local result = {completed = 0, total = #ids, trees = {}, rootStates = {}}
@@ -30,20 +32,20 @@ for i, id in ipairs(ids) do
 	result.completed = i; result.rootStates[i] = "missing"
 end
 t.expect(result.completed > 0 and result.completed < #ids, "fixture completes exactly one category")
-Inventory.progress(model, ids, result)
+Inventory.progress(ids, result)
 t.assertEqual(model.scan.completed, result.completed, "live scan exposes completed locations")
 t.assertEqual(model.scan.total, #ids, "live scan exposes total locations")
-local rows = Categories.rows(model)
+local rows = Categories.rows()
 t.expect(not rows[1].calculating and rows[1].size == "0 KB", "completed zero category stops spinning")
 t.expect(rows[2].calculating, "unrelated pending category keeps spinning")
-local filtered = Categories.rows(model, nil, first.name)
+local filtered = Categories.rows(nil, first.name)
 t.expect(not filtered[1].calculating, "filter preserves category completion")
-Inventory.cancel(model)
-for _, row in ipairs(Categories.rows(model)) do t.expect(not row.calculating, "cancel clears all pending indicators") end
+Inventory.cancel()
+for _, row in ipairs(Categories.rows()) do t.expect(not row.calculating, "cancel clears all pending indicators") end
 t.assertEqual(model.measurements[ids[1]].bytes, 0, "cancel retains this scan's completed result")
-Inventory.begin(model, ids)
-Inventory.progress(model, ids, result)
-Inventory.apply(model, ids, {failure = "Worker stopped"})
+Inventory.begin(ids)
+Inventory.progress(ids, result)
+Inventory.apply(ids, {failure = "Worker stopped"})
 t.assertEqual(model.measurements[ids[1]].bytes, 0, "worker failure keeps already published fresh result")
 t.assertEqual(model.measurements[ids[#ids]].status, "failed", "worker failure clears pending state")
 t.assertEqual(model.measurements[ids[#ids]].bytes, nil, "worker failure cannot restore cached data")
@@ -56,8 +58,8 @@ local scanner = Scan.new(model, {
 }, "/Users/test")
 scanner:start()
 pending.progress(result)
-t.expect(not Categories.rows(model)[1].calculating, "controller applies incremental measurement")
-t.expect(Categories.rows(model)[2].calculating, "controller leaves other categories pending")
+t.expect(not Categories.rows()[1].calculating, "controller applies incremental measurement")
+t.expect(Categories.rows()[2].calculating, "controller leaves other categories pending")
 t.expect(scanner.status:find(string.format("%d of %d locations measured", result.completed, result.total), 1, true) == 1, "scan status gives clear completed and total counts")
 scanner:cancel()
 local completion
@@ -74,9 +76,9 @@ t.expect(finished.status:find("Partial lower bound", 1, true) == 1, "partial sna
 t.expect(finished.status:find("filesystem read issues", 1, true) == nil, "finished status does not duplicate the coverage issue count")
 local failure = Scan.new(model, {start = function() error("No worker") end}, "/Users/test")
 failure:start()
-t.assertEqual(Model.total(model), 0, "start failure does not retain old measurements")
-t.assertEqual(Categories.rows(model)[1].size, "Unavailable", "failed category reports unavailable rather than access denial")
-t.expect(not Categories.rows(model)[2].calculating, "controller cancellation stops pending spinner")
+t.assertEqual(Store.total(model), 0, "start failure does not retain old measurements")
+t.assertEqual(Categories.rows()[1].size, "Unavailable", "failed category reports unavailable rather than access denial")
+t.expect(not Categories.rows()[2].calculating, "controller cancellation stops pending spinner")
 
 -- Shared native cells: alignment, sizing, reuse, and shrinking remain independent of scan IO.
 for _, tag in ipairs({"OutlineView", "List"}) do
@@ -105,5 +107,5 @@ for _, tag in ipairs({"OutlineView", "List"}) do
 end
 -- A category holding only resources file scans cannot measure is system
 -- managed, never "Access restricted".
-t.assertEqual(Categories.row(model, "backups").size, "System Managed", "backups of local snapshots only are system managed")
+t.assertEqual(Categories.row("backups").size, "System Managed", "backups of local snapshots only are system managed")
 os.exit(t.summary() and 0 or 1)

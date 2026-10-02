@@ -1,4 +1,5 @@
 _G.__headless = true
+local Marks = require("apps.diskmap.models.Marks")
 local t = require('TestKit')
 local ns = require('AppKit')
 local bridge = require('AppKitNative')
@@ -15,7 +16,7 @@ window.size = ns.Size(950, 580); window:layout()
 -- Real root navigation disposes and remounts this same page instance. Keep
 -- both family selections and the chosen runtime through that lifecycle.
 app:show('simulators')
-local page = app.graph:get('simulators')
+local page = app:request("simulators")
 local choices = {}
 for _, family in ipairs({'iPhone','iPad'}) do
 	local plan = page:plan()
@@ -51,7 +52,7 @@ t.expect(refs.selectionSection.hidden, 'empty worktree inspector uses no space')
 refs.reviewList:selectRow(0); bridge._flushLayout(); refs = app.page.refs
 t.expect(not refs.selectionSection.hidden, 'selection exposes evidence')
 t.expect(refs.selectionSection.superview == refs.page.superview, 'evidence stays outside scrolling inventory')
-t.expect(refs.selectedDetail.text:find(app.graph:get('worktrees').selected.path, 1, true), 'selection exposes complete path')
+t.expect(refs.selectedDetail.text:find(app:request("worktrees").selected.path, 1, true), 'selection exposes complete path')
 t.expect(refs.openOwner.enabled, 'managed checkout exposes its owner action')
 local widths = bridge._tableColumnWidths(refs.reviewList)
 t.expect(widths[1].width > widths[2].width and widths[1].width > widths[3].width, 'name/branch gets more space than repeated status/date')
@@ -59,17 +60,17 @@ t.expect(widths[1].width > widths[2].width and widths[1].width > widths[3].width
 -- Installer arrival leads with the actual filtered subset, with staging
 -- only; no confirmation or deletion is triggered by marking.
 app:show('kinds'); app.page.actions.showInstallers()
-local rows = Files.rows(app.model, 'Installers & archives')
+local rows = Files:rows('Installers & archives')
 local bytes = 0
 for _, row in ipairs(rows) do bytes = bytes + row.bytes end
 local lead = app.page.refs
-t.assertEqual(lead.decisionAmount.text, require('apps.diskmap.Model').size(bytes), 'file decision totals only the visible subset')
+t.assertEqual(lead.decisionAmount.text, require("apps.diskmap.helpers.Format").size(bytes), 'file decision totals only the visible subset')
 t.assertEqual(lead.decisionCaption.text, 'to review', 'documents are review candidates')
 local before = app.review:count()
 ns._invokeAction(lead.decisionAction)
 t.expect(app.review:count() > before, 'marking stages visible installers')
 for _, row in ipairs(rows) do t.expect(app.review:isMarked(row.path), 'each installer is staged') end
-app.review.basket:clear(); app:basketChanged()
+Marks:clear(); app:basketChanged()
 t.expect(app.collector.collectorArea.hidden, 'empty collector collapses')
 local deferred, originalAsync, originalSleep = {}, ns.async, ns.sleep
 ns.async = function(fn) table.insert(deferred, fn) end

@@ -3,7 +3,7 @@ local t = require("TestKit")
 local ns = require("AppKit")
 local Mock = require("apps.diskmap.services.Mock")
 local Simulators = require("apps.diskmap.models.Simulators")
-local Sdks = require("apps.diskmap.models.Sdks")
+local Sdks = require("apps.diskmap.helpers.Sdks")
 
 local function writeSnapshot(path, items)
 	table.sort(items, function(a, b) return a[1] < b[1] end)

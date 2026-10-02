@@ -1,7 +1,7 @@
 local ns = require("AppKit")
 local xml = require("ui.xml")
 local Manifest = require("data.manifest")
-local Workflows = require("apps.diskmap.knowledge.Workflows")
+local Workflows = require("apps.diskmap.models.Workflows")
 local Controller = {}; Controller.__index = Controller
 
 -- Sidebar destinations come from the app manifest (apps/diskmap/app.xml): the
@@ -70,7 +70,7 @@ end
 -- Returns whether the sidebar changed.
 function Controller:setWorkflows(present)
 	local changed = false
-	for _, workflow in ipairs(Workflows.list) do
+	for _, workflow in ipairs(Workflows:all()) do
 		local shown = present[workflow.id] == true
 		if (self.workflows[workflow.id] == true) ~= shown then changed = true end
 		self.workflows[workflow.id] = shown or nil

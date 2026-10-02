@@ -132,7 +132,7 @@ t.expect(deleted, "the mock deletes a deletable runtime through simctl's command
 t.expect(math.abs(app.service.diskSpace().freeKb - freeBefore - deletedBytes / 1024) < 1, "deleting a runtime frees its image")
 app.service.simulatorRuntimes(function(value) runtimeList = value end)
 t.assertEqual(#Simulators.runtimeRows(runtimeList, {}), 2, "a deleted runtime leaves the list")
-local update = require("apps.diskmap.models.Updates").softwareUpdate(app.service.softwareUpdateStatus())
+local update = require("apps.diskmap.helpers.Updates").softwareUpdate(app.service.softwareUpdateStatus())
 t.assertEqual(update.title, "macOS Tahoe 26.1 is available", "the mock reports a pending macOS update")
 local xml, ns = require("ui.xml"), require("AppKit")
 local windowData = app.commands:data()

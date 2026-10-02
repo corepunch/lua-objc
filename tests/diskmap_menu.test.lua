@@ -3,7 +3,7 @@ local t = require("TestKit")
 local bridge = require("AppKitNative")
 local Mock = require("apps.diskmap.services.Mock")
 local Controller = require("apps.diskmap.Controller")
-local Help = require("apps.diskmap.models.Help")
+local Help = require("apps.diskmap.helpers.Help")
 local Navigation = require("apps.diskmap.controllers.NavigationController")
 
 local function find(items, title)

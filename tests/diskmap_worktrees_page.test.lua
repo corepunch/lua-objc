@@ -1,20 +1,21 @@
 _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
-local Model = require("apps.diskmap.Model")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
 local Mock = require("apps.diskmap.services.Mock")
 local Host = require("tests.diskmap_page")
-local Recommendations = require("apps.diskmap.models.Recommendations")
-local Cleanup = require("apps.diskmap.models.Cleanup")
+local Recommendations = require("apps.diskmap.helpers.Recommendations")
+local Cleanup = require("apps.diskmap.helpers.Cleanup")
 
 -- With the mock fixture: the page lists every worktree, offers the clean ones and holds the rest back.
 local service = Mock.new()
-local model = Model.new(service.home)
+local model = Store.new(service.home)
 local confirmations, saved = {}, nil
 service.confirmAction = function(title, message) table.insert(confirmations, {title, message}); return true end
 service.saveKeep = function(kept) saved = kept; return true end
 local changed, published, page, worktrees = 0, 0, nil, nil
-page, worktrees = Host.new("worktrees", "WorktreesPage", "pages/Worktrees", {model = model, service = service,
+page, worktrees = Host.new("worktrees", {model = model, service = service,
 	rescan = function() changed = changed + 1 end, refresh = function() published = published + 1; page:update(page.state) end})
 page:mount(ns.VStack {}, {query = ""})
 local refs = page.refs
@@ -58,7 +59,7 @@ t.expect(published > 0 and model.worktreePlan and model.worktreePlan.removalCoun
 t.assertEqual(model.worktreePlan.pruneCount, 1, "with its missing registration counted apart")
 local decision = page.refs
 t.expect(decision.decisionAction.enabled and decision.decisionAction.title:find("2 Worktrees", 1, true), "the review button counts the removal set")
-t.assertEqual(decision.decisionAmount.stringValue, Model.size(model.worktreePlan.removalBytes), "beside the amount the removal could recover")
+t.assertEqual(decision.decisionAmount.stringValue, Format.size(model.worktreePlan.removalBytes), "beside the amount the removal could recover")
 t.assertEqual(decision.decisionCaption.stringValue, "could recover", "which says what it is")
 t.expect(refs.prune.enabled, "missing registrations can be pruned")
 t.expect(refs.removeDetail.text:find("Source", 1, true) and refs.removeDetail.text:find("Git", 1, true), "storage is shown split: " .. refs.removeDetail.text)
@@ -83,13 +84,13 @@ select("MockProject")
 t.expect(not refs.keep.enabled, "the primary cannot be kept or removed")
 
 -- Clean Up carries the same plan and does not count the tool's folder again.
-local data = Recommendations.presentation(model, "", {})
+local data = Recommendations.presentation("", {})
 local candidate
 for _, row in ipairs(data.decisions) do if row.id == "worktrees" then candidate = row end end
 t.expect(candidate and candidate.page == "worktrees", "Clean Up offers the worktree review")
 t.assertEqual(candidate.eligibleBytes, model.worktreePlan.removalBytes, "with the plan's removal bytes as its eligible bytes")
 model.measurements["codex-worktrees"] = {status = "complete", bytes = 2e9}
-for _, value in ipairs(Cleanup.suggestions(model)) do t.expect(value.id ~= "codex-worktrees", "the tool's worktree folder is not suggested beside the per-worktree review") end
+for _, value in ipairs(Cleanup.suggestions()) do t.expect(value.id ~= "codex-worktrees", "the tool's worktree folder is not suggested beside the per-worktree review") end
 
 -- Review: one confirmation, each worktree rechecked, nothing forced, results reported.
 select("coin-quest")
@@ -132,9 +133,9 @@ t.expect(worktrees.result:find("No checkout was deleted", 1, true), "and the res
 
 -- A failing removal is reported and the rest continue.
 local failing = Mock.new()
-local failModel = Model.new(failing.home)
+local failModel = Store.new(failing.home)
 failing.confirmAction = function() return true end
-local failedPage, failed = Host.new("worktrees", "WorktreesPage", "pages/Worktrees", {model = failModel, service = failing})
+local failedPage, failed = Host.new("worktrees", {model = failModel, service = failing})
 failedPage:mount(ns.VStack {}, {query = ""})
 local realFailing = failing.command
 local attempts = 0
@@ -155,11 +156,11 @@ page:update({query = ""})
 local empty = Mock.new()
 empty.worktreeScan = function(_, done) done({}, {}) end
 local routed
-local emptyPage, emptyWorktrees = Host.new("worktrees", "WorktreesPage", "pages/Worktrees", {model = Model.new(empty.home), service = empty,
+local emptyPage, emptyWorktrees = Host.new("worktrees", {model = Store.new(empty.home), service = empty,
 	show = function(id) routed = id end})
 emptyPage:mount(ns.VStack {}, {query = ""})
 t.expect(not emptyPage.refs.worktreesEmpty.hidden and emptyPage.refs.removeSection.hidden and emptyPage.refs.reviewSection.hidden, "no worktrees shows its own empty state")
-t.assertEqual(emptyWorktrees.storage.worktreePlan.removalCount, 0, "and an empty plan")
+t.assertEqual(require("data.model").db.worktreePlan.removalCount, 0, "and an empty plan")
 t.assertEqual(emptyPage.refs.decisionAction.title, "Open Clean Up", "a page with nothing to remove routes to other cleanup")
 ns._invokeAction(emptyPage.refs.decisionAction)
 t.assertEqual(routed, "cleanup", "and the route opens Clean Up")
@@ -174,7 +175,7 @@ local realScan = delayed.worktreeScan
 delayed.worktreeScan = function(self, roots, done, progress)
 	table.insert(pending, function() realScan(self, roots, done, progress) end)
 end
-local lifecycle, lifecycleWorktrees = Host.new("worktrees", "WorktreesPage", "pages/Worktrees", {model = Model.new(delayed.home), service = delayed})
+local lifecycle, lifecycleWorktrees = Host.new("worktrees", {model = Store.new(delayed.home), service = delayed})
 lifecycleWorktrees:load()
 t.expect(lifecycleWorktrees.busy and not lifecycleWorktrees.loaded, "a background load is pending before the page mounts")
 lifecycle:mount(ns.VStack {}, {query = ""})
@@ -187,8 +188,8 @@ pending[1]()
 t.expect(not lifecycleWorktrees.busy and lifecycleWorktrees.loaded, "the pending load finishes after navigating away and back")
 t.assertEqual(lifecycle.refs.removeList.rowCount, 2, "and the mounted page shows its result")
 t.expect(lifecycle.refs.decisionAction.enabled, "with its review action ready")
-local unmounted, unmountedWorktrees = Host.new("worktrees", "WorktreesPage", "pages/Worktrees", {model = Model.new(delayed.home), service = delayed})
+local unmounted, unmountedWorktrees = Host.new("worktrees", {model = Store.new(delayed.home), service = delayed})
 unmountedWorktrees:load(); unmounted:mount(ns.VStack {}, {query = ""}); unmounted:dispose()
 pending[#pending]()
-t.expect(unmountedWorktrees.loaded and not unmountedWorktrees.busy and unmountedWorktrees.storage.worktreePlan ~= nil, "a load that finishes while the page is closed still publishes the plan")
+t.expect(unmountedWorktrees.loaded and not unmountedWorktrees.busy and require("data.model").db.worktreePlan ~= nil, "a load that finishes while the page is closed still publishes the plan")
 os.exit(t.summary() and 0 or 1)
