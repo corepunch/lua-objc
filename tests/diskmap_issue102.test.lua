@@ -8,7 +8,7 @@ local Controller = require("apps.diskmap.Controller")
 local Files = require("apps.diskmap.models.Files")
 local Recommendations = require("apps.diskmap.models.Recommendations")
 local Navigation = require("apps.diskmap.controllers.NavigationController")
-local SimulatorsController = require("apps.diskmap.controllers.SimulatorsController")
+local Host = require("tests.diskmap_page")
 local WorktreeService = require("apps.diskmap.services.Worktrees")
 
 -- #102: every destination leads with a concrete decision (what to review,
@@ -33,7 +33,7 @@ local function visible(id, label)
 	app:show(id)
 	bridge._flushLayout()
 	local refs = app.page.refs
-	local host = refs.lead or refs.decisionHost or (app.page.planRefs and app.page.planRefs.planCard) or refs.decision
+	local host = refs.lead or refs.decisionHost or refs.planCard or refs.decision
 	t.expect(host ~= nil and not host.hidden, label .. ": the page has a leading decision")
 	local bottom = bottomFromTop(host)
 	t.expect(bottom <= refs.page.contentView.bounds.size.height,
@@ -113,15 +113,14 @@ for _, row in ipairs(Files.rows(app.model, "Installers & archives")) do
 end
 t.assertEqual(installers.removableBytes, ownInstallers, "the installers kind counts only its own user-owned files")
 t.assertEqual(archives and archives.removableBytes, archives and ownArchives, "and archives theirs")
-local kindsPage = app.page
-local decision = kindsPage:decisionData(kinds)
+local kindsPage = app.page.model
+local decision = kindsPage:decision(kinds)
 t.assertEqual(decision.amount, Model.size(ownInstallers + ownArchives), "the decision's amount is the user-owned review set")
 t.assertEqual(decision.amountCaption, "could recover", "which it names")
 t.expect(decision.detail:find("installed or extracted", 1, true), "the lead explains the review before removal")
-local shown
-kindsPage.show = function(id, filter) shown = {id, filter} end
-app.page.template.actions.decisionInstallers()
-t.assertEqual(shown[1] .. "/" .. shown[2], "files/Installers & archives", "its action opens the reviewable files")
+app.page.actions.showInstallers()
+t.assertEqual(app.destination, "files", "its action opens Large Files")
+t.assertEqual(app.page.model.filterIndex, Files.filterIndex("Installers & archives"), "on the reviewable files")
 
 -- Updates routes to Clean Up with the same estimate Clean Up states.
 app:show("updates")
@@ -159,37 +158,36 @@ local delayed = Mock.new()
 local replies = {}
 local runtimes = delayed.simulatorRuntimes
 delayed.simulatorRuntimes = function(done) table.insert(replies, function() runtimes(done) end) end
-local model = Model.new(delayed.home)
-local simulators = SimulatorsController.new({model = model, service = delayed, rescan = function() end})
-simulators:load()
-t.expect(simulators.busy and simulators.loading, "a background read is pending before the page mounts")
+local storage = Model.new(delayed.home)
+local simulators, inventory = Host.new("simulators", "SimulatorsPage", "Simulators", {model = storage, service = delayed})
+inventory:load()
+t.expect(inventory.busy and not inventory.loaded, "a background read is pending before the page mounts")
 simulators:mount(ns.VStack {}, {query = ""})
 t.assertEqual(#replies, 1, "mounting during the read does not start another")
-t.assertEqual(simulators.refs.summary.text, "Reading simulator devices and runtimes…", "the page shows the pending read")
+t.assertEqual(simulators.refs.computingStatus.text, "Reading simulator devices and runtimes…", "the page shows the pending read as one progress state")
 simulators:dispose()
 simulators:mount(ns.VStack {}, {query = ""})
 for _, reply in ipairs(replies) do reply() end
-t.expect(not simulators.busy and simulators.loaded, "the read finishes after navigating away and back")
+t.expect(not inventory.busy and inventory.loaded, "the read finishes after navigating away and back")
 t.expect(simulators.refs.summary.text:find("stored in", 1, true), "and the mounted page shows it: " .. simulators.refs.summary.text)
-t.expect(simulators.planRefs.planReview ~= nil and simulators.planRefs.planAmount.text ~= "—", "with the plan's amount beside its review button")
-t.expect(model.simulatorPlan ~= nil, "and the plan is published for Clean Up")
+t.expect(simulators.refs.planReview ~= nil and simulators.refs.planAmount.text ~= "—", "with the plan's amount beside its review button")
+t.expect(storage.simulatorPlan ~= nil, "and the plan is published for Clean Up")
 t.expect(simulators.refs.retry.enabled, "Retry is available again")
 -- A read that completes while the page is closed still records the inventory.
 replies = {}
-local closed = SimulatorsController.new({model = Model.new(delayed.home), service = delayed, rescan = function() end})
-closed:load(); closed:mount(ns.VStack {}, {query = ""}); closed:dispose()
+local closedStorage = Model.new(delayed.home)
+local closed, closedInventory = Host.new("simulators", "SimulatorsPage", "Simulators", {model = closedStorage, service = delayed})
+closedInventory:load(); closed:mount(ns.VStack {}, {query = ""}); closed:dispose()
 for _, reply in ipairs(replies) do reply() end
-t.expect(closed.loaded and not closed.busy and closed.model.simulatorPlan ~= nil, "a read that finishes while the page is closed publishes its plan")
+t.expect(closedInventory.loaded and not closedInventory.busy and closedStorage.simulatorPlan ~= nil, "a read that finishes while the page is closed publishes its plan")
 closed:mount(ns.VStack {}, {query = ""})
 t.expect(closed.refs.summary.text:find("stored in", 1, true), "and the next visit shows it at once")
 
 -- Simulators: keep choices, recoverable bytes and the review action sit
 -- together, before the plan's list; the full inventory is collapsed.
-local plain = SimulatorsController.new({model = Model.new(service.home), service = service, rescan = function() end})
+local plain = Host.new("simulators", "SimulatorsPage", "Simulators", {model = Model.new(service.home), service = service})
 plain:mount(ns.VStack {}, {query = ""})
-local planRefs = plain.planRefs
-local order = {}
-for position, view in ipairs(planRefs.planCard.subviews[1].subviews) do order[view] = position end
+local planRefs = plain.refs
 local actionRow = planRefs.planReview.superview
 t.expect(planRefs.planAmount.superview.superview == actionRow, "the amount sits beside the review button")
 t.assertEqual(planRefs.planCaption.text, "could recover", "and says it could be recovered")
@@ -235,12 +233,12 @@ t.expect(all and all["/wt6"] ~= nil, "every worktree's facts arrive")
 t.assertEqual(progress[#progress], "6/6", "progress reports each finished worktree")
 
 -- Folder Map: a build folder is named by itself, not "CMake builds › CMake build output".
-local FolderController = require("apps.diskmap.controllers.FolderController")
+local FolderPage = require("apps.diskmap.models.FolderPage")
 local folderModel = Model.new("/Users/test")
 local artifact = {path = "/Users/test/p/build", name = "CMake build output", policy = "Rebuildable", artifact = true,
 	getParent = function() return {name = "CMake builds"} end}
 folderModel.resources.owner = function() return artifact end
-local name = FolderController.catalogName({model = folderModel}, "/Users/test/p/build")
+local name = FolderPage.catalogName({storage = folderModel}, "/Users/test/p/build")
 t.assertEqual(name, "CMake build output · Rebuildable", "a build folder's name does not repeat its kind")
 
 os.exit(t.summary() and 0 or 1)

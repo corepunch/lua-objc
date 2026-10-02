@@ -12,8 +12,11 @@ local Selection = require("apps.diskmap.models.Selection")
 --             `layout(presented)` when the structure depends on the data
 --   children  {slot = template}: partials drawn into the slots Page.etlua names
 --   details   function(model, row) -> data for the selection panel, if any
+--   menu      function(page, row) -> a row's menu items, when it is not its
+--             resource's menu
 --   actions   {name = function(page, ...)}: what the view's actions do, beside the
---             row menu, activation and links every list page has
+--             row menu, activation, reveal, the filter picker and links every
+--             list page has (`page.filterIndex` is the picker's segment, from 1)
 --   queries   {name = true}: actions that only read, after which the page is
 --             not drawn again
 --   load      function(page): work to start when the page appears (a service to
@@ -23,8 +26,15 @@ local Selection = require("apps.diskmap.models.Selection")
 --     lists     {id = rows}: rows for each list
 --     texts     {id = text}
 --     hidden    {id = boolean}
+--     disabled  {id = boolean}
 --     children  {slot = data} for each child
---     links     {action = {open = id} | {page = id, filter = n} | {settings = section}}
+--     loading   {id = true}: the lists that show their spinner
+--     waiting   {title, systemImage, description}: the empty state of a page
+--               the running scan has not measured yet (no lists, no partial rows)
+--     computing a status line, while a request of the page's own runs (a
+--               service to ask): the page shows it with a spinner and no lists
+--     links     {action = {open = id} | {page = id, filter = n} | {settings = section}
+--               | {handler = name, args = {...}} (a handler of the app's actions)}
 --   }
 --
 -- `data(state)` is the request: it runs `present` and hands the answer to the
@@ -46,16 +56,16 @@ function ListPage.class(page)
 		local link = links and links[key]
 		if link then return function() class.follow(self, link) end end
 		local action = rawget(self, "page") and self.page.actions and self.page.actions[key]
-		if action then return function(...) return action(self, ...) end end
+		if action then return function(_, ...) return action(self, ...) end end
 	end
 	-- Row menu, activation and links only read or navigate.
 	function class.new(_, services, id)
 		local table_ = page(services, id)
 		-- Row menu, activation and links only read or navigate.
-		local queries = {rowMenu = true, open = true, openSelection = true}
+		local queries = {rowMenu = true, open = true, openSelection = true, reveal = true}
 		for name in pairs(table_.queries or {}) do queries[name] = true end
 		return setmetatable({storage = services.model, services = services, actions = services.actions, id = id,
-			page = table_, queries = queries}, class)
+			page = table_, queries = queries, filterIndex = 1}, class)
 	end
 	for name, method in pairs(ListPage.methods) do class[name] = method end
 	return class
@@ -64,6 +74,7 @@ end
 ListPage.methods = {}
 
 function ListPage.methods:menu(row)
+	if self.page.menu then return self.page.menu(self, row) end
 	if row.page then
 		return {{title = "Open " .. (row.pageName or "Page"), systemImage = "arrow.right.circle",
 			action = function() self.services.showFiltered(row.page, row.filter) end}}
@@ -87,8 +98,16 @@ function ListPage.methods:select(_, _, row)
 	self.selectedRow, self.selectedId = row, row and row.id
 end
 
+function ListPage.methods:reveal(_, _, row)
+	if row then self.services.service.reveal(row.path) end
+end
+
+-- The segmented filter (Page.etlua's `filters`) picked a segment.
+function ListPage.methods:filter(index) self.filterIndex = (index or 0) + 1 end
+
 function ListPage.methods:follow(link)
-	if link.open then self.services.open(link.open)
+	if link.handler then self.actions.handlers[link.handler](table.unpack(link.args or {}))
+	elseif link.open then self.services.open(link.open)
 	elseif link.page then self.services.showFiltered(link.page, link.filter)
 	elseif link.settings then self.services.service.openSettings(link.settings) end
 end
@@ -123,8 +142,9 @@ function ListPage.methods:data(state)
 		details = page.details(self.storage, self.selectedRow)
 		details.actions = nil
 	end
-	return {layout = layout, header = self.header, lists = presented.lists, texts = presented.texts,
-		hidden = presented.hidden, children = presented.children, childViews = page.children, details = details}
+	return {layout = layout, header = self.header, lists = presented.lists, loading = presented.loading,
+		filterIndex = self.filterIndex, waiting = presented.waiting, computing = presented.computing, texts = presented.texts,
+		hidden = presented.hidden, disabled = presented.disabled, children = presented.children, childViews = page.children, details = details}
 end
 
 -- After a draw the native selection follows the selected row.

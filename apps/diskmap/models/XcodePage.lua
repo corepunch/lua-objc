@@ -1,8 +1,7 @@
-local Page = require("apps.diskmap.controllers.PageController")
 local Model = require("apps.diskmap.Model")
+local ListPage = require("apps.diskmap.models.ListPage")
 local Xcode = require("apps.diskmap.models.Xcode")
 local Status = require("apps.diskmap.models.Status")
-local Controller = Page.extend("xcode")
 
 -- Three reviewable lists, in the order they are usually worth cleaning.
 local SECTIONS = {
@@ -25,7 +24,6 @@ local SECTIONS = {
 -- Caches shared by every project are rebuilt by Xcode (green).
 local STATUS = {["Newest · keep"] = "Keep", Older = "Review", Missing = "Rebuildable", Present = "Review", Unknown = "Review",
 	Shared = "Rebuildable"}
-Controller.statuses = STATUS
 
 local LAYOUT = {
 	summary = "Reading Xcode's device support, build data and archives…", summaryId = "xcodeSummary",
@@ -36,19 +34,12 @@ local LAYOUT = {
 for _, section in ipairs(SECTIONS) do
 	table.insert(LAYOUT.sections, {id = section.id .. "Section", title = section.title, detail = section.detail,
 		buttons = section.bulkTitle and {{id = "bulk_" .. section.id, title = section.bulkTitle, systemImage = "plus.circle",
-			action = "bulk_" .. section.id, help = section.bulkHelp, disabled = true}},
-		list = {id = "list_" .. section.id, menu = "menu_" .. section.id, activate = "reveal",
+			action = "bulk_" .. section.id, help = section.bulkHelp}},
+		list = {id = "list_" .. section.id, menu = "rowMenu", activate = "reveal",
 			status = section.status, detailColumn = section.detailColumn}})
 end
 
--- The Xcode page: device support per OS version, DerivedData per project and
--- archives, read from Xcode's folders when the page opens. Rows are marked
--- for cleanup from their menu; nothing is removed here.
-function Controller.new(context)
-	return setmetatable({model = context.model, service = context.service, actions = context.actions, rows = {}}, Controller)
-end
-
-function Controller:item(section, row)
+local function item(section, row)
 	return {path = row.path, name = row.name .. (row.subtitle ~= "" and (" · " .. row.subtitle) or ""), bytes = row.bytes,
 		source = "Xcode · " .. section.title, consequence = section.consequence}
 end
@@ -59,90 +50,15 @@ local function bulkable(section, row)
 	return false
 end
 
-function Controller:mount(host, state)
-	self.query = state.query or ""
-	local actions = {openXcode = function()
-		local ok, message = self.service.openOwner("xcode")
-		if ok == false then self.service.showError("Cannot open Xcode", message) end
-	end,
-		reveal = function(_, _, row) if row then self.service.reveal(row.path) end end}
-	for _, section in ipairs(SECTIONS) do
-		local id = section.id
-		actions["menu_" .. id] = function(_, _, row)
-			return self.actions:folder(row, nil, self:item(section, row))
-		end
-		actions["bulk_" .. id] = function()
-			local items = {}
-			for _, row in ipairs(self.rows[id] or {}) do
-				if bulkable(section, row) then table.insert(items, self:item(section, row)) end
-			end
-			self.actions:markAll(items)
-		end
-	end
-	local refs = self:attach(host, {layout = LAYOUT, actions = actions})
-	self:load()
-	return refs
-end
-
-local function filtered(rows, query)
-	local needle, kept = (query or ""):lower(), {}
-	for _, row in ipairs(rows or {}) do
-		if needle == "" or (row.name .. " " .. (row.subtitle or "") .. " " .. row.path):lower():find(needle, 1, true) then
-			local copy = {}
-			for key, value in pairs(row) do copy[key] = value end
-			table.insert(kept, copy)
-		end
-	end
-	return kept
-end
-
-function Controller:show()
-	if not self.refs then return end
-	local total = 0
-	for _, section in ipairs(SECTIONS) do
-		local rows = self.actions:annotate(filtered(self.rows[section.id], self.query), section.icon, section.color)
-		for _, row in ipairs(rows) do
-			if section.status then
-				row.detail = row.status
-				Status.apply(row, STATUS[row.status])
-			else
-				row.detail = row.date ~= "" and row.date or "—"
-			end
-			row.calculating = row.bytes == nil and self.measuring == true
-		end
-		self.refs["list_" .. section.id]:replaceRows(rows)
-		total = total + Xcode.total(self.rows[section.id])
-		self.refs[section.id .. "Section"].hidden = not self.loading and #(self.rows[section.id] or {}) == 0
-		local bulk = self.refs["bulk_" .. section.id]
-		if bulk then
-			local pending = false
-			for _, row in ipairs(self.rows[section.id] or {}) do
-				if bulkable(section, row) and not self.actions:isIncluded(row.path) then pending = true end
-			end
-			bulk.enabled = pending
-		end
-	end
-	self.refs.xcodeSummary.text = self.loading and "Reading Xcode's device support, build data and archives…"
-		or total == 0 and "No Xcode device support, build data or archives on this Mac."
-		or (Model.size(total) .. " in device support, build data and archives")
-end
-
-function Controller:marksChanged() self:show() end
-
-function Controller:update(state)
-	if self.query == (state.query or "") then return end
-	self.query = state.query or ""
-	self:show()
-end
-
 local function children(service, path)
 	return type(service.children) == "function" and service.children(path) or {}
 end
 
-function Controller:load()
-	self.loading = true
-	self:show()
-	local service, generation = self.service, self.generation
+-- Reads Xcode's folders and, for the entries the listing did not size,
+-- asks the service to measure them. The page is drawn when both are done;
+-- a visit that ended meanwhile bumps the generation and ignores the answer.
+local function read(page)
+	local service, services, generation = page.services.service, page.services, page.generation
 	local support, derived, archives = {}, {}, {}
 	for _, root in ipairs(Xcode.deviceSupport) do
 		for _, child in ipairs(children(service, root.path)) do
@@ -165,32 +81,100 @@ function Controller:load()
 		end
 	end
 	local function build()
-		self.rows = {support = Xcode.supportRows(support), derived = Xcode.derivedRows(derived), archives = Xcode.archiveRows(archives)}
+		page.rows = {support = Xcode.supportRows(support), derived = Xcode.derivedRows(derived), archives = Xcode.archiveRows(archives)}
+		page.reading = false
+		services.refresh()
 	end
-	build()
-	self.loading = false
 	local pending, paths = {}, {}
 	for _, list in ipairs({support, derived, archives}) do
 		for _, entry in ipairs(list) do
 			if entry.bytes == nil then table.insert(paths, entry.path); table.insert(pending, entry) end
 		end
 	end
-	if #paths == 0 or type(service.measure) ~= "function" then self:show(); return end
-	self.measuring = true
-	self:show()
+	if #paths == 0 or type(service.measure) ~= "function" then
+		for _, entry in ipairs(pending) do entry.bytes = 0 end
+		return build()
+	end
 	service.measure(paths, function(sizes)
-		if generation ~= self.generation then return end
+		if generation ~= page.generation then return end
 		for index, entry in ipairs(pending) do entry.bytes = sizes[index] or 0 end
-		self.measuring = false
 		build()
-		self:show()
 	end)
 end
 
-function Controller:badge()
-	if self.loading or self.measuring or not self.rows.support then return nil end
-	local total = Xcode.total(self.rows.support) + Xcode.total(self.rows.derived) + Xcode.total(self.rows.archives)
-	return total > 0 and Model.size(total) or nil
+local function filtered(rows, query)
+	local needle, kept = query:lower(), {}
+	for _, row in ipairs(rows or {}) do
+		if needle == "" or (row.name .. " " .. (row.subtitle or "") .. " " .. row.path):lower():find(needle, 1, true) then
+			local copy = {}
+			for key, value in pairs(row) do copy[key] = value end
+			table.insert(kept, copy)
+		end
+	end
+	return kept
 end
 
-return Controller
+-- The Xcode page: device support per OS version, DerivedData per project and
+-- archives, read from Xcode's folders when the page opens. Rows are marked
+-- for cleanup from their menu; nothing is removed here.
+local class = ListPage.class(function()
+	local actions = {
+		openXcode = function(page)
+			local ok, message = page.services.service.openOwner("xcode")
+			if ok == false then page.services.service.showError("Cannot open Xcode", message) end
+		end,
+		-- The sidebar's badge: what the page found, once it has read.
+		badge = function(page)
+			if page.reading ~= false then return nil end
+			local total = 0
+			for _, section in ipairs(SECTIONS) do total = total + Xcode.total(page.rows[section.id]) end
+			return total > 0 and Model.size(total) or nil
+		end,
+	}
+	for _, section in ipairs(SECTIONS) do
+		actions["bulk_" .. section.id] = function(page)
+			local items = {}
+			for _, row in ipairs(page.rows[section.id]) do
+				if bulkable(section, row) then table.insert(items, item(section, row)) end
+			end
+			page.actions:markAll(items)
+		end
+	end
+	return {id = "xcode", layout = LAYOUT, actions = actions,
+	load = function(page) page.generation, page.reading = (page.generation or 0) + 1, true; read(page) end,
+	unload = function(page) page.generation = page.generation + 1 end,
+	menu = function(page, row)
+		for _, section in ipairs(SECTIONS) do
+			if section.id == row.section then return page.actions:folder(row, nil, item(section, row)) end
+		end
+	end,
+	present = function(_, state, page)
+		if page.reading ~= false then return {computing = "Reading Xcode's device support, build data and archives…"} end
+		local lists, hidden, disabled, total = {}, {}, {}, 0
+		for _, section in ipairs(SECTIONS) do
+			local rows = filtered(page.rows[section.id], state.query or "")
+			for _, row in ipairs(rows) do
+				row.section = section.id
+				if section.status then
+					row.detail = row.status
+					Status.apply(row, STATUS[row.status])
+				else
+					row.detail = row.date ~= "" and row.date or "—"
+				end
+			end
+			lists["list_" .. section.id] = page.actions:annotate(rows, section.icon, section.color)
+			total = total + Xcode.total(page.rows[section.id])
+			hidden[section.id .. "Section"] = #page.rows[section.id] == 0
+			local pending = false
+			for _, row in ipairs(page.rows[section.id]) do
+				if bulkable(section, row) and not page.actions:isIncluded(row.path) then pending = true end
+			end
+			disabled["bulk_" .. section.id] = not pending
+		end
+		return {lists = lists, hidden = hidden, disabled = disabled, texts = {xcodeSummary = total == 0
+			and "No Xcode device support, build data or archives on this Mac."
+			or (Model.size(total) .. " in device support, build data and archives")}}
+	end}
+end)
+class.statuses = STATUS
+return class

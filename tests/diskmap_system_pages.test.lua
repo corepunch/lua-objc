@@ -100,12 +100,11 @@ model.measurements.installer = {bytes = 16e9, status = "complete"}
 local page = Updates.presentation(model, plist, false)
 t.assertEqual(page.stages[1].size, "≥ 12.0 GB", "downloaded updates show their measured size")
 t.assertEqual(page.stages[2].size, "0 KB", "an empty Update volume is measured as empty")
-t.assertEqual(page.stages[3].size, "Calculating…", "stages show measurement progress")
+t.assertEqual(page.stages[3].size, "Not measured", "a stage still being measured says nothing yet: a scan shows no row-level progress")
 t.assertEqual(#page.installers, 1, "installers in Applications are found by name")
 t.assertEqual(page.installers[1].name, "Install macOS Tahoe", "installer names drop the app extension")
 t.assertEqual(page.installers[1].size, "16.0 GB", "installers show their size")
 t.assertEqual(page.snapshotTitle, "Local snapshots could not be listed", "a failed tmutil call is reported")
-t.assertEqual(Updates.presentation(model, plist, nil).snapshotTitle, "Checking local snapshots…", "pending snapshots say so")
 t.assertEqual(Updates.presentation(model, plist, {}).snapshotTitle, "No local snapshots", "no snapshots is a result")
 for _, stage in ipairs(Updates.stages) do
 	t.expect(model.resources:find(stage.id) ~= nil, "update stage cites a registered resource: " .. stage.id)

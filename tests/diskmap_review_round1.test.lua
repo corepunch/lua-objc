@@ -15,20 +15,24 @@ window.size = ns.Size(950, 580); window:layout()
 -- Real root navigation disposes and remounts this same page instance. Keep
 -- both family selections and the chosen runtime through that lifecycle.
 app:show('simulators')
-local page = app.simulators
+local page = app.graph:get('simulators')
 local choices = {}
 for _, family in ipairs({'iPhone','iPad'}) do
-	for index, id in ipairs(page.planOptions[family]) do
-		if id and id ~= page.plan.keep[family] then page:chooseKeep(family, index - 1); choices[family] = id; break end
+	local plan = page:plan()
+	for index, row in ipairs(plan.candidates[family]) do
+		if row.id ~= plan.keep[family] then
+			-- The Picker lists "Choose…" first only when the family needs a choice.
+			page:chooseKeep(family, index - 1 + (plan.needsChoice[family] and 1 or 0)); choices[family] = row.id; break
+		end
 	end
 	t.expect(choices[family] ~= nil, 'the fixture has an alternative ' .. family)
 end
-local runtime = page.plan.runtime
+local runtime = page:plan().runtime
 app:show('cleanup'); app:show('simulators')
-t.assertEqual(page.plan.runtime, runtime, 'navigation preserves selected runtime')
+t.assertEqual(page:plan().runtime, runtime, 'navigation preserves selected runtime')
 for family, id in pairs(choices) do
-	t.assertEqual(page.plan.keep[family], id, 'navigation preserves chosen ' .. family)
-	for _, row in ipairs(page.plan.removal) do t.expect(row.id ~= id, 'chosen ' .. family .. ' never enters removal plan') end
+	t.assertEqual(page:plan().keep[family], id, 'navigation preserves chosen ' .. family)
+	for _, row in ipairs(page:plan().removal) do t.expect(row.id ~= id, 'chosen ' .. family .. ' never enters removal plan') end
 end
 
 -- The heading and explanation have their own row, above filters/actions;
@@ -42,24 +46,23 @@ t.expect(refs.filter.superview ~= refs.projectRoots.superview, 'filters do not c
 
 -- Selection evidence is a fixed sibling of the scrolling list, immediately
 -- accessible even when the list has many worktrees.
-app:show('worktrees'); refs = app.worktrees.refs
+app:show('worktrees'); refs = app.page.refs
 t.expect(refs.selectionSection.hidden, 'empty worktree inspector uses no space')
-refs.reviewList:selectRow(0); bridge._flushLayout()
+refs.reviewList:selectRow(0); bridge._flushLayout(); refs = app.page.refs
 t.expect(not refs.selectionSection.hidden, 'selection exposes evidence')
 t.expect(refs.selectionSection.superview == refs.page.superview, 'evidence stays outside scrolling inventory')
-t.expect(refs.selectedDetail.text:find(app.worktrees.selected.path, 1, true), 'selection exposes complete path')
+t.expect(refs.selectedDetail.text:find(app.graph:get('worktrees').selected.path, 1, true), 'selection exposes complete path')
 t.expect(refs.openOwner.enabled, 'managed checkout exposes its owner action')
 local widths = bridge._tableColumnWidths(refs.reviewList)
 t.expect(widths[1].width > widths[2].width and widths[1].width > widths[3].width, 'name/branch gets more space than repeated status/date')
 
 -- Installer arrival leads with the actual filtered subset, with staging
 -- only; no confirmation or deletion is triggered by marking.
-app:show('kinds'); app.page.template.actions.decisionInstallers()
-local files = app.page
+app:show('kinds'); app.page.actions.showInstallers()
 local rows = Files.rows(app.model, 'Installers & archives')
 local bytes = 0
 for _, row in ipairs(rows) do bytes = bytes + row.bytes end
-local lead = files.decisions.lead.refs
+local lead = app.page.refs
 t.assertEqual(lead.decisionAmount.text, require('apps.diskmap.Model').size(bytes), 'file decision totals only the visible subset')
 t.assertEqual(lead.decisionCaption.text, 'to review', 'documents are review candidates')
 local before = app.review:count()
@@ -95,7 +98,7 @@ ns.async, ns.sleep = originalAsync, originalSleep
 t.expect(app.collector.collectorArea.hidden, 'no drag and no staged items collapses collector')
 
 app:show('applications')
-local applicationLead = app.page.leadRefs
+local applicationLead = app.page.refs
 t.expect(applicationLead.decisionAction.title:find('Likely Leftover', 1, true), 'app cleanup action uses concrete language')
 for _, row in ipairs(Navigation.destinations) do
 	if row.id == 'developer' then t.assertEqual(row.name, 'Dev tools', 'workflow label distinguishes owner category') end

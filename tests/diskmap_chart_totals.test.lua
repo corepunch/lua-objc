@@ -7,13 +7,13 @@ local xml = require("ui.xml")
 -- narrower than the total at its declared size, so every center label is one
 -- line and shrinks to fit.
 local _, refs = xml.renderFile("apps/diskmap/views/Kinds.etlua", {
-	header = {icon = "square.grid.2x2.fill", color = "systemPink", title = "File Types"},
+	page = {icon = "square.grid.2x2.fill", color = "systemPink", title = "File Types"},
 	kinds = {{id = "other", bytes = 1, color = "systemBlue", name = "Other files"}},
 	extensionsDetail = "The twelve extensions that use the most space",
 	total = "110.4 GB", summary = "110.4 GB in files across 1 kinds",
 	headline = {id = "other", title = "Other files", advice = ""}, accessibilityLabel = "File types",
 	decision = {id = "decision", icon = "opticaldiscdrive.fill", color = "systemTeal", title = "Review", detail = "", amount = "0 KB", amountCaption = "could recover"},
-	actions = {openKind = function() end, kindMenu = function() return {} end, kind_other = function() end,
+	actions = {openKind = function() end, kindMenu = function() return {} end, showHeadline = function() end,
 		selectKind = function() end, chartSelect = function() end, chartHover = function() end},
 }, ns)
 local chart = refs.kindsChart

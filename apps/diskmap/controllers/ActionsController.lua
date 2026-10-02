@@ -3,7 +3,7 @@ local Destinations = require("apps.diskmap.models.Destinations")
 local Inspector = require("apps.diskmap.models.Inspector")
 local Files = require("apps.diskmap.models.Files")
 local FolderTree = require("apps.diskmap.models.FolderTree")
-local InspectorController = require("apps.diskmap.controllers.InspectorController")
+local Manage = require("apps.diskmap.models.Manage")
 local Controller = {}; Controller.__index = Controller
 
 -- Row menus for every list in Diskmap. A row's actions live in its "More"
@@ -15,10 +15,10 @@ local Controller = {}; Controller.__index = Controller
 -- `handlers.keep(id)` toggles Keep, `handlers.watch(entry)` returns the
 -- Watch/Stop Watching item for a resource or folder entry, and
 -- `handlers.refresh()` remeasures.
--- `review` is the cleanup basket (ReviewController): "Mark for Cleanup"
+-- `review` is the cleanup basket (models/Review.lua), set by the app once built: "Mark for Cleanup"
 -- adds a row to it, and nothing touches the disk until its review sheet.
-function Controller.new(model, service, handlers, review)
-	return setmetatable({model = model, service = service, handlers = handlers, review = review}, Controller)
+function Controller.new(model, service, handlers)
+	return setmetatable({model = model, service = service, handlers = handlers}, Controller)
 end
 
 function Controller:isMarked(path) return self.review ~= nil and self.review:isMarked(path) end
@@ -192,7 +192,7 @@ function Controller:resource(id)
 			table.insert(items, {title = detail.manageTitle, disabled = not detail.canManage,
 				action = function()
 					if Destinations.elsewhere(self.model, id) then self.handlers.open(id); return end
-					local inspector = InspectorController.new(self.model, self.service, self.handlers.refresh)
+					local inspector = Manage.new(self.model, self.service, self.handlers.refresh)
 					inspector:select(id); inspector:manage()
 				end})
 		end

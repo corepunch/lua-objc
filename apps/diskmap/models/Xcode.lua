@@ -32,8 +32,6 @@ local function newer(a, b)
 	return false
 end
 
-local function sized(bytes) return bytes and Model.size(bytes) or "Measuring…" end
-
 -- Rows for Device Support entries ({platform, name, path, bytes}), newest
 -- first per platform. The newest version of each platform is kept: it is
 -- the one a connected device most likely needs.
@@ -44,7 +42,7 @@ function Xcode.supportRows(entries)
 		table.insert(rows, {id = entry.path, path = entry.path, platform = entry.platform, parts = parsed.parts,
 			name = entry.platform .. " " .. (parsed.version or entry.name),
 			subtitle = table.concat({parsed.build and ("Build " .. parsed.build) or nil, parsed.model}, " · "),
-			bytes = entry.bytes, size = sized(entry.bytes)})
+			bytes = entry.bytes, size = Model.size(entry.bytes)})
 	end
 	table.sort(rows, function(a, b)
 		if a.platform ~= b.platform then return a.platform < b.platform end
@@ -85,7 +83,7 @@ function Xcode.derivedRows(entries)
 	for _, entry in ipairs(entries or {}) do
 		local shared = Xcode.sharedCache(entry.name)
 		if shared then
-			table.insert(rows, {id = entry.path, path = entry.path, name = shared, bytes = entry.bytes, size = sized(entry.bytes),
+			table.insert(rows, {id = entry.path, path = entry.path, name = shared, bytes = entry.bytes, size = Model.size(entry.bytes),
 				subtitle = "Shared by every project · Xcode rebuilds it", missing = false, shared = true, status = "Shared"})
 			goto continue
 		end
@@ -93,7 +91,7 @@ function Xcode.derivedRows(entries)
 		local name = workspace and workspace:match("([^/]+)%.xc[a-z]+$")
 			or entry.name:match("^(.-)%-%l+$") or entry.name
 		local missing = workspace ~= nil and entry.exists == false
-		table.insert(rows, {id = entry.path, path = entry.path, name = name, bytes = entry.bytes, size = sized(entry.bytes),
+		table.insert(rows, {id = entry.path, path = entry.path, name = name, bytes = entry.bytes, size = Model.size(entry.bytes),
 			subtitle = workspace or "Workspace not recorded", missing = missing,
 			status = missing and "Missing" or workspace and "Present" or "Unknown"})
 		::continue::
@@ -123,7 +121,7 @@ function Xcode.archiveRows(entries)
 			name = type(plist.Name) == "string" and plist.Name or entry.name:gsub("%.xcarchive$", ""),
 			subtitle = version and ("Version " .. version .. (build and (" (" .. build .. ")") or "")) or "Version not recorded",
 			date = created, status = created ~= "" and ("Created " .. created) or "Date unknown",
-			bytes = entry.bytes, size = sized(entry.bytes)})
+			bytes = entry.bytes, size = Model.size(entry.bytes)})
 	end
 	table.sort(rows, function(a, b)
 		if a.date ~= b.date then return a.date < b.date end

@@ -1,0 +1,72 @@
+_G.__headless = true
+local t = require("TestKit")
+local ns = require("AppKit")
+local Mock = require("apps.diskmap.services.Mock")
+local Controller = require("apps.diskmap.Controller")
+local Inventory = require("apps.diskmap.models.Inventory")
+local MapPage = require("apps.diskmap.models.MapPage")
+local FolderPage = require("apps.diskmap.models.FolderPage")
+
+-- Overview, Map and Folder are models drawn by the framework's page
+-- controller: no controller class remains for them.
+for _, name in ipairs({"OverviewController", "MapController", "FolderController"}) do
+	t.expect(not pcall(require, "apps.diskmap.controllers." .. name), name .. " is gone")
+end
+
+local app = Controller.new(Mock.new())
+app:createWindow()
+local _, ids = Inventory.plan(app.model)
+
+-- While the scan runs the pages draw their empty state; the scan's end draws them again.
+Inventory.begin(app.model, ids)
+app:updateRows()
+t.assertEqual(app.refs.results, nil, "a running scan leaves the Overview without a category list")
+t.expect(app.refs.legendExplanation ~= nil and app.refs.legend == nil, "and without a legend")
+t.expect(app.refs.cleanUp == nil, "and without a cleanup offer")
+app:show("map")
+t.expect(app.refs.mapEmpty ~= nil, "the Map says nothing is measured yet")
+t.assertEqual(app.refs.mapList.rowCount, 0, "and lists nothing")
+app.scan:start()
+t.expect(app.refs.mapEmpty == nil and app.refs.mapList.rowCount > 0, "the Map is drawn when the scan has finished")
+
+-- Map: focus by breadcrumb position, up, styles.
+local map = app.graph:get("map")
+app.pages.map.actions.chartSelect("developer", 1)
+t.assertEqual(map.focus, "developer", "a group looks inside")
+t.assertEqual(app.refs.mapSummary.text:find("Developer", 1, true), 1, "the summary names the focus")
+app.pages.map.actions.focus_1()
+t.assertEqual(map.focus, "", "the first breadcrumb step goes back to the whole map")
+app.pages.map.actions.chartSelect("developer", 1)
+app.pages.map.actions.up()
+t.assertEqual(map.focus, "", "up leaves the group")
+app.pages.map.actions.chartSelect("applications#other", 1)
+t.assertEqual(map.focus, "", "a folded remainder cannot be focused")
+t.assertThrows(function() map:setStyle("hexagons") end, "an unknown map style is an error")
+t.assertEqual(map.style, "rings", "a rejected style leaves the chart alone")
+t.assertEqual(MapPage.new({}, {mapStyle = "rectangles"}).style, "rectangles", "the services pick the first style")
+
+-- Hovering only points: it draws nothing again and clears with the pointer.
+local list = app.refs.mapList
+app.pages.map.actions.chartHover("developer")
+t.assertEqual(app.refs.mapList, list, "pointing keeps the list")
+app.pages.map.actions.chartHover(nil)
+t.assertEqual(map.selectedId, nil, "leaving the chart clears the token")
+t.assertEqual(app.refs.mapHover.text, map.hover, "and the line under it")
+
+-- Folder: states of the page.
+local folder = app.graph:build({"folder"}).folder
+app:show("folder")
+t.expect(app.refs.folderEmpty ~= nil and app:badges().folder == nil, "an unopened folder invites a drop and has no badge")
+app.pages.folder.actions.pickStyle(1)
+t.assertEqual(folder.style, "rectangles", "the style picker changes the style")
+app.pages.folder.actions.pickStyle(0)
+t.assertThrows(function() folder:pickStyle(7) end, "an unknown folder map style is an error")
+folder:pickColoring(99)
+t.assertEqual(folder.coloring, "folders", "an unknown coloring changes nothing")
+t.assertEqual(folder:open("relative/path"), false, "only absolute paths open")
+app:openFolder("/Nowhere")
+t.expect(app.refs.folderFailed ~= nil, "a folder that cannot be read says so")
+app.pages.folder.actions.stop()
+t.expect(folder.loading == nil, "stopping leaves nothing loading")
+t.assertEqual(FolderPage.new({}, {model = app.model, service = app.service}).path, nil, "a new page has no folder")
+os.exit(t.summary() and 0 or 1)

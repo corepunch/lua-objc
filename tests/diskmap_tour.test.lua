@@ -78,7 +78,7 @@ t.expect(again.tour.sheet ~= nil, "it shows on the next start while the box is c
 -- Unchecking the box keeps it from showing on start; Skip closes it.
 again.tour.refs.showOnStart.state = 0
 again.tour:setShowOnStart(false)
-again.tour:finish()
+again.tour:close()
 local later = Controller.new(service)
 later:createWindow()
 t.expect(later.tour.sheet == nil, "unchecked, it does not show on start")
@@ -86,7 +86,7 @@ t.expect(later.tour:open(later.window) and later.tour.sheet ~= nil, "Help > Disk
 t.assertEqual(later.tour.page, 1, "from the first page")
 t.expect(later.tour.refs.showOnStart.state == 0, "the box shows the choice")
 later.tour:setShowOnStart(true)
-later.tour:finish()
+later.tour:close()
 t.expect(later.tour:needed(), "checking it again brings it back on start")
 
 -- After the access steps, the tour follows them.

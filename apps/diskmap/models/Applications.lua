@@ -77,13 +77,13 @@ function Applications.rows(model, info, filter, query, now)
 		local row = {id = bundle.id, resourceId = bundle.id, name = name, path = bundle.path, bundleId = details.bundleId,
 			appIcon = details.bundleId, fileIcon = bundle.path, icon = "app.fill", color = "systemBlue",
 			appBytes = appBytes, dataBytes = dataBytes, bytes = appBytes + dataBytes, folders = folders,
-			lastUsed = details.lastUsed, running = details.running == true, unused = unused == true, calculating = m.status == "calculating",
+			lastUsed = details.lastUsed, running = details.running == true, unused = unused == true,
 			-- A missing date is not evidence of inactivity: Spotlight may simply not
 			-- track the app. It stays unknown and is excluded from every
 			-- inactivity filter, total and suggestion.
 			usageUnknown = details.lastUsed == nil,
 			detail = details.running and "Running now" or details.lastUsed and Model.used(Files.age(details.lastUsed, now)) or (info and "Last use unknown" or "—")}
-		row.size = row.calculating and "Calculating…" or Model.size(row.bytes)
+		row.size = Model.size(row.bytes)
 		row.subtitle = (details.version and ("Version " .. details.version .. " · ") or "") .. "App " .. Model.size(appBytes)
 			.. (dataBytes > 0 and (" · Data " .. Model.size(dataBytes)) or "")
 		local visible = filter ~= "Unused for 6 months" or row.unused
@@ -197,6 +197,44 @@ function Applications.summary(rows, leftovers)
 	end
 	return {count = #rows, apps = apps, data = data, unused = unused, unusedBytes = unusedBytes,
 		leftovers = leftovers and #leftovers or nil, leftoverBytes = leftoverBytes, leftoversHigh = high, leftoversHighBytes = highBytes}
+end
+
+-- The page's leading decision: leftover data first, because removing it
+-- changes nothing an installed app needs; then apps with a known long
+-- absence; otherwise where else to look. `hasInfo` is whether Spotlight has
+-- told the app about last-use dates yet.
+function Applications.decision(summary, unmarkedHigh, markedHigh, hasInfo)
+	local data = {id = "decision", icon = "questionmark.folder.fill", color = "systemGray"}
+	if not summary.leftovers then
+		data.title, data.detail, data.amount, data.amountCaption = "Checking for data left behind by removed apps…", "Diskmap compares data folders with the apps Spotlight knows.", "—", "to review"
+	elseif summary.leftovers > 0 then
+		data.title = "Review " .. Model.plural(summary.leftovers, "possible leftover folder")
+		data.detail = summary.leftoversHigh > 0
+			and (Model.plural(summary.leftoversHigh, "folder") .. " " .. (summary.leftoversHigh == 1 and "is" or "are") .. " likely leftovers: no app from that vendor is known to be installed. Review the other unclaimed folders individually.")
+			or "No known installed app claims these folders. A name-only match does not prove its app was removed; review each folder individually."
+		if summary.leftoversHighBytes > 0 then data.amount, data.amountCaption = Model.size(summary.leftoversHighBytes), "could recover"
+		else data.amount, data.amountCaption = Model.size(summary.leftoverBytes), "to review" end
+		if unmarkedHigh > 0 then
+			data.actionTitle, data.action = "Mark " .. Model.plural(unmarkedHigh, "Likely Leftover"), "markHigh"
+		elseif markedHigh > 0 then
+			data.actionTitle, data.action = "Review Marked Items…", "reviewMarked"
+		end
+		data.secondaryTitle = unmarkedHigh > 0 and markedHigh > 0 and "Review Marked Items…" or nil
+		data.secondaryAction = "reviewMarked"
+	elseif hasInfo and summary.unused > 0 then
+		data.icon, data.color = "hourglass", "systemOrange"
+		data.title = Model.plural(summary.unused, "app") .. " not opened in six months"
+		data.detail = "No leftover data was found. These apps have a known last use over six months ago; uninstall them in the Finder or with their own uninstaller if you no longer need them."
+		data.amount, data.amountCaption = Model.size(summary.unusedBytes), "to review"
+		data.actionTitle, data.action = "Show Unused Apps", "unusedFilter"
+	else
+		data.icon, data.color = "checkmark.circle.fill", "systemGreen"
+		data.title = "No leftover app data"
+		data.detail = "Every data folder belongs to an installed app" .. (hasInfo and ", and no app has gone unused for six months" or "") .. ". Clean Up lists the other places worth reviewing."
+		data.amount, data.amountCaption = Model.size(0), "could recover"
+		data.actionTitle, data.action = "Open Clean Up", "cleanup"
+	end
+	return data
 end
 
 return Applications

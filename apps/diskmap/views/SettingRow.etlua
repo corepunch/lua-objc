@@ -1,0 +1,11 @@
+<HStack spacing="12" alignment="center">
+  <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+    <Label text="<%= title %>" size="13" maxWidth="infinity" />
+    <Label text="<%= detail %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
+  </VStack>
+  <% if button then %>
+  <Button title="Open…" action="<%= action %>" />
+  <% else %>
+  <Toggle id="<%= id %>" style="switch" label="<%= title %>" onChange="<%= action %>" />
+  <% end %>
+</HStack>

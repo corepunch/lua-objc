@@ -3,7 +3,7 @@ local t = require("TestKit")
 local Model = require("apps.diskmap.Model")
 local Cleanup = require("apps.diskmap.models.Cleanup")
 local Inspector = require("apps.diskmap.models.Inspector")
-local InspectorController = require("apps.diskmap.controllers.InspectorController")
+local Manage = require("apps.diskmap.models.Manage")
 
 local model = Model.new("/Users/test")
 local row = model.resources:find("user-trash")
@@ -58,7 +58,7 @@ local service = {
 	emptyTrash = function() calls = calls + 1; return true end,
 	showError = function() error("must not fail") end,
 }
-local controller = InspectorController.new(model, service, function() refreshes = refreshes + 1 end)
+local controller = Manage.new(model, service, function() refreshes = refreshes + 1 end)
 controller:select("user-trash")
 t.expect(controller:manage(), "confirmed emptying succeeds")
 t.assertEqual(confirmed, 1, "controller confirms before emptying")
@@ -66,7 +66,7 @@ t.assertEqual(calls, 2, "confirmed emptying reaches the service")
 t.assertEqual(refreshes, 1, "confirmed emptying refreshes measurements")
 
 local serviceCalls = 0
-local denied = InspectorController.new(model, {
+local denied = Manage.new(model, {
 	confirmEmptyTrash = function() return false end,
 	emptyTrash = function() serviceCalls = serviceCalls + 1; return true end,
 	showError = function() error("must not fail") end,

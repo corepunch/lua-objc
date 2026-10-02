@@ -8,8 +8,8 @@ local Cleanup = require("apps.diskmap.models.Cleanup")
 local Inventory = require("apps.diskmap.models.Inventory")
 local AgentFiles = require("apps.diskmap.models.AgentFiles")
 local Simulators = require("apps.diskmap.models.Simulators")
-local Management = require("apps.diskmap.controllers.ManagementController")
-local SimulatorController = require("apps.diskmap.controllers.SimulatorsController")
+local Management = require("apps.diskmap.models.ManagementSheet")
+local Host = require("tests.diskmap_page")
 local model = Model.new("/Users/test")
 local paths, ids = {}, {}
 for _, row in ipairs(model.resources:leaves()) do
@@ -69,22 +69,22 @@ local calls, confirmed, refreshed = {}, false, 0
 local service = {command = function(argv, completion) table.insert(calls, {argv = argv, done = completion}) end,
 	decode = function() return data end, confirmAction = function() return confirmed end,
 	reveal = function() end, openSettings = function() end, openOwner = function() end}
-local controller = SimulatorController.new({model = model, service = service, rescan = function() refreshed = refreshed + 1 end})
+local _, controller = Host.new("simulators", "SimulatorsPage", "Simulators", {model = model, service = service, rescan = function() refreshed = refreshed + 1 end})
 controller.inventory = data; controller.selected = Simulators.rows(data)[1]
-t.expect(not controller:perform("erase"), "cancel confirmation never launches a command")
+t.expect(not controller:erase(), "cancel confirmation never launches a command")
 t.assertEqual(#calls, 0, "cancel has no side effects")
 confirmed = true; model.kept.simulators = true
-t.expect(not controller:perform("delete"), "Keep protects simulator contents")
+t.expect(not controller:delete(), "Keep protects simulator contents")
 model.kept.simulators = nil
-t.expect(controller:perform("delete", true), "unavailable deletion requires explicit confirmation")
+t.expect(controller:unavailable(), "unavailable deletion requires explicit confirmation")
 t.assertEqual(#calls, 1, "only selected unavailable device is targeted")
 t.assertEqual(calls[1].argv[4], other, "unavailable command is a concrete ID, never an expanding selector")
-t.expect(not controller:perform("delete", true), "duplicate clicks cannot start concurrent mutations")
+t.expect(not controller:unavailable(), "duplicate clicks cannot start concurrent mutations")
 calls[1].done(false, "device busy")
 t.assertEqual(refreshed, 1, "failed action refreshes potentially changed totals")
 t.expect(controller.error:find("device busy", 1, true), "command failures remain visible")
 service.simulatorRuntimes = function(completion) table.insert(calls, {done = completion}) end
-controller:load(); local pending = calls[#calls]; controller:dispose(); pending.done({})
+controller:load(); local pending = calls[#calls]; pending.done({})
 -- #100: a load belongs to the inventory, not to one visit of the page.
 t.assertEqual(type(controller.runtimeList), "table", "a load that finishes after its page closed still records the inventory")
 t.expect(not controller.busy and controller.loaded, "and leaves the controller ready for the next visit")
@@ -92,8 +92,12 @@ t.expect(not controller.busy and controller.loaded, "and leaves the controller r
 model.measurements.archives = {bytes = 20e9, status = "complete"}
 model.measurements.derived = {bytes = 12e9, status = "complete"}
 local categoryRefreshes = 0
-local manager = Management.new(model, service, function() categoryRefreshes = categoryRefreshes + 1 end,
-	function(id) model.kept[id] = not model.kept[id] end, function() end)
+local function management(open)
+	return Management.new({}, {model = model, service = service, scanning = function() return false end,
+		rescan = function() categoryRefreshes = categoryRefreshes + 1 end,
+		keep = function(id) model.kept[id] = not model.kept[id] end, open = open or function() end})
+end
+local manager = management()
 local parent = ns.Window {visible = false, width = 1000, height = 700}
 manager:open(parent, "developer")
 t.assertEqual(manager.sheet.size.width, 620, "a wide window keeps the default sheet 80 points inside a 700 point window")
@@ -133,7 +137,7 @@ for index = 0, manager.refs.rows1.rowCount - 1 do
 	t.expect(previousImpact <= impact, "impact header sorts impact values")
 	previousImpact = impact
 end
-manager:select("runtime-assets")
+manager.selectedId = "runtime-assets"; manager:draw()
 t.expect(manager.refs.manage.enabled, "runtime can be revealed for inspection")
 t.expect(manager.refs.status.text:find("iOSSimulatorRuntime", 1, true) ~= nil, "selected resource shows its location")
 for _, size in ipairs({{800, 560}, {1100, 780}}) do
@@ -141,12 +145,12 @@ for _, size in ipairs({{800, 560}, {1100, 780}}) do
 	local width, height = manager.refs.rows1.size.width, manager.refs.rows1.size.height
 	t.expect(width > 400 and height > 80, "native table retains usable geometry after resize")
 end
-manager.query = "no such resource"; manager:update()
+manager.query = "no such resource"; manager:draw()
 t.assertEqual(manager.refs.rows1.rowCount, 0, "empty management search")
 t.expect(not manager.refs.manage.enabled and not manager.refs.reveal.enabled, "empty result clears destructive and reveal actions")
 manager:close()
 local openedSimulators = 0
-manager = Management.new(model, service, function() end, function(id) model.kept[id] = not model.kept[id] end, function() openedSimulators = openedSimulators + 1 end)
+manager = management(function() openedSimulators = openedSimulators + 1 end)
 manager:open(parent, "developer")
 local simulatorRow
 for index = 0, manager.refs.rows1.rowCount - 1 do
@@ -173,9 +177,10 @@ local runtimeList = {[runtimeId] = {identifier = runtimeId, runtimeIdentifier = 
 	platformIdentifier = "com.apple.platform.iphonesimulator", deletable = true, sizeBytes = 8.4e9}}
 service.simulatorRuntimes = function(completion) completion(runtimeList) end
 local host = ns.VStack {}
-local simulatorUI = SimulatorController.new({model = model, service = service, rescan = function() end})
+local simulatorUI, simulatorModel = Host.new("simulators", "SimulatorsPage", "Simulators", {model = model, service = service})
 simulatorUI:mount(host, {query = ""})
-simulatorUI:finish(simulatorUI.loadToken, data, runtimeList)
+simulatorModel.inventory, simulatorModel.runtimeList = data, runtimeList
+simulatorUI:update({query = ""})
 t.assertEqual(simulatorUI.refs.filter.className, "NSSegmentedControl", "device filters are a segmented control")
 t.assertEqual(simulatorUI.refs.devices.rowCount, 2, "every device is listed")
 t.assertEqual(simulatorUI.refs.runtimes.rowCount, 1, "installed runtimes are listed")
@@ -190,8 +195,8 @@ t.expect(not simulatorUI.refs.erase.enabled and simulatorUI.refs.delete.enabled,
 simulatorUI.refs.runtimes:selectRow(0)
 t.expect(simulatorUI.refs.deleteRuntime.enabled, "a deletable runtime can be deleted")
 model.kept.runtimes = true
--- Reselecting the same row is not a selection change, so re-evaluate directly.
-simulatorUI:buttons()
+-- Reselecting the same row is not a selection change, so draw again.
+simulatorUI:update({query = ""})
 t.expect(not simulatorUI.refs.deleteRuntime.enabled, "Keep protects runtimes")
 t.expect(simulatorUI.refs.runtimeStatus.text:find("Keep", 1, true) ~= nil, "a disabled runtime action explains why")
 model.kept.runtimes = nil

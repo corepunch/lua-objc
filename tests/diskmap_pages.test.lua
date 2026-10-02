@@ -25,7 +25,7 @@ end
 
 t.expect(window.subtitle:find("available of", 1, true) ~= nil and not window.subtitle:find("free", 1, true),
 	"the window subtitle is Finder's one number, purgeable storage included, short enough for the toolbar")
-t.expect(app.pages.overview.hero.refs.hiddenSpace ~= nil, "the overview lists hidden space")
+t.expect(app.pages.overview.refs.hiddenSpace ~= nil, "the overview lists hidden space")
 
 -- Map: rings by default, drill in and out, switch to rectangles.
 app:show("map")
@@ -71,19 +71,19 @@ for _, node in ipairs(mapNodes) do
 		t.assertEqual(node.color, mapById[node.parent].color, node.id .. " keeps its parent's hue")
 	end
 end
-app.page.template.actions.chartSelect("developer", 1)
-t.assertEqual(app.pages.map.focus, "developer", "clicking a group focuses it")
+app.page.actions.chartSelect("developer", 1)
+t.assertEqual(app.graph:get("map").focus, "developer", "clicking a group focuses it")
 t.assertEqual(page().mapFocus.text, "Developer", "the breadcrumb ends at the focus")
-app.page.template.actions.style(1)
+app.page.actions.pickStyle(1)
 t.expect(page().treemap ~= nil and page().sunburst == nil, "rectangles replace the rings")
 t.assertEqual(page().mapList, nil, "rectangles name every item, so the list serves the rings only")
 local treemapWidth = page().mapChartPane.frame.size.width
 t.expect(inside(page().worthMark_1, page().mapChartPane), "without a list, Worth a look sits under the rectangles")
-app.page.template.actions.chartHover("xcode")
+app.page.actions.chartHover("xcode")
 t.expect(page().mapHover.text:find("Developer › Xcode", 1, true) == 1, "hover describes a node in place")
-app.page.template.actions.up()
-t.assertEqual(app.pages.map.focus, "", "the center or breadcrumb goes back up")
-app.page.template.actions.style(0)
+app.page.actions.up()
+t.assertEqual(app.graph:get("map").focus, "", "the center or breadcrumb goes back up")
+app.page.actions.pickStyle(0)
 t.expect(page().mapList ~= nil and page().mapList.rowCount > 0, "the rings bring the list back")
 t.expect(page().mapChartPane.frame.size.width < treemapWidth, "the rectangles take the list's width")
 
@@ -94,7 +94,7 @@ t.expect(leftovers.rowCount >= 4, "leftovers list unclaimed folders")
 t.assertEqual(bridge._tableCell(leftovers, 1, 0).textField.stringValue, "High", "the most certain leftovers come first")
 -- #102: the page leads with the leftover decision and its bulk action,
 -- above the installed-app inventory.
-local lead = app.page.leadRefs
+local lead = app.page.refs
 t.expect(lead.decisionTitle.stringValue:find("leftover folder", 1, true) ~= nil, "the page leads with the leftover review")
 t.assertEqual(lead.decisionCaption.stringValue, "could recover", "high-confidence leftovers state what they could recover")
 t.expect(lead.decisionAction.enabled, "high-confidence leftovers can be marked together")
@@ -104,11 +104,11 @@ local installed = page().apps
 while installed and not order[installed] do installed = installed.superview end
 t.expect(order[page().lead] < order[page().leftoversSection] and order[page().leftoversSection] < order[installed],
 	"the decision comes before the leftovers, and the leftovers before the installed apps")
-app.page.template.actions.markHigh()
+app.page.actions.markHigh()
 local marked = app.review:count()
 t.expect(marked >= 2, "every high-confidence leftover is marked")
-t.assertEqual(app.page.leadRefs.decisionAction.title, "Review Marked Items…", "fully staged leftovers offer final review")
-t.expect(app.page.leadRefs.decisionAction.enabled, "review stays accessible after staging")
+t.assertEqual(app.page.refs.decisionAction.title, "Review Marked Items…", "fully staged leftovers offer final review")
+t.expect(app.page.refs.decisionAction.enabled, "review stays accessible after staging")
 t.expect(perform(leftovers, 1, "Unmark"), "a marked row offers Unmark in its menu")
 t.assertEqual(app.review:count(), marked - 1, "unmarking removes the row from the basket")
 t.expect(perform(leftovers, 1, "Mark for Cleanup"), "a row is marked from its menu")
@@ -120,8 +120,8 @@ t.assertEqual(page().list_support.rowCount, 4, "device support lists each OS ver
 t.assertEqual(page().list_derived.rowCount, 2, "DerivedData lists each project")
 t.assertEqual(page().list_archives.rowCount, 2, "archives are listed")
 t.expect(page().bulk_support.enabled and page().bulk_derived.enabled, "bulk marks start enabled")
-app.page.template.actions.bulk_support()
-app.page.template.actions.bulk_derived()
+app.page.actions.bulk_support()
+app.page.actions.bulk_derived()
 t.assertEqual(app.review:count(), marked + 3, "older device support and missing projects are marked")
 t.expect(not page().bulk_support.enabled, "marked sections disable their bulk action")
 t.assertEqual(bridge._tableRowMenu(page().list_support, 2)[1].title, "Unmark", "marked rows say so in their menu")
@@ -179,9 +179,9 @@ t.expect(bridge._navigationGesture(window, "forward") and app.destination == "up
 -- The Overview's ring is interactive: a sector names itself in the center
 -- while hovered and opens the Map inside its category; the center opens the
 -- whole map.
-app.pages.map:setFocus("")
+app.graph:get("map"):setFocus("")
 app:show("overview")
-local hero = app.pages.overview.hero
+local hero = app.pages.overview
 local heroActions = hero.actions
 local usedTotal, usedCaption = hero.refs.usedTotal.text, hero.refs.usedCaption.text
 t.assertEqual(hero.refs.chart.subviews[#hero.refs.chart.subviews].className, "LuaPointerView", "the overview ring takes the pointer")
@@ -196,16 +196,16 @@ heroActions.chartSelect("free")
 t.assertEqual(app.destination, "overview", "free space has nothing inside to open")
 heroActions.chartSelect("developer")
 t.assertEqual(app.destination, "map", "clicking a category's sector opens the Map")
-t.assertEqual(app.pages.map.focus, "developer", "inside that category")
+t.assertEqual(app.graph:get("map").focus, "developer", "inside that category")
 app:show("overview")
-app.pages.overview.hero.actions.chartCenter()
+app.pages.overview.actions.chartCenter()
 t.assertEqual(app.destination, "map", "the center opens the Map")
-t.assertEqual(app.pages.map.focus, "", "at the whole disk")
+t.assertEqual(app.graph:get("map").focus, "", "at the whole disk")
 
 -- The keyboard does the same: focus names a sector, Return opens it, and
 -- Delete, which has no level to go up to here, stays on the page.
 app:show("overview")
-hero = app.pages.overview.hero
+hero = app.pages.overview
 local heroPointer = hero.refs.chart.subviews[#hero.refs.chart.subviews]
 t.expect(heroPointer.acceptsFirstResponder, "the overview ring takes keyboard focus")
 bridge._pointerSend(heroPointer, "key", "tab")
@@ -224,14 +224,14 @@ end
 t.expect(hero.refs.chartDetail.text:find("Developer · ", 1, true) == 1, "arrows reach the categories")
 bridge._pointerSend(heroPointer, "key", "return")
 t.assertEqual(app.destination, "map", "return opens the Map inside the focused category")
-t.assertEqual(app.pages.map.focus, "developer", "focused on it")
-app.pages.map:setFocus("")
+t.assertEqual(app.graph:get("map").focus, "developer", "focused on it")
+app.graph:get("map"):setFocus("")
 
 -- Drilling takes the new level in place.
 local rings = app.page.refs.sunburst
-app.page.template.actions.chartSelect("developer", 1)
+app.page.actions.chartSelect("developer", 1)
 t.expect(app.page.refs.sunburst == rings, "drilling keeps the chart view")
-app.page.template.actions.up()
+app.page.actions.up()
 t.expect(app.page.refs.sunburst == rings, "and so does going back out")
 
 

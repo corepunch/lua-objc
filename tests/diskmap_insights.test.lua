@@ -154,7 +154,7 @@ t.assertEqual(used + apfs.free, apfs.capacity, "mock volumes and free space part
 t.assertEqual(#Volumes.external(volumes.external), 1, "other mounted disks are listed")
 
 -- Clean Up uses every knowledge entry.
-local cleanup = Recommendations.presentation(model, nil, {apps = app.pages.applications:summary()})
+local cleanup = Recommendations.presentation(model, nil, {apps = app:pageModel("applications"):summary()})
 t.expect(#cleanup.rebuildable > 0 and #cleanup.decisions > 0, "clean up separates rebuildable data from decisions")
 local rebuildable = {}
 for _, row in ipairs(cleanup.rebuildable) do rebuildable[row.id] = true end
@@ -202,7 +202,7 @@ t.expect(app.refs.files.rowCount > 0, "Large Files lists files")
 app:show("kinds")
 t.expect(app.refs.kinds.rowCount > 0 and app.refs.extensions.rowCount > 0, "File Types lists kinds and extensions")
 t.expect(app.refs.kindsChart.subviews[1].className == "LuaArcView", "the File Types chart is flat context")
-app.pages.kinds.showFiles("installers")
+app.pages.kinds.model:showFiles("installers")
 t.assertEqual(app.destination, "files", "opening a kind shows Large Files")
 t.expect(not app.refs.clearKind.hidden, "a narrowed list offers to show every kind")
 for index = 1, app.refs.files.rowCount do

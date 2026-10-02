@@ -1,16 +1,18 @@
 local Model = require("apps.diskmap.Model")
 local Inspector = require("apps.diskmap.models.Inspector")
 local Cleanup = require("apps.diskmap.models.Cleanup")
-local Controller = {}; Controller.__index = Controller
-function Controller.new(model, service, refresh)
-	return setmetatable({model = model, service = service, refresh = refresh}, Controller)
+local Manage = {}; Manage.__index = Manage
+-- The one resource a person asked to act on: `select` it, then `manage` it
+-- (move to Trash, empty the Trash, run its owner's cleanup, open its owner).
+function Manage.new(model, service, refresh)
+	return setmetatable({model = model, service = service, refresh = refresh}, Manage)
 end
-function Controller:select(id)
+function Manage:select(id)
 	local data = Inspector.details(self.model, id)
 	if data then self.selectedId = id end
 	return data
 end
-function Controller:manage()
+function Manage:manage()
 	local row = self.model.resources:find(self.selectedId)
 	if not row or not row:isLeaf() then return false end
 	if row.action == "trash" then
@@ -44,4 +46,4 @@ function Controller:manage()
 	elseif row.path then self.service.reveal(row.path) end
 	return true
 end
-return Controller
+return Manage

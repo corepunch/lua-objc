@@ -73,10 +73,10 @@ end
 
 -- Which empty state the page is in, so "nothing chosen yet" is never read as
 -- "nothing found": choose (no folder), ready (folders chosen, not searched),
--- searching, failed, none (searched, no duplicates), nomatch (the filter
--- hides every group) or list.
-function Duplicates.state(roots, searching, result, shown, query)
-	if searching then return "searching" end
+-- failed, none (searched, no duplicates), nomatch (the filter hides every
+-- group) or list. A running search is not a state of its own: the page is
+-- computing.
+function Duplicates.state(roots, result, shown, query)
 	if result and (result.failure or result.groups == nil) then return "failed" end
 	if #(roots or {}) == 0 then return "choose" end
 	if not result then return "ready" end

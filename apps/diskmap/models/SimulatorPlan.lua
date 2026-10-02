@@ -10,6 +10,10 @@ local SimulatorPlan = {}
 
 SimulatorPlan.families = {"iPhone", "iPad"}
 
+-- How the page names and colors a device's role in the plan.
+local ROLES = {keep = "Keep", remove = "Remove", blocked = "Blocked", preserve = "Protected", undecided = "Choose", outside = "Not in plan"}
+local COLORS = {keep = "systemGreen", remove = "systemOrange", blocked = "systemRed", preserve = "systemBlue", undecided = "systemGray", outside = "systemGray"}
+
 -- The family of a device type and whether it is the base model of its line.
 -- iPhone-17 and iPad-10th-generation are base models; Pro, Max, Plus, Air,
 -- mini, e and SE variants are not. Unknown identifiers belong to no family.
@@ -121,6 +125,8 @@ function SimulatorPlan.build(inventory, options)
 			table.insert(removal, entry)
 			removalBytes = removalBytes + (row.bytes or 0)
 		end
+		entry.roleLabel, entry.color = ROLES[entry.role], COLORS[entry.role]
+		if row.state == "Booted" or row.running then entry.lastUse = "Running" end
 		table.insert(plan.devices, entry)
 	end
 	-- Rank by what the user can recover first; roles keep their own order.

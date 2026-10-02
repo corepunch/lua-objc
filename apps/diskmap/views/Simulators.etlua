@@ -1,16 +1,21 @@
 <ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
   <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
-    <%- partial("PageHeader.etlua", {header = header, summary = "Reading simulator devices and runtimes…", summaryId = "summary",
+    <%- partial("PageHeader.etlua", {header = page, summary = summary, summaryId = "summary",
       buttons = {{id = "retry", title = "Retry", action = "retry", help = "Read simulator state and runtime information again"}, {id = "components", title = "Xcode Components…", action = "components", help = "Manage runtimes in Xcode › Settings › Components"}}}) %>
-    <VStack id="planHost" spacing="0" alignment="leading" />
+    <% if computing then %>
+    <%- partial("Computing.etlua", {status = computing}) %>
+    <% else %>
+    <VStack id="planHost" spacing="0" alignment="leading">
+      <%- partial("SimulatorPlan.etlua", plan) %>
+    </VStack>
     <% --[[ The inventory explains the plan; it is not a second plan. It stays
       collapsed until opened, for erasing one device, the unavailable ones or
       a runtime. ]] %>
     <DisclosureGroup id="inventory" label="All devices and runtimes" expanded="false" spacing="16" indicatorWidth="26" indicatorSpacing="10">
     <VStack id="devicesSection" spacing="8" alignment="leading">
       <HStack spacing="12" alignment="center">
-        <%- partial("SectionHeader.etlua", {title = "Devices", detail = "Erase keeps a device and removes its apps and data; Delete removes the device.", detailId = "devicesDetail"}) %>
-        <Picker id="filter" style="segmented" onChange="filter">
+        <%- partial("SectionHeader.etlua", {title = "Devices", detail = devicesDetail, detailId = "devicesDetail"}) %>
+        <Picker id="filter" style="segmented" value="<%= filter %>" onChange="filter">
           <% for _, title in ipairs(filters) do %><Option title="<%= title %>" /><% end %>
         </Picker>
       </HStack>
@@ -23,13 +28,13 @@
         </List>
       </GroupBox>
       <HStack spacing="8" alignment="center">
-        <Button id="reveal" title="Show in Finder" action="reveal" disabled="true" />
-        <Button id="erase" title="Erase…" action="erase" disabled="true" />
-        <Button id="delete" title="Delete…" action="delete" disabled="true" />
+        <Button id="reveal" title="Show in Finder" action="reveal" />
+        <Button id="erase" title="Erase…" action="erase" />
+        <Button id="delete" title="Delete…" action="delete" />
         <Spacer />
-        <Button id="deleteUnavailable" title="Delete Unavailable…" action="unavailable" disabled="true" help="Delete every device whose runtime is gone" />
+        <Button id="deleteUnavailable" title="Delete Unavailable…" action="unavailable" help="Delete every device whose runtime is gone" />
       </HStack>
-      <Label id="status" text="" size="11" color="secondary" maxWidth="infinity" lines="0" />
+      <Label id="status" text="<%= status %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
     </VStack>
     <VStack id="runtimesSection" spacing="8" alignment="leading">
       <%- partial("SectionHeader.etlua", {title = "Runtimes", detail = "Each runtime is a full operating system image. Devices on a deleted runtime become unavailable.", detailId = "runtimesDetail"}) %>
@@ -42,11 +47,12 @@
         </List>
       </GroupBox>
       <HStack spacing="8" alignment="center">
-        <Button id="deleteRuntime" title="Delete Runtime…" action="deleteRuntime" disabled="true" />
+        <Button id="deleteRuntime" title="Delete Runtime…" action="deleteRuntime" />
         <Spacer />
       </HStack>
-      <Label id="runtimeStatus" text="" size="11" color="secondary" maxWidth="infinity" lines="0" />
+      <Label id="runtimeStatus" text="<%= runtimeStatus %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
     </VStack>
     </DisclosureGroup>
+    <% end %>
   </VStack>
 </ScrollView>

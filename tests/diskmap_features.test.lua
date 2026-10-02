@@ -5,10 +5,10 @@ local Cleanup = require("apps.diskmap.models.Cleanup")
 local Tips = require("apps.diskmap.models.Tips")
 local Inspector = require("apps.diskmap.models.Inspector")
 local Scan = require("apps.diskmap.controllers.ScanController")
-local CleanupController = require("apps.diskmap.controllers.CleanupController")
-local InspectorController = require("apps.diskmap.controllers.InspectorController")
+local Keep = require("apps.diskmap.models.Keep")
+local Manage = require("apps.diskmap.models.Manage")
 local Recommendations = require("apps.diskmap.models.Recommendations")
-local SettingsController = require("apps.diskmap.controllers.SettingsController")
+local Settings = require("apps.diskmap.models.Settings")
 local Rules = require("apps.diskmap.knowledge.CleanupRules")
 local model = Model.new("/Users/test")
 for id, rule in pairs(Rules) do
@@ -38,21 +38,21 @@ t.assertEqual(#Cleanup.suggestions(model), 0, "keeping parent suppresses all des
 model.kept.xcode = nil
 local saved, refreshed = 0, 0
 local keepMessage
-local cleanup = CleanupController.new(model, {saveKeep = function() saved = saved + 1; return true end}, function(message) keepMessage = message end)
+local cleanup = Keep.new(model, {saveKeep = function() saved = saved + 1; return true end}, function(message) keepMessage = message end)
 local Recommendations = require("apps.diskmap.models.Recommendations")
 t.assertEqual(Recommendations.presentation(model).decisions[1].id, "simulators", "clean up keeps resource identity")
 t.assertEqual(#Recommendations.presentation(model, "unfindable").decisions, 0, "clean up search is independent")
 local reviewRow = Recommendations.presentation(model).decisions[1]
 t.assertEqual(reviewRow.statusColor, "systemOrange", "a review suggestion carries an orange status symbol")
 t.assertEqual(reviewRow.shareText, "to review", "a suggestion without proven recovery names its amount as bytes to review")
-cleanup:toggleKeep("simulators")
+cleanup:toggle("simulators")
 t.assertEqual(#Cleanup.suggestions(model), 0, "a kept resource leaves the suggestions")
 local keptRow; for _, row in ipairs(Recommendations.presentation(model).checked) do if row.id == "simulators" then keptRow = row end end
 t.assertEqual(keptRow and keptRow.detail, "Kept", "a kept resource is listed as checked and kept")
 t.assertEqual(keptRow and keptRow.statusIcon, "pin.circle.fill", "a kept resource shows the kept symbol")
 t.assertEqual(saved, 1, "keep change persists the preference")
 t.assertEqual(model.measurements.projects.bytes, 900e9, "keep preserves unrelated measured state")
-cleanup:toggleKeep("simulators")
+cleanup:toggle("simulators")
 t.assertEqual(saved, 2, "unkeep change also saves")
 t.assertEqual(keepMessage, nil, "successful persistence does not report an error")
 t.assertEqual(#Cleanup.suggestions(model), 1, "unkeep restores eligible resource")
@@ -75,7 +75,7 @@ local details = Inspector.details(model, "simulators")
 t.expect(details.text:find("Review threshold", 1, true) ~= nil, "inspector reuses cleanup evidence")
 t.expect(details.canManage, "fresh measurement allows live actions")
 local deletes = 0
-local inspector = InspectorController.new(model, {confirmTrash = function() return true end,
+local inspector = Manage.new(model, {confirmTrash = function() return true end,
 	trash = function() deletes = deletes + 1; return true end}, function() refreshed = refreshed + 1 end)
 model.measurements.derived.bytes = 2e9
 inspector:select("derived")
@@ -84,7 +84,7 @@ t.assertEqual(deletes, 1, "allowed action uses injected filesystem service")
 t.assertEqual(refreshed, 1, "successful mutation requests fresh full inventory")
 local ownerCalls = {}
 model.measurements.npm = {bytes = 20e6, status = "complete"}
-local ownerInspector = InspectorController.new(model, {
+local ownerInspector = Manage.new(model, {
 	confirmOwnerCleanup = function(row, size) ownerCalls.confirmed = row.id == "npm" and size == "20.0 MB"; return true end,
 	runOwnerCleanup = function(commandId, home, done) ownerCalls.commandId, ownerCalls.home = commandId, home; done(true) end,
 }, function() refreshed = refreshed + 1 end)
@@ -95,7 +95,7 @@ t.assertEqual(ownerCalls.home, model.home, "owner command uses the active accoun
 t.assertEqual(refreshed, 2, "owner cleanup triggers a fresh measurement")
 model.kept.xcode = true
 t.expect(not inspector:manage(), "kept ancestor prevents mutation")
-local settings = SettingsController.new({loadSettings = function() return true end, saveSettings = function() return false end})
+local settings = Settings.new({}, {service = {loadSettings = function() return true end, saveSettings = function() return false end}, model = {}})
 t.expect(not settings:toggle() and settings.enabled, "failed setting save preserves previous state")
 local pending, cancelled = {}, 0
 local scanner = Scan.new(Model.new("/Users/test"), {

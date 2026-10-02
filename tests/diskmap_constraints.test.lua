@@ -3,7 +3,7 @@ local t = require("TestKit")
 local Model = require("apps.diskmap.Model")
 local Cleanup = require("apps.diskmap.models.Cleanup")
 local Inspector = require("apps.diskmap.models.Inspector")
-local InspectorController = require("apps.diskmap.controllers.InspectorController")
+local Manage = require("apps.diskmap.models.Manage")
 local Simulators = require("apps.diskmap.models.Simulators")
 
 local model = Model.new("/Users/test")
@@ -49,7 +49,7 @@ t.assertEqual(failedError.code, "trash_service", "service failure is named")
 t.assertEqual(model.measurements.derived.bytes, 2e9, "service failure preserves measurement state")
 
 local refreshes, controllerCalls, errors = 0, 0, 0
-local controller = InspectorController.new(model, {
+local controller = Manage.new(model, {
 	confirmTrash = function()
 		model.kept.xcode = true
 		return true

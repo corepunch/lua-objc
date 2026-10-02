@@ -1,4 +1,3 @@
-<% if changes then %>
 <VStack id="changesSection" spacing="8" alignment="leading">
   <HStack spacing="12" alignment="center">
     <%- partial("SectionHeader.etlua", {title = "Changes", detail = changes.detail}) %>
@@ -23,6 +22,3 @@
     </HStack>
   </GroupBox>
 </VStack>
-<% else %>
-<VStack id="changesEmpty" hidden="true" />
-<% end %>

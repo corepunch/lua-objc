@@ -126,7 +126,7 @@ t.expect(refs.contents.rowCount >= 1, "a watched folder lists its immediate chil
 t.expect(refs.contentsDetail.text:find("at the top level", 1, true) ~= nil, "the contents are summarized once measured")
 t.expect(refs.reveal ~= nil and refs.openCategory == nil, "a folder offers Finder but no category")
 t.assertEqual(sidebar.documentView.selectedRow, 2, "the folder's sidebar row is selected")
-local folderMenu = app.pages.watched:contentsMenu({path = home .. "/Library/Developer/Xcode", name = "Xcode", directory = true})
+local folderMenu = app.pages.watched.model:menu({path = home .. "/Library/Developer/Xcode", name = "Xcode", directory = true})
 t.expect(perform(folderMenu, "Watch"), "a subfolder can be watched from the contents list")
 t.assertEqual(#service.watchlist, 3, "three locations are saved")
 
@@ -143,7 +143,7 @@ t.assertEqual(second.navigation.refs.sidebar.rowCount, plainRows + 4, "all three
 
 -- Stop Watching from the page returns to the overview.
 second:show("watched:resource:xcode")
-second.page.template.actions.unwatch()
+second.page.actions.unwatch()
 t.assertEqual(second.destination, "overview", "stopping a watch leaves its page")
 t.assertEqual(#service.watchlist, 2, "the removal is saved")
 second:show("watched:resource:xcode")

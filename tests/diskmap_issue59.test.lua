@@ -70,7 +70,7 @@ t.assertEqual(derived[3].name, "Module cache", "shared caches follow, named for 
 t.assertEqual(derived[3].status, "Shared", "and are not projects with an unknown workspace")
 t.assertEqual(derived[4].subtitle, "Shared by every project · Xcode rebuilds it", "their subtitle says whose they are")
 t.expect(not derived[3].missing, "a shared cache is never a missing project")
-t.assertEqual(require("apps.diskmap.controllers.XcodeController").statuses.Shared, "Rebuildable", "shared caches are rebuildable")
+t.assertEqual(require("apps.diskmap.models.XcodePage").statuses.Shared, "Rebuildable", "shared caches are rebuildable")
 
 -- Projects are told apart by where they are; a tool's folder is not one.
 t.assertEqual(require("apps.diskmap.Model").tilde(home .. "/Developer/Temp/vue-frontend", home), "~/Developer/Temp/vue-frontend", "a project shows its folder")
@@ -122,10 +122,10 @@ t.expect(app.refs.filesNoResults.hidden and not app.refs.filesPanel.hidden, "cle
 -- Search narrows the Map's list; the chart keeps the level.
 app:show("map")
 local everything = app.refs.mapList.rowCount
-local marks = #app.pages.map:presentation().nodes
+local marks = #app.pages.map.model:data(app:state()).nodes
 app:search("map", "developer")
 t.expect(app.refs.mapList.rowCount > 0 and app.refs.mapList.rowCount < everything, "search narrows the map's list")
-t.assertEqual(#app.pages.map:presentation().nodes, marks, "the chart keeps every sector")
+t.assertEqual(#app.pages.map.model:data(app:state()).nodes, marks, "the chart keeps every sector")
 app:search("map", "no such category")
 t.expect(app.refs.mapNoResults ~= nil, "a map search without matches says No Results")
 app:search("map", "")
@@ -165,28 +165,28 @@ t.assertEqual(#Applications.rows(rawModel, {["/Applications/logioptionsplus.app"
 t.assertEqual(app.model.includeMedia, false, "media libraries start excluded")
 app.settings:setMedia(true)
 t.expect(app.service.loadFlag("media"), "the choice is saved")
-t.expect(require("apps.diskmap.controllers.SettingsController").new(app.service, Model.new(home), function() end, app.notifications).model.includeMedia,
+t.expect(require("apps.diskmap.models.Settings").new({}, {service = app.service, model = Model.new(home), notifications = app.notifications}).storage.includeMedia,
 	"and restored at the next launch")
 app.settings:setMedia(false)
 
--- Simulators never show zeros while they load.
+-- Simulators claim no totals and list no half-read rows while they load: the
+-- page is one progress state until the read ends.
 app:show("simulators")
-local simulators = app.pages.simulators
-simulators.busy, simulators.loading = true, true
-simulators:show()
-t.assertEqual(app.refs.summary.text, "Reading simulator devices and runtimes…", "a loading page claims no totals")
-t.assertEqual(app.refs.devicesDetail.text, "Reading…", "nothing is claimed about devices not read yet")
-t.assertEqual(simulators.planRefs.planAmount.text, "—", "the plan's amount has no value while it loads")
-simulators.busy, simulators.loading = false, false
-simulators:show()
-t.expect(simulators.planRefs.planAmount.text ~= "—", "a loaded plan has its amount")
+local simulators = app.graph:get("simulators")
+simulators.loaded = false
+app:updateRows()
+t.assertEqual(app.refs.computingStatus.text, "Reading simulator devices and runtimes…", "a loading page claims no totals")
+t.expect(app.refs.computingSpinner ~= nil and app.refs.devices == nil and app.refs.planAmount == nil, "and shows no lists or plan")
+simulators.loaded = true
+app:updateRows()
+t.expect(app.refs.planAmount ~= nil and app.refs.planAmount.text ~= "", "a loaded plan has its amount")
 t.expect(not app.refs.summary.text:find(" 1 runtimes", 1, true) and not app.refs.summary.text:find(" 1 devices", 1, true), "counts are pluralized")
 
 -- Overview sections with nothing to show take no place.
 app:show("overview")
 -- The synthetic disk leaves its media libraries out, so the card names them
 -- and asks for no access it does not need.
-t.expect(not app.refs.notMeasured.hidden and app.pages.overview.notMeasured.refs.unmeasured_media ~= nil, "what was not measured is named")
-t.expect(app.pages.overview.notMeasured.refs.grantAccess == nil, "no access is requested when nothing was refused")
+t.expect(not app.refs.notMeasured.hidden and app.refs.unmeasured_media ~= nil, "what was not measured is named")
+t.expect(app.refs.grantAccess == nil, "no access is requested when nothing was refused")
 window.size = ns.Size(950, 580); window:layout()
 os.exit(t.summary() and 0 or 1)

@@ -154,19 +154,18 @@ t.assertEqual(rows["/Library/Trial"].size, "No access", "a refused location asks
 local grantedRows = {}
 for _, area in ipairs(Filesystem.presentation(page, sizes, true).areas) do for _, row in ipairs(area.rows) do grantedRows[row.id] = row end end
 t.assertEqual(grantedRows["/Library/Trial"].size, "Not readable", "and is protected once access is on")
-t.expect(rows["/System/Volumes/Data/MobileSoftwareUpdate"].calculating, "a leftover still measuring shows a spinner")
+t.assertEqual(rows["/System/Volumes/Data/MobileSoftwareUpdate"].size, "Not measured", "a leftover still measuring says so: a scan shows no row-level progress")
 t.assertEqual(Filesystem.presentation(page, sizes, false, "rosetta").count, 1, "search finds a location by what it holds")
 t.expect(Filesystem.presentation(page, sizes, false, "no such folder").empty, "a search with no match is empty")
 
--- A volume without an APFS size never spins forever: once APFS has
--- answered, a volume it did not report reads Not measured.
+-- A volume APFS has not sized reads Not measured, never a spinner.
 local volumeless = Model.new(home)
 local function rowOf(m, id)
 	for _, area in ipairs(Filesystem.presentation(m, {}, false).areas) do
 		for _, row in ipairs(area.rows) do if row.id == id then return row end end
 	end
 end
-t.expect(rowOf(volumeless, "/").calculating, "the system volume waits while APFS has not answered")
+t.assertEqual(rowOf(volumeless, "/").size, "Not measured", "the system volume waits as Not measured while APFS has not answered")
 volumeless.volumeUsage = {}
 t.assertEqual(rowOf(volumeless, "/").size, "Not measured", "and says so once APFS could not size it")
 
@@ -188,8 +187,8 @@ t.assertEqual(scanModel.volumeUsage.Preboot, 21e9, "so volume sizes are known be
 local app = Controller.new(Mock.new())
 app:createWindow()
 app:show("overview")
-t.expect(app.pages.overview.notMeasured.refs.exploreFolders ~= nil, "the card links to macOS Folders")
-app.pages.overview.handlers.navigate("filesystem")
+t.expect(app.pages.overview.refs.exploreFolders ~= nil, "the card links to macOS Folders")
+app.pages.overview.actions.exploreFolders()
 t.assertEqual(app.destination, "filesystem", "which opens the page")
 t.expect(app.pages.filesystem.refs.area_volumes ~= nil and app.pages.filesystem.refs.area_home ~= nil, "every area is on the page")
 t.expect(app.model.folderSizes ~= nil, "the page measures the locations no resource covers")

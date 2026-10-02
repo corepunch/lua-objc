@@ -52,7 +52,12 @@ raises(function()
 end, "cycle a %-> b %-> c %-> a", "a cycle is reported with its path")
 raises(function() Model.graph({ classes = { a = define("a", { "a" }) } }):plan({ "a" }) end, "cycle a %-> a", "a self dependency")
 raises(function() Model.graph({ classes = { a = define("b", {}) } }):build({ "a" }) end, "whose id is", "registered under another id")
-raises(function() Model.define({}) end, "needs an id", "define needs an id")
+raises(function() Model.define({ id = "" }) end, "must be a name", "an id is a name")
+-- A class without an id serves several models and learns which one it is.
+local shared = Model.define({})
+function shared.new(_, _, id) return { id = id } end
+local sharedGraph = Model.graph({ classes = { one = shared, two = shared } })
+t.assertEqual(sharedGraph:build({ "one", "two" }).two.id, "two", "a shared class is built for each id")
 raises(function() Model.define({ id = "x", needs = { 1 } }) end, "lists model ids", "needs lists ids")
 
 os.exit(t.summary() and 0 or 1)

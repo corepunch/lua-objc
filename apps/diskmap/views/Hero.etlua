@@ -7,7 +7,7 @@
   -- out in units of the chart (`chartUnits` across), so ring and total grow
   -- together. The text shrinks to fit the hole, no smaller than the scale
   -- factors allow.
-  local hiddenRows = hidden or {}
+  local hiddenRows = hiddenSpace or {}
   -- One legend column, no wider than a name, a size and a share read well
   -- across: two columns ran into each other in the narrowest window.
   HERO.legend = 440
@@ -19,14 +19,12 @@
   HERO.symbol = { column = 20, gap = 6 }
 %>
 <VStack spacing="14" alignment="leading">
-      <% if not summary.calculating or summary.lowSpace then %>
-      <% --[[ Low-space launches offer measured suggestions immediately;
-        the explanation makes their incomplete coverage explicit. ]] %>
+      <% if reclaim then %>
       <HStack spacing="<%= HERO.symbol.gap %>" alignment="center">
         <SystemImage name="sparkles" size="18" color="accent" width="<%= HERO.symbol.column %>" />
         <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="1" alignment="leading">
           <Label id="reclaimTitle" text="<%= reclaim.title %>" size="13" weight="semibold" monospacedDigit="true" maxWidth="infinity" lines="1" />
-          <Label id="reclaimDetail" text="<%= summary.calculating and "Review measured items now; more suggestions may appear as the scan continues." or reclaim.detail %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
+          <Label id="reclaimDetail" text="<%= reclaim.detail %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
         </VStack>
         <Button id="cleanUp" title="Review Cleanup" style="borderedProminent" controlSize="large" action="reclaim" help="Open Clean Up: suggestions grouped by impact" />
       </HStack>
@@ -52,18 +50,7 @@
       <VStack spacing="2" alignment="leading">
         <HStack spacing="10" alignment="center">
           <Label text="<%= volumeName %>" size="22" weight="semibold" />
-          <% if summary.calculating then %>
-          <% --[[ Scan progress sits beside the title, the first line the eye
-            reads, so no one scrolls to find a spinner row. ]] %>
-          <HStack id="calculating" spacing="4" alignment="center">
-            <ProgressView controlSize="small" />
-            <Label text="Calculating…" size="12" color="secondary" lines="1" />
-          </HStack>
-          <% end %>
         </HStack>
-        <% if summary.calculating then %>
-        <Label id="scanProgress" text="<%= scanStatus or "Measuring storage…" %>" size="12" color="secondary" maxWidth="infinity" lines="0" />
-        <% end %>
         <Label id="freeSpace" text="<%= summary.subtitle or summary.caption %>" size="13" color="secondary" monospacedDigit="true" />
         <% if summary.lowSpace then %>
         <HStack spacing="<%= HERO.symbol.gap %>" alignment="center">
