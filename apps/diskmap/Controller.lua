@@ -10,15 +10,16 @@ local Workflows = require("apps.diskmap.knowledge.Workflows")
 local History = require("apps.diskmap.models.History")
 local Model = require("apps.diskmap.Model")
 local Provider = require("apps.diskmap.services.Provider")
-local ScanController = require("apps.diskmap.controllers.ScanController")
+local ScanJob = require("apps.diskmap.models.Scan")
 local TourSheet = require("apps.diskmap.models.TourSheet")
 local Keep = require("apps.diskmap.models.Keep")
 local Manage = require("apps.diskmap.models.Manage")
 local ManagementSheet = require("apps.diskmap.models.ManagementSheet")
 local SdksSheet = require("apps.diskmap.models.SdksSheet")
 local Settings = require("apps.diskmap.models.Settings")
-local ActionsController = require("apps.diskmap.controllers.ActionsController")
+local RowMenus = require("apps.diskmap.models.RowMenus")
 local Review = require("apps.diskmap.models.Review")
+local ScanProgress = require("apps.diskmap.models.ScanProgress")
 local HistorySheet = require("apps.diskmap.models.HistorySheet")
 local SnapshotChanges = require("apps.diskmap.models.SnapshotChanges")
 local NavigationController = require("apps.diskmap.controllers.NavigationController")
@@ -27,7 +28,7 @@ local Help = require("apps.diskmap.models.Help")
 local Notifications = require("apps.diskmap.services.Notifications")
 local CommandsController = require("apps.diskmap.controllers.CommandsController")
 local SnapshotComparison = require("apps.diskmap.services.SnapshotComparison")
-local WatchlistController = require("apps.diskmap.controllers.WatchlistController")
+local WatchlistStore = require("apps.diskmap.models.WatchlistStore")
 local Onboarding = require("apps.diskmap.models.Onboarding")
 local Manifest = require("data.manifest")
 local ModelGraph = require("data.model")
@@ -54,7 +55,7 @@ function Controller.new(service)
 	-- Scan ticks arrive many times a second, so they apply immediately: an
 	-- animated transaction would diff the layout of the whole page on each
 	-- one and fight the user's scrolling.
-	self.scan = ScanController.new(self.model, service, home, function() self:updateRows() end, function() self:scanFinished() end)
+	self.scan = ScanJob.new(self.model, service, home, function() self:scanChanged() end, function() self:scanFinished() end)
 	self.notifications = Notifications.new(self.model, service, {
 		mark = function(items) self.actions:markAll(items) end,
 		review = function() self:openReview() end,
@@ -68,8 +69,8 @@ function Controller.new(service)
 	-- Every list, menu and link opens a resource through this one function.
 	local open = function(id) self:open(id) end
 	self.navigation = NavigationController.new(function(id, fromHistory) self:show(id, false, fromHistory) end)
-	self.watchlist = WatchlistController.new(self.model, service, function() self:updateRows() end)
-	self.actions = ActionsController.new(self.model, service, {
+	self.watchlist = WatchlistStore.new(self.model, service, function() self:updateRows() end)
+	self.actions = RowMenus.new(self.model, service, {
 		open = open,
 		search = function(page, text) self:search(page, text) end,
 		review = function(path) self:openReview(path) end,
@@ -102,6 +103,9 @@ function Controller.new(service)
 		openHistory = function() self.history:open(self.window) end,
 		keep = function(id) self.keep:toggle(id) end,
 		scanning = function() return self.scan.job ~= nil end,
+		scanDisk = function() return self.scan.disk end,
+		scanStatus = function() return self.scan.status end,
+		cancelScan = function() self.scan:cancel() end,
 		onboarded = function(granted)
 			self.fullDiskAccess = granted == true
 			self.scan:start()
@@ -125,6 +129,7 @@ function Controller.new(service)
 	self.settings, self.review, self.history = Settings.new({}, context), Review.new({}, context), HistorySheet.new({}, context)
 	self.sdks, self.management = SdksSheet.new({}, context), ManagementSheet.new({}, context)
 	self.changesSheet = SnapshotChanges.new({}, context)
+	self.progress = ScanProgress.new({}, context)
 	self.actions.review = self.review
 	local manifest = Manifest.load("apps/diskmap/app.xml")
 	context.entry = function(id) return manifest.pages[id] end
@@ -368,6 +373,16 @@ function Controller:quickLook()
 	return false
 end
 
+-- A running scan shows in its progress window and nowhere else; the pages
+-- are drawn when it is over.
+function Controller:scanChanged()
+	if self.model.scan.running and self.window then
+		self.progress:show(self.window)
+	else
+		self.progress:close()
+		self:updateRows()
+	end
+end
 -- After each measurement: refresh capacity and snapshots for hidden space,
 -- and record category totals when history is on.
 function Controller:scanFinished()

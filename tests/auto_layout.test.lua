@@ -120,7 +120,7 @@ local function source(path)
 	local file = assert(io.open(path)); local text = file:read("*a"); file:close(); return text
 end
 for _, path in ipairs({
-	"apps/diskmap/Controller.lua", "apps/diskmap/controllers/ManagementController.lua",
+	"apps/diskmap/Controller.lua", "apps/diskmap/models/ManagementSheet.lua",
 	"apps/adventure-arena/controllers/SessionController.lua", "apps/studio/Controller.lua",
 }) do
 	t.expect(not source(path):find(":layout%(") and not source(path):find("_layout%("),

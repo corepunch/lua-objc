@@ -170,7 +170,7 @@ volumeless.volumeUsage = {}
 t.assertEqual(rowOf(volumeless, "/").size, "Not measured", "and says so once APFS could not size it")
 
 -- Volume sizes are asked for when a scan starts, not after discovery.
-local Scan = require("apps.diskmap.controllers.ScanController")
+local Scan = require("apps.diskmap.models.Scan")
 local asked, discovering = false, nil
 local service = {
 	apfsVolumes = function(completion) asked = true; completion(list, "disk3") end,

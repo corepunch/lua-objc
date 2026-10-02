@@ -396,12 +396,18 @@ The app and framework changes are described in [DESIGN.md](DESIGN.md); the resea
 
 ## Component boundaries
 
-The root controller composes focused controllers: sidebar navigation, one page
-controller per destination (overview, largest items, large files, file types,
-clean up, applications, developer, simulators, disks and volumes, updates and
-snapshots, guide), category management sheets, the SDK sheet, scan lifecycle,
-category presentation, Keep persistence, contextual tips, row menus
-(`ActionsController`), inspector actions, and settings. Pages
+Diskmap is a page-per-request app (`app.xml`, docs/data-driven.md): every page
+and every sheet is a model plus a view. A page's model answers `data(state)`, the
+framework's page controller draws the etlua view with it, and an action in the
+view is a method of the model followed by the same request again. The root
+controller is only the window's code-behind: it wires services, the scan and the
+shell (sidebar, menus, history, the cleanup collector). A running scan shows in
+one small progress window; the pages are drawn when it finishes. Models for
+destinations: overview, largest items, large files, file types, clean up,
+applications, developer, simulators, disks and volumes, updates and snapshots,
+guide; sheets for review, settings, history, snapshots, SDKs, category
+management, the tour and onboarding; row menus (`models/RowMenus.lua`), Keep,
+inspector actions, scan lifecycle (`models/Scan.lua`). Pages
 mount retained templates into the content pane; the root disposes the previous
 page before mounting the next. The guide re-renders only when its search
 changes, so scan progress never collapses the topic being read. Their
@@ -438,10 +444,9 @@ cancellation, preference persistence failures, action routing and fresh startup 
 | `models/Watchlist.lua` | Watched resources and folders, their previous-session baseline and change |
 | `models/Tips.lua` | Contextual access, capacity, Keep and system-storage guidance |
 | `models/Inspector.lua`, `models/Preferences.lua` | Resource details and action eligibility |
-| `controllers/` | Small coordinators with injected IO and navigation callbacks |
+| `controllers/` | The shell: sidebar navigation and menu commands |
 | `controllers/NavigationController.lua` | The sidebar, and the one table of pages: each row names its page in the sidebar, the Go menu and the page's own header (icon, color, title) |
-| `controllers/PageController.lua` | The lifecycle every page shares, and the one controller for every page that is only data (Largest Items, Clean Up and each workflow): what a page shows is a table its model builds |
-| `controllers/TopicsController.lua` | The Storage Guide and Diskmap Help: chapters of topics, each page a table |
+| `models/*Page.lua`, `models/*Sheet.lua`, `SheetPage.lua` | A page or a sheet: `data(state)` for its view, a method per action. `models/ListPage.lua` is the model of the layout-table pages |
 | `views/Page.etlua` | The list page. Every page that ranks storage in lists is this template and a `layout` table: header buttons, stat tiles, sections (title, filter, buttons, empty states, list) and a footnote |
 | `services/Provider.lua`, `services/Mock.lua`, `services/System.lua`, `services/Scanner.lua`, `src/plugins/storage/StorageScan.m` | Provider selection, synthetic filesystem, actual system integration and native bulk metadata enumeration |
 | `views/` | All presentation, etlua loops and reusable partials |
@@ -490,7 +495,7 @@ with its row selected. No page routes on its own.
 A kind of work is one entry in `knowledge/Workflows.lua`: its name and
 symbol, the sections of its page, and the catalog groups, roots or single
 locations each section lists. `models/Workflow.lua` turns an entry into a
-page and `PageController` presents it, so adding a page for another
+page and the framework's page controller draws it, so adding a page for another
 profession is a table entry plus the catalog locations it cites
 (`catalog/MusicCreation.lua`, `catalog/Creative.lua`, `catalog/Games.lua`).
 A page appears in the sidebar only on a Mac that has its data: one of its
@@ -499,11 +504,10 @@ A page appears in the sidebar only on a Mac that has its data: one of its
 A page that ranks storage in lists has no template of its own. It is a
 `layout` table rendered by `views/Page.etlua`: Largest Items, Large Files,
 Duplicates, Clean Up, Applications, Disks & Volumes, Xcode, Projects, a
-watched location and every kind of work. A page that is only data is a table
-for `PageController` (`id`, `layout`, `present(model, state)`); a page that
-reads folders, runs a search or keeps a filter is a class from
-`Page.extend(id)` that supplies `mount` and `update` and inherits the rest.
-Only pages with a presentation of their own keep a template: the Overview,
+watched location and every kind of work. Its model is a `ListPage` class over
+a page table (`id`, `layout`, `present(model, state, page)`, `actions`). A page
+that reads folders, runs a search or keeps a filter keeps that state on its
+model and starts its service requests in `activate`. Only pages with a presentation of their own keep a template: the Overview,
 the two maps, File Types, Simulators, Updates & Snapshots and macOS Folders.
 
 ## Verification

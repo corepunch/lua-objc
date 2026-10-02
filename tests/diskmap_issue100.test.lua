@@ -104,7 +104,7 @@ t.expect(installerKind.removableBytes and installerKind.removableBytes <= instal
 
 -- Generated project output is one decision per artifact and project, counted once.
 local Projects = require("apps.diskmap.models.Projects")
-local Scan = require("apps.diskmap.controllers.ScanController")
+local Scan = require("apps.diskmap.models.Scan")
 local pm = Model.new("/Users/test")
 Scan.register(pm, {
 	{id = "cm1", name = "CMake build output · engine", path = "/Users/test/Developer/engine/build", policy = "Rebuildable", action = "trash",

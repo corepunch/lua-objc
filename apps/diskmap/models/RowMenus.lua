@@ -4,7 +4,7 @@ local Inspector = require("apps.diskmap.models.Inspector")
 local Files = require("apps.diskmap.models.Files")
 local FolderTree = require("apps.diskmap.models.FolderTree")
 local Manage = require("apps.diskmap.models.Manage")
-local Controller = {}; Controller.__index = Controller
+local RowMenus = {}; RowMenus.__index = RowMenus
 
 -- Row menus for every list in Diskmap. A row's actions live in its "More"
 -- button and its contextual menu instead of buttons under the list, so a
@@ -17,20 +17,20 @@ local Controller = {}; Controller.__index = Controller
 -- `handlers.refresh()` remeasures.
 -- `review` is the cleanup basket (models/Review.lua), set by the app once built: "Mark for Cleanup"
 -- adds a row to it, and nothing touches the disk until its review sheet.
-function Controller.new(model, service, handlers)
-	return setmetatable({model = model, service = service, handlers = handlers}, Controller)
+function RowMenus.new(model, service, handlers)
+	return setmetatable({model = model, service = service, handlers = handlers}, RowMenus)
 end
 
-function Controller:isMarked(path) return self.review ~= nil and self.review:isMarked(path) end
-function Controller:covering(path)
+function RowMenus:isMarked(path) return self.review ~= nil and self.review:isMarked(path) end
+function RowMenus:covering(path)
 	if self.review then return self.review:covering(path) end
 end
-function Controller:isIncluded(path) return self:covering(path) ~= nil end
+function RowMenus:isIncluded(path) return self:covering(path) ~= nil end
 
 -- The Mark/Unmark item for an item {path, name, bytes, source, consequence,
 -- resourceId}. A refusal (a system folder, a parent already marked) is
 -- shown as an alert rather than failing silently.
-function Controller:mark(item)
+function RowMenus:mark(item)
 	if not self.review or not item or not item.path then return nil end
 	local marked = self.review:isMarked(item.path)
 	local parent, exact = self:covering(item.path)
@@ -46,14 +46,14 @@ function Controller:mark(item)
 end
 
 -- Marks every item in `items` that is not marked yet; returns how many.
-function Controller:markAll(items)
+function RowMenus:markAll(items)
 	return self.review and self.review:markAll(items) or 0
 end
 
 -- Prepares rows for ResourceList: share bars relative to the largest row,
 -- the row's own icon and color, and a checkmark for rows in the basket so
 -- marked items are recognisable in every list.
-function Controller:annotate(rows, icon, color)
+function RowMenus:annotate(rows, icon, color)
 	local largest = 0
 	for _, row in ipairs(rows) do largest = math.max(largest, row.bytes or 0) end
 	local presented = {}
@@ -82,34 +82,34 @@ end
 
 -- Only resources Diskmap has a verified Move to Trash recipe for can be
 -- marked from a list; everything else is reviewed in its category.
-function Controller:markableResource(row)
+function RowMenus:markableResource(row)
 	return row ~= nil and row:isLeaf() and row.action == "trash" and row.path ~= nil and (row:validateTrash()) == true
 end
 
 local function separator() return {separator = true} end
 
-function Controller:reveal(path)
+function RowMenus:reveal(path)
 	return {title = "Show in Finder", systemImage = "folder", action = function() self.service.reveal(path) end}
 end
 
 -- Watch/Stop Watching; nil when the page was built without a watchlist.
-function Controller:watch(entry)
+function RowMenus:watch(entry)
 	return self.handlers.watch and self.handlers.watch(entry) or nil
 end
 
-function Controller:copyPath(path)
+function RowMenus:copyPath(path)
 	return {title = "Copy Path", systemImage = "doc.on.doc", action = function() self.service.copy(path) end}
 end
 
 -- Quick Look, as the Finder's Space bar: `paths` are the neighbours the
 -- panel's arrow keys step through, starting at `path`. A provider without
 -- Quick Look offers none.
-function Controller:quickLookItem(path, paths)
+function RowMenus:quickLookItem(path, paths)
 	if type(rawget(self.service, "quickLook")) ~= "function" then return nil end
 	return {title = "Quick Look", systemImage = "eye", action = function() self:quickLook(path, paths) end}
 end
 
-function Controller:quickLook(path, paths)
+function RowMenus:quickLook(path, paths)
 	if type(rawget(self.service, "quickLook")) ~= "function" or not path then return false end
 	paths = paths and #paths > 0 and paths or {path}
 	local index = 1
@@ -122,14 +122,14 @@ end
 -- Nektony's Disk Space Analyzer and the Finder do. `validate(path)` is the
 -- page's own policy for what may leave its place; `moved(destination)`
 -- updates the page once the move finished. Nothing is ever replaced.
-function Controller:moveItem(row, validate, moved)
+function RowMenus:moveItem(row, validate, moved)
 	if type(rawget(self.service, "moveItem")) ~= "function" then return nil end
 	local ok, reason = validate(row.path)
 	return {title = ok and "Move to…" or ("Move to… — " .. tostring(reason)), systemImage = "folder.badge.plus", disabled = not ok,
 		action = function() self:move(row, validate, moved) end}
 end
 
-function Controller:move(row, validate, moved)
+function RowMenus:move(row, validate, moved)
 	local ok, reason = validate(row.path)
 	if not ok then self.service.showError("Cannot move " .. (row.name or "this item"), reason); return end
 	local folder = self.service.pickFolder("Move “" .. (row.name or row.path) .. "” to")
@@ -145,7 +145,7 @@ end
 
 -- Move to Trash for an item outside the catalog, checked by `validate`
 -- first; `trashed()` updates the page.
-function Controller:trashItem(row, validate, trashed)
+function RowMenus:trashItem(row, validate, trashed)
 	local ok, reason = validate(row.path)
 	if not ok then self.service.showError("Cannot move to Trash", reason); return end
 	if not self.service.confirmTrashPath("Move " .. (row.name or row.path) .. " to Trash?", row.path,
@@ -159,7 +159,7 @@ end
 -- A file or folder on the Folder page. `handlers.open(row)` looks inside a
 -- folder, `handlers.changed(path)` follows a move or Trash, and
 -- `handlers.siblings` are the paths Quick Look steps through.
-function Controller:item(row, handlers)
+function RowMenus:item(row, handlers)
 	local items = {}
 	if row.directory then
 		table.insert(items, {title = "Open", systemImage = "arrow.right.circle", action = function() handlers.open(row) end})
@@ -180,7 +180,7 @@ function Controller:item(row, handlers)
 end
 
 -- A catalog resource (leaf or group).
-function Controller:resource(id)
+function RowMenus:resource(id)
 	local row = self.model.resources:find(id)
 	if not row then return {} end
 	local items = {}
@@ -220,7 +220,7 @@ end
 
 -- An individual file from Large Files. Trash is offered only for ordinary
 -- documents in the home folder; the menu says why otherwise.
-function Controller:file(row, handlers)
+function RowMenus:file(row, handlers)
 	local ok, reason = Files.validateTrash(self.model, row.path)
 	local items = {
 		{title = ok and "Move to Trash…" or ("Move to Trash — " .. (reason and reason.message or "unavailable")), systemImage = "trash", disabled = not ok,
@@ -243,7 +243,7 @@ function Controller:file(row, handlers)
 	return items
 end
 
-function Controller:trashFile(row)
+function RowMenus:trashFile(row)
 	local ok, reason = Files.validateTrash(self.model, row.path)
 	if not ok then self.service.showError("Cannot move to Trash", reason.message); return end
 	if not self.service.confirmTrashPath("Move " .. row.name .. " to Trash?", row.path,
@@ -256,7 +256,7 @@ end
 -- A folder that is not itself a catalog resource: an app's container, a
 -- possible leftover, Xcode data or a project's build folder. `trash(row)`
 -- performs a validated move when given; `mark` is the basket item for it.
-function Controller:folder(row, trash, mark)
+function RowMenus:folder(row, trash, mark)
 	local items = {}
 	if trash then
 		table.insert(items, {title = "Move to Trash…", systemImage = "trash", action = function() trash(row) end})
@@ -272,7 +272,7 @@ function Controller:folder(row, trash, mark)
 end
 
 -- An installed application: its bundle and the data folders it owns.
-function Controller:application(row)
+function RowMenus:application(row)
 	local items = {self:reveal(row.path)}
 	for index, folder in ipairs(row.folders or {}) do
 		if index > 4 then break end
@@ -289,4 +289,4 @@ function Controller:application(row)
 	return items
 end
 
-return Controller
+return RowMenus

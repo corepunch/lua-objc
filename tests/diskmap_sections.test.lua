@@ -167,7 +167,7 @@ t.assertEqual(Model.sizeStates.unsupported.text, "System Managed", "system-manag
 t.assertEqual(Model.sizeStates.denied.color, "systemOrange", "no access is a warning")
 t.assertEqual(Model.sizeStates.failed.color, "systemRed", "a failed measurement is an error")
 t.expect(Model.sizeLabel({}, "complete", 1e9).sizeIcon == nil, "a measured size has no state symbol")
-local annotated = require("apps.diskmap.controllers.ActionsController").new({}, {}, {}, nil):annotate({
+local annotated = require("apps.diskmap.models.RowMenus").new({}, {}, {}, nil):annotate({
 	{id = "big", bytes = 4e9}, {id = "empty", bytes = 0}, Model.sizeLabel({id = "locked"}, "denied")})
 t.assertEqual(annotated[1].relative, 1, "the largest row fills its bar")
 t.assertEqual(annotated[2].relative, 0, "a measured zero is an empty bar")

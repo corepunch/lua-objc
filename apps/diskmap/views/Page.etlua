@@ -1,5 +1,5 @@
 <% --[[ The list page: every page that ranks storage in lists is this
-  template and a `layout` table (controllers/PageController.lua), so headers,
+  template and a `layout` table (models/ListPage.lua), so headers,
   tiles, section titles, filters and lists sit in the same places on all of
   them. The template carries structure only; rows, sizes and summaries are
   set in place, so scan progress does not rebuild the page under the reader.

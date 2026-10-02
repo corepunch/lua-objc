@@ -1,7 +1,7 @@
 _G.__headless = true
 local t = require("TestKit")
 local Model = require("apps.diskmap.Model")
-local Scan = require("apps.diskmap.controllers.ScanController")
+local Scan = require("apps.diskmap.models.Scan")
 local Catalog = require("apps.diskmap.Catalog")
 local Categories = require("apps.diskmap.models.Categories")
 local Inventory = require("apps.diskmap.models.Inventory")
