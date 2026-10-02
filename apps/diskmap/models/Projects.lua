@@ -84,7 +84,7 @@ function Projects.groups(model, info, now, filter, query)
 			local m = model.measurements[row.id]
 			local bytes = m and m.bytes
 			table.insert(group.artifacts, {id = row.id, name = row.artifact or row.name, path = row.path,
-				bytes = bytes, size = m and m.status == "calculating" and "Calculating…" or Model.size(bytes)})
+				bytes = bytes, size = Model.size(bytes)})
 			group.bytes = group.bytes + (bytes or 0)
 		end
 	end

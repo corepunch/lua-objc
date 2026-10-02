@@ -16,8 +16,9 @@
 -- `loading = {id = true}` shows that list's own native spinner. `texts`,
 -- `hidden` and `disabled` set a node's text, visibility and enabled state by
 -- id. A model that must touch live views after a draw (a chart that follows a
--- running scan, a native selection) defines `rendered(refs)`. A
--- model method that only reads (a row's menu, a reveal) lists itself in
+-- running scan, a native selection) defines `rendered(refs)`. Actions the
+-- view cannot name in advance (a button per row) are `handlers = {name =
+-- function}` in the data. A model method that only reads (a row's menu, a reveal) lists itself in
 -- `queries = {name = true}` and the page is not drawn again after it. A
 -- model with work to start when its page appears (a service to ask) defines
 -- `activate()`, and `deactivate()` for work to cancel when it goes; work that
@@ -43,7 +44,7 @@ function PageController:mount(host, state)
 	self.model = context.graph:build({ self.page.model })[self.page.model]
 	self.template = Template.new(host, context.viewsDir .. self.page.view .. ".etlua", context.ns)
 	self.actions = setmetatable({}, { __index = function(_, name)
-		local method = self.model[name]
+		local method = self.model[name] or self.handlers and self.handlers[name]
 		if type(method) ~= "function" then return nil end
 		return function(...)
 			-- What drawing itself makes fire (a table reloading its selection)
@@ -73,6 +74,8 @@ function PageController:update(state)
 	data.overrides = { texts = data.texts, hidden = data.hidden, disabled = data.disabled }
 	local lists, loading = data.lists, data.loading
 	data.lists, data.loading = nil, nil
+	-- Actions named by the data itself (one button per row), not by the view.
+	self.handlers, data.handlers = data.handlers, nil
 	self.drawing = true
 	local _, refs = self.template:update(data)
 	self.refs = refs
@@ -83,6 +86,9 @@ function PageController:update(state)
 	if self.model.rendered then self.model:rendered(refs) end
 	self.drawing = false
 end
+
+-- A mark changed what the page shows.
+function PageController:marksChanged() self:update(self.state) end
 
 function PageController:dispose()
 	if self.model and self.model.deactivate then self.model:deactivate() end

@@ -7,7 +7,7 @@ local Mock = require("apps.diskmap.services.Mock")
 local Inventory = require("apps.diskmap.models.Inventory")
 local Scan = require("apps.diskmap.controllers.ScanController")
 local Simulators = require("apps.diskmap.models.Simulators")
-local SimulatorController = require("apps.diskmap.controllers.SimulatorsController")
+local Host = require("tests.diskmap_page")
 local Controller = require("apps.diskmap.Controller")
 local Recommendations = require("apps.diskmap.models.Recommendations")
 local Categories = require("apps.diskmap.models.Categories")
@@ -60,22 +60,27 @@ t.expect(not Categories.coverage(model, scan.disk):find("not attributed", 1, tru
 local chart = require("apps.diskmap.models.Overview").chart(model, scan.service.diskSpace())
 t.assertEqual(chart.marks[1].label, "Not measured yet", "unfinished chart names the pending allocation")
 t.expect(chart.explanation:find("still arriving", 1, true), "unfinished chart explains its gray sector")
-local apps = require("apps.diskmap.controllers.ApplicationsController").new({model = model, service = {}, actions = {}})
-t.assertEqual(apps:summary(), nil, "live file findings do not imply app-data breakdowns are ready")
-local files = require("apps.diskmap.controllers.FilesController").new({model = model, service = {}, actions = {
+local graph = require("data.model").graph({classes = {files = require("apps.diskmap.models.FilesPage"),
+	applications = require("apps.diskmap.models.ApplicationsPage")}, services = {model = model, service = {}, actions = {
 	file = function() return {} end, annotate = function(_, rows) return rows end,
 	isMarked = function() return false end, isIncluded = function() return false end,
-}})
+}}})
+t.assertEqual(graph:build({"applications"}).applications:summary(), nil, "live file findings do not imply app-data breakdowns are ready")
+local files = require("data.pagecontroller").new({page = {id = "files", title = "Large Files", icon = "doc.fill", color = "systemTeal",
+	model = "files", view = "Page"}, graph = graph, ns = ns, viewsDir = "apps/diskmap/views/"})
 files:mount(ns.VStack {}, {query = ""})
-t.assertEqual(files.refs.files.rowCount, 1, "partial file appears in the native table")
-t.expect(files.refs.summary.text:find("Found so far", 1, true), "file page names partial results")
+-- A running scan draws no partial rows and no half-filled totals: the page
+-- says it is not measured yet and is drawn again when the scan finishes.
+t.expect(files.refs.waiting ~= nil and files.refs.files == nil and files.refs.largeTileValue == nil, "a running scan lists no partial file results")
 scan:cancel()
 t.expect(not model.files.measuring and model.files.partial, "cancellation keeps findings as a lower bound")
+files:update({query = ""})
+t.assertEqual(files.refs.files.rowCount, 1, "the kept partial file appears in the native table")
+t.expect(files.refs.summary.text:find("incomplete", 1, true), "file page names partial results")
 scan:start()
 t.assertEqual(model.files, nil, "refresh clears file findings before collecting a new scan")
 files:update({query = ""})
-t.assertEqual(files.refs.largeTileValue.text, "—", "refresh clears displayed file totals from the previous scan")
-t.expect(files.refs.filesNoResults.hidden and files.refs.filesEmpty.hidden, "loading does not show an empty-result message")
+t.expect(files.refs.waiting ~= nil and files.refs.files == nil, "refresh clears displayed file totals from the previous scan")
 files:dispose()
 pending.done({largeFiles = {}, extensions = {}, trees = {}, rootStates = {}})
 t.expect(not model.files.measuring and not model.files.partial, "final summary clears in-progress flags")
@@ -103,8 +108,14 @@ live.devices[runtime][1].state = "Shutdown"
 t.expect(Simulators.validate("erase", Simulators.rows(Simulators.discover(service, model.home, live))[1]), "verified shutdown device can be reviewed for erase")
 service.simulatorDevices = function(done) done(nil, "Device state could not be checked. Retry.") end
 service.simulatorRuntimes = function(done) done(nil, "Runtimes could not be read. Retry.") end
-local simulator = SimulatorController.new({model = model, service = service, rescan = function() end})
+local held = {}
+service.simulatorDevices = function(done) held.devices = done end
+service.simulatorRuntimes = function(done) held.runtimes = done end
+local simulator, simulatorModel = Host.new("simulators", "SimulatorsPage", "Simulators", {model = model, service = service})
 simulator:mount(ns.VStack {}, {query = ""})
+t.expect(simulator.refs.computingSpinner and simulator.refs.devices == nil and simulator.refs.planReview == nil, "while the first read runs the page shows one progress state, not empty lists")
+held.devices(nil, "Device state could not be checked. Retry.")
+held.runtimes(nil, "Runtimes could not be read. Retry.")
 t.expect(simulator.refs.devicesDetail.text:find("could not be checked for availability", 1, true) ~= nil, "failed availability check is not a fabricated zero")
 t.expect(not simulator.refs.devicesDetail.text:find("unavailable,", 1, true), "runtime failure does not promise availability")
 t.expect(not simulator.refs.summary.text:find("0 runtimes", 1, true), "failed runtime listing is not an empty inventory")
@@ -112,18 +123,19 @@ t.expect(simulator.refs.retry.enabled, "failed reads can be retried")
 simulator.refs.devices:selectRow(0)
 t.expect(not simulator.refs.erase.enabled and not simulator.refs.delete.enabled, "unverified devices cannot be erased or deleted")
 t.expect(simulator.refs.status.text:find("could not be checked", 1, true), "disabled action explains how to proceed")
-local token = simulator.loadToken
 simulator:dispose()
-simulator:finish(token, live, {})
+simulatorModel:load()
+held.runtimes({}, nil)
+held.devices(live)
 t.assertEqual(simulator.refs, nil, "late replies cannot remount a disposed page")
-t.assertEqual(simulator.inventory, live, "but they still record the inventory for the next visit")
+t.expect(simulatorModel.loaded and #Simulators.rows(simulatorModel.inventory) == 1, "but they still record the inventory for the next visit")
 
 -- Low-space launch reaches the inventory without a ten-page modal detour.
 local mock = Mock.new()
 mock.hasFullDiskAccess = function() return true end
 local app = Controller.new(mock)
 app:createWindow()
-app.tour:finish()
+app.tour:close()
 local disk = {totalKb = 256e9 / 1024, freeKb = 4.5e9 / 1024}
 t.expect(not app.tour:needed(disk), "low-space launch bypasses automatic tour")
 t.expect(app.tour:needed({totalKb = 256e9 / 1024, freeKb = 100e9 / 1024}), "normal-space launch preserves the tour preference")

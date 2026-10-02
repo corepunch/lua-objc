@@ -3,7 +3,6 @@ local t=require('TestKit')
 local Model=require('apps.diskmap.Model')
 local Applications=require('apps.diskmap.models.Applications')
 local Leftovers=require('apps.diskmap.models.Leftovers')
-local Controller=require('apps.diskmap.controllers.ApplicationsController')
 local home='/Users/review'
 local model=Model.new(home)
 model.resources:add('applications',{id='renamed-app',name='ChatGPT.app',path='/Applications/ChatGPT.app'})
@@ -35,7 +34,7 @@ t.assertEqual(Leftovers.classify('Codex',true,Leftovers.index({{bundleId='com.op
 t.assertEqual(Leftovers.classify('Codex',true,Leftovers.index({})),'low','removed bundle makes name-only data uncertain again')
 model.measurements['renamed-app']={status='complete',bytes=0}
 t.assertEqual(#Applications.data(model,'com.openai.chat','ChatGPT'),1,'unrelated identity receives only its explicitly matching name')
-local decision=Controller.new(model,{},{}):decisionData({leftovers=2,leftoversHigh=0,leftoversHighBytes=0,leftoverBytes=100000000},0,0)
+local decision=Applications.decision({leftovers=2,leftoversHigh=0,leftoversHighBytes=0,leftoverBytes=100000000},0,0)
 t.expect(decision.title:find('possible leftover',1,true),'uncertain headline labels possibilities')
 t.expect(not decision.title:find('no longer installed',1,true),'headline does not assert app removal')
 t.expect(decision.detail:find('does not prove',1,true),'name-only evidence is explained honestly')

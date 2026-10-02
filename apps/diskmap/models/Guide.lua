@@ -11,18 +11,18 @@ end
 
 -- The live measurement for a topic's resources, summed across its catalog
 -- rows. Unmeasured, excluded or system-managed rows add no bytes; if none of
--- them has bytes the topic shows no size rather than an invented zero.
+-- them has bytes (or one is still being measured) the topic shows no size
+-- rather than an invented zero or a partial sum.
 function Guide.measurement(model, topic)
-	local bytes, measured, partial, calculating = 0, false, false, false
+	local bytes, measured, partial = 0, false, false
 	for _, id in ipairs(topic.resources or {}) do
 		local row = Categories.row(model, id)
 		if row then
 			if row.bytes then bytes = bytes + row.bytes; measured = true end
 			if row.status == "partial" then partial = true end
-			if row.calculating then calculating = true end
+			if row.calculating then return nil end
 		end
 	end
-	if calculating then return "Measuring…" end
 	if not measured then return nil end
 	return Model.atLeast(bytes, partial) .. " on this Mac"
 end

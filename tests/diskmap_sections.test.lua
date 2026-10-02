@@ -29,7 +29,7 @@ t.assertEqual(chart.marks[#chart.marks].label, "Free", "free space closes the ri
 local chartActions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end}
 local hero, heroRefs = render("Hero", {summary = Overview.summary(model, disk), chart = chart,
 	reclaim = Overview.reclaim(model), volumeName = "Startup Disk", actions = chartActions,
-	hidden = Overview.hidden(disk, {important = 110e9}, 2, 3)})
+	hiddenSpace = Overview.hidden(disk, {important = 110e9}, 2, 3)})
 t.assertEqual(chart.marks[1].id, chart.legend[1].id, "a mark carries its category, so its sector can open it")
 t.expect(heroRefs.hiddenSpace ~= nil, "the hero explains space no file scan can attribute")
 t.assertEqual(#heroRefs.hiddenSpace.subviews, 3, "purgeable space, snapshots and unreadable locations are listed")
@@ -56,18 +56,19 @@ hero.size = ns.Size(900, 400)
 hero:layout(900)
 t.expect(heroRefs.chart.frame.size.height > 150, "the donut takes the height of the card: " .. heroRefs.chart.frame.size.height)
 local _, emptyRefs = render("Hero", {summary = Overview.summary(model, {totalKb = 1, freeKb = 0}),
-	chart = Overview.chart(model, {totalKb = 1, freeKb = 0}), reclaim = Overview.reclaim(model), volumeName = "Startup Disk", actions = chartActions, hidden = {}})
-t.expect(heroRefs.calculating == nil, "a finished scan shows no progress in the hero")
+	chart = Overview.chart(model, {totalKb = 1, freeKb = 0}), reclaim = Overview.reclaim(model), volumeName = "Startup Disk", actions = chartActions})
 model.measurements.downloads = {status = "calculating"}
-local _, busyRefs = render("Hero", {summary = Overview.summary(model, disk), chart = chart,
-	reclaim = Overview.reclaim(model), volumeName = "Startup Disk", actions = chartActions, hidden = {}})
-t.assertEqual(busyRefs.calculating.subviews[1].className, "LuaProgressIndicator", "a scan in progress spins beside the hero title")
+-- While the scan runs the page draws its empty state: an empty ring, no legend, no cleanup offer.
+local _, busyRefs = render("Hero", {summary = Overview.summary(model, disk), chart = {marks = {}, legend = {}, explanation = "Measuring"},
+	volumeName = "Startup Disk", actions = chartActions})
 t.expect(busyRefs.cleanUp == nil and heroRefs.cleanUp ~= nil, "cleanup is offered only once every size is known")
+t.expect(busyRefs.legend == nil and busyRefs.legendExplanation ~= nil, "a running scan draws no legend")
 model.measurements.downloads = {bytes = 5e9, status = "complete"}
 t.expect(emptyRefs.legendExplanation ~= nil, "an overcounted inventory explains why no partition is drawn")
 t.expect(emptyRefs.lowSpace ~= nil and heroRefs.lowSpace == nil, "only a nearly full disk shows the low-space warning")
 t.assertEqual(#emptyRefs.chart.subviews, 3, "an empty chart keeps its track ring and centered total under the pointer view")
-local _, refs = render("Overview", {status = "Calculating…", actions = {select = function() end, open = function() end,
+local _, refs = render("Overview", {status = "Measured", measured = true, coverage = "", largestHidden = false, accessTitle = "Scan access…", accessHidden = false,
+	unmeasured = {items = {}}, hero = {summary = Overview.summary(model, disk), chart = chart, volumeName = "Startup Disk"}, actions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end, reclaim = function() end, select = function() end, open = function() end,
 	largestMenu = function() return {} end, openLargest = function() end, showLargest = function() end, access = function() end}})
 t.assertEqual(refs.categoriesPanel.className, "NSBox", "category rows share a native rounded section")
 t.assertEqual(refs.opportunities, nil, "the overview does not repeat reclaim content")
@@ -83,13 +84,11 @@ t.expect(not unmeasured.hidden and not unmeasured.enabled and unmeasured.doubleV
 	"an unmeasured category keeps an empty, disabled bar under its state")
 
 local settings, settingsRefs = render("Settings", {monitoring = true, mediaEnabled = false, historyEnabled = false,
-	actions = {monitor = function() end, media = function() end, history = function() end, reminder = function() end, sentinel = function() end, storage = function() end, privacy = function() end, done = function() end}})
-t.assertEqual(settingsRefs.history.state, 0, "storage history starts off")
+	actions = {toggleMonitor = function() end, toggleMedia = function() end, toggleHistory = function() end, toggleReminder = function() end, toggleSentinel = function() end, openStorage = function() end, openPrivacy = function() end, close = function() end}})
 t.expect(settingsRefs ~= nil and settings ~= nil, "settings reorganized into concise groups still render")
 t.assertEqual(settingsRefs.monitor.className, "NSSwitch", "background checks use a switch")
-t.assertEqual(settingsRefs.monitor.state, 1, "background checks start enabled")
 t.assertEqual(settingsRefs.media.className, "NSSwitch", "media libraries use a switch")
-t.assertEqual(settingsRefs.media.state, 0, "media libraries start off")
+-- Which way each switch starts is the model's `sync` (tests/diskmap_sheets.test.lua).
 
 refs.results.fixedHeight = 44
 refs.page.size = ns.Size(400, 500); refs.page:layout(400)
@@ -185,7 +184,7 @@ t.expect(lower.symbol.hidden, "a lower bound is a sign, not a symbol")
 t.assertEqual(Status.apply({detail = "Under 5.0 GB"}, "Within").statusColor, "systemGreen", "a location within limits is green")
 t.assertEqual(Status.apply({detail = "Review"}).statusColor, "systemOrange", "review is orange")
 t.assertEqual(Status.apply({detail = "Keep"}).statusColor, "systemRed", "required data is red")
-local XcodeController = require("apps.diskmap.controllers.XcodeController")
+local XcodeController = require("apps.diskmap.models.XcodePage")
 for _, status in ipairs({"Newest · keep", "Older", "Missing", "Present", "Unknown"}) do
 	t.expect(Status.styles[XcodeController.statuses[status]] ~= nil, "Xcode status " .. status .. " has a symbol")
 end

@@ -2,7 +2,7 @@ _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
 local DiskModel = require("apps.diskmap.Model")
-local Controller = require("apps.diskmap.controllers.SimulatorsController")
+local Host = require("tests.diskmap_page")
 local Plan = require("apps.diskmap.models.SimulatorPlan")
 local Simulators = require("apps.diskmap.models.Simulators")
 
@@ -224,14 +224,14 @@ local service = {
 	measure = function(paths, done) local sizes = {} for i in ipairs(paths) do sizes[i] = 0 end done(sizes) end,
 }
 local changed = 0
-local model = DiskModel.new("/Users/test")
-local page = Controller.new({model = model, service = service, rescan = function() changed = changed + 1 end})
+local storage = DiskModel.new("/Users/test")
+local page, model = Host.new("simulators", "SimulatorsPage", "Simulators", {model = storage, service = service, rescan = function() changed = changed + 1 end})
 page:mount(ns.VStack {}, {query = ""})
-local refs = page.planRefs
+local refs = page.refs
 t.expect(refs and refs.planDevices, "the minimal device set renders on the Simulators page")
 t.assertEqual(refs.planDevices.rowCount, 5, "every device is in the plan list")
-t.assertEqual(page.plan.keep.iPhone, udid(1), "the base iPhone is proposed")
-t.assertEqual(page.plan.keep.iPad, udid(2), "the base iPad is proposed")
+t.assertEqual(model:plan().keep.iPhone, udid(1), "the base iPhone is proposed")
+t.assertEqual(model:plan().keep.iPad, udid(2), "the base iPad is proposed")
 t.expect(refs.planReview.enabled, "a ready plan can be reviewed")
 t.expect(refs.planReview.title:find("3 Devices", 1, true), "the button counts the removal set")
 t.assertEqual(refs.planAmount.text, "12.0 GB", "the amount beside the review button totals the removal set")
@@ -239,18 +239,20 @@ t.assertEqual(refs.planCaption.text, "could recover", "and says it is what the p
 t.expect(refs.planHeadline.text:find("delete 3 redundant devices", 1, true) ~= nil, "the headline states the decision: " .. refs.planHeadline.text)
 
 -- Keep protection for one device removes it from the set; the choice persists.
-page.planSelected = {id = udid(5), family = "iPad", runtimeIdentifier = rtId, available = true}
-page:togglePreserve()
+model.planSelected = {id = udid(5), family = "iPad", runtimeIdentifier = rtId, available = true}
+page.actions.planPreserve()
 t.expect(saved and saved["simulator:" .. udid(5)], "Keep for a device is saved with the other Keep choices")
-t.assertEqual(#page.plan.removal, 2, "a protected device leaves the removal set")
-t.expect(not page:keepSelected() or true, "keepSelected tolerates an empty selection")
+t.assertEqual(#model:plan().removal, 2, "a protected device leaves the removal set")
+t.assertEqual(page.refs.planPreserve.title, "Remove Keep", "and the button offers to undo it")
+model.planSelected = nil
+model:planKeepThis()
 
 -- A device that started running after the plan was drawn is skipped, a failing
 -- delete is reported, and the rest still go through.
 fixture[udid(3)].state = "Booted"
 failOn = udid(4)
-page.model.kept["simulator:" .. udid(5)] = true
-local ran = page:reviewPlan()
+storage.kept["simulator:" .. udid(5)] = true
+local ran = model:planReview()
 t.expect(ran, "review runs after one confirmation")
 t.assertEqual(#confirmations, 1, "the whole removal set is confirmed once")
 t.expect(confirmations[1]:find("Extra A", 1, true) and confirmations[1]:find("Extra B", 1, true), "the confirmation lists the removal set")
@@ -259,6 +261,7 @@ t.expect(not confirmations[1]:find("Phone", 1, true) or confirmations[1]:find("K
 t.assertEqual(deletions[1], udid(4), "the only still-eligible device is attempted")
 t.assertEqual(#deletions, 1, "the device that began running was never deleted")
 t.expect(fixture[udid(3)] and fixture[udid(1)] and fixture[udid(2)] and fixture[udid(5)], "kept, protected and running devices survive")
-t.expect(page.planResult:find("Skipped", 1, true) and page.planResult:find("Failed", 1, true), "skips and failures are reported separately: " .. tostring(page.planResult))
+t.expect(model.planResult:find("Skipped", 1, true) and model.planResult:find("Failed", 1, true), "skips and failures are reported separately: " .. tostring(model.planResult))
+t.assertEqual(page.refs.planStatus.text, model.planResult, "and the page states them")
 t.expect(changed > 0, "the root is told to remeasure")
 os.exit(t.summary() and 0 or 1)

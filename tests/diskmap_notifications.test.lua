@@ -4,7 +4,7 @@ local Model = require("apps.diskmap.Model")
 local History = require("apps.diskmap.models.History")
 local Reminder = require("apps.diskmap.models.Reminder")
 local Sentinel = require("apps.diskmap.models.Sentinel")
-local NotificationsController = require("apps.diskmap.controllers.NotificationsController")
+local Notifications = require("apps.diskmap.services.Notifications")
 
 -- The monthly reminder describes what grew.
 local model = Model.new("/Users/test")
@@ -56,7 +56,7 @@ local service = {
 	readPropertyList = function() return {CFBundleIdentifier = "com.old.editor"} end,
 }
 local marked, reviewed, shown = nil, 0, 0
-local notifications = NotificationsController.new(model, service, {
+local notifications = Notifications.new(model, service, {
 	mark = function(items) marked = items end,
 	review = function() reviewed = reviewed + 1 end,
 	show = function() shown = shown + 1 end,

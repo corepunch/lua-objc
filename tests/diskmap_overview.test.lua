@@ -131,6 +131,6 @@ local chapter = Guide.presentation(model, "recovery and updates").chapters
 t.assertEqual(#chapter, 1, "a chapter title match keeps its chapter")
 t.assertEqual(#chapter[1].topics, #Guide.chapters[2].topics, "a matching chapter keeps all of its topics")
 model.measurements.preboot = {status = "calculating"}
-t.assertEqual(Guide.measurement(model, Guide.topic("preboot")), "Measuring…", "topics show measurement progress")
+t.assertEqual(Guide.measurement(model, Guide.topic("preboot")), nil, "a topic still being measured shows no size, not a row-level spinner")
 
 os.exit(t.summary() and 0 or 1)

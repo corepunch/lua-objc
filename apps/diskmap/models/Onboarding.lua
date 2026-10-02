@@ -1,7 +1,4 @@
-local ns = require("AppKit")
-local xml = require("ui.xml")
-local Sheet = require("apps.diskmap.Sheet")
-local Controller = {}; Controller.__index = Controller
+local SheetPage = require("apps.diskmap.SheetPage")
 
 -- First-launch access onboarding (#52, after Headroom's), shown before the
 -- first scan when the provider can tell that access is missing. It has two
@@ -12,11 +9,13 @@ local Controller = {}; Controller.__index = Controller
 -- nothing. "fullDisk" asks once for Full Disk Access; while it is open
 -- Diskmap checks access every second and, once it is granted, closes the
 -- sheet and starts the scan by itself. "Continue Without Access" is always
--- there. `finished(granted)` starts the scan.
-Controller.interval = 1
+-- there. `services.onboarded(granted)` starts the scan.
+local Onboarding = SheetPage.define({id = "onboarding", view = "Onboarding", width = 580, height = 390})
 
-function Controller.new(service, finished)
-	return setmetatable({service = service, finished = finished}, Controller)
+Onboarding.interval = 1
+
+function Onboarding.new(_, services)
+	return setmetatable({services = services, service = services.service}, Onboarding)
 end
 
 local function call(service, name, ...)
@@ -26,7 +25,7 @@ end
 
 -- "disk" while a provider that can tell (the sandboxed Mac) has no access
 -- to the startup disk, otherwise "fullDisk".
-function Controller:stage()
+function Onboarding:stage()
 	if call(self.service, "hasDiskAccess") == false then return "disk" end
 	return "fullDisk"
 end
@@ -34,40 +33,26 @@ end
 -- Needed when the provider reports access (a real Mac does; the synthetic
 -- disk does not) and it is missing: the disk on every launch, Full Disk
 -- Access until onboarding has been shown.
-function Controller:needed()
+function Onboarding:needed()
 	if type(rawget(self.service, "hasFullDiskAccess")) ~= "function" then return false end
 	if self:stage() == "disk" then return true end
 	if call(self.service, "loadFlag", "onboarded") == true then return false end
 	return self.service.hasFullDiskAccess() ~= true
 end
 
-function Controller:render()
-	return xml.renderFile("apps/diskmap/views/Onboarding.etlua", {stage = self:stage(), openedSettings = self.openedSettings == true, actions = {
-		chooseDisk = function() self:chooseDisk() end,
-		openSettings = function() self:openSettings() end,
-		restart = function() self:restart() end,
-		skip = function() self:finish(false) end,
-	}}, ns)
+function Onboarding:data()
+	local waiting = self.openedSettings == true
+	return {stage = self:stage(), hidden = {waiting = not waiting, restart = not waiting}}
 end
 
-function Controller:open(parent)
-	self.parent = parent
-	self.sheet, self.refs = Sheet.present(function() return self:render() end, parent)
-	-- Headless tests call poll() themselves instead of waiting.
-	if not _G.__headless and not self.polling then
-		self.polling = true
-		ns.async(function()
-			while self.sheet do
-				ns.sleep(Controller.interval)
-				if self.sheet then self:poll() end
-			end
-			self.polling = false
-		end)
-	end
+function Onboarding:open(parent)
+	self.openedSettings = false
+	SheetPage.open(self, parent)
+	self:every(Onboarding.interval, function() self:poll() end)
 end
 
 -- Continues once Full Disk Access has been granted. Returns whether it did.
-function Controller:poll()
+function Onboarding:poll()
 	if not self.sheet or self:stage() ~= "fullDisk" then return false end
 	if self.service.hasFullDiskAccess() == true then self:finish(true); return true end
 	return false
@@ -75,39 +60,38 @@ end
 
 -- The open panel for the startup disk. Once it is chosen the sheet moves on
 -- to Full Disk Access, or closes when that is already on.
-function Controller:chooseDisk()
+function Onboarding:chooseDisk()
 	if not call(self.service, "requestDiskAccess") then return false end
 	if self.service.hasFullDiskAccess() == true or call(self.service, "loadFlag", "onboarded") == true then
 		self:finish(self.service.hasFullDiskAccess() == true)
 		return true
 	end
-	ns.dismiss(self.sheet)
-	self.sheet, self.refs = nil, nil
-	self:open(self.parent)
+	self:draw()
 	return true
 end
 
-function Controller:openSettings()
+function Onboarding:openSettings()
 	self.service.openSettings("privacy")
 	self.openedSettings = true
-	if self.refs then self.refs.waiting.hidden = false; self.refs.restart.hidden = false end
+	self:draw()
 end
 
 -- Starts a new instance and quits once it runs; the new one skips the
 -- sheet if access now works, or shows it again.
-function Controller:restart()
+function Onboarding:restart()
 	local relaunch = rawget(self.service, "relaunch")
 	if type(relaunch) ~= "function" then return false end
 	relaunch(function(message) self.service.showError("Diskmap could not restart", message or "Quit and open Diskmap again.") end)
 	return true
 end
 
-function Controller:finish(granted)
+function Onboarding:skip() self:finish(false) end
+
+function Onboarding:finish(granted)
 	if not self.sheet then return end
 	call(self.service, "saveFlag", "onboarded", true)
-	ns.dismiss(self.sheet)
-	self.sheet, self.refs = nil, nil
-	self.finished(granted)
+	self:close()
+	self.services.onboarded(granted)
 end
 
-return Controller
+return Onboarding

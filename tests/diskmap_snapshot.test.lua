@@ -2,7 +2,7 @@ _G.__headless = true
 local t = require("TestKit")
 local Model = require("apps.diskmap.Model")
 local Snapshot = require("apps.diskmap.models.Snapshot")
-local SnapshotController = require("apps.diskmap.controllers.SnapshotController")
+local SnapshotComparison = require("apps.diskmap.services.SnapshotComparison")
 local Scanner = require("apps.diskmap.services.Scanner")
 
 local root = os.tmpname(); os.remove(root); os.execute("mkdir -p '" .. root .. "'")
@@ -82,7 +82,7 @@ local function controller(options)
 	end
 	options.async = function(fn) fn() end
 	options.changed = function(value) reported = value end
-	return SnapshotController.new(model, service, {}, options)
+	return SnapshotComparison.new(model, service, options)
 end
 local first = controller({path = snapshotPath})
 first:compare()
@@ -120,7 +120,7 @@ Scanner.writeSnapshot(snapshotPath, {capacityBytes = 500e9, availableBytes = 100
 local live = Model.new(root .. "/home")
 live.measurements = {derived = {bytes = 5e9, status = "complete"}}
 local yields = 0
-local real = SnapshotController.new(live, {}, {}, {path = snapshotPath, cache = false,
+local real = SnapshotComparison.new(live, {}, {path = snapshotPath, cache = false,
 	async = function(fn) fn() end, yield = function() yields = yields + 1 end,
 	changed = function(value) reported = value end})
 real:compare()
@@ -138,7 +138,7 @@ local withApp = Model.new(appHome)
 t.expect(withApp.resources:add("apps-system", {id = "discovered-editor", name = "Editor.app", subtitle = "Installed application",
 	path = "/Applications/Editor.app", action = "finder", policy = "Review"}) ~= nil, "the live scan discovers an app")
 t.assertEqual(#withApp.resources:added(), 1, "the model remembers discovered locations")
-local plain = SnapshotController.new(withApp, {}, {}, {path = snapshotPath, cache = false, async = function(fn) fn() end,
+local plain = SnapshotComparison.new(withApp, {}, {path = snapshotPath, cache = false, async = function(fn) fn() end,
 	yield = function() end, changed = function() end})
 local baselineTotals = select(1, plain.measure(snapshotPath, withApp, function() end))
 t.assertEqual(baselineTotals["discovered-editor"], 4e9, "the snapshot measures the discovered app as its own location")

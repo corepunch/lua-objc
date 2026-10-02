@@ -7,7 +7,10 @@
 %>
 <ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
   <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
-    <%- partial("PageHeader.etlua", {header = header, summary = summary}) %>
+    <%- partial("PageHeader.etlua", {header = page, summary = summary}) %>
+    <% if waiting then %>
+    <ContentUnavailable id="waiting" title="<%= waiting.title %>" systemImage="<%= waiting.systemImage %>" description="<%= waiting.description %>" />
+    <% else %>
     <%- partial("Decision.etlua", decision) %>
     <% if #kinds > 0 then %>
     <%- partial("Footnote.etlua", {id = "scopeNote", icon = "scope", text = scope}) %>
@@ -27,7 +30,7 @@
           <DisclosureGroup label="What this inventory includes" expanded="false" indicatorWidth="26" indicatorSpacing="10">
             <Label text="<%= inventoryNote %>" size="12" color="secondary" maxWidth="infinity" lines="0" />
           </DisclosureGroup>
-          <Button id="showHeadline" title="Show Largest Files" style="link" action="kind_<%= headline.id %>" />
+          <Button id="showHeadline" title="Show Largest Files" style="link" action="showHeadline" />
         </VStack>
       </HStack>
     </GroupBox>
@@ -37,10 +40,6 @@
         <%- partial("ResourceList.etlua", {id = "kinds", menu = "kindMenu", selectAction = "selectKind", activate = "openKind", detailColumn = true}) %>
       </GroupBox>
     </VStack>
-    <% elseif loading then %>
-    <GroupBox>
-      <%- partial("ResourceList.etlua", {id = "kinds", menu = "kindMenu", selectAction = "selectKind", activate = "openKind", detailColumn = true}) %>
-    </GroupBox>
     <% end %>
     <% if hasExtensions then %>
     <VStack spacing="8" alignment="leading">
@@ -52,6 +51,7 @@
     <% end %>
     <% if #kinds > 0 then %>
     <%- partial("Footnote.etlua", {text = "Totals cover every measured location, including files inside app bundles and libraries. Excluded media libraries are not counted."}) %>
+    <% end %>
     <% end %>
   </VStack>
 </ScrollView>

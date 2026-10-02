@@ -38,37 +38,37 @@ local app = Root.new(service)
 local window = app:createWindow()
 app.scan:start()
 window.size = ns.Size(950,580); window:layout()
-app:show('kinds'); app.page.template.actions.decisionInstallers()
-local files, changes = app.page, 0
-local originalChanged = app.review.handlers.changed
-app.review.handlers.changed = function() changes=changes+1; originalChanged() end
+app:show('kinds'); app.page.actions.showInstallers()
+local files, changes = app.page.model, 0
+local originalChanged = app.review.services.basketChanged
+app.review.services.basketChanged = function() changes=changes+1; originalChanged() end
 local total = #files.visible
-local button = files.decisions.lead.refs.decisionAction
+local button = app.page.refs.decisionAction
 t.assertEqual(button.title,'Mark ' .. Model.plural(total,'File'),'initial bulk action uses eligible visible count')
 files:markFiles()
 t.assertEqual(changes,1,'bulk staging publishes once for every file together')
-button = files.decisions.lead.refs.decisionAction
+button = app.page.refs.decisionAction
 t.assertEqual(button.title,'Review Marked Items…','staged files offer review immediately')
 t.expect(button.enabled,'review remains available')
 local item = app.review.basket:rows()[1]
 app.review:toggle(item)
-t.assertEqual(files.decisions.lead.refs.decisionAction.title,'Mark 1 File','individual unmark refreshes count')
-files:update({query='Old macOS Installer'})
+t.assertEqual(app.page.refs.decisionAction.title,'Mark 1 File','individual unmark refreshes count')
+app.query='Old macOS Installer'; app:updateRows()
 t.assertEqual(#files.visible,1,'search narrows displayed files')
 local row = files.visible[1]
 if app.review:isMarked(row.path) then app.review:toggle(row) end
 files:markFiles()
-t.assertEqual(files.decisions.lead.refs.decisionAction.title,'Review Marked Items…','filtered staging stays current')
+t.assertEqual(app.page.refs.decisionAction.title,'Review Marked Items…','filtered staging stays current')
 local reviewed = 0
 app.actions.handlers.review = function() reviewed=reviewed+1 end
-ns._invokeAction(files.decisions.lead.refs.decisionAction)
+ns._invokeAction(app.page.refs.decisionAction)
 t.assertEqual(reviewed,1,'review action routes to existing review sheet')
 app:show('applications'); app.review.basket:clear(); app:basketChanged()
 app:show('files')
-t.expect(files.decisions.lead.refs.decisionAction.title:find('Mark ',1,true),'cross-page clearing is reflected on return')
+t.expect(app.page.refs.decisionAction.title:find('Mark ',1,true),'cross-page clearing is reflected on return')
 files.filterIndex = require('apps.diskmap.models.Files').filterIndex('Installers & archives')
-files:update({query=''}); bridge._flushLayout()
-local refs = files.refs
+app.query=''; app:updateRows(); bridge._flushLayout()
+local refs = app.page.refs
 t.expect(refs.scopeNote.superview ~= refs.pageContent,'accounting is disclosed separately')
 local function yFromTop(view)
 	local root, y, height = refs.pageContent, 0, view.frame.size.height
@@ -79,30 +79,31 @@ t.expect(yFromTop(refs.filesPanel) < 260,'first file rows arrive before accounti
 t.expect(yFromTop(refs.scanDetails) > yFromTop(refs.filesPanel),'scan statistics follow actual files')
 
 app:show('applications')
-app.page.pageActions.markHigh()
-t.assertEqual(app.page.leadRefs.decisionAction.title,'Review Marked Items…','marked likely leftovers route to review')
+app.page.actions.markHigh()
+t.assertEqual(app.page.refs.decisionAction.title,'Review Marked Items…','marked likely leftovers route to review')
 app.review.basket:clear(); app:basketChanged()
-local leftovers = app.page.visibleLeftovers
+local leftovers = app.page.model.visibleLeftovers
 local high
 for _, value in ipairs(leftovers) do if value.tier=='high' then high=value;break end end
-app.review:toggle(app.page:leftoverItem(high))
-t.assertEqual(app.page.leadRefs.decisionAction.title,'Mark 1 Likely Leftover','leftover action counts only remaining folders')
+app.review:toggle({path=high.path,name=high.name,bytes=high.bytes,source='Leftovers',leftover=true,consequence='Leftover'})
+t.assertEqual(app.page.refs.decisionAction.title,'Mark 1 Likely Leftover','leftover action counts only remaining folders')
 
 app:show('worktrees')
-local page = app.worktrees
+local worktrees = app.graph:get('worktrees')
+local page = app.page
 page.refs.reviewList:selectRow(0)
-local selected = page.selected
+local selected = worktrees.selected
 selected.name = string.rep('long-project-name-',12)
 selected.branch = string.rep('feature/branch/',12)
 selected.reasons = {string.rep('Complete local evidence that must stay accessible. ',60)}
-page:buttons(); bridge._flushLayout()
+app:updateRows(); bridge._flushLayout()
 t.expect(page.refs.selectionEvidence.frame.size.height <= 144,'long evidence scrolls inside a bounded inspector')
 t.expect(page.refs.openOwner.frame.size.width > 0 and page.refs.openOwner.enabled,'owner action remains usable with long evidence')
 t.expect(page.refs.page.frame.size.height > 200,'long evidence leaves usable inventory space (' .. page.refs.page.frame.size.height .. ' page, ' .. page.refs.selectionSection.frame.size.height .. ' selection, ' .. page.refs.selectionEvidence.frame.size.height .. ' evidence)' )
 t.assertEqual(Worktrees.roleNames.recent,'Recent','compact recent label fits')
 t.assertEqual(Worktrees.roleNames.active,'In use','confirmed activity stays distinct')
 service.openOwner = function() return false,'Owner app unavailable' end
-page:openOwner()
+page.actions.openOwner()
 t.assertEqual(page.refs.status.text,'Owner app unavailable','owner launch failure is visible beside selection')
 window:close()
 os.exit(t.summary() and 0 or 1)

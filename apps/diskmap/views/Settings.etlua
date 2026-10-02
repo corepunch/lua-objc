@@ -1,86 +1,38 @@
-<Sheet width="460" height="684">
-  <VStack maxHeight="infinity" padding="20" spacing="16" alignment="leading">
-    <Label text="Settings" size="15" weight="semibold" />
-    <VStack spacing="6" alignment="leading">
-      <Label text="Scanning" size="11" weight="semibold" color="secondary" />
-      <GroupBox>
-        <VStack padding="12" spacing="10" alignment="leading">
-          <HStack spacing="12" alignment="center">
-            <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
-              <Label text="Refresh while Diskmap is open" size="13" maxWidth="infinity" />
-              <Label text="Every 15 minutes. Files are never deleted." size="11" color="secondary" maxWidth="infinity" lines="2" />
-            </VStack>
-            <Toggle id="monitor" style="switch" label="Refresh while Diskmap is open" value="<%= monitoring and "true" or "false" %>" onChange="monitor" />
-          </HStack>
-          <Divider />
-          <HStack spacing="12" alignment="center">
-            <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
-              <Label text="Include media libraries" size="13" maxWidth="infinity" />
-              <Label text="Measure the Photos, Music and TV libraries too." size="11" color="secondary" maxWidth="infinity" lines="2" />
-            </VStack>
-            <Toggle id="media" style="switch" label="Include media libraries" value="<%= mediaEnabled and "true" or "false" %>" onChange="media" />
-          </HStack>
-          <Divider />
-          <HStack spacing="12" alignment="center">
-            <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
-              <Label text="Keep storage history" size="13" maxWidth="infinity" />
-              <Label text="Records category totals after each scan to show what grew. No file names are kept." size="11" color="secondary" maxWidth="infinity" lines="2" />
-            </VStack>
-            <Toggle id="history" style="switch" label="Keep storage history" value="<%= historyEnabled and "true" or "false" %>" onChange="history" />
-          </HStack>
-        </VStack>
-      </GroupBox>
-    </VStack>
-    <VStack spacing="6" alignment="leading">
-      <Label text="Notifications" size="11" weight="semibold" color="secondary" />
-      <GroupBox>
-        <VStack padding="12" spacing="10" alignment="leading">
-          <HStack spacing="12" alignment="center">
-            <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
-              <Label text="Monthly storage reminder" size="13" maxWidth="infinity" />
-              <Label text="On the first of each month, what grew most. Uses storage history." size="11" color="secondary" maxWidth="infinity" lines="2" />
-            </VStack>
-            <Toggle id="reminder" style="switch" label="Monthly storage reminder" value="<%= reminderEnabled and "true" or "false" %>" disabled="<%= notificationsAvailable and "false" or "true" %>" onChange="reminder" />
-          </HStack>
-          <Divider />
-          <HStack spacing="12" alignment="center">
-            <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
-              <Label text="Offer cleanup after deleting an app" size="13" maxWidth="infinity" />
-              <Label text="While Diskmap is open, moving an app to the Trash offers to mark the data it left." size="11" color="secondary" maxWidth="infinity" lines="2" />
-            </VStack>
-            <Toggle id="sentinel" style="switch" label="Offer cleanup after deleting an app" value="<%= sentinelEnabled and "true" or "false" %>" disabled="<%= notificationsAvailable and "false" or "true" %>" onChange="sentinel" />
-          </HStack>
-          <% if not notificationsAvailable then %>
-          <Label id="notificationsUnavailable" text="Notifications are available when Diskmap runs as an app." size="11" color="secondary" maxWidth="infinity" lines="2" />
-          <% end %>
-        </VStack>
-      </GroupBox>
-    </VStack>
-    <VStack spacing="6" alignment="leading">
-      <Label text="System" size="11" weight="semibold" color="secondary" />
-      <GroupBox>
-        <VStack padding="12" spacing="10" alignment="leading">
-          <HStack spacing="12" alignment="center">
-            <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
-              <Label text="Full Disk Access" size="13" maxWidth="infinity" />
-              <Label text="Optional. Protected files can still be omitted." size="11" color="secondary" maxWidth="infinity" lines="2" />
-            </VStack>
-            <Button title="Open…" action="privacy" />
-          </HStack>
-          <Divider />
-          <HStack spacing="12" alignment="center">
-            <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
-              <Label text="Storage" size="13" maxWidth="infinity" />
-              <Label text="macOS storage settings." size="11" color="secondary" maxWidth="infinity" lines="2" />
-            </VStack>
-            <Button title="Open…" action="storage" />
-          </HStack>
-        </VStack>
-      </GroupBox>
-    </VStack>
-    <HStack>
-      <Spacer />
-      <Button id="done" title="Done" action="done" keyboardShortcut="defaultAction" />
-    </HStack>
+<% local GROUPS = {
+  {title = "Scanning", rows = {
+    {id = "monitor", action = "toggleMonitor", title = "Refresh while Diskmap is open", detail = "Every 15 minutes. Files are never deleted."},
+    {id = "media", action = "toggleMedia", title = "Include media libraries", detail = "Measure the Photos, Music and TV libraries too."},
+    {id = "history", action = "toggleHistory", title = "Keep storage history", detail = "Records category totals after each scan to show what grew. No file names are kept."},
+  }},
+  {title = "Notifications", rows = {
+    {id = "reminder", action = "toggleReminder", title = "Monthly storage reminder", detail = "On the first of each month, what grew most. Uses storage history."},
+    {id = "sentinel", action = "toggleSentinel", title = "Offer cleanup after deleting an app", detail = "While Diskmap is open, moving an app to the Trash offers to mark the data it left."},
+  }, footer = true},
+  {title = "System", rows = {
+    {button = true, action = "openPrivacy", title = "Full Disk Access", detail = "Optional. Protected files can still be omitted."},
+    {button = true, action = "openStorage", title = "Storage", detail = "macOS storage settings."},
+  }},
+} %>
+<VStack maxHeight="infinity" padding="20" spacing="16" alignment="leading">
+  <Label text="Settings" size="15" weight="semibold" />
+  <% for _, group in ipairs(GROUPS) do %>
+  <VStack spacing="6" alignment="leading">
+    <Label text="<%= group.title %>" size="11" weight="semibold" color="secondary" />
+    <GroupBox>
+      <VStack padding="12" spacing="10" alignment="leading">
+        <% for index, row in ipairs(group.rows) do %>
+        <% if index > 1 then %><Divider /><% end %>
+        <%- partial("SettingRow.etlua", row) %>
+        <% end %>
+        <% if group.footer then %>
+        <Label id="notificationsUnavailable" text="Notifications are available when Diskmap runs as an app." size="11" color="secondary" maxWidth="infinity" lines="2" />
+        <% end %>
+      </VStack>
+    </GroupBox>
   </VStack>
-</Sheet>
+  <% end %>
+  <HStack>
+    <Spacer />
+    <Button id="done" title="Done" action="close" keyboardShortcut="defaultAction" />
+  </HStack>
+</VStack>

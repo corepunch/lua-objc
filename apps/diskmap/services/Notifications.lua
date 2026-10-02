@@ -1,15 +1,15 @@
 local History = require("apps.diskmap.models.History")
 local Reminder = require("apps.diskmap.models.Reminder")
 local Sentinel = require("apps.diskmap.models.Sentinel")
-local Controller = {}; Controller.__index = Controller
+local Notifications = {}; Notifications.__index = Notifications
 
 -- The two opt-in notifications: the monthly reminder (#15) and the Sentinel
 -- offer after an app is moved to the Trash (#14). Both need the app bundle's
 -- notification center; the reminder also needs storage history.
 -- `handlers.mark(items)` marks items for cleanup and `handlers.review()`
 -- opens the Marked sheet; `handlers.show()` brings the window forward.
-function Controller.new(model, service, handlers)
-	return setmetatable({model = model, service = service, handlers = handlers}, Controller)
+function Notifications.new(model, service, handlers)
+	return setmetatable({model = model, service = service, handlers = handlers}, Notifications)
 end
 
 local function call(service, name, ...)
@@ -17,17 +17,17 @@ local function call(service, name, ...)
 	if type(fn) == "function" then return fn(...) end
 end
 
-function Controller:available()
+function Notifications:available()
 	return call(self.service, "notificationsAvailable") == true
 end
 
-function Controller:enabled(name)
+function Notifications:enabled(name)
 	return call(self.service, "loadFlag", name) == true
 end
 
 -- Turns a notification feature on or off. Turning one on asks macOS for
 -- permission first; the switch reports whether it stuck.
-function Controller:setEnabled(name, enabled, done)
+function Notifications:setEnabled(name, enabled, done)
 	if not enabled then
 		call(self.service, "saveFlag", name, false)
 		self:apply()
@@ -43,7 +43,7 @@ end
 
 -- Starts or stops the Sentinel watch and schedules or withdraws the reminder
 -- to match the saved flags.
-function Controller:apply()
+function Notifications:apply()
 	local sentinel = self:available() and self:enabled("sentinel")
 	if sentinel and not self.watcher then
 		self.trash = self.model.home .. "/.Trash"
@@ -56,7 +56,7 @@ function Controller:apply()
 end
 
 -- Reschedules the monthly reminder from the newest history.
-function Controller:historyRecorded(entries)
+function Notifications:historyRecorded(entries)
 	if not (self:available() and self:enabled("reminder")) then return end
 	local notification = Reminder.notification(self.model, entries)
 	if notification then
@@ -64,7 +64,7 @@ function Controller:historyRecorded(entries)
 	end
 end
 
-function Controller:trashed(events)
+function Notifications:trashed(events)
 	for _, app in ipairs(Sentinel.trashedApps(events, self.trash)) do
 		local plist = call(self.service, "readPropertyList", app .. "/Contents/Info.plist")
 		local offer = Sentinel.offer(self.model, app, type(plist) == "table" and plist.CFBundleIdentifier or nil)
@@ -86,8 +86,8 @@ function Controller:trashed(events)
 	end
 end
 
-function Controller:stop()
+function Notifications:stop()
 	if self.watcher then self.watcher.cancel(); self.watcher = nil end
 end
 
-return Controller
+return Notifications

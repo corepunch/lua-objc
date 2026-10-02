@@ -71,69 +71,70 @@ app:createWindow()
 
 app:show("overview")
 local overview = app.pages.overview
+local model = overview.model
 local results = overview.refs.results
-local category = overview.categoryRows[2].id
+local category = model.categoryRows[2].id
 -- Hovering the ring stays inside the chart: the line under it names the
 -- sector and no category row follows the pointer.
-overview.hero.actions.chartHover(category)
-t.assertEqual(overview.selectedId, nil, "hovering a sector selects no category row")
+overview.actions.chartHover(category)
+t.assertEqual(model.selectedId, nil, "hovering a sector selects no category row")
 t.assertEqual(results.documentView.selectedRow, -1, "natively")
-t.expect(overview.hero.refs.chartDetail.text:find(overview.categoryRows[2].name, 1, true) == 1, "the line under the ring names the sector")
-overview.hero.actions.chartHover(Overview.folded)
-t.assertEqual(overview.hero.refs.chartDetail.text:match("^[^·]+"), "Other categories ", "the folded categories name themselves")
-overview.hero.actions.chartHover("free")
-t.expect(overview.hero.refs.chartDetail.text:find("of disk", 1, true) ~= nil, "free space is a share of the disk")
-overview.hero.actions.chartHover(nil)
-t.assertEqual(overview.hero.refs.chartDetail.text, "", "leaving the chart clears the line")
+t.expect(overview.refs.chartDetail.text:find(model.categoryRows[2].name, 1, true) == 1, "the line under the ring names the sector")
+overview.actions.chartHover(Overview.folded)
+t.assertEqual(overview.refs.chartDetail.text:match("^[^·]+"), "Other categories ", "the folded categories name themselves")
+overview.actions.chartHover("free")
+t.expect(overview.refs.chartDetail.text:find("of disk", 1, true) ~= nil, "free space is a share of the disk")
+overview.actions.chartHover(nil)
+t.assertEqual(overview.refs.chartDetail.text, "", "leaving the chart clears the line")
 -- "other" is a category too: its sector and legend row are its own, never
 -- the folded categories'.
-local mapped, opened = {}, {}
-local handlers = overview.handlers
-overview.handlers = setmetatable({map = function(id) table.insert(mapped, id) end,
-	open = function(id) table.insert(opened, id) end}, {__index = handlers})
-overview:update(overview.state or app:state())
-overview.hero.actions.chartSelect("other")
+local mapped = {}
+local map = app.graph:get("map")
+map.setFocus = function(self, id) table.insert(mapped, id) end
+overview.actions.chartSelect("other")
 t.assertEqual(mapped[1], "other", "the Other category's sector opens the Map inside it")
-overview.hero.actions.chartSelect(Overview.folded)
+app:show("overview")
+overview.actions.chartSelect(Overview.folded)
 t.assertEqual(mapped[2], "", "the folded sector opens the whole map")
-t.assertEqual(overview.hero.actions["category_" .. Overview.folded], nil, "the folded legend row opens nothing")
-overview.handlers = handlers
-overview:update(app:state())
+map.setFocus = nil
+app:show("overview")
+t.assertEqual(overview.actions["category_" .. Overview.folded], nil, "the folded legend row opens nothing")
 
 app:show("map")
-local map = app.pages.map
-map.template.actions.chartHover("developer")
+local mapPage = app.pages.map
+mapPage.actions.chartHover("developer")
 t.assertEqual(map.selectedId, "developer", "the Map's wedge and rows share one token")
-t.assertEqual(map.refs.mapList.documentView.selectedRow, Selection.index(map.rows, "developer"),
+t.assertEqual(mapPage.refs.mapList.documentView.selectedRow, Selection.index(map.rows, "developer"),
 	"hovering a wedge selects its row")
 t.assertEqual(map.focus, "", "without looking inside it")
-map.template.actions.chartHover("developer#other")
+mapPage.actions.chartHover("developer#other")
 t.assertEqual(map.selectedId, nil, "a folded remainder is no resource")
-t.assertEqual(map.refs.mapList.documentView.selectedRow, -1, "and selects no row")
+t.assertEqual(mapPage.refs.mapList.documentView.selectedRow, -1, "and selects no row")
 
 app:show("kinds")
 local page = app.pages.kinds
+local model = page.model
 local opened
-local showFiles = page.showFiles
-page.showFiles = function(id) opened = id end
-local first, second = page.kinds[1].id, page.kinds[2].id
+local showFiles = model.showFiles
+model.showFiles = function(_, id) opened = id end
+local first, second = model.kinds[1].id, model.kinds[2].id
 local allExtensions = page.refs.extensions.rowCount
-page.template.actions.chartHover(second)
+page.actions.chartHover(second)
 t.assertEqual(page.refs.kinds.documentView.selectedRow, 1, "hovering a kind's sector points at its row")
-t.assertEqual(page.selectedId, nil, "pointing keeps no kind")
+t.assertEqual(model.selectedId, nil, "pointing keeps no kind")
 t.assertEqual(page.refs.extensions.rowCount, allExtensions, "and leaves the top extensions whole")
-page.template.actions.chartSelect(second)
-t.assertEqual(page.selectedId, second, "clicking a sector keeps its kind")
+page.actions.chartSelect(second)
+t.assertEqual(model.selectedId, second, "clicking a sector keeps its kind")
 t.assertEqual(page.refs.kinds.documentView.selectedRow, 1, "its row stays selected")
 t.expect(page.refs.extensions.rowCount <= allExtensions, "the top extensions follow the kind")
 t.assertEqual(opened, nil, "the first click opens nothing")
-page.template.actions.chartHover(first)
-page.template.actions.chartHover(nil)
+page.actions.chartHover(first)
+page.actions.chartHover(nil)
 t.assertEqual(page.refs.kinds.documentView.selectedRow, 1, "leaving the chart returns to the kept kind")
-page.template.actions.chartSelect(second)
+page.actions.chartSelect(second)
 t.assertEqual(opened, second, "a second click opens the kind's largest files")
 page.refs.kinds:selectRow(0)
-t.assertEqual(page.selectedId, first, "selecting a row keeps its kind too")
-page.showFiles = showFiles
+t.assertEqual(model.selectedId, first, "selecting a row keeps its kind too")
+model.showFiles = showFiles
 
 os.exit(t.summary() and 0 or 1)

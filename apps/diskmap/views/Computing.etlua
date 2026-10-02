@@ -1,0 +1,12 @@
+<% --[[ The state of a page whose data is still being computed (a read of the
+  system, a long scan): one native spinner and a short status line, in place
+  of lists that would fill row by row. The populated page is drawn once the
+  data is there.
+
+    status   what is being computed, or how far it is ]]
+  local COMPUTING = { padding = 48, spacing = 10 }
+%>
+<VStack id="computing" padding="<%= COMPUTING.padding %>" spacing="<%= COMPUTING.spacing %>" alignment="center" maxWidth="infinity">
+  <ProgressView id="computingSpinner" />
+  <Label id="computingStatus" text="<%= status %>" size="13" color="secondary" lines="0" />
+</VStack>

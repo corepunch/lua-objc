@@ -1,6 +1,23 @@
 <App name="Diskmap" startup="overview" controller="Controller">
+	<Model id="simulators" class="models.SimulatorsPage" />
+	<Model id="worktrees" class="models.WorktreesPage" />
 	<Model id="largest" class="models.LargestPage" />
+	<Model id="files" class="models.FilesPage" />
+	<Model id="kinds" class="models.KindsPage" />
+	<Model id="applications" class="models.ApplicationsPage" />
+	<Model id="projects" class="models.ProjectsPage" />
+	<Model id="xcode" class="models.XcodePage" />
+	<Model id="overview" class="models.OverviewPage" />
+	<Model id="map" class="models.MapPage" />
+	<Model id="folder" class="models.FolderPage" />
 	<Model id="cleanup" class="models.CleanupPage" />
+	<Model id="duplicates" class="models.DuplicatesPage" />
+	<Model id="disks" class="models.DisksPage" />
+	<Model id="updates" class="models.UpdatesPage" />
+	<Model id="filesystem" class="models.FilesystemPage" />
+	<Model id="guide" class="models.TopicsPage" />
+	<Model id="help" class="models.TopicsPage" />
+	<Model id="watched" class="models.WatchedPage" />
 	<Model id="developer" class="models.WorkflowPage" />
 	<Model id="music" class="models.WorkflowPage" />
 	<Model id="video" class="models.WorkflowPage" />
@@ -8,29 +25,29 @@
 	<Model id="design" class="models.WorkflowPage" />
 	<Model id="studio3d" class="models.WorkflowPage" />
 	<Model id="games" class="models.WorkflowPage" />
-	<Page id="overview" title="Overview" icon="chart.pie.fill" color="systemBlue" key="1" controller="OverviewController" />
+	<Page id="overview" title="Overview" icon="chart.pie.fill" color="systemBlue" key="1" model="overview" view="Overview" />
 	<Page id="cleanup" title="Clean Up" icon="sparkles" color="systemIndigo" key="2" model="cleanup" view="Page" />
 	<Section title="Free Up Space">
-		<Page id="applications" title="Applications" icon="square.grid.3x3.fill" color="systemBlue" key="3" controller="ApplicationsController" />
-		<Page id="files" title="Large Files" icon="doc.fill" color="systemTeal" key="4" controller="FilesController" />
-		<Page id="duplicates" title="Duplicates" icon="doc.on.doc.fill" color="systemTeal" controller="DuplicatesController" />
-		<Page id="simulators" title="Simulators" icon="iphone" color="systemBlue" controller="SimulatorsController" workflow="developer" />
-		<Page id="worktrees" title="Worktrees" icon="arrow.triangle.branch" color="systemPurple" controller="WorktreesController" workflow="developer" />
-		<Page id="projects" title="Projects" icon="folder.fill.badge.gearshape" color="systemOrange" controller="ProjectsController" workflow="developer" />
+		<Page id="applications" title="Applications" icon="square.grid.3x3.fill" color="systemBlue" key="3" model="applications" view="Page" />
+		<Page id="files" title="Large Files" icon="doc.fill" color="systemTeal" key="4" model="files" view="Page" />
+		<Page id="duplicates" title="Duplicates" icon="doc.on.doc.fill" color="systemTeal" model="duplicates" view="Page" />
+		<Page id="simulators" title="Simulators" icon="iphone" color="systemBlue" model="simulators" view="Simulators" workflow="developer" />
+		<Page id="worktrees" title="Worktrees" icon="arrow.triangle.branch" color="systemPurple" model="worktrees" view="Worktrees" workflow="developer" />
+		<Page id="projects" title="Projects" icon="folder.fill.badge.gearshape" color="systemOrange" model="projects" view="Page" workflow="developer" />
 	</Section>
 	<Section title="Explore">
-		<Page id="map" title="Storage Map" icon="circle.circle.fill" color="systemIndigo" key="5" controller="MapController" />
-		<Page id="folder" title="Folder Map" icon="folder.fill" color="systemBlue" controller="FolderController" />
+		<Page id="map" title="Storage Map" icon="circle.circle.fill" color="systemIndigo" key="5" model="map" view="Map" />
+		<Page id="folder" title="Folder Map" icon="folder.fill" color="systemBlue" model="folder" view="Folder" />
 		<Page id="largest" title="Largest Locations" icon="chart.bar.fill" color="systemOrange" key="6" model="largest" view="Page" />
-		<Page id="kinds" title="File Types" icon="square.grid.2x2.fill" color="systemPink" key="7" controller="KindsController" />
+		<Page id="kinds" title="File Types" icon="square.grid.2x2.fill" color="systemPink" key="7" model="kinds" view="Kinds" />
 	</Section>
 	<Section title="System">
-		<Page id="disks" title="Disks &amp; Volumes" icon="internaldrive.fill" color="systemGray" controller="DisksController" />
-		<Page id="updates" title="Updates &amp; Snapshots" icon="arrow.triangle.2.circlepath" color="systemGray" controller="UpdatesController" />
+		<Page id="disks" title="Disks &amp; Volumes" icon="internaldrive.fill" color="systemGray" model="disks" view="Page" />
+		<Page id="updates" title="Updates &amp; Snapshots" icon="arrow.triangle.2.circlepath" color="systemGray" model="updates" view="Updates" />
 	</Section>
 	<Section title="Developer">
 		<Page id="developer" title="Developer tools" sidebar="Dev tools" icon="hammer.fill" color="systemPurple" key="8" model="developer" view="Page" workflow="developer" />
-		<Page id="xcode" title="Xcode" icon="hammer.circle.fill" color="systemBlue" key="9" controller="XcodeController" workflow="developer" />
+		<Page id="xcode" title="Xcode" icon="hammer.circle.fill" color="systemBlue" key="9" model="xcode" view="Page" workflow="developer" />
 	</Section>
 	<Section title="Creative &amp; Games">
 		<Page id="music" title="Music Production" sidebar="Music" icon="pianokeys" color="systemPink" model="music" view="Page" workflow="music" />
@@ -41,11 +58,11 @@
 		<Page id="games" title="Games" icon="gamecontroller.fill" color="systemGreen" model="games" view="Page" workflow="games" />
 	</Section>
 	<Section title="Learn">
-		<Page id="guide" title="Storage Guide" icon="book.fill" color="systemTeal" controller="TopicsController" source="Guide" />
-		<Page id="filesystem" title="macOS Folders" icon="apple.logo" color="systemGray" controller="FilesystemController" />
-		<Page id="help" title="Diskmap Help" icon="questionmark.circle.fill" color="systemBlue" controller="TopicsController" source="Help" />
+		<Page id="guide" title="Storage Guide" icon="book.fill" color="systemTeal" model="guide" view="Topics" source="Guide" />
+		<Page id="filesystem" title="macOS Folders" icon="apple.logo" color="systemGray" model="filesystem" view="Filesystem" />
+		<Page id="help" title="Diskmap Help" icon="questionmark.circle.fill" color="systemBlue" model="help" view="Topics" source="Help" />
 	</Section>
 
 	<!-- Opened from the Watched section of the sidebar and from Settings; not a sidebar row of its own. -->
-	<Page id="watched" title="Watched" icon="eye.fill" color="systemBlue" controller="WatchedController" listed="false" />
+	<Page id="watched" title="Watched" icon="eye.fill" color="systemBlue" model="watched" view="Page" listed="false" />
 </App>

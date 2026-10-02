@@ -16,13 +16,8 @@ Overview.folded = "#other"
 
 -- Volume summary for the hero card. Capacity numbers come from the system
 -- volume query; measured totals come from the ledger and never replace them.
--- `calculating` is true while any location is still being measured, so the
--- hero shows progress without the person scrolling to find a spinner row.
 function Overview.summary(model, disk, capacity)
-	local result = {measured = Model.size(Model.total(model)), calculating = false}
-	for _, m in pairs(model.measurements or {}) do
-		if m.status == "calculating" then result.calculating = true; break end
-	end
+	local result = {measured = Model.size(Model.total(model))}
 	if not disk or not disk.totalKb or disk.totalKb <= 0 then
 		result.available = false
 		result.used, result.total, result.free = "—", "Capacity unavailable", "—"

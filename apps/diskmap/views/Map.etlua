@@ -30,7 +30,7 @@
       </GroupBox>
 <% end %>
 <VStack id="page" flexGrow="1" maxHeight="infinity" spacing="16" padding="24" alignment="leading">
-  <%- partial("PageHeader.etlua", {header = header, summary = subtitle, summaryId = "mapSummary"}) %>
+  <%- partial("PageHeader.etlua", {header = page, summary = subtitle, summaryId = "mapSummary"}) %>
   <HStack id="mapBar" spacing="6" alignment="center">
     <% for index, step in ipairs(trail) do %>
     <% if index > 1 then %><SystemImage name="chevron.right" size="10" color="tertiary" /><% end %>
@@ -41,7 +41,7 @@
     <% end %>
     <% end %>
     <Spacer />
-    <Picker id="mapStyle" style="segmented" value="<%= style == "rectangles" and 1 or 0 %>" onChange="style">
+    <Picker id="mapStyle" style="segmented" value="<%= style == "rectangles" and 1 or 0 %>" onChange="pickStyle">
       <Option title="Rings" />
       <Option title="Rectangles" />
     </Picker>

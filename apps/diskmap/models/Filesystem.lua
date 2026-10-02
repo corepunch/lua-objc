@@ -14,7 +14,6 @@ local STATES = {
 	privacy = {text = "No access", icon = "lock.fill", color = "systemOrange"},
 	missing = {text = "Not on this Mac", icon = "minus.circle", color = "tertiary"},
 	unmeasured = {text = "Not measured", icon = "minus.circle", color = "tertiary"},
-	measuring = {text = "Calculating…"},
 }
 
 local function expand(path, home)
@@ -54,17 +53,16 @@ function Filesystem.row(model, location, sizes, fullDiskAccess)
 		sized(row, model.volumeUsage[location.volume], false)
 	elseif location.volume and not row.resource then
 		-- Only APFS can size a whole volume; walking / would count the disk twice.
-		state = model.volumeUsage and "unmeasured" or "measuring"
+		state = "unmeasured"
 	elseif row.resource and model.resources:find(row.resource) then
 		local measured = Categories.row(model, row.resource)
-		if measured and measured.calculating then state = "measuring"
-		elseif measured and measured.bytes then sized(row, measured.bytes, measured.status == "partial")
+		if measured and measured.bytes then sized(row, measured.bytes, measured.status == "partial")
 		elseif measured and measured.status == "denied" then state = "privacy"
 		elseif measured and measured.status == "protected" then state = "protected"
-		else state = "measuring" end
+		else state = "unmeasured" end
 	else
 		local entry = sizes and sizes[path]
-		if not entry then state = "measuring"
+		if not entry then state = "unmeasured"
 		elseif entry.state == "missing" then state = "missing"
 		elseif entry.state == "unreadable" and (entry.bytes or 0) == 0 then
 			state = fullDiskAccess == true and "protected" or "privacy"
@@ -72,7 +70,7 @@ function Filesystem.row(model, location, sizes, fullDiskAccess)
 	end
 	if state then
 		local look = STATES[state]
-		row.size, row.stateIcon, row.stateColor, row.calculating = look.text, look.icon, look.color, state == "measuring"
+		row.size, row.stateIcon, row.stateColor = look.text, look.icon, look.color
 		row.state = state
 	end
 	-- The one-line status a reader sees before the explanation.

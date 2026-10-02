@@ -16,13 +16,17 @@
 <% end %>
 <ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
   <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
-    <%- partial("PageHeader.etlua", {header = header, summary = "Looking for Git worktrees…", summaryId = "summary",
+    <%- partial("PageHeader.etlua", {header = page, summary = summary, summaryId = "summary",
       buttons = {{id = "retry", title = "Retry", action = "retry", help = "Look for worktrees again"}}}) %>
-    <VStack id="decisionHost" spacing="0" alignment="leading" />
-    <ContentUnavailable id="worktreesEmpty" hidden="true" title="No Linked Worktrees" systemImage="arrow.triangle.branch" description="No repository in your project folders has a linked worktree, so there is nothing to clean up here." />
+    <% if computing then %>
+    <%- partial("Computing.etlua", {status = computing}) %>
+    <% else %>
+    <VStack id="decisionHost" spacing="0" alignment="leading">
+      <%- partial("Decision.etlua", decision) %>
+    </VStack>
+    <ContentUnavailable id="worktreesEmpty" title="No Linked Worktrees" systemImage="arrow.triangle.branch" description="No repository in your project folders has a linked worktree, so there is nothing to clean up here." />
     <VStack id="removeSection" spacing="8" alignment="leading">
-      <%- partial("SectionHeader.etlua", {title = "Ready to remove", detailId = "removeDetail",
-        detail = "Clean, every commit published, and unchanged for a few days. Removing one deletes its checkout and ignored files; the repository and its history stay."}) %>
+      <%- partial("SectionHeader.etlua", {title = "Ready to remove", detailId = "removeDetail", detail = removeDetail}) %>
       <GroupBox>
 <% list("removeList") %>
       </GroupBox>
@@ -37,7 +41,7 @@
     <VStack id="missingSection" spacing="8" alignment="leading">
       <HStack spacing="12" alignment="center">
         <%- partial("SectionHeader.etlua", {title = "Missing", detail = "Git still lists these, but the directory is gone. Pruning forgets the record; no checkout is deleted."}) %>
-        <Button id="prune" title="Prune Missing…" action="prune" disabled="true" help="Forget registrations whose directory is gone; existing worktrees are not touched" />
+        <Button id="prune" title="Prune Missing…" action="prune" help="Forget registrations whose directory is gone; existing worktrees are not touched" />
       </HStack>
       <GroupBox>
 <% list("missingList") %>
@@ -50,26 +54,27 @@
       </GroupBox>
     </DisclosureGroup>
     <%- partial("Footnote.etlua", {text = "Diskmap reads each repository with git worktree list, status and rev-list, and removes only with git worktree remove, never with force. Session activity is not visible to Diskmap: In use means a process was confirmed; a worktree changed in the last few days is Recent and waits for your review. Claude and Codex worktrees are best removed by archiving their session in the app."}) %>
+    <% end %>
   </VStack>
 </ScrollView>
 
-    <VStack id="selectionSection" spacing="8" padding="14" hidden="true" alignment="leading">
+    <VStack id="selectionSection" spacing="8" padding="14" alignment="leading">
       <ScrollView id="selectionEvidence" vertical="true" maxHeight="<%= SELECTION.detailMaximum %>">
         <VStack spacing="8" alignment="leading">
-      <Label id="selectedTitle" text="" size="13" weight="semibold" maxWidth="infinity" lines="1" truncation="middle" />
-      <Label id="selectedSummary" text="" size="12" maxWidth="infinity" lines="0" />
+      <Label id="selectedTitle" text="<%= selection and selection.title or "" %>" help="<%= selection and selection.title or "" %>" size="13" weight="semibold" maxWidth="infinity" lines="1" truncation="middle" />
+      <Label id="selectedSummary" text="<%= selection and selection.summary or "" %>" size="12" maxWidth="infinity" lines="0" />
       <DisclosureGroup label="Path and storage details" expanded="false" indicatorWidth="26" indicatorSpacing="10">
-        <Label id="selectedDetail" text="" size="11" color="secondary" maxWidth="infinity" lines="0" />
+        <Label id="selectedDetail" text="<%= selection and selection.detail or "" %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
       </DisclosureGroup>
         </VStack>
       </ScrollView>
       <HStack spacing="8" alignment="center">
-        <Button id="reveal" title="Show in Finder" action="reveal" disabled="true" />
-        <Button id="keep" title="Keep" action="keep" disabled="true" help="Protect this worktree from every cleanup suggestion" />
-        <Button id="openOwner" title="Open Owner…" action="openOwner" disabled="true" help="Archive managed worktrees in the application that made them" />
+        <Button id="reveal" title="Show in Finder" action="reveal" />
+        <Button id="keep" title="Keep" action="keep" help="Protect this worktree from every cleanup suggestion" />
+        <Button id="openOwner" title="Open Owner…" action="openOwner" help="Archive managed worktrees in the application that made them" />
         <Spacer />
       </HStack>
-      <Label id="status" text="" size="11" color="secondary" maxWidth="infinity" lines="0" />
+      <Label id="status" text="<%= status %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
     </VStack>
 
 </VStack>

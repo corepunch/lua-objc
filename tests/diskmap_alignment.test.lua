@@ -50,7 +50,7 @@ service.availableBytes = service.fixture.capacityBytes * 0.05
 local app = Controller.new(service)
 local window = app:createWindow()
 bridge._flushLayout()
-local hero = app.pages.overview.hero.refs
+local hero = app.pages.overview.refs
 t.expect(hero.lowSpace ~= nil, "a nearly full disk shows the low-space warning")
 t.expect(hero.legend ~= nil and hero.hiddenSpace ~= nil, "the card lists categories and hidden space")
 local column = hero.legend.superview
@@ -61,7 +61,7 @@ assertOneColumn(symbolRows(column), 1 + legend + hidden, "the Overview card")
 -- The "could not measure" card: its own symbol and each reason's symbol share
 -- one column, and the title, each reason's name and what is written under it
 -- start at one edge.
-local notMeasured = app.pages.overview.notMeasured.refs
+local notMeasured = app.pages.overview.refs
 t.expect(notMeasured.notMeasuredCard ~= nil, "the Overview explains what was not measured")
 local reasons = symbolRows(notMeasured.notMeasuredCard)
 assertOneColumn(reasons, 2, "the not-measured card")

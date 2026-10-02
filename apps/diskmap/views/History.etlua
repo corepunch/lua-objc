@@ -1,21 +1,19 @@
-<Sheet width="640" height="480">
-  <VStack maxHeight="infinity" padding="20" spacing="12">
-    <HStack spacing="12" alignment="center">
-      <SystemImage name="clock.fill" size="28" badgeColor="systemGray" />
-      <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
-        <Label text="Action History" size="17" weight="semibold" />
-        <Label text="<%= detail %>" size="12" color="secondary" maxWidth="infinity" lines="2" />
-      </VStack>
-    </HStack>
-    <List id="entries" style="inset" header="false" alternatingRows="false" rowHeight="44" flexGrow="1" flexBasis="0" maxHeight="infinity">
-      <Column id="name" title="Action" subtitleKey="subtitle" minWidth="220" />
-      <Column id="date" title="When" width="160" minWidth="130" />
-      <Column id="result" title="Result" width="110" minWidth="80" />
-      <Column id="size" title="Size" width="90" minWidth="70" alignment="trailing" />
-    </List>
-    <HStack>
-      <Spacer />
-      <Button id="done" title="Done" action="done" keyboardShortcut="defaultAction" />
-    </HStack>
-  </VStack>
-</Sheet>
+<VStack maxHeight="infinity" padding="20" spacing="12">
+  <HStack spacing="12" alignment="center">
+    <SystemImage name="clock.fill" size="28" badgeColor="systemGray" />
+    <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+      <Label text="Action History" size="17" weight="semibold" />
+      <Label id="detail" size="12" color="secondary" maxWidth="infinity" lines="2" />
+    </VStack>
+  </HStack>
+  <List id="entries" style="inset" header="false" alternatingRows="false" rowHeight="44" flexGrow="1" flexBasis="0" maxHeight="infinity">
+    <Column id="name" title="Action" subtitleKey="subtitle" minWidth="220" />
+    <Column id="date" title="When" width="160" minWidth="130" />
+    <Column id="result" title="Result" width="110" minWidth="80" />
+    <Column id="size" title="Size" width="90" minWidth="70" alignment="trailing" />
+  </List>
+  <HStack>
+    <Spacer />
+    <Button id="done" title="Done" action="close" keyboardShortcut="defaultAction" />
+  </HStack>
+</VStack>

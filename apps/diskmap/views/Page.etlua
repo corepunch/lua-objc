@@ -4,6 +4,11 @@
   them. The template carries structure only; rows, sizes and summaries are
   set in place, so scan progress does not rebuild the page under the reader.
 
+    waiting              {title, systemImage, description}: while the scan has not
+                         measured what the page lists, this empty state stands
+                         in place of everything below the header
+    computing            while a request of the page's own is running: its status
+                         line beside one native spinner, in place of the same
     summary, summaryId   the header's second line and its ref ("summary")
     buttons              header buttons: {id, title, systemImage, action, help, disabled}
     tiles                stat tiles: {id, icon, color, title, value, detail, actionTitle, action}
@@ -32,6 +37,14 @@
 <ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
   <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {header = header or page, summary = layout.summary, summaryId = layout.summaryId, buttons = layout.buttons}) %>
+    <% if waiting then %>
+    <ContentUnavailable id="waiting" title="<%= waiting.title %>" systemImage="<%= waiting.systemImage %>" description="<%= waiting.description %>" />
+    <% elseif computing then %>
+    <HStack id="computing" spacing="10" alignment="center">
+      <ProgressView controlSize="small" />
+      <Label id="computingStatus" text="<%= computing %>" size="13" color="secondary" lines="1" />
+    </HStack>
+    <% else %>
     <% for _, slot in ipairs(layout.leads or {}) do %>
     <VStack id="<%= slot %>" spacing="0" alignment="leading">
       <% if children and children[slot] then %><%- partial(childViews[slot] .. ".etlua", children[slot]) %><% end %>
@@ -56,7 +69,7 @@
       <% if section.links or section.filters or section.buttons then %>
       <VStack <% if section.controlsId then %>id="<%= section.controlsId %>" <% end %> spacing="8" alignment="leading">
         <% if section.filters then %>
-        <Picker id="<%= section.filters.id %>" style="segmented" onChange="filter">
+        <Picker id="<%= section.filters.id %>" style="segmented" value="<%= (filterIndex or 1) - 1 %>" onChange="filter">
           <% for _, title in ipairs(section.filters.options) do %><Option title="<%= title %>" /><% end %>
         </Picker>
         <% end %>
@@ -95,6 +108,7 @@
     <% end %>
     <% if layout.footnote then %>
     <%- partial("Footnote.etlua", layout.footnote) %>
+    <% end %>
     <% end %>
   </VStack>
 </ScrollView>

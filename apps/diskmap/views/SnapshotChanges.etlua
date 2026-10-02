@@ -1,26 +1,24 @@
 <% --[[ Every location that changed since the saved snapshot, largest change
   first. Bars compare changes with the largest one: orange grew, green shrank. ]]
   local CHANGES = { change = 200, size = 90 } %>
-<Sheet width="720" height="520">
-  <VStack maxHeight="infinity" padding="20" spacing="12">
-    <HStack spacing="12" alignment="center">
-      <SystemImage name="clock.arrow.circlepath" size="28" badgeColor="systemIndigo" />
-      <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
-        <Label text="<%= title %>" size="17" weight="semibold" />
-        <Label text="<%= detail %>" size="12" color="secondary" maxWidth="infinity" lines="2" />
-      </VStack>
-    </HStack>
-    <List id="changes" rowMenu="rowMenu" onActivate="reveal" dragKey="path" style="inset" header="true" alternatingRows="false" rowHeight="44" flexGrow="1" flexBasis="0" maxHeight="infinity">
-      <Column id="name" title="Location" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" imageSize="28" minWidth="220" />
-      <Column id="change" title="Change" width="<%= CHANGES.change %>" minWidth="<%= CHANGES.change %>">
-        <%- partial("cells/Meter.etlua", {value = "detail", tint = "levelColor", title = "Change"}) %>
-      </Column>
-      <Column id="before" title="Before" width="<%= CHANGES.size %>" minWidth="<%= CHANGES.size %>" alignment="trailing" />
-      <Column id="size" title="Now" width="<%= CHANGES.size %>" minWidth="<%= CHANGES.size %>" alignment="trailing" />
-    </List>
-    <HStack>
-      <Spacer />
-      <Button id="done" title="Done" action="done" keyboardShortcut="defaultAction" />
-    </HStack>
-  </VStack>
-</Sheet>
+<VStack maxHeight="infinity" padding="20" spacing="12">
+  <HStack spacing="12" alignment="center">
+    <SystemImage name="clock.arrow.circlepath" size="28" badgeColor="systemIndigo" />
+    <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+      <Label id="title" size="17" weight="semibold" />
+      <Label id="detail" size="12" color="secondary" maxWidth="infinity" lines="2" />
+    </VStack>
+  </HStack>
+  <List id="changes" rowMenu="rowMenu" onActivate="reveal" dragKey="path" style="inset" header="true" alternatingRows="false" rowHeight="44" flexGrow="1" flexBasis="0" maxHeight="infinity">
+    <Column id="name" title="Location" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" imageSize="28" minWidth="220" />
+    <Column id="change" title="Change" width="<%= CHANGES.change %>" minWidth="<%= CHANGES.change %>">
+      <%- partial("cells/Meter.etlua", {value = "detail", tint = "levelColor", title = "Change"}) %>
+    </Column>
+    <Column id="before" title="Before" width="<%= CHANGES.size %>" minWidth="<%= CHANGES.size %>" alignment="trailing" />
+    <Column id="size" title="Now" width="<%= CHANGES.size %>" minWidth="<%= CHANGES.size %>" alignment="trailing" />
+  </List>
+  <HStack>
+    <Spacer />
+    <Button id="done" title="Done" action="close" keyboardShortcut="defaultAction" />
+  </HStack>
+</VStack>

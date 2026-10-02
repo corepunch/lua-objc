@@ -118,7 +118,6 @@ function Watchlist:rows()
 		row.missing = current.missing == true
 		row.delta, row.changeText = self:change(key)
 		if row.missing then row.size, row.changeText = "Missing", "This folder no longer exists"
-		elseif row.calculating then row.size = "Calculating…"
 		else row.size = row.bytes and Model.size(row.bytes) or "Not measured" end
 		row.changeText = row.changeText or (current.bytes and "Measured for the first time" or "Waiting for a measurement")
 		table.insert(rows, row)

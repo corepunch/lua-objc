@@ -11,23 +11,24 @@ local History = require("apps.diskmap.models.History")
 local Model = require("apps.diskmap.Model")
 local Provider = require("apps.diskmap.services.Provider")
 local ScanController = require("apps.diskmap.controllers.ScanController")
-local TourController = require("apps.diskmap.controllers.TourController")
-local CleanupController = require("apps.diskmap.controllers.CleanupController")
-local InspectorController = require("apps.diskmap.controllers.InspectorController")
-local ManagementController = require("apps.diskmap.controllers.ManagementController")
-local SdksController = require("apps.diskmap.controllers.SdksController")
-local SettingsController = require("apps.diskmap.controllers.SettingsController")
+local TourSheet = require("apps.diskmap.models.TourSheet")
+local Keep = require("apps.diskmap.models.Keep")
+local Manage = require("apps.diskmap.models.Manage")
+local ManagementSheet = require("apps.diskmap.models.ManagementSheet")
+local SdksSheet = require("apps.diskmap.models.SdksSheet")
+local Settings = require("apps.diskmap.models.Settings")
 local ActionsController = require("apps.diskmap.controllers.ActionsController")
-local ReviewController = require("apps.diskmap.controllers.ReviewController")
-local HistoryController = require("apps.diskmap.controllers.HistoryController")
+local Review = require("apps.diskmap.models.Review")
+local HistorySheet = require("apps.diskmap.models.HistorySheet")
+local SnapshotChanges = require("apps.diskmap.models.SnapshotChanges")
 local NavigationController = require("apps.diskmap.controllers.NavigationController")
 local Files = require("apps.diskmap.models.Files")
 local Help = require("apps.diskmap.models.Help")
-local NotificationsController = require("apps.diskmap.controllers.NotificationsController")
+local Notifications = require("apps.diskmap.services.Notifications")
 local CommandsController = require("apps.diskmap.controllers.CommandsController")
-local SnapshotController = require("apps.diskmap.controllers.SnapshotController")
+local SnapshotComparison = require("apps.diskmap.services.SnapshotComparison")
 local WatchlistController = require("apps.diskmap.controllers.WatchlistController")
-local OnboardingController = require("apps.diskmap.controllers.OnboardingController")
+local Onboarding = require("apps.diskmap.models.Onboarding")
 local Manifest = require("data.manifest")
 local ModelGraph = require("data.model")
 local PageController = require("data.pagecontroller")
@@ -54,28 +55,18 @@ function Controller.new(service)
 	-- animated transaction would diff the layout of the whole page on each
 	-- one and fight the user's scrolling.
 	self.scan = ScanController.new(self.model, service, home, function() self:updateRows() end, function() self:scanFinished() end)
-	self.notifications = NotificationsController.new(self.model, service, {
+	self.notifications = Notifications.new(self.model, service, {
 		mark = function(items) self.actions:markAll(items) end,
 		review = function() self:openReview() end,
 		show = function() if self.window then self.window:show() end end,
 	})
-	self.settings = SettingsController.new(service, self.model, function() self.scan:start() end, self.notifications)
-	self.cleanup = CleanupController.new(self.model, service, function(error)
+	self.keep = Keep.new(self.model, service, function(error)
 		if error then self.scan.status = error end
 		self:updateRows()
 	end)
-	self.inspector = InspectorController.new(self.model, service, function() self.scan:start() end)
-	self.history = HistoryController.new(service)
-	self.review = ReviewController.new(self.model, service, {
-		changed = function() self:basketChanged() end,
-		rescan = function() self.scan:start() end,
-		history = function() self.review:close(); self.history:open(self.window) end,
-	})
-	self.sdks = SdksController.new(self.model, service)
+	self.inspector = Manage.new(self.model, service, function() self.scan:start() end)
 	-- Every list, menu and link opens a resource through this one function.
 	local open = function(id) self:open(id) end
-	self.management = ManagementController.new(self.model, service, function() self.scan:start() end,
-		function(id) self.cleanup:toggleKeep(id) end, open)
 	self.navigation = NavigationController.new(function(id, fromHistory) self:show(id, false, fromHistory) end)
 	self.watchlist = WatchlistController.new(self.model, service, function() self:updateRows() end)
 	self.actions = ActionsController.new(self.model, service, {
@@ -83,16 +74,16 @@ function Controller.new(service)
 		search = function(page, text) self:search(page, text) end,
 		review = function(path) self:openReview(path) end,
 		show = function(id) self:show(id) end,
-		keep = function(id) self.cleanup:toggleKeep(id) end,
+		keep = function(id) self.keep:toggle(id) end,
 		watch = function(entry) return self.watchlist:menuItem(entry) end,
 		refresh = function() self.scan:start() end,
-	}, self.review)
+	})
 	-- A live scan compares with the saved Mock HDD snapshot, the previous
 	-- state of this Mac; Mock HDD itself has nothing earlier to compare with.
 	if not self.mock then self.snapshots = self:snapshotComparison(Provider.savedSnapshotPath(), true) end
 	-- What other pages measured, for every page that states Clean Up's totals,
 	-- so they all name the same number.
-	self.cleanupSources = function() return {apps = self.pages.applications:summary()} end
+	self.cleanupSources = function() return {apps = self:pageModel("applications"):summary()} end
 	-- Every page of app.xml is built from one context, by the controller its
 	-- manifest entry names. `pages` fills as they are built; pages look each
 	-- other up when they run, not when they are built.
@@ -101,21 +92,40 @@ function Controller.new(service)
 		model = self.model, service = service, actions = self.actions, pages = self.pages,
 		open = open,
 		show = function(id, remount) self:show(id, remount) end,
-		showFiltered = function(id, filter) self:showFiltered(id, filter) end,
+		showFiltered = function(id, filter, kind) self:showFiltered(id, filter, kind) end,
 		search = function(id, text) self:search(id, text) end,
 		rescan = function() self.scan:start() end,
 		refresh = function() self:updateRows() end,
 		log = function(...) self.review:log(...) end,
+		notifications = self.notifications,
+		basketChanged = function() self:basketChanged() end,
+		openHistory = function() self.history:open(self.window) end,
+		keep = function(id) self.keep:toggle(id) end,
+		scanning = function() return self.scan.job ~= nil end,
+		onboarded = function(granted)
+			self.fullDiskAccess = granted == true
+			self.scan:start()
+			if self.tour:needed(self.scan.disk) then self.tour:open(self.window) end
+		end,
 		cleanupSources = self.cleanupSources,
+		destination = function() return self.destination end,
 		watchlist = self.watchlist,
 		mapStyle = Provider.mapStyle(App.args()),
 		volumeName = function() return self:state().volumeName end,
 		access = function() self:grantAccess() end,
-		openChanges = function() if self.snapshots then self.snapshots:open(self.window) end end,
+		openChanges = function()
+			if self.snapshots and self.snapshots.result then self.changesSheet:open(self.window, self.snapshots.result) end
+		end,
 		shortcuts = function() return self.shortcuts or {} end,
 		command = function(name) self.commandActions[name]() end,
 		links = CommandsController.links(),
 	}
+	self.context = context
+	-- The sheets of the window, each the model of its own request.
+	self.settings, self.review, self.history = Settings.new({}, context), Review.new({}, context), HistorySheet.new({}, context)
+	self.sdks, self.management = SdksSheet.new({}, context), ManagementSheet.new({}, context)
+	self.changesSheet = SnapshotChanges.new({}, context)
+	self.actions.review = self.review
 	local manifest = Manifest.load("apps/diskmap/app.xml")
 	context.entry = function(id) return manifest.pages[id] end
 	local classes = {}
@@ -131,8 +141,6 @@ function Controller.new(service)
 			self.pages[entry.id] = require("apps.diskmap.controllers." .. entry.controller).new(context, entry)
 		end
 	end
-	self.files, self.applications = self.pages.files, self.pages.applications
-	self.simulators, self.worktrees = self.pages.simulators, self.pages.worktrees
 	self.commands = CommandsController.new(self.model, service, {
 		show = function(id) self:show(id) end,
 		destination = function() return self.destination end,
@@ -148,7 +156,7 @@ function Controller.new(service)
 		history = function() self.history:open(self.window) end,
 		openFolder = function() self:chooseFolder() end,
 		quickLook = function() self:quickLook() end,
-		canQuickLook = function() return self.page ~= nil and self.page.canQuickLook ~= nil and self.page:canQuickLook() end,
+		canQuickLook = function() local model = self.page and self.page.model; return model ~= nil and model.canQuickLook ~= nil and model:canQuickLook() end,
 		openScan = function() self:openScan() end,
 		compareScan = function() self:compareScan() end,
 		exportScan = function() self:exportScan() end,
@@ -183,11 +191,14 @@ function Controller:open(id, filter)
 end
 -- Shows a page narrowed to one of its filters, as Clean Up's pointers to
 -- Large Files and Applications do.
-function Controller:showFiltered(id, filter)
-	if id == "files" then self.files:focus(nil); self.files.filterIndex = filter or 1
-	elseif id == "applications" then self.applications:focus(filter) end
+-- `kind` narrows Large Files to one File Types kind.
+function Controller:showFiltered(id, filter, kind)
+	if id == "files" then self:pageModel(id):focus(kind, filter)
+	elseif id == "applications" then self:pageModel(id):focus(filter) end
 	self:show(id, true)
 end
+-- The model a page is drawn from, built when first asked for.
+function Controller:pageModel(id) return self.graph:build({id})[id] end
 -- Everything a page needs to present the current scan, in one value.
 function Controller:state()
 	return {disk = self.scan.disk, capacity = self.capacity, snapshotCount = self.snapshotCount, changes = self.snapshotChanges or self.changes,
@@ -221,22 +232,23 @@ function Controller:badges()
 	for _, workflow in ipairs(Workflows.list) do
 		if present[workflow.id] then badges[workflow.id] = Workflow.badge(self.model, workflow) end
 	end
-	for _, id in ipairs({"xcode", "projects", "folder"}) do
-		local page = self.pages[id]
-		if page.badge then badges[id] = page:badge() end
+	for _, id in ipairs({"xcode", "projects"}) do
+		badges[id] = self:pageModel(id):badge()
 	end
+	local folder = self.graph:get("folder")
+	badges.folder = folder and folder:badge()
 	return badges
 end
 function Controller:updateRows()
 	if self.window then self.window.subtitle = self:subtitle() end
 	-- App facts load once the scan has measured the data folders they need.
-	if self.model.files and not self.model.files.measuring then self.pages.applications:load() end
+	if self.model.files and not self.model.files.measuring then self:pageModel("applications"):loadFacts() end
 	-- A page may re-render its template, so its refs are read after updating.
 	if self.page then self.page:update(self:state()); self.refs = self.page.refs end
 	self.navigation:setBadges(self:badges())
 	self.navigation:setWatched(self.watchlist:rows())
 	self.navigation:setWorkflows(self:presentWorkflows())
-	self.management:update()
+	self.management:draw()
 end
 -- A kind of work leads nobody who does not do it (#52): its pages appear
 -- once one of its markers exists (Xcode for Developer, Logic Pro for Music
@@ -327,7 +339,7 @@ end
 -- the Folder Map, whatever page was showing.
 function Controller:openFolder(path)
 	if type(path) ~= "string" or path == "" then return false end
-	self.pages.folder:open(path)
+	self.graph:build({"folder"}).folder:open(path)
 	self:show("folder")
 	return true
 end
@@ -351,7 +363,8 @@ end
 
 -- Quick Look (⌘Y) previews the current page's selection.
 function Controller:quickLook()
-	if self.page and self.page.quickLook then return self.page:quickLook() end
+	local model = self.page and self.page.model
+	if model and model.quickLook then return model:quickLook() end
 	return false
 end
 
@@ -369,8 +382,8 @@ function Controller:scanFinished()
 	if snapshots then snapshots(function(count) self.snapshotCount = count; self:updateRows() end) end
 	-- Clean Up ranks simulators by what the minimal device set would remove,
 	-- so the inventory is read whether or not the Simulators page is open.
-	if optional(self.service, "simulatorRuntimes") or optional(self.service, "simulatorDevices") then self.simulators:load() end
-	if optional(self.service, "worktreeScan") then self.worktrees:load() end
+	if optional(self.service, "simulatorRuntimes") or optional(self.service, "simulatorDevices") then self.graph:build({"simulators"}).simulators:load() end
+	if optional(self.service, "worktreeScan") then self.graph:build({"worktrees"}).worktrees:load() end
 	if self.settings.history then
 		local load, save = optional(self.service, "loadHistory"), optional(self.service, "saveHistory")
 		if load and save then
@@ -388,7 +401,7 @@ end
 -- Changes since a snapshot replace history's category totals on the
 -- overview: they name locations, not only categories.
 function Controller:snapshotComparison(path, cache)
-	return SnapshotController.new(self.model, self.service, self.actions, {path = path, cache = cache,
+	return SnapshotComparison.new(self.model, self.service, {path = path, cache = cache,
 		changed = function(changes, failure)
 			self.snapshotChanges = changes
 			if failure then self.scan.status = "Could not compare with the snapshot: " .. failure end
@@ -408,7 +421,6 @@ function Controller:show(id, remount, fromHistory)
 	if not page or not self.content then return end
 	if key and not self.watchlist:find(key) then return end
 	if self.destination == id and self.page and not remount then return end
-	if key then page:focus(key) end
 	if self.page then self.page:dispose() end
 	self.destination, self.page = id, page
 	self.refs = page:mount(self.content, self:state())
@@ -417,11 +429,11 @@ function Controller:show(id, remount, fromHistory)
 end
 -- setMapStyle("rings" | "rectangles") switches the Map page's chart.
 function Controller:setMapStyle(style)
-	self.pages.map:setStyle(style)
+	self.graph:build({"map"}).map:setStyle(style)
+	self:updateRows()
 end
 
 function Controller:select(id)
-	if self.pages.overview.refs then self.pages.overview.selectedId = id end
 	self.inspector:select(id)
 end
 -- Exported scans (#37 item 20): metadata only, the format --export-mock
@@ -512,7 +524,7 @@ function Controller:createWindow()
 	end) end
 	local folder = Provider.folder(App.args())
 	if folder then self:openFolder(folder) end
-	self.tour = TourController.new(self.service)
+	self.tour = TourSheet.new({}, self.context)
 	local exportPath = Provider.exportPath(App.args())
 	if exportPath then
 		self.scan.status = "Creating a local metadata-only Mock HDD snapshot…"; self:updateRows()
@@ -529,11 +541,7 @@ function Controller:createWindow()
 		-- First launch without Full Disk Access explains it before the first
 		-- scan and starts the scan once access is granted or declined.
 		-- The welcome tour follows while the scan runs.
-		self.onboarding = OnboardingController.new(self.service, function(granted)
-			self.fullDiskAccess = granted == true
-			self.scan:start()
-			if self.tour:needed(self.scan.disk) then self.tour:open(self.window) end
-		end)
+		self.onboarding = Onboarding.new({}, self.context)
 		if self.onboarding:needed() then self.onboarding:open(self.window)
 		else
 			self.scan:start()
@@ -543,10 +551,11 @@ function Controller:createWindow()
 	local scope = ns.Scope.current()
 	if scope then scope:add(self.scan); scope:add({dispose = function()
 		if self.page then self.page:dispose() end
-		self.pages.folder:cancel()
+		local folder = self.graph:get("folder")
+		if folder then folder:cancel() end
 		if onOpen then onOpen(nil) end
 		self.settings:close(); self.management:close(); self.sdks:close()
-		self.review:close(); self.history:close(); self.notifications:stop()
+		self.review:close(); self.history:close(); self.changesSheet:close(); self.notifications:stop()
 	end}) end
 	self.notifications:apply()
 	self.service.monitor(function() return self.window.visible end, function()

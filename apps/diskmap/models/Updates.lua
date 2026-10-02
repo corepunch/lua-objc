@@ -72,8 +72,7 @@ end
 
 local function sized(model, id)
 	local row = Categories.row(model, id)
-	if not row then return nil end
-	if row.calculating then return "Calculating…" end
+	if not row or row.calculating then return nil end
 	return row.size
 end
 
@@ -86,7 +85,8 @@ function Updates.installers(model, files)
 		if row.path and row.name:match("^Install macOS .+%.app$") then
 			local m = model.measurements[row.id]
 			table.insert(rows, {id = row.id, name = (row.name:gsub("%.app$", "")), path = row.path, kind = "macOS installer app", type = "macOS installer",
-				bytes = m and m.bytes, size = m and m.status == "calculating" and "Calculating…" or Model.size(m and m.bytes)})
+				subtitle = row.path, detail = "macOS installer", icon = "app.dashed",
+				bytes = m and m.bytes, size = Model.size(m and m.bytes)})
 		end
 	end
 	for _, file in ipairs(files or {}) do
@@ -94,8 +94,9 @@ function Updates.installers(model, files)
 		local extension = (name:match("%.(%w+)$") or ""):lower()
 		local kinds = {dmg = "Disk image", pkg = "Installer package", xip = "Xcode archive (xip)", iso = "Disc image"}
 		-- `type` fits the list's detail column; the row's subtitle is its path.
-		table.insert(rows, {id = file.path, name = name, path = file.path,
-			type = ((kinds[extension] or "Installer"):gsub(" %(.*$", "")),
+		local label = (kinds[extension] or "Installer"):gsub(" %(.*$", "")
+		table.insert(rows, {id = file.path, name = name, path = file.path, type = label, detail = label, subtitle = file.path,
+			icon = "opticaldiscdrive",
 			kind = (kinds[extension] or "Installer") .. " in " .. (file.path:match("/([^/]+)/[^/]+$") or "a folder"),
 			bytes = file.bytes, size = Model.size(file.bytes)})
 	end
@@ -119,8 +120,8 @@ function Updates.spaceNote(update, freeBytes)
 		.. free .. " Staged update files and the Update and Preboot volumes belong to macOS: do not remove them by hand, and they shrink when the update finishes."
 end
 
--- Everything the Updates & Snapshots page shows. `snapshotDates` is nil while
--- tmutil has not answered, and false when it failed.
+-- Everything the Updates & Snapshots page shows. `snapshotDates` is false when
+-- tmutil failed.
 function Updates.presentation(model, plist, snapshotDates, installerFiles, freeBytes)
 	local stages = {}
 	for index, stage in ipairs(Updates.stages) do
@@ -129,8 +130,7 @@ function Updates.presentation(model, plist, snapshotDates, installerFiles, freeB
 	end
 	local snapshots = snapshotDates and Updates.snapshots(snapshotDates) or {}
 	local snapshotTitle
-	if snapshotDates == nil then snapshotTitle = "Checking local snapshots…"
-	elseif snapshotDates == false then snapshotTitle = "Local snapshots could not be listed"
+	if not snapshotDates then snapshotTitle = "Local snapshots could not be listed"
 	elseif #snapshots == 0 then snapshotTitle = "No local snapshots"
 	else snapshotTitle = #snapshots .. (#snapshots == 1 and " local snapshot" or " local snapshots") end
 	local update = Updates.softwareUpdate(plist)
