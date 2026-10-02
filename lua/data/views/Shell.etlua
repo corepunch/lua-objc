@@ -1,0 +1,23 @@
+<% --[[
+  The window every manifest app gets: a Go menu with one item per page (the
+  keys come from the manifest), a sidebar toggle and the content area the
+  generic page controller mounts pages into. `--isolated` leaves only the
+  content. The sidebar itself is Sidebar.etlua. ]] %>
+<Window title="<%= app.name %>" width="1100" height="720" minWidth="700" minHeight="440" sidebarWidth="226">
+  <% if not isolated then %>
+  <Commands appName="<%= app.name %>">
+    <CommandMenu title="Go">
+      <% for index, section in ipairs(app.sections) do %>
+      <% if index > 1 then %><Separator /><% end %>
+      <% for _, page in ipairs(section.pages) do %>
+      <MenuItem title="<%= page.title %>" systemImage="<%= page.icon or "" %>" keyEquivalent="<%= page.key or "" %>" action="page_<%= page.id %>" validate="isPage_<%= page.id %>" />
+      <% end %>
+      <% end %>
+    </CommandMenu>
+  </Commands>
+  <Toolbar>
+    <ToolbarItem id="toggleSidebar" />
+  </Toolbar>
+  <% end %>
+  <VStack id="content" maxWidth="infinity" maxHeight="infinity" />
+</Window>

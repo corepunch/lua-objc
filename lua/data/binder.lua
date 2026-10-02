@@ -9,6 +9,9 @@
 -- model calls `update()` and every entry is set again. Animation stays the
 -- caller's choice: wrap `update()` in `ns.withAnimation`.
 --
+-- `propagates`: set when a model graph rebinds the page after a change (it
+-- calls `changed`); the binder then does not update itself.
+--
 -- Two-way entries (Toggle `isOn`, TextField `text`, Picker `selection`)
 -- write back through the model's `set<Field>` setter. A setter returning
 -- `false` refuses the edit; either way `update()` runs next, so a refused
@@ -108,7 +111,7 @@ function Binder:invoke(prefix, name)
 	local model = self:modelAt(prefix)
 	model[name](model)
 	self.changed(model)
-	self:update()
+	if not self.propagates then self:update() end
 end
 
 -- Writes a control's new value to the field's setter. Returns whether the
@@ -118,7 +121,8 @@ function Binder:write(prefix, id, value)
 	local model = self:modelAt(prefix)
 	local accepted = model[Schema.setterName(id)](model, value) ~= false
 	if accepted then self.changed(model) end
-	self:update()
+	-- A refused edit still rebinds: the control shows the model's value again.
+	if not accepted or not self.propagates then self:update() end
 	return accepted
 end
 
