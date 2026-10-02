@@ -1,7 +1,7 @@
 #pragma mark - Show
 
-static int bridge_NSWindow_show_impl(lua_State *L) {
-	NSWindow *w = (__bridge NSWindow *)((ObjCRef *)lua_touserdata(L, 1))->ptr;
+static int bridge_NSWindow_show(lua_State *L) {
+	NSWindow *w = lua_objc_check_object(L, 1, [NSWindow class], "Window");
 	[NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
 	[NSApp unhide:nil];
 	[NSApp activate];
@@ -176,7 +176,7 @@ static int bridge_text_view(lua_State *L) {
 	return 1;
 }
 
-static int bridge_NSScrollView_onChange_impl(lua_State *L) {
+static int bridge_NSScrollView_onChange(lua_State *L) {
 	id obj = check_objc(L, 1);
 	luaL_checktype(L, 2, LUA_TFUNCTION);
 

@@ -87,7 +87,7 @@ static int bridge_on_window_close(lua_State *L) {
 	return 0;
 }
 
-static int bridge_NSWindow_addTabbedWindow_impl(lua_State *L) {
+static int bridge_NSWindow_addTabbedWindow(lua_State *L) {
 	id parentObj = check_objc(L, 1);
 	id childObj = check_objc(L, 2);
 	if (![parentObj isKindOfClass:[NSWindow class]]
@@ -341,7 +341,7 @@ static int bridge_set_window_workspace(lua_State *L) {
 	return 0;
 }
 
-static int bridge_NSWindow_workspaceState_impl(lua_State *L) {
+static int bridge_NSWindow_workspaceState(lua_State *L) {
 	id obj = check_objc(L, 1);
 	if (![obj isKindOfClass:[NSWindow class]]) {
 		return luaL_error(L, "workspaceState requires a window");
@@ -426,7 +426,7 @@ static int bridge_NSWindow_workspaceState_impl(lua_State *L) {
 	return 1;
 }
 
-static int bridge_NSWindow_toggleSidebar_impl(lua_State *L) {
+static int bridge_NSWindow_toggleSidebar(lua_State *L) {
 	id obj = check_objc(L, 1);
 	if (![obj isKindOfClass:[NSWindow class]]) {
 		return luaL_error(L, "toggleSidebar requires a window");
@@ -445,7 +445,7 @@ static int bridge_NSWindow_toggleSidebar_impl(lua_State *L) {
 	return 0;
 }
 
-static int bridge_NSWindow_toggleDetail_impl(lua_State *L) {
+static int bridge_NSWindow_toggleDetail(lua_State *L) {
 	id obj = check_objc(L, 1);
 	if (![obj isKindOfClass:[NSWindow class]]) {
 		return luaL_error(L, "toggleDetail requires a window");
@@ -460,7 +460,7 @@ static int bridge_NSWindow_toggleDetail_impl(lua_State *L) {
 	return 0;
 }
 
-static int bridge_NSView_splitProportions_impl(lua_State *L) {
+static int bridge_NSView_splitProportions(lua_State *L) {
 	NSView *view = check_view(L, 1);
 	if (![view isKindOfClass:[NSSplitView class]]) {
 		return luaL_error(L, "splitProportions requires an NSSplitView");
@@ -1016,7 +1016,7 @@ static int bridge_add_hover_tooltip(lua_State *L) {
 	return 0;
 }
 
-static int bridge_NSView_clearContainer_impl(lua_State *L) {
+static int bridge_NSView_clearContainer(lua_State *L) {
 @autoreleasepool {
 	NSView *container = check_view(L, 1);
 	for (NSView *sub in [container.subviews copy]) {

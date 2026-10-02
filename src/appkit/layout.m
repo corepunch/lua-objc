@@ -1448,7 +1448,7 @@ static void satisfy_pending_layout(NSView *root) {
 	}
 }
 
-static int bridge_object_layout_impl(lua_State *L) {
+static int bridge_object_layout(lua_State *L) {
 	id obj = check_objc(L, 1);
 	CGFloat width = luaL_optnumber(L, 2, kLayoutDefaultWidth);
 
@@ -1483,7 +1483,7 @@ static int bridge_object_layout_impl(lua_State *L) {
 	return 0;
 }
 
-static int bridge_object_set_content_size_impl(lua_State *L) {
+static int bridge_object_set_content_size(lua_State *L) {
 	id obj = check_objc(L, 1);
 	CGFloat width = luaL_checknumber(L, 2);
 	CGFloat height = luaL_checknumber(L, 3);

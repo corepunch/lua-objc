@@ -74,7 +74,7 @@ static int bridge_sheet(lua_State *L) {
 	return 1;
 }
 
-static int bridge_NSWindow_presentPanel_impl(lua_State *L) {
+static int bridge_NSWindow_presentPanel(lua_State *L) {
 	id panelObj = check_objc(L, 1);
 	id parentObj = check_objc(L, 2);
 	CGFloat offsetY = luaL_optnumber(L, 3, 0);
@@ -97,7 +97,7 @@ static int bridge_NSWindow_presentPanel_impl(lua_State *L) {
 	return 0;
 }
 
-static int bridge_NSWindow_focus_impl(lua_State *L) {
+static int bridge_NSWindow_focus(lua_State *L) {
 	id windowObj = check_objc(L, 1);
 	id viewObj = check_objc(L, 2);
 	if (![windowObj isKindOfClass:[NSWindow class]]
@@ -109,7 +109,7 @@ static int bridge_NSWindow_focus_impl(lua_State *L) {
 	return 1;
 }
 
-static int bridge_NSWindow_isFirstResponder_impl(lua_State *L) {
+static int bridge_NSWindow_isFirstResponder(lua_State *L) {
 	id windowObj = check_objc(L, 1);
 	id viewObj = check_objc(L, 2);
 	if (![windowObj isKindOfClass:[NSWindow class]]

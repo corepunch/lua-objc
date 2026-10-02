@@ -47,18 +47,6 @@ static NSData *offscreen_render(NSView *view, CGFloat width, CGFloat height) {
 	return png;
 }
 
-static int bridge_NSView_renderToPNG_impl(lua_State *L) {
-	NSView *view  = check_view(L, 1);
-	CGFloat width  = luaL_optnumber(L, 2, kRenderDefaultWidth);
-	CGFloat height = luaL_optnumber(L, 3, kRenderDefaultHeight);
-	view.frame = NSMakeRect(0, 0, width, height);
-	layout_recursive(view, width);
-	NSData *png = offscreen_render(view, width, height);
-	if (!png) { lua_pushnil(L); return 1; }
-	lua_pushlstring(L, png.bytes, png.length);
-	return 1;
-}
-
 #pragma mark - File system watcher
 
 /* FSEvents for a file or a directory tree. Each watch is its own stream with

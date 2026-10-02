@@ -33,8 +33,8 @@ static int bridge_LuaArcView_arcBounds(lua_State *L);
 @interface LuaArcView : NSView
 @end
 static int bridge_object_add_impl(lua_State *L);
-static int bridge_object_layout_impl(lua_State *L);
-static int bridge_object_set_content_size_impl(lua_State *L);
+static int bridge_object_layout(lua_State *L);
+static int bridge_object_set_content_size(lua_State *L);
 /* Native bridge method forwards. */
 #define GEN_CLASS_FORWARDS
 #include "bindings.m"
