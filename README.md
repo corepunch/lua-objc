@@ -126,7 +126,7 @@ point. See [preview behavior](ARCHITECTURE.md#--preview-cli-mode).
 |---|---|
 | Maintain native framework `.m` code | `skills/maintain-lua-objc-framework/SKILL.md`, then `src/README.md` |
 | Add or compose a Lua widget | `lua/embedded/AppKit.lua` |
-| Describe an app as data (manifest, pages as requests over models, resources) | `lua/data/`, [`docs/data-driven.md`](docs/data-driven.md), `demo/storage` |
+| Describe an app as data (manifest, Lapis-style models, routes and flows, resources) | `lua/data/`, [`docs/data-driven.md`](docs/data-driven.md), `demo/storage` |
 | Add a component (new XML tag, written in etlua) | `lua/components/`, `lua/ui/component.lua`, [`docs/components.md`](docs/components.md) |
 | Add a macOS native bridge primitive | `src/README.md`, then the matching `src/appkit/*.m` fragment |
 | Change flex layout | `src/appkit/layout.m` |

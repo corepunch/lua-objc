@@ -167,10 +167,11 @@ The UIKit counterpart has the same API shape with UIKit-appropriate names
 
 ### Data-driven apps
 
-Apps may be described as data: an `app.xml` manifest, `resources.xml`, etlua views
-over a model's `data(state)` and a generic page controller. The full reference is
+Apps may be described as data, after Lapis: an `app.xml` manifest, `resources.xml`,
+Lapis-style models over a bound store, routes whose `data(state)` the etlua views draw,
+flows of shared action code and a generic page controller. The full reference is
 [data-driven.md](data-driven.md); the modules are `lua/data/manifest.lua`, `app.lua`,
-`model.lua`, `pagecontroller.lua` and `lua/ui/resources.lua`.
+`model.lua`, `routes.lua`, `flow.lua`, `pagecontroller.lua` and `lua/ui/resources.lua`.
 
 ### Declarative components: the escape hatch beyond the eager native tree
 

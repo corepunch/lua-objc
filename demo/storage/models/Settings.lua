@@ -1,34 +1,24 @@
--- The settings form's data: a switch, a name and a size threshold. A name
--- must not be empty, so its setter refuses it.
+-- The settings form's one row: a switch, a name and a size threshold. A
+-- name must not be empty and a threshold must be one of the picker's
+-- options; the constraints refuse anything else.
 local Model = require("data.model")
 
-local Settings = Model.define({id = "settings"})
+local Settings, Setting = Model:extend("settings", {
+	-- The threshold picker's options, in order, and the bytes each keeps.
+	thresholds = Model.enum({"Show every folder", "At least 100 MB", "At least 1 GB"}),
+	bytes = {0, 100e6, 1e9},
+	constraints = {
+		deviceName = function(_, name)
+			if name == nil or name:match("^%s*$") then return "A device needs a name." end
+		end,
+		threshold = function(settings, index)
+			if settings:model().bytes[index + 1] == nil then return "Choose one of the thresholds." end
+		end,
+	},
+})
 
--- The threshold picker's options, in order (bytes).
-Settings.THRESHOLDS = {0, 100e6, 1e9}
+function Settings:current() return self:find("device") end
 
-function Settings.new()
-	return setmetatable({history = false, deviceName = "My Mac", threshold = 0}, Settings)
-end
-
--- What views/Settings.etlua reads.
-function Settings:data()
-	return {history = self.history, deviceName = self.deviceName, threshold = self.threshold,
-		note = "History is " .. tostring(self.history) .. "; name is " .. self.deviceName}
-end
-
-function Settings:setHistory(value) self.history = value == true end
-
-function Settings:setDeviceName(value)
-	if value == nil or value:match("^%s*$") then return false end
-	self.deviceName = value
-end
-
-function Settings:setThreshold(index)
-	if Settings.THRESHOLDS[index + 1] == nil then return false end
-	self.threshold = index
-end
-
-function Settings:minimumBytes() return Settings.THRESHOLDS[self.threshold + 1] end
+function Setting:minimumBytes() return Settings.bytes[self.threshold + 1] end
 
 return Settings

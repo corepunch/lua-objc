@@ -448,12 +448,16 @@ instead of adding app-specific positioning or substitute controls.
 #### Data-driven apps and the state contract
 
 An app may be described as data instead of written as controllers
-([docs/data-driven.md](docs/data-driven.md)): an `app.xml` manifest names its models,
-sections and pages; `resources.xml` holds constants (`@name`); a page is a request —
-the generic page controller (`lua/data/pagecontroller.lua`) asks the page's model for
-`data(state)` and renders the page's etlua view with it, and an action in the view is
-a method of the model followed by the same request again. A class is written only for
-coordination (sheets, confirmation, multi-step flows).
+([docs/data-driven.md](docs/data-driven.md)), after Lapis: an `app.xml` manifest names
+its sections and pages and each page's route; `resources.xml` holds constants
+(`@name`); a page is a request — the generic page controller
+(`lua/data/pagecontroller.lua`) asks the page its route builds for `data(state)` and
+renders the route's etlua view with it, and an action in the view is a method of the
+route followed by the same request again. Models are Lapis models over the app's
+store (`lua/data/model.lua`): one table of rows each, queried by class methods and
+changed through row methods and constraints. Shared action code is a flow
+(`lua/data/flow.lua`). A class is written only for coordination (sheets,
+confirmation, multi-step flows).
 
 State is ordinary Lua data. It does not subscribe to property reads and nothing
 notifies: whoever changes state says so by drawing again (`page:update()`), after a

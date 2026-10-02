@@ -6,20 +6,21 @@
 -- the class the launch contract already expects: `new()` and `createWindow()`
 -- (so every host, macOS and iOS, starts it unchanged). From the
 -- manifest the framework builds the window, the sidebar, the Go menu and one
--- generic page controller per page, and it provides two launch options for
--- every app:
+-- generic page controller per page, each drawing the page its route builds
+-- (lua/data/routes.lua). `options.store` is bound as the store every model
+-- reads (lua/data/model.lua). It provides two launch options for every app:
 --
 --   --page=<id>   starts on that page instead of the manifest's startup page
---   --isolated    shows that page alone: no sidebar, no menu, and only the
---                 models the page needs, built through the model graph
+--   --isolated    shows that page alone: no sidebar and no menu
 --
--- That is "playable from every scene": a page declares what it binds to, so
--- the framework builds exactly that.
+-- That is "playable from every scene": a page asks its models for what it
+-- shows, so it runs on its own.
 local ns = require("ns")
 local xml = require("ui.xml")
 local Resources = require("ui.resources")
 local Model = require("data.model")
 local Manifest = require("data.manifest")
+local Routes = require("data.routes")
 local PageController = require("data.pagecontroller")
 
 local SHELL = "lua/data/views/Shell.etlua"
@@ -37,9 +38,21 @@ end
 local Launcher = {}
 Launcher.__index = Launcher
 
+-- The module `name`, or nil when no searcher has it. Any other error, one
+-- inside the module, is raised. `require` (not package.searchpath) so modules
+-- the iOS host streams from the packager are found too.
+function App.optional(name)
+	local ok, module = pcall(require, name)
+	if ok then return module end
+	if tostring(module):find("module '" .. name .. "' not found", 1, true) then return nil end
+	error(module, 0)
+end
+
 -- Returns the launch class for the manifest at `path`. `options.services`
--- reaches every model's `new` (a mock service runs the real models);
--- `options.args` replaces the process arguments.
+-- is every page's `self.app` (a mock service runs the real routes),
+-- `options.store` the store the models read (or a function that
+-- returns a fresh one; `Store.lua` beside app.xml when omitted) and `options.args` replaces the
+-- process arguments. `defaults` are options for every instance.
 function App.launcher(path, defaults)
 	local manifest = Manifest.load(path)
 	-- An app with a root controller coordinates its own window.
@@ -65,34 +78,37 @@ function Launcher.create(path, options)
 		error("--page=" .. startup .. ": the manifest of " .. self.manifest.name .. " has no such page", 0)
 	end
 	self.startup = startup
-	local classes = {}
-	for id, class in pairs(self.manifest.models) do
-		classes[id] = function() return require(self.module .. "." .. class) end
-	end
-	self.graph = Model.graph({ classes = classes, services = options.services or {} })
+	self.routes = require(self.module .. "." .. self.manifest.routes)
+	-- A page that names no route fails at launch, not when first shown.
+	for _, entry in ipairs(self.manifest.order) do Routes.find(self.routes, entry) end
+	self.services = options.services or {}
+	self.pages = {}
+	-- The store's seed is `Store.lua` beside app.xml, a function returning the
+	-- tables the models read; each launch binds a fresh store from it.
+	local store = options.store
+	if store == nil then store = App.optional(self.module .. ".Store") end
+	if type(store) == "function" then store = store() end
+	if store then self.store = Model.bind(store) end
 	local resources = xml.source(self.dir .. "/resources.xml")
 	self.resources = resources and Resources.fromNodes(xml.parse(resources)) or nil
 	return self
 end
 
-function Launcher:context(page)
-	return { page = page, graph = self.graph, ns = ns,
-		viewsDir = self.dir .. "/views/", resources = self.resources, app = self }
+-- The page `id` built from its route, the first time it is asked for.
+function Launcher:request(id)
+	local entry = self.manifest.pages[id]
+	if not entry then error("no page " .. tostring(id), 0) end
+	if not self.pages[id] then self.pages[id] = Routes.page(Routes.find(self.routes, entry), entry, self.services, self.module) end
+	return self.pages[id]
 end
 
 -- Shows page `id` in the content area, disposing the previous one.
 function Launcher:show(id)
-	local page = self.manifest.pages[id]
-	if not page then error("no page " .. tostring(id), 0) end
+	local entry = self.manifest.pages[id]
+	if not entry then error("no page " .. tostring(id), 0) end
 	if self.page then self.page:dispose() end
-	local context = self:context(page)
-	if page.controller then
-		local class = require(self.module .. ".controllers." .. page.controller)
-		context.generic = PageController.new(context)
-		self.page = class.new(context)
-	else
-		self.page = PageController.new(context)
-	end
+	self.page = PageController.new({ page = entry, request = self:request(id), ns = ns,
+		viewsDir = self.dir .. "/views/", resources = self.resources, store = self.store })
 	self.refs = self.page:mount(self.content)
 	self.current = id
 	self:select(id)
