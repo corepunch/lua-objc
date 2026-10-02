@@ -203,5 +203,21 @@ rejects('<TextField text="$summary" />', "not writable", "two-way needs writable
 rejects('<Toggle label="x" isOn="$locked" />', "not writable", "two-way needs writable on a Bool")
 rejects('<TextField text="$lead.name" />', "not writable", "writable is per field")
 
+-- Performance: projecting and binding 10,000 rows stays well inside a frame
+-- budget per thousand rows, and scrolling them still runs no Lua
+-- (tests/table_cell_template.test.lua).
+local big = newModel()
+big.rows = {}
+for index = 1, 10000 do
+	table.insert(big.rows, { name = "Row " .. index, bytes = index * 1000, relative = (index % 100) / 100, markable = true,
+		mark = function() end })
+end
+local _, _, bigBinder = render('<List id="rows" items="$rows" style="fullWidth" header="false" rowHeight="40" height="200"><Column id="name" /></List>', big)
+local started = os.clock()
+bigBinder:update()
+local elapsed = os.clock() - started
+t.expect(#bigBinder.record.rows == 10000, "10,000 rows project")
+t.expect(elapsed < 5, string.format("projecting and binding 10,000 rows takes %.2fs", elapsed))
+
 for name, original in pairs(originals) do ns[name] = original end
 os.exit(t.summary() and 0 or 1)

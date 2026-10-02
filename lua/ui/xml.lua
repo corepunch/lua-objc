@@ -554,7 +554,13 @@ end
 -- callback writes through the model's setter.
 local TWO_WAY = {
     Toggle = { isOn = { kind = "bool", apply = function(view, on) view.state = on and 1 or 0 end } },
-    TextField = { text = { kind = "string", apply = function(view, text) view.text = text end } },
+    -- A field being edited keeps its caret: it is set only when it differs.
+    TextField = { text = { kind = "string", apply = function(view, text)
+        if view.stringValue ~= text then view.stringValue = text end
+    end } },
+    SearchField = { text = { kind = "string", apply = function(view, text)
+        if view.stringValue ~= text then view.stringValue = text end
+    end } },
     Picker = { selection = { kind = "number", apply = function(view, index)
         if view.selectedSegment ~= nil then view.selectedSegment = index else view:selectIndex(index) end
     end } },

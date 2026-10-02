@@ -63,7 +63,7 @@ function Launcher.create(path, options)
 		error("--page=" .. startup .. ": the manifest of " .. self.manifest.name .. " has no such page", 0)
 	end
 	self.startup = startup
-	self.schemas = Schema.directory(self.dir .. "/schemas", read, xml.parse)
+	self.schemas = Schema.app(self.dir .. "/schemas")
 	local classes = {}
 	for id, class in pairs(self.manifest.models) do
 		classes[id] = function() return require(self.module .. "." .. class) end

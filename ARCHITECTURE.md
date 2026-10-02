@@ -422,7 +422,8 @@ the root `Controller.lua` alone may create `ns.Window`). Pre-existing violations
 are listed in the test and the list may only shrink.
 
 `init.lua` never self-starts. It returns the class; the framework calls
-`class.new():createWindow()`. No module-level function controllers, no loose
+`class.new():createWindow()`. A manifest app instead returns the path of its
+`app.xml` and the framework builds that class (`lua/data/app.lua`). No module-level function controllers, no loose
 table hierarchies. Flat `apps/<appname>.lua` shims are forbidden.
 
 Larger apps follow Laravel/PHP-style composition: focused domain models own
@@ -436,22 +437,36 @@ UI gaps belong in the framework. When native controls or layout do not meet
 the SwiftUI-style contract, improve the shared implementation and its tests
 instead of adding app-specific positioning or substitute controls.
 
-#### State invalidation contract
+#### Data-driven apps and the state contract
 
-Application state is ordinary Lua data held by a controller or model. It does
-not subscribe to property reads and it does not invalidate views automatically.
-Controllers explicitly choose when to update the interface after an action or
-model mutation. This is observation-shaped state management, not a port of
-Combine or Swift Observation.
+An app may be described as data instead of written as controllers
+([docs/data-driven.md](docs/data-driven.md)): an `app.xml` manifest names its
+models, sections and pages; `schemas/*.xml` declare the fields views may bind
+to; `resources.xml` holds constants; views bind with `$field`, `@name`,
+`action="$command"` and two-way `isOn`/`text`/`selection`. The framework's
+generic page controller (`lua/data/pagecontroller.lua`) and binder
+(`lua/data/binder.lua`) sit between them, so a page that only copies model
+values into views needs no controller class. A class is written only for
+coordination (sheets, confirmation, multi-step flows).
 
-Use the narrowest update available: mutate a retained view ref for a local
-change, refresh a native collection for row changes, or call the controller's
-full render path when the view structure changes. A full render reconstructs
-the window's view tree; calling it for each text-field keystroke can make input
-laggy and discard native control state. Buffer edits in the controller/model
-when the UI need not react immediately, or update the specific retained ref.
+State is ordinary Lua data. It does not subscribe to property reads and it
+does not invalidate views automatically; propagation stays explicit and
+follows the model graph (`lua/data/model.lua`). A model declares what it needs
+in its own file; the graph builds a page's models transitively, in order
+(a cycle is a startup error). When a model changes — `graph:changed(id)`, which
+commands and accepted writes call — the graph marks it and everything built
+that depends on it stale, calls `invalidate` on the dependents, and rebinds the
+pages bound to stale models. This is WPF's `PropertyChanged` with an empty
+property name (“rebind everything on this context”), not per-property
+observation. Animation remains the caller's choice (`ns.withAnimation`).
+
+Hand-written controllers (the apps not yet on a manifest) still choose when to
+update: mutate a retained view ref for a local change, refresh a native
+collection for row changes, or call the full render path when structure
+changes. A full render reconstructs the window's view tree; calling it for each
+text-field keystroke can make input laggy and discard native control state.
 Invalidate after a meaningful user action, completed async result, or
-structural state change. Do not invalidate from scroll or animation callbacks.
+structural state change; never from scroll or animation callbacks.
 
 The IDE example is organized as:
 

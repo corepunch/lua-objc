@@ -141,3 +141,10 @@ views:
 - Keep geometry in plain functions on the module and test them headlessly,
   as `tests/components.test.lua` does for the bundled set.
 - Reusable structure with no attributes of its own can stay a `partial()`.
+
+## Resources in components
+
+A component's template may use the app's resources (`width="@symbolColumn"`);
+they resolve after the component expands. A `<Resources>` element inside a
+component scopes to its parent element, as in any template. See
+[data-driven.md](data-driven.md#resources).
