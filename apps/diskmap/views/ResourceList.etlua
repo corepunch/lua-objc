@@ -21,7 +21,7 @@
   <% elseif detailColumn then %>
   <% -- A detail ("main · 4 uncommitted changes") wraps onto a second line before it truncates. %>
   <Column id="detail" title="Detail" width="<%= COLUMNS.detail %>" minWidth="<%= COLUMNS.detail %>">
-    <Label text="{detail}" lines="2" truncation="tail" />
+    <Label text="$detail" lines="2" truncation="tail" />
   </Column>
   <% end %>
   <Column id="size" title="On disk" width="<%= COLUMNS.share %>" minWidth="<%= COLUMNS.share %>">

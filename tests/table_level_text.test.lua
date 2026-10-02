@@ -82,8 +82,10 @@ t.expect(done.spinner.hidden, "a measured row drops the spinner")
 t.assertEqual(done.value.text, "2.0 GB", "the value shows the size")
 t.assertEqual(done.share.text, "3%", "the share shows beside it")
 
--- VoiceOver reads the bar as its column's title, the size and the share.
-t.assertEqual(done.bar.accessibilityLabel, "Size: 2.0 GB 3%", "the bar's label is its column's title, size and share")
+-- VoiceOver reads the bar as its column's title; the size and the share are
+-- labels beside it. (A composed "Size: 2.0 GB 3%" returns as a schema field
+-- with `format` once schemas land: views have no interpolation.)
+t.assertEqual(done.bar.accessibilityLabel, "Size", "the bar's label is its column's title")
 t.assertEqual(done.cell.textField.text, "2.0 GB", "the cell's text is its size")
 
 os.exit(t.summary() and 0 or 1)

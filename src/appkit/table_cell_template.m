@@ -3,7 +3,7 @@
 /* SwiftUI `TableColumn { row in ... }`, WPF's DataTemplate: a column's child
  * XML is built once per reusable cell, by the framework's own constructors,
  * and laid out by the framework's own layout engine. Attributes written
- * `{field}` are row bindings. Lua builds a cell's views and lists its
+ * `$field` are row bindings. Lua builds a cell's views and lists its
  * bindings when AppKit has no cell to reuse; after that the bindings are
  * applied here, through KVC, each time the cell is given a row. Scrolling
  * never enters Lua. */
@@ -19,8 +19,8 @@ typedef NS_ENUM(NSInteger, LuaCellBindingKind) {
 @property(nonatomic, strong) NSView *view;
 @property(nonatomic, copy) NSString *key;
 @property(nonatomic) LuaCellBindingKind kind;
-// Literal strings and @{@"field": name} references, in order.
-@property(nonatomic, copy) NSArray *parts;
+// The row field path, one key per level: `$size.color` is @[@"size", @"color"].
+@property(nonatomic, copy) NSArray<NSString *> *path;
 @property(nonatomic) BOOL negate;
 // What the view was built with; a row without the field returns to it.
 @property(nonatomic, strong) id fallback;
@@ -37,23 +37,19 @@ static BOOL cell_binding_truthy(id value) {
 	return YES;
 }
 
-static id cell_binding_field(NSDictionary *row, id part) {
-	id value = row[part[@"field"]];
+/* A path reaches into nested fields; a level that is not a dictionary ends
+ * it with nothing, as a missing field. */
+static id cell_binding_field(NSDictionary *row, NSArray<NSString *> *path) {
+	id value = row;
+	for (NSString *key in path) {
+		if (![value isKindOfClass:NSDictionary.class]) return nil;
+		value = value[key];
+	}
 	return value == NSNull.null ? nil : value;
 }
 
 static id cell_binding_value(LuaCellBinding *binding, NSDictionary *row) {
-	NSArray *parts = binding.parts;
-	BOOL whole = parts.count == 1 && [parts[0] isKindOfClass:NSDictionary.class];
-	if (!whole) {
-		NSMutableString *text = [NSMutableString string];
-		for (id part in parts) {
-			if ([part isKindOfClass:NSString.class]) [text appendString:part];
-			else [text appendString:[cell_binding_field(row, part) description] ?: @""];
-		}
-		return text;
-	}
-	id value = cell_binding_field(row, parts[0]);
+	id value = cell_binding_field(row, binding.path);
 	if (binding.kind == LuaCellBindingBool)
 		return @(cell_binding_truthy(value) != binding.negate);
 	if (!value) return binding.fallback;
@@ -166,8 +162,8 @@ static LuaCellBinding *template_cell_binding(lua_State *L, int idx) {
 	binding.kind = kind.integerValue;
 	lua_getfield(L, idx, "negate");
 	binding.negate = lua_toboolean(L, -1);
-	lua_getfield(L, idx, "parts");
-	binding.parts = lua_to_objc_value(L, -1);
+	lua_getfield(L, idx, "path");
+	binding.path = lua_to_objc_value(L, -1);
 	lua_pop(L, 5);
 	@try {
 		binding.fallback = [binding.view valueForKey:binding.key];

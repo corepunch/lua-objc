@@ -60,7 +60,7 @@ function Preview:render(files, entry)
 		if name == "UIKitNative" or name == "AppKitNative" then return reader end
 		if loaded[name] ~= nil then return loaded[name] end
 		local source, path
-		if name == "ui.xml" or name == "ui.component" or name == "ui.template" then
+		if name == "ui.xml" or name == "ui.component" or name == "ui.template" or name == "ui.resources" then
 			path = "lua/" .. name:gsub("%.", "/") .. ".lua"; source = self.readFramework(path)
 		elseif name == "etlua" then
 			path = "lua/vendor/etlua/etlua.lua"; source = self.readFramework(path)

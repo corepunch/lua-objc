@@ -479,7 +479,19 @@ Templates live in `<app-root>/<app>/views/*.etlua`. The renderer:
 
 - Applies etlua (`lua/vendor/etlua`, git submodule) to the XML source first,
   substituting `<%= expr %>` and `<% stmt %>` blocks.
+  Templates render in a sandbox (`renderTemplate`): the template data, the
+  injected helpers (`partial`, `extends`...) and the pure functions `string`,
+  `table`, `math`, `utf8`, `ipairs`, `pairs`, `tostring`, `tonumber`, `type`,
+  `select`, `next`, `pcall`, `assert`, `error` and `unpack`. `io`, `os`,
+  `require`, `load` and `debug` do not exist, so a view cannot open a file or
+  a socket.
 - Parses the resulting XML with a pure-Lua SAX-style parser.
+- Resolves `@name` resources (`lua/ui/resources.lua`) before components expand:
+  `<Resources>` holds `Number`, `String`, `Bool` and `Color` constants; an app
+  passes its `resources.xml` (`xml.loadResources(path)`) as `data.resources`,
+  and a `<Resources>` child scopes to its parent element's attributes and
+  subtree. `@name` is static, resolved once; `$field` is live row data in a
+  `<Column>` cell template.
 - Maps each tag to an `ns.*` call via a registry table. The platform module
   (`ns`) is injected by the caller — `<Label>` becomes `ns.Text` on AppKit
   and `ns.Label` (→ UILabel) on UIKit. No conditionals in the template.

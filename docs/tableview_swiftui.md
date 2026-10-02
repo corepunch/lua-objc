@@ -176,12 +176,12 @@ the text cell that shows `row[id]`.
   <Column id="usage" title="Used" width="220">
     <VStack spacing="3">
       <HStack maxWidth="infinity">
-        <Label text="{used}" truncation="tail" />
+        <Label text="$used" truncation="tail" />
         <Spacer />
-        <Label text="{share}" color="secondary" fixedSize="horizontal" />
+        <Label text="$share" color="secondary" fixedSize="horizontal" />
       </HStack>
-      <Gauge value="{fraction}" tint="{color}" disabled="{!fraction}"
-             accessibilityLabel="Used space on {name}" maxWidth="infinity" />
+      <Gauge value="$fraction" tint="$color" enabled="$fraction"
+             accessibilityLabel="$accessibility" maxWidth="infinity" />
     </VStack>
   </Column>
 </List>
@@ -190,32 +190,40 @@ the text cell that shows `row[id]`.
 ### Row bindings
 
 etlua expressions (`<%= %>`) run once, when the screen renders. An attribute
-written in braces is resolved for each row instead:
+written `$field` is resolved for each row instead:
 
 | Form | Meaning |
 |---|---|
-| `{field}` as the whole value | The row's value, typed: a `Gauge` value stays a number, a colour is a semantic colour name |
-| `"Used {a} of {b}"` | Text interpolation; a missing field reads as empty |
-| `{!field}` | For true/false attributes: true when the field is missing, `false` or `""`. Zero is a value |
-| `{{` | A literal brace |
+| `$field` | The row's value, typed: a `Gauge` value stays a number, a colour is a semantic colour name |
+| `$size.color` | A path into a nested field; a missing level is a missing field |
+| `$$` | A literal dollar sign (`text="$$3.9k"`) |
 
-There are no expressions. A value derived from several fields is a row field
-the model prepares, as in any MVC view. A row without the field returns the
-attribute to the value the view was built with, so a reused cell never shows
-its previous row.
+An attribute is a literal or exactly one `$path`. There is no interpolation,
+negation or expression: a composed string (`"3 of 4 GB"`, an accessibility
+label) is a row field the model prepares, and a condition is a field with an
+attribute pair:
+
+| Bind | Meaning |
+|---|---|
+| `hidden="$f"` / `visible="$f"` | Hidden when `f` is present / when it is missing |
+| `disabled="$f"` / `enabled="$f"` | Disabled when `f` is present / when it is missing |
+
+Present means not missing, `false` or `""`. Zero is a value. A row without
+the field returns the attribute to the value the view was built with, so a
+reused cell never shows its previous row.
 
 Bindable attributes:
 
 | Tag | Attributes |
 |---|---|
-| any view | `hidden`, `opacity`, `disabled`, `help`, `accessibilityLabel` |
+| any view | `hidden`, `visible`, `opacity`, `disabled`, `enabled`, `help`, `accessibilityLabel` |
 | `Label` | `text`, `color` |
 | `SystemImage` | `name`, `color`, `badgeColor`, `appIcon` |
 | `Gauge` | `value`, `tint` |
 | `ProgressView` | `value` |
 
-Binding any other attribute, interpolating into a number or colour, or
-writing an expression fails when the screen renders. To make an attribute
+Binding any other attribute, writing a `$` that is not one whole `$path` or
+`$$`, or an expression fails when the screen renders. To make an attribute
 bindable, add it to `TAG_BINDINGS` in `lua/ui/xml.lua` with the native
 property it sets and its kind (`string`, `number`, `bool`, `color`); if the
 native class has no such property, add a semantic accessor to the exported
