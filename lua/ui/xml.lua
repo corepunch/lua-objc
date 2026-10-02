@@ -539,6 +539,10 @@ local TAG_BINDINGS = {
 
 -- The bindings of the cell being compiled; nil outside a cell template.
 local cellBindings
+-- The page's binder (lua/data/binder.lua) while a page template renders with
+-- `data.binder`, and the data context its bindings resolve against: a schema
+-- and the path of the record it describes (`context="$lead"` narrows both).
+local pageBinder, bindScope
 
 -- Reads an attribute value: returns the literal text (with `$$` unescaped)
 -- or, for a binding, nil and the field path.
@@ -561,21 +565,102 @@ local function parseBinding(value)
     return (value:gsub("%$%$", "$"))
 end
 
+-- Controls whose value is edited by the person: the attribute binds two-way,
+-- the native property is set from the model, and the control's change
+-- callback writes through the model's setter.
+local TWO_WAY = {
+    Toggle = { isOn = { kind = "bool", apply = function(view, on) view.state = on and 1 or 0 end } },
+    TextField = { text = { kind = "string", apply = function(view, text) view.text = text end } },
+    Picker = { selection = { kind = "number", apply = function(view, index)
+        if view.selectedSegment ~= nil then view.selectedSegment = index else view:selectIndex(index) end
+    end } },
+}
+
+local function describe(node, key)
+    return "<" .. node.tag .. "> " .. key
+end
+
+-- Resolves `path` against the data context. Without a schema (a cell of a
+-- plain `data=` list) the path is read as written.
+local function scoped(scope, path, kind, node, key)
+    if not (scope and scope.schema) then return path end
+    local ok, resolved, field, schema = pcall(scope.schema.resolve, scope.schema, path, kind)
+    if not ok then error("xml: " .. describe(node, key) .. ": " .. tostring(resolved), 0) end
+    local full = {}
+    for _, segment in ipairs(scope.prefix) do table.insert(full, segment) end
+    for _, segment in ipairs(resolved) do table.insert(full, segment) end
+    return full, field, schema, resolved
+end
+
+local function bindingEntry(node, key, path, scope, page)
+    local twoWay = page and (TWO_WAY[node.tag] or {})[key]
+    if twoWay then
+        local full, field, _, resolved = scoped(scope, path, "field", node, key)
+        if not field.writable then
+            error("xml: " .. describe(node, key) .. " binds $" .. table.concat(path, ".") ..
+                " two-way, but " .. field.id .. " is not writable=\"true\" in its schema", 0)
+        end
+        if field.attrs.format or #path ~= #resolved or resolved[#resolved]:find(".", 1, true) then
+            error("xml: " .. describe(node, key) .. " must bind the field itself, not a part of it", 0)
+        end
+        local prefix = {}
+        for index = 1, #full - 1 do table.insert(prefix, full[index]) end
+        local read = { table.unpack(full) }
+        if twoWay.kind == "number" then read[#read] = field.id .. ".value" end
+        return { kind = twoWay.kind, apply = twoWay.apply, path = read, write = { prefix = prefix, id = field.id } }
+    end
+    if page and node.tag == "List" and key == "items" then
+        local full, field, schema, resolved = scoped(scope, path, "rows", node, key)
+        if field.type ~= "List" then
+            error("xml: <List> items binds $" .. table.concat(path, ".") .. ", which is a " .. field.type ..
+                " field; items needs a <List> field", 0)
+        end
+        return { kind = "rows", path = full, key = "rows", rows = schema:related(field),
+            apply = function(view, rows) view:replaceRows(rows) end }
+    end
+    local spec = (TAG_BINDINGS[node.tag] or {})[key] or ANY_BINDINGS[key]
+    if not spec then
+        error("xml: <" .. node.tag .. "> cannot bind " .. key .. " to a field")
+    end
+    local full = scoped(scope, path, spec[2], node, key)
+    return { key = spec[1], kind = spec[2], path = full, negate = spec.inverted == true, outer = spec.outer }
+end
+
 -- Splits a template node's attributes into the static ones its constructor
--- takes and the bindings applied per row.
-local function splitBindings(node)
+-- takes and the bindings applied to its views: per row in a cell, by the
+-- page's binder otherwise.
+local function splitBindings(node, scope, page)
     local attrs, bound = {}, {}
     for key, value in pairs(node.attrs) do
         if type(value) == "string" then
             local literal, path = parseBinding(value)
             if path then
-                local spec = (TAG_BINDINGS[node.tag] or {})[key] or ANY_BINDINGS[key]
-                if not spec then
-                    error("xml: <" .. node.tag .. "> cannot bind " .. key .. " to a row field")
+                if page and key == "context" then
+                    -- Narrows the data context; compile reads it.
+                elseif page and key == "action" then
+                    local full, field = scoped(scope, path, "command", node, key)
+                    if field.type ~= "Command" then
+                        error("xml: " .. describe(node, key) .. " binds $" .. table.concat(path, ".") ..
+                            ", which is a " .. field.type .. " field, not a command", 0)
+                    end
+                    local prefix = {}
+                    for index = 1, #full - 1 do table.insert(prefix, full[index]) end
+                    table.insert(bound, { command = field.id, prefix = prefix, path = full })
+                else
+                    local entry = bindingEntry(node, key, path, scope, page)
+                    if not page and (entry.write or entry.rows) then
+                        error("xml: " .. describe(node, key) .. " binds the page, not a row", 0)
+                    end
+                    table.insert(bound, entry)
                 end
-                table.insert(bound, { key = spec[1], kind = spec[2], path = path,
-                    negate = spec.inverted == true, outer = spec.outer })
             else
+                if page and key == "action" and scope and scope.schema then
+                    local field = scope.schema.byId[literal]
+                    if field and field.type == "Command" then
+                        error("xml: " .. describe(node, key) .. "=\"" .. literal ..
+                            "\" is a literal; bind the command with action=\"$" .. literal .. "\"", 0)
+                    end
+                end
                 attrs[key] = literal
             end
         else
@@ -590,6 +675,8 @@ local compile
 -- The factory the platform calls when it has no cell to reuse. Returns the
 -- template's root view and its bindings.
 local function columnTemplate(node, ns, registry)
+    -- The row schema the enclosing <List items="$rows"> gave its columns.
+    local rowScope = bindScope
     local roots = {}
     for _, child in ipairs(node.children) do
         if child.kind == "element" then table.insert(roots, child) end
@@ -601,17 +688,18 @@ local function columnTemplate(node, ns, registry)
     -- Mistakes in a binding fail the render, not the first scroll.
     local function validate(element)
         if element.kind ~= "element" then return end
-        splitBindings(element)
+        splitBindings(element, rowScope, false)
         for _, child in ipairs(element.children) do validate(child) end
     end
     validate(roots[1])
     local templateData = renderData
     return function()
-        local previousData, previousTracking, previousBindings = renderData, tracking, cellBindings
-        renderData, tracking, cellBindings = templateData, false, {}
+        local previousData, previousTracking, previousBindings, previousScope =
+            renderData, tracking, cellBindings, bindScope
+        renderData, tracking, cellBindings, bindScope = templateData, false, {}, rowScope
         local ok, views = pcall(compile, roots, ns, registry, {})
         local bindings = cellBindings
-        renderData, tracking, cellBindings = previousData, previousTracking, previousBindings
+        renderData, tracking, cellBindings, bindScope = previousData, previousTracking, previousBindings, previousScope
         if not ok then error(views, 0) end
         if type(views[1]) ~= "userdata" then
             error("xml: <Column> content must render one native view")
@@ -636,8 +724,56 @@ compile = function(nodes, ns, registry, refs)
 			local lazy = node.tag == "LazyVStack" or node.tag == "LazyVGrid"
 			local templated = node.tag == "Column"
 			local attrs, bound = node.attrs, nil
-			if cellBindings then attrs, bound = splitBindings(node) end
+			local binder = pageBinder
+			local page = binder ~= nil and cellBindings == nil
+			local savedScope = bindScope
+			local outerScope = savedScope
+			local childScope = outerScope
+			if page and node.attrs.context then
+				-- WPF's DataContext: this element and its subtree bind to a record field.
+				local _, path = parseBinding(node.attrs.context)
+				if not path then error("xml: <" .. node.tag .. "> context must be one $path") end
+				local full, field, schema = scoped(outerScope, path, "record", node, "context")
+				if field.type ~= "Record" then
+					error("xml: <" .. node.tag .. "> context binds $" .. table.concat(path, ".") ..
+						", which is a " .. field.type .. " field; context needs a <Record> field", 0)
+				end
+				outerScope = { schema = schema:related(field), prefix = full }
+				childScope = outerScope
+			end
+			if cellBindings or page then
+				bindScope = outerScope
+				attrs, bound = splitBindings(node, outerScope, page)
+				bindScope = childScope
+				for _, binding in ipairs(bound) do
+					if binding.rows then childScope = { schema = binding.rows, prefix = {} } end
+				end
+			end
+			local overlay
+			if page then
+				for _, binding in ipairs(bound) do
+					if binding.command then
+						overlay = overlay or {}
+						local name = "$command:" .. binding.command
+						overlay[name] = function() binder:invoke(binding.prefix, binding.command) end
+						attrs.action = name
+						table.insert(bound, { key = "enabled", kind = "bool", path = (function()
+							local path = { table.unpack(binding.prefix) }
+							table.insert(path, binding.command .. ".enabled")
+							return path
+						end)() })
+					elseif binding.write then
+						overlay = overlay or {}
+						local name = "$write:" .. binding.write.id
+						overlay[name] = function(value)
+							binder:write(binding.write.prefix, binding.write.id, value)
+						end
+						attrs.onChange = name
+					end
+				end
+			end
 			local children
+			bindScope = childScope
 			if templated then
 				-- Absent for a text column; Column.collect takes the factory.
 				children = { template = columnTemplate(node, ns, registry) }
@@ -676,12 +812,28 @@ compile = function(nodes, ns, registry, refs)
 				end
 			end
 			local view
+			local construct = handler
+			if overlay then
+				-- The page's own actions (commands, write-backs) sit beside the
+				-- controller's, visible to this node's constructor only.
+				construct = function(...)
+					local previous = renderData
+					renderData = setmetatable({ actions = setmetatable(overlay,
+						{ __index = previous and previous.actions }) }, { __index = previous })
+					local ok, built = pcall(handler, ...)
+					renderData = previous
+					if not ok then error(built, 0) end
+					return built
+				end
+			end
 			if nodeScope then
 				if not children then children = ns.Scope.withScope(nodeScope, compile, node.children, ns, registry, refs) end
-				view = ns.Scope.withScope(nodeScope, handler, ns, attrs, children)
+				bindScope = savedScope
+				view = ns.Scope.withScope(nodeScope, construct, ns, attrs, children)
 			else
 				if not children then children = compile(node.children, ns, registry, refs) end
-				view = handler(ns, attrs, children)
+				bindScope = savedScope
+				view = construct(ns, attrs, children)
 			end
 			applyMotion(view, paddedLeaves[view] or view, attrs, ns)
 			-- SwiftUI's `.accessibilityLabel` applies to any view: tags whose
@@ -694,12 +846,14 @@ compile = function(nodes, ns, registry, refs)
 			end
 			if bound and #bound > 0 then
 				if type(view) ~= "userdata" then
-					error("xml: <" .. node.tag .. "> cannot bind row fields; it renders no view")
+					error("xml: <" .. node.tag .. "> cannot bind fields; it renders no view")
 				end
 				for _, binding in ipairs(bound) do
-					binding.view = binding.outer and view or paddedLeaves[view] or view
-					binding.outer = nil
-					table.insert(cellBindings, binding)
+					if not binding.command and not (page and binding.write and false) then
+						binding.view = binding.outer and view or paddedLeaves[view] or view
+						binding.outer = nil
+						if page then binder:add(binding) else table.insert(cellBindings, binding) end
+					end
 				end
 			end
 			if view then
@@ -1185,7 +1339,7 @@ local TAG_SCHEMA = {
         constructor = "Toggle",
         positional  = { "label", default = "" },
         props = {
-            value = { prop = "is_on", aliases = { "checked" }, type = "bool", default = false },
+            value = { prop = "is_on", aliases = { "checked", "isOn" }, type = "bool", default = false },
 			disabled = "bool",
 			style = "str",
 			tint = "str",
@@ -1367,7 +1521,7 @@ local TAG_SCHEMA = {
     Picker = {
         constructor = "Picker",
         props = {
-            value = "num",
+            value = { aliases = { "selection" }, type = "num" },
 			style = "str",
 			disabled = "bool",
         },
@@ -2255,12 +2409,14 @@ end
 function M.renderDescription(description, ns)
     ns = ns or require("ns")
     local refs = {}
-    local previous = renderData
+    local previous, previousBinder, previousScope = renderData, pageBinder, bindScope
     renderData = description.data
+    pageBinder = description.data and description.data.binder
+    bindScope = pageBinder and { schema = pageBinder.schema, prefix = {} } or nil
     local ok, views = pcall(function()
         return compile(expandComponents(parseXML(description.source), description), ns, registry, refs)
     end)
-    renderData = previous
+    renderData, pageBinder, bindScope = previous, previousBinder, previousScope
     if not ok then error(views) end
 
     -- Window root: return (configTable, refs) — caller passes config to ns.Window

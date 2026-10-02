@@ -320,6 +320,7 @@ static void bridge_set_optional_callback(
 #include "shared/arc_path.m"
 #include "appkit/arc.m"
 #include "shared/notifications.m"
+#include "shared/formatters.m"
 #include "appkit/toolbar.m"
 #include "appkit/presentation.m"
 #include "appkit/text_field.m"
@@ -413,6 +414,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_segmentedPicker", bridge_AppKitControls_segmentedPicker},
 	LUA_OBJC_MOTION_FUNCTIONS
 	LUA_OBJC_NOTIFICATION_FUNCTIONS
+	LUA_OBJC_FORMATTER_FUNCTIONS
 	{"_pointerView", bridge_pointer_view},
 	{"_pointerSend", bridge_pointer_send},
 	{"_treemap", bridge_treemap},

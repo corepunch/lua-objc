@@ -161,6 +161,7 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #include "runtime.m"
 #include "../shared/motion.m"
 #include "../shared/notifications.m"
+#include "../shared/formatters.m"
 #include "../shared/flow_layout.m"
 #include "layout.m"
 
@@ -273,6 +274,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_hasLayoutAxis", bridge_has_layout_axis},
 	LUA_OBJC_MOTION_FUNCTIONS
 	LUA_OBJC_NOTIFICATION_FUNCTIONS
+	LUA_OBJC_FORMATTER_FUNCTIONS
 	{"_separator", bridge_UIKitControls_separator},
 	{"_progressIndicator", bridge_UIKitControls_progressIndicator},
 	{"_progressView", bridge_UIKitControls_progressView},
