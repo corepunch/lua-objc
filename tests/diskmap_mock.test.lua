@@ -1,8 +1,9 @@
 _G.__headless = true
+local SimulatorService = require("apps.diskmap.services.Simulators")
 local t = require("TestKit")
 local Provider = require("apps.diskmap.services.Provider")
 local Mock = require("apps.diskmap.services.Mock")
-local Simulators = require("apps.diskmap.models.Simulators")
+local Simulators = require("apps.diskmap.helpers.Simulators")
 
 local home = "/Users/mock-diskmap"
 local args = {[0] = "apps/diskmap/init.lua", [1] = "--mock"}
@@ -74,7 +75,7 @@ fresh.command({"/usr/bin/xcrun", "simctl", "list", "--json"}, function(ok, outpu
 t.expect(listOK, "simulator inventory is provided from Mock HDD data")
 local simulators = fresh.decode(simulatorJSON)
 t.assertEqual(simulators.devices["com.apple.CoreSimulator.SimRuntime.iOS-26-0"][1].dataPathSize, 8800000000, "simulator sizes come from virtual entries")
-local discovered = Simulators.discover(fresh, home)
+local discovered = SimulatorService.discover(fresh, home)
 local discoveredRows = Simulators.rows(discovered)
 t.assertEqual(#discoveredRows, 6, "mock review lists simulator folders without calling simctl")
 t.assertEqual(discoveredRows[1].name, "iPhone 17 Pro", "bundled simulator metadata supplies the device name")
@@ -122,7 +123,7 @@ t.assertEqual(app.model.measurements["mock-video-studio"].bytes, 3400000000, "di
 t.assertEqual(app.model.measurements.simulators.bytes, 22100000000, "simulator allocation is measured without simctl")
 local runtimeList
 app.service.simulatorRuntimes(function(value) runtimeList = value end)
-local Simulators = require("apps.diskmap.models.Simulators")
+local Simulators = require("apps.diskmap.helpers.Simulators")
 local runtimes = Simulators.runtimeRows(runtimeList, {})
 t.assertEqual(#runtimes, 3, "the mock lists installed simulator runtimes")
 local deletedBytes, freeBefore = runtimes[1].bytes, app.service.diskSpace().freeKb

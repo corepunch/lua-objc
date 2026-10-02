@@ -1,10 +1,9 @@
 local Locations = require("apps.diskmap.models.Locations")
 local Model = require("data.model")
-local Categories = require("apps.diskmap.helpers.Categories")
-local Inspector = require("apps.diskmap.helpers.Inspector")
 local Manage = require("apps.diskmap.flows.Manage")
 local Selection = require("apps.diskmap.helpers.Selection")
 local SheetRoute = require("apps.diskmap.pages.SheetRoute")
+local Categories = require("apps.diskmap.models.Categories")
 
 -- A category's list of locations, as a sheet over the window: one list per
 -- impact tab, searchable and sortable, with the selected location's
@@ -61,7 +60,7 @@ function ManagementSheet:data()
 	local resources, scanning = Model.db.resources, self.app.scanning()
 	local lists, tabRows, loading = {}, {}, {}
 	for index, filter in ipairs(self.filters) do
-		local rows = scanning and {} or sortRows(Categories.managementRows(self.rootId, self.query, filter),
+		local rows = scanning and {} or sortRows(Categories:managementRows(self.rootId, self.query, filter),
 			self.sortColumn, self.sortAscending)
 		lists["rows" .. index], tabRows[filter], loading["rows" .. index] = rows, rows, scanning
 	end
@@ -77,10 +76,10 @@ function ManagementSheet:data()
 	local summary = scanning and "Measuring…" or total == 0 and "No matching resources."
 		or total .. (total == 1 and " resource" or " resources")
 	local row = selected and not scanning and Locations:find(selected)
-	local detail = row and Inspector.details(selected)
+	local detail = row and Locations:details(selected)
 	local root = Locations:find(self.rootId)
 	return {
-		title = root and root.name or "Safe reclaim potential", category = Inspector.details(self.rootId),
+		title = root and root.name or "Safe reclaim potential", category = Locations:details(self.rootId),
 		filters = self.filters, manageTitle = detail and detail.manageTitle or "Review",
 		lists = lists, loading = loading,
 		texts = {status = detail and detail.location or (self.snapshotNote and self.snapshotNote .. " · " .. summary or summary),

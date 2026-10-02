@@ -1,8 +1,8 @@
 local Model = require("data.model")
 local Locations = require("apps.diskmap.models.Locations")
 local Format = require("apps.diskmap.helpers.Format")
-local Categories = require("apps.diskmap.helpers.Categories")
 local Constraints = require("apps.diskmap.helpers.Constraints")
+local Categories = require("apps.diskmap.models.Categories")
 
 -- Locations the person watches across launches: a catalog resource (a
 -- category, SDKs, macOS installers) or any folder, the store's `watchlist`
@@ -76,7 +76,7 @@ end
 -- measurements count, so an interrupted scan never looks like shrinkage.
 function Watchlist:sync(time)
 	for _, entry in ipairs(self:select({kind = "resource"})) do
-		local row = Categories.row(entry.id)
+		local row = Categories:row(entry.id)
 		if row and row.status == "complete" and row.bytes then
 			sizes()[entry.key] = {bytes = row.bytes, time = time or os.time()}
 		end
@@ -104,7 +104,7 @@ function Watchlist:rows()
 	for _, entry in ipairs(self:all()) do
 		local key = entry.key
 		local current = sizes()[key] or {}
-		local resource = entry.kind == "resource" and Categories.row(entry.id)
+		local resource = entry.kind == "resource" and Categories:row(entry.id)
 		local row = {key = key, id = "watched:" .. key, kind = entry.kind, resourceId = entry.id,
 			name = entry.name, path = entry.path or (resource and resource.path),
 			icon = resource and resource.icon or "folder.fill", color = resource and resource.color or "systemBlue"}

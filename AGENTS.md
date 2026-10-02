@@ -90,8 +90,13 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   (`Files:find`, `Files:select`), row methods for rows, `constraints` for
   validation (`lua/data/model.lua`). The store is plain Lua data an app binds
   (`Store.lua`); models read the bound store and never take it as an argument.
-  Few models, one per kind of row: pure computation is a helper, IO a service,
-  shared action code a flow (`Flow:extend`, `self:flow(name)`).
+  Few models, one per kind of row; a table computed from other tables is a
+  model too (`source`), as a database view is. Only models read the store:
+  a helper is pure and computes over the rows and values it is given, IO is
+  a service, shared action code a flow (`Flow:extend`, `self:flow(name)`).
+  A store is bound where code enters a window: the page controller for a
+  page's actions, the root controller for its own methods and menu commands,
+  `Model.bound` for a service's callbacks. Nothing else calls `Model.bind`.
 - **Laravel-style MVC.** Models own domain queries, validation, and mutations;
   controllers coordinate model calls, navigation, and callbacks; etlua views
   own presentation. Models never depend on `ns` or native widgets. Inject
@@ -103,13 +108,15 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
     Model.lua      ← a small app's data, queries, mutations
     Controller.lua ← wires model → views, owns actions
     Store.lua      ← the store's seed: the tables the models read
-    models/        ← Lapis models (Model:extend), one per kind of row
+    models/        ← Lapis models (Model:extend), stored or computed; every file is one
     routes.lua     ← the app's pages by route name; may gather pages/*.lua
-    pages/         ← route files (one per sidebar section or large page)
+    pages/         ← route files, one per page or small group; no AppKit
     flows/         ← action code several pages share (Flow:extend)
-    helpers/       ← pure computation and formatting over rows
+    helpers/       ← pure computation and formatting over rows given as arguments:
+                     no store, no model, no service, no file
     services/      ← injected IO and runtime integration
-    controllers/   ← coordination only (sheets, navigation, commands)
+    controllers/   ← coordination only (sheets, navigation, commands); with the
+                     root controller and services, the only code that touches `ns`
     views/         ← etlua templates only, sorted like a web frontend:
       layouts/       app shell (window, sidebar, content frame)
       pages/         one template per screen

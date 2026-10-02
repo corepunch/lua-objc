@@ -1,7 +1,6 @@
 _G.__headless = true
 local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
 local Snapshot = require("apps.diskmap.helpers.Snapshot")
 local SnapshotComparison = require("apps.diskmap.services.SnapshotComparison")
@@ -13,10 +12,10 @@ local root = os.tmpname(); os.remove(root); os.execute("mkdir -p '" .. root .. "
 local snapshotPath = root .. "/previous.bin"
 Scanner.writeSnapshot(snapshotPath, {capacityBytes = 500e9, availableBytes = 100e9, createdAt = 1790000000},
 	{{path = "/Users/test/Library/Developer/Xcode/DerivedData/App/Build", allocatedBytes = 2e9}})
-t.assertEqual(Snapshot.created(snapshotPath), 1790000000, "the snapshot date reads from its header")
-t.assertEqual(Snapshot.created(root .. "/missing.bin"), nil, "a missing snapshot has no date")
+t.assertEqual(SnapshotComparison.created(snapshotPath), 1790000000, "the snapshot date reads from its header")
+t.assertEqual(SnapshotComparison.created(root .. "/missing.bin"), nil, "a missing snapshot has no date")
 local junk = io.open(root .. "/junk.bin", "wb"); junk:write(string.rep("x", 100)); junk:close()
-t.assertEqual(Snapshot.created(root .. "/junk.bin"), nil, "a file that is not a snapshot has no date")
+t.assertEqual(SnapshotComparison.created(root .. "/junk.bin"), nil, "a file that is not a snapshot has no date")
 
 -- Totals and changes per location.
 local model = Store.new("/Users/test")
@@ -27,7 +26,7 @@ local function measure(values)
 	end
 end
 measure({derived = 6e9, simulators = 11e9, downloads = 20e9, ["codex-cache"] = {status = "denied"}})
-local totals = Snapshot:totals()
+local totals = Locations:totals()
 t.assertEqual(totals.derived, 6e9, "measured locations are totalled")
 t.assertEqual(totals["codex-cache"], nil, "denied locations are left out")
 
@@ -38,7 +37,7 @@ t.assertEqual(decoded.createdAt, baseline.createdAt, "the cached baseline keeps 
 t.assertEqual(decoded.totals.simulators, 12e9, "the cached baseline round-trips")
 t.assertEqual(Snapshot.decode("not a baseline"), nil, "an unreadable cache is ignored")
 
-local changes = Snapshot:changes(baseline)
+local changes = Locations:changesSince(baseline)
 t.assertEqual(#changes.rows, 2, "only locations measured on both sides and changed by 50 MB or more are listed")
 t.assertEqual(changes.rows[1].id, "derived", "the largest change comes first")
 t.assertEqual(changes.rows[1].text, "+4.0 GB", "growth is signed")
@@ -50,9 +49,9 @@ t.assertEqual(changes.rows[2].relative, 0.25, "bars compare changes with the lar
 t.expect(changes.rows[1].subtitle:find("Xcode", 1, true) ~= nil, "rows say where the location lives")
 t.assertEqual(changes.since, "Sep 25", "changes name the snapshot date")
 t.expect(changes.detail:find("4.0 GB more", 1, true) and changes.detail:find("1.0 GB freed", 1, true), "the summary totals growth and freed space")
-t.expect(Snapshot:changes(nil) == nil, "no baseline has no changes")
+t.expect(Locations:changesSince(nil) == nil, "no baseline has no changes")
 measure({derived = 2e9})
-local quiet = Snapshot:changes(baseline)
+local quiet = Locations:changesSince(baseline)
 t.assertEqual(#quiet.rows, 0, "an unchanged Mac has no rows")
 t.expect(quiet.detail:find("No location changed", 1, true) ~= nil, "and says so")
 t.assertEqual(Snapshot.overview(quiet), nil, "the overview hides an empty comparison")
@@ -65,7 +64,7 @@ for index, id in ipairs({"derived", "simulators", "downloads", "archives", "devi
 	values[id] = 1e9 + index * 1e8
 end
 measure(values)
-local overview = Snapshot.overview(Snapshot:changes(many))
+local overview = Snapshot.overview(Locations:changesSince(many))
 t.assertEqual(#overview.rows, Snapshot.overviewLimit, "the overview shows the largest changes")
 t.expect(overview.all, "and offers every change when there are more")
 t.assertEqual(overview.since, "the Sep 25 snapshot", "reminders can name the snapshot")
@@ -80,7 +79,7 @@ local function controller(options)
 		measured = measured + 1
 		t.assertEqual(path, snapshotPath, "the saved snapshot is measured")
 		t.assertEqual(live, model, "with the live model's catalog")
-		return {derived = 2e9, simulators = 12e9}, Snapshot.created(path)
+		return {derived = 2e9, simulators = 12e9}, SnapshotComparison.created(path)
 	end
 	options.async = function(fn) fn() end
 	options.changed = function(value) reported = value end
@@ -162,7 +161,7 @@ t.assertEqual(items, #overview.rows, "one item per changed location in a single 
 t.assertEqual(dividers, #overview.rows - 1, "with a vertical separator between neighbours")
 local _, historyRefs = xml.renderFile("apps/diskmap/views/sections/Changes.etlua", {changes = {rows = overview.rows, detail = "Since Sep 20 · 3 scans recorded"}, actions = {}}, ns)
 t.expect(historyRefs.changesSection ~= nil and historyRefs.showAllChanges == nil, "history changes show without Show All")
-local full = Snapshot:changes(many)
+local full = Locations:changesSince(many)
 local _, sheetRefs = xml.renderFile("apps/diskmap/views/sheets/SnapshotChanges.etlua", {title = full.title, detail = full.detail,
 	actions = {done = function() end, rowMenu = function() return {} end, reveal = function() end}}, ns)
 sheetRefs.changes:replaceRows(full.rows)

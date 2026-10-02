@@ -1,11 +1,13 @@
+local Locations = require("apps.diskmap.models.Locations")
+local Categories = require("apps.diskmap.models.Categories")
 local Provider = require("apps.diskmap.services.Provider")
 local Model = require("data.model")
 local Format = require("apps.diskmap.helpers.Format")
 local ListRoute = require("apps.diskmap.pages.ListRoute")
-local Recommendations = require("apps.diskmap.helpers.Recommendations")
 local Updates = require("apps.diskmap.helpers.Updates")
 local VolumeContents = require("apps.diskmap.helpers.VolumeContents")
 local Volumes = require("apps.diskmap.helpers.Volumes")
+local Suggestions = require("apps.diskmap.models.Suggestions")
 
 -- The System pages: Disks & Volumes and Updates & Snapshots.
 local routes = {}
@@ -168,7 +170,7 @@ end
 
 -- The space an update needs comes from Clean Up, with the amount it estimates.
 function UpdatesPage:decision(data)
-	local cleanup = Recommendations.presentation("", self.app.cleanupSources and self.app.cleanupSources() or {})
+	local cleanup = Suggestions:presentation("", self.app.cleanupSources and self.app.cleanupSources() or {})
 	local waiting = data.softwareUpdate.known and #data.softwareUpdate.updates > 0
 	return {id = "decision", icon = "sparkles", color = "systemIndigo",
 		title = waiting and ("Make room for " .. data.softwareUpdate.updates[1].name .. " in Clean Up") or "Free space for the next update in Clean Up",
@@ -181,7 +183,8 @@ function UpdatesPage:data()
 	-- The installers and snapshots are asked for each visit; the page is drawn when both answer.
 	if self.installerFiles == nil or self.snapshotDates == nil then return {computing = "Looking for installers and local snapshots…"} end
 	local disk = self.service.diskSpace and self.service.diskSpace(Model.db.home)
-	local data = Updates.presentation(self.plist, self.snapshotDates, self.installerFiles, disk and disk.freeKb and disk.freeKb * 1024 or nil)
+	local data = Updates.presentation(self.plist, self.snapshotDates, self.installerFiles, disk and disk.freeKb and disk.freeKb * 1024 or nil,
+		{measured = Categories.measured, installers = Locations:installers()})
 	data.decision = self:decision(data)
 	if #data.installers > 0 then data.lists = {installers = self:flow("Rows"):annotate(data.installers, nil, "systemGray")} end
 	return data

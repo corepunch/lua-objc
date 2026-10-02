@@ -2,9 +2,6 @@ local Locations = require("apps.diskmap.models.Locations")
 local ns = require("AppKit")
 local App = require("App")
 local xml = require("ui.xml")
-local Overview = require("apps.diskmap.helpers.Overview")
-local Categories = require("apps.diskmap.helpers.Categories")
-local Recommendations = require("apps.diskmap.helpers.Recommendations")
 local Workflows = require("apps.diskmap.models.Workflows")
 local History = require("apps.diskmap.helpers.History")
 local Format = require("apps.diskmap.helpers.Format")
@@ -16,8 +13,6 @@ local Manage = require("apps.diskmap.flows.Manage")
 local Rows = require("apps.diskmap.flows.Rows")
 local ScanProgress = require("apps.diskmap.controllers.ScanProgressController")
 local NavigationController = require("apps.diskmap.controllers.NavigationController")
-local Files = require("apps.diskmap.models.Files")
-local Help = require("apps.diskmap.helpers.Help")
 local Notifications = require("apps.diskmap.services.Notifications")
 local CommandsController = require("apps.diskmap.controllers.CommandsController")
 local SnapshotComparison = require("apps.diskmap.services.SnapshotComparison")
@@ -28,6 +23,9 @@ local Routes = require("data.routes")
 local SheetController = require("apps.diskmap.controllers.SheetController")
 local Sheets = require("apps.diskmap.pages.Sheets")
 local PageController = require("data.pagecontroller")
+local Scans = require("apps.diskmap.models.Scans")
+local Categories = require("apps.diskmap.models.Categories")
+local Suggestions = require("apps.diskmap.models.Suggestions")
 local Controller = {}; Controller.__index = Controller
 local function render(name, data) return xml.renderFile("apps/diskmap/views/layouts/" .. name .. ".etlua", data or {}, ns) end
 -- Services grow optional features; a provider that lacks one simply does not
@@ -200,7 +198,7 @@ function Controller:state()
 		status = (Provider.offers(self.service, "badge") and (Provider.offers(self.service, "badge") .. " · ") or "") .. (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status}
 end
 function Controller:subtitle()
-	local text = Overview.summary(self.scan.disk, self.capacity).short or ""
+	local text = Scans:summary(self.scan.disk, self.capacity).short or ""
 	local marked = self.review:count()
 	if marked > 0 then text = text .. " · " .. marked .. " marked for cleanup" end
 	return text
@@ -209,15 +207,15 @@ end
 -- already loaded their own inventory.
 function Controller:badges()
 	local badges = {}
-	local summary = Overview.summary(self.scan.disk, self.capacity)
+	local summary = Scans:summary(self.scan.disk, self.capacity)
 	if summary.available then badges.overview = summary.used end
 	-- Clean Up's badge is what it could recover, the number its page leads
 	-- with; every other badge is a total stored.
 	if self.cleanupSources and self.scan.job == nil then
-		local eligible = Recommendations.presentation("", self.cleanupSources()).eligibleBytes
+		local eligible = Suggestions:presentation("", self.cleanupSources()).eligibleBytes
 		if eligible > 0 then badges.cleanup = Format.size(eligible) end
 	end
-	local simulators = Categories.row("simulators")
+	local simulators = Categories:row("simulators")
 	if simulators and simulators.bytes and simulators.bytes > 0 and not simulators.calculating then badges.simulators = simulators.size end
 	-- A workflow's badge is its page's own total, so the sidebar and the page
 	-- header name one number.
@@ -391,9 +389,9 @@ function Controller:scanFinished()
 	if self.settings.history then
 		local load, save = optional(self.service, "loadHistory"), optional(self.service, "saveHistory")
 		if load and save then
-			local entries = History.append(History.decode(load()), History:snapshot())
+			local entries = History.append(History.decode(load()), Categories:snapshot())
 			save(History.encode(entries))
-			self.changes = History:changes(entries, 30, 4)
+			self.changes = Categories:changes(entries, 30, 4)
 			self.notifications:historyRecorded(entries)
 		end
 	else
@@ -495,7 +493,7 @@ function Controller:createWindow()
 	self.capacity = capacity and capacity(self.model.home) or nil
 	if self.settings.history then
 		local load = optional(self.service, "loadHistory")
-		if load then self.changes = History:changes(History.decode(load()), 30, 4) end
+		if load then self.changes = Categories:changes(History.decode(load()), 30, 4) end
 	end
 	local actions = setmetatable({
 		search = function(value) self.query = value or ""; self:updateRows() end,

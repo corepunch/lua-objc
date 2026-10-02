@@ -1,6 +1,3 @@
-local Model = require("data.model")
-local Locations = require("apps.diskmap.models.Locations")
-local Format = require("apps.diskmap.helpers.Format")
 local SystemDetails = {}
 -- Counts local APFS snapshots in `tmutil listlocalsnapshots /` output.
 -- Snapshot lines are stable identity strings; the header line is not one.
@@ -17,39 +14,6 @@ function SystemDetails.parseSnapshotDates(output)
 	end
 	table.sort(dates)
 	return dates
-end
-local function leaves(row, result)
-	if row:isLeaf() then table.insert(result, row); return end
-	for _, child in ipairs(row:children()) do leaves(child, result) end
-end
--- Ledger-only breakdown of the System Data group: ranked measured
--- contributors, the group total and virtual-memory allocation when measured.
--- Anything macOS does not expose as files (snapshot exclusive allocation,
--- purgeable space, metadata) cannot appear here by construction.
-function SystemDetails.explain()
-	local model = Model.db
-	local group = Locations:find("system-data")
-	local found = {}
-	if group then leaves(group, found) end
-	local contributors, totalBytes = {}, 0
-	for _, row in ipairs(found) do
-		local m = model.measurements[row.id]
-		if m and m.status == "complete" and (m.bytes or 0) > 0 then
-			totalBytes = totalBytes + m.bytes
-			table.insert(contributors, {id = row.id, name = row.name, bytes = m.bytes, size = Format.size(m.bytes)})
-		end
-	end
-	table.sort(contributors, function(a, b) return a.bytes > b.bytes end)
-	local measuredLocations = #contributors
-	while #contributors > 5 do contributors[#contributors] = nil end
-	local vm = model.measurements.vm
-	return {
-		contributors = contributors,
-		measuredLocations = measuredLocations,
-		knownLocations = #found,
-		total = totalBytes > 0 and {bytes = totalBytes, size = Format.size(totalBytes)} or nil,
-		vm = vm and vm.status == "complete" and (vm.bytes or 0) > 0 and {bytes = vm.bytes, size = Format.size(vm.bytes)} or nil,
-	}
 end
 function SystemDetails.format(explanation, snapshots)
 	local lines = {}

@@ -9,12 +9,12 @@ local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
 local Map = require("apps.diskmap.knowledge.Filesystem")
 local Filesystem = require("apps.diskmap.helpers.Filesystem")
-local Inventory = require("apps.diskmap.helpers.Inventory")
-local Categories = require("apps.diskmap.helpers.Categories")
 local Overview = require("apps.diskmap.helpers.Overview")
 local Volumes = require("apps.diskmap.helpers.Volumes")
 local Mock = require("apps.diskmap.services.Mock")
 local Controller = require("apps.diskmap.Controller")
+local Scans = require("apps.diskmap.models.Scans")
+local Categories = require("apps.diskmap.models.Categories")
 local home = "/Users/test"
 
 -- Integrity: every location is named, explained and correctly linked.
@@ -59,7 +59,7 @@ end
 local planModel = Store.new(home)
 planModel.protected = {visual, Map.find("/private/var/db/oah")}
 planModel.volumeUsage = {Preboot = 21e9, VM = 7e9, Recovery = 3e9}
-local paths, ids, exclusions = Inventory.plan()
+local paths, ids, exclusions = Scans:plan()
 local planned, excluded = {}, {}
 for _, path in ipairs(paths) do planned[path] = true end
 for _, path in ipairs(exclusions) do excluded[path] = true end
@@ -74,11 +74,11 @@ local visualId
 for _, row in ipairs(Locations:leaves()) do if row.path == visual.path then visualId = row.id end end
 t.assertEqual(planModel.measurements[visualId].status, "protected", "a protected resource reads as protected")
 t.assertEqual(Format.sizeLabel({}, "protected").size, "Protected", "not No access")
-Inventory.begin(ids)
+Scans:begin(ids)
 t.assertEqual(planModel.measurements[visualId].status, "protected", "a refresh keeps a protected resource out of Calculating")
 t.assertEqual(planModel.measurements.preboot.bytes, 21e9, "and keeps a volume's size")
-Inventory.apply(ids, {trees = {}, rootStates = {}})
-t.assertEqual(Categories.row(visualId).status, "protected", "the category tree carries the state")
+Scans:apply(ids, {trees = {}, rootStates = {}})
+t.assertEqual(Categories:row(visualId).status, "protected", "the category tree carries the state")
 
 -- APFS roles add up within the startup container only.
 local list = {Containers = {
@@ -101,24 +101,24 @@ model.scan = {errors = 5, protected = 3, issues = {
 	{path = "/private/var/db/unknown", protected = true},
 }}
 model.protected = {visual, Map.find("/System/Library/AssetsV2/com_apple_MobileAsset_UAF_FM_CodeLM"), Map.find("/private/var/db/oah")}
-local privacy = Overview.unreadable()
+local privacy = Scans:unreadable()
 t.assertEqual(#privacy.paths, 1, "the access request lists only folders permission can open")
 t.assertEqual(privacy.total, 2, "and counts only those")
-local protected = Overview.protected(false)
+local protected = Scans:protected(false)
 t.assertEqual(protected.count, 6, "known protected locations and refused ones count together")
 t.assertEqual(table.concat(protected.names, ", "), "Apple Intelligence models, Rosetta translations", "locations serving one feature are named once")
-t.assertEqual(Overview.protected(true).count, 8, "with Full Disk Access on, every refusal is one no permission lifts")
+t.assertEqual(Scans:protected(true).count, 8, "with Full Disk Access on, every refusal is one no permission lifts")
 local disk = {totalKb = 200e9 / 1024, freeKb = 20e9 / 1024}
 local split = {}
 for _, row in ipairs(Overview.hidden(disk, nil, 0, 5, 0, 0, false, protected)) do split[row.id] = row end
 t.assertEqual(split.unreadable.value, "2", "unreadable locations leave out protected folders")
 t.assertEqual(split.protected.value, "6", "protected folders have their own row")
 local granted = {}
-for _, row in ipairs(Overview.hidden(disk, nil, 0, 5, 0, 0, false, Overview.protected(true))) do granted[row.id] = row end
+for _, row in ipairs(Overview.hidden(disk, nil, 0, 5, 0, 0, false, Scans:protected(true))) do granted[row.id] = row end
 t.expect(granted.unreadable == nil, "with Full Disk Access on, nothing is offered to it")
 
 -- The card says how much is in no category and why.
-local card = Overview.unmeasured(disk, {fullDiskAccess = false, snapshotCount = 3, mediaExcluded = true})
+local card = Categories:unmeasured(disk, {fullDiskAccess = false, snapshotCount = 3, mediaExcluded = true})
 local items = {}
 for _, item in ipairs(card.items) do items[item.id] = item end
 t.expect(items.protected.detail:find("Including Apple Intelligence models, Rosetta translations", 1, true) == 1, "protected locations are named")
@@ -127,16 +127,16 @@ t.expect(items.privacy.grant and #items.privacy.paths == 1, "folders Full Disk A
 t.assertEqual(items.snapshots.value, "3", "snapshots are counted")
 t.assertEqual(items.media.value, "Not scanned", "excluded media libraries are named")
 t.expect(card.summary:find("180.0 GB of used space is in no category", 1, true) == 1, "the residual is stated up front")
-local grantedCard = Overview.unmeasured(disk, {fullDiskAccess = true})
+local grantedCard = Categories:unmeasured(disk, {fullDiskAccess = true})
 t.assertEqual(#grantedCard.items, 1, "with access granted, only protected locations remain")
 model.protected, model.scan = nil, {}
-t.assertEqual(#Overview.unmeasured(disk, {fullDiskAccess = true}).items, 0, "nothing unmeasured, nothing listed")
+t.assertEqual(#Categories:unmeasured(disk, {fullDiskAccess = true}).items, 0, "nothing unmeasured, nothing listed")
 
 -- The macOS Folders page: every location, with the right state.
 local page = Store.new(home)
 page.volumeUsage = {Preboot = 21e9}
 page.measurements.preboot = {bytes = 21e9, status = "complete"}
-local pending = Filesystem.pending()
+local pending = Filesystem.pending(Categories:facts())
 local pendingSet = {}
 for _, path in ipairs(pending) do pendingSet[path] = true end
 t.expect(pendingSet["/cores"] == nil, "a leftover with a resource is not measured twice")
@@ -145,7 +145,7 @@ t.expect(not pendingSet[visual.path], "a protected location is never measured")
 local sizes = {["/Users/Shared"] = {bytes = 5e8, state = "measured"},
 	["/System/Volumes/Data/.PreviousSystemInformation"] = {bytes = 0, state = "missing"},
 	["/Library/Trial"] = {bytes = 0, state = "unreadable"}}
-local presentation = Filesystem.presentation(sizes, false)
+local presentation = Filesystem.presentation(sizes, false, nil, Categories:facts())
 local rows = {}
 for _, area in ipairs(presentation.areas) do for _, row in ipairs(area.rows) do rows[row.id] = row end end
 t.assertEqual(presentation.count, count, "the page lists every location")
@@ -156,16 +156,16 @@ t.assertEqual(rows[visual.path].guardTitle, Map.guards.sip.title, "and why")
 t.assertEqual(rows["/System/Volumes/Data/.PreviousSystemInformation"].size, "Not on this Mac", "a missing location says so")
 t.assertEqual(rows["/Library/Trial"].size, "No access", "a refused location asks for access while it is off")
 local grantedRows = {}
-for _, area in ipairs(Filesystem.presentation(sizes, true).areas) do for _, row in ipairs(area.rows) do grantedRows[row.id] = row end end
+for _, area in ipairs(Filesystem.presentation(sizes, true, nil, Categories:facts()).areas) do for _, row in ipairs(area.rows) do grantedRows[row.id] = row end end
 t.assertEqual(grantedRows["/Library/Trial"].size, "Not readable", "and is protected once access is on")
 t.assertEqual(rows["/System/Volumes/Data/MobileSoftwareUpdate"].size, "Not measured", "a leftover still measuring says so: a scan shows no row-level progress")
-t.assertEqual(Filesystem.presentation(sizes, false, "rosetta").count, 1, "search finds a location by what it holds")
-t.expect(Filesystem.presentation(sizes, false, "no such folder").empty, "a search with no match is empty")
+t.assertEqual(Filesystem.presentation(sizes, false, "rosetta", Categories:facts()).count, 1, "search finds a location by what it holds")
+t.expect(Filesystem.presentation(sizes, false, "no such folder", Categories:facts()).empty, "a search with no match is empty")
 
 -- A volume APFS has not sized reads Not measured, never a spinner.
 local volumeless = Store.new(home)
 local function rowOf(m, id)
-	for _, area in ipairs(Filesystem.presentation({}, false).areas) do
+	for _, area in ipairs(Filesystem.presentation({}, false, nil, Categories:facts()).areas) do
 		for _, row in ipairs(area.rows) do if row.id == id then return row end end
 	end
 end

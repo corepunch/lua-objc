@@ -1,10 +1,8 @@
 _G.__headless = true
 local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
-local Cleanup = require("apps.diskmap.helpers.Cleanup")
-local AgentFiles = require("apps.diskmap.helpers.AgentFiles")
+local Suggestions = require("apps.diskmap.models.Suggestions")
 
 local model = Store.new("/Users/test")
 local function check(id, path, action, policy)
@@ -31,7 +29,7 @@ t.assertEqual(Locations:find("opencode-models"), nil, "speculative opencode mode
 t.assertEqual(Locations:find("opencode-settings"), nil, "speculative opencode config row is gone")
 t.expect(Locations:find("claude") ~= nil and not Locations:find("claude"):isLeaf(), "claude is a group with measured children")
 
-local added, addError = AgentFiles.add({
+local added, addError = Locations:addAgentFiles({
 	{agent = "claude", name = "debug.log", path = "/Users/test/.claude/debug.log"},
 	{agent = "claude", name = "settings.json", path = "/Users/test/.claude/settings.json"},
 	{agent = "codex", name = "logs_2.sqlite", path = "/Users/test/.codex/logs_2.sqlite"},
@@ -45,7 +43,7 @@ t.assertEqual(Locations:find("codex-file-logs_2.sqlite").action, "finder", "diag
 model.measurements["codex-sessions"] = {bytes = 2e9, status = "complete"}
 model.measurements["claude-cache"] = {bytes = 600e6, status = "complete"}
 model.measurements["opencode-snapshots"] = {bytes = 3e9, status = "complete"}
-local suggestions = Cleanup.suggestions()
+local suggestions = Suggestions:ranked()
 local byId = {}
 for _, suggestion in ipairs(suggestions) do byId[suggestion.id] = suggestion end
 t.expect(byId["codex-sessions"] ~= nil, "large session history surfaces for review")

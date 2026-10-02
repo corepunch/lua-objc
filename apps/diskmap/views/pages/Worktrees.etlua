@@ -3,7 +3,7 @@
   what it could recover, then the linked worktrees that need a person, then
   registrations that only need pruning. The repositories they were made from
   are never offered and stay collapsed as context. Evidence and rules live in
-  models/Worktrees.lua; this template carries structure only. ]]
+  pages/Worktrees.lua and helpers/Worktrees.lua; this template carries structure only. ]]
   local SELECTION = {detailMaximum = 144}
   local function list(id)
 %>

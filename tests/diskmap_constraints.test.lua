@@ -1,18 +1,15 @@
 _G.__headless = true
 local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
-local Cleanup = require("apps.diskmap.helpers.Cleanup")
-local Inspector = require("apps.diskmap.helpers.Inspector")
 local Manage = require("apps.diskmap.flows.Manage")
-local Simulators = require("apps.diskmap.models.Simulators")
+local Simulators = require("apps.diskmap.helpers.Simulators")
 
 local model = Store.new("/Users/test")
 local row = Locations:find("derived")
 model.measurements.derived = {bytes = 2e9, status = "complete"}
 t.expect(row:validateTrash(), "complete positive trash resource validates")
-local ok, err = Cleanup.moveToTrash("unknown", {trash = function() error("must not run") end})
+local ok, err = Manage({app = {service = {trash = function() error("must not run") end}}}):moveToTrash("unknown")
 t.assertEqual(ok, false, "unknown resource cannot mutate")
 t.assertEqual(err.code, "unknown_resource", "unknown resource has a stable code")
 
@@ -40,12 +37,12 @@ t.assertEqual(groupErr.code, "not_leaf", "group validation is named")
 
 local calls = 0
 local service = {trash = function(path) calls = calls + 1; t.assertEqual(path, savedPath, "mutation uses the current canonical path"); return true end}
-local moved, moveError = Cleanup.moveToTrash("derived", service)
+local moved, moveError = Manage({app = {service = service}}):moveToTrash("derived")
 t.assertEqual(moved, true, "valid model mutation reaches the service")
 t.assertEqual(moveError, nil, "valid mutation has no error")
 t.assertEqual(calls, 1, "valid mutation runs exactly once")
 model.measurements.derived = {bytes = 2e9, status = "complete"}
-local failedMove, failedError = Cleanup.moveToTrash("derived", {trash = function() return false, "symbolic link" end})
+local failedMove, failedError = Manage({app = {service = {trash = function() return false, "symbolic link" end}}}):moveToTrash("derived")
 t.assertEqual(failedMove, false, "service rejection is not reported as success")
 t.assertEqual(failedError.code, "trash_service", "service failure is named")
 t.assertEqual(model.measurements.derived.bytes, 2e9, "service failure preserves measurement state")
@@ -63,7 +60,7 @@ model.kept.xcode = nil; t.expect(not controller:manage("derived"), "changed Keep
 t.assertEqual(controllerCalls, 0, "stale confirmation never reaches IO")
 t.assertEqual(errors, 1, "stale mutation reports a structured service error")
 model.kept.xcode = nil
-local details = Inspector.details("derived")
+local details = Locations:details("derived")
 t.expect(details.canManage, "inspector uses current trash constraints")
 
 local validUuid = "12345678-ABCD-1234-ABCD-123456789ABC"
@@ -79,7 +76,7 @@ t.assertEqual(simulatorError.code, "device_running", "running simulator is rejec
 _, simulatorError = Simulators.validate("erase", {id = validUuid, available = false, running = false})
 t.assertEqual(simulatorError.code, "device_unavailable", "unavailable simulator cannot be erased")
 model.kept.simulators = true
-_, simulatorError = Simulators.validate("delete", simulator, model)
+_, simulatorError = Simulators.validate("delete", simulator, Locations.keeps)
 t.assertEqual(simulatorError.code, "kept_resource", "catalog Keep protects simulator actions")
 
 os.exit(t.summary() and 0 or 1)

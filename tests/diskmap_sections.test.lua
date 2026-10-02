@@ -1,18 +1,18 @@
 _G.__headless = true
+local Categories = require("apps.diskmap.models.Categories")
 local t = require("TestKit")
 local ns = require("AppKit")
 local xml = require("ui.xml")
 local bridge = require("AppKitNative")
 local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
-local Categories = require("apps.diskmap.helpers.Categories")
 local FOLDERS = {Hero = "sections", Overview = "pages", Settings = "sheets", ResourceList = "components", Page = "pages"}
 local function render(name, data)
 	return xml.renderFile("apps/diskmap/views/" .. FOLDERS[name] .. "/" .. name .. ".etlua", data, ns)
 end
 local model = Store.new("/Users/test")
 model.scan.errors = 3
-local coverage = Categories.coverage({totalKb = 1000000, freeKb = 500000})
+local coverage = Categories:coverage({totalKb = 1000000, freeKb = 500000})
 t.expect(coverage:find("At least ", 1, true) == 1, "partial inventories mark the measured total as a lower bound")
 t.expect(coverage:find("3 filesystem read issues", 1, true) ~= nil, "coverage reports read issues without calling them inaccessible locations")
 t.expect(coverage:find("not attributed", 1, true) ~= nil, "capacity difference uses a plain-language label")
@@ -22,15 +22,17 @@ for id, bytes in pairs({["apps-system-other"] = 30e9, derived = 20e9, ["codex-ca
 	model.measurements[id] = {bytes = bytes, status = "complete"}
 end
 local Overview = require("apps.diskmap.helpers.Overview")
+local Scans = require("apps.diskmap.models.Scans")
+local Suggestions = require("apps.diskmap.models.Suggestions")
 local disk = {totalKb = 200e9 / 1024, freeKb = 100e9 / 1024}
-local chart = Overview.chart(disk)
+local chart = Categories:chart(disk)
 t.assertEqual(chart.legend[1].id, "applications", "largest category leads the legend")
 t.assertEqual(chart.legend[2].id, "developer", "next largest category follows")
 t.assertEqual(chart.legend[3].id, "ai-agents", "AI agents have their own storage segment")
 t.assertEqual(chart.marks[#chart.marks].label, "Free", "free space closes the ring")
 local chartActions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end}
-local hero, heroRefs = render("Hero", {summary = Overview.summary(disk), chart = chart,
-	reclaim = Overview.reclaim(), volumeName = "Startup Disk", actions = chartActions,
+local hero, heroRefs = render("Hero", {summary = Scans:summary(disk), chart = chart,
+	reclaim = Suggestions:reclaim(), volumeName = "Startup Disk", actions = chartActions,
 	hiddenSpace = Overview.hidden(disk, {important = 110e9}, 2, 3)})
 t.assertEqual(chart.marks[1].id, chart.legend[1].id, "a mark carries its category, so its sector can open it")
 t.expect(heroRefs.hiddenSpace ~= nil, "the hero explains space no file scan can attribute")
@@ -57,11 +59,11 @@ end
 hero.size = ns.Size(900, 400)
 hero:layout(900)
 t.expect(heroRefs.chart.frame.size.height > 150, "the donut takes the height of the card: " .. heroRefs.chart.frame.size.height)
-local _, emptyRefs = render("Hero", {summary = Overview.summary({totalKb = 1, freeKb = 0}),
-	chart = Overview.chart({totalKb = 1, freeKb = 0}), reclaim = Overview.reclaim(), volumeName = "Startup Disk", actions = chartActions})
+local _, emptyRefs = render("Hero", {summary = Scans:summary({totalKb = 1, freeKb = 0}),
+	chart = Categories:chart({totalKb = 1, freeKb = 0}), reclaim = Suggestions:reclaim(), volumeName = "Startup Disk", actions = chartActions})
 model.measurements.downloads = {status = "calculating"}
 -- While the scan runs the page draws its empty state: an empty ring, no legend, no cleanup offer.
-local _, busyRefs = render("Hero", {summary = Overview.summary(disk), chart = {marks = {}, legend = {}, explanation = "Measuring"},
+local _, busyRefs = render("Hero", {summary = Scans:summary(disk), chart = {marks = {}, legend = {}, explanation = "Measuring"},
 	volumeName = "Startup Disk", actions = chartActions})
 t.expect(busyRefs.cleanUp == nil and heroRefs.cleanUp ~= nil, "cleanup is offered only once every size is known")
 t.expect(busyRefs.legend == nil and busyRefs.legendExplanation ~= nil, "a running scan draws no legend")
@@ -70,7 +72,7 @@ t.expect(emptyRefs.legendExplanation ~= nil, "an overcounted inventory explains 
 t.expect(emptyRefs.lowSpace ~= nil and heroRefs.lowSpace == nil, "only a nearly full disk shows the low-space warning")
 t.assertEqual(#emptyRefs.chart.subviews, 3, "an empty chart keeps its track ring and centered total under the pointer view")
 local _, refs = render("Overview", {status = "Measured", measured = true, coverage = "", largestHidden = false, accessTitle = "Scan access…", accessHidden = false,
-	unmeasured = {items = {}}, hero = {summary = Overview.summary(disk), chart = chart, volumeName = "Startup Disk"}, actions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end, reclaim = function() end, select = function() end, open = function() end,
+	unmeasured = {items = {}}, hero = {summary = Scans:summary(disk), chart = chart, volumeName = "Startup Disk"}, actions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end, reclaim = function() end, select = function() end, open = function() end,
 	largestMenu = function() return {} end, openLargest = function() end, showLargest = function() end, access = function() end}})
 t.assertEqual(refs.categoriesPanel.className, "NSBox", "category rows share a native rounded section")
 t.assertEqual(refs.opportunities, nil, "the overview does not repeat reclaim content")

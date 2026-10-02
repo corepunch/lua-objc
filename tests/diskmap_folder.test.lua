@@ -1,4 +1,6 @@
 _G.__headless = true
+local Locations = require("apps.diskmap.models.Locations")
+local Model = require("data.model")
 local t = require("TestKit")
 local bridge = require("AppKitNative")
 local native = require("StorageScan")
@@ -147,10 +149,10 @@ local remaining
 for _, row in ipairs(page.tree:rows(page.focus, page.coloring)) do if not row.directory and not row.other then remaining = row; break end end
 
 -- System locations and standard folders are never moved.
-t.expect(not FolderTree.validateChange(downloads), "a standard folder is never moved")
-t.expect(not FolderTree.validateChange("/Applications/Safari.app"), "items outside the home folder and other disks are not moved")
-t.expect(FolderTree.validateChange("/Volumes/Backup/Old"), "items on another disk may be moved")
-t.expect(not FolderTree.validateChange("/Volumes/Backup"), "a disk itself is never moved")
+t.expect(not FolderTree.validateChange(downloads, Model.db.home, Locations:owner(downloads)), "a standard folder is never moved")
+t.expect(not FolderTree.validateChange("/Applications/Safari.app", Model.db.home, Locations:owner("/Applications/Safari.app")), "items outside the home folder and other disks are not moved")
+t.expect(FolderTree.validateChange("/Volumes/Backup/Old", Model.db.home, Locations:owner("/Volumes/Backup/Old")), "items on another disk may be moved")
+t.expect(not FolderTree.validateChange("/Volumes/Backup", Model.db.home, Locations:owner("/Volumes/Backup")), "a disk itself is never moved")
 t.expect(not FolderTree.validateDestination(largest, downloads), "a move needs a different folder")
 t.expect(not FolderTree.validateDestination(downloads .. "/a", downloads .. "/a/b"), "a folder is never moved into itself")
 

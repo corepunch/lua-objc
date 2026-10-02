@@ -20,7 +20,7 @@ end
 -- Where a saved story stands, in the words a reader uses: the room, then
 -- the status line and how far the score has come.
 function Controller:progressEntry(record)
-	local game = Adventures:find(record.gameId)
+	local game = record:adventure()
 	if not game then return nil end
 	local place = record.room or game.title
 	local maxScore = tonumber(record.maxScore) or 0

@@ -1,4 +1,3 @@
-local Model = require("data.model")
 local Scope = {}
 
 -- Totals on different pages describe different populations: a category
@@ -13,23 +12,10 @@ local POPULATION = {
 }
 Scope.pages = POPULATION
 
--- Coverage of the latest scan as one sentence.
-function Scope.coverage()
-	local model = Model.db
-	local scan = model.scan or {}
-	local parts = {}
-	if scan.running then table.insert(parts, "scan in progress, totals are still growing") end
-	if scan.failure and scan.failure ~= "" then table.insert(parts, "the scan stopped early") end
-	local protected = scan.protected or 0
-	if protected > 0 then table.insert(parts, protected .. (protected == 1 and " protected location" or " protected locations") .. " not readable without Full Disk Access") end
-	if not model.includeMedia then table.insert(parts, "Photos, Music and TV libraries excluded") end
-	if #parts == 0 then return "Coverage: complete." end
-	return "Coverage: " .. table.concat(parts, "; ") .. "."
-end
-
-function Scope.text(page)
-	local model = Model.db
-	return (POPULATION[page] or "") .. " " .. Scope.coverage()
+-- What a page's numbers cover, then `coverage`, what the latest scan saw
+-- (Scans:coverage()).
+function Scope.text(page, coverage)
+	return (POPULATION[page] or "") .. " " .. coverage
 end
 
 return Scope

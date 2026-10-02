@@ -1,8 +1,9 @@
 _G.__headless = true
+local SimulatorService = require("apps.diskmap.services.Simulators")
 local t = require("TestKit")
 local ns = require("AppKit")
 local Mock = require("apps.diskmap.services.Mock")
-local Simulators = require("apps.diskmap.models.Simulators")
+local Simulators = require("apps.diskmap.helpers.Simulators")
 local Sdks = require("apps.diskmap.helpers.Sdks")
 
 local function writeSnapshot(path, items)
@@ -24,7 +25,7 @@ writeSnapshot(snapshot, {
 	{"/opt/homebrew/Library/Homebrew/test/support/fixtures/sdks/big_sur/MacOSX.sdk/usr", 1000},
 })
 local mock = Mock.new({home = home, fixturePath = snapshot})
-local unnamed = Simulators.discover(mock, home)
+local unnamed = SimulatorService.discover(mock, home)
 local devices = unnamed.devices.unknown
 t.assertEqual(devices and #devices or 0, 1, "a snapshot without simctl metadata still lists the device folder")
 t.assertEqual(devices[1].name, device, "a device without device.plist keeps its folder name")
@@ -42,7 +43,7 @@ plist:write([[<?xml version="1.0" encoding="UTF-8"?>
 </dict></plist>
 ]])
 plist:close()
-local named = Simulators.discover(mock, home)
+local named = SimulatorService.discover(mock, home)
 local namedDevice = named.devices["com.apple.CoreSimulator.SimRuntime.iOS-26-0"][1]
 t.assertEqual(namedDevice.name, "iPhone 17", "device.plist supplies the simulator name")
 t.assertEqual(Simulators.rows(named)[1].runtime, "iOS 26.0", "runtime identifier becomes a version label")

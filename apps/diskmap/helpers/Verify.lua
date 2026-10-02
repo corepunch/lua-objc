@@ -1,5 +1,5 @@
+local Paths = require("apps.diskmap.helpers.Paths")
 local Format = require("apps.diskmap.helpers.Format")
-local Marks = require("apps.diskmap.models.Marks")
 local Verify = {}
 
 -- Checks a marked item again just before it moves to the Trash, as
@@ -50,11 +50,11 @@ function Verify.check(item, resource, home, probes)
 	probes = probes or {}
 	local path = item.path
 	-- Compared as the basket compares: /etc is /private/etc, in any case.
-	local key = type(path) == "string" and Marks.normalize(path) .. "/" or ""
+	local key = type(path) == "string" and Paths.normalize(path) .. "/" or ""
 	for _, prefix in ipairs(Verify.protected) do
 		if key:sub(1, #prefix) == prefix:lower() then return false, {code = "protected", reason = "it is in a protected system location"} end
 	end
-	local valid, why = Marks.validate(path, home)
+	local valid, why = Paths.validate(path, home)
 	if not valid then return false, {code = "location", reason = why:gsub("%.$", ""):lower()} end
 	if probes.exists and not probes.exists(path) then return false, {code = "missing", reason = "it is no longer there"} end
 	if item.identity and probes.identity then

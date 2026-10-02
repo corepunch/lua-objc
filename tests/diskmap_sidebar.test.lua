@@ -2,7 +2,6 @@ _G.__headless = true
 local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
 local bridge = require("AppKitNative")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
 local Workflows = require("apps.diskmap.models.Workflows")
 local Navigation = require("apps.diskmap.controllers.NavigationController")

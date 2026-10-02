@@ -1,7 +1,8 @@
 local Locations = require("apps.diskmap.models.Locations")
 local Model = require("data.model")
 local Format = require("apps.diskmap.helpers.Format")
-local Simulators = require("apps.diskmap.models.Simulators")
+local Simulators = require("apps.diskmap.helpers.Simulators")
+local SimulatorService = require("apps.diskmap.services.Simulators")
 local SimulatorPlan = require("apps.diskmap.helpers.SimulatorPlan")
 local Selection = require("apps.diskmap.helpers.Selection")
 local Outcome = require("apps.diskmap.helpers.Outcome")
@@ -33,7 +34,7 @@ function Page:plan()
 	local plan = SimulatorPlan.build(self.inventory, {runtime = self.chosenRuntime, keep = self.keep,
 		protected = function(udid)
 			local catalog = Locations:find("simulators")
-			return (catalog and catalog:isKept()) or Simulators:isKept(udid)
+			return (catalog and catalog:isKept()) or Locations.keeps(Simulators.keepKey(udid))
 		end})
 	Model.db.simulatorPlan = self.loaded and {removalBytes = plan.removalBytes, removalCount = #plan.removal,
 		blockedBytes = plan.blockedBytes, complete = plan.complete, runtime = plan.runtime} or nil
@@ -90,7 +91,7 @@ local function planView(self, plan)
 	return {runtimes = plan.runtimes, runtimeIndex = runtimeIndex, families = families, headline = headline, summary = summary,
 		amount = Format.size(plan.removalBytes),
 		reviewTitle = removable > 0 and ("Review " .. Format.plural(removable, "Device") .. "…") or "Review…",
-		preserveTitle = row and Simulators:isKept(row.id) and "Remove Keep" or "Keep Device",
+		preserveTitle = row and Locations.keeps(Simulators.keepKey(row.id)) and "Remove Keep" or "Keep Device",
 		status = self.planResult or ""}
 end
 
@@ -122,8 +123,8 @@ function Page:data(state)
 	self.planSelected = pick(plan.devices, self.planSelected)
 	self.lists = {devices = rows, runtimes = runtimes, planDevices = #plan.runtimes > 0 and plan.devices or nil}
 	local selected, runtime, allowed = self.selected, self.selectedRuntime, not self.busy
-	local _, deviceReason = Simulators.validate("delete", selected, Model.db)
-	local _, runtimeReason = Simulators.validateRuntime(runtime, Model.db)
+	local _, deviceReason = Simulators.validate("delete", selected, Locations.keeps)
+	local _, runtimeReason = Simulators.validateRuntime(runtime, Locations.keeps)
 	local status = self.deviceError or (#rows == 0 and "No matching devices." or Format.plural(#rows, "device"))
 	if selected then status = deviceReason and deviceReason.message or (selected.name .. " · " .. selected.state) end
 	local summary, detail = texts(self, allRuntimes)
@@ -135,11 +136,11 @@ function Page:data(state)
 		lists = self.lists,
 		hidden = {runtimesSection = self.runtimeList ~= nil and #allRuntimes == 0},
 		disabled = {
-			erase = not (allowed and Simulators.command("erase", selected, Model.db)),
-			delete = not (allowed and Simulators.command("delete", selected, Model.db)),
+			erase = not (allowed and Simulators.command("erase", selected, Locations.keeps)),
+			delete = not (allowed and Simulators.command("delete", selected, Locations.keeps)),
 			reveal = not (allowed and selected and type(selected.path) == "string"),
 			deleteUnavailable = not (allowed and #self:unavailableDevices() > 0),
-			deleteRuntime = not (allowed and Simulators.runtimeCommand(runtime, Model.db)),
+			deleteRuntime = not (allowed and Simulators.runtimeCommand(runtime, Locations.keeps)),
 			retry = not allowed,
 			planReview = not (allowed and plan.ready),
 			planPreserve = not (allowed and row and row.family),
@@ -192,7 +193,7 @@ end
 function Page:planPreserve()
 	local row = self.planSelected
 	if not row or not row.family then return end
-	Simulators:toggleKept(row.id)
+	Locations:toggleKeep(Simulators.keepKey(row.id))
 	if self.service.saveKeep then self.service.saveKeep(Model.db.kept) end
 	self.planResult = nil
 end
@@ -220,7 +221,7 @@ function Page:load()
 	else done() end
 	local function discover(listed, error)
 		self.deviceError = error
-		local ok, discovered = pcall(Simulators.discover, service, Model.db.home, listed)
+		local ok, discovered = pcall(SimulatorService.discover, service, Model.db.home, listed)
 		if not ok then done(); return end
 		inventory = discovered
 		local paths, slots = {}, {}
@@ -270,7 +271,7 @@ end
 function Page:unavailableDevices()
 	local rows = {}
 	for _, row in ipairs(Simulators.rows(self.inventory, nil, "Unavailable")) do
-		if Simulators.command("delete", row, Model.db) then table.insert(rows, row) end
+		if Simulators.command("delete", row, Locations.keeps) then table.insert(rows, row) end
 	end
 	return rows
 end
@@ -279,7 +280,7 @@ function Page:perform(action, targets, many)
 	if self.busy or #targets == 0 then return false end
 	local commands, names = {}, {}
 	for _, row in ipairs(targets) do
-		local command = Simulators.command(action, row, Model.db)
+		local command = Simulators.command(action, row, Locations.keeps)
 		if not command then return false end
 		table.insert(commands, command); table.insert(names, row.name .. " · " .. row.id)
 	end
@@ -287,7 +288,7 @@ function Page:perform(action, targets, many)
 	local message = many and (table.concat(names, "\n") .. "\n\nThese devices cannot use their current runtime. Their apps and data may still be valuable. Permanently deletes ONLY these devices and their contents. Installed runtimes are preserved. This cannot be undone.")
 		or Simulators.impact(action, targets[1])
 	if not self.service.confirmAction(title, message) then return false end
-	return self:run(commands, targets, function(row) return Simulators.validate(action, row, Model.db) end)
+	return self:run(commands, targets, function(row) return Simulators.validate(action, row, Locations.keeps) end)
 end
 
 function Page:erase() return self:perform("erase", {self.selected}) end
@@ -296,9 +297,9 @@ function Page:unavailable() return self:perform("delete", self:unavailableDevice
 
 function Page:deleteRuntime()
 	local row = self.selectedRuntime
-	if self.busy or not Simulators.runtimeCommand(row, Model.db) then return false end
+	if self.busy or not Simulators.runtimeCommand(row, Locations.keeps) then return false end
 	if not self.service.confirmAction("Delete simulator runtime", Simulators.runtimeImpact(row)) then return false end
-	return self:run({Simulators.runtimeCommand(row, Model.db)}, {row}, function(target) return Simulators.validateRuntime(target, Model.db) end)
+	return self:run({Simulators.runtimeCommand(row, Locations.keeps)}, {row}, function(target) return Simulators.validateRuntime(target, Locations.keeps) end)
 end
 
 -- The shared review flow: one confirmation for the whole removal set, then
@@ -324,7 +325,7 @@ function Page:planReview()
 				done({id = entry.id, name = entry.name, runtime = entry.runtime, available = record.isAvailable, running = running})
 			end)
 		end,
-		validate = function(entry, fresh) return SimulatorPlan.revalidate(plan, entry.id, fresh, Model.db) end,
+		validate = function(entry, fresh) return SimulatorPlan.revalidate(plan, entry.id, fresh, Locations.keeps) end,
 		execute = function(entry, done)
 			self.service.command({"/usr/bin/xcrun", "simctl", "delete", entry.id}, function(success, output)
 				self.app.log("simctl delete " .. entry.id, success, entry.bytes, entry.name, not success and output or nil)

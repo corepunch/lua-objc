@@ -1,3 +1,4 @@
+local Categories = require("apps.diskmap.models.Categories")
 local Model = require("data.model")
 local Filesystem = require("apps.diskmap.helpers.Filesystem")
 local Guide = require("apps.diskmap.helpers.Guide")
@@ -13,7 +14,7 @@ local routes = {}
 local SOURCES = {
 	Guide = {topic = "topics/GuideTopic", noun = "guide topic",
 		summary = "Where macOS keeps things, why they grow and what is safe to do about them. Sizes are measured on this Mac.",
-		present = function(_, query) return Guide.presentation(query) end,
+		present = function(_, query) return Guide.presentation(query, Categories.measured) end,
 		follow = function(self, topic) return topic.open and function() self.app.open(topic.open) end end},
 	Help = {topic = "topics/HelpTopic", noun = "help topic",
 		summary = "How to find what uses your storage and free up space safely. To search help from anywhere, use the Help menu.",
@@ -63,7 +64,7 @@ end
 function filesystem:rendered()
 	local storage, service = Model.db, self.app.service
 	if self.measuring or not self:waiting() then return end
-	local paths = Filesystem.pending()
+	local paths = Filesystem.pending(Categories:facts())
 	self.measuring = true
 	service.measure(paths, function(sizes, states)
 		self.measuring = false
@@ -79,7 +80,7 @@ end
 -- Each row's Finder and Diskmap buttons are named by their location.
 function filesystem:data(state)
 	local storage = Model.db
-	local data = Filesystem.presentation(storage.folderSizes, state.fullDiskAccess, state.query)
+	local data = Filesystem.presentation(storage.folderSizes, state.fullDiskAccess, state.query, Categories:facts())
 	data.query = state.query or ""
 	if self:waiting() then data.computing = "Measuring folders…" end
 	data.handlers = {}

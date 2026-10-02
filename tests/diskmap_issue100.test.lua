@@ -2,15 +2,14 @@ _G.__headless = true
 local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
 local Model = require("data.model")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
-local Cleanup = require("apps.diskmap.helpers.Cleanup")
 local Files = require("apps.diskmap.models.Files")
-local Recommendations = require("apps.diskmap.helpers.Recommendations")
 
 -- Clean Up leads with actions: no summary tiles, files and apps before the
 -- review inventory, and the checked inventory collapsed.
 local page = require("apps.diskmap.routes").cleanup
+local Scans = require("apps.diskmap.models.Scans")
+local Suggestions = require("apps.diskmap.models.Suggestions")
 t.expect(page.layout.tiles == nil, "Clean Up has no summary tiles ahead of its lists")
 local order = {}
 for _, section in ipairs(page.layout.sections) do table.insert(order, section.id) end
@@ -28,11 +27,11 @@ local function dirs(list)
 end
 model.measurements.devices = {status = "complete", bytes = 4e9}
 local function suggested(id)
-	for _, row in ipairs(Cleanup.suggestions()) do if row.id == id then return row end end
+	for _, row in ipairs(Suggestions:ranked()) do if row.id == id then return row end end
 end
 model.breakdowns.devices = dirs({{"iPhone17,1 26.0 (23A341)", 4e9}})
 t.assertEqual(suggested("devices"), nil, "device support holding only the newest version is not a dead-end suggestion")
-t.expect(Cleanup.ineligible.devices:find("newest", 1, true), "and the reason is recorded: " .. tostring(Cleanup.ineligible.devices))
+t.expect(Suggestions.ineligible.devices:find("newest", 1, true), "and the reason is recorded: " .. tostring(Suggestions.ineligible.devices))
 model.measurements.devices.bytes = 7e9
 model.breakdowns.devices = dirs({{"iPhone17,1 26.0 (23A341)", 4e9}, {"18.6 (22G86)", 3e9}})
 local devices = suggested("devices")
@@ -53,23 +52,23 @@ model.simulatorPlan = nil
 -- Ranking: eligible bytes x confidence / effort; unknown eligibility ranks by a fraction of its size.
 local rebuildable = {bytes = 5e9, eligibleBytes = 5e9, confidence = "High", effort = "Low"}
 local review = {bytes = 50e9, confidence = "Low", effort = "High"}
-t.assertEqual(Cleanup.score(rebuildable), 5e9, "a proven rebuildable cache scores its size")
-t.expect(Cleanup.score(review) < Cleanup.score(rebuildable), "50 GB to review does not outrank 5 GB that is certain")
-t.expect(Cleanup.score({bytes = 10e9, eligibleBytes = 10e9, confidence = "Medium", effort = "Low"}) > Cleanup.score(rebuildable),
+t.assertEqual(Suggestions.score(rebuildable), 5e9, "a proven rebuildable cache scores its size")
+t.expect(Suggestions.score(review) < Suggestions.score(rebuildable), "50 GB to review does not outrank 5 GB that is certain")
+t.expect(Suggestions.score({bytes = 10e9, eligibleBytes = 10e9, confidence = "Medium", effort = "Low"}) > Suggestions.score(rebuildable),
 	"more recoverable bytes outrank fewer even at lower confidence")
 
 -- Presentation separates review bytes from recoverable bytes and exposes the accounting.
 model.measurements.simulators = {status = "complete", bytes = 22e9}
 model.simulatorPlan = {removalBytes = 13e9, removalCount = 3, blockedBytes = 0, complete = true}
-local data = Recommendations.presentation("", {})
+local data = Suggestions:presentation("", {})
 local row
 for _, item in ipairs(data.decisions) do if item.id == "simulators" then row = item end end
 t.expect(row and row.page == "simulators", "the simulator suggestion opens the minimal device set")
 t.expect(row.decisionTitle:find("Keep one iPhone and one iPad", 1, true), "and says what it proposes")
 t.assertEqual(data.eligibleBytes, 13e9 + 3e9, "the page total adds eligible bytes only: " .. tostring(data.eligibleBytes))
 t.expect(data.reviewBytes >= 22e9, "bytes to review are reported separately")
-t.expect(Recommendations.recovery(row):find("Estimated recoverable 13", 1, true), "the inspector shows estimated recoverable bytes")
-t.expect(Recommendations.recovery({bytes = 9e9}):find("recoverable space is unknown", 1, true), "unknown eligibility says so")
+t.expect(Suggestions.recovery(row):find("Estimated recoverable 13", 1, true), "the inspector shows estimated recoverable bytes")
+t.expect(Suggestions.recovery({bytes = 9e9}):find("recoverable space is unknown", 1, true), "unknown eligibility says so")
 t.expect(data.summary:find("estimated recoverable", 1, true) and data.summary:find("to review", 1, true), "the headline keeps the two apart")
 
 -- Applications: unknown usage never reaches Clean Up; high-confidence leftovers are the eligible part.
@@ -79,7 +78,7 @@ local summary = Applications.summary({{appBytes = 1e9, dataBytes = 0, bytes = 1e
 t.assertEqual(summary.unused, 0, "an app with unknown usage is not unused")
 t.assertEqual(summary.leftoversHighBytes, 3e9, "only high-confidence leftovers are eligible")
 t.assertEqual(summary.leftoverBytes, 5e9, "all leftovers are bytes to review")
-local out = Recommendations.presentation("", {apps = summary})
+local out = Suggestions:presentation("", {apps = summary})
 local leftovers
 for _, item in ipairs(out.decisions) do if item.id == "leftovers" then leftovers = item end end
 t.assertEqual(leftovers and leftovers.eligibleBytes, 3e9, "Clean Up carries the eligible part")
@@ -122,7 +121,7 @@ local groups = Projects:groups(nil, nil, nil)
 local projectTotal = 0
 for _, group in ipairs(groups) do projectTotal = projectTotal + group.bytes end
 local ecosystem
-for _, value in ipairs(Cleanup.suggestions()) do if value.group then ecosystem = value end end
+for _, value in ipairs(Suggestions:ranked()) do if value.group then ecosystem = value end end
 t.assertEqual(projectTotal, 700e6, "the Projects page counts each artifact once")
 t.assertEqual(ecosystem and ecosystem.bytes, 700e6, "the ecosystem group counts the same artifacts once, not again")
 t.assertEqual(ecosystem and ecosystem.eligibleBytes, 700e6, "and its eligible bytes equal its measured, proven rebuildable bytes")
@@ -149,13 +148,13 @@ t.expect(idle and idle.unused, "the same app closed with a known old date is unu
 -- Totals say what they cover and what the scan could not see.
 local Scope = require("apps.diskmap.helpers.Scope")
 local scoped = Store.new("/Users/test")
-t.expect(Scope.coverage():find("Photos, Music and TV libraries excluded", 1, true), "excluded media is stated")
+t.expect(Scans:coverage():find("Photos, Music and TV libraries excluded", 1, true), "excluded media is stated")
 scoped.includeMedia = true
-t.assertEqual(Scope.coverage(), "Coverage: complete.", "a complete scan says so")
+t.assertEqual(Scans:coverage(), "Coverage: complete.", "a complete scan says so")
 scoped.scan = {running = true, protected = 2}
-t.expect(Scope.coverage():find("still growing", 1, true) and Scope.coverage():find("2 protected locations", 1, true), "an unfinished, partly unreadable scan says both")
+t.expect(Scans:coverage():find("still growing", 1, true) and Scans:coverage():find("2 protected locations", 1, true), "an unfinished, partly unreadable scan says both")
 for _, page in ipairs({"largest", "cleanup", "files", "kinds"}) do
-	t.expect(Scope.text(page):find("Coverage:", 1, true) and #Scope.pages[page] > 20, page .. " states its population and coverage")
+	t.expect(Scope.text(page, Scans:coverage()):find("Coverage:", 1, true) and #Scope.pages[page] > 20, page .. " states its population and coverage")
 end
 t.expect(Scope.pages.files:find("Largest Locations", 1, true) and Scope.pages.kinds:find("over 50 MB", 1, true), "overlaps between pages are named")
 local scopeApp = AppController.new(Mock.new())

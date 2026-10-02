@@ -1,6 +1,4 @@
-local Model = require("data.model")
 local Format = require("apps.diskmap.helpers.Format")
-local Applications = require("apps.diskmap.models.Applications")
 local Sentinel = {}
 
 -- Opt-in, while Diskmap is open: when an app lands in the Trash, offer to
@@ -22,12 +20,13 @@ function Sentinel.trashedApps(events, trash)
 	return apps
 end
 
--- The data a trashed app left behind, from its bundle identifier and name,
--- or nil when it is too small to mention.
-function Sentinel.offer(appPath, bundleId)
-	local model = Model.db
-	local name = (appPath:match("([^/]+)%.app$") or appPath)
-	local folders, bytes = Applications:data(bundleId, name)
+-- The name an app's data is filed under: its bundle's name.
+function Sentinel.name(appPath) return (appPath:match("([^/]+)%.app$") or appPath) end
+
+-- The offer for the data a trashed app left behind (`folders` and their
+-- `bytes`, from Applications:data), or nil when it is too small to mention.
+function Sentinel.offer(appPath, bundleId, folders, bytes)
+	local name = Sentinel.name(appPath)
 	if bytes < Sentinel.minimumBytes then return nil end
 	return {name = name, bundleId = bundleId, folders = folders, bytes = bytes,
 		notification = {id = "diskmap.sentinel." .. (bundleId or name), title = name .. " is in the Trash",

@@ -1,9 +1,8 @@
 _G.__headless = true
+local Paths = require("apps.diskmap.helpers.Paths")
 local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
-local Marks = require("apps.diskmap.models.Marks")
 local Verify = require("apps.diskmap.helpers.Verify")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
 
 -- The collector and the Review sheet refuse anything whose loss a person
@@ -57,11 +56,11 @@ local refused = {
 	{"/volumes/backup", "a mount point in lower case"},
 }
 for _, case in ipairs(refused) do
-	t.expect(not Marks.validate(case[1], home), "the collector refuses " .. case[2])
+	t.expect(not Paths.validate(case[1], home), "the collector refuses " .. case[2])
 	local ok, why = Verify.check({path = case[1]}, nil, home, {})
 	t.expect(not ok and (why.code == "location" or why.code == "protected"), "the Review sheet refuses " .. case[2])
 end
-local reason = select(2, Marks.validate(home .. "/Library/Keychains", home))
+local reason = select(2, Paths.validate(home .. "/Library/Keychains", home))
 t.expect(reason:find("Passwords", 1, true) ~= nil, "a refusal says why")
 
 local allowed = {
@@ -83,7 +82,7 @@ local allowed = {
 	"/Volumes/Media/Footage/clip.mov",
 }
 for _, path in ipairs(allowed) do
-	local ok, why = Marks.validate(path, home)
+	local ok, why = Paths.validate(path, home)
 	t.expect(ok, "the collector takes " .. path .. (why and (": " .. why) or ""))
 	t.expect(Verify.check({path = path}, nil, home, {}), "the Review sheet moves " .. path)
 end
@@ -94,14 +93,26 @@ local offered = 0
 for _, row in ipairs(Locations:leaves()) do
 	if row.action == "trash" and row.path then
 		offered = offered + 1
-		local ok, why = Marks.validate(row.path, home)
+		local ok, why = Paths.validate(row.path, home)
 		t.expect(ok, "catalog item " .. row.id .. " can be marked" .. (why and (": " .. why) or ""))
 	end
 end
 t.expect(offered > 5, "the catalog offers locations to check")
 
-t.assertEqual(Marks.normalize("/tmp/x/"), "/private/tmp/x", "normalizing follows the root's links")
-t.assertEqual(Marks.normalize("/"), "/", "the root stays the root")
-t.assertEqual(Marks.normalize("/tmpfiles"), "/tmpfiles", "a name that starts like a link is left alone")
+t.assertEqual(Paths.normalize("/tmp/x/"), "/private/tmp/x", "normalizing follows the root's links")
+t.assertEqual(Paths.normalize("/"), "/", "the root stays the root")
+t.assertEqual(Paths.normalize("/tmpfiles"), "/tmpfiles", "a name that starts like a link is left alone")
+
+-- The same guard is the marks table's constraint: a row that breaks it is
+-- never stored, and a mark answers the location it stands for.
+local Marks = require("apps.diskmap.models.Marks")
+local stored, refusal = Marks:create({path = "/System"})
+t.expect(stored == nil and refusal == "System location.", "the marks table refuses a system location")
+t.assertEqual(Marks:count(), 0, "and stores nothing")
+local derived = Locations:find("derived")
+t.expect(Marks:add({path = derived.path, resourceId = "derived"}), "a location can be marked")
+t.expect(Marks:find(derived.path):location() == derived, "a mark answers its location")
+t.expect(Marks:add({path = home .. "/Downloads/a.zip"}) and Marks:find(home .. "/Downloads/a.zip"):location() == nil, "a mark of a plain file has none")
+Marks:clear()
 
 os.exit(t.summary() and 0 or 1)

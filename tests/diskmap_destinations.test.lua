@@ -3,7 +3,6 @@ local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
 local Model = require("data.model")
 local bridge = require("AppKitNative")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
 local Catalog = require("apps.diskmap.Catalog")
 local Projects = require("apps.diskmap.models.Projects")
@@ -50,7 +49,7 @@ end
 
 -- Largest Items: a row opens where its resource lives, not its whole category.
 app:show("largest")
-local rows = Overview.largest(app.scan.disk, 100, "")
+local rows = Locations:largest(app.scan.disk, 100, "")
 local function rowOf(id)
 	for index, row in ipairs(rows) do if row.id == id then return index - 1 end end
 end

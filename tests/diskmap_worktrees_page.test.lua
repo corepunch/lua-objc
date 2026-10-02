@@ -5,8 +5,7 @@ local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
 local Mock = require("apps.diskmap.services.Mock")
 local Host = require("tests.diskmap_page")
-local Recommendations = require("apps.diskmap.helpers.Recommendations")
-local Cleanup = require("apps.diskmap.helpers.Cleanup")
+local Suggestions = require("apps.diskmap.models.Suggestions")
 
 -- With the mock fixture: the page lists every worktree, offers the clean ones and holds the rest back.
 local service = Mock.new()
@@ -84,13 +83,13 @@ select("MockProject")
 t.expect(not refs.keep.enabled, "the primary cannot be kept or removed")
 
 -- Clean Up carries the same plan and does not count the tool's folder again.
-local data = Recommendations.presentation("", {})
+local data = Suggestions:presentation("", {})
 local candidate
 for _, row in ipairs(data.decisions) do if row.id == "worktrees" then candidate = row end end
 t.expect(candidate and candidate.page == "worktrees", "Clean Up offers the worktree review")
 t.assertEqual(candidate.eligibleBytes, model.worktreePlan.removalBytes, "with the plan's removal bytes as its eligible bytes")
 model.measurements["codex-worktrees"] = {status = "complete", bytes = 2e9}
-for _, value in ipairs(Cleanup.suggestions()) do t.expect(value.id ~= "codex-worktrees", "the tool's worktree folder is not suggested beside the per-worktree review") end
+for _, value in ipairs(Suggestions:ranked()) do t.expect(value.id ~= "codex-worktrees", "the tool's worktree folder is not suggested beside the per-worktree review") end
 
 -- Review: one confirmation, each worktree rechecked, nothing forced, results reported.
 select("coin-quest")

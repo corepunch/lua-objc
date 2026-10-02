@@ -1,6 +1,3 @@
-local Model = require("data.model")
-local Locations = require("apps.diskmap.models.Locations")
-local Format = require("apps.diskmap.helpers.Format")
 local Snapshot = {}
 
 -- A saved Mock HDD snapshot doubles as the previous state of this Mac: its
@@ -9,38 +6,7 @@ local Snapshot = {}
 -- without decoding the snapshot again. Changes smaller than `minimumChange`
 -- are ordinary churn — caches, logs — and are not reported.
 Snapshot.minimumChange = 50e6
-Snapshot.headerSize = 72
 Snapshot.overviewLimit = 4
-
-local function little64(bytes, offset)
-	local value = 0
-	for index = 7, 0, -1 do value = value * 256 + bytes:byte(offset + index) end
-	return value
-end
-
--- The snapshot's creation time, read from its uncompressed header, or nil
--- when the file is missing or not a snapshot.
-function Snapshot.created(path)
-	local file = path and io.open(path, "rb")
-	if not file then return nil end
-	local header = file:read(Snapshot.headerSize)
-	file:close()
-	if not header or #header < Snapshot.headerSize or header:sub(1, 8) ~= "DMOCK002" then return nil end
-	local created = little64(header, 57)
-	return created > 0 and created or nil
-end
-
--- Measured bytes per catalog location. Denied, excluded and unmeasured
--- locations are left out, so they never read as growth or shrinkage.
-function Snapshot:totals()
-	local model = Model.db
-	local totals = {}
-	for _, row in ipairs(Locations:leaves()) do
-		local m = model.measurements[row.id]
-		if m and (m.status == "complete" or m.status == "partial") and m.bytes then totals[row.id] = m.bytes end
-	end
-	return totals
-end
 
 -- One line with the creation time, then one `id bytes` line per location.
 function Snapshot.encode(baseline)
@@ -59,59 +25,6 @@ function Snapshot.decode(text)
 	local totals = {}
 	for id, bytes in text:gmatch("\n([^%s]+) (%d+)") do totals[id] = tonumber(bytes) end
 	return {createdAt = tonumber(created), totals = totals}
-end
-
-local function ancestry(row)
-	local names, parent = {}, row:parent()
-	while parent do
-		table.insert(names, 1, parent.name)
-		parent = parent:parent()
-	end
-	return table.concat(names, " › ")
-end
-
-local function since(createdAt)
-	return (os.date("%b %e", createdAt):gsub("  ", " "))
-end
-
--- Locations that grew or shrank since the snapshot, largest change first,
--- with totals for the section summary. Locations measured on only one side
--- are skipped: a new tool or a newly denied folder is not a change in size.
-function Snapshot:changes(baseline)
-	local model = Model.db
-	if not baseline or not baseline.totals then return nil end
-	local now = Snapshot:totals()
-	local rows, grew, freed = {}, 0, 0
-	for id, after in pairs(now) do
-		local before = baseline.totals[id]
-		local resource = Locations:find(id)
-		if before and resource and math.abs(after - before) >= Snapshot.minimumChange then
-			local delta = after - before
-			if delta > 0 then grew = grew + delta else freed = freed - delta end
-			table.insert(rows, {id = id, name = resource.name, subtitle = ancestry(resource), icon = resource.icon, color = resource.color,
-				appIcon = resource.appIcon, path = resource.path, delta = delta, bytes = after, size = Format.size(after),
-				before = Format.size(before), grew = delta > 0,
-				text = (delta > 0 and "+" or "−") .. Format.size(math.abs(delta))})
-		end
-	end
-	table.sort(rows, function(a, b)
-		if math.abs(a.delta) ~= math.abs(b.delta) then return math.abs(a.delta) > math.abs(b.delta) end
-		return a.id < b.id
-	end)
-	local largest = rows[1] and math.abs(rows[1].delta) or 0
-	for _, row in ipairs(rows) do
-		row.relative = largest > 0 and math.abs(row.delta) / largest or 0
-		row.detail, row.shareText = row.text, ""
-		row.levelColor = row.grew and "systemOrange" or "systemGreen"
-	end
-	local date = baseline.createdAt and since(baseline.createdAt) or "the snapshot"
-	local parts = {}
-	if grew > 0 then table.insert(parts, Format.size(grew) .. " more") end
-	if freed > 0 then table.insert(parts, Format.size(freed) .. " freed") end
-	return {rows = rows, since = date, grew = grew, freed = freed,
-		title = "Changes Since " .. date,
-		detail = #rows == 0 and ("No location changed by more than " .. Format.size(Snapshot.minimumChange) .. " since the " .. date .. " snapshot.")
-			or (Format.plural(#rows, "location") .. " changed since the " .. date .. " snapshot · " .. table.concat(parts, ", "))}
 end
 
 -- The first rows for the overview tiles, sharing the section's summary.

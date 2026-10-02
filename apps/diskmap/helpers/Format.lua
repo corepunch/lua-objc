@@ -94,4 +94,10 @@ function Format.count(value)
 	local result = text:reverse():gsub("(%d%d%d)", "%1,"):reverse()
 	return (result:gsub("^,", ""))
 end
+-- How long ago a file was last used, from its Unix time.
+function Format.age(seconds, now)
+	if not seconds or seconds <= 0 then return "Unknown" end
+	return Format.ago(math.floor(((now or os.time()) - seconds) / 86400))
+end
+
 return Format

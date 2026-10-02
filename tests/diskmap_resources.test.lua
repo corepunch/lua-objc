@@ -2,7 +2,7 @@ _G.__headless = true
 local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
 local Model = require("data.model")
-local Categories = require("apps.diskmap.helpers.Categories")
+local Categories = require("apps.diskmap.models.Categories")
 
 local function model()
 	return {measurements = {}, kept = {}}
@@ -43,7 +43,7 @@ firstModel.kept.root = true
 t.expect(Locations:find("leaf"):isKept(), "row resolves inherited Keep")
 firstModel.kept.root = nil
 t.expect(not Locations:find("leaf"):isKept(), "row sees Keep removal")
-local presentation = Categories.rows()
+local presentation = Categories:rows()
 t.assertEqual(getmetatable(presentation[1]), nil, "presentation rows are plain tables")
 t.assertEqual(presentation[1].parent, nil, "presentation rows do not leak relation methods")
 

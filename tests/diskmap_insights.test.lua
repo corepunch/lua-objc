@@ -1,4 +1,5 @@
 _G.__headless = true
+local FileKind = require("apps.diskmap.helpers.FileKind")
 -- Large Files, File Types, Applications, Clean Up and Disks against the
 -- synthetic Mock HDD, plus the pure rules behind them.
 local t = require("TestKit")
@@ -10,9 +11,8 @@ local Mock = require("apps.diskmap.services.Mock")
 local Files = require("apps.diskmap.models.Files")
 local Applications = require("apps.diskmap.models.Applications")
 local Volumes = require("apps.diskmap.helpers.Volumes")
-local Recommendations = require("apps.diskmap.helpers.Recommendations")
-local Inventory = require("apps.diskmap.helpers.Inventory")
 local Controller = require("apps.diskmap.Controller")
+local Suggestions = require("apps.diskmap.models.Suggestions")
 local home = os.getenv("HOME")
 
 -- The mock scan honours the same summary options as the native scanner.
@@ -38,19 +38,19 @@ t.expect(containers["com.mock.RemovedEditor"] and containers["com.mock.RemovedEd
 t.expect(containers["com.apple.mail"] == nil, "excluded locations stay out of breakdowns")
 
 -- File kinds and ages.
-t.assertEqual(Files.kind("/x/Movie.MOV").id, "video", "kinds ignore extension case")
-t.assertEqual(Files.kind("/x/archive.tar.gz").id, "archives", "the last extension decides the kind")
-t.assertEqual(Files.kind("/x/.hidden").id, "other", "dot files have no kind")
-t.assertEqual(Files.age(now - 3 * 86400, now), "3 days ago", "recent ages are in days")
-t.assertEqual(Format.used(Files.age(now - 3 * 86400, now)), "Used 3 days ago", "headerless rows name the event an age measures")
-t.assertEqual(Format.used(Files.age(now, now)), "Used today", "today reads as a phrase")
-t.assertEqual(Format.used(Files.age(nil, now)), "Last use unknown", "a missing date never reads as a bare Unknown")
+t.assertEqual(FileKind.of("/x/Movie.MOV").id, "video", "kinds ignore extension case")
+t.assertEqual(FileKind.of("/x/archive.tar.gz").id, "archives", "the last extension decides the kind")
+t.assertEqual(FileKind.of("/x/.hidden").id, "other", "dot files have no kind")
+t.assertEqual(Format.age(now - 3 * 86400, now), "3 days ago", "recent ages are in days")
+t.assertEqual(Format.used(Format.age(now - 3 * 86400, now)), "Used 3 days ago", "headerless rows name the event an age measures")
+t.assertEqual(Format.used(Format.age(now, now)), "Used today", "today reads as a phrase")
+t.assertEqual(Format.used(Format.age(nil, now)), "Last use unknown", "a missing date never reads as a bare Unknown")
 t.assertEqual(Format.used("—"), "—", "a placeholder stays a placeholder")
 t.assertEqual(Format.percent(0, 100), "0%", "a measured zero shows 0% like any other share")
 t.assertEqual(Format.percent(nil, 100), "", "an unmeasured size has no share")
 t.assertEqual(Format.percent(0.5, 100), "<1%", "a sliver stays <1%")
-t.assertEqual(Files.age(now - 400 * 86400, now), "1 year ago", "old ages are in years")
-t.assertEqual(Files.age(nil, now), "Unknown", "missing dates are unknown, not zero")
+t.assertEqual(Format.age(now - 400 * 86400, now), "1 year ago", "old ages are in years")
+t.assertEqual(Format.age(nil, now), "Unknown", "missing dates are unknown, not zero")
 t.assertEqual(Format.count(1234567), "1,234,567", "counts use thousands separators")
 t.assertEqual(Format.count(12), "12", "short counts are unchanged")
 
@@ -160,7 +160,7 @@ t.assertEqual(used + apfs.free, apfs.capacity, "mock volumes and free space part
 t.assertEqual(#Volumes.external(volumes.external), 1, "other mounted disks are listed")
 
 -- Clean Up uses every knowledge entry.
-local cleanup = Recommendations.presentation(nil, {apps = app:request("applications"):summary()})
+local cleanup = Suggestions:presentation(nil, {apps = app:request("applications"):summary()})
 t.expect(#cleanup.rebuildable > 0 and #cleanup.decisions > 0, "clean up separates rebuildable data from decisions")
 local rebuildable = {}
 for _, row in ipairs(cleanup.rebuildable) do rebuildable[row.id] = true end

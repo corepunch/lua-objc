@@ -1,7 +1,4 @@
-local Model = require("data.model")
-local Locations = require("apps.diskmap.models.Locations")
 local Format = require("apps.diskmap.helpers.Format")
-local Categories = require("apps.diskmap.helpers.Categories")
 local Map = require("apps.diskmap.knowledge.Filesystem")
 local Filesystem = {}
 
@@ -23,16 +20,16 @@ local function expand(path, home)
 end
 
 -- Paths the page measures itself: readable locations that neither a volume
--- nor a catalog resource sizes.
-function Filesystem.pending()
-	local model = Model.db
+-- nor a catalog resource sizes. `facts` is what the store knows
+-- (Categories:facts()): {home, volumeUsage, measured(id)}.
+function Filesystem.pending(facts)
 	local paths = {}
 	for _, area in ipairs(Map.areas) do
 		for _, location in ipairs(area.locations) do
 			local guarded = location.guard == "sip" or location.guard == "owner"
-			local leftover = location.leftover and Locations:find(location.leftover.id)
+			local leftover = location.leftover and facts.measured(location.leftover.id)
 			if not guarded and not location.volume and not location.resource and not leftover then
-				table.insert(paths, expand(location.path, model.home))
+				table.insert(paths, expand(location.path, facts.home))
 			end
 		end
 	end
@@ -44,25 +41,24 @@ local function sized(row, bytes, partial)
 end
 
 -- One location as a page row.
-function Filesystem.row(location, sizes, fullDiskAccess)
-	local model = Model.db
-	local path = expand(location.path, model.home)
+function Filesystem.row(location, sizes, fullDiskAccess, facts)
+	local path = expand(location.path, facts.home)
 	local guard = location.guard and Map.guards[location.guard]
 	local row = {id = location.path, name = location.name, path = path, what = location.what,
 		guardTitle = guard and guard.title or nil, resource = location.resource or (location.leftover and location.leftover.id)}
 	local state
 	if location.guard == "sip" or location.guard == "owner" then
 		state = "protected"
-	elseif location.volume and model.volumeUsage and model.volumeUsage[location.volume] then
-		sized(row, model.volumeUsage[location.volume], false)
+	elseif location.volume and facts.volumeUsage and facts.volumeUsage[location.volume] then
+		sized(row, facts.volumeUsage[location.volume], false)
 	elseif location.volume and not row.resource then
 		-- Only APFS can size a whole volume; walking / would count the disk twice.
 		state = "unmeasured"
-	elseif row.resource and Locations:find(row.resource) then
-		local measured = Categories.row(row.resource)
-		if measured and measured.bytes then sized(row, measured.bytes, measured.status == "partial")
-		elseif measured and measured.status == "denied" then state = "privacy"
-		elseif measured and measured.status == "protected" then state = "protected"
+	elseif row.resource and facts.measured(row.resource) then
+		local measured = facts.measured(row.resource)
+		if measured.bytes then sized(row, measured.bytes, measured.status == "partial")
+		elseif measured.status == "denied" then state = "privacy"
+		elseif measured.status == "protected" then state = "protected"
 		else state = "unmeasured" end
 	else
 		local entry = sizes and sizes[path]
@@ -84,8 +80,7 @@ function Filesystem.row(location, sizes, fullDiskAccess)
 end
 
 -- Areas matching `query` with their rows, in map order.
-function Filesystem.presentation(sizes, fullDiskAccess, query)
-	local model = Model.db
+function Filesystem.presentation(sizes, fullDiskAccess, query, facts)
 	local needle = (query or ""):lower()
 	local areas, count = {}, 0
 	for _, area in ipairs(Map.areas) do
@@ -94,7 +89,7 @@ function Filesystem.presentation(sizes, fullDiskAccess, query)
 		for _, location in ipairs(area.locations) do
 			local text = (location.name .. " " .. location.path .. " " .. location.what):lower()
 			if areaMatches or text:find(needle, 1, true) then
-				table.insert(rows, Filesystem.row(location, sizes, fullDiskAccess))
+				table.insert(rows, Filesystem.row(location, sizes, fullDiskAccess, facts))
 			end
 		end
 		if #rows > 0 then

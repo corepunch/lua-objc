@@ -1,13 +1,14 @@
+local FileKind = require("apps.diskmap.helpers.FileKind")
 local Model = require("data.model")
 local Files = require("apps.diskmap.models.Files")
 local Format = require("apps.diskmap.helpers.Format")
-local Inventory = require("apps.diskmap.helpers.Inventory")
 local ListRoute = require("apps.diskmap.pages.ListRoute")
 local Scope = require("apps.diskmap.helpers.Scope")
+local Scans = require("apps.diskmap.models.Scans")
 
 local routes = {}
 
-local THRESHOLD = Format.size(Inventory.summary.minimumFileBytes)
+local THRESHOLD = Format.size(Scans.fileSummary.minimumFileBytes)
 local LAYOUT = {
 	summary = "Measuring files…", scopeNote = Scope.pages.files, leads = {"lead"}, contextAfterSections = true, contextDisclosure = "Scan scope and statistics",
 	tiles = {
@@ -93,7 +94,7 @@ routes.files = ListRoute.extend({layout = LAYOUT, children = {lead = "sections/D
 		local fileState, reason = Files:state()
 		page.visible = {}
 		if fileState == "loading" then return {waiting = WAITING} end
-		local query, kind = state.query or "", page.kind and Files.kindById(page.kind)
+		local query, kind = state.query or "", page.kind and FileKind.byId(page.kind)
 		local files, summary = model.files, Files:summary()
 		local rows = Files:rows(Files.filters[page.filterIndex], query, page.kind)
 		page.visible = rows
@@ -101,7 +102,7 @@ routes.files = ListRoute.extend({layout = LAYOUT, children = {lead = "sections/D
 		local noFiles = fileState == "empty" or (fileState == "loaded" and noLarge)
 		local unavailable = fileState == "error" or fileState == "unavailable"
 		local listed = files ~= nil and #rows == 0 and fileState == "loaded" and not noLarge
-		local texts = {scopeNote = Scope.text("files"), summary = not summary and "No file results are available. Refresh to try again."
+		local texts = {scopeNote = Scope.text("files", Scans:coverage()), summary = not summary and "No file results are available. Refresh to try again."
 			or "Files over " .. THRESHOLD .. " · " .. (summary.partial and "scan coverage is incomplete" or "largest first")}
 		if summary then
 			texts.largeTileValue, texts.largeTileDetail = Format.size(summary.bytes), Format.plural(Format.count(summary.count), "file") .. ", largest first"

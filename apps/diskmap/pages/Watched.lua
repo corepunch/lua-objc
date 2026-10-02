@@ -1,10 +1,10 @@
 local Model = require("data.model")
 local Provider = require("apps.diskmap.services.Provider")
 local Locations = require("apps.diskmap.models.Locations")
-local Categories = require("apps.diskmap.helpers.Categories")
 local Format = require("apps.diskmap.helpers.Format")
 local ListRoute = require("apps.diskmap.pages.ListRoute")
 local VolumeContents = require("apps.diskmap.helpers.VolumeContents")
+local Categories = require("apps.diskmap.models.Categories")
 
 -- The Watched page, which every watched location of the sidebar opens.
 local routes = {}
@@ -59,7 +59,7 @@ end
 local function contents(page, row)
 	local source = group(page, row)
 	if source then
-		local rows = Categories.rows(source.id)
+		local rows = Categories:rows(source.id)
 		for _, item in ipairs(rows) do item.resourceId, item.detail = item.id, item.policy or "" end
 		return page.rowActions:annotate(rows), Format.plural(#source:children(), "location") .. " Diskmap measures here. Open one to review it."
 	end

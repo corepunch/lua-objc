@@ -55,9 +55,13 @@ its models again each time it is drawn.
 
 An app that shows two windows (Diskmap's opened scan beside this Mac) has a store per
 window and binds the right one whenever a window's code runs. The page controller
-binds its page's store before every request and action and when a menu item it
-returned runs; `Model.bound(store, fn)` wraps a callback that enters from outside
-(Diskmap's `Provider.bind` wraps every callback a window's service calls back with).
+binds its page's store before every request and action, when a menu item it
+returned runs and when the page goes; `Model.bound(store, fn)` wraps a callback
+that enters from outside (Diskmap's `Provider.bind` wraps every callback a window's
+service calls back with). The window's own controller is the third way in (a drop,
+the toolbar, the menu bar): Diskmap's root controller binds its store in every one
+of its methods and menu commands, in one place at the end of `Controller.lua`.
+Nothing else binds a store.
 
 ## Models
 
@@ -103,9 +107,13 @@ end
   `filters[2]`, `filters:index("Unused")`.
 
 A model owns its domain queries, validation and mutations and never touches `ns`.
-What only computes from rows — formatting, parsers of a service's output, the
-figures of a chart — is a helper module in `helpers/`; IO is a service in
-`services/`, injected.
+Only models read the store. What only computes — formatting, parsers of a
+service's output, the figures of a chart — is a helper module in `helpers/`: it is
+pure, takes the rows and values it computes over as arguments, and requires no
+model, no service and no `data.model`. A helper that needs to look a row up takes
+the lookup as an argument (`Guide.presentation(query, Categories.measured)`). IO is
+a service in `services/`, injected. `tests/diskmap_layers.test.lua` checks these
+rules on Diskmap's source.
 
 ## Pages: routes
 

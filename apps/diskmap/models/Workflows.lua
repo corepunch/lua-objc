@@ -1,10 +1,10 @@
 local Model = require("data.model")
 local Locations = require("apps.diskmap.models.Locations")
 local Format = require("apps.diskmap.helpers.Format")
-local Categories = require("apps.diskmap.helpers.Categories")
-local Cleanup = require("apps.diskmap.helpers.Cleanup")
 local Status = require("apps.diskmap.helpers.Status")
 local Knowledge = require("apps.diskmap.knowledge.Workflows")
+local Categories = require("apps.diskmap.models.Categories")
+local Suggestions = require("apps.diskmap.models.Suggestions")
 
 -- The kinds of work (knowledge/Workflows.lua), one row each, and each kind's
 -- storage presented as sections of catalog rows. Developer, Music
@@ -16,7 +16,7 @@ local Workflows, Workflow = Model:extend("workflows", {source = function() retur
 
 local POLICY = {Rebuildable = "Rebuildable", Essential = "Keep", ["System managed"] = "System managed"}
 
--- A page row from a category row (Categories.rows): nothing for a location
+-- A page row from a category row (Categories:rows): nothing for a location
 -- that is empty, absent, left out of the scan or never measured.
 local function pageRow(model, value)
 	local group = value.children ~= nil
@@ -35,15 +35,15 @@ local function sectionValues(model, section)
 	local values = {}
 	for _, id in ipairs(section.roots or {}) do
 		-- Build folders roll up into one row per ecosystem ("Node modules").
-		for _, value in ipairs(Locations:find(id) and Categories.rows(id) or {}) do
+		for _, value in ipairs(Locations:find(id) and Categories:rows(id) or {}) do
 			if value.children == nil or value.id:match("^build%-") then table.insert(values, value) end
 		end
 	end
 	for _, id in ipairs(section.groups or {}) do
-		for _, value in ipairs(Locations:find(id) and Categories.rows(id) or {}) do table.insert(values, value) end
+		for _, value in ipairs(Locations:find(id) and Categories:rows(id) or {}) do table.insert(values, value) end
 	end
 	for _, id in ipairs(section.items or {}) do
-		table.insert(values, (Categories.row(id)))
+		table.insert(values, (Categories:row(id)))
 	end
 	return values
 end
@@ -89,7 +89,7 @@ function Workflow:presentation(query)
 		end
 	end
 	local rebuildable = 0
-	for _, suggestion in ipairs(Cleanup.suggestions()) do
+	for _, suggestion in ipairs(Suggestions:ranked()) do
 		if covered[suggestion.id] and suggestion.impact == "Safe/rebuildable" then rebuildable = rebuildable + suggestion.bytes end
 	end
 	return {sections = sections, total = Format.size(total), bytes = total, rebuildable = rebuildable,
@@ -118,13 +118,11 @@ function Workflow:measured()
 end
 
 function Workflow:present(exists)
-	local model = Model.db
 	return exists ~= nil and self:marked(exists) or self:measured()
 end
 
 -- The sidebar badge: the page's own total once nothing is being measured.
 function Workflow:badge()
-	local model = Model.db
 	local data = self:presentation()
 	if data.bytes > 0 and not data.calculating then return data.total end
 end

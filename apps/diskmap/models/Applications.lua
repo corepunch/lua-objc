@@ -1,7 +1,6 @@
 local Model = require("data.model")
 local Locations = require("apps.diskmap.models.Locations")
 local Format = require("apps.diskmap.helpers.Format")
-local Files = require("apps.diskmap.models.Files")
 local Leftovers = require("apps.diskmap.helpers.Leftovers")
 -- The installed applications: discovered `.app` locations, plus catalog
 -- apps such as Xcode when they exist; a bundle the scan found missing is not
@@ -88,7 +87,7 @@ function Applications:rows(filter, query, now)
 			-- track the app. It stays unknown and is excluded from every
 			-- inactivity filter, total and suggestion.
 			usageUnknown = details.lastUsed == nil,
-			detail = details.running and "Running now" or details.lastUsed and Format.used(Files.age(details.lastUsed, now)) or (info and "Last use unknown" or "—")}
+			detail = details.running and "Running now" or details.lastUsed and Format.used(Format.age(details.lastUsed, now)) or (info and "Last use unknown" or "—")}
 		row.size = Format.size(row.bytes)
 		row.subtitle = (details.version and ("Version " .. details.version .. " · ") or "") .. "App " .. Format.size(appBytes)
 			.. (dataBytes > 0 and (" · Data " .. Format.size(dataBytes)) or "")

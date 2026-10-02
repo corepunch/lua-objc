@@ -1,7 +1,6 @@
 _G.__headless = true
 local t=require('TestKit')
 local Locations = require("apps.diskmap.models.Locations")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
 local Applications=require('apps.diskmap.models.Applications')
 local Leftovers=require('apps.diskmap.helpers.Leftovers')

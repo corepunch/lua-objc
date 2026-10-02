@@ -1,4 +1,3 @@
-local Model = require("data.model")
 local Format = require("apps.diskmap.helpers.Format")
 local ListRoute = require("apps.diskmap.pages.ListRoute")
 local Status = require("apps.diskmap.helpers.Status")

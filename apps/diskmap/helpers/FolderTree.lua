@@ -1,8 +1,6 @@
-local Model = require("data.model")
-local Locations = require("apps.diskmap.models.Locations")
+local Paths = require("apps.diskmap.helpers.Paths")
+local FileKind = require("apps.diskmap.helpers.FileKind")
 local Format = require("apps.diskmap.helpers.Format")
-local Files = require("apps.diskmap.models.Files")
-local Marks = require("apps.diskmap.models.Marks")
 local Kinds = require("apps.diskmap.knowledge.FileKinds")
 local FolderTree = {}; FolderTree.__index = FolderTree
 
@@ -158,7 +156,7 @@ local function kindTotals(node)
 	if node.kinds then return node.kinds end
 	local totals = {}
 	if not node.directory then
-		totals[Files.kind(node.name).id] = node.bytes
+		totals[FileKind.of(node.name).id] = node.bytes
 	else
 		for _, child in ipairs(node.children or {}) do
 			for id, bytes in pairs(kindTotals(child)) do totals[id] = (totals[id] or 0) + bytes end
@@ -168,12 +166,12 @@ local function kindTotals(node)
 	return totals
 end
 function FolderTree.kindOf(node)
-	if not node.directory then return Files.kind(node.name) end
+	if not node.directory then return FileKind.of(node.name) end
 	local best, bestBytes = nil, 0
 	for id, bytes in pairs(kindTotals(node)) do
 		if bytes > bestBytes or (bytes == bestBytes and best and id < best) then best, bestBytes = id, bytes end
 	end
-	return best and Files.kindById(best) or OTHER_KIND
+	return best and FileKind.byId(best) or OTHER_KIND
 end
 
 function FolderTree.ageOf(node, now)
@@ -194,7 +192,7 @@ local function colorFor(node, coloring, inherited, now)
 end
 
 -- Chart nodes {id, parent, value, color, label, detail, ring, leaf, other}
--- below the focus, as MapTree.nodes draws them, and the focus's total.
+-- below the focus, as Categories:mapNodes draws them, and the focus's total.
 function FolderTree:nodes(focus, coloring, now, depth)
 	depth = depth or FolderTree.depth
 	local root = self:find(focus) or self.root
@@ -245,15 +243,15 @@ local function subtitle(node, now, owner)
 			table.insert(parts, count == 0 and "Empty folder" or Format.plural(Format.count(count), "item"))
 		end
 	else
-		table.insert(parts, Files.kind(node.name).name)
+		table.insert(parts, FileKind.of(node.name).name)
 	end
-	if node.used and node.used > 0 then table.insert(parts, "used " .. Files.age(node.used, now):lower()) end
+	if node.used and node.used > 0 then table.insert(parts, "used " .. Format.age(node.used, now):lower()) end
 	return table.concat(parts, " · ")
 end
 
 local function iconFor(node)
-	if not node.directory then return Files.kind(node.name).icon end
-	if Files.isPackage(node.name) then return "shippingbox.fill" end
+	if not node.directory then return FileKind.of(node.name).icon end
+	if FileKind.isPackage(node.name) then return "shippingbox.fill" end
 	return "folder.fill"
 end
 
@@ -296,7 +294,7 @@ function FolderTree:legend(focus, coloring, now)
 	local function walk(node)
 		for _, child in ipairs(node.children or {}) do
 			if child.directory and child.children and #child.children > 0 then walk(child)
-			else add(coloring == "kinds" and (child.directory and FolderTree.kindOf(child) or Files.kind(child.name)) or FolderTree.ageOf(child, now), child.bytes) end
+			else add(coloring == "kinds" and (child.directory and FolderTree.kindOf(child) or FileKind.of(child.name)) or FolderTree.ageOf(child, now), child.bytes) end
 		end
 		if node.otherBytes > 0 then add(coloring == "age" and FolderTree.ageOf(node, now) or UNKNOWN, node.otherBytes) end
 	end
@@ -335,12 +333,12 @@ end
 -- only items in the home folder or on another disk, never a system
 -- location, a standard folder or a mount point (the cleanup basket's
 -- rules), never something inside a package, and never a location the
--- catalog marks Keep, Essential or system managed.
-function FolderTree.validateChange(path)
-	local model = Model.db
-	local ok, reason = Marks.validate(path, model.home)
+-- catalog marks Keep, Essential or system managed. `home` is the home
+-- folder and `owner` the location that owns the path (Locations:owner).
+function FolderTree.validateChange(path, home, owner)
+	local ok, reason = Paths.validate(path, home)
 	if not ok then return false, reason end
-	local home = model.home or ""
+	home = home or ""
 	local inHome = home ~= "" and path:sub(1, #home + 1) == home .. "/"
 	if not inHome and not path:match("^/Volumes/[^/]+/.") then
 		return false, "Diskmap changes only items in your home folder and on other disks."
@@ -348,12 +346,11 @@ function FolderTree.validateChange(path)
 	local parent = parentOf(path)
 	while parent and parent ~= "/" do
 		local name = parent:match("([^/]+)$")
-		if Files.isPackage(name) then return false, "This is inside " .. name .. ". Manage it in the app that owns it." end
+		if FileKind.isPackage(name) then return false, "This is inside " .. name .. ". Manage it in the app that owns it." end
 		parent = parentOf(parent)
 	end
 	-- The catalog describes the startup disk; another disk has no owners.
-	local owner = inHome and Locations:owner(path)
-	if owner then
+	if inHome and owner then
 		if owner:isKept() then return false, owner.name .. " is marked Keep." end
 		if owner.policy == "Essential" or owner.policy == "System managed" then return false, owner.name .. " is managed by its owner." end
 	end

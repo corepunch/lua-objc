@@ -1,4 +1,4 @@
-local Worktrees = require("apps.diskmap.models.Worktrees")
+local Worktrees = require("apps.diskmap.helpers.Worktrees")
 local Service = {}
 
 -- Git queries for the worktree review. Every function takes `run(argv,

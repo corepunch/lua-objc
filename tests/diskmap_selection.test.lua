@@ -1,20 +1,20 @@
 _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
 local Overview = require("apps.diskmap.helpers.Overview")
 local Files = require("apps.diskmap.models.Files")
 local Selection = require("apps.diskmap.helpers.Selection")
 local Mock = require("apps.diskmap.services.Mock")
 local Controller = require("apps.diskmap.Controller")
+local Categories = require("apps.diskmap.models.Categories")
 
 -- The token's rules.
 t.expect(Selection.isResource("applications"), "a category id is a resource")
 t.expect(not Selection.isResource("free"), "free space is volume geometry")
 t.expect(not Selection.isResource("unreconciled"), "the residual is not selectable")
 t.expect(Selection.isResource("other"), "\"other\" is a category and a file kind of its own")
-t.expect(not Selection.isResource(Overview.folded), "the Overview's folded categories are not one resource")
+t.expect(not Selection.isResource(Categories.folded), "the Overview's folded categories are not one resource")
 t.expect(not Selection.isResource("developer#other"), "a folded remainder is not a row")
 t.expect(not Selection.isResource(""), "empty is not a resource")
 t.expect(not Selection.isResource(nil), "nothing is not a resource")
@@ -36,7 +36,7 @@ t.assertEqual(#rows, 3, "filtering leaves the ranking itself alone")
 local model = Store.new("/Users/test")
 model.measurements["apps-system-other"] = {bytes = 58e9, status = "complete"}
 local disk = {totalKb = 494e9 / 1024, freeKb = 157e9 / 1024}
-local chart = Overview.chart(disk)
+local chart = Categories:chart(disk)
 t.assertEqual(chart.marks[1].id, "applications", "overview sectors carry the category id")
 t.assertEqual(chart.marks[#chart.marks].id, "free", "the empty track is tagged free")
 
@@ -81,7 +81,7 @@ overview.actions.chartHover(category)
 t.assertEqual(model.selectedId, nil, "hovering a sector selects no category row")
 t.assertEqual(results.documentView.selectedRow, -1, "natively")
 t.expect(overview.refs.chartDetail.text:find(model.categoryRows[2].name, 1, true) == 1, "the line under the ring names the sector")
-overview.actions.chartHover(Overview.folded)
+overview.actions.chartHover(Categories.folded)
 t.assertEqual(overview.refs.chartDetail.text:match("^[^·]+"), "Other categories ", "the folded categories name themselves")
 overview.actions.chartHover("free")
 t.expect(overview.refs.chartDetail.text:find("of disk", 1, true) ~= nil, "free space is a share of the disk")
@@ -95,11 +95,11 @@ map.setFocus = function(self, id) table.insert(mapped, id) end
 overview.actions.chartSelect("other")
 t.assertEqual(mapped[1], "other", "the Other category's sector opens the Map inside it")
 app:show("overview")
-overview.actions.chartSelect(Overview.folded)
+overview.actions.chartSelect(Categories.folded)
 t.assertEqual(mapped[2], "", "the folded sector opens the whole map")
 map.setFocus = nil
 app:show("overview")
-t.assertEqual(overview.actions["category_" .. Overview.folded], nil, "the folded legend row opens nothing")
+t.assertEqual(overview.actions["category_" .. Categories.folded], nil, "the folded legend row opens nothing")
 
 app:show("map")
 local mapPage = app.pages.map

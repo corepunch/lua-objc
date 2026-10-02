@@ -1,7 +1,6 @@
 _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
 local Mock = require("apps.diskmap.services.Mock")
 local Controller = require("apps.diskmap.Controller")
