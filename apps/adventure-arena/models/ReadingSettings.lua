@@ -1,5 +1,9 @@
-local ReadingSettings = {}
-ReadingSettings.__index = ReadingSettings
+local Model = require("data.model")
+
+-- The reader's settings, one row of the store's `reading` table:
+-- `ReadingSettings:current()`. Changes are row methods; the controller
+-- writes `snapshot()` to its document.
+local ReadingSettings, Settings = Model:extend("reading")
 
 -- The reader is a book first: New York (the system serif) by default, with
 -- San Francisco, Rounded and Mono for readers who prefer them.
@@ -40,17 +44,25 @@ local function indexOf(list, id)
 	end
 end
 
-function ReadingSettings.new(initial)
+-- The row a saved snapshot restores to: anything unknown falls back to the
+-- defaults, and the size is clamped.
+function ReadingSettings.restore(initial)
 	initial = initial or {}
-	local self = setmetatable({
+	local row = ReadingSettings:load({
+		id = "reader",
 		font = indexOf(FONTS, initial.font) and initial.font or FONTS[1].id,
 		fontSize = SIZE.default,
 		theme = indexOf(THEMES, initial.theme) and initial.theme or THEMES[1].id,
 		spacing = indexOf(SPACING, initial.spacing) and initial.spacing or "normal",
 		justified = initial.justified == true,
-	}, ReadingSettings)
-	self:setFontSize(initial.fontSize or SIZE.default)
-	return self
+	})
+	row:setFontSize(initial.fontSize or SIZE.default)
+	return row
+end
+
+-- The reader's one row.
+function ReadingSettings:current()
+	return self:find("reader")
 end
 
 function ReadingSettings.fonts() return FONTS end
@@ -65,35 +77,35 @@ local function select(self, key, list, index)
 	return true
 end
 
-function ReadingSettings:setFontIndex(index) return select(self, "font", FONTS, index) end
-function ReadingSettings:setThemeIndex(index) return select(self, "theme", THEMES, index) end
-function ReadingSettings:setSpacingIndex(index) return select(self, "spacing", SPACING, index) end
+function Settings:setFontIndex(index) return select(self, "font", FONTS, index) end
+function Settings:setThemeIndex(index) return select(self, "theme", THEMES, index) end
+function Settings:setSpacingIndex(index) return select(self, "spacing", SPACING, index) end
 
-function ReadingSettings:setFontSize(value)
+function Settings:setFontSize(value)
 	value = tonumber(value)
 	if not value then return false end
 	self.fontSize = math.max(SIZE.minimum, math.min(SIZE.maximum, math.floor(value + 0.5)))
 	return true
 end
 
-function ReadingSettings:adjustFontSize(delta)
+function Settings:adjustFontSize(delta)
 	return self:setFontSize(self.fontSize + delta)
 end
 
-function ReadingSettings:setJustified(value)
+function Settings:setJustified(value)
 	self.justified = value == true
 	return true
 end
 
--- Plain values for persistence; `ReadingSettings.new(snapshot)` restores them.
-function ReadingSettings:snapshot()
+-- Plain values for persistence; `ReadingSettings.restore(snapshot)` restores them.
+function Settings:snapshot()
 	return {
 		font = self.font, fontSize = self.fontSize, theme = self.theme,
 		spacing = self.spacing, justified = self.justified,
 	}
 end
 
-function ReadingSettings:presentation()
+function Settings:presentation()
 	local fontIndex, themeIndex, spacingIndex = indexOf(FONTS, self.font), indexOf(THEMES, self.theme), indexOf(SPACING, self.spacing)
 	local theme, spacing = THEMES[themeIndex], SPACING[spacingIndex]
 	local themes = {}

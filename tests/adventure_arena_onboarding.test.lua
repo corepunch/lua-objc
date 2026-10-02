@@ -9,7 +9,9 @@ local OnboardingController = require("apps.adventure-arena.controllers.Onboardin
 local Controller = require("apps.adventure-arena.Controller")
 local Plan = require("apps.adventure-arena.tour.capture")
 
-local catalog = Adventures.new()
+local Store = require("apps.adventure-arena.Store")
+Store.new()
+local catalog = Adventures
 local toymaker = catalog:find("books.wondertown")
 local sanitarium = catalog:find("books.blackwood-horror")
 t.expect(toymaker and sanitarium, "the catalog still has the all-ages and horror titles")
@@ -46,7 +48,7 @@ t.assertEqual(fresh.step, "welcome", "the tour opens on the welcome page")
 -- its size, in light and dark (tour/capture.sh crops them so), and the plan
 -- has a shot for each.
 local BOX = Plan.BOX
-t.expect(source("apps/adventure-arena/views/Onboarding.etlua")
+t.expect(source("apps/adventure-arena/views/sheets/Onboarding.etlua")
 	:find("imageWidth = " .. BOX.width .. ", imageHeight = " .. BOX.height, 1, true) ~= nil,
 	"the view's image box matches the capture plan")
 local shots = {}
@@ -87,7 +89,7 @@ for _, row in ipairs(pages.play.rows) do
 	t.expect(#row.symbol > 0 and #row.title > 0 and #row.detail > 0, row.title .. " has a symbol and a line of help")
 end
 -- The reader no longer has a compass; the tour must not teach one.
-for _, path in ipairs({ "apps/adventure-arena/models/Onboarding.lua", "apps/adventure-arena/views/Onboarding.etlua" }) do
+for _, path in ipairs({ "apps/adventure-arena/models/Onboarding.lua", "apps/adventure-arena/views/sheets/Onboarding.etlua" }) do
 	t.expect(source(path):lower():find("compass", 1, true) == nil, path .. " does not mention the retired compass")
 end
 
@@ -151,7 +153,9 @@ t.expect(horrorVisible, "parents still see horror worlds")
 -- must not be a Continue that leads nowhere.
 local empty = Onboarding.new()
 empty.step = "ready"
-local emptyPage = empty:presentation(Adventures.new { games = {} }).page
+Store.new { games = {} }
+local emptyPage = empty:presentation(Adventures).page
+Store.new()
 t.assertEqual(emptyPage.primary, "browse", "an empty catalog ends on Browse the Library")
 
 -- "How to Play" reopens the guide alone and keeps what the reader chose.
@@ -184,7 +188,6 @@ end
 -- UIKit in name only: the pages a phone shows, built with AppKit's views.
 local phone = setmetatable({ platform = "UIKit" }, { __index = ns })
 tour = OnboardingController.new {
-	adventures = catalog,
 	store = store,
 	ns = phone,
 	presentSheet = function(sheet, sizes)
@@ -305,7 +308,6 @@ t.expect(opened == nil, "closing the guide opens no story")
 t.expect(saved.completed == true and saved.audience == "kids", "and the reader's choices are still saved")
 
 local skipped = OnboardingController.new {
-	adventures = catalog,
 	store = { save = function() end },
 	ns = ns,
 	presentSheet = function(sheet) return sheet end,
@@ -320,11 +322,12 @@ t.expect(not skipped:needed(), "Skip still completes the tour")
 -- Wiring: the root controller owns a tour, headless launches leave it
 -- closed, and Settings reopens the guide.
 local app = Controller.new {
-	adventures = catalog,
 	ns = ns,
-	saveStore = { load = function() end, save = function() end },
-	readingStore = { load = function() end, save = function() end },
-	onboardingStore = { load = function() end, save = function() end },
+	documents = {
+		saves = { load = function() end, save = function() end },
+		reading = { load = function() end, save = function() end },
+		onboarding = { load = function() end, save = function() end },
+	},
 }
 t.expect(app.onboarding and app.onboarding:needed(), "a new app still owes the tour")
 t.expect(app.onboarding.sheet == nil, "headless create does not present the tour by itself")

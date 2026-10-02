@@ -9,7 +9,7 @@
   <ScrollView horizontal="true" vertical="false">
     <HStack spacing="14" paddingHorizontal="16" alignment="top">
       <% for gameIndex, game in ipairs(shelf.games) do %>
-      <%- partial("CoverCard.etlua", { game = game, action = game.id, id = "cover_" .. index .. "_" .. gameIndex }) %>
+      <%- partial("../components/CoverCard.etlua", { game = game, action = game.id, id = "cover_" .. index .. "_" .. gameIndex }) %>
       <% end %>
     </HStack>
   </ScrollView>

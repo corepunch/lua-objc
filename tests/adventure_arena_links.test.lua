@@ -8,6 +8,8 @@ local Template = require("ui.template")
 local Adventures = require("apps.adventure-arena.models.Adventures")
 local Session = require("apps.adventure-arena.models.Session")
 local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
+local Store = require("apps.adventure-arena.Store")
+local SavedGames = require("apps.adventure-arena.models.SavedGames")
 local SessionController = require("apps.adventure-arena.controllers.SessionController")
 local ZILRuntime = require("apps.adventure-arena.services.ZILRuntime")
 
@@ -108,17 +110,16 @@ end
 -- ── The reader's page ───────────────────────────────────────────────────
 state.room = "Gate"
 local rendered
+Store.new { games = { { id = "links", title = "Links" } } }
 local controller = SessionController.new {
 	model = model,
-	findGame = function() return { id = "links", title = "Links" } end,
 	push = function(_, data)
-		local view, refs = xml.renderFile("apps/adventure-arena/views/Session.etlua", data, ns)
+		local view, refs = xml.renderFile("apps/adventure-arena/views/pages/Session.etlua", data, ns)
 		rendered = { view = view, refs = refs }
 		return view, refs
 	end,
 	back = function() end,
 	ns = ns,
-	readingSettings = ReadingSettings.new(),
 	renderTemplate = function() end,
 	mountTemplate = function(host, template)
 		return Template.new(host, "apps/adventure-arena/views/" .. template .. ".etlua", ns)
@@ -153,7 +154,7 @@ t.assertEqual(table.concat(hall[1].titles, ","), "Examine,Climb", "they offer th
 t.assertEqual(table.concat(hall[2].titles, ","), "Go south", "and the way back")
 
 -- Reading settings re-set the page and keep its links.
-controller.readingSettings:setJustified(true)
+ReadingSettings:current():setJustified(true)
 controller:applyReadingSettings()
 hall = bridge._paragraphLinks(page()["paragraph_" .. #entries .. "_1"])
 t.assertEqual(#hall, 2, "links survive a change of reading settings")
@@ -172,7 +173,8 @@ local last = resumed.entries[#resumed.entries]
 t.assertEqual(last.links[1][1].target, "staircase", "replayed prose carries its links")
 
 -- ── The real story ──────────────────────────────────────────────────────
-local game = Adventures.new():find("books.blackwood-horror")
+Store.new()
+local game = Adventures:find("books.blackwood-horror")
 t.expect(game ~= nil, "the horror story is in the catalog")
 if game then
 	local story = Session.new { engineFactory = function(entry, seed) return ZILRuntime.new(entry, nil, seed) end }

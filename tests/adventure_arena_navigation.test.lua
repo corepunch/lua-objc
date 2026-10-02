@@ -3,23 +3,23 @@ local t = require("TestKit")
 local ns = require("AppKit")
 local Adventures = require("apps.adventure-arena.models.Adventures")
 local Session = require("apps.adventure-arena.models.Session")
-local catalog = Adventures.new()
+local catalog = Adventures
 local sessionModel = Session.new({ engineFactory = function()
 	return { start = function() return { resume = function(_, command) return "Response to " .. command end }, "Opening" end }
 end })
 local function memoryStore() local value return { load = function() return value end, save = function(v) value = v end } end
 local controller = require("apps.adventure-arena.Controller").new {
-	adventures = catalog, sessionModel = sessionModel, ns = ns,
-	saveStore = memoryStore(), readingStore = memoryStore(), after = function() end,
+	sessionModel = sessionModel, ns = ns,
+	documents = { saves = memoryStore(), reading = memoryStore() }, after = function() end,
 }
 t.assertEqual(controller.sessionModel, sessionModel, "controller uses injected session model")
 local home = controller:home()
 home.frameSize = ns.Size(640, 720)
 home:layout(640)
 t.assertEqual(home.depth, 1, "adventure home starts in one native navigation root")
-controller.library:showGame(catalog:list()[1].id)
+controller.library:showGame(catalog:all()[1].id)
 t.assertEqual(home.depth, 2, "detail stays in original navigation root")
-controller.sessionController:show(catalog:list()[1].id)
+controller.sessionController:show(catalog:all()[1].id)
 t.assertEqual(home.depth, 3, "session stays above detail in original navigation root")
 t.assertEqual(controller.window, nil, "component navigation never creates a window")
 ns._textFieldTestInput(controller.sessionController.refs.input, "look")

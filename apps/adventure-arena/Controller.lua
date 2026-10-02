@@ -1,8 +1,7 @@
-local Adventures = require("apps.adventure-arena.models.Adventures")
-local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
 local SavedGames = require("apps.adventure-arena.models.SavedGames")
 local Session = require("apps.adventure-arena.models.Session")
 local JsonDocument = require("apps.adventure-arena.services.JsonDocument")
+local Store = require("apps.adventure-arena.Store")
 local ZILRuntime = require("apps.adventure-arena.services.ZILRuntime")
 local LibraryController = require("apps.adventure-arena.controllers.LibraryController")
 local OnboardingController = require("apps.adventure-arena.controllers.OnboardingController")
@@ -28,14 +27,13 @@ Controller.__index = Controller
 function Controller.new(options)
 	options = options or {}
 	local ns = options.ns or require("ns")
-	local adventures = options.adventures or Adventures.new { games = options.games }
 	local readFile = ns._readFile
 	local sessionModel = options.sessionModel or Session.new {
 		engineFactory = options.engineFactory or function(game, seed)
 			return ZILRuntime.new(game, readFile, seed)
 		end,
 	}
-	local self = setmetatable({ ns = ns, adventures = adventures, sessionModel = sessionModel }, Controller)
+	local self = setmetatable({ ns = ns, sessionModel = sessionModel }, Controller)
 	local function mountTemplate(host, template)
 		return Template.new(host, VIEWS .. template .. ".etlua", ns)
 	end
@@ -44,14 +42,14 @@ function Controller.new(options)
 		if rawget(_G, "__headless") then return {} end
 		return JsonDocument.new(ns, name)
 	end
-	local readingStore = options.readingStore or document(DOCUMENTS.reading)
-	self.readingSettings = options.readingSettings or ReadingSettings.new(readingStore.load and readingStore.load())
-	self.savedGames = options.savedGames or SavedGames.new {
-		store = options.saveStore or document(DOCUMENTS.saves),
+	-- The store the models read: the catalog, the saves and the reader's
+	-- settings, loaded from and written to their documents.
+	local documents = options.documents or {}
+	self.store = Store.new {
+		games = options.games,
+		documents = {saves = documents.saves or document(DOCUMENTS.saves), reading = documents.reading or document(DOCUMENTS.reading)},
 	}
 	self.readingOptions = ReadingSettingsController.new {
-		model = self.readingSettings,
-		store = readingStore,
 		mountTemplate = mountTemplate,
 		onChange = function() self.sessionController:applyReadingSettings() end,
 	}
@@ -60,8 +58,6 @@ function Controller.new(options)
 	end
 	local function back() return self:back() end
 	self.library = LibraryController.new {
-		model = adventures,
-		savedGames = self.savedGames,
 		push = push,
 		back = back,
 		focus = function(origin) self:focus(origin) end,
@@ -71,13 +67,10 @@ function Controller.new(options)
 	}
 	self.sessionController = SessionController.new {
 		model = sessionModel,
-		findGame = function(id) return self.adventures:find(id) end,
 		push = push,
 		back = back,
 		ns = ns,
-		readingSettings = self.readingSettings,
 		readingOptions = self.readingOptions,
-		savedGames = self.savedGames,
 		haptics = options.haptics or require("ui.haptics"),
 		-- Dictation is the Speech plugin (src/plugins/speech), which the iOS
 		-- hosts link; elsewhere the composer offers no microphone.
@@ -105,8 +98,7 @@ function Controller.new(options)
 		end,
 	}
 	self.onboarding = options.onboarding or OnboardingController.new {
-		adventures = adventures,
-		store = options.onboardingStore or document(DOCUMENTS.onboarding),
+		store = documents.onboarding or document(DOCUMENTS.onboarding),
 		ns = ns,
 		presentSheet = function(sheet, detents)
 			return ns.presentSheet(sheet, { parent = self.window, detents = detents })
@@ -153,7 +145,7 @@ end
 
 -- The accessory resumes the latest story in whichever tab is showing.
 function Controller:resumeLatest()
-	local latest = self.savedGames:latest()
+	local latest = SavedGames:latest()
 	if not latest then return false end
 	self:focus(TABS[(self.selectedTab or 0) + 1])
 	return self.sessionController:show(latest.gameId)
@@ -179,7 +171,7 @@ function Controller:refreshProgress()
 		self.bookshelf:update(self.library:bookshelf())
 	end
 	if self.nowReading and not self.nowReading:isDisposed() then
-		local latest = self.savedGames:latest()
+		local latest = SavedGames:latest()
 		local entry = latest and self.library:progressEntry(latest)
 		self.nowReading:update({
 			game = entry and entry.game, place = entry and entry.place or "",
@@ -192,11 +184,11 @@ end
 
 function Controller:attach(refs)
 	-- An empty catalog shows its empty state and has no shelf to fill.
-	if refs.continueShelf then self.continueShelf = self.mountTemplate(refs.continueShelf, "ContinueShelf") end
-	if refs.bookshelf then self.bookshelf = self.mountTemplate(refs.bookshelf, "Bookshelf") end
-	if refs.nowReading then self.nowReading = self.mountTemplate(refs.nowReading, "NowReading") end
+	if refs.continueShelf then self.continueShelf = self.mountTemplate(refs.continueShelf, "sections/ContinueShelf") end
+	if refs.bookshelf then self.bookshelf = self.mountTemplate(refs.bookshelf, "pages/Bookshelf") end
+	if refs.nowReading then self.nowReading = self.mountTemplate(refs.nowReading, "sections/NowReading") end
 	if refs.settings then
-		local settings = self.mountTemplate(refs.settings, "Settings")
+		local settings = self.mountTemplate(refs.settings, "pages/Settings")
 		local _, settingsRefs = settings:update({ actions = {
 			howToPlay = function() self.onboarding:openGuide(self.window) end,
 		} })
@@ -207,7 +199,7 @@ function Controller:attach(refs)
 end
 
 function Controller:home()
-	local _, refs = xml.renderFile(VIEWS .. "Home.etlua", self:libraryData(), self.ns)
+	local _, refs = xml.renderFile(VIEWS .. "layouts/Home.etlua", self:libraryData(), self.ns)
 	self.navigation = refs.navigation
 	self.navigations = { library = refs.navigation }
 	self:attach(refs)
@@ -215,7 +207,7 @@ function Controller:home()
 end
 
 function Controller:createWindow()
-	local config, refs = xml.renderFile(VIEWS .. "Window.etlua", self:libraryData(), self.ns)
+	local config, refs = xml.renderFile(VIEWS .. "layouts/Window.etlua", self:libraryData(), self.ns)
 	self.navigation = refs.navigation
 	self.navigations = {
 		library = refs.navigation, bookshelf = refs.bookshelfNavigation, create = refs.createNavigation,
@@ -223,7 +215,7 @@ function Controller:createWindow()
 	}
 	self.tabs = refs.tabs
 	self.window = self.ns.Window(config)
-	self.library:attachSearch(Template.new(refs.searchResults, VIEWS .. "SearchResults.etlua", self.ns))
+	self.library:attachSearch(Template.new(refs.searchResults, VIEWS .. "sections/SearchResults.etlua", self.ns))
 	self:attach(refs)
 	-- Headless runs drive the tour themselves; a live launch shows it once.
 	if not rawget(_G, "__headless") and self.onboarding:needed() then

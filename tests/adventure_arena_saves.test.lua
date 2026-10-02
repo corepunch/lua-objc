@@ -12,7 +12,10 @@ local ZILRuntime = require("apps.adventure-arena.services.ZILRuntime")
 local written
 local clock = 100
 local memory = { load = function() return written end, save = function(value) written = value end }
-local saves = SavedGames.new { store = memory, clock = function() return clock end }
+local Store = require("apps.adventure-arena.Store")
+SavedGames.clock = function() return clock end
+Store.new { documents = { saves = memory } }
+local saves = SavedGames
 t.assertEqual(#saves:list(), 0, "a new library has no saved games")
 t.expect(not saves:record({ gameId = "zork", commands = {} }),
 	"opening a story without playing it is not saved")
@@ -28,18 +31,22 @@ t.assertEqual(saves:latest().gameId, "zork", "playing again moves a story to the
 t.assertEqual(#saves:find("zork").commands, 2, "a save replaces the previous one for the same story")
 t.assertEqual(#written.games, 2, "every saved story is persisted")
 
-local reloaded = SavedGames.new { store = memory }
+Store.new { documents = { saves = memory } }
+local reloaded = SavedGames
 t.assertEqual(#reloaded:list(), 2, "saves survive a relaunch")
 t.assertEqual(reloaded:find("planetfall").room, "Gangway", "saved details survive a relaunch")
 t.expect(reloaded:remove("planetfall"), "a saved story can be removed")
 t.expect(not reloaded:remove("planetfall"), "removing twice reports nothing removed")
-t.assertEqual(#SavedGames.new({ store = memory }):list(), 1, "removal is persisted")
+Store.new { documents = { saves = memory } }
+t.assertEqual(#SavedGames:list(), 1, "removal is persisted")
 
-local corrupt = SavedGames.new { store = { load = function() return { games = { 1, 2 } } end } }
-t.assertEqual(#corrupt:list(), 0, "records that are not saves are skipped")
-local broken = SavedGames.new { store = { load = function() return { games = { { gameId = 3 } } } end } }
-t.assertEqual(#broken:list(), 0, "malformed records are skipped")
-t.assertEqual(#SavedGames.new():list(), 0, "the model works without a store")
+Store.new { documents = { saves = { load = function() return { games = { 1, 2 } } end } } }
+t.assertEqual(#SavedGames:list(), 0, "records that are not saves are skipped")
+Store.new { documents = { saves = { load = function() return { games = { { gameId = 3 } } } end } } }
+t.assertEqual(#SavedGames:list(), 0, "malformed records are skipped")
+Store.new()
+t.assertEqual(#SavedGames:list(), 0, "the model works without a document")
+SavedGames.clock = os.time
 
 -- ── The store is JSON in the platform document folder ─────────────────
 local documents = {}
@@ -73,7 +80,7 @@ t.expect(unit >= 0 and unit < 1, "random() is a unit float")
 local single = ZILRuntime.random(5)(3)
 t.expect(single >= 1 and single <= 3, "random(n) draws from 1 to n")
 
-local catalog = Adventures.new()
+local catalog = Adventures
 -- The runtime routes io.open through this reader while it runs.
 local open = io.open
 local function readFile(path)

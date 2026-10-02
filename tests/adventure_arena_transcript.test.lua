@@ -5,6 +5,8 @@ local ns = require("AppKit")
 local xml = require("ui.xml")
 local Session = require("apps.adventure-arena.models.Session")
 local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
+local Store = require("apps.adventure-arena.Store")
+local SavedGames = require("apps.adventure-arena.models.SavedGames")
 local SessionController = require("apps.adventure-arena.controllers.SessionController")
 local Template = require("ui.template")
 local function mountTemplate(host, template)
@@ -34,17 +36,16 @@ local function after(_, callback) table.insert(timers, callback) end
 local function finishTimers()
 	while #timers > 0 do table.remove(timers, 1)() end
 end
+Store.new { games = { { id = "zork", title = "Zork", description = "A story." } } }
 local controller = SessionController.new {
 	model = model,
-	findGame = function() return { id = "zork", title = "Zork", description = "A story." } end,
 	push = function(_, data)
-		local view, refs = xml.renderFile("apps/adventure-arena/views/Session.etlua", data, ns)
+		local view, refs = xml.renderFile("apps/adventure-arena/views/pages/Session.etlua", data, ns)
 		rendered = { view = view, refs = refs }
 		return view, refs
 	end,
 	back = function() end,
 	ns = ns,
-	readingSettings = ReadingSettings.new(),
 	renderTemplate = function() end,
 	mountTemplate = mountTemplate,
 	presentSheet = function() end,
@@ -107,7 +108,7 @@ finishTimers()
 local cellar = model:entryCount()
 t.assertEqual(controller.transcript.refs["sceneTitle_" .. cellar].text, "Cellar", "the move opens a scene")
 t.assertEqual(controller.transcript.refs["entry_" .. cellar].paddingTop,
-	math.floor(ReadingSettings.new():presentation().fontSize * 1.3), "a scene sits 1.3 lines below its command")
+	math.floor(ReadingSettings:current():presentation().fontSize * 1.3), "a scene sits 1.3 lines below its command")
 
 -- The command field takes the width the compass left: it ends at the bar's
 -- trailing edge, and the bar holds only the menu and the field.
@@ -130,22 +131,23 @@ local saved = Session.new { engineFactory = function()
 		}, savedOpening
 	end }
 end }
+Store.new { games = { { id = "zork", title = "Zork", description = "A story." } } }
+local record = { seed = 1, commands = {} }
+record.gameId = "zork"
+SavedGames:create(record)
 local loaded = SessionController.new {
 	model = saved,
-	findGame = function() return { id = "zork", title = "Zork", description = "A story." } end,
 	push = function(_, data)
-		local view, refs = xml.renderFile("apps/adventure-arena/views/Session.etlua", data, ns)
+		local view, refs = xml.renderFile("apps/adventure-arena/views/pages/Session.etlua", data, ns)
 		rendered = { view = view, refs = refs }
 		return view, refs
 	end,
 	back = function() end,
 	ns = ns,
-	readingSettings = ReadingSettings.new(),
 	renderTemplate = function() end,
 	mountTemplate = mountTemplate,
 	presentSheet = function() end,
 	dismissSheet = function() end,
-	savedGames = { find = function() return { seed = 1, commands = {} } end, record = function() end },
 	after = after,
 	reduceMotion = function() return false end,
 }

@@ -11,7 +11,7 @@
 <Page title="<%= gameTitle %>" hidesTabBar="true" titleDisplayMode="inline" backButtonDisplayMode="minimal" onDisappear="disappear">
 <Toolbar>
   <ToolbarItem id="sessionTitle" placement="principal" label="<%= gameTitle %>">
-    <%- partial("SessionTitle.etlua", { gameTitle = gameTitle, roomTitle = roomTitle }) %>
+    <%- partial("../sections/SessionTitle.etlua", { gameTitle = gameTitle, roomTitle = roomTitle }) %>
   </ToolbarItem>
   <ToolbarItem id="readingSettings" placement="primaryAction" icon="textformat.size" label="Themes and settings" action="readingSettings" />
   <ToolbarItem id="suggestionBar" placement="keyboard" label="Suggestions">

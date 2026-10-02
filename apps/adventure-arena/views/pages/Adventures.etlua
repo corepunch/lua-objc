@@ -16,14 +16,14 @@
     <ScrollView id="featuredCarousel" horizontal="true" vertical="false" scrollTargetBehavior="viewAligned">
       <HStack spacing="12" paddingHorizontal="<%= PAGE.side %>" paddingTop="4" alignment="top">
         <% for index, game in ipairs(featured) do %>
-        <%- partial("FeaturedCard.etlua", { game = game, index = index }) %>
+        <%- partial("../components/FeaturedCard.etlua", { game = game, index = index }) %>
         <% end %>
       </HStack>
     </ScrollView>
     <% end %>
     <VStack id="continueShelf" maxWidth="infinity" />
     <% for index, shelf in ipairs(shelves) do %>
-    <%- partial("Shelf.etlua", { shelf = shelf, index = index }) %>
+    <%- partial("../sections/Shelf.etlua", { shelf = shelf, index = index }) %>
     <% end %>
     <% if #topRated > 0 then %>
     <VStack paddingTop="<%= PAGE.band %>" paddingHorizontal="<%= PAGE.side %>" spacing="2" alignment="leading" maxWidth="infinity">
@@ -31,7 +31,7 @@
       <Label text="The adventures players love most" size="15" color="secondary" />
       <VStack paddingTop="<%= PAGE.heading %>" spacing="0" maxWidth="infinity">
         <% for index, entry in ipairs(topRated) do %>
-        <%- partial("GameRow.etlua", { game = entry.game, rank = entry.rank, action = "chart_" .. index, id = "chartRow_" .. index, divider = index < #topRated }) %>
+        <%- partial("../components/GameRow.etlua", { game = entry.game, rank = entry.rank, action = "chart_" .. index, id = "chartRow_" .. index, divider = index < #topRated }) %>
         <% end %>
       </VStack>
     </VStack>
@@ -39,7 +39,7 @@
     <% if #genres > 0 then %>
     <VStack paddingTop="<%= PAGE.band %>" paddingHorizontal="<%= PAGE.side %>" spacing="<%= PAGE.heading + 2 %>" alignment="leading" maxWidth="infinity">
       <Label text="Browse by Genre" size="22" weight="bold" />
-      <%- partial("GenreGrid.etlua", { genres = genres }) %>
+      <%- partial("../sections/GenreGrid.etlua", { genres = genres }) %>
     </VStack>
     <% end %>
   </VStack>

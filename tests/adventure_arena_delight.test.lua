@@ -31,11 +31,10 @@ end
 local function make(options)
 	options = options or {}
 	return Controller.new {
-		adventures = options.adventures or Adventures.new { games = {} },
+		games = options.games or {},
 		sessionModel = Session.new(),
 		ns = ns,
-		saveStore = memoryStore(),
-		readingStore = memoryStore(),
+		documents = { saves = memoryStore(), reading = memoryStore() },
 		after = function() end,
 	}
 end

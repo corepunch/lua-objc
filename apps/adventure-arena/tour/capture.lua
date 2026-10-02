@@ -16,7 +16,7 @@ local ns = require("ns")
 
 local Plan = {}
 
--- BOX matches GUIDE in views/Onboarding.etlua;
+-- BOX matches GUIDE in views/sheets/Onboarding.etlua;
 -- tests/adventure_arena_onboarding.test.lua checks every image against it.
 Plan.BOX = { width = 300, height = 252, scale = 3 }
 
