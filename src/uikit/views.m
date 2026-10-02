@@ -416,7 +416,11 @@ static void arc_add_clockwise(UIBezierPath *path, CGPoint center, CGFloat radius
 @property(nonatomic, copy) NSString *lineCap;
 @property(nonatomic) CGFloat diameter;
 @property(nonatomic) CGFloat fitDiameter;
+@property(nonatomic) CGFloat inset;
+@property(nonatomic) CGFloat cornerRadius;
 - (UIBezierPath *)arcPath;
+- (BOOL)isSector;
+- (CGPathRef)copySectorPath;
 @end
 
 /* SwiftUI strokes a shape centered on its path and never clips it to the
@@ -480,17 +484,35 @@ static void arc_add_clockwise(UIBezierPath *path, CGPoint center, CGFloat radius
 	return path;
 }
 
+/* With an inset or a corner radius the arc is a filled sector of its band
+ * (shared/sector_path.m), as a SectorChart draws it; otherwise a stroke. */
+- (BOOL)isSector { return self.inset > 0 || self.cornerRadius > 0; }
+
+- (CGPathRef)copySectorPath {
+	return arc_sector_path_create(self.bounds, self.fitScale, self.diameter, self.lineWidth,
+		self.startAngle, self.endAngle, self.inset, self.cornerRadius);
+}
+
 - (void)updateShape {
 	CAShapeLayer *shape = (CAShapeLayer *)self.layer;
-	shape.path = self.arcPath.CGPath;
-	shape.fillColor = nil;
-	shape.lineWidth = self.scaledLineWidth;
+	BOOL sector = self.isSector;
+	if (sector) {
+		CGPathRef path = [self copySectorPath];
+		shape.path = path;
+		if (path) CGPathRelease(path);
+	} else {
+		shape.path = self.arcPath.CGPath;
+	}
+	shape.fillRule = kCAFillRuleEvenOdd;
+	shape.lineWidth = sector ? 0 : self.scaledLineWidth;
 	shape.lineCap = [self.lineCap isEqualToString:@"round"] ? kCALineCapRound : kCALineCapButt;
 	// Label colors carry their own translucency; strokeAlpha scales it.
 	UIColor *color = [lua_objc_uikit_system_color((self.stroke ?: @"accent").UTF8String)
 		resolvedColorWithTraitCollection:self.traitCollection];
-	shape.strokeColor = [color colorWithAlphaComponent:
+	CGColorRef ink = [color colorWithAlphaComponent:
 		CGColorGetAlpha(color.CGColor) * MIN(1, MAX(0, self.strokeAlpha))].CGColor;
+	shape.strokeColor = sector ? nil : ink;
+	shape.fillColor = sector ? ink : nil;
 }
 
 - (void)layoutSubviews {
@@ -506,6 +528,8 @@ static void arc_add_clockwise(UIBezierPath *path, CGPoint center, CGFloat radius
 - (void)setLineCap:(NSString *)value { _lineCap = [value copy]; [self updateShape]; }
 - (void)setDiameter:(CGFloat)value { _diameter = value; [self updateShape]; }
 - (void)setFitDiameter:(CGFloat)value { _fitDiameter = value; [self updateShape]; }
+- (void)setInset:(CGFloat)value { _inset = value; [self updateShape]; }
+- (void)setCornerRadius:(CGFloat)value { _cornerRadius = value; [self updateShape]; }
 
 @end
 
@@ -519,6 +543,12 @@ static int bridge_arc(lua_State *L) {
 
 static int bridge_LuaArcView_arcBounds(lua_State *L) {
 	LuaArcView *view = lua_objc_check_object(L, 1, [LuaArcView class], "Arc");
+	if (view.isSector) {
+		CGPathRef path = [view copySectorPath];
+		push_CGRect(L, path ? CGPathGetPathBoundingBox(path) : CGRectZero);
+		if (path) CGPathRelease(path);
+		return 1;
+	}
 	push_CGRect(L, view.arcPath.bounds);
 	return 1;
 }

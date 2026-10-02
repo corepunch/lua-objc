@@ -107,7 +107,10 @@ static NSColor *semantic_color(NSString *name);
 @property(nonatomic, copy) NSString *lineCap;
 @property(nonatomic) CGFloat diameter;
 @property(nonatomic) CGFloat fitDiameter;
+@property(nonatomic) CGFloat inset;
+@property(nonatomic) CGFloat cornerRadius;
 - (NSBezierPath *)arcPath;
+- (CGPathRef)copySectorPath;
 @end
 
 /* SwiftUI strokes a shape centered on its path and never clips it to the
@@ -171,19 +174,31 @@ static NSColor *semantic_color(NSString *name);
 	return path;
 }
 
+/* With an inset or a corner radius the arc is a filled sector of its band
+ * (shared/sector_path.m), as a SectorChart draws it; otherwise a stroke. */
+- (BOOL)isSector { return self.inset > 0 || self.cornerRadius > 0; }
+
+- (CGPathRef)copySectorPath {
+	return arc_sector_path_create(self.bounds, self.fitScale, self.diameter, self.lineWidth,
+		self.startAngle, self.endAngle, self.inset, self.cornerRadius);
+}
+
 - (void)updateShape {
 	CAShapeLayer *shape = (CAShapeLayer *)self.layer;
 	if (![shape isKindOfClass:CAShapeLayer.class]) return;
-	// arcPath is in this flipped view's coordinates; match the layer's.
-	CGPathRef path = self.arcPath.CGPath;
+	BOOL sector = self.isSector;
+	CGPathRef sectorPath = sector ? [self copySectorPath] : NULL;
+	// Paths are in this flipped view's coordinates; match the layer's.
+	CGPathRef path = sector ? sectorPath : self.arcPath.CGPath;
 	if (!shape.geometryFlipped) {
 		CGAffineTransform flip = CGAffineTransformMake(1, 0, 0, -1, 0, self.bounds.size.height);
 		shape.path = CFAutorelease(CGPathCreateCopyByTransformingPath(path, &flip));
 	} else {
 		shape.path = path;
 	}
-	shape.fillColor = nil;
-	shape.lineWidth = self.scaledLineWidth;
+	if (sectorPath) CGPathRelease(sectorPath);
+	shape.fillRule = kCAFillRuleEvenOdd;
+	shape.lineWidth = sector ? 0 : self.scaledLineWidth;
 	shape.lineCap = [self.lineCap isEqualToString:@"round"] ? kCALineCapRound : kCALineCapButt;
 	shape.masksToBounds = NO;
 	[self.effectiveAppearance performAsCurrentDrawingAppearance:^{
@@ -191,8 +206,10 @@ static NSColor *semantic_color(NSString *name);
 		// strokeAlpha scales it rather than replacing it with opaque ink.
 		NSColor *color = [semantic_color(self.stroke ?: @"accent")
 			colorUsingColorSpace:NSColorSpace.sRGBColorSpace];
-		shape.strokeColor = [color colorWithAlphaComponent:
+		CGColorRef ink = [color colorWithAlphaComponent:
 			color.alphaComponent * MIN(1, MAX(0, self.strokeAlpha))].CGColor;
+		shape.strokeColor = sector ? nil : ink;
+		shape.fillColor = sector ? ink : nil;
 	}];
 }
 
@@ -206,6 +223,8 @@ static NSColor *semantic_color(NSString *name);
 - (void)setLineCap:(NSString *)value { _lineCap = [value copy]; [self updateShape]; }
 - (void)setDiameter:(CGFloat)value { _diameter = value; [self updateShape]; }
 - (void)setFitDiameter:(CGFloat)value { _fitDiameter = value; [self updateShape]; }
+- (void)setInset:(CGFloat)value { _inset = value; [self updateShape]; }
+- (void)setCornerRadius:(CGFloat)value { _cornerRadius = value; [self updateShape]; }
 
 @end
 
@@ -262,6 +281,12 @@ static int bridge_arc(lua_State *L) {
 
 static int bridge_LuaArcView_arcBounds(lua_State *L) {
 	LuaArcView *view = lua_objc_check_object(L, 1, [LuaArcView class], "Arc");
+	if (view.isSector) {
+		CGPathRef path = [view copySectorPath];
+		push_NSRect(L, path ? CGPathGetPathBoundingBox(path) : NSZeroRect);
+		if (path) CGPathRelease(path);
+		return 1;
+	}
 	push_NSRect(L, view.arcPath.bounds);
 	return 1;
 }

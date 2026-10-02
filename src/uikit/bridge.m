@@ -192,6 +192,7 @@ static void motion_invalidate_layout(UIView *view) {
 	if (view) uikit_invalidate_layout(view);
 }
 #include "metatable.m"
+#include "../shared/sector_path.m"
 #include "views.m"
 #include "controls.m"
 #include "tables.m"

@@ -656,10 +656,12 @@ end
 ---
 --- Angles are degrees, clockwise from east, in a y-down view. Equal angles
 --- close the circle. `stroke` is a semantic color name.
+--- @prop cornerRadius number optional. Draws the arc as a filled sector of its band with corners rounded this many points.
 --- @prop endAngle number optional. Ending angle in degrees.
 --- @prop height number optional. Component-specific setting passed to the native control.
 --- @prop lineCap string optional. `butt` or `round`.
 --- @prop diameter number optional. With `fitDiameter`, the circle's diameter in units.
+--- @prop inset number optional. Draws the arc as a filled sector of its band, every edge moved in by half this many points, so neighbours are this far apart.
 --- @prop fitDiameter number optional. Scales the arc to its frame: the frame's shorter side spans this many units, and `diameter` and `lineWidth` are in those units.
 --- @prop lineWidth number optional. Stroke width in points.
 --- @prop startAngle number optional. Starting angle in degrees.
@@ -682,6 +684,8 @@ function UIKit.Arc(props)
 	if props.lineCap then view.lineCap = props.lineCap end
 	if props.diameter then view.diameter = props.diameter end
 	if props.fitDiameter then view.fitDiameter = props.fitDiameter end
+	if props.inset then view.inset = props.inset end
+	if props.cornerRadius then view.cornerRadius = props.cornerRadius end
 	return applyLayout(view, props)
 end
 

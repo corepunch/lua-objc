@@ -28,7 +28,21 @@ t.expect(math.abs(math.rad(gap) * 54 - 2) < 1e-9, "angular inset is a point gap 
 local pie = Sectors.layout({{value = 1}, {value = 1}}, 180, 0, 2)
 t.expect(math.abs(math.rad(pie[2].startAngle - pie[1].endAngle) * 45 - 2) < 1e-9, "a pie measures its inset at mid-radius")
 local band = Sectors.band(200, 0.5, 1, 3)
-t.expect(math.abs((band.outer - band.inner) - band.lineWidth - 2) < 1e-9, "rings are separated by a 2pt gap, not a hairline")
+t.expect(math.abs(band.lineWidth - (band.outer - band.inner)) < 1e-9, "a band spans its ring; the arcs' inset separates rings")
+local twoRings = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.4,
+	{__sectorMark = true, id = "a", value = 1}, {__sectorMark = true, id = "a1", parent = "a", ring = 2, value = 1}}
+t.assertEqual(twoRings.subviews[1].inset, 2, "rings are separated by a 2pt gap, not a hairline")
+local oneRing = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.4, angularInset = 3,
+	{__sectorMark = true, id = "a", value = 1, cornerRadius = 4}, {__sectorMark = true, id = "b", value = 1}}
+t.assertEqual(oneRing.subviews[1].inset, 3, "the angular inset separates neighbours")
+t.assertEqual(oneRing.subviews[1].cornerRadius, 4, "a mark rounds its own corners")
+t.assertEqual(oneRing.subviews[2].cornerRadius, 0, "and only its own")
+-- A sector is filled: its ink is the band of its share less half the inset
+-- at each parallel edge, so the gap does not widen outwards. The arc is its
+-- mid-radius circle, 140pt wide, so the chart's center is at 70.
+local right = oneRing.subviews[1]:arcBounds()
+t.expect(math.abs(right.origin.x - (70 + 1.5)) < 0.5, "the gap beside a half is the inset's half, in points: " .. right.origin.x)
+t.expect(math.abs(right.size.height - (200 - 3)) < 0.5, "and the rim gives up the same half: " .. right.size.height)
 t.expect(math.abs((inset[1].startAngle + inset[1].endAngle) / 2 - 0) < 1e-9, "insets keep each sector centred on its share")
 
 local lone = Sectors.layout({{value = 0}, {value = 5}, {value = -2}}, 100, 0.5, 4)
@@ -190,7 +204,8 @@ local smallBounds = first:arcBounds()
 t.expect(math.abs(smallBounds.size.width - smallBounds.size.height) < 1, "the rings keep their aspect in a wide view")
 t.expect(math.abs(smallBounds.origin.x + smallBounds.size.width / 2 - arcWidth / 2) < 1, "and stay centered")
 local smallScale = math.min(arcWidth, arcHeight) / 360
-t.expect(math.abs(smallBounds.size.width - first.diameter * smallScale) < 1, "the inner ring scales with the view")
+t.expect(math.abs(smallBounds.size.height - ((first.diameter + first.lineWidth) * smallScale - first.inset)) < 1,
+	"the ring scales with the view, its gaps stay in points")
 host.size = ns.Size(1200, 900)
 host:layout(1200)
 local largerWidth, largerHeight = first.frame.size.width, first.frame.size.height
@@ -209,6 +224,20 @@ t.expect(scalableCentered, "the view's center is the chart's hole")
 t.expect(Sectors.update(scalable, {mark("a", 1), mark("b", 1)}), "a scalable chart takes new marks")
 t.assertEqual(scalable.subviews[1], first, "keeping its arcs")
 t.assertEqual(first.fitDiameter, 360, "which still draw in the chart's units")
+
+-- Marks that arrive inside an animated transaction (a scan's new sizes)
+-- appear where they belong: the arc is not grown from the size it was built
+-- with, even though the hover restyle writes to it before layout places it.
+local growing = ns.SectorChart {scalable = true, diameter = 360, innerRadius = 0.4, angularInset = 3,
+	mark("a", 3), mark("b", 1), onHover = function() end}
+local growingHost = ns.VStack {alignment = "center", flexGrow = 1, growing}
+growingHost.size = ns.Size(600, 400)
+growingHost:layout(600)
+ns.withAnimation(function() Sectors.update(growing, {mark("a", 3), mark("b", 1), mark("c", 1)}) end)
+growingHost:layout(600)
+local arrived = bridge._motionAnimations(growing.subviews[3])
+t.expect(arrived.bounds == nil and arrived.position == nil, "a new sector does not fly in from its construction frame")
+bridge._motionSettle()
 
 -- UIKit composes the same chart from its own Arc and ZStack.
 local file = assert(io.open("lua/embedded/UIKit.lua")); local uikit = file:read("*a"); file:close()

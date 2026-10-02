@@ -1024,12 +1024,17 @@ in-app browsing workflow; open a normal external link in the system browser.
 ### `SectorChart{...}` and `Gauge{...}`
 
 `<SectorChart>` is SwiftUI Charts' `SectorMark`: a pie or donut composed from
-native `Arc` strokes in a `ZStack`, on AppKit and UIKit alike (`lua/ui/sectors.lua`).
+native `Arc`s in a `ZStack`, on AppKit and UIKit alike (`lua/ui/sectors.lua`).
 Each `<SectorMark value="…" color="…" label="…" />` becomes one arc; the first
 starts at 12 o'clock and marks advance clockwise in data order. `innerRadius`
 is the hole as a fraction of the outer radius (0 draws a pie) and
-`angularInset` is the gap between neighbours in points, measured at each
-ring's inner edge so no separator is thinner; sunburst rings are 2pt apart.
+`angularInset` is the gap between neighbours in points. As in SwiftUI the gap
+has parallel sides and stays that many points at any chart size, so a large
+chart does not grow wide wedges; sunburst rings are as far apart, at least
+2pt. A mark's `cornerRadius` rounds its corners in points, like SwiftUI's
+`.cornerRadius` on a `SectorMark`. With an inset or a corner radius each Arc
+fills its sector (`Arc` `inset` and `cornerRadius`,
+`src/shared/sector_path.m`); without either it is a plain stroke.
 Non-positive values
 occupy no angle, a lone mark is a closed ring, and a chart without positive
 values draws its empty ring in `quaternaryLabel`. Any other child view is

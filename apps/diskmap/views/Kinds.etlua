@@ -1,6 +1,6 @@
 <%
   -- The chart is context for the decision above it, so it stays compact.
-  local CHART = { size = 112, padding = 14, spacing = 20, hole = 0.62, gap = 3, total = 15, caption = 10, totalScale = 9 / 15, captionScale = 0.8 }
+  local CHART = { size = 112, padding = 14, spacing = 20, hole = 0.62, gap = 3, corner = 3, total = 15, caption = 10, totalScale = 9 / 15, captionScale = 0.8 }
   -- The center text is set at its largest; the chart offers it the square
   -- inscribed in the hole and it shrinks to fit on one line, like the Hero.
 %>
@@ -14,7 +14,7 @@
       <HStack padding="<%= CHART.padding %>" spacing="<%= CHART.spacing %>" alignment="center">
         <SectorChart id="kindsChart" width="<%= CHART.size %>" height="<%= CHART.size %>" innerRadius="<%= CHART.hole %>" angularInset="<%= CHART.gap %>" onSelect="chartSelect" onHover="chartHover" accessibilityLabel="<%= accessibilityLabel %>">
           <% for _, kind in ipairs(kinds) do %>
-          <SectorMark id="<%= kind.id %>" value="<%= kind.bytes %>" color="<%= kind.color %>" label="<%= kind.name %>" />
+          <SectorMark cornerRadius="<%= CHART.corner %>" id="<%= kind.id %>" value="<%= kind.bytes %>" color="<%= kind.color %>" label="<%= kind.name %>" />
           <% end %>
           <VStack spacing="0" alignment="center">
             <Label id="kindsTotal" text="<%= total %>" size="<%= CHART.total %>" minimumScaleFactor="<%= CHART.totalScale %>" lines="1" weight="semibold" design="rounded" monospacedDigit="true" />

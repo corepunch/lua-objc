@@ -924,7 +924,7 @@ local TAG_SCHEMA = {
     -- `ring` 2+ with a `parent` id draws a sunburst level inside the parent.
     SectorMark = {
         kind = "record", flag = "__sectorMark",
-        props = { id = "str", value = "num", color = "str", label = "str", ring = "num", parent = "str", opacity = "num" },
+        props = { id = "str", value = "num", color = "str", label = "str", ring = "num", parent = "str", opacity = "num", cornerRadius = "num" },
     },
     -- SwiftUI SceneView over SceneKit. Its records are the scene graph and
     -- reconcile in place by id (see src/shared/scene_view.m).

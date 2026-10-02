@@ -307,6 +307,7 @@ static void bridge_set_optional_callback(
 	lua_reg_store(target, key, lua_reg_opt(L, argIdx));
 }
 
+#include "shared/sector_path.m"
 #include "appkit/bezier_path.m"
 #include "appkit/level_indicator.m"
 #include "appkit/table_data_source.m"

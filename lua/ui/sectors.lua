@@ -1,8 +1,11 @@
--- SwiftUI Charts `SectorMark` for both platforms, composed from native Arc
--- strokes in a ZStack. A ring of outer radius R and inner radius r is one Arc
--- per sector, stroked at the ring's mid-radius with a line width of R - r, so
--- the chart needs no custom drawing class. Angles follow SwiftUI: the first
--- sector starts at 12 o'clock and sectors advance clockwise in data order.
+-- SwiftUI Charts `SectorMark` for both platforms, composed from native Arcs
+-- in a ZStack. A ring of outer radius R and inner radius r is one Arc per
+-- sector, centered on the ring's mid-radius with a line width of R - r. With
+-- an `angularInset`, or a mark's `cornerRadius`, each Arc fills its sector as
+-- SwiftUI's does: parallel-sided gaps of that many points between neighbours
+-- and between rings, and rounded corners, both in points at any chart size.
+-- Angles follow SwiftUI: the first sector starts at 12 o'clock and sectors
+-- advance clockwise in data order.
 --
 -- Marks may sit on several rings (a sunburst): a mark with `ring = 2` and a
 -- `parent` id is drawn inside its parent's angle, sized by its share of the
@@ -15,8 +18,8 @@ local TOP = -90
 -- Sectors thinner than this after the angular inset draw nothing, matching
 -- SwiftUI, which drops a mark once its inset consumes it.
 local MINIMUM_SWEEP = 0.1
--- Rings are separated by a gap at least as wide as a sector gap would be at
--- 2pt; thinner separators render as dark hairlines on any backdrop.
+-- Rings are separated by a gap of at least 2pt; thinner separators render
+-- as dark hairlines on any backdrop.
 -- Content in a donut's hole is offered the side of the square inscribed in
 -- the hole, so a label with a minimum scale factor sizes itself to the hole.
 local STYLE = { ringGap = 2, dimmedAlpha = 0.35, highlightGain = 0.5, holeContent = 1 / math.sqrt(2) }
@@ -37,8 +40,7 @@ function Sectors.band(diameter, innerRadius, ring, rings)
 	local width = (whole.outer - whole.inner) / rings
 	local inner = whole.inner + (ring - 1) * width
 	local outer = inner + width
-	local gap = rings > 1 and STYLE.ringGap or 0
-	return {inner = inner, outer = outer, lineWidth = math.max(0, width - gap), frame = inner + outer}
+	return {inner = inner, outer = outer, lineWidth = width, frame = inner + outer}
 end
 
 -- Lays `marks` out clockwise over `span` degrees from `from`, each taking
@@ -58,6 +60,7 @@ local function spread(marks, from, span, total, gapDegrees, ring, band)
 			local drawn = sweep - gapDegrees
 			local sector = {id = mark.id, color = mark.color, label = mark.label, value = value,
 				alpha = math.max(0, math.min(1, tonumber(mark.opacity) or 1)),
+				cornerRadius = math.max(0, tonumber(mark.cornerRadius) or 0),
 				fraction = value / total, ring = ring, inner = band.inner, outer = band.outer,
 				lineWidth = band.lineWidth, frame = band.frame}
 			if closed then
@@ -136,8 +139,9 @@ function Sectors.layout(marks, diameter, innerRadius, angularInset)
 	return result, total
 end
 
--- The sector under a point in the chart's top-left, y-down coordinates.
--- Returns nil for the hole, the outside and gaps between sectors.
+-- The sector under a point in the chart's top-left, y-down coordinates: the
+-- one whose share of its ring holds it, so the pointer never falls into a
+-- gap between neighbours. Returns nil for the hole and the outside.
 function Sectors.hit(sectors, diameter, x, y)
 	if x == nil or y == nil then return nil end
 	local dx, dy = x - diameter / 2, y - diameter / 2
@@ -145,9 +149,9 @@ function Sectors.hit(sectors, diameter, x, y)
 	local angle = math.deg(math.atan(dy, dx))
 	for _, sector in ipairs(sectors) do
 		if radius >= sector.inner and radius <= sector.outer then
-			if sector.startAngle == sector.endAngle then return sector end
-			local relative = (angle - sector.startAngle) % 360
-			if relative <= sector.endAngle - sector.startAngle then return sector end
+			if sector.spanEnd - sector.spanStart >= 360 then return sector end
+			local relative = (angle - sector.spanStart) % 360
+			if relative <= sector.spanEnd - sector.spanStart then return sector end
 		end
 	end
 end
@@ -157,16 +161,17 @@ end
 -- instead of rebuilding the chart and replaying its entrance.
 local charts = setmetatable({}, {__mode = "k"})
 
--- The arcs to draw: one per sector, or the empty ring in the quaternary
+-- The arcs to draw: one per sector over its whole share, which the Arc's
+-- inset separates from its neighbours, or the empty ring in the quaternary
 -- label color when no value is positive, so the chart keeps its shape.
 local function arcSpecs(sectors, ring)
 	if #sectors == 0 then
-		return {{startAngle = TOP, endAngle = TOP, lineWidth = ring.lineWidth, stroke = "quaternaryLabel", frame = ring.frame, alpha = 1}}
+		return {{startAngle = TOP, endAngle = TOP, lineWidth = ring.lineWidth, stroke = "quaternaryLabel", frame = ring.frame, alpha = 1, cornerRadius = 0}}
 	end
 	local specs = {}
 	for _, sector in ipairs(sectors) do
-		table.insert(specs, {startAngle = sector.startAngle, endAngle = sector.endAngle, lineWidth = sector.lineWidth,
-			stroke = sector.color or "accent", frame = sector.frame, alpha = sector.alpha})
+		table.insert(specs, {startAngle = sector.spanStart, endAngle = sector.spanEnd, lineWidth = sector.lineWidth,
+			stroke = sector.color or "accent", frame = sector.frame, alpha = sector.alpha, cornerRadius = sector.cornerRadius})
 	end
 	return specs
 end
@@ -187,13 +192,23 @@ end
 -- chart's arcs all fill the chart and draw their circle in its units, so
 -- every ring scales with the view about one center.
 local function newArc(state, spec)
+	local arc = {startAngle = spec.startAngle, endAngle = spec.endAngle, strokeAlpha = spec.alpha,
+		lineWidth = spec.lineWidth, stroke = spec.stroke, inset = state.inset, cornerRadius = spec.cornerRadius}
 	if state.scalable then
-		return state.ns.Arc {startAngle = spec.startAngle, endAngle = spec.endAngle, strokeAlpha = spec.alpha,
-			lineWidth = spec.lineWidth, stroke = spec.stroke, diameter = spec.frame, fitDiameter = state.diameter,
-			fillWidth = true, fillHeight = true}
+		arc.diameter, arc.fitDiameter, arc.fillWidth, arc.fillHeight = spec.frame, state.diameter, true, true
+	else
+		arc.width, arc.height = spec.frame, spec.frame
 	end
-	return state.ns.Arc {startAngle = spec.startAngle, endAngle = spec.endAngle, strokeAlpha = spec.alpha,
-		lineWidth = spec.lineWidth, stroke = spec.stroke, width = spec.frame, height = spec.frame}
+	return state.ns.Arc(arc)
+end
+
+-- The points between neighbours: the chart's angular inset, and at least
+-- the ring gap once a second ring needs separating from the first.
+local function insetFor(state)
+	local rings = 1
+	for _, sector in ipairs(state.sectors) do rings = math.max(rings, sector.ring or 1) end
+	local inset = math.max(0, tonumber(state.angularInset) or 0)
+	return rings > 1 and math.max(inset, STYLE.ringGap) or inset
 end
 
 -- A point of a scalable chart's view in chart units: the view's shorter
@@ -227,6 +242,7 @@ function Sectors.chart(ns, props)
 		angularInset = props.angularInset, marks = marks, arcs = {}}
 	state.ring = Sectors.ring(diameter, props.innerRadius)
 	state.sectors = Sectors.layout(marks, diameter, props.innerRadius, props.angularInset)
+	state.inset = insetFor(state)
 	local stack = {alignment = "center", fixedWidth = diameter, fixedHeight = diameter}
 	if scalable then stack = {alignment = "center", fillWidth = true, fillHeight = true} end
 	for key, value in pairs(props) do
@@ -358,6 +374,7 @@ function Sectors.update(view, records)
 		for _, overlay in ipairs(state.fitted) do overlay.maxWidth = state.ring.inner * 2 * STYLE.holeContent end
 	end
 	state.sectors = Sectors.layout(marks, state.diameter, state.innerRadius, state.angularInset)
+	state.inset = insetFor(state)
 	local specs = arcSpecs(state.sectors, state.ring)
 	if state.keys then
 		state.keys.marks = marks
@@ -369,6 +386,7 @@ function Sectors.update(view, records)
 			if state.scalable then arc.diameter = spec.frame else arc.fixedWidth, arc.fixedHeight = spec.frame, spec.frame end
 			arc.startAngle, arc.endAngle = spec.startAngle, spec.endAngle
 			arc.lineWidth, arc.stroke, arc.strokeAlpha = spec.lineWidth, spec.stroke, spec.alpha
+			arc.inset, arc.cornerRadius = state.inset, spec.cornerRadius
 		else
 			arc = newArc(state, spec)
 			state.arcs[index] = arc

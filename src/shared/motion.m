@@ -348,6 +348,7 @@ static void motion_apply_effects(MotionView *view) {
 @property(nonatomic, strong) NSHashTable<MotionView *> *owners;
 @property(nonatomic, strong) NSHashTable<MotionView *> *claimed;
 @property(nonatomic, strong) NSHashTable<MotionView *> *appearing;
+@property(nonatomic, strong) NSHashTable<MotionView *> *inserted;
 @property(nonatomic, strong) NSMutableArray<MotionView *> *removals;
 @property(nonatomic, strong) NSMutableDictionary<NSString *, NSMutableArray *> *matchedSources;
 @property(nonatomic, strong) NSMutableArray<id<LuaMotionAnimator>> *animators;
@@ -360,6 +361,7 @@ static void motion_apply_effects(MotionView *view) {
 		_owners = [NSHashTable weakObjectsHashTable];
 		_claimed = [NSHashTable weakObjectsHashTable];
 		_appearing = [NSHashTable weakObjectsHashTable];
+		_inserted = [NSHashTable weakObjectsHashTable];
 		_removals = [NSMutableArray array];
 		_matchedSources = [NSMutableDictionary dictionary];
 		_animators = [NSMutableArray array];
@@ -517,11 +519,18 @@ static BOOL motion_is_opaque_container(MotionView *view) {
 #endif
 }
 
+/* A view inserted during the transaction has no old state: until layout
+ * places it, its frame is whatever it was built with, and capturing that
+ * would grow it from its construction size and corner when a later write
+ * (a restyle, a sibling's change) snapshots it before the commit. It plays
+ * its insertion transition instead. */
 static void motion_snapshot_view(LuaMotionTransaction *txn, MotionView *view) {
+	if ([txn.inserted containsObject:view]) return;
 	if (![txn.states objectForKey:view]) [txn.states setObject:motion_capture(view) forKey:view];
 }
 
 static void motion_snapshot_tree(LuaMotionTransaction *txn, MotionView *root) {
+	if ([txn.inserted containsObject:root]) return;
 	motion_snapshot_view(txn, root);
 	if (motion_is_opaque_container(root)) return;
 	for (MotionView *child in root.subviews) motion_snapshot_tree(txn, child);
@@ -954,6 +963,8 @@ static void motion_remove(MotionView *view) {
  * leaving, or last. An existing child moves. */
 static void motion_insert(MotionView *container, MotionView *child, NSInteger index) {
 	motion_will_change(container, YES);
+	LuaMotionTransaction *txn = motion_current();
+	if (txn && child.superview != container) [txn.inserted addObject:child];
 	NSMutableArray<MotionView *> *present = [NSMutableArray array];
 	for (MotionView *view in container.subviews) {
 		if (view != child && !motion_is_leaving(view)) [present addObject:view];
