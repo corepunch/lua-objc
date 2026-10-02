@@ -124,6 +124,10 @@ LUA_BOOL_ACCESSORS(fillWidth, setFillWidth, kFillWidthKey)
 LUA_NUMBER_ACCESSORS(containerRelativeWidth, setContainerRelativeWidth,
 	kContainerRelativeWidthKey, 0, MAX(0, value))
 LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
+/* A ZStack's content in units, like `LuaArcView.fitDiameter`: the stack's
+ * shorter side spans this many units, and each child that does not fill the
+ * stack has its `maxWidth` and its labels' sizes in those units. */
+LUA_NUMBER_ACCESSORS(fitDiameter, setFitDiameter, kFitDiameterKey, 0, MAX(0, value))
 
 /* A fixed dimension is optional, like a maximum: nil clears it, so a
  * reconciled template that drops `width` lets the view size itself again,
@@ -235,6 +239,9 @@ LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
  * bring the full size back. */
 @interface LuaLabel : LuaTextField
 @property(nonatomic) CGFloat minimumScaleFactor;
+/* Multiplies the declared size, for a label laid out in a container's units
+ * (`fitDiameter`); `minimumScaleFactor` then shrinks from the scaled size. */
+@property(nonatomic) CGFloat fontScale;
 - (void)fitFontToWidth:(CGFloat)width;
 @end
 
@@ -246,8 +253,14 @@ LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
 + (Class)cellClass { return LuaLabelCell.class; }
 - (instancetype)initWithFrame:(NSRect)frame {
 	self = [super initWithFrame:frame];
-	if (self) _minimumScaleFactor = 1;
+	if (self) _minimumScaleFactor = _fontScale = 1;
 	return self;
+}
+- (void)setFontScale:(CGFloat)value {
+	value = value > 0 ? value : 1;
+	if (value == _fontScale) return;
+	_fontScale = value;
+	[self fitFontToWidth:CGFLOAT_MAX];
 }
 - (void)setMinimumScaleFactor:(CGFloat)value {
 	_minimumScaleFactor = MAX(0.01, MIN(1, value));
@@ -261,7 +274,9 @@ LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
 - (void)fitFontToWidth:(CGFloat)width {
 	NSFont *declared = _declaredFont ?: self.font;
 	if (!declared) return;
-	if (self.font != declared) [self applyScaledFont:declared];
+	if (_fontScale != 1)
+		declared = [NSFont fontWithDescriptor:declared.fontDescriptor size:declared.pointSize * _fontScale] ?: declared;
+	if (![self.font isEqual:declared]) [self applyScaledFont:declared];
 	if (_minimumScaleFactor >= 1 || width >= CGFLOAT_MAX / 2) return;
 	CGFloat natural = self.fittingSize.width;
 	if (natural <= width || natural <= 0) return;

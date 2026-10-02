@@ -50,7 +50,11 @@ for _, button in ipairs(buttons) do
 	t.expect(button.enabled, "legend keeps native link interaction")
 	t.expect(button.toolTip ~= nil and button.toolTip:find("Show ", 1, true) == 1, "legend links explain where they go")
 end
-t.expect(heroRefs.chart.frame.size.width == heroRefs.chart.frame.size.height, "the donut keeps a square frame")
+-- The chart fills the room the card gives it (its rings stay circular inside
+-- the view, see sector_chart.test.lua), so it is taller than the old fixed 144.
+hero.size = ns.Size(900, 400)
+hero:layout(900)
+t.expect(heroRefs.chart.frame.size.height > 150, "the donut takes the height of the card: " .. heroRefs.chart.frame.size.height)
 local _, emptyRefs = render("Hero", {summary = Overview.summary(model, {totalKb = 1, freeKb = 0}),
 	chart = Overview.chart(model, {totalKb = 1, freeKb = 0}), reclaim = Overview.reclaim(model), volumeName = "Startup Disk", actions = chartActions, hidden = {}})
 t.expect(heroRefs.calculating == nil, "a finished scan shows no progress in the hero")

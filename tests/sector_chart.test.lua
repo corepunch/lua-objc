@@ -322,4 +322,22 @@ local holeOnly = sunburstOf(top, {onCenter = function() keyed.holeOnly = true en
 bridge._pointerSend(holeOnly.subviews[#holeOnly.subviews], "key", "delete")
 t.expect(not keyed.holeOnly, "a chart with nowhere to go back to ignores delete")
 
+
+-- A scalable chart's center content is in the chart's units: the total in the
+-- hole grows with the rings, and a label that no longer fits shrinks.
+local function centered(width, height)
+	local chart, refs = xml.render([[<SectorChart scalable="true" diameter="360" innerRadius="0.7" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
+	<SectorMark value="1" color="systemBlue" />
+	<Label id="total" text="640 GB" size="40" minimumScaleFactor="0.2" lines="1" />
+</SectorChart>]], {}, ns)
+	local host = ns.VStack {alignment = "center", flexGrow = 1, chart}
+	host.size = ns.Size(width, height)
+	host:layout(width)
+	return refs.total.font.pointSize, refs.total.frame.size.width
+end
+local smallSize = centered(180, 180)
+local largeSize, largeWidth = centered(360, 360)
+t.expect(largeSize > smallSize * 1.5, "a larger chart sets its total larger: " .. smallSize .. " -> " .. largeSize)
+t.expect(largeWidth <= 360 * 0.3 / math.sqrt(2) * 2 + 1, "and the total stays inside the hole")
+
 os.exit(t.summary() and 0 or 1)

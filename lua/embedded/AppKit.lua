@@ -45,6 +45,7 @@ local layout_properties = {
 	"fillWidth",
 	"containerRelativeWidth",
 	"fillHeight",
+	"fitDiameter",
 	"fixedSize",
 	"ignoresSafeArea",
 	"hidden",
