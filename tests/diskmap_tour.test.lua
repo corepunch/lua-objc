@@ -43,8 +43,7 @@ end
 local image = xml.render('<Image path="' .. Tour.pages[1].image .. '" darkPath="' .. Tour.pages[1].darkImage .. '" width="262" height="145" />', {}, ns)
 t.expect(image ~= nil, "an Image with a dark variant renders")
 
--- Pages slide; a page that leaves stays until its slide ends.
-local function settle(done) for _ = 1, 150 do if done() then return true end; ns._runLoopTick(0.01) end; return done() end
+-- Pages change at once; the system's push transition does the sliding.
 
 -- On start on a real Mac, while the scan runs.
 local service = Mock.new()
@@ -59,21 +58,15 @@ t.expect(not tour.refs.page_1.hidden and tour.refs.page_2.hidden, "page one show
 t.expect(tour.refs.back.hidden and not tour.refs.skip.hidden, "no Back on the first page; Skip on every page")
 t.assertEqual(tour.refs.dots.numberOfPages, #Tour.pages, "one dot per page")
 t.assertEqual(tour.refs.dots.currentPage, 0, "the first dot is current")
-ns._motionOverrideReduceMotion(false)
 tour:next()
-for _, name in ipairs({"page_2", "image_2"}) do
-	local animations = ns._motionAnimations(tour.refs[name])
-	t.expect(animations.position == nil and animations.bounds == nil, name .. " enters at its final geometry on its first visit")
-end
-t.expect(ns._motionAnimations(tour.refs.page_2).transform ~= nil, "the first visit still slides sideways")
 t.assertEqual(tour.page, 2, "Continue moves on")
 t.assertEqual(tour.refs.dots.currentPage, 1, "the dots follow")
-t.expect(not tour.refs.page_2.hidden and not tour.refs.back.hidden, "the next page slides in, with Back")
-t.expect(settle(function() return tour.refs.page_1.hidden end), "and the first one slides out")
+t.expect(not tour.refs.page_2.hidden and not tour.refs.back.hidden, "the next page shows, with Back")
+t.expect(tour.refs.page_1.hidden, "and the first one hides")
 tour:show(#Tour.pages)
 t.assertEqual(tour.refs.next.title, "Start Using Diskmap", "the last page closes the tour")
 tour:show(3); tour:show(2)
-t.expect(settle(function() return tour.refs.page_3.hidden end) and not tour.refs.page_2.hidden, "Back slides the previous page in")
+t.expect(tour.refs.page_3.hidden and not tour.refs.page_2.hidden, "Back shows the previous page")
 tour:show(99)
 t.assertEqual(tour.page, #Tour.pages, "pages stay in range")
 tour:next()

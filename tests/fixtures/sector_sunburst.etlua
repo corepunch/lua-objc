@@ -1,4 +1,4 @@
-<SectorChart id="chart" width="200" height="200" innerRadius="<%= hole %>" animation="easeInOut(0.3)" animationValue="<%= level %>">
+<SectorChart id="chart" width="200" height="200" innerRadius="<%= hole %>">
   <% for _, mark in ipairs(marks) do %>
   <SectorMark id="<%= mark.id %>" value="<%= mark.value %>" ring="<%= mark.ring or 1 %>" parent="<%= mark.parent or "" %>" color="<%= mark.color %>" />
   <% end %>

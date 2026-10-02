@@ -1,4 +1,4 @@
-<ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
+<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
   <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {header = header, summary = "Reading simulator devices and runtimes…", summaryId = "summary",
       buttons = {{id = "retry", title = "Retry", action = "retry", help = "Read simulator state and runtime information again"}, {id = "components", title = "Xcode Components…", action = "components", help = "Manage runtimes in Xcode › Settings › Components"}}}) %>

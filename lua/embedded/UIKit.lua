@@ -43,8 +43,6 @@ local layout_properties = {
 	"cornerRadius",
 	"clipsToBounds",
 	"opacity",
-	"scaleEffect",
-	"rotationEffect",
 	"offsetX",
 	"offsetY",
 	"ignoresSafeArea",
@@ -663,12 +661,11 @@ function UIKit.Arc(props)
 	if props.fitDiameter then view.fitDiameter = props.fitDiameter end
 	if props.inset then view.inset = props.inset end
 	if props.cornerRadius then view.cornerRadius = props.cornerRadius end
+	-- An animated arc turns, grows and changes rings by its own animation.
+	if props.animated then view.animated = true end
 	return applyLayout(view, props)
 end
 
--- SwiftUI animation: Animation values, withAnimation, withTransaction,
--- AnyTransition and the per-view motion modifiers (see ui/animation.lua).
-require("ui.animation").install(UIKit, bridge)
 require("ui.meshgradient").install(UIKit, bridge, applyLayout)
 require("ui.lazy").install(UIKit, bridge, applyLayout)
 require("ui.webpage").install(UIKit, bridge, applyLayout)

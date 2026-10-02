@@ -27,7 +27,7 @@
 	<% if message then -%>
 	<HStack maxWidth="infinity">
 		<Spacer />
-		<GlassEffect cornerRadius="24" transition="scale">
+		<GlassEffect cornerRadius="24">
 			<VStack paddingHorizontal="32" paddingVertical="22" spacing="6" alignment="center">
 				<Label id="messageTitle" text="<%= message.title %>" size="30" weight="heavy" />
 				<Label id="messageDetail" text="<%= message.detail %>" size="14" color="secondary" />

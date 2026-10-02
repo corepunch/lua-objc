@@ -2,7 +2,7 @@
 local Preview = {}
 Preview.__index = Preview
 
-local FRAMEWORK_HOOKS = { _motionInsert = true, _motionRemove = true, _hasLayoutAxis = true }
+local FRAMEWORK_HOOKS = { _insertSubview = true, _removeSubview = true, _hasLayoutAxis = true }
 
 function Preview.new(ns, readFramework, localStorage)
 	return setmetatable({ ns = ns, readFramework = readFramework, localStorage = localStorage }, Preview)

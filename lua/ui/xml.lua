@@ -366,7 +366,7 @@ local function layoutProps(attrs)
         "spacing", "alignment", "maxRows", "fixedSize",
         "flexGrow", "flexShrink", "flexBasis",
         "containerRelativeWidth", "hidden", "allowsHitTesting", "background", "tint", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick", "onTap", "onDrag", "onEdgeSwipe",
-        "opacity", "scaleEffect", "rotationEffect", "offsetX", "offsetY",
+        "opacity", "offsetX", "offsetY",
         "help", "dropExternalOnly",
     }
     local props = {}
@@ -456,22 +456,6 @@ end
 -- Scope, so the reconciler can replace or remove one node's subtree and
 -- dispose exactly the callbacks it owned.
 local tracking = false
-
--- SwiftUI's motion modifiers: metadata the animation engine reads when a
--- transaction inserts, removes or changes the view.
-local function applyMotion(view, target, attrs, ns)
-    if type(view) ~= "userdata" then return end
-    if attrs.transition and ns.transition then ns.transition(view, attrs.transition) end
-    if attrs.matchedGeometry and ns.matchedGeometry then
-        ns.matchedGeometry(view, attrs.matchedGeometry, attrs.matchedGeometryNamespace)
-    end
-    if attrs.contentTransition and ns.contentTransition then ns.contentTransition(target, attrs.contentTransition) end
-    -- An indefinite symbol effect runs while the view exists; one with a
-    -- value plays each time the value changes (see xml.reconcile).
-    if attrs.symbolEffect and ns.symbolEffect and not attrs.symbolEffectValue and attrs.symbolEffectActive ~= "false" then
-        ns.symbolEffect(target, attrs.symbolEffect, { repeating = true })
-    end
-end
 
 -- ── Column content templates ──────────────────────────────────────────────
 --
@@ -678,7 +662,6 @@ compile = function(nodes, ns, registry, refs)
 				if not children then children = compile(node.children, ns, registry, refs) end
 				view = handler(ns, attrs, children)
 			end
-			applyMotion(view, paddedLeaves[view] or view, attrs, ns)
 			-- SwiftUI's `.accessibilityLabel` applies to any view: tags whose
 			-- constructor does not take the label still carry it.
 			if attrs.accessibilityLabel and type(view) == "userdata" then
@@ -2281,10 +2264,7 @@ end
 --     place keeps its native view, state and focus;
 --   * stacks insert, move and remove children individually; any other node
 --     whose structure changed is rebuilt and replaces the old one;
---   * everything happens inside the current animation transaction, so
---     changes animate and inserted or removed views play their transitions;
---     a node with `animation="…"` animates the update when its
---     `animationValue` changed, like SwiftUI's `.animation(_:value:)`.
+--   * nothing animates: a reconcile applies its changes at once.
 --
 -- Planning builds new subtrees and validates every change first; nothing on
 -- screen changes if planning fails, so a render error keeps the old view.
@@ -2306,8 +2286,8 @@ local function identity(node) return node.attrs.id or node.attrs.key end
 -- Stacks whose native subviews are exactly their element children, in order.
 local CONTAINERS = { VStack = true, HStack = true, ZStack = true, FlowStack = true }
 
--- Attributes that only describe animation; changing them patches metadata.
-local MOTION_ATTRS = { animation = true, animationValue = true, key = true }
+-- Attributes that only identify a node; changing them patches nothing.
+local IDENTITY_ATTRS = { key = true }
 
 local function hasProperty(view, name)
     local ok, value = pcall(function() return view[name] end)
@@ -2328,8 +2308,6 @@ local function number(fallback) return function(v) return v == nil and fallback 
 local OUTER = {
     hidden = function(view, v) return function() view.hidden = v ~= nil and bool(v) end end,
     opacity = setter("opacity", number(1)),
-    scaleEffect = setter("scaleEffect", number(1)),
-    rotationEffect = setter("rotationEffect", number(0)),
     offsetX = setter("offsetX", number(0)),
     offsetY = setter("offsetY", number(0)),
     cornerRadius = setter("cornerRadius", number(0)),
@@ -2337,19 +2315,11 @@ local OUTER = {
         local color = v and ns.Color(v) or nil
         return function() view.backgroundColor = color end
     end,
-    transition = function(view, v, ns) return function() ns.transition(view, v) end end,
-    matchedGeometry = function(view, v, ns, attrs)
-        return function() ns.matchedGeometry(view, v, attrs.matchedGeometryNamespace) end
-    end,
 }
-OUTER.matchedGeometryNamespace = function(view, _, ns, attrs)
-    return function() ns.matchedGeometry(view, attrs.matchedGeometry, attrs.matchedGeometryNamespace) end
-end
 
 -- Attributes applied to the view the tag produced.
 local TEXT = setter("text", function(v) return v or "" end)
 local INNER = {
-    contentTransition = function(view, v, ns) return function() ns.contentTransition(view, v) end end,
     disabled = function(view, v)
         if not hasProperty(view, "enabled") then return nil end
         return function() view.enabled = not (v ~= nil and bool(v)) end
@@ -2357,9 +2327,6 @@ local INNER = {
     -- VoiceOver text often carries live values (a chart's totals); it
     -- updates in place like SwiftUI's `.accessibilityLabel`.
     accessibilityLabel = function(view, v) return function() view.accessibilityLabel = v or "" end end,
-    symbolEffect = function() return function() end end,
-    symbolEffectActive = function() return function() end end,
-    symbolEffectValue = function() return function() end end,
 }
 local TAG_INNER = {
     Label = { text = TEXT, value = TEXT },
@@ -2450,7 +2417,7 @@ local function attributePatch(old, new, ns)
     for key in pairs(changed) do
         local value = new.attrs[key]
         local plan
-        if MOTION_ATTRS[key] then
+        if IDENTITY_ATTRS[key] then
             plan = function() end
         elseif OUTER[key] then
             plan = OUTER[key](old.view, value, ns, new.attrs)
@@ -2469,17 +2436,6 @@ local function attributePatch(old, new, ns)
         local layoutOps = layoutPatch(old, new.attrs, layout, ns)
         if not layoutOps then return nil end
         for _, op in ipairs(layoutOps) do table.insert(ops, op) end
-    end
-    -- A discrete symbol effect plays when its value changes.
-    if changed.symbolEffectValue and new.attrs.symbolEffect and ns.symbolEffect then
-        table.insert(ops, function() ns.symbolEffect(old.target, new.attrs.symbolEffect) end)
-    elseif (changed.symbolEffect or changed.symbolEffectActive) and ns.symbolEffect and not new.attrs.symbolEffectValue then
-        table.insert(ops, function()
-            ns.symbolEffect(old.target, nil)
-            if new.attrs.symbolEffect and new.attrs.symbolEffectActive ~= "false" then
-                ns.symbolEffect(old.target, new.attrs.symbolEffect, { repeating = true })
-            end
-        end)
     end
     return ops, changed
 end
@@ -2580,9 +2536,6 @@ local function reconcileChildren(old, new, ns, plan)
             result = build(child, ns, plan)
             if match then
                 table.insert(plan.removals, match)
-                if child.attrs.animation and match.attrs.animationValue ~= child.attrs.animationValue then
-                    plan.animation = plan.animation or child.attrs.animation
-                end
             end
         end
         results[index] = result
@@ -2592,7 +2545,7 @@ local function reconcileChildren(old, new, ns, plan)
     end
     local container = old.target
     for index, child in ipairs(results) do
-        table.insert(plan.ops, function() ns._motionInsert(container, child.view, index) end)
+        table.insert(plan.ops, function() ns._insertSubview(container, child.view, index) end)
     end
     return true
 end
@@ -2615,7 +2568,7 @@ reconcileNode = function(old, new, ns, plan, record)
     end
     local ops, changed = attributePatch(old, new, ns)
     if not ops then return nil end
-    local childPlan = { ops = {}, removals = {}, built = {}, animation = plan.animation }
+    local childPlan = { ops = {}, removals = {}, built = {} }
     if not reconcileChildren(old, new, ns, childPlan) then
         for _, node in ipairs(childPlan.built) do disposeNode(node) end
         return nil
@@ -2624,10 +2577,6 @@ reconcileNode = function(old, new, ns, plan, record)
     for _, op in ipairs(childPlan.ops) do table.insert(plan.ops, op) end
     for _, node in ipairs(childPlan.removals) do table.insert(plan.removals, node) end
     for _, node in ipairs(childPlan.built) do table.insert(plan.built, node) end
-    plan.animation = plan.animation or childPlan.animation
-    if not plan.animation and new.attrs.animation and changed.animationValue then
-        plan.animation = new.attrs.animation
-    end
     new.view, new.target, new.scope = old.view, old.target, old.scope
     return new
 end
@@ -2670,13 +2619,11 @@ function M.mount(description, ns, host)
     if type(root.view) ~= "userdata" then error("Template mounts require a view root, not a Window") end
     local mounted = { root = root, view = root.view, refs = {} }
     collectRefs(root, mounted.refs)
-    ns._motionInsert(host, root.view, 1)
+    ns._insertSubview(host, root.view, 1)
     return mounted
 end
 
---- Reconciles `mounted` with a new description. Changes apply inside the
---- current transaction, or inside the animation of a changed
---- `animationValue` when no transaction is open.
+--- Reconciles `mounted` with a new description. Changes apply at once.
 function M.reconcile(mounted, description, ns, host)
     ns = ns or require("ns")
     local root = rootNode(description)
@@ -2688,7 +2635,7 @@ function M.reconcile(mounted, description, ns, host)
         if kept then return kept end
         build(root, ns, plan)
         table.insert(plan.removals, mounted.root)
-        table.insert(plan.ops, function() ns._motionInsert(host, root.view, 1) end)
+        table.insert(plan.ops, function() ns._insertSubview(host, root.view, 1) end)
         return root
     end)
     renderData, tracking = previous, previousTracking
@@ -2699,27 +2646,21 @@ function M.reconcile(mounted, description, ns, host)
     local function apply()
         for _, op in ipairs(plan.ops) do op() end
         for _, node in ipairs(plan.removals) do
-            ns._motionRemove(node.view)
+            ns._removeSubview(node.view)
             disposeNode(node)
         end
     end
-    local animation = require("ui.animation")
-    if plan.animation and not animation.inTransaction() then
-        ns.withAnimation(animation.Animation.parse(plan.animation), apply)
-    else
-        apply()
-    end
+    apply()
     mounted.root, mounted.view = result, result.view
     for key in pairs(mounted.refs) do mounted.refs[key] = nil end
     collectRefs(result, mounted.refs)
     return mounted
 end
 
---- Removes a mounted tree, playing its root's removal transition when a
---- transaction is animating, and disposes its callbacks.
+--- Removes a mounted tree and disposes its callbacks.
 function M.unmount(mounted, ns)
     ns = ns or require("ns")
-    ns._motionRemove(mounted.root.view)
+    ns._removeSubview(mounted.root.view)
     disposeNode(mounted.root)
 end
 

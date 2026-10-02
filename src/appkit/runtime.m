@@ -540,8 +540,6 @@ static MethodEntry TableDataMethods[] = {
 
 static void invalidate_layout(NSView *view);
 static void flush_pending_layout(void);
-static void motion_will_set(id object, const char *key);
-static BOOL motion_intercept_hidden(id object, BOOL hidden);
 
 /* SwiftUI `.scrollDisabled(true)`: the list keeps its rows in place and is
  * as tall as all of them, leaving overflow to a scrolling ancestor. */
@@ -618,11 +616,6 @@ static int nsview_newindex(lua_State *L) {
 
 	NSString *kvcKey = [NSString stringWithUTF8String:key];
 	id value = lua_to_kvc_value(L, 3);
-	motion_will_set(obj, key);
-	if (strcmp(key, "hidden") == 0 && motion_intercept_hidden(obj, lua_toboolean(L, 3))) {
-		invalidate_layout((NSView *)obj);
-		return 0;
-	}
 	@try {
 		[obj setValue:value forKey:kvcKey];
 		if ([obj isKindOfClass:NSView.class] && lua_objc_key_affects_layout(key))

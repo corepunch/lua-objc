@@ -16,11 +16,11 @@ function Controller:render()
 	self.gallery:update(self.model:snapshot())
 end
 
--- Components are retained: the next day's values move the existing rings,
--- bars and cells inside this animation instead of rebuilding them.
+-- Components are retained: the next day's values update the existing rings,
+-- bars and cells instead of rebuilding them.
 function Controller:advance()
 	self.model:advance()
-	ns.withAnimation(ns.Animation.snappy(), function() self:render() end)
+	self:render()
 end
 
 function Controller:createWindow()

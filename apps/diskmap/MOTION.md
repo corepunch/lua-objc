@@ -60,10 +60,10 @@ id, and which extensions belong to a kind.
 
 Allowed:
 
-- Size figures spring onto the number once a measurement commits.
-- Share bars fill once per committed figure, not on every 15-minute refresh.
-- Disclosure triangles use the framework `transition`.
-- Reduce Motion on: all of the above snap; no springs, no fills.
+- Rings turn to a new level by the arcs' own animation.
+- The tour pages use the system push transition.
+- Nothing else animates; scan progress and page changes apply at once.
+- Reduce Motion on: the above snap.
 
 Not allowed in the window:
 
@@ -71,9 +71,10 @@ Not allowed in the window:
 - Staggered list entrances on sidebar navigation.
 - Confetti or success bursts after Trash.
 
-Looking inside a Map group, or going back out, moves the rings to the new
-level in one animation transaction. Reduce Motion shows the new level at once
-(`tests/diskmap_motion.test.lua`). Switching the map's style stays instant.
+Looking inside a Map group, or going back out, turns the rings to the new
+level by the arcs' own animation. Reduce Motion shows the new level at once.
+Switching the map's style stays instant. Scan progress never animates
+(`tests/diskmap_motion.test.lua`).
 
 ## Cleanup confirmation
 

@@ -2,7 +2,7 @@
 -- later updates reconcile the new description with the mounted views (see
 -- xml.reconcile): unchanged nodes keep their native views, changed
 -- attributes apply in place, and only nodes whose structure changed are
--- rebuilt. Updates made inside `ns.withAnimation` animate.
+-- rebuilt. Updates apply at once; nothing animates.
 local xml = require("ui.xml")
 local Template = {}; Template.__index = Template
 local function copy(value)
@@ -64,7 +64,6 @@ function Template:child(ref, path)
 	return self.ns.Scope.withScope(scope, Template.new, self.refs[ref], path, self.ns)
 end
 function Template:isDisposed() return self.closed == true end
--- Disposing inside `ns.withAnimation` plays the root's removal transition.
 function Template:dispose()
 	if self.closed then return end
 	self.closed = true

@@ -199,14 +199,12 @@ local function shapeOf(state, spec)
 		inset = state.inset, cornerRadius = spec.cornerRadius, stroke = spec.stroke, strokeAlpha = spec.alpha}
 end
 
--- New arcs fade in, and leaving ones fade out, inside a transaction.
 local function newArc(state, spec)
 	local props = shapeOf(state, spec)
 	props.fitDiameter = state.diameter
+	props.animated = true
 	for key, value in pairs(state.layerSize) do props[key] = value end
-	local arc = state.ns.Arc(props)
-	state.ns.transition(arc, "opacity")
-	return arc
+	return state.ns.Arc(props)
 end
 
 -- The points between neighbours: the chart's angular inset, and at least
@@ -369,10 +367,10 @@ function Sectors.configure(view, props)
 end
 
 -- Applies new `SectorMark` records to a chart built by `Sectors.chart`. An
--- arc stays with its mark's id and takes the new shape; inside an animated
--- transaction it turns, grows and changes rings along its circle, so showing
--- the inside of a sector opens that sector's children to the whole chart.
--- Marks that come or go fade in or out, below the overlay. Omitting
+-- arc stays with its mark's id and takes the new shape, turning, growing and
+-- changing rings along its circle by its own animation, so showing the
+-- inside of a sector opens that sector's children to the whole chart. Marks
+-- that come or go appear and disappear at once. Omitting
 -- `records` lays the same marks out again. Returns false for a view this
 -- module did not build.
 function Sectors.update(view, records)
@@ -405,11 +403,11 @@ function Sectors.update(view, records)
 			for key, value in pairs(shapeOf(state, spec)) do arc[key] = value end
 		else
 			arc = newArc(state, spec)
-			ns._motionInsert(view, arc, index)
+			ns._insertSubview(view, arc, index)
 		end
 		state.arcs[index], state.arcKeys[index] = arc, spec.key
 	end
-	for _, arc in pairs(previous) do ns._motionRemove(arc) end
+	for _, arc in pairs(previous) do ns._removeSubview(arc) end
 	if state.restyle then state.restyle() end
 	return true
 end

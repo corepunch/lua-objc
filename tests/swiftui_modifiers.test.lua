@@ -75,10 +75,6 @@ ns._invokeAction(label)
 t.assertEqual(triangle.state, 1, "clicking the label turns the triangle down")
 t.expect(not refs.body.superview.hidden, "expanding shows the content")
 ns._invokeAction(label)
-if not ns.reduceMotion() then
-	t.expect(ns._motionIsLeaving(refs.body.superview), "collapsing fades the content out of layout first")
-end
-ns._motionSettle()
 t.expect(refs.body.superview.hidden, "clicking again collapses the content")
 
 -- .pickerStyle(.segmented) is NSSegmentedControl; the default stays a pop-up.
