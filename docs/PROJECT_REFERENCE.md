@@ -1023,14 +1023,6 @@ in-app browsing workflow; open a normal external link in the system browser.
 
 ### `SectorChart{...}` and `Gauge{...}`
 
-A raised chart (`depth` > 0) can be `scalable="true"`: its sectors are laid out
-in `diameter` units (default 360) and the view takes the room it is given. The
-camera frames the chart's radius on the view's narrower side, so the wheel is
-centered, keeps its aspect and grows with its container (`flexGrow`,
-`maxWidth`/`maxHeight="infinity"`). Pointer positions are mapped back to the
-same units. The Folder Map puts a scalable chart beside its list in an
-`<HSplit>`, so dragging the divider resizes the wheel.
-
 `<SectorChart>` is SwiftUI Charts' `SectorMark`: a pie or donut composed from
 native `Arc` strokes in a `ZStack`, on AppKit and UIKit alike (`lua/ui/sectors.lua`).
 Each `<SectorMark value="…" color="…" label="…" />` becomes one arc; the first
@@ -1053,32 +1045,19 @@ label set at its largest size with `minimumScaleFactor` fits any hole:
 </SectorChart>
 ```
 
-A positive `depth="14"` draws the chart **raised** instead (AppKit,
-`src/appkit/sector_scene.m`): one SceneKit view renders each sector as an
-extruded solid with a rounded top edge, seen through a camera tilted down
-like Excel's 3-D pie. The edge is a quarter-circle fillet of up to 3pt, held
-under a share of the height and of the sector's narrowest width so slivers
-stay clean; it catches the key light and outlines every slice. Every ring stands the same height, so a wall never runs into the
-ring in front of it, and the first sector starts at half past one. `angularInset` becomes a parallel-sided gap of the same width between
-neighbours and between rings. Each slice carries its own soft diagonal
-gradient; a key light, a fill, a little ambient light that keeps the walls
-in their hue, and a soft contact shadow on a shadow-only floor do the rest;
-`shadow="false"` drops the shadow. Mark
-opacity blends towards the window background rather than making solids
-translucent. The pointer is unprojected onto each ring's top face, so hover,
-selection and drag use the same flat geometry as the arcs. The hovered
-sector never moves, because a sector that rose or slid out read differently
-at the front and the back of the tilted chart: it takes its color at full
-strength and steps away from the backdrop, lighter in dark mode and deeper in
-light mode. `require("ui.sectors").highlight(chart, id)` highlights a sector
-from code, so a list beside the chart can point at it. Inside an animated
-transaction (`ns.withAnimation`, or `animation` + `animationValue` on the
-chart) new marks move the solids to their new shapes with the transaction's
-animation, paired by `id`. When the new marks are the inside of one of its
-sectors, or the level outside them, the chart **drills**: the sector opens to
-the whole circle and every ring moves one band inwards. `innerRadius` and
-`angularInset` update in place with the marks. See “Custom animators” in
-[animation.md](animation.md).
+A chart can be `scalable="true"`: its sectors are laid out in `diameter`
+units (default 360) and the view takes the room it is given. Every arc fills
+the chart and draws its circle in those units (`Arc` `diameter` and
+`fitDiameter`), so the rings are centered on the view's narrower side, keep
+their aspect and grow with the container (`flexGrow`,
+`maxWidth`/`maxHeight="infinity"`). Pointer positions are mapped back to the
+same units. The Storage Map and Folder Map scale their rings to their pane
+this way.
+
+The hovered sector moves halfway to opaque where it stands;
+`require("ui.sectors").highlight(chart, id)` highlights a sector from code,
+so a list beside the chart can point at it. New marks take the existing arcs
+in place, and `innerRadius` and `angularInset` update with the marks.
 
 `<Gauge value="0.4" tint="systemBlue" />` is SwiftUI `Gauge` with the linear
 capacity style: a read-only continuous-capacity `NSLevelIndicator` on AppKit

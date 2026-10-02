@@ -1,13 +1,13 @@
 <%
-  local MAP = { minChart = 200, minPane = 300, chartUnits = 360, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, gap = 3, depth = 14, list = { minimum = 300, maximum = 330 }, meter = 130 }
+  local MAP = { minChart = 200, minPane = 300, chartUnits = 360, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, gap = 3, list = { minimum = 300, maximum = 330 }, meter = 130 }
   -- Every ring keeps the thickness it has among three, so one ring of
   -- files is a slim ring like the Overview donut, not a thick disc.
   local rings = 1
   for _, node in ipairs(nodes) do rings = math.max(rings, node.ring or 1) end
   local hole = math.max(MAP.minimumHole, 1 - rings * MAP.ring)
-  -- Raised rings are already told apart by their gaps and shading, so outer
-  -- rings fade only a little.
-  local ringOpacity = { 1, 0.84, 0.68 }
+  -- Outer rings fade so the contents of a sector read as part of it, not as
+  -- separate items in the same hue.
+  local ringOpacity = { 1, 0.72, 0.5 }
   -- Smaller items folded under a parent take its hue, faded further.
   local otherFade = 0.55
 %>
@@ -80,9 +80,9 @@
         <% end %>
       </Treemap>
       <% else %>
-      <% -- Looking inside a group, or back out, moves the rings to the new level. %>
+      <% -- Looking inside a group, or back out, keeps the chart and takes the new level in place. %>
       <VStack id="mapChartHost" flexGrow="1" flexBasis="0" flexShrink="1" minHeight="<%= MAP.minChart %>" maxWidth="infinity" maxHeight="infinity" alignment="center">
-      <SectorChart id="sunburst" transition="opacity" animation="smooth" animationValue="<%= trail[#trail].id %>" scalable="true" diameter="<%= MAP.chartUnits %>" flexGrow="1" flexBasis="0" maxWidth="infinity" maxHeight="infinity" innerRadius="<%= hole %>" angularInset="<%= MAP.gap %>" depth="<%= MAP.depth %>" shadow="false" onSelect="chartSelect" onHover="chartHover" onCenter="up" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
+      <SectorChart id="sunburst" transition="opacity" animation="smooth" animationValue="<%= trail[#trail].id %>" scalable="true" diameter="<%= MAP.chartUnits %>" flexGrow="1" flexBasis="0" maxWidth="infinity" maxHeight="infinity" innerRadius="<%= hole %>" angularInset="<%= MAP.gap %>" onSelect="chartSelect" onHover="chartHover" onCenter="up" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
         <% for _, node in ipairs(nodes) do %>
         <SectorMark id="<%= node.id %>" ring="<%= node.ring %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" opacity="<%= (ringOpacity[node.ring] or 0.5) * (node.other and node.parent and otherFade or 1) %>" label="<%= node.label %>" />
         <% end %>

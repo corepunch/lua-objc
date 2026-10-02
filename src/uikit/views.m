@@ -414,6 +414,8 @@ static void arc_add_clockwise(UIBezierPath *path, CGPoint center, CGFloat radius
 @property(nonatomic) CGFloat strokeAlpha;
 @property(nonatomic, copy) NSString *stroke;
 @property(nonatomic, copy) NSString *lineCap;
+@property(nonatomic) CGFloat diameter;
+@property(nonatomic) CGFloat fitDiameter;
 - (UIBezierPath *)arcPath;
 @end
 
@@ -442,10 +444,25 @@ static void arc_add_clockwise(UIBezierPath *path, CGPoint center, CGFloat radius
 	return self;
 }
 
+/* A chart that scales to its pane lays its arcs out in fixed units: with a
+ * positive fitDiameter the view's shorter side spans that many units, and
+ * the circle (`diameter` units across) and its stroke scale with the view,
+ * centered. Without it the circle fills the frame and lineWidth is points. */
+- (CGFloat)fitScale {
+	if (self.fitDiameter <= 0) return 0;
+	return MIN(self.bounds.size.width, self.bounds.size.height) / self.fitDiameter;
+}
+
+- (CGFloat)scaledLineWidth {
+	CGFloat scale = self.fitScale;
+	return scale > 0 ? self.lineWidth * scale : self.lineWidth;
+}
+
 - (UIBezierPath *)arcPath {
 	CGRect bounds = self.bounds;
 	CGPoint center = CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds));
-	CGFloat radius = MIN(bounds.size.width, bounds.size.height) / 2.0;
+	CGFloat scale = self.fitScale;
+	CGFloat radius = scale > 0 ? self.diameter * scale / 2.0 : MIN(bounds.size.width, bounds.size.height) / 2.0;
 	UIBezierPath *path = [UIBezierPath bezierPath];
 	if (radius <= 0) return path;
 	CGFloat start = arc_normalize_degrees(self.startAngle);
@@ -458,7 +475,7 @@ static void arc_add_clockwise(UIBezierPath *path, CGPoint center, CGFloat radius
 	} else {
 		arc_add_clockwise(path, center, radius, start, sweep);
 	}
-	path.lineWidth = self.lineWidth;
+	path.lineWidth = self.scaledLineWidth;
 	path.lineCapStyle = [self.lineCap isEqualToString:@"round"] ? kCGLineCapRound : kCGLineCapButt;
 	return path;
 }
@@ -467,7 +484,7 @@ static void arc_add_clockwise(UIBezierPath *path, CGPoint center, CGFloat radius
 	CAShapeLayer *shape = (CAShapeLayer *)self.layer;
 	shape.path = self.arcPath.CGPath;
 	shape.fillColor = nil;
-	shape.lineWidth = self.lineWidth;
+	shape.lineWidth = self.scaledLineWidth;
 	shape.lineCap = [self.lineCap isEqualToString:@"round"] ? kCALineCapRound : kCALineCapButt;
 	// Label colors carry their own translucency; strokeAlpha scales it.
 	UIColor *color = [lua_objc_uikit_system_color((self.stroke ?: @"accent").UTF8String)
@@ -487,6 +504,8 @@ static void arc_add_clockwise(UIBezierPath *path, CGPoint center, CGFloat radius
 - (void)setStrokeAlpha:(CGFloat)value { _strokeAlpha = value; [self updateShape]; }
 - (void)setStroke:(NSString *)value { _stroke = [value copy]; [self updateShape]; }
 - (void)setLineCap:(NSString *)value { _lineCap = [value copy]; [self updateShape]; }
+- (void)setDiameter:(CGFloat)value { _diameter = value; [self updateShape]; }
+- (void)setFitDiameter:(CGFloat)value { _fitDiameter = value; [self updateShape]; }
 
 @end
 

@@ -659,6 +659,8 @@ end
 --- @prop endAngle number optional. Ending angle in degrees.
 --- @prop height number optional. Component-specific setting passed to the native control.
 --- @prop lineCap string optional. `butt` or `round`.
+--- @prop diameter number optional. With `fitDiameter`, the circle's diameter in units.
+--- @prop fitDiameter number optional. Scales the arc to its frame: the frame's shorter side spans this many units, and `diameter` and `lineWidth` are in those units.
 --- @prop lineWidth number optional. Stroke width in points.
 --- @prop startAngle number optional. Starting angle in degrees.
 --- @prop stroke string optional. Semantic stroke color.
@@ -678,6 +680,8 @@ function UIKit.Arc(props)
 	if props.stroke then view.stroke = props.stroke end
 	if props.strokeAlpha then view.strokeAlpha = props.strokeAlpha end
 	if props.lineCap then view.lineCap = props.lineCap end
+	if props.diameter then view.diameter = props.diameter end
+	if props.fitDiameter then view.fitDiameter = props.fitDiameter end
 	return applyLayout(view, props)
 end
 
@@ -690,6 +694,8 @@ require("ui.notifications").install(UIKit, bridge)
 --- Draws a pie or donut chart from `SectorMark` records (SwiftUI Charts).
 --- @prop innerRadius number optional. Hole radius as a fraction of the outer radius (0 draws a pie).
 --- @prop angularInset number optional. Gap between neighbouring sectors, in points.
+--- @prop scalable boolean optional. Lays the sectors out in `diameter` units and scales them to fill the room the chart is given, centered.
+--- @prop diameter number optional. With `scalable`, the chart's geometry in units (default 360).
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function UIKit.SectorChart(props)
 	return require("ui.sectors").chart(UIKit, props)

@@ -8,7 +8,7 @@ local Controller = Page.extend("map", "Map")
 
 local STYLES = {"rings", "rectangles"}
 
--- The Map page: the semantic tree as raised rings beside a list of the
+-- The Map page: the semantic tree as rings beside a list of the
 -- focused node's children, or as rectangles alone. Clicking a group focuses
 -- it, the center or the breadcrumb goes back up, and hovering describes a
 -- node without re-rendering the chart. Activating a leaf opens its category sheet; list

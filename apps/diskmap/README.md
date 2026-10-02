@@ -92,7 +92,7 @@ the height of AppKit's capacity cell.
 - **Developer — what can I do about Xcode and friends?** Sections for Xcode &
   simulators, packages & toolchains, projects & editors, containers & virtual
   machines, and AI tools & models, each a ranked list of catalog locations.
-- **Storage Map** — the same semantic tree as a raised (3D) sunburst or a squarified
+- **Storage Map** — the same semantic tree as a sunburst or a squarified
   treemap (segmented Rings / Rectangles), beside a list of the focused node's
   children. Click a group to look inside, click the center or the breadcrumb
   to go back, hover for the path, size and share; the hovered sector brightens in place, and

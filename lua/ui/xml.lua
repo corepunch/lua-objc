@@ -911,7 +911,7 @@ local TAG_SCHEMA = {
     SectorChart = {
         constructor = "SectorChart",
         children = "array",
-        props = { innerRadius = "num", angularInset = "num", depth = "num", shadow = "bool", scalable = "bool", diameter = "num", accessibilityLabel = "str" },
+        props = { innerRadius = "num", angularInset = "num", scalable = "bool", diameter = "num", accessibilityLabel = "str" },
         -- New marks move the existing arcs, like SwiftUI Charts, instead of
         -- rebuilding the chart (see ui/sectors.lua).
         updateRecords = function(view, records) return require("ui.sectors").update(view, records) end,

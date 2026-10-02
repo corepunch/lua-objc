@@ -88,47 +88,9 @@ enum {
 static char kKeys[kKeyCount];
 static const CGFloat kStackSpacing = 8.0;
 static const CGFloat kArcFullCircleDegrees = 359.0;
-/* Raised SectorChart (appkit/sector_scene.m): arc tessellation, how far a
- * highlighted sector slides out and rises, the camera's downward tilt and
- * lens, each slice's gradient (the darkest multiplied shade, the brightest
- * emitted glow and how far across the slice it reaches, and the direction
- * from dark to light), the rounded top edge (its radius, as a share of the
- * height and of the slice's narrowest width at most), the surface, the two
- * overhead lights and the ambient light under them, and the key light's
- * soft shadow.
- * Distances are points, angles radians except the field of view and the
- * gradient (degrees). */
-static const CGFloat kSectorSceneFlatness = 0.04;
-static const NSTimeInterval kSectorSceneHighlightDuration = 0.18;
-static const CGFloat kSectorSceneHighlightContrast = 0.22;
 /* How often a relaunch looks for its new instance, and how long it waits. */
 static const NSTimeInterval kRelaunchPollInterval = 0.25;
 static const NSTimeInterval kRelaunchTimeout = 10.0;
-static const CGFloat kSectorSceneTilt = 0.5;
-static const CGFloat kSectorSceneFieldOfView = 24.0;
-static const CGFloat kSectorSceneFitMargin = 1.08;
-static const CGFloat kSectorSceneFarPlane = 100000.0;
-static const CGFloat kSectorSceneGradientShade = 0.74;
-static const CGFloat kSectorSceneGradientGlow = 0.14;
-static const CGFloat kSectorSceneGradientGlowReach = 0.6;
-static const CGFloat kSectorSceneGradientAngle = 135.0;
-static const CGFloat kSectorSceneEdgeRadius = 3.0;
-static const CGFloat kSectorSceneEdgeHeightShare = 0.3;
-static const CGFloat kSectorSceneEdgeWidthShare = 0.25;
-static const CGFloat kSectorSceneRoughness = 0.55;
-static const CGFloat kSectorSceneEdgeRoughness = 0.3;
-static const CGFloat kSectorSceneKeyIntensity = 900.0;
-static const CGFloat kSectorSceneKeyPitch = -0.35;
-static const CGFloat kSectorSceneKeyYaw = -0.25;
-static const CGFloat kSectorSceneFillIntensity = 700.0;
-static const CGFloat kSectorSceneFillPitch = 0.6;
-static const CGFloat kSectorSceneAmbientIntensity = 300.0;
-static const CGFloat kSectorSceneShadowOpacity = 0.3;
-static const CGFloat kSectorSceneShadowRadius = 12.0;
-static const NSUInteger kSectorSceneShadowSamples = 32;
-static const CGFloat kSectorSceneShadowMapSize = 2048.0;
-static const CGFloat kSectorSceneShadowCoverage = 1.4;
-static const CGFloat kSectorSceneShadowDistance = 1000.0;
 /* SceneView (shared/scene_view.m): the frame rate it renders and calls
  * `onFrame` at; a camera's default lens and clipping planes and a light's
  * default intensity (SceneKit lumens); shadow softness, sampling and map
@@ -379,7 +341,9 @@ static void bridge_set_optional_callback(
 #include "appkit/charts.m"
 #include "appkit/mesh_gradient.m"
 #include "appkit/shader_view.m"
-#include "appkit/sector_scene.m"
+/* Imported here, after the AppKit fragments: SceneKit declares `target`
+ * properties that would make their `target` messages ambiguous. */
+#import <SceneKit/SceneKit.h>
 #include "shared/scene_models.m"
 #include "shared/scene_view.m"
 #include "appkit/reorder_container.m"
@@ -532,12 +496,6 @@ static const luaL_Reg bridge_lib[] = {
 	{"_font", bridge_AppKit_font},
 	{"_pathView", bridge_pathView},
 	{"_arc", bridge_arc},
-	{"_sectorScene", bridge_sector_scene},
-	{"_sectorSceneConfigure", bridge_sector_scene_configure},
-	{"_sectorSceneNodes", bridge_sector_scene_nodes},
-	{"_sectorSceneTransition", bridge_sector_scene_transition},
-	{"_sectorSceneTransitionState", bridge_sector_scene_transition_state},
-	{"_sectorScenePoint", bridge_sector_scene_point},
 	{"_sceneView", bridge_scene_view},
 	{"_sceneGraph", bridge_scene_graph},
 	{"_sceneBackground", bridge_scene_background},

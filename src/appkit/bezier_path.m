@@ -105,6 +105,8 @@ static NSColor *semantic_color(NSString *name);
 @property(nonatomic) CGFloat strokeAlpha;
 @property(nonatomic, copy) NSString *stroke;
 @property(nonatomic, copy) NSString *lineCap;
+@property(nonatomic) CGFloat diameter;
+@property(nonatomic) CGFloat fitDiameter;
 - (NSBezierPath *)arcPath;
 @end
 
@@ -132,10 +134,25 @@ static NSColor *semantic_color(NSString *name);
 - (BOOL)isOpaque { return NO; }
 - (NSView *)hitTest:(NSPoint)point { (void)point; return nil; }
 
+/* A chart that scales to its pane lays its arcs out in fixed units: with a
+ * positive fitDiameter the view's shorter side spans that many units, and
+ * the circle (`diameter` units across) and its stroke scale with the view,
+ * centered. Without it the circle fills the frame and lineWidth is points. */
+- (CGFloat)fitScale {
+	if (self.fitDiameter <= 0) return 0;
+	return MIN(self.bounds.size.width, self.bounds.size.height) / self.fitDiameter;
+}
+
+- (CGFloat)scaledLineWidth {
+	CGFloat scale = self.fitScale;
+	return scale > 0 ? self.lineWidth * scale : self.lineWidth;
+}
+
 - (NSBezierPath *)arcPath {
 	NSRect bounds = self.bounds;
 	NSPoint center = NSMakePoint(NSMidX(bounds), NSMidY(bounds));
-	CGFloat radius = MIN(bounds.size.width, bounds.size.height) / 2.0;
+	CGFloat scale = self.fitScale;
+	CGFloat radius = scale > 0 ? self.diameter * scale / 2.0 : MIN(bounds.size.width, bounds.size.height) / 2.0;
 	NSBezierPath *path = [NSBezierPath bezierPath];
 	if (radius <= 0) return path;
 	CGFloat start = arc_normalize_degrees(self.startAngle);
@@ -148,7 +165,7 @@ static NSColor *semantic_color(NSString *name);
 	} else {
 		arc_add_clockwise(path, center, radius, start, sweep);
 	}
-	path.lineWidth = self.lineWidth;
+	path.lineWidth = self.scaledLineWidth;
 	path.lineCapStyle = [self.lineCap isEqualToString:@"round"]
 		? NSLineCapStyleRound : NSLineCapStyleButt;
 	return path;
@@ -166,7 +183,7 @@ static NSColor *semantic_color(NSString *name);
 		shape.path = path;
 	}
 	shape.fillColor = nil;
-	shape.lineWidth = self.lineWidth;
+	shape.lineWidth = self.scaledLineWidth;
 	shape.lineCap = [self.lineCap isEqualToString:@"round"] ? kCALineCapRound : kCALineCapButt;
 	shape.masksToBounds = NO;
 	[self.effectiveAppearance performAsCurrentDrawingAppearance:^{
@@ -187,6 +204,8 @@ static NSColor *semantic_color(NSString *name);
 - (void)setStrokeAlpha:(CGFloat)value { _strokeAlpha = value; [self updateShape]; }
 - (void)setStroke:(NSString *)value { _stroke = [value copy]; [self updateShape]; }
 - (void)setLineCap:(NSString *)value { _lineCap = [value copy]; [self updateShape]; }
+- (void)setDiameter:(CGFloat)value { _diameter = value; [self updateShape]; }
+- (void)setFitDiameter:(CGFloat)value { _fitDiameter = value; [self updateShape]; }
 
 @end
 

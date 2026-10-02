@@ -1,5 +1,5 @@
 <%
-  local HERO = { chart = 144, hole = 0.7, gap = 3, depth = 0, total = 24, caption = 11, totalScale = 13 / 24, captionScale = 0.5 }
+  local HERO = { chart = 144, hole = 0.7, gap = 3, total = 24, caption = 11, totalScale = 13 / 24, captionScale = 0.5 }
   -- The line under the ring naming the hovered sector: as wide as the column the
   -- ring leaves beside the legend, so a category, its size and share fit.
   HERO.detail = { size = 12, width = 240, height = 16, gap = 8 }
@@ -33,7 +33,7 @@
       is named there, and the line keeps its height while empty so the ring
       never moves. ]] %>
     <VStack id="chartColumn" spacing="<%= HERO.detail.gap %>" alignment="center">
-      <SectorChart id="chart" transition="opacity" width="<%= HERO.chart %>" height="<%= HERO.chart %>" innerRadius="<%= HERO.hole %>" angularInset="<%= HERO.gap %>" depth="<%= HERO.depth %>" shadow="false" onSelect="chartSelect" onHover="chartHover" onCenter="chartCenter" accessibilityLabel="<%= chart.accessibilityLabel %>">
+      <SectorChart id="chart" transition="opacity" width="<%= HERO.chart %>" height="<%= HERO.chart %>" innerRadius="<%= HERO.hole %>" angularInset="<%= HERO.gap %>" onSelect="chartSelect" onHover="chartHover" onCenter="chartCenter" accessibilityLabel="<%= chart.accessibilityLabel %>">
         <% for _, mark in ipairs(chart.marks) do %>
         <SectorMark id="<%= mark.id %>" value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" />
         <% end %>

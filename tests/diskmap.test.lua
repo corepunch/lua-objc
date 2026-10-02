@@ -147,7 +147,7 @@ t.assertEqual(bridge._tableCell(sidebar, 0, 1).textField.stringValue, "Clean Up"
 t.assertEqual(bridge._tableCell(sidebar, 0, 2).textField.stringValue, "Free Up Space", "sidebar sections are native group headers")
 t.expect(ui.refs.results ~= nil and ui.refs.largest ~= nil, "overview shows categories and largest items")
 t.expect(ui.pages.overview.hero.refs.chart ~= nil, "overview leads with the storage chart")
-t.expect(ui.pages.overview.hero.refs.chart.subviews[1].className ~= "LuaSectorSceneView", "the overview chart uses calm flat sectors")
+t.expect(ui.pages.overview.hero.refs.chart.subviews[1].className == "LuaArcView", "the overview chart uses calm flat sectors")
 local categoryRows = ui.refs.results.rowCount
 t.expect(not ui.refs.results.hasVerticalScroller, "the category list has no scrollbar of its own")
 t.expect(ui.refs.results.scrollDisabled, "the category list is declared scrollDisabled")

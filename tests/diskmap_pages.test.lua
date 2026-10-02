@@ -27,11 +27,11 @@ t.expect(window.subtitle:find("available of", 1, true) ~= nil and not window.sub
 	"the window subtitle is Finder's one number, purgeable storage included, short enough for the toolbar")
 t.expect(app.pages.overview.hero.refs.hiddenSpace ~= nil, "the overview lists hidden space")
 
--- Map: raised rings by default, drill in and out, switch to rectangles.
+-- Map: rings by default, drill in and out, switch to rectangles.
 app:show("map")
-t.expect(page().sunburst ~= nil and page().sunburst.subviews[1].className == "LuaSectorSceneView",
-	"the map starts as raised rings in SceneKit")
-t.expect(not page().sunburst.subviews[1].castsShadow, "the Map's raised rings cast no shadow")
+t.expect(page().sunburst ~= nil and page().sunburst.subviews[1].className == "LuaArcView",
+	"the map starts as flat rings")
+t.expect(page().sunburst.subviews[1].fitDiameter > 0, "which scale to their pane")
 t.expect(page().mapList.rowCount > 5, "the map lists the focus's children")
 -- The rings scale to their pane instead of scrolling inside it, and "Worth a
 -- look" sits under the list so the rings keep the pane's height.
@@ -227,13 +227,12 @@ t.assertEqual(app.destination, "map", "return opens the Map inside the focused c
 t.assertEqual(app.pages.map.focus, "developer", "focused on it")
 app.pages.map:setFocus("")
 
--- Drilling moves the rings to the new level instead of snapping.
+-- Drilling takes the new level in place.
 local rings = app.page.refs.sunburst
 app.page.template.actions.chartSelect("developer", 1)
 t.expect(app.page.refs.sunburst == rings, "drilling keeps the chart view")
-t.expect(ns._sectorSceneTransitionState(rings.subviews[1]) > 0, "and the rings move into the group")
 app.page.template.actions.up()
-t.expect(ns._sectorSceneTransitionState(rings.subviews[1]) > 0, "and back out of it")
+t.expect(app.page.refs.sunburst == rings, "and so does going back out")
 require("AppKitNative")._motionSettle()
 
 

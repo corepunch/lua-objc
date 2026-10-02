@@ -2256,6 +2256,8 @@ end
 --- @prop endAngle number optional. Ending angle in degrees.
 --- @prop height number optional. Component-specific setting passed to the native control.
 --- @prop lineCap string optional. `butt` or `round`.
+--- @prop diameter number optional. With `fitDiameter`, the circle's diameter in units.
+--- @prop fitDiameter number optional. Scales the arc to its frame: the frame's shorter side spans this many units, and `diameter` and `lineWidth` are in those units.
 --- @prop lineWidth number optional. Stroke width in points.
 --- @prop startAngle number optional. Starting angle in degrees.
 --- @prop stroke string optional. Semantic stroke color.
@@ -2275,28 +2277,8 @@ function AppKit.Arc(props)
 	if props.stroke then view.stroke = props.stroke end
 	if props.strokeAlpha then view.strokeAlpha = props.strokeAlpha end
 	if props.lineCap then view.lineCap = props.lineCap end
-	return applyLayout(view, props)
-end
-
---- Renders raised chart sectors in SceneKit for `SectorChart depth`.
----
---- Sectors are `{startAngle, endAngle, inner, outer, height, gap, color,
---- alpha, highlight}` in the chart's point geometry: each sector's whole share and
---- band, and the parallel-sided gap cut between neighbours. `ui/sectors.lua`
---- computes them.
---- @prop sectors table optional. Sector descriptions.
---- @prop shadow boolean optional. Casts a soft contact shadow (default true).
---- @prop fitRadius number optional. The chart's outer radius in sector units; the camera frames it on the view's narrower side, so the chart scales with the view.
---- @platform AppKit.
-function AppKit.SectorScene(props)
-	props = props or {}
-	if props.width and not props.fixedWidth then props.fixedWidth = props.width end
-	if props.height and not props.fixedHeight then props.fixedHeight = props.height end
-	local width = props.fixedWidth or 160
-	local view = bridge._sectorScene(width, props.fixedHeight or width)
-	if props.shadow ~= nil then view.castsShadow = props.shadow end
-	if props.fitRadius then view.fitRadius = props.fitRadius end
-	bridge._sectorSceneConfigure(view, props.sectors or {}, false)
+	if props.diameter then view.diameter = props.diameter end
+	if props.fitDiameter then view.fitDiameter = props.fitDiameter end
 	return applyLayout(view, props)
 end
 
@@ -2407,8 +2389,8 @@ end
 --- centered over the chart, typically a total inside the hole.
 --- @prop innerRadius number optional. Hole radius as a fraction of the outer radius (0 draws a pie).
 --- @prop angularInset number optional. Gap between neighbouring sectors, in points.
---- @prop depth number optional. Draws raised sectors this many points deep under a tilted camera (SceneKit), starting at half past one; 0 draws flat arcs.
---- @prop shadow boolean optional. With `depth`, casts a soft contact shadow (default true).
+--- @prop scalable boolean optional. Lays the sectors out in `diameter` units and scales them to fill the room the chart is given, centered.
+--- @prop diameter number optional. With `scalable`, the chart's geometry in units (default 360).
 --- @prop accessibilityLabel string optional. Summary read by VoiceOver.
 --- @example <SectorChart width="180" height="180" innerRadius="0.62"><SectorMark value="40" color="systemBlue" /></SectorChart>
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.

@@ -121,27 +121,16 @@ Lua-only animators:
 
 ## Custom animators
 
-Core Animation cannot tween everything: a raised `SectorChart` is SceneKit
-geometry, rebuilt from outlines. Such a view is its own **animator**
-(`LuaMotionAnimator` in `src/shared/motion.m`). Inside an animated
-transaction it joins the transaction with `motion_animate`, which hands it
-the transaction's animation; it steps itself from a display link with
-`motion_progress` (the same curve or spring a layer would follow) and reports
-the end with `motion_animator_finished`. The transaction's completion waits
-for it, `_motionSettle` ends it on its final state, and outside a
-transaction, in one that disables animation, or under Reduce Motion it shows
-the final state at once. Nothing about its timing is its own.
-
-The raised chart pairs the sectors of the old and new marks by `id` and moves
-each to its new shape; marks that come or go open from, or close to, nothing.
-When the new marks are the inside of one of its sectors (their ids were its
-second-ring children), or the level outside them, the sector opens to the
-whole circle and every ring moves one band inwards. A template asks for it
-like any other animation:
-
-```xml
-<SectorChart animation="smooth" animationValue="<%= focus %>" depth="14" …>
-```
+Core Animation cannot tween everything. A view whose state is not a layer
+property can be its own **animator** (`LuaMotionAnimator` in
+`src/shared/motion.m`). Inside an animated transaction it joins the
+transaction with `motion_animate`, which hands it the transaction's
+animation; it steps itself from a display link with `motion_progress` (the
+same curve or spring a layer would follow) and reports the end with
+`motion_animator_finished`. The transaction's completion waits for it,
+`_motionSettle` ends it on its final state, and outside a transaction, in
+one that disables animation, or under Reduce Motion it shows the final state
+at once. Nothing about its timing is its own.
 
 ## Retained templates and reconciliation
 

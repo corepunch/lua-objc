@@ -1,13 +1,13 @@
 <%
-  local FOLDER = { minChart = 160, chartUnits = 300, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, gap = 3, depth = 14, list = 340, minList = 260, minPane = 320, meter = 130, legendSize = 84, legendShare = 34 }
+  local FOLDER = { minChart = 160, chartUnits = 300, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, gap = 3, list = 340, minList = 260, minPane = 320, meter = 130, legendSize = 84, legendShare = 34 }
   -- Every ring keeps the thickness it has among three, so one ring of
   -- files is a slim ring like the Overview donut, not a thick disc.
   local rings = 1
   for _, node in ipairs(nodes) do rings = math.max(rings, node.ring or 1) end
   local hole = math.max(FOLDER.minimumHole, 1 - rings * FOLDER.ring)
-  -- The Map page's ring fades: raised rings are told apart by their gaps and
-  -- shading, and smaller items keep their folder's hue, faded further.
-  local ringOpacity = { 1, 0.84, 0.68 }
+  -- The Map page's ring fades: outer rings fade so the contents of a folder read
+  -- as part of it, and smaller items keep their folder's hue, faded further.
+  local ringOpacity = { 1, 0.72, 0.5 }
   local otherFade = 0.55
 %>
 <VStack id="page" transition="opacity" flexGrow="1" maxHeight="infinity" spacing="16" padding="24" alignment="leading">
@@ -71,9 +71,9 @@
         <% end %>
       </Treemap>
       <% else %>
-      <% -- Looking inside a group, or back out, moves the rings to the new level. %>
+      <% -- Looking inside a group, or back out, keeps the chart and takes the new level in place. %>
       <VStack id="folderChartHost" flexGrow="1" flexBasis="0" flexShrink="1" minHeight="<%= FOLDER.minChart %>" maxWidth="infinity" maxHeight="infinity" alignment="center">
-      <SectorChart id="folderSunburst" transition="opacity" animation="smooth" animationValue="<%= trail[#trail].id %>" scalable="true" diameter="<%= FOLDER.chartUnits %>" flexGrow="1" flexBasis="0" maxWidth="infinity" maxHeight="infinity" innerRadius="<%= hole %>" angularInset="<%= FOLDER.gap %>" depth="<%= FOLDER.depth %>" shadow="false" onSelect="chartSelect" onHover="chartHover" onCenter="up" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
+      <SectorChart id="folderSunburst" transition="opacity" animation="smooth" animationValue="<%= trail[#trail].id %>" scalable="true" diameter="<%= FOLDER.chartUnits %>" flexGrow="1" flexBasis="0" maxWidth="infinity" maxHeight="infinity" innerRadius="<%= hole %>" angularInset="<%= FOLDER.gap %>" onSelect="chartSelect" onHover="chartHover" onCenter="up" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
         <% for _, node in ipairs(nodes) do %>
         <SectorMark id="<%= node.id %>" ring="<%= node.ring %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" opacity="<%= (ringOpacity[node.ring] or 0.5) * (node.other and node.parent and otherFade or 1) %>" label="<%= node.label %>" />
         <% end %>
