@@ -14,7 +14,7 @@ Read only the material needed for the current task:
 - [docs/PROJECT_REFERENCE.md](docs/PROJECT_REFERENCE.md) — detailed API and
   implementation reference; consult the relevant heading, not the whole file
 - [docs/tableview_swiftui.md](docs/tableview_swiftui.md) — table behavior
-- [docs/animation.md](docs/animation.md) — animation, transitions, retained
+- [docs/retained-templates.md](docs/retained-templates.md) — motion, retained
   template reconciliation and steady live updates
 - [docs/reels.md](docs/reels.md) — making 3-D promo reels with Reel and
   SceneKit: captures, component motion, camera, traps, performance
@@ -109,6 +109,18 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
 - **etlua is the only template engine.** It is vendored at
   `lua/vendor/etlua` (git submodule). Import with `require("etlua")`. Do not
   add Mustache, Handlebars, or any other template dependency.
+
+## Performance and baggage
+
+- **Ask "are you sure?" first.** When the user asks for a feature that could
+  slow the application down or add a large amount of machinery, stop and ask
+  "are you sure?" before building it, naming the cost.
+- No animation is better than an animation that costs frames. Never wrap
+  frequent updates (scan progress, streaming text, per-tick refreshes) in
+  `withAnimation`: a transaction diffs the layout of the whole subtree and
+  can start dozens of Core Animation animations per tick, and it fights
+  scrolling. Animate only deliberate, infrequent changes, on the views that
+  change.
 
 ## Non-negotiable product rules
 

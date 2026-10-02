@@ -112,12 +112,6 @@ static int nsview_newindex(lua_State *L) {
 
 	NSString *kvcKey = [NSString stringWithUTF8String:key];
 	id value = lua_to_kvc_value(L, 3);
-	motion_will_set(obj, key);
-	if (strcmp(key, "hidden") == 0 && motion_intercept_hidden(obj, lua_toboolean(L, 3))) {
-		uikit_invalidate_layout((UIView *)obj);
-		return 0;
-	}
-
 	@try {
 		[obj setValue:value forKey:kvcKey];
 	} @catch (NSException *e) {

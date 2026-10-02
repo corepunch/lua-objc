@@ -308,7 +308,7 @@ the eager native-tree architecture may have hit the wall this section predicts:
 - the same component must preserve local state while its body is reevaluated;
 - conditional branches or collections must insert, remove, move, or reuse
   native controls without bespoke imperative code for that one feature;
-- modifiers, animation transactions, lifecycle, environment, preferences, or
+- modifiers, lifecycle, environment, preferences, or
   navigation need to propagate through a logical component hierarchy;
 - implementing the feature would require every application callback to know and
   manually synchronize the underlying AppKit subtree.
@@ -328,7 +328,7 @@ The intended progression is:
    component function is reevaluated.
 5. Add stable identity and keyed reconciliation so native widgets and component
    state survive updates where their logical identity is unchanged.
-6. Layer environment, lifecycle, preferences, navigation, transactions, and
+6. Layer environment, lifecycle, preferences, navigation, and
    animation on that retained logical graph.
 
 This is not a mandate to build a virtual tree for every small missing control.
@@ -1061,10 +1061,10 @@ The hovered sector moves halfway to opaque where it stands;
 `require("ui.sectors").highlight(chart, id)` highlights a sector from code,
 so a list beside the chart can point at it. New marks take the existing arcs
 in place, paired by `id`, and `innerRadius` and `angularInset` update with
-the marks. Inside an animated transaction each arc turns and grows along its
-circle, so showing the inside of a sector opens its children to the whole
-chart, and marks that come or go fade (see “Shapes” in
-[animation.md](animation.md)).
+the marks. Each arc animates itself, turning and growing along its circle, so
+showing the inside of a sector opens its children to the whole chart; marks
+that come or go appear and leave at once (see
+[retained-templates.md](retained-templates.md)).
 
 `<Gauge value="0.4" tint="systemBlue" />` is SwiftUI `Gauge` with the linear
 capacity style: a read-only continuous-capacity `NSLevelIndicator` on AppKit
@@ -1119,26 +1119,14 @@ height (or a width and height); it relays out whenever its size changes.
 </Treemap>
 ```
 
-### Animation: `withAnimation` and `transition`
+### Motion
 
-The full guide is [animation.md](animation.md): transactions, animation
-values, transitions, motion attributes, how retained templates reconcile
-(what patches in place and what rebuilds), layout after structural changes,
-keeping live updates steady, and test hooks. In short:
-
-- `ns.withAnimation(animation, body, completion)` animates every frame,
-  opacity, transform, colour and content change `body` causes, on AppKit and
-  UIKit; `template:update(data)` inside it is SwiftUI's
-  `withAnimation { state = … }`.
-- `transition="…"` plays on insertion and removal inside an animated
-  transaction (`opacity`, `scale(0.8)`, `slide`, `move(edge)`, `push(edge)`,
-  `offset(x, y)`, `a+b`, `asymmetric(a, b)`).
-- Model values never change during an animation; frames are final as soon as
-  the body returns. Reduce Motion keeps fades and makes movement immediate.
-
-```xml
-<VStack id="pageContent" transition="opacity">…</VStack>
-```
+There is no animation engine: no `withAnimation`, no `transition`. An `Arc`
+animates its own path, the welcome tour uses the system's push transition
+(`ns._pushTransition`), and everything else applies at once. See
+[retained-templates.md](retained-templates.md) for what patches in place,
+what rebuilds, layout after structural changes and keeping live updates
+steady.
 
 ### Components
 
@@ -2422,11 +2410,6 @@ control: `<List onSelect="select" onActivate="open" onSort="sort">` and
 `<TabView onChange="tabChanged">`. When actions are supplied, a misspelt name
 fails at render time. Native List/Outline selection and activation callbacks preserve row
 boolean, numeric and structured values rather than stringifying them.
-
-### Animation (SwiftUI transactions)
-
-See [animation.md](animation.md) and the summary under
-[Animation: `withAnimation` and `transition`](#animation-withanimation-and-transition).
 
 Other additions: `ns.watch(paths, callback, {since})` (FSEvents, Scope
 owned), `ns.notifications` (UNUserNotificationCenter; unavailable without an

@@ -123,8 +123,8 @@ offered, and it resizes with the window.
 ### Retained updates
 
 A component's elements are reconciled like the rest of the template
-(see [animation.md](animation.md)): changed attributes are applied to the
-existing views, and inside `ns.withAnimation` they animate. Give repeated
+(see [retained-templates.md](retained-templates.md)): changed attributes are
+applied to the existing views. Give repeated
 elements a `key` so added or removed records insert and remove their own
 views:
 

@@ -45,6 +45,7 @@ local layout_properties = {
 	"fillWidth",
 	"containerRelativeWidth",
 	"fillHeight",
+	"fitDiameter",
 	"fixedSize",
 	"ignoresSafeArea",
 	"hidden",
@@ -53,8 +54,6 @@ local layout_properties = {
 	"cornerRadius",
 	"clipsToBounds",
 	"opacity",
-	"scaleEffect",
-	"rotationEffect",
 	"offsetX",
 	"offsetY",
 	"onClick",
@@ -704,7 +703,6 @@ function AppKit.DisclosureGroup(props)
 		paddingLeading = props.indicatorWidth and props.indicatorWidth + gap or nil,
 	})
 	for _, child in ipairs(props) do content:add(child) end
-	AppKit.transition(content, "opacity")
 	local container = AppKit.VStack { spacing = 8, alignment = "leading" }
 	local expanded = props.expanded ~= false
 	-- SwiftUI's macOS DisclosureGroup is AppKit's disclosure triangle beside a
@@ -717,11 +715,7 @@ function AppKit.DisclosureGroup(props)
 			expanded = not expanded
 			triangle.state = expanded and 1 or 0
 		end
-		-- The reveal animates: the content fades and siblings below slide to
-		-- their new frames.
-		AppKit.withAnimation(AppKit.Animation.snappy(), function()
-			content.hidden = not expanded
-		end)
+		content.hidden = not expanded
 	end
 	triangle = AppKit.Button { title = "", action = function() toggle(true) end }
 	triangle.bezelStyle = 5 -- NSBezelStyleDisclosure
@@ -2149,6 +2143,8 @@ function AppKit.Arc(props)
 	if props.fitDiameter then view.fitDiameter = props.fitDiameter end
 	if props.inset then view.inset = props.inset end
 	if props.cornerRadius then view.cornerRadius = props.cornerRadius end
+	-- An animated arc turns, grows and changes rings by its own animation.
+	if props.animated then view.animated = true end
 	return applyLayout(view, props)
 end
 
@@ -2201,9 +2197,6 @@ function AppKit.sceneGraph(view, records)
 	return true
 end
 
--- SwiftUI animation: Animation values, withAnimation, withTransaction,
--- AnyTransition and the per-view motion modifiers (see ui/animation.lua).
-require("ui.animation").install(AppKit, bridge)
 require("ui.meshgradient").install(AppKit, bridge, applyLayout)
 require("ui.lazy").install(AppKit, bridge, applyLayout)
 require("ui.webpage").install(AppKit, bridge, applyLayout)

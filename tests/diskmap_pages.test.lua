@@ -233,7 +233,6 @@ app.page.template.actions.chartSelect("developer", 1)
 t.expect(app.page.refs.sunburst == rings, "drilling keeps the chart view")
 app.page.template.actions.up()
 t.expect(app.page.refs.sunburst == rings, "and so does going back out")
-require("AppKitNative")._motionSettle()
 
 
 os.exit(t.summary() and 0 or 1)

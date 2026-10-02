@@ -16,8 +16,8 @@ The toolkit has two layers over the same primitives:
   animated like any other node.
 
 Reel is a separate module. The runtime never loads it, app bundles do not
-ship it, and it uses none of the live animation engine (`withAnimation`,
-`src/shared/motion.m`): that engine runs on the display clock, while a reel
+ship it, and it uses none of the runtime's live motion (an Arc's own animation, the
+system push transition): that runs on the display clock, while a reel
 must render any instant exactly and repeatably.
 
 | Piece | Where |

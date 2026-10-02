@@ -48,7 +48,6 @@ local WatchlistController = require("apps.diskmap.controllers.WatchlistControlle
 local WatchedController = require("apps.diskmap.controllers.WatchedController")
 local OnboardingController = require("apps.diskmap.controllers.OnboardingController")
 local Controller = {}; Controller.__index = Controller
-local SCAN_ANIMATION = ns.Animation.snappy()
 local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
 -- Services grow optional features; a provider that lacks one simply does not
 -- offer it. rawget keeps strict test doubles from reporting a probe as a call.
@@ -67,11 +66,10 @@ function Controller.new(service)
 	end
 	local loadFolders = optional(service, "loadFolders")
 	self.model.projectRoots = loadFolders and loadFolders("projects") or {}
-	-- Only measurement animates: sizes arriving from a scan move the charts
-	-- and numbers. Navigation and other refreshes apply immediately.
-	self.scan = ScanController.new(self.model, service, home, function()
-		ns.withAnimation(SCAN_ANIMATION, function() self:updateRows() end)
-	end, function() self:scanFinished() end)
+	-- Scan ticks arrive many times a second, so they apply immediately: an
+	-- animated transaction would diff the layout of the whole page on each
+	-- one and fight the user's scrolling.
+	self.scan = ScanController.new(self.model, service, home, function() self:updateRows() end, function() self:scanFinished() end)
 	self.notifications = NotificationsController.new(self.model, service, {
 		mark = function(items) self.actions:markAll(items) end,
 		review = function() self:openReview() end,
@@ -310,11 +308,9 @@ function Controller:basketChanged()
 	if self.window then self.window.subtitle = self:subtitle() end
 	if self.collector then
 		local count = self.review:count()
-		ns.withAnimation(ns.Animation.snappy(), function()
-			self.collector.collectorText.text = count == 0 and "Drag items here to mark them for cleanup" or self.review:summary()
-			self.collector.collectorReview.enabled = count > 0
-			self.collector.collectorArea.hidden = count == 0 and not self.collectorDragging
-		end)
+		self.collector.collectorText.text = count == 0 and "Drag items here to mark them for cleanup" or self.review:summary()
+		self.collector.collectorReview.enabled = count > 0
+		self.collector.collectorArea.hidden = count == 0 and not self.collectorDragging
 	end
 	if self.page and self.page.marksChanged then self.page:marksChanged() end
 end

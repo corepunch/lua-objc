@@ -13,7 +13,7 @@
   <Divider />
   <HStack id="collector" onDrop="dropToMark" onFileDragChanged="collectorDrag" height="<%= COLLECTOR.height %>" paddingHorizontal="<%= COLLECTOR.padding %>" spacing="8" alignment="center">
     <SystemImage name="tray.and.arrow.down" size="15" color="secondary" />
-    <Label id="collectorText" text="Drag items here to mark them for cleanup" size="12" color="secondary" contentTransition="numericText" monospacedDigit="true" flexGrow="1" flexShrink="1" lines="1" truncation="tail" />
+    <Label id="collectorText" text="Drag items here to mark them for cleanup" size="12" color="secondary" monospacedDigit="true" flexGrow="1" flexShrink="1" lines="1" truncation="tail" />
     <Button id="collectorReview" title="Review…" action="review" disabled="true" controlSize="small" />
   </HStack>
   </VStack>

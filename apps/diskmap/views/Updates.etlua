@@ -1,4 +1,4 @@
-<ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
+<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
   <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {header = header,
       summary = "Storage macOS uses to download and install updates, and the restore points Time Machine keeps on this disk."}) %>

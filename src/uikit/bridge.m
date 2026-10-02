@@ -39,6 +39,9 @@ static char kFlexShrinkKey;
 static char kFlexBasisKey;
 static char kFillWidthKey;
 static char kFillHeightKey;
+static char kFitDiameterKey;
+static char kUnitScaleKey;
+static char kUnitFontKey;
 static char kFixedSizeKey;
 static char kCornerRadiusKey;
 static char kIgnoresSafeAreaKey;
@@ -128,10 +131,10 @@ static const CGFloat kLazyMinimumItemWidth = 1.0;
 static const CGFloat kLazyLayoutGuardPixels = 1.0;
 static const NSInteger kLazyStackColumns = 1;
 static const NSInteger kLazyGridColumns = 2;
-static const CGFloat kMotionDefaultDuration = 0.35;
-static const CGFloat kMotionContentMaxDuration = 0.35;
-/* Path samples per second when a shape (an Arc's angles and radius) animates. */
-static const CGFloat kMotionShapeFrameRate = 60;
+static const CGFloat kPushTransitionDuration = 0.3;
+static const CGFloat kArcAnimationDuration = 0.35;
+/* Path samples per second when an Arc's angles and radius animate. */
+static const CGFloat kArcShapeFrameRate = 60;
 static int bridge_UIKitNavigation_stack(lua_State *L);
 static int bridge_UIKitNavigation_push(lua_State *L);
 static int bridge_UIKitTabView_selectTab(lua_State *L);
@@ -159,41 +162,12 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #include "table_data_source.m"
 #include "action_target.m"
 #include "runtime.m"
-#include "../shared/motion.m"
+#include "../shared/view_tree.m"
 #include "../shared/notifications.m"
 #include "../shared/formatters.m"
 #include "../shared/flow_layout.m"
 #include "layout.m"
 
-/* ----- Motion glue for shared/motion.m ----- */
-
-/* UIKit lays a window out in one pass from its root, so a layout write can
- * move anything in the window: the owner is the topmost superview. */
-static UIView *motion_layout_owner(UIView *view) {
-	UIView *owner = view;
-	while (owner.superview) owner = owner.superview;
-	return owner;
-}
-
-static void motion_flush_layout(NSArray<UIView *> *owners) {
-	for (UIView *owner in owners) {
-		[owner setNeedsLayout];
-		[owner layoutIfNeeded];
-	}
-}
-
-/* UIKit marks invalid ancestors up to the window, which lays them out in
- * its next pass; laying out every window applies them now. */
-static void motion_settle_layout(void) {
-	for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-		if (![scene isKindOfClass:UIWindowScene.class]) continue;
-		for (UIWindow *window in ((UIWindowScene *)scene).windows) [window layoutIfNeeded];
-	}
-}
-
-static void motion_invalidate_layout(UIView *view) {
-	if (view) uikit_invalidate_layout(view);
-}
 #include "metatable.m"
 #include "../shared/arc_path.m"
 #include "views.m"
@@ -272,7 +246,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_testParagraphEditMenu", bridge_test_paragraph_edit_menu},
 	{"_paragraphPerformLink", bridge_paragraph_perform_link},
 	{"_hasLayoutAxis", bridge_has_layout_axis},
-	LUA_OBJC_MOTION_FUNCTIONS
+	LUA_OBJC_VIEW_TREE_FUNCTIONS
 	LUA_OBJC_NOTIFICATION_FUNCTIONS
 	LUA_OBJC_FORMATTER_FUNCTIONS
 	{"_separator", bridge_UIKitControls_separator},

@@ -124,6 +124,10 @@ LUA_BOOL_ACCESSORS(fillWidth, setFillWidth, kFillWidthKey)
 LUA_NUMBER_ACCESSORS(containerRelativeWidth, setContainerRelativeWidth,
 	kContainerRelativeWidthKey, 0, MAX(0, value))
 LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
+/* A ZStack's content in units, like `LuaArcView.fitDiameter`: the stack's
+ * shorter side spans this many units, and each child that does not fill the
+ * stack has its `maxWidth` and its labels' sizes in those units. */
+LUA_NUMBER_ACCESSORS(fitDiameter, setFitDiameter, kFitDiameterKey, 0, MAX(0, value))
 
 /* A fixed dimension is optional, like a maximum: nil clears it, so a
  * reconciled template that drops `width` lets the view size itself again,
@@ -235,6 +239,9 @@ LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
  * bring the full size back. */
 @interface LuaLabel : LuaTextField
 @property(nonatomic) CGFloat minimumScaleFactor;
+/* Multiplies the declared size, for a label laid out in a container's units
+ * (`fitDiameter`); `minimumScaleFactor` then shrinks from the scaled size. */
+@property(nonatomic) CGFloat fontScale;
 - (void)fitFontToWidth:(CGFloat)width;
 @end
 
@@ -246,8 +253,14 @@ LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
 + (Class)cellClass { return LuaLabelCell.class; }
 - (instancetype)initWithFrame:(NSRect)frame {
 	self = [super initWithFrame:frame];
-	if (self) _minimumScaleFactor = 1;
+	if (self) _minimumScaleFactor = _fontScale = 1;
 	return self;
+}
+- (void)setFontScale:(CGFloat)value {
+	value = value > 0 ? value : 1;
+	if (value == _fontScale) return;
+	_fontScale = value;
+	[self fitFontToWidth:CGFLOAT_MAX];
 }
 - (void)setMinimumScaleFactor:(CGFloat)value {
 	_minimumScaleFactor = MAX(0.01, MIN(1, value));
@@ -261,7 +274,9 @@ LUA_BOOL_ACCESSORS(fillHeight, setFillHeight, kFillHeightKey)
 - (void)fitFontToWidth:(CGFloat)width {
 	NSFont *declared = _declaredFont ?: self.font;
 	if (!declared) return;
-	if (self.font != declared) [self applyScaledFont:declared];
+	if (_fontScale != 1)
+		declared = [NSFont fontWithDescriptor:declared.fontDescriptor size:declared.pointSize * _fontScale] ?: declared;
+	if (![self.font isEqual:declared]) [self applyScaledFont:declared];
 	if (_minimumScaleFactor >= 1 || width >= CGFLOAT_MAX / 2) return;
 	CGFloat natural = self.fittingSize.width;
 	if (natural <= width || natural <= 0) return;
@@ -525,8 +540,6 @@ static MethodEntry TableDataMethods[] = {
 
 static void invalidate_layout(NSView *view);
 static void flush_pending_layout(void);
-static void motion_will_set(id object, const char *key);
-static BOOL motion_intercept_hidden(id object, BOOL hidden);
 
 /* SwiftUI `.scrollDisabled(true)`: the list keeps its rows in place and is
  * as tall as all of them, leaving overflow to a scrolling ancestor. */
@@ -603,11 +616,6 @@ static int nsview_newindex(lua_State *L) {
 
 	NSString *kvcKey = [NSString stringWithUTF8String:key];
 	id value = lua_to_kvc_value(L, 3);
-	motion_will_set(obj, key);
-	if (strcmp(key, "hidden") == 0 && motion_intercept_hidden(obj, lua_toboolean(L, 3))) {
-		invalidate_layout((NSView *)obj);
-		return 0;
-	}
 	@try {
 		[obj setValue:value forKey:kvcKey];
 		if ([obj isKindOfClass:NSView.class] && lua_objc_key_affects_layout(key))

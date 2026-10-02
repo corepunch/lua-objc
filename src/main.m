@@ -47,6 +47,8 @@ enum {
 	kFlexBasisKey,
 	kFillWidthKey,
 	kFillHeightKey,
+	kFitDiameterKey,
+	kUnitScaleKey,
 	kFixedSizeKey,
 	kIgnoresSafeAreaKey,
 	kBackgroundColorKey,
@@ -146,10 +148,12 @@ static const CGFloat kParagraphLinkUnderlineOffset = 3.0;
 #define kGaugeDisabledFillAlpha       0.35
 #define kTableCellBadgeGap               6
 /* ----- Motion ----- */
-#define kMotionDefaultDuration        0.35
-#define kMotionContentMaxDuration     0.35
-/* Path samples per second when a shape (an Arc's angles and radius) animates. */
-#define kMotionShapeFrameRate         60
+/* The system push transition of a view's contents (a tour page). */
+#define kPushTransitionDuration       0.3
+/* ----- Arc ----- */
+#define kArcAnimationDuration         0.35
+/* Path samples per second when an Arc's angles and radius animate. */
+#define kArcShapeFrameRate            60
 #define kPointerDragThreshold         3.0
 #define kPointerDragIconSize          32.0
 /* ----- Treemap ----- */
@@ -315,8 +319,7 @@ static void bridge_set_optional_callback(
 #include "appkit/outline_data_source.m"
 #include "appkit/action_button.m"
 #include "appkit/runtime.m"
-#include "shared/motion.m"
-/* After motion.m: an Arc animates its shape as a LuaMotionShape. */
+#include "shared/view_tree.m"
 #include "shared/arc_path.m"
 #include "appkit/arc.m"
 #include "shared/notifications.m"
@@ -343,7 +346,6 @@ static void bridge_set_optional_callback(
 
 #include "appkit/workspace.m"
 #include "appkit/constructors.m"
-#include "appkit/motion.m"
 #include "appkit/charts.m"
 #include "shared/mesh_gradient.m"
 #include "appkit/shader_view.m"
@@ -412,7 +414,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_stepper", bridge_AppKitControls_stepper},
 	{"_picker", bridge_AppKitControls_picker},
 	{"_segmentedPicker", bridge_AppKitControls_segmentedPicker},
-	LUA_OBJC_MOTION_FUNCTIONS
+	LUA_OBJC_VIEW_TREE_FUNCTIONS
 	LUA_OBJC_NOTIFICATION_FUNCTIONS
 	LUA_OBJC_FORMATTER_FUNCTIONS
 	{"_pointerView", bridge_pointer_view},

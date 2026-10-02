@@ -314,25 +314,20 @@ runtime with `list:replaceRows(rows)`. Use `style="sourceList"` for sidebar
 navigation, `style="plain"` or `style="fullWidth"` for primary data, and
 `style="inset"` for grouped settings.
 
-## Motion and identity
+## Identity and paint
 
-Any view accepts these attributes; [`../animation.md`](../animation.md)
-explains transactions, reconciliation and live updates.
+Any view accepts these attributes; [`../retained-templates.md`](../retained-templates.md)
+explains reconciliation and live updates. Nothing here animates.
 
 | Attribute | Purpose |
 |---|---|
-| `transition` | Insertion/removal inside an animated transaction: `opacity`, `scale(0.8)`, `slide`, `move(top)`, `push(trailing)`, `offset(0, 20)`, `a+b`, `asymmetric(a, b)` |
-| `animation`, `animationValue` | Animate this node's update with `animation` when `animationValue` changes (`.animation(_:value:)`) |
-| `opacity`, `scaleEffect`, `rotationEffect`, `offsetX`, `offsetY` | Paint-only effects; never change layout |
-| `matchedGeometry`, `matchedGeometryNamespace` | Grow a new view from its leaving match |
-| `contentTransition` | `opacity`, `numericText`, `interpolate`, `identity` |
-| `symbolEffect`, `symbolEffectActive`, `symbolEffectValue` | SF Symbol effects on `SystemImage` |
+| `opacity`, `offsetX`, `offsetY` | Paint-only effects; never change layout |
 | `key` | Identity for reconciliation when `id` is not wanted as a ref; keyed stack children move instead of being rewritten |
 
 ```xml
 <VStack id="rows" spacing="6">
   <% for _, row in ipairs(rows) do %>
-  <HStack key="row-<%= row.id %>" transition="opacity">
+  <HStack key="row-<%= row.id %>">
     <Label text="<%= row.name %>" />
     <Spacer />
     <Label text="<%= row.size %>" width="84" alignment="trailing" monospacedDigit="true" />
