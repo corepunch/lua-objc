@@ -5,8 +5,9 @@ local Mock = require("apps.diskmap.services.Mock")
 local Controller = require("apps.diskmap.Controller")
 
 -- Measurement and the map's change of level animate. Opening a page or
--- switching the map's style applies at once; sizes arriving from a scan
--- animate, and so does looking inside a group.
+-- switching the map's style applies at once, and so do sizes arriving from a
+-- scan (they tick many times a second and would diff the whole page while it
+-- scrolls); only looking inside a group animates.
 local app = Controller.new(Mock.new())
 app:createWindow()
 
@@ -32,7 +33,7 @@ app.page.template.actions.style(0)
 t.assertEqual(transactions, 0, "switching the map style does not animate")
 
 app.scan:notify()
-t.assertEqual(transactions, 1, "a scan update animates its new sizes")
+t.assertEqual(transactions, 0, "a scan update applies at once, without a page-wide transaction")
 
 -- Pointing at a resource selects; it neither animates nor changes level.
 transactions = 0

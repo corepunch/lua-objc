@@ -96,6 +96,18 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   `lua/vendor/etlua` (git submodule). Import with `require("etlua")`. Do not
   add Mustache, Handlebars, or any other template dependency.
 
+## Performance and baggage
+
+- **Ask "are you sure?" first.** When the user asks for a feature that could
+  slow the application down or add a large amount of machinery, stop and ask
+  "are you sure?" before building it, naming the cost.
+- No animation is better than an animation that costs frames. Never wrap
+  frequent updates (scan progress, streaming text, per-tick refreshes) in
+  `withAnimation`: a transaction diffs the layout of the whole subtree and
+  can start dozens of Core Animation animations per tick, and it fights
+  scrolling. Animate only deliberate, infrequent changes, on the views that
+  change.
+
 ## Non-negotiable product rules
 
 - The goal is complete SwiftUI-style coverage through native AppKit/UIKit
