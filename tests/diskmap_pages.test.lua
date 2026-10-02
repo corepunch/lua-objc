@@ -33,6 +33,26 @@ t.expect(page().sunburst ~= nil and page().sunburst.subviews[1].className == "Lu
 	"the map starts as raised rings in SceneKit")
 t.expect(not page().sunburst.subviews[1].castsShadow, "the Map's raised rings cast no shadow")
 t.expect(page().mapList.rowCount > 5, "the map lists the focus's children")
+-- The rings scale to their pane instead of scrolling inside it, and "Worth a
+-- look" sits under the list so the rings keep the pane's height.
+local function inside(view, ancestor)
+	while view do
+		if view == ancestor then return true end
+		view = view.superview
+	end
+	return false
+end
+local function scrolled(view, stop)
+	while view and view ~= stop do
+		if view.className == "NSScrollView" then return true end
+		view = view.superview
+	end
+	return false
+end
+t.expect(inside(page().sunburst, page().mapChartPane) and not scrolled(page().sunburst, page().mapChartPane),
+	"the rings sit in their pane with no scroll view of their own")
+t.expect(page().worthMark_1 ~= nil and not inside(page().worthMark_1, page().mapChartPane),
+	"beside the rings, Worth a look sits under the list")
 -- Slivers fold into "Other" so every mark is wide enough to see and point at.
 local MapTree = require("apps.diskmap.models.MapTree")
 local mapNodes, mapTotal = MapTree.nodes(app.model, "")
@@ -57,14 +77,15 @@ t.assertEqual(page().mapFocus.text, "Developer", "the breadcrumb ends at the foc
 app.page.template.actions.style(1)
 t.expect(page().treemap ~= nil and page().sunburst == nil, "rectangles replace the rings")
 t.assertEqual(page().mapList, nil, "rectangles name every item, so the list serves the rings only")
-local treemapWidth = page().mapChartScroll.frame.size.width
+local treemapWidth = page().mapChartPane.frame.size.width
+t.expect(inside(page().worthMark_1, page().mapChartPane), "without a list, Worth a look sits under the rectangles")
 app.page.template.actions.chartHover("xcode")
 t.expect(page().mapHover.text:find("Developer › Xcode", 1, true) == 1, "hover describes a node in place")
 app.page.template.actions.up()
 t.assertEqual(app.pages.map.focus, "", "the center or breadcrumb goes back up")
 app.page.template.actions.style(0)
 t.expect(page().mapList ~= nil and page().mapList.rowCount > 0, "the rings bring the list back")
-t.expect(page().mapChartScroll.frame.size.width < treemapWidth, "the rectangles take the list's width")
+t.expect(page().mapChartPane.frame.size.width < treemapWidth, "the rectangles take the list's width")
 
 -- Applications: leftovers carry a confidence tier; High can be marked at once.
 app:show("applications")

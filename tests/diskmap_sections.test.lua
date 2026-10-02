@@ -227,6 +227,14 @@ t.assertEqual(fullRefs.bulk.superview.superview, filterRow, "section buttons sha
 t.expect(fullRefs.bulk.superview ~= titleRow, "section actions stay below the heading")
 t.expect(fullRefs.firstDetail.frame.size.width > 400, "the heading's detail keeps the section's width beside no controls")
 t.assertEqual(fullRefs.firstDetail.frame.size.height, fullRefs.firstDetail.intrinsicContentSize.height, "the detail stays on one line")
+-- The meter is no wider than its widest value and share, "≥ 999.9 MB" and
+-- "could recover", so the name and its subtitle keep the rest.
+local columns = {}
+for _, column in ipairs(bridge._tableColumnWidths(fullRefs.second)) do columns[column.id] = column end
+t.assertEqual(columns.size.minWidth, 200, "the meter column fits its widest value and share, no more")
+local probe = xml.render('<Label text="≥ 999.9 MB" />', {}, ns)
+local shareProbe = xml.render('<Label text="could recover" />', {}, ns)
+t.expect(probe.fittingSize.width + shareProbe.fittingSize.width + 8 <= 200 - 16, "the meter's widest value and share fit inside the cell's insets")
 local _, plainRefs = render("Page", {header = header, actions = anyAction, layout = {sections = {
 	{title = "Plain", titleId = "plainTitle", buttons = {{id = "open", title = "Open", action = "open"}}, list = {id = "plain", menu = "rowMenu"}}}}})
 t.expect(plainRefs.open.superview ~= plainRefs.plainTitle.superview.superview, "section actions keep their own row without a filter")

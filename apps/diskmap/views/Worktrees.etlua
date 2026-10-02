@@ -9,9 +9,9 @@
 %>
         <List id="<%= id %>" onSelect="select" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
           <Column id="name" title="Worktree" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" imageSize="28" minWidth="170" />
-          <Column id="roleLabel" title="Plan" width="115" minWidth="105" />
-          <Column id="lastUse" title="Last change" width="105" minWidth="90" />
-          <Column id="size" title="On disk" width="90" minWidth="80" alignment="trailing" />
+          <Column id="roleLabel" title="Plan" width="125" minWidth="125" />
+          <Column id="lastUse" title="Last change" width="155" minWidth="155" />
+          <Column id="size" title="On disk" width="110" minWidth="110" alignment="trailing" />
         </List>
 <% end %>
 <ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">

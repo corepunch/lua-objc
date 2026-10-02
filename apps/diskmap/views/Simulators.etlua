@@ -18,7 +18,7 @@
         <List id="devices" onSelect="select" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
           <Column id="name" title="Device" subtitleKey="runtime" imageKey="icon" badgeColorKey="color" imageSize="28" minWidth="180" />
           <Column id="state" title="State" width="110" minWidth="90" />
-          <Column id="lastUse" title="Last used" width="150" minWidth="120" />
+          <Column id="lastUse" title="Last used" width="150" minWidth="150" />
           <Column id="size" title="Apps &amp; data" width="110" minWidth="100" alignment="trailing" />
         </List>
       </GroupBox>
@@ -37,7 +37,7 @@
         <List id="runtimes" onSelect="selectRuntime" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
           <Column id="name" title="Runtime" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" imageSize="28" minWidth="180" />
           <Column id="deviceText" title="Devices" width="110" minWidth="90" />
-          <Column id="lastUse" title="Last used" width="150" minWidth="120" />
+          <Column id="lastUse" title="Last used" width="150" minWidth="150" />
           <Column id="size" title="On disk" width="110" minWidth="100" alignment="trailing" />
         </List>
       </GroupBox>

@@ -7,11 +7,12 @@
   its own; the page scrolls as one surface. `status = true` turns the detail
   column into one colour-coded symbol per row (models/Status.lua); the status
   word remains its tooltip and accessibility label. The meter fits
-  "≥ 999.9 MB" or a spinner with "Calculating…" beside its share, and
-  its bar keeps most of the Overview's width. The detail column fits "Used 11
-  months ago". Fixed columns total at most 425 points so the name keeps 170
-  points in the narrowest window's 595-point list. ]]
-  local COLUMNS = { name = 170, detail = 150, status = 48, share = 235, more = 40, statusSymbol = 20 }
+  "≥ 999.9 MB" or a spinner with "Calculating…" beside a share as wide
+  as "could recover", and no wider: every point it gives up goes to the name
+  and its subtitle. The detail column fits "Used 11 months ago". Fixed
+  columns total at most 390 points so the name keeps 205 points in the
+  narrowest window's 595-point list. ]]
+  local COLUMNS = { name = 170, detail = 150, status = 48, share = 200, more = 40, statusSymbol = 20 }
 %>
 <List id="<%= id %>" rowMenu="<%= menu %>" dragKey="path"<% if selectAction then %> onSelect="<%= selectAction %>"<% end %><% if activate then %> onActivate="<%= activate %>"<% end %> scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
   <Column id="name" title="Name" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon"<% if fileIcons then %> fileIconKey="fileIcon"<% end %> imageSize="28" minWidth="<%= COLUMNS.name %>" />
