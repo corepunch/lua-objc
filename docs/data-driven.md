@@ -1,128 +1,105 @@
 # Data-driven apps
 
-An app is described in XML — its pages, its data schemas, its views and its
-constants — and views bind to model fields by name. The framework supplies the
-generic controller in between. Lua is left for what is logic: models that
-compute, and the few controllers that coordinate a flow. WPF is the reference
-for names and behaviour (`DataContext`, `Binding`, `StaticResource`,
-`ICommand`, `App.xaml`).
+An app is described in XML — its pages, its views and its constants — and a page
+is a request: the framework asks the page's model for data and renders the view
+with it. There are no bindings and no notifications. A view is etlua over plain
+data (`<%= summary %>`, loops, partials); an action is a method of the model,
+followed by the same request again, like a form post and the page it shows next.
+Lua is left for what is logic: models that compute, and the few controllers that
+coordinate a flow. WPF is the reference for names (`App.xaml` for the manifest,
+`ResourceDictionary` for resources).
 
-XML is preferred wherever possible because it is data: it can be validated and
-it cannot open a file or a socket. etlua templates are Lua, so they render in a
+XML is preferred wherever possible because it is data: it can be validated and it
+cannot open a file or a socket. etlua templates are Lua, so they render in a
 sandbox (below).
 
 | Piece | File | Module |
 |---|---|---|
 | App manifest | `app.xml` | `lua/data/manifest.lua`, `lua/data/app.lua` |
-| Schemas | `schemas/<Id>.xml` | `lua/data/schema.lua` |
 | Resources | `resources.xml`, `<Resources>` | `lua/ui/resources.lua` |
 | Views | `views/*.etlua` | `lua/ui/xml.lua` |
-| Models and graph | `models/*.lua` | `lua/data/model.lua` |
-| Generic controller | — | `lua/data/pagecontroller.lua`, `lua/data/binder.lua` |
+| Models | `models/*.lua` | `lua/data/model.lua` |
+| Generic page controller | — | `lua/data/pagecontroller.lua` |
 
-`demo/storage` is the reference app: a manifest with two pages, a folder list
-and a settings form, and no controller class. `./lua-objc demo/storage/init.lua
+`demo/storage` is the reference app: a manifest with two pages, a folder list and a
+settings form, and no controller class. `./lua-objc demo/storage/init.lua
 --page=settings --isolated` plays one page alone.
 
-## Bindings
-
-`attr="$field"` binds an attribute; `attr="field"` is the literal string and
-`$$` a literal dollar sign. `$size.color` reaches into a field. An attribute is
-a literal or exactly one `$path`: no negation, expression or interpolation.
-
-- etlua (`<% %>`) runs once and decides structure; `$field` is live, set by the
-  framework when the data changes without re-running the template.
-- Conditions use attribute pairs: `visible` beside `hidden`, `enabled` beside
-  `disabled`. A composed string is a schema field with `format`.
-- Bindings work in a page (with a binder, below) and in `<Column>` cell
-  templates (per row, applied natively so scrolling runs no Lua). Without a
-  schema a path is read as written; with one, a binding to an undeclared field
-  or to an attribute that is not bindable is an error when the template renders.
-
-Bindable attributes are listed in `docs/tableview_swiftui.md` (“Row bindings”);
-add one by extending `TAG_BINDINGS` in `lua/ui/xml.lua`.
-
-### Data context
-
-Every page has a context: its model, projected through its schema. A
-`<List items="$rows">` gives each row its row as the context (and validates its
-columns against the `<List>` field's `of` schema). `context="$lead"` narrows a
-container to a `<Record>` field.
-
-### Commands
-
-`<Button action="$mark" />` dispatches the schema's `<Command id="mark">` to the
-model (`model:mark()`), then the views rebind. The control follows the command's
-`enabled` field (`enabled="markable"`: a model key), so a menu or button needs
-no separate validator. `action="mark"` beside a command is a literal and an
-error. Commands are page-level; cells do not bind them.
-
-### Two-way binding
-
-`<Toggle isOn="$history">`, `<TextField text="$query">`,
-`<SearchField text="$query">` and `<Picker selection="$filter">` write back.
-The schema marks the field `writable="true"`; binding a control two-way to any
-other field is a render error. A write calls the model's `set<Field>` setter
-(`setHistory(value)`); returning `false` refuses it. Either way the views are
-set again, so a refused edit shows the model's value.
-
-## Schemas
+## Pages
 
 ```xml
-<Schema id="StorageRow" extends="Base">
-  <String  id="name" />
-  <Bytes   id="size" source="bytes" missing="Not measured">
-    <State id="calculating" text="Calculating…" />
-    <State id="denied" text="No access" icon="lock.fill" color="systemOrange" />
-  </Bytes>
-  <Percent id="share" source="relative" digits="0" below="&lt;1%" />
-  <Date    id="lastUsed" style="relative" format="Used $value" />
-  <String  id="accessibility" format="$name: $size $share" />
-  <Bool    id="history" writable="true" />
-  <Command id="mark" enabled="markable" />
-  <List    id="rows" of="StorageRow" />
-  <Record  id="lead" of="StorageRow" />
-</Schema>
+<Page id="folders" title="Folders" icon="folder.fill" color="systemBlue"
+      key="1" view="Folders" model="folders" />
 ```
 
-- **Type tags convert, `format` composes.** `<Bytes>`, `<Number>`, `<Percent>`
-  and `<Date>` run on the system formatters (`src/shared/formatters.m`), so
-  output follows the person's locale; `format` arranges already converted
-  fields (`$name`, and `$value` for the field itself). Cycles are errors.
-- **States belong to the type.** The model names the active state in
-  `<source>State` (or `state="key"`); the field then shows the state's text and
-  exposes `size.icon`, `size.color`, `size.state` and `size.calculating`.
-- **Typed binding.** A text attribute reads the formatted string, a numeric
-  attribute (`Gauge value`) the raw number (`$share` binds `share.value`).
-- **Validation.** `schema:check(model)` fails a model that lacks a declared
-  field, a command method or a setter. A field is optional with `optional`,
-  `missing` or `format`. The model graph checks every model it builds.
-- **Composition.** `extends` copies the base schema's fields first.
+```lua
+-- models/Folders.lua
+local Folders = Model.define({id = "folders", needs = {"settings"}})
+function Folders:data(state)               -- the request
+	return {summary = "6 folders", lists = {folders = self:rows()}}
+end
+function Folders:rescan() ... end          -- an action: run, then the request again
+```
+
+```xml
+<!-- views/Folders.etlua -->
+<Label text="<%= summary %>" />
+<Button title="Scan Again" action="rescan" />
+<List id="folders" ...> <Column id="name" /> </List>
+```
+
+- **Data.** `model:data(state)` returns the table the view reads, plus `page` (the
+  manifest entry) and `actions`. Rows for native tables go in `lists = {id = rows}`:
+  they are set on the `<List id>` of that name (`replaceRows`), not copied into the
+  template, and a table reuses its cells however many rows there are.
+- **Actions.** Any `action="name"`/`onChange="name"` in the view is the model's
+  method of that name. After it runs the page is requested again; a method that only
+  reads (a row's menu, a reveal) lists itself in `Model.queries = {name = true}`.
+  The template is retained: unchanged data costs nothing, changed data reconciles
+  the views that exist, and updates made inside `ns.withAnimation` animate.
+- **Lifecycle.** `activate()` runs after the page appears and `deactivate()` when it
+  goes (start and cancel a service request). Work that finishes later asks the app
+  to draw again (`services.refresh()`); nothing observes the model.
+- **Live parts.** Only what must change while the model is busy is updated in place,
+  by code written for that case — Diskmap's chart while a scan counts — and every
+  list, bar and number is drawn once its data is computed.
+
+## Cell templates (`$field`)
+
+A `<Column>` with child XML is a cell template rendered natively for every row
+(WPF's DataTemplate), so `$field` is the one place bindings exist: `text="$title"`
+binds the attribute to the row's field, `$size.color` reaches into a nested field,
+`$$` is a literal dollar sign. An attribute is a literal or exactly one `$path`: no
+interpolation, negation or expressions. A composed string is a row field the model
+prepares; a condition is a field plus an attribute pair (`visible` beside `hidden`,
+`enabled` beside `disabled`). A row without the field returns the attribute to the
+value the view was built with. Bindable attributes are listed in
+`docs/tableview_swiftui.md` ("Row bindings"); add one in `TAG_BINDINGS` in
+`lua/ui/xml.lua`.
 
 ## Resources
 
 `<Resources>` declares `Number`, `String`, `Bool` and `Color` constants;
 `attr="@name"` takes the value, resolved once when the template renders. An app's
-`resources.xml` applies everywhere; a `<Resources>` element scopes to its parent
-element (its own attributes and subtree) and overrides what it inherits.
+`resources.xml` applies everywhere (passed to a render as `data.resources`; the page
+controller does it); a `<Resources>` element scopes to its parent element (its own
+attributes and its subtree) and overrides what it inherits. `@` is a reference only
+where some resources are in scope; there an undeclared name is an error.
 
-## Models and propagation
+## Models
 
 ```lua
 local Recommendations = Model.define({
-	id = "cleanup", schema = "Recommendations",
+	id = "cleanup",
 	needs = {"scan", "applications", "simulatorPlan", "keep"},
 })
 function Recommendations.new(needs, services) ... end
 ```
 
-A model declares its dependencies in its own file. The graph builds a page's
-model and its dependencies transitively, in order; a cycle is an error naming
-its path. Models are plain data and are not observed: whoever changes one calls
-`graph:changed(id)`; the graph calls `invalidate` on each built dependent and
-rebinds the pages bound to stale models (WPF's `PropertyChanged` with an empty
-property name). Commands and accepted writes do this automatically. Animation
-stays the caller's choice (`ns.withAnimation`).
+A model declares its dependencies in its own file. The graph builds a page's model
+and its dependencies transitively, in order, and nothing else; a cycle is an error
+naming its path. Models are plain Lua data that computes and never touch `ns`;
+services (IO) are injected through the graph.
 
 ## The manifest
 
@@ -137,43 +114,33 @@ stays the caller's choice (`ns.withAnimation`).
 ```
 
 `init.lua` returns the launch class built from the manifest
-(`return require("data.app").launcher("demo/storage/app.xml")`). From the manifest the framework builds the
-window, the sidebar, the Go menu and one generic page controller per page. Every
-manifest app accepts `--page=<id>` and `--isolated` (the page alone, building
-only its models).
+(`return require("data.app").launcher("demo/storage/app.xml")`). From the manifest the
+framework builds the window, the sidebar, the Go menu and one generic page
+controller per page. Every manifest app accepts `--page=<id>` and `--isolated` (the
+page alone, building only its models).
 
-### Code-behind pages and a root controller
-
-A `<Page>` with `controller=` may omit `view` and `model`: its controller owns
-what it shows. Other attributes stay in `page.attrs` for the app
-(`workflow="developer"`, `source="Largest"`); `sidebar="Dev tools"` is a shorter
-sidebar name (`title` is then the page header) and `listed="false"` keeps a page
-out of the sidebar and the Go menu. `<App controller="Controller">` names a root
-controller that replaces the framework's launcher for an app that coordinates its
-whole window (services, scanning, sheets); it still reads its pages, sidebar rows
-and Go menu from the manifest. **Diskmap** is built this way: `apps/diskmap/app.xml`
-lists its 24 pages and 6 sections; `NavigationController.destinations`, the Go
-menu and the root controller's page table are all derived from it, and each page
-is built by `Controller.new(context, entry)` from one shared context
-(`model`, `service`, `actions`, `open`, `show`, `rescan`, `pages`, …). Pages that
-only copy model values to views (the SDK sheet) bind through schemas; the others
-are still hand-written controllers.
+A `<Page>` with `controller=` may omit `view` and `model`: its controller owns what it
+shows. Other attributes stay in `page.attrs` (`workflow="developer"`,
+`source="Largest"`); `sidebar="Dev tools"` is a shorter sidebar name (`title` is then
+the page header) and `listed="false"` keeps a page out of the sidebar and the Go menu.
+`<App controller="Controller">` names a root controller that replaces the framework's
+launcher for an app that coordinates its whole window (services, scanning, sheets); it
+still reads its pages, sidebar rows and Go menu from the manifest — Diskmap is built
+this way.
 
 ## Controllers
 
-The generic page controller owns mount, dispose, staleness and command dispatch.
-Write a class only for coordination — sheets, confirmation, multi-step flows,
-chart interaction (WPF code-behind): `controller="SheetController"` names a
-class in `controllers/` whose `new(context)` receives the generic controller as
+The generic page controller owns mount, dispose and the request/render cycle. Write a
+class only for coordination — sheets, confirmation, multi-step flows, chart
+interaction (WPF code-behind): `controller="SheetController"` names a class in
+`controllers/` whose `new(context)` receives the generic controller as
 `context.generic`. If a page needs a function to express behaviour, write a
-controller; the generic one does not grow a configuration language. A
-controller may also own a bound view directly, as `SdksController` does: it
-renders `views/Sdks.etlua` with a `Binder` and `SdkList`, and starts discovery.
+controller; the generic one does not grow a configuration language.
 
 ## Template sandbox
 
-etlua templates run in an environment of the template data, the injected
-helpers (`partial`, `extends`) and the pure functions `string`, `table`,
-`math`, `utf8`, `ipairs`, `pairs`, `next`, `select`, `type`, `tostring`,
-`tonumber`, `pcall`, `assert`, `error` and `unpack`. There is no `io`, `os`,
-`require`, `load` or `debug`.
+etlua templates run in an environment of the template data, the injected helpers
+(`partial`, `extends`) and the pure functions `string`, `table`, `math`, `utf8`,
+`ipairs`, `pairs`, `next`, `select`, `type`, `tostring`, `tonumber`, `pcall`,
+`assert`, `error` and `unpack`. There is no `io`, `os`, `require`, `load` or `debug`:
+a view gets what it shows from its model's data.

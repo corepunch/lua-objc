@@ -62,22 +62,21 @@ t.assertEqual(chart.marks[1].label, "Not measured yet", "unfinished chart names 
 t.expect(chart.explanation:find("still arriving", 1, true), "unfinished chart explains its gray sector")
 local apps = require("apps.diskmap.controllers.ApplicationsController").new({model = model, service = {}, actions = {}})
 t.assertEqual(apps:summary(), nil, "live file findings do not imply app-data breakdowns are ready")
-local filesPage = require("apps.diskmap.models.FilesPage").new({storage = model, session = {query = ""}}, {service = {}, actions = {
+local files = require("apps.diskmap.controllers.FilesController").new({model = model, service = {}, actions = {
 	file = function() return {} end, annotate = function(_, rows) return rows end,
 	isMarked = function() return false end, isIncluded = function() return false end,
-	handlers = {},
 }})
-filesPage:prepare()
-t.assertEqual(#filesPage.rows, 1, "partial file appears in the list")
-t.expect(filesPage:summary():find("Found so far", 1, true), "file page names partial results")
+files:mount(ns.VStack {}, {query = ""})
+t.assertEqual(files.refs.files.rowCount, 1, "partial file appears in the native table")
+t.expect(files.refs.summary.text:find("Found so far", 1, true), "file page names partial results")
 scan:cancel()
 t.expect(not model.files.measuring and model.files.partial, "cancellation keeps findings as a lower bound")
 scan:start()
 t.assertEqual(model.files, nil, "refresh clears file findings before collecting a new scan")
-filesPage.storage = model
-filesPage:prepare()
-t.assertEqual(filesPage:largeTile().value, "—", "refresh clears displayed file totals from the previous scan")
-t.expect(not filesPage.noResults and not filesPage.emptyFilter, "loading does not show an empty-result message")
+files:update({query = ""})
+t.assertEqual(files.refs.largeTileValue.text, "—", "refresh clears displayed file totals from the previous scan")
+t.expect(files.refs.filesNoResults.hidden and files.refs.filesEmpty.hidden, "loading does not show an empty-result message")
+files:dispose()
 pending.done({largeFiles = {}, extensions = {}, trees = {}, rootStates = {}})
 t.expect(not model.files.measuring and not model.files.partial, "final summary clears in-progress flags")
 

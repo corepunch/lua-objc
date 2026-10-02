@@ -1,5 +1,0 @@
-<Schema id="Folders">
-	<String id="summary" />
-	<List id="rows" of="FolderRow" />
-	<Command id="rescan" enabled="canRescan" />
-</Schema>

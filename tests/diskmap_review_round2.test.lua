@@ -42,32 +42,32 @@ app:show('kinds'); app.page.template.actions.decisionInstallers()
 local files, changes = app.page, 0
 local originalChanged = app.review.handlers.changed
 app.review.handlers.changed = function() changes=changes+1; originalChanged() end
-local total = #app:pageModel("files").visible
-local button = files.refs.decisionAction
+local total = #files.visible
+local button = files.decisions.lead.refs.decisionAction
 t.assertEqual(button.title,'Mark ' .. Model.plural(total,'File'),'initial bulk action uses eligible visible count')
-app:pageModel("files"):markFiles()
+files:markFiles()
 t.assertEqual(changes,1,'bulk staging publishes once for every file together')
-button = files.refs.decisionAction
+button = files.decisions.lead.refs.decisionAction
 t.assertEqual(button.title,'Review Marked Items…','staged files offer review immediately')
 t.expect(button.enabled,'review remains available')
 local item = app.review.basket:rows()[1]
 app.review:toggle(item)
-t.assertEqual(files.refs.decisionAction.title,'Mark 1 File','individual unmark refreshes count')
-app.session.query='Old macOS Installer';app:updateRows()
-t.assertEqual(#app:pageModel("files").visible,1,'search narrows displayed files')
-local row = app:pageModel("files").visible[1]
+t.assertEqual(files.decisions.lead.refs.decisionAction.title,'Mark 1 File','individual unmark refreshes count')
+files:update({query='Old macOS Installer'})
+t.assertEqual(#files.visible,1,'search narrows displayed files')
+local row = files.visible[1]
 if app.review:isMarked(row.path) then app.review:toggle(row) end
-app:pageModel("files"):markFiles()
-t.assertEqual(files.refs.decisionAction.title,'Review Marked Items…','filtered staging stays current')
+files:markFiles()
+t.assertEqual(files.decisions.lead.refs.decisionAction.title,'Review Marked Items…','filtered staging stays current')
 local reviewed = 0
 app.actions.handlers.review = function() reviewed=reviewed+1 end
-ns._invokeAction(files.refs.decisionAction)
+ns._invokeAction(files.decisions.lead.refs.decisionAction)
 t.assertEqual(reviewed,1,'review action routes to existing review sheet')
 app:show('applications'); app.review.basket:clear(); app:basketChanged()
 app:show('files')
-t.expect(files.refs.decisionAction.title:find('Mark ',1,true),'cross-page clearing is reflected on return')
+t.expect(files.decisions.lead.refs.decisionAction.title:find('Mark ',1,true),'cross-page clearing is reflected on return')
 files.filterIndex = require('apps.diskmap.models.Files').filterIndex('Installers & archives')
-app.session.query='';app:updateRows(); bridge._flushLayout()
+files:update({query=''}); bridge._flushLayout()
 local refs = files.refs
 t.expect(refs.scopeNote.superview ~= refs.pageContent,'accounting is disclosed separately')
 local function yFromTop(view)
