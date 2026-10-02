@@ -29,6 +29,8 @@ local SnapshotController = require("apps.diskmap.controllers.SnapshotController"
 local WatchlistController = require("apps.diskmap.controllers.WatchlistController")
 local OnboardingController = require("apps.diskmap.controllers.OnboardingController")
 local Manifest = require("data.manifest")
+local ModelGraph = require("data.model")
+local PageController = require("data.pagecontroller")
 local Controller = {}; Controller.__index = Controller
 local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
 -- Services grow optional features; a provider that lacks one simply does not
@@ -114,8 +116,20 @@ function Controller.new(service)
 		command = function(name) self.commandActions[name]() end,
 		links = CommandsController.links(),
 	}
-	for _, entry in ipairs(Manifest.load("apps/diskmap/app.xml").order) do
-		self.pages[entry.id] = require("apps.diskmap.controllers." .. entry.controller).new(context, entry)
+	local manifest = Manifest.load("apps/diskmap/app.xml")
+	context.entry = function(id) return manifest.pages[id] end
+	local classes = {}
+	for id, class in pairs(manifest.models) do
+		classes[id] = function() return require("apps.diskmap." .. class) end
+	end
+	-- The models pages are drawn from, built when a page first needs one.
+	self.graph = ModelGraph.graph({classes = classes, services = context})
+	for _, entry in ipairs(manifest.order) do
+		if entry.model then
+			self.pages[entry.id] = PageController.new({page = entry, graph = self.graph, ns = ns, viewsDir = "apps/diskmap/views/"})
+		else
+			self.pages[entry.id] = require("apps.diskmap.controllers." .. entry.controller).new(context, entry)
+		end
 	end
 	self.files, self.applications = self.pages.files, self.pages.applications
 	self.simulators, self.worktrees = self.pages.simulators, self.pages.worktrees

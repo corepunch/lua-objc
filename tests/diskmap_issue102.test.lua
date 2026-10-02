@@ -55,7 +55,7 @@ local data = Recommendations.presentation(app.model, "", app.cleanupSources())
 local top = data.lead
 for _, row in ipairs(data.rebuildable) do t.expect(row.score <= top.score, "the lead outranks every rebuildable row: " .. row.id) end
 for _, row in ipairs(data.decisions) do t.expect(row.score <= top.score, "and every decision: " .. row.id) end
-local lead = cleanup.children.lead.refs
+local lead = cleanup.refs
 t.expect(lead.decisionAction ~= nil and lead.decisionAction.enabled, "the lead has its action")
 t.assertEqual(lead.decisionAmount.stringValue, top.size, "and its amount")
 for _, list in ipairs({data.rebuildable, data.decisions}) do

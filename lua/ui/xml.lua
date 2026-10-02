@@ -2176,6 +2176,32 @@ local M = {}
 -- Component tags (ui/component.lua) become the elements their templates
 -- render before anything is compiled or reconciled, so the rest of the
 -- renderer only ever sees the vocabulary.
+-- Template data may set a node's text, visibility or enabled state by its
+-- `id` after the template has expanded: `overrides = {texts = {summary = "3
+-- files"}, hidden = {panel = true}, disabled = {action = true}}`. A long page whose
+-- structure is fixed and whose values come from its model says them in one
+-- table instead of at every node; the views are still made from this one
+-- description, never patched afterwards. `text` becomes a Button's `title`.
+local function applyOverrides(nodes, data)
+    local texts, hidden, disabled = data.texts or {}, data.hidden or {}, data.disabled or {}
+    local function visit(list)
+        for _, node in ipairs(list) do
+            if node.kind == "element" then
+                local id = node.attrs.id
+                if id then
+                    if texts[id] ~= nil then
+                        node.attrs[node.tag == "Button" and "title" or "text"] = tostring(texts[id])
+                    end
+                    if hidden[id] ~= nil then node.attrs.hidden = tostring(hidden[id]) end
+                    if disabled[id] ~= nil then node.attrs.disabled = tostring(disabled[id]) end
+                end
+                visit(node.children)
+            end
+        end
+    end
+    visit(nodes)
+end
+
 local function expandComponents(nodes, description)
     -- `@name` resolves first, so a component's props see the values.
     local resources = require("ui.resources")
@@ -2184,7 +2210,10 @@ local function expandComponents(nodes, description)
     nodes = require("ui.component").expand(nodes, description.data and description.data.__baseDir,
         function(tag) return registry[tag] ~= nil end)
     -- A component's own template may use them too.
-    return resources.resolve(nodes, app)
+    nodes = resources.resolve(nodes, app)
+    local overrides = description.data and description.data.overrides
+    if overrides then applyOverrides(nodes, overrides) end
+    return nodes
 end
 
 -- Evaluate etlua without creating native views or mutating caller bindings.
