@@ -27,10 +27,4 @@ function Store.new(home)
 	return db
 end
 
--- Every byte measured so far.
-function Store.total(model)
-	local bytes = 0; for _, m in pairs(model.measurements) do bytes = bytes + (m.bytes or 0) end
-	return bytes
-end
-
 return Store

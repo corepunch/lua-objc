@@ -1,11 +1,10 @@
 _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
 local Host = require("tests.diskmap_page")
 local Plan = require("apps.diskmap.helpers.SimulatorPlan")
-local Simulators = require("apps.diskmap.models.Simulators")
+local Simulators = require("apps.diskmap.helpers.Simulators")
 
 local TYPE = "com.apple.CoreSimulator.SimDeviceType."
 local RT26 = "com.apple.CoreSimulator.SimRuntime.iOS-26-0"

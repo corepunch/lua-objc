@@ -3,16 +3,14 @@ local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
 local ns = require("AppKit")
 local bridge = require("AppKitNative")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
-local Categories = require("apps.diskmap.helpers.Categories")
-local Cleanup = require("apps.diskmap.helpers.Cleanup")
-local Inventory = require("apps.diskmap.helpers.Inventory")
-local AgentFiles = require("apps.diskmap.helpers.AgentFiles")
-local Simulators = require("apps.diskmap.models.Simulators")
+local Simulators = require("apps.diskmap.helpers.Simulators")
 local SheetController = require("apps.diskmap.controllers.SheetController")
 local Sheets = require("apps.diskmap.pages.Sheets")
 local Host = require("tests.diskmap_page")
+local Scans = require("apps.diskmap.models.Scans")
+local Categories = require("apps.diskmap.models.Categories")
+local Suggestions = require("apps.diskmap.models.Suggestions")
 local model = Store.new("/Users/test")
 local paths, ids = {}, {}
 for _, row in ipairs(Locations:leaves()) do
@@ -25,28 +23,28 @@ t.assertEqual(Locations:find("runtime-assets"):parent().id, "runtimes", "downloa
 model.measurements["runtime-images"] = {bytes = 4096, status = "complete"}
 model.measurements["runtime-assets"] = {bytes = 8.5e9, status = "complete"}
 model.measurements["runtime-bundles"] = {bytes = 0, status = "complete"}
-local xcode = Categories.rows("xcode")
+local xcode = Categories:rows("xcode")
 t.assertEqual(xcode[1].bytes, 8.5e9 + 4096, "runtime total includes MobileAsset storage")
-t.assertEqual(#Cleanup.suggestions(), 0, "installed runtimes never become cleanup suggestions")
+t.assertEqual(#Suggestions:ranked(), 0, "installed runtimes never become cleanup suggestions")
 for _, id in ipairs({"simulators", "documentation-assets", "siri-assets-6", "dictation-1", "voices-1", "codex-plugins", "opencode-other"}) do model.measurements[id] = {bytes = 11e9, status = "complete"} end
-local candidates = {}; for _, row in ipairs(Cleanup.suggestions()) do candidates[row.id] = row end
+local candidates = {}; for _, row in ipairs(Suggestions:ranked()) do candidates[row.id] = row end
 t.expect(candidates.simulators and candidates["documentation-assets"] and candidates["siri-assets-6"], "devices, offline documentation and Siri are actionable review candidates")
 t.assertEqual(candidates["siri-assets-6"].impact, "Needs review", "protected assets only suggest review")
 t.expect(candidates["codex-plugins"] and candidates["opencode-other"], "opaque agent storage surfaces for review")
 model.kept["system-data"] = true
 t.expect(not Locations:find("siri-assets-6"):validateTrash(), "system asset has no trash path")
 local fixture = {{agent = "codex", name = "state_99.sqlite", path = "/Users/test/.codex/state_99.sqlite"}, {agent = "opencode", name = "opencode.db-wal", path = "/Users/test/.local/share/opencode/opencode.db-wal"}}
-AgentFiles.add(fixture); local leafCount = #Locations:leaves(); AgentFiles.add(fixture)
+Locations:addAgentFiles(fixture); local leafCount = #Locations:leaves(); Locations:addAgentFiles(fixture)
 t.assertEqual(#Locations:leaves(), leafCount, "metadata discovery is idempotent")
 local row = Locations:find("codex-file-state_99.sqlite")
 t.expect(row and row.name:find("Database", 1, true), "new database versions have named paths")
 t.assertEqual(row.action, "finder", "persistent SQLite files cannot be cleared as cache")
-local _, _, exclusions = Inventory.plan(); local found = false
+local _, _, exclusions = Scans:plan(); local found = false
 for _, path in ipairs(exclusions) do if path == row.path then found = true end end
 t.expect(found, "discovered file is excluded from agent residual")
-t.assertEqual(#Categories.managementRows("codex", "state_99.sqlite"), 1, "management searches exact paths")
-t.assertEqual(#Categories.managementRows("codex", "["), 0, "management search is literal")
-t.assertEqual(#Categories.managementRows("runtimes", nil, "Safe/rebuildable"), 0, "runtime cannot appear under safe reclaim")
+t.assertEqual(#Categories:managementRows("codex", "state_99.sqlite"), 1, "management searches exact paths")
+t.assertEqual(#Categories:managementRows("codex", "["), 0, "management search is literal")
+t.assertEqual(#Categories:managementRows("runtimes", nil, "Safe/rebuildable"), 0, "runtime cannot appear under safe reclaim")
 t.expect(Locations:find("grok-other") ~= nil, "Grok known local root is scanned")
 local uid = "12345678-ABCD-1234-ABCD-123456789ABC"
 local other = "12345678-ABCD-1234-ABCD-123456789ABD"

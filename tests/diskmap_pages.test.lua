@@ -12,6 +12,7 @@ service.confirmAction = function(title) table.insert(confirmations, title); retu
 local shownErrors = {}
 service.showError = function(title) table.insert(shownErrors, title) end
 local ns = require("AppKit")
+local Categories = require("apps.diskmap.models.Categories")
 local app = Controller.new(service)
 local window = app:createWindow()
 local function page() return app.page.refs end
@@ -54,10 +55,9 @@ t.expect(inside(page().sunburst, page().mapChartPane) and not scrolled(page().su
 t.expect(page().worthMark_1 ~= nil and not inside(page().worthMark_1, page().mapChartPane),
 	"beside the rings, Worth a look sits under the list")
 -- Slivers fold into "Other" so every mark is wide enough to see and point at.
-local MapTree = require("apps.diskmap.helpers.MapTree")
-local mapNodes, mapTotal = MapTree.nodes("")
+local mapNodes, mapTotal = Categories:mapNodes("")
 for _, node in ipairs(mapNodes) do
-	t.expect(node.value / mapTotal >= MapTree.minimumShare or (node.other and node.ring == 1),
+	t.expect(node.value / mapTotal >= Categories.mapMinimumShare or (node.other and node.ring == 1),
 		"map node " .. node.id .. " is not a sliver")
 end
 local mapById, childCount = {}, {}

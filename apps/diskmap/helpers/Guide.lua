@@ -1,6 +1,4 @@
-local Model = require("data.model")
 local Format = require("apps.diskmap.helpers.Format")
-local Categories = require("apps.diskmap.helpers.Categories")
 local Guide = {}
 
 Guide.chapters = require("apps.diskmap.knowledge.Guide")
@@ -13,12 +11,12 @@ end
 -- The live measurement for a topic's resources, summed across its catalog
 -- rows. Unmeasured, excluded or system-managed rows add no bytes; if none of
 -- them has bytes (or one is still being measured) the topic shows no size
--- rather than an invented zero or a partial sum.
-function Guide.measurement(topic)
-	local model = Model.db
+-- rather than an invented zero or a partial sum. `lookup(id)` answers a
+-- location's rolled-up row (Categories.measured).
+function Guide.measurement(topic, lookup)
 	local bytes, measured, partial = 0, false, false
 	for _, id in ipairs(topic.resources or {}) do
-		local row = Categories.row(id)
+		local row = lookup(id)
 		if row then
 			if row.bytes then bytes = bytes + row.bytes; measured = true end
 			if row.status == "partial" then partial = true end
@@ -31,8 +29,7 @@ end
 
 -- Chapters and topics matching `query`, in guide order. A chapter whose title
 -- matches keeps all of its topics; otherwise only matching topics remain.
-function Guide.presentation(query)
-	local model = Model.db
+function Guide.presentation(query, measured)
 	local needle = (query or ""):lower()
 	local chapters, count = {}, 0
 	for chapterIndex, chapter in ipairs(Guide.chapters) do
@@ -44,7 +41,7 @@ function Guide.presentation(query)
 					title = topic.title, icon = topic.icon, summary = topic.summary,
 					what = topic.what, why = topic.why, action = topic.action,
 					paths = table.concat(topic.paths or {}, "\n"), open = topic.open,
-					measurement = Guide.measurement(topic)})
+					measurement = Guide.measurement(topic, measured)})
 			end
 		end
 		if #topics > 0 then

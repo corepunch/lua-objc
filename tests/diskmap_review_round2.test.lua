@@ -8,7 +8,7 @@ local Mock = require('apps.diskmap.services.Mock')
 local Root = require('apps.diskmap.Controller')
 local Owners = require('apps.diskmap.services.Owners')
 local System = require('apps.diskmap.services.System')
-local Worktrees = require('apps.diskmap.models.Worktrees')
+local Worktrees = require("apps.diskmap.helpers.Worktrees")
 
 for _, pair in ipairs({{'repository','repositories'},{'directory','directories'},{'entry','entries'},
 	{'key','keys'},{'cache','caches'},{'process','processes'},{'match','matches'},{'status','statuses'},

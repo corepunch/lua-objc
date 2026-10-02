@@ -1,15 +1,14 @@
 local Locations = require("apps.diskmap.models.Locations")
 local Model = require("data.model")
-local Categories = require("apps.diskmap.helpers.Categories")
 local Figures = require("apps.diskmap.helpers.Overview")
 local Format = require("apps.diskmap.helpers.Format")
-local Inventory = require("apps.diskmap.helpers.Inventory")
 local ListRoute = require("apps.diskmap.pages.ListRoute")
-local Recommendations = require("apps.diskmap.helpers.Recommendations")
 local Scope = require("apps.diskmap.helpers.Scope")
 local Selection = require("apps.diskmap.helpers.Selection")
-local Tips = require("apps.diskmap.helpers.Tips")
 local Sectors = require("ui.sectors")
+local Scans = require("apps.diskmap.models.Scans")
+local Categories = require("apps.diskmap.models.Categories")
+local Suggestions = require("apps.diskmap.models.Suggestions")
 
 -- The pages that lead the sidebar: the Overview of the disk and Clean Up.
 local routes = {}
@@ -55,7 +54,7 @@ function overview:showMap(id)
 end
 
 function overview:chartSelect(id)
-	if id == Figures.folded then self:showMap("")
+	if id == Categories.folded then self:showMap("")
 	elseif Locations:find(id) then self:showMap(id) end
 end
 
@@ -74,29 +73,29 @@ function overview:data(state)
 	-- the scan finishes.
 	local scanning = storage.scan.running == true
 	local chart = scanning and {marks = {}, legend = {}, explanation = "Diskmap is measuring your storage. Sizes appear when it finishes."}
-		or Figures.chart(disk)
+		or Categories:chart(disk)
 	self.marks, self.categoryRows = {}, {}
 	for _, mark in ipairs(chart.marks) do self.marks[mark.id] = mark end
 	-- A legend row's button is named for its category (`category_developer`).
 	local handlers = {}
 	for _, row in ipairs(chart.legend or {}) do
-		if row.id and row.id ~= Figures.folded then handlers["category_" .. row.id] = function() self.app.open(row.id) end end
+		if row.id and row.id ~= Categories.folded then handlers["category_" .. row.id] = function() self.app.open(row.id) end end
 	end
 	local data = {status = state.status, accessHidden = state.mock == true, accessTitle = errors > 0 and "Review scan access…" or "Scan access…",
-		hero = {summary = Figures.summary(disk, state.capacity), chart = chart, volumeName = state.volumeName}, handlers = handlers}
+		hero = {summary = Scans:summary(disk, state.capacity), chart = chart, volumeName = state.volumeName}, handlers = handlers}
 	if scanning then return data end
 	data.measured = true
-	self.categoryRows = Figures.categories(disk, state.query)
+	self.categoryRows = Categories:shares(disk, state.query)
 	if not Selection.index(self.categoryRows, self.selectedId) then self.selectedId = nil end
-	local largest = Figures.largest(disk, PREVIEW.largest, state.query)
-	local cloudBytes, cloudFiles = Inventory.cloud()
+	local largest = Locations:largest(disk, PREVIEW.largest, state.query)
+	local cloudBytes, cloudFiles = Scans:cloud()
 	local hero = data.hero
 	hero.hiddenSpace = Figures.hidden(disk, state.capacity, state.snapshotCount, errors, cloudBytes, cloudFiles,
-		not storage.includeMedia, Figures.protected(state.fullDiskAccess))
-	hero.reclaim = Figures.reclaim(self.app.cleanupSources())
-	data.coverage, data.largestHidden, data.changes = Categories.coverage(disk), #largest == 0, state.changes
+		not storage.includeMedia, Scans:protected(state.fullDiskAccess))
+	hero.reclaim = Suggestions:reclaim(self.app.cleanupSources())
+	data.coverage, data.largestHidden, data.changes = Categories:coverage(disk), #largest == 0, state.changes
 	-- Everything no category holds, and why.
-	data.unmeasured = Figures.unmeasured(disk, {fullDiskAccess = state.fullDiskAccess, diskAccess = state.diskAccess,
+	data.unmeasured = Categories:unmeasured(disk, {fullDiskAccess = state.fullDiskAccess, diskAccess = state.diskAccess,
 		snapshotCount = state.snapshotCount, mediaExcluded = not storage.includeMedia})
 	data.lists = {results = self.categoryRows, largest = largest}
 	return data
@@ -163,25 +162,24 @@ function routes.cleanup:details(row)
 	local destination = row.page and {page = row.page} or Locations:destination(row.id)
 	local target = row.pageName or destination and destination.page
 	return {title = row.name, detail = row.subtitle or "", status = row.detail,
-		size = row.size, evidence = row.kind and ((row.evidence and (row.evidence .. "\n") or "") .. Recommendations.recovery(row)) or row.evidence, consequence = row.consequence ~= row.subtitle and row.consequence or nil,
+		size = row.size, evidence = row.kind and ((row.evidence and (row.evidence .. "\n") or "") .. Suggestions.recovery(row)) or row.evidence, consequence = row.consequence ~= row.subtitle and row.consequence or nil,
 		actionTitle = "Open " .. (PAGE_NAMES[target] or target or "Details") .. "…"}
 end
 
 function routes.cleanup:present(state)
-	local model = Model.db
-	local data = Recommendations.presentation(state.query, self.app.cleanupSources())
+	local data = Suggestions:presentation(state.query, self.app.cleanupSources())
 	local lists, hidden = {}, {}
 	for _, section in ipairs(SECTIONS) do
 		lists["list_" .. section.id] = data[section.id]
 		hidden["section_" .. section.id] = #data[section.id] == 0
 	end
-	local tips, links = Tips.forInventory(state.disk), {}
+	local tips, links = Scans:tips(state.disk), {}
 	for _, tip in ipairs(tips) do links["tip_" .. tip.id] = TIP_LINKS[tip.action] end
 	local first = data.lead
 	links.leadOpen = first and (first.page and {page = first.page, filter = first.filter} or {open = first.id}) or nil
 	links.leadFiles = {page = "files"}
 	return {lists = lists, hidden = hidden, links = links, children = {tips = {tips = tips}, lead = lead(data)}, texts = {
-		summary = data.summary, scopeNote = Scope.text("cleanup"),
+		summary = data.summary, scopeNote = Scope.text("cleanup", Scans:coverage()),
 	}}
 end
 

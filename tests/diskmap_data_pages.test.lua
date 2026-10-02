@@ -2,12 +2,10 @@ _G.__headless = true
 local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
 local ns = require("AppKit")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
 local Model = require("data.model")
 local Routes = require("data.routes")
 local PageController = require("data.pagecontroller")
-local Files = require("apps.diskmap.models.Files")
 
 -- Large Files, File Types, Applications, Projects and Xcode are routes drawn
 -- by the framework's page controller. The scan is shown by the app, so while

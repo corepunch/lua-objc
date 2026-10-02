@@ -1,5 +1,6 @@
+local Categories = require("apps.diskmap.models.Categories")
+local Applications = require("apps.diskmap.models.Applications")
 local Provider = require("apps.diskmap.services.Provider")
-local History = require("apps.diskmap.helpers.History")
 local Reminder = require("apps.diskmap.helpers.Reminder")
 local Sentinel = require("apps.diskmap.helpers.Sentinel")
 local Notifications = {}; Notifications.__index = Notifications
@@ -59,7 +60,7 @@ end
 -- Reschedules the monthly reminder from the newest history.
 function Notifications:historyRecorded(entries)
 	if not (self:available() and self:enabled("reminder")) then return end
-	local notification = Reminder.notification(entries)
+	local notification = Reminder.notification(Categories:changes(entries, Reminder.days, Reminder.limit))
 	if notification then
 		call(self.service, "notify", notification, function() self.handlers.show() end)
 	end
@@ -68,7 +69,9 @@ end
 function Notifications:trashed(events)
 	for _, app in ipairs(Sentinel.trashedApps(events, self.trash)) do
 		local plist = call(self.service, "readPropertyList", app .. "/Contents/Info.plist")
-		local offer = Sentinel.offer(app, type(plist) == "table" and plist.CFBundleIdentifier or nil)
+		local bundleId = type(plist) == "table" and plist.CFBundleIdentifier or nil
+		local folders, bytes = Applications:data(bundleId, Sentinel.name(app))
+		local offer = Sentinel.offer(app, bundleId, folders, bytes)
 		if offer then
 			call(self.service, "notify", offer.notification, function(_, action)
 				self.handlers.show()

@@ -1,8 +1,7 @@
+local Paths = require("apps.diskmap.helpers.Paths")
 local Provider = require("apps.diskmap.services.Provider")
-local Locations = require("apps.diskmap.models.Locations")
 local Model = require("data.model")
 local Marks = require("apps.diskmap.models.Marks")
-local Cleanup = require("apps.diskmap.helpers.Cleanup")
 local Format = require("apps.diskmap.helpers.Format")
 local OperationLog = require("apps.diskmap.helpers.OperationLog")
 local Selection = require("apps.diskmap.helpers.Selection")
@@ -38,7 +37,7 @@ function Review:count() return Marks:count() end
 -- Identity and basket validation are identical for individual and bulk
 -- staging. Only the caller publishes, so a bulk click refreshes UI once.
 local function add(self, item)
-	local valid, why = Marks.validate(item.path, Model.db.home)
+	local valid, why = Paths.validate(item.path, Model.db.home)
 	if not valid then return false, why end
 	local identity = Provider.offers(self.service, "fileIdentity")
 	if type(identity) == "function" and not item.identity then item.identity = identity(item.path) end
@@ -177,14 +176,14 @@ function Review:moveAll(paths)
 	for _, path in ipairs(paths) do
 		local item = Marks:find(path)
 		if item then
-			local resource = item.resourceId and Locations:find(item.resourceId)
+			local resource = item:location()
 			local ok, message
 			local allowed, why = Verify.check(item, resource, home, probes)
 			if not allowed then
 				ok, message = false, "Skipped: " .. why.reason
 				table.insert(result.skipped, why.reason)
 			elseif item.resourceId then
-				local done, err = Cleanup.moveToTrash(item.resourceId, self.service)
+				local done, err = self:flow("Manage"):moveToTrash(item.resourceId)
 				ok, message = done, err and err.message
 			else
 				local pcallOk, moved, detail = pcall(self.service.trash, path)

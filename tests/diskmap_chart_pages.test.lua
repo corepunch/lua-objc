@@ -3,8 +3,8 @@ local t = require("TestKit")
 local ns = require("AppKit")
 local Mock = require("apps.diskmap.services.Mock")
 local Controller = require("apps.diskmap.Controller")
-local Inventory = require("apps.diskmap.helpers.Inventory")
 local Routes = require("data.routes")
+local Scans = require("apps.diskmap.models.Scans")
 local function routePage(id, app) return Routes.page(require("apps.diskmap.routes")[id], {id = id}, app, "apps.diskmap") end
 
 -- Overview, Map and Folder are models drawn by the framework's page
@@ -15,10 +15,10 @@ end
 
 local app = Controller.new(Mock.new())
 app:createWindow()
-local _, ids = Inventory.plan()
+local _, ids = Scans:plan()
 
 -- While the scan runs the pages draw their empty state; the scan's end draws them again.
-Inventory.begin(ids)
+Scans:begin(ids)
 app:updateRows()
 t.assertEqual(app.refs.results, nil, "a running scan leaves the Overview without a category list")
 t.expect(app.refs.legendExplanation ~= nil and app.refs.legend == nil, "and without a legend")

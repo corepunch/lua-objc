@@ -1,22 +1,9 @@
-local Model = require("data.model")
-local Locations = require("apps.diskmap.models.Locations")
-local Format = require("apps.diskmap.helpers.Format")
-local Categories = require("apps.diskmap.helpers.Categories")
 local History = {}
 
 -- Opt-in record of category totals per completed scan, a few hundred bytes
 -- each. No paths or file names are kept. Only complete category totals are
 -- recorded, so partial scans never look like shrinkage.
 History.keep = 60
-
-function History:snapshot(time)
-	local model = Model.db
-	local totals = {}
-	for _, row in ipairs(Categories.rows()) do
-		if row.status == "complete" and row.bytes then totals[row.id] = row.bytes end
-	end
-	return {time = time or os.time(), totals = totals}
-end
 
 function History.append(entries, snapshot)
 	entries = entries or {}
@@ -48,39 +35,6 @@ function History.decode(text)
 		end
 	end
 	return entries
-end
-
--- The largest changes between the oldest entry within `days` and the newest
--- one, as rows for the overview. Categories missing from either end are
--- skipped rather than reported as appearing or vanishing.
-function History:changes(entries, days, limit, now)
-	local model = Model.db
-	if not entries or #entries < 2 then return nil end
-	local latest = entries[#entries]
-	local since = (now or latest.time) - (days or 30) * 86400
-	local base
-	for _, entry in ipairs(entries) do
-		if entry ~= latest and entry.time >= since then base = entry; break end
-	end
-	base = base or entries[#entries - 1]
-	local rows = {}
-	for id, bytes in pairs(latest.totals) do
-		local before = base.totals[id]
-		local resource = Locations:find(id)
-		if before and resource and bytes ~= before then
-			local delta = bytes - before
-			table.insert(rows, {id = id, name = resource.name, color = resource.color, icon = resource.icon, delta = delta,
-				text = (delta > 0 and "+" or "−") .. Format.size(math.abs(delta)), grew = delta > 0})
-		end
-	end
-	table.sort(rows, function(a, b)
-		if math.abs(a.delta) ~= math.abs(b.delta) then return math.abs(a.delta) > math.abs(b.delta) end
-		return a.id < b.id
-	end)
-	while #rows > (limit or 4) do table.remove(rows) end
-	if #rows == 0 then return nil end
-	local since = (os.date("%b %e", base.time):gsub("  ", " "))
-	return {rows = rows, since = since, scans = #entries, detail = "Since " .. since .. " · " .. #entries .. " scans recorded"}
 end
 
 return History

@@ -1,5 +1,5 @@
 local Format = require("apps.diskmap.helpers.Format")
-local Simulators = require("apps.diskmap.models.Simulators")
+local Simulators = require("apps.diskmap.helpers.Simulators")
 local SimulatorPlan = {}
 
 -- "Keep one standard iPhone and one standard iPad": a consolidation plan over
@@ -53,7 +53,7 @@ local function better(a, b)
 end
 
 -- Builds the plan.
---   inventory  Simulators.discover's result
+--   inventory  what services/Simulators.lua discovered
 --   options    runtime     identifier of the chosen iOS runtime (default: newest)
 --              keep        {iPhone = udid, iPad = udid} chosen by the user
 --              preserve    set of udids the user keeps as specialised QA devices
@@ -148,7 +148,7 @@ end
 -- A device may be removed only while it still passes both the plan and the
 -- single-device validation (running state, UUID, category Keep). `fresh` is
 -- the device's current row, re-read just before the deletion.
-function SimulatorPlan.revalidate(plan, id, fresh, model)
+function SimulatorPlan.revalidate(plan, id, fresh, kept)
 	for _, family in ipairs(SimulatorPlan.families) do
 		if plan.keep[family] == id then return false, {code = "kept_device", message = "This device is the kept " .. family .. "."} end
 	end
@@ -156,7 +156,7 @@ function SimulatorPlan.revalidate(plan, id, fresh, model)
 	for _, entry in ipairs(plan.removal or {}) do if entry.id == id then planned = true end end
 	if not planned then return false, {code = "not_in_plan", message = "This device is not in the removal set."} end
 	if not fresh then return false, {code = "missing_device", message = "This device no longer exists."} end
-	return Simulators.validate("delete", fresh, model)
+	return Simulators.validate("delete", fresh, kept)
 end
 
 -- Consequence text for the confirmation: the full removal set, its size and

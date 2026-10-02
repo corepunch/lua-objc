@@ -1,18 +1,18 @@
 _G.__headless = true
+local SimulatorService = require("apps.diskmap.services.Simulators")
 local t = require("TestKit")
 local ns = require("AppKit")
 local xml = require("ui.xml")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
 local Mock = require("apps.diskmap.services.Mock")
-local Inventory = require("apps.diskmap.helpers.Inventory")
 local Scan = require("apps.diskmap.services.Scan")
-local Simulators = require("apps.diskmap.models.Simulators")
+local Simulators = require("apps.diskmap.helpers.Simulators")
 local Host = require("tests.diskmap_page")
 local Controller = require("apps.diskmap.Controller")
-local Recommendations = require("apps.diskmap.helpers.Recommendations")
-local Categories = require("apps.diskmap.helpers.Categories")
 local System = require("apps.diskmap.services.System")
+local Scans = require("apps.diskmap.models.Scans")
+local Categories = require("apps.diskmap.models.Categories")
+local Suggestions = require("apps.diskmap.models.Suggestions")
 
 -- Command failures and malformed JSON remain distinct from an empty result.
 local command, answer, success = System.command, nil, true
@@ -35,7 +35,7 @@ System.command = command
 -- Its file findings and live counters must still reach pages; none is a final
 -- reclaim estimate, and cancelling must retain the useful partial findings.
 local model = Store.new("/Users/test")
-local paths, ids = Inventory.plan()
+local paths, ids = Scans:plan()
 local pending
 local scan = Scan.new(model, {
 	start = function() return {} end,
@@ -57,8 +57,8 @@ local first = scan.status
 progress(50, 8)
 t.expect(first ~= scan.status and scan.status:find("50 items checked", 1, true), "same completed count still advances live counters")
 t.expect(not scan.status:find("%%"), "root count does not masquerade as time progress")
-t.expect(not Categories.coverage(scan.disk):find("not attributed", 1, true), "in-progress coverage is not reported as unexplained usage")
-local chart = require("apps.diskmap.helpers.Overview").chart(scan.service.diskSpace())
+t.expect(not Categories:coverage(scan.disk):find("not attributed", 1, true), "in-progress coverage is not reported as unexplained usage")
+local chart = require("apps.diskmap.models.Categories"):chart(scan.service.diskSpace())
 t.assertEqual(chart.marks[1].label, "Not measured yet", "unfinished chart names the pending allocation")
 t.expect(chart.explanation:find("still arriving", 1, true), "unfinished chart explains its gray sector")
 local routes, Routes = require("apps.diskmap.routes"), require("data.routes")
@@ -95,7 +95,7 @@ local service = {
 	children = function() return {{name = uuid, path = model.home .. "/Devices/" .. uuid, bytes = 4e9}} end,
 	readPropertyList = function() return {name = "iPhone", runtime = runtime} end,
 }
-local unknown = Simulators.discover(service, model.home)
+local unknown = SimulatorService.discover(service, model.home)
 local row = Simulators.rows(unknown)[1]
 t.assertEqual(row.lastUse, "Last use unknown", "no boot date does not imply never started")
 t.assertEqual(row.available, nil, "filesystem discovery cannot prove runtime availability")
@@ -104,11 +104,11 @@ t.assertEqual(#Simulators.rows(unknown, nil, "Unused for 90 days"), 0, "unknown 
 local ok, reason = Simulators.validate("delete", row)
 t.expect(not ok and reason.code == "state_unknown", "unknown running state prevents device deletion")
 local live = {devices = {[runtime] = {{udid = uuid, state = "Booted", isAvailable = true}}}}
-t.expect(Simulators.rows(Simulators.discover(service, model.home, live))[1].running, "live simulator state reaches the row")
+t.expect(Simulators.rows(SimulatorService.discover(service, model.home, live))[1].running, "live simulator state reaches the row")
 live.devices[runtime][1].state = "Creating"
-t.expect(not Simulators.validate("delete", Simulators.rows(Simulators.discover(service, model.home, live))[1]), "unrecognized state is not treated as shutdown")
+t.expect(not Simulators.validate("delete", Simulators.rows(SimulatorService.discover(service, model.home, live))[1]), "unrecognized state is not treated as shutdown")
 live.devices[runtime][1].state = "Shutdown"
-t.expect(Simulators.validate("erase", Simulators.rows(Simulators.discover(service, model.home, live))[1]), "verified shutdown device can be reviewed for erase")
+t.expect(Simulators.validate("erase", Simulators.rows(SimulatorService.discover(service, model.home, live))[1]), "verified shutdown device can be reviewed for erase")
 service.simulatorDevices = function(done) done(nil, "Device state could not be checked. Retry.") end
 service.simulatorRuntimes = function(done) done(nil, "Runtimes could not be read. Retry.") end
 local held = {}
@@ -144,7 +144,7 @@ t.expect(not app.tour:needed(disk), "low-space launch bypasses automatic tour")
 t.expect(app.tour:needed({totalKb = 256e9 / 1024, freeKb = 100e9 / 1024}), "normal-space launch preserves the tour preference")
 app:show("cleanup")
 local page = app.page
-local data = Recommendations.presentation("")
+local data = Suggestions:presentation("")
 local expected = data.decisions[1]
 -- #102: with nothing selected the inspector takes no space.
 t.expect(page.refs.selectionDetails.hidden, "an empty inspector is hidden until a suggestion is selected")

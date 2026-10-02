@@ -4,7 +4,6 @@
 _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
 local Scan = require("apps.diskmap.services.Scan")
 local ScanProgress = require("apps.diskmap.controllers.ScanProgressController")

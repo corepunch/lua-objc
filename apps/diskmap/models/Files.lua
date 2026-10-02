@@ -1,7 +1,7 @@
+local FileKind = require("apps.diskmap.helpers.FileKind")
 local Model = require("data.model")
 local Locations = require("apps.diskmap.models.Locations")
 local Format = require("apps.diskmap.helpers.Format")
-local Kinds = require("apps.diskmap.knowledge.FileKinds")
 -- The files the last scan ranked: every file over the size threshold, and
 -- the ones unused for a year, each {path, bytes, used}. The store's `files`
 -- holds both lists with the extension totals of the same walk.
@@ -15,41 +15,22 @@ local Files = Model:extend("files", {primaryKey = "path", source = function(db)
 	return rows
 end})
 
+-- One file by its path, read from the two lists without merging them.
+function Files:find(path)
+	local files = Model.db.files
+	for _, list in ipairs({files and files.large or {}, files and files.old or {}}) do
+		for _, file in ipairs(list) do
+			if file.path == path then return self:load(file) end
+		end
+	end
+end
+
 -- Large Files filters. "Unused" is a year without being opened or changed,
 -- the threshold CleanMyMac's Large & Old Files and most Reddit advice use.
 -- "Yours" leads: the files a person can act on. Files inside apps, system
 -- volumes and tool folders stay under "All", for context.
 Files.filters = Model.enum({"Yours", "All", "Unused for a year", "Installers & archives", "Media"})
 local FILTER_KINDS = {["Installers & archives"] = {installers = true, archives = true}, Media = {video = true, images = true, audio = true}}
-
--- Folders that are documents to Finder. A file inside one belongs to its app
--- (a Photos library, an Xcode archive, a virtual machine), so Diskmap never
--- offers to trash it on its own.
-local PACKAGES = {"app", "photoslibrary", "photolibrary", "musiclibrary", "tvlibrary", "imovielibrary", "fcpbundle",
-	"logicx", "band", "xcarchive", "bundle", "framework", "lrdata", "sparsebundle", "pvm", "utm", "vmwarevm",
-	"aplibrary", "migratedphotolibrary", "xcodeproj", "xcworkspace", "playground", "rtfd", "pages", "numbers", "key"}
-local packageSet = {}
-for _, extension in ipairs(PACKAGES) do packageSet[extension] = true end
-
--- Whether a file or folder name is a package Finder shows as one document.
-function Files.isPackage(name)
-	local extension = (name or ""):match("[^/]%.([^./]+)$")
-	return extension ~= nil and packageSet[extension:lower()] == true
-end
-
-local kindByExtension = {}
-for _, kind in ipairs(Kinds) do
-	for _, extension in ipairs(kind.extensions) do kindByExtension[extension] = kind end
-end
-local OTHER = Kinds[#Kinds]
-
-function Files.kind(path)
-	local extension = (path or ""):match("[^/]%.([^./]+)$")
-	return extension and kindByExtension[extension:lower()] or OTHER
-end
-function Files.kindById(id)
-	for _, kind in ipairs(Kinds) do if kind.id == id then return kind end end
-end
 
 local plural = Format.plural
 
@@ -66,12 +47,6 @@ function Files:state()
 		return "empty"
 	end
 	return "loaded"
-end
-
--- How long ago a file was last used, from its Unix time.
-function Files.age(seconds, now)
-	if not seconds or seconds <= 0 then return "Unknown" end
-	return Format.ago(math.floor(((now or os.time()) - seconds) / 86400))
 end
 
 -- A home-relative folder, so rows read like Finder's path bar.
@@ -108,7 +83,7 @@ function Files:validateTrash(path)
 	end
 	for component in (relative:match("^(.*)/[^/]+$") or ""):gmatch("[^/]+") do
 		local extension = component:match("%.([^.]+)$")
-		if extension and packageSet[extension:lower()] then
+		if extension and FileKind.packages[extension:lower()] then
 			return false, {code = "package", message = "This file is inside " .. component .. ". Manage it in the app that owns it."}
 		end
 	end
@@ -141,16 +116,16 @@ function Files:rows(filter, query, kind, now)
 	now = now or os.time()
 	local source = filter == "Unused for a year" and summary.old or summary.large
 	local kinds, needle = FILTER_KINDS[filter], (query or ""):lower()
-	local oldBefore = now - require("apps.diskmap.helpers.Inventory").summary.oldDays * 86400
+	local oldBefore = now - require("apps.diskmap.models.Scans").fileSummary.oldDays * 86400
 	local rows = {}
 	for _, file in ipairs(source) do
-		local fileKind = Files.kind(file.path)
+		local fileKind = FileKind.of(file.path)
 		if (not kinds or kinds[fileKind.id]) and (not kind or fileKind.id == kind) then
 			local owner = Locations:owner(file.path)
 			local row = {id = file.path, path = file.path, name = file.path:match("([^/]+)$") or file.path,
 				subtitle = (owner and owner.path ~= file.path and owner.path ~= file.path:match("^(.*)/[^/]+$") and (owner.name .. " · ") or "") .. Files:folder(file.path), bytes = file.bytes, size = Format.size(file.bytes),
 				owner = owner and owner.name or "", ownerId = owner and owner.id or nil,
-				lastUse = Files.age(file.used, now), used = file.used, old = (file.used or now) < oldBefore,
+				lastUse = Format.age(file.used, now), used = file.used, old = (file.used or now) < oldBefore,
 				kind = fileKind.name, kindId = fileKind.id, fileIcon = file.path, icon = fileKind.icon, color = fileKind.color,
 				trashable = (Files:validateTrash(file.path))}
 			row.detail = Format.used(row.lastUse)
@@ -178,7 +153,7 @@ function Files:kinds()
 	if not summary then return {}, {} end
 	local byKind, extensions = {}, {}
 	for _, row in ipairs(summary.extensions) do
-		local kind = row.extension ~= "" and kindByExtension[row.extension] or OTHER
+		local kind = row.extension ~= "" and FileKind.byExtension[row.extension] or FileKind.other
 		local total = byKind[kind.id] or {kind = kind, bytes = 0, count = 0, oldBytes = 0, extensions = {}}
 		total.bytes, total.count, total.oldBytes = total.bytes + row.bytes, total.count + row.count, total.oldBytes + (row.oldBytes or 0)
 		table.insert(total.extensions, row)
@@ -224,7 +199,7 @@ function Files:kinds()
 	local top = {}
 	for _, row in ipairs(extensions) do
 		if row.extension ~= "" then
-			local kind = kindByExtension[row.extension] or OTHER
+			local kind = FileKind.byExtension[row.extension] or FileKind.other
 			-- The Files column carries the count; the subtitle names the kind.
 			table.insert(top, {id = row.extension, name = "." .. row.extension, subtitle = kind.name,
 				icon = kind.icon, color = kind.color, bytes = row.bytes, size = Format.size(row.bytes), count = row.count, kindId = kind.id,

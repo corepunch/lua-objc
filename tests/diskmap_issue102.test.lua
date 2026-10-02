@@ -7,10 +7,10 @@ local Store = require("apps.diskmap.Store")
 local Mock = require("apps.diskmap.services.Mock")
 local Controller = require("apps.diskmap.Controller")
 local Files = require("apps.diskmap.models.Files")
-local Recommendations = require("apps.diskmap.helpers.Recommendations")
 local Navigation = require("apps.diskmap.controllers.NavigationController")
 local Host = require("tests.diskmap_page")
 local WorktreeService = require("apps.diskmap.services.Worktrees")
+local Suggestions = require("apps.diskmap.models.Suggestions")
 
 -- #102: every destination leads with a concrete decision (what to review,
 -- why, what it could recover, and the action that starts it) before any
@@ -52,7 +52,7 @@ visible("updates", "Updates")
 app:show("cleanup")
 local cleanup = app.page
 t.expect(cleanup.refs.selectionDetails.hidden, "Clean Up has no empty inspector")
-local data = Recommendations.presentation("", app.cleanupSources())
+local data = Suggestions:presentation("", app.cleanupSources())
 local top = data.lead
 for _, row in ipairs(data.rebuildable) do t.expect(row.score <= top.score, "the lead outranks every rebuildable row: " .. row.id) end
 for _, row in ipairs(data.decisions) do t.expect(row.score <= top.score, "and every decision: " .. row.id) end
@@ -75,11 +75,11 @@ local probe = Store.new("/Users/test")
 probe.measurements.simulators = {status = "complete", bytes = 22e9}
 probe.simulatorPlan = plan
 local simulatorRow
-for _, row in ipairs(Recommendations.presentation("", {}).decisions) do if row.id == "simulators" then simulatorRow = row end end
+for _, row in ipairs(Suggestions:presentation("", {}).decisions) do if row.id == "simulators" then simulatorRow = row end end
 t.assertEqual(simulatorRow and simulatorRow.size, "13.0 GB", "the simulator suggestion shows what the minimal set could recover")
 t.assertEqual(simulatorRow.shareText, "could recover", "and names it")
 t.expect(simulatorRow.subtitle:find("22.0 GB is stored", 1, true), "the whole inventory is stated as stored, apart: " .. simulatorRow.subtitle)
-t.expect(require("apps.diskmap.routes").cleanup.lead(Recommendations.presentation("", {})).title:find("Keep one iPhone and one iPad", 1, true),
+t.expect(require("apps.diskmap.routes").cleanup.lead(Suggestions:presentation("", {})).title:find("Keep one iPhone and one iPad", 1, true),
 	"the lead names the concrete decision")
 local empty = require("apps.diskmap.routes").cleanup.lead({count = 0})
 t.assertEqual(empty.action, "leadFiles", "with nothing to suggest the lead routes to where a person can still look")
@@ -90,7 +90,7 @@ t.assertEqual(badges.cleanup, Format.size(data.eligibleBytes), "Clean Up's badge
 
 -- The Overview's call to action names the same estimate.
 local Overview = require("apps.diskmap.helpers.Overview")
-t.assertEqual(Overview.reclaim(app.cleanupSources()).title, Format.size(data.eligibleBytes) .. " could recover",
+t.assertEqual(Suggestions:reclaim(app.cleanupSources()).title, Format.size(data.eligibleBytes) .. " could recover",
 	"the Overview headline, Clean Up and its badge name one number")
 
 -- Meters: a capsule half the height of AppKit's 18-point capacity cell.

@@ -1,7 +1,4 @@
-local Model = require("data.model")
-local Locations = require("apps.diskmap.models.Locations")
 local Format = require("apps.diskmap.helpers.Format")
-local Categories = require("apps.diskmap.helpers.Categories")
 local Updates = {}
 
 -- Storage an update passes through, in the order macOS uses it: downloaded
@@ -72,8 +69,8 @@ function Updates.snapshots(dates)
 	return rows
 end
 
-local function sized(model, id)
-	local row = Categories.row(id)
+-- The size text of a rolled-up row, once it is measured.
+local function sized(row)
 	if not row or row.calculating then return nil end
 	return row.size
 end
@@ -81,16 +78,13 @@ end
 -- Full macOS installers in Applications, plus disk images and installer
 -- packages found in Downloads, Desktop and Documents (`files`, each
 -- {path, bytes}). They are ordinary files that can be downloaded again.
-function Updates.installers(files)
-	local model = Model.db
+-- `apps` are the installer apps among the locations (Locations:installers()).
+function Updates.installers(apps, files)
 	local rows = {}
-	for _, row in ipairs(Locations:leaves()) do
-		if row.path and row.name:match("^Install macOS .+%.app$") then
-			local m = model.measurements[row.id]
-			table.insert(rows, {id = row.id, name = (row.name:gsub("%.app$", "")), path = row.path, kind = "macOS installer app", type = "macOS installer",
-				subtitle = row.path, detail = "macOS installer", icon = "app.dashed",
-				bytes = m and m.bytes, size = Format.size(m and m.bytes)})
-		end
+	for _, app in ipairs(apps or {}) do
+		table.insert(rows, {id = app.id, name = (app.name:gsub("%.app$", "")), path = app.path, kind = "macOS installer app", type = "macOS installer",
+			subtitle = app.path, detail = "macOS installer", icon = "app.dashed",
+			bytes = app.bytes, size = Format.size(app.bytes)})
 	end
 	for _, file in ipairs(files or {}) do
 		local name = file.path:match("([^/]+)$") or file.path
@@ -124,13 +118,13 @@ function Updates.spaceNote(update, freeBytes)
 end
 
 -- Everything the Updates & Snapshots page shows. `snapshotDates` is false when
--- tmutil failed.
-function Updates.presentation(plist, snapshotDates, installerFiles, freeBytes)
-	local model = Model.db
+-- tmutil failed. `facts` is what the store knows: {measured(id), a location's
+-- rolled-up row (Categories.measured); installers (Locations:installers())}.
+function Updates.presentation(plist, snapshotDates, installerFiles, freeBytes, facts)
 	local stages = {}
 	for index, stage in ipairs(Updates.stages) do
 		table.insert(stages, {index = index, id = stage.id, title = stage.title, icon = stage.icon,
-			detail = stage.detail, size = sized(model, stage.id) or "Not measured"})
+			detail = stage.detail, size = sized(facts.measured(stage.id)) or "Not measured"})
 	end
 	local snapshots = snapshotDates and Updates.snapshots(snapshotDates) or {}
 	local snapshotTitle
@@ -139,7 +133,7 @@ function Updates.presentation(plist, snapshotDates, installerFiles, freeBytes)
 	else snapshotTitle = #snapshots .. (#snapshots == 1 and " local snapshot" or " local snapshots") end
 	local update = Updates.softwareUpdate(plist)
 	return {softwareUpdate = update, spaceNote = Updates.spaceNote(update, freeBytes), stages = stages,
-		installers = Updates.installers(installerFiles), snapshots = snapshots, snapshotTitle = snapshotTitle}
+		installers = Updates.installers(facts.installers, installerFiles), snapshots = snapshots, snapshotTitle = snapshotTitle}
 end
 
 return Updates

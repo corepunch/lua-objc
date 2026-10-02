@@ -1,4 +1,3 @@
-local Model = require("data.model")
 local Routes = require("data.routes")
 local Selection = require("apps.diskmap.helpers.Selection")
 

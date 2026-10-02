@@ -3,6 +3,8 @@ local t = require("TestKit")
 local Mock = require("apps.diskmap.services.Mock")
 local Controller = require("apps.diskmap.Controller")
 local Overview = require("apps.diskmap.helpers.Overview")
+local Scans = require("apps.diskmap.models.Scans")
+local Categories = require("apps.diskmap.models.Categories")
 
 -- First launch without Full Disk Access explains it before the first scan
 -- and continues by itself once access is granted (#52).
@@ -49,11 +51,11 @@ other.model.scan.issues = issues
 other:show("overview", true)
 local notice = other.pages.overview.refs
 t.expect(notice.unmeasured_privacy ~= nil and notice.grantAccess ~= nil, "the Overview shows which folders need Full Disk Access")
-local card = Overview.unmeasured(other:state().disk, {fullDiskAccess = false})
+local card = Categories:unmeasured(other:state().disk, {fullDiskAccess = false})
 local privacy
 for _, item in ipairs(card.items) do if item.id == "privacy" then privacy = item end end
 t.assertEqual(privacy.more, "and 2 more", "at most six folders are listed")
-local unreadable = Overview.unreadable()
+local unreadable = Scans:unreadable()
 t.assertEqual(#unreadable.paths, 6, "six folders are listed")
 t.assertEqual(unreadable.paths[1], "~/Library/Protected 1", "folders are shown from the home folder")
 t.assertEqual(unreadable.total, 8, "a folder reported twice counts once")
@@ -116,7 +118,7 @@ skipped.onboarding:finish(false)
 t.assertEqual(skipped:state().diskAccess, false, "the hidden disk is known after the scan")
 local hiddenHome = hidden.home
 skipped.model.scan.issues = {{path = hiddenHome .. "/Library/Mail", reason = "Operation not permitted"}}
-local diskCard = Overview.unmeasured(skipped:state().disk, {fullDiskAccess = false, diskAccess = false})
+local diskCard = Categories:unmeasured(skipped:state().disk, {fullDiskAccess = false, diskAccess = false})
 local diskItem
 for _, item in ipairs(diskCard.items) do if item.id == "privacy" then diskItem = item end end
 t.assertEqual(diskItem.title, "Needs access to your disk", "the card names the disk as what is missing")
@@ -130,7 +132,7 @@ t.expect(requested == 1 and settingsOpened == 0, "it opens the panel, not Settin
 t.expect(skipped.diskAccess == true and rescans == 1, "and measures again with the disk")
 t.expect(skipped:grantAccess() and settingsOpened == 1, "with the disk, the button opens Full Disk Access")
 skipped.model.scan.issues = {{path = hiddenHome .. "/Library/Mail", reason = "Operation not permitted"}}
-local fdaCard = Overview.unmeasured(skipped:state().disk, {fullDiskAccess = false, diskAccess = true})
+local fdaCard = Categories:unmeasured(skipped:state().disk, {fullDiskAccess = false, diskAccess = true})
 diskItem = nil
 for _, item in ipairs(fdaCard.items) do if item.id == "privacy" then diskItem = item end end
 t.assertEqual(diskItem.title, "Needs Full Disk Access", "with the disk, Full Disk Access is what is missing")

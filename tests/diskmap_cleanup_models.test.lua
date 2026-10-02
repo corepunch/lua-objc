@@ -1,8 +1,8 @@
 _G.__headless = true
+local Paths = require("apps.diskmap.helpers.Paths")
 local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
 local Model = require("data.model")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
 local Xcode = require("apps.diskmap.helpers.Xcode")
 local Leftovers = require("apps.diskmap.helpers.Leftovers")
@@ -10,9 +10,10 @@ local Projects = require("apps.diskmap.models.Projects")
 local Marks = require("apps.diskmap.models.Marks")
 local OperationLog = require("apps.diskmap.helpers.OperationLog")
 local History = require("apps.diskmap.helpers.History")
-local MapTree = require("apps.diskmap.helpers.MapTree")
 local Overview = require("apps.diskmap.helpers.Overview")
 local Updates = require("apps.diskmap.helpers.Updates")
+local Scans = require("apps.diskmap.models.Scans")
+local Categories = require("apps.diskmap.models.Categories")
 
 -- Xcode: device support by version, newest kept per platform.
 local parsed = Xcode.parseSupport("iPhone15,2 17.2 (21C62)")
@@ -106,10 +107,10 @@ t.assertEqual(Projects:groups(nil, nil, now)[1].gitText, "Checking…", "git sta
 local home = "/Users/test"
 for _, path in ipairs({"/", "/System", "/System/Library/Caches", "/Applications", "/Library", "/Users", home, home .. "/Documents",
 	home .. "/Library", home .. "/Library/Caches", "/Volumes/Backup", "/System/Volumes/Data", "relative/path", home .. "/a/../b"}) do
-	t.expect(not Marks.validate(path, home), "refused: " .. path)
+	t.expect(not Paths.validate(path, home), "refused: " .. path)
 end
 for _, path in ipairs({home .. "/Downloads/installer.dmg", home .. "/Library/Caches/com.x", "/Applications/Old.app"}) do
-	t.expect(Marks.validate(path, home), "allowed: " .. path)
+	t.expect(Paths.validate(path, home), "allowed: " .. path)
 end
 require("apps.diskmap.Store").new(home)
 local basket = Marks
@@ -134,12 +135,12 @@ local a = {time = now - 10 * 86400, totals = {developer = 10e9, documents = 5e9,
 local b = {time = now, totals = {developer = 14e9, documents = 4e9}}
 local decoded = History.decode(History.encode({a, b}))
 t.assertEqual(decoded[2].totals.developer, 14e9, "history round-trips")
-local changes = History:changes(decoded, 30, 4, now)
+local changes = Categories:changes(decoded, 30, 4, now)
 t.assertEqual(changes.rows[1].id, "developer", "the largest change comes first")
 t.assertEqual(changes.rows[1].text, "+4.0 GB", "growth is signed")
 t.assertEqual(changes.rows[2].text, "−1.0 GB", "shrinkage is signed")
 t.assertEqual(#changes.rows, 2, "categories missing at either end are skipped")
-t.assertEqual(History:changes({a}, 30), nil, "one scan has no changes")
+t.assertEqual(Categories:changes({a}, 30), nil, "one scan has no changes")
 local long = {}
 for index = 1, History.keep + 5 do History.append(long, {time = index, totals = {}}) end
 t.assertEqual(#long, History.keep, "history keeps a bounded number of scans")
@@ -150,7 +151,7 @@ map.measurements.derived = {bytes = 40e9, status = "complete"}
 map.measurements.simulators = {bytes = 20e9, status = "complete"}
 map.measurements.downloads = {bytes = 30e9, status = "complete"}
 map.measurements.npm = {bytes = 1e6, status = "complete"}
-local nodes, total = MapTree.nodes("")
+local nodes, total = Categories:mapNodes("")
 t.assertEqual(total, 90e9 + 1e6, "the map totals the focus")
 local byId = {}
 for _, node in ipairs(nodes) do byId[node.id] = node end
@@ -159,11 +160,11 @@ t.assertEqual(byId.xcode.parent, "developer", "groups sit inside their category"
 t.assertEqual(byId.derived.color, byId.developer.color, "descendants share their category color")
 t.expect(byId.derived.hatched, "rebuildable resources are hatched")
 t.assertEqual(byId.npm, nil, "slivers fold into their parent's roll-up")
-local focused = MapTree.nodes("xcode")
+local focused = Categories:mapNodes("xcode")
 t.assertEqual(focused[1].parent, nil, "a focus starts a new first ring")
-t.assertEqual(MapTree.path("xcode")[3].name, "Xcode", "the breadcrumb leads from All Storage to the focus")
-t.assertEqual(MapTree.worthALook("developer")[1].id, "derived", "worth a look lists rebuildable resources under the focus")
-t.expect(MapTree.describe("xcode", total):find("Developer › Xcode", 1, true) == 1, "hover text names the path")
+t.assertEqual(Categories:path("xcode")[3].name, "Xcode", "the breadcrumb leads from All Storage to the focus")
+t.assertEqual(Categories:worthALook("developer")[1].id, "derived", "worth a look lists rebuildable resources under the focus")
+t.expect(Categories:describe("xcode", total):find("Developer › Xcode", 1, true) == 1, "hover text names the path")
 
 -- Overview: hidden space and available capacity.
 local disk = {totalKb = 1000e9 / 1024, freeKb = 100e9 / 1024}
@@ -171,31 +172,29 @@ local hidden = Overview.hidden(disk, {important = 130e9}, 3, 2)
 t.assertEqual(hidden[1].value, "30.0 GB", "purgeable space is important minus free")
 t.assertEqual(hidden[2].value, "3", "snapshots are counted")
 t.assertEqual(#Overview.hidden(disk, {important = 90e9}, 0, 0), 0, "nothing hidden shows nothing")
-t.assertEqual(Overview.summary(disk, {important = 130e9}).short, "130.0 GB available of 1.00 TB", "the window subtitle names one number")
-t.assertEqual(Overview.summary(disk, {important = 130e9}).subtitle, "100.0 GB free · 130.0 GB available of 1.00 TB",
+t.assertEqual(Scans:summary(disk, {important = 130e9}).short, "130.0 GB available of 1.00 TB", "the window subtitle names one number")
+t.assertEqual(Scans:summary(disk, {important = 130e9}).subtitle, "100.0 GB free · 130.0 GB available of 1.00 TB",
 	"available includes purgeable space")
 
 -- Updates: installers found on disk join installer apps.
-local found = Updates.installers({{path = "/Users/test/Downloads/Tool.dmg", bytes = 2e8}, {path = "/Users/test/Desktop/x.PKG", bytes = 9e8}})
+local found = Updates.installers(Locations:installers(), {{path = "/Users/test/Downloads/Tool.dmg", bytes = 2e8}, {path = "/Users/test/Desktop/x.PKG", bytes = 9e8}})
 t.assertEqual(found[1].kind, "Installer package in Desktop", "installers say what and where they are")
 t.assertEqual(found[2].name, "Tool.dmg", "installers are largest first")
 
 -- Logical sizes and iCloud-only files travel from the scan to the inspector.
-local Inventory = require("apps.diskmap.helpers.Inventory")
-local Inspector = require("apps.diskmap.helpers.Inspector")
 local cloudModel = Store.new("/Users/test")
-local _, cloudIds = Inventory.plan()
-Inventory.begin(cloudIds)
+local _, cloudIds = Scans:plan()
+Scans:begin(cloudIds)
 local trees, states = {}, {}
 for index in ipairs(cloudIds) do trees[index] = {kb = 1024}; states[index] = "measured" end
 trees[1] = {kb = 1024, logicalKb = 1024 * 1024, cloudKb = 2048, cloudFiles = 3}
-Inventory.progress(cloudIds, {completed = #cloudIds, total = #cloudIds, trees = trees, rootStates = states})
+Scans:progress(cloudIds, {completed = #cloudIds, total = #cloudIds, trees = trees, rootStates = states})
 local measured = cloudModel.measurements[cloudIds[1]]
 t.expect(measured.logicalBytes == 1024 * 1024 * 1024 and measured.cloudFiles == 3 and measured.cloudBytes == 2048 * 1024,
 	"measurements keep logical size and iCloud-only files")
-local cloudBytes, cloudFiles = Inventory.cloud()
+local cloudBytes, cloudFiles = Scans:cloud()
 t.expect(cloudFiles == 3 and cloudBytes == 2048 * 1024, "iCloud-only files are totalled across resources")
-local location = Inspector.details(cloudIds[1]).location
+local location = Locations:details(cloudIds[1]).location
 t.expect(location:find("logical size", 1, true) and location:find("3 files in iCloud only", 1, true), "the inspector explains both")
 local hiddenCloud = Overview.hidden(disk, nil, 0, 0, cloudBytes, cloudFiles)
 t.assertEqual(hiddenCloud[1].id, "icloud", "the overview lists iCloud-only files")

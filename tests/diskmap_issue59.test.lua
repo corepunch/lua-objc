@@ -9,16 +9,17 @@ local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
 local Mock = require("apps.diskmap.services.Mock")
 local Overview = require("apps.diskmap.helpers.Overview")
-local Inventory = require("apps.diskmap.helpers.Inventory")
 local Xcode = require("apps.diskmap.helpers.Xcode")
 local Projects = require("apps.diskmap.models.Projects")
 local Files = require("apps.diskmap.models.Files")
 local Applications = require("apps.diskmap.models.Applications")
-local Simulators = require("apps.diskmap.models.Simulators")
+local Simulators = require("apps.diskmap.helpers.Simulators")
 local Updates = require("apps.diskmap.helpers.Updates")
-local Recommendations = require("apps.diskmap.helpers.Recommendations")
 local developerWorkflow = require("apps.diskmap.models.Workflows"):find("developer")
 local Controller = require("apps.diskmap.Controller")
+local Scans = require("apps.diskmap.models.Scans")
+local Categories = require("apps.diskmap.models.Categories")
+local Suggestions = require("apps.diskmap.models.Suggestions")
 local home = "/Users/test"
 
 -- The unreadable notice and the Unreadable locations row name one number,
@@ -27,7 +28,7 @@ local model = Store.new(home)
 local issues = {}
 for index = 1, 1000 do table.insert(issues, {path = home .. "/Library/Locked/" .. index}) end
 model.scan = {errors = 1011, issues = issues}
-local unreadable = Overview.unreadable()
+local unreadable = Scans:unreadable()
 t.assertEqual(#unreadable.paths, 6, "the notice lists six folders")
 t.assertEqual(unreadable.total, 1011, "and counts every unreadable location")
 t.assertEqual(unreadable.more, 1005, "so the rest add up to the scan's total")
@@ -41,7 +42,7 @@ t.assertEqual(byId.media.value, "Not scanned", "excluded media libraries are nam
 t.assertEqual(#Overview.hidden(disk, nil, 0, 0, 0, 0, false), 0, "included media libraries need no row")
 
 -- A location where nothing could be read has no size.
-Inventory.apply({"mail", "downloads"}, {trees = {{kb = 0, partial = true}, {kb = 2048, partial = true}},
+Scans:apply({"mail", "downloads"}, {trees = {{kb = 0, partial = true}, {kb = 2048, partial = true}},
 	rootStates = {"unreadable", "unreadable"}})
 t.assertEqual(model.measurements.mail.status, "denied", "an unreadable location is denied")
 local row = Format.sizeLabel({}, model.measurements.mail.status, model.measurements.mail.bytes)
@@ -50,12 +51,11 @@ t.assertEqual(model.measurements.downloads.status, "partial", "a partly read loc
 t.assertEqual(Format.atLeast(model.measurements.downloads.bytes, true), "≥ 2.1 MB", "which reads at least")
 
 -- A group of locations that could not be read has no access either.
-local Categories = require("apps.diskmap.helpers.Categories")
 local denied = Store.new(home)
 local mailGroup = Locations:find("mail"):parent()
 for _, child in ipairs(mailGroup:children()) do denied.measurements[child.id] = {status = "complete", bytes = 0} end
 denied.measurements.mail = {status = "denied"}
-local mailRow = Categories.row(mailGroup.id)
+local mailRow = Categories:row(mailGroup.id)
 t.assertEqual(mailRow.size, "No access", "a group with nothing readable reads No access")
 t.assertEqual(mailRow.bytes, nil, "and has no bytes to chart")
 
@@ -83,7 +83,7 @@ t.expect(not Projects.isToolFolder(home .. "/.projects/site", home .. "/.project
 t.assertEqual(Projects.gitText(nil), "Not in git", "the git state fits its column")
 
 -- Installers name their kind in the detail column; the path is the subtitle.
-local installers = Updates.installers({{path = home .. "/Downloads/Tool.dmg", bytes = 2e9}, {path = home .. "/Desktop/Xcode.xip", bytes = 3e9}})
+local installers = Updates.installers(Locations:installers(), {{path = home .. "/Downloads/Tool.dmg", bytes = 2e9}, {path = home .. "/Desktop/Xcode.xip", bytes = 3e9}})
 t.assertEqual(installers[1].type, "Xcode archive", "an installer's type is short")
 t.assertEqual(installers[2].type, "Disk image", "and leaves out where it is")
 t.assertEqual(installers[2].kind, "Disk image in Downloads", "the full description stays available")
@@ -138,7 +138,7 @@ t.expect(app.refs.mapSummary.text:find(" measured of ", 1, true) ~= nil, "the Ma
 t.assertEqual(app:badges().developer, developerWorkflow:presentation().total, "the Developer badge is the page's total")
 
 -- Clean Up lists read by recovery score: eligible bytes x confidence / effort.
-local cleanup = Recommendations.presentation()
+local cleanup = Suggestions:presentation()
 for _, list in ipairs({cleanup.rebuildable, cleanup.decisions}) do
 	for index = 2, #list do t.expect(list[index - 1].score >= list[index].score, "cleanup suggestions are ranked by recovery score") end
 end

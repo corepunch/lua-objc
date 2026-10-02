@@ -1,13 +1,162 @@
 local Model = require("data.model")
 local Locations = require("apps.diskmap.models.Locations")
-local Format = require("apps.diskmap.helpers.Format")
-local Cleanup = require("apps.diskmap.helpers.Cleanup")
 local Files = require("apps.diskmap.models.Files")
-local Rules = require("apps.diskmap.knowledge.CleanupRules")
+local Format = require("apps.diskmap.helpers.Format")
 local Status = require("apps.diskmap.helpers.Status")
-local Scope = require("apps.diskmap.helpers.Scope")
-local Recommendations = {}
+local Xcode = require("apps.diskmap.helpers.Xcode")
+local Rules = require("apps.diskmap.knowledge.CleanupRules")
 
+-- Cleanup suggestions: the measured locations that crossed a review
+-- threshold, ranked by what they could recover, how sure that is and how
+-- much work it takes. A view of the store: nothing is stored, the rows are
+-- computed from `locations` and `measurements` each time they are asked for.
+local Suggestions
+Suggestions = Model:extend("suggestions", {source = function() return Suggestions:ranked() end})
+
+-- A suggestion carries three separate numbers. `bytes` is the measured size
+-- of the location (what there is to review); `eligibleBytes` is what the
+-- suggestion could actually recover once every child is checked (nil when
+-- that cannot be known); the score ranks by eligible bytes, how sure we are
+-- and how much work the owner's flow takes.
+Suggestions.confidence = {High = 1, Medium = 0.6, Low = 0.3}
+Suggestions.effort = {Low = 1, Medium = 1.5, High = 2.5}
+-- Bytes to review with no eligibility proof count for this much of their size.
+Suggestions.reviewFraction = 0.2
+local SUPPORT_PLATFORMS = {devices = "iOS", ["watch-devices"] = "watchOS"}
+
+-- {eligibleBytes | nil, confidence, reason | nil} for a measured resource.
+-- A group agrees with its children: device support that holds only the newest
+-- kept version offers nothing, and simulators offer only what the minimal
+-- device set (published by the Simulators page) would remove.
+function Suggestions:eligibility(row, measurement)
+	local model = Model.db
+	local platform = SUPPORT_PLATFORMS[row.id]
+	local children = platform and model.breakdowns[row.id]
+	if children then
+		local entries = {}
+		for _, child in ipairs(children) do
+			if child.directory then
+				table.insert(entries, {platform = platform, name = child.name, path = child.name, bytes = math.floor((child.kb or 0) * 1024 + 0.5)})
+			end
+		end
+		local older = Xcode.total(Xcode.supportRows(entries), function(item) return not item.keep end)
+		return older, "Medium", older == 0 and "Only the newest version is present, and it is kept." or nil
+	end
+	-- A tool's worktree folder is reviewed worktree by worktree, so its total is
+	-- not also a suggestion once that review exists.
+	if row.page == "worktrees" and model.worktreePlan then
+		return 0, "Medium", "Reviewed worktree by worktree on the Worktrees page."
+	end
+	if row.id == "simulators" and model.simulatorPlan then
+		local plan = model.simulatorPlan
+		return plan.removalBytes, "Medium", plan.removalBytes == 0 and "The minimal device set has nothing eligible to remove." or nil
+	end
+	if row.policy == "Rebuildable" then return measurement.bytes, "High" end
+	return nil, "Low"
+end
+
+local function effortOf(row, rule)
+	if rule and rule.effort then return rule.effort end
+	if row.action == "trash" or row.action == "ownerCleanup" then return "Low" end
+	if row.page then return "Medium" end
+	return "High"
+end
+
+function Suggestions.score(value)
+	local base = value.eligibleBytes or (value.bytes * Suggestions.reviewFraction)
+	return base * Suggestions.confidence[value.confidence] / Suggestions.effort[value.effort]
+end
+-- Build folders are judged per ecosystem, not per folder: sixty 200 MB
+-- node_modules folders are 12 GB that no single folder's threshold would
+-- ever show. A group is one suggestion once its measured, unkept folders
+-- reach this total; it is Rebuildable only when every one of them is.
+Suggestions.buildGroupThreshold = 500e6
+local function buildGroups(model)
+	local groups, order = {}, {}
+	for _, row in ipairs(Locations:leaves()) do
+		local parent = row.artifact and row:parent()
+		local m = model.measurements[row.id]
+		if parent and parent.id:match("^build%-") and not row:isKept() and m and (m.status == "complete" or m.status == "partial") and (m.bytes or 0) > 0 then
+			local group = groups[parent.id]
+			if not group then
+				group = {row = parent, bytes = 0, projects = {}, count = 0, partial = false, rebuildable = true}
+				groups[parent.id] = group
+				table.insert(order, parent.id)
+			end
+			group.bytes = group.bytes + m.bytes
+			group.partial = group.partial or m.status == "partial"
+			group.rebuildable = group.rebuildable and row.policy == "Rebuildable"
+			if not group.projects[row.project or row.path] then group.projects[row.project or row.path] = true; group.count = group.count + 1 end
+		end
+	end
+	local result = {}
+	for _, id in ipairs(order) do table.insert(result, groups[id]) end
+	return result
+end
+Suggestions.buildGroups = buildGroups
+
+-- Why a measured location is not a suggestion, by id; rebuilt on every call.
+Suggestions.ineligible = {}
+function Suggestions:ranked(rules)
+	local model = Model.db
+	local result = {}
+	Suggestions.ineligible = {}
+	for _, group in ipairs(buildGroups(model)) do
+		local row = group.row
+		if group.bytes >= Suggestions.buildGroupThreshold and not row:isKept() then
+			local value = {id = row.id, name = row.name, icon = row.icon, color = row.color, group = true, projects = group.count,
+				bytes = group.bytes,
+				policy = group.rebuildable and "Rebuildable" or "Review"}
+			Format.sizeLabel(value, group.partial and "partial" or "complete", group.bytes)
+			value.impact = group.rebuildable and not group.partial and "Safe/rebuildable" or "Needs review"
+			value.priority, value.threshold = 2, Suggestions.buildGroupThreshold
+			value.eligibleBytes, value.confidence, value.effort = group.rebuildable and not group.partial and group.bytes or nil,
+				group.rebuildable and "High" or "Low", "Low"
+			value.kind = group.rebuildable and not group.partial and "rebuildable" or "decision"
+			value.subtitle = (row.subtitle or "") .. " In " .. Format.plural(group.count, "project") .. "."
+			value.evidence = "Measured " .. value.size .. " in " .. Format.plural(group.count, "project")
+			table.insert(result, value)
+		end
+	end
+	for _, row in ipairs(Locations:leaves()) do
+		local m, rule = model.measurements[row.id], (rules or Rules)[row.id]
+		if row.artifact then m = nil end
+		if not rule and (row.reviewThreshold or row.agent or row.id == "opencode-downloads" or row.id == "grok-support") then
+			rule = {threshold = row.reviewThreshold or 100e6, priority = 3, advice = row.consequence or row.subtitle}
+		end
+		if rule and m and (m.status == "complete" or m.status == "partial") and (m.bytes or 0) >= rule.threshold
+			and not row:isKept() and row.policy ~= "Essential" then
+			local value = {id = row.id, name = row.name, path = row.path, policy = row.policy, action = row.action,
+				subtitle = row.subtitle, consequence = row.consequence, icon = row.icon, color = row.color, appIcon = row.appIcon}
+			value.bytes = m.bytes
+			Format.sizeLabel(value, m.status, m.bytes)
+			value.impact = row.policy == "Rebuildable" and not value.partial and "Safe/rebuildable" or "Needs review"
+			value.priority, value.threshold = rule.priority, rule.threshold
+			value.subtitle = rule.advice
+			value.evidence = "Measured " .. value.size .. " · Review threshold " .. Format.size(rule.threshold)
+			local eligible, confidence, reason = Suggestions:eligibility(row, m)
+			value.eligibleBytes, value.confidence, value.effort = eligible, confidence, effortOf(row, rule)
+			value.kind = value.impact == "Safe/rebuildable" and "rebuildable" or "decision"
+			if eligible and eligible ~= m.bytes then
+				value.evidence = value.evidence .. " · " .. Format.size(eligible) .. " eligible after keeping what is current"
+			end
+			if reason then
+				-- Nothing to do here: the page says why instead of sending the reader
+				-- to a destination with no candidate.
+				Suggestions.ineligible[row.id] = reason
+			else
+				table.insert(result, value)
+			end
+		end
+	end
+	for _, value in ipairs(result) do value.score = Suggestions.score(value) end
+	table.sort(result, function(a, b)
+		if a.score ~= b.score then return a.score > b.score end
+		if a.bytes ~= b.bytes then return a.bytes > b.bytes end
+		return a.id < b.id
+	end)
+	return result
+end
 local function matches(row, needle)
 	return needle == "" or ((row.name or "") .. " " .. (row.subtitle or "") .. " " .. (row.path or "")):lower():find(needle, 1, true) ~= nil
 end
@@ -22,7 +171,7 @@ end
 -- A suggestion's prominent amount is what it could recover when a check
 -- proved that, and otherwise what there is to review; the meter's caption
 -- says which, so a whole-location size never reads as a recovery estimate.
-function Recommendations.amount(row)
+function Suggestions.amount(row)
 	if row.eligibleBytes and row.eligibleBytes > 0 then
 		row.shownBytes = row.eligibleBytes
 		if row.eligibleBytes ~= row.bytes or not row.size then row.size = Format.size(row.eligibleBytes) end
@@ -38,7 +187,7 @@ end
 -- catalog review thresholds. Measured ones below their threshold, kept ones
 -- and ones absent from this Mac are reported as checked, so the page shows
 -- the whole checklist and not only what crossed a line.
-function Recommendations.checked(suggested, needle)
+function Suggestions:checked(suggested, needle)
 	local model = Model.db
 	local rows, absent, total = {}, 0, 0
 	for _, row in ipairs(Locations:leaves()) do
@@ -74,13 +223,13 @@ local function candidate(row, fields)
 	for key, value in pairs(fields) do row[key] = value end
 	row.shareText = row.shareText or ""
 	row.size = row.size or Format.size(row.bytes)
-	row.score = Cleanup.score(row)
+	row.score = Suggestions.score(row)
 	return row
 end
 
 -- The recovery line the inspector shows, and the prefix that tells a row's
 -- bytes-to-review from bytes it could recover.
-function Recommendations.recovery(row)
+function Suggestions.recovery(row)
 	if row.eligibleBytes then
 		return "Estimated recoverable " .. Format.size(row.eligibleBytes) .. " · " .. (row.confidence or "Low") .. " confidence · "
 			.. (row.effort or "High") .. " effort"
@@ -94,7 +243,7 @@ end
 -- reader's own files, apps and devices, and system-managed context that
 -- offers no cleanup here. `sources` carries what other pages measured:
 -- `apps` is the Applications summary once it is known.
-function Recommendations.presentation(query, sources)
+function Suggestions:presentation(query, sources)
 	local model = Model.db
 	local needle = (query or ""):lower()
 	sources = sources or {}
@@ -102,7 +251,7 @@ function Recommendations.presentation(query, sources)
 	local rebuildable, decisions, suggested = {}, {}, {}
 	local rebuildableBytes, eligibleBytes, reviewBytes = 0, 0, 0
 	local plan = model.simulatorPlan
-	for _, row in ipairs(Cleanup.suggestions()) do
+	for _, row in ipairs(Suggestions:ranked()) do
 		suggested[row.id] = true
 		-- A partial measurement already reads "≥" in the size column.
 		row.detail = row.kind == "rebuildable" and "Rebuildable" or "Review"
@@ -126,7 +275,7 @@ function Recommendations.presentation(query, sources)
 	local elsewhere = {}
 	if files and files.reviewableOldBytes > 0 then
 		table.insert(elsewhere, candidate({id = "old-files", name = "Documents unused for a year", page = "files", filter = Files.filters:index("Unused for a year"),
-			subtitle = Format.count(files.reviewableOld) .. " of your own files over " .. Format.size(require("apps.diskmap.helpers.Inventory").summary.minimumFileBytes)
+			subtitle = Format.count(files.reviewableOld) .. " of your own files over " .. Format.size(require("apps.diskmap.models.Scans").fileSummary.minimumFileBytes)
 				.. " were not opened or changed in a year. Review them; they may be your only copy.",
 			icon = "clock.fill", color = "systemOrange", bytes = files.reviewableOldBytes, detail = "Large Files"},
 			{confidence = "Low", effort = "High", kind = "decision"}))
@@ -187,15 +336,15 @@ function Recommendations.presentation(query, sources)
 		eligibleBytes = eligibleBytes + (row.eligibleBytes or 0)
 	end
 	for _, row in ipairs(rebuildable) do eligibleBytes = eligibleBytes + (row.eligibleBytes or row.bytes) end
-	for _, row in ipairs(rebuildable) do Recommendations.amount(row) end
-	for _, row in ipairs(decisions) do Recommendations.amount(row) end
+	for _, row in ipairs(rebuildable) do Suggestions.amount(row) end
+	for _, row in ipairs(decisions) do Suggestions.amount(row) end
 	-- The first decision on the page: the highest-ranked suggestion of either kind.
 	local lead
 	for _, row in pairs({rebuildable = rebuildable[1], decisions = decisions[1]}) do
 		if not lead or row.score > lead.score or (row.score == lead.score and row.kind == "rebuildable") then lead = row end
 	end
-	local checked, absent, known = Recommendations.checked(suggested, needle)
-	local context = Recommendations.context(needle)
+	local checked, absent, known = Suggestions:checked(suggested, needle)
+	local context = Suggestions:context(needle)
 	local empty = #rebuildable + #decisions == 0
 	return {rebuildable = relative(rebuildable), decisions = relative(decisions), context = relative(context), checked = checked, lead = lead,
 		count = #rebuildable + #decisions,
@@ -206,12 +355,12 @@ end
 
 -- System-managed locations: what they hold and where macOS manages them.
 -- Context only; Diskmap offers no removal here.
-function Recommendations.context(needle)
+function Suggestions:context(needle)
 	local model = Model.db
 	local rows = {}
 	for _, row in ipairs(Locations:leaves()) do
 		local m = model.measurements[row.id] or {}
-		if row.policy == "System managed" and (m.status == "complete" or m.status == "partial") and (m.bytes or 0) >= Recommendations.contextMinimum then
+		if row.policy == "System managed" and (m.status == "complete" or m.status == "partial") and (m.bytes or 0) >= Suggestions.contextMinimum then
 			local value = {id = row.id, name = row.name, icon = row.icon, color = row.color, appIcon = row.appIcon, path = row.path,
 				bytes = m.bytes, subtitle = row.consequence or row.subtitle, detail = "System managed", shareText = ""}
 			Format.sizeLabel(value, m.status, m.bytes)
@@ -222,6 +371,31 @@ function Recommendations.context(needle)
 	table.sort(rows, function(a, b) if a.bytes ~= b.bytes then return a.bytes > b.bytes end return a.id < b.id end)
 	return rows
 end
-Recommendations.contextMinimum = 1e9
+Suggestions.contextMinimum = 1e9
 
-return Recommendations
+-- Headline for the Clean Up call to action: the same estimate Clean Up and
+-- its sidebar badge state, computed by the same presentation, so the three
+-- never name different numbers. What could be recovered leads; bytes that
+-- only a person can judge follow as bytes to review, never added to it.
+-- `sources` is what other pages measured (the Applications summary).
+function Suggestions:reclaim(sources)
+	local data = require("apps.diskmap.models.Suggestions"):presentation("", sources or {})
+	local result = {count = data.count, eligible = data.eligibleBytes, review = data.reviewBytes, top = data.lead and data.lead.name or nil}
+	if data.count == 0 then
+		result.title = "No cleanup suggestions yet"
+		result.detail = "Suggestions appear once measured caches or build data exceed their review thresholds."
+	elseif data.eligibleBytes > 0 then
+		result.title = Format.size(data.eligibleBytes) .. " could recover"
+		result.detail = data.count .. (data.count == 1 and " suggestion" or " suggestions")
+			.. (data.reviewBytes > 0 and (" · " .. Format.size(data.reviewBytes) .. " more to review") or "")
+			.. (result.top and (" · start with " .. result.top) or "")
+	else
+		-- Nothing is proven recoverable yet; lead with what can be reviewed
+		-- rather than a zero.
+		result.title = Format.size(data.reviewBytes) .. " to review"
+		result.detail = data.count .. (data.count == 1 and " suggestion" or " suggestions") .. " · nothing recoverable without review"
+	end
+	return result
+end
+
+return Suggestions

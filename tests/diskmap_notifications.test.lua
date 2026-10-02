@@ -1,8 +1,8 @@
 _G.__headless = true
+local Categories = require("apps.diskmap.models.Categories")
+local Applications = require("apps.diskmap.models.Applications")
 local t = require("TestKit")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
-local History = require("apps.diskmap.helpers.History")
 local Reminder = require("apps.diskmap.helpers.Reminder")
 local Sentinel = require("apps.diskmap.helpers.Sentinel")
 local Notifications = require("apps.diskmap.services.Notifications")
@@ -14,12 +14,12 @@ local entries = {
 	{time = 100 * day, totals = {developer = 10e9, documents = 5e9}},
 	{time = 125 * day, totals = {developer = 24e9, documents = 5.2e9}},
 }
-local reminder = Reminder.notification(entries, 125 * day)
+local reminder = Reminder.notification(Categories:changes(entries, Reminder.days, Reminder.limit, 125 * day))
 t.expect(reminder and reminder.body:find("Developer grew by 14.0 GB", 1, true), "the reminder names the category that grew")
 t.expect(not reminder.body:find("Documents", 1, true), "small growth is left out")
 t.expect(reminder.day == 1 and reminder.repeats and reminder.id == Reminder.id, "it repeats on the first of each month")
-t.assertEqual(Reminder.notification({entries[1]}), nil, "one scan is not enough history")
-local flat = Reminder.notification({entries[1], {time = 120 * day, totals = {developer = 10.1e9}}}, 120 * day)
+t.assertEqual(Reminder.notification(Categories:changes({entries[1]}, Reminder.days, Reminder.limit)), nil, "one scan is not enough history")
+local flat = Reminder.notification(Categories:changes({entries[1], {time = 120 * day, totals = {developer = 10.1e9}}}, Reminder.days, Reminder.limit, 120 * day))
 t.expect(flat and flat.body:find("Nothing grew", 1, true), "a quiet month says so")
 
 -- Sentinel recognises apps arriving in the Trash and what they left.
@@ -34,10 +34,10 @@ t.assertEqual(#apps, 1, "only apps arriving in the Trash count")
 t.assertEqual(apps[1], trash .. "/Old Editor.app", "the app bundle is recognised")
 model.breakdowns["app-containers"] = {{name = "com.old.editor", kb = 300 * 1024, directory = true}}
 model.breakdowns["user-caches"] = {{name = "com.old.editor", kb = 40 * 1024, directory = true}}
-local offer = Sentinel.offer(apps[1], "com.old.editor")
+local offer = Sentinel.offer(apps[1], "com.old.editor", Applications:data("com.old.editor", Sentinel.name(apps[1])))
 t.expect(offer and #offer.folders == 2 and offer.bytes > Sentinel.minimumBytes, "its data folders are found by bundle identifier")
 t.expect(offer.notification.body:find("of data in your Library", 1, true), "the offer says how much it left")
-t.assertEqual(Sentinel.offer(trash .. "/Tiny.app", "com.tiny.app"), nil, "apps that left little are not mentioned")
+t.assertEqual(Sentinel.offer(trash .. "/Tiny.app", "com.tiny.app", Applications:data("com.tiny.app", "Tiny")), nil, "apps that left little are not mentioned")
 
 -- The controller follows the saved flags.
 local posted, removed, flags, watchers, requested = {}, {}, {}, {}, 0

@@ -2,7 +2,6 @@ local Provider = require("apps.diskmap.services.Provider")
 local Locations = require("apps.diskmap.models.Locations")
 local Model = require("data.model")
 local FolderTree = require("apps.diskmap.helpers.FolderTree")
-local Selection = require("apps.diskmap.helpers.Selection")
 local Sectors = require("ui.sectors")
 local Format = require("apps.diskmap.helpers.Format")
 

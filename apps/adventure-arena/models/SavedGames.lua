@@ -5,7 +5,10 @@ local Model = require("data.model")
 -- without starting an engine. The store's `saves` table, keyed by gameId;
 -- every change is written at once through the store's `documents.saves`
 -- (a JSON document in the app's folder), so the model never touches files.
-local SavedGames = Model:extend("saves", {primaryKey = "gameId"})
+-- `save:adventure()` is the adventure it belongs to (models/Adventures.lua).
+local SavedGames = Model:extend("saves", {primaryKey = "gameId", relations = {
+	{"adventure", belongsTo = "adventures", key = "gameId"},
+}})
 
 -- The time a save is stamped with; tests replace it.
 SavedGames.clock = os.time

@@ -1,9 +1,8 @@
 local Provider = require("apps.diskmap.services.Provider")
 local Locations = require("apps.diskmap.models.Locations")
-local Inventory = require("apps.diskmap.helpers.Inventory")
 local Volumes = require("apps.diskmap.helpers.Volumes")
 local Format = require("apps.diskmap.helpers.Format")
-local Store = require("apps.diskmap.Store")
+local Scans = require("apps.diskmap.models.Scans")
 local Scan = {}; Scan.__index = Scan
 -- `finished(result)` runs after each completed measurement, before pages
 -- refresh, so callers can record history or remeasure related state.
@@ -20,12 +19,12 @@ function Scan:fraction()
 	local disk = self.disk
 	local used = disk and disk.totalKb and disk.freeKb and (disk.totalKb - disk.freeKb) * 1024
 	if not used or used <= 0 then return nil end
-	return math.min(Store.total(self.model) / used, 0.99)
+	return math.min(Scans:measured() / used, 0.99)
 end
 function Scan:cancel(silent)
 	self.generation = self.generation + 1
 	if self.job then self.job.cancelled = true; self.service.cancel(self.job); self.job = nil end
-	Inventory.cancel()
+	Scans:cancel()
 	if not silent then self.status = "Measurement cancelled; completed locations retained."; self:notify() end
 end
 function Scan:start()
@@ -33,25 +32,25 @@ function Scan:start()
 	local generation = self.generation
 	self.startedAt = os.time()
 	if Provider.offers(self.service, "agentEntries") then
-		local added, err = require("apps.diskmap.helpers.AgentFiles").add(self.service.agentEntries(self.model))
+		local added, err = require("apps.diskmap.models.Locations"):addAgentFiles(self.service.agentEntries(self.model))
 		if not added then self.status = "Could not register discovered resource: " .. (err and err.message or "unknown error"); self:notify(); return end
 	end
 	-- Locations macOS keeps from every app are named, not walked.
 	local protected = Provider.offers(self.service, "protectedLocations")
 	self.model.protected = protected and protected() or {}
 	local function walk()
-		local paths, ids, exclusions = Inventory.plan()
+		local paths, ids, exclusions = Scans:plan()
 		if #paths == 0 then return end
-		Inventory.begin(ids)
-		local ok, job = pcall(self.service.start, paths, exclusions, Inventory.options())
+		Scans:begin(ids)
+		local ok, job = pcall(self.service.start, paths, exclusions, Scans.options())
 		if not ok then
-			Inventory.apply(ids, {failure = tostring(job)})
+			Scans:apply(ids, {failure = tostring(job)})
 			self.status = "Could not start measurement: " .. tostring(job); self:notify(); return
 		end
 		self.job = job; self.status = "Measuring all storage categories…"; self:notify()
 		self.service.await(job, function(result)
 			if generation ~= self.generation then return end
-			self.job = nil; Inventory.apply(ids, result)
+			self.job = nil; Scans:apply(ids, result)
 			self.disk = self.service.diskSpace(self.home)
 			local seconds = math.max(0, math.floor(result.seconds or (os.time() - self.startedAt)))
 			local elapsed = seconds < 60 and (seconds .. " sec") or (math.floor(seconds / 60) .. " min " .. (seconds % 60) .. " sec")
@@ -61,7 +60,7 @@ function Scan:start()
 			self:notify()
 		end, function(progress)
 			if generation ~= self.generation or type(progress) ~= "table" or type(progress.total) ~= "number" or progress.total <= 0 then return end
-			Inventory.progress(ids, progress)
+			Scans:progress(ids, progress)
 			local completed = math.min(progress.completed or 0, progress.total)
 			-- Location counts are not an estimate of time remaining: the final
 			-- location can hold more files than every earlier one combined.
@@ -96,8 +95,8 @@ function Scan:start()
 		self.model.volumeUsage, usageReady = {}, true
 	end
 	if Provider.offers(self.service, "discoverEntries") then
-		local _, initialIds = Inventory.plan()
-		Inventory.begin(initialIds)
+		local _, initialIds = Scans:plan()
+		Scans:begin(initialIds)
 		self.status = "Discovering project build data and installers…"; self:notify()
 		self.service.discoverEntries(self.home, function(entries)
 			if generation ~= self.generation then return end

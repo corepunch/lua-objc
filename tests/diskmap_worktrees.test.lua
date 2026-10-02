@@ -1,6 +1,6 @@
 _G.__headless = true
 local t = require("TestKit")
-local Worktrees = require("apps.diskmap.models.Worktrees")
+local Worktrees = require("apps.diskmap.helpers.Worktrees")
 local Service = require("apps.diskmap.services.Worktrees")
 
 -- Parsing `git worktree list --porcelain -z`.

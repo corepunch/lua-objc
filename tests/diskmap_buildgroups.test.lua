@@ -1,14 +1,12 @@
 _G.__headless = true
 local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
 local Scan = require("apps.diskmap.services.Scan")
-local Categories = require("apps.diskmap.helpers.Categories")
-local Cleanup = require("apps.diskmap.helpers.Cleanup")
-local Recommendations = require("apps.diskmap.helpers.Recommendations")
 local Projects = require("apps.diskmap.models.Projects")
 local developerWorkflow = require("apps.diskmap.models.Workflows"):find("developer")
+local Categories = require("apps.diskmap.models.Categories")
+local Suggestions = require("apps.diskmap.models.Suggestions")
 
 -- Build folders found in projects add up per ecosystem: "Node modules:
 -- 1.2 GB in 3 projects", drillable to each project's folder.
@@ -23,7 +21,7 @@ end
 local empty = Store.new(home)
 t.expect(Scan.register(empty, {}), "an empty discovery registers nothing")
 t.expect(Locations:find("build-node-modules") == nil, "no group exists without build folders")
-t.assertEqual(#Cleanup.buildGroups(empty), 0, "no ecosystem totals without build folders")
+t.assertEqual(#Suggestions.buildGroups(empty), 0, "no ecosystem totals without build folders")
 
 local model = Store.new(home)
 local entries = {
@@ -46,10 +44,10 @@ t.assertEqual(#group:children(), 4, "a later scan adds to the group")
 -- Each folder is small; together they cross the review threshold.
 local sizes = {["nm-site"] = 200e6, ["nm-blog"] = 180e6, ["nm-shop"] = 150e6, ["nm-new"] = 90e6, ["rust-shop"] = 300e6}
 for id, bytes in pairs(sizes) do model.measurements[id] = {status = "complete", bytes = bytes} end
-local row = Categories.row("build-node-modules")
+local row = Categories:row("build-node-modules")
 t.assertEqual(row.bytes, 620e6, "the group totals its folders")
 local suggestions = {}
-for _, value in ipairs(Cleanup.suggestions()) do suggestions[value.id] = value end
+for _, value in ipairs(Suggestions:ranked()) do suggestions[value.id] = value end
 local nm = suggestions["build-node-modules"]
 t.expect(nm ~= nil, "folders under the per-folder threshold still surface as their ecosystem")
 t.expect(suggestions["nm-site"] == nil, "folders are not suggested one by one")
@@ -61,13 +59,13 @@ t.expect(suggestions["build-rust-build-output"] == nil, "an ecosystem under the 
 
 -- Every folder proven: the group is rebuildable. Keep removes a folder.
 Locations:find("nm-new").policy = "Rebuildable"
-t.assertEqual(Cleanup.suggestions()[1].impact, "Safe/rebuildable", "a fully proven group is rebuildable")
+t.assertEqual(Suggestions:ranked()[1].impact, "Safe/rebuildable", "a fully proven group is rebuildable")
 model.kept["nm-site"] = true
 local kept
-for _, value in ipairs(Cleanup.suggestions()) do if value.id == "build-node-modules" then kept = value end end
+for _, value in ipairs(Suggestions:ranked()) do if value.id == "build-node-modules" then kept = value end end
 t.expect(kept == nil, "keeping a folder takes it out of the total, below the threshold")
 model.kept["nm-site"] = nil
-local checked = Recommendations.checked({}, "")
+local checked = Suggestions:checked({}, "")
 for _, value in ipairs(checked) do t.expect(value.id ~= "nm-blog", "build folders are checked as their group, not alone") end
 
 -- One project with several artifacts stays one project on the Projects page.

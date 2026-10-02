@@ -3,7 +3,7 @@ local Model = require("data.model")
 -- The reader's settings, one row of the store's `reading` table:
 -- `ReadingSettings:current()`. Changes are row methods; the controller
 -- writes `snapshot()` to its document.
-local ReadingSettings, Settings = Model:extend("reading")
+local ReadingSettings, Settings
 
 -- The reader is a book first: New York (the system serif) by default, with
 -- San Francisco, Rounded and Mono for readers who prefer them.
@@ -44,6 +44,17 @@ local function indexOf(list, id)
 	end
 end
 
+-- A choice is one of its list's ids; the constraints refuse anything else.
+local function oneOf(list, what)
+	return function(_, id)
+		if not indexOf(list, id) then return "Unknown " .. what .. "." end
+	end
+end
+
+ReadingSettings, Settings = Model:extend("reading", {constraints = {
+	font = oneOf(FONTS, "font"), theme = oneOf(THEMES, "theme"), spacing = oneOf(SPACING, "spacing"),
+}})
+
 -- The row a saved snapshot restores to: anything unknown falls back to the
 -- defaults, and the size is clamped.
 function ReadingSettings.restore(initial)
@@ -73,8 +84,7 @@ function ReadingSettings.spacings() return SPACING end
 local function select(self, key, list, index)
 	index = tonumber(index)
 	if not index or index ~= math.floor(index) or not list[index + 1] then return false end
-	self[key] = list[index + 1].id
-	return true
+	return self:update({[key] = list[index + 1].id}) == true
 end
 
 function Settings:setFontIndex(index) return select(self, "font", FONTS, index) end

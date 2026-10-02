@@ -3,7 +3,6 @@ local Flow = require("data.flow")
 local Provider = require("apps.diskmap.services.Provider")
 local Locations = require("apps.diskmap.models.Locations")
 local Format = require("apps.diskmap.helpers.Format")
-local Inspector = require("apps.diskmap.helpers.Inspector")
 local Files = require("apps.diskmap.models.Files")
 local FolderTree = require("apps.diskmap.helpers.FolderTree")
 local Manage = require("apps.diskmap.flows.Manage")
@@ -168,7 +167,7 @@ function Rows:item(row, handlers)
 	table.insert(items, self:quickLookItem(row.path, handlers.siblings))
 	table.insert(items, self:reveal(row.path))
 	table.insert(items, separator())
-	local validate = function(path) return FolderTree.validateChange(path) end
+	local validate = function(path) return FolderTree.validateChange(path, Model.db.home, Locations:owner(path)) end
 	table.insert(items, self:moveItem(row, validate, function() handlers.changed(row.path) end))
 	local ok, reason = validate(row.path)
 	table.insert(items, {title = ok and "Move to Trash…" or ("Move to Trash — " .. tostring(reason)), systemImage = "trash", disabled = not ok,
@@ -188,7 +187,7 @@ function Rows:resource(id)
 	if not row:isLeaf() then
 		table.insert(items, {title = "Open " .. row.name .. "…", systemImage = "list.bullet", action = function() self.app.open(id) end})
 	else
-		local detail = Inspector.details(id)
+		local detail = Locations:details(id)
 		if row.action ~= "finder" and detail then
 			table.insert(items, {title = detail.manageTitle, disabled = not detail.canManage,
 				action = function()

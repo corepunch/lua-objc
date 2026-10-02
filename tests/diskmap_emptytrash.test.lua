@@ -1,10 +1,7 @@
 _G.__headless = true
 local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
-local Cleanup = require("apps.diskmap.helpers.Cleanup")
-local Inspector = require("apps.diskmap.helpers.Inspector")
 local Manage = require("apps.diskmap.flows.Manage")
 
 local model = Store.new("/Users/test")
@@ -14,7 +11,7 @@ t.assertEqual(row.action, "empty", "trash leaf authorizes emptying")
 
 model.measurements["user-trash"] = {bytes = 4e9, status = "complete"}
 t.expect(row:validateEmpty(), "complete positive trash measurement validates")
-local details = Inspector.details("user-trash")
+local details = Locations:details("user-trash")
 t.assertEqual(details.manageTitle, "Empty Trash…", "inspector offers emptying")
 t.expect(details.canManage, "inspector enables emptying for measured trash")
 
@@ -22,7 +19,7 @@ model.measurements["user-trash"] = {bytes = 0, status = "complete"}
 local zeroValid, zeroError = row:validateEmpty()
 t.assertEqual(zeroValid, false, "empty trash cannot be emptied again")
 t.assertEqual(zeroError.code, "measurement_nonpositive", "empty trash has a stable code")
-t.expect(not Inspector.details("user-trash").canManage, "inspector disables emptying for empty trash")
+t.expect(not Locations:details("user-trash").canManage, "inspector disables emptying for empty trash")
 
 model.measurements["user-trash"] = {bytes = 4e9, status = "partial"}
 local partialValid, partialError = row:validateEmpty()
@@ -37,14 +34,14 @@ t.assertEqual(keptError.code, "kept_resource", "kept trash has a stable code")
 model.kept.trash = nil
 
 local calls = 0
-local emptied, emptyError = Cleanup.emptyTrash("user-trash", {emptyTrash = function() calls = calls + 1; return true end})
+local emptied, emptyError = Manage({app = {service = {emptyTrash = function() calls = calls + 1; return true end}}}):emptyTrash("user-trash")
 t.assertEqual(emptied, true, "valid emptying reaches the service")
 t.assertEqual(emptyError, nil, "valid emptying has no error")
 t.assertEqual(calls, 1, "valid emptying runs exactly once")
-local rejected, rejectedError = Cleanup.emptyTrash("user-trash", {emptyTrash = function() return false, "locked" end})
+local rejected, rejectedError = Manage({app = {service = {emptyTrash = function() return false, "locked" end}}}):emptyTrash("user-trash")
 t.assertEqual(rejected, false, "service rejection is not reported as success")
 t.assertEqual(rejectedError.code, "empty_service", "service failure is named")
-local unknown, unknownError = Cleanup.emptyTrash("missing", {emptyTrash = function() error("must not run") end})
+local unknown, unknownError = Manage({app = {service = {emptyTrash = function() error("must not run") end}}}):emptyTrash("missing")
 t.assertEqual(unknown, false, "unknown resource cannot mutate")
 t.assertEqual(unknownError.code, "unknown_resource", "unknown resource has a stable code")
 

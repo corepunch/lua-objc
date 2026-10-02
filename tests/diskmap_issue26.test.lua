@@ -1,11 +1,9 @@
 _G.__headless = true
 local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
-local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
-local Inventory = require("apps.diskmap.helpers.Inventory")
-local Inspector = require("apps.diskmap.helpers.Inspector")
 local Rules = require("apps.diskmap.knowledge.CleanupRules")
+local Scans = require("apps.diskmap.models.Scans")
 
 local home = "/Users/test"
 local model = Store.new(home)
@@ -41,13 +39,13 @@ t.assertEqual(Locations:find("ipsw"), nil, "IPSW files have no invented catalog 
 local movies = resource("movies")
 t.assertEqual(movies.path, home .. "/Movies", "known media library keeps its actual owner path")
 t.expect(movies.mediaAccess, "personal media remains behind the explicit media opt-in")
-local paths, ids = Inventory.plan()
+local paths, ids = Scans:plan()
 local included = {}
 for index, id in ipairs(ids) do included[id] = paths[index] end
 t.assertEqual(included.movies, nil, "Movies is excluded by default")
 t.assertEqual(model.measurements.movies.status, "excluded", "excluded media is not reported as zero")
 model.includeMedia = true
-paths, ids = Inventory.plan()
+paths, ids = Scans:plan()
 included = {}
 for index, id in ipairs(ids) do included[id] = paths[index] end
 t.assertEqual(included.movies, home .. "/Movies", "explicit media opt-in measures the configured Movies library")
@@ -67,7 +65,7 @@ for _, id in ipairs({"movies", "downloads", "device-backups", "docker", "mail-lo
 	t.expect(not valid and failure.code == "invalid_action", id .. " remains outside Diskmap's deletion authority")
 end
 
-local dockerDetails = Inspector.details("docker")
+local dockerDetails = Locations:details("docker")
 t.expect(dockerDetails.canManage and dockerDetails.manageTitle == "Open Docker", "Docker inspector offers owner review without a cleanup action")
 
 os.exit(t.summary() and 0 or 1)

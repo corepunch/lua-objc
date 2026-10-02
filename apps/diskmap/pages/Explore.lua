@@ -1,15 +1,14 @@
+local FileKind = require("apps.diskmap.helpers.FileKind")
 local Locations = require("apps.diskmap.models.Locations")
 local Model = require("data.model")
-local Categories = require("apps.diskmap.helpers.Categories")
 local Files = require("apps.diskmap.models.Files")
-local Figures = require("apps.diskmap.helpers.Overview")
 local Format = require("apps.diskmap.helpers.Format")
-local Inventory = require("apps.diskmap.helpers.Inventory")
 local ListRoute = require("apps.diskmap.pages.ListRoute")
-local MapTree = require("apps.diskmap.helpers.MapTree")
 local Scope = require("apps.diskmap.helpers.Scope")
 local Selection = require("apps.diskmap.helpers.Selection")
 local Sectors = require("ui.sectors")
+local Scans = require("apps.diskmap.models.Scans")
+local Categories = require("apps.diskmap.models.Categories")
 
 -- The pages that explore where space goes: the Storage Map, Largest
 -- Locations and File Types (the Folder Map is pages/Folder.lua).
@@ -66,7 +65,7 @@ function map:pickStyle(index) self:setStyle(STYLES[(index or 0) + 1]) end
 function map:point(id)
 	self.selectedId = Selection.index(self.rows, id) and id or nil
 	if self.refs then
-		self.refs.mapHover.text = id and MapTree.describe(id, self.total) or self.hover
+		self.refs.mapHover.text = id and Categories:describe(id, self.total) or self.hover
 		Selection.show(self.refs.mapList, self.rows, self.selectedId)
 	end
 end
@@ -118,12 +117,12 @@ function map:data(state)
 	-- it is drawn again when the scan finishes.
 	local scanning = storage.scan.running == true
 	local nodes, total = {}, 0
-	if not scanning then nodes, total = MapTree.nodes(self.focus) end
-	local trail = MapTree.path(self.focus)
+	if not scanning then nodes, total = Categories:mapNodes(self.focus) end
+	local trail = Categories:path(self.focus)
 	local query = state.query or ""
 	-- Search narrows the list beside the chart, as on every other page; the
 	-- chart keeps the whole level so its proportions stay true.
-	local rows = scanning and {} or Categories.rows(self.focus ~= "" and self.focus or nil, query)
+	local rows = scanning and {} or Categories:rows(self.focus ~= "" and self.focus or nil, query)
 	table.sort(rows, function(a, b) return (a.bytes or -1) > (b.bytes or -1) end)
 	local largest = rows[1] and rows[1].bytes or 0
 	for _, row in ipairs(rows) do
@@ -131,7 +130,7 @@ function map:data(state)
 		row.relative = row.bytes and largest > 0 and row.bytes / largest or nil
 		row.shareText = row.bytes and total > 0 and string.format("%d%%", math.floor(row.bytes * 100 / total + 0.5)) or ""
 	end
-	local worth = scanning and {} or MapTree.worthALook(self.focus, 3)
+	local worth = scanning and {} or Categories:worthALook(self.focus, 3)
 	for _, item in ipairs(worth) do
 		item.markable = self.rowActions:markableResource(Locations:find(item.id))
 		item.marked = self.rowActions:isMarked(item.path)
@@ -147,7 +146,7 @@ function map:data(state)
 	for index, item in ipairs(worth) do handlers["worth_" .. index] = function() self:toggleWorth(item) end end
 	self.hover = #nodes == 0 and "" or DEFAULT_HOVER
 	if not Selection.index(rows, self.selectedId) then self.selectedId = nil end
-	local focusRow = self.focus ~= "" and Categories.row(self.focus) or nil
+	local focusRow = self.focus ~= "" and Categories:row(self.focus) or nil
 	-- The Overview counts what the disk reports as used; the Map counts
 	-- what Diskmap measured. Saying both keeps the two pages reconcilable.
 	local disk = state.disk
@@ -184,13 +183,12 @@ routes.largest = ListRoute.extend({layout = {summaryId = "largestSummary", scope
 }, limit = LARGEST.limit})
 
 function routes.largest:present(state)
-	local model = Model.db
-	local rows = Figures.largest(state.disk, LARGEST.limit, state.query)
+	local rows = Locations:largest(state.disk, LARGEST.limit, state.query)
 	local bytes = 0
 	for _, row in ipairs(rows) do bytes = bytes + row.bytes end
 	local disk = state.disk
 	local used = disk and disk.totalKb and disk.totalKb > 0 and (disk.totalKb - disk.freeKb) * 1024 or nil
-	return {lists = {largest = rows}, texts = {scopeNote = Scope.text("largest"), largestSummary = #rows == 0 and "No measured items match yet."
+	return {lists = {largest = rows}, texts = {scopeNote = Scope.text("largest", Scans:coverage()), largestSummary = #rows == 0 and "No measured items match yet."
 		or string.format("The %d largest measured locations use %s%s.", #rows, Format.size(bytes),
 			used and used >= bytes and (" of " .. Format.size(used) .. " used") or "")}}
 end
@@ -218,7 +216,7 @@ function kinds:openKind(_, _, row) if row then self:showFiles(row.kindId or row.
 
 function kinds:kindMenu(_, _, row)
 	local kindId = row.kindId or row.id
-	local kind = Files.kindById(kindId)
+	local kind = FileKind.byId(kindId)
 	return {{title = "Show Largest " .. (kind and kind.name or "Files"), systemImage = "doc.fill", action = function() self:showFiles(kindId) end}}
 end
 
@@ -281,7 +279,7 @@ function kinds:decision(kinds)
 	else
 		data.icon, data.color = "checkmark.circle.fill", "systemGreen"
 		data.title = "No large file of yours to review"
-		data.detail = "No user-owned file over " .. Format.size(Inventory.summary.minimumFileBytes) .. " was ranked. Clean Up lists other places their owners can clear."
+		data.detail = "No user-owned file over " .. Format.size(Scans.fileSummary.minimumFileBytes) .. " was ranked. Clean Up lists other places their owners can clear."
 		data.amount, data.amountCaption = Format.size(0), "could recover"
 		data.actionTitle, data.action = "Open Clean Up", "cleanup"
 	end
@@ -350,7 +348,7 @@ function kinds:data(state)
 	elseif model.files and model.files.partial then summary = summary .. " · scan coverage is incomplete" end
 	local lists = {extensions = #extensions > 0 and Selection.extensions(extensions, self.selectedId) or nil}
 	if #kinds > 0 then lists.kinds = kinds end
-	return {kinds = marks, total = Format.size(all), scope = Scope.text("kinds"), summary = summary, hasExtensions = #extensions > 0,
+	return {kinds = marks, total = Format.size(all), scope = Scope.text("kinds", Scans:coverage()), summary = summary, hasExtensions = #extensions > 0,
 		accessibilityLabel = "File types: " .. table.concat(labels, ", "), decision = decision, inventoryNote = inventoryNote,
 		headline = headline and {title = headline.name .. " · " .. headline.size .. " stored"} or {},
 		extensionsDetail = selected and ("The " .. selected.name .. " extensions that use the most space") or "The twelve extensions that use the most space",

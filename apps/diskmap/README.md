@@ -48,7 +48,7 @@ the height of AppKit's capacity cell.
   with advice for the largest actionable kind and the top twelve extensions.
   Opening a kind shows its largest files.
 - **Clean Up** — candidates from every screen ranked by one rule (eligible
-  bytes × confidence ÷ effort, `helpers/Cleanup.lua`): rebuildable data first,
+  bytes × confidence ÷ effort, `models/Suggestions.lua`): rebuildable data first,
   then *your decisions* (unused documents, user-owned installers, unused apps
   with a known last use, high-confidence leftovers, the minimal simulator set,
   leftover worktrees), then system-managed context and the checklist of known
@@ -88,7 +88,7 @@ the height of AppKit's capacity cell.
   progress, and timestamps before `git status` refreshes the index.
   Removal is `git worktree remove` without force, one confirmation, each worktree
   rechecked first; missing registrations are pruned in their own review
-  (`models/Worktrees.lua`, `services/Worktrees.lua`).
+  (`helpers/Worktrees.lua`, `services/Worktrees.lua`).
 - **Developer — what can I do about Xcode and friends?** Sections for Xcode &
   simulators, packages & toolchains, projects & editors, containers & virtual
   machines, and AI tools & models, each a ranked list of catalog locations.
@@ -416,7 +416,7 @@ independently.
 | Module | Owns |
 | --- | --- |
 | `Store.lua` | The store: the catalog's locations, measurements, Keep, scan state and what services report. Each window binds its own |
-| `models/` | The nine Lapis models (`Model:extend`), one per kind of row |
+| `models/` | The ten Lapis models (`Model:extend`), one per kind of row. Seven are stored tables; `Categories`, `Suggestions` and `Scans` are computed from them, as database views are. Only models read the store |
 | `models/Locations.lua` | The catalog's locations: find by id or path, tree relations, registration of discovered locations, Keep and where opening one goes |
 | `models/Files.lua`, `knowledge/FileKinds.lua` | Large and unused files, kinds by extension, file ages and per-file Trash eligibility |
 | `models/Applications.lua` | Installed apps, their data folders, last use and possible leftovers |
@@ -424,13 +424,16 @@ independently.
 | `models/Marks.lua` | Marked items, location refusals and parent/child de-duplication |
 | `models/Watchlist.lua` | Watched resources and folders, their previous-session baseline and change |
 | `models/Workflows.lua`, `knowledge/Workflows.lua` | The kinds of work (Developer, Music Production, …): a page's ranked rows per section, totals, presence on this Mac and sidebar badge |
-| `models/Simulators.lua`, `models/Worktrees.lua` | Device, runtime and worktree inventories, filters, summaries and validated commands |
+| `models/Scans.lua` | The running or last scan and what it writes: each location's measurement, the ranked files, coverage, what could not be read |
+| `models/Categories.lua` | The location tree with measurements rolled up: category rows, the overview's chart and shares, the map's nodes, history of totals |
+| `models/Suggestions.lua` | Cleanup suggestions ranked by eligible bytes, confidence and effort; the Clean Up page's presentation |
+| `helpers/Simulators.lua`, `helpers/Worktrees.lua`, `services/Simulators.lua` | Device, runtime and worktree inventories: filters, summaries and validated commands over an inventory a service read |
 | `catalog/` | Independent category definitions, paths, ownership and consequences |
-| `routes.lua`, `pages/` | Every page by route name; `pages/ListRoute.lua` is the base route of the list pages and `pages/SheetRoute.lua` of the sheets |
+| `routes.lua`, `pages/` | Every page by route name, one route file per page or small group; `pages/ListRoute.lua` is the base route of the list pages. `pages/Sheets.lua` gathers the sheets in `pages/sheets/`, which extend `pages/SheetRoute.lua` |
 | `flows/Rows.lua`, `flows/Keep.lua`, `flows/Manage.lua` | Row menus and marks, Keep, and acting on one location: action code every page shares |
-| `helpers/` | Pure computation and formatting: categories, the overview's figures, inventory transitions, recommendations, the simulator plan, maps, parsers of service output |
+| `helpers/` | Pure computation and formatting over rows given as arguments: file kinds, path guards, the folder tree, the simulator plan, parsers of service output. No helper reads the store, a model or a file (`tests/diskmap_layers.test.lua`) |
 | `helpers/Constraints.lua` | Named validation results for registration, Keep and Watch changes and Trash mutations |
-| `controllers/` | The shell: sidebar navigation, menu commands and the scan's progress window |
+| `controllers/` | The shell: sidebar navigation, menu commands, the scan's progress window, and `SheetController`, which presents every sheet |
 | `views/pages/Page.etlua` | The list page. Every page that ranks storage in lists is this template and a `layout` table: header buttons, stat tiles, sections (title, filter, buttons, empty states, list) and a footnote |
 | `services/Provider.lua`, `services/Mock.lua`, `services/System.lua`, `services/Scanner.lua`, `src/plugins/storage/StorageScan.m` | Provider selection, synthetic filesystem, actual system integration and native bulk metadata enumeration |
 | `views/` | All presentation, etlua loops and reusable partials |

@@ -29,6 +29,10 @@ clock = 300
 saves:record({ gameId = "zork", seed = 7, commands = { "open mailbox", "read leaflet" }, room = "West of House" })
 t.assertEqual(saves:latest().gameId, "zork", "playing again moves a story to the front")
 t.assertEqual(#saves:find("zork").commands, 2, "a save replaces the previous one for the same story")
+local firstGame = Adventures:all()[1]
+saves:record({ gameId = firstGame.id, seed = 1, commands = { "look" } })
+t.expect(saves:find(firstGame.id):adventure() == firstGame, "a save answers the adventure it belongs to")
+saves:remove(firstGame.id)
 t.assertEqual(#written.games, 2, "every saved story is persisted")
 
 Store.new { documents = { saves = memory } }
