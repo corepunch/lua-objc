@@ -56,8 +56,8 @@ $(ROOT)/lua/%.o: $(LUA)/%.c scripts/ipad/build.mk
 build/generated/UIKit.lua.h: lua/embedded/UIKit.lua
 	@mkdir -p $(@D)
 	xxd -i -n UIKit_lua $< $@
-$(ROOT)/LuaStudio: $(OBJECTS) $(HOST) ios/LuaRuntime/LuaRuntime.h src/uikit_module.m $(FRAGMENTS) build/generated/UIKit.lua.h src/plugins/git/Git.c $(LIBGIT2) scripts/ipad/build.mk $(SIM_ENTITLEMENTS) $(SIM_DER)
-	xcrun --sdk $(SDK) clang $(FLAGS) -fobjc-arc -Iios/LuaRuntime -Isrc -Ibuild -Ivendor/libgit2/include $(HOST) src/uikit_module.m src/plugins/git/Git.c $(OBJECTS) $(LIBGIT2) $(FRAMEWORKS) $(SIM_LINK_FLAGS) -o $@
+$(ROOT)/LuaStudio: $(OBJECTS) $(HOST) ios/LuaRuntime/LuaRuntime.h src/uikit_module.m $(FRAGMENTS) build/generated/UIKit.lua.h src/plugins/git/Git.c src/plugins/speech/Speech.m $(LIBGIT2) scripts/ipad/build.mk $(SIM_ENTITLEMENTS) $(SIM_DER)
+	xcrun --sdk $(SDK) clang $(FLAGS) -fobjc-arc -Iios/LuaRuntime -Isrc -Ibuild -Ivendor/libgit2/include $(HOST) src/uikit_module.m src/plugins/git/Git.c src/plugins/speech/Speech.m $(OBJECTS) $(LIBGIT2) $(FRAMEWORKS) $(SIM_LINK_FLAGS) -o $@
 app: $(ROOT)/LuaStudio
 	python3 scripts/ipad/bundle.py --binary $< --bundle $(BUNDLE) --sdk $(SDK) \
 		--identifier $(BUNDLE_ID) --minimum $(IOS_MIN) --app "$(APP_DIR)" \

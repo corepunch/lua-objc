@@ -67,7 +67,7 @@ build/UIKit.dylib: $(UIKIT_RUNTIME_SRC) $(UIKIT_RUNTIME_FRAGMENTS) $(GENERATED_D
 	xcrun --sdk iphonesimulator $(CC) $(CFLAGS) -dynamiclib $(IOS_LUA_LOOKUP_FLAGS) \
 		-Ibuild -framework UIKit -framework CoreGraphics -framework CoreText -framework WebKit -framework SceneKit \
 		-framework Foundation -framework QuartzCore -framework Symbols -framework UserNotifications \
-		-framework Security -framework AVFAudio -framework AVFoundation -framework Speech \
+		-framework Security -framework AVFAudio -framework AVFoundation \
 		-o $@ $(UIKIT_RUNTIME_SRC)
 
 uikit: build/UIKit.dylib
@@ -208,14 +208,14 @@ $(PACKAGER): src/packager/packager.m lua/packager/paths.lua
 
 $(HOST_BINARY): $(IOS_LUA_A) $(IOS_HOST_SRCS) ios/LuaRuntime/LuaRuntime.h $(UIKIT_RUNTIME_SRC) \
 		$(UIKIT_RUNTIME_FRAGMENTS) $(GENERATED_DIR)/UIKit.lua.h \
-		ios/LuaRuntime/Info.plist ios/LuaRuntime/AppIcon.png src/plugins/git/Git.c $(IOS_LIBGIT2_A)
+		ios/LuaRuntime/Info.plist ios/LuaRuntime/AppIcon.png src/plugins/git/Git.c src/plugins/speech/Speech.m $(IOS_LIBGIT2_A)
 	@test -n "$(IOS_SDK)" || { echo "iPhone Simulator SDK missing; set DEVELOPER_DIR"; exit 1; }
 	@echo "Building iOS host..."
 	@mkdir -p $(HOST_BUNDLE)
 	@$(IOS_CC) $(IOS_CFLAGS) \
 		-framework UIKit -framework CoreText -framework Foundation -framework CoreGraphics -framework QuartzCore -framework Symbols -framework UserNotifications -framework Security -framework WebKit -framework SceneKit -framework AVFoundation -framework Speech \
 		-o $(HOST_BUNDLE)/LuaRuntime \
-		$(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) src/plugins/git/Git.c $(IOS_LUA_A) \
+		$(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) src/plugins/git/Git.c src/plugins/speech/Speech.m $(IOS_LUA_A) \
 		$(IOS_LIBGIT2_A) $(LIBGIT2_LIBS)
 	@cp ios/LuaRuntime/Info.plist $(HOST_BUNDLE)/Info.plist
 	@cp ios/LuaRuntime/AppIcon.png $(HOST_BUNDLE)/AppIcon.png

@@ -79,6 +79,12 @@ function Controller.new(options)
 		readingOptions = self.readingOptions,
 		savedGames = self.savedGames,
 		haptics = options.haptics or require("ui.haptics"),
+		-- Dictation is the Speech plugin (src/plugins/speech), which the iOS
+		-- hosts link; elsewhere the composer offers no microphone.
+		speech = options.speech or (function()
+			local ok, Speech = pcall(require, "Speech")
+			return ok and Speech or nil
+		end)(),
 		after = options.after or function(seconds, callback)
 			if type(ns.async) ~= "function" then return end
 			ns.async(function()

@@ -1412,27 +1412,6 @@ function UIKit.GlassEffectContainer(props)
 	return applyLayout(bridge._glassEffectContainer(content, props.spacing or 0), layout)
 end
 
---- Creates a speech-to-text session that does not present the software keyboard.
---- @prop onEvent function required. Receives `(state, text, message)` updates.
---- @prop locale string optional. Locale identifier; defaults to the system locale.
---- @example local speech = UIKit.SpeechRecognizer(onEvent); speech:start()
---- @platform UIKit Speech and AVAudioSession.
-function UIKit.SpeechRecognizer(onEvent, locale)
-	assert(type(onEvent) == "function", "SpeechRecognizer requires an event callback")
-	local session = bridge._speechRecognizer(onEvent, locale or "")
-	local recognizer = {}
-	function recognizer:start()
-		bridge._speechRecognizerAction(session, "start")
-	end
-	function recognizer:stop()
-		bridge._speechRecognizerAction(session, "stop")
-	end
-	function recognizer:cancel()
-		bridge._speechRecognizerAction(session, "cancel")
-	end
-	return recognizer
-end
-
 --- Opens or navigates to a destination when activated.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.

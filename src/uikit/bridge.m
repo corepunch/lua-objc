@@ -203,7 +203,6 @@ static void motion_invalidate_layout(UIView *view) {
 #include "../shared/paragraph.m"
 #include "paragraph.m"
 #include "mesh_gradient.m"
-#include "speech_recognition.m"
 #include "text_field.m"
 #include "hosting.m"
 #include "preview.m"
@@ -288,8 +287,6 @@ static const luaL_Reg bridge_lib[] = {
 	{"_materialView", bridge_UIKitControls_materialView},
 	{"_glassEffect", bridge_UIKitControls_glassEffect},
 	{"_glassEffectContainer", bridge_UIKitControls_glassEffectContainer},
-	{"_speechRecognizer", bridge_UIKitSpeechRecognition_create},
-	{"_speechRecognizerAction", bridge_UIKitSpeechRecognition_action},
 	{"_webView", bridge_UIKitControls_webView},
 	{"_webViewAction", bridge_UIKitControls_webViewAction},
 	{"_hapticsAvailable", bridge_UIKit_hapticsAvailable},

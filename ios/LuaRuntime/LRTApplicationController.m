@@ -6,6 +6,7 @@
 
 int luaopen_UIKitNative(lua_State *L);
 int luaopen_Git(lua_State *L);
+int luaopen_Speech(lua_State *L);
 
 static UIWindow *gHostWindow;
 
@@ -193,10 +194,12 @@ static int bridge_read_file(lua_State *L) {
 	lua_setfield(_L, -2, "_readFile");
 	lua_pop(_L, 1);
 	// iOS cannot load plugin dylibs from package.cpath, so the host links the
-	// Git module (src/plugins/git) and offers it to require().
+	// Git and Speech modules (src/plugins) and offers them to require().
 	luaL_getsubtable(_L, LUA_REGISTRYINDEX, LUA_PRELOAD_TABLE);
 	lua_pushcfunction(_L, luaopen_Git);
 	lua_setfield(_L, -2, "Git");
+	lua_pushcfunction(_L, luaopen_Speech);
+	lua_setfield(_L, -2, "Speech");
 	lua_pop(_L, 1);
 
 	lua_getglobal(_L, "package");

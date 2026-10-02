@@ -127,3 +127,5 @@ fragments, each plugin is an independent Lua module with no duplicate UI runtime
 metadata scans to Diskmap through the existing native plugin loader.
 [Git](plugins/git/README.md) is libgit2 as a Lua module; the iOS hosts link it
 statically and preload it, since iOS cannot load plugin dylibs or run `git`.
+[Speech](plugins/speech/README.md) is on-device dictation for iOS, linked and
+preloaded the same way.

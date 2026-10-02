@@ -33,6 +33,8 @@ function Controller.new(options)
 		dismissSheet = assert(options.dismissSheet, "sheet dismisser is required"),
 		-- Moments: a haptic and a toast when the score changes.
 		haptics = options.haptics,
+		-- The Speech module, or nil where dictation is unavailable.
+		speechModule = options.speech,
 		after = options.after or function() end,
 		reduceMotion = options.reduceMotion or function()
 			return type(options.ns.reduceMotion) == "function" and options.ns.reduceMotion() == true
@@ -59,9 +61,9 @@ function Controller:show(id, fresh)
 		return false
 	end
 	self:cancelDictation()
-	local speechAvailable = type(self.ns.SpeechRecognizer) == "function"
+	local speechAvailable = self.speechModule ~= nil
 	if speechAvailable then
-		self.speech = self.ns.SpeechRecognizer(function(state, text, message)
+		self.speech = self.speechModule.recognizer(function(state, text, message)
 			self:onSpeechEvent(state, text, message)
 		end)
 	end

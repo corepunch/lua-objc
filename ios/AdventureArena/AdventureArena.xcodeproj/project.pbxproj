@@ -30,6 +30,7 @@
 		76976B71763A4EA3B08F01B1 /* loslib.c in Sources */ = {isa = PBXBuildFile; fileRef = 6B8D2AD9C2F29DCB7500B919 /* loslib.c */; };
 		7B6886B85A0B222A0EED24F8 /* LRTResourceLoader.m in Sources */ = {isa = PBXBuildFile; fileRef = 3E8C37603E2F1A927883CDA0 /* LRTResourceLoader.m */; };
 		7B8D88191D77240B149E3659 /* uikit_module.m in Sources */ = {isa = PBXBuildFile; fileRef = FE432A81CC667E335374D0C1 /* uikit_module.m */; };
+		5EEC40A1D2B34C7F9A1E6B01 /* Speech.m in Sources */ = {isa = PBXBuildFile; fileRef = 5EEC40A1D2B34C7F9A1E6B02 /* Speech.m */; };
 		86CFF77B96B523AD8328ADBB /* lutf8lib.c in Sources */ = {isa = PBXBuildFile; fileRef = 1BFCA743BDE64335B50D5583 /* lutf8lib.c */; };
 		8C12E2D16B2FFD0347395911 /* llex.c in Sources */ = {isa = PBXBuildFile; fileRef = E28DF639751BC02BDDF46479 /* llex.c */; };
 		8FFA651328474AC5568E4B53 /* lgc.c in Sources */ = {isa = PBXBuildFile; fileRef = DB5F6A5B1FAE0FCD61D5489B /* lgc.c */; };
@@ -113,6 +114,7 @@
 		EA02DE418BEC7A3383138C81 /* lopcodes.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lopcodes.c; path = "../../vendor/lua-5.4.8/src/lopcodes.c"; sourceTree = "<group>"; };
 		F34A923D6072A0AF6205907D /* lcode.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = lcode.c; path = "../../vendor/lua-5.4.8/src/lcode.c"; sourceTree = "<group>"; };
 		FE432A81CC667E335374D0C1 /* uikit_module.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = uikit_module.m; path = ../../src/uikit_module.m; sourceTree = "<group>"; };
+		5EEC40A1D2B34C7F9A1E6B02 /* Speech.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = Speech.m; path = ../../src/plugins/speech/Speech.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -251,6 +253,7 @@
 			isa = PBXGroup;
 			children = (
 				FE432A81CC667E335374D0C1 /* uikit_module.m */,
+				5EEC40A1D2B34C7F9A1E6B02 /* Speech.m */,
 			);
 			name = src;
 			sourceTree = "<group>";
@@ -368,6 +371,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7B8D88191D77240B149E3659 /* uikit_module.m in Sources */,
+				5EEC40A1D2B34C7F9A1E6B01 /* Speech.m in Sources */,
 				2C8357330BA07165E7A9CD73 /* lapi.c in Sources */,
 				DE9C6F295284E6DB74D29569 /* lauxlib.c in Sources */,
 				94ACFD23A49229559105B363 /* lbaselib.c in Sources */,

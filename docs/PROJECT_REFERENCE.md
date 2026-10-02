@@ -837,7 +837,7 @@ Links follow the typewriter reveal: a link is ruled, and can be tapped, only
 once typing has reached it. A retained template gives new links to the same
 native view. Headless tests read links with `bridge._paragraphLinks(view)`
 and choose an item with `bridge._paragraphPerformLink(view, link, item)`.
-The shared link model and bridge are in `src/shared/paragraph_links.m`.
+The shared link model, reveal and bridge are in `src/shared/paragraph.m`.
 
 **Typewriter reveal.** `revealedCharacters` is what SwiftUI typewriter
 effects build with `TextRenderer`: the whole paragraph is laid out once, so
@@ -984,16 +984,6 @@ without `<Commands>`; a window that declares them replaces the menu bar.
 Headless tests read the installed bar with `bridge._mainMenuSnapshot()`,
 choose an item with `bridge._performMainMenuItem("Menu", "Item", ...)` and
 query help search with `bridge._searchHelp(query[, perform])`.
-
-### `UIKit.SpeechRecognizer(callback, locale)`
-
-Creates a microphone dictation session that writes recognition results through
-the callback without focusing a text field or opening the software keyboard.
-The callback receives `(state, text, message)` with states `starting`,
-`listening`, `partial`, `processing`, `finished`, `error`, or `idle`. Call
-`start()`, `stop()`, or `cancel()` on the returned session. The locale defaults
-to the device's current locale. The host app must include the microphone and
-speech recognition usage descriptions in its `Info.plist`.
 
 ### `WebView{...}` and `ui.webpage`
 

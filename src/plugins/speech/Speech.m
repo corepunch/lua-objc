@@ -1,8 +1,23 @@
-#import <AVFoundation/AVFoundation.h>
-#import <Speech/Speech.h>
+// Speech — on-device dictation for Lua apps without the software keyboard.
+// SFSpeechRecognizer transcribes the microphone through AVAudioEngine; each
+// change of state reaches Lua as onEvent(state, text, message) on the main
+// thread: "starting", "listening", "partial" (text so far), "processing",
+// "finished" (final text), "idle" or "error" (message). The module uses
+// public Speech and AVFoundation APIs only. A Lua state never sees an event
+// after it closes: closing runs each session's finalizer, which cancels it
+// and forgets the state.
 
-@interface LuaSpeechRecognition : NSObject
-@property(nonatomic, strong) LuaReg *callback;
+#import <AVFoundation/AVFoundation.h>
+#import <Foundation/Foundation.h>
+#import <Speech/Speech.h>
+#import <lua.h>
+#import <lauxlib.h>
+
+static const char *SessionMetatable = "Speech.Recognizer";
+
+@interface LuaSpeechSession : NSObject
+@property(nonatomic) lua_State *L;           // the main thread; NULL once closed
+@property(nonatomic) int callback;           // registry reference to onEvent
 @property(nonatomic, copy) NSString *localeIdentifier;
 @property(nonatomic, strong) SFSpeechRecognizer *recognizer;
 @property(nonatomic, strong) SFSpeechAudioBufferRecognitionRequest *request;
@@ -13,42 +28,23 @@
 @property(nonatomic) BOOL listening;
 @property(nonatomic) BOOL finishing;
 @property(nonatomic) BOOL tapInstalled;
-- (instancetype)initWithCallback:(LuaReg *)callback localeIdentifier:(NSString *)localeIdentifier;
-- (void)start;
-- (void)stop;
-- (void)cancel;
-- (void)emitState:(NSString *)state text:(NSString *)text message:(NSString *)message;
-- (void)beginListeningForGeneration:(NSUInteger)generation;
 - (void)cancelSilently;
-- (void)stopAudioCapture;
-- (void)completeWithText:(NSString *)text;
-- (void)failWithMessage:(NSString *)message;
 @end
 
-@implementation LuaSpeechRecognition
-
-- (instancetype)initWithCallback:(LuaReg *)callback localeIdentifier:(NSString *)localeIdentifier {
-	self = [super init];
-	if (self) {
-		_callback = callback;
-		_localeIdentifier = [localeIdentifier copy];
-	}
-	return self;
-}
+@implementation LuaSpeechSession
 
 - (void)emitState:(NSString *)state text:(NSString *)text message:(NSString *)message {
-	LuaReg *callback = self.callback;
-	if (!callback) return;
 	dispatch_async(dispatch_get_main_queue(), ^{
-		lua_State *L = lua_reg_live_state(callback);
-		if (!L || !lua_reg_push(callback)) {
-			[self cancelSilently];
-			return;
-		}
+		lua_State *L = self.L;
+		if (!L) return;
+		lua_rawgeti(L, LUA_REGISTRYINDEX, self.callback);
 		lua_pushstring(L, state.UTF8String ?: "");
 		lua_pushstring(L, text.UTF8String ?: "");
 		lua_pushstring(L, message.UTF8String ?: "");
-		lua_objc_pcall(L, 3, 0, "speech recognition");
+		if (lua_pcall(L, 3, 0, 0) != LUA_OK) {
+			NSLog(@"Speech: %s", lua_tostring(L, -1));
+			lua_pop(L, 1);
+		}
 	});
 }
 
@@ -59,10 +55,10 @@
 	self.starting = YES;
 	[self emitState:@"starting" text:@"" message:@""];
 
-	__weak LuaSpeechRecognition *weakSelf = self;
+	__weak LuaSpeechSession *weakSelf = self;
 	[SFSpeechRecognizer requestAuthorization:^(SFSpeechRecognizerAuthorizationStatus status) {
 		dispatch_async(dispatch_get_main_queue(), ^{
-			LuaSpeechRecognition *session = weakSelf;
+			LuaSpeechSession *session = weakSelf;
 			if (!session || generation != session.generation) return;
 			if (status != SFSpeechRecognizerAuthorizationStatusAuthorized) {
 				[session failWithMessage:@"Speech recognition access is denied."];
@@ -70,7 +66,7 @@
 			}
 			[AVAudioApplication requestRecordPermissionWithCompletionHandler:^(BOOL granted) {
 				dispatch_async(dispatch_get_main_queue(), ^{
-					LuaSpeechRecognition *current = weakSelf;
+					LuaSpeechSession *current = weakSelf;
 					if (!current || generation != current.generation) return;
 					if (!granted) {
 						[current failWithMessage:@"Microphone access is denied."];
@@ -123,13 +119,13 @@
 	self.listening = YES;
 	self.finishing = NO;
 
-	__weak LuaSpeechRecognition *weakSelf = self;
+	__weak LuaSpeechSession *weakSelf = self;
 	self.task = [recognizer recognitionTaskWithRequest:request resultHandler:^(SFSpeechRecognitionResult *result, NSError *error) {
 		if (!result && !error) return;
 		NSString *transcript = result.bestTranscription.formattedString ?: @"";
 		BOOL isFinal = result.isFinal;
 		dispatch_async(dispatch_get_main_queue(), ^{
-			LuaSpeechRecognition *session = weakSelf;
+			LuaSpeechSession *session = weakSelf;
 			if (!session || generation != session.generation) return;
 			if (error) {
 				[session failWithMessage:error.localizedDescription ?: @"Speech recognition failed."];
@@ -228,30 +224,61 @@
 	[self emitState:@"error" text:@"" message:message];
 }
 
-- (void)dealloc {
-	[self cancelSilently];
-	[_callback dispose];
-}
-
 @end
 
-static int bridge_UIKitSpeechRecognition_create(lua_State *L) {
+typedef struct {
+	void *session; // CFBridgingRetain'd LuaSpeechSession
+} SessionBox;
+
+static LuaSpeechSession *check_session(lua_State *L) {
+	SessionBox *box = luaL_checkudata(L, 1, SessionMetatable);
+	if (!box->session) luaL_error(L, "speech recognizer is closed");
+	return (__bridge LuaSpeechSession *)box->session;
+}
+
+// Speech.recognizer(onEvent [, locale]) -> recognizer; locale defaults to the
+// user's.
+static int recognizer(lua_State *L) {
 	luaL_checktype(L, 1, LUA_TFUNCTION);
 	const char *locale = luaL_optstring(L, 2, "");
-	LuaSpeechRecognition *session = [[LuaSpeechRecognition alloc]
-		initWithCallback:lua_reg_create(L, 1, YES)
-		localeIdentifier:[NSString stringWithUTF8String:locale]];
-	push_objc(L, session, "nsobject");
+	LuaSpeechSession *session = [[LuaSpeechSession alloc] init];
+	lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_MAINTHREAD);
+	session.L = lua_tothread(L, -1);
+	lua_pop(L, 1);
+	lua_pushvalue(L, 1);
+	session.callback = luaL_ref(L, LUA_REGISTRYINDEX);
+	session.localeIdentifier = @(locale);
+	SessionBox *box = lua_newuserdatauv(L, sizeof(SessionBox), 0);
+	box->session = (void *)CFBridgingRetain(session);
+	luaL_setmetatable(L, SessionMetatable);
 	return 1;
 }
 
-static int bridge_UIKitSpeechRecognition_action(lua_State *L) {
-	LuaSpeechRecognition *session = (LuaSpeechRecognition *)lua_objc_check_object(
-		L, 1, [LuaSpeechRecognition class], "SpeechRecognizer");
-	const char *action = luaL_checkstring(L, 2);
-	if (strcmp(action, "start") == 0) [session start];
-	else if (strcmp(action, "stop") == 0) [session stop];
-	else if (strcmp(action, "cancel") == 0) [session cancel];
-	else return luaL_error(L, "unknown speech-recognition action: %s", action);
+static int session_start(lua_State *L) { [check_session(L) start]; return 0; }
+static int session_stop(lua_State *L) { [check_session(L) stop]; return 0; }
+static int session_cancel(lua_State *L) { [check_session(L) cancel]; return 0; }
+
+static int session_gc(lua_State *L) {
+	SessionBox *box = luaL_checkudata(L, 1, SessionMetatable);
+	if (!box->session) return 0;
+	LuaSpeechSession *session = CFBridgingRelease(box->session);
+	box->session = NULL;
+	[session cancelSilently];
+	luaL_unref(L, LUA_REGISTRYINDEX, session.callback);
+	session.L = NULL;
 	return 0;
+}
+
+int luaopen_Speech(lua_State *L) {
+	if (luaL_newmetatable(L, SessionMetatable)) {
+		const luaL_Reg methods[] = {{"start", session_start}, {"stop", session_stop}, {"cancel", session_cancel}, {NULL, NULL}};
+		luaL_newlib(L, methods);
+		lua_setfield(L, -2, "__index");
+		lua_pushcfunction(L, session_gc);
+		lua_setfield(L, -2, "__gc");
+	}
+	lua_pop(L, 1);
+	const luaL_Reg functions[] = {{"recognizer", recognizer}, {NULL, NULL}};
+	luaL_newlib(L, functions);
+	return 1;
 }
