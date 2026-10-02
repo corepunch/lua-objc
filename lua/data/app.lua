@@ -1,10 +1,10 @@
 -- The launcher for an app described by a manifest (lua/data/manifest.lua).
--- An app's `init.lua` returns the manifest path:
+-- An app's `init.lua` returns the launch class built from its manifest:
 --
---   return "apps/diskmap/app.xml"
+--   return require("data.app").launcher("demo/storage/app.xml")
 --
--- and the host (src/main.m) turns that into `App.launcher(path)`, the class
--- the launch contract already expects: `new()` and `createWindow()`. From the
+-- the class the launch contract already expects: `new()` and `createWindow()`
+-- (so every host, macOS and iOS, starts it unchanged). From the
 -- manifest the framework builds the window, the sidebar, the Go menu and one
 -- generic page controller per page, and it provides two launch options for
 -- every app:
@@ -42,6 +42,9 @@ Launcher.__index = Launcher
 -- reaches every model's `new` (a mock service runs the real models);
 -- `options.args` replaces the process arguments.
 function App.launcher(path, defaults)
+	local manifest = Manifest.load(path)
+	-- An app with a root controller coordinates its own window.
+	if manifest.controller then return require(dirname(path):gsub("/", ".") .. "." .. manifest.controller) end
 	local class = {}
 	class.__index = class
 	setmetatable(class, { __index = Launcher })
@@ -53,7 +56,7 @@ end
 
 function Launcher.create(path, options)
 	local self = setmetatable({}, Launcher)
-	self.manifest = Manifest.parse(xml.parse(read(path)))
+	self.manifest = Manifest.load(path)
 	self.dir = dirname(path)
 	-- Module path of the app: apps/diskmap -> apps.diskmap
 	self.module = self.dir:gsub("/", ".")
@@ -105,7 +108,7 @@ function Launcher:rows()
 	for _, section in ipairs(self.manifest.sections) do
 		if section.title then table.insert(rows, { section = true, title = section.title }) end
 		for _, page in ipairs(section.pages) do
-			table.insert(rows, { id = page.id, name = page.title, icon = page.icon, color = page.color })
+			table.insert(rows, { id = page.id, name = page.attrs.sidebar or page.title, icon = page.icon, color = page.color })
 		end
 	end
 	return rows

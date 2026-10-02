@@ -18,8 +18,9 @@ local STYLES = {"rings", "rectangles"}
 -- at once. Folders below the first scan's depth are measured when opened.
 -- `handlers.volumeName()` names the startup disk, and `handlers.opened()`
 -- tells the root controller a folder was opened so it can show this page.
-function Controller.new(model, service, actions, handlers)
-	return setmetatable({model = model, service = service, actions = actions, handlers = handlers or {},
+function Controller.new(context)
+	return setmetatable({model = context.model, service = context.service, actions = context.actions,
+		handlers = {volumeName = context.volumeName},
 		style = STYLES[1], coloring = FolderTree.colorings[1].id, generation = 0}, Controller)
 end
 

@@ -275,7 +275,8 @@ function Recommendations.details(model, row)
 		actionTitle = "Open " .. (names[target] or target or "Details") .. "…"}
 end
 
-function Recommendations.page(sources)
+function Recommendations.page(context)
+	local sources = context.cleanupSources
 	return {id = "cleanup", layout = LAYOUT, details = Recommendations.details, children = {lead = "Decision", tips = "Tips"}, present = function(model, state)
 		local data = Recommendations.presentation(model, state.query, sources())
 		local lists, hidden = {}, {}

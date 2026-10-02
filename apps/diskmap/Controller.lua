@@ -4,7 +4,6 @@ local xml = require("ui.xml")
 local Overview = require("apps.diskmap.models.Overview")
 local Categories = require("apps.diskmap.models.Categories")
 local Destinations = require("apps.diskmap.models.Destinations")
-local Largest = require("apps.diskmap.models.Largest")
 local Recommendations = require("apps.diskmap.models.Recommendations")
 local Workflow = require("apps.diskmap.models.Workflow")
 local Workflows = require("apps.diskmap.knowledge.Workflows")
@@ -16,37 +15,20 @@ local TourController = require("apps.diskmap.controllers.TourController")
 local CleanupController = require("apps.diskmap.controllers.CleanupController")
 local InspectorController = require("apps.diskmap.controllers.InspectorController")
 local ManagementController = require("apps.diskmap.controllers.ManagementController")
-local SimulatorsController = require("apps.diskmap.controllers.SimulatorsController")
-local WorktreesController = require("apps.diskmap.controllers.WorktreesController")
 local SdksController = require("apps.diskmap.controllers.SdksController")
 local SettingsController = require("apps.diskmap.controllers.SettingsController")
 local ActionsController = require("apps.diskmap.controllers.ActionsController")
 local ReviewController = require("apps.diskmap.controllers.ReviewController")
 local HistoryController = require("apps.diskmap.controllers.HistoryController")
 local NavigationController = require("apps.diskmap.controllers.NavigationController")
-local OverviewController = require("apps.diskmap.controllers.OverviewController")
-local MapController = require("apps.diskmap.controllers.MapController")
-local FolderController = require("apps.diskmap.controllers.FolderController")
-local FilesController = require("apps.diskmap.controllers.FilesController")
 local Files = require("apps.diskmap.models.Files")
-local PageController = require("apps.diskmap.controllers.PageController")
-local KindsController = require("apps.diskmap.controllers.KindsController")
-local ApplicationsController = require("apps.diskmap.controllers.ApplicationsController")
-local XcodeController = require("apps.diskmap.controllers.XcodeController")
-local ProjectsController = require("apps.diskmap.controllers.ProjectsController")
-local DisksController = require("apps.diskmap.controllers.DisksController")
-local DuplicatesController = require("apps.diskmap.controllers.DuplicatesController")
-local TopicsController = require("apps.diskmap.controllers.TopicsController")
-local Guide = require("apps.diskmap.models.Guide")
 local Help = require("apps.diskmap.models.Help")
-local UpdatesController = require("apps.diskmap.controllers.UpdatesController")
-local FilesystemController = require("apps.diskmap.controllers.FilesystemController")
 local NotificationsController = require("apps.diskmap.controllers.NotificationsController")
 local CommandsController = require("apps.diskmap.controllers.CommandsController")
 local SnapshotController = require("apps.diskmap.controllers.SnapshotController")
 local WatchlistController = require("apps.diskmap.controllers.WatchlistController")
-local WatchedController = require("apps.diskmap.controllers.WatchedController")
 local OnboardingController = require("apps.diskmap.controllers.OnboardingController")
+local Manifest = require("data.manifest")
 local Controller = {}; Controller.__index = Controller
 local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
 -- Services grow optional features; a provider that lacks one simply does not
@@ -87,13 +69,6 @@ function Controller.new(service)
 		rescan = function() self.scan:start() end,
 		history = function() self.review:close(); self.history:open(self.window) end,
 	})
-	self.simulators = SimulatorsController.new(self.model, service, function() self.scan:start() end)
-	self.simulators.log = function(...) self.review:log(...) end
-	self.simulators.published = function() self:updateRows() end
-	self.worktrees = WorktreesController.new(self.model, service, function() self.scan:start() end)
-	self.worktrees.log = function(...) self.review:log(...) end
-	self.worktrees.published = function() self:updateRows() end
-	self.worktrees.showPage = function(id) self:show(id) end
 	self.sdks = SdksController.new(self.model, service)
 	-- Every list, menu and link opens a resource through this one function.
 	local open = function(id) self:open(id) end
@@ -113,60 +88,37 @@ function Controller.new(service)
 	-- A live scan compares with the saved Mock HDD snapshot, the previous
 	-- state of this Mac; Mock HDD itself has nothing earlier to compare with.
 	if not self.mock then self.snapshots = self:snapshotComparison(Provider.savedSnapshotPath(), true) end
-	local files = FilesController.new(self.model, service, self.actions)
-	local applications = ApplicationsController.new(self.model, service, self.actions, function(remeasure)
-		if remeasure then self.scan:start() else self:updateRows() end
-	end)
-	applications.showPage = function(id) self:show(id) end
 	-- What other pages measured, for every page that states Clean Up's totals,
 	-- so they all name the same number.
-	local function cleanupSources() return {apps = applications:summary()} end
-	self.cleanupSources = cleanupSources
-	-- Pages that list catalog resources share one controller; each is a table.
-	local resourcePage = function(page)
-		return PageController.new(self.model, self.actions, {open = open,
-			show = function(id, filter) self:showFiltered(id, filter) end,
-			settings = function(section) self.service.openSettings(section) end}, page)
-	end
-	self.pages = {
-		overview = OverviewController.new(self.model, {
-			open = open, navigate = function(id) self:show(id) end,
-			map = function(id) self.pages.map:setFocus(id); self:show("map") end,
-			reclaim = function() self:show("cleanup") end,
-			sources = function() return self.cleanupSources and self.cleanupSources() end,
-			access = function() self:grantAccess() end,
-			menu = function(id) return self.actions:resource(id) end,
-			changes = function() if self.snapshots then self.snapshots:open(self.window) end end,
-		}),
-		map = MapController.new(self.model, self.actions, Provider.mapStyle(App.args())),
-		folder = FolderController.new(self.model, service, self.actions, {
-			volumeName = function() return self:state().volumeName end,
-		}),
-		largest = resourcePage(Largest.page),
-		files = files,
-		kinds = KindsController.new(self.model, function(kind) files:focus(kind); self:show("files", true) end,
-			function(id, filter) self:showFiltered(id, filter and Files.filterIndex(filter)) end,
-			function() self.scan:start() end, function() self:search("kinds", "") end),
-		duplicates = DuplicatesController.new(self.model, service, self.actions),
-		cleanup = resourcePage(Recommendations.page(cleanupSources)),
-		applications = applications,
-		xcode = XcodeController.new(self.model, service, self.actions),
-		projects = ProjectsController.new(self.model, service, self.actions, function() self.scan:start() end),
-		simulators = self.simulators,
-		worktrees = self.worktrees,
-		disks = DisksController.new(service, self.actions),
-		updates = UpdatesController.new(self.model, service, self.actions, function(id) self:show(id) end, cleanupSources),
-		guide = TopicsController.new({id = "guide", topic = "GuideTopic", noun = "guide topic",
-			summary = "Where macOS keeps things, why they grow and what is safe to do about them. Sizes are measured on this Mac.",
-			present = function(query) return Guide.presentation(self.model, query) end,
-			follow = function(topic) return topic.open and function() open(topic.open) end end}),
-		filesystem = FilesystemController.new(self.model, service, open),
-		watched = WatchedController.new(self.model, service, self.watchlist, self.actions, {
-			open = open, closed = function() self:show("overview") end,
-		}),
+	self.cleanupSources = function() return {apps = self.pages.applications:summary()} end
+	-- Every page of app.xml is built from one context, by the controller its
+	-- manifest entry names. `pages` fills as they are built; pages look each
+	-- other up when they run, not when they are built.
+	self.pages = {}
+	local context = {
+		model = self.model, service = service, actions = self.actions, pages = self.pages,
+		open = open,
+		show = function(id, remount) self:show(id, remount) end,
+		showFiltered = function(id, filter) self:showFiltered(id, filter) end,
+		search = function(id, text) self:search(id, text) end,
+		rescan = function() self.scan:start() end,
+		refresh = function() self:updateRows() end,
+		log = function(...) self.review:log(...) end,
+		cleanupSources = self.cleanupSources,
+		watchlist = self.watchlist,
+		mapStyle = Provider.mapStyle(App.args()),
+		volumeName = function() return self:state().volumeName end,
+		access = function() self:grantAccess() end,
+		openChanges = function() if self.snapshots then self.snapshots:open(self.window) end end,
+		shortcuts = function() return self.shortcuts or {} end,
+		command = function(name) self.commandActions[name]() end,
+		links = CommandsController.links(),
 	}
-	self.files, self.applications = files, applications
-	for _, workflow in ipairs(Workflows.list) do self.pages[workflow.id] = resourcePage(Workflow.page(workflow)) end
+	for _, entry in ipairs(Manifest.load("apps/diskmap/app.xml").order) do
+		self.pages[entry.id] = require("apps.diskmap.controllers." .. entry.controller).new(context, entry)
+	end
+	self.files, self.applications = self.pages.files, self.pages.applications
+	self.simulators, self.worktrees = self.pages.simulators, self.pages.worktrees
 	self.commands = CommandsController.new(self.model, service, {
 		show = function(id) self:show(id) end,
 		destination = function() return self.destination end,
@@ -189,18 +141,6 @@ function Controller.new(service)
 		tour = function() self.tour:open(self.window) end,
 	})
 	self.commandActions = self.commands:actions()
-	-- A help topic's button opens a page or runs a menu command. Its title
-	-- and the shortcut list come from the command layer, not the help text.
-	local links = CommandsController.links()
-	self.pages.help = TopicsController.new({id = "help", topic = "HelpTopic", noun = "help topic",
-		summary = "How to find what uses your storage and free up space safely. To search help from anywhere, use the Help menu.",
-		present = function(query) return Help.presentation(query, self.shortcuts or {}, links) end,
-		follow = function(topic)
-			local target = topic.target
-			return topic.link and function()
-				if self.pages[target] then self:show(target) else self.commandActions[target]() end
-			end
-		end})
 	return self
 end
 -- Shows a page filtered to `text`, as if typed into the toolbar search:

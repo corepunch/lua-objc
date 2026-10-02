@@ -15,7 +15,8 @@ local STYLES = {"rings", "rectangles"}
 -- rows carry the same menu as every other resource list.
 -- `style` ("rings" or "rectangles") picks the initial chart; unknown values
 -- fall back to rings.
-function Controller.new(model, actions, style)
+function Controller.new(context)
+	local model, actions, style = context.model, context.actions, context.mapStyle
 	for _, known in ipairs(STYLES) do if known == style then return setmetatable({model = model, actions = actions, focus = "", style = style}, Controller) end end
 	return setmetatable({model = model, actions = actions, focus = "", style = STYLES[1]}, Controller)
 end

@@ -41,9 +41,15 @@ t.expect(not Workflow.present(model, Workflows.find("design"), nil), "the fonts 
 local ids = {}
 for _, workflow in ipairs(Workflows.list) do
 	t.expect(not ids[workflow.id], "workflow ids are unique: " .. workflow.id); ids[workflow.id] = true
-	for _, key in ipairs({"name", "icon", "color", "section", "noun", "summary", "empty", "footnote"}) do
+	for _, key in ipairs({"noun", "summary", "empty", "footnote"}) do
 		t.expect(type(workflow[key]) == "string" and workflow[key] ~= "", workflow.id .. " has " .. key)
 	end
+	-- Its sidebar row, header, icon and color belong to its page in app.xml.
+	local row = require("apps.diskmap.controllers.NavigationController").page(workflow.id)
+	for _, key in ipairs({"name", "icon", "color"}) do
+		t.expect(row and type(row[key]) == "string" and row[key] ~= "", workflow.id .. " has " .. key .. " in app.xml")
+	end
+	t.assertEqual(row and row.workflow, workflow.id, workflow.id .. " is gated on its own work")
 	t.expect(#workflow.sections > 0, workflow.id .. " has sections")
 	for _, section in ipairs(workflow.sections) do
 		for _, id in ipairs(section.groups or {}) do

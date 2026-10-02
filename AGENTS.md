@@ -99,8 +99,8 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   ```
   init.lua never self-starts. It returns the class; the framework calls
   `class.new():createWindow()`. A manifest app (`app.xml`) has no
-  `Controller.lua`: `init.lua` returns the manifest path and the framework
-  builds the window, sidebar, menu and a generic controller per page.
+  `Controller.lua`: `init.lua` returns `require("data.app").launcher("<app>/app.xml")` and the
+  framework builds the window, sidebar, menu and a generic controller per page.
 - **XML templates are cross-platform.** View XML files live in `views/` and
   use the tag vocabulary in `lua/ui/xml.lua` (`<Label>`, `<VStack>`, `<Button>`,
   etc.). The platform module (`ns`) is injected by the caller; the same XML

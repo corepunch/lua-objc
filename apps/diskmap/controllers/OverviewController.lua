@@ -15,8 +15,15 @@ local LARGEST = {preview = 6}
 -- navigate(id) another sidebar destination, map(id) the Map inside a category
 -- (or the whole map), menu(id) a resource's actions and changes() the full
 -- list of changes since the snapshot.
-function Controller.new(model, handlers)
-	return setmetatable({model = model, handlers = handlers}, Controller)
+function Controller.new(context)
+	return setmetatable({model = context.model, handlers = {
+		open = context.open, navigate = context.show,
+		map = function(id) context.pages.map:setFocus(id); context.show("map") end,
+		reclaim = function() context.show("cleanup") end,
+		sources = context.cleanupSources, access = context.access,
+		menu = function(id) return context.actions:resource(id) end,
+		changes = context.openChanges,
+	}}, Controller)
 end
 
 function Controller:mount(host, state)

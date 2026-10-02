@@ -120,7 +120,8 @@ function Workflow.badge(model, workflow)
 end
 
 -- The page a PageController presents for `workflow`.
-function Workflow.page(workflow)
+function Workflow.page(context, entry)
+	local workflow = require("apps.diskmap.knowledge.Workflows").find(entry.id)
 	local links, buttons = {}, {}
 	for index, link in ipairs(workflow.links or {}) do
 		links["link_" .. index] = link.page and {page = link.page} or {open = link.open}
@@ -140,7 +141,7 @@ function Workflow.page(workflow)
 			or (data.total .. " " .. workflow.summary
 				.. (data.rebuildable > 0 and (" · " .. data.rebuildableSize .. " rebuildable now") or ""))
 		return {layout = {buttons = buttons, sections = structure, scopeNote = workflow.id == "developer" and "Developer tools includes Xcode, package managers, containers and AI tools. Overview’s Developer category covers a different set by owner; these totals overlap." or nil, footnote = {text = workflow.footnote},
-				empty = #structure == 0 and {id = "workflowEmpty", systemImage = workflow.icon, description = workflow.empty,
+				empty = #structure == 0 and {id = "workflowEmpty", systemImage = entry.icon, description = workflow.empty,
 					title = data.calculating and ("Measuring " .. workflow.noun .. "…") or ("No " .. workflow.noun .. " found")} or nil},
 			lists = lists, texts = texts, links = links}
 	end}

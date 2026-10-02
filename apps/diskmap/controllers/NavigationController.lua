@@ -1,59 +1,29 @@
 local ns = require("AppKit")
 local xml = require("ui.xml")
+local Manifest = require("data.manifest")
 local Workflows = require("apps.diskmap.knowledge.Workflows")
 local Controller = {}; Controller.__index = Controller
 
--- Sidebar destinations in the order a person needs them: where storage
--- stands and what to do first (Overview, Clean Up) lead without a header,
--- then the pages that each end in a cleanup decision, then the tools for
--- browsing storage, the disk and system-managed storage, the kinds of work
--- this Mac does, and how macOS lays it out. A row with `workflow` appears
--- only on a Mac that does that work (knowledge/Workflows.lua, #52), and a
--- section with no rows to show is left out. Section rows are native
--- source-list group headers and cannot be selected. `key` is the page's
--- ⌘-digit shortcut in the Go menu. A row is also its page's header: `icon`
--- in a `color` badge beside `title` (the row's `name` unless it differs), so
--- the sidebar, the Go menu and the page never disagree.
+-- Sidebar destinations come from the app manifest (apps/diskmap/app.xml): the
+-- pages that lead the sidebar without a header (Overview, Clean Up), then the
+-- pages that each end in a cleanup decision, the tools for browsing storage,
+-- the disk and system-managed storage, the kinds of work this Mac does, and
+-- how macOS lays it out. A row with `workflow` appears only on a Mac that does
+-- that work (knowledge/Workflows.lua, #52), and a section with no rows to show
+-- is left out. Section rows are native source-list group headers and cannot be
+-- selected. `key` is the page's ⌘-digit shortcut in the Go menu. A row is also
+-- its page's header: `icon` in a `color` badge beside `title` (the row's `name`
+-- unless it differs), so the sidebar, the Go menu and the page never disagree.
 local function destinations()
-	local list = {
-		{id = "overview", name = "Overview", icon = "chart.pie.fill", color = "systemBlue", key = "1"},
-		{id = "cleanup", name = "Clean Up", icon = "sparkles", color = "systemIndigo", key = "2"},
-		{section = true, title = "Free Up Space"},
-		{id = "applications", name = "Applications", icon = "square.grid.3x3.fill", color = "systemBlue", key = "3"},
-		{id = "files", name = "Large Files", icon = "doc.fill", color = "systemTeal", key = "4"},
-		{id = "duplicates", name = "Duplicates", icon = "doc.on.doc.fill", color = "systemTeal"},
-		{id = "simulators", name = "Simulators", icon = "iphone", color = "systemBlue", workflow = "developer"},
-		{id = "worktrees", name = "Worktrees", icon = "arrow.triangle.branch", color = "systemPurple", workflow = "developer"},
-		{id = "projects", name = "Projects", icon = "folder.fill.badge.gearshape", color = "systemOrange", workflow = "developer"},
-		{section = true, title = "Explore"},
-		{id = "map", name = "Storage Map", icon = "circle.circle.fill", color = "systemIndigo", key = "5"},
-		{id = "folder", name = "Folder Map", icon = "folder.fill", color = "systemBlue"},
-		{id = "largest", name = "Largest Locations", icon = "chart.bar.fill", color = "systemOrange", key = "6"},
-		{id = "kinds", name = "File Types", icon = "square.grid.2x2.fill", color = "systemPink", key = "7"},
-		{section = true, title = "System"},
-		{id = "disks", name = "Disks & Volumes", icon = "internaldrive.fill", color = "systemGray"},
-		{id = "updates", name = "Updates & Snapshots", icon = "arrow.triangle.2.circlepath", color = "systemGray"},
-	}
-	-- Pages that belong to one kind of work follow its own page.
-	local companions = {developer = {
-		{id = "xcode", name = "Xcode", icon = "hammer.circle.fill", color = "systemBlue", key = "9", workflow = "developer"},
-	}}
-	local section
-	for _, workflow in ipairs(Workflows.list) do
-		if workflow.section ~= section then
-			section = workflow.section
-			table.insert(list, {section = true, title = section})
+	local list = {}
+	for _, section in ipairs(Manifest.load("apps/diskmap/app.xml").sections) do
+		if section.title then table.insert(list, {section = true, title = section.title}) end
+		for _, page in ipairs(section.pages) do
+			local sidebar = page.attrs.sidebar
+			table.insert(list, {id = page.id, name = sidebar or page.title, title = sidebar and page.title or nil,
+				icon = page.icon, color = page.color, key = page.key, workflow = page.attrs.workflow})
 		end
-		table.insert(list, {id = workflow.id, name = workflow.sidebar or (workflow.id == "developer" and "Dev tools" or workflow.name), title = workflow.id == "developer" and "Developer tools" or workflow.name, icon = workflow.icon,
-			color = workflow.color, key = workflow.key, workflow = workflow.id})
-		for _, row in ipairs(companions[workflow.id] or {}) do table.insert(list, row) end
 	end
-	for _, row in ipairs({
-		{section = true, title = "Learn"},
-		{id = "guide", name = "Storage Guide", icon = "book.fill", color = "systemTeal"},
-		{id = "filesystem", name = "macOS Folders", icon = "apple.logo", color = "systemGray"},
-		{id = "help", name = "Diskmap Help", icon = "questionmark.circle.fill", color = "systemBlue"},
-	}) do table.insert(list, row) end
 	return list
 end
 Controller.destinations = destinations()

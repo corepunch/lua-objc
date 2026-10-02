@@ -12,9 +12,21 @@
 --   	</Section>
 --   </App>
 --
+-- `<App controller="Controller">` names a class of the app (a module path
+-- inside it) that coordinates the whole window — a root controller with
+-- services, scanning, sheets — and replaces the framework's launcher; it still
+-- takes its pages, sidebar rows and Go menu from this file.
+--
 -- `class` is a module path inside the app, `view` a template in views/,
 -- `controller` a class in controllers/ for a page that coordinates (a sheet,
--- a batch flow). A model's dependencies are in its own file, not here.
+-- a batch flow). A page with a controller may omit `view` and `model`: the
+-- controller is its code-behind and owns what it shows. A model's
+-- dependencies are in its own file, not here.
+--
+-- Any other attribute of a page (`workflow="developer"`, `header="..."`) is
+-- kept in `page.attrs` for the app's controllers. `sidebar="Dev tools"` is a
+-- shorter name for the sidebar row; `listed="false"` keeps a page out of the
+-- sidebar and the Go menu (a page opened from elsewhere).
 local Manifest = {}
 
 local function fail(message) error("manifest: " .. message, 0) end
@@ -28,19 +40,23 @@ function Manifest.parse(nodes)
 		end
 	end
 	if not root then fail("no <App> element") end
-	local manifest = { name = root.attrs.name or "App", startup = root.attrs.startup,
+	local manifest = { name = root.attrs.name or "App", startup = root.attrs.startup, controller = root.attrs.controller,
 		models = {}, sections = {}, pages = {}, order = {} }
 	local function page(node, section)
-		for _, key in ipairs({ "id", "title", "view", "model" }) do
-			if not node.attrs[key] or node.attrs[key] == "" then fail("<Page> needs " .. key) end
-		end
 		local attrs = node.attrs
+		for _, key in ipairs({ "id", "title" }) do
+			if not attrs[key] or attrs[key] == "" then fail("<Page> needs " .. key) end
+		end
+		if not attrs.controller and (not attrs.view or not attrs.model) then
+			fail("page " .. attrs.id .. " needs view and model, or a controller")
+		end
 		if manifest.pages[attrs.id] then fail("page " .. attrs.id .. " is declared twice") end
 		local entry = { id = attrs.id, title = attrs.title, icon = attrs.icon, color = attrs.color, key = attrs.key,
-			view = attrs.view, model = attrs.model, controller = attrs.controller, section = section }
+			view = attrs.view, model = attrs.model, controller = attrs.controller, section = section,
+			listed = attrs.listed ~= "false", attrs = attrs }
 		manifest.pages[entry.id] = entry
 		table.insert(manifest.order, entry)
-		table.insert(section.pages, entry)
+		if entry.listed then table.insert(section.pages, entry) end
 	end
 	local current = { pages = {} }
 	table.insert(manifest.sections, current)
@@ -71,11 +87,15 @@ function Manifest.parse(nodes)
 			end
 		end
 	end
-	if #manifest.sections[1].pages == 0 then table.remove(manifest.sections, 1) end
+	-- A section left with no listed page (pages after it that are unlisted) is
+	-- no group in the sidebar or the Go menu.
+	for index = #manifest.sections, 1, -1 do
+		if #manifest.sections[index].pages == 0 then table.remove(manifest.sections, index) end
+	end
 	if #manifest.order == 0 then fail("the app has no pages") end
 	local keys = {}
 	for _, entry in ipairs(manifest.order) do
-		if not manifest.models[entry.model] then
+		if entry.model and not manifest.models[entry.model] then
 			fail("page " .. entry.id .. " names the model " .. entry.model .. ", which the manifest does not declare")
 		end
 		if entry.key then
@@ -86,6 +106,12 @@ function Manifest.parse(nodes)
 	manifest.startup = manifest.startup or manifest.order[1].id
 	if not manifest.pages[manifest.startup] then fail("startup page " .. manifest.startup .. " is not declared") end
 	return manifest
+end
+
+-- Parses the manifest file at `path`.
+function Manifest.load(path)
+	local xml = require("ui.xml")
+	return Manifest.parse(xml.parse(xml.source(path) or error("manifest: cannot read " .. path, 0)))
 end
 
 -- The launch options in `args` (the process arguments): `--page=<id>` and

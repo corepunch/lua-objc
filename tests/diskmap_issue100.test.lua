@@ -7,7 +7,7 @@ local Recommendations = require("apps.diskmap.models.Recommendations")
 
 -- Clean Up leads with actions: no summary tiles, files and apps before the
 -- review inventory, and the checked inventory collapsed.
-local page = Recommendations.page(function() return nil end)
+local page = Recommendations.page({cleanupSources = function() return nil end})
 t.expect(page.layout.tiles == nil, "Clean Up has no summary tiles ahead of its lists")
 local order = {}
 for _, section in ipairs(page.layout.sections) do table.insert(order, section.id) end

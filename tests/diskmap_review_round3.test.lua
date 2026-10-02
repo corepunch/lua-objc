@@ -136,7 +136,7 @@ app:show('kinds');app.page:update({query='no-match-for-review'})
 t.assertEqual(app.page.refs.decisionAction.title,'Clear Search','no-match file types offer clear search')
 t.expect(app.page.refs.kinds==nil and app.page.refs.extensions==nil,'no-match types suppress inventory scaffolding')
 local Projects=require('apps.diskmap.controllers.ProjectsController')
-local project=Projects.new(app.model,service,app.actions,function() end)
+local project=Projects.new({model=app.model,service=service,actions=app.actions,rescan=function() end})
 local group={path=liveFolder,name='Review project',artifacts={{path=liveFolder..'/node_modules',name='Node modules',bytes=9000,size='9 KB'}}}
 app.review:toggle(item(liveFolder))
 t.expect(project:included(group) and not project:isMarked(group),'project distinguishes covered artifacts from exact marks')

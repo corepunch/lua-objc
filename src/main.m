@@ -819,30 +819,6 @@ int lua_objc_main(int argc, char *argv[]) {
 	 * for tests, so the class itself must never arrive as the first argument.
 	 */
 	/*
-	 * An app described by a manifest returns its path (`return
-	 * "apps/x/app.xml"`); lua/data/app.lua turns it into the launch class
-	 * below. require() also leaves a string on top (the module's file name,
-	 * ending .lua), which is not a manifest.
-	 */
-	if (lua_isstring(L, -1) && !lua_isnumber(L, -1)) {
-		size_t length = 0;
-		const char *manifest = lua_tolstring(L, -1, &length);
-		if (length > 4 && strcmp(manifest + length - 4, ".xml") == 0) {
-			lua_getglobal(L, "require");
-			lua_pushstring(L, "data.app");
-			if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
-				report_lua_error(L, "manifest");
-				return 1;
-			}
-			lua_getfield(L, -1, "launcher");
-			lua_pushstring(L, manifest);
-			if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
-				report_lua_error(L, "manifest");
-				return 1;
-			}
-		}
-	}
-	/*
 	 * require() pushes two values: the module and the filename it was loaded
 	 * from. Pop any trailing non-table values so the class table is on top.
 	 */

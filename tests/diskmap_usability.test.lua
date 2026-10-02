@@ -60,12 +60,12 @@ t.expect(not Categories.coverage(model, scan.disk):find("not attributed", 1, tru
 local chart = require("apps.diskmap.models.Overview").chart(model, scan.service.diskSpace())
 t.assertEqual(chart.marks[1].label, "Not measured yet", "unfinished chart names the pending allocation")
 t.expect(chart.explanation:find("still arriving", 1, true), "unfinished chart explains its gray sector")
-local apps = require("apps.diskmap.controllers.ApplicationsController").new(model, {}, {}, function() end)
+local apps = require("apps.diskmap.controllers.ApplicationsController").new({model = model, service = {}, actions = {}})
 t.assertEqual(apps:summary(), nil, "live file findings do not imply app-data breakdowns are ready")
-local files = require("apps.diskmap.controllers.FilesController").new(model, {}, {
+local files = require("apps.diskmap.controllers.FilesController").new({model = model, service = {}, actions = {
 	file = function() return {} end, annotate = function(_, rows) return rows end,
 	isMarked = function() return false end, isIncluded = function() return false end,
-})
+}})
 files:mount(ns.VStack {}, {query = ""})
 t.assertEqual(files.refs.files.rowCount, 1, "partial file appears in the native table")
 t.expect(files.refs.summary.text:find("Found so far", 1, true), "file page names partial results")
@@ -103,7 +103,7 @@ live.devices[runtime][1].state = "Shutdown"
 t.expect(Simulators.validate("erase", Simulators.rows(Simulators.discover(service, model.home, live))[1]), "verified shutdown device can be reviewed for erase")
 service.simulatorDevices = function(done) done(nil, "Device state could not be checked. Retry.") end
 service.simulatorRuntimes = function(done) done(nil, "Runtimes could not be read. Retry.") end
-local simulator = SimulatorController.new(model, service, function() end)
+local simulator = SimulatorController.new({model = model, service = service, rescan = function() end})
 simulator:mount(ns.VStack {}, {query = ""})
 t.expect(simulator.refs.devicesDetail.text:find("could not be checked for availability", 1, true) ~= nil, "failed availability check is not a fabricated zero")
 t.expect(not simulator.refs.devicesDetail.text:find("unavailable,", 1, true), "runtime failure does not promise availability")

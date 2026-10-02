@@ -33,8 +33,11 @@ local VIEWS = "apps/diskmap/views/"
 -- A page with behaviour of its own (it reads a folder, runs a search, keeps
 -- a filter) is a class from `Page.extend(id, view)`: it inherits `attach`,
 -- `render` and `dispose`, and supplies `mount` and `update`.
-function Page.new(model, actions, handlers, page)
-	return setmetatable({model = model, actions = actions, handlers = handlers, page = page, id = page.id, view = page.view}, Page)
+function Page.new(context, entry)
+	local page = require("apps.diskmap.models." .. entry.attrs.source).page(context, entry)
+	return setmetatable({model = context.model, actions = context.actions, page = page, id = page.id, view = page.view,
+		handlers = {open = context.open, show = context.showFiltered,
+			settings = function(section) context.service.openSettings(section) end}}, Page)
 end
 
 function Page.extend(id, view)

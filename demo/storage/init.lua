@@ -1,1 +1,1 @@
-return "demo/storage/app.xml"
+return require("data.app").launcher("demo/storage/app.xml")

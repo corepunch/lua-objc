@@ -3,8 +3,8 @@ local Filesystem = require("apps.diskmap.models.Filesystem")
 local Controller = Page.extend("filesystem", "Filesystem")
 
 -- `open(id)` shows a catalog resource in Diskmap.
-function Controller.new(model, service, open)
-	return setmetatable({model = model, service = service, open = open}, Controller)
+function Controller.new(context)
+	return setmetatable({model = context.model, service = context.service, open = context.open}, Controller)
 end
 
 function Controller:mount(host, state)

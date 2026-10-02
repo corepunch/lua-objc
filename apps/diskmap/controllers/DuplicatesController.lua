@@ -30,9 +30,10 @@ local LAYOUT = {
 -- The Duplicates page. Reading contents is a privacy boundary, so nothing
 -- is read until the person adds a folder and starts a search, and only
 -- that folder is read. Results last for the session.
-function Controller.new(model, service, actions)
+function Controller.new(context)
+	local service = context.service
 	local load = rawget(service, "loadFolders")
-	return setmetatable({model = model, service = service, actions = actions,
+	return setmetatable({model = context.model, service = service, actions = context.actions,
 		roots = load and load("duplicates") or {}}, Controller)
 end
 

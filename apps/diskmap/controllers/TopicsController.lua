@@ -10,7 +10,8 @@ local Controller = Page.extend(nil, "Topics")
 --   noun          "No <noun> mentions …", when a search finds nothing
 --   present(query) → {chapters, empty}
 --   follow(topic)  what the topic's button does, or nil for no button
-function Controller.new(page)
+function Controller.new(context, entry)
+	local page = require("apps.diskmap.models." .. entry.attrs.source).page(context, entry)
 	return setmetatable({page = page, id = page.id}, Controller)
 end
 

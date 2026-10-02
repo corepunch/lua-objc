@@ -69,7 +69,7 @@ local calls, confirmed, refreshed = {}, false, 0
 local service = {command = function(argv, completion) table.insert(calls, {argv = argv, done = completion}) end,
 	decode = function() return data end, confirmAction = function() return confirmed end,
 	reveal = function() end, openSettings = function() end, openOwner = function() end}
-local controller = SimulatorController.new(model, service, function() refreshed = refreshed + 1 end)
+local controller = SimulatorController.new({model = model, service = service, rescan = function() refreshed = refreshed + 1 end})
 controller.inventory = data; controller.selected = Simulators.rows(data)[1]
 t.expect(not controller:perform("erase"), "cancel confirmation never launches a command")
 t.assertEqual(#calls, 0, "cancel has no side effects")
@@ -173,7 +173,7 @@ local runtimeList = {[runtimeId] = {identifier = runtimeId, runtimeIdentifier = 
 	platformIdentifier = "com.apple.platform.iphonesimulator", deletable = true, sizeBytes = 8.4e9}}
 service.simulatorRuntimes = function(completion) completion(runtimeList) end
 local host = ns.VStack {}
-local simulatorUI = SimulatorController.new(model, service, function() end)
+local simulatorUI = SimulatorController.new({model = model, service = service, rescan = function() end})
 simulatorUI:mount(host, {query = ""})
 simulatorUI:finish(simulatorUI.loadToken, data, runtimeList)
 t.assertEqual(simulatorUI.refs.filter.className, "NSSegmentedControl", "device filters are a segmented control")

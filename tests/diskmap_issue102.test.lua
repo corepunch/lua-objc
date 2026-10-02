@@ -160,7 +160,7 @@ local replies = {}
 local runtimes = delayed.simulatorRuntimes
 delayed.simulatorRuntimes = function(done) table.insert(replies, function() runtimes(done) end) end
 local model = Model.new(delayed.home)
-local simulators = SimulatorsController.new(model, delayed, function() end)
+local simulators = SimulatorsController.new({model = model, service = delayed, rescan = function() end})
 simulators:load()
 t.expect(simulators.busy and simulators.loading, "a background read is pending before the page mounts")
 simulators:mount(ns.VStack {}, {query = ""})
@@ -176,7 +176,7 @@ t.expect(model.simulatorPlan ~= nil, "and the plan is published for Clean Up")
 t.expect(simulators.refs.retry.enabled, "Retry is available again")
 -- A read that completes while the page is closed still records the inventory.
 replies = {}
-local closed = SimulatorsController.new(Model.new(delayed.home), delayed, function() end)
+local closed = SimulatorsController.new({model = Model.new(delayed.home), service = delayed, rescan = function() end})
 closed:load(); closed:mount(ns.VStack {}, {query = ""}); closed:dispose()
 for _, reply in ipairs(replies) do reply() end
 t.expect(closed.loaded and not closed.busy and closed.model.simulatorPlan ~= nil, "a read that finishes while the page is closed publishes its plan")
@@ -185,7 +185,7 @@ t.expect(closed.refs.summary.text:find("stored in", 1, true), "and the next visi
 
 -- Simulators: keep choices, recoverable bytes and the review action sit
 -- together, before the plan's list; the full inventory is collapsed.
-local plain = SimulatorsController.new(Model.new(service.home), service, function() end)
+local plain = SimulatorsController.new({model = Model.new(service.home), service = service, rescan = function() end})
 plain:mount(ns.VStack {}, {query = ""})
 local planRefs = plain.planRefs
 local order = {}

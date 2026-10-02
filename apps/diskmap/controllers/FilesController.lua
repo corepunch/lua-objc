@@ -30,8 +30,8 @@ local LAYOUT = {
 
 -- Large Files: the individual files the last scan ranked, with filters for
 -- files unused for a year, installers and media. `actions` builds row menus.
-function Controller.new(model, service, actions)
-	return setmetatable({model = model, service = service, actions = actions, filterIndex = 1}, Controller)
+function Controller.new(context)
+	return setmetatable({model = context.model, service = context.service, actions = context.actions, filterIndex = 1}, Controller)
 end
 
 -- File Types opens this page narrowed to one kind.

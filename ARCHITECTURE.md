@@ -422,8 +422,8 @@ the root `Controller.lua` alone may create `ns.Window`). Pre-existing violations
 are listed in the test and the list may only shrink.
 
 `init.lua` never self-starts. It returns the class; the framework calls
-`class.new():createWindow()`. A manifest app instead returns the path of its
-`app.xml` and the framework builds that class (`lua/data/app.lua`). No module-level function controllers, no loose
+`class.new():createWindow()`. A manifest app instead returns the class the framework
+builds from its `app.xml` (`lua/data/app.lua`). No module-level function controllers, no loose
 table hierarchies. Flat `apps/<appname>.lua` shims are forbidden.
 
 Larger apps follow Laravel/PHP-style composition: focused domain models own
