@@ -1,0 +1,37 @@
+<% --[[ One cleanup decision, the first thing a page offers: what to review and
+  why, what it could recover, and the action that starts it, on one line the
+  way System Settings › General › Storage pairs each recommendation with its
+  button. Bound to a Decision record (schemas/Decision.xml): put it in a
+  container with `context="$lead"`. `id` prefixes the refs: <id>, <id>Title,
+  <id>Detail, <id>Amount, <id>Caption, <id>Action, <id>Secondary. The amount
+  names itself: `amountCaption` is "could recover" for bytes a check proved
+  removable and "to review" or "total stored" for everything else. ]] %>
+<GroupBox id="<%= id %>" visible="$shown">
+  <Resources>
+    <Number id="padding" value="14" />
+    <Number id="spacing" value="14" />
+    <Number id="symbol" value="32" />
+    <Number id="textSpacing" value="3" />
+    <Number id="title" value="14" />
+    <Number id="detail" value="12" />
+    <Number id="amount" value="17" />
+    <Number id="caption" value="11" />
+    <Number id="amountSpacing" value="1" />
+    <Number id="buttonSpacing" value="8" />
+  </Resources>
+  <HStack padding="@padding" spacing="@spacing" alignment="center">
+    <SystemImage name="$icon" size="@symbol" badgeColor="$color" />
+    <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="@textSpacing" alignment="leading">
+      <Label id="<%= id %>Title" text="$title" size="@title" weight="semibold" maxWidth="infinity" lines="0" />
+      <Label id="<%= id %>Detail" text="$detail" size="@detail" color="secondary" maxWidth="infinity" lines="0" />
+    </VStack>
+    <VStack spacing="@amountSpacing" alignment="trailing" fixedSize="horizontal" visible="$amount">
+      <Label id="<%= id %>Amount" text="$amount" size="@amount" weight="semibold" design="rounded" monospacedDigit="true" lines="1" />
+      <Label id="<%= id %>Caption" text="$amountCaption" size="@caption" color="secondary" lines="1" />
+    </VStack>
+    <VStack spacing="@buttonSpacing" alignment="trailing" fixedSize="horizontal">
+      <Button id="<%= id %>Action" title="$actionTitle" action="$run" style="borderedProminent" visible="$actionTitle" />
+      <Button id="<%= id %>Secondary" title="$secondaryTitle" action="$secondary" style="link" visible="$secondaryTitle" />
+    </VStack>
+  </HStack>
+</GroupBox>

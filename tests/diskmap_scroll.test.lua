@@ -19,12 +19,12 @@ for _, size in ipairs({{700, 720}, {540, 400}, {1000, 900}}) do
 	t.assertEqual(bridge._testScrollWheel(list.documentView, -1), page,
 		"wheel over a Diskmap category reaches the page")
 end
-app.query = "no category can match this query"
+app.session.query = "no category can match this query"
 app:updateRows()
 page:layout(1000)
 t.assertEqual(list.rowCount, 0, "search empties the list")
 t.assertEqual(bridge._testScrollWheel(list.documentView, -1), page, "empty search does not trap wheel input")
-app.query = ""
+app.session.query = ""
 app:updateRows()
 page:layout(1000)
 t.expect(list.rowCount > 0, "clearing search restores categories")

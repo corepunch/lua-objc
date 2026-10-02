@@ -118,6 +118,16 @@ function Graph:build(ids)
 	return built
 end
 
+-- Registers a model built elsewhere (an app's root object that predates the
+-- graph) so other models can need it and its changes reach the graph.
+function Graph:adopt(id, instance)
+	self:class(id)
+	self.instances[id] = instance
+	table.insert(self.order, id)
+	rawset(instance, "changed", function() self:post(id) end)
+	return instance
+end
+
 function Graph:get(id)
 	return self.instances[id]
 end

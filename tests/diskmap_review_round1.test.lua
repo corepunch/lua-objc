@@ -59,7 +59,7 @@ local files = app.page
 local rows = Files.rows(app.model, 'Installers & archives')
 local bytes = 0
 for _, row in ipairs(rows) do bytes = bytes + row.bytes end
-local lead = files.decisions.lead.refs
+local lead = files.refs
 t.assertEqual(lead.decisionAmount.text, require('apps.diskmap.Model').size(bytes), 'file decision totals only the visible subset')
 t.assertEqual(lead.decisionCaption.text, 'to review', 'documents are review candidates')
 local before = app.review:count()

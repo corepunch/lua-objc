@@ -12,7 +12,7 @@ local Controller = Page.extend("kinds", "Kinds")
 -- Files on one of its filters.
 function Controller.new(context)
 	return setmetatable({model = context.model,
-		showFiles = function(kind) context.pages.files:focus(kind); context.show("files", true) end,
+		showFiles = function(kind) context.pageModel("files"):focus(kind); context.show("files", true) end,
 		show = function(id, filter) context.showFiltered(id, filter and Files.filterIndex(filter)) end,
 		refresh = context.rescan, clearSearch = function() context.search("kinds", "") end}, Controller)
 end

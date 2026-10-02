@@ -1,0 +1,3 @@
+<Schema id="Note">
+	<String id="text" />
+</Schema>

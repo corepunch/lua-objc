@@ -36,7 +36,8 @@ function PageController:mount(host)
 	-- not also update itself.
 	self.binder.propagates = true
 	local path = context.viewsDir .. self.page.view .. ".etlua"
-	local root, refs = xml.renderFile(path, { binder = self.binder, resources = context.resources }, context.ns)
+	local root, refs = xml.renderFile(path, { binder = self.binder, resources = context.resources,
+		page = self.page, model = self.model }, context.ns)
 	self.root, self.refs, self.host = root, refs, host
 	context.ns._insertSubview(host, root, 1)
 	self.unsubscribe = graph:subscribe(self.page.model, function() self.binder:update() end)

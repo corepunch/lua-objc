@@ -1,0 +1,47 @@
+<% --[[ Large Files: the individual files the last scan ranked. Bound to
+  models/FilesPage.lua through schemas/FilesPage.xml; there is no controller. ]] %>
+<Resources>
+  <Number id="pageSpacing" value="24" />
+  <Number id="sectionSpacing" value="8" />
+  <Number id="controlSpacing" value="12" />
+  <Number id="tileSpacing" value="12" />
+</Resources>
+<ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
+  <VStack id="pageContent" spacing="@pageSpacing" padding="24" alignment="leading">
+    <%- partial("Header.etlua", {page = page}) %>
+    <VStack id="leadHost" spacing="0" alignment="leading" context="$lead">
+      <%- partial("DecisionCard.etlua", {id = "decision"}) %>
+    </VStack>
+    <VStack id="filesSection" spacing="@sectionSpacing" alignment="leading">
+      <VStack id="fileControls" spacing="@sectionSpacing" alignment="leading" visible="$showControls">
+        <Picker id="filter" style="segmented" selection="$filter">
+          <% for _, title in ipairs(model.filters) do %><Option title="<%= title %>" /><% end %>
+        </Picker>
+        <HStack spacing="@controlSpacing" alignment="center">
+          <Button id="clearKind" title="Show All Kinds" style="link" action="$clearKind" visible="$kindFiltered" />
+          <Spacer />
+        </HStack>
+      </VStack>
+      <ContentUnavailable id="filesUnavailable" visible="$unavailable" title="File Results Unavailable" systemImage="exclamationmark.triangle" description="Check scan access, then refresh to measure files again." />
+      <ContentUnavailable id="filesNone" visible="$none" title="No Large Files Found" systemImage="doc" description="No files over <%= model.threshold %> were ranked. Clean Up can still find rebuildable data." />
+      <ContentUnavailable id="filesNoResults" visible="$noResults" title="No Results" systemImage="magnifyingglass" description="No large file matches the search. Try another filter or search." />
+      <ContentUnavailable id="filesEmpty" visible="$emptyFilter" title="No Files Here" systemImage="doc" description="No large file fits this filter. Choose All to see every file Diskmap ranked." />
+      <GroupBox id="filesPanel" visible="$showPanel">
+        <%- partial("StorageList.etlua", {id = "files", rows = "files", menu = "menu", activate = "reveal", loading = "loading", detailColumn = true, fileIcons = true}) %>
+      </GroupBox>
+    </VStack>
+    <DisclosureGroup id="scanDetails" label="Scan scope and statistics" expanded="false" indicatorWidth="26" indicatorSpacing="10">
+      <VStack spacing="@controlSpacing" alignment="leading">
+        <VStack context="$scope" spacing="0" alignment="leading">
+          <%- partial("NoteLine.etlua", {id = "scopeNote", icon = "scope"}) %>
+        </VStack>
+        <HStack id="stats" fixedSize="vertical" spacing="@tileSpacing" alignment="top">
+          <VStack context="$largeTile" spacing="0" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity"><%- partial("Tile.etlua", {id = "largeTile", icon = "doc.fill", color = "systemTeal", title = "Over " .. model.threshold}) %></VStack>
+          <VStack context="$oldTile" spacing="0" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity"><%- partial("Tile.etlua", {id = "oldTile", icon = "clock.fill", color = "systemOrange", title = "Unused for a year"}) %></VStack>
+          <VStack context="$movableTile" spacing="0" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity"><%- partial("Tile.etlua", {id = "movableTile", icon = "trash.fill", color = "systemRed", title = "Yours to review"}) %></VStack>
+        </HStack>
+      </VStack>
+    </DisclosureGroup>
+    <%- partial("Footnote.etlua", {text = "Diskmap reads only names, sizes and dates. Files inside apps, libraries and hidden tool folders are listed for context and managed by their owners; only your own documents can be moved to the Trash here."}) %>
+  </VStack>
+</ScrollView>

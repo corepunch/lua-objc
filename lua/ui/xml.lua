@@ -524,6 +524,7 @@ local TAG_BINDINGS = {
         if on then view:showLoading() else view:hideLoading() end
     end } },
     Window = { title = { "title", "string" }, subtitle = { "subtitle", "string" } },
+    Button = { title = { "title", "string" } },
 }
 
 -- Attributes that name an event handler. In a page, `$command` binds the
