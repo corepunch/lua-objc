@@ -1,5 +1,5 @@
 <% if changes then %>
-<VStack id="changesSection" transition="opacity" spacing="8" alignment="leading">
+<VStack id="changesSection" spacing="8" alignment="leading">
   <HStack spacing="12" alignment="center">
     <%- partial("SectionHeader.etlua", {title = "Changes", detail = changes.detail}) %>
     <% if changes.all then %>

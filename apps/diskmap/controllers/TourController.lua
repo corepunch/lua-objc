@@ -6,11 +6,8 @@ local Controller = {}; Controller.__index = Controller
 
 -- Pages slide in from the side they come from: Continue brings the next one
 -- in from the trailing edge, Back the previous one from the leading edge.
-local SLIDE = {
-	animation = ns.Animation.snappy(),
-	forward = "asymmetric(move(trailing), move(leading))",
-	backward = "asymmetric(move(leading), move(trailing))",
-}
+-- The system's push transition does the sliding.
+local SLIDE = { forward = "trailing", backward = "leading" }
 
 -- The welcome tour sheet: on start, after any access steps and while the
 -- scan runs, until "Show this window on start" is turned off, and whenever
@@ -57,17 +54,10 @@ function Controller:show(index)
 	if not self.sheet then return end
 	local previous = self.page
 	self.page = math.max(1, math.min(index, #Tour.pages))
-	local function apply()
-		for _, page in ipairs(Tour.pages) do self.refs["page_" .. page.index].hidden = page.index ~= self.page end
-	end
 	if previous ~= self.page then
-		local transition = self.page > previous and SLIDE.forward or SLIDE.backward
-		ns.transition(self.refs["page_" .. previous], transition)
-		ns.transition(self.refs["page_" .. self.page], transition)
-		ns.withAnimation(SLIDE.animation, apply)
-	else
-		apply()
+		ns._pushTransition(self.refs.pages, self.page > previous and SLIDE.forward or SLIDE.backward)
 	end
+	for _, page in ipairs(Tour.pages) do self.refs["page_" .. page.index].hidden = page.index ~= self.page end
 	self.refs.dots.currentPage = self.page - 1
 	self.refs.back.hidden = self.page == 1
 	self.refs.next.title = self.page == #Tour.pages and "Start Using Diskmap" or "Continue"

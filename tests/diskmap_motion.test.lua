@@ -4,42 +4,30 @@ local ns = require("AppKit")
 local Mock = require("apps.diskmap.services.Mock")
 local Controller = require("apps.diskmap.Controller")
 
--- Measurement and the map's change of level animate. Opening a page or
--- switching the map's style applies at once, and so do sizes arriving from a
--- scan (they tick many times a second and would diff the whole page while it
--- scrolls); only looking inside a group animates.
+-- Nothing in the app animates the view tree: there is no transaction engine,
+-- so a scan tick (many a second) or a page change cannot diff the layout of
+-- the page and start animations while the user scrolls. Only an Arc animates
+-- its own path, and the welcome tour uses the system's push transition.
+t.assertEqual(ns.withAnimation, nil, "the framework has no animation transactions")
+t.assertEqual(ns.transition, nil, "and no per-view transitions")
+
 local app = Controller.new(Mock.new())
 app:createWindow()
-
-local transactions = 0
-local withAnimation = ns.withAnimation
-ns.withAnimation = function(...) transactions = transactions + 1; return withAnimation(...) end
-
 for _, id in ipairs({"map", "applications", "overview", "xcode", "overview"}) do app:show(id) end
-t.assertEqual(transactions, 0, "switching pages does not animate")
 
 app:show("map")
+local rings = app.page.refs.sunburst
 app.page.template.actions.chartSelect("developer", 1)
 t.assertEqual(app.pages.map.focus, "developer", "clicking a group still focuses it")
-t.assertEqual(transactions, 1, "looking inside a group animates in one transaction")
-local bridge = require("AppKitNative")
-bridge._motionSettle()
+t.expect(app.page.refs.sunburst == rings, "drilling keeps the chart view")
 app.page.template.actions.up()
-t.assertEqual(transactions, 2, "so does going back out")
-bridge._motionSettle()
-transactions = 0
-app.page.template.actions.style(1)
-app.page.template.actions.style(0)
-t.assertEqual(transactions, 0, "switching the map style does not animate")
+t.expect(app.page.refs.sunburst == rings, "and so does going back out")
 
 app.scan:notify()
-t.assertEqual(transactions, 0, "a scan update applies at once, without a page-wide transaction")
+t.expect(app.page ~= nil, "a scan update applies at once")
 
--- Pointing at a resource selects; it neither animates nor changes level.
-transactions = 0
+-- Pointing at a resource selects; it does not change level.
 app.page.template.actions.chartHover("developer")
 t.assertEqual(app.pages.map.selectedId, "developer", "map hover and the list share one token")
 t.assertEqual(app.pages.map.focus, "", "hovering does not look inside a group")
-t.assertEqual(transactions, 0, "selection does not animate")
-
-ns.withAnimation = withAnimation
+os.exit(t.summary() and 0 or 1)

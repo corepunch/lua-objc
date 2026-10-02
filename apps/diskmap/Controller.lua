@@ -308,11 +308,9 @@ function Controller:basketChanged()
 	if self.window then self.window.subtitle = self:subtitle() end
 	if self.collector then
 		local count = self.review:count()
-		ns.withAnimation(ns.Animation.snappy(), function()
-			self.collector.collectorText.text = count == 0 and "Drag items here to mark them for cleanup" or self.review:summary()
-			self.collector.collectorReview.enabled = count > 0
-			self.collector.collectorArea.hidden = count == 0 and not self.collectorDragging
-		end)
+		self.collector.collectorText.text = count == 0 and "Drag items here to mark them for cleanup" or self.review:summary()
+		self.collector.collectorReview.enabled = count > 0
+		self.collector.collectorArea.hidden = count == 0 and not self.collectorDragging
 	end
 	if self.page and self.page.marksChanged then self.page:marksChanged() end
 end

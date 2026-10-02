@@ -14,7 +14,7 @@ Read only the material needed for the current task:
 - [docs/PROJECT_REFERENCE.md](docs/PROJECT_REFERENCE.md) — detailed API and
   implementation reference; consult the relevant heading, not the whole file
 - [docs/tableview_swiftui.md](docs/tableview_swiftui.md) — table behavior
-- [docs/animation.md](docs/animation.md) — animation, transitions, retained
+- [docs/retained-templates.md](docs/retained-templates.md) — motion, retained
   template reconciliation and steady live updates
 - [docs/reels.md](docs/reels.md) — making 3-D promo reels with Reel and
   SceneKit: captures, component motion, camera, traps, performance

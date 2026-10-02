@@ -225,53 +225,30 @@ t.expect(Sectors.update(scalable, {mark("a", 1), mark("b", 1)}), "a scalable cha
 t.assertEqual(scalable.subviews[1], first, "keeping its arcs")
 t.assertEqual(first.fitDiameter, 360, "which still draw in the chart's units")
 
--- Marks that arrive inside an animated transaction (a scan's new sizes)
--- appear where they belong: the arc is not grown from the size it was built
--- with, even though the hover restyle writes to it before layout places it.
+-- An arc animates itself, and nothing else does: marks that arrive appear
+-- where they belong, and an arc that is already shown turns, grows and
+-- changes rings along its circle (sampled as keyframes by the arc, not a
+-- point-by-point path morph). Marks that come or go appear and leave at once.
 local growing = ns.SectorChart {scalable = true, diameter = 360, innerRadius = 0.4, angularInset = 3,
 	mark("a", 3), mark("b", 1), onHover = function() end}
 local growingHost = ns.VStack {alignment = "center", flexGrow = 1, growing}
 growingHost.size = ns.Size(600, 400)
 growingHost:layout(600)
-ns.withAnimation(function() Sectors.update(growing, {mark("a", 3), mark("b", 1), mark("c", 1)}) end)
+Sectors.update(growing, {mark("a", 3), mark("b", 1), mark("c", 1)})
 growingHost:layout(600)
-local arrived = bridge._motionAnimations(growing.subviews[3])
-t.expect(arrived.bounds == nil and arrived.position == nil, "a new sector does not fly in from its construction frame")
-bridge._motionSettle()
+t.expect(not growing.subviews[3].animating, "a new sector is not animated into place")
 
--- Drilling: an arc stays with its mark's id, so showing the inside of "a"
--- turns its child "a1" from a slice of the outer ring into the whole inner
--- ring along its circle, sampled as keyframes rather than a point-by-point
--- path morph. Marks that come or go fade.
 local drill = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.3, angularInset = 2,
 	mark("a", 3), mark("b", 1), mark("a1", 2, 2, "a"), mark("a2", 1, 2, "a")}
-local drillHost = ns.VStack {drill}
-drillHost:layout(200)
+local drillWindow = ns.Window {title = "Arcs", width = 200, height = 200, content = ns.VStack {drill}}
 local childArc = drill.subviews[3]
-local before = {}
-for _, child in ipairs(drill.subviews) do before[child] = true end
-ns.withAnimation(ns.Animation.easeInOut(0.3), function()
-	Sectors.update(drill, {mark("a1", 2), mark("a2", 1), mark("a1x", 1, 2, "a1")})
-end)
-local turning = bridge._motionAnimations(childArc)
-t.expect(turning.path and turning.path.kind == "keyframes", "the child turns into the inner ring along its circle")
-t.expect(turning.path and math.abs(turning.path.duration - 0.3) < 1e-6, "with the transaction's timing")
-local entering
-for _, child in ipairs(drill.subviews) do if not before[child] then entering = child end end
-t.expect(childArc.superview == drill, "keeping its view")
-t.expect(bridge._motionIsLeaving(drill.subviews[1]) and bridge._motionAnimations(drill.subviews[1]).opacity ~= nil,
-	"the level it leaves fades out")
-t.expect(entering and bridge._motionAnimations(entering).opacity ~= nil, "and a mark only the new level has fades in")
-bridge._motionSettle()
-t.assertEqual(#drill.subviews, 3, "the level it left is gone once the drill settles")
-ns.withAnimation(nil, function() Sectors.update(drill, {mark("a", 3), mark("b", 1)}) end)
-t.expect(bridge._motionAnimations(childArc).path == nil, "a transaction without animation changes level at once")
-bridge._motionOverrideReduceMotion(true)
-local reducedChart = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.3, mark("a", 1), mark("b", 1)}
-ns.withAnimation(function() Sectors.update(reducedChart, {mark("a", 2), mark("b", 1)}) end)
-t.expect(bridge._motionAnimations(reducedChart.subviews[1]).path == nil, "so does Reduce Motion")
-bridge._motionOverrideReduceMotion(nil)
-bridge._motionSettle()
+t.expect(not childArc.animating, "an arc that has not changed does not animate")
+Sectors.update(drill, {mark("a1", 2), mark("a2", 1), mark("a1x", 1, 2, "a1")})
+t.expect(childArc.superview == drill, "an arc keeps its view when its mark keeps its id")
+t.expect(childArc.animating, "and turns into its new shape by its own animation")
+t.assertEqual(#drill.subviews, 3, "the level it left is gone at once")
+Sectors.update(drill, {mark("a", 3), mark("b", 1)})
+t.assertEqual(#drill.subviews, 2, "going back removes the marks the level lacks at once")
 
 -- UIKit composes the same chart from its own Arc and ZStack.
 local file = assert(io.open("lua/embedded/UIKit.lua")); local uikit = file:read("*a"); file:close()
@@ -301,8 +278,7 @@ holeTemplate:update({hole = 0.3, level = "top", marks = top})
 local holeChart = holeTemplate.refs.chart
 holeTemplate:update({hole = 0.5, level = "a", marks = inside})
 t.expect(holeTemplate.refs.chart == holeChart, "a new inner radius keeps the chart view")
-bridge._motionSettle()
-t.assertEqual(#holeChart.subviews, 4, "with one arc per new mark once the old ones fade out")
+t.assertEqual(#holeChart.subviews, 4, "with one arc per new mark")
 
 -- The keyboard reaches an interactive chart: focus reports through onHover,
 -- Return activates, and Delete goes back, which is not a click in the hole.

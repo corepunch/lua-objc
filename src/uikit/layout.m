@@ -1,7 +1,5 @@
-/* A view playing its removal transition stays on screen but no longer
- * takes part in layout, as a removed SwiftUI view does. */
 static BOOL uikit_is_hidden(UIView *view) {
-	return view.hidden || motion_is_leaving(view);
+	return view.hidden;
 }
 
 #pragma mark - Layout helpers
@@ -190,7 +188,7 @@ static CGSize measure_horizontal_children(UIView *view, CGSize proposal, CGSize 
 // from the current proposal, never from a previous layout or an item count.
 static CGSize layout_flow_children(UIView *view, CGFloat width, BOOL place) {
 	NSMutableArray<UIView *> *children = [NSMutableArray array];
-	for (UIView *child in view.subviews) if ((!child.hidden || objc_getAssociatedObject(child, &kFlowOverflowKey)) && !motion_is_leaving(child)) [children addObject:child];
+	for (UIView *child in view.subviews) if ((!child.hidden || objc_getAssociatedObject(child, &kFlowOverflowKey))) [children addObject:child];
 	CGSize *sizes = calloc(MAX(1, children.count), sizeof(CGSize));
 	CGRect *frames = place ? calloc(MAX(1, children.count), sizeof(CGRect)) : NULL;
 	for (NSUInteger i = 0; i < children.count; i++) {

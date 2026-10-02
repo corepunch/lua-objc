@@ -5,7 +5,7 @@
   -- The center text is set at its largest; the chart offers it the square
   -- inscribed in the hole and it shrinks to fit on one line, like the Hero.
 %>
-<ScrollView id="page" transition="opacity" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
+<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
   <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
     <%- partial("PageHeader.etlua", {header = header, summary = summary}) %>
     <%- partial("Decision.etlua", decision) %>

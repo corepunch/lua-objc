@@ -4,11 +4,14 @@ static void push_NSRect(lua_State *L, NSRect value);
 static NSColor *semantic_color(NSString *name);
 
 /* An arc or sector (shared/arc_path.m) as a filled CAShapeLayer path. Its
- * shape animates inside a transaction (LuaMotionShape), so a chart's
+ * shape animates itself when `animated` (ArcAnimator), so a chart's
  * sectors turn and grow along their circles rather than morphing point by
  * point. The layer is not clipped: SwiftUI never clips a stroke to its
  * frame. */
-@interface LuaArcView () <LuaMotionShape>
+@interface LuaArcView ()
+@property(nonatomic) BOOL animated;
+/* True while the arc's own path animation runs (read by tests). */
+@property(nonatomic, readonly) BOOL animating;
 @property(nonatomic) CGFloat startAngle;
 @property(nonatomic) CGFloat endAngle;
 @property(nonatomic) CGFloat lineWidth;
@@ -22,11 +25,14 @@ static NSColor *semantic_color(NSString *name);
 - (ArcShape)shape;
 @end
 
-@implementation LuaArcView
+@implementation LuaArcView {
+	ArcAnimator *_animator;
+}
 
 - (instancetype)initWithFrame:(NSRect)frameRect {
 	self = [super initWithFrame:frameRect];
 	if (self) {
+		_animator = [ArcAnimator new];
 		_lineWidth = 1;
 		_strokeAlpha = 1;
 		_stroke = @"accent";
@@ -58,18 +64,19 @@ static NSColor *semantic_color(NSString *name);
 	return flipped;
 }
 
-- (id)motionShape { return arc_shape_value(self.shape); }
-
-- (CGPathRef)copyMotionPathFrom:(id)from progress:(CGFloat)progress {
-	return [self copyLayerPath:arc_shape_mix(arc_shape_from_value(from), self.shape, progress)];
-}
+- (BOOL)animating { return [self.layer animationForKey:@"arc.shape"] != nil; }
+- (BOOL)animated { return _animator.animated; }
+- (void)setAnimated:(BOOL)value { _animator.animated = value; }
 
 - (void)updateShape {
 	CAShapeLayer *layer = (CAShapeLayer *)self.layer;
 	if (![layer isKindOfClass:CAShapeLayer.class]) return;
-	CGPathRef path = [self copyLayerPath:self.shape];
+	ArcShape shape = self.shape;
+	CGPathRef path = [self copyLayerPath:shape];
 	layer.path = path;
 	if (path) CGPathRelease(path);
+	[_animator layer:layer shows:shape inWindow:self.window != nil
+		pathFor:^CGPathRef(ArcShape mixed) { return [self copyLayerPath:mixed]; }];
 	layer.fillRule = kCAFillRuleEvenOdd;
 	layer.masksToBounds = NO;
 	[self.effectiveAppearance performAsCurrentDrawingAppearance:^{

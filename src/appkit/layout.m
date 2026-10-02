@@ -138,7 +138,6 @@ static int bridge_object_add_impl(lua_State *L) {
 		}
 		return 0;
 	}
-	motion_will_change(container, YES);
 	[container addSubview:child];
 	invalidate_layout(container);
 	return 0;
@@ -149,10 +148,8 @@ static BOOL is_flexible(NSView *view) {
 	return [objc_getAssociatedObject(view, &kKeys[kFlexibleKey]) boolValue];
 }
 
-/* A view playing its removal transition stays on screen but no longer
- * takes part in layout, as a removed SwiftUI view does. */
 static BOOL is_hidden(NSView *view) {
-	return view.isHidden || motion_is_leaving(view);
+	return view.isHidden;
 }
 
 static CGFloat view_padding_horizontal(NSView *view) {
@@ -434,7 +431,7 @@ static NSSize measure_horizontal_children(NSView *view, LuaLayoutConstraint cons
 // from the current proposal, never from a previous layout or an item count.
 static NSSize layout_flow_children(NSView *view, CGFloat width, BOOL place) {
 	NSMutableArray<NSView *> *children = [NSMutableArray array];
-	for (NSView *child in view.subviews) if ((!child.hidden || objc_getAssociatedObject(child, &kKeys[kFlowOverflowKey])) && !motion_is_leaving(child)) [children addObject:child];
+	for (NSView *child in view.subviews) if ((!child.hidden || objc_getAssociatedObject(child, &kKeys[kFlowOverflowKey]))) [children addObject:child];
 	CGSize *sizes = calloc(MAX(1, children.count), sizeof(CGSize));
 	CGRect *frames = place ? calloc(MAX(1, children.count), sizeof(CGRect)) : NULL;
 	for (NSUInteger i = 0; i < children.count; i++) {

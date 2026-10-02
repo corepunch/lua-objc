@@ -228,9 +228,9 @@ local snapshots and unreadable locations. With **Keep storage history** on in
 Settings, category totals are recorded after each scan (no file names), and
 the overview shows what grew.
 
-Pages and map levels switch instantly; only measurement animates, as sizes
-arrive during a scan, and disclosures animate open. All animation goes through the
-framework's `withAnimation` and `transition`, so Reduce Motion turns it off.
+Pages switch instantly and scan progress never animates. The only motion is
+the donut and map rings turning to a new level (the arcs' own animation),
+and the tour's system push transition; Reduce Motion turns both off.
 
 ```sh
 make
