@@ -1,0 +1,4 @@
+<% -- The sidebar the manifest builds: section headers and pages, one source list. %>
+<List id="sidebar" style="sourceList" header="false" alternatingRows="false" onSelect="navigate" maxHeight="infinity">
+  <Column id="name" title="" imageKey="icon" imageColorKey="color" />
+</List>

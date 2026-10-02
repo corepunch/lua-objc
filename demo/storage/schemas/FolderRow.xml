@@ -1,0 +1,9 @@
+<Schema id="FolderRow">
+	<String id="name" />
+	<Symbol id="icon" />
+	<Bytes id="size" source="bytes" missing="Not measured">
+		<State id="calculating" text="Calculating…" />
+		<State id="denied" text="No access" icon="lock.fill" color="systemOrange" />
+	</Bytes>
+	<Percent id="share" source="relative" digits="0" below="&lt;1%" />
+</Schema>

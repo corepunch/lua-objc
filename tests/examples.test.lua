@@ -39,6 +39,7 @@ local examples = {
 	"demo/todo/init.lua",
 	"demo/notes/init.lua",
 	"demo/ledger/init.lua",
+	"demo/storage/init.lua",
 }
 
 for _, path in ipairs(examples) do

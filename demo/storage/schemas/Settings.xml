@@ -1,0 +1,6 @@
+<Schema id="Settings">
+	<Bool id="history" writable="true" />
+	<String id="deviceName" writable="true" />
+	<Number id="threshold" writable="true" />
+	<String id="note" format="History is $history; name is $deviceName" />
+</Schema>
