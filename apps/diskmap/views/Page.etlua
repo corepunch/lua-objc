@@ -31,9 +31,11 @@
 <% if layout.details then %><VStack spacing="0" flexGrow="1" flexBasis="0" flexShrink="1"><% end %>
 <ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
   <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
-    <%- partial("PageHeader.etlua", {header = header, summary = layout.summary, summaryId = layout.summaryId, buttons = layout.buttons}) %>
+    <%- partial("PageHeader.etlua", {header = header or page, summary = layout.summary, summaryId = layout.summaryId, buttons = layout.buttons}) %>
     <% for _, slot in ipairs(layout.leads or {}) do %>
-    <VStack id="<%= slot %>" spacing="0" alignment="leading" />
+    <VStack id="<%= slot %>" spacing="0" alignment="leading">
+      <% if children and children[slot] then %><%- partial(childViews[slot] .. ".etlua", children[slot]) %><% end %>
+    </VStack>
     <% end %>
     <% if not layout.contextAfterSections then %>
     <%- partial("PageContext.etlua", {layout = layout}) %>
@@ -87,7 +89,9 @@
     <%- partial("PageContext.etlua", {layout = layout}) %>
     <% end %>
     <% for _, slot in ipairs(layout.slots or {}) do %>
-    <VStack id="<%= slot %>" spacing="0" />
+    <VStack id="<%= slot %>" spacing="0">
+      <% if children and children[slot] then %><%- partial(childViews[slot] .. ".etlua", children[slot]) %><% end %>
+    </VStack>
     <% end %>
     <% if layout.footnote then %>
     <%- partial("Footnote.etlua", layout.footnote) %>
@@ -95,6 +99,8 @@
   </VStack>
 </ScrollView>
 <% if layout.details then %>
-  <VStack id="selectionDetails" spacing="0" padding="14" hidden="true" />
+  <VStack id="selectionDetails" spacing="0" padding="14"<% if not details then %> hidden="true"<% end %>>
+    <% if details then %><%- partial("SelectionDetails.etlua", details) %><% end %>
+  </VStack>
 </VStack>
 <% end %>

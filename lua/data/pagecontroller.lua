@@ -12,7 +12,11 @@
 --
 -- Template data is `data` plus `page` (the app.xml entry) and `actions`.
 -- Rows go to native tables, which reuse their cells: `data.lists = {id = rows}`
--- is set on the `<List id>` of that name, not copied into the template. A
+-- is set on the `<List id>` of that name, not copied into the template, and
+-- `loading = {id = true}` shows that list's own native spinner. `texts`,
+-- `hidden` and `disabled` set a node's text, visibility and enabled state by
+-- id. A model that must touch live views after a draw (a chart that follows a
+-- running scan, a native selection) defines `rendered(refs)`. A
 -- model method that only reads (a row's menu, a reveal) lists itself in
 -- `queries = {name = true}` and the page is not drawn again after it. A
 -- model with work to start when its page appears (a service to ask) defines
@@ -42,9 +46,13 @@ function PageController:mount(host, state)
 		local method = self.model[name]
 		if type(method) ~= "function" then return nil end
 		return function(...)
-			local results = table.pack(method(self.model, ...))
-			local queries = self.model.queries
-			if not (queries and queries[name]) then self:update(self.state) end
+			-- What drawing itself makes fire (a table reloading its selection)
+			-- is not the person acting.
+			if self.drawing then return end
+			local model = self.model
+			local results = table.pack(method(model, ...))
+			-- The action may have left the page (a row that opens another).
+			if self.model and not (model.queries and model.queries[name]) then self:update(self.state) end
 			return table.unpack(results, 1, results.n)
 		end
 	end })
@@ -62,11 +70,18 @@ function PageController:update(state)
 	local page = self.page
 	data.page = { id = page.id, title = page.title, icon = page.icon, color = page.color, key = page.key, attrs = page.attrs }
 	data.actions, data.resources = self.actions, self.context.resources
-	local lists = data.lists
-	data.lists = nil
+	data.overrides = { texts = data.texts, hidden = data.hidden, disabled = data.disabled }
+	local lists, loading = data.lists, data.loading
+	data.lists, data.loading = nil, nil
+	self.drawing = true
 	local _, refs = self.template:update(data)
 	self.refs = refs
-	for id, rows in pairs(lists or {}) do refs[id]:replaceRows(rows) end
+	for id, rows in pairs(lists or {}) do
+		refs[id]:replaceRows(rows)
+		if loading and loading[id] then refs[id]:showLoading() else refs[id]:hideLoading() end
+	end
+	if self.model.rendered then self.model:rendered(refs) end
+	self.drawing = false
 end
 
 function PageController:dispose()

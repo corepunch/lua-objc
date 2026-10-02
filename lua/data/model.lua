@@ -17,6 +17,9 @@
 -- builds its model and the models that one needs, transitively, in
 -- dependency order, and nothing else. A cycle is an error naming its path.
 --
+-- A class without an `id` serves several models (seven pages that differ only
+-- in the entry they are built for): `new` also receives the id it is built as.
+--
 -- There are no notifications. A page is rendered from its model's data when
 -- it is shown, and again when the app says its data changed (a finished scan,
 -- an action): ask the model again, render again, like a request.
@@ -24,10 +27,10 @@ local Model = {}
 
 function Model.define(spec)
 	assert(type(spec) == "table", "Model.define needs a table")
-	if type(spec.id) ~= "string" or spec.id == "" then error("Model.define needs an id", 2) end
+	if spec.id ~= nil and (type(spec.id) ~= "string" or spec.id == "") then error("Model.define: id must be a name", 2) end
 	local needs = spec.needs or {}
 	for _, need in ipairs(needs) do
-		if type(need) ~= "string" then error("model " .. spec.id .. ": needs lists model ids", 2) end
+		if type(need) ~= "string" then error("model " .. tostring(spec.id) .. ": needs lists model ids", 2) end
 	end
 	local class = { id = spec.id, needs = needs }
 	class.__index = class
@@ -52,7 +55,7 @@ function Graph:class(id)
 	local class = self.classes[id]
 	if type(class) == "function" then class = class(id); self.classes[id] = class end
 	if not class then error("model graph: no model \"" .. id .. "\" is registered", 0) end
-	if class.id ~= id then
+	if class.id ~= nil and class.id ~= id then
 		error("model graph: \"" .. id .. "\" is registered as a class whose id is \"" .. tostring(class.id) .. "\"", 0)
 	end
 	return class
@@ -91,7 +94,7 @@ function Graph:build(ids)
 			local class = self:class(id)
 			local needs = {}
 			for _, need in ipairs(class.needs) do needs[need] = self.instances[need] end
-			local instance = class.new(needs, self.services)
+			local instance = class.new(needs, self.services, id)
 			if type(instance) ~= "table" then error("model " .. id .. ": new must return the model", 0) end
 			self.instances[id] = instance
 		end

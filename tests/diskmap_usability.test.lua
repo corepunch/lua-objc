@@ -136,21 +136,20 @@ t.expect(page.refs.selectionDetails.hidden, "an empty inspector is hidden until 
 page.refs.list_rebuildable:selectRow(0)
 t.expect(not page.refs.selectionDetails.hidden, "selecting a suggestion shows the inspector")
 page.refs.list_decisions:selectRow(0)
-t.assertEqual(page.selectedRow.id, expected.id, "single selection chooses its suggestion")
+t.assertEqual(page.model.selectedRow.id, expected.id, "single selection chooses its suggestion")
 t.assertEqual(page.refs.list_rebuildable.documentView.selectedRow, -1, "selecting a different section clears the previous highlight")
-t.assertEqual(page.detailsTemplate.refs.selectionAdvice.text, expected.subtitle, "full advice is shown without truncation")
-t.expect(page.detailsTemplate.refs.openSelection.title:find("Open", 1, true) == 1, "selected suggestion has a visible detail action")
+t.assertEqual(page.refs.selectionAdvice.text, expected.subtitle, "full advice is shown without truncation")
+t.expect(page.refs.openSelection.title:find("Open", 1, true) == 1, "selected suggestion has a visible detail action")
 page:update(app:state())
-t.assertEqual(page.selectedRow.id, expected.id, "live measurements preserve the selection by id")
-t.assertEqual(page.detailsTemplate.refs.selectionAdvice.text, expected.subtitle, "refresh keeps the matching explanation")
+t.assertEqual(page.model.selectedRow.id, expected.id, "live measurements preserve the selection by id")
+t.assertEqual(page.refs.selectionAdvice.text, expected.subtitle, "refresh keeps the matching explanation")
 page:update({query = "no-such-suggestion", disk = disk})
-t.assertEqual(page.selectedRow, nil, "filtering away a suggestion removes the stale detail")
+t.assertEqual(page.model.selectedRow, nil, "filtering away a suggestion removes the stale detail")
 t.expect(page.refs.selectionDetails.hidden, "an empty selection hides the inspector, so no stale item can be opened")
 local opened
-page.handlers.show = function(id, filter) opened = {id, filter} end
-page.selectedRow = {id = "unused-apps", page = "applications", filter = "Unused for 6 months"}
-page:showDetails()
-page.detailsTemplate.actions.openSelection()
+page.model.services.showFiltered = function(id, filter) opened = {id, filter} end
+page.model.selectedRow = {id = "unused-apps", page = "applications", filter = "Unused for 6 months"}
+page.actions.openSelection()
 t.assertEqual(opened[1], "applications", "visible action navigates to the suggested page")
 t.assertEqual(opened[2], "Unused for 6 months", "visible action preserves its review filter")
 local long = string.rep("Keep personal documents. Review installed test apps and their data. ", 12)

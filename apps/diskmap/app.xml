@@ -1,6 +1,15 @@
 <App name="Diskmap" startup="overview" controller="Controller">
+	<Model id="largest" class="models.LargestPage" />
+	<Model id="cleanup" class="models.CleanupPage" />
+	<Model id="developer" class="models.WorkflowPage" />
+	<Model id="music" class="models.WorkflowPage" />
+	<Model id="video" class="models.WorkflowPage" />
+	<Model id="photography" class="models.WorkflowPage" />
+	<Model id="design" class="models.WorkflowPage" />
+	<Model id="studio3d" class="models.WorkflowPage" />
+	<Model id="games" class="models.WorkflowPage" />
 	<Page id="overview" title="Overview" icon="chart.pie.fill" color="systemBlue" key="1" controller="OverviewController" />
-	<Page id="cleanup" title="Clean Up" icon="sparkles" color="systemIndigo" key="2" controller="PageController" source="Recommendations" />
+	<Page id="cleanup" title="Clean Up" icon="sparkles" color="systemIndigo" key="2" model="cleanup" view="Page" />
 	<Section title="Free Up Space">
 		<Page id="applications" title="Applications" icon="square.grid.3x3.fill" color="systemBlue" key="3" controller="ApplicationsController" />
 		<Page id="files" title="Large Files" icon="doc.fill" color="systemTeal" key="4" controller="FilesController" />
@@ -12,7 +21,7 @@
 	<Section title="Explore">
 		<Page id="map" title="Storage Map" icon="circle.circle.fill" color="systemIndigo" key="5" controller="MapController" />
 		<Page id="folder" title="Folder Map" icon="folder.fill" color="systemBlue" controller="FolderController" />
-		<Page id="largest" title="Largest Locations" icon="chart.bar.fill" color="systemOrange" key="6" controller="PageController" source="Largest" />
+		<Page id="largest" title="Largest Locations" icon="chart.bar.fill" color="systemOrange" key="6" model="largest" view="Page" />
 		<Page id="kinds" title="File Types" icon="square.grid.2x2.fill" color="systemPink" key="7" controller="KindsController" />
 	</Section>
 	<Section title="System">
@@ -20,16 +29,16 @@
 		<Page id="updates" title="Updates &amp; Snapshots" icon="arrow.triangle.2.circlepath" color="systemGray" controller="UpdatesController" />
 	</Section>
 	<Section title="Developer">
-		<Page id="developer" title="Developer tools" sidebar="Dev tools" icon="hammer.fill" color="systemPurple" key="8" controller="PageController" source="Workflow" workflow="developer" />
+		<Page id="developer" title="Developer tools" sidebar="Dev tools" icon="hammer.fill" color="systemPurple" key="8" model="developer" view="Page" workflow="developer" />
 		<Page id="xcode" title="Xcode" icon="hammer.circle.fill" color="systemBlue" key="9" controller="XcodeController" workflow="developer" />
 	</Section>
 	<Section title="Creative &amp; Games">
-		<Page id="music" title="Music Production" sidebar="Music" icon="pianokeys" color="systemPink" controller="PageController" source="Workflow" workflow="music" />
-		<Page id="video" title="Video Production" sidebar="Video" icon="film.fill" color="systemPurple" controller="PageController" source="Workflow" workflow="video" />
-		<Page id="photography" title="Photography" icon="camera.fill" color="systemOrange" controller="PageController" source="Workflow" workflow="photography" />
-		<Page id="design" title="Design" icon="paintbrush.pointed.fill" color="systemTeal" controller="PageController" source="Workflow" workflow="design" />
-		<Page id="studio3d" title="3D &amp; Game Engines" sidebar="3D &amp; Engines" icon="cube.fill" color="systemIndigo" controller="PageController" source="Workflow" workflow="studio3d" />
-		<Page id="games" title="Games" icon="gamecontroller.fill" color="systemGreen" controller="PageController" source="Workflow" workflow="games" />
+		<Page id="music" title="Music Production" sidebar="Music" icon="pianokeys" color="systemPink" model="music" view="Page" workflow="music" />
+		<Page id="video" title="Video Production" sidebar="Video" icon="film.fill" color="systemPurple" model="video" view="Page" workflow="video" />
+		<Page id="photography" title="Photography" icon="camera.fill" color="systemOrange" model="photography" view="Page" workflow="photography" />
+		<Page id="design" title="Design" icon="paintbrush.pointed.fill" color="systemTeal" model="design" view="Page" workflow="design" />
+		<Page id="studio3d" title="3D &amp; Game Engines" sidebar="3D &amp; Engines" icon="cube.fill" color="systemIndigo" model="studio3d" view="Page" workflow="studio3d" />
+		<Page id="games" title="Games" icon="gamecontroller.fill" color="systemGreen" model="games" view="Page" workflow="games" />
 	</Section>
 	<Section title="Learn">
 		<Page id="guide" title="Storage Guide" icon="book.fill" color="systemTeal" controller="TopicsController" source="Guide" />
