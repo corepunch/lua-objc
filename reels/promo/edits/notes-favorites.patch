@@ -20,6 +20,6 @@
 +		</GroupBox>
 +	</VStack>
 +	<Divider />
- 	<List id="notes" style="plain" header="false" alternatingRows="false" rowHeight="72" data="notes" onSelect="selectNote" maxWidth="infinity" maxHeight="infinity">
- 		<Column id="title" title="Note">
- 			<VStack spacing="3" alignment="leading" maxWidth="infinity">
+ 	<List id="notes" style="plain" header="false" alternatingRows="false" rowHeight="52" data="notes" onSelect="selectNote" maxWidth="infinity" maxHeight="infinity">
+ 		<Column id="title" title="Note" subtitleKey="subtitle" />
+ 	</List>

@@ -12,7 +12,6 @@ See [object and state ownership](../ARCHITECTURE.md#object-and-state-ownership).
 |---|---|---|
 | `main.m` | imports, constants, includes, Lua module table, host entry point | `bridge_lib`, `lua_objc_main` |
 | `appkit/table_data_source.m` | reusable table rows and cells | `LuaTableViewSource`, `LuaTableCellView` |
-| `appkit/table_cell_template.m` | column content templates: hosted views, native row bindings | `LuaTemplateCellView`, `LuaCellBinding` |
 | `appkit/outline_data_source.m` | hierarchical outline rows and cells | `LuaOutlineViewSource`, `LuaOutlineCellView` |
 | `appkit/action_button.m` | callback target, lookup tables, compound action button | `LuaButtonTarget`, `LuaActionButton` |
 | `appkit/toolbar.m` | native toolbar item construction | `LuaToolbarDelegate` |

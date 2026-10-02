@@ -1,7 +1,9 @@
 # lua-objc agent guide
 
 lua-objc exposes SwiftUI-like Lua APIs backed by real AppKit/UIKit controls.
-Most application work belongs in `.lua`; native bridge work belongs in `src/`.
+It is a lightweight framework: Apple's frameworks do the work and an idle
+app burns no CPU (see "A lightweight framework"). Most application work
+belongs in `.lua`; native bridge work belongs in `src/`.
 
 ## Start here
 
@@ -19,7 +21,7 @@ Read only the material needed for the current task:
 - [docs/reels.md](docs/reels.md) — making 3-D promo reels with Reel and
   SceneKit: captures, component motion, camera, traps, performance
 - [docs/data-driven.md](docs/data-driven.md) — manifests, pages as requests over
-  models, `@name` resources, cell `$field` bindings, the model graph
+  models, `@name` resources, the model graph
 - [docs/components.md](docs/components.md) — components: new XML tags
   written as etlua templates, the bundled set, resolution
 - [docs/scenekit.md](docs/scenekit.md) — `<SceneView>` 3-D scenes: scene
@@ -97,7 +99,6 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
       sections/      large blocks a page composes (hero, decision, details)
       components/    small reusable partials (header, button row, tile)
       sheets/        modal dialogs and popovers
-      cells/         table column content
       (a folder per other kind, e.g. topics/; no loose files in views/)
       view names are paths under views/ ("pages/Overview"); partials resolve
       relative to the including template: partial("../components/X.etlua")
@@ -118,17 +119,50 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   `lua/vendor/etlua` (git submodule). Import with `require("etlua")`. Do not
   add Mustache, Handlebars, or any other template dependency.
 
-## Performance and baggage
+## A lightweight framework
 
+lua-objc is a thin layer: etlua templates and plain Lua over Apple's own
+frameworks. It is not a second UI toolkit. Everything below follows from
+that, and outranks any feature request that conflicts with it.
+
+- **Apple's frameworks do the work; we do not invent our own.** Scrolling,
+  animation, transitions, text, selection, focus, drag and drop, tables and
+  window behavior come from AppKit, UIKit and Core Animation as they ship.
+  The bridge exposes what exists; it does not reimplement it. If Apple has
+  no API for an effect, the answer is to go without the effect, not to
+  build an engine for it.
+- **Scrolling is the system's.** `NSScrollView` and `UIScrollView` scroll.
+  No custom scroll animation, no Lua or timer-driven offsets, no code that
+  runs per scroll frame.
+- **No animation is better than a wasteful one.** The project once had its
+  own motion engine (`src/shared/motion.m`, removed in 7a909a21): it
+  snapshotted and diffed whole layout subtrees and started about 35 Core
+  Animation animations on every scan tick, on every page, and it fought
+  scrolling. Nothing like it comes back. A view may animate itself with a
+  system facility (`Arc` animates its own path; a page slides with
+  `CATransition`); nothing animates the view tree, and frequent updates
+  (scan progress, streaming text, per-tick refreshes) are never animated.
+- **An idle app uses 0% CPU.** Nothing redraws, lays out, polls or ticks
+  unless something asked for it: a user action, a completed async result,
+  or a controller setting a value. No display links, repeating timers or
+  refresh loops behind a page the user is only looking at. A timer or
+  display link exists only while the thing it drives is visibly running
+  (a game scene, a playing reel) and stops with it.
+- **No bindings, no observation, no notifications between models and
+  views.** A value reaches the screen in exactly two ways: etlua writes it
+  when the template renders (`<%= %>`, `<% for %>`), or a controller sets
+  it on a retained view ref when that is truly necessary (a progress bar's
+  value during a scan). There is no `attr="{field}"` or `$field` syntax, no
+  observable model, no change subscription, no automatic refresh. A table
+  `<Column>` takes no child views: its cell is a native kind chosen by key
+  attributes that name row fields (`subtitleKey`, `levelKey`, ...).
+- **Less machinery beats more.** Before adding a subsystem, a cache, a
+  diffing pass, a registry or an abstraction layer, look for the version
+  that is a loop in a template or one call on a native view. Delete
+  machinery that a simpler design makes unnecessary.
 - **Ask "are you sure?" first.** When the user asks for a feature that could
   slow the application down or add a large amount of machinery, stop and ask
   "are you sure?" before building it, naming the cost.
-- No animation is better than an animation that costs frames. Never wrap
-  frequent updates (scan progress, streaming text, per-tick refreshes) in
-  `withAnimation`: a transaction diffs the layout of the whole subtree and
-  can start dozens of Core Animation animations per tick, and it fights
-  scrolling. Animate only deliberate, infrequent changes, on the views that
-  change.
 
 ## Non-negotiable product rules
 

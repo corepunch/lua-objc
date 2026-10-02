@@ -19,7 +19,7 @@ local SdksSheet = require("apps.diskmap.models.SdksSheet")
 local Settings = require("apps.diskmap.models.Settings")
 local RowMenus = require("apps.diskmap.models.RowMenus")
 local Review = require("apps.diskmap.models.Review")
-local ScanProgress = require("apps.diskmap.models.ScanProgress")
+local ScanProgress = require("apps.diskmap.controllers.ScanProgressController")
 local HistorySheet = require("apps.diskmap.models.HistorySheet")
 local SnapshotChanges = require("apps.diskmap.models.SnapshotChanges")
 local NavigationController = require("apps.diskmap.controllers.NavigationController")
@@ -103,9 +103,6 @@ function Controller.new(service)
 		openHistory = function() self.history:open(self.window) end,
 		keep = function(id) self.keep:toggle(id) end,
 		scanning = function() return self.scan.job ~= nil end,
-		scanDisk = function() return self.scan.disk end,
-		scanStatus = function() return self.scan.status end,
-		cancelScan = function() self.scan:cancel() end,
 		onboarded = function(granted)
 			self.fullDiskAccess = granted == true
 			self.scan:start()
@@ -129,7 +126,7 @@ function Controller.new(service)
 	self.settings, self.review, self.history = Settings.new({}, context), Review.new({}, context), HistorySheet.new({}, context)
 	self.sdks, self.management = SdksSheet.new({}, context), ManagementSheet.new({}, context)
 	self.changesSheet = SnapshotChanges.new({}, context)
-	self.progress = ScanProgress.new({}, context)
+	self.progress = ScanProgress.new(self.scan)
 	self.actions.review = self.review
 	local manifest = Manifest.load("apps/diskmap/app.xml")
 	context.entry = function(id) return manifest.pages[id] end

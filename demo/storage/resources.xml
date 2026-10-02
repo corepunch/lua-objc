@@ -3,6 +3,5 @@
 	<Number id="pagePadding" value="20" />
 	<Number id="rowHeight" value="44" />
 	<Number id="meterWidth" value="200" />
-	<Number id="meterGap" value="4" />
 	<Number id="listHeight" value="320" />
 </Resources>

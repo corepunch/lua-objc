@@ -135,7 +135,7 @@ statuses.size = ns.Size(560, 200); statuses:layout(560)
 local statusWidths = {}
 for _, column in ipairs(bridge._tableColumnWidths(statuses)) do statusWidths[column.id] = column.width end
 t.expect(statusWidths.detail <= 48, "the status column is one symbol wide")
-t.expect(statusWidths.size >= 180, "the meter fits a lower-bound size such as ≥ 999.9 MB beside its share")
+t.expect(statusWidths.shareText >= 180, "the meter fits a lower-bound size such as ≥ 999.9 MB beside its share")
 for status, style in pairs(Status.styles) do
 	t.expect(style.icon:find("%.fill$") ~= nil and style.color ~= nil, status .. " has a filled, coloured symbol")
 end
@@ -150,14 +150,14 @@ sizes:replaceRows({
 })
 sizes.size = ns.Size(560, 200); sizes:layout(560)
 local denied, measured = meterOf(bridge._tableCell(sizes, 1, 0)), meterOf(bridge._tableCell(sizes, 1, 1))
-t.assertEqual(denied.value.text, "No access", "the state is spelled out")
-t.expect(not denied.symbol.hidden and denied.symbol.image ~= nil, "a state leads with its symbol")
+t.assertEqual(denied.value.stringValue, "No access", "the state is spelled out")
+t.expect(denied.symbol.image ~= nil, "a state leads with its symbol")
 t.expect(denied.symbol.frameInWindow.origin.x + denied.symbol.frameInWindow.size.width <= denied.value.frameInWindow.origin.x, "the symbol comes before the word")
 t.assertEqual(denied.symbol.frame.size.width, 16, "the symbol fills the spinner's square")
 t.assertEqual(tostring(denied.value.textColor), tostring(denied.symbol.contentTintColor), "the word takes its symbol's colour")
 t.expect(not denied.bar.hidden and not denied.bar.enabled, "a state keeps an empty, disabled bar")
-t.expect(measured.symbol.hidden and measured.bar.enabled, "a measured size has no symbol and an enabled bar")
-t.assertEqual(measured.value.text, "2.0 GB", "the measured size is text")
+t.expect(measured.symbol.image == nil and measured.bar.enabled, "a measured size has no symbol and an enabled bar")
+t.assertEqual(measured.value.stringValue, "2.0 GB", "the measured size is text")
 for status, state in pairs(Model.sizeStates) do
 	local row = Model.sizeLabel({}, status)
 	t.assertEqual(row.size, state.text, status .. " reads as its word")
@@ -180,8 +180,8 @@ t.assertEqual(partial.size, "≥ 2.0 GB", "a partial size reads as a lower bound
 t.expect(partial.partial, "a partial size is flagged")
 sizes:replaceRows({Model.sizeLabel({id = "dev", name = "Developer", relative = 1, shareText = "", color = "systemBlue", icon = "hammer"}, "partial", 15.8e9)})
 local lower = meterOf(bridge._tableCell(sizes, 1, 0))
-t.assertEqual(lower.value.text, "≥ 15.8 GB", "the lower bound reads ≥ before its number")
-t.expect(lower.symbol.hidden, "a lower bound is a sign, not a symbol")
+t.assertEqual(lower.value.stringValue, "≥ 15.8 GB", "the lower bound reads ≥ before its number")
+t.expect(lower.symbol.image == nil, "a lower bound is a sign, not a symbol")
 t.assertEqual(Status.apply({detail = "Under 5.0 GB"}, "Within").statusColor, "systemGreen", "a location within limits is green")
 t.assertEqual(Status.apply({detail = "Review"}).statusColor, "systemOrange", "review is orange")
 t.assertEqual(Status.apply({detail = "Keep"}).statusColor, "systemRed", "required data is red")
@@ -235,7 +235,7 @@ t.assertEqual(fullRefs.firstDetail.frame.size.height, fullRefs.firstDetail.intri
 -- "could recover", so the name and its subtitle keep the rest.
 local columns = {}
 for _, column in ipairs(bridge._tableColumnWidths(fullRefs.second)) do columns[column.id] = column end
-t.assertEqual(columns.size.minWidth, 200, "the meter column fits its widest value and share, no more")
+t.assertEqual(columns.shareText.minWidth, 200, "the meter column fits its widest value and share, no more")
 local probe = xml.render('<Label text="≥ 999.9 MB" />', {}, ns)
 local shareProbe = xml.render('<Label text="could recover" />', {}, ns)
 t.expect(probe.fittingSize.width + shareProbe.fittingSize.width + 8 <= 200 - 16, "the meter's widest value and share fit inside the cell's insets")

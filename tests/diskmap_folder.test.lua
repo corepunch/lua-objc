@@ -81,7 +81,7 @@ local refs = pc.refs
 t.expect(refs.folderSunburst ~= nil and refs.folderList.rowCount >= 3, "the folder shows as rings beside its contents")
 t.assertEqual(bridge._tableCell(refs.folderList, 0, 0).textField.stringValue, "Old macOS Installer.dmg", "the largest item comes first")
 local folderMeter = dofile("tests/fixtures/meter.lua")(bridge._tableCell(refs.folderList, 1, 0))
-t.expect(folderMeter.value.text ~= "" and folderMeter.share.text:find("%%$") ~= nil, "the folder meter shows the size and its share")
+t.expect(folderMeter.value.stringValue ~= "" and folderMeter.share.stringValue:find("%%$") ~= nil, "the folder meter shows the size and its share")
 t.expect(not folderMeter.bar.hidden, "the folder meter draws its bar")
 t.expect(refs.folderSummary.text:find("~/Downloads", 1, true) ~= nil, "the summary names the folder from the home folder")
 t.expect(app:badges().folder ~= nil, "the sidebar badge is the open folder's size")

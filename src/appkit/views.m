@@ -744,7 +744,7 @@ static int bridge_system_image(lua_State *L) {
 	NSString *name = [NSString stringWithUTF8String:symbol];
 	NSString *accessibilityDescription =
 		[NSString stringWithUTF8String:description];
-	/* An empty name is no symbol: a cell template binds the name per row. */
+	/* An empty name is no symbol. */
 	LuaSymbolImageView *view = [[LuaSymbolImageView alloc]
 		initWithFrame:NSMakeRect(0, 0, pointSize, pointSize)];
 	view.symbolSize = pointSize;

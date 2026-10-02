@@ -1378,28 +1378,6 @@ function AppKit.TimelineView(props)
 	return applyLayout(content, props)
 end
 
--- A column's `template` is a Lua factory (see "Column content templates" in
--- docs/tableview_swiftui.md); the native column spec is plain data. Returns
--- the specs without their templates, and a function that installs them.
-local function columnTemplates(columns)
-	local specs, templates = {}, {}
-	for _, column in ipairs(columns) do
-		local spec = {}
-		for key, value in pairs(column) do
-			if key ~= "template" then spec[key] = value end
-		end
-		if column.template ~= nil then
-			assert(type(column.template) == "function", "Column template must be a function")
-			assert(column.id, "a Column with a template requires an id")
-			templates[column.id] = column.template
-		end
-		table.insert(specs, spec)
-	end
-	return specs, function(view)
-		for id, template in pairs(templates) do bridge._tableColumnTemplate(view, id, template) end
-	end
-end
-
 --- Displays rows of data in a native table or list control.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
@@ -1428,8 +1406,6 @@ function AppKit.List(props)
 	if not columns or type(columns) ~= "table" then
 		error("List requires a 'columns' property (array of {id, title})")
 	end
-	local installTemplates
-	columns, installTemplates = columnTemplates(columns)
 
 	local width = props.width or 400
 	local height = props.height or 200
@@ -1442,7 +1418,6 @@ function AppKit.List(props)
 		gridLines = props.gridLines,
 		style = props.style,
 	})
-	installTemplates(tv)
 	if props.rowHeight then tv.documentView.rowHeight = props.rowHeight end
 	if props.scrollDisabled then tv.scrollDisabled = true end
 
@@ -1574,8 +1549,6 @@ function AppKit.OutlineView(props)
 	if not columns or type(columns) ~= "table" then
 		error("OutlineView requires a 'columns' property (array of {id, title})")
 	end
-	local installTemplates
-	columns, installTemplates = columnTemplates(columns)
 
 	local width = props.width or 400
 	local height = props.height or 200
@@ -1588,7 +1561,6 @@ function AppKit.OutlineView(props)
 		gridLines = props.gridLines,
 		style = props.style,
 	})
-	installTemplates(tv)
 
 	if props.rowHeight then tv.documentView.rowHeight = props.rowHeight end
 	if props.indentation then

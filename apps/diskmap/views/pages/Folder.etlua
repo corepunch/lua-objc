@@ -58,9 +58,7 @@
     <GroupBox width="<%= FOLDER.list %>" minWidth="<%= FOLDER.minList %>" maxHeight="infinity">
       <List id="folderList" onSelect="selectRow" onActivate="drillRow" rowMenu="rowMenu" dragKey="path" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="40" drawsBackground="false" maxHeight="infinity">
         <Column id="name" title="Item" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" imageSize="22" minWidth="140" />
-        <Column id="size" title="Size" width="<%= FOLDER.meter %>" minWidth="<%= FOLDER.meter %>">
-          <%- partial("../cells/Meter.etlua") %>
-        </Column>
+        <Column id="shareText" title="Size" width="<%= FOLDER.meter %>" minWidth="<%= FOLDER.meter %>" levelKey="relative" levelColorKey="color" valueKey="size" loadingKey="calculating" imageKey="sizeIcon" imageColorKey="sizeColor" />
       </List>
     </GroupBox>
   <% else %>

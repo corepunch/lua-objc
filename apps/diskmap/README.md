@@ -402,7 +402,9 @@ framework's page controller draws the etlua view with it, and an action in the
 view is a method of the model followed by the same request again. The root
 controller is only the window's code-behind: it wires services, the scan and the
 shell (sidebar, menus, history, the cleanup collector). A running scan shows in
-one small progress window; the pages are drawn when it finishes. Models for
+one small progress window, which `controllers/ScanProgressController` renders
+once and then updates by setting the bar's value and the status text; the pages
+are drawn when it finishes. Models for
 destinations: overview, largest items, large files, file types, clean up,
 applications, developer, simulators, disks and volumes, updates and snapshots,
 guide; sheets for review, settings, history, snapshots, SDKs, category
