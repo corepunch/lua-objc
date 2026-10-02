@@ -67,7 +67,7 @@ local graph = require("data.model").graph({classes = {files = require("apps.disk
 }}})
 t.assertEqual(graph:build({"applications"}).applications:summary(), nil, "live file findings do not imply app-data breakdowns are ready")
 local files = require("data.pagecontroller").new({page = {id = "files", title = "Large Files", icon = "doc.fill", color = "systemTeal",
-	model = "files", view = "Page"}, graph = graph, ns = ns, viewsDir = "apps/diskmap/views/"})
+	model = "files", view = "pages/Page"}, graph = graph, ns = ns, viewsDir = "apps/diskmap/views/"})
 files:mount(ns.VStack {}, {query = ""})
 -- A running scan draws no partial rows and no half-filled totals: the page
 -- says it is not measured yet and is drawn again when the scan finishes.
@@ -111,7 +111,7 @@ service.simulatorRuntimes = function(done) done(nil, "Runtimes could not be read
 local held = {}
 service.simulatorDevices = function(done) held.devices = done end
 service.simulatorRuntimes = function(done) held.runtimes = done end
-local simulator, simulatorModel = Host.new("simulators", "SimulatorsPage", "Simulators", {model = model, service = service})
+local simulator, simulatorModel = Host.new("simulators", "SimulatorsPage", "pages/Simulators", {model = model, service = service})
 simulator:mount(ns.VStack {}, {query = ""})
 t.expect(simulator.refs.computingSpinner and simulator.refs.devices == nil and simulator.refs.planReview == nil, "while the first read runs the page shows one progress state, not empty lists")
 held.devices(nil, "Device state could not be checked. Retry.")
@@ -165,7 +165,7 @@ page.actions.openSelection()
 t.assertEqual(opened[1], "applications", "visible action navigates to the suggested page")
 t.assertEqual(opened[2], "Unused for 6 months", "visible action preserves its review filter")
 local long = string.rep("Keep personal documents. Review installed test apps and their data. ", 12)
-local detail, refs = xml.renderFile("apps/diskmap/views/SelectionDetails.etlua", {title = "A very long suggestion name", detail = long, actionTitle = "Open Simulators…", size = "25.7 GB"}, ns)
+local detail, refs = xml.renderFile("apps/diskmap/views/sections/SelectionDetails.etlua", {title = "A very long suggestion name", detail = long, actionTitle = "Open Simulators…", size = "25.7 GB"}, ns)
 detail.size = ns.Size(540, 700); detail:layout(540)
 t.expect(refs.selectionAdvice.frame.size.height > 40, "long consequences wrap over multiple lines")
 t.expect(refs.openSelection.frame.size.width >= refs.openSelection.fittingSize.width, "explicit action fits at narrow width")

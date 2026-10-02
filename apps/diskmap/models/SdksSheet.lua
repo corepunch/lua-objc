@@ -4,7 +4,7 @@ local Sdks = require("apps.diskmap.models.Sdks")
 
 -- The SDKs one installation holds (an Xcode, the Command Line Tools). Sizes
 -- the discovery did not know are measured once the sheet is up.
-local SdksSheet = SheetPage.define({id = "sdks", view = "Sdks", width = 620, height = 480})
+local SdksSheet = SheetPage.define({id = "sdks", view = "sheets/Sdks", width = 620, height = 480})
 
 function SdksSheet.new(_, services)
 	return setmetatable({services = services, service = services.service, rows = {}, query = ""}, SdksSheet)

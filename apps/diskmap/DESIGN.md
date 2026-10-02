@@ -142,7 +142,7 @@ and Diskmap settings are sheets; suggested cleanups are the Clean Up page.
 All screens and partials are etlua.
 
 Every page scrolls as one surface. Lists inside a page are `scrollDisabled`
-and share one row design (`views/ResourceList.etlua`): icon, name and
+and share one row design (`views/components/ResourceList.etlua`): icon, name and
 location, a status column, a meter (size and share on a line above the share
 bar, one native cell, as on every level list) and a "More" (⋯) button.
 Row actions live in that button's menu and the row's contextual menu, built
@@ -156,7 +156,7 @@ and disclosure triangle is centered on one vertical line and every label
 starts at one edge. The Overview card has one symbol column for its warning,
 legend dots, hidden-space symbols and cleanup symbol (`HERO.symbol`); info
 rows, tips, guide and help topics share a 26-point column with a 10-point
-gap; section titles with a symbol use `views/SectionTitle.etlua`. Optional
+gap; section titles with a symbol use `views/components/SectionTitle.etlua`. Optional
 trailing buttons sit in a fixed column so values keep one trailing edge.
 `tests/diskmap_alignment.test.lua` measures these columns.
 
@@ -412,7 +412,7 @@ services, feature controllers, template refs, navigation and the window.
 | `models/` | Inventory transitions, categories, cleanup eligibility, tips, inspector data and preferences. No native widgets. |
 | `catalog/` | Category definitions, explanations, paths, ownership and policies. |
 | `knowledge/CleanupRules.lua` | Resource-specific review thresholds and advice with consequences. |
-| `models/` | Independently testable scan, cleanup, inspector and settings models; a page or sheet is a model with `data(state)` and a method per action, drawn by the framework page controller. List pages share one template (`views/Page.etlua`) laid out from a table. |
+| `models/` | Independently testable scan, cleanup, inspector and settings models; a page or sheet is a model with `data(state)` and a method per action, drawn by the framework page controller. List pages share one template (`views/pages/Page.etlua`) laid out from a table. |
 | `knowledge/Workflows.lua` | One entry per kind of work (Developer, Music Production, …): its page and the catalog groups it lists. |
 | `models/Destinations.lua` | The one place that decides where opening a resource goes. |
 | `services/` | Injected native IO, persistence, permissions and owner-management integration. |

@@ -69,7 +69,7 @@ local calls, confirmed, refreshed = {}, false, 0
 local service = {command = function(argv, completion) table.insert(calls, {argv = argv, done = completion}) end,
 	decode = function() return data end, confirmAction = function() return confirmed end,
 	reveal = function() end, openSettings = function() end, openOwner = function() end}
-local _, controller = Host.new("simulators", "SimulatorsPage", "Simulators", {model = model, service = service, rescan = function() refreshed = refreshed + 1 end})
+local _, controller = Host.new("simulators", "SimulatorsPage", "pages/Simulators", {model = model, service = service, rescan = function() refreshed = refreshed + 1 end})
 controller.inventory = data; controller.selected = Simulators.rows(data)[1]
 t.expect(not controller:erase(), "cancel confirmation never launches a command")
 t.assertEqual(#calls, 0, "cancel has no side effects")
@@ -177,7 +177,7 @@ local runtimeList = {[runtimeId] = {identifier = runtimeId, runtimeIdentifier = 
 	platformIdentifier = "com.apple.platform.iphonesimulator", deletable = true, sizeBytes = 8.4e9}}
 service.simulatorRuntimes = function(completion) completion(runtimeList) end
 local host = ns.VStack {}
-local simulatorUI, simulatorModel = Host.new("simulators", "SimulatorsPage", "Simulators", {model = model, service = service})
+local simulatorUI, simulatorModel = Host.new("simulators", "SimulatorsPage", "pages/Simulators", {model = model, service = service})
 simulatorUI:mount(host, {query = ""})
 simulatorModel.inventory, simulatorModel.runtimeList = data, runtimeList
 simulatorUI:update({query = ""})

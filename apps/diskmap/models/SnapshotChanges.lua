@@ -2,7 +2,7 @@ local SheetPage = require("apps.diskmap.SheetPage")
 
 -- Every location that changed since the saved snapshot, in a sheet over the
 -- window. The comparison itself is services/SnapshotComparison.lua.
-local SnapshotChanges = SheetPage.define({id = "snapshotChanges", view = "SnapshotChanges", width = 720, height = 520})
+local SnapshotChanges = SheetPage.define({id = "snapshotChanges", view = "sheets/SnapshotChanges", width = 720, height = 520})
 
 SnapshotChanges.queries = {rowMenu = true, reveal = true}
 

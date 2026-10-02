@@ -5,7 +5,7 @@ local SheetPage = require("apps.diskmap.SheetPage")
 -- `services.notifications` (services/Notifications.lua) owns the opt-in
 -- notifications. A switch flips before its action runs, so `sync` sets every
 -- switch from the model after each draw: a refused change flips it back.
-local Settings = SheetPage.define({id = "settings", view = "Settings", width = 460, height = 684})
+local Settings = SheetPage.define({id = "settings", view = "sheets/Settings", width = 460, height = 684})
 
 local MEDIA = {
 	mock = "Include the synthetic Photos, Music and TV libraries? Mock HDD reads only its bundled fixture.",

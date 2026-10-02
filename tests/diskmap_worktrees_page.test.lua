@@ -14,7 +14,7 @@ local confirmations, saved = {}, nil
 service.confirmAction = function(title, message) table.insert(confirmations, {title, message}); return true end
 service.saveKeep = function(kept) saved = kept; return true end
 local changed, published, page, worktrees = 0, 0, nil, nil
-page, worktrees = Host.new("worktrees", "WorktreesPage", "Worktrees", {model = model, service = service,
+page, worktrees = Host.new("worktrees", "WorktreesPage", "pages/Worktrees", {model = model, service = service,
 	rescan = function() changed = changed + 1 end, refresh = function() published = published + 1; page:update(page.state) end})
 page:mount(ns.VStack {}, {query = ""})
 local refs = page.refs
@@ -134,7 +134,7 @@ t.expect(worktrees.result:find("No checkout was deleted", 1, true), "and the res
 local failing = Mock.new()
 local failModel = Model.new(failing.home)
 failing.confirmAction = function() return true end
-local failedPage, failed = Host.new("worktrees", "WorktreesPage", "Worktrees", {model = failModel, service = failing})
+local failedPage, failed = Host.new("worktrees", "WorktreesPage", "pages/Worktrees", {model = failModel, service = failing})
 failedPage:mount(ns.VStack {}, {query = ""})
 local realFailing = failing.command
 local attempts = 0
@@ -155,7 +155,7 @@ page:update({query = ""})
 local empty = Mock.new()
 empty.worktreeScan = function(_, done) done({}, {}) end
 local routed
-local emptyPage, emptyWorktrees = Host.new("worktrees", "WorktreesPage", "Worktrees", {model = Model.new(empty.home), service = empty,
+local emptyPage, emptyWorktrees = Host.new("worktrees", "WorktreesPage", "pages/Worktrees", {model = Model.new(empty.home), service = empty,
 	show = function(id) routed = id end})
 emptyPage:mount(ns.VStack {}, {query = ""})
 t.expect(not emptyPage.refs.worktreesEmpty.hidden and emptyPage.refs.removeSection.hidden and emptyPage.refs.reviewSection.hidden, "no worktrees shows its own empty state")
@@ -174,7 +174,7 @@ local realScan = delayed.worktreeScan
 delayed.worktreeScan = function(self, roots, done, progress)
 	table.insert(pending, function() realScan(self, roots, done, progress) end)
 end
-local lifecycle, lifecycleWorktrees = Host.new("worktrees", "WorktreesPage", "Worktrees", {model = Model.new(delayed.home), service = delayed})
+local lifecycle, lifecycleWorktrees = Host.new("worktrees", "WorktreesPage", "pages/Worktrees", {model = Model.new(delayed.home), service = delayed})
 lifecycleWorktrees:load()
 t.expect(lifecycleWorktrees.busy and not lifecycleWorktrees.loaded, "a background load is pending before the page mounts")
 lifecycle:mount(ns.VStack {}, {query = ""})
@@ -187,7 +187,7 @@ pending[1]()
 t.expect(not lifecycleWorktrees.busy and lifecycleWorktrees.loaded, "the pending load finishes after navigating away and back")
 t.assertEqual(lifecycle.refs.removeList.rowCount, 2, "and the mounted page shows its result")
 t.expect(lifecycle.refs.decisionAction.enabled, "with its review action ready")
-local unmounted, unmountedWorktrees = Host.new("worktrees", "WorktreesPage", "Worktrees", {model = Model.new(delayed.home), service = delayed})
+local unmounted, unmountedWorktrees = Host.new("worktrees", "WorktreesPage", "pages/Worktrees", {model = Model.new(delayed.home), service = delayed})
 unmountedWorktrees:load(); unmounted:mount(ns.VStack {}, {query = ""}); unmounted:dispose()
 pending[#pending]()
 t.expect(unmountedWorktrees.loaded and not unmountedWorktrees.busy and unmountedWorktrees.storage.worktreePlan ~= nil, "a load that finishes while the page is closed still publishes the plan")

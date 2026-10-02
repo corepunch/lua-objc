@@ -62,7 +62,7 @@
       <% if #chart.legend > 0 then %>
       <VStack id="legend" maxWidth="<%= HERO.legend %>" spacing="4" alignment="leading">
         <% for _, item in ipairs(chart.legend) do %>
-        <%- partial("LegendRow.etlua", {item = item, symbol = HERO.symbol}) %>
+        <%- partial("../components/LegendRow.etlua", {item = item, symbol = HERO.symbol}) %>
         <% end %>
       </VStack>
       <% else %>

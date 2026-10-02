@@ -6,7 +6,7 @@ local xml = require("ui.xml")
 -- A donut's center total must never wrap ("110.4" over "GB"): the hole is
 -- narrower than the total at its declared size, so every center label is one
 -- line and shrinks to fit.
-local _, refs = xml.renderFile("apps/diskmap/views/Kinds.etlua", {
+local _, refs = xml.renderFile("apps/diskmap/views/pages/Kinds.etlua", {
 	page = {icon = "square.grid.2x2.fill", color = "systemPink", title = "File Types"},
 	kinds = {{id = "other", bytes = 1, color = "systemBlue", name = "Other files"}},
 	extensionsDetail = "The twelve extensions that use the most space",
@@ -25,7 +25,7 @@ t.expect(label.frame.size.height < label.font.pointSize * 2, "the total occupies
 
 -- Every label drawn inside a SectorChart in an app view declares lines="1"
 -- and a minimumScaleFactor.
-for path in io.popen("ls apps/*/views/*.etlua demo/*/views/*.etlua 2>/dev/null"):lines() do
+for path in io.popen("find apps/*/views demo/*/views -name '*.etlua' 2>/dev/null"):lines() do
 	local source = io.open(path):read("a")
 	for body in source:gmatch("<SectorChart.-</SectorChart>") do
 		for tag in body:gmatch("<Label%s.-/>") do

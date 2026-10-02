@@ -34,7 +34,7 @@ local Manifest = require("data.manifest")
 local ModelGraph = require("data.model")
 local PageController = require("data.pagecontroller")
 local Controller = {}; Controller.__index = Controller
-local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
+local function render(name, data) return xml.renderFile("apps/diskmap/views/layouts/" .. name .. ".etlua", data or {}, ns) end
 -- Services grow optional features; a provider that lacks one simply does not
 -- offer it. rawget keeps strict test doubles from reporting a probe as a call.
 local function optional(service, name)

@@ -14,7 +14,7 @@
 -- Elements are found by their template ids in the layout dump written with
 -- each shot.
 local here = debug.getinfo(1, "S").source:match("^@(.*/)") or "./"
--- BOX matches TOUR in views/Tour.etlua; tests/diskmap_tour.test.lua checks
+-- BOX matches TOUR in views/sheets/Tour.etlua; tests/diskmap_tour.test.lua checks
 -- every image against it.
 local BOX = { width = 524, height = 290, scale = 2 }
 local CROP = { margin = 12, quality = 92 }

@@ -414,6 +414,14 @@ Controller.lua  ← defines Controller class; wires model → views, owns action
 views/          ← etlua templates and reusable partials only
 ```
 
+Larger apps sort `views/` the way a web frontend does: `layouts/` (app
+shell), `pages/` (one template per screen), `sections/` (large blocks a page
+composes), `components/` (small reusable partials), `sheets/` (modal dialogs),
+`cells/` (table column content), plus a folder per other kind. A view name is
+a path under `views/` (`view="pages/Overview"` in `app.xml`). Partials
+resolve relative to the including template, so a page includes
+`partial("../components/Footnote.etlua")`. Diskmap is the reference layout.
+
 `tests/app_architecture.test.lua` enforces this contract for every folder
 under `apps/`, `demo/` and `test/`: a one-line `init.lua`, a `Controller.lua`,
 etlua-only `views/`, models that never require or reference the platform module,

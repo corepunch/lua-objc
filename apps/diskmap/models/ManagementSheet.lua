@@ -9,7 +9,7 @@ local Selection = require("apps.diskmap.models.Selection")
 -- impact tab, searchable and sortable, with the selected location's
 -- actions below. `services.open(id)` opens a resource wherever Destinations
 -- sends it; a row that lives on a page or sheet of its own leaves this one.
-local ManagementSheet = SheetPage.define({id = "management", view = "Management", width = 620, height = 640})
+local ManagementSheet = SheetPage.define({id = "management", view = "sheets/Management", width = 620, height = 640})
 
 ManagementSheet.filters = {"All", "Safe/rebuildable", "Needs review", "Essential to keep"}
 ManagementSheet.queries = {reveal = true}

@@ -6,7 +6,7 @@ local Selection = require("apps.diskmap.models.Selection")
 -- page table (models/Largest.lua, Recommendations.lua, Workflow.lua) is
 --
 --   id        the page's id
---   view      the template in views/, Page.etlua (the list page) when omitted
+--   view      the template in views/, pages/Page.etlua (the list page) when omitted
 --   layout    what Page.etlua lays out: tiles, sections of lists, a footnote
 --             (the fields are listed in the template), or a function
 --             `layout(presented)` when the structure depends on the data

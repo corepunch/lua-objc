@@ -277,7 +277,7 @@ end
 
 function Recommendations.page(context)
 	local sources = context.cleanupSources
-	return {id = "cleanup", layout = LAYOUT, details = Recommendations.details, children = {lead = "Decision", tips = "Tips"}, present = function(model, state)
+	return {id = "cleanup", layout = LAYOUT, details = Recommendations.details, children = {lead = "sections/Decision", tips = "sections/Tips"}, present = function(model, state)
 		local data = Recommendations.presentation(model, state.query, sources())
 		local lists, hidden = {}, {}
 		for _, section in ipairs(SECTIONS) do

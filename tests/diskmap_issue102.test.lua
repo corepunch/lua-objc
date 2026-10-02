@@ -137,7 +137,7 @@ for _, id in ipairs({"cleanup", "applications", "files", "simulators", "worktree
 end
 
 -- Critical guidance wraps instead of truncating.
-t.expect(source("apps/diskmap/views/SectionHeader.etlua"):find('lines="0"', 1, true) and not source("apps/diskmap/views/SectionHeader.etlua"):find('lines="2"', 1, true),
+t.expect(source("apps/diskmap/views/components/SectionHeader.etlua"):find('lines="0"', 1, true) and not source("apps/diskmap/views/components/SectionHeader.etlua"):find('lines="2"', 1, true),
 	"section explanations wrap")
 local function wraps(path, id)
 	local text = source(path)
@@ -145,10 +145,10 @@ local function wraps(path, id)
 	local tag = start and text:sub(start, text:find("/>", start, true))
 	return tag ~= nil and tag:find('lines="0"', 1, true) ~= nil and not tag:find("truncation", 1, true)
 end
-t.expect(wraps("apps/diskmap/views/Decision.etlua", "<%= id %>Title"), "a decision's title wraps")
-t.expect(wraps("apps/diskmap/views/Decision.etlua", "<%= id %>Detail"), "a decision's detail wraps")
-t.expect(wraps("apps/diskmap/views/SimulatorPlan.etlua", "planSummary"), "the plan's qualifications wrap")
-t.expect(wraps("apps/diskmap/views/Folder.etlua", "folderHover"), "the Folder Map's guidance wraps in a narrow pane")
+t.expect(wraps("apps/diskmap/views/sections/Decision.etlua", "<%= id %>Title"), "a decision's title wraps")
+t.expect(wraps("apps/diskmap/views/sections/Decision.etlua", "<%= id %>Detail"), "a decision's detail wraps")
+t.expect(wraps("apps/diskmap/views/sections/SimulatorPlan.etlua", "planSummary"), "the plan's qualifications wrap")
+t.expect(wraps("apps/diskmap/views/pages/Folder.etlua", "folderHover"), "the Folder Map's guidance wraps in a narrow pane")
 window:close()
 
 -- #100 P1: Simulators. The root reads the inventory when a scan finishes,
@@ -159,7 +159,7 @@ local replies = {}
 local runtimes = delayed.simulatorRuntimes
 delayed.simulatorRuntimes = function(done) table.insert(replies, function() runtimes(done) end) end
 local storage = Model.new(delayed.home)
-local simulators, inventory = Host.new("simulators", "SimulatorsPage", "Simulators", {model = storage, service = delayed})
+local simulators, inventory = Host.new("simulators", "SimulatorsPage", "pages/Simulators", {model = storage, service = delayed})
 inventory:load()
 t.expect(inventory.busy and not inventory.loaded, "a background read is pending before the page mounts")
 simulators:mount(ns.VStack {}, {query = ""})
@@ -176,7 +176,7 @@ t.expect(simulators.refs.retry.enabled, "Retry is available again")
 -- A read that completes while the page is closed still records the inventory.
 replies = {}
 local closedStorage = Model.new(delayed.home)
-local closed, closedInventory = Host.new("simulators", "SimulatorsPage", "Simulators", {model = closedStorage, service = delayed})
+local closed, closedInventory = Host.new("simulators", "SimulatorsPage", "pages/Simulators", {model = closedStorage, service = delayed})
 closedInventory:load(); closed:mount(ns.VStack {}, {query = ""}); closed:dispose()
 for _, reply in ipairs(replies) do reply() end
 t.expect(closedInventory.loaded and not closedInventory.busy and closedStorage.simulatorPlan ~= nil, "a read that finishes while the page is closed publishes its plan")
@@ -185,7 +185,7 @@ t.expect(closed.refs.summary.text:find("stored in", 1, true), "and the next visi
 
 -- Simulators: keep choices, recoverable bytes and the review action sit
 -- together, before the plan's list; the full inventory is collapsed.
-local plain = Host.new("simulators", "SimulatorsPage", "Simulators", {model = Model.new(service.home), service = service})
+local plain = Host.new("simulators", "SimulatorsPage", "pages/Simulators", {model = Model.new(service.home), service = service})
 plain:mount(ns.VStack {}, {query = ""})
 local planRefs = plain.refs
 local actionRow = planRefs.planReview.superview

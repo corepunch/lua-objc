@@ -10,7 +10,7 @@ developer pages appear only on a Mac with developer data: Xcode or
 `~/Library/Developer` present, or at least 500 MB measured in the Developer
 category.
 
-Every cleanup destination leads with one decision (`views/Decision.etlua`):
+Every cleanup destination leads with one decision (`views/sections/Decision.etlua`):
 what to review and why, its amount labelled *could recover* or *to review*,
 and the button that starts it, before any chart or inventory; a page with
 nothing to remove says why and routes to Clean Up. Meters are capsules half
@@ -447,7 +447,7 @@ cancellation, preference persistence failures, action routing and fresh startup 
 | `controllers/` | The shell: sidebar navigation and menu commands |
 | `controllers/NavigationController.lua` | The sidebar, and the one table of pages: each row names its page in the sidebar, the Go menu and the page's own header (icon, color, title) |
 | `models/*Page.lua`, `models/*Sheet.lua`, `SheetPage.lua` | A page or a sheet: `data(state)` for its view, a method per action. `models/ListPage.lua` is the model of the layout-table pages |
-| `views/Page.etlua` | The list page. Every page that ranks storage in lists is this template and a `layout` table: header buttons, stat tiles, sections (title, filter, buttons, empty states, list) and a footnote |
+| `views/pages/Page.etlua` | The list page. Every page that ranks storage in lists is this template and a `layout` table: header buttons, stat tiles, sections (title, filter, buttons, empty states, list) and a footnote |
 | `services/Provider.lua`, `services/Mock.lua`, `services/System.lua`, `services/Scanner.lua`, `src/plugins/storage/StorageScan.m` | Provider selection, synthetic filesystem, actual system integration and native bulk metadata enumeration |
 | `views/` | All presentation, etlua loops and reusable partials |
 
@@ -502,7 +502,7 @@ A page appears in the sidebar only on a Mac that has its data: one of its
 `markers` exists, or its locations measure at least `visibleBytes`.
 
 A page that ranks storage in lists has no template of its own. It is a
-`layout` table rendered by `views/Page.etlua`: Largest Items, Large Files,
+`layout` table rendered by `views/pages/Page.etlua`: Largest Items, Large Files,
 Duplicates, Clean Up, Applications, Disks & Volumes, Xcode, Projects, a
 watched location and every kind of work. Its model is a `ListPage` class over
 a page table (`id`, `layout`, `present(model, state, page)`, `actions`). A page

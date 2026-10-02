@@ -43,7 +43,7 @@ end
 -- the installed-identifier list load in the background once per set of
 -- discovered bundles, and the page is drawn again when they arrive.
 return ListPage.class(function()
-	return {id = "applications", layout = LAYOUT, children = {lead = "Decision"}, load = function(page)
+	return {id = "applications", layout = LAYOUT, children = {lead = "sections/Decision"}, load = function(page)
 		page:loadFacts()
 		if (page.pending or 0) > 0 then page.services.refresh() end
 	end,

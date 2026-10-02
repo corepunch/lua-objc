@@ -24,7 +24,7 @@ end
 -- Every screenshot fills the tour's image box exactly, at twice its size,
 -- in light and dark (tour/capture.lua crops them so).
 local BOX = { width = 524, height = 290, scale = 2 }
-local template = io.open("apps/diskmap/views/Tour.etlua"):read("a")
+local template = io.open("apps/diskmap/views/sheets/Tour.etlua"):read("a")
 t.expect(template:find("imageWidth = " .. BOX.width .. ", imageHeight = " .. BOX.height, 1, true) ~= nil, "the view's image box matches the captures")
 local plan = io.open("apps/diskmap/tour/capture.lua"):read("a")
 t.expect(plan:find("local BOX = { width = " .. BOX.width .. ", height = " .. BOX.height .. ", scale = " .. BOX.scale .. " }", 1, true) ~= nil, "and so does the capture plan")

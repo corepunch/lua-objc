@@ -6,7 +6,7 @@
   comes from models/SimulatorsPage.lua (the plan: models/SimulatorPlan.lua). ]] %>
 <% local PLAN = { label = 54, padding = 14, spacing = 10, amount = 17, caption = 11, amountSpacing = 1, actionSpacing = 14 } %>
 <VStack id="planSection" spacing="8" alignment="leading">
-  <%- partial("SectionHeader.etlua", {title = "Keep one iPhone and one iPad", detailId = "planDetail",
+  <%- partial("../components/SectionHeader.etlua", {title = "Keep one iPhone and one iPad", detailId = "planDetail",
     detail = "The other devices are redundant for this setup, not unused: deleting one removes its installed apps, accounts and data, and lowers your test coverage. Shared runtimes stay."}) %>
   <% if #runtimes == 0 then %>
   <ContentUnavailable id="planEmpty" title="No iOS Simulator Devices" systemImage="iphone.slash" description="This plan needs devices on an installed iOS runtime. Clean Up lists the other places worth reviewing." />
