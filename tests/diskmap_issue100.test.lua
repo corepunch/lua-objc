@@ -1,23 +1,26 @@
 _G.__headless = true
+local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
-local Model = require("apps.diskmap.Model")
-local Cleanup = require("apps.diskmap.models.Cleanup")
+local Model = require("data.model")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
+local Cleanup = require("apps.diskmap.helpers.Cleanup")
 local Files = require("apps.diskmap.models.Files")
-local Recommendations = require("apps.diskmap.models.Recommendations")
+local Recommendations = require("apps.diskmap.helpers.Recommendations")
 
 -- Clean Up leads with actions: no summary tiles, files and apps before the
 -- review inventory, and the checked inventory collapsed.
-local page = Recommendations.page({cleanupSources = function() return nil end})
+local page = require("apps.diskmap.routes").cleanup
 t.expect(page.layout.tiles == nil, "Clean Up has no summary tiles ahead of its lists")
 local order = {}
 for _, section in ipairs(page.layout.sections) do table.insert(order, section.id) end
 t.assertEqual(table.concat(order, ","), "section_rebuildable,section_decisions,section_context,section_checked",
 	"rebuildable, then decisions, then collapsed context and checked inventory")
 t.expect(page.layout.sections[3].collapsed and page.layout.sections[4].collapsed, "context and the checked inventory are collapsed by default")
-t.assertEqual(Recommendations.details(nil, nil).detail, "", "an empty inspector stays compact")
+t.assertEqual(page:details(nil).detail, "", "an empty inspector stays compact")
 
 -- Group recommendations agree with their children's eligibility.
-local model = Model.new("/Users/test")
+local model = Store.new("/Users/test")
 local function dirs(list)
 	local result = {}
 	for _, item in ipairs(list) do table.insert(result, {name = item[1], kb = item[2] / 1024, directory = true}) end
@@ -25,7 +28,7 @@ local function dirs(list)
 end
 model.measurements.devices = {status = "complete", bytes = 4e9}
 local function suggested(id)
-	for _, row in ipairs(Cleanup.suggestions(model)) do if row.id == id then return row end end
+	for _, row in ipairs(Cleanup.suggestions()) do if row.id == id then return row end end
 end
 model.breakdowns.devices = dirs({{"iPhone17,1 26.0 (23A341)", 4e9}})
 t.assertEqual(suggested("devices"), nil, "device support holding only the newest version is not a dead-end suggestion")
@@ -58,7 +61,7 @@ t.expect(Cleanup.score({bytes = 10e9, eligibleBytes = 10e9, confidence = "Medium
 -- Presentation separates review bytes from recoverable bytes and exposes the accounting.
 model.measurements.simulators = {status = "complete", bytes = 22e9}
 model.simulatorPlan = {removalBytes = 13e9, removalCount = 3, blockedBytes = 0, complete = true}
-local data = Recommendations.presentation(model, "", {})
+local data = Recommendations.presentation("", {})
 local row
 for _, item in ipairs(data.decisions) do if item.id == "simulators" then row = item end end
 t.expect(row and row.page == "simulators", "the simulator suggestion opens the minimal device set")
@@ -76,7 +79,7 @@ local summary = Applications.summary({{appBytes = 1e9, dataBytes = 0, bytes = 1e
 t.assertEqual(summary.unused, 0, "an app with unknown usage is not unused")
 t.assertEqual(summary.leftoversHighBytes, 3e9, "only high-confidence leftovers are eligible")
 t.assertEqual(summary.leftoverBytes, 5e9, "all leftovers are bytes to review")
-local out = Recommendations.presentation(Model.new("/Users/test"), "", {apps = summary})
+local out = Recommendations.presentation("", {apps = summary})
 local leftovers
 for _, item in ipairs(out.decisions) do if item.id == "leftovers" then leftovers = item end end
 t.assertEqual(leftovers and leftovers.eligibleBytes, 3e9, "Clean Up carries the eligible part")
@@ -88,15 +91,15 @@ local AppController = require("apps.diskmap.Controller")
 local app = AppController.new(Mock.new())
 app.scan:start()
 local all, removable = 0, 0
-for _, row in ipairs(Files.rows(app.model, "All")) do
+for _, row in ipairs(Files:rows("All")) do
 	if row.kindId == "installers" or row.kindId == "archives" then all = all + 1 end
 end
-for _, row in ipairs(Files.rows(app.model, "Installers & archives")) do
+for _, row in ipairs(Files:rows("Installers & archives")) do
 	removable = removable + 1
 	t.expect(row.trashable, "the installers filter lists only files this app can move to the Trash: " .. row.path)
 end
 t.expect(removable > 0 and removable <= all, "removable installers are a subset of the installer-kind files")
-local kinds = Files.kinds(app.model)
+local kinds = Files:kinds()
 local installerKind
 for _, kind in ipairs(kinds) do if kind.id == "installers" then installerKind = kind end end
 t.expect(installerKind and installerKind.subtitle:find("total stored", 1, true), "the File Types row calls its total what is stored")
@@ -104,8 +107,8 @@ t.expect(installerKind.removableBytes and installerKind.removableBytes <= instal
 
 -- Generated project output is one decision per artifact and project, counted once.
 local Projects = require("apps.diskmap.models.Projects")
-local Scan = require("apps.diskmap.models.Scan")
-local pm = Model.new("/Users/test")
+local Scan = require("apps.diskmap.services.Scan")
+local pm = Store.new("/Users/test")
 Scan.register(pm, {
 	{id = "cm1", name = "CMake build output · engine", path = "/Users/test/Developer/engine/build", policy = "Rebuildable", action = "trash",
 		artifact = "CMake build output", project = "/Users/test/Developer/engine", projectName = "engine", reviewThreshold = 500e6},
@@ -114,41 +117,45 @@ Scan.register(pm, {
 })
 pm.measurements.cm1 = {status = "complete", bytes = 400e6}
 pm.measurements.cm2 = {status = "complete", bytes = 300e6}
-local groups = Projects.groups(pm, {})
+Model.db.projectInfo = {}
+local groups = Projects:groups(nil, nil, nil)
 local projectTotal = 0
 for _, group in ipairs(groups) do projectTotal = projectTotal + group.bytes end
 local ecosystem
-for _, value in ipairs(Cleanup.suggestions(pm)) do if value.group then ecosystem = value end end
+for _, value in ipairs(Cleanup.suggestions()) do if value.group then ecosystem = value end end
 t.assertEqual(projectTotal, 700e6, "the Projects page counts each artifact once")
 t.assertEqual(ecosystem and ecosystem.bytes, 700e6, "the ecosystem group counts the same artifacts once, not again")
 t.assertEqual(ecosystem and ecosystem.eligibleBytes, 700e6, "and its eligible bytes equal its measured, proven rebuildable bytes")
 pm.files = {large = {{path = "/Users/test/Developer/engine/build/obj/index.bin", bytes = 100e6, used = os.time()}}, old = {}, extensions = {}}
-local ok, reason = Files.validateTrash(pm, "/Users/test/Developer/engine/build/obj/index.bin")
+local ok, reason = Files:validateTrash("/Users/test/Developer/engine/build/obj/index.bin")
 t.assertEqual(ok, false, "a single file inside generated output is not a trash candidate")
 t.assertEqual(reason.code, "artifact", "the reason names the artifact: " .. tostring(reason and reason.message))
 -- A running app is never inactive, whatever its date says.
-local appModel = Model.new("/Users/test")
-appModel.resources:add("applications", {id = "run-app", name = "Busy.app", subtitle = "Installed application", path = "/Applications/Busy.app"})
+local appModel = Store.new("/Users/test")
+Locations:add("applications", {id = "run-app", name = "Busy.app", subtitle = "Installed application", path = "/Applications/Busy.app"})
 appModel.measurements["run-app"] = {status = "complete", bytes = 5e8}
 local oldDate = os.time() - 400 * 86400
-local busy = Applications.rows(appModel, {["/Applications/Busy.app"] = {bundleId = "com.example.busy", lastUsed = oldDate, running = true}}, "All")[1]
+Model.db.applicationInfo = {["/Applications/Busy.app"] = {bundleId = "com.example.busy", lastUsed = oldDate, running = true}}
+local busy = Applications:rows("All")[1]
 t.expect(busy.running and not busy.unused, "an app that is open now is not unused")
 t.assertEqual(busy.detail, "Running now", "and says so")
-t.assertEqual(#Applications.rows(appModel, {["/Applications/Busy.app"] = {bundleId = "com.example.busy", lastUsed = oldDate, running = true}}, "Unused for 6 months"), 0,
+Model.db.applicationInfo = {["/Applications/Busy.app"] = {bundleId = "com.example.busy", lastUsed = oldDate, running = true}}
+t.assertEqual(#Applications:rows("Unused for 6 months"), 0,
 	"the Unused filter leaves it out")
-local idle = Applications.rows(appModel, {["/Applications/Busy.app"] = {bundleId = "com.example.busy", lastUsed = oldDate}}, "Unused for 6 months")[1]
+Model.db.applicationInfo = {["/Applications/Busy.app"] = {bundleId = "com.example.busy", lastUsed = oldDate}}
+local idle = Applications:rows("Unused for 6 months")[1]
 t.expect(idle and idle.unused, "the same app closed with a known old date is unused")
 
 -- Totals say what they cover and what the scan could not see.
-local Scope = require("apps.diskmap.models.Scope")
-local scoped = Model.new("/Users/test")
-t.expect(Scope.coverage(scoped):find("Photos, Music and TV libraries excluded", 1, true), "excluded media is stated")
+local Scope = require("apps.diskmap.helpers.Scope")
+local scoped = Store.new("/Users/test")
+t.expect(Scope.coverage():find("Photos, Music and TV libraries excluded", 1, true), "excluded media is stated")
 scoped.includeMedia = true
-t.assertEqual(Scope.coverage(scoped), "Coverage: complete.", "a complete scan says so")
+t.assertEqual(Scope.coverage(), "Coverage: complete.", "a complete scan says so")
 scoped.scan = {running = true, protected = 2}
-t.expect(Scope.coverage(scoped):find("still growing", 1, true) and Scope.coverage(scoped):find("2 protected locations", 1, true), "an unfinished, partly unreadable scan says both")
+t.expect(Scope.coverage():find("still growing", 1, true) and Scope.coverage():find("2 protected locations", 1, true), "an unfinished, partly unreadable scan says both")
 for _, page in ipairs({"largest", "cleanup", "files", "kinds"}) do
-	t.expect(Scope.text(scoped, page):find("Coverage:", 1, true) and #Scope.pages[page] > 20, page .. " states its population and coverage")
+	t.expect(Scope.text(page):find("Coverage:", 1, true) and #Scope.pages[page] > 20, page .. " states its population and coverage")
 end
 t.expect(Scope.pages.files:find("Largest Locations", 1, true) and Scope.pages.kinds:find("over 50 MB", 1, true), "overlaps between pages are named")
 local scopeApp = AppController.new(Mock.new())
@@ -174,7 +181,7 @@ end
 for id in pairs(Audit) do t.expect(seen[id], "the audit names a real destination: " .. id) end
 
 -- Updates: download size is not installation space, and no recovery target is invented.
-local Updates = require("apps.diskmap.models.Updates")
+local Updates = require("apps.diskmap.helpers.Updates")
 local waiting = Updates.softwareUpdate({RecommendedUpdates = {{["Display Name"] = "macOS Tahoe 26.1"}}, LastSuccessfulDate = "2026-09-24 08:12:00 +0000"})
 local note = Updates.spaceNote(waiting, 4e9)
 t.expect(note:find("download size", 1, true) and note:find("needs more room", 1, true), "the note separates download size from installation space")
@@ -185,7 +192,7 @@ t.expect(Updates.spaceNote(Updates.softwareUpdate({}), nil):find("no space targe
 t.expect(Updates.spaceNote(Updates.softwareUpdate(nil), nil):find("Open Software Update", 1, true), "an unreadable record says to check Software Update")
 
 -- Results report measured free space the same way everywhere.
-local Outcome = require("apps.diskmap.models.Outcome")
+local Outcome = require("apps.diskmap.helpers.Outcome")
 t.assertEqual(Outcome.freeText(10e9, 12.1e9), "Free space 10.0 GB → 12.1 GB (+2.1 GB)", "a freed amount is shown")
 t.expect(Outcome.freeText(10e9, 10e9, true):find("after a short delay", 1, true), "no change right after a removal explains the delay")
 t.assertEqual(Outcome.freeText(nil, 1), "Free space could not be measured.", "an unmeasured figure says so")
@@ -193,7 +200,7 @@ t.assertEqual(Outcome.free({diskSpace = function() return {freeKb = 1000} end}, 
 t.assertEqual(Outcome.free({}, "/"), nil, "a service that cannot say gives nil")
 
 -- One batch flow: refresh, validate, execute; skips and failures never stop the rest.
-local Batch = require("apps.diskmap.models.Batch")
+local Batch = require("apps.diskmap.helpers.Batch")
 local log = {}
 local outcome
 Batch.run({{name = "a", bytes = 100}, {name = "b", bytes = 200}, {name = "c", bytes = 300}, {name = "d", bytes = 400}}, {

@@ -1,7 +1,24 @@
-local Model = require("apps.diskmap.Model")
+local Model = require("data.model")
+local Locations = require("apps.diskmap.models.Locations")
+local Format = require("apps.diskmap.helpers.Format")
 local Files = require("apps.diskmap.models.Files")
-local Leftovers = require("apps.diskmap.models.Leftovers")
-local Applications = {}
+local Leftovers = require("apps.diskmap.helpers.Leftovers")
+-- The installed applications: discovered `.app` locations, plus catalog
+-- apps such as Xcode when they exist; a bundle the scan found missing is not
+-- installed. What the service tells about them lives in the store beside
+-- them: `applicationInfo` maps a bundle path to {bundleId, displayName,
+-- version, lastUsed, running}, and `installedBundleIds` lists every bundle
+-- identifier Spotlight knows. Missing info leaves an app listed with its
+-- bundle size only.
+local Applications = Model:extend("applications", {primaryKey = "path", source = function(db)
+	local rows = {}
+	for _, row in ipairs(Locations:leaves()) do
+		local m = db.measurements[row.id]
+		local missing = m and m.status == "complete" and (m.bytes or 0) == 0
+		if row.path and row.path:match("%.app$") and not missing then table.insert(rows, row) end
+	end
+	return rows
+end})
 
 -- An app's data lives outside its bundle, in folders named by its bundle
 -- identifier (or, for Application Support, sometimes its name). These are
@@ -12,32 +29,21 @@ Applications.dataSources = {
 	{id = "support", label = "Application Support", byId = true, byName = true},
 	{id = "user-caches", label = "Caches", byId = true},
 }
-Applications.filters = {"All", "Unused for 6 months", "Most data"}
+Applications.filters = Model.enum({"All", "Unused for 6 months", "Most data"})
 Applications.unusedDays = 180
 -- Folders smaller than this are not worth listing as possible leftovers.
 Applications.leftoverMinimum = 50e6
 
--- Installed application bundles: discovered `.app` resources, plus catalog
--- apps such as Xcode when they exist. A bundle the scan found missing is not
--- installed.
-function Applications.bundles(model)
-	local rows = {}
-	for _, row in ipairs(model.resources:leaves()) do
-		local m = model.measurements[row.id]
-		local missing = m and m.status == "complete" and (m.bytes or 0) == 0
-		if row.path and row.path:match("%.app$") and not missing then table.insert(rows, row) end
-	end
-	return rows
-end
 
 -- The data folders that belong to one app, with their measured sizes.
-function Applications.data(model, bundleId, name)
+function Applications:data(bundleId, name)
+	local model = Model.db
 	local folders, bytes = {}, 0
 	if not bundleId and not name then return folders, bytes end
 	local lowerId, lowerName = bundleId and bundleId:lower(), name and name:lower()
 	local supportNames = Leftovers.supportNames(bundleId) or {}
 	for _, source in ipairs(Applications.dataSources) do
-		local root = model.resources:find(source.id)
+		local root = Locations:find(source.id)
 		for _, child in ipairs(root and model.breakdowns[source.id] or {}) do
 			local candidate = child.name:lower()
 			local owned = (source.byId and lowerId and (candidate == lowerId or candidate:sub(1, #lowerId + 1) == lowerId .. "."))
@@ -54,13 +60,13 @@ function Applications.data(model, bundleId, name)
 	return folders, bytes
 end
 
--- Rows for the Applications page. `info` maps a bundle path to
--- `{bundleId, version, lastUsed}` from the service; missing info leaves the
--- app listed with its bundle size only.
-function Applications.rows(model, info, filter, query, now)
+-- Rows for the Applications page.
+function Applications:rows(filter, query, now)
+	local model = Model.db
+	local info = model.applicationInfo
 	now = now or os.time()
 	local needle, rows = (query or ""):lower(), {}
-	for _, bundle in ipairs(Applications.bundles(model)) do
+	for _, bundle in ipairs(Applications:all()) do
 		local m = model.measurements[bundle.id] or {}
 		local details = info and info[bundle.path] or {}
 		-- An app is called what Finder calls it. A catalog row's own title ("Xcode & bundled
@@ -70,7 +76,7 @@ function Applications.rows(model, info, filter, query, now)
 		-- ("logioptionsplus") gives way to the bundle's display name.
 		local raw = not fileName:find("[%u%s]")
 		local name = raw and details.displayName or fileName
-		local folders, dataBytes = Applications.data(model, details.bundleId, fileName)
+		local folders, dataBytes = Applications:data(details.bundleId, fileName)
 		local appBytes = m.bytes or 0
 		-- A running app is in use now, whatever its recorded date.
 		local unused = details.lastUsed and not details.running and (now - details.lastUsed) > Applications.unusedDays * 86400
@@ -82,10 +88,10 @@ function Applications.rows(model, info, filter, query, now)
 			-- track the app. It stays unknown and is excluded from every
 			-- inactivity filter, total and suggestion.
 			usageUnknown = details.lastUsed == nil,
-			detail = details.running and "Running now" or details.lastUsed and Model.used(Files.age(details.lastUsed, now)) or (info and "Last use unknown" or "—")}
-		row.size = Model.size(row.bytes)
-		row.subtitle = (details.version and ("Version " .. details.version .. " · ") or "") .. "App " .. Model.size(appBytes)
-			.. (dataBytes > 0 and (" · Data " .. Model.size(dataBytes)) or "")
+			detail = details.running and "Running now" or details.lastUsed and Format.used(Files.age(details.lastUsed, now)) or (info and "Last use unknown" or "—")}
+		row.size = Format.size(row.bytes)
+		row.subtitle = (details.version and ("Version " .. details.version .. " · ") or "") .. "App " .. Format.size(appBytes)
+			.. (dataBytes > 0 and (" · Data " .. Format.size(dataBytes)) or "")
 		local visible = filter ~= "Unused for 6 months" or row.unused
 		if visible and (needle == "" or (name .. " " .. (details.bundleId or "")):lower():find(needle, 1, true)) then
 			table.insert(rows, row)
@@ -107,28 +113,30 @@ function Applications.rows(model, info, filter, query, now)
 end
 
 -- Data folders that no installed app claims: what AppCleaner and CleanMyMac
--- call leftovers. `installed` is the list of bundle identifiers Spotlight
--- knows; without it nothing is reported, since an unknown app is not
+-- call leftovers. Without the bundle identifiers Spotlight knows
+-- (`installedBundleIds`) nothing is reported, since an unknown app is not
 -- evidence of an uninstalled one. Installed bundles found by the scan add
 -- their names, so "Google" or "Code" in Application Support stay claimed.
--- Each row carries a confidence tier (see models/Leftovers.lua): only High
+-- Each row carries a confidence tier (see helpers/Leftovers.lua): only High
 -- means no app from that vendor is installed. Apple's own data is never listed.
-function Applications.leftovers(model, installed, query)
+function Applications:leftovers(query)
+	local model = Model.db
+	local installed = model.installedBundleIds
 	if not installed then return nil end
 	local apps = {}
 	for _, id in ipairs(installed) do table.insert(apps, {bundleId = id}) end
-	for _, bundle in ipairs(Applications.bundles(model)) do table.insert(apps, {name = bundle.name}) end
+	for _, bundle in ipairs(Applications:all()) do table.insert(apps, {name = bundle.name}) end
 	local index = Leftovers.index(apps)
 	local needle, rows = (query or ""):lower(), {}
 	for _, source in ipairs(Applications.dataSources) do
-		local root = model.resources:find(source.id)
+		local root = Locations:find(source.id)
 		for _, child in ipairs(root and model.breakdowns[source.id] or {}) do
 			local bytes = math.floor((child.kb or 0) * 1024 + 0.5)
 			local tier = child.directory and bytes >= Applications.leftoverMinimum and Leftovers.classify(child.name, source.byName, index)
 			if tier and (needle == "" or child.name:lower():find(needle, 1, true)) then
 				local info = Leftovers.tiers[tier]
 				table.insert(rows, {id = root.path .. "/" .. child.name, path = root.path .. "/" .. child.name, name = child.name,
-					subtitle = source.label .. " · " .. info.label, bytes = bytes, size = Model.size(bytes),
+					subtitle = source.label .. " · " .. info.label, bytes = bytes, size = Format.size(bytes),
 					tier = tier, rank = info.rank, confidence = info.confidence, reason = info.label, source = source.label,
 					icon = "questionmark.folder.fill", color = tier == "high" and "systemPink" or "systemGray", detail = info.confidence})
 			end
@@ -147,8 +155,8 @@ end
 
 -- A leftover may be moved to the Trash only while it is still an unclaimed,
 -- measured folder directly inside one of the data sources.
-function Applications.validateLeftover(model, installed, path)
-	for _, row in ipairs(Applications.leftovers(model, installed) or {}) do
+function Applications:validateLeftover(path)
+	for _, row in ipairs(Applications:leftovers() or {}) do
 		if row.path == path then return true end
 	end
 	return false, {code = "not_leftover", message = "This folder is no longer an unclaimed leftover. Refresh and review it again."}
@@ -208,14 +216,14 @@ function Applications.decision(summary, unmarkedHigh, markedHigh, hasInfo)
 	if not summary.leftovers then
 		data.title, data.detail, data.amount, data.amountCaption = "Checking for data left behind by removed apps…", "Diskmap compares data folders with the apps Spotlight knows.", "—", "to review"
 	elseif summary.leftovers > 0 then
-		data.title = "Review " .. Model.plural(summary.leftovers, "possible leftover folder")
+		data.title = "Review " .. Format.plural(summary.leftovers, "possible leftover folder")
 		data.detail = summary.leftoversHigh > 0
-			and (Model.plural(summary.leftoversHigh, "folder") .. " " .. (summary.leftoversHigh == 1 and "is" or "are") .. " likely leftovers: no app from that vendor is known to be installed. Review the other unclaimed folders individually.")
+			and (Format.plural(summary.leftoversHigh, "folder") .. " " .. (summary.leftoversHigh == 1 and "is" or "are") .. " likely leftovers: no app from that vendor is known to be installed. Review the other unclaimed folders individually.")
 			or "No known installed app claims these folders. A name-only match does not prove its app was removed; review each folder individually."
-		if summary.leftoversHighBytes > 0 then data.amount, data.amountCaption = Model.size(summary.leftoversHighBytes), "could recover"
-		else data.amount, data.amountCaption = Model.size(summary.leftoverBytes), "to review" end
+		if summary.leftoversHighBytes > 0 then data.amount, data.amountCaption = Format.size(summary.leftoversHighBytes), "could recover"
+		else data.amount, data.amountCaption = Format.size(summary.leftoverBytes), "to review" end
 		if unmarkedHigh > 0 then
-			data.actionTitle, data.action = "Mark " .. Model.plural(unmarkedHigh, "Likely Leftover"), "markHigh"
+			data.actionTitle, data.action = "Mark " .. Format.plural(unmarkedHigh, "Likely Leftover"), "markHigh"
 		elseif markedHigh > 0 then
 			data.actionTitle, data.action = "Review Marked Items…", "reviewMarked"
 		end
@@ -223,15 +231,15 @@ function Applications.decision(summary, unmarkedHigh, markedHigh, hasInfo)
 		data.secondaryAction = "reviewMarked"
 	elseif hasInfo and summary.unused > 0 then
 		data.icon, data.color = "hourglass", "systemOrange"
-		data.title = Model.plural(summary.unused, "app") .. " not opened in six months"
+		data.title = Format.plural(summary.unused, "app") .. " not opened in six months"
 		data.detail = "No leftover data was found. These apps have a known last use over six months ago; uninstall them in the Finder or with their own uninstaller if you no longer need them."
-		data.amount, data.amountCaption = Model.size(summary.unusedBytes), "to review"
+		data.amount, data.amountCaption = Format.size(summary.unusedBytes), "to review"
 		data.actionTitle, data.action = "Show Unused Apps", "unusedFilter"
 	else
 		data.icon, data.color = "checkmark.circle.fill", "systemGreen"
 		data.title = "No leftover app data"
 		data.detail = "Every data folder belongs to an installed app" .. (hasInfo and ", and no app has gone unused for six months" or "") .. ". Clean Up lists the other places worth reviewing."
-		data.amount, data.amountCaption = Model.size(0), "could recover"
+		data.amount, data.amountCaption = Format.size(0), "could recover"
 		data.actionTitle, data.action = "Open Clean Up", "cleanup"
 	end
 	return data

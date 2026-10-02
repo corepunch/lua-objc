@@ -1,21 +1,25 @@
 -- A Diskmap page on its own, without the root: the framework's page controller
--- over one model of apps/diskmap/models, with the services a test supplies.
+-- over the page one route of apps/diskmap/routes.lua builds, with the services
+-- a test supplies. `services.model` is the store the page's models read.
 -- `refresh` draws the mounted page again, as the root does when work that
--- started earlier finishes. Returns the controller and the model it draws.
-local Define = require("data.model")
+-- started earlier finishes. Returns the controller and the page it draws.
+local Model = require("data.model")
+local Routes = require("data.routes")
 local PageController = require("data.pagecontroller")
 local ns = require("AppKit")
 local Host = {}
 
-function Host.new(id, class, view, services)
+-- `params` are the page's app.xml attributes (`{workflow = "music"}`).
+function Host.new(id, services, params)
 	local controller
 	local context = {rescan = function() end, log = function() end, show = function() end,
 		refresh = function() if controller.template then controller:update(controller.state) end end}
 	for key, value in pairs(services) do context[key] = value end
-	local graph = Define.graph({classes = {[id] = function() return require("apps.diskmap.models." .. class) end}, services = context})
-	controller = PageController.new({page = {id = id, title = id, icon = "circle", color = "systemBlue", model = id, view = view},
-		graph = graph, ns = ns, viewsDir = "apps/diskmap/views/"})
-	return controller, graph:build({id})[id]
+	if context.model then Model.bind(context.model) end
+	local entry = {id = id, title = id, icon = "circle", color = "systemBlue", attrs = params or {}}
+	local page = Routes.page(Routes.find(require("apps.diskmap.routes"), entry), entry, context, "apps.diskmap")
+	controller = PageController.new({page = entry, request = page, ns = ns, viewsDir = "apps/diskmap/views/", store = context.model})
+	return controller, page
 end
 
 return Host

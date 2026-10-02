@@ -1,0 +1,141 @@
+local Model = require("data.model")
+local Routes = require("data.routes")
+local Selection = require("apps.diskmap.helpers.Selection")
+
+-- The route of a page that ranks storage in lists (Largest Locations, Clean
+-- Up, the kinds of work, Large Files…): views/pages/Page.etlua over what the
+-- route presents. A list route extends this one (`ListRoute.extend{...}`)
+-- with:
+--
+--   layout    what Page.etlua lays out: tiles, sections of lists, a footnote
+--             (the fields are listed in the template), or a function
+--             `layout(self, presented)` when the structure depends on the data
+--   children  {slot = template}: partials drawn into the slots Page.etlua names
+--   details   function(self, row) -> data for the selection panel, if any
+--   menu      function(self, row) -> a row's menu items, when it is not its
+--             resource's menu
+--   load      function(self): work to start when the page appears (a service
+--             to ask); call `self.app.refresh()` when it finishes
+--   unload    function(self): work to cancel when the page goes
+--   present(self, state) -> {
+--     lists     {id = rows}: rows for each list
+--     texts     {id = text}
+--     hidden    {id = boolean}
+--     disabled  {id = boolean}
+--     children  {slot = data} for each child
+--     loading   {id = true}: the lists that show their spinner
+--     waiting   {title, systemImage, description}: the empty state of a page
+--               the running scan has not measured yet (no lists, no partial rows)
+--     computing a status line, while a request of the page's own runs (a
+--               service to ask): the page shows it with a spinner and no lists
+--     links     {action = {open = id} | {page = id, filter = n} | {settings = section}
+--               | {handler = name, args = {...}} (a handler of the app's actions)}
+--   }
+--   and its actions, as methods; `self.filterIndex` is the filter picker's
+--   segment, from 1.
+--
+-- A row's menu is its resource's menu, and opening a row goes where
+-- its location sends it; a row that stands for another page
+-- (`row.page`) opens that page.
+local ListRoute = {view = "pages/Page", filterIndex = 1}
+
+-- Row menus, activation and links only read or navigate.
+ListRoute.queries = {rowMenu = true, open = true, openSelection = true, reveal = true}
+
+-- A list route: `route` over this one, its queries beside the shared ones.
+-- `route.actions` are its actions, set as its methods.
+function ListRoute.extend(route)
+	route.queries = setmetatable(route.queries or {}, {__index = ListRoute.queries})
+	for name, action in pairs(route.actions or {}) do route[name] = action end
+	route.actions = nil
+	return Routes.extend(ListRoute, route)
+end
+
+-- Every list reads the store; its rows' menus and marks are the Rows flow.
+function ListRoute:init()
+	self.actions = self:flow("Rows")
+end
+
+function ListRoute:rowMenu(_, _, row)
+	if self.menu then return self:menu(row) end
+	if row.page then
+		return {{title = "Open " .. (row.pageName or "Page"), systemImage = "arrow.right.circle",
+			action = function() self.app.showFiltered(row.page, row.filter) end}}
+	end
+	return self.actions:resource(row.id)
+end
+
+function ListRoute:activateRow(row)
+	if not row then return end
+	if row.page then self.app.showFiltered(row.page, row.filter) else self.app.open(row.id) end
+end
+
+function ListRoute:open(_, _, row) self:activateRow(row) end
+
+-- The selection panel's button opens what the selected row stands for.
+function ListRoute:openSelection() self:activateRow(self.selectedRow) end
+
+function ListRoute:select(_, _, row)
+	self.selectedRow, self.selectedId = row, row and row.id
+end
+
+function ListRoute:reveal(_, _, row)
+	if row then self.app.service.reveal(row.path) end
+end
+
+-- The segmented filter (Page.etlua's `filters`) picked a segment.
+function ListRoute:filter(index) self.filterIndex = (index or 0) + 1 end
+
+function ListRoute:follow(link)
+	if link.handler then
+		local handlers = {review = self.app.openReview, refresh = self.app.rescan, search = self.app.search}
+		handlers[link.handler](table.unpack(link.args or {}))
+	elseif link.open then self.app.open(link.open)
+	elseif link.page then self.app.showFiltered(link.page, link.filter)
+	elseif link.settings then self.app.service.openSettings(link.settings) end
+end
+
+-- The page's own work, started when it appears and cancelled when it goes.
+function ListRoute:activate()
+	if self.load then self:load() end
+end
+
+function ListRoute:deactivate()
+	if self.unload then self:unload() end
+end
+
+function ListRoute:data(state)
+	local presented = self:present(state or {})
+	local layout = self.layout
+	if type(layout) == "function" then layout = layout(self, presented) end
+	self.presented = presented
+	-- The row the selection token names, and the panel that explains it.
+	self.selectedRow = nil
+	if self.details then
+		for _, rows in pairs(presented.lists or {}) do
+			local index = Selection.index(rows, self.selectedId)
+			if index then self.selectedRow = rows[index + 1] end
+		end
+	end
+	if not self.selectedRow then self.selectedId = nil end
+	local details
+	if self.details and self.selectedRow then
+		details = self:details(self.selectedRow)
+		details.actions = nil
+	end
+	-- A link named by `present` is an action of the view that follows it.
+	local handlers = {}
+	for name, link in pairs(presented.links or {}) do handlers[name] = function() self:follow(link) end end
+	return {layout = layout, header = self.header, lists = presented.lists, loading = presented.loading,
+		filterIndex = self.filterIndex, waiting = presented.waiting, computing = presented.computing, texts = presented.texts,
+		hidden = presented.hidden, disabled = presented.disabled, children = presented.children, childViews = self.children,
+		details = details, handlers = handlers}
+end
+
+-- After a draw the native selection follows the selected row.
+function ListRoute:rendered(refs)
+	if not self.details then return end
+	for id, rows in pairs(self.presented.lists or {}) do Selection.show(refs[id], rows, self.selectedId) end
+end
+
+return ListRoute

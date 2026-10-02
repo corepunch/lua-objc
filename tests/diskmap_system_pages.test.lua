@@ -1,8 +1,10 @@
 _G.__headless = true
+local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
-local Model = require("apps.diskmap.Model")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
 local Simulators = require("apps.diskmap.models.Simulators")
-local Updates = require("apps.diskmap.models.Updates")
+local Updates = require("apps.diskmap.helpers.Updates")
 
 -- Simulator runtimes as `xcrun simctl runtime list -j` reports them.
 local ios = "5B0E6C62-9E4B-4C57-9B63-2D5F3A4E7A11"
@@ -48,7 +50,7 @@ local ok, err = Simulators.validateRuntime(runtimes[2])
 t.expect(not ok and err.code == "not_deletable", "runtimes simctl will not delete stay in Xcode's hands")
 t.expect(not Simulators.runtimeCommand({id = "all", deletable = true}), "wildcard runtime deletion is forbidden")
 t.expect(not Simulators.runtimeCommand(nil), "no selection has no command")
-local model = Model.new("/Users/test")
+local model = Store.new("/Users/test")
 model.kept.xcode = true
 t.expect(not Simulators.runtimeCommand(runtimes[1], model), "Keep on Xcode protects its runtimes")
 model.kept.xcode = nil
@@ -93,11 +95,11 @@ t.assertEqual(snapshots[2].name, "Sep 22, 2026 at 18:42", "dashed snapshot ident
 model.measurements["update-assets-2"] = {bytes = 12e9, status = "complete"}
 model.measurements["update-volume"] = {bytes = 0, status = "complete"}
 model.measurements.preboot = {status = "calculating"}
-local installer = model.resources:add("apps-system", {id = "installer", name = "Install macOS Tahoe.app", subtitle = "Full macOS installer app",
+local installer = Locations:add("apps-system", {id = "installer", name = "Install macOS Tahoe.app", subtitle = "Full macOS installer app",
 	path = "/Applications/Install macOS Tahoe.app", policy = "Review", action = "finder"})
 t.expect(installer ~= nil, "an installer can be registered")
 model.measurements.installer = {bytes = 16e9, status = "complete"}
-local page = Updates.presentation(model, plist, false)
+local page = Updates.presentation(plist, false)
 t.assertEqual(page.stages[1].size, "≥ 12.0 GB", "downloaded updates show their measured size")
 t.assertEqual(page.stages[2].size, "0 KB", "an empty Update volume is measured as empty")
 t.assertEqual(page.stages[3].size, "Not measured", "a stage still being measured says nothing yet: a scan shows no row-level progress")
@@ -105,9 +107,9 @@ t.assertEqual(#page.installers, 1, "installers in Applications are found by name
 t.assertEqual(page.installers[1].name, "Install macOS Tahoe", "installer names drop the app extension")
 t.assertEqual(page.installers[1].size, "16.0 GB", "installers show their size")
 t.assertEqual(page.snapshotTitle, "Local snapshots could not be listed", "a failed tmutil call is reported")
-t.assertEqual(Updates.presentation(model, plist, {}).snapshotTitle, "No local snapshots", "no snapshots is a result")
+t.assertEqual(Updates.presentation(plist, {}).snapshotTitle, "No local snapshots", "no snapshots is a result")
 for _, stage in ipairs(Updates.stages) do
-	t.expect(model.resources:find(stage.id) ~= nil, "update stage cites a registered resource: " .. stage.id)
+	t.expect(Locations:find(stage.id) ~= nil, "update stage cites a registered resource: " .. stage.id)
 end
 
 os.exit(t.summary() and 0 or 1)

@@ -3,9 +3,9 @@ local t = require("TestKit")
 local ns = require("AppKit")
 local Mock = require("apps.diskmap.services.Mock")
 local Controller = require("apps.diskmap.Controller")
-local Inventory = require("apps.diskmap.models.Inventory")
-local MapPage = require("apps.diskmap.models.MapPage")
-local FolderPage = require("apps.diskmap.models.FolderPage")
+local Inventory = require("apps.diskmap.helpers.Inventory")
+local Routes = require("data.routes")
+local function routePage(id, app) return Routes.page(require("apps.diskmap.routes")[id], {id = id}, app, "apps.diskmap") end
 
 -- Overview, Map and Folder are models drawn by the framework's page
 -- controller: no controller class remains for them.
@@ -15,10 +15,10 @@ end
 
 local app = Controller.new(Mock.new())
 app:createWindow()
-local _, ids = Inventory.plan(app.model)
+local _, ids = Inventory.plan()
 
 -- While the scan runs the pages draw their empty state; the scan's end draws them again.
-Inventory.begin(app.model, ids)
+Inventory.begin(ids)
 app:updateRows()
 t.assertEqual(app.refs.results, nil, "a running scan leaves the Overview without a category list")
 t.expect(app.refs.legendExplanation ~= nil and app.refs.legend == nil, "and without a legend")
@@ -30,7 +30,7 @@ app.scan:start()
 t.expect(app.refs.mapEmpty == nil and app.refs.mapList.rowCount > 0, "the Map is drawn when the scan has finished")
 
 -- Map: focus by breadcrumb position, up, styles.
-local map = app.graph:get("map")
+local map = app:request("map")
 app.pages.map.actions.chartSelect("developer", 1)
 t.assertEqual(map.focus, "developer", "a group looks inside")
 t.assertEqual(app.refs.mapSummary.text:find("Developer", 1, true), 1, "the summary names the focus")
@@ -43,7 +43,7 @@ app.pages.map.actions.chartSelect("applications#other", 1)
 t.assertEqual(map.focus, "", "a folded remainder cannot be focused")
 t.assertThrows(function() map:setStyle("hexagons") end, "an unknown map style is an error")
 t.assertEqual(map.style, "rings", "a rejected style leaves the chart alone")
-t.assertEqual(MapPage.new({}, {mapStyle = "rectangles"}).style, "rectangles", "the services pick the first style")
+t.assertEqual(routePage("map", {mapStyle = "rectangles"}).style, "rectangles", "the services pick the first style")
 
 -- Hovering only points: it draws nothing again and clears with the pointer.
 local list = app.refs.mapList
@@ -54,7 +54,7 @@ t.assertEqual(map.selectedId, nil, "leaving the chart clears the token")
 t.assertEqual(app.refs.mapHover.text, map.hover, "and the line under it")
 
 -- Folder: states of the page.
-local folder = app.graph:build({"folder"}).folder
+local folder = app:request("folder")
 app:show("folder")
 t.expect(app.refs.folderEmpty ~= nil and app:badges().folder == nil, "an unopened folder invites a drop and has no badge")
 app.pages.folder.actions.pickStyle(1)
@@ -68,5 +68,5 @@ app:openFolder("/Nowhere")
 t.expect(app.refs.folderFailed ~= nil, "a folder that cannot be read says so")
 app.pages.folder.actions.stop()
 t.expect(folder.loading == nil, "stopping leaves nothing loading")
-t.assertEqual(FolderPage.new({}, {model = app.model, service = app.service}).path, nil, "a new page has no folder")
+t.assertEqual(routePage("folder", {model = app.model, service = app.service}).path, nil, "a new page has no folder")
 os.exit(t.summary() and 0 or 1)

@@ -1,10 +1,17 @@
-local Model = require("apps.diskmap.Model")
-local Projects = {}
+local Model = require("data.model")
+local Locations = require("apps.diskmap.models.Locations")
+local Format = require("apps.diskmap.helpers.Format")
+-- The projects whose build folders a scan found: discovered artifact
+-- locations (leaves with a `project` path), grouped by project. What git and
+-- the project folder say about each lives in the store's `projectInfo`,
+-- by project path: {modified = unix time, git = parsed or nil, loaded}.
+local Projects
+Projects = Model:extend("projects", {primaryKey = "path", source = function() return Projects:groups() end})
 
 -- Projects untouched for this long are worth reviewing first. Age comes from
 -- the project's own folder, never from the generated artifact.
 Projects.staleDays = 90
-Projects.filters = {"All", "Not touched in 3 months", "Clean git tree"}
+Projects.filters = Model.enum({"All", "Not touched in 3 months", "Clean git tree"})
 
 -- Parses `git status --porcelain=v1 --branch`. Returns nil for output that is
 -- not from git (not a repository or git missing).
@@ -68,13 +75,13 @@ function Projects.lastWorked(output, budget)
 	return newest
 end
 
--- Groups discovered artifact resources (leaves with a `project` path) by
--- project. `info[projectPath]` holds {modified = unix time, git = parsed or
--- nil, false while loading}.
-function Projects.groups(model, info, now, filter, query)
-	info, now = info or {}, now or os.time()
+-- The projects a filter and a search leave, largest first.
+function Projects:groups(filter, query, now)
+	local model = Model.db
+	local info = model.projectInfo or {}
+	now = now or os.time()
 	local byProject, order, needle = {}, {}, (query or ""):lower()
-	for _, row in ipairs(model.resources:leaves()) do
+	for _, row in ipairs(Locations:leaves()) do
 		if row.project then
 			if not byProject[row.project] then
 				byProject[row.project] = {path = row.project, name = row.projectName or row.project:match("([^/]+)$") or row.project, artifacts = {}, bytes = 0}
@@ -84,7 +91,7 @@ function Projects.groups(model, info, now, filter, query)
 			local m = model.measurements[row.id]
 			local bytes = m and m.bytes
 			table.insert(group.artifacts, {id = row.id, name = row.artifact or row.name, path = row.path,
-				bytes = bytes, size = Model.size(bytes)})
+				bytes = bytes, size = Format.size(bytes)})
 			group.bytes = group.bytes + (bytes or 0)
 		end
 	end
@@ -103,7 +110,7 @@ function Projects.groups(model, info, now, filter, query)
 		local names = {}
 		for _, artifact in ipairs(group.artifacts) do table.insert(names, artifact.name) end
 		group.artifactText = table.concat(names, ", ")
-		group.size = Model.size(group.bytes)
+		group.size = Format.size(group.bytes)
 		local matches = needle == "" or (group.name .. " " .. group.path .. " " .. group.artifactText):lower():find(needle, 1, true)
 		local passes = filter == nil or filter == Projects.filters[1]
 			or (filter == Projects.filters[2] and group.age ~= nil and group.age >= Projects.staleDays)

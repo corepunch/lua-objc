@@ -3,7 +3,7 @@
   rest in one confirmation. The keep choices, the amount the removal set
   could recover and the review button sit in one card, so the decision and
   its action are read together; the device-by-device plan follows. Data
-  comes from models/SimulatorsPage.lua (the plan: models/SimulatorPlan.lua). ]] %>
+  comes from models/SimulatorsPage.lua (the plan: helpers/SimulatorPlan.lua). ]] %>
 <% local PLAN = { label = 54, padding = 14, spacing = 10, amount = 17, caption = 11, amountSpacing = 1, actionSpacing = 14 } %>
 <VStack id="planSection" spacing="8" alignment="leading">
   <%- partial("../components/SectionHeader.etlua", {title = "Keep one iPhone and one iPad", detailId = "planDetail",

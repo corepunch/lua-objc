@@ -48,7 +48,7 @@ the height of AppKit's capacity cell.
   with advice for the largest actionable kind and the top twelve extensions.
   Opening a kind shows its largest files.
 - **Clean Up** — candidates from every screen ranked by one rule (eligible
-  bytes × confidence ÷ effort, `models/Cleanup.lua`): rebuildable data first,
+  bytes × confidence ÷ effort, `helpers/Cleanup.lua`): rebuildable data first,
   then *your decisions* (unused documents, user-owned installers, unused apps
   with a known last use, high-confidence leftovers, the minimal simulator set,
   leftover worktrees), then system-managed context and the checklist of known
@@ -56,7 +56,7 @@ the height of AppKit's capacity cell.
   recoverable bytes apart from bytes to review; a group agrees with its
   children (device support holding only the newest version is not a
   suggestion). Every page's totals state their scope and coverage
-  (`models/Scope.lua`); `knowledge/Audit.lua` records each destination's first
+  (`helpers/Scope.lua`); `knowledge/Audit.lua` records each destination's first
   conclusion and next step, or why it has none. The page opens with the
   top-ranked suggestion as a decision; each row's meter shows what it could
   recover, or what there is to review. Select a suggestion to read its full
@@ -75,7 +75,7 @@ the height of AppKit's capacity cell.
   standard iPad on a chosen iOS runtime (models identified by device type, not
   name); every other device is *redundant for this setup*, listed with size, last
   use and running state, with Keep choices, a keep-pair override, one batch
-  confirmation and per-device revalidation (`models/SimulatorPlan.lua`). The
+  confirmation and per-device revalidation (`helpers/SimulatorPlan.lua`). The
   keep pickers, the amount the removal could recover and Review sit in one
   card; the full device and runtime inventory is collapsed below it.
 - **Worktrees** — linked Git worktrees found with `git worktree list --porcelain -z`
@@ -396,73 +396,54 @@ The app and framework changes are described in [DESIGN.md](DESIGN.md); the resea
 
 ## Component boundaries
 
-Diskmap is a page-per-request app (`app.xml`, docs/data-driven.md): every page
-and every sheet is a model plus a view. A page's model answers `data(state)`, the
-framework's page controller draws the etlua view with it, and an action in the
-view is a method of the model followed by the same request again. The root
-controller is only the window's code-behind: it wires services, the scan and the
-shell (sidebar, menus, history, the cleanup collector). A running scan shows in
-one small progress window, which `controllers/ScanProgressController` renders
-once and then updates by setting the bar's value and the status text; the pages
-are drawn when it finishes. Models for
-destinations: overview, largest items, large files, file types, clean up,
-applications, developer, simulators, disks and volumes, updates and snapshots,
-guide; sheets for review, settings, history, snapshots, SDKs, category
-management, the tour and onboarding; row menus (`models/RowMenus.lua`), Keep,
-inspector actions, scan lifecycle (`models/Scan.lua`). Pages
-mount retained templates into the content pane; the root disposes the previous
-page before mounting the next. The guide re-renders only when its search
-changes, so scan progress never collapses the topic being read. Their
-models contain no native controls. Services are injected, so tests can exercise
-cancellation, preference persistence failures, action routing and fresh startup independently.
+Diskmap follows Lapis ([docs/data-driven.md](../../docs/data-driven.md)): every
+sidebar destination is a page drawn from a route, and every sheet is a route plus a
+view. A route answers `data(state)`, the framework's page controller draws the etlua
+view with it, and an action in the view is a method of the route followed by the
+same request again. The seven kinds of work are one `workflow` route and the guide
+and help are one `topics` route, each page naming its argument in `app.xml`. The
+root controller is only the window's code-behind: it wires services, the scan and
+the shell (sidebar, menus, history, the cleanup collector). A running scan shows in
+one small progress window, which `controllers/ScanProgressController` renders once
+and then updates by setting the bar's value and the status text; the pages are
+drawn when it finishes. Pages mount retained templates into the content pane; the
+root disposes the previous page before mounting the next. The guide re-renders only
+when its search changes, so scan progress never collapses the topic being read.
+Routes contain no native controls. Services are injected, so tests can exercise
+cancellation, preference persistence failures, action routing and fresh startup
+independently.
 
 | Module | Owns |
 | --- | --- |
-| `catalog/` | Independent category definitions, paths, ownership and consequences |
-| `Model.lua` | Live measurements, Keep state, scan state and byte aggregation |
-| `models/Resources.lua` | Per-model canonical resource collection, ordered relations and registration |
-| `models/Constraints.lua` | Named validation results for registration, Keep and Watch changes and Trash mutations |
-| `models/Inventory.lua` | Scan plans, measurement transitions and current diagnostics |
-| `models/Categories.lua` | Category queries, rolled-up rows and capacity distribution |
-| `models/Overview.lua` | Volume summary, donut marks and legend, cleanup headline, ranked categories and largest items |
-| `knowledge/Workflows.lua` | One table entry per kind of work (Developer, Music Production, Video Production, Photography, Design, 3D & Game Engines, Games): its sidebar page, sections and the catalog groups they list |
-| `models/Workflow.lua` | A workflow's page: ranked rows per section, total, rebuildable total, presence on this Mac and sidebar badge |
-| `models/Destinations.lua` | Where opening a resource goes: the page or sheet its catalog entry names, or its category's list with its row selected |
-| `models/Largest.lua` | The Largest Items page |
+| `Store.lua` | The store: the catalog's locations, measurements, Keep, scan state and what services report. Each window binds its own |
+| `models/` | The nine Lapis models (`Model:extend`), one per kind of row |
+| `models/Locations.lua` | The catalog's locations: find by id or path, tree relations, registration of discovered locations, Keep and where opening one goes |
 | `models/Files.lua`, `knowledge/FileKinds.lua` | Large and unused files, kinds by extension, file ages and per-file Trash eligibility |
-| `models/Applications.lua` | Installed apps, their data folders, last use, possible leftovers and Spotlight date parsing |
-| `models/Recommendations.lua` | Clean Up sections: suggestions, file and app pointers, and the checked knowledge list |
-| `models/Volumes.lua` | Drive health facts, APFS volume rows and other mounted disks |
-| `models/Guide.lua`, `knowledge/Guide.lua` | Storage Guide topics, search and live topic sizes |
-| `models/Simulators.lua` | Device and runtime inventory, filters, summaries and validated `simctl` commands |
-| `models/MapTree.lua` | Map nodes for a focus, breadcrumb, roll-ups and "Worth a look" |
-| `models/Leftovers.lua` | Leftover classification with confidence tiers |
-| `models/Xcode.lua` | Device Support versions, DerivedData projects and archives |
-| `models/Projects.lua` | Project artifacts grouped by project, git state and age |
-| `models/Basket.lua` | Marked items, location refusals and parent/child de-duplication |
-| `models/OperationLog.lua`, `models/History.lua` | Action log lines and opt-in category history |
-| `models/Updates.lua` | Software Update record, update staging storage, installers and local snapshots |
-| `models/Cleanup.lua`, `knowledge/CleanupRules.lua` | Recognized resources, review thresholds, evidence and tailored advice |
+| `models/Applications.lua` | Installed apps, their data folders, last use and possible leftovers |
+| `models/Projects.lua` | Project build folders grouped by project, git state and age |
+| `models/Marks.lua` | Marked items, location refusals and parent/child de-duplication |
 | `models/Watchlist.lua` | Watched resources and folders, their previous-session baseline and change |
-| `models/Tips.lua` | Contextual access, capacity, Keep and system-storage guidance |
-| `models/Inspector.lua`, `models/Preferences.lua` | Resource details and action eligibility |
-| `controllers/` | The shell: sidebar navigation and menu commands |
-| `controllers/NavigationController.lua` | The sidebar, and the one table of pages: each row names its page in the sidebar, the Go menu and the page's own header (icon, color, title) |
-| `models/*Page.lua`, `models/*Sheet.lua`, `SheetPage.lua` | A page or a sheet: `data(state)` for its view, a method per action. `models/ListPage.lua` is the model of the layout-table pages |
+| `models/Workflows.lua`, `knowledge/Workflows.lua` | The kinds of work (Developer, Music Production, …): a page's ranked rows per section, totals, presence on this Mac and sidebar badge |
+| `models/Simulators.lua`, `models/Worktrees.lua` | Device, runtime and worktree inventories, filters, summaries and validated commands |
+| `catalog/` | Independent category definitions, paths, ownership and consequences |
+| `routes.lua`, `pages/` | Every page by route name; `pages/ListRoute.lua` is the base route of the list pages and `pages/SheetRoute.lua` of the sheets |
+| `flows/Rows.lua`, `flows/Keep.lua`, `flows/Manage.lua` | Row menus and marks, Keep, and acting on one location: action code every page shares |
+| `helpers/` | Pure computation and formatting: categories, the overview's figures, inventory transitions, recommendations, the simulator plan, maps, parsers of service output |
+| `helpers/Constraints.lua` | Named validation results for registration, Keep and Watch changes and Trash mutations |
+| `controllers/` | The shell: sidebar navigation, menu commands and the scan's progress window |
 | `views/pages/Page.etlua` | The list page. Every page that ranks storage in lists is this template and a `layout` table: header buttons, stat tiles, sections (title, filter, buttons, empty states, list) and a footnote |
 | `services/Provider.lua`, `services/Mock.lua`, `services/System.lua`, `services/Scanner.lua`, `src/plugins/storage/StorageScan.m` | Provider selection, synthetic filesystem, actual system integration and native bulk metadata enumeration |
 | `views/` | All presentation, etlua loops and reusable partials |
 
-`Model.resources` owns one canonical row for every catalog resource. Use
-`resources:find(id)`, `resources:roots()` and `resources:leaves()` for collection
-queries; rows expose `getParent()`, `getChildren()`, `isLeaf()`, `getMeasurement()`,
-`isKept()` and `validateTrash()`. Relation sequences are snapshots for reading,
-and structural registration goes through `resources:add(parentId, definition)` so
-IDs, exact paths and parent links remain atomic and model-local. Discovered agent
+`Locations` owns one row for every catalog location. Use `Locations:find(id)`,
+`Locations:roots()`, `Locations:leaves()` and `Locations:owner(path)` for queries;
+rows answer `parent()`, `children()`, `isLeaf()`, `measurement()`, `isKept()`,
+`validateTrash()` and `destination()`. Relation sequences are snapshots for reading,
+and structural registration goes through `Locations:add(parentId, definition)` so
+IDs, exact paths and parent links remain atomic within the store. Discovered agent
 metadata uses the same registration path, making repeated discovery idempotent.
-Rows do not expose mutable child arrays, parent IDs or model references. Feature
-models explicitly project row fields into presentation tables, so relation caches
-and collection ownership never leak into views.
+Routes explicitly project row fields into presentation tables, so relations never
+leak into views.
 
 Review suggestions and filesystem mutations are separate policies. Cleanup rules
 decide when measured storage is worth reviewing, including partial lower bounds;
@@ -485,7 +466,7 @@ The application does not clear and rebuild native container children itself.
 ## Opening a resource, and pages for kinds of work
 
 Every list, menu and link opens a resource by its own id through
-`Controller:open(id)`, and `models/Destinations.lua` decides where that goes.
+`Controller:open(id)`, and `Location:destination()` decides where that goes.
 The catalog declares the exceptions on the resource itself: `page` names the
 sidebar page that presents it and everything under it (Developer projects and
 build folders on Projects, Simulator devices on Simulators, DerivedData,
@@ -496,8 +477,8 @@ with its row selected. No page routes on its own.
 
 A kind of work is one entry in `knowledge/Workflows.lua`: its name and
 symbol, the sections of its page, and the catalog groups, roots or single
-locations each section lists. `models/Workflow.lua` turns an entry into a
-page and the framework's page controller draws it, so adding a page for another
+locations each section lists. The `workflow` route presents an entry from
+`models/Workflows.lua` for the page that names it in `app.xml`, so adding a page for another
 profession is a table entry plus the catalog locations it cites
 (`catalog/MusicCreation.lua`, `catalog/Creative.lua`, `catalog/Games.lua`).
 A page appears in the sidebar only on a Mac that has its data: one of its
@@ -506,10 +487,10 @@ A page appears in the sidebar only on a Mac that has its data: one of its
 A page that ranks storage in lists has no template of its own. It is a
 `layout` table rendered by `views/pages/Page.etlua`: Largest Items, Large Files,
 Duplicates, Clean Up, Applications, Disks & Volumes, Xcode, Projects, a
-watched location and every kind of work. Its model is a `ListPage` class over
-a page table (`id`, `layout`, `present(model, state, page)`, `actions`). A page
-that reads folders, runs a search or keeps a filter keeps that state on its
-model and starts its service requests in `activate`. Only pages with a presentation of their own keep a template: the Overview,
+watched location and every kind of work. Its route extends `pages/ListRoute.lua`
+with a `layout`, `present(self, state)` and its actions. A page that reads
+folders, runs a search or keeps a filter keeps that state on its page and starts
+its service requests in `activate`. Only pages with a presentation of their own keep a template: the Overview,
 the two maps, File Types, Simulators, Updates & Snapshots and macOS Folders.
 
 ## Verification

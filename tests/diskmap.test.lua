@@ -1,20 +1,21 @@
-local Categories = require("apps.diskmap.models.Categories")
-local Preferences = require("apps.diskmap.models.Preferences")
-local Cleanup = require("apps.diskmap.models.Cleanup")
-local Inspector = require("apps.diskmap.models.Inspector")
+local Locations = require("apps.diskmap.models.Locations")
+local Categories = require("apps.diskmap.helpers.Categories")
+local Cleanup = require("apps.diskmap.helpers.Cleanup")
+local Inspector = require("apps.diskmap.helpers.Inspector")
 _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
 local bridge = require("AppKitNative")
 local xml = require("ui.xml")
-local Model = require("apps.diskmap.Model")
-local Inventory = require("apps.diskmap.models.Inventory")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
+local Inventory = require("apps.diskmap.helpers.Inventory")
 local System = require("apps.diskmap.services.System")
 local Controller = require("apps.diskmap.Controller")
-local model = Model.new("/Users/test")
-t.expect(#model.resources:leaves() > 60, "catalog describes macOS and developer storage")
+local model = Store.new("/Users/test")
+t.expect(#Locations:leaves() > 60, "catalog describes macOS and developer storage")
 local unique = {}
-for _, row in ipairs(model.resources:leaves()) do
+for _, row in ipairs(Locations:leaves()) do
 	t.expect(not unique[row.id], "stable unique resource " .. row.id); unique[row.id] = true
 	t.expect(row.subtitle ~= nil, "resource explains purpose")
 	local trashable = {derived = true, brew = true, documentation = true, ["opencode-downloads"] = true, ["codex-cache"] = true,
@@ -26,63 +27,63 @@ for _, row in ipairs(model.resources:leaves()) do
 		["iphone-updates"] = true, ["ipad-updates"] = true, ["mail-downloads"] = true}
 	if row.action == "trash" then t.expect(trashable[row.id], "only verified caches or offline documentation can be trashed: " .. row.id) end
 end
-t.assertEqual(model.resources:find("npm").action, "ownerCleanup", "npm cache uses npm's cache command")
-t.assertEqual(model.resources:find("pip").action, "ownerCleanup", "pip cache uses pip's cache command")
-t.assertEqual(model.resources:find('codex-worktrees').action, "finder", "worktrees never treated as cache")
-t.assertEqual(model.resources:find('preboot').action, "settings", "boot assets system managed")
-t.assertEqual(model.resources:find('xcode-app').action, "sdks", "bundled SDKs open as the installation's SDK list")
-t.assertEqual(model.resources:find('clt').action, "sdks", "Command Line Tools open as that installation's SDK list")
-t.assertEqual(Model.size(1e9), "1.0 GB", "decimal bytes")
-t.assertEqual(Model.size(nil), "Not measured", "unknown is not zero")
-Inventory.apply(model, {"derived", "archives"}, {trees = {{kb = 100}, {kb = 200, partial = true}}, rootStates = {"measured", "unreadable"}})
+t.assertEqual(Locations:find("npm").action, "ownerCleanup", "npm cache uses npm's cache command")
+t.assertEqual(Locations:find("pip").action, "ownerCleanup", "pip cache uses pip's cache command")
+t.assertEqual(Locations:find('codex-worktrees').action, "finder", "worktrees never treated as cache")
+t.assertEqual(Locations:find('preboot').action, "settings", "boot assets system managed")
+t.assertEqual(Locations:find('xcode-app').action, "sdks", "bundled SDKs open as the installation's SDK list")
+t.assertEqual(Locations:find('clt').action, "sdks", "Command Line Tools open as that installation's SDK list")
+t.assertEqual(Format.size(1e9), "1.0 GB", "decimal bytes")
+t.assertEqual(Format.size(nil), "Not measured", "unknown is not zero")
+Inventory.apply({"derived", "archives"}, {trees = {{kb = 100}, {kb = 200, partial = true}}, rootStates = {"measured", "unreadable"}})
 t.assertEqual(model.measurements.derived.bytes, 102400, "normalizes worker units")
-t.assertEqual(Model.total(model), 307200, "disjoint ledger totals")
-t.expect(model.resources:find("derived"):validateTrash(), "complete cache eligible")
-t.expect(not model.resources:find("archives"):validateTrash(), "personal history never eligible")
+t.assertEqual(Store.total(model), 307200, "disjoint ledger totals")
+t.expect(Locations:find("derived"):validateTrash(), "complete cache eligible")
+t.expect(not Locations:find("archives"):validateTrash(), "personal history never eligible")
 model.kept.xcode = true
-t.expect(not model.resources:find("derived"):validateTrash(), "kept parent protects descendants")
+t.expect(not Locations:find("derived"):validateTrash(), "kept parent protects descendants")
 model.kept.xcode = nil
-local filtered = Categories.rows(model, nil, "DerivedData")
+local filtered = Categories.rows(nil, "DerivedData")
 t.assertEqual(#filtered, 1, "search preserves one semantic ancestor")
 t.assertEqual(filtered[1].id, "developer", "search retains category")
 t.assertEqual(filtered[1].bytes, 307200, "filter does not change category total")
-t.assertEqual(#Categories.rows(model, nil, "["), 0, "search is literal")
-local downloadSearch = Categories.rows(model, nil, "Downloads")
+t.assertEqual(#Categories.rows(nil, "["), 0, "search is literal")
+local downloadSearch = Categories.rows(nil, "Downloads")
 local documents
 for _, row in ipairs(downloadSearch) do if row.id == "documents" then documents = row end end
 t.expect(documents and documents.forceExpanded, "resource search expands its semantic category")
 local downloadFound = false
 for _, child in ipairs(documents and documents.children or {}) do if child.id == "downloads" then downloadFound = true end end
 t.expect(downloadFound, "storage search returns the matching resource, not only its category")
-t.expect(Inspector.details(model, "applications").text:find("Review its measured resources", 1, true) ~= nil,
+t.expect(Inspector.details("applications").text:find("Review its measured resources", 1, true) ~= nil,
 	"category guidance points to resources in the management sheet")
-Inventory.apply(model, {"derived"}, {failure = "cancelled"})
-t.expect(not model.resources:find("derived"):validateTrash(), "failed measurement disables removal")
+Inventory.apply({"derived"}, {failure = "cancelled"})
+t.expect(not Locations:find("derived"):validateTrash(), "failed measurement disables removal")
 t.assertEqual(model.measurements.derived.bytes, nil, "failure discards old bytes")
-Inventory.apply(model, {"derived"}, {trees = {}, rootStates = {"missing"}})
+Inventory.apply({"derived"}, {trees = {}, rootStates = {"missing"}})
 t.assertEqual(model.measurements.derived.bytes, 0, "confirmed missing is zero")
-Inventory.apply(model, {"derived"}, {trees = {}, rootStates = {"unreadable"}})
+Inventory.apply({"derived"}, {trees = {}, rootStates = {"unreadable"}})
 t.assertEqual(model.measurements.derived.bytes, nil, "denied is unknown")
-Inventory.apply(model, {"derived"}, {trees = {{kb = 125}}, rootStates = {"measured"}})
+Inventory.apply({"derived"}, {trees = {{kb = 125}}, rootStates = {"measured"}})
 model.measurements.derived.status = "partial"
-t.expect(Inspector.details(model, "derived").location:find("At least 128 KB measured · partial", 1, true) ~= nil,
+t.expect(Inspector.details("derived").location:find("At least 128 KB measured · partial", 1, true) ~= nil,
 	"inspector describes partial size as a measured lower bound")
-local paths, ids = Inventory.plan(model)
+local paths, ids = Inventory.plan()
 local targets = {}; for i, path in ipairs(paths) do targets[ids[i]] = path end
-for _, row in ipairs(model.resources:leaves()) do
+for _, row in ipairs(Locations:leaves()) do
 	if row.path and not row.mediaAccess then t.assertEqual(targets[row.id], row.path, "startup includes " .. row.id) end
 end
 t.assertEqual(targets["home-other"], "/Users/test", "unrecognized home files are measured")
 t.assertEqual(targets["root-system"], "/", "root residual closes inventory gaps")
 t.assertEqual(model.measurements.snapshots.status, "unsupported", "snapshot allocation is explicitly system managed")
-local chartModel = Model.new("/Users/test")
+local chartModel = Store.new("/Users/test")
 chartModel.measurements["apps-system-other"] = {bytes = 58e9, status = "complete"}
 chartModel.measurements.derived = {bytes = 4.9e9, status = "complete"}
 chartModel.measurements["codex-cache"] = {bytes = 10e9, status = "complete"}
 chartModel.measurements["siri-assets-1"] = {bytes = 3e9, status = "complete"}
 chartModel.measurements["dictation-1"] = {bytes = 2e9, status = "complete"}
 local disk = {totalKb = 494e9 / 1024, freeKb = 157e9 / 1024}
-local segments = Categories.distribution(chartModel, disk)
+local segments = Categories.distribution(disk)
 local sum = 0
 for _, segment in ipairs(segments) do sum = sum + segment.weight end
 t.expect(math.abs(sum - 1) < 0.000001, "breakdown accounts for all capacity")
@@ -96,7 +97,7 @@ t.assertEqual(byId["system-data"].bytes, 2e9, "Dictation remains in System Data 
 t.assertEqual(byId.developer.bytes, 4.9e9, "Developer excludes AI coding tools")
 t.assertEqual(segments[#segments].bytes, 157e9, "free space represented separately")
 t.expect(segments[#segments-1].bytes > 0, "unclassified and other bytes remain visible")
-t.assertEqual(#Categories.distribution(chartModel, {totalKb = 1, freeKb = 0}), 0, "overcount does not fabricate a capacity chart")
+t.assertEqual(#Categories.distribution({totalKb = 1, freeKb = 0}), 0, "overcount does not fabricate a capacity chart")
 local startCalls = 0
 local service = {monitor = function() end, start = function() startCalls = startCalls + 1; return {} end,
 	await = function(job, completion) job.complete = completion end,
@@ -106,7 +107,7 @@ local service = {monitor = function() end, start = function() startCalls = start
 local app = Controller.new(service)
 app.scan:start(); local old = app.scan.job
 app.scan:start(); local current = app.scan.job
-local _, scanIds = Inventory.plan(app.model)
+local _, scanIds = Inventory.plan()
 local function measuredResult(id, kb)
 	local result = {trees = {}, rootStates = {}}
 	for index, target in ipairs(scanIds) do
@@ -160,9 +161,9 @@ t.expect(ui.refs.list_rebuildable.scrollDisabled and ui.refs.page ~= nil, "clean
 window.subtitle = "stale"
 ui:updateRows()
 t.assertEqual(window.subtitle, "5.1 MB free of 10.2 MB", "scan updates continue while clean up is shown")
-local Recommendations = require("apps.diskmap.models.Recommendations")
-t.assertEqual(#Recommendations.presentation(ui.model, "DerivedData").rebuildable, 1, "clean up search finds a matching measured candidate")
-t.assertEqual(#Recommendations.presentation(ui.model, "no match").rebuildable, 0, "clean up search can empty a section")
+local Recommendations = require("apps.diskmap.helpers.Recommendations")
+t.assertEqual(#Recommendations.presentation("DerivedData").rebuildable, 1, "clean up search finds a matching measured candidate")
+t.assertEqual(#Recommendations.presentation("no match").rebuildable, 0, "clean up search can empty a section")
 t.expect(#bridge._tableRowMenu(ui.refs.list_rebuildable, 1) > 0, "each suggestion has a row menu")
 ui:show("overview")
 t.assertEqual(ui.refs.results.rowCount, categoryRows, "category rows remain after returning from clean up")
@@ -194,13 +195,13 @@ t.expect(ui.management.sheet ~= nil, "the row button opens that category")
 ui.management:close()
 t.expect(sizeCell.spinner.hidden, "loaded category has no spinner")
 t.expect(not meterOf(bridge._tableCell(ui.refs.results, 1, 0)).bar.hidden, "measured categories show a share bar")
-local _, loadingIds = Inventory.plan(ui.model)
+local _, loadingIds = Inventory.plan()
 -- A running scan is shown by the app's progress window, not by half-filled lists:
 -- the Overview draws its empty state and is drawn again when the scan finishes.
-Inventory.begin(ui.model, loadingIds); ui:updateRows()
+Inventory.begin(loadingIds); ui:updateRows()
 t.assertEqual(ui.refs.results, nil, "while the scan runs the Overview draws no category list")
 t.assertEqual(ui.refs.largestSection, nil, "nor the largest items")
-Inventory.cancel(ui.model); ui:updateRows()
+Inventory.cancel(); ui:updateRows()
 t.assertEqual(ui.refs.results.rowCount, 22, "the categories return with the scan's end")
 window:layout()
 t.expect(ui.refs.page.documentView.frame.size.height > ui.refs.page.contentView.bounds.size.height, "the overview scrolls past the category list")
@@ -274,23 +275,23 @@ t.assertEqual(scanned.trees[2].kb, 8, "hard links have one allocation")
 t.assertEqual(scanned.trees[1].kb, 0, "parent excludes separately owned child")
 t.assertEqual(scanned.trees[1].children, nil, "inventory retains no folder tree")
 for _, path in ipairs({hostile, root .. "/cache/link", root .. "/cache", root .. "/outside", root}) do os.remove(path) end
-local features = Model.new("/Users/test")
+local features = Store.new("/Users/test")
 local uniquePaths = {}
-for _, leaf in ipairs(features.resources:leaves()) do
+for _, leaf in ipairs(Locations:leaves()) do
 	if leaf.path then t.expect(not uniquePaths[leaf.path], "one catalog owner per exact path"); uniquePaths[leaf.path] = true end
 end
-t.assertEqual(features.resources:find("vscode-cache").appIcon, "com.microsoft.VSCode", "resource inherits owning application icon")
-t.assertEqual(features.resources:find("temporary").color, "systemYellow", "temporary files have yellow badge")
-t.assertEqual(features.resources:find("dictation-1").policy, "System managed", "recognition assets never become disposable caches")
+t.assertEqual(Locations:find("vscode-cache").appIcon, "com.microsoft.VSCode", "resource inherits owning application icon")
+t.assertEqual(Locations:find("temporary").color, "systemYellow", "temporary files have yellow badge")
+t.assertEqual(Locations:find("dictation-1").policy, "System managed", "recognition assets never become disposable caches")
 features.measurements["siri-assets-1"] = {bytes = 1200, status = "complete"}
 features.measurements["dictation-1"] = {bytes = 800, status = "complete"}
-local rolled = Categories.rows(features, "intelligence")
+local rolled = Categories.rows("intelligence")
 t.assertEqual(rolled[2].bytes, 1200, "Siri has independent measured total")
 t.assertEqual(rolled[2].status, "partial", "unmeasured asset classes remain explicit")
-local speech = Categories.rows(features, "speech-assets")
+local speech = Categories.rows("speech-assets")
 t.assertEqual(speech[1].bytes, 800, "Dictation remains independently measured with speech resources")
-t.assertEqual(features.resources:find("intelligence"):getParent().id, "ai-agents", "Apple Intelligence and Siri belong to AI agents")
-t.assertEqual(features.resources:find("codex"):getParent():getParent().id, "ai-agents", "AI coding tools belong to AI agents")
-t.assertEqual(features.resources:find("cursor"):getParent():getParent().id, "ai-agents", "Cursor is counted with AI tools")
-t.assertEqual(#Cleanup.suggestions(features), 0, "system feature data is never a cleanup suggestion")
+t.assertEqual(Locations:find("intelligence"):parent().id, "ai-agents", "Apple Intelligence and Siri belong to AI agents")
+t.assertEqual(Locations:find("codex"):parent():parent().id, "ai-agents", "AI coding tools belong to AI agents")
+t.assertEqual(Locations:find("cursor"):parent():parent().id, "ai-agents", "Cursor is counted with AI tools")
+t.assertEqual(#Cleanup.suggestions(), 0, "system feature data is never a cleanup suggestion")
 os.exit(t.summary() and 0 or 1)

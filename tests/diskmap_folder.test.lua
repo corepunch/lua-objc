@@ -5,7 +5,7 @@ local native = require("StorageScan")
 local Mock = require("apps.diskmap.services.Mock")
 local Provider = require("apps.diskmap.services.Provider")
 local Controller = require("apps.diskmap.Controller")
-local FolderTree = require("apps.diskmap.models.FolderTree")
+local FolderTree = require("apps.diskmap.helpers.FolderTree")
 
 -- The native scanner lists a folder's tree: its largest children to
 -- `treeDepth` levels, smaller items summed, deeper folders measured only.
@@ -67,7 +67,7 @@ local downloads = home .. "/Downloads"
 local app = Controller.new(service)
 app:createWindow()
 local pc = app.pages.folder
-local page = app.graph:build({"folder"}).folder
+local page = app:request("folder")
 app:show("folder")
 t.expect(pc.refs.folderEmpty ~= nil, "the page invites a drop until a folder is open")
 t.assertEqual(Provider.folder({"--folder=/Volumes/Backup"}), "/Volumes/Backup", "--folder opens a folder at launch")
@@ -147,10 +147,10 @@ local remaining
 for _, row in ipairs(page.tree:rows(page.focus, page.coloring)) do if not row.directory and not row.other then remaining = row; break end end
 
 -- System locations and standard folders are never moved.
-t.expect(not FolderTree.validateChange(app.model, downloads), "a standard folder is never moved")
-t.expect(not FolderTree.validateChange(app.model, "/Applications/Safari.app"), "items outside the home folder and other disks are not moved")
-t.expect(FolderTree.validateChange(app.model, "/Volumes/Backup/Old"), "items on another disk may be moved")
-t.expect(not FolderTree.validateChange(app.model, "/Volumes/Backup"), "a disk itself is never moved")
+t.expect(not FolderTree.validateChange(downloads), "a standard folder is never moved")
+t.expect(not FolderTree.validateChange("/Applications/Safari.app"), "items outside the home folder and other disks are not moved")
+t.expect(FolderTree.validateChange("/Volumes/Backup/Old"), "items on another disk may be moved")
+t.expect(not FolderTree.validateChange("/Volumes/Backup"), "a disk itself is never moved")
 t.expect(not FolderTree.validateDestination(largest, downloads), "a move needs a different folder")
 t.expect(not FolderTree.validateDestination(downloads .. "/a", downloads .. "/a/b"), "a folder is never moved into itself")
 
@@ -188,7 +188,7 @@ t.expect(pc.refs.folderFailed ~= nil, "a folder that cannot be measured says so"
 -- Large Files rows offer Quick Look and Move to… as well.
 local Files = require("apps.diskmap.models.Files")
 local dmg
-for _, row in ipairs(Files.rows(app.model, "All")) do if row.name == "Old macOS Installer.dmg" then dmg = row end end
+for _, row in ipairs(Files:rows("All")) do if row.name == "Old macOS Installer.dmg" then dmg = row end end
 local fileMenu = {}
 for _, item in ipairs(dmg and app.actions:file(dmg) or {}) do if item.title then fileMenu[item.title] = true end end
 t.expect(fileMenu["Quick Look"] and fileMenu["Move to…"], "large files can be previewed and offloaded")

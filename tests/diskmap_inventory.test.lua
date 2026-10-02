@@ -1,13 +1,13 @@
-local Categories = require("apps.diskmap.models.Categories")
-local Preferences = require("apps.diskmap.models.Preferences")
-local Cleanup = require("apps.diskmap.models.Cleanup")
+local Categories = require("apps.diskmap.helpers.Categories")
+local Cleanup = require("apps.diskmap.helpers.Cleanup")
 _G.__headless = true
 local t = require("TestKit")
-local Model = require("apps.diskmap.Model")
-local Inventory = require("apps.diskmap.models.Inventory")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
+local Inventory = require("apps.diskmap.helpers.Inventory")
 local System = require("apps.diskmap.services.System")
-local model = Model.new("/Users/test")
-local paths, ids, exclusions = Inventory.plan(model)
+local model = Store.new("/Users/test")
+local paths, ids, exclusions = Inventory.plan()
 t.assertEqual(#paths, #ids, "every path has one ledger owner")
 t.expect(#exclusions > #paths + 3, "excluded media roots also stay out of residual traversal")
 local index = {}; for i, id in ipairs(ids) do index[id] = i end
@@ -15,15 +15,15 @@ local result = {trees = {}, rootStates = {}, visited = 123, seconds = 2, errors 
 for i in ipairs(ids) do result.rootStates[i] = "missing" end
 result.trees[index["apps-system-other"]] = {kb = 100}; result.rootStates[index["apps-system-other"]] = "measured"
 result.trees[index["user-trash"]] = {kb = 0, partial = true}; result.rootStates[index["user-trash"]] = "unreadable"
-Inventory.apply(model, ids, result)
-for _, row in ipairs(Categories.rows(model)) do t.expect(row.status ~= "notMeasured", "completed batch attempts " .. row.id) end
+Inventory.apply(ids, result)
+for _, row in ipairs(Categories.rows()) do t.expect(row.status ~= "notMeasured", "completed batch attempts " .. row.id) end
 t.assertEqual(model.measurements["user-trash"].status, "denied", "a location where nothing could be read has no access, not a size of zero")
 t.assertEqual(model.measurements["user-trash"].bytes, nil, "and no bytes")
 t.assertEqual(model.scan.issues[1].path, "/denied", "current scan retains access evidence")
-Inventory.apply(model, {"apps-system-other", "user-trash"}, {failure = "Worker stopped", trees = {{kb = 80}}, rootStates = {"measured"}})
+Inventory.apply({"apps-system-other", "user-trash"}, {failure = "Worker stopped", trees = {{kb = 80}}, rootStates = {"measured"}})
 t.assertEqual(model.measurements["apps-system-other"].bytes, 81920, "completed roots survive later worker failure")
 t.assertEqual(model.measurements["user-trash"].status, "failed", "unfinished roots have no stale value")
-Inventory.apply(model, {"apps-system-other"}, {rootStates = {"skipped"}})
+Inventory.apply({"apps-system-other"}, {rootStates = {"skipped"}})
 t.assertEqual(model.measurements["apps-system-other"].status, "skipped", "linked location is distinct from access denial")
 -- Scanner tests use tiny temporary trees, no windows or waiting.
 local pipe = assert(io.popen("/usr/bin/mktemp -d /private/tmp/diskmap-inventory.XXXXXXXX"))

@@ -1,12 +1,14 @@
 _G.__headless = true
+local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
-local Model = require("apps.diskmap.Model")
-local Overview = require("apps.diskmap.models.Overview")
-local Workflow = require("apps.diskmap.models.Workflow")
-local developerWorkflow = require("apps.diskmap.knowledge.Workflows").find("developer")
-local Guide = require("apps.diskmap.models.Guide")
+local Model = require("data.model")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
+local Overview = require("apps.diskmap.helpers.Overview")
+local developerWorkflow = require("apps.diskmap.models.Workflows"):find("developer")
+local Guide = require("apps.diskmap.helpers.Guide")
 
-local model = Model.new("/Users/test")
+local model = Store.new("/Users/test")
 for id, bytes in pairs({["apps-system-other"] = 58e9, derived = 4.9e9, simulators = 11e9,
 	["codex-cache"] = 10e9, downloads = 20e9}) do
 	model.measurements[id] = {bytes = bytes, status = "complete"}
@@ -14,17 +16,17 @@ end
 local disk = {totalKb = 494e9 / 1024, freeKb = 157e9 / 1024}
 
 -- Summary: capacity comes from the volume, never from measured totals.
-local summary = Overview.summary(model, disk)
+local summary = Overview.summary(disk)
 t.assertEqual(summary.used, "337.0 GB", "used capacity is total minus free")
 t.assertEqual(summary.caption, "of 494.0 GB used", "the chart caption names the volume size")
 t.assertEqual(summary.subtitle, "157.0 GB free of 494.0 GB", "free space keeps the file system's meaning")
 t.expect(not summary.lowSpace, "a third free is not low space")
-t.expect(Overview.summary(model, {totalKb = 100, freeKb = 5}).lowSpace, "under 10% free is low space")
-local unknown = Overview.summary(model, nil)
+t.expect(Overview.summary({totalKb = 100, freeKb = 5}).lowSpace, "under 10% free is low space")
+local unknown = Overview.summary(nil)
 t.expect(not unknown.available and unknown.used == "—", "missing capacity is never shown as zero")
 
 -- Chart: named categories, the unattributed residual, then free space.
-local chart = Overview.chart(model, disk)
+local chart = Overview.chart(disk)
 local total = 0
 for _, mark in ipairs(chart.marks) do total = total + mark.value end
 t.expect(math.abs(total - 494e9) < 1, "the ring accounts for the whole volume")
@@ -34,41 +36,44 @@ t.assertEqual(chart.marks[#chart.marks].color, "quaternaryLabel", "free space is
 t.assertEqual(chart.marks[#chart.marks - 1].label, "Not attributed", "the residual is visible, not hidden")
 t.assertEqual(chart.legend[1].share, "17%", "legend shares are of used capacity")
 t.expect(chart.accessibilityLabel:find("Applications 58.0 GB", 1, true) ~= nil, "VoiceOver reads the chart as text")
-local crowded = Model.new("/Users/test")
+local crowded = Store.new("/Users/test")
 for index, id in ipairs({"apps-system-other", "derived", "codex-cache", "downloads", "user-caches", "trash-user",
 	"mail", "messages", "books-library", "podcasts-library"}) do
-	if crowded.resources:find(id) then crowded.measurements[id] = {bytes = index * 1e9, status = "complete"} end
+	if Locations:find(id) then crowded.measurements[id] = {bytes = index * 1e9, status = "complete"} end
 end
-local crowdedChart = Overview.chart(crowded, disk)
+local crowdedChart = Overview.chart(disk)
 t.expect(#crowdedChart.legend <= 6, "at most five categories and one aggregate are named")
-t.assertEqual(#Overview.chart(model, {totalKb = 1, freeKb = 0}).marks, 0, "an overcount draws no partition")
+Model.bind(model)
+t.assertEqual(#Overview.chart({totalKb = 1, freeKb = 0}).marks, 0, "an overcount draws no partition")
 
 -- Cleanup headline keeps rebuildable and review-first bytes apart.
-local reclaim = Overview.reclaim(model)
-local cleanup = require("apps.diskmap.models.Recommendations").presentation(model, "", {})
-t.assertEqual(reclaim.title, Model.size(cleanup.eligibleBytes) .. " could recover", "the headline states Clean Up's own recoverable estimate")
+local reclaim = Overview.reclaim()
+local cleanup = require("apps.diskmap.helpers.Recommendations").presentation("", {})
+t.assertEqual(reclaim.title, Format.size(cleanup.eligibleBytes) .. " could recover", "the headline states Clean Up's own recoverable estimate")
 t.expect(reclaim.detail:find("more to review", 1, true) ~= nil, "review candidates are counted separately")
 t.expect(reclaim.top ~= nil and reclaim.detail:find("start with " .. reclaim.top, 1, true), "the headline names where to start, the top-ranked suggestion")
-t.assertEqual(Overview.reclaim(Model.new("/Users/test")).title, "No cleanup suggestions yet", "an empty inventory promises nothing")
+Store.new("/Users/test")
+t.assertEqual(Overview.reclaim().title, "No cleanup suggestions yet", "an empty inventory promises nothing")
+Model.bind(model)
 
 -- Largest items rank individual resources with their semantic owner.
-local largest = Overview.largest(model, disk, 3)
+local largest = Overview.largest(disk, 3)
 t.assertEqual(#largest, 3, "the ranking honours its limit")
 t.assertEqual(largest[1].id, "apps-system-other", "largest item first")
 t.assertEqual(largest[1].relative, 1, "bars compare items with the largest")
 t.assertEqual(largest[2].id, "downloads", "ranking is by measured bytes")
 t.assertEqual(largest[1].subtitle, "Applications › Installed applications", "each item names its owner")
-t.assertEqual(require("apps.diskmap.models.Destinations").resolve(model, largest[1].id).page, "applications", "items open where their resource lives")
-t.assertEqual(#Overview.largest(model, disk, nil, "derived"), 1, "search filters by name, owner and path")
-t.assertEqual(#Overview.largest(model, disk, nil, "no such thing"), 0, "search can empty the ranking")
-t.assertEqual(Overview.largest(model, disk, nil, "derived")[1].impact, "Rebuildable", "impact follows cleanup policy")
+t.assertEqual(require("apps.diskmap.models.Locations"):destination(largest[1].id).page, "applications", "items open where their resource lives")
+t.assertEqual(#Overview.largest(disk, nil, "derived"), 1, "search filters by name, owner and path")
+t.assertEqual(#Overview.largest(disk, nil, "no such thing"), 0, "search can empty the ranking")
+t.assertEqual(Overview.largest(disk, nil, "derived")[1].impact, "Rebuildable", "impact follows cleanup policy")
 model.measurements.archives = {status = "denied"}
-for _, row in ipairs(Overview.largest(model, disk)) do
+for _, row in ipairs(Overview.largest(disk)) do
 	t.expect(row.id ~= "archives", "unmeasured resources are never ranked")
 end
 
 -- Category rows sort by size and keep catalog order for unmeasured ones.
-local rows = Overview.categories(model, disk)
+local rows = Overview.categories(disk)
 t.assertEqual(rows[1].id, "applications", "largest category first")
 t.assertEqual(rows[1].relative, 1, "the largest category has a full bar")
 t.assertEqual(rows[#rows].relative, nil, "unmeasured categories have no bar")
@@ -76,7 +81,7 @@ t.assertEqual(rows[1].children, nil, "overview rows are flat")
 
 -- Developer sections list catalog resources, largest first, with bars compared
 -- across the whole page.
-local developer = Workflow.presentation(model, developerWorkflow)
+local developer = developerWorkflow:presentation()
 t.expect(#developer.sections > 0, "developer storage is grouped into sections")
 local sectionsById, rowsById = {}, {}
 for _, section in ipairs(developer.sections) do
@@ -84,7 +89,7 @@ for _, section in ipairs(developer.sections) do
 	for index, row in ipairs(section.rows) do
 		rowsById[row.id] = row
 		if index > 1 then t.expect(section.rows[index - 1].bytes >= row.bytes, "section rows are largest first: " .. section.id) end
-		t.expect(model.resources:find(row.id) ~= nil, "developer rows name catalog resources: " .. row.id)
+		t.expect(Locations:find(row.id) ~= nil, "developer rows name catalog resources: " .. row.id)
 	end
 end
 t.expect(sectionsById.xcode ~= nil, "Xcode storage has its own section")
@@ -93,12 +98,12 @@ t.assertEqual(rowsById.derived.size, "4.9 GB", "rows show measured sizes")
 t.assertEqual(rowsById.derived.detail, "Rebuildable", "rows state their cleanup policy")
 t.assertEqual(developer.total, "25.9 GB", "developer total includes AI coding tools")
 for _, section in ipairs(developerWorkflow.sections) do
-	for _, id in ipairs(section.groups) do t.expect(model.resources:find(id) ~= nil, "developer section cites a registered group: " .. id) end
+	for _, id in ipairs(section.groups) do t.expect(Locations:find(id) ~= nil, "developer section cites a registered group: " .. id) end
 end
-t.assertEqual(#Workflow.presentation(model, developerWorkflow, "deriveddata").sections, 1, "search narrows developer sections")
+t.assertEqual(#developerWorkflow:presentation("deriveddata").sections, 1, "search narrows developer sections")
 model.measurements["runtime-images"] = {status = "complete", bytes = 1e9}
 local rolled
-for _, row in ipairs(Workflow.presentation(model, developerWorkflow).sections[1].rows) do if row.id == "runtimes" then rolled = row end end
+for _, row in ipairs(developerWorkflow:presentation().sections[1].rows) do if row.id == "runtimes" then rolled = row end end
 t.expect(rolled and rolled.group and rolled.detail == "Group", "nested groups roll up into one row")
 model.measurements["runtime-images"] = nil
 
@@ -109,28 +114,28 @@ for _, chapter in ipairs(Guide.chapters) do
 		topics = topics + 1
 		t.expect(topic.what and topic.why and topic.action and topic.summary, "guide topic is complete: " .. topic.id)
 		for _, id in ipairs(topic.resources or {}) do
-			t.expect(model.resources:find(id) ~= nil, "guide topic " .. topic.id .. " cites registered resource " .. id)
+			t.expect(Locations:find(id) ~= nil, "guide topic " .. topic.id .. " cites registered resource " .. id)
 		end
 		if topic.open and topic.open ~= "simulators" and topic.open ~= "updates" then
-			t.expect(model.resources:find(topic.open) ~= nil, "guide topic " .. topic.id .. " opens a registered category")
+			t.expect(Locations:find(topic.open) ~= nil, "guide topic " .. topic.id .. " opens a registered category")
 		end
 	end
 end
-local guide = Guide.presentation(model, "")
+local guide = Guide.presentation("")
 t.assertEqual(guide.count, topics, "an empty search shows every topic")
 for _, id in ipairs({"preboot", "updates", "vm", "snapshots", "free-space", "what-is-system-data"}) do
 	t.expect(Guide.topic(id) ~= nil, "the guide explains " .. id)
 end
-t.assertEqual(Guide.measurement(model, Guide.topic("derived-data")), "4.9 GB on this Mac", "topics show live sizes")
-t.assertEqual(Guide.measurement(model, Guide.topic("container")), nil, "topics without resources show no size")
-t.assertEqual(Guide.measurement(model, Guide.topic("preboot")), nil, "unmeasured topics never show zero")
-local swap = Guide.presentation(model, "SWAP")
+t.assertEqual(Guide.measurement(Guide.topic("derived-data")), "4.9 GB on this Mac", "topics show live sizes")
+t.assertEqual(Guide.measurement(Guide.topic("container")), nil, "topics without resources show no size")
+t.assertEqual(Guide.measurement(Guide.topic("preboot")), nil, "unmeasured topics never show zero")
+local swap = Guide.presentation("SWAP")
 t.expect(swap.count >= 1 and swap.count < topics, "guide search is case-insensitive and narrows topics")
-t.expect(Guide.presentation(model, "no topic mentions this").empty, "guide search can be empty")
-local chapter = Guide.presentation(model, "recovery and updates").chapters
+t.expect(Guide.presentation("no topic mentions this").empty, "guide search can be empty")
+local chapter = Guide.presentation("recovery and updates").chapters
 t.assertEqual(#chapter, 1, "a chapter title match keeps its chapter")
 t.assertEqual(#chapter[1].topics, #Guide.chapters[2].topics, "a matching chapter keeps all of its topics")
 model.measurements.preboot = {status = "calculating"}
-t.assertEqual(Guide.measurement(model, Guide.topic("preboot")), nil, "a topic still being measured shows no size, not a row-level spinner")
+t.assertEqual(Guide.measurement(Guide.topic("preboot")), nil, "a topic still being measured shows no size, not a row-level spinner")
 
 os.exit(t.summary() and 0 or 1)

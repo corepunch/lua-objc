@@ -22,7 +22,7 @@ local CROP = { margin = 12, quality = 92 }
 -- the difference is trimmed from the margins, so it must stay small.
 local SEARCH = { minWidth = 780, maxWidth = 1560, height = 900, steps = 9, tolerance = 0.03 }
 
--- One shot per page of models/Tour.lua, named by its id. `ids`: the
+-- One shot per page of helpers/Tour.lua, named by its id. `ids`: the
 -- elements cropped together; `maxHeight` in points keeps a long list to its
 -- first rows, ending the crop at the last whole row; `height` is the window
 -- height for pages whose content fills it.

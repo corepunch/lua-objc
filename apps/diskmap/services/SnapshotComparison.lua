@@ -1,6 +1,10 @@
+local Model = require("data.model")
+local Provider = require("apps.diskmap.services.Provider")
+local Locations = require("apps.diskmap.models.Locations")
 local ns = require("AppKit")
-local Model = require("apps.diskmap.Model")
-local Snapshot = require("apps.diskmap.models.Snapshot")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
+local Snapshot = require("apps.diskmap.helpers.Snapshot")
 local Comparison = {}; Comparison.__index = Comparison
 
 -- Compares live scans with a saved snapshot (the sheet that lists every change
@@ -20,16 +24,24 @@ local SNAPSHOT = {yieldEvery = 25000}
 -- as a change in the residual "Other files" row that no longer contains it.
 local function measureSnapshot(path, live, yield)
 	local Mock = require("apps.diskmap.services.Mock")
-	local ScanController = require("apps.diskmap.models.Scan")
+	local ScanController = require("apps.diskmap.services.Scan")
 	local home = live.home
-	local service = Mock.new({fixturePath = path, home = home, yield = yield, yieldEvery = SNAPSHOT.yieldEvery})
-	local model = Model.new(home)
-	for _, added in ipairs(live.resources:added()) do
-		if not model.resources:find(added.definition.id) then model.resources:add(added.parentId, added.definition) end
+	Model.bind(live)
+	local discovered = Locations:added()
+	-- The snapshot's own store while it is measured; the window's code that
+	-- runs while the measurement yields binds its own, so each step here
+	-- binds this one again, and the live store is bound when it is done.
+	local model = Store.new(home)
+	local service = Mock.new({fixturePath = path, home = home, yieldEvery = SNAPSHOT.yieldEvery,
+		yield = yield and function() yield(); Model.bind(model) end})
+	for _, added in ipairs(discovered) do
+		if not Locations:find(added.definition.id) then Locations:add(added.parentId, added.definition) end
 	end
 	local scan = ScanController.new(model, service, home)
 	scan:start()
-	return Snapshot.totals(model), service.fixture.createdAt
+	local totals = Snapshot:totals()
+	Model.bind(live)
+	return totals, service.fixture.createdAt
 end
 
 function Comparison.new(model, service, options)
@@ -43,7 +55,7 @@ end
 -- The cached baseline, when it belongs to the snapshot on disk.
 function Comparison:cached(createdAt)
 	if not self.cache then return nil end
-	local load = rawget(self.service, "loadSnapshotSummary")
+	local load = Provider.offers(self.service, "loadSnapshotSummary")
 	local baseline = load and Snapshot.decode(load())
 	return baseline and baseline.createdAt == createdAt and baseline or nil
 end
@@ -66,14 +78,14 @@ function Comparison:compare()
 		self.measuring = false
 		if not ok then self.result = nil; self.changed(nil, tostring(totals)); return end
 		self.baseline = {createdAt = created or createdAt, totals = totals}
-		local save = rawget(self.service, "saveSnapshotSummary")
+		local save = Provider.offers(self.service, "saveSnapshotSummary")
 		if self.cache and save then save(Snapshot.encode(self.baseline)) end
 		self:report()
 	end)
 end
 
 function Comparison:report()
-	self.result = Snapshot.changes(self.model, self.baseline)
+	self.result = Snapshot:changes(self.baseline)
 	self.changed(Snapshot.overview(self.result))
 end
 

@@ -1,6 +1,7 @@
 _G.__headless = true
 local t = require("TestKit")
-local Verify = require("apps.diskmap.models.Verify")
+local Marks = require("apps.diskmap.models.Marks")
+local Verify = require("apps.diskmap.helpers.Verify")
 
 -- Each marked item is checked again just before it moves (#52).
 local home = "/Users/test"
@@ -77,17 +78,17 @@ for _, path in ipairs({iso, pkg, cache}) do
 	t.expect(app.review:toggle({path = path, name = path:match("([^/]+)$"), bytes = 1}), "marks " .. path:match("([^/]+)$"))
 end
 t.expect(app.review:toggle({path = site, name = "Node modules · website", resourceId = "mock-website-node-modules"}), "marks a discovered build folder")
-t.expect(app.review.basket.items[iso].identity ~= nil, "an item's identity is recorded when it is marked")
+t.expect(Marks:find(iso).identity ~= nil, "an item's identity is recorded when it is marked")
 service.runningApps = {"com.mock.oldeditor"}
 service.replace(pkg)
 service.trash(mhome .. "/Documents/website/package.json")
 app:openReview()
 t.expect(app.review:trash(), "the cleanup runs")
 t.expect(app.review.done[iso] == "Moved to Trash", "an unchanged item moves")
-t.assertEqual(app.review.basket.items[iso], nil, "a moved item leaves the basket")
+t.assertEqual(Marks:find(iso), nil, "a moved item leaves the basket")
 t.assertEqual(app.review.results[pkg], "Skipped", "a replaced item is skipped")
 t.assertEqual(app.review.results[cache], "Skipped", "a cache whose app is open is skipped")
-t.expect(app.review.basket.items[pkg] and app.review.basket.items[cache], "skipped items stay marked")
+t.expect(Marks:find(pkg) and Marks:find(cache), "skipped items stay marked")
 local summary = app.review.refs.reviewSummary.text
 t.assertEqual(app.review.results[site], "Skipped", "a build folder whose project file is gone is skipped")
 t.expect(summary:find("moved to the Trash · 1 item", 1, true), "the sheet says what moved")

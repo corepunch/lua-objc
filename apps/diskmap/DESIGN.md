@@ -408,13 +408,15 @@ services, feature controllers, template refs, navigation and the window.
 | Area | Current responsibility |
 | --- | --- |
 | `init.lua` | Thin entry point returning the Controller class. |
-| `Model.lua` | Indexed state and aggregate byte arithmetic. |
-| `models/` | Inventory transitions, categories, cleanup eligibility, tips, inspector data and preferences. No native widgets. |
+| `Store.lua` | The store: locations, measurements, Keep, scan state; each window binds its own. |
+| `models/` | Lapis models over the store, one per kind of row: locations, files, applications, projects, marks, the watchlist, the kinds of work, simulators and worktrees. No native widgets. |
+| `helpers/` | Inventory transitions, categories, cleanup eligibility, tips, inspector data and the parsers of service output. |
 | `catalog/` | Category definitions, explanations, paths, ownership and policies. |
 | `knowledge/CleanupRules.lua` | Resource-specific review thresholds and advice with consequences. |
-| `models/` | Independently testable scan, cleanup, inspector and settings models; a page or sheet is a model with `data(state)` and a method per action, drawn by the framework page controller. List pages share one template (`views/pages/Page.etlua`) laid out from a table. |
+| `routes.lua`, `pages/` | A page or sheet is a route with `data(state)` and a method per action, drawn by the framework page controller. List pages share one template (`views/pages/Page.etlua`) laid out from a table. |
+| `flows/` | Row menus and marks, Keep and acting on one location, shared by every page. |
 | `knowledge/Workflows.lua` | One entry per kind of work (Developer, Music Production, …): its page and the catalog groups it lists. |
-| `models/Destinations.lua` | The one place that decides where opening a resource goes. |
+| `Location:destination()` | The one place that decides where opening a resource goes. |
 | `services/` | Injected native IO, persistence, permissions and owner-management integration. |
 | `services/Scanner.lua` + `StorageScan.dylib` | Metadata-only enumeration, exclusions, cross-root hard-link ownership and diagnostics. |
 | `Controller.lua` | Composition root, navigation and template/action binding. |

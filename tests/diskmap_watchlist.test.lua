@@ -1,8 +1,10 @@
 _G.__headless = true
+local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
 local ns = require("AppKit")
 local bridge = require("AppKitNative")
-local Model = require("apps.diskmap.Model")
+local Format = require("apps.diskmap.helpers.Format")
+local Store = require("apps.diskmap.Store")
 local Watchlist = require("apps.diskmap.models.Watchlist")
 local Mock = require("apps.diskmap.services.Mock")
 local Controller = require("apps.diskmap.Controller")
@@ -14,9 +16,9 @@ t.expect(not pcall(ns.applicationSupportDirectory, "../escape"), "a folder name 
 t.expect(not pcall(ns.applicationSupportDirectory, ""), "an empty folder name is refused")
 
 -- Model: stored entries are validated, deduplicated and keep their baseline.
-local model = Model.new("/Users/test")
+local model = Store.new("/Users/test")
 local day = os.time({year = 2026, month = 9, day = 20, hour = 12})
-local list = Watchlist.new(model, {
+local list = Watchlist:restore({
 	{kind = "resource", id = "developer", bytes = 5e9, measuredAt = day},
 	{kind = "resource", id = "developer"},
 	{kind = "resource", id = "retired-resource"},
@@ -53,10 +55,10 @@ t.assertEqual(list:count(), 2, "recording an unwatched key changes nothing")
 model.measurements["derived"] = {status = "calculating"}
 list:sync(day + 86400)
 t.expect(list:change("resource:developer") == nil, "an incomplete category is not compared")
-for _, leaf in ipairs(model.resources:find("developer"):getChildren()) do
+for _, leaf in ipairs(Locations:find("developer"):children()) do
 	local function complete(node)
 		if node:isLeaf() then model.measurements[node.id] = {status = "complete", bytes = 1e9}
-		else for _, child in ipairs(node:getChildren()) do complete(child) end end
+		else for _, child in ipairs(node:children()) do complete(child) end end
 	end
 	complete(leaf)
 end
@@ -69,7 +71,7 @@ local encoded = list:encode()
 t.assertEqual(encoded[1].measuredAt, day + 86400, "the stored time is this session's measurement")
 t.expect(encoded[1].bytes ~= 5e9, "the stored size is this session's measurement")
 t.assertEqual(encoded[2].bytes, 2e9, "a missing folder keeps its previous size")
-local reloaded = Watchlist.new(model, encoded)
+local reloaded = Watchlist:restore(encoded)
 t.assertEqual(reloaded:find("resource:developer").bytes, encoded[1].bytes, "the next session starts from the stored size")
 
 -- Toggling validates and removes cleanly.
@@ -126,7 +128,7 @@ t.expect(refs.contents.rowCount >= 1, "a watched folder lists its immediate chil
 t.expect(refs.contentsDetail.text:find("at the top level", 1, true) ~= nil, "the contents are summarized once measured")
 t.expect(refs.reveal ~= nil and refs.openCategory == nil, "a folder offers Finder but no category")
 t.assertEqual(sidebar.documentView.selectedRow, 2, "the folder's sidebar row is selected")
-local folderMenu = app.pages.watched.model:menu({path = home .. "/Library/Developer/Xcode", name = "Xcode", directory = true})
+local folderMenu = app:request("watched"):menu({path = home .. "/Library/Developer/Xcode", name = "Xcode", directory = true})
 t.expect(perform(folderMenu, "Watch"), "a subfolder can be watched from the contents list")
 t.assertEqual(#service.watchlist, 3, "three locations are saved")
 

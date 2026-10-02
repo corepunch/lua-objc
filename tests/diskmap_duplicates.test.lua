@@ -1,7 +1,7 @@
 _G.__headless = true
 local t = require("TestKit")
 local native = require("StorageScan")
-local Duplicates = require("apps.diskmap.models.Duplicates")
+local Duplicates = require("apps.diskmap.helpers.Duplicates")
 
 -- The native search compares contents, never follows hard links, and
 -- reports what removing each copy would free.

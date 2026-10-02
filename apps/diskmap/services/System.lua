@@ -1,3 +1,4 @@
+local Locations = require("apps.diskmap.models.Locations")
 local ns = require("AppKit")
 local Owners = require("apps.diskmap.services.Owners")
 local System = {}
@@ -156,7 +157,7 @@ function System.emptyTrash()
 end
 function System.showError(title, message) ns.Alert {title = title, message = message} end
 function System.relaunch(onFailure) ns.relaunch(onFailure) end
--- What a cleanup checks just before each move (models/Verify.lua).
+-- What a cleanup checks just before each move (helpers/Verify.lua).
 System.fileIdentity = ns.fileIdentity
 function System.cleanupProbes()
 	local running = {}
@@ -180,7 +181,7 @@ end
 function System.agentEntries(model)
 	local entries = {}
 	for _, id in ipairs({"codex", "opencode", "grok", "claude"}) do
-		local root = model.resources:find(id .. "-other")
+		local root = Locations:find(id .. "-other")
 		for _, entry in ipairs(root and ns.readDirectory(root.path, 0) or {}) do
 			entry.agent = id; table.insert(entries, entry)
 		end
@@ -377,7 +378,7 @@ function System.command(argv, completion)
 end
 function System.snapshotCount(completion)
 	System.command({"/usr/bin/tmutil", "listlocalsnapshots", "/"}, function(ok, output)
-		local details = require("apps.diskmap.models.SystemDetails")
+		local details = require("apps.diskmap.helpers.SystemDetails")
 		local dates = ok and details.parseSnapshotDates(output) or nil
 		completion(dates and #dates or nil, dates)
 	end)

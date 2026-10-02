@@ -2,12 +2,13 @@ _G.__headless = true
 local t=require('TestKit')
 local ns=require('AppKit')
 local bridge=require('AppKitNative')
-local Basket=require('apps.diskmap.models.Basket')
+local Marks = require("apps.diskmap.models.Marks")
 local Files=require('apps.diskmap.models.Files')
 local Root=require('apps.diskmap.Controller')
 local Mock=require('apps.diskmap.services.Mock')
 local home='/Users/review'
-local basket=Basket.new(home)
+require("apps.diskmap.Store").new(home)
+local basket = Marks
 local folder=home..'/Downloads/review-folder'
 local child=folder..'/large.zip'
 local sibling=home..'/Downloads/review-folder-sibling/file.zip'
@@ -49,7 +50,7 @@ local liveChild=liveFolder..'/cleanup-fixture-nested-archive.zip'
 table.insert(app.model.files.large,{path=liveChild,bytes=90000000,used=os.time()})
 app.review:toggle({path=liveFolder,name='Review folder',bytes=90000000,consequence='Moves this folder and every file inside it.'})
 app:show('files');app.query='cleanup-fixture-nested-archive.zip';app:updateRows()
-local page=app.page.model
+local page=app.page.request
 local decision=app.page.refs
 t.assertEqual(decision.decisionAction.title,'Review Marked Items…','covered visible file routes to review')
 t.expect(decision.decisionDetail.text:find('included through a marked folder',1,true),'bulk feedback explains folder coverage')
@@ -79,7 +80,7 @@ t.expect(app.review.refs.consequence.text:find('installation is complete',1,true
 t.assertEqual(app.review.refs.selectedPath.text,liveChild,'full selected path is retained')
 t.expect(app.review.refs.revalidation.text:find('checked just before',1,true),'generic revalidation remains visible')
 local long=string.rep('A concrete consequence must stay readable before removing this file. ',20)
-app.review.basket.items[liveChild].consequence=long
+Marks:find(liveChild).consequence=long
 app.review:draw();bridge._flushLayout()
 t.assertEqual(app.review.selected.path,liveChild,'refresh preserves a still-present selection')
 t.assertEqual(app.review.refs.consequence.text,long,'long consequence remains complete')
@@ -114,13 +115,13 @@ t.expect(not app.page.refs.summary.text:find('Measuring',1,true),'completed empt
 t.expect(app.page.refs.kinds==nil and app.page.refs.extensions==nil and app.page.refs.kindsChart==nil,'empty types suppress empty tables and chart')
 t.assertEqual(app.page.refs.decisionAction.title,'Open Clean Up','empty types give another cleanup route')
 app.model.files={large={},old={},extensions={{extension='txt',bytes=100000,count=2}},oldBytes=0,oldCount=0}
-app:show('files');page=app.page.model;app.query='';app:updateRows()
+app:show('files');page=app.page.request;app.query='';app:updateRows()
 t.expect(not app.page.refs.filesNone.hidden and app.page.refs.filesEmpty.hidden,'small files are not presented as a filter mismatch')
 t.expect(app.page.refs.decisionDetail.text:find('over 50',1,true),'no large-file result explains the threshold')
 app:show('kinds')
 t.expect(app.page.refs.kinds~=nil,'under-threshold files still contribute to types')
 app.model.scan={failure='Scan could not read its roots'}
-app:show('files');page=app.page.model;app.query='';app:updateRows()
+app:show('files');page=app.page.request;app.query='';app:updateRows()
 t.expect(app.page.refs.decisionDetail.text:find('could not read',1,true),'scan failure is explicit')
 t.assertEqual(app.page.refs.decisionAction.title,'Refresh Scan','unavailable files offer refresh')
 app:show('kinds')
@@ -128,12 +129,12 @@ t.assertEqual(app.page.refs.decisionAction.title,'Refresh Scan','failed types of
 app.model.files=nil;app.model.scan={running=false}
 t.assertEqual(Files.state(app.model),'unavailable','no results after scan is unavailable, never empty')
 app.model.files=savedFiles;app.model.scan={running=false}
-app:show('files');page=app.page.model;app.query='no-match-for-review';app:updateRows()
+app:show('files');page=app.page.request;app.query='no-match-for-review';app:updateRows()
 t.assertEqual(app.page.refs.decisionAction.title,'Clear Search','no-match files provide a useful next step')
 app:show('kinds');app.query='no-match-for-review';app:updateRows()
 t.assertEqual(app.page.refs.decisionAction.title,'Clear Search','no-match file types offer clear search')
 t.expect(app.page.refs.kinds==nil and app.page.refs.extensions==nil,'no-match types suppress inventory scaffolding')
-local project=app:pageModel('projects')
+local project=app:request('projects')
 local group={path=liveFolder,name='Review project',artifacts={{path=liveFolder..'/node_modules',name='Node modules',bytes=9000,size='9 KB'}}}
 app.review:toggle(item(liveFolder))
 local covered=project:menu(group)
@@ -141,10 +142,10 @@ t.expect(covered[1].title:find('Included through',1,true),'covered project offer
 for _, entry in ipairs(covered) do t.expect(not (entry.title or ''):find('Build Data',1,true),'a covered project cannot unmark its enclosing sources folder') end
 app.review:toggle(item(liveFolder));project:menu(group)[1].action()
 t.assertEqual(project:menu(group)[1].title,'Unmark Build Data','direct artifact marks keep their own unmark action')
-app.review.basket:clear();app:basketChanged()
+Marks:clear();app:basketChanged()
 app.query='';app:show('worktrees');local worktrees=app.page
 worktrees.refs.reviewList:selectRow(0)
-local selected=app.graph:get('worktrees').selected
+local selected=app:request("worktrees").selected
 selected.reasons={string.rep('Review unpublished work with the owning session before deleting. ',25)}
 app:updateRows();bridge._flushLayout()
 t.assertEqual(worktrees.refs.selectionEvidence.size.height,144,'actual long worktree evidence fills bounded viewport')
@@ -153,7 +154,7 @@ local document=worktrees.refs.selectedSummary.superview
 local visibleTop=document.size.height-worktrees.refs.selectedSummary.frame.origin.y-worktrees.refs.selectedSummary.size.height
 t.expect(visibleTop<worktrees.refs.selectionEvidence.contentView.bounds.size.height,'selected evidence starts within visible viewport')
 t.expect(worktrees.refs.openOwner.enabled and worktrees.refs.openOwner.size.height>=24,'action remains accessible')
-app:show('files');page=app.page.model;page:focus('installers',2);app.query='';app:updateRows();bridge._flushLayout()
+app:show('files');page=app.page.request;page:focus('installers',2);app.query='';app:updateRows();bridge._flushLayout()
 t.expect(not app.page.refs.clearKind.hidden,'real kind focus reveals Show All Kinds')
 local parent=app.page.refs.clearKind.superview
 local button=app.page.refs.clearKind.frame

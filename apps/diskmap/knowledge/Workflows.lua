@@ -95,10 +95,4 @@ Workflows.list = {
 		}},
 }
 
-function Workflows.find(id)
-	for _, workflow in ipairs(Workflows.list) do
-		if workflow.id == id then return workflow end
-	end
-end
-
 return Workflows

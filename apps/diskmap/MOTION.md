@@ -52,7 +52,7 @@ Pie sectors brighten in place on hover
 ([corepunch/lua-objc#61](https://github.com/corepunch/lua-objc/pull/61)) on the
 Overview, File Types and the Map. Do not replace it with a mobile-style pop.
 
-`models/Selection.lua` holds the token's rules: which ids are resources
+`helpers/Selection.lua` holds the token's rules: which ids are resources
 (free space, the residual and folded remainders are not), which row owns an
 id, and which extensions belong to a kind.
 
