@@ -6,6 +6,9 @@
 -- `context.generic` and mounts it (`context.generic:mount(host)`) beside
 -- whatever it coordinates.
 --
+-- A model may define `activate()` (called after the page mounts) and
+-- `deactivate()` (called when it is disposed).
+--
 -- Rule against option creep: if a page needs a function to express
 -- behaviour, write a controller. This one does not grow a configuration
 -- language.
@@ -42,6 +45,9 @@ function PageController:mount(host)
 	context.ns._insertSubview(host, root, 1)
 	self.unsubscribe = graph:subscribe(self.page.model, function() self.binder:update() end)
 	self.binder:update()
+	-- Lifecycle: a model that loads data when its page opens starts there
+	-- and stops when the page goes (stale results compare a generation).
+	if self.model.activate then self.model:activate() end
 	return refs
 end
 
@@ -51,6 +57,7 @@ function PageController:update()
 end
 
 function PageController:dispose()
+	if self.model and self.root and self.model.deactivate then self.model:deactivate() end
 	if self.unsubscribe then self.unsubscribe(); self.unsubscribe = nil end
 	if self.root then
 		pcall(function() self.root:removeFromSuperview() end)

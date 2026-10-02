@@ -85,6 +85,17 @@ t.assertEqual(app.sidebar.documentView.selectedRow, 2, "the sidebar follows")
 app:show("folders")
 t.assertEqual(app.current, "folders", "and back")
 
+-- A model's activate/deactivate run when its page mounts and is disposed.
+local log = {}
+folders.activate = function() table.insert(log, "activate") end
+folders.deactivate = function() table.insert(log, "deactivate") end
+app:show("settings")
+app:show("folders")
+t.assertEqual(table.concat(log, ","), "deactivate,activate", "leaving a page deactivates its model; mounting activates it")
+app:show("settings")
+t.assertEqual(table.concat(log, ","), "deactivate,activate,deactivate", "and again on dispose")
+folders.activate, folders.deactivate = nil, nil
+
 -- --page and --isolated.
 local only = App.launcher(MANIFEST).new({ args = { "--page=settings", "--isolated" } })
 only:createWindow()

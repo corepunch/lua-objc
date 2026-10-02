@@ -32,13 +32,16 @@
 --   mark.enabled    for a Command: whether its enabling field is truthy
 --
 -- A List field projects to an array of records, a Record field to a nested
--- record; both use the schema named by `of`.
+-- record; both use the schema named by `of`. A Map field is a table the model
+-- keys by id (`{topic_cache = "12 GB"}`): a template whose structure comes from
+-- static data binds one entry as `$sizes.topic_cache`, so fixed structure
+-- (a page of named rows) needs no field declared per row.
 local Schema = {}
 Schema.__index = Schema
 
 local TYPES = {
 	String = true, Number = true, Bool = true, Bytes = true, Percent = true,
-	Date = true, Symbol = true, Color = true, Command = true, List = true, Record = true,
+	Date = true, Symbol = true, Color = true, Command = true, List = true, Record = true, Map = true,
 }
 -- Raw values of these are numbers: a numeric attribute binds `field.value`.
 local NUMERIC = { Number = true, Bytes = true, Percent = true, Date = true }
@@ -83,7 +86,7 @@ function Schema.parse(nodes, loader)
 		if node.kind == "element" then
 			if not TYPES[node.tag] then
 				fail(self, "<" .. node.tag .. "> is not a field type; use " ..
-					"String, Number, Bool, Bytes, Percent, Date, Symbol, Color, Command, List or Record")
+					"String, Number, Bool, Bytes, Percent, Date, Symbol, Color, Command, List, Record or Map")
 			end
 			local fieldId = node.attrs.id
 			if not fieldId or fieldId == "" then fail(self, "<" .. node.tag .. "> needs an id") end
@@ -275,6 +278,8 @@ function Schema:project(model, options)
 			end
 			record[id] = projected
 			record[id .. "#raw"] = rows
+		elseif field.type == "Map" then
+			record[id] = read(model, field.source) or {}
 		elseif field.type == "Record" then
 			local nested = read(model, field.source)
 			record[id] = nested and self:related(field):project(nested, options) or nil
@@ -340,6 +345,11 @@ function Schema:resolve(path, kind)
 		if field.type == "Record" and index <= #path then
 			schema = schema:related(field)
 			field = nil
+		elseif field.type == "Map" and index <= #path then
+			-- Every remaining segment is the entry's key.
+			local resolved = { table.unpack(prefix) }
+			for rest = index, #path do table.insert(resolved, path[rest]) end
+			return resolved, field, schema
 		else
 			break
 		end
@@ -366,6 +376,7 @@ function Schema:resolve(path, kind)
 		resolved[#resolved] = field.id .. "." .. suffix
 		return resolved, field, schema
 	end
+	if field.type == "Map" then fail(schema, "binding $" .. field.id .. " is a map; bind one of its entries, $" .. field.id .. ".key") end
 	if kind == "command" or kind == "field" then return resolved, field, schema end
 	if field.type == "Command" then
 		fail(schema, "binding $" .. field.id .. " is a command; bind it with action=\"$" .. field.id .. "\"")
