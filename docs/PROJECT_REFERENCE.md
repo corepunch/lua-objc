@@ -1062,7 +1062,11 @@ this way.
 The hovered sector moves halfway to opaque where it stands;
 `require("ui.sectors").highlight(chart, id)` highlights a sector from code,
 so a list beside the chart can point at it. New marks take the existing arcs
-in place, and `innerRadius` and `angularInset` update with the marks.
+in place, paired by `id`, and `innerRadius` and `angularInset` update with
+the marks. Inside an animated transaction each arc turns and grows along its
+circle, so showing the inside of a sector opens its children to the whole
+chart, and marks that come or go fade (see “Shapes” in
+[animation.md](animation.md)).
 
 `<Gauge value="0.4" tint="systemBlue" />` is SwiftUI `Gauge` with the linear
 capacity style: a read-only continuous-capacity `NSLevelIndicator` on AppKit
@@ -1130,13 +1134,12 @@ keeping live updates steady, and test hooks. In short:
   `withAnimation { state = … }`.
 - `transition="…"` plays on insertion and removal inside an animated
   transaction (`opacity`, `scale(0.8)`, `slide`, `move(edge)`, `push(edge)`,
-  `offset(x, y)`, `drawOn`, `a+b`, `asymmetric(a, b)`).
+  `offset(x, y)`, `a+b`, `asymmetric(a, b)`).
 - Model values never change during an animation; frames are final as soon as
   the body returns. Reduce Motion keeps fades and makes movement immediate.
 
 ```xml
 <VStack id="pageContent" transition="opacity">…</VStack>
-<SectorChart transition="drawOn" …>…</SectorChart>
 ```
 
 ### Components

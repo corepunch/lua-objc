@@ -30,6 +30,10 @@ static int bridge_text_field_test_input(lua_State *L);
 static int bridge_text_field_test_command(lua_State *L);
 static int bridge_text_field_test_focus(lua_State *L);
 static int bridge_NSScrollView_scrollTo(lua_State *L);
+static int bridge_LuaArcView_arcBounds(lua_State *L);
+/* Declared here for the bindings; appkit/arc.m defines it. */
+@interface LuaArcView : NSView
+@end
 static int bridge_object_add_impl(lua_State *L);
 static int bridge_object_layout_impl(lua_State *L);
 static int bridge_object_set_content_size_impl(lua_State *L);

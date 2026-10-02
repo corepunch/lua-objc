@@ -12,7 +12,6 @@ ns._motionOverrideReduceMotion(false)
 local function near(a, b, tolerance) return math.abs(a - b) <= (tolerance or 1e-6) end
 local function animations(view)
 	local result = ns._motionAnimations(view)
-	result.arcs = nil
 	return result
 end
 

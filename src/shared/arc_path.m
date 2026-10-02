@@ -1,4 +1,4 @@
-#pragma mark - Sector shape
+#pragma mark - Arc and sector geometry
 
 /* The filled annular sector a SectorChart draws, shared by the AppKit and
  * UIKit Arc. SwiftUI's SectorMark separates neighbours by `angularInset`
@@ -97,18 +97,64 @@ static CGPathRef sector_path_create(CGPoint center, CGFloat inner, CGFloat outer
 	return path;
 }
 
-/* An Arc's sector: its circle (the view's, or `diameter` units scaled by
- * `scale` in a chart that fits its pane) stroked `lineWidth` wide becomes
- * the band from radius - lineWidth/2 to radius + lineWidth/2. The inset and
- * corner radius are points at any scale. */
-static CGPathRef arc_sector_path_create(CGRect bounds, CGFloat scale, CGFloat diameter, CGFloat lineWidth,
-	CGFloat startAngle, CGFloat endAngle, CGFloat inset, CGFloat cornerRadius) {
+/* Everything an Arc's path is drawn from. A plain arc is its circle's
+ * stroke, `lineWidth` wide; with an inset or a corner radius it is the
+ * filled sector of that band. `fitDiameter`, when positive, makes the
+ * view's shorter side span that many units: the circle (`diameter` units
+ * across) and the stroke scale with the view, while the inset and the
+ * corner radius stay in points. Without it the circle fills the view. */
+typedef struct {
+	CGFloat startAngle, endAngle, lineWidth, diameter, fitDiameter, inset, cornerRadius;
+	BOOL roundCap;
+} ArcShape;
+
+/* The shape `progress` of the way from `a` to `b`, for animation: numbers
+ * interpolate, so an arc keeps to its circle while it grows or turns. */
+static ArcShape arc_shape_mix(ArcShape a, ArcShape b, CGFloat progress) {
+	ArcShape mix = b;
+	mix.startAngle = a.startAngle + (b.startAngle - a.startAngle) * progress;
+	mix.endAngle = a.endAngle + (b.endAngle - a.endAngle) * progress;
+	mix.lineWidth = a.lineWidth + (b.lineWidth - a.lineWidth) * progress;
+	mix.diameter = a.diameter + (b.diameter - a.diameter) * progress;
+	mix.inset = a.inset + (b.inset - a.inset) * progress;
+	mix.cornerRadius = a.cornerRadius + (b.cornerRadius - a.cornerRadius) * progress;
+	return mix;
+}
+
+static NSValue *arc_shape_value(ArcShape shape) {
+	return [NSValue valueWithBytes:&shape objCType:@encode(ArcShape)];
+}
+
+static ArcShape arc_shape_from_value(NSValue *value) {
+	ArcShape shape;
+	[value getValue:&shape size:sizeof(shape)];
+	return shape;
+}
+
+/* The filled outline an Arc draws in `bounds` (y down): SwiftUI strokes a
+ * shape centered on its path and never clips it to the frame, so a stroke
+ * reaches lineWidth/2 past the circle. Equal angles close the circle. */
+static CGPathRef arc_path_create(CGRect bounds, ArcShape shape) {
 	CGPoint center = CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds));
-	CGFloat radius = scale > 0 ? diameter * scale / 2.0 : MIN(bounds.size.width, bounds.size.height) / 2.0;
-	CGFloat width = scale > 0 ? lineWidth * scale : lineWidth;
+	CGFloat side = MIN(bounds.size.width, bounds.size.height);
+	CGFloat scale = shape.fitDiameter > 0 ? side / shape.fitDiameter : 1;
+	CGFloat radius = shape.fitDiameter > 0 ? shape.diameter * scale / 2.0 : side / 2.0;
+	CGFloat width = shape.lineWidth * scale;
 	if (radius <= 0 || width <= 0) return NULL;
-	CGFloat start = fmod(fmod(startAngle, 360.0) + 360.0, 360.0);
-	CGFloat sweep = fmod(fmod(endAngle, 360.0) + 360.0, 360.0) - start;
-	if (sweep <= 0) sweep += 360.0;
-	return sector_path_create(center, MAX(0, radius - width / 2), radius + width / 2, start, sweep, inset, cornerRadius);
+	CGFloat sweep = shape.endAngle - shape.startAngle;
+	sweep = fmod(fmod(sweep, 360.0) + 360.0, 360.0);
+	if (sweep == 0) sweep = 360.0;
+	if (shape.inset > 0 || shape.cornerRadius > 0)
+		return sector_path_create(center, MAX(0, radius - width / 2), radius + width / 2,
+			shape.startAngle, sweep, shape.inset, shape.cornerRadius);
+	CGMutablePathRef line = CGPathCreateMutable();
+	CGFloat start = shape.startAngle * M_PI / 180.0;
+	if (sweep >= kArcFullCircleDegrees)
+		CGPathAddEllipseInRect(line, NULL, CGRectMake(center.x - radius, center.y - radius, radius * 2, radius * 2));
+	else
+		CGPathAddArc(line, NULL, center.x, center.y, radius, start, start + sweep * M_PI / 180.0, false);
+	CGPathRef outline = CGPathCreateCopyByStrokingPath(line, NULL, width,
+		shape.roundCap ? kCGLineCapRound : kCGLineCapButt, kCGLineJoinMiter, 10);
+	CGPathRelease(line);
+	return outline;
 }

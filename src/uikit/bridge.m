@@ -130,6 +130,8 @@ static const NSInteger kLazyStackColumns = 1;
 static const NSInteger kLazyGridColumns = 2;
 static const CGFloat kMotionDefaultDuration = 0.35;
 static const CGFloat kMotionContentMaxDuration = 0.35;
+/* Path samples per second when a shape (an Arc's angles and radius) animates. */
+static const CGFloat kMotionShapeFrameRate = 60;
 static int bridge_UIKitNavigation_stack(lua_State *L);
 static int bridge_UIKitNavigation_push(lua_State *L);
 static int bridge_UIKitTabView_selectTab(lua_State *L);
@@ -192,7 +194,7 @@ static void motion_invalidate_layout(UIView *view) {
 	if (view) uikit_invalidate_layout(view);
 }
 #include "metatable.m"
-#include "../shared/sector_path.m"
+#include "../shared/arc_path.m"
 #include "views.m"
 #include "controls.m"
 #include "tables.m"

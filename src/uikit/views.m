@@ -371,43 +371,12 @@ static int bridge_on_window_close(lua_State *L) {
 	return 0;
 }
 
-#include <math.h>
-
-static CGFloat arc_normalize_degrees(CGFloat degrees) {
-	CGFloat wrapped = fmod(degrees, 360.0);
-	if (wrapped < 0) wrapped += 360.0;
-	return wrapped;
-}
-
-static void arc_add_clockwise(UIBezierPath *path, CGPoint center, CGFloat radius,
-		CGFloat startDegrees, CGFloat sweepDegrees) {
-	CGFloat angle = startDegrees;
-	CGFloat remaining = sweepDegrees;
-	BOOL moved = !path.isEmpty;
-	while (remaining > 0.01) {
-		CGFloat step = MIN(90.0, remaining);
-		CGFloat a1 = angle * M_PI / 180.0;
-		CGFloat a2 = (angle + step) * M_PI / 180.0;
-		CGFloat handle = (4.0 / 3.0) * tan((a2 - a1) / 4.0);
-		CGPoint start = CGPointMake(center.x + radius * cos(a1), center.y + radius * sin(a1));
-		CGPoint end = CGPointMake(center.x + radius * cos(a2), center.y + radius * sin(a2));
-		CGPoint tangentStart = CGPointMake(-sin(a1), cos(a1));
-		CGPoint tangentEnd = CGPointMake(-sin(a2), cos(a2));
-		if (!moved) {
-			[path moveToPoint:start];
-			moved = YES;
-		}
-		[path addCurveToPoint:end
-			controlPoint1:CGPointMake(start.x + handle * radius * tangentStart.x,
-				start.y + handle * radius * tangentStart.y)
-			controlPoint2:CGPointMake(end.x - handle * radius * tangentEnd.x,
-				end.y - handle * radius * tangentEnd.y)];
-		angle += step;
-		remaining -= step;
-	}
-}
-
-@interface LuaArcView ()
+/* An arc or sector (shared/arc_path.m) as a filled CAShapeLayer path. Its
+ * shape animates inside a transaction (LuaMotionShape), so a chart's
+ * sectors turn and grow along their circles rather than morphing point by
+ * point. The layer is not clipped: SwiftUI never clips a stroke to its
+ * frame. */
+@interface LuaArcView () <LuaMotionShape>
 @property(nonatomic) CGFloat startAngle;
 @property(nonatomic) CGFloat endAngle;
 @property(nonatomic) CGFloat lineWidth;
@@ -418,14 +387,9 @@ static void arc_add_clockwise(UIBezierPath *path, CGPoint center, CGFloat radius
 @property(nonatomic) CGFloat fitDiameter;
 @property(nonatomic) CGFloat inset;
 @property(nonatomic) CGFloat cornerRadius;
-- (UIBezierPath *)arcPath;
-- (BOOL)isSector;
-- (CGPathRef)copySectorPath;
+- (ArcShape)shape;
 @end
 
-/* SwiftUI strokes a shape centered on its path and never clips it to the
- * frame, so an Arc stroke extends lineWidth/2 past its bounds. drawRect is
- * clipped to the view's backing store; a CAShapeLayer is not. */
 @implementation LuaArcView
 
 + (Class)layerClass { return CAShapeLayer.class; }
@@ -448,71 +412,28 @@ static void arc_add_clockwise(UIBezierPath *path, CGPoint center, CGFloat radius
 	return self;
 }
 
-/* A chart that scales to its pane lays its arcs out in fixed units: with a
- * positive fitDiameter the view's shorter side spans that many units, and
- * the circle (`diameter` units across) and its stroke scale with the view,
- * centered. Without it the circle fills the frame and lineWidth is points. */
-- (CGFloat)fitScale {
-	if (self.fitDiameter <= 0) return 0;
-	return MIN(self.bounds.size.width, self.bounds.size.height) / self.fitDiameter;
+- (ArcShape)shape {
+	return (ArcShape){self.startAngle, self.endAngle, self.lineWidth, self.diameter, self.fitDiameter,
+		self.inset, self.cornerRadius, [self.lineCap isEqualToString:@"round"]};
 }
 
-- (CGFloat)scaledLineWidth {
-	CGFloat scale = self.fitScale;
-	return scale > 0 ? self.lineWidth * scale : self.lineWidth;
-}
+- (id)motionShape { return arc_shape_value(self.shape); }
 
-- (UIBezierPath *)arcPath {
-	CGRect bounds = self.bounds;
-	CGPoint center = CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds));
-	CGFloat scale = self.fitScale;
-	CGFloat radius = scale > 0 ? self.diameter * scale / 2.0 : MIN(bounds.size.width, bounds.size.height) / 2.0;
-	UIBezierPath *path = [UIBezierPath bezierPath];
-	if (radius <= 0) return path;
-	CGFloat start = arc_normalize_degrees(self.startAngle);
-	CGFloat end = arc_normalize_degrees(self.endAngle);
-	CGFloat sweep = end - start;
-	if (sweep <= 0) sweep += 360.0;
-	if (sweep >= kArcFullCircleDegrees) {
-		[path appendPath:[UIBezierPath bezierPathWithOvalInRect:CGRectMake(
-			center.x - radius, center.y - radius, radius * 2.0, radius * 2.0)]];
-	} else {
-		arc_add_clockwise(path, center, radius, start, sweep);
-	}
-	path.lineWidth = self.scaledLineWidth;
-	path.lineCapStyle = [self.lineCap isEqualToString:@"round"] ? kCGLineCapRound : kCGLineCapButt;
-	return path;
-}
-
-/* With an inset or a corner radius the arc is a filled sector of its band
- * (shared/sector_path.m), as a SectorChart draws it; otherwise a stroke. */
-- (BOOL)isSector { return self.inset > 0 || self.cornerRadius > 0; }
-
-- (CGPathRef)copySectorPath {
-	return arc_sector_path_create(self.bounds, self.fitScale, self.diameter, self.lineWidth,
-		self.startAngle, self.endAngle, self.inset, self.cornerRadius);
+- (CGPathRef)copyMotionPathFrom:(id)from progress:(CGFloat)progress {
+	return arc_path_create(self.bounds, arc_shape_mix(arc_shape_from_value(from), self.shape, progress));
 }
 
 - (void)updateShape {
-	CAShapeLayer *shape = (CAShapeLayer *)self.layer;
-	BOOL sector = self.isSector;
-	if (sector) {
-		CGPathRef path = [self copySectorPath];
-		shape.path = path;
-		if (path) CGPathRelease(path);
-	} else {
-		shape.path = self.arcPath.CGPath;
-	}
-	shape.fillRule = kCAFillRuleEvenOdd;
-	shape.lineWidth = sector ? 0 : self.scaledLineWidth;
-	shape.lineCap = [self.lineCap isEqualToString:@"round"] ? kCALineCapRound : kCALineCapButt;
+	CAShapeLayer *layer = (CAShapeLayer *)self.layer;
+	CGPathRef path = arc_path_create(self.bounds, self.shape);
+	layer.path = path;
+	if (path) CGPathRelease(path);
+	layer.fillRule = kCAFillRuleEvenOdd;
 	// Label colors carry their own translucency; strokeAlpha scales it.
 	UIColor *color = [lua_objc_uikit_system_color((self.stroke ?: @"accent").UTF8String)
 		resolvedColorWithTraitCollection:self.traitCollection];
-	CGColorRef ink = [color colorWithAlphaComponent:
+	layer.fillColor = [color colorWithAlphaComponent:
 		CGColorGetAlpha(color.CGColor) * MIN(1, MAX(0, self.strokeAlpha))].CGColor;
-	shape.strokeColor = sector ? nil : ink;
-	shape.fillColor = sector ? ink : nil;
 }
 
 - (void)layoutSubviews {
@@ -541,14 +462,11 @@ static int bridge_arc(lua_State *L) {
 	return 1;
 }
 
+// The drawn outline's bounds in view coordinates.
 static int bridge_LuaArcView_arcBounds(lua_State *L) {
 	LuaArcView *view = lua_objc_check_object(L, 1, [LuaArcView class], "Arc");
-	if (view.isSector) {
-		CGPathRef path = [view copySectorPath];
-		push_CGRect(L, path ? CGPathGetPathBoundingBox(path) : CGRectZero);
-		if (path) CGPathRelease(path);
-		return 1;
-	}
-	push_CGRect(L, view.arcPath.bounds);
+	CGPathRef path = arc_path_create(view.bounds, view.shape);
+	push_CGRect(L, path ? CGPathGetPathBoundingBox(path) : CGRectZero);
+	if (path) CGPathRelease(path);
 	return 1;
 }

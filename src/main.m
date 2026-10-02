@@ -148,6 +148,8 @@ static const CGFloat kParagraphLinkUnderlineOffset = 3.0;
 /* ----- Motion ----- */
 #define kMotionDefaultDuration        0.35
 #define kMotionContentMaxDuration     0.35
+/* Path samples per second when a shape (an Arc's angles and radius) animates. */
+#define kMotionShapeFrameRate         60
 #define kPointerDragThreshold         3.0
 #define kPointerDragIconSize          32.0
 /* ----- Treemap ----- */
@@ -307,7 +309,6 @@ static void bridge_set_optional_callback(
 	lua_reg_store(target, key, lua_reg_opt(L, argIdx));
 }
 
-#include "shared/sector_path.m"
 #include "appkit/bezier_path.m"
 #include "appkit/level_indicator.m"
 #include "appkit/table_data_source.m"
@@ -315,6 +316,9 @@ static void bridge_set_optional_callback(
 #include "appkit/action_button.m"
 #include "appkit/runtime.m"
 #include "shared/motion.m"
+/* After motion.m: an Arc animates its shape as a LuaMotionShape. */
+#include "shared/arc_path.m"
+#include "appkit/arc.m"
 #include "shared/notifications.m"
 #include "appkit/toolbar.m"
 #include "appkit/presentation.m"

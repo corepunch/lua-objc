@@ -19,7 +19,7 @@
                             the same with a `Transaction`
                             ({animation, disablesAnimations}).
     ns.AnyTransition        transitions: opacity, scale, slide, move, offset,
-                            push, identity, drawOn, asymmetric, :combined.
+                            push, identity, asymmetric, :combined.
     ns.transition(view, t), ns.matchedGeometry(view, id, namespace),
     ns.contentTransition(view, kind)
                             the per-view modifiers behind the XML attributes.
@@ -43,7 +43,6 @@ local DEFAULTS = {
 	interactiveResponse = 0.15,
 	interactiveDamping = 0.86,
 	keyframeRate = 60,
-	drawOnStagger = 0.03,
 }
 
 -- ── Animation values ────────────────────────────────────────────────────
@@ -330,8 +329,6 @@ AnyTransition.identity = transition({}, {})
 AnyTransition.opacity = transition({opacity = 0})
 --- Moves in from the leading edge and out to the trailing edge.
 AnyTransition.slide = transition({edge = "leading"}, {edge = "trailing"})
---- Arcs stroke themselves in, one after another; SectorChart uses it.
-AnyTransition.drawOn = transition({strokeEnd = 0, stagger = DEFAULTS.drawOnStagger}, {strokeEnd = 0})
 --- Scales from `scale` (0 by default) about the centre.
 function AnyTransition.scale(scale) return transition({scale = scale or 0}) end
 --- Moves in from and out to `edge`.
@@ -350,11 +347,11 @@ end
 
 function AnyTransition.isTransition(candidate) return getmetatable(candidate) == TransitionValue end
 
-local NAMED = {identity = true, opacity = true, slide = true, drawOn = true}
+local NAMED = {identity = true, opacity = true, slide = true}
 local CALLED = {scale = true, offset = true}
 
 --- Parses `opacity`, `scale(0.8)`, `move(top)`, `offset(0, 20)`,
---- `push(trailing)`, `slide`, `drawOn`, `opacity+scale(0.9)` and
+--- `push(trailing)`, `slide`, `opacity+scale(0.9)` and
 --- `asymmetric(move(top), opacity)`.
 function AnyTransition.parse(text)
 	if AnyTransition.isTransition(text) then return text end

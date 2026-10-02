@@ -38,10 +38,10 @@ t.assertEqual(oneRing.subviews[1].inset, 3, "the angular inset separates neighbo
 t.assertEqual(oneRing.subviews[1].cornerRadius, 4, "a mark rounds its own corners")
 t.assertEqual(oneRing.subviews[2].cornerRadius, 0, "and only its own")
 -- A sector is filled: its ink is the band of its share less half the inset
--- at each parallel edge, so the gap does not widen outwards. The arc is its
--- mid-radius circle, 140pt wide, so the chart's center is at 70.
+-- at each parallel edge, so the gap does not widen outwards. Every arc
+-- covers the chart, whose center is at 100.
 local right = oneRing.subviews[1]:arcBounds()
-t.expect(math.abs(right.origin.x - (70 + 1.5)) < 0.5, "the gap beside a half is the inset's half, in points: " .. right.origin.x)
+t.expect(math.abs(right.origin.x - (100 + 1.5)) < 0.5, "the gap beside a half is the inset's half, in points: " .. right.origin.x)
 t.expect(math.abs(right.size.height - (200 - 3)) < 0.5, "and the rim gives up the same half: " .. right.size.height)
 t.expect(math.abs((inset[1].startAngle + inset[1].endAngle) / 2 - 0) < 1e-9, "insets keep each sector centred on its share")
 
@@ -239,6 +239,40 @@ local arrived = bridge._motionAnimations(growing.subviews[3])
 t.expect(arrived.bounds == nil and arrived.position == nil, "a new sector does not fly in from its construction frame")
 bridge._motionSettle()
 
+-- Drilling: an arc stays with its mark's id, so showing the inside of "a"
+-- turns its child "a1" from a slice of the outer ring into the whole inner
+-- ring along its circle, sampled as keyframes rather than a point-by-point
+-- path morph. Marks that come or go fade.
+local drill = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.3, angularInset = 2,
+	mark("a", 3), mark("b", 1), mark("a1", 2, 2, "a"), mark("a2", 1, 2, "a")}
+local drillHost = ns.VStack {drill}
+drillHost:layout(200)
+local childArc = drill.subviews[3]
+local before = {}
+for _, child in ipairs(drill.subviews) do before[child] = true end
+ns.withAnimation(ns.Animation.easeInOut(0.3), function()
+	Sectors.update(drill, {mark("a1", 2), mark("a2", 1), mark("a1x", 1, 2, "a1")})
+end)
+local turning = bridge._motionAnimations(childArc)
+t.expect(turning.path and turning.path.kind == "keyframes", "the child turns into the inner ring along its circle")
+t.expect(turning.path and math.abs(turning.path.duration - 0.3) < 1e-6, "with the transaction's timing")
+local entering
+for _, child in ipairs(drill.subviews) do if not before[child] then entering = child end end
+t.expect(childArc.superview == drill, "keeping its view")
+t.expect(bridge._motionIsLeaving(drill.subviews[1]) and bridge._motionAnimations(drill.subviews[1]).opacity ~= nil,
+	"the level it leaves fades out")
+t.expect(entering and bridge._motionAnimations(entering).opacity ~= nil, "and a mark only the new level has fades in")
+bridge._motionSettle()
+t.assertEqual(#drill.subviews, 3, "the level it left is gone once the drill settles")
+ns.withAnimation(nil, function() Sectors.update(drill, {mark("a", 3), mark("b", 1)}) end)
+t.expect(bridge._motionAnimations(childArc).path == nil, "a transaction without animation changes level at once")
+bridge._motionOverrideReduceMotion(true)
+local reducedChart = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.3, mark("a", 1), mark("b", 1)}
+ns.withAnimation(function() Sectors.update(reducedChart, {mark("a", 2), mark("b", 1)}) end)
+t.expect(bridge._motionAnimations(reducedChart.subviews[1]).path == nil, "so does Reduce Motion")
+bridge._motionOverrideReduceMotion(nil)
+bridge._motionSettle()
+
 -- UIKit composes the same chart from its own Arc and ZStack.
 local file = assert(io.open("lua/embedded/UIKit.lua")); local uikit = file:read("*a"); file:close()
 t.expect(uikit:find('require("ui.sectors").chart(UIKit, props)', 1, true) ~= nil, "UIKit shares the sector geometry")
@@ -267,8 +301,8 @@ holeTemplate:update({hole = 0.3, level = "top", marks = top})
 local holeChart = holeTemplate.refs.chart
 holeTemplate:update({hole = 0.5, level = "a", marks = inside})
 t.expect(holeTemplate.refs.chart == holeChart, "a new inner radius keeps the chart view")
-t.assertEqual(#holeChart.subviews, 4, "with one arc per new mark")
 bridge._motionSettle()
+t.assertEqual(#holeChart.subviews, 4, "with one arc per new mark once the old ones fade out")
 
 -- The keyboard reaches an interactive chart: focus reports through onHover,
 -- Return activates, and Delete goes back, which is not a click in the hole.

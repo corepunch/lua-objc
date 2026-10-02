@@ -76,7 +76,6 @@ Changing `hidden` inside a transaction plays the same transitions.
 
 ```xml
 <VStack id="pageContent" transition="opacity">…</VStack>
-<SectorChart transition="drawOn" …>…</SectorChart>
 <Label transition="asymmetric(move(top), opacity)" … />
 ```
 
@@ -88,7 +87,6 @@ Changing `hidden` inside a transaction plays the same transitions.
 | `move(top)` | In from and out to an edge (`top`, `bottom`, `leading`, `trailing`). |
 | `offset(x, y)` | From/to an offset. |
 | `push(trailing)` | In from the edge and out toward the opposite one, fading. |
-| `drawOn` | Arcs inside the view stroke themselves in, staggered (charts). |
 | `identity` | No transition. |
 | `a+b` | Combined, for example `opacity+scale(0.9)`. |
 | `asymmetric(a, b)` | Separate insertion and removal. |
@@ -119,18 +117,24 @@ Lua-only animators:
 - `ns.symbolEffect(view, effect, options)` plays an SF Symbol effect.
 - `ns.reduceMotion()` reports the accessibility setting.
 
-## Custom animators
+## Shapes
 
-Core Animation cannot tween everything. A view whose state is not a layer
-property can be its own **animator** (`LuaMotionAnimator` in
-`src/shared/motion.m`). Inside an animated transaction it joins the
-transaction with `motion_animate`, which hands it the transaction's
-animation; it steps itself from a display link with `motion_progress` (the
-same curve or spring a layer would follow) and reports the end with
-`motion_animator_finished`. The transaction's completion waits for it,
-`_motionSettle` ends it on its final state, and outside a transaction, in
-one that disables animation, or under Reduce Motion it shows the final state
-at once. Nothing about its timing is its own.
+Core Animation tweens a path point by point, so a growing arc would cut
+across its circle. A view whose layer path is drawn from a few numbers
+reports them as its **shape** (`LuaMotionShape` in `src/shared/motion.m`):
+when they change inside an animated transaction, the engine samples the
+path along the transaction's curve or spring (`motion_progress`) and plays
+the samples as a keyframe animation on the layer's `path`. It settles,
+completes and honours Reduce Motion like every other animation.
+
+`Arc` is such a view: its angles, radius, width, inset and corner radius
+interpolate. `SectorChart` keeps each arc with its mark's `id`, so when a
+template shows the inside of a sector (its children become the first ring)
+the children turn and grow into place, and marks that come or go fade:
+
+```xml
+<SectorChart animation="smooth" animationValue="<%= focus %>" …>
+```
 
 ## Retained templates and reconciliation
 
@@ -195,8 +199,8 @@ many times a second. They should change values, not structure:
 - Prefer one view with changing attributes over an `if` that swaps between
   different tags; every swap rebuilds that node.
 - Put charts' changing data in their records (`SectorMark` values) and let
-  `updateRecords` apply it; entrance transitions such as `drawOn` then play
-  once, not on every update.
+  `updateRecords` apply it; entrance transitions then play once, not on
+  every update.
 - Keep `withAnimation` for user-driven changes (navigation, selection,
   disclosure). Diskmap animates page changes (`Controller:show`) but applies
   scan progress immediately.

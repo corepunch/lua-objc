@@ -321,7 +321,7 @@ explains transactions, reconciliation and live updates.
 
 | Attribute | Purpose |
 |---|---|
-| `transition` | Insertion/removal inside an animated transaction: `opacity`, `scale(0.8)`, `slide`, `move(top)`, `push(trailing)`, `offset(0, 20)`, `drawOn`, `a+b`, `asymmetric(a, b)` |
+| `transition` | Insertion/removal inside an animated transaction: `opacity`, `scale(0.8)`, `slide`, `move(top)`, `push(trailing)`, `offset(0, 20)`, `a+b`, `asymmetric(a, b)` |
 | `animation`, `animationValue` | Animate this node's update with `animation` when `animationValue` changes (`.animation(_:value:)`) |
 | `opacity`, `scaleEffect`, `rotationEffect`, `offsetX`, `offsetY` | Paint-only effects; never change layout |
 | `matchedGeometry`, `matchedGeometryNamespace` | Grow a new view from its leaving match |
