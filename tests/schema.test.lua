@@ -157,4 +157,16 @@ bad('<Schema id="Bad"><List id="r" /></Schema>', "needs of=", "list without of")
 bad('<Schema id="Other"><String id="a" /></Schema>', "must match the file name", "id and file name agree")
 bad('<Schema id="Bad" extends="Bad"><String id="a" /></Schema>', "extends itself", "self extension")
 
+-- A Map is keyed by id: a template of static structure binds one entry.
+define("Keyed", [[<Schema id="Keyed"><Map id="sizes" /><Bool id="shown" /></Schema>]])
+local Keyed = load("Keyed")
+local keyed = {sizes = {cache = "12 GB"}, shown = true}
+t.assertEqual(Keyed:check(keyed), keyed, "a map is satisfied by a table")
+local record = Keyed:project(keyed)
+local path = Keyed:resolve({"sizes", "cache"}, "string")
+t.assertEqual(table.concat(path, "."), "sizes.cache", "a map entry resolves to its key")
+t.assertEqual(Schema.lookup(record, path), "12 GB", "the entry is read from the projected map")
+t.assertEqual(Schema.lookup(record, Keyed:resolve({"sizes", "absent"}, "string")), nil, "an absent entry reads as nothing")
+raises(function() Keyed:resolve({"sizes"}, "string") end, "is a map", "the map itself is not a value")
+
 os.exit(t.summary() and 0 or 1)
