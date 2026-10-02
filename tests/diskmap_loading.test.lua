@@ -6,7 +6,7 @@ local xml = require("ui.xml")
 local Model = require("apps.diskmap.Model")
 local Inventory = require("apps.diskmap.models.Inventory")
 local Categories = require("apps.diskmap.models.Categories")
-local Scan = require("apps.diskmap.controllers.ScanController")
+local Scan = require("apps.diskmap.models.Scan")
 local model = Model.new("/Users/test")
 local _, ids = Inventory.plan(model)
 model.measurements[ids[1]] = {bytes = 9e9, status = "complete"}

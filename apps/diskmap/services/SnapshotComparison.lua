@@ -20,7 +20,7 @@ local SNAPSHOT = {yieldEvery = 25000}
 -- as a change in the residual "Other files" row that no longer contains it.
 local function measureSnapshot(path, live, yield)
 	local Mock = require("apps.diskmap.services.Mock")
-	local ScanController = require("apps.diskmap.controllers.ScanController")
+	local ScanController = require("apps.diskmap.models.Scan")
 	local home = live.home
 	local service = Mock.new({fixturePath = path, home = home, yield = yield, yieldEvery = SNAPSHOT.yieldEvery})
 	local model = Model.new(home)

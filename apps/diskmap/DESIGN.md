@@ -146,7 +146,7 @@ and share one row design (`views/ResourceList.etlua`): icon, name and
 location, a status column, a meter (size and share on a line above the share
 bar, one native cell, as on every level list) and a "More" (⋯) button.
 Row actions live in that button's menu and the row's contextual menu, built
-by `ActionsController` from the same rules the sheets use, so the same data
+by `RowMenus` from the same rules the sheets use, so the same data
 reads the same way on Largest Items, Large Files, Developer, Clean Up,
 Applications and Disks, and no action buttons sit beneath a list. Stat tiles
 summarize a page above its lists.
@@ -412,7 +412,7 @@ services, feature controllers, template refs, navigation and the window.
 | `models/` | Inventory transitions, categories, cleanup eligibility, tips, inspector data and preferences. No native widgets. |
 | `catalog/` | Category definitions, explanations, paths, ownership and policies. |
 | `knowledge/CleanupRules.lua` | Resource-specific review thresholds and advice with consequences. |
-| `controllers/` | Independently testable scan, cleanup, inspector and settings coordinators. Pages share `PageController`: one lifecycle, one list-page template (`views/Page.etlua`) laid out from a table, and one controller for the pages that are only data. |
+| `models/` | Independently testable scan, cleanup, inspector and settings models; a page or sheet is a model with `data(state)` and a method per action, drawn by the framework page controller. List pages share one template (`views/Page.etlua`) laid out from a table. |
 | `knowledge/Workflows.lua` | One entry per kind of work (Developer, Music Production, …): its page and the catalog groups it lists. |
 | `models/Destinations.lua` | The one place that decides where opening a resource goes. |
 | `services/` | Injected native IO, persistence, permissions and owner-management integration. |
