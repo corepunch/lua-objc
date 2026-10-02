@@ -53,7 +53,8 @@ local function rejects(template, pattern, message, data)
 	t.expect(not ok and tostring(err):find(pattern) ~= nil, message .. " (" .. tostring(err) .. ")")
 end
 rejects('<Label text="@missing" />', "not declared", "an undeclared resource is an error")
-rejects('<Label text="@missing" />', "not declared", "no app resources is the same as none declared", { resources = {} })
+t.assertEqual(render('<Label text="@img" />', { resources = {} }).text, "@img",
+	"without resources in scope, @ is ordinary text (data such as an npm scope)")
 rejects('<Resources><Number id="a" value="x" /></Resources>', "non%-numeric", "a Number must be a number",
 	{ resources = {} })
 local function declares(source, pattern, message)

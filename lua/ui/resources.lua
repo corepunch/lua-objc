@@ -12,7 +12,8 @@
 -- An attribute written `@name` takes the resource's value, resolved once
 -- when the template renders (`$name` is live data, `@name` is static).
 -- An attribute is a literal or exactly one reference, so a resource cannot be
--- spliced into a longer string.
+-- spliced into a longer string. `@` is a reference only where some resources
+-- are in scope, and there an undeclared name is an error.
 --
 -- Scope follows the tree. The app's resources (`resources.xml`, passed to a
 -- render as `data.resources`) apply everywhere; a `<Resources>` element
@@ -77,11 +78,14 @@ end
 
 -- The scope a list of siblings sees: `scope` plus what its <Resources>
 -- elements declare.
+-- Marks a scope that has resources in it. Without any, `@` is ordinary text
+-- (a path like node_modules/@img reaches attributes as data).
+local ANY = " any"
 local function extend(list, scope)
 	local own
 	for _, node in ipairs(list) do
 		if node.kind == "element" and node.tag == "Resources" then
-			own = own or setmetatable({}, { __index = scope })
+			own = own or setmetatable({ [ANY] = true }, { __index = scope })
 			declare(node, own)
 		end
 	end
@@ -101,7 +105,7 @@ function Resources.resolve(nodes, inherited)
 				if node.kind == "element" then
 					local own = extend(node.children, scope)
 					for key, value in pairs(node.attrs) do
-						local name = type(value) == "string" and value:match("^@([%a_][%w_]*)$")
+						local name = type(value) == "string" and own[ANY] and value:match("^@([%a_][%w_]*)$")
 						if name then
 							local resolved = own[name]
 							if resolved == nil then
@@ -117,6 +121,9 @@ function Resources.resolve(nodes, inherited)
 			end
 		end
 		return kept
+	end
+	if inherited and next(inherited) ~= nil and not inherited[ANY] then
+		inherited = setmetatable({ [ANY] = true }, { __index = inherited })
 	end
 	return visit(nodes, inherited or {})
 end
