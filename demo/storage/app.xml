@@ -1,8 +1,6 @@
 <App name="Storage" startup="folders">
-	<Model id="settings" class="models.Settings" />
-	<Model id="folders" class="models.Folders" />
 	<Section title="Storage">
-		<Page id="folders" title="Folders" icon="folder.fill" color="systemBlue" key="1" view="Folders" model="folders" />
-		<Page id="settings" title="Settings" icon="gearshape.fill" color="systemGray" key="2" view="Settings" model="settings" />
+		<Page id="folders" title="Folders" icon="folder.fill" color="systemBlue" key="1" />
+		<Page id="settings" title="Settings" icon="gearshape.fill" color="systemGray" key="2" />
 	</Section>
 </App>

@@ -76,13 +76,22 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   focused controllers, domain models, and injected services in `controllers/`,
   `models/`, and `services/`. Each must be independently testable; the root
   controller coordinates them. See [ARCHITECTURE.md](ARCHITECTURE.md#app-layer).
-- **Pages are requests.** A page is a view and a model: the framework asks the
-  model for `data(state)` and renders the etlua view with it; an action in the view
-  is a method of the model, followed by the same request again. No bindings, no
-  notifications, no controller that copies model values into views. Constants live
+- **Pages are requests.** A page is a route and a view: the framework asks the
+  route for `data(state)` and renders the etlua view with it; an action in the view
+  is a method of the route, followed by the same request again. No bindings, no
+  notifications, no controller that copies model values into views. Pages that
+  differ by an argument are one route reading `self.params` from their `<Page>`
+  (`route="workflow" workflow="music"`), never a class per page. Constants live
   in `resources.xml` or a `<Resources>` element (`@name`), not in Lua tables at the
   top of a template. Write a controller class only to coordinate (sheets,
   confirmation, batch flows). See [docs/data-driven.md](docs/data-driven.md).
+- **Models are Lapis models.** A model is one table of the app's store:
+  `local Files, File = Model:extend("files", {...})`, class methods for queries
+  (`Files:find`, `Files:select`), row methods for rows, `constraints` for
+  validation (`lua/data/model.lua`). The store is plain Lua data an app binds
+  (`Store.lua`); models read the bound store and never take it as an argument.
+  Few models, one per kind of row: pure computation is a helper, IO a service,
+  shared action code a flow (`Flow:extend`, `self:flow(name)`).
 - **Laravel-style MVC.** Models own domain queries, validation, and mutations;
   controllers coordinate model calls, navigation, and callbacks; etlua views
   own presentation. Models never depend on `ns` or native widgets. Inject
@@ -91,8 +100,16 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   ```
   apps/<app>/, demo/<name>/, or test/<name>/
     init.lua       ← requires and returns Controller class (framework instantiates)
-    Model.lua      ← data, queries, mutations
+    Model.lua      ← a small app's data, queries, mutations
     Controller.lua ← wires model → views, owns actions
+    Store.lua      ← the store's seed: the tables the models read
+    models/        ← Lapis models (Model:extend), one per kind of row
+    routes.lua     ← the app's pages by route name; may gather pages/*.lua
+    pages/         ← route files (one per sidebar section or large page)
+    flows/         ← action code several pages share (Flow:extend)
+    helpers/       ← pure computation and formatting over rows
+    services/      ← injected IO and runtime integration
+    controllers/   ← coordination only (sheets, navigation, commands)
     views/         ← etlua templates only, sorted like a web frontend:
       layouts/       app shell (window, sidebar, content frame)
       pages/         one template per screen
@@ -103,13 +120,15 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
       view names are paths under views/ ("pages/Overview"); partials resolve
       relative to the including template: partial("../components/X.etlua")
     components/    ← optional etlua components: new tags used by the views
-    app.xml        ← optional manifest: models, sections and pages
+    app.xml        ← optional manifest: sections and pages, each naming its route
     resources.xml  ← optional XML constants, referenced as `@name`
   ```
-  init.lua never self-starts. It returns the class; the framework calls
-  `class.new():createWindow()`. A manifest app (`app.xml`) has no
-  `Controller.lua`: `init.lua` returns `require("data.app").launcher("<app>/app.xml")` and the
-  framework builds the window, sidebar, menu and a generic controller per page.
+  A small app is init.lua, Model.lua, Controller.lua and views/; it grows into
+  the folders above. init.lua never self-starts. It returns the class; the
+  framework calls `class.new():createWindow()`. A manifest app (`app.xml`) has
+  no `Controller.lua`: `init.lua` returns
+  `require("data.app").launcher("<app>/app.xml")` and the framework builds the
+  window, sidebar, menu and a generic controller per page from `routes.lua`.
 - **XML templates are cross-platform.** View XML files live in `views/` and
   use the tag vocabulary in `lua/ui/xml.lua` (`<Label>`, `<VStack>`, `<Button>`,
   etc.). The platform module (`ns`) is injected by the caller; the same XML

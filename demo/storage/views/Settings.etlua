@@ -2,9 +2,12 @@
 	<Toggle label="Keep cleanup history" value="<%= history %>" onChange="setHistory" />
 	<TextField placeholder="Device name" value="<%= deviceName %>" width="@meterWidth" onChange="setDeviceName" />
 	<Picker value="<%= threshold %>" onChange="setThreshold">
-		<Option title="Show every folder" />
-		<Option title="At least 100 MB" />
-		<Option title="At least 1 GB" />
+	<% for _, title in ipairs(thresholds) do %>
+		<Option title="<%= title %>" />
+	<% end %>
 	</Picker>
 	<Label text="<%= note %>" color="secondary" />
+	<% if errors then %>
+	<Label id="error" text="<%= errors[1] %>" color="systemRed" />
+	<% end %>
 </VStack>

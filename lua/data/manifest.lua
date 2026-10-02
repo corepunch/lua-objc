@@ -1,32 +1,26 @@
--- The app manifest: one XML file that names an app's models, sections and
--- pages. The sidebar, the Go menu, the page set and the startup page all
--- come from it, where Diskmap kept three lists that had to agree.
+-- The app manifest: one XML file that names an app's sections and pages.
+-- The sidebar, the Go menu, the page set and the startup page all come from
+-- it, where Diskmap kept three lists that had to agree.
 --
 --   <App name="Diskmap" startup="overview">
---   	<Model id="xcode" class="models.Xcode" />
---   	<Section title="Free Up Space">
---   		<Page id="xcode" title="Xcode" icon="hammer.circle.fill" color="systemBlue"
---   		      key="9" view="Page" model="xcode" />
---   		<Page id="simulators" title="Simulators" icon="iphone" view="Simulators"
---   		      model="simulators" controller="SimulatorsController" />
+--   	<Section title="Developer">
+--   		<Page id="xcode" title="Xcode" icon="hammer.circle.fill" color="systemBlue" key="9" />
+--   		<Page id="music" title="Music Production" icon="pianokeys" route="workflow" workflow="music" />
 --   	</Section>
 --   </App>
 --
--- `<App controller="Controller">` names a class of the app (a module path
--- inside it) that coordinates the whole window — a root controller with
--- services, scanning, sheets — and replaces the framework's launcher; it still
--- takes its pages, sidebar rows and Go menu from this file.
+-- A page is drawn by its route (lua/data/routes.lua): `route` names it, and
+-- the page id is the route's name when it is omitted. Every other attribute
+-- is kept in `page.attrs`, the route's `self.params` (`workflow="music"`).
+-- `sidebar="Dev tools"` is a shorter name for the sidebar row;
+-- `listed="false"` keeps a page out of the sidebar and the Go menu (a page
+-- opened from elsewhere).
 --
--- `class` is a module path inside the app, `view` a template in views/,
--- `controller` a class in controllers/ for a page that coordinates (a sheet,
--- a batch flow). A page with a controller may omit `view` and `model`: the
--- controller is its code-behind and owns what it shows. A model's
--- dependencies are in its own file, not here.
---
--- Any other attribute of a page (`workflow="developer"`, `header="..."`) is
--- kept in `page.attrs` for the app's controllers. `sidebar="Dev tools"` is a
--- shorter name for the sidebar row; `listed="false"` keeps a page out of the
--- sidebar and the Go menu (a page opened from elsewhere).
+-- `<App routes="pages">` names the module of the app's routes, a module path
+-- inside the app; it is `routes` when omitted. `<App controller="Controller">`
+-- names a class of the app that coordinates the whole window -- a root
+-- controller with services, scanning, sheets -- and replaces the framework's
+-- launcher; it still takes its pages, sidebar rows and Go menu from this file.
 local Manifest = {}
 
 local function fail(message) error("manifest: " .. message, 0) end
@@ -41,19 +35,15 @@ function Manifest.parse(nodes)
 	end
 	if not root then fail("no <App> element") end
 	local manifest = { name = root.attrs.name or "App", startup = root.attrs.startup, controller = root.attrs.controller,
-		models = {}, sections = {}, pages = {}, order = {} }
+		routes = root.attrs.routes or "routes", sections = {}, pages = {}, order = {} }
 	local function page(node, section)
 		local attrs = node.attrs
 		for _, key in ipairs({ "id", "title" }) do
 			if not attrs[key] or attrs[key] == "" then fail("<Page> needs " .. key) end
 		end
-		if not attrs.controller and (not attrs.view or not attrs.model) then
-			fail("page " .. attrs.id .. " needs view and model, or a controller")
-		end
 		if manifest.pages[attrs.id] then fail("page " .. attrs.id .. " is declared twice") end
 		local entry = { id = attrs.id, title = attrs.title, icon = attrs.icon, color = attrs.color, key = attrs.key,
-			view = attrs.view, model = attrs.model, controller = attrs.controller, section = section,
-			listed = attrs.listed ~= "false", attrs = attrs }
+			route = attrs.route or attrs.id, section = section, listed = attrs.listed ~= "false", attrs = attrs }
 		manifest.pages[entry.id] = entry
 		table.insert(manifest.order, entry)
 		if entry.listed then table.insert(section.pages, entry) end
@@ -62,11 +52,7 @@ function Manifest.parse(nodes)
 	table.insert(manifest.sections, current)
 	for _, node in ipairs(root.children) do
 		if node.kind == "element" then
-			if node.tag == "Model" then
-				if not node.attrs.id or not node.attrs.class then fail("<Model> needs id and class") end
-				if manifest.models[node.attrs.id] then fail("model " .. node.attrs.id .. " is declared twice") end
-				manifest.models[node.attrs.id] = node.attrs.class
-			elseif node.tag == "Section" then
+			if node.tag == "Section" then
 				current = { title = node.attrs.title, pages = {} }
 				table.insert(manifest.sections, current)
 				for _, child in ipairs(node.children) do
@@ -83,7 +69,7 @@ function Manifest.parse(nodes)
 				end
 				page(node, current)
 			else
-				fail("<" .. node.tag .. "> is not part of the manifest; use Model, Section or Page")
+				fail("<" .. node.tag .. "> is not part of the manifest; use Section or Page")
 			end
 		end
 	end
@@ -95,9 +81,6 @@ function Manifest.parse(nodes)
 	if #manifest.order == 0 then fail("the app has no pages") end
 	local keys = {}
 	for _, entry in ipairs(manifest.order) do
-		if entry.model and not manifest.models[entry.model] then
-			fail("page " .. entry.id .. " names the model " .. entry.model .. ", which the manifest does not declare")
-		end
 		if entry.key then
 			if keys[entry.key] then fail("pages " .. keys[entry.key] .. " and " .. entry.id .. " share the key " .. entry.key) end
 			keys[entry.key] = entry.id
